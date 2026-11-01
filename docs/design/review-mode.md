@@ -303,7 +303,10 @@ speed than it had before the record: one beside the record's own footage (a cut 
 before two touching 2× records meet leaves 0.05 s of the first in the second's clip, and the
 second's Remove sets that clip back whole), or one of its own between two pieces that were at
 different speeds (a 4× over the start of a 2×, cut 0.01 s into the 2×: its Remove sets all it
-still plays to 1×). A speed-up left that was intact and no longer plays such a sliver at its speed
+still plays to 1×); or the reset snaps to nothing, and a sliver of the record's own footage stays
+at its speed inside a clip it cannot be split from, held by no record any more (a 4× inside a 2×
+whose last 0.06 s shares a clip with a 4× kept). A speed-up left that was intact and no longer
+plays such a sliver at its speed
 (nor has it held there by a later record) gives it up, as Keep's `withSpeedUpKept` gives up a part:
 it is not its change any more, and the record stays intact and to review for the rest
 (`withoutResetSlivers`); so does one that held it through that one. When such a sliver beside the
@@ -609,7 +612,9 @@ Unit (`tests/review*.test.ts`), each failing without its code:
   0.05 s before they meet (or starting 0.05 s after), then Remove of the other 2×: the 2× left gives
   up the sliver, stays to review, and its Remove and the cut's bring all the footage back; its Keep
   keeps the rest sped up, and undo gives the sliver back. A 4× over the start of a 2×, cut 0.01 s
-  into the 2×, removed: the 2× gives up the 0.01 s and stays to review. `setRangeSpeed` snaps to
+  into the 2×, removed: the 2× gives up the 0.01 s and stays to review. A 4× inside a 2× whose last
+  0.06 s shares a clip with a 4× kept, removed: that 0.06 s stays at 4×, and the 2× gives it up and
+  stays to review. `setRangeSpeed` snaps to
   the nearest clip edge, and an end on an edge stays (14.6 − 14.5 is a hair under 0.1).
   The cut leaving the second 2× only its 0.05 s beside the first, the first removed (or the
   mirror: the first left only its 0.05 s, the second removed): the reset stops short of the clip

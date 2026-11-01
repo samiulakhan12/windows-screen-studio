@@ -1067,15 +1067,21 @@ const length = (pieces: readonly Piece[]): number => pieces.reduce((n, p) => n +
  * `after` (takeBack). A clip is never shorter than MIN_CLIP, so a reset snaps a range end that close
  * to a clip edge onto it (setRangeSpeed), and a sliver can end up at another speed than it had
  * before the records taken back: one beside their own footage, or one of theirs between two pieces
- * that were at different speeds. A speed-up left that was intact and no longer plays such a sliver
- * at its speed (nor has it held at it by a later record) gives it up, as withSpeedUpKept gives up a
- * part: that part is not its change any more. It stays intact, to review for the rest; so does one
- * that held it through that one. So Remove of one row never takes another off the list. Records
- * that change nothing are the same objects.
+ * that were at different speeds; or it snaps to nothing, and a sliver of a speed-up taken back
+ * still plays at its speed inside a clip it cannot be split from, held by no record any more. A
+ * speed-up left that was intact and no longer plays such a sliver at its speed (nor has it held at
+ * it by a later record) gives it up, as withSpeedUpKept gives up a part: that part is not its change
+ * any more. It stays intact, to review for the rest; so does one that held it through that one. So
+ * Remove of one row never takes another off the list. Records that change nothing are the same
+ * objects.
  */
 function withoutResetSlivers(out: AutoCut[], list: readonly AutoCut[], gone: ReadonlySet<string>, before: Clip[], after: Clip[]): AutoCut[] {
-  if (after === before) return out
-  const changed = retimed(before, after)
+  const changed = after === before ? [] : retimed(before, after)
+  // The footage of the speed-ups taken back that their reset could not set back.
+  for (const c of list) {
+    if (c.action === 'cut' || !gone.has(c.id)) continue
+    for (const w of c.was) changed.push(...playing(after, w.start, w.end, c.action))
+  }
   if (changed.length === 0) return out
   const intact = new Set(list.filter((c) => c.action !== 'cut' && !gone.has(c.id) && autoCutIntact(c, before, list)).map((c) => c.id))
   for (let n = 0; n < list.length && intact.size > 0; n++) {

@@ -948,6 +948,27 @@ describe('a Remove that re-times a sliver of footage another record holds', () =
     expect(plays(s.p.clips)).toBe('[0,20]@1')
   })
 
+  it('a 4x inside a 2x whose reset cannot set part of it back, removed: the 2x gives that part up and stays to review', () => {
+    // Remove silences 4x inside an idle part at 2x: setRangeSpeed snaps the second pause's start
+    // (10.184) onto the end of the first (10.124), so r1 holds [10, 10.184] and the clips are
+    // [10, 10.124] and [10.124, 10.563] at 4x. With r2 kept, r1's Remove sets [10, 10.124] back to 2x,
+    // but [10.124, 10.184] (0.06 s inside the kept clip) cannot be a clip of its own and stays at 4x.
+    // r0 held it at 2x through r1 only: it went off the list and read kept.
+    const s = replay('tool 10-12 2 smart-speed; tool 10-10.124,10.184-10.563 4 silences; open; K r2; R r1')
+    expect(plays(s.p.clips)).toBe('[0,10]@1 [10,10.124]@2 [10.124,10.563]@4 [10.563,12]@2 [12,20]@1')
+    expect(s.rows()).toEqual(['r1:removed', 'r0:pending', 'r2:kept'])
+    expect(pendingCount(s.p)).toBe(1)
+    expect(s.p.autoCuts?.find((c) => c.id === 'r0')?.was).toEqual([
+      { start: 10, end: 10.124, speed: 1 },
+      { start: 10.563, end: 12, speed: 1 }
+    ])
+    s.run('R r0')
+    expect(plays(s.p.clips)).toBe('[0,10.124]@1 [10.124,10.563]@4 [10.563,20]@1')
+    expect(s.rows()).toEqual(['r1:removed', 'r0:removed', 'r2:kept'])
+    s.run('undo; undo')
+    expect(s.rows()).toEqual(['r1:pending', 'r0:pending', 'r2:kept'])
+  })
+
   it('Keep of the 2x left keeps the rest of its footage sped up; undo gives the sliver back to it', () => {
     const s = replay(`${joined}; tool 13-13.95 cut filler; R r1; K r0`)
     expect(plays(s.p.clips)).toBe('[0,10]@1 [10,13]@2 [13.95,20]@1')
