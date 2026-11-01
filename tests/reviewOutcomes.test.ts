@@ -427,6 +427,24 @@ describe('reopening the panel', () => {
     s.run('K all')
     expect(s.p.autoCutOutcomes).toHaveLength(1078)
   })
+  it('a cut over footage an earlier cut of its own still holds a hair of opens again with all its footage', () => {
+    // A filler cut ending inside a silence cut records only its first 30 microseconds (the rest was
+    // cut already). Put back by hand, that 30 microseconds stays its record's (within 1 ms), and the
+    // same filler cut again records it again. The reader dropped every piece that started inside
+    // one before it, so the second record and its row went on reopening, and Remove all left the
+    // 0.4 s cut with no row to bring it back.
+    const s = replay('tool 10-12 cut silences; tool 9.99997-10.4 cut filler; hand restore 9.99997-12; tool 9.99997-10.4 cut filler; open')
+    expect(s.rows()).toEqual(['r1:pending', 'r2:pending'])
+    expect(plays(s.p.clips)).toBe('[0,10]@1 [10.4,20]@1')
+    const again = migrateProject(JSON.parse(JSON.stringify(s.p)))
+    expect(again.autoCuts?.map((c) => [c.id, c.was.map((w) => [w.start, w.end])])).toEqual([
+      ['r1', [[9.99997, 10]]],
+      ['r2', [[10, 10.4]]]
+    ])
+    const rows = reviewItems(again)
+    expect(rows.map((i) => i.key)).toEqual(['cut:r1', 'cut:r2'])
+    expect(plays(removeItems(again, rows).clips)).toBe('[0,20]@1')
+  })
 })
 
 describe('a 3-hour recording: opening the panel, K, Keep all and the Review button take milliseconds', () => {

@@ -221,10 +221,12 @@ Project.autoCutOutcomes?: AutoCutOutcome[]
 * `readAutoCuts(raw, duration)`: an array of plain objects only; `id` 1–64 characters, unique;
   `by` and `action` from their lists; `start < end`, finite, clamped to `[0, duration]`; `was`
   pieces finite, inside `[start, end]`, speed in `[0.25, 16]`; `words` a string cut to 80
-  characters; no two pieces of one action over the same footage, as the editor writes them (a cut
-  or a speed-up claims footage no other record of its action holds): the pieces of each action gone
-  through by where they start, one that starts inside one kept already is dropped, and a record
-  left without a piece goes (`withoutOverlaps`); the newest records that fit whole in 10,000
+  characters; no two pieces of one action over the same footage, as the editor writes them within
+  1 ms (a cut or a speed-up claims footage no other record of its action holds; a record whose
+  footage plays again for under 1 ms stays intact, and a later run can claim that footage again):
+  the pieces of each action gone through by where they start, one that starts inside those kept
+  already keeps only its part past their end (dropped when nothing is left, never for a sliver it
+  shares), and a record left without a piece goes (`withoutOverlaps`); the newest records that fit whole in 10,000
   records and 64,000 pieces in all (`newestAutoCuts`: walking from the newest, up to the first
   that does not fit). Anything else is
   dropped; an empty result is `undefined` (no key). Idempotent. The count is well above what the
@@ -549,8 +551,10 @@ drawing the rows, which are not virtualised (§8).
 
 Unit (`tests/review*.test.ts`), each failing without its code:
 * `readAutoCuts`: absent → undefined; malformed entries dropped; clamped; a piece over footage a
-  piece of its action read before it holds dropped, and a record left with none (a cut holding a
-  thousand copies of a 2×'s footage is read with one, and Delete on the 2× stays quick); capped
+  piece of its action read before it holds keeps only its part past it, and a record left with none
+  is dropped (a cut holding a thousand copies of a 2×'s footage is read with one, and Delete on the
+  2× stays quick; a filler cut whose first 30 µs an earlier one of its own still holds opens again
+  with the rest, and Remove all brings all of it back); capped
   (the newest records whole within 10,000 records and 64,000 pieces, a record past 64 pieces kept
   whole); idempotent; a project without `autoCuts`
   migrates with no key (byte-for-byte JSON equal to the old migration). `withAutoCuts` keeps the

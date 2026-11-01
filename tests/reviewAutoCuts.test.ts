@@ -136,23 +136,27 @@ describe('readAutoCuts (migration)', () => {
     expect(readAutoCuts(once, 20)).toEqual(once)
   })
 
-  it('drops a piece over footage a piece of the same action read before it holds, and a record left with none', () => {
-    // The editor never writes two pieces of one action over the same footage: a cut or a speed-up
-    // claims footage no other record of its action holds.
+  it('keeps of a piece over footage a piece of the same action read before it holds only the part past it, and drops a record left with none', () => {
+    // The editor never writes two pieces of one action over the same footage by more than 1 ms: a cut
+    // or a speed-up claims footage no other record of its action holds. Below that it can (a record
+    // whose footage plays again for under 1 ms stays, and a later run claims it again), so a piece
+    // is never dropped for the part it shares: only that part goes.
     const out = readAutoCuts(
       [
         cut({ id: 'a', start: 0, end: 10, was: [{ start: 1, end: 3, speed: 1 }, { start: 2, end: 4, speed: 1 }, { start: 5, end: 6, speed: 1 }] }),
         cut({ id: 'b', start: 0, end: 10, was: [{ start: 5.5, end: 7, speed: 1 }] }),
         cut({ id: 'c', start: 0, end: 10, was: [{ start: 6, end: 7, speed: 2 }] }),
+        cut({ id: 'd', start: 0, end: 10, was: [{ start: 1.5, end: 2.5, speed: 1 }] }),
         cut({ id: 's', by: 'smart-speed', action: 2, start: 0, end: 10, was: [{ start: 1, end: 3, speed: 1 }] }),
         cut({ id: 't', by: 'polish', action: 2, start: 0, end: 10, was: [{ start: 2.999, end: 4, speed: 1 }] })
       ],
       20
     )!
     expect(out.map((c) => [c.id, c.was.map((w) => [w.start, w.end])])).toEqual([
-      ['a', [[1, 3], [5, 6]]],
-      ['c', [[6, 7]]],
-      ['s', [[1, 3]]]
+      ['a', [[1, 3], [3, 4], [5, 6]]],
+      ['b', [[6, 7]]],
+      ['s', [[1, 3]]],
+      ['t', [[3, 4]]]
     ])
     expect(readAutoCuts(out, 20)).toEqual(out)
   })

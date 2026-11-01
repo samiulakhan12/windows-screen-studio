@@ -62,16 +62,20 @@ export function newestAutoCuts<T extends { was: readonly unknown[] }>(list: T[])
 }
 
 /**
- * `list` with no two pieces of one action overlapping, as the editor writes records (a cut or a
- * speed-up claims footage no other record of its action holds, and a record's pieces never overlap):
- * the pieces of each action gone through by where they start, a piece that starts before the end of
- * one kept already is dropped, and a record left without a piece goes. A hand-made file that stacks
- * pieces would otherwise make the steps that split records at a speed-up's pieces
- * (withSpeedsBefore, autoCuts.ts) grow with the product of the two. Idempotent.
+ * `list` with no two pieces of one action overlapping, as the editor writes records, within 1 ms (a
+ * cut or a speed-up claims footage no other record of its action holds, and a record's pieces never
+ * overlap; a record whose footage plays again for under 1 ms stays, and a later run can claim that
+ * footage again): the pieces of each action gone through by where they start, a piece that starts
+ * before the end of those kept already keeps only its part past that end (dropped when nothing is
+ * left), and a record left without a piece goes. So a piece is never dropped for a sliver another
+ * one shares with it. A hand-made file that stacks pieces would otherwise make the steps that split
+ * records at a speed-up's pieces (withSpeedsBefore, autoCuts.ts) grow with the product of the two.
+ * Idempotent.
  */
 function withoutOverlaps(list: AutoCut[]): AutoCut[] {
   const all = list.flatMap((c, i) => c.was.map((p, j) => ({ i, j, p, a: c.action })))
-  const drop = new Set<string>()
+  /** A piece trimmed (its new start) or dropped (null), by `${record}:${piece}`. */
+  const changed = new Map<string, number | null>()
   const byAction = new Map<AutoCut['action'], typeof all>()
   for (const x of all) {
     const xs = byAction.get(x.a)
@@ -82,14 +86,23 @@ function withoutOverlaps(list: AutoCut[]): AutoCut[] {
     xs.sort((u, v) => u.p.start - v.p.start || u.i - v.i || u.j - v.j)
     let end = -Infinity
     for (const x of xs) {
-      if (x.p.start < end - EPS) drop.add(`${x.i}:${x.j}`)
-      else end = Math.max(end, x.p.end)
+      if (x.p.start >= end - EPS) end = Math.max(end, x.p.end)
+      else if (x.p.end - end > EPS) {
+        changed.set(`${x.i}:${x.j}`, end)
+        end = x.p.end
+      } else changed.set(`${x.i}:${x.j}`, null)
     }
   }
-  if (drop.size === 0) return list
+  if (changed.size === 0) return list
   return list.flatMap((c, i) => {
-    const was = c.was.filter((_, j) => !drop.has(`${i}:${j}`))
-    return was.length === 0 ? [] : [was.length === c.was.length ? c : { ...c, was }]
+    if (!c.was.some((_, j) => changed.has(`${i}:${j}`))) return [c]
+    const was: AutoCut['was'] = []
+    c.was.forEach((p, j) => {
+      const to = changed.get(`${i}:${j}`)
+      if (to === undefined) was.push(p)
+      else if (to !== null) was.push({ ...p, start: to })
+    })
+    return was.length === 0 ? [] : [{ ...c, was }]
   })
 }
 
