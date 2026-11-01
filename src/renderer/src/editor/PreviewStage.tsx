@@ -22,7 +22,7 @@ import { frameCamera } from '../../../shared/engine/frameView'
 import { outputSize, type Rect, type SceneLayout } from '../../../shared/engine/layout'
 import { useSceneView } from './sceneRect'
 import { clamp } from '../../../shared/engine/math'
-import { isTall, withoutFollow } from '../../../shared/engine/reframeData'
+import { isTall, tallAs, withoutFollow } from '../../../shared/engine/reframeData'
 import { cameraFor, zoomAt, zoomTargetScale, type Camera } from '../../../shared/engine/zoom'
 import { ANNOTATION_FONT } from '../../../shared/render/overlays'
 import { cursorOverVideoAt, spotlightArea, visibleCursorAt } from '../../../shared/render/shapes'
@@ -194,7 +194,7 @@ export const PreviewStage = memo(function PreviewStage({ project, pickZoom: pick
       const dpr = window.devicePixelRatio || 1
       const k = Math.min(1, out.width / (w * dpr), out.height / (h * dpr))
       const bw = Math.max(2, Math.round(w * dpr * k))
-      const bh = Math.max(2, Math.round(h * dpr * k))
+      const bh = tallAs(bw, Math.max(2, Math.round(h * dpr * k)), out.width, out.height)
       if (canvas.width !== bw || canvas.height !== bh) {
         canvas.width = bw
         canvas.height = bh
