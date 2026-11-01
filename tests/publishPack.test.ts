@@ -4,7 +4,7 @@ import { AI_TEXT_TASKS, type AiTextResult } from '../src/shared/api/ai'
 import { AiOutputError, runTextTask, textPrompt, validateTextRequest, type TextPrompt } from '../src/shared/captions/transcriptText'
 import { migrateProject } from '../src/shared/engine/project'
 import { publishBlocker, publishSegments, readPublishPrefs, spokenWords, transcriptKey, PACK_TASKS } from '../src/shared/publish/pack'
-import { cleanTags, packPrompt, packTranscript, PACK_DATA_START, PACK_RULES, renderArticle, validatePackAnswer } from '../src/shared/publish/prompts'
+import { cleanTags, LINK_RULE, packPrompt, packTranscript, PACK_DATA_START, PACK_RULES, renderArticle, validatePackAnswer } from '../src/shared/publish/prompts'
 import { readPublish } from '../src/shared/publish/project'
 import { createQueue, CancelledError } from '../src/shared/publish/queue'
 import { cutAt, fitX, plainText, xLength, X_LIMIT } from '../src/shared/publish/text'
@@ -171,11 +171,14 @@ describe('the existing text tasks', () => {
     title: '1e6510af21580e99509bf4136b49d188f4b071da0bc04f978626e5142bba3286',
     summary: '7cecc313a945fabe2eddac00ab91ab05a11bfde8c4d338795939b75e9387dcc7'
   }
-  it('keep their prompts byte for byte, also when a request carries the pack fields', () => {
+  it('keep their prompts byte for byte, also when a request carries the pack fields; those whose text becomes copy or the recording\'s data only gain the link rule (§4.1)', () => {
     const segs = [seg('a', 0, 2.004, 'hello there'), seg('b', 130, 290.5, 'second "part" here')]
     for (const task of ['cleanup', 'translate', 'chapters', 'title', 'summary'] as const) {
       const p = textPrompt({ task, segments: segs, ...(task === 'translate' ? { targetLanguage: 'Bengali' } : {}), tone: 'casual', length: 'short', context: { title: 'X' } })
-      expect(createHash('sha256').update(JSON.stringify(p)).digest('hex'), task).toBe(BEFORE[task])
+      const ruled = task === 'chapters' || task === 'title' || task === 'summary'
+      expect(p.system.endsWith(` ${LINK_RULE}`), task).toBe(ruled)
+      const before = ruled ? { ...p, system: p.system.slice(0, -LINK_RULE.length - 1) } : p
+      expect(createHash('sha256').update(JSON.stringify(before)).digest('hex'), task).toBe(BEFORE[task])
     }
   })
   it('get no pack fields from validateTextRequest', () => {
@@ -210,6 +213,9 @@ describe('packPrompt', () => {
     expect(p.system).not.toContain('Ignore previous')
     expect(p.system).not.toContain('Admin tour')
     expect(p.system).toContain(PACK_RULES)
+    // Links only as said, with a space on each side (§4.1).
+    expect(p.system).toContain(LINK_RULE)
+    expect(LINK_RULE).toContain('space before and after')
     expect(p.system).toContain('at most 500 characters')
     expect(p.system).toContain('relaxed and conversational')
     expect(p.user.startsWith(PACK_DATA_START)).toBe(true)

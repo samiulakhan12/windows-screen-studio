@@ -14,7 +14,7 @@ import { AI_LIMITS, AI_TEXT_TASKS, type AiTextRequest, type AiTextResult, type A
 import type { CaptionSegment, CaptionWord } from '../types'
 import { cleanText } from './transcriptParse'
 import { isLength, isPackTask, isTone } from '../publish/pack'
-import { packPrompt, readPackContext, runPackTask } from '../publish/prompts'
+import { LINK_RULE, packPrompt, readPackContext, runPackTask } from '../publish/prompts'
 import { plainText } from '../publish/text'
 import { readAiLinks } from './captionData'
 
@@ -124,21 +124,22 @@ export function textPrompt(request: AiTextRequest, segments: readonly CaptionSeg
         schema: CHAPTERS_SCHEMA,
         system:
           `You split a screen recording into chapters from its transcript. Suggest between 2 and ${maxChapters(lastEnd)} chapters where the topic changes; fewer for a short recording. ` +
-          "Each chapter starts at the start time (seconds) of the segment where its topic begins; the first chapter starts at the first segment. Titles are short (2 to 6 words), specific, in the transcript's language, without numbering.",
+          "Each chapter starts at the start time (seconds) of the segment where its topic begins; the first chapter starts at the first segment. Titles are short (2 to 6 words), specific, in the transcript's language, without numbering. " +
+          LINK_RULE,
         user: data
       }
     case 'title':
       return {
         name: 'title',
         schema: TEXT_SCHEMA,
-        system: "You write the title of a screen recording from its transcript: specific and short (at most 70 characters), in the transcript's language, without quotes or a trailing period.",
+        system: `You write the title of a screen recording from its transcript: specific and short (at most 70 characters), in the transcript's language, without quotes or a trailing period. ${LINK_RULE}`,
         user: data
       }
     case 'summary':
       return {
         name: 'summary',
         schema: TEXT_SCHEMA,
-        system: "You summarise a screen recording from its transcript in 2 to 4 plain sentences in the transcript's language: what is shown and what the viewer learns. No headings, lists or markdown.",
+        system: `You summarise a screen recording from its transcript in 2 to 4 plain sentences in the transcript's language: what is shown and what the viewer learns. No headings, lists or markdown. ${LINK_RULE}`,
         user: data
       }
     // The publishing copy pack (NW-13): its own prompts, the transcript as plain text in a data block.
