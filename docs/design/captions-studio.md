@@ -2777,7 +2777,8 @@ Offline rules, each optional (§2.9). The choices are `CleanupChoices` (`caps`, 
 6. **AI fix** (`ai`, off by default, needs a provider): today's **Fix captions** (`cleanup`
    text task, `transcriptText.ts`), checked by `applyTextResult` (`edit.ts:156-175`) as today.
    It runs after rules 1–4 inside the same Tidy captions action, and its changes are recorded with
-   theirs.
+   theirs. The provider is sent the captions as rules 1–4 leave them, so its answer keeps the word
+   list's terms, the digits, the capitals and the full stops.
 
 The clean-up is one undo step. Each caption it changed gets a `captionAuto.text` record with its
 text and words before.

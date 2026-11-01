@@ -124,13 +124,16 @@ export function CleanupSection({ project }: { project: Project }): JSX.Element {
     let fix: TextResult | undefined
     let leftOut: string | undefined
     const before = store.state.transcript.segments
+    // The provider fixes the captions as rules 1–4 leave them, so its answer goes on top of them
+    // (rule 6) and keeps the word list's terms, the digits, the capitals and the full stops.
+    const asked = ai && chosen ? (tidyCaptions(store.state, { ...choices, ai: false, bleep: 'off', words: list }).project.transcript?.segments ?? before) : before
     if (ai && chosen) {
       const mine = { cancelled: false }
       run.current = mine
       setBusy(true)
       try {
         // TODO(phase B): pass a requestId so Cancel also stops the provider's request (cancelAiText, publishing pack).
-        const result = await window.api.aiText(chosen.id, { task: 'cleanup', segments: before })
+        const result = await window.api.aiText(chosen.id, { task: 'cleanup', segments: asked })
         if (mine.cancelled || !live.current) return
         if (result.task === 'cleanup') fix = result
         else leftOut = 'The AI fix was left out: the provider answered something else.'
@@ -147,7 +150,7 @@ export function CleanupSection({ project }: { project: Project }): JSX.Element {
     if (fix && store.state.transcript?.segments !== before) {
       fix = undefined
       leftOut = 'The AI fix was left out: the captions changed while the provider worked.'
-    } else if (fix && !applyTextResult(before, fix.segments)) {
+    } else if (fix && !applyTextResult(asked, fix.segments)) {
       fix = undefined
       leftOut = "The AI fix was left out: the provider changed the captions' timing or left some out."
     }
