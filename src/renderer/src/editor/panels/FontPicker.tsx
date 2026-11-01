@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import type { AssetState } from '../../../../shared/api/assets'
 import { catalogFamily, catalogFont, catalogId, CATALOG_FONTS, CATALOG_PREFIX, type CatalogFont, type FontCoverage } from '../../../../shared/captions/fontCatalog'
+import { partnerFor } from '../../../../shared/captions/fontStack'
 import { DEFAULT_FONT_LABEL, fontNameFromFile, fontOf, MAX_PROJECT_FONTS, newFontId } from '../../../../shared/render/fonts'
 import type { Project, ProjectFont } from '../../../../shared/types'
 import { fontState, loadCatalogFont, preloadProjectFont } from '../../render/fontLoader'
@@ -41,8 +42,11 @@ const COVERAGE_WORDS: Partial<Record<FontCoverage, string>> = {
   korean: 'Korean'
 }
 
-/** The letters a caption language needs, its name, and the bundled font that draws them when the chosen one cannot (§6.6). */
-const LANGUAGE_LETTERS: Readonly<Record<string, { coverage: FontCoverage; name: string; partner: string }>> = {
+/**
+ * The letters a caption language needs, its name, and the script font that draws them when the
+ * chosen one cannot (§6.6). Cyrillic and Vietnamese have none: the chosen font's own partner draws them.
+ */
+const LANGUAGE_LETTERS: Readonly<Record<string, { coverage: FontCoverage; name: string; partner?: string }>> = {
   bn: { coverage: 'bengali', name: 'Bengali', partner: 'noto-sans-bengali' },
   hi: { coverage: 'devanagari', name: 'Hindi', partner: 'noto-sans-devanagari' },
   mr: { coverage: 'devanagari', name: 'Marathi', partner: 'noto-sans-devanagari' },
@@ -50,9 +54,9 @@ const LANGUAGE_LETTERS: Readonly<Record<string, { coverage: FontCoverage; name: 
   ur: { coverage: 'arabic', name: 'Urdu', partner: 'noto-sans-arabic' },
   he: { coverage: 'hebrew', name: 'Hebrew', partner: 'noto-sans-hebrew' },
   th: { coverage: 'thai', name: 'Thai', partner: 'noto-sans-thai' },
-  ru: { coverage: 'cyrillic', name: 'Russian', partner: 'inter-tight' },
-  uk: { coverage: 'cyrillic', name: 'Ukrainian', partner: 'inter-tight' },
-  vi: { coverage: 'vietnamese', name: 'Vietnamese', partner: 'inter-tight' }
+  ru: { coverage: 'cyrillic', name: 'Russian' },
+  uk: { coverage: 'cyrillic', name: 'Ukrainian' },
+  vi: { coverage: 'vietnamese', name: 'Vietnamese' }
 }
 
 /** "Latin · Cyrillic · Vietnamese", and "One weight" for a single static weight. */
@@ -65,7 +69,9 @@ export function fontBadges(font: CatalogFont): { coverage: string; oneWeight: bo
 export function coverageNote(font: CatalogFont, language: string | undefined): string | null {
   const need = language ? LANGUAGE_LETTERS[language.split('-')[0].toLowerCase()] : undefined
   if (!need || font.coverage.includes(need.coverage)) return null
-  const partner = catalogFont(need.partner)?.family ?? 'another font'
+  // The font the captions draw those letters with (Anton → Oswald for Russian), as partnerFor picks it.
+  const partnerId = need.partner ?? catalogId(partnerFor(`${CATALOG_PREFIX}${font.id}`, [need.coverage]))
+  const partner = (partnerId && catalogFont(partnerId)?.family) ?? 'another font'
   return `Doesn't have ${need.name} letters: Flown uses ${partner} for them`
 }
 
