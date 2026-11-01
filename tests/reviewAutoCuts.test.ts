@@ -509,6 +509,47 @@ describe('intact, change gone, live', () => {
     expect(migrateProject(JSON.parse(JSON.stringify(p))).autoCuts).toEqual(p.autoCuts)
   })
 
+  it('Remove all over chains of slivers from a project file, handed on or joined across one at a time, takes milliseconds', () => {
+    // Hand-written: 200 'silences' cuts, each a chain of 64 touching 1.5 ms pieces at 1.25x and 1x in
+    // turn (too short to come back alone or together), each chain with a filler cut still to review
+    // touching its right end, or a clip at 2x. Remove all on Silences hands the chain to the filler
+    // cut (or joins it to the 2x clip) a piece at a time, from the right: one pass over all the
+    // pieces for each one took tens of seconds.
+    const R = 200
+    const P = MAX_WAS_PIECES
+    const w = 0.0015
+    const cell = P * w + 0.2
+    const D = R * cell + 2
+    for (const beside of ['filler', 'clip'] as const) {
+      const recs: AutoCut[] = []
+      const clips: Clip[] = [clip(0, 1)]
+      for (let k = 0; k < R; k++) {
+        const x0 = 1.01 + k * cell
+        const was = Array.from({ length: P }, (_, j) => ({ start: x0 + j * w, end: x0 + (j + 1) * w, speed: j % 2 ? 1 : 1.25 }))
+        recs.push(cut({ id: `s${k}`, start: x0, end: x0 + P * w, was }))
+        if (beside === 'filler') {
+          recs.push(cut({ id: `f${k}`, by: 'filler', start: x0 + P * w, end: x0 + P * w + 0.05, was: [{ start: x0 + P * w, end: x0 + P * w + 0.05, speed: 1 }] }))
+          clips.push(clip(x0 + P * w + 0.06, x0 + cell - 0.01, 1, `c${k}`))
+        } else clips.push(clip(x0 + P * w, x0 + cell - 0.01, 2, `c${k}`))
+      }
+      const p = project(clips, { duration: D, autoCuts: readAutoCuts(recs, D) })
+      const silences = reviewItems(p).filter((i) => i.kind === 'silence')
+      expect(silences).toHaveLength(R)
+      const t = performance.now()
+      const out = removeItems(p, silences)
+      expect(performance.now() - t).toBeLessThan(1000)
+      if (beside === 'filler') {
+        // Each filler cut holds all but the first piece of its chain (64 pieces at most).
+        expect(out.autoCuts!.map((c) => c.was.length)).toEqual(Array.from({ length: R }, () => P))
+        expect(out.clips).toHaveLength(R + 1)
+      } else {
+        // Every piece joins the 2x clip beside its chain.
+        expect(out.autoCuts).toBeUndefined()
+        expect(out.clips.slice(1).every((c, k) => c.start === 1.01 + k * cell && c.speed === 2)).toBe(true)
+      }
+    }
+  })
+
   it('two records from a project file with 32,000 pieces each: taking one from under the other and a Keep take milliseconds', () => {
     // Hand-written, over a 600 s video at 2x: a 2x whose pieces cover it all, at 1x and 0.5x in turn,
     // and a cut holding a sliver inside each at 2x. The 2x taken from under the cut (withoutSpeedUp:

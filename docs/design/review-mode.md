@@ -448,7 +448,11 @@ that go at once with five hundred records around or inside them) is listed, sett
 the panel in milliseconds: the speed-ups that go as kept give their parts up together, a speed at
 a time, not one by one. Taking a speed-up from under the other records (`withoutSpeedUp`) and
 giving up the parts of a speed-up kept (`withSpeedUpKept`) go by binary search over its pieces
-joined once, so two records of 32,000 pieces each take milliseconds too. A row's status reads its recorded choice by id, or
+joined once, so two records of 32,000 pieces each take milliseconds too. Remove and Remove all
+join the pieces still out to a clip, and hand them on to a cut, pass after pass as §4.1 says, but
+look at a piece again only once a clip or a record beside it changed, and find what touches a piece
+by the times its pieces start and end: Remove all over 500 chains of 64 slivers, each handed on or
+joined one piece at a time, takes well under a second (it took up to 95 s). A row's status reads its recorded choice by id, or
 its record and the clips, so reading the rows again after many are kept or removed costs no more.
 
 ## 7. Files and exported signatures
@@ -541,7 +545,8 @@ Unit (`tests/review*.test.ts`), each failing without its code:
   range starts before it; a piece between two parts sped up since, or re-timed by hand, joins the
   clip at the nearest speed; one inside a speed-up still to review goes to the cut beside it instead
   of joining a clip outside it at another speed (the speed-up stays to review); one between two
-  kept cuts stays out and reads removed.
+  kept cuts stays out and reads removed. Remove all over 200 chains of 64 slivers, each handed on to
+  a filler cut or joined to a 2× clip one piece at a time, takes under a second (it took 7 s).
 * A reset that snaps (§4.1): two touching 2× records joined into one clip by a Remove, a cut ending
   0.05 s before they meet (or starting 0.05 s after), then Remove of the other 2×: the 2× left gives
   up the sliver, stays to review, and its Remove and the cut's bring all the footage back; its Keep

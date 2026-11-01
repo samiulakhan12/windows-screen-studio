@@ -692,32 +692,196 @@ export function takeBack(
     at = next
     return []
   })
-  for (let joined = true; joined && left.length; ) {
-    joined = false
-    left = left.filter((p) => {
-      const next = joinAcross(at, p, duration)
-      if (!next || !leaves(p, next)) return true
-      at = next
-      joined = true
-      return false
-    })
-  }
-  // Hand each piece still out to a cut to review whose footage touches it (or touches one handed
-  // on before it), one at its speed first, so their Remove puts them back together.
-  const touches = (w: Piece, p: Piece): boolean => Math.abs(w.end - p.start) <= EPS || Math.abs(p.end - w.start) <= EPS
-  for (let handed = true; handed && left.length; ) {
-    handed = false
-    left = left.filter((p) => {
-      const heirs = out.filter((c) => c.action === 'cut' && !gone.has(c.id) && c.was.some((w) => touches(w, p)) && heir(c) && autoCutIntact(c, at))
-      const to = heirs.find((c) => c.was.some((w) => touches(w, p) && w.speed === p.speed)) ?? heirs[0]
-      const was = to && joinPieces([...to.was, p])
-      if (!to || !was || was.length > MAX_WAS_PIECES) return true
-      out = out.map((c) => (c === to ? { ...c, start: Math.min(c.start, p.start), end: Math.max(c.end, p.end), was } : c))
-      handed = true
-      return false
-    })
-  }
+  // As one pass after another until none joins (inPasses): a piece joined changes the clips that
+  // touch the pieces touching it, and nothing else that decides whether one joins (a join never
+  // changes a record left, so how the others read stays), so only those are tried again.
+  const touchingLeft = touchIndex(left)
+  const joined = inPasses(left.length, (i) => {
+    const next = joinAcross(at, left[i], duration)
+    if (!next || !leaves(left[i], next)) return null
+    at = next
+    return touchingLeft([left[i]])
+  })
+  left = left.filter((_, i) => !joined[i])
+  out = handOn(out, left, (c) => c.action === 'cut' && !gone.has(c.id) && heir(c) && autoCutIntact(c, at))
   return { clips: at, list: out.filter((c) => !gone.has(c.id)) }
+}
+
+/** Whether a piece `w` of a record and a piece `p` touch (one ends where the other starts). */
+const touches = (w: Piece, p: Piece): boolean => Math.abs(w.end - p.start) <= EPS || Math.abs(p.end - w.start) <= EPS
+
+/** Times `t` and `u` within EPS fall on keys at most this far apart (with room for rounding). */
+const KEY_REACH = 2
+const keyOf = (t: number): number => Math.round(t / EPS)
+
+/** `map` with `value` added under the key of `t`. */
+function addAt(map: Map<number, number[]>, t: number, value: number): void {
+  const k = keyOf(t)
+  const at = map.get(k)
+  if (at) at.push(value)
+  else map.set(k, [value])
+}
+
+/** The values of `map` under keys near the key of `t` (a superset of those within EPS of `t`). */
+function near(map: ReadonlyMap<number, number[]>, t: number, into: Set<number>): void {
+  const k = keyOf(t)
+  for (let d = -KEY_REACH; d <= KEY_REACH; d++) for (const v of map.get(k + d) ?? []) into.add(v)
+}
+
+/**
+ * The records `list` with each of the pieces `left` (sorted by start) that can go to one handed to
+ * it: to a record that `can` take one (a cut still to review, in takeBack) and whose footage touches
+ * the piece (or touches one handed on before it), one at its speed first, else the first in the
+ * list, while it holds at most MAX_WAS_PIECES pieces with it. That record holds the piece from then
+ * on (its `was`, `start` and `end` grow), so its Remove puts them back together. `list` itself when
+ * none goes.
+ *
+ * As one pass over the pieces after another until a pass hands none on (inPasses). What decides
+ * where a piece goes is which records touch it and how many pieces they hold, so once a record takes
+ * one, the pieces touching that one are looked at again, and when joining it to the record took a
+ * piece away (it fills a gap), all those the record touches. The records touching a piece are looked
+ * up by the times their pieces start and end.
+ */
+function handOn(list: AutoCut[], left: readonly Piece[], can: (c: AutoCut) => boolean): AutoCut[] {
+  if (left.length === 0) return list
+  const out = [...list]
+  // The records that can take a piece, by where their pieces end and start (one that takes a piece
+  // can take more: what it holds stays cut).
+  const recEnds = new Map<number, number[]>()
+  const recStarts = new Map<number, number[]>()
+  const index = (k: number, w: Piece): void => {
+    addAt(recEnds, w.end, k)
+    addAt(recStarts, w.start, k)
+  }
+  out.forEach((c, k) => {
+    if (can(c)) for (const w of c.was) index(k, w)
+  })
+  if (recEnds.size === 0) return list
+  const touching = touchIndex(left)
+  // How many pieces each record's `was` makes joined (worked out once for each).
+  const joined = new WeakMap<readonly Piece[], number>()
+  const joinedCount = (was: readonly Piece[]): number => {
+    let n = joined.get(was)
+    if (n === undefined) joined.set(was, (n = joinPieces([...was]).length))
+    return n
+  }
+  let changed = false
+  inPasses(left.length, (i) => {
+    const p = left[i]
+    const ks = new Set<number>()
+    near(recEnds, p.start, ks)
+    near(recStarts, p.end, ks)
+    const heirs = [...ks].sort((a, b) => a - b).filter((k) => out[k].was.some((w) => touches(w, p)))
+    const k = heirs.find((h) => out[h].was.some((w) => touches(w, p) && w.speed === p.speed)) ?? heirs[0]
+    // A piece joins at most the two it touches into one, so a record whose pieces make more than
+    // one over the most joined cannot take it.
+    if (k === undefined || joinedCount(out[k].was) > MAX_WAS_PIECES + 1) return null
+    const to = out[k]
+    const was = joinPieces([...to.was, p])
+    if (was.length > MAX_WAS_PIECES) return null
+    out[k] = { ...to, start: Math.min(to.start, p.start), end: Math.max(to.end, p.end), was }
+    index(k, p)
+    changed = true
+    return touching(was.length > to.was.length ? [p] : [...to.was, p])
+  })
+  return changed ? out : list
+}
+
+/** Finds the pieces of `pieces` that touch any of the given ones, by the times they start and end. */
+function touchIndex(pieces: readonly Piece[]): (of: readonly Piece[]) => Set<number> {
+  const starts = new Map<number, number[]>()
+  const ends = new Map<number, number[]>()
+  pieces.forEach((p, i) => {
+    addAt(starts, p.start, i)
+    addAt(ends, p.end, i)
+  })
+  return (of) => {
+    const found = new Set<number>()
+    for (const w of of) {
+      near(starts, w.end, found)
+      near(ends, w.start, found)
+    }
+    return found
+  }
+}
+
+/**
+ * `take` tried on items 0..n-1 in order, pass after pass, until a pass takes none: what filtering
+ * the items left again and again would do. `take` gives null for an item it does not take, else the
+ * items whose answer that may change; only those are tried again (later in the pass when they come
+ * after it, else in the next pass), since one not taken gives the same answer until then. So the
+ * cost grows with the items and what each one taken changes, not with the passes times the items.
+ * Which items were taken.
+ */
+function inPasses(n: number, take: (i: number) => Iterable<number> | null): Uint8Array {
+  const taken = new Uint8Array(n)
+  let queued = new Uint8Array(n).fill(1)
+  let pass = Array.from({ length: n }, (_, i) => i)
+  while (pass.length > 0) {
+    const heap = new MinHeap(pass)
+    const next: number[] = []
+    const queuedNext = new Uint8Array(n)
+    for (let i = heap.pop(); i !== undefined; i = heap.pop()) {
+      queued[i] = 0
+      if (taken[i]) continue
+      const again = take(i)
+      if (!again) continue
+      taken[i] = 1
+      for (const j of again) {
+        if (taken[j]) continue
+        if (j > i) {
+          if (!queued[j]) {
+            queued[j] = 1
+            heap.push(j)
+          }
+        } else if (!queuedNext[j]) {
+          queuedNext[j] = 1
+          next.push(j)
+        }
+      }
+    }
+    pass = next
+    queued = queuedNext
+  }
+  return taken
+}
+
+/** A min-heap of numbers. */
+class MinHeap {
+  private readonly a: number[] = []
+  constructor(values: readonly number[]) {
+    for (const v of values) this.push(v)
+  }
+  push(v: number): void {
+    const a = this.a
+    a.push(v)
+    for (let i = a.length - 1; i > 0; ) {
+      const up = (i - 1) >> 1
+      if (a[up] <= a[i]) break
+      ;[a[up], a[i]] = [a[i], a[up]]
+      i = up
+    }
+  }
+  pop(): number | undefined {
+    const a = this.a
+    if (a.length === 0) return undefined
+    const top = a[0]
+    const last = a.pop()!
+    if (a.length > 0) {
+      a[0] = last
+      for (let i = 0; ; ) {
+        const l = 2 * i + 1
+        const r = l + 1
+        let m = i
+        if (l < a.length && a[l] < a[m]) m = l
+        if (r < a.length && a[r] < a[m]) m = r
+        if (m === i) break
+        ;[a[m], a[i]] = [a[i], a[m]]
+        i = m
+      }
+    }
+    return top
+  }
 }
 
 /** The time `before` and `after` both play, at different speeds (with the speed `after` plays it at). */
@@ -780,13 +944,34 @@ function withoutResetSlivers(out: AutoCut[], list: readonly AutoCut[], gone: Rea
  * null when it touches no clip.
  */
 function joinAcross(clips: Clip[], p: Piece, duration: number): Clip[] | null {
-  const before = clips.find((c) => Math.abs(c.end - p.start) <= EPS)
-  const after = clips.find((c) => Math.abs(c.start - p.end) <= EPS)
-  if (!before && !after) return null
+  const b = clips.findIndex((c) => Math.abs(c.end - p.start) <= EPS)
+  const a = clips.findIndex((c) => Math.abs(c.start - p.end) <= EPS)
+  if (b < 0 && a < 0) return null
+  const before = clips[b]
+  const after = clips[a]
   if (before && after && before.speed === after.speed) {
-    return normalizeClips(clips.flatMap((c) => (c === after ? [] : c === before ? [{ ...c, end: after.end }] : [c])), duration)
+    return normalizedAround(
+      clips.flatMap((c, k) => (k === a ? [] : k === b ? [{ ...c, end: after.end }] : [c])),
+      b > a ? b - 1 : b,
+      duration
+    )
   }
   const far = (c: Clip | undefined): number => (c ? Math.abs(Math.log(c.speed / p.speed)) : Infinity)
-  const to = far(before) <= far(after) ? before! : after!
-  return normalizeClips(clips.map((c) => (c !== to ? c : to === before ? { ...c, end: p.end } : { ...c, start: p.start })), duration)
+  const k = far(before) <= far(after) ? b : a
+  return normalizedAround(
+    clips.map((c, i) => (i !== k ? c : k === b ? { ...c, end: p.end } : { ...c, start: p.start })),
+    k,
+    duration
+  )
+}
+
+/**
+ * `clips` normalised (normalizeClips) where clip `k` changed, the rest already being so: only the
+ * clips beside it can change (its new end or start lies within MIN_CLIP of where it was), so only
+ * those are gone through, not every clip, for every piece joined.
+ */
+function normalizedAround(clips: Clip[], k: number, duration: number): Clip[] {
+  const lo = Math.max(0, k - 1)
+  const hi = Math.min(clips.length, k + 3)
+  return [...clips.slice(0, lo), ...normalizeClips(clips.slice(lo, hi), duration), ...clips.slice(hi)]
 }
