@@ -128,6 +128,25 @@ describe('chunk modes (test 9)', () => {
     expect(gap(grown)).toBeGreaterThan(gap(plain))
   })
 
+  it('Stickers stand 0.2 em apart, sticker to sticker, with or without a space in the text (more.html)', () => {
+    const st = look('stickers')
+    const edge = st.box.padX + st.box.border / 2
+    for (const [text, language] of [['Three easy steps it is a go', 'en'], ['今天我们一起来看看这个新的功能怎么用', 'zh']] as const) {
+      const l = studioLayout({ id: 'c', start: 0, end: 3, text }, st, 1080, 1920, measure, { faceOf: () => FACE, language })
+      const room = studioMetrics(st, 1080, 1920, null, language === 'zh' ? 'han' : 'latin').maxWidth
+      let pairs = 0
+      for (const line of l.chunks.flatMap((ch) => ch.lines)) {
+        expect(line.width, text).toBeLessThanOrEqual(room * (1 + 1e-9))
+        for (let i = 1; i < line.words.length; i++) {
+          const [a, b] = [line.words[i - 1], line.words[i]]
+          expect(b.x - edge * b.px - (a.x + a.w + edge * a.px), `${a.text}|${b.text}`).toBeGreaterThanOrEqual(0.2 * b.px - 1e-9)
+          pairs++
+        }
+      }
+      expect(pairs, text).toBeGreaterThan(0)
+    }
+  })
+
   it('Light to Bold measures every word at its spoken weight, so lines never re-break', () => {
     const weights: number[] = []
     studioLayout(timed('lowercase words turn bold'), look('weight-shift'), 1080, 1920, (t, px, f) => (weights.push(f.weight), measure(t, px)), { faceOf: () => ({ ...FACE, weight: 400 }) })

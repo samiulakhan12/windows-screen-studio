@@ -176,19 +176,19 @@ function breakCost(tokens: readonly StudioToken[], i: number, language: string |
   return cost
 }
 
-/** Widths and character counts of lines over the words, with spaces only where the text has them. */
+/** Widths and character counts of lines over the words, with the room before each word in `spaces` (0 where the text has no space, but between stickers). */
 function lineMeter(widths: readonly number[], tokens: readonly StudioToken[], spaces?: readonly number[]): { width(a: number, b: number): number; chars(a: number, b: number): number } {
   const n = tokens.length
   const wSum = new Float64Array(n + 1)
   const cSum = new Float64Array(n + 1)
   for (let i = 0; i < n; i++) {
     const gap = tokens[i].gap
-    wSum[i + 1] = wSum[i] + widths[i] + (gap ? (spaces?.[i] ?? 0) : 0)
+    wSum[i + 1] = wSum[i] + widths[i] + (spaces?.[i] ?? 0)
     cSum[i + 1] = cSum[i] + graphemes(tokens[i].text) + (gap ? 1 : 0)
   }
   return {
     // The first word's own space is not part of its line.
-    width: (a, b) => wSum[b] - wSum[a] - (tokens[a].gap ? (spaces?.[a] ?? 0) : 0),
+    width: (a, b) => wSum[b] - wSum[a] - (spaces?.[a] ?? 0),
     chars: (a, b) => cSum[b] - cSum[a] - (tokens[a].gap ? 1 : 0)
   }
 }
@@ -199,7 +199,7 @@ function lineMeter(widths: readonly number[], tokens: readonly StudioToken[], sp
  * line but the last of a chunk, and the two-line rules, with a cost per line and per chunk so a
  * line that fits is never broken. Lines are no wider than `room` and no longer than `maxChars`
  * (0: no limit; a word alone always fits); a chunk holds at most `lines` (1 or 2) lines. `spaces`:
- * the width of the space before each word, used where the text has one (none: 0).
+ * the room before each word: its space where the text has one, the gap between stickers (none: 0).
  */
 export function breakPhrases(widths: number[], tokens: StudioToken[], room: number, maxChars: number, lines: number, language?: string, spaces?: readonly number[]): [number, number][][] {
   const n = tokens.length
@@ -498,12 +498,15 @@ export function studioLayout(
     const grow = scriptScale(tokens[k].script, studio.motion.spokenScale ?? 1)
     return tokens[k].script === 'bengali' ? Math.max(grow, motionPeak(k)) : grow
   }
+  // Stickers (§0.1, more.html): each word is its own sticker, reaching padX and half its border past
+  // the word, so neighbours stand 0.2 em apart sticker to sticker, with or without a space in the text.
+  const box = studio.box
+  const sticker = (k: number): number => (box.padX + box.border / 2) * pxOf[k]
+  const g = (k: number): number => (peak(k) - 1) * widths[k]
   const spaces = tokens.map((t, i) => {
-    if (!t.gap) return 0
-    const space = measure(' ', pxOf[i], faces[i])
-    if (i === 0) return space
-    const g = (k: number): number => (peak(k) - 1) * widths[k]
-    return space + Math.max(g(i - 1), g(i)) / 2
+    const grow = i > 0 ? Math.max(g(i - 1), g(i)) / 2 : 0
+    if (box.kind === 'word' && i > 0) return sticker(i - 1) + sticker(i) + 0.2 * pxOf[i] + grow
+    return t.gap ? measure(' ', pxOf[i], faces[i]) + grow : 0
   })
   const meter = lineMeter(widths, tokens, spaces)
   const lay = studio.layout
