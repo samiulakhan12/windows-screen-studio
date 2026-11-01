@@ -2767,7 +2767,11 @@ Offline rules, each optional (§2.9). The choices are `CleanupChoices` (`caps`, 
      sound is muted. Masks ("f***": first letter and asterisks, the same number of graphemes;
      "****" in scripts without case) apply in the burned-in captions on every look (through
      `burnedSegments`, §14.2), in SRT, VTT and text exports (`subtitles.ts`), in subtitle streams,
-     and in Review rows and their accessible names. The transcript keeps the real word.
+     and in Review rows and their accessible names. The transcript keeps the real word. Motion
+     graphics never show one (`wordsBleeped`): Make my captions great makes no keyword pop-up, AI
+     list card or quote card with a bleeped word, an offline list card shows it masked, and a
+     counter drops it as its label; a keyword pop-up made before the bleep is not drawn (nor its
+     pop sound), so the caption's chunk shows with the mask.
    - **Sound.** Both choices mute the recording's sound over the span with the sound finder's
      mechanism (F-17, `rev/sound-finder`): `bleepGains(project)` gives a `SoundGain` of gain 0 per
      bleep, and `soundGains` (`soundsEdit.ts:136`) joins them with the found sounds' spans through

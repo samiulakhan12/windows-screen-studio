@@ -5,6 +5,7 @@
  * from caption words takes their place while it shows. Pure.
  */
 import type { Project } from '../types'
+import { wordsBleeped } from './cleanup'
 
 /**
  * The captions and chunks replaced at source time `t` (the captions' clock, §9.1 rule 6): the chunk
@@ -24,6 +25,8 @@ export function replacedAt(project: Project, t: number): { captions: ReadonlySet
   for (const g of project.graphics ?? []) {
     if (g.kind !== 'keyword' || !g.anchor || g.replace === false || !(t >= g.start && t < g.end)) continue
     if (g.lang && g.lang.toLowerCase() !== shown) continue
+    // A keyword on a bleeped word is not drawn (graphicDrawn): the caption shows its mask.
+    if (wordsBleeped(project, g.anchor)) continue
     chunks.push({ caption: g.anchor.caption, word: g.anchor.from })
   }
   const captions = new Set<string>()

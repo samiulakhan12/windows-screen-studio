@@ -7,7 +7,10 @@ import { textHash } from '../src/shared/captions/captionTracks'
 import { graphicId, planGraphics, type GraphicOptions } from '../src/shared/captions/graphicRules'
 import { studioPreset } from '../src/shared/captions/studioPresets'
 import { DEFAULT_CAPTIONS } from '../src/shared/captions/settings'
-import type { Graphic, Project } from '../src/shared/types'
+import { replacedAt } from '../src/shared/captions/replaced'
+import { captionWordTimes } from '../src/shared/editor/transcript'
+import { graphicDrawn } from '../src/shared/render/popSound'
+import type { Bleep, CaptionSegment, Graphic, Project } from '../src/shared/types'
 import { captions, studioProject } from './p4Fixtures'
 
 vi.mock('../src/shared/captions/words', async (o) => (await import('./p1Fillins')).fillWords(await o()))
@@ -65,6 +68,35 @@ describe('graphic generation (§10.2)', () => {
     const out = planGraphics(pop, { ...NONE, keywords: true })
     const k = out.graphics?.find((g) => g.kind === 'keyword') as Extract<Graphic, { kind: 'keyword' }>
     expect(k).toMatchObject({ text: 'Auto Save', look: 'card', anchor: { caption: 'c0', from: 3, to: 4, text: 'Auto Save' } })
+  })
+
+  it('a bleeped word is never readable on a graphic: no keyword pop-up, AI list or quote on it, no counter label', () => {
+    const segs = captions(['Now turn on Auto Save in the menu', 'and nothing else matters'])
+    const pop = studioProject({ segments: segs, captions: { ...DEFAULT_CAPTIONS, studio: { ...studioPreset('bold-pop')!.look, layout: { ...studioPreset('bold-pop')!.look.layout, chunk: 'words', words: 3 } } } })
+    const bleepOn = (seg: CaptionSegment, word: number, text: string): Bleep => {
+      const w = captionWordTimes(seg)[word]
+      return { id: `b-${text}`, start: w.start, end: w.end, word: text, sound: 'tone' }
+    }
+    const bleeps = [bleepOn(segs[0], 3, 'auto')]
+    // Made before the bleep: the pop-up on "Auto Save".
+    const before = planGraphics(pop, { ...NONE, keywords: true })
+    const kw = before.graphics!.find((g) => g.kind === 'keyword')!
+    expect(kw).toMatchObject({ text: 'Auto Save' })
+    // Drawn after the bleep: the pop-up is not drawn, and its chunk shows with the mask.
+    expect(graphicDrawn(before, kw)).toBe(true)
+    expect(graphicDrawn({ ...before, bleeps }, kw)).toBe(false)
+    expect(replacedAt({ ...before, bleeps }, kw.start + 0.01).chunks).toEqual([])
+    // Made with the bleep: no pop-up, AI list or quote shows the word.
+    const marks = { captions: [], numbers: [], lists: [{ id: 'c1', from: 0, to: 1, items: [{ id: 'c0', from: 3, to: 4 }, { id: 'c1', from: 2, to: 3 }] }], quotes: [{ id: 'c0', from: 0, to: 4 }] }
+    const after = planGraphics({ ...pop, bleeps }, { ...NONE, keywords: true, lists: true, quotes: true, marks })
+    expect(JSON.stringify([after.graphics ?? [], after.titles ?? []])).not.toMatch(/Auto/)
+    // A counter's label is the word after its number: none when that word is bleeped.
+    const stats = captions(['Users grew 300% damn fast this year'])
+    const counted = studioProject({ segments: stats })
+    expect(planGraphics(counted, { ...NONE, counters: true }).graphics![0]).toMatchObject({ kind: 'counter', label: 'damn' })
+    const quiet = planGraphics({ ...counted, bleeps: [bleepOn(stats[0], 3, 'damn')] }, { ...NONE, counters: true }).graphics![0]
+    expect(quiet).toMatchObject({ kind: 'counter', to: 300 })
+    expect(quiet).not.toHaveProperty('label')
   })
 
   it('lower thirds only for names the user typed', () => {

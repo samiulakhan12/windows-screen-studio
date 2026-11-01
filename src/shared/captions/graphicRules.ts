@@ -14,6 +14,7 @@ import { GRAPHIC_DEFAULTS } from '../render/graphics'
 import { viewingTime } from '../render/overlays'
 import type { AiProviderKind, AutoOrigin, CaptionSegment, CounterGraphic, Graphic, KeywordGraphic, ListGraphic, Project, TitleCard } from '../types'
 import { textHash } from './captionTracks'
+import { maskedSegments, wordsBleeped } from './cleanup'
 import { chosenEmoji, isSensitive, LEAD, suggestEmoji } from './emoji'
 import { emphasisScores } from './emphasis'
 import { findLists } from './lists'
@@ -131,7 +132,8 @@ export function planGraphics(project: Project, opts: GraphicOptions): Project {
           decimals: n.decimals,
           prefix: n.prefix.slice(0, 8),
           suffix: n.suffix.slice(0, 16),
-          ...(n.label ? { label: n.label.slice(0, GRAPHIC_TEXT_MAX) } : {}),
+          // A bleeped word is never readable (§11.7): not as the label either.
+          ...(n.label && !wordsBleeped(project, { caption: seg.id, from: n.to + 1, to: n.to + 1 }) ? { label: n.label.slice(0, GRAPHIC_TEXT_MAX) } : {}),
           locale: language || 'en',
           countFor
         }
@@ -141,7 +143,8 @@ export function planGraphics(project: Project, opts: GraphicOptions): Project {
 
   // Lists: the AI's lists when it gave valid ones, else the offline finder; one per 60 s.
   if (opts.lists) {
-    const lists = aiLists(opts.marks, byId, language) ?? findLists(segments, language)
+    // A bleeped word is never readable (§11.7): the AI's lists skip it, the offline ones show it masked.
+    const lists = aiLists(opts.marks, byId, language, (span) => wordsBleeped(project, span)) ?? findLists(maskedSegments(segments, project.bleeps), language)
     let lastList = -Infinity
     for (const l of lists) {
       const seg = byId.get(l.caption)
@@ -186,6 +189,8 @@ export function planGraphics(project: Project, opts: GraphicOptions): Project {
       const chunk = chunks.find((c) => c.first <= s.word && s.word <= c.last)
       if (!chunk || chunk.end - chunk.start < KEYWORD_CHUNK) continue
       if (picked.some((p) => Math.abs(p.start - chunk.start) < KEYWORD_EVERY)) continue
+      // A bleeped word is never readable (§11.7): no pop-up shows it over the mask.
+      if (wordsBleeped(project, { caption: seg.id, from: s.word, to: s.to })) continue
       const words = studioWordTexts(seg.text, language)
       const text = trimText(words.slice(s.word, s.to + 1).join(' '), GRAPHIC_TEXT_MAX)
       if (!text) continue
@@ -254,7 +259,7 @@ export function planGraphics(project: Project, opts: GraphicOptions): Project {
     let lastQuote = -Infinity
     for (const q of opts.marks.quotes) {
       const seg = byId.get(q.id)
-      if (!seg || sensitive.has(seg.id) || seg.start - lastQuote < QUOTE_EVERY) continue
+      if (!seg || sensitive.has(seg.id) || seg.start - lastQuote < QUOTE_EVERY || wordsBleeped(project, { caption: q.id, from: q.from, to: q.to })) continue
       const words = studioWordTexts(seg.text, language)
       const text = words.slice(q.from, q.to + 1).join(' ').trim()
       if (!text) continue
@@ -297,13 +302,18 @@ function withItems(project: Project, graphics: Graphic[], titleCards: TitleCard[
   return next
 }
 
-/** Lists from the AI's word spans, or null when it gave none usable (§11.2 rule 5). */
-function aiLists(marks: MarksAnswer | undefined, byId: ReadonlyMap<string, CaptionSegment>, language: string | undefined): { title: string; items: { text: string; at: number }[]; caption: string }[] | null {
+/** Lists from the AI's word spans, or null when it gave none usable (§11.2 rule 5); none with a bleeped word (`bleeped`). */
+function aiLists(
+  marks: MarksAnswer | undefined,
+  byId: ReadonlyMap<string, CaptionSegment>,
+  language: string | undefined,
+  bleeped: (span: { caption: string; from: number; to: number }) => boolean
+): { title: string; items: { text: string; at: number }[]; caption: string }[] | null {
   if (!marks?.lists.length) return null
   const out: { title: string; items: { text: string; at: number }[]; caption: string }[] = []
   for (const l of marks.lists) {
     const seg = byId.get(l.id)
-    if (!seg) continue
+    if (!seg || bleeped({ caption: l.id, from: l.from, to: l.to }) || l.items.some((it) => bleeped({ caption: it.id, from: it.from, to: it.to }))) continue
     const title = studioWordTexts(seg.text, language).slice(l.from, l.to + 1).join(' ')
     const items: { text: string; at: number }[] = []
     for (const it of l.items) {

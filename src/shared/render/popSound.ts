@@ -7,6 +7,7 @@
  * (§9.1 rule 6): a graphic appears when the sound time reaches its start, so in a continue freeze
  * its pop sounds with the speech, and a pop at a pause freeze sounds when the freeze starts.
  */
+import { wordsBleeped } from '../captions/cleanup'
 import { EMOJI_KEYS } from '../captions/emojiList'
 import { editToVideo, planOf, type FreezePlan } from '../engine/freeze'
 import { outputDuration, playableFrom, sourceToOutput } from '../engine/timeline'
@@ -104,12 +105,15 @@ const burnedLanguage = (project: Project): string | undefined => project.caption
 
 /**
  * Whether graphic `g` is ever drawn (§10.4): a graphic with `lang` only while the burned-in
- * captions have that language, an emoji only when it is in this build's emoji list. The graphics
- * layer and its sounds share this rule, so a pop never sounds for a graphic that does not show.
+ * captions have that language, an emoji only when it is in this build's emoji list, a keyword
+ * made from caption words only while none of them is bleeped (§11.7: the caption then shows its
+ * mask). The graphics layer and its sounds share this rule, so a pop never sounds for a graphic
+ * that does not show; replacedAt follows it, so the caption's chunk shows instead.
  */
 export function graphicDrawn(project: Project, g: Graphic): boolean {
   if (g.lang && g.lang !== burnedLanguage(project)) return false
   if (g.kind === 'emoji' && !EMOJI_KEYS.has(g.emoji)) return false
+  if (g.kind === 'keyword' && g.anchor && wordsBleeped(project, g.anchor)) return false
   return true
 }
 

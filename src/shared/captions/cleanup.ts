@@ -15,6 +15,7 @@ import { applyTextResult } from './edit'
 import { parseNumberWords } from './numbers'
 import { textHash } from './captionTracks'
 import { MAX_BLEEPS } from './studioData'
+import { studioWordTexts } from './words'
 
 /** The Clean up section's choices (prefs `captionCleanup`, §2.9). */
 export interface CleanupChoices {
@@ -492,6 +493,39 @@ export function maskedSegments(segments: readonly CaptionSegment[], bleeps: read
     return { ...seg, text, ...(words ? { words } : {}) }
   })
   return changed ? out : segments
+}
+
+/** Each caption's masked words (studioWords indexes, or 'all'), made once per captions and bleeps. */
+const bleepedOf = new WeakMap<readonly Bleep[], { segments: readonly CaptionSegment[]; language: string | undefined; words: Map<string, ReadonlySet<number> | 'all'> }>()
+
+/**
+ * Whether a bleep masks one of the words from..to (studioWords indexes) of caption `caption`, as
+ * maskedSegments draws them: a graphic showing those words would read a bleeped word (§11.7). When
+ * the masked caption no longer splits into the same words, any of its words counts.
+ */
+export function wordsBleeped(project: Pick<Project, 'transcript' | 'bleeps'>, span: { caption: string; from: number; to: number }): boolean {
+  const bleeps = project.bleeps
+  const segments = project.transcript?.segments
+  if (!bleeps?.length || !segments?.length) return false
+  const language = project.transcript?.language
+  let made = bleepedOf.get(bleeps)
+  if (!made || made.segments !== segments || made.language !== language) {
+    const shown = maskedSegments(segments, bleeps)
+    const words = new Map<string, ReadonlySet<number> | 'all'>()
+    segments.forEach((seg, i) => {
+      if (shown[i] === seg) return
+      const was = studioWordTexts(seg.text, language)
+      const now = studioWordTexts(shown[i].text, language)
+      words.set(seg.id, was.length === now.length ? new Set(was.flatMap((w, k) => (w === now[k] ? [] : [k]))) : 'all')
+    })
+    made = { segments, language, words }
+    bleepedOf.set(bleeps, made)
+  }
+  const masked = made.words.get(span.caption)
+  if (!masked) return false
+  if (masked === 'all') return true
+  for (let k = span.from; k <= span.to; k++) if (masked.has(k)) return true
+  return false
 }
 
 /** A gain of 0 over each bleep, for the sound finder's one muting path. */
