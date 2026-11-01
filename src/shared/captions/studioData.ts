@@ -387,30 +387,96 @@ function captionWords(transcript: Transcript | undefined, id: string): { text: s
   return words
 }
 
+/** Final sigma read as sigma: lower-casing a word alone and in its caption differ only there. */
+const sigma = (t: string): string => t.replace(/ς/g, 'σ')
+
+/**
+ * A caption's words as the search of checkAnchor compares them, made once per words list: each
+ * word lower-cased without spaces (`low`) and also without punctuation (`bare`), joined, with
+ * where each word starts in the joins, and for each word the first word from it that has more
+ * than punctuation (itself when it does).
+ */
+interface Joined {
+  bare: string
+  bareAt: number[]
+  low: string
+  lowAt: number[]
+  letters: number[]
+}
+
+const joinedOf = new WeakMap<readonly { text: string; gap: boolean }[], Joined>()
+
+function joined(words: readonly { text: string; gap: boolean }[]): Joined {
+  const hit = joinedOf.get(words)
+  if (hit) return hit
+  const n = words.length
+  const out: Joined = { bare: '', bareAt: new Array<number>(n + 1), low: '', lowAt: new Array<number>(n + 1), letters: new Array<number>(n) }
+  for (let k = 0; k < n; k++) {
+    out.bareAt[k] = out.bare.length
+    out.lowAt[k] = out.low.length
+    const low = sigma(words[k].text.toLowerCase().replace(/\s+/g, ''))
+    out.low += low
+    out.bare += low.replace(/\p{P}+/gu, '')
+  }
+  out.bareAt[n] = out.bare.length
+  out.lowAt[n] = out.low.length
+  for (let k = n - 1, next = n; k >= 0; k--) out.letters[k] = next = out.bareAt[k + 1] > out.bareAt[k] ? k : next
+  joinedOf.set(words, out)
+  return out
+}
+
+/** The first m in lo+1..hi with at[m] >= target (`at` never goes down), or -1. */
+function firstReaching(at: readonly number[], lo: number, hi: number, target: number): number {
+  if (hi <= lo || at[hi] < target) return -1
+  let a = lo + 1
+  let b = hi
+  while (a < b) {
+    const mid = (a + b) >> 1
+    if (at[mid] >= target) b = mid
+    else a = mid + 1
+  }
+  return a
+}
+
 /**
  * The anchor's words found again in its caption (§4.2 rule 3, §11.1 "text check"), or null: the
  * anchor itself when the words at from..to still read as its text (after lower-casing and removing
  * punctuation), else the same text looked for again in the caption, nearest the old index first,
  * with new indexes; null when the caption is gone or the text is not there.
+ *
+ * The search reads the caption's joined words once (`joined`) and tries each start word with one
+ * comparison, so a file with thousands of marks that no longer match loads at once.
  */
 export function checkAnchor<T extends { caption: string; from: number; to: number; text: string }>(a: T, transcript: Transcript | undefined): T | null {
   const words = captionWords(transcript, a.caption)
   if (!words || !words.length) return null
   if (Number.isInteger(a.from) && Number.isInteger(a.to) && a.from >= 0 && a.from <= a.to && a.to < words.length && names(words, a.from, a.to, a.text)) return a
-  const want = norm(a.text)
+  const want = sigma(norm(a.text))
   if (!want) return null
+  const cut = cutText(a.text)
+  // norm keeps punctuation only for a text that has nothing else: then only words of punctuation can name it.
+  const letters = want.replace(/\p{P}+/gu, '') !== ''
+  const { bare, bareAt, low, lowAt, letters: next } = joined(words)
+  const n = words.length
   let best: { from: number; to: number } | null = null
-  for (let i = 0; i < words.length; i++) {
-    for (let j = i; j < words.length; j++) {
-      const have = norm(joinWords(words, i, j))
-      if (have.length > want.length && !(cutText(a.text) && have.startsWith(want))) break
-      if (names(words, i, j, a.text)) {
-        // A cut text names the start of its words: they keep their number of words.
-        const to = cutText(a.text) ? Math.max(j, Math.min(words.length - 1, i + Math.max(0, a.to - a.from))) : j
-        if (!best || Math.abs(i - a.from) < Math.abs(best.from - a.from)) best = { from: i, to }
-        break
-      }
+  for (let i = 0; i < n; i++) {
+    const r = next[i]
+    // m: the first word end at or past the text's length from word i; the words i..m-1 name the text.
+    let m: number
+    if (letters) {
+      // Words of punctuation first read as themselves: longer than the text, they name nothing.
+      if (r === n || lowAt[r] - lowAt[i] > want.length || !bare.startsWith(want, bareAt[i])) continue
+      m = firstReaching(bareAt, r, n, bareAt[i] + want.length)
+      if (m < 0 || (!cut && bareAt[m] !== bareAt[i] + want.length)) continue
+    } else {
+      if (r === i || !low.startsWith(want, lowAt[i])) continue
+      m = firstReaching(lowAt, i, r, lowAt[i] + want.length)
+      if (m < 0 || (!cut && lowAt[m] !== lowAt[i] + want.length)) continue
     }
+    const j = m - 1
+    // A cut text names the start of its words: they keep their number of words.
+    const to = cut ? Math.max(j, Math.min(n - 1, i + Math.max(0, a.to - a.from))) : j
+    if (!best || Math.abs(i - a.from) < Math.abs(best.from - a.from)) best = { from: i, to }
   }
   return best ? { ...a, from: best.from, to: best.to } : null
 }

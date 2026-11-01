@@ -274,6 +274,33 @@ describe('readCaptionMarks and checkAnchor (test 5, rule 3)', () => {
     expect(readCaptionMarks([mark({ from: 0, to: 0, text: 'tomorrow' })], transcript)).toBeUndefined()
   })
 
+  it('finds words past punctuation, and a text of punctuation only among words of punctuation', () => {
+    const t: Transcript = { ...transcript, segments: [{ id: 'p', start: 0, end: 3, text: 'Wait — what ?! okay … then' }] }
+    expect(studioWordTexts(t.segments[0].text, 'en')).toEqual(['Wait', '—', 'what', '?!', 'okay', '…', 'then'])
+    const at = (from: number, text: string): unknown => checkAnchor({ caption: 'p', from, to: from, text }, t)
+    // A dash before the words compares as nothing, so the nearest start may be the dash.
+    expect(at(0, 'what')).toMatchObject({ from: 1, to: 2 })
+    expect(at(4, 'What okay')).toMatchObject({ from: 2, to: 4 })
+    expect(at(0, '?!')).toMatchObject({ from: 3, to: 3 })
+    expect(at(6, '…')).toMatchObject({ from: 5, to: 5 })
+    expect(at(0, '!?')).toBeNull()
+    expect(at(0, '!')).toBeNull()
+  })
+
+  it('looks again for marks that no longer match without freezing the load (a file with thousands of them)', () => {
+    // 249 one-letter words, marks of 80 characters that are not there: each start word is tried once.
+    const segments = [
+      { id: 'a', start: 0, end: 9, text: Array.from({ length: 249 }, (_, i) => 'abcdefghijklmnopqrstuvwxy'[i % 25]).join(' ') },
+      { id: 'z', start: 9, end: 18, text: Array.from({ length: 249 }, () => 'z').join(' ') }
+    ]
+    const t: Transcript = { ...transcript, segments }
+    const raw = Array.from({ length: 200 }, (_, i) => ({ id: `m${i}`, caption: i % 2 ? 'a' : 'z', from: 0, to: 0, text: i % 2 ? 'z'.repeat(80) : `${'z'.repeat(78)}y` }))
+    const t0 = performance.now()
+    expect(readCaptionMarks(raw, t)).toBeUndefined()
+    // About 13 s before; a few milliseconds now. The margin keeps a slow machine passing.
+    expect(performance.now() - t0).toBeLessThan(1500)
+  })
+
   it('keeps at most MAX_MARKS', () => {
     const segments = Array.from({ length: 4100 }, (_, i) => ({ id: `s${i}`, start: i, end: i + 0.9, text: 'one two three four five' }))
     const t: Transcript = { ...transcript, segments }
