@@ -246,8 +246,10 @@ The answer must be an object with the schema's fields of the right types, else `
 
 Every string from the AI: CR/LF normalised; C0 and C1 control characters (except line break and
 tab, which becomes a space), DEL, bidirectional overrides and isolates (U+202A–U+202E,
-U+2066–U+2069), U+FEFF and the invisible characters IDNA drops from a host (soft hyphen, zero-width
-space, invisible plus: `evil\u200bflown.app` is evilflown.app to a browser) removed; NFC (as X reads a post); markdown emphasis removed, only as pairs
+U+2066–U+2069), U+FEFF and the invisible characters IDNA drops from a host (soft hyphen, combining
+grapheme joiner, zero-width space, the word joiner and the invisible operators, the shorthand format
+controls: `evil\u200bflown.app` is evilflown.app to a browser; the word joiner comes back only
+before a word's ending on a said link, below) removed; NFC (as X reads a post); markdown emphasis removed, only as pairs
 around words (`**Bold**`, `__two words__`: `__init__`, `__name__`, `**kwargs`, `2**8`, a glob's `**`
 and `snake__case` stay as written); trailing spaces on lines and more than one blank line in a row
 removed; trimmed; cut to the field's cap (`cutAt`, below); and then, last, **no link the transcript
@@ -260,47 +262,76 @@ after a link, `@`, `#` and `$`, ports, paths, queries, punycode, any script). A 
 ways. As X reads it at its very start and as it reads it after a space, since a part of the pack
 becomes either as it is put together and pasted (at the start, X takes a first `é` or `(` as what
 comes before a link: `éflown.app` links `flown.app`; after a space it links `éflown.app`). And as
-sites other than X read it (LinkedIn, YouTube, a help centre's linkifier): where X has rules of its
-own, they take these for the end of a name, so that reading has them as spaces: `$` and `#` (X's
-cashtag and hashtag: `$paypal-login.com/verify`, and markdown-it's linkifier links `#evil.com`; a
-said `#ASP.NET` stays, an unsaid one is broken); `@`, but an e-mail address's (an ASCII user name
-starting a word, a name after it ending at a space or a sentence's punctuation:
-`paypal.com@login` and `paypal-login.com@evil.comx` are links elsewhere, `wei.wang@acme.com` is
-not); `//` before a name that is not a scheme's, with a user name after it
-(`//evil.com/login`, `//me@evil.com`); what X counts as part of a name (`"`, `` ` ``, punctuation
-other than ASCII's: `/．evil.com`, `「evil.com」`, which X then drops for the `/`; the text of
-languages written without spaces: `网站flown.app/download`, where X counts the whole run as one
-label, too long to link); and the ASCII punctuation X reads on through in a path or query it drops
-(`flown.app?README.md`: X links `flown.app` and nothing in its query, other sites start again after
-the `?`; `!?*'();=+,%[]~|&{}^<>\`). Added to X's in every reading: links X leaves only for their length (over 4 096
-characters), names on such a domain with no Latin letters (`госуслуги.рф`, which X links only after a
-scheme but other sites may), names on the top-level domains IANA delegated after twitter-text's
-lists (`newerTlds.ts`: `evil.web`, `evil.amazon`, `evil.亚马逊`…), and every `http(s)://` or `www.`
-link X does not link but YouTube and LinkedIn do (glued to a word, `xhttps://…`; inside another
-link's query, `flown.app?next=https://evil.com/login`; on an address X does not know,
-`http://192.168.1.1/login`, `https://evil.example`), as X ends it from there, else up to a space, a
-quotation mark (`"`, `'`, `` ` ``, `“”‘’‹›«»„‚`), an angle bracket or Chinese or Japanese text (not
-full-width Latin letters: IDNA reads `https://ｅｖｉｌ.ｃｏｍ` as `evil.com`). Where X ends such a link
-earlier than that, the stretch to the next space is a link too when a browser may open another
-name for it: when a piece of its authority (before, between or after its `@`s), cut where any site
-may end it (at each character that is not a letter, digit, `-`, `_` or `.`: `%`, `．`, a quotation
-mark…) and read as a browser reads a host (no port, percent-decoded, IDNA: NFKC, `．` and `。` as
-dots), is a host on a top-level domain that is neither X's host nor one under it
-(`https://flown.app%2eevil%2ecom/login`, `https://flown.app:8443@evil.com/login`,
+sites other than X read it (LinkedIn, YouTube, a help centre's linkifier). There, what a browser
+reads in a host as ASCII letters or digits, or drops, is a letter (full-width and mathematical
+letters, variation selectors: in `ｇｅｔflown.com` and `get\ufe0fflown.com` X links only
+`flown.com`, a browser opens getflown.com); and where X has rules of its own, they take these for
+the end of a name, so that reading has them as spaces:
+
+- `$` and `#` (X's cashtag and hashtag: `$paypal-login.com/verify`, and markdown-it's linkifier
+  links `#evil.com`; a said `#ASP.NET` stays, an unsaid one is broken);
+- `@`, but where no site links across it. It stays when nothing right before it can be a link (the
+  name before it has none, and no `/` or `\` starts its user name: `support@flown.app—`,
+  `「support@flown.app」`, `support@flown.app’s`, `@flown.studio`, `@flown@mastodon.social`), or when
+  it is an e-mail address's as linkify-it 5 (markdown-it's linkifier) reads one: a user name of ASCII
+  letters, digits and `-;:&=+$,._` after the start, a space or one of `<>｜"(`, then dotted names on
+  a top-level domain of two letters, punycode or its list (com, net, org, edu, gov, biz, info, name,
+  pro, aero, asia, coop, museum, shop, web, xxx, рф), not followed by `_`, a port or more of a name
+  (`wei.wang@acme.com`). Else the name before it is read: `paypal.com@login`,
+  `paypal-login.com@evil.comx`, `paypal-login.com@flown.app` (linkify-it does not know `.app` for an
+  address, so it links the name before the `@`), `paypal-login.com@x.com:80/verify`,
+  `|paypal-login.com@evil.com`;
+- `//` before a name that is not a scheme's (`//evil.com/login`; a user name after it is judged by
+  the `@` rule: `//me@evil.com`, `//paypal-login.com@x.com/verify`);
+- what X counts as part of a name: `"`, `` ` ``, punctuation other than ASCII's (`/．evil.com`,
+  `「evil.com」`, which X then drops for the `/`), the text of languages written without spaces
+  (`网站flown.app/download`, where X counts the whole run as one label, too long to link), but not
+  right after a `.`, where that text is a top-level domain (`$paypal-login.在线/verify`,
+  `「paypal-login.コム」`);
+- the ASCII punctuation X reads on through in a path or query it drops (`flown.app?README.md`: X
+  links `flown.app` and nothing in its query, other sites start again after the `?`;
+  `!?*'();=+,%[]~|&{}^<>\`).
+
+Each reading is read with X's top-level domains and, apart, with the wider lists below, as a match
+the wider lists make and X drops can use up the text X links from (`/a.web:1paypal-login.com/verify`:
+X links `1paypal-login.com/verify`). Added to X's in every reading: links X leaves only for their
+length (over 4 096 characters), names on such a domain with no Latin letters (`госуслуги.рф`, which X
+links only after a scheme but other sites may), names on the top-level domains IANA delegated after
+twitter-text's lists (`newerTlds.ts`: `evil.web`, `evil.amazon`, `evil.亚马逊`…), and every
+`http(s)://` or `www.` link X does not link but YouTube and LinkedIn do (glued to a word,
+`xhttps://…`; inside another link's query, `flown.app?next=https://evil.com/login`; on an address X
+does not know, `http://192.168.1.1/login`, `https://evil.example`), as X ends it from there, else up
+to a space, a quotation mark (`"`, `'`, `` ` ``), an angle bracket, Chinese or Japanese text (not
+full-width Latin letters: IDNA reads `https://ｅｖｉｌ.ｃｏｍ` as `evil.com`) or punctuation other than
+ASCII's that no host holds (`，`, `（`, `！`, `；`, `“”‘’‹›«»„‚`, `—`, `।`; not `．`, `－`, `＿`, `｡` or
+`…`, which IDNA reads as `.`, `-` and `_`): `http://localhost:3000，就能看到` links
+`http://localhost:3000`, and keeps its comma.
+
+Where X ends such a link before the next space, the stretch to that space is a link too when a
+browser may open another name for it. Its authority runs to the first `/`, `?`, `#` or `\`. With an
+`@` in it, a browser opens whatever follows the last one, an IP address or a name
+(`https://flown.app!@203.0.113.7/login`, `https://flown.app:8443@3405803783/login`), so the stretch
+is the link; so it is when the authority is longer than 2 000 characters, which no link's is (escapes
+of characters a browser drops can pad one: `https://flown.app%e2%80%8b…%2eevil%2ecom`). Else it is
+when a host of it, cut where any site may end it (at each character that is not a letter, digit,
+`-`, `_` or `.`: `%`, `．`, a quotation mark…) and read as a browser reads a host (no port,
+percent-decoded, the characters IDNA drops dropped, NFKC, `．` and `。` as dots), is on a top-level
+domain and is neither X's host nor one under it (`https://flown.app%2eevil%2ecom/login`,
 `https://flown.app．evil．com`, `https://flown.app".evil.com` open evil.com's;
 `https://flown.app—great` and `https://flown.app,` are on no top-level domain and open nothing). A
 `http(s)://` or `www.` glued to what no site reads as a host (`https://日%2eevil…`, `https://“…`) is
 a link of its own: the scheme.
 
 *Which are kept.* A link is kept when the transcript, the recording's name or a chapter title (§4.1)
-has the very same link (`trustedText`, read the same three ways), without `http(s)://` (it goes to
-the same place: `https://flown.app/download` is `flown.app/download`, and `http://` is `https://`;
-`www.` is another host), the host compared without case in ASCII only (the Kelvin sign is not `k`),
-the rest exactly. `example.co` is not `example.com/settings`. A link that is a said one with a
-word's ending glued on (`flown.app/download'dan`, `github.com/flown/recorder's`, `…/download-Seite`,
-`…:sta`, `…-странице`, which X reads into its path) keeps the said link: U+2060, the word joiner,
-goes before the ending, so X links exactly the said link and no letter is lost; a transcript that
-says the link with an ending allows it without too. The name and chapter titles are what the user
+has the very same link (`trustedText`, read the same three ways), without `http(s)://` and without a
+`/` at its end (each goes to the same place: `https://flown.app/download` is `flown.app/download`,
+`https://flown.app/` is `flown.app`, and `http://` is `https://`; `www.` is another host), the host
+compared without case in ASCII only (the Kelvin sign is not `k`), the rest exactly. `example.co` is
+not `example.com/settings`. A link that is a said one with a word's ending glued on
+(`flown.app/download'dan`, `github.com/flown/recorder's`, `…/download-Seite`, `…:sta`,
+`…-странице`, which X reads into its path) keeps the said link: U+2060, the word joiner, goes before
+the ending, so X links exactly the said link and no letter is lost; a transcript that says the link
+with an ending allows it without too. The name and chapter titles are what the user
 typed, or what an AI suggested for them, which is cleaned the same way against the captions it was
 written from before it reaches the project (§4.6).
 
@@ -315,6 +346,9 @@ join the text around it into another (`evil.comhttps://x.de`), and breaking one 
 (`x.de:80evil.com`), so the text is read again until no such link is left; after 8 rounds (a text
 built to hide links in links) a no-break space goes after every `.` that is not before a space and
 into every `://`: then nothing can be a link, and as it only adds characters, it joins nothing.
+The text read is the NFC form, and that is what comes back once anything changed: a mark that a
+removed link left behind joins the letter before it (`paypal-login.site`, a removed link, then
+U+0301 gives `paypal-login.sité`, which nothing links), and the decomposed text is never returned.
 
 *Cuts make no link.* A cut can turn a word into a link (`evil.comfy` cut to `evil.com…`). Every cut
 (a field's cap, `fitX`, the article's 20 000) happens before that last reading; `cutAt` and `fitX`
@@ -325,7 +359,12 @@ inside a link that goes whole, but before it. The article and the release notes 
 as a whole after their parts are put together; a step's number and a heading's `#` come off before a
 part is read; a tag's `<`, `>`, `#` and commas before it is read. The YouTube description's `<` to
 `‹` (§4.7) makes no link either (`withLinksOf`; `‹` and `›` end a link as the angle brackets do, so
-the user's own `http://localhost:3000/users/<id>` keeps its link).
+the user's own `http://localhost:3000/users/<id>` keeps its link). Text an AI wrote that is then
+trusted as typed is cut the same way where it is cut by UTF-16 units (`sliceAt`, no `…`): the Captions
+tab's suggested title (120), summary (4 000) and chapter titles (100), whose own changes to what main
+sent (quotation marks off a title's ends, control characters) make no link either
+(`readSuggestedText`, `readSuggestedChapters`), and a copy's name (`copyName`: `…flown-files.comfy`
+cut before ` (copy)` gives `…flown-files. co (copy)`, not `…flown-files.com (copy)`).
 
 *Emphasis* is removed as pairs around words: `**` and `__` not glued to a letter, digit, `_` or `*`
 outside, except the text of a language written without spaces (`点击**保存**按钮`, `**설정**을`).
@@ -469,7 +508,8 @@ All above AA (4.5:1).
   own rules and other sites' (§4.3–4.4); the renderer cleans again before showing it. The Captions
   tab's chapter titles, title and summary lose in main the links their captions lack, since the
   chapter titles and the name (once *Rename the recording* is used) go into the project, whose links
-  the pack trusts.
+  the pack trusts; what the renderer then does to them (quotation marks off, a cut by UTF-16 units),
+  and a copy's name cut before its suffix, makes no link (`sliceAt`, §4.4).
 - **No HTML:** textareas and text nodes only (§2.5).
 - **Export bundle:** the description is plain text written by main's existing sidecar writer
   (size, NUL and path checks unchanged).
@@ -493,8 +533,8 @@ New:
   `PUBLISH_LENGTHS`, `PublishTone`, `PublishLength`, `PACK_TASKS`, `taskOfKind`, `readPublishPrefs`,
   `publishSegments(project)`, `publishBlocker(project, segments)`, `transcriptKey(segments)`.
 - `src/shared/publish/text.ts`: `plainText(s, { max, oneLine, linksFrom, keepLinks })`,
-  `typedText(s, max)`, `cutAt(s, max)`, `xLength(s)`, `fitX(s)`, `X_LIMIT`, `linkKeys(text)`,
-  `trustedText(transcript, context)`, `withLinksOf(s, from)`.
+  `typedText(s, max)`, `cutAt(s, max)`, `sliceAt(s, max)`, `xLength(s)`, `fitX(s)`, `X_LIMIT`,
+  `linkKeys(text)`, `trustedText(transcript, context)`, `withLinksOf(s, from)`.
 - `src/shared/publish/twitterText.ts`: the port of twitter-text 3.1.0 (Apache-2.0):
   `extractUrlsWithIndices(text)`, `findUrls(text, lenient)`, `parseTweet(text)`, `emojiSpans(text)`
   and its patterns (`EXTRACT_URL`, `VALID_ASCII_DOMAIN`, `VALID_TCO_URL`…).
@@ -521,6 +561,8 @@ Changed (additive): `src/shared/api/ai.ts` (task ids, request fields, results, `
 `src/shared/editor/commands.ts` (a *Publish* category and 11 commands),
 `src/renderer/src/views/Editor.tsx` (the button, the dialog, the command handlers),
 `src/renderer/src/editor/captionItems.ts` + `panels/CaptionsPanel.tsx` (an `ai` request kind),
+`src/shared/captions/edit.ts` (`readSuggestedText(task, text)`, and `readSuggestedChapters` cuts
+with `sliceAt`), `src/shared/editor/duplicate.ts` (`copyName` cuts with `sliceAt`),
 `src/renderer/src/editor/exportBundleRun.ts` (the saved description),
 `ExportBundleOptions.tsx` + `ExportDialog.tsx` (the Description choice's tooltip names it),
 `tests/e2e/ai-mock-server.cjs` (answers for the pack's prompts).
@@ -614,7 +656,22 @@ Where the build differs from or adds to the sections above:
   `https://`, with a word's ending, or glued to a long run of Chinese, Japanese or Thai text. So
   links are also read as other sites read them, a scheme's host as a browser reads it, a broken name
   gets a no-break space (which no later cut takes for a sentence end), a bare name with a path is
-  broken rather than removed, and the last resort only adds. As a result:
+  broken rather than removed, and the last resort only adds. A fourth review found that a match on a
+  newer top-level domain could use up the text X links from (`/a.web:1paypal-login.com`); that
+  characters a browser drops from a host or folds into ASCII letters (`get\u2060flown.com`,
+  `ｇｅｔflown.com`) glued a prefix onto a said name; that a said link followed by a user name and an
+  IP address, or by an `@` 2 000 characters on, was kept; that a top-level domain in Chinese or
+  Japanese after `$` or `「`, and a name before an `@` that linkify-it does not read as an address's,
+  were missed; that a decomposed result could come back that was never read; and that a cut by UTF-16
+  units after the cleaning (a copy's name, the Captions tab's title, summary and chapters) could make
+  a link. It also found e-mail addresses and handles broken next to any punctuation but ASCII's
+  (`support@flown.app—`, `「support@flown.app」`, `@flown.studio`), a said `http://localhost:3000`
+  deleted with the full-width comma after it, and a said link deleted when written with a `/` at its
+  end. So X's lists and the wider ones are read apart, those characters are removed or read as
+  letters, an `@` in an authority makes the stretch to the space the link, an `@` stays where nothing
+  before it can be a link or it is an address's as linkify-it reads one, a loose link ends at
+  punctuation no host holds, links compare without a `/` at their end, the result is the NFC form
+  that was read, and those cuts make no link (`sliceAt`). As a result:
   - code and file names on a top-level domain are broken where X would link them, the rest as written
     (`e. target.value`, `Date. now()`, `form. is_valid()`, `README. md`, `logo. ai`, `settings. py`;
     the space is a no-break space).
@@ -640,7 +697,9 @@ Where the build differs from or adds to the sections above:
   to the provider as typed (one line, capped, control characters removed: `readPackContext`), and an
   answer may keep a link they have (`trustedText`), in the pack's items and in the title and summary
   cards. What an AI suggests for them (*Suggest chapters*, the title for *Rename the recording*) loses
-  in main the links its captions lack, so the project holds no link nobody said.
+  in main the links its captions lack, so the project holds no link nobody said; the Captions tab
+  shows and stores it without making one (`readSuggestedText`, `readSuggestedChapters`), and a copy's
+  name is cut the same way (`copyName`).
 - **Emphasis is removed only as pairs around words** (§4.4): `__this__` (one word, written as
   `__init__` is) stays.
 - **Speed.** twitter-text takes time quadratic in a long run of name characters with dots (Chinese or
