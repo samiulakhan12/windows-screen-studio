@@ -409,6 +409,11 @@ there (`went`, `changeGone`) and keeps it until its record comes back.
   in the region, so the same words after an undo are read out again); and the next pending item
   after the one acted on gets the focus (it is not played: playing only follows a move). After
   Keep all, whose button then turns disabled, the focus goes back to the focused item's row.
+  Undo and redo (the editor's `Ctrl+Z`, `Ctrl+Y`) can take a row in or out of review under the
+  focus too: its Keep and Remove buttons go, or a footer button turns disabled. When the focus was
+  in the panel as the project changed and is on the page once the change is shown, it goes back to
+  the focused item's row (else Close), so `Escape` and the list's keys keep working and do not
+  reach the editor as Snapping, Pause or delete.
 * Empty: `Nothing to review. Flown has not changed anything by itself yet, or you have reviewed it all.`
 
 ## 5. UI and copy
@@ -562,9 +567,11 @@ End to end (`tests/e2e/review-mode.e2e.cjs`): open a project with an auto zoom, 
 and an automatic silence cut; the button shows 3; open with `Shift+R`; the rows read right; `N`
 moves and the playhead jumps; `K` keeps the zoom (it stays, `auto` false in the saved project);
 Delete removes the cut (clips back, record gone, `removed` saved for it); `Ctrl+Z` brings the cut
-back and the row back to pending (the choice gone); Keep all (`kept` saved); Escape returns the focus to the button; screenshots.
+back and the row back to pending (the choice gone); Keep all (`kept` saved); `Ctrl+Z`, `Tab` to the
+row's Keep, `Ctrl+Y`: the focus back on the row; Escape returns the focus to the button; screenshots.
 Then, with the panel open, Polish (silences only, against the AI mock) on a recording with spoken
-words, `Ctrl+Z`, and the same Polish again: the first run's rows read removed after the undo and
+words, `Ctrl+Z` from the first row's Keep button (the focus goes back to that row), and the same
+Polish again: the first run's rows read removed after the undo and
 still do beside the new pending rows (`2 of 4 reviewed`, nothing read out as kept, no choice saved).
 
 ## 10. Later

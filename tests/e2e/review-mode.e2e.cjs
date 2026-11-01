@@ -235,6 +235,18 @@ async function main() {
     h.assert(JSON.stringify(kept.autoCutOutcomes) === JSON.stringify([{ id: 's1', outcome: 'kept' }]), `the choice saved: ${JSON.stringify(kept.autoCutOutcomes)}`)
     if (SHOTS) await win.screenshot({ path: path.join(SHOTS, 'review-mode-reviewed.png') })
 
+    // Undo and redo take a row in and out of review under the focus: Ctrl+Z gives the cut its Keep
+    // and Remove buttons back, Tab moves to Keep, and Ctrl+Y takes that button away. The focus goes
+    // back to the row, not to the page, so the panel's keys (Escape below) still work.
+    await win.keyboard.press('Control+z')
+    await f.waitFor(async () => (await rows(win)).includes('cut:s1=pending'), 'Keep all undone')
+    await win.keyboard.press('Tab')
+    h.assert((await focused(win)) === 'Keep: Cut 2.4 s of silence', `Tab moves to the row's Keep: ${await focused(win)}`)
+    await win.keyboard.press('Control+y')
+    await f.waitFor(async () => (await rows(win)).includes('cut:s1=kept'), 'Keep all redone')
+    await h.sleep(100)
+    h.assert((await focused(win)).startsWith('Cut 2.4 s of silence, silence, at 0:08.0, Remove silences, kept'), `the focus back on the row after the redo: ${await focused(win)}`)
+
     // Escape closes and gives the focus back to the button, which has nothing left to count.
     h.assert((await win.getAttribute('.editor-body > .inspector', 'inert')) !== null, 'still out of reach')
     await win.keyboard.press('Escape')
@@ -298,11 +310,17 @@ async function main() {
       h.assert(ids.length >= 1, `Polish cut the silences: ${JSON.stringify(first.autoCuts)}`)
       await f.waitFor(async () => same(await rows(win), ids.map((k) => `${k}=pending`)), 'the first run listed to review', 5000)
 
-      // Ctrl+Z takes the run back: its rows read removed.
-      await win.evaluate(() => document.activeElement instanceof HTMLElement && document.activeElement.blur())
+      // Ctrl+Z takes the run back: its rows read removed. From the first row's Keep button, which the
+      // undo takes away, the focus goes back to that row (not to the page, which would take the
+      // panel's keys with it).
+      await win.focus('[data-testid="review-row"] [data-testid="review-keep"]')
+      h.assert((await focused(win)).startsWith('Keep: Cut '), `on the first row's Keep: ${await focused(win)}`)
       await win.keyboard.press('Control+z')
       await savedWhen(home, id, (p) => !('autoCuts' in p), 'the run undone')
       await f.waitFor(async () => same(await rows(win), ids.map((k) => `${k}=removed`)), 'the undone rows read removed', 5000)
+      await h.sleep(100)
+      const back = await focused(win)
+      h.assert(back.startsWith('Cut ') && back.endsWith(', removed'), `the focus back on the row: ${back}`)
 
       // The same Polish again: new rows to review beside the first run's, which still read removed.
       await polishSilences(win)

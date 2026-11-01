@@ -7,7 +7,7 @@
  * Not modal: the preview stays in view and the editor's shortcuts keep working, except the keys
  * the list uses while the focus is in it (N/P/arrows, Home/End, K, Delete), which it keeps.
  */
-import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
 import type React from 'react'
 import { shortcutIndex } from '../../../shared/editor/shortcuts'
 import { planOf, videoTimeAt } from '../../../shared/engine/freeze'
@@ -61,7 +61,22 @@ export function ReviewPanel({ onClose }: { onClose: () => void }): JSX.Element {
   const say = (text: string): void => setSaid((s) => ({ text, n: s.n + 1 }))
   const rows = useRef(new Map<string, HTMLButtonElement>())
   const closeRef = useRef<HTMLButtonElement>(null)
+  const panelRef = useRef<HTMLElement>(null)
   const stopRef = useRef<(() => void) | null>(null)
+
+  // Undo and redo (the editor's Ctrl+Z, Ctrl+Y) can take a row in or out of review under the focus:
+  // its Keep and Remove buttons go, or a footer button turns disabled, and the focus would drop to
+  // the page, taking the panel's keys (Escape, N, K, Delete) with it. When the focus was in the
+  // panel as the project changed and is on the page once the change is shown, it goes back to the
+  // focused item's row (else Close). Keep, Remove and the footer move it first themselves.
+  const focusWasIn = useRef(false)
+  useEffect(
+    () =>
+      store.subscribe(() => {
+        focusWasIn.current ||= !!panelRef.current?.contains(document.activeElement)
+      }),
+    [store]
+  )
 
   const stopStretch = useCallback(() => {
     stopRef.current?.()
@@ -146,6 +161,14 @@ export function ReviewPanel({ onClose }: { onClose: () => void }): JSX.Element {
     focusKey(list[active].key)
   }
 
+  useLayoutEffect(() => {
+    if (!focusWasIn.current) return
+    focusWasIn.current = false
+    const el = document.activeElement
+    if (el && el !== document.body) return
+    ;((list[active] && rows.current.get(list[active].key)) || closeRef.current)?.focus()
+  })
+
   const current = list[active]
   const kindPending = current ? list.filter((i, k) => i.kind === current.kind && statuses[k] === 'pending') : []
   const removeKind = (): void => {
@@ -198,7 +221,7 @@ export function ReviewPanel({ onClose }: { onClose: () => void }): JSX.Element {
   const timeOf = (item: ReviewItem): string => formatTime(videoTimeAt(project.clips, plan, item.start))
 
   return (
-    <aside className="review-panel" role="region" aria-label={REVIEW_TITLE} data-testid="review-panel" onKeyDown={onPanelKey}>
+    <aside ref={panelRef} className="review-panel" role="region" aria-label={REVIEW_TITLE} data-testid="review-panel" onKeyDown={onPanelKey}>
       <div className="review-head">
         <h2>{REVIEW_TITLE}</h2>
         <button
