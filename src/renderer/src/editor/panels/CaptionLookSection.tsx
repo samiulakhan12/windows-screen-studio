@@ -23,6 +23,7 @@ import { EditorIcon } from '../EditorIcon'
 import { useGroup } from '../groupContext'
 import { currentGreatOptions, loadGreatOptions, onGreatOptions } from '../greatRun'
 import { setPreviewLook } from '../previewLook'
+import { useReturnFocus } from '../returnFocus'
 import { CaptionGallery } from './CaptionGallery'
 import { lookName, pickTile, resetTile, tileName } from './captionTiles'
 import { FontPicker } from './FontPicker'
@@ -197,14 +198,24 @@ function ClassicColor({ label, value, presets, mergeKey, onChange }: { label: st
   )
 }
 
-/** Save as my style (§2.4): a name field, Save and Cancel; at most 50 saved looks. */
+/**
+ * Save as my style (§2.4): a name field, which takes the focus with its name selected, Save and
+ * Cancel (Escape too); at most 50 saved looks. Closed with the keyboard, the focus goes back to the
+ * button.
+ */
 function SaveStyle({ settings, saved, onSaved }: { settings: CaptionSettings; saved: readonly SavedLook[]; onSaved: (name: string) => void }): JSX.Element {
   const [name, setName] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
+  const back = useReturnFocus<HTMLFormElement>(name !== null)
+  const close = (keyed?: boolean): void => {
+    back.closing(keyed)
+    setName(null)
+  }
   if (name === null) {
     return (
       <button
+        ref={back.opener}
         type="button"
         className="btn small"
         data-testid="caption-style-save"
@@ -219,11 +230,12 @@ function SaveStyle({ settings, saved, onSaved }: { settings: CaptionSettings; sa
   }
   const save = async (): Promise<void> => {
     if (busy) return
+    const keyed = back.byKey()
     setBusy(true)
     try {
       // A Classic look is saved as its twin, which draws it the same way (§5.8).
       const entry = await saveLook(name, settings.studio ?? legacyTwin(settings))
-      setName(null)
+      close(keyed)
       onSaved(entry.name)
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err))
@@ -233,6 +245,7 @@ function SaveStyle({ settings, saved, onSaved }: { settings: CaptionSettings; sa
   }
   return (
     <form
+      ref={back.form}
       className="caption-save"
       onSubmit={(e) => {
         e.preventDefault()
@@ -241,13 +254,29 @@ function SaveStyle({ settings, saved, onSaved }: { settings: CaptionSettings; sa
     >
       <label className="field">
         <span>Name</span>
-        <input className="tc-input" data-testid="caption-style-name-input" aria-label="Name" maxLength={40} value={name} onChange={(e) => setName(e.target.value)} />
+        <input
+          className="tc-input"
+          data-testid="caption-style-name-input"
+          aria-label="Name"
+          maxLength={40}
+          value={name}
+          autoFocus
+          onFocus={(e) => e.currentTarget.select()}
+          onChange={(e) => setName(e.target.value)}
+          onKeyDown={(e) => {
+            // Escape cancels (the editor would only take the focus out of the field).
+            if (e.key !== 'Escape') return
+            e.preventDefault()
+            e.stopPropagation()
+            close()
+          }}
+        />
       </label>
       <div className="row start">
         <button type="submit" className="btn small primary" disabled={busy || !name.trim()}>
           Save
         </button>
-        <button type="button" className="btn small" onClick={() => setName(null)}>
+        <button type="button" className="btn small" onClick={() => close()}>
           Cancel
         </button>
       </div>

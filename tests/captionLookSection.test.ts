@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { CaptionMark, CaptionSettings, Project } from '../src/shared/types'
-import { byTestId, contexts, descendants, mockReact, settle, testStore, textOf, unmountAll, useEditorContexts, type El } from './studioHarness'
+import { byTestId, contexts, descendants, focused, key, mockReact, settle, testStore, textOf, unmountAll, useEditorContexts, type El } from './studioHarness'
 
 /*
  * Captions › Look's controls (docs/design/captions-studio.md §2.4, §2.6, §2.7, §7.3, test 32)
@@ -24,6 +24,9 @@ vi.mock('../src/shared/captions/great', async (importOriginal) => ({
 vi.mock('../src/shared/captions/autoStyle', () => ({ suggestedTile: () => 'subtitle' }))
 vi.mock('../src/renderer/src/editor/panels/GreatOptions', () => ({ GreatOptionsPopover: () => ({ type: 'button', props: { 'data-testid': 'captions-great-options' } }) }))
 vi.mock('../src/renderer/src/render/studioLayer', () => ({ drawStudioSample: () => ({ textPx: 18 }) }))
+// Whether the last input was a key (focus.ts keeps it from the window's events, which these tests have not).
+const keys = vi.hoisted(() => ({ last: false }))
+vi.mock('../src/renderer/src/editor/focus', async (importOriginal) => ({ ...(await importOriginal<Record<string, unknown>>()), lastInputWasKey: () => keys.last }))
 const probe = vi.hoisted(() => ({ asked: [] as number[] }))
 vi.mock('../src/renderer/src/render/contrastProbe', () => ({
   probeContrast: async (_p: unknown, t: number) => {
@@ -79,6 +82,7 @@ const chipIn = (els: El[], id: string, text: string): El => {
 
 beforeEach(() => {
   unmountAll()
+  keys.last = false
   notices.length = 0
   probe.asked.length = 0
   p4.marks = []
@@ -355,3 +359,66 @@ describe('Digits (§0.2)', () => {
 function chipLike(els: El[], id: string, label: string): El {
   return descendants(byTestId(els, id)!).find((e) => e.props['aria-label'] === label)!
 }
+
+describe('Save as my style keeps the keyboard (§2.4, §2.15)', () => {
+  const look = (): unknown => ({ type: CaptionLookSection, props: { project: store.state, vw: 1920, vh: 1080, onGreat: () => undefined, greatBusy: false, onGreatCancel: () => undefined } })
+  const SECTION_SKIP = ['TextControls', 'ColourControls', 'LayoutControls', 'MotionControls', 'EmphasisControls', 'SpeakerControls', 'FontPicker', 'ShowSpeakerToggle', 'CaptionGallery']
+  const open = async (): Promise<El[]> => {
+    const els = await settle(look(), SECTION_SKIP)
+    ;(byTestId(els, 'caption-style-save')!.props.onClick as () => void)()
+    return settle(look(), SECTION_SKIP)
+  }
+
+  it('the name field takes the focus with its name selected, so typed keys name the style', async () => {
+    const name = byTestId(await open(), 'caption-style-name-input')!
+    expect(name.props.value).toMatch(/^My style \d+$/)
+    expect(name.props.autoFocus).toBe(true)
+    const selected: string[] = []
+    ;(name.props.onFocus as (e: unknown) => void)({ currentTarget: { select: () => selected.push('all') } })
+    expect(selected).toEqual(['all'])
+  })
+
+  it('Escape in the name cancels (not the editor’s blur) and the keyboard goes back to the button', async () => {
+    keys.last = true
+    const name = byTestId(await open(), 'caption-style-name-input')!
+    let stopped = false
+    const esc = { ...key('Escape'), stopPropagation: () => void (stopped = true) }
+    esc.preventDefault = () => void (esc.prevented = true)
+    ;(name.props.onKeyDown as (e: unknown) => void)(esc)
+    expect(esc.prevented).toBe(true)
+    expect(stopped).toBe(true)
+    const els = await settle(look(), SECTION_SKIP)
+    expect(byTestId(els, 'caption-style-name-input')).toBeUndefined()
+    expect(focused.at(-1)?.props['data-testid']).toBe('caption-style-save')
+    // Other keys are the field's.
+    const other = byTestId(await open(), 'caption-style-name-input')!
+    ;(other.props.onKeyDown as (e: unknown) => void)(key('t'))
+    expect(byTestId(await settle(look(), SECTION_SKIP), 'caption-style-name-input')).toBeDefined()
+  })
+
+  it('Cancel with the keyboard gives the focus back; Cancel clicked leaves it, as a clicked button does', async () => {
+    keys.last = true
+    let els = await open()
+    ;(els.find((e) => e.type === 'button' && textOf(e) === 'Cancel')!.props.onClick as () => void)()
+    els = await settle(look(), SECTION_SKIP)
+    expect(focused.map((e) => e.props['data-testid'])).toEqual(['caption-style-save'])
+    focused.length = 0
+    keys.last = false
+    els = await open()
+    ;(els.find((e) => e.type === 'button' && textOf(e) === 'Cancel')!.props.onClick as () => void)()
+    els = await settle(look(), SECTION_SKIP)
+    expect(byTestId(els, 'caption-style-save')).toBeDefined()
+    expect(focused).toEqual([])
+  })
+
+  it('Save with the keyboard (Enter in the name) saves the look and gives the focus back to the button', async () => {
+    keys.last = true
+    const els = await open()
+    const form = els.find((e) => e.type === 'form')!
+    ;(form.props.onSubmit as (e: unknown) => void)({ preventDefault: () => undefined })
+    const after = await settle(look(), SECTION_SKIP)
+    expect(byTestId(after, 'caption-style-name-input')).toBeUndefined()
+    expect(notices.at(-1)).toMatch(/^Saved “My style \d+” to your styles$/)
+    expect(focused.at(-1)?.props['data-testid']).toBe('caption-style-save')
+  })
+})

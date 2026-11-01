@@ -11,6 +11,7 @@ import { applyTextResult } from '../../../../shared/captions/edit'
 import type { Project } from '../../../../shared/types'
 import { currentWordList, ipcMessage, loadWordList, onSectionRequest, onWordList, saveWordList, takeSectionRequest } from '../captionItems'
 import { useEditor } from '../context'
+import { useReturnFocus } from '../returnFocus'
 import { Chips, Section } from '../controls'
 import { providerName, useTextProviders } from './LanguagesSection'
 
@@ -56,6 +57,12 @@ export function CleanupSection({ project }: { project: Project }): JSX.Element {
   const [heard, setHeard] = useState('')
   const aiBox = useRef<HTMLInputElement>(null)
   const termBox = useRef<HTMLInputElement>(null)
+  // Closed with the keyboard, the word form gives the focus back to Add a word.
+  const wordForm = useReturnFocus<HTMLFormElement>(addingWord)
+  const closeWordForm = (): void => {
+    wordForm.closing()
+    setAddingWord(false)
+  }
   const focusAi = useRef(false)
   const live = useRef(true)
   const run = useRef<{ cancelled: boolean } | null>(null)
@@ -175,7 +182,7 @@ export function CleanupSection({ project }: { project: Project }): JSX.Element {
     saveWords([{ term: t, heard: heardForms(heard) }, ...rest])
     setTerm('')
     setHeard('')
-    setAddingWord(false)
+    closeWordForm()
   }
 
   return (
@@ -205,6 +212,7 @@ export function CleanupSection({ project }: { project: Project }): JSX.Element {
           </ul>
           {addingWord ? (
             <form
+              ref={wordForm.form}
               className="captions-suggestion"
               onSubmit={(e) => {
                 e.preventDefault()
@@ -223,14 +231,14 @@ export function CleanupSection({ project }: { project: Project }): JSX.Element {
                 <button type="submit" className="btn small primary" disabled={!term.trim()}>
                   Add
                 </button>
-                <button type="button" className="btn small ghost" onClick={() => setAddingWord(false)}>
+                <button type="button" className="btn small ghost" onClick={closeWordForm}>
                   Cancel
                 </button>
               </div>
             </form>
           ) : (
             <div className="row start">
-              <button className="btn small" disabled={words.length >= WORD_LIST_MAX} onClick={() => setAddingWord(true)}>
+              <button ref={wordForm.opener} className="btn small" disabled={words.length >= WORD_LIST_MAX} onClick={() => setAddingWord(true)}>
                 Add a word
               </button>
             </div>

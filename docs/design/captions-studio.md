@@ -642,6 +642,10 @@ Keys inside panels: `Ctrl+B` and `Ctrl+Shift+B` in the Transcript word list (§2
 - New CSS passes `tests/labelContrast.test.ts` (AA, 4.5:1 for text, 3:1 for control edges).
 - The Graphics list and the timeline row both lead to the same inspector, so nothing needs a
   mouse.
+- A form that opens in place of its button (**Save as my style**, **Add a word**, **Add a
+  language**) focuses its first field (Save as my style's name selected; Escape there cancels).
+  Closed with the keyboard (Save, Cancel, Close, Escape, or Translate once it is done), the focus
+  goes back to that button, not to the page, where typed keys would run editor shortcuts.
 - Burned-in captions and graphics are pixels: screen readers cannot read them in the video. The
   export keeps offering SRT and VTT, and now subtitle tracks, for that reason.
 

@@ -24,6 +24,7 @@ const cells = new Map<string, Cell[]>()
 let hooks: { cells: Cell[]; i: number } | null = null
 let effects: (() => void)[] = []
 let dirty = false
+let ids = 0
 const cell = (): Cell => (hooks!.cells[hooks!.i++] ??= {})
 const changed = (a: readonly unknown[] | undefined, b: readonly unknown[] | undefined): boolean => !a || !b || a.length !== b.length || a.some((v, i) => !Object.is(v, b[i]))
 
@@ -102,6 +103,11 @@ export function mockReact(): void {
         })
       },
       useSyncExternalStore: (_subscribe: unknown, get: () => unknown) => get(),
+      useId: () => {
+        const c = cell()
+        if (!('value' in c)) c.value = `:r${++ids}:`
+        return c.value
+      },
       useContext: (ctx: unknown) => {
         if (ctx === contexts.editorCtx) return contexts.editor
         if (ctx === contexts.groupCtx) return contexts.group

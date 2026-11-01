@@ -16,6 +16,7 @@ import { AI_PROVIDERS_CHANGED_EVENT, OPEN_SETTINGS_EVENT } from '../../settings/
 import { ipcMessage, onSectionRequest, takeSectionRequest } from '../captionItems'
 import { useEditor } from '../context'
 import { Section } from '../controls'
+import { useReturnFocus } from '../returnFocus'
 
 /**
  * Whether On this PC is offered. TODO(phase B): Mozilla's translation models and runtime
@@ -76,6 +77,12 @@ export function LanguagesSection({ project }: { project: Project }): JSX.Element
   const [status, setStatus] = useState('')
   const select = useRef<HTMLSelectElement>(null)
   const focusSelect = useRef(false)
+  // Closed with the keyboard (Close, or Translate once it is done), the form gives the focus back to Add a language.
+  const back = useReturnFocus<HTMLDivElement>(adding)
+  const close = (keyed?: boolean): void => {
+    back.closing(keyed)
+    setAdding(false)
+  }
   const live = useRef(true)
   const running = useRef<Job | null>(null)
   const group = useId()
@@ -120,6 +127,7 @@ export function LanguagesSection({ project }: { project: Project }): JSX.Element
       setStatus(`The ${languageName(code)} captions are up to date`)
       return
     }
+    const keyed = !again && back.byKey()
     const mine: Job = { language: code, count: sent.length, cancelled: false }
     running.current = mine
     setJob(mine)
@@ -149,7 +157,7 @@ export function LanguagesSection({ project }: { project: Project }): JSX.Element
       setError("Could not translate: the provider changed the captions' timing or left some out.")
       return
     }
-    setAdding(false)
+    close(keyed)
     setStatus(`${again ? 'Translated again' : 'Translated'} ${sent.length} ${sent.length === 1 ? 'caption' : 'captions'} into ${languageName(code)}`)
   }
 
@@ -226,6 +234,7 @@ export function LanguagesSection({ project }: { project: Project }): JSX.Element
         {!adding ? (
           <div className="row start">
             <button
+              ref={back.opener}
               className="btn small"
               data-testid="track-add"
               disabled={full || offered.length === 0}
@@ -240,19 +249,19 @@ export function LanguagesSection({ project }: { project: Project }): JSX.Element
             </button>
           </div>
         ) : noProviders && !OFFLINE_TRANSLATION ? (
-          <div className="captions-empty">
+          <div ref={back.form} className="captions-empty">
             <p>Add an AI provider to translate your captions. OpenAI, Gemini and Claude all can.</p>
             <div className="row start">
               <button className="btn small" onClick={openAiSettings}>
                 Add an AI provider
               </button>
-              <button className="btn small ghost" onClick={() => setAdding(false)}>
+              <button className="btn small ghost" onClick={() => close()}>
                 Close
               </button>
             </div>
           </div>
         ) : (
-          <div className="captions-suggestion">
+          <div ref={back.form} className="captions-suggestion">
             <label className="field">
               <span>Language</span>
               <select ref={select} className="captions-select" value={chosenLanguage} onChange={(e) => setLanguage(e.target.value)} disabled={!!job}>
@@ -275,7 +284,7 @@ export function LanguagesSection({ project }: { project: Project }): JSX.Element
               <button className="btn small primary" data-testid="track-translate" disabled={!chosenLanguage || !chosenVia || !!job} onClick={() => chosenVia && void translate(chosenLanguage, chosenVia, false)}>
                 Translate
               </button>
-              <button className="btn small ghost" disabled={!!job} onClick={() => setAdding(false)}>
+              <button className="btn small ghost" disabled={!!job} onClick={() => close()}>
                 Close
               </button>
             </div>

@@ -37,6 +37,15 @@ export function releaseFocus(target?: EventTarget | null): void {
 
 /** The element that has focus when the keyboard moved it there (Tab, a shortcut); null after a pointer press. Kept by installFocusRelease. */
 let keyboardFocus: Element | null = null
+/** The last input: a key (Tab, Enter, Escape, a shortcut) or a pointer press. Focus moves after it. Kept by installFocusRelease. */
+let byKey = false
+
+/**
+ * Whether the last input was a key rather than a pointer press: a form closed with the keyboard
+ * hands the keyboard back to the button that opened it (returnFocus.ts), one closed with a click
+ * does not, as a clicked button does not keep the focus.
+ */
+export const lastInputWasKey = (): boolean => byKey
 
 /**
  * A checkbox the keyboard moved focus to, which keeps Space (its only key). One the pointer
@@ -53,13 +62,13 @@ export function isKeyboardToggle(el: Element | null): boolean {
  * (including the click it produces), moves focus off that control. Keyboard
  * users who Tab to a control keep it focused, since they produce no pointer
  * events, and only the control the pointer pressed is ever blurred. Also
- * notes whether focus came from the keyboard or the pointer (isKeyboardToggle).
+ * notes whether focus came from the keyboard or the pointer (isKeyboardToggle,
+ * lastInputWasKey).
  */
 export function installFocusRelease(): () => void {
   let timer = 0
   let pressed: Element | null = null
-  // The last input: a key (Tab, a shortcut) or a pointer press. Focus moves after it.
-  let byKey = false
+  byKey = false
   const onKeyDown = (): void => {
     byKey = true
   }
@@ -88,6 +97,7 @@ export function installFocusRelease(): () => void {
   return () => {
     window.clearTimeout(timer)
     keyboardFocus = null
+    byKey = false
     window.removeEventListener('keydown', onKeyDown, true)
     window.removeEventListener('focusin', onFocusIn, true)
     window.removeEventListener('pointerdown', onPointerDown, true)
