@@ -182,8 +182,6 @@ interface Placed {
   scale: number
 }
 
-const placeCache = new WeakMap<Graphic, { key: string; place: Placed }>()
-
 /** A number per object, for cache keys. */
 const ids = new WeakMap<object, number>()
 let nextId = 1
@@ -233,10 +231,11 @@ function placeKey(project: Project, w: number, h: number, area: Rect | null): st
 
 /**
  * Where graphic `g` is centred (§10.3): a dragged one where the user put it (kept inside the
- * frame); else the first free candidate, shrunk, or the least overlap, computed once per graphic,
- * frame size, project and action (placeKey), so it never moves while it shows.
+ * frame); else the first free candidate, shrunk, or the least overlap, keeping clear of `others`,
+ * the earlier graphics showing with it. Computed once per graphic and frame (placementOf), so it
+ * never moves while it shows.
  */
-function placeOf(ctx: Ctx, project: Project, g: Graphic, shape: Shape, w: number, h: number, area: Rect | null, before: readonly { g: Graphic; rect: Rect }[]): Placed {
+function placeOf(ctx: Ctx, project: Project, g: Graphic, shape: Shape, w: number, h: number, area: Rect | null, others: readonly Rect[]): Placed {
   if (g.place !== 'auto') {
     const x = Math.max(shape.w / 2, Math.min(w - shape.w / 2, g.place.x * w))
     const y = Math.max(shape.h / 2, Math.min(h - shape.h / 2, g.place.y * h))
@@ -244,10 +243,6 @@ function placeOf(ctx: Ctx, project: Project, g: Graphic, shape: Shape, w: number
   }
   const fc = frames.get(project)
   const withAction = !!fc && fc.w === w && fc.h === h
-  const anchorKey = g.kind === 'keyword' || g.kind === 'emoji' ? JSON.stringify(g.anchor ?? null) : ''
-  const key = [placeKey(project, w, h, area), anchorKey, before.map((b) => `${b.rect.x | 0},${b.rect.y | 0}`).join(';')].join('|')
-  const hit = placeCache.get(g)
-  if (hit && hit.key === key) return hit.place
   const seg = { id: `graphic:${g.id}`, start: g.start, end: g.end, text: '' }
   const cam = captionObstacles(project, seg, w, h, { titles: [], keys: null, action: [] }).camera
   const action = withAction ? actionRects(fc!.scene, fc!.cursor.valid ? fc!.cursor : null, project.zoomSettings?.auto ?? DEFAULT_ZOOM_SETTINGS.auto, w, h, fc!.vw, fc!.vh, g.start, g.end, project.clips).map((a) => a.rect) : []
@@ -256,11 +251,8 @@ function placeOf(ctx: Ctx, project: Project, g: Graphic, shape: Shape, w: number
   const candidates = graphicCandidates(g.kind, w, h, { camera: union(cam), action: union(action) }, replacing)
   const inset = 0.06 * Math.min(w, h)
   const room = area ?? { x: inset, y: inset, w: w - inset * 2, h: h - inset * 2 }
-  const others = before.filter((b) => b.g.start < g.end && b.g.end > g.start).map((b) => b.rect)
   const captions = replacing ? [] : captionRects(ctx, project, g.start, g.end, w, h, area)
-  const place = placeGraphic({ w: shape.w, h: shape.h }, candidates, room, { captions, camera: cam, action, safe: [], graphics: others })
-  placeCache.set(g, { key, place })
-  return place
+  return placeGraphic({ w: shape.w, h: shape.h }, candidates, room, { captions, camera: cam, action, safe: [], graphics: others })
 }
 
 /* ---------- what shows at t ---------- */
@@ -284,24 +276,70 @@ function windowAt(g: Graphic, t: number, project: Project): { start: number; end
   return t >= g.start && t < g.end ? { start: g.start, end: g.end } : null
 }
 
-/** Every graphic's shape and place, in order (each keeps clear of those placed before it), once per graphics, frame and what placement reads. */
-const placements = new WeakMap<readonly Graphic[], { key: string; map: Map<Graphic, { shape: Shape; place: Placed }> }>()
-function placementsOf(ctx: Ctx, project: Project, w: number, h: number, area: Rect | null): Map<Graphic, { shape: Shape; place: Placed }> {
+interface Placement {
+  shape: Shape
+  place: Placed
+}
+
+/** Frames whose places are kept per graphics array: the preview's canvas, the output size its handles hit-test at, and the frames just before an edit. */
+const KEPT_FRAMES = 4
+
+/**
+ * The graphics placed so far, per graphics array and frame (placeKey), filled as graphics show:
+ * an edit places again only what the frame shows, not every graphic of the project.
+ */
+const placements = new WeakMap<readonly Graphic[], Map<string, Map<Graphic, Placement>>>()
+function placedIn(project: Project, w: number, h: number, area: Rect | null): Map<Graphic, Placement> {
   const graphics = project.graphics ?? []
   const key = placeKey(project, w, h, area)
-  const hit = placements.get(graphics)
-  if (hit && hit.key === key) return hit.map
-  const map = new Map<Graphic, { shape: Shape; place: Placed }>()
-  const before: { g: Graphic; rect: Rect }[] = []
-  for (const g of graphics) {
-    if (!graphicDrawn(project, g)) continue
-    const shape = shapeOf(ctx, project, g, w, h)
-    const place = placeOf(ctx, project, g, shape, w, h, area, before)
-    map.set(g, { shape, place })
-    before.push({ g, rect: { x: place.x - (shape.w * place.scale) / 2, y: place.y - (shape.h * place.scale) / 2, w: shape.w * place.scale, h: shape.h * place.scale } })
+  let byFrame = placements.get(graphics)
+  if (!byFrame) placements.set(graphics, (byFrame = new Map()))
+  let map = byFrame.get(key)
+  if (!map) {
+    byFrame.set(key, (map = new Map()))
+    if (byFrame.size > KEPT_FRAMES) byFrame.delete(byFrame.keys().next().value as string)
   }
-  placements.set(graphics, { key, map })
   return map
+}
+
+/** The indexes of the drawn graphics before graphics[i] that show with it (it keeps clear of them, §10.3 obstacle 5). */
+function earlierWith(project: Project, graphics: readonly Graphic[], i: number): number[] {
+  const g = graphics[i]
+  const out: number[] = []
+  for (let j = 0; j < i; j++) {
+    const b = graphics[j]
+    if (b.start < g.end && b.end > g.start && graphicDrawn(project, b)) out.push(j)
+  }
+  return out
+}
+
+const rectOf = (p: Placement): Rect => ({ x: p.place.x - (p.shape.w * p.place.scale) / 2, y: p.place.y - (p.shape.h * p.place.scale) / 2, w: p.shape.w * p.place.scale, h: p.shape.h * p.place.scale })
+
+/**
+ * The shape and place of graphics[i] in this frame: the earlier graphics showing with it (and
+ * theirs, in turn) are placed first, in the list's order, as each keeps clear of those before it.
+ */
+function placementOf(ctx: Ctx, project: Project, i: number, w: number, h: number, area: Rect | null, map: Map<Graphic, Placement>): Placement {
+  const graphics = project.graphics ?? []
+  const hit = map.get(graphics[i])
+  if (hit) return hit
+  // The graphics to place, found without recursion (a long run of overlapping graphics is fine).
+  const earlier = new Map<number, number[]>()
+  const todo = [i]
+  while (todo.length) {
+    const j = todo.pop()!
+    if (earlier.has(j) || map.has(graphics[j])) continue
+    const before = earlierWith(project, graphics, j)
+    earlier.set(j, before)
+    for (const k of before) todo.push(k)
+  }
+  for (const j of [...earlier.keys()].sort((a, b) => a - b)) {
+    const g = graphics[j]
+    const shape = shapeOf(ctx, project, g, w, h)
+    const others = earlier.get(j)!.map((k) => rectOf(map.get(graphics[k])!))
+    map.set(g, { shape, place: placeOf(ctx, project, g, shape, w, h, area, others) })
+  }
+  return map.get(graphics[i])!
 }
 
 /** The graphics showing at `t`, placed, with their poses, in drawing order. */
@@ -311,16 +349,17 @@ function graphicsAt(ctx: Ctx, project: Project, t: number, w: number, h: number,
   const calm = !!project.captions?.studio?.motion.calm
   const u = Math.min(w, h)
   const out: Shown[] = []
-  let placed: Map<Graphic, { shape: Shape; place: Placed }> | null = null
-  for (const g of graphics) {
+  let placed: Map<Graphic, Placement> | null = null
+  for (let i = 0; i < graphics.length; i++) {
+    const g = graphics[i]
     if (!graphicDrawn(project, g)) continue
     const win = windowAt(g, t, project)
     if (!win) continue
     const pose = itemPose(win.start, win.end, t, project.clips, g.enter, g.exit, u, calm)
     if (!pose || pose.alpha <= 0.002) continue
-    placed ??= placementsOf(ctx, project, w, h, area)
-    const p = placed.get(g)
-    if (p) out.push({ g, shape: p.shape, place: p.place, pose, start: win.start, end: win.end })
+    placed ??= placedIn(project, w, h, area)
+    const p = placementOf(ctx, project, i, w, h, area, placed)
+    out.push({ g, shape: p.shape, place: p.place, pose, start: win.start, end: win.end })
   }
   return out
 }

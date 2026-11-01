@@ -147,6 +147,30 @@ describe('the graphics layer (§10.4)', () => {
     expect(placed()).toBe(6)
   })
 
+  it('places only the graphics that show and the earlier ones showing with them, once per frame size (§10.3)', () => {
+    // 40 keywords one after another, and last a counter that shows with three of them.
+    const words = Array.from({ length: 40 }, (_, i) => keyword({ id: `k${i}`, start: i * 0.25, end: i * 0.25 + 0.2 }))
+    const p1 = project([...words, counter({ start: 5.1, end: 5.6 })])
+    const cursor = { valid: false, samples: [], clicks: [] }
+    const placed = (): typeof hooks.log => hooks.log.filter((l) => l.name === 'placeGraphic')
+    drawGraphicsLayer(frameOf(p1, 1.05, 960, 540, { cursor }).fc)
+    expect(placed().length).toBe(1)
+    // k21 and the counter show: the counter is placed after k20, k21 and k22, and keeps clear of them.
+    drawGraphicsLayer(frameOf(p1, 5.3, 960, 540, { cursor }).fc)
+    expect(placed().length).toBe(5)
+    expect(placed().at(-1)!.args[1]).toHaveLength(3)
+    // An edit places again only what shows (not all 41).
+    const p2 = { ...p1, captions: { show: true, preset: 'clean', position: 'bottom', size: 0.06, color: '#ffffff', highlightColor: '#ffe14d', background: 'shadow', maxLines: 2 } } as unknown as Project
+    drawGraphicsLayer(frameOf(p2, 1.05, 960, 540, { cursor }).fc)
+    expect(placed().length).toBe(6)
+    // The handles at the output size and the preview at its canvas size keep their own places.
+    graphicRects(contextOf(canvas()), p2, 1.06, 1920, 1080)
+    drawGraphicsLayer(frameOf(p2, 1.07, 960, 540, { cursor }).fc)
+    graphicRects(contextOf(canvas()), p2, 1.08, 1920, 1080)
+    drawGraphicsLayer(frameOf(p2, 1.09, 960, 540, { cursor }).fc)
+    expect(placed().length).toBe(7)
+  })
+
   it('keeps a dragged graphic where the user put it, inside the frame', () => {
     const p = project([keyword({ place: { x: 0.25, y: 0.4 } }), keyword({ id: 'k2', place: { x: 1.2, y: -0.3 } })])
     const rects = graphicRects(contextOf(canvas()), p, 2, 1920, 1080)

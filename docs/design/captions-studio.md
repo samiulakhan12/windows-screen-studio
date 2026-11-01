@@ -2374,7 +2374,10 @@ covers a caption. Priority: captions, then the camera and face, then the action,
 zones, then other graphics. The place is computed once per (graphic, frame size, project, action
 boxes) and cached, so a graphic never moves while it shows; any edit places it again, as it does a
 caption (§8.6), since the zooms, style, crop, follow settings and title cards move the action and
-the captions. A
+the captions. Only the graphics a frame shows are placed, each after the earlier graphics that
+overlap it in time (and theirs), so an edit costs the few graphics on screen, not every graphic
+of the project; the places of a few frame sizes are kept, so the preview and its handles at the
+output size do not place each other's graphics again. A
 dragged graphic (`place: { x, y }`) stays where the user put it, kept inside the frame. A list
 card's place is computed over its whole time, so it does not move between its windows.
 

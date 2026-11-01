@@ -335,8 +335,8 @@ export const fakeGraphics = (real: typeof import('../src/shared/render/graphics'
   return {
     ...real,
     graphicCandidates: (_kind: string, w: number, h: number, _avoid: unknown, replacing?: Rect) => (replacing ? [{ x: replacing.x + replacing.w / 2, y: replacing.y + replacing.h / 2 }] : [{ x: w * 0.5, y: h * 0.3 }]),
-    placeGraphic: (_box: unknown, candidates: readonly { x: number; y: number }[]) => {
-      hooks.log.push({ name: 'placeGraphic', args: [candidates[0]] })
+    placeGraphic: (_box: unknown, candidates: readonly { x: number; y: number }[], _area: unknown, obstacles?: { graphics: readonly Rect[] }) => {
+      hooks.log.push({ name: 'placeGraphic', args: [candidates[0], obstacles?.graphics] })
       return { ...candidates[0], scale: 1 }
     },
     counterText: (g: CounterGraphic, value: number) => {
