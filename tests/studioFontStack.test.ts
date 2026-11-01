@@ -59,7 +59,12 @@ describe('font stacks (§6.6)', () => {
   it('puts the script fonts of the other scripts of a mixed caption after the look font', () => {
     const stack = studioFontStack(look('subtitle'), 'text', ctxOf('Open the Settings সেটিংস', 'en'))
     expect(first(stack)).toBe("'FlownCat-inter-tight'")
-    expect(stack.indexOf('FlownCat-noto-sans-bengali')).toBeGreaterThan(stack.indexOf('FlownCat-inter-tight'))
+    // Bangla's is the look's Bangla font (§0.2: Subtitle's Hind Siliguri), else Noto Sans Bengali.
+    expect(stack.indexOf('FlownCat-hind-siliguri')).toBeGreaterThan(stack.indexOf('FlownCat-inter-tight'))
+    const plain = look('subtitle')
+    delete plain.text.scripts
+    const fallback = studioFontStack(plain, 'text', ctxOf('Open the Settings সেটিংস', 'en'))
+    expect(fallback.indexOf('FlownCat-noto-sans-bengali')).toBeGreaterThan(fallback.indexOf('FlownCat-inter-tight'))
   })
 
   it('Devanagari takes Poppins for Hindi at 600–800, else Noto Sans Devanagari', () => {
@@ -105,6 +110,17 @@ describe('faces per word (§6.5, §0.2)', () => {
     }
     expect(wordFace(look('stacked'), 'text', 'bengali', mixed).stretch).toBe(75)
     expect(wordFace(look('stacked'), 'text', 'latin', mixed).stretch).toBeUndefined()
+  })
+
+  it('draws the Bangla of a mixed word (Windows-এ) in the look’s Bangla font, right after its Latin font (§0.2)', () => {
+    const families = (s: CaptionStudio): string[] => wordFace(s, 'text', 'latin', mixed).stack.split(',').map((f) => f.trim())
+    expect(families(look('bold-pop')).slice(0, 2)).toEqual(["'FlownCat-montserrat'", "'FlownCat-baloo-da-2'"])
+    expect(families(look('bold-pop'))).not.toContain("'FlownCat-noto-sans-bengali'")
+    expect(families(look('neon'))[1]).toBe("'FlownCat-mina'")
+    // A look without its own Bangla font keeps Noto Sans Bengali there.
+    const s = look('bold-pop')
+    delete s.text.scripts
+    expect(families(s)[1]).toBe("'FlownCat-noto-sans-bengali'")
   })
 
   it('a look without its own Bangla font draws Bangla in Noto Sans Bengali (§0.2: any other look)', () => {

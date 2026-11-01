@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { calls, canvas, contextOf, frameOf, spriteTexts } from './studioFakes'
+import { calls, canvas, contextOf, frameOf, sets, spriteTexts } from './studioFakes'
 import { studioPreset } from '../src/shared/captions/studioPresets'
 import type { CaptionSegment, CaptionSettings, CaptionStudio, CounterGraphic, CursorTrack, KeywordGraphic, ListGraphic, Project, StudioPosition, TitleCard } from '../src/shared/types'
 
@@ -225,6 +225,35 @@ describe('the gallery’s Bangla sample (§0.2: tiles show Bangla text when the 
     STUDIO_SPRITES.clear()
     drawStudioSample(contextOf(canvas(136, 96)), look('bold-pop'), { w: 1920, h: 1080 }, { w: 136, h: 96 }, 1.0, 'en')
     expect(painted().join(' ')).toMatch(/MAKE|EVERY|WORD/)
+  })
+})
+
+describe('Bangla edges (§0.2: outlines about 0.08 em, thinner than Latin, with a soft shadow)', () => {
+  const caption = (text: string): CaptionSegment => ({ id: 'b1', start: 0.5, end: 3, text })
+  /** Each sprite painted with `word`: its outline's width per em of its font (0 without one), and whether it casts a blurred shadow. */
+  const edges = (word: string): { outline: number; shadow: boolean }[] => {
+    const texts = spriteTexts()
+    return [...texts.keys()]
+      .filter((id) => texts.get(id)![0] === word)
+      .map((id) => {
+        const em = parseFloat(/([\d.]+)px/.exec(String(calls.find((c) => c.canvas === id && c.name === 'fillText')!.font))![1])
+        const widths = sets.filter((s) => s.canvas === id && s.name === 'lineWidth').map((s) => Number(s.value))
+        return { outline: widths.length ? Math.max(...widths) / em : 0, shadow: sets.some((s) => s.canvas === id && s.name === 'shadowBlur' && Number(s.value) > 0) }
+      })
+  }
+
+  it('a mixed word (Windows-এ) takes the thin Bangla outline, as the Bangla word beside it does', () => {
+    sets.length = 0
+    const p = project([caption('Windows-এ Chrome খুলুন')], 'bn', { preset: 'bold', studio: look('bold-pop') })
+    // Bold Pop shows a few words at a time: the first chunk, then the one with খুলুন.
+    for (const t of [1, 2.8]) drawStudioCaptions(frameOf(p, t).fc)
+    for (const word of ['WINDOWS-এ', 'খুলুন']) {
+      expect(edges(word).length, word).toBeGreaterThan(0)
+      for (const e of edges(word)) expect(e.outline, word).toBeCloseTo(0.08, 3)
+    }
+    // An English word keeps Bold Pop's 0.085 em outline.
+    expect(edges('CHROME').length).toBeGreaterThan(0)
+    for (const e of edges('CHROME')) expect(e.outline).toBeCloseTo(0.17, 3)
   })
 })
 

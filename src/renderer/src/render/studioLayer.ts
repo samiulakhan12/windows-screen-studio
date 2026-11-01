@@ -679,6 +679,7 @@ interface WordInfo {
 
 /** Bangla outlines are thinner than Latin (§0.2: 2.5 px at 30 px). */
 const BENGALI_OUTLINE_MAX = 0.04
+const BENGALI_LETTER = /\p{Script=Bengali}/u
 
 /**
  * A sticker's top above the line's middle, em, for scripts whose marks reach higher than 0.62 em
@@ -712,7 +713,8 @@ function paintOf(studio: CaptionStudio, wi: WordInfo, state: WordState): WordPai
     else if (spokenMark !== 'weight' && spokenMark !== 'none' && spokenMark !== 'underline') fill = theme.spoken
   }
   const hollow = !!edge.hollow && !lit && !emph
-  const outlineEm = Math.min(edge.outline, bengali ? BENGALI_OUTLINE_MAX : Infinity)
+  // A mixed word ('Windows-এ') takes the thin Bangla outline too: its joined Bangla letters need it as much.
+  const outlineEm = Math.min(edge.outline, bengali || BENGALI_LETTER.test(wi.box.text) ? BENGALI_OUTLINE_MAX : Infinity)
   // No outline on words over a marker or box (the mark is their background), nor on the spoken box.
   const onMark = (emph && markOnBox) || (lit && boxedSpoken && box.kind !== 'word')
   const outline = !hollow && !onMark && outlineEm > 0 && edge.outlineAlpha > 0 ? { width: 2 * outlineEm * em * grow, color: rgba(theme.outline, edge.outlineAlpha) } : null

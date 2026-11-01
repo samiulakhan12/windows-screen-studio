@@ -231,12 +231,17 @@ function scriptFirst(
   return windows ? { windows: windows[0] } : null
 }
 
-/** The font stack of §6.6 for words of `script` in a caption with `scripts`, `first` going before the look's font. */
+/**
+ * The font stack of §6.6 for words of `script` in a caption with `scripts`, `first` going before the
+ * look's font; `bengali` is the look's Bangla font (§0.2), which draws the Bangla of a mixed word
+ * ('Windows-এ') as it draws the Bangla words around it.
+ */
 function stackFor(
   font: string,
   script: ScriptTag,
   first: ReturnType<typeof scriptFirst>,
-  ctx: { language?: string; scripts: Set<ScriptTag>; fonts?: readonly ProjectFont[]; downloaded: (id: string) => boolean }
+  ctx: { language?: string; scripts: Set<ScriptTag>; fonts?: readonly ProjectFont[]; downloaded: (id: string) => boolean },
+  bengali: string | undefined
 ): string {
   const families: string[] = []
   const add = (f: string | null): void => {
@@ -249,7 +254,7 @@ function stackFor(
   // 3. The other bundled script fonts, for the other scripts of the caption.
   for (const s of ctx.scripts) {
     if (s === script) continue
-    const f = s === 'bengali' ? SCRIPT_FONTS.bengali : SCRIPT_FONTS[s]
+    const f = s === 'bengali' && bengali && catalogId(bengali) ? bengali : SCRIPT_FONTS[s]
     if (f) add(familyOf(f, ctx.fonts))
     if (s === 'han' || s === 'kana' || s === 'hangul') {
       const cjk = cjkFont(s, ctx.language)
@@ -291,7 +296,7 @@ export function wordFace(
   const drawn = first && 'font' in first ? first : null
   const weight = clampWeight(drawn ? drawn.font : look.font, drawn ? drawn.weight : look.weight)
   return {
-    stack: stackFor(look.font, script, first, ctx),
+    stack: stackFor(look.font, script, first, ctx, studio.text.scripts?.bengali?.font),
     weight,
     tracking: trackingFor(script, studio.text.tracking),
     ...(drawn?.width ? { stretch: drawn.width } : {})
@@ -305,5 +310,5 @@ export function studioFontStack(
   ctx: { language?: string; scripts: Set<ScriptTag>; main: { script: ScriptTag; share: number }; fonts?: readonly ProjectFont[]; downloaded: (id: string) => boolean }
 ): string {
   const look = lookFont(studio, role, ctx)
-  return stackFor(look.font, ctx.main.script, scriptFirst(studio, role, look.font, look.weight, ctx.main.script, ctx), ctx)
+  return stackFor(look.font, ctx.main.script, scriptFirst(studio, role, look.font, look.weight, ctx.main.script, ctx), ctx, studio.text.scripts?.bengali?.font)
 }
