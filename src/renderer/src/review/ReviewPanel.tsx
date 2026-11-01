@@ -7,7 +7,7 @@
  * Not modal: the preview stays in view and the editor's shortcuts keep working, except the keys
  * the list uses while the focus is in it (N/P/arrows, Home/End, K, Delete), which it keeps.
  */
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
+import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
 import type React from 'react'
 import { shortcutIndex } from '../../../shared/editor/shortcuts'
 import { planOf } from '../../../shared/engine/freeze'
@@ -23,7 +23,17 @@ import {
 } from '../../../shared/review/copy'
 import { listKey } from '../../../shared/review/keys'
 import { previewStretch } from '../../../shared/review/preview'
-import { keepItems, mergeSnapshot, removeItems, reviewItems, reviewProgress, reviewStatus, type ReviewItem, type ReviewStatus } from '../../../shared/review/review'
+import {
+  keepItems,
+  mergeSnapshot,
+  removeItems,
+  reviewItems,
+  reviewProgress,
+  reviewStatus,
+  type ReviewItem,
+  type ReviewKind,
+  type ReviewStatus
+} from '../../../shared/review/review'
 import { rowTimes } from '../../../shared/review/times'
 import { useEditor } from '../editor/context'
 import { useKeymap } from '../editor/keymapContext'
@@ -50,13 +60,15 @@ export function ReviewPanel({ onClose }: { onClose: () => void }): JSX.Element {
   }, [store])
   const list = useMemo(() => (shown.at === project ? shown.list : mergeSnapshot(shown.list, project)), [shown, project])
   const statuses = useMemo(() => list.map((i) => reviewStatus(project, i)), [list, project])
-  const { reviewed, total } = reviewProgress(statuses)
+  const { reviewed, total } = useMemo(() => reviewProgress(statuses), [statuses])
+  /** Where each row is in the list, by key. */
+  const indexOf = useMemo(() => new Map(list.map((i, k) => [i.key, k])), [list])
   const plan = planOf(project)
   // Every row's time, in one pass over the clips, kept for the same clips and plan (times.ts).
   const times = useMemo(() => rowTimes(list, project.clips, plan), [list, project.clips, plan])
 
   const [activeKey, setActiveKey] = useState<string | null>(() => list.find((_, i) => statuses[i] === 'pending')?.key ?? list[0]?.key ?? null)
-  const active = Math.max(0, list.findIndex((i) => i.key === activeKey))
+  const active = (activeKey !== null ? indexOf.get(activeKey) : undefined) ?? 0
   // What the live region says. Each message is a new node, so the same words twice (Keep, Ctrl+Z,
   // Keep) are read out twice.
   const [said, setSaid] = useState({ text: '', n: 0 })
@@ -143,7 +155,7 @@ export function ReviewPanel({ onClose }: { onClose: () => void }): JSX.Element {
   }
 
   const act = (item: ReviewItem, action: 'keep' | 'remove'): void => {
-    const index = list.indexOf(item)
+    const index = indexOf.get(item.key) ?? -1
     if (index < 0 || reviewStatus(store.state, item) !== 'pending') return
     stopStretch()
     store.update((p) => (action === 'keep' ? keepItems(p, [item]) : removeItems(p, [item])))
@@ -174,7 +186,8 @@ export function ReviewPanel({ onClose }: { onClose: () => void }): JSX.Element {
   })
 
   const current = list[active]
-  const kindPending = current ? list.filter((i, k) => i.kind === current.kind && statuses[k] === 'pending') : []
+  const kind = current?.kind
+  const kindPending = useMemo(() => (kind ? list.filter((i, k) => i.kind === kind && statuses[k] === 'pending') : []), [list, statuses, kind])
   const removeKind = (): void => {
     if (!current || kindPending.length === 0) return
     stopStretch()
@@ -184,6 +197,25 @@ export function ReviewPanel({ onClose }: { onClose: () => void }): JSX.Element {
     const next = nextPending(after, active)
     if (next) focusKey(next)
   }
+
+  // The rows' handlers stay the same function from render to render, so a row draws again only
+  // when what it shows changes (N redraws the two rows whose focus moved, not the whole list).
+  const latest = useRef({ choose, act, list, indexOf })
+  latest.current = { choose, act, list, indexOf }
+  const onRowChoose = useCallback((key: string) => {
+    const { list, indexOf, choose } = latest.current
+    const k = indexOf.get(key)
+    if (k !== undefined) choose(list[k])
+  }, [])
+  const onRowAct = useCallback((key: string, action: 'keep' | 'remove') => {
+    const { list, indexOf, act } = latest.current
+    const k = indexOf.get(key)
+    if (k !== undefined) act(list[k], action)
+  }, [])
+  const setRow = useCallback((key: string, el: HTMLButtonElement | null) => {
+    if (el) rows.current.set(key, el)
+    else rows.current.delete(key)
+  }, [])
 
   const onListKey = (e: React.KeyboardEvent): void => {
     const key = listKey(e, shortcuts)
@@ -255,56 +287,22 @@ export function ReviewPanel({ onClose }: { onClose: () => void }): JSX.Element {
         <>
           <p className="review-hint">{REVIEW_HINT}</p>
           <ul className="review-list" aria-label="Automatic changes" onKeyDown={onListKey}>
-            {list.map((item, k) => {
-              const status = statuses[k]
-              const isActive = k === active
-              const time = times[k]
-              return (
-                <li key={item.key} className={`review-row ${status}${isActive ? ' active' : ''}`} data-testid="review-row" data-key={item.key} data-status={status}>
-                  <button
-                    ref={(el) => {
-                      if (el) rows.current.set(item.key, el)
-                      else rows.current.delete(item.key)
-                    }}
-                    className="review-item"
-                    tabIndex={isActive ? 0 : -1}
-                    aria-current={isActive ? 'true' : undefined}
-                    aria-label={itemAccessibleName(item, time, status)}
-                    onClick={() => choose(item)}
-                    onFocus={() => setActiveKey(item.key)}
-                  >
-                    <span className={`review-chip kind-${item.kind}`} aria-hidden="true">
-                      {KIND_WORDS[item.kind].chip}
-                    </span>
-                    <span className="review-text" aria-hidden="true">
-                      <span className="review-title">{item.title}</span>
-                      <span className="review-meta">
-                        {time} · {item.detail}
-                      </span>
-                    </span>
-                  </button>
-                  {status === 'pending' ? (
-                    <span className="review-actions">
-                      <button className="btn" tabIndex={isActive ? 0 : -1} aria-label={`Keep: ${item.title}`} data-testid="review-keep" onClick={() => act(item, 'keep')}>
-                        Keep
-                      </button>
-                      <button className="btn" tabIndex={isActive ? 0 : -1} aria-label={`Remove: ${item.title}`} data-testid="review-remove" onClick={() => act(item, 'remove')}>
-                        Remove
-                      </button>
-                    </span>
-                  ) : (
-                    <span className={`review-mark ${status}`}>
-                      {status === 'kept' && (
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                          <path d="M5 12l5 5 9-10" />
-                        </svg>
-                      )}
-                      {status === 'kept' ? 'Kept' : 'Removed'}
-                    </span>
-                  )}
-                </li>
-              )
-            })}
+            {list.map((item, k) => (
+              <ReviewRow
+                key={item.key}
+                itemKey={item.key}
+                kind={item.kind}
+                title={item.title}
+                detail={item.detail}
+                time={times[k]}
+                status={statuses[k]}
+                isActive={k === active}
+                onChoose={onRowChoose}
+                onAct={onRowAct}
+                onFocusRow={setActiveKey}
+                setRef={setRow}
+              />
+            ))}
           </ul>
           <div className="review-foot">
             <button className="btn" data-testid="review-keep-all" disabled={reviewed === total} onClick={keepAll}>
@@ -322,3 +320,64 @@ export function ReviewPanel({ onClose }: { onClose: () => void }): JSX.Element {
     </aside>
   )
 }
+
+interface RowProps {
+  itemKey: string
+  kind: ReviewKind
+  title: string
+  detail: string
+  time: string
+  status: ReviewStatus
+  isActive: boolean
+  onChoose: (key: string) => void
+  onAct: (key: string, action: 'keep' | 'remove') => void
+  onFocusRow: (key: string) => void
+  setRef: (key: string, el: HTMLButtonElement | null) => void
+}
+
+/** One row: drawn again only when what it shows changes (its props are values and stable handlers). */
+const ReviewRow = memo(function ReviewRow({ itemKey, kind, title, detail, time, status, isActive, onChoose, onAct, onFocusRow, setRef }: RowProps): JSX.Element {
+  const ref = useCallback((el: HTMLButtonElement | null) => setRef(itemKey, el), [setRef, itemKey])
+  return (
+    <li className={`review-row ${status}${isActive ? ' active' : ''}`} data-testid="review-row" data-key={itemKey} data-status={status}>
+      <button
+        ref={ref}
+        className="review-item"
+        tabIndex={isActive ? 0 : -1}
+        aria-current={isActive ? 'true' : undefined}
+        aria-label={itemAccessibleName({ title, kind, detail }, time, status)}
+        onClick={() => onChoose(itemKey)}
+        onFocus={() => onFocusRow(itemKey)}
+      >
+        <span className={`review-chip kind-${kind}`} aria-hidden="true">
+          {KIND_WORDS[kind].chip}
+        </span>
+        <span className="review-text" aria-hidden="true">
+          <span className="review-title">{title}</span>
+          <span className="review-meta">
+            {time} · {detail}
+          </span>
+        </span>
+      </button>
+      {status === 'pending' ? (
+        <span className="review-actions">
+          <button className="btn" tabIndex={isActive ? 0 : -1} aria-label={`Keep: ${title}`} data-testid="review-keep" onClick={() => onAct(itemKey, 'keep')}>
+            Keep
+          </button>
+          <button className="btn" tabIndex={isActive ? 0 : -1} aria-label={`Remove: ${title}`} data-testid="review-remove" onClick={() => onAct(itemKey, 'remove')}>
+            Remove
+          </button>
+        </span>
+      ) : (
+        <span className={`review-mark ${status}`}>
+          {status === 'kept' && (
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <path d="M5 12l5 5 9-10" />
+            </svg>
+          )}
+          {status === 'kept' ? 'Kept' : 'Removed'}
+        </span>
+      )}
+    </li>
+  )
+})
