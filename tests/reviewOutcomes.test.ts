@@ -552,6 +552,20 @@ describe('a speed-up that goes with no choice made leaves the records inside it 
     expect(plays(s.p.clips)).toBe('[0,6]@1 [6,15]@4 [15,20]@1')
     expect(s.rows()).toEqual(['r0:kept', 'r1:removed'])
   })
+
+  it('three speed-ups, one inside the other, all set back to 1x by one edit read removed: a cut inside them comes back at 1x', () => {
+    const three = 'tool 5-15 2 smart-speed; tool 7-12 4 silences; tool 8-11 8 polish; tool 9-10 cut filler; open'
+    const s = replay(`${three}; hand speed 5-15 1`)
+    expect(s.p.autoCuts?.map((c) => c.id)).toEqual(['r3'])
+    expect(s.p.autoCuts?.[0].was).toEqual([{ start: 9, end: 10, speed: 1 }])
+    expect(s.rows()).toEqual(['r0:removed', 'r1:removed', 'r2:removed', 'r3:pending'])
+    s.run('R r3')
+    expect(plays(s.p.clips)).toBe('[0,20]@1')
+    // As if the three had been removed in the panel, in any order, and then the cut.
+    for (const order of ['R r2; R r1; R r0', 'R r0; R r1; R r2', 'R r1; R r0; R r2']) {
+      expect(plays(replay(`${three}; ${order}; R r3`).p.clips), order).toBe('[0,20]@1')
+    }
+  })
 })
 
 describe('every reviewed row reads what was chosen, in any order (nested runs)', () => {

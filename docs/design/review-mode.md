@@ -85,8 +85,11 @@ one level further in (a silence sped up 8× inside the 4× one): the 4× record 
 the 8× one, and all three stay listed.
 A speed-up the settle step drops leaves the records around it as Keep or Remove of it would
 (§2.4), by how its row then reads (§2.3). Those with none of their footage at their speed any more
-(read removed) go first, the latest first: a record inside one that holds footage at its speed
-takes the speed from before it (`withoutSpeedUp`). Then those that still play at their speed
+(read removed) go first, the fastest first (one inside another is faster, so an 8× hands its part
+back at 4× before the 4× around it goes) and the latest first among those at one speed: a record
+inside one that holds footage at its speed takes the speed from before it (`withoutSpeedUp`'s
+rule; what those at one speed held is joined into one set of parts, so a project file with a
+thousand records settles in tens of milliseconds). Then those that still play at their speed
 somewhere (read kept), all at once: an earlier speed-up one holds footage of gives that part up
 (`withSpeedUpKept`'s rule, the parts joined a speed at a time), while a record inside it keeps
 holding its speed. So removing a record later never puts footage back at the speed of one gone,

@@ -197,8 +197,8 @@ function intactOf(list: readonly AutoCut[], clips: readonly Clip[]): AutoCut[] {
 /**
  * The records of `list` whose change is still in `clips` (intactOf), each speed-up that goes leaving
  * the others as Keep or Remove of it would, by how its row then reads (changeGone, §2.3). First
- * those whose change is gone (none of it plays at its speed), the latest first, as Remove: a record
- * holding footage at its speed takes the speed from before it (withoutSpeedUp). Then those that
+ * those whose change is gone (none of it plays at its speed), as Remove: a record holding footage
+ * at its speed takes the speed from before it (withoutSpeedUps, the fastest first). Then those that
  * still play at their speed somewhere, as Keep: an earlier speed-up one holds footage of gives that
  * part up (withSpeedUpsKept), while a record inside it keeps holding its speed. So removing a record
  * left never puts footage back at the speed of one gone, inside a speed-up still listed. The rest
@@ -215,7 +215,7 @@ function settledOf(list: readonly AutoCut[], clips: readonly Clip[]): AutoCut[] 
     // Those that go as kept stay in the list through the first step, so a speed-up removed around
     // one hands it the speed from before it too, as it would in the panel.
     let out = live.filter((c) => stays.has(c) || kept.has(c.id))
-    for (const s of [...gone].reverse()) if (!kept.has(s.id)) out = withoutSpeedUp(out, s)
+    out = withoutSpeedUps(out, gone.filter((c) => !kept.has(c.id)))
     out = withSpeedUpsKept(out, out.filter((c) => kept.has(c.id)))
     live = out.filter((c) => !kept.has(c.id))
   }
@@ -328,6 +328,103 @@ export function withoutSpeedUp(list: AutoCut[], s: AutoCut): AutoCut[] {
     const was = beforeSpeedUp(c.was, s)
     return was === c.was ? c : { ...c, was }
   })
+}
+
+/**
+ * The records `list` with the speed-ups `ss` gone from under them (settledOf), as withoutSpeedUp
+ * for each: the fastest first, so a part an 8× hands back at 4× inside a 4× gone too goes on back
+ * to the 4×'s speed from before (a speed-up inside another is faster than it), and among those at
+ * one speed the latest first. What those at one speed held before them is joined into one set of
+ * parts (speedsBefore) and each record is gone through once for each speed, so the cost grows with
+ * the pieces, not with the speed-ups gone times the records left. `ss` themselves and records that
+ * change nothing are the same objects.
+ */
+function withoutSpeedUps(list: AutoCut[], ss: readonly AutoCut[]): AutoCut[] {
+  const skip = new Set(ss.map((s) => s.id))
+  const speeds = [...new Set(ss.flatMap((s) => (s.action === 'cut' ? [] : [s.action])))].sort((a, b) => b - a)
+  let out = list
+  for (const speed of speeds) {
+    if (!out.some((c) => !skip.has(c.id) && c.was.some((p) => p.speed === speed))) continue
+    const parts = speedsBefore(ss.filter((s) => s.action === speed).reverse(), speed)
+    if (parts.length === 0) continue
+    out = out.map((c) => {
+      if (skip.has(c.id)) return c
+      const was = withSpeedsBefore(c.was, parts, speed)
+      return was === c.was ? c : { ...c, was }
+    })
+  }
+  return out
+}
+
+/**
+ * Where the speed-ups `ss` (all at `speed`, the first to decide first) set footage to `speed`, with
+ * the speed it had before: as beforeSpeedUp for each in turn, a time held by none of them, or held
+ * at `speed` itself by the first of a record's pieces holding it, is left to the next one. Sorted,
+ * not overlapping.
+ */
+function speedsBefore(ss: readonly AutoCut[], speed: number): Piece[] {
+  return firstHeld(ss.flatMap((s) => firstHeld(s.was).filter((p) => p.speed !== speed)))
+}
+
+/**
+ * The time `pieces` cover, each part with the speed of the first piece (in their order) holding it:
+ * sorted, not overlapping, touching parts at one speed joined.
+ */
+function firstHeld(pieces: readonly Piece[]): Piece[] {
+  const sorted = pieces.every((p, i) => i === 0 || p.start >= pieces[i - 1].end)
+  if (sorted) return joinPieces(pieces.map((p) => ({ start: p.start, end: p.end, speed: p.speed })))
+  const ts = [...new Set(pieces.flatMap((p) => [p.start, p.end]))].sort((a, b) => a - b)
+  const at = new Map(ts.map((t, i) => [t, i]))
+  const speedOf: (number | undefined)[] = new Array(Math.max(0, ts.length - 1))
+  // The next span between two ends not held yet, at or after each (a span once held is skipped).
+  const free = Int32Array.from({ length: ts.length }, (_, i) => i)
+  const nextFree = (i: number): number => {
+    while (free[i] !== i) i = free[i] = free[free[i]]
+    return i
+  }
+  for (const p of pieces) {
+    const end = at.get(p.end)!
+    for (let i = nextFree(at.get(p.start)!); i < end; i = nextFree(i + 1)) {
+      speedOf[i] = p.speed
+      free[i] = i + 1
+    }
+  }
+  const out: Piece[] = []
+  speedOf.forEach((speed, i) => {
+    if (speed !== undefined) out.push({ start: ts[i], end: ts[i + 1], speed })
+  })
+  return joinPieces(out)
+}
+
+/**
+ * `pieces` as they were before the speed-ups whose parts are `parts` (speedsBefore): a part that
+ * plays at `speed` inside one of them gets its speed from before, as beforeSpeedUp does. `pieces`
+ * itself when no part does.
+ */
+function withSpeedsBefore(pieces: Piece[], parts: readonly Piece[], speed: number): Piece[] {
+  if (!pieces.some((p) => p.speed === speed)) return pieces
+  let hit = false
+  const out: Piece[] = []
+  for (const p of pieces) {
+    const first = p.speed === speed ? firstAfter(parts, p.start) : parts.length
+    if (first >= parts.length || parts[first].start >= p.end) {
+      out.push(p)
+      continue
+    }
+    const cuts = [p.start]
+    for (let k = first; k < parts.length && parts[k].start < p.end - EPS; k++) {
+      for (const t of [parts[k].start, parts[k].end]) if (t > p.start + EPS && t < p.end - EPS && t !== cuts[cuts.length - 1]) cuts.push(t)
+    }
+    cuts.push(p.end)
+    for (let i = 0; i + 1 < cuts.length; i++) {
+      const mid = (cuts[i] + cuts[i + 1]) / 2
+      const k = firstAfter(parts, mid)
+      const w = k < parts.length && parts[k].start <= mid ? parts[k] : undefined
+      if (w && w.speed !== p.speed) hit = true
+      out.push({ start: cuts[i], end: cuts[i + 1], speed: w ? w.speed : p.speed })
+    }
+  }
+  return hit ? joinPieces(out) : pieces
 }
 
 /**
