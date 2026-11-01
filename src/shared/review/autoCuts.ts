@@ -584,14 +584,91 @@ export function withAutoCuts(project: Project, list: AutoCut[]): Project {
  */
 export function undoAutoCut(clips: Clip[], cut: AutoCut, duration: number): Clip[] {
   if (cut.action === 'cut') return putBack(clips, cut.was, duration)
+  return setBack(clips, cut).clips
+}
+
+/** A part of a removed speed-up's footage its reset leaves in the clip of a speed-up left, given to that one. */
+interface Handed {
+  id: string
+  piece: Piece
+}
+
+/**
+ * The clips with the speed-up `cut` set back (undoAutoCut): its pieces set back to their speeds
+ * where they still play at the record's speed, latest first. setRangeSpeed snaps a range end within
+ * MIN_CLIP of the edge of the clip around it onto that edge, so it re-times the sliver of the clip
+ * past that end too. With `left` (takeBack: the records it leaves), where that sliver is all that a
+ * speed-up left still plays at its speed, the reset stops short of it instead and hands that one
+ * what it leaves of this record's footage there (spare).
+ */
+function setBack(clips: Clip[], cut: AutoCut, left?: () => readonly AutoCut[]): { clips: Clip[]; handed: Handed[] } {
   let out = clips
+  const handed: Handed[] = []
+  let list: readonly AutoCut[] | undefined
+  const others = left && ((): readonly AutoCut[] => (list ??= left()))
   for (const p of [...cut.was].sort((a, b) => b.start - a.start)) {
     const fast = out
       .filter((c) => c.speed === cut.action && Math.min(p.end, c.end) - Math.max(p.start, c.start) > EPS)
       .map((c) => ({ start: Math.max(p.start, c.start), end: Math.min(p.end, c.end) }))
-    for (const r of fast) out = setRangeSpeed(out, r.start, r.end, p.speed)
+    for (const r of fast) {
+      const next = setRangeSpeed(out, r.start, r.end, p.speed)
+      const spared = others && next !== out ? spare(out, next, r, p.speed, cut.action as number, others) : null
+      if (spared) handed.push(...spared.handed)
+      out = spared ? spared.clips : next
+    }
   }
-  return out
+  return { clips: out, handed }
+}
+
+/**
+ * For setBack, the reset of [r.start, r.end] (inside one clip at `action`) to `speed`, `next` being
+ * setRangeSpeed's: when its snap onto an edge of that clip re-timed, past an end, all that a speed-up
+ * of `left()` at `action` (intact) still plays at its speed (the rest of that one cut since), the
+ * reset with that end just over MIN_CLIP short of the edge. The clip left there plays both at
+ * `action`, and the part of [r.start, r.end] in it (under MIN_CLIP, or all of it in a clip too short
+ * to split) is handed to that one: it holds it from then on, so it stays to review, its Remove sets
+ * that clip back whole and its Keep keeps it sped up with it. null when the reset takes no speed-up
+ * left off the list, or would even so.
+ */
+function spare(clips: Clip[], next: Clip[], r: { start: number; end: number }, speed: number, action: number, left: () => readonly AutoCut[]): { clips: Clip[]; handed: Handed[] } | null {
+  const k = clips.find((c) => c.speed === action && c.start <= r.start + EPS && c.end >= r.end - EPS)
+  if (!k) return null
+  const own = (c: AutoCut, at: readonly Clip[]): number => c.was.reduce((n, w) => n + covered(at, w.start, w.end, (x) => x.speed === action), 0)
+  let a = r.start
+  let b = r.end
+  const spared: { id: string; sliver: Piece }[] = []
+  for (const [after, sliver] of [
+    [true, { start: r.end, end: k.end, speed }],
+    [false, { start: k.start, end: r.start, speed }]
+  ] as const) {
+    const len = sliver.end - sliver.start
+    if (len <= EPS || len >= MIN_CLIP || covered(next, sliver.start, sliver.end, (x) => x.speed === action) > len - EPS) continue
+    const list = left()
+    const v = list.find(
+      (c) =>
+        c.action === action &&
+        c.start < sliver.end &&
+        c.end > sliver.start &&
+        c.was.some((w) => Math.min(w.end, sliver.end) - Math.max(w.start, sliver.start) > EPS) &&
+        own(c, next) <= SLACK &&
+        autoCutIntact(c, clips, list)
+    )
+    if (!v) continue
+    spared.push({ id: v.id, sliver })
+    if (after) b = k.end - MIN_CLIP - 1e-6
+    else a = k.start + MIN_CLIP + 1e-6
+  }
+  if (spared.length === 0) return null
+  const out = b - a > EPS ? setRangeSpeed(clips, a, b, speed) : clips
+  const now = left()
+  if (spared.some((s) => own(now.find((c) => c.id === s.id)!, out) <= SLACK)) return null
+  const handed: Handed[] = []
+  for (const s of spared) {
+    const m = out.find((c) => c.speed === action && Math.min(c.end, s.sliver.end) - Math.max(c.start, s.sliver.start) > EPS)
+    const piece = m && { start: Math.max(r.start, m.start), end: Math.min(r.end, m.end), speed }
+    if (piece && piece.end - piece.start > EPS && !handed.some((h) => h.piece.start < piece.end && h.piece.end > piece.start)) handed.push({ id: s.id, piece })
+  }
+  return { clips: out, handed }
 }
 
 /**
@@ -659,8 +736,16 @@ export function takeBack(
   const order = ids.flatMap((id) => list.filter((c) => c.id === id).slice(0, 1))
   for (const { id } of order.sort((a, b) => b.start - a.start)) {
     const c = out.find((x) => x.id === id)!
-    at = undoAutoCut(at, c, duration)
-    if (c.action !== 'cut') out = withoutSpeedUp(out, c)
+    if (c.action === 'cut') {
+      at = undoAutoCut(at, c, duration)
+      continue
+    }
+    const back = setBack(at, c, () => out.filter((x) => !gone.has(x.id)))
+    at = back.clips
+    for (const { id: to, piece } of back.handed) {
+      out = out.map((x) => (x.id === to ? { ...x, start: Math.min(x.start, piece.start), end: Math.max(x.end, piece.end), was: joinPieces([...x.was, piece]) } : x))
+    }
+    out = withoutSpeedUp(out, c)
   }
   out = withoutResetSlivers(out, list, gone, clips, at)
   const outOf = (pieces: readonly Piece[]): Piece[] =>

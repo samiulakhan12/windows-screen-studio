@@ -800,6 +800,52 @@ describe('a Remove that re-times a sliver of footage another record holds', () =
     expect(plays(s.p.clips)).toBe('[0,20]@1')
   })
 
+  it('a cut leaving the later 2x only 0.05 s beside the earlier one, then the earlier one removed: the later one stays to review, and its Remove sets the clip they share back', () => {
+    // r3 cuts all of r1's footage but [14, 14.05], in the clip [10, 14.05] with r0's. r0's reset
+    // snapped onto 14.05 set all of r1 still at 2x to 1x and took it off the list. It now stops
+    // short of the clip [13.95, 14.05], which stays at 2x, and r1 holds r0's 0.05 s in it.
+    const s = replay(`${joined}; tool 14.05-16 cut filler; R r0`)
+    expect(plays(s.p.clips)).toBe('[0,13.95]@1 [13.95,14.05]@2 [16,20]@1')
+    expect(s.rows()).toEqual(['r0:removed', 'r1:pending', 'r2:removed', 'r3:pending'])
+    expect(pendingCount(s.p)).toBe(2)
+    expect(s.p.autoCuts?.find((c) => c.id === 'r1')?.was).toEqual([{ start: 14.05 - 0.1 - 1e-6, end: 16, speed: 1 }])
+    s.run('R r1')
+    expect(plays(s.p.clips)).toBe('[0,14.05]@1 [16,20]@1')
+    s.run('R r3')
+    expect(plays(s.p.clips)).toBe('[0,20]@1')
+    expect(s.p.autoCuts).toBeUndefined()
+    // Kept instead, the clip stays sped up; undo gives both rows back as they were.
+    const k = replay(`${joined}; tool 14.05-16 cut filler; R r0; K r1`)
+    expect(plays(k.p.clips)).toBe('[0,13.95]@1 [13.95,14.05]@2 [16,20]@1')
+    expect(k.rows()).toEqual(['r0:removed', 'r1:kept', 'r2:removed', 'r3:pending'])
+    k.run('undo; undo')
+    expect(plays(k.p.clips)).toBe('[0,10]@1 [10,14.05]@2 [16,20]@1')
+    expect(k.rows()).toEqual(['r0:pending', 'r1:pending', 'r2:removed', 'r3:pending'])
+    expect(k.p.autoCuts?.find((c) => c.id === 'r1')?.was).toEqual([{ start: 14, end: 16, speed: 1 }])
+  })
+
+  it('the mirror: a cut leaving the earlier 2x only 0.05 s beside the later one, then the later one removed: the earlier one stays to review', () => {
+    const s = replay(`${joined}; tool 10-13.95 cut filler; R r1`)
+    expect(plays(s.p.clips)).toBe('[0,10]@1 [13.95,14.05]@2 [14.05,20]@1')
+    expect(s.rows()).toEqual(['r0:pending', 'r3:pending', 'r1:removed', 'r2:removed'])
+    expect(s.p.autoCuts?.find((c) => c.id === 'r0')?.was).toEqual([{ start: 10, end: 13.95 + 0.1 + 1e-6, speed: 1 }])
+    s.run('R r0')
+    expect(plays(s.p.clips)).toBe('[0,10]@1 [13.95,20]@1')
+    s.run('R r3')
+    expect(plays(s.p.clips)).toBe('[0,20]@1')
+  })
+
+  it('in a clip too short to split, the 2x left holds all of the removed one’s part of it', () => {
+    // Cuts leave [13.92, 14.05] at 2x: 0.08 s of r0's and 0.05 s of r1's. No reset of r0's part can
+    // leave a clip of r1's at 2x, so the clip stays at 2x and r1 holds all of it.
+    const s = replay(`${joined}; tool 10-13.92 cut filler; tool 14.05-16 cut filler; R r0`)
+    expect(plays(s.p.clips)).toBe('[0,10]@1 [13.92,14.05]@2 [16,20]@1')
+    expect(s.rows()).toEqual(['r0:removed', 'r3:pending', 'r1:pending', 'r2:removed', 'r4:pending'])
+    expect(s.p.autoCuts?.find((c) => c.id === 'r1')?.was).toEqual([{ start: 13.92, end: 16, speed: 1 }])
+    s.run('R r1; R r3; R r4')
+    expect(plays(s.p.clips)).toBe('[0,20]@1')
+  })
+
   it('Keep of the 2x left keeps the rest of its footage sped up; undo gives the sliver back to it', () => {
     const s = replay(`${joined}; tool 13-13.95 cut filler; R r1; K r0`)
     expect(plays(s.p.clips)).toBe('[0,10]@1 [10,13]@2 [13.95,20]@1')

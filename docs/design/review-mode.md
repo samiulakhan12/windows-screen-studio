@@ -300,8 +300,15 @@ different speeds (a 4× over the start of a 2×, cut 0.01 s into the 2×: its Re
 still plays to 1×). A speed-up left that was intact and no longer plays such a sliver at its speed
 (nor has it held there by a later record) gives it up, as Keep's `withSpeedUpKept` gives up a part:
 it is not its change any more, and the record stays intact and to review for the rest
-(`withoutResetSlivers`); so does one that held it through that one. So Remove of one row never
-takes another off the list.
+(`withoutResetSlivers`); so does one that held it through that one. When such a sliver beside the
+record's footage is all that a speed-up left at the same speed, intact, still plays at it (a cut
+since took the rest: the second's 0.05 s is all of it left at 2×), giving it up would leave nothing
+of that one sped up: the reset then stops just over `MIN_CLIP` short of that clip's edge instead,
+so a clip of `MIN_CLIP` stays at the speed with both slivers, and the part of the removed record's
+footage in it (under `MIN_CLIP`; all of its part of a clip too short to split, about twice
+`MIN_CLIP` or less) goes to the one left, which holds it from then on (its `was`, `start` and `end` grow): its
+Remove sets that clip back whole, and its Keep keeps it sped up. So Remove of one row never takes
+another off the list.
 
 A piece shorter than `MIN_CLIP` (Remove silences run again with less padding cuts 0.05 s more on
 each side of the same pause) comes back only by joining a clip: alone it cannot be one. Remove
@@ -565,6 +572,12 @@ Unit (`tests/review*.test.ts`), each failing without its code:
   keeps the rest sped up, and undo gives the sliver back. A 4× over the start of a 2×, cut 0.01 s
   into the 2×, removed: the 2× gives up the 0.01 s and stays to review. `setRangeSpeed` snaps to
   the nearest clip edge, and an end on an edge stays (14.6 − 14.5 is a hair under 0.1).
+  The cut leaving the second 2× only its 0.05 s beside the first, the first removed (or the
+  mirror: the first left only its 0.05 s, the second removed): the reset stops short of the clip
+  they share, which stays at 2×, and the one left holds the removed one's 0.05 s in it and stays
+  to review; its Remove and the cut's bring all the footage back, its Keep keeps that clip sped
+  up, and undo gives both rows back as they were. In a clip too short to split (0.08 s of the first
+  and 0.05 s of the second), the one left holds all of the removed one's part of it.
 * Director: removing a `cutOut` piece gives its time back to the position (`withoutDirected` agrees).
 * `previewStretch`: a cut plays across the cut point; capped at 8 s; clamped to the video.
 * Polish and the Clip panel record (planPolish with silences gives `autoCuts`; nothing when no change).
