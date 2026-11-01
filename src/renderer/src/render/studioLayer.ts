@@ -62,15 +62,27 @@ const idOf = (o: object | null | undefined): number => {
 const MEASURE_PX = 100
 const widths = new Map<string, number>()
 
-/** The canvas font of a face at `px`. */
-export const faceFont = (face: StudioFace, px: number): string => `${face.weight} ${px}px ${face.stack}`
+/** Canvas fonts take a width only as a keyword: the keyword of each width (wdth, percent), 100 being none. */
+const STRETCH: readonly (readonly [number, string])[] = [[62.5, 'extra-condensed'], [75, 'condensed'], [87.5, 'semi-condensed'], [100, ''], [112.5, 'semi-expanded'], [125, 'expanded']]
+
+/** The keyword of the width nearest `stretch` (§0.2: Stacked's Anek Bangla at 75 is 'condensed'). */
+function stretchWord(stretch: number | undefined): string {
+  if (stretch === undefined || stretch === 100) return ''
+  return STRETCH.reduce((a, b) => (Math.abs(b[0] - stretch) < Math.abs(a[0] - stretch) ? b : a))[1]
+}
+
+/** The canvas font of a face at `px`, in its width. */
+export const faceFont = (face: StudioFace, px: number): string => {
+  const stretch = stretchWord(face.stretch)
+  return `${face.weight}${stretch ? ` ${stretch}` : ''} ${px}px ${face.stack}`
+}
 
 /** Letter spacing of a face at `px` (canvas takes a length; the face's is in em). */
 const spacing = (face: StudioFace, px: number): string => `${+(face.tracking * px).toFixed(3)}px`
 
 function measureOn(ctx: Ctx): (text: string, px: number, face: StudioFace) => number {
   return (text, px, face) => {
-    const key = `${fontGeneration()}|${face.stack}|${face.weight}|${face.tracking}|${text}`
+    const key = `${fontGeneration()}|${face.stack}|${face.weight}|${stretchWord(face.stretch)}|${face.tracking}|${text}`
     let w = widths.get(key)
     if (w === undefined) {
       ctx.save()

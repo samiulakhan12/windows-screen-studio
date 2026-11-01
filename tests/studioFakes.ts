@@ -51,8 +51,13 @@ export function canvas(w = 300, h = 150): Record<string, unknown> & { id: number
       if (prop === 'canvas') return c
       if (prop in target) return target[prop]
       if (prop === 'createLinearGradient' || prop === 'createRadialGradient' || prop === 'createPattern') return () => ({ addColorStop() {} })
-      // 10 units a character at 100 px, a narrow "1" (5): digits differ in width, as in most fonts.
-      if (prop === 'measureText') return (text: string) => ({ width: [...String(text)].reduce((a, ch) => a + (ch === '1' ? 5 : 10), 0) * (parseFloat(String(target.font ?? '').split(' ')[1]) / 100 || 1), actualBoundingBoxAscent: 7, actualBoundingBoxDescent: 2 })
+      // 10 units a character at 100 px, a narrow "1" (5): digits differ in width, as in most fonts; a condensed font is 0.75 as wide.
+      if (prop === 'measureText')
+        return (text: string) => {
+          const font = String(target.font ?? '')
+          const narrow = / condensed /.test(font) ? 0.75 : 1
+          return { width: [...String(text)].reduce((a, ch) => a + (ch === '1' ? 5 : 10), 0) * narrow * (parseFloat(font.replace(/ (?:extra-|semi-)?(?:condensed|expanded)(?= )/, '').split(' ')[1]) / 100 || 1), actualBoundingBoxAscent: 7, actualBoundingBoxDescent: 2 }
+        }
       if (prop === 'getTransform') return () => ({ a: matrix[0], b: matrix[1], c: matrix[2], d: matrix[3], e: matrix[4], f: matrix[5] })
       if (prop === 'getImageData')
         return (...args: number[]) => {
@@ -125,7 +130,7 @@ export const fakeFontStack = {
   wordFace: (studio: CaptionStudio, role: 'text' | 'emphasis', script: string): StudioFace => {
     const font = role === 'emphasis' ? (studio.emphasis.font ?? studio.text.font) : studio.text.font
     const bn = script === 'bengali' ? studio.text.scripts?.bengali : undefined
-    return { stack: `"FlownCat-${(bn?.font ?? font).replace('cat:', '')}"`, weight: bn?.weight ?? (role === 'emphasis' ? studio.emphasis.weight : studio.text.weight), tracking: studio.text.tracking }
+    return { stack: `"FlownCat-${(bn?.font ?? font).replace('cat:', '')}"`, weight: bn?.weight ?? (role === 'emphasis' ? studio.emphasis.weight : studio.text.weight), tracking: studio.text.tracking, ...(bn?.width ? { stretch: bn.width } : {}) }
   },
   clampWeight: (_font: string, weight: number) => weight,
   studioFontStack: () => '"FlownCat-inter-tight"',

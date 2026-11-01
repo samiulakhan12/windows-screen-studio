@@ -322,6 +322,28 @@ describe('the Studio layer draws word sprites (test 23)', () => {
     const extruded = calls.filter((c) => c.name === 'fillText' && c.args[0] === 'MAKE' && c.fill === '#551329')
     expect(extruded.length).toBeGreaterThanOrEqual(6)
   })
+
+  it('draws and measures Stacked’s Bangla font at its width 75, condensed (§0.2)', () => {
+    const bn: CaptionSegment = { id: 'b1', start: 0.5, end: 3, text: 'আপনার ভিডিও সুন্দর' }
+    const bangla = (studio: CaptionStudio): Project => studioProject(studio, { transcript: { language: 'bn', segments: [bn] } } as Partial<Project>)
+    /** How far right of the first word the frame drew the second: the first word and its space, as measured. */
+    const second = (studio: CaptionStudio): number => {
+      calls.length = 0
+      STUDIO_SPRITES.clear()
+      const { fc, id } = frameOf(bangla(studio), 1.2)
+      drawStudioCaptions(fc)
+      const texts = spriteTexts()
+      const x = (word: string): number => onFrame(id).find((c) => c.name === 'drawImage' && texts.get((c.args[0] as { id: number }).id)?.[0] === word)!.args[1] as number
+      return x('ভিডিও') - x('আপনার')
+    }
+    const stacked = look('stacked')
+    const condensed = second(stacked)
+    expect(calls.find((c) => c.name === 'fillText' && c.args[0] === 'আপনার')?.font).toMatch(/^800 condensed [\d.]+px "FlownCat-anek-bangla"/)
+    // The same font at its normal width is measured again, not taken from the condensed one's widths.
+    const normal = second({ ...stacked, text: { ...stacked.text, scripts: { bengali: { ...stacked.text.scripts!.bengali!, width: undefined } } } })
+    expect(calls.find((c) => c.name === 'fillText' && c.args[0] === 'আপনার')?.font).toMatch(/^800 [\d.]+px "FlownCat-anek-bangla"/)
+    expect(normal).toBeGreaterThan(condensed + 1)
+  })
 })
 
 describe('the legacy branch and its three guarded calls (tests 23, 50, 51)', () => {
