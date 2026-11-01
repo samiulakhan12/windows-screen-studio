@@ -64,8 +64,16 @@ describe('the copy pack after the third review of its link cleaning', () => {
 
   it("When the transcript says a link, anything glued after X's end of that link is never checked, even where a browser reads it as part of the host", () => {
     const said = 'Get it at https://flown.app and the beta at https://flown.app:8443 or www.flown.app today.'
-    for (const answer of ['https://flown.app%2eevil%2ecom/login', 'https://flown.app:8443@evil.com/login', 'www.flown.app%2eevil%2ecom', 'https://flown.app．evil．com/login']) {
-      expect(plainText(`Sign in at ${answer} today`, { max: 500, linksFrom: said })).toBe('Sign in at today')
+    // The said link stays, with a no-break space after it, so a site reading on to the next space reads only that link (fifth review).
+    for (const [answer, link, rest] of [
+      ['https://flown.app%2eevil%2ecom/login', 'https://flown.app', '%2eevil%2ecom/login'],
+      ['https://flown.app:8443@evil.com/login', 'https://flown.app:8443', '@evil.com/login'],
+      ['www.flown.app%2eevil%2ecom', 'www.flown.app', '%2eevil%2ecom'],
+      ['https://flown.app．evil．com/login', 'https://flown.app', '．evil．com/login']
+    ]) {
+      const out = plainText(`Sign in at ${answer} today`, { max: 500, linksFrom: said })
+      expect(out).toBe(`Sign in at ${link}\u00a0${rest} today`)
+      expect(extractUrlsWithIndices(out).map((u) => u.url)).toEqual([link])
     }
     // Where a site reading on opens no other host, the said link stays as written.
     for (const kept of ['Get it at https://flown.app, https://flown.appで https://flown.app—great', 'Beta: https://flown.app:8443 now', 'See https://flown.app.']) {
@@ -103,8 +111,12 @@ describe('the copy pack after the third review of its link cleaning', () => {
     expect(plainText('Get evil\u200bflown.app now', said)).toBe('Get evilflown.\u00a0app now')
     // A host after a user name or a quotation mark that a site may end the link at.
     const beta = { max: 500, linksFrom: 'The beta is at https://flown.app:8443 and https://flown.app today.' }
-    for (const answer of ['https://flown.app:8443:1@evil.com%2Ehttps://x', 'https://flown.app".evil.com/login', 'https://flown.app\u017f"-．@evil.com']) {
-      expect(plainText(`Beta at ${answer} now`, beta)).toBe('Beta at now')
+    for (const [answer, cleaned] of [
+      ['https://flown.app:8443:1@evil.com%2Ehttps://x', 'https://flown.app:8443\u00a0:1@evil.com%2E'],
+      ['https://flown.app".evil.com/login', ''],
+      ['https://flown.app\u017f"-．@evil.com', 'https://flown.app\u00a0\u017f"-．@evil.com']
+    ]) {
+      expect(plainText(`Beta at ${answer} now`, beta)).toBe(`Beta at ${cleaned}${cleaned && ' '}now`)
     }
     // E-mail addresses, snake_case and paths stay: nothing links them.
     for (const kept of ['Mail wei.wang@acme.com today.', 'Call my_model.fit() in src/main.rs.']) expect(plainText(kept, none)).toBe(kept)

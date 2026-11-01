@@ -42,10 +42,19 @@ interface Link {
   end: number
   text: string
   whole: boolean
+  /**
+   * A stretch read to the next space (otherHostReader): the length of the link X or a linkifier reads
+   * from its start, which cleanLinks keeps when it is a said one.
+   */
+  keep?: number
 }
 
-/** "http://", "https://" or "www." anywhere: other sites (YouTube, LinkedIn) link from there. */
-const SCHEME_OR_WWW = /https?:\/\/|www\./gi
+/**
+ * "http://", "https://" or "www." anywhere: other sites (YouTube, LinkedIn) link from there; and "//"
+ * not right after ":" or "/", where linkify-it starts a protocol-relative link (after a separator, or
+ * where a link or address it read ends: "(support@flown.app//203.0.113.7").
+ */
+const SCHEME_OR_WWW = /https?:\/\/|www\.|(?<![:/])\/\//gi
 /**
  * Letters of the languages written without spaces between words (Chinese, Japanese, Korean, Thai…),
  * their punctuation (U+3000–U+303F) and the half-width forms (U+FF5F–U+FFEF). Not the full-width
@@ -53,11 +62,17 @@ const SCHEME_OR_WWW = /https?:\/\/|www\./gi
  * ("https://ｅｖｉｌ.ｃｏｍ").
  */
 const NO_SPACE = '\\p{scx=Han}\\p{scx=Hiragana}\\p{scx=Katakana}\\p{scx=Hangul}\\p{sc=Thai}\\p{sc=Lao}\\p{sc=Khmer}\\p{sc=Myanmar}\\u3000-\\u303f\\uff5f-\\uffef'
-/** A "http(s)://" or "www." link X does not link: to a space, a quotation mark, an angle bracket or such a language's text (and endsLooseLink)… */
-const LOOSE_LINK = new RegExp(`(?:https?:\\/\\/|www\\.)[^\\s"'\`<>${NO_SPACE}]*`, 'iuy')
-/** …without the sentence's punctuation after it, and with something after its "://" or "www.". */
+/** A "http(s)://", "www." or "//" link X does not link: to a space, a quotation mark, an angle bracket or such a language's text (and endsLooseLink)… */
+const LOOSE_LINK = new RegExp(`(?:https?:\\/\\/|www\\.|\\/\\/)[^\\s"'\`<>${NO_SPACE}]*`, 'iuy')
+/**
+ * …without the sentence's punctuation after it, and with something after its "://" or "www."; after
+ * "//", a host with a dot inside it (linkify-it's: "//203.0.113.7", "//paypal-login.com\ufe0f"; not
+ * "//comments", "a.//b", nor a broken name, "//evil.\u00a0com").
+ */
 const LOOSE_TRAIL = /(?:[.,;:!?)\]}]|(?![\x00-\x7f])\p{P})+$/u
-const LOOSE_HOST = /^(?:https?:\/\/|www\.)[\p{L}\p{N}]/iu
+const LOOSE_HOST = /^(?:(?:https?:\/\/|www\.)[\p{L}\p{N}]|\/\/[^/?#\\]*[^./?#\\]\.[^/?#\\])/iu
+/** An authority (after "//") with a dot inside it. */
+const DOTTED_AUTHORITY = /^[^/?#\\]*[^./?#\\]\.[^/?#\\]/u
 /** A link that goes whole: with a scheme or "www."; any other is a bare name, broken. */
 const WHOLE = /^(?:https?:\/\/|www\.)/i
 /** Longest stretch X's own reading of one "http(s)://" or "www." link is looked for in, longest such link X does not link, and longest authority read for its hosts. */
@@ -68,13 +83,18 @@ const LOOSE_MAX = 2000
  * "$" and "#" (X's cashtag and hashtag: a linkifier such as markdown-it's links "#evil.com"), "@"
  * (but where it stays one: atStays), "//" before a name that is not a scheme's (protocol-relative,
  * "//evil.com/login"); what X counts as part of a name: '"' and "`", punctuation other than ASCII's
- * ("「evil.com」", "/．evil.com") and the text of languages written without spaces
+ * ("「evil.com」", "/．evil.com"), linkify-it's other separators ("<", ">" and "｜":
+ * "support@flown.app｜paypal-login.com") and the text of languages written without spaces
  * ("网站flown.app/download"), but not right after a "." (a top-level domain in such a script:
  * "paypal-login.在线"); and the ASCII punctuation X reads on through in a path or query it drops
  * ("flown.app?README.md", ".x.de/a%2eREADME.md": X links nothing after a bare name's "?" or in a name
- * it does not link, other sites start again there).
+ * it does not link, other sites start again there). A "." right after one of them is an end too
+ * (asOtherSitesRead).
  */
-const OTHER_SITES_ENDS = new RegExp(`(?<![.${NO_SPACE}])[${NO_SPACE}]+|(?:(?![\\x00-\\x7f])\\p{P})+|[$#"\`!?*'();=+,%[\\]~|&{}^<>\\\\]+|@|(?<!https?:)\\/\\/`, 'giu')
+const OTHER_SITES_ENDS = new RegExp(
+  `(?<![.${NO_SPACE}])[${NO_SPACE}]+|(?:(?![\\x00-\\x7f])\\p{P})+|[$#"\`!?*'();=+,%[\\]~|&{}^<>\\\\\\uff5c]+|@|(?<!https?:)\\/\\/`,
+  'giu'
+)
 
 /**
  * Characters a browser drops from a host: IDNA's ignored ones (soft hyphen, combining grapheme joiner,
@@ -85,14 +105,17 @@ const HOST_IGNORED = /[\u00ad\u034f\u180b-\u180d\u180f\u200b-\u200d\u2060-\u2064
 /**
  * Whether a browser reads character `c` in a host as ASCII letters, digits or "-" (IDNA: NFKC, case
  * folded: "ｇ", "𝗀", "™", "①") or drops it (HOST_IGNORED), while X reads it as no part of an ASCII
- * name. Not the word joiner: what an AI wrote has none but JOIN, after a said link's path.
+ * name. Not punctuation ("－", "﹣", which NFKC makes "-"): a linkifier ends a name there, so no
+ * browser reads it in a host it was given without a scheme ("support@flown.app－paypal-login.com"
+ * links paypal-login.com). Not the word joiner: what an AI wrote has none but JOIN, after a said
+ * link's path.
  */
 const foldCache = new Uint8Array(0x10000)
 function joinsName(c: string): boolean {
   const code = c.length === 1 ? c.charCodeAt(0) : -1
   if (code >= 0 && foldCache[code]) return foldCache[code] === 1
   HOST_IGNORED.lastIndex = 0
-  const joins = c !== JOIN && (HOST_IGNORED.test(c) || /^[a-z0-9-]+$/.test(c.normalize('NFKC').toLowerCase()))
+  const joins = c !== JOIN && !/\p{P}/u.test(c) && (HOST_IGNORED.test(c) || /^[a-z0-9-]+$/.test(c.normalize('NFKC').toLowerCase()))
   if (code >= 0) foldCache[code] = joins ? 1 : 2
   return joins
 }
@@ -155,15 +178,32 @@ function atStays(text: string, folded: string, ended: string, at: number): boole
   return plain || isMailAt(text, at)
 }
 
+/** A variation selector: it belongs to the character before it. */
+const VARIATION_SELECTOR = /^(?:[\u180b-\u180d\u180f\ufe00-\ufe0f]|\udb40[\udd00-\uddef])$/
+
 /**
  * `text` as sites other than X read it for links, each character where it was: what a browser reads
- * in a host as ASCII letters or digits, or drops ("ｇｅｔflown.com", "get\ufe0fflown.com", which X links
- * from "flown.com"), as "x"; then OTHER_SITES_ENDS as spaces, an "@" only where it does not stay one
- * (atStays).
+ * in a host as ASCII letters or digits, or drops (joinsName: "ｇｅｔflown.com", "get\ufe0fflown.com",
+ * which X links from "flown.com"), as "0" (it glues the name around it, but makes no top-level
+ * domain, as none has a digit: "１.５００", "ｒｅａｄｍｅ.ｔｘｔ" are no link); a variation selector so
+ * only after what is part of such a name ("get\ufe0fflown.com"), as after an emoji it is the emoji's
+ * ("➡\ufe0fflown.app" is "➡flown.app" to a browser); then OTHER_SITES_ENDS as spaces, and a "."
+ * right after one of them (not after a space): a site may read what ended the name as a label of the
+ * name after the "." (linkify-it reads "ログイン", "~", "$" or "𐄀" in a host:
+ * "support@flown.app，ログイン.paypal-login.com", "~.paypal-login.com", "//$.paypal-login.com"), while X
+ * links no name after a "."; then an "@" only where it does not stay one (atStays).
  */
 function asOtherSitesRead(text: string): string {
-  const folded = text.replace(/[^\x00-\x7f]/gu, (c) => (joinsName(c) ? 'x'.repeat(c.length) : c))
-  const ended = folded.replace(OTHER_SITES_ENDS, (m: string) => (m === '@' ? m : ' '.repeat(m.length)))
+  let folded = ''
+  let inName = false
+  for (const c of text) {
+    if (c < '\x80') inName = /[A-Za-z0-9-]/.test(c)
+    else inName = joinsName(c) && (inName || !VARIATION_SELECTOR.test(c))
+    folded += c >= '\x80' && inName ? '0'.repeat(c.length) : c
+  }
+  const ended = folded
+    .replace(OTHER_SITES_ENDS, (m: string) => (m === '@' ? m : ' '.repeat(m.length)))
+    .replace(/(?<= )\./g, (dot: string, at: number) => (/\s/.test(text[at - 1]) ? dot : ' '))
   return ended.replace(/@/g, (m: string, at: number) => (atStays(text, folded, ended, at) ? m : ' '))
 }
 
@@ -195,11 +235,12 @@ function hostsOf(authority: string): string[] {
 /**
  * The links in `text`, in order: every link X finds (with those it leaves only for their length, and
  * names on newer top-level domains, which other sites link: `findUrls` read both ways), read three
- * ways; and every "http(s)://" or "www." link elsewhere (glued to a word, in another link's query, to
- * an address X does not link), as X ends it when it links it from there, else up to a space, a
- * quotation mark, punctuation that ends a host (endsLooseLink) or Chinese or Japanese text; and to
- * the next space too when a site reading that far may open another host (otherHostReader:
- * "https://flown.app%2eevil.com", "https://flown.app:8443@evil.com", "https://flown.app!@203.0.113.7").
+ * ways; and every "http(s)://", "www." or protocol-relative "//" link elsewhere (glued to a word, in
+ * another link's query, to an address X does not link), as X ends it when it links it from there,
+ * else up to a space, a quotation mark, punctuation that ends a host (endsLooseLink) or Chinese or
+ * Japanese text; and to the next space too when a site reading that far may open another host
+ * (otherHostReader: "https://flown.app%2eevil.com", "https://flown.app:8443@evil.com",
+ * "https://flown.app!@203.0.113.7").
  *
  * X reads the start of a text in two ways: at the very start a first character such as "é" or "("
  * is what comes before a link ("éflown.app" links "flown.app"), after a space it is part of it
@@ -210,29 +251,40 @@ function hostsOf(authority: string): string[] {
 function linksIn(text: string): Link[] {
   const links: Link[] = []
   const seen = new Set<string>()
-  const add = (start: number, end: number): void => {
+  const add = (start: number, end: number, keep?: number): void => {
     if (end <= start || seen.has(`${start}:${end}`)) return
     seen.add(`${start}:${end}`)
     const t = text.slice(start, end)
-    links.push({ start, end, text: t, whole: WHOLE.test(t) })
+    links.push({ start, end, text: t, whole: WHOLE.test(t), ...(keep ? { keep } : {}) })
   }
   for (const [read, shift] of [[text, 0], [` ${text}`, 1], [` ${asOtherSitesRead(text)}`, 1]] as const) {
     // X's own reading, and the wider one: a match on a newer top-level domain that X drops can hide one X makes ("/a.web:1paypal-login.com").
     for (const lenient of [false, true]) for (const { indices } of findUrls(read, lenient)) add(Math.max(0, indices[0] - shift), indices[1] - shift)
   }
-  const found = links.slice()
+  // The links found above by where they start, and how far those that start before a point reach (in one pass, as the matches below go forward).
+  const found = links.slice().sort((a, b) => a.start - b.start)
+  let foundAt = 0
+  let reach = 0
   const opens = otherHostReader(text)
   const nextSpace = nextIndex(text, /\s/g)
+  const authorityEnd = nextIndex(text, /[\s/?#\\]/g)
   let after = 0
   for (const m of text.matchAll(SCHEME_OR_WWW)) {
     const i = m.index
+    while (foundAt < found.length && found[foundAt].start < i) reach = Math.max(reach, found[foundAt++].end)
     // Inside a link found above, or the last one found here: it goes with that one.
-    if (i < after || found.some((l) => l.start < i && i < l.end)) continue
+    if (i < after || reach > i) continue
+    const relative = m[0] === '//'
+    let host = i + (/^w/i.test(m[0]) ? 0 : m[0].length)
+    // A browser skips "/" and "\\" after "//" ("//\\@203.0.113.7/login" opens 203.0.113.7).
+    if (relative) while (text[host] === '/' || text[host] === '\\') host++
+    // A "//" starts a link only before a dotted host (linkify-it's), and X links none from there.
+    if (relative && !DOTTED_AUTHORITY.test(text.slice(host, Math.min(authorityEnd(host), host + LOOSE_MAX)))) continue
     // The stretch a site reading to the next space takes (a link has no space in it).
     const stretch = nextSpace(i)
     // As if the text started here.
     const from = text.slice(i, Math.min(stretch, i + LOOSE_MAX))
-    const own = Math.max(0, ...[false, true].map((lenient) => findUrls(from, lenient).find((u) => u.indices[0] === 0)?.indices[1] ?? 0))
+    const own = relative ? 0 : Math.max(0, ...[false, true].map((lenient) => findUrls(from, lenient).find((u) => u.indices[0] === 0)?.indices[1] ?? 0))
     let loose = ''
     if (!own) {
       LOOSE_LINK.lastIndex = 0
@@ -246,7 +298,13 @@ function linksIn(text: string): Link[] {
     if (link) {
       end = i + link.length
       add(i, end)
-      if (opens(i + (/^w/i.test(m[0]) ? 0 : m[0].length), stretch, link)) {
+      if (opens(host, stretch, link)) {
+        end = stretch
+        add(i, end, link.length)
+      }
+    } else if (relative) {
+      // What the loose reading ends at once, linkify-it may read in a host ("//`@203.0.113.7/login"): to the next space, when a host there may be opened.
+      if (opens(host, stretch, '')) {
         end = stretch
         add(i, end)
       }
@@ -310,12 +368,22 @@ function ending(link: string): { stem: string; tail: string } | null {
 }
 
 /**
- * A link as links compare: without "http(s)://" and without a "/" at its end (each goes to the same
- * place: "https://flown.app/" is "flown.app"), the host without case in ASCII only (U+212A, the Kelvin
- * sign, is not "k"), the rest exactly.
+ * The "-" X reads into a bare name after a letter of a script other than Latin (Hebrew attaches "ל-",
+ * "ב-", "מ-" so: "ל-flown.app" links "-flown.app"), which no registry gives a name: the link without
+ * it, and it; or null.
+ */
+function leadingHyphen(link: string): { lead: string; name: string } | null {
+  const m = /^-+(?=[^-])/.exec(link)
+  return m && !WHOLE.test(link) ? { lead: m[0], name: link.slice(m[0].length) } : null
+}
+
+/**
+ * A link as links compare: without "http(s)://" or "//" and without a "/" at its end (each goes to the
+ * same place: "https://flown.app/" and "//flown.app" are "flown.app"), the host without case in ASCII
+ * only (U+212A, the Kelvin sign, is not "k"), the rest exactly.
  */
 function linkKey(link: string): string {
-  const bare = link.replace(/^https?:\/\//i, '').replace(/\/$/, '')
+  const bare = link.replace(/^(?:https?:)?\/\//i, '').replace(/\/$/, '')
   const host = /^[^/?#:]*/.exec(bare)?.[0] ?? ''
   return host.replace(/[A-Z]+/g, (c) => c.toLowerCase()) + bare.slice(host.length)
 }
@@ -323,7 +391,7 @@ function linkKey(link: string): string {
 /** The last few texts' links: every field of an answer is checked against the same transcript. */
 const keysOf = new Map<string, ReadonlySet<string>>()
 
-/** The links of `text` (in its NFC form, as X reads it), as linkKey compares them, each also without a word's ending. */
+/** The links of `text` (in its NFC form, as X reads it), as linkKey compares them, each also without a word's ending and without a "-" X reads before it. */
 export function linkKeys(text: string): ReadonlySet<string> {
   let keys = keysOf.get(text)
   if (keys) keysOf.delete(text)
@@ -333,6 +401,8 @@ export function linkKeys(text: string): ReadonlySet<string> {
       set.add(linkKey(l.text))
       const e = ending(l.text)
       if (e) set.add(linkKey(e.stem))
+      const h = leadingHyphen(l.text)
+      if (h) set.add(linkKey(h.name))
     }
     keys = set
     if (keysOf.size >= 8) keysOf.delete(keysOf.keys().next().value as string)
@@ -365,6 +435,17 @@ const BREAK = '\u00a0'
 /** Between a link and a word's ending: U+2060, the word joiner, which ends X's link and shows nothing. */
 const JOIN = '\u2060'
 
+/** What cleanLinks writes for `l`, a link (or links taken together) that `allowed` lacks. */
+function cleanedLink(l: Link, allowed: ReadonlySet<string>): string {
+  const said = l.keep ? l.text.slice(0, l.keep) : ''
+  if (said && allowed.has(linkKey(said))) return `${said}${BREAK}${l.text.slice(said.length)}`
+  const e = ending(l.text)
+  if (e && allowed.has(linkKey(e.stem))) return `${e.stem}${JOIN}${e.tail}`
+  const h = leadingHyphen(l.text)
+  if (h && allowed.has(linkKey(h.name))) return `${h.lead}${JOIN}${h.name}`
+  return l.whole ? '' : l.text.replace(/\./g, `.${BREAK}`)
+}
+
 /** Rounds of cleaning before the last resort (a text made to hide links in links needs one per level). */
 const ROUNDS = 8
 
@@ -377,12 +458,16 @@ const noLinkAtAll = (t: string): string => t.replace(/\.(?=\S)/g, `.${BREAK}`).r
 
 /**
  * `text` with no link that `allowed` lacks (read in NFC, as X reads it; NFC when anything changed): a
- * link that is one `allowed` has with a word's ending ("flown.app/download'dan") gets JOIN before the
- * ending; else a link with a scheme or "www." (and its port, path and query) is removed (the
- * punctuation after it stays), and a bare name ("evil.com/login", "TP.Thủ", "README.md") gets BREAK
- * after each of its dots ("evil. com/login", "TP. Thủ"), so no word loses a letter and nothing links
- * it. The result is read again until no such link is left, since removing one can join the text
- * around it into another; should a text still hide one after ROUNDS, noLinkAtAll.
+ * stretch read to the next space (Link.keep) that starts with a link `allowed` has keeps that link,
+ * with BREAK after it ("https://flown.app，客服邮箱：support@flown.app。": a site reading on to the next
+ * space then reads only the said link, and what follows it is read again); a link that is one
+ * `allowed` has with a word's ending ("flown.app/download'dan") gets JOIN before the ending, and one
+ * X reads with a "-" before it ("ל-flown.app") gets JOIN after the "-"; else a link with a scheme or
+ * "www." (and its port, path and query) is removed (the punctuation after it stays), and a bare name
+ * ("evil.com/login", "TP.Thủ", "README.md", "//203.0.113.7") gets BREAK after each of its dots
+ * ("evil. com/login", "TP. Thủ"), so no word loses a letter and nothing links it. The result is read
+ * again until no such link is left, since removing one can join the text around it into another;
+ * should a text still hide one after ROUNDS, noLinkAtAll.
  */
 function cleanLinks(text: string, allowed: ReadonlySet<string>): string {
   let t = text
@@ -394,9 +479,7 @@ function cleanLinks(text: string, allowed: ReadonlySet<string>): string {
     let out = ''
     let last = 0
     for (const l of bad) {
-      const e = ending(l.text)
-      const kept = e && allowed.has(linkKey(e.stem)) ? `${e.stem}${JOIN}${e.tail}` : l.whole ? '' : l.text.replace(/\./g, `.${BREAK}`)
-      out += nfc.slice(last, l.start) + kept
+      out += nfc.slice(last, l.start) + cleanedLink(l, allowed)
       last = l.end
     }
     t = out + nfc.slice(last)

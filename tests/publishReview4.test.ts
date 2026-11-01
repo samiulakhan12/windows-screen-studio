@@ -67,8 +67,9 @@ describe('the copy pack after the fourth review of its link cleaning', () => {
     }
     // A host with a scheme or "www.": what a browser drops or folds is read as it reads it.
     const both = 'Visit www.flown.app and https://flown.app today.'
-    expect(clean('Visit https://flown.app．evil．com\u180b/login now', both)).toBe('Visit now')
-    expect(clean('Visit www.flown.appｅｖｉｌ.ｃｏｍ\ufe0f now', both)).toBe('Visit now')
+    // (The said link stays, with a no-break space after it: fifth review.)
+    expect(clean('Visit https://flown.app．evil．com\u180b/login now', both)).toBe('Visit https://flown.app\u00a0．evil．com\u180b/login now')
+    expect(clean('Visit www.flown.appｅｖｉｌ.ｃｏｍ\ufe0f now', both)).toBe('Visit www.flown.app\u00a0ｅｖｉｌ.ｃｏｍ\ufe0f now')
     // The said links stay, and so does an emoji's variation selector before a space.
     for (const kept of ['Download Flown for free at flown.com today.', 'I ❤\ufe0f flown.com']) expect(clean(kept, said)).toBe(kept)
     expect(clean(both, both)).toBe(both)
@@ -77,13 +78,16 @@ describe('the copy pack after the fourth review of its link cleaning', () => {
   it("A link the transcript says, followed by a user name and an IP host, or by more than 2,000 characters before the '@', still reaches every card", () => {
     const said = 'Download Flown for free at flown.app today.'
     for (const c of ['!', '%', '.', '~', ';', '$', '*', '=', "'", ',', '_', '&']) {
-      for (const out of everyCard(`Sign in: https://flown.app${c}@203.0.113.7/login today.`, said)) expect(out).not.toContain('203.0.113.7')
+      // No stretch without a space runs from the link to the host (the said link stays, with a no-break space after it: fifth review).
+      for (const out of everyCard(`Sign in: https://flown.app${c}@203.0.113.7/login today.`, said)) expect(out).not.toMatch(/https:\/\/\S*203\.0\.113\.7/)
     }
-    expect(clean('Sign in: https://flown.app!@203.0.113.7/login today.', said)).toBe('Sign in: today.')
-    expect(clean('Beta: https://flown.app:8443@3405803783/login today.', 'The beta runs at https://flown.app:8443')).toBe('Beta: today.')
-    expect(clean(`Sign in: https://flown.app:${'a'.repeat(2000)}@evil.com/login today.`, said)).toBe('Sign in: today.')
+    expect(clean('Sign in: https://flown.app!@203.0.113.7/login today.', said)).toBe('Sign in: https://flown.app\u00a0!@203.0.113.7/login today.')
+    expect(clean('Beta: https://flown.app:8443@3405803783/login today.', 'The beta runs at https://flown.app:8443')).toBe('Beta: https://flown.app:8443\u00a0@3405803783/login today.')
+    expect(clean(`Sign in: https://flown.app:${'a'.repeat(2000)}@evil.com/login today.`, said)).toBe(`Sign in: https://flown.app\u00a0:${'a'.repeat(2000)}@evil.com/login today.`)
     // Escapes of characters a browser drops from a host can pad an authority past any length read.
-    expect(clean(`Sign in at https://flown.app${'%e2%80%8b'.repeat(250)}%2eevil%2ecom/login today`, said)).toBe('Sign in at today')
+    expect(clean(`Sign in at https://flown.app${'%e2%80%8b'.repeat(250)}%2eevil%2ecom/login today`, said)).toBe(`Sign in at https://flown.app\u00a0${'%e2%80%8b'.repeat(250)}%2eevil%2ecom/login today`)
+    // A link nobody said goes whole.
+    expect(clean('Sign in: https://evil.com!@203.0.113.7/login today.', said)).toBe('Sign in: today.')
     // A said link with its port, path or an "@" after its path stays.
     for (const kept of ['Beta: https://flown.app:8443 now', 'Follow https://flown.app/@flown today.']) {
       expect(clean(kept, 'The beta runs at https://flown.app:8443 and https://flown.app/@flown today.')).toBe(kept)

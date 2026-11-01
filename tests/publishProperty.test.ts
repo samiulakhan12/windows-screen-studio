@@ -205,7 +205,7 @@ describe('the copy pack, on thousands of seeded texts', () => {
     expect(problems.slice(0, 20)).toEqual([])
   }, 120_000)
 
-  it('cleans the worst texts in tens of milliseconds: runs of dots, nested brackets, long queries, links in links', () => {
+  it('cleans the worst texts in tens of milliseconds: runs of dots, nested brackets, long queries, links in links, protocol-relative runs', () => {
     const N = 10_000
     const ja = '今日は新しいエクスポート機能を紹介します設定を開いて保存を押すだけです'
     const worst = [
@@ -222,7 +222,10 @@ describe('the copy pack, on thousands of seeded texts', () => {
       '日本.com'.repeat(N / 7),
       'a_b.com.'.repeat(N / 8),
       `${'evil.c'.repeat(500)}https://x.de${'om'.repeat(500)}`,
-      'TP.Thủ '.repeat(N / 7)
+      'TP.Thủ '.repeat(N / 7),
+      '//a.'.repeat(N / 4),
+      '//`@a.b'.repeat(N / 7),
+      'x//y.z '.repeat(N / 7)
     ]
     for (const s of worst) {
       for (const max of [3000, 25_000]) {
