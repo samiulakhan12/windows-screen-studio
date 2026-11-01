@@ -22,6 +22,7 @@ import { Icon } from '../../components/Icon'
 import { useEditor } from '../context'
 import { Chips, Section, Slider, Toggle } from '../controls'
 import { EditorIcon } from '../EditorIcon'
+import { lastInputWasKey } from '../focus'
 import { addGraphicAt, showGraphic } from '../graphicItems'
 import { useGroup } from '../groupContext'
 import { useKeymap } from '../keymapContext'
@@ -68,6 +69,12 @@ const ADD_KINDS: readonly { kind: Graphic['kind']; label: string }[] = [
 
 /** Items a list card holds at most (§2.11). */
 export const MAX_LIST_ITEMS = 7
+
+/**
+ * The graphic the Add menu just added with the keyboard: its first field takes the focus when its
+ * fields show, as the menu item that had it goes (the focus would fall to the page).
+ */
+let addedByKey: string | null = null
 
 /** What a run made: graphics and automatic title cards (lower thirds, chapter titles, quote cards) that were not there before. */
 export function madeCount(before: Project, after: Project): number {
@@ -209,7 +216,18 @@ function GenerateSection({ project }: { project: Project }): JSX.Element {
         <button type="button" className="btn primary" data-testid="graphics-generate" disabled={!hasCaptions || !chips.some((c) => on(c.id))} onClick={generate}>
           <EditorIcon name="sparkle" size={16} /> Add pop-ups from captions
         </button>
-        <AddMenu onAdd={(kind) => addGraphicAt(services, kind, { onSelect: (sel) => sel?.kind === 'graphic' && select(sel.id), onNotice: group.notice })} />
+        <AddMenu
+          onAdd={(kind, byKey) =>
+            addGraphicAt(services, kind, {
+              onSelect: (sel) => {
+                if (sel?.kind !== 'graphic') return
+                addedByKey = byKey ? sel.id : null
+                select(sel.id)
+              },
+              onNotice: group.notice
+            })
+          }
+        />
       </div>
       <p className="hint">Pop-ups made here are listed in Review mode. Drag one in the preview to place it yourself.</p>
     </Section>
@@ -217,7 +235,7 @@ function GenerateSection({ project }: { project: Project }): JSX.Element {
 }
 
 /** The Add menu (§2.11): Keyword pop-up, Emoji, Counter, List card; arrow keys move, Escape closes and returns to the button. */
-function AddMenu({ onAdd }: { onAdd: (kind: Graphic['kind']) => void }): JSX.Element {
+function AddMenu({ onAdd }: { onAdd: (kind: Graphic['kind'], byKey: boolean) => void }): JSX.Element {
   const [open, setOpen] = useState(false)
   const buttonRef = useRef<HTMLButtonElement>(null)
   const menuRef = useRef<HTMLDivElement>(null)
@@ -259,7 +277,7 @@ function AddMenu({ onAdd }: { onAdd: (kind: Graphic['kind']) => void }): JSX.Ele
               data-testid={`graphics-add-${k.kind}`}
               onClick={() => {
                 close(false)
-                onAdd(k.kind)
+                onAdd(k.kind, lastInputWasKey())
               }}
             >
               {k.label}
@@ -345,12 +363,17 @@ function SelectedGraphic({ project, graphic: g }: { project: Project; graphic: G
   const id = g.id
   const set = (patch: Partial<Graphic>, key?: string): void => store.update((p) => updateGraphic(p, id, patch), key)
   const followsCaptions = g.color === undefined && g.accent === undefined
+  // Added from the Add menu with the keyboard: its first field takes the focus as it shows (autoFocus works once, on mount).
+  const first = addedByKey === id
+  useEffect(() => {
+    if (addedByKey === id) addedByKey = null
+  }, [id])
   return (
     <Section title={`Selected ${GRAPHIC_NAMES[g.kind].toLowerCase()}`} aside={<span className="muted small">{formatTime(g.start)} – {formatTime(g.end)}</span>}>
-      {g.kind === 'keyword' && <KeywordFields g={g} set={set} />}
-      {g.kind === 'emoji' && <EmojiPicker value={g.emoji} onPick={(emoji) => set({ emoji })} />}
-      {g.kind === 'counter' && <CounterFields g={g} set={set} />}
-      {g.kind === 'list' && <ListFields g={g} set={set} playhead={() => displayTime(project.clips, player.time)} />}
+      {g.kind === 'keyword' && <KeywordFields g={g} set={set} first={first} />}
+      {g.kind === 'emoji' && <EmojiPicker value={g.emoji} onPick={(emoji) => set({ emoji })} first={first} />}
+      {g.kind === 'counter' && <CounterFields g={g} set={set} first={first} />}
+      {g.kind === 'list' && <ListFields g={g} set={set} playhead={() => displayTime(project.clips, player.time)} first={first} />}
 
       <Slider label="Size" value={g.size} min={GRAPHIC_SIZE.min} max={GRAPHIC_SIZE.max} step={0.005} format={(v) => `${Math.round(v * 1000) / 10}%`} onChange={(size) => set({ size }, `graphic-size:${id}`)} />
       <div className="field">
@@ -432,12 +455,12 @@ function SelectedGraphic({ project, graphic: g }: { project: Project; graphic: G
 
 type SetGraphic = (patch: Partial<Graphic>, key?: string) => void
 
-function KeywordFields({ g, set }: { g: KeywordGraphic; set: SetGraphic }): JSX.Element {
+function KeywordFields({ g, set, first }: { g: KeywordGraphic; set: SetGraphic; first: boolean }): JSX.Element {
   return (
     <>
       <label className="field">
         <span>Text</span>
-        <input className="tc-input" aria-label="Text" maxLength={GRAPHIC_TEXT_MAX} value={g.text} onChange={(e) => set({ text: e.target.value.replace(/[\r\n]+/g, ' ') }, `graphic-text:${g.id}`)} />
+        <input className="tc-input" aria-label="Text" maxLength={GRAPHIC_TEXT_MAX} value={g.text} autoFocus={first} onChange={(e) => set({ text: e.target.value.replace(/[\r\n]+/g, ' ') }, `graphic-text:${g.id}`)} />
       </label>
       <div className="field">
         <span>Look</span>
@@ -464,7 +487,7 @@ function KeywordFields({ g, set }: { g: KeywordGraphic; set: SetGraphic }): JSX.
 }
 
 /** A searchable picker over the emoji the bundled font draws (§2.11): by name, the first 96 matches. */
-function EmojiPicker({ value, onPick }: { value: string; onPick: (key: string) => void }): JSX.Element {
+function EmojiPicker({ value, onPick, first }: { value: string; onPick: (key: string) => void; first: boolean }): JSX.Element {
   const [query, setQuery] = useState('')
   const current = emojiEntry(value)
   const q = query.trim().toLowerCase()
@@ -484,7 +507,7 @@ function EmojiPicker({ value, onPick }: { value: string; onPick: (key: string) =
           'Not in this version of Flown'
         )}
       </p>
-      <input className="tc-input" type="search" aria-label="Search emoji by name" placeholder="Search: fire, bulb, check…" value={query} onChange={(e) => setQuery(e.target.value)} />
+      <input className="tc-input" type="search" aria-label="Search emoji by name" placeholder="Search: fire, bulb, check…" value={query} autoFocus={first} onChange={(e) => setQuery(e.target.value)} />
       <div className="emoji-grid" role="group" aria-label="Emoji">
         {matches.map((e) => (
           <button key={e.key} type="button" className={`emoji-cell ${e.key === value ? 'active' : ''}`} aria-pressed={e.key === value} aria-label={e.name} title={e.name} onClick={() => onPick(e.key)}>
@@ -498,7 +521,7 @@ function EmojiPicker({ value, onPick }: { value: string; onPick: (key: string) =
 }
 
 /** A number field that writes finite values only. */
-function NumberField({ label, value, step, onChange }: { label: string; value: number; step?: number; onChange: (v: number) => void }): JSX.Element {
+function NumberField({ label, value, step, autoFocus, onChange }: { label: string; value: number; step?: number; autoFocus?: boolean; onChange: (v: number) => void }): JSX.Element {
   return (
     <label className="field">
       <span>{label}</span>
@@ -508,6 +531,7 @@ function NumberField({ label, value, step, onChange }: { label: string; value: n
         aria-label={label}
         step={step ?? 1}
         value={value}
+        autoFocus={autoFocus}
         onChange={(e) => {
           const v = Number(e.target.value)
           if (e.target.value.trim() !== '' && Number.isFinite(v)) onChange(v)
@@ -517,13 +541,13 @@ function NumberField({ label, value, step, onChange }: { label: string; value: n
   )
 }
 
-function CounterFields({ g, set }: { g: CounterGraphic; set: SetGraphic }): JSX.Element {
+function CounterFields({ g, set, first }: { g: CounterGraphic; set: SetGraphic; first: boolean }): JSX.Element {
   const typed = `graphic-text:${g.id}`
   const step = g.decimals ? 10 ** -g.decimals : 1
   return (
     <>
       <div className="graphics-pair">
-        <NumberField label="From" value={g.from} step={step} onChange={(from) => set({ from } as Partial<Graphic>, typed)} />
+        <NumberField label="From" value={g.from} step={step} autoFocus={first} onChange={(from) => set({ from } as Partial<Graphic>, typed)} />
         <NumberField label="To" value={g.to} step={step} onChange={(to) => set({ to } as Partial<Graphic>, typed)} />
       </div>
       <div className="field">
@@ -558,7 +582,7 @@ function CounterFields({ g, set }: { g: CounterGraphic; set: SetGraphic }): JSX.
   )
 }
 
-function ListFields({ g, set, playhead }: { g: ListGraphic; set: SetGraphic; playhead: () => number }): JSX.Element {
+function ListFields({ g, set, playhead, first }: { g: ListGraphic; set: SetGraphic; playhead: () => number; first: boolean }): JSX.Element {
   const typed = `graphic-text:${g.id}`
   const setItems = (items: ListGraphic['items'], key?: string): void => set({ items } as Partial<Graphic>, key)
   const at = (): number => Math.min(Math.max(playhead(), g.start), g.end)
@@ -566,7 +590,7 @@ function ListFields({ g, set, playhead }: { g: ListGraphic; set: SetGraphic; pla
     <>
       <label className="field">
         <span>Title</span>
-        <input className="tc-input" aria-label="Title" maxLength={LIST_ITEM_MAX} value={g.title ?? ''} onChange={(e) => set({ title: e.target.value || undefined } as Partial<Graphic>, typed)} />
+        <input className="tc-input" aria-label="Title" maxLength={LIST_ITEM_MAX} value={g.title ?? ''} autoFocus={first} onChange={(e) => set({ title: e.target.value || undefined } as Partial<Graphic>, typed)} />
       </label>
       <ol className="graphics-items" aria-label="Items">
         {g.items.map((it, i) => (

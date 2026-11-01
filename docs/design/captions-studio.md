@@ -641,7 +641,8 @@ Keys inside panels: `Ctrl+B` and `Ctrl+Shift+B` in the Transcript word list (§2
   0:42".
 - New CSS passes `tests/labelContrast.test.ts` (AA, 4.5:1 for text, 3:1 for control edges).
 - The Graphics list and the timeline row both lead to the same inspector, so nothing needs a
-  mouse.
+  mouse. A pop-up added from the **Add** menu with the keyboard puts the focus in its first field
+  (Text, the emoji search, From or Title), as the menu item that had it goes.
 - A form that opens in place of its button (**Save as my style**, **Add a word**, **Add a
   language**) focuses its first field (Save as my style's name selected; Escape there cancels).
   Closed with the keyboard (Save, Cancel, Close, Escape, or Translate once it is done), the focus

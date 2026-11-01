@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { Graphic, KeywordGraphic, ListGraphic, Project } from '../src/shared/types'
-import { allByTestId, button, byLabel, byTestId, contexts, mockReact, settle, testStore, textOf, unmountAll, useEditorContexts, type El } from './studioHarness'
+import { allByTestId, button, byLabel, byTestId, contexts, mockReact, render, settle, testStore, textOf, unmountAll, useEditorContexts, type El } from './studioHarness'
 
 /*
  * Inspector › Graphics (docs/design/captions-studio.md §2.11, §10.5, test 33) without a DOM. The
@@ -34,6 +34,10 @@ vi.mock('../src/shared/captions/great', async (importOriginal) => ({
   readGreatOptions: (raw: unknown) => ({ style: true, emphasis: true, emoji: 'auto', keywords: 'auto', counters: 'auto', lists: 'auto', speakers: true, chapters: 'auto', quotes: false, tidy: true, sound: 'none', provider: null, ...(raw as object) }),
   resolveGreatOptions: (o: { sound: string }) => ({ ...o, ...calls.resolved })
 }))
+
+// Whether the last input was a key (focus.ts keeps it from the window's events, which these tests have not).
+const keys = vi.hoisted(() => ({ last: false }))
+vi.mock('../src/renderer/src/editor/focus', async (importOriginal) => ({ ...(await importOriginal<Record<string, unknown>>()), lastInputWasKey: () => keys.last }))
 
 const counterOf = (id: string, start: number, end: number): Graphic => ({
   id,
@@ -137,6 +141,7 @@ beforeEach(() => {
   prefs.captionsGreat = null
   prefs.writes.length = 0
   providers = []
+  keys.last = false
   player.seek.mockClear()
 })
 
@@ -182,6 +187,31 @@ describe('with nothing selected', () => {
     expect(calls.add).toEqual([['counter', 6]])
     expect(store.steps).toBe(1)
     expect(selected).toEqual([['graphic:new1']])
+  })
+
+  it('a pop-up added from the Add menu with the keyboard takes the focus in its first field, once, as the menu item goes', async () => {
+    keys.last = true
+    let els = await settle(view(), SKIP)
+    ;(byTestId(els, 'graphics-add')!.props.onClick as () => void)()
+    els = await settle(view(), SKIP)
+    ;(byTestId(els, 'graphics-add-keyword')!.props.onClick as () => void)()
+    expect(selected).toEqual([['graphic:new1']])
+    // The panel shows the selected pop-up's fields: its Text field takes the focus as it mounts.
+    els = render(view({ kind: 'graphic', id: 'new1' }), SKIP)
+    expect(byLabel(els, 'Text')!.props.autoFocus).toBe(true)
+    // Only then: shown again (another graphic selected and back), it does not take it again.
+    unmountAll()
+    els = render(view({ kind: 'graphic', id: 'new1' }), SKIP)
+    expect(byLabel(els, 'Text')!.props.autoFocus).not.toBe(true)
+  })
+
+  it('a pop-up added from the Add menu with a click leaves the focus alone', async () => {
+    let els = await settle(view(), SKIP)
+    ;(byTestId(els, 'graphics-add')!.props.onClick as () => void)()
+    els = await settle(view(), SKIP)
+    ;(byTestId(els, 'graphics-add-keyword')!.props.onClick as () => void)()
+    els = render(view({ kind: 'graphic', id: 'new1' }), SKIP)
+    expect(byLabel(els, 'Text')!.props.autoFocus).not.toBe(true)
   })
 
   it('lists every graphic with its text, time and kind, and a row selects it', async () => {
