@@ -15,7 +15,8 @@
  * package's toASCII is replaced by punycodeLength below, which gives the length of its result (RFC
  * 3492's encoder, counted). Added: urlMatches and asciiDomainsIn, which find the same matches as
  * twitter-text's loops over EXTRACT_URL and VALID_ASCII_DOMAIN in linear time, and the `lenient`
- * option of findUrls. See resources/notices/34-twitter-text.txt.
+ * option of findUrls (with the top-level domains of newerTlds.ts). See
+ * resources/notices/34-twitter-text.txt.
  */
 
 /**
@@ -24,6 +25,7 @@
  * which tests/fixtures/x-links.json (written from the package itself by
  * scripts/build-link-oracle.mjs) proves case by case. Pure.
  */
+import { NEWER_COUNTRY_TLDS, NEWER_GENERIC_TLDS } from './newerTlds'
 import { X_COUNTRY_TLDS, X_GENERIC_TLDS } from './tlds'
 import { TWEMOJI } from './twemoji'
 
@@ -43,10 +45,10 @@ const validDomainChars = `[^${invalidDomainChars}]`
 const validUrlPrecedingChars = `(?:[^A-Za-z0-9@＠$#＃${invalidCharsGroup}]|[${directionalMarkersGroup}]|^)`
 const validSubdomain = `(?:(?:${validDomainChars}(?:[_-]|${validDomainChars})*)?${validDomainChars}\\.)`
 const validDomainName = `(?:(?:${validDomainChars}(?:-|${validDomainChars})*)?${validDomainChars}\\.)`
-const validGTLD = `(?:(?:${X_GENERIC_TLDS})(?=[^0-9a-zA-Z@+-]|$))`
-const validCCTLD = `(?:(?:${X_COUNTRY_TLDS})(?=[^0-9a-zA-Z@+-]|$))`
+const validTLD = (tlds: string): string => `(?:(?:${tlds})(?=[^0-9a-zA-Z@+-]|$))`
+const validGTLD = validTLD(X_GENERIC_TLDS)
+const validCCTLD = validTLD(X_COUNTRY_TLDS)
 const validPunycode = '(?:xn--[\\-0-9a-z]+)'
-const validDomain = `(?:${validSubdomain}*${validDomainName}(?:${validGTLD}|${validCCTLD}|${validPunycode}))`
 const validPortNumber = '[0-9]+'
 const validGeneralUrlPathChars = `[a-z${cyrillicLettersAndMarks}0-9!\\*';:=\\+,\\.\\$\\/%#\\[\\]\\-\\u2013_~@\\|&${latinAccentChars}]`
 // Up to two nested levels of balanced brackets ("/Primer_(film)", "/We_Up_(Album_Version_(Edited))/").
@@ -60,16 +62,40 @@ const validUrlPath =
 const validUrlQueryChars = "[a-z0-9!?\\*'@\\(\\);:&=\\+\\$\\/%#\\[\\]\\-_\\.,~|]"
 const validUrlQueryEndingChars = '[a-z0-9\\-_&=#\\/]'
 
+/** regexp/extractUrl.js with the top-level domains `generic` and `country` ("|" separated). */
+const extractUrlSource = (generic: string, country: string): string => {
+  const validDomain = `(?:${validSubdomain}*${validDomainName}(?:${validTLD(generic)}|${validTLD(country)}|${validPunycode}))`
+  return `((${validUrlPrecedingChars})((https?:\\/\\/)?(${validDomain})(?::(${validPortNumber}))?(\\/${validUrlPath}*)?(\\?${validUrlQueryChars}*${validUrlQueryEndingChars})?))`
+}
+
 /**
  * regexp/extractUrl.js: $2 the character before the link, $3 the link, $4 its scheme, $5 its domain,
  * $6 port, $7 path, $8 query. Not Unicode-aware, as in twitter-text: a character class matches one
  * UTF-16 unit and "i" folds only what toUpperCase folds within a unit (U+017F, the long s, and
  * U+212A, the Kelvin sign, are not "s" and "k").
  */
-export const EXTRACT_URL = new RegExp(
-  `((${validUrlPrecedingChars})((https?:\\/\\/)?(${validDomain})(?::(${validPortNumber}))?(\\/${validUrlPath}*)?(\\?${validUrlQueryChars}*${validUrlQueryEndingChars})?))`,
-  'gi'
-)
+export const EXTRACT_URL = new RegExp(extractUrlSource(X_GENERIC_TLDS, X_COUNTRY_TLDS), 'gi')
+/** The patterns that depend on the list of top-level domains: the link pattern (also sticky) and a top-level domain at one place (sticky). */
+interface Tlds {
+  extractUrl: RegExp
+  extractUrlAt: RegExp
+  tldAt: RegExp
+}
+const tldsOf = (generic: string, country: string): Tlds => {
+  const source = extractUrlSource(generic, country)
+  return { extractUrl: new RegExp(source, 'gi'), extractUrlAt: new RegExp(source, 'iy'), tldAt: new RegExp(`(?:${validTLD(generic)}|${validTLD(country)}|${validPunycode})`, 'iy') }
+}
+/** X's top-level domains (twitter-text 3.1.0's lists). */
+const X_TLDS: Tlds = tldsOf(X_GENERIC_TLDS, X_COUNTRY_TLDS)
+/** X's and those IANA delegated since (newerTlds.ts), which sites with a newer list link: what `lenient` reads. */
+const WIDER_TLDS: Tlds = tldsOf(`${X_GENERIC_TLDS}|${NEWER_GENERIC_TLDS}`, `${X_COUNTRY_TLDS}|${NEWER_COUNTRY_TLDS}`)
+
+/** The top-level domains `lenient` reads (X's and IANA's newer ones), as written in Unicode, lower case. */
+const WIDER_TLD_NAMES = new Set(`${X_GENERIC_TLDS}|${NEWER_GENERIC_TLDS}|${X_COUNTRY_TLDS}|${NEWER_COUNTRY_TLDS}`.split('|'))
+
+/** Whether `label` (lower case) is a top-level domain `lenient` reads, or one written in punycode ("xn--p1ai"). Not in twitter-text. */
+export const isTopLevelDomain = (label: string): boolean => WIDER_TLD_NAMES.has(label) || /^xn--[-0-9a-z]+$/.test(label)
+
 /** regexp/validAsciiDomain.js: the part of a domain X links without a scheme. */
 export const VALID_ASCII_DOMAIN = new RegExp(`(?:(?:[\\-a-z0-9${latinAccentChars}]+)\\.)+(?:${validGTLD}|${validCCTLD}|${validPunycode})`, 'gi')
 /** regexp/validTcoUrl.js. */
@@ -152,8 +178,8 @@ function punycodeLength(label: string): number {
 }
 
 /** lib/idna.js toAscii: the domain when each label is 1–63 characters in punycode, else undefined. */
-function toAscii(domain: string): string | undefined {
-  if (domain.substring(0, 4) === PUNYCODE_ENCODED_DOMAIN_PREFIX && !asciiDomainsIn(domain).length) return undefined
+function toAscii(domain: string, tlds: Tlds): string | undefined {
+  if (domain.substring(0, 4) === PUNYCODE_ENCODED_DOMAIN_PREFIX && !asciiDomainsIn(domain, tlds).length) return undefined
   const labels = domain.split('.')
   for (const label of labels) {
     const n = punycodeLength(label)
@@ -174,9 +200,9 @@ export interface UrlEntity {
   indices: [number, number]
 }
 
-function isValidUrl(url: string, protocol: string, domain: string): boolean {
+function isValidUrl(url: string, protocol: string, domain: string, tlds: Tlds): boolean {
   let urlLength = url.length
-  const punycodeEncodedDomain = toAscii(domain)
+  const punycodeEncodedDomain = toAscii(domain, tlds)
   if (!punycodeEncodedDomain || !punycodeEncodedDomain.length) return false
   urlLength = urlLength + punycodeEncodedDomain.length - domain.length
   return protocol.length + urlLength <= MAX_URL_LENGTH
@@ -198,17 +224,16 @@ interface UrlMatch {
  * quadratic in such a run (Chinese or Japanese written with "." between words); `urlMatches` gives
  * the same faster. Kept to test that.
  */
-export function urlMatchesPlain(text: string): UrlMatch[] {
+export function urlMatchesPlain(text: string, tlds: Tlds = X_TLDS): UrlMatch[] {
   const out: UrlMatch[] = []
-  EXTRACT_URL.lastIndex = 0
+  const re = tlds.extractUrl
+  re.lastIndex = 0
   let m: RegExpExecArray | null
-  while ((m = EXTRACT_URL.exec(text))) out.push({ before: m[2] ?? '', url: m[3], protocol: m[4] ?? '', domain: m[5], path: m[7] ?? '', end: EXTRACT_URL.lastIndex })
+  while ((m = re.exec(text))) out.push({ before: m[2] ?? '', url: m[3], protocol: m[4] ?? '', domain: m[5], path: m[7] ?? '', end: re.lastIndex })
   return out
 }
 
-/** EXTRACT_URL at one place (sticky), and its pieces: where a top-level domain is, a scheme, a domain character, a character a link may follow. */
-const EXTRACT_URL_AT = new RegExp(EXTRACT_URL.source, 'iy')
-const TLD_AT = new RegExp(`(?:${validGTLD}|${validCCTLD}|${validPunycode})`, 'iy')
+/** EXTRACT_URL's pieces: a scheme, a domain character, a character a link may follow. */
 const PROTOCOL_AT = /https?:\/\//iy
 const DOMAIN_CHAR = new RegExp(`^${validDomainChars}$`, 'i')
 const PRECEDING_CHAR = new RegExp(`^(?:[^A-Za-z0-9@＠$#＃${invalidCharsGroup}]|[${directionalMarkersGroup}])$`, 'i')
@@ -231,12 +256,12 @@ const isAsciiLabelChar = (c: number): boolean => {
   return asciiLabelCharCache[c] === 1
 }
 
-/** Where a top-level domain starts after each "." of `s`: the end of the one TLD_AT takes there, else -1. */
-function tldEnds(s: string): Int32Array {
+/** Where a top-level domain starts after each "." of `s`: the end of the one `tlds.tldAt` takes there, else -1. */
+function tldEnds(s: string, tlds: Tlds): Int32Array {
   const tldEnd = new Int32Array(s.length + 1).fill(-1)
   for (let j = s.indexOf('.'); j >= 0; j = s.indexOf('.', j + 1)) {
-    TLD_AT.lastIndex = j + 1
-    const m = TLD_AT.exec(s)
+    tlds.tldAt.lastIndex = j + 1
+    const m = tlds.tldAt.exec(s)
     if (m) tldEnd[j] = j + 1 + m[0].length
   }
   return tldEnd
@@ -247,9 +272,9 @@ function tldEnds(s: string): Int32Array {
  * them, in linear time: `(?:[-a-z0-9…]+\.)+` is greedy, so from each place the match ends at the
  * last "." of its run of names that a top-level domain follows; where there is none, it fails.
  */
-export function asciiDomainsIn(domain: string): string[] {
+export function asciiDomainsIn(domain: string, tlds: Tlds = X_TLDS): string[] {
   const n = domain.length
-  const tldEnd = tldEnds(domain)
+  const tldEnd = tldEnds(domain, tlds)
   const labelEnd = new Int32Array(n + 1)
   const far = new Int32Array(n + 1)
   labelEnd[n] = n
@@ -282,9 +307,9 @@ export function asciiDomainsIn(domain: string): string[] {
  * EXTRACT_URL itself reads the port, path and query from that place; elsewhere the match ends with
  * the domain and is written directly. tests/publishLinks.test.ts checks this against urlMatchesPlain.
  */
-function urlMatches(text: string): UrlMatch[] {
+function urlMatches(text: string, tlds: Tlds): UrlMatch[] {
   const n = text.length
-  const tldEnd = tldEnds(text)
+  const tldEnd = tldEnds(text, tlds)
   // labelEnd: the first unit from i that is not a domain character, "-" or "_".
   const labelEnd = new Int32Array(n + 1)
   const nextUnderscore = new Int32Array(n + 1)
@@ -329,14 +354,15 @@ function urlMatches(text: string): UrlMatch[] {
     const end = tldEnd[dot]
     const next = text.charCodeAt(end)
     if (next === 0x3a || next === 0x2f || next === 0x3f) {
-      EXTRACT_URL_AT.lastIndex = p
-      const m = EXTRACT_URL_AT.exec(text)
+      const at = tlds.extractUrlAt
+      at.lastIndex = p
+      const m = at.exec(text)
       if (!m) {
         p++
         continue
       }
-      out.push({ before: m[2] ?? '', url: m[3], protocol: m[4] ?? '', domain: m[5], path: m[7] ?? '', end: EXTRACT_URL_AT.lastIndex })
-      p = EXTRACT_URL_AT.lastIndex
+      out.push({ before: m[2] ?? '', url: m[3], protocol: m[4] ?? '', domain: m[5], path: m[7] ?? '', end: at.lastIndex })
+      p = at.lastIndex
     } else {
       out.push({ before, url: text.slice(start, end), protocol, domain: text.slice(domainStart, end), path: '', end })
       p = end
@@ -349,27 +375,29 @@ function urlMatches(text: string): UrlMatch[] {
  * The links in `text` as twitter-text 3.1.0's extractUrlsWithIndices finds them (with links without
  * a scheme, its default). `lenient` (not in twitter-text) also gives what it matches but drops only
  * for its length (over 4 096 characters, a t.co name over 40) or, without a scheme, for having no
- * name in Latin letters ("госуслуги.рф"), which other sites may still link; the others are the
- * same. A domain no site can have (a label over 63 characters in punycode, a "xn--" one with other
+ * name in Latin letters ("госуслуги.рф"), and names on the top-level domains IANA delegated after
+ * its lists (newerTlds.ts: "evil.web"), which other sites may still link; the others are the same.
+ * A domain no site can have (a label over 63 characters in punycode, a "xn--" one with other
  * letters) is no link either way.
  */
-export function findUrls(text: string, lenient = false, matches = urlMatches): UrlEntity[] {
+export function findUrls(text: string, lenient = false, matches: (text: string, tlds: Tlds) => UrlMatch[] = urlMatches): UrlEntity[] {
   if (!text || !text.match(/\./)) return []
+  const tlds = lenient ? WIDER_TLDS : X_TLDS
   const urls: UrlEntity[] = []
-  for (const m of matches(text)) {
+  for (const m of matches(text, tlds)) {
     const { before, protocol, domain, path } = m
     let url = m.url
     let endPosition = m.end
     const startPosition = endPosition - url.length
-    const valid = isValidUrl(url, protocol || DEFAULT_PROTOCOL, domain)
+    const valid = isValidUrl(url, protocol || DEFAULT_PROTOCOL, domain, tlds)
     // `lenient` keeps one that is too long, not one with a label no name can have.
-    if (!valid && !(lenient && toAscii(domain))) continue
+    if (!valid && !(lenient && toAscii(domain, tlds))) continue
     if (!protocol) {
       // Only the domain's parts in Latin letters are linked without a scheme.
       if (before.match(INVALID_URL_WITHOUT_PROTOCOL_PRECEDING_CHARS)) continue
       let lastUrl: UrlEntity | null = null
       let asciiEndPosition = 0
-      for (const asciiDomain of asciiDomainsIn(domain)) {
+      for (const asciiDomain of asciiDomainsIn(domain, tlds)) {
         // As twitter-text does: the first place the name appears from the last one's end.
         const asciiStartPosition = domain.indexOf(asciiDomain, asciiEndPosition)
         asciiEndPosition = asciiStartPosition + asciiDomain.length

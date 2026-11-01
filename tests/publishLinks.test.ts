@@ -1,5 +1,6 @@
 import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
+import { NEWER_COUNTRY_TLDS, NEWER_GENERIC_TLDS } from '../src/shared/publish/newerTlds'
 import { X_COUNTRY_TLDS, X_GENERIC_TLDS } from '../src/shared/publish/tlds'
 import {
   asciiDomainsIn,
@@ -64,7 +65,7 @@ describe("the port of twitter-text 3.1.0 (X's rules for links and length)", () =
 
   it("finds the same matches in linear time as twitter-text's own loop (seeded random texts, short and long)", () => {
     const rnd = random(42)
-    const atoms = ['a', 'b', 'Th', 'ủ', '.', '.', '.', 'com', 'co', 'uk', 'de', '日本', '在线', '嘉里', '大酒店', 'онлайн', '_', '-', 'x', '1', 'https://', 'HTTP://', '/', '?', ':', '#', '(', ')', ' ', 'ы', 'xn--p1ai', 'é', '\u0301', '\u212a', '\u017f', '@', '😀', '。', '\u200b']
+    const atoms = ['a', 'b', 'Th', 'ủ', '.', '.', '.', 'com', 'co', 'uk', 'de', '日本', '在线', '嘉里', '大酒店', 'онлайн', '_', '-', 'x', '1', 'https://', 'HTTP://', '/', '?', ':', '#', '(', ')', ' ', 'ы', 'xn--p1ai', 'é', '\u0301', '\u212a', '\u017f', '@', '😀', '。', '\u200b', 'web', 'ישראל']
     for (let k = 0; k < 4000; k++) {
       let s = ''
       const n = 1 + Math.floor(rnd() * (k % 10 === 0 ? 200 : 20))
@@ -96,6 +97,18 @@ describe("the port of twitter-text 3.1.0 (X's rules for links and length)", () =
   })
 
   it('has top-level domains that each start with a letter', () => {
-    for (const tld of `${X_GENERIC_TLDS}|${X_COUNTRY_TLDS}`.split('|')) expect(/^\p{L}/u.test(tld), tld).toBe(true)
+    for (const tld of `${X_GENERIC_TLDS}|${X_COUNTRY_TLDS}|${NEWER_GENERIC_TLDS}|${NEWER_COUNTRY_TLDS}`.split('|')) expect(/^\p{L}/u.test(tld), tld).toBe(true)
+  })
+
+  it('reads the top-level domains IANA delegated after its lists only when lenient, as sites with a newer list do', () => {
+    const x = new Set(`${X_GENERIC_TLDS}|${X_COUNTRY_TLDS}`.split('|'))
+    for (const tld of `${NEWER_GENERIC_TLDS}|${NEWER_COUNTRY_TLDS}`.split('|')) {
+      expect(x.has(tld), tld).toBe(false)
+      const text = `Go to evil.${tld}/login now`
+      expect(extractUrlsWithIndices(text), tld).toEqual([])
+      expect(findUrls(text, true), tld).toEqual([{ url: `evil.${tld}/login`, indices: [6, 6 + `evil.${tld}/login`.length] }])
+    }
+    // "web" does not end a longer name X knows.
+    expect(findUrls('see evil.webcam and evil.website', true).map((u) => u.url)).toEqual(['evil.webcam', 'evil.website'])
   })
 })
