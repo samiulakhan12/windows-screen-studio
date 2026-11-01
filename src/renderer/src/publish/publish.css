@@ -209,6 +209,8 @@
 .publish-said {
   color: var(--text-2);
   font-size: var(--text-sm);
+  /* A notice may name a long link (the safety net's): it wraps inside the card. */
+  overflow-wrap: anywhere;
 }
 
 .publish-said.warn {

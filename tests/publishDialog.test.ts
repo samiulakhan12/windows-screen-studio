@@ -474,6 +474,57 @@ describe("Publish dialog: what a card's buttons did is said on that card (§5.1)
     expect(note(card(out, 'xpost'))).toContain('evil⟨U+200B⟩reports.com')
   })
 
+  it('the note agrees in number with the links it names (§4.8)', async () => {
+    const note = (els: El[]): string | null => {
+      const box = els.find((e) => e.props['data-testid'] === 'publish-check')
+      return box ? textOf(box.props.children) : null
+    }
+    let out = await opened()
+    type(card(out, 'linkedin'), 'LinkedIn post text', 'Files at evil.com and paypal-login.com/verify')
+    out = render()
+    expect(note(card(out, 'linkedin'))).toBe(
+      "Check these links before you post:evil.compaypal-login.com/verifyThey are not in what was said, the recording's name or its chapters. Nothing was changed: post them only if you know where they go."
+    )
+    type(card(out, 'linkedin'), 'LinkedIn post text', 'Files at evil.com')
+    out = render()
+    expect(note(card(out, 'linkedin'))).toBe(
+      "Check this link before you post:evil.comIt is not in what was said, the recording's name or its chapters. Nothing was changed: post it only if you know where it goes."
+    )
+  })
+
+  it('the text field is described by the note, and Use for exports says it too (§4.8)', async () => {
+    const field = (els: El[], label: string): El | undefined => els.find((e) => e.type === 'textarea' && e.props['aria-label'] === label)
+    let out = await opened()
+    type(card(out, 'linkedin'), 'LinkedIn post text', 'Files at evil.com')
+    out = render()
+    // A screen reader hears the note with the field, not only when Copy is pressed.
+    const box = card(out, 'linkedin').find((e) => e.props['data-testid'] === 'publish-check') as El
+    expect(box.props.id).toBe('publish-linkedin-check')
+    expect(field(card(out, 'linkedin'), 'LinkedIn post text')?.props['aria-describedby']).toBe('publish-linkedin-check')
+    expect(field(card(out, 'xpost'), 'X post text')?.props['aria-describedby']).toBeUndefined()
+    // Every export's description file would have the link: Use for exports says so.
+    type(card(out, 'youtube'), 'YouTube description text', 'All about the new reports: paypal-login.com/verify')
+    out = render()
+    press(card(out, 'youtube'), 'Use for exports')
+    out = render()
+    expect(said(card(out, 'youtube'))).toEqual([['status', "The export's description file will use this text. Check this link before you post: paypal-login.com/verify"]])
+  })
+
+  it('Rename the recording is not offered for a title with a link the note asks to check: the name is trusted as typed (§4.8)', async () => {
+    let out = await opened()
+    type(card(out, 'title'), 'Title text', 'New reports at 登录paypal-login.com')
+    out = render()
+    const rename = card(out, 'title').find((e) => e.type === 'button' && textOf(e.props.children).trim() === 'Rename the recording') as El
+    expect(rename.props.disabled).toBe(true)
+    expect(() => press(card(out, 'title'), 'Rename the recording')).toThrow('is disabled')
+    expect(current.name).toBe('Demo')
+    type(card(out, 'title'), 'Title text', 'New reports')
+    out = render()
+    press(card(out, 'title'), 'Rename the recording')
+    out = render()
+    expect(current.name).toBe('New reports')
+  })
+
   it('Use for exports, Stop using for exports and Rename the recording', async () => {
     let out = await opened()
     type(card(out, 'youtube'), 'YouTube description text', 'All about the new reports.')

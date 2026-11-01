@@ -60,4 +60,8 @@ describe('Publish dialog text fields (publish-pack §5.4)', () => {
       expect(contrast(colour(sel, 'color'), fill), sel).toBeGreaterThanOrEqual(4.5)
     }
   })
+
+  it("a card's notice wraps a long link inside the card (the safety net's, with Copy)", () => {
+    expect(declared(publish, '.publish-said', 'overflow-wrap')).toBe('anywhere')
+  })
 })

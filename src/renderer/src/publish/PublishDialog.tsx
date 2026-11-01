@@ -249,7 +249,9 @@ export function PublishDialog({ project, request, onClose, onGenerateCaptions }:
                 const description = descriptionBody(text)
                 if (!description) return
                 store.update((p) => ({ ...p, publish: { description } }))
-                say(kind, "The export's description file will use this text")
+                // The safety net's notes are said here too: every export's description file will have the link.
+                const check = checkText(checksOf(composeYoutubeDescription(description, youtube.chapters, youtube.duration), said))
+                say(kind, check ? `The export's description file will use this text. ${check}` : "The export's description file will use this text")
               }}
               onStopForExports={() => {
                 store.update((p) => {
@@ -384,10 +386,11 @@ function Card({ kind, item, stale, canWrite, youtube, saved, saidLinks: spoken, 
         rows={kind === 'title' ? 1 : kind === 'xpost' ? 3 : 6}
         placeholder={busy ? '' : 'Not written yet.'}
         readOnly={busy}
+        aria-describedby={checks.length && !busy ? `${id}-check` : undefined}
         onChange={(e) => onEdit({ text: e.target.value.slice(0, EDIT_MAX) })}
       />
       {checks.length > 0 && !busy && (
-        <div className="publish-check" role="note" data-testid="publish-check">
+        <div className="publish-check" role="note" id={`${id}-check`} data-testid="publish-check">
           <p className="publish-check-title">{checks.length === 1 ? 'Check this link before you post:' : 'Check these links before you post:'}</p>
           <ul>
             {checks.map((run) => (
@@ -396,7 +399,11 @@ function Card({ kind, item, stale, canWrite, youtube, saved, saidLinks: spoken, 
               </li>
             ))}
           </ul>
-          <p className="publish-check-why">It is not in what was said, the recording's name or its chapters. Nothing was changed: post it only if you know where it goes.</p>
+          <p className="publish-check-why">
+            {checks.length === 1
+              ? "It is not in what was said, the recording's name or its chapters. Nothing was changed: post it only if you know where it goes."
+              : "They are not in what was said, the recording's name or its chapters. Nothing was changed: post them only if you know where they go."}
+          </p>
         </div>
       )}
       {isYoutube && (
@@ -451,8 +458,9 @@ function Card({ kind, item, stale, canWrite, youtube, saved, saidLinks: spoken, 
               {saved ? 'Update for exports' : 'Use for exports'}
             </button>
           ))}
+        {/* A name is trusted as typed (§4.8): not one with a link the note above asks to check. */}
         {kind === 'title' && !busy && (
-          <button className="btn small ghost" disabled={!cleanTitle} onClick={() => onRename(cleanTitle)}>
+          <button className="btn small ghost" disabled={!cleanTitle || checks.length > 0} onClick={() => onRename(cleanTitle)}>
             Rename the recording
           </button>
         )}
