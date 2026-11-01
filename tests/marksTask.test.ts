@@ -84,6 +84,12 @@ describe('the marks task (test 45)', () => {
     expect(check('⚙️')).toBe('2699')
   })
 
+  it('takes only the chosen emoji: none of the never list, flags, alcohol or gender variants, though the font draws them', () => {
+    const check = (emoji: string) => validateMarksAnswer(answer({ captions: [caption({ id: 'a', emoji, emojiWord: 2 })] }), batch).captions[0].emoji
+    for (const e of ['🖕', '💩', '🍆', '🔫', '🇪🇸', '🥂', '👨‍💻', '👍🏽']) expect(check(e), e).toBe('')
+    expect(check('💡')).toBe('1f4a1')
+  })
+
   it('refuses too many emphasised words and punctuation-only words', () => {
     const many = validateMarksAnswer(answer({ captions: [caption({ id: 'b', emphasis: [0, 2, 4] })] }), batch)
     expect(many.captions[0].emphasis).toEqual([0, 2])

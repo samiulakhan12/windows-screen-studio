@@ -14,8 +14,7 @@ import { GRAPHIC_DEFAULTS } from '../render/graphics'
 import { viewingTime } from '../render/overlays'
 import type { AiProviderKind, AutoOrigin, CaptionSegment, CounterGraphic, Graphic, KeywordGraphic, ListGraphic, Project, TitleCard } from '../types'
 import { textHash } from './captionTracks'
-import { isSensitive, LEAD, suggestEmoji } from './emoji'
-import { EMOJI_KEYS } from './emojiList'
+import { chosenEmoji, isSensitive, LEAD, suggestEmoji } from './emoji'
 import { emphasisScores } from './emphasis'
 import { findLists } from './lists'
 import { findNumbers } from './numbers'
@@ -335,7 +334,7 @@ function aiEmoji(project: Project, marks: MarksAnswer | undefined, via: AutoOrig
     const seg = byId.get(c.id)
     if (!seg || isSensitive(seg.text, language)) continue
     const key = c.emoji
-    if (!EMOJI_KEYS.has(key)) continue
+    if (!chosenEmoji(key)) continue
     const t = wordsOf(seg, language)[c.emojiWord]
     if (!t) continue
     const start = Math.max(0, t.start - LEAD)

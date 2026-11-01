@@ -21,6 +21,23 @@ describe('graphic generation (§10.2)', () => {
     expect(graphicId('counter', 'c1', 3, '300%')).toBe(`g-${textHash('counter|c1|3|300%')}`)
   })
 
+  it('an AI emoji goes on its word only when it is one of the chosen emoji', () => {
+    const p = studioProject({ segments: captions(['Thanks to my boss Dave', 'Here is a great idea', 'We will celebrate tonight']) })
+    const marks = {
+      captions: [
+        { id: 'c0', emphasis: [], emoji: '1f595', emojiWord: 3 },
+        { id: 'c1', emphasis: [], emoji: '1f4a1', emojiWord: 4 },
+        { id: 'c2', emphasis: [], emoji: '1f942', emojiWord: 2 }
+      ],
+      numbers: [],
+      lists: [],
+      quotes: []
+    }
+    const out = planGraphics(p, { ...NONE, emoji: true, marks, marksVia: 'gemini' })
+    const ai = (out.graphics ?? []).filter((g): g is Extract<Graphic, { kind: 'emoji' }> => g.kind === 'emoji' && g.auto?.via === 'gemini')
+    expect(ai.map((g) => `${g.emoji} ${g.anchor?.text}`)).toEqual(['1f4a1 idea'])
+  })
+
   it('counters for statistics only, starting 0.1 s before the number', () => {
     const p = studioProject({ segments: captions(['Revenue grew 300% this year', 'Set the width to 300 pixels', 'There are 12 options']) })
     const out = planGraphics(p, { ...NONE, counters: true })

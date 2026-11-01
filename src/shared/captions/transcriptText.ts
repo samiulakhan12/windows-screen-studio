@@ -13,8 +13,7 @@
 import { AI_LIMITS, AI_TEXT_TASKS, type AiTextRequest, type AiTextResult, type AiTextTask, type MarksAnswer, type MarksBatch } from '../api/ai'
 import type { CaptionSegment, CaptionWord } from '../types'
 import { LANGUAGE_RE } from './captionData'
-import { emojiKey, isSensitive } from './emoji'
-import { EMOJI_KEYS } from './emojiList'
+import { chosenEmoji, emojiKey, isSensitive } from './emoji'
 import { findNumbers } from './numbers'
 import { cleanText } from './transcriptParse'
 import { studioWordTexts } from './words'
@@ -391,13 +390,13 @@ export function validateMarksAnswer(answer: unknown, batch: MarksBatch): MarksAn
     emphasis = emphasis.slice(0, adjacent ? Math.min(SPAN_MAX.emphasis, EMPHASIS_PER_CAPTION) : 2)
     if (emphasised + emphasis.length > Math.max(1, Math.floor(all * EMPHASIS_SHARE))) emphasis = []
     emphasised += emphasis.length
-    // Emoji: one of Flown's list, no letters; never on a sensitive caption.
+    // Emoji: one of the chosen emoji (§11.3), none of the never list, no letters; never on a sensitive caption.
     let emoji = ''
     let emojiWord = -1
     const word = index(c.emojiWord, w.length)
     if (typeof c.emoji === 'string' && c.emoji && word !== null && !/\p{L}/u.test(c.emoji) && c.emoji.length <= 32) {
       const key = emojiKey(c.emoji)
-      if (EMOJI_KEYS.has(key) && !isSensitive(w.join(' '), batch.language)) {
+      if (chosenEmoji(key) && !isSensitive(w.join(' '), batch.language)) {
         emoji = key
         emojiWord = word
       }

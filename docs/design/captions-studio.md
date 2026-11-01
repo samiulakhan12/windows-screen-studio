@@ -2584,8 +2584,11 @@ Batches of 150 captions and 12,000 characters (`transcriptText.ts:27-28`); for l
    words for emphasis, 8 for numbers and list items, 20 for quotes.
 2. Punctuation-only tokens dropped; repeats removed; at most 3 emphasised words per caption and
    20% of all words (over that, the offline scores decide).
-3. An emoji must equal one entry of Flown's emoji list after removing U+FE0F; anything with a
-   letter (`\p{L}`) or not in the list is refused. At most 1 per caption and 1 per 8 s. Captions
+3. An emoji must equal one entry of Flown's emoji list after removing U+FE0F: one of the chosen
+   emoji of §11.3 (the trigger words' emoji, none of its never list), not merely one the font
+   draws, so flags, alcohol, skin tones and gender variants are refused too (`chosenEmoji`, checked
+   again when the planner places it); anything with a letter (`\p{L}`) or not in the list is
+   refused. At most 1 per caption and 1 per 8 s. Captions
    the offline filter marks sensitive get none.
 4. Numbers: the span must hold a digit or a number word the local parser reads, and pass the
    statistics rule of §11.4. **The value is always computed locally.**

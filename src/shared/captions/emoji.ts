@@ -30,6 +30,14 @@ export function emojiKey(emoji: string): string {
 /** Never suggested, even if a list names them (§11.3). */
 const NEVER = new Set(['🔪', '🔫', '💣', '🍆', '🍑', '💦', '🖕', '💩', '⚰️', '🩸', '💀', '☠️'].map(emojiKey))
 
+/** The emoji chosen for captions (§11.3 "The list"): no flags, alcohol, drugs, religious symbols, skin tones or gender variants. */
+const CHOSEN: ReadonlySet<string> = new Set(Object.values(EMOJI_TRIGGERS).flatMap((words) => Object.values(words)))
+
+/** Whether an AI provider's emoji (its key) may go on a word: one of the chosen emoji the font draws, never one of the never list (§11.2 rule 3, §11.3). */
+export function chosenEmoji(key: string): boolean {
+  return CHOSEN.has(key) && !NEVER.has(key) && EMOJI_KEYS.has(key)
+}
+
 /** Word endings a trigger may take (§11.3); other languages match whole words. */
 const SUFFIXES: Readonly<Record<string, readonly string[]>> = {
   en: ['s', 'es', 'ed', 'ing', 'er', 'ers', 'ly'],
