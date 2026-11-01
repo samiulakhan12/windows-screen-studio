@@ -178,11 +178,13 @@ export function CaptionsPanel(props: InspectorProps): JSX.Element {
       else if (r.kind === 'export') setExportNow((n) => n + 1)
       else if (r.kind === 'generate') setGenerateNow((n) => n + 1)
     }
-    // 'language' and 'cleanup' (Captions Studio §2.14) stay for the Languages and Clean up sections
-    // to take; the tab brings that section into view.
+    // 'language' and 'cleanup' (Captions Studio §2.14): the Languages and Clean up sections take
+    // their own copy (takeSectionRequest); the tab brings that section into view once, taking the
+    // request so the next visit to the tab opens at the top again.
     const route = (): void => {
       const r = peekCaptionsRequest()
       if (r?.kind === 'language' || r?.kind === 'cleanup') {
+        takeCaptionsRequest()
         const id = r.kind === 'language' ? 'caption-languages' : 'caption-cleanup'
         requestAnimationFrame(() => document.querySelector<HTMLElement>(`[data-testid="${id}"]`)?.scrollIntoView({ block: 'start' }))
         return

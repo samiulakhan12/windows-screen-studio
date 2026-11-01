@@ -1307,3 +1307,34 @@ describe('banglaOfferApplies: the offer under the summary (offline-captions §14
     expect(banglaOfferApplies(state, undefined)).toBe(false)
   })
 })
+
+describe('CaptionsPanel: Add a caption language… (Captions Studio §2.14)', () => {
+  it('brings Languages into view once; the next visit to the tab opens at the top, and Languages still takes its request', () => {
+    // The module CaptionsPanel was imported with (later tests import fresh copies).
+    const requests = items as unknown as { requestCaptions(r: unknown): void; takeSectionRequest(kind: string): unknown; takeCaptionsRequest(): unknown }
+    const scrolled: string[] = []
+    const g = globalThis as { requestAnimationFrame?: unknown }
+    const doc = page as { querySelector?: unknown }
+    g.requestAnimationFrame = (fn: () => void) => {
+      fn()
+      return 0
+    }
+    doc.querySelector = (sel: string) => ({ scrollIntoView: () => scrolled.push(sel) })
+    try {
+      requests.requestCaptions({ kind: 'language', via: 'ai' })
+      render()
+      expect(scrolled).toEqual(['[data-testid="caption-languages"]'])
+      // Another tab, then Captions again: the panel mounts afresh.
+      for (const list of cells.values()) for (const c of list) c.cleanup?.()
+      cells.clear()
+      render()
+      expect(scrolled).toHaveLength(1)
+      expect(requests.takeSectionRequest('language')).toEqual({ kind: 'language', via: 'ai' })
+    } finally {
+      delete g.requestAnimationFrame
+      delete doc.querySelector
+      requests.takeSectionRequest('language')
+      requests.takeCaptionsRequest()
+    }
+  })
+})
