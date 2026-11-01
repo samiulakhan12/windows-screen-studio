@@ -196,11 +196,13 @@ function intactOf(list: readonly AutoCut[], clips: readonly Clip[]): AutoCut[] {
 
 /**
  * The records of `list` whose change is still in `clips` (intactOf), each speed-up that goes leaving
- * the others as Keep or Remove of it would, by how its row then reads (changeGone, §2.3): gone, a
- * record holding footage at its speed inside it takes the speed from before it (withoutSpeedUp, as
- * Remove); still playing at its speed, an earlier speed-up it holds footage of gives that part up
- * (withSpeedUpKept, as Keep). So removing a record left never puts footage back at the speed of one
- * gone, inside a speed-up still listed. The latest first; the rest judged again until none goes.
+ * the others as Keep or Remove of it would, by how its row then reads (changeGone, §2.3). First
+ * those whose change is gone (none of it plays at its speed), the latest first, as Remove: a record
+ * holding footage at its speed takes the speed from before it (withoutSpeedUp). Then those that
+ * still play at their speed somewhere, as Keep: an earlier speed-up one holds footage of gives that
+ * part up (withSpeedUpsKept), while a record inside it keeps holding its speed. So removing a record
+ * left never puts footage back at the speed of one gone, inside a speed-up still listed. The rest
+ * are judged again until none goes.
  */
 function settledOf(list: readonly AutoCut[], clips: readonly Clip[]): AutoCut[] {
   let live = [...list]
@@ -208,11 +210,14 @@ function settledOf(list: readonly AutoCut[], clips: readonly Clip[]): AutoCut[] 
     const next = intactOf(live, clips)
     if (next.length === live.length) return next
     const stays = new Set(next)
-    let out = next
-    for (const s of [...live].reverse()) {
-      if (s.action !== 'cut' && !stays.has(s)) out = changeGone(s, clips) ? withoutSpeedUp(out, s) : withSpeedUpKept(out, s)
-    }
-    live = out
+    const gone = live.filter((c) => c.action !== 'cut' && !stays.has(c))
+    const kept = new Set(gone.filter((c) => !changeGone(c, clips)).map((c) => c.id))
+    // Those that go as kept stay in the list through the first step, so a speed-up removed around
+    // one hands it the speed from before it too, as it would in the panel.
+    let out = live.filter((c) => stays.has(c) || kept.has(c.id))
+    for (const s of [...gone].reverse()) if (!kept.has(s.id)) out = withoutSpeedUp(out, s)
+    out = withSpeedUpsKept(out, out.filter((c) => kept.has(c.id)))
+    live = out.filter((c) => !kept.has(c.id))
   }
 }
 
@@ -291,7 +296,8 @@ function assign(pieces: readonly Piece[], ranges: readonly AutoRange[]): Piece[]
  * speed gets that piece's speed from before. `pieces` itself when no part does.
  */
 function beforeSpeedUp(pieces: Piece[], s: AutoCut): Piece[] {
-  if (s.action === 'cut') return pieces
+  if (s.action === 'cut' || !pieces.some((p) => p.speed === s.action)) return pieces
+  const bounds = s.was.flatMap((w) => [w.start, w.end]).sort((x, y) => x - y)
   let hit = false
   const out: Piece[] = []
   for (const p of pieces) {
@@ -299,7 +305,7 @@ function beforeSpeedUp(pieces: Piece[], s: AutoCut): Piece[] {
       out.push(p)
       continue
     }
-    const cuts = [p.start, ...s.was.flatMap((w) => [w.start, w.end]).filter((t) => t > p.start + EPS && t < p.end - EPS).sort((x, y) => x - y), p.end]
+    const cuts = [p.start, ...bounds.filter((t) => t > p.start + EPS && t < p.end - EPS), p.end]
     for (let i = 0; i + 1 < cuts.length; i++) {
       const mid = (cuts[i] + cuts[i + 1]) / 2
       const w = s.was.find((x) => mid >= x.start && mid <= x.end)
@@ -448,6 +454,41 @@ export function withSpeedUpKept(list: AutoCut[], k: AutoCut): AutoCut[] {
       if (!mine.length) return c
       const rest = without(c.was, mine)
       next.push(...without(c.was, rest))
+      return { ...c, was: rest }
+    })
+    gone = next
+  }
+  return out
+}
+
+/**
+ * The records `list` with the speed-ups `ks` kept (settledOf), as withSpeedUpKept for each at once:
+ * an earlier speed-up of `list` whose footage one of them holds at its speed gives that part up, and
+ * so does one that holds the part given up in turn. The parts are joined a speed at a time, so the
+ * cost grows with the pieces, not with the records kept times the records left. `ks` themselves and
+ * records that change nothing are the same objects.
+ */
+function withSpeedUpsKept(list: AutoCut[], ks: readonly AutoCut[]): AutoCut[] {
+  const skip = new Set(ks.map((k) => k.id))
+  let out = list
+  let gone: Piece[] = ks.flatMap((k) => (k.action === 'cut' ? [] : k.was))
+  // Outward one level at a time: the part a record gives up carries its speeds from before it.
+  for (let n = 0; gone.length > 0 && n < list.length; n++) {
+    const bySpeed = new Map<number, Piece[]>()
+    for (const w of gone) {
+      const ws = bySpeed.get(w.speed)
+      if (ws) ws.push(w)
+      else bySpeed.set(w.speed, [w])
+    }
+    const parts = new Map([...bySpeed].map(([speed, ws]) => [speed, union(ws)]))
+    const next: Piece[] = []
+    out = out.map((c) => {
+      const g = c.action === 'cut' || skip.has(c.id) ? undefined : parts.get(c.action)
+      if (!g) return c
+      const rest = outside(c.was, g)
+      const given = without(c.was, rest)
+      if (given.length === 0) return c
+      next.push(...given)
       return { ...c, was: rest }
     })
     gone = next

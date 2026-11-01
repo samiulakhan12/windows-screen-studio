@@ -84,12 +84,16 @@ inside it does, so removing only the later one puts the part back at 2×, not at
 one level further in (a silence sped up 8× inside the 4× one): the 4× record hands that part on to
 the 8× one, and all three stay listed.
 A speed-up the settle step drops leaves the records around it as Keep or Remove of it would
-(§2.4), by how its row then reads (§2.3): when none of it plays at its speed any more, a record
-inside it that holds footage at its speed takes the speed from before it (`withoutSpeedUp`); while
-some of it still does, an earlier speed-up it holds footage of gives that part up
-(`withSpeedUpKept`). So removing a record later never puts footage back at the speed of one gone,
+(§2.4), by how its row then reads (§2.3). Those with none of their footage at their speed any more
+(read removed) go first, the latest first: a record inside one that holds footage at its speed
+takes the speed from before it (`withoutSpeedUp`). Then those that still play at their speed
+somewhere (read kept), all at once: an earlier speed-up one holds footage of gives that part up
+(`withSpeedUpKept`'s rule, the parts joined a speed at a time), while a record inside it keeps
+holding its speed. So removing a record later never puts footage back at the speed of one gone,
 inside a speed-up still listed: a 4× inside a 2× set back to 2× by hand, then the retake cut inside
-it removed, brings the retake back at 2× and the 2× stays to review.
+it removed, brings the retake back at 2× and the 2× stays to review; a 4× slowed in part by hand
+outside the 2×, with the retake cut covering all of the 4× inside the 2×, has the 2× give that part
+up, so the retake's part inside the 4× comes back at 4× and the 2× stays to review.
 
 ### 2.2 What is listed
 
@@ -400,9 +404,11 @@ its list, at most 1000); a choice only ever changes how a row reads, never the f
 What records hold is worked out a speed at a time, each speed as one set of parts, and a chain
 only goes on to a faster record, so the cost grows with the pieces stored, never with the ways
 footage is handed from one record to another: a file with a thousand records over the same footage
-(at their own speed, or over three rising speeds with 64 pieces each) is listed, settled and shown
-in the panel in milliseconds. A row's status reads its recorded choice by id, or its record and the
-clips, so reading the rows again after many are kept or removed costs no more.
+(at their own speed, or over three rising speeds with 64 pieces each, or five hundred speed-ups
+that go at once with five hundred records around or inside them) is listed, settled and shown in
+the panel in milliseconds: the speed-ups that go as kept give their parts up together, a speed at
+a time, not one by one. A row's status reads its recorded choice by id, or
+its record and the clips, so reading the rows again after many are kept or removed costs no more.
 
 ## 7. Files and exported signatures
 

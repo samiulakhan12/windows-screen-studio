@@ -353,6 +353,48 @@ describe('intact, change gone, live', () => {
     }
   })
 
+  it('a thousand records from a project file, half of them speed-ups that go and half cuts inside them, are settled at once', () => {
+    // Hand-written: 8x records over [1,20] holding it at 4x, and cuts holding all of it at 8x, over a
+    // video cut down to [0,1]. Every 8x goes with its change gone, and each cut takes the 4x it held
+    // from before them (settledOf), the latest first.
+    const pieces = (speed: number) => Array.from({ length: MAX_WAS_PIECES }, (_, j) => ({ start: 1 + (19 * j) / MAX_WAS_PIECES, end: 1 + (19 * (j + 1)) / MAX_WAS_PIECES, speed }))
+    const n = MAX_AUTO_CUTS / 2
+    const list = readAutoCuts(
+      [
+        ...Array.from({ length: n }, (_, k) => cut({ id: `s${k}`, action: 8, start: 1, end: 20, was: pieces(4) })),
+        ...Array.from({ length: n }, (_, k) => cut({ id: `c${k}`, start: 1, end: 20, was: pieces(8) }))
+      ],
+      20
+    )!
+    const p = project([clip(0, 1)], { autoCuts: list })
+    const t = performance.now()
+    const out = settleAutoCuts({ ...p, clips: [clip(0, 1)] }, p).autoCuts!
+    expect(performance.now() - t).toBeLessThan(500)
+    expect(out.map((c) => c.id)).toEqual(list.filter((c) => c.action === 'cut').map((c) => c.id))
+    expect(out.every((c) => c.was.length === 1 && c.was[0].speed === 4)).toBe(true)
+  })
+
+  it('a thousand records from a project file, half of them speed-ups that go as kept inside the other half, are settled at once', () => {
+    // Hand-written: 2x records over [0,10] and 4x records over [0,20] that sped it up from 2x, their
+    // pieces interleaved, with [15,20] set back to 1x by hand: every 4x goes, still playing at 4x in
+    // [10,15], and each 2x gives up the parts of them it held. One 4x at a time took seconds.
+    const pieces = (a: number, b: number, speed: number, off: number) =>
+      Array.from({ length: MAX_WAS_PIECES }, (_, j) => ({ start: a + ((b - a) * (j + off)) / MAX_WAS_PIECES, end: a + ((b - a) * (j + off + 0.5)) / MAX_WAS_PIECES, speed }))
+    const n = MAX_AUTO_CUTS / 2
+    const list = readAutoCuts(
+      [
+        ...Array.from({ length: n }, (_, k) => cut({ id: `t${k}`, action: 2, start: 0, end: 10, was: pieces(0, 10, 1, 0) })),
+        ...Array.from({ length: n }, (_, k) => cut({ id: `f${k}`, action: 4, start: 0, end: 20, was: pieces(0, 20, 2, 0.5) }))
+      ],
+      20
+    )!
+    const p = project([clip(0, 10, 2), clip(10, 20, 4)], { autoCuts: list })
+    const t = performance.now()
+    const out = settleAutoCuts({ ...p, clips: [clip(0, 10, 2), clip(10, 15, 4), clip(15, 20, 1)] }, p).autoCuts ?? []
+    expect(performance.now() - t).toBeLessThan(500)
+    expect(out.every((c) => c.action === 2)).toBe(true)
+  })
+
   it('withAutoCuts leaves no key for an empty list', () => {
     const p = { ...project(), autoCuts: [cut()] }
     expect('autoCuts' in withAutoCuts(p, [])).toBe(false)

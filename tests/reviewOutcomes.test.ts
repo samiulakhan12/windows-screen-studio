@@ -537,6 +537,14 @@ describe('a speed-up that goes with no choice made leaves the records inside it 
     expect(s.rows()).toEqual(['r0:pending', 'r1:kept', 'r2:removed'])
     s.run('R r0')
     expect(plays(s.p.clips)).toBe('[0,10]@1 [10,11]@2 [11,13]@4 [13,15]@2 [15,20]@4')
+    // The 4x inside the 2x all cut, the rest of it slowed in part by hand: the same.
+    const cut = replay('tool 5-10 2; tool 9-15 4 smart-speed; tool 8.5-10.5 cut retake; open; hand speed 12-13 1')
+    expect(cut.rows()).toEqual(['r0:pending', 'r2:pending', 'r1:kept'])
+    cut.run('R r2')
+    expect(plays(cut.p.clips)).toBe('[0,5]@1 [5,9]@2 [9,12]@4 [12,13]@1 [13,15]@4 [15,20]@1')
+    expect(cut.rows()).toEqual(['r0:pending', 'r2:removed', 'r1:kept'])
+    cut.run('R r0')
+    expect(plays(cut.p.clips)).toBe('[0,9]@1 [9,12]@4 [12,13]@1 [13,15]@4 [15,20]@1')
   })
 
   it('a 4x part of which is slowed by hand reads kept: a cut inside it still comes back at 4x', () => {
