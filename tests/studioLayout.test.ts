@@ -88,6 +88,32 @@ describe('chunk modes (test 9)', () => {
     for (const c of l.chunks) expect(c.last - c.first + 1).toBeLessThanOrEqual(6)
   })
 
+  it('draws a word too long for the room smaller, so no line is wider than the room or the frame (§8.4)', () => {
+    // Bold Pop in a tall frame: "TROUBLESHOOTING" at the look's size is wider than the room.
+    const s = look('bold-pop')
+    const m = studioMetrics(s, 1080, 1920)
+    const l = lay(timed('fix the troubleshooting step'), s, 1080, 1920)
+    expect(15 * 0.55 * l.px).toBeGreaterThan(m.maxWidth)
+    const lines = l.chunks.flatMap((c) => c.lines)
+    const long = lines.find((line) => line.words.some((w) => w.text === 'TROUBLESHOOTING'))!
+    expect(long.width).toBeCloseTo(m.maxWidth, 6)
+    expect(long.px).toBeLessThan(l.px)
+    for (const line of lines) expect(line.width).toBeLessThanOrEqual(m.maxWidth * (1 + 1e-9))
+    // Lines that fit keep the look's size.
+    expect(lines.find((line) => line.words.some((w) => w.text === 'FIX'))!.px).toBe(l.px)
+    const c = l.chunks.find((ch) => ch.lines.includes(long))!
+    const placed = placeStudio(l, c, s, 1080, 1920, {}).lines[c.lines.indexOf(long)]
+    expect(placed.x).toBeGreaterThanOrEqual(0)
+    expect(placed.x + placed.width).toBeLessThanOrEqual(1080)
+    // One Word and Stacked too, below their 0.6 floor when they must.
+    for (const id of ['one-word', 'stacked']) {
+      const st = look(id)
+      const room = studioMetrics(st, 1080, 1920).maxWidth
+      const one = lay(timed('incomprehensibilities'), st, 1080, 1920)
+      for (const line of one.chunks.flatMap((ch) => ch.lines)) expect(line.width, id).toBeLessThanOrEqual(room * (1 + 1e-9))
+    }
+  })
+
   it('emphasised words are measured at the emphasis scale, and the layout keeps room for a spoken word that grows', () => {
     const bp = look('bold-pop')
     const l = lay(timed('make every word count'), bp, 1920, 1080, [{ from: 1, to: 1 }])

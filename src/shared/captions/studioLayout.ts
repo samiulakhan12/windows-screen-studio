@@ -513,12 +513,14 @@ export function studioLayout(
   else if (lay.chunk === 'words') ranges = fewWordsChunks(tokens, meter, Math.max(1, lay.words), m.maxWidth, m.maxChars, per, language)
   else if (lay.chunk === 'word') ranges = oneWordChunks(tokens)
   else ranges = stackedChunks(tokens, emphasis, Math.max(1, lay.words), Math.max(1, Math.min(4, lay.lines)))
-  // 'word' and 'stack' fit each line to `fit` of the room (0.6..2.2 times the look's size).
+  // 'word' and 'stack' fit each line to `fit` of the room (0.6..2.2 times the look's size). No line
+  // is wider than the room: one holding a word too long for it ("TROUBLESHOOTING") is drawn smaller.
   const fitted = (lay.chunk === 'word' || lay.chunk === 'stack') && lay.fit !== undefined
   const lineScale = (a: number, b: number): number => {
-    if (!fitted) return 1
     const at = meter.width(a, b)
-    return at > 0 ? Math.min(2.2, Math.max(0.6, (m.maxWidth * lay.fit!) / at)) : 1
+    if (!(at > 0)) return 1
+    const k = fitted ? Math.min(2.2, Math.max(0.6, (m.maxWidth * lay.fit!) / at)) : 1
+    return at * k > m.maxWidth * (1 + 1e-9) ? m.maxWidth / at : k
   }
   const chunks: StudioChunk[] = ranges.map((group) => {
     const lines: StudioLine[] = group.map(([a, b]) => {

@@ -1911,7 +1911,7 @@ Legacy looks keep `captionTokens` unchanged.
 | **Phrase** | Lines no wider than the room (§8.4) and no longer than `chars` (`tallChars` in tall frames); `lines` lines per chunk; breaks chosen by the phrase cost (§8.3). |
 | **A few words** | A chunk ends at the first of: `words` words; the end of a sentence (`.` `!` `?` `…` `।` `۔` `。` `！` `？`); a pause of 0.15 s or more before the next word; the line limits. A Latin word of 1–2 letters never ends a chunk: it joins the next word. |
 | **One word** | One word per chunk. A Latin word of 1–3 letters joins the next word ("IN THE"). Chinese, Japanese and Thai: Segmenter words, 2–4 characters. |
-| **Stacked** | `words` words (4–8) on up to `lines` lines (2–4). An emphasised word gets a line of its own. Each line is sized to fill `fit` × the room: its size is the room divided by its width at 1 px, clamped to 0.6–2.2 × the look's size. |
+| **Stacked** | `words` words (4–8) on up to `lines` lines (2–4). An emphasised word gets a line of its own. Each line is sized to fill `fit` × the room: its size is the room divided by its width at 1 px, clamped to 0.6–2.2 × the look's size (and never wider than the room, §8.4). |
 
 Chunk times follow `captionLayout` (`layout.ts:359-387`): a chunk starts at its first word, chunks
 that start together share the time, each shows at least min(0.4 s, caption / chunks), and a chunk
@@ -1952,6 +1952,9 @@ under 1 ms.
   scale, and the layout measures them at that size.
 - The room is today's: min(0.84 W, W − 0.12 u) less the box padding, inside the text area when
   there is one (`captionMetrics`, `layout.ts:292-310`).
+- No line is wider than the room. A line holding a word too long for it ("TROUBLESHOOTING" in
+  Bold Pop in a tall frame, a long address) is drawn smaller, to the room's width; in One Word
+  and Stacked that goes below their 0.6 floor when it must. Lines that fit keep their size.
 - Widths are measured once at 100 px per (font stack, weight, letter spacing, text) and scaled.
   The cache key adds the letter spacing, which today's key lacks (`captionsLayer.ts:25`).
 - Light to Bold measures every word at its spoken weight, so lines never re-break while weights
