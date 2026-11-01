@@ -6,7 +6,8 @@
 // (the footage comes back, the record goes, the choice is saved); Ctrl+Z brings the cut back and
 // its row back to "not reviewed", and takes the choice away; a mouse click on a row then Delete removes the camera change (the same message as
 // before is announced again); Keep all, pressed from the keyboard, reviews the rest and leaves the
-// focus in the list; Escape closes and gives the focus back to the button; the palette opens it
+// focus in the list, and undone and redone (from the keys and from the palette) under a row's Keep
+// button leaves it on that row; Escape closes and gives the focus back to the button; the palette opens it
 // again, now empty; a palette command that shows an Inspector tab closes it, the focus going to the
 // button when it was in the panel and staying where it was when it was outside. Then, against the
 // local mock of the AI providers: with the panel open, Polish cuts the silences of a recording with
@@ -247,6 +248,21 @@ async function main() {
     await f.waitFor(async () => (await rows(win)).includes('cut:s1=kept'), 'Keep all redone')
     await h.sleep(100)
     h.assert((await focused(win)).startsWith('Cut 2.4 s of silence, silence, at 0:08.0, Remove silences, kept'), `the focus back on the row after the redo: ${await focused(win)}`)
+
+    // The same redo run from the palette: the palette gives the focus back as it closes, but the
+    // Keep button that had it is gone, so it goes to that button's row.
+    await win.keyboard.press('Control+z')
+    await f.waitFor(async () => (await rows(win)).includes('cut:s1=pending'), 'Keep all undone again')
+    await win.keyboard.press('Tab')
+    h.assert((await focused(win)) === 'Keep: Cut 2.4 s of silence', `Tab moves to the row's Keep again: ${await focused(win)}`)
+    await win.keyboard.press('Control+k')
+    await win.waitForSelector('.command-palette[role="dialog"]', { timeout: 5000 })
+    await win.keyboard.type('redo')
+    await f.waitFor(async () => (await win.$eval('.command-palette [role="option"] .palette-title', (e) => e.textContent).catch(() => '')) === 'Redo', '"Redo" listed first', 3000)
+    await win.keyboard.press('Enter')
+    await f.waitFor(async () => (await rows(win)).includes('cut:s1=kept'), 'Keep all redone from the palette')
+    await h.sleep(100)
+    h.assert((await focused(win)).startsWith('Cut 2.4 s of silence, silence, at 0:08.0, Remove silences, kept'), `the focus on the row after Redo from the palette: ${await focused(win)}`)
 
     // Escape closes and gives the focus back to the button, which has nothing left to count.
     h.assert((await win.getAttribute('.editor-body > .inspector', 'inert')) !== null, 'still out of reach')

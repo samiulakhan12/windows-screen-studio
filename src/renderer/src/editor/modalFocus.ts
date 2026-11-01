@@ -21,13 +21,28 @@ function targetsFromHere(): HTMLElement[] {
  * Keyboard behaviour of a modal dialog: Tab and Shift+Tab stay inside it (even after a mouse
  * click moved focus off a button, see focus.ts), Esc closes it unless a control inside
  * already handled Esc (calling preventDefault), and focus goes back to where it was when the
- * dialog closes, unless something else took it meanwhile (a dialog the closing one opened).
+ * dialog closes, unless something else took it meanwhile (a dialog the closing one opened). When
+ * what had it is gone or disabled by then and was in a panel, the focus goes to the first control
+ * of its nearest container still there.
  */
 export function useModalFocus(ref: RefObject<HTMLElement>, onClose: () => void): void {
   const close = useRef(onClose)
   close.current = onClose
   // Read while rendering: by the time effects run, autoFocus has already moved focus into the dialog.
   const [targets] = useState(targetsFromHere)
+  // In a panel (role="region"), the focused element's containers up to the panel, nearest first:
+  // when it is gone or disabled by the time the dialog closes (a redo from the palette took a row's
+  // Keep button away), the first control in the nearest one still there. None outside a panel, or
+  // once the panel itself is gone (a command closed it and sends the focus on itself).
+  const [around] = useState(() => {
+    const out: HTMLElement[] = []
+    const region = targets[0]?.closest('[role="region"]')
+    for (let el = region ? targets[0].parentElement : null; el; el = el.parentElement) {
+      out.push(el)
+      if (el === region) break
+    }
+    return out
+  })
   useEffect(() => {
     // Kept: by the time the cleanup runs, React has detached the ref.
     const box = ref.current
@@ -62,7 +77,13 @@ export function useModalFocus(ref: RefObject<HTMLElement>, onClose: () => void):
       // focus was lost with it: a dialog opened in its place has already focused its own field.
       const active = document.activeElement
       if (box?.isConnected || (active && active !== document.body)) return
-      targets.find((el) => el.isConnected)?.focus({ preventScroll: true })
+      const back =
+        targets.find((el) => el.isConnected && !el.matches(':disabled')) ??
+        around
+          .filter((el) => el.isConnected)
+          .map((el) => el.querySelector<HTMLElement>(FOCUSABLE))
+          .find(Boolean)
+      back?.focus({ preventScroll: true })
     }
-  }, [ref, targets])
+  }, [ref, targets, around])
 }

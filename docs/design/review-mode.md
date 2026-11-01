@@ -429,7 +429,10 @@ there (`went`, `changeGone`) and keeps it until its record comes back.
   in the panel as the project changed and is on the page once the change is shown, or still on a
   button the change disabled (Chromium drops it from there only at its next rendering update), it
   goes back to the focused item's row (else Close), so `Escape` and the list's keys keep working and
-  do not reach the editor as Snapping, Pause or delete.
+  do not reach the editor as Snapping, Pause or delete. Run from the palette, the undo or redo
+  happens with the focus in the palette, which gives it back as it closes: to what had it, or, when
+  that is gone or disabled, to the first control of its nearest container left in the panel (the
+  row whose Keep button a Redo took away).
 * Empty: `Nothing to review. Flown has not changed anything by itself yet, or you have reviewed it all.`
 
 ## 5. UI and copy
@@ -599,7 +602,8 @@ and an automatic silence cut; the button shows 3; open with `Shift+R`; the rows 
 moves and the playhead jumps; `K` keeps the zoom (it stays, `auto` false in the saved project);
 Delete removes the cut (clips back, record gone, `removed` saved for it); `Ctrl+Z` brings the cut
 back and the row back to pending (the choice gone); Keep all (`kept` saved); `Ctrl+Z`, `Tab` to the
-row's Keep, `Ctrl+Y`: the focus back on the row; Escape returns the focus to the button; screenshots.
+row's Keep, `Ctrl+Y`: the focus back on the row; the same with Redo run from the palette; Escape
+returns the focus to the button; screenshots.
 Then, with the panel open, Polish (silences only, against the AI mock) on a recording with spoken
 words, `Ctrl+Z` from the first row's Keep button (the focus goes back to that row), and the same
 Polish again: the first run's rows read removed after the undo and
