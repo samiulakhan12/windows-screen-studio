@@ -97,6 +97,13 @@ const OTHER_SITES_ENDS = new RegExp(
   `(?<![.${NO_SPACE}])[${NO_SPACE}]+|(?:(?![\\x00-\\x7f])\\p{P})+|[$#"\`!?*'();=+,%[\\]~|&{}^<>\\\\\\uff5c]+|@|(?<!https?:)\\/\\/`,
   'giu'
 )
+/**
+ * The same, but with the text of languages written without spaces kept in names: linkify-it reads it
+ * in a host, so before an "@" it is a name ("paypalログイン.com@verify", "登录.com@客服").
+ */
+const OTHER_SITES_ENDS_IN_RUNS = new RegExp(OTHER_SITES_ENDS.source.replace(`(?<![.${NO_SPACE}])[${NO_SPACE}]+|`, ''), 'giu')
+/** Text of a language written without spaces: the fourth reading (asOtherSitesRead with runs) is needed only with an "@". */
+const NO_SPACE_TEXT = new RegExp(`[${NO_SPACE}]`, 'u')
 
 /**
  * Characters a browser drops from a host: IDNA's ignored ones (soft hyphen, combining grapheme joiner,
@@ -136,8 +143,15 @@ function endsLooseLink(c: string): boolean {
   return ends
 }
 
-/** An e-mail address's top-level domain as markdown-it's linkifier (linkify-it 5) knows one: two letters, punycode, or its list. */
-const MAIL_TLD = /^(?:[a-z]{2}|xn--[-a-z0-9]+|biz|com|edu|gov|net|org|pro|web|xxx|aero|asia|coop|info|museum|name|shop|рф)$/i
+/**
+ * An e-mail address's top-level domain as markdown-it's linkifier (linkify-it 5) knows one: a country's
+ * two letters (its list: not "ok" or "zz"), punycode, or its other names.
+ */
+const MAIL_TLD = new RegExp(
+  '^(?:a[cdefgilmnoqrstuwxz]|b[abdefghijmnorstvwyz]|c[acdfghiklmnoruvwxyz]|d[ejkmoz]|e[cegrstu]|f[ijkmor]|g[abdefghilmnpqrstuwy]|h[kmnrtu]|i[delmnoqrst]|j[emop]|k[eghimnprwyz]|l[abcikrstuvy]|m[acdeghklmnopqrstuvwxyz]|n[acefgilopruz]|om|p[aefghklmnrstwy]|qa|r[eosuw]|s[abcdeghijklmnortuvxyz]|t[cdfghjklmnortvwz]|u[agksyz]|v[aceginu]|w[fs]|y[et]|z[amw]' +
+    '|xn--[-a-z0-9]{1,59}|biz|com|edu|gov|net|org|pro|web|xxx|aero|asia|coop|info|museum|name|shop|рф)$',
+  'i'
+)
 /** A host's characters for a linkifier: anything but spaces, controls, punctuation and "<", ">", "｜"; "-" and "." between. */
 const MAIL_HOST = /^(?:[^\s\p{P}\p{Cc}<>｜]|[-.])+/u
 
@@ -159,7 +173,7 @@ function isMailAt(text: string, at: number): boolean {
   const host = MAIL_HOST.exec(text.slice(at + 1, at + 300))?.[0] ?? ''
   const name = host.replace(/\.+$/, '')
   const labels = name.split('.')
-  if (labels.length < 2 || labels.some((l) => !l || l.startsWith('-') || l.endsWith('-')) || !MAIL_TLD.test(labels[labels.length - 1])) return false
+  if (labels.length < 2 || labels.some((l) => !l || l.length > 63 || l.startsWith('-') || l.endsWith('-')) || !MAIL_TLD.test(labels[labels.length - 1])) return false
   return !/^(?:_|:\d)/.test(text.slice(at + 1 + name.length))
 }
 
@@ -195,7 +209,7 @@ const VARIATION_SELECTOR = /^(?:[\u180b-\u180d\u180f\ufe00-\ufe0f]|\udb40[\udd00
  * "support@flown.app，ログイン.paypal-login.com", "~.paypal-login.com", "//$.paypal-login.com"), while X
  * links no name after a "."; then an "@" only where it does not stay one (atStays).
  */
-function asOtherSitesRead(text: string): string {
+function asOtherSitesRead(text: string, runs = false): string {
   let folded = ''
   let inName = false
   for (const c of text) {
@@ -204,8 +218,8 @@ function asOtherSitesRead(text: string): string {
     folded += c >= '\x80' && inName ? '0'.repeat(c.length) : c
   }
   const ended = folded
-    .replace(OTHER_SITES_ENDS, (m: string) => (m === '@' ? m : ' '.repeat(m.length)))
-    .replace(/(?<= )\./g, (dot: string, at: number) => (/\s/.test(text[at - 1]) ? dot : ' '))
+    .replace(runs ? OTHER_SITES_ENDS_IN_RUNS : OTHER_SITES_ENDS, (m: string) => (m === '@' ? m : ' '.repeat(m.length)))
+    .replace(/(?<= )\./g, (dot: string, at: number) => (/[\s\p{P}]/u.test(text[at - 1]) ? dot : ' '))
   return ended.replace(/@/g, (m: string, at: number) => (atStays(text, folded, ended, at) ? m : ' '))
 }
 
@@ -259,7 +273,10 @@ function linksIn(text: string): Link[] {
     const t = text.slice(start, end)
     links.push({ start, end, text: t, whole: WHOLE.test(t), ...(keep ? { keep } : {}) })
   }
-  for (const [read, shift] of [[text, 0], [` ${text}`, 1], [` ${asOtherSitesRead(text)}`, 1]] as const) {
+  const readings: [string, number][] = [[text, 0], [` ${text}`, 1], [` ${asOtherSitesRead(text)}`, 1]]
+  // And with the text of languages written without spaces in names, where an "@" may follow one ("ログイン.com@verify").
+  if (text.includes('@') && NO_SPACE_TEXT.test(text)) readings.push([` ${asOtherSitesRead(text, true)}`, 1])
+  for (const [read, shift] of readings) {
     // X's own reading, and the wider one: a match on a newer top-level domain that X drops can hide one X makes ("/a.web:1paypal-login.com").
     for (const lenient of [false, true]) for (const { indices } of findUrls(read, lenient)) add(Math.max(0, indices[0] - shift), indices[1] - shift)
   }
@@ -277,13 +294,22 @@ function linksIn(text: string): Link[] {
     // Inside a link found above, or the last one found here: it goes with that one.
     if (i < after || reach > i) continue
     const relative = m[0] === '//'
+    // linkify-it starts no "//" glued to a letter or digit (floor division: "img.height//self.scale"), but where an address it read ends ("a@b.de//c.de").
+    if (relative && /[\p{L}\p{N}]/u.test(text[i - 1] ?? '') && !/@[^\s@]*$/.test(text.slice(Math.max(0, i - LOOSE_MAX), i))) continue
     let host = i + (/^w/i.test(m[0]) ? 0 : m[0].length)
     // A browser skips "/" and "\\" after "//" ("//\\@203.0.113.7/login" opens 203.0.113.7).
     if (relative) while (text[host] === '/' || text[host] === '\\') host++
-    // A "//" starts a link only before a dotted host (linkify-it's), and X links none from there.
-    if (relative && !DOTTED_AUTHORITY.test(text.slice(host, Math.min(authorityEnd(host), host + LOOSE_MAX)))) continue
     // The stretch a site reading to the next space takes (a link has no space in it).
     const stretch = nextSpace(i)
+    // linkify-it reads a "//" link's user name across "\\", "?" and "#" and links the host after its "@", while a browser
+    // opens what comes before them ("//paypal-login｡com\\support@flown.app", "//3405803783#support@flown.app"): the stretch.
+    if (relative && /^[^@/[\]()]*[?#\\][^@/[\]()]*@[^/?#\\]*[^./?#\\]\.[^/?#\\]/.test(text.slice(host, Math.min(stretch, host + LOOSE_MAX)))) {
+      add(i, stretch)
+      after = Math.max(after, stretch)
+      continue
+    }
+    // A "//" starts a link only before a dotted host (linkify-it's), and X links none from there.
+    if (relative && !DOTTED_AUTHORITY.test(text.slice(host, Math.min(authorityEnd(host), host + LOOSE_MAX)))) continue
     // As if the text started here.
     const from = text.slice(i, Math.min(stretch, i + LOOSE_MAX))
     const own = relative ? 0 : Math.max(0, ...[false, true].map((lenient) => findUrls(from, lenient).find((u) => u.indices[0] === 0)?.indices[1] ?? 0))
@@ -365,7 +391,8 @@ const authorityOf = (link: string): string => link.replace(/^https?:\/\//i, '').
  * as part of its path: the link without it, and it; or null.
  */
 function ending(link: string): { stem: string; tail: string } | null {
-  const m = /['’:\-–][\p{L}\p{M}]+$/u.exec(link)
+  // Letters after it may be none: X ends a link before Bengali, Devanagari or Tamil ("…/guide-এ" links "…/guide-").
+  const m = /['’:\-–][\p{L}\p{M}]*$/u.exec(link)
   return m && m.index > 0 ? { stem: link.slice(0, m.index), tail: m[0] } : null
 }
 

@@ -407,8 +407,12 @@ export function findUrls(text: string, lenient = false, matches: (text: string, 
       }
       const last = lastUrl as UrlEntity | null
       if (last == null) {
-        // No Latin name in it ("госуслуги.рф"): X does not link it, other sites may.
-        if (lenient && valid) urls.push({ url: path ? url : domain, indices: [startPosition, path ? endPosition : startPosition + domain.length] })
+        // No Latin name in it ("госуслуги.рф"): X does not link it, other sites may; from after the
+        // last punctuation X reads into it ("«госуслуги.рф»", '".com"'), which no host has, and none
+        // when a "." follows that ("«.NET»" is no name).
+        const name = domain.replace(/^.*[^\P{P}.-]/su, '')
+        const lead = domain.length - name.length
+        if (lenient && valid && name && !name.startsWith('.')) urls.push({ url: (path ? url : domain).slice(lead), indices: [startPosition + lead, path ? endPosition : startPosition + domain.length] })
         continue
       }
       // Only the last name gets the port, path and query.
