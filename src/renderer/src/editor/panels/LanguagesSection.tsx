@@ -182,14 +182,16 @@ export function LanguagesSection({ project }: { project: Project }): JSX.Element
     <div data-testid="caption-languages">
       <Section title="Languages">
         <div role="radiogroup" aria-label="Captions drawn on the video" className="caption-list">
-          {rows.map((row) => {
+          {rows.map((row, i) => {
             const code = row.language
             const provider = code ? againWith(code) : null
             const stale = row.changed + row.missing > 0
+            // Each radio is named by its words and its row's language: "Show on the video, Bengali · translated with Gemini".
+            const name = `${group}-track-${i}`
             return (
               <div key={code ?? ''} className="caption-row" data-track={code ?? ''}>
                 <div className="caption-text">
-                  <strong>{row.label}</strong>
+                  <strong id={name}>{row.label}</strong>
                   {row.notes.map((n) => (
                     <span key={n} className="hint">
                       {' · '}
@@ -199,8 +201,19 @@ export function LanguagesSection({ project }: { project: Project }): JSX.Element
                 </div>
                 <div className="row start">
                   <label className="toggle">
-                    <input type="radio" name={`${group}-shown`} data-testid="track-show" checked={row.shown} onChange={() => store.update((p) => withShownTrack(p, code))} />
-                    <span>Show on the video</span>
+                    <input
+                      type="radio"
+                      name={`${group}-shown`}
+                      data-testid="track-show"
+                      aria-labelledby={`${name}-show ${name}`}
+                      checked={row.shown}
+                      onChange={() => store.update((p) => withShownTrack(p, code))}
+                      onKeyDown={(e) => {
+                        // Left and Right move between the radios, as Up and Down do; the editor's window handler would step the playhead.
+                        if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') e.stopPropagation()
+                      }}
+                    />
+                    <span id={`${name}-show`}>Show on the video</span>
                   </label>
                   {code && (
                     <>

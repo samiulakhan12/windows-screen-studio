@@ -647,6 +647,9 @@ Keys inside panels: `Ctrl+B` and `Ctrl+Shift+B` in the Transcript word list (§2
   language**) focuses its first field (Save as my style's name selected; Escape there cancels).
   Closed with the keyboard (Save, Cancel, Close, Escape, or Translate once it is done), the focus
   goes back to that button, not to the page, where typed keys would run editor shortcuts.
+- Each **Show on the video** radio is named with its row: "Show on the video, Bengali ·
+  translated with Gemini". All four arrow keys move between them (Left and Right do not step the
+  playhead there).
 - Burned-in captions and graphics are pixels: screen readers cannot read them in the video. The
   export keeps offering SRT and VTT, and now subtitle tracks, for that reason.
 

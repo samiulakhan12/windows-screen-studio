@@ -1,11 +1,13 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { Project } from '../src/shared/types'
-import { button, byTestId, contexts, focused, mockReact, settle, testStore, textOf, unmountAll, useEditorContexts, type El } from './studioHarness'
+import { button, byTestId, contexts, focused, key, mockReact, settle, testStore, textOf, unmountAll, useEditorContexts, type El } from './studioHarness'
 
 /*
  * Captions › Languages and Clean up's word list from the keyboard (docs/design/captions-studio.md
- * §2.10, §2.15) without a DOM: the forms that open in place of their button (Add a language, Add a
- * word) give the keyboard back to it when the keyboard closes them; a click does not.
+ * §2.10, §2.15) without a DOM: each Show on the video radio is named with its row's language and
+ * keeps Left and Right (the editor would step the playhead), and the forms that open in place of
+ * their button (Add a language, Add a word) give the keyboard back to it when the keyboard closes
+ * them; a click does not.
  */
 
 // Whether the last input was a key (focus.ts keeps it from the window's events, which these tests have not).
@@ -45,6 +47,8 @@ const base = (): Project => ({
 let store: ReturnType<typeof testStore<Project>>
 const languages = (): unknown => ({ type: LanguagesSection, props: { project: store.state } })
 const cleanup = (): unknown => ({ type: CleanupSection, props: { project: store.state } })
+const radios = (els: El[]): El[] => els.filter((e) => e.type === 'input' && e.props.type === 'radio')
+const byId = (els: El[], id: string): El | undefined => els.find((e) => e.props.id === id)
 
 beforeEach(() => {
   unmountAll()
@@ -52,6 +56,37 @@ beforeEach(() => {
   sent.length = 0
   store = testStore(base())
   contexts.editor = { store, player: { time: 0, subscribe: () => () => undefined } }
+})
+
+describe('Show on the video (§2.10)', () => {
+  beforeEach(() => {
+    store.state = { ...base(), captionTracks: [{ language: 'bn', by: 'gemini', model: 'gemini-x', createdAt: '2026-01-01T00:00:00.000Z', segments: [] }] }
+  })
+
+  it('names each radio with its words and its row’s language', async () => {
+    const els = await settle(languages())
+    const names = radios(els).map((r) =>
+      String(r.props['aria-labelledby'] ?? '')
+        .split(' ')
+        .map((id) => textOf(byId(els, id)))
+        .join(', ')
+    )
+    expect(names).toEqual(['Show on the video, English · spoken', 'Show on the video, Bengali · translated with Gemini'])
+  })
+
+  it('keeps Left and Right for the radios (the editor would step the playhead), and leaves their move to the browser', async () => {
+    const radio = radios(await settle(languages()))[1]
+    for (const k of ['ArrowLeft', 'ArrowRight']) {
+      let stopped = false
+      const e = { ...key(k), stopPropagation: () => void (stopped = true) }
+      ;(radio.props.onKeyDown as (e: unknown) => void)(e)
+      expect(stopped).toBe(true)
+      expect(e.prevented).toBe(false)
+    }
+    let stopped = false
+    ;(radio.props.onKeyDown as (e: unknown) => void)({ ...key('s'), stopPropagation: () => void (stopped = true) })
+    expect(stopped).toBe(false)
+  })
 })
 
 describe('Add a language gives the keyboard back to its button (§2.15)', () => {
