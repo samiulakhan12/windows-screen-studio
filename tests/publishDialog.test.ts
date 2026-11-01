@@ -449,6 +449,31 @@ describe("Publish dialog: what a card's buttons did is said on that card (§5.1)
     expect(notices).toEqual([])
   })
 
+  it('a link nobody said shows a note next to its card and with its copy, and is copied as written (§4.8)', async () => {
+    const note = (els: El[]): string | null => {
+      const box = els.find((e) => e.props['data-testid'] === 'publish-check')
+      return box ? textOf(box.props.children) : null
+    }
+    let out = await opened()
+    type(card(out, 'linkedin'), 'LinkedIn post text', 'The new reports are here: paypal-login.com/verify')
+    out = render()
+    expect(note(card(out, 'linkedin'))).toContain('Check this link before you post:paypal-login.com/verify')
+    expect(card(out, 'linkedin').find((e) => e.props['data-testid'] === 'publish-check')?.props.role).toBe('note')
+    expect(note(card(out, 'xpost'))).toBeNull()
+    press(card(out, 'linkedin'), 'Copy')
+    await flush()
+    out = render()
+    expect(clipboardText).toBe('The new reports are here: paypal-login.com/verify')
+    expect(said(card(out, 'linkedin'))).toEqual([['status', 'LinkedIn post copied. Check this link before you post: paypal-login.com/verify']])
+    // What the captions say needs no note; an invisible character in a link is shown.
+    type(card(out, 'linkedin'), 'LinkedIn post text', 'Open the settings page first.')
+    out = render()
+    expect(note(card(out, 'linkedin'))).toBeNull()
+    type(card(out, 'xpost'), 'X post text', `Go to evil${String.fromCharCode(0x200b)}reports.com now`)
+    out = render()
+    expect(note(card(out, 'xpost'))).toContain('evil⟨U+200B⟩reports.com')
+  })
+
   it('Use for exports, Stop using for exports and Rename the recording', async () => {
     let out = await opened()
     type(card(out, 'youtube'), 'YouTube description text', 'All about the new reports.')

@@ -231,7 +231,18 @@ async function main() {
         const ytCopy = yt.replace(/</g, '‹').replace(/>/g, '›')
         h.assert(copied === `${ytCopy}\n\nChapters\n0:00 Intro\n0:02 Settings\n0:04 Save`, `YouTube copy: ${JSON.stringify(copied)}`)
         h.assert((await copyFrom(win, app, 'youtube', 'Copy tags')) === 'mock, flown demo, btag/b', 'tags copied')
+        // The safety net (§4.8): no card the mock wrote has a note; a link nobody said, typed into a
+        // card, gets one next to it and in the copy's notice, and is copied as written.
+        h.assert((await dialog(win).locator('[data-testid="publish-check"]').count()) === 0, 'no note on the written cards')
+        await card(win, 'linkedin').locator('textarea.publish-text').fill('Get the files at paypal-login.com/verify today')
+        const note = card(win, 'linkedin').locator('[data-testid="publish-check"]')
+        await f.waitFor(async () => (await note.count()) === 1, 'the note shows', 5000)
+        h.assert((await note.textContent()).includes('Check this link before you post:paypal-login.com/verify'), `note: ${await note.textContent()}`)
+        h.assert((await copyFrom(win, app, 'linkedin')) === 'Get the files at paypal-login.com/verify today', 'copied as written')
+        const said = await card(win, 'linkedin').locator('.publish-said[role="status"]').textContent()
+        h.assert(said === 'LinkedIn post copied. Check this link before you post: paypal-login.com/verify', `copy notice: ${said}`)
         await card(win, 'linkedin').locator('textarea.publish-text').fill('My own words <b>here</b>')
+        await f.waitFor(async () => (await note.count()) === 0, 'the note goes with the link', 5000)
         h.assert((await copyFrom(win, app, 'linkedin')) === 'My own words <b>here</b>', 'the edit is copied')
 
         // Regenerate one item: one request.

@@ -5,6 +5,7 @@
  */
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { AiProviderInfo } from '../../../shared/api/ai'
+import { linksToCheck, saidLinks, shownRun, type SaidLinks } from '../../../shared/publish/check'
 import { BLOCKER_TEXT, PUBLISH_KINDS, PUBLISH_LABELS, PUBLISH_LENGTHS, PUBLISH_TONES, publishBlocker, publishSegments, transcriptKey, type PublishKind, type PublishPrefs } from '../../../shared/publish/pack'
 import { plainText, xLength, X_LIMIT } from '../../../shared/publish/text'
 import { composeYoutubeDescription, descriptionBody, parseTags, projectYoutubeChapters, YOUTUBE_DESCRIPTION_MAX } from '../../../shared/publish/youtube'
@@ -63,6 +64,9 @@ export function PublishDialog({ project, request, onClose, onGenerateCaptions }:
   const chosen = list.find((p) => p.id === prefs.provider) ?? list[0] ?? null
   const key = useMemo(() => transcriptKey(segments), [segments])
   const youtube = useMemo(() => projectYoutubeChapters(project), [project])
+  const chapterTitles = useMemo(() => youtube.chapters.map((c) => c.title), [youtube])
+  // What was said, for the safety net's notes (§4.8): the captions (not the links an AI wrote into them), the name, the chapter titles.
+  const said = useMemo(() => saidLinks(segments, { title: project.name, chapters: chapterTitles }), [segments, project.name, chapterTitles])
 
   // The description saved for exports shows in an empty YouTube card (a new session).
   useEffect(() => {
@@ -83,7 +87,7 @@ export function PublishDialog({ project, request, onClose, onGenerateCaptions }:
 
   const context = (): WriteContext | null => {
     if (!chosen || blocker) return null
-    const chapters = youtube.chapters.map((c) => c.title)
+    const chapters = chapterTitles
     return {
       providerId: chosen.id,
       segments,
@@ -136,18 +140,20 @@ export function PublishDialog({ project, request, onClose, onGenerateCaptions }:
   }, [running.length]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Said on the card, not in the editor's notice: that one shows behind the dialog.
-  const [said, setSaid] = useState<Said | null>(null)
+  const [notice, setNotice] = useState<Said | null>(null)
   const saidTimer = useRef(0)
   const say = (kind: PublishKind, text: string, alert = false): void => {
-    setSaid({ kind, text, alert })
+    setNotice({ kind, text, alert })
     window.clearTimeout(saidTimer.current)
-    saidTimer.current = window.setTimeout(() => setSaid(null), SAID_MS)
+    saidTimer.current = window.setTimeout(() => setNotice(null), SAID_MS)
   }
   useEffect(() => () => window.clearTimeout(saidTimer.current), [])
 
   const copy = (kind: PublishKind, text: string, what: string): void => {
+    // The safety net's notes are said with the copy too (§4.8).
+    const check = checkText(checksOf(text, said))
     void navigator.clipboard.writeText(text).then(
-      () => say(kind, `${what} copied`),
+      () => say(kind, check ? `${what} copied. ${check}` : `${what} copied`),
       () => say(kind, `${what} could not be copied`, true)
     )
   }
@@ -233,7 +239,8 @@ export function PublishDialog({ project, request, onClose, onGenerateCaptions }:
               canWrite={!!chosen}
               youtube={youtube}
               saved={project.publish?.description ?? null}
-              said={said?.kind === kind ? said : null}
+              saidLinks={said}
+              said={notice?.kind === kind ? notice : null}
               onWrite={() => write([kind])}
               onStop={() => stopItem(project.id, kind)}
               onEdit={(change) => editItem(project.id, kind, change)}
@@ -301,6 +308,8 @@ interface CardProps {
   canWrite: boolean
   youtube: ReturnType<typeof projectYoutubeChapters>
   saved: string | null
+  /** What was said, for the safety net's notes. */
+  saidLinks: SaidLinks
   said: Said | null
   onWrite: () => void
   onStop: () => void
@@ -311,12 +320,30 @@ interface CardProps {
   onRename: (name: string) => void
 }
 
+/** linksToCheck, remembered for the last texts of each `said` (a card is drawn again on every change of the dialog). */
+const checked = new WeakMap<SaidLinks, Map<string, string[]>>()
+function checksOf(text: string, said: SaidLinks): string[] {
+  let memo = checked.get(said)
+  if (!memo) checked.set(said, (memo = new Map()))
+  let runs = memo.get(text)
+  if (!runs) {
+    runs = linksToCheck(text, said)
+    if (memo.size >= 32) memo.delete(memo.keys().next().value as string)
+    memo.set(text, runs)
+  }
+  return runs
+}
+
+/** The safety net's words for `runs` (linksToCheck), each as written with what is invisible in it shown; '' for none. */
+const checkText = (runs: readonly string[]): string =>
+  runs.length ? `Check ${runs.length === 1 ? 'this link' : 'these links'} before you post: ${runs.map(shownRun).join(', ')}` : ''
+
 /** A card's status line (role status): "Written" is how a screen reader hears the text is ready. */
 const STATUS_TEXT: Record<PackItem['status'], string> = { idle: 'Not written yet', waiting: 'Waiting…', writing: 'Writing…', done: 'Written', error: '' }
 /** "Written" only for new text: a stopped run says so, and a card the user emptied is not written. */
 const statusText = (item: PackItem): string => (item.stopped ? 'Stopped' : item.status === 'done' && !item.text.trim() ? STATUS_TEXT.idle : STATUS_TEXT[item.status])
 
-function Card({ kind, item, stale, canWrite, youtube, saved, said, onWrite, onStop, onEdit, onCopy, onUseForExports, onStopForExports, onRename }: CardProps): JSX.Element {
+function Card({ kind, item, stale, canWrite, youtube, saved, saidLinks: spoken, said, onWrite, onStop, onEdit, onCopy, onUseForExports, onStopForExports, onRename }: CardProps): JSX.Element {
   const label = PUBLISH_LABELS[kind]
   const id = `publish-${kind}`
   const busy = isRunning(item.status)
@@ -332,6 +359,8 @@ function Card({ kind, item, stale, canWrite, youtube, saved, said, onWrite, onSt
   const text = item.text.trim()
   const cleanTitle = kind === 'title' ? plainText(item.text, { max: 150, oneLine: true, keepLinks: true }) : ''
   const isSaved = saved !== null && saved === body
+  // The safety net (§4.8): what is copied, read for anything a site could link that was not said. Never changes the text.
+  const checks = checksOf(isYoutube ? `${copied}\n${tags.join(' ')}` : copied, spoken)
 
   return (
     <section className="publish-card" data-publish-card={kind} data-status={item.status} aria-labelledby={`${id}-title`}>
@@ -357,6 +386,19 @@ function Card({ kind, item, stale, canWrite, youtube, saved, said, onWrite, onSt
         readOnly={busy}
         onChange={(e) => onEdit({ text: e.target.value.slice(0, EDIT_MAX) })}
       />
+      {checks.length > 0 && !busy && (
+        <div className="publish-check" role="note" data-testid="publish-check">
+          <p className="publish-check-title">{checks.length === 1 ? 'Check this link before you post:' : 'Check these links before you post:'}</p>
+          <ul>
+            {checks.map((run) => (
+              <li key={run}>
+                <code>{shownRun(run)}</code>
+              </li>
+            ))}
+          </ul>
+          <p className="publish-check-why">It is not in what was said, the recording's name or its chapters. Nothing was changed: post it only if you know where it goes.</p>
+        </div>
+      )}
       {isYoutube && (
         <div className="publish-youtube">
           <p className="publish-sub">Chapters (from your timeline)</p>

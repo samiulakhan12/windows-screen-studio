@@ -51,6 +51,9 @@ describe('Publish dialog text fields (publish-pack §5.4)', () => {
       expect(contrast(colour(field, 'color'), fill), field).toBeGreaterThanOrEqual(4.5)
       expect(contrast(colour(`${field}::placeholder`, 'color'), fill), `${field}::placeholder`).toBeGreaterThanOrEqual(4.5)
     }
+    // The safety net's note (§4.8): its title, its text and the links in it.
+    const note = colour('.publish-check', 'background')
+    for (const sel of ['.publish-check', '.publish-check-title', '.publish-check code']) expect(contrast(colour(sel, 'color'), note), sel).toBeGreaterThanOrEqual(4.5)
     const fill = colour('.publish-text', 'background')
     for (const status of ['waiting', 'writing']) {
       const sel = `.publish-card[data-status='${status}'] .publish-text`
