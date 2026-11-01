@@ -103,6 +103,15 @@ describe('tidyCaptions (test 41)', () => {
     expect(b.words![4]).toMatchObject({ text: 'Flown', start: 5 + 4 * 0.4 })
   })
 
+  it('the word list leaves words heard right alone', () => {
+    const words = [{ term: 'Flown', heard: ['flow in', 'flowen'] }, { term: 'React', heard: [] }, { term: 'Notion', heard: [] }, { term: 'Slack', heard: [] }, { term: 'Figma', heard: [] }]
+    const said = ['please reach out', 'the data flows', 'it flowed in', 'the flower icon', 'blown away', 'the motion of the black panel', 'a sigma']
+    const p = project(said.map((t, i) => timed(`w${i}`, i * 5, t)))
+    expect(texts(tidyCaptions(p, { ...OFF, words }).project)).toEqual(said)
+    // A heard form is matched as written.
+    expect(texts(tidyCaptions(project([timed('h', 0, 'add a flowen step')]), { ...OFF, words }).project)).toEqual(['add a Flown step'])
+  })
+
   it('records each changed caption once, keeping the first text across runs', () => {
     const p = project([timed('a', 0, 'so i think'), timed('b', 5, 'Fine.')])
     const once = tidyCaptions(p, { ...OFF, caps: true, words: [] }).project

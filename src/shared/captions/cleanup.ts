@@ -195,10 +195,11 @@ function oneOff(a: string, b: string): boolean {
 
 function applyWordList(tokens: Tok[], words: readonly WordListEntry[]): Tok[] {
   if (!words.length) return tokens
-  // Heard forms of several words first ("flow in" → "Flown"), then single words.
-  const forms: { parts: string[]; term: string }[] = []
+  // Heard forms of several words first ("flow in" → "Flown"), then single words. Only a term's own
+  // spelling (`own`) takes a word one letter off; heard forms match exactly, as listed.
+  const forms: { parts: string[]; term: string; own?: true }[] = []
   for (const e of words) {
-    forms.push({ parts: e.term.toLowerCase().split(/\s+/), term: e.term })
+    forms.push({ parts: e.term.toLowerCase().split(/\s+/), term: e.term, own: true })
     for (const h of e.heard) forms.push({ parts: h.toLowerCase().split(/\s+/).filter(Boolean), term: e.term })
   }
   forms.sort((a, b) => b.parts.length - a.parts.length)
@@ -213,7 +214,7 @@ function applyWordList(tokens: Tok[], words: readonly WordListEntry[]): Tok[] {
         const core = coreOf(tokens[i + k].text).toLowerCase()
         // The last part may end in punctuation; inner parts may not.
         if (k < n - 1 && TRAILING.exec(tokens[i + k].text)?.[0]) match = false
-        else if (core !== f.parts[k]) match = n === 1 && f.parts[0].length >= 5 && [...core].length >= 5 && oneOff(core, f.parts[0]) && !isTerm(core, words)
+        else if (core !== f.parts[k]) match = n === 1 && !!f.own && closeMisspelling(core, f.parts[0]) && !isTerm(core, words)
       }
       if (!match || !joinable(tokens, i, i + n - 1)) continue
       const first = tokens[i].text
@@ -227,6 +228,15 @@ function applyWordList(tokens: Tok[], words: readonly WordListEntry[]): Tok[] {
     i++
   }
   return out
+}
+/**
+ * A word of 5 letters or more one letter off a term, with the term's first and last letters: "qbexl"
+ * is Qbexel, but words heard right stay ("reach" is not React, "flows" not Flown, "black" not Slack).
+ */
+function closeMisspelling(core: string, term: string): boolean {
+  const a = [...core]
+  const b = [...term]
+  return b.length >= 5 && a.length >= 5 && a[0] === b[0] && a[a.length - 1] === b[b.length - 1] && oneOff(core, term)
 }
 /** A word that is itself one of the terms (never "corrected" into another term). */
 const isTerm = (core: string, words: readonly WordListEntry[]): boolean => words.some((e) => e.term.toLowerCase() === core)
