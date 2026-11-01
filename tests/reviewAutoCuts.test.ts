@@ -443,6 +443,39 @@ describe('intact, change gone, live', () => {
     expect(out.autoCuts).toBeUndefined()
   })
 
+  it('a thousand speed-ups from a project file, each holding 64 small pieces at every speed, over a video all at 8x, settle at once', () => {
+    // Hand-written 2x, 4x and 8x records over [0,20], each with 64 short pieces at 1x, 2x and 4x
+    // spread at random; the video plays at 8x. Every 2x and 4x goes when the clips change; taking
+    // each back from every record left, piece by piece, took over a second.
+    let x = 12345
+    const rnd = (): number => {
+      x ^= x << 13
+      x ^= x >>> 17
+      x ^= x << 5
+      return ((x >>> 0) % 1000000) / 1000000
+    }
+    const list = readAutoCuts(
+      Array.from({ length: MAX_AUTO_CUTS }, (_, k) =>
+        cut({
+          id: `r${k}`,
+          action: ([2, 4, 8] as const)[k % 3],
+          start: 0,
+          end: 20,
+          was: Array.from({ length: MAX_WAS_PIECES }, (_, j) => {
+            const a = rnd() * 19.99
+            return { start: a, end: a + 0.002 + rnd() * 0.3, speed: [1, 2, 4][j % 3] }
+          })
+        })
+      ),
+      20
+    )!
+    const p = project([clip(0, 20, 8)], { autoCuts: list })
+    const t = performance.now()
+    const out = settleAutoCuts({ ...p, clips: [clip(0, 20, 8, 'other')] }, p)
+    expect(performance.now() - t).toBeLessThan(500)
+    expect(out.autoCuts?.every((c) => c.action === 8)).toBe(true)
+  })
+
   it('withAutoCuts leaves no key for an empty list', () => {
     const p = { ...project(), autoCuts: [cut()] }
     expect('autoCuts' in withAutoCuts(p, [])).toBe(false)
