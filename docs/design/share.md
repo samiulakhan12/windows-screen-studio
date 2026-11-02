@@ -109,7 +109,9 @@ can be turned off there ("Use" switch), and the export chip's tooltip shows the 
   The final name is then **claimed atomically**: a hard link to the free name fails with `EEXIST` if a
   file appeared meanwhile (another share, the cloud app syncing one down), and the next name is
   tried; where the link fails any other way (FAT and exFAT, where Windows reports `EISDIR`; some
-  network shares and virtual drives, `UNKNOWN`) the name is checked and the file renamed. Cancel or failure deletes the partial file; one the cloud app holds open is retried at
+  network shares and virtual drives, `UNKNOWN`) the name is checked and the file renamed, tried
+  again up to 4 times (150 ms × n, the name checked before each try) while an antivirus scan or the
+  cloud app holds the fresh file (`EBUSY`, `EPERM`, `EACCES`), as the export's own rename is. Cancel or failure deletes the partial file; one the cloud app holds open is retried at
   quit, and partial files over an hour old are removed by the next copy into that folder.
 * Before copying: free space at the target (`fs.statfs`) must be ≥ size + **64 MB**, else
   "There is not enough space on the drive of OneDrive (needs 1.2 GB)."

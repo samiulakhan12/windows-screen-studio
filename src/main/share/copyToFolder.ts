@@ -74,7 +74,7 @@ async function sweepStale(dir: string, now: number): Promise<void> {
  * (FAT and exFAT drives, some network shares and virtual drives) the name is checked and the file
  * renamed. Real failures (no access, a full drive) come out of the rename.
  */
-export async function claimName(temp: string, dir: string, name: string, exists: (file: string) => boolean = existsSync): Promise<string> {
+export async function claimName(temp: string, dir: string, name: string, exists: (file: string) => boolean = existsSync, backoffMs = 150): Promise<string> {
   for (let i = 0; i < 50; i++) {
     const dest = freeBatchPath(dir, name, exists)
     try {
@@ -82,14 +82,32 @@ export async function claimName(temp: string, dir: string, name: string, exists:
     } catch (e) {
       // A drive without links answers in many ways on Windows (EISDIR on FAT and exFAT, UNKNOWN, EPERM…).
       if ((e as NodeJS.ErrnoException).code === 'EEXIST') continue
-      if (exists(dest)) continue
-      await fs.rename(temp, dest)
-      return dest
+      if (await renameIfFree(temp, dest, exists, backoffMs)) return dest
+      continue
     }
     await removeWithRetries(temp)
     return dest
   }
   throw new Error('No free file name was found.')
+}
+
+/**
+ * Renames `temp` to `dest` unless a file is there (false then). Tried again for a moment while an
+ * antivirus scan, the indexer or the cloud app holds the fresh file, as the export's own rename is;
+ * the name is checked before each try, since a rename on Windows replaces a file.
+ */
+async function renameIfFree(temp: string, dest: string, exists: (file: string) => boolean, backoffMs: number): Promise<boolean> {
+  for (let attempt = 0; ; attempt++) {
+    if (exists(dest)) return false
+    try {
+      await fs.rename(temp, dest)
+      return true
+    } catch (e) {
+      const code = (e as NodeJS.ErrnoException).code
+      if (attempt >= 4 || (code !== 'EBUSY' && code !== 'EPERM' && code !== 'EACCES')) throw e
+      await new Promise((r) => setTimeout(r, backoffMs * (attempt + 1)))
+    }
+  }
 }
 
 /** Partial files being written now: deleted at once when the app quits, so a cloud app never keeps one. */

@@ -232,4 +232,41 @@ describe('claiming the name', () => {
       rmSync(dir, { recursive: true, force: true })
     }
   })
+
+  it('tries the rename again while a scanner holds the fresh file, and never replaces one that appears meanwhile', async () => {
+    const dir = mkdtempSync(path.join(os.tmpdir(), 'ssw-shareheld-'))
+    const link = vi.spyOn(fsp, 'link').mockRejectedValue(Object.assign(new Error('EISDIR: link'), { code: 'EISDIR' }))
+    const realRename = fsp.rename.bind(fsp)
+    const rename = vi.spyOn(fsp, 'rename')
+    try {
+      const video = path.join(dir, 'Demo.mp4')
+      writeFileSync(video, 'video')
+      const root = path.join(dir, 'USB')
+      mkdirSync(root)
+      // Held once: the copy still lands.
+      rename.mockRejectedValueOnce(Object.assign(new Error('EBUSY: rename'), { code: 'EBUSY' }))
+      const done = await copyIntoFolder(video, root, 'USB', { signal: signal(), freeBytes: plenty })
+      expect(done.dest).toBe(path.join(root, 'Flown', 'Demo.mp4'))
+      expect(readFileSync(done.dest, 'utf8')).toBe('video')
+      expect(readdirSync(path.join(root, 'Flown'))).toEqual(['Demo.mp4'])
+
+      // A file that appears while waiting keeps its name; the copy takes the next one.
+      rename.mockReset()
+      rename.mockImplementationOnce(async (_from, to) => {
+        writeFileSync(String(to), 'theirs')
+        throw Object.assign(new Error('EBUSY: rename'), { code: 'EBUSY' })
+      })
+      rename.mockImplementation(realRename)
+      const { claimName, partialName } = await import('../src/main/share/copyToFolder')
+      const temp = partialName(path.join(dir, 'Clip.mp4'))
+      writeFileSync(temp, 'new')
+      expect(await claimName(temp, dir, 'Clip.mp4', existsSync, 1)).toBe(path.join(dir, 'Clip (2).mp4'))
+      expect(readFileSync(path.join(dir, 'Clip.mp4'), 'utf8')).toBe('theirs')
+      expect(readFileSync(path.join(dir, 'Clip (2).mp4'), 'utf8')).toBe('new')
+    } finally {
+      rename.mockRestore()
+      link.mockRestore()
+      rmSync(dir, { recursive: true, force: true })
+    }
+  })
 })
