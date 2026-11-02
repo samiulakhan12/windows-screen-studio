@@ -64,7 +64,7 @@ Read from each project's `project.json` (`src/shared/types.ts`), never from medi
 | Kind (`SearchKind`) | From | Time | Weight |
 | --- | --- | --- | --- |
 | `name` | `Project.name` | none | 3 |
-| `file` | `Project.source.fileName` (imported videos, read through `importedSource`) | none | 2 |
+| `file` | `Project.source.fileName` without its extension (imported videos, read through `importedSource`) | none | 2 |
 | `chapter` | `Project.chapters[].title` | `t` | 2.5 |
 | `title` | `Project.titles[]`: `title` and `subtitle` | `start`–`end` | 2.5 |
 | `text` | `Project.annotations[].text` (text on screen) | `start`–`end` | 1.5 |
@@ -181,7 +181,7 @@ is), at most once every 3 seconds while changes come in, and once when the app q
 
 ```json
 {
-  "version": 2,
+  "version": 3,
   "projects": {
     "rec-20261030-101500": {
       "stamp": "1730283300123.4:48211",
@@ -200,7 +200,8 @@ is), at most once every 3 seconds while changes come in, and once when the app q
   holds and makes a change in tokenising (§2.3) need no rebuild.
 - A unit is `[kind, start, end, text]`, plus its time in the edited video when that differs from
   `start` (§2.2; here the first 2:00 are trimmed).
-- `version` is `SEARCH_INDEX_VERSION` (2; version 1 had no edited-video times). A missing file,
+- `version` is `SEARCH_INDEX_VERSION` (3; version 1 had no edited-video times, version 2 kept the
+  imported file's extension). A missing file,
   unreadable JSON, a different version, or an entry that does not validate (wrong types, a unit
   kind not known) means that entry, or the whole file, is built again from the projects. Bump the version whenever **what is extracted**
   (§2.2) changes.
@@ -432,6 +433,9 @@ No new dependency: `Intl.Segmenter` is in Electron's ICU, and the rest is small 
 - A first Thai, Lao, Khmer, Myanmar or kana letter matched by prefix in every caption and note, so
   the first key typed listed nearly every recording in that language. Only a Han character is a word
   on its own; any other one letter matches by prefix only in names, titles and chapters (§2.5).
+- An imported file name was indexed with its extension, so the first key typed (`m`, or `mp4`, `mov`)
+  listed every imported video as "Found in the name" with nothing marked. The extension is left out
+  now (§2.2); the index file went to version 3 and is built again.
 - The live region stays quiet while the index is built; Ctrl+F does nothing on an empty library.
 - Writing the file is synchronous, like every state file (37–55 ms for 500 recordings, at most every
   3 s and only after a change); an asynchronous write is left for later.

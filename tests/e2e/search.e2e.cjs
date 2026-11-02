@@ -208,7 +208,7 @@ async function backToHome(win) {
     const file = indexFileOf(home)
     h.assert(file, 'the index file is in userData/search')
     const stored = JSON.parse(fs.readFileSync(file, 'utf8'))
-    h.assert(stored.version === 2 && stored.projects['rec-search-bangla'], 'it holds the recordings')
+    h.assert(stored.version === 3 && stored.projects['rec-search-bangla'], 'it holds the recordings')
     h.assert(!fs.readdirSync(path.join(root, ids.bangla)).some((n) => /search|index/i.test(n)), 'nothing is written into project folders')
     fs.writeFileSync(file, '{ damaged')
 
@@ -221,7 +221,7 @@ async function backToHome(win) {
     await f.waitFor(
       () => {
         try {
-          return JSON.parse(fs.readFileSync(file, 'utf8')).version === 2
+          return JSON.parse(fs.readFileSync(file, 'utf8')).version === 3
         } catch {
           return false
         }

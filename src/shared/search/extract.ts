@@ -48,7 +48,8 @@ export function projectUnits(raw: unknown): SearchUnit[] {
 
   add('name', textOf(p.name))
   const source = importedSource(raw as Pick<Project, 'source'>)
-  if (source) add('file', textOf(source.fileName))
+  // Without its extension (as the project was first named): "m" or "mp4" is no word of the file's.
+  if (source) add('file', textOf(source.fileName.replace(/\.[^./\\]+$/, '')))
   for (const c of listOf(p.chapters)) {
     const t = time(c.t)
     if (t !== null) add('chapter', textOf(c.title), t, t)

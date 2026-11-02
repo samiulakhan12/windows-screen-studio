@@ -8,7 +8,7 @@
  * of another version is built again. A change in how text is split into terms needs no bump,
  * since terms are made again whenever the file is loaded.
  */
-export const SEARCH_INDEX_VERSION = 2
+export const SEARCH_INDEX_VERSION = 3
 
 /** Where in a recording words were found. */
 export type SearchKind = 'name' | 'file' | 'chapter' | 'title' | 'text' | 'said' | 'notes'

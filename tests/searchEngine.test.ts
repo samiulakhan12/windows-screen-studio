@@ -42,7 +42,7 @@ describe('projectUnits', () => {
   it('reads every kind with its time, in a stable order', () => {
     expect(projectUnits(project)).toEqual([
       { kind: 'name', start: null, end: null, text: 'Product demo' },
-      { kind: 'file', start: null, end: null, text: 'Zoom call.mp4' },
+      { kind: 'file', start: null, end: null, text: 'Zoom call' },
       { kind: 'chapter', start: 12, end: 12, text: 'Settings' },
       { kind: 'title', start: 0, end: 4, text: 'Welcome · to Flown' },
       { kind: 'text', start: 5, end: 9, text: 'Click here' },
@@ -75,6 +75,14 @@ describe('projectUnits', () => {
     expect(e).toMatchObject({ stamp: '5:6', name: '  Product demo ', duration: 0, hasTranscript: true, kept: [[0, 50]] })
     expect(indexedProject({ name: 'n', clips: [{ start: 3, end: 1 }, { start: 'a' }] }, 's')).toMatchObject({ hasTranscript: false, kept: [] })
     expect(indexedProject('nope', 's')).toBeNull()
+  })
+
+  it('finds an imported video by its file name, not by its extension', () => {
+    const imported = indexedProject({ name: 'Budget', source: { kind: 'import', fileName: 'Quarterly review.mp4' } }, 's') as IndexedProject
+    const r = index({ imp: imported, rec: entry('Marketing sync', []) })
+    expect(r.search('quarterly').map((h) => h.id)).toEqual(['imp'])
+    expect(r.search('m').map((h) => h.id)).toEqual(['rec'])
+    expect(r.search('mp4')).toEqual([])
   })
 })
 
