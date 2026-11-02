@@ -11,7 +11,7 @@ import { clockTime, KIND_LABEL, resultsSummary } from '../../../shared/search/mo
 import { SEARCH_LIMITS } from '../../../shared/search/types'
 import type { ProjectSummary } from '../../../shared/types'
 import { clearPendingMoment, setPendingMoment } from './openAt'
-import { dateOf, resultRows, rowLabel, type Row } from './rows'
+import { answeredQuery, dateOf, enterTarget, resultRows, rowLabel, type Row } from './rows'
 import './search.css'
 
 /** Typing pause before a query is sent (§4). */
@@ -36,6 +36,8 @@ export function LibrarySearch({ projects, onOpen }: { projects: ProjectSummary[]
   const input = useRef<HTMLInputElement>(null)
   const listId = useId()
   const seq = useRef(0)
+  /** Enter pressed before the results of the text in the box came: the query whose first row then opens. */
+  const openFirst = useRef<string | null>(null)
   const searching = query.trim().length > 0
 
   // A moment picked before, never taken (its editor failed to open): it must not apply later.
@@ -51,7 +53,10 @@ export function LibrarySearch({ projects, onOpen }: { projects: ProjectSummary[]
       (r) => {
         if (n === seq.current) setResponse(r)
       },
-      () => console.warn('Search failed')
+      () => {
+        if (n === seq.current) openFirst.current = null
+        console.warn('Search failed')
+      }
     )
   }, [])
 
@@ -65,6 +70,7 @@ export function LibrarySearch({ projects, onOpen }: { projects: ProjectSummary[]
   useEffect(() => {
     setActiveKey(null)
     setExpanded(new Set())
+    openFirst.current = null
   }, [query])
 
   // While the index is built, results fill in as it goes.
@@ -140,10 +146,19 @@ export function LibrarySearch({ projects, onOpen }: { projects: ProjectSummary[]
     onOpen(row.hit.id)
   }
 
+  // The answer Enter waited for: its first row opens (nothing when it found nothing).
+  useEffect(() => {
+    if (openFirst.current === null || response?.query !== openFirst.current) return
+    openFirst.current = null
+    if (rows[0]) activate(rows[0])
+    // When an answer comes (`activate` is new on every render).
+  }, [response, rows])
+
   const onKeyDown = (e: React.KeyboardEvent<HTMLInputElement>): void => {
     if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
       if (!rows.length) return
       e.preventDefault()
+      openFirst.current = null
       const step = e.key === 'ArrowDown' ? 1 : -1
       const i = active < 0 ? (step > 0 ? 0 : rows.length - 1) : Math.min(rows.length - 1, Math.max(0, active + step))
       setActiveKey(rows[i].key)
@@ -151,10 +166,12 @@ export function LibrarySearch({ projects, onOpen }: { projects: ProjectSummary[]
       // Still composing (an input method, as many Bangla keyboards use): the Enter is the IME's.
       if (e.nativeEvent.isComposing) return
       // A row picked that the latest results no longer hold: nothing opens (never another recording).
-      const row = activeKey === null ? rows[0] : activeRow
-      if (!row) return
+      // Results of what was typed before (the query is sent 150 ms after the last key): wait for the answer.
+      const target = enterTarget(rows, activeKey, response?.query ?? null, query)
+      if (!target) return
       e.preventDefault()
-      activate(row)
+      if (target === 'wait') openFirst.current = answeredQuery(query)
+      else activate(target)
     } else if (e.key === 'Escape') {
       e.preventDefault()
       if (query) setQuery('')

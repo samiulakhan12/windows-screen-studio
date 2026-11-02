@@ -22,8 +22,9 @@ with a small local model.
   `File`) and a one-line snippet with the matched words in bold. `3 more moments` is a button that
   shows the rest (up to 50).
 - `↓`/`↑` move through the rows (each recording's heading, its moments, its "more" row), `Enter`
-  opens the recording at the moment (the first row when none is active; never while an input method
-  is composing), `Escape` clears the box (a second Escape leaves it). `Home`/`End` stay with the
+  opens the recording at the moment (the first row when none is active, of the results of what is in
+  the box: pressed before they came, it opens their first row when they come; never while an input
+  method is composing), `Escape` clears the box (a second Escape leaves it). `Home`/`End` stay with the
   text, as in any text box.
   The list is an ARIA `listbox` driven from the input (`aria-activedescendant`), the pattern of a
   combobox: focus stays in the box, a screen reader reads each moment as one sentence ("Said at
@@ -441,6 +442,10 @@ No new dependency: `Intl.Segmenter` is in Electron's ICU, and the rest is small 
 - A caption whose first words were cut showed no `Cut` tag but opened with "That moment was cut from
   the video": the tag looked at the whole moment, the editor at its start only. The pending moment
   now carries its end, and the notice uses the tag's test (§2.10).
+- Enter right after typing opened the first result of what was in the box before (the query is sent
+  150 ms after the last key, so the old results were still shown): `demo`, then Ctrl+F, `budget` and
+  Enter opened Product demo. With no row active, Enter now opens only results of the text in the box,
+  and pressed before they come it opens their first row when they do.
 - The live region stays quiet while the index is built; Ctrl+F does nothing on an empty library.
 - Writing the file is synchronous, like every state file (37–55 ms for 500 recordings, at most every
   3 s and only after a change); an asynchronous write is left for later.

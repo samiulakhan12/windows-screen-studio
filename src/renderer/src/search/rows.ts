@@ -4,6 +4,7 @@
  */
 import type { SearchHit, SearchMoment, SnippetPart } from '../../../shared/api/search'
 import { KIND_LABEL, spokenTime } from '../../../shared/search/moment'
+import { SEARCH_LIMITS } from '../../../shared/search/types'
 
 /** Moments shown per recording until "more" is pressed (§4). */
 export const MOMENTS_SHOWN = 4
@@ -39,6 +40,22 @@ export function resultRows(hits: readonly SearchHit[], expanded: ReadonlySet<str
     if (hidden > 0) rows.push({ kind: 'more', key: `${hit.id}:more`, hit, count: hidden })
   }
   return rows
+}
+
+/** The text of the box as the main process answers it (a response's `query`). */
+export const answeredQuery = (text: string): string => text.slice(0, SEARCH_LIMITS.queryChars).trim()
+
+/**
+ * What Enter in the box opens: the active row (null when the results no longer hold it), else the
+ * first row of results that answer the text in the box. `wait` while the results shown are still
+ * those of what was typed before (`answered`: the query they answer, null for none yet): the first
+ * row of the answer opens when it comes, never one of the old results.
+ */
+export function enterTarget(rows: readonly Row[], activeKey: string | null, answered: string | null, text: string): Row | 'wait' | null {
+  if (activeKey !== null) return rows.find((r) => r.key === activeKey) ?? null
+  const q = answeredQuery(text)
+  if (!q) return null
+  return answered === q ? (rows[0] ?? null) : 'wait'
 }
 
 /** What a screen reader says for a row. */

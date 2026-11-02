@@ -17,7 +17,8 @@ const { clearPendingMoment, PENDING_MS, setPendingMoment, takePendingMoment } = 
   setPendingMoment: (projectId: string, t: number, end?: number, now?: number) => void
   takePendingMoment: (projectId: string, now?: number) => { t: number; end: number } | null
 }
-const { MOMENTS_SHOWN, resultRows, rowLabel } = (await import(/* @vite-ignore */ ROWS)) as {
+const { enterTarget, MOMENTS_SHOWN, resultRows, rowLabel } = (await import(/* @vite-ignore */ ROWS)) as {
+  enterTarget: (rows: readonly Row[], activeKey: string | null, answered: string | null, text: string) => Row | 'wait' | null
   MOMENTS_SHOWN: number
   resultRows: (hits: readonly SearchHit[], expanded: ReadonlySet<string>) => Row[]
   rowLabel: (row: Row) => string
@@ -85,6 +86,35 @@ describe('rowLabel', () => {
     expect(rowLabel(rows[0])).toMatch(/^Open Name a\. .*, 5 minutes 12 seconds long\.$/)
     expect(rowLabel(rows[rows.length - 1])).toMatch(/^Show 1 more moment\. In Name a/)
     expect(rowLabel(resultRows([hit('b', [])], new Set())[0])).toMatch(/^Open Name b, found in the name\./)
+  })
+})
+
+describe('enterTarget', () => {
+  const rows = resultRows([hit('demo', [moment(3, 'demo')]), hit('other', [])], new Set())
+
+  it('opens the first row of results that answer the text in the box', () => {
+    expect(enterTarget(rows, null, 'demo', 'demo')).toBe(rows[0])
+    // The box as main reads it: spaces around, and at most 200 characters.
+    expect(enterTarget(rows, null, 'demo', '  demo ')).toBe(rows[0])
+    const long = 'x'.repeat(200)
+    expect(enterTarget(rows, null, long, `${long}yz`)).toBe(rows[0])
+  })
+
+  it('waits while the results are those of what was typed before (or none came yet)', () => {
+    // "demo" was answered; "budget" was typed over it and its query is not sent yet.
+    expect(enterTarget(rows, null, 'demo', 'budget')).toBe('wait')
+    expect(enterTarget(rows, null, 'demo', 'demo budget')).toBe('wait')
+    expect(enterTarget([], null, null, 'budget')).toBe('wait')
+  })
+
+  it('opens the row picked, or nothing when the results no longer hold it', () => {
+    expect(enterTarget(rows, rows[1].key, 'demo', 'demo')).toBe(rows[1])
+    expect(enterTarget(rows, 'gone:open', 'demo', 'demo')).toBeNull()
+  })
+
+  it('opens nothing for an empty box, or an answer with no rows', () => {
+    expect(enterTarget([], null, 'demo', '   ')).toBeNull()
+    expect(enterTarget([], null, 'budget', 'budget')).toBeNull()
   })
 })
 

@@ -1,6 +1,7 @@
 // Search every recording (F-18; docs/design/search.md) in the real built app, with seeded projects
 // (no network): the box under Recent recordings and Ctrl+F; a typo finds the moment a word was said,
 // with the word marked and the count read out; arrow keys and Enter open the editor at the moment;
+// Enter right after typing opens what was typed, not the results still shown of what was there;
 // a moment that was cut opens at the next kept part with a notice; Bangla is found by a prefix of an
 // inflected word; a rename saved in the editor is found; a deleted recording's results go and leave
 // the index file; the index file sits in userData and a damaged one is rebuilt; projects the index
@@ -169,6 +170,15 @@ async function backToHome(win) {
     await win.keyboard.press('Escape')
     h.assert((await win.inputValue('[data-testid="library-search"]')) === '', 'Escape clears the box')
     await win.waitForSelector('.project-grid', { state: 'visible' })
+
+    // Enter right after typing (before its query is sent) opens the first result of what was typed.
+    await search(win, 'setings', 'settings')
+    await win.keyboard.press('Control+f')
+    await win.keyboard.type('budget')
+    await win.keyboard.press('Enter')
+    await win.waitForSelector('.editor .preview-canvas', { timeout: 30000 })
+    const opened = await win.inputValue('input[aria-label="Recording name"]')
+    h.assert(opened === 'Quarterly numbers', `Enter opens the recording with the word typed (${opened})`)
   })
 
   await test('Bangla by a prefix, notes, no match, and a deleted recording goes', async (ctx) => {
