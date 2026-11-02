@@ -81,15 +81,19 @@ STEM_NOUNS.push('বালপাকনা', 'বালপাকা', 'বাল�
 /**
  * Compounds written as one word, also after another word written together with them: চোদ, চুদ,
  * চোত and চোৎ after each first part (বানচোদ, বাইনচোদ, বাইঞ্চোদ and বেঞ্চোদ in Bangladesh, বানচোত and
- * বাঞ্চোৎ in West Bengal, মাদারচোদ), ৎ written as ত্ and a joiner too (বাঞ্চোত্‍), চোদ after any
- * other first part (আবালচোদা, বোকাচ্চোদা, বেইনচোদ, বইনচোদ and বোনচোদ in Dhaka, মাচোদা), চুদমারানি
+ * বাঞ্চোৎ in West Bengal, মাদারচোদ; আবাল, বোকাচ্চোদা's doubled চ, and বেইন, বইন, বোন, বেহেন and বাপ in
+ * Dhaka; the first parts written with a hasanta, বান্চোত, a ZWNJ after it or not), ৎ written as ত্
+ * and a joiner too (বাঞ্চোত্‍), চোদ after any other first part (মাচোদা, খানকিচোদা), চুদমারানি
  * written with দ, ত, ৎ or ত্, খানকিরপোলা as খানকি is written.
  */
 const CHOD = ['চোদ', 'চুদ', 'চোত', 'চোৎ']
 const FIRST_PARTS = ['বোকা', 'বান', 'বাইন', 'বাইঞ্', 'বাঞ্', 'বেঞ্', 'বেন', 'মাদার']
+FIRST_PARTS.push('আবাল', 'বোকাচ্', 'বেইন', 'বইন', 'বোন', 'বেহেন', 'বাপ')
+FIRST_PARTS.push('বান্', 'বাইন্', 'বেন্', 'মাদার্')
 const COMPOUNDS = [
   ...FIRST_PARTS.flatMap((w) => CHOD.map((c) => w + c)),
   ...FIRST_PARTS.map((w) => w + 'চোত্\u200D'),
+  ...['বান্', 'বাইন্', 'বেন্', 'মাদার্'].flatMap((w) => CHOD.map((c) => w + '\u200C' + c)),
   ...['বোকাচোদা', 'বোকাচুদা'],
   ...['আবালচোদা', 'বোকাচ্চোদা', 'বেইনচোদ', 'বইনচোদ', 'বোনচোদ', 'বেহেনচোদ', 'মাচোদা', 'বাপচোদা', 'খানকিচোদা'],
   ...['চুদ', 'চুত', 'চুৎ', 'চুত্'].map((c) => c + 'মারানি'),
@@ -167,6 +171,8 @@ const DITHER = [...new Set(['চুদুরবুদুর', 'চুদুর�
 
 /** Everyday words that share letters with a rude word, each never bleeped. */
 const LOOK_ALIKES = [
+  // Nicknames with দা, "elder brother", after them (বাচ্চু, পাঁচু).
+  ...['বাচ্চুদা', 'বাচ্চুদার', 'বাচ্চুদাকে', 'পাঁচুদা', 'পাঁচুদার', 'বাচ্চু'],
   // চোদ্দ and চৌদ্দ, "fourteen" (the stem's দ takes a virama), also after another number, and other words starting চো, চু.
   ...['চোদ্দ', 'চোদ্দো', 'চোদ্দটা', 'চোদ্দটি', 'চোদ্দই', 'চোদ্দতম', 'চোদ্দশো', 'চোদ্দবার', 'চোদ্দপুরুষ', 'চোদ্দগুষ্টি', 'চোদ্\u200Cদ', 'তেরোচোদ্দ'],
   // প্রচোদ, "to inspire" (Sanskrit): প্রচোদয়াৎ in the Gayatri mantra (ধিয়ো যো নঃ প্রচোদয়াৎ), প্রচোদিত "inspired".
@@ -462,6 +468,14 @@ describe('Bangla bleeping: stems, compounds and every generated form', () => {
       ['শালা বেঞ্চোদ একটা', 'বেঞ্চোদ'],
       ['তুই একটা আবালচোদা', 'আবালচোদা'],
       ['কি বোকাচ্চোদা রে তুই', 'বোকাচ্চোদা'],
+      ['তুই একটা আবালচুদা', 'আবালচুদা'],
+      ['কি বোকাচ্চুদা রে তুই', 'বোকাচ্চুদা'],
+      ['ওই বইনচুদ চুপ কর', 'বইনচুদ'],
+      ['বোনচুদ কোথাকার', 'বোনচুদ'],
+      ['ওই বান্চোত কোথায় গেলি', 'বান্চোত'],
+      ['ওই বান্\u200Cচুদ কোথায় গেলি', 'বান্\u200Cচুদ'],
+      ['ওই বাচ্চুদা কেমন আছেন', ''],
+      ['পাঁচুদা কাল আসবেন', ''],
       ['ওই বইনচোদ চুপ কর', 'বইনচোদ'],
       ['এইসব বালসাল কথা বাদ দে', 'বালসাল'],
       ['শুকরের বাচ্চা কোথাকার', 'শুকরের'],

@@ -462,11 +462,17 @@ const TEAM_LISTS: Readonly<Record<string, TeamList>> = {
     // চোদ after any first part (বোকাচোদা, বোকাচ্চোদা, আবালচোদা; বানচোদ, বাইনচোদ, বেঞ্চোদ, and
     // বেইনচোদ, বইনচোদ or বোনচোদ in Dhaka; মাদারচোদ, মাচোদা); চুদ, চোত and চোৎ (ৎ also written ত্
     // and a joiner, বাঞ্চোত্‍) after the first parts that take them (বানচোত and বাঞ্চোৎ in West
-    // Bengal), not anywhere: বাচ্চুদা and পাঁচুদা are nicknames; চুদমারানি with দ, ত, ৎ or ত্,
+    // Bengal; আবাল, বোকাচ্চ's doubled চ, and the Dhaka বইন, বেইন, বোন, বেহেন and বাপ; বান্, বাইন্,
+    // বেন্ and মাদার্ written with a hasanta, as বান্চোত), not anywhere: বাচ্চুদা and পাঁচুদা are
+    // nicknames; চুদমারানি with দ, ত, ৎ or ত্,
     // খানকিরপোলা as খানকি is written, and শুয়োরেরবাচ্চা and কুত্তারবাচ্চা written as one word.
     compounds: [
       'চোদ',
-      ...['বোকা', 'বান', 'বাইন', 'বাইঞ্', 'বাঞ্', 'বেঞ্', 'বেন', 'মাদার'].flatMap((w) => ['চুদ', 'চোত', 'চোৎ', 'চোত্'].map((c) => w + c)),
+      ...[
+        ...['বোকা', 'বান', 'বাইন', 'বাইঞ্', 'বাঞ্', 'বেঞ্', 'বেন', 'মাদার'],
+        ...['আবাল', 'বোকাচ্', 'বইন', 'বেইন', 'বোন', 'বেহেন', 'বাপ'],
+        ...['বান্', 'বাইন্', 'বেন্', 'মাদার্']
+      ].flatMap((w) => ['চুদ', 'চোত', 'চোৎ', 'চোত্'].map((c) => w + c)),
       ...['চুদ', 'চুত', 'চুৎ', 'চুত্'].map((c) => c + 'মারানি'),
       ...BN_KHANKI.map((k) => k + 'রপোলা'),
       ...BN_ANIMALS.flatMap((w) => BN_KID.map((k) => w + k))
