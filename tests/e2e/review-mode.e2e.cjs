@@ -205,14 +205,17 @@ const focusOn = (win) =>
     if (row && a.classList.contains('review-item')) return row.dataset.key
     return a?.dataset?.testid ?? a?.getAttribute?.('aria-label') ?? a?.tagName ?? ''
   })
-/** Records, on every key press, whether Keep all or Remove all was working then (window.__busyAt). */
+/** Records, on every key press and click, whether Keep all or Remove all was working then (window.__busyAt). */
 async function watchBusy(win) {
   await win.evaluate(() => {
     window.__busyAt = []
     window.__said = []
     if (window.__watching) return
     window.__watching = true
-    window.addEventListener('keydown', (e) => window.__busyAt.push(`${e.key}:${!!document.querySelector('[data-testid="review-panel"] [aria-busy="true"]')}`), true)
+    const busy = () => !!document.querySelector('[data-testid="review-panel"] [aria-busy="true"]')
+    window.addEventListener('keydown', (e) => window.__busyAt.push(`${e.key}:${busy()}`), true)
+    // Pointer clicks only (Enter on a button clicks it too, with no detail).
+    window.addEventListener('click', (e) => e.detail > 0 && window.__busyAt.push(`click:${busy()}`), true)
     const said = document.querySelector('[data-testid="review-said"]')
     new MutationObserver(() => window.__said.push(said.textContent)).observe(said, { childList: true, subtree: true, characterData: true })
   })
@@ -751,6 +754,23 @@ async function main() {
         // Reopened, the rows reviewed before are no longer listed: the first zoom only (kept).
         h.assert((await progressOf(win)) === `0 of ${total - 1} reviewed`, `reopened: all but the kept first zoom to review: ${await progressOf(win)}`)
         h.assert(!(await win.$('[data-key="zoom:z0"]')) && (await focusOn(win)) === 'zoom:z1', `z0 kept, not listed; the focus on z1: ${await focusOn(win)}`)
+
+        // Leaving the editor while Remove all works, with a Keep waiting: Back waits for both and saves them.
+        await win.keyboard.press('End')
+        await settled(win)
+        await watchBusy(win)
+        await win.focus('[data-testid="review-remove-kind"]')
+        await win.keyboard.press('Enter')
+        await win.focus('[data-testid="review-row"] .review-item[tabindex="0"]')
+        await win.keyboard.press('Home')
+        await win.keyboard.press('k')
+        await win.click('button[aria-label="Back to recordings"]')
+        const backAt = await pressedAfter(win)
+        h.assert(same(backAt, ['Home:true', 'k:true', 'click:true']), `pressed while it worked: ${JSON.stringify(backAt)}`)
+        await win.waitForSelector(`.project-open:has-text("${name}")`, { timeout: 60000 })
+        const left = h.readProject(home, id)
+        h.assert(left.autoCuts.length === MIXED_SILENCES, `the Remove all saved on leaving: ${left.autoCuts.length} records`)
+        h.assert(left.zooms.find((z) => z.id === 'z1')?.auto === false && left.zooms.find((z) => z.id === 'z0')?.auto === false, 'the waiting Keep saved, and the one before')
       } else {
         await win.keyboard.press('Escape')
         await f.waitFor(async () => !(await win.$('[data-testid="review-panel"]')), 'the panel closed')
@@ -758,6 +778,58 @@ async function main() {
       h.assert(!logs.some((l) => l.includes('[pageerror]')), `no page errors: ${logs.filter((l) => l.includes('pageerror'))}`)
     })
   }
+
+  await test('review mode: 6000 rows: Duplicate, and closing the window, while Remove all works keep it and the Keep that waits for it', async (ctx) => {
+    const home = h.tempHome('review-copy-close')
+    const copied = seedMixed(home, 'Copied while busy', 5997)
+    const closed = seedMixed(home, 'Closed while busy', 5996)
+    const { app, win, logs } = await h.launch({ home })
+    ctx.app = app
+    ctx.logs = logs
+    /** Opens `name`'s panel, Remove all from the last row (word cuts), then Home and K: each pressed while it works. */
+    const removeAllThenKeep = async (name) => {
+      await f.openProject(win, name)
+      await win.evaluate(() => (document.activeElement instanceof HTMLElement ? document.activeElement.blur() : undefined))
+      await win.keyboard.press('Shift+R')
+      await win.waitForSelector('[data-testid="review-panel"] [data-testid="review-row"]', { timeout: 20000 })
+      await win.keyboard.press('End')
+      await settled(win)
+      await watchBusy(win)
+      await win.focus('[data-testid="review-remove-kind"]')
+      await win.keyboard.press('Enter')
+      await win.focus('[data-testid="review-row"] .review-item[tabindex="0"]')
+      await win.keyboard.press('Home')
+      await win.keyboard.press('k')
+    }
+    // Duplicate copies the project with the Remove all made, and the Keep that waited for it.
+    await removeAllThenKeep('Copied while busy')
+    const before = h.listProjects(home)
+    await win.keyboard.press('Control+k')
+    await win.waitForSelector('.command-palette[role="dialog"]', { timeout: 5000 })
+    await win.keyboard.type('Duplicate this video')
+    await f.waitFor(async () => (await win.$$eval('.command-palette [role="option"] .palette-title', (els) => els.map((e) => e.textContent)))[0] === 'Duplicate this video', 'the palette lists Duplicate first', 3000)
+    await win.keyboard.press('Enter')
+    const copyAt = await pressedAfter(win)
+    h.assert(same(copyAt.slice(0, 3), ['Home:true', 'k:true', 'k:true']), `pressed while it worked: ${JSON.stringify(copyAt)}`)
+    const copy = await f.waitFor(() => h.listProjects(home).find((d) => !before.includes(d)), 'the copy made', 20000)
+    const made = await savedWhen(home, copy, (q) => q.name === 'Copied while busy (copy)', 'the copy saved')
+    h.assert(made.autoCuts.length === MIXED_SILENCES, `the copy has the Remove all: ${made.autoCuts.length} records`)
+    h.assert(made.zooms.find((z) => z.id === 'z0')?.auto === false, 'the copy has the Keep that waited')
+    const original = await savedWhen(home, copied, (q) => q.autoCuts.length === MIXED_SILENCES, 'the original saved with it too')
+    h.assert(original.zooms.find((z) => z.id === 'z0')?.auto === false, 'the original has the Keep too')
+    // The copy opens in place (its seeded video is not one the player opens, so it says so; Back is there either way).
+    await win.click('.titlebar button:has-text("Back")', { timeout: 20000 })
+    await win.waitForSelector('.project-open:has-text("Closed while busy")', { timeout: 20000 })
+    // Closing the window saves at once (beforeunload): the Remove all is made first, then the Keep.
+    await removeAllThenKeep('Closed while busy')
+    const at = await pressedAfter(win)
+    h.assert(same(at, ['Home:true', 'k:true']), `pressed while it worked: ${JSON.stringify(at)}`)
+    h.assert(!logs.some((l) => l.includes('[pageerror]')), `no page errors: ${logs.filter((l) => l.includes('pageerror'))}`)
+    await app.close()
+    const saved = h.readProject(home, closed)
+    h.assert(saved.autoCuts.length === MIXED_SILENCES, `the Remove all saved on closing: ${saved.autoCuts.length} records`)
+    h.assert(saved.zooms.find((z) => z.id === 'z0')?.auto === false, 'the Keep that waited saved')
+  })
 
   const mock = await startMockAi({ ffmpeg: FF })
   try {

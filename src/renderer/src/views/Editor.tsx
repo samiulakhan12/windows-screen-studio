@@ -196,10 +196,16 @@ async function openSession(projectId: string): Promise<Session> {
 }
 
 function closeSession(s: Session): void {
-  s.player.dispose()
-  // Normally already flushed by Back; this covers any other way the editor goes away.
-  if (s.saver.dirty) void s.saver.flush().finally(() => s.saver.dispose())
-  else s.saver.dispose()
+  // Work still holding the project (Review mode's Remove all) makes its edit now, to be saved, and
+  // what waits for it is done (before the player goes: a waiting Keep stops the panel's stretch).
+  try {
+    s.store.finish()
+  } finally {
+    s.player.dispose()
+    // Normally already flushed by Back; this covers any other way the editor goes away.
+    if (s.saver.dirty) void s.saver.flush().finally(() => s.saver.dispose())
+    else s.saver.dispose()
+  }
 }
 
 export function Editor({
@@ -488,7 +494,10 @@ function EditorSession({
       leavingRef.current = true
       setLeaving(true)
       player.pause()
-      // Wait for the save so the library shows the latest name and nothing is lost.
+      // Work still holding the project (Review mode's Remove all, docs/design/review-mode.md §4.3)
+      // makes its edit first, and what waits for it is done; then the save, so the library shows
+      // the latest name and nothing is lost.
+      await new Promise<void>((done) => store.whenFree(done))
       const saved = await saver.flush()
       const status = saver.status
       if (!saved && !window.confirm(`Your latest changes could not be saved${status.state === 'error' ? `:\n${status.message}` : ''}.\n\nLeave the editor anyway?`)) {
@@ -498,7 +507,7 @@ function EditorSession({
       }
       then()
     },
-    [player, saver]
+    [player, saver, store]
   )
 
   /** Opens the project this one was copied from, unless it is gone from the library. */
@@ -532,6 +541,8 @@ function EditorSession({
   const makeCopy = useCallback(
     async (kind: CopyKind): Promise<void> => {
       if (copyAbort.current) return showNotice(`${COPY_FAILED}a copy is already being made.`, { alert: true })
+      // The copy is of the project with the edit of work still holding it (Review mode's Remove all), made now.
+      store.finish()
       const p = store.state
       const { vw, vh } = editorFrame(p)
       const can = canCopyAs(p, kind, vw, vh)
@@ -1560,8 +1571,13 @@ function EditorSession({
 
   useEffect(() => {
     // Closing the window or quitting tears the page down without unmounting React; save synchronously.
+    // Work still holding the project (Review mode's Remove all) makes its edit first, and what waits for it is done.
     const flush = (): void => {
-      saver.flushSync()
+      try {
+        store.finish()
+      } finally {
+        saver.flushSync()
+      }
     }
     window.addEventListener('beforeunload', flush)
     window.addEventListener('pagehide', flush)
@@ -1569,7 +1585,7 @@ function EditorSession({
       window.removeEventListener('beforeunload', flush)
       window.removeEventListener('pagehide', flush)
     }
-  }, [saver])
+  }, [saver, store])
 
   // What the Vertical framing section reads besides the project, and the recording as cropped for the copy menu.
   const followEnv = useMemo<FollowEnv>(() => ({ cursorValid: cursor.valid, reveal: followReveal }), [cursor.valid, followReveal])
