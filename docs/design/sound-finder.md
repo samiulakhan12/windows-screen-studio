@@ -286,9 +286,12 @@ side: every muted or lowered stretch is fully muted or lowered.
 
 - **Export** (`audioPlan.ts`, `recordingGraph`): when the job has `sounds`, the recording's head (the
   mixed track or the mixed stems, after noise reduction, in source time because it starts at 0 with
-  `first_pts=0`) gets `asetnsamples=n=64:p=0,volume=volume='<expr>':eval=frame` (the gain is evaluated every 1.3 ms, so a
+  `first_pts=0`) gets `asetnsamples=n=64:p=0,volume=volume='<expr>':eval=frame,asetnsamples=n=1024:p=0` (the gain is evaluated every 1.3 ms, so a
   20 ms ramp is 15 steps). `<expr>` is `soundGainExpression`, the exact `g(t)` as a binary search over
-  its keyframes (like `duckExpression`). Then it is cut and re-timed clip by clip as before, so cuts, speed changes and
+  its keyframes (like `duckExpression`). The sound is then regrouped into 1024-sample frames, because
+  the split into clips handles every frame once per clip: with 64-sample frames there, a project with
+  hundreds of cuts exported its sound more than ten times slower (the output is the same sample for
+  sample). Then it is cut and re-timed clip by clip as before, so cuts, speed changes and
   pause freezes carry the curve with the sound. A job without `sounds` gets the graph of before.
 - **Preview** (`previewAudio.ts`): a new `sounds` gain node right after `cut` (both act on the mixed recording only, before the limiter and the master fades). Its curve is
   `g` mapped to the output (video) timeline through the clips and the pause freezes

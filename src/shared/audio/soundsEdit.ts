@@ -24,6 +24,11 @@ export const MAX_SOUND_SPANS = 2000
 export const MAX_SOUND_GAINS = 4000
 /** The export evaluates the gain once per this many samples (1.3 ms at 48 kHz): a 20 ms ramp in 15 steps. */
 export const GAIN_FRAME = 64
+/**
+ * Samples per frame after the gain: the recording is split into one copy per clip next, and every
+ * frame is handled once per clip, so small frames there make a heavily cut export many times slower.
+ */
+export const SPLIT_FRAME = 1024
 
 const EPS = 1e-6
 const finite = (v: unknown): v is number => typeof v === 'number' && Number.isFinite(v)
@@ -275,11 +280,14 @@ export function soundGainExpression(joined: readonly SoundGain[]): string {
   return tree(0, keys.length + 1)
 }
 
-/** The filters (no leading comma) that put `gains` on the recording's sound in source time, or '' for none. */
+/**
+ * The filters (no leading comma) that put `gains` on the recording's sound in source time, or '' for
+ * none: small frames for the gain, then regrouped into large ones (SPLIT_FRAME) for the cuts.
+ */
 export function soundGainFilters(gains: readonly SoundGain[] | undefined): string {
   const joined = joinGains(gains ?? [])
   if (joined.length === 0) return ''
-  return `asetnsamples=n=${GAIN_FRAME}:p=0,volume=volume='${soundGainExpression(joined)}':eval=frame`
+  return `asetnsamples=n=${GAIN_FRAME}:p=0,volume=volume='${soundGainExpression(joined)}':eval=frame,asetnsamples=n=${SPLIT_FRAME}:p=0`
 }
 
 /** Whether an export job's `sounds` is well formed (main checks every job). */

@@ -206,7 +206,8 @@ describe('the gain curve', () => {
     for (let t = 0; t < 7; t += 0.0013) expect(fn(t)).toBeCloseTo(soundGainAt(gains, t), 3)
     expect(soundGainExpression([])).toBe('1')
     expect(soundGainFilters([])).toBe('')
-    expect(soundGainFilters(gains)).toMatch(/^asetnsamples=n=64:p=0,volume=volume='.*':eval=frame$/)
+    // Small frames for the gain only: regrouped into large ones before the recording is split per clip.
+    expect(soundGainFilters(gains)).toMatch(/^asetnsamples=n=64:p=0,volume=volume='.*':eval=frame,asetnsamples=n=1024:p=0$/)
     // Many stretches: a balanced search.
     const many = joinGains(Array.from({ length: 3000 }, (_, i) => ({ start: i, end: i + 0.3, gain: i % 2 ? 0 : DUCK_GAIN })))
     const big = evaluate(soundGainExpression(many))
@@ -238,7 +239,7 @@ describe('the gain curve', () => {
     // Before the split into clips: once, on the whole recording.
     expect(withGain.indexOf('volume=volume=')).toBeLessThan(withGain.indexOf('asplit'))
     const stems = recordingGraph({ clips, volume: 1, input: '1:a', stems: [{ input: '1:a', gain: 1, denoise: false }, { input: '2:a', gain: 0.5, denoise: false }], sounds: [{ start: 1, end: 2, gain: 0 }] }, 7)
-    expect(stems).toMatch(/amix=inputs=2:duration=longest:dropout_transition=0:normalize=0,asetnsamples=n=64:p=0,volume=volume='[^']+':eval=frame,asplit/)
+    expect(stems).toMatch(/amix=inputs=2:duration=longest:dropout_transition=0:normalize=0,asetnsamples=n=64:p=0,volume=volume='[^']+':eval=frame,asetnsamples=n=1024:p=0,asplit/)
     const job = { frames: 210, fps: 30, audio: { clips, volume: 1, sounds: [{ start: 1, end: 2, gain: 0 }] } } as unknown as ExportJob
     expect(planSoundtrack(job, { mix: 'screen.mp4' }, 1).graph).toContain("volume=volume='")
     const none = { frames: 210, fps: 30, audio: { clips, volume: 1 } } as unknown as ExportJob
