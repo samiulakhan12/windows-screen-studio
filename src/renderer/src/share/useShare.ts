@@ -3,7 +3,7 @@
  * in Settings › Share, the export dialog's "After export" choices remembered per preset, and the
  * share runs main reports for a file.
  */
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { ShareMeta, ShareRunView, ShareTargets } from '../../../shared/api/share'
 import { choicesFor, readShareChoices, withChoices } from '../../../shared/share/choices'
 import { ipcMessage } from '../settings/providerText'
@@ -81,6 +81,9 @@ export function useAfterExport(preset: string | undefined): AfterExport {
   const [error, setError] = useState<string | null>(null)
   const offered = useMemo(() => offeredIds(targets), [targets])
   const chosen = useMemo(() => choicesFor(choices, preset, offered), [choices, preset, offered])
+  // An export's start keeps the `begin` of the render Export was pressed in; this is what is shown now.
+  const latest = useRef({ targets, choices, preset })
+  latest.current = { targets, choices, preset }
   const toggle = (id: string): void => {
     const ids = chosen.includes(id) ? chosen.filter((x) => x !== id) : [...chosen, id]
     const next = withChoices(choices, preset, ids, offered)
@@ -94,8 +97,13 @@ export function useAfterExport(preset: string | undefined): AfterExport {
   const begin = async (file: string, meta: ShareMeta): Promise<void> => {
     setError(null)
     const fail = (err: unknown): void => setError(`Could not share: ${ipcMessage(err)}`)
-    await window.api.shareOffer(file, meta, chosen.length > 0).catch(fail)
-    if (chosen.length) void window.api.shareStart(file, chosen, meta).catch(fail)
+    // Export may have been pressed before the destinations loaded: what is chosen is read as the
+    // export ends, and destinations still loading then are waited for (no remembered choice skipped).
+    const now = latest.current
+    const t = now.targets ?? (await window.api.shareTargets().catch(() => null))
+    const ids = choicesFor(now.choices, now.preset, offeredIds(t))
+    await window.api.shareOffer(file, meta, ids.length > 0).catch(fail)
+    if (ids.length) void window.api.shareStart(file, ids, meta).catch(fail)
   }
   return { targets, offered, chosen, toggle, begin, error }
 }

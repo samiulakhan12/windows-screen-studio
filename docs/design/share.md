@@ -238,7 +238,10 @@ choose Share (OneDrive), Copy Dropbox link (Dropbox) or Share › Copy link (Goo
   pending.
 * Nothing waits on detection: the export's done view appears at once (the chosen share is started
   without waiting), and the notification waits at most **1.5 s** for the folders before showing
-  without them. A share that cannot start is said in the done view ("Could not share: …").
+  without them. A share that cannot start is said in the done view ("Could not share: …"). What is
+  chosen is read when the export ends, not when Export was pressed (the destinations may still have
+  been loading then); only when they are still loading as the export ends does the done view wait
+  for them, so a remembered choice is never skipped.
 * The done view has one **Cancel share** per running run (it stops that run's remaining steps), and
   *Try again* on a post that a failed copy held back retries that copy too, so the message still says
   where the video went (not when that copy has been saved since by its own *Try again*: the post
@@ -366,6 +369,8 @@ Unit (vitest, each failing without its code):
   when no done view shows the file.
 * `redact.test` addition — webhook URLs redacted.
 * `shareSeen.test.ts` — the found folders count as seen only after staying on screen for `SEEN_MS`.
+* `shareAfterExport.test.ts` — Export pressed before the destinations loaded still shares to the
+  remembered choice, waiting for them when they are still loading as the export ends.
 
 End-to-end (`tests/e2e/share.e2e.cjs`, Linux under Xvfb, real built app): a fake Windows profile
 (`SSW_SHARE_FAKE_CLOUD`) with OneDrive and Dropbox folders; Settings › Share lists them with their
