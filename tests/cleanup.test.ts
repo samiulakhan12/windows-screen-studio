@@ -94,8 +94,8 @@ describe('tidyCaptions (test 41)', () => {
     expect(texts(tidyCaptions(p, { ...OFF, digits: 'all', words: [] }).project)).toEqual(['pick this one or one of the 3'])
   })
 
-  it('the word list: whole words, one letter off for long words, heard forms joined', () => {
-    const words = [{ term: 'Flown', heard: ['flow in'] }, { term: 'Qbexel', heard: [] }]
+  it('the word list: whole words and heard forms, heard forms joined', () => {
+    const words = [{ term: 'Flown', heard: ['flow in'] }, { term: 'Qbexel', heard: ['qbexl'] }]
     const p = project([timed('a', 0, 'open flown now'), timed('b', 5, 'made by qbexl and flow in team'), timed('c', 9, 'it has flow')])
     const out = tidyCaptions(p, { ...OFF, words }).project
     expect(texts(out)).toEqual(['open Flown now', 'made by Qbexel and Flown team', 'it has flow'])
@@ -112,13 +112,15 @@ describe('tidyCaptions (test 41)', () => {
     expect(texts(tidyCaptions(project([timed('h', 0, 'add a flowen step')]), { ...OFF, words }).project)).toEqual(['add a Flown step'])
   })
 
-  it('a swapped letter is another word, never a term; a letter added or dropped still is', () => {
-    const words = ['Slack', 'Swift', 'Claude', 'Notion', 'Flown', 'Stripe', 'Excel'].map((term) => ({ term, heard: [] }))
-    const said = ['the call stack is full', 'press shift and tab', 'read the clause again', 'the whole nation watched', 'do not frown', 'strike while hot', 'expel the air', 'that was a stride']
+  it('a word a letter away from a term is another word, never the term; a heard form is', () => {
+    const words = ['Slack', 'Swift', 'Claude', 'Notion', 'Flown', 'Stripe', 'Excel', 'Stuart', 'Steven', 'Pearson', 'Flickr', 'Planet', 'Marie', 'Tumblr', 'Linear'].map((term) => ({ term, heard: [] }))
+    const said = ['the call stack is full', 'press shift and tab', 'read the clause again', 'the whole nation watched', 'do not frown', 'strike while hot', 'expel the air', 'that was a stride', 'click start to begin', 'there are seven steps', 'every person on the team', 'the screen will flicker', 'water the plant daily', 'a marine biologist', 'the tumbler fell', 'a new liner', 'a clade of birds']
     const p = project(said.map((t, i) => timed(`s${i}`, i * 5, t)))
     expect(texts(tidyCaptions(p, { ...OFF, words }).project)).toEqual(said)
-    const typo = project([timed('t', 0, 'open notiion and clade')])
-    expect(texts(tidyCaptions(typo, { ...OFF, words }).project)).toEqual(['open Notion and Claude'])
+    // "seven" stays a number word, so Digits can still write it.
+    expect(texts(tidyCaptions(project([timed('d', 0, 'there are seven steps')]), { ...OFF, digits: 'all', words }).project)).toEqual(['there are 7 steps'])
+    const heard = [{ term: 'Notion', heard: ['notiion'] }, { term: 'Claude', heard: ['clade'] }]
+    expect(texts(tidyCaptions(project([timed('t', 0, 'open notiion and clade')]), { ...OFF, words: heard }).project)).toEqual(['open Notion and Claude'])
   })
 
   it('records each changed caption once, keeping the first text across runs', () => {

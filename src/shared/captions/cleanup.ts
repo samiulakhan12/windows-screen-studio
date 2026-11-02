@@ -181,25 +181,14 @@ const coreOf = (text: string): string => {
 
 /* ---------- rule 4: the word list ---------- */
 
-/** Levenshtein distance of at most 1 (one letter off). */
-function oneOff(a: string, b: string): boolean {
-  if (a === b) return true
-  const la = a.length
-  const lb = b.length
-  if (Math.abs(la - lb) > 1) return false
-  let i = 0
-  while (i < Math.min(la, lb) && a[i] === b[i]) i++
-  if (la === lb) return a.slice(i + 1) === b.slice(i + 1)
-  return la > lb ? a.slice(i + 1) === b.slice(i) : a.slice(i) === b.slice(i + 1)
-}
-
 function applyWordList(tokens: Tok[], words: readonly WordListEntry[]): Tok[] {
   if (!words.length) return tokens
-  // Heard forms of several words first ("flow in" → "Flown"), then single words. Only a term's own
-  // spelling (`own`) takes a word with a letter added or dropped; heard forms match exactly, as listed.
-  const forms: { parts: string[]; term: string; own?: true }[] = []
+  // Heard forms of several words first ("flow in" → "Flown"), then single words. A term and its heard
+  // forms match whole words only, as written: a word a letter away from a name is often another real
+  // word ("start" and Stuart, "seven" and Steven), so a mishearing goes in "also heard as".
+  const forms: { parts: string[]; term: string }[] = []
   for (const e of words) {
-    forms.push({ parts: e.term.toLowerCase().split(/\s+/), term: e.term, own: true })
+    forms.push({ parts: e.term.toLowerCase().split(/\s+/), term: e.term })
     for (const h of e.heard) forms.push({ parts: h.toLowerCase().split(/\s+/).filter(Boolean), term: e.term })
   }
   forms.sort((a, b) => b.parts.length - a.parts.length)
@@ -213,8 +202,7 @@ function applyWordList(tokens: Tok[], words: readonly WordListEntry[]): Tok[] {
       for (let k = 0; k < n && match; k++) {
         const core = coreOf(tokens[i + k].text).toLowerCase()
         // The last part may end in punctuation; inner parts may not.
-        if (k < n - 1 && TRAILING.exec(tokens[i + k].text)?.[0]) match = false
-        else if (core !== f.parts[k]) match = n === 1 && !!f.own && closeMisspelling(core, f.parts[0]) && !isTerm(core, words)
+        if ((k < n - 1 && TRAILING.exec(tokens[i + k].text)?.[0]) || core !== f.parts[k]) match = false
       }
       if (!match || !joinable(tokens, i, i + n - 1)) continue
       const first = tokens[i].text
@@ -229,19 +217,6 @@ function applyWordList(tokens: Tok[], words: readonly WordListEntry[]): Tok[] {
   }
   return out
 }
-/**
- * A word of 5 letters or more with one letter added to or dropped from a term, and the term's first
- * and last letters: "qbexl" is Qbexel, but words heard right stay ("reach" is not React, "flows" not
- * Flown, "stack" not Slack). A swapped letter often makes another real word, so it never matches;
- * such a form goes in "also heard as".
- */
-function closeMisspelling(core: string, term: string): boolean {
-  const a = [...core]
-  const b = [...term]
-  return b.length >= 5 && a.length >= 5 && a.length !== b.length && a[0] === b[0] && a[a.length - 1] === b[b.length - 1] && oneOff(core, term)
-}
-/** A word that is itself one of the terms (never "corrected" into another term). */
-const isTerm = (core: string, words: readonly WordListEntry[]): boolean => words.some((e) => e.term.toLowerCase() === core)
 
 /* ---------- rule 3: numbers as digits ---------- */
 
