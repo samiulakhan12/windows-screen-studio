@@ -43,7 +43,7 @@ Source: the [OpenAI deprecations page](https://developers.openai.com/api/docs/de
 4. **NW-03**: better auto zoom input.
 5. **NW-06**: smooth cuts. Ship the audio fades first.
 6. **NW-07**: import an existing video (shipped in 0.7.0).
-7. **NW-13**: publishing copy pack.
+7. **NW-13**: publishing copy pack (built on `feat-publish-pack`, for the next release).
 8. **NW-15 + X-03**: auto-update and a diagnostics bundle.
 
 **Agreed order (25 October 2026):** NW-08 camera director and NW-03 smarter auto zoom (both shipped in Wave 5, 0.2.0), then NW-02
@@ -130,7 +130,7 @@ and preview speed, E-10 crop the recording, E-11 freeze frame.
 - **Seen in:** Screen Studio, FocuSee, Tella, ScreenPal, Camtasia.
 
 ### NW-13 · Publishing copy pack
-**AI · S · planned**
+**AI · S · shipped (next release)**: see [FEATURES.md](FEATURES.md) (Publishing copy pack) and `docs/design/publish-pack.md`. Left for later: copy for silent recordings (LT-09, F-10), the "On this PC" provider (F-04), posting directly to YouTube, LinkedIn or X, AI-written descriptions for each part of "one file per chapter", and saving the other items as export files.
 
 - **What:** from the transcript, writes:
   - a YouTube description with chapter timestamps and tags;

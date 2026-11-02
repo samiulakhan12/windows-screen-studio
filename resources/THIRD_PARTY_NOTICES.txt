@@ -411,6 +411,90 @@ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+------------------------------------------------------------------------------
+
+twitter-text 3.1.0 (link and length rules of X)
+https://github.com/twitter/twitter-text
+The copy pack finds links and counts a post on X exactly as X does with a port of twitter-text's
+extractUrlsWithIndices and parseTweet, written into Flown (src/shared/publish/twitterText.ts and
+tlds.ts, which say what was changed); the package itself is not shipped. The package has no NOTICE
+file; its LICENSE file begins:
+
+Copyright 2011 Twitter, Inc.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this work except in compliance with the License.
+You may obtain a copy of the License below, or at:
+
+   http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+
+The source files ported say "Copyright 2018 Twitter, Inc. Licensed under the Apache License,
+Version 2.0". The full text of the Apache License, Version 2.0 is reproduced below with the npm
+packages under the same licence.
+
+------------------------------------------------------------------------------
+
+twemoji-parser 11.0.2 (the emoji X counts as two)
+https://github.com/twitter/twemoji-parser
+The copy pack counts an emoji in a post on X as X does with twemoji-parser's emoji pattern, copied
+into Flown (src/shared/publish/twemoji.ts); the package itself is not shipped. Its licence:
+
+Copyright (c) 2018 Twitter, Inc.
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+THE SOFTWARE.
+
+------------------------------------------------------------------------------
+
+punycode 1.4.1 (the length of a name in punycode)
+https://github.com/mathiasbynens/punycode.js
+The copy pack checks the length of a name in punycode as twitter-text does with punycode.js:
+its toASCII and encode, adapted into Flown to give the length of their result
+(punycodeLength and punycodeEncodedLength in src/shared/publish/twitterText.ts); the package itself is
+not shipped. Its licence:
+
+Copyright Mathias Bynens <https://mathiasbynens.be/>
+
+Permission is hereby granted, free of charge, to any person obtaining
+a copy of this software and associated documentation files (the
+"Software"), to deal in the Software without restriction, including
+without limitation the rights to use, copy, modify, merge, publish,
+distribute, sublicense, and/or sell copies of the Software, and to
+permit persons to whom the Software is furnished to do so, subject to
+the following conditions:
+
+The above copyright notice and this permission notice shall be
+included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
+LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
+OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
+WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
 
 ==============================================================================
 Rust crates compiled into the native helpers (ssw-capture.exe, ssw-speech.exe, ssw-speech-compat.exe)

@@ -7,8 +7,9 @@ import { subtitleFile } from '../../../shared/captions/subtitles'
 import { pictureTime, planOf, videoDuration, videoToSource } from '../../../shared/engine/freeze'
 import { outputDuration, outputToSource } from '../../../shared/engine/timeline'
 import { outputChapters } from '../../../shared/render/chapters'
-import { chapterListText, descriptionText, partProject, sidecarName, type ChapterPart, type SidecarKind } from '../../../shared/render/exportBundle'
+import { chapterListText, partProject, sidecarName, type ChapterPart, type SidecarKind } from '../../../shared/render/exportBundle'
 import type { Project } from '../../../shared/types'
+import { exportDescription } from '../../../shared/publish/youtube'
 import type { BatchExtras } from './exporter'
 
 /**
@@ -56,7 +57,8 @@ export function sidecarText(kind: SidecarKind, req: BundleRequest): string | nul
   if (kind === 'srt' || kind === 'vtt') return subtitleFile(project.transcript?.segments ?? [], project.clips, kind, plan)
   const chapters = outputChapters(project.chapters ?? [], project.clips, plan)
   if (kind === 'chapters') return chapterListText(chapters, length)
-  if (kind === 'description') return descriptionText(req.title, length, chapters, req.part)
+  // With the copy pack's saved YouTube description (NW-13), that text as its Copy gives it; a part keeps its own.
+  if (kind === 'description') return exportDescription(project, req.title, length, chapters, req.part)
   return null
 }
 

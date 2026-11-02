@@ -14,6 +14,8 @@ const PART_TITLES: Partial<Record<SidecarKind, string>> = {
   thumbnail: 'Save the frame 1 s into each part as a PNG at the export size',
   description: "Save a description with each part's title, which part it is and its length, ready to paste"
 }
+/** The description written in Publish and saved with "Use for exports" (NW-13): it replaces the standard one, not a part's. */
+const SAVED_DESCRIPTION_TITLE = "Save the description written in Publish, with this export's chapters, ready to paste"
 /** One file per chapter: a part is one chapter, so no chapter list is saved (bundleKinds). */
 const PART_NO_CHAPTER_LIST = 'Each file is one chapter, so it has no chapter list'
 
@@ -27,7 +29,8 @@ export function ExportBundleOptions({
   format,
   has,
   mode,
-  chapterCount
+  chapterCount,
+  savedDescription = false
 }: {
   value: BundleOptions
   onChange: (next: BundleOptions) => void
@@ -35,6 +38,8 @@ export function ExportBundleOptions({
   has: BundleSources
   mode: 'single' | 'batch'
   chapterCount: number
+  /** The project has a description saved in Publish (project.publish), which the description file uses. */
+  savedDescription?: boolean
 }): JSX.Element {
   const perBlocked = perChapterBlocked(has, mode)
   const perOn = value.perChapter && !perBlocked
@@ -56,7 +61,7 @@ export function ExportBundleOptions({
                   className={`chip ${on ? 'active' : ''}`}
                   aria-pressed={on}
                   disabled={!!blocked}
-                  title={blocked ?? ((perOn && PART_TITLES[k]) || TITLES[k])}
+                  title={blocked ?? ((perOn && PART_TITLES[k]) || (k === 'description' && savedDescription ? SAVED_DESCRIPTION_TITLE : TITLES[k]))}
                   data-sidecar={k}
                   onClick={() => onChange({ ...value, [k]: !value[k] })}
                 >

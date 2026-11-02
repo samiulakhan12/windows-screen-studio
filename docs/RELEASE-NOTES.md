@@ -18,6 +18,12 @@
   made by itself (auto zooms, camera moves, silences and idle time cut or sped up, fillers removed)
   in time order. Play each one, then *Keep* it or *Remove* it to get back what was there; *Keep all*
   or *Remove all* of a kind. Every choice is one undo step, and it all works from the keyboard.
+- **Publish: the text to post with your video** (NW-13): *Publish* in the title bar writes a YouTube
+  description (with the chapter times of the edited video and tags), a LinkedIn post, an X post, a
+  help-centre article, release notes, a title and a summary from the captions, with your OpenAI,
+  Gemini or Claude key. Pick a tone and a length, edit any of it, copy it in one click, or regenerate
+  one item. *Use for exports* saves the YouTube description as the export's description file. Every
+  AI text tool is now in the command palette (Ctrl+K).
 
 ## 0.7.1
 

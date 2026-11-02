@@ -82,9 +82,9 @@ describe('one file per chapter: what the export dialog says', () => {
     }
     return out
   }
-  const render = async (value: BundleOptions, has: BundleSources = { captions: false, chapters: true }): Promise<El[]> => {
+  const render = async (value: BundleOptions, has: BundleSources = { captions: false, chapters: true }, savedDescription?: boolean): Promise<El[]> => {
     const { ExportBundleOptions } = (await import(/* @vite-ignore */ OPTIONS)) as { ExportBundleOptions: Options }
-    return elements(ExportBundleOptions({ value, onChange: () => undefined, format: 'mp4', has, mode: 'single', chapterCount: 3 }))
+    return elements(ExportBundleOptions({ value, onChange: () => undefined, format: 'mp4', has, mode: 'single', chapterCount: 3, savedDescription }))
   }
   const chip = (tree: El[], kind: string): El => tree.find((e) => e.props['data-sidecar'] === kind)!
   const thumbnailTitle = async (perChapter: boolean): Promise<string> =>
@@ -129,5 +129,16 @@ describe('one file per chapter: what the export dialog says', () => {
     expect(chip(await render({ ...value, perChapter: true }), 'description').props.title).toBe(
       "Save a description with each part's title, which part it is and its length, ready to paste"
     )
+  })
+
+  it('says the description written in Publish is saved, when "Use for exports" chose one (NW-13)', async () => {
+    const value: BundleOptions = { srt: false, vtt: false, chapters: false, thumbnail: false, description: true, perChapter: false }
+    const has: BundleSources = { captions: false, chapters: true }
+    expect(chip(await render(value, has, true), 'description').props.title).toBe("Save the description written in Publish, with this export's chapters, ready to paste")
+    // A part keeps its own description (exportDescription).
+    expect(chip(await render({ ...value, perChapter: true }, has, true), 'description').props.title).toBe(
+      "Save a description with each part's title, which part it is and its length, ready to paste"
+    )
+    expect(chip(await render(value, has, false), 'description').props.title).toBe('Save a description with the title, length and chapters, ready to paste')
   })
 })

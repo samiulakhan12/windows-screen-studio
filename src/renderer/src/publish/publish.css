@@ -1,0 +1,322 @@
+/* Publish: the copy pack (PublishDialog.tsx). Looks like .modal but is not one, as .polish-dialog. */
+.publish-dialog {
+  width: 720px;
+  max-width: calc(100vw - 32px);
+  max-height: calc(100vh - 48px);
+  overflow-y: auto;
+  background: var(--surface-1);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-xl);
+  padding: var(--space-5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  box-shadow: var(--highlight-top), var(--shadow-4);
+  animation: modal-in var(--dur-med) var(--ease-out);
+}
+
+.publish-dialog:focus {
+  outline: none;
+}
+
+.publish-dialog .modal-head h2 {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.publish-dialog .modal-head h2 .icon {
+  color: var(--accent-text);
+}
+
+.publish-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  border-radius: var(--radius-lg);
+  background: var(--surface-2);
+  border: 1px solid var(--border-subtle);
+}
+
+.publish-empty p {
+  margin: 0;
+  color: var(--text-1);
+}
+
+.publish-options {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--space-4);
+}
+
+.publish-options select {
+  min-width: 220px;
+  max-width: 100%;
+}
+
+.publish-run {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-height: var(--control-md);
+}
+
+.publish-progress {
+  color: var(--text-2);
+  font-size: var(--text-sm);
+}
+
+.publish-cards {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.publish-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  border-radius: var(--radius-lg);
+  background: var(--surface-2);
+  border: 1px solid var(--border-subtle);
+}
+
+.publish-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.publish-card-head h3 {
+  margin: 0;
+  font-size: var(--text-md);
+  font-weight: var(--weight-semibold);
+  color: var(--text-1);
+}
+
+.publish-state {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--text-2);
+  font-size: var(--text-sm);
+}
+
+.publish-spinner {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: 2px solid var(--border-strong);
+  border-top-color: var(--accent-text);
+  animation: spin 0.8s linear infinite;
+}
+
+/* A field colour of their own: the platform's dark one (#3b3b3b) leaves greyed text under AA. */
+.publish-text,
+.publish-tags {
+  width: 100%;
+  resize: vertical;
+  padding: var(--space-2) 10px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-default);
+  background: var(--surface-0);
+  font: inherit;
+  font-size: var(--text-sm);
+  line-height: 1.5;
+  color: var(--text-1);
+}
+
+.publish-text::placeholder,
+.publish-tags::placeholder {
+  color: var(--text-3);
+}
+
+.publish-card[data-status='waiting'] .publish-text,
+.publish-card[data-status='writing'] .publish-text {
+  color: var(--text-2);
+}
+
+.publish-sub {
+  margin: 0;
+  color: var(--text-2);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+}
+
+.publish-youtube {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.publish-chapters {
+  margin: 0;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-md);
+  background: var(--surface-sunken);
+  color: var(--text-1);
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: var(--text-sm);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  max-height: 160px;
+  overflow-y: auto;
+}
+
+.publish-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+/* The safety net's note (publish-pack §4.8): a stretch some site could link that was not said, as written. */
+.publish-check {
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--warning);
+  border-radius: var(--radius-md);
+  background: var(--surface-sunken);
+  color: var(--text-1);
+  font-size: var(--text-sm);
+}
+
+.publish-check p,
+.publish-check ul {
+  margin: 0;
+}
+
+.publish-check ul {
+  padding-left: var(--space-4);
+}
+
+.publish-check-title {
+  color: var(--warning-text);
+  font-weight: var(--weight-semibold);
+}
+
+/* A noted piece as written; the runs that make it link-like are marked (check.ts pieceParts). */
+.publish-check code {
+  color: var(--text-1);
+  font-family: var(--font-mono, ui-monospace, monospace);
+  overflow-wrap: anywhere;
+}
+
+.publish-check mark {
+  background: transparent;
+  color: var(--warning-text);
+  font-weight: var(--weight-semibold);
+  text-decoration: underline;
+}
+
+/* What the card's last action did ("X post copied"); empty otherwise. */
+.publish-said {
+  color: var(--text-2);
+  font-size: var(--text-sm);
+  /* A notice may name a long link (the safety net's): it wraps inside the card. */
+  overflow-wrap: anywhere;
+}
+
+.publish-said.warn {
+  color: var(--warning-text);
+}
+
+.publish-count {
+  margin-left: auto;
+  color: var(--text-2);
+  font-size: var(--text-sm);
+  font-variant-numeric: tabular-nums;
+}
+
+.publish-count.over {
+  color: var(--danger-text);
+  font-weight: var(--weight-semibold);
+}
+
+.publish-card .hint.warn {
+  color: var(--warning-text);
+}
+
+.publish-dialog .modal-foot {
+  align-items: center;
+}
+
+.publish-sends {
+  margin-right: auto;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .publish-spinner {
+    animation: none;
+  }
+}
+
+/* The link check's confirm (checkNote.tsx NotedConfirm): over the Publish dialog or the editor. */
+.publish-confirm-scrim {
+  z-index: 60;
+}
+
+.publish-confirm {
+  width: 520px;
+  max-width: calc(100vw - 32px);
+  max-height: calc(100vh - 48px);
+  overflow-y: auto;
+  background: var(--surface-1);
+  border: 1px solid var(--warning);
+  border-radius: var(--radius-xl);
+  padding: var(--space-5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  box-shadow: var(--highlight-top), var(--shadow-4);
+  animation: modal-in var(--dur-med) var(--ease-out);
+}
+
+.publish-confirm h2 {
+  margin: 0;
+  font-size: var(--text-lg);
+  color: var(--text-1);
+}
+
+.publish-confirm p {
+  margin: 0;
+  color: var(--text-2);
+  font-size: var(--text-sm);
+}
+
+.publish-confirm-list {
+  margin: 0;
+  padding-left: var(--space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.publish-confirm-list code {
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: var(--text-sm);
+  color: var(--text-2);
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+
+.publish-confirm-piece {
+  color: var(--text-1);
+}
+
+.publish-confirm-list mark {
+  background: transparent;
+  color: var(--warning-text);
+  font-weight: var(--weight-semibold);
+  text-decoration: underline;
+}
+
+.publish-confirm-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-2);
+}

@@ -5,6 +5,9 @@ const FOCUSABLE = 'button:not(:disabled), input:not(:disabled), select:not(:disa
 /** For each open dialog, where focus may go back to when it closes, best first. */
 const returnTargets = new WeakMap<Element, HTMLElement[]>()
 
+/** The open dialogs, the last opened last: only it hears Tab and Esc (a confirm opened over a dialog). */
+const open: HTMLElement[] = []
+
 /**
  * Where focus should go back to when a dialog opened now closes: the focused element, then
  * (when that is inside another dialog that closes as this one opens, as when a palette command
@@ -19,11 +22,12 @@ function targetsFromHere(): HTMLElement[] {
 
 /**
  * Keyboard behaviour of a modal dialog: Tab and Shift+Tab stay inside it (even after a mouse
- * click moved focus off a button, see focus.ts), Esc closes it unless a control inside
- * already handled Esc (calling preventDefault), and focus goes back to where it was when the
- * dialog closes, unless something else took it meanwhile (a dialog the closing one opened). When
- * what had it is gone or disabled by then and was in a panel, the focus goes to the panel's current
- * item (aria-current), else to the first control of its nearest container still there.
+ * click moved focus off a button, see focus.ts, or while the dialog itself has the focus), Esc
+ * closes it unless a control inside already handled Esc (calling preventDefault), and focus goes
+ * back to where it was when the dialog closes, unless something else took it meanwhile (a dialog
+ * the closing one opened). When what had it is gone or disabled by then and was in a panel, the
+ * focus goes to the panel's current item (aria-current), else to the first control of its nearest
+ * container still there. While a dialog opened over it is open, it does none of this.
  */
 export function useModalFocus(ref: RefObject<HTMLElement>, onClose: () => void): void {
   const close = useRef(onClose)
@@ -46,9 +50,13 @@ export function useModalFocus(ref: RefObject<HTMLElement>, onClose: () => void):
   useEffect(() => {
     // Kept: by the time the cleanup runs, React has detached the ref.
     const box = ref.current
-    if (box) returnTargets.set(box, targets)
+    if (box) {
+      returnTargets.set(box, targets)
+      open.push(box)
+    }
+    const onTop = (): boolean => open[open.length - 1] === box
     const onTab = (e: KeyboardEvent): void => {
-      if (e.key !== 'Tab' || !box) return
+      if (e.key !== 'Tab' || !box || !onTop()) return
       const items = [...box.querySelectorAll<HTMLElement>(FOCUSABLE)].filter((el) => el.offsetParent !== null || el === document.activeElement)
       if (items.length === 0) {
         e.preventDefault()
@@ -58,13 +66,15 @@ export function useModalFocus(ref: RefObject<HTMLElement>, onClose: () => void):
       const last = items[items.length - 1]
       const active = document.activeElement
       const inside = active instanceof Node && box.contains(active)
-      if (!inside || (e.shiftKey && active === first) || (!e.shiftKey && active === last)) {
+      // The dialog itself (focused while it has no button to focus) wraps too: from it, Shift+Tab
+      // would go to the page behind the scrim.
+      if (!inside || active === box || (e.shiftKey && active === first) || (!e.shiftKey && active === last)) {
         e.preventDefault()
         ;(e.shiftKey ? last : first).focus()
       }
     }
     const onEscape = (e: KeyboardEvent): void => {
-      if (e.key !== 'Escape' || e.defaultPrevented) return
+      if (e.key !== 'Escape' || e.defaultPrevented || (box && !onTop())) return
       e.preventDefault()
       close.current()
     }
@@ -73,6 +83,7 @@ export function useModalFocus(ref: RefObject<HTMLElement>, onClose: () => void):
     return () => {
       window.removeEventListener('keydown', onTab, true)
       window.removeEventListener('keydown', onEscape)
+      if (box && open.includes(box)) open.splice(open.lastIndexOf(box), 1)
       // Only once the dialog is gone (not when this effect merely runs again), and only when its
       // focus was lost with it: a dialog opened in its place has already focused its own field.
       const active = document.activeElement

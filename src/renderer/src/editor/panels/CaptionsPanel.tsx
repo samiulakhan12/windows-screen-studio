@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
 import type { AiProviderInfo, AiTextRequest, AiTextResult, TranscribeOptions } from '../../../../shared/api/ai'
 import { cleanCaptionText, CAPTION_MAX_CHARS } from '../../../../shared/captions/captionData'
-import { applyTextResult, findInCaptions, mergeWithNext, readSuggestedChapters, replaceInCaptions, splitCaption } from '../../../../shared/captions/edit'
+import { applyTextResult, findInCaptions, mergeWithNext, readSuggestedChapters, readSuggestedText, replaceInCaptions, splitCaption, typedCaption } from '../../../../shared/captions/edit'
 import { captionIndexAt } from '../../../../shared/captions/layout'
 import { CAPTION_COLORS, CAPTION_PRESETS, CAPTION_SIZE, captionsOf, HIGHLIGHT_COLORS, withPreset } from '../../../../shared/captions/settings'
 import { subtitleFile, SUBTITLE_FORMATS, type SubtitleFormat } from '../../../../shared/captions/subtitles'
@@ -11,6 +11,7 @@ import { chapterNear, createChapter } from '../../../../shared/editor/titles'
 import { planOf, videoTimeAt } from '../../../../shared/engine/freeze'
 import { formatTime } from '../../../../shared/engine/project'
 import { NOTES_COPY } from '../../../../shared/notes/notesCopy'
+import { linksToCheck, notedPieces, type Said } from '../../../../shared/publish/check'
 import type { CaptionPreset, CaptionSegment, CaptionSettings, Project, Transcript } from '../../../../shared/types'
 import { Icon } from '../../components/Icon'
 import { SearchIcon } from '../CommandPalette'
@@ -24,6 +25,7 @@ import {
   takeCaptionsRequest,
   transcribe,
   transcriptionJob,
+  type CaptionsAiTask,
   type CaptionsRequest
 } from '../captionItems'
 import { useEditor } from '../context'
@@ -32,6 +34,7 @@ import { FontPicker } from './FontPicker'
 import { EditorIcon } from '../EditorIcon'
 import type { InspectorProps } from '../Inspector'
 import { useKeymap } from '../keymapContext'
+import { checkNote, NotedConfirm, projectSaid, type NotedAsk } from '../../publish/checkNote'
 import { LOCAL_TRANSCRIBER_ID } from '../../../../shared/api/speech'
 import { BANGLA_MODEL, isBengali, speechModel, type SpeechModelId } from '../../../../shared/speech/catalog'
 import { doneLine, downloadSpaceNeeded, notLanguage, SPEECH_COPY, unavailableLine } from '../../../../shared/speech/speechCopy'
@@ -116,7 +119,7 @@ const isSettingsDialog = (n: Node): boolean => n instanceof Element && n.classLi
  * (the settings may have changed), when the settings say they changed (AI_PROVIDERS_CHANGED) and
  * when the settings dialog closes. Null while the first read is under way.
  */
-function useAiProviders(): { providers: AiProviderInfo[] | null; error: string | null; reload: () => void } {
+export function useAiProviders(): { providers: AiProviderInfo[] | null; error: string | null; reload: () => void } {
   const [providers, setProviders] = useState<AiProviderInfo[] | null>(null)
   const [error, setError] = useState<string | null>(null)
   const seq = useRef(0)
@@ -164,6 +167,9 @@ export function CaptionsPanel(props: InspectorProps): JSX.Element {
   const [focusId, setFocusId] = useState<string | null>(null)
   const [exportNow, setExportNow] = useState(0)
   const [generateNow, setGenerateNow] = useState(0)
+  const [aiNow, setAiNow] = useState<{ task: CaptionsAiTask; n: number } | null>(null)
+  // Numbers the AI requests: never one the tools have taken before, though aiNow is cleared once taken.
+  const aiCount = useRef(0)
 
   // What the commands and the caption track ask for (also a request made just before the tab opened).
   useEffect(() => {
@@ -172,6 +178,7 @@ export function CaptionsPanel(props: InspectorProps): JSX.Element {
       if (!r) return
       if (r.kind === 'focus') setFocusId(r.id)
       else if (r.kind === 'export') setExportNow((n) => n + 1)
+      else if (r.kind === 'ai') setAiNow({ task: r.task, n: ++aiCount.current })
       else setGenerateNow((n) => n + 1)
     }
     take()
@@ -197,7 +204,7 @@ export function CaptionsPanel(props: InspectorProps): JSX.Element {
             onNotice={props.onNotice}
           />
           {speakersShown(project) && <SpeakersSection project={project} onNotice={props.onNotice} />}
-          <AiToolsSection providers={providers} onNotice={props.onNotice} services={services} />
+          <AiToolsSection providers={providers} onNotice={props.onNotice} services={services} request={aiNow} onRequestHandled={() => setAiNow(null)} />
           <ExportSection project={project} transcript={transcript} request={exportNow} onNotice={props.onNotice} />
         </>
       )}
@@ -909,7 +916,8 @@ function TranscriptSection({
   const setText = (id: string, raw: string): void => {
     // While typing: one line, but spaces kept; cleaned when the field is left.
     const text = raw.replace(/[\r\n]+/g, ' ').slice(0, CAPTION_MAX_CHARS)
-    store.update((p) => setSegments(p, (p.transcript?.segments ?? []).map((s) => (s.id === id ? { ...s, text } : s))), `caption-text:${id}`)
+    // Edited by hand: the words are the user's, but a link an AI wrote into the caption stays unsaid while one is left (typedCaption).
+    store.update((p) => setSegments(p, (p.transcript?.segments ?? []).map((s) => (s.id === id ? typedCaption(s, text) : s))), `caption-text:${id}`)
   }
   const tidyText = (id: string): void => {
     const seg = store.state.transcript?.segments.find((s) => s.id === id)
@@ -1026,20 +1034,22 @@ function TranscriptSection({
 
 /* ---------- AI tools ---------- */
 
-type AiTask = 'cleanup' | 'translate' | 'chapters' | 'title' | 'summary'
-
-/** Control characters of an AI answer as spaces (`keepLines`: line breaks stay), trimmed. */
-const plainAnswer = (text: string, keepLines = false): string =>
-  (keepLines ? text.replace(/\r\n?/g, '\n').replace(/[\u0000-\u0009\u000b-\u001f\u007f]+/g, ' ').replace(/\n{3,}/g, '\n\n') : text.replace(/[\u0000-\u001f\u007f]+/g, ' ')).trim()
+type AiTask = CaptionsAiTask
 
 function AiToolsSection({
   providers,
   onNotice,
-  services
+  services,
+  request,
+  onRequestHandled
 }: {
   providers: AiProviderInfo[] | null
   onNotice: (message: string) => void
   services: ReturnType<typeof useEditor>
+  /** A tool the command palette asked for (NW-13): run once the providers are known. */
+  request?: { task: CaptionsAiTask; n: number } | null
+  /** Called once the request is taken, so a remount never runs it again. */
+  onRequestHandled?: () => void
 }): JSX.Element {
   const { store } = services
   const [provider, setProvider] = useState(remembered.textProvider)
@@ -1048,15 +1058,65 @@ function AiToolsSection({
   const [error, setError] = useState<string | null>(null)
   const [title, setTitle] = useState<string | null>(null)
   const [summary, setSummary] = useState<string | null>(null)
+  // The link check (publish-pack §4.8) reads a suggested title and summary as the Publish dialog reads its cards. What
+  // was said is read once, when the answer comes (the note speaks for the captions it was written from), never while
+  // the captions are edited or dragged; Rename and Copy read it again, and ask first when the check notes anything.
+  const [said, setSaid] = useState<Said | null>(null)
+  // Suggested chapters whose titles the check notes: shown with their note, and added only when asked (never a confirm
+  // that opens by itself when the answer comes, while the user may be typing).
+  const [chapters, setChapters] = useState<{ t: number; title: string }[] | null>(null)
+  const titleChecks = useMemo(() => (title && said ? linksToCheck(title, said) : []), [title, said])
+  const summaryChecks = useMemo(() => (summary && said ? linksToCheck(summary, said) : []), [summary, said])
+  const chapterChecks = useMemo(() => (chapters && said ? linksToCheck(chapters.map((c) => c.title).join('\n'), said) : []), [chapters, said])
+  const [ask, setAsk] = useState<NotedAsk | null>(null)
+  /** Runs `run` at once when `text` has nothing the check notes against what is said now, else after the confirm. */
+  const confirmed = (what: string, action: NotedAsk['action'], text: string, run: () => void): void => {
+    const now = projectSaid(store.state)
+    const pieces = notedPieces(text, now)
+    if (pieces.length && live.current) setAsk({ what, action, text, pieces, said: now, run })
+    else if (!pieces.length) run()
+    // The tab is gone (the answer came after it closed): nothing to ask in, so nothing is used.
+    else onNotice(`${what} not used: there is a link, address or file name nobody said to check. Run it again with the Captions tab open.`)
+  }
   const list = providers ?? []
   const chosen = list.find((p) => p.id === provider) ?? list[0] ?? null
   const live = useRef(true)
+  // The tools that make a suggestion: when its block goes (used, added or dismissed, also after the link check's confirm),
+  // the focus, which was on a button in it or in the confirm, goes back to the tool that made it, not to the page (§4.8).
+  const chaptersTool = useRef<HTMLButtonElement>(null)
+  const titleTool = useRef<HTMLButtonElement>(null)
+  const summaryTool = useRef<HTMLButtonElement>(null)
+  const closeTitle = (): void => {
+    setTitle(null)
+    titleTool.current?.focus()
+  }
+  const closeChapters = (): void => {
+    setChapters(null)
+    chaptersTool.current?.focus()
+  }
+  const closeSummary = (): void => {
+    setSummary(null)
+    summaryTool.current?.focus()
+  }
+  // Suggested chapters not added yet: when the tab closes with them, the editor says so (they are not kept).
+  const pendingChapters = useRef(false)
+  pendingChapters.current = !!chapters
   useEffect(
     () => () => {
       live.current = false
+      if (pendingChapters.current) onNotice('Suggested chapters not added: open the Captions tab and suggest them again to add them.')
     },
-    []
+    [] // eslint-disable-line react-hooks/exhaustive-deps
   )
+  /** The suggested chapters `found` not near a chapter the recording has now. */
+  const newChapters = (found: readonly { t: number; title: string }[]): ReturnType<typeof createChapter>[] => {
+    const existing = store.state.chapters ?? []
+    return found.filter((c, i) => !chapterNear(existing, c.t) && !found.slice(0, i).some((d) => Math.abs(d.t - c.t) < 0.1)).map((c) => createChapter(c.t, c.title))
+  }
+  const addChapters = (added: ReturnType<typeof createChapter>[]): void => {
+    store.update((p) => ({ ...p, chapters: [...(p.chapters ?? []), ...added] }))
+    onNotice(`Added ${added.length} ${added.length === 1 ? 'chapter' : 'chapters'} (see the Text tab)`)
+  }
   useEffect(() => {
     remembered.textProvider = provider
     remembered.translateTo = translateTo
@@ -1070,6 +1130,7 @@ function AiToolsSection({
     setError(null)
     setTitle(null)
     setSummary(null)
+    setChapters(null)
     const request: AiTextRequest = { task, segments: before.segments }
     // The language's name: the provider is told to translate "into" it, and a code such as 'it' or 'id' reads as a word.
     if (task === 'translate') request.targetLanguage = CAPTION_LANGUAGES.find((l) => l.code === translateTo)?.name ?? translateTo
@@ -1097,21 +1158,48 @@ function AiToolsSection({
       onNotice(result.task === 'translate' ? `Captions translated to ${name} (Undo brings the original back)` : 'Captions fixed (Undo brings the original back)')
     } else if (result.task === 'chapters') {
       const found = readSuggestedChapters(result.chapters, store.state.duration)
-      const existing = store.state.chapters ?? []
-      const added = found.filter((c, i) => !chapterNear(existing, c.t) && !found.slice(0, i).some((d) => Math.abs(d.t - c.t) < 0.1)).map((c) => createChapter(c.t, c.title))
+      const added = newChapters(found)
       if (!added.length) return fail(found.length ? 'The suggested chapters are already there.' : 'The provider suggested no chapters.')
-      store.update((p) => ({ ...p, chapters: [...(p.chapters ?? []), ...added] }))
-      onNotice(`Added ${added.length} ${added.length === 1 ? 'chapter' : 'chapters'} (see the Text tab)`)
+      // Chapter titles count as said once they are the recording's. With nothing the check notes they are added at once;
+      // else they are shown with the note, and Add the chapters asks first.
+      const now = projectSaid(store.state)
+      if (!notedPieces(added.map((c) => c.title).join('\n'), now).length) return addChapters(added)
+      if (!live.current) return onNotice('Suggested chapters not added: there is a link, address or file name nobody said to check. Run it again with the Captions tab open.')
+      setSaid(now)
+      setChapters(added.map((c) => ({ t: c.t, title: c.title })))
     } else if (result.task === 'title') {
-      const text = typeof result.text === 'string' ? plainAnswer(result.text).replace(/^["“'\s]+|["”'\s]+$/g, '').slice(0, 120) : ''
+      const text = readSuggestedText('title', result.text)
       if (!text) return fail('The provider suggested no title.')
-      if (live.current) setTitle(text)
+      if (live.current) {
+        setSaid(projectSaid(store.state))
+        setTitle(text)
+      }
     } else if (result.task === 'summary') {
-      const text = typeof result.text === 'string' ? plainAnswer(result.text, true).slice(0, 4000) : ''
+      const text = readSuggestedText('summary', result.text)
       if (!text) return fail('The provider wrote no summary.')
-      if (live.current) setSummary(text)
+      if (live.current) {
+        setSaid(projectSaid(store.state))
+        setSummary(text)
+      }
     }
   }
+
+  // A tool the command palette asked for (NW-13): translate only shows the language list, as a language must be chosen.
+  const translateRef = useRef<HTMLSelectElement>(null)
+  const toolsRef = useRef<HTMLLabelElement>(null)
+  const handled = useRef(0)
+  useEffect(() => {
+    if (!request || request.n === handled.current || providers === null) return
+    handled.current = request.n
+    onRequestHandled?.()
+    if (!chosen) return onNotice('Add an AI provider first: the button is in the AI tools section')
+    if (busy) return onNotice('An AI tool is already working')
+    // The tab may be scrolled to its captions: the tools come into view, with their progress and the answer under them.
+    toolsRef.current?.scrollIntoView({ block: 'start' })
+    if (request.task !== 'translate') return void run(request.task)
+    translateRef.current?.scrollIntoView({ block: 'nearest' })
+    translateRef.current?.focus()
+  }, [request, providers]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const label = (task: AiTask, text: string): string => (busy === task ? 'Working…' : text)
   return (
@@ -1125,7 +1213,7 @@ function AiToolsSection({
         </div>
       ) : (
         <>
-          <label className="field">
+          <label className="field" ref={toolsRef}>
             <span>Provider</span>
             <select className="captions-select" aria-label="AI provider for text" value={chosen?.id ?? ''} onChange={(e) => setProvider(e.target.value)} disabled={!list.length}>
               {list.map((p) => (
@@ -1143,7 +1231,7 @@ function AiToolsSection({
               <button className="btn" disabled={!chosen || !!busy} onClick={() => void run('translate')} title="Replace the text with a translation; the timing stays">
                 {label('translate', 'Translate to…')}
               </button>
-              <select className="captions-select" aria-label="Translate to" value={translateTo} onChange={(e) => setTranslateTo(e.target.value)}>
+              <select ref={translateRef} className="captions-select" aria-label="Translate to" value={translateTo} onChange={(e) => setTranslateTo(e.target.value)}>
                 {CAPTION_LANGUAGES.map((l) => (
                   <option key={l.code} value={l.code}>
                     {l.name}
@@ -1151,13 +1239,13 @@ function AiToolsSection({
                 ))}
               </select>
             </div>
-            <button className="btn" disabled={!chosen || !!busy} onClick={() => void run('chapters')} title="Chapters from what is said, added to the chapter strip">
+            <button ref={chaptersTool} className="btn" disabled={!chosen || !!busy} onClick={() => void run('chapters')} title="Chapters from what is said, added to the chapter strip">
               {label('chapters', 'Suggest chapters')}
             </button>
-            <button className="btn" disabled={!chosen || !!busy} onClick={() => void run('title')} title="A name for this recording from what is said">
+            <button ref={titleTool} className="btn" disabled={!chosen || !!busy} onClick={() => void run('title')} title="A name for this recording from what is said">
               {label('title', 'Suggest a title')}
             </button>
-            <button className="btn" disabled={!chosen || !!busy} onClick={() => void run('summary')} title="A short summary of what is said, to copy into a description">
+            <button ref={summaryTool} className="btn" disabled={!chosen || !!busy} onClick={() => void run('summary')} title="A short summary of what is said, to copy into a description">
               {label('summary', 'Summarize')}
             </button>
           </div>
@@ -1166,18 +1254,59 @@ function AiToolsSection({
               <p>
                 Suggested title: <strong>{title}</strong>
               </p>
+              {said && checkNote(titleChecks, 'captions-title-check', said)}
               <div className="row start">
                 <button
                   className="btn small primary"
-                  onClick={() => {
-                    store.update((p) => ({ ...p, name: title }))
-                    setTitle(null)
-                    onNotice('Recording renamed')
-                  }}
+                  aria-describedby={titleChecks.length ? 'captions-title-check' : undefined}
+                  onClick={() =>
+                    // The name counts as said once it is the recording's: asked about first when the check notes anything in it.
+                    confirmed('Suggested title', 'Use anyway', title, () => {
+                      store.update((p) => ({ ...p, name: title }))
+                      closeTitle()
+                      onNotice('Recording renamed')
+                    })
+                  }
                 >
                   Rename the recording
                 </button>
-                <button className="btn small ghost" onClick={() => setTitle(null)}>
+                <button className="btn small ghost" aria-describedby={titleChecks.length ? 'captions-title-check' : undefined} onClick={closeTitle}>
+                  Dismiss
+                </button>
+              </div>
+            </div>
+          )}
+          {chapters && (
+            <div className="captions-suggestion" role="status" data-testid="captions-chapters-suggestion">
+              <p>Suggested chapters:</p>
+              <ol className="captions-chapter-list">
+                {chapters.map((c) => (
+                  <li key={c.t}>
+                    <span className="captions-chapter-time">{formatTime(c.t, false)}</span> {c.title}
+                  </li>
+                ))}
+              </ol>
+              {said && checkNote(chapterChecks, 'captions-chapters-check', said)}
+              <div className="row start">
+                <button
+                  className="btn small primary"
+                  aria-describedby={chapterChecks.length ? 'captions-chapters-check' : undefined}
+                  onClick={() => {
+                    // Against the chapters the recording has now: one added meanwhile near the same time stays alone.
+                    const added = newChapters(chapters)
+                    if (!added.length) {
+                      closeChapters()
+                      return onNotice('The suggested chapters are already there.')
+                    }
+                    confirmed('Suggested chapters', 'Use anyway', added.map((c) => c.title).join('\n'), () => {
+                      closeChapters()
+                      addChapters(added)
+                    })
+                  }}
+                >
+                  Add the chapters
+                </button>
+                <button className="btn small ghost" aria-describedby={chapterChecks.length ? 'captions-chapters-check' : undefined} onClick={closeChapters}>
                   Dismiss
                 </button>
               </div>
@@ -1187,19 +1316,23 @@ function AiToolsSection({
             <div className="captions-suggestion" role="status">
               <p>Summary:</p>
               <p className="captions-summary">{summary}</p>
+              {said && checkNote(summaryChecks, 'captions-summary-check', said)}
               <div className="row start">
                 <button
                   className="btn small primary"
+                  aria-describedby={summaryChecks.length ? 'captions-summary-check' : undefined}
                   onClick={() =>
-                    void navigator.clipboard.writeText(summary).then(
-                      () => onNotice('Summary copied'),
-                      () => onNotice('The summary could not be copied')
-                    )
+                    confirmed('Summary', 'Copy anyway', summary, () => {
+                      void navigator.clipboard.writeText(summary).then(
+                        () => onNotice('Summary copied'),
+                        () => onNotice('The summary could not be copied')
+                      )
+                    })
                   }
                 >
                   Copy
                 </button>
-                <button className="btn small ghost" onClick={() => setSummary(null)}>
+                <button className="btn small ghost" aria-describedby={summaryChecks.length ? 'captions-summary-check' : undefined} onClick={closeSummary}>
                   Dismiss
                 </button>
               </div>
@@ -1211,6 +1344,7 @@ function AiToolsSection({
             </p>
           )}
           <p className="hint">Each tool sends the caption text (not the sound) to {chosen ? KIND_NAMES[chosen.kind] : 'the provider'}. Undo reverts any change.</p>
+          {ask && <NotedConfirm ask={ask} onClose={() => setAsk(null)} />}
         </>
       )}
     </Section>

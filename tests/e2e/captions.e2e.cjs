@@ -645,6 +645,70 @@ async function main() {
     await win.click('.captions-suggestion button:has-text("Dismiss")')
     await win.waitForSelector('.captions-summary', { state: 'detached' })
 
+    // The link check's confirm (publish-pack §4.8) keeps the keyboard: nothing behind it plays, is deleted or unselected.
+    await answer("return { task: 'title', text: 'Sign in at paypal-login.com' }")
+    await win.click('button:has-text("Suggest a title")')
+    await win.waitForSelector('.captions-suggestion:has-text("paypal-login.com")')
+    await win.click('.seg.caption-seg >> nth=1')
+    await win.waitForSelector('.seg.caption-seg.selected')
+    const rename = '.captions-suggestion button:has-text("Rename the recording")'
+    await win.focus(rename)
+    await win.keyboard.press('Enter')
+    await win.waitForSelector('[data-testid="publish-confirm"]')
+    const focusedText = () => win.evaluate(() => (document.activeElement?.textContent || '').trim())
+    const paused = () => win.evaluate(() => [...document.querySelectorAll('video')].every((v) => v.paused))
+    h.assert((await focusedText()) === 'Cancel', `the focus starts on Cancel: ${await focusedText()}`)
+    h.assert(
+      (await win.$eval('[data-testid="publish-confirm"]', (e) => e.getAttribute('aria-describedby'))) === 'publish-confirm-why publish-confirm-list',
+      'the confirm is described by why and by the pieces to check'
+    )
+    await win.keyboard.press('Delete')
+    await win.keyboard.press('Space')
+    await win.waitForSelector('[data-testid="publish-confirm"]', { state: 'detached' })
+    await h.sleep(400)
+    h.assert(await paused(), 'Space pressed Cancel: the video did not play behind the confirm')
+    h.assert((await focusedText()) === 'Rename the recording', `the focus went back to Rename: ${await focusedText()}`)
+    p = h.readProject(home, id)
+    h.assert(p.transcript.segments.length === 2 && p.name === 'A Better Name', `Delete removed nothing and nothing was renamed: ${p.transcript.segments.length} ${p.name}`)
+    await win.keyboard.press('Enter')
+    await win.waitForSelector('[data-testid="publish-confirm"]')
+    await win.keyboard.press('Escape')
+    await win.waitForSelector('[data-testid="publish-confirm"]', { state: 'detached' })
+    h.assert((await win.locator('.seg.caption-seg.selected').count()) === 1, 'Escape closed only the confirm: the caption stays selected')
+    // Dismissed from the keyboard, the suggestion goes with its buttons: the focus goes to the tool that made it, not the page.
+    await win.focus('.captions-suggestion button:has-text("Dismiss")')
+    await win.keyboard.press('Enter')
+    await win.waitForSelector('.captions-suggestion', { state: 'detached' })
+    h.assert((await focusedText()) === 'Suggest a title', `the focus went to Suggest a title: ${await focusedText()}`)
+
+    // Suggested chapters with a title nobody said wait with their note; nothing opens while the user may be typing.
+    await answer("return { task: 'chapters', chapters: [{ t: 1.5, title: 'Basics' }, { t: 4.5, title: 'Sign in at paypal-login.com' }] }")
+    await win.click('button:has-text("Suggest chapters")')
+    await win.waitForSelector('[data-testid="captions-chapters-suggestion"] [data-testid="publish-check"]:has-text("paypal-login.com")')
+    h.assert((await win.locator('[data-testid="publish-confirm"]').count()) === 0, 'no confirm opened by itself')
+    await win.click('[data-testid="captions-chapters-suggestion"] button:has-text("Add the chapters")')
+    await win.waitForSelector('[data-testid="publish-confirm"] mark:has-text("paypal-login.com")')
+    // Use anyway from the keyboard: the chapters are added, and the focus goes to the tool that made them.
+    await win.keyboard.press('Tab')
+    h.assert((await focusedText()) === 'Use anyway', `Tab went to Use anyway: ${await focusedText()}`)
+    await win.keyboard.press('Enter')
+    p = await saved(home, id, (q) => (q.chapters || []).length === 4, 'the confirmed chapters')
+    const names = [...p.chapters].sort((a, b) => a.t - b.t).map((c) => c.title)
+    h.assert(names.join() === 'Intro,Basics,Second part,Sign in at paypal-login.com', `chapter names: ${names}`)
+    await f.waitFor(async () => (await focusedText()) === 'Suggest chapters', 'the focus went to Suggest chapters, not the page')
+
+    // Rename the recording, then Use anyway, from the keyboard: renamed, and the focus on Suggest a title.
+    await answer("return { task: 'title', text: 'Sign in at evil-login.net' }")
+    await win.click('button:has-text("Suggest a title")')
+    await win.waitForSelector('.captions-suggestion:has-text("evil-login.net")')
+    await win.focus(rename)
+    await win.keyboard.press('Enter')
+    await win.waitForSelector('[data-testid="publish-confirm"]')
+    await win.keyboard.press('Tab')
+    await win.keyboard.press('Enter')
+    await saved(home, id, (q) => q.name === 'Sign in at evil-login.net', 'the recording is renamed')
+    await f.waitFor(async () => (await focusedText()) === 'Suggest a title', 'the focus went to Suggest a title, not the page')
+
     // A provider error is shown as it is.
     await answer("throw new Error('The key was refused')")
     await win.click('button:has-text("Fix captions")')

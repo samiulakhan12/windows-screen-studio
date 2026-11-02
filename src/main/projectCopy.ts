@@ -36,7 +36,10 @@ const PROJECT_MAX = 64 * 1024 * 1024
 const PROGRESS_MS = 100
 /** Files larger than this are copied piece by piece, so Cancel stops them midway. */
 const PIECE_BYTES = 4 * 1024 * 1024
-/** Longest name of a copy (shared/editor/duplicate.ts copyName makes one this long at most). */
+/**
+ * Longest name of a copy (shared/editor/duplicate.ts copyName makes one this long at most, cut so that
+ * the cut makes no link, as the copy pack trusts the name as typed: this cut never applies to it).
+ */
 const NAME_MAX = 120
 
 /** How a file of the source folder goes into the copy: linked (LINKED_MEDIA), copied, or left out (null). */

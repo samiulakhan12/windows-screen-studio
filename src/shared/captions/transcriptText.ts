@@ -10,9 +10,13 @@
  * (https://platform.claude.com/docs/en/build-with-claude/structured-outputs,
  * https://developers.openai.com/api/docs/guides/structured-outputs).
  */
-import { AI_LIMITS, AI_TEXT_TASKS, type AiTextRequest, type AiTextResult, type AiTextTask } from '../api/ai'
+import { AI_LIMITS, AI_TEXT_TASKS, type AiTextRequest, type AiTextResult, type AiTextTask, type PackTextTask } from '../api/ai'
 import type { CaptionSegment, CaptionWord } from '../types'
 import { cleanText } from './transcriptParse'
+import { isLength, isPackTask, isTone } from '../publish/pack'
+import { CAPTION_LINK_RULE, LINK_RULE, packPrompt, readPackContext, runPackTask } from '../publish/prompts'
+import { plainText } from '../publish/text'
+import { readAiLinks } from './captionData'
 
 /** One request to a provider: instructions, the transcript, and the shape of the answer. */
 export interface TextPrompt {
@@ -101,7 +105,7 @@ export function textPrompt(request: AiTextRequest, segments: readonly CaptionSeg
         system:
           'You correct automatic captions of a screen recording. For each segment fix punctuation, capitalisation and obvious mis-hearings (a word the speech recogniser clearly got wrong, judged from the context, such as product names and technical terms). ' +
           'Never change the meaning, never reword, shorten, summarise or translate, and keep the language of the original. Leave text that is already right as it is. ' +
-          KEEP_RULES,
+          `${KEEP_RULES} ${CAPTION_LINK_RULE}`,
         user: data
       }
     case 'translate':
@@ -111,7 +115,7 @@ export function textPrompt(request: AiTextRequest, segments: readonly CaptionSeg
         system:
           `You translate the captions of a screen recording into ${request.targetLanguage}. Translate each segment on its own, naturally and faithfully, so it can be shown during that segment's time. ` +
           'Keep names, product names, code, file names, keyboard shortcuts and on-screen labels as they are. ' +
-          KEEP_RULES,
+          `${KEEP_RULES} ${CAPTION_LINK_RULE}`,
         user: data
       }
     case 'chapters':
@@ -120,23 +124,31 @@ export function textPrompt(request: AiTextRequest, segments: readonly CaptionSeg
         schema: CHAPTERS_SCHEMA,
         system:
           `You split a screen recording into chapters from its transcript. Suggest between 2 and ${maxChapters(lastEnd)} chapters where the topic changes; fewer for a short recording. ` +
-          "Each chapter starts at the start time (seconds) of the segment where its topic begins; the first chapter starts at the first segment. Titles are short (2 to 6 words), specific, in the transcript's language, without numbering.",
+          "Each chapter starts at the start time (seconds) of the segment where its topic begins; the first chapter starts at the first segment. Titles are short (2 to 6 words), specific, in the transcript's language, without numbering. " +
+          LINK_RULE,
         user: data
       }
     case 'title':
       return {
         name: 'title',
         schema: TEXT_SCHEMA,
-        system: "You write the title of a screen recording from its transcript: specific and short (at most 70 characters), in the transcript's language, without quotes or a trailing period.",
+        system: `You write the title of a screen recording from its transcript: specific and short (at most 70 characters), in the transcript's language, without quotes or a trailing period. ${LINK_RULE}`,
         user: data
       }
     case 'summary':
       return {
         name: 'summary',
         schema: TEXT_SCHEMA,
-        system: "You summarise a screen recording from its transcript in 2 to 4 plain sentences in the transcript's language: what is shown and what the viewer learns. No headings, lists or markdown.",
+        system: `You summarise a screen recording from its transcript in 2 to 4 plain sentences in the transcript's language: what is shown and what the viewer learns. No headings, lists or markdown. ${LINK_RULE}`,
         user: data
       }
+    // The publishing copy pack (NW-13): its own prompts, the transcript as plain text in a data block.
+    case 'youtube':
+    case 'linkedin':
+    case 'xpost':
+    case 'article':
+    case 'releaseNotes':
+      return packPrompt(request as AiTextRequest & { task: PackTextTask })
   }
 }
 
@@ -173,7 +185,10 @@ function retimeWords(words: readonly CaptionWord[] | undefined, text: string): C
 /**
  * The captions of an answer to a cleanup or translation of `input`: every id exactly once, in
  * order, each with text, and times (when the answer repeats them) unchanged. Times and ids are
- * taken from `input`, so they cannot drift.
+ * taken from `input`, so they cannot drift. The text is the user's caption: it is never rewritten
+ * for links ("Socket.IO", "README.md" and a corrected "www.flown.app" stay as written). The copy
+ * pack trusts none of the links it adds instead: the Captions tab records them with the captions it
+ * stores (edit.ts applyTextResult, CaptionSegment.aiLinks; docs/design/publish-pack.md §4.6).
  */
 export function validateSegmentsAnswer(task: 'cleanup' | 'translate', input: readonly CaptionSegment[], answer: unknown): CaptionSegment[] {
   if (!isObject(answer) || !Array.isArray(answer.segments)) throw new AiOutputError('no list of captions')
@@ -197,7 +212,11 @@ export function validateSegmentsAnswer(task: 'cleanup' | 'translate', input: rea
   })
 }
 
-/** Chapters of an answer: inside the transcript, in order, at least 5 s apart, the first at its start. */
+/**
+ * Chapters of an answer: inside the transcript, in order, at least 5 s apart, the first at its start.
+ * Their titles are cleaned (plainText), never changed for a link: the Captions tab shows what the
+ * link check notes in them and asks before it adds them (docs/design/publish-pack.md §4.8).
+ */
 export function validateChaptersAnswer(segments: readonly CaptionSegment[], answer: unknown): { t: number; title: string }[] {
   if (!isObject(answer) || !Array.isArray(answer.chapters)) throw new AiOutputError('no list of chapters')
   const first = segments.length ? segments[0].start : 0
@@ -205,7 +224,7 @@ export function validateChaptersAnswer(segments: readonly CaptionSegment[], answ
   const raw: { t: number; title: string }[] = []
   for (const c of answer.chapters) {
     if (!isObject(c) || typeof c.start !== 'number' || !Number.isFinite(c.start) || typeof c.title !== 'string') continue
-    const title = cleanText(c.title, 80).replace(/^\d+[.)]\s*/, '')
+    const title = plainText(cleanText(c.title, 80).replace(/^\d+[.)]\s*/, ''), { max: 80, oneLine: true })
     if (!title || c.start > last + 1 || c.start < -1) continue
     raw.push({ t: Math.min(Math.max(c.start, 0), last), title })
   }
@@ -217,10 +236,17 @@ export function validateChaptersAnswer(segments: readonly CaptionSegment[], answ
   return out.slice(0, maxChapters(last)).map((c) => ({ t: Math.round(c.t * 1000) / 1000, title: c.title }))
 }
 
-/** A title or summary of an answer. */
+/**
+ * A title or summary of an answer, cleaned (plainText), never changed for a link: what the link check
+ * notes in it is shown with it, and asked about before it is copied or becomes the recording's name
+ * (docs/design/publish-pack.md §4.8).
+ */
 export function validateTextAnswer(task: 'title' | 'summary', answer: unknown): string {
   if (!isObject(answer) || typeof answer.text !== 'string') throw new AiOutputError(`no ${task}`)
-  const text = task === 'title' ? cleanText(answer.text, 120).replace(/^["'“”‘’]+|["'“”‘’]+$/g, '').replace(/\.$/, '').trim() : answer.text.trim().slice(0, 3000)
+  const text =
+    task === 'title'
+      ? plainText(cleanText(answer.text, 120).replace(/^["'“”‘’]+|["'“”‘’]+$/g, '').replace(/\.$/, '').trim(), { max: 120, oneLine: true })
+      : plainText(answer.text.trim().slice(0, 3000), { max: 3000 })
   if (!text) throw new AiOutputError(`an empty ${task}`)
   return text
 }
@@ -242,6 +268,12 @@ export async function runTextTask(request: AiTextRequest, ask: (prompt: TextProm
     case 'title':
     case 'summary':
       return { task: request.task, text: validateTextAnswer(request.task, await ask(textPrompt(request))) }
+    case 'youtube':
+    case 'linkedin':
+    case 'xpost':
+    case 'article':
+    case 'releaseNotes':
+      return runPackTask(request as AiTextRequest & { task: PackTextTask }, ask)
   }
 }
 
@@ -267,7 +299,9 @@ export function validateTextRequest(raw: unknown): AiTextRequest {
         (w: unknown): w is CaptionWord => isObject(w) && typeof w.text === 'string' && w.text.length <= 200 && typeof w.start === 'number' && typeof w.end === 'number' && Number.isFinite(w.start) && Number.isFinite(w.end)
       ).map((w: CaptionWord) => ({ text: w.text, start: w.start, end: w.end }))
     }
-    return { id: s.id, start, end, text, ...(words?.length ? { words } : {}) }
+    // The links an AI wrote into it: never trusted as said (§4.6 of publish-pack.md).
+    const aiLinks = readAiLinks(s.aiLinks)
+    return { id: s.id, start, end, text, ...(words?.length ? { words } : {}), ...(aiLinks ? { aiLinks } : {}) }
   })
   if (!segments.some((s) => s.text.trim())) throw new Error('There are no captions to work on.')
   let targetLanguage: string | undefined
@@ -276,6 +310,11 @@ export function validateTextRequest(raw: unknown): AiTextRequest {
     // A language name or code, not instructions: letters, spaces and a few separators only.
     targetLanguage = raw.targetLanguage.trim()
     if (!/^[\p{L}\p{M} ()'.,-]+$/u.test(targetLanguage)) throw new Error('Choose the language to translate into.')
+  }
+  if (isPackTask(task)) {
+    // The pack's choices: a tone and a length from their lists (else the defaults), the name and chapter titles as one-line data.
+    const context = readPackContext(raw.context)
+    return { task, segments, tone: isTone(raw.tone) ? raw.tone : 'friendly', length: isLength(raw.length) ? raw.length : 'normal', ...(context ? { context } : {}) }
   }
   return { task, segments, ...(targetLanguage ? { targetLanguage } : {}) }
 }

@@ -17,8 +17,11 @@ import type { PreviewPlayer } from './player'
 
 /* ---------- requests to the Captions tab ---------- */
 
-/** 'generate' and 'export' from the commands; `focus` a caption's text (a double-click on the track). */
-export type CaptionsRequest = { kind: 'generate' } | { kind: 'export' } | { kind: 'focus'; id: string }
+/** 'generate' and 'export' from the commands; `focus` a caption's text (a double-click on the track); `ai` runs an AI tool (NW-13 palette). */
+export type CaptionsRequest = { kind: 'generate' } | { kind: 'export' } | { kind: 'focus'; id: string } | { kind: 'ai'; task: CaptionsAiTask }
+
+/** The Captions tab's AI tools (translate only focuses the language list: one must be chosen). */
+export type CaptionsAiTask = 'cleanup' | 'translate' | 'chapters' | 'title' | 'summary'
 
 let pending: CaptionsRequest | null = null
 const requestListeners = new Set<() => void>()

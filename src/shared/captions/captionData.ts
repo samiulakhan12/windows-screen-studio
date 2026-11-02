@@ -4,6 +4,7 @@
  * project (engine/project.ts) and for what a provider returns (the Captions tab), like
  * engine/titleData.ts for title cards.
  */
+import { sliceAt } from '../publish/text'
 import type { CaptionSegment, CaptionWord, Transcript } from '../types'
 import { cleanSpeakerName } from './speakers'
 
@@ -21,13 +22,40 @@ const LANGUAGE = /^[a-z]{2,3}(-[a-z0-9]{1,8})*$/i
 
 const finite = (v: unknown): v is number => typeof v === 'number' && Number.isFinite(v)
 
-/** Caption text as stored and drawn: one line (control characters and line breaks become spaces), single spaces, trimmed, at most CAPTION_MAX_CHARS. */
+/** Caption text as stored and drawn: one line (control characters and line breaks become spaces), single spaces, trimmed, at most CAPTION_MAX_CHARS (sliceAt). */
 export const cleanCaptionText = (text: string): string =>
-  text
-    .replace(/[\u0000-\u001f\u007f\u2028\u2029]+/g, ' ')
-    .replace(/\s+/g, ' ')
-    .trim()
-    .slice(0, CAPTION_MAX_CHARS)
+  sliceAt(
+    text
+      .replace(/[\u0000-\u001f\u007f\u2028\u2029]+/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim(),
+    CAPTION_MAX_CHARS
+  )
+
+/**
+ * CaptionSegment.aiLinks of a caption an AI wrote more links into than a caption records (or whose
+ * record could not be read whole): every link of its text is the AI's.
+ */
+export const EVERY_LINK = '*'
+
+/** Most links one caption records as written by an AI (CaptionSegment.aiLinks); with more, it records EVERY_LINK. */
+export const MAX_AI_LINKS = 100
+
+/** aiLinks as a caption records them: distinct, or EVERY_LINK alone when there are more than MAX_AI_LINKS or it is one of them. */
+export function capAiLinks(keys: readonly string[]): string[] {
+  const out = [...new Set(keys)]
+  return out.length > MAX_AI_LINKS || out.includes(EVERY_LINK) ? [EVERY_LINK] : out
+}
+
+/**
+ * A caption's stored aiLinks (capAiLinks); null when there are none. Never cut short: a list that is
+ * too long, or has an item that is not a string of 1 to 2 000 characters, is EVERY_LINK.
+ */
+export function readAiLinks(raw: unknown): string[] | null {
+  if (!Array.isArray(raw) || !raw.length) return null
+  if (raw.length > MAX_AI_LINKS || raw.some((k) => typeof k !== 'string' || !k || k.length > 2000)) return [EVERY_LINK]
+  return capAiLinks(raw as string[])
+}
 
 let idCounter = 0
 export const newCaptionId = (): string => `cap${Date.now().toString(36)}${(idCounter++).toString(36)}`
@@ -78,6 +106,8 @@ export function readCaptionSegments(raw: unknown, duration = Infinity): CaptionS
     // Who speaks (docs/design/transcription.md §6.3): absent in older projects.
     const speaker = cleanSpeakerName(r.speaker)
     if (speaker) seg.speaker = speaker
+    const aiLinks = readAiLinks(r.aiLinks)
+    if (aiLinks) seg.aiLinks = aiLinks
     items.push(seg)
   }
   items.sort((a, b) => a.start - b.start || a.end - b.end)

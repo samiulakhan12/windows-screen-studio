@@ -338,6 +338,13 @@ export interface CaptionSegment {
   words?: CaptionWord[]
   /** Who speaks, as shown ("You", "Speaker 2"); absent: no label (docs/design/transcription.md §6). */
   speaker?: string
+  /**
+   * The pieces with a link (as the copy pack's link check reads them: check.ts) that Fix captions or
+   * Translate wrote into this caption that it did not say before: the copy pack never counts this
+   * caption as said (docs/design/publish-pack.md §4.6, §4.8). `['*']` (EVERY_LINK) when there were
+   * more than a caption records. Gone once the user edits the caption's text by hand.
+   */
+  aiLinks?: string[]
 }
 
 /** What was said in the recording, as returned by a transcription provider and edited by the user. */
@@ -776,6 +783,14 @@ export interface Project {
   autoCuts?: AutoCut[]
   /** What was chosen in the Review panel for automatic cuts and speed-ups, one entry per record id, the newest last. Absent: nothing chosen. */
   autoCutOutcomes?: AutoCutOutcome[]
+  /** The publishing copy pack's saved choices (NW-13). Absent: none (every project from before it). */
+  publish?: ProjectPublish
+}
+
+/** What the publishing copy pack keeps with the project (docs/design/publish-pack.md §3). */
+export interface ProjectPublish {
+  /** The YouTube description's text (without the chapters), saved with "Use for exports". */
+  description: string
 }
 
 /** A project made from a video file recorded with another app (docs/design/import-video.md §3). */

@@ -34,20 +34,60 @@ const providers = (): AiProviderStore => (store ??= new AiProviderStore(path.joi
 /** Text tasks in progress, stopped when the app quits. */
 const textCalls = new Set<AbortController>()
 
-const EFFORT: Record<AiTextRequest['task'], TextEffort> = { cleanup: 'medium', translate: 'medium', chapters: 'medium', title: 'low', summary: 'low' }
+const EFFORT: Record<AiTextRequest['task'], TextEffort> = {
+  cleanup: 'medium',
+  translate: 'medium',
+  chapters: 'medium',
+  title: 'low',
+  summary: 'low',
+  // The publishing copy pack (NW-13): the longer pieces think a little more than the posts.
+  youtube: 'medium',
+  linkedin: 'low',
+  xpost: 'low',
+  article: 'medium',
+  releaseNotes: 'medium'
+}
 
-/** Runs a text task on the transcript with provider `providerId`. */
-export async function aiText(providerId: unknown, raw: unknown): Promise<AiTextResult> {
+/** Text requests the renderer named (NW-13), so cancelAiText can stop one. */
+const namedTextCalls = new Map<string, AbortController>()
+
+/** A request id from the renderer: 1–64 of A-Z, a-z, 0-9, _ and -. Throws otherwise. */
+export function readRequestId(raw: unknown): string | undefined {
+  if (raw === undefined || raw === null) return undefined
+  if (typeof raw !== 'string' || !/^[A-Za-z0-9_-]{1,64}$/.test(raw)) throw new Error('Invalid request id.')
+  return raw
+}
+
+/**
+ * Runs a text task on the transcript with provider `providerId`. With `requestId`, cancelAiText
+ * stops it, and a second request with the same id stops the first.
+ */
+export async function aiText(providerId: unknown, raw: unknown, requestId?: unknown): Promise<AiTextResult> {
+  const id = readRequestId(requestId)
   const request = validateTextRequest(raw)
-  const { info, apiKey } = providers().get(providerId)
-  const client = await clientFor(info, apiKey)
   const controller = new AbortController()
+  if (id) {
+    namedTextCalls.get(id)?.abort()
+    namedTextCalls.set(id, controller)
+  }
   textCalls.add(controller)
   try {
+    const { info, apiKey } = providers().get(providerId)
+    const client = await clientFor(info, apiKey)
+    controller.signal.throwIfAborted()
     return await runTextTask(request, (prompt) => client.json(prompt, { signal: controller.signal, effort: EFFORT[request.task] }))
   } finally {
     textCalls.delete(controller)
+    if (id && namedTextCalls.get(id) === controller) namedTextCalls.delete(id)
   }
+}
+
+/** Stops text request `requestId`, if it runs. */
+export function cancelAiText(requestId: unknown): void {
+  const id = readRequestId(requestId)
+  if (!id) return
+  namedTextCalls.get(id)?.abort()
+  namedTextCalls.delete(id)
 }
 
 /** The script draft in progress (one at a time: a new one, or Cancel, stops it). */
@@ -150,9 +190,23 @@ export function registerAiIpc(): void {
     fromApp(e)
     return typeof projectId === 'string' ? stopTranscription(projectId) : undefined
   })
-  ipcMain.handle('ai:text', (e, providerId: unknown, request: unknown) => {
+  ipcMain.handle('ai:text', async (e, providerId: unknown, request: unknown, requestId: unknown) => {
     fromApp(e)
-    return aiText(providerId, request)
+    // A named request belongs to the page that asked: a reload, a navigation or a dead page stops it.
+    const sender = e.sender
+    const id = readRequestId(requestId)
+    const gone = (): void => cancelAiText(id)
+    const events = ['did-navigate', 'destroyed', 'render-process-gone'] as const
+    if (id) for (const name of events) sender.once(name as 'destroyed', gone)
+    try {
+      return await aiText(providerId, request, id)
+    } finally {
+      if (id) for (const name of events) sender.removeListener(name as 'destroyed', gone)
+    }
+  })
+  ipcMain.handle('ai:cancelText', (e, requestId: unknown) => {
+    fromApp(e)
+    cancelAiText(requestId)
   })
   ipcMain.handle('ai:draftScript', (e, providerId: unknown, request: unknown) => {
     fromApp(e)

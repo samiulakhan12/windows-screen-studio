@@ -8,6 +8,7 @@
 import { visibleSize } from '../engine/crop'
 import { outputSize, type Rect } from '../engine/layout'
 import { canFollow, DEFAULT_REFRAME, followApplies } from '../engine/reframeData'
+import { sliceAt } from '../publish/text'
 import { fontStack } from '../render/fonts'
 import { overlayBox } from '../render/imageOverlays'
 import { ANNOTATION_FONT, annotationMetrics, type TextBoxMetrics } from '../render/overlays'
@@ -28,19 +29,12 @@ const MIN_SCALE = 0.6
 /** Width of a character as a share of the font size, when no measure is given (Segoe UI's average). */
 const CHAR_WIDTH = 0.55
 
-/** At most `max` UTF-16 units of `s`, never ending in half of a surrogate pair. */
-function cut(s: string, max: number): string {
-  if (s.length <= max) return s
-  const code = s.charCodeAt(max - 1)
-  return s.slice(0, code >= 0xd800 && code <= 0xdbff ? max - 1 : max)
-}
-
 /** "Billing demo (copy)", "(vertical)", "(square)"; a blank name gives "Untitled recording (…)"; at most 120 characters. */
 export function copyName(name: string, kind: CopyKind): string {
   const suffix = SUFFIX[kind]
   const base = (typeof name === 'string' ? name.trim() : '') || UNTITLED
   // A long name is cut before its suffix, so the copy still says what it is.
-  return `${cut(base, NAME_MAX - suffix.length).trimEnd()}${suffix}`
+  return `${sliceAt(base, NAME_MAX - suffix.length).trimEnd()}${suffix}`
 }
 
 /** Measures text as the compositor draws it (px wide). */

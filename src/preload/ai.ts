@@ -14,7 +14,8 @@ export const aiApi: AiApi = {
     ipcRenderer.on('ai:transcribeProgress', handler)
     return () => ipcRenderer.removeListener('ai:transcribeProgress', handler)
   },
-  aiText: (providerId, request) => ipcRenderer.invoke('ai:text', providerId, request),
+  aiText: (providerId, request, requestId) => ipcRenderer.invoke('ai:text', providerId, request, requestId),
+  cancelAiText: (requestId) => ipcRenderer.invoke('ai:cancelText', requestId),
   draftScript: (providerId, request) => ipcRenderer.invoke('ai:draftScript', providerId, request),
   cancelScriptDraft: () => ipcRenderer.invoke('ai:cancelScriptDraft')
 }

@@ -115,3 +115,39 @@ describe('Captions tab: "the captions after X were left out" is video time', () 
     expect(items.transcriptionJob()?.notice).toContain('the captions after 250:02 were left out')
   })
 })
+
+describe('Captions tab: a caption typed by hand (publish-pack §4.6)', () => {
+  const type = (label: string, value: string): void => {
+    const out = walk(CaptionsPanel({ project: store.state, selection: null, onSelect: () => undefined, onNotice: () => undefined }), [])
+    const field = out.find((e) => e.props.className === 'caption-text' && e.props['aria-label'] === label)
+    ;(field?.props.onChange as (e: { target: { value: string } }) => void)({ target: { value } })
+  }
+  const segments = (): { text: string; aiLinks?: string[] }[] => (store.state.transcript as { segments: { text: string; aiLinks?: string[] }[] }).segments
+
+  it('keeps the record of a link an AI wrote into it while a link is left, so a word fixed next to it never makes it said', () => {
+    store.state = {
+      ...store.state,
+      transcript: {
+        provider: 'openai',
+        model: 'm',
+        createdAt: '',
+        segments: [
+          { id: 'a', start: 5, end: 6, text: 'Files at paypal-login.com/verify and sigh in', aiLinks: ['paypal-login.com/verify'] },
+          { id: 'b', start: 7, end: 8, text: 'Also socket.io', aiLinks: ['socket.io'] }
+        ]
+      }
+    }
+    type('Caption at 0:05.0', 'Files at paypal-login.com/verify and sign in')
+    expect(segments()[0]).toEqual({ id: 'a', start: 5, end: 6, text: 'Files at paypal-login.com/verify and sign in', aiLinks: ['paypal-login.com/verify'] })
+    expect(segments()[1].aiLinks).toEqual(['socket.io'])
+    // With no link left, the caption is the user's.
+    type('Caption at 0:05.0', 'Files at the usual place and sign in')
+    expect(segments()[0]).toEqual({ id: 'a', start: 5, end: 6, text: 'Files at the usual place and sign in' })
+  })
+
+  it('without such a record stays without one: what the user types is said', () => {
+    store.state = { ...store.state, transcript: { provider: 'openai', model: 'm', createdAt: '', segments: [{ id: 'a', start: 5, end: 6, text: 'Get it at' }] } }
+    type('Caption at 0:05.0', 'Get it at flown.app')
+    expect(segments()[0]).toEqual({ id: 'a', start: 5, end: 6, text: 'Get it at flown.app' })
+  })
+})

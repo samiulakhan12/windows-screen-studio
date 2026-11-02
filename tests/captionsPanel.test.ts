@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterAll, beforeAll, beforeEach, describe, expect, it, onTestFinished, vi } from 'vitest'
 import type { TranscribeProgress } from '../src/shared/api/ai'
 import { MAX_CAPTIONS } from '../src/shared/captions/captionData'
 
@@ -38,8 +38,12 @@ function deferred<T>(): { promise: Promise<T>; resolve: (v: T) => void; reject: 
 
 /** Elements that got the focus (refs are given a stand-in element as they are rendered). */
 const focused: El[] = []
+/** Elements scrolled into view, with the options given. */
+const scrolled: { el: El; options: unknown }[] = []
 
 const runs: ReturnType<typeof deferred<unknown>>[] = []
+/** What the AI tools asked the provider (window.api.aiText): the task, and its answer to give. */
+const aiAsked: { task: string; answer: ReturnType<typeof deferred<unknown>> }[] = []
 const OPENAI = { id: 'o', kind: 'openai', label: '', model: 'm', transcriptionModel: 't', maskedKey: '', createdAt: '' }
 /** What the main process answers; the speech state rejects by default, as before workstream B's handlers exist. */
 const replies: { providers: () => Promise<unknown>; speech: () => Promise<unknown>; download: (id: string) => Promise<void>; confirm: boolean } = {
@@ -86,7 +90,12 @@ vi.stubGlobal('window', {
         if (progress === l) progress = null
       }
     },
-    cancelTranscription: () => Promise.resolve()
+    cancelTranscription: () => Promise.resolve(),
+    aiText: (_id: string, request: { task: string }) => {
+      const answer = deferred<unknown>()
+      aiAsked.push({ task: request.task, answer })
+      return answer.promise
+    }
   },
   confirm: (question: string) => {
     calls.confirm.push(question)
@@ -154,6 +163,9 @@ vi.doMock('react', async (importOriginal) => ({
   useContext: () => editor
 }))
 
+// Tab and Esc in the link check's confirm are not what is tested, and the hook reads the real document.
+vi.doMock('../src/renderer/src/editor/modalFocus', () => ({ useModalFocus: () => undefined }))
+
 // Renderer code: imported at run time so the Node typecheck of tests/ does not follow it.
 const PANEL = '../src/renderer/src/editor/panels/CaptionsPanel'
 const ITEMS = '../src/renderer/src/editor/captionItems'
@@ -180,7 +192,7 @@ function walk(node: unknown, path: string, out: El[]): void {
   const ref = (node as { ref?: { current?: unknown } | null }).ref
   if (ref && typeof ref === 'object') {
     if (!ref.current) {
-      const stand: { el: El; focus: () => void; querySelector: (sel: string) => unknown; scrollIntoView: () => void } = {
+      const stand: { el: El; focus: () => void; querySelector: (sel: string) => unknown; scrollIntoView: (options?: unknown) => void } = {
         el,
         focus: () => focused.push(stand.el),
         querySelector: (sel) => {
@@ -188,7 +200,7 @@ function walk(node: unknown, path: string, out: El[]): void {
           const found = match ? descendants(stand.el).find((d) => String(d.props[match[1]]) === match[2]) : undefined
           return found ? { focus: () => focused.push(found) } : null
         },
-        scrollIntoView: () => undefined
+        scrollIntoView: (options) => void scrolled.push({ el: stand.el, options })
       }
       ref.current = stand
     } else if (typeof ref.current === 'object' && ref.current && 'el' in ref.current) (ref.current as { el: El }).el = el
@@ -211,12 +223,15 @@ function descendants(el: El): El[] {
   return found
 }
 
+/** The notices the tab gave (its onNotice), in order. */
+const panelNotices: string[] = []
+
 /** The tab for the project in the store, rendered until its state and effects settle. */
 function render(panel: (props: unknown) => unknown = CaptionsPanel, extra: unknown = null): El[] {
   for (let pass = 0; pass < 20; pass++) {
     dirty = false
     const out: El[] = []
-    walk([{ type: panel, props: { project: store.state, selection: null, onSelect: () => undefined, onNotice: () => undefined } }, extra], 'root', out)
+    walk([{ type: panel, props: { project: store.state, selection: null, onSelect: () => undefined, onNotice: (m: string) => void panelNotices.push(m) } }, extra], 'root', out)
     const run = effects
     effects = []
     run.forEach((e) => e())
@@ -325,7 +340,7 @@ function speechState(over: Partial<SpeechState> & { statuses?: Partial<Record<Sp
 
 interface Mods {
   panel: (props: unknown) => unknown
-  items: { requestCaptions(r: { kind: 'generate' }): void; clearTranscriptionError(): void }
+  items: { requestCaptions(r: { kind: 'generate' } | { kind: 'ai'; task: string }): void; clearTranscriptionError(): void }
   speech: { useCaptionsHost(projectId: string, onNotice: (m: string) => void, open: boolean): unknown; captionsIntent(projectId: string): { model: string; options: unknown } | null; spokenLanguage(): string }
 }
 
@@ -1305,5 +1320,251 @@ describe('banglaOfferApplies: the offer under the summary (offline-captions §14
     expect(banglaOfferApplies({ ...state, engine: { ...state.engine, available: false } }, t)).toBe(false)
     expect(banglaOfferApplies(null, t)).toBe(false)
     expect(banglaOfferApplies(state, undefined)).toBe(false)
+  })
+})
+
+/* ---------- the AI tools asked for from the command palette (publish-pack §2.8) ---------- */
+
+describe('CaptionsPanel: AI tools from the command palette (NW-13)', () => {
+  let m: Mods
+  const segments = [{ id: 'a', start: 0, end: 1, text: 'hi' }]
+  // The AI tools section is called as well (left unrendered in the tests above).
+  beforeAll(() => void ['AiToolsSection', 'NotedConfirm'].forEach((name) => RENDERED.add(name)))
+  afterAll(() => void ['AiToolsSection', 'NotedConfirm'].forEach((name) => RENDERED.delete(name)))
+  beforeEach(async () => {
+    m = await fresh()
+    aiAsked.length = 0
+    scrolled.length = 0
+    replies.providers = () => Promise.resolve([OPENAI])
+    replies.speech = () => Promise.resolve(speechState())
+    store.state = { ...store.state, transcript: { provider: 'openai', model: 'm', createdAt: '', segments } }
+  })
+  const show = async (): Promise<El[]> => {
+    render(m.panel)
+    await flush()
+    await flush()
+    return render(m.panel)
+  }
+  /** A palette command such as "Summarize with AI" with the Captions tab already open. */
+  const command = (task: string): El[] => {
+    m.items.requestCaptions({ kind: 'ai', task })
+    return render(m.panel)
+  }
+  const answer = async (i: number, result: unknown): Promise<El[]> => {
+    aiAsked[i].answer.resolve(result)
+    await flush()
+    return render(m.panel)
+  }
+
+  it('runs every command given while the tab is open, once each', async () => {
+    await show()
+    command('summary')
+    expect(aiAsked.map((a) => a.task)).toEqual(['summary'])
+    expect(has(await answer(0, { task: 'summary', text: 'All about users.' }), 'All about users.')).toBe(true)
+    // The next command runs too, not only every other one.
+    command('title')
+    expect(aiAsked.map((a) => a.task)).toEqual(['summary', 'title'])
+    expect(has(await answer(1, { task: 'title', text: 'Users' }), 'Users')).toBe(true)
+    command('summary')
+    expect(aiAsked.map((a) => a.task)).toEqual(['summary', 'title', 'summary'])
+    await answer(2, { task: 'summary', text: 'Again.' })
+
+    // Undo takes the captions away and Redo brings them back (the section mounts afresh): nothing is sent again.
+    const transcript = store.state.transcript
+    store.state = { ...store.state, transcript: undefined }
+    render(m.panel)
+    for (const [path, list] of cells) {
+      if (!path.endsWith('/AiToolsSection')) continue
+      for (const c of list) c.cleanup?.()
+      cells.delete(path)
+    }
+    store.state = { ...store.state, transcript }
+    await show()
+    expect(aiAsked).toHaveLength(3)
+  })
+
+  /** The link check's confirm (publish-pack §4.8): the pieces it lists, or null when none shows. */
+  const confirmItems = (out: El[]): string[] | null => {
+    const box = byTest(out, 'publish-confirm')[0]
+    return box ? descendants(box).filter((e) => e.type === 'li').map((li) => textOf(li.props.children)) : null
+  }
+
+  it('a suggested summary with a link nobody said shows the note, and Copy asks first (publish-pack §4.8)', async () => {
+    let clipboardText = ''
+    // The clipboard (only for this test: the window stub stays).
+    const navigatorBefore = Object.getOwnPropertyDescriptor(globalThis, 'navigator')
+    Object.defineProperty(globalThis, 'navigator', { configurable: true, value: { clipboard: { writeText: (t: string) => ((clipboardText = t), Promise.resolve()) } } })
+    onTestFinished(() => void (navigatorBefore ? Object.defineProperty(globalThis, 'navigator', navigatorBefore) : delete (globalThis as { navigator?: unknown }).navigator))
+    const said = [{ id: 'a', start: 0, end: 5, text: 'You can download it from flown.jp/download today.' }]
+    store.state = { ...store.state, name: 'Demo', transcript: { provider: 'openai', model: 'm', createdAt: '', segments: said } }
+    await show()
+    command('summary')
+    let out = await answer(0, { task: 'summary', text: 'Grab the project at ログインflown.jp/download today.' })
+    const note = byTest(out, 'publish-check')
+    expect(note.map((n) => textOf(n.props.children))).toEqual([
+      "Check this before you post:ログインflown.jp/downloadIt has a link, address or file name that is not in what was said, the recording's name or its chapters, or one written right against other letters, where it can open a different address. Nothing was changed: post it only if you know where it goes."
+    ])
+    expect(note[0].props.role).toBe('note')
+    const copy = out.find((e) => e.type === 'button' && textOf(e.props.children).trim() === 'Copy') as El
+    expect(copy.props['aria-describedby']).toBe(note[0].props.id)
+    panelNotices.length = 0
+    click(out, 'Copy')
+    out = render(m.panel)
+    expect(confirmItems(out)).toEqual(['… project at ログインflown.jp/download today.'])
+    expect(clipboardText).toBe('')
+    click(out, 'Cancel')
+    out = render(m.panel)
+    expect(confirmItems(out)).toBeNull()
+    click(out, 'Copy')
+    out = render(m.panel)
+    click(out, 'Copy anyway')
+    await flush()
+    // Copied as written.
+    expect(clipboardText).toBe('Grab the project at ログインflown.jp/download today.')
+    expect(panelNotices).toEqual(['Summary copied'])
+    // The said link needs no note, and is copied at once.
+    command('summary')
+    out = await answer(1, { task: 'summary', text: 'Grab the project at flown.jp/download today.' })
+    expect(byTest(out, 'publish-check')).toEqual([])
+    panelNotices.length = 0
+    click(out, 'Copy')
+    await flush()
+    expect(panelNotices).toEqual(['Summary copied'])
+  })
+
+  it('a suggested title with a link nobody said shows the note, and Rename the recording asks first; the note describes its buttons (publish-pack §4.8)', async () => {
+    const said = [{ id: 'a', start: 0, end: 5, text: 'You can download it from github.com/flown/recorder or from flown.app.' }]
+    store.state = { ...store.state, name: 'Demo', transcript: { provider: 'openai', model: 'm', createdAt: '', segments: said } }
+    await show()
+    command('title')
+    let out = await answer(0, { task: 'title', text: 'Get it at 登录github.com/flown/recorder' })
+    expect(byTest(out, 'publish-check').map((n) => textOf(n.props.children))).toEqual([expect.stringContaining('Check this before you post:登录github.com/flown/recorder')])
+    const button = (els: El[], label: string): El => els.find((e) => e.type === 'button' && textOf(e.props.children).trim() === label) as El
+    // Focusable, with the note as its description, as is Dismiss.
+    expect(button(out, 'Rename the recording').props.disabled).toBeUndefined()
+    expect(button(out, 'Rename the recording').props['aria-describedby']).toBe('captions-title-check')
+    expect(button(out, 'Dismiss').props['aria-describedby']).toBe('captions-title-check')
+    click(out, 'Rename the recording')
+    out = render(m.panel)
+    expect(confirmItems(out)).toEqual(['Get it at 登录github.com/flown/recorder'])
+    click(out, 'Cancel')
+    out = render(m.panel)
+    expect(store.state.name).toBe('Demo')
+    click(out, 'Rename the recording')
+    out = render(m.panel)
+    click(out, 'Use anyway')
+    out = render(m.panel)
+    expect(store.state.name).toBe('Get it at 登录github.com/flown/recorder')
+    // A title with the said link is renamed at once.
+    command('title')
+    out = await answer(1, { task: 'title', text: 'Get it at github.com/flown/recorder' })
+    expect(byTest(out, 'publish-check')).toEqual([])
+    click(out, 'Rename the recording')
+    out = render(m.panel)
+    expect(confirmItems(out)).toBeNull()
+    expect(store.state.name).toBe('Get it at github.com/flown/recorder')
+  })
+
+  it('suggested chapters with a link nobody said in a title are shown with the note, and Add the chapters asks first; nothing opens by itself (publish-pack §4.8)', async () => {
+    const said = [
+      { id: 'a', start: 0, end: 5, text: 'Welcome, download it from flown.app first.' },
+      { id: 'b', start: 30, end: 35, text: 'Then open the settings.' }
+    ]
+    store.state = { ...store.state, chapters: [], transcript: { provider: 'openai', model: 'm', createdAt: '', segments: said } }
+    await show()
+    const suggested = { task: 'chapters', chapters: [{ t: 0, title: 'Download at flown.app' }, { t: 30, title: 'Sign in at paypal-login.com' }] }
+    command('chapters')
+    let out = await answer(0, suggested)
+    // No confirm takes the focus when the answer comes (the user may be typing in a caption): the chapters wait with their note.
+    expect(confirmItems(out)).toBeNull()
+    expect((store.state.chapters as unknown[]).length).toBe(0)
+    expect(textOf(byTest(out, 'captions-chapters-suggestion')[0].props.children)).toContain('0:30 Sign in at paypal-login.com')
+    const note = byTest(out, 'publish-check')
+    expect(note.map((n) => textOf(n.props.children))).toEqual([expect.stringContaining('Check this before you post:paypal-login.com')])
+    const add = out.find((e) => e.type === 'button' && textOf(e.props.children).trim() === 'Add the chapters') as El
+    expect(add.props['aria-describedby']).toBe(note[0].props.id)
+    click(out, 'Add the chapters')
+    out = render(m.panel)
+    expect(confirmItems(out)).toEqual(['… Sign in at paypal-login.com'])
+    click(out, 'Cancel')
+    out = render(m.panel)
+    expect((store.state.chapters as unknown[]).length).toBe(0)
+    expect(byTest(out, 'captions-chapters-suggestion')).toHaveLength(1)
+    click(out, 'Add the chapters')
+    out = render(m.panel)
+    panelNotices.length = 0
+    click(out, 'Use anyway')
+    out = render(m.panel)
+    expect((store.state.chapters as { title: string }[]).map((c) => c.title)).toEqual(['Download at flown.app', 'Sign in at paypal-login.com'])
+    expect(byTest(out, 'captions-chapters-suggestion')).toEqual([])
+    expect(panelNotices).toEqual(['Added 2 chapters (see the Text tab)'])
+    // Chapters with only what was said are added at once.
+    store.state = { ...store.state, chapters: [] }
+    command('chapters')
+    out = await answer(1, { task: 'chapters', chapters: [{ t: 0, title: 'Download at flown.app' }, { t: 30, title: 'Settings' }] })
+    expect(confirmItems(out)).toBeNull()
+    expect(byTest(out, 'captions-chapters-suggestion')).toEqual([])
+    expect((store.state.chapters as { title: string }[]).map((c) => c.title)).toEqual(['Download at flown.app', 'Settings'])
+    // The tab closing with chapters still waiting says they were not added.
+    store.state = { ...store.state, chapters: [] }
+    command('chapters')
+    out = await answer(2, suggested)
+    expect(byTest(out, 'captions-chapters-suggestion')).toHaveLength(1)
+    panelNotices.length = 0
+    // The section goes (its hooks are kept under the place it is rendered at, its children's under that and its name).
+    const at = [...cells.keys()].find((k) => !k.includes('/AiToolsSection') && [...cells.keys()].some((c) => c.startsWith(`${k}/AiToolsSection`)))
+    for (const [path, list] of cells) {
+      if (path !== at && !path.startsWith(`${at}/AiToolsSection`)) continue
+      for (const c of list) c.cleanup?.()
+      cells.delete(path)
+    }
+    expect(panelNotices).toEqual(['Suggested chapters not added: open the Captions tab and suggest them again to add them.'])
+    expect((store.state.chapters as unknown[]).length).toBe(0)
+  })
+
+  it('after Use anyway, an add or a Dismiss, the focus goes to the tool that made the suggestion, not to the page (publish-pack §4.8)', async () => {
+    const said = [{ id: 'a', start: 0, end: 5, text: 'Welcome, download it from flown.app first.' }]
+    store.state = { ...store.state, name: 'Demo', chapters: [], transcript: { provider: 'openai', model: 'm', createdAt: '', segments: said } }
+    await show()
+    const last = (): string => textOf(focused[focused.length - 1]?.props.children).trim()
+    command('title')
+    let out = await answer(0, { task: 'title', text: 'Sign in at paypal-login.com' })
+    click(out, 'Rename the recording')
+    out = render(m.panel)
+    expect(last()).toBe('Cancel')
+    click(out, 'Use anyway')
+    out = render(m.panel)
+    expect(store.state.name).toBe('Sign in at paypal-login.com')
+    // The suggestion and the confirm are gone, with the button that asked: the focus is on Suggest a title.
+    expect(last()).toBe('Suggest a title')
+    command('chapters')
+    // (The name is said now: another link.)
+    out = await answer(1, { task: 'chapters', chapters: [{ t: 0, title: 'Download at flown.app' }, { t: 30, title: 'Sign in at evil-login.net' }] })
+    click(out, 'Add the chapters')
+    out = render(m.panel)
+    click(out, 'Use anyway')
+    out = render(m.panel)
+    expect((store.state.chapters as unknown[]).length).toBe(2)
+    expect(last()).toBe('Suggest chapters')
+    command('summary')
+    out = await answer(2, { task: 'summary', text: 'All about the export.' })
+    click(out, 'Dismiss')
+    out = render(m.panel)
+    expect(last()).toBe('Summarize')
+    command('title')
+    out = await answer(3, { task: 'title', text: 'Exporting' })
+    // Renamed at once (nothing to check): the same.
+    click(out, 'Rename the recording')
+    out = render(m.panel)
+    expect(store.state.name).toBe('Exporting')
+    expect(last()).toBe('Suggest a title')
+  })
+
+  it('brings the AI tools into view, where the work and its answer show', async () => {
+    await show()
+    // The tab may be scrolled to its captions: the tools come to its top, with the answer's room under them.
+    const out = command('summary')
+    expect(scrolled.map((s) => ({ text: textOf(s.el.props.children), options: s.options }))).toEqual([{ text: expect.stringMatching(/^Provider/), options: { block: 'start' } }])
+    expect(buttons(out)).toContain('Working…')
   })
 })

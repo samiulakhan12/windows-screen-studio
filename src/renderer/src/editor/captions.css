@@ -381,6 +381,18 @@
   gap: 6px;
 }
 
+/* Suggested chapters waiting to be added (a title the link check notes): time and title per line. */
+.captions-suggestion .captions-chapter-list {
+  margin: 0 0 6px;
+  padding-left: 18px;
+  color: var(--text);
+}
+
+.captions-chapter-time {
+  color: var(--text-2);
+  font-variant-numeric: tabular-nums;
+}
+
 /* "Your script": the speaker notes read while recording (folded by default). */
 .captions-script-head {
   display: inline-flex;
