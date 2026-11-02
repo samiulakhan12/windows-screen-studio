@@ -33,7 +33,7 @@ import { replacedAt } from '../../../shared/captions/replaced'
 import { speakersOf, STEM_SPEAKERS } from '../../../shared/captions/speakers'
 import { captionObstacles, fitChunk, placeStudio, studioChunkAt, studioLayout, type CaptionObstacles, type StudioChunk, type StudioFace, type StudioLayout, type StudioLine, type StudioWordBox } from '../../../shared/captions/studioLayout'
 import { effectiveStudio, SHADOW_CHIPS } from '../../../shared/captions/studioPresets'
-import { prefixDrawsSame, scriptsIn, wordScripts, type ScriptTag, type StudioToken } from '../../../shared/captions/words'
+import { prefixDrawsSame, scriptsIn, STICKER_TOP, wordScripts, type ScriptTag, type StudioToken } from '../../../shared/captions/words'
 import type { Rect } from '../../../shared/engine/layout'
 import { isTall } from '../../../shared/engine/reframeData'
 import { DEFAULT_ZOOM_SETTINGS } from '../../../shared/engine/zoom'
@@ -674,13 +674,6 @@ interface WordInfo {
 /** Bangla outlines are thinner than Latin (§0.2: 2.5 px at 30 px). */
 const BENGALI_OUTLINE_MAX = 0.04
 const BENGALI_LETTER = /\p{Script=Bengali}/u
-
-/**
- * A sticker's top above the line's middle, em, for scripts whose marks reach higher than 0.62 em
- * (BANGLA-NOTES: boxes get extra top padding): ি, ৌ and the reph reach 0.74 em in Noto Sans
- * Bengali, ि 0.71 in Noto Sans Devanagari, Thai's stacked tone marks 0.84; all clear of the border.
- */
-const STICKER_TOP: Partial<Record<ScriptTag, number>> = { bengali: 0.8, devanagari: 0.8, thai: 0.92 }
 
 /** The paint of word `wi` in `state` (§9.3, §0.1, §0.2). */
 function paintOf(studio: CaptionStudio, wi: WordInfo, state: WordState): WordPaint {

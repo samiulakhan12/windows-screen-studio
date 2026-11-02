@@ -470,6 +470,52 @@ describe('positions (test 10)', () => {
           }
   })
 
+  it('a Stickers block at the top or the bottom keeps its grown, tilted stickers inside the frame, dragged there or at Top or Bottom (§8.4, §8.5)', () => {
+    // A sticker reaches past its row: its top 0.62 em above the line's middle (0.8 em for Bangla and
+    // Hindi), its bottom 0.62 em below, its border too; it grows with the spoken word and turns by the
+    // look's tilt, so a wide one reaches hw·sin 4° further. At Size 13% the spoken TROUBLESHOOTING
+    // sticker reached 8 px past the bottom of a block dragged there, and the Hindi one 10 px past the
+    // top at Top. The chunk's entrance rises in from below while it fades in: its faint first frames
+    // are left out.
+    const texts: [string, string][] = [['fix the troubleshooting step', 'en'], ['Windows-में अपडेट करें', 'hi'], ['আমাদের সমস্যাসমাধান আজ', 'bn']]
+    const wheres: ({ place: { x: number; y: number } } | { position: StudioPosition })[] = [{ place: { x: 0.5, y: 0 } }, { place: { x: 0.5, y: 1 } }, { position: 'top' }, { position: 'bottom' }]
+    for (const [W, H] of [[1920, 1080], [1080, 1920], [1080, 1080]])
+      for (const size of [0.065, 0.13, 0.16, 0.22])
+        for (const where of wheres)
+          for (const [text, language] of texts) {
+            const base = look('stickers')
+            const { place: _place, ...rest } = base.layout
+            const s: CaptionStudio = { ...base, text: { ...base.text, size }, layout: { ...rest, ...where } }
+            const b = s.box
+            const l = studioLayout(timed(text, 0.5, 0.45), s, W, H, measure, { faceOf: () => FACE, language })
+            const id = `${W}x${H} size ${size} ${JSON.stringify(where)} ${text}`
+            let top = Infinity
+            let bottom = -Infinity
+            l.chunks.forEach((c, ci) => {
+              const placed = placeStudio(l, c, s, W, H, {})
+              const cy = placed.top + placed.height / 2
+              c.lines.forEach((line, li) =>
+                line.words.forEach((word) => {
+                  const my = placed.lines[li].y
+                  const hw = word.w / 2 + (b.padX + b.border / 2) * word.px
+                  const up = ((language === 'en' ? 0.62 : 0.8) + b.padY + b.border / 2) * word.px
+                  const down = (0.62 + b.padY + b.border / 2) * word.px
+                  for (let t = c.start; t < c.end; t += 0.01) {
+                    const p = captionPoses(l, ci, t, ONE, s, Math.min(W, H), null, { spoken: true })
+                    const wp = p.words.find((w) => w.token === word.token)!
+                    if (p.chunk.alpha * wp.alpha < 0.3) continue
+                    const a = Math.abs((wp.rotate * Math.PI) / 180)
+                    top = Math.min(top, cy + p.chunk.dy + (my + wp.dy - (hw * Math.sin(a) + up * Math.cos(a)) * wp.scale - cy) * p.chunk.scale)
+                    bottom = Math.max(bottom, cy + p.chunk.dy + (my + wp.dy + (hw * Math.sin(a) + down * Math.cos(a)) * wp.scale - cy) * p.chunk.scale)
+                  }
+                })
+              )
+            })
+            expect(top, id).toBeGreaterThanOrEqual(0)
+            expect(bottom, id).toBeLessThanOrEqual(H)
+          }
+  })
+
   it("with legacyAnchor, the block sits where today's placeChunk puts it, in a tall frame and in its text area", () => {
     for (const area of [null, { x: 60, y: 0.11 * 1920, w: 960, h: 0.65 * 1920 }])
       for (const [position, legacy] of [

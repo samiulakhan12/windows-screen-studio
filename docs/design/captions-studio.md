@@ -2060,6 +2060,13 @@ under 1 ms.
   spoken words at their largest: a block dragged against a side moves in by as far as a line's
   grown edge word reaches past the block (§8.4), so Bold Pop's popped TROUBLESHOOTING is never cut
   off. A dragged block does not avoid obstacles: the user put it there.
+- **Stickers** (`box.kind` 'word'): each sticker reaches past its row, 0.62 em above and below the
+  line's middle (0.8 em above for Bangla and Hindi, 0.92 for Thai) plus its padding and border,
+  grown with its spoken word and turned by the look's tilt (a wide sticker reaches hw × sin 4°
+  further). The block keeps that inside too, as far as any chunk of the caption reaches, so its
+  chunks keep one height: a dragged block 0.06 u inside the frame (or the text area), a block at a
+  position inside the text area or 0.03 u from the frame's edges, as far as a block may go. It
+  moves in only when a sticker would reach further.
 - **One caption at the top or the bottom** (`captionPlaces`, §2.7): that caption uses the Top or
   Bottom anchor whatever the look's position, and does not move to avoid obstacles. Legacy looks
   honour it too (`placeOf`, §14.2): `placeChunk` gets 'top' or 'bottom' for that caption.

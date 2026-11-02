@@ -204,6 +204,15 @@ export function wordScripts(word: { text: string; script: ScriptTag }): Set<Scri
   return out
 }
 
+/**
+ * A sticker's top above the line's middle, em, for scripts whose marks reach higher than 0.62 em
+ * (BANGLA-NOTES: boxes get extra top padding): ি, ৌ and the reph reach 0.74 em in Noto Sans
+ * Bengali, ि 0.71 in Noto Sans Devanagari, Thai's stacked tone marks 0.84; all clear of the border.
+ */
+export const STICKER_TOP: Partial<Record<ScriptTag, number>> = { bengali: 0.8, devanagari: 0.8, thai: 0.92 }
+/** A sticker's bottom below the line's middle, and its top for every other script, em (§0.1). */
+export const STICKER_HALF = 0.62
+
 /** Scripts where the first k letters of a word draw as they do in the whole word (no joining or reordering, §9.3 typewriter). */
 const PREFIX_SAFE: ReadonlySet<ScriptTag> = new Set(['latin', 'cyrillic', 'greek', 'han', 'kana', 'hangul'])
 
