@@ -193,6 +193,8 @@ only when it validates:
 
 An hour is 7,385 windows × 9 bytes = 66 KB (89 KB as base64) per source. The storage manager's
 cache clean-up already treats `.cache/` as removable; removing it only means listening again.
+Duplicate and Make a vertical / square version (`projectCopy.ts`) copy it with `.cache/speech.json`:
+the copy keeps the project's muted and lowered stretches, so it shows their rows at once.
 
 ---
 

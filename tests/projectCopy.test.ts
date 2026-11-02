@@ -49,7 +49,7 @@ const OLD = new Date('2026-01-01T09:30:00.123Z')
 
 /** The files of a recording folder, with what Duplicate does with them. */
 const MEDIA = ['screen.mp4', 'webcam.mp4', 'mic.m4a', 'system.m4a']
-const COPIED = ['cursor.json', 'background.png', 'cursor.png', 'watermark-2.png', 'music-1.mp3', 'overlay-3.png', 'font-1.woff2', 'script.txt', '.cache/speech.json']
+const COPIED = ['cursor.json', 'background.png', 'cursor.png', 'watermark-2.png', 'music-1.mp3', 'overlay-3.png', 'font-1.woff2', 'script.txt', '.cache/speech.json', '.cache/sounds.json']
 const LEFT_OUT = ['.cache/transcript-parts/part-1.json', 'screen.webm', 'native.mp4', 'webcam.webm', 'audio.webm', 'recording.json', 'desktop.ini', 'notes.txt', 'extra/inside.png', 'project.json.tmp']
 
 function sourceProject(over: Partial<Project> = {}): Project {
@@ -159,7 +159,7 @@ describe('making a copy (test 61)', () => {
       expect(Math.trunc(b.mtimeMs)).toBe(Math.trunc(a.mtimeMs))
     }
     for (const f of [...LEFT_OUT, 'overlay-9.png', COPYING_MARK]) expect(existsSync(path.join(dst, f)), f).toBe(false)
-    expect(readdirSync(path.join(dst, '.cache'))).toEqual(['speech.json'])
+    expect(readdirSync(path.join(dst, '.cache')).sort()).toEqual(['sounds.json', 'speech.json'])
     expect(readdirSync(dst).sort()).toEqual([...MEDIA, ...COPIED.filter((f) => !f.includes('/')), '.cache', 'project.json'].sort())
   })
 })

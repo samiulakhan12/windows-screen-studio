@@ -11,6 +11,7 @@
 import { constants as fsConstants, promises as fs, type Stats } from 'node:fs'
 import path from 'node:path'
 import type { DuplicateProgress, DuplicateResult } from '../shared/api/projects'
+import { SOUNDS_CACHE_FILE } from '../shared/audio/soundsCache'
 import { APP_NAME } from '../shared/brand'
 import { migrateProject } from '../shared/engine/project'
 import { writeFileAtomicSync } from './atomicWrite'
@@ -24,8 +25,13 @@ export const COPYING_MARK = '.copying'
 
 /** The speech detector's results (speech/vad.ts SPEECH_CACHE_FILE), keyed by the media's size and time: saves running it again. */
 const SPEECH_CACHE = '.cache/speech.json'
-/** Small files kept with a recording besides its assets: the cursor track, the speaker notes, the speech cache. */
-const COPIED = new Set(['cursor.json', projects.SCRIPT_FILE, SPEECH_CACHE])
+/**
+ * The unwanted-sound finder's scores (F-17), keyed the same way: the copy keeps the project's muted
+ * and lowered stretches, and its rows (with Restore) show at once instead of after listening again.
+ */
+const SOUNDS_CACHE = `.cache/${SOUNDS_CACHE_FILE}`
+/** Small files kept with a recording besides its assets: the cursor track, the speaker notes, the speech and sound caches. */
+const COPIED = new Set(['cursor.json', projects.SCRIPT_FILE, SPEECH_CACHE, SOUNDS_CACHE])
 /** Room left on the drive besides the copied bytes. */
 const SPARE_BYTES = 64 * 1024 * 1024
 /** A copy whose marker is older than this was left by a crash. */
@@ -99,9 +105,11 @@ async function planFiles(src: string): Promise<Planned[]> {
   for (const entry of await fs.readdir(src)) {
     if (entry !== '.cache') await add(entry)
     else if ((await fs.lstat(path.join(src, entry))).isDirectory()) {
-      await add(SPEECH_CACHE).catch((err: NodeJS.ErrnoException) => {
-        if (err.code !== 'ENOENT') throw err
-      })
+      for (const cache of [SPEECH_CACHE, SOUNDS_CACHE]) {
+        await add(cache).catch((err: NodeJS.ErrnoException) => {
+          if (err.code !== 'ENOENT') throw err
+        })
+      }
     }
   }
   return out
