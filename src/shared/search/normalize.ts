@@ -118,10 +118,10 @@ export function queryTerms(query: string): string[] {
 }
 
 /**
- * Other readings of a query that found nothing, most likely first. Its last word, in a script
- * written without spaces, may be half typed, and the word breaker splits a word cut short into a
- * word and a piece no word starts with (โปรแก → โปร + แก, 東京タ → 東京 + タ). The pieces are joined
- * from the end, one more each time, into one term matched by prefix (โปรแก finds "โปรแกรม").
+ * Other readings of a query, most likely first. Its last word, in a script written without
+ * spaces, may be half typed, and the word breaker splits a word cut short into a word and a piece
+ * no word starts with (โปรแก → โปร + แก, 東京タ → 東京 + タ). The pieces are joined from the end, one
+ * more each time, into one term matched by prefix (โปรแก finds "โปรแกรม").
  */
 export function queryRetries(query: string): string[][] {
   if (typeof query !== 'string') return []
@@ -137,7 +137,9 @@ export function queryRetries(query: string): string[][] {
     const joined = [...normalizeText(q.slice(tokens[j].start, runEnd)).matchAll(TERM_RE)].map((m) => m[0]).join('')
     // Longer than a term can be: no word starts with it.
     if (codePoints(joined) > SEARCH_LIMITS.termCodePoints) break
-    out.push(capTerms([...tokens.slice(0, j).map((t) => t.term), joined]))
+    const terms = capTerms([...tokens.slice(0, j).map((t) => t.term), joined])
+    // Past the most words a query reads, the joined word is left out: that reading is the first one.
+    if (terms.includes(joined)) out.push(terms)
   }
   return out
 }

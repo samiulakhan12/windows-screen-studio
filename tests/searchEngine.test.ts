@@ -192,8 +192,33 @@ describe('SearchIndex', () => {
     }
     // The word it found is marked whole.
     expect(hits(r.search('โปรแก')[0].moments[0].snippet)).toEqual(['โปรแกรม'])
-    // A query that finds something is never read another way.
+    // A word typed in one piece is read only one way.
     expect(r.search('ขอบคุณ').map((h) => h.id)).toEqual(['th'])
+  })
+
+  it('still finds the word being typed when another recording holds its split pieces', () => {
+    const r = index({
+      th: entry('Demo', [said(1, 'วันนี้เราจะมาตั้งค่าโปรแกรมบันทึกหน้าจอ'), said(5, 'ขอบคุณที่รับชมครับ')]),
+      // โปร + แก start โปรด (please) and แก้ไข (edit); ขอบ + คุ start ขอบ (edge) and คุณ (you).
+      other: entry('Other', [said(1, 'สวัสดีครับคุณผู้ชม'), said(5, 'โปรดกดปุ่มแก้ไขที่ขอบหน้าต่าง')]),
+      ja: entry('旅行', [said(1, '東京タワーに行きました')]),
+      // 東京 + タ: a name starting with タ, and 東京 said.
+      ja2: entry('タスク管理', [said(1, '東京で会議があります')])
+    })
+    for (const [word, id] of [['โปรแกรม', 'th'], ['ขอบคุณ', 'th'], ['東京タワー', 'ja']]) {
+      const letters = [...word]
+      for (let n = /\p{Script=Han}/u.test(letters[0]) ? 1 : 2; n <= letters.length; n++) {
+        const typed = letters.slice(0, n).join('')
+        expect(r.search(typed).map((h) => h.id), typed).toContain(id)
+      }
+    }
+    // The word being typed comes first; the recording holding only the pieces follows.
+    expect(r.search('โปรแก').map((h) => h.id)).toEqual(['th', 'other'])
+    expect(hits(r.search('โปรแก')[0].moments[0].snippet)).toEqual(['โปรแกรม'])
+    expect(r.search('東京タ').map((h) => h.id)).toEqual(['ja', 'ja2'])
+    // A recording found both ways is listed once.
+    const both = index({ both: entry('Both', [said(1, 'โปรแกรมแก้ไขวิดีโอ')]), other: entry('Other', [said(1, 'โปรดกดปุ่มแก้ไข')]) })
+    expect(both.search('โปรแก').map((h) => h.id)).toEqual(['both', 'other'])
   })
 
   it('puts moments with more of the words first, and a phrase above scattered words', () => {

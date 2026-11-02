@@ -101,6 +101,14 @@ describe('queryRetries', () => {
     expect(expected[expected.length - 1]).toEqual(['open', 'ตั้งค่าโปรแก'])
   })
 
+  it('leaves out a reading whose joined word is past the most words a query reads', () => {
+    // a … g, ตั้ง, ค่า, โปร, แก: only the first 8 words are read, so joining ค่า + โปร + แก, or
+    // โปร + แก, would read the same 8 words again.
+    const query = 'a b c d e f g ตั้งค่าโปรแก'
+    expect(queryTerms(query)).toHaveLength(8)
+    expect(queryRetries(query)).toEqual([['a', 'b', 'c', 'd', 'e', 'f', 'g', 'ตั้งค่าโปรแก']])
+  })
+
   it('has none for words with spaces, or a last word in one piece', () => {
     expect(queryRetries('setting pag')).toEqual([])
     expect(queryRetries('โปรแก open')).toEqual([])

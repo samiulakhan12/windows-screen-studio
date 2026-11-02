@@ -202,24 +202,38 @@ export class SearchIndex {
 
   search(query: string, options: SearchOptions = {}): SearchHit[] {
     const known = new Map<string, TermMatches>()
-    const hits = this.searchTerms(queryTerms(query), options, known)
-    if (hits.length) return hits
-    // A word of Thai or Japanese still being typed (§2.3): its pieces joined from the end.
+    let found = this.searchTerms(queryTerms(query), options, known)
+    // A word of Thai or Japanese still being typed (§2.3): its pieces joined from the end. Another
+    // recording may hold the split pieces (โปร + แก in โปรด + แก้ไข), so this is tried even when they
+    // found something. The first reading that finds something comes first, then the other recordings
+    // the split one found; words as typed still come before typo guesses, and a recording found both
+    // ways is listed once, by the better of the two.
     for (const words of queryRetries(query)) {
-      const retry = this.searchTerms(words, options, known)
-      if (retry.length) return retry
+      const joined = this.searchTerms(words, options, known)
+      if (!joined.length) continue
+      const seen = new Set<Doc>()
+      found = [...joined, ...found]
+        .sort((a, b) => a.typos - b.typos)
+        .filter((s) => {
+          if (seen.has(s.doc)) return false
+          seen.add(s.doc)
+          return true
+        })
+      break
     }
-    return []
+    return found.slice(0, options.hits ?? SEARCH_LIMITS.hits).map((s) => hitOf(s.doc, s.score, s.matches, options.moments ?? SEARCH_LIMITS.moments))
   }
 
-  /** The recordings holding every one of `words` (`known`: the words matched so far in this search). */
-  private searchTerms(words: string[], options: SearchOptions, known: Map<string, TermMatches>): SearchHit[] {
+  /** The recordings holding every one of `words`, best first (`known`: the words matched so far in this search). */
+  private searchTerms(words: string[], options: SearchOptions, known: Map<string, TermMatches>): Scored[] {
     if (!words.length) return []
     const matches = words.map((q) => {
       let m = known.get(q)
       if (!m) known.set(q, (m = this.match(q)))
       return m
     })
+    // A word matching no term (most joined readings): no recording holds them all.
+    if (matches.some((m) => !m.ids.length)) return []
     // Recordings holding every word somewhere (strong-only matches are checked per unit below).
     let candidates: Set<Doc> | null = null
     for (const m of matches) {
@@ -229,17 +243,24 @@ export class SearchIndex {
       if (!docs.size) return []
     }
     // Score every candidate first; moments and snippets only for those returned.
-    const scored: { doc: Doc; score: number; typos: number }[] = []
+    const scored: Scored[] = []
     for (const doc of candidates ?? []) {
       if (options.only && !options.only.has(doc.id)) continue
       const s = docScore(doc, matches)
-      if (s) scored.push({ doc, ...s })
+      if (s) scored.push({ doc, matches, ...s })
     }
     // Recordings holding the words as typed (exactly or by prefix) come before typo guesses, however
     // many captions guess: "come" said ten times never hides the one recording that says "code".
-    scored.sort((a, b) => a.typos - b.typos || b.score - a.score || b.doc.entry.createdAt.localeCompare(a.doc.entry.createdAt) || a.doc.id.localeCompare(b.doc.id))
-    return scored.slice(0, options.hits ?? SEARCH_LIMITS.hits).map(({ doc, score }) => hitOf(doc, score, matches, options.moments ?? SEARCH_LIMITS.moments))
+    return scored.sort((a, b) => a.typos - b.typos || b.score - a.score || b.doc.entry.createdAt.localeCompare(a.doc.entry.createdAt) || a.doc.id.localeCompare(b.doc.id))
   }
+}
+
+/** A recording found, with the matches of the query words it was found by. */
+interface Scored {
+  doc: Doc
+  matches: TermMatches[]
+  score: number
+  typos: number
 }
 
 /** A unit's score and how many query words it holds. */
