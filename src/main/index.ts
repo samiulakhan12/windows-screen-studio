@@ -32,6 +32,7 @@ import { registerStorageIpc } from './storageIpc'
 import { disposeUpdates, registerUpdatesIpc } from './updates/updatesIpc'
 import { registerModelListIpc } from './ai/modelListIpc'
 import { disposeShare, registerShareIpc } from './share/shareIpc'
+import { disposeSearch, registerSearchIpc } from './search/searchIpc'
 
 // The app was called "Screen Studio for Windows" before: its userData folder moves to Flown's
 // before anything reads it, and before the single-instance lock, which lives in it.
@@ -94,6 +95,8 @@ if (!app.requestSingleInstanceLock()) {
     registerModelListIpc()
     // Share without a server (docs/design/share.md): cloud folders and chat webhooks after export.
     registerShareIpc()
+    // Search every recording (docs/design/search.md): the index is built in the background.
+    registerSearchIpc()
     openMainWindow()
     app.on('activate', () => {
       if (BrowserWindow.getAllWindows().length === 0) openMainWindow()
@@ -110,6 +113,7 @@ if (!app.requestSingleInstanceLock()) {
     disposeJobs()
     disposeUpdates()
     disposeShare()
+    disposeSearch()
     appLog()?.flushSync()
   })
 

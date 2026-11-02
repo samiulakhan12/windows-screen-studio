@@ -108,6 +108,7 @@ import { noCursorText } from '../../../shared/import/imported'
 import '../editor/editor.css'
 import { PublishDialog } from '../publish/PublishDialog'
 import type { PublishKind } from '../../../shared/publish/pack'
+import { useSearchMoment } from '../search/useSearchMoment'
 
 interface Session {
   data: LoadedProject
@@ -506,6 +507,8 @@ function EditorSession({
     if (!held) noticeTimer.current = window.setTimeout(() => setNotice(null), noticeMs.current)
   }, [])
   useEffect(() => () => window.clearTimeout(noticeTimer.current), [])
+  // Opened from a search result on Home: start at its moment (docs/design/search.md §2.10).
+  useSearchMoment(store, player, showNotice)
 
   /* ---------- leaving, copies and the original (docs/design/vertical-video.md §2.3) ---------- */
 

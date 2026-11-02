@@ -58,6 +58,11 @@
   paste a chat's incoming webhook there (it is stored encrypted). Pick the destinations under
   *After export* in the export dialog; they are remembered for each preset. The video is never
   uploaded to a chat, and nothing goes through a Flown server.
+- **Search every recording** (F-18): type in the new box under *Recent recordings* on Home (or press
+  `Ctrl+F`) to find a moment across all your recordings: words said in captions, chapters, title
+  cards, text on screen, speaker notes and names. Results show the time and the words in context;
+  Enter opens the recording in the editor right at that moment. Small typos are forgiven, and Bangla,
+  Chinese, Japanese and Thai work too. Everything stays on your PC.
 
 ## 0.7.1
 

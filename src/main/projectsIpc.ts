@@ -14,6 +14,7 @@ import * as projects from './projects'
 import { isAppUrl } from './security'
 import { loadStyleDefaults, saveStyleDefaults, type StyleDefaults } from './styleDefaults'
 import { getMainWindow } from './windows'
+import { noteProjectSaved } from './search/searchIpc'
 
 /** Newest save written per project, so a save that arrives late cannot overwrite a newer one. */
 const lastSaved = new Map<string, SaveMeta>()
@@ -33,6 +34,7 @@ export function saveProjectNow(project: Project, meta?: SaveMeta): void {
   if (!existsSync(dir)) throw new Error('The recording folder no longer exists, so changes cannot be saved.')
   writeFileAtomicSync(path.join(dir, 'project.json'), JSON.stringify(project, null, 2))
   if (meta) lastSaved.set(project.id, meta)
+  noteProjectSaved(project)
 }
 
 /**

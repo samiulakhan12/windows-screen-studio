@@ -18,6 +18,7 @@ import type { UpdatesApi } from './api/updates'
 import type { AssetsApi } from './api/assets'
 import type { SoundsApi } from './api/sounds'
 import type { ShareApi } from './api/share'
+import type { SearchApi } from './api/search'
 
 export type { ExportApi, ExportJob } from './api/export'
 export type { LoadedProject, ProjectsApi } from './api/projects'
@@ -26,4 +27,4 @@ export type { RecorderCommand, RecordingApi, SaveRecordingPayload } from './api/
 export type { ImportApi, ImportProgress, ImportResult } from './api/import'
 
 /** API exposed to renderer windows by the preload script as `window.api`. */
-export type StudioApi = { platform: string } & RecordingApi & ProjectsApi & ExportApi & PrefsApi & AiApi & CaptionsApi & BrandApi & BrandKitApi & NotesApi & SpeechApi & JobsApi & ExportBundleApi & DiagnosticsApi & StorageApi & ImportApi & VoiceApi & UpdatesApi & AssetsApi & SoundsApi & ShareApi
+export type StudioApi = { platform: string } & RecordingApi & ProjectsApi & ExportApi & PrefsApi & AiApi & CaptionsApi & BrandApi & BrandKitApi & NotesApi & SpeechApi & JobsApi & ExportBundleApi & DiagnosticsApi & StorageApi & ImportApi & VoiceApi & UpdatesApi & AssetsApi & SoundsApi & ShareApi & SearchApi
