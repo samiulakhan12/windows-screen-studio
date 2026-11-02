@@ -165,7 +165,9 @@ For each recording:
 ### 2.7 Snippets
 
 A moment's snippet is the unit's text around its first matched term: up to 60 characters before
-and 120 after, cut on a word boundary with `…` at a cut end, never across a line break. Matched
+and 120 after, cut on a word boundary with `…` at a cut end, never across a line break. Where there
+is no space to cut at, it is cut between whole characters (grapheme clusters): a Thai letter keeps
+its vowel and tone marks, an emoji sequence or a flag stays whole. Matched
 terms are returned as ranges (`{ text, hit }` parts), never as HTML; the page renders them as text
 in `<mark>`. This keeps any `<`, `&` in a caption inert.
 
@@ -414,6 +416,8 @@ No new dependency: `Intl.Segmenter` is in Electron's ICU, and the rest is small 
 - A moment's time was its second in the recording, so after a trim, a speed change or a pause it
   differed from the editor's timecode, the caption and chapter lists and the exported video. It is
   now the time in the edited video (§2.2); the index file went to version 2 and is built again.
+- A snippet cut in Thai text without spaces could start with a vowel or tone mark parted from its
+  letter, or end on a letter without its marks; it is now cut between whole characters (§2.7).
 - A Thai or Japanese word found nothing while it was typed (`โปรแก`, `บันทึ`, `東京タ`): the word
   breaker split it into pieces, one of which starts no word. Its pieces are now joined again (§2.3).
 - A recording holding the words as typed is never ranked below one that only holds typo neighbours

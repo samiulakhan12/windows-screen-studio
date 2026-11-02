@@ -9,6 +9,45 @@ export type Range = readonly [number, number]
 const ELLIPSIS = '…'
 
 const isLowSurrogate = (c: number): boolean => c >= 0xdc00 && c <= 0xdfff
+/** A flag is two regional indicators, paired from the start of their run. */
+const isRegionalIndicator = (c: number | undefined): boolean => c !== undefined && c >= 0x1f1e6 && c <= 0x1f1ff
+const MARK_RE = /\p{M}/u
+/** Code units read on each side of a cut to find the character it falls in. */
+const CUT_CONTEXT = 32
+/** Characters nothing joins to the one before them (Han, kana, Thai consonants, ASCII): a cut before one needs no look. */
+const STARTER_RE = /[\x21-\x7e\p{Script=Han}\u3041-\u3096\u30A1-\u30FA\u0E01-\u0E2E]/u
+
+let graphemes: Intl.Segmenter | null | undefined
+
+function characterBreaker(): Intl.Segmenter | null {
+  if (graphemes === undefined) {
+    try {
+      graphemes = typeof Intl !== 'undefined' && 'Segmenter' in Intl ? new Intl.Segmenter(undefined, { granularity: 'grapheme' }) : null
+    } catch {
+      graphemes = null
+    }
+  }
+  return graphemes
+}
+
+/**
+ * `i` moved forward to where a whole character starts (at most `max`): a cut never parts a letter
+ * from its marks (Thai vowels and tones), an emoji sequence or a surrogate pair.
+ */
+function characterStart(text: string, i: number, max: number): number {
+  if (STARTER_RE.test(text[i] ?? '')) return i
+  const breaker = characterBreaker()
+  if (!breaker) {
+    while (i < max && (isLowSurrogate(text.charCodeAt(i)) || MARK_RE.test(text[i]))) i++
+    return i
+  }
+  let from = Math.max(0, i - CUT_CONTEXT)
+  if (from > 0 && isLowSurrogate(text.charCodeAt(from))) from--
+  while (from >= 2 && isRegionalIndicator(text.codePointAt(from - 2))) from -= 2
+  const end = Math.min(max, i + CUT_CONTEXT)
+  for (const s of breaker.segment(text.slice(from, end))) if (from + s.index >= i) return from + s.index
+  return end
+}
 
 /** Sorted, merged ranges inside 0..length. */
 function mergeRanges(ranges: readonly Range[], length: number): [number, number][] {
@@ -58,14 +97,14 @@ export function snippetOf(text: string, ranges: readonly Range[]): SnippetPart[]
   // Cut on a word boundary: never in the middle of a word.
   if (from > lineStart) {
     const space = text.slice(from, first[0]).search(/\s/)
-    // No space to cut at (Chinese, Japanese, Thai): cut between characters, never inside a surrogate pair.
+    // No space to cut at (Chinese, Japanese, Thai): cut between whole characters.
     if (space >= 0) from += space + 1
-    else if (isLowSurrogate(text.charCodeAt(from))) from++
+    else from = characterStart(text, from, first[0])
   }
   if (to < lineEnd) {
     const space = text.slice(first[1], to).search(/\s\S*$/)
     if (space >= 0) to = first[1] + space
-    else if (isLowSurrogate(text.charCodeAt(to))) to--
+    else to = characterStart(text, to, lineEnd)
   }
   const parts = markRanges(text, merged, from, to)
   const trimmed = parts.length ? parts : [{ text: '', hit: false }]

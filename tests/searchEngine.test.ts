@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { SearchIndex } from '../src/shared/search/engine'
 import { indexedProject, projectUnits } from '../src/shared/search/extract'
+import { tokenize } from '../src/shared/search/normalize'
 import { parseIndexFile, serializeIndex } from '../src/shared/search/indexFile'
 import { clockTime, momentTarget, resultsSummary, spokenTime } from '../src/shared/search/moment'
 import { snippetOf } from '../src/shared/search/snippet'
@@ -329,6 +330,26 @@ describe('snippetOf', () => {
     const parts = snippetOf(emoji, [[e, e + 3]])
     expect(plain(parts)).not.toMatch(/[\uDC00-\uDFFF]…|…[\uDC00-\uDFFF]/)
     expect(plain(parts).slice(1).codePointAt(0)).toBe(0x1f600)
+  })
+
+  it('never parts a Thai letter from its vowel and tone marks, nor an emoji sequence', () => {
+    const thai = 'วันนี้เราจะมาเรียนรู้วิธีการบันทึกหน้าจอคอมพิวเตอร์อย่างง่ายดายและรวดเร็วที่สุดสำหรับผู้เริ่มต้นใช้งานโปรแกรมนี้เป็นครั้งแรกนะครับ'
+    for (const t of tokenize(thai)) {
+      const s = plain(snippetOf(thai, [[t.start, t.end]]))
+      const body = s.replace(/^…|…$/g, '')
+      const at = thai.indexOf(body)
+      expect(at, s).toBeGreaterThanOrEqual(0)
+      expect(/^\p{M}/u.test(body), s).toBe(false)
+      expect(/^\p{M}/u.test(thai.slice(at + body.length)), s).toBe(false)
+    }
+    const family = '👨\u200D👩\u200D👧'
+    // Cuts that fall inside a family emoji and inside a flag.
+    for (let pad = 0; pad < 8; pad++) {
+      const emoji = `${family.repeat(12)}${'x'.repeat(pad)}hit${'y'.repeat(pad)}${'🇧🇩'.repeat(40)}`
+      const e = emoji.indexOf('hit')
+      const parts = plain(snippetOf(emoji, [[e, e + 3]]))
+      expect(parts, `${pad}`).toMatch(/^…(👨\u200D👩\u200D👧)+x*hity*(🇧🇩)+…$/u)
+    }
   })
 
   it('merges overlapping ranges and shows the start without a match', () => {
