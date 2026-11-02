@@ -251,7 +251,7 @@ export function LibrarySearch({ projects, onOpen }: { projects: ProjectSummary[]
                       )}
                       {row.kind === 'moment' && (
                         <>
-                          <span className="search-time">{row.moment.start === null ? '' : clockTime(row.moment.start)}</span>
+                          <span className="search-time">{row.moment.video === null ? '' : clockTime(row.moment.video)}</span>
                           <span className="search-kind">{KIND_LABEL[row.moment.kind]}</span>
                           <span className="search-snippet">
                             <Snippet parts={row.moment.snippet} />

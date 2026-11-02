@@ -27,6 +27,7 @@ const moment = (start: number | null, text: string, over: Partial<SearchMoment> 
   kind: 'said',
   start,
   end: start,
+  video: start,
   snippet: [{ text: 'open ', hit: false }, { text, hit: true }],
   terms: 1,
   cut: false,
@@ -66,6 +67,11 @@ describe('rowLabel', () => {
   it('reads a moment as one sentence with its time in words', () => {
     const [, m] = resultRows([hit('a', [moment(83, 'settings')])], new Set())
     expect(rowLabel(m)).toMatch(/^Said at 1 minute 23 seconds: open settings\. In Name a, /)
+  })
+
+  it('reads the time of the edited video, not of the recording', () => {
+    const [, m] = resultRows([hit('a', [moment(300, 'settings', { video: 180 })])], new Set())
+    expect(rowLabel(m)).toMatch(/^Said at 3 minutes: open settings\. /)
   })
 
   it('says when a moment was cut, and reads notes without a time', () => {

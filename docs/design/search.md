@@ -75,6 +75,12 @@ Each is a **unit**: `{ kind, start, end, text }`. A unit's text is capped at 2,0
 project at 400,000 characters of text in all (a 10-hour recording's captions are about 350,000);
 anything over is left out of the index, never an error.
 
+Times are source seconds: the editor opens there. A timed unit also keeps its time in the edited
+video (`video`: cuts, speed and pause freezes counted, from the clips and freezes read the way the
+editor reads them; a time in a cut is where the video goes on), stored only where it differs from
+`start`. That is the time Home shows and reads out, so it matches the editor's timecode, its caption
+and chapter lists and the exported video.
+
 Not indexed: words in shapes, brand-kit intro/outro cards come in through `titles` like any title;
 image overlays (no text); the cursor and keystrokes (keystrokes never record which keys, by design).
 
@@ -167,14 +173,14 @@ is), at most once every 3 seconds while changes come in, and once when the app q
 
 ```json
 {
-  "version": 1,
+  "version": 2,
   "projects": {
     "rec-20261030-101500": {
       "stamp": "1730283300123.4:48211",
       "name": "Product demo",
       "createdAt": "2026-10-30T10:15:00.000Z",
       "duration": 312.4,
-      "units": [["name", null, null, "Product demo"], ["said", 1.2, 3.9, "So the first thing…"]]
+      "units": [["name", null, null, "Product demo"], ["said", 121.2, 123.9, "So the first thing…", 1.2]]
     }
   }
 }
@@ -184,9 +190,11 @@ is), at most once every 3 seconds while changes come in, and once when the app q
 - **Only text is stored, not the inverted index**: terms are made again when the file is loaded
   (§8: 0.4 s for 500 recordings, in slices). That keeps the file about the size of the text it
   holds and makes a change in tokenising (§2.3) need no rebuild.
-- `version` is `SEARCH_INDEX_VERSION` (1). A missing file, unreadable JSON, a different version, or
-  an entry that does not validate (wrong types, a unit kind not known) means that entry, or the
-  whole file, is built again from the projects. Bump the version whenever **what is extracted**
+- A unit is `[kind, start, end, text]`, plus its time in the edited video when that differs from
+  `start` (§2.2; here the first 2:00 are trimmed).
+- `version` is `SEARCH_INDEX_VERSION` (2; version 1 had no edited-video times). A missing file,
+  unreadable JSON, a different version, or an entry that does not validate (wrong types, a unit
+  kind not known) means that entry, or the whole file, is built again from the projects. Bump the version whenever **what is extracted**
   (§2.2) changes.
 - The file is read with a 64 MB cap; anything bigger is ignored and rebuilt. An index that would be
   bigger is written as an empty file instead, so it is built again at the next start.
@@ -400,6 +408,9 @@ No new dependency: `Intl.Segmenter` is in Electron's ICU, and the rest is small 
   every recording and write an empty index.
 - A project folder named `__proto__` is stored like any other.
 - Snippets in scripts without spaces keep their text before the match and never cut a surrogate pair.
+- A moment's time was its second in the recording, so after a trim, a speed change or a pause it
+  differed from the editor's timecode, the caption and chapter lists and the exported video. It is
+  now the time in the edited video (§2.2); the index file went to version 2 and is built again.
 - A recording holding the words as typed is never ranked below one that only holds typo neighbours
   ("come", "model" for `code`), however many of its captions hold them (§2.6).
 - The live region stays quiet while the index is built; Ctrl+F does nothing on an empty library.

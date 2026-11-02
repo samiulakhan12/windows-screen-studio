@@ -204,6 +204,27 @@ describe('SearchIndex', () => {
     expect(hit.moments.map((m) => [m.start, m.cut])).toEqual([[10, true], [40, false]])
   })
 
+  it('gives each moment its time in the edited video: cuts, speed and pauses counted', () => {
+    const project = {
+      name: 'Demo',
+      duration: 600,
+      clips: [{ id: 'a', start: 120, end: 600, speed: 1 }],
+      chapters: [{ id: 'c', t: 300, title: 'Settings chapter' }],
+      transcript: { segments: [{ id: 's', start: 300, end: 302, text: 'open the settings page' }, { id: 'x', start: 60, end: 62, text: 'cut settings' }] },
+      script: { text: 'settings notes' }
+    }
+    // The first 2:00 trimmed: 5:00 of the recording is 3:00 of the video; a cut moment is where the editor opens.
+    const [trimmed] = index({ p: indexedProject(project, 's') as IndexedProject }).search('settings')
+    expect(trimmed.moments.map((m) => [m.kind, m.start, m.video])).toEqual([['chapter', 300, 180], ['said', 60, 0], ['said', 300, 180], ['notes', null, null]])
+    // At 2x, with a 3 s pause before it.
+    const fast = indexedProject({ ...project, clips: [{ id: 'a', start: 0, end: 600, speed: 2 }], freezes: [{ id: 'f', at: 100, length: 3, sound: 'pause' }] }, 's') as IndexedProject
+    expect(index({ p: fast }).search('chapter')[0].moments[0]).toMatchObject({ start: 300, video: 153 })
+    // Not edited: the source time, and nothing more is stored.
+    const plainEntry = indexedProject({ ...project, clips: [{ id: 'a', start: 0, end: 600, speed: 1 }] }, 's') as IndexedProject
+    expect(plainEntry.units.some((u) => u.video !== undefined)).toBe(false)
+    expect(index({ p: plainEntry }).search('chapter')[0].moments[0]).toMatchObject({ start: 300, video: 300 })
+  })
+
   it('limits recordings and moments, and counts the rest', () => {
     const many: Record<string, IndexedProject> = {}
     for (let i = 0; i < 60; i++) many[`r${i}`] = entry(`R${i}`, Array.from({ length: 70 }, (_, k) => said(k, 'the word again')))
@@ -303,6 +324,14 @@ describe('index file', () => {
 
   it('round-trips', () => {
     expect(parseIndexFile(JSON.parse(serializeIndex(projects)))).toEqual(projects)
+  })
+
+  it('round-trips the time in the edited video, and drops one that is not a time', () => {
+    const edited = new Map([['rec-1', entry('One', [{ ...said(300, 'hello'), video: 180 }], { kept: [[120, 600]] })]])
+    expect(parseIndexFile(JSON.parse(serializeIndex(edited)))).toEqual(edited)
+    const file = (unit: unknown[]): unknown => ({ version: SEARCH_INDEX_VERSION, projects: { 'rec-1': { stamp: 's', name: 'n', createdAt: '', duration: 1, hasTranscript: true, kept: [], units: [unit] } } })
+    expect(parseIndexFile(file(['said', 1, 2, 'x', 0.5])).get('rec-1')?.units[0].video).toBe(0.5)
+    for (const bad of [['said', 1, 2, 'x', -1], ['said', 1, 2, 'x', 'soon'], ['notes', null, null, 'x', 3], ['said', 1, 2, 'x', null]]) expect(parseIndexFile(file(bad)).size).toBe(0)
   })
 
   it('keeps a project folder named __proto__', () => {

@@ -4,8 +4,11 @@
  * Read defensively: project.json may be old, damaged or edited by hand; anything that is not what
  * it should be is left out, never an error.
  */
+import { freezePlan, videoTimeAt } from '../engine/freeze'
+import { readFreezes } from '../engine/freezeData'
+import { fullClip, normalizeClips } from '../engine/timeline'
 import { importedSource } from '../import/imported'
-import type { Project } from '../types'
+import type { Clip, Project } from '../types'
 import { SEARCH_LIMITS, type IndexedProject, type SearchUnit } from './types'
 
 const isObject = (v: unknown): v is Record<string, unknown> => !!v && typeof v === 'object' && !Array.isArray(v)
@@ -82,6 +85,34 @@ export function keptRanges(raw: unknown): [number, number][] {
   return out.sort((a, b) => a[0] - b[0]).slice(0, 10_000)
 }
 
+/**
+ * Where a source second is in the edited video (cuts, speed and pauses counted), the time the
+ * editor's timecode, its caption and chapter lists and the export show. The clips and freezes are
+ * read the way the editor reads them (engine/project.ts migrateProject). Null when they cannot be.
+ */
+function videoClock(raw: Record<string, unknown>): ((t: number) => number) | null {
+  try {
+    const duration = typeof raw.duration === 'number' && Number.isFinite(raw.duration) && raw.duration > 0 ? raw.duration : 0.1
+    const listed = listOf(raw.clips).filter((c) => Number.isFinite(c.start) && Number.isFinite(c.end)) as unknown as Clip[]
+    const trim = (raw as { trim?: { start?: number; end?: number } }).trim
+    const clips = normalizeClips(listed.length ? listed : [{ ...fullClip(duration, ''), start: trim?.start ?? 0, end: trim?.end ?? duration }], duration)
+    const plan = freezePlan(clips, readFreezes(raw.freezes, duration))
+    return (t) => videoTimeAt(clips, plan, t)
+  } catch {
+    return null
+  }
+}
+
+/** The units with their time in the edited video, where it is not their source time. */
+function withVideoTimes(units: SearchUnit[], clock: ((t: number) => number) | null): SearchUnit[] {
+  if (!clock) return units
+  return units.map((u) => {
+    if (u.start === null) return u
+    const video = clock(u.start)
+    return Number.isFinite(video) && video >= 0 && video !== u.start ? { ...u, video } : u
+  })
+}
+
 /** The index entry of a project read from project.json (`stamp`: its mtimeMs:size). Null when it is not a project. */
 export function indexedProject(raw: unknown, stamp: string): IndexedProject | null {
   if (!isObject(raw)) return null
@@ -91,7 +122,7 @@ export function indexedProject(raw: unknown, stamp: string): IndexedProject | nu
     name: typeof raw.name === 'string' ? raw.name.slice(0, SEARCH_LIMITS.unitChars) : '',
     createdAt: typeof raw.createdAt === 'string' ? raw.createdAt.slice(0, 40) : '',
     duration: time(raw.duration) ?? 0,
-    units: projectUnits(raw),
+    units: withVideoTimes(projectUnits(raw), videoClock(raw)),
     hasTranscript: listOf(transcript?.segments).length > 0,
     kept: keptRanges(raw.clips)
   }

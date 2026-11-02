@@ -8,7 +8,7 @@
  * of another version is built again. A change in how text is split into terms needs no bump,
  * since terms are made again whenever the file is loaded.
  */
-export const SEARCH_INDEX_VERSION = 1
+export const SEARCH_INDEX_VERSION = 2
 
 /** Where in a recording words were found. */
 export type SearchKind = 'name' | 'file' | 'chapter' | 'title' | 'text' | 'said' | 'notes'
@@ -21,6 +21,8 @@ export interface SearchUnit {
   start: number | null
   end: number | null
   text: string
+  /** `start` in the edited video (cuts, speed and pauses counted), when that differs from `start`. */
+  video?: number
 }
 
 /** What the index keeps of one project (also what the index file stores, units as tuples). */
@@ -46,9 +48,11 @@ export interface SnippetPart {
 /** A place in a recording where the words were found. */
 export interface SearchMoment {
   kind: SearchKind
-  /** Source seconds; null for notes (no time). */
+  /** Source seconds (where the editor opens); null for notes (no time). */
   start: number | null
   end: number | null
+  /** The time shown: seconds of the edited video, as the editor's timecode and the export count them. */
+  video: number | null
   snippet: SnippetPart[]
   /** How many of the query's words it holds. */
   terms: number

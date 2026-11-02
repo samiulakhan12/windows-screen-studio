@@ -48,7 +48,7 @@ export function rowLabel(row: Row): string {
   if (row.kind === 'more') return `Show ${row.count} more moment${row.count === 1 ? '' : 's'}. ${where}`
   const m = row.moment
   const label = KIND_LABEL[m.kind]
-  const at = m.start === null ? label : `${label} at ${spokenTime(m.start)}`
+  const at = m.video === null ? label : `${label} at ${spokenTime(m.video)}`
   return `${at}${m.cut ? ', cut from the video' : ''}: ${textOf(m.snippet)}. ${where}`
 }
 

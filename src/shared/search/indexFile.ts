@@ -5,8 +5,8 @@
  */
 import { SEARCH_INDEX_VERSION, SEARCH_KINDS, SEARCH_LIMITS, type IndexedProject, type SearchKind, type SearchUnit } from './types'
 
-/** A unit as stored: [kind, start, end, text]. */
-type StoredUnit = [SearchKind, number | null, number | null, string]
+/** A unit as stored: [kind, start, end, text], and its time in the edited video when that differs from `start`. */
+type StoredUnit = [SearchKind, number | null, number | null, string] | [SearchKind, number, number | null, string, number]
 
 interface StoredProject {
   stamp: string
@@ -33,10 +33,14 @@ const isRange = (v: unknown): v is [number, number] =>
   Array.isArray(v) && v.length === 2 && typeof v[0] === 'number' && typeof v[1] === 'number' && Number.isFinite(v[0]) && Number.isFinite(v[1]) && v[1] > v[0]
 
 function readUnit(v: unknown): SearchUnit | null {
-  if (!Array.isArray(v) || v.length !== 4) return null
-  const [kind, start, end, text] = v as unknown[]
+  if (!Array.isArray(v) || (v.length !== 4 && v.length !== 5)) return null
+  const [kind, start, end, text, video] = v as unknown[]
   if (typeof kind !== 'string' || !KINDS.has(kind) || !timeOrNull(start) || !timeOrNull(end) || typeof text !== 'string') return null
-  return { kind: kind as SearchKind, start, end, text: text.slice(0, SEARCH_LIMITS.unitChars) }
+  const unit: SearchUnit = { kind: kind as SearchKind, start, end, text: text.slice(0, SEARCH_LIMITS.unitChars) }
+  if (v.length === 4) return unit
+  // A time in the edited video belongs to a unit with a time.
+  if (start === null || !timeOrNull(video) || video === null) return null
+  return { ...unit, video }
 }
 
 /** One stored project, or null when any part of it does not validate (it is then read again from its folder). */
@@ -86,7 +90,7 @@ export function serializeIndex(projects: ReadonlyMap<string, IndexedProject>): s
       duration: p.duration,
       hasTranscript: p.hasTranscript,
       kept: p.kept,
-      units: p.units.map((u) => [u.kind, u.start, u.end, u.text])
+      units: p.units.map((u): StoredUnit => (u.video !== undefined && u.start !== null ? [u.kind, u.start, u.end, u.text, u.video] : [u.kind, u.start, u.end, u.text]))
     }
   }
   return JSON.stringify(file)

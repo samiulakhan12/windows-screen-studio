@@ -339,6 +339,7 @@ function hitOf(doc: Doc, score: number, matches: TermMatches[], momentLimit: num
       kind: u.kind,
       start: u.start,
       end: u.end,
+      video: u.start === null ? null : (u.video ?? u.start),
       snippet: snippetOf(u.text, unitRanges(doc, s.unit, matches)),
       terms: s.terms,
       cut: u.start !== null && isCut(doc.entry.kept, u.start, u.end ?? u.start)

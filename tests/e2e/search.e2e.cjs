@@ -140,6 +140,7 @@ async function backToHome(win) {
     await win.click('[data-testid="library-search"]')
     await search(win, 'pricing', 'pricing')
     h.assert((await win.textContent('.search-moment')).includes('Cut'), 'a cut moment says so')
+    h.assert((await win.textContent('.search-moment .search-time')) === '0:04', 'its time is where the edited video goes on (4.2 s of the recording is cut)')
     await shot(win, 'search-cut')
     await win.keyboard.press('ArrowDown')
     await win.keyboard.press('ArrowDown')
@@ -207,7 +208,7 @@ async function backToHome(win) {
     const file = indexFileOf(home)
     h.assert(file, 'the index file is in userData/search')
     const stored = JSON.parse(fs.readFileSync(file, 'utf8'))
-    h.assert(stored.version === 1 && stored.projects['rec-search-bangla'], 'it holds the recordings')
+    h.assert(stored.version === 2 && stored.projects['rec-search-bangla'], 'it holds the recordings')
     h.assert(!fs.readdirSync(path.join(root, ids.bangla)).some((n) => /search|index/i.test(n)), 'nothing is written into project folders')
     fs.writeFileSync(file, '{ damaged')
 
@@ -220,7 +221,7 @@ async function backToHome(win) {
     await f.waitFor(
       () => {
         try {
-          return JSON.parse(fs.readFileSync(file, 'utf8')).version === 1
+          return JSON.parse(fs.readFileSync(file, 'utf8')).version === 2
         } catch {
           return false
         }
