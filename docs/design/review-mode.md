@@ -455,8 +455,9 @@ there (`went`, `changeGone`) and keeps it until its record comes back.
   Keep all and Remove all acting on more than 200 rows say they are working before they work: the
   button reads `Keeping…` or `Removing…` (`aria-busy`; both buttons `aria-disabled`, so the focus
   stays on the one pressed) and the live region says what it does and what waits for it
-  (`Keeping 8098 changes… Keep, Remove, Undo and Redo wait until it is done.`,
-  `Removing 5393 silence cuts… Keep, Remove, Undo and Redo wait until it is done.`), drawn before
+  (`Keeping 8098 changes… Keep, Remove, Undo and Redo wait until it is done. Closing the panel
+  stops it.`, `Removing 5393 silence cuts… Keep, Remove, Undo and Redo wait until it is done.
+  Closing the panel stops it.`), drawn before
   the work starts. Then the work goes a slice of time at a time (about 25 ms, a task each, the page
   drawing in between): Remove all takes its cuts and speed-ups back one at a time (`removeSteps`,
   `takeBackSteps`: the same result as `removeItems`), and the result is one edit, one undo step,
@@ -478,19 +479,33 @@ there (`went`, `changeGone`) and keeps it until its record comes back.
   * Keep all and Remove all pressed meanwhile say the work goes on (`Still removing 5393 silence
     cuts…`); nothing is dropped without a word. Moving in the list (`N`, `P`, arrows, `Home`, `End`,
     a click on a row) works as ever and plays.
-  * Other edits made in the editor meanwhile (the timeline) are made at once; the work then starts
-    over on the project as it is and lands on top of them, its own undo step.
-  * Closing the panel stops the work with nothing of it done (the redo list untouched); what waited
-    is then done in order on the history as it is.
+  * Other edits made in the editor meanwhile (the timeline, Polish) are made at once; the work then
+    starts over on the project as it is and lands on top of them, its own undo step. `Ctrl+Z` (any
+    Undo, `Undo polish` too) right after such an edit takes it back at once, and `Ctrl+Y` brings it
+    back, as if pressed after the work in that order; an undo or redo asked for after something
+    that waits (a waiting Keep, a waiting undo) waits too, in turn.
+  * Closing the panel (`Escape`, Close, `Shift+R`, the Review button, a command that shows an
+    Inspector tab) stops the work with nothing of it done, and the editor's notice says so
+    (`Remove all silence cuts stopped: nothing was removed.`, `Keep all stopped: nothing was
+    kept.`). What waited is then done in order as if the work had been made: an undo that would
+    have taken it back does nothing (a Keep you made before stays), a redo it would have found
+    nothing for does nothing (the redo list stays as it was), and a Keep or Remove that waited is
+    made, its own undo step, its message in the same notice (`… nothing was removed. Kept. 2 of
+    6000 reviewed.`). So does work that finds nothing left to change.
+  * Leaving the editor (Back, Open original) waits for the work and what waits for it, then saves;
+    closing the window, and Duplicate or Make a vertical version, make its edit at once first. None
+    of them loses it.
 
   When it is done the focus moves on as below (to the next row to review after the focused one; a
-  row chosen meanwhile and still to review keeps it), if it is still in the panel.
+  row chosen meanwhile and still to review keeps it), if it is still in the panel: also from a
+  button the work took away (the focused row's Remove, reached again with `Shift+Tab` meanwhile),
+  once that row is drawn, never left on the row it moved on from.
 * After each action a polite live region says what happened: `Kept. 13 of 40 reviewed.`,
   `Removed. 14 of 40 reviewed.`, `Kept 26 changes.`, `Removed 5 zooms.`, and before Keep all or
   Remove all over more than 200 rows `Removing 5393 silence cuts… Keep, Remove, Undo and Redo
-  wait until it is done.` (each message a new node in the region, so the same words after an undo
-  are read out again; messages said before the page shows the first are said together, in one
-  node); and the next pending item
+  wait until it is done. Closing the panel stops it.` (each message a new node in the region, so
+  the same words after an undo are read out again; messages said before the page shows the first
+  are said together, in one node); and the next pending item
   after the one acted on gets the focus (it is not played: playing only follows a move). After
   Keep all, whose button then turns disabled, the focus goes back to the focused item's row.
   Undo and redo (the editor's `Ctrl+Z`, `Ctrl+Y`) can take a row in or out of review under the
@@ -618,12 +633,15 @@ wait for it (§4.3).
 * `src/shared/review/slices.ts` — `inSlices(read, start, done, tasks, slice?)`: steps a slice of
   time at a time, over again when the state changes; `heldInSlices(store, start, done, tasks,
   slice?)`: the same on the edit store's state, holding the store meanwhile (undo, redo and what
-  waits are done after `done`'s edit; stopped, nothing of it is done and they are done then);
+  waits are done after `done`'s edit; stopped, nothing of it is done and they are done as if it
+  had been); both give `{ stop, finish }` (`finish`: the steps left at once);
   `src/renderer/src/review/tasks.ts` `pageTasks()`: the page's tasks for it (the first after the
-  next frame is drawn). `src/shared/editor/editStore.ts` `hold()`, `held`, `whenFree(fn)`.
+  next frame is drawn). `src/shared/editor/editStore.ts` `hold(finish?)` (gives `release(made?)`),
+  `held`, `whenFree(fn)`, `finish()`; `src/shared/engine/history.ts` `push` says whether it made a
+  new step.
 * `src/shared/review/copy.ts` — titles, places, the live messages (`busyMessage` with `BUSY_RULE`,
   `stillBusyMessage`, `waitMessage`, `staleMessage`, `BUSY_WORDS` for Keep all and Remove all at
-  work), `itemAccessibleName`.
+  work, `stoppedMessage` when closing the panel stops it), `itemAccessibleName`.
 * `src/shared/review/preview.ts` — `previewStretch(clips, start, end)` (where to seek, when to stop).
 * `src/shared/review/stretch.ts` — `playStretch(player, clips, stretch, clock)`: plays the stretch,
   pauses at its end; a seek of more than 0.5 s (back or ahead) or a pause by the user ends it
@@ -748,14 +766,22 @@ Unit (`tests/review*.test.ts`), each failing without its code:
 * Work in slices (`tests/reviewSlices.test.ts`): `removeSteps` yields once for each cut or
   speed-up taken back and gives what `removeItems` gives (cuts, and speed-ups at 2×, 4× and 8×);
   `inSlices` takes steps for about a slice per task and gives the result once, starts over from the
-  new state when the state changes under it, does nothing more once stopped, and a long Remove all
-  through it is one store edit and one undo step. `heldInSlices`: `Ctrl+Z` while it works undoes
-  the Remove all once it is done, the Keep before it stays and `Ctrl+Y` brings it back; a Keep
-  handed to `whenFree` meanwhile is done after it, in turn with an undo; stopped, nothing of it is
-  done, the redo list stays and what waited is then done. `EditStore` (`tests/editStore.test.ts`):
-  undo and redo wait while held and are done in order after the holder's edit; a hold let go with
-  no edit does them on the history as it was; `whenFree` runs at once when free, else in turn, and
-  one that holds again keeps the rest waiting.
+  new state when the state changes under it, does nothing more once stopped, `finish` takes the
+  steps left at once from the state as it is, and a long Remove all through it is one store edit
+  and one undo step. `heldInSlices`: `Ctrl+Z` while it works undoes the Remove all once it is done,
+  the Keep before it stays and `Ctrl+Y` brings it back; a Keep handed to `whenFree` meanwhile is
+  done after it, in turn with an undo; stopped, nothing of it is done and a Keep that waited is
+  made; `Ctrl+Z` then stopped leaves the Keep before it; a redo that waited, stopped, finds nothing
+  and the redo list stays; a Remove all that finds nothing left to change makes no step and the
+  undo that waited for it takes nothing back; `finish` makes it at once, then what waited; an edit
+  made meanwhile is taken back at once by `Ctrl+Z` and the Remove all then lands on the Keep.
+  `EditStore` (`tests/editStore.test.ts`): undo and redo wait while held and are done in order
+  after the holder's edit; let go without its edit, what waited is done as if it had been made (an
+  undo for it does nothing, two undos take the step before it too, a redo for after it finds
+  nothing, a Keep that waited is made and an undo after it takes that Keep back); an undo takes
+  back at once an edit made meanwhile after the last thing that waits, and a redo brings it back,
+  else both wait; `finish` has the holder make its edit; `whenFree` runs at once when free, else in
+  turn, and one that holds again keeps the rest waiting.
 
 End to end (`tests/e2e/review-mode.e2e.cjs`): open a project with an auto zoom, a director segment
 and an automatic silence cut; the button shows 3; open with `Shift+R`; the rows read right; `N`
@@ -790,7 +816,18 @@ the Keep stays; `Ctrl+Y` brings it back. On 6,000 rows, while Remove all works: 
 `Delete`, a click on the next row's Keep, and Keep all: each Keep or Remove says it waits and moves
 the focus on, Keep all says it is still working, nothing changes until it is done; then each is done
 in order (`N of 6000 reviewed` counts them), said in one message after the Remove all's, the focus
-where the moves left it, and each `Ctrl+Z` takes back one of them, then the Remove all.
+where the moves left it, and each `Ctrl+Z` takes back one of them, then the Remove all. Then, each
+checked as pressed while it works: `Shift+Tab` twice to the last row's Remove, and once done the
+focus moves on to the next row to review (not drawn until then), in view, where `N` moves in the
+list; `Z` on the timeline then `Ctrl+Z`: the zoom is taken back at once, the Remove all is made, and
+one `Ctrl+Z` takes it back with the first zoom still kept; `Ctrl+Z`, `Home`, `N`, `K`, then
+`Escape`: the panel closes, the notice says `Remove all word cuts stopped: nothing was removed.
+Kept. 2 of 6000 reviewed.`, the saved project keeps every record and both zooms' Keeps, `Ctrl+Z`
+takes the waiting Keep back, and reopened the panel lists every row but the kept first zoom
+(`0 of 5999 reviewed`); `Home`, `K`, then Back: the library shows, and the saved project has the
+Remove all and the waiting Keep. On two more 6,000-row projects, Remove all then `Home` and `K`
+while it works: Duplicate from the palette makes a copy with the Remove all and the Keep (and the
+original saved with them); closing the window saves both.
 
 ## 10. Later
 
