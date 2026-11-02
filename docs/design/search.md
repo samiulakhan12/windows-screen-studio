@@ -145,7 +145,9 @@ A 1- or 2-code-point query term is matched only exactly and by prefix (no typos)
 term by prefix only in `name`, `file`, `title` and `chapter` units, so typing the first letter
 does not list every caption with a word starting with "a". Han characters are single code points,
 so for them a 1-character term matches by prefix in every unit; a first Thai, Lao, Khmer, Myanmar or
-kana letter is only a letter and follows the rule.
+kana letter is only a letter and follows the rule when it is the whole query. Among other words, such
+a letter is most often a piece the word breaker cut from a word being typed (`すご` → `す` + `ご`,
+`進みま` → `進み` + `ま`), and matches by prefix everywhere like the rest of that word.
 
 The vocabulary scan uses the bounded distance with an early exit and skips terms whose length
 cannot be within the allowed distance.
@@ -448,6 +450,9 @@ No new dependency: `Intl.Segmenter` is in Electron's ICU, and the rest is small 
 - A first Thai, Lao, Khmer, Myanmar or kana letter matched by prefix in every caption and note, so
   the first key typed listed nearly every recording in that language. Only a Han character is a word
   on its own; any other one letter matches by prefix only in names, titles and chapters (§2.5).
+  That rule first held for every one-letter term, and the breaker often cuts a half-typed Japanese
+  word into pieces, the last one kana: `すご`, `進みま` and `ありがとうござい` found nothing. A Thai, Lao,
+  Khmer, Myanmar or kana letter now follows it only when it is the whole query.
 - A snippet kept 60 Chinese or Japanese characters before the match (about 780 px), and the row
   shows one line of about 460 px at the smallest window: it showed only text and an ellipsis, never
   the marked word. The text before is now measured by width, a wide character counting as two (§2.7).

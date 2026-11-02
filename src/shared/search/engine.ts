@@ -28,6 +28,12 @@ const COMPACT_MIN_DEAD = 2000
 
 /** Han, where one character is a whole word, matched by prefix everywhere (a Thai or kana letter is only a letter). */
 const HAN_RE = /\p{Script=Han}/u
+/**
+ * Letters of the other scripts written without spaces. One alone is a first letter (the rule above);
+ * one among other words is most often a piece the word breaker cut from a word being typed
+ * (すご → す + ご), matched by prefix everywhere like the rest of that word.
+ */
+const UNSPACED_LETTER_RE = /[\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Thai}\p{Script=Lao}\p{Script=Khmer}\p{Script=Myanmar}]/u
 
 /**
  * A recording in the index: every unit's terms and their ranges in one packed array each (units
@@ -170,15 +176,15 @@ export class SearchIndex {
     this.dead = 0
   }
 
-  /** The vocabulary's matches for one query word. */
-  private match(q: string): TermMatches {
+  /** The vocabulary's matches for one query word (`lone`: the only word of its reading). */
+  private match(q: string, lone: boolean): TermMatches {
     const n = this.terms.length
     const quality = new Float32Array(n)
     const strongOnly = new Uint8Array(n)
     const ids: number[] = []
     const qLength = codePoints(q)
     const typos = allowedTypos(q, qLength)
-    const shortPrefix = qLength === 1 && !HAN_RE.test(q)
+    const shortPrefix = qLength === 1 && !HAN_RE.test(q) && (lone || !UNSPACED_LETTER_RE.test(q))
     for (let tid = 0; tid < n; tid++) {
       if (this.postings[tid].size === 0) continue
       const t = this.terms[tid]
@@ -227,9 +233,11 @@ export class SearchIndex {
   /** The recordings holding every one of `words`, best first (`known`: the words matched so far in this search). */
   private searchTerms(words: string[], options: SearchOptions, known: Map<string, TermMatches>): Scored[] {
     if (!words.length) return []
+    const lone = words.length === 1
     const matches = words.map((q) => {
-      let m = known.get(q)
-      if (!m) known.set(q, (m = this.match(q)))
+      const key = lone ? '\u0000' + q : q
+      let m = known.get(key)
+      if (!m) known.set(key, (m = this.match(q, lone)))
       return m
     })
     // A word matching no term (most joined readings): no recording holds them all.

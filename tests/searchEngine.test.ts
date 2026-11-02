@@ -177,6 +177,17 @@ describe('SearchIndex', () => {
     expect(index({ n: entry('ตั้งค่า', []) }).search('ต').map((h) => h.id)).toEqual(['n'])
   })
 
+  it('a kana letter split from a word being typed matches by prefix everywhere', () => {
+    // The word breaker cuts a half-typed word into pieces, the last often one kana: 進みま → 進み + ま,
+    // すご → す + ご. Those pieces are the word being typed, not a first letter.
+    const r = index({ a: entry('Demo', [said(1, 'では次に進みます')]), b: entry('Tips', [said(1, 'すごく簡単です')]), c: entry('End', [said(1, 'ありがとうございました')]) })
+    expect(r.search('進みま').map((h) => h.id)).toEqual(['a'])
+    expect(r.search('すご').map((h) => h.id)).toEqual(['b'])
+    expect(r.search('ありがとうござい').map((h) => h.id)).toEqual(['c'])
+    // Alone it is still a first letter.
+    expect(r.search('ま')).toEqual([])
+  })
+
   it('finds a Thai or Japanese word while it is typed, letter by letter', () => {
     const r = index({
       th: entry('Demo', [said(1, 'วันนี้เราจะมาตั้งค่าโปรแกรมบันทึกหน้าจอ'), said(5, 'ขอบคุณที่รับชมครับ')]),
