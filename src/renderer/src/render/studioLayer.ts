@@ -32,7 +32,7 @@ import { captionPoses, clipsKey, EASE, flashSafeChunks, seedOf, typewriterClip, 
 import { replacedAt } from '../../../shared/captions/replaced'
 import { speakersOf, STEM_SPEAKERS } from '../../../shared/captions/speakers'
 import { captionObstacles, fitChunk, placeStudio, studioChunkAt, studioLayout, type CaptionObstacles, type StudioChunk, type StudioFace, type StudioLayout, type StudioLine, type StudioWordBox } from '../../../shared/captions/studioLayout'
-import { SHADOW_CHIPS, STUDIO_BASE } from '../../../shared/captions/studioPresets'
+import { effectiveStudio, SHADOW_CHIPS } from '../../../shared/captions/studioPresets'
 import { prefixDrawsSame, scriptsIn, type ScriptTag, type StudioToken } from '../../../shared/captions/words'
 import type { Rect } from '../../../shared/engine/layout'
 import { isTall } from '../../../shared/engine/reframeData'
@@ -40,7 +40,7 @@ import { DEFAULT_ZOOM_SETTINGS } from '../../../shared/engine/zoom'
 import { actionRects } from '../../../shared/render/actionRects'
 import { TEXT_INSET } from '../../../shared/render/safeZones'
 import type { CaptionMark, CaptionSegment, CaptionSettings, CaptionStudio, Clip, Project, StudioPosition } from '../../../shared/types'
-import { catalogFontReady, catalogFontsFor, ensureCaptionFonts, ensureCatalogFont, fontGeneration } from './fontLoader'
+import { catalogFontReady, ensureCaptionFonts, ensureCatalogFont, fontGeneration, sampleCatalogFonts } from './fontLoader'
 import type { FrameContext } from './frameContext'
 import { blurredFrameOf, lowerThirdBoxes } from './titleCardLayer'
 import { blurredSprite, STUDIO_SPRITES } from './wordSprites'
@@ -98,15 +98,6 @@ function measureOn(ctx: Ctx): (text: string, px: number, face: StudioFace) => nu
 }
 
 /* ---------- the look a caption draws with ---------- */
-
-/** Chat with no speaker in the whole transcript draws as Subtitle (§0.1). */
-const subtitleOf = new WeakMap<CaptionStudio, CaptionStudio>()
-function effectiveStudio(studio: CaptionStudio, segments: readonly CaptionSegment[]): CaptionStudio {
-  if (studio.box.kind !== 'chat' || segments.some((s) => s.speaker)) return studio
-  let out = subtitleOf.get(studio)
-  if (!out) subtitleOf.set(studio, (out = { ...structuredClone(STUDIO_BASE as CaptionStudio), from: studio.from }))
-  return out
-}
 
 /** The marks of each caption, made once per captionMarks array. */
 const marksOf = new WeakMap<readonly CaptionMark[], ReadonlyMap<string, readonly CaptionMark[]>>()
@@ -1536,7 +1527,7 @@ export function drawStudioSample(ctx: Ctx, studio: CaptionStudio, frame: { w: nu
   // Its fonts start loading; fontGeneration() then changes, and sprites (keyed by it) are painted
   // again: a thumbnail drawn again after that shows the font. A missing download is not fetched
   // again on each draw (that would change fontGeneration and draw again, for ever).
-  for (const id of catalogFontsFor(sampleProject(studio, sample))) ensureCatalogFont(id)
+  for (const id of sampleCatalogFonts(sampleProject(studio, sample))) ensureCatalogFont(id)
   ctx.save()
   const bg = ctx.createLinearGradient(0, 0, tile.w, tile.h)
   bg.addColorStop(0, '#2a2d34')

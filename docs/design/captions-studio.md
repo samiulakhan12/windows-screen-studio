@@ -1747,7 +1747,9 @@ Per-script rules:
 ### 6.8 Loading before drawing and export
 
 - `catalogFontsFor(project)` (§14.2) lists what the project needs: the look's font and emphasis
-  font; every graphic's font (list items included), with the partner it draws with when the
+  font, of the look the captions draw with (Chat with no speaker in the transcript draws as
+  Subtitle, so Subtitle's fonts and Bangla font load; a gallery tile draws Chat itself and loads
+  Chat's, `sampleCatalogFonts`); every graphic's font (list items included), with the partner it draws with when the
   language needs letters it lacks; the catalogue fonts of title cards (the quote
   style's `cat:instrument-serif-italic` and any `cat:` font a card was given); the script fonts
   for the scripts found in the burned-in captions, graphics and titles (Unicode script of each
@@ -3318,7 +3320,7 @@ May touch additively: none beyond its own files.
 | `src/renderer/src/render/graphicsLayer.ts` (new) | `export function drawGraphicsLayer(fc: FrameContext): void`; `export function graphicRects(ctx: CanvasRenderingContext2D, project: Project, t: number, w: number, h: number): { id: string; rect: Rect }[]` (hit tests) |
 | `src/renderer/src/render/compositor.ts` | `drawGraphicsLayer(soundTime === t ? top : { ...top, t: soundTime })` between `drawAnnotations` and `drawCaptionsLayer` (§9.1 rule 6). |
 | `src/renderer/src/render/titleCardLayer.ts`, `src/shared/render/titleCards.ts` | The `quote` panel style (§10.1); `cat:` fonts on title cards; `export function blurredFrameOf(ctx: CanvasRenderingContext2D, size: 256 \| 128): HTMLCanvasElement` shared with Glass. |
-| `src/renderer/src/render/fontLoader.ts` | `export function catalogFontsFor(project: Project): string[]` (captions, graphics, title cards, scripts, partners, the emoji face with any Studio look or graphic, §6.8); `export function loadCatalogFont(id: string): Promise<void>`; `export function catalogFontReady(id: string): boolean`; `export async function prepareCaptionFonts(project: Project): Promise<void>` (never rejects; waits for catalogue faces and the `FlownFontW-` faces, keyed by project); `export function missingCatalogFonts(project: Project): CatalogFont[]`; `usedFontIds` reads `captions.studio`, graphics and title cards; Studio brand families `FlownFontW-<id>`. |
+| `src/renderer/src/render/fontLoader.ts` | `export function catalogFontsFor(project: Project): string[]` (captions, graphics, title cards, scripts, partners, the emoji face with any Studio look or graphic, §6.8; the captions' fonts are those of the look they draw with, Subtitle for Chat with no speaker); `export function sampleCatalogFonts(project: Project): string[]` (the same for a gallery tile, which draws the look itself); `export function loadCatalogFont(id: string): Promise<void>`; `export function catalogFontReady(id: string): boolean`; `export async function prepareCaptionFonts(project: Project): Promise<void>` (never rejects; waits for catalogue faces and the `FlownFontW-` faces, keyed by project); `export function missingCatalogFonts(project: Project): CatalogFont[]`; `usedFontIds` reads `captions.studio`, graphics and title cards; Studio brand families `FlownFontW-<id>`. |
 | `src/renderer/src/render/catalogFonts.ts` (new) | `export const BUNDLED_FONT_URLS: Readonly<Record<string, string>>` (`?url` imports). |
 | `src/renderer/src/render/contrastProbe.ts` (new) | `export function probeContrast(project: Project, t: number, studio: CaptionStudio): Promise<{ ratio: number; at: number } \| null>` (paused and after a seek only, on a `willReadFrequently` canvas, §7.3). |
 | `src/renderer/src/editor/exporter.ts` | `prepareCaptionFonts` in `prepare`; the sprite cap from the output size; pops, bleep tones and subtitle streams passed into the job. |

@@ -11,7 +11,7 @@ import { assetFontFile } from '../../../shared/api/assets'
 import { burnedSegments, captionLanguage } from '../../../shared/captions/captionTracks'
 import { catalogFamily, catalogFont, catalogId, type CatalogFile, type CatalogFont } from '../../../shared/captions/fontCatalog'
 import { coverageNeeded, partnerFor } from '../../../shared/captions/fontStack'
-import { STUDIO_BASE } from '../../../shared/captions/studioPresets'
+import { effectiveStudio, STUDIO_BASE } from '../../../shared/captions/studioPresets'
 import { fontFamily, fontOf, fontStack } from '../../../shared/render/fonts'
 import { MEDIA_SCHEME, mediaUrl } from '../../../shared/mediaUrl'
 import type { Graphic, Project, ProjectFont, TitleCard } from '../../../shared/types'
@@ -354,18 +354,31 @@ export function catalogFontsFor(project: Project): string[] {
   return out
 }
 
+const sampleFonts = new WeakMap<Project, string[]>()
+
+/** catalogFontsFor of a gallery sample (drawStudioSample), which draws the look as it is: a Chat tile is a bubble with no speaker. */
+export function sampleCatalogFonts(project: Project): string[] {
+  const hit = sampleFonts.get(project)
+  if (hit) return hit
+  const out = catalogIdsOf(project, true, true)
+  sampleFonts.set(project, out)
+  return out
+}
+
 /**
  * catalogFontsFor's list; without `captions`, what the burned-in captions alone draw with is left
- * out (their look's fonts, the scripts and CJK font of their words, their partners).
+ * out (their look's fonts, the scripts and CJK font of their words, their partners). The captions
+ * draw with Subtitle's fonts when the look is Chat and no caption has a speaker (studioLayer), unless
+ * `asIs` (a gallery sample, drawn in the look itself).
  */
-function catalogIdsOf(project: Project, captions: boolean): string[] {
+function catalogIdsOf(project: Project, captions: boolean, asIs = false): string[] {
   const ids = new Set<string>()
   const add = (font: string | undefined): void => {
     const id = catalogId(font)
     if (id) ids.add(id)
   }
   const studio = project.captions?.studio
-  const shown = captions ? studio : undefined
+  const shown = captions && studio ? (asIs ? studio : effectiveStudio(studio, burnedSegments(project))) : undefined
   const language = project.captions?.track ?? project.transcript?.language
   const texts: string[] = []
   if (shown) {
@@ -390,12 +403,13 @@ function catalogIdsOf(project: Project, captions: boolean): string[] {
   }
   const text = texts.join('\n')
   for (const [re, id] of SCRIPT_FONTS) if (re.test(text)) ids.add(id)
-  if ((shown || graphics.length) && BENGALI.test(text)) {
-    // The look's Bangla font (§0.2; graphics on a legacy look take Subtitle's), or Baloo Da 2 for heavy looks without one (§6.6).
-    const look = studio ?? STUDIO_BASE
-    const bn = look.text.scripts?.bengali
-    if (bn) add(bn.font)
-    else if (look.text.weight >= 700) ids.add('baloo-da-2')
+  if (BENGALI.test(text)) {
+    // The Bangla font of the look the captions draw with and of the look graphics take (§0.2; Subtitle's on a legacy look), or Baloo Da 2 for heavy looks without one (§6.6).
+    for (const look of new Set([shown, graphics.length ? (studio ?? STUDIO_BASE) : undefined])) {
+      const bn = look?.text.scripts?.bengali
+      if (bn) add(bn.font)
+      else if (look && look.text.weight >= 700) ids.add('baloo-da-2')
+    }
   }
   // Bangla on a card without a font of its own (BANGLA-NOTES): a quote's in Noto Serif Bengali, an automatic lower third's in the look's Bangla font.
   for (const c of project.titles ?? []) {

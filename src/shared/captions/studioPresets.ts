@@ -13,6 +13,7 @@
 import type {
   CaptionMotion,
   CaptionPreset,
+  CaptionSegment,
   CaptionStudio,
   StudioBox,
   StudioEdge,
@@ -607,6 +608,15 @@ export const STUDIO_PRESETS: readonly StudioPreset[] = [...LONG, ...MORE_LONG, .
 /** The built-in look `id`, or undefined. */
 export function studioPreset(id: string): StudioPreset | undefined {
   return STUDIO_PRESETS.find((p) => p.id === id)
+}
+
+/** Chat with no speaker in the whole transcript draws as Subtitle (§0.1): the look the captions draw with, and load the fonts of. */
+const subtitleOf = new WeakMap<CaptionStudio, CaptionStudio>()
+export function effectiveStudio(studio: CaptionStudio, segments: readonly CaptionSegment[]): CaptionStudio {
+  if (studio.box.kind !== 'chat' || segments.some((s) => s.speaker)) return studio
+  let out = subtitleOf.get(studio)
+  if (!out) subtitleOf.set(studio, (out = { ...structuredClone(STUDIO_BASE as CaptionStudio), from: studio.from }))
+  return out
 }
 
 /** The five legacy looks (§5.2), drawn by today's code, under *Classic*. */

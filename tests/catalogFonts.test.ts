@@ -55,6 +55,7 @@ const LOADER = '../src/renderer/src/render/fontLoader'
 const URLS = '../src/renderer/src/render/catalogFonts'
 const fonts = (await import(/* @vite-ignore */ LOADER)) as {
   catalogFontsFor(p: Project): string[]
+  sampleCatalogFonts(p: Project): string[]
   loadCatalogFont(id: string): Promise<void>
   catalogFontReady(id: string): boolean
   prepareCaptionFonts(p: Project): Promise<void>
@@ -154,6 +155,26 @@ describe('catalogFontsFor (§6.8)', () => {
     expect(fonts.catalogFontsFor(project({ titles: [quote] }))).toEqual(expect.arrayContaining(['instrument-serif-italic', 'noto-serif-bengali']))
     // A lower third placed by hand draws in the title font as before: nothing to load for it.
     expect(fonts.catalogFontsFor(withStudio(look('bold-pop'), { titles: [{ ...name, auto: undefined }] }))).not.toContain('baloo-da-2')
+  })
+
+  it('loads the fonts of the look the captions draw with: Chat with no speaker draws as Subtitle (§0.1)', () => {
+    const text = 'আমরা আজ শিখব কীভাবে ভিডিও বানাতে হয়'
+    const chat = look('chat')
+    chat.text.font = 'cat:poppins'
+    // No speaker (local transcription): Subtitle's Inter Tight and Hind Siliguri draw, not Chat's fonts.
+    const alone = fonts.catalogFontsFor(withStudio(chat, { transcript: { language: 'bn', segments: [{ id: 'c1', start: 0, end: 2, text }] } } as Partial<Project>))
+    expect(alone).toEqual(expect.arrayContaining(['hind-siliguri', 'inter-tight']))
+    expect(alone).not.toContain('poppins')
+    // With a speaker the bubbles draw in Chat's own fonts.
+    const spoken = fonts.catalogFontsFor(withStudio(chat, { transcript: { language: 'bn', segments: [{ id: 'c1', start: 0, end: 2, text, speaker: 'You' }] } } as Partial<Project>))
+    expect(spoken).toContain('poppins')
+    expect(spoken).not.toContain('hind-siliguri')
+    // A Bangla graphic takes the look as it is (graphicsLayer): Chat's Bangla font, beside Subtitle's for the captions.
+    expect(fonts.catalogFontsFor(withStudio(chat, { transcript: { language: 'bn', segments: [{ id: 'c1', start: 0, end: 2, text }] }, graphics: [keyword({ text: 'স্বয়ংক্রিয়' })] } as Partial<Project>))).toEqual(
+      expect.arrayContaining(['hind-siliguri', 'noto-sans-bengali', 'poppins'])
+    )
+    // A gallery tile draws the look itself, a Chat bubble with no speaker.
+    expect(fonts.sampleCatalogFonts(withStudio(chat, { transcript: { language: 'en', segments: [{ id: 'sample', start: 0, end: 2.4, text: 'Make every word count today' }] } } as Partial<Project>))).toContain('poppins')
   })
 
   it('adds the partner when the language needs letters the look font lacks, and the CJK download of the language', () => {
