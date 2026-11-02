@@ -116,6 +116,11 @@ export interface FindInput {
   sources: readonly SourceScores[]
   /** The speech detector's ranges (source seconds), or null when it did not run. */
   speech: readonly Range[] | null
+  /**
+   * The source the speech detector listened to (voiceSource). YAMNet's speech score still guards
+   * every source it did not hear (the system sound when it heard the microphone): every source when absent.
+   */
+  voice?: AudioSource
   /** Each source's sound levels (for fitting), when measured. */
   levels?: Partial<Record<AudioSource, AudioLevels>>
 }
@@ -148,7 +153,7 @@ function candidateWindows(s: SourceScores, column: number, threshold: number): n
   return out
 }
 
-/** The speech guard when the detector did not run: windows whose speech score reaches FIND.speechScore. */
+/** YAMNet's speech guard (where the detector did not listen): windows whose speech score reaches FIND.speechScore. */
 function speechFromScores(sources: readonly SourceScores[]): Range[] {
   const cols = SCORE_COLUMNS.length
   const min = Math.ceil(FIND.speechScore * 255)
@@ -204,7 +209,9 @@ export function subtractRanges(r: Range, cuts: readonly Range[]): Range[] {
  * by time. Pure and linear in the windows.
  */
 export function findSounds(input: FindInput): SoundRow[] {
-  const speech = mergeRanges((input.speech ?? speechFromScores(input.sources)).map((r) => ({ start: r.start - FIND.speechGuard, end: r.end + FIND.speechGuard })))
+  // The detector heard its voice source (the mixed track holds every source); YAMNet's speech score guards the rest.
+  const unheard = input.speech === null ? input.sources : input.sources.filter((s) => input.voice !== 'mix' && s.source !== input.voice)
+  const speech = mergeRanges([...(input.speech ?? []), ...speechFromScores(unheard)].map((r) => ({ start: r.start - FIND.speechGuard, end: r.end + FIND.speechGuard })))
   const cols = SCORE_COLUMNS.length
   const rows: SoundRow[] = []
   SOUND_KIND_ORDER.forEach((kind, k) => {

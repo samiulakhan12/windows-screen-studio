@@ -157,11 +157,11 @@ export function subscribeScan(listener: () => void): () => void {
 }
 
 /** What the rows are made from besides the scores: each source's levels, and the voice's speech ranges. */
-async function inputs(project: ScanProject): Promise<{ sources: AudioSource[]; levels: Partial<Record<AudioSource, AudioLevels>>; speech: Range[] | null }> {
+async function inputs(project: ScanProject): Promise<{ sources: AudioSource[]; levels: Partial<Record<AudioSource, AudioLevels>>; speech: Range[] | null; voice: AudioSource }> {
   const sources = scanSources(project)
   const voice = voiceSource(project)
   const levels = await loadAudioAnalysis(project.id, [...new Set([...sources, voice])])
-  return { sources, levels, speech: levels[voice]?.speech ?? null }
+  return { sources, levels, speech: levels[voice]?.speech ?? null, voice }
 }
 
 /** The stored scores of every source when they all match, else null. */
@@ -194,10 +194,10 @@ export async function checkStored(api: SoundsApi, project: ScanProject): Promise
       if (entry(project.id).epoch === epoch) set(project.id, IDLE)
       return
     }
-    const { levels, speech } = await inputs(project)
+    const { levels, speech, voice } = await inputs(project)
     const have = await stored(api, project, sources, skipKey(speech))
     if (entry(project.id).epoch !== epoch) return
-    if (have.size === sources.length) set(project.id, { status: 'done', rows: findSounds({ sources: sources.map((s) => have.get(s)!), speech, levels }), fromCache: true, sources: sources.join() })
+    if (have.size === sources.length) set(project.id, { status: 'done', rows: findSounds({ sources: sources.map((s) => have.get(s)!), speech, voice, levels }), fromCache: true, sources: sources.join() })
     else set(project.id, IDLE)
   } catch (err) {
     console.warn('Could not read the stored sound scores:', err)
@@ -219,7 +219,7 @@ export async function startScan(api: SoundsApi, project: ScanProject, listen: Li
   const listeners: Listener[] = []
   e.listeners = listeners
   try {
-    const { sources, levels, speech } = await inputs(project)
+    const { sources, levels, speech, voice } = await inputs(project)
     if (!live()) return
     if (sources.length === 0) throw new Error(SOUNDS_COPY.noSound)
     const skip = skipKey(speech)
@@ -254,7 +254,7 @@ export async function startScan(api: SoundsApi, project: ScanProject, listen: Li
       throw err
     })
     if (!live()) return
-    set(id, { status: 'done', rows: findSounds({ sources: sources.map((s) => have.get(s)!), speech, levels }), fromCache: missing.length === 0, sources: sources.join() })
+    set(id, { status: 'done', rows: findSounds({ sources: sources.map((s) => have.get(s)!), speech, voice, levels }), fromCache: missing.length === 0, sources: sources.join() })
   } catch (err) {
     for (const l of listeners) l.stop()
     if (!live()) return

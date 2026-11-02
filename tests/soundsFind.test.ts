@@ -92,6 +92,16 @@ describe('findSounds', () => {
     expect(own).toEqual([])
   })
 
+  it("guards a source the speech detector did not hear with YAMNet's speech score", () => {
+    // A call: the other person talks on the system sound over music (speech wins all but every third
+    // window), with a ding during their words; the detector heard the microphone, where nobody spoke.
+    const marks: [SoundKind | 'speech', number, number, number][] = [['music', 0, 40, 0.55], ['speech', 0, 40, 0.86], ['ping', 20, 20, 0.9], ['speech', 20, 20, 0.6]]
+    for (let w = 1; w <= 40; w += 3) marks.push(['music', w, w, 0.63], ['speech', w, w, 0.43])
+    expect(findSounds({ sources: [scores('mic', 30, []), scores('system', 30, marks)], speech: [], voice: 'mic' })).toEqual([])
+    // A detector that heard the mixed track heard the system sound too: its ranges are used as they are.
+    expect(findSounds({ sources: [scores('system', 30, marks)], speech: [], voice: 'mix' }).map((r) => r.kind)).toEqual(['music', 'ping'])
+  })
+
   it('drops what speech leaves too short for its kind', () => {
     expect(findSounds({ sources: [scores('mic', 30, [['music', 10, 20, 0.9]])], speech: [{ start: 6, end: 9.5 }] })).toEqual([])
   })

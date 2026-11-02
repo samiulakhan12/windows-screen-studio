@@ -217,7 +217,8 @@ test reads the label list packed inside the bundled model and checks every index
 | `music` | Background music | Music (132) | 0.50 | 3.0 s | no |
 | (speech) | — | Speech (0), Child speech (1), Conversation (2), Narration, monologue (3), Speech synthesizer (5) | 0.50 | — | — |
 
-The speech column is not a row; it is the fallback speech guard when the speech detector cannot run.
+The speech column is not a row; it is the speech guard where the speech detector did not listen: every
+source when it cannot run, and the system sound when it heard the microphone (§4.3).
 
 ### 4.2 Listening (`SoundScanner`, `src/shared/audio/soundsScan.ts`, run by the worker)
 
@@ -243,9 +244,11 @@ already measured for the preview's ducking and shared through `loadAudioAnalysis
    the window's speech score (a word that sounds like a ding is speech).
 2. **Spans:** candidate windows of a kind that overlap or are less than 0.5 s apart are joined; a
    span covers its windows `[k × hop, k × hop + 0.975]`.
-3. **Speech guard:** the speech ranges (or, when the detector did not run, the windows whose speech
-   score is at least 0.5), each widened by 0.1 s, are taken out of the span (music under speech is
-   offered only between sentences, a cough inside a sentence not at all).
+3. **Speech guard:** the speech ranges, and the windows whose speech score is at least 0.5 on every
+   source the detector did not hear (all of them when it did not run; the system sound when it heard
+   the microphone, so the other people on a call are guarded too), each widened by 0.1 s, are taken
+   out of the span (music under speech is offered only between sentences, a cough inside a sentence
+   not at all).
 4. **Fit** (each piece left, all kinds but music): inside the piece, the 50 ms level windows within
    20 dB of its loudest one; the piece becomes the first to the last of them (a cough is 0.3 s of a
    1.5 s window run), padded by 50 ms, never beyond the piece. It is kept when at least the kind's
@@ -509,6 +512,9 @@ End to end (`tests/e2e/sound-finder.e2e.cjs`, the built app under Xvfb):
   the focus moves to the next row when one leaves the list, Cancel stops a listener while its model
   still loads and a failed start always closes its stream, the stream limit is taken before the first
   await, and rows are dropped when the recording's sources change.
+- After a second review: speech heard only on the system sound (the other people on a call, a
+  narrated video) is guarded by YAMNet's speech score even when the speech detector ran on the
+  microphone; before, a music or ping row could run over their words.
 - `@mediapipe/tasks-audio` is pinned at 1.0.1 (the version of `@mediapipe/tasks-vision` in use);
   `scripts/notices.mjs` names it among the bundled packages and `resources/THIRD_PARTY_NOTICES.txt`
   is regenerated; `resources/notices/34-yamnet.txt` names the model.
