@@ -889,12 +889,14 @@ function EditorSession({
   const exitPick = useCallback(() => setPickFocus(false), [])
 
   const openExport = useCallback((): void => {
+    // The export is of the project with the edit of work still holding it (Review mode's Remove all), made now.
+    store.finish()
     player.pause()
     releaseFocus()
     setPickFocus(false)
     setCropDraft(null)
     setExporting(true)
-  }, [player])
+  }, [player, store])
 
   /* ---------- crop ---------- */
 

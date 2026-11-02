@@ -850,8 +850,8 @@ async function main() {
 
   // Remove all over 5,000 speed-ups takes seconds. While it works, as the first edit since the
   // project opened: Undo from the palette and the title bar's Undo wait for it and take it back;
-  // Redo with nothing to bring back after it says so at once.
-  await test('review mode: 5000 speed-ups: Undo from the palette and the title bar, and Redo, while Remove all works', async (ctx) => {
+  // Redo with nothing to bring back after it says so at once; Export makes it first.
+  await test('review mode: 5000 speed-ups: Undo from the palette and the title bar, Redo and Export while Remove all works', async (ctx) => {
     const home = h.tempHome('review-speed-busy')
     const count = 5000
     const total = count + 3
@@ -919,6 +919,22 @@ async function main() {
     await f.waitFor(async () => (await progressOf(win)) === `${count} of ${total} reviewed`, 'Ctrl+Y brings it back', 10000)
     await win.keyboard.press('Control+z')
     await f.waitFor(async () => (await progressOf(win)) === `0 of ${total} reviewed`, 'and Ctrl+Z takes it back', 10000)
+
+    // Export while it works: the dialog opens on the project with the Remove all made (its speed-ups
+    // gone: 4 s a record, not 2.5 s), as the video it exports.
+    await removeAll()
+    await win.click('header button.primary:has-text("Export")')
+    await win.waitForSelector('.modal[aria-label="Export"] .export-size', { timeout: 30000 })
+    const exportAt = await pressedAfter(win)
+    const size = await win.textContent('.modal[aria-label="Export"] .export-size')
+    const progressThen = await progressOf(win)
+    h.assert(same(exportAt, ['click:true']), `Export pressed while it worked: ${JSON.stringify(exportAt)}`)
+    h.assert(size.includes('333 min 20 s') && progressThen === `${count} of ${total} reviewed`, `the export dialog opened on the project with the Remove all: ${size} (${progressThen})`)
+    await win.keyboard.press('Escape')
+    await f.waitFor(async () => !(await win.$('.modal[aria-label="Export"]')), 'the export dialog closed', 5000)
+    await win.evaluate(() => (document.activeElement instanceof HTMLElement ? document.activeElement.blur() : undefined))
+    await win.keyboard.press('Control+z')
+    await f.waitFor(async () => (await progressOf(win)) === `0 of ${total} reviewed`, 'the Remove all undone', 10000)
 
     h.assert(!logs.some((l) => l.includes('[pageerror]')), `no page errors: ${logs.filter((l) => l.includes('pageerror'))}`)
   })
