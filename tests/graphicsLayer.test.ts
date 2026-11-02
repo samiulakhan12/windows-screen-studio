@@ -3,7 +3,7 @@ import { planOf, videoFrames } from '../src/shared/engine/freeze'
 import { popJob } from '../src/shared/render/popSound'
 import { studioPreset } from '../src/shared/captions/studioPresets'
 import type { CaptionStudio, CounterGraphic, EmojiGraphic, Graphic, KeywordGraphic, ListGraphic, Project } from '../src/shared/types'
-import { calls, canvas, contextOf, frameOf, hooks, sets } from './studioFakes'
+import { calls, canvas, contextOf, fakeFontStack, frameOf, hooks, sets } from './studioFakes'
 import { sceneFixtures } from './verticalFixtures'
 
 /*
@@ -254,6 +254,28 @@ describe('the graphics layer (§10.4)', () => {
     for (const f of boldPop) expect(f).toContain('"FlownCat-montserrat", "FlownCat-baloo-da-2", "FlownCat-noto-sans-bengali"')
     // A legacy look: Subtitle's Inter Tight and Hind Siliguri.
     for (const f of fonts([bn[0]])) expect(f).toContain('"FlownCat-inter-tight", "FlownCat-hind-siliguri", "FlownCat-noto-sans-bengali"')
+  })
+
+  it('draws a graphic in its font’s partner when the language needs letters the font lacks, as its captions (§6.6)', async () => {
+    const real = await vi.importActual<typeof import('../src/shared/captions/fontStack')>('../src/shared/captions/fontStack')
+    const needs = vi.spyOn(fakeFontStack, 'coverageNeeded').mockImplementation(real.coverageNeeded as typeof fakeFontStack.coverageNeeded)
+    const partner = vi.spyOn(fakeFontStack, 'partnerFor').mockImplementation(real.partnerFor as typeof fakeFontStack.partnerFor)
+    try {
+      const fonts = (language: string): string[] => {
+        calls.length = 0
+        STUDIO_SPRITES.clear()
+        drawGraphicsLayer(frameOf(project([keyword({ text: 'Экспорт', font: 'cat:anton' })], { transcript: { language, segments: [] } } as unknown as Partial<Project>), 2).fc)
+        return calls.filter((c) => c.name === 'fillText').map((c) => String(c.font))
+      }
+      const ru = fonts('ru')
+      expect(ru.length).toBeGreaterThan(0)
+      for (const f of ru) expect(f).toMatch(/px "FlownCat-oswald", /)
+      // English: Anton as chosen.
+      for (const f of fonts('en')) expect(f).toMatch(/px "FlownCat-anton", /)
+    } finally {
+      needs.mockRestore()
+      partner.mockRestore()
+    }
   })
 })
 

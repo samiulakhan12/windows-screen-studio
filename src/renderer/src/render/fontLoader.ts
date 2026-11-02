@@ -8,9 +8,9 @@
  * so everything measured while a font was still loading is measured again once it is ready.
  */
 import { assetFontFile } from '../../../shared/api/assets'
-import { burnedSegments } from '../../../shared/captions/captionTracks'
+import { burnedSegments, captionLanguage } from '../../../shared/captions/captionTracks'
 import { catalogFamily, catalogFont, catalogId, type CatalogFile, type CatalogFont } from '../../../shared/captions/fontCatalog'
-import { coverageNeeded } from '../../../shared/captions/fontStack'
+import { coverageNeeded, partnerFor } from '../../../shared/captions/fontStack'
 import { STUDIO_BASE } from '../../../shared/captions/studioPresets'
 import { fontFamily, fontOf, fontStack } from '../../../shared/render/fonts'
 import { MEDIA_SCHEME, mediaUrl } from '../../../shared/mediaUrl'
@@ -375,8 +375,11 @@ function catalogIdsOf(project: Project, captions: boolean): string[] {
   }
   const graphics = project.graphics ?? []
   for (const g of graphics) {
-    // A graphic without a font takes the look's (Subtitle's on a legacy look).
-    add(g.font ?? studio?.text.font ?? STUDIO_BASE.text.font)
+    // A graphic without a font takes the look's (Subtitle's on a legacy look), and draws in its
+    // partner when the language needs letters it lacks (graphicsLayer's fontRef).
+    const font = g.font ?? studio?.text.font ?? STUDIO_BASE.text.font
+    add(font)
+    add(partnerFor(font, coverageNeeded(captionLanguage(project), '')))
     texts.push(...graphicTexts(g))
   }
   for (const c of project.titles ?? []) {

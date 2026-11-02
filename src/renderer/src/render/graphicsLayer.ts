@@ -14,7 +14,7 @@ import { burnedSegments, captionLanguage } from '../../../shared/captions/captio
 import { textOn } from '../../../shared/captions/colors'
 import { emojiEntry } from '../../../shared/captions/emojiList'
 import { catalogFamily, catalogId } from '../../../shared/captions/fontCatalog'
-import { clampWeight, trackingFor } from '../../../shared/captions/fontStack'
+import { clampWeight, coverageNeeded, partnerFor, trackingFor } from '../../../shared/captions/fontStack'
 import { CAPTION_FONT, captionIndexAt, viewAt } from '../../../shared/captions/layout'
 import { counterValue, EASE, itemPose, listWindows, seedOf, type ChunkPose } from '../../../shared/captions/motion'
 import { captionObstacles } from '../../../shared/captions/studioLayout'
@@ -44,8 +44,11 @@ const FALLBACK = ['noto-sans-bengali', 'noto-sans-devanagari', 'noto-sans-arabic
 /** The look graphics take their font and colours from: the Studio look, else Subtitle's. */
 const lookOf = (project: Project): CaptionStudio => project.captions?.studio ?? (STUDIO_BASE as CaptionStudio)
 
-/** A graphic's font reference: its own, else the look's text font. */
-const fontRef = (project: Project, g: Graphic): string => g.font ?? lookOf(project).text.font
+/**
+ * A graphic's font reference: its own, else the look's text font; its partner when the caption
+ * language needs letters it lacks, as the captions swap theirs (§6.6 rule 2: Anton → Oswald for Russian).
+ */
+const fontRef = (project: Project, g: Graphic): string => partnerFor(g.font ?? lookOf(project).text.font, coverageNeeded(captionLanguage(project), ''))
 
 /**
  * The canvas font stack of a font reference: a catalogue font, a brand font (FlownFontW-, §6.7),

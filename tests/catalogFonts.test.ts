@@ -163,6 +163,14 @@ describe('catalogFontsFor (§6.8)', () => {
     expect(fonts.catalogFontsFor(withStudio(look('subtitle'), { transcript: ja } as Partial<Project>))).toContain('noto-sans-jp')
   })
 
+  it("adds the partner a graphic draws with when the language needs letters its font lacks, as the captions' (§6.6)", () => {
+    const ru = { language: 'ru', segments: [{ id: 'c1', start: 0, end: 2, text: 'Привет мир' }] }
+    expect(fonts.catalogFontsFor(withStudio(look('subtitle'), { transcript: ru, graphics: [keyword({ font: 'cat:anton' })] } as Partial<Project>))).toEqual(expect.arrayContaining(['anton', 'oswald']))
+    // On a legacy look too: Bebas Neue → Oswald in Vietnamese.
+    const vi = { language: 'vi', segments: [{ id: 'c1', start: 0, end: 2, text: 'Xin chào mọi người' }] }
+    expect(fonts.catalogFontsFor(project({ transcript: vi, graphics: [keyword({ font: 'cat:bebas-neue' })] } as Partial<Project>))).toContain('oswald')
+  })
+
   it('adds the partners of partners the drawing walks to: Anton → Oswald → Inter Tight for Greek', () => {
     const el = { language: 'el', segments: [{ id: 'c1', start: 0, end: 2, text: 'Καλημέρα σε όλους σήμερα' }] }
     expect(fonts.catalogFontsFor(withStudio(look('one-word'), { transcript: el } as Partial<Project>))).toEqual(expect.arrayContaining(['anton', 'oswald', 'inter-tight']))
