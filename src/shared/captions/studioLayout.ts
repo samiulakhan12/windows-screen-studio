@@ -527,12 +527,26 @@ export function studioLayout(
   else ranges = stackedChunks(tokens, emphasis, Math.max(1, lay.words), Math.max(1, Math.min(4, lay.lines)))
   // 'word' and 'stack' fit each line to `fit` of the room (0.6..2.2 times the look's size). No line
   // is wider than the room: one holding a word too long for it ("TROUBLESHOOTING") is drawn smaller.
+  // A word alone on its line stays inside the room at its peak size while spoken too (Bold Pop's
+  // 1.18 × pulse), so it never runs past the frame; lines of several words are broken to fit.
   const fitted = (lay.chunk === 'word' || lay.chunk === 'stack') && lay.fit !== undefined
   const lineScale = (a: number, b: number): number => {
     const at = meter.width(a, b)
     if (!(at > 0)) return 1
     const k = fitted ? Math.min(2.2, Math.max(0.6, (m.maxWidth * lay.fit!) / at)) : 1
-    return at * k > m.maxWidth * (1 + 1e-9) ? m.maxWidth / at : k
+    let need = at
+    let plain = 0
+    for (let i = a; i < b; i++) if (!tokens[i].label && WORDISH.test(tokens[i].text)) plain++
+    if (plain <= 1) {
+      // Each word grows by g(i) around its middle: the line, centred, needs twice what it reaches past its nearer end.
+      let x = 0
+      for (let i = a; i < b; i++) {
+        if (i > a) x += spaces[i]
+        need = Math.max(need, at + g(i) - 2 * Math.min(x, at - x - widths[i]))
+        x += widths[i]
+      }
+    }
+    return need * k > m.maxWidth * (1 + 1e-9) ? m.maxWidth / need : k
   }
   const chunks: StudioChunk[] = ranges.map((group) => {
     const lines: StudioLine[] = group.map(([a, b]) => {

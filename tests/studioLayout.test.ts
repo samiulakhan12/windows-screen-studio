@@ -4,13 +4,15 @@ import { createProject } from '../src/shared/engine/project'
 import { placeChunk, type CaptionLayout } from '../src/shared/captions/layout'
 import { blockEdge, captionObstacles, placeStudio, studioChunkAt, studioLayout, studioMetrics, type CaptionObstacles, type StudioFace, type StudioLayout } from '../src/shared/captions/studioLayout'
 import { STUDIO_BASE, studioPreset } from '../src/shared/captions/studioPresets'
-import type { CaptionSegment, CaptionStudio, CaptionWord, Project, StudioPosition } from '../src/shared/types'
+import { captionPoses } from '../src/shared/captions/motion'
+import type { CaptionSegment, CaptionStudio, CaptionWord, Clip, Project, StudioPosition } from '../src/shared/types'
 
 /* Tests 9, 10 and 11 (docs/design/captions-studio.md §16.1): chunk modes (§8.2), positions (§8.5) and keeping clear (§8.6). */
 
 const FACE: StudioFace = { stack: 'test', weight: 600, tracking: 0 }
 const measure = (text: string, px: number): number => [...text].length * 0.55 * px
 const look = (id: string): CaptionStudio => structuredClone(studioPreset(id)!.look)
+const ONE: Clip[] = [{ id: 'a', start: 0, end: 100, speed: 1 }]
 
 /** Words every `step` seconds, `dur` long, with an optional pause after some. */
 function timed(text: string, step = 0.3, dur = 0.25, pauses: Record<number, number> = {}): CaptionSegment {
@@ -96,7 +98,8 @@ describe('chunk modes (test 9)', () => {
     expect(15 * 0.55 * l.px).toBeGreaterThan(m.maxWidth)
     const lines = l.chunks.flatMap((c) => c.lines)
     const long = lines.find((line) => line.words.some((w) => w.text === 'TROUBLESHOOTING'))!
-    expect(long.width).toBeCloseTo(m.maxWidth, 6)
+    // Alone on its line, it fills the room at its peak size while spoken: 1.18 × the 1.08 pulse.
+    expect(long.width * 1.18 * 1.08).toBeCloseTo(m.maxWidth, 6)
     expect(long.px).toBeLessThan(l.px)
     for (const line of lines) expect(line.width).toBeLessThanOrEqual(m.maxWidth * (1 + 1e-9))
     // Lines that fit keep the look's size.
@@ -111,6 +114,32 @@ describe('chunk modes (test 9)', () => {
       const room = studioMetrics(st, 1080, 1920).maxWidth
       const one = lay(timed('incomprehensibilities'), st, 1080, 1920)
       for (const line of one.chunks.flatMap((ch) => ch.lines)) expect(line.width, id).toBeLessThanOrEqual(room * (1 + 1e-9))
+    }
+  })
+
+  it('keeps a word alone inside the frame while it is spoken and grows (§8.4)', () => {
+    // Bold Pop (1.18 × a pulse), Spotlight Word (1.28) and Stickers (1.12) in a tall frame: the long
+    // word at its largest, with its outline or sticker, never reaches past the frame's edges.
+    for (const id of ['bold-pop', 'spotlight-word', 'stickers']) {
+      const s = look(id)
+      const l = lay(timed('fix the troubleshooting step', 1, 0.8), s, 1080, 1920)
+      const isLong = (w: { text: string }): boolean => w.text.toUpperCase() === 'TROUBLESHOOTING'
+      const ci = l.chunks.findIndex((ch) => ch.lines.some((line) => line.words.some(isLong)))
+      const c = l.chunks[ci]
+      const li = c.lines.findIndex((line) => line.words.some(isLong))
+      const word = c.lines[li].words.find(isLong)!
+      const placed = placeStudio(l, c, s, 1080, 1920, {}).lines[li]
+      const mid = placed.x + word.x + word.w / 2
+      const start = l.tokens[word.token].start
+      let most = 0
+      for (let t = start; t < start + 0.8; t += 0.005) {
+        const p = captionPoses(l, ci, t, ONE, s, 1080, null, { spoken: true })
+        most = Math.max(most, p.words.find((w) => w.token === word.token)!.scale * p.chunk.scale)
+      }
+      expect(most, id).toBeGreaterThan(1.1)
+      const reach = (word.w / 2 + Math.max(s.edge.outline, s.box.kind === 'word' ? s.box.padX + s.box.border : 0) * word.px) * most
+      expect(mid - reach, id).toBeGreaterThanOrEqual(0)
+      expect(mid + reach, id).toBeLessThanOrEqual(1080)
     }
   })
 
