@@ -268,8 +268,9 @@ NFC; markdown emphasis removed as pairs around words (below); trailing spaces on
 one blank line in a row removed; trimmed; cut to the field's cap (`cutAt`: after the last sentence end
 in its second half, else at the last word end, with "…" when cut inside a sentence; inside a word, as
 in Chinese or Japanese written without spaces, never inside a link X finds, but before it, nor inside
-the last label of a dotted name, but before its dot: `paypal-login.comfort` is never cut to
-`paypal-login.com…`, so a cut never makes a name the check did not see). One-line
+the last label of a dotted name (one that starts with a letter, as every top-level domain does), but
+before its dot: `paypal-login.comfort` is never cut to `paypal-login.com…`, so a cut never makes a
+name the check did not see, while a version such as `2.4` is cut as any word). One-line
 fields (titles, headings, tags, steps) also turn line breaks into spaces.
 
 **No character of the copy changes because of a link.** A link, address or file name nobody said
@@ -315,8 +316,10 @@ half, as in Chinese or Japanese written without spaces), never inside a link X c
   `CaptionSegment.aiLinks` (`aiLinksAfter`). A caption with `aiLinks` is never read as said, so an
   injected caption cannot have the clean-up write `paypal-login.com/verify` into the next one for the
   check to take for said: what was said comes only from what the speech recogniser heard and what the
-  user typed. The record stays through a split, a merge (which keeps both records) and a save, and
-  goes when the user edits that caption by hand; it is never cut short (`['*']` past 100, §3).
+  user typed. The record stays through a split, a merge (which keeps both records), a save and an edit
+  by hand while anything link-like is left in the caption (`typedCaption`: fixing a word next to the
+  AI's link does not make it said), and goes once no link is left; it is never cut short (`['*']`
+  past 100, §3).
   Captions an AI changed before `aiLinks` existed count as said.
 - Progress: "Writing… 3 of 7 done" while any job runs; each card shows *Waiting…* or *Writing…*.
 - Closing the dialog stops every job; what was written stays for the session (§2.7).
@@ -344,12 +347,15 @@ so a stray `="` in the prose cannot take the attribute's opening quote. Each pie
 (`normalise`): HTML character references (numeric with or without `;`, named ones; a name it does not
 know may be any letter) and percent-escapes decoded, invisible and format characters removed, the
 Chinese and Japanese punctuation no parser reads as a URL's made `、` (the full-width and small colons
-and at signs; `。`, `．` and `｡` unless they stand between ASCII letters, digits or `-`, also
-full-width, or the piece has a scheme or `//`), NFKC, the dot-likes left (IDNA's dots) as `.`, `\` as
-`/`, lower case. It is also read as written but for NFKC (`asWritten`), as X and linkify-it end a name
-before a character NFKC would make ASCII (`evil.comſ` links evil.com), and, with an escape or an
-invisible character, as typed (`asTyped`: nothing decoded, an invisible character an end), as X reads
-`flo&#119;n.app` and `flow⟨U+200B⟩n.app` (n.app).
+and at signs; `。`, `．` and `｡` unless they stand after an ASCII letter, digit or `-` and before a
+lower-case one, a digit or `-`, also full-width, or the piece has a scheme or `//`: `GIF。Windows` is
+two sentences, `paypal-login。com` a name), NFKC, the dot-likes left (IDNA's dots) as `.`, `\` as
+`/`, `ẞ` as `ss` (as Node's `new URL` maps it), lower case. It is also read as written but for NFKC
+(`asWritten`), as X and linkify-it end a name before a character NFKC would make ASCII (`evil.comſ`
+links evil.com); with an escape or an invisible character, as typed (`asTyped`: nothing decoded, an
+invisible character an end or dropped), as X reads `flo&#119;n.app` (n.app) and linkify-it
+`%66lown⟨U+FE0F⟩.app` (66lown.app); and, with a `\`, both first readings again with Markdown's
+backslash escapes read (`[x](https://flown.app·\.ws)` opens flown.app·.ws in markdown-it).
 
 *Link-like.* A scheme (ASCII letters, `+`, `.` or `-` of two or more characters, then `:` and more
 than nothing; `mailto:` included; one letter is a Windows drive); `www.`, `//` or `@` before a
@@ -357,15 +363,17 @@ host-like run (letters, digits, marks, `.`, `-`, `_`, so every form of an IPv4 a
 a character outside the Basic Multilingual Plane; punctuation outside ASCII, which a URL's host keeps:
 `//·flown.app` is xn--flown-pja.app); or a dotted name whose last label is a top-level domain from the
 full list (`tlds.ts`, `newerTlds.ts`), also without its marks, glued to text in any script
-(`ログインflown.jp`), and, after a name that ends in ASCII, a top-level domain glued to more text
-(`flown.jpから`, `paypal-login.在线客服`; `_` ends a label: `df.to_csv`).
+(`ログインflown.jp`), and, after a name that ends as X reads one (an ASCII letter, digit or `-`, or a Latin
+letter with an accent), a top-level domain glued to more text (`flown.jpから`, `flowń.comから`,
+`paypal-login.在线客服`; `_` ends a label: `df.to_csv`).
 
 *Said.* The said tokens are the link-like runs of the captions without `aiLinks` (§4.6), the
 recording's name and its chapter titles, read the same way (ASCII runs of URL characters and dotted
 names of any script, without the brackets, quotes, sentence punctuation or word ending around them),
 with the forms that go to the same place (with and without `http(s)://` or `//` and a `/` at the end, a
 link's host alone, an address's host, the address after `mailto:`), and a run written after a prefix
-of another script and `-` also without the `-` (`מ-flown.app` says flown.app). A dotted name is said
+of another script and `-`, or before a word's ending after `-`, also without the `-` (`מ-flown.app`
+and `flown.app-এ` say flown.app). A dotted name is said
 as a host only where a parser opens one: not an address's user name (`anna.li` in `anna.li@acme.de`),
 nor a name after `?`, `=`, `&`, `#` or `@` or in a path (`flown.app/get/install.sh` says that link, not
 `https://install.sh`). They are read once per change of the captions (`saidLinks` is remembered for
@@ -389,8 +397,10 @@ is a real registrable name). A miss is a high-severity problem; an extra note is
 hits ordinary prose without any dot, scheme, `@` or `//`.
 
 *Shown.* Under each card (and the Captions tab's suggested title, summary and chapters), the noted
-pieces, each exactly as written with invisible characters as `⟨U+200B⟩` (`shownRun`) and its link-like
-runs marked (`pieceParts`: in `…完了。flown.appから…` the name stands out): **Check this before you
+pieces, each exactly as written with invisible characters as `⟨U+200B⟩` (`shownRun`) and the runs that
+are why it is noted marked (`pieceParts`): a run noted on its own, of any script, or a link-like run
+glued to the text around it, never a said link standing alone or a full-width colon (in
+`…完了。flown.appから…` the name stands out, in `下载地址：flown.app，登录：支付宝登录.在线` the second name): **Check this before you
 post:** … *It has a link, address or file name that is not in what was said, the recording's name or
 its chapters, or one written right against other letters, where it can open a different address.
 Nothing was changed: post it only if you know where it goes.* (with two pieces or more: **Check
@@ -402,8 +412,12 @@ shows one small dialog (`NotedConfirm`, `role="alertdialog"`, modal, described b
 list of pieces): "LinkedIn post: check this before you copy it", each noted piece exactly with a few
 characters on each side (`inContext`), and *Copy anyway* or *Use anyway* and *Cancel*. The focus starts
 on *Cancel*, Esc cancels (and only the confirm), Tab stays inside, the editor's shortcuts are off
-behind it (Space presses its focused button), and the focus then goes back to the button that asked.
-The actions: *Copy* and *Copy tags*, *Use for exports* (the description and its chapters), *Rename
+behind it (Space presses its focused button), and the focus then goes back to the button that asked,
+or, when that went with its suggestion (the Captions tab's *Rename the recording*, *Add the chapters*,
+*Dismiss*), to the tool that made it. The actions: *Copy* and *Copy tags*, *Use for exports* (what any
+export can write: the description with the chapters it has now and, when they cut it, the rest of the
+text, which an export with fewer chapters writes; `descriptionToCheck`, which the card's note reads
+too), *Rename
 the recording* with a suggested title, the Captions tab's *Copy* of a summary, and its *Add the
 chapters*: suggested chapters with a noted title wait under the tools with their note (nothing opens
 by itself when an answer comes; closing the tab says they were not added). Text with no noted piece
@@ -413,13 +427,14 @@ saved, cut to fit the chapters it has then; a cut never ends a name early (§4.4
 *Measured* on the earlier rounds' realistic tutorial copy (262 cards in 25 languages,
 `tests/fixtures/tutorial-corpus.json`): 65 cards have a note (25%), 15 (6%) with a space around each
 link as the prompts ask (§4.1); at cf2a807, with the rewriter, 30, and 24 cards changed, 11 losing
-letters; now none. On the ninth review's 72 cards in 19 languages: 3 notes with spaced links (19
-before the prose punctuation and prefix rules; 14 of them Chinese or Japanese prose without a link),
-19 with glued ones (32). Against linkify-it, markdown-it, HTML URL attributes and X
-(`tests/publishCheckOracle.test.ts`, 4 420 texts: every probe of the earlier rounds, every tutorial
+letters; now none. On the ninth review's 72 cards in 19 languages: 3 notes with spaced links, 19 with
+glued ones; on the tenth review's 56 cards in 20 languages: 5 spaced and 13 glued (12 and 18 before
+the full stop before a capital and a word's ending after `-` were read), none on prose without a dot,
+scheme, `@`, `/` or `\`. Against linkify-it, markdown-it, HTML URL attributes and X
+(`tests/publishCheckOracle.test.ts`, 4 445 texts: every probe of the earlier rounds, every tutorial
 card, 2 000 random texts built from them), every link to a host nobody said is in a noted piece; so it
-is on 54 000 more random texts of nine other seeds and for every code point before and after a said
-name.
+is on 54 000 more random texts of nine other seeds, the reviews' fuzzers, and for every code point
+before and after a said name.
 
 ---
 
@@ -644,15 +659,21 @@ Unit (vitest, each failing without its code):
   tutorial copy (no note on prose without a dot, scheme, `@` or `//`).
 - `publishCheckOracle.test.ts`: against linkify-it 5, markdown-it 14 and parse5 7
   (`tests/fixtures/check-oracle.json`, `scripts/build-check-oracle.mjs`) and the vendored twitter-text,
-  for every probe of the earlier rounds, every tutorial card and 2 000 seeded random texts (4 420 in
-  all; the generator also glues punctuation of other scripts and `𐄀`, and splits an attribute across
-  lines after a stray `="`): every link
+  for every probe of the earlier rounds, every tutorial card and 2 000 seeded random texts (4 445 in
+  all; the generator also glues punctuation of other scripts, `𐄀`, Latin letters with accents, `\`
+  and `ẞ`, writes Markdown escapes and escapes with a variation selector, and splits an attribute
+  across lines after a stray `="`): every link
   opened to a host nobody said is in a noted piece, and the copy is what the AI wrote but for the
   cleaning that has nothing to do with links.
 - `publishReview9.test.ts`: the fourteen problems left after the eighth review, each with its own
   probe, and the `aiLinks` record. (The rewriter's tests of the earlier rounds,
   `publishFindings`, `publishReview3`–`8` and `publishProperty`, went with it; their probes are
   `tests/fixtures/check-probes.json`, all read by the oracle test.)
+- `publishReview11.test.ts`: the problems the tenth review found (a Latin letter with an accent
+  before a glued top-level domain, a Markdown escape, Use for exports past the cut, a caption edited
+  by hand, an escape with a variation selector, `ẞ`, a full stop before a capital, a word's ending
+  after `-`, the speed on a long run of letters, a version cut short, what a note marks), each with
+  its own probe.
 - `publishReview10.test.ts`: the problems the ninth review found (an attribute after a stray quote,
   punctuation a URL's host keeps, characters outside the Basic Multilingual Plane, names said only
   inside an address, query or path, a cut that ends a name early, Chinese and Japanese prose
@@ -690,8 +711,10 @@ E2E (`tests/e2e/publish-pack.e2e.cjs`, with the AI mock):
 And in `tests/e2e/captions.e2e.cjs` (the Captions tab's AI tools): with a suggested title nobody
 said, the confirm opened from *Rename the recording* has the focus on *Cancel* and is described by
 its list; Delete removes no caption and Space presses *Cancel* (nothing plays behind it); Esc closes
-only the confirm (the caption stays selected); suggested chapters with a noted title wait with their
-note, and *Add the chapters* asks first.
+only the confirm (the caption stays selected); *Dismiss* from the keyboard leaves the focus on
+*Suggest a title*; suggested chapters with a noted title wait with their note, and *Add the chapters*
+asks first; *Use anyway* from the keyboard (chapters, then a title) leaves the focus on the tool that
+made the suggestion.
 
 ---
 
@@ -746,6 +769,13 @@ Where the build differs from or adds to the sections above:
   the note marks the link-like runs and says a name glued to letters can open a different address;
   the confirm is described by its list; the Captions tab lists noted chapters instead of opening a
   confirm on arrival, and the editor's shortcuts are off behind any modal dialog.
+- **The eleventh round** closed what the tenth review found the same way: a Latin letter with an
+  accent ends a name as X reads one; Markdown's escapes are read; an escape and a variation selector
+  are read as linkify-it reads them; `ẞ` is `ss`; *Use for exports* asks about the text past the cut
+  too; a caption edited by hand keeps the record of an AI's link while one is left; a full stop before
+  a capital and a word's ending after `-` are read as the prose they are; the scheme test of the prose
+  punctuation is linear again; a cut keeps a version whole; the note marks why a piece is noted, in any
+  script; and the focus goes to the tool when a suggestion goes with the button that asked.
 - **What the user typed is said.** The recording's name and chapter titles go to the provider as typed
   (one line, capped, control characters removed: `readPackContext`), and what they say counts as said
   for the check. What an AI suggests for them (*Suggest chapters*, the title for *Rename the
