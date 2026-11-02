@@ -691,6 +691,32 @@ async function main() {
         h.assert((await win.getAttribute('[data-testid="snap-toggle"]', 'aria-pressed')) === snapped, 'Snapping untouched')
         await win.keyboard.press('Control+z')
         await f.waitFor(async () => (await progressOf(win)) === `1 of ${total} reviewed`, 'Remove all undone', 10000)
+
+        // An edit made on the timeline while Remove all works (Z adds a zoom), then Ctrl+Z: the
+        // zoom is taken back at once, the Remove all is made once done, and one Ctrl+Z then takes
+        // it back (the Keep before it stays).
+        await win.keyboard.press('End')
+        await settled(win)
+        const zooms = (await win.$$('.zoom-seg')).length
+        await watchBusy(win)
+        await win.focus('[data-testid="review-remove-kind"]')
+        await win.keyboard.press('Enter')
+        await win.evaluate(() => (document.activeElement instanceof HTMLElement ? document.activeElement.blur() : undefined))
+        await win.keyboard.press('z')
+        const added = (await win.$$('.zoom-seg')).length
+        await win.keyboard.press('Control+z')
+        await f.waitFor(async () => (await win.$$('.zoom-seg')).length === zooms, 'the zoom taken back', 3000).catch(() => undefined)
+        const meanwhileZ = { zooms: (await win.$$('.zoom-seg')).length, busy: !!(await win.$('[data-testid="review-panel"] [aria-busy="true"]')) }
+        await idle(win, 60000)
+        const zKeys = await pressedAfter(win)
+        h.assert(same(zKeys, ['z:true', 'z:true']) && added === zooms + 1, `Z added a zoom while it worked, then Ctrl+Z: ${JSON.stringify(zKeys)} ${zooms} ${added}`)
+        h.assert(meanwhileZ.busy && meanwhileZ.zooms === zooms, `the Ctrl+Z took the zoom back at once, while it worked: ${JSON.stringify(meanwhileZ)}`)
+        await f.waitFor(async () => (await progressOf(win)) === `${retakes + 1} of ${total} reviewed`, 'the Remove all made', 5000).catch(() => undefined)
+        h.assert((await progressOf(win)) === `${retakes + 1} of ${total} reviewed`, `the Remove all made once done, not undone: ${await progressOf(win)}`)
+        h.assert((await win.$$('.zoom-seg')).length === zooms, 'the zoom still gone')
+        await win.keyboard.press('Control+z')
+        await f.waitFor(async () => (await progressOf(win)) === `1 of ${total} reviewed`, 'one Ctrl+Z takes the Remove all back', 5000)
+        h.assert((await win.getAttribute('[data-key="zoom:z0"]', 'data-status').catch(() => 'not drawn')) === 'kept', 'the Keep before it stays')
       }
       await win.keyboard.press('Escape')
       await f.waitFor(async () => !(await win.$('[data-testid="review-panel"]')), 'the panel closed')

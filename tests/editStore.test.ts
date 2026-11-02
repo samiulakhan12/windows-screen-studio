@@ -156,20 +156,136 @@ describe('EditStore', () => {
     expect(s.state).toBe(1)
   })
 
-  it('a hold let go with no edit (the work stopped) does what waited on the history as it was, redo list kept', () => {
+  it('a hold let go without its edit (the work stopped) does what waited as if it had been made: an undo for it does nothing, the step before and the redo list stay', () => {
+    // Ctrl+Z while it works, then the panel closed: the user's Keep (1) stays, and the redo list (2).
     const { s } = store()
     s.update(() => 1)
     s.update(() => 2)
     s.undo() // redo holds 2
-    const release = s.hold()
-    s.redo()
-    s.undo()
+    let release = s.hold()
+    expect(s.undo()).toBe(true) // waits
+    release(false)
+    expect(s.held).toBe(false)
     expect(s.state).toBe(1)
-    release()
-    expect(s.state).toBe(1) // redo then undo, in order
     expect(s.canRedo).toBe(true)
+    // A redo that waited finds nothing above the edit (it would have emptied the redo list); the list stays.
+    release = s.hold()
+    s.redo()
+    release(false)
+    expect(s.state).toBe(1)
     expect(s.redo()).toBe(true)
     expect(s.state).toBe(2)
+    s.undo()
+    // Undo, then redo: the edit taken back and brought back, nothing changes.
+    release = s.hold()
+    s.undo()
+    s.redo()
+    release(false)
+    expect(s.state).toBe(1)
+    expect(s.canRedo).toBe(true)
+    // Two undos: the edit, then the step before it (the Keep), which redo brings back.
+    release = s.hold()
+    s.undo()
+    s.undo()
+    release(false)
+    expect(s.state).toBe(0)
+    expect(s.redo()).toBe(true)
+    expect(s.state).toBe(1)
+    // Two undos then two redos: the step before back, then the edit (nothing), and no more.
+    release = s.hold()
+    s.undo()
+    s.undo()
+    s.redo()
+    s.redo()
+    s.redo()
+    release(false)
+    expect(s.state).toBe(1)
+    expect(s.canRedo).toBe(true) // 2, which the edit would have taken: no waiting redo reached it
+  })
+
+  it('stopped, a Keep that waited is made and an undo after it takes that Keep back; one before it does nothing', () => {
+    const { s } = store()
+    s.update(() => 1) // the user's Keep
+    let release = s.hold()
+    s.whenFree(() => s.update((v) => v + 10)) // a Keep that waits
+    s.undo()
+    release(false)
+    expect(s.state).toBe(1) // the waiting Keep, then undone
+    expect(s.canRedo).toBe(true)
+    expect(s.redo()).toBe(true)
+    expect(s.state).toBe(11)
+    release = s.hold()
+    s.undo()
+    s.whenFree(() => s.update((v) => v + 100))
+    release(false)
+    expect(s.state).toBe(111) // the undo was for the edit not made; the Keep after it is made
+    s.undo()
+    expect(s.state).toBe(11)
+  })
+
+  it('while held, an undo takes back at once an edit made meanwhile after the last thing that waits, and a redo brings it back; else both wait', () => {
+    const { s } = store()
+    s.update(() => 1) // the user's Keep
+    let edits = 0
+    s.subscribe(() => edits++)
+    const release = s.hold()
+    s.update(() => 5) // a zoom added on the timeline meanwhile
+    expect(s.undo()).toBe(true)
+    expect(s.state).toBe(1) // at once
+    expect(s.redo()).toBe(true)
+    expect(s.state).toBe(5) // at once
+    expect(s.undo()).toBe(true)
+    expect(s.state).toBe(1)
+    expect(edits).toBe(4)
+    // No edit of its own left to take back: the next undo waits for the work's edit.
+    expect(s.undo()).toBe(true)
+    expect(s.state).toBe(1)
+    // Then a redo waits too (done in turn after it), the zoom's redo being before what waits.
+    expect(s.redo()).toBe(true)
+    expect(s.state).toBe(1)
+    s.update(() => 7) // the work's edit, on top
+    release()
+    expect(s.state).toBe(7) // undone, then redone, in turn
+    s.undo()
+    expect(s.state).toBe(1) // the Keep stays below
+    // In the order asked for, as if after the work's edit: a Keep that waits, then an edit, then
+    // undo: the edit is taken back at once and the Keep made after the work.
+    const { s: t } = store()
+    let free = t.hold()
+    t.whenFree(() => t.update((v) => v + 10))
+    t.update(() => 2)
+    t.undo()
+    expect(t.state).toBe(0)
+    t.update(() => 3) // the work's edit
+    free()
+    expect(t.state).toBe(13)
+    // An edit, then a Keep that waits, then undo: the undo waits, and takes back the Keep.
+    free = t.hold()
+    t.update(() => 20)
+    t.whenFree(() => t.update((v) => v + 100))
+    t.undo()
+    expect(t.state).toBe(20)
+    t.update(() => 30) // the work's edit
+    free()
+    expect(t.state).toBe(30)
+    t.undo()
+    expect(t.state).toBe(20)
+  })
+
+  it('finish has each work holding the store make its edit and let go at once', () => {
+    const { s } = store()
+    s.update(() => 1)
+    const release = s.hold(() => {
+      s.update(() => 9)
+      release()
+    })
+    s.undo()
+    s.finish()
+    expect(s.held).toBe(false)
+    expect(s.state).toBe(1) // the edit made, then the waiting undo took it back
+    s.finish() // nothing holds it: nothing to do
+    expect(s.redo()).toBe(true)
+    expect(s.state).toBe(9)
   })
 
   it('whenFree runs at once when free, else in turn with the waiting undo and redo; one that holds again keeps the rest waiting', () => {

@@ -12,11 +12,17 @@ export interface Tasks {
   now: () => number
 }
 
+/** Work going on in slices: `stop` ends it with `done` never called; `finish` takes the steps left at once and calls `done`. */
+export interface Work {
+  stop: () => void
+  finish: () => void
+}
+
 /**
  * Takes the steps `start(base)` makes for the state `read()` gives, in tasks of about `slice` ms
  * each, and calls `done(base, value)` with what they give. A task that finds the state changed
  * (another edit) starts over from the new one, so `value` is always made from `base`, the state
- * when `done` is called. Returns a function that stops it: `done` is then never called.
+ * when `done` is called.
  */
 export function inSlices<S, T>(
   read: () => S,
@@ -24,46 +30,57 @@ export function inSlices<S, T>(
   done: (base: S, value: T) => void,
   tasks: Tasks,
   slice = 25
-): () => void {
+): Work {
   let stopped = false
   let base = read()
   let steps = start(base)
-  const run = (): void => {
-    if (stopped) return
+  /** Takes steps until `until` says to stop (false) or they are done (true, `done` called). */
+  const take = (until: () => boolean): boolean => {
     if (read() !== base) {
       base = read()
       steps = start(base)
     }
-    const until = tasks.now() + slice
     for (;;) {
       const r = steps.next()
       if (r.done) {
         stopped = true
         done(base, r.value)
-        return
+        return true
       }
-      if (tasks.now() >= until) break
+      if (until()) return false
     }
-    tasks.post(run)
+  }
+  const run = (): void => {
+    if (stopped) return
+    const end = tasks.now() + slice
+    if (!take(() => tasks.now() >= end)) tasks.post(run)
   }
   tasks.post(run)
-  return () => {
-    stopped = true
+  return {
+    stop: () => {
+      stopped = true
+    },
+    finish: () => {
+      if (!stopped) take(() => false)
+    }
   }
 }
 
 /** What heldInSlices needs of the edit store (shared/editor/editStore.ts). */
 export interface HeldStore<S> {
   readonly state: S
-  hold: () => () => void
+  readonly revision: number
+  hold: (finish?: () => void) => (made?: boolean) => void
 }
 
 /**
  * inSlices on the store's state, holding the store while it works: undo and redo asked for
  * meanwhile (and what is handed to its `whenFree`) wait, and are done in order once `done` has
- * made the work's edit, as if asked for after it (so Ctrl+Z undoes it, never the step before). The
- * function returned stops the work with nothing changed (`done` never called) and lets the store
- * go, so what waited is then done on the history as it was.
+ * made the work's edit, as if asked for after it (so Ctrl+Z undoes it, never the step before).
+ * `stop` ends the work with nothing changed (`done` never called) and lets the store go: what
+ * waited is then done as if the edit had been made, so an undo that would have taken it back does
+ * nothing (the step before it stays) and the redo list stays as it was. `finish` (also the store's
+ * `finish`) makes the edit at once.
  */
 export function heldInSlices<S, T>(
   store: HeldStore<S>,
@@ -71,23 +88,29 @@ export function heldInSlices<S, T>(
   done: (base: S, value: T) => void,
   tasks: Tasks,
   slice = 25
-): () => void {
-  const release = store.hold()
-  const stop = inSlices(
+): Work {
+  let work: Work | null = null
+  const release = store.hold(() => work?.finish())
+  work = inSlices(
     () => store.state,
     start,
     (base, value) => {
+      const before = store.revision
       try {
         done(base, value)
       } finally {
-        release()
+        release(store.revision !== before)
       }
     },
     tasks,
     slice
   )
-  return () => {
-    stop()
-    release()
+  const { finish } = work
+  return {
+    stop: () => {
+      work?.stop()
+      release(false)
+    },
+    finish
   }
 }

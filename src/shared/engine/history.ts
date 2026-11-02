@@ -27,9 +27,9 @@ export class History<T> {
     return this.future.length > 0
   }
 
-  /** Records `next` as a new state. */
-  push(next: T, mergeKey?: string, now = Date.now()): void {
-    if (Object.is(next, this.current)) return
+  /** Records `next` as a new state; true when that made a new undo step (false: merged into the last one, or no change). */
+  push(next: T, mergeKey?: string, now = Date.now()): boolean {
+    if (Object.is(next, this.current)) return false
     const merge = mergeKey !== undefined && mergeKey === this.lastKey && now - this.lastAt <= this.mergeWindowMs
     if (!merge) {
       this.past.push(this.current)
@@ -39,6 +39,7 @@ export class History<T> {
     this.future = []
     this.lastKey = mergeKey ?? null
     this.lastAt = now
+    return !merge
   }
 
   /** Replaces the present without creating an undo step (e.g. automatic corrections). */

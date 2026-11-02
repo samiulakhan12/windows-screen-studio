@@ -44,7 +44,7 @@ import {
   type ReviewKind,
   type ReviewStatus
 } from '../../../shared/review/review'
-import { heldInSlices } from '../../../shared/review/slices'
+import { heldInSlices, type Work } from '../../../shared/review/slices'
 import { rowTimes } from '../../../shared/review/times'
 import type { Project } from '../../../shared/types'
 import { useEditor } from '../editor/context'
@@ -264,10 +264,11 @@ export function ReviewPanel({ onClose }: { onClose: () => void }): JSX.Element {
   // drawing in between, and is one edit (one undo step) at the end, made from the project as it is
   // then. Meanwhile the store is held: undo and redo, and the rows' Keep and Remove (ask), wait and
   // are done in order after it, as if pressed once it was done (Ctrl+Z undoes it, never the step
-  // before). Closing the panel stops it with nothing of it done; what waited is then done in order.
+  // before). Closing the panel stops it with nothing of it done; what waited is then done as if it
+  // had been made (an undo for it does nothing; the Keep before it stays).
   const [busy, setBusy] = useState<{ action: 'keep' | 'remove'; count: number; kind?: ReviewKind } | null>(null)
-  const working = useRef<(() => void) | null>(null)
-  useEffect(() => () => working.current?.(), [])
+  const working = useRef<Work | null>(null)
+  useEffect(() => () => working.current?.stop(), [])
 
   /**
    * Keep or Remove `count` rows of `list` (of `kind` for Remove all) still to review, then `after`

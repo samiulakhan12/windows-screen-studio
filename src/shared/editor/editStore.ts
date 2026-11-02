@@ -24,7 +24,13 @@ import { History } from '../engine/history'
  * works. Undo and redo asked for meanwhile, and what is handed to `whenFree`, wait and are then
  * done in order, after the work's own edit, as if asked for once it was done: Ctrl+Z then undoes
  * that edit, and the step before it, or the redo list, is never taken by the wait. Other edits are
- * not held.
+ * not held (the work lands on top of them); an undo takes back at once such an edit made after the
+ * last thing that waits, and a redo brings back one it took, as if done in that order after the
+ * work's edit. Work let go without its edit (stopped,
+ * or it found nothing to change) leaves what waited to be done as if the edit had been made: an
+ * undo that would take it back, or a redo it would have found nothing for, does nothing, and the
+ * step before it and the redo list stay. `finish` has the work make its edit at once (the editor
+ * closing saves it).
  */
 export class EditStore<T> {
   private readonly history: History<T>
@@ -32,6 +38,19 @@ export class EditStore<T> {
   private holds = 0
   /** What waits for the store to be let go, in the order it was asked for. */
   private readonly waiting: (() => void)[] = []
+  /** What finishes each work that holds the store at once (its edit made, the store let go). */
+  private readonly finishers = new Set<() => void>()
+  /**
+   * While held: steps made by other edits since the last thing that waits (less those undone), and
+   * those undone since that redo brings back.
+   */
+  private ownSteps = 0
+  private ownRedos = 0
+  /**
+   * While what waited for work let go without its edit is done: that edit's place in the history
+   * (`W`) among the steps made meanwhile (`R`), above the history as it was, and in the redo list.
+   */
+  private phantom: { past: ('W' | 'R')[]; future: ('W' | 'R')[] } | null = null
   private gestures = 0
   private lastKey: string | null = null
   private lastAt = 0
@@ -87,7 +106,15 @@ export class EditStore<T> {
     const now = this.clock()
     // Passing the previous timestamp keeps a held gesture inside the merge window.
     const at = holding ? this.lastAt : now
-    this.history.push(next, key, at)
+    const step = this.history.push(next, key, at)
+    if (this.holds > 0) {
+      if (step) this.ownSteps++
+      this.ownRedos = 0
+    }
+    if (this.phantom) {
+      if (step) this.phantom.past.push('R')
+      this.phantom.future = []
+    }
     this.lastKey = key ?? null
     this.lastAt = at
     this.changed()
@@ -103,26 +130,72 @@ export class EditStore<T> {
     this.changed()
   }
 
-  /** Goes back a step; false when there is none. While the store is held it waits (true). */
+  /**
+   * Goes back a step; false when there is none. While the store is held it waits (true), unless an
+   * edit was made meanwhile since the last thing that waits: that is taken back at once.
+   */
   undo = (): boolean => {
     if (this.holds > 0) {
-      this.waiting.push(() => void this.undo())
+      if (this.ownSteps > 0) {
+        if (!this.step('undo')) return false
+        this.ownSteps--
+        this.ownRedos++
+        return true
+      }
+      this.wait(() => void this.undo())
       return true
     }
-    this.seal()
-    if (this.history.undo() === null) return false
-    this.changed()
+    const ph = this.phantom
+    if (ph && ph.past[ph.past.length - 1] === 'W') {
+      // Takes back the edit the work did not make: nothing changes.
+      ph.past.pop()
+      ph.future.push('W')
+      return true
+    }
+    if (!this.step('undo')) return false
+    if (ph) {
+      ph.past.pop()
+      ph.future.push('R')
+    }
     return true
   }
 
-  /** Goes forward a step; false when there is none. While the store is held it waits (true). */
+  /**
+   * Goes forward a step; false when there is none. While the store is held it waits (true), unless
+   * an undo since the last thing that waits took back an edit made meanwhile: that comes back at once.
+   */
   redo = (): boolean => {
     if (this.holds > 0) {
-      this.waiting.push(() => void this.redo())
+      if (this.ownRedos > 0) {
+        if (!this.step('redo')) return false
+        this.ownRedos--
+        this.ownSteps++
+        return true
+      }
+      this.wait(() => void this.redo())
       return true
     }
+    const ph = this.phantom
+    if (!ph) return this.step('redo')
+    const top = ph.future.pop()
+    // Nothing to redo above the edit the work did not make (it would have emptied the redo list).
+    if (top === undefined) return false
+    // That edit itself: nothing changes.
+    if (top === 'R' && !this.step('redo')) return false
+    ph.past.push(top)
+    return true
+  }
+
+  /** Has `fn` wait for the store to be let go; an undo or redo after it waits too (it comes after `fn`). */
+  private wait(fn: () => void): void {
+    this.waiting.push(fn)
+    this.ownSteps = 0
+    this.ownRedos = 0
+  }
+
+  private step(way: 'undo' | 'redo'): boolean {
     this.seal()
-    if (this.history.redo() === null) return false
+    if ((way === 'undo' ? this.history.undo() : this.history.redo()) === null) return false
     this.changed()
     return true
   }
@@ -133,24 +206,43 @@ export class EditStore<T> {
   }
 
   /**
-   * Holds the store until the function returned is called (once; again does nothing). Then, once
-   * nothing holds it, what waited is done in order; a waiting step that holds it again leaves the
-   * rest waiting for that.
+   * Holds the store until the function returned is called (once; again does nothing), `made` false
+   * when the holder let it go without its edit (stopped, or nothing to change). Then, once nothing
+   * holds it, what waited is done in order (as if after that edit, when it was not made); a waiting
+   * step that holds it again leaves the rest waiting for that. `finish`, when given, has the holder
+   * make its edit and let go at once (`finish` below).
    */
-  hold = (): (() => void) => {
+  hold = (finish?: () => void): ((made?: boolean) => void) => {
+    if (this.holds === 0) {
+      this.ownSteps = 0
+      this.ownRedos = 0
+    }
     this.holds++
+    if (finish) this.finishers.add(finish)
     let held = true
-    return () => {
+    return (made = true) => {
       if (!held) return
       held = false
+      if (finish) this.finishers.delete(finish)
       this.holds--
-      while (this.holds === 0 && this.waiting.length > 0) this.waiting.shift()!()
+      if (this.holds > 0) return
+      this.phantom = made ? null : { past: ['W'], future: [] }
+      try {
+        while (this.holds === 0 && this.waiting.length > 0) this.waiting.shift()!()
+      } finally {
+        this.phantom = null
+      }
     }
+  }
+
+  /** Has each work holding the store that can finish at once do so (its edit made, what waited then done). */
+  finish = (): void => {
+    for (const f of [...this.finishers]) f()
   }
 
   /** Runs `fn` now, or, while the store is held, once it is let go, in turn with the undo and redo that wait. */
   whenFree = (fn: () => void): void => {
-    if (this.holds > 0) this.waiting.push(fn)
+    if (this.holds > 0) this.wait(fn)
     else fn()
   }
 
