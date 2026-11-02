@@ -76,6 +76,13 @@ const asWritten = (s: string): string =>
     .replace(/\\/g, '/')
     .replace(/[A-Z]+/g, (c) => c.toLowerCase())
 
+/**
+ * A piece as X and linkify-it read the text itself, also checked when it has an escape or an invisible
+ * character: nothing decoded, an invisible character an end (as X ends a name there), ASCII letters in
+ * lower case. Decoded, "flo&#119;n.app" and "flow\u200bn.app" read as flown.app; X links n.app in both.
+ */
+const asTyped = (s: string): string => s.replace(INVISIBLE, ' ').replace(/[A-Z]+/g, (c) => c.toLowerCase())
+
 /* ---------- what is link-like ---------- */
 
 /**
@@ -93,19 +100,19 @@ const DOTTED = /(?<=[\p{L}\p{N}\p{M}\p{Co}_\-]|(?![<>|^])\p{S})\.([\p{L}\p{N}\p{
 
 /**
  * Whether `label`, the last label of a dotted name, is a top-level domain from the full list, also
- * without its marks; or, after a name that ends in ASCII, one glued to more text: an ASCII one before
- * a letter or symbol of another script ("flown.jpから", "README.md를"), or one in another script
- * before more of it ("paypal-login.在线客服", which X links). Any label with a reference this could
- * not read (ANY) may be.
+ * without its marks; or, after a name that ends in ASCII, one glued to more text: an ASCII one (or one
+ * in punycode) before a letter or symbol of another script ("flown.jpから", "README.md를",
+ * "evíl.xn--p1ai今天"), or one in another script before more of it ("paypal-login.在线客服", which X
+ * links). Any label with a reference this could not read (ANY) may be.
  */
 function topLevel(label: string, afterAscii: boolean): boolean {
   if (isTopLevelDomain(label) || label.includes(ANY)) return true
   const bare = label.normalize('NFD').replace(/\p{M}/gu, '')
   if (bare !== label && isTopLevelDomain(bare)) return true
   if (!afterAscii) return false
-  const ascii = /^[a-z0-9]+/.exec(label)?.[0]
+  const ascii = /^(?:xn--[a-z0-9-]+|[a-z0-9]+)/.exec(label)?.[0]
   if (ascii) return ascii.length < label.length && /[^\x00-\x7f]/.test(label[ascii.length]) && isTopLevelDomain(ascii)
-  const chars = [...label]
+  const chars = [...label.slice(0, 26)]
   for (let k = 1; k < Math.min(chars.length, 13); k++) if (isTopLevelDomain(chars.slice(0, k).join(''))) return true
   return false
 }
@@ -310,8 +317,35 @@ function joinsAfter(n: string, end: number, hostOnly: boolean): boolean {
 /** A label from where it is looked for (DOTTED's). */
 const LABEL_AT = /[\p{L}\p{N}\p{M}\p{Co}\-]*/uy
 
-/** What may come right before an address whose user name is a name on a top-level domain: else linkify-it reads that name as a host ("'anna.li@acme.de'"). */
+/**
+ * An address whose user name is itself link-like, a name on a top-level domain ("anna.li@acme.de",
+ * also after "mailto:"): where linkify-it does not read the address, it opens that name as a host.
+ */
+const dottedMail = (token: string): boolean => {
+  const at = token.indexOf('@')
+  return at > 0 && linkLike(token.slice(0, at).replace(/^mailto:/, ''))
+}
+
+/** What may come right before a dotted address (dottedMail): else linkify-it reads its user name as a host ("'anna.li@acme.de'"). */
 const BEFORE_MAIL = /^[<>｜"(\s]?$/u
+
+/** A space, punctuation or a control: where linkify-it ends an address's host. */
+const ENDS_HOST = /[\p{Z}\p{P}\p{Cc}]/u
+
+/**
+ * Whether linkify-it ends a dotted address (dottedMail) that ends at `end`: before nothing, "<", ">",
+ * "｜", a space, a control or punctuation, but "-", "_", a ":" before a digit, and a "." before anything
+ * but nothing, a space, a control or punctuation other than "-". Else it opens the user name
+ * ("anna.li@acme.de.>", "anna.li@acme.de|", "anna.li@acme.de:42" open anna.li).
+ */
+function mailEnds(n: string, end: number): boolean {
+  const next = charAt(n, end)
+  const after = charAt(n, end + next.length)
+  if (next === '' || next === '<' || next === '>' || next === '｜') return true
+  if (next === '-' || next === '_' || (next === ':' && /\d/.test(after))) return false
+  if (next === '.') return after === '' || (after !== '-' && ENDS_HOST.test(after))
+  return ENDS_HOST.test(next)
+}
 
 /**
  * Whether what comes before a token that starts at `i` joins it: for a token with a scheme, an
@@ -322,16 +356,20 @@ const BEFORE_MAIL = /^[<>｜"(\s]?$/u
  */
 function joinsBefore(n: string, i: number, token: string): boolean {
   if (/^[a-z][a-z0-9+.-]*:/.test(token)) return SCHEME_BEFORE.test(n.slice(Math.max(0, i - 64), i))
-  const at = token.indexOf('@')
-  if (at > 0 && linkLike(token.slice(0, at)) && !BEFORE_MAIL.test(charBefore(n, i))) return true
+  if (dottedMail(token) && !BEFORE_MAIL.test(charBefore(n, i))) return true
   let j = i
   while (n[j - 1] === ':') j--
   const prev = charBefore(n, j)
   return prev !== '' && (j < i ? /[a-z0-9+.-]/.test(prev) : JOINS.test(prev))
 }
 
-/** `n` with every said token blanked where it stands alone (nothing that joins it right before or after it). Linear in `n` for a given said set. */
-function withoutSaid(n: string, said: Said): string {
+/**
+ * `n` with every said token blanked where it stands alone (nothing that joins it right before or after
+ * it). A dotted address (dottedMail) also only where linkify-it ends it (mailEnds), and never when the
+ * piece had an invisible character (`invisible`), which linkify-it reads as no end. Linear in `n` for a
+ * given said set.
+ */
+function withoutSaid(n: string, said: Said, invisible: boolean): string {
   if (!said.tokens.size) return n
   const { next, fail, ends } = matcherOf(said)
   // How far a blank reaches from each position, the tokens found by where they end.
@@ -344,6 +382,7 @@ function withoutSaid(n: string, said: Said): string {
     for (const length of ends[state]) {
       const i = j + 1 - length
       const t = n.slice(i, j + 1)
+      if (dottedMail(t) && (invisible || !mailEnds(n, j + 1))) continue
       if (!joinsBefore(n, i, t) && !joinsAfter(n, j + 1, HOST_ONLY.test(t))) blank[i] = Math.max(blank[i], j + 1)
     }
   }
@@ -362,10 +401,12 @@ function withoutSaid(n: string, said: Said): string {
   return out + n.slice(copied)
 }
 
-/** Whether `piece` (as written, between ASCII spaces) holds anything link-like once what was said is blanked, as either reading has it. */
+/** Whether `piece` (as written, between ASCII spaces) holds anything link-like once what was said is blanked, as any reading has it. */
 function isNoted(piece: string, said: Said): boolean {
   if (!/[.:@/\\%&]|[^\x00-\x7f]/.test(piece)) return false
-  return [normalise(piece), asWritten(piece)].some((n) => linkLike(n) && linkLike(withoutSaid(n, said)))
+  const invisible = piece.search(INVISIBLE) >= 0
+  const readings = [normalise(piece), asWritten(piece), ...(invisible || /[%&]/.test(piece) ? [asTyped(piece)] : [])]
+  return readings.some((n) => linkLike(n) && linkLike(withoutSaid(n, said, invisible)))
 }
 
 /** A piece of a text the check notes: where it is, and its text as written. */

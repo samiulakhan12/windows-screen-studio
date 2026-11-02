@@ -47,6 +47,30 @@ describe('what was said', () => {
   })
 })
 
+describe('what the larger runs against the reference parsers found (tests/fixtures/check-probes.json, last entries)', () => {
+  const said = saidLinks([{ text: 'Get it at flown.app, or mail anna.li@acme.de.' }])
+
+  it('a said address whose user name is a name on a top-level domain stands alone only where linkify-it ends it', () => {
+    // Else linkify-it opens the user name, anna.li.
+    for (const text of ['anna.li@acme.de.>', '<anna.li@acme.de.>', 'anna.li@acme.de|', 'anna.li@acme.de.<', 'anna.li@acme.de^', 'anna.li@acme.de:42', 'anna.li@acme.de.ä', 'anna.li@acme.de\u200b', '\u200banna.li@acme.de'])
+      expect(linksToCheck(text, said), text).toEqual([text])
+    for (const text of ['anna.li@acme.de', 'anna.li@acme.de.', '<anna.li@acme.de>', 'anna.li@acme.de，', 'anna.li@acme.de…', '(anna.li@acme.de).', '[Anna](mailto:anna.li@acme.de)'])
+      expect(linksToCheck(text, said), text).toEqual([])
+  })
+
+  it('reads a piece with an escape or an invisible character also as typed, as X does: nothing decoded, the invisible character an end', () => {
+    // Decoded, each reads as flown.app; X links n.app, lown.app or 77n.app.
+    for (const text of ['flo&#119;n.app', '&#102;lown.app', 'flo%77n.app', 'flow\u200bn.app', 'flow\u2060n.app', 'ב-\u2060flown.app.']) expect(linksToCheck(text, said), text).toEqual([text])
+    // A said link with an invisible character before or after it, and "%" or "&" in prose, need no note.
+    for (const text of ['flown.app\u200b', '\u200eflown.app', 'Q&A', 'R&D. 50%']) expect(linksToCheck(text, said), text).toEqual([])
+  })
+
+  it('a top-level domain in punycode glued to more text is one too', () => {
+    expect(linksToCheck('Log in at evíl.xn--p1ai今天我来介绍新的导出功能。', said)).toEqual(['evíl.xn--p1ai今天我来介绍新的导出功能。'])
+    expect(linksToCheck('evil.xn--p1aiから', said)).toEqual(['evil.xn--p1aiから'])
+  })
+})
+
 describe('notedPieces', () => {
   it('splits at ASCII spaces only, and reads a quoted attribute across its line breaks as one piece', () => {
     const said = saidOf(['flown.app'])

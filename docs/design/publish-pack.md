@@ -340,8 +340,11 @@ percent-escapes decoded, invisible and format characters removed, NFKC, the dot-
 `｡` (IDNA's dots) as `.`, `\` as `/`, lower case. It is also read as written but for NFKC
 (`asWritten`: escapes decoded, invisible characters removed, the same dots and slashes, ASCII letters
 in lower case), as X and linkify-it end a name before a character NFKC would make ASCII (`evil.comſ`,
-`evil.comK` link evil.com) and read `（` as no `(`. A quoted attribute value with a tab or line break
-in it is also read as one piece with them dropped, as a browser reads a URL there.
+`evil.comK` link evil.com) and read `（` as no `(`. A piece with an escape or an invisible character
+is also read as typed (`asTyped`: nothing decoded, an invisible character an end, ASCII letters in
+lower case), as X reads it: decoded, `flo&#119;n.app` and `flow⟨U+200B⟩n.app` are flown.app, where X
+links n.app. A quoted attribute value with a tab or line break in it is also read as one piece with
+them dropped, as a browser reads a URL there.
 
 *Link-like.* A piece is link-like when it has a scheme (ASCII letters, `+`, `.` or `-` of two or more
 characters, then `:` and more than nothing; `mailto:` included; one letter is a Windows drive,
@@ -350,7 +353,8 @@ characters, then `:` and more than nothing; `mailto:` included; one letter is a 
 IPv6); or a dotted name whose last label is a top-level domain from the full list
 (`src/shared/publish/tlds.ts` and `newerTlds.ts`), also without its marks, including names glued to
 text in any script (`ログインflown.jp`), and, after a name that ends in ASCII, a top-level domain glued
-to more text (`flown.jpから`, `README.md를`, `paypal-login.在线客服`; `_` ends a label too: `df.to_csv`).
+to more text (`flown.jpから`, `README.md를`, `evíl.xn--p1ai今天`, `paypal-login.在线客服`; `_` ends a label
+too: `df.to_csv`).
 
 *Said.* The said tokens are the link-like runs of the captions without `aiLinks` (§4.6), the
 recording's name and its chapter titles, read the same way (ASCII runs of URL characters and dotted
@@ -370,8 +374,11 @@ not join); after a host alone, neither does a port or line number (`main.py:42`)
 the text of another script unless that text may be a top-level domain (`README.md。第二步` is said,
 `flown.app。在线` is not). Before a token, a colon after text other than ASCII is punctuation
 (`下载：flown.app`); and an address whose user name is a dotted name on a top-level domain
-(`anna.li@acme.de`) stands alone only at the start of a piece or after `<`, `>`, `｜`, `"` or `(`,
-where linkify-it reads an address, not a host (`'anna.li@acme.de'`, `（anna.li@acme.de` are noted).
+(`anna.li@acme.de`) stands alone only where linkify-it reads an address, not that name as a host:
+at the start of a piece or after `<`, `>`, `｜`, `"` or `(`, and before nothing, a space, punctuation
+(not `-`, `_`, a `:` before a digit, or a `.` before anything but a space or punctuation), `<`, `>` or
+`｜`, in a piece without an invisible character (`'anna.li@acme.de'`, `（anna.li@acme.de`,
+`anna.li@acme.de.>`, `anna.li@acme.de|` and `anna.li@acme.de:42` are noted).
 The piece is **noted** if anything link-like is left in either reading. Being over-inclusive is the
 point: a dotted file name the AI wrote that was not said (`README.md`, `Socket.IO`) is noted, and so
 is a said name glued to letters of another script (a look-alike such as `ログインflown.jp` is a real
@@ -402,9 +409,11 @@ the export's description file is written from what *Use for exports* saved.)
 letters of another script; with a space around each link, as the prompts now ask (§4.1), 18 (7%). At
 cf2a807 (the rewriter and the eighth round's net) 30 cards had a note, and the rewriter changed 24
 cards, 11 of them losing letters (whole Chinese and Japanese sentences); now no card loses or gains a
-character. Against linkify-it, markdown-it, HTML URL attributes and X on 4 377 texts (every probe of
+character. Against linkify-it, markdown-it, HTML URL attributes and X on 4 398 texts (every probe of
 the earlier rounds, every tutorial card, 2 000 random texts built from them), every link to a host
-nobody said is in a noted piece (`tests/publishCheckOracle.test.ts`).
+nobody said is in a noted piece (`tests/publishCheckOracle.test.ts`); so it is on 36 000 more random
+texts from six other seeds, whose first runs found the dotted-address ends, the as-typed reading and
+the glued punycode domain above (their texts are the last probes).
 
 ---
 
@@ -699,7 +708,8 @@ Where the build differs from or adds to the sections above:
   argued (§10). The rules added to the check beyond the plain reading, each because the reference
   parsers or the tutorial copy showed it was needed and safe: symbols join a name (linkify-it reads
   them in a host), `_` ends a label (X links `df.to` in `df.to_csv`), the text is also read without
-  NFKC (X ends `evil.comſ` before the `ſ`), a dotted user name stands alone only where linkify-it
+  NFKC (X ends `evil.comſ` before the `ſ`) and, with an escape or an invisible character, as typed (X
+  links n.app in `flo&#119;n.app` and `flow⟨U+200B⟩n.app`), a dotted user name stands alone only where linkify-it
   reads an address, sentence-ending dots and colons, a port after a host, a dot before Chinese or
   Japanese text that is no top-level domain, and a colon after text other than ASCII do not join, and
   a one-letter scheme is a Windows drive.

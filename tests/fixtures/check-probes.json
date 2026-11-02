@@ -2115,6 +2115,27 @@
     "https://flown.app\t.evil.com",
     "Скачать: ",
     "1. ",
-    " today."
+    " today.",
+    "!README.md「 ![here](<anna.li@acme.de.>)ב-。Get it at https://flown.app/download.",
+    "anna.li@acme.de.>",
+    "<anna.li@acme.de.>",
+    "anna.li@acme.de.<",
+    "anna.li@acme.de|",
+    "anna.li@acme.de.|",
+    "anna.li@acme.de^",
+    "anna.li@acme.de:42",
+    "anna.li@acme.de.ä",
+    "anna.li@acme.de\u200b",
+    "\u200banna.li@acme.de",
+    "[Anna](mailto:anna.li@acme.de.>)",
+    "Open localhost:3000 in your browser. — היכנסו ל-flown.app\n\n<a href='ｇｅｔflown.jp😀'>here</a>להורדה ב-\u2060flown.app.",
+    "flo&#119;n.app",
+    "&#102;lown.app",
+    "flo%77n.app",
+    "flow\u200bn.app",
+    "flow\u2060n.app",
+    "flow\u00adn.app",
+    "Log in at evíl.xn--p1ai今天我来介绍新的导出功能。",
+    "evil.xn--p1aiから"
   ]
 }
