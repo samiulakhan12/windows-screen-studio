@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { duckKeyframes, gainAt } from '../src/shared/audio/automation'
 import { LEVEL_WINDOW, normalizeGain, type AudioLevels } from '../src/shared/audio/loudness'
-import { editLoudness, type AudioAnalysis } from '../src/shared/audio/soundtrack'
+import { editLoudness, musicDucking, soundActivity, type AudioAnalysis } from '../src/shared/audio/soundtrack'
 import { createProject } from '../src/shared/engine/project'
 import type { Project, SoundSpan } from '../src/shared/types'
 
@@ -153,5 +154,30 @@ describe('the preview with unwanted sounds muted or lowered', () => {
     expect(rec.gain.value).toBeLessThan(narration)
     sound.setProject(p)
     expect(rec.gain.value).toBe(before)
+  })
+
+  it('ducks the music only under the recorded sound that is heard', async () => {
+    const music = { path: 'music.mp3', volume: 1, ducking: 0.7, loop: true, fadeIn: 0, fadeOut: 0 }
+    // A song on the PC from 10 to 30 s; the playhead in the middle of it.
+    analysis = { mix: levels([...run(-60, 10), ...run(-20, 20), ...run(-60, 30)]) }
+    const p = project(60, { music })
+    const sound = new PreviewAudio({ currentTime: 20, muted: false, volume: 1 }, p)
+    disposers.push(() => sound.dispose())
+    await settle()
+    const { duck } = nodes()
+    const ducked = (q: Project): number => {
+      const d = musicDucking(q, soundActivity(q, analysis))
+      return d ? gainAt(duckKeyframes(d.ranges, 60, d.shape), 20) : 1
+    }
+    expect(duck!.gain.value).toBeCloseTo(0.3, 6)
+    expect(duck!.gain.value).toBeCloseTo(ducked(p), 6)
+    // The song muted: nothing is heard there, the music plays at its level, as in the export.
+    const muted = withSpans(p, [10, 30, 'mute'])
+    sound.setProject(muted)
+    expect(duck!.gain.value).toBe(1)
+    expect(ducked(muted)).toBe(1)
+    // Undo: ducked again.
+    sound.setProject(p)
+    expect(duck!.gain.value).toBeCloseTo(0.3, 6)
   })
 })

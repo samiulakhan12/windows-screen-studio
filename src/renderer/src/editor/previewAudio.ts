@@ -2,7 +2,7 @@ import { rangesToOutput, type Range } from '../../../shared/audio/activity'
 import { duckKeyframes, fadeGainAt, fadeKeyframes, gainAt, keyIndexAt, type Keyframe } from '../../../shared/audio/automation'
 import { normalizeGain, type AudioLevels } from '../../../shared/audio/loudness'
 import { activitySources, audioLook, musicEnd, needsAudioGraph, recordingMix, SOURCE_FILES, STEM_KINDS, type AudioLook, type AudioSource, type StemKind } from '../../../shared/audio/settings'
-import { analysisSources, editLoudness, heardLevels, musicDucking, sourceActivity, type AudioAnalysis } from '../../../shared/audio/soundtrack'
+import { analysisSources, editLoudness, heardActivity, heardLevels, musicDucking, type AudioAnalysis } from '../../../shared/audio/soundtrack'
 import { voiceLook, voiceTarget, withCleanVoice, type VoiceSource } from '../../../shared/audio/voiceClean'
 import { soundGains, soundOutputKeyframes } from '../../../shared/audio/soundsEdit'
 import { MAX_ELEMENT_RATE, MIN_ELEMENT_RATE } from '../../../shared/editor/shuttle'
@@ -461,12 +461,12 @@ export class PreviewAudio {
 
   /**
    * Where the recording has sound on the output timeline (soundActivity, in two steps: the
-   * source-time ranges per measurement and heard sources, their output times per edit), past the
-   * pause freezes as the export ducks: speech around one stays ducked across it.
+   * source-time ranges per measurement, heard sources and muted stretches, their output times per
+   * edit), past the pause freezes as the export ducks: speech around one stays ducked across it.
    */
   private soundRanges(): Range[] | null {
-    const sourceKey = `${this.analysisVersion}|${activitySources(this.project).join()}`
-    if (this.sourceActivity.key !== sourceKey) this.sourceActivity = { key: sourceKey, value: sourceActivity(this.project, this.analysis) }
+    const sourceKey = `${this.analysisVersion}|${activitySources(this.project).join()}|${this.spansKey()}`
+    if (this.sourceActivity.key !== sourceKey) this.sourceActivity = { key: sourceKey, value: heardActivity(this.project, this.analysis) }
     const key = `${sourceKey}|${this.clipsKey}`
     if (this.activity.key !== key) {
       const ranges = this.sourceActivity.value

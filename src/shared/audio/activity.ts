@@ -110,6 +110,23 @@ export function mergeRanges(ranges: readonly Range[], gap = 0): Range[] {
   return out
 }
 
+/** `ranges` without the parts inside `holes`: sorted, separate ranges. */
+export function subtractRanges(ranges: readonly Range[], holes: readonly Range[]): Range[] {
+  const cut = mergeRanges(holes)
+  const out: Range[] = []
+  let j = 0
+  for (const r of mergeRanges(ranges)) {
+    while (j < cut.length && cut[j].end <= r.start) j++
+    let start = r.start
+    for (let k = j; k < cut.length && cut[k].start < r.end; k++) {
+      if (cut[k].start > start) out.push({ start, end: cut[k].start })
+      start = Math.max(start, cut[k].end)
+    }
+    if (r.end > start) out.push({ start, end: r.end })
+  }
+  return out
+}
+
 /**
  * `ranges` (source seconds) on the output timeline: only the parts inside kept clips, each
  * shortened or stretched by its clip's speed. Pieces that touch across a cut are joined.

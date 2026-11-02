@@ -5,7 +5,7 @@
  */
 import type { SoundGain } from '../api/export'
 import type { Clip, Project } from '../types'
-import { combineLevels, detectActivity, limitRanges, mergeRanges, rangesToOutput, type Range } from './activity'
+import { combineLevels, detectActivity, limitRanges, mergeRanges, rangesToOutput, subtractRanges, type Range } from './activity'
 import { DUCK_TIMING, duckRanges, MAX_DUCK_RANGES, type DuckShape } from './automation'
 import { integratedLoudness, normalizeGain, type AudioLevels } from './loudness'
 import { activitySources, audioLook, recordingMix, type AudioSource } from './settings'
@@ -61,9 +61,19 @@ export function sourceActivity(project: Omit<SoundProject, 'clips'>, analysis: A
   return mergeRanges(union)
 }
 
-/** sourceActivity on the OUTPUT timeline (through the clips): what the music ducks under. */
-export function soundActivity(project: SoundProject, analysis: AudioAnalysis): Range[] | null {
+/**
+ * sourceActivity without the stretches muted with the unwanted-sound finder (F-17): they are
+ * silent in the edit, so the music does not duck under them. Lowered stretches are still heard.
+ */
+export function heardActivity(project: Omit<SoundProject, 'clips'>, analysis: AudioAnalysis): Range[] | null {
   const ranges = sourceActivity(project, analysis)
+  const muted = soundGains(project).filter((g) => g.gain <= 0)
+  return ranges && muted.length > 0 ? subtractRanges(ranges, muted) : ranges
+}
+
+/** heardActivity on the OUTPUT timeline (through the clips): what the music ducks under. */
+export function soundActivity(project: SoundProject, analysis: AudioAnalysis): Range[] | null {
+  const ranges = heardActivity(project, analysis)
   return ranges && rangesToOutput(ranges, project.clips)
 }
 

@@ -303,6 +303,9 @@ side: every muted or lowered stretch is fully muted or lowered.
   hears the muted stretches as silence and the lowered ones 14 dB down. The preview's one loudness
   gain is measured the same way: each level window counts at `g(t)²` of its power, and the gain is
   worked out again when a stretch is muted, lowered or restored.
+- **Music ducking** (`soundtrack.ts`, `heardActivity`): added music ducks only under recorded sound
+  that is heard, so the muted stretches are taken out of the ranges it ducks under, in the preview and
+  the export alike. A lowered stretch is still heard and still ducks it.
 
 Both are tested against `g(t)`: the expression evaluated at thousands of times, the preview keyframes
 mapped back through the clips.

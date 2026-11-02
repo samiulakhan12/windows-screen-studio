@@ -2,12 +2,12 @@
 import { execFileSync, spawnSync } from 'node:child_process'
 import { describe, expect, it } from 'vitest'
 import { ffmpegPath } from '../src/main/ffmpeg'
-import { combineLevels, detectActivity, kthSmallest, limitRanges, mergeRanges, rangesToOutput } from '../src/shared/audio/activity'
+import { combineLevels, detectActivity, kthSmallest, limitRanges, mergeRanges, rangesToOutput, subtractRanges } from '../src/shared/audio/activity'
 import { DUCK_TIMING, duckAmount, duckExpression, duckGainAt, duckKeyframes, duckRanges, fadeGainAt, fadeKeyframes, fitFades, gainAt, MAX_DUCK_RANGES } from '../src/shared/audio/automation'
 import { integratedLoudness, kWeighting, LEVEL_WINDOW, LevelMeter, loudnessOf, normalizeGain, type AudioLevels } from '../src/shared/audio/loudness'
 import { activitySources, audioLook, hasSoundtrack, musicEnd, needsAudioGraph, recordingMix, stemsOf } from '../src/shared/audio/settings'
 import { soundGains } from '../src/shared/audio/soundsEdit'
-import { analysisSources, editLoudness, heardLevels, musicDucking, previewNormalizeGain, recordingLoudness, soundActivity, sourceActivity } from '../src/shared/audio/soundtrack'
+import { analysisSources, editLoudness, heardActivity, heardLevels, musicDucking, previewNormalizeGain, recordingLoudness, soundActivity, sourceActivity } from '../src/shared/audio/soundtrack'
 import { migrateProject } from '../src/shared/engine/project'
 import type { Clip, Project, SoundSpan } from '../src/shared/types'
 
@@ -205,6 +205,16 @@ describe('sound activity', () => {
     expect(limited).toHaveLength(7)
     expect(limited[0]).toEqual({ start: 0, end: 3.5 })
     expect(limited.slice(1)).toEqual(even.slice(4))
+  })
+
+  it('takes ranges out of ranges', () => {
+    const r = (start: number, end: number) => ({ start, end })
+    expect(subtractRanges([r(0, 10), r(20, 30)], [])).toEqual([r(0, 10), r(20, 30)])
+    expect(subtractRanges([r(0, 10), r(20, 30)], [r(5, 25)])).toEqual([r(0, 5), r(25, 30)])
+    expect(subtractRanges([r(0, 10)], [r(2, 3), r(6, 7)])).toEqual([r(0, 2), r(3, 6), r(7, 10)])
+    expect(subtractRanges([r(2, 4)], [r(0, 10)])).toEqual([])
+    expect(subtractRanges([r(20, 30), r(0, 10)], [r(8, 22), r(0, 1)])).toEqual([r(1, 8), r(22, 30)])
+    expect(subtractRanges([r(0, 10)], [r(10, 12), r(-2, 0)])).toEqual([r(0, 10)])
   })
 
   it('merges ranges closer than a gap', () => {
@@ -445,5 +455,28 @@ describe('shared preview/export sound decisions', () => {
     // Without stretches: as before.
     expect(editLoudness(music, p.clips, [])).toBe(editLoudness(music, p.clips))
     expect(recordingLoudness(withSpans(p), { mix: music })).toBe(editLoudness(music, p.clips))
+  })
+
+  it('does not duck the music under recorded sound that is muted, only under what is heard', () => {
+    const music = { path: 'music.m4a', volume: 0.5, ducking: 0.7, loop: true, fadeIn: 0, fadeOut: 0 }
+    // Sound from 10 to 30 s (a song on the PC) and from 40 to 45 s.
+    const mix = levels([...run(-60, 10), ...run(-20, 20), ...run(-60, 10), ...run(-20, 5), ...run(-60, 15)])
+    const p = project({ duration: 60, clips: [clip(0, 60)], audio: { volume: 1, muted: false, music } })
+    const all = soundActivity(p, { mix })!
+    expect(all.map((r) => [r.start, r.end])).toEqual([[10, 30], [40, 45]])
+    expect(heardActivity(p, { mix })).toEqual(sourceActivity(p, { mix }))
+    // The song muted: the music ducks only under the rest, in the preview and the export alike.
+    const muted = withSpans(p, [10, 30, 'mute'])
+    expect(soundActivity(muted, { mix })).toEqual([{ start: 40, end: 45 }])
+    expect(musicDucking(muted, soundActivity(muted, { mix }))!.ranges).toEqual(musicDucking(p, [{ start: 40, end: 45 }])!.ranges)
+    // Part of it muted: the rest is still heard.
+    expect(soundActivity(withSpans(p, [15, 20, 'mute']), { mix })).toEqual([{ start: 10, end: 15 }, { start: 20, end: 30 }, { start: 40, end: 45 }])
+    // Lowered is still heard; a mute inside a lowered stretch silences only itself.
+    expect(soundActivity(withSpans(p, [10, 30, 'duck']), { mix })).toEqual(all)
+    expect(soundActivity(withSpans(p, [10, 30, 'duck'], [12, 13, 'mute']), { mix })).toEqual([{ start: 10, end: 12 }, { start: 13, end: 30 }, { start: 40, end: 45 }])
+    // Through the edit's clips, still null until measured.
+    const cut = { ...muted, clips: [clip(0, 35), clip(40, 60)] }
+    expect(soundActivity(cut, { mix })).toEqual([{ start: 35, end: 40 }])
+    expect(soundActivity(muted, {})).toBeNull()
   })
 })
