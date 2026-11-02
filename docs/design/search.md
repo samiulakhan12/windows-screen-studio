@@ -297,7 +297,9 @@ Onboarding call · 3 Oct 2026 · 41:02
   (captions), titles, chapters, text on screen, speaker notes and names.`, followed by `Recordings
   without captions are found by their name, titles, chapters, text on screen and notes.` when at
   least one recording has no transcript.
-- Building: `Still indexing your recordings (120 of 500)…` above the results.
+- Building: `Still indexing your recordings (120 of 500)…` above the results; the live region says
+  `Still indexing your recordings; more results may appear.` instead of the count (the same words as
+  the count goes up, so it is read once) and the count when the index is ready.
 - The index could not be read or written: results still come from memory; a warning goes to the
   log (no text), nothing is shown.
 - Kind labels: `Said`, `Title`, `Chapter`, `On screen`, `Notes`, `File`. A cut moment adds a `Cut`
@@ -446,7 +448,11 @@ No new dependency: `Intl.Segmenter` is in Electron's ICU, and the rest is small 
   150 ms after the last key, so the old results were still shown): `demo`, then Ctrl+F, `budget` and
   Enter opened Product demo. With no row active, Enter now opens only results of the text in the box,
   and pressed before they come it opens their first row when they do.
-- The live region stays quiet while the index is built; Ctrl+F does nothing on an empty library.
+- The live region no longer reads the count every half second while the index is built; Ctrl+F does
+  nothing on an empty library.
+- That quiet live region said nothing at all while the index was built, so a screen reader user
+  heard neither that it was still indexing nor that nothing matched so far. It now says one sentence
+  that does not change as the index grows (§5).
 - Writing the file is synchronous, like every state file (37–55 ms for 500 recordings, at most every
   3 s and only after a change); an asynchronous write is left for later.
 

@@ -11,7 +11,7 @@ import { clockTime, KIND_LABEL, resultsSummary } from '../../../shared/search/mo
 import { SEARCH_LIMITS } from '../../../shared/search/types'
 import type { ProjectSummary } from '../../../shared/types'
 import { clearPendingMoment, setPendingMoment } from './openAt'
-import { answeredQuery, dateOf, enterTarget, resultRows, rowLabel, type Row } from './rows'
+import { answeredQuery, dateOf, enterTarget, liveStatus, resultRows, rowLabel, type Row } from './rows'
 import './search.css'
 
 /** Typing pause before a query is sent (§4). */
@@ -218,8 +218,8 @@ export function LibrarySearch({ projects, onOpen }: { projects: ProjectSummary[]
         )}
       </div>
       <p className="sr-only" role="status" aria-live="polite">
-        {/* Not while the index is built: the count would be read out every half second. */}
-        {building ? '' : summary}
+        {/* Not the count while the index is built: it would be read out every half second. */}
+        {liveStatus(summary, building)}
       </p>
       {searching && (
         <div className="search-results">

@@ -17,8 +17,9 @@ const { clearPendingMoment, PENDING_MS, setPendingMoment, takePendingMoment } = 
   setPendingMoment: (projectId: string, t: number, end?: number, now?: number) => void
   takePendingMoment: (projectId: string, now?: number) => { t: number; end: number } | null
 }
-const { enterTarget, MOMENTS_SHOWN, resultRows, rowLabel } = (await import(/* @vite-ignore */ ROWS)) as {
+const { enterTarget, liveStatus, MOMENTS_SHOWN, resultRows, rowLabel } = (await import(/* @vite-ignore */ ROWS)) as {
   enterTarget: (rows: readonly Row[], activeKey: string | null, answered: string | null, text: string) => Row | 'wait' | null
+  liveStatus: (summary: string, building: boolean) => string
   MOMENTS_SHOWN: number
   resultRows: (hits: readonly SearchHit[], expanded: ReadonlySet<string>) => Row[]
   rowLabel: (row: Row) => string
@@ -115,6 +116,18 @@ describe('enterTarget', () => {
   it('opens nothing for an empty box, or an answer with no rows', () => {
     expect(enterTarget([], null, 'demo', '   ')).toBeNull()
     expect(enterTarget([], null, 'budget', 'budget')).toBeNull()
+  })
+})
+
+describe('liveStatus', () => {
+  it('says the results, and while the index is built one sentence that the count does not change', () => {
+    expect(liveStatus('2 recordings found', false)).toBe('2 recordings found')
+    const building = [liveStatus('No recordings match "budget".', true), liveStatus('1 recording found', true), liveStatus('3 recordings found', true)]
+    expect(building[0]).toMatch(/^Still indexing your recordings/)
+    expect(new Set(building).size).toBe(1)
+    // Nothing before the first answer, built or not (nothing is read when Home opens).
+    expect(liveStatus('', true)).toBe('')
+    expect(liveStatus('', false)).toBe('')
   })
 })
 

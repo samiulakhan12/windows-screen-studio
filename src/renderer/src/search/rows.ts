@@ -58,6 +58,15 @@ export function enterTarget(rows: readonly Row[], activeKey: string | null, answ
   return answered === q ? (rows[0] ?? null) : 'wait'
 }
 
+/** What the live region says while the index is built: one sentence that does not change as it goes, so it is read once. */
+export const STILL_INDEXING = 'Still indexing your recordings; more results may appear.'
+
+/** What the polite live region says for the results' `summary` (empty before the first answer). */
+export function liveStatus(summary: string, building: boolean): string {
+  if (!summary) return ''
+  return building ? STILL_INDEXING : summary
+}
+
 /** What a screen reader says for a row. */
 export function rowLabel(row: Row): string {
   const where = `In ${row.hit.name || 'Untitled'}${dateOf(row.hit.createdAt) ? `, ${dateOf(row.hit.createdAt)}` : ''}.`
