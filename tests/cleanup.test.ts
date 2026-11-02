@@ -158,6 +158,14 @@ describe('bleeping (tests 41, 50)', () => {
     }
   })
 
+  it('Bangla bleeps the other forms its words take: verb forms, and the nouns with their case and plural endings', () => {
+    const forms = ['চোদনা', 'চোদো', 'চোদাও', 'চোদাস', 'খানকিদের', 'খানকিকে', 'মাগিদের', 'মাগিকে', 'বালছাল', 'হারামিদের', 'হারামিকে', 'হারামজাদাকে', 'হারামজাদাদের']
+    for (const word of forms) {
+      expect(isSwearWord(word, 'standard', 'bn'), word).toBe(true)
+      expect(isSwearWord(word, 'strict', 'bn-BD'), word).toBe(true)
+    }
+  })
+
   it('bleeps are time-based: the word ± 0.05 s (± 0.15 s estimated), its word lower case', () => {
     const p = project([timed('a', 10, 'well fuck this'), { id: 'b', start: 20, end: 22, text: 'damn it' }])
     const out = tidyCaptions(p, { ...OFF, bleep: 'standard', words: [] })
