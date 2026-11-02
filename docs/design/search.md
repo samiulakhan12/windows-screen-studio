@@ -15,7 +15,8 @@ with a small local model.
 
 - A search box under the head of **Recent recordings** on Home: `Search recordings` with a
   magnifier, and `Ctrl+F` anywhere on Home puts the cursor in it (selecting what is there), unless a
-  dialog is open over Home.
+  dialog is open over Home or Home is busy (a recording starting or being saved, one recovered, a
+  video imported). While Home is busy, no result opens.
 - As they type (150 ms after the last key), the recording grid is replaced by results, grouped by
   recording: the recording's name, date and length, then up to 4 moments, each with a time
   (`1:23`), where the words were found (`Said`, `Title`, `Chapter`, `On screen`, `Notes`, `Name`,
@@ -460,6 +461,9 @@ No new dependency: `Intl.Segmenter` is in Electron's ICU, and the rest is small 
 - With no rows (nothing found, or before the first answer) the results list box was marked `hidden`,
   but its own `display: flex` overrode that: a screen reader found an empty "Search results" list,
   against the box's `aria-expanded="false"`. A `[hidden]` rule of its own hides it now.
+- Ctrl+F reached the box under the "Saving recording…" and "Recovering recording…" overlays, and
+  Enter there opened another recording: when the save ended, the editor switched to the new
+  recording. The box now takes neither while Home is busy, like Home's other buttons (§1).
 - Writing the file is synchronous, like every state file (37–55 ms for 500 recordings, at most every
   3 s and only after a change); an asynchronous write is left for later.
 
@@ -496,6 +500,8 @@ Unit (vitest), each failing without its rule:
   indexed text or query in any log line.
 - `searchMoment.test.ts`: target inside a clip, in a cut, after the last clip; spoken time.
 - `searchBench.test.ts`: the numbers of §8 with generous limits.
+- `searchCss.test.ts`: the results list with no rows is hidden, though its class lays it out.
+- `librarySearch.test.ts`: Ctrl+F and Enter while Home is busy take nothing and open nothing.
 
 End to end (`tests/e2e/search.e2e.cjs`, the built app under Xvfb): three seeded recordings (one with
 an English transcript and a chapter, one in Bangla, one with only a name) → the box is there,

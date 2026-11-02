@@ -832,7 +832,7 @@ export function Home({ onOpenProject }: { onOpenProject: (id: string) => void })
               </h2>
               <ImportButton importer={importer} disabled={!idle} />
             </div>
-            <LibrarySearch projects={projects} onOpen={onOpenProject} />
+            <LibrarySearch projects={projects} onOpen={onOpenProject} disabled={!idle} />
             <ImportDropZone importer={importer} disabled={!idle} empty={projects.length === 0}>
             {projects.length === 0 ? (
               <div className="empty-state">

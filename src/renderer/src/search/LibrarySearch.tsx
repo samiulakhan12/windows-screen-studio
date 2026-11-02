@@ -26,7 +26,11 @@ function Snippet({ parts }: { parts: SnippetPart[] }): JSX.Element {
   )
 }
 
-export function LibrarySearch({ projects, onOpen }: { projects: ProjectSummary[]; onOpen: (projectId: string) => void }): JSX.Element | null {
+/**
+ * `disabled` while Home is busy (a recording starting or being saved, one recovered, a video imported):
+ * Ctrl+F leaves the box alone and nothing opens, so no other recording takes Home's place meanwhile.
+ */
+export function LibrarySearch({ projects, onOpen, disabled = false }: { projects: ProjectSummary[]; onOpen: (projectId: string) => void; disabled?: boolean }): JSX.Element | null {
   const [query, setQuery] = useState('')
   const [response, setResponse] = useState<SearchResponse | null>(null)
   const [status, setStatus] = useState<SearchStatus | null>(null)
@@ -104,10 +108,12 @@ export function LibrarySearch({ projects, onOpen }: { projects: ProjectSummary[]
 
   const projectsRef = useRef(projects)
   projectsRef.current = projects
-  // Ctrl+F on Home puts the cursor in the box (not while a dialog is open over Home).
+  const disabledRef = useRef(disabled)
+  disabledRef.current = disabled
+  // Ctrl+F on Home puts the cursor in the box (not while a dialog is open over Home, nor while Home is busy).
   useEffect(() => {
     const onKey = (e: KeyboardEvent): void => {
-      if (!projectsRef.current.length) return
+      if (!projectsRef.current.length || disabledRef.current) return
       if (!(e.ctrlKey || e.metaKey) || e.shiftKey || e.altKey || e.key.toLowerCase() !== 'f') return
       if (document.querySelector('[role="dialog"][aria-modal="true"], .modal, dialog[open]')) return
       e.preventDefault()
@@ -141,6 +147,7 @@ export function LibrarySearch({ projects, onOpen }: { projects: ProjectSummary[]
       setActiveKey(firstHidden?.key ?? null)
       return
     }
+    if (disabled) return
     if (row.kind === 'moment' && row.moment.start !== null) setPendingMoment(row.hit.id, row.moment.start, row.moment.end ?? row.moment.start)
     else clearPendingMoment()
     onOpen(row.hit.id)
@@ -163,8 +170,8 @@ export function LibrarySearch({ projects, onOpen }: { projects: ProjectSummary[]
       const i = active < 0 ? (step > 0 ? 0 : rows.length - 1) : Math.min(rows.length - 1, Math.max(0, active + step))
       setActiveKey(rows[i].key)
     } else if (e.key === 'Enter') {
-      // Still composing (an input method, as many Bangla keyboards use): the Enter is the IME's.
-      if (e.nativeEvent.isComposing) return
+      // Still composing (an input method, as many Bangla keyboards use): the Enter is the IME's. Home busy: nothing opens.
+      if (e.nativeEvent.isComposing || disabled) return
       // A row picked that the latest results no longer hold: nothing opens (never another recording).
       // Results of what was typed before (the query is sent 150 ms after the last key): wait for the answer.
       const target = enterTarget(rows, activeKey, response?.query ?? null, query)
