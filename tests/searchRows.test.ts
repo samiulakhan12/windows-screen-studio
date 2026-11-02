@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { CUT_END_NOTICE, CUT_MOMENT_NOTICE, momentOpening } from '../src/shared/search/moment'
 import type { SearchHit, SearchMoment } from '../src/shared/search/types'
 
 // Renderer modules, outside this project's TypeScript program (like tests/brandNewText.test.ts).
@@ -151,5 +152,19 @@ describe('pending moment', () => {
     expect(takePendingMoment('rec-a', 1000)).toEqual({ t: 3, end: 3 })
     setPendingMoment('rec-a', 3, 1, 1000)
     expect(takePendingMoment('rec-a', 1000)).toEqual({ t: 3, end: 3 })
+  })
+
+  it('opens the editor where the moment is kept, with the notice its result implies', () => {
+    const kept = [{ start: 0, end: 9 }, { start: 12, end: 20 }]
+    const open = (t: number, end: number): ReturnType<typeof momentOpening> => {
+      setPendingMoment('rec-a', t, end, 1000)
+      const moment = takePendingMoment('rec-a', 1000)
+      if (!moment) throw new Error('no pending moment')
+      return momentOpening(kept, moment)
+    }
+    // Its first words cut: where the rest is, with no notice (the row shows no Cut tag).
+    expect(open(10, 14)).toEqual({ t: 12, notice: null })
+    expect(open(9.5, 11.5)).toEqual({ t: 12, notice: CUT_MOMENT_NOTICE })
+    expect(open(25, 26)).toEqual({ t: 19.95, notice: CUT_END_NOTICE })
   })
 })

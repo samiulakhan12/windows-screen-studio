@@ -13,20 +13,31 @@ export function isCut(kept: readonly (readonly [number, number])[], start: numbe
 
 /**
  * Where the editor's playhead goes for a moment from source second `t` to `end`: `t` itself when a
- * clip keeps it, else the start of the next kept clip (else the end of the last one). `cut` is true
- * when nothing of the moment is kept, as its result says (`isCut`): a caption whose first word was
- * cut opens where the rest of it is, with no notice.
+ * clip keeps it, else the start of the next kept clip (else the end of the last one, and `after` is
+ * true: the playhead is before the moment). `cut` is true when nothing of the moment is kept, as its
+ * result says (`isCut`): a caption whose first word was cut opens where the rest of it is, with no notice.
  */
-export function momentTarget(clips: readonly Pick<Clip, 'start' | 'end'>[], t: number, end = t): { t: number; cut: boolean } {
+export function momentTarget(clips: readonly Pick<Clip, 'start' | 'end'>[], t: number, end = t): { t: number; cut: boolean; after: boolean } {
   const sorted = [...clips].filter((c) => c.end > c.start).sort((a, b) => a.start - b.start)
-  if (!sorted.length || !Number.isFinite(t)) return { t: Math.max(0, Number.isFinite(t) ? t : 0), cut: false }
-  if (sorted.some((c) => t >= c.start && t < c.end)) return { t, cut: false }
+  if (!sorted.length || !Number.isFinite(t)) return { t: Math.max(0, Number.isFinite(t) ? t : 0), cut: false, after: false }
+  if (sorted.some((c) => t >= c.start && t < c.end)) return { t, cut: false, after: false }
   const cut = isCut(sorted.map((c) => [c.start, c.end] as const), t, end)
   const next = sorted.find((c) => c.start > t)
-  if (next) return { t: next.start, cut }
+  if (next) return { t: next.start, cut, after: false }
   const last = sorted[sorted.length - 1]
   // Before the end, so the frame shown is one that is kept.
-  return { t: Math.max(last.start, last.end - 0.05), cut }
+  return { t: Math.max(last.start, last.end - 0.05), cut, after: true }
+}
+
+/** Said in the editor when the moment opened from search was cut (§5). */
+export const CUT_MOMENT_NOTICE = 'That moment was cut from the video, so the editor is at the next part that is kept.'
+/** Said when it was cut after the last part that is kept: the editor is at the end, before it. */
+export const CUT_END_NOTICE = 'That moment was cut from the end of the video, so the editor is at the end.'
+
+/** Where the editor opens for a pending moment (§2.10), and its notice: none when some of it is kept. */
+export function momentOpening(clips: readonly Pick<Clip, 'start' | 'end'>[], moment: { t: number; end: number }): { t: number; notice: string | null } {
+  const target = momentTarget(clips, moment.t, moment.end)
+  return { t: target.t, notice: !target.cut ? null : target.after ? CUT_END_NOTICE : CUT_MOMENT_NOTICE }
 }
 
 /** Short label of where the words were found. */

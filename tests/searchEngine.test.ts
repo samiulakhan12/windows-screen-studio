@@ -3,7 +3,7 @@ import { SearchIndex } from '../src/shared/search/engine'
 import { indexedProject, projectUnits } from '../src/shared/search/extract'
 import { tokenize } from '../src/shared/search/normalize'
 import { parseIndexFile, serializeIndex } from '../src/shared/search/indexFile'
-import { clockTime, momentTarget, resultsSummary, spokenTime } from '../src/shared/search/moment'
+import { clockTime, CUT_END_NOTICE, CUT_MOMENT_NOTICE, momentOpening, momentTarget, resultsSummary, spokenTime } from '../src/shared/search/moment'
 import { snippetOf } from '../src/shared/search/snippet'
 import { SEARCH_INDEX_VERSION, type IndexedProject, type SearchUnit } from '../src/shared/search/types'
 
@@ -492,22 +492,31 @@ describe('moments', () => {
   const clips = [{ start: 0, end: 10 }, { start: 20, end: 30 }]
 
   it('goes to the moment when it is kept, else the next kept part', () => {
-    expect(momentTarget(clips, 5)).toEqual({ t: 5, cut: false })
-    expect(momentTarget(clips, 15)).toEqual({ t: 20, cut: true })
-    expect(momentTarget(clips, 30)).toEqual({ t: 29.95, cut: true })
-    expect(momentTarget([], 7)).toEqual({ t: 7, cut: false })
+    expect(momentTarget(clips, 5)).toEqual({ t: 5, cut: false, after: false })
+    expect(momentTarget(clips, 15)).toEqual({ t: 20, cut: true, after: false })
+    expect(momentTarget(clips, 30)).toEqual({ t: 29.95, cut: true, after: true })
+    expect(momentTarget([], 7)).toEqual({ t: 7, cut: false, after: false })
   })
 
   it('says a moment was cut only when none of it is kept, as its result does', () => {
     const kept = [{ start: 0, end: 9 }, { start: 12, end: 20 }]
     // A caption at 10-14 s whose first words were cut: the editor goes to where the rest is, with no notice.
-    expect(momentTarget(kept, 10, 14)).toEqual({ t: 12, cut: false })
-    expect(momentTarget(kept, 9.5, 11.5)).toEqual({ t: 12, cut: true })
-    expect(momentTarget(kept, 25, 26)).toEqual({ t: 19.95, cut: true })
+    expect(momentTarget(kept, 10, 14)).toEqual({ t: 12, cut: false, after: false })
+    expect(momentTarget(kept, 9.5, 11.5)).toEqual({ t: 12, cut: true, after: false })
+    expect(momentTarget(kept, 25, 26)).toEqual({ t: 19.95, cut: true, after: true })
     const r = index({ p: entry('P', [{ kind: 'said', start: 10, end: 14, text: 'pricing plans' }, { kind: 'said', start: 9.5, end: 11.5, text: 'pricing table' }], { kept: [[0, 9], [12, 20]] }) })
     const moments = r.search('pricing')[0].moments
     expect(moments).toHaveLength(2)
     for (const m of moments) expect(momentTarget(kept, m.start as number, m.end as number).cut).toBe(m.cut)
+  })
+
+  it('tells where the editor is when the moment was cut', () => {
+    const kept = [{ start: 0, end: 9 }, { start: 12, end: 20 }]
+    expect(momentOpening(kept, { t: 10, end: 14 })).toEqual({ t: 12, notice: null })
+    expect(momentOpening(kept, { t: 9.5, end: 11.5 })).toEqual({ t: 12, notice: CUT_MOMENT_NOTICE })
+    // Cut from the end (the tail trimmed): the editor is at the end, before the moment, not at a next part.
+    expect(momentOpening(kept, { t: 25, end: 26 })).toEqual({ t: 19.95, notice: CUT_END_NOTICE })
+    expect(CUT_END_NOTICE).not.toMatch(/next part/)
   })
 
   it('writes times for the eye and the ear', () => {

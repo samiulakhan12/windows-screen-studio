@@ -41,7 +41,9 @@ with a small local model.
   No stemming (§2.4).
 - A moment that was cut from the video is still found (the words are in the recording) and says
   `Cut`; opening it goes to the next part that is kept, with the notice "That moment was cut from
-  the video, so the editor is at the next part that is kept." A moment only partly cut opens where
+  the video, so the editor is at the next part that is kept." After the last part that is kept (the
+  end of the recording trimmed) it goes to the end, with "That moment was cut from the end of the
+  video, so the editor is at the end." A moment only partly cut opens where
   it is kept, with no tag and no notice.
 - While the index is first built (a new install with many recordings, or after an update that
   changes the index format) the results say "Still indexing your recordings (120 of 500)…" and fill
@@ -239,8 +241,9 @@ if it is for this project, and seeks:
 
 - `t` inside a kept clip: `player.seek(t)`.
 - `t` in a cut: the start of the next kept clip after `t` (else the end of the last one), and the
-  notice above when nothing of `t`–`end` is kept, the same test as the result's `Cut` tag (`isCut`
-  and `momentTarget` in `src/shared/search/moment.ts`, pure and tested).
+  notice above when nothing of `t`–`end` is kept, the same test as the result's `Cut` tag (`isCut`,
+  `momentTarget` and `momentOpening` in `src/shared/search/moment.ts`, pure and tested). Past the
+  last kept clip the playhead is before the moment, and the notice says it is at the end.
 - A moment with no time (notes, name): nothing is pending; the editor opens as it always does.
 
 The pending moment is dropped when taken, when Home mounts again, and after 30 s, so it never
@@ -317,7 +320,8 @@ Onboarding call · 3 Oct 2026 · 41:02
 - Screen reader text of a moment: `{Kind label} at {time in words}: {snippet}. In {name}, {date}.`
   ("Said at 1 minute 23 seconds: …"). A moment with no time: `{Kind label}: {snippet}. In …`.
 - Opening a cut moment, editor notice: `That moment was cut from the video, so the editor is at the
-  next part that is kept.`
+  next part that is kept.`; after the last part that is kept: `That moment was cut from the end of the
+  video, so the editor is at the end.`
 
 Colours (dark theme tokens of `styles.css`; contrast on `--surface-1` #141418 / the active row's
 `--accent-soft` over it):
@@ -389,7 +393,7 @@ New:
 - `src/shared/search/engine.ts`: `class SearchIndex { add(id, entry); remove(id); has(id); ids(); search(query, opts): SearchHit[] }`.
 - `src/shared/search/snippet.ts`: `snippetOf(text, ranges): SnippetPart[]`.
 - `src/shared/search/indexFile.ts`: `parseIndexFile(raw): Map<string, IndexedProject>`, `serializeIndex(map)`.
-- `src/shared/search/moment.ts`: `momentTarget(clips, t): { t: number; cut: boolean }`, `momentLabel(kind)`, `spokenTime(seconds)`.
+- `src/shared/search/moment.ts`: `momentTarget(clips, t, end): { t: number; cut: boolean; after: boolean }`, `momentOpening(clips, { t, end }): { t: number; notice: string | null }`, `momentLabel(kind)`, `spokenTime(seconds)`.
 - `src/shared/api/search.ts`: `SearchApi` (`searchLibrary`, `refreshSearch`, `onSearchStatus`), `SEARCH_CHANNELS`.
 - `src/main/search/searchService.ts`: `SearchService` (`start`, `reconcile`, `refresh`, `noteSaved`, `query`, `writeNow`, `dispose`: the queue, debounced saves and writes), with an injectable disk (`SearchDisk`), clock and log.
 - `src/main/search/searchIpc.ts`: `registerSearchIpc()`, `noteProjectSaved(project)`, `disposeSearch()`.
@@ -462,6 +466,9 @@ No new dependency: `Intl.Segmenter` is in Electron's ICU, and the rest is small 
 - A caption whose first words were cut showed no `Cut` tag but opened with "That moment was cut from
   the video": the tag looked at the whole moment, the editor at its start only. The pending moment
   now carries its end, and the notice uses the tag's test (§2.10).
+- A moment cut from the end of the recording (a trimmed tail) opened at the end of the last part that
+  is kept, before the moment, with "the editor is at the next part that is kept". It now says "That
+  moment was cut from the end of the video, so the editor is at the end." (§2.10).
 - Enter right after typing opened the first result of what was in the box before (the query is sent
   150 ms after the last key, so the old results were still shown): `demo`, then Ctrl+F, `budget` and
   Enter opened Product demo. With no row active, Enter now opens only results of the text in the box,
