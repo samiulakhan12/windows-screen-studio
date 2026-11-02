@@ -15,12 +15,14 @@ import {
   languageName,
   languagesToAdd,
   missingTranslations,
+  mostlyBangla,
   outOfDate,
   placeOf,
   textHash,
   tickedExportLanguages,
   TRACK_LANGUAGES,
   trackRows,
+  transcriptLanguage,
   withoutTrack,
   withShownTrack,
   withTrack,
@@ -57,6 +59,26 @@ describe('caption tracks (test 47)', () => {
     expect(captionLanguage(unnamed('এখন ৩টি ধাপ, Chrome খুলুন'))).toBe('bn')
     expect(captionLanguage(unnamed('Open Chrome এখন'))).toBeUndefined()
     expect(captionLanguage({ captions: undefined, transcript: undefined })).toBeUndefined()
+  })
+
+  it('a transcript that names no language (OpenAI, Gemini) is Bangla when it is mostly Bangla with English words, its vowel signs and hasanta counted, and not when it is English with a few Bangla words', () => {
+    const unnamed = (texts: string[]): Project =>
+      project({ transcript: { provider: 'openai', model: 'm', createdAt: '', segments: texts.map((text, i) => ({ id: `m${i}`, start: i * 4, end: i * 4 + 3, text })) } })
+    // 23 of its 32 words are Bangla: 46% of its letters, 57% with their vowel signs and hasanta.
+    const mixed = unnamed([
+      'তো guys আজকের video তে আমরা দেখবো কিভাবে Node.js install করতে হয়',
+      'প্রথমে browser খুলে official website এ যাবো',
+      'তারপর download বাটনে click করে দিন',
+      'এরপর installer টা খুলে next চাপুন',
+      'সবশেষে terminal খুলে দেখুন সব ঠিক আছে কিনা'
+    ])
+    expect(mostlyBangla(mixed.transcript!.segments)).toBe(true)
+    expect(transcriptLanguage(mixed.transcript)).toBe('bn')
+    expect(captionLanguage(mixed)).toBe('bn')
+    const english = unnamed(['Today we will install Node.js on Windows', 'first open the browser and go to the official website', 'my friend said আচ্ছা ঠিক আছে and left'])
+    expect(mostlyBangla(english.transcript!.segments)).toBe(false)
+    expect(transcriptLanguage(english.transcript)).toBeUndefined()
+    expect(captionLanguage(english)).toBeUndefined()
   })
 
   it('textHash is FNV-1a 32 bits in hex', () => {

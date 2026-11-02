@@ -6,6 +6,8 @@ import { describe, expect, it } from 'vitest'
 import { bleepGains, bleepKey, cleanupNotice, glossaryLine, glossaryTerms, GLOSSARY_BYTES, isSwearWord, maskBleeped, maskedSegments, maskWord, readCleanupChoices, readWordList, tidyCaptions, type CleanupChoices } from '../src/shared/captions/cleanup'
 import { mergeWithNext, splitCaption } from '../src/shared/captions/edit'
 import { readBleeps } from '../src/shared/captions/studioData'
+import { languageSubtitleFile } from '../src/shared/captions/subtitles'
+import { studioProject } from './p4Fixtures'
 import { DEFAULT_CAPTIONS } from '../src/shared/captions/settings'
 import type { Bleep, CaptionSegment, Project } from '../src/shared/types'
 
@@ -152,6 +154,9 @@ describe('bleeping (tests 41, 50)', () => {
     expect(isSwearWord('assassin', 'standard')).toBe(false)
     expect(isSwearWord('classic', 'standard')).toBe(false)
     expect(bleepKey('Shiiiit!!')).toBe('shit')
+    // A Bengali letter written twice is a word's own spelling (বালককে, "to the boy", is not বালকে).
+    expect(bleepKey('বালককে')).toBe('বালককে')
+    expect(bleepKey('বাস্টার্ডডা')).toBe('বাস্টার্ডডা')
   })
 
   it('Strict adds LDNOOBW words; Bangla has the team list', () => {
@@ -166,6 +171,8 @@ describe('bleeping (tests 41, 50)', () => {
     // শুয়োর (pig) is an everyday word too, with য় written either way.
     const everyday = ['চোদ্দ', 'চোদ্দো', 'বালক', 'বালকটি', 'বালিকা', 'বালিশ', 'বালতি', 'বালু', 'বালি', 'বালা', 'বালাই', 'মাগিনা', 'শুয়োর', 'শু\u09DFোর']
     everyday.push('চৌদ্দ', 'হারাম', 'হারামের', 'শুয়ে', 'বালাম', 'মাগুর', 'বালুচর')
+    // বালককে, "to the boy", and কেঁচোদের, "earthworms'".
+    everyday.push('বালককে', 'বালককেও', 'বালককেই', 'কেঁচোদের', 'কেঁচোদেরকে')
     for (const word of everyday) {
       expect(isSwearWord(word, 'standard', 'bn')).toBe(false)
       expect(isSwearWord(word, 'strict', 'bn-BD')).toBe(false)
@@ -213,6 +220,25 @@ describe('bleeping (tests 41, 50)', () => {
     }
   })
 
+  it('a mostly Bangla transcript with English words that names no language (OpenAI, Gemini) is tidied and bleeped as Bangla; English with a few Bangla words as English, its Bangla words bleeped by the Bangla list', () => {
+    const unnamed = (lines: string[]): Project => {
+      const p = project(lines.map((text, i) => timed(String(i), i * 10, text)))
+      delete (p.transcript as { language?: string }).language
+      return p
+    }
+    // 16 of its 24 words are Bangla: 44% of its letters, 56% with their vowel signs and hasanta.
+    const mixed = ['তো guys আজকের video তে আমরা দেখবো কিভাবে Node.js install করতে হয়', 'প্রথমে browser খুলে official website এ যাবো', 'ধুর বাল আবার error দিচ্ছে']
+    const english = ['Today we will install Node.js on Windows', 'first open the browser and go to the official website', 'he said ধুর বাল and left']
+    for (const bleep of ['standard', 'strict'] as const) {
+      const bn = tidyCaptions(unnamed(mixed), { ...OFF, punct: true, bleep, words: [] })
+      expect(bn.project.bleeps?.map((b) => b.word), bleep).toEqual(['বাল'])
+      expect(texts(bn.project)).toEqual(mixed.map((t) => `${t}।`))
+      const en = tidyCaptions(unnamed(english), { ...OFF, punct: true, bleep, words: [] })
+      expect(en.project.bleeps?.map((b) => b.word), bleep).toEqual(['বাল'])
+      expect(texts(en.project)).toEqual(english.map((t) => `${t}.`))
+    }
+  })
+
   it('Tidy captions bleeps the Bangla participle, the Dhaka forms, the ী spellings and the compounds in a Bangla caption', () => {
     const lines = ['তোরে চুদিয়ে দেব', 'তোরে চোদমু আজকে', 'ওই হারামিডা আবার আসছে', 'এই মাগী কোথায়', 'শালা বোকাচোদা একটা']
     const segs = lines.map((text, i) => timed(String(i), i * 5, text))
@@ -256,6 +282,62 @@ describe('bleeping (tests 41, 50)', () => {
     expect(maskedSegments([seg], undefined)).toEqual([seg])
     const list = [seg]
     expect(maskedSegments(list, [])).toBe(list)
+  })
+
+  it('a masked word keeps its time when the caption’s words do not line up with its text, so a word cut from the video stays out of the subtitles', () => {
+    const spoken = (text: string, words: string[]): CaptionSegment => {
+      const ws = words.map((w, i) => ({ text: w, start: i * 0.5, end: i * 0.5 + 0.4 }))
+      return { id: 'a', start: 0, end: ws[ws.length - 1].end, text, words: ws }
+    }
+    // The bleeped word (1.5–1.9 s) cut on the timeline, the bleep made before the cut.
+    const clips = [
+      { id: 'k0', start: 0, end: 1.45, speed: 1 },
+      { id: 'k1', start: 1.95, end: 30, speed: 1 }
+    ]
+    const bleep: Bleep = { id: 'b1', start: 1.45, end: 1.95, word: 'fucking', sound: 'tone' }
+    const scenarios = [
+      // "um" deleted from the text by hand: the six word times stay.
+      { seg: spoken('so this fucking thing works', ['so', 'um', 'this', 'fucking', 'thing', 'works']), out: 'so this thing works' },
+      // whisper-1 gives "well-known" as two words.
+      { seg: spoken('This well-known fucking tool works.', ['This', 'well', 'known', 'fucking', 'tool', 'works.']), out: 'This well-known tool works.' },
+      // As many words as the text, but not the same ones: "um" deleted and "really" typed in by
+      // hand, or "well-known" timed as two words and "really" typed in.
+      { seg: spoken('so this fucking thing really works', ['so', 'um', 'this', 'fucking', 'thing', 'works']), out: 'so this thing really works' },
+      { seg: spoken('This well-known fucking tool really works.', ['This', 'well', 'known', 'fucking', 'tool', 'works.']), out: 'This well-known tool really works.' },
+      // A Bangla caption so edited ("উম" deleted, "গেল" typed in).
+      { seg: spoken('ওই তো মাগি চলে গেল', ['ওই', 'উম', 'তো', 'মাগি', 'চলে']), out: 'ওই তো চলে গেল', word: 'মাগি' }
+    ]
+    for (const { seg, out, word = 'fucking' } of scenarios) {
+      const p = { ...studioProject({ segments: [seg] }), clips }
+      expect(languageSubtitleFile(p, null, 'txt').trim()).toBe(out)
+      const q = { ...p, bleeps: [{ ...bleep, word: bleepKey(word) }] }
+      for (const format of ['txt', 'srt', 'vtt'] as const) expect(languageSubtitleFile(q, null, format), `${seg.text} ${format}`).toBe(languageSubtitleFile(p, null, format))
+      // Only the bleeped word is masked ("f******"), and it keeps its own time.
+      const [masked] = maskedSegments([seg], q.bleeps)
+      const at = seg.text.split(' ').indexOf(word)
+      const mask = masked.text.split(' ')[at]
+      expect(mask).not.toContain(word.slice(0, 2))
+      expect(masked.text).toBe(seg.text.replace(word, mask))
+      expect(masked.words?.find((w) => w.text === mask), seg.text).toEqual({ text: mask, start: 1.5, end: 1.9 })
+    }
+    expect(maskedSegments([scenarios[0].seg], [bleep])[0].text).toBe('so this f****** thing works')
+    // Captions a bleep masks nothing in stay the same objects.
+    const other = spoken('so this fucking thing works', ['so', 'um', 'this', 'fucking', 'thing', 'works'])
+    const list = [other]
+    expect(maskedSegments(list, [{ ...bleep, start: 20, end: 21 }])).toBe(list)
+  })
+
+  it('masks a Bangla word whole, its last vowel sign or hasanta too, and keeps its punctuation', () => {
+    const lines = ['ওই মাগি চলে গেল', 'হারামজাদা গেল কই', 'ধুর শালা-খানকি।', 'মাগি, চলে যা', 'ওই বাঞ্চোত্ কোথায়']
+    const p = tidyCaptions(project(lines.map((text, i) => timed(String(i), i * 5, text)), 'bn'), { ...OFF, bleep: 'standard', words: [] }).project
+    expect(p.bleeps).toHaveLength(5)
+    const shown = maskedSegments(p.transcript!.segments, p.bleeps).map((s) => s.text)
+    expect(shown.slice(0, 4)).toEqual(['ওই ** চলে গেল', '***** গেল কই', 'ধুর ******।', '**, চলে যা'])
+    // Nothing of the word is left, however its conjuncts are counted.
+    expect(shown[4]).toMatch(/^ওই \*+ কোথায়$/u)
+    // In the subtitle files as well, and in text drawn from caption words.
+    expect(languageSubtitleFile({ ...studioProject({ segments: p.transcript!.segments, language: 'bn' }), bleeps: p.bleeps }, null, 'txt')).toContain('ওই ** চলে গেল')
+    expect(maskBleeped('মাগি! চলে গেল', p.bleeps)).toBe('**! চলে গেল')
   })
 
   it('masks the words the bleeps are for in text drawn from caption words, also made before the bleep', () => {

@@ -74,6 +74,21 @@ describe('graphic generation (§10.2)', () => {
     expect(ai).toEqual([0, 0])
   })
 
+  it('a mostly Bangla transcript with English words that names no language (OpenAI, Gemini) is read as Bangla; English with a few Bangla words as English', () => {
+    const counters = (texts: string[], language: string | undefined): (string | number)[][] => {
+      const p = studioProject({ segments: captions(texts), language: language ?? 'en' })
+      if (!language) delete (p.transcript as { language?: string }).language
+      return (planGraphics(p, { ...NONE, counters: true }).graphics ?? []).filter((g): g is Extract<Graphic, { kind: 'counter' }> => g.kind === 'counter').map((g) => [g.to, g.suffix, g.locale])
+    }
+    // 49% of its letters are Bengali, 60% with their vowel signs and hasanta: its spelled-out numbers are read as Bangla.
+    const mixed = ['তো guys এই month এ আমাদের sales তিনশো শতাংশ বেড়েছে', 'আর total revenue বারো লক্ষ টাকা হয়েছে', 'এটা আমাদের whole team এর জন্য big news']
+    expect(counters(mixed, undefined)).toEqual([[300, '%', 'bn'], [1200000, ' টাকা', 'bn']])
+    expect(counters(mixed, undefined)).toEqual(counters(mixed, 'bn'))
+    const english = ['Last month our sales grew three hundred percent', 'and the revenue was twelve lakh টাকা this year', 'আমার বন্ধু said great job']
+    expect(counters(english, undefined)).toEqual(counters(english, 'en'))
+    expect(counters(english, undefined).map((c) => c[2])).toEqual(['en', 'en'])
+  })
+
   it('list cards from spoken lists', () => {
     const p = studioProject({ segments: captions(['Exporting takes three steps.', 'First, open the Settings page.', 'Second, choose the format.', 'Finally, click Export.']) })
     const out = planGraphics(p, { ...NONE, lists: true })

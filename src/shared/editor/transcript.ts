@@ -44,6 +44,9 @@ export const normalizeWord = (text: string): string =>
     .toLowerCase()
     .replace(/^[\p{P}\p{S}\s]+|[\p{P}\p{S}\s]+$/gu, '')
 
+/** A word as alignCaptionWords matches a shown word to a timed one: normalised, or, with nothing left once normalised (a dash), as written. */
+export const alignKey = (text: string): string => normalizeWord(text) || `\u0000${text.trim()}`
+
 /** Times shared out over `texts` between `from` and `to`, in proportion to their length. */
 function spread(texts: string[], from: number, to: number): TimedText[] {
   const lengths = texts.map((t) => Math.max(1, [...t].length))
@@ -104,9 +107,8 @@ export function alignCaptionWords(seg: CaptionSegment): TimedText[] {
   if (texts.length === 0) return []
   const timed = (seg.words ?? []).filter((w) => w.text.trim())
   if (timed.length === 0) return spread(texts, seg.start, seg.end)
-  const keyOf = (text: string): string => normalizeWord(text) || `\u0000${text.trim()}`
-  const keyA = texts.map(keyOf)
-  const keyB = timed.map((w) => keyOf(w.text))
+  const keyA = texts.map(alignKey)
+  const keyB = timed.map((w) => alignKey(w.text))
   // Word timings may split a shown word or join two, but most match one to one.
   const pairs = lcsPairs(keyA, keyB, (x, y) => x === y, (_, j) => timed[j].deleted === true)
   const out: TimedText[] = new Array(texts.length)

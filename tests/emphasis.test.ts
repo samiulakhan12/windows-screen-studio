@@ -80,6 +80,29 @@ describe('auto emphasis (test 36)', () => {
     expect(pickEmphasis(unnamed)).toEqual(pickEmphasis(named))
   })
 
+  it('a mostly Bangla transcript with English words that names no language (OpenAI, Gemini) gets the picks of one named Bangla; English with a few Bangla words those of English', () => {
+    // 23 of its 32 words are Bangla: 46% of its letters, 57% with their vowel signs and hasanta.
+    const mixed = [
+      'তো guys আজকের video তে আমরা দেখবো কিভাবে Node.js install করতে হয়',
+      'প্রথমে browser খুলে official website এ যাবো',
+      'তারপর download বাটনে click করে দিন',
+      'এরপর installer টা খুলে next চাপুন',
+      'সবশেষে terminal খুলে দেখুন সব ঠিক আছে কিনা'
+    ]
+    const english = ['Today we will install Node.js on Windows', 'first open the browser and go to the official website', 'my friend said আচ্ছা ঠিক আছে and left', 'then click the download button and run the installer']
+    const unnamed = (texts: string[]): Project => {
+      const p = project(segs(texts, 'm'), 'bn')
+      delete (p.transcript as { language?: string }).language
+      return p
+    }
+    const bn = pickEmphasis(project(segs(mixed, 'm'), 'bn'))
+    // A Bangla word such as করতে ("to do") is a stop word in Bangla.
+    expect(bn.map((m) => m.text)).not.toContain('করতে')
+    expect(pickEmphasis(unnamed(mixed))).toEqual(bn)
+    expect(pickEmphasis(unnamed(english))).toEqual(pickEmphasis(project(segs(english, 'm'), 'en')))
+    expect(pickEmphasis(unnamed(english))).not.toEqual(pickEmphasis(project(segs(english, 'm'), 'bn')))
+  })
+
   it('"important", "never", "only" and "open" are not stop words; no list holds a negation', () => {
     for (const w of ['important', 'never', 'only', 'open', 'every', 'not', 'best']) expect(STOP_WORDS.en.has(w)).toBe(false)
     expect(STOP_WORDS.bn.has('না')).toBe(false)
