@@ -33,11 +33,12 @@ vi.mock('../src/main/longJobs', () => ({ setNotificationExtras: () => undefined 
 
 import { registerShareIpc } from '../src/main/share/shareIpc'
 import { choicesFor, withChoices } from '../src/shared/share/choices'
-import { offeredIds } from '../src/renderer/src/share/useShare'
 
 const appEvent = { senderFrame: { url: pathToFileURL(path.join(__dirname, '..', 'src', 'renderer', 'index.html')).href } }
 const call = (channel: string, ...args: unknown[]): Promise<ShareTargets> => Promise.resolve(h.handlers.get(channel)!(appEvent, ...args) as ShareTargets)
 const folder = (t: ShareTargets, id: string) => t.folders.find((f) => f.id === id)
+/** What the export offers, as the renderer's offeredIds reads it: folders that are on, then chats that can be read. */
+const offeredIds = (t: ShareTargets): string[] => [...t.folders.filter((f) => f.on).map((f) => f.id), ...t.hooks.filter((x) => x.readable).map((x) => x.id)]
 
 const paths = { team: '', box: '', info: '' }
 
