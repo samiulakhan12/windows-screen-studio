@@ -89,8 +89,19 @@ describe('ShareService', () => {
     await expect(s.service.start(FILE, ['whkother'], META)).rejects.toThrow('no longer set up')
     await expect(s.service.start(FILE, ['cf00000000ff'], META)).rejects.toThrow('This folder is not set up any more')
     await expect(s.service.start(FILE, [ONEDRIVE.id], { title: 'x', seconds: -1 })).rejects.toThrow('Invalid')
-    await expect(s.service.start(FILE, [ONEDRIVE.id], { title: 'x'.repeat(201), seconds: 1 })).rejects.toThrow('Invalid')
+    await expect(s.service.start(FILE, [ONEDRIVE.id], { title: 7, seconds: 1 })).rejects.toThrow('Invalid')
     expect(validMeta({ title: 'ok', seconds: 3 })).toEqual({ title: 'ok', seconds: 3 })
+  })
+
+  it('cuts a long recording name instead of refusing to share', async () => {
+    // The editor's name field has no limit: a 201-character name must not fail every share.
+    const s = setup()
+    const long = { title: 'x'.repeat(201), seconds: 1 }
+    expect(validMeta(long)).toEqual({ title: 'x'.repeat(200), seconds: 1 })
+    expect(() => s.service.offer(FILE, long, false)).not.toThrow()
+    expect((await s.service.extras(FILE)).length).toBeGreaterThan(0)
+    await s.service.start(FILE, ['whkchat'], long)
+    expect((await s.settled()).steps.map((x) => x.state)).toEqual(['done'])
   })
 
   it('runs at most four shares at once and never the same one twice', async () => {

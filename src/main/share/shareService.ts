@@ -37,13 +37,13 @@ interface Run {
   controller: AbortController
 }
 
-/** The page's meta, checked. */
+/** The page's meta, checked. A long title (the editor's name field has no limit) is cut, not refused. */
 export function validMeta(raw: unknown): ShareMeta {
   if (typeof raw !== 'object' || raw === null) throw new Error('Invalid share request.')
   const { title, seconds } = raw as Record<string, unknown>
-  if (typeof title !== 'string' || title.length > 200) throw new Error('Invalid share request.')
+  if (typeof title !== 'string') throw new Error('Invalid share request.')
   if (typeof seconds !== 'number' || !Number.isFinite(seconds) || seconds < 0 || seconds > 86400) throw new Error('Invalid share request.')
-  return { title, seconds }
+  return { title: title.slice(0, 200), seconds }
 }
 
 /** What a finished step says: "Saved to OneDrive › Flown", "Posted to #demos". */

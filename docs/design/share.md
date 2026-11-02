@@ -228,7 +228,8 @@ choose Share (OneDrive), Copy Dropbox link (Dropbox) or Share › Copy link (Goo
 * `shareStart(file, targetIds, meta)` validates and starts a **run** (steps in order) in main and
   returns its view; `share:update` events carry `ShareRunView` to the app's window; `shareCancel(runId)`
   stops it. The notification buttons start runs the same way, so both paths share one code path.
-* `meta` = `{ title, seconds }` from the page (checked: text ≤ 200, 0 ≤ seconds ≤ 24 h). For the
+* `meta` = `{ title, seconds }` from the page (checked: text, cut to 200 characters rather than
+  refused, since the editor's name field has no limit; 0 ≤ seconds ≤ 24 h). For the
   notification buttons, the page registers it with the file when the export ends (`shareOffer`, the
   line before `link.end`), with `auto: true` when it starts a run itself (no buttons then).
 * At most **4** runs at once ("Wait for the other shares to finish."); a run for a file that is
