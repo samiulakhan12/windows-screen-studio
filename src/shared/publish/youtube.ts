@@ -48,6 +48,21 @@ export function composeYoutubeDescription(text: string, chapters: readonly Outpu
 }
 
 /**
+ * What any export can write of the saved description `text`, for the link check (§4.8): the
+ * description composed with `chapters` (as Copy and an export with them write it) and, when that cuts
+ * the text to fit them, the rest of the text from the piece the cut fell in, which an export with
+ * fewer chapters, or none, writes too. So Use for exports asks about all of it.
+ */
+export function descriptionToCheck(text: string, chapters: readonly OutputChapter[], duration: number): string {
+  const composed = composeYoutubeDescription(text, chapters, duration)
+  const whole = composeYoutubeDescription(text, [], duration)
+  if (!whole || composed === whole || composed.startsWith(`${whole}\n\n`)) return composed
+  let same = 0
+  while (same < whole.length && composed[same] === whole[same]) same++
+  return `${composed}\n\n${whole.slice(whole.slice(0, same).search(/[^\t\n\f\r ]*$/))}`
+}
+
+/**
  * The export bundle's description file: the copy pack's saved description composed with the chapters
  * of this export, as the dialog's Copy gives it; without one, or for a part of "one file per chapter",
  * the standard description (exportBundle.ts descriptionText).

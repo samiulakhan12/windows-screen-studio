@@ -60,6 +60,14 @@ export function aiLinksAfter(before: Pick<CaptionSegment, 'text' | 'aiLinks'>, t
   return capAiLinks([...new Set(notedPieces(text, said).map((p) => normalise(p.text)))])
 }
 
+/**
+ * Caption `seg` with `text` typed by hand (the Captions tab's field). The words are the user's, but the
+ * record of the links an AI wrote into it (aiLinks) stays while anything link-like is left in the text
+ * (aiLinksAfter, against nothing said), so that fixing a word next to an AI's link never makes the link
+ * said; it goes once no link is left (docs/design/publish-pack.md §4.6).
+ */
+export const typedCaption = (seg: CaptionSegment, text: string): CaptionSegment => withAiLinks({ ...seg, text }, seg.aiLinks?.length ? aiLinksAfter(seg, text) : undefined)
+
 /** `seg` with `aiLinks` (none when empty; capAiLinks). */
 function withAiLinks<T extends CaptionSegment>(seg: T, aiLinks: readonly string[] | undefined): T {
   const { aiLinks: _old, ...rest } = seg

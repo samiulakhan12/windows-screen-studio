@@ -208,15 +208,15 @@ function generate(oracle) {
   const contexts = [
     ...projects.map((p) => ({ captions: p.captions, title: p.title, chapters: p.chapters })),
     {
-      captions: ['Download it from flown.app or https://flown.app/download, mail support@flown.app.', 'The code is at github.com/flown/recorder, preview on http://localhost:3000.', 'Docs at flown.app/docs and www.flown.app, follow @flown, built with ASP.NET.', 'Open README.md and main.py, mail anna.li@acme.de.'],
+      captions: ['Download it from flown.app or https://flown.app/download, mail support@flown.app.', 'The code is at github.com/flown/recorder, preview on http://localhost:3000.', 'Docs at flown.app/docs and www.flown.app, follow @flown, built with ASP.NET.', 'Open README.md and main.py, mail anna.li@acme.de.', 'flown.jp-এ গিয়ে ডাউনলোড করুন।'],
       title: 'Flown tour',
       chapters: ['Intro', 'flown.app/docs']
     }
   ]
-  const HOSTS = ['paypal-login.com', 'evil.de', 'evil.co.uk', '203.0.113.7', '3405803783', '0xcb.0x7107', '203.28935', 'evil.在线', 'evil.онлайн', 'evil.web', 'evil.amazon', 'xn--pypal-4ve.com', 'evil.app', 'EVIL.COM', 'login.evil.io', 'evil.рф', '163.com', 'ログインflown.jp', 'flown.app.evil.com', 'flown.app', 'flown.jp', 'github.com', 'acme.de']
+  const HOSTS = ['paypal-login.com', 'evil.de', 'evil.co.uk', '203.0.113.7', '3405803783', '0xcb.0x7107', '203.28935', 'evil.在线', 'evil.онлайн', 'evil.web', 'evil.amazon', 'xn--pypal-4ve.com', 'evil.app', 'EVIL.COM', 'login.evil.io', 'evil.рф', '163.com', 'ログインflown.jp', 'flown.app.evil.com', 'flown.app', 'flown.jp', 'github.com', 'acme.de', 'flowń.com', 'paypal-loginÀ.com', '%66lown\ufe0f.app', '&#102;lown\ufe0e.app']
   const SCHEMES = ['', '', '', 'https://', 'http://', 'HTTPS://', 'www.', '//', '\\\\', 'https:', 'https:\\\\', 'mailto:x@', 'x@', 'flown.app@', 'https://flown.app@', 'https://flown.app:443@', '//x@', 'https://flown.app\u00a0@', 'https://flown.app\u3000@']
-  const PATHS = ['', '', '/verify', '/login?next=x', ':8443/x', '#frag', '/a(b)', '?q=1', '/', '\\x', '%2fx', '.', '。', '%2eevil.com', '．evil．com']
-  const GLUE = ['', '', ' ', '.', '@', '//', '/', ':', '%2e', '&#46;', '&period;', '$', '#', '(', ')', '<', '>', '"', "'", '`', '!', '?', '*', ',', '=', '+', '&', '|', '~', '-', '_', '。', '．', '｡', '，', '：', '（', '「', '」', '…', '·', '、', '’', '\u{10100}', '＠', '\u200b', '\u2060', '\ufe0f', '\u00ad', '\u0301', '日本', 'ログイン', '로그인', 'ที่', 'ב-', 'ب-', 'на', 'é', 'ｇｅｔ', '😀', '➡\ufe0f', '™', 'a', '1', '\u00a0', '\u3000']
+  const PATHS = ['', '', '/verify', '/login?next=x', ':8443/x', '#frag', '/a(b)', '?q=1', '/', '\\x', '%2fx', '.', '。', '%2eevil.com', '．evil．com', '·\\.ws', '’\\.evil\\.com/x', '.ẞ', '-এ']
+  const GLUE = ['', '', ' ', '.', '@', '//', '/', ':', '%2e', '&#46;', '&period;', '$', '#', '(', ')', '<', '>', '"', "'", '`', '!', '?', '*', ',', '=', '+', '&', '|', '~', '-', '_', '。', '．', '｡', '，', '：', '（', '「', '」', '…', '·', '、', '’', '\u{10100}', '＠', '\u200b', '\u2060', '\ufe0f', '\u00ad', '\u0301', '日本', 'ログイン', '로그인', 'ที่', 'ב-', 'ب-', 'на', 'é', 'ｇｅｔ', '😀', '➡\ufe0f', '™', 'a', '1', '\u00a0', '\u3000', 'ń', 'À', '\\', 'ẞ', 'から', '-এ']
   const WRAPS = [
     (u) => u,
     (u) => u,

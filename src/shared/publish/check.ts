@@ -5,7 +5,7 @@
  * that the piece is shown under its card and confirmed before it leaves the app. It never changes
  * text, and it is over-inclusive on purpose: a dotted file name the AI wrote is noted too. Pure.
  */
-import { isTopLevelDomain } from './twitterText'
+import { isTopLevelDomain, latinAccentChars } from './twitterText'
 
 /* ---------- reading a piece ---------- */
 
@@ -57,26 +57,32 @@ function decoded(s: string): string {
 /**
  * Chinese and Japanese punctuation no parser reads as a URL's: the full-width and small colons and at
  * signs (NFKC would make them ":" and "@", but a linkifier ends a link there and a URL's host refuses
- * them), and the full stops "。", "．" and "｡" unless they stand between ASCII letters, digits or "-"
- * (also full-width: "paypal-login。com") or the piece has a scheme or "//", where a URL's host reads them
- * as dots ("https://flown.app。在线"). Each becomes "、", punctuation that joins nothing: so
- * "Windows：更新", "勉強会＠渋谷" and "ありがとう。みんな" are prose.
+ * them), and the full stops "。", "．" and "｡" unless they stand after an ASCII letter, digit or "-" and
+ * before a lower-case one, a digit or "-" (also full-width: "paypal-login。com"), or the piece has a
+ * scheme or "//", where a URL's host reads them as dots ("https://flown.app。在线"). Each becomes "、",
+ * punctuation that joins nothing: so "Windows：更新", "勉強会＠渋谷", "ありがとう。みんな" and
+ * "GIF。Windows" (a capital starts a sentence) are prose.
  */
 const WIDE = 'A-Za-z0-9\\-\\uff0d\\uff10-\\uff19\\uff21-\\uff3a\\uff41-\\uff5a'
-const LONE_STOP = new RegExp(`(?<![${WIDE}])[。．｡]|[。．｡](?![${WIDE}])`, 'g')
+const LOWER = 'a-z0-9\\-\\uff0d\\uff10-\\uff19\\uff41-\\uff5a'
+const LONE_STOP = new RegExp(`(?<![${WIDE}])[。．｡]|[。．｡](?![${LOWER}])`, 'g')
+/** A scheme or "//" (a scheme only from where one starts: linear on a long run of letters). */
+const URL_START = /[\\/]{2}|(?<![a-z0-9+.-])[a-z][a-z0-9+.-]+:/i
 function prosePunctuation(s: string): string {
   const t = s.replace(/[：﹕︓＠﹫]/g, '、')
-  return /[\\/]{2}|[a-z][a-z0-9+.-]+:/i.test(t) ? t : t.replace(LONE_STOP, '、')
+  return URL_START.test(t) ? t : t.replace(LONE_STOP, '、')
 }
 
 /**
  * A piece as the check reads it: HTML character references and percent-escapes decoded, invisible
  * and format characters removed, prose punctuation as "、" (prosePunctuation), NFKC, the dot-likes
- * "。", "．" and "｡" left (IDNA's dots) as ".", "\\" as "/" (a browser reads it so in a URL), lower case.
+ * "。", "．" and "｡" left (IDNA's dots) as ".", "\\" as "/" (a browser reads it so in a URL), "ẞ" as
+ * "ss" (as UTS46 before Unicode 15.1 maps it, so WHATWG `new URL` in Node: "flown.app.ẞ" is on .ss),
+ * lower case.
  */
 export function normalise(s: string): string {
   const t = prosePunctuation(decoded(s.replace(INVISIBLE, '')).replace(INVISIBLE, '')).normalize('NFKC')
-  return decoded(t).replace(INVISIBLE, '').replace(/[。．｡]/g, '.').replace(/\\/g, '/').toLowerCase()
+  return decoded(t).replace(INVISIBLE, '').replace(/[。．｡]/g, '.').replace(/\\/g, '/').replace(/\u1e9e/g, 'ss').toLowerCase()
 }
 
 /**
@@ -92,10 +98,12 @@ const asWritten = (s: string): string =>
 
 /**
  * A piece as X and linkify-it read the text itself, also checked when it has an escape or an invisible
- * character: nothing decoded, an invisible character an end (as X ends a name there), ASCII letters in
- * lower case. Decoded, "flo&#119;n.app" and "flow\u200bn.app" read as flown.app; X links n.app in both.
+ * character: nothing decoded, ASCII letters in lower case, and an invisible character an end (`gap` " ",
+ * as X ends a name there) or nothing (`gap` "", as linkify-it reads a variation selector into a host and
+ * a URL's host drops it). Decoded, "flo&#119;n.app" and "flow\u200bn.app" read as flown.app, and
+ * "%66lown\ufe0f.app" too; X links n.app in the first two, linkify-it 66lown.app in the last.
  */
-const asTyped = (s: string): string => s.replace(INVISIBLE, ' ').replace(/[A-Z]+/g, (c) => c.toLowerCase())
+const asTyped = (s: string, gap: string): string => s.replace(INVISIBLE, gap).replace(/[A-Z]+/g, (c) => c.toLowerCase())
 
 /* ---------- what is link-like ---------- */
 
@@ -122,10 +130,11 @@ const DOTTED = /(?<=[\p{L}\p{N}\p{M}\p{Co}_\-\u{10000}-\u{10ffff}]|(?![<>|^])\p{
 
 /**
  * Whether `label`, the last label of a dotted name, is a top-level domain from the full list, also
- * without its marks; or, after a name that ends in ASCII, one glued to more text: an ASCII one (or one
- * in punycode) before a letter or symbol of another script ("flown.jpから", "README.md를",
- * "evíl.xn--p1ai今天"), or one in another script before more of it ("paypal-login.在线客服", which X
- * links). Any label with a reference this could not read (ANY) may be.
+ * without its marks; or, after a name that ends as X reads a name without a scheme (in an ASCII letter,
+ * digit or "-", or a Latin letter with an accent: X_NAME_END), one glued to more text: an ASCII one (or
+ * one in punycode) before a letter or symbol of another script ("flown.jpから", "README.md를",
+ * "evíl.xn--p1ai今天", "flowń.comから"), or one in another script before more of it
+ * ("paypal-login.在线客服", which X links). Any label with a reference this could not read (ANY) may be.
  */
 function topLevel(label: string, afterAscii: boolean): boolean {
   if (isTopLevelDomain(label) || label.includes(ANY)) return true
@@ -139,13 +148,16 @@ function topLevel(label: string, afterAscii: boolean): boolean {
   return false
 }
 
+/** The end of a name as X reads one without a scheme (twitter-text's validAsciiDomain): ASCII letters, digits, "-" and Latin letters with accents. */
+const X_NAME_END = new RegExp(`[a-z0-9\\-${latinAccentChars}]`, 'i')
+
 /**
  * Whether `n` (a piece as `normalise` reads it) holds anything link-like: a scheme, "www.", "//" or
  * "@" before a host, or a dotted name whose last label is a top-level domain (topLevel). Linear.
  */
 export function linkLike(n: string): boolean {
   if (SCHEME.test(n) || BEFORE_HOST.test(n)) return true
-  for (const m of n.matchAll(DOTTED)) if (topLevel(m[1], /[a-z0-9-]/.test(n[m.index - 1]))) return true
+  for (const m of n.matchAll(DOTTED)) if (topLevel(m[1], X_NAME_END.test(charBefore(n, m.index)))) return true
   return false
 }
 
@@ -216,7 +228,8 @@ function tokensOf(text: string): string[] {
   for (const piece of text.split(ASCII_SPACES)) {
     if (!piece) continue
     const n = normalise(piece)
-    if (!linkLike(n)) continue
+    // Also a link said with a word's ending written after a "-" ("flown.app-এ", "README.md-তে"): trimmed() takes the "-".
+    if (!linkLike(n) && !linkLike(n.replace(/-(?=[^\x00-\x7f])/g, ' '))) continue
     const runs = [...[...n.matchAll(URL_RUN)].map((m) => ({ m, name: false })), ...[...n.matchAll(NAME_RUN)].map((m) => ({ m, name: true }))]
     for (const { m, name } of runs) {
       if (name && notAHost(n, m.index, m.index + m[0].length)) continue
@@ -462,11 +475,25 @@ function withoutSaid(n: string, said: Said, invisible: boolean): string {
   return out + n.slice(copied)
 }
 
-/** Whether `piece` (as written, between ASCII spaces) holds anything link-like once what was said is blanked, as any reading has it. */
+/** A Markdown backslash escape: markdown-it reads "\\." in a link's destination or text as ".". */
+const MD_ESCAPE = /\\([\x21-\x2f\x3a-\x40\x5b-\x60\x7b-\x7e])/g
+
+/**
+ * Whether `piece` (as written, between ASCII spaces) holds anything link-like once what was said is
+ * blanked, as any reading has it: as normalised, as written, as typed when it has an escape or an
+ * invisible character, and the first two with Markdown's escapes read when it has a "\\" (the others
+ * read it as "/", as a browser does).
+ */
 function isNoted(piece: string, said: Said): boolean {
   if (!/[.:@/\\%&]|[^\x00-\x7f]/.test(piece)) return false
   const invisible = piece.search(INVISIBLE) >= 0
-  const readings = [normalise(piece), asWritten(piece), ...(invisible || /[%&]/.test(piece) ? [asTyped(piece)] : [])]
+  const unescaped = piece.includes('\\') ? piece.replace(MD_ESCAPE, '$1') : piece
+  const readings = [
+    normalise(piece),
+    asWritten(piece),
+    ...(invisible || /[%&]/.test(piece) ? [asTyped(piece, ' '), asTyped(piece, '')] : []),
+    ...(unescaped !== piece ? [normalise(unescaped), asWritten(unescaped)] : [])
+  ]
   return readings.some((n) => linkLike(n) && linkLike(withoutSaid(n, said, invisible)))
 }
 
@@ -510,27 +537,62 @@ export const linksToCheck = (text: string, said: Said): string[] => [...new Set(
 export const shownRun = (run: string): string => run.replace(INVISIBLE, (c) => `⟨U+${(c.codePointAt(0) as number).toString(16).toUpperCase().padStart(4, '0')}⟩`)
 
 /**
- * The runs of a piece a note marks: link characters as written (ASCII URL characters but brackets, '"',
- * "<" and ">"; their full-width forms, the dot-likes, invisible characters) with a ":", "@", "\\" or "//",
- * or a dot before a letter or more than one dot (not "2.4" or "Windows/macOS"), and a label of any
- * script after a dot that ends a name ("evil.在线"); without sentence punctuation at either end.
+ * The runs of a piece a note may mark: link characters as written (ASCII URL characters but brackets,
+ * '"', "<" and ">"; their full-width forms, the dot-likes, invisible characters), with a label of any
+ * script after a dot (not a full stop, which ends a sentence: "README.md。第二步") that ends a name
+ * ("evil.在线"); and dotted names of any script with a letter outside
+ * ASCII next to a dot ("支付宝登录.在线", "пример.рф", "flowń.comから"). Without sentence punctuation,
+ * ASCII or full-width, at either end ("：flown.app，" is flown.app).
  */
-const MARKED = new RegExp(`(?:[A-Za-z0-9\\-._~:/?#@!$%&*+=\\\\,;'\\uff01-\\uff5e。｡]|${INVISIBLE.source})+(?:(?<=[A-Za-z0-9-][.。．｡])[\\p{L}\\p{N}\\p{M}-]+)?`, 'gu')
-const MARKS = /[:@\\：＠＼]|\/\/|／／|[.。．｡][^\d.。．｡]|[.。．｡][^.。．｡]*[.。．｡]/u
+const MARKED = new RegExp(`(?:[A-Za-z0-9\\-._~:/?#@!$%&*+=\\\\,;'\\uff01-\\uff5e。｡]|${INVISIBLE.source})+(?:(?<=[A-Za-z0-9-][.．])[\\p{L}\\p{N}\\p{M}-]+)?`, 'gu')
+const SCRIPT_NAME = /(?<![\p{L}\p{N}\p{M}-])[\p{L}\p{N}\p{M}-]+(?:[.．][\p{L}\p{N}\p{M}-]+)+/gu
+const SCRIPT_DOT = /(?![\x00-\x7f])\p{L}[.．]|[.．](?![\x00-\x7f])\p{L}/u
+const RUN_START = /^[,;:!?'。｡．！＂＇（），：；＜＞？＠［］＾｀｛｜｝]+/
+const RUN_END = /(?<![.,;:!?'。｡．！＂＇（），：；＜＞？＠［］＾｀｛｜｝])[.,;:!?'。｡．！＂＇（），：；＜＞？＠［］＾｀｛｜｝]+$/
+
+/** Punctuation a host keeps right after a URL's host, and the dotted name it runs on into ("·.ws", "·acme.de"). */
+const RUNS_ON = /(?:(?=[^\x00-\x7f])\p{P})+[\p{L}\p{N}\p{M}-]*(?:\.[\p{L}\p{N}\p{M}-]+)+/uy
 
 /**
- * Piece `piece` as a note and a confirm show it (shownRun), in parts: the link-like runs (MARKED) to
- * mark, and the text around them, glued to them, as plain context (so in "完了。flown.appから…" the
- * name stands out). One marked part, the whole piece, when no run is link-like.
+ * Whether the run at `start`–`end` of `piece` is why it is noted: noted on its own, or link-like and
+ * glued to the text around it (a character that joins a name right before or after it), so that a
+ * said name standing alone ("下载地址：flown.app，…") is not marked.
  */
-export function pieceParts(piece: string): { text: string; marked: boolean }[] {
+function isWhy(piece: string, start: number, end: number, said: Said): boolean {
+  const run = piece.slice(start, end)
+  return isNoted(run, said) || (linkLike(normalise(run)) && (JOINS.test(charBefore(piece, start)) || JOINS.test(charAt(piece, end))))
+}
+
+/**
+ * Piece `piece` as a note and a confirm show it (shownRun), in parts: the runs that are why it is noted
+ * against `said` (isWhy) to mark, and the text around them, glued to them, as plain context (so in
+ * "完了。flown.appから…" the name stands out, and in "下载地址：flown.app，登录：支付宝登录.在线" the second
+ * name, not the said one). One marked part, the whole piece, when no run is why. Linear.
+ */
+export function pieceParts(piece: string, said: Said = NOTHING_SAID): { text: string; marked: boolean }[] {
+  const runs: [number, number][] = []
+  for (const m of piece.matchAll(MARKED)) {
+    const run = m[0].replace(RUN_START, '')
+    const start = m.index + m[0].length - run.length
+    let end = start + run.replace(RUN_END, '').length
+    // A URL's host that runs on into another name ("https://flown.app·.ws"): the run takes that name too.
+    RUNS_ON.lastIndex = end
+    if (end > start && urlHost(normalise(piece.slice(start, end))) && RUNS_ON.test(piece)) end = RUNS_ON.lastIndex
+    if (end > start) runs.push([start, end])
+  }
+  for (const m of piece.matchAll(SCRIPT_NAME)) if (SCRIPT_DOT.test(m[0])) runs.push([m.index, m.index + m[0].length])
+  // Overlapping runs as one ("flowń.comから" is "flowń" and ".comから" and the name of both).
+  runs.sort((a, b) => a[0] - b[0])
+  const merged: [number, number][] = []
+  for (const [start, end] of runs) {
+    const last = merged[merged.length - 1]
+    if (last && start < last[1]) last[1] = Math.max(last[1], end)
+    else merged.push([start, end])
+  }
   const parts: { text: string; marked: boolean }[] = []
   let last = 0
-  for (const m of piece.matchAll(MARKED)) {
-    const run = m[0].replace(/^[,;:!?'。｡．]+/, '')
-    const start = m.index + m[0].length - run.length
-    const end = start + run.replace(/[.,;:!?'。｡．]+$/, '').length
-    if (end <= start || !MARKS.test(piece.slice(start, end))) continue
+  for (const [start, end] of merged) {
+    if (!isWhy(piece, start, end, said)) continue
     if (start > last) parts.push({ text: shownRun(piece.slice(last, start)), marked: false })
     parts.push({ text: shownRun(piece.slice(start, end)), marked: true })
     last = end

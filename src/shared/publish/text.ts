@@ -72,8 +72,11 @@ export function typedText(s: unknown, max: number): string {
   return cutAt(s.replace(/\r\n?/g, '\n').replace(CONTROLS, '').trim(), max)
 }
 
-/** The last label of a dotted name at the end of a text, from its dot (".com" in "…：paypal-login.com"). */
-const LAST_LABEL = /(?<=[\p{L}\p{N}\p{M}_-])\.[\p{L}\p{N}\p{M}-]+$/u
+/**
+ * The last label of a dotted name at the end of a text, from its dot (".com" in "…：paypal-login.com"):
+ * one that starts with a letter, as every top-level domain does (not the "4" of "バージョン2.4").
+ */
+const LAST_LABEL = /(?<=[\p{L}\p{N}\p{M}_-])\.(?=\p{L})[\p{L}\p{N}\p{M}-]+$/u
 const LABEL_CHAR = /^[\p{L}\p{N}\p{M}-]/u
 
 /**

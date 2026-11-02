@@ -179,11 +179,12 @@ describe('damage 4 and integration 5: what a note marks in a long piece', () => 
   it('marks the link-like runs and shows the text glued to them as it is (§4.8)', () => {
     expect(shown('Flownの書き出しが簡単すぎる…Ctrl+Shift+E→MP4→完了。flown.appから無料で使えます')).toBe('Flownの書き出しが簡単すぎる…Ctrl+Shift+E→MP4→完了。[flown.app]から無料で使えます')
     expect(shown('2.4はhttps://flown.appから無料でダウンロードできます。設定はconfig.yamlで、詳しい手順はflown.app/docsにまとめました。')).toBe(
-      '2.4は[https://flown.app]から無料でダウンロードできます。設定は[config.yaml]で、詳しい手順は[flown.app/docs]にまとめました。'
+      // config.yaml is on no top-level domain: no parser opens it, and it is not why the piece is noted (the eleventh round).
+      '2.4は[https://flown.app]から無料でダウンロードできます。設定はconfig.yamlで、詳しい手順は[flown.app/docs]にまとめました。'
     )
     expect(shown('สอนส่งออกวิดีโอด้วยFlownแบบง่ายๆ ดาวน์โหลดได้ที่flown.appได้เลย')).toBe('สอนส่งออกวิดีโอด้วยFlownแบบง่ายๆ ดาวน์โหลดได้ที่[flown.app]ได้เลย')
     expect(shown('ログインflown.jp/download')).toBe('ログイン[flown.jp/download]')
-    expect(shown('https://flown.app·.ws/verify')).toBe('[https://flown.app]·[.ws/verify]')
+    expect(shown('https://flown.app·.ws/verify')).toBe('[https://flown.app·.ws/verify]')
     expect(shown('evil.在线')).toBe('[evil.在线]')
     // Invisible characters by their code, inside the run; a piece without a link-like run is marked whole.
     expect(shown('evil​.com')).toBe('[evil⟨U+200B⟩.com]')
