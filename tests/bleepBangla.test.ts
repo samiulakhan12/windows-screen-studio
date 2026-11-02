@@ -125,6 +125,8 @@ const ANIMAL_JOINED = [...ANIMALS.flatMap((w) => KIDS.map((k) => w + k)), ...ANI
  * বাল গোপাল, বাল বাচ্চা (the kids), বাল বিধবা, বাল-বৃদ্ধ-বনিতা (young and old).
  */
 const BAL_NAMES = ['গঙ্গাধর', 'ঠাকরে', 'গোপাল', 'কৃষ্ণ', 'পাল', 'বাচ্চা', 'বাচ্ছা', 'বিধবা', 'বিবাহ', 'বৃদ্ধ'].flatMap(nounForms)
+/** পাল in every form: লাল, বাল, পাল is a list, which a history lesson writes with commas. */
+const PAL = nounForms('পাল')
 
 /** The latest review's list (input.json "bleep"), in full: its regressions, misses and Tidy captions scenario. */
 const REVIEW_NOUN_ENDS = ['রাও', 'রাই', 'কেও', 'কেই', 'টাও', 'টাই', 'রেও']
@@ -393,12 +395,25 @@ describe('Bangla bleeping: stems, compounds and every generated form', () => {
       for (const next of ['বলিস', 'ছিঁড়বি', 'কথা', '', undefined]) expect(isSwearWord('বাল', mode, lang, next), `${mode} ${lang} ${next}`).toBe(true)
       // A sentence mark, a comma or a ! between them, with or without a space, or the end of the
       // caption: বাল ends its phrase, and the word after it is no name of its.
-      for (const mark of ['।', ',', '!', '?', '.', ';', ':', '…', '॥', '!"', '।’']) {
-        const missed = BAL_NAMES.filter(
+      // But a comma before পাল, which writes the list লাল, বাল, পাল: expecting a bleep there was the bug.
+      for (const mark of ['।', ',', '!', '?', '.', ';', ':', '…', '॥', '!"', '।’', ',।', '!,', ',…']) {
+        const missed = BAL_NAMES.filter((n) => mark !== ',' || !PAL.includes(n)).filter(
           (n) => !isSwearWord('বাল' + mark, mode, lang, n) || !isSwearWord('বাল', mode, lang, mark + n) || !isSwearWord('বাল' + mark + n, mode, lang) || !isSwearWord('ধুর-বাল' + mark + n, mode, lang)
         )
         expect(missed, `${mode} ${lang} ${mark}`).toEqual([])
       }
+      // লাল, বাল, পাল: with or without a space, on either side of the comma, a quotation mark too.
+      const listed = PAL.filter(
+        (n) =>
+          isSwearWord('বাল,', mode, lang, n) ||
+          isSwearWord('বাল', mode, lang, ',' + n) ||
+          isSwearWord('বাল,' + n, mode, lang) ||
+          isSwearWord('লাল,বাল,' + n, mode, lang) ||
+          isSwearWord('বাল”,', mode, lang, `“${n}”`)
+      )
+      expect(listed, `${mode} ${lang}`).toEqual([])
+      // But for a caption's end and silence after it.
+      expect(PAL.filter((n) => !isSwearWord('বাল,', mode, lang, n, true)), `${mode} ${lang}`).toEqual([])
       expect(BAL_NAMES.filter((n) => !isSwearWord('বাল', mode, lang, n, true)), `${mode} ${lang}`).toEqual([])
       // Written apart by a space, a hyphen, a dash or a quotation mark, they are the name still.
       const names = BAL_NAMES.filter((n) => ['-', '—', '‐'].some((j) => isSwearWord(`বাল${j}${n}`, mode, lang)) || isSwearWord('বাল”', mode, lang, n) || isSwearWord('বাল', mode, lang, `“${n}”`))
@@ -412,7 +427,9 @@ describe('Bangla bleeping: stems, compounds and every generated form', () => {
       'বাল বাচ্চা নিয়ে আমরা গ্রামে বেড়াতে গেলাম।',
       'বাল-গোপাল',
       'বাল-বৃদ্ধ-বনিতা নির্বিশেষে সবাই উৎসবে যোগ দিয়েছে।',
-      'বাল বৃদ্ধ বনিতা সবাই মেলায় এসেছিল।'
+      'বাল বৃদ্ধ বনিতা সবাই মেলায় এসেছিল।',
+      'স্বদেশী আন্দোলনের তিন নেতা লাল, বাল, পাল নামে পরিচিত ছিলেন।',
+      'লাল,বাল,পাল তিনজনই জেল খেটেছিলেন।'
     ]
     const rude = [
       ['কি বাল বলিস', 'বাল'],
@@ -420,6 +437,8 @@ describe('Bangla bleeping: stems, compounds and every generated form', () => {
       ['বাল ছিঁড়বি তুই', 'বাল'],
       // A sentence mark, a comma or a ! after it: the next word is no name of its.
       ['কি বাল, বাচ্চাদের মতো কথা বলিস', 'বাল'],
+      ['ধুর বাল, গোপাল আবার আসছে', 'বাল'],
+      ['ধুর বাল, ঠাকরে সাহেবকে ডাক', 'বাল'],
       ['ধুর বাল। বাচ্চাটা আবার কান্দে', 'বাল'],
       ['ধুর বাল! পাল বাবু আসছেন', 'বাল'],
       ['বাল।বাচ্চাটা', 'বাল।বাচ্চাটা'],
@@ -452,6 +471,10 @@ describe('Bangla bleeping: stems, compounds and every generated form', () => {
         }
         // A sentence mark at the caption's end is a pause still, however soon the next caption starts.
         expect(bleeped(split(0.1, 'গঙ্গাধর', 'কি বাল।')), `${language} ${bleep}`).toEqual([bleepKey('বাল।')])
+        // A comma at its end, before পাল: the list লাল, বাল, পাল goes on into the next caption.
+        expect(bleeped(split(0.1, 'পাল', 'তিন নেতা লাল, বাল,')), `${language} ${bleep}`).toEqual([])
+        expect(bleeped(split(1, 'পাল', 'তিন নেতা লাল, বাল,')), `${language} ${bleep}`).toEqual([bleepKey('বাল,')])
+        expect(bleeped(split(0.1, 'গঙ্গাধর', 'কি বাল,')), `${language} ${bleep}`).toEqual([bleepKey('বাল,')])
         // Captions as the Bangla model makes them: one long run cut by captionPieces, here right after বাল.
         const runs = [
           'আজকের ক্লাসে আমরা ভারতের স্বাধীনতা আন্দোলনের অন্যতম নেতা লোকমান্য বাল গঙ্গাধর তিলকের জীবন ও কাজ নিয়ে বিস্তারিত আলোচনা করব আজ',

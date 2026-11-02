@@ -395,6 +395,8 @@ interface TeamList {
   onlyBefore: readonly (readonly [readonly string[], readonly string[]])[]
   /** Words never rude before certain nouns, each [the words, the nouns], as onlyBefore: names and words written apart (বাল গঙ্গাধর তিলক). */
   notBefore: readonly (readonly [readonly string[], readonly string[]])[]
+  /** Of those, the ones a comma does not set apart, as notBefore: a list written with commas (লাল, বাল, পাল). */
+  listed: readonly (readonly [readonly string[], readonly string[]])[]
 }
 
 /**
@@ -506,7 +508,10 @@ const TEAM_LISTS: Readonly<Record<string, TeamList>> = {
       [['বাল'], ['গঙ্গাধর', 'ঠাকরে', 'গোপাল', 'কৃষ্ণ', 'পাল', ...BN_KID, 'বিধবা', 'বিবাহ', 'বৃদ্ধ']],
       // চুদুরবুদুর written apart.
       [['চুদুর'], ['বুদুর', 'বুদুরি']]
-    ]
+    ],
+    // লাল, বাল, পাল, the three leaders, as a history lesson writes them; a comma before বাল's other
+    // names and বাচ্চা stays a pause (কি বাল, বাচ্চাদের মতো কথা বলিস).
+    listed: [[['বাল'], ['পাল']]]
   }
 }
 
@@ -527,6 +532,8 @@ interface TeamRules {
   onlyBefore: ReadonlyMap<string, ReadonlySet<string>>
   /** Each word never rude before a word, and those words (notBefore, every form). */
   notBefore: ReadonlyMap<string, ReadonlySet<string>>
+  /** Each word never rude before a word across a comma, and those words (listed, every form). */
+  listed: ReadonlyMap<string, ReadonlySet<string>>
 }
 const teamRules = new Map<string, TeamRules | null>()
 function teamRulesOf(lang: string): TeamRules | null {
@@ -559,7 +566,8 @@ function teamRulesOf(lang: string): TeamRules | null {
       everyday,
       whole: new Set(list.nouns.flatMap(nounForms).map(keyOf).filter((k) => k && !everyday.has(k))),
       onlyBefore: before(list.onlyBefore),
-      notBefore: before(list.notBefore)
+      notBefore: before(list.notBefore),
+      listed: before(list.listed)
     }
   }
   teamRules.set(lang, r)
@@ -577,18 +585,30 @@ const heldAt = (holders: readonly string[], key: string, c: Stem, at: number): b
   })
 
 /**
+ * A pause between two words: none, a comma only (লাল, বাল, পাল: a list may go on across it), or a
+ * full one (a sentence mark, a !, ;, : or …, or a caption's end and silence), the stronger of two
+ * the larger.
+ */
+type Pause = 0 | 1 | 2
+const NO_PAUSE: Pause = 0
+const COMMA_PAUSE: Pause = 1
+const FULL_PAUSE: Pause = 2
+const stronger = (a: Pause, b: Pause): Pause => (a > b ? a : b)
+
+/**
  * Whether a word's key is rude by a team list, `next` the key of the word after it ('' when there is
  * none; not known when undefined, and then a word rude only before some words is taken as rude).
- * `apart`: a pause is between them (a sentence mark, a comma or a !, or a caption's end and silence), so a word
- * never rude before some words is rude whatever comes next (বাল। বাচ্চাটা: no name).
+ * `pause`: what is between them. After a pause a word never rude before some words is rude
+ * whatever comes next (বাল। বাচ্চাটা: no name), but after a comma before a word it is listed with
+ * (লাল, বাল, পাল).
  */
-function teamMatch(r: TeamRules, key: string, next: string | undefined, apart = false): boolean {
+function teamMatch(r: TeamRules, key: string, next: string | undefined, pause: Pause = NO_PAUSE): boolean {
   const k = r.fold(key)
   if (r.everyday.has(k)) return false
   const n = next === undefined ? undefined : r.fold(next)
   const only = r.onlyBefore.get(k)
   if (only) return n === undefined || only.has(n)
-  if (n !== undefined && !apart && r.notBefore.get(k)?.has(n)) return false
+  if (n !== undefined && r.notBefore.get(k)?.has(n) && (pause === NO_PAUSE || (pause === COMMA_PAUSE && r.listed.get(k)?.has(n)))) return false
   if (r.whole.has(k)) return true
   for (const stem of r.stems) if (stemAt(k, stem, 0)) return true
   for (const c of r.compounds) {
@@ -603,8 +623,12 @@ const BETWEEN_WORDS = /[^\p{L}\p{N}\p{M}\p{Cf}]+/u
 /** Text between words that is more than hyphens and dashes (খান,কিন্তু; মা।গিয়ে): two words, never one written in parts. */
 const APART = /[^\p{L}\p{N}\p{M}\p{Cf}]*[^\p{L}\p{N}\p{M}\p{Cf}\-\u2010-\u2015][^\p{L}\p{N}\p{M}\p{Cf}]*/u
 
-/** A pause between words: a sentence mark, a comma, a !, ;, : or … (বাল। বাচ্চাটা, বাল, পাল বাবু), not a hyphen, dash or quotation mark. */
+/** A pause between words: a sentence mark, a comma, a !, ;, : or … (বাল। বাচ্চাটা, বাল! পাল বাবু), not a hyphen, dash or quotation mark. */
 const PAUSE = /[\p{Terminal_Punctuation}\u2026]/u
+/** A comma: the Latin one Bangla writes, and the Arabic, ideographic and full-width ones. */
+const COMMAS = /[,\u060C\u3001\uFF0C]/gu
+/** The pause the text between two words makes: a comma only, or a full one when it has another pause mark too. */
+const pauseOf = (between: string): Pause => (!PAUSE.test(between) ? NO_PAUSE : PAUSE.test(between.replace(COMMAS, '')) ? FULL_PAUSE : COMMA_PAUSE)
 /** A word's text after its last letter, digit, mark or joiner, and the next word's before its first. */
 const AFTER_WORD = /[^\p{L}\p{N}\p{M}\p{Cf}]*$/u
 const BEFORE_WORD = /^[^\p{L}\p{N}\p{M}\p{Cf}]*/u
@@ -614,27 +638,27 @@ const firstKey = (text: string): string => text.split(BETWEEN_WORDS).map(bleepKe
 
 /**
  * Whether a word is rude by the team's list for `lang` (`key` its key, `next` the key of the word
- * after it and `apart` whether a pause is before it, as teamMatch takes them; a pause after the
- * word's last letter counts too). Words written together with a dash or a । and no space
+ * after it and `pause` the pause before it, as teamMatch takes them; a pause after the word's last
+ * letter counts too). Words written together with a dash or a । and no space
  * (ধুর—বাল, বাল।এটা, শালা-খানকি, শুয়োরের-বাচ্চা) are rude when one of them is, each before the
  * next. Parts joined by hyphens or dashes only are one word as well (হারাম-জাদা, বান-চোত), unless
  * the first is an everyday word that starts with a stem (মাগিনা-এটা); words joined by anything else
  * (a comma, a ।, ? or /) never are: খান,কিন্তু and মা।গিয়ে are everyday words.
  */
-function teamWordMatch(word: string, key: string, lang: string, next: string | undefined, apart: boolean): boolean {
+function teamWordMatch(word: string, key: string, lang: string, next: string | undefined, pause: Pause): boolean {
   const r = teamRulesOf(lang)
   if (!r) return false
-  if (!JOINED.test(word)) return teamMatch(r, key, next, apart || PAUSE.test(AFTER_WORD.exec(word)?.[0] ?? ''))
-  // Each part's key and whether a pause follows it, the text between parts kept by the split.
-  const parts: { key: string; pause: boolean }[] = []
+  if (!JOINED.test(word)) return teamMatch(r, key, next, stronger(pause, pauseOf(AFTER_WORD.exec(word)?.[0] ?? '')))
+  // Each part's key and the pause after it, the text between parts kept by the split.
+  const parts: { key: string; pause: Pause }[] = []
   word.split(/([^\p{L}\p{N}\p{M}\p{Cf}]+)/u).forEach((bit, i) => {
     const last = parts[parts.length - 1]
     if (i % 2) {
-      if (last && PAUSE.test(bit)) last.pause = true
-    } else if (bleepKey(bit)) parts.push({ key: bleepKey(bit), pause: false })
+      if (last) last.pause = stronger(last.pause, pauseOf(bit))
+    } else if (bleepKey(bit)) parts.push({ key: bleepKey(bit), pause: NO_PAUSE })
   })
   const end = parts.length - 1
-  if (parts.some((p, i) => teamMatch(r, p.key, i < end ? parts[i + 1].key : next, p.pause || (i === end && apart)))) return true
+  if (parts.some((p, i) => teamMatch(r, p.key, i < end ? parts[i + 1].key : next, i === end ? stronger(p.pause, pause) : p.pause))) return true
   const groups = word.split(APART).filter((g) => bleepKey(g))
   return groups.some((g, i) => JOINED.test(g) && !r.everyday.has(r.fold(firstKey(g))) && teamMatch(r, bleepKey(g), i + 1 < groups.length ? firstKey(groups[i + 1]) : next))
 }
@@ -657,8 +681,8 @@ const LATIN_RUN = /\p{Script=Latin}+/gu
  * Bangla it decides for a word rude only before certain words (শুয়োরের in শুয়োরের বাচ্চা) or
  * never before certain words (বাল in বাল গঙ্গাধর তিলক); without it, such a word is taken as rude.
  * `apart` is true when the next word starts the next caption at least PAUSE_FOR_STOP later: as
- * after a sentence mark, a comma or a !, then, a word never rude before certain words is rude
- * whatever the next word is.
+ * after a sentence mark or a !, then, a word never rude before certain words is rude whatever the
+ * next word is. A comma does the same but before a word listed with it (লাল, বাল, পাল).
  */
 export function isSwearWord(word: string, mode: 'standard' | 'strict', language?: string, next?: string, apart = false): boolean {
   const key = bleepKey(word)
@@ -677,7 +701,7 @@ export function isSwearWord(word: string, mode: 'standard' | 'strict', language?
   const named = baseLanguage(language)
   const lang = named !== 'as' && BENGALI.test(key) ? 'bn' : named
   // Bangla and the languages LDNOOBW lacks have the team's lists in Standard too.
-  const pause = apart || (next !== undefined && PAUSE.test(BEFORE_WORD.exec(next)?.[0] ?? ''))
+  const pause = apart ? FULL_PAUSE : next === undefined ? NO_PAUSE : pauseOf(BEFORE_WORD.exec(next)?.[0] ?? '')
   if (teamWordMatch(word, key, lang, next === undefined ? undefined : firstKey(next), pause)) return true
   if (mode === 'strict') {
     if (strictSet(lang).has(key) || (lang !== 'en' && strictSet('en').has(key))) return true
