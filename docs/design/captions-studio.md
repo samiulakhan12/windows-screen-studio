@@ -1403,10 +1403,12 @@ turns green".
 - Edge: outline 0.085 α 1; shadow (0, 0.04, 0.12) α 0.55.
 - Words: a few words, 3 words, 1 line, 16 / 14, lower.
 - Motion: spoken colour; in pop, out fade; word pulse; emphasis pop; upcoming 1; tilt 3° on
-  emphasised words; the spoken word grows to 1.18 and holds while spoken (`spokenScale` 1.18,
-  ×1.14 in Bangla; with the pulse it peaks near 1.28 in about 0.08 s and settles by 0.2 s, as in
-  `APPROVED-LOOK.md`), and the layout keeps room for that peak beside it and past a line's
-  first and last words (§8.4); while spoken it also
+  emphasised words; the spoken word pops as in `APPROVED-LOOK.md` (more.html `pop()`): from 0.70
+  to 1.28 in 0.06 s, back to 1.18 by 0.2 s along a quarter sine, and held while spoken
+  (`spokenScale` 1.18 with the word pulse: this pop is the spoken word's pulse, not added to it;
+  ×1.14 in Bangla, the dip and the peak in proportion; by strength). Once the next word starts it
+  goes back to its size over 0.1 s from where it had got to. The layout keeps room for the 1.28
+  peak beside it and past a line's first and last words (§8.4); while spoken it also
   tilts −2° (`spokenTilt` −2; not on Bangla words, as the approved Bangla pop).
 
 **Clean Short** (`clean-short`, fallback `clean`): "Calm sentence-case words with a soft
@@ -2011,7 +2013,7 @@ under 1 ms.
 - No line is wider than the room. A line holding a word too long for it ("TROUBLESHOOTING" in
   Bold Pop in a tall frame, a long address) is drawn smaller, to the room's width; in One Word
   and Stacked that goes below their 0.6 floor when it must. A spoken word that grows also stays
-  inside the room at its peak size (Bold Pop's 1.18 × the 1.08 pulse, Spotlight Word's 1.28), so
+  inside the room at its peak size (Bold Pop's 1.28 pop, Spotlight Word's 1.28), so
   it never runs past the frame or the text area: a word alone on its line, or a line whose first
   or last word would grow past the room, is drawn just small enough for it to fit. Lines that
   fit, with their words grown, keep their size.
@@ -2192,7 +2194,7 @@ after the first), each pill's width going from the old chunk's line of the same 
 
 | Kind | d | Pose |
 |---|---|---|
-| pulse | 0.18 s | scale 1 → 1 + 0.08 s over 0.08 s (out), back to 1 over 0.10 s |
+| pulse | 0.18 s | scale 1 → 1 + 0.08 s over 0.08 s (out), back to 1 over 0.10 s; with a spoken size (`spokenScale`, Bold Pop) the spoken word's pop of §5.4 instead |
 | pop | 0.22 s | scale = lerp(0.6, 1, back(p, 1.7 s)) as an entrance, from 0.9 as a beat; alpha = min(1, 3p) |
 | bounce | 0.35 s | dy = −0.035 u · s · (1 − spring(p)) |
 | rise | 0.25 s | dy = (1 − e) · 0.3 em · s; alpha = e; emphDecel |

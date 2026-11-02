@@ -98,8 +98,8 @@ describe('chunk modes (test 9)', () => {
     expect(15 * 0.55 * l.px).toBeGreaterThan(m.maxWidth)
     const lines = l.chunks.flatMap((c) => c.lines)
     const long = lines.find((line) => line.words.some((w) => w.text === 'TROUBLESHOOTING'))!
-    // Alone on its line, it fills the room at its peak size while spoken: 1.18 × the 1.08 pulse.
-    expect(long.width * 1.18 * 1.08).toBeCloseTo(m.maxWidth, 6)
+    // Alone on its line, it fills the room at its peak size while spoken: the approved pop's 1.28.
+    expect(long.width * 1.28).toBeCloseTo(m.maxWidth, 6)
     expect(long.px).toBeLessThan(l.px)
     for (const line of lines) expect(line.width).toBeLessThanOrEqual(m.maxWidth * (1 + 1e-9))
     // Lines that fit keep the look's size.

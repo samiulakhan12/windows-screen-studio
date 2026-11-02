@@ -353,6 +353,36 @@ describe('spoken marks and word motion (§9.3)', () => {
     expect(at(lay(guess, s), 0.3)).toBe(1)
   })
 
+  it("Bold Pop's spoken word pops from 0.70 to 1.28 in 0.06 s and eases back to 1.18 by 0.2 s (APPROVED-LOOK.md, more.html pop())", () => {
+    const s = look('bold-pop')
+    const at = (l: StudioLayout, dt: number, st: CaptionStudio = s): number => captionPoses(l, 0, 0.4 + dt, ONE, st, U, null).words[1].scale
+    const l = lay(timed('click export and', 0.4), s)
+    // more.html: 0.7 + 0.58 × dt / 60 ms, then 1.28 − 0.1 × sin(u × π/2) to 200 ms, then 1.18.
+    const approved = (ms: number): number => (ms < 60 ? 0.7 + 0.58 * (ms / 60) : ms < 200 ? 1.28 - 0.1 * Math.sin(((ms - 60) / 140) * (Math.PI / 2)) : 1.18)
+    for (const ms of [0, 10, 30, 50, 60, 80, 100, 130, 160, 200, 300]) expect(at(l, ms / 1000), `+${ms} ms`).toBeCloseTo(approved(ms), 3)
+    // No pulse on top: the peak is the pop's.
+    let peak = 0
+    for (let ms = 0; ms < 390; ms += 2) peak = Math.max(peak, at(l, ms / 1000))
+    expect(peak).toBeCloseTo(1.28, 3)
+    // By strength: half the dip, the peak and the growth at 0.5.
+    const half = withMotion(s, { strength: 0.5 })
+    expect(at(l, 0, half)).toBeCloseTo(0.85, 3)
+    expect(at(l, 0.3, half)).toBeCloseTo(1.09, 3)
+    // In Bangla, to ×1.14 with the dip and peak in proportion (as the approved Bangla pop, smaller).
+    const bn = lay(timed('এক ক্লিকে সুন্দর', 0.4), s, 1080, 1920, undefined, 'bn')
+    expect(at(bn, 0)).toBeCloseTo(1 - (0.3 * 0.14) / 0.18, 3)
+    expect(at(bn, 0.3)).toBeCloseTo(1.14, 3)
+    // A word replaced before it settles goes back to its size from where it had got to, without a jump.
+    const quick = timed('go export it', 0.4)
+    quick.words = [quick.words![0], { ...quick.words![1], end: 0.42 }, { ...quick.words![2], start: 0.43 }]
+    const fast = lay(quick, s)
+    expect(fast.chunks.length).toBe(1)
+    const word1 = (t: number): number => captionPoses(fast, 0, t, ONE, s, U, null).words[1].scale
+    expect(word1(0.4299)).toBeLessThan(1)
+    expect(Math.abs(word1(0.43) - word1(0.4299))).toBeLessThan(0.01)
+    expect(word1(0.6)).toBe(1)
+  })
+
   it("Bold Pop's spoken word tilts -2° while spoken, and no other word does (APPROVED-LOOK.md)", () => {
     const s = look('bold-pop')
     const rot = (l: StudioLayout, t: number, st: CaptionStudio = s): number[] => captionPoses(l, 0, t, ONE, st, U, null).words.map((w) => w.rotate)

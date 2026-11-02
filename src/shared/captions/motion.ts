@@ -191,6 +191,21 @@ function duration(d: number, m: CaptionMotion, min: number): number {
   return out
 }
 
+/**
+ * Bold Pop's spoken word (APPROVED-LOOK.md, more.html pop()): from 0.70 it pops to 1.28 in 0.06 s,
+ * eases back to 1.18 by 0.2 s (a quarter sine) and holds while spoken. `grow` is the held size
+ * less 1 (0.18 at full strength; 0.14 in Bangla), and the dip and the peak keep their share of it.
+ */
+function popScale(age: number, grow: number, m: CaptionMotion): number {
+  if (age < 0) return 1
+  const k = grow / 0.18
+  const up = duration(0.06, m, 0.03)
+  const settle = duration(0.2, m, 0.06)
+  if (age < up) return 1 - 0.3 * k + 0.58 * k * (age / up)
+  if (age < settle) return 1 + 0.28 * k - 0.1 * k * Math.sin(((age - up) / (settle - up)) * (Math.PI / 2))
+  return 1 + grow
+}
+
 /** The seed key of a caption: its id, else its first word's time and text (a layout made by hand in a test). */
 const captionKey = (layout: StudioLayout): string => layout.caption ?? `${layout.tokens[0]?.start ?? 0}|${layout.tokens.map((t) => t.text).join(' ')}`
 
@@ -616,7 +631,12 @@ export function captionPoses(
     if (spoken) {
       // Estimated words move gently (§9.1 rule 7).
       const wm = tok.estimated && !calm ? calmedOf(m) : m
-      const kind = emph ? wm.emphasis : wm.word
+      /* growing while spoken (Bold Pop, Stickers, Spotlight Word; ×1.14 at most in Bangla; by strength,
+         none at 0; estimated words keep their size). With the pulse (Bold Pop), the approved pop is
+         the word's pulse: it is not added on top. */
+      const grow = calm ? 0 : (scriptScale(tok.script, wm.spokenScale ?? 1) - 1) * s
+      const pops = grow > 0 && wm.word === 'pulse'
+      const kind = emph ? wm.emphasis : pops ? 'none' : wm.word
       const ctx: WordCtx = { age: ageW, len: lenW, em: wem, u, s, m: wm, entrance: m.upcoming < 1, upcoming: m.upcoming, dir: layout.dirs[i] ?? 'l', seed: kind === 'shake' ? seedOf(`${key}|${i}`) : 0, graphemes: kind === 'typewriter' ? graphemeCount(tok.text) : 0, calm: calm || !!tok.estimated }
       Object.assign(pose, wordMotion(kind, ctx))
       /* the spoken mark */
@@ -664,16 +684,15 @@ export function captionPoses(
           pose.fill = isSpoken ? 1 : 0
           break
       }
-      /* growing while spoken (Bold Pop, Stickers, Spotlight Word; ×1.14 at most in Bangla; by strength,
-         none at 0; estimated words keep their size) */
-      const grow = calm ? 0 : (scriptScale(tok.script, wm.spokenScale ?? 1) - 1) * s
       if (grow > 0) {
         const up = duration(0.2, m, 0.06)
         const down = duration(0.1, m, 0.06)
-        if (spokenAt === i) pose.scale *= 1 + grow * (ageW < 0 ? 0 : back(unit(ageW / up), 1.7 * s))
+        if (spokenAt === i) pose.scale *= pops ? popScale(ageW, grow, m) : 1 + grow * (ageW < 0 ? 0 : back(unit(ageW / up), 1.7 * s))
         else if (past) {
+          // Back to its size over 0.1 s once the next word starts, from where it had got to.
           const next = i + 1 <= ch.last ? v.starts[i + 1] : Infinity
-          pose.scale *= 1 + grow * (1 - EASE.out((now - next) / down))
+          const from = pops ? popScale(next - v.starts[i], grow, m) - 1 : grow
+          pose.scale *= 1 + from * (1 - EASE.out((now - next) / down))
         }
       }
       /* Bold Pop's spoken word tilts (-2°) while spoken; not in Bangla, as the approved Bangla pop */
