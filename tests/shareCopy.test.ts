@@ -211,9 +211,10 @@ describe('claiming the name', () => {
     }
   })
 
-  it('renames into place on a FAT or exFAT drive, where Windows refuses the link with EISDIR', async () => {
+  // EISDIR: Windows on a FAT or exFAT drive; UNKNOWN: an error Node does not name (virtual drives).
+  it.each(['EISDIR', 'UNKNOWN'])('renames into place on a drive where Windows refuses the link with %s', async (code) => {
     const dir = mkdtempSync(path.join(os.tmpdir(), 'ssw-sharefat-'))
-    const link = vi.spyOn(fsp, 'link').mockRejectedValue(Object.assign(new Error('EISDIR: illegal operation on a directory, link'), { code: 'EISDIR' }))
+    const link = vi.spyOn(fsp, 'link').mockRejectedValue(Object.assign(new Error(`${code}: link`), { code }))
     try {
       const video = path.join(dir, 'Demo.mp4')
       writeFileSync(video, 'video')

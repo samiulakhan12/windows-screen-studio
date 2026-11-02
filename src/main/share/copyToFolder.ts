@@ -70,8 +70,9 @@ async function sweepStale(dir: string, now: number): Promise<void> {
 
 /**
  * Puts `temp` in place as `name` (or "name (2)", …) in `dir` without ever replacing a file: a hard
- * link fails when the name is taken (then the next name is tried); where links are not supported
- * (FAT drives, some network shares) the name is checked and the file renamed.
+ * link fails when the name is taken (then the next name is tried); where the link fails otherwise
+ * (FAT and exFAT drives, some network shares and virtual drives) the name is checked and the file
+ * renamed. Real failures (no access, a full drive) come out of the rename.
  */
 export async function claimName(temp: string, dir: string, name: string, exists: (file: string) => boolean = existsSync): Promise<string> {
   for (let i = 0; i < 50; i++) {
@@ -79,10 +80,8 @@ export async function claimName(temp: string, dir: string, name: string, exists:
     try {
       await fs.link(temp, dest)
     } catch (e) {
-      const code = (e as NodeJS.ErrnoException).code
-      if (code === 'EEXIST') continue
-      // EISDIR is how Windows reports "Incorrect function" for a link on a FAT or exFAT drive.
-      if (code !== 'EPERM' && code !== 'ENOTSUP' && code !== 'EXDEV' && code !== 'ENOSYS' && code !== 'EINVAL' && code !== 'EISDIR') throw e
+      // A drive without links answers in many ways on Windows (EISDIR on FAT and exFAT, UNKNOWN, EPERM…).
+      if ((e as NodeJS.ErrnoException).code === 'EEXIST') continue
       if (exists(dest)) continue
       await fs.rename(temp, dest)
       return dest
