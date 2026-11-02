@@ -591,6 +591,8 @@ function strictSet(lang: string): ReadonlySet<string> {
   return s
 }
 
+const BENGALI = /\p{Script=Bengali}/u
+
 /**
  * Whether a word is bleeped by `mode` in `language`. `next` is the word after it ('' for none): in
  * Bangla it decides for a word rude only before certain words (শুয়োরের in শুয়োরের বাচ্চা) or
@@ -604,7 +606,11 @@ export function isSwearWord(word: string, mode: 'standard' | 'strict', language?
     if (w.safe.some((s) => s && key.includes(s))) continue
     return true
   }
-  const lang = baseLanguage(language)
+  // A word written in Bengali script is Bangla whatever the transcript's language (an English
+  // transcript quoting a Bangla word, a mixed one that names no language), but in Assamese, which
+  // is written in the same script.
+  const named = baseLanguage(language)
+  const lang = named !== 'as' && BENGALI.test(key) ? 'bn' : named
   // Bangla and the languages LDNOOBW lacks have the team's lists in Standard too.
   if (teamWordMatch(word, key, lang, next === undefined ? undefined : firstKey(next))) return true
   if (mode === 'strict') {

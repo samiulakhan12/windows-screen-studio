@@ -291,6 +291,26 @@ describe('Bangla bleeping: stems, compounds and every generated form', () => {
     for (const bleep of ['standard', 'strict'] as const) expect(bleptUnnamed(RUDE, bleep), bleep).toEqual(RUDE.map((w) => bleepKey(w).slice(0, 40)))
   })
 
+  it('matches a word written in Bengali script by the Bangla list whatever the transcript’s language, but in Assamese', () => {
+    for (const mode of ['standard', 'strict'] as const) {
+      for (const lang of ['en', 'en-US', 'hi', undefined]) {
+        expect(RUDE.filter((w) => !isSwearWord(w, mode, lang)), `${mode} ${lang}`).toEqual([])
+        expect(EVERYDAY.filter((w) => isSwearWord(w, mode, lang)), `${mode} ${lang}`).toEqual([])
+      }
+      // Assamese is written in the same script: its words are not Bangla.
+      expect(RUDE.filter((w) => isSwearWord(w, mode, 'as')), mode).toEqual([])
+    }
+    const lines = ['he said বাল and left', 'this is a খানকি thing', 'ওই হারামজাদাটারে ধর', 'we need চোদ্দ more']
+    const segs = lines.map((text, i) => timed(String(i), i * 5, text))
+    for (const language of ['en', undefined]) {
+      for (const bleep of ['standard', 'strict'] as const) {
+        const out = tidyCaptions(project(segs, language), { ...OFF, bleep, words: [] }).project.bleeps ?? []
+        expect(out.map((b) => [b.word, Math.floor((b.start + 0.1) / 5)]), `${language} ${bleep}`).toEqual([['বাল', 0], [bleepKey('খানকি'), 1], [bleepKey('হারামজাদাটারে'), 2]])
+      }
+    }
+    expect(tidyCaptions(project(segs, 'as'), { ...OFF, bleep: 'strict', words: [] }).project.bleeps).toBeUndefined()
+  })
+
   it('Tidy captions bleeps one word in each of the review’s captions, named Bangla or not', () => {
     const segs = REVIEW_LINES.map((text, i) => timed(String(i), i * 5, text))
     const rude = ['চুদতেছস', 'হারামজাদাটারে', 'খানকিরাও', 'চুদাচুদি', 'চোদাইলি', 'চুদিয়েছিল', 'মাগিটাও', 'চুদনা'].map(bleepKey)

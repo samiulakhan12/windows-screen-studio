@@ -215,6 +215,25 @@ describe('bleeping (tests 41, 50)', () => {
     }
   })
 
+  it('a mostly Bangla transcript with English words that names no language (OpenAI, Gemini) is tidied and bleeped as Bangla; English with a few Bangla words as English, its Bangla words bleeped by the Bangla list', () => {
+    const unnamed = (lines: string[]): Project => {
+      const p = project(lines.map((text, i) => timed(String(i), i * 10, text)))
+      delete (p.transcript as { language?: string }).language
+      return p
+    }
+    // 16 of its 24 words are Bangla: 44% of its letters, 56% with their vowel signs and hasanta.
+    const mixed = ['তো guys আজকের video তে আমরা দেখবো কিভাবে Node.js install করতে হয়', 'প্রথমে browser খুলে official website এ যাবো', 'ধুর বাল আবার error দিচ্ছে']
+    const english = ['Today we will install Node.js on Windows', 'first open the browser and go to the official website', 'he said ধুর বাল and left']
+    for (const bleep of ['standard', 'strict'] as const) {
+      const bn = tidyCaptions(unnamed(mixed), { ...OFF, punct: true, bleep, words: [] })
+      expect(bn.project.bleeps?.map((b) => b.word), bleep).toEqual(['বাল'])
+      expect(texts(bn.project)).toEqual(mixed.map((t) => `${t}।`))
+      const en = tidyCaptions(unnamed(english), { ...OFF, punct: true, bleep, words: [] })
+      expect(en.project.bleeps?.map((b) => b.word), bleep).toEqual(['বাল'])
+      expect(texts(en.project)).toEqual(english.map((t) => `${t}.`))
+    }
+  })
+
   it('Tidy captions bleeps the Bangla participle, the Dhaka forms, the ী spellings and the compounds in a Bangla caption', () => {
     const lines = ['তোরে চুদিয়ে দেব', 'তোরে চোদমু আজকে', 'ওই হারামিডা আবার আসছে', 'এই মাগী কোথায়', 'শালা বোকাচোদা একটা']
     const segs = lines.map((text, i) => timed(String(i), i * 5, text))

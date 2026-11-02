@@ -288,7 +288,11 @@ export function burnedSegments(project: Project): readonly CaptionSegment[] {
 
 const banglaCache = new WeakMap<readonly CaptionSegment[], boolean>()
 
-/** Most letters of the first 50 captions are Bengali (§0.2, §8.1: a transcript that names no language). Memoised. */
+/**
+ * Most letters of the first 50 captions are Bengali (§0.2, §8.1: a transcript that names no
+ * language), each with its vowel signs and hasanta, which are marks: Bangla mixed with English words
+ * (তো guys আজকের video তে) is Bangla when most of it is. Memoised.
+ */
 export function mostlyBangla(segments: readonly CaptionSegment[]): boolean {
   let out = banglaCache.get(segments)
   if (out === undefined) {
@@ -296,7 +300,7 @@ export function mostlyBangla(segments: readonly CaptionSegment[]): boolean {
     let bengali = 0
     for (const s of segments.slice(0, 50)) {
       for (const ch of s.text) {
-        if (!/\p{L}/u.test(ch)) continue
+        if (!/[\p{L}\p{M}]/u.test(ch)) continue
         letters++
         if (/\p{Script=Bengali}/u.test(ch)) bengali++
       }
