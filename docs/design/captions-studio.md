@@ -2022,8 +2022,10 @@ under 1 ms.
   and Stacked that goes below their 0.6 floor when it must. A spoken word that grows also stays
   inside the room at its peak size (Bold Pop's 1.28 pop, Spotlight Word's 1.28), so
   it never runs past the frame or the text area: a word alone on its line, or a line whose first
-  or last word would grow past the room, is drawn just small enough for it to fit. Lines that
-  fit, with their words grown, keep their size.
+  or last word would grow past the room, is drawn just small enough for it to fit. First and last
+  are where the words show: a run read the other way is mirrored, so in "go الإعدادات في" the
+  Arabic run reads right to left and الإعدادات ends the line. Lines that fit, with their words
+  grown, keep their size.
 - Widths are measured once at 100 px per (font stack, weight, letter spacing, text) and scaled.
   The cache key adds the letter spacing, which today's key lacks (`captionsLayer.ts:25`).
 - Light to Bold measures every word at its spoken weight, so lines never re-break while weights

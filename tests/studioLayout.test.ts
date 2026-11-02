@@ -183,6 +183,35 @@ describe('chunk modes (test 9)', () => {
     expect(smaller).toBeGreaterThan(0)
   })
 
+  it('keeps a word that shows at the edge of a mixed-direction line inside the room while it is spoken and grows (§8.4)', () => {
+    // A run read the other way is mirrored, so a word in the middle in reading order can stand at the
+    // edge: in "go الإعدادات في" the Arabic run reads right to left and الإعدادات ends the line on the right.
+    const wide = (text: string, px: number): number => [...text].length * 0.65 * px
+    const s = look('spotlight-word')
+    const room = studioMetrics(s, 1080, 1920).maxWidth
+    for (const [text, edge, language] of [['go الإعدادات في', 'الإعدادات', 'en'], ['افتح GOOGLE DOCS', 'GOOGLE', 'ar']]) {
+      const l = studioLayout(timed(text, 0.5, 0.45), s, 1080, 1920, wide, { faceOf: () => FACE, language })
+      expect(l.chunks.length, text).toBe(1)
+      const c = l.chunks[0]
+      const line = c.lines[0]
+      expect(line.words.map((w) => w.token), text).toEqual([0, 1, 2])
+      const shown = [...line.words].sort((a, b) => a.x - b.x)
+      expect([shown[0].text, shown[2].text], text).toContain(edge)
+      const placed = placeStudio(l, c, s, 1080, 1920, {})
+      for (const word of line.words) {
+        const tok = l.tokens[word.token]
+        let most = 0
+        for (let t = tok.start; t < tok.end + 0.2; t += 0.005) most = Math.max(most, captionPoses(l, 0, t, ONE, s, 1080, null, { spoken: true }).words.find((w) => w.token === word.token)!.scale)
+        expect(most, `${text} ${word.text}`).toBeGreaterThan(1.2)
+        const mid = placed.lines[0].x + word.x + word.w / 2
+        // Give or take the pop's overshoot (a tenth of the growth, for 0.1 s).
+        const slack = 0.1 * (s.motion.spokenScale! - 1) * word.w
+        expect(mid - (word.w * most) / 2, `${text} ${word.text}`).toBeGreaterThanOrEqual((1080 - room) / 2 - slack)
+        expect(mid + (word.w * most) / 2, `${text} ${word.text}`).toBeLessThanOrEqual((1080 + room) / 2 + slack)
+      }
+    }
+  })
+
   it('emphasised words are measured at the emphasis scale, and the layout keeps room for a spoken word that grows', () => {
     const bp = look('bold-pop')
     const l = lay(timed('make every word count'), bp, 1920, 1080, [{ from: 1, to: 1 }])

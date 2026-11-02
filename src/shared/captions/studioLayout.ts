@@ -10,7 +10,7 @@ import { isTall } from '../engine/reframeData'
 import { TEXT_INSET } from '../render/safeZones'
 import type { CaptionSegment, CaptionSettings, CaptionStudio, Project, StudioPosition } from '../types'
 import { scriptLineHeight, scriptScale } from './fontStack'
-import { CAPTION_MAX_WIDTH, CAPTION_SAFE, displayOrder, RTL_FIRST } from './layout'
+import { CAPTION_MAX_WIDTH, CAPTION_SAFE, displayOrder, RTL_FIRST, type CaptionWordBox } from './layout'
 import { CLAUSE_END, CURRENCY, END_WORDS, JOIN_WORDS, NO_LINE_END, NO_LINE_START, POST_WORDS, SENTENCE_END, UNIT_WORDS } from './phraseWords'
 import { hasCase, mainScript, scriptOf, studioTokens, withDigits, type ScriptTag, type StudioToken } from './words'
 
@@ -537,14 +537,19 @@ export function studioLayout(
     const at = meter.width(a, b)
     if (!(at > 0)) return 1
     const k = fitted ? Math.min(2.2, Math.max(0.6, (m.maxWidth * lay.fit!) / at)) : 1
-    // Each word grows by g(i) around its middle: the line, centred, needs twice what it reaches past its nearer end.
-    let need = at
+    // Each word grows by g(i) around its middle where it shows (a run read the other way is mirrored,
+    // so a word in the middle in reading order can stand at the edge): the line, centred, needs twice
+    // what it reaches past its nearer end.
+    const boxes: CaptionWordBox[] = []
     let x = 0
     for (let i = a; i < b; i++) {
       if (i > a) x += spaces[i]
-      need = Math.max(need, at + g(i) - 2 * Math.min(x, at - x - widths[i]))
+      boxes.push({ token: i, text: tokens[i].text, x, w: widths[i] })
       x += widths[i]
     }
+    displayOrder(boxes, at, dirs, rtl ? 'r' : 'l')
+    let need = at
+    for (const bx of boxes) need = Math.max(need, at + g(bx.token) - 2 * Math.min(bx.x, at - bx.x - bx.w))
     return need * k > m.maxWidth * (1 + 1e-9) ? m.maxWidth / need : k
   }
   const chunks: StudioChunk[] = ranges.map((group) => {
