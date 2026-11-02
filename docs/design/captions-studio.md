@@ -1723,8 +1723,11 @@ Montserrat, Oswald and Nunito.
 3. The other bundled script fonts (for mixed text such as an English product name in Bangla).
    For Bangla this is the look's Bangla font (§0.2), else Noto Sans Bengali, so the Bangla of a
    mixed word such as "Windows-এ" draws like the Bangla words around it. A word with any Bangla
-   letter also follows Bangla's limits (`sizeScript`): the thin outline, and ×1.14 at most when
-   emphasised or spoken, in the layout's room, the motion and the paint alike.
+   letter also follows Bangla's limits (`sizeScript`): the thin outline, ×1.14 at most when
+   emphasised or spoken, in the layout's room, the motion and the paint alike, and no spoken tilt.
+   Whatever any of a word's scripts needs, it gets (`wordScripts`: "Chrome-টি" is Latin and Bangla,
+   "Windows-में" Latin and Devanagari): its line's height, its sticker's top, no letter spacing, and
+   the typewriter's equal steps; and it is never a short Latin word that joins the next ("AI-র").
 4. `FlownCat-noto-color-emoji`: always, after the text fonts. Without it, emoji fall back to
    Segoe UI Emoji (tested: the system font took over).
 5. The language's Windows fonts: Nirmala UI (Tamil, Telugu and other Indic scripts), Leelawadee UI
@@ -2059,6 +2062,13 @@ under 1 ms.
   spoken words at their largest: a block dragged against a side moves in by as far as a line's
   grown edge word reaches past the block (§8.4), so Bold Pop's popped TROUBLESHOOTING is never cut
   off. A dragged block does not avoid obstacles: the user put it there.
+- **Stickers** (`box.kind` 'word'): each sticker reaches past its row, 0.62 em above and below the
+  line's middle (0.8 em above for Bangla and Hindi, 0.92 for Thai) plus its padding and border,
+  grown with its spoken word and turned by the look's tilt (a wide sticker reaches hw × sin 4°
+  further). The block keeps that inside too, as far as any chunk of the caption reaches, so its
+  chunks keep one height: a dragged block 0.06 u inside the frame (or the text area), a block at a
+  position inside the text area or 0.03 u from the frame's edges, as far as a block may go. It
+  moves in only when a sticker would reach further.
 - **One caption at the top or the bottom** (`captionPlaces`, §2.7): that caption uses the Top or
   Bottom anchor whatever the look's position, and does not move to avoid obstacles. Legacy looks
   honour it too (`placeOf`, §14.2): `placeChunk` gets 'top' or 'bottom' for that caption.

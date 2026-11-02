@@ -343,6 +343,74 @@ describe('Bangla edges (§0.2: outlines about 0.08 em, thinner than Latin, with 
     }
   })
 
+  it('a mixed word (Chrome-টি, Windows-में) gets the sticker room above its vowel signs that the Bangla and Hindi words beside it get', () => {
+    // The sticker's top edge above the word's middle, in the sprite's em, on each sprite that painted `word` (its shadow sits lower).
+    const tops = (word: string): number[] => {
+      const texts = spriteTexts()
+      return [...texts.keys()]
+        .filter((id) => texts.get(id)![0] === word)
+        .map((id) => {
+          const on = calls.filter((c) => c.canvas === id)
+          const em = parseFloat(/([\d.]+)px/.exec(String(on.find((c) => c.name === 'fillText')!.font))![1])
+          return -Math.min(...on.filter((c) => c.name === 'roundRect').map((c) => c.args[1] as number)) / em
+        })
+    }
+    const draw = (text: string, language: string): void => {
+      const [a, b] = text.split(' ')
+      const seg: CaptionSegment = { id: 'b1', start: 0.5, end: 3, text, words: [{ text: a, start: 0.5, end: 0.9 }, { text: b, start: 1, end: 1.4 }] }
+      drawStudioCaptions(frameOf(project([seg], language, { studio: look('stickers') }), 2).fc)
+    }
+    draw('Chrome-টি কিন্তু', 'bn')
+    // ি reaches 0.72 em above the middle: the 0.1 em border starts above 0.8 em, for the mixed word as for কিন্তু.
+    for (const word of ['Chrome-টি', 'কিন্তু']) {
+      expect(tops(word).length, word).toBeGreaterThan(0)
+      for (const top of tops(word)) expect(top, word).toBeCloseTo(0.8 + 0.07, 6)
+    }
+    calls.length = 0
+    STUDIO_SPRITES.clear()
+    draw('Windows-में खोलें', 'hi')
+    for (const word of ['Windows-में', 'खोलें']) {
+      expect(tops(word).length, word).toBeGreaterThan(0)
+      for (const top of tops(word)) expect(top, word).toBeCloseTo(0.8 + 0.07, 6)
+    }
+  })
+
+  it('a mixed word (Chrome-টি) draws with no letter spacing, so its Bangla stays joined as the Bangla words beside it (§6.6)', () => {
+    sets.length = 0
+    // Highlight Box spaces its Latin letters 0.02 em.
+    drawStudioCaptions(frameOf(project([caption('Chrome-টি Chrome খুলুন')], 'bn', { studio: look('highlight-box') }), 1).fc)
+    const spacing = (word: string): string[] => {
+      const texts = spriteTexts()
+      const ids = new Set([...texts.keys()].filter((id) => texts.get(id)![0] === word))
+      return sets.filter((x) => ids.has(x.canvas) && x.name === 'letterSpacing').map((x) => String(x.value))
+    }
+    for (const word of ['CHROME-টি', 'খুলুন']) {
+      expect(spacing(word).length, word).toBeGreaterThan(0)
+      for (const v of spacing(word)) expect(v, word).toBe('0px')
+    }
+    expect(spacing('CHROME').length).toBeGreaterThan(0)
+    for (const v of spacing('CHROME')) expect(parseFloat(v)).toBeGreaterThan(0)
+  })
+
+  it("a mixed word (Chrome-টি) types in equal steps of its width, as a Bangla word: a prefix of its Bangla does not draw as in the word (§9.3)", () => {
+    const seg: CaptionSegment = { id: 'b1', start: 0.5, end: 3, text: 'Chrome-টি আজ', words: [{ text: 'Chrome-টি', start: 0.5, end: 1.5 }, { text: 'আজ', start: 2, end: 2.5 }] }
+    const p = project([seg], 'bn', { studio: look('typewriter') })
+    // The caret's places while the word types, then once it is typed.
+    const xs: number[] = []
+    for (let t = 0.5; t < 1.9; t += 0.01) {
+      calls.length = 0
+      const { fc, id } = frameOf(p, t)
+      drawStudioCaptions(fc)
+      const caret = calls.filter((c) => c.canvas === id && c.name === 'fillRect')
+      const x = caret.length ? (caret[caret.length - 1].args[0] as number) : NaN
+      if (Number.isFinite(x) && !xs.some((v) => Math.abs(v - x) < 1e-6)) xs.push(x)
+    }
+    // Its 8 letters (টি is one): 9 places, each 1/8 of the word's width after the one before.
+    expect(xs).toHaveLength(9)
+    const steps = xs.slice(1).map((x, i) => x - xs[i])
+    for (const step of steps) expect(step).toBeCloseTo(steps[0], 6)
+  })
+
   it('Bangla in a look without a shadow (Circle) gets a soft shadow with its thinner outline; English keeps none', () => {
     sets.length = 0
     const p = project([caption('আমরা আজ শিখব')], 'bn', { studio: look('circle') })

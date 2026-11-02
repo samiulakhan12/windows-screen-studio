@@ -66,6 +66,20 @@ describe('auto emphasis (test 36)', () => {
     expect(pickEmphasis(bn, { maxShare: 1 / 6 }).map((m) => m.text.replace(/[।]+$/u, ''))).toEqual(['Flown', '৩০০', 'Settings'])
   })
 
+  it('a mostly Bangla transcript that names no language gets the same picks as one named Bangla (§0.2)', () => {
+    const texts = [
+      'আজকে আমরা দেখব কীভাবে উইন্ডোজ আপডেট বন্ধ করতে হয়', 'প্রথমে কন্ট্রোল প্যানেল খুলুন', 'তারপর সিকিউরিটি ট্যাবে যান',
+      'এখানে অটোমেটিক আপডেট অপশনটা বন্ধ করে দিন', 'তারপর রিস্টার্ট দিন', 'ব্যাস হয়ে গেল', 'আমি এই ভিডিওতে আপনাদের দেখাবো কীভাবে সেটিংস খুলতে হয়',
+      'প্রথমে আপনি স্টার্ট মেনুতে ক্লিক করুন', 'তারপর আমরা নিরাপত্তা অপশনটি বেছে নেব', 'এটা খুবই গুরুত্বপূর্ণ একটা ধাপ', 'এবার সেভ বাটনে চাপ দিন'
+    ]
+    const named = project(segs(texts, 'n'), 'bn')
+    const unnamed = project(segs(texts, 'n'), 'bn')
+    delete (unnamed.transcript as { language?: string }).language
+    // The objects of the polite commands (খুলুন, করুন) are picked, with or without the language code.
+    expect(picked(named)).toEqual(['প্যানেল', 'মেনুতে'])
+    expect(pickEmphasis(unnamed)).toEqual(pickEmphasis(named))
+  })
+
   it('"important", "never", "only" and "open" are not stop words; no list holds a negation', () => {
     for (const w of ['important', 'never', 'only', 'open', 'every', 'not', 'best']) expect(STOP_WORDS.en.has(w)).toBe(false)
     expect(STOP_WORDS.bn.has('না')).toBe(false)

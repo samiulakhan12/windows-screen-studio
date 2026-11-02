@@ -13,6 +13,7 @@ import { catalogFamily, catalogFont, catalogId, type CatalogFile, type CatalogFo
 import { coverageNeeded, partnerFor } from '../../../shared/captions/fontStack'
 import { effectiveStudio, STUDIO_BASE } from '../../../shared/captions/studioPresets'
 import { fontFamily, fontOf, fontStack } from '../../../shared/render/fonts'
+import { counterText, graphicNeeds, graphicWords, listNumberText } from '../../../shared/render/graphics'
 import { MEDIA_SCHEME, mediaUrl } from '../../../shared/mediaUrl'
 import type { Graphic, Project, ProjectFont, TitleCard } from '../../../shared/types'
 import { BUNDLED_FONT_URLS } from './catalogFonts'
@@ -291,12 +292,17 @@ function cjkFont(language: string | undefined, text: string): string | null {
   return null
 }
 
-/** The texts a graphic draws (keyword, list title and items, counter label, prefix and suffix). */
-function graphicTexts(g: Graphic): string[] {
-  if (g.kind === 'keyword') return [g.text]
-  if (g.kind === 'list') return [g.title ?? '', ...g.items.map((i) => i.text)]
-  if (g.kind === 'counter') return [g.prefix, g.suffix, g.label ?? '']
-  return []
+
+/**
+ * The texts a graphic draws: its words (graphicWords), and the numbers graphicsLayer draws with them
+ * in the captions' Digits choice: a counter's in its locale (Bangla ৩০০% needs a Bangla font as its
+ * label does), and a numbered list card's (১, ২ beside English items).
+ */
+function graphicTexts(g: Graphic, project: Project): string[] {
+  const words = graphicWords(g)
+  if (g.kind === 'counter') return [counterText(g, g.to, project.captions?.digits, captionLanguage(project)).text, ...words]
+  if (g.kind === 'list' && g.marker === 'number') return [g.items.map((_, i) => listNumberText(i + 1, project.captions?.digits, captionLanguage(project))).join(' '), ...words]
+  return words
 }
 
 /** The brand font ids (ProjectFont ids) of the Studio look and the graphics (FlownFontW-, §6.7). */
@@ -389,11 +395,11 @@ function catalogIdsOf(project: Project, captions: boolean, asIs = false): string
   const graphics = project.graphics ?? []
   for (const g of graphics) {
     // A graphic without a font takes the look's (Subtitle's on a legacy look), and draws in its
-    // partner when the language needs letters it lacks (graphicsLayer's fontRef).
+    // partner when its words need letters it lacks (graphicNeeds, as graphicsLayer's fontRef).
     const font = g.font ?? studio?.text.font ?? STUDIO_BASE.text.font
     add(font)
-    add(partnerFor(font, coverageNeeded(captionLanguage(project), '')))
-    texts.push(...graphicTexts(g))
+    add(partnerFor(font, graphicNeeds(project, g)))
+    texts.push(...graphicTexts(g, project))
   }
   for (const c of project.titles ?? []) {
     const id = titleCatalogId(c)

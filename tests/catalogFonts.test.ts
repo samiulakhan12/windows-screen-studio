@@ -157,6 +157,34 @@ describe('catalogFontsFor (§6.8)', () => {
     expect(fonts.catalogFontsFor(withStudio(look('bold-pop'), { titles: [{ ...name, auto: undefined }] }))).not.toContain('baloo-da-2')
   })
 
+  it('adds the Bangla fonts for the Bangla digits a counter draws, on a legacy look too (§0.2)', () => {
+    const counter = (over: Partial<Graphic> = {}): Graphic =>
+      ({ id: 'n1', kind: 'counter', start: 0, end: 2, place: 'auto', size: 0.11, from: 0, to: 300, decimals: 0, prefix: '', suffix: '%', locale: 'bn', countFor: 2, enter: { kind: 'pop', duration: 0.24, strength: 1 }, exit: { kind: 'fade', duration: 0.18, strength: 1 }, ...over }) as Graphic
+    const bn = { segments: [{ id: 'c1', start: 0, end: 2, text: 'আমাদের আয় ৩০০% বেড়েছে এই বছরে' }] }
+    // A Bangla counter (৩০০%) with no words of its own, on a Classic look, the transcript naming no language or Bangla.
+    for (const transcript of [bn, { ...bn, language: 'bn' }]) expect(fonts.catalogFontsFor(project({ transcript, graphics: [counter()] } as Partial<Project>))).toEqual(expect.arrayContaining(['hind-siliguri', 'noto-sans-bengali']))
+    // An English-locale counter drawn with Bangla digits by the Digits choice.
+    const native = project({ transcript: { ...bn, language: 'bn' }, graphics: [counter({ locale: 'en' } as Partial<Graphic>)] } as Partial<Project>)
+    expect(fonts.catalogFontsFor({ ...native, captions: { ...native.captions!, digits: 'native' } })).toEqual(expect.arrayContaining(['hind-siliguri', 'noto-sans-bengali']))
+    // Western digits add none.
+    expect(fonts.catalogFontsFor(project({ graphics: [counter({ locale: 'en' } as Partial<Graphic>)] }))).not.toContain('noto-sans-bengali')
+  })
+
+  it('adds the Bangla fonts for the Bangla numbers a list card draws, its items in English (§0.2)', () => {
+    const list = (marker: 'number' | 'bullet'): Graphic =>
+      ({ id: 'l1', kind: 'list', start: 0, end: 4, place: 'auto', size: 0.05, marker, items: [{ text: 'Chrome', at: 0 }, { text: 'Firefox', at: 1 }], enter: { kind: 'pop', duration: 0.24, strength: 1 }, exit: { kind: 'fade', duration: 0.18, strength: 1 } }) as Graphic
+    const bn = { segments: [{ id: 'c1', start: 0, end: 2, text: 'আমরা আজ দুটি ব্রাউজার দেখব' }] }
+    const native = (transcript: object, marker: 'number' | 'bullet'): Project => {
+      const p = project({ transcript, graphics: [list(marker)] } as Partial<Project>)
+      return { ...p, captions: { ...p.captions!, digits: 'native' } }
+    }
+    // Bangla captions with Bangla digits chosen: the card numbers its items ১, ২ on a Classic look, the transcript naming no language or Bangla.
+    for (const transcript of [bn, { ...bn, language: 'bn' }]) expect(fonts.catalogFontsFor(native(transcript, 'number'))).toEqual(expect.arrayContaining(['hind-siliguri', 'noto-sans-bengali']))
+    // Bullets have no number, and Western digits are drawn in the look's font.
+    expect(fonts.catalogFontsFor(native({ ...bn, language: 'bn' }, 'bullet'))).not.toContain('noto-sans-bengali')
+    expect(fonts.catalogFontsFor(project({ transcript: { ...bn, language: 'bn' }, graphics: [list('number')] } as Partial<Project>))).not.toContain('noto-sans-bengali')
+  })
+
   it('loads the fonts of the look the captions draw with: Chat with no speaker draws as Subtitle (§0.1)', () => {
     const text = 'আমরা আজ শিখব কীভাবে ভিডিও বানাতে হয়'
     const chat = look('chat')
@@ -190,6 +218,27 @@ describe('catalogFontsFor (§6.8)', () => {
     // On a legacy look too: Bebas Neue → Oswald in Vietnamese.
     const vi = { language: 'vi', segments: [{ id: 'c1', start: 0, end: 2, text: 'Xin chào mọi người' }] }
     expect(fonts.catalogFontsFor(project({ transcript: vi, graphics: [keyword({ font: 'cat:bebas-neue' })] } as Partial<Project>))).toContain('oswald')
+  })
+
+  it('adds the partner for the language of the graphic’s own words, never a shown translation’s, and for its own Cyrillic or Greek', () => {
+    const track = (language: string, text: string): Partial<Project> =>
+      ({ captionTracks: [{ language, by: 'openai', model: 'm', createdAt: '2026-11-01T00:00:00Z', segments: [{ id: 'c1', text, src: 'x' }] }] }) as Partial<Project>
+    const shown = (p: Project, language: string): Project => ({ ...p, captions: { ...p.captions!, track: language } })
+    // Russian speech with its English translation shown: the Russian pop-up still draws in Oswald.
+    const ru = { language: 'ru', segments: [{ id: 'c1', start: 0, end: 2, text: 'Продажи выросли' }] }
+    const ruShown = shown(withStudio(look('subtitle'), { transcript: ru, graphics: [keyword({ text: 'Продажи', font: 'cat:anton' })], ...track('en', 'Sales grew') } as Partial<Project>), 'en')
+    expect(fonts.catalogFontsFor(ruShown)).toEqual(expect.arrayContaining(['anton', 'oswald']))
+    // English speech with its Russian translation shown: the English pop-up draws in Anton alone.
+    const en = { language: 'en', segments: [{ id: 'c1', start: 0, end: 2, text: 'Sales grew' }] }
+    const enShown = shown(project({ transcript: en, graphics: [keyword({ text: 'Sales', font: 'cat:anton' })], ...track('ru', 'Продажи выросли') } as Partial<Project>), 'ru')
+    expect(fonts.catalogFontsFor(enShown)).toContain('anton')
+    expect(fonts.catalogFontsFor(enShown)).not.toContain('oswald')
+    // A graphic of the Russian track (its own language) draws in Oswald.
+    const own = shown(project({ transcript: en, graphics: [keyword({ text: 'Продажи', lang: 'ru', font: 'cat:anton' })], ...track('ru', 'Продажи выросли') } as Partial<Project>), 'ru')
+    expect(fonts.catalogFontsFor(own)).toContain('oswald')
+    // Cyrillic or Greek typed into a graphic of English speech: Oswald, and Inter Tight for Greek.
+    expect(fonts.catalogFontsFor(project({ transcript: en, graphics: [keyword({ text: 'Экспорт', font: 'cat:anton' })] } as Partial<Project>))).toContain('oswald')
+    expect(fonts.catalogFontsFor(project({ transcript: en, graphics: [keyword({ text: 'Ωmega', font: 'cat:anton' })] } as Partial<Project>))).toContain('inter-tight')
   })
 
   it('adds the partners of partners the drawing walks to: Anton → Oswald → Inter Tight for Greek', () => {

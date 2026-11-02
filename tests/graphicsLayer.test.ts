@@ -272,22 +272,39 @@ describe('the graphics layer (§10.4)', () => {
     for (const f of fonts([bn[0]])) expect(f).toContain('"FlownCat-inter-tight", "FlownCat-hind-siliguri", "FlownCat-noto-sans-bengali"')
   })
 
-  it('draws a graphic in its font’s partner when the language needs letters the font lacks, as its captions (§6.6)', async () => {
+  it('draws a graphic in its font’s partner when its words need letters the font lacks, as its captions (§6.6)', async () => {
     const real = await vi.importActual<typeof import('../src/shared/captions/fontStack')>('../src/shared/captions/fontStack')
     const needs = vi.spyOn(fakeFontStack, 'coverageNeeded').mockImplementation(real.coverageNeeded as typeof fakeFontStack.coverageNeeded)
     const partner = vi.spyOn(fakeFontStack, 'partnerFor').mockImplementation(real.partnerFor as typeof fakeFontStack.partnerFor)
     try {
-      const fonts = (language: string): string[] => {
+      const fonts = (g: Partial<KeywordGraphic>, spoken: string, shown?: { language: string; text: string }): string[] => {
         calls.length = 0
         STUDIO_SPRITES.clear()
-        drawGraphicsLayer(frameOf(project([keyword({ text: 'Экспорт', font: 'cat:anton' })], { transcript: { language, segments: [] } } as unknown as Partial<Project>), 2).fc)
-        return calls.filter((c) => c.name === 'fillText').map((c) => String(c.font))
+        const over = {
+          transcript: { language: spoken, segments: [{ id: 'c1', start: 0, end: 3, text: 'x' }] },
+          ...(shown ? { captionTracks: [{ language: shown.language, by: 'openai', model: 'm', createdAt: '2026-11-01T00:00:00Z', segments: [{ id: 'c1', text: shown.text, src: 'x' }] }], captions: { show: true, track: shown.language } } : {})
+        }
+        drawGraphicsLayer(frameOf(project([keyword({ font: 'cat:anton', ...g })], over as unknown as Partial<Project>), 2).fc)
+        const out = calls.filter((c) => c.name === 'fillText').map((c) => String(c.font))
+        expect(out.length, `${g.text} ${spoken} ${shown?.language ?? '-'}`).toBeGreaterThan(0)
+        return out
       }
-      const ru = fonts('ru')
-      expect(ru.length).toBeGreaterThan(0)
-      for (const f of ru) expect(f).toMatch(/px "FlownCat-oswald", /)
-      // English: Anton as chosen.
-      for (const f of fonts('en')) expect(f).toMatch(/px "FlownCat-anton", /)
+      const all = (fs: string[], family: string): void => {
+        for (const f of fs) expect(f).toMatch(new RegExp(`px "FlownCat-${family}", `))
+      }
+      // Russian speech: Oswald for its Russian (Anton has no Cyrillic), and still with the English
+      // translation shown: graphics hold the spoken words, which the shown track never changes.
+      all(fonts({ text: 'Экспорт' }, 'ru'), 'oswald')
+      all(fonts({ text: 'Экспорт' }, 'ru', { language: 'en', text: 'Export' }), 'oswald')
+      // English speech: Anton as chosen, and still with the Russian translation shown.
+      all(fonts({ text: 'Export' }, 'en'), 'anton')
+      all(fonts({ text: 'Export' }, 'en', { language: 'ru', text: 'Экспорт' }), 'anton')
+      // A graphic of the Russian track (its own language) is drawn in Oswald over English speech.
+      all(fonts({ text: 'Экспорт', lang: 'ru' }, 'en', { language: 'ru', text: 'Экспорт' }), 'oswald')
+      // Its own Cyrillic or Greek letters, typed in, need them too, as a caption's do: Anton → Oswald
+      // for Cyrillic, → Oswald → Inter Tight for Greek.
+      all(fonts({ text: 'Экспорт' }, 'en'), 'oswald')
+      all(fonts({ text: 'Ωmega' }, 'en'), 'inter-tight')
     } finally {
       needs.mockRestore()
       partner.mockRestore()

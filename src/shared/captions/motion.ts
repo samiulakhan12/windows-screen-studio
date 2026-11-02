@@ -695,8 +695,9 @@ export function captionPoses(
           pose.scale *= 1 + from * (1 - EASE.out((now - next) / down))
         }
       }
-      /* Bold Pop's spoken word tilts (-2°) while spoken; not in Bangla, as the approved Bangla pop */
-      if (!calm && s > 0 && wm.spokenTilt && spokenAt === i && tok.script !== 'bengali') pose.rotate += wm.spokenTilt * s
+      /* Bold Pop's spoken word tilts (-2°) while spoken; not in Bangla, as the approved Bangla pop,
+         nor a mixed word with Bangla letters ("Chrome-টি", Latin by its first letter; sizeScript) */
+      if (!calm && s > 0 && wm.spokenTilt && spokenAt === i && sizeScript(tok) !== 'bengali') pose.rotate += wm.spokenTilt * s
     }
     /* emphasis marks draw with the wipe timing */
     if (emph && studio.emphasis.mark !== 'none') {

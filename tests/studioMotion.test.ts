@@ -409,6 +409,8 @@ describe('spoken marks and word motion (§9.3)', () => {
     expect(straight(rot(l, 0.5, withMotion(s, { calm: true })))).toBe(true)
     // Not in Bangla (the approved Bangla pop stands straight), nor on a word whose time is estimated.
     expect(straight(rot(lay(timed('এক ক্লিকে সুন্দর', 0.4), s, 1080, 1920, undefined, 'bn'), 0.5))).toBe(true)
+    // Nor on a mixed word with Bangla letters (Latin by its first letter), as the Bangla words beside it.
+    expect(straight(rot(lay(timed('এক Chrome-টি সুন্দর', 0.4), s, 1080, 1920, undefined, 'bn'), 0.5))).toBe(true)
     const guess = timed('go export it', 0.4)
     guess.words = guess.words!.map((w) => ({ ...w, estimated: true as const }))
     expect(straight(rot(lay(guess, s), 0.5))).toBe(true)

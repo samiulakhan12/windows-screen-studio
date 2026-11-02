@@ -65,6 +65,11 @@ describe('chunk modes (test 9)', () => {
     expect(chunkTexts(lay(timed('Click IN THE big box now'), look('one-word')))).toEqual(['CLICK', 'IN THE', 'BIG BOX', 'NOW'])
   })
 
+  it('one word: a mixed word (AI-র) is not a short Latin word and stands alone', () => {
+    expect(chunkTexts(lay(timed('AI-র ব্যবহার বাড়ছে'), look('one-word')))).toEqual(['AI-র', 'ব্যবহার', 'বাড়ছে'])
+    expect(chunkTexts(lay(timed('AI ব্যবহার বাড়ছে'), look('one-word')))).toEqual(['AI ব্যবহার', 'বাড়ছে'])
+  })
+
   it('one word: Chinese words of 2–4 characters', () => {
     const l = studioLayout({ id: 'c', start: 0, end: 3, text: '我们今天学习如何导出视频' }, look('one-word'), 1080, 1920, measure, { faceOf: () => FACE, language: 'zh' })
     for (const t of chunkTexts(l)) expect([...t].length, t).toBeGreaterThanOrEqual(2)
@@ -299,6 +304,19 @@ describe('chunk modes (test 9)', () => {
     expect(gap).toBeCloseTo(0.55 * words[0].px + ((1.14 * (1 + 0.08 * bp.motion.strength) - 1) * words[0].w) / 2, 9)
   })
 
+  it('gives a line with a mixed word (Chrome-টি) the Bangla line height, as a Bangla word on it would (§6.6)', () => {
+    /** The height of the line holding `word`, per px of its largest word. */
+    const tall = (text: string, word: string): number => {
+      const lines = lay(timed(text), look('bold-pop'), 1080, 1920).chunks.flatMap((c) => c.lines)
+      const line = lines.find((l) => l.words.some((w) => w.text === word))!
+      return line.height / Math.max(...line.words.map((w) => w.px))
+    }
+    expect(tall('open Chrome now', 'CHROME')).toBeCloseTo(1.05, 9)
+    expect(tall('open কিন্তু now', 'কিন্তু')).toBeCloseTo(1.4, 9)
+    // Latin by its first letter, its টি reaches as high as a Bangla word's vowel signs.
+    expect(tall('open Chrome-টি now', 'CHROME-টি')).toBeCloseTo(1.4, 9)
+  })
+
   it('raises the line height for Bangla captions', () => {
     const bn = studioLayout({ id: 'c', start: 0, end: 2, text: 'আমরা আজ শিখব' }, look('bold-pop'), 1080, 1920, measure, { faceOf: () => FACE, language: 'bn' })
     expect(bn.lineHeight / bn.px).toBeCloseTo(1.4, 9)
@@ -411,6 +429,91 @@ describe('positions (test 10)', () => {
         expect(left, `${id} ${x}`).toBeGreaterThanOrEqual(0)
         expect(right, `${id} ${x}`).toBeLessThanOrEqual(1080)
       }
+  })
+
+  it('a dragged Stickers block keeps the spoken sticker inside the frame at any size and padding, its padding growing with it (§8.5)', () => {
+    // Each sticker grows with its word, padding and border too, so the block's padding is no room the
+    // grown word can use: at Size 13% in a wide frame the spoken TROUBLESHOOTING sticker reached 9 px
+    // past the right edge. Its tilted corners, at its largest and with the chunk's entrance, stay inside.
+    for (const [W, H] of [[1920, 1080], [1080, 1920], [1080, 1080]])
+      for (const size of [0.065, 0.13, 0.16])
+        for (const padX of [0.33, 0.6, 1])
+          for (const x of [0, 1]) {
+            const base = look('stickers')
+            const s: CaptionStudio = { ...base, text: { ...base.text, size }, box: { ...base.box, padX }, layout: { ...base.layout, place: { x, y: 0.7 } } }
+            const b = s.box
+            const l = lay(timed('fix the troubleshooting step', 0.5, 0.45), s, W, H)
+            const id = `${W}x${H} size ${size} padX ${padX} x ${x}`
+            let left = Infinity
+            let right = -Infinity
+            l.chunks.forEach((c, ci) => {
+              const placed = placeStudio(l, c, s, W, H, {})
+              const cx = placed.box.x + placed.box.w / 2
+              c.lines.forEach((line, li) =>
+                line.words.forEach((word) => {
+                  const mid = placed.lines[li].x + word.x + word.w / 2
+                  const hw = word.w / 2 + (b.padX + b.border / 2) * word.px
+                  const hh = (0.62 + b.padY + b.border / 2) * word.px
+                  for (let t = c.start; t < c.end; t += 0.005) {
+                    const p = captionPoses(l, ci, t, ONE, s, Math.min(W, H), null, { spoken: true })
+                    const wp = p.words.find((w) => w.token === word.token)!
+                    const a = (wp.rotate * Math.PI) / 180
+                    const half = (hw * Math.abs(Math.cos(a)) + hh * Math.abs(Math.sin(a))) * wp.scale * wp.scaleX
+                    left = Math.min(left, cx + p.chunk.dx + (mid + wp.dx - half - cx) * p.chunk.scale)
+                    right = Math.max(right, cx + p.chunk.dx + (mid + wp.dx + half - cx) * p.chunk.scale)
+                  }
+                })
+              )
+            })
+            expect(left, id).toBeGreaterThanOrEqual(0)
+            expect(right, id).toBeLessThanOrEqual(W)
+          }
+  })
+
+  it('a Stickers block at the top or the bottom keeps its grown, tilted stickers inside the frame, dragged there or at Top or Bottom (§8.4, §8.5)', () => {
+    // A sticker reaches past its row: its top 0.62 em above the line's middle (0.8 em for Bangla and
+    // Hindi), its bottom 0.62 em below, its border too; it grows with the spoken word and turns by the
+    // look's tilt, so a wide one reaches hw·sin 4° further. At Size 13% the spoken TROUBLESHOOTING
+    // sticker reached 8 px past the bottom of a block dragged there, and the Hindi one 10 px past the
+    // top at Top. The chunk's entrance rises in from below while it fades in: its faint first frames
+    // are left out.
+    const texts: [string, string][] = [['fix the troubleshooting step', 'en'], ['Windows-में अपडेट करें', 'hi'], ['আমাদের সমস্যাসমাধান আজ', 'bn']]
+    const wheres: ({ place: { x: number; y: number } } | { position: StudioPosition })[] = [{ place: { x: 0.5, y: 0 } }, { place: { x: 0.5, y: 1 } }, { position: 'top' }, { position: 'bottom' }]
+    for (const [W, H] of [[1920, 1080], [1080, 1920], [1080, 1080]])
+      for (const size of [0.065, 0.13, 0.16, 0.22])
+        for (const where of wheres)
+          for (const [text, language] of texts) {
+            const base = look('stickers')
+            const { place: _place, ...rest } = base.layout
+            const s: CaptionStudio = { ...base, text: { ...base.text, size }, layout: { ...rest, ...where } }
+            const b = s.box
+            const l = studioLayout(timed(text, 0.5, 0.45), s, W, H, measure, { faceOf: () => FACE, language })
+            const id = `${W}x${H} size ${size} ${JSON.stringify(where)} ${text}`
+            let top = Infinity
+            let bottom = -Infinity
+            l.chunks.forEach((c, ci) => {
+              const placed = placeStudio(l, c, s, W, H, {})
+              const cy = placed.top + placed.height / 2
+              c.lines.forEach((line, li) =>
+                line.words.forEach((word) => {
+                  const my = placed.lines[li].y
+                  const hw = word.w / 2 + (b.padX + b.border / 2) * word.px
+                  const up = ((language === 'en' ? 0.62 : 0.8) + b.padY + b.border / 2) * word.px
+                  const down = (0.62 + b.padY + b.border / 2) * word.px
+                  for (let t = c.start; t < c.end; t += 0.01) {
+                    const p = captionPoses(l, ci, t, ONE, s, Math.min(W, H), null, { spoken: true })
+                    const wp = p.words.find((w) => w.token === word.token)!
+                    if (p.chunk.alpha * wp.alpha < 0.3) continue
+                    const a = Math.abs((wp.rotate * Math.PI) / 180)
+                    top = Math.min(top, cy + p.chunk.dy + (my + wp.dy - (hw * Math.sin(a) + up * Math.cos(a)) * wp.scale - cy) * p.chunk.scale)
+                    bottom = Math.max(bottom, cy + p.chunk.dy + (my + wp.dy + (hw * Math.sin(a) + down * Math.cos(a)) * wp.scale - cy) * p.chunk.scale)
+                  }
+                })
+              )
+            })
+            expect(top, id).toBeGreaterThanOrEqual(0)
+            expect(bottom, id).toBeLessThanOrEqual(H)
+          }
   })
 
   it("with legacyAnchor, the block sits where today's placeChunk puts it, in a tall frame and in its text area", () => {

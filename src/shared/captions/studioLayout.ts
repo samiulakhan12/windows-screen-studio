@@ -12,7 +12,7 @@ import type { CaptionSegment, CaptionSettings, CaptionStudio, Project, StudioPos
 import { scriptLineHeight, scriptScale, sizeScript } from './fontStack'
 import { CAPTION_MAX_WIDTH, CAPTION_SAFE, displayOrder, RTL_FIRST, type CaptionWordBox } from './layout'
 import { CLAUSE_END, CURRENCY, END_WORDS, JOIN_WORDS, NO_LINE_END, NO_LINE_START, POST_WORDS, SENTENCE_END, UNIT_WORDS } from './phraseWords'
-import { hasCase, mainScript, scriptOf, studioTokens, withDigits, type ScriptTag, type StudioToken } from './words'
+import { hasCase, mainScript, scriptOf, STICKER_HALF, STICKER_TOP, studioTokens, withDigits, wordScripts, type ScriptTag, type StudioToken } from './words'
 
 /** A word's font as drawn: the stack (its script's font first, §6.5), weight and letter spacing (em). */
 export interface StudioFace {
@@ -45,8 +45,15 @@ export interface StudioLine {
   width: number
   height: number
   px: number
-  /** How far its spoken words reach past its nearer end at their largest, px (§8.4); absent: they stay inside it. */
+  /** How far its spoken words (for Stickers, each word's sticker) reach past its nearer end at their largest, px (§8.4); absent: they stay inside it. */
   reach?: number
+  /**
+   * Stickers only: how far its stickers reach above and below the line's middle at their largest,
+   * tilted, border included, px (§8.4): a grown sticker reaches past its row, and the block keeps
+   * that inside the frame too.
+   */
+  above?: number
+  below?: number
 }
 
 export interface StudioChunk {
@@ -311,8 +318,8 @@ function chunkLines(tokens: readonly StudioToken[], meter: ReturnType<typeof lin
 
 /* ---------- chunks (§8.2) ---------- */
 
-/** A Latin word of at most `n` letters (they never end a chunk: "IN THE"). */
-const shortLatin = (t: StudioToken, n: number): boolean => t.script === 'latin' && (t.text.match(/\p{L}/gu)?.length ?? 0) <= n
+/** A Latin word of at most `n` letters (they never end a chunk: "IN THE"); a mixed word ("AI-র") is not one. */
+const shortLatin = (t: StudioToken, n: number): boolean => t.script === 'latin' && (t.text.match(/\p{L}/gu)?.length ?? 0) <= n && wordScripts(t).size === 1
 
 /** A few words (§8.2): a chunk ends at `words` words, a sentence end, a pause of 0.15 s or more, or the line limits; 1–2-letter Latin words join the next. */
 function fewWordsChunks(tokens: readonly StudioToken[], meter: ReturnType<typeof lineMeter>, words: number, room: number, maxChars: number, per: number, language: string | undefined): [number, number][][] {
@@ -537,7 +544,8 @@ export function studioLayout(
   // would grow past the room is drawn just small enough for it to fit.
   const fitted = (lay.chunk === 'word' || lay.chunk === 'stack') && lay.fit !== undefined
   // The line's scale, and how far its grown words then reach past its nearer end (a dragged block
-  // keeps that inside the frame too, §8.5).
+  // keeps that inside the frame too, §8.5). A sticker grows with its word, padding and border too, so
+  // for Stickers the reach is the grown sticker's, and the block's padding is no room to spare.
   const lineScale = (a: number, b: number): { k: number; reach: number } => {
     const at = meter.width(a, b)
     if (!(at > 0)) return { k: 1, reach: 0 }
@@ -554,9 +562,41 @@ export function studioLayout(
     }
     displayOrder(boxes, at, dirs, rtl ? 'r' : 'l')
     let need = at
-    for (const bx of boxes) need = Math.max(need, at + g(bx.token) - 2 * Math.min(bx.x, at - bx.x - bx.w))
+    let past = 0
+    for (const bx of boxes) {
+      const inside = Math.min(bx.x, at - bx.x - bx.w)
+      need = Math.max(need, at + g(bx.token) - 2 * inside)
+      if (box.kind === 'word') past = Math.max(past, g(bx.token) / 2 + peak(bx.token) * sticker(bx.token) - inside)
+    }
     const s = need * k > m.maxWidth * (1 + 1e-9) ? m.maxWidth / need : k
-    return { k: s, reach: ((need - at) / 2) * s }
+    return { k: s, reach: (box.kind === 'word' ? past : (need - at) / 2) * s }
+  }
+  // Stickers: each sticker turns by the look's word tilt (and an emphasised word's seeded tilt, the
+  // spoken word's tilt) about its word's middle on the line, and grows there with its word, so at
+  // its largest it reaches hw·sin t + (top + padY + border/2)·em·cos t above the line's middle
+  // (0.62 em below it instead of its top), times its peak (motion.ts captionPoses).
+  const m0 = studio.motion
+  const tiltOf = (i: number): number => {
+    if (calm) return 0
+    let deg = m0.wordTilt ? Math.max(Math.abs(m0.wordTilt[0]), Math.abs(m0.wordTilt[1])) : 0
+    if (emphasis[i] && m0.tilt > 0 && m0.tiltOn === 'emphasis') deg += m0.tilt
+    if (spoken && m0.spokenTilt && sizeScript(tokens[i]) !== 'bengali') deg += Math.abs(m0.spokenTilt)
+    return (Math.min(90, deg * Math.max(0, s0)) * Math.PI) / 180
+  }
+  const stickerReach = (words: readonly StudioWordBox[]): { above: number; below: number } => {
+    let above = 0
+    let below = 0
+    for (const wd of words) {
+      const t = tiltOf(wd.token)
+      const sin = Math.abs(Math.sin(t))
+      const cos = Math.cos(t)
+      const hw = wd.w / 2 + (box.padX + box.border / 2) * wd.px
+      const edge = (box.padY + box.border / 2) * wd.px
+      const up = Math.max(STICKER_HALF, ...[...wordScripts(tokens[wd.token])].map((sc) => STICKER_TOP[sc] ?? 0)) * wd.px
+      above = Math.max(above, peak(wd.token) * (hw * sin + (up + edge) * cos))
+      below = Math.max(below, peak(wd.token) * (hw * sin + (STICKER_HALF * wd.px + edge) * cos))
+    }
+    return { above, below }
   }
   const chunks: StudioChunk[] = ranges.map((group) => {
     const lines: StudioLine[] = group.map(([a, b]) => {
@@ -570,10 +610,11 @@ export function studioLayout(
       }
       displayOrder(words, x, dirs, rtl ? 'r' : 'l')
       // Each line is as tall as the tallest script on it needs (§0.2: Bangla 1.4), so a Bangla word
-      // among English ones keeps its vowel signs clear of the next line.
+      // among English ones keeps its vowel signs clear of the next line, and so does the Bangla of a
+      // mixed word ("Chrome-টি", Latin by its first letter).
       const top = Math.max(...words.map((wd) => wd.px))
-      const tall = Math.max(lhMul, ...words.map((wd) => scriptLineHeight(tokens[wd.token].script, studio.text.lineHeight)))
-      return { words, width: x, height: top * tall, px: m.px * k, ...(reach > 0 ? { reach } : {}) }
+      const tall = Math.max(lhMul, ...words.flatMap((wd) => [...wordScripts(tokens[wd.token])].map((sc) => scriptLineHeight(sc, studio.text.lineHeight))))
+      return { words, width: x, height: top * tall, px: m.px * k, ...(reach > 0 ? { reach } : {}), ...(box.kind === 'word' ? stickerReach(words) : {}) }
     })
     const first = group[0][0]
     const last = group[group.length - 1][1] - 1
@@ -851,10 +892,56 @@ export function fitChunk(
   const k = Math.min(1, Math.max(0.1, (room - (height - chunk.height)) / chunk.height))
   return {
     ...chunk,
-    lines: chunk.lines.map((l) => ({ ...l, words: l.words.map((wd) => ({ ...wd, x: wd.x * k, w: wd.w * k, px: wd.px * k })), width: l.width * k, height: l.height * k, px: l.px * k, ...(l.reach ? { reach: l.reach * k } : {}) })),
+    lines: chunk.lines.map((l) => ({
+      ...l,
+      words: l.words.map((wd) => ({ ...wd, x: wd.x * k, w: wd.w * k, px: wd.px * k })),
+      width: l.width * k,
+      height: l.height * k,
+      px: l.px * k,
+      ...(l.reach ? { reach: l.reach * k } : {}),
+      ...(l.above !== undefined ? { above: l.above * k } : {}),
+      ...(l.below !== undefined ? { below: l.below * k } : {})
+    })),
     width: chunk.width * k,
     height: chunk.height * k
   }
+}
+
+/** How far a chunk's stickers reach past its block (lines' above and below, studioLayout), px. */
+function chunkStickersPast(chunk: StudioChunk, studio: CaptionStudio, px: number, w: number): { rise: number; drop: number } {
+  const b = blockOf(chunk, studio, px, w)
+  let rise = 0
+  let drop = 0
+  chunk.lines.forEach((l, i) => {
+    const mid = b.rows[i].offset + b.rows[i].height / 2
+    rise = Math.max(rise, (l.above ?? 0) - mid)
+    drop = Math.max(drop, mid + (l.below ?? 0) - b.height)
+  })
+  return { rise, drop }
+}
+
+const NO_PAST: Readonly<{ rise: number; drop: number }> = Object.freeze({ rise: 0, drop: 0 })
+/** stickersPast over a layout's chunks, made once per layout, look and frame width (placeStudio runs every frame). */
+const pasts = new WeakMap<StudioLayout, { studio: CaptionStudio; w: number; past: { rise: number; drop: number } }>()
+
+/** For Stickers, how far the stickers of `chunk` and of every chunk of its caption reach above their block's top and below its bottom at their largest, px; 0 for other looks. */
+function stickersPast(layout: StudioLayout, chunk: StudioChunk, studio: CaptionStudio, w: number): Readonly<{ rise: number; drop: number }> {
+  if (studio.box.kind !== 'word') return NO_PAST
+  let hit = pasts.get(layout)
+  if (!hit || hit.studio !== studio || hit.w !== w) {
+    let rise = 0
+    let drop = 0
+    for (const c of layout.chunks) {
+      const p = chunkStickersPast(c, studio, layout.px, w)
+      rise = Math.max(rise, p.rise)
+      drop = Math.max(drop, p.drop)
+    }
+    pasts.set(layout, (hit = { studio, w, past: { rise, drop } }))
+  }
+  if (layout.chunks.includes(chunk)) return hit.past
+  // A chunk that is not one of the layout's (a look tile's first lines) counts too.
+  const p = chunkStickersPast(chunk, studio, layout.px, w)
+  return { rise: Math.max(hit.past.rise, p.rise), drop: Math.max(hit.past.drop, p.drop) }
 }
 
 /** Where `chunk` goes (§8.5, §8.6): its lines, block and the edge key presses keep clear of. */
@@ -872,7 +959,14 @@ export function placeStudio(
   const area = opts.area ?? null
   const margin = CAPTION_SAFE * u
   const bounds = boundsOf(w, h, area)
-  const intoArea =(top: number, height: number): number => (area ? Math.min(Math.max(top, bounds.top), Math.max(bounds.top, bounds.bottom - height)) : top)
+  // Stickers: how far the grown, tilted stickers reach above the block's top and below its bottom
+  // (§8.4: a grown spoken word never runs past the frame), the most any chunk of the caption does,
+  // so its chunks keep one height. Other looks: 0, and they sit as they did.
+  const { rise, drop } = stickersPast(layout, chunk, studio, w)
+  const intoArea = (top: number, height: number): number => {
+    const t = area ? Math.min(Math.max(top, bounds.top), Math.max(bounds.top, bounds.bottom - height)) : top
+    return rise > 0 || drop > 0 ? Math.min(Math.max(t, bounds.top + rise), Math.max(bounds.top + rise, bounds.bottom - drop - height)) : t
+  }
   const topOf = (p: StudioPosition, height: number): number => (lay.legacyAnchor && !opts.forced ? legacyTop(legacyPosition(p), height, w, h, area, opts.legacyAnchor) : intoArea(anchorTop(p, height, w, h), height))
   let top: number
   // Chat (§0.1): the captions of "You" sit on the right, others on the left.
@@ -890,7 +984,7 @@ export function placeStudio(
     const hi = { x: w - margin, y: area ? bounds.bottom : h - margin }
     const half = block.width / 2 + Math.max(0, ...chunk.lines.map((l) => (l.reach ?? 0) - (block.width - l.width) / 2))
     cx = Math.min(Math.max(lay.place.x * w, lo.x + half), Math.max(lo.x + half, hi.x - half))
-    top = Math.min(Math.max(lay.place.y * h - block.height / 2, lo.y), Math.max(lo.y, hi.y - block.height))
+    top = Math.min(Math.max(lay.place.y * h - block.height / 2, lo.y + rise), Math.max(lo.y + rise, hi.y - block.height - drop))
   } else {
     let plan: Plan = { position: lay.position, dy: 0, cx: side }
     if (lay.avoid && opts.obstacles) {
@@ -906,7 +1000,7 @@ export function placeStudio(
           const b = blockOf(c, studio, layout.px, w)
           return { width: Math.max(s.width, b.width), height: Math.max(s.height, b.height) }
         }, { width: 0, height: 0 })
-        found = keepClear(studio, size, w, h, bounds, opts.obstacles, topOf, side)
+        found = keepClear(studio, size, w, h, rise > 0 || drop > 0 ? { top: bounds.top + rise, bottom: bounds.bottom - drop } : bounds, opts.obstacles, topOf, side)
         byKey.set(key, found)
       }
       plan = found

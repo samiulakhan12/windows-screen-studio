@@ -15,18 +15,18 @@ import { maskBleeped } from '../../../shared/captions/cleanup'
 import { textOn } from '../../../shared/captions/colors'
 import { emojiEntry } from '../../../shared/captions/emojiList'
 import { catalogFamily, catalogId } from '../../../shared/captions/fontCatalog'
-import { clampWeight, coverageNeeded, partnerFor, trackingFor } from '../../../shared/captions/fontStack'
+import { clampWeight, partnerFor, trackingFor } from '../../../shared/captions/fontStack'
 import { CAPTION_FONT, captionIndexAt, viewAt } from '../../../shared/captions/layout'
 import { counterValue, EASE, itemPose, listWindows, seedOf, type ChunkPose } from '../../../shared/captions/motion'
 import { captionObstacles } from '../../../shared/captions/studioLayout'
 import { STUDIO_BASE } from '../../../shared/captions/studioPresets'
-import { scriptOf, withDigits } from '../../../shared/captions/words'
+import { scriptOf } from '../../../shared/captions/words'
 import { visibleSize } from '../../../shared/engine/crop'
 import { outputSize, type Rect } from '../../../shared/engine/layout'
 import { isTall } from '../../../shared/engine/reframeData'
 import { DEFAULT_ZOOM_SETTINGS } from '../../../shared/engine/zoom'
 import { actionRects } from '../../../shared/render/actionRects'
-import { counterText, GRAPHIC_DEFAULTS, graphicCandidates, placeGraphic } from '../../../shared/render/graphics'
+import { counterText, GRAPHIC_DEFAULTS, graphicCandidates, graphicNeeds, listNumberText, placeGraphic } from '../../../shared/render/graphics'
 import { graphicDrawn } from '../../../shared/render/popSound'
 import { textArea } from '../../../shared/render/safeZones'
 import { fontOf } from '../../../shared/render/fonts'
@@ -48,10 +48,11 @@ const FALLBACK = ['noto-sans-bengali', 'noto-sans-devanagari', 'noto-sans-arabic
 const lookOf = (project: Project): CaptionStudio => project.captions?.studio ?? (STUDIO_BASE as CaptionStudio)
 
 /**
- * A graphic's font reference: its own, else the look's text font; its partner when the caption
- * language needs letters it lacks, as the captions swap theirs (§6.6 rule 2: Anton → Oswald for Russian).
+ * A graphic's font reference: its own, else the look's text font; its partner when the graphic's
+ * words need letters it lacks (graphicNeeds: their language, never a shown translation's, and their
+ * own Cyrillic or Greek), as the captions swap theirs (§6.6 rule 2: Anton → Oswald for Russian).
  */
-const fontRef = (project: Project, g: Graphic): string => partnerFor(g.font ?? lookOf(project).text.font, coverageNeeded(captionLanguage(project), ''))
+const fontRef = (project: Project, g: Graphic): string => partnerFor(g.font ?? lookOf(project).text.font, graphicNeeds(project, g))
 
 /**
  * The canvas font stack of a font reference: a catalogue font, a brand font (FlownFontW-, §6.7),
@@ -677,8 +678,7 @@ function drawList(c: Ctx, project: Project, g: ListGraphic, s: Shown, t: number,
 
 /** A list number in the captions' Digits choice (§0.2: Bangla ০–৯, Devanagari ०–९… or Western 0–9). */
 function listNumber(n: number, project: Project): string {
-  const lang = captionLanguage(project) ?? 'en'
-  return withDigits(String(n), project.captions?.digits, lang)
+  return listNumberText(n, project.captions?.digits, captionLanguage(project))
 }
 
 /** Motion graphics of fc.t, on the captions' clock (§9.1 rule 6); nothing without graphics. */
