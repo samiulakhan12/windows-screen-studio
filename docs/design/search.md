@@ -192,7 +192,7 @@ is), at most once every 3 seconds while changes come in, and once when the app q
 
 | Event | What happens |
 | --- | --- |
-| App start | 4 s after the window opens, the index file is loaded, then **reconciled**: every project folder in `projectsRoot()` and the legacy roots is listed, `project.json` stat'ed; new or changed (stamp) ones are read and indexed, folders gone are dropped. One project per slice. |
+| App start | 4 s after the window opens, the index file is loaded, then **reconciled**: every project folder in `projectsRoot()` and the legacy roots is listed, `project.json` stat'ed; new or changed (stamp) ones are read and indexed, folders gone are dropped. A root or `project.json` that is there but cannot be read just now (a network share offline for a moment, a lock) keeps its entries until it can. One project per slice. |
 | A project is saved (`saveProjectNow`, the editor's autosave and the closing save) | **One line** in `src/main/projectsIpc.ts` tells the index: `noteProjectSaved(project)`. It is debounced per project by 1.5 s (autosave runs every edit), and the entry is made from the project object in hand (no read), stamped with a fresh stat. |
 | A recording finishes, a video is imported, a project is duplicated, recovered, deleted, or the Storage manager moves one to the Recycle Bin | Not hooked (those files belong to other teams). Home tells the index whenever its library list changes (`refreshSearch()`), and every query reconciles first when the last reconcile is older than 2 s; a reconcile with nothing changed costs one `readdir` and one `stat` per recording (about 4 ms for 500). |
 | A query arrives while the first build runs | It is answered from what is indexed so far, with `status.state = 'building'`; Home asks again when `search:status` says more is ready (at most every 500 ms). |
@@ -391,6 +391,9 @@ No new dependency: `Intl.Segmenter` is in Electron's ICU, and the rest is small 
   words), so a long editing session does not slow down every keystroke's scan.
 - The stamp of a save is the stat taken right after its write, not 1.5 s later.
 - The file is never written before it was loaded, nor when it is too large to read back (64 MB).
+- Only a folder or `project.json` that is missing counts as gone. A folder listing or stat that failed
+  for another reason (a Videos folder on a network share offline for a moment, a lock) used to drop
+  every recording and write an empty index.
 - A project folder named `__proto__` is stored like any other.
 - Snippets in scripts without spaces keep their text before the match and never cut a surrogate pair.
 - The live region stays quiet while the index is built; Ctrl+F does nothing on an empty library.

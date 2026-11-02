@@ -1,10 +1,14 @@
-import { readFileSync } from 'node:fs'
+import { promises as fsp, readFileSync } from 'node:fs'
 import path from 'node:path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { MAX_READ_BYTES, SEARCH_TIMING, SearchService, type SearchDisk } from '../src/main/search/searchService'
 import { SEARCH_CHANNELS } from '../src/shared/api/search'
 import { serializeIndex } from '../src/shared/search/indexFile'
 import { SEARCH_INDEX_VERSION, type SearchStatus } from '../src/shared/search/types'
+
+// searchIpc.ts (the real disk) is loaded by one test below.
+vi.mock('electron', () => ({ app: { getPath: () => '/data' }, ipcMain: { handle: () => undefined } }))
+vi.mock('../src/main/windows', () => ({ getMainWindow: () => null }))
 
 const ROOT = '/videos/Flown'
 const LEGACY = '/videos/Old'
@@ -17,6 +21,8 @@ class FakeDisk implements SearchDisk {
   reads: string[] = []
   writes: string[] = []
   failWrites = false
+  /** Folders and files that cannot be read just now (a share offline, a lock). */
+  unreadable = new Set<string>()
   clock = 1000
 
   put(file: string, value: unknown): void {
@@ -38,11 +44,13 @@ class FakeDisk implements SearchDisk {
     this.dirs.set(root, (this.dirs.get(root) ?? []).filter((n) => n !== id))
   }
 
-  async listDirs(dir: string): Promise<string[]> {
+  async listDirs(dir: string): Promise<string[] | null> {
+    if (this.unreadable.has(dir)) return null
     return [...(this.dirs.get(dir) ?? [])]
   }
 
   async stat(file: string): Promise<{ mtimeMs: number; size: number } | null> {
+    if (this.unreadable.has(file)) throw Object.assign(new Error('offline'), { code: 'EIO' })
     const f = this.files.get(file)
     return f ? { mtimeMs: f.mtimeMs, size: Buffer.byteLength(f.text) } : null
   }
@@ -137,6 +145,44 @@ describe('SearchService', () => {
     disk.put(`${ROOT}/rec-b/project.json`, '{ not json')
     await service.reconcile()
     expect(service.index.ids()).toEqual([])
+  })
+
+  it('keeps what cannot be read just now (a share offline, a lock), and drops what is gone', async () => {
+    const { disk, service } = setup()
+    disk.project('rec-a', { name: 'Alpha' })
+    disk.project('rec-b', { name: 'Beta' })
+    disk.project('rec-old', { name: 'Old' }, LEGACY)
+    await service.start()
+    await vi.advanceTimersByTimeAsync(SEARCH_TIMING.writeDebounceMs)
+    expect(disk.writes).toHaveLength(1)
+    const all = ['rec-a', 'rec-b', 'rec-old']
+    disk.reads = []
+
+    // The current root cannot be listed: nothing is dropped, nothing written.
+    disk.unreadable.add(ROOT)
+    await vi.advanceTimersByTimeAsync(SEARCH_TIMING.reconcileAfterMs + 10)
+    expect(await ids(service, 'alpha')).toEqual(['rec-a'])
+    expect(service.index.ids().sort()).toEqual(all)
+    // One project.json cannot be looked at: its entry is kept.
+    disk.unreadable.clear()
+    disk.unreadable.add(`${ROOT}/rec-b/project.json`)
+    await service.reconcile()
+    expect(service.index.ids().sort()).toEqual(all)
+    await vi.advanceTimersByTimeAsync(SEARCH_TIMING.writeDebounceMs)
+    expect(disk.writes).toHaveLength(1)
+
+    // The old root cannot be listed: a recording deleted from the current one still leaves.
+    disk.unreadable.clear()
+    disk.unreadable.add(LEGACY)
+    disk.removeFolder('rec-b')
+    await service.reconcile()
+    expect(service.index.ids().sort()).toEqual(['rec-a', 'rec-old'])
+
+    // Readable again: nothing is read again.
+    disk.unreadable.clear()
+    await service.reconcile()
+    expect(service.index.ids().sort()).toEqual(['rec-a', 'rec-old'])
+    expect(disk.reads).toEqual([])
   })
 
   it('reconciles before a query when the last one is older than 2 s', async () => {
@@ -341,6 +387,33 @@ describe('SearchService', () => {
     await vi.advanceTimersByTimeAsync(SEARCH_TIMING.writeDebounceMs)
     expect(logs.length).toBeGreaterThan(0)
     for (const line of logs) expect(line).not.toMatch(/secret|swordfish|password|private|plan/i)
+  })
+})
+
+describe('the real disk', () => {
+  const failure = (code: string): NodeJS.ErrnoException => Object.assign(new Error(code), { code })
+
+  it('tells a missing folder or file from one that cannot be read just now', async () => {
+    const { nodeSearchDisk } = await import('../src/main/search/searchIpc')
+    const readdir = vi.spyOn(fsp, 'readdir')
+    const stat = vi.spyOn(fsp, 'stat')
+    try {
+      for (const code of ['ENOENT', 'ENOTDIR']) {
+        readdir.mockRejectedValueOnce(failure(code))
+        stat.mockRejectedValueOnce(failure(code))
+        expect(await nodeSearchDisk.listDirs('/videos/Flown')).toEqual([])
+        expect(await nodeSearchDisk.stat('/videos/Flown/rec-a/project.json')).toBeNull()
+      }
+      for (const code of ['EBUSY', 'EIO', 'EPERM', 'EACCES', 'ELOOP']) {
+        readdir.mockRejectedValueOnce(failure(code))
+        stat.mockRejectedValueOnce(failure(code))
+        expect(await nodeSearchDisk.listDirs('/videos/Flown')).toBeNull()
+        await expect(nodeSearchDisk.stat('/videos/Flown/rec-a/project.json')).rejects.toMatchObject({ code })
+      }
+    } finally {
+      readdir.mockRestore()
+      stat.mockRestore()
+    }
   })
 })
 

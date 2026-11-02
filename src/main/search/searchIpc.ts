@@ -18,20 +18,27 @@ export const START_DELAY_MS = 4000
 /** Status messages to Home, at most this often while building. */
 const STATUS_EVERY_MS = 500
 
+/** A path that is not there, as opposed to one that cannot be read just now (offline, locked, no access). */
+const isMissing = (err: unknown): boolean => {
+  const code = (err as NodeJS.ErrnoException | null)?.code
+  return code === 'ENOENT' || code === 'ENOTDIR'
+}
+
 export const nodeSearchDisk: SearchDisk = {
   async listDirs(dir) {
     try {
       return (await fs.readdir(dir, { withFileTypes: true })).filter((e) => e.isDirectory()).map((e) => e.name)
-    } catch {
-      return []
+    } catch (err) {
+      return isMissing(err) ? [] : null
     }
   },
   async stat(file) {
     try {
       const st = await fs.stat(file)
       return st.isFile() ? { mtimeMs: st.mtimeMs, size: st.size } : null
-    } catch {
-      return null
+    } catch (err) {
+      if (isMissing(err)) return null
+      throw err
     }
   },
   async readText(file, max) {

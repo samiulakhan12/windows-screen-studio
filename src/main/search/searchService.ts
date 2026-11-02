@@ -29,9 +29,9 @@ export const SEARCH_TIMING = {
 export const MAX_READ_BYTES = 64 * 1024 * 1024
 
 export interface SearchDisk {
-  /** Folder names in `dir`; [] when it cannot be read. */
-  listDirs(dir: string): Promise<string[]>
-  /** mtimeMs and size of a file; null when it is missing. */
+  /** Folder names in `dir`; [] when it is missing, null when it cannot be read just now (offline, locked, no access). */
+  listDirs(dir: string): Promise<string[] | null>
+  /** mtimeMs and size of a file; null when it is missing or not a file. Rejects when it cannot be looked at just now. */
   stat(file: string): Promise<{ mtimeMs: number; size: number } | null>
   /** A file's text; null when missing or bigger than `max` bytes. */
   readText(file: string, max: number): Promise<string | null>
@@ -140,32 +140,38 @@ export class SearchService {
     this.loaded = true
   }
 
-  /** The project folders: id → project.json path, the first root winning. */
-  private async folders(): Promise<Map<string, string>> {
-    const out = new Map<string, string>()
+  /** The project folders (id → project.json path, the first root winning), and the roots that could not be read. */
+  private async folders(): Promise<{ folders: Map<string, string>; unread: string[] }> {
+    const folders = new Map<string, string>()
+    const unread: string[] = []
     for (const root of this.deps.roots()) {
-      for (const name of await this.deps.disk.listDirs(root)) {
-        if (ID_RE.test(name) && !out.has(name)) out.set(name, path.join(root, name, 'project.json'))
+      const names = await this.deps.disk.listDirs(root)
+      if (!names) unread.push(root)
+      for (const name of names ?? []) {
+        if (ID_RE.test(name) && !folders.has(name)) folders.set(name, path.join(root, name, 'project.json'))
       }
     }
-    return out
+    return { folders, unread }
   }
 
   /**
    * Indexes new and changed projects (by project.json's stamp) and drops those whose folder or
-   * project.json is gone. A reconcile already running is joined.
+   * project.json is gone. What cannot be read just now (a share offline, a lock) is kept as it is.
+   * A reconcile already running is joined.
    */
   reconcile(): Promise<void> {
     if (this.reconciling) return this.reconciling
     const run = this.run(async () => {
-      const folders = await this.folders()
+      const { folders, unread } = await this.folders()
       let removed = 0
       for (const id of this.index.ids()) {
-        if (!folders.has(id)) {
-          this.index.remove(id)
-          this.files.delete(id)
-          removed++
-        }
+        if (folders.has(id)) continue
+        // Not listed: gone, unless it may be in a root that could not be read (its place unknown, or there).
+        const file = this.files.get(id)
+        if (unread.length && (!file || unread.some((root) => path.join(root, id, 'project.json') === file))) continue
+        this.index.remove(id)
+        this.files.delete(id)
+        removed++
       }
       const building = this.status.state === 'building'
       let done = 0
@@ -173,14 +179,15 @@ export class SearchService {
       let slice = this.now()
       for (const [id, file] of folders) {
         this.files.set(id, file)
-        const st = await this.deps.disk.stat(file).catch(() => null)
-        if (!st) {
+        // undefined: it could not be looked at just now; its entry is kept as it is.
+        const st = await this.deps.disk.stat(file).catch(() => undefined)
+        if (st === null) {
           // An unfinished recording, or a folder that is not a project.
           if (this.index.has(id)) {
             this.index.remove(id)
             removed++
           }
-        } else if (this.index.get(id)?.stamp !== stampOf(st) && !this.pendingSaves.has(id)) {
+        } else if (st && this.index.get(id)?.stamp !== stampOf(st) && !this.pendingSaves.has(id)) {
           read++
           const entry = await this.readEntry(file, st)
           if (entry) this.index.add(id, entry)
