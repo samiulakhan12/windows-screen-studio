@@ -1,9 +1,9 @@
-import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, mkdtempSync, promises as fsp, readdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs'
 import http from 'node:http'
 import type { AddressInfo } from 'node:net'
 import os from 'node:os'
 import path from 'node:path'
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { CANCELLED, copyIntoFolder } from '../src/main/share/copyToFolder'
 import { postToWebhook } from '../src/main/share/webhookPost'
 
@@ -207,6 +207,27 @@ describe('claiming the name', () => {
       expect(existsSync(old)).toBe(false)
       expect(existsSync(fresh)).toBe(true)
     } finally {
+      rmSync(dir, { recursive: true, force: true })
+    }
+  })
+
+  it('renames into place on a FAT or exFAT drive, where Windows refuses the link with EISDIR', async () => {
+    const dir = mkdtempSync(path.join(os.tmpdir(), 'ssw-sharefat-'))
+    const link = vi.spyOn(fsp, 'link').mockRejectedValue(Object.assign(new Error('EISDIR: illegal operation on a directory, link'), { code: 'EISDIR' }))
+    try {
+      const video = path.join(dir, 'Demo.mp4')
+      writeFileSync(video, 'video')
+      const root = path.join(dir, 'USB')
+      mkdirSync(path.join(root, 'Flown'), { recursive: true })
+      writeFileSync(path.join(root, 'Flown', 'Demo.mp4'), 'theirs')
+      const done = await copyIntoFolder(video, root, 'USB', { signal: signal(), freeBytes: plenty })
+      expect(link).toHaveBeenCalled()
+      expect(done.dest).toBe(path.join(root, 'Flown', 'Demo (2).mp4'))
+      expect(readFileSync(done.dest, 'utf8')).toBe('video')
+      expect(readFileSync(path.join(root, 'Flown', 'Demo.mp4'), 'utf8')).toBe('theirs')
+      expect(readdirSync(path.join(root, 'Flown')).sort()).toEqual(['Demo (2).mp4', 'Demo.mp4'])
+    } finally {
+      link.mockRestore()
       rmSync(dir, { recursive: true, force: true })
     }
   })

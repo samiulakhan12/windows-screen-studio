@@ -81,7 +81,8 @@ export async function claimName(temp: string, dir: string, name: string, exists:
     } catch (e) {
       const code = (e as NodeJS.ErrnoException).code
       if (code === 'EEXIST') continue
-      if (code !== 'EPERM' && code !== 'ENOTSUP' && code !== 'EXDEV' && code !== 'ENOSYS' && code !== 'EINVAL') throw e
+      // EISDIR is how Windows reports "Incorrect function" for a link on a FAT or exFAT drive.
+      if (code !== 'EPERM' && code !== 'ENOTSUP' && code !== 'EXDEV' && code !== 'ENOSYS' && code !== 'EINVAL' && code !== 'EISDIR') throw e
       if (exists(dest)) continue
       await fs.rename(temp, dest)
       return dest

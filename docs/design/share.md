@@ -106,8 +106,8 @@ can be turned off there ("Use" switch), and the export chip's tooltip shows the 
   treat as a temporary file: Dropbox ignores `.~*` and `~*.tmp`) with a stream copy (1 MiB chunks).
   The final name is then **claimed atomically**: a hard link to the free name fails with `EEXIST` if a
   file appeared meanwhile (another share, the cloud app syncing one down), and the next name is
-  tried; where links are not supported (FAT, some network shares) the name is checked and the file
-  renamed. Cancel or failure deletes the partial file; one the cloud app holds open is retried at
+  tried; where links are not supported (FAT and exFAT, where Windows reports `EISDIR`; some network
+  shares) the name is checked and the file renamed. Cancel or failure deletes the partial file; one the cloud app holds open is retried at
   quit, and partial files over an hour old are removed by the next copy into that folder.
 * Before copying: free space at the target (`fs.statfs`) must be ≥ size + **64 MB**, else
   "There is not enough space on the drive of OneDrive (needs 1.2 GB)."
