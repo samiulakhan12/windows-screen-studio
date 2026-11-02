@@ -131,8 +131,9 @@ can be turned off there ("Use" switch), and the export chip's tooltip shows the 
 * Progress: bytes copied / size, sent at most every **200 ms**.
 * **Quitting during a copy** aborts it and deletes its partial file synchronously at `will-quit`
   (`removePartialCopies`), so a cloud app is never left with half a video. *Restart now* (an
-  update) is refused while a share is still copying or posting ("Wait for the share to finish, or
-  cancel it."), as for exports.
+  update) is refused while a share is still copying or posting ("Wait for the share to finish."),
+  as for exports. The text does not offer Cancel: Restart now cannot be pressed while the Export
+  dialog is open, and once it is closed nothing can cancel the share.
 
 ### 2.4 Share links — **only when the cloud app offers one locally; otherwise say how**
 None of the three desktop apps offers a documented local way to make a share link (no CLI, no local

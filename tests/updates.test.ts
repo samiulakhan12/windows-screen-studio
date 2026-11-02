@@ -94,4 +94,8 @@ describe('the update state', () => {
     expect(statusLine(idle({ phase: 'error', error: UPDATE_COPY.downloadFailed }))).toBe(UPDATE_COPY.downloadFailed)
     expect(Object.values(BUSY_COPY).every((t) => t.endsWith('.'))).toBe(true)
   })
+
+  it('only asks to wait for a share, since nothing can cancel it while Restart now can be pressed', () => {
+    expect(BUSY_COPY.share).toBe('Wait for the share to finish.')
+  })
 })

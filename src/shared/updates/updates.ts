@@ -187,5 +187,5 @@ export const BUSY_COPY: Record<BusyKind, string> = {
   import: 'Wait for the import to finish, or cancel it.',
   voice: 'Wait for Clean voice to finish.',
   copy: 'Wait for the copy to finish, or cancel it.',
-  share: 'Wait for the share to finish, or cancel it.'
+  share: 'Wait for the share to finish.'
 }
