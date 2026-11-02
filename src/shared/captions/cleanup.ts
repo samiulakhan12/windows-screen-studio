@@ -442,8 +442,12 @@ const BN_KHANKI = ['খানকি', 'খাংকি', 'খাঙ্কি', '
  * and শুকরের from শূকর, the standard word (শূকরের by the fold).
  */
 const BN_PIG = ['শুয়োরের', 'শুওরের', 'শুয়রের', 'শুয়ারের', 'শুকরের']
+/** কুত্তার, "dog's", rude before বাচ্চা as শুয়োরের is (কুকুরের বাচ্চা, with the everyday word for dog, is a puppy). */
+const BN_DOG = ['কুত্তার']
 /** বাচ্চা, "child", as it is spelled. */
 const BN_KID = ['বাচ্চা', 'বাচ্ছা']
+/** The animals whose genitive is rude before বাচ্চা. */
+const BN_ANIMALS = [...BN_PIG, ...BN_DOG]
 
 const TEAM_LISTS: Readonly<Record<string, TeamList>> = {
   bn: {
@@ -459,13 +463,13 @@ const TEAM_LISTS: Readonly<Record<string, TeamList>> = {
     // বেইনচোদ, বইনচোদ or বোনচোদ in Dhaka; মাদারচোদ, মাচোদা); চুদ, চোত and চোৎ (ৎ also written ত্
     // and a joiner, বাঞ্চোত্‍) after the first parts that take them (বানচোত and বাঞ্চোৎ in West
     // Bengal), not anywhere: বাচ্চুদা and পাঁচুদা are nicknames; চুদমারানি with দ, ত, ৎ or ত্,
-    // খানকিরপোলা as খানকি is written, and শুয়োরেরবাচ্চা written as one word.
+    // খানকিরপোলা as খানকি is written, and শুয়োরেরবাচ্চা and কুত্তারবাচ্চা written as one word.
     compounds: [
       'চোদ',
       ...['বোকা', 'বান', 'বাইন', 'বাইঞ্', 'বাঞ্', 'বেঞ্', 'বেন', 'মাদার'].flatMap((w) => ['চুদ', 'চোত', 'চোৎ', 'চোত্'].map((c) => w + c)),
       ...['চুদ', 'চুত', 'চুৎ', 'চুত্'].map((c) => c + 'মারানি'),
       ...BN_KHANKI.map((k) => k + 'রপোলা'),
-      ...BN_PIG.flatMap((w) => BN_KID.map((k) => w + k))
+      ...BN_ANIMALS.flatMap((w) => BN_KID.map((k) => w + k))
     ],
     // প্রচোদ, "to inspire" (Sanskrit): প্রচোদয়াৎ in the Gayatri mantra (ধিয়ো যো নঃ প্রচোদয়াৎ), প্রচোদিত.
     holders: ['প্রচোদ'],
@@ -481,7 +485,8 @@ const TEAM_LISTS: Readonly<Record<string, TeamList>> = {
     nouns: ['বাল', 'বালছাল', 'বালসাল'],
     // শুয়োরের, with ও or ই, is rude in শুয়োরের বাচ্চা only: শুয়োর, "pig", is an everyday word
     // (শুয়োরের মাংস, pork; শুয়োরের খামার, a pig farm; বুনো শুয়োরের আক্রমণ, a wild boar's attack).
-    onlyBefore: [[BN_PIG.flatMap((w) => BN_PARTICLES.map((p) => w + p)), BN_KID]],
+    // কুত্তার the same way (কুত্তার কামড়, a dog's bite).
+    onlyBefore: [[BN_ANIMALS.flatMap((w) => BN_PARTICLES.map((p) => w + p)), BN_KID]],
     notBefore: [
       // বাল, "child", in names and words written apart (বাল গঙ্গাধর তিলক, বাল ঠাকরে, লাল বাল পাল,
       // বাল গোপাল, বাল কৃষ্ণ, বাল বিধবা, বাল বিবাহ), and বাল বাচ্চা, "the kids".

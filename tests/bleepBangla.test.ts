@@ -104,9 +104,12 @@ const WHOLE_NOUNS = ['বাল', 'বালছাল', 'বালসাল']
  * never in শুয়োরের মাংস (pork) or শুয়োরের খামার (a pig farm). Written together with বাচ্চা, it is rude anywhere.
  */
 const PIG = ['শুয়োরের', 'শুওরের', 'শুয়রের', 'শুয়ারের', 'শুকরের', 'শূকরের']
-const PIG_GENITIVES = PIG.flatMap((w) => PARTICLES.map((p) => w + p))
+/** কুত্তার, "dog's", the same way: rude only before বাচ্চা, never in কুত্তার কামড় (a dog's bite); কুকুরের বাচ্চা is a puppy. */
+const DOG = ['কুত্তার']
+const ANIMALS = [...PIG, ...DOG]
+const ANIMAL_GENITIVES = ANIMALS.flatMap((w) => PARTICLES.map((p) => w + p))
 const KIDS = ['বাচ্চা', 'বাচ্ছা'].flatMap(nounForms)
-const PIG_JOINED = [...PIG.flatMap((w) => KIDS.map((k) => w + k)), ...PIG.map((w) => 'শালা' + w + 'বাচ্চা')]
+const ANIMAL_JOINED = [...ANIMALS.flatMap((w) => KIDS.map((k) => w + k)), ...ANIMALS.map((w) => 'শালা' + w + 'বাচ্চা')]
 /** বাল in names and set phrases, never rude before these: বাল গঙ্গাধর তিলক, বাল ঠাকরে, লাল বাল পাল, বাল গোপাল, বাল বাচ্চা (the kids), বাল বিধবা. */
 const BAL_NAMES = ['গঙ্গাধর', 'ঠাকরে', 'গোপাল', 'কৃষ্ণ', 'পাল', 'বাচ্চা', 'বাচ্ছা', 'বিধবা', 'বিবাহ'].flatMap(nounForms)
 
@@ -136,7 +139,7 @@ const RUDE = [
     ...COMPOUND_FORMS,
     ...WHOLE_NOUNS.flatMap(nounForms),
     ...DHAKA_PARTICIPLES,
-    ...PIG_JOINED,
+    ...ANIMAL_JOINED,
     ...REVIEW
   ])
 ]
@@ -185,7 +188,9 @@ const LOOK_ALIKES = [
   ...['বালি', 'বালির', 'বালিতে', 'বালু', 'বালুর', 'বালুচর', 'বালুকা', 'বালুকাবেলা', 'বালা', 'বালাই', 'বালাম'],
   ...['বাল্য', 'বাল্যকাল', 'বাল্যবিবাহ', 'বাল্যবন্ধু', 'বালিগঞ্জ', 'বালিয়াডাঙ্গী', 'বালসা'],
   // শুয়োর "pig" (য় written either way), শুয়ে "lying down".
-  ...['শুয়োর', 'শু\u09DFোর', 'শূকর', 'শুকর', 'শুয়ে', 'শুয়েছিল', 'শুকনো', 'শুক্রবার', 'শুভ', 'শুরু']
+  ...['শুয়োর', 'শু\u09DFোর', 'শূকর', 'শুকর', 'শুয়ে', 'শুয়েছিল', 'শুকনো', 'শুক্রবার', 'শুভ', 'শুরু'],
+  // কুকুর "dog" (কুকুরের বাচ্চা, a puppy), কুকুরছানা "a puppy".
+  ...['কুকুর', 'কুকুরের', 'কুকুরছানা']
 ]
 const EVERYDAY = [
   ...LOOK_ALIKES,
@@ -328,12 +333,12 @@ describe('Bangla bleeping: stems, compounds and every generated form', () => {
     }
   })
 
-  it('bleeps শুয়োরের, however it is spelled, only before বাচ্চা: never in শুয়োরের মাংস (pork) or শুয়োরের খামার (a pig farm)', () => {
-    const spellings = PIG_GENITIVES.flatMap((g) => [g, g.replaceAll('\u09AF\u09BC', '\u09DF'), g.replaceAll('ু', 'ূ'), g.normalize('NFD')])
+  it('bleeps শুয়োরের, however it is spelled, and কুত্তার only before বাচ্চা: never in শুয়োরের মাংস (pork), শুয়োরের খামার (a pig farm) or কুত্তার কামড় (a dog’s bite)', () => {
+    const spellings = ANIMAL_GENITIVES.flatMap((g) => [g, g.replaceAll('\u09AF\u09BC', '\u09DF'), g.replaceAll('ু', 'ূ'), g.normalize('NFD')])
     for (const [mode, lang] of MODES) {
       for (const g of spellings) {
         expect(KIDS.filter((k) => !isSwearWord(g, mode, lang, k)), `${mode} ${lang} ${g}`).toEqual([])
-        for (const next of ['মাংস', 'খামারে', 'আক্রমণে', 'চাষ', '']) expect(isSwearWord(g, mode, lang, next), `${mode} ${lang} ${g} ${next}`).toBe(false)
+        for (const next of ['মাংস', 'খামারে', 'আক্রমণে', 'চাষ', 'কামড়ে', '']) expect(isSwearWord(g, mode, lang, next), `${mode} ${lang} ${g} ${next}`).toBe(false)
         // A lone word, the word after it unknown: as it may be used.
         expect(isSwearWord(g, mode, lang), `${mode} ${lang} ${g}`).toBe(true)
       }
@@ -344,16 +349,17 @@ describe('Bangla bleeping: stems, compounds and every generated form', () => {
       `${g} মাংস খাওয়া ইসলামে হারাম।`,
       `বুনো ${g} আক্রমণে দুজন আহত`,
       `${g} খামারে আফ্রিকান সোয়াইন ফিভার ছড়িয়েছে।`,
+      `${g} কামড়ে দুজন আহত`,
       // বাচ্চা at the start of the next caption.
       `ওই ${g}`,
       'বাচ্চাটা পালাল'
     ]
-    for (const g of PIG_GENITIVES) {
+    for (const g of ANIMAL_GENITIVES) {
       const segs = lines(g).map((text, i) => timed(String(i), i * 5, text))
       for (const language of ['bn', 'bn-BD', undefined]) {
         for (const bleep of ['standard', 'strict'] as const) {
           const out = tidyCaptions(project(segs, language), { ...OFF, bleep, words: [] }).project.bleeps ?? []
-          expect(out.map((b) => [b.word, Math.floor((b.start + 0.1) / 5)]), `${g} ${language} ${bleep}`).toEqual([0, 1, 5].map((i) => [bleepKey(g), i]))
+          expect(out.map((b) => [b.word, Math.floor((b.start + 0.1) / 5)]), `${g} ${language} ${bleep}`).toEqual([0, 1, 6].map((i) => [bleepKey(g), i]))
         }
       }
     }
@@ -391,8 +397,8 @@ describe('Bangla bleeping: stems, compounds and every generated form', () => {
     expect(everyday.filter((w) => isSwearWord(w, 'strict', 'bn-BD'))).toEqual([])
     // The pig's child joined to বাচ্চা by a dash, or written in two parts, the second at the start of the next word.
     for (const [mode, lang] of MODES) {
-      expect(PIG_GENITIVES.filter((g) => !isSwearWord(`${g}-বাচ্চা`, mode, lang) || !isSwearWord(`ধুর—${g}`, mode, lang, 'বাচ্চা-টা')), `${mode} ${lang}`).toEqual([])
-      expect(PIG_GENITIVES.filter((g) => isSwearWord(`${g}-মাংস`, mode, lang, 'খাওয়া') || isSwearWord(`ধুর—${g}`, mode, lang, 'মাংস')), `${mode} ${lang}`).toEqual([])
+      expect(ANIMAL_GENITIVES.filter((g) => !isSwearWord(`${g}-বাচ্চা`, mode, lang) || !isSwearWord(`ধুর—${g}`, mode, lang, 'বাচ্চা-টা')), `${mode} ${lang}`).toEqual([])
+      expect(ANIMAL_GENITIVES.filter((g) => isSwearWord(`${g}-মাংস`, mode, lang, 'খাওয়া') || isSwearWord(`ধুর—${g}`, mode, lang, 'মাংস')), `${mode} ${lang}`).toEqual([])
     }
   })
 
@@ -437,6 +443,8 @@ describe('Bangla bleeping: stems, compounds and every generated form', () => {
       ['শূকরের বাচ্চা একটা', 'শূকরের'],
       ['ওই বাঞ্চোত্\u200D কোথায় গেলি', 'বাঞ্চোত্\u200D'],
       ['এই মাদারচোত্\u200D চুপ কর', 'মাদারচোত্\u200D'],
+      ['ওই কুত্তার বাচ্চা কোথায় গেলি', 'কুত্তার'],
+      ['কুত্তারবাচ্চা একটা', 'কুত্তারবাচ্চা'],
       // Everyday: none.
       ['ওসব চুদুরবুদুর চলবে না, সোজা কথা বলুন।', ''],
       ['ওসব চুদুর বুদুর চলবে না', ''],
@@ -448,7 +456,9 @@ describe('Bangla bleeping: stems, compounds and every generated form', () => {
       ['তেরো-চোদ্দ বছরের ছেলে', ''],
       ['ধিয়ো যো নঃ প্রচোদয়াৎ', ''],
       ['বালসা কাঠ খুব হালকা', ''],
-      ['শূকরের মাংস খাওয়া হারাম', '']
+      ['শূকরের মাংস খাওয়া হারাম', ''],
+      ['কুকুরের বাচ্চা খুব সুন্দর', ''],
+      ['কুত্তার কামড়ে দুজন আহত', '']
     ]
     const segs = lines.map(([text], i) => timed(String(i), i * 5, text))
     const want = lines.flatMap(([, w], i) => (w ? [[bleepKey(w), i]] : []))
