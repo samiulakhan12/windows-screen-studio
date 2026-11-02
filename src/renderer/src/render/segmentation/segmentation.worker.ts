@@ -8,6 +8,7 @@ import wasmLoaderUrl from '@mediapipe/tasks-vision/vision_wasm_module_internal.j
 import wasmBinaryUrl from '@mediapipe/tasks-vision/vision_wasm_module_internal.wasm?url'
 import modelUrl from '../../../../../resources/segmentation/selfie_segmenter.tflite?url'
 import { maskPixels } from '../../../../shared/render/cameraLook'
+import { keepOffline } from '../../editor/sounds/offline'
 import type { FromWorker, ToWorker } from './protocol'
 
 /** The parts of the worker scope used here (the renderer is type-checked with the DOM library). */
@@ -15,6 +16,9 @@ const scope = self as unknown as {
   onmessage: ((e: MessageEvent<ToWorker>) => void) | null
   postMessage(message: FromWorker, transfer?: Transferable[]): void
 }
+
+// Before anything loads: MediaPipe's usage statistics stay on this PC (as in the sound worker).
+keepOffline(self)
 
 let segmenter: Promise<ImageSegmenter> | null = null
 /** Pictures are segmented one after another, so one that failed is followed by a fresh segmenter. */

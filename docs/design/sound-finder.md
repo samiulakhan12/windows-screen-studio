@@ -406,7 +406,9 @@ the project. Play, Show ignored and the scan state are view state.
   bundled URLs, and its `fetch` reaches only the app's own files (`keepOffline`, `offline.ts`):
   MediaPipe Tasks posts usage statistics to Google (`odml.pa.googleapis.com`) once a minute while a
   classifier is alive, and the page's Content Security Policy does not cover a module worker loaded
-  from file://. MediaPipe takes the refusal as a failed send and stops; listening goes on.
+  from file://. MediaPipe takes the refusal as a failed send and stops; listening goes on. The
+  camera's background-blur worker (`segmentation.worker.ts`) runs the same runtime and calls
+  `keepOffline` the same way (`tests/segmentationOffline.test.ts`).
 
 ## 8. Performance (measured here; a Windows PC of the same class should be close)
 
