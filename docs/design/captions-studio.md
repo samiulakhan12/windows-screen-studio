@@ -37,6 +37,8 @@ Terms used below:
   (`src/shared/captions/settings.ts:9-10`).
 - **em**: the drawn text size in px. Outline, shadow, padding, glow and offsets are in em.
 - **Tall frame**: height ≥ 1.25 × width (`isTall`, `src/shared/engine/reframeData.ts`): 9:16 and 4:5.
+  The editor's preview and the export dialog's picture are tall exactly when their file is (`tallAs`):
+  a 4:5 picture whose rounded height falls a pixel short of the line is made a pixel taller.
 - **Source time, viewing time**: as in `edit-by-text.md`. Every animation runs in viewing time
   (`viewingTime`, `src/shared/render/overlays.ts`), like the caption fade today
   (`captionAlpha`, `src/shared/captions/layout.ts:89-103`).

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { exportProject, exportSize } from '../../../shared/render/exportPlan'
+import { exportPreviewSize, exportProject, exportSize } from '../../../shared/render/exportPlan'
 import type { ExportOptions } from '../../../shared/render/exportPresets'
 import type { Project } from '../../../shared/types'
 import { drawFrame, type RenderScene } from '../render/compositor'
@@ -47,8 +47,7 @@ export function ExportPreview(props: Props): JSX.Element {
   )
   const scene = useMemo(() => (drawn === props.scene.project ? props.scene : { ...props.scene, project: drawn }), [drawn, props.scene])
   const size = exportSize(project, props.options)
-  const k = Math.min(props.box.width / size.width, props.box.height / size.height)
-  const css = { width: Math.max(1, Math.round(size.width * k)), height: Math.max(1, Math.round(size.height * k)) }
+  const { css, pixels } = exportPreviewSize(size, props.box, window.devicePixelRatio || 1)
 
   useEffect(() => {
     const screen = createVideo(props.screenUrl)
@@ -92,15 +91,13 @@ export function ExportPreview(props: Props): JSX.Element {
     const c = canvas.current
     const m = media.current
     if (!c || !m || frameTime === null) return
-    const dpr = window.devicePixelRatio || 1
-    const w = Math.max(2, Math.round(css.width * dpr))
-    const h = Math.max(2, Math.round(css.height * dpr))
+    const { width: w, height: h } = pixels
     if (c.width !== w) c.width = w
     if (c.height !== h) c.height = h
     const ctx = c.getContext('2d', { alpha: false })
     if (!ctx) return
     drawFrame(ctx, w, h, frameTime.t, scene, { screen: m.screen, webcam: m.webcam, background: props.background }, { frameInterval: 1 / size.fps, blurSamples: props.held ? 1 : 4 }, frameTime.sound)
-  }, [frameTime, scene, props.background, props.held, css.width, css.height, size.fps, masks, assets])
+  }, [frameTime, scene, props.background, props.held, pixels.width, pixels.height, size.fps, masks, assets])
 
   return <canvas ref={canvas} className="export-preview-canvas" style={{ width: css.width, height: css.height }} />
 }
