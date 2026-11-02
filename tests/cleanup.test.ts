@@ -6,6 +6,8 @@ import { describe, expect, it } from 'vitest'
 import { bleepGains, bleepKey, cleanupNotice, glossaryLine, glossaryTerms, GLOSSARY_BYTES, isSwearWord, maskBleeped, maskedSegments, maskWord, readCleanupChoices, readWordList, tidyCaptions, type CleanupChoices } from '../src/shared/captions/cleanup'
 import { mergeWithNext, splitCaption } from '../src/shared/captions/edit'
 import { readBleeps } from '../src/shared/captions/studioData'
+import { languageSubtitleFile } from '../src/shared/captions/subtitles'
+import { studioProject } from './p4Fixtures'
 import { DEFAULT_CAPTIONS } from '../src/shared/captions/settings'
 import type { Bleep, CaptionSegment, Project } from '../src/shared/types'
 
@@ -256,6 +258,39 @@ describe('bleeping (tests 41, 50)', () => {
     expect(maskedSegments([seg], undefined)).toEqual([seg])
     const list = [seg]
     expect(maskedSegments(list, [])).toBe(list)
+  })
+
+  it('a masked word keeps its time when the caption’s words do not line up with its text, so a word cut from the video stays out of the subtitles', () => {
+    const spoken = (text: string, words: string[]): CaptionSegment => {
+      const ws = words.map((w, i) => ({ text: w, start: i * 0.5, end: i * 0.5 + 0.4 }))
+      return { id: 'a', start: 0, end: ws[ws.length - 1].end, text, words: ws }
+    }
+    // The bleeped word (1.5–1.9 s) cut on the timeline, the bleep made before the cut.
+    const clips = [
+      { id: 'k0', start: 0, end: 1.45, speed: 1 },
+      { id: 'k1', start: 1.95, end: 30, speed: 1 }
+    ]
+    const bleep: Bleep = { id: 'b1', start: 1.45, end: 1.95, word: 'fucking', sound: 'tone' }
+    const scenarios = [
+      // "um" deleted from the text by hand: the six word times stay.
+      { seg: spoken('so this fucking thing works', ['so', 'um', 'this', 'fucking', 'thing', 'works']), out: 'so this thing works' },
+      // whisper-1 gives "well-known" as two words.
+      { seg: spoken('This well-known fucking tool works.', ['This', 'well', 'known', 'fucking', 'tool', 'works.']), out: 'This well-known tool works.' }
+    ]
+    for (const { seg, out } of scenarios) {
+      const p = { ...studioProject({ segments: [seg] }), clips }
+      expect(languageSubtitleFile(p, null, 'txt').trim()).toBe(out)
+      const q = { ...p, bleeps: [bleep] }
+      for (const format of ['txt', 'srt', 'vtt'] as const) expect(languageSubtitleFile(q, null, format), format).toBe(languageSubtitleFile(p, null, format))
+      // The masked word keeps its own time.
+      const [masked] = maskedSegments([seg], [bleep])
+      expect(masked.text).toBe(seg.text.replace('fucking', 'f******'))
+      expect(masked.words?.find((w) => w.text === 'f******')).toEqual({ text: 'f******', start: 1.5, end: 1.9 })
+    }
+    // Captions a bleep masks nothing in stay the same objects.
+    const other = spoken('so this fucking thing works', ['so', 'um', 'this', 'fucking', 'thing', 'works'])
+    const list = [other]
+    expect(maskedSegments(list, [{ ...bleep, start: 20, end: 21 }])).toBe(list)
   })
 
   it('masks the words the bleeps are for in text drawn from caption words, also made before the bleep', () => {

@@ -609,7 +609,11 @@ export function maskedSegments(segments: readonly CaptionSegment[], bleeps: read
     if (!mask.size) return seg
     changed = true
     const text = texts.map((t, i) => (mask.has(i) ? maskToken(t) : t)).join(' ')
-    const words = seg.words && seg.words.length === texts.length ? seg.words.map((w, i) => (mask.has(i) ? { ...w, text: maskToken(w.text) } : w)) : seg.words
+    // Words that do not line up with the text one to one ("well-known" timed as two, a word typed
+    // out) give way to the times worked out for each word of the text (with their deleted and
+    // estimated marks): a masked word then keeps its time, and a word cut from the video stays cut.
+    const lined = seg.words && (seg.words.length === texts.length ? seg.words : times)
+    const words = lined?.map((w, i) => (mask.has(i) ? { ...w, text: maskToken(w.text) } : w))
     return { ...seg, text, ...(words ? { words } : {}) }
   })
   return changed ? out : segments
