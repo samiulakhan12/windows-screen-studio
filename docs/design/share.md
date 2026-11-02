@@ -116,7 +116,10 @@ can be turned off there ("Use" switch), and the export chip's tooltip shows the 
 * Before copying: free space at the target (`fs.statfs`) must be ≥ size + **64 MB**, else
   "There is not enough space on the drive of OneDrive (needs 1.2 GB)."
 * **Containment:** the real path (`fs.realpath`) of `<root>\Flown` must be `<real root>` + `\Flown`
-  (a junction or link named `Flown` that points elsewhere is refused). The root itself must be a
+  (a junction or link named `Flown` that points elsewhere is refused). Where the system call fails
+  (RAM disks, WinFsp and other virtual drives answer `EISDIR`), Node's own walk, which still follows
+  links and junctions, gives the real path; when that fails too: "The OneDrive folder could not be
+  opened." The root itself must be a
   folder Flown found this session or one the user picked (stored in `share.json`); the page only
   ever sends a destination **id**, never a path.
 * The source must be a file exported in this session (`isExportedFile`), with a name `batchFileOk`

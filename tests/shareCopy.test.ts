@@ -1,4 +1,4 @@
-import { existsSync, mkdirSync, mkdtempSync, promises as fsp, readdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs'
+import fsCallbacks, { existsSync, mkdirSync, mkdtempSync, promises as fsp, readdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs'
 import http from 'node:http'
 import type { AddressInfo } from 'node:net'
 import os from 'node:os'
@@ -70,6 +70,43 @@ describe('copyIntoFolder', () => {
     symlinkSync(elsewhere, path.join(root, 'Flown'))
     await expect(copyIntoFolder(video, root, 'OneDrive', { signal: signal(), freeBytes: plenty })).rejects.toThrow('leads somewhere else')
     expect(readdirSync(elsewhere)).toEqual([])
+  })
+
+  describe('on a drive where the system cannot give the real path (RAM disks, virtual drives)', () => {
+    const native = (): ReturnType<typeof vi.spyOn> =>
+      vi.spyOn(fsp, 'realpath').mockImplementation(async (p) => {
+        throw Object.assign(new Error(`EISDIR: illegal operation on a directory, realpath '${String(p)}'`), { code: 'EISDIR' })
+      })
+    afterEach(() => vi.restoreAllMocks())
+
+    it('still copies', async () => {
+      const spy = native()
+      const done = await copyIntoFolder(video, root, 'OneDrive', { signal: signal(), freeBytes: plenty })
+      expect(spy).toHaveBeenCalled()
+      expect(done).toMatchObject({ dest: path.join(root, 'Flown', 'Demo.mp4'), already: false })
+      expect(readFileSync(done.dest).equals(readFileSync(video))).toBe(true)
+    })
+
+    it.skipIf(process.platform === 'win32')('still refuses a Flown folder that is a link to somewhere else', async () => {
+      native()
+      const elsewhere = path.join(dir, 'elsewhere')
+      mkdirSync(elsewhere)
+      symlinkSync(elsewhere, path.join(root, 'Flown'))
+      await expect(copyIntoFolder(video, root, 'OneDrive', { signal: signal(), freeBytes: plenty })).rejects.toThrow('leads somewhere else')
+      expect(readdirSync(elsewhere)).toEqual([])
+    })
+
+    it('says so plainly, without the path, when no way works', async () => {
+      native()
+      const lstat = fsCallbacks.lstat
+      vi.spyOn(fsCallbacks, 'lstat').mockImplementation(((p: string, ...rest: unknown[]) => {
+        const cb = rest[rest.length - 1] as (e: Error | null) => void
+        if (String(p).startsWith(root)) return cb(Object.assign(new Error('EIO: i/o error'), { code: 'EIO' }))
+        return (lstat as (...a: unknown[]) => void)(p, ...rest)
+      }) as typeof fsCallbacks.lstat)
+      const err = await copyIntoFolder(video, root, 'OneDrive', { signal: signal(), freeBytes: plenty }).catch((e: Error) => e)
+      expect((err as Error).message).toBe('The OneDrive folder could not be opened.')
+    })
   })
 })
 

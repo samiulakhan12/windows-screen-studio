@@ -4,10 +4,11 @@
  * never leaving the folder through a link named Flown, with progress, Cancel and a free-space check.
  * The caller makes sure `file` was exported in this session and `root` is a folder found or picked.
  */
-import { createReadStream, createWriteStream, existsSync, promises as fs, rmSync } from 'node:fs'
+import { createReadStream, createWriteStream, existsSync, promises as fs, realpath as realpathWalk, rmSync } from 'node:fs'
 import path from 'node:path'
 import { Transform } from 'node:stream'
 import { pipeline } from 'node:stream/promises'
+import { promisify } from 'node:util'
 import { normalizeFolderPath, SHARE_SUBFOLDER } from '../../shared/share/cloudFolders'
 import { removeWithRetries } from '../exportCleanup'
 import { batchFileOk, freeBatchPath } from '../exportJob'
@@ -42,6 +43,14 @@ const realFree = async (dir: string): Promise<number | null> => {
 }
 
 const sameDir = (a: string, b: string): boolean => normalizeFolderPath(a) === normalizeFolderPath(b)
+
+const walk = promisify(realpathWalk)
+/**
+ * The real path. The system call fails on drives Windows' mount manager does not know (RAM disks,
+ * WinFsp and other virtual drives answer EISDIR); Node's own walk, which still follows links and
+ * junctions, is used then.
+ */
+const realPath = (p: string): Promise<string> => fs.realpath(p).catch(() => walk(p))
 
 export const CANCELLED = 'The share was cancelled.'
 
@@ -143,12 +152,14 @@ export async function copyIntoFolder(file: string, root: string, label: string, 
     throw new Error(`Could not make the ${SHARE_SUBFOLDER} folder in ${label}.`)
   }
   // A link or junction named Flown must not lead out of the folder.
-  const realRoot = await fs.realpath(root)
-  const realSub = await fs.realpath(sub)
+  const reals = await Promise.all([realPath(root), realPath(sub)]).catch(() => null)
+  if (!reals) throw new Error(`The ${label} folder could not be opened.`)
+  const [realRoot, realSub] = reals
   if (!sameDir(realSub, path.join(realRoot, SHARE_SUBFOLDER))) throw new Error(`The ${SHARE_SUBFOLDER} folder in ${label} leads somewhere else, so nothing was copied.`)
-  if (!(await fs.stat(realSub)).isDirectory()) throw new Error(`Could not make the ${SHARE_SUBFOLDER} folder in ${label}.`)
+  if (!(await fs.stat(realSub).catch(() => null))?.isDirectory()) throw new Error(`Could not make the ${SHARE_SUBFOLDER} folder in ${label}.`)
 
-  const realFile = await fs.realpath(file)
+  const realFile = await realPath(file).catch(() => null)
+  if (!realFile) throw new Error('The exported file is not there any more.')
   if (sameDir(path.dirname(realFile), realSub)) return { dest: realFile, bytes: st.size, already: true }
 
   const free = await (opts.freeBytes ?? realFree)(realSub)
