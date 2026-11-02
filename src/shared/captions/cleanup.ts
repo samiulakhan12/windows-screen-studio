@@ -8,7 +8,7 @@
  * are shown; the transcript keeps the real word.
  */
 import type { AiTextResult } from '../api/ai'
-import { captionWordTimes } from '../editor/transcript'
+import { alignKey, captionWordTimes } from '../editor/transcript'
 import type { Bleep, CaptionAuto, CaptionSegment, CaptionSettings, CaptionWord, Project } from '../types'
 import { STANDARD_WORDS, STRICT_WORDS } from './bleepWords'
 import { applyTextResult } from './edit'
@@ -609,11 +609,14 @@ export function maskedSegments(segments: readonly CaptionSegment[], bleeps: read
     if (!mask.size) return seg
     changed = true
     const text = texts.map((t, i) => (mask.has(i) ? maskToken(t) : t)).join(' ')
-    // Words that do not line up with the text one to one ("well-known" timed as two, a word typed
-    // out) give way to the times worked out for each word of the text (with their deleted and
-    // estimated marks): a masked word then keeps its time, and a word cut from the video stays cut.
-    const lined = seg.words && (seg.words.length === texts.length ? seg.words : times)
-    const words = lined?.map((w, i) => (mask.has(i) ? { ...w, text: maskToken(w.text) } : w))
+    // Words that do not line up with the text one to one, each the same word as alignCaptionWords
+    // compares them ("well-known" timed as two, a word typed out, or one deleted and another typed
+    // in: as many words, not the same ones), give way to the times worked out for each word of the
+    // text (with their deleted and estimated marks): a masked word then keeps its time, and a word
+    // cut from the video stays cut. A masked word reads as the text's word masked, so it still
+    // lines up with it.
+    const lined = seg.words && (seg.words.length === texts.length && seg.words.every((w, i) => alignKey(w.text) === alignKey(texts[i])) ? seg.words : times)
+    const words = lined?.map((w, i) => (mask.has(i) ? { ...w, text: maskToken(texts[i]) } : w))
     return { ...seg, text, ...(words ? { words } : {}) }
   })
   return changed ? out : segments

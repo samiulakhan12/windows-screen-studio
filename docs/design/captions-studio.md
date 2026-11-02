@@ -2837,11 +2837,13 @@ Offline rules, each optional (§2.9). The choices are `CleanupChoices` (`caps`, 
      least half of its time lies inside a bleep's span and its text, normalised, equals the
      bleep's word; when no word there matches (the caption was edited), every word with at least
      half its time inside the span is masked. A bleeped word is therefore never readable while its
-     sound is muted. A masked caption whose stored words do not line up with its text one to one
-     ("well-known" timed as two words, a word deleted from the text by hand) carries the times
-     worked out for each word of its text (`captionWordTimes`, with their deleted and estimated
-     marks), so the masked word keeps its time, and a word cut from the video stays out of the
-     subtitle files; a caption no bleep masks is left as it is. Masks ("f***": first letter and asterisks, the same number of graphemes;
+     sound is muted. A masked caption whose stored words do not line up with its text one to one,
+     each the same word as `alignCaptionWords` compares them ("well-known" timed as two words, a
+     word deleted from the text by hand, or one deleted and another typed in, as many words but
+     not the same ones), carries the times worked out for each word of its text
+     (`captionWordTimes`, with their deleted and estimated marks), so the masked word keeps its
+     time, and a word cut from the video stays out of the subtitle files; a caption no bleep masks
+     is left as it is. Masks ("f***": first letter and asterisks, the same number of graphemes;
      "****" in scripts without case) apply in the burned-in captions on every look (through
      `burnedSegments`, §14.2), in SRT, VTT and text exports (`subtitles.ts`), in subtitle streams,
      and in Review rows and their accessible names. The transcript keeps the real word. Motion
@@ -3664,7 +3666,7 @@ under `xvfb-run`: `captions-studio`, `captions`, `edit-by-text`, `transcription`
     masked in the burned-in captions on Clean and on Bold Pop, in SRT, VTT and text, and in a
     subtitle stream; masking falls back to every word in the span when the text was edited; a
     bleeped word cut on the timeline stays out of the subtitle files when the caption's words do
-    not line up with its text.
+    not line up with its text, also when they are as many as its words but not the same ones.
 51. **Nothing read twice** (P2): with an anchored keyword showing, the Studio layer's call log
     draws the keyword's text once in that frame (in the card, not in the caption); an automatic
     quote card hides its caption on Boxed (legacy) and on Subtitle.

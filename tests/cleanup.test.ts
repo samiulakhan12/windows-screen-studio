@@ -275,18 +275,28 @@ describe('bleeping (tests 41, 50)', () => {
       // "um" deleted from the text by hand: the six word times stay.
       { seg: spoken('so this fucking thing works', ['so', 'um', 'this', 'fucking', 'thing', 'works']), out: 'so this thing works' },
       // whisper-1 gives "well-known" as two words.
-      { seg: spoken('This well-known fucking tool works.', ['This', 'well', 'known', 'fucking', 'tool', 'works.']), out: 'This well-known tool works.' }
+      { seg: spoken('This well-known fucking tool works.', ['This', 'well', 'known', 'fucking', 'tool', 'works.']), out: 'This well-known tool works.' },
+      // As many words as the text, but not the same ones: "um" deleted and "really" typed in by
+      // hand, or "well-known" timed as two words and "really" typed in.
+      { seg: spoken('so this fucking thing really works', ['so', 'um', 'this', 'fucking', 'thing', 'works']), out: 'so this thing really works' },
+      { seg: spoken('This well-known fucking tool really works.', ['This', 'well', 'known', 'fucking', 'tool', 'works.']), out: 'This well-known tool really works.' },
+      // A Bangla caption so edited ("উম" deleted, "গেল" typed in).
+      { seg: spoken('ওই তো মাগি চলে গেল', ['ওই', 'উম', 'তো', 'মাগি', 'চলে']), out: 'ওই তো চলে গেল', word: 'মাগি' }
     ]
-    for (const { seg, out } of scenarios) {
+    for (const { seg, out, word = 'fucking' } of scenarios) {
       const p = { ...studioProject({ segments: [seg] }), clips }
       expect(languageSubtitleFile(p, null, 'txt').trim()).toBe(out)
-      const q = { ...p, bleeps: [bleep] }
-      for (const format of ['txt', 'srt', 'vtt'] as const) expect(languageSubtitleFile(q, null, format), format).toBe(languageSubtitleFile(p, null, format))
-      // The masked word keeps its own time.
-      const [masked] = maskedSegments([seg], [bleep])
-      expect(masked.text).toBe(seg.text.replace('fucking', 'f******'))
-      expect(masked.words?.find((w) => w.text === 'f******')).toEqual({ text: 'f******', start: 1.5, end: 1.9 })
+      const q = { ...p, bleeps: [{ ...bleep, word: bleepKey(word) }] }
+      for (const format of ['txt', 'srt', 'vtt'] as const) expect(languageSubtitleFile(q, null, format), `${seg.text} ${format}`).toBe(languageSubtitleFile(p, null, format))
+      // Only the bleeped word is masked ("f******"), and it keeps its own time.
+      const [masked] = maskedSegments([seg], q.bleeps)
+      const at = seg.text.split(' ').indexOf(word)
+      const mask = masked.text.split(' ')[at]
+      expect(mask).not.toContain(word.slice(0, 2))
+      expect(masked.text).toBe(seg.text.replace(word, mask))
+      expect(masked.words?.find((w) => w.text === mask), seg.text).toEqual({ text: mask, start: 1.5, end: 1.9 })
     }
+    expect(maskedSegments([scenarios[0].seg], [bleep])[0].text).toBe('so this f****** thing works')
     // Captions a bleep masks nothing in stay the same objects.
     const other = spoken('so this fucking thing works', ['so', 'um', 'this', 'fucking', 'thing', 'works'])
     const list = [other]
