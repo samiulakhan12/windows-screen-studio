@@ -103,6 +103,11 @@
   gap: var(--space-3);
 }
 
+/* No rows: out of the page and of what a screen reader reaches (the rule above beats `hidden`). */
+.search-list[hidden] {
+  display: none;
+}
+
 .search-hit {
   display: flex;
   flex-direction: column;
