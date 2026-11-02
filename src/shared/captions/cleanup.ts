@@ -382,15 +382,17 @@ export function bleepKey(word: string): string {
  * Words the team writes for languages LDNOOBW lacks (Written for Flown, CC0-1.0; they start small
  * and need a native speaker's check before release, §0.3 decision 4). Matched whole, as Strict's are:
  * each form a word takes is listed, since stems such as বাল and চোদ begin everyday words (বালক,
- * বালিশ, চোদ্দ). The nouns take each case and plural ending (খানকিকে, হারামজাদাদের).
+ * বালিশ, চোদ্দ). The nouns take each case and plural ending (খানকিকে, চোদনার, হারামজাদাদের).
  */
 const BN_NOUN_ENDINGS = ['', 'র', 'রা', 'রে', 'দের', 'কে', 'টা', 'টাকে', 'টার']
 const TEAM_WORDS: Readonly<Record<string, readonly string[]>> = {
   bn: [
-    'চোদ', 'চোদা', 'চোদে', 'চোদো', 'চোদন', 'চোদনা', 'চোদার', 'চোদাও', 'চোদাস', 'চোদিস', 'চোদাবি', 'চোদাতে', 'চোদানো',
-    'চুদি', 'চুদে', 'চুদিস', 'চুদির',
-    ...['খানকি', 'মাগি', 'হারামি', 'হারামজাদা'].flatMap((noun) => BN_NOUN_ENDINGS.map((end) => noun + end)),
-    'বাল', 'বালের', 'বালটা', 'বালছাল', 'শুয়োরের'
+    'চোদ', 'চোদা', 'চোদে', 'চোদো', 'চোদি', 'চোদেন', 'চোদিস', 'চোদত', 'চোদতে', 'চোদবো', 'চোদবি', 'চোদছে', 'চোদছিস',
+    'চোদন', 'চোদনের', 'চোদার', 'চোদাও', 'চোদাস', 'চোদায়', 'চোদাই', 'চোদান', 'চোদাবি', 'চোদাতে', 'চোদানো',
+    'চুদি', 'চুদে', 'চুদিস', 'চুদির', 'চুদিনি',
+    ...['চোদনা', 'খানকি', 'মাগি', 'হারামি', 'হারামজাদা'].flatMap((noun) => BN_NOUN_ENDINGS.map((end) => noun + end)),
+    'খানকিপনা', 'মাগিবাজ', 'হারামিপনা',
+    'বাল', 'বালের', 'বালটা', 'বালডা', 'বালছাল', 'শুয়োরের'
   ]
 }
 

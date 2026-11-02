@@ -169,6 +169,10 @@ describe('bleeping (tests 41, 50)', () => {
 
   it('Bangla bleeps the other forms its words take: verb forms, and the nouns with their case and plural endings', () => {
     const forms = ['চোদনা', 'চোদো', 'চোদাও', 'চোদাস', 'খানকিদের', 'খানকিকে', 'মাগিদের', 'মাগিকে', 'বালছাল', 'হারামিদের', 'হারামিকে', 'হারামজাদাকে', 'হারামজাদাদের']
+    // The verb forms, চোদনা with its endings (চোদনার বাচ্চা) and the words made from the stems.
+    forms.push('চোদি', 'চোদেন', 'চোদত', 'চোদতে', 'চোদবো', 'চোদছে', 'চোদায়', 'চোদাই', 'চোদান', 'চোদনের', 'চুদিনি')
+    forms.push('চোদনার', 'চোদনারা', 'চোদনাকে', 'চোদনাটা')
+    forms.push('খানকিপনা', 'মাগিবাজ', 'হারামিপনা', 'বালডা')
     for (const word of forms) {
       expect(isSwearWord(word, 'standard', 'bn'), word).toBe(true)
       expect(isSwearWord(word, 'strict', 'bn-BD'), word).toBe(true)
