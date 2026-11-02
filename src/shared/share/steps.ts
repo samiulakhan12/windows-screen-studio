@@ -19,8 +19,12 @@ export function stepText(s: ShareStepView): string {
   return `Could not post to ${s.label}: ${s.message ?? 'something went wrong.'}`
 }
 
-/** What "Try again" on `step` starts: a post the failed copy held back goes with that copy again. */
-export function retryTargets(run: ShareRunView, step: ShareStepView): string[] {
+/**
+ * What "Try again" on `step` starts: a post the failed copy held back goes with that copy again,
+ * unless the copy has been saved since (`latest`: the latest step of each destination).
+ */
+export function retryTargets(run: ShareRunView, step: ShareStepView, latest: readonly ShareStepView[] = run.steps): string[] {
   if (step.kind !== 'post' || step.message !== 'Not posted: the copy failed.') return [step.target]
-  return [...run.steps.filter((s) => s.kind === 'copy' && s.state === 'failed').map((s) => s.target), step.target]
+  const saved = (target: string): boolean => latest.some((s) => s.target === target && s.state === 'done')
+  return [...run.steps.filter((s) => s.kind === 'copy' && s.state === 'failed' && !saved(s.target)).map((s) => s.target), step.target]
 }

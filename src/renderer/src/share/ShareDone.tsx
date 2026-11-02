@@ -71,7 +71,7 @@ export function ShareDone({ file, meta, targets, startError }: { file: string; m
               <span className="share-step-text">{stepText(step)}</span>
               {step.kind === 'copy' && step.state === 'running' && <progress className="share-progress" max={1} value={step.fraction ?? 0} aria-hidden="true" />}
               {(step.state === 'failed' || step.state === 'cancelled') && run.finished && (
-                <button className="btn ghost small" disabled={pending.includes(step.target)} aria-label={`Try again: ${step.kind === 'copy' ? 'copy to' : 'post to'} ${step.label}`} onClick={() => start(retryTargets(run, step))}>
+                <button className="btn ghost small" disabled={pending.includes(step.target)} aria-label={`Try again: ${step.kind === 'copy' ? 'copy to' : 'post to'} ${step.label}`} onClick={() => start(retryTargets(run, step, steps.map((s) => s.step)))}>
                   Try again
                 </button>
               )}

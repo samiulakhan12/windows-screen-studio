@@ -239,7 +239,8 @@ choose Share (OneDrive), Copy Dropbox link (Dropbox) or Share › Copy link (Goo
   without them. A share that cannot start is said in the done view ("Could not share: …").
 * The done view has one **Cancel share** per running run (it stops that run's remaining steps), and
   *Try again* on a post that a failed copy held back retries that copy too, so the message still says
-  where the video went. Every button names its destination for screen readers, and focus moves to the
+  where the video went (not when that copy has been saved since by its own *Try again*: the post
+  alone then names its place, and no second copy is made). Every button names its destination for screen readers, and focus moves to the
   Share block when the focused button goes away.
 * *Rejected:* copying from the page (no file access in the sandboxed page) and posting from the page
   (its CSP blocks the network on purpose).
