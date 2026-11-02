@@ -130,8 +130,8 @@ describe('the realistic tutorial copy of the earlier rounds', () => {
       }
     }
     expect(cards).toBe(262)
-    // Measured: 67 of 262 cards (26%), most for a name glued to the letters of another script, which the prompts now
+    // Measured: 65 of 262 cards (25%), most for a name glued to the letters of another script, which the prompts now
     // ask the model to write with a space on each side (§4.1); 30 of 262 at cf2a807, which rewrote 24 cards, 11 losing letters.
-    expect(noted).toBeLessThanOrEqual(67)
+    expect(noted).toBeLessThanOrEqual(65)
   })
 })

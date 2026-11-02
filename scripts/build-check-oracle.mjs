@@ -216,7 +216,7 @@ function generate(oracle) {
   const HOSTS = ['paypal-login.com', 'evil.de', 'evil.co.uk', '203.0.113.7', '3405803783', '0xcb.0x7107', '203.28935', 'evil.在线', 'evil.онлайн', 'evil.web', 'evil.amazon', 'xn--pypal-4ve.com', 'evil.app', 'EVIL.COM', 'login.evil.io', 'evil.рф', '163.com', 'ログインflown.jp', 'flown.app.evil.com', 'flown.app', 'flown.jp', 'github.com', 'acme.de']
   const SCHEMES = ['', '', '', 'https://', 'http://', 'HTTPS://', 'www.', '//', '\\\\', 'https:', 'https:\\\\', 'mailto:x@', 'x@', 'flown.app@', 'https://flown.app@', 'https://flown.app:443@', '//x@', 'https://flown.app\u00a0@', 'https://flown.app\u3000@']
   const PATHS = ['', '', '/verify', '/login?next=x', ':8443/x', '#frag', '/a(b)', '?q=1', '/', '\\x', '%2fx', '.', '。', '%2eevil.com', '．evil．com']
-  const GLUE = ['', '', ' ', '.', '@', '//', '/', ':', '%2e', '&#46;', '&period;', '$', '#', '(', ')', '<', '>', '"', "'", '`', '!', '?', '*', ',', '=', '+', '&', '|', '~', '-', '_', '。', '．', '｡', '，', '：', '（', '「', '」', '…', '\u200b', '\u2060', '\ufe0f', '\u00ad', '\u0301', '日本', 'ログイン', '로그인', 'ที่', 'ב-', 'ب-', 'на', 'é', 'ｇｅｔ', '😀', '➡\ufe0f', '™', 'a', '1', '\u00a0', '\u3000']
+  const GLUE = ['', '', ' ', '.', '@', '//', '/', ':', '%2e', '&#46;', '&period;', '$', '#', '(', ')', '<', '>', '"', "'", '`', '!', '?', '*', ',', '=', '+', '&', '|', '~', '-', '_', '。', '．', '｡', '，', '：', '（', '「', '」', '…', '·', '、', '’', '\u{10100}', '＠', '\u200b', '\u2060', '\ufe0f', '\u00ad', '\u0301', '日本', 'ログイン', '로그인', 'ที่', 'ב-', 'ب-', 'на', 'é', 'ｇｅｔ', '😀', '➡\ufe0f', '™', 'a', '1', '\u00a0', '\u3000']
   const WRAPS = [
     (u) => u,
     (u) => u,
@@ -228,7 +228,9 @@ function generate(oracle) {
     (u) => `<a href=${u}>here</a>`,
     (u) => `<img src="${u}">`,
     (u) => `[here]: ${u}`,
-    (u) => `![x](${u})`
+    (u) => `![x](${u})`,
+    // An attribute across line breaks after a stray '="' in the prose, which must not take its opening quote.
+    (u) => `uses a=" values.\n<a href="${u.replace(/\./g, '\n.\n')}">here</a>`
   ]
   const SEPS = [' ', ' ', ' ', '\n', '\n\n', '', '\u00a0', '\u3000', '。', '，', '\t', ' — ']
   const attack = () => `${pick(GLUE)}${pick(SCHEMES)}${pick(HOSTS)}${pick(PATHS)}${pick(GLUE)}`
@@ -238,8 +240,9 @@ function generate(oracle) {
     const ctx = contexts[c]
     const saidTexts = [...ctx.captions.filter((_, k) => !ai.includes(k)), ctx.title, ...ctx.chapters].filter(Boolean)
     // What the parsers open in what was said, also with spaces around its links in text written without them
-    // ("support@flown.appまで"), and before a word's ending written after a "-" ("flown.app-এ").
-    const said = new Set(saidTexts.flatMap((t) => [t, t.replace(/-?[^\x00-\x7f]+/g, ' ')]).flatMap((t) => Object.values(oracle).flatMap((read) => read(t))))
+    // ("support@flown.appまで"), before a word's ending written after a "-" ("flown.app-এ") and after a prefix
+    // written before one ("מ-flown.app").
+    const said = new Set(saidTexts.flatMap((t) => [t, t.replace(/-?[^\x00-\x7f]+-?/g, ' ')]).flatMap((t) => Object.values(oracle).flatMap((read) => read(t))))
     const pieces = [...text.matchAll(PIECE)]
     const links = []
     for (const [by, read] of Object.entries(oracle)) {

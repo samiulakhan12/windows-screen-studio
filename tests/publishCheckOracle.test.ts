@@ -82,7 +82,7 @@ describe('the link check against the reference parsers (§4.8, §10)', () => {
       const segments = segmentsOf(c)
       const { title, chapters } = contexts[c.context]
       const saidTexts = [...segments.filter((s) => !s.aiLinks).map((s) => s.text), title, ...chapters].filter(Boolean)
-      const xSaid = new Set(saidTexts.flatMap((t) => [t, t.replace(/-?[^\x00-\x7f]+/g, ' ')]).flatMap((t) => xLinks(t).map((l) => l.host)))
+      const xSaid = new Set(saidTexts.flatMap((t) => [t, t.replace(/-?[^\x00-\x7f]+-?/g, ' ')]).flatMap((t) => xLinks(t).map((l) => l.host)))
       const said = new Set([...c.said, ...xSaid])
       const noted = notedPieces(c.text, saidLinks(segments, { title, chapters }))
       const pieces = [...c.text.matchAll(PIECE)].map((m) => ({ start: m.index, end: m.index + m[0].length }))

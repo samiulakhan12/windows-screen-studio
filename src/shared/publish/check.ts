@@ -55,12 +55,27 @@ function decoded(s: string): string {
 }
 
 /**
+ * Chinese and Japanese punctuation no parser reads as a URL's: the full-width and small colons and at
+ * signs (NFKC would make them ":" and "@", but a linkifier ends a link there and a URL's host refuses
+ * them), and the full stops "。", "．" and "｡" unless they stand between ASCII letters, digits or "-"
+ * (also full-width: "paypal-login。com") or the piece has a scheme or "//", where a URL's host reads them
+ * as dots ("https://flown.app。在线"). Each becomes "、", punctuation that joins nothing: so
+ * "Windows：更新", "勉強会＠渋谷" and "ありがとう。みんな" are prose.
+ */
+const WIDE = 'A-Za-z0-9\\-\\uff0d\\uff10-\\uff19\\uff21-\\uff3a\\uff41-\\uff5a'
+const LONE_STOP = new RegExp(`(?<![${WIDE}])[。．｡]|[。．｡](?![${WIDE}])`, 'g')
+function prosePunctuation(s: string): string {
+  const t = s.replace(/[：﹕︓＠﹫]/g, '、')
+  return /[\\/]{2}|[a-z][a-z0-9+.-]+:/i.test(t) ? t : t.replace(LONE_STOP, '、')
+}
+
+/**
  * A piece as the check reads it: HTML character references and percent-escapes decoded, invisible
- * and format characters removed, NFKC, the dot-likes "。", "．" and "｡" (IDNA's dots) as ".", "\\" as
- * "/" (a browser reads it so in a URL), lower case.
+ * and format characters removed, prose punctuation as "、" (prosePunctuation), NFKC, the dot-likes
+ * "。", "．" and "｡" left (IDNA's dots) as ".", "\\" as "/" (a browser reads it so in a URL), lower case.
  */
 export function normalise(s: string): string {
-  const t = decoded(s.replace(INVISIBLE, '')).replace(INVISIBLE, '').normalize('NFKC')
+  const t = prosePunctuation(decoded(s.replace(INVISIBLE, '')).replace(INVISIBLE, '')).normalize('NFKC')
   return decoded(t).replace(INVISIBLE, '').replace(/[。．｡]/g, '.').replace(/\\/g, '/').toLowerCase()
 }
 
@@ -70,8 +85,7 @@ export function normalise(s: string): string {
  * "evil.comK" link evil.com) and read "（" as no "(" ("（anna.li@acme.de" links anna.li).
  */
 const asWritten = (s: string): string =>
-  decoded(s.replace(INVISIBLE, ''))
-    .replace(INVISIBLE, '')
+  prosePunctuation(decoded(s.replace(INVISIBLE, '')).replace(INVISIBLE, ''))
     .replace(/[。．｡]/g, '.')
     .replace(/\\/g, '/')
     .replace(/[A-Z]+/g, (c) => c.toLowerCase())
@@ -90,13 +104,21 @@ const asTyped = (s: string): string => s.replace(INVISIBLE, ' ').replace(/[A-Z]+
  * characters or more: one letter is a Windows drive ("C:\\Users\\…"), and opens no host.
  */
 const SCHEME = /(?<![a-z0-9+.-])[a-z][a-z0-9+.-]+:(?=\S)/
-/** "www.", "//" or "@" before a host (letters, digits, "." and "-", so every form of an IPv4 address; "[" for IPv6). */
-const BEFORE_HOST = /(?:www\.|\/\/|@)[\p{L}\p{N}\p{M}\p{Co}[_.\-]/u
+/**
+ * Punctuation outside ASCII (after NFKC: "·", "、", "」", "’", "𐄀"): a URL's host keeps it (WHATWG URL
+ * maps it with UTS46, X reads it after a scheme), so it is part of a host in a URL.
+ */
+const KEPT = /(?=[^\x00-\x7f])\p{P}/u
+/**
+ * "www.", "//" or "@" before a host (letters, digits, "." and "-", so every form of an IPv4 address; "[" for
+ * IPv6; and punctuation a URL's host keeps, KEPT: "//·flown.app" is xn--flown-pja.app).
+ */
+const BEFORE_HOST = /(?:www\.|\/\/|@)(?:[\p{L}\p{N}\p{M}\p{Co}[_.\-\u{10000}-\u{10ffff}]|(?=[^\x00-\x7f])\p{P})/u
 /**
  * A name's dot and the label after it (which "_" ends: X links "df.to" in "df.to_csv"); the name may be
  * glued to text in any script ("ログインflown.jp", "flown.jpから").
  */
-const DOTTED = /(?<=[\p{L}\p{N}\p{M}\p{Co}_\-]|(?![<>|^])\p{S})\.([\p{L}\p{N}\p{M}\p{Co}\-]+)/gu
+const DOTTED = /(?<=[\p{L}\p{N}\p{M}\p{Co}_\-\u{10000}-\u{10ffff}]|(?![<>|^])\p{S})\.([\p{L}\p{N}\p{M}\p{Co}\-]+)/gu
 
 /**
  * Whether `label`, the last label of a dotted name, is a top-level domain from the full list, also
@@ -180,6 +202,14 @@ function formsOf(token: string): string[] {
   return forms.filter((f) => f.length >= 2)
 }
 
+/**
+ * Whether the dotted name at `i`–`end` of `n` is no host a parser opens there: an address's user name
+ * ("anna.li" in anna.li@acme.de), a name in a query or a fragment ("?ref=paypal-login.com", "#x.io"),
+ * one in a path ("install.sh" in flown.app/get/install.sh), or one after "@" (the host of an address or
+ * of a link with a user name, which formsOf says with it). The link it is in is said whole (URL_RUN).
+ */
+const notAHost = (n: string, i: number, end: number): boolean => n[end] === '@' || /[?=&#@]/.test(n[i - 1] ?? '') || (n[i - 1] === '/' && n[i - 2] !== '/')
+
 /** The link-like tokens of `text` (said), as `normalise` reads it, with the forms that go to the same place (formsOf). */
 function tokensOf(text: string): string[] {
   const out = new Set<string>()
@@ -187,10 +217,15 @@ function tokensOf(text: string): string[] {
     if (!piece) continue
     const n = normalise(piece)
     if (!linkLike(n)) continue
-    for (const m of [...n.matchAll(URL_RUN), ...n.matchAll(NAME_RUN)]) {
+    const runs = [...[...n.matchAll(URL_RUN)].map((m) => ({ m, name: false })), ...[...n.matchAll(NAME_RUN)].map((m) => ({ m, name: true }))]
+    for (const { m, name } of runs) {
+      if (name && notAHost(n, m.index, m.index + m[0].length)) continue
       const t = trimmed(m[0])
-      // Also without a word's ending written after an apostrophe ("flown.app/docs'ta", "README.md's").
-      for (const u of [t, t.replace(/'[a-z]+$/, '')]) if (u && linkLike(u)) for (const form of formsOf(u)) out.add(form)
+      // Also without a word's ending written after an apostrophe ("flown.app/docs'ta", "README.md's"), and without a "-"
+      // written after a prefix of another script ("מ-flown.app", "ب-163.com": the link itself was said).
+      const forms = [t, t.replace(/'[a-z]+$/, '')]
+      if (!name && t.startsWith('-') && /[^\x00-\x7f]/.test(charBefore(n, m.index))) forms.push(t.replace(/^-+/, ''))
+      for (const u of forms) if (u && linkLike(u)) for (const form of formsOf(u)) out.add(form)
     }
   }
   return [...out]
@@ -286,9 +321,10 @@ export function saidLinks(segments: readonly { text: string; aiLinks?: readonly 
 
 /**
  * What joins a name: a letter of any script, a digit, mark or symbol (linkify-it reads one into a
- * host: "😀flown.to"; not "<", ">", "|" or "^", which end one), ".", "-", "_", "@", ":", "/", "%" or "&".
+ * host: "😀flown.to"; not "<", ">", "|" or "^", which end one), any character outside the Basic
+ * Multilingual Plane (linkify-it reads one as a letter, "𐄀" too), ".", "-", "_", "@", ":", "/", "%" or "&".
  */
-const JOINS = /[\p{L}\p{N}\p{M}\p{Co}._@:/%&\-]|(?![<>|^])\p{S}/u
+const JOINS = /[\p{L}\p{N}\p{M}\p{Co}._@:/%&\-\u{10000}-\u{10ffff}]|(?![<>|^])\p{S}/u
 /** What joins a scheme before it: ASCII letters, digits, "+", "." and "-" (dots alone end a sentence: "完成。https://…"). */
 const SCHEME_BEFORE = /[a-z0-9+-][a-z0-9+.-]*$/
 /** A token that is a host alone: no path, query or fragment after its scheme. */
@@ -316,6 +352,31 @@ function joinsAfter(n: string, end: number, hostOnly: boolean): boolean {
 
 /** A label from where it is looked for (DOTTED's). */
 const LABEL_AT = /[\p{L}\p{N}\p{M}\p{Co}\-]*/uy
+
+/** What a URL's host is made of, as far as a registrable name goes: a name's characters, symbols, and punctuation it keeps (KEPT). */
+const IN_HOST = /[\p{L}\p{N}\p{M}\p{Co}_\-\u{10000}-\u{10ffff}]|(?![<>|^])\p{S}|(?=[^\x00-\x7f])\p{P}/u
+
+/**
+ * Whether the host of a URL (a token with a scheme, "//" or "@") that ends at `end` runs on into
+ * another name: punctuation a URL's host keeps (KEPT) and then, in the same run, a dot before more of
+ * it ("https://flown.app·.ws" is flown.xn--app-nga.ws, "https://flown.app·acme.de" a name on .de). A
+ * run without a dot ("https://flown.app、请下载") ends on no other top-level domain. A host's 253
+ * characters at most.
+ */
+function runsOn(n: string, end: number): boolean {
+  let kept = false
+  for (let i = end; i < n.length && i < end + 253; ) {
+    const c = charAt(n, i)
+    if (c === '.') {
+      if (kept && IN_HOST.test(charAt(n, i + 1))) return true
+    } else if (KEPT.test(c)) kept = true
+    else if (!IN_HOST.test(c)) return false
+    i += c.length
+  }
+  return false
+}
+/** Whether `token` is a URL's host: a host alone (HOST_ONLY) with a scheme, "//" or "@" (runsOn). */
+const urlHost = (token: string): boolean => HOST_ONLY.test(token) && /^(?:[a-z][a-z0-9+.-]*:|\/\/)|@/.test(token)
 
 /**
  * An address whose user name is itself link-like, a name on a top-level domain ("anna.li@acme.de",
@@ -383,7 +444,7 @@ function withoutSaid(n: string, said: Said, invisible: boolean): string {
       const i = j + 1 - length
       const t = n.slice(i, j + 1)
       if (dottedMail(t) && (invisible || !mailEnds(n, j + 1))) continue
-      if (!joinsBefore(n, i, t) && !joinsAfter(n, j + 1, HOST_ONLY.test(t))) blank[i] = Math.max(blank[i], j + 1)
+      if (!joinsBefore(n, i, t) && !joinsAfter(n, j + 1, HOST_ONLY.test(t)) && !(urlHost(t) && runsOn(n, j + 1))) blank[i] = Math.max(blank[i], j + 1)
     }
   }
   let out = ''
@@ -416,8 +477,12 @@ export interface Noted {
   text: string
 }
 
-/** A quoted attribute value: a browser drops the tabs and line breaks in it before it reads a URL there ('<a href="https://flown.app\n.com">'). */
-const QUOTED = /=\s*(?:"([^"]*)"|'([^']*)')/g
+/**
+ * A quoted attribute value: a browser drops the tabs and line breaks in it before it reads a URL there
+ * ('<a href="https://flown.app\n.com">'). Looked for after every "=", so that a stray '="' in the prose
+ * before an attribute cannot take its opening quote.
+ */
+const QUOTED = /=\s*(?="([^"]*)"|'([^']*)')/g
 
 /**
  * The pieces of `text` (between ASCII spaces, exactly as written) that hold anything link-like
@@ -430,7 +495,7 @@ export function notedPieces(text: string, said: Said): Noted[] {
   for (const m of text.matchAll(QUOTED)) {
     const value = m[1] ?? m[2] ?? ''
     if (!/[\t\n\r]/.test(value)) continue
-    const start = m.index + m[0].length - value.length - 1
+    const start = m.index + m[0].length + 1
     const end = start + value.length
     const joined = value.replace(/[\t\n\r]+/g, '').split(/[\f ]+/)
     if (joined.some((part) => part && isNoted(part, said)) && !found.some((f) => f.start <= start && f.end >= end)) found.push({ start, end, text: value })
@@ -443,6 +508,37 @@ export const linksToCheck = (text: string, said: Said): string[] => [...new Set(
 
 /** How a piece shows: invisible characters as their code ("evil⟨U+200B⟩.com"), so nothing in it is hidden. */
 export const shownRun = (run: string): string => run.replace(INVISIBLE, (c) => `⟨U+${(c.codePointAt(0) as number).toString(16).toUpperCase().padStart(4, '0')}⟩`)
+
+/**
+ * The runs of a piece a note marks: link characters as written (ASCII URL characters but brackets, '"',
+ * "<" and ">"; their full-width forms, the dot-likes, invisible characters) with a ":", "@", "\\" or "//",
+ * or a dot before a letter or more than one dot (not "2.4" or "Windows/macOS"), and a label of any
+ * script after a dot that ends a name ("evil.在线"); without sentence punctuation at either end.
+ */
+const MARKED = new RegExp(`(?:[A-Za-z0-9\\-._~:/?#@!$%&*+=\\\\,;'\\uff01-\\uff5e。｡]|${INVISIBLE.source})+(?:(?<=[A-Za-z0-9-][.。．｡])[\\p{L}\\p{N}\\p{M}-]+)?`, 'gu')
+const MARKS = /[:@\\：＠＼]|\/\/|／／|[.。．｡][^\d.。．｡]|[.。．｡][^.。．｡]*[.。．｡]/u
+
+/**
+ * Piece `piece` as a note and a confirm show it (shownRun), in parts: the link-like runs (MARKED) to
+ * mark, and the text around them, glued to them, as plain context (so in "完了。flown.appから…" the
+ * name stands out). One marked part, the whole piece, when no run is link-like.
+ */
+export function pieceParts(piece: string): { text: string; marked: boolean }[] {
+  const parts: { text: string; marked: boolean }[] = []
+  let last = 0
+  for (const m of piece.matchAll(MARKED)) {
+    const run = m[0].replace(/^[,;:!?'。｡．]+/, '')
+    const start = m.index + m[0].length - run.length
+    const end = start + run.replace(/[.,;:!?'。｡．]+$/, '').length
+    if (end <= start || !MARKS.test(piece.slice(start, end))) continue
+    if (start > last) parts.push({ text: shownRun(piece.slice(last, start)), marked: false })
+    parts.push({ text: shownRun(piece.slice(start, end)), marked: true })
+    last = end
+  }
+  if (!parts.length) return [{ text: shownRun(piece), marked: true }]
+  if (last < piece.length) parts.push({ text: shownRun(piece.slice(last)), marked: false })
+  return parts
+}
 
 /** Characters of context a confirm shows on each side of a noted piece. */
 const CONTEXT = 12

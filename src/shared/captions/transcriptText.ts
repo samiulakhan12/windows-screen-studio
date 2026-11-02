@@ -14,7 +14,7 @@ import { AI_LIMITS, AI_TEXT_TASKS, type AiTextRequest, type AiTextResult, type A
 import type { CaptionSegment, CaptionWord } from '../types'
 import { cleanText } from './transcriptParse'
 import { isLength, isPackTask, isTone } from '../publish/pack'
-import { LINK_RULE, packPrompt, readPackContext, runPackTask } from '../publish/prompts'
+import { CAPTION_LINK_RULE, LINK_RULE, packPrompt, readPackContext, runPackTask } from '../publish/prompts'
 import { plainText } from '../publish/text'
 import { readAiLinks } from './captionData'
 
@@ -105,7 +105,7 @@ export function textPrompt(request: AiTextRequest, segments: readonly CaptionSeg
         system:
           'You correct automatic captions of a screen recording. For each segment fix punctuation, capitalisation and obvious mis-hearings (a word the speech recogniser clearly got wrong, judged from the context, such as product names and technical terms). ' +
           'Never change the meaning, never reword, shorten, summarise or translate, and keep the language of the original. Leave text that is already right as it is. ' +
-          KEEP_RULES,
+          `${KEEP_RULES} ${CAPTION_LINK_RULE}`,
         user: data
       }
     case 'translate':
@@ -115,7 +115,7 @@ export function textPrompt(request: AiTextRequest, segments: readonly CaptionSeg
         system:
           `You translate the captions of a screen recording into ${request.targetLanguage}. Translate each segment on its own, naturally and faithfully, so it can be shown during that segment's time. ` +
           'Keep names, product names, code, file names, keyboard shortcuts and on-screen labels as they are. ' +
-          KEEP_RULES,
+          `${KEEP_RULES} ${CAPTION_LINK_RULE}`,
         user: data
       }
     case 'chapters':

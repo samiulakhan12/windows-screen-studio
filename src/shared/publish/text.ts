@@ -72,10 +72,17 @@ export function typedText(s: unknown, max: number): string {
   return cutAt(s.replace(/\r\n?/g, '\n').replace(CONTROLS, '').trim(), max)
 }
 
+/** The last label of a dotted name at the end of a text, from its dot (".com" in "…：paypal-login.com"). */
+const LAST_LABEL = /(?<=[\p{L}\p{N}\p{M}_-])\.[\p{L}\p{N}\p{M}-]+$/u
+const LABEL_CHAR = /^[\p{L}\p{N}\p{M}-]/u
+
 /**
  * `s` at most `max` characters: whole when it fits, else cut after the last sentence end in its
  * second half, or else the last word end, with "…" when cut inside a sentence; inside a word (no word
- * end in the second half, as in Chinese or Japanese) never inside a link X finds, but before it.
+ * end in the second half, as in Chinese or Japanese) never inside a link X finds, but before it, nor
+ * inside the last label of a dotted name, but before its dot. So a cut never ends a name early and
+ * makes another one ("paypal-login.comfort" is never "paypal-login.com…"), as when the export cuts a
+ * description confirmed with fewer chapters to fit more.
  */
 export function cutAt(s: string, max: number): string {
   const chars = [...s]
@@ -90,6 +97,8 @@ export function cutAt(s: string, max: number): string {
   if (cut === room) {
     const inside = extractUrlsWithIndices(s).find((u) => u.indices[0] < cut.length && cut.length < u.indices[1])
     if (inside) cut = cut.slice(0, inside.indices[0])
+    const label = LAST_LABEL.exec(cut)
+    if (label && LABEL_CHAR.test(s.slice(cut.length, cut.length + 2))) cut = cut.slice(0, label.index)
   }
   return `${cut.replace(/[\s,;:–—-]+$/, '')}…`
 }
