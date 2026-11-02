@@ -341,9 +341,12 @@ function applyStop(tokens: Tok[], pauseAfter: number, language: string | undefin
 /** Letters a run of is collapsed to two (obscenity's thresholds); any other letter to one. */
 const KEEP_TWO = new Set(['b', 'e', 'o', 'l', 's', 'g'])
 
-/** A word as the bleep lists match it: lower case, punctuation removed, repeated letters collapsed. */
+/**
+ * A word as the bleep lists match it: in NFC (a cloud transcript or typed text may write য় as one
+ * code point or ো in two parts), lower case, punctuation removed, repeated letters collapsed.
+ */
 export function bleepKey(word: string): string {
-  const bare = word.toLowerCase().replace(/[^\p{L}\p{N}\p{M}]/gu, '')
+  const bare = word.normalize('NFC').toLowerCase().replace(/[^\p{L}\p{N}\p{M}]/gu, '')
   let out = ''
   let run = 0
   for (const ch of bare) {
@@ -357,17 +360,41 @@ export function bleepKey(word: string): string {
  * Words the team writes for languages LDNOOBW lacks (Written for Flown, CC0-1.0; they start small
  * and need a native speaker's check before release, §0.3 decision 4). Matched whole, as Strict's are:
  * each form a word takes is listed, since stems such as বাল and চোদ begin everyday words (বালক,
- * বালিশ, চোদ্দ). The nouns take each case and plural ending (খানকিকে, চোদনার, হারামজাদাদের).
+ * বালিশ, চোদ্দ). The forms are made from the stems, so every person and tense is there: the verb
+ * stems চোদ and চুদ take each ending after a consonant (চোদব, চুদছি, চুদেছে, চোদলাম, চুদতাম), the
+ * causative চোদা each ending after a vowel (চোদাই, চোদায়, চোদাচ্ছে, চোদাবো, চোদালো) and the Dhaka
+ * ones (চোদাইছে, চোদাইস); the nouns each case and plural ending and the particles ও and ই
+ * (খানকিকে, চোদনার, হারামজাদাদের, মাগিগো, খানকিও).
  */
-const BN_NOUN_ENDINGS = ['', 'র', 'রা', 'রে', 'দের', 'কে', 'টা', 'টাকে', 'টার']
+const BN_NOUN_ENDINGS = ['', 'র', 'রা', 'রে', 'দের', 'কে', 'টা', 'টাকে', 'টার', 'গো', 'গুলো', 'গুলোর', 'গুলোকে', 'ও', 'ই']
+/** A verb's endings after a stem ending in a consonant: present, continuous, perfect, past, habitual, future, the infinitive, the negative and the Dhaka forms. */
+const BN_VERB_ENDINGS = [
+  ...['', 'ি', 'িস', 'ে', 'ো', 'েন', 'িনি', 'িনা', 'স', 'সনা', 'ুম'],
+  ...['ছ', 'ছি', 'ছিস', 'ছে', 'ছো', 'ছেন', 'ছস', 'ছিল', 'ছিলো', 'ছিলাম', 'ছিলি', 'ছিলে', 'ছিলেন'],
+  ...['েছ', 'েছি', 'েছিস', 'েছে', 'েছো', 'েছেন', 'েছিল', 'েছিলো', 'েছিলাম', 'েছিলি', 'েছিলে', 'েছিলেন'],
+  ...['ল', 'লো', 'লাম', 'লি', 'লে', 'লেন', 'লা'],
+  ...['ত', 'তো', 'তাম', 'তিস', 'তে', 'তেন', 'তাছে', 'তাছি', 'তাছস', 'তেছে'],
+  ...['ব', 'বো', 'বি', 'বে', 'বেন', 'বা']
+]
+/** A verb's endings after a stem ending in আ (the causative চোদা): its vowels written in full (চোদাই, চোদাও, চোদায়), and the Dhaka -ই- forms. */
+const BN_VERB_VOWEL_ENDINGS = [
+  ...['', 'ই', 'স', 'য়', 'ও', 'ন', 'ইনি', 'সনা'],
+  ...['চ্ছ', 'চ্ছি', 'চ্ছিস', 'চ্ছে', 'চ্ছো', 'চ্ছেন', 'চ্ছিল', 'চ্ছিলো'],
+  ...['ল', 'লো', 'লাম', 'লি', 'লে', 'লেন'],
+  ...['ত', 'তো', 'তাম', 'তিস', 'তে', 'তেন'],
+  ...['ব', 'বো', 'বি', 'বে', 'বেন'],
+  ...['নো', 'নোর', 'নি', 'র'],
+  ...['ইছ', 'ইছি', 'ইছে', 'ইছস', 'ইছো', 'ইস', 'ইতে', 'ইতাছে', 'ইল', 'ইলো', 'ইলাম', 'ইয়া', 'ইবি', 'ইমু']
+]
 const TEAM_WORDS: Readonly<Record<string, readonly string[]>> = {
   bn: [
-    'চোদ', 'চোদা', 'চোদে', 'চোদো', 'চোদি', 'চোদেন', 'চোদিস', 'চোদত', 'চোদতে', 'চোদবো', 'চোদবি', 'চোদছে', 'চোদছিস',
-    'চোদন', 'চোদনের', 'চোদার', 'চোদাও', 'চোদাস', 'চোদায়', 'চোদাই', 'চোদান', 'চোদাবি', 'চোদাতে', 'চোদানো',
-    'চুদি', 'চুদে', 'চুদিস', 'চুদির', 'চুদিনি',
-    ...['চোদনা', 'খানকি', 'মাগি', 'হারামি', 'হারামজাদা'].flatMap((noun) => BN_NOUN_ENDINGS.map((end) => noun + end)),
+    ...['চোদ', 'চুদ'].flatMap((stem) => BN_VERB_ENDINGS.map((end) => stem + end)),
+    ...['চোদা', 'চুদা'].flatMap((stem) => BN_VERB_VOWEL_ENDINGS.map((end) => stem + end)),
+    'চোদন', 'চোদনের', 'চুদির', 'চুদিরে',
+    ...['চোদনা', 'চোদাচুদি', 'খানকি', 'মাগি', 'হারামি', 'হারামজাদা'].flatMap((noun) => BN_NOUN_ENDINGS.map((end) => noun + end)),
     'খানকিপনা', 'মাগিবাজ', 'হারামিপনা',
-    'বাল', 'বালের', 'বালটা', 'বালডা', 'বালছাল', 'শুয়োরের'
+    ...['', 'ের', 'ে', 'ও', 'টা', 'টার', 'টাকে', 'ডা', 'ডার', 'ছাল'].map((end) => 'বাল' + end),
+    'শুয়োরের'
   ]
 }
 

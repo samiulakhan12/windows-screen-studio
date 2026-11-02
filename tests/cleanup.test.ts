@@ -163,7 +163,8 @@ describe('bleeping (tests 41, 50)', () => {
 
   it('Bangla matches the team list whole: its forms are bleeped, everyday words that start the same are not', () => {
     for (const word of ['বাল', 'বালের', 'চোদা', 'চুদির', 'খানকির', 'হারামজাদারা']) expect(isSwearWord(word, 'standard', 'bn')).toBe(true)
-    for (const word of ['চোদ্দ', 'চোদ্দো', 'বালক', 'বালকটি', 'বালিকা', 'বালিশ', 'বালতি', 'বালু', 'বালি', 'বালা', 'বালাই', 'মাগিনা']) {
+    // শুয়োর (pig) is an everyday word too, with য় written either way.
+    for (const word of ['চোদ্দ', 'চোদ্দো', 'বালক', 'বালকটি', 'বালিকা', 'বালিশ', 'বালতি', 'বালু', 'বালি', 'বালা', 'বালাই', 'মাগিনা', 'শুয়োর', 'শু\u09DFোর']) {
       expect(isSwearWord(word, 'standard', 'bn')).toBe(false)
       expect(isSwearWord(word, 'strict', 'bn-BD')).toBe(false)
     }
@@ -175,6 +176,15 @@ describe('bleeping (tests 41, 50)', () => {
     forms.push('চোদি', 'চোদেন', 'চোদত', 'চোদতে', 'চোদবো', 'চোদছে', 'চোদায়', 'চোদাই', 'চোদান', 'চোদনের', 'চুদিনি')
     forms.push('চোদনার', 'চোদনারা', 'চোদনাকে', 'চোদনাটা')
     forms.push('খানকিপনা', 'মাগিবাজ', 'হারামিপনা', 'বালডা')
+    // Every person and tense, made from the stems চোদ, চুদ and the causative চোদা, and the Dhaka forms.
+    forms.push('চোদব', 'চোদবে', 'চোদবেন', 'চোদছি', 'চোদছো', 'চোদছ', 'চোদল', 'চোদলে', 'চোদলাম', 'চোদলি', 'চোদতো', 'চোদাবো', 'চোদাবে', 'চোদালো', 'চোদাতাম', 'চোদানি')
+    forms.push('চুদলাম', 'চুদছি', 'চুদছে', 'চুদেছে', 'চুদেছিস', 'চুদবো', 'চুদবি', 'চুদতাম', 'চুদতে', 'চোদাচ্ছে', 'চোদাচুদি', 'চুদিরে')
+    forms.push('চোদাইছে', 'চোদাইস', 'চোদাইতে', 'চুদতাছে', 'চুদুম')
+    // The Dhaka plural গো and the particles ও and ই on the nouns, and বাল's case forms.
+    forms.push('খানকিগো', 'মাগিগো', 'হারামিগো', 'হারামজাদাগো', 'খানকিও', 'মাগিও', 'চোদনাই', 'মাগিগুলো', 'বালও', 'বালে', 'বালটার')
+    // Written another way, as a cloud transcript, a translation or typed text may: য় as one code point
+    // (U+09DF), ো in two parts (U+09C7 U+09BE).
+    forms.push('চোদা\u09DF', 'শু\u09DFোরের', 'চ\u09C7\u09BEদনা', 'চ\u09C7\u09BEদব')
     for (const word of forms) {
       expect(isSwearWord(word, 'standard', 'bn'), word).toBe(true)
       expect(isSwearWord(word, 'strict', 'bn-BD'), word).toBe(true)
