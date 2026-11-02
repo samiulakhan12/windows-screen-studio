@@ -14,6 +14,10 @@
   computer-sound tracks get *You* and *Others* with no AI. Rename a speaker once for every caption;
   names show in the Captions and Transcript tabs, in WebVTT voice tags, optionally in SRT and text
   files, and optionally on the video (*Show speaker names*).
+- **Review mode** (E-02): *Review* in the editor's title bar (or `Shift+R`) lists every change Flown
+  made by itself (auto zooms, camera moves, silences and idle time cut or sped up, fillers removed)
+  in time order. Play each one, then *Keep* it or *Remove* it to get back what was there; *Keep all*
+  or *Remove all* of a kind. Every choice is one undo step, and it all works from the keyboard.
 
 ## 0.7.1
 

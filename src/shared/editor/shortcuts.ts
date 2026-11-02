@@ -46,6 +46,7 @@ export const DEFAULT_KEYMAP: Keymap = Object.freeze({
   split: ['S'],
   deleteSelection: ['Delete', 'Backspace'],
   polish: ['Shift+P'],
+  review: ['Shift+R'],
   cropRecording: ['C'],
   addZoom: ['Z'],
   addText: ['T'],

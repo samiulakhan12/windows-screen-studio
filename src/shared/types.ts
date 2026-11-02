@@ -772,6 +772,10 @@ export interface Project {
   script?: ProjectScript
   /** Where the video came from when Flown did not record it. Absent: recorded in Flown (every project from before NW-07). */
   source?: ImportedSource
+  /** Cuts and speed-ups Flown made by itself, for Review mode (docs/design/review-mode.md). Absent: none recorded (every project from before E-02). */
+  autoCuts?: AutoCut[]
+  /** What was chosen in the Review panel for automatic cuts and speed-ups, one entry per record id, the newest last. Absent: nothing chosen. */
+  autoCutOutcomes?: AutoCutOutcome[]
 }
 
 /** A project made from a video file recorded with another app (docs/design/import-video.md §3). */
@@ -840,4 +844,30 @@ export interface ExportSettings {
 export interface RecordingStatus {
   state: 'idle' | 'countdown' | 'recording' | 'paused' | 'processing'
   elapsed: number
+}
+
+/** What made an automatic cut or speed-up (docs/design/review-mode.md §3). */
+export type AutoCutSource = 'silences' | 'smart-speed' | 'polish' | 'filler' | 'retake' | 'repeat'
+
+/** A cut or speed-up Flown made by itself, in source seconds; Review mode keeps or undoes it. */
+export interface AutoCut {
+  id: string
+  by: AutoCutSource
+  /** 'cut', or the speed the range was set to. */
+  action: 'cut' | 2 | 4 | 8
+  start: number
+  end: number
+  /** The kept pieces inside [start, end] before the change, with their speeds: what Remove puts back. */
+  was: { start: number; end: number; speed: number }[]
+  /** The words a filler or retake cut removed, as the Transcript tab shows them (at most 80 characters). */
+  words?: string
+}
+
+/**
+ * Keep or Remove pressed in the Review panel for an automatic cut or speed-up (`id` is its
+ * AutoCut's). Written in the same edit as the change it makes, so undo and redo carry it too.
+ */
+export interface AutoCutOutcome {
+  id: string
+  outcome: 'kept' | 'removed'
 }

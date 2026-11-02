@@ -1,0 +1,876 @@
+# Review mode (E-02)
+
+Status: built for the next release (branch `feat-review-mode`).
+
+Flown makes many edits by itself: auto zoom, the camera director, Remove silences, Smart speed,
+Polish in one click and the "Remove all" of the fillers-and-retakes list. Review mode steps through
+every one of them, like tracked changes in a document: what each one is, where it is, and **Keep**
+or **Remove** (undo just that one). Keeping a change makes it yours; removing it puts back what was
+there before.
+
+| What | Where |
+|---|---|
+| Review list (the pure rules) | `src/shared/review/*` |
+| Review panel (view, css) | `src/renderer/src/review/*` |
+| Record of automatic cuts | `Project.autoCuts` (optional, additive), read by `readAutoCuts` in the migration |
+| What was chosen for them | `Project.autoCutOutcomes` (optional, additive), read by `readAutoCutOutcomes` in the migration |
+| Entry points | a **Review** button in the editor's title bar, the `review` command in `Ctrl+K` (`Shift+R`) |
+
+---
+
+## 1. What the code does today (read before deciding)
+
+* **Zooms already say whether they are automatic.** `ZoomSegment.auto` (`src/shared/types.ts`) is
+  true for zooms made by auto zoom (`engine/zoom.ts` `autoZoomsForTrack`, Polish's zoom step) and
+  every edit by hand clears it (`zoomEdit.ts`, `groupEdit.ts`, `followEdit.ts` `holdViewAt`).
+  Regenerating auto zooms replaces only `auto` zooms (`regenerateAutoZooms`), and
+  `rebaseAutoZooms` keeps a deleted automatic zoom deleted.
+* **Camera layouts too.** `LayoutSegment.auto` marks the director's segments; `cutOut` marks a
+  director segment cut out of a camera position of the user's, and `cameraDirector.ts`
+  `withoutDirected` joins such pieces back into the position. The director's face framing is the
+  webcam's `zoom/cropX/cropY` while `framingIsDirectors(webcam, project.director)` holds
+  (`engine/directorData.ts`); `clearDirected` resets it.
+* **Cuts do not.** `Project.clips` is a list of kept ranges (`Clip {start, end, speed}`), so a cut
+  made by Remove silences (`smartSpeed.ts` `planSilences` + `applySmartSpeed`, called by
+  `editor/panels/ClipPanel.tsx` `apply` and by `polish.ts` `planPolish`'s silences step), by Smart
+  speed's idle parts (same `apply`), or by the fillers list's Remove all
+  (`editor/panels/TranscriptPanel.tsx` `removeSuggestions` → `transcriptReview.ts`
+  `applySuggestions` → `transcript.ts` `cutWords`) looks exactly like a cut made by hand.
+  `cutRange` (`engine/timeline.ts`) may also take a sliver shorter than `MIN_CLIP` (0.1 s) next to
+  the range, and refuses to cut the last of the video.
+* **Undo** is `EditStore.update` (`shared/editor/editStore.ts`): one call is one undo step unless a
+  `key` merges it with the previous one. The editor's `settle` (`settleDeletedWords`) drops the
+  Transcript tab's `deleted` word marks whose time is no longer cut, so restoring a filler cut
+  needs nothing more.
+* **Vertical framing.** The follow plan (`engine/reframe.ts`) is recomputed from the project every
+  time and never stored; the only stored framing decisions are the holds placed by hand
+  (`followEdit.ts`, `auto: false` zooms). There is nothing automatic to review there (§10).
+* **Fillers and retakes that were only suggested** live in the Transcript tab's own review list
+  (`transcriptReview.ts`); they are not changes yet, so they stay there.
+* **The preview player** (`editor/player.ts`) works in source time: `seek(t)`, `play()`, `pause()`,
+  `time`, `playing`. It does not emit per frame.
+* **Keys.** The editor listens on `window` (`views/Editor.tsx`); a panel that handles a key and
+  stops it from bubbling keeps it to itself. `N` is Snapping and `P` is free; `K` is Pause.
+
+## 2. Decisions
+
+### 2.1 How Flown remembers automatic cuts — **a separate, optional record** (`Project.autoCuts`)
+
+Alternatives:
+1. *A flag on `Clip`* (`auto?: true`). A cut is a gap *between* clips, not a clip, so the flag has
+   nothing to sit on; and clips are split, joined and re-created by every edit (`normalizeClips`,
+   `restoreRange`), so a flag would be lost or spread to the wrong footage.
+2. *Store the clips from before each automatic edit* (a snapshot). Large, and Remove would undo
+   every later edit inside the range too.
+3. **A list of records, each the source range acted on and what was there before** (chosen). Source
+   time is what every other timed item uses, so the record never moves when the user cuts or
+   re-times other parts. Each record holds the kept pieces with their speeds from before
+   (`was`), so Remove puts the footage back *at the speed it had*, not just at 1×.
+
+The record is written in the same `store.update` as the cut (one undo step; undo takes both away).
+Records whose change is no longer in the clips (the user restored or re-timed that part by hand)
+are *stale*: the editor's store drops them in the same undo step as the edit that made them stale
+(`settleAutoCuts`, composed with `settleDeletedWords` as the `EditStore` settle), so a later hand cut
+over the same footage can never bring an old record back; undo brings the record back with the clips.
+The same step drops an automatic cut that an edit by hand made longer: a trim, a cut or a deleted
+clip that takes away kept time in the same gap as the cut (the trimmed outro holding a silence cut,
+a deleted sentence holding a filler cut). That cut is the user's now, so Remove can never bring
+back footage inside their trim or cut. Time claimed by the records an edit writes itself (a tool's
+own cut next to an earlier one) is not by hand.
+A speed-up stays intact when a part of it is cut later: what is still kept still plays at its speed.
+It also stays intact when a later automatic speed-up re-times a part of it (a silence sped up 4×
+inside an idle part sped up 2×): the later record holds that part at this one's speed, as a cut
+inside it does, so removing only the later one puts the part back at 2×, not at 1×. The same goes
+one level further in (a silence sped up 8× inside the 4× one): the 4× record hands that part on to
+the 8× one, and all three stay listed.
+A speed-up the settle step drops leaves the records around it as Keep or Remove of it would
+(§2.4), by how its row then reads (§2.3). Those with none of their footage at their speed any more
+(read removed) go first, the fastest first (one inside another is faster, so an 8× hands its part
+back at 4× before the 4× around it goes) and the latest first among those at one speed: a record
+inside one that holds footage at its speed takes the speed from before it (`withoutSpeedUp`'s
+rule; what those at one speed held is joined into one set of parts, so a project file with as
+many records as it may hold settles in tens of milliseconds). Then those that still play at their speed
+somewhere (read kept), all at once: an earlier speed-up one holds footage of gives that part up
+(`withSpeedUpKept`'s rule, the parts joined a speed at a time), while a record inside it keeps
+holding its speed. So removing a record later never puts footage back at the speed of one gone,
+inside a speed-up still listed: a 4× inside a 2× set back to 2× by hand, then the retake cut inside
+it removed, brings the retake back at 2× and the 2× stays to review; a 4× slowed in part by hand
+outside the 2×, with the retake cut covering all of the 4× inside the 2×, has the 2× give that part
+up, so the retake's part inside the 4× comes back at 4× and the 2× stays to review.
+
+### 2.2 What is listed
+
+| Kind (`ReviewKind`) | Comes from | Pending while |
+|---|---|---|
+| `zoom` | `ZoomSegment.auto === true` | the zoom exists and is still `auto` |
+| `camera` | `LayoutSegment.auto === true`; the director's face framing | the segment exists and is `auto`; `framingIsDirectors` |
+| `silence` | `autoCuts` by `silences` or `polish` | the record exists, its change is intact and no choice is recorded for it |
+| `idle` | `autoCuts` by `smart-speed` | as above |
+| `words` | `autoCuts` by `filler`, `retake`, `repeat` | as above |
+
+Captions written by Polish and a style preset are not listed: captions have their own tab and are
+plain text the user edits; a style is one visible look, not a decision at a time.
+
+### 2.3 Status is read from the project
+
+Each listed item is **pending**, **kept** or **removed**, read from the current project:
+
+* zoom / camera segment: exists and `auto` → pending; exists, not `auto` → kept; gone → removed.
+* face framing: `framingIsDirectors` → pending; framing still set (not the director's) → kept;
+  framing back to none → removed.
+* automatic cut or speed-up: the choice made for it in the panel (`Project.autoCutOutcomes`, §3)
+  when there is one. Else record present and intact → pending. Else (an undo, an edit by hand or a
+  later tool run took the record, with no choice made) the row reads what the video showed in the
+  first state without the record: **removed** when its change was gone from it (all of a cut's
+  footage plays again, at any speed; none of a speed-up's footage plays at its speed), **kept**
+  otherwise (`changeGone`). It keeps that reading as a choice is kept: a later run over the same
+  footage (Polish undone and run again: the first run's rows still read removed beside the new
+  ones), an edit by hand or another row's Keep or Remove leaves it; undo or redo that brings the
+  record back makes the row pending again, and its record going again reads it again. Only the
+  panel lists such a row (a record with neither a choice nor its change is never listed), so the
+  panel holds that reading with the row it shows (below). The footage alone cannot tell it later:
+  the run made again cuts or speeds up the same footage the undone one did.
+
+Why cuts and speed-ups record the choice: a zoom or camera segment carries its state itself
+(`auto`), so the project tells. Keep and Remove both drop a cut's record, and the footage cannot
+always tell which one was pressed: nested speed-ups, undo and later runs over the same footage can
+leave the same clips and records after a Keep as after a Remove. So the choice is written in the
+same `store.update` as the change it makes (§2.4): undo and redo take it back and forth with the
+footage, and a row always agrees with the project.
+
+So **undo and redo just work**: undoing a Keep makes the zoom `auto` again, or brings a cut's
+record back without its choice, and the item pending again, with no second copy of the state to
+keep in step. Alternative: a set of reviewed ids in the panel — rejected, it disagrees with the
+project after any undo.
+
+The panel keeps one thing of its own: the list of items it showed (a snapshot taken when it opens,
+with every new pending item added as it appears, and every pending item taken as it is now), so
+kept and removed items stay in the list, marked, until the panel closes, each cut or speed-up whose
+record went with no choice made carrying how it read then (`went`). The list follows every state
+the store takes, in turn, so that reading is the one of the state the record left in; an edit
+settles before its record leaves (a drag's moves keep the record), and undo and redo bring back
+states the record left in the same way, so a state reads the same each time it comes back.
+Reopening lists only what is still automatic: a record with a choice is never listed.
+
+### 2.4 Keep and Remove
+
+| | Keep | Remove |
+|---|---|---|
+| zoom | `auto: false` (as an edit by hand does) | the zoom is deleted |
+| camera segment | `auto` and `cutOut` cleared | the segment is deleted; a `cutOut` piece turns back into the position's corner and joins its touching pieces (as `withoutDirected` does for one run) |
+| face framing | `director.framed` dropped (the framing is yours) | webcam `zoom/cropX/cropY` removed and `director.framed` dropped (`clearDirected`'s framing part) |
+| automatic cut | the record is dropped (the cut stays, now a plain cut); `kept` is recorded for its id | each `was` piece restored (`restoreRange`) and set back to its speed (`setRangeSpeed`); a piece shorter than `MIN_CLIP` that cannot come back alone joins a clip it touches, or goes to a cut still to review next to it (§4.1); the record is dropped; `removed` is recorded for its id |
+| automatic speed-up | the record is dropped; an earlier speed-up it holds footage of (it was made inside that one) gives that part up (`withSpeedUpKept`), and so does one that holds that part of it in turn (a 2× around a 4× around the 8× kept): the part is yours now, and the earlier ones stay listed for the rest; `kept` is recorded for its id | each `was` piece set back to its speed where it still plays at the record's speed; a record still listed that holds footage at that speed inside it (a silence cut made inside a sped-up idle part) now holds it at the speed from before (`withoutSpeedUp`), so removing it later brings the footage back at that speed, not at the removed one; `removed` is recorded for its id |
+
+Each Keep or Remove is **one** `store.update` (one undo step), the recorded choice included.
+**Keep all** keeps every pending item in one update; **Remove all of this kind** removes every
+pending item of the focused item's kind in one update; each records the choice for every cut and
+speed-up it acts on. Removing cuts goes from the latest in source time to the earliest so restoring
+one never shifts another (they are in source time anyway; the order only keeps `restoreRange`'s
+joins predictable).
+
+### 2.5 Where the panel lives — **a non-modal side panel over the Inspector**
+
+Alternatives: a modal dialog (Polish's) hides the preview and turns off Undo; a timeline overlay
+has no room for text. The panel is 360 px wide on the right, over the Inspector, so the preview
+stays in view while it plays each change. Editor shortcuts keep working (Space, `Ctrl+Z`), except
+for the keys the list uses while the focus is in it (§4.3).
+
+### 2.6 What "Zoom in on the Save button" can say
+
+Flown does not know the names of buttons on the screen (that needs Windows UI Automation at record
+time, §10). The label says what the zoom was made for and where: *"Zoom in on a click, top right"*,
+*"Zoom in on typing, middle"*, *"Pull back"*, from `anchor` (or a fixed focus point) in thirds of
+the frame.
+
+## 3. Data model and compatibility
+
+```ts
+/** Who made an automatic cut or speed change. */
+export type AutoCutSource = 'silences' | 'smart-speed' | 'polish' | 'filler' | 'retake' | 'repeat'
+
+/** A cut or speed-up Flown made by itself (docs/design/review-mode.md). Source seconds. */
+export interface AutoCut {
+  id: string
+  by: AutoCutSource
+  /** 'cut', or the speed the range was set to (2, 4 or 8). */
+  action: 'cut' | 2 | 4 | 8
+  start: number
+  end: number
+  /** The kept pieces inside [start, end] before the change, with their speeds: what Remove puts back. */
+  was: { start: number; end: number; speed: number }[]
+  /** The words a filler or retake cut removed, as shown in the Transcript tab (at most 80 characters). */
+  words?: string
+}
+
+/** Keep or Remove pressed in the Review panel for an automatic cut or speed-up. */
+export interface AutoCutOutcome {
+  /** The AutoCut's id. */
+  id: string
+  outcome: 'kept' | 'removed'
+}
+
+Project.autoCuts?: AutoCut[]
+Project.autoCutOutcomes?: AutoCutOutcome[]
+```
+
+* **Absent** in every project from before (and in projects nothing automatic has cut): the
+  migration adds no key (`optional('autoCuts', readAutoCuts(...))`), so old projects load and save
+  **byte for byte unchanged**, and simply have no automatic cuts to review. Zooms and layouts
+  already carried `auto`.
+* `readAutoCuts(raw, duration)`: an array of plain objects only; `id` 1–64 characters, unique;
+  `by` and `action` from their lists; `start < end`, finite, clamped to `[0, duration]`; `was`
+  pieces finite, inside `[start, end]`, speed in `[0.25, 16]`; `words` a string cut to 80
+  characters; no two pieces of one action over the same footage, as the editor writes them within
+  1 ms (a cut or a speed-up claims footage no other record of its action holds; a record whose
+  footage plays again for under 1 ms stays intact, and a later run can claim that footage again):
+  the pieces of each action gone through by where they start, one that starts inside those kept
+  already keeps only its part past their end (dropped when nothing is left, never for a sliver it
+  shares), and a record left without a piece goes (`withoutOverlaps`); the newest records that fit whole in 10,000
+  records and 64,000 pieces in all (`newestAutoCuts`: walking from the newest, up to the first
+  that does not fit). Anything else is
+  dropped; an empty result is `undefined` (no key). Idempotent. The count is well above what the
+  runs over one long recording write (Remove silences and then Polish on a 1-hour recording with a
+  pause every 10 s write 1,078 records: past a cap of 1000 the oldest went, their rows read kept and
+  their cuts turned plain cuts no row could bring back); the 64,000 pieces, a budget of their own,
+  bound the work on a hand-made file. A tool run writes at most 64 pieces
+  in a record (§4.1), but a record grows past that while the project is open: Keep of the 80 pauses
+  sped up inside an idle part gives those parts up from it (81 pieces), and a speed-up an edit takes
+  away hands the cut inside it its speeds from before. So the cap is on the pieces in all, not on
+  each record, and the editor keeps its records by the same rule (`withAutoCuts`): a project saves
+  and opens again (or is duplicated) with every record whole, and Remove still puts all of it back.
+* `autoCutOutcomes` is **absent** until a choice is made in the panel (the migration adds no key:
+  `optional('autoCutOutcomes', readAutoCutOutcomes(...))`), so old projects, and projects with
+  records but no choice, load and save byte for byte unchanged. Keep, Remove, Keep all and Remove
+  all add one entry per cut or speed-up they act on (`withOutcomes`): one entry per record id, a
+  new choice for an id taking the old one's place at the end, at most 10,000, one for each record
+  a project holds (the newest kept). A choice outlives its record, which the same edit drops.
+* `readAutoCutOutcomes(raw)`: an array of plain objects only, fields read one by one; `id` a string
+  of 1–64 characters; `outcome` `'kept'` or `'removed'`; one entry per id (a later entry for an id
+  is the newer choice and takes its place); at most 10,000 (the newest kept). Anything else is
+  dropped; an empty result is `undefined` (no key). Idempotent.
+* A copy (Duplicate, vertical version) carries the records and the choices with the clips; they are
+  in source time of the same media.
+* Rendering, export, captions and the audio plan never read `autoCuts` or `autoCutOutcomes`.
+
+## 4. Exact behaviour and numbers
+
+### 4.1 Recording a change (`recordAutoCuts`)
+
+`recordAutoCuts(project, nextClips, ranges, action, by, newId?) → Project` (a range may carry its own
+`by` and `words`):
+1. `removed` = the kept source time of `project.clips` that is not kept in `nextClips` (for a cut),
+   or the kept time whose speed changed to `action` (for a speed-up); each piece with its old speed.
+2. The pieces are split at the ranges' ends; a part inside a range goes to the first range holding
+   it, a part outside every range (a sliver `cutRange` took next to one) to the nearest range. So
+   two fillers whose cuts meet keep a record each. Ranges whose share is empty — the cut was
+   refused, the part already played that fast — get no record; a share of more than 64 pieces is
+   split over several records.
+3. An earlier automatic speed-up whose footage this change cuts or re-times keeps all its pieces
+   while some of it still plays at its own speed: the new record holds the part it takes at that
+   speed (Smart speed at 2×, then a silence inside it at 4×: the 4× record holds the silence at 2×),
+   so removing only the new one gives that part back at 2×, and removing the 2× takes the 4× record
+   back to 1× (`withoutSpeedUp`). When none of it plays at its speed any more (Remove silences at 2×
+   and then again with Cut, Smart speed at 2× and then at 4× over the same part), it is dropped:
+   the new record holds that footage at its speed from *before* the speed-up, and any other record
+   holding footage at its speed inside it (a cut made inside it) takes that speed too. Speed-ups
+   are taken over latest first, so one inside another goes first. So Remove never leaves an
+   automatic 2× behind that the list no longer shows, and never a 1× hole inside one it still shows.
+4. Stale records (§2.1) are dropped; the new ones are appended; ids are `a<base36 time><counter>`.
+5. Returns `{ ...project, clips: nextClips, autoCuts }`; `project` itself when the clips are the
+   same object.
+
+Intact (`autoCutIntact`): for a cut, no clip overlaps any `was` piece by more than 1 ms; for a
+speed-up, every part of the `was` pieces still kept plays at `action`, or is held at `action` by a
+later, faster speed-up record that plays it at its own speed or hands it on to another one in the
+same way (an 8× inside a 4× inside a 2×), within 1 ms, and something plays at `action`. Only a
+faster record counts (a tool only speeds up), so a chain is at most three deep. What the records
+hold is worked out one speed at a time, the slowest first, as one set of parts for each speed (not
+path by path), once for a list and its clips. Records are judged among the others still intact, so
+a speed-up whose later record went stale goes too.
+
+Change gone (`changeGone`, the reading of a record that went with no choice made, §2.3): for a
+cut, every `was` piece is kept again (at any speed), within 1 ms; for a speed-up, no part of its
+`was` pieces plays at `action` (it plays at another speed, or is cut), within 1 ms.
+
+Remove of a cut (`undoAutoCut`) puts each `was` piece back as a clip at its own speed where nothing
+plays it, **without snapping** (a piece shorter than `MIN_CLIP` next to a speed change joins the
+clip it was part of), and joins it to touching clips at the same speed, keeping the old clip's id;
+a split of the user's next to it stays, and so does every clip it put no piece in (a clip under
+`MIN_CLIP` a hand restore left at the start or end of the video is not dropped). Remove of a
+speed-up sets each piece back with `setRangeSpeed`, which snaps a range end within `MIN_CLIP` of a clip edge onto the nearest such
+edge (a clip is never shorter; an end on an edge stays). So a reset can leave a sliver at another
+speed than it had before the record: one beside the record's own footage (a cut ending 0.05 s
+before two touching 2× records meet leaves 0.05 s of the first in the second's clip, and the
+second's Remove sets that clip back whole), or one of its own between two pieces that were at
+different speeds (a 4× over the start of a 2×, cut 0.01 s into the 2×: its Remove sets all it
+still plays to 1×); or the reset snaps to nothing, and a sliver of the record's own footage stays
+at its speed inside a clip it cannot be split from, held by no record any more (a 4× inside a 2×
+whose last 0.06 s shares a clip with a 4× kept). A speed-up left that was intact and no longer
+plays such a sliver at its speed
+(nor has it held there by a later record) gives it up, as Keep's `withSpeedUpKept` gives up a part:
+it is not its change any more, and the record stays intact and to review for the rest
+(`withoutResetSlivers`); so does one that held it through that one. When such a sliver beside the
+record's footage is all that a speed-up left at the same speed, intact, still plays at it (a cut
+since took the rest: the second's 0.05 s is all of it left at 2×), giving it up would leave nothing
+of that one sped up: the reset then stops just over `MIN_CLIP` short of that clip's edge instead,
+so a clip of `MIN_CLIP` stays at the speed with both slivers, and the part of the removed record's
+footage in it (under `MIN_CLIP`; all of its part of a clip too short to split, about twice
+`MIN_CLIP` or less) goes to the one left, which holds it from then on (its `was`, `start` and `end` grow): its
+Remove sets that clip back whole, and its Keep keeps it sped up. So Remove of one row never takes
+another off the list.
+
+A piece shorter than `MIN_CLIP` (Remove silences run again with less padding cuts 0.05 s more on
+each side of the same pause) comes back only by joining a clip: alone it cannot be one. Remove
+and Remove all (`takeBack`) therefore, once every record they act on is back:
+1. put such a piece back again, so it joins a neighbour at its speed that came back with it (Remove
+   all, or a record whose range starts before its own footage, taken back first);
+2. put touching pieces at different speeds that are long enough together (a cut across a speed
+   change, each side under `MIN_CLIP`) back as one clip, at the speed of the longest; join one that
+   touches no clip at its speed to a clip it touches at another speed, the one whose speed is
+   nearest its own (it plays again, at that speed; removing a speed-up there later sets it back
+   with the rest). Neither is done when it changes a record still listed (a speed-up holding that
+   time would no longer play it at its speed);
+3. hand one with cut footage on both sides to a cut still to review whose footage touches it (one
+   at its speed first): that record holds it from then on (its `was`, `start` and `end` grow), so
+   its Remove brings the piece back with its own footage, and its Keep keeps it cut with it.
+A piece stays out only where none of these can take it: between two cuts no row can take back
+(the user's own, or kept), or between such a cut and a clip at another speed that it cannot join
+without changing a speed-up still listed. Alone it cannot be a clip; its row reads removed, as
+chosen.
+
+### 4.2 The list (`reviewItems`)
+
+`reviewItems(project) → ReviewItem[]`, sorted by source start, then kind:
+
+```ts
+interface ReviewItem {
+  key: string            // 'zoom:<id>', 'camera:<id>', 'camera:framing', 'cut:<id>'
+  kind: ReviewKind       // 'zoom' | 'camera' | 'silence' | 'idle' | 'words'
+  start: number; end: number   // source seconds
+  title: string          // "Cut 2.4 s of silence"
+  detail: string         // "Remove silences", "Polish", "2×", "Camera director"
+  cut?: AutoCut          // a cut or speed-up: its record as last listed
+  went?: 'kept' | 'removed'    // how it read once its record went with no choice made (mergeSnapshot)
+}
+```
+
+Titles (exact copy):
+
+| Item | Title | Detail |
+|---|---|---|
+| auto zoom, click | `Zoom in on a click, <place>` | `<level>` e.g. `2×` |
+| auto zoom, typing (`anchor.until`) | `Zoom in on typing, <place>` | level |
+| auto zoom, no anchor | `Zoom in, <place>` / `Zoom in` | level |
+| auto zoom, level < 1 | `Pull back` | level |
+| layout `camera-only` | `Full camera` | `Camera director` |
+| layout `camera-large` | `Large camera` | `Camera director` |
+| layout `side-by-side` | `Camera side by side` | `Camera director` |
+| layout `screen-only` | `Camera hidden` | `Camera director` |
+| layout `default` + corner | `Camera to the <corner> corner` | `Camera director` |
+| face framing | `Camera framed on your face` | `Camera director` |
+| cut, silences / polish | `Cut <n> s of silence` | `Remove silences` / `Polish` |
+| speed, silences / polish | `Sped up <n> s of silence <k>×` | as above |
+| cut / speed, smart speed | `Cut <n> s of idle time` / `Sped up <n> s of idle time <k>×` | `Smart speed` |
+| filler | `Removed “<words>”` | `Filler` |
+| retake / repeat | `Removed a retake: “<words>”` / `Removed a repeat: “<words>”` | `Retake` / `Repeat` |
+
+`<place>` is one of `top left, top, top right, left, middle, right, bottom left, bottom, bottom
+right` from the anchor (else a fixed focus point) in thirds; `<n>` is the source length of the
+`was` pieces with one decimal; `<corner>` is `top left`, `top right`, `bottom left`, `bottom right`.
+
+`reviewStatus(project, item) → 'pending' | 'kept' | 'removed'` (§2.3). `reviewProgress(statuses)`
+gives `{ reviewed, total }`. A cut or speed-up with a recorded choice is not listed by
+`reviewItems`, even where a hand-edited file still holds its record.
+
+`pendingCount(project)` is the badge on the Review button (`reviewItems(project).length`, every
+listed item being pending by construction).
+
+`mergeSnapshot(shown, project)` is the panel's list (§2.3): `shown` with each item still pending
+taken as it is in `reviewItems(project)`, plus the items pending there not shown yet, in time
+order; a cut or speed-up whose record is gone from `project` with no choice made gets how it reads
+there (`went`, `changeGone`) and keeps it until its record comes back.
+
+### 4.3 The panel
+
+* While open, the Inspector under it is `inert`, so `Tab` never reaches hidden controls. A mouse
+  click on a row keeps the focus on the row (the editor's focus release would hand it back to the
+  page, and the list's keys with it).
+* Opens with the Review button or the `review` command; the focus goes to the first pending item
+  (else the first item, else the Close button). Escape (focus in the panel) or Close shuts it and
+  gives the focus back to the Review button. A command that shows an Inspector tab (`Open … settings`,
+  Smart speed, the camera director, generating or exporting captions) shuts it first, so the tab and
+  what the command does there are in sight and in reach. The focus then stays where it was (the
+  palette gives it back to what had it before it opened); only when it was in the panel, and so went
+  with it, does it go to the Review button.
+* The time shown is the **video time** of the item's start (`videoTimeAt`, freeze frames counted),
+  as `m:ss.t`. The rows' times are worked out together in one pass over the clips
+  (`videoTimesAt`: the starts in order, the edit time before each clip added up as the walk goes,
+  the same numbers as `videoTimeAt` one by one) and kept by start for each clips array and freeze
+  plan (`rowTimes`), so a key or an edit that leaves the clips alone reads them back. Row by row it
+  was rows × clips on every render: 40 to 120 ms on a 3-hour recording.
+* Choosing an item (click, Enter or Space on it, or `N`/`P`/↑/↓ moving to it) **jumps and plays**:
+  the playhead goes to `PREVIEW_BEFORE = 1.5` s of video before the item and plays until
+  `PREVIEW_AFTER = 1.5` s after it, at most `PREVIEW_MAX = 8` s in all, then pauses. A cut has no
+  length in the video: it plays across the cut point. A removed cut plays the footage that came
+  back. Moving to another item, closing the panel, or pressing Space stops it: Space on a row
+  stops whatever plays (the row's own press is held back, so the stretch does not start over),
+  and chooses the row when nothing plays.
+* Keys while the focus is in the list: `↓`/`N` next item, `↑`/`P` previous, `Home`/`End` first and
+  last, `K` keep, `Delete`/`Backspace` remove. Letters are read as the editor's shortcuts read them
+  (`eventKeyName`), so on a layout of another alphabet the keys where N, P and K sit do the same
+  (else they would reach the editor as Snapping and Pause). The focus stays on the row (roving
+  `tabindex`); `Tab` moves to the row's Keep and Remove buttons. Other keys go on to the editor
+  (`Ctrl+Z` undoes), and so does Shift with a letter that has a shortcut of its own in the user's
+  keymap (`Shift+P` is Polish). Shift with another letter is that letter, as a capital from Caps
+  Lock is (`Shift+N` moves on; the editor would read it as `N`, Snapping). Space on a row is the
+  row's own, as above.
+* Long lists (a 3-hour recording lists 5,000 to 8,000 rows). A row is drawn again only when what it
+  shows changes (a memoized row given its values and handlers that stay the same function), so `N`
+  redraws the two rows whose focus moved, and `K` the rows whose status changed. A list of more
+  than 200 rows draws only the rows near the visible area (360 px above and below) and the focused
+  row, each at its place over a block the height of the whole list, so the scroll bar is the whole
+  list's: rows drawn are measured, those not drawn yet count as the mean height of those measured
+  (52 px before any is), and when rows above the view turn out taller or shorter, the view keeps its
+  place on the focused row when it is in view, else on the first row in view; a view at the end of
+  the list (the scroll bar dragged to the bottom) stays at its end, so the last row shows whole,
+  unless that would take the focused row, in view, out of it. Which row that is is
+  judged from where the last frame had scrolled to: the block takes its new height only after that
+  is read (a shorter block would have the browser pull the scroll position back first, and the
+  focused row at the end judged out of view). The focused row is always drawn, so the roving focus
+  stays on it when the list is scrolled away with the wheel; a move to a row not drawn yet (`End`,
+  `Home`, `N` after scrolling away, the next row to review after the last) draws it and gives it the
+  focus once it is drawn as the focused row (a render before that, the project's change after
+  Remove all drawn first, leaves it waiting). Every move to a row (the list's keys, a click, Keep or
+  Remove moving on, Keep all and Remove all when done) then brings it fully into view once the rows
+  drawn are measured, with the least scroll, also when it had the focus already (`End` on the last
+  row scrolled away with the wheel), on lists of any length and rows of any height. Each row says
+  where it is in the whole list (`aria-posinset`, `aria-setsize` on its `li`), so a screen reader
+  gives its place among all of them, not among those drawn. A list of 200 rows or fewer is drawn
+  whole, as before. In the built app on a 3-hour recording (5,399 to 8,098 rows) the panel opens in
+  70 to 85 ms, `N` and `P` take 11 to 43 ms, `K` 32 to 90 ms and `Delete` 46 to 113 ms, against
+  0.9 to 1 s, 0.15 to 0.4 s, 0.27 to 0.39 s and 0.45 to 0.65 s before (§6).
+* Header: `Review automatic changes`, then progress `12 of 40 reviewed` and a bar.
+* Footer: `Keep all` (keeps every pending item), `Remove all <kind words>` for the focused item's
+  kind (`Remove all zooms`, `Remove all camera changes`, `Remove all silence cuts`,
+  `Remove all idle-time changes`, `Remove all word cuts`), disabled when none of that kind is pending.
+  Keep all and Remove all acting on more than 200 rows say they are working before they work: the
+  button reads `Keeping…` or `Removing…` (`aria-busy`; both buttons `aria-disabled`, so the focus
+  stays on the one pressed) and the live region says what it does and what waits for it
+  (`Keeping 8098 changes… Keep, Remove, Undo and Redo wait until it is done. Closing the panel
+  stops it.`, `Removing 5393 silence cuts… Keep, Remove, Undo and Redo wait until it is done.
+  Closing the panel stops it.`), drawn before
+  the work starts. Then the work goes a slice of time at a time (about 25 ms, a task each, the page
+  drawing in between): Remove all takes its cuts and speed-ups back one at a time (`removeSteps`,
+  `takeBackSteps`: the same result as `removeItems`), and the result is one edit, one undo step,
+  made at the end from the project as it is then.
+* **While it works, what you do to the review waits for it and is then done in order, as if done
+  after it** (as when the work was one long task the page waited for). The work holds the edit
+  store (`heldInSlices`, `EditStore.hold`):
+  * `Ctrl+Z` and `Ctrl+Y` (the keys, the palette, the title bar's Undo and Redo, any Undo or
+    Redo) wait and are done once its edit is made: `Ctrl+Z` undoes the Keep all or Remove all,
+    never the step before it (a Keep you made before is never lost), and `Ctrl+Y` then brings it
+    back. So Undo is there while it works, also when it is the first edit since the project opened
+    (the palette lists it, the title bar's button is enabled), and Redo only after an Undo that
+    waits: its edit, made first, empties the redo list as any edit does, so `Ctrl+Y` with nothing
+    to bring back after it says `Nothing to redo` at once.
+  * A row's Keep and Remove (`K`, `Delete`, `Backspace`, its buttons) wait, in turn with the undo
+    and redo: the live region says so (`Keep waits until Remove all is done.`), and the focus moves
+    on at once as after a Keep or Remove, to the next row that will still be to review (not one the
+    work or another waiting Keep or Remove reviews), so `K` then `Delete` keeps one row and removes
+    the next. Once the work is done each is done in order, its own undo step, and said after it
+    (`Removed 5967 word cuts. Kept. 5969 of 6000 reviewed. Removed. 5970 of 6000 reviewed.`, one
+    message, so none is lost); one whose row the work reviewed meanwhile says so
+    (`Not kept: already removed.`). The focus stays where the moves left it.
+  * Keep all and Remove all pressed meanwhile say the work goes on (`Still removing 5393 silence
+    cuts…`); nothing is dropped without a word. Moving in the list (`N`, `P`, arrows, `Home`, `End`,
+    a click on a row) works as ever and plays.
+  * Other edits made in the editor meanwhile (the timeline, Polish) are made at once; the work then
+    starts over on the project as it is and lands on top of them, its own undo step. `Ctrl+Z` (any
+    Undo, `Undo polish` too) right after such an edit takes it back at once, and `Ctrl+Y` brings it
+    back while the work goes on; an undo or redo asked for after something that waits (a waiting
+    Keep, a waiting undo) waits too, in turn. Once the work's edit is made, an edit taken back
+    meanwhile can no longer be brought back (`Nothing to redo`): that edit, made after it, empties
+    the redo list, as any edit does.
+  * While a drag is held (a trim handle, a segment, a slider, the vertical framing view), the work
+    does not make its edit: each move of the drag is worked out from where it started, so the next
+    one would write over it (the footage back, its records still gone). It goes on once the drag
+    ends, from the project the drag leaves, and lands on top of it, its own undo step.
+  * Closing the panel (`Escape`, Close, the Review button, a command that shows an Inspector tab;
+    `Shift+R` only opens it) stops the work with nothing of it done, and the editor's notice says so
+    (`Remove all silence cuts stopped: nothing was removed.`, `Keep all stopped: nothing was
+    kept.`). What waited is then done in order as if the work had been made: an undo that would
+    have taken it back does nothing (a Keep you made before stays), a redo it would have found
+    nothing for does nothing (the redo list stays as it was), and a Keep or Remove that waited is
+    made, its own undo step, its message in the same notice (`… nothing was removed. Kept. 2 of
+    6000 reviewed.`). So does work that finds nothing left to change.
+  * Leaving the editor (Back, Open original) waits for the work and what waits for it, then saves;
+    closing the window, Duplicate or Make a vertical version, and Export (`Ctrl+E`, the Export
+    button) make its edit at once first, so the copy, the saved file and the video exported have
+    it. None of them loses it.
+
+  When it is done the focus moves on as below (to the next row to review after the focused one; a
+  row chosen meanwhile and still to review keeps it) only from where the work left it: the button
+  pressed (the footer), the page, or a button the work took away (the focused row's Remove,
+  reached again with `Shift+Tab` meanwhile), once the next row is drawn, never left on the row it
+  moved on from. A control chosen meanwhile and still there (a Keep or Remove of a row still to
+  review, the row itself, Close) keeps the focus, so the next `Enter` does what it says; so does
+  the editor, when the focus went there.
+* After each action a polite live region says what happened: `Kept. 13 of 40 reviewed.`,
+  `Removed. 14 of 40 reviewed.`, `Kept 26 changes.`, `Removed 5 zooms.`, and before Keep all or
+  Remove all over more than 200 rows `Removing 5393 silence cuts… Keep, Remove, Undo and Redo
+  wait until it is done. Closing the panel stops it.` (each message a new node in the region, so
+  the same words after an undo are read out again; messages said before the page shows the first
+  are said together, in one node); and the next pending item
+  after the one acted on gets the focus (it is not played: playing only follows a move). After
+  Keep all, whose button then turns disabled, the focus goes back to the focused item's row.
+  Undo and redo (the editor's `Ctrl+Z`, `Ctrl+Y`) can take a row in or out of review under the
+  focus too: its Keep and Remove buttons go, or a footer button turns disabled. When the focus was
+  in the panel as the project changed and is on the page once the change is shown, or still on a
+  button the change disabled (Chromium drops it from there only at its next rendering update), it
+  goes back to the focused item's row (else Close), so `Escape` and the list's keys keep working and
+  do not reach the editor as Snapping, Pause or delete. Run from the palette, the undo or redo
+  happens with the focus in the palette, which gives it back as it closes: to what had it, or, when
+  that is gone or disabled, to the first control of its nearest container left in the panel (the
+  row whose Keep button a Redo took away).
+* Empty: `Nothing to review. Flown has not changed anything by itself yet, or you have reviewed it all.`
+
+## 5. UI and copy
+
+* Title bar button, before **Polish**: an eye-check icon, `Review`, and a count pill when there are
+  pending items. `title`: `Review automatic changes (Shift+R)`; `aria-label`:
+  `Review automatic changes, 12 to review`.
+* Command: `review`, *Review automatic changes…*, category Edit, keywords `tracked changes auto
+  zoom silence cut camera director filler undo keep remove accept reject`, default key `Shift+R`.
+* Each row: kind chip (`Zoom`, `Camera`, `Silence`, `Idle`, `Words`, coloured like the timeline
+  track: `--track-zoom`, `--track-layout`, `--track-clip`, `--track-clip-fast`, `--track-caption`),
+  title, detail and time on the second line, then **Keep** and **Remove** buttons. A reviewed row
+  shows `Kept` (check, `--success-text`) or `Removed` (`--text-2`, title struck through) in place of
+  its buttons; `Ctrl+Z` takes the action back and the row is pending again (§2.3).
+* The row's accessible name: `<title>, <kind>, at <time>, <detail>, <status>` (status: `not reviewed`,
+  `kept`, `removed`), e.g. *"Cut 2.4 s of silence, silence, at 0:12.4, Polish, not reviewed"*: all
+  the row shows, so which tool made a cut and how far a zoom goes are read out too. The list is
+  `role="listbox"`-free: a `ul` of rows whose main button carries that name, so the Keep and Remove
+  buttons stay ordinary buttons a screen reader can reach.
+* Contrast (on `--surface-1` #141418): titles `--text-1` 17:1, details `--text-2` 7.2:1, `Kept`
+  `--success-text` #6ee7b7 11:1, the chips' text is `--text-1` on a 16% tint of the track colour
+  (≥ 12:1). Focus ring: `--focus-ring` (7.7:1).
+
+## 6. Security
+
+Nothing new reads files, runs programs or talks to the network. `project.json` is untrusted input:
+`readAutoCuts` keeps only well-formed records (types, finite numbers, bounded lengths and counts, no
+prototype keys copied: fields are read one by one), so a hand-edited file cannot crash the list or
+make Remove restore time outside the recording (`restoreRange` clamps to the duration as well).
+`readAutoCutOutcomes` does the same for the choices (plain objects, bounded ids, an outcome from
+its list, at most 10,000); a choice only ever changes how a row reads, never the footage.
+What records hold is worked out a speed at a time, each speed as one set of parts, and a chain
+only goes on to a faster record, so the cost grows with the pieces stored, never with the ways
+footage is handed from one record to another. A file never holds two pieces of one action over the
+same footage (`readAutoCuts`): one that stacked them made a single Remove split every copy at every
+piece end of a speed-up (two records, a cut holding 2000 copies of a 2× holding 8000 pieces, ran
+the editor out of memory). So a file with as many records as it may hold (ten thousand of a few
+pieces each, or a thousand of 64), the records of each action sharing the footage out and those of
+different actions over the same footage (at their own speed, or over three rising speeds, or half
+of them speed-ups that go at once with the other half around or inside them), is listed, settled
+and shown in the panel in milliseconds: the speed-ups that go as kept give their parts up together, a speed at
+a time, not one by one. Taking a speed-up from under the other records (`withoutSpeedUp`) and
+giving up the parts of a speed-up kept (`withSpeedUpKept`) go by binary search over its pieces
+joined once, so two records of 32,000 pieces each take milliseconds too. Remove and Remove all
+join the pieces still out to a clip, and hand them on to a cut, pass after pass as §4.1 says, but
+look at a piece again only once a clip or a record beside it changed, and find what touches a piece
+by the times its pieces start and end: Remove all over 500 chains of 64 slivers, each handed on or
+joined one piece at a time, takes well under a second (it took up to 95 s). A row's status reads its recorded choice by id, or
+its record (by id) and whether it is intact, so reading the rows again after many are kept or
+removed costs no more.
+
+A long recording is the other side of the same budget, and only part of it is fast. Remove silences
+and then Polish over 3 hours with a pause every 4 s write 8,098 cuts over 2,700 clips, or, sped up
+instead (2×, then Polish 4× and 8×), 5,399 speed-ups over 10,799 clips. Whether each record is
+intact is worked out once for a state of the project, and the settle step, the list, the Review
+button's count and every row's status share it (`staleAmong`); a record's footage is measured over
+only the clips it can touch, found by binary search over the clips in order; Keep all gives up the
+parts of all its speed-ups at once. There, the logic of opening the panel, one K, Keep all,
+Delete, the settle step after an edit by hand and the Review button's count after any edit (counted
+without making the rows) each take from a few milliseconds to a few tens (tested: the panel's steps
+under 250 ms, the count under 50 ms; they took 0.3 to 3 s, and the count 55 to 600 ms on every
+edit).
+
+The panel draws as fast (§4.3: the rows' times in one pass, a row drawn again only when what it
+shows changes, only the rows near the view drawn). Measured in the built app under Xvfb on those two
+projects, from the key to the next frame drawn, over two to four runs (before, at 7546e2b, in brackets):
+
+| Step | 8,098 cuts over 2,700 clips | 5,399 speed-ups over 10,799 clips |
+|---|---|---|
+| Open the panel (`Shift+R`) | 69-72 ms (1,008 ms) | 79-85 ms (879 ms) |
+| `N`, `P` | 11-24 ms (151-259 ms) | 21-43 ms (208-418 ms) |
+| Ten `↓` back to back | no task over 50 ms (1.2 s of them) | no task over 50 ms (2.2 s of them) |
+| `K` | 32-57 ms (266-310 ms) | 50-90 ms (281-389 ms) |
+| `Delete` | 46-79 ms (551-652 ms) | 64-113 ms (449-538 ms) |
+| `Ctrl+Z`, `Ctrl+Y` on a row | 36-49 ms (523-527 ms) | 46-109 ms (467 ms) |
+| `End`, `Home` | 57-58 ms, 14-24 ms (266, 156 ms) | 62-63 ms, 21-26 ms (249, 211 ms) |
+| Keep all, done | 47-54 ms (891 ms) | 54-58 ms (704 ms) |
+| Remove all, busy state drawn | 9-13 ms | 13-16 ms |
+| Remove all, done | 0.82-0.89 s, no task over 54 ms (1.8 s, one task of 1.3 s) | 5.7-8.0 s, no task over 250 ms (9.3 s, one task of 8.6 s) |
+| `Ctrl+Z` of Remove all, panel open / closed | 215-307 / 160-179 ms (1,265 ms open) | 340-355 / 243-322 ms (1,140 ms open) |
+| An edit elsewhere (`Z`, `Ctrl+Z`), panel open | 25-51 ms; no records: 14-21 ms (144-541 ms) | 32-57 ms; no records: 27-66 ms (253-444 ms) |
+| `Escape` | 14-51 ms (165 ms) | 32-67 ms (260 ms) |
+
+`End` brings the last row fully into view once the rows near it are measured (§4.3), a few
+milliseconds more than drawing it where it was guessed to be. Only part of each step is the
+panel's: any edit to these projects costs the editor 20 to 40 ms (an
+undo with the panel closed), and the one long task of Remove all over the speed-ups, at its end,
+is the editor taking in the clips that changed (the same redo with the panel closed takes 216-260
+ms). Not fast there: the tool runs that write the records (about half a second for a
+cut run, 3 to 4 s for each speed-up run over 10,000 clips), and Remove all of a kind over thousands
+of rows in all (0.8 s for the cuts, 5.7 to 8 s for the speed-ups), which is why it shows it is at
+work first, lets the page draw while it works, and has undo, redo and the rows' Keep and Remove
+wait for it (§4.3).
+
+## 7. Files and exported signatures
+
+* `src/shared/review/autoCutData.ts` — `AUTO_CUT_SOURCES`, `readAutoCuts(raw, duration)`,
+  `readAutoCutOutcomes(raw)`, `withOutcomes(list, chosen)` (the migration's sanitisers, free of
+  editor code).
+* `src/shared/review/autoCuts.ts` — `recordAutoCuts(project, nextClips, ranges, action, by, newId?)`,
+  `autoCutIntact(cut, clips, list?)`, `changeGone(cut, clips)`, `undoAutoCut(clips, cut, duration)`,
+  `liveAutoCuts(project)`, `staleAmong(list, clips)`, `settleAutoCuts(next, prev)`,
+  `withSpeedUpKept(list, kept)`, `withSpeedUpsKept(list, kept)`,
+  `withoutSpeedUp(list, speedUp)`, `withAutoCuts(project, list)`, `takeBack(clips, list, ids,
+  duration, heir)` and `takeBackSteps(…)` (the same, yielding after each record taken back),
+  `finish(steps)` (runs steps to their end).
+* `src/shared/review/review.ts` — `ReviewKind`, `ReviewItem`, `ReviewStatus`, `reviewItems(project)`,
+  `reviewStatus(project, item)`, `keepItems(project, items)`, `removeItems(project, items)`,
+  `mergeSnapshot(shown, project)`, `reviewProgress`, `KIND_WORDS`, `removeSteps(project, items)`
+  (removeItems a cut or speed-up a step).
+* `src/shared/review/times.ts` — `rowTimes(items, clips, plan)`: the rows' times, kept by start for
+  each clips array and plan; `src/shared/engine/freeze.ts` `videoTimesAt(clips, plan, times)`:
+  `videoTimeAt` for many times in one pass over the clips.
+* `src/shared/review/slices.ts` — `inSlices(read, start, done, tasks, slice?)`: steps a slice of
+  time at a time, over again when the state changes; `heldInSlices(store, start, done, tasks,
+  slice?)`: the same on the edit store's state, holding the store meanwhile (undo, redo and what
+  waits are done after `done`'s edit; stopped, nothing of it is done and they are done as if it
+  had been); both give `{ stop, finish }` (`finish`: the steps left at once);
+  `src/renderer/src/review/tasks.ts` `pageTasks()`: the page's tasks for it (the first after the
+  next frame is drawn). `src/shared/editor/editStore.ts` `hold(finish?)` (gives `release(made?)`),
+  `held`, `whenFree(fn)`, `finish()`; `src/shared/engine/history.ts` `push` says whether it made a
+  new step.
+* `src/shared/review/copy.ts` — titles, places, the live messages (`busyMessage` with `BUSY_RULE`,
+  `stillBusyMessage`, `waitMessage`, `staleMessage`, `BUSY_WORDS` for Keep all and Remove all at
+  work, `stoppedMessage` when closing the panel stops it), `itemAccessibleName`.
+* `src/shared/review/preview.ts` — `previewStretch(clips, start, end)` (where to seek, when to stop).
+* `src/shared/review/stretch.ts` — `playStretch(player, clips, stretch, clock)`: plays the stretch,
+  pauses at its end; a seek of more than 0.5 s (back or ahead) or a pause by the user ends it
+  quietly. `src/renderer/src/review/playStretch.ts` runs it on animation frames.
+* `src/shared/review/wordCuts.ts` — `suggestionRanges(words, items, duration)`.
+* `src/shared/review/keys.ts` — `listKey(event)`: what a key pressed in the list does, or null.
+* `src/renderer/src/review/ReviewPanel.tsx` (the panel, `ReviewList` and its windowing,
+  `ReviewRow`), `ReviewButton.tsx`, `playStretch.ts`, `tasks.ts`, `review.css`.
+* Additive lines: `types.ts` (`AutoCut`, `AutoCutOutcome`, `Project.autoCuts`,
+  `Project.autoCutOutcomes`), `engine/project.ts` (two lines),
+  `Editor.tsx`'s store settle (`settleAutoCuts` after `settleDeletedWords`),
+  `ClipPanel.tsx` apply, `polish.ts` silences step, `TranscriptPanel.tsx` Remove all,
+  `commands.ts`/`shortcuts.ts` (the command and its key), `Editor.tsx` (state, button, command,
+  panel).
+
+## 8. Risks
+
+* **A record drifts from the clips** (the user edits that part by hand): the record turns stale and
+  is not listed; Remove of an intact record is computed from the clips at that moment, never from a
+  snapshot. Tested.
+* **The choices grow with the project**: one small entry per cut or speed-up reviewed, at most
+  10,000 kept (the newest); an older choice dropped by that limit belongs to a record long gone, so only a
+  row still shown in an open panel could read the fallback (§2.3) instead.
+* **Restoring a cut next to clips at another speed**: `restoreRange` makes the footage a 1× clip and
+  `setRangeSpeed` sets it back; tested at 2× and 0.5×.
+* **Polish's "polishing again changes nothing"**: recording adds nothing when the clips do not
+  change (same object back), so it still holds; covered by the existing polish tests.
+* **Shift+R** could clash with a user's own binding: the keymap's conflict rules already handle a
+  clash (the user's binding wins in their keymap file).
+* **Long lists** (a long recording with 300 zooms; a 3-hour one after Remove silences and Polish
+  lists up to about 8,000 rows, and the choices allow 10,000): what the rows read is worked out in
+  milliseconds (§6), each row is drawn again only when what it shows changes, and over 200 rows only
+  the rows near the view and the focused row are drawn (§4.3). A screen reader's browse mode reads
+  only the rows drawn (their places in the whole list are given); the keys reach every row.
+  Measured in the built app (§6). Remove all over thousands of speed-ups still takes seconds in
+  all, but in slices, with the page drawing and the busy state shown first.
+
+## 9. Test plan
+
+Unit (`tests/review*.test.ts`), each failing without its code:
+* `readAutoCuts`: absent → undefined; malformed entries dropped; clamped; a piece over footage a
+  piece of its action read before it holds keeps only its part past it, and a record left with none
+  is dropped (a cut holding a thousand copies of a 2×'s footage is read with one, and Delete on the
+  2× stays quick; a filler cut whose first 30 µs an earlier one of its own still holds opens again
+  with the rest, and Remove all brings all of it back); capped
+  (the newest records whole within 10,000 records and 64,000 pieces, a record past 64 pieces kept
+  whole); idempotent; a project without `autoCuts`
+  migrates with no key (byte-for-byte JSON equal to the old migration). `withAutoCuts` keeps the
+  same records. Saved and opened again: an idle part with 80 pauses inside it kept (81 pieces), and
+  a retake cut inside an 8× an edit by hand took away (over 64 pieces), each removed after opening,
+  bring all their footage back. Two records of 32,000 pieces each: `withoutSpeedUp` and Keep of
+  one inside the other take milliseconds.
+* `readAutoCutOutcomes`: absent or empty → undefined; malformed entries dropped (not an object, id
+  empty or over 64 characters, an unknown outcome, extra fields not copied); one entry per id, the
+  later one kept; capped at 10,000, the newest kept; idempotent; a project without choices (with
+  records or not) migrates with no key, byte for byte; Duplicate and the vertical and square copies
+  carry the choices; only Review mode and the migration name the field.
+* `recordAutoCuts`: a silence cut records the exact removed pieces with speeds; a sliver taken by
+  `cutRange` joins its record; a refused cut records nothing; speed-ups record only changed pieces;
+  stale records are dropped; same clips → same project.
+* `undoAutoCut`: cut at 1×, at 2× next to a 1× clip, speed-up back to 1× and to 0.5×; parts the
+  user re-timed since are left alone.
+* `reviewItems`/`reviewStatus`: each kind and title; statuses after keep, remove, undo (an
+  `EditStore` round trip: one undo step each, `Keep all` and `Remove all` one step).
+* `mergeSnapshot`: a cut whose record is gone with no choice made gets its reading (not while a
+  drag has not settled and the record is still there), keeps it when a later run makes the same
+  cut, and is taken as listed again when its record comes back; a choice is read, never fixed.
+* Choices (`tests/reviewOutcomes.test.ts`): histories replayed through the editor's store (its
+  settle step) and the panel's list, as the panel drives them: every case earlier review rounds
+  found (nested speed-ups, undo, redo, reopening, later runs, Keep all), every order of Keep and
+  Remove over nested runs (and the removed ones, then Keep all), two histories that leave the same
+  clips and records, and seeded random histories with undo, redo, reopening and edits by hand.
+  After each step every row the user chose reads that choice and the project holds exactly those
+  choices, and Keep or Remove leaves every row it did not act on to review (a speed-up the settle
+  step dropped leaves the records inside and around it as its row reads, §2.1). Keep, Remove, Keep
+  all and Remove all are one undo step each: the rows go back to
+  pending and forward again on redo. Reopening lists only what is still automatic. Remove
+  silences and then Polish on a 1-hour recording (1,078 records) leave every row to review, and the
+  project opens again with all of them. On a 3-hour one (8,098 cuts over 2,700 clips, or 5,399
+  speed-ups over 10,799 clips), opening the panel, K as the panel runs it (Keep, the settle step,
+  the rows read twice and the list merged) and Keep all each take under 250 ms, and the Review
+  button's count after an edit under 50 ms (they took up to 3 s and 600 ms). Edits by hand
+  after a choice leave it; with no choice, the rows read `changeGone` in the first state without
+  their record and keep it (undone runs, runs undone from the inside out, Polish undone and run
+  again, a cut put back by hand, a speed-up re-timed or cut by hand, a run taken over by a later
+  one), and every state reads the same each time undo or redo comes back to it.
+* A clip under `MIN_CLIP` a hand restore left at the end of the video (the last 0.05 s cut inside
+  an 8× and put back) stays through Remove of a cut elsewhere, and the filler cut before it stays to
+  review.
+* A piece of a cut shorter than `MIN_CLIP` (§4.1): Remove silences run three times with less
+  padding over one pause (the planner's own ranges), its five rows removed in every order and with
+  Remove all, ends with all the footage back; the piece goes to the cut next to it while that one is
+  to review (and stays cut when that one is kept); Remove all brings back a piece whose record's
+  range starts before it; a piece between two parts sped up since, or re-timed by hand, joins the
+  clip at the nearest speed; one inside a speed-up still to review goes to the cut beside it instead
+  of joining a clip outside it at another speed (the speed-up stays to review); one between two
+  kept cuts stays out and reads removed. Remove all over 200 chains of 64 slivers, each handed on to
+  a filler cut or joined to a 2× clip one piece at a time, takes under a second (it took 7 s).
+* A reset that snaps (§4.1): two touching 2× records joined into one clip by a Remove, a cut ending
+  0.05 s before they meet (or starting 0.05 s after), then Remove of the other 2×: the 2× left gives
+  up the sliver, stays to review, and its Remove and the cut's bring all the footage back; its Keep
+  keeps the rest sped up, and undo gives the sliver back. A 4× over the start of a 2×, cut 0.01 s
+  into the 2×, removed: the 2× gives up the 0.01 s and stays to review. A 4× inside a 2× whose last
+  0.06 s shares a clip with a 4× kept, removed: that 0.06 s stays at 4×, and the 2× gives it up and
+  stays to review. `setRangeSpeed` snaps to
+  the nearest clip edge, and an end on an edge stays (14.6 − 14.5 is a hair under 0.1).
+  The cut leaving the second 2× only its 0.05 s beside the first, the first removed (or the
+  mirror: the first left only its 0.05 s, the second removed): the reset stops short of the clip
+  they share, which stays at 2×, and the one left holds the removed one's 0.05 s in it and stays
+  to review; its Remove and the cut's bring all the footage back, its Keep keeps that clip sped
+  up, and undo gives both rows back as they were. In a clip too short to split (0.08 s of the first
+  and 0.05 s of the second), the one left holds all of the removed one's part of it.
+* Director: removing a `cutOut` piece gives its time back to the position (`withoutDirected` agrees).
+* `previewStretch`: a cut plays across the cut point; capped at 8 s; clamped to the video.
+* Polish and the Clip panel record (planPolish with silences gives `autoCuts`; nothing when no change).
+* Copy: every title, the accessible name, progress text, the busy messages.
+* Row times (`tests/reviewTimes.test.ts`): `videoTimesAt` gives `videoTimeAt`'s numbers bit for bit
+  for times in a clip, in a cut, on the edges, before, past the end and not finite, in any order
+  with repeats, on clips never put in order, and on 500 seeded random edits with speeds and pause
+  and continue freezes; `rowTimes` gives each start's `m:ss.t` and works out 8,098 rows over 2,700
+  clips in one pass in milliseconds, then reads them back for the same clips.
+* Work in slices (`tests/reviewSlices.test.ts`): `removeSteps` yields once for each cut or
+  speed-up taken back and gives what `removeItems` gives (cuts, and speed-ups at 2×, 4× and 8×);
+  `inSlices` takes steps for about a slice per task and gives the result once, starts over from the
+  new state when the state changes under it, does nothing more once stopped, `finish` takes the
+  steps left at once from the state as it is, with a gate shut once the steps are done it gives
+  the result only once the gate opens, from the state as it is then (`finish` does not wait), and
+  a long Remove all through it is one store edit and one undo step. `heldInSlices`: `Ctrl+Z` while
+  it works undoes the Remove all once it is done,
+  the Keep before it stays and `Ctrl+Y` brings it back; a Keep handed to `whenFree` meanwhile is
+  done after it, in turn with an undo; stopped, nothing of it is done and a Keep that waited is
+  made; `Ctrl+Z` then stopped leaves the Keep before it; a redo asked for while it works is refused
+  at once (the Remove all would empty the redo list) and, stopped, the redo list stays; a Remove
+  all that finds nothing left to change makes no step and the undo that waited for it takes nothing
+  back; `finish` makes it at once, then what waited; an edit made meanwhile is taken back at once
+  by `Ctrl+Z` and the Remove all then lands on the Keep; with a trim drag held as its steps end, it
+  makes its edit only once the drag ends, on the trimmed project (the trim and the Remove all both
+  there, each its own undo step).
+  `EditStore` (`tests/editStore.test.ts`): undo and redo wait while held and are done in order
+  after the holder's edit; let go without its edit, what waited is done as if it had been made (an
+  undo for it does nothing, two undos take the step before it too, a redo for after it finds
+  nothing, a Keep that waited is made and an undo after it takes that Keep back); an undo takes
+  back at once an edit made meanwhile after the last thing that waits, and a redo brings it back,
+  else both wait; while held `canUndo` is true (also with no step before), `canRedo` only for an
+  edit taken back meanwhile or after an undo that waits, a redo with nothing to bring back after
+  the holder's edit (a redo list from before it, after a Keep that waits) is refused at once, and
+  `subscribeHistory` hears the hold, each wait and the release; `afterGestures` runs once the last
+  open gesture ends; `finish` has the holder make its edit; `whenFree` runs at once when free, else
+  in turn, and one that holds again keeps the rest waiting.
+
+End to end (`tests/e2e/review-mode.e2e.cjs`): open a project with an auto zoom, a director segment
+and an automatic silence cut; the button shows 3; open with `Shift+R`; the rows read right; `N`
+moves and the playhead jumps; `K` keeps the zoom (it stays, `auto` false in the saved project);
+Delete removes the cut (clips back, record gone, `removed` saved for it); `Ctrl+Z` brings the cut
+back and the row back to pending (the choice gone); Keep all (`kept` saved); `Ctrl+Z`, `Tab` to the
+row's Keep, `Ctrl+Y`: the focus back on the row; the same with Redo run from the palette; Escape
+returns the focus to the button; screenshots.
+Then, with the panel open, Polish (silences only, against the AI mock) on a recording with spoken
+words, `Ctrl+Z` from the first row's Keep button (the focus goes back to that row), and the same
+Polish again: the first run's rows read removed after the undo and
+still do beside the new pending rows (`2 of 4 reviewed`, nothing read out as kept, no choice saved);
+`Ctrl+Z` from Keep all, which the undo disables: the focus back on a row; `Ctrl+Y`, then Undo run
+from the palette with the focus on Keep all: the focus on a row too (the panel's current item, not
+its Close button), `N` moves in the list, and Escape closes.
+A long list (a 20-minute recording with 399 cut records): fewer than 60 rows drawn; the focus starts
+on the first row; `End` (a row not drawn until then), `P`, `Home` and 30 `↓` move it, each time
+with the row's accessible name (its video time), its place (`aria-posinset`, `aria-setsize`) and
+the row in view; `K` keeps and moves on, announced; scrolled far away with the wheel, the focus
+stays on its row and `N` brings the next one into view; Remove all says `Removing 398 silence
+cuts…` then `Removed 398 silence cuts.`, its button says it is working, and one `Ctrl+Z` takes it
+all back; Escape closes and gives the focus to the Review button.
+Long lists of rows of different heights (three auto zooms, then cut records whose retake words wrap
+a third of the titles over two or three lines; 400, 2,000 and 6,000 rows): the scroll bar dragged
+to the bottom as the panel opens shows the last row whole once the rows there are measured, the
+view still at the end; `End`, `End` again,
+`End` once scrolled away with the wheel, `K` (on to the first row), `Home`, `End` then `P` three
+times, and `↑` held 150 times from the end each leave the focused row fully in view once the list
+settles. Remove all word cuts from the last row moves the focus to the first row to review, not
+drawn until then, in view, and `N` then moves in the list (Snapping untouched); the live region says
+what it does and what waits, then what it did. `K` on the first zoom, then Remove all and `Ctrl+Z`
+while it works (checked as pressed while busy on 6,000 rows): once done the Remove all is undone and
+the Keep stays; `Ctrl+Y` brings it back. On 6,000 rows, while Remove all works: `Home`, `N`, `K`,
+`Delete`, a click on the next row's Keep, and Keep all: each Keep or Remove says it waits and moves
+the focus on, Keep all says it is still working, nothing changes until it is done; then each is done
+in order (`N of 6000 reviewed` counts them), said in one message after the Remove all's, the focus
+where the moves left it, and each `Ctrl+Z` takes back one of them, then the Remove all. Then, each
+checked as pressed while it works: `Shift+Tab` twice to the last row's Remove, and once done the
+focus moves on to the next row to review (not drawn until then), in view, where `N` moves in the
+list; `Z` on the timeline then `Ctrl+Z`: the zoom is taken back at once, the Remove all is made, and
+one `Ctrl+Z` takes it back with the first zoom still kept; `Ctrl+Z`, `Home`, `N`, `K`, then
+`Escape`: the panel closes, the notice says `Remove all word cuts stopped: nothing was removed.
+Kept. 2 of 6000 reviewed.`, the saved project keeps every record and both zooms' Keeps, `Ctrl+Z`
+takes the waiting Keep back, and reopened the panel lists every row but the kept first zoom
+(`0 of 5999 reviewed`); `Home`, `K`, then Back: the library shows, and the saved project has the
+Remove all and the waiting Keep. On two more 6,000-row projects, Remove all then `Home` and `K`
+while it works: Duplicate from the palette makes a copy with the Remove all and the Keep (and the
+original saved with them); closing the window saves both.
+On a recording sped up 5,000 times by Polish (three auto zooms first; Remove all takes seconds),
+each checked as pressed while it works: as the first edit since the project opened, the title
+bar's Undo is enabled (Redo not) and the palette lists Undo available, whose `Enter` waits and
+takes the Remove all back once done (`0 of 5003 reviewed`); `Ctrl+Y` with the Remove all undone
+before it says `Nothing to redo` at once, and the title bar's Undo waits and takes it back, which
+`Ctrl+Y` then brings back; Export opens its dialog on the project with the Remove all made
+(`333 min 20 s`, not `208 min 20 s`); a trim drag held while it works keeps it waiting until the
+drag ends, then it lands on top of the trim (the saved project has the trim, no speed-up and no
+record), one `Ctrl+Z` takes it back and keeps the trim; `Shift+Tab` three times, `Home` and `Tab`
+to the first zoom's Keep: once done the focus stays on that Keep, and `Enter` keeps the zoom and
+moves on.
+
+## 10. Later
+
+* Name the clicked control ("Zoom in on the Save button") from Windows UI Automation at record time.
+* Review the suggestions not applied yet (fillers) in the same list.
+* Polish's captions and style as reviewable items.
+* A "Show automatic changes" layer on the timeline (marks on the tracks).
+* Vertical framing: if the follow plan's holds become stored decisions, list them as a kind.

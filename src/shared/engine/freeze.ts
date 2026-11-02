@@ -187,6 +187,60 @@ export function videoTimeAt(clips: Clip[], plan: FreezePlan, t: number): number 
   return o >= outputDuration(clips) - EPS ? videoDuration(clips, plan) : editToVideo(plan, o)
 }
 
+/** Clips that start before they end, each ending at or before the next one starts (normalizeClips). */
+function inOrder(clips: readonly Clip[]): boolean {
+  if (clips.length === 0) return false
+  for (let i = 0; i < clips.length; i++) {
+    if (!(clips[i].start < clips[i].end)) return false
+    if (i > 0 && !(clips[i - 1].end <= clips[i].start)) return false
+  }
+  return true
+}
+
+/**
+ * videoTimeAt for each of `ts` (in any order), the same numbers, in one pass over the clips: the
+ * times are taken in order and the edit time before each clip is added up as the walk goes, as
+ * sourceToOutput adds it up. A list of thousands of times over thousands of clips costs a sort,
+ * not times x clips. Clips out of order (never normalised) are mapped one time at a time.
+ */
+export function videoTimesAt(clips: Clip[], plan: FreezePlan, ts: readonly number[]): number[] {
+  const out = new Array<number>(ts.length)
+  if (!inOrder(clips)) {
+    for (let k = 0; k < ts.length; k++) out[k] = videoTimeAt(clips, plan, ts[k])
+    return out
+  }
+  const order: number[] = []
+  let sorted = true
+  for (let k = 0; k < ts.length; k++) {
+    if (Number.isNaN(ts[k])) out[k] = videoTimeAt(clips, plan, ts[k])
+    else {
+      if (order.length > 0 && ts[order[order.length - 1]] > ts[k]) sorted = false
+      order.push(k)
+    }
+  }
+  if (!sorted) order.sort((a, b) => (ts[a] < ts[b] ? -1 : ts[a] > ts[b] ? 1 : 0))
+  const holds = plan.holds.length > 0
+  const total = outputDuration(clips)
+  const video = holds ? videoDuration(clips, plan) : total
+  let i = 0
+  let acc = 0
+  for (const k of order) {
+    const t = ts[k]
+    // The first clip that ends after t is where playback goes on from (playableFrom).
+    while (i < clips.length && !(t < clips[i].end)) {
+      acc += clipLength(clips[i])
+      i++
+    }
+    let o = acc
+    if (i < clips.length) {
+      const c = clips[i]
+      o = acc + ((t < c.start ? c.start : t) - c.start) / c.speed
+    }
+    out[k] = !holds ? o : o >= total - EPS ? video : editToVideo(plan, o)
+  }
+  return out
+}
+
 /** The still whose span holds edit time `o`, or null. */
 function stillAt(plan: FreezePlan, o: number): Still | null {
   return plan.stills.find((s) => o >= s.editStart - EPS && o < s.editEnd - EPS) ?? null

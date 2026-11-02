@@ -80,6 +80,9 @@ import { PreviewPlayer } from '../editor/player'
 import { addShapeAt, addSpotlightAt } from '../editor/playheadItems'
 import { FollowEnvContext, type FollowEnv } from '../editor/panels/FollowSection'
 import { PolishDialog } from '../editor/PolishDialog'
+import { ReviewButton } from '../review/ReviewButton'
+import { settleAutoCuts } from '../../../shared/review/autoCuts'
+import { ReviewPanel } from '../review/ReviewPanel'
 import { PreviewStage } from '../editor/PreviewStage'
 import { SaveIndicator } from '../editor/SaveIndicator'
 import { groupKeyOf, selectionOfKey, validSelection, type Selection } from '../editor/selection'
@@ -180,7 +183,8 @@ async function openSession(projectId: string): Promise<Session> {
   const opened = openedWithoutCamera(openedWithoutStems(data.project, data.missingStems), !data.webcamUrl)
   const project = correctProjectMedia(opened, { duration, width: screen.videoWidth, height: screen.videoHeight })
   // Words deleted in the Transcript tab keep their mark only while they are cut (edit-by-text.md §4.2).
-  const store = new EditStore(project, undefined, undefined, undefined, settleDeletedWords)
+  // Review mode (E-02): records of automatic cuts whose change is gone are dropped in the same step.
+  const store = new EditStore(project, undefined, undefined, undefined, (next: Project, prev: Project) => settleAutoCuts(settleDeletedWords(next, prev), prev))
   const recorded = (p: Project): Project => withRecordedCamera(withRecordedStems(withSavedName(p), data.project), data.project)
   const saver = new Autosaver(store, {
     save: (p, meta) => window.api.saveProject(recorded(p), meta),
@@ -192,10 +196,16 @@ async function openSession(projectId: string): Promise<Session> {
 }
 
 function closeSession(s: Session): void {
-  s.player.dispose()
-  // Normally already flushed by Back; this covers any other way the editor goes away.
-  if (s.saver.dirty) void s.saver.flush().finally(() => s.saver.dispose())
-  else s.saver.dispose()
+  // Work still holding the project (Review mode's Remove all) makes its edit now, to be saved, and
+  // what waits for it is done (before the player goes: a waiting Keep stops the panel's stretch).
+  try {
+    s.store.finish()
+  } finally {
+    s.player.dispose()
+    // Normally already flushed by Back; this covers any other way the editor goes away.
+    if (s.saver.dirty) void s.saver.flush().finally(() => s.saver.dispose())
+    else s.saver.dispose()
+  }
 }
 
 export function Editor({
@@ -319,6 +329,10 @@ function EditorSession({
 }): JSX.Element {
   const { data, store, saver, player } = session
   const project = useSyncExternalStore(store.subscribe, store.getSnapshot)
+  // Undo and Redo for the title bar's buttons: also while work holds the project (Review mode's
+  // Remove all), when they wait for its edit (docs/design/review-mode.md §4.3).
+  const canUndo = useSyncExternalStore(store.subscribeHistory, () => store.canUndo)
+  const canRedo = useSyncExternalStore(store.subscribeHistory, () => store.canRedo)
   const services = useMemo<EditorServices>(() => ({ store, player }), [store, player])
   // cursor.json as recorded; never changed. Everything that shows or uses input reads `cursor`:
   // the recording with the project's input edits (ignored clicks, straightened moves) applied.
@@ -382,6 +396,18 @@ function EditorSession({
   const [tab, setTab] = useState<InspectorTab>('style')
   const [dialog, setDialog] = useState<'palette' | 'shortcuts' | 'polish' | null>(null)
   const [smartSpeedRequest, setSmartSpeedRequest] = useState(0)
+  // E-02 Review mode (docs/design/review-mode.md): the panel over the Inspector, and its button.
+  const [reviewOpen, setReviewOpen] = useState(false)
+  const reviewButton = useRef<HTMLButtonElement>(null)
+  // When the panel closes under the focus (a command that shows an Inspector tab), the focus goes to
+  // its button, as Esc does. Run after the unmount cleanups: a palette closing with it has given the
+  // focus back to where it was, which then keeps it.
+  const reviewWasOpen = useRef(false)
+  useEffect(() => {
+    const active = document.activeElement
+    if (reviewWasOpen.current && !reviewOpen && (!active || active === document.body)) reviewButton.current?.focus()
+    reviewWasOpen.current = reviewOpen
+  }, [reviewOpen])
   const [directorRequest, setDirectorRequest] = useState(0)
 
   // The background image always follows the project state, including undo/redo.
@@ -472,7 +498,10 @@ function EditorSession({
       leavingRef.current = true
       setLeaving(true)
       player.pause()
-      // Wait for the save so the library shows the latest name and nothing is lost.
+      // Work still holding the project (Review mode's Remove all, docs/design/review-mode.md §4.3)
+      // makes its edit first, and what waits for it is done; then the save, so the library shows
+      // the latest name and nothing is lost.
+      await new Promise<void>((done) => store.whenFree(done))
       const saved = await saver.flush()
       const status = saver.status
       if (!saved && !window.confirm(`Your latest changes could not be saved${status.state === 'error' ? `:\n${status.message}` : ''}.\n\nLeave the editor anyway?`)) {
@@ -482,7 +511,7 @@ function EditorSession({
       }
       then()
     },
-    [player, saver]
+    [player, saver, store]
   )
 
   /** Opens the project this one was copied from, unless it is gone from the library. */
@@ -516,6 +545,8 @@ function EditorSession({
   const makeCopy = useCallback(
     async (kind: CopyKind): Promise<void> => {
       if (copyAbort.current) return showNotice(`${COPY_FAILED}a copy is already being made.`, { alert: true })
+      // The copy is of the project with the edit of work still holding it (Review mode's Remove all), made now.
+      store.finish()
       const p = store.state
       const { vw, vh } = editorFrame(p)
       const can = canCopyAs(p, kind, vw, vh)
@@ -575,8 +606,8 @@ function EditorSession({
 
   /* ---------- edit actions (stable; they read the store, not render-time values) ---------- */
 
-  const latest = useRef({ selection, group, tab, pickFocus, exporting, dialog, keymap, shortcuts, copying: false })
-  latest.current = { selection, group, tab, pickFocus, exporting, dialog, keymap, shortcuts, copying: !!copy }
+  const latest = useRef({ selection, group, tab, pickFocus, exporting, dialog, keymap, shortcuts, copying: false, reviewOpen })
+  latest.current = { selection, group, tab, pickFocus, exporting, dialog, keymap, shortcuts, copying: !!copy, reviewOpen }
 
 
   /** Edits to the recorded input: each one store.update (one undo step), with its notice. */
@@ -858,12 +889,14 @@ function EditorSession({
   const exitPick = useCallback(() => setPickFocus(false), [])
 
   const openExport = useCallback((): void => {
+    // The export is of the project with the edit of work still holding it (Review mode's Remove all), made now.
+    store.finish()
     player.pause()
     releaseFocus()
     setPickFocus(false)
     setCropDraft(null)
     setExporting(true)
-  }, [player])
+  }, [player, store])
 
   /* ---------- crop ---------- */
 
@@ -935,7 +968,12 @@ function EditorSession({
   const commands = useMemo((): Record<CommandId, () => void> => {
     const turned = (what: string, on: boolean): void => showNotice(`${what} ${on ? 'on' : 'off'}`)
     const level = (key: string) => (): void => actions.setZoomLevelKey(ZOOM_LEVEL_PRESETS.find((p) => p.key === key)!.value)
-    const showTab = (t: InspectorTab) => (): void => setTab(t)
+    /** Shows an Inspector tab. Review covers the Inspector, so it closes first (the focus, when it goes with it, then goes to its button). */
+    const reveal = (t: InspectorTab): void => {
+      if (latest.current.reviewOpen) setReviewOpen(false)
+      setTab(t)
+    }
+    const showTab = (t: InspectorTab) => (): void => reveal(t)
     /** The cursor path range commands: the selected range straightened, or kept as recorded. */
     const pathRangeCommand = (mode: PathMode): void => {
       const sel = latest.current.selection
@@ -1115,7 +1153,7 @@ function EditorSession({
       cutRange: actions.cutSelectedRange,
       restoreAll: actions.restoreAll,
       smartSpeed: () => {
-        setTab('clip')
+        reveal('clip')
         setSmartSpeedRequest((n) => n + 1)
       },
       addZoom: actions.addZoom,
@@ -1142,7 +1180,7 @@ function EditorSession({
       directCamera: () => {
         const why = directUnavailable(!!data.webcamUrl, store.state.webcam.show)
         if (why) return showNotice(why)
-        setTab('camera')
+        reveal('camera')
         setDirectorRequest((n) => n + 1)
       },
       zoomLevel0: level('0'),
@@ -1205,7 +1243,7 @@ function EditorSession({
         turned('Camera', on)
       },
       generateCaptions: () => {
-        setTab('captions')
+        reveal('captions')
         requestCaptions({ kind: 'generate' })
       },
       toggleCaptions: () => {
@@ -1216,7 +1254,7 @@ function EditorSession({
       },
       exportCaptions: () => {
         if (!store.state.transcript?.segments.length) return showNotice('This video has no captions yet: generate them in the Captions tab')
-        setTab('captions')
+        reveal('captions')
         requestCaptions({ kind: 'export' })
       },
       showCaptions: showTab('captions'),
@@ -1239,6 +1277,8 @@ function EditorSession({
 
       // E-01 polish
       polish: () => setDialog('polish'),
+      // E-02 review mode
+      review: () => setReviewOpen(true),
 
       // E-04 waveform: a view preference, so not an undo step (like the timeline zoom)
       toggleWaveform: () => {
@@ -1537,8 +1577,13 @@ function EditorSession({
 
   useEffect(() => {
     // Closing the window or quitting tears the page down without unmounting React; save synchronously.
+    // Work still holding the project (Review mode's Remove all) makes its edit first, and what waits for it is done.
     const flush = (): void => {
-      saver.flushSync()
+      try {
+        store.finish()
+      } finally {
+        saver.flushSync()
+      }
     }
     window.addEventListener('beforeunload', flush)
     window.addEventListener('pagehide', flush)
@@ -1546,7 +1591,7 @@ function EditorSession({
       window.removeEventListener('beforeunload', flush)
       window.removeEventListener('pagehide', flush)
     }
-  }, [saver])
+  }, [saver, store])
 
   // What the Vertical framing section reads besides the project, and the recording as cropped for the copy menu.
   const followEnv = useMemo<FollowEnv>(() => ({ cursorValid: cursor.valid, reveal: followReveal }), [cursor.valid, followReveal])
@@ -1574,10 +1619,10 @@ function EditorSession({
           />
           <CopyMenu project={project} vw={shown.vw} vh={shown.vh} run={(kind) => void makeCopy(kind)} />
           <div className="history-buttons">
-            <button className="btn ghost icon-btn" onClick={actions.undo} disabled={!store.canUndo} title={withShortcut('Undo', keymap.undo)} aria-label="Undo">
+            <button className="btn ghost icon-btn" onClick={actions.undo} disabled={!canUndo} title={withShortcut('Undo', keymap.undo)} aria-label="Undo">
               <EditorIcon name="undo" />
             </button>
-            <button className="btn ghost icon-btn" onClick={actions.redo} disabled={!store.canRedo} title={withShortcut('Redo', keymap.redo)} aria-label="Redo">
+            <button className="btn ghost icon-btn" onClick={actions.redo} disabled={!canRedo} title={withShortcut('Redo', keymap.redo)} aria-label="Redo">
               <EditorIcon name="redo" />
             </button>
           </div>
@@ -1592,6 +1637,7 @@ function EditorSession({
           <button className="btn ghost icon-btn" onClick={() => setDialog('shortcuts')} title={withShortcut('Keyboard shortcuts', keymap.shortcuts)} aria-label="Keyboard shortcuts">
             <EditorIcon name="keyboard" />
           </button>
+          <ReviewButton ref={reviewButton} project={project} shortcuts={keymap.review} open={reviewOpen} onToggle={() => setReviewOpen((o) => !o)} />
           <button className="btn" data-testid="polish-open" onClick={() => setDialog('polish')} title={withShortcut(POLISH_BUTTON_TITLE, keymap.polish)}>
             <EditorIcon name="sparkle" size={16} /> Polish
           </button>
@@ -1666,6 +1712,15 @@ function EditorSession({
             onRestore={actions.restore}
             onCutRange={actions.cut}
           />
+          {reviewOpen && (
+            <ReviewPanel
+              onClose={() => {
+                setReviewOpen(false)
+                reviewButton.current?.focus()
+              }}
+              onNotice={showNotice}
+            />
+          )}
         </div>
 
         <Timeline

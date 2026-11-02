@@ -36,6 +36,7 @@ import type { InspectorProps } from '../Inspector'
 import { useKeymap } from '../keymapContext'
 import { FirstShortcut } from '../ShortcutKeys'
 import { FreezeSection } from './FreezeSection'
+import { recordAutoCuts } from '../../../../shared/review/autoCuts'
 import './clipPanel.css'
 import './silences.css'
 
@@ -426,7 +427,8 @@ function SmartSpeed(props: InspectorProps): JSX.Element {
     // A silence across a cut is acted on at both sides of it.
     const ranges = mode === 'idle' ? chosenIdle : chosenSilences.flatMap((p) => p.pieces)
     const before = outputDuration(store.state.clips)
-    store.update((p) => ({ ...p, clips: applySmartSpeed(p.clips, ranges, currentAction) }))
+    // Remembered as automatic, for Review mode (docs/design/review-mode.md §4.1).
+    store.update((p) => recordAutoCuts(p, applySmartSpeed(p.clips, ranges, currentAction), ranges, currentAction, mode === 'idle' ? 'smart-speed' : 'silences'))
     const shorter = before - outputDuration(store.state.clips)
     onSelect(null)
     const noun = mode === 'idle' ? 'idle part' : 'silence'
