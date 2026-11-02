@@ -9,6 +9,50 @@ Order of releases: **0.7.1** (auto-update) → **0.8.0** (wave 8: captions that 
 pack, review mode, versions and filmstrip, sound finder, share, search) → **0.9.0** (wave 9, Captions Studio) → later
 waves.
 
+## Checkpoint (2 November 2026)
+
+**Merged and pushed** on `ccr-b6df7cf7-yked87`, each reviewed through several lenses (every finding checked twice),
+fixed, and verified with typecheck, the full unit suite, the build and the end-to-end files it touches:
+
+- **0.7.1** auto-update.
+- **NW-09** captions that survive OpenAI's `whisper-1` shutdown, and speaker labels.
+- **E-02 Review mode**: review what Flown changed by itself.
+- **NW-13 Publishing pack**: the text to post with a video, with a link check and a confirm before noted text leaves
+  the app.
+- **Wave 9, Captions Studio phase A**: the look gallery, 42 bundled fonts (9 Bangla families), motion, motion graphics
+  made from captions, automation (Make my captions great, Tidy captions, bleeping, Auto style, AI marks), caption
+  tracks and subtitle streams; Bangla bleeping redesigned to catch every form of a listed word.
+
+**Known minor issues** (all low; none loses work):
+
+- Review mode: a control focused while *Remove all* works can lose focus when the work ends in two cases; a Keep or
+  Delete on a row a waiting undo brings back is dropped; *Keep all* pressed while *Remove all* works is refused
+  instead of waiting.
+- Publishing pack: some file names get a needless note; *Use for exports* can list the same link twice; a Chinese or
+  Japanese text cut to fit can lose a little more than needed or get a note with no link; the highlight on a
+  look-alike host stops at its non-ASCII letters.
+- Captions Studio: Stickers at a very large size with very fast speech can reach past the frame edge, and a wide
+  dragged Stickers block is pinned to the left; the palette's *Fix captions* and *Translate* commands point to
+  Clean up and Languages until phase B.
+- Bangla bleeping: Bangla written in Latin letters is not bleeped; the bustard bird's name, everyday words joined by
+  an en or em dash, the locative of "boy" (spelled like a form of a listed word) and the literal "piglets" and
+  "puppies" can be bleeped.
+
+**Built, review part-way** (each resumes its review run; worktrees are clean):
+
+| Feature | Branch | Worktree | Review run |
+| --- | --- | --- | --- |
+| F-18 Search | `rev/search` | `/home/user/wt-search` | `wf_c4ad3490-0d9` |
+| F-17 Sound finder (needs `npm ci` in the main checkout after merging) | `rev/sound-finder` | `/home/user/wt-snd` | `wf_0844d540-15d` |
+| F-22 Share | `rev/share` | `/home/user/wt-share` | `wf_4eff5e90-bd4` |
+| E-12/E-07/E-09 Versions and filmstrip | `rev/versions` | `/home/user/wt-ver` | `wf_918b72cf-295` |
+
+**Then**: Captions Studio phase B, waves 10–12 below, and auto-blur of private information last.
+
+**Open items**: #61, an intermittent 20 ms microphone stem offset (Chromium capture); `tests/aiProviders.test.ts` and
+one offline-captions e2e step read leftover `ssw-transcribe-*` folders in the shared temp folder (run unit tests
+with a private `TMPDIR` until it is isolated).
+
 ## Wave 9 · Captions Studio (first)
 
 Captions today: styles *clean, bold, boxed, karaoke, minimal*, a position, brand fonts, word timings (on this PC or
