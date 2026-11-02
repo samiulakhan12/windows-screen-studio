@@ -354,6 +354,33 @@ describe('SearchService', () => {
     expect(await ids(service, 'alpha')).toEqual(['rec-a'])
   })
 
+  it('empties the file when the index grows too large to keep: no deleted recording\'s words stay in it', async () => {
+    const { disk, service, logs } = setup()
+    disk.project('rec-a', { name: 'Alpha' })
+    disk.project('rec-b', { name: 'Beta', transcript: { segments: [said(1, 'the password is swordfish')] } })
+    await service.start()
+    await vi.advanceTimersByTimeAsync(SEARCH_TIMING.writeDebounceMs)
+    expect(disk.files.get(INDEX)?.text).toContain('swordfish')
+    disk.removeFolder('rec-b')
+    await service.reconcile()
+    // Meanwhile the library grew past what the next start would read back (a long transcribed one).
+    const lecture = { stamp: '1:1', name: 'Lecture', createdAt: '', duration: 1, units: [{ kind: 'said' as const, start: 0, end: 1, text: 'অ'.repeat(MAX_READ_BYTES / 3 + 1) }], hasTranscript: true, kept: [] }
+    const realIds = service.index.ids.bind(service.index)
+    const realGet = service.index.get.bind(service.index)
+    const idsSpy = vi.spyOn(service.index, 'ids').mockImplementation(() => [...realIds(), 'rec-lecture'])
+    const getSpy = vi.spyOn(service.index, 'get').mockImplementation((id) => (id === 'rec-lecture' ? lecture : realGet(id)))
+    try {
+      await vi.advanceTimersByTimeAsync(SEARCH_TIMING.writeDebounceMs)
+    } finally {
+      idsSpy.mockRestore()
+      getSpy.mockRestore()
+    }
+    const text = disk.files.get(INDEX)?.text ?? ''
+    expect(text).not.toContain('swordfish')
+    expect(JSON.parse(text)).toEqual({ version: SEARCH_INDEX_VERSION, projects: {} })
+    expect(logs.some((l) => l.includes('too large'))).toBe(true)
+  })
+
   it('writes pending saves when disposed', async () => {
     const { disk, service } = setup()
     disk.project('rec-a', { name: 'Alpha' })

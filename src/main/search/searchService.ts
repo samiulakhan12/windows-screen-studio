@@ -270,15 +270,13 @@ export class SearchService {
       if (e) entries.set(id, e)
     }
     const text = serializeIndex(entries)
-    // A file the next start would refuse to read is not written: the index is built again instead.
-    if (text.length * 3 > MAX_READ_BYTES && Buffer.byteLength(text) > MAX_READ_BYTES) {
-      this.dirty = false
-      this.log('The search index is too large to keep; it is built again at the next start')
-      return
-    }
+    // A file the next start would refuse to read is not written: an empty one replaces the last one
+    // (so no deleted recording's words stay in it), and the index is built again at the next start.
+    const tooLarge = text.length * 3 > MAX_READ_BYTES && Buffer.byteLength(text) > MAX_READ_BYTES
     try {
-      this.deps.disk.writeText(this.deps.indexFile, text)
+      this.deps.disk.writeText(this.deps.indexFile, tooLarge ? serializeIndex(new Map()) : text)
       this.dirty = false
+      if (tooLarge) this.log('The search index is too large to keep; it is built again at the next start')
     } catch (err) {
       this.log(`Could not write the search index (${err instanceof Error && 'code' in err ? String((err as NodeJS.ErrnoException).code) : 'error'}); trying again later`)
       this.scheduleWrite()

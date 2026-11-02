@@ -186,7 +186,8 @@ is), at most once every 3 seconds while changes come in, and once when the app q
   an entry that does not validate (wrong types, a unit kind not known) means that entry, or the
   whole file, is built again from the projects. Bump the version whenever **what is extracted**
   (§2.2) changes.
-- The file is read with a 64 MB cap; anything bigger is ignored and rebuilt.
+- The file is read with a 64 MB cap; anything bigger is ignored and rebuilt. An index that would be
+  bigger is written as an empty file instead, so it is built again at the next start.
 
 ### 2.9 Keeping it current
 
@@ -390,7 +391,8 @@ No new dependency: `Intl.Segmenter` is in Electron's ICU, and the rest is small 
 - The vocabulary is made again when most of its terms are dead (autosaves replace a recording's
   words), so a long editing session does not slow down every keystroke's scan.
 - The stamp of a save is the stat taken right after its write, not 1.5 s later.
-- The file is never written before it was loaded, nor when it is too large to read back (64 MB).
+- The file is never written before it was loaded. When it would be too large to read back (64 MB), an
+  empty one replaces it; the last file used to stay as it was, with the words of recordings deleted since.
 - Only a folder or `project.json` that is missing counts as gone. A folder listing or stat that failed
   for another reason (a Videos folder on a network share offline for a moment, a lock) used to drop
   every recording and write an empty index.
