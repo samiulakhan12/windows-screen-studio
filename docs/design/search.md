@@ -92,7 +92,12 @@ Captions Studio's quote cards and lower thirds are title cards (`titles`); its e
 no text. Translated caption tracks (`Project.captionTracks`) are not indexed: `said` is what was said,
 the spoken transcript, in the language it was said in. Bleeped words (`Project.bleeps`) are masked
 in the video, subtitle files, Review and what goes to an AI provider; the index, like the Captions
-and Transcript tabs, keeps the transcript's real words.
+and Transcript tabs, keeps the transcript's real words in `said`. Text on screen is indexed as the
+video draws it (captions-studio.md §11.7): a word a bleep is for is masked (`maskBleeped`) in a
+motion graphic's text (keyword, list title and items, counter label) and in a quote card's quote,
+and a keyword pop-up on caption words a bleep masks is left out, since it is never drawn
+(`graphicDrawn`, `wordsBleeped`). Bleeps, the transcript and the pop-up's anchor are read the way
+the editor reads them (`readBleeps`, `readTranscript`, `checkAnchor`).
 
 ### 2.3 How text becomes terms (`src/shared/search/normalize.ts`)
 
@@ -198,7 +203,7 @@ is), at most once every 3 seconds while changes come in, and once when the app q
 
 ```json
 {
-  "version": 4,
+  "version": 5,
   "projects": {
     "rec-20261030-101500": {
       "stamp": "1730283300123.4:48211",
@@ -217,8 +222,9 @@ is), at most once every 3 seconds while changes come in, and once when the app q
   holds and makes a change in tokenising (§2.3) need no rebuild.
 - A unit is `[kind, start, end, text]`, plus its time in the edited video when that differs from
   `start` (§2.2; here the first 2:00 are trimmed).
-- `version` is `SEARCH_INDEX_VERSION` (4; version 1 had no edited-video times, version 2 kept the
-  imported file's extension, version 3 did not read Captions Studio's graphics). A missing file,
+- `version` is `SEARCH_INDEX_VERSION` (5; version 1 had no edited-video times, version 2 kept the
+  imported file's extension, version 3 did not read Captions Studio's graphics, version 4 kept a
+  bleeped word on screen readable). A missing file,
   unreadable JSON, a different version, or an entry that does not validate (wrong types, a unit
   kind not known) means that entry, or the whole file, is built again from the projects. Bump the version whenever **what is extracted**
   (§2.2) changes.
@@ -493,6 +499,10 @@ No new dependency: `Intl.Segmenter` is in Electron's ICU, and the rest is small 
 - Ctrl+F reached the box under the "Saving recording…" and "Recovering recording…" overlays, and
   Enter there opened another recording: when the save ended, the editor switched to the new
   recording. The box now takes neither while Home is busy, like Home's other buttons (§1).
+- Text on screen kept a bleeped word readable: a keyword pop-up on bleeped caption words, which the
+  video never draws, and a list card, counter label or quote card that the video draws masked
+  (`d***`) were found by the word and listed as "On screen" or "Title" moments. They are now
+  indexed as drawn (§2.2); the index file went to version 5 and is built again.
 - Writing the file is synchronous, like every state file (37–55 ms for 500 recordings, at most every
   3 s and only after a change); an asynchronous write is left for later.
 
@@ -519,7 +529,9 @@ Unit (vitest), each failing without its rule:
   original text, 40-code-point cap.
 - `searchDistance.test.ts`: edit distance with swaps, bounded early exit, prefix distance.
 - `searchExtract.test.ts`: every kind from a project, caps, garbage in project.json ignored, notes
-  paragraphs, imported file name, `{}` and old projects give units without throwing.
+  paragraphs, imported file name, `{}` and old projects give units without throwing, text on screen
+  as the video draws it (a bleeped word masked, no keyword pop-up on bleeped words; in
+  `searchEngine.test.ts`).
 - `searchEngine.test.ts`: AND across units, exact > prefix > typo, short-term rules, phrase bonus,
   field weights, ordering of recordings and moments, cut flag, limits, removal, Bangla prefix.
 - `searchSnippet.test.ts`: windows, ellipses, line breaks, HTML stays text.

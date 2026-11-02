@@ -5,6 +5,7 @@ import { tokenize } from '../src/shared/search/normalize'
 import { parseIndexFile, serializeIndex } from '../src/shared/search/indexFile'
 import { clockTime, CUT_END_NOTICE, CUT_MOMENT_NOTICE, momentOpening, momentTarget, resultsSummary, spokenTime } from '../src/shared/search/moment'
 import { snippetOf } from '../src/shared/search/snippet'
+import { captionWordTimes } from '../src/shared/editor/transcript'
 import { SEARCH_INDEX_VERSION, type IndexedProject, type SearchUnit } from '../src/shared/search/types'
 
 const said = (start: number, text: string): SearchUnit => ({ kind: 'said', start, end: start + 2, text })
@@ -109,6 +110,55 @@ describe('projectUnits', () => {
     expect(r.search('signed users').map((h) => h.id)).toEqual(['studio'])
     // A translated track is not what was said (§2.2).
     expect(r.search('livraison')).toEqual([])
+  })
+
+  it('reads a bleeped word on screen as the video draws it: masked, and no keyword pop-up that is never drawn (§2.2)', () => {
+    const seg = { id: 'c0', start: 9, end: 12, text: 'this is damn good' }
+    const damn = captionWordTimes(seg)[2]
+    const studio = {
+      name: 'Launch',
+      duration: 60,
+      transcript: { segments: [seg] },
+      bleeps: [{ id: 'b', start: damn.start, end: damn.end, word: 'damn', sound: 'tone' }],
+      graphics: [
+        // Made from the caption's words before the bleep: never drawn (graphicDrawn).
+        { id: 'k', kind: 'keyword', start: 10, end: 12, text: 'damn good', look: 'card', anchor: { caption: 'c0', from: 2, to: 3, text: 'damn good' } },
+        // A keyword typed in, on no caption: drawn, with the word masked.
+        { id: 'f', kind: 'keyword', start: 14, end: 16, text: 'damn fine', look: 'card' },
+        { id: 'l', kind: 'list', start: 20, end: 30, title: 'Damn list', marker: 'number', items: [{ text: 'one damn thing', at: 21 }] },
+        { id: 'c', kind: 'counter', start: 32, end: 35, from: 0, to: 3, decimals: 0, prefix: '', suffix: '', label: 'damn', locale: 'en' }
+      ],
+      titles: [
+        { id: 'q', start: 40, end: 43, title: 'it is damn good', subtitle: 'Priya', style: 'quote' },
+        // A card the user typed is drawn as typed.
+        { id: 't', start: 50, end: 52, title: 'damn right', style: 'full' }
+      ]
+    }
+    expect(projectUnits(studio)).toEqual([
+      { kind: 'name', start: null, end: null, text: 'Launch' },
+      { kind: 'title', start: 40, end: 43, text: 'it is d*** good · Priya' },
+      { kind: 'title', start: 50, end: 52, text: 'damn right' },
+      { kind: 'text', start: 14, end: 16, text: 'd*** fine' },
+      { kind: 'text', start: 20, end: 30, text: 'D*** list' },
+      { kind: 'text', start: 21, end: 30, text: 'one d*** thing' },
+      { kind: 'text', start: 32, end: 35, text: '3 · d***' },
+      // The captions keep the transcript's real words, like the Captions and Transcript tabs.
+      { kind: 'said', start: 9, end: 12, text: 'this is damn good' }
+    ])
+    const r = index({ studio: indexedProject(studio, 's') as IndexedProject })
+    const found = (q: string): string[] => r.search(q).flatMap((h) => h.moments.map((m) => `${m.kind} ${m.start}`)).sort()
+    expect(found('damn')).toEqual(['said 9', 'title 50'])
+    expect(found('good')).toEqual(['said 9', 'title 40'])
+    // Without the bleep, the pop-up is drawn and every text reads the word.
+    expect(projectUnits({ ...studio, bleeps: undefined }).filter((u) => u.kind === 'text' || u.kind === 'title').map((u) => u.text)).toEqual([
+      'it is damn good · Priya',
+      'damn right',
+      'damn good',
+      'damn fine',
+      'Damn list',
+      'one damn thing',
+      '3 · damn'
+    ])
   })
 
   it('finds an imported video by its file name, not by its extension', () => {

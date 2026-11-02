@@ -482,7 +482,7 @@ export function checkAnchor<T extends { caption: string; from: number; to: numbe
 }
 
 /** A stored anchor's fields, or null when they are not usable (before checkAnchor). */
-function readAnchorFields(v: unknown): WordAnchor | null {
+export function readAnchorFields(v: unknown): WordAnchor | null {
   if (!isObj(v) || typeof v.caption !== 'string' || !v.caption || !Number.isInteger(v.from) || !Number.isInteger(v.to)) return null
   const from = v.from as number
   const to = v.to as number

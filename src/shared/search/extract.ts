@@ -4,16 +4,22 @@
  * Read defensively: project.json may be old, damaged or edited by hand; anything that is not what
  * it should be is left out, never an error.
  */
+import { readTranscript } from '../captions/captionData'
+import { maskBleeped, wordsBleeped } from '../captions/cleanup'
+import { checkAnchor, readAnchorFields, readBleeps } from '../captions/studioData'
 import { freezePlan, videoTimeAt } from '../engine/freeze'
 import { readFreezes } from '../engine/freezeData'
 import { fullClip, normalizeClips } from '../engine/timeline'
 import { importedSource } from '../import/imported'
-import type { Clip, Project } from '../types'
+import type { Bleep, Clip, Project } from '../types'
 import { SEARCH_LIMITS, type IndexedProject, type SearchUnit } from './types'
 
 const isObject = (v: unknown): v is Record<string, unknown> => !!v && typeof v === 'object' && !Array.isArray(v)
 const time = (v: unknown): number | null => (typeof v === 'number' && Number.isFinite(v) && v >= 0 ? v : null)
 const listOf = (v: unknown): Record<string, unknown>[] => (Array.isArray(v) ? v.filter(isObject) : [])
+
+/** The recording's length as the editor reads it (engine/project.ts migrateProject). */
+const durationOf = (raw: Record<string, unknown>): number => (typeof raw.duration === 'number' && Number.isFinite(raw.duration) && raw.duration > 0 ? raw.duration : 0.1)
 
 /** Text worth indexing: a string with something other than spaces, capped. */
 function textOf(v: unknown): string | null {
@@ -54,6 +60,21 @@ export function projectUnits(raw: unknown): SearchUnit[] {
     units.push({ kind, start, end: end ?? start, text })
   }
 
+  // Text on screen is indexed as the video draws it (captions-studio.md §11.7): a word a bleep is
+  // for is masked on motion graphics and quote cards, and a keyword pop-up on bleeped caption words
+  // is never drawn (graphicDrawn). Bleeps, the transcript and anchors are read as the editor reads them.
+  const duration = durationOf(raw)
+  const bleeps: Bleep[] | undefined = readBleeps(p.bleeps, duration)
+  const masked = (text: string | null): string | null => (text && bleeps ? maskBleeped(text, bleeps) : text)
+  let spoken: Pick<Project, 'transcript' | 'bleeps'> | null = null
+  const onBleepedWords = (anchor: unknown): boolean => {
+    const fields = bleeps ? readAnchorFields(anchor) : null
+    if (!fields) return false
+    spoken ??= { transcript: readTranscript(p.transcript, duration), bleeps }
+    const checked = checkAnchor(fields, spoken.transcript)
+    return !!checked && wordsBleeped(spoken, checked)
+  }
+
   add('name', textOf(p.name))
   const source = importedSource(raw as Pick<Project, 'source'>)
   // Without its extension (as the project was first named): "m" or "mp4" is no word of the file's.
@@ -66,7 +87,8 @@ export function projectUnits(raw: unknown): SearchUnit[] {
     const start = time(c.start)
     if (start === null) continue
     const end = Math.max(start, time(c.end) ?? start)
-    const words = [textOf(c.title), textOf(c.subtitle)].filter((s): s is string => !!s).join(' · ')
+    // A quote card masks a bleeped word in its quote (titleCardLayer drawnCard).
+    const words = [c.style === 'quote' ? masked(textOf(c.title)) : textOf(c.title), textOf(c.subtitle)].filter((s): s is string => !!s).join(' · ')
     add('title', textOf(words), start, end)
   }
   for (const a of listOf(p.annotations)) {
@@ -79,11 +101,12 @@ export function projectUnits(raw: unknown): SearchUnit[] {
     const start = time(g.start)
     if (start === null) continue
     const end = Math.max(start, time(g.end) ?? start)
-    if (g.kind === 'keyword') add('text', textOf(g.text), start, end)
-    else if (g.kind === 'list') {
-      add('text', textOf(g.title), start, end)
-      for (const item of listOf(g.items)) add('text', textOf(item.text), Math.min(Math.max(time(item.at) ?? start, start), end), end)
-    } else if (g.kind === 'counter') add('text', textOf([counterNumber(g), textOf(g.label)].filter((s) => !!s).join(' · ')), start, end)
+    if (g.kind === 'keyword') {
+      if (!onBleepedWords(g.anchor)) add('text', masked(textOf(g.text)), start, end)
+    } else if (g.kind === 'list') {
+      add('text', masked(textOf(g.title)), start, end)
+      for (const item of listOf(g.items)) add('text', masked(textOf(item.text)), Math.min(Math.max(time(item.at) ?? start, start), end), end)
+    } else if (g.kind === 'counter') add('text', textOf([counterNumber(g), masked(textOf(g.label))].filter((s) => !!s).join(' · ')), start, end)
   }
   const transcript = isObject(p.transcript) ? p.transcript : null
   for (const s of listOf(transcript?.segments)) {
@@ -113,7 +136,7 @@ export function keptRanges(raw: unknown): [number, number][] {
  */
 function videoClock(raw: Record<string, unknown>): ((t: number) => number) | null {
   try {
-    const duration = typeof raw.duration === 'number' && Number.isFinite(raw.duration) && raw.duration > 0 ? raw.duration : 0.1
+    const duration = durationOf(raw)
     const listed = listOf(raw.clips).filter((c) => Number.isFinite(c.start) && Number.isFinite(c.end)) as unknown as Clip[]
     const trim = (raw as { trim?: { start?: number; end?: number } }).trim
     const clips = normalizeClips(listed.length ? listed : [{ ...fullClip(duration, ''), start: trim?.start ?? 0, end: trim?.end ?? duration }], duration)
