@@ -8,14 +8,14 @@
  * so everything measured while a font was still loading is measured again once it is ready.
  */
 import { assetFontFile } from '../../../shared/api/assets'
-import { burnedSegments } from '../../../shared/captions/captionTracks'
+import { burnedSegments, captionLanguage } from '../../../shared/captions/captionTracks'
 import { catalogFamily, catalogFont, catalogId, type CatalogFile, type CatalogFont } from '../../../shared/captions/fontCatalog'
 import { coverageNeeded, partnerFor } from '../../../shared/captions/fontStack'
 import { effectiveStudio, STUDIO_BASE } from '../../../shared/captions/studioPresets'
 import { fontFamily, fontOf, fontStack } from '../../../shared/render/fonts'
-import { graphicNeeds, graphicWords } from '../../../shared/render/graphics'
+import { counterText, graphicNeeds, graphicWords } from '../../../shared/render/graphics'
 import { MEDIA_SCHEME, mediaUrl } from '../../../shared/mediaUrl'
-import type { Project, ProjectFont, TitleCard } from '../../../shared/types'
+import type { Graphic, Project, ProjectFont, TitleCard } from '../../../shared/types'
 import { BUNDLED_FONT_URLS } from './catalogFonts'
 import { notifyStyleAssetsChanged } from './watermarkLayer'
 
@@ -293,6 +293,15 @@ function cjkFont(language: string | undefined, text: string): string | null {
 }
 
 
+/**
+ * The texts a graphic draws: its words (graphicWords), and a counter's number as graphicsLayer draws
+ * it, in its locale and the captions' Digits choice (Bangla ৩০০% needs a Bangla font as its label does).
+ */
+function graphicTexts(g: Graphic, project: Project): string[] {
+  const words = graphicWords(g)
+  return g.kind === 'counter' ? [counterText(g, g.to, project.captions?.digits, captionLanguage(project)).text, ...words] : words
+}
+
 /** The brand font ids (ProjectFont ids) of the Studio look and the graphics (FlownFontW-, §6.7). */
 function studioBrandIds(project: Pick<Project, 'captions' | 'graphics' | 'fonts'>): string[] {
   const ids = new Set<string>()
@@ -387,7 +396,7 @@ function catalogIdsOf(project: Project, captions: boolean, asIs = false): string
     const font = g.font ?? studio?.text.font ?? STUDIO_BASE.text.font
     add(font)
     add(partnerFor(font, graphicNeeds(project, g)))
-    texts.push(...graphicWords(g))
+    texts.push(...graphicTexts(g, project))
   }
   for (const c of project.titles ?? []) {
     const id = titleCatalogId(c)

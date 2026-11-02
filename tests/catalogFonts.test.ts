@@ -157,6 +157,19 @@ describe('catalogFontsFor (§6.8)', () => {
     expect(fonts.catalogFontsFor(withStudio(look('bold-pop'), { titles: [{ ...name, auto: undefined }] }))).not.toContain('baloo-da-2')
   })
 
+  it('adds the Bangla fonts for the Bangla digits a counter draws, on a legacy look too (§0.2)', () => {
+    const counter = (over: Partial<Graphic> = {}): Graphic =>
+      ({ id: 'n1', kind: 'counter', start: 0, end: 2, place: 'auto', size: 0.11, from: 0, to: 300, decimals: 0, prefix: '', suffix: '%', locale: 'bn', countFor: 2, enter: { kind: 'pop', duration: 0.24, strength: 1 }, exit: { kind: 'fade', duration: 0.18, strength: 1 }, ...over }) as Graphic
+    const bn = { segments: [{ id: 'c1', start: 0, end: 2, text: 'আমাদের আয় ৩০০% বেড়েছে এই বছরে' }] }
+    // A Bangla counter (৩০০%) with no words of its own, on a Classic look, the transcript naming no language or Bangla.
+    for (const transcript of [bn, { ...bn, language: 'bn' }]) expect(fonts.catalogFontsFor(project({ transcript, graphics: [counter()] } as Partial<Project>))).toEqual(expect.arrayContaining(['hind-siliguri', 'noto-sans-bengali']))
+    // An English-locale counter drawn with Bangla digits by the Digits choice.
+    const native = project({ transcript: { ...bn, language: 'bn' }, graphics: [counter({ locale: 'en' } as Partial<Graphic>)] } as Partial<Project>)
+    expect(fonts.catalogFontsFor({ ...native, captions: { ...native.captions!, digits: 'native' } })).toEqual(expect.arrayContaining(['hind-siliguri', 'noto-sans-bengali']))
+    // Western digits add none.
+    expect(fonts.catalogFontsFor(project({ graphics: [counter({ locale: 'en' } as Partial<Graphic>)] }))).not.toContain('noto-sans-bengali')
+  })
+
   it('loads the fonts of the look the captions draw with: Chat with no speaker draws as Subtitle (§0.1)', () => {
     const text = 'আমরা আজ শিখব কীভাবে ভিডিও বানাতে হয়'
     const chat = look('chat')
