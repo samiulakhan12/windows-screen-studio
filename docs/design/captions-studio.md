@@ -2809,57 +2809,73 @@ Offline rules, each optional (§2.9). The choices are `CleanupChoices` (`caps`, 
      "assassin"). Strict: adds LDNOOBW (`naughty-words` 1.2.0, CC-BY-4.0, attributed in full in
      `NN-caption-data.txt`, §6.9; 28 languages, no bn, ur, ta, te or mr). Bangla and the missing
      languages: short lists the team writes (CC0-1.0). The user's own words can be added.
-   - Matching: lower case, punctuation removed, repeated letters collapsed, safe look-alikes
-     checked. Other languages match whole words. A word written in Bengali script is matched by
-     the Bangla list whatever the transcript's language (an English transcript quoting a Bangla
-     word, a mixed one that names no language), but in Assamese, which is written in the same
-     script; an English word written together with a Bangla ending, as Banglish writes videoটা and
-     file-টা, has its Latin letters checked by the English rules, as the bare word is. Bangla
-     builds many forms from one word (case endings, plurals and classifiers with particles stacked
-     after them, every person and tense, Dhaka forms, causatives, compounds, spelling variants), so
-     a list of whole forms is never complete; the team's Bangla list (`TEAM_LISTS.bn`,
+   - Matching: lower case, punctuation removed, repeated letters collapsed (but Bengali ones: a
+     Bangla word writes a letter twice as its spelling, so বালককে, "to the boy", is never read as
+     বালকে), safe look-alikes checked. Other languages match whole words. A word written in Bengali
+     script is matched by the Bangla list whatever the transcript's language (an English transcript
+     quoting a Bangla word, a mixed one that names no language), but in Assamese, which is written
+     in the same script; an English word written together with a Bangla ending, as Banglish writes
+     videoটা and file-টা, has its Latin letters checked by the English rules, as the bare word is.
+     Bangla builds many forms from one word (case endings, plurals and classifiers with particles
+     stacked after them, every person and tense, Dhaka forms, causatives, compounds, spelling
+     variants), so a list of whole forms is never complete; the team's Bangla list (`TEAM_LISTS.bn`,
      `cleanup.ts`) has three kinds of entry, matched after both the word and the list are
      normalised, for matching only (NFC, so য় as U+09DF or U+09AF U+09BC and ো or ৌ in one or two
      parts are one spelling; ী read as ি and ূ as ু); the caption keeps its own spelling and the
      bleep its word.
      - **Stems** rude in every form (চোদ, চুদ, the Dhaka participle চুইদ, চুইদ্দ and চুইদ্য as in
        চুইদা দিমু, খানকি as written with ং, a conjunct or a hasanta too: খাংকি, খাঙ্কি, খান্কি,
-       মাগি, হারামি, হারামজাদা, হারামজাদি, বালপাক): a word starting with one is bleeped
-       (চুদতেছস, চুদিয়েছিল, চোদাইলি, খানকিরাও, খাংকির, হারামিগুলোরে, মাগীবাজ, বালপাকনা), and a
+       মাগি, হারামি, হারামজাদা, হারামজাদি, বালপাক; the common borrowed and regional insults
+       চুতিয়, গান্ডু and গাণ্ডু, the Kolkata ঢ্যামনা, the Dhaka জাউরা, বেজন্মা; the body words
+       ল্যাওড়, লেওড় and লাওড়, and the Dhaka পুটকি; মাচুদ, the ু spelling of the compound after মা,
+       at a word's start only, so মাচা, "a platform", and মাচুয়া stay unmuted): a word starting
+       with one is bleeped (চুদতেছস, চুদিয়েছিল, চোদাইলি, খানকিরাও, খাংকির, হারামিগুলোরে, মাগীবাজ,
+       বালপাকনা, চুতিয়াগিরি, ল্যাওড়ার), and a
        **compound** written as one word anywhere in a word: চোদ after any first part (বোকাচোদা,
        বোকাচ্চোদা, আবালচোদা, বেইনচোদ, মাচোদা); চুদ, চোত or চোৎ after the first parts that take
        them, বোকা, বোকাচ্ (the doubled চ of Kolkata), আবাল, বান, বাইন, বাইঞ্, বাঞ্, বেঞ্, বেন,
        মাদার and the Dhaka বইন, বেইন, বোন, বেহেন and বাপ, or বান্, বাইন্, বেন্ and মাদার্ written with
        a hasanta, a ZWNJ after it or not (বানচোত, বাঞ্চোৎ, বোকাচ্চুদা, বান্চোত), ৎ also written ত্
        and a joiner (বাঞ্চোত্‍), but not after any other first part, as বাচ্চুদা and পাঁচুদা are
-       nicknames; চুদমারানি with দ, ত, ৎ or ত্, খানকিরপোলা as খানকি is written, and শুয়োরেরবাচ্চা
-       and কুত্তারবাচ্চা in every spelling the next-word entries below take. Guards: no bleep where
-       a stem's or compound's last consonant takes a virama (চোদ্দ, চোদ্দো: fourteen, also after
-       another number, তেরোচোদ্দ), nor inside an everyday word that holds a compound (প্রচোদ, "to
-       inspire", Sanskrit: প্রচোদয়াৎ in the Gayatri mantra, প্রচোদিত), nor for the everyday words
-       that start with a stem, each with its meaning in the list, generated too: every form of
-       মাগা, "to ask", that puts ি after মাগ in songs, poems and the old written style (every
-       person of each tense, the imperative and the participles: মাগিতেছেন, মাগিয়াছিলাম, মাগিনু,
-       মাগিবার), but the forms the slur takes too (মাগি, মাগিতে), and চুদুরবুদুর, "stalling", in
-       every form.
+       nicknames; চুদমারানি with দ, ত, ৎ or ত্, and গুদমারানি; খানকিরপোলা as খানকি is written, and
+       শুয়োরেরবাচ্চা and কুত্তারবাচ্চা in every spelling the next-word entries below take. Guards: no
+       bleep where a stem's or compound's last consonant takes a virama (চোদ্দ, চোদ্দো: fourteen,
+       also after another number, তেরোচোদ্দ), nor inside an everyday word that holds a compound
+       (প্রচোদ, "to inspire", Sanskrit: প্রচোদয়াৎ in the Gayatri mantra, প্রচোদিত; কেঁচো,
+       "earthworm", in its plural কেঁচোদের and কেঁচোদেরকে), nor for the everyday words that start
+       with a stem or are a whole noun's form, each with its meaning in the list, generated too:
+       every form of মাগা, "to ask", that puts ি after মাগ in songs, poems and the old written style
+       (every person of each tense, the imperative and the participles: মাগিতেছেন, মাগিয়াছিলাম,
+       মাগিনু, মাগিবার), but the forms the slur takes too (মাগি, মাগিতে), চুদুরবুদুর, "stalling", in
+       every form, and ভোদাই, "a fool", a mild everyday word that is ভোদা's ই form too.
      - **Nouns matched whole**, every form generated: each classifier or plural (টা, টি, ডা,
        গুলো, গুলা, গুলি, গো; রা, দের, দেরকে), case ending (র, রে, কে, তে, য়) and particle (ও, ই)
        Bangla allows (বালের, বালটারেও). They are the nouns that begin everyday words (বাল: বালক,
        বালিশ, বালতি, বালি; বালছাল, also written বালসাল as Dhaka writes স for ছ, while বালসা, balsa,
-       stays unmuted), and four English rude words as the Bangla model writes them, in Bengali
-       script, as it writes all spoken English; never the bare transliteration of the commonest
-       one, which also spells ফাঁক, "a gap" (এই ফাকে, "meanwhile"), beside ফাকা and ফাঁকা, "empty".
+       stays unmuted), the body words (গুদ, ভোদা, ধোন, বাঁড়া, পোঁদ, গাঁড়: গুদাম, "a warehouse",
+       ধোনি, the cricketer, বাঁড়ুজ্যে, বাড়া, গাড়ি and পোঁটলা stay unmuted), রেন্ডি (রেন্ডিশন, "a
+       rendition", stays unmuted), and English rude words as the Bangla model writes them, in
+       Bengali script, as it writes all spoken English: the commonest one's -ing form in two
+       spellings and its -er and -ed forms, the compound insult built on the word for mother, the
+       word for an illegitimate child, and the compound insult built on the backside in two
+       spellings; never the bare transliteration of the commonest one, which also spells ফাঁক, "a
+       gap" (এই ফাকে, "meanwhile"), beside ফাকা and ফাঁকা, "empty".
      - **Words the next word decides**, the next word's every form generated: শুয়োরের ("pig's",
        also শুওরের, শুয়রের, শুয়ারের, and শুকরের or শূকরের from শূকর, the standard word) and কুত্তার
        ("dog's"), with ও or ই, are rude only before বাচ্চা (শুয়োরের বাচ্চা), never in শুয়োরের মাংস
        (pork), শুয়োরের খামার (a pig farm) or কুত্তার কামড় (a dog's bite); কুকুরের বাচ্চা is a puppy.
        বাল is never rude before a name or a word it is written apart from (বাল গঙ্গাধর তিলক, বাল
-       ঠাকরে, লাল বাল পাল, বাল গোপাল, বাল বিধবা, বাল বাচ্চা: the kids), nor চুদুর before বুদুর,
-       unless a pause is between them: a sentence mark, a comma, a !, ;, : or … after the word or
-       before the next, with or without a space (বাল। বাচ্চাটা, বাল, পাল বাবু, বাল।বাচ্চাটা), or the
-       end of the caption, the next word starting the next one; a space, a hyphen, a dash or a
-       quotation mark is no pause (বাল-গোপাল). The next word is the caption's next word not
-       deleted, or the next caption's first; a word with none after it stays as it is rude alone.
+       ঠাকরে, লাল বাল পাল, বাল গোপাল, বাল বিধবা, বাল বাচ্চা: the kids; বাল-বৃদ্ধ-বনিতা, young
+       and old), nor চুদুর before বুদুর, unless a pause is between them: a sentence mark, a comma, a
+       !, ;, : or … after the word or before the next, with or without a space (বাল। বাচ্চাটা, বাল,
+       গোপাল, বাল! পাল বাবু, বাল।বাচ্চাটা), or the end of the caption when the next caption, which
+       the next word starts, begins 0.7 s or more later (the pause that gets a caption its full
+       stop, rule 2): the Bangla model cuts captions by length, and a cut with no silence can fall
+       inside a name (লোকমান্য বাল | গঙ্গাধর তিলক). A comma alone is no pause before পাল, as a
+       history lesson writes the three leaders লাল, বাল, পাল, but a comma with another mark is,
+       and so is a caption's end with silence after it. A space, a hyphen, a dash or a quotation
+       mark is no pause (বাল-গোপাল). The next word is the caption's next word not deleted, or the
+       next caption's first; a word with none after it stays as it is rude alone.
      - **Words written together** with no space: parts joined by hyphens or dashes only are one
        word (হারাম-জাদা, বান-চোত), unless the first is an everyday word that starts with a stem
        (মাগিনা-এটা), and each part is matched as well, before the next (ধুর—বাল, শালা-খানকি,
@@ -3674,8 +3690,12 @@ under `xvfb-run`: `captions-studio`, `captions`, `edit-by-text`, `transcription`
     of any language but Assamese; over 300 everyday words, those sharing letters with a stem among
     them, never, joined so or not, nor words joined by a comma, a ।, ? or /; শুয়োরের in every
     spelling, and কুত্তার, only before বাচ্চা in every form; বাল but before a name, unless a
-    sentence mark, a comma, a ! or a caption's end comes between them; an English word with a
-    Bangla ending as the bare English word.
+    sentence mark, a comma (but before পাল: লাল, বাল, পাল), a ! or a caption's end with 0.7 s or
+    more before the next comes between them, also when captionPieces cuts a run through a name;
+    an English word with a Bangla ending as the bare English word; the body words, the common
+    insults and the English words in Bengali script in Bangla and Banglish captions, while their
+    look-alikes (a warehouse, Dhoni, a fool, a rendition, a platform) and বালককে and কেঁচোদের stay
+    unmuted.
 42. Make my captions great: the order; one update; **a second run returns the same project
     object** (content ids); a second style change keeps the first `was`; the summary; in a
     screen-led tall project emoji and keyword pop-ups resolve off and counters and lists on.
