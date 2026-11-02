@@ -382,8 +382,14 @@ interface TeamList {
   everyday: readonly string[]
   /** Nouns that also begin everyday words (বাল: বালক, বালিশ): matched whole, in every form nounForms gives. */
   nouns: readonly string[]
-  /** Other words matched whole, as written. */
-  words: readonly string[]
+  /**
+   * Words rude only before certain nouns, each [the words, the nouns]: matched whole, as written,
+   * when the next word is one of the nouns in a form nounForms gives (শুয়োরের, "pig's", in
+   * শুয়োরের বাচ্চা, never in শুয়োরের মাংস, pork).
+   */
+  onlyBefore: readonly (readonly [readonly string[], readonly string[]])[]
+  /** Words never rude before certain nouns, each [the words, the nouns], as onlyBefore: names and words written apart (বাল গঙ্গাধর তিলক). */
+  notBefore: readonly (readonly [readonly string[], readonly string[]])[]
 }
 
 /**
@@ -405,28 +411,73 @@ function nounForms(noun: string): string[] {
   return ends.flatMap((e) => BN_PARTICLES.map((p) => noun + e + p))
 }
 
+/**
+ * The forms of a Bangla verb in the old written style (also in songs and poems) that put ি after
+ * its root (মাগ: মাগিতেছেন, মাগিয়াছিলাম, মাগিলেম, মাগিনু, মাগিবার): the present and its
+ * negative, every person of the present continuous and perfect, the past, past continuous, past
+ * perfect, habitual past and future, the imperative, the participles ("having asked", "of
+ * asking"; "to ask" and "if asked" are habitual and past forms already), then the particle ও or ই.
+ */
+const BN_LITERARY_ENDS = [
+  ...['ি', 'িস', 'িনা'],
+  ...['িতেছ', 'িয়াছ'].flatMap((t) => ['ি', '', 'িস', 'ে', 'েন'].map((p) => t + p)),
+  ...['িল', 'িতেছিল', 'িয়াছিল'].flatMap((t) => ['াম', 'েম', 'ে', 'ি', '', 'েন', 'া'].map((p) => t + p)),
+  'িনু',
+  ...['াম', 'েম', 'ে', 'িস', '', 'েন'].map((p) => 'িত' + p),
+  ...['', 'ো', 'ে', 'ি', 'েন', 'া'].map((p) => 'িব' + p),
+  ...['িয়ো', 'িয়া', 'িবার']
+]
+function literaryForms(root: string): string[] {
+  return BN_LITERARY_ENDS.flatMap((e) => BN_PARTICLES.map((p) => root + e + p))
+}
+
+/** The slur মাগি in every form: the forms of মাগা, "to ask", it shares stay bleeped (মাগি "I ask", মাগিতে "to ask"). */
+const BN_MAGI = new Set(nounForms('মাগি'))
+/** খানকি as it is written: with ং, a conjunct or a hasanta too (খাংকির পোলা, খাঙ্কি, খান্কি). */
+const BN_KHANKI = ['খানকি', 'খাংকি', 'খাঙ্কি', 'খান্কি']
+/** শুয়োরের, "pig's", as it is spelled: শুওরের in West Bengal, শুয়ারের in Bangladesh (শুয়ারের বাচ্চা). */
+const BN_PIG = ['শুয়োরের', 'শুওরের', 'শুয়রের', 'শুয়ারের']
+/** বাচ্চা, "child", as it is spelled. */
+const BN_KID = ['বাচ্চা', 'বাচ্ছা']
+
 const TEAM_LISTS: Readonly<Record<string, TeamList>> = {
   bn: {
     // ী and ি, ূ and ু: one word either way (মাগী and মাগি, খানকীপনা and খানকিপনা).
     fold: [['ী', 'ি'], ['ূ', 'ু']],
     // The verb চোদা in every person and tense, its causative and the Dhaka forms (চোদব, চুদতেছস,
-    // চুদিয়েছিল, চোদাইলি), the nouns made from it (চোদন, চোদনা, চুদির, চোদাচুদি), and the nouns
-    // in every form (খানকিরাও, মাগিটারে, হারামিগুলোরে, হারামজাদাদেরকে, মাগীবাজ, হারামিপনা).
-    stems: ['চোদ', 'চুদ', 'খানকি', 'মাগি', 'হারামি', 'হারামজাদা', 'হারামজাদি'],
-    compounds: [...['বোকা', 'বান', 'মাদার'].flatMap((w) => [w + 'চোদ', w + 'চুদ']), 'চুদমারানি', 'চুতমারানি', 'খানকিরপোলা'],
+    // চুদিয়েছিল, চোদাইলি; the participle with ই after the vowel, its দ doubled or with য-ফলা, as
+    // কইরা and মাইরা: চুইদা, চুইদ্দা, চুইদ্যা), the nouns made from it (চোদন, চোদনা, চুদির,
+    // চোদাচুদি), the nouns in every form (খানকিরাও, খাংকির, মাগিটারে, হারামিগুলোরে,
+    // হারামজাদাদেরকে, মাগীবাজ, হারামিপনা), and বাল's compounds (বালপাকনা, বালপাকা: a know-it-all child).
+    stems: ['চোদ', 'চুদ', 'চুইদ', 'চুইদ্দ', 'চুইদ্য', ...BN_KHANKI, 'মাগি', 'হারামি', 'হারামজাদা', 'হারামজাদি', 'বালপাক'],
+    // চোদ, চুদ, চোত and চোৎ after each first part (বোকাচোদা; বানচোদ, বাইনচোদ and বাইঞ্চোদ in
+    // Bangladesh, বানচোত and বাঞ্চোৎ in West Bengal; মাদারচোদ), চুদমারানি with দ, ত, ৎ or ত্,
+    // খানকিরপোলা as খানকি is written, and শুয়োরেরবাচ্চা written as one word.
+    compounds: [
+      ...['বোকা', 'বান', 'বাইন', 'বাইঞ্', 'বাঞ্', 'বেন', 'মাদার'].flatMap((w) => ['চোদ', 'চুদ', 'চোত', 'চোৎ'].map((c) => w + c)),
+      ...['চুদ', 'চুত', 'চুৎ', 'চুত্'].map((c) => c + 'মারানি'),
+      ...BN_KHANKI.map((k) => k + 'রপোলা'),
+      ...BN_PIG.flatMap((w) => BN_KID.map((k) => w + k))
+    ],
     everyday: [
-      // মাগা, "to beg, to ask for" (in songs, poems and the old written style): its forms that start with মাগি.
-      'মাগিনা', // "(I) do not ask"
-      'মাগিয়া', // "having asked"
-      'মাগিল', 'মাগিলা', 'মাগিলাম', 'মাগিলেন', 'মাগিলে', // "asked"; মাগিলে also "if (one) asks"
-      'মাগিব', 'মাগিবে', 'মাগিবেন', // "will ask"
-      'মাগিত', 'মাগিতাম', 'মাগিতেন', // "used to ask"
-      'মাগিতেছে', 'মাগিতেছি', // "is asking", "am asking"
-      'মাগিয়াছে', 'মাগিয়াছি', 'মাগিয়াছিল', 'মাগিয়াছিলেন' // "has asked", "had asked"
+      // মাগা, "to beg, to ask for" (in songs, poems and the old written style): its forms that start
+      // with মাগি (মাগিতেছেন, মাগিয়াছিলাম, মাগিলেম, মাগিনু, মাগিবার), but those the slur takes too.
+      ...literaryForms('মাগ').filter((w) => !BN_MAGI.has(w)),
+      // চুদুরবুদুর, "stalling, dithering" (টালবাহানা): in the Bangla Academy's dictionary of regional
+      // words, and quoted in the news (চুদুরবুদুর চলবে না).
+      ...['চুদুরবুদুর', 'চুদুরবুদুরি'].flatMap(nounForms)
     ],
     nouns: ['বাল', 'বালছাল'],
-    // শুয়োরের (in শুয়োরের বাচ্চা), and with ও or ই: শুয়োর, "pig", is an everyday word.
-    words: BN_PARTICLES.map((p) => 'শুয়োরের' + p)
+    // শুয়োরের, with ও or ই, is rude in শুয়োরের বাচ্চা only: শুয়োর, "pig", is an everyday word
+    // (শুয়োরের মাংস, pork; শুয়োরের খামার, a pig farm; বুনো শুয়োরের আক্রমণ, a wild boar's attack).
+    onlyBefore: [[BN_PIG.flatMap((w) => BN_PARTICLES.map((p) => w + p)), BN_KID]],
+    notBefore: [
+      // বাল, "child", in names and words written apart (বাল গঙ্গাধর তিলক, বাল ঠাকরে, লাল বাল পাল,
+      // বাল গোপাল, বাল কৃষ্ণ, বাল বিধবা, বাল বিবাহ), and বাল বাচ্চা, "the kids".
+      [['বাল'], ['গঙ্গাধর', 'ঠাকরে', 'গোপাল', 'কৃষ্ণ', 'পাল', ...BN_KID, 'বিধবা', 'বিবাহ']],
+      // চুদুরবুদুর written apart.
+      [['চুদুর'], ['বুদুর', 'বুদুরি']]
+    ]
   }
 }
 
@@ -442,6 +493,10 @@ interface TeamRules {
   compounds: readonly Stem[]
   everyday: ReadonlySet<string>
   whole: ReadonlySet<string>
+  /** Each word rude only before a word, and those words (onlyBefore, every form). */
+  onlyBefore: ReadonlyMap<string, ReadonlySet<string>>
+  /** Each word never rude before a word, and those words (notBefore, every form). */
+  notBefore: ReadonlyMap<string, ReadonlySet<string>>
 }
 const teamRules = new Map<string, TeamRules | null>()
 function teamRulesOf(lang: string): TeamRules | null {
@@ -455,12 +510,25 @@ function teamRulesOf(lang: string): TeamRules | null {
     const keyOf = (w: string): string => fold(bleepKey(w))
     const everyday = new Set(list.everyday.map(keyOf))
     const stem = (w: string): Stem => ({ key: keyOf(w), consonant: BN_CONSONANT_END.test(keyOf(w)) })
+    const before = (pairs: TeamList['onlyBefore']): Map<string, ReadonlySet<string>> => {
+      const m = new Map<string, Set<string>>()
+      for (const [words, nouns] of pairs) {
+        for (const w of words) {
+          const next = m.get(keyOf(w)) ?? new Set<string>()
+          for (const n of nouns.flatMap(nounForms)) next.add(keyOf(n))
+          m.set(keyOf(w), next)
+        }
+      }
+      return m
+    }
     r = {
       fold,
       stems: list.stems.map(stem),
       compounds: list.compounds.map(stem),
       everyday,
-      whole: new Set([...list.nouns.flatMap(nounForms), ...list.words].map(keyOf).filter((k) => k && !everyday.has(k)))
+      whole: new Set(list.nouns.flatMap(nounForms).map(keyOf).filter((k) => k && !everyday.has(k))),
+      onlyBefore: before(list.onlyBefore),
+      notBefore: before(list.notBefore)
     }
   }
   teamRules.set(lang, r)
@@ -470,18 +538,46 @@ function teamRulesOf(lang: string): TeamRules | null {
 /** Whether `stem` is at `at` in `key`, its last consonant taking no virama there. */
 const stemAt = (key: string, stem: Stem, at: number): boolean => key.startsWith(stem.key, at) && !(stem.consonant && key[at + stem.key.length] === VIRAMA)
 
-/** Whether a word's key is rude by the team's list for `lang`. */
-function teamMatch(key: string, lang: string): boolean {
-  const r = teamRulesOf(lang)
-  if (!r) return false
+/**
+ * Whether a word's key is rude by a team list, `next` the key of the word after it ('' when there is
+ * none; not known when undefined, and then a word rude only before some words is taken as rude).
+ */
+function teamMatch(r: TeamRules, key: string, next: string | undefined): boolean {
   const k = r.fold(key)
   if (r.everyday.has(k)) return false
+  const n = next === undefined ? undefined : r.fold(next)
+  const only = r.onlyBefore.get(k)
+  if (only) return n === undefined || only.has(n)
+  if (n !== undefined && r.notBefore.get(k)?.has(n)) return false
   if (r.whole.has(k)) return true
   for (const stem of r.stems) if (stemAt(k, stem, 0)) return true
   for (const c of r.compounds) {
     for (let at = k.indexOf(c.key); at >= 0; at = k.indexOf(c.key, at + 1)) if (stemAt(k, c, at)) return true
   }
   return false
+}
+
+/** Text between letters that is not a letter, a digit, a mark or a joiner (ZWJ, ZWNJ): words written together (ধুর—বাল, বাল।এটা). */
+const JOINED = /[\p{L}\p{M}][^\p{L}\p{N}\p{M}\p{Cf}]+[\p{L}\p{M}]/u
+const BETWEEN_WORDS = /[^\p{L}\p{N}\p{M}\p{Cf}]+/u
+
+/** The key of the word `text` begins with: its first part when words are written together (বাচ্চা-টা); '' for none. */
+const firstKey = (text: string): string => text.split(BETWEEN_WORDS).map(bleepKey).find(Boolean) ?? ''
+
+/**
+ * Whether a word is rude by the team's list for `lang` (`key` its key, `next` the key of the word
+ * after it, as teamMatch takes it). Words written together with a dash or a । and no space
+ * (ধুর—বাল, বাল।এটা, শালা-খানকি, শুয়োরের-বাচ্চা) are rude when one of them is, each before the
+ * next, or when they are together (হারাম-জাদা, বান-চোত) and the first is not an everyday word that
+ * starts with a stem (মাগিনা-এটা).
+ */
+function teamWordMatch(word: string, key: string, lang: string, next: string | undefined): boolean {
+  const r = teamRulesOf(lang)
+  if (!r) return false
+  if (!JOINED.test(word)) return teamMatch(r, key, next)
+  const parts = word.split(BETWEEN_WORDS).map(bleepKey).filter(Boolean)
+  if (parts.some((p, i) => teamMatch(r, p, i + 1 < parts.length ? parts[i + 1] : next))) return true
+  return !r.everyday.has(r.fold(parts[0])) && teamMatch(r, key, next)
 }
 
 const standardRes = STANDARD_WORDS.map((w) => ({ word: w.word, res: w.patterns.map((p) => new RegExp(p, 'u')), safe: w.safe.map((s) => bleepKey(s)) }))
@@ -495,8 +591,12 @@ function strictSet(lang: string): ReadonlySet<string> {
   return s
 }
 
-/** Whether a word is bleeped by `mode` in `language`. */
-export function isSwearWord(word: string, mode: 'standard' | 'strict', language?: string): boolean {
+/**
+ * Whether a word is bleeped by `mode` in `language`. `next` is the word after it ('' for none): in
+ * Bangla it decides for a word rude only before certain words (শুয়োরের in শুয়োরের বাচ্চা) or
+ * never before certain words (বাল in বাল গঙ্গাধর তিলক); without it, such a word is taken as rude.
+ */
+export function isSwearWord(word: string, mode: 'standard' | 'strict', language?: string, next?: string): boolean {
   const key = bleepKey(word)
   if (!key) return false
   for (const w of standardRes) {
@@ -506,7 +606,7 @@ export function isSwearWord(word: string, mode: 'standard' | 'strict', language?
   }
   const lang = baseLanguage(language)
   // Bangla and the languages LDNOOBW lacks have the team's lists in Standard too.
-  if (teamMatch(key, lang)) return true
+  if (teamWordMatch(word, key, lang, next === undefined ? undefined : firstKey(next))) return true
   if (mode === 'strict') {
     if (strictSet(lang).has(key) || (lang !== 'en' && strictSet('en').has(key))) return true
   }
@@ -529,20 +629,26 @@ function findBleeps(
   estimated?: Set<string>
 ): Bleep[] {
   const out: Bleep[] = []
-  for (const seg of segments) {
-    for (const w of captionWordTimes(seg)) {
-      if (w.deleted || !isSwearWord(w.text, mode, language)) continue
-      const pad = w.estimated ? WIDEN_ESTIMATED : WIDEN
-      const start = Math.max(0, w.start - pad)
-      const end = Math.min(duration > 0 ? duration : Infinity, w.end + pad)
-      const word = bleepKey(w.text).slice(0, 40) || w.text.toLowerCase().slice(0, 40)
-      const mid = (w.start + w.end) / 2
-      if (have.some((b) => b.start <= mid && b.end >= mid) || out.some((b) => b.start <= mid && b.end >= mid)) continue
-      const id = `b-${textHash(`${start.toFixed(3)}|${end.toFixed(3)}|${word}`)}`
-      if (w.estimated) estimated?.add(id)
-      out.push({ id, start, end, word, sound, auto: true })
-    }
+  const words = segments.flatMap((seg) => captionWordTimes(seg))
+  // The word after each, past the deleted ones and into the next caption ('' after the last): it
+  // decides for some words (শুয়োরের বাচ্চা).
+  const after: string[] = new Array(words.length)
+  for (let i = words.length - 1, next = ''; i >= 0; i--) {
+    after[i] = next
+    if (!words[i].deleted) next = words[i].text
   }
+  words.forEach((w, i) => {
+    if (w.deleted || !isSwearWord(w.text, mode, language, after[i])) return
+    const pad = w.estimated ? WIDEN_ESTIMATED : WIDEN
+    const start = Math.max(0, w.start - pad)
+    const end = Math.min(duration > 0 ? duration : Infinity, w.end + pad)
+    const word = bleepKey(w.text).slice(0, 40) || w.text.toLowerCase().slice(0, 40)
+    const mid = (w.start + w.end) / 2
+    if (have.some((b) => b.start <= mid && b.end >= mid) || out.some((b) => b.start <= mid && b.end >= mid)) return
+    const id = `b-${textHash(`${start.toFixed(3)}|${end.toFixed(3)}|${word}`)}`
+    if (w.estimated) estimated?.add(id)
+    out.push({ id, start, end, word, sound, auto: true })
+  })
   return out
 }
 

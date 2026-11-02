@@ -2817,18 +2817,34 @@ Offline rules, each optional (§2.9). The choices are `CleanupChoices` (`caps`, 
      matched after both the word and the list are normalised, for matching only (NFC, so য় as
      U+09DF or U+09AF U+09BC and ো or ৌ in one or two parts are one spelling; ী read as ি and ূ as
      ু); the caption keeps its own spelling and the bleep its word.
-     - **Stems** rude in every form (চোদ, চুদ, খানকি, মাগি, হারামি, হারামজাদা, হারামজাদি): a
-       word starting with one is bleeped (চুদতেছস, চুদিয়েছিল, চোদাইলি, খানকিরাও, হারামিগুলোরে,
-       মাগীবাজ), and a **compound** written as one word (বোকাচোদ, বানচোদ, মাদারচোদ, চুতমারানি,
-       খানকিরপোলা) anywhere in a word. Guards: no bleep where a stem's last consonant takes a
-       virama (চোদ্দ, চোদ্দো: fourteen), nor for a short list of everyday words that start with a
-       stem, each with its meaning in the list (মাগিনা, মাগিল: মাগা, "to ask", in songs and the
-       old written style).
+     - **Stems** rude in every form (চোদ, চুদ, the Dhaka participle চুইদ, চুইদ্দ and চুইদ্য as in
+       চুইদা দিমু, খানকি as written with ং, a conjunct or a hasanta too: খাংকি, খাঙ্কি, খান্কি,
+       মাগি, হারামি, হারামজাদা, হারামজাদি, বালপাক): a word starting with one is bleeped
+       (চুদতেছস, চুদিয়েছিল, চোদাইলি, খানকিরাও, খাংকির, হারামিগুলোরে, মাগীবাজ, বালপাকনা), and a
+       **compound** written as one word anywhere in a word: চোদ, চুদ, চোত or চোৎ after বোকা, বান,
+       বাইন, বাইঞ্, বাঞ্, বেন or মাদার (বানচোদ, বাইনচোদ, বাঞ্চোৎ, বানচোত, মাদারচোদ), চুদমারানি
+       with দ, ত, ৎ or ত্, খানকিরপোলা as খানকি is written, শুয়োরেরবাচ্চা. Guards: no bleep where
+       a stem's last consonant takes a virama (চোদ্দ, চোদ্দো: fourteen), nor for the everyday words
+       that start with a stem, each with its meaning in the list, generated too: every form of
+       মাগা, "to ask", that puts ি after মাগ in songs, poems and the old written style (every
+       person of each tense, the imperative and the participles: মাগিতেছেন, মাগিয়াছিলাম, মাগিনু,
+       মাগিবার), but the forms the slur takes too (মাগি, মাগিতে), and চুদুরবুদুর, "stalling", in
+       every form.
      - **Nouns that begin everyday words** (বাল: বালক, বালিশ, বালতি, বালি): matched whole, every
        form generated: each classifier or plural (টা, টি, ডা, গুলো, গুলা, গুলি, গো; রা, দের,
        দেরকে), case ending (র, রে, কে, তে, য়) and particle (ও, ই) Bangla allows (বালের,
        বালটারেও).
-     - Other whole words (শুয়োরের, with ও or ই).
+     - **Words the next word decides**, the next word's every form generated: শুয়োরের ("pig's",
+       also শুওরের, শুয়রের, শুয়ারের, with ও or ই) is rude only before বাচ্চা (শুয়োরের বাচ্চা),
+       never in শুয়োরের মাংস (pork) or শুয়োরের খামার (a pig farm); বাল is never rude before a
+       name or a word it is written apart from (বাল গঙ্গাধর তিলক, বাল ঠাকরে, লাল বাল পাল, বাল
+       গোপাল, বাল বিধবা, বাল বাচ্চা: the kids), nor চুদুর before বুদুর. The next word is the
+       caption's next word not deleted, or the next caption's first; a word with none after it
+       stays as it is rude alone.
+     - **Words written together** with a dash or a । and no space (ধুর—বাল, বাল।এটা, শালা-খানকি,
+       শুয়োরের-বাচ্চা) are bleeped when one of them is, each before the next, or when they are
+       together (হারাম-জাদা) and the first is not an everyday word; a joiner (ZWJ, ZWNJ) is part
+       of a word, and words that make an everyday word together (চুদুর-বুদুর) stay unmuted.
    - **A bleep is time-based** (`Bleep`, §4.1): its source-time span is the word's time ± 0.05 s
      (± 0.15 s for estimated times, with the notice "Some bleeped words have estimated times, so a
      little more is bleeped"), and it keeps the matched word in lower case. It carries no caption
@@ -3631,7 +3647,9 @@ under `xvfb-run`: `captions-studio`, `captions`, `edit-by-text`, `transcription`
     list, bleep masks; the AI fix's changes get `captionAuto.text` records. Bangla bleeping
     (`tests/bleepBangla.test.ts`): every form generated from each stem, compound and whole noun is
     bleeped in Standard and Strict (bn, bn-BD, and a mostly Bangla transcript naming no language),
-    written either way; over 300 everyday words, those sharing letters with a stem among them, never.
+    written either way, and joined to the word before or after by a dash or a ।; over 300 everyday
+    words, those sharing letters with a stem among them, never, joined so or not; শুয়োরের in every
+    spelling only before বাচ্চা in every form, বাল but before a name.
 42. Make my captions great: the order; one update; **a second run returns the same project
     object** (content ids); a second style change keeps the first `was`; the summary; in a
     screen-led tall project emoji and keyword pop-ups resolve off and counters and lists on.
