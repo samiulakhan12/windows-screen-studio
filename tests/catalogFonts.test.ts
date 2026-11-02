@@ -170,6 +170,21 @@ describe('catalogFontsFor (§6.8)', () => {
     expect(fonts.catalogFontsFor(project({ graphics: [counter({ locale: 'en' } as Partial<Graphic>)] }))).not.toContain('noto-sans-bengali')
   })
 
+  it('adds the Bangla fonts for the Bangla numbers a list card draws, its items in English (§0.2)', () => {
+    const list = (marker: 'number' | 'bullet'): Graphic =>
+      ({ id: 'l1', kind: 'list', start: 0, end: 4, place: 'auto', size: 0.05, marker, items: [{ text: 'Chrome', at: 0 }, { text: 'Firefox', at: 1 }], enter: { kind: 'pop', duration: 0.24, strength: 1 }, exit: { kind: 'fade', duration: 0.18, strength: 1 } }) as Graphic
+    const bn = { segments: [{ id: 'c1', start: 0, end: 2, text: 'আমরা আজ দুটি ব্রাউজার দেখব' }] }
+    const native = (transcript: object, marker: 'number' | 'bullet'): Project => {
+      const p = project({ transcript, graphics: [list(marker)] } as Partial<Project>)
+      return { ...p, captions: { ...p.captions!, digits: 'native' } }
+    }
+    // Bangla captions with Bangla digits chosen: the card numbers its items ১, ২ on a Classic look, the transcript naming no language or Bangla.
+    for (const transcript of [bn, { ...bn, language: 'bn' }]) expect(fonts.catalogFontsFor(native(transcript, 'number'))).toEqual(expect.arrayContaining(['hind-siliguri', 'noto-sans-bengali']))
+    // Bullets have no number, and Western digits are drawn in the look's font.
+    expect(fonts.catalogFontsFor(native({ ...bn, language: 'bn' }, 'bullet'))).not.toContain('noto-sans-bengali')
+    expect(fonts.catalogFontsFor(project({ transcript: { ...bn, language: 'bn' }, graphics: [list('number')] } as Partial<Project>))).not.toContain('noto-sans-bengali')
+  })
+
   it('loads the fonts of the look the captions draw with: Chat with no speaker draws as Subtitle (§0.1)', () => {
     const text = 'আমরা আজ শিখব কীভাবে ভিডিও বানাতে হয়'
     const chat = look('chat')

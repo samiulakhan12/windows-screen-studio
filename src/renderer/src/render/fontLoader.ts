@@ -13,7 +13,7 @@ import { catalogFamily, catalogFont, catalogId, type CatalogFile, type CatalogFo
 import { coverageNeeded, partnerFor } from '../../../shared/captions/fontStack'
 import { effectiveStudio, STUDIO_BASE } from '../../../shared/captions/studioPresets'
 import { fontFamily, fontOf, fontStack } from '../../../shared/render/fonts'
-import { counterText, graphicNeeds, graphicWords } from '../../../shared/render/graphics'
+import { counterText, graphicNeeds, graphicWords, listNumberText } from '../../../shared/render/graphics'
 import { MEDIA_SCHEME, mediaUrl } from '../../../shared/mediaUrl'
 import type { Graphic, Project, ProjectFont, TitleCard } from '../../../shared/types'
 import { BUNDLED_FONT_URLS } from './catalogFonts'
@@ -294,12 +294,15 @@ function cjkFont(language: string | undefined, text: string): string | null {
 
 
 /**
- * The texts a graphic draws: its words (graphicWords), and a counter's number as graphicsLayer draws
- * it, in its locale and the captions' Digits choice (Bangla ৩০০% needs a Bangla font as its label does).
+ * The texts a graphic draws: its words (graphicWords), and the numbers graphicsLayer draws with them
+ * in the captions' Digits choice: a counter's in its locale (Bangla ৩০০% needs a Bangla font as its
+ * label does), and a numbered list card's (১, ২ beside English items).
  */
 function graphicTexts(g: Graphic, project: Project): string[] {
   const words = graphicWords(g)
-  return g.kind === 'counter' ? [counterText(g, g.to, project.captions?.digits, captionLanguage(project)).text, ...words] : words
+  if (g.kind === 'counter') return [counterText(g, g.to, project.captions?.digits, captionLanguage(project)).text, ...words]
+  if (g.kind === 'list' && g.marker === 'number') return [g.items.map((_, i) => listNumberText(i + 1, project.captions?.digits, captionLanguage(project))).join(' '), ...words]
+  return words
 }
 
 /** The brand font ids (ProjectFont ids) of the Studio look and the graphics (FlownFontW-, §6.7). */

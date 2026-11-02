@@ -20,13 +20,13 @@ import { CAPTION_FONT, captionIndexAt, viewAt } from '../../../shared/captions/l
 import { counterValue, EASE, itemPose, listWindows, seedOf, type ChunkPose } from '../../../shared/captions/motion'
 import { captionObstacles } from '../../../shared/captions/studioLayout'
 import { STUDIO_BASE } from '../../../shared/captions/studioPresets'
-import { scriptOf, withDigits } from '../../../shared/captions/words'
+import { scriptOf } from '../../../shared/captions/words'
 import { visibleSize } from '../../../shared/engine/crop'
 import { outputSize, type Rect } from '../../../shared/engine/layout'
 import { isTall } from '../../../shared/engine/reframeData'
 import { DEFAULT_ZOOM_SETTINGS } from '../../../shared/engine/zoom'
 import { actionRects } from '../../../shared/render/actionRects'
-import { counterText, GRAPHIC_DEFAULTS, graphicCandidates, graphicNeeds, placeGraphic } from '../../../shared/render/graphics'
+import { counterText, GRAPHIC_DEFAULTS, graphicCandidates, graphicNeeds, listNumberText, placeGraphic } from '../../../shared/render/graphics'
 import { graphicDrawn } from '../../../shared/render/popSound'
 import { textArea } from '../../../shared/render/safeZones'
 import { fontOf } from '../../../shared/render/fonts'
@@ -678,8 +678,7 @@ function drawList(c: Ctx, project: Project, g: ListGraphic, s: Shown, t: number,
 
 /** A list number in the captions' Digits choice (§0.2: Bangla ০–৯, Devanagari ०–९… or Western 0–9). */
 function listNumber(n: number, project: Project): string {
-  const lang = captionLanguage(project) ?? 'en'
-  return withDigits(String(n), project.captions?.digits, lang)
+  return listNumberText(n, project.captions?.digits, captionLanguage(project))
 }
 
 /** Motion graphics of fc.t, on the captions' clock (§9.1 rule 6); nothing without graphics. */

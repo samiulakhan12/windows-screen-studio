@@ -6,7 +6,7 @@ import type { Rect } from '../engine/layout'
 import { isTall } from '../engine/reframeData'
 import { transcriptLanguage } from '../captions/captionTracks'
 import { coverageNeeded } from '../captions/fontStack'
-import { numberingFor } from '../captions/words'
+import { numberingFor, withDigits } from '../captions/words'
 import type { CounterGraphic, Graphic, ItemMotion, Project } from '../types'
 import { keepInArea } from './safeZones'
 
@@ -152,6 +152,11 @@ export function counterText(g: CounterGraphic, value: number, digits?: 'native' 
   }
   const text = `${g.prefix}${formatted}${g.suffix}`
   return { text, cells: (formatted.match(/\p{Nd}/gu) ?? []).length }
+}
+
+/** A list card's number `n` as drawn (§0.2): in the captions' Digits choice, native digits being those of the captions' `language` (১, ২ for Bangla). */
+export function listNumberText(n: number, digits?: 'native' | 'western', language?: string): string {
+  return withDigits(String(n), digits, language ?? 'en')
 }
 
 /** The words a graphic writes: a keyword's text, a list's title and items, a counter's prefix, suffix and label. */
