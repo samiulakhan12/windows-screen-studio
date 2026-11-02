@@ -521,7 +521,7 @@ Unit (vitest), each failing without its rule:
 - `searchMoment.test.ts`: target inside a clip, in a cut, after the last clip; spoken time.
 - `searchBench.test.ts`: the numbers of §8 with generous limits.
 - `searchCss.test.ts`: the results list with no rows is hidden, though its class lays it out.
-- `librarySearch.test.ts`: Ctrl+F and Enter while Home is busy take nothing and open nothing.
+- `librarySearch.test.ts`: Home turns the box off while it is busy, and Ctrl+F and Enter while Home is busy take nothing and open nothing.
 
 End to end (`tests/e2e/search.e2e.cjs`, the built app under Xvfb): three seeded recordings (one with
 an English transcript and a chapter, one in Bangla, one with only a name) → the box is there,

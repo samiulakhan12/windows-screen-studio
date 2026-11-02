@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs'
+import path from 'node:path'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { SearchHit, SearchResponse } from '../src/shared/search/types'
 
@@ -191,6 +193,13 @@ beforeEach(() => {
 })
 
 describe('the search box while Home is busy (saving or recovering a recording, importing)', () => {
+  it('Home turns the box off whenever its other controls are off', () => {
+    const home = readFileSync(path.resolve(__dirname, '../src/renderer/src/views/Home.tsx'), 'utf8')
+    // Not idle while a recording is being prepared, saved or recovered, or while files are imported.
+    expect(home).toMatch(/const idle = phase === null && !busy && !importer\.busy\b/)
+    expect(home).toMatch(/<LibrarySearch\b[^>]*\bdisabled=\{!idle\}/)
+  })
+
   it('Ctrl+F and Enter work while Home is idle', async () => {
     const onOpen = vi.fn()
     props = { projects, onOpen }
