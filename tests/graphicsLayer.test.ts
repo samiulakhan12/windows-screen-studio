@@ -234,6 +234,22 @@ describe('the graphics layer (§10.4)', () => {
     expect(items(5.5)).toEqual(['Three steps', '1', 'Open settings', '2', 'Click export', '3', 'Save'])
   })
 
+  it('masks a bleeped word on a list card, a counter label and a keyword made before the bleep (§11.7)', () => {
+    const list: ListGraphic = { id: 'l1', kind: 'list', start: 1, end: 8, place: 'auto', size: 0.045, title: 'Fucking easy steps', marker: 'number', items: [{ text: 'open the fucking Settings page', at: 1.2 }], ...motion }
+    const graphics: Graphic[] = [list, counter({ label: 'fucking' }), keyword({ start: 2, end: 6, text: 'fucking!' })]
+    const texts = (bleeps?: Project['bleeps']): string[] => {
+      calls.length = 0
+      STUDIO_SPRITES.clear()
+      drawGraphicsLayer(frameOf(project(graphics, bleeps ? { bleeps } : {}), 4.5).fc)
+      return calls.filter((c) => c.name === 'fillText').map((c) => String(c.args[0]))
+    }
+    expect(texts().join(' ')).toMatch(/fucking/i)
+    const shown = texts([{ id: 'b1', start: 30, end: 30.5, word: 'fucking', sound: 'tone', auto: true }])
+    expect(shown.join(' ')).not.toMatch(/fucking/i)
+    expect(shown).toEqual(expect.arrayContaining(['F****** easy steps', 'open the f****** Settings page', 'F******']))
+    expect(shown.some((t) => /^f\*{6}!$/i.test(t))).toBe(true)
+  })
+
   it('numbers a list in Bangla digits when chosen, for Bangla captions whose transcript names no language (§0.2)', () => {
     const list: ListGraphic = { id: 'l1', kind: 'list', start: 1, end: 8, place: 'auto', size: 0.045, title: 'ধাপ', marker: 'number', items: [{ text: 'সেটিংস খুলুন', at: 1.2 }], ...motion }
     const p = project([list], { transcript: { segments: [{ id: 'c1', start: 0, end: 2, text: 'এখন সেটিংস খুলুন' }] }, captions: { digits: 'native' } } as unknown as Partial<Project>)

@@ -1,6 +1,7 @@
 import { animationTime, isAnimated } from '../../../shared/engine/backgrounds'
 import { backgroundIsLight, luminance, titleColorOf, titleTextColorOf } from '../../../shared/editor/titles'
 import { captionLanguage } from '../../../shared/captions/captionTracks'
+import { maskBleeped } from '../../../shared/captions/cleanup'
 import { catalogFamily, catalogId } from '../../../shared/captions/fontCatalog'
 import { STUDIO_BASE } from '../../../shared/captions/studioPresets'
 import { withWordDigits } from '../../../shared/captions/words'
@@ -403,13 +404,15 @@ function drawLowerThird(fc: FrameContext, card: TitleCard, phase: TitlePhase, l:
  */
 /**
  * A card as drawn: a chapter title made from the chapters (Captions Studio §10.1) writes its digits
- * in the captions' Digits choice (§0.2), a Latin word keeping its own as in captions ("MP3"); every
- * other card, and every card without the choice, is the card itself.
+ * in the captions' Digits choice (§0.2), a Latin word keeping its own as in captions ("MP3"); a
+ * quote card masks a bleeped word as the captions do, also when it was made before the bleep
+ * (§11.7); every other card is the card itself.
  */
 function drawnCard(project: Project, card: TitleCard): TitleCard {
   const digits = project.captions?.digits
-  if (!digits || card.auto?.by !== 'chapter') return card
-  const title = withWordDigits(card.title, digits, captionLanguage(project))
+  let title = card.title
+  if (digits && card.auto?.by === 'chapter') title = withWordDigits(title, digits, captionLanguage(project))
+  if (card.style === 'quote') title = maskBleeped(title, project.bleeps)
   return title === card.title ? card : { ...card, title }
 }
 

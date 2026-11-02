@@ -3,7 +3,7 @@
  * rules, the word list, bleeping, masks by time, and the AI fix's records.
  */
 import { describe, expect, it } from 'vitest'
-import { bleepGains, bleepKey, cleanupNotice, glossaryLine, glossaryTerms, GLOSSARY_BYTES, isSwearWord, maskedSegments, maskWord, readCleanupChoices, readWordList, tidyCaptions, type CleanupChoices } from '../src/shared/captions/cleanup'
+import { bleepGains, bleepKey, cleanupNotice, glossaryLine, glossaryTerms, GLOSSARY_BYTES, isSwearWord, maskBleeped, maskedSegments, maskWord, readCleanupChoices, readWordList, tidyCaptions, type CleanupChoices } from '../src/shared/captions/cleanup'
 import { mergeWithNext, splitCaption } from '../src/shared/captions/edit'
 import { readBleeps } from '../src/shared/captions/studioData'
 import { DEFAULT_CAPTIONS } from '../src/shared/captions/settings'
@@ -200,6 +200,14 @@ describe('bleeping (tests 41, 50)', () => {
     expect(maskedSegments([seg], undefined)).toEqual([seg])
     const list = [seg]
     expect(maskedSegments(list, [])).toBe(list)
+  })
+
+  it('masks the words the bleeps are for in text drawn from caption words, also made before the bleep', () => {
+    const p = tidyCaptions(project([timed('a', 10, 'well fuck this now')]), { ...OFF, bleep: 'standard', words: [] }).project
+    expect(maskBleeped('Fuck, this is easy', p.bleeps)).toBe('F***, this is easy')
+    const plain = 'nothing to hide here'
+    expect(maskBleeped(plain, p.bleeps)).toBe(plain)
+    expect(maskBleeped('fuck', undefined)).toBe('fuck')
   })
 
   it('a bleep survives split and merge, and the project equals what reading it gives', () => {

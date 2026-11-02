@@ -477,6 +477,32 @@ const maskToken = (text: string): string => {
   return core ? withCore(text, maskWord(core)) : text
 }
 
+/** The words the bleeps are for (Bleep.word), made once per bleeps array. */
+const bleepWords = new WeakMap<readonly Bleep[], ReadonlySet<string>>()
+
+/**
+ * `text` with each word a bleep is for masked as the captions mask it ("f***"): text drawn from
+ * caption words (pop-ups, list cards, counter labels, quote cards) never reads a bleeped word,
+ * also when it was made before the bleep (§11.7). `text` itself when it has none.
+ */
+export function maskBleeped(text: string, bleeps: readonly Bleep[] | undefined): string {
+  if (!bleeps?.length || !text) return text
+  let words = bleepWords.get(bleeps)
+  if (!words) {
+    words = new Set(bleeps.map((b) => b.word))
+    bleepWords.set(bleeps, words)
+  }
+  const bleeped = words
+  let changed = false
+  const out = text.replace(/\S+/g, (t) => {
+    const key = bleepKey(t).slice(0, 40)
+    if (!key || !bleeped.has(key)) return t
+    changed = true
+    return maskToken(t)
+  })
+  return changed ? out : text
+}
+
 /** The share of [a, b] inside [s, e]. */
 const inside = (a: number, b: number, s: number, e: number): number => (b - a <= 0 ? (a >= s && a <= e ? 1 : 0) : Math.max(0, Math.min(b, e) - Math.max(a, s)) / (b - a))
 

@@ -11,6 +11,7 @@
  * live in fixed cells. Nothing is drawn, and nothing is called on the frame, without graphics.
  */
 import { burnedSegments, captionLanguage } from '../../../shared/captions/captionTracks'
+import { maskBleeped } from '../../../shared/captions/cleanup'
 import { textOn } from '../../../shared/captions/colors'
 import { emojiEntry } from '../../../shared/captions/emojiList'
 import { catalogFamily, catalogId } from '../../../shared/captions/fontCatalog'
@@ -154,7 +155,7 @@ function shapeOf(ctx: Ctx, project: Project, g: Graphic, w: number, h: number): 
   if (g.kind === 'emoji') return { w: px * 1.25, h: px * 1.25, px }
   if (g.kind === 'keyword') {
     const font = `${weightOf(ref, look.emphasis.weight)} ${px}px ${stackOf(project, ref)}`
-    const tw = measure(ctx, keywordText(g, look), font)
+    const tw = measure(ctx, keywordText(project, g, look), font)
     const pad = g.look === 'card' || g.look === 'tag' ? { x: 0.4 * px, y: 0.25 * px } : { x: 0.15 * px, y: 0.1 * px }
     return { w: tw + pad.x * 2, h: px * 1.25 + pad.y * 2, px }
   }
@@ -162,7 +163,7 @@ function shapeOf(ctx: Ctx, project: Project, g: Graphic, w: number, h: number): 
     const font = counterFont(project, g, px)
     const cell = cellWidth(ctx, font, project, g)
     const tw = Math.max(counterWidth(ctx, font, counterOf(project, g, g.from).text, cell), counterWidth(ctx, font, counterOf(project, g, g.to).text, cell))
-    const label = g.label?.toLocaleUpperCase() ?? ''
+    const label = counterLabel(project, g).toLocaleUpperCase()
     const labelW = label ? measure(ctx, label, labelFont(project, g, px)) + [...label].length * labelSpacing(px, label) : 0
     return { w: Math.max(tw, labelW) + px * 0.8, h: px * 1.15 + (g.label ? px * 0.45 * 1.6 : 0) + px * 0.5, px }
   }
@@ -170,8 +171,14 @@ function shapeOf(ctx: Ctx, project: Project, g: Graphic, w: number, h: number): 
   return { w: m.width, h: listHeight(m, g.items.length), px: m.px }
 }
 
-/** A keyword's text: in capitals when the look writes in capitals. */
-const keywordText = (g: KeywordGraphic, look: CaptionStudio): string => (look.text.case === 'upper' ? g.text.toLocaleUpperCase() : look.text.case === 'lower' ? g.text.toLocaleLowerCase() : g.text)
+/** A keyword's text: in capitals when the look writes in capitals; a bleeped word masked (§11.7). */
+const keywordText = (project: Project, g: KeywordGraphic, look: CaptionStudio): string => {
+  const text = maskBleeped(g.text, project.bleeps)
+  return look.text.case === 'upper' ? text.toLocaleUpperCase() : look.text.case === 'lower' ? text.toLocaleLowerCase() : text
+}
+
+/** A counter's label as drawn: a bleeped word masked (§11.7). */
+const counterLabel = (project: Project, g: CounterGraphic): string => maskBleeped(g.label ?? '', project.bleeps)
 
 const counterFont = (project: Project, g: CounterGraphic, px: number): string => {
   const ref = fontRef(project, g)
@@ -491,7 +498,7 @@ function drawKeyword(c: Ctx, project: Project, g: KeywordGraphic, shape: Shape):
   const px = shape.px
   const ref = fontRef(project, g)
   const font = `${weightOf(ref, look.emphasis.weight)} ${px}px ${stackOf(project, ref)}`
-  const text = keywordText(g, look)
+  const text = keywordText(project, g, look)
   // Card: the look's box with the emphasis colour; Plain: outlined text; Outline: hollow; Tag: a pill in the spoken colour.
   const box = g.accent ?? (g.look === 'tag' ? theme.spoken : theme.box)
   const ink = g.color ?? (g.look === 'card' ? theme.emphasis : g.look === 'tag' ? (theme.spokenText ?? textOn(box)) : theme.text)
@@ -551,7 +558,8 @@ function drawCounter(c: Ctx, project: Project, g: CounterGraphic, shape: Shape, 
   const px = shape.px
   const box = g.accent ?? look.theme.box
   const ink = g.color ?? look.theme.spoken
-  const sp = sprite(JSON.stringify(['counter', box, shape.w, shape.h, g.label ?? '', labelFont(project, g, px), look.theme.text]), shape.w, shape.h, px * 0.9, (k) => {
+  const label = counterLabel(project, g)
+  const sp = sprite(JSON.stringify(['counter', box, shape.w, shape.h, label, labelFont(project, g, px), look.theme.text]), shape.w, shape.h, px * 0.9, (k) => {
     k.save()
     cardShadow(k, px)
     k.fillStyle = rgba(box, 0.85)
@@ -559,13 +567,13 @@ function drawCounter(c: Ctx, project: Project, g: CounterGraphic, shape: Shape, 
     k.roundRect(-shape.w / 2, -shape.h / 2, shape.w, shape.h, Math.min(px * 0.3, shape.h / 2))
     k.fill()
     k.restore()
-    if (g.label) {
+    if (label) {
       k.font = labelFont(project, g, px)
       k.textAlign = 'center'
       k.textBaseline = 'middle'
-      k.letterSpacing = `${labelSpacing(px, g.label).toFixed(2)}px`
+      k.letterSpacing = `${labelSpacing(px, label).toFixed(2)}px`
       k.fillStyle = rgba(look.theme.text, 0.7)
-      k.fillText(g.label.toLocaleUpperCase(), 0, shape.h / 2 - px * 0.25 - px * 0.45 * 0.8)
+      k.fillText(label.toLocaleUpperCase(), 0, shape.h / 2 - px * 0.25 - px * 0.45 * 0.8)
     }
   })
   if (sp) c.drawImage(sp.canvas, -sp.ox, -sp.oy)
@@ -622,7 +630,7 @@ function drawList(c: Ctx, project: Project, g: ListGraphic, s: Shown, t: number,
   if (g.title) {
     c.font = `${weightOf(ref, itemWeight + 200)} ${m.titlePx}px ${stack}`
     c.fillStyle = accent
-    c.fillText(g.title, left + m.padX, top + m.padY + m.titleH / 2)
+    c.fillText(maskBleeped(g.title, project.bleeps), left + m.padX, top + m.padY + m.titleH / 2)
   }
   items.forEach((item, i) => {
     const p = EASE.out(progress(item.at, 0.22))
@@ -661,7 +669,7 @@ function drawList(c: Ctx, project: Project, g: ListGraphic, s: Shown, t: number,
     }
     c.font = `${itemWeight} ${m.px}px ${stack}`
     c.fillStyle = '#1c2030'
-    c.fillText(item.text, mx + r + m.px * 0.5, y, m.width - (mx + r + m.px * 0.5 - left) - m.padX)
+    c.fillText(maskBleeped(item.text, project.bleeps), mx + r + m.px * 0.5, y, m.width - (mx + r + m.px * 0.5 - left) - m.padX)
     c.restore()
   })
   c.restore()

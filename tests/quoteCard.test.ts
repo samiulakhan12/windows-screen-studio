@@ -71,6 +71,22 @@ describe('the quote panel (§10.1)', () => {
     expect(calls.some((c) => c.canvas === id && c.name === 'fillRect')).toBe(false)
   })
 
+  it('masks a bleeped word on a quote card made before the bleep, as the captions do (§11.7)', () => {
+    const card: TitleCard = { ...quote, title: 'Honestly this is fucking amazing for everyone' }
+    const drawn = (p: Project): string => {
+      calls.length = 0
+      drawTitleCardsLayer(frameOf(p, 1.5).fc)
+      return calls.filter((c) => c.name === 'fillText').map((c) => String(c.args[0])).join(' ')
+    }
+    expect(drawn(project([card]))).toContain('fucking')
+    const bleeped = { ...project([card]), bleeps: [{ id: 'b1', start: 17.14, end: 18.09, word: 'fucking', sound: 'tone', auto: true }] } as Project
+    const text = drawn(bleeped)
+    expect(text).not.toMatch(/fucking/i)
+    expect(text).toContain('f******')
+    // Other cards are drawn as typed.
+    expect(drawn({ ...bleeped, titles: [{ ...card, id: 't1', style: 'centered', background: 'solid' }] })).toContain('fucking')
+  })
+
   it('draws a card in its catalogue font, and an older card in the title font as before', () => {
     const cat: TitleCard = { id: 't1', start: 0, end: 4, title: 'Launch', style: 'centered', background: 'solid', font: 'cat:anton' }
     const { fc } = frameOf(project([cat]), 1.5)

@@ -2807,7 +2807,10 @@ Offline rules, each optional (§2.9). The choices are `CleanupChoices` (`caps`, 
      graphics never show one (`wordsBleeped`): Make my captions great makes no keyword pop-up, AI
      list card or quote card with a bleeped word, an offline list card shows it masked, and a
      counter drops it as its label; a keyword pop-up made before the bleep is not drawn (nor its
-     pop sound), so the caption's chunk shows with the mask.
+     pop sound), so the caption's chunk shows with the mask. Any other text drawn from caption
+     words (a list card's title and items, a counter label, a free keyword, a quote card) masks
+     each word a bleep is for as it is drawn (`maskBleeped`, by the bleep's `word`), so a card made
+     before the bleep shows the mask too.
    - **Sound.** Both choices mute the recording's sound over the span with the sound finder's
      mechanism (F-17, `rev/sound-finder`): `bleepGains(project)` gives a `SoundGain` of gain 0 per
      bleep, and `soundGains` (`soundsEdit.ts:136`) joins them with the found sounds' spans through
