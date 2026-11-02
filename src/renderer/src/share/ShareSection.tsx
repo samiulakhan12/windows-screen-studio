@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, type FormEvent } from 'react'
 import type { ShareHookInfo, ShareTargets } from '../../../shared/api/share'
 import { sourceText } from '../../../shared/share/cloudFolders'
 import { folderPlaces, hookPlaces, withPlace } from '../../../shared/share/names'
-import { whenOnScreen } from '../../../shared/share/onScreen'
+import { switchOn, whenOnScreen } from '../../../shared/share/onScreen'
 import { SHARE_LIMITS, WEBHOOK_SERVICES } from '../../../shared/share/webhooks'
 import { ipcMessage } from '../settings/providerText'
 import { useShareTargets } from './useShare'
@@ -110,7 +110,7 @@ export function ShareSection(): JSX.Element {
               </div>
               <div className="share-item-actions">
                 <label className="share-use">
-                  <input type="checkbox" checked={f.on} onChange={(e) => void act(() => window.api.shareSetFolder(f.id, e.target.checked))} aria-label={`Use ${withPlace(f.label, folderPlace.get(f.id))}`} />
+                  <input type="checkbox" checked={switchOn(f, targets?.reviewed ?? true)} onChange={(e) => void act(() => window.api.shareSetFolder(f.id, e.target.checked))} aria-label={`Use ${withPlace(f.label, folderPlace.get(f.id))}`} />
                   Use
                 </label>
                 {f.source === 'picked' && (

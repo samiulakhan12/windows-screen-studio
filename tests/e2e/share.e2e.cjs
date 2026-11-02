@@ -86,10 +86,12 @@ const run = async () => {
         const reviewed = () => fs.existsSync(shareJson) && JSON.parse(fs.readFileSync(shareJson, 'utf8')).reviewed === true
         await h.sleep(1500)
         h.assert(!reviewed(), 'found folders are not offered before they have been on screen')
-        h.assert((await win.locator('.share-settings [data-share-folder] input:checked').count()) === 0, 'not on before they have been seen')
+        // Their switches already show them as they will be once seen, so none turns on under the user.
+        const checked = () => win.locator('.share-settings [data-share-folder] input:checked').count()
+        h.assert((await checked()) === 2, 'found folders shown on before they have been seen')
         await win.locator('.share-settings [aria-label="Cloud folders"]').scrollIntoViewIfNeeded()
         await ef.waitFor(async () => reviewed(), 'found folders offered once they were on screen')
-        await ef.waitFor(async () => (await win.locator('.share-settings [data-share-folder] input:checked').count()) === 2, 'both found folders on once seen')
+        h.assert((await checked()) === 2, 'both found folders still on once seen')
 
         // A folder of the user's own, with the folder dialog.
         await app.evaluate(({ dialog }, target) => {

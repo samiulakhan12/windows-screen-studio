@@ -135,7 +135,10 @@ export function registerShareIpc(): void {
     const s = shareStore()
     if (on === null) s.removeFolder(id)
     else if (typeof on === 'boolean') {
-      if (!(await folderInfos()).some((f) => f.id === id)) throw new Error('This folder is not there any more.')
+      const folder = (await folderInfos()).find((f) => f.id === id)
+      if (!folder) throw new Error('This folder is not there any more.')
+      // A found folder's switch sits in their list, shown as it will be once seen: changing it is seeing them.
+      if (folder.source !== 'picked') s.markReviewed()
       s.setOff(id, !on)
     }
     return targets()

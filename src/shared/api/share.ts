@@ -28,7 +28,10 @@ export interface ShareHookInfo {
 export interface ShareTargets {
   folders: ShareFolderInfo[]
   hooks: ShareHookInfo[]
-  /** Settings › Share has been on screen; until then found folders are listed but not offered. */
+  /**
+   * The found folders' list in Settings › Share has been on screen (or one of their switches was
+   * changed); until then found folders are listed but not offered.
+   */
   reviewed: boolean
 }
 
@@ -72,7 +75,10 @@ export interface ShareApi {
    * `fromSettings` (Settings › Share is showing them) lets found folders be offered from now on.
    */
   shareTargets(refresh?: boolean, fromSettings?: boolean): Promise<ShareTargets>
-  /** Turns a found folder on or off, or removes one the user added (`on` = null). */
+  /**
+   * Turns a folder on or off (a found folder's switch counts as having seen the found folders), or
+   * removes one the user added (`on` = null).
+   */
   shareSetFolder(id: string, on: boolean | null): Promise<ShareTargets>
   /** Asks for a folder with the system dialog and adds it; null when cancelled. */
   sharePickFolder(): Promise<ShareTargets | null>

@@ -82,8 +82,9 @@ better source winning. On Windows only (§2.9 for the test seam):
 
 **Found folders are offered only after the user has seen them**: until their list in Settings ›
 Share has been on screen once, for half a second (`reviewed` in `share.json`; opening Settings at
-another section, a quick scroll past or the page moving while it loads do not count; their "Use"
-switches turn on then), the export dialog says "Flown found OneDrive, Dropbox on this
+another section, a quick scroll past or the page moving while it loads do not count; changing one
+of their "Use" switches does, and those switches show them on from the start, as they will be, so
+none changes under the user), the export dialog says "Flown found OneDrive, Dropbox on this
 PC. Check them in Settings › Share to copy exports there." and neither the dialog nor the notification
 offers them. Sources shown: "Found in OneDrive's settings", "Found in Dropbox's settings", "Found in Google
 Drive's settings", "Found at the usual place", "Added by you". **Nothing is guessed silently**:
@@ -380,7 +381,10 @@ Unit (vitest, each failing without its code):
   auto, at most 3), the run cap, an export saved over the same path forgetting the earlier place, the result notified
   when no done view shows the file.
 * `redact.test` addition — webhook URLs redacted.
-* `shareSeen.test.ts` — the found folders count as seen only after staying on screen for `SEEN_MS`.
+* `shareSeen.test.ts` — the found folders count as seen only after staying on screen for `SEEN_MS`;
+  their switches show them on before that.
+* `shareIpc.test.ts` — changing a found folder's switch counts as seeing them, in the same step
+  (turning one off leaves only the others offered); a folder of the user's own does not.
 * `shareAfterExport.test.ts` — Export pressed before the destinations loaded still shares to the
   remembered choice, waiting for them when they are still loading as the export ends.
 

@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { SEEN_MS, whenOnScreen } from '../src/shared/share/onScreen'
+import { SEEN_MS, switchOn, whenOnScreen } from '../src/shared/share/onScreen'
 
 type Callback = (entries: { isIntersecting: boolean }[]) => void
 
@@ -62,5 +62,22 @@ describe('Settings › Share counts as seen', () => {
     io.show(true)
     vi.advanceTimersByTime(5000)
     expect(seen).toBe(0)
+  })
+})
+
+describe('the "Use" switches of Settings › Share', () => {
+  it('show found folders on before their list is seen, so a switch does not turn on under the user', () => {
+    // Not yet offered (main says off) but shown as they will be once seen.
+    expect(switchOn({ on: false, source: 'app' }, false)).toBe(true)
+    expect(switchOn({ on: false, source: 'usual' }, false)).toBe(true)
+    // Once seen, as main says: on, or turned off by the user.
+    expect(switchOn({ on: true, source: 'app' }, true)).toBe(true)
+    expect(switchOn({ on: false, source: 'app' }, true)).toBe(false)
+  })
+
+  it("show a folder of the user's own as it is", () => {
+    expect(switchOn({ on: false, source: 'picked' }, false)).toBe(false)
+    expect(switchOn({ on: true, source: 'picked' }, false)).toBe(true)
+    expect(switchOn({ on: false, source: 'picked' }, true)).toBe(false)
   })
 })
