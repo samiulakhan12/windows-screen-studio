@@ -16,6 +16,7 @@ import { releaseTilt } from '../render/tiltLayer'
 import { prepareCursorAssets } from '../render/cursorLayer'
 import { prepareStyleAssets } from '../render/watermarkLayer'
 import { prepareCaptionFonts, prepareProjectFonts } from '../render/fontLoader'
+import { graphicShown } from '../render/graphicsLayer'
 import { spriteCap, STUDIO_SPRITES } from '../render/wordSprites'
 import { popJob, toneJob } from '../../../shared/render/popSound'
 import { subtitleStreams } from '../../../shared/render/exportBundle'
@@ -149,13 +150,16 @@ async function soundOf(input: ExportInput, format: ExportOptions['format']): Pro
     ...(look.fadeIn > 0 ? { fadeIn: look.fadeIn } : {}),
     ...(look.fadeOut > 0 ? { fadeOut: look.fadeOut } : {}),
     // Captions Studio (§10.6, §11.7): graphics' pops and bleep tones; a project without them gets the job of before.
-    ...studioSounds(project)
+    ...studioSounds(project, exportDimensions(project, input.settings))
   }
 }
 
-/** The pops of graphics and the bleep tones of a project, in the export's video time; nothing without them. */
-function studioSounds(project: Project): Pick<ExportJob, 'pops' | 'tones'> {
-  const pops = popJob(project)
+/**
+ * The pops of graphics and the bleep tones of a project, in the export's video time; nothing
+ * without them. A pop sounds when its graphic starts to show in the `size` frame (graphicShown).
+ */
+function studioSounds(project: Project, size: { width: number; height: number }): Pick<ExportJob, 'pops' | 'tones'> {
+  const pops = popJob(project, (g) => graphicShown(project, g, size.width > 0 && size.height > 0 ? size : undefined).start)
   const tones = toneJob(project)
   return { ...(pops.length ? { pops } : {}), ...(tones.length ? { tones } : {}) }
 }

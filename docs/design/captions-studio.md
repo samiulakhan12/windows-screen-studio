@@ -2498,9 +2498,10 @@ look given by Auto style (rule 1, not picked by hand) too.
 | Pop | 520, 0.55, 0.040 s · 1040, 0.25, 0.020 s · 2600, 0.08, 0.006 s | 0.12 s |
 | Ding | 1320, 0.40, 0.35 s · 2640, 0.12, 0.18 s · 3960, 0.05, 0.08 s | 0.90 s |
 
-- Each plays when its graphic appears, at volume 0.35. Its output time is the graphic's start
-  mapped to output time on the captions' clock (in a continue freeze, the sound time), so the pop
-  and the picture agree. The export mixes them with the click-track builder (`clickTrackGraph`,
+- Each plays when its graphic appears, at volume 0.35. Its output time is the time the graphic
+  starts to show (`graphicShown`: its own start, or for a keyword that replaces its chunk the
+  start of that chunk as the look draws it in the frame, §10.1) mapped to output time on the
+  captions' clock (in a continue freeze, the sound time), so the pop and the picture agree. The export mixes them with the click-track builder (`clickTrackGraph`,
   `audioPlan.ts:261`) as one more track; the preview plays them with Web Audio like clicks.
 - A list card plays its sound once, at its start.
 - Wave 10's sound library (LT-13) adds sound files later under new ids.
@@ -3301,7 +3302,7 @@ May touch additively: none beyond its own files.
 | `src/renderer/src/render/catalogFonts.ts` (new) | `export const BUNDLED_FONT_URLS: Readonly<Record<string, string>>` (`?url` imports). |
 | `src/renderer/src/render/contrastProbe.ts` (new) | `export function probeContrast(project: Project, t: number, studio: CaptionStudio): Promise<{ ratio: number; at: number } \| null>` (paused and after a seek only, on a `willReadFrequently` canvas, §7.3). |
 | `src/renderer/src/editor/exporter.ts` | `prepareCaptionFonts` in `prepare`; the sprite cap from the output size; pops, bleep tones and subtitle streams passed into the job. |
-| `src/shared/render/popSound.ts` (new) | `export const POP_SOUNDS: Readonly<Record<'pop' \| 'ding', { partials: readonly { freq: number; amp: number; tau: number }[]; duration: number }>>`; `export function popJob(project: Project): { times: number[]; sound: 'pop' \| 'ding' }[]` (output times on the captions' clock); `export function toneJob(project: Project): { start: number; end: number }[]` (bleep tones, output time, split at cuts); `export function popWaveform(sound: 'pop' \| 'ding', rate: number): Float32Array`; `export function popSoundSource(sound: 'pop' \| 'ding'): string` |
+| `src/shared/render/popSound.ts` (new) | `export const POP_SOUNDS: Readonly<Record<'pop' \| 'ding', { partials: readonly { freq: number; amp: number; tau: number }[]; duration: number }>>`; `export function popJob(project: Project, startOf?: (g: Graphic) => number): { times: number[]; sound: 'pop' \| 'ding' }[]` (output times on the captions' clock; `startOf` is when a graphic starts to show, the graphics layer's `graphicShown`); `export function toneJob(project: Project): { start: number; end: number }[]` (bleep tones, output time, split at cuts); `export function popWaveform(sound: 'pop' \| 'ding', rate: number): Float32Array`; `export function popSoundSource(sound: 'pop' \| 'ding'): string` |
 | `src/shared/audio/soundsEdit.ts` (sound-finder) | `soundGains(p)` also returns `bleepGains(p)` (P4, §11.7), joined by `joinGains`. P2 owns this reconciliation with F-17. |
 | `src/shared/render/audioPlan.ts`, `src/renderer/src/editor/previewAudio.ts` | The pop and tone tracks (built like `clickTrackGraph`); no second muting path (bleeps reach the `sounds` gains above). The preview reschedules its `sounds` curve when `bleeps` change, as it does for `sounds`. |
 | `src/shared/audio/settings.ts` | `needsAudioGraph` is true with bleeps or with pop sounds, so the preview builds its graph for them. |

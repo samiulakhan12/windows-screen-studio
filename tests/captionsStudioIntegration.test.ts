@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { calls, canvas, contextOf, frameOf, sets, spriteTexts } from './studioFakes'
 import { studioPreset } from '../src/shared/captions/studioPresets'
+import { popJob } from '../src/shared/render/popSound'
 import type { CaptionSegment, CaptionSettings, CaptionStudio, CounterGraphic, CursorTrack, KeywordGraphic, ListGraphic, Project, StudioPosition, TitleCard } from '../src/shared/types'
 
 /*
@@ -41,6 +42,7 @@ const { drawGraphicsLayer, graphicRects, graphicShown } = (await import(/* @vite
   graphicShown: (p: Project, g: KeywordGraphic, size?: { width: number; height: number }) => { start: number; end: number }
 }
 const EDITOR = '../src/renderer/src/editor/'
+const { PreviewAudio } = (await import(/* @vite-ignore */ `${EDITOR}previewAudio`)) as { PreviewAudio: new (screen: unknown, p: Project) => unknown }
 const { showGraphic } = (await import(/* @vite-ignore */ `${EDITOR}graphicItems`)) as { showGraphic: (player: { time: number; seek(t: number): void }, p: Project, g: KeywordGraphic) => void }
 const { drawTitleCardsLayer } = (await import(/* @vite-ignore */ `${R}titleCardLayer`)) as { drawTitleCardsLayer: Draw }
 const { drawKeystrokes } = (await import(/* @vite-ignore */ `${R}textOverlays`)) as { drawKeystrokes: (ctx: unknown, w: number, h: number, t: number, p: Project, cursor: CursorTrack) => void }
@@ -413,4 +415,19 @@ describe('a keyword card that replaces its chunk shows only while the drawn chun
       const block = studioBlockAt(contextOf(canvas(w, h)), moved, 1.5, w, h)!.box
       expect(rect.y + rect.h <= block.y || rect.y >= block.y + block.h).toBe(true)
     })
+
+  it('its Pop sounds as the card appears, in the preview and the export (§10.6)', () => {
+    const [w, h] = [1080, 1920]
+    const p = project([seg], 'en', { preset: 'bold', studio: look('bold-pop') }, { graphics: [{ ...card, sound: 'pop' }], width: w, height: h } as Partial<Project>)
+    let first = -1
+    for (let t = 0; t < 6 && first < 0; t += 0.01) if (drawsOn(drawGraphicsLayer, p, t, w, h)) first = t
+    expect(first).toBeGreaterThan(seg.start + 0.5)
+    // The export's job: popJob with the export frame's graphicShown.
+    const pops = popJob(p, (g) => graphicShown(p, g as KeywordGraphic, { width: w, height: h }).start)
+    expect(pops).toEqual([{ times: [expect.any(Number)], sound: 'pop' }])
+    expect(Math.abs(pops[0].times[0] - first)).toBeLessThanOrEqual(0.01 + 1e-9)
+    // The preview's: the same time.
+    const preview = new PreviewAudio({}, { ...p, audio: {}, hasAudio: false } as unknown as Project) as unknown as { effectsOf(): { pops: { times: number[] }[] } }
+    expect(preview.effectsOf().pops[0].times).toEqual(pops[0].times)
+  })
 })

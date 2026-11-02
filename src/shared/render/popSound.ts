@@ -132,8 +132,12 @@ function shownFrom(clips: Clip[], s: number): number | null {
   return next ? sourceToOutput(clips, next.time) : null
 }
 
-/** The pops of the project's graphics: output times on the captions' clock. */
-export function popJob(project: Project): { times: number[]; sound: 'pop' | 'ding' }[] {
+/**
+ * The pops of the project's graphics: output times on the captions' clock. `startOf` is when a
+ * graphic starts to show, where that is not its own start (the graphics layer's graphicShown: a
+ * keyword that replaces its chunk shows from that chunk's start), so a pop sounds as it appears.
+ */
+export function popJob(project: Project, startOf?: (g: Graphic) => number): { times: number[]; sound: 'pop' | 'ding' }[] {
   const graphics = project.graphics
   if (!graphics?.length || project.clips.length === 0) return []
   const plan = planOf(project)
@@ -142,7 +146,7 @@ export function popJob(project: Project): { times: number[]; sound: 'pop' | 'din
   for (const g of graphics) {
     if (!g.sound || !graphicDrawn(project, g)) continue
     // A list card sounds once, when it first appears (§10.6).
-    const at = shownFrom(project.clips, g.start)
+    const at = shownFrom(project.clips, startOf ? startOf(g) : g.start)
     if (at === null || at >= total) continue
     // A graphic wholly inside a cut never shows.
     const end = sourceToOutput(project.clips, g.end) ?? shownFrom(project.clips, g.end) ?? total

@@ -13,6 +13,8 @@ import type { Project } from '../../../shared/types'
 import { fadesInAfterHold } from '../../../shared/render/audioPlan'
 import { POP_VOLUME, popJob, popWaveform, toneJob, toneWaveform } from '../../../shared/render/popSound'
 import { CUT_FADE, cutFadeAhead, editHasCuts } from '../../../shared/render/cutFades'
+import { fontGeneration } from '../render/fontLoader'
+import { graphicShown } from '../render/graphicsLayer'
 import { loadAudioAnalysis } from './audioAnalysis'
 import { createAudio, SCREEN_PROXY_FPS } from './media'
 import { voiceStems } from './voiceStems'
@@ -811,13 +813,17 @@ export class PreviewAudio {
 
   /* ---------- Captions Studio: pops and bleep tones (§10.6, §11.7) ---------- */
 
-  /** The project's pops and tones in output seconds, made again only when what they come from changed. */
+  /**
+   * The project's pops and tones in output seconds, made again only when what they come from
+   * changed: a pop sounds when its graphic starts to show (graphicShown), which the caption layout
+   * moves (frame, crop, text area, marks, fonts).
+   */
   private effectsOf(): Effects {
     const p = this.project
-    const from = [p.graphics, p.bleeps, p.clips, p.freezes, p.captions, p.transcript]
+    const from = [p.graphics, p.bleeps, p.clips, p.freezes, p.captions, p.transcript, p.style, p.crop, p.reframe, p.captionMarks, p.fonts, fontGeneration()]
     const e = this.effects
     if (e && e.from.length === from.length && e.from.every((v, i) => v === from[i])) return e
-    this.effects = { from, pops: popJob(p), tones: toneJob(p) }
+    this.effects = { from, pops: popJob(p, (g) => graphicShown(p, g).start), tones: toneJob(p) }
     return this.effects
   }
 
