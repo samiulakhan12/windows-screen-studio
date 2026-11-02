@@ -29,6 +29,8 @@ export interface ShareDeps {
 export const MAX_RUNS = 4
 /** Longest wait for the folders before the notification shows without them. */
 export const EXTRAS_WAIT_MS = 1500
+/** How long a run that ends with the window focused waits for its just-opened done view to show it. */
+export const WATCH_GRACE_MS = 2000
 const MAX_TARGETS = 12
 const MAX_OFFERS = 200
 
@@ -255,8 +257,12 @@ export class ShareService {
     run.view.finished = true
     this.emit(run)
     // Said here unless a Share block on screen shows it: the window is in the background, or the
-    // export dialog was closed while the run went on.
-    if (signal.aborted || (this.deps.isFocused() && this.watchers.has(file))) return
+    // export dialog was closed while the run went on. A done view that has just opened may not have
+    // said so yet (a quick run can end first), so with the window focused it gets a moment.
+    const quiet = (): boolean => signal.aborted || (this.deps.isFocused() && this.watchers.has(file))
+    if (quiet()) return
+    if (this.deps.isFocused()) await new Promise((resolve) => setTimeout(resolve, WATCH_GRACE_MS))
+    if (quiet()) return
     const failed = run.view.steps.find((s) => s.state === 'failed')
     const copied = run.view.steps.find((s) => s.kind === 'copy' && s.state === 'done' && s.dest)
     if (failed) this.deps.notify({ title: 'Could not share', body: `${failed.label}: ${failed.message ?? ''}`.slice(0, 200), ...(copied?.dest ? { show: copied.dest } : {}) })

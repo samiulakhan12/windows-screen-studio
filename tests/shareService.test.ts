@@ -1,6 +1,6 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import type { ShareFolderInfo, ShareRunView } from '../src/shared/api/share'
-import { EXTRAS_WAIT_MS, MAX_RUNS, ShareService, validMeta, type ShareDeps } from '../src/main/share/shareService'
+import { EXTRAS_WAIT_MS, MAX_RUNS, ShareService, validMeta, WATCH_GRACE_MS, type ShareDeps } from '../src/main/share/shareService'
 
 const FILE = 'C:\\Videos\\Demo.mp4'
 const ONEDRIVE: ShareFolderInfo = { id: 'cf0000000001', service: 'onedrive', label: 'OneDrive', path: 'C:\\OneDrive', source: 'app', on: true }
@@ -181,22 +181,53 @@ describe('ShareService', () => {
   })
 
   it('notifies the result while focused when no Share block shows the file', async () => {
-    // The export dialog was closed while the copy ran: nothing on screen says how it ended.
-    const s = setup({ post: async () => Promise.reject(new Error('Could not reach Slack. Check the connection.')) })
-    await s.service.start(FILE, [ONEDRIVE.id, 'whkchat'], META)
-    await s.settled()
-    expect(s.notes).toEqual([{ title: 'Could not share', body: '#demos: Could not reach Slack. Check the connection.', show: 'C:\\OneDrive\\Flown\\Demo.mp4' }])
-    // While its done view shows the run, the view says it.
-    const w = setup()
-    w.service.watch(FILE, true)
-    await w.service.start(FILE, [ONEDRIVE.id], META)
-    await w.settled()
-    expect(w.notes).toEqual([])
-    w.service.watch(FILE, false)
-    w.sent.length = 0
-    await w.service.start(FILE, ['whkchat'], META)
-    await w.settled()
-    expect(w.notes).toEqual([{ title: 'Shared', body: 'Posted to #demos' }])
+    vi.useFakeTimers()
+    try {
+      // The export dialog was closed while the copy ran: nothing on screen says how it ended.
+      const s = setup({ post: async () => Promise.reject(new Error('Could not reach Slack. Check the connection.')) })
+      await s.service.start(FILE, [ONEDRIVE.id, 'whkchat'], META)
+      await vi.advanceTimersByTimeAsync(WATCH_GRACE_MS)
+      expect(s.notes).toEqual([{ title: 'Could not share', body: '#demos: Could not reach Slack. Check the connection.', show: 'C:\\OneDrive\\Flown\\Demo.mp4' }])
+      // While its done view shows the run, the view says it.
+      const w = setup()
+      w.service.watch(FILE, true)
+      await w.service.start(FILE, [ONEDRIVE.id], META)
+      await vi.advanceTimersByTimeAsync(WATCH_GRACE_MS)
+      expect(w.notes).toEqual([])
+      w.service.watch(FILE, false)
+      await w.service.start(FILE, ['whkchat'], META)
+      await vi.advanceTimersByTimeAsync(WATCH_GRACE_MS)
+      expect(w.notes).toEqual([{ title: 'Shared', body: 'Posted to #demos' }])
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('gives a done view that has just opened a moment to show a quick run', async () => {
+    vi.useFakeTimers()
+    try {
+      // The export ends: the share starts, then the done view mounts and says it shows the file.
+      // A small copy (or one refused for space) ends before that.
+      const s = setup()
+      s.service.offer(FILE, META, true)
+      await s.service.start(FILE, [ONEDRIVE.id], META)
+      await vi.advanceTimersByTimeAsync(5)
+      expect(s.sent.at(-1)?.finished).toBe(true)
+      await vi.advanceTimersByTimeAsync(25)
+      s.service.watch(FILE, true)
+      await vi.advanceTimersByTimeAsync(WATCH_GRACE_MS)
+      expect(s.notes).toEqual([])
+      // The window lost focus before the moment was over: it is said.
+      let focused = true
+      const b = setup({ isFocused: () => focused })
+      await b.service.start(FILE, [ONEDRIVE.id], META)
+      await vi.advanceTimersByTimeAsync(5)
+      focused = false
+      await vi.advanceTimersByTimeAsync(WATCH_GRACE_MS)
+      expect(b.notes).toEqual([{ title: 'Shared', body: 'Saved to OneDrive › Flown', show: 'C:\\OneDrive\\Flown\\Demo.mp4' }])
+    } finally {
+      vi.useRealTimers()
+    }
   })
 
   it('is busy while a share runs, so Restart now waits for it', async () => {

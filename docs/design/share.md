@@ -228,7 +228,9 @@ choose Share (OneDrive), Copy Dropbox link (Dropbox) or Share › Copy link (Goo
   the window still in the background a second notification says "Saved to OneDrive › Flown" /
   "Posted to #demos" (or "Could not share" and the reason), with **Show in folder** for a copy.
   Any run that ends while no done view shows its file (the export dialog was closed while it ran:
-  the page tells main with `shareWatch`) is said the same way, even with the window focused.
+  the page tells main with `shareWatch`) is said the same way, even with the window focused. With
+  the window focused it is said only if still none shows it **2 s** later: the done view registers
+  as it opens, after the export's share has started, and a quick run can end before that.
 * A post after a copy (in the same run, or later for the same file in this session) uses that copy's
   place; main remembers the last place per exported file for the session. An export saved over the
   same path is a new file: when it registers (`shareOffer`), main forgets the earlier one's place and
@@ -379,7 +381,7 @@ Unit (vitest, each failing without its code):
   before posting, test-origin rewrite only when allowed.
 * `shareService.test.ts` — copy then post with the place, cancel, notification extras (none when
   auto, at most 3), the run cap, an export saved over the same path forgetting the earlier place, the result notified
-  when no done view shows the file.
+  when no done view shows the file, but not when a done view opens just after a quick run ends.
 * `redact.test` addition — webhook URLs redacted.
 * `shareSeen.test.ts` — the found folders count as seen only after staying on screen for `SEEN_MS`;
   their switches show them on before that.
