@@ -97,7 +97,9 @@ export function planGraphics(project: Project, opts: GraphicOptions): Project {
 export function* planGraphicsSteps(project: Project, opts: GraphicOptions): Generator<void, Project, void> {
   const transcript = project.transcript
   const segments = transcript?.segments ?? []
-  const language = transcript?.language
+  // Read as the captions read them (§0.2, §11.4): Bangla for a mostly Bangla transcript that names no
+  // language, so its spelled-out numbers, lists, emphasis and sensitive topics take the Bangla rules.
+  const language = transcriptLanguage(transcript)
   // Quote cards are made only from the provider's `marks` answer: asked without it, the ones made stay.
   const on = (by: AutoOrigin['by']): boolean =>
     (Object.keys(BY_OF_SWITCH) as (keyof typeof BY_OF_SWITCH)[]).some((k) => BY_OF_SWITCH[k] === by && opts[k] && (k !== 'quotes' || !!opts.marks))
@@ -143,7 +145,7 @@ export function* planGraphicsSteps(project: Project, opts: GraphicOptions): Gene
           // A bleeped word is never readable (§11.7): not as the label either.
           ...(n.label && !wordsBleeped(project, { caption: seg.id, from: n.to + 1, to: n.to + 1 }) ? { label: n.label.slice(0, GRAPHIC_TEXT_MAX) } : {}),
           // Grouped as the captions are read: Bangla for a mostly Bangla transcript that names no language.
-          locale: transcriptLanguage(transcript) || 'en',
+          locale: language || 'en',
           countFor
         }
         candidates.push({ item, rank: 0, caption: seg.id })
@@ -386,7 +388,7 @@ function aiLists(
 function aiEmoji(project: Project, marks: MarksAnswer | undefined, via: AutoOrigin['via']): Graphic[] {
   if (!marks) return []
   const transcript = project.transcript
-  const language = transcript?.language
+  const language = transcriptLanguage(transcript)
   const byId = new Map((transcript?.segments ?? []).map((s) => [s.id, s]))
   const d = GRAPHIC_DEFAULTS.emoji
   const out: Graphic[] = []

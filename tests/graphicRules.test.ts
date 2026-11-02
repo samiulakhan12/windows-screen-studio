@@ -51,6 +51,29 @@ describe('graphic generation (§10.2)', () => {
     expect(g.end - g.start).toBeCloseTo(g.countFor + 1)
   })
 
+  it('a mostly Bangla transcript that names no language is read as Bangla, as its captions are (§0.2, §11.4)', () => {
+    const plan = (texts: string[], opts: Partial<GraphicOptions>, marks?: GraphicOptions['marks']): Project[] =>
+      [undefined, 'bn'].map((language) => {
+        const p = studioProject({ segments: captions(texts), language: language as string })
+        if (!language) delete (p.transcript as { language?: string }).language
+        return planGraphics(p, { ...NONE, ...opts, ...(marks ? { marks, marksVia: 'gemini' as const } : {}) })
+      })
+    // Spoken numbers: তিনশো শতাংশ is 300%, বারো লক্ষ টাকা 12,00,000 টাকা, grouped as Bangla.
+    const counters = plan(['আমাদের বিক্রি তিনশো শতাংশ বেড়েছে এই বছরে', 'আমাদের আয় বারো লক্ষ টাকা হয়েছে এই বছরে'], { counters: true }).map((p) =>
+      (p.graphics ?? []).filter((g): g is Extract<Graphic, { kind: 'counter' }> => g.kind === 'counter').map((g) => [g.to, g.suffix, g.locale])
+    )
+    expect(counters[0]).toEqual([[300, '%', 'bn'], [1200000, ' টাকা', 'bn']])
+    expect(counters[0]).toEqual(counters[1])
+    // An emoji from a Bangla word (আগুন 🔥).
+    const emoji = plan(['রান্নাঘরে হঠাৎ আগুন লেগে গেল সেদিন', 'আমরা আজ রাতে উদযাপন করব সবাই'], { emoji: true }).map((p) => (p.graphics ?? []).filter((g) => g.kind === 'emoji').map((g) => (g as Extract<Graphic, { kind: 'emoji' }>).emoji))
+    expect(emoji[0]).toEqual(['1f525'])
+    expect(emoji[0]).toEqual(emoji[1])
+    // No AI emoji on a caption about a sensitive topic, in Bangla words too (মৃত্যু).
+    const marks = { captions: [{ id: 'c0', emphasis: [], emoji: '1f525', emojiWord: 1 }], numbers: [], lists: [], quotes: [] }
+    const ai = plan(['তার মৃত্যু আমাদের সবাইকে কাঁদিয়েছে', 'আমরা আবার শুরু করব'], { emoji: true }, marks).map((p) => (p.graphics ?? []).filter((g) => g.kind === 'emoji' && g.auto?.via === 'gemini').length)
+    expect(ai).toEqual([0, 0])
+  })
+
   it('list cards from spoken lists', () => {
     const p = studioProject({ segments: captions(['Exporting takes three steps.', 'First, open the Settings page.', 'Second, choose the format.', 'Finally, click Export.']) })
     const out = planGraphics(p, { ...NONE, lists: true })

@@ -5,6 +5,7 @@
  */
 import { GRAPHIC_DEFAULTS } from '../render/graphics'
 import type { EmojiGraphic, Project } from '../types'
+import { transcriptLanguage } from './captionTracks'
 import { EMOJI_TRIGGERS } from './emojiData'
 import { EMOJI_KEYS } from './emojiList'
 import { bareWord } from './numbers'
@@ -156,7 +157,8 @@ const SENTENCE_END = /[.!?…।。！？]["'”’)\]]*$/u
 export function suggestEmoji(project: Project): EmojiGraphic[] {
   const transcript = project.transcript
   if (!transcript?.segments.length) return []
-  const language = transcript.language
+  // Bangla for a mostly Bangla transcript that names no language, as the captions read it (§0.2).
+  const language = transcriptLanguage(transcript)
   const lang = baseLanguage(language)
   const speakers = new Set(transcript.segments.flatMap((s) => (s.speaker ? s.speaker.toLocaleLowerCase().split(/\s+/) : [])))
   const marked = new Map<string, Set<number>>()
