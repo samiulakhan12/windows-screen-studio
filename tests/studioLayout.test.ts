@@ -143,6 +143,46 @@ describe('chunk modes (test 9)', () => {
     }
   })
 
+  it('keeps the first and last words of a full line inside the room while they are spoken and grow (§8.4)', () => {
+    // Wide letters (0.75 em) in a tall frame, so lines of several words fill the room. The room is
+    // the text area in a vertical copy: a spoken end word held at 1.18 must not reach past it.
+    const wide = (text: string, px: number): number => [...text].length * 0.75 * px
+    const text = 'today we will build a simple website with nothing more than plain html and some styles then publish it online for everyone to see'
+    let smaller = 0
+    for (const id of ['bold-pop', 'spotlight-word', 'stickers']) {
+      const s = look(id)
+      const l = studioLayout(timed(text, 0.5, 0.45), s, 1080, 1920, wide, { faceOf: () => FACE, language: 'en' })
+      const room = studioMetrics(s, 1080, 1920).maxWidth
+      let several = 0
+      l.chunks.forEach((c, ci) => {
+        const placed = placeStudio(l, c, s, 1080, 1920, {})
+        c.lines.forEach((line, li) => {
+          if (line.words.length < 2) return
+          several++
+          let reach = -Infinity
+          for (const word of line.words) {
+            const tok = l.tokens[word.token]
+            let most = 0
+            for (let t = Math.max(c.start, tok.start); t < Math.min(c.end, tok.end + 0.2); t += 0.005) most = Math.max(most, captionPoses(l, ci, t, ONE, s, 1080, null, { spoken: true }).words.find((w) => w.token === word.token)!.scale)
+            const mid = placed.lines[li].x + word.x + word.w / 2
+            // Give or take the pop's overshoot (a tenth of the growth, for 0.1 s).
+            const slack = 0.1 * (s.motion.spokenScale! - 1) * word.w
+            const past = Math.max((1080 - room) / 2 - (mid - (word.w * most) / 2), mid + (word.w * most) / 2 - (1080 + room) / 2)
+            expect(past, `${id} ${word.text}`).toBeLessThanOrEqual(slack)
+            reach = Math.max(reach, past)
+          }
+          // A line is drawn smaller only as far as its words need: one of them then reaches the room's edge.
+          if (line.px < l.px) {
+            smaller++
+            expect(reach, `${id} ${line.words.map((w) => w.text).join(' ')}`).toBeGreaterThanOrEqual(-1e-6)
+          }
+        })
+      })
+      expect(several, id).toBeGreaterThan(3)
+    }
+    expect(smaller).toBeGreaterThan(0)
+  })
+
   it('emphasised words are measured at the emphasis scale, and the layout keeps room for a spoken word that grows', () => {
     const bp = look('bold-pop')
     const l = lay(timed('make every word count'), bp, 1920, 1080, [{ from: 1, to: 1 }])

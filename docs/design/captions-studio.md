@@ -1403,7 +1403,8 @@ turns green".
 - Motion: spoken colour; in pop, out fade; word pulse; emphasis pop; upcoming 1; tilt 3° on
   emphasised words; the spoken word grows to 1.18 and holds while spoken (`spokenScale` 1.18,
   ×1.14 in Bangla; with the pulse it peaks near 1.28 in about 0.08 s and settles by 0.2 s, as in
-  `APPROVED-LOOK.md`), and the layout keeps room for that peak beside it; while spoken it also
+  `APPROVED-LOOK.md`), and the layout keeps room for that peak beside it and past a line's
+  first and last words (§8.4); while spoken it also
   tilts −2° (`spokenTilt` −2; not on Bangla words, as the approved Bangla pop).
 
 **Clean Short** (`clean-short`, fallback `clean`): "Calm sentence-case words with a soft
@@ -2004,9 +2005,11 @@ under 1 ms.
   there is one (`captionMetrics`, `layout.ts:292-310`).
 - No line is wider than the room. A line holding a word too long for it ("TROUBLESHOOTING" in
   Bold Pop in a tall frame, a long address) is drawn smaller, to the room's width; in One Word
-  and Stacked that goes below their 0.6 floor when it must. A word alone on its line also stays
-  inside the room at its peak size while spoken (Bold Pop's 1.18 × the 1.08 pulse, Spotlight
-  Word's 1.28), so it never runs past the frame. Lines that fit keep their size.
+  and Stacked that goes below their 0.6 floor when it must. A spoken word that grows also stays
+  inside the room at its peak size (Bold Pop's 1.18 × the 1.08 pulse, Spotlight Word's 1.28), so
+  it never runs past the frame or the text area: a word alone on its line, or a line whose first
+  or last word would grow past the room, is drawn just small enough for it to fit. Lines that
+  fit, with their words grown, keep their size.
 - Widths are measured once at 100 px per (font stack, weight, letter spacing, text) and scaled.
   The cache key adds the letter spacing, which today's key lacks (`captionsLayer.ts:25`).
 - Light to Bold measures every word at its spoken weight, so lines never re-break while weights
