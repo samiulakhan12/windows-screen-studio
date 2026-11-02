@@ -19,13 +19,17 @@
 // arrow move it with its accessible name and place in the list (aria-posinset, aria-setsize), each
 // in view; K keeps and moves on; scrolled away, N brings the next row into view; Remove all says it
 // is working, then what it did, and one Ctrl+Z takes it back; Escape closes. Long lists of rows of
-// different heights (400, 2,000 and 6,000 rows, retakes whose words wrap): End, End again, End once
+// different heights (400, 2,000 and 6,000 rows, retakes whose words wrap): the scroll bar dragged to
+// the bottom shows the last row whole, the view still at the end; End, End again, End once
 // scrolled away, K, Home, P and a held arrow each leave the focused row fully in view; Remove all
 // from the last row moves the focus to the first row to review, not drawn until then, where N moves
 // in the list; Ctrl+Z pressed while Remove all works waits and undoes it, the Keep before it stays
 // and Ctrl+Y brings it back; and on 6,000 rows, K, Delete and a click on a row's Keep pressed while
 // it works each say they wait, move the focus on, and are done after it in order, each its own undo
-// step, while Keep all pressed meanwhile says it is still working.
+// step, while Keep all pressed meanwhile says it is still working. On 5,000 speed-ups, while Remove
+// all works as the first edit: Undo from the palette and the title bar wait and take it back; Ctrl+Y
+// with nothing to bring back after it says so at once; Export makes it first; a trim drag held keeps
+// it waiting, and it lands on the trim; a Keep chosen meanwhile keeps the focus.
 const fs = require('node:fs')
 const path = require('node:path')
 const { execFileSync } = require('node:child_process')
