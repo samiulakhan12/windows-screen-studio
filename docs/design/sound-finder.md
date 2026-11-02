@@ -370,7 +370,9 @@ Section **Unwanted sounds** in the Audio tab, after Voice (`SoundsSection.tsx`):
   the next action.
 - Keyboard: everything is a button in tab order; after an action the focus moves to the row's first
   button (it would otherwise fall to the page, where Delete removes timeline items), and the list
-  scrolls to show that row (after Mute all, the first). Find, Cancel and
+  scrolls to show that row (after Mute all, the first). A row that leaves the list (Ignore, or Restore
+  of a stretch no found row claims) hands the focus to the row in its place, else the one before, else
+  Show ignored, else the sentence. Find, Cancel and
   Try again go with their state: when one had the focus, it moves to Cancel while listening, then to
   the first sound's Play (the sentence when nothing is found), to Find after Cancel, and to Try again
   after a failure.
@@ -540,7 +542,8 @@ End to end (`tests/e2e/sound-finder.e2e.cjs`, the built app under Xvfb):
   scan; before, one closed while the recording was got ready went on in the background without the
   levels and the speech detector, and one closed while listening could end as a false failure.
   A span no found row claims (its key changed with the speech ranges) is listed with Restore; before,
-  it stayed in the preview and the export with nothing in the panel to show or undo it.
+  it stayed in the preview and the export with nothing in the panel to show or undo it. Restoring the
+  last such row sends the focus to the sentence, not to the page.
   A refused Cut (*"That would cut the whole video"*) is shown under the list; before, only a screen
   reader heard it and the button seemed to do nothing. Play on a sound in a trimmed end says it is
   cut out; before, the player started from the beginning and played the whole video. Moving the

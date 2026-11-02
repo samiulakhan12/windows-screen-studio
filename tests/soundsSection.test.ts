@@ -574,3 +574,36 @@ describe('Mute all', () => {
     expect(scrolled).toEqual([{ key: 'cough-300', options: { block: 'nearest' } }])
   })
 })
+
+describe('a muted stretch that no found row claims', () => {
+  // Muted in an earlier session as cough-497; this listen no longer finds that cough.
+  const orphan = (): Project => ({ ...project(), sounds: { spans: [{ start: 4.97, end: 5.3, action: 'mute', key: 'cough-497' }], ignored: [] } })
+
+  it('sends the focus to the next row once restored', () => {
+    store.state = orphan()
+    scan.state = done([row('dog-1000', 10, 10.5)])
+    view()
+    const restore = buttonOf('cough-497', 'Restore')
+    restore.focus()
+    click(restore)
+    view()
+    expect(store.state.sounds?.spans ?? []).toEqual([])
+    expect(rowOf('cough-497')).toBeUndefined()
+    expect(doc.activeElement).toBe(buttonOf('dog-1000', 'Mute'))
+  })
+
+  it('sends the focus to the sentence, not to the page, when it was the only row', () => {
+    store.state = orphan()
+    scan.state = done([])
+    view()
+    const restore = buttonOf('cough-497', 'Restore')
+    restore.focus()
+    click(restore)
+    view()
+    expect(store.state.sounds?.spans ?? []).toEqual([])
+    expect(byTestId('sound-list')).toBeUndefined()
+    const hint = byTestId('sounds-status')!.querySelector('p')!
+    expect(textOf(hint.el.props.children)).toBe(SOUNDS_COPY.none)
+    expect(doc.activeElement).toBe(hint)
+  })
+})

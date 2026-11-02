@@ -48,15 +48,17 @@ export function SoundsSection({ project }: { project: Project }): JSX.Element {
   useEffect(() => () => stopPlay.current?.(), [])
   // After an action the row's buttons change: the focus goes to its first one (not to the page,
   // where Delete would remove a timeline item).
-  // A row that left the list (Ignore) hands the focus to the row now in its place, else the one before,
-  // else Show ignored.
+  // A row that left the list (Ignore, or Restore of a stretch no found row claims) hands the focus to
+  // the row now in its place, else the one before, else Show ignored, else the sentence.
   useEffect(() => {
     const want = focusKey.current
     if (!want) return
     focusKey.current = null
     const items = [...(listRef.current?.querySelectorAll<HTMLElement>('li.sound-row') ?? [])]
     const row = items.find((li) => li.dataset.key === want.key) ?? items[Math.min(want.index, items.length - 1)]
-    const target = row ? (row.querySelector<HTMLElement>('.sound-actions button') ?? row) : sectionRef.current?.querySelector<HTMLElement>('.sound-show-ignored input, button')
+    const target = row
+      ? (row.querySelector<HTMLElement>('.sound-actions button') ?? row)
+      : (sectionRef.current?.querySelector<HTMLElement>('.sound-show-ignored input, button') ?? hintRef.current)
     target?.focus({ preventScroll: true })
     // The list scrolls: after Mute all the first row can be above what it shows.
     row?.scrollIntoView({ block: 'nearest' })
