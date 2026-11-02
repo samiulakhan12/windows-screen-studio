@@ -175,6 +175,28 @@ describe('the checked look, wherever it comes in its filter (§2.5, §2.14, §2.
     expect(tiles(els).filter((t) => t.props.tabIndex === 0)).toEqual([tile])
   })
 
+  it('an undo or redo that moves the checked look never takes away the tile with the focus', async () => {
+    const look = (id: string): CaptionSettings => ({ ...DEFAULT_CAPTIONS, studio: { ...studioPreset(id)!.look, from: id } })
+    const textBox = short.indexOf('text-box')
+    expect(textBox).toBeLessThan(3)
+    // Text Box picked: the two rows are the filter's first four; the 4th has the focus.
+    let els = await settle(gallery({ frame: SQUARE, value: look('text-box') }))
+    expect(ids(els)).toEqual(short.slice(0, 4))
+    const fourth = short[3]
+    ;(tiles(els)[3].props.onFocus as () => void)()
+    // Ctrl+Z: Highlight Box is checked again. It takes the place of the last tile without the focus.
+    els = await settle(gallery({ frame: SQUARE, value: highlight }))
+    expect(ids(els)).toEqual([...short.slice(0, 4).filter((id) => id !== short[2]), 'highlight-box'])
+    expect(tiles(els).find((t) => t.props['data-tile'] === fourth)!.props.tabIndex).toBe(0)
+    expect(tiles(els).find((t) => t.props['data-tile'] === 'highlight-box')!.props['aria-checked']).toBe(true)
+    // The focus on Highlight Box, Ctrl+Y: Text Box is checked again and Highlight Box stays.
+    ;(tiles(els).find((t) => t.props['data-tile'] === 'highlight-box')!.props.onFocus as () => void)()
+    els = await settle(gallery({ frame: SQUARE, value: look('text-box') }))
+    expect(ids(els)).toEqual([...short.slice(0, 3), 'highlight-box'])
+    expect(tiles(els).find((t) => t.props['data-tile'] === 'highlight-box')!.props.tabIndex).toBe(0)
+    expect(tiles(els)[textBox].props['aria-checked']).toBe(true)
+  })
+
   it('Play names and plays the same tile: the focused one, else the checked one, even after a filter change', async () => {
     reduced = true
     const picture = (els: El[], id: string): unknown => (els.filter((e) => e.props.className === 'tile-thumb')[ids(els).indexOf(id)].props.children as El | null)?.type

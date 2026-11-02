@@ -175,6 +175,23 @@ const focusTaken = (): void => {
   focusExpiry = null
 }
 
+/**
+ * The first `n` tiles, with each of `keep` the list has among them: a later one takes the last place
+ * no kept tile holds, and the tiles stay in the filter's order.
+ */
+function firstRows(tiles: readonly GalleryTile[], n: number, keep: readonly (string | null)[]): GalleryTile[] {
+  const rows = tiles.slice(0, n)
+  for (const t of tiles.slice(n)) {
+    if (!keep.includes(t.id)) continue
+    let free = rows.length - 1
+    while (free >= 0 && keep.includes(rows[free].id)) free--
+    if (free < 0) break
+    rows.splice(free, 1)
+    rows.push(t)
+  }
+  return rows
+}
+
 export function CaptionGallery(props: {
   value: CaptionSettings
   frame: { w: number; h: number }
@@ -213,14 +230,12 @@ export function CaptionGallery(props: {
   const cols = width > 460 ? 3 : 2
   const tileW = Math.max(96, Math.min(TILE.w, Math.floor((width - GAP * (cols - 1)) / cols)))
   const size = { w: tileW, h: Math.round((tileW * TILE.h) / TILE.w) }
-  // Two rows; the checked tile is always among them (it takes the last place when it comes later),
-  // so the radio group's tab stop is the checked radio (§2.15).
-  const rows = tiles.slice(0, cols * 2)
-  const later = showAll || !checked || rows.some((t) => t.id === checked) ? undefined : tiles.find((t) => t.id === checked)
-  const shown = showAll ? tiles : later ? [...rows.slice(0, -1), later] : rows
-
   // The roving tab stop: the focused tile, else the checked one, else the first.
   const [focusId, setFocusId] = useState<string | null>(null)
+  // Two rows. The checked tile is always among them, so the radio group's tab stop is the checked
+  // radio (§2.15), and so is the focused one, so an undo that moves the checked look never takes
+  // away the tile with the focus. A later one takes the last place neither holds.
+  const shown = showAll ? tiles : firstRows(tiles, cols * 2, [checked, focusId])
   const stop = shown.find((t) => t.id === focusId)?.id ?? shown.find((t) => t.id === checked)?.id ?? shown[0]?.id ?? null
   // The tile playing its look: hovered or focused (not under reduced motion), or Play's one loop.
   const [active, setActive] = useState<string | null>(null)
