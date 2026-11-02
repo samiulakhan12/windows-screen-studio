@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { actedMessage, bulkMessage, BUSY_RULE, BUSY_WORDS, busyMessage, buttonLabel, itemAccessibleName, KIND_WORDS, placeOf, progressText, REVIEW_KINDS, staleMessage, stillBusyMessage, waitMessage } from '../src/shared/review/copy'
+import { actedMessage, bulkMessage, BUSY_RULE, BUSY_WORDS, busyMessage, buttonLabel, itemAccessibleName, KIND_WORDS, placeOf, progressText, REVIEW_KINDS, staleMessage, stillBusyMessage, stoppedMessage, waitMessage } from '../src/shared/review/copy'
 
 describe('review copy', () => {
   it('places points in thirds of the frame', () => {
@@ -29,10 +29,10 @@ describe('review copy', () => {
     expect(bulkMessage('remove', 5, 'zoom')).toBe('Removed 5 zooms.')
     expect(bulkMessage('remove', 1, 'words')).toBe('Removed 1 word cut.')
     // Keep all and Remove all on a long list say what they do before the work (§4.3).
-    expect(BUSY_RULE).toBe('Keep, Remove, Undo and Redo wait until it is done.')
-    expect(busyMessage('keep', 8098)).toBe('Keeping 8098 changes… Keep, Remove, Undo and Redo wait until it is done.')
-    expect(busyMessage('remove', 5399, 'silence')).toBe('Removing 5399 silence cuts… Keep, Remove, Undo and Redo wait until it is done.')
-    expect(busyMessage('remove', 1, 'zoom')).toBe('Removing 1 zoom… Keep, Remove, Undo and Redo wait until it is done.')
+    expect(BUSY_RULE).toBe('Keep, Remove, Undo and Redo wait until it is done. Closing the panel stops it.')
+    expect(busyMessage('keep', 8098)).toBe('Keeping 8098 changes… Keep, Remove, Undo and Redo wait until it is done. Closing the panel stops it.')
+    expect(busyMessage('remove', 5399, 'silence')).toBe('Removing 5399 silence cuts… Keep, Remove, Undo and Redo wait until it is done. Closing the panel stops it.')
+    expect(busyMessage('remove', 1, 'zoom')).toBe('Removing 1 zoom… Keep, Remove, Undo and Redo wait until it is done. Closing the panel stops it.')
     expect(stillBusyMessage('remove', 5399, 'silence')).toBe('Still removing 5399 silence cuts…')
     expect(stillBusyMessage('keep', 8098)).toBe('Still keeping 8098 changes…')
     expect(waitMessage('keep', 'remove')).toBe('Keep waits until Remove all is done.')
@@ -41,6 +41,10 @@ describe('review copy', () => {
     expect(staleMessage('remove', 'kept')).toBe('Not removed: already kept.')
     expect(staleMessage('remove', 'removed')).toBe('Already removed.')
     expect(staleMessage('keep', 'kept')).toBe('Already kept.')
+    // The editor's notice when closing the panel stops the work.
+    expect(stoppedMessage('remove', 'silence')).toBe('Remove all silence cuts stopped: nothing was removed.')
+    expect(stoppedMessage('remove', 'words')).toBe('Remove all word cuts stopped: nothing was removed.')
+    expect(stoppedMessage('keep')).toBe('Keep all stopped: nothing was kept.')
     expect(BUSY_WORDS).toEqual({ keep: 'Keeping…', remove: 'Removing…' })
     expect(buttonLabel(12)).toBe('Review automatic changes, 12 to review')
     expect(buttonLabel(0)).toBe('Review automatic changes, nothing to review')

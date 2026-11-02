@@ -135,8 +135,8 @@ function workNoun(action: 'keep' | 'remove', count: number, kind?: ReviewKind): 
   return `${count} ${count === 1 ? (k?.one ?? 'change') : (k?.plural ?? 'changes')}`
 }
 
-/** What waits while Keep all or Remove all works on a long list, said as it starts (§4.3). */
-export const BUSY_RULE = 'Keep, Remove, Undo and Redo wait until it is done.'
+/** What waits while Keep all or Remove all works on a long list, and what stops it, said as it starts (§4.3). */
+export const BUSY_RULE = 'Keep, Remove, Undo and Redo wait until it is done. Closing the panel stops it.'
 
 /**
  * The live message as Keep all or Remove all starts on a long list, before the work (§4.3), with
@@ -163,6 +163,15 @@ export function waitMessage(action: 'keep' | 'remove', busy: 'keep' | 'remove'):
 export function staleMessage(action: 'keep' | 'remove', status: Exclude<ReviewStatus, 'pending'>): string {
   const did = action === 'keep' ? 'kept' : 'removed'
   return did === status ? `Already ${status}.` : `Not ${did}: already ${status}.`
+}
+
+/**
+ * The editor's notice when closing the panel stopped Keep all or Remove all (§4.3): "Remove all
+ * stopped: nothing was removed.", "Keep all stopped: nothing was kept."
+ */
+export function stoppedMessage(action: 'keep' | 'remove', kind?: ReviewKind): string {
+  if (action === 'keep') return 'Keep all stopped: nothing was kept.'
+  return `${kind ? KIND_WORDS[kind].all : 'Remove all'} stopped: nothing was removed.`
 }
 
 /** What a footer button reads while it works. */

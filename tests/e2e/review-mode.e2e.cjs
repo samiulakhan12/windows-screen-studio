@@ -480,7 +480,7 @@ async function main() {
     const pending = LONG_ROWS - 1
     await f.waitFor(async () => (await win.textContent('[data-testid="review-progress"]')) === `${LONG_ROWS} of ${LONG_ROWS} reviewed`, 'all removed or kept', 15000)
     const said = await win.evaluate(() => window.__said)
-    h.assert(same(said, [`Removing ${pending} silence cuts… Keep, Remove, Undo and Redo wait until it is done.`, `Removed ${pending} silence cuts.`]), `said what it does and what waits, then what it did: ${JSON.stringify(said)}`)
+    h.assert(same(said, [`Removing ${pending} silence cuts… Keep, Remove, Undo and Redo wait until it is done. Closing the panel stops it.`, `Removed ${pending} silence cuts.`]), `said what it does and what waits, then what it did: ${JSON.stringify(said)}`)
     h.assert(await win.evaluate(() => window.__busy), 'the button said it was working')
     h.assert((await win.textContent('[data-testid="review-remove-kind"]')) === 'Remove all silence cuts', 'the button back')
     await win.keyboard.press('Control+z')
@@ -502,7 +502,7 @@ async function main() {
     await test(`review mode: ${total} rows of different heights: moves end in view; after Remove all the focus moves on; what is done while it works waits`, async (ctx) => {
       const home = h.tempHome(`review-mixed-${total}`)
       const name = `Mixed rows ${total}`
-      seedMixed(home, name, cuts)
+      const id = seedMixed(home, name, cuts)
       const { app, win, logs } = await h.launch({ home })
       ctx.app = app
       ctx.logs = logs
@@ -575,7 +575,7 @@ async function main() {
       h.assert((await settled(win)).inView, 'in view')
       h.assert((await progressOf(win)) === `${retakes} of ${total} reviewed`, `all word cuts removed: ${await progressOf(win)}`)
       h.assert(
-        same(await win.evaluate(() => window.__said), [`Removing ${retakes} word cuts… Keep, Remove, Undo and Redo wait until it is done.`, `Removed ${retakes} word cuts.`]),
+        same(await win.evaluate(() => window.__said), [`Removing ${retakes} word cuts… Keep, Remove, Undo and Redo wait until it is done. Closing the panel stops it.`, `Removed ${retakes} word cuts.`]),
         `said what it does and what waits, then what it did: ${JSON.stringify(await win.evaluate(() => window.__said))}`
       )
       const snap = await win.getAttribute('[data-testid="snap-toggle"]', 'aria-pressed')
@@ -646,7 +646,7 @@ async function main() {
         const said = await win.evaluate(() => window.__said)
         h.assert(
           same(said, [
-            `Removing ${retakes} word cuts… Keep, Remove, Undo and Redo wait until it is done.`,
+            `Removing ${retakes} word cuts… Keep, Remove, Undo and Redo wait until it is done. Closing the panel stops it.`,
             'Keep waits until Remove all is done.',
             'Remove waits until Remove all is done.',
             'Keep waits until Remove all is done.',
@@ -717,9 +717,44 @@ async function main() {
         await win.keyboard.press('Control+z')
         await f.waitFor(async () => (await progressOf(win)) === `1 of ${total} reviewed`, 'one Ctrl+Z takes the Remove all back', 5000)
         h.assert((await win.getAttribute('[data-key="zoom:z0"]', 'data-status').catch(() => 'not drawn')) === 'kept', 'the Keep before it stays')
+
+        // Ctrl+Z, then a Keep, while Remove all works, then Escape: closing stops the work with
+        // nothing of it done and the editor's notice says so; the Ctrl+Z was for the Remove all, so
+        // it takes nothing back (the first zoom's Keep stays), and the Keep that waited is made.
+        await win.keyboard.press('End')
+        await settled(win)
+        await watchBusy(win)
+        await win.focus('[data-testid="review-remove-kind"]')
+        await win.keyboard.press('Enter')
+        await win.keyboard.press('Control+z')
+        await win.focus('[data-testid="review-row"] .review-item[tabindex="0"]')
+        await win.keyboard.press('Home')
+        await win.keyboard.press('n')
+        await win.keyboard.press('k')
+        await win.keyboard.press('Escape')
+        const escKeys = await pressedAfter(win)
+        h.assert(same(escKeys, ['z:true', 'Home:true', 'n:true', 'k:true', 'Escape:true']), `pressed while it worked: ${JSON.stringify(escKeys)}`)
+        await f.waitFor(async () => !(await win.$('[data-testid="review-panel"]')), 'Escape closed the panel', 3000)
+        const notice = await f.waitFor(async () => (await win.textContent('.notice-live .notice-text').catch(() => '')) || null, 'the notice', 3000).catch(() => '')
+        h.assert(
+          notice === `Remove all word cuts stopped: nothing was removed. Kept. 2 of ${total} reviewed.`,
+          `the notice says the work stopped and the Keep that waited was made: ${JSON.stringify(notice)}`
+        )
+        const stopped = await savedWhen(home, id, (q) => q.zooms.find((z) => z.id === 'z1')?.auto === false, 'the waiting Keep saved')
+        h.assert(stopped.zooms.find((z) => z.id === 'z0')?.auto === false, 'the Keep made before the work stays')
+        h.assert(stopped.autoCuts.length === cuts, `nothing of the Remove all: ${stopped.autoCuts.length} records`)
+        await win.keyboard.press('Control+z') // the waiting Keep, its own step
+        await savedWhen(home, id, (q) => q.zooms.find((z) => z.id === 'z1')?.auto === true, 'Ctrl+Z takes the waiting Keep back')
+        await win.evaluate(() => (document.activeElement instanceof HTMLElement ? document.activeElement.blur() : undefined))
+        await win.keyboard.press('Shift+R')
+        await win.waitForSelector('[data-testid="review-panel"] [data-testid="review-row"]', { timeout: 20000 })
+        // Reopened, the rows reviewed before are no longer listed: the first zoom only (kept).
+        h.assert((await progressOf(win)) === `0 of ${total - 1} reviewed`, `reopened: all but the kept first zoom to review: ${await progressOf(win)}`)
+        h.assert(!(await win.$('[data-key="zoom:z0"]')) && (await focusOn(win)) === 'zoom:z1', `z0 kept, not listed; the focus on z1: ${await focusOn(win)}`)
+      } else {
+        await win.keyboard.press('Escape')
+        await f.waitFor(async () => !(await win.$('[data-testid="review-panel"]')), 'the panel closed')
       }
-      await win.keyboard.press('Escape')
-      await f.waitFor(async () => !(await win.$('[data-testid="review-panel"]')), 'the panel closed')
       h.assert(!logs.some((l) => l.includes('[pageerror]')), `no page errors: ${logs.filter((l) => l.includes('pageerror'))}`)
     })
   }

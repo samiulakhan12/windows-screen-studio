@@ -1696,6 +1696,7 @@ function EditorSession({
                 setReviewOpen(false)
                 reviewButton.current?.focus()
               }}
+              onNotice={showNotice}
             />
           )}
         </div>

@@ -28,6 +28,7 @@ import {
   REVIEW_TITLE,
   staleMessage,
   stillBusyMessage,
+  stoppedMessage,
   waitMessage
 } from '../../../shared/review/copy'
 import { listKey } from '../../../shared/review/keys'
@@ -53,7 +54,7 @@ import { playStretch } from './playStretch'
 import { pageTasks } from './tasks'
 import './review.css'
 
-export function ReviewPanel({ onClose }: { onClose: () => void }): JSX.Element {
+export function ReviewPanel({ onClose, onNotice }: { onClose: () => void; /** Shows a notice in the editor (said once the panel is gone). */ onNotice?: (text: string) => void }): JSX.Element {
   const { store, player } = useEditor()
   const keymap = useKeymap()
   const shortcuts = useMemo(() => shortcutIndex(keymap), [keymap])
@@ -87,7 +88,10 @@ export function ReviewPanel({ onClose }: { onClose: () => void }): JSX.Element {
   // (Remove all done, then the Keep that waited for it), so none is lost.
   const [said, setSaid] = useState({ text: '', n: 0 })
   const saying = useRef<string[]>([])
+  /** Once the panel is closing, where what it says goes instead (the editor's notice). */
+  const sayAfter = useRef<string[] | null>(null)
   const say = (text: string): void => {
+    if (sayAfter.current) return void sayAfter.current.push(text)
     saying.current.push(text)
     const all = saying.current.join(' ')
     setSaid((s) => ({ text: all, n: s.n + 1 }))
@@ -264,11 +268,25 @@ export function ReviewPanel({ onClose }: { onClose: () => void }): JSX.Element {
   // drawing in between, and is one edit (one undo step) at the end, made from the project as it is
   // then. Meanwhile the store is held: undo and redo, and the rows' Keep and Remove (ask), wait and
   // are done in order after it, as if pressed once it was done (Ctrl+Z undoes it, never the step
-  // before). Closing the panel stops it with nothing of it done; what waited is then done as if it
-  // had been made (an undo for it does nothing; the Keep before it stays).
+  // before). Closing the panel stops it with nothing of it done, and the editor's notice says so:
+  // what waited is then done as if it had been made (an undo for it does nothing; the Keep before
+  // it stays), and what that says goes in the same notice. Leaving the editor waits for it instead.
   const [busy, setBusy] = useState<{ action: 'keep' | 'remove'; count: number; kind?: ReviewKind } | null>(null)
-  const working = useRef<Work | null>(null)
-  useEffect(() => () => working.current?.stop(), [])
+  const working = useRef<{ work: Work; action: 'keep' | 'remove'; kind?: ReviewKind } | null>(null)
+  const noticeRef = useRef(onNotice)
+  noticeRef.current = onNotice
+  useEffect(
+    () => () => {
+      const w = working.current
+      if (!w) return
+      working.current = null
+      const said = [stoppedMessage(w.action, w.kind)]
+      sayAfter.current = said
+      w.work.stop()
+      noticeRef.current?.(said.join(' '))
+    },
+    []
+  )
 
   /**
    * Keep or Remove `count` rows of `list` (of `kind` for Remove all) still to review, then `after`
@@ -286,7 +304,7 @@ export function ReviewPanel({ onClose }: { onClose: () => void }): JSX.Element {
     }
     setBusy({ action, count, kind })
     say(busyMessage(action, count, kind))
-    working.current = heldInSlices(
+    const work = heldInSlices(
       store,
       (p) =>
         action === 'remove'
@@ -305,6 +323,7 @@ export function ReviewPanel({ onClose }: { onClose: () => void }): JSX.Element {
       },
       pageTasks()
     )
+    working.current = { work, action, kind }
   }
 
   /** Pressed while Keep all or Remove all works: says it still works (the buttons are aria-disabled). */
