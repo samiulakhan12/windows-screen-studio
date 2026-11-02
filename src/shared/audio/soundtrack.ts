@@ -3,17 +3,19 @@
  * sound (for ducking the music) and how loud it is (for the preview's normalisation gain).
  * Both call these functions with the same levels, so the music ducks at the same moments.
  */
+import type { SoundGain } from '../api/export'
 import type { Clip, Project } from '../types'
 import { combineLevels, detectActivity, limitRanges, mergeRanges, rangesToOutput, type Range } from './activity'
 import { DUCK_TIMING, duckRanges, MAX_DUCK_RANGES, type DuckShape } from './automation'
 import { integratedLoudness, normalizeGain, type AudioLevels } from './loudness'
 import { activitySources, audioLook, recordingMix, type AudioSource } from './settings'
+import { soundGainAt, soundGains } from './soundsEdit'
 import { speechActivity, trustSpeech } from './voice'
 
 /** Measured levels per recorded source (only the ones asked for). */
 export type AudioAnalysis = Partial<Record<AudioSource, AudioLevels>>
 
-type SoundProject = Pick<Project, 'hasAudio' | 'audioStems' | 'audio' | 'clips'>
+type SoundProject = Pick<Project, 'hasAudio' | 'audioStems' | 'audio' | 'clips' | 'sounds'>
 
 /** Sources whose levels these functions need for `project` right now. */
 export function analysisSources(project: SoundProject): AudioSource[] {
@@ -99,9 +101,11 @@ export function heardLevels(project: Omit<SoundProject, 'clips'>, analysis: Audi
 
 /**
  * Integrated loudness (LUFS) of `levels` in the edit: kept clips only, each window counted
- * for as long as it lasts in the output. Null when that is silent.
+ * for as long as it lasts in the output, at the unwanted sounds' gain (`gains`, joined: muted
+ * stretches count as silence, lowered ones as lowered, as the export's loudnorm hears them).
+ * Null when that is silent.
  */
-export function editLoudness(levels: AudioLevels, clips: readonly Clip[]): number | null {
+export function editLoudness(levels: AudioLevels, clips: readonly Clip[], gains: readonly SoundGain[] = []): number | null {
   const w = levels.window
   const span = (c: Clip): [number, number] => [Math.max(0, Math.floor(c.start / w)), Math.max(0, Math.ceil(c.end / w))]
   let n = 0
@@ -115,7 +119,8 @@ export function editLoudness(levels: AudioLevels, clips: readonly Clip[]): numbe
   for (const c of clips) {
     const [from, to] = span(c)
     for (let i = from; i < to; i++, j++) {
-      power[j] = levels.power[i] ?? 0
+      const g = gains.length > 0 ? soundGainAt(gains, (i + 0.5) * w) : 1
+      power[j] = (levels.power[i] ?? 0) * g * g
       weight[j] = 1 / c.speed
     }
   }
@@ -124,11 +129,12 @@ export function editLoudness(levels: AudioLevels, clips: readonly Clip[]): numbe
 
 /**
  * Integrated loudness (LUFS) of the recording as it is heard in the edit (heardLevels over
- * the kept clips). Null when silent or when levels are missing.
+ * the kept clips, with the unwanted sounds muted or lowered). Null when silent or when levels
+ * are missing.
  */
 export function recordingLoudness(project: SoundProject, analysis: AudioAnalysis): number | null {
   const levels = heardLevels(project, analysis)
-  return levels && editLoudness(levels, project.clips)
+  return levels && editLoudness(levels, project.clips, soundGains(project))
 }
 
 /** The preview's stand-in for the export's loudness normalisation: one gain to about -16 LUFS. */

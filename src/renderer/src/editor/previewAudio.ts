@@ -443,15 +443,18 @@ export class PreviewAudio {
     })
   }
 
-  /** The loudness gain for the current mix: the heard levels per mix, their loudness per edit. */
+  /**
+   * The loudness gain for the current mix: the heard levels per mix, their loudness per edit and
+   * per muted or lowered stretch (the export's loudnorm hears them muted or lowered).
+   */
   private normalizeGain(): number {
     const mix = recordingMix(this.project)
     const heardKey = `${this.analysisVersion}|${mix.kind}|${mix.kind === 'stems' ? JSON.stringify(mix.stems) : ''}`
     if (this.heard.key !== heardKey) this.heard = { key: heardKey, value: heardLevels(this.project, this.analysis) }
-    const key = `${heardKey}|${this.clipsKey}`
+    const key = `${heardKey}|${this.clipsKey}|${this.spansKey()}`
     if (this.loudness.key !== key) {
       const levels = this.heard.value
-      this.loudness = { key, value: normalizeGain(levels && editLoudness(levels, this.project.clips)) }
+      this.loudness = { key, value: normalizeGain(levels && editLoudness(levels, this.project.clips, soundGains(this.project))) }
     }
     return this.loudness.value
   }
@@ -498,10 +501,16 @@ export class PreviewAudio {
 
   /** What the unwanted sounds' curve is made from: the stretches and the edit's timing (F-17). */
   private soundSpansKey(): string {
+    const key = this.spansKey()
+    return key === 'no-sounds' ? key : `${key}|${this.clipsKey}`
+  }
+
+  /** The unwanted sounds' muted and lowered stretches (F-17), as a key. */
+  private spansKey(): string {
     const spans = this.project.sounds?.spans
     if (!spans?.length) return 'no-sounds'
     if (this.soundSpans.spans !== spans) this.soundSpans = { spans, key: spans.map((s) => `${s.start},${s.end},${s.action}`).join(';') }
-    return `${this.soundSpans.key}|${this.clipsKey}`
+    return this.soundSpans.key
   }
 
   /** The curves (memoised: playback schedules them again after every jump and re-anchor). */

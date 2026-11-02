@@ -6,9 +6,10 @@ import { combineLevels, detectActivity, kthSmallest, limitRanges, mergeRanges, r
 import { DUCK_TIMING, duckAmount, duckExpression, duckGainAt, duckKeyframes, duckRanges, fadeGainAt, fadeKeyframes, fitFades, gainAt, MAX_DUCK_RANGES } from '../src/shared/audio/automation'
 import { integratedLoudness, kWeighting, LEVEL_WINDOW, LevelMeter, loudnessOf, normalizeGain, type AudioLevels } from '../src/shared/audio/loudness'
 import { activitySources, audioLook, hasSoundtrack, musicEnd, needsAudioGraph, recordingMix, stemsOf } from '../src/shared/audio/settings'
+import { soundGains } from '../src/shared/audio/soundsEdit'
 import { analysisSources, editLoudness, heardLevels, musicDucking, previewNormalizeGain, recordingLoudness, soundActivity, sourceActivity } from '../src/shared/audio/soundtrack'
 import { migrateProject } from '../src/shared/engine/project'
-import type { Clip, Project } from '../src/shared/types'
+import type { Clip, Project, SoundSpan } from '../src/shared/types'
 
 const clip = (start: number, end: number, speed = 1): Clip => ({ id: `${start}`, start, end, speed })
 
@@ -417,5 +418,32 @@ describe('shared preview/export sound decisions', () => {
     // Only kept clips count: the quiet part is cut out.
     const loudThenQuiet = levels([...run(-20, 5), ...run(-40, 5)])
     expect(editLoudness(loudThenQuiet, [clip(0, 5)])!).toBeCloseTo(-20.691, 1)
+  })
+
+  /** The project with the unwanted-sound finder's stretches (F-17). */
+  const withSpans = (p: Project, ...spans: [number, number, SoundSpan['action']][]): Project => ({
+    ...p,
+    sounds: { spans: spans.map(([start, end, action], i) => ({ start, end, action, key: `music-${i}` })), ignored: [] }
+  })
+
+  it('measures the loudness with the unwanted sounds muted or lowered, as the export normalises it', () => {
+    // 40 s of loud music, then 80 s of quieter narration.
+    const music = levels([...run(-20, 40), ...run(-35, 80)])
+    const p = project({ duration: 120, clips: [clip(0, 120)], audio: { volume: 1, muted: false, normalize: true } })
+    const narration = editLoudness(levels(run(-35, 80)), [clip(0, 80)])!
+    expect(narration).toBeCloseTo(-35.691, 2)
+    expect(recordingLoudness(p, { mix: music })!).toBeGreaterThan(narration + 5)
+    // The music muted: only the narration counts (the export's loudnorm hears silence there).
+    const muted = withSpans(p, [0, 40, 'mute'])
+    expect(recordingLoudness(muted, { mix: music })!).toBeCloseTo(narration, 1)
+    expect(previewNormalizeGain(muted, { mix: music })).toBe(normalizeGain(recordingLoudness(muted, { mix: music })))
+    expect(20 * Math.log10(previewNormalizeGain(muted, { mix: music }))).toBeCloseTo(-16 - narration, 1)
+    expect(editLoudness(music, p.clips, soundGains(muted))).toBe(recordingLoudness(muted, { mix: music }))
+    // Lowered by 14 dB: counted 14 dB quieter.
+    const lowered = recordingLoudness(withSpans(p, [0, 40, 'duck']), { mix: music })!
+    expect(lowered).toBeCloseTo(editLoudness(levels([...run(-20 + 20 * Math.log10(0.2), 40), ...run(-35, 80)]), p.clips)!, 1)
+    // Without stretches: as before.
+    expect(editLoudness(music, p.clips, [])).toBe(editLoudness(music, p.clips))
+    expect(recordingLoudness(withSpans(p), { mix: music })).toBe(editLoudness(music, p.clips))
   })
 })

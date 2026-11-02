@@ -299,6 +299,10 @@ side: every muted or lowered stretch is fully muted or lowered.
   (masked by the cut fade). It is scheduled with the other curves (`ramp`, re-anchored after jumps
   and every 30 s) from the same keyframes, so the preview hears what the export renders. A project
   with spans plays through the Web Audio graph (as projects with cuts already do).
+- **Normalize** (`soundtrack.ts`, `editLoudness`): the export's loudnorm runs after the curve, so it
+  hears the muted stretches as silence and the lowered ones 14 dB down. The preview's one loudness
+  gain is measured the same way: each level window counts at `g(t)²` of its power, and the gain is
+  worked out again when a stretch is muted, lowered or restored.
 
 Both are tested against `g(t)`: the expression evaluated at thousands of times, the preview keyframes
 mapped back through the clips.
