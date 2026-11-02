@@ -32,6 +32,7 @@ import { heldLivePicture, onCameraMasksChanged } from '../render/segmentation/ca
 import { onStyleAssetsChanged } from '../render/watermarkLayer'
 import { FreezeStills } from './freezeStills'
 import { PreviewAudio } from './previewAudio'
+import { cancelScan } from './sounds/soundScan'
 
 /** Proxy frame rate when the project does not say (older projects: always 60 fps). */
 const SOURCE_FPS = 60
@@ -1067,7 +1068,9 @@ export class PreviewPlayer {
     this.webcam?.removeEventListener('error', this.onWebcamSeeked)
     this.releaseWebcam()
     this.sound.dispose()
-    // The editor is closing: the project's analyses (smart speed, sound levels) stop reading its files.
+    // The editor is closing: the project's analyses (smart speed, sound levels) stop reading its files,
+    // and a search for unwanted sounds stops as if cancelled (it would go on without them otherwise).
+    cancelScan(this.project.id)
     void window.api.stopAnalysis(this.project.id).catch(() => undefined)
     void this.clickAudio?.ctx.close()
     this.clickAudio = null

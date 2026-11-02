@@ -328,8 +328,9 @@ mapped back through the clips.
 4. At the end each entry is saved (`soundsSave`, main checks it and that the file has not changed since)
    and the rows are shown.
 5. **Cancel** terminates the workers and closes the streams (ffmpeg is killed); nothing is saved.
-   Closing the editor (or deleting the project) stops main's ffmpeg through `stopAnalyses`, which ends
-   the scan as stopped. A failure ("Could not listen to the recording: …") offers Try again.
+   Closing the editor cancels the scan the same way (the player's `dispose`, next to `stopAnalysis`,
+   which stops main's ffmpeg and the level and speech measurement), also while the recording is
+   still being got ready. A failure ("Could not listen to the recording: …") offers Try again.
 6. The state is per project and lives outside the panel (switching tabs does not stop it).
 
 ---
@@ -514,7 +515,9 @@ End to end (`tests/e2e/sound-finder.e2e.cjs`, the built app under Xvfb):
   await, and rows are dropped when the recording's sources change.
 - After a second review: speech heard only on the system sound (the other people on a call, a
   narrated video) is guarded by YAMNet's speech score even when the speech detector ran on the
-  microphone; before, a music or ping row could run over their words.
+  microphone; before, a music or ping row could run over their words. Closing the editor cancels a
+  scan; before, one closed while the recording was got ready went on in the background without the
+  levels and the speech detector, and one closed while listening could end as a false failure.
 - `@mediapipe/tasks-audio` is pinned at 1.0.1 (the version of `@mediapipe/tasks-vision` in use);
   `scripts/notices.mjs` names it among the bundled packages and `resources/THIRD_PARTY_NOTICES.txt`
   is regenerated; `resources/notices/34-yamnet.txt` names the model.
