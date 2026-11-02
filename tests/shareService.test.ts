@@ -199,6 +199,18 @@ describe('ShareService', () => {
     expect(w.notes).toEqual([{ title: 'Shared', body: 'Posted to #demos' }])
   })
 
+  it('is busy while a share runs, so Restart now waits for it', async () => {
+    let done: () => void = () => undefined
+    const s = setup({ copy: () => new Promise((resolve) => (done = () => resolve({ dest: 'C:\\OneDrive\\Flown\\Demo.mp4', bytes: 10, already: false }))) })
+    expect(s.service.busy()).toBe(false)
+    await s.service.start(FILE, [ONEDRIVE.id], META)
+    await new Promise((r) => setTimeout(r, 2))
+    expect(s.service.busy()).toBe(true)
+    done()
+    await s.settled()
+    expect(s.service.busy()).toBe(false)
+  })
+
   it('lists the runs of a file', async () => {
     const s = setup()
     const run = await s.service.start(FILE, [ONEDRIVE.id], META)

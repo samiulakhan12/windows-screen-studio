@@ -178,6 +178,9 @@ export function registerShareIpc(): void {
   setNotificationExtras((file) => shares().extras(file))
 }
 
+/** A share is copying or posting (Restart now waits for it). */
+export const shareRunning = (): boolean => service?.busy() ?? false
+
 export function disposeShare(): void {
   service?.dispose()
   removePartialCopies()

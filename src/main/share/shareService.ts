@@ -135,6 +135,11 @@ export class ShareService {
     return [...this.runs.values()].filter((r) => r.view.file === file).map((r) => this.snapshot(r))
   }
 
+  /** Whether a run is still copying or posting (Restart now waits for it). */
+  busy(): boolean {
+    return [...this.runs.values()].some((r) => !r.view.finished)
+  }
+
   /** Cancels every run (the app is quitting). */
   dispose(): void {
     for (const r of this.runs.values()) r.controller.abort()

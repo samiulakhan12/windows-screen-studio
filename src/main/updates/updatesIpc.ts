@@ -12,6 +12,7 @@ import { importRunning } from '../importVideo'
 import { jobsSnapshot } from '../longJobs'
 import { copyRunning } from '../projectsIpc'
 import { isAppUrl } from '../security'
+import { shareRunning } from '../share/shareIpc'
 import { voiceCleaner } from '../voice/voiceIpc'
 import { electronUpdaterPort } from './electronUpdaterPort'
 import { fakeUpdaterPort, isFakeScenario } from './fakeUpdaterPort'
@@ -45,6 +46,7 @@ export function busyReason(): string | null {
   if (importRunning()) return BUSY_COPY.import
   if (voiceCleaner.busy) return BUSY_COPY.voice
   if (copyRunning()) return BUSY_COPY.copy
+  if (shareRunning()) return BUSY_COPY.share
   return null
 }
 
