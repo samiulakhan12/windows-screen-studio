@@ -349,17 +349,28 @@ function partnersOf(font: string | undefined): string[] {
 export function catalogFontsFor(project: Project): string[] {
   const hit = fontsFor.get(project)
   if (hit) return hit
+  const out = catalogIdsOf(project, true)
+  fontsFor.set(project, out)
+  return out
+}
+
+/**
+ * catalogFontsFor's list; without `captions`, what the burned-in captions alone draw with is left
+ * out (their look's fonts, the scripts and CJK font of their words, their partners).
+ */
+function catalogIdsOf(project: Project, captions: boolean): string[] {
   const ids = new Set<string>()
   const add = (font: string | undefined): void => {
     const id = catalogId(font)
     if (id) ids.add(id)
   }
   const studio = project.captions?.studio
+  const shown = captions ? studio : undefined
   const language = project.captions?.track ?? project.transcript?.language
   const texts: string[] = []
-  if (studio) {
-    add(studio.text.font)
-    add(studio.emphasis.font)
+  if (shown) {
+    add(shown.text.font)
+    add(shown.emphasis.font)
     for (const seg of burnedSegments(project)) texts.push(seg.text)
   }
   const graphics = project.graphics ?? []
@@ -376,7 +387,7 @@ export function catalogFontsFor(project: Project): string[] {
   }
   const text = texts.join('\n')
   for (const [re, id] of SCRIPT_FONTS) if (re.test(text)) ids.add(id)
-  if ((studio || graphics.length) && BENGALI.test(text)) {
+  if ((shown || graphics.length) && BENGALI.test(text)) {
     // The look's Bangla font (§0.2; graphics on a legacy look take Subtitle's), or Baloo Da 2 for heavy looks without one (§6.6).
     const look = studio ?? STUDIO_BASE
     const bn = look.text.scripts?.bengali
@@ -393,13 +404,11 @@ export function catalogFontsFor(project: Project): string[] {
   const cjk = cjkFont(language, text)
   if (cjk) ids.add(cjk)
   // The drawing walks to the partner whenever the language needs letters (lookFont, fontStack.ts), even for text written only in Latin-1 (Estonian 'täna õpime').
-  if (studio && (BEYOND_LATIN1.test(text) || coverageNeeded(language, '').length > 0)) {
-    for (const f of [studio.text.font, studio.emphasis.font]) for (const partner of partnersOf(f)) ids.add(partner)
+  if (shown && (BEYOND_LATIN1.test(text) || coverageNeeded(language, '').length > 0)) {
+    for (const f of [shown.text.font, shown.emphasis.font]) for (const partner of partnersOf(f)) ids.add(partner)
   }
-  if (studio || graphics.length) ids.add('noto-color-emoji')
-  const out = [...ids].filter((id) => !!catalogFont(id)).sort()
-  fontsFor.set(project, out)
-  return out
+  if (shown || graphics.length) ids.add('noto-color-emoji')
+  return [...ids].filter((id) => !!catalogFont(id)).sort()
 }
 
 /* ---------- brand fonts again, for Studio looks (§6.7) ---------- */
@@ -497,7 +506,12 @@ export function missingCatalogFonts(project: Project): CatalogFont[] {
  */
 export async function missingCatalogNotes(project: Project): Promise<string[]> {
   await prepareCaptionFonts(project)
-  return missingCatalogFonts(project).map((f) =>
-    f.download ? `Captions use ${f.family}, which is not downloaded: they will use ${f.download.until}.` : `Font missing: ${f.family}. Text that uses it is drawn with another font.`
-  )
+  // Show captions off: the captions' fonts still load (graphics made from them are placed by their
+  // words), but no text on the video uses them, so none is named.
+  const drawn = project.captions?.show ? null : new Set(catalogIdsOf(project, false))
+  return missingCatalogFonts(project)
+    .filter((f) => !drawn || drawn.has(f.id))
+    .map((f) =>
+      f.download ? `Captions use ${f.family}, which is not downloaded: they will use ${f.download.until}.` : `Font missing: ${f.family}. Text that uses it is drawn with another font.`
+    )
 }

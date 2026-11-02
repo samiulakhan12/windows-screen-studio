@@ -596,7 +596,9 @@ When the captions use a downloadable font that is missing, the export dialog's m
 (`missingCatalogNotes` beside `missingFonts`, `fontLoader.ts`) list it once the dialog has tried
 the project's catalogue fonts as the export does: "Captions use Noto Sans JP, which is not
 downloaded: they will use Yu Gothic UI." A bundled caption font whose file fails to load says
-"Font missing: Bangers. Text that uses it is drawn with another font."
+"Font missing: Bangers. Text that uses it is drawn with another font." With Show captions off,
+a font only the captions use is not named: it still loads (graphics made from the captions are
+placed by their words), but nothing on the video is drawn with it.
 
 ### 2.14 Command palette and keys
 

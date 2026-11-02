@@ -290,4 +290,14 @@ describe('prepareCaptionFonts (§6.8)', () => {
     // An old project on a legacy look needs no catalogue font.
     expect(await fonts.missingCatalogNotes(project({ id: 'po' }))).toEqual([])
   })
+
+  it('names no font that only the captions use while Show captions is off (§2.13)', async () => {
+    const ko = withStudio(STUDIO_BASE as CaptionStudio, { id: 'ph', transcript: { language: 'ko', segments: [{ id: 'c1', start: 0, end: 1, text: '안녕하세요' }] } } as Partial<Project>)
+    const hidden = { ...ko, captions: { ...ko.captions!, show: false } }
+    expect(await fonts.missingCatalogNotes(hidden)).toEqual([])
+    // Still loaded: graphics made from the captions are placed by their words.
+    expect(fonts.catalogFontsFor(hidden)).toContain('noto-sans-kr')
+    // A graphic that draws Korean still names it.
+    expect(await fonts.missingCatalogNotes({ ...hidden, graphics: [keyword({ text: '안녕' })] })).toEqual(['Captions use Noto Sans KR, which is not downloaded: they will use Malgun Gothic.'])
+  })
 })
