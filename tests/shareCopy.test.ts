@@ -6,6 +6,7 @@ import path from 'node:path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { CANCELLED, copyIntoFolder } from '../src/main/share/copyToFolder'
 import { postToWebhook } from '../src/main/share/webhookPost'
+import { stepText } from '../src/shared/share/steps'
 
 const signal = (): AbortSignal => new AbortController().signal
 const plenty = async (): Promise<number> => 1e12
@@ -263,6 +264,35 @@ describe('claiming the name', () => {
       expect(await claimName(temp, dir, 'Clip.mp4', existsSync, 1)).toBe(path.join(dir, 'Clip (2).mp4'))
       expect(readFileSync(path.join(dir, 'Clip.mp4'), 'utf8')).toBe('theirs')
       expect(readFileSync(path.join(dir, 'Clip (2).mp4'), 'utf8')).toBe('new')
+    } finally {
+      rename.mockRestore()
+      link.mockRestore()
+      rmSync(dir, { recursive: true, force: true })
+    }
+  })
+
+  it('names the destination once when the copy fails', async () => {
+    const dir = mkdtempSync(path.join(os.tmpdir(), 'ssw-sharefail-'))
+    const link = vi.spyOn(fsp, 'link')
+    const rename = vi.spyOn(fsp, 'rename')
+    try {
+      const video = path.join(dir, 'Demo.mp4')
+      writeFileSync(video, 'video')
+      const root = path.join(dir, 'OneDrive')
+      mkdirSync(root)
+      const failed = async (): Promise<string> => {
+        const err = await copyIntoFolder(video, root, 'OneDrive', { signal: signal(), freeBytes: plenty }).catch((e: Error) => e)
+        expect(err).toBeInstanceOf(Error)
+        return stepText({ target: 'cf0000000001', kind: 'copy', service: 'onedrive', label: 'OneDrive', state: 'failed', message: (err as Error).message })
+      }
+      // Held for good (the cloud app keeps the file open).
+      link.mockRejectedValue(Object.assign(new Error('EISDIR: link'), { code: 'EISDIR' }))
+      rename.mockRejectedValue(Object.assign(new Error('EPERM: rename'), { code: 'EPERM' }))
+      expect(await failed()).toBe('Could not copy to OneDrive: the folder is read-only or a file there is in use.')
+      // Any other failure.
+      link.mockRejectedValue(Object.assign(new Error('EEXIST: link'), { code: 'EEXIST' }))
+      expect(await failed()).toBe('Could not copy to OneDrive: No free file name was found.')
+      expect(readdirSync(path.join(root, 'Flown'))).toEqual([])
     } finally {
       rename.mockRestore()
       link.mockRestore()

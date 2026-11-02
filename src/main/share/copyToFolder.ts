@@ -185,8 +185,9 @@ export async function copyIntoFolder(file: string, root: string, label: string, 
     if (signal.aborted) throw new Error(CANCELLED)
     const code = (e as NodeJS.ErrnoException).code
     if (code === 'ENOSPC') throw new Error(`The drive of ${label} is full.`)
-    if (code === 'EBUSY' || code === 'EPERM' || code === 'EACCES') throw new Error(`Could not copy to ${label}: the folder is read-only or a file there is in use.`)
-    throw new Error(`Could not copy to ${label}: ${(e as Error).message.split('\n')[0].replace(/'[^']*'/g, '').trim()}`)
+    // The done view and the notification name the destination themselves ("Could not copy to OneDrive: …").
+    if (code === 'EBUSY' || code === 'EPERM' || code === 'EACCES') throw new Error('the folder is read-only or a file there is in use.')
+    throw new Error((e as Error).message.split('\n')[0].replace(/'[^']*'/g, '').trim() || 'something went wrong.')
   }
   return { dest, bytes: st.size, already: false }
 }
