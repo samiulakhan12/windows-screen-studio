@@ -4,7 +4,7 @@
  * from their content, so a second run that picks the same words gives the same marks (§11.8).
  */
 import type { CaptionMark, CaptionSegment, Clip, CursorTrack, Project } from '../types'
-import { textHash } from './captionTracks'
+import { textHash, transcriptLanguage } from './captionTracks'
 import { bareWord, isLabelWord, isNumberWord, isYearWord } from './numbers'
 import { STOP_WORDS } from './stopWords'
 import { studioTokens, type StudioToken } from './words'
@@ -220,7 +220,8 @@ export function markId(caption: string, from: number, text: string): string {
 export function pickEmphasis(project: Project, opts?: { maxShare?: number; cursor?: CursorTrack; avoid?: ReadonlySet<string> }): CaptionMark[] {
   const segments = project.transcript?.segments ?? []
   if (!segments.length) return []
-  const language = project.transcript?.language
+  // Read as the captions are drawn: Bangla for a mostly Bangla transcript that names no language (§0.2).
+  const language = transcriptLanguage(project.transcript)
   const marked = new Set((project.captionMarks ?? []).map((m) => m.caption))
   const scores = emphasisScores(segments, { language, cursor: opts?.cursor, clips: project.clips })
   const byCaption = new Map<string, { word: number; to: number; score: number }[]>()
