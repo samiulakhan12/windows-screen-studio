@@ -389,6 +389,21 @@ describe('Bangla bleeping: stems, compounds and every generated form', () => {
     }
   })
 
+  it('reads words joined by a hyphen or dash as one word, and never words joined by a comma, a ।, ? or / with no space', () => {
+    // Everyday words written next to each other (খান,কিন্তু: Khan, but; মা,গিয়ে: mother, having gone) are two words, each everyday.
+    const SEPARATORS = [',', '।', '?', '/', '!', ';', ':', '.']
+    const NEXT = ['কিন্তু', 'কি', 'কিনা', 'কিছু', 'গিয়ে', 'গিয়েছিলাম', 'গিন্নি', 'দা']
+    const apart = EVERYDAY.flatMap((w) => SEPARATORS.flatMap((j) => NEXT.map((n) => `${w}${j}${n}`)))
+    expect(apart).toEqual(expect.arrayContaining(['খান,কিন্তু', 'খান।কিন্তু', 'খান?কি', 'খান/কিনা', 'মা,গিয়ে', 'মা।গিয়েছিলাম']))
+    for (const [mode, lang] of MODES) expect(apart.filter((w) => isSwearWord(w, mode, lang)), `${mode} ${lang}`).toEqual([])
+    // A rude word among them is caught on its own.
+    for (const [mode, lang] of MODES) expect(['ধুর।বাল', 'বাল।এটা', 'খান,খানকি', 'মা,মাগি?'].filter((w) => !isSwearWord(w, mode, lang)), `${mode} ${lang}`).toEqual([])
+    // A rude word written in parts joined by a hyphen or dash is one word, also beside words joined otherwise.
+    const parts = ['হারাম-জাদা', 'হারাম–জাদি', 'বান-চোত', 'বাইন—চোদ', 'মাদার-চোদ', 'বোকা‐চোদা', 'খান-কি', 'খান-কির', 'চুত-মারানি', 'হারাম-জাদা-টা']
+    const beside = parts.flatMap((w) => [w, `ধুর,${w}`, `${w}।এটা`, `${w}?`, `এই/${w}/ওই`])
+    for (const [mode, lang] of MODES) expect(beside.filter((w) => !isSwearWord(w, mode, lang)), `${mode} ${lang}`).toEqual([])
+  })
+
   it('Tidy captions bleeps the spellings, compounds and Dhaka forms the checkers found, named Bangla or not', () => {
     const lines = [
       ['শুওরের বাচ্চা কোথাকার', 'শুওরের'],

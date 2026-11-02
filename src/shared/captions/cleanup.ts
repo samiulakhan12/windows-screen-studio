@@ -560,6 +560,8 @@ function teamMatch(r: TeamRules, key: string, next: string | undefined): boolean
 /** Text between letters that is not a letter, a digit, a mark or a joiner (ZWJ, ZWNJ): words written together (ধুর—বাল, বাল।এটা). */
 const JOINED = /[\p{L}\p{M}][^\p{L}\p{N}\p{M}\p{Cf}]+[\p{L}\p{M}]/u
 const BETWEEN_WORDS = /[^\p{L}\p{N}\p{M}\p{Cf}]+/u
+/** Text between words that is more than hyphens and dashes (খান,কিন্তু; মা।গিয়ে): two words, never one written in parts. */
+const APART = /[^\p{L}\p{N}\p{M}\p{Cf}]*[^\p{L}\p{N}\p{M}\p{Cf}\-\u2010-\u2015][^\p{L}\p{N}\p{M}\p{Cf}]*/u
 
 /** The key of the word `text` begins with: its first part when words are written together (বাচ্চা-টা); '' for none. */
 const firstKey = (text: string): string => text.split(BETWEEN_WORDS).map(bleepKey).find(Boolean) ?? ''
@@ -568,8 +570,9 @@ const firstKey = (text: string): string => text.split(BETWEEN_WORDS).map(bleepKe
  * Whether a word is rude by the team's list for `lang` (`key` its key, `next` the key of the word
  * after it, as teamMatch takes it). Words written together with a dash or a । and no space
  * (ধুর—বাল, বাল।এটা, শালা-খানকি, শুয়োরের-বাচ্চা) are rude when one of them is, each before the
- * next, or when they are together (হারাম-জাদা, বান-চোত) and the first is not an everyday word that
- * starts with a stem (মাগিনা-এটা).
+ * next. Parts joined by hyphens or dashes only are one word as well (হারাম-জাদা, বান-চোত), unless
+ * the first is an everyday word that starts with a stem (মাগিনা-এটা); words joined by anything else
+ * (a comma, a ।, ? or /) never are: খান,কিন্তু and মা।গিয়ে are everyday words.
  */
 function teamWordMatch(word: string, key: string, lang: string, next: string | undefined): boolean {
   const r = teamRulesOf(lang)
@@ -577,7 +580,8 @@ function teamWordMatch(word: string, key: string, lang: string, next: string | u
   if (!JOINED.test(word)) return teamMatch(r, key, next)
   const parts = word.split(BETWEEN_WORDS).map(bleepKey).filter(Boolean)
   if (parts.some((p, i) => teamMatch(r, p, i + 1 < parts.length ? parts[i + 1] : next))) return true
-  return !r.everyday.has(r.fold(parts[0])) && teamMatch(r, key, next)
+  const groups = word.split(APART).filter((g) => bleepKey(g))
+  return groups.some((g, i) => JOINED.test(g) && !r.everyday.has(r.fold(firstKey(g))) && teamMatch(r, bleepKey(g), i + 1 < groups.length ? firstKey(groups[i + 1]) : next))
 }
 
 const standardRes = STANDARD_WORDS.map((w) => ({ word: w.word, res: w.patterns.map((p) => new RegExp(p, 'u')), safe: w.safe.map((s) => bleepKey(s)) }))
