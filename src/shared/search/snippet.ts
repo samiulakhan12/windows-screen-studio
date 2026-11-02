@@ -94,16 +94,16 @@ export function snippetOf(text: string, ranges: readonly Range[]): SnippetPart[]
   const lineEnd = nl < 0 ? text.length : nl
   let from = Math.max(lineStart, first[0] - SEARCH_LIMITS.snippetBefore)
   let to = Math.min(lineEnd, first[1] + SEARCH_LIMITS.snippetAfter)
-  // Cut on a word boundary: never in the middle of a word.
+  // Cut on a word boundary in the outer half of each side. No space there (Chinese, Japanese, Thai,
+  // or one Latin word next to the match): cut between whole characters, keeping the text around it.
   if (from > lineStart) {
     const space = text.slice(from, first[0]).search(/\s/)
-    // No space to cut at (Chinese, Japanese, Thai): cut between whole characters.
-    if (space >= 0) from += space + 1
+    if (space >= 0 && space < SEARCH_LIMITS.snippetBefore / 2) from += space + 1
     else from = characterStart(text, from, first[0])
   }
   if (to < lineEnd) {
     const space = text.slice(first[1], to).search(/\s\S*$/)
-    if (space >= 0) to = first[1] + space
+    if (space >= SEARCH_LIMITS.snippetAfter / 2) to = first[1] + space
     else to = characterStart(text, to, lineEnd)
   }
   const parts = markRanges(text, merged, from, to)

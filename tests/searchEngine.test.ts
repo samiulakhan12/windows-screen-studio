@@ -352,6 +352,20 @@ describe('snippetOf', () => {
     }
   })
 
+  it('keeps the text around a match when the only space is next to it', () => {
+    const before = 'วันนี้เราจะมาดูวิธีการตั้งค่าโปรแกรมบันทึกหน้าจอให้ทำงานได้อย่างมีประสิทธิภาพมากที่สุด'
+    const after = 'ระบบจะบันทึกทุกอย่างที่เกิดขึ้นบนหน้าจอของคุณโดยอัตโนมัติและสามารถแก้ไขได้ภายหลังในโปรแกรมตัดต่อที่มาพร้อมกับแอปพลิเคชันนี้ซึ่งช่วยให้คุณประหยัดเวลาได้มากขึ้น'
+    const zh = '今天我们来看一下如何使用这个录屏软件来制作教学视频以及如何在编辑器里面调整画面的缩放效果和光标的大小还有'
+    for (const text of [`${before} ทดสอบ ${after}`, `${zh}我们今天要介绍的工具是 Flown ${zh}${zh}`]) {
+      const word = text.includes('Flown') ? 'Flown' : 'ทดสอบ'
+      const at = text.indexOf(word)
+      const parts = snippetOf(text, [[at, at + word.length]])
+      expect(hits(parts)).toEqual([word])
+      expect(parts[0].text.length, plain(parts)).toBeGreaterThan(40)
+      expect(parts[parts.length - 1].text.length, plain(parts)).toBeGreaterThan(80)
+    }
+  })
+
   it('merges overlapping ranges and shows the start without a match', () => {
     expect(hits(snippetOf('abcdef', [[0, 3], [2, 5]]))).toEqual(['abcde'])
     expect(plain(snippetOf('short text', []))).toBe('short text')
