@@ -18,6 +18,9 @@
 //   6. Keyboard and the hovered look: Tab reaches Make my captions great, its options, the gallery,
 //      Play and Show all styles; the options popover keeps the focus and Esc returns it; hovering a
 //      tile previews it on the video with its label, changing neither the project nor its undo.
+//   7. The options left open as Shift+R opens the Review panel over the Inspector keep no keys: Tab
+//      and Shift+Tab move in the panel, Esc closes only the panel, and the options then keep Tab
+//      and close on Esc again.
 //
 // SSW_E2E_ONLY=<part of a test name> runs one test; SSW_E2E_DOC_SHOTS=1 also writes the pictures
 // docs/screenshots/captions-studio-*.png.
@@ -620,6 +623,49 @@ async function keyboardTests() {
     await win.locator('[data-testid="cleanup-bleep"] button', { hasText: 'Standard' }).click()
     const note = await win.textContent('[data-testid="cleanup-bleep-note"]')
     h.assert(/not muted yet/.test(note), `the bleep note says the word's sound is not muted yet (got ${note})`)
+  }))
+
+  await test('the options left open under the Review panel keep no keys: Tab moves in the panel, Esc closes only the panel', fx.withHome('cs-review', async (ctx, home) => {
+    // Two automatic cuts, so the Review panel has rows, their buttons and a footer.
+    const clips = [
+      { id: 'k0', start: 0, end: 3.1, speed: 1 },
+      { id: 'k1', start: 3.4, end: 6.8, speed: 1 },
+      { id: 'k2', start: 7.2, end: 10, speed: 1 }
+    ]
+    const autoCuts = [
+      { id: 'a1', by: 'silences', action: 'cut', start: 3.1, end: 3.4, was: [{ start: 3.1, end: 3.4, speed: 1 }] },
+      { id: 'a2', by: 'silences', action: 'cut', start: 6.8, end: 7.2, was: [{ start: 6.8, end: 7.2, speed: 1 }] }
+    ]
+    seed(home, { id: 'rec-review', name: 'Review', extra: { transcript: transcript([C1, C2]), clips, autoCuts } })
+    const { win } = await launch(ctx, home)
+    await open(win, 'Review')
+    await captionsTab(win)
+    await win.focus('[data-testid="captions-great-options"]')
+    await win.keyboard.press('Enter')
+    await win.waitForSelector('[data-testid="great-options"]', { timeout: 5000 })
+    const inside = () => win.evaluate(() => !!document.activeElement?.closest('[data-testid="great-options"]'))
+    await f.waitFor(inside, 'the focus moves into the options')
+
+    // The panel makes the Inspector (and the options in it) inert: its own buttons take Tab.
+    await win.keyboard.press('Shift+R')
+    await win.waitForSelector('[data-testid="review-panel"]', { timeout: 5000 })
+    await f.waitFor(() => win.evaluate(() => !!document.activeElement?.closest('.review-item')), 'the focus moves to the first row to review')
+    const seen = []
+    for (const key of ['Tab', 'Tab', 'Tab', 'Shift+Tab']) {
+      await win.keyboard.press(key)
+      seen.push(await focusedTestId(win))
+    }
+    h.assert(seen.join() === 'review-keep,review-remove,review-keep-all,review-remove', `Tab and Shift+Tab move in the Review panel (got ${seen.join()})`)
+    await win.keyboard.press('Escape')
+    await win.waitForSelector('[data-testid="review-panel"]', { state: 'detached', timeout: 5000 })
+    h.assert(!!(await win.$('[data-testid="great-options"]')), 'Esc closes only the Review panel: the options are still open')
+
+    // Back in reach, the options keep Tab again, and Esc closes them with the focus on their button.
+    await win.keyboard.press('Tab')
+    h.assert(await inside(), `Tab goes back into the options (got ${await focusedTestId(win)})`)
+    await win.keyboard.press('Escape')
+    await win.waitForSelector('[data-testid="great-options"]', { state: 'detached', timeout: 5000 })
+    h.assert((await focusedTestId(win)) === 'captions-great-options', `Esc returns the focus to its button (got ${await focusedTestId(win)})`)
   }))
 }
 

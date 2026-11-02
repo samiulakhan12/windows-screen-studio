@@ -27,7 +27,9 @@ function targetsFromHere(): HTMLElement[] {
  * back to where it was when the dialog closes, unless something else took it meanwhile (a dialog
  * the closing one opened). When what had it is gone or disabled by then and was in a panel, the
  * focus goes to the panel's current item (aria-current), else to the first control of its nearest
- * container still there. While a dialog opened over it is open, it does none of this.
+ * container still there. While a dialog opened over it is open, it does none of this, nor while
+ * something covers it (it is inside an inert part of the page, as the Inspector under the Review
+ * panel): the keys belong to what is over it.
  */
 export function useModalFocus(ref: RefObject<HTMLElement>, onClose: () => void): void {
   const close = useRef(onClose)
@@ -55,8 +57,10 @@ export function useModalFocus(ref: RefObject<HTMLElement>, onClose: () => void):
       open.push(box)
     }
     const onTop = (): boolean => open[open.length - 1] === box
+    // Its controls cannot take the focus then: Tab would be held where it is.
+    const covered = (): boolean => !!box?.closest('[inert]')
     const onTab = (e: KeyboardEvent): void => {
-      if (e.key !== 'Tab' || !box || !onTop()) return
+      if (e.key !== 'Tab' || !box || !onTop() || covered()) return
       const items = [...box.querySelectorAll<HTMLElement>(FOCUSABLE)].filter((el) => el.offsetParent !== null || el === document.activeElement)
       if (items.length === 0) {
         e.preventDefault()
@@ -74,7 +78,7 @@ export function useModalFocus(ref: RefObject<HTMLElement>, onClose: () => void):
       }
     }
     const onEscape = (e: KeyboardEvent): void => {
-      if (e.key !== 'Escape' || e.defaultPrevented || (box && !onTop())) return
+      if (e.key !== 'Escape' || e.defaultPrevented || (box && (!onTop() || covered()))) return
       e.preventDefault()
       close.current()
     }

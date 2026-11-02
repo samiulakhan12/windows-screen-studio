@@ -17,6 +17,8 @@ class FakeElement extends FakeNode {
   children: FakeElement[] = []
   offsetParent: object | null = {}
   isConnected = true
+  /** The `inert` attribute (the Review panel sets it on the Inspector it covers). */
+  inert = false
   constructor(readonly name: string) {
     super()
   }
@@ -30,7 +32,10 @@ class FakeElement extends FakeNode {
   focus(): void {
     doc.activeElement = this
   }
-  closest(): null {
+  /** Only `[inert]` is looked for here: this element or the nearest container that is inert. */
+  closest(selector: string): FakeElement | null {
+    if (selector !== '[inert]') return null
+    for (let x: FakeNode | null = this; x; x = x.parent) if (x instanceof FakeElement && x.inert) return x
     return null
   }
   /** Every focusable element inside, in order (the buttons; not the dialog itself, whose tabindex is -1). */
@@ -84,9 +89,11 @@ function press(key: string, shiftKey = false): KeyboardEventLike {
 }
 
 let editorButton: FakeElement
+let overlay: FakeElement
 let dialog: FakeElement
 let write: FakeElement
 let close: FakeElement
+let onClose: ReturnType<typeof vi.fn<() => void>>
 
 beforeEach(() => {
   keydown.length = 0
@@ -94,10 +101,12 @@ beforeEach(() => {
   write = new FakeElement('button: Write all')
   close = new FakeElement('button: Close')
   dialog = new FakeElement('dialog').append(new FakeElement('header'), new FakeElement('main').append(write), new FakeElement('footer').append(close))
+  overlay = new FakeElement('overlay').append(dialog)
   body.children = []
-  body.append(editorButton, new FakeElement('overlay').append(dialog))
+  body.append(editorButton, overlay)
   editorButton.focus()
-  useModalFocus({ current: dialog }, () => undefined)
+  onClose = vi.fn<() => void>()
+  useModalFocus({ current: dialog }, onClose)
 })
 
 describe('A modal dialog keeps Tab inside it (useModalFocus)', () => {
@@ -133,5 +142,40 @@ describe('A modal dialog keeps Tab inside it (useModalFocus)', () => {
     editorButton.focus()
     expect(press('Tab', true).defaultPrevented).toBe(true)
     expect(doc.activeElement).toBe(close)
+  })
+})
+
+describe('A dialog covered by a panel (inside an inert part of the page) keeps no keys', () => {
+  // Captions Studio's "Make my captions great" options stay open in the Inspector when Shift+R opens
+  // the Review panel over it, which makes the Inspector inert: Tab and Esc belong to the Review panel.
+  let keep: FakeElement
+  let remove: FakeElement
+  beforeEach(() => {
+    keep = new FakeElement('button: Keep')
+    remove = new FakeElement('button: Remove')
+    body.append(new FakeElement('review panel').append(keep, remove))
+    overlay.inert = true
+    keep.focus()
+  })
+
+  it('leaves Tab and Shift+Tab in the panel over it to the browser', () => {
+    expect(press('Tab').defaultPrevented).toBe(false)
+    expect(doc.activeElement).toBe(keep)
+    remove.focus()
+    expect(press('Tab', true).defaultPrevented).toBe(false)
+    expect(doc.activeElement).toBe(remove)
+  })
+
+  it('does not close on Esc', () => {
+    expect(press('Escape').defaultPrevented).toBe(false)
+    expect(onClose).not.toHaveBeenCalled()
+  })
+
+  it('keeps Tab and Esc again once the panel is gone', () => {
+    overlay.inert = false
+    expect(press('Tab').defaultPrevented).toBe(true)
+    expect(doc.activeElement).toBe(write)
+    expect(press('Escape').defaultPrevented).toBe(true)
+    expect(onClose).toHaveBeenCalledTimes(1)
   })
 })
