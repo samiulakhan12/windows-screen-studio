@@ -690,10 +690,13 @@ export function maskWord(word: string): string {
   return g.map((ch, i) => (i === 0 && cased ? ch : '*')).join('')
 }
 
-/** A word with its letters masked and its punctuation kept ("damn," → "d***,"). */
+/** A word with its letters masked and its punctuation kept ("damn," → "d***,"), its last vowel sign or hasanta masked with it (মাগি, not "**ি"). */
 const maskToken = (text: string): string => {
-  const core = coreOf(text)
-  return core ? withCore(text, maskWord(core)) : text
+  const lead = LEADING.exec(text)?.[0] ?? ''
+  const rest = text.slice(lead.length)
+  const trail = /[^\p{L}\p{N}\p{M}]*$/u.exec(rest)?.[0] ?? ''
+  const core = rest.slice(0, rest.length - trail.length)
+  return core ? lead + maskWord(core) + trail : text
 }
 
 /** The words the bleeps are for (Bleep.word), made once per bleeps array. */

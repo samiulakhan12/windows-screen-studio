@@ -322,6 +322,19 @@ describe('bleeping (tests 41, 50)', () => {
     expect(maskedSegments(list, [{ ...bleep, start: 20, end: 21 }])).toBe(list)
   })
 
+  it('masks a Bangla word whole, its last vowel sign or hasanta too, and keeps its punctuation', () => {
+    const lines = ['ওই মাগি চলে গেল', 'হারামজাদা গেল কই', 'ধুর শালা-খানকি।', 'মাগি, চলে যা', 'ওই বাঞ্চোত্ কোথায়']
+    const p = tidyCaptions(project(lines.map((text, i) => timed(String(i), i * 5, text)), 'bn'), { ...OFF, bleep: 'standard', words: [] }).project
+    expect(p.bleeps).toHaveLength(5)
+    const shown = maskedSegments(p.transcript!.segments, p.bleeps).map((s) => s.text)
+    expect(shown.slice(0, 4)).toEqual(['ওই ** চলে গেল', '***** গেল কই', 'ধুর ******।', '**, চলে যা'])
+    // Nothing of the word is left, however its conjuncts are counted.
+    expect(shown[4]).toMatch(/^ওই \*+ কোথায়$/u)
+    // In the subtitle files as well, and in text drawn from caption words.
+    expect(languageSubtitleFile({ ...studioProject({ segments: p.transcript!.segments, language: 'bn' }), bleeps: p.bleeps }, null, 'txt')).toContain('ওই ** চলে গেল')
+    expect(maskBleeped('মাগি! চলে গেল', p.bleeps)).toBe('**! চলে গেল')
+  })
+
   it('masks the words the bleeps are for in text drawn from caption words, also made before the bleep', () => {
     const p = tidyCaptions(project([timed('a', 10, 'well fuck this now')]), { ...OFF, bleep: 'standard', words: [] }).project
     expect(maskBleeped('Fuck, this is easy', p.bleeps)).toBe('F***, this is easy')
