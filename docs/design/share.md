@@ -111,8 +111,8 @@ can be turned off there ("Use" switch), and the export chip's tooltip shows the 
   tried; where the link fails any other way (FAT and exFAT, where Windows reports `EISDIR`; some
   network shares and virtual drives, `UNKNOWN`) the name is checked and the file renamed, tried
   again up to 4 times (150 ms × n, the name checked before each try) while an antivirus scan or the
-  cloud app holds the fresh file (`EBUSY`, `EPERM`, `EACCES`), as the export's own rename is. Cancel or failure deletes the partial file; one the cloud app holds open is retried at
-  quit, and partial files over an hour old are removed by the next copy into that folder.
+  cloud app holds the fresh file (`EBUSY`, `EPERM`, `EACCES`), as the export's own rename is. Cancel or failure deletes the partial file, as does a claimed link (the partial name is then a
+  second name for the video); one the cloud app holds open is retried at quit, and partial files over an hour old are removed by the next copy into that folder.
 * Before copying: free space at the target (`fs.statfs`), less the bytes other running copies to the
   same drive (`stat`'s `dev`) still have to write, must be ≥ size + **64 MB**, else
   "There is not enough space on the drive of OneDrive (needs 1.2 GB)." (Shares run in parallel, so
@@ -353,7 +353,7 @@ Unit (vitest, each failing without its code):
 * `shareStore.test.ts` — encrypted at rest, masked to the page, refuses to save without encryption,
   malformed entries dropped, limits, found folders turned off.
 * `shareCopy.test.ts` — copies with progress, never replaces, " (2)", cancel deletes the partial
-  file, refuses a non-exported file, a bad name, a junction escape, low disk space; already there.
+  file (and at quit one still held after the link), refuses a non-exported file, a bad name, a junction escape, low disk space; already there.
 * `sharePost.test.ts` — no redirect, time limit, response cap, status → message, re-validation
   before posting, test-origin rewrite only when allowed.
 * `shareService.test.ts` — copy then post with the place, cancel, notification extras (none when

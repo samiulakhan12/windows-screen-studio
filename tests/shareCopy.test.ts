@@ -411,4 +411,30 @@ describe('claiming the name', () => {
       rmSync(dir, { recursive: true, force: true })
     }
   })
+
+  it('deletes the partial name at quit when a scanner held it after the link', async () => {
+    const { removePartialCopies } = await import('../src/main/share/copyToFolder')
+    const dir = mkdtempSync(path.join(os.tmpdir(), 'ssw-sharelinked-'))
+    const realRm = fsp.rm.bind(fsp)
+    const rm = vi.spyOn(fsp, 'rm').mockImplementation(async (file, opts) => {
+      if (String(file).includes('.partial-')) throw Object.assign(new Error('EBUSY: rm'), { code: 'EBUSY' })
+      return realRm(file, opts)
+    })
+    try {
+      const video = path.join(dir, 'Demo.mp4')
+      writeFileSync(video, 'video')
+      const root = path.join(dir, 'OneDrive')
+      mkdirSync(root)
+      const done = await copyIntoFolder(video, root, 'OneDrive', { signal: signal(), freeBytes: plenty })
+      expect(done.dest).toBe(path.join(root, 'Flown', 'Demo.mp4'))
+      expect(readdirSync(path.join(root, 'Flown')).some((n) => n.includes('.partial-'))).toBe(true)
+      rm.mockRestore()
+      removePartialCopies()
+      expect(readdirSync(path.join(root, 'Flown'))).toEqual(['Demo.mp4'])
+      expect(readFileSync(done.dest, 'utf8')).toBe('video')
+    } finally {
+      rm.mockRestore()
+      rmSync(dir, { recursive: true, force: true })
+    }
+  }, 20_000)
 })

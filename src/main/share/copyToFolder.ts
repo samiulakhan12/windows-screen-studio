@@ -208,7 +208,8 @@ export async function copyIntoFolder(file: string, root: string, label: string, 
     await pipeline(createReadStream(file, { highWaterMark: 1024 * 1024 }), count, createWriteStream(temp, { flags: 'wx' }), { signal })
     dest = await claimName(temp, realSub, name)
     opts.onProgress?.(1)
-    writing.delete(temp)
+    // After a link the partial name is a second name for the video: one still held stays listed, so quitting deletes it.
+    if (!existsSync(temp)) writing.delete(temp)
   } catch (e) {
     // A partial file the cloud app holds open stays listed, so quitting tries again.
     if (await removeWithRetries(temp)) writing.delete(temp)
