@@ -70,6 +70,7 @@ interface FakeNode {
   children: FakeNode[]
   dataset: Record<string, string>
   focus(options?: unknown): void
+  scrollIntoView(options?: unknown): void
   contains(n: unknown): boolean
   querySelector(sel: string): FakeNode | null
   querySelectorAll(sel: string): FakeNode[]
@@ -119,6 +120,8 @@ const matches = (n: FakeNode, sel: string): boolean =>
 const descendants = (n: FakeNode): FakeNode[] => n.children.flatMap((c) => [c, ...descendants(c)])
 
 const nodes = new Map<string, FakeNode>()
+/** The rows scrolled into view (by key), with the options. */
+const scrolled: { key: string; options: unknown }[] = []
 function nodeAt(path: string, el: El): FakeNode {
   let n = nodes.get(path)
   if (!n) {
@@ -131,6 +134,9 @@ function nodeAt(path: string, el: El): FakeNode {
         const p = node.el.props
         const focusable = node.el.type === 'button' || node.el.type === 'input' || p.tabIndex !== undefined
         if (focusable && !p.disabled) focusOn(node)
+      },
+      scrollIntoView(options?: unknown) {
+        scrolled.push({ key: node.dataset.key, options })
       },
       contains: (o: unknown) => {
         for (let a = o as FakeNode | null; a && 'el' in a; a = a.parent) if (a === node) return true
@@ -327,6 +333,7 @@ beforeEach(() => {
   doc.activeElement = body
   doc.focusin.clear()
   timers.clear()
+  scrolled.length = 0
   Object.assign(scan, { state: { status: 'idle' }, started: 0, cancelled: 0 })
   Object.assign(store, { state: project(), updates: 0 })
   Object.assign(player, { time: 0, playing: false, seeks: 0, calls: [] })
@@ -549,5 +556,21 @@ describe('the focus and what is said as the finder moves on', () => {
     scan.state = done([row('cough-300', 3, 3.4)])
     view()
     expect(said()).toBe('1 found. Nothing changes until you choose.')
+  })
+})
+
+describe('Mute all', () => {
+  it('sends the focus to the first row and scrolls the list back to it', () => {
+    scan.state = done([row('cough-300', 3, 3.4), row('ping-1000', 10, 10.3), row('typing-2000', 20, 21)])
+    view()
+    // Reached with Tab below the list, which scrolled to its end on the way.
+    const muteAll = all().find((n) => n.el.type === 'button' && textOf(n.el.props.children) === SOUNDS_COPY.muteAll)
+    if (!muteAll) throw new Error('no Mute all')
+    muteAll.focus()
+    click(muteAll)
+    view()
+    expect(store.updates).toBe(1)
+    expect(doc.activeElement).toBe(buttonOf('cough-300', 'Restore'))
+    expect(scrolled).toEqual([{ key: 'cough-300', options: { block: 'nearest' } }])
   })
 })

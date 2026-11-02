@@ -369,7 +369,8 @@ Section **Unwanted sounds** in the Audio tab, after Voice (`SoundsSection.tsx`):
   action that cannot be done (*"That would cut the whole video"*) is also shown under the list, until
   the next action.
 - Keyboard: everything is a button in tab order; after an action the focus moves to the row's first
-  button (it would otherwise fall to the page, where Delete removes timeline items). Find, Cancel and
+  button (it would otherwise fall to the page, where Delete removes timeline items), and the list
+  scrolls to show that row (after Mute all, the first). Find, Cancel and
   Try again go with their state: when one had the focus, it moves to Cancel while listening, then to
   the first sound's Play (the sentence when nothing is found), to Find after Cancel, and to Try again
   after a failure.
@@ -546,7 +547,8 @@ End to end (`tests/e2e/sound-finder.e2e.cjs`, the built app under Xvfb):
   playhead while Play plays a sound hands the playback back; before, it was paused at once (or when
   it next passed the sound's end). The focus follows Find, Cancel and Try again to the next control,
   and the result of listening is said; before, the focus fell to the page and a screen reader heard
-  nothing when listening ended.
+  nothing when listening ended. Mute all scrolls the list back to the first row, which takes the
+  focus; before, the focus could sit above what the list showed.
   The worker's `fetch` reaches only the app's own files (§7); before, MediaPipe posted usage
   statistics to Google when listening to a source took more than a minute.
 - `@mediapipe/tasks-audio` is pinned at 1.0.1 (the version of `@mediapipe/tasks-vision` in use);

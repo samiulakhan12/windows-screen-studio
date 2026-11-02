@@ -58,6 +58,8 @@ export function SoundsSection({ project }: { project: Project }): JSX.Element {
     const row = items.find((li) => li.dataset.key === want.key) ?? items[Math.min(want.index, items.length - 1)]
     const target = row ? (row.querySelector<HTMLElement>('.sound-actions button') ?? row) : sectionRef.current?.querySelector<HTMLElement>('.sound-show-ignored input, button')
     target?.focus({ preventScroll: true })
+    // The list scrolls: after Mute all the first row can be above what it shows.
+    row?.scrollIntoView({ block: 'nearest' })
   })
 
   const timeOf = (r: SoundRow): number => editToVideo(planOf(project), outputTimeAt(project.clips, r.start))
