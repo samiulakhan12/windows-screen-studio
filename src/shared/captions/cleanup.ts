@@ -13,7 +13,7 @@ import type { Bleep, CaptionAuto, CaptionSegment, CaptionSettings, CaptionWord, 
 import { STANDARD_WORDS, STRICT_WORDS } from './bleepWords'
 import { applyTextResult } from './edit'
 import { parseNumberWords } from './numbers'
-import { textHash } from './captionTracks'
+import { textHash, transcriptLanguage } from './captionTracks'
 import { MAX_BLEEPS } from './studioData'
 import { studioWordTexts } from './words'
 
@@ -592,7 +592,9 @@ export function tidyCaptions(
 ): { project: Project; changed: number; bleeped: number; /** New bleeps made from estimated word times (a little more is bleeped). */ estimated: number } {
   const transcript = project.transcript
   if (!transcript?.segments.length) return { project, changed: 0, bleeped: 0, estimated: 0 }
-  const language = transcript.language
+  // As the captions read them (§0.2): Bangla for a mostly Bangla transcript that names no language,
+  // so its swear words are bleeped from the Bangla list and its sentences end with ।.
+  const language = transcriptLanguage(transcript)
   const segs = transcript.segments
   let tidied: CaptionSegment[] = segs.map((seg, i) => {
     let tokens = tokensOf(seg)

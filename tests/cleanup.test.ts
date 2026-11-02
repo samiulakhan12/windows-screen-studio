@@ -191,6 +191,20 @@ describe('bleeping (tests 41, 50)', () => {
     }
   })
 
+  it('a mostly Bangla transcript that names no language is tidied and bleeped as Bangla, as its captions are read (§0.2)', () => {
+    const segs = [timed('a', 0, 'তোরে চোদব আমি'), timed('b', 5, 'আমরা আজ শিখব কীভাবে')]
+    const unnamed = project(segs, 'bn')
+    delete (unnamed.transcript as { language?: string }).language
+    for (const p of [project(segs, 'bn'), unnamed]) {
+      for (const bleep of ['standard', 'strict'] as const) {
+        const out = tidyCaptions(p, { ...OFF, punct: true, bleep, words: [] })
+        // The Bangla word is bleeped (never played or shown), and the captions end with the Bangla full stop.
+        expect(out.project.bleeps?.map((b) => b.word), bleep).toEqual(['চোদব'])
+        expect(texts(out.project)).toEqual(['তোরে চোদব আমি।', 'আমরা আজ শিখব কীভাবে।'])
+      }
+    }
+  })
+
   it('bleeps are time-based: the word ± 0.05 s (± 0.15 s estimated), its word lower case', () => {
     const p = project([timed('a', 10, 'well fuck this'), { id: 'b', start: 20, end: 22, text: 'damn it' }])
     const out = tidyCaptions(p, { ...OFF, bleep: 'standard', words: [] })
