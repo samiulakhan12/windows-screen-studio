@@ -2810,41 +2810,63 @@ Offline rules, each optional (§2.9). The choices are `CleanupChoices` (`caps`, 
      `NN-caption-data.txt`, §6.9; 28 languages, no bn, ur, ta, te or mr). Bangla and the missing
      languages: short lists the team writes (CC0-1.0). The user's own words can be added.
    - Matching: lower case, punctuation removed, repeated letters collapsed, safe look-alikes
-     checked. Other languages match whole words. Bangla builds many forms from one word (case
-     endings, plurals and classifiers with particles stacked after them, every person and tense,
-     Dhaka forms, causatives, compounds, spelling variants), so a list of whole forms is never
-     complete; the team's Bangla list (`TEAM_LISTS.bn`, `cleanup.ts`) has three kinds of entry,
-     matched after both the word and the list are normalised, for matching only (NFC, so য় as
-     U+09DF or U+09AF U+09BC and ো or ৌ in one or two parts are one spelling; ী read as ি and ূ as
-     ু); the caption keeps its own spelling and the bleep its word.
+     checked. Other languages match whole words. A word written in Bengali script is matched by
+     the Bangla list whatever the transcript's language (an English transcript quoting a Bangla
+     word, a mixed one that names no language), but in Assamese, which is written in the same
+     script; an English word written together with a Bangla ending, as Banglish writes videoটা and
+     file-টা, has its Latin letters checked by the English rules, as the bare word is. Bangla
+     builds many forms from one word (case endings, plurals and classifiers with particles stacked
+     after them, every person and tense, Dhaka forms, causatives, compounds, spelling variants), so
+     a list of whole forms is never complete; the team's Bangla list (`TEAM_LISTS.bn`,
+     `cleanup.ts`) has three kinds of entry, matched after both the word and the list are
+     normalised, for matching only (NFC, so য় as U+09DF or U+09AF U+09BC and ো or ৌ in one or two
+     parts are one spelling; ী read as ি and ূ as ু); the caption keeps its own spelling and the
+     bleep its word.
      - **Stems** rude in every form (চোদ, চুদ, the Dhaka participle চুইদ, চুইদ্দ and চুইদ্য as in
        চুইদা দিমু, খানকি as written with ং, a conjunct or a hasanta too: খাংকি, খাঙ্কি, খান্কি,
        মাগি, হারামি, হারামজাদা, হারামজাদি, বালপাক): a word starting with one is bleeped
        (চুদতেছস, চুদিয়েছিল, চোদাইলি, খানকিরাও, খাংকির, হারামিগুলোরে, মাগীবাজ, বালপাকনা), and a
-       **compound** written as one word anywhere in a word: চোদ, চুদ, চোত or চোৎ after বোকা, বান,
-       বাইন, বাইঞ্, বাঞ্, বেন or মাদার (বানচোদ, বাইনচোদ, বাঞ্চোৎ, বানচোত, মাদারচোদ), চুদমারানি
-       with দ, ত, ৎ or ত্, খানকিরপোলা as খানকি is written, শুয়োরেরবাচ্চা. Guards: no bleep where
-       a stem's last consonant takes a virama (চোদ্দ, চোদ্দো: fourteen), nor for the everyday words
+       **compound** written as one word anywhere in a word: চোদ after any first part (বোকাচোদা,
+       বোকাচ্চোদা, আবালচোদা, বেইনচোদ, মাচোদা); চুদ, চোত or চোৎ after the first parts that take
+       them, বোকা, বোকাচ্ (the doubled চ of Kolkata), আবাল, বান, বাইন, বাইঞ্, বাঞ্, বেঞ্, বেন,
+       মাদার and the Dhaka বইন, বেইন, বোন, বেহেন and বাপ, or বান্, বাইন্, বেন্ and মাদার্ written with
+       a hasanta, a ZWNJ after it or not (বানচোত, বাঞ্চোৎ, বোকাচ্চুদা, বান্চোত), ৎ also written ত্
+       and a joiner (বাঞ্চোত্‍), but not after any other first part, as বাচ্চুদা and পাঁচুদা are
+       nicknames; চুদমারানি with দ, ত, ৎ or ত্, খানকিরপোলা as খানকি is written, and শুয়োরেরবাচ্চা
+       and কুত্তারবাচ্চা in every spelling the next-word entries below take. Guards: no bleep where
+       a stem's or compound's last consonant takes a virama (চোদ্দ, চোদ্দো: fourteen, also after
+       another number, তেরোচোদ্দ), nor inside an everyday word that holds a compound (প্রচোদ, "to
+       inspire", Sanskrit: প্রচোদয়াৎ in the Gayatri mantra, প্রচোদিত), nor for the everyday words
        that start with a stem, each with its meaning in the list, generated too: every form of
        মাগা, "to ask", that puts ি after মাগ in songs, poems and the old written style (every
        person of each tense, the imperative and the participles: মাগিতেছেন, মাগিয়াছিলাম, মাগিনু,
        মাগিবার), but the forms the slur takes too (মাগি, মাগিতে), and চুদুরবুদুর, "stalling", in
        every form.
-     - **Nouns that begin everyday words** (বাল: বালক, বালিশ, বালতি, বালি): matched whole, every
-       form generated: each classifier or plural (টা, টি, ডা, গুলো, গুলা, গুলি, গো; রা, দের,
-       দেরকে), case ending (র, রে, কে, তে, য়) and particle (ও, ই) Bangla allows (বালের,
-       বালটারেও).
+     - **Nouns matched whole**, every form generated: each classifier or plural (টা, টি, ডা,
+       গুলো, গুলা, গুলি, গো; রা, দের, দেরকে), case ending (র, রে, কে, তে, য়) and particle (ও, ই)
+       Bangla allows (বালের, বালটারেও). They are the nouns that begin everyday words (বাল: বালক,
+       বালিশ, বালতি, বালি; বালছাল, also written বালসাল as Dhaka writes স for ছ, while বালসা, balsa,
+       stays unmuted), and four English rude words as the Bangla model writes them, in Bengali
+       script, as it writes all spoken English; never the bare transliteration of the commonest
+       one, which also spells ফাঁক, "a gap" (এই ফাকে, "meanwhile"), beside ফাকা and ফাঁকা, "empty".
      - **Words the next word decides**, the next word's every form generated: শুয়োরের ("pig's",
-       also শুওরের, শুয়রের, শুয়ারের, with ও or ই) is rude only before বাচ্চা (শুয়োরের বাচ্চা),
-       never in শুয়োরের মাংস (pork) or শুয়োরের খামার (a pig farm); বাল is never rude before a
-       name or a word it is written apart from (বাল গঙ্গাধর তিলক, বাল ঠাকরে, লাল বাল পাল, বাল
-       গোপাল, বাল বিধবা, বাল বাচ্চা: the kids), nor চুদুর before বুদুর. The next word is the
-       caption's next word not deleted, or the next caption's first; a word with none after it
-       stays as it is rude alone.
-     - **Words written together** with a dash or a । and no space (ধুর—বাল, বাল।এটা, শালা-খানকি,
-       শুয়োরের-বাচ্চা) are bleeped when one of them is, each before the next, or when they are
-       together (হারাম-জাদা) and the first is not an everyday word; a joiner (ZWJ, ZWNJ) is part
-       of a word, and words that make an everyday word together (চুদুর-বুদুর) stay unmuted.
+       also শুওরের, শুয়রের, শুয়ারের, and শুকরের or শূকরের from শূকর, the standard word) and কুত্তার
+       ("dog's"), with ও or ই, are rude only before বাচ্চা (শুয়োরের বাচ্চা), never in শুয়োরের মাংস
+       (pork), শুয়োরের খামার (a pig farm) or কুত্তার কামড় (a dog's bite); কুকুরের বাচ্চা is a puppy.
+       বাল is never rude before a name or a word it is written apart from (বাল গঙ্গাধর তিলক, বাল
+       ঠাকরে, লাল বাল পাল, বাল গোপাল, বাল বিধবা, বাল বাচ্চা: the kids), nor চুদুর before বুদুর,
+       unless a pause is between them: a sentence mark, a comma, a !, ;, : or … after the word or
+       before the next, with or without a space (বাল। বাচ্চাটা, বাল, পাল বাবু, বাল।বাচ্চাটা), or the
+       end of the caption, the next word starting the next one; a space, a hyphen, a dash or a
+       quotation mark is no pause (বাল-গোপাল). The next word is the caption's next word not
+       deleted, or the next caption's first; a word with none after it stays as it is rude alone.
+     - **Words written together** with no space: parts joined by hyphens or dashes only are one
+       word (হারাম-জাদা, বান-চোত), unless the first is an everyday word that starts with a stem
+       (মাগিনা-এটা), and each part is matched as well, before the next (ধুর—বাল, শালা-খানকি,
+       শুয়োরের-বাচ্চা); words joined by anything else (a comma, a ।, ? or /) are two words, each
+       matched on its own (বাল।এটা, খান,খানকি) and never as one, so খান,কিন্তু and মা।গিয়ে stay
+       unmuted. A joiner (ZWJ, ZWNJ) is part of a word, and words that make an everyday word
+       together (চুদুর-বুদুর) stay unmuted.
    - **A bleep is time-based** (`Bleep`, §4.1): its source-time span is the word's time ± 0.05 s
      (± 0.15 s for estimated times, with the notice "Some bleeped words have estimated times, so a
      little more is bleeped"), and it keeps the matched word in lower case. It carries no caption
@@ -2860,7 +2882,8 @@ Offline rules, each optional (§2.9). The choices are `CleanupChoices` (`caps`, 
      (`captionWordTimes`, with their deleted and estimated marks), so the masked word keeps its
      time, and a word cut from the video stays out of the subtitle files; a caption no bleep masks
      is left as it is. Masks ("f***": first letter and asterisks, the same number of graphemes;
-     "****" in scripts without case) apply in the burned-in captions on every look (through
+     "****" in scripts without case; a Bangla word's last vowel sign or hasanta masked with it,
+     never left alone on a dotted circle, and the punctuation after the word kept) apply in the burned-in captions on every look (through
      `burnedSegments`, §14.2), in SRT, VTT and text exports (`subtitles.ts`), in subtitle streams,
      and in Review rows and their accessible names. The transcript keeps the real word. Motion
      graphics never show one (`wordsBleeped`): Make my captions great makes no keyword pop-up, AI
@@ -3647,9 +3670,12 @@ under `xvfb-run`: `captions-studio`, `captions`, `edit-by-text`, `transcription`
     list, bleep masks; the AI fix's changes get `captionAuto.text` records. Bangla bleeping
     (`tests/bleepBangla.test.ts`): every form generated from each stem, compound and whole noun is
     bleeped in Standard and Strict (bn, bn-BD, and a mostly Bangla transcript naming no language),
-    written either way, and joined to the word before or after by a dash or a ।; over 300 everyday
-    words, those sharing letters with a stem among them, never, joined so or not; শুয়োরের in every
-    spelling only before বাচ্চা in every form, বাল but before a name.
+    written either way, and joined to the word before or after by a dash or a ।, in a transcript
+    of any language but Assamese; over 300 everyday words, those sharing letters with a stem among
+    them, never, joined so or not, nor words joined by a comma, a ।, ? or /; শুয়োরের in every
+    spelling, and কুত্তার, only before বাচ্চা in every form; বাল but before a name, unless a
+    sentence mark, a comma, a ! or a caption's end comes between them; an English word with a
+    Bangla ending as the bare English word.
 42. Make my captions great: the order; one update; **a second run returns the same project
     object** (content ids); a second style change keeps the first `was`; the summary; in a
     screen-led tall project emoji and keyword pop-ups resolve off and counters and lists on.
