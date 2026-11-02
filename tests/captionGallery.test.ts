@@ -197,6 +197,34 @@ describe('the checked look, wherever it comes in its filter (§2.5, §2.14, §2.
     expect(tiles(els)[textBox].props['aria-checked']).toBe(true)
   })
 
+  it('a focused tile that leaves the filter gives the focus to the checked tile, not to the page', async () => {
+    const bold = { ...DEFAULT_CAPTIONS, studio: { ...studioPreset('bold-pop')!.look, from: 'bold-pop' } }
+    const page = (globalThis as unknown as { document: { activeElement: unknown } }).document
+    try {
+      // An old project with Classic Clean: its "Your current style" tile comes first and has the focus.
+      let els = await settle(gallery({ frame: SQUARE, value: DEFAULT_CAPTIONS }))
+      expect(ids(els)[0]).toBe('legacy:clean')
+      ;(tiles(els)[0].props.onFocus as () => void)()
+      page.activeElement = { tile: 'legacy:clean' }
+      const box = (grid(els).ref as { current: { el: El; contains(n: unknown): boolean } }).current
+      box.contains = (n) => descendants(box.el).some((d) => d.props['data-tile'] === (n as { tile?: string } | null)?.tile)
+      focused.length = 0
+      // Ctrl+Y to Bold Pop takes that tile away: the focus goes to Bold Pop, the checked tile.
+      els = await settle(gallery({ frame: SQUARE, value: bold }))
+      expect(ids(els)).not.toContain('legacy:clean')
+      expect(focused.map((e) => e.props['data-tile'])).toEqual(['bold-pop'])
+      expect(tiles(els).find((t) => t.props['data-tile'] === 'bold-pop')!.props['aria-checked']).toBe(true)
+      // A tile that stays keeps the focus where it is.
+      page.activeElement = { tile: 'bold-pop' }
+      ;(tiles(els).find((t) => t.props['data-tile'] === 'bold-pop')!.props.onFocus as () => void)()
+      focused.length = 0
+      els = await settle(gallery({ frame: SQUARE, value: highlight }))
+      expect(focused).toEqual([])
+    } finally {
+      page.activeElement = null
+    }
+  })
+
   it('Play names and plays the same tile: the focused one, else the checked one, even after a filter change', async () => {
     reduced = true
     const picture = (els: El[], id: string): unknown => (els.filter((e) => e.props.className === 'tile-thumb')[ids(els).indexOf(id)].props.children as El | null)?.type

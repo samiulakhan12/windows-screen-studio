@@ -6,7 +6,7 @@
  * tile size, language and fontGeneration(), in idle time; the hovered or focused tile plays its
  * look over a 2.4 s loop, never under reduced motion (Play plays one loop then).
  */
-import { useEffect, useRef, useState, useSyncExternalStore, type KeyboardEvent as ReactKeyboardEvent } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore, type KeyboardEvent as ReactKeyboardEvent } from 'react'
 import { legacyTwin } from '../../../../shared/captions/studioEdit'
 import { withPreset } from '../../../../shared/captions/settings'
 import type { SavedLook } from '../../../../shared/captions/studioPresets'
@@ -237,6 +237,12 @@ export function CaptionGallery(props: {
   // away the tile with the focus. A later one takes the last place neither holds.
   const shown = showAll ? tiles : firstRows(tiles, cols * 2, [checked, focusId])
   const stop = shown.find((t) => t.id === focusId)?.id ?? shown.find((t) => t.id === checked)?.id ?? shown[0]?.id ?? null
+  // A focused tile can still leave the filter: an undo or redo to a Studio look takes away the
+  // Classic "Your current style" tile. The focus then goes to the tab stop, not to the page.
+  const hadFocus = typeof document !== 'undefined' && !!gridRef.current?.contains(document.activeElement)
+  useLayoutEffect(() => {
+    if (hadFocus && !gridRef.current?.contains(document.activeElement)) gridRef.current?.querySelector<HTMLElement>(`[data-tile="${stop}"]`)?.focus()
+  })
   // The tile playing its look: hovered or focused (not under reduced motion), or Play's one loop.
   const [active, setActive] = useState<string | null>(null)
   const [once, setOnce] = useState<string | null>(null)
