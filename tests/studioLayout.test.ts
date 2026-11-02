@@ -413,6 +413,45 @@ describe('positions (test 10)', () => {
       }
   })
 
+  it('a dragged Stickers block keeps the spoken sticker inside the frame at any size and padding, its padding growing with it (§8.5)', () => {
+    // Each sticker grows with its word, padding and border too, so the block's padding is no room the
+    // grown word can use: at Size 13% in a wide frame the spoken TROUBLESHOOTING sticker reached 9 px
+    // past the right edge. Its tilted corners, at its largest and with the chunk's entrance, stay inside.
+    for (const [W, H] of [[1920, 1080], [1080, 1920], [1080, 1080]])
+      for (const size of [0.065, 0.13, 0.16])
+        for (const padX of [0.33, 0.6, 1])
+          for (const x of [0, 1]) {
+            const base = look('stickers')
+            const s: CaptionStudio = { ...base, text: { ...base.text, size }, box: { ...base.box, padX }, layout: { ...base.layout, place: { x, y: 0.7 } } }
+            const b = s.box
+            const l = lay(timed('fix the troubleshooting step', 0.5, 0.45), s, W, H)
+            const id = `${W}x${H} size ${size} padX ${padX} x ${x}`
+            let left = Infinity
+            let right = -Infinity
+            l.chunks.forEach((c, ci) => {
+              const placed = placeStudio(l, c, s, W, H, {})
+              const cx = placed.box.x + placed.box.w / 2
+              c.lines.forEach((line, li) =>
+                line.words.forEach((word) => {
+                  const mid = placed.lines[li].x + word.x + word.w / 2
+                  const hw = word.w / 2 + (b.padX + b.border / 2) * word.px
+                  const hh = (0.62 + b.padY + b.border / 2) * word.px
+                  for (let t = c.start; t < c.end; t += 0.005) {
+                    const p = captionPoses(l, ci, t, ONE, s, Math.min(W, H), null, { spoken: true })
+                    const wp = p.words.find((w) => w.token === word.token)!
+                    const a = (wp.rotate * Math.PI) / 180
+                    const half = (hw * Math.abs(Math.cos(a)) + hh * Math.abs(Math.sin(a))) * wp.scale * wp.scaleX
+                    left = Math.min(left, cx + p.chunk.dx + (mid + wp.dx - half - cx) * p.chunk.scale)
+                    right = Math.max(right, cx + p.chunk.dx + (mid + wp.dx + half - cx) * p.chunk.scale)
+                  }
+                })
+              )
+            })
+            expect(left, id).toBeGreaterThanOrEqual(0)
+            expect(right, id).toBeLessThanOrEqual(W)
+          }
+  })
+
   it("with legacyAnchor, the block sits where today's placeChunk puts it, in a tall frame and in its text area", () => {
     for (const area of [null, { x: 60, y: 0.11 * 1920, w: 960, h: 0.65 * 1920 }])
       for (const [position, legacy] of [

@@ -45,7 +45,7 @@ export interface StudioLine {
   width: number
   height: number
   px: number
-  /** How far its spoken words reach past its nearer end at their largest, px (§8.4); absent: they stay inside it. */
+  /** How far its spoken words (for Stickers, each word's sticker) reach past its nearer end at their largest, px (§8.4); absent: they stay inside it. */
   reach?: number
 }
 
@@ -537,7 +537,8 @@ export function studioLayout(
   // would grow past the room is drawn just small enough for it to fit.
   const fitted = (lay.chunk === 'word' || lay.chunk === 'stack') && lay.fit !== undefined
   // The line's scale, and how far its grown words then reach past its nearer end (a dragged block
-  // keeps that inside the frame too, §8.5).
+  // keeps that inside the frame too, §8.5). A sticker grows with its word, padding and border too, so
+  // for Stickers the reach is the grown sticker's, and the block's padding is no room to spare.
   const lineScale = (a: number, b: number): { k: number; reach: number } => {
     const at = meter.width(a, b)
     if (!(at > 0)) return { k: 1, reach: 0 }
@@ -554,9 +555,14 @@ export function studioLayout(
     }
     displayOrder(boxes, at, dirs, rtl ? 'r' : 'l')
     let need = at
-    for (const bx of boxes) need = Math.max(need, at + g(bx.token) - 2 * Math.min(bx.x, at - bx.x - bx.w))
+    let past = 0
+    for (const bx of boxes) {
+      const inside = Math.min(bx.x, at - bx.x - bx.w)
+      need = Math.max(need, at + g(bx.token) - 2 * inside)
+      if (box.kind === 'word') past = Math.max(past, g(bx.token) / 2 + peak(bx.token) * sticker(bx.token) - inside)
+    }
     const s = need * k > m.maxWidth * (1 + 1e-9) ? m.maxWidth / need : k
-    return { k: s, reach: ((need - at) / 2) * s }
+    return { k: s, reach: (box.kind === 'word' ? past : (need - at) / 2) * s }
   }
   const chunks: StudioChunk[] = ranges.map((group) => {
     const lines: StudioLine[] = group.map(([a, b]) => {
