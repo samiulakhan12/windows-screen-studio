@@ -6,6 +6,7 @@
  */
 import { useEffect, useMemo, useRef, useState, type KeyboardEvent as ReactKeyboardEvent } from 'react'
 import type { AiProviderInfo } from '../../../../shared/api/ai'
+import { captionLanguage } from '../../../../shared/captions/captionTracks'
 import { emojiEntry, EMOJI_LIST } from '../../../../shared/captions/emojiList'
 import { DEFAULT_GREAT_OPTIONS, readGreatOptions, resolveGreatOptions, type GreatOptions } from '../../../../shared/captions/great'
 import { planGraphics } from '../../../../shared/captions/graphicRules'
@@ -396,7 +397,7 @@ function SelectedGraphic({ project, graphic: g }: { project: Project; graphic: G
         project={project}
         value={g.font}
         catalogue
-        language={project.transcript?.language}
+        language={captionLanguage(project)}
         bangla={(project.captions?.studio ?? STUDIO_BASE).text.scripts?.bengali?.font}
         testId="graphic-font"
         defaultLabel="Same as the captions"

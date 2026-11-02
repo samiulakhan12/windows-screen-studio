@@ -379,6 +379,29 @@ describe('Digits (§0.2)', () => {
   })
 })
 
+describe('the Font menus’ note (§2.6)', () => {
+  /** The language each Font menu gives its note: Text, then Emphasis. */
+  const noteLanguages = async (): Promise<unknown[]> => [
+    byFontMenu(await settle(view('TextControls'), SKIP), 'caption-font'),
+    byFontMenu(await settle(view('EmphasisControls'), SKIP), 'caption-emphasis-font')
+  ]
+  const byFontMenu = (els: El[], id: string): unknown => els.find((e) => e.props.testId === id)!.props.language
+  const ruTrack: CaptionTrack = { language: 'ru', by: 'openai', model: 'gpt-4.1-mini', createdAt: '2026-11-01T00:00:00Z', segments: [{ id: 'c1', text: 'Каждое слово важно', src: 'x' }] }
+
+  it('follows the caption track shown on the video, as the drawing does', async () => {
+    // English speech with its Russian translation burned in: the captions need Russian letters.
+    store.state = project({ ...boldPop(), track: 'ru' }, { captionTracks: [ruTrack] })
+    expect(await noteLanguages()).toEqual(['ru', 'ru'])
+    // Russian speech with its English translation burned in: no Russian letters are drawn.
+    const enTrack: CaptionTrack = { ...ruTrack, language: 'en', segments: [{ id: 'c1', text: 'Every word counts', src: 'x' }] }
+    store.state = project({ ...boldPop(), track: 'en' }, { transcript: { language: 'ru', segments: [{ id: 'c1', start: 0, end: 2, text: 'Каждое слово важно' }] } as Project['transcript'], captionTracks: [enTrack] })
+    expect(await noteLanguages()).toEqual(['en', 'en'])
+    // Bangla captions whose transcript names no language are drawn as Bangla.
+    store.state = project(boldPop(), { transcript: { segments: [{ id: 'c1', start: 0, end: 2, text: 'এখন ৩টি ধাপ' }] } as Project['transcript'] })
+    expect(await noteLanguages()).toEqual(['bn', 'bn'])
+  })
+})
+
 /** A colour dot by its accessible name. */
 function chipLike(els: El[], id: string, label: string): El {
   return descendants(byTestId(els, id)!).find((e) => e.props['aria-label'] === label)!

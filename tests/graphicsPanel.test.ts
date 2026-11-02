@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import type { Graphic, KeywordGraphic, ListGraphic, Project } from '../src/shared/types'
+import type { CaptionTrack, Graphic, KeywordGraphic, ListGraphic, Project } from '../src/shared/types'
 import { allByTestId, button, byLabel, byTestId, contexts, mockReact, render, settle, testStore, textOf, unmountAll, useEditorContexts, type El } from './studioHarness'
 
 /*
@@ -80,6 +80,7 @@ const { GraphicsPanel, graphicLabel } = (await import(/* @vite-ignore */ PANEL))
 await useEditorContexts()
 const { DEFAULT_KEYMAP } = await import('../src/shared/editor/shortcuts')
 const { createProject } = await import('../src/shared/engine/project')
+const { DEFAULT_CAPTIONS } = await import('../src/shared/captions/settings')
 
 const base = createProject({
   id: 'p',
@@ -308,5 +309,15 @@ describe('a selected graphic', () => {
     const els = await settle(view({ kind: 'graphic', id: 'c9' }), SKIP)
     for (const label of ['From', 'To', 'Before', 'After', 'Label', 'Count for']) expect(byLabel(els, label), label).toBeDefined()
     expect(allByTestId(els, 'graphic-place')).toHaveLength(1)
+  })
+  it('the Font menu’s note follows the caption track shown on the video, as graphics are drawn', async () => {
+    const track = (language: string, text: string): CaptionTrack => ({ language, by: 'openai', model: 'gpt-4.1-mini', createdAt: '2026-11-01T00:00:00Z', segments: [{ id: 'c1', text, src: 'x' }] })
+    const noteLanguage = async (): Promise<unknown> => (await settle(view({ kind: 'graphic', id: 'k1' }), SKIP)).find((e) => e.props.testId === 'graphic-font')!.props.language
+    // English speech with its Russian translation shown: graphics, like the captions, need Russian letters.
+    store.state = { ...store.state, captions: { ...DEFAULT_CAPTIONS, track: 'ru' }, captionTracks: [track('ru', 'Продажи выросли')] }
+    expect(await noteLanguage()).toBe('ru')
+    // Russian speech with its English translation shown.
+    store.state = { ...store.state, transcript: { ...transcript!, language: 'ru' }, captions: { ...DEFAULT_CAPTIONS, track: 'en' }, captionTracks: [track('en', 'Sales grew')] }
+    expect(await noteLanguage()).toBe('en')
   })
 })
