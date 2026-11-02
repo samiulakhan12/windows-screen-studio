@@ -122,13 +122,13 @@ export function linkLike(n: string): boolean {
 
 /* ---------- what was said ---------- */
 
-/** What was said, as the check blanks it: the link-like tokens of the said texts, by their first two characters. */
+/** What was said, as the check blanks it: the link-like tokens of the said texts. */
 export interface Said {
-  readonly tokens: ReadonlyMap<string, readonly string[]>
+  readonly tokens: ReadonlySet<string>
 }
 
 /** Nothing said: every link-like piece is noted. */
-export const NOTHING_SAID: Said = { tokens: new Map() }
+export const NOTHING_SAID: Said = { tokens: new Set() }
 
 /** ASCII spaces: every Markdown, HTML and URL parser ends a link there. Other spaces stay inside a piece. */
 const ASCII_SPACES = /[\t\n\f\r ]+/
@@ -201,19 +201,60 @@ function cachedTokens(text: string): string[] {
   return t
 }
 
-/** What was said in `texts`: their link-like tokens, the longest first under each key. */
+/** What was said in `texts`: their link-like tokens. */
 export function saidOf(texts: readonly string[]): Said {
-  const tokens = new Map<string, string[]>()
-  for (const text of texts) {
-    for (const t of cachedTokens(text)) {
-      const key = t.slice(0, 2)
-      const list = tokens.get(key)
-      if (!list) tokens.set(key, [t])
-      else if (!list.includes(t)) list.push(t)
+  const tokens = new Set<string>()
+  for (const text of texts) for (const t of cachedTokens(text)) tokens.add(t)
+  return { tokens }
+}
+
+/**
+ * The said tokens as one automaton (Aho–Corasick): `next` per state, the state a mismatch falls back
+ * to, and the lengths of the tokens that end in each state. Finds every token in a text in one pass.
+ */
+interface Matcher {
+  next: Map<string, number>[]
+  fail: number[]
+  ends: number[][]
+}
+
+const matchers = new WeakMap<Said, Matcher>()
+function matcherOf(said: Said): Matcher {
+  let m = matchers.get(said)
+  if (m) return m
+  const next: Map<string, number>[] = [new Map()]
+  const ends: number[][] = [[]]
+  // By UTF-16 units, as a text is read.
+  for (const t of said.tokens) {
+    let state = 0
+    for (let k = 0; k < t.length; k++) {
+      const c = t[k]
+      let to = next[state].get(c)
+      if (to === undefined) {
+        to = next.length
+        next.push(new Map())
+        ends.push([])
+        next[state].set(c, to)
+      }
+      state = to
+    }
+    ends[state].push(t.length)
+  }
+  const fail = new Array<number>(next.length).fill(0)
+  const queue = [...next[0].values()]
+  for (let q = 0; q < queue.length; q++) {
+    const state = queue[q]
+    for (const [c, to] of next[state]) {
+      let f = fail[state]
+      while (f && !next[f].has(c)) f = fail[f]
+      fail[to] = next[f].get(c) ?? 0
+      ends[to] = [...ends[to], ...ends[fail[to]]]
+      queue.push(to)
     }
   }
-  for (const list of tokens.values()) list.sort((a, b) => b.length - a.length)
-  return { tokens }
+  m = { next, fail, ends }
+  matchers.set(said, m)
+  return m
 }
 
 /** The last answer of saidLinks for each caption list. */
@@ -292,22 +333,29 @@ function joinsBefore(n: string, i: number, token: string): boolean {
 /** `n` with every said token blanked where it stands alone (nothing that joins it right before or after it). Linear in `n` for a given said set. */
 function withoutSaid(n: string, said: Said): string {
   if (!said.tokens.size) return n
+  const { next, fail, ends } = matcherOf(said)
+  // How far a blank reaches from each position, the tokens found by where they end.
+  const blank = new Int32Array(n.length)
+  let state = 0
+  for (let j = 0; j < n.length; j++) {
+    const c = n[j]
+    while (state && !next[state].has(c)) state = fail[state]
+    state = next[state].get(c) ?? 0
+    for (const length of ends[state]) {
+      const i = j + 1 - length
+      const t = n.slice(i, j + 1)
+      if (!joinsBefore(n, i, t) && !joinsAfter(n, j + 1, HOST_ONLY.test(t))) blank[i] = Math.max(blank[i], j + 1)
+    }
+  }
   let out = ''
   let copied = 0
-  for (let i = 0; i < n.length - 1; ) {
-    const list = said.tokens.get(n.slice(i, i + 2))
-    let end = -1
-    if (list) {
-      for (const t of list) {
-        if (!n.startsWith(t, i) || joinsBefore(n, i, t) || joinsAfter(n, i + t.length, HOST_ONLY.test(t))) continue
-        end = i + t.length
-        break
-      }
-    }
-    if (end < 0) {
+  for (let i = 0; i < n.length; ) {
+    if (blank[i] <= i) {
       i++
       continue
     }
+    let end = blank[i]
+    for (let k = i + 1; k < end; k++) end = Math.max(end, blank[k])
     out += n.slice(copied, i) + ' '.repeat(end - i)
     copied = i = end
   }

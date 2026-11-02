@@ -715,8 +715,11 @@ Where the build differs from or adds to the sections above:
   Japanese with `.` between phrases: 0.8 s for 10 000 characters, minutes for an hour's transcript).
   The port finds the same matches in linear time (`urlMatches`, `asciiDomainsIn`), which the tests
   check against twitter-text's own loop; it now counts X's length and keeps a cut out of a link. The
-  link check is linear in a text for a given said set (each said token is looked up by its first two
-  characters), and what was said is read once per change of the captions.
+  link check is linear in a text for a given said set: the said tokens are found in one pass (one
+  Aho–Corasick automaton per said set, built when it is first read: 50 ms for the 40 000 tokens of
+  5 000 captions that each name a link and an address; a 285 000-character text then takes 70 ms).
+  What was said is read once per change of the captions (150 ms for those 5 000 captions, 6 ms after
+  a keystroke in one of them, whose tokens alone are read again), never per render.
 - **The saved description shows in the YouTube card** of a new session (it says *Stop using for
   exports*), so the export's text is never hidden.
 - **The export's description** is chosen by `exportDescription` (`src/shared/publish/youtube.ts`),
