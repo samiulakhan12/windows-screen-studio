@@ -478,6 +478,9 @@ function withoutSaid(n: string, said: Said, invisible: boolean): string {
 /** A Markdown backslash escape: markdown-it reads "\\." in a link's destination or text as ".". */
 const MD_ESCAPE = /\\([\x21-\x2f\x3a-\x40\x5b-\x60\x7b-\x7e])/g
 
+/** `n` with each '-' that no ASCII letter or digit follows read as an end ("paypal-login.com-এ", "evil.co-"). */
+const endsAtDash = (n: string): string => n.replace(/-+(?![a-z0-9])/g, ' ')
+
 /**
  * Whether `piece` (as written, between ASCII spaces) holds anything link-like once what was said is
  * blanked, as any reading has it: as normalised, as written, as typed when it has an escape or an
@@ -494,6 +497,8 @@ function isNoted(piece: string, said: Said): boolean {
     ...(invisible || /[%&]/.test(piece) ? [asTyped(piece, ' '), asTyped(piece, '')] : []),
     ...(unescaped !== piece ? [normalise(unescaped), asWritten(unescaped)] : [])
   ]
+  // As the said set reads a piece (tokensOf, trimmed): a '-' no ASCII letter or digit follows ends a name.
+  if (piece.includes('-')) readings.push(...readings.map(endsAtDash))
   return readings.some((n) => linkLike(n) && linkLike(withoutSaid(n, said, invisible)))
 }
 

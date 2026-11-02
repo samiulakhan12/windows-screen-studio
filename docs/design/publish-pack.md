@@ -390,7 +390,10 @@ that is no top-level domain (`README.md。第二步`). After a URL's host (a tok
 (`https://flown.app·.ws` is flown.xn--app-nga.ws; `https://flown.app、请下载` is not noted). Before a
 token, a colon after text other than ASCII is punctuation (`下载：flown.app`); an address whose user
 name is a dotted name stands alone only where linkify-it reads an address, not that name as a host
-(`anna.li@acme.de.>` and `anna.li@acme.de:42` are noted). The piece is **noted** if anything link-like
+(`anna.li@acme.de.>` and `anna.li@acme.de:42` are noted). Each reading of a piece with `-` is also read
+with every `-` that no ASCII letter or digit follows as an end, as the said tokens are read
+(`paypal-login.com-এ` and `paypal-login.com-` are noted where paypal-login.com was not said), so no text
+the check passes can make a link said. The piece is **noted** if anything link-like
 is left in any reading. Being over-inclusive is the point: a dotted file name the AI wrote that was not
 said (`README.md`) is noted, and so is a said name glued to letters of another script (`ログインflown.jp`
 is a real registrable name). A miss is a high-severity problem; an extra note is a low one unless it
