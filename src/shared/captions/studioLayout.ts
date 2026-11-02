@@ -12,7 +12,7 @@ import type { CaptionSegment, CaptionSettings, CaptionStudio, Project, StudioPos
 import { scriptLineHeight, scriptScale, sizeScript } from './fontStack'
 import { CAPTION_MAX_WIDTH, CAPTION_SAFE, displayOrder, RTL_FIRST, type CaptionWordBox } from './layout'
 import { CLAUSE_END, CURRENCY, END_WORDS, JOIN_WORDS, NO_LINE_END, NO_LINE_START, POST_WORDS, SENTENCE_END, UNIT_WORDS } from './phraseWords'
-import { hasCase, mainScript, scriptOf, studioTokens, withDigits, type ScriptTag, type StudioToken } from './words'
+import { hasCase, mainScript, scriptOf, studioTokens, withDigits, wordScripts, type ScriptTag, type StudioToken } from './words'
 
 /** A word's font as drawn: the stack (its script's font first, §6.5), weight and letter spacing (em). */
 export interface StudioFace {
@@ -311,8 +311,8 @@ function chunkLines(tokens: readonly StudioToken[], meter: ReturnType<typeof lin
 
 /* ---------- chunks (§8.2) ---------- */
 
-/** A Latin word of at most `n` letters (they never end a chunk: "IN THE"). */
-const shortLatin = (t: StudioToken, n: number): boolean => t.script === 'latin' && (t.text.match(/\p{L}/gu)?.length ?? 0) <= n
+/** A Latin word of at most `n` letters (they never end a chunk: "IN THE"); a mixed word ("AI-র") is not one. */
+const shortLatin = (t: StudioToken, n: number): boolean => t.script === 'latin' && (t.text.match(/\p{L}/gu)?.length ?? 0) <= n && wordScripts(t).size === 1
 
 /** A few words (§8.2): a chunk ends at `words` words, a sentence end, a pause of 0.15 s or more, or the line limits; 1–2-letter Latin words join the next. */
 function fewWordsChunks(tokens: readonly StudioToken[], meter: ReturnType<typeof lineMeter>, words: number, room: number, maxChars: number, per: number, language: string | undefined): [number, number][][] {
@@ -576,9 +576,10 @@ export function studioLayout(
       }
       displayOrder(words, x, dirs, rtl ? 'r' : 'l')
       // Each line is as tall as the tallest script on it needs (§0.2: Bangla 1.4), so a Bangla word
-      // among English ones keeps its vowel signs clear of the next line.
+      // among English ones keeps its vowel signs clear of the next line, and so does the Bangla of a
+      // mixed word ("Chrome-টি", Latin by its first letter).
       const top = Math.max(...words.map((wd) => wd.px))
-      const tall = Math.max(lhMul, ...words.map((wd) => scriptLineHeight(tokens[wd.token].script, studio.text.lineHeight)))
+      const tall = Math.max(lhMul, ...words.flatMap((wd) => [...wordScripts(tokens[wd.token])].map((sc) => scriptLineHeight(sc, studio.text.lineHeight))))
       return { words, width: x, height: top * tall, px: m.px * k, ...(reach > 0 ? { reach } : {}) }
     })
     const first = group[0][0]

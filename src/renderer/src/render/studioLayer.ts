@@ -26,14 +26,14 @@
 import { CAPTION_FONT, CAPTION_SAFE, captionIndexAt, viewAt } from '../../../shared/captions/layout'
 import { burnedSegments, captionLanguage } from '../../../shared/captions/captionTracks'
 import { speakerColors, textOn } from '../../../shared/captions/colors'
-import { wordFace } from '../../../shared/captions/fontStack'
+import { trackingFor, wordFace } from '../../../shared/captions/fontStack'
 import { marksByCaption } from '../../../shared/captions/marks'
 import { captionPoses, clipsKey, EASE, flashSafeChunks, seedOf, typewriterClip, type ChunkPose, type MarkBox, type WordPose } from '../../../shared/captions/motion'
 import { replacedAt } from '../../../shared/captions/replaced'
 import { speakersOf, STEM_SPEAKERS } from '../../../shared/captions/speakers'
 import { captionObstacles, fitChunk, placeStudio, studioChunkAt, studioLayout, type CaptionObstacles, type StudioChunk, type StudioFace, type StudioLayout, type StudioLine, type StudioWordBox } from '../../../shared/captions/studioLayout'
 import { effectiveStudio, SHADOW_CHIPS } from '../../../shared/captions/studioPresets'
-import { prefixDrawsSame, scriptsIn, type ScriptTag, type StudioToken } from '../../../shared/captions/words'
+import { prefixDrawsSame, scriptsIn, wordScripts, type ScriptTag, type StudioToken } from '../../../shared/captions/words'
 import type { Rect } from '../../../shared/engine/layout'
 import { isTall } from '../../../shared/engine/reframeData'
 import { DEFAULT_ZOOM_SETTINGS } from '../../../shared/engine/zoom'
@@ -160,8 +160,11 @@ function layoutOf(i: LayoutInput): StudioLayout {
   const key = [i.w, i.h, areaKey(i.area), fontGeneration(), clipsKey(clips), i.language ?? '', i.showSpeaker, i.spoken, digits ?? '', marks.map((m) => `${m.from}-${m.to}-${m.tone ?? 1}`).join(','), idOf(i.project.fonts), forced ?? ''].join('|')
   const hit = layouts.get(i.seg)
   if (hit && hit.studio === i.studio && hit.key === key) return hit.layout
-  const faceOf = (token: StudioToken, role: 'text' | 'emphasis'): StudioFace =>
-    wordFace(i.studio, role, token.script, { language: i.language, scripts: i.scripts, fonts: i.project.fonts, downloaded: catalogFontReady })
+  // A mixed word ("Chrome-টি") draws with no letter spacing when any of its letters takes none, so its Bangla stays joined (§6.6).
+  const faceOf = (token: StudioToken, role: 'text' | 'emphasis'): StudioFace => {
+    const face = wordFace(i.studio, role, token.script, { language: i.language, scripts: i.scripts, fonts: i.project.fonts, downloaded: catalogFontReady })
+    return face.tracking && [...wordScripts(token)].some((sc) => trackingFor(sc, face.tracking) === 0) ? { ...face, tracking: 0 } : face
+  }
   const raw = studioLayout(i.seg, i.studio, i.w, i.h, measureOn(i.ctx), { faceOf, area: i.area, marks, language: i.language, showSpeaker: i.showSpeaker, spoken: i.spoken, digits })
   const room = { area: i.area, ...(forced ? { forced } : {}), ...(i.studio.layout.legacyAnchor ? { legacyAnchor: legacyAnchorOf(i.w, i.h, i.area) } : {}) }
   const layout = raw.chunks.length ? flashSafeChunks(raw, clips, i.w * i.h, (c) => chunkArea(i.studio, raw, raw.chunks[c]), (c) => fitChunk(raw, c, i.studio, i.w, i.h, room)) : raw
@@ -722,6 +725,8 @@ function paintOf(studio: CaptionStudio, wi: WordInfo, state: WordState): WordPai
   const ex = edge.extrude
   const extrude = ex && ex.steps > 0 ? { steps: ex.steps, x: ex.x * em * grow, y: ex.y * em * grow, color: (lit && !emph ? theme.spokenExtrude : undefined) ?? theme.extrude ?? theme.shadow } : null
   const split = edge.split && theme.split ? { d: edge.split * em * grow, left: theme.split[0], right: theme.split[1] } : null
+  // A mixed word's sticker ("Chrome-টি") makes room for its Bangla vowel signs as the Bangla words' do.
+  const top = box.kind === 'word' ? Math.max(0, ...[...wordScripts({ text: wi.box.text, script: wi.token.script })].map((sc) => STICKER_TOP[sc] ?? 0)) : 0
   const sticker =
     box.kind === 'word'
       ? {
@@ -732,7 +737,7 @@ function paintOf(studio: CaptionStudio, wi: WordInfo, state: WordState): WordPai
           padY: box.padY * em * grow,
           radius: box.radius * em * grow,
           shadow: box.shadow && box.shadow.alpha > 0 ? { x: box.shadow.x * em * grow, y: box.shadow.y * em * grow, blur: box.shadow.blur * em * grow, color: rgba(theme.shadow, box.shadow.alpha) } : null,
-          ...(STICKER_TOP[wi.token.script] ? { top: STICKER_TOP[wi.token.script] } : {})
+          ...(top > 0 ? { top } : {})
         }
       : null
   const m = studio.motion
@@ -1240,7 +1245,8 @@ const graphemes = typeof Intl !== 'undefined' && 'Segmenter' in Intl ? new Intl.
 function prefixAdvances(c: Ctx, info: WordInfo): { n: number; adv?: number[] } {
   const parts = graphemes ? [...graphemes.segment(info.box.text)].map((g) => g.segment) : Array.from(info.box.text)
   const n = parts.length
-  if (!prefixDrawsSame(info.token.script)) return { n }
+  // Every script of the word must draw a prefix the same: a mixed word's Bangla does not ("Chrome-টি").
+  if (![...wordScripts({ text: info.box.text, script: info.token.script })].every(prefixDrawsSame)) return { n }
   const font = faceFont(info.box.face, info.box.px)
   const key = `${fontGeneration()}|${font}|${info.box.face.tracking}|${info.box.text}`
   let adv = advances.get(key)

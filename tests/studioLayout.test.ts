@@ -65,6 +65,11 @@ describe('chunk modes (test 9)', () => {
     expect(chunkTexts(lay(timed('Click IN THE big box now'), look('one-word')))).toEqual(['CLICK', 'IN THE', 'BIG BOX', 'NOW'])
   })
 
+  it('one word: a mixed word (AI-র) is not a short Latin word and stands alone', () => {
+    expect(chunkTexts(lay(timed('AI-র ব্যবহার বাড়ছে'), look('one-word')))).toEqual(['AI-র', 'ব্যবহার', 'বাড়ছে'])
+    expect(chunkTexts(lay(timed('AI ব্যবহার বাড়ছে'), look('one-word')))).toEqual(['AI ব্যবহার', 'বাড়ছে'])
+  })
+
   it('one word: Chinese words of 2–4 characters', () => {
     const l = studioLayout({ id: 'c', start: 0, end: 3, text: '我们今天学习如何导出视频' }, look('one-word'), 1080, 1920, measure, { faceOf: () => FACE, language: 'zh' })
     for (const t of chunkTexts(l)) expect([...t].length, t).toBeGreaterThanOrEqual(2)
@@ -297,6 +302,19 @@ describe('chunk modes (test 9)', () => {
     const words = at('Windows-এ Chrome খুলুন').chunks[0].lines[0].words
     const gap = words[1].x - (words[0].x + words[0].w)
     expect(gap).toBeCloseTo(0.55 * words[0].px + ((1.14 * (1 + 0.08 * bp.motion.strength) - 1) * words[0].w) / 2, 9)
+  })
+
+  it('gives a line with a mixed word (Chrome-টি) the Bangla line height, as a Bangla word on it would (§6.6)', () => {
+    /** The height of the line holding `word`, per px of its largest word. */
+    const tall = (text: string, word: string): number => {
+      const lines = lay(timed(text), look('bold-pop'), 1080, 1920).chunks.flatMap((c) => c.lines)
+      const line = lines.find((l) => l.words.some((w) => w.text === word))!
+      return line.height / Math.max(...line.words.map((w) => w.px))
+    }
+    expect(tall('open Chrome now', 'CHROME')).toBeCloseTo(1.05, 9)
+    expect(tall('open কিন্তু now', 'কিন্তু')).toBeCloseTo(1.4, 9)
+    // Latin by its first letter, its টি reaches as high as a Bangla word's vowel signs.
+    expect(tall('open Chrome-টি now', 'CHROME-টি')).toBeCloseTo(1.4, 9)
   })
 
   it('raises the line height for Bangla captions', () => {

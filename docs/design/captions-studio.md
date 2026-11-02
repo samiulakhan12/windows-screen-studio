@@ -1721,8 +1721,11 @@ Montserrat, Oswald and Nunito.
 3. The other bundled script fonts (for mixed text such as an English product name in Bangla).
    For Bangla this is the look's Bangla font (§0.2), else Noto Sans Bengali, so the Bangla of a
    mixed word such as "Windows-এ" draws like the Bangla words around it. A word with any Bangla
-   letter also follows Bangla's limits (`sizeScript`): the thin outline, and ×1.14 at most when
-   emphasised or spoken, in the layout's room, the motion and the paint alike.
+   letter also follows Bangla's limits (`sizeScript`): the thin outline, ×1.14 at most when
+   emphasised or spoken, in the layout's room, the motion and the paint alike, and no spoken tilt.
+   Whatever any of a word's scripts needs, it gets (`wordScripts`: "Chrome-টি" is Latin and Bangla,
+   "Windows-में" Latin and Devanagari): its line's height, its sticker's top, no letter spacing, and
+   the typewriter's equal steps; and it is never a short Latin word that joins the next ("AI-র").
 4. `FlownCat-noto-color-emoji`: always, after the text fonts. Without it, emoji fall back to
    Segoe UI Emoji (tested: the system font took over).
 5. The language's Windows fonts: Nirmala UI (Tamil, Telugu and other Indic scripts), Leelawadee UI
