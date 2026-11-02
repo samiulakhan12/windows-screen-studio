@@ -108,6 +108,24 @@ describe('Make my captions great (test 42)', () => {
     expect(settleCaptionAuto(project, p).captionMarks!.find((m) => m.id === 'mine')).toMatchObject({ from: 6, to: 6, text: 'Revenue' })
   })
 
+  it('an automatic mark the tidy moves stays automatic through the store’s settle', () => {
+    const p = studioProject({
+      segments: captions(['We will in twenty five days ship the new Export button.', 'It saves time for everyone here.']),
+      captionMarks: [{ id: 'm-a', caption: 'c0', from: 9, to: 9, text: 'Export', auto: true }]
+    })
+    // Key words unticked: the run keeps the automatic marks there are and only tidies.
+    for (const by of ['great', 'polish'] as const) {
+      const { project, summary } = run(p, WIDE, { emphasis: false, style: false }, by)
+      expect(project.transcript!.segments[0].text).toBe('We will in 25 days ship the new Export button.')
+      expect(summary.emphasised).toBe(1)
+      const settled = settleCaptionAuto(project, p)
+      expect(settled.captionMarks).toHaveLength(1)
+      expect(settled.captionMarks![0]).toMatchObject({ caption: 'c0', from: 8, to: 8, text: 'Export', auto: true })
+      // A later run's tidy finds nothing to change: the same project.
+      expect(run(settled, WIDE, { emphasis: false, style: false }, by).project).toBe(settled)
+    }
+  })
+
   it('emphasis on a legacy look makes the Studio twin in the same update', () => {
     const p = studioProject({ segments: captions(TEXTS), captions: { ...DEFAULT_CAPTIONS, preset: 'boxed', picked: true } })
     const { project } = run(p, TALL, { style: false })

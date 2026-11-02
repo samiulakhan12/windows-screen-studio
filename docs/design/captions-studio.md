@@ -2567,7 +2567,8 @@ update itself made or moved already names the new captions' words and is only ch
 captions great (and Polish's Caption look) tidies first, moves the marks and anchors already there
 onto the tidied words, and picks its emphasis, keywords and emoji on the tidied text; the AI's
 `marks` task is asked on the captions as that tidy leaves them, so its word indexes are the
-planner's ("twenty five" sent as "25").
+planner's ("twenty five" sent as "25"). An automatic mark that tidy moves gets a new id from its
+new words, so the settle reads it as automation's change and it stays automatic (§11.8 rule 3).
 
 Per-caption positions (`captionPlaces`) follow their caption the same way: after a split both
 halves keep the position, after a merge the merged caption keeps the first one's, and a caption

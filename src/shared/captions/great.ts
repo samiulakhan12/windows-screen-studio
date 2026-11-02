@@ -199,7 +199,7 @@ export function* planCaptionsGreatSteps(input: GreatInput, options: GreatOptions
     const t = tidyCaptions(p, { ...input.cleanup, ai: false, words: input.words })
     // The marks and anchors there move onto the tidied words ("twenty five" is now "25"): the
     // steps below pick words of the tidied text, and the store's settle moves only what the input had.
-    p = remapAnchors(t.project, start)
+    p = renewMovedMarks(remapAnchors(t.project, start), start)
     summary.tidied = t.changed
     summary.bleeped = t.bleeped
   }
@@ -262,6 +262,27 @@ export function* planCaptionsGreatSteps(input: GreatInput, options: GreatOptions
   summary.chapters = autoTitles.filter((c) => c.auto?.by === 'chapter').length
   summary.quotes = autoTitles.filter((c) => c.auto?.by === 'quote').length
   return { project: deepEqual(p, start) ? start : p, summary }
+}
+
+/**
+ * The automatic marks the tidy moved, under new ids from their new words. The store's settle reads
+ * a mark that kept its id and `auto` but changed as a hand edit (§11.8 rule 3); a new id is
+ * automation's own change, so the mark stays automatic.
+ */
+function renewMovedMarks(p: Project, start: Project): Project {
+  const was = new Map((start.captionMarks ?? []).map((m) => [m.id, m]))
+  const moved = (m: CaptionMark): boolean => !!m.auto && was.has(m.id) && !deepEqual(was.get(m.id), m)
+  if (!p.captionMarks?.some(moved)) return p
+  const taken = new Set([...was.keys(), ...p.captionMarks.map((m) => m.id)])
+  const captionMarks = p.captionMarks.map((m) => {
+    if (!moved(m)) return m
+    const base = markId(m.caption, m.from, m.text)
+    let id = base
+    for (let k = 2; taken.has(id); k++) id = `${base}~${k}`
+    taken.add(id)
+    return { ...m, id }
+  })
+  return { ...p, captionMarks }
 }
 
 function withoutMarks(p: Project): Project {
