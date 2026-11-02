@@ -133,7 +133,7 @@ export function descendants(el: El): El[] {
   return found
 }
 
-/** A stand-in DOM node for a ref: focus is recorded; querySelector(All) finds `[attr="value"]`, `[attr]` or `.class` among its elements. */
+/** A stand-in DOM node for a ref: focus is recorded, `disabled` is its element's; querySelector(All) finds `[attr="value"]`, `[attr]` or `.class` among its elements. */
 function standIn(el: El): Record<string, unknown> {
   const match = (sel: string) => (d: El): boolean => {
     const attr = /^\[([\w-]+)(?:=["']([^"']*)["'])?\]$/.exec(sel)
@@ -141,9 +141,12 @@ function standIn(el: El): Record<string, unknown> {
     const cls = /^\.([\w-]+)$/.exec(sel)
     return !!cls && String(d.props.className ?? '').split(/\s+/).includes(cls[1])
   }
-  const node = (d: El): Record<string, unknown> => ({ el: d, focus: () => focused.push(d), dataset: {}, getBoundingClientRect: () => ({ left: 0, top: 0, width: 0, height: 0 }) })
+  const node = (d: El): Record<string, unknown> => ({ el: d, focus: () => focused.push(d), disabled: !!d.props.disabled, dataset: {}, getBoundingClientRect: () => ({ left: 0, top: 0, width: 0, height: 0 }) })
   const stand: Record<string, unknown> = {
     el,
+    get disabled(): boolean {
+      return !!(stand.el as El).props.disabled
+    },
     clientWidth: 280,
     focus: () => focused.push(stand.el as El),
     contains: () => false,

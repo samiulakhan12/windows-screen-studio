@@ -16,6 +16,7 @@ import { AI_PROVIDERS_CHANGED_EVENT, OPEN_SETTINGS_EVENT } from '../../settings/
 import { ipcMessage, onSectionRequest, takeSectionRequest } from '../captionItems'
 import { useEditor } from '../context'
 import { Section } from '../controls'
+import { lastInputWasKey } from '../focus'
 import { useReturnFocus } from '../returnFocus'
 
 /**
@@ -76,13 +77,17 @@ export function LanguagesSection({ project }: { project: Project }): JSX.Element
   const [error, setError] = useState<string | null>(null)
   const [status, setStatus] = useState('')
   const select = useRef<HTMLSelectElement>(null)
+  const translateButton = useRef<HTMLButtonElement>(null)
+  const rowsBox = useRef<HTMLDivElement>(null)
   const focusSelect = useRef(false)
-  // Closed with the keyboard (Close, or Translate once it is done), the form gives the focus back to Add a language.
+  // Closed with Close from the keyboard, the form gives the focus back to Add a language.
   const back = useReturnFocus<HTMLDivElement>(adding)
-  const close = (keyed?: boolean): void => {
-    back.closing(keyed)
+  const close = (): void => {
+    back.closing()
     setAdding(false)
   }
+  // A translation started with the keyboard: Translate and Translate again are off while it runs, so the focus falls to the page.
+  const landing = useRef<{ language: string; again: boolean } | null>(null)
   const live = useRef(true)
   const running = useRef<Job | null>(null)
   const group = useId()
@@ -127,9 +132,9 @@ export function LanguagesSection({ project }: { project: Project }): JSX.Element
       setStatus(`The ${languageName(code)} captions are up to date`)
       return
     }
-    const keyed = !again && back.byKey()
     const mine: Job = { language: code, count: sent.length, cancelled: false }
     running.current = mine
+    landing.current = lastInputWasKey() ? { language: code, again } : null
     setJob(mine)
     setError(null)
     setStatus('')
@@ -157,7 +162,7 @@ export function LanguagesSection({ project }: { project: Project }): JSX.Element
       setError("Could not translate: the provider changed the captions' timing or left some out.")
       return
     }
-    close(keyed)
+    setAdding(false)
     setStatus(`${again ? 'Translated again' : 'Translated'} ${sent.length} ${sent.length === 1 ? 'caption' : 'captions'} into ${languageName(code)}`)
   }
 
@@ -177,11 +182,31 @@ export function LanguagesSection({ project }: { project: Project }): JSX.Element
     const track = trackOf(project, code)
     return list.find((p) => p.kind === track?.by) ?? list[0] ?? null
   }
+  /** Track row `code`'s Translate again when it can take the focus, else its Show on the video radio. */
+  const rowControl = (code: string): HTMLElement | null => {
+    const name = `${group}-track-${rows.findIndex((r) => r.language === code)}`
+    const again = rowsBox.current?.querySelector<HTMLButtonElement>(`[id="${name}-again"]`)
+    return again && !again.disabled ? again : (rowsBox.current?.querySelector<HTMLElement>(`[id="${name}-show-radio"]`) ?? null)
+  }
+  // When it ends (done, failed or cancelled) with the focus still on the page, the keyboard goes
+  // back: to Translate while the form stays open, to Add a language once it closed (or to the new
+  // row when the project's translations are full), to its row for Translate again. Focus moved
+  // elsewhere, or a click since, is left alone.
+  useEffect(() => {
+    const to = landing.current
+    if (!to || job) return
+    landing.current = null
+    const el = document.activeElement
+    if (!lastInputWasKey() || (el && el !== document.body)) return
+    const translateOn = translateButton.current && !translateButton.current.disabled ? translateButton.current : select.current
+    const opener = back.opener.current && !back.opener.current.disabled ? back.opener.current : null
+    ;(to.again ? rowControl(to.language) : adding ? translateOn : (opener ?? rowControl(to.language)))?.focus()
+  })
 
   return (
     <div data-testid="caption-languages">
       <Section title="Languages">
-        <div role="radiogroup" aria-label="Captions drawn on the video" className="caption-list">
+        <div ref={rowsBox} role="radiogroup" aria-label="Captions drawn on the video" className="caption-list">
           {rows.map((row, i) => {
             const code = row.language
             const provider = code ? againWith(code) : null
@@ -202,6 +227,7 @@ export function LanguagesSection({ project }: { project: Project }): JSX.Element
                 <div className="row start">
                   <label className="toggle">
                     <input
+                      id={`${name}-show-radio`}
                       type="radio"
                       name={`${group}-shown`}
                       data-testid="track-show"
@@ -218,6 +244,7 @@ export function LanguagesSection({ project }: { project: Project }): JSX.Element
                   {code && (
                     <>
                       <button
+                        id={`${name}-again`}
                         className="btn small"
                         data-testid="track-retranslate"
                         aria-label={`Translate the ${languageName(code)} captions again`}
@@ -294,7 +321,7 @@ export function LanguagesSection({ project }: { project: Project }): JSX.Element
             </div>
             {chosenVia && <p className="hint">The captions' text is sent to {providerName(chosenVia)} with your key; their timing stays.</p>}
             <div className="row start">
-              <button className="btn small primary" data-testid="track-translate" disabled={!chosenLanguage || !chosenVia || !!job} onClick={() => chosenVia && void translate(chosenLanguage, chosenVia, false)}>
+              <button ref={translateButton} className="btn small primary" data-testid="track-translate" disabled={!chosenLanguage || !chosenVia || !!job} onClick={() => chosenVia && void translate(chosenLanguage, chosenVia, false)}>
                 Translate
               </button>
               <button className="btn small ghost" disabled={!!job} onClick={() => close()}>

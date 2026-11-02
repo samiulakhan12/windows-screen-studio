@@ -57,10 +57,11 @@ export function CleanupSection({ project }: { project: Project }): JSX.Element {
   const [heard, setHeard] = useState('')
   const aiBox = useRef<HTMLInputElement>(null)
   const termBox = useRef<HTMLInputElement>(null)
-  // Closed with the keyboard, the word form gives the focus back to Add a word.
-  const wordForm = useReturnFocus<HTMLFormElement>(addingWord)
-  const closeWordForm = (): void => {
-    wordForm.closing()
+  const firstRemove = useRef<HTMLButtonElement>(null)
+  // Closed with the keyboard, the word form gives the focus back to Add a word, or to the new word's Remove once the list is full.
+  const wordForm = useReturnFocus<HTMLFormElement>(addingWord, () => firstRemove.current)
+  const closeWordForm = (keyed?: boolean): void => {
+    wordForm.closing(keyed)
     setAddingWord(false)
   }
   const focusAi = useRef(false)
@@ -178,17 +179,18 @@ export function CleanupSection({ project }: { project: Project }): JSX.Element {
     setStatus('Tidy captions was cancelled; nothing was changed.')
   }
 
-  const saveWords = (next: readonly WordListEntry[]): void => {
-    void saveWordList(next).catch((err: unknown) => setError(`The word list could not be saved: ${ipcMessage(err)}`))
-  }
-  const addWord = (): void => {
+  const saveWords = (next: readonly WordListEntry[]): Promise<void> =>
+    saveWordList(next).catch((err: unknown) => setError(`The word list could not be saved: ${ipcMessage(err)}`))
+  const addWord = async (): Promise<void> => {
     const t = term.replace(/\s+/g, ' ').trim()
     if (!t) return
+    const keyed = wordForm.byKey()
     const rest = words.filter((w) => w.term.toLowerCase() !== t.toLowerCase())
-    saveWords([{ term: t, heard: heardForms(heard) }, ...rest])
+    // Saved before the form closes, so Add a word is already off when this word fills the list.
+    await saveWords([{ term: t, heard: heardForms(heard) }, ...rest])
     setTerm('')
     setHeard('')
-    closeWordForm()
+    closeWordForm(keyed)
   }
 
   return (
@@ -204,13 +206,18 @@ export function CleanupSection({ project }: { project: Project }): JSX.Element {
         <div className="field" data-testid="cleanup-words">
           <span>Word list</span>
           <ul className="caption-list" aria-label="Word list">
-            {words.map((w) => (
+            {words.map((w, i) => (
               <li key={w.term} className="caption-row">
                 <span className="caption-text">
                   {w.term}
                   {w.heard.length > 0 && <span className="hint"> — also heard as: {w.heard.join(', ')}</span>}
                 </span>
-                <button className="btn small ghost" aria-label={`Remove ${w.term} from the word list`} onClick={() => saveWords(words.filter((x) => x !== w))}>
+                <button
+                  ref={i === 0 ? firstRemove : undefined}
+                  className="btn small ghost"
+                  aria-label={`Remove ${w.term} from the word list`}
+                  onClick={() => void saveWords(words.filter((x) => x !== w))}
+                >
                   Remove
                 </button>
               </li>
@@ -222,7 +229,7 @@ export function CleanupSection({ project }: { project: Project }): JSX.Element {
               className="captions-suggestion"
               onSubmit={(e) => {
                 e.preventDefault()
-                addWord()
+                void addWord()
               }}
             >
               <label className="field">
@@ -237,7 +244,7 @@ export function CleanupSection({ project }: { project: Project }): JSX.Element {
                 <button type="submit" className="btn small primary" disabled={!term.trim()}>
                   Add
                 </button>
-                <button type="button" className="btn small ghost" onClick={closeWordForm}>
+                <button type="button" className="btn small ghost" onClick={() => closeWordForm()}>
                   Cancel
                 </button>
               </div>

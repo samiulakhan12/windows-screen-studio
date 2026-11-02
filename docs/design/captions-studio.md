@@ -657,7 +657,14 @@ Keys inside panels: `Ctrl+B` and `Ctrl+Shift+B` in the Transcript word list (§2
 - A form that opens in place of its button (**Save as my style**, **Add a word**, **Add a
   language**) focuses its first field (Save as my style's name selected; Escape there cancels).
   Closed with the keyboard (Save, Cancel, Close, Escape, or Translate once it is done), the focus
-  goes back to that button, not to the page, where typed keys would run editor shortcuts.
+  goes back to that button, not to the page, where typed keys would run editor shortcuts. When the
+  button has turned off (the 8th translation, the 500th word), it goes to the new row's **Show on
+  the video** or the new word's **Remove**.
+- **Translate** and **Translate again** are off while a translation runs. One started with the
+  keyboard gives the focus back when it ends: done, to Add a language as above; failed or
+  cancelled, to **Translate**; from Translate again, to that row's Translate again, or its Show on
+  the video once it is up to date. Focus moved elsewhere meanwhile stays there, and a click since
+  leaves it where the click left it.
 - Each **Show on the video** radio is named with its row: "Show on the video, Bengali ·
   translated with Gemini". All four arrow keys move between them (Left and Right do not step the
   playhead there).
