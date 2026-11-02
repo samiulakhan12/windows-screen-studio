@@ -65,12 +65,16 @@ export function fontBadges(font: CatalogFont): { coverage: string; oneWeight: bo
   return { coverage: words.join(' · '), oneWeight: Array.isArray(font.weights) && font.weights.length === 1 }
 }
 
-/** "Doesn't have Bengali letters: Flown uses Noto Sans Bengali for them", or null when the font has the language's letters. */
-export function coverageNote(font: CatalogFont, language: string | undefined): string | null {
+/**
+ * "Doesn't have Bengali letters: Flown uses Hind Siliguri for them", or null when the font has the
+ * language's letters. `bangla` is the look's Bangla font (§0.2), which draws the Bangla the font lacks.
+ */
+export function coverageNote(font: CatalogFont, language: string | undefined, bangla?: string): string | null {
   const need = language ? LANGUAGE_LETTERS[language.split('-')[0].toLowerCase()] : undefined
   if (!need || font.coverage.includes(need.coverage)) return null
   // The font the captions draw those letters with (Anton → Oswald for Russian), as partnerFor picks it.
-  const partnerId = need.partner ?? catalogId(partnerFor(`${CATALOG_PREFIX}${font.id}`, [need.coverage]))
+  const own = need.coverage === 'bengali' ? catalogId(bangla) : null
+  const partnerId = own ?? need.partner ?? catalogId(partnerFor(`${CATALOG_PREFIX}${font.id}`, [need.coverage]))
   const partner = (partnerId && catalogFont(partnerId)?.family) ?? 'another font'
   return `Doesn't have ${need.name} letters: Flown uses ${partner} for them`
 }
@@ -200,6 +204,7 @@ export function FontPicker({
   label = 'Font',
   catalogue = false,
   language,
+  bangla,
   testId = 'font-picker',
   defaultLabel
 }: {
@@ -210,6 +215,8 @@ export function FontPicker({
   catalogue?: boolean
   /** The captions' language, for the coverage note. */
   language?: string
+  /** The look's Bangla font (§0.2), which the coverage note names for Bangla. */
+  bangla?: string
   testId?: string
   /** The first entry's name (default: "Default (Segoe UI)"). */
   defaultLabel?: string
@@ -225,7 +232,7 @@ export function FontPicker({
   const catId = catalogue ? catalogId(value) : null
   const cat = catId ? catalogFont(catId) : undefined
   const badges = cat ? fontBadges(cat) : null
-  const note = cat ? coverageNote(cat, language) : null
+  const note = cat ? coverageNote(cat, language, bangla) : null
 
   const addFont = async (): Promise<void> => {
     if (busy) return

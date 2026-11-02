@@ -338,7 +338,7 @@ buttons do not set it.
 
 | Control (`data-testid`) | Copy | Values |
 |---|---|---|
-| Font menu `caption-font` | **Font** | Groups "Caption fonts" (bundled), "Your brand fonts" (project and brand kit), "Download" (Chinese, Japanese, Korean, with size). Each name is drawn in its own font. Badges: script coverage ("Latin · Cyrillic · Vietnamese"), "One weight". A font without the caption language's letters shows "Doesn't have Bengali letters: Flown uses Noto Sans Bengali for them", naming the font the captions draw them with (for Russian, Ukrainian and Vietnamese the font's own partner of §6.6: Anton → Oswald). |
+| Font menu `caption-font` | **Font** | Groups "Caption fonts" (bundled), "Your brand fonts" (project and brand kit), "Download" (Chinese, Japanese, Korean, with size). Each name is drawn in its own font. Badges: script coverage ("Latin · Cyrillic · Vietnamese"), "One weight". A font without the caption language's letters shows "Doesn't have Bengali letters: Flown uses Hind Siliguri for them", naming the font the captions draw them with (for Bangla the look's own Bangla font of §0.2, Hind Siliguri in Subtitle, else Noto Sans Bengali; for Russian, Ukrainian and Vietnamese the font's own partner of §6.6: Anton → Oswald). |
 | Select `caption-weight` | **Weight** | Only the weights the font has: Light 300, Regular 400, Medium 500, Semibold 600, Bold 700, Extra bold 800, Black 900. |
 | Slider `caption-size` | **Size** `8.5%` | 2.5–22% of the shorter side, step 0.1%. In a tall frame it shows and sets the size drawn there (`size × tall`, §4.1). Merge key `caption-size`. |
 | Chips `caption-case` | **Case**: **As written** · **CAPITALS** · **lowercase** | Hidden for scripts without case. |

@@ -167,6 +167,7 @@ export function TextControls(props: { project: Project }): JSX.Element {
         value={studio.text.font === 'system' ? undefined : studio.text.font}
         catalogue
         language={project.transcript?.language}
+        bangla={studio.text.scripts?.bengali?.font}
         testId="caption-font"
         apply={(p, id) => ({ ...p, captions: editStudio(captionsOf(p), (s) => ({ ...s, text: { ...s.text, font: id ?? 'system' } })) })}
       />
@@ -694,6 +695,7 @@ export function EmphasisControls(props: { project: Project }): JSX.Element {
         value={studio.emphasis.font}
         catalogue
         language={project.transcript?.language}
+        bangla={studio.text.scripts?.bengali?.font}
         testId="caption-emphasis-font"
         defaultLabel="Same as the words"
         apply={(p, font) =>
