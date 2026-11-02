@@ -534,6 +534,30 @@ async function main() {
       h.assert((await progressOf(win)) === `0 of ${total} reviewed`, 'every row listed')
       const last = `cut:s${cuts - 1}`
 
+      // The scroll bar dragged to the bottom, the rows there not measured yet: once they are, the
+      // view is still at the end of the list and the last row shows whole.
+      await settled(win)
+      await win.$eval('.review-list', (e) => {
+        e.scrollTop = e.scrollHeight
+      })
+      let bottom = null
+      for (let i = 0; i < 40; i++) {
+        await h.sleep(60)
+        const now = await win.evaluate(() => {
+          const ul = document.querySelector('.review-list')
+          const size = ul.querySelector('[data-testid="review-row"]').getAttribute('aria-setsize')
+          const li = ul.querySelector(`[aria-posinset="${size}"]`)
+          const b = ul.getBoundingClientRect()
+          return { drawn: !!li, below: li ? Math.round(li.getBoundingClientRect().bottom - b.bottom) : null, atEnd: ul.scrollTop + ul.clientHeight >= ul.scrollHeight - 1, top: ul.scrollTop }
+        })
+        if (bottom && same(now, bottom)) break
+        bottom = now
+      }
+      h.assert(bottom.drawn && bottom.below <= 0 && bottom.atEnd, `the scroll bar at the bottom shows the last row whole: ${JSON.stringify(bottom)}`)
+      await win.$eval('.review-list', (e) => {
+        e.scrollTop = 0
+      })
+
       // A move from the keyboard ends with the row fully in view once the rows drawn are measured:
       // End, End again on the row that has the focus, K (on to the first row), Home, End then P,
       // and an arrow held from the end.

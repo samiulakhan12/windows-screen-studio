@@ -583,10 +583,10 @@ interface ListProps {
  * rows near the visible area and the focused row, each at its place over a block the height of the
  * whole list (the scroll bar is the whole list's): rows drawn are measured, those not drawn yet
  * count as the mean height, and when rows above the view turn out taller or shorter the view keeps
- * its place on the focused row (else the first row in view), judged from where the last frame had
- * scrolled to: the block takes its new height only after that is read, so a shorter list has not
- * pulled the scroll position back yet. A row moved to (`reveal`) is then brought fully into view
- * once the rows drawn are all measured.
+ * its place on the focused row (else the first row in view; a view at the end of the list stays at
+ * its end), judged from where the last frame had scrolled to: the block takes its new height only
+ * after that is read, so a shorter list has not pulled the scroll position back yet. A row moved to
+ * (`reveal`) is then brought fully into view once the rows drawn are all measured.
  */
 function ReviewList({ list, indexOf, statuses, times, active, reveal, onKeyDown, onChoose, onAct, onFocusRow, setRef }: ListProps): JSX.Element {
   const n = list.length
@@ -643,6 +643,13 @@ function ReviewList({ list, indexOf, statuses, times, active, reveal, onKeyDown,
       const at = inView ? a : rowAt(before.places, top)
       const now = before.list[at] ? indexOf.get(before.list[at].key) : undefined
       if (now !== undefined) to = top + places[now] - before.places[at]
+      // A view at the end of the list (the scroll bar dragged to the bottom) stays at its end, unless
+      // that would take the focused row, in view, out of it.
+      if (bottom >= before.places[before.list.length] - ROW_GAP - 1) {
+        const end = Math.max(0, places[n] - ROW_GAP - el.clientHeight)
+        const f = inView ? now : undefined
+        if (f === undefined || (places[f] >= end - 0.5 && places[f + 1] - ROW_GAP <= end + el.clientHeight + 0.5)) to = end
+      }
     }
     const tall = `${places[n] - ROW_GAP}px`
     if (tall !== height.current) {
