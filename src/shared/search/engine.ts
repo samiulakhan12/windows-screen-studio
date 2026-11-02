@@ -25,8 +25,8 @@ const ALL_TERMS_BONUS = 0.5
 /** Dead terms tolerated before the vocabulary is made again. */
 const COMPACT_MIN_DEAD = 2000
 
-/** Scripts written without spaces: a one-character word is a whole word there, matched by prefix everywhere. */
-const UNSPACED_RE = /[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Thai}\p{Script=Lao}\p{Script=Khmer}\p{Script=Myanmar}]/u
+/** Han, where one character is a whole word, matched by prefix everywhere (a Thai or kana letter is only a letter). */
+const HAN_RE = /\p{Script=Han}/u
 
 /**
  * A recording in the index: every unit's terms and their ranges in one packed array each (units
@@ -177,7 +177,7 @@ export class SearchIndex {
     const ids: number[] = []
     const qLength = codePoints(q)
     const typos = allowedTypos(q, qLength)
-    const shortPrefix = qLength === 1 && !UNSPACED_RE.test(q)
+    const shortPrefix = qLength === 1 && !HAN_RE.test(q)
     for (let tid = 0; tid < n; tid++) {
       if (this.postings[tid].size === 0) continue
       const t = this.terms[tid]

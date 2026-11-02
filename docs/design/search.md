@@ -138,7 +138,8 @@ the index's **vocabulary** (each distinct term once):
 A 1- or 2-code-point query term is matched only exactly and by prefix (no typos), and a 1-code-point
 term by prefix only in `name`, `file`, `title` and `chapter` units, so typing the first letter
 does not list every caption with a word starting with "a". Han characters are single code points,
-so for them a 1-character term matches exactly in every unit.
+so for them a 1-character term matches by prefix in every unit; a first Thai, Lao, Khmer, Myanmar or
+kana letter is only a letter and follows the rule.
 
 The vocabulary scan uses the bounded distance with an early exit and skips terms whose length
 cannot be within the allowed distance.
@@ -428,6 +429,9 @@ No new dependency: `Intl.Segmenter` is in Electron's ICU, and the rest is small 
   breaker split it into pieces, one of which starts no word. Its pieces are now joined again (§2.3).
 - A recording holding the words as typed is never ranked below one that only holds typo neighbours
   ("come", "model" for `code`), however many of its captions hold them (§2.6).
+- A first Thai, Lao, Khmer, Myanmar or kana letter matched by prefix in every caption and note, so
+  the first key typed listed nearly every recording in that language. Only a Han character is a word
+  on its own; any other one letter matches by prefix only in names, titles and chapters (§2.5).
 - The live region stays quiet while the index is built; Ctrl+F does nothing on an empty library.
 - Writing the file is synchronous, like every state file (37–55 ms for 500 recordings, at most every
   3 s and only after a change); an asynchronous write is left for later.
