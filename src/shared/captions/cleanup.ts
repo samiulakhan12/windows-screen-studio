@@ -378,6 +378,8 @@ interface TeamList {
   stems: readonly string[]
   /** Compounds written as one word: a word holding one anywhere is bleeped, with the same guard. */
   compounds: readonly string[]
+  /** Everyday words that hold a compound: it is not matched inside one, wherever that is in a word. */
+  holders: readonly string[]
   /** Everyday words that start with a stem: never bleeped. */
   everyday: readonly string[]
   /** Nouns that also begin everyday words (বাল: বালক, বালিশ): matched whole, in every form nounForms gives. */
@@ -450,15 +452,20 @@ const TEAM_LISTS: Readonly<Record<string, TeamList>> = {
     // চোদাচুদি), the nouns in every form (খানকিরাও, খাংকির, মাগিটারে, হারামিগুলোরে,
     // হারামজাদাদেরকে, মাগীবাজ, হারামিপনা), and বাল's compounds (বালপাকনা, বালপাকা: a know-it-all child).
     stems: ['চোদ', 'চুদ', 'চুইদ', 'চুইদ্দ', 'চুইদ্য', ...BN_KHANKI, 'মাগি', 'হারামি', 'হারামজাদা', 'হারামজাদি', 'বালপাক'],
-    // চোদ, চুদ, চোত and চোৎ after each first part (বোকাচোদা; বানচোদ, বাইনচোদ and বাইঞ্চোদ in
-    // Bangladesh, বানচোত and বাঞ্চোৎ in West Bengal; মাদারচোদ), চুদমারানি with দ, ত, ৎ or ত্,
+    // চোদ after any first part (বোকাচোদা, বোকাচ্চোদা, আবালচোদা; বানচোদ, বাইনচোদ, বেঞ্চোদ, and
+    // বেইনচোদ, বইনচোদ or বোনচোদ in Dhaka; মাদারচোদ, মাচোদা); চুদ, চোত and চোৎ (ৎ also written ত্
+    // and a joiner, বাঞ্চোত্‍) after the first parts that take them (বানচোত and বাঞ্চোৎ in West
+    // Bengal), not anywhere: বাচ্চুদা and পাঁচুদা are nicknames; চুদমারানি with দ, ত, ৎ or ত্,
     // খানকিরপোলা as খানকি is written, and শুয়োরেরবাচ্চা written as one word.
     compounds: [
-      ...['বোকা', 'বান', 'বাইন', 'বাইঞ্', 'বাঞ্', 'বেন', 'মাদার'].flatMap((w) => ['চোদ', 'চুদ', 'চোত', 'চোৎ'].map((c) => w + c)),
+      'চোদ',
+      ...['বোকা', 'বান', 'বাইন', 'বাইঞ্', 'বাঞ্', 'বেঞ্', 'বেন', 'মাদার'].flatMap((w) => ['চুদ', 'চোত', 'চোৎ', 'চোত্'].map((c) => w + c)),
       ...['চুদ', 'চুত', 'চুৎ', 'চুত্'].map((c) => c + 'মারানি'),
       ...BN_KHANKI.map((k) => k + 'রপোলা'),
       ...BN_PIG.flatMap((w) => BN_KID.map((k) => w + k))
     ],
+    // প্রচোদ, "to inspire" (Sanskrit): প্রচোদয়াৎ in the Gayatri mantra (ধিয়ো যো নঃ প্রচোদয়াৎ), প্রচোদিত.
+    holders: ['প্রচোদ'],
     everyday: [
       // মাগা, "to beg, to ask for" (in songs, poems and the old written style): its forms that start
       // with মাগি (মাগিতেছেন, মাগিয়াছিলাম, মাগিলেম, মাগিনু, মাগিবার), but those the slur takes too.
@@ -491,6 +498,7 @@ interface TeamRules {
   fold: (key: string) => string
   stems: readonly Stem[]
   compounds: readonly Stem[]
+  holders: readonly string[]
   everyday: ReadonlySet<string>
   whole: ReadonlySet<string>
   /** Each word rude only before a word, and those words (onlyBefore, every form). */
@@ -525,6 +533,7 @@ function teamRulesOf(lang: string): TeamRules | null {
       fold,
       stems: list.stems.map(stem),
       compounds: list.compounds.map(stem),
+      holders: list.holders.map(keyOf),
       everyday,
       whole: new Set(list.nouns.flatMap(nounForms).map(keyOf).filter((k) => k && !everyday.has(k))),
       onlyBefore: before(list.onlyBefore),
@@ -537,6 +546,13 @@ function teamRulesOf(lang: string): TeamRules | null {
 
 /** Whether `stem` is at `at` in `key`, its last consonant taking no virama there. */
 const stemAt = (key: string, stem: Stem, at: number): boolean => key.startsWith(stem.key, at) && !(stem.consonant && key[at + stem.key.length] === VIRAMA)
+
+/** Whether the compound `c` at `at` in `key` is part of an everyday word there (প্রচোদয়াৎ). */
+const heldAt = (holders: readonly string[], key: string, c: Stem, at: number): boolean =>
+  holders.some((h) => {
+    const i = h.indexOf(c.key)
+    return i >= 0 && i <= at && key.startsWith(h, at - i)
+  })
 
 /**
  * Whether a word's key is rude by a team list, `next` the key of the word after it ('' when there is
@@ -552,7 +568,7 @@ function teamMatch(r: TeamRules, key: string, next: string | undefined): boolean
   if (r.whole.has(k)) return true
   for (const stem of r.stems) if (stemAt(k, stem, 0)) return true
   for (const c of r.compounds) {
-    for (let at = k.indexOf(c.key); at >= 0; at = k.indexOf(c.key, at + 1)) if (stemAt(k, c, at)) return true
+    for (let at = k.indexOf(c.key); at >= 0; at = k.indexOf(c.key, at + 1)) if (stemAt(k, c, at) && !heldAt(r.holders, k, c, at)) return true
   }
   return false
 }
