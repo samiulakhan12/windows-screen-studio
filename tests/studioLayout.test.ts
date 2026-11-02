@@ -360,6 +360,43 @@ describe('positions (test 10)', () => {
     expect(corner.top + corner.height).toBeCloseTo(1080 - 0.06 * 1080, 6)
   })
 
+  it('a dragged block against a side keeps its spoken edge word inside the frame while it grows (§8.5)', () => {
+    // Bold Pop (1.18 × a pulse), Spotlight Word (1.28) and Stickers (1.12) in a tall frame, dragged to
+    // the left and the right edge: TROUBLESHOOTING at its largest, with its outline or sticker and the
+    // chunk's own entrance, stays inside the frame.
+    for (const id of ['bold-pop', 'spotlight-word', 'stickers'])
+      for (const x of [0, 1]) {
+        const base = look(id)
+        const s: CaptionStudio = { ...base, layout: { ...base.layout, place: { x, y: 0.7 } } }
+        const l = lay(timed('fix the troubleshooting step', 1, 0.8), s, 1080, 1920)
+        const isLong = (w: { text: string }): boolean => w.text.toUpperCase() === 'TROUBLESHOOTING'
+        const ci = l.chunks.findIndex((ch) => ch.lines.some((line) => line.words.some(isLong)))
+        const c = l.chunks[ci]
+        const li = c.lines.findIndex((line) => line.words.some(isLong))
+        const word = c.lines[li].words.find(isLong)!
+        const placed = placeStudio(l, c, s, 1080, 1920, {})
+        const cx = placed.box.x + placed.box.w / 2
+        const mid = placed.lines[li].x + word.x + word.w / 2
+        const edge = Math.max(s.edge.outline, s.box.kind === 'word' ? s.box.padX + s.box.border : 0) * word.px
+        const start = l.tokens[word.token].start
+        let left = Infinity
+        let right = -Infinity
+        let most = 0
+        for (let t = start; t < start + 0.8; t += 0.005) {
+          const p = captionPoses(l, ci, t, ONE, s, 1080, null, { spoken: true })
+          const scale = p.words.find((w) => w.token === word.token)!.scale
+          most = Math.max(most, scale)
+          const half = (word.w / 2 + edge) * scale
+          // The word grows about its middle, the chunk about the block's centre.
+          left = Math.min(left, cx + (mid - half - cx) * p.chunk.scale)
+          right = Math.max(right, cx + (mid + half - cx) * p.chunk.scale)
+        }
+        expect(most, `${id} ${x}`).toBeGreaterThan(1.1)
+        expect(left, `${id} ${x}`).toBeGreaterThanOrEqual(0)
+        expect(right, `${id} ${x}`).toBeLessThanOrEqual(1080)
+      }
+  })
+
   it("with legacyAnchor, the block sits where today's placeChunk puts it, in a tall frame and in its text area", () => {
     for (const area of [null, { x: 60, y: 0.11 * 1920, w: 960, h: 0.65 * 1920 }])
       for (const [position, legacy] of [

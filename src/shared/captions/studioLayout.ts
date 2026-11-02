@@ -45,6 +45,8 @@ export interface StudioLine {
   width: number
   height: number
   px: number
+  /** How far its spoken words reach past its nearer end at their largest, px (§8.4); absent: they stay inside it. */
+  reach?: number
 }
 
 export interface StudioChunk {
@@ -533,9 +535,11 @@ export function studioLayout(
   // never runs past the frame or the text area: a line whose first or last word (or a word alone)
   // would grow past the room is drawn just small enough for it to fit.
   const fitted = (lay.chunk === 'word' || lay.chunk === 'stack') && lay.fit !== undefined
-  const lineScale = (a: number, b: number): number => {
+  // The line's scale, and how far its grown words then reach past its nearer end (a dragged block
+  // keeps that inside the frame too, §8.5).
+  const lineScale = (a: number, b: number): { k: number; reach: number } => {
     const at = meter.width(a, b)
-    if (!(at > 0)) return 1
+    if (!(at > 0)) return { k: 1, reach: 0 }
     const k = fitted ? Math.min(2.2, Math.max(0.6, (m.maxWidth * lay.fit!) / at)) : 1
     // Each word grows by g(i) around its middle where it shows (a run read the other way is mirrored,
     // so a word in the middle in reading order can stand at the edge): the line, centred, needs twice
@@ -550,11 +554,12 @@ export function studioLayout(
     displayOrder(boxes, at, dirs, rtl ? 'r' : 'l')
     let need = at
     for (const bx of boxes) need = Math.max(need, at + g(bx.token) - 2 * Math.min(bx.x, at - bx.x - bx.w))
-    return need * k > m.maxWidth * (1 + 1e-9) ? m.maxWidth / need : k
+    const s = need * k > m.maxWidth * (1 + 1e-9) ? m.maxWidth / need : k
+    return { k: s, reach: ((need - at) / 2) * s }
   }
   const chunks: StudioChunk[] = ranges.map((group) => {
     const lines: StudioLine[] = group.map(([a, b]) => {
-      const k = lineScale(a, b)
+      const { k, reach } = lineScale(a, b)
       const words: StudioWordBox[] = []
       let x = 0
       for (let i = a; i < b; i++) {
@@ -567,7 +572,7 @@ export function studioLayout(
       // among English ones keeps its vowel signs clear of the next line.
       const top = Math.max(...words.map((wd) => wd.px))
       const tall = Math.max(lhMul, ...words.map((wd) => scriptLineHeight(tokens[wd.token].script, studio.text.lineHeight)))
-      return { words, width: x, height: top * tall, px: m.px * k }
+      return { words, width: x, height: top * tall, px: m.px * k, ...(reach > 0 ? { reach } : {}) }
     })
     const first = group[0][0]
     const last = group[group.length - 1][1] - 1
@@ -845,7 +850,7 @@ export function fitChunk(
   const k = Math.min(1, Math.max(0.1, (room - (height - chunk.height)) / chunk.height))
   return {
     ...chunk,
-    lines: chunk.lines.map((l) => ({ ...l, words: l.words.map((wd) => ({ ...wd, x: wd.x * k, w: wd.w * k, px: wd.px * k })), width: l.width * k, height: l.height * k, px: l.px * k })),
+    lines: chunk.lines.map((l) => ({ ...l, words: l.words.map((wd) => ({ ...wd, x: wd.x * k, w: wd.w * k, px: wd.px * k })), width: l.width * k, height: l.height * k, px: l.px * k, ...(l.reach ? { reach: l.reach * k } : {}) })),
     width: chunk.width * k,
     height: chunk.height * k
   }
@@ -877,11 +882,13 @@ export function placeStudio(
     position = opts.forced
     top = intoArea(anchorTop(opts.forced, block.height, w, h), block.height)
   } else if (lay.place) {
-    // Dragged: centred on the place, kept 0.06 u inside the frame (and the text area); it never moves for obstacles.
+    // Dragged: centred on the place, kept 0.06 u inside the frame (and the text area), its spoken words
+    // at their largest too (§8.4: a line's grown edge word reaches past it); it never moves for obstacles.
     position = null
     const lo = { x: margin, y: area ? bounds.top : margin }
     const hi = { x: w - margin, y: area ? bounds.bottom : h - margin }
-    cx = Math.min(Math.max(lay.place.x * w, lo.x + block.width / 2), Math.max(lo.x + block.width / 2, hi.x - block.width / 2))
+    const half = block.width / 2 + Math.max(0, ...chunk.lines.map((l) => (l.reach ?? 0) - (block.width - l.width) / 2))
+    cx = Math.min(Math.max(lay.place.x * w, lo.x + half), Math.max(lo.x + half, hi.x - half))
     top = Math.min(Math.max(lay.place.y * h - block.height / 2, lo.y), Math.max(lo.y, hi.y - block.height))
   } else {
     let plan: Plan = { position: lay.position, dy: 0, cx: side }

@@ -2047,8 +2047,10 @@ under 1 ms.
 - **Legacy anchors**: with `layout.legacyAnchor` (a Studio twin, §5.8), the block uses today's
   `placeChunk` anchors for top, middle and bottom instead of the table above.
 - **Dragged**: `place` is the block's centre, normalised. Lines are centred on its x. The block is
-  clamped to stay 0.06 u inside the frame (and inside the text area when there is one). A dragged
-  block does not avoid obstacles: the user put it there.
+  clamped to stay 0.06 u inside the frame (and inside the text area when there is one), with its
+  spoken words at their largest: a block dragged against a side moves in by as far as a line's
+  grown edge word reaches past the block (§8.4), so Bold Pop's popped TROUBLESHOOTING is never cut
+  off. A dragged block does not avoid obstacles: the user put it there.
 - **One caption at the top or the bottom** (`captionPlaces`, §2.7): that caption uses the Top or
   Bottom anchor whatever the look's position, and does not move to avoid obstacles. Legacy looks
   honour it too (`placeOf`, §14.2): `placeChunk` gets 'top' or 'bottom' for that caption.
