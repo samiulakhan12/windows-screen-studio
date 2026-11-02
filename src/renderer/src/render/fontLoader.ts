@@ -10,6 +10,7 @@
 import { assetFontFile } from '../../../shared/api/assets'
 import { burnedSegments } from '../../../shared/captions/captionTracks'
 import { catalogFamily, catalogFont, catalogId, type CatalogFile, type CatalogFont } from '../../../shared/captions/fontCatalog'
+import { coverageNeeded } from '../../../shared/captions/fontStack'
 import { STUDIO_BASE } from '../../../shared/captions/studioPresets'
 import { fontFamily, fontOf, fontStack } from '../../../shared/render/fonts'
 import { MEDIA_SCHEME, mediaUrl } from '../../../shared/mediaUrl'
@@ -277,7 +278,6 @@ const KANA = /[\p{Script=Hiragana}\p{Script=Katakana}]/u
 const HANGUL = /\p{Script=Hangul}/u
 /** Letters a Latin-1 font may lack: Latin Extended, Vietnamese, Greek and Cyrillic (§6.6, step 2). */
 const BEYOND_LATIN1 = /[Ā-ɏḀ-ỿͰ-ϿЀ-ӿ]/u
-const PARTNER_LANGUAGES = new Set(['vi', 'ru', 'uk', 'pl', 'tr'])
 
 /** The downloadable CJK font of a language (§6.4), else of the script found. */
 function cjkFont(language: string | undefined, text: string): string | null {
@@ -392,7 +392,8 @@ export function catalogFontsFor(project: Project): string[] {
   if (DEVANAGARI.test(text) && (language === 'hi' || language === 'mr')) ids.add('poppins')
   const cjk = cjkFont(language, text)
   if (cjk) ids.add(cjk)
-  if (studio && (BEYOND_LATIN1.test(text) || PARTNER_LANGUAGES.has((language ?? '').slice(0, 2)))) {
+  // The drawing walks to the partner whenever the language needs letters (lookFont, fontStack.ts), even for text written only in Latin-1 (Estonian 'täna õpime').
+  if (studio && (BEYOND_LATIN1.test(text) || coverageNeeded(language, '').length > 0)) {
     for (const f of [studio.text.font, studio.emphasis.font]) for (const partner of partnersOf(f)) ids.add(partner)
   }
   if (studio || graphics.length) ids.add('noto-color-emoji')

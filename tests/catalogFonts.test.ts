@@ -166,8 +166,16 @@ describe('catalogFontsFor (§6.8)', () => {
   it('adds the partners of partners the drawing walks to: Anton → Oswald → Inter Tight for Greek', () => {
     const el = { language: 'el', segments: [{ id: 'c1', start: 0, end: 2, text: 'Καλημέρα σε όλους σήμερα' }] }
     expect(fonts.catalogFontsFor(withStudio(look('one-word'), { transcript: el } as Partial<Project>))).toEqual(expect.arrayContaining(['anton', 'oswald', 'inter-tight']))
-    // Every look, in languages that need letters beyond Latin-1: the font the words draw with is loaded.
-    const captions: Record<string, string> = { el: 'Καλημέρα σε όλους σήμερα', ru: 'Привет всем сегодня', vi: 'Xin chào mọi người hôm nay', pl: 'Dzień dobry wszystkim' }
+    // Every look, in languages that need letters beyond Latin-1: the font the words draw with is loaded,
+    // also when the caption happens to use only Latin-1 letters (Estonian, Hungarian): the drawing goes by the language.
+    const captions: Record<string, string> = {
+      el: 'Καλημέρα σε όλους σήμερα',
+      ru: 'Привет всем сегодня',
+      vi: 'Xin chào mọi người hôm nay',
+      pl: 'Dzień dobry wszystkim',
+      et: 'Tere tulemast, täna õpime koos',
+      hu: 'Jó napot mindenkinek'
+    }
     for (const preset of STUDIO_PRESETS) {
       for (const [language, text] of Object.entries(captions)) {
         const studio = structuredClone(preset.look)

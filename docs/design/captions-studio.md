@@ -1740,7 +1740,9 @@ Per-script rules:
   style's `cat:instrument-serif-italic` and any `cat:` font a card was given); the script fonts
   for the scripts found in the burned-in captions, graphics and titles (Unicode script of each
   letter); the partner fonts, with their own partners down to Inter Tight (a partner may lack
-  the letters too: Anton → Oswald → Inter Tight for Greek); and the emoji font whenever the
+  the letters too: Anton → Oswald → Inter Tight for Greek), whenever the text has letters beyond
+  Latin-1 or the language needs letters the drawing goes by (`coverageNeeded`, §6.6 rule 2: an
+  Estonian caption written only in Latin-1 still draws with the partner); and the emoji font whenever the
   project has a Studio look or any graphic. The emoji face is not chosen by scanning for emoji:
   keycaps, U+FE0F sequences and text-presentation symbols have no "emoji script", and a scan
   would miss them.
