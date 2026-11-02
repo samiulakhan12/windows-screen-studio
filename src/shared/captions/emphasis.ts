@@ -116,6 +116,8 @@ function scoreWords(segments: readonly CaptionSegment[], ctx: { language?: strin
 
 /** Share of a caption's letters outside the Latin script. */
 function nonLatinShare(ts: readonly StudioToken[]): number {
+  // ASCII letters are all Latin (most captions, and testing each letter is slow).
+  if (ts.every((t) => /^[\x00-\x7f]*$/.test(t.text))) return 0
   let latin = 0
   let all = 0
   for (const t of ts)
@@ -127,10 +129,22 @@ function nonLatinShare(ts: readonly StudioToken[]): number {
   return all ? 1 - latin / all : 0
 }
 
-/** Times of clicks, Zoom here marks and the starts of typing. */
+/** Times of clicks, Zoom here marks and the starts of typing, in order (a time that is not a number is near no word). */
 function actionTimes(cursor: CursorTrack | undefined): number[] {
   if (!cursor) return []
-  return [...cursor.clicks.map((c) => c.t), ...(cursor.marks ?? []).map((m) => m.t), ...(cursor.typing ?? []).map((t) => t.t)].sort((a, b) => a - b)
+  return [...cursor.clicks.map((c) => c.t), ...(cursor.marks ?? []).map((m) => m.t), ...(cursor.typing ?? []).map((t) => t.t)].filter((t) => typeof t === 'number' && !Number.isNaN(t)).sort((a, b) => a - b)
+}
+
+/** Whether an action time is in [from, to]: found by halving, as an hour's recording has thousands of clicks for 50,000 words. */
+function actionIn(actions: readonly number[], from: number, to: number): boolean {
+  let lo = 0
+  let hi = actions.length
+  while (lo < hi) {
+    const mid = (lo + hi) >> 1
+    if (actions[mid] >= from) hi = mid
+    else lo = mid + 1
+  }
+  return lo < actions.length && actions[lo] <= to
 }
 
 /** A capital letter not at a sentence start, in a script with case. */
@@ -162,7 +176,7 @@ function scoreWord(
   if (c.otherScript && LATIN.test(t.text) && LETTER.test(t.text)) score += 1.5
   if (MEANING_WORDS.has(key) || (c.lang === 'en' && (SUPERLATIVE.test(key) || (SUPERLATIVE_EST.test(key) && !NOT_SUPERLATIVE.has(key))))) score += 1.5
   if (!number && graphemes(key) >= 7) score += 0.5
-  if (c.actions.some((a) => a >= t.start - NEAR_ACTION && a <= t.end + NEAR_ACTION)) score += 1
+  if (actionIn(c.actions, t.start - NEAR_ACTION, t.end + NEAR_ACTION)) score += 1
   return score
 }
 

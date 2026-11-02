@@ -231,6 +231,21 @@ describe('runPolish', () => {
     expect(store.state).toBe(before)
   })
 
+  it('plans its changes a step at a time, so Cancel while it applies writes nothing (Captions Studio §9.8)', async () => {
+    analyzeAudio.mockResolvedValue({ mic: talking(), system: talking() })
+    const { store, run, rows } = start()
+    const before = store.state
+    await flush()
+    calls.transcribe[0].resolve(answer(2))
+    for (let i = 0; i < 50 && rows.at(-1)?.captionLook.text !== 'Applying…'; i++) await flush()
+    expect(rows.at(-1)?.captionLook).toMatchObject({ phase: 'working', text: 'Applying…' })
+    expect(store.state).toBe(before)
+    run.cancel()
+    await expect(run.done).resolves.toBeNull()
+    expect(store.state).toBe(before)
+    expect(store.canUndo).toBe(false)
+  })
+
   it('makes captions with the Bangla model in Bengali when it is the choice; others get no language, as before (§14.4)', async () => {
     analyzeAudio.mockResolvedValue({ mic: talking(), system: talking() })
     const store = new EditStore(project())

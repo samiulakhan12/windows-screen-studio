@@ -16,7 +16,12 @@ export const EMOJI_EVERY = 8
 /** A graphic starts this long before its word (§10.2). */
 export const LEAD = 0.1
 
-const baseLanguage = (language: string | undefined): string => (language ?? 'en').toLowerCase().split(/[-_]/)[0]
+/** The base language last read: a run asks for one language for every word. */
+let lastBase: { language: string | undefined; base: string } | null = null
+const baseLanguage = (language: string | undefined): string => {
+  if (!lastBase || lastBase.language !== language) lastBase = { language, base: (language ?? 'en').toLowerCase().split(/[-_]/)[0] }
+  return lastBase.base
+}
 
 /** The key of an emoji as typed: code points in hex joined by '-', without FE0F. */
 export function emojiKey(emoji: string): string {
@@ -119,9 +124,12 @@ export function isSensitive(text: string, language?: string): boolean {
   return false
 }
 
+/** The negations last made, for the language of every caption of a run. */
+let lastNegations: { lang: string; list: ReadonlySet<string> } | null = null
 /** Whether a caption says no to something (no emoji on it). */
 function negated(words: readonly string[], lang: string): boolean {
-  const list = new Set([...(NEGATIONS[lang] ?? []), ...(lang === 'en' ? [] : NEGATIONS.en)])
+  if (!lastNegations || lastNegations.lang !== lang) lastNegations = { lang, list: new Set([...(NEGATIONS[lang] ?? []), ...(lang === 'en' ? [] : NEGATIONS.en)]) }
+  const list = lastNegations.list
   return words.some((w) => list.has(w) || (lang === 'en' && /n't$/.test(w)))
 }
 

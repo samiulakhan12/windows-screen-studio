@@ -5,7 +5,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import { DEFAULT_CLEANUP } from '../src/shared/captions/cleanup'
 import { DEFAULT_GREAT_OPTIONS } from '../src/shared/captions/great'
-import { DEFAULT_POLISH_OPTIONS, planPolish, readPolishOptions, type PolishInput, type PolishOptions } from '../src/shared/editor/polish'
+import { DEFAULT_POLISH_OPTIONS, planPolish, planPolishSteps, readPolishOptions, type PolishInput, type PolishOptions } from '../src/shared/editor/polish'
 import { polishHint, polishSkipText, polishStepLabel } from '../src/shared/editor/polishCopy'
 import type { Project, Transcript } from '../src/shared/types'
 import { captions, studioProject } from './p4Fixtures'
@@ -66,6 +66,21 @@ describe("Polish's Caption look (test 46)", () => {
     expect(r.project.captions?.studio?.from).toBe('clean-short')
     expect(r.project.captions?.show).toBe(true)
     expect(r.project.captionAuto).toBeUndefined()
+  })
+
+  it('is planned in the steps of its planner, so the editor is free between them (§9.8)', () => {
+    const look = { great: { ...DEFAULT_GREAT_OPTIONS, counters: true, lists: true, emoji: true, keywords: true }, cleanup: DEFAULT_CLEANUP, words: [] }
+    const at = input(studioProject({ segments: captions(TEXTS), aspect: '9:16' }), { captionLook: look })
+    const steps = planPolishSteps(at, ONLY)
+    let pauses = 0
+    let r = steps.next()
+    for (; !r.done; r = steps.next()) pauses++
+    // Before and after it, after its tidy, its emphasis and each kind of graphic.
+    expect(pauses).toBeGreaterThanOrEqual(6)
+    expect(r.value).toEqual(planPolish(at, ONLY))
+    // Without captions to style, nothing waits.
+    const none = planPolishSteps(input(studioProject()), ONLY)
+    expect(none.next().done).toBe(true)
   })
 
   it('has its label, hint and skip text', () => {

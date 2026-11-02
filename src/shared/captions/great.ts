@@ -11,7 +11,7 @@ import type { AiProviderKind, CaptionMark, CaptionStudio, CursorTrack, Graphic, 
 import { autoStyleSettings, cameraLed, frameShape } from './autoStyle'
 import { tidyCaptions, type CleanupChoices, type WordListEntry } from './cleanup'
 import { markId, pickEmphasis } from './emphasis'
-import { deepEqual, planGraphics } from './graphicRules'
+import { deepEqual, planGraphicsSteps } from './graphicRules'
 import { remapAnchors } from './marks'
 import { captionsOf } from './settings'
 import { studioPreset } from './studioPresets'
@@ -158,24 +158,33 @@ function sortMarks(project: Project, marks: CaptionMark[]): CaptionMark[] {
 /** Words inside auto marks (the notice's "38 words emphasised"). */
 const markedWords = (marks: readonly CaptionMark[] | undefined): number => (marks ?? []).filter((m) => m.auto).reduce((n, m) => n + m.to - m.from + 1, 0)
 
+/** What the planner plans from (§11.8). */
+export interface GreatInput {
+  project: Project
+  frame: { w: number; h: number }
+  brand?: CaptionStudio | null
+  cleanup: CleanupChoices
+  words: readonly WordListEntry[]
+  /** The AI's picks; their word indexes name the captions as the tidy step leaves them (what greatRun asks on). */
+  marks?: MarksAnswer
+  by: 'great' | 'polish'
+  /** The provider kind the AI marks came from (their items' `auto.via`). */
+  marksVia?: AiProviderKind
+  /** The recording's cursor: words said near a click score more (§11.1). */
+  cursor?: CursorTrack
+}
+
 /** The planner (§11.8): the input project itself when nothing changes. */
-export function planCaptionsGreat(
-  input: {
-    project: Project
-    frame: { w: number; h: number }
-    brand?: CaptionStudio | null
-    cleanup: CleanupChoices
-    words: readonly WordListEntry[]
-    /** The AI's picks; their word indexes name the captions as the tidy step leaves them (what greatRun asks on). */
-    marks?: MarksAnswer
-    by: 'great' | 'polish'
-    /** The provider kind the AI marks came from (their items' `auto.via`). */
-    marksVia?: AiProviderKind
-    /** The recording's cursor: words said near a click score more (§11.1). */
-    cursor?: CursorTrack
-  },
-  options: GreatOptions
-): { project: Project; summary: GreatSummary } {
+export function planCaptionsGreat(input: GreatInput, options: GreatOptions): { project: Project; summary: GreatSummary } {
+  const steps = planCaptionsGreatSteps(input, options)
+  for (let r = steps.next(); ; r = steps.next()) if (r.done) return r.value
+}
+
+/**
+ * The planner a step at a time (tidy; style and emphasis; each kind of graphic): the editor runs it
+ * with a moment between the steps, so it is never held for the whole plan (§9.8).
+ */
+export function* planCaptionsGreatSteps(input: GreatInput, options: GreatOptions): Generator<void, { project: Project; summary: GreatSummary }, void> {
   const start = input.project
   const o = resolveGreatOptions(options, start, input.frame)
   // Polish runs unattended on long tutorials: in wide frames only style, emphasis and tidy (§11.8).
@@ -194,6 +203,7 @@ export function planCaptionsGreat(
     summary.tidied = t.changed
     summary.bleeped = t.bleeped
   }
+  yield
 
   // 2. Style, recording the look before the first automatic change.
   if (o.style) {
@@ -217,9 +227,11 @@ export function planCaptionsGreat(
     if (picks.length && !captionsOf(p).studio) p = { ...p, captions: { ...captionsOf(p), studio: legacyTwin(captionsOf(p)) } }
   }
 
+  yield
+
   // 4–5. Emoji and graphics.
   if (graphicsOn) {
-    p = planGraphics(p, {
+    p = yield* planGraphicsSteps(p, {
       keywords: o.keywords,
       emoji: o.emoji,
       counters: o.counters,

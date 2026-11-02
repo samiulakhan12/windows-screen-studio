@@ -302,12 +302,31 @@ function timesByConcatenation(
   })
 }
 
+type TokenSource = Pick<CaptionSegment, 'start' | 'end' | 'text' | 'words' | 'speaker'>
+
+/**
+ * The tokens last made for each caption, with what they were made from: every rule of Make my
+ * captions great reads a caption's words (§9.8), and the layout reads them again. Callers never
+ * change the list or its tokens.
+ */
+const tokensMade = new WeakMap<TokenSource, { text: string; start: number; end: number; words: TokenSource['words']; speaker: TokenSource['speaker']; language?: string; withLabel: boolean; tokens: StudioToken[] }>()
+
 /**
  * The words of a caption with their times (§8.1): the provider's word times when they match the
  * words, else mapped by concatenation (NW-09 text-only Chinese, Japanese, Thai), else spread by
- * graphemes + 1 and `estimated`. Speaker labels (withLabel) come first with word -1.
+ * graphemes + 1 and `estimated`. Speaker labels (withLabel) come first with word -1. The list is
+ * shared between calls for the same caption: callers never change it.
  */
-export function studioTokens(seg: Pick<CaptionSegment, 'start' | 'end' | 'text' | 'words' | 'speaker'>, language?: string, withLabel?: boolean): StudioToken[] {
+export function studioTokens(seg: TokenSource, language?: string, withLabel?: boolean): StudioToken[] {
+  const label = !!withLabel
+  const hit = tokensMade.get(seg)
+  if (hit && hit.text === seg.text && hit.start === seg.start && hit.end === seg.end && hit.words === seg.words && hit.speaker === seg.speaker && hit.language === language && hit.withLabel === label) return hit.tokens
+  const tokens = makeStudioTokens(seg, language, label)
+  tokensMade.set(seg, { text: seg.text, start: seg.start, end: seg.end, words: seg.words, speaker: seg.speaker, language, withLabel: label, tokens })
+  return tokens
+}
+
+function makeStudioTokens(seg: TokenSource, language: string | undefined, withLabel: boolean): StudioToken[] {
   const words = studioWords(seg.text, language)
   if (!words.length) return []
   const texts = words.map((w) => w.text)

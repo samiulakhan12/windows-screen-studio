@@ -13,8 +13,14 @@ import { studioWordTexts } from './words'
 const ZEROS = [0x30, 0x9e6, 0x966, 0x660, 0x6f0]
 const ALL_DIGITS = /[0-9০-৯०-९٠-٩۰-۹]/gu
 
+/** A digit of a script read (ALL_DIGITS without its global flag, for a test). */
+const ANY_DIGIT = /[0-9০-৯०-९٠-٩۰-۹]/u
+/** Digits other than 0–9: most words have none, and those are returned as they are. */
+const OTHER_DIGITS = /[০-৯०-९٠-٩۰-۹]/u
+
 /** `text` with every digit as 0–9 (digit for digit). */
 export function asciiDigits(text: string): string {
+  if (!OTHER_DIGITS.test(text)) return text
   return text.replace(ALL_DIGITS, (ch) => {
     const c = ch.codePointAt(0)!
     for (const z of ZEROS) if (c >= z && c <= z + 9) return String(c - z)
@@ -24,7 +30,12 @@ export function asciiDigits(text: string): string {
 
 /* ---------- word lists (team-written, §11.4) ---------- */
 
-const baseLanguage = (language: string | undefined): string => (language ?? 'en').toLowerCase().split(/[-_]/)[0]
+/** The base language last read: a run asks for one language for every word. */
+let lastBase: { language: string | undefined; base: string } | null = null
+const baseLanguage = (language: string | undefined): string => {
+  if (!lastBase || lastBase.language !== language) lastBase = { language, base: (language ?? 'en').toLowerCase().split(/[-_]/)[0] }
+  return lastBase.base
+}
 /** Bare forms made (speech repeats its words, and every rule asks for them). */
 const bareForms = new Map<string, string>()
 /** A word as compared with the lists: lower case, punctuation off both ends. */
@@ -119,8 +130,18 @@ const valueIn = (table: Readonly<Record<string, number>>, w: string): number | u
 /** A word that can begin or go on with an English number (the parse below stops at any other). */
 const enNumberish = (w: string): boolean => has(EN_SMALL, w) || has(EN_SCALES, w) || w === 'hundred' || w === 'a' || w === 'an' || w === 'and'
 
+/** Whether an English number can begin with this bare word (its part before a hyphen); a word of punctuation alone is read past. */
+function beginsEnglish(bare: string): boolean {
+  const cut = bare.indexOf('-')
+  const head = cut < 0 ? bare : bare.slice(0, cut)
+  return !head || has(EN_SMALL, head) || head === 'a' || head === 'an'
+}
+
 /** English: "twenty five", "twenty-five", "one hundred and five", "a thousand". */
 function parseEnglish(words: readonly string[]): { value: number; used: number } | null {
+  // A first word that cannot begin a number (most words: a caption is parsed from each of them)
+  // gives none. A word of punctuation alone is read past, as below.
+  if (!beginsEnglish(bareWord(words[0] ?? ''))) return null
   const parts: { w: string; end: boolean; index: number }[] = []
   for (let k = 0; k < words.length && parts.length < 40; k++) {
     const end = ENDS_CLAUSE.test(words[k])
@@ -211,6 +232,8 @@ interface DigitNumber {
 
 /** A word written as a number: an optional currency sign, digits with grouping, an optional unit. */
 function digitNumber(word: string, language: string | undefined): DigitNumber | null {
+  // Most words have no digit, and a number needs one.
+  if (!ANY_DIGIT.test(word)) return null
   const core = asciiDigits(word).replace(/^[("“'‘[]+/u, '').replace(TRAILING, '')
   const m = /^([$€£¥₹৳])?(\d[\d.,]*)([$€£¥₹৳]|%|x|×|k|K|M|B|bn)?$/u.exec(core)
   if (!m) return null
@@ -268,7 +291,8 @@ export interface FoundNumber {
 export function findNumbers(seg: CaptionSegment, language?: string): FoundNumber[] {
   const words = studioWordTexts(seg.text, language)
   const bare = words.map(bareWord)
-  const commaDecimal = COMMA_DECIMAL.has(baseLanguage(language))
+  const lang = baseLanguage(language)
+  const commaDecimal = COMMA_DECIMAL.has(lang)
   const out: FoundNumber[] = []
   let i = 0
   while (i < words.length) {
@@ -289,7 +313,7 @@ export function findNumbers(seg: CaptionSegment, language?: string): FoundNumber
         last++
       }
     } else {
-      const w = parseNumberWords(words.slice(i), language)
+      const w = lang === 'bn' || lang === 'hi' || beginsEnglish(bare[i]) ? parseNumberWords(words.slice(i), language) : null
       // A lone "one", "a" or "an" is no number worth a counter.
       if (w && !(w.used === 1 && /^(a|an|one)$/.test(bare[i]))) {
         num = { value: w.value, decimals: 0, prefix: '', unit: '', plain: true }

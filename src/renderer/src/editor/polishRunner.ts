@@ -4,13 +4,15 @@
  * smart speed and the director through loadAudioAnalysis), the transcript (the Captions tab's
  * transcription job, without writing it), the director's speech and the face. Then it commits
  * planPolish on the project as it is at that moment, in one store.update between two seals, so
- * the whole polish is one undo step. Nothing is written before that; Cancel writes nothing.
+ * the whole polish is one undo step: planned first a step at a time, so a long project's captions
+ * never hold the editor (Captions Studio §9.8), and again at once when an edit came meanwhile.
+ * Nothing is written before that; Cancel writes nothing.
  */
 import { activitySources, type AudioSource } from '../../../shared/audio/settings'
 import { sourceActivity } from '../../../shared/audio/soundtrack'
 import { speechLevelSource, type DirectorSpeech } from '../../../shared/audio/speech'
 import { applyingLabel } from '../../../shared/editor/directorCopy'
-import { planPolish, polishAvailability, POLISH_STEPS, type PolishInput, type PolishOptions, type PolishResult, type PolishSkip, type PolishStep } from '../../../shared/editor/polish'
+import { planPolish, planPolishSteps, polishAvailability, POLISH_STEPS, type PolishInput, type PolishOptions, type PolishResult, type PolishSkip, type PolishStep } from '../../../shared/editor/polish'
 import { polishSkipText, transcribePhaseText } from '../../../shared/editor/polishCopy'
 import { BUILT_IN_PRESETS, type StylePreset } from '../../../shared/editor/stylePresets'
 import { effectiveTrack } from '../../../shared/engine/inputTrack'
@@ -20,7 +22,7 @@ import { loadAudioAnalysis } from './audioAnalysis'
 import { cancelTranscription, fetchTranscript, onTranscriptionJob, transcriptionJob, type FetchedTranscript } from './captionItems'
 import type { EditorServices } from './context'
 import { loadDirectorSpeech, measureFraming } from './directorAnalysis'
-import { loadGreatInputs } from './greatRun'
+import { loadGreatInputs, planInSteps } from './greatRun'
 
 /** What a row of the running dialog shows. `canSkip`: its Skip button (captions, the face). */
 export type PolishRowState = { phase: 'waiting' | 'working' | 'done' | 'skipped'; text: string; canSkip?: boolean }
@@ -139,7 +141,7 @@ export function runPolish(
   const measureFace = async (gathered: Omit<PolishInput, 'project'>, speech: DirectorSpeech | null): Promise<FramingOutcome> => {
     const video = player.webcam
     if (!runs('director') || !video) return { status: 'skipped' }
-    const plan = planPolish({ ...gathered, project: store.state }, options).directorPlan
+    const plan = (await planInSteps(planPolishSteps({ ...gathered, project: store.state }, options), run.signal))?.directorPlan
     if (!plan?.settings.frameFace) return { status: 'skipped' }
     const showFace = (done: number, total: number): void =>
       setRow('director', { phase: 'working', text: applyingLabel({ listening: false, done, total }), canSkip: true })
@@ -196,13 +198,17 @@ export function runPolish(
     const framing = await until(measureFace(gathered, speech))
     if (!framing || run.signal.aborted) return null
 
-    // 4. One undo step, planned again from the project as it is now.
+    // 4. One undo step, planned again from the project as it is now, a step at a time (Captions
+    // Studio §9.8), and planned again at once from an edit made meanwhile.
     for (const step of POLISH_STEPS) if (runs(step)) setRow(step, { phase: 'working', text: 'Applying…' })
+    const from = store.state
+    const planned = await planInSteps(planPolishSteps({ ...gathered, framing, project: from }, options), run.signal)
+    if (!planned || run.signal.aborted) return null
     const before = store.state
     let result = null as PolishResult | null
     store.seal()
     // EditStore.update calls the function once, before anything is pushed: a throw changes nothing.
-    store.update((p) => (result = planPolish({ ...gathered, framing, project: p }, options)).project)
+    store.update((p) => (result = p === from ? planned : planPolish({ ...gathered, framing, project: p }, options)).project)
     store.seal()
     if (!result) throw new Error('nothing was planned')
     return { before, after: store.state, result }

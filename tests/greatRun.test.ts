@@ -1,8 +1,9 @@
 /**
  * Make my captions great's runner (docs/design/captions-studio.md §11.8, §2.8; greatRun.ts): the AI
- * marks first, then one sealed update (one undo step); AI marks of a caption edited while the
- * provider worked are dropped; a provider that fails leaves the offline picks and says so; Cancel
- * changes nothing; a second run with the same result adds no undo step.
+ * marks first, then the plan a step at a time (§9.8) and one sealed update (one undo step); AI marks
+ * of a caption edited while the provider worked are dropped; an edit made while it plans is kept; a
+ * provider that fails leaves the offline picks and says so; Cancel changes nothing; a second run
+ * with the same result adds no undo step.
  */
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { AiProviderInfo, AiTextRequest, AiTextResult, MarksAnswer } from '../src/shared/api/ai'
@@ -155,6 +156,36 @@ describe('runCaptionsGreat', () => {
     expect(await run).toBeNull()
     expect(store.state).toBe(start)
     expect(store.canUndo).toBe(false)
+  })
+
+  it('plans with the editor free between its steps, and Cancel then changes nothing (§9.8)', async () => {
+    const start = studioProject({ segments: captions(TEXTS) })
+    const store = storeOf(start)
+    const cancel = new AbortController()
+    const pause = vi.spyOn(globalThis, 'setTimeout')
+    const run = runCaptionsGreat({ store, frame: TALL, options: OFFLINE, signal: cancel.signal })
+    // The planner has made its first step and lets the editor go on before the next.
+    for (let i = 0; i < 100 && !pause.mock.calls.length; i++) await Promise.resolve()
+    pause.mockRestore()
+    expect(store.state).toBe(start)
+    cancel.abort()
+    expect(await run).toBeNull()
+    expect(store.state).toBe(start)
+    expect(store.canUndo).toBe(false)
+  })
+
+  it('keeps an edit made while it plans: the plan is made again from it (§9.8)', async () => {
+    const store = storeOf(studioProject({ segments: captions(TEXTS) }))
+    const pause = vi.spyOn(globalThis, 'setTimeout')
+    const run = runCaptionsGreat({ store, frame: TALL, options: OFFLINE, signal: new AbortController().signal })
+    for (let i = 0; i < 100 && !pause.mock.calls.length; i++) await Promise.resolve()
+    pause.mockRestore()
+    store.update((p) => ({ ...p, transcript: { ...p.transcript!, segments: p.transcript!.segments.map((s) => (s.id === 'c2' ? { ...s, text: 'click Save and you are finished' } : s)) } }))
+    expect((await run)?.notice).toMatch(/^Captions: /)
+    // The edit, tidied by the plan made from it (a capital at the start).
+    expect(store.state.transcript!.segments[2].text).toMatch(/^Click Save and you are finished/)
+    expect(store.state.captionMarks?.length).toBeGreaterThan(0)
+    expect(undoSteps(store)).toBe(2)
   })
 
   it('reads the saved Clean up choices for its tidy step', async () => {

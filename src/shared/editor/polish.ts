@@ -17,7 +17,7 @@ import { activitySources } from '../audio/settings'
 import type { DirectorSpeech } from '../audio/speech'
 import { autoStyleOnFirstCaptions, captionFrame } from '../captions/autoStyle'
 import { DEFAULT_CLEANUP, type CleanupChoices, type WordListEntry } from '../captions/cleanup'
-import { DEFAULT_GREAT_OPTIONS, planCaptionsGreat, type GreatOptions } from '../captions/great'
+import { DEFAULT_GREAT_OPTIONS, planCaptionsGreatSteps, type GreatOptions } from '../captions/great'
 import { captionsOf } from '../captions/settings'
 import { cropView, regenerateInFrame } from '../engine/crop'
 import { directorSettingsOf } from '../engine/directorData'
@@ -189,6 +189,16 @@ const SILENCES = { minLength: SILENCE_LENGTH.default, padding: SILENCE_PADDING.d
  * polishing a polished project again changes nothing.
  */
 export function planPolish(input: PolishInput, options: PolishOptions): PolishResult {
+  const steps = planPolishSteps(input, options)
+  for (let r = steps.next(); ; r = steps.next()) if (r.done) return r.value
+}
+
+/**
+ * planPolish a step at a time, the caption look in the steps of its planner: polishRunner runs it
+ * with a moment between them, so a long project's captions never hold the editor (Captions
+ * Studio §9.8).
+ */
+export function* planPolishSteps(input: PolishInput, options: PolishOptions): Generator<void, PolishResult, void> {
   const base = input.project
   let p = base
   const steps: PolishStepResult[] = []
@@ -275,13 +285,15 @@ export function planPolish(input: PolishInput, options: PolishOptions): PolishRe
   if (!options.captionLook) skip('captionLook', 'off')
   else if (!p.transcript?.segments.length) skip('captionLook', 'no-captions')
   else {
+    yield
     const look = input.captionLook
     const great = { ...(look?.great ?? DEFAULT_GREAT_OPTIONS), provider: null, quotes: false }
-    const planned = planCaptionsGreat(
+    const planned = yield* planCaptionsGreatSteps(
       { project: p, frame: captionFrame(p), brand: look?.brand ?? null, cleanup: look?.cleanup ?? DEFAULT_CLEANUP, words: look?.words ?? [], by: 'polish', cursor: effectiveTrack(input.recorded, p) },
       great
     )
     ran('captionLook', planned.project)
+    yield
   }
 
   // Camera director, last: it plans in output seconds on the final clips, finds the demo from the

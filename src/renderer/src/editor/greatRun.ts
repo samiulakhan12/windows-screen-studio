@@ -1,6 +1,7 @@
 /**
  * Runs Make my captions great (docs/design/captions-studio.md §11.8): gathers the slow input first
- * (the AI marks, cancellable), then one sealed update of the planner: one undo step.
+ * (the AI marks, cancellable), plans a step at a time with the editor free between the steps
+ * (§9.8; Cancel still changes nothing), then one sealed update of the plan: one undo step.
  *
  * Also the inputs Make my captions great, Polish's Caption look and the first captions share: the
  * saved options (prefs captionsGreat, captionCleanup, captionWordList) and the brand kit's look.
@@ -8,7 +9,7 @@
 import type { AiProviderInfo, AiTextRequest, MarksAnswer } from '../../../shared/api/ai'
 import { textHash } from '../../../shared/captions/captionTracks'
 import { readCleanupChoices, readWordList, tidyCaptions, type CleanupChoices, type WordListEntry } from '../../../shared/captions/cleanup'
-import { DEFAULT_GREAT_OPTIONS, greatNotice, planCaptionsGreat, readGreatOptions, type GreatOptions, type GreatSummary } from '../../../shared/captions/great'
+import { DEFAULT_GREAT_OPTIONS, greatNotice, planCaptionsGreat, planCaptionsGreatSteps, readGreatOptions, type GreatInput, type GreatOptions, type GreatSummary } from '../../../shared/captions/great'
 import { readCaptionStudio } from '../../../shared/captions/studioData'
 import type { BrandKit } from '../../../shared/editor/brandKit'
 import type { EditStore } from '../../../shared/editor/editStore'
@@ -127,6 +128,18 @@ async function providerKind(id: string): Promise<AiProviderInfo['kind'] | undefi
   }
 }
 
+/**
+ * A planner's steps run with a moment between them, so the editor draws, plays and takes Cancel
+ * while a long project is planned (§9.8): the result, or null when `signal` is aborted meanwhile.
+ */
+export async function planInSteps<T>(steps: Generator<void, T, void>, signal: AbortSignal): Promise<T | null> {
+  for (let r = steps.next(); ; r = steps.next()) {
+    if (r.done) return r.value
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    if (signal.aborted) return null
+  }
+}
+
 const NOTHING: Omit<GreatSummary, 'providerFailed'> = { style: null, emphasised: 0, emoji: 0, counters: 0, lists: 0, keywords: 0, lowerThirds: 0, chapters: 0, quotes: 0, tidied: 0, bleeped: 0 }
 
 export async function runCaptionsGreat(deps: { store: EditStore<Project>; frame: { w: number; h: number }; options: GreatOptions; signal: AbortSignal; undo?: string }): Promise<{ notice: string } | null> {
@@ -135,14 +148,14 @@ export async function runCaptionsGreat(deps: { store: EditStore<Project>; frame:
   if (!start.transcript?.segments.length) return null
   const inputs = await loadGreatInputs()
   if (signal.aborted) return null
-  let marks: MarksAnswer | undefined
+  let asked: { answer: MarksAnswer; sent: Map<string, string> } | undefined
   let marksVia: AiProviderInfo['kind'] | undefined
   let providerFailed = false
   if (options.provider) {
     try {
-      const [asked, kind] = await Promise.all([requestMarks(start, options.provider, options.tidy ? inputs : null), providerKind(options.provider)])
+      const [answer, kind] = await Promise.all([requestMarks(start, options.provider, options.tidy ? inputs : null), providerKind(options.provider)])
       if (signal.aborted) return null
-      marks = stillValid(asked.answer, asked.sent, store.getSnapshot())
+      asked = answer
       marksVia = kind
     } catch {
       if (signal.aborted) return null
@@ -151,12 +164,21 @@ export async function runCaptionsGreat(deps: { store: EditStore<Project>; frame:
     }
   }
   if (signal.aborted) return null
+  /** The planner's input for `project`: the AI's marks of captions not edited since they were asked. */
+  const input = (project: Project): GreatInput => {
+    const marks = asked ? stillValid(asked.answer, asked.sent, project) : undefined
+    return { project, frame, brand: inputs.brand, cleanup: inputs.cleanup, words: inputs.words, by: 'great', ...(marks ? { marks } : {}), ...(marksVia ? { marksVia } : {}) }
+  }
+  // Planned from the project as it is now, a step at a time (§9.8).
+  const from = store.getSnapshot()
+  const planned = await planInSteps(planCaptionsGreatSteps(input(from), options), signal)
+  if (!planned) return null
   let summary: GreatSummary | null = null
   let changed = false
-  // One undo step, planned from the project as it is now (polish-in-one-click decision 3).
+  // One undo step (polish-in-one-click decision 3); planned again at once from an edit made meanwhile.
   store.seal()
   store.update((p) => {
-    const out = planCaptionsGreat({ project: p, frame, brand: inputs.brand, cleanup: inputs.cleanup, words: inputs.words, by: 'great', ...(marks ? { marks } : {}), ...(marksVia ? { marksVia } : {}) }, options)
+    const out = p === from ? planned : planCaptionsGreat(input(p), options)
     summary = out.summary
     changed = out.project !== p
     return out.project

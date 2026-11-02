@@ -37,7 +37,7 @@ export async function startCaptionsGreat(deps: { store: EditStore<Project>; fram
   }
 }
 
-/** Cancel: stops a run waiting for an AI provider (nothing is changed). */
+/** Cancel: stops a run waiting for an AI provider or still planning (nothing is changed). */
 export function cancelCaptionsGreat(): void {
   running?.abort()
 }

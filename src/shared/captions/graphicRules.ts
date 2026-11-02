@@ -89,6 +89,12 @@ interface Candidate {
 
 /** The project with the automatic graphics, lower thirds, chapter titles and quote cards made again. */
 export function planGraphics(project: Project, opts: GraphicOptions): Project {
+  const steps = planGraphicsSteps(project, opts)
+  for (let r = steps.next(); ; r = steps.next()) if (r.done) return r.value
+}
+
+/** planGraphics a kind at a time, for a planner run with a moment between its steps (great.ts, §9.8). */
+export function* planGraphicsSteps(project: Project, opts: GraphicOptions): Generator<void, Project, void> {
   const transcript = project.transcript
   const segments = transcript?.segments ?? []
   const language = transcript?.language
@@ -142,6 +148,7 @@ export function planGraphics(project: Project, opts: GraphicOptions): Project {
         candidates.push({ item, rank: 0, caption: seg.id })
       }
     }
+  yield
 
   // Lists: the AI's lists when it gave valid ones, else the offline finder; one per 60 s.
   if (opts.lists) {
@@ -169,6 +176,7 @@ export function planGraphics(project: Project, opts: GraphicOptions): Project {
       candidates.push({ item, rank: 1, caption: seg.id })
     }
   }
+  yield
 
   // Keyword pop-ups: only for looks of a few words, one word or stacked words (§10.1).
   const studio = project.captions?.studio
@@ -178,10 +186,14 @@ export function planGraphics(project: Project, opts: GraphicOptions): Project {
     const measure = (text: string, px: number): number => graphemes(text) * px * 0.55
     const face = { stack: 'sans-serif', weight: 700, tracking: 0 }
     const chunksOf = new Map<string, { start: number; end: number; first: number; last: number }[]>()
-    const picked: { start: number }[] = []
+    // The picked starts, in time order (§9.8).
+    const picked: number[] = []
     for (const s of best) {
       const seg = byId.get(s.caption)
       if (!seg) continue
+      // Its chunks start within the caption (§8.2): one near a picked start all the time is not
+      // laid out (most of a long project's are, at one pop-up per 15 s).
+      if (nearThroughout(picked, seg.start, seg.end, KEYWORD_EVERY)) continue
       let chunks = chunksOf.get(seg.id)
       if (!chunks) {
         const layout = studioLayout(seg, studio, frame.width, frame.height, measure, { faceOf: () => face, language })
@@ -190,13 +202,13 @@ export function planGraphics(project: Project, opts: GraphicOptions): Project {
       }
       const chunk = chunks.find((c) => c.first <= s.word && s.word <= c.last)
       if (!chunk || chunk.end - chunk.start < KEYWORD_CHUNK) continue
-      if (picked.some((p) => Math.abs(p.start - chunk.start) < KEYWORD_EVERY)) continue
+      if (nearIn(picked, chunk.start, KEYWORD_EVERY)) continue
       // A bleeped word is never readable (§11.7): no pop-up shows it over the mask.
       if (wordsBleeped(project, { caption: seg.id, from: s.word, to: s.to })) continue
       const words = studioWordTexts(seg.text, language)
       const text = trimText(words.slice(s.word, s.to + 1).join(' '), GRAPHIC_TEXT_MAX)
       if (!text) continue
-      picked.push({ start: chunk.start })
+      insertSorted(picked, chunk.start)
       const d = GRAPHIC_DEFAULTS.keyword
       const item: KeywordGraphic = {
         id: graphicId('keyword', seg.id, s.word, text),
@@ -210,6 +222,7 @@ export function planGraphics(project: Project, opts: GraphicOptions): Project {
       candidates.push({ item, rank: 2, caption: seg.id })
     }
   }
+  yield
 
   // Emoji: the AI's picks where it gave a listed emoji on a word, else the offline words (§11.3).
   if (opts.emoji) {
@@ -218,22 +231,28 @@ export function planGraphics(project: Project, opts: GraphicOptions): Project {
     const covered = new Set(fromAi.map((g) => g.auto?.caption))
     for (const item of [...fromAi, ...offline.filter((g) => !covered.has(g.auto?.caption))]) candidates.push({ item: sound ? { ...item, sound } : item, rank: 3, caption: item.auto?.caption })
   }
+  yield
 
   // Density: spacing, pause freezes, a cap per minute of viewing time; the kept graphics count.
   const cap = tall ? PER_MINUTE.tall : PER_MINUTE.other
   const clock = (t: number): number => (project.clips.length ? viewingTime(project.clips, t) : t)
   const pauses = (project.freezes ?? []).filter((f) => f.sound === 'pause').map((f) => f.at)
   const accepted: Graphic[] = []
-  const starts: number[] = keptGraphics.map((g) => clock(g.start))
+  // The starts in time order: a long project has thousands of candidates (§9.8).
+  const starts: number[] = []
+  for (const g of keptGraphics) insertSorted(starts, clock(g.start))
   candidates.sort((a, b) => a.rank - b.rank || a.item.start - b.item.start || (a.item.id < b.item.id ? -1 : 1))
   for (const c of candidates) {
     if (c.caption && sensitive.has(c.caption)) continue
     if (!(c.item.end - c.item.start > 0.05)) continue
     const at = clock(c.item.start)
-    if (starts.some((s) => Math.abs(s - at) < GRAPHIC_SPACING)) continue
+    if (nearIn(starts, at, GRAPHIC_SPACING)) continue
     if (pauses.some((p) => c.item.start >= p && c.item.start - p < AFTER_FREEZE)) continue
-    if (starts.filter((s) => s > at - 60 && s <= at).length >= cap || starts.filter((s) => s >= at && s < at + 60).length >= cap) continue
-    starts.push(at)
+    // Starts in the minute up to `at`, and in the minute from it.
+    const before = firstWhere(starts, (s) => s > at) - firstWhere(starts, (s) => s > at - 60)
+    const after = firstWhere(starts, (s) => s >= at + 60) - firstWhere(starts, (s) => s >= at)
+    if (before >= cap || after >= cap) continue
+    insertSorted(starts, at)
     accepted.push(c.item)
   }
 
@@ -276,6 +295,36 @@ export function planGraphics(project: Project, opts: GraphicOptions): Project {
   const graphics = sortGraphics([...keptGraphics, ...accepted])
   const titleCards = [...keptTitles, ...newTitles].sort((a, b) => a.start - b.start || a.end - b.end || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0))
   return withItems(project, graphics, titleCards)
+}
+
+/** The first index of the sorted `list` from which `ok` holds (once it holds for a time, it holds for every later one). */
+function firstWhere(list: readonly number[], ok: (t: number) => boolean): number {
+  let lo = 0
+  let hi = list.length
+  while (lo < hi) {
+    const mid = (lo + hi) >> 1
+    if (ok(list[mid])) hi = mid
+    else lo = mid + 1
+  }
+  return lo
+}
+
+/** Whether a time of the sorted `list` is less than `gap` from `at`: only the times near it are read. */
+function nearIn(list: readonly number[], at: number, gap: number): boolean {
+  for (let i = firstWhere(list, (t) => t >= at - 2 * gap); i < list.length && !(list[i] > at + 2 * gap); i++) if (Math.abs(list[i] - at) < gap) return true
+  return false
+}
+
+/** Whether one time of the sorted `list` is less than `gap` from every time from `a` to `b`, with room for rounding. */
+function nearThroughout(list: readonly number[], a: number, b: number, gap: number): boolean {
+  const reach = gap - 0.01
+  const i = firstWhere(list, (t) => t > Math.max(a, b) - reach)
+  return i < list.length && list[i] < Math.min(a, b) + reach
+}
+
+/** `t` put in its place in the sorted `list`; a time that is not a number is near none and left out. */
+function insertSorted(list: number[], t: number): void {
+  if (!Number.isNaN(t)) list.splice(firstWhere(list, (u) => u > t), 0, t)
 }
 
 /** Graphics in time order, as the reader keeps them. */
