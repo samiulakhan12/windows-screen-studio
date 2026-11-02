@@ -360,8 +360,10 @@ Section **Unwanted sounds** in the Audio tab, after Voice (`SoundsSection.tsx`):
     **Cut** (*"Cut it out of the video"*), **Ignore** (*"Keep it and take it off the list"*);
   - muted / ducked / cut: the state (*Muted*, *Lowered*, *Cut*) and **Restore**;
   - ignored (shown with Show ignored): *Ignored* and **Bring back**.
-- Play on a sound cut out of the video with the half second around it (a trimmed end) plays nothing
-  and says *"That part is cut out of the video"*, as a refused action does.
+- Play pauses half a second after the sound, unless the user moves the playhead meanwhile (a click
+  on the timeline, a jump): that playback is theirs and goes on. Play on a sound cut out of the video
+  with the half second around it (a trimmed end) plays nothing and says *"That part is cut out of
+  the video"*, as a refused action does.
 - A polite live region announces each action (*"Muted the cough at 0:12.4"*, *"Cut 0.4 s"*). An
   action that cannot be done (*"That would cut the whole video"*) is also shown under the list, until
   the next action.
@@ -536,7 +538,9 @@ End to end (`tests/e2e/sound-finder.e2e.cjs`, the built app under Xvfb):
   it stayed in the preview and the export with nothing in the panel to show or undo it.
   A refused Cut (*"That would cut the whole video"*) is shown under the list; before, only a screen
   reader heard it and the button seemed to do nothing. Play on a sound in a trimmed end says it is
-  cut out; before, the player started from the beginning and played the whole video.
+  cut out; before, the player started from the beginning and played the whole video. Moving the
+  playhead while Play plays a sound hands the playback back; before, it was paused at once (or when
+  it next passed the sound's end).
   The worker's `fetch` reaches only the app's own files (§7); before, MediaPipe posted usage
   statistics to Google when listening to a source took more than a minute.
 - `@mediapipe/tasks-audio` is pinned at 1.0.1 (the version of `@mediapipe/tasks-vision` in use);

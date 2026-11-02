@@ -92,7 +92,10 @@ export function SoundsSection({ project }: { project: Project }): JSX.Element {
       return refuse(SOUNDS_COPY.playCut)
     }
     setRefused('')
+    const seeks = player.seeks
     const timer = window.setInterval(() => {
+      // The user moved the playhead (the timeline, a jump): the playback is theirs now and goes on.
+      if (player.seeks !== seeks) return stop()
       if (!player.playing || player.time >= until) {
         stop()
         if (player.playing) player.pause()

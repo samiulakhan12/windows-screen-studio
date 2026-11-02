@@ -408,3 +408,50 @@ describe('Play', () => {
     expect(textOf(byTestId('sounds-refused')?.el.props.children)).toBe(SOUNDS_COPY.playCut)
   })
 })
+
+describe('Play’s stop', () => {
+  /** Plays the music row 10–100 s and lets playback run to `t`. */
+  function playing(): void {
+    scan.state = done([row('music-1000', 10, 100)])
+    view()
+    click(buttonOf('music-1000', 'Play'))
+    view()
+    player.calls = []
+    player.time = 12
+    tick()
+    expect(player.calls).toEqual([])
+  }
+
+  it('pauses half a second after the sound', () => {
+    playing()
+    player.time = 100.4
+    tick()
+    expect(player.calls).toEqual([])
+    player.time = 100.52
+    tick()
+    expect(player.calls).toEqual(['pause'])
+    expect(timers.size).toBe(0)
+  })
+
+  it('lets the user’s own playback go on once they move the playhead past it', () => {
+    playing()
+    // A click on the timeline at 110 s while playing: playback goes on from there.
+    player.seek(110)
+    player.calls = []
+    tick()
+    expect(player.calls).toEqual([])
+    expect(player.playing).toBe(true)
+    expect(timers.size).toBe(0)
+  })
+
+  it('or back before it: playback is not stopped later at the sound’s end', () => {
+    playing()
+    player.seek(5)
+    tick()
+    player.calls = []
+    player.time = 101
+    tick()
+    expect(player.calls).toEqual([])
+    expect(player.playing).toBe(true)
+  })
+})

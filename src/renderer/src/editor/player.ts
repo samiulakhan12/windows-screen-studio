@@ -58,6 +58,8 @@ let sessionPreviewSpeed: PreviewSpeed = DEFAULT_PREVIEW_SPEED
 export class PreviewPlayer {
   time = 0
   playing = false
+  /** Moves of the playhead (seek) so far; playback's own jumps over cuts are none. */
+  seeks = 0
 
   /** How fast normal playback runs; the project and the export never see it. */
   get previewSpeed(): PreviewSpeed {
@@ -257,6 +259,7 @@ export class PreviewPlayer {
   /* ---------- transport ---------- */
 
   seek(t: number): void {
+    this.seeks++
     // A seek leaves a pause freeze (E-11); playback goes on from the new place.
     const held = this.clearHold()
     this.time = clamp(t, 0, this.project.duration)
