@@ -540,7 +540,7 @@ New:
 - `src/shared/publish/text.ts`: `plainText(s, { max, oneLine })`, `typedText(s, max)`, `cutAt(s, max)`,
   `sliceAt(s, max)`, `xLength(s)`, `fitX(s)`, `X_LIMIT`.
 - `src/shared/publish/twitterText.ts`: the port of twitter-text 3.1.0 (Apache-2.0):
-  `extractUrlsWithIndices(text)`, `findUrls(text, lenient)`, `parseTweet(text)`, `emojiSpans(text)`
+  `extractUrlsWithIndices(text)`, `findUrls(text)`, `parseTweet(text)`, `emojiSpans(text)`, `isTopLevelDomain(label)`
   and its patterns (`EXTRACT_URL`, `VALID_ASCII_DOMAIN`, `VALID_TCO_URL`…).
 - `src/shared/publish/newerTlds.ts`: `NEWER_GENERIC_TLDS`, `NEWER_COUNTRY_TLDS` (IANA's top-level
   domains twitter-text's lists lack; with tlds.ts, the full list the link check reads: `isTopLevelDomain`).

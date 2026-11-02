@@ -8,6 +8,7 @@ import {
   EXTRACT_URL,
   findUrls,
   INVALID_URL_WITHOUT_PROTOCOL_PRECEDING_CHARS,
+  isTopLevelDomain,
   parseTweet,
   urlMatchesPlain,
   VALID_ASCII_DOMAIN,
@@ -70,8 +71,7 @@ describe("the port of twitter-text 3.1.0 (X's rules for links and length)", () =
       let s = ''
       const n = 1 + Math.floor(rnd() * (k % 10 === 0 ? 200 : 20))
       for (let i = 0; i < n; i++) s += atoms[Math.floor(rnd() * atoms.length)]
-      expect(findUrls(s), s).toEqual(findUrls(s, false, urlMatchesPlain))
-      expect(findUrls(s, true), s).toEqual(findUrls(s, true, urlMatchesPlain))
+      expect(findUrls(s), s).toEqual(findUrls(s, urlMatchesPlain))
       const domain = s.replace(/[\s/?:#()@]/g, '')
       expect(asciiDomainsIn(domain), domain).toEqual(domain.match(VALID_ASCII_DOMAIN) ?? [])
     }
@@ -90,7 +90,7 @@ describe("the port of twitter-text 3.1.0 (X's rules for links and length)", () =
     ]
     for (const t of texts) {
       const start = performance.now()
-      findUrls(t, true)
+      findUrls(t)
       parseTweet(t)
       expect(performance.now() - start, t.slice(0, 30)).toBeLessThan(400)
     }
@@ -100,15 +100,15 @@ describe("the port of twitter-text 3.1.0 (X's rules for links and length)", () =
     for (const tld of `${X_GENERIC_TLDS}|${X_COUNTRY_TLDS}|${NEWER_GENERIC_TLDS}|${NEWER_COUNTRY_TLDS}`.split('|')) expect(/^\p{L}/u.test(tld), tld).toBe(true)
   })
 
-  it('reads the top-level domains IANA delegated after its lists only when lenient, as sites with a newer list do', () => {
+  it('knows the top-level domains IANA delegated after its lists, which X does not link and the link check reads', () => {
     const x = new Set(`${X_GENERIC_TLDS}|${X_COUNTRY_TLDS}`.split('|'))
     for (const tld of `${NEWER_GENERIC_TLDS}|${NEWER_COUNTRY_TLDS}`.split('|')) {
       expect(x.has(tld), tld).toBe(false)
-      const text = `Go to evil.${tld}/login now`
-      expect(extractUrlsWithIndices(text), tld).toEqual([])
-      expect(findUrls(text, true), tld).toEqual([{ url: `evil.${tld}/login`, indices: [6, 6 + `evil.${tld}/login`.length] }])
+      expect(extractUrlsWithIndices(`Go to evil.${tld}/login now`), tld).toEqual([])
+      expect(isTopLevelDomain(tld), tld).toBe(true)
     }
-    // "web" does not end a longer name X knows.
-    expect(findUrls('see evil.webcam and evil.website', true).map((u) => u.url)).toEqual(['evil.webcam', 'evil.website'])
+    expect(isTopLevelDomain('xn--p1ai')).toBe(true)
+    expect(isTopLevelDomain('webcam')).toBe(true)
+    expect(isTopLevelDomain('json')).toBe(false)
   })
 })

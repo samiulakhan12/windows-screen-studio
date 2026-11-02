@@ -16,13 +16,13 @@
  * adapted from punycode.js 1.4.1 (Copyright Mathias Bynens <https://mathiasbynens.be/>, MIT licence:
  * resources/notices/36-punycode.txt), its toASCII and its encoder (RFC 3492's), counted. Added:
  * urlMatches and asciiDomainsIn, which find the same matches as twitter-text's loops over
- * EXTRACT_URL and VALID_ASCII_DOMAIN in linear time, and the `lenient` option of findUrls (with the
- * top-level domains of newerTlds.ts). See resources/notices/34-twitter-text.txt.
+ * EXTRACT_URL and VALID_ASCII_DOMAIN in linear time, and isTopLevelDomain (with the top-level domains
+ * of newerTlds.ts), which the copy pack's link check reads. See resources/notices/34-twitter-text.txt.
  */
 
 /**
  * X's own rules for what it turns into a link and how it counts a post (docs/design/publish-pack.md
- * §4.4–4.5): `extractUrlsWithIndices` and `parseTweet` give exactly what twitter-text 3.1.0 gives,
+ * §4.4–4.5, §4.8): `extractUrlsWithIndices` and `parseTweet` give exactly what twitter-text 3.1.0 gives,
  * which tests/fixtures/x-links.json (written from the package itself by
  * scripts/build-link-oracle.mjs) proves case by case. Pure.
  */
@@ -88,13 +88,10 @@ const tldsOf = (generic: string, country: string): Tlds => {
 }
 /** X's top-level domains (twitter-text 3.1.0's lists). */
 const X_TLDS: Tlds = tldsOf(X_GENERIC_TLDS, X_COUNTRY_TLDS)
-/** X's and those IANA delegated since (newerTlds.ts), which sites with a newer list link: what `lenient` reads. */
-const WIDER_TLDS: Tlds = tldsOf(`${X_GENERIC_TLDS}|${NEWER_GENERIC_TLDS}`, `${X_COUNTRY_TLDS}|${NEWER_COUNTRY_TLDS}`)
-
-/** The top-level domains `lenient` reads (X's and IANA's newer ones), as written in Unicode, lower case. */
+/** The top-level domains the link check reads: X's and those IANA delegated since (newerTlds.ts), as written in Unicode, lower case. */
 const WIDER_TLD_NAMES = new Set(`${X_GENERIC_TLDS}|${NEWER_GENERIC_TLDS}|${X_COUNTRY_TLDS}|${NEWER_COUNTRY_TLDS}`.split('|'))
 
-/** Whether `label` (lower case) is a top-level domain `lenient` reads, or one written in punycode ("xn--p1ai"). Not in twitter-text. */
+/** Whether `label` (lower case) is a top-level domain of the full list, or one written in punycode ("xn--p1ai"). Not in twitter-text. */
 export const isTopLevelDomain = (label: string): boolean => WIDER_TLD_NAMES.has(label) || /^xn--[-0-9a-z]+$/.test(label)
 
 /** regexp/validAsciiDomain.js: the part of a domain X links without a scheme. */
@@ -374,16 +371,12 @@ function urlMatches(text: string, tlds: Tlds): UrlMatch[] {
 
 /**
  * The links in `text` as twitter-text 3.1.0's extractUrlsWithIndices finds them (with links without
- * a scheme, its default). `lenient` (not in twitter-text) also gives what it matches but drops only
- * for its length (over 4 096 characters, a t.co name over 40) or, without a scheme, for having no
- * name in Latin letters ("госуслуги.рф"), and names on the top-level domains IANA delegated after
- * its lists (newerTlds.ts: "evil.web"), which other sites may still link; the others are the same.
- * A domain no site can have (a label over 63 characters in punycode, a "xn--" one with other
- * letters) is no link either way.
+ * a scheme, its default), its matches found by `matches` (urlMatches; urlMatchesPlain is
+ * twitter-text's own loop, for the tests).
  */
-export function findUrls(text: string, lenient = false, matches: (text: string, tlds: Tlds) => UrlMatch[] = urlMatches): UrlEntity[] {
+export function findUrls(text: string, matches: (text: string, tlds: Tlds) => UrlMatch[] = urlMatches): UrlEntity[] {
   if (!text || !text.match(/\./)) return []
-  const tlds = lenient ? WIDER_TLDS : X_TLDS
+  const tlds = X_TLDS
   const urls: UrlEntity[] = []
   for (const m of matches(text, tlds)) {
     const { before, protocol, domain, path } = m
@@ -391,8 +384,7 @@ export function findUrls(text: string, lenient = false, matches: (text: string, 
     let endPosition = m.end
     const startPosition = endPosition - url.length
     const valid = isValidUrl(url, protocol || DEFAULT_PROTOCOL, domain, tlds)
-    // `lenient` keeps one that is too long, not one with a label no name can have.
-    if (!valid && !(lenient && toAscii(domain, tlds))) continue
+    if (!valid) continue
     if (!protocol) {
       // Only the domain's parts in Latin letters are linked without a scheme.
       if (before.match(INVALID_URL_WITHOUT_PROTOCOL_PRECEDING_CHARS)) continue
@@ -406,15 +398,8 @@ export function findUrls(text: string, lenient = false, matches: (text: string, 
         urls.push(lastUrl)
       }
       const last = lastUrl as UrlEntity | null
-      if (last == null) {
-        // No Latin name in it ("госуслуги.рф"): X does not link it, other sites may; from after the
-        // last punctuation X reads into it ("«госуслуги.рф»", '".com"'), which no host has, and none
-        // when a "." follows that ("«.NET»" is no name).
-        const name = domain.replace(/^.*[^\P{P}.-]/su, '')
-        const lead = domain.length - name.length
-        if (lenient && valid && name && !name.startsWith('.')) urls.push({ url: (path ? url : domain).slice(lead), indices: [startPosition + lead, path ? endPosition : startPosition + domain.length] })
-        continue
-      }
+      // No Latin name in it ("госуслуги.рф"): X does not link it.
+      if (last == null) continue
       // Only the last name gets the port, path and query.
       if (path) {
         last.url = url.replace(domain, last.url)
@@ -424,9 +409,8 @@ export function findUrls(text: string, lenient = false, matches: (text: string, 
       // A t.co link takes no more path.
       const tco = url.match(VALID_TCO_URL)
       if (tco) {
-        if (tco[1] && tco[1].length > MAX_TCO_SLUG_LENGTH) {
-          if (!lenient) continue
-        } else {
+        if (tco[1] && tco[1].length > MAX_TCO_SLUG_LENGTH) continue
+        else {
           url = tco[0]
           endPosition = startPosition + url.length
         }
@@ -438,7 +422,7 @@ export function findUrls(text: string, lenient = false, matches: (text: string, 
 }
 
 /** twitter-text 3.1.0's extractUrlsWithIndices(text): what X links in `text`. */
-export const extractUrlsWithIndices = (text: string): UrlEntity[] => findUrls(text, false)
+export const extractUrlsWithIndices = (text: string): UrlEntity[] => findUrls(text)
 
 /* ---------- parseTweet.js (weighted length, configs.js version 3) ---------- */
 
