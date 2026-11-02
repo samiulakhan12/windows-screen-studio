@@ -9,7 +9,7 @@ import { cubicBezier } from '../engine/easing'
 import { clamp, lerp } from '../engine/math'
 import { outputToSource } from '../engine/timeline'
 import type { CaptionMotion, CaptionStudio, ChunkEnter, ChunkExit, Clip, CounterGraphic, ItemMotion, ItemMotionKind, ListGraphic, WordMotion } from '../types'
-import { scriptScale } from './fontStack'
+import { scriptScale, sizeScript } from './fontStack'
 import { CAPTION_JOIN, viewAt } from './layout'
 import type { StudioChunk, StudioLayout } from './studioLayout'
 
@@ -634,7 +634,7 @@ export function captionPoses(
       /* growing while spoken (Bold Pop, Stickers, Spotlight Word; ×1.14 at most in Bangla; by strength,
          none at 0; estimated words keep their size). With the pulse (Bold Pop), the approved pop is
          the word's pulse: it is not added on top. */
-      const grow = calm ? 0 : (scriptScale(tok.script, wm.spokenScale ?? 1) - 1) * s
+      const grow = calm ? 0 : (scriptScale(sizeScript(tok), wm.spokenScale ?? 1) - 1) * s
       const pops = grow > 0 && wm.word === 'pulse'
       const kind = emph ? wm.emphasis : pops ? 'none' : wm.word
       const ctx: WordCtx = { age: ageW, len: lenW, em: wem, u, s, m: wm, entrance: m.upcoming < 1, upcoming: m.upcoming, dir: layout.dirs[i] ?? 'l', seed: kind === 'shake' ? seedOf(`${key}|${i}`) : 0, graphemes: kind === 'typewriter' ? graphemeCount(tok.text) : 0, calm: calm || !!tok.estimated }

@@ -9,7 +9,7 @@ import { cameraBoxShown, layoutPhaseAt, sceneCameraBox, type Rect } from '../eng
 import { isTall } from '../engine/reframeData'
 import { TEXT_INSET } from '../render/safeZones'
 import type { CaptionSegment, CaptionSettings, CaptionStudio, Project, StudioPosition } from '../types'
-import { scriptLineHeight, scriptScale } from './fontStack'
+import { scriptLineHeight, scriptScale, sizeScript } from './fontStack'
 import { CAPTION_MAX_WIDTH, CAPTION_SAFE, displayOrder, RTL_FIRST, type CaptionWordBox } from './layout'
 import { CLAUSE_END, CURRENCY, END_WORDS, JOIN_WORDS, NO_LINE_END, NO_LINE_START, POST_WORDS, SENTENCE_END, UNIT_WORDS } from './phraseWords'
 import { hasCase, mainScript, scriptOf, studioTokens, withDigits, type ScriptTag, type StudioToken } from './words'
@@ -492,7 +492,7 @@ export function studioLayout(
   const dirs = tokens.map((t) => t.dir)
   const spoken = opts.spoken !== false
   const faces = tokens.map((t, i) => opts.faceOf(t, emphasis[i] ? 'emphasis' : 'text'))
-  const pxOf = tokens.map((t, i) => (emphasis[i] ? m.px * scriptScale(t.script, studio.emphasis.scale) : m.px))
+  const pxOf = tokens.map((t, i) => (emphasis[i] ? m.px * scriptScale(sizeScript(t), studio.emphasis.scale) : m.px))
   const measureFace = (i: number): StudioFace => (spoken && studio.spoken === 'weight' && !tokens[i].label ? { ...faces[i], weight: Math.max(faces[i].weight, spokenWeightOf(studio)) } : faces[i])
   const widths = tokens.map((t, i) => measure(t.text, pxOf[i], measureFace(i)))
   // Room for a word that grows, on the side of each neighbour: the spoken word's size times the peak
@@ -507,9 +507,10 @@ export function studioLayout(
   }
   const peak = (k: number): number => {
     if (!spoken || calm || tokens[k].label) return 1
-    const grow = scriptScale(tokens[k].script, studio.motion.spokenScale ?? 1)
+    const script = sizeScript(tokens[k])
+    const grow = scriptScale(script, studio.motion.spokenScale ?? 1)
     if (grow > 1) return Math.max(grow * motionPeak(k), studio.motion.word === 'pulse' ? 1 + ((grow - 1) * 0.28) / 0.18 : 1)
-    return tokens[k].script === 'bengali' ? motionPeak(k) : 1
+    return script === 'bengali' ? motionPeak(k) : 1
   }
   // Stickers (§0.1, more.html): each word is its own sticker, reaching padX and half its border past
   // the word, so neighbours stand 0.2 em apart sticker to sticker, with or without a space in the text.

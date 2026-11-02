@@ -339,6 +339,17 @@ describe('spoken marks and word motion (§9.3)', () => {
     expect(captionPoses(bn, 0, 0.35 + 0.25, ONE, s, U, null).words[1].scale).toBeCloseTo(1.14, 6)
   })
 
+  it('a mixed word (Chrome-টি) grows as the Bangla words around it, ×1.14 at most (§0.2, §6.6 step 3)', () => {
+    const s = look('spotlight-word')
+    const mixed = lay(timed('এক Chrome-টি সুন্দর'), s, 1080, 1920, undefined, 'bn')
+    // Its script comes from its first letter.
+    expect(mixed.tokens[1].script).toBe('latin')
+    expect(captionPoses(mixed, 0, 0.35 + 0.25, ONE, s, U, null).words[1].scale).toBeCloseTo(1.14, 6)
+    const bp = look('bold-pop')
+    const l = lay(timed('এক Windows-এ সুন্দর', 0.4), bp, 1080, 1920, undefined, 'bn')
+    expect(captionPoses(l, 0, 0.4 + 0.3, ONE, bp, U, null).words[1].scale).toBeCloseTo(1.14, 6)
+  })
+
   it("Bold Pop's spoken word pops past its size, settles at 1.18 by 0.2 s and holds while spoken (APPROVED-LOOK.md)", () => {
     const s = look('bold-pop')
     const at = (l: StudioLayout, dt: number): number => captionPoses(l, 0, 0.4 + dt, ONE, s, U, null).words[1].scale

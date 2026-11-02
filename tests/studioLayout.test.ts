@@ -283,6 +283,22 @@ describe('chunk modes (test 9)', () => {
     expect(gap({ ...bp, motion: { ...bp.motion, calm: true } })).toBe(gap(still))
   })
 
+  it('a mixed word (Windows-এ) grows as the Bangla words around it: ×1.14 at most, with room for that (§0.2, §6.6 step 3)', () => {
+    const bp = look('bold-pop')
+    const at = (text: string, marks?: { from: number; to: number }[]): StudioLayout => studioLayout({ id: 'c', start: 0, end: 2, text }, bp, 1920, 1080, measure, { faceOf: () => FACE, language: 'bn', marks })
+    // Emphasised: ×1.14 as খুলুন, not Bold Pop's ×1.15 of a Latin word, though its script comes from its first letter.
+    const l = at('Windows-এ Chrome খুলুন', [{ from: 0, to: 2 }])
+    expect(l.tokens.map((t) => t.script)).toEqual(['latin', 'latin', 'bengali'])
+    const px = new Map(l.chunks.flatMap((c) => c.lines.flatMap((line) => line.words.map((w) => [w.text, w.px / l.px] as const))))
+    expect(px.get('WINDOWS-এ')).toBeCloseTo(1.14, 9)
+    expect(px.get('খুলুন')).toBeCloseTo(1.14, 9)
+    expect(px.get('CHROME')).toBeCloseTo(1.15, 9)
+    // Spoken: room beside it for the Bangla ×1.14 times its pulse's peak, not the Latin 1.28.
+    const words = at('Windows-এ Chrome খুলুন').chunks[0].lines[0].words
+    const gap = words[1].x - (words[0].x + words[0].w)
+    expect(gap).toBeCloseTo(0.55 * words[0].px + ((1.14 * (1 + 0.08 * bp.motion.strength) - 1) * words[0].w) / 2, 9)
+  })
+
   it('raises the line height for Bangla captions', () => {
     const bn = studioLayout({ id: 'c', start: 0, end: 2, text: 'আমরা আজ শিখব' }, look('bold-pop'), 1080, 1920, measure, { faceOf: () => FACE, language: 'bn' })
     expect(bn.lineHeight / bn.px).toBeCloseTo(1.4, 9)

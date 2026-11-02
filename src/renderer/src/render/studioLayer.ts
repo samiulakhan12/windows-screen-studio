@@ -683,7 +683,8 @@ const STICKER_TOP: Partial<Record<ScriptTag, number>> = { bengali: 0.8, devanaga
 function paintOf(studio: CaptionStudio, wi: WordInfo, state: WordState): WordPaint {
   const { theme, edge, box } = studio
   const em = wi.box.px
-  const bengali = wi.token.script === 'bengali'
+  // A mixed word ('Windows-এ') follows Bangla's size and outline too: its Bangla letters need them as much (§6.6 step 3).
+  const bengali = wi.token.script === 'bengali' || BENGALI_LETTER.test(wi.box.text)
   const spokenMark = studio.spoken
   const lit = state === 'lit'
   const emph = wi.emphasis > 0
@@ -705,8 +706,7 @@ function paintOf(studio: CaptionStudio, wi: WordInfo, state: WordState): WordPai
     else if (spokenMark !== 'weight' && spokenMark !== 'none' && spokenMark !== 'underline') fill = theme.spoken
   }
   const hollow = !!edge.hollow && !lit && !emph
-  // A mixed word ('Windows-এ') takes the thin Bangla outline too: its joined Bangla letters need it as much.
-  const outlineEm = Math.min(edge.outline, bengali || BENGALI_LETTER.test(wi.box.text) ? BENGALI_OUTLINE_MAX : Infinity)
+  const outlineEm = Math.min(edge.outline, bengali ? BENGALI_OUTLINE_MAX : Infinity)
   // No outline on words over a marker or box (the mark is their background), nor on the spoken box.
   const onMark = (emph && markOnBox) || (lit && boxedSpoken && box.kind !== 'word')
   const outline = !hollow && !onMark && outlineEm > 0 && edge.outlineAlpha > 0 ? { width: 2 * outlineEm * em * grow, color: rgba(theme.outline, edge.outlineAlpha) } : null

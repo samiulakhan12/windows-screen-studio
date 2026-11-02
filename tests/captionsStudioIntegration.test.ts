@@ -328,6 +328,21 @@ describe('Bangla edges (§0.2: outlines about 0.08 em, thinner than Latin, with 
     for (const e of edges('CHROME')) expect(e.outline).toBeCloseTo(0.17, 3)
   })
 
+  it('a mixed word (Chrome-টি) is painted at the Bangla spoken size, as the Bangla words beside it (Spotlight Word: ×1.14, not ×1.28)', () => {
+    const p = project([caption('এক Chrome-টি সুন্দর')], 'bn', { studio: look('spotlight-word') })
+    for (let t = 0.6; t < 3; t += 0.1) drawStudioCaptions(frameOf(p, t).fc)
+    /** The font sizes its sprites were painted at: at rest and spoken. */
+    const sizes = (word: string): number[] => {
+      const texts = spriteTexts()
+      return [...texts.keys()].filter((id) => texts.get(id)![0] === word).map((id) => parseFloat(/([\d.]+)px/.exec(String(calls.find((c) => c.canvas === id && c.name === 'fillText')!.font))![1]))
+    }
+    for (const word of ['Chrome-টি', 'সুন্দর']) {
+      const px = sizes(word)
+      expect(px.length, word).toBeGreaterThan(1)
+      expect(Math.max(...px) / Math.min(...px), word).toBeCloseTo(1.14, 3)
+    }
+  })
+
   it('Bangla in a look without a shadow (Circle) gets a soft shadow with its thinner outline; English keeps none', () => {
     sets.length = 0
     const p = project([caption('আমরা আজ শিখব')], 'bn', { studio: look('circle') })

@@ -195,6 +195,16 @@ export function scriptScale(script: ScriptTag, scale: number): number {
   return script === 'bengali' ? Math.min(scale, BANGLA_SCALE_MAX) : scale
 }
 
+const BENGALI_LETTER = /\p{Script=Bengali}/u
+/**
+ * The script whose limits a word's size and outline follow: Bangla for any word with a Bangla
+ * letter, so the Bangla of a mixed word ("Windows-এ", Latin by its first letter) grows no more than
+ * the Bangla words around it (§0.2, §6.6 step 3).
+ */
+export function sizeScript(word: { text: string; script: ScriptTag }): ScriptTag {
+  return word.script !== 'bengali' && BENGALI_LETTER.test(word.text) ? 'bengali' : word.script
+}
+
 /** The outline (em) a word of `script` draws with. */
 export function scriptOutline(script: ScriptTag, outline: number): number {
   return script === 'bengali' ? Math.min(outline, BANGLA_OUTLINE_MAX) : outline
