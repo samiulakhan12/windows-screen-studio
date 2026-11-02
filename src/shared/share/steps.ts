@@ -19,6 +19,24 @@ export function stepText(s: ShareStepView): string {
   return `Could not post to ${s.label}: ${s.message ?? 'something went wrong.'}`
 }
 
+/** A step's buttons, as they read on screen. */
+export type StepButton = 'Try again' | 'Show in folder' | 'Copy link'
+
+/**
+ * A step button's name for screen readers and speech control: its visible words first (WCAG 2.5.3,
+ * so "click Show in folder" finds it), then the destination: "Show in folder: the copy in OneDrive".
+ */
+export function stepButtonName(button: StepButton, s: ShareStepView): string {
+  if (button === 'Try again') return `Try again: ${s.kind === 'copy' ? 'copy to' : 'post to'} ${s.label}`
+  return `${button}: the copy in ${s.label}`
+}
+
+/** A run's Cancel, named by what it still has to do: "Cancel share: OneDrive and #demos". */
+export function cancelName(run: ShareRunView): string {
+  const left = run.steps.filter((s) => s.state === 'running' || s.state === 'waiting').map((s) => s.label)
+  return left.length ? `Cancel share: ${left.join(' and ')}` : 'Cancel share'
+}
+
 /**
  * What "Try again" on `step` starts: a post the failed copy held back goes with that copy again,
  * unless the copy has been saved since (`latest`: the latest step of each destination).
