@@ -26,6 +26,9 @@ export function SoundsSection({ project }: { project: Project }): JSX.Element {
   const state = scanState(project.id)
   const [showIgnored, setShowIgnored] = useState(false)
   const [said, setSaid] = useState('')
+  // Why the last action did nothing (That would cut the whole video): shown under the list, as well
+  // as said, until the next action.
+  const [refused, setRefused] = useState('')
   const listRef = useRef<HTMLUListElement>(null)
   const sectionRef = useRef<HTMLDivElement>(null)
   const focusKey = useRef<{ key: string; index: number } | null>(null)
@@ -57,11 +60,16 @@ export function SoundsSection({ project }: { project: Project }): JSX.Element {
   const act = (r: SoundRow, edit: (p: Project) => Project, message: string, failed?: string): void => {
     const before = store.state
     if (edit(before) === before) {
-      if (failed) setSaid(failed)
+      if (failed) refuse(failed)
       return
     }
     store.update(edit)
     focusKey.current = { key: r.key, index: Math.max(0, shown.findIndex((x) => x.key === r.key)) }
+    setRefused('')
+    setSaid(message)
+  }
+  const refuse = (message: string): void => {
+    setRefused(message)
     setSaid(message)
   }
 
@@ -154,6 +162,11 @@ export function SoundsSection({ project }: { project: Project }): JSX.Element {
               ))}
             </ul>
           )}
+          {refused && (
+            <p className="hint" data-testid="sounds-refused">
+              {refused}
+            </p>
+          )}
           {(open.length > 1 || ignoredCount > 0) && (
             <div className="row start sound-footer">
               {open.length > 1 && (
@@ -164,6 +177,7 @@ export function SoundsSection({ project }: { project: Project }): JSX.Element {
                     store.update((p) => addSpans(p, open, 'mute'))
                     // The button goes with the last open row: the focus goes to the first row muted.
                     focusKey.current = { key: open[0].key, index: 0 }
+                    setRefused('')
                     setSaid(actionText.muteAll(open.length))
                   }}
                 >

@@ -360,7 +360,9 @@ Section **Unwanted sounds** in the Audio tab, after Voice (`SoundsSection.tsx`):
     **Cut** (*"Cut it out of the video"*), **Ignore** (*"Keep it and take it off the list"*);
   - muted / ducked / cut: the state (*Muted*, *Lowered*, *Cut*) and **Restore**;
   - ignored (shown with Show ignored): *Ignored* and **Bring back**.
-- A polite live region announces each action (*"Muted the cough at 0:12.4"*, *"Cut 0.4 s"*).
+- A polite live region announces each action (*"Muted the cough at 0:12.4"*, *"Cut 0.4 s"*). An
+  action that cannot be done (*"That would cut the whole video"*) is also shown under the list, until
+  the next action.
 - Keyboard: everything is a button in tab order; after an action the focus moves to the row's first
   button (it would otherwise fall to the page, where Delete removes timeline items).
 - Colours: the existing tokens (`--text`, `--text-dim`, `--accent`, `--danger`); the state text uses
@@ -530,6 +532,8 @@ End to end (`tests/e2e/sound-finder.e2e.cjs`, the built app under Xvfb):
   levels and the speech detector, and one closed while listening could end as a false failure.
   A span no found row claims (its key changed with the speech ranges) is listed with Restore; before,
   it stayed in the preview and the export with nothing in the panel to show or undo it.
+  A refused Cut (*"That would cut the whole video"*) is shown under the list; before, only a screen
+  reader heard it and the button seemed to do nothing.
   The worker's `fetch` reaches only the app's own files (§7); before, MediaPipe posted usage
   statistics to Google when listening to a source took more than a minute.
 - `@mediapipe/tasks-audio` is pinned at 1.0.1 (the version of `@mediapipe/tasks-vision` in use);
