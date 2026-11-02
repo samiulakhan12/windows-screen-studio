@@ -306,14 +306,18 @@ export function mostlyBangla(segments: readonly CaptionSegment[]): boolean {
   return out
 }
 
+/** The transcript's language, else Bangla when it names none and is mostly Bangla (§0.2, §8.1). */
+export function transcriptLanguage(transcript: Project['transcript']): string | undefined {
+  return transcript?.language || (transcript && mostlyBangla(transcript.segments) ? 'bn' : undefined)
+}
+
 /**
- * The language of the captions on the video: the shown track's, else the transcript's, else Bangla
- * when the transcript names none and is mostly Bangla. The Digits choice, Case and letter spacing
- * follow it, in the controls and the drawing alike (§0.2).
+ * The language of the captions on the video: the shown track's, else the transcript's
+ * (transcriptLanguage). The Digits choice, Case and letter spacing follow it, in the controls and
+ * the drawing alike (§0.2).
  */
 export function captionLanguage(project: Pick<Project, 'captions' | 'transcript'>): string | undefined {
-  const t = project.transcript
-  return project.captions?.track || t?.language || (t && mostlyBangla(t.segments) ? 'bn' : undefined)
+  return project.captions?.track || transcriptLanguage(project.transcript)
 }
 
 /** One caption's position (captionPlaces) for the legacy placement; `position` itself without one. */

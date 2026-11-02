@@ -3,6 +3,7 @@
  * the project, and gives the project itself when nothing changes. The graphics stay as reading the
  * saved project gives them (readGraphics: inside the recording, texts cleaned, in time order).
  */
+import { transcriptLanguage } from '../captions/captionTracks'
 import { readGraphics } from '../captions/studioData'
 import { GRAPHIC_DEFAULTS } from '../render/graphics'
 import type { Graphic, Project } from '../types'
@@ -40,7 +41,7 @@ function fresh(project: Project, kind: Graphic['kind'], id: string, start: numbe
     case 'emoji':
       return { ...base, kind, emoji: '2728' }
     case 'counter':
-      return { ...base, kind, from: 0, to: 100, decimals: 0, prefix: '', suffix: '%', locale: project.transcript?.language ?? 'en', countFor: countFor(100) }
+      return { ...base, kind, from: 0, to: 100, decimals: 0, prefix: '', suffix: '%', locale: transcriptLanguage(project.transcript) || 'en', countFor: countFor(100) }
     case 'list':
       return { ...base, kind, marker: 'number', items: [{ text: 'First point', at: start }] }
   }

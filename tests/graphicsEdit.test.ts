@@ -36,6 +36,15 @@ describe('graphics edits (test 22)', () => {
     expect(own.project.graphics![0]).toMatchObject({ text: 'Export', look: 'tag' })
   })
 
+  it('a counter added by hand groups its digits in the captions’ language, Bangla for a mostly Bangla transcript that names none', () => {
+    const said = [{ id: 'c1', start: 0, end: 2, text: 'আমাদের আয় বেড়েছে এই বছরে' }]
+    const counterOf = (p: Project): unknown => addGraphic(p, 'counter', 1).project.graphics![0]
+    expect(counterOf({ ...base(), transcript: { segments: said } } as Project)).toMatchObject({ kind: 'counter', locale: 'bn' })
+    expect(counterOf({ ...base(), transcript: { language: 'en', segments: said } } as Project)).toMatchObject({ locale: 'en' })
+    expect(counterOf({ ...base(), transcript: { segments: [{ id: 'c1', start: 0, end: 2, text: 'Sales grew this year' }] } } as Project)).toMatchObject({ locale: 'en' })
+    expect(counterOf(base())).toMatchObject({ locale: 'en' })
+  })
+
   it('updates a field, keeping the id and the kind', () => {
     const { project, id } = addGraphic(base(), 'counter', 1)
     const next = updateGraphic(project, id, { to: 300, suffix: '%', id: 'other', kind: 'list' } as never)

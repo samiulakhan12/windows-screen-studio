@@ -13,7 +13,7 @@ import { isTall } from '../engine/reframeData'
 import { GRAPHIC_DEFAULTS } from '../render/graphics'
 import { viewingTime } from '../render/overlays'
 import type { AiProviderKind, AutoOrigin, CaptionSegment, CounterGraphic, Graphic, KeywordGraphic, ListGraphic, Project, TitleCard } from '../types'
-import { textHash } from './captionTracks'
+import { textHash, transcriptLanguage } from './captionTracks'
 import { maskedSegments, wordsBleeped } from './cleanup'
 import { chosenEmoji, isSensitive, LEAD, suggestEmoji } from './emoji'
 import { emphasisScores } from './emphasis'
@@ -142,7 +142,8 @@ export function* planGraphicsSteps(project: Project, opts: GraphicOptions): Gene
           suffix: n.suffix.slice(0, 16),
           // A bleeped word is never readable (§11.7): not as the label either.
           ...(n.label && !wordsBleeped(project, { caption: seg.id, from: n.to + 1, to: n.to + 1 }) ? { label: n.label.slice(0, GRAPHIC_TEXT_MAX) } : {}),
-          locale: language || 'en',
+          // Grouped as the captions are read: Bangla for a mostly Bangla transcript that names no language.
+          locale: transcriptLanguage(transcript) || 'en',
           countFor
         }
         candidates.push({ item, rank: 0, caption: seg.id })

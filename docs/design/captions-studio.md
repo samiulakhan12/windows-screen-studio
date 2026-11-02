@@ -2698,8 +2698,9 @@ answer, `requestId` and `cancelAiText` (publish-pack), keys kept in main.
   CLDR's number-spelling rules (`cldr-rbnf` 49.0.0, Unicode-3.0; `bn-SpelloutRules.txt` lists
   0–99 and শো, হাজার, লাখ, কোটি), under 10 KB.
 - **Fields**: `to` = the value, `decimals` from the text (0–2), `prefix` and `suffix` from the
-  sign and unit as written ("$", "%", "M"), `locale` = the transcript's language, `label` = the
-  noun after the number when there is one ("users").
+  sign and unit as written ("$", "%", "M"), `locale` = the transcript's language (`bn` when it
+  names none and is mostly Bangla, as the captions read it; `en` otherwise), `label` = the
+  noun after the number when there is one ("users"). A counter added by hand takes the same `locale`.
 - Prototype: "300%" → 300 with suffix %; "$1.2M" → prefix $, 1.2, suffix M; "৩০০ শতাংশ" → 300;
   "2" and "2024" left out as a label and a year; "300 pixels" and "12 options" left out.
 

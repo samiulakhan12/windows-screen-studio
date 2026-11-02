@@ -154,6 +154,31 @@ describe('the Digits choice reaches every place §0.2 names (captions, counters,
     expect(drawn).not.toMatch(/[0-9]/u)
   })
 
+  it('a counter made from Bangla captions whose transcript names no language groups its digits as the captions do, with the choice and without it', () => {
+    const said: CaptionSegment = { id: 'c1', start: 0.5, end: 3, text: 'আমাদের আয় ১২,৫০,০০০ টাকা বেড়েছে এই বছরে' }
+    for (const digits of [undefined, 'native'] as const) {
+      const made = planGraphics(project([said], undefined as unknown as string, { preset: 'bold', studio: look('bold-pop'), ...(digits ? { digits } : {}) }), {
+        keywords: false,
+        emoji: false,
+        counters: true,
+        lists: false,
+        speakers: false,
+        chapters: false,
+        quotes: false,
+        sound: 'none'
+      })
+      const counters = made.graphics?.filter((g) => g.kind === 'counter') ?? []
+      expect(counters).toHaveLength(1)
+      expect(counters[0]).toMatchObject({ locale: 'bn' })
+      calls.length = 0
+      const { fc, id } = frameOf(made, counters[0].end - 0.4)
+      drawGraphicsLayer(fc)
+      const drawn = frameChars(id)
+      expect(drawn).toContain('১২,৫০,০০০')
+      expect(drawn).not.toMatch(/[0-9]/u)
+    }
+  })
+
   it('a counter on English speech counts in Bangla digits when chosen with its Bangla track on the video, as its list numbers do', () => {
     const p = project([{ id: 'c1', start: 0.5, end: 3, text: 'Sales grew 300% this year' }], 'en', { preset: 'bold', studio: look('bold-pop'), digits: 'native', track: 'bn' }, { graphics: [counter({ locale: 'en' })] } as Partial<Project>)
     const { fc, id } = frameOf(p, 4)
