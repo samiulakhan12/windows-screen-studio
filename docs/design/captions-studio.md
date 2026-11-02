@@ -2775,10 +2775,11 @@ Offline rules, each optional (§2.9). The choices are `CleanupChoices` (`caps`, 
    (Netflix's guides: 1–10 written out in most languages, 1–12 in Norwegian). "one" in "this one"
    and "one of the" stays a word. When words join ("twenty five" → "25"), their times merge (first
    start to last end), so word timing survives.
-4. **Word list**: whole words replaced without regard to case; close misspellings (one letter off)
-   of a term itself for words of 5 letters or more that start and end with the term's letters
-   ("qbexl" → "Qbexel", while "reach", "flows" and "black" stay, not React, Flown or Slack); each
-   term's "also heard as" forms, matched as written. The list also steers
+4. **Word list**: whole words replaced without regard to case; close misspellings (one letter added
+   or dropped) of a term itself for words of 5 letters or more that start and end with the term's
+   letters ("qbexl" → "Qbexel", while "reach", "flows" and "black" stay, not React, Flown or Slack).
+   A swapped letter often makes another real word ("stack", "nation", "clause"), so it never
+   matches; such a mishearing goes in the term's "also heard as" forms, matched as written. The list also steers
    transcription: the local engine's `--prompt` (`native/speech/src/args.rs:185-212`) becomes a
    supported option fed "Glossary: Flown, Qbexel." (Whisper keeps at most 224 prompt tokens);
    OpenAI's transcription `prompt` field; a "Spell these names as written" line in Gemini's data

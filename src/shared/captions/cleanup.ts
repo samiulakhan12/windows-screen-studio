@@ -196,7 +196,7 @@ function oneOff(a: string, b: string): boolean {
 function applyWordList(tokens: Tok[], words: readonly WordListEntry[]): Tok[] {
   if (!words.length) return tokens
   // Heard forms of several words first ("flow in" → "Flown"), then single words. Only a term's own
-  // spelling (`own`) takes a word one letter off; heard forms match exactly, as listed.
+  // spelling (`own`) takes a word with a letter added or dropped; heard forms match exactly, as listed.
   const forms: { parts: string[]; term: string; own?: true }[] = []
   for (const e of words) {
     forms.push({ parts: e.term.toLowerCase().split(/\s+/), term: e.term, own: true })
@@ -230,13 +230,15 @@ function applyWordList(tokens: Tok[], words: readonly WordListEntry[]): Tok[] {
   return out
 }
 /**
- * A word of 5 letters or more one letter off a term, with the term's first and last letters: "qbexl"
- * is Qbexel, but words heard right stay ("reach" is not React, "flows" not Flown, "black" not Slack).
+ * A word of 5 letters or more with one letter added to or dropped from a term, and the term's first
+ * and last letters: "qbexl" is Qbexel, but words heard right stay ("reach" is not React, "flows" not
+ * Flown, "stack" not Slack). A swapped letter often makes another real word, so it never matches;
+ * such a form goes in "also heard as".
  */
 function closeMisspelling(core: string, term: string): boolean {
   const a = [...core]
   const b = [...term]
-  return b.length >= 5 && a.length >= 5 && a[0] === b[0] && a[a.length - 1] === b[b.length - 1] && oneOff(core, term)
+  return b.length >= 5 && a.length >= 5 && a.length !== b.length && a[0] === b[0] && a[a.length - 1] === b[b.length - 1] && oneOff(core, term)
 }
 /** A word that is itself one of the terms (never "corrected" into another term). */
 const isTerm = (core: string, words: readonly WordListEntry[]): boolean => words.some((e) => e.term.toLowerCase() === core)

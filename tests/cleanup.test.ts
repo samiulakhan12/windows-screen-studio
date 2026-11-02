@@ -112,6 +112,15 @@ describe('tidyCaptions (test 41)', () => {
     expect(texts(tidyCaptions(project([timed('h', 0, 'add a flowen step')]), { ...OFF, words }).project)).toEqual(['add a Flown step'])
   })
 
+  it('a swapped letter is another word, never a term; a letter added or dropped still is', () => {
+    const words = ['Slack', 'Swift', 'Claude', 'Notion', 'Flown', 'Stripe', 'Excel'].map((term) => ({ term, heard: [] }))
+    const said = ['the call stack is full', 'press shift and tab', 'read the clause again', 'the whole nation watched', 'do not frown', 'strike while hot', 'expel the air', 'that was a stride']
+    const p = project(said.map((t, i) => timed(`s${i}`, i * 5, t)))
+    expect(texts(tidyCaptions(p, { ...OFF, words }).project)).toEqual(said)
+    const typo = project([timed('t', 0, 'open notiion and clade')])
+    expect(texts(tidyCaptions(typo, { ...OFF, words }).project)).toEqual(['open Notion and Claude'])
+  })
+
   it('records each changed caption once, keeping the first text across runs', () => {
     const p = project([timed('a', 0, 'so i think'), timed('b', 5, 'Fine.')])
     const once = tidyCaptions(p, { ...OFF, caps: true, words: [] }).project
