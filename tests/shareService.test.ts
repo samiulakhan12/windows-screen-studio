@@ -211,6 +211,18 @@ describe('ShareService', () => {
     expect(s.service.busy()).toBe(false)
   })
 
+  it('names two folders with the same label by where they are, but not in the message', async () => {
+    const work: ShareFolderInfo = { id: 'cf0000000003', service: 'gdrive', label: 'Google Drive', path: 'G:\\My Drive', source: 'app', on: true }
+    const home: ShareFolderInfo = { id: 'cf0000000004', service: 'gdrive', label: 'Google Drive', path: 'H:\\My Drive', source: 'app', on: true }
+    const s = setup({ folders: async () => [work, home] })
+    s.service.offer(FILE, META, false)
+    expect((await s.service.extras(FILE)).map((e) => e.text)).toEqual(['Copy to Google Drive (G:)', 'Copy to Google Drive (H:)', 'Post to #demos'])
+    const run = await s.service.start(FILE, [home.id, 'whkchat'], META)
+    expect(run.steps.map((x) => x.label)).toEqual(['Google Drive (H:)', '#demos'])
+    await s.settled()
+    expect(s.posts[0].lines).toEqual(['New video: Demo (2:31)', 'Saved to Google Drive › Flown'])
+  })
+
   it('lists the runs of a file', async () => {
     const s = setup()
     const run = await s.service.start(FILE, [ONEDRIVE.id], META)

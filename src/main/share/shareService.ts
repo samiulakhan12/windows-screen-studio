@@ -7,7 +7,8 @@
  */
 import type { ShareFolderInfo, ShareMeta, ShareRunView, ShareStepView } from '../../shared/api/share'
 import { placeText } from '../../shared/share/cloudFolders'
-import { cleanTitle, shareMessage, type SharePlace, type WebhookService } from '../../shared/share/webhooks'
+import { folderPlaces, hookPlaces, withPlace } from '../../shared/share/names'
+import { cleanTitle, maskWebhook, shareMessage, type SharePlace, type WebhookService } from '../../shared/share/webhooks'
 import type { CopyResult } from './copyToFolder'
 
 export interface ShareDeps {
@@ -96,18 +97,21 @@ export class ShareService {
     if (active.length >= MAX_RUNS) throw new Error('Wait for the other shares to finish.')
     const ids = [...new Set(targets as string[])]
     const steps: ShareStepView[] = []
+    const folderPlace = folderPlaces(folders)
     for (const id of ids) {
       const f = folders.find((x) => x.id === id)
       if (f) {
-        if (!f.on) throw new Error(`${f.label} is turned off in Settings › Share.`)
-        steps.push({ target: id, kind: 'copy', service: f.service, label: f.label, state: 'waiting' })
+        const name = withPlace(f.label, folderPlace.get(id))
+        if (!f.on) throw new Error(`${name} is turned off in Settings › Share.`)
+        steps.push({ target: id, kind: 'copy', service: f.service, label: name, state: 'waiting' })
       }
     }
+    const hookPlace = ids.some((id) => !folders.some((x) => x.id === id)) ? this.hookPlaces() : new Map<string, string>()
     for (const id of ids) {
       if (folders.some((x) => x.id === id)) continue
       if (id.startsWith('cf')) throw new Error('This folder is not set up any more. Look in Settings › Share.')
       const h = this.deps.hook(id)
-      steps.push({ target: id, kind: 'post', service: h.service, label: h.label, state: 'waiting' })
+      steps.push({ target: id, kind: 'post', service: h.service, label: withPlace(h.label, hookPlace.get(id)), state: 'waiting' })
     }
     for (const r of active) {
       const busy = steps.find((s) => r.view.file === file && r.view.steps.some((x) => x.target === s.target && (x.state === 'running' || x.state === 'waiting')))
@@ -159,16 +163,34 @@ export class ShareService {
     const startOne = (id: string): void => {
       this.start(file, [id], offer.meta).catch((err: unknown) => this.deps.notify({ title: 'Could not share', body: err instanceof Error ? err.message : String(err) }))
     }
-    for (const f of folders) out.push({ text: `Copy to ${cleanTitle(f.label, 30)}`, run: () => startOne(f.id) })
+    // Named as on the page: a label two share says where each is ("Copy to Google Drive (H:)").
+    const folderPlace = folderPlaces(listed ?? [])
+    const hookPlace = this.hookPlaces()
+    const short = (label: string, place: string | undefined): string => withPlace(cleanTitle(label, 30), place && cleanTitle(place, 20))
+    for (const f of folders) out.push({ text: `Copy to ${short(f.label, folderPlace.get(f.id))}`, run: () => startOne(f.id) })
     for (const id of this.deps.hookIds()) {
       try {
         const h = this.deps.hook(id)
-        out.push({ text: `Post to ${cleanTitle(h.label, 30)}`, run: () => startOne(id) })
+        out.push({ text: `Post to ${short(h.label, hookPlace.get(id))}`, run: () => startOne(id) })
       } catch {
         // A chat whose webhook cannot be read is not offered.
       }
     }
     return out.slice(0, 3)
+  }
+
+  /** Which chat each is, for the chats offered (those that can be read) that share a label. */
+  private hookPlaces(): Map<string, string> {
+    const hooks: Parameters<typeof hookPlaces>[0][number][] = []
+    for (const id of this.deps.hookIds()) {
+      try {
+        const h = this.deps.hook(id)
+        hooks.push({ id, label: h.label, service: h.service, masked: maskWebhook(h.url) })
+      } catch {
+        // Not offered, so not named.
+      }
+    }
+    return hookPlaces(hooks)
   }
 
   private snapshot(run: Run): ShareRunView {
@@ -207,7 +229,8 @@ export class ShareService {
           step.fraction = 1
           const link = (await this.deps.link?.(folder, result.dest).catch(() => null)) ?? null
           if (link) step.link = link
-          if (result.already) step.message = `Already in ${placeText(folder.label)}`
+          if (result.already) step.message = `Already in ${placeText(step.label)}`
+          // The message names the folder by its label alone: no drive or local folder goes in it.
           this.places.set(file, { text: placeText(folder.label), ...(link ? { link } : {}) })
           console.info(`Share: copied 1 file to ${folder.service}${result.already ? ' (already there)' : ''}`)
         } else {

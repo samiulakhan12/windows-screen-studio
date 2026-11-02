@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react'
 import type { ShareHookInfo, ShareTargets } from '../../../shared/api/share'
 import { sourceText } from '../../../shared/share/cloudFolders'
+import { folderPlaces, hookPlaces, withPlace } from '../../../shared/share/names'
 import { whenOnScreen } from '../../../shared/share/onScreen'
 import { SHARE_LIMITS, WEBHOOK_SERVICES } from '../../../shared/share/webhooks'
 import { ipcMessage } from '../settings/providerText'
@@ -62,6 +63,9 @@ export function ShareSection(): JSX.Element {
   const folders = targets?.folders ?? []
   const hooks = targets?.hooks ?? []
   const found = folders.filter((f) => f.source !== 'picked')
+  // Switches and buttons of two folders or chats with the same name say which one they act on.
+  const folderPlace = folderPlaces(folders)
+  const hookPlace = hookPlaces(hooks)
   const watch = found.length > 0 && targets?.reviewed === false && !seen
 
   useEffect(() => (folderList && watch ? whenOnScreen(folderList, () => setSeen(true), IntersectionObserver) : undefined), [folderList, watch])
@@ -106,7 +110,7 @@ export function ShareSection(): JSX.Element {
               </div>
               <div className="share-item-actions">
                 <label className="share-use">
-                  <input type="checkbox" checked={f.on} onChange={(e) => void act(() => window.api.shareSetFolder(f.id, e.target.checked))} aria-label={`Use ${f.label}`} />
+                  <input type="checkbox" checked={f.on} onChange={(e) => void act(() => window.api.shareSetFolder(f.id, e.target.checked))} aria-label={`Use ${withPlace(f.label, folderPlace.get(f.id))}`} />
                   Use
                 </label>
                 {f.source === 'picked' && (
@@ -117,7 +121,7 @@ export function ShareSection(): JSX.Element {
                       refocus.current = 'folder'
                       void act(() => window.api.shareSetFolder(f.id, null))
                     }}
-                    aria-label={`Remove ${f.label}`}
+                    aria-label={`Remove ${withPlace(f.label, folderPlace.get(f.id))}`}
                   >
                     Remove
                   </button>
@@ -189,10 +193,10 @@ export function ShareSection(): JSX.Element {
                   </div>
                 ) : (
                   <div className="share-item-actions">
-                    <button type="button" className="btn settings-small" disabled={t?.busy || !h.readable} onClick={() => void test(h)} aria-label={`Test ${h.label}`}>
+                    <button type="button" className="btn settings-small" disabled={t?.busy || !h.readable} onClick={() => void test(h)} aria-label={`Test ${withPlace(h.label, hookPlace.get(h.id))}`}>
                       Test
                     </button>
-                    <button type="button" className="btn ghost danger settings-small" data-focus-key={`remove:${h.id}`} onClick={() => setRemoving(h)} aria-label={`Remove ${h.label}`}>
+                    <button type="button" className="btn ghost danger settings-small" data-focus-key={`remove:${h.id}`} onClick={() => setRemoving(h)} aria-label={`Remove ${withPlace(h.label, hookPlace.get(h.id))}`}>
                       Remove
                     </button>
                   </div>

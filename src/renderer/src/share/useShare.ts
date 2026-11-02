@@ -6,6 +6,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { ShareMeta, ShareRunView, ShareTargets } from '../../../shared/api/share'
 import { choicesFor, readShareChoices, withChoices } from '../../../shared/share/choices'
+import { folderPlaces, hookPlaces, withPlace } from '../../../shared/share/names'
 import { ipcMessage } from '../settings/providerText'
 
 const CHOICES_KEY = 'export-share'
@@ -16,12 +17,16 @@ export function offeredIds(t: ShareTargets | null): string[] {
   return [...t.folders.filter((f) => f.on).map((f) => f.id), ...t.hooks.filter((h) => h.readable).map((h) => h.id)]
 }
 
-/** "Copy to OneDrive" / "Post to #demos" for a destination id. */
+/**
+ * "Copy to OneDrive" / "Post to #demos" for a destination id; a label two destinations share says
+ * where each is ("Copy to Google Drive (H:)"), as main's steps and notification buttons do.
+ */
 export function actionLabel(t: ShareTargets | null, id: string): string {
-  const f = t?.folders.find((x) => x.id === id)
-  if (f) return `Copy to ${f.label}`
-  const h = t?.hooks.find((x) => x.id === id)
-  return h ? `Post to ${h.label}` : 'Share'
+  if (!t) return 'Share'
+  const f = t.folders.find((x) => x.id === id)
+  if (f) return `Copy to ${withPlace(f.label, folderPlaces(t.folders).get(id))}`
+  const h = t.hooks.find((x) => x.id === id)
+  return h ? `Post to ${withPlace(h.label, hookPlaces(t.hooks.filter((x) => x.readable)).get(id))}` : 'Share'
 }
 
 /** The tooltip of a destination: the folder's path, or the chat's service and masked webhook. */

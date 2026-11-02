@@ -93,8 +93,9 @@ vi.stubGlobal('window', {
 
 // Renderer code: imported at run time so the Node typecheck of tests/ does not follow it.
 const HOOK = '../src/renderer/src/share/useShare'
-const { useAfterExport } = (await import(/* @vite-ignore */ HOOK)) as {
+const { useAfterExport, actionLabel } = (await import(/* @vite-ignore */ HOOK)) as {
   useAfterExport: (preset: string | undefined) => { chosen: string[]; begin: (file: string, meta: ShareMeta) => Promise<void> }
+  actionLabel: (t: ShareTargets | null, id: string) => string
 }
 
 /** One render of the dialog's hook, then its effects. */
@@ -131,6 +132,21 @@ describe('After export', () => {
     await atClick.begin('C:\\Videos\\Demo.mp4', META)
     expect(main.offers).toEqual([['C:\\Videos\\Demo.mp4', META, true]])
     expect(main.starts).toEqual([['C:\\Videos\\Demo.mp4', ['cf0000000001', 'whkchat']]])
+  })
+
+  it('names each of two destinations with the same label by where it is', () => {
+    const t: ShareTargets = {
+      folders: [TARGETS.folders[0], { ...TARGETS.folders[0], id: 'cf0000000002', path: 'D:\\OneDrive' }],
+      hooks: [TARGETS.hooks[0], { ...TARGETS.hooks[0], id: 'whkother', masked: 'hooks.slack.com/…/WxYz' }],
+      reviewed: true
+    }
+    expect(['cf0000000001', 'cf0000000002', 'whkchat', 'whkother'].map((id) => actionLabel(t, id))).toEqual([
+      'Copy to OneDrive (C:)',
+      'Copy to OneDrive (D:)',
+      'Post to #demos (…AbCd)',
+      'Post to #demos (…WxYz)'
+    ])
+    expect(actionLabel(TARGETS, 'cf0000000001')).toBe('Copy to OneDrive')
   })
 
   it('waits for the destinations when they are still loading as the export ends', async () => {

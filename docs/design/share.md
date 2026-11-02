@@ -208,6 +208,13 @@ choose Share (OneDrive), Copy Dropbox link (Dropbox) or Share › Copy link (Goo
   OneDrive", "Copy to Dropbox", "Copy to Team share", "Post to #demos" (`aria-pressed`, a tooltip
   with the path or the masked URL). With nothing set up: "Add a cloud folder or a chat in Settings
   › Share."
+* **Two destinations with the same label** (two Google accounts, an old Dropbox folder beside the
+  app's, two added "Videos" folders, two chats called "Slack") are told apart on every chip, button,
+  step, notification button and Settings switch by where each is (`shared/share/names.ts`): a
+  folder's drive ("Google Drive (H:)") or network server ("Videos (nas)"), else its own folder name,
+  else its last two folders, else its path; a chat's service, else the end of its webhook
+  ("#team (…AbCd)"). The chat message keeps the label alone ("Saved to Google Drive › Flown"), so no
+  local path goes into it.
 * **Order:** copies first (one at a time), then posts, so a post can say where the file went.
 * **The done view** shows a "Share" block: one line per step with its state ("Copying to OneDrive…
   42%", "Saved to OneDrive › Flown", "Posted to #demos", "Could not post to #demos: …"), **Cancel**
