@@ -14,8 +14,8 @@ interface Row {
 const { clearPendingMoment, PENDING_MS, setPendingMoment, takePendingMoment } = (await import(/* @vite-ignore */ OPEN_AT)) as {
   clearPendingMoment: () => void
   PENDING_MS: number
-  setPendingMoment: (projectId: string, t: number, now?: number) => void
-  takePendingMoment: (projectId: string, now?: number) => number | null
+  setPendingMoment: (projectId: string, t: number, end?: number, now?: number) => void
+  takePendingMoment: (projectId: string, now?: number) => { t: number; end: number } | null
 }
 const { MOMENTS_SHOWN, resultRows, rowLabel } = (await import(/* @vite-ignore */ ROWS)) as {
   MOMENTS_SHOWN: number
@@ -90,18 +90,23 @@ describe('rowLabel', () => {
 
 describe('pending moment', () => {
   it('is taken once, by its own project, within 30 s', () => {
-    setPendingMoment('rec-a', 12.5, 1000)
-    expect(takePendingMoment('rec-a', 2000)).toBe(12.5)
+    setPendingMoment('rec-a', 12.5, 14, 1000)
+    expect(takePendingMoment('rec-a', 2000)).toEqual({ t: 12.5, end: 14 })
     expect(takePendingMoment('rec-a', 2000)).toBeNull()
-    setPendingMoment('rec-a', 3, 1000)
+    setPendingMoment('rec-a', 3, 3, 1000)
     expect(takePendingMoment('rec-b', 1000)).toBeNull()
     expect(takePendingMoment('rec-a', 1000)).toBeNull() // another editor took (cleared) it
-    setPendingMoment('rec-a', 3, 1000)
+    setPendingMoment('rec-a', 3, 3, 1000)
     expect(takePendingMoment('rec-a', 1000 + PENDING_MS + 1)).toBeNull()
-    setPendingMoment('rec-a', 3, 1000)
+    setPendingMoment('rec-a', 3, 3, 1000)
     clearPendingMoment()
     expect(takePendingMoment('rec-a', 1000)).toBeNull()
-    setPendingMoment('rec-a', Number.NaN, 1000)
+    setPendingMoment('rec-a', Number.NaN, 3, 1000)
     expect(takePendingMoment('rec-a', 1000)).toBeNull()
+    // An end that is not after the start is the start.
+    setPendingMoment('rec-a', 3, Number.NaN, 1000)
+    expect(takePendingMoment('rec-a', 1000)).toEqual({ t: 3, end: 3 })
+    setPendingMoment('rec-a', 3, 1, 1000)
+    expect(takePendingMoment('rec-a', 1000)).toEqual({ t: 3, end: 3 })
   })
 })

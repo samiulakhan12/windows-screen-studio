@@ -4,6 +4,7 @@
  * required, recordings and their moments ranked. Pure: the main process feeds it entries and asks.
  */
 import { prefixDistance } from './distance'
+import { isCut } from './moment'
 import { codePoints, isNumeric, queryRetries, queryTerms, tokenize } from './normalize'
 import { markRanges, snippetOf, type Range } from './snippet'
 import { SEARCH_LIMITS, type IndexedProject, type SearchHit, type SearchKind, type SearchMoment, type SearchUnit } from './types'
@@ -239,12 +240,6 @@ export class SearchIndex {
     scored.sort((a, b) => a.typos - b.typos || b.score - a.score || b.doc.entry.createdAt.localeCompare(a.doc.entry.createdAt) || a.doc.id.localeCompare(b.doc.id))
     return scored.slice(0, options.hits ?? SEARCH_LIMITS.hits).map(({ doc, score }) => hitOf(doc, score, matches, options.moments ?? SEARCH_LIMITS.moments))
   }
-}
-
-/** Whether nothing of `start..end` is kept (no clip overlaps it; a point is cut when no clip holds it). */
-export function isCut(kept: readonly (readonly [number, number])[], start: number, end: number): boolean {
-  if (!kept.length) return false
-  return !kept.some(([s, e]) => (end > start ? s < end && e > start : start >= s && start < e))
 }
 
 /** A unit's score and how many query words it holds. */

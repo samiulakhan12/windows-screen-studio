@@ -10,13 +10,13 @@ export const CUT_MOMENT_NOTICE = 'That moment was cut from the video, so the edi
 
 /**
  * Opens the editor at the moment picked in Home's search, once: a seek, not an edit (no undo step).
- * A moment in a cut goes to the next part that is kept, with a notice.
+ * A moment that starts in a cut goes to the next part that is kept, with a notice when none of it is.
  */
 export function useSearchMoment(store: EditStore<Project>, player: PreviewPlayer, notice: (text: string) => void): void {
   useEffect(() => {
-    const t = takePendingMoment(store.state.id)
-    if (t === null) return
-    const target = momentTarget(store.state.clips, t)
+    const moment = takePendingMoment(store.state.id)
+    if (moment === null) return
+    const target = momentTarget(store.state.clips, moment.t, moment.end)
     player.seek(target.t)
     if (target.cut) notice(CUT_MOMENT_NOTICE)
     // Once per session: the store and player of an editor never change.

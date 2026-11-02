@@ -10,14 +10,15 @@ export const PENDING_MS = 30_000
 interface Pending {
   projectId: string
   t: number
+  end: number
   at: number
 }
 
 let pending: Pending | null = null
 
-/** Asks the next editor of `projectId` to start at source second `t`. */
-export function setPendingMoment(projectId: string, t: number, now = Date.now()): void {
-  pending = Number.isFinite(t) && t >= 0 ? { projectId, t, at: now } : null
+/** Asks the next editor of `projectId` to start at the moment from source second `t` to `end`. */
+export function setPendingMoment(projectId: string, t: number, end = t, now = Date.now()): void {
+  pending = Number.isFinite(t) && t >= 0 ? { projectId, t, end: Number.isFinite(end) && end > t ? end : t, at: now } : null
 }
 
 export function clearPendingMoment(): void {
@@ -25,9 +26,9 @@ export function clearPendingMoment(): void {
 }
 
 /** The moment for `projectId`, once: taking it clears it (any other project's is cleared too). */
-export function takePendingMoment(projectId: string, now = Date.now()): number | null {
+export function takePendingMoment(projectId: string, now = Date.now()): { t: number; end: number } | null {
   const p = pending
   pending = null
   if (!p || p.projectId !== projectId || now - p.at > PENDING_MS) return null
-  return p.t
+  return { t: p.t, end: p.end }
 }

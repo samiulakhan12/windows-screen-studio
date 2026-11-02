@@ -39,7 +39,8 @@ with a small local model.
   No stemming (§2.4).
 - A moment that was cut from the video is still found (the words are in the recording) and says
   `Cut`; opening it goes to the next part that is kept, with the notice "That moment was cut from
-  the video, so the editor is at the next part that is kept."
+  the video, so the editor is at the next part that is kept." A moment only partly cut opens where
+  it is kept, with no tag and no notice.
 - While the index is first built (a new install with many recordings, or after an update that
   changes the index format) the results say "Still indexing your recordings (120 of 500)…" and fill
   in as it goes.
@@ -223,14 +224,15 @@ its stamp is taken after the write.
 
 ### 2.10 Opening at a moment
 
-Home sets a **pending moment** (`src/renderer/src/search/openAt.ts`: `{ projectId, t, cut }`) and
+Home sets a **pending moment** (`src/renderer/src/search/openAt.ts`: `{ projectId, t, end }`) and
 calls its usual `onOpenProject(id)`; `App.tsx` is not changed. The editor's session (one additive
 line in `Editor.tsx`: `useSearchMoment(store, player, showNotice)`) takes the pending moment once,
 if it is for this project, and seeks:
 
 - `t` inside a kept clip: `player.seek(t)`.
 - `t` in a cut: the start of the next kept clip after `t` (else the end of the last one), and the
-  notice above (`momentTarget` in `src/shared/search/moment.ts`, pure and tested).
+  notice above when nothing of `t`–`end` is kept, the same test as the result's `Cut` tag (`isCut`
+  and `momentTarget` in `src/shared/search/moment.ts`, pure and tested).
 - A moment with no time (notes, name): nothing is pending; the editor opens as it always does.
 
 The pending moment is dropped when taken, when Home mounts again, and after 30 s, so it never
@@ -436,6 +438,9 @@ No new dependency: `Intl.Segmenter` is in Electron's ICU, and the rest is small 
 - An imported file name was indexed with its extension, so the first key typed (`m`, or `mp4`, `mov`)
   listed every imported video as "Found in the name" with nothing marked. The extension is left out
   now (§2.2); the index file went to version 3 and is built again.
+- A caption whose first words were cut showed no `Cut` tag but opened with "That moment was cut from
+  the video": the tag looked at the whole moment, the editor at its start only. The pending moment
+  now carries its end, and the notice uses the tag's test (§2.10).
 - The live region stays quiet while the index is built; Ctrl+F does nothing on an empty library.
 - Writing the file is synchronous, like every state file (37–55 ms for 500 recordings, at most every
   3 s and only after a change); an asynchronous write is left for later.

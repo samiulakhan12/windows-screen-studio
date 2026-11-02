@@ -135,7 +135,7 @@ export function LibrarySearch({ projects, onOpen }: { projects: ProjectSummary[]
       setActiveKey(firstHidden?.key ?? null)
       return
     }
-    if (row.kind === 'moment' && row.moment.start !== null) setPendingMoment(row.hit.id, row.moment.start)
+    if (row.kind === 'moment' && row.moment.start !== null) setPendingMoment(row.hit.id, row.moment.start, row.moment.end ?? row.moment.start)
     else clearPendingMoment()
     onOpen(row.hit.id)
   }

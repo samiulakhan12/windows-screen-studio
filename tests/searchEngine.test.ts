@@ -439,6 +439,18 @@ describe('moments', () => {
     expect(momentTarget([], 7)).toEqual({ t: 7, cut: false })
   })
 
+  it('says a moment was cut only when none of it is kept, as its result does', () => {
+    const kept = [{ start: 0, end: 9 }, { start: 12, end: 20 }]
+    // A caption at 10-14 s whose first words were cut: the editor goes to where the rest is, with no notice.
+    expect(momentTarget(kept, 10, 14)).toEqual({ t: 12, cut: false })
+    expect(momentTarget(kept, 9.5, 11.5)).toEqual({ t: 12, cut: true })
+    expect(momentTarget(kept, 25, 26)).toEqual({ t: 19.95, cut: true })
+    const r = index({ p: entry('P', [{ kind: 'said', start: 10, end: 14, text: 'pricing plans' }, { kind: 'said', start: 9.5, end: 11.5, text: 'pricing table' }], { kept: [[0, 9], [12, 20]] }) })
+    const moments = r.search('pricing')[0].moments
+    expect(moments).toHaveLength(2)
+    for (const m of moments) expect(momentTarget(kept, m.start as number, m.end as number).cut).toBe(m.cut)
+  })
+
   it('writes times for the eye and the ear', () => {
     expect(clockTime(83.9)).toBe('1:23')
     expect(clockTime(3723)).toBe('1:02:03')
