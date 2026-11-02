@@ -62,6 +62,24 @@ describe('the static rule (test 8)', () => {
     expect(staticContrast(second).colour).toBe('#3a0000')
   })
 
+  it('judges the spoken word of Stickers on its sticker, which every mark but None and Underline turns the spoken colour (§0.1)', () => {
+    for (const spoken of ['box', 'color', 'glow', 'fill', 'weight'] as const) {
+      // The look's own dark text on its yellow sticker passes; a yellow word on it would not.
+      const st: CaptionStudio = { ...look('stickers'), spoken }
+      expect(staticContrast(st).worst, spoken).toBeGreaterThanOrEqual(4.5)
+      // Text set to the sticker's own colour fails, and Fix makes it read on the sticker.
+      const same: CaptionStudio = { ...st, theme: { ...st.theme, spokenText: st.theme.spoken } }
+      expect(staticContrast(same), spoken).toMatchObject({ worst: 1, against: st.theme.spoken })
+      const fixed = contrastFix(same)
+      expect(contrastRatio(fixed.theme.spokenText!, fixed.theme.spoken), spoken).toBeGreaterThanOrEqual(4.5)
+    }
+    // A gradient sweeps over the word on its sticker: each stop is judged on the sticker's colour.
+    const gradient: CaptionStudio = { ...look('stickers'), spoken: 'gradient', theme: { ...look('stickers').theme, gradient: ['#ffd23f', '#111111'] } }
+    expect(staticContrast(gradient)).toMatchObject({ colour: '#ffd23f', against: '#ffd23f' })
+    const fixed = contrastFix(gradient)
+    for (const c of fixed.theme.gradient!) expect(contrastRatio(c, fixed.theme.spoken)).toBeGreaterThanOrEqual(4.5)
+  })
+
   it('a look without a box or a 0.04 em outline is judged against white and black video', () => {
     const bare: CaptionStudio = { ...STUDIO_BASE, edge: { ...STUDIO_BASE.edge, outline: 0.02 } }
     expect(staticContrast(bare).worst).toBeCloseTo(1, 6)

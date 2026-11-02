@@ -821,7 +821,7 @@ export interface StudioTheme {
   upcoming?: string
   /** The spoken mark: the word's colour ('color', 'glow', 'weight'), the fill, or the box, pill or underline colour. */
   spoken: string
-  /** Text on a spoken box or pill; absent: #111111 or #ffffff, whichever contrasts more with `spoken`. */
+  /** Text on a spoken box or pill, or on Stickers' spoken sticker; absent: #111111 or #ffffff, whichever contrasts more with `spoken`. */
   spokenText?: string
   emphasis: string
   /** Text on an emphasis marker or box; absent: by contrast, as spokenText. */
@@ -1850,7 +1850,9 @@ upcoming words at their opacity, spoken text, emphasis, text on a box or marker)
 against its **surround** over any video, with the WCAG formula:
 
 1. A box (line, chunk, glass, band) or a spoken or emphasis box or marker: the box colour at its
-   alpha over white and over black; the worse of the two. Glass counts as its tint alone.
+   alpha over white and over black; the worse of the two. Glass counts as its tint alone. On
+   Stickers every spoken mark but None and Underline turns the spoken word's sticker `spoken`,
+   so that word is drawn in `spokenText` (a gradient keeps its stops) and judged on `spoken`.
 2. Else an outline of at least 0.04 em: the outline colour at its alpha over white and black.
 3. Else the video itself: white and black.
 

@@ -100,10 +100,12 @@ function contrastPairs(s: CaptionStudio): Pair[] {
   } else if (t.upcoming && up > 0) onSurround(t.upcoming, 'upcoming')
   // Hollow words: their stroke against the dark halo (black at α 0.6 over white).
   if (s.edge.hollow) pairs.push({ fg: t.text, bg: over(BLACK, 0.6, WHITE), source: 'text' })
-  // The spoken word.
-  if (s.spoken === 'color' || s.spoken === 'glow' || s.spoken === 'weight' || s.spoken === 'fill') onSurround(t.spoken, 'spoken')
-  if (s.spoken === 'box' || s.spoken === 'pill') onBox(t.spokenText, t.spoken, 'spokenText')
-  if (s.spoken === 'gradient') (t.gradient ?? []).forEach((c, i) => onSurround(c, `gradient:${i}`))
+  // The spoken word. On Stickers every mark but none and underline turns its sticker the spoken
+  // colour (§0.1), so the word is judged on that sticker.
+  const sticker = s.box.kind === 'word' && s.spoken !== 'none' && s.spoken !== 'underline'
+  if (s.spoken === 'gradient' && t.gradient?.length) t.gradient.forEach((c, i) => (sticker ? void pairs.push({ fg: c, bg: t.spoken, source: `gradient:${i}` }) : onSurround(c, `gradient:${i}`)))
+  else if (s.spoken === 'box' || s.spoken === 'pill' || sticker) onBox(t.spokenText, t.spoken, 'spokenText')
+  else if (s.spoken === 'color' || s.spoken === 'glow' || s.spoken === 'weight' || s.spoken === 'fill') onSurround(t.spoken, 'spoken')
   // Emphasis, in both tones.
   for (const field of ['emphasis', 'emphasis2'] as const) {
     const colour = t[field]

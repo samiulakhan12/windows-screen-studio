@@ -250,6 +250,21 @@ describe('the Studio layer draws word sprites (test 23)', () => {
     expect(calls.find((c) => c.name === 'fillText' && c.args[0] === 'Make')?.fill).toBe('#ffffff')
   })
 
+  it('draws the spoken sticker’s word in the colour that reads on it under the Colour, Glow and Fill marks too (§0.1)', () => {
+    // Each turns the sticker the spoken colour, so the word on it is never drawn in that same colour.
+    for (const spoken of ['color', 'glow', 'fill'] as const) {
+      calls.length = 0
+      STUDIO_SPRITES.clear()
+      drawStudioCaptions(frameOf(studioProject({ ...look('stickers'), spoken }), 1.2).fc)
+      const lit = calls.filter((c) => c.name === 'fillText' && c.args[0] === 'every' && String(c.font).includes(`${0.065 * 1080 * 1.12}px`))
+      expect(lit.length, spoken).toBeGreaterThan(0)
+      for (const c of lit) expect(c.fill, spoken).toBe('#111111')
+      // On a sticker filled with the spoken colour.
+      const sprites = new Set(lit.map((c) => c.canvas))
+      expect(calls.some((c) => sprites.has(c.canvas) && c.name === 'fill' && c.fill === 'rgba(255, 210, 63, 1)'), spoken).toBe(true)
+    }
+  })
+
   it('gives a Bangla sticker room above for its vowel signs, clear of the border (BANGLA-NOTES)', () => {
     const seg: CaptionSegment = { id: 'b1', start: 0.5, end: 3, text: 'Make কিন্তু', words: [{ text: 'Make', start: 0.5, end: 0.9 }, { text: 'কিন্তু', start: 1, end: 1.4 }] }
     drawStudioCaptions(frameOf(studioProject(look('stickers'), { transcript: { language: 'bn', segments: [seg] } } as Partial<Project>), 2).fc)

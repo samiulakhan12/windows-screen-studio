@@ -466,7 +466,7 @@ export interface StudioTheme {
   upcoming?: string
   /** The spoken mark: the word's colour ('color', 'glow', 'weight'), the fill, or the box, pill or underline colour. */
   spoken: string
-  /** Text on a spoken box or pill; absent: #111111 or #ffffff, whichever contrasts more with `spoken`. */
+  /** Text on a spoken box or pill, or on Stickers' spoken sticker; absent: #111111 or #ffffff, whichever contrasts more with `spoken`. */
   spokenText?: string
   emphasis: string
   /**

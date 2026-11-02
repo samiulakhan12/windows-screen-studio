@@ -709,7 +709,8 @@ function paintOf(studio: CaptionStudio, wi: WordInfo, state: WordState): WordPai
   const boxedSpoken = spokenMark === 'box' || spokenMark === 'pill'
   if (lit && !emph) {
     if (spokenMark === 'gradient' && theme.gradient?.length) fill = { stops: theme.gradient, axis: 'across', from: 0, to: 1 }
-    else if (boxedSpoken) fill = theme.spokenText ?? textOn(theme.spoken)
+    // On a spoken box or pill, or a sticker turned the spoken colour (Stickers, any mark): the colour that reads on it.
+    else if (boxedSpoken || box.kind === 'word') fill = theme.spokenText ?? textOn(theme.spoken)
     else if (spokenMark !== 'weight' && spokenMark !== 'none' && spokenMark !== 'underline') fill = theme.spoken
   }
   const hollow = !!edge.hollow && !lit && !emph
