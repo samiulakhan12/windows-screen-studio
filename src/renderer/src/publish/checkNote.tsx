@@ -27,15 +27,15 @@ const why = (count: number): string =>
     ? "It has a link, address or file name that is not in what was said, the recording's name or its chapters, or one written right against other letters, where it can open a different address. Nothing was changed: post it only if you know where it goes."
     : "Each has a link, address or file name that is not in what was said, the recording's name or its chapters, or one written right against other letters, where it can open a different address. Nothing was changed: post them only if you know where they go."
 
-/** A noted piece exactly as written (invisible characters by their code), its link-like runs marked (pieceParts). */
-const shownPiece = (piece: string): JSX.Element[] => pieceParts(piece).map((p, i) => (p.marked ? <mark key={i}>{p.text}</mark> : <span key={i}>{p.text}</span>))
+/** A noted piece exactly as written (invisible characters by their code), the runs that are why it is noted against `said` marked (pieceParts). */
+const shownPiece = (piece: string, said: Said): JSX.Element[] => pieceParts(piece, said).map((p, i) => (p.marked ? <mark key={i}>{p.text}</mark> : <span key={i}>{p.text}</span>))
 
 /**
- * The note under a text the check notes `pieces` in (null for none). `id` is for the aria-describedby
- * of the text field or the buttons it is about, so a screen reader hears it with them. Called as a
- * function, not a component.
+ * The note under a text the check notes `pieces` in against `said` (null for none). `id` is for the
+ * aria-describedby of the text field or the buttons it is about, so a screen reader hears it with them.
+ * Called as a function, not a component.
  */
-export function checkNote(pieces: readonly string[], id: string): JSX.Element | null {
+export function checkNote(pieces: readonly string[], id: string, said: Said): JSX.Element | null {
   if (!pieces.length) return null
   return (
     <div className="publish-check" role="note" id={id} data-testid="publish-check">
@@ -43,7 +43,7 @@ export function checkNote(pieces: readonly string[], id: string): JSX.Element | 
       <ul>
         {pieces.map((piece) => (
           <li key={piece}>
-            <code>{shownPiece(piece)}</code>
+            <code>{shownPiece(piece, said)}</code>
           </li>
         ))}
       </ul>
@@ -58,9 +58,10 @@ export interface NotedAsk {
   what: string
   /** The action, said on its button. */
   action: 'Copy anyway' | 'Use anyway'
-  /** The text that would be copied or used, and its noted pieces (check.ts notedPieces). */
+  /** The text that would be copied or used, and its noted pieces (check.ts notedPieces) against what was said. */
   text: string
   pieces: readonly Noted[]
+  said: Said
   /** Copies or uses it. */
   run: () => void
 }
@@ -100,7 +101,7 @@ export function NotedConfirm({ ask, onClose }: { ask: NotedAsk; onClose: () => v
               <li key={`${p.start}:${p.end}`}>
                 <code>
                   <span className="publish-confirm-context">{shown.before}</span>
-                  <span className="publish-confirm-piece">{shownPiece(p.text)}</span>
+                  <span className="publish-confirm-piece">{shownPiece(p.text, ask.said)}</span>
                   <span className="publish-confirm-context">{shown.after}</span>
                 </code>
               </li>

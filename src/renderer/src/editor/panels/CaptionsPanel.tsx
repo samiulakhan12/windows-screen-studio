@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
 import type { AiProviderInfo, AiTextRequest, AiTextResult, TranscribeOptions } from '../../../../shared/api/ai'
 import { cleanCaptionText, CAPTION_MAX_CHARS } from '../../../../shared/captions/captionData'
-import { applyTextResult, findInCaptions, mergeWithNext, readSuggestedChapters, readSuggestedText, replaceInCaptions, splitCaption } from '../../../../shared/captions/edit'
+import { applyTextResult, findInCaptions, mergeWithNext, readSuggestedChapters, readSuggestedText, replaceInCaptions, splitCaption, typedCaption } from '../../../../shared/captions/edit'
 import { captionIndexAt } from '../../../../shared/captions/layout'
 import { CAPTION_COLORS, CAPTION_PRESETS, CAPTION_SIZE, captionsOf, HIGHLIGHT_COLORS, withPreset } from '../../../../shared/captions/settings'
 import { subtitleFile, SUBTITLE_FORMATS, type SubtitleFormat } from '../../../../shared/captions/subtitles'
@@ -890,9 +890,8 @@ function TranscriptSection({
   const setText = (id: string, raw: string): void => {
     // While typing: one line, but spaces kept; cleaned when the field is left.
     const text = raw.replace(/[\r\n]+/g, ' ').slice(0, CAPTION_MAX_CHARS)
-    // Edited by hand, the caption is the user's: the copy pack trusts its links (no aiLinks).
-    const typed = ({ aiLinks: _ai, ...s }: CaptionSegment): CaptionSegment => ({ ...s, text })
-    store.update((p) => setSegments(p, (p.transcript?.segments ?? []).map((s) => (s.id === id ? typed(s) : s))), `caption-text:${id}`)
+    // Edited by hand: the words are the user's, but a link an AI wrote into the caption stays unsaid while one is left (typedCaption).
+    store.update((p) => setSegments(p, (p.transcript?.segments ?? []).map((s) => (s.id === id ? typedCaption(s, text) : s))), `caption-text:${id}`)
   }
   const tidyText = (id: string): void => {
     const seg = store.state.transcript?.segments.find((s) => s.id === id)
@@ -1045,8 +1044,9 @@ function AiToolsSection({
   const [ask, setAsk] = useState<NotedAsk | null>(null)
   /** Runs `run` at once when `text` has nothing the check notes against what is said now, else after the confirm. */
   const confirmed = (what: string, action: NotedAsk['action'], text: string, run: () => void): void => {
-    const pieces = notedPieces(text, projectSaid(store.state))
-    if (pieces.length && live.current) setAsk({ what, action, text, pieces, run })
+    const now = projectSaid(store.state)
+    const pieces = notedPieces(text, now)
+    if (pieces.length && live.current) setAsk({ what, action, text, pieces, said: now, run })
     else if (!pieces.length) run()
     // The tab is gone (the answer came after it closed): nothing to ask in, so nothing is used.
     else onNotice(`${what} not used: there is a link, address or file name nobody said to check. Run it again with the Captions tab open.`)
@@ -1054,6 +1054,23 @@ function AiToolsSection({
   const list = providers ?? []
   const chosen = list.find((p) => p.id === provider) ?? list[0] ?? null
   const live = useRef(true)
+  // The tools that make a suggestion: when its block goes (used, added or dismissed, also after the link check's confirm),
+  // the focus, which was on a button in it or in the confirm, goes back to the tool that made it, not to the page (§4.8).
+  const chaptersTool = useRef<HTMLButtonElement>(null)
+  const titleTool = useRef<HTMLButtonElement>(null)
+  const summaryTool = useRef<HTMLButtonElement>(null)
+  const closeTitle = (): void => {
+    setTitle(null)
+    titleTool.current?.focus()
+  }
+  const closeChapters = (): void => {
+    setChapters(null)
+    chaptersTool.current?.focus()
+  }
+  const closeSummary = (): void => {
+    setSummary(null)
+    summaryTool.current?.focus()
+  }
   // Suggested chapters not added yet: when the tab closes with them, the editor says so (they are not kept).
   const pendingChapters = useRef(false)
   pendingChapters.current = !!chapters
@@ -1195,13 +1212,13 @@ function AiToolsSection({
                 ))}
               </select>
             </div>
-            <button className="btn" disabled={!chosen || !!busy} onClick={() => void run('chapters')} title="Chapters from what is said, added to the chapter strip">
+            <button ref={chaptersTool} className="btn" disabled={!chosen || !!busy} onClick={() => void run('chapters')} title="Chapters from what is said, added to the chapter strip">
               {label('chapters', 'Suggest chapters')}
             </button>
-            <button className="btn" disabled={!chosen || !!busy} onClick={() => void run('title')} title="A name for this recording from what is said">
+            <button ref={titleTool} className="btn" disabled={!chosen || !!busy} onClick={() => void run('title')} title="A name for this recording from what is said">
               {label('title', 'Suggest a title')}
             </button>
-            <button className="btn" disabled={!chosen || !!busy} onClick={() => void run('summary')} title="A short summary of what is said, to copy into a description">
+            <button ref={summaryTool} className="btn" disabled={!chosen || !!busy} onClick={() => void run('summary')} title="A short summary of what is said, to copy into a description">
               {label('summary', 'Summarize')}
             </button>
           </div>
@@ -1210,7 +1227,7 @@ function AiToolsSection({
               <p>
                 Suggested title: <strong>{title}</strong>
               </p>
-              {checkNote(titleChecks, 'captions-title-check')}
+              {said && checkNote(titleChecks, 'captions-title-check', said)}
               <div className="row start">
                 <button
                   className="btn small primary"
@@ -1219,14 +1236,14 @@ function AiToolsSection({
                     // The name counts as said once it is the recording's: asked about first when the check notes anything in it.
                     confirmed('Suggested title', 'Use anyway', title, () => {
                       store.update((p) => ({ ...p, name: title }))
-                      setTitle(null)
+                      closeTitle()
                       onNotice('Recording renamed')
                     })
                   }
                 >
                   Rename the recording
                 </button>
-                <button className="btn small ghost" aria-describedby={titleChecks.length ? 'captions-title-check' : undefined} onClick={() => setTitle(null)}>
+                <button className="btn small ghost" aria-describedby={titleChecks.length ? 'captions-title-check' : undefined} onClick={closeTitle}>
                   Dismiss
                 </button>
               </div>
@@ -1242,7 +1259,7 @@ function AiToolsSection({
                   </li>
                 ))}
               </ol>
-              {checkNote(chapterChecks, 'captions-chapters-check')}
+              {said && checkNote(chapterChecks, 'captions-chapters-check', said)}
               <div className="row start">
                 <button
                   className="btn small primary"
@@ -1251,18 +1268,18 @@ function AiToolsSection({
                     // Against the chapters the recording has now: one added meanwhile near the same time stays alone.
                     const added = newChapters(chapters)
                     if (!added.length) {
-                      setChapters(null)
+                      closeChapters()
                       return onNotice('The suggested chapters are already there.')
                     }
                     confirmed('Suggested chapters', 'Use anyway', added.map((c) => c.title).join('\n'), () => {
-                      setChapters(null)
+                      closeChapters()
                       addChapters(added)
                     })
                   }}
                 >
                   Add the chapters
                 </button>
-                <button className="btn small ghost" aria-describedby={chapterChecks.length ? 'captions-chapters-check' : undefined} onClick={() => setChapters(null)}>
+                <button className="btn small ghost" aria-describedby={chapterChecks.length ? 'captions-chapters-check' : undefined} onClick={closeChapters}>
                   Dismiss
                 </button>
               </div>
@@ -1272,7 +1289,7 @@ function AiToolsSection({
             <div className="captions-suggestion" role="status">
               <p>Summary:</p>
               <p className="captions-summary">{summary}</p>
-              {checkNote(summaryChecks, 'captions-summary-check')}
+              {said && checkNote(summaryChecks, 'captions-summary-check', said)}
               <div className="row start">
                 <button
                   className="btn small primary"
@@ -1288,7 +1305,7 @@ function AiToolsSection({
                 >
                   Copy
                 </button>
-                <button className="btn small ghost" aria-describedby={summaryChecks.length ? 'captions-summary-check' : undefined} onClick={() => setSummary(null)}>
+                <button className="btn small ghost" aria-describedby={summaryChecks.length ? 'captions-summary-check' : undefined} onClick={closeSummary}>
                   Dismiss
                 </button>
               </div>

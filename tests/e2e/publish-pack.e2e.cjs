@@ -162,7 +162,8 @@ async function main() {
         h.assert((await dialog(win).locator('button', { hasText: 'Generate captions' }).count()) === 0, 'no sound: nothing to generate')
         await win.keyboard.press('Escape')
         await f.waitFor(async () => !(await win.$('[data-testid="publish-dialog"]')), 'Esc closes the dialog', 5000)
-        h.assert((await win.evaluate(() => document.activeElement && document.activeElement.getAttribute('data-testid'))) === 'publish-open', 'focus goes back to the Publish button')
+        // The focus goes back as the dialog's effects are cleaned up, which may be just after it left the page.
+        await f.waitFor(async () => (await win.evaluate(() => document.activeElement && document.activeElement.getAttribute('data-testid'))) === 'publish-open', 'focus goes back to the Publish button', 3000)
 
         await win.click('button[aria-label="Back to recordings"]')
         await fx.openProject(win, 'Talking')

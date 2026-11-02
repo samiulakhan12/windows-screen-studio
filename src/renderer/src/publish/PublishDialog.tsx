@@ -8,7 +8,7 @@ import type { AiProviderInfo } from '../../../shared/api/ai'
 import { notedPieces, saidLinks, type Noted, type Said as Spoken } from '../../../shared/publish/check'
 import { BLOCKER_TEXT, PUBLISH_KINDS, PUBLISH_LABELS, PUBLISH_LENGTHS, PUBLISH_TONES, publishBlocker, publishSegments, transcriptKey, type PublishKind, type PublishPrefs } from '../../../shared/publish/pack'
 import { plainText, xLength, X_LIMIT } from '../../../shared/publish/text'
-import { composeYoutubeDescription, descriptionBody, parseTags, projectYoutubeChapters, YOUTUBE_DESCRIPTION_MAX } from '../../../shared/publish/youtube'
+import { composeYoutubeDescription, descriptionBody, descriptionToCheck, parseTags, projectYoutubeChapters, YOUTUBE_DESCRIPTION_MAX } from '../../../shared/publish/youtube'
 import { youtubeChapters } from '../../../shared/render/chapters'
 import type { Project } from '../../../shared/types'
 import { useEditor } from '../editor/context'
@@ -74,7 +74,7 @@ export function PublishDialog({ project, request, onClose, onGenerateCaptions }:
   /** Runs `run` at once when `text` has nothing the check notes, else after the confirm. */
   const confirmed = (what: string, action: NotedAsk['action'], text: string, run: () => void): void => {
     const pieces = piecesOf(text, said)
-    if (pieces.length) setAsk({ what, action, text, pieces, run })
+    if (pieces.length) setAsk({ what, action, text, pieces, said, run })
     else run()
   }
 
@@ -257,8 +257,8 @@ export function PublishDialog({ project, request, onClose, onGenerateCaptions }:
               onUseForExports={(text) => {
                 const description = descriptionBody(text)
                 if (!description) return
-                // What every export's description file will have: asked about first when the check notes anything in it.
-                confirmed(PUBLISH_LABELS[kind], 'Use anyway', composeYoutubeDescription(description, youtube.chapters, youtube.duration), () => {
+                // What any export's description file can have (with these chapters, or fewer): asked about first when the check notes anything in it.
+                confirmed(PUBLISH_LABELS[kind], 'Use anyway', descriptionToCheck(description, youtube.chapters, youtube.duration), () => {
                   store.update((p) => ({ ...p, publish: { description } }))
                   say(kind, "The export's description file will use this text")
                 })
@@ -371,8 +371,8 @@ function Card({ kind, item, stale, canWrite, youtube, saved, spoken, said, onWri
   const text = item.text.trim()
   const cleanTitle = kind === 'title' ? plainText(item.text, { max: 150, oneLine: true }) : ''
   const isSaved = saved !== null && saved === body
-  // The link check (§4.8): what is copied, read for anything link-like nobody said. Never changes the text.
-  const checks = [...new Set(piecesOf(isYoutube ? `${copied}\n${tags.join(', ')}` : copied, spoken).map((p) => p.text))]
+  // The link check (§4.8): what is copied or used for exports, read for anything link-like nobody said. Never changes the text.
+  const checks = [...new Set(piecesOf(isYoutube ? `${descriptionToCheck(body, youtube.chapters, youtube.duration)}\n${tags.join(', ')}` : copied, spoken).map((p) => p.text))]
 
   return (
     <section className="publish-card" data-publish-card={kind} data-status={item.status} aria-labelledby={`${id}-title`}>
@@ -399,7 +399,7 @@ function Card({ kind, item, stale, canWrite, youtube, saved, spoken, said, onWri
         aria-describedby={checks.length && !busy ? `${id}-check` : undefined}
         onChange={(e) => onEdit({ text: e.target.value.slice(0, EDIT_MAX) })}
       />
-      {!busy && checkNote(checks, `${id}-check`)}
+      {!busy && checkNote(checks, `${id}-check`, spoken)}
       {isYoutube && (
         <div className="publish-youtube">
           <p className="publish-sub">Chapters (from your timeline)</p>

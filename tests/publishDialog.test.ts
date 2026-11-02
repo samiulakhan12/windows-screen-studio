@@ -561,6 +561,34 @@ describe("Publish dialog: what a card's buttons did is said on that card (§5.1)
     expect(said(card(out, 'youtube'))).toEqual([['status', "The export's description file will use this text"]])
   })
 
+  it('Use for exports also asks about the text past the cut that fits the chapters now, which an export with fewer chapters writes (§4.7, §4.8)', async () => {
+    current = { ...current, chapters: [{ id: 'c1', t: 0, title: 'Intro to the new reports' }, { id: 'c2', t: 6, title: 'Reports and saving them' }] }
+    let out = await opened()
+    // Nearly 5 000 characters: with the chapters, the last sentence and its link do not fit.
+    const text = `${'Turn on the new reports and press save to keep them. '.repeat(93)}Files: paypal-login.com/verify`
+    type(card(out, 'youtube'), 'YouTube description text', text)
+    out = render()
+    const { chapters, duration } = projectYoutubeChapters(current)
+    expect(composeYoutubeDescription(text, chapters, duration)).not.toContain('paypal-login.com')
+    expect(exportDescription({ publish: { description: text } }, current.name, duration, [])).toContain('paypal-login.com/verify')
+    // The note lists it, though Copy gives the text without it (and asks nothing).
+    const note = card(out, 'youtube').find((e) => e.props['data-testid'] === 'publish-check')
+    expect(textOf(note?.props.children)).toContain('Check this before you post:paypal-login.com/verify')
+    press(card(out, 'youtube'), 'Copy')
+    await flush()
+    out = render()
+    expect(out.some((e) => e.props['data-testid'] === 'publish-confirm')).toBe(false)
+    expect(clipboardText).not.toContain('paypal-login.com')
+    // Use for exports asks first: an export without the chapters writes it.
+    press(card(out, 'youtube'), 'Use for exports')
+    out = render()
+    expect(confirmOf(out).items).toEqual(['…hem. Files: paypal-login.com/verify'])
+    expect(current.publish).toBeUndefined()
+    press(confirmOf(out).els, 'Use anyway')
+    out = render()
+    expect(current.publish).toEqual({ description: text })
+  })
+
   it('Rename the recording asks first for a title with a note, and stays focusable with the note as its description (§4.8)', async () => {
     let out = await opened()
     type(card(out, 'title'), 'Title text', 'New reports at 登录paypal-login.com')

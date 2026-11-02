@@ -1522,6 +1522,44 @@ describe('CaptionsPanel: AI tools from the command palette (NW-13)', () => {
     expect((store.state.chapters as unknown[]).length).toBe(0)
   })
 
+  it('after Use anyway, an add or a Dismiss, the focus goes to the tool that made the suggestion, not to the page (publish-pack §4.8)', async () => {
+    const said = [{ id: 'a', start: 0, end: 5, text: 'Welcome, download it from flown.app first.' }]
+    store.state = { ...store.state, name: 'Demo', chapters: [], transcript: { provider: 'openai', model: 'm', createdAt: '', segments: said } }
+    await show()
+    const last = (): string => textOf(focused[focused.length - 1]?.props.children).trim()
+    command('title')
+    let out = await answer(0, { task: 'title', text: 'Sign in at paypal-login.com' })
+    click(out, 'Rename the recording')
+    out = render(m.panel)
+    expect(last()).toBe('Cancel')
+    click(out, 'Use anyway')
+    out = render(m.panel)
+    expect(store.state.name).toBe('Sign in at paypal-login.com')
+    // The suggestion and the confirm are gone, with the button that asked: the focus is on Suggest a title.
+    expect(last()).toBe('Suggest a title')
+    command('chapters')
+    // (The name is said now: another link.)
+    out = await answer(1, { task: 'chapters', chapters: [{ t: 0, title: 'Download at flown.app' }, { t: 30, title: 'Sign in at evil-login.net' }] })
+    click(out, 'Add the chapters')
+    out = render(m.panel)
+    click(out, 'Use anyway')
+    out = render(m.panel)
+    expect((store.state.chapters as unknown[]).length).toBe(2)
+    expect(last()).toBe('Suggest chapters')
+    command('summary')
+    out = await answer(2, { task: 'summary', text: 'All about the export.' })
+    click(out, 'Dismiss')
+    out = render(m.panel)
+    expect(last()).toBe('Summarize')
+    command('title')
+    out = await answer(3, { task: 'title', text: 'Exporting' })
+    // Renamed at once (nothing to check): the same.
+    click(out, 'Rename the recording')
+    out = render(m.panel)
+    expect(store.state.name).toBe('Exporting')
+    expect(last()).toBe('Suggest a title')
+  })
+
   it('brings the AI tools into view, where the work and its answer show', async () => {
     await show()
     // The tab may be scrolled to its captions: the tools come to its top, with the answer's room under them.
