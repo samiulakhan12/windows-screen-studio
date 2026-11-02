@@ -210,13 +210,14 @@ export class SearchIndex {
     const known = new Map<string, TermMatches>()
     let found = this.searchTerms(queryTerms(query), options, known)
     // A word of Thai or Japanese still being typed (§2.3): its pieces joined from the end. Another
-    // recording may hold the split pieces (โปร + แก in โปรด + แก้ไข), so this is tried even when they
-    // found something. The first reading that finds something comes first, then the other recordings
-    // the split one found; words as typed still come before typo guesses, and a recording found both
-    // ways is listed once, by the better of the two.
-    for (const words of queryRetries(query)) {
-      const joined = this.searchTerms(words, options, known)
-      if (!joined.length) continue
+    // recording may hold the split pieces (โปร + แก in โปรด + แก้ไข), or those of a reading only partly
+    // joined (มหา + วิทยาล in มหาชน + วิทยาลัย), so every reading is tried. The most joined comes
+    // first, then the less joined ones and the split one; words as typed still come before typo
+    // guesses, and a recording found several ways is listed once, by the best of them.
+    const joined = queryRetries(query)
+      .reverse()
+      .flatMap((words) => this.searchTerms(words, options, known))
+    if (joined.length) {
       const seen = new Set<Doc>()
       found = [...joined, ...found]
         .sort((a, b) => a.typos - b.typos)
@@ -225,7 +226,6 @@ export class SearchIndex {
           seen.add(s.doc)
           return true
         })
-      break
     }
     return found.slice(0, options.hits ?? SEARCH_LIMITS.hits).map((s) => hitOf(s.doc, s.score, s.matches, options.moments ?? SEARCH_LIMITS.moments))
   }

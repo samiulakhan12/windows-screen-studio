@@ -232,6 +232,28 @@ describe('SearchIndex', () => {
     expect(both.search('โปรแก').map((h) => h.id)).toEqual(['both', 'other'])
   })
 
+  it('still finds the word being typed when another recording holds the pieces of a partly joined reading', () => {
+    // มหาวิทยาล splits as มหา + วิ + ทยา + ล; มหา + วิทยาล start มหาชน (public company) and วิทยาลัย
+    // (college). 東京タワ splits as 東京 + タ + ワ; 東京 + タワ are said with タワー on its own.
+    const r = index({
+      th: entry('Campus tour', [said(1, 'วันนี้ผมจะพาไปเที่ยวมหาวิทยาลัยของผม')]),
+      other: entry('Family', [said(1, 'น้องชายเรียนที่วิทยาลัยอาชีวะ'), said(5, 'เขาทำงานในบริษัทมหาชนจำกัด')]),
+      ja: entry('旅行', [said(1, '東京タワーに行きました')]),
+      ja2: entry('引っ越し', [said(1, '東京のタワーマンションに住んでいます')])
+    })
+    for (const [word, id] of [['มหาวิทยาลัย', 'th'], ['東京タワー', 'ja']]) {
+      const letters = [...word]
+      for (let n = /\p{Script=Han}/u.test(letters[0]) ? 1 : 2; n <= letters.length; n++) {
+        const typed = letters.slice(0, n).join('')
+        expect(r.search(typed).map((h) => h.id), typed).toContain(id)
+      }
+    }
+    // The most joined reading comes first.
+    expect(r.search('มหาวิทยาล').map((h) => h.id)).toEqual(['th', 'other'])
+    expect(hits(r.search('มหาวิทยาล')[0].moments[0].snippet)).toEqual(['มหาวิทยาลัย'])
+    expect(r.search('東京タワ').map((h) => h.id)).toEqual(['ja', 'ja2'])
+  })
+
   it('puts moments with more of the words first, and a phrase above scattered words', () => {
     const r = index({
       p: entry('P', [said(1, 'open now the settings'), said(5, 'open settings now'), said(9, 'settings')])
