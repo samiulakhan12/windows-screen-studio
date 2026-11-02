@@ -234,12 +234,18 @@ const digitValue = (ch: string): number => {
 /**
  * `text` with its digits in the Digits choice (§0.2): 'native' the language's own (Bangla ০–৯ in a
  * Bangla caption), 'western' 0–9; absent: as written. Digit for digit, so words and their indexes
- * never change. Used by captions, counters, list numbers and chapter titles.
+ * never change. Used by counters and list numbers, and word by word by captions and chapter titles.
  */
 export function withDigits(text: string, digits: 'native' | 'western' | undefined, language?: string): string {
   if (!digits) return text
   const zero = ZEROS[digits === 'western' ? 'latn' : nativeNumbering(language)]
   return text.replace(ANY_DIGIT, (ch) => String.fromCodePoint(zero + digitValue(ch)))
+}
+
+/** withDigits word by word, as captions write them: a Latin word keeps its own digits ("MP3", "1080p"). */
+export function withWordDigits(text: string, digits: 'native' | 'western' | undefined, language?: string): string {
+  if (!digits) return text
+  return text.replace(/\S+/gu, (word) => (scriptOf(word) === 'latin' ? word : withDigits(word, digits, language)))
 }
 
 /** The Intl numbering system of a Digits choice for `language` (counters), or undefined for the locale's own. */

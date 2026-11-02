@@ -170,6 +170,13 @@ describe('the Digits choice reaches every place §0.2 names (captions, counters,
     expect(texts).toContain('অধ্যায় ২')
   })
 
+  it('a chapter title’s Latin words keep their digits, as in captions ("MP3", "1080p")', () => {
+    const p = project([C], 'bn', { preset: 'bold', studio: look('bold-pop'), digits: 'native' }, { titles: [chapterCard('MP3 আর 1080p ফাইল 2')] })
+    drawTitleCardsLayer(frameOf(p, 2.5).fc)
+    const texts = [...painted(), ...calls.filter((c) => c.name === 'fillText').map((c) => String(c.args[0]))].join(' ')
+    expect(texts).toContain('MP3 আর 1080p ফাইল ২')
+  })
+
   it('a title the user typed keeps its digits', () => {
     const p = project([C], 'bn', { preset: 'bold', studio: look('bold-pop'), digits: 'native' }, { titles: [chapterCard('Step 2', false)] })
     drawTitleCardsLayer(frameOf(p, 2.5).fc)

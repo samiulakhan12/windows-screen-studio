@@ -3243,7 +3243,8 @@ on the same thing:
   index), `spokenScale` (1..1.3) and `spokenTilt` (degrees, −8..8: Bold Pop's −2° while spoken). `CaptionSettings.digits` (`'native'` or `'western'`, §0.2),
   in the language of the captions on the video (`captionLanguage`: the shown track's, else the
   transcript's, else Bangla when the transcript names none and is mostly Bangla); the Digits, Case
-  and Letter spacing controls follow the same language.
+  and Letter spacing controls follow the same language. In captions and chapter titles a Latin
+  word keeps its own digits ("MP3", "1080p"), and a word whose digits change takes their script.
   `STUDIO_LIMITS` holds the new limits.
 - **Readers**: an unknown `cat:` emphasis font is dropped (the text's font draws); repeated ids
   become `id~2`, `id~3`; overlapping marks keep the first one's id and tone, `auto` only when both

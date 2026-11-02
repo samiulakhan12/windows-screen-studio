@@ -3,7 +3,7 @@ import { backgroundIsLight, luminance, titleColorOf, titleTextColorOf } from '..
 import { captionLanguage } from '../../../shared/captions/captionTracks'
 import { catalogFamily, catalogId } from '../../../shared/captions/fontCatalog'
 import { STUDIO_BASE } from '../../../shared/captions/studioPresets'
-import { withDigits } from '../../../shared/captions/words'
+import { withWordDigits } from '../../../shared/captions/words'
 import { quoteName, quotePanel, TITLE_FONT, titleLayout, titlePhase, type MeasureText, type TextBlock, type TitleLayout, type TitlePhase } from '../../../shared/render/titleCards'
 import type { Rect } from '../../../shared/engine/layout'
 import type { TitleCard } from '../../../shared/types'
@@ -403,13 +403,13 @@ function drawLowerThird(fc: FrameContext, card: TitleCard, phase: TitlePhase, l:
  */
 /**
  * A card as drawn: a chapter title made from the chapters (Captions Studio §10.1) writes its digits
- * in the captions' Digits choice (§0.2); every other card, and every card without the choice, is
- * the card itself.
+ * in the captions' Digits choice (§0.2), a Latin word keeping its own as in captions ("MP3"); every
+ * other card, and every card without the choice, is the card itself.
  */
 function drawnCard(project: Project, card: TitleCard): TitleCard {
   const digits = project.captions?.digits
   if (!digits || card.auto?.by !== 'chapter') return card
-  const title = withDigits(card.title, digits, captionLanguage(project))
+  const title = withWordDigits(card.title, digits, captionLanguage(project))
   return title === card.title ? card : { ...card, title }
 }
 
