@@ -20,6 +20,8 @@ const entry = (name: string, units: SearchUnit[], over: Partial<IndexedProject> 
 })
 const plain = (parts: { text: string }[]): string => parts.map((p) => p.text).join('')
 const hits = (parts: { text: string; hit: boolean }[]): string[] => parts.filter((p) => p.hit).map((p) => p.text)
+/** How wide text is drawn, in Latin letters: a Chinese or Japanese character counts two. */
+const columns = (s: string): number => [...s].reduce((n, c) => n + (/[\u3000-\u9fff]/.test(c) ? 2 : 1), 0)
 
 function index(entries: Record<string, IndexedProject>): SearchIndex {
   const ix = new SearchIndex()
@@ -380,9 +382,30 @@ describe('snippetOf', () => {
       const at = text.indexOf(word)
       const parts = snippetOf(text, [[at, at + word.length]])
       expect(hits(parts)).toEqual([word])
-      expect(parts[0].text.length, plain(parts)).toBeGreaterThan(40)
+      expect(columns(parts[0].text), plain(parts)).toBeGreaterThan(40)
       expect(parts[parts.length - 1].text.length, plain(parts)).toBeGreaterThan(80)
     }
+  })
+
+  it('keeps a match after Chinese or Japanese text in the one line a row shows', () => {
+    // A caption read as one segment: the match came after 55 characters, about 715 px at 13 px, and
+    // the row (one line, cut with an ellipsis) has about 460 px for the snippet at the smallest window.
+    const ja = 'それでは今日はこのアプリケーションの基本的な使い方について順番にご説明していきますので画面の右上をクリックして設定を開いてください'
+    const zh = `${'大家好，今天我们来介绍一下这个应用程序的基本使用方法，首先打开主页面，'.repeat(3)}然后点击右上角的按钮，接着打开设置页面选择录制质量。`
+    for (const [text, word] of [[ja, '設定'], [zh, '设置']]) {
+      const at = text.indexOf(word)
+      const parts = snippetOf(text, [[at, at + word.length]])
+      expect(hits(parts)).toEqual([word])
+      const lead = parts[0].text
+      expect(lead.startsWith('…'), plain(parts)).toBe(true)
+      expect(columns(lead), plain(parts)).toBeLessThanOrEqual(61)
+      expect(columns(lead), plain(parts)).toBeGreaterThan(50)
+      expect(text.slice(0, at).endsWith(lead.slice(1)), plain(parts)).toBe(true)
+    }
+    // Latin text keeps its 60 characters before the match.
+    const latin = `${'a'.repeat(100)} ${'word '.repeat(20)}target`
+    const t = latin.indexOf('target')
+    expect(plain(snippetOf(latin, [[t, t + 6]])).indexOf('target')).toBeGreaterThan(50)
   })
 
   it('merges overlapping ranges and shows the start without a match', () => {

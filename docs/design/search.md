@@ -170,7 +170,8 @@ For each recording:
 A moment's snippet is the unit's text around its first matched term: up to 60 characters before
 and 120 after, cut on a word boundary in the outer half of each side (a space in the first 30
 characters before the match, or the last 60 after it) with `…` at a cut end, never across a line
-break. Where there is no such space (Chinese, Japanese, Thai; or one Latin word set off by spaces
+break. The text before is measured by width: a Chinese, Japanese or Korean character (or an emoji)
+counts as two, so at most 30 of them come before the match and it stays in the one line a row shows. Where there is no such space (Chinese, Japanese, Thai; or one Latin word set off by spaces
 next to the match), it is cut between whole characters (grapheme clusters), so the text around the
 match is kept: a Thai letter keeps its vowel and tone marks, an emoji sequence or a flag stays whole. Matched
 terms are returned as ranges (`{ text, hit }` parts), never as HTML; the page renders them as text
@@ -438,6 +439,9 @@ No new dependency: `Intl.Segmenter` is in Electron's ICU, and the rest is small 
 - A first Thai, Lao, Khmer, Myanmar or kana letter matched by prefix in every caption and note, so
   the first key typed listed nearly every recording in that language. Only a Han character is a word
   on its own; any other one letter matches by prefix only in names, titles and chapters (§2.5).
+- A snippet kept 60 Chinese or Japanese characters before the match (about 780 px), and the row
+  shows one line of about 460 px at the smallest window: it showed only text and an ellipsis, never
+  the marked word. The text before is now measured by width, a wide character counting as two (§2.7).
 - An imported file name was indexed with its extension, so the first key typed (`m`, or `mp4`, `mov`)
   listed every imported video as "Found in the name" with nothing marked. The extension is left out
   now (§2.2); the index file went to version 3 and is built again.

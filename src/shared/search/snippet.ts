@@ -16,6 +16,28 @@ const MARK_RE = /\p{M}/u
 const CUT_CONTEXT = 32
 /** Characters nothing joins to the one before them (Han, kana, Thai consonants, ASCII): a cut before one needs no look. */
 const STARTER_RE = /[\x21-\x7e\p{Script=Han}\u3041-\u3096\u30A1-\u30FA\u0E01-\u0E2E]/u
+/** Wide characters (Chinese, Japanese, Korean, fullwidth forms): drawn about twice as wide as a Latin letter. */
+const WIDE_RE = /[\u1100-\u115F\u2E80-\u303E\u3041-\u33FF\u3400-\u4DBF\u4E00-\u9FFF\uA000-\uA4CF\uA960-\uA97F\uAC00-\uD7A3\uF900-\uFAFF\uFE10-\uFE19\uFE30-\uFE6F\uFF00-\uFF60\uFFE0-\uFFE6]/
+
+/**
+ * How wide `text` from `start` to `end` is drawn, in Latin letters: a wide character counts two, as
+ * does a character outside the BMP (an emoji, a rare Han character: two code units), anything else one.
+ */
+function widthOf(text: string, start: number, end: number): number {
+  let width = 0
+  for (let i = start; i < end; i++) width += WIDE_RE.test(text[i]) ? 2 : 1
+  return width
+}
+
+/** Where the text before a match at `at` starts: as far back as fits `snippetBefore` Latin letters' width. */
+function leadStart(text: string, lineStart: number, at: number): number {
+  let i = at
+  for (let width = 0; i > lineStart; i--) {
+    width += WIDE_RE.test(text[i - 1]) ? 2 : 1
+    if (width > SEARCH_LIMITS.snippetBefore) break
+  }
+  return i
+}
 
 let graphemes: Intl.Segmenter | null | undefined
 
@@ -92,13 +114,15 @@ export function snippetOf(text: string, ranges: readonly Range[]): SnippetPart[]
   const lineStart = text.lastIndexOf('\n', first[0] - 1) + 1
   const nl = text.indexOf('\n', first[1])
   const lineEnd = nl < 0 ? text.length : nl
-  let from = Math.max(lineStart, first[0] - SEARCH_LIMITS.snippetBefore)
+  // The text before is measured by its width, so a match after Chinese or Japanese text is still in
+  // the one line the row shows.
+  let from = leadStart(text, lineStart, first[0])
   let to = Math.min(lineEnd, first[1] + SEARCH_LIMITS.snippetAfter)
   // Cut on a word boundary in the outer half of each side. No space there (Chinese, Japanese, Thai,
   // or one Latin word next to the match): cut between whole characters, keeping the text around it.
   if (from > lineStart) {
     const space = text.slice(from, first[0]).search(/\s/)
-    if (space >= 0 && space < SEARCH_LIMITS.snippetBefore / 2) from += space + 1
+    if (space >= 0 && widthOf(text, from, from + space) < SEARCH_LIMITS.snippetBefore / 2) from += space + 1
     else from = characterStart(text, from, first[0])
   }
   if (to < lineEnd) {
