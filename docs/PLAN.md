@@ -9,10 +9,13 @@ Order of releases: **0.7.1** (auto-update) → **0.8.0** (wave 8: captions that 
 pack, review mode, versions and filmstrip, sound finder, share, search) → **0.9.0** (wave 9, Captions Studio) → later
 waves.
 
-## Checkpoint (2 November 2026)
+## Checkpoint (2 November 2026, updated at the pause)
+
+Work is **paused** at the user's request until they say continue.
 
 **Merged and pushed** on `ccr-b6df7cf7-yked87`, each reviewed through several lenses (every finding checked twice),
-fixed, and verified with typecheck, the full unit suite, the build and the end-to-end files it touches:
+fixed, merged with a check for lost behaviour and feature interactions, and verified with typecheck, the full unit
+suite, the build and the end-to-end files it touches:
 
 - **0.7.1** auto-update.
 - **NW-09** captions that survive OpenAI's `whisper-1` shutdown, and speaker labels.
@@ -22,6 +25,15 @@ fixed, and verified with typecheck, the full unit suite, the build and the end-t
 - **Wave 9, Captions Studio phase A**: the look gallery, 42 bundled fonts (9 Bangla families), motion, motion graphics
   made from captions, automation (Make my captions great, Tidy captions, bleeping, Auto style, AI marks), caption
   tracks and subtitle streams; Bangla bleeping redesigned to catch every form of a listed word.
+- **F-17 Unwanted-sound finder**: finds coughs, typing, notifications and music on this PC; Mute, Duck, Cut; one gain
+  curve for preview and export. With it, the camera background-blur worker no longer sends MediaPipe usage
+  statistics to Google (it now refuses every outside request, as the sound worker does).
+- **F-22 Share without a server**: copy an export into OneDrive, Dropbox, Google Drive or a chosen folder, or post to
+  Slack, Discord or Teams.
+- **F-18 Search every recording**: Ctrl+F on Home finds words in names, captions, notes, chapters and text on screen,
+  and opens the editor at that moment. Text a bleep is for is masked in on-screen results as the video draws it.
+- The Inspector rail shows its tab labels on a tall window again (Captions Studio's Graphics tab had pushed it past
+  its limit).
 
 **Known minor issues** (all low; none loses work):
 
@@ -37,14 +49,19 @@ fixed, and verified with typecheck, the full unit suite, the build and the end-t
 - Bangla bleeping: Bangla written in Latin letters is not bleeped; the bustard bird's name, everyday words joined by
   an en or em dash, the locative of "boy" (spelled like a form of a listed word) and the literal "piglets" and
   "puppies" can be bleeped.
+- Share: *Cancel export* pressed in the second or two after the video is written can still start the chosen shares;
+  opening Settings at About counts as having seen the found folders.
+- Search: while a Thai word is being typed, a few in-between prefixes show no results; a counter is found by its
+  plain number (1200) but not as drawn (1,200 or ১,২০০); spoken captions in results keep a bleeped word unmasked,
+  as the Captions and Transcript tabs do; right after leaving the editor, results can lag the last save by about
+  1.5 s; indexing a recording with thousands of cuts takes about 0.2 s.
+- Inspector rail: at the minimum window size the compact tabs are about 21 px apart, under the 24 px target-size
+  spacing; a two-column compact rail or a taller Inspector would restore it.
 
-**Built, review part-way** (each resumes its review run; worktrees are clean):
+**Built, review part-way** (resumes its review run; worktree clean):
 
 | Feature | Branch | Worktree | Review run |
 | --- | --- | --- | --- |
-| F-18 Search | `rev/search` | `/home/user/wt-search` | `wf_c4ad3490-0d9` |
-| F-17 Sound finder (needs `npm ci` in the main checkout after merging) | `rev/sound-finder` | `/home/user/wt-snd` | `wf_0844d540-15d` |
-| F-22 Share | `rev/share` | `/home/user/wt-share` | `wf_4eff5e90-bd4` |
 | E-12/E-07/E-09 Versions and filmstrip | `rev/versions` | `/home/user/wt-ver` | `wf_918b72cf-295` |
 
 **Then**: Captions Studio phase B, waves 10–12 below, and auto-blur of private information last.
