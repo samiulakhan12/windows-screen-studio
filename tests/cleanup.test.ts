@@ -154,6 +154,9 @@ describe('bleeping (tests 41, 50)', () => {
     expect(isSwearWord('assassin', 'standard')).toBe(false)
     expect(isSwearWord('classic', 'standard')).toBe(false)
     expect(bleepKey('Shiiiit!!')).toBe('shit')
+    // A Bengali letter written twice is a word's own spelling (বালককে, "to the boy", is not বালকে).
+    expect(bleepKey('বালককে')).toBe('বালককে')
+    expect(bleepKey('বাস্টার্ডডা')).toBe('বাস্টার্ডডা')
   })
 
   it('Strict adds LDNOOBW words; Bangla has the team list', () => {
@@ -168,6 +171,8 @@ describe('bleeping (tests 41, 50)', () => {
     // শুয়োর (pig) is an everyday word too, with য় written either way.
     const everyday = ['চোদ্দ', 'চোদ্দো', 'বালক', 'বালকটি', 'বালিকা', 'বালিশ', 'বালতি', 'বালু', 'বালি', 'বালা', 'বালাই', 'মাগিনা', 'শুয়োর', 'শু\u09DFোর']
     everyday.push('চৌদ্দ', 'হারাম', 'হারামের', 'শুয়ে', 'বালাম', 'মাগুর', 'বালুচর')
+    // বালককে, "to the boy", and কেঁচোদের, "earthworms'".
+    everyday.push('বালককে', 'বালককেও', 'বালককেই', 'কেঁচোদের', 'কেঁচোদেরকে')
     for (const word of everyday) {
       expect(isSwearWord(word, 'standard', 'bn')).toBe(false)
       expect(isSwearWord(word, 'strict', 'bn-BD')).toBe(false)

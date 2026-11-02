@@ -340,10 +340,13 @@ function applyStop(tokens: Tok[], pauseAfter: number, language: string | undefin
 
 /** Letters a run of is collapsed to two (obscenity's thresholds); any other letter to one. */
 const KEEP_TWO = new Set(['b', 'e', 'o', 'l', 's', 'g'])
+const BENGALI = /\p{Script=Bengali}/u
 
 /**
  * A word as the bleep lists match it: in NFC (a cloud transcript or typed text may write য় as one
- * code point or ো in two parts), lower case, punctuation removed, repeated letters collapsed.
+ * code point or ো in two parts), lower case, punctuation removed, repeated letters collapsed but
+ * Bengali ones: a Bangla word writes a letter twice as its spelling (বালককে, "to the boy", is no
+ * বালকে), not to draw it out.
  */
 export function bleepKey(word: string): string {
   const bare = word.normalize('NFC').toLowerCase().replace(/[^\p{L}\p{N}\p{M}]/gu, '')
@@ -351,7 +354,7 @@ export function bleepKey(word: string): string {
   let run = 0
   for (const ch of bare) {
     run = out.endsWith(ch) ? run + 1 : 1
-    if (run <= (KEEP_TWO.has(ch) ? 2 : 1)) out += ch
+    if (run <= (KEEP_TWO.has(ch) ? 2 : 1) || BENGALI.test(ch)) out += ch
   }
   return out
 }
@@ -477,8 +480,9 @@ const TEAM_LISTS: Readonly<Record<string, TeamList>> = {
       ...BN_KHANKI.map((k) => k + 'রপোলা'),
       ...BN_ANIMALS.flatMap((w) => BN_KID.map((k) => w + k))
     ],
-    // প্রচোদ, "to inspire" (Sanskrit): প্রচোদয়াৎ in the Gayatri mantra (ধিয়ো যো নঃ প্রচোদয়াৎ), প্রচোদিত.
-    holders: ['প্রচোদ'],
+    // প্রচোদ, "to inspire" (Sanskrit): প্রচোদয়াৎ in the Gayatri mantra (ধিয়ো যো নঃ প্রচোদয়াৎ), প্রচোদিত;
+    // কেঁচো, "earthworm", in its plural (কেঁচোদের, কেঁচোদেরকে).
+    holders: ['প্রচোদ', 'কেঁচোদ'],
     everyday: [
       // মাগা, "to beg, to ask for" (in songs, poems and the old written style): its forms that start
       // with মাগি (মাগিতেছেন, মাগিয়াছিলাম, মাগিলেম, মাগিনু, মাগিবার), but those the slur takes too.
@@ -497,8 +501,9 @@ const TEAM_LISTS: Readonly<Record<string, TeamList>> = {
     onlyBefore: [[BN_ANIMALS.flatMap((w) => BN_PARTICLES.map((p) => w + p)), BN_KID]],
     notBefore: [
       // বাল, "child", in names and words written apart (বাল গঙ্গাধর তিলক, বাল ঠাকরে, লাল বাল পাল,
-      // বাল গোপাল, বাল কৃষ্ণ, বাল বিধবা, বাল বিবাহ), and বাল বাচ্চা, "the kids".
-      [['বাল'], ['গঙ্গাধর', 'ঠাকরে', 'গোপাল', 'কৃষ্ণ', 'পাল', ...BN_KID, 'বিধবা', 'বিবাহ']],
+      // বাল গোপাল, বাল কৃষ্ণ, বাল বিধবা, বাল বিবাহ, বাল-বৃদ্ধ-বনিতা: young and old), and বাল বাচ্চা,
+      // "the kids".
+      [['বাল'], ['গঙ্গাধর', 'ঠাকরে', 'গোপাল', 'কৃষ্ণ', 'পাল', ...BN_KID, 'বিধবা', 'বিবাহ', 'বৃদ্ধ']],
       // চুদুরবুদুর written apart.
       [['চুদুর'], ['বুদুর', 'বুদুরি']]
     ]
@@ -574,7 +579,7 @@ const heldAt = (holders: readonly string[], key: string, c: Stem, at: number): b
 /**
  * Whether a word's key is rude by a team list, `next` the key of the word after it ('' when there is
  * none; not known when undefined, and then a word rude only before some words is taken as rude).
- * `apart`: a pause is between them (a sentence mark, a comma or a !, or a caption's end), so a word
+ * `apart`: a pause is between them (a sentence mark, a comma or a !, or a caption's end and silence), so a word
  * never rude before some words is rude whatever comes next (বাল। বাচ্চাটা: no name).
  */
 function teamMatch(r: TeamRules, key: string, next: string | undefined, apart = false): boolean {
@@ -645,15 +650,15 @@ function strictSet(lang: string): ReadonlySet<string> {
   return s
 }
 
-const BENGALI = /\p{Script=Bengali}/u
 const LATIN_RUN = /\p{Script=Latin}+/gu
 
 /**
  * Whether a word is bleeped by `mode` in `language`. `next` is the word after it ('' for none): in
  * Bangla it decides for a word rude only before certain words (শুয়োরের in শুয়োরের বাচ্চা) or
  * never before certain words (বাল in বাল গঙ্গাধর তিলক); without it, such a word is taken as rude.
- * `apart` is true when the next word is in the next caption: as after a sentence mark, a comma or
- * a !, then, a word never rude before certain words is rude whatever the next word is.
+ * `apart` is true when the next word starts the next caption at least PAUSE_FOR_STOP later: as
+ * after a sentence mark, a comma or a !, then, a word never rude before certain words is rude
+ * whatever the next word is.
  */
 export function isSwearWord(word: string, mode: 'standard' | 'strict', language?: string, next?: string, apart = false): boolean {
   const key = bleepKey(word)
@@ -701,15 +706,17 @@ function findBleeps(
   const captionOf = captions.flatMap((ws, c) => ws.map(() => c))
   // The word after each, past the deleted ones and into the next caption ('' after the last): it
   // decides for some words (শুয়োরের বাচ্চা). A caption's end sets them apart as a full stop does
-  // (বাল before a name).
+  // (বাল before a name) when the next caption starts PAUSE_FOR_STOP or more later: the Bangla
+  // model cuts captions by length, through a name (লোকমান্য বাল | গঙ্গাধর তিলক) as anywhere.
   const after: string[] = new Array(words.length)
   const apart: boolean[] = new Array(words.length)
-  for (let i = words.length - 1, next = '', nextCaption = -1; i >= 0; i--) {
+  for (let i = words.length - 1, next = '', nextCaption = -1, nextStart = Infinity; i >= 0; i--) {
     after[i] = next
-    apart[i] = nextCaption !== captionOf[i]
+    apart[i] = nextCaption !== captionOf[i] && nextStart - words[i].end >= PAUSE_FOR_STOP
     if (!words[i].deleted) {
       next = words[i].text
       nextCaption = captionOf[i]
+      nextStart = words[i].start
     }
   }
   words.forEach((w, i) => {

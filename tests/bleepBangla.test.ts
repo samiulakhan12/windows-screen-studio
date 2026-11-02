@@ -5,6 +5,7 @@
  */
 import { describe, expect, it } from 'vitest'
 import { bleepKey, isSwearWord, tidyCaptions, type CleanupChoices } from '../src/shared/captions/cleanup'
+import { captionPieces } from '../src/shared/speech/protocol'
 import type { CaptionSegment, Project } from '../src/shared/types'
 
 const OFF: CleanupChoices = { caps: false, punct: false, digits: 'off', bleep: 'off', bleepSound: 'tone', ai: false }
@@ -119,8 +120,11 @@ const ANIMALS = [...PIG, ...DOG]
 const ANIMAL_GENITIVES = ANIMALS.flatMap((w) => PARTICLES.map((p) => w + p))
 const KIDS = ['বাচ্চা', 'বাচ্ছা'].flatMap(nounForms)
 const ANIMAL_JOINED = [...ANIMALS.flatMap((w) => KIDS.map((k) => w + k)), ...ANIMALS.map((w) => 'শালা' + w + 'বাচ্চা')]
-/** বাল in names and set phrases, never rude before these: বাল গঙ্গাধর তিলক, বাল ঠাকরে, লাল বাল পাল, বাল গোপাল, বাল বাচ্চা (the kids), বাল বিধবা. */
-const BAL_NAMES = ['গঙ্গাধর', 'ঠাকরে', 'গোপাল', 'কৃষ্ণ', 'পাল', 'বাচ্চা', 'বাচ্ছা', 'বিধবা', 'বিবাহ'].flatMap(nounForms)
+/**
+ * বাল in names and set phrases, never rude before these: বাল গঙ্গাধর তিলক, বাল ঠাকরে, লাল বাল পাল,
+ * বাল গোপাল, বাল বাচ্চা (the kids), বাল বিধবা, বাল-বৃদ্ধ-বনিতা (young and old).
+ */
+const BAL_NAMES = ['গঙ্গাধর', 'ঠাকরে', 'গোপাল', 'কৃষ্ণ', 'পাল', 'বাচ্চা', 'বাচ্ছা', 'বিধবা', 'বিবাহ', 'বৃদ্ধ'].flatMap(nounForms)
 
 /** The latest review's list (input.json "bleep"), in full: its regressions, misses and Tidy captions scenario. */
 const REVIEW_NOUN_ENDS = ['রাও', 'রাই', 'কেও', 'কেই', 'টাও', 'টাই', 'রেও']
@@ -186,6 +190,8 @@ const LOOK_ALIKES = [
   // প্রচোদ, "to inspire" (Sanskrit): প্রচোদয়াৎ in the Gayatri mantra (ধিয়ো যো নঃ প্রচোদয়াৎ), প্রচোদিত "inspired".
   ...['প্রচোদয়াৎ', 'প্রচোদয়াত্', 'প্রচোদিত', 'প্রচোদনা', 'প্রচোদনায়', 'ধর্মপ্রচোদিত'],
   ...['চৌদ্দ', 'চৌদ্দটা', 'চৌদ্দতম', 'চৌদ্দগুষ্টি', 'চোখ', 'চোখের', 'চোর', 'চোরের', 'চোট', 'চোয়াল', 'চাদর', 'চাঁদ', 'চাঁদা', 'চোতা'],
+  // কেঁচো, "earthworm": its plural holds চোদ (কেঁচোদের, কেঁচোদেরকে).
+  ...['কেঁচো', 'কেঁচোদের', 'কেঁচোদেরকে'],
   ...['চুপ', 'চুল', 'চুলের', 'চুলা', 'চুমু', 'চুক্তি', 'চুরি', 'চুন', 'চুড়ি', 'চূড়া', 'চূড়ান্ত', 'চুম্বক', 'চুইঝাল', 'চুইয়ে'],
   ...DITHER,
   // বান-, বাঞ্-, মাদার-: to wreck, wish, wished, a district, mother.
@@ -197,8 +203,10 @@ const LOOK_ALIKES = [
   ...['খানকা', 'খানকাহ', 'খান', 'খানা', 'খানিক', 'খানিকটা', 'খানদান', 'খানসামা', 'খানাপিনা', 'খানাখন্দ'],
   // হারাম "forbidden", হারানো "to lose", হালাল.
   ...['হারাম', 'হারামের', 'হারানো', 'হারিয়ে', 'হার', 'হারা', 'হারমোনিয়াম', 'হালাল'],
-  // বাল-: boy, girl, pillow, bucket, sand, bangle, trouble, childhood, and places.
+  // বাল-: boy, girl, pillow, bucket, sand, bangle, trouble, childhood, and places. বালককে, "to the
+  // boy", with its doubled ক, is no form of বাল (বালকে).
   ...['বালক', 'বালকটি', 'বালকের', 'বালকেরা', 'বালকদের', 'বালিকা', 'বালিকাদের', 'বালিকারা', 'বালিশ', 'বালিশের', 'বালতি', 'বালতিতে'],
+  ...['বালককে', 'বালককেও', 'বালককেই'],
   ...['বালি', 'বালির', 'বালিতে', 'বালু', 'বালুর', 'বালুচর', 'বালুকা', 'বালুকাবেলা', 'বালা', 'বালাই', 'বালাম'],
   ...['বাল্য', 'বাল্যকাল', 'বাল্যবিবাহ', 'বাল্যবন্ধু', 'বালিগঞ্জ', 'বালিয়াডাঙ্গী', 'বালসা'],
   // শুয়োর "pig" (য় written either way), শুয়ে "lying down".
@@ -402,7 +410,9 @@ describe('Bangla bleeping: stems, compounds and every generated form', () => {
       'লাল বাল পাল',
       'বাল গোপালের পূজা হয় জন্মাষ্টমীতে।',
       'বাল বাচ্চা নিয়ে আমরা গ্রামে বেড়াতে গেলাম।',
-      'বাল-গোপাল'
+      'বাল-গোপাল',
+      'বাল-বৃদ্ধ-বনিতা নির্বিশেষে সবাই উৎসবে যোগ দিয়েছে।',
+      'বাল বৃদ্ধ বনিতা সবাই মেলায় এসেছিল।'
     ]
     const rude = [
       ['কি বাল বলিস', 'বাল'],
@@ -423,6 +433,35 @@ describe('Bangla bleeping: stems, compounds and every generated form', () => {
       for (const bleep of ['standard', 'strict'] as const) {
         const out = tidyCaptions(project(segs, language), { ...OFF, bleep, words: [] }).project.bleeps ?? []
         expect(out.map((b) => [b.word, Math.floor((b.start + 0.1) / 5)]), `${language} ${bleep}`).toEqual(want)
+      }
+    }
+  })
+
+  it('reads a caption’s end as a pause only when the next caption starts 0.7 s later or more: the Bangla model cuts captions by length, through a name', () => {
+    // বাল ends one caption and the name starts the next, `gap` seconds later.
+    const split = (gap: number, name: string, first = 'স্বাধীনতা আন্দোলনের নেতা লোকমান্য বাল'): CaptionSegment[] => {
+      const a = timed('a', 0, first)
+      return [a, timed('b', a.end + gap, `${name} তাঁর জীবন`)]
+    }
+    for (const language of ['bn', 'bn-BD', undefined]) {
+      for (const bleep of ['standard', 'strict'] as const) {
+        const bleeped = (segs: CaptionSegment[]): string[] => (tidyCaptions(project(segs, language), { ...OFF, bleep, words: [] }).project.bleeps ?? []).map((b) => b.word)
+        for (const name of ['গঙ্গাধর', 'ঠাকরে', 'পাল', 'বাচ্চারা']) {
+          for (const gap of [0.05, 0.1, 0.3, 0.6]) expect(bleeped(split(gap, name)), `${language} ${bleep} ${name} ${gap}`).toEqual([])
+          for (const gap of [0.75, 1, 4]) expect(bleeped(split(gap, name)), `${language} ${bleep} ${name} ${gap}`).toEqual(['বাল'])
+        }
+        // A sentence mark at the caption's end is a pause still, however soon the next caption starts.
+        expect(bleeped(split(0.1, 'গঙ্গাধর', 'কি বাল।')), `${language} ${bleep}`).toEqual([bleepKey('বাল।')])
+        // Captions as the Bangla model makes them: one long run cut by captionPieces, here right after বাল.
+        const runs = [
+          'আজকের ক্লাসে আমরা ভারতের স্বাধীনতা আন্দোলনের অন্যতম নেতা লোকমান্য বাল গঙ্গাধর তিলকের জীবন ও কাজ নিয়ে বিস্তারিত আলোচনা করব আজ',
+          'বঙ্গভঙ্গের পর স্বদেশী আন্দোলনে সবচেয়ে পরিচিত তিন নেতা ছিলেন লাল বাল পাল যাঁরা ব্রিটিশদের বিরুদ্ধে প্রবল আন্দোলন গড়ে তুলেছিলেন এবং জেল খেটেছিলেন',
+          'মহারাষ্ট্রের রাজনীতিতে গত সবচেয়ে প্রভাবশালী নেতাদের একজন ছিলেন শিবসেনার প্রতিষ্ঠাতা বাল ঠাকরে আর তাঁর মৃত্যুর পর দল দুই ভাগ হয়ে যায়'
+        ]
+        const cut = runs.map((text) => captionPieces(text.split(' ').map((w, i) => ({ text: w, start: i * 0.55, end: i * 0.55 + 0.45 }))))
+        expect(cut.map((pieces) => pieces.some((p) => p[p.length - 1].text === 'বাল'))).toEqual([true, true, false])
+        const segs = cut.flatMap((pieces, r) => pieces.map((p, i) => ({ id: `${r}-${i}`, start: r * 100 + p[0].start, end: r * 100 + p[p.length - 1].end, text: p.map((w) => w.text).join(' '), words: p.map((w) => ({ ...w, start: r * 100 + w.start, end: r * 100 + w.end })) })))
+        expect(bleeped(segs), `${language} ${bleep}`).toEqual([])
       }
     }
   })
@@ -510,7 +549,11 @@ describe('Bangla bleeping: stems, compounds and every generated form', () => {
       ['বালসা কাঠ খুব হালকা', ''],
       ['শূকরের মাংস খাওয়া হারাম', ''],
       ['কুকুরের বাচ্চা খুব সুন্দর', ''],
-      ['কুত্তার কামড়ে দুজন আহত', '']
+      ['কুত্তার কামড়ে দুজন আহত', ''],
+      ['পুলিশ নিখোঁজ বালককে উদ্ধার করেছে।', ''],
+      ['শিক্ষক বালককেও পুরস্কার দিলেন।', ''],
+      ['বাঘটি বালককে আক্রমণ করেছিল।', ''],
+      ['কেঁচোদের চোখ নেই, তবু তারা আলো টের পায়।', '']
     ]
     const segs = lines.map(([text], i) => timed(String(i), i * 5, text))
     const want = lines.flatMap(([, w], i) => (w ? [[bleepKey(w), i]] : []))
