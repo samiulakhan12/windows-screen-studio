@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { calls, canvas, contextOf, frameOf, sets, spriteTexts } from './studioFakes'
-import { studioPreset } from '../src/shared/captions/studioPresets'
+import { SHADOW_CHIPS, studioPreset } from '../src/shared/captions/studioPresets'
 import { popJob } from '../src/shared/render/popSound'
 import { planGraphics } from '../src/shared/captions/graphicRules'
 import type { CaptionSegment, CaptionSettings, CaptionStudio, CounterGraphic, CursorTrack, KeywordGraphic, ListGraphic, Project, StudioPosition, TitleCard } from '../src/shared/types'
@@ -317,6 +317,22 @@ describe('Bangla edges (§0.2: outlines about 0.08 em, thinner than Latin, with 
     drawStudioCaptions(frameOf(project([caption('We learn today')], 'en', { studio: look('circle') }), 1.5).fc)
     expect(edges('learn').length).toBeGreaterThan(0)
     for (const e of edges('learn')) expect(e).toEqual({ outline: expect.closeTo(0.14, 3), shadow: false })
+  })
+
+  it('Shadow › Off turns the shadow off for Bangla too: no soft one is lent (Bold Pop, Comic, Circle)', () => {
+    for (const id of ['bold-pop', 'comic', 'circle']) {
+      calls.length = 0
+      sets.length = 0
+      STUDIO_SPRITES.clear()
+      const studio = look(id)
+      studio.edge = { ...studio.edge, shadow: { ...SHADOW_CHIPS.off } }
+      const p = project([caption('আমরা আজ শিখব')], 'bn', { studio })
+      for (const t of [1, 2.8]) drawStudioCaptions(frameOf(p, t).fc)
+      for (const word of ['আমরা', 'শিখব']) {
+        expect(edges(word).length, `${id} ${word}`).toBeGreaterThan(0)
+        for (const e of edges(word)) expect(e.shadow, `${id} ${word}`).toBe(false)
+      }
+    }
   })
 })
 

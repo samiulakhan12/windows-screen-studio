@@ -131,14 +131,16 @@ describe('each control writes its field with its merge key and sets picked', () 
     expect(store.state.captions?.studio?.theme).toMatchObject({ spoken: '#22d3ee', text: '#abcdef' })
   })
 
-  it('Shadow chips write the chip’s shadow, Off none', async () => {
+  it('Shadow chips write the chip’s shadow, Off one of α 0 (so Bangla gets no soft one, §0.2)', async () => {
     let els = await settle(view('ColourControls'), SKIP)
     ;(chipIn(els, 'caption-shadow', 'Hard').props.onClick as () => void)()
     expect(store.state.captions?.studio?.edge.shadow).toEqual(SHADOW_CHIPS.hard)
     els = await settle(view('ColourControls'), SKIP)
     expect(chipIn(els, 'caption-shadow', 'Hard').props['aria-pressed']).toBe(true)
     ;(chipIn(els, 'caption-shadow', 'Off').props.onClick as () => void)()
-    expect(store.state.captions?.studio?.edge).not.toHaveProperty('shadow')
+    expect(store.state.captions?.studio?.edge.shadow).toEqual({ x: 0, y: 0, blur: 0, alpha: 0 })
+    els = await settle(view('ColourControls'), SKIP)
+    expect(chipIn(els, 'caption-shadow', 'Off').props['aria-pressed']).toBe(true)
     expect(store.steps).toBe(2)
   })
 

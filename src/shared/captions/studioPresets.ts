@@ -657,9 +657,9 @@ export const LINE_LENGTHS: Readonly<Record<'short' | 'medium' | 'long', { chars:
   long: { chars: 42, tallChars: 26 }
 }
 
-/** Colours › Shadow chips (§2.6). */
-export const SHADOW_CHIPS: Readonly<Record<'off' | 'soft' | 'strong' | 'hard', StudioEdge['shadow'] | null>> = {
-  off: null,
+/** Colours › Shadow chips (§2.6). Off is a shadow of α 0, so a look turned Off lends Bangla words no soft shadow (§0.2). */
+export const SHADOW_CHIPS: Readonly<Record<'off' | 'soft' | 'strong' | 'hard', NonNullable<StudioEdge['shadow']>>> = {
+  off: { x: 0, y: 0, blur: 0, alpha: 0 },
   soft: { x: 0, y: 0.05, blur: 0.3, alpha: 0.7 },
   strong: { x: 0, y: 0.06, blur: 0.4, alpha: 0.85 },
   hard: { x: 0.06, y: 0.08, blur: 0, alpha: 1 }

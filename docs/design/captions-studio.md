@@ -351,7 +351,7 @@ buttons do not set it.
 | Swatches `caption-theme` | **Theme** | The eight themes of §7.1, plus **Brand** when the brand kit has two or more colours. One undo step. |
 | Colour dots `caption-color-text`, `-spoken`, `-emphasis`, `-emphasis2` | **Words**, **Spoken word**, **Emphasis**, **Second emphasis** | Five presets each plus any colour, like today's `ColorDots`. Merge keys `caption-color-*`. *Second emphasis* is the colour of words emphasised with Ctrl+Shift+B (§2.7); absent in a look, it starts as the emphasis colour. |
 | Colour dot and slider `caption-outline` | **Outline** `6%` | Colour; thickness 0–20% of the size. |
-| Chips `caption-shadow` | **Shadow**: **Off** · **Soft** · **Strong** · **Hard** | Off; Soft (0, 0.05, 0.30 em) α 0.7; Strong (0, 0.06, 0.4 em) α 0.85; Hard (0.06, 0.08, 0 em) α 1. One undo step per chip. |
+| Chips `caption-shadow` | **Shadow**: **Off** · **Soft** · **Strong** · **Hard** | Off (a shadow of α 0, so Bangla words get no soft one either; a look with no shadow at all shows Off and lends Bangla the Soft one, §0.2); Soft (0, 0.05, 0.30 em) α 0.7; Strong (0, 0.06, 0.4 em) α 0.85; Hard (0.06, 0.08, 0 em) α 1. One undo step per chip. |
 | Chips `caption-box` | **Background**: **None** · **Box per line** · **One box** · **Glass** · **Band** | With an opacity slider (30–100%, merge key `caption-box-alpha`) and the box colour. |
 | Slider `caption-glow` | **Glow** | 0–100%, only for looks with a glow or the Glow spoken mark. |
 | Swatches `caption-gradient` | **Gradient** | Only with the Gradient spoken mark: Sunset, Ocean, Candy, Brand. |

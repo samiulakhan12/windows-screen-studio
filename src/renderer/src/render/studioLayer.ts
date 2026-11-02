@@ -719,8 +719,9 @@ function paintOf(studio: CaptionStudio, wi: WordInfo, state: WordState): WordPai
   // No outline on words over a marker or box (the mark is their background), nor on the spoken box.
   const onMark = (emph && markOnBox) || (lit && boxedSpoken && box.kind !== 'word')
   const outline = !hollow && !onMark && outlineEm > 0 && edge.outlineAlpha > 0 ? { width: 2 * outlineEm * em * grow, color: rgba(theme.outline, edge.outlineAlpha) } : null
-  // §0.2: Bangla's thinner outline comes with a soft shadow; a look without a shadow of its own lends it the Soft one.
-  const sh = edge.shadow && edge.shadow.alpha > 0 ? edge.shadow : outline && outlineEm < edge.outline ? SHADOW_CHIPS.soft : edge.shadow
+  // §0.2: Bangla's thinner outline comes with a soft shadow; a look without a shadow of its own lends it the Soft one
+  // (Shadow › Off writes a shadow of α 0, so a shadow turned off stays off).
+  const sh = edge.shadow ?? (outline && outlineEm < edge.outline ? SHADOW_CHIPS.soft : undefined)
   const shadow = hollow
     ? { x: 0, y: 0, blur: 0.1 * em * grow, color: rgba('#000000', 0.6) }
     : sh && sh.alpha > 0 && !onMark

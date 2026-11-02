@@ -249,8 +249,9 @@ const EDGE_COLORS = ['#000000', '#ffffff', '#0a0a10', '#1d4ed8', '#c8102e']
 
 const sameTheme = (a: StudioTheme, b: StudioTheme): boolean => (['text', 'spoken', 'emphasis', 'outline', 'box'] as const).every((k) => a[k].toLowerCase() === b[k].toLowerCase())
 const shadowChip = (shadow: CaptionStudio['edge']['shadow']): keyof typeof SHADOW_CHIPS | null => {
+  if (!shadow || shadow.alpha <= 0) return 'off'
   for (const [k, v] of Object.entries(SHADOW_CHIPS) as [keyof typeof SHADOW_CHIPS, (typeof SHADOW_CHIPS)[keyof typeof SHADOW_CHIPS]][]) {
-    if (!v ? !shadow : !!shadow && v.x === shadow.x && v.y === shadow.y && v.blur === shadow.blur && v.alpha === shadow.alpha) return k
+    if (v.x === shadow.x && v.y === shadow.y && v.blur === shadow.blur && v.alpha === shadow.alpha) return k
   }
   return null
 }
@@ -319,14 +320,7 @@ export function ColourControls(props: { project: Project }): JSX.Element {
           { value: 'strong', label: 'Strong' },
           { value: 'hard', label: 'Hard' }
         ]}
-        onChange={(k) =>
-          edit((s) => {
-            const chip = SHADOW_CHIPS[k]
-            const { shadow: _old, ...edge } = s.edge
-            void _old
-            return { ...s, edge: chip ? { ...edge, shadow: { ...chip } } : edge }
-          })
-        }
+        onChange={(k) => edit((s) => ({ ...s, edge: { ...s.edge, shadow: { ...SHADOW_CHIPS[k] } } }))}
       />
       <ChipField<StudioBoxKind>
         id="caption-box"
