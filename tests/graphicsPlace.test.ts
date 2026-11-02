@@ -122,4 +122,15 @@ describe('counter text (§10.1)', () => {
     expect(counterText(counter({ locale: 'en' }), 300, 'native').text).toBe('300%')
     expect(counterText(counter({ locale: 'bn-BD' }), 300, 'native').text).toBe('৩০০%')
   })
+
+  it('writes native digits in the captions’ language, as the captions write theirs (§0.2)', () => {
+    // Made from a transcript that named no language, or from English speech with its Bangla track on the video.
+    expect(counterText(counter({ locale: 'en' }), 300, 'native', 'bn').text).toBe('৩০০%')
+    // Bangla speech with its English track on the video.
+    expect(counterText(counter({ locale: 'bn' }), 300, 'native', 'en').text).toBe('300%')
+    // Western digits, and no choice at all, never look at the captions' language.
+    expect(counterText(counter({ locale: 'bn' }), 300, 'western', 'bn').text).toBe('300%')
+    expect(counterText(counter({ locale: 'en' }), 300, undefined, 'bn').text).toBe('300%')
+    expect(counterText(counter({ locale: 'bn' }), 300, undefined, 'en').text).toBe('৩০০%')
+  })
 })

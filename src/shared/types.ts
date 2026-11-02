@@ -711,7 +711,7 @@ export interface CounterGraphic extends GraphicBase {
   prefix: string
   suffix: string
   label?: string
-  /** BCP-47 locale for digits and grouping, fixed per item. */
+  /** BCP-47 locale for grouping, and for digits unless the captions' Digits choice (§0.2) sets them. */
   locale: string
   /** Output seconds the count takes, 0.4..5. */
   countFor: number

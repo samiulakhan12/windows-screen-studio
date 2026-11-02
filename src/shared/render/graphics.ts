@@ -134,12 +134,13 @@ export function placeGraphic(
 
 /**
  * A counter's text at `value` (§10.1): its prefix, the number formatted for its locale with fixed
- * decimals (Bengali digits for bn, ১২,৩৪,৫৬৭.৫; the Digits choice of §0.2 when given), and its
- * suffix; and how many digit cells it has (each drawn as wide as the font's widest digit).
+ * decimals (Bengali digits for bn, ১২,৩৪,৫৬৭.৫; the Digits choice of §0.2 when given, native
+ * digits being those of the captions' `language` as the captions write theirs), and its suffix;
+ * and how many digit cells it has (each drawn as wide as the font's widest digit).
  */
-export function counterText(g: CounterGraphic, value: number, digits?: 'native' | 'western'): { text: string; cells: number } {
+export function counterText(g: CounterGraphic, value: number, digits?: 'native' | 'western', language?: string): { text: string; cells: number } {
   const v = Number.isFinite(value) ? value : 0
-  const numbering = numberingFor(digits, g.locale)
+  const numbering = numberingFor(digits, digits === 'native' ? (language ?? g.locale) : g.locale)
   const options: Intl.NumberFormatOptions = { minimumFractionDigits: g.decimals, maximumFractionDigits: g.decimals, ...(numbering ? { numberingSystem: numbering } : {}) }
   let formatted: string
   try {

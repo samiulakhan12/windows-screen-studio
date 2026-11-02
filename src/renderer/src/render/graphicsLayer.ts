@@ -101,8 +101,8 @@ const DIGIT = /\p{Nd}/u
 /** A counter's text in parts: each digit alone, and each run between digits whole, so its letters join and shape (Bangla, Hindi, Arabic units). */
 const counterParts = (text: string): string[] => text.match(/\p{Nd}|\P{Nd}+/gu) ?? []
 
-/** A counter's text in the captions' Digits choice (§0.2: Bangla ০–৯ or Western 0–9 when chosen). */
-const counterOf = (project: Project, g: CounterGraphic, value: number): ReturnType<typeof counterText> => counterText(g, value, project.captions?.digits)
+/** A counter's text in the captions' Digits choice (§0.2: Bangla ০–৯ for Bangla captions, or Western 0–9, when chosen). */
+const counterOf = (project: Project, g: CounterGraphic, value: number): ReturnType<typeof counterText> => counterText(g, value, project.captions?.digits, captionLanguage(project))
 
 /** A counter's digit cell: as wide as the font's widest digit of its locale and Digits choice (§10.1). */
 function cellWidth(ctx: Ctx, font: string, project: Project, g: CounterGraphic): number {

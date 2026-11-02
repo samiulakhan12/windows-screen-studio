@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { calls, canvas, contextOf, frameOf, sets, spriteTexts } from './studioFakes'
 import { studioPreset } from '../src/shared/captions/studioPresets'
 import { popJob } from '../src/shared/render/popSound'
+import { planGraphics } from '../src/shared/captions/graphicRules'
 import type { CaptionSegment, CaptionSettings, CaptionStudio, CounterGraphic, CursorTrack, KeywordGraphic, ListGraphic, Project, StudioPosition, TitleCard } from '../src/shared/types'
 
 /*
@@ -129,6 +130,37 @@ describe('the Digits choice reaches every place §0.2 names (captions, counters,
     const drawn = frameChars(id)
     expect(drawn).toContain('300')
     expect(drawn).not.toMatch(/[০-৯]/u)
+  })
+
+  it('a counter made from Bangla captions whose transcript names no language counts in Bangla digits when chosen, as the captions write theirs', () => {
+    const said: CaptionSegment = { id: 'c1', start: 0.5, end: 3, text: 'আমাদের আয় ৩০০% বেড়েছে এই বছরে' }
+    const made = planGraphics(project([said], undefined as unknown as string, { preset: 'bold', studio: look('bold-pop'), digits: 'native' }), {
+      keywords: false,
+      emoji: false,
+      counters: true,
+      lists: false,
+      speakers: false,
+      chapters: false,
+      quotes: false,
+      sound: 'none'
+    })
+    const counters = made.graphics?.filter((g) => g.kind === 'counter') ?? []
+    expect(counters).toHaveLength(1)
+    // Once it has counted up, before it leaves.
+    const { fc, id } = frameOf(made, counters[0].end - 0.4)
+    drawGraphicsLayer(fc)
+    const drawn = frameChars(id)
+    expect(drawn).toContain('৩০০')
+    expect(drawn).not.toMatch(/[0-9]/u)
+  })
+
+  it('a counter on English speech counts in Bangla digits when chosen with its Bangla track on the video, as its list numbers do', () => {
+    const p = project([{ id: 'c1', start: 0.5, end: 3, text: 'Sales grew 300% this year' }], 'en', { preset: 'bold', studio: look('bold-pop'), digits: 'native', track: 'bn' }, { graphics: [counter({ locale: 'en' })] } as Partial<Project>)
+    const { fc, id } = frameOf(p, 4)
+    drawGraphicsLayer(fc)
+    const drawn = frameChars(id)
+    expect(drawn).toContain('৩০০')
+    expect(drawn).not.toMatch(/[0-9]/u)
   })
 
   it('a list card numbers its items in Devanagari for Hindi captions with native digits', () => {
