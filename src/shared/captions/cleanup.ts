@@ -363,17 +363,20 @@ export function bleepKey(word: string): string {
  * বালিশ, চোদ্দ). The forms are made from the stems, so every person and tense is there: the verb
  * stems চোদ and চুদ take each ending after a consonant (চোদব, চুদছি, চুদেছে, চোদলাম, চুদতাম), the
  * causative চোদা each ending after a vowel (চোদাই, চোদায়, চোদাচ্ছে, চোদাবো, চোদালো) and the Dhaka
- * ones (চোদাইছে, চোদাইস); the nouns each case and plural ending and the particles ও and ই
- * (খানকিকে, চোদনার, হারামজাদাদের, মাগিগো, খানকিও).
+ * ones (চোদাইছে, চোদাইস, চোদমু, চুদতেছি, চুদিয়া); the nouns each case and plural ending, the
+ * Dhaka ডা and গুলা, and the particles ও and ই (খানকিকে, চোদনার, হারামজাদাদের, মাগিগো, হারামিডা,
+ * খানকিও). A noun written with ী as well as ি (মাগী, খানকী) has both spellings listed, and the
+ * common compounds (বোকাচোদা, মাদারচোদ, খানকিরপোলা) are listed whole.
  */
-const BN_NOUN_ENDINGS = ['', 'র', 'রা', 'রে', 'দের', 'কে', 'টা', 'টাকে', 'টার', 'গো', 'গুলো', 'গুলোর', 'গুলোকে', 'ও', 'ই']
-/** A verb's endings after a stem ending in a consonant: present, continuous, perfect, past, habitual, future, the infinitive, the negative and the Dhaka forms. */
+const BN_NOUN_ENDINGS = ['', 'র', 'রা', 'রে', 'দের', 'কে', 'টা', 'টাকে', 'টার', 'ডা', 'ডার', 'ডারে', 'গো', 'গুলো', 'গুলোর', 'গুলোকে', 'গুলা', 'ও', 'ই']
+/** A verb's endings after a stem ending in a consonant: present, continuous, perfect, past, habitual, future, the infinitive, the negative, the participle and the Dhaka forms. */
 const BN_VERB_ENDINGS = [
-  ...['', 'ি', 'িস', 'ে', 'ো', 'েন', 'িনি', 'িনা', 'স', 'সনা', 'ুম'],
-  ...['ছ', 'ছি', 'ছিস', 'ছে', 'ছো', 'ছেন', 'ছস', 'ছিল', 'ছিলো', 'ছিলাম', 'ছিলি', 'ছিলে', 'ছিলেন'],
+  ...['', 'ি', 'িস', 'ে', 'ো', 'েন', 'িনি', 'িনা', 'স', 'োস', 'সনা', 'ুম', 'মু'],
+  ...['ছ', 'ছি', 'ছিস', 'ছে', 'ছো', 'ছেন', 'ছস', 'ছোস', 'ছিল', 'ছিলো', 'ছিলাম', 'ছিলি', 'ছিলে', 'ছিলেন'],
   ...['েছ', 'েছি', 'েছিস', 'েছে', 'েছো', 'েছেন', 'েছিল', 'েছিলো', 'েছিলাম', 'েছিলি', 'েছিলে', 'েছিলেন'],
+  ...['িয়ে', 'িয়া', 'িয়েছে', 'িয়েছি', 'িয়েছিস'],
   ...['ল', 'লো', 'লাম', 'লি', 'লে', 'লেন', 'লা'],
-  ...['ত', 'তো', 'তাম', 'তিস', 'তে', 'তেন', 'তাছে', 'তাছি', 'তাছস', 'তেছে'],
+  ...['ত', 'তো', 'তাম', 'তিস', 'তে', 'তেন', 'তাছে', 'তাছি', 'তাছস', 'তেছে', 'তেছি', 'তেছিস', 'তেছো'],
   ...['ব', 'বো', 'বি', 'বে', 'বেন', 'বা']
 ]
 /** A verb's endings after a stem ending in আ (the causative চোদা): its vowels written in full (চোদাই, চোদাও, চোদায়), and the Dhaka -ই- forms. */
@@ -391,7 +394,9 @@ const TEAM_WORDS: Readonly<Record<string, readonly string[]>> = {
     ...['চোদ', 'চুদ'].flatMap((stem) => BN_VERB_ENDINGS.map((end) => stem + end)),
     ...['চোদা', 'চুদা'].flatMap((stem) => BN_VERB_VOWEL_ENDINGS.map((end) => stem + end)),
     'চোদন', 'চোদনের', 'চুদির', 'চুদিরে',
-    ...['চোদনা', 'চোদাচুদি', 'খানকি', 'মাগি', 'হারামি', 'হারামজাদা'].flatMap((noun) => BN_NOUN_ENDINGS.map((end) => noun + end)),
+    ...['চোদনা', 'চোদাচুদি', 'খানকি', 'খানকী', 'মাগি', 'মাগী', 'হারামি', 'হারামী', 'হারামজাদা', 'হারামজাদি', 'হারামজাদী']
+      .flatMap((noun) => BN_NOUN_ENDINGS.map((end) => noun + end)),
+    ...['বোকাচোদা', 'বানচোদ', 'মাদারচোদ', 'চুদমারানি', 'চুতমারানি', 'খানকিরপোলা'].flatMap((noun) => BN_NOUN_ENDINGS.map((end) => noun + end)),
     'খানকিপনা', 'মাগিবাজ', 'হারামিপনা',
     ...['', 'ের', 'ে', 'ও', 'টা', 'টার', 'টাকে', 'ডা', 'ডার', 'ছাল'].map((end) => 'বাল' + end),
     'শুয়োরের'
