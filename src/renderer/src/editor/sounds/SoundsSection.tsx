@@ -32,6 +32,10 @@ export function SoundsSection({ project }: { project: Project }): JSX.Element {
   const [refused, setRefused] = useState('')
   const listRef = useRef<HTMLUListElement>(null)
   const sectionRef = useRef<HTMLDivElement>(null)
+  const findRef = useRef<HTMLButtonElement>(null)
+  const cancelRef = useRef<HTMLButtonElement>(null)
+  const retryRef = useRef<HTMLButtonElement>(null)
+  const hintRef = useRef<HTMLParagraphElement>(null)
   const focusKey = useRef<{ key: string; index: number } | null>(null)
   const stopPlay = useRef<(() => void) | null>(null)
   const hasSound = scanSources(project).length > 0
@@ -115,6 +119,43 @@ export function SoundsSection({ project }: { project: Project }): JSX.Element {
   const shown = rows.filter((r) => showIgnored || states.get(r.key) !== 'ignored')
   const open = rows.filter((r) => states.get(r.key) === 'open')
 
+  // Find, Cancel and Try again go with their state, and the list can go too: when one of this
+  // section's controls had the focus last, the control of the new state takes it rather than the page.
+  // Noted on focusin, as a focused button that goes fires none.
+  const focusHere = useRef(false)
+  useEffect(() => {
+    const note = (e: FocusEvent): void => {
+      const t = e.target as Node | null
+      focusHere.current = !!t && [findRef, cancelRef, retryRef, sectionRef].some((r) => r.current?.contains(t))
+    }
+    document.addEventListener('focusin', note, true)
+    return () => document.removeEventListener('focusin', note, true)
+  }, [])
+  const view = state.status === 'idle' && state.checking ? 'checking' : state.status
+  const lastView = useRef(view)
+  useEffect(() => {
+    const was = lastView.current
+    if (was === view) return
+    lastView.current = view
+    setRefused('')
+    // The result is said; cleared while listening, so that the same result is said again next time.
+    if (view === 'listening') setSaid('')
+    else if (view === 'done' && was === 'listening') setSaid(rows.length === 0 ? SOUNDS_COPY.none : foundText(rows.length))
+    const active = document.activeElement
+    if (!focusHere.current || (active && active !== document.body)) return
+    const target =
+      view === 'idle'
+        ? findRef.current
+        : view === 'listening'
+          ? cancelRef.current
+          : view === 'failed'
+            ? retryRef.current
+            : view === 'done'
+              ? (sectionRef.current?.querySelector<HTMLElement>('button, input') ?? hintRef.current)
+              : null
+    target?.focus({ preventScroll: true })
+  }, [view])
+
   return (
     <Section title={SOUNDS_COPY.title}>
       <span className="sr-only" role="status" aria-live="polite">
@@ -125,7 +166,7 @@ export function SoundsSection({ project }: { project: Project }): JSX.Element {
       ) : state.status === 'idle' ? (
         <>
           <p className="hint">{state.checking ? SOUNDS_COPY.checking : SOUNDS_COPY.intro}</p>
-          <button type="button" className="btn" data-testid="sounds-find" disabled={state.checking} onClick={() => void startScan(window.api, project)}>
+          <button type="button" className="btn" data-testid="sounds-find" ref={findRef} disabled={state.checking} onClick={() => void startScan(window.api, project)}>
             <EditorIcon name="sparkle" size={14} /> {SOUNDS_COPY.find}
           </button>
         </>
@@ -137,7 +178,7 @@ export function SoundsSection({ project }: { project: Project }): JSX.Element {
           <div className="sounds-bar" role="progressbar" aria-label={SOUNDS_COPY.title} aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(state.progress * 100)}>
             <span style={{ width: `${Math.round(state.progress * 100)}%` }} />
           </div>
-          <button type="button" className="btn" onClick={() => cancelScan(project.id)}>
+          <button type="button" className="btn" ref={cancelRef} onClick={() => cancelScan(project.id)}>
             {SOUNDS_COPY.cancel}
           </button>
         </div>
@@ -147,13 +188,15 @@ export function SoundsSection({ project }: { project: Project }): JSX.Element {
             <EditorIcon name="alert" size={16} />
             <span>{`${SOUNDS_COPY.failed} ${state.message}`}</span>
           </p>
-          <button type="button" className="btn" onClick={() => void startScan(window.api, project)}>
+          <button type="button" className="btn" ref={retryRef} onClick={() => void startScan(window.api, project)}>
             {SOUNDS_COPY.tryAgain}
           </button>
         </div>
       ) : (
         <div data-testid="sounds-status" data-state="done" data-from={state.fromCache ? 'cache' : 'scan'} ref={sectionRef}>
-          <p className="hint">{rows.length === 0 ? SOUNDS_COPY.none : foundText(rows.length)}</p>
+          <p className="hint" ref={hintRef} tabIndex={-1}>
+            {rows.length === 0 ? SOUNDS_COPY.none : foundText(rows.length)}
+          </p>
           {shown.length > 0 && (
             <ul className="sound-list" ref={listRef} data-testid="sound-list">
               {shown.map((r) => (

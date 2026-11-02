@@ -455,3 +455,99 @@ describe('Play’s stop', () => {
     expect(player.playing).toBe(true)
   })
 })
+
+describe('the focus and what is said as the finder moves on', () => {
+  const find = (): FakeNode => byTestId('sounds-find')!
+  const statusButton = (text: string): FakeNode => byTestId('sounds-status')!.querySelectorAll('button').find((n) => textOf(n.el.props.children) === text)!
+  /** Find pressed with the keyboard (the focus is on it). */
+  function findWithKeyboard(): void {
+    view()
+    find().focus()
+    click(find())
+    view()
+  }
+
+  it('goes from Find to Cancel, then to the first sound, and the result is said', () => {
+    findWithKeyboard()
+    expect(scan.started).toBe(1)
+    expect(doc.activeElement).toBe(statusButton('Cancel'))
+    scan.state = done([row('cough-300', 3, 3.4), row('ping-900', 9, 9.5)])
+    view()
+    expect(doc.activeElement).toBe(buttonOf('cough-300', 'Play'))
+    expect(said()).toBe('2 found. Nothing changes until you choose.')
+  })
+
+  it('goes to the sentence when nothing is found, which is said', () => {
+    findWithKeyboard()
+    scan.state = done([])
+    view()
+    const hint = byTestId('sounds-status')!.querySelector('p')!
+    expect(textOf(hint.el.props.children)).toBe(SOUNDS_COPY.none)
+    expect(doc.activeElement).toBe(hint)
+    expect(said()).toBe(SOUNDS_COPY.none)
+  })
+
+  it('goes back to Find after Cancel, and from Try again to Cancel', () => {
+    findWithKeyboard()
+    click(statusButton('Cancel'))
+    view()
+    expect(scan.cancelled).toBe(1)
+    expect(doc.activeElement).toBe(find())
+    click(find())
+    view()
+    scan.state = { status: 'failed', message: 'The file is missing.' }
+    view()
+    expect(doc.activeElement).toBe(statusButton('Try again'))
+    click(statusButton('Try again'))
+    view()
+    expect(doc.activeElement).toBe(statusButton('Cancel'))
+  })
+
+  it('stays where the user put it meanwhile', () => {
+    findWithKeyboard()
+    const timeline = { name: 'the timeline' }
+    focusOn(timeline)
+    scan.state = done([row('cough-300', 3, 3.4)])
+    view()
+    expect(doc.activeElement).toBe(timeline)
+    expect(said()).toBe('1 found. Nothing changes until you choose.')
+    // Nor is it taken when the list shows at once (sounds found before).
+    cells = []
+    nodes.clear()
+    doc.activeElement = body
+    view()
+    expect(doc.activeElement).toBe(body)
+  })
+
+  it('does not show a refusal again with the next list', () => {
+    store.state = project([{ id: 'a', start: 30, end: 40, speed: 1 }])
+    scan.state = done([row('music-500', 5, 110)])
+    view()
+    click(buttonOf('music-500', 'Cut'))
+    view()
+    expect(byTestId('sounds-refused')).toBeDefined()
+    scan.state = { status: 'idle' }
+    view()
+    click(find())
+    view()
+    scan.state = done([row('music-500', 5, 110)])
+    view()
+    expect(byTestId('sounds-refused')).toBeUndefined()
+  })
+
+  it('says the same result again after listening again', () => {
+    findWithKeyboard()
+    scan.state = done([row('cough-300', 3, 3.4)])
+    view()
+    expect(said()).toBe('1 found. Nothing changes until you choose.')
+    // The recording's sources changed: Find again.
+    scan.state = { status: 'idle' }
+    view()
+    click(find())
+    view()
+    expect(said()).toBe('')
+    scan.state = done([row('cough-300', 3, 3.4)])
+    view()
+    expect(said()).toBe('1 found. Nothing changes until you choose.')
+  })
+})

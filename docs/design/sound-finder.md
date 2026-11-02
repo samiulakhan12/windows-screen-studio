@@ -364,11 +364,15 @@ Section **Unwanted sounds** in the Audio tab, after Voice (`SoundsSection.tsx`):
   on the timeline, a jump): that playback is theirs and goes on. Play on a sound cut out of the video
   with the half second around it (a trimmed end) plays nothing and says *"That part is cut out of
   the video"*, as a refused action does.
-- A polite live region announces each action (*"Muted the cough at 0:12.4"*, *"Cut 0.4 s"*). An
+- A polite live region announces each action (*"Muted the cough at 0:12.4"*, *"Cut 0.4 s"*) and the
+  result of listening (*"3 found. Nothing changes until you choose."*, *"No unwanted sounds found."*). An
   action that cannot be done (*"That would cut the whole video"*) is also shown under the list, until
   the next action.
 - Keyboard: everything is a button in tab order; after an action the focus moves to the row's first
-  button (it would otherwise fall to the page, where Delete removes timeline items).
+  button (it would otherwise fall to the page, where Delete removes timeline items). Find, Cancel and
+  Try again go with their state: when one had the focus, it moves to Cancel while listening, then to
+  the first sound's Play (the sentence when nothing is found), to Find after Cancel, and to Try again
+  after a failure.
 - Colours: the existing tokens (`--text`, `--text-dim`, `--accent`, `--danger`); the state text uses
   `--text-dim`, which passes AA on `--panel` (checked in §11).
 
@@ -540,7 +544,9 @@ End to end (`tests/e2e/sound-finder.e2e.cjs`, the built app under Xvfb):
   reader heard it and the button seemed to do nothing. Play on a sound in a trimmed end says it is
   cut out; before, the player started from the beginning and played the whole video. Moving the
   playhead while Play plays a sound hands the playback back; before, it was paused at once (or when
-  it next passed the sound's end).
+  it next passed the sound's end). The focus follows Find, Cancel and Try again to the next control,
+  and the result of listening is said; before, the focus fell to the page and a screen reader heard
+  nothing when listening ended.
   The worker's `fetch` reaches only the app's own files (§7); before, MediaPipe posted usage
   statistics to Google when listening to a source took more than a minute.
 - `@mediapipe/tasks-audio` is pinned at 1.0.1 (the version of `@mediapipe/tasks-vision` in use);
