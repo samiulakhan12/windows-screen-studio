@@ -170,10 +170,23 @@ export function ReviewPanel({ onClose, onNotice }: { onClose: () => void; /** Sh
     focusLater.current = null
     el.focus()
   })
-  /** Whether the focus is in the panel, or was dropped to the page (where the panel takes it back). */
-  const focusHere = (): boolean => {
+  /**
+   * Where the focus is as Keep all or Remove all ends (§4.3), its edit just made: on the page, on
+   * the footer's buttons (the one pressed) or in a row it reviewed (a button it took away), the
+   * focus moves on (`moves`); on a control chosen meanwhile, in a row still to review (`row`, its
+   * key) or Close, or out of the panel, it stays where the user put it.
+   */
+  const focusAfterWork = (): { moves: boolean; row?: string } => {
     const el = document.activeElement
-    return !el || el === document.body || !!panelRef.current?.contains(el)
+    if (!el || el === document.body) return { moves: true }
+    if (!(el instanceof HTMLElement) || !panelRef.current?.contains(el)) return { moves: false }
+    const key = el.closest<HTMLElement>('li[data-key]')?.dataset.key
+    if (key !== undefined) {
+      const { list, indexOf } = latest.current
+      const k = indexOf.get(key)
+      return k !== undefined && reviewStatus(store.state, list[k]) === 'pending' ? { moves: false, row: key } : { moves: true }
+    }
+    return { moves: !!el.closest('.review-foot') }
   }
 
   /** Jumps the preview to the item and plays a short stretch around it. */
@@ -290,16 +303,16 @@ export function ReviewPanel({ onClose, onNotice }: { onClose: () => void; /** Sh
 
   /**
    * Keep or Remove `count` rows of `list` (of `kind` for Remove all) still to review, then `after`
-   * (where the focus goes); the live region says what was done.
+   * (where the focus goes, from where it is: focusAfterWork); the live region says what was done.
    */
-  const bulk = (action: 'keep' | 'remove', kind: ReviewKind | undefined, count: number, after: (here: boolean) => void): void => {
+  const bulk = (action: 'keep' | 'remove', kind: ReviewKind | undefined, count: number, after: (at: { moves: boolean; row?: string }) => void): void => {
     stopStretch()
     const targets = (p: Project): ReviewItem[] => latest.current.list.filter((i) => (!kind || i.kind === kind) && reviewStatus(p, i) === 'pending')
     const apply = (p: Project, items: readonly ReviewItem[]): Project => (action === 'keep' ? keepItems(p, items) : removeItems(p, items))
     if (count <= BUSY_FROM) {
       store.update((p) => apply(p, targets(p)))
       say(bulkMessage(action, count, kind))
-      after(true)
+      after({ moves: true })
       return
     }
     setBusy({ action, count, kind })
@@ -318,8 +331,8 @@ export function ReviewPanel({ onClose, onNotice }: { onClose: () => void; /** Sh
         store.update((p) => (p === base ? next : apply(p, targets(p))))
         setBusy(null)
         say(bulkMessage(action, done, kind))
-        // The focus moves on only when it is still in the panel (or was dropped to the page).
-        after(focusHere())
+        // The focus moves on only from where the work left it, not from a control chosen meanwhile.
+        after(focusAfterWork())
       },
       pageTasks()
     )
@@ -338,10 +351,10 @@ export function ReviewPanel({ onClose, onNotice }: { onClose: () => void; /** Sh
     if (count === 0) return
     // Keep all turns disabled under the focus, which would drop to the page (Esc and the list's
     // keys would then miss the panel): the focus goes back to the row.
-    bulk('keep', undefined, count, (here) => {
+    bulk('keep', undefined, count, (at) => {
       const { list, active } = latest.current
       if (!list[active]) return
-      if (here) focusKey(list[active].key)
+      if (at.moves) focusKey(list[active].key)
     })
   }
 
@@ -360,13 +373,15 @@ export function ReviewPanel({ onClose, onNotice }: { onClose: () => void; /** Sh
   const kindPending = useMemo(() => (kind ? list.filter((i, k) => i.kind === kind && statuses[k] === 'pending') : []), [list, statuses, kind])
   const removeKind = (): void => {
     if (stillBusy() || !current || kindPending.length === 0) return
-    bulk('remove', current.kind, kindPending.length, (here) => {
-      // On to the next row to review after the focused one, which is the one pressed from unless
-      // another was chosen meanwhile: that one stays when it is still to review.
+    bulk('remove', current.kind, kindPending.length, (at) => {
+      // A control in a row still to review, chosen meanwhile, keeps the focus, its row the focused
+      // one. Else on to the next row to review after the focused one, which is the one pressed from
+      // unless another was chosen meanwhile: that one stays when it is still to review.
+      if (at.row !== undefined) return pick(at.row)
       const { list, active } = latest.current
       const after = list.map((i) => reviewStatus(store.state, i))
       const next = after[active] === 'pending' ? list[active].key : nextPending(list, after, active)
-      if (next && here) focusKey(next)
+      if (next && at.moves) focusKey(next)
       else if (next) pick(next)
     })
   }

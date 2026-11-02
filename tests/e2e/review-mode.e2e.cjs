@@ -851,8 +851,8 @@ async function main() {
   // Remove all over 5,000 speed-ups takes seconds. While it works, as the first edit since the
   // project opened: Undo from the palette and the title bar's Undo wait for it and take it back;
   // Redo with nothing to bring back after it says so at once; Export makes it first; a timeline drag
-  // held as it would land has it wait for the drag.
-  await test('review mode: 5000 speed-ups: Undo from the palette and the title bar, Redo, Export and a drag while Remove all works', async (ctx) => {
+  // held as it would land has it wait for the drag; and a row's Keep chosen meanwhile keeps the focus.
+  await test('review mode: 5000 speed-ups: Undo from the palette and the title bar, Redo, Export, a drag and a Keep chosen while Remove all works', async (ctx) => {
     const home = h.tempHome('review-speed-busy')
     const count = 5000
     const total = count + 3
@@ -971,6 +971,21 @@ async function main() {
     await win.keyboard.press('Control+z')
     await f.waitFor(async () => (await progressOf(win)) === `0 of ${total} reviewed`, 'then the trim', 10000)
 
+    // Back to the row, Home and Tab to the first zoom's Keep while it works: once done the focus
+    // stays on that Keep (its row still to review), so Enter keeps it.
+    await removeAll()
+    for (const k of ['Shift+Tab', 'Shift+Tab', 'Shift+Tab', 'Home', 'Tab']) await win.keyboard.press(k)
+    const chosen = await win.evaluate(() => `${document.activeElement?.dataset?.testid} ${document.activeElement?.closest('li')?.dataset.key}`)
+    const keepAt = await pressedAfter(win)
+    await idle(win, 60000)
+    await h.sleep(500)
+    h.assert(same(keepAt, ['Tab:true', 'Tab:true', 'Tab:true', 'Home:true', 'Tab:true']), `pressed while it worked: ${JSON.stringify(keepAt)}`)
+    h.assert(chosen === 'review-keep zoom:z0', `on the first zoom's Keep while it worked: ${chosen}`)
+    const after = await win.evaluate(() => `${document.activeElement?.dataset?.testid} ${document.activeElement?.closest('li')?.dataset.key}`)
+    h.assert(after === 'review-keep zoom:z0', `the focus stays on the Keep chosen meanwhile: ${after}`)
+    await win.keyboard.press('Enter')
+    await f.waitFor(async () => (await win.getAttribute('[data-key="zoom:z0"]', 'data-status')) === 'kept', 'Enter keeps the first zoom', 3000)
+    await f.waitFor(async () => (await focusOn(win)) === 'zoom:z1', 'and moves on', 3000)
     h.assert(!logs.some((l) => l.includes('[pageerror]')), `no page errors: ${logs.filter((l) => l.includes('pageerror'))}`)
   })
 
