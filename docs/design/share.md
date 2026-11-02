@@ -80,8 +80,10 @@ better source winning. On Windows only (§2.9 for the test seam):
 | Google Drive | `HKCU\Software\Google\DriveFS` `PerAccountPreferences` (JSON; every `mount_point_path`, a letter or a path) and `DefaultMountPoint` → `<mount>\My Drive` | "Google Drive" |
 | Google Drive | usual places `G:\My Drive` (stream mode), `%USERPROFILE%\My Drive` (mirror mode), `%USERPROFILE%\Google Drive` (the old Backup and Sync) | "Google Drive" |
 
-**Found folders are offered only after the user has seen them**: until Settings › Share has been
-opened once (`reviewed` in `share.json`), the export dialog says "Flown found OneDrive, Dropbox on this
+**Found folders are offered only after the user has seen them**: until their list in Settings ›
+Share has been on screen once, for half a second (`reviewed` in `share.json`; opening Settings at
+another section, a quick scroll past or the page moving while it loads do not count; their "Use"
+switches turn on then), the export dialog says "Flown found OneDrive, Dropbox on this
 PC. Check them in Settings › Share to copy exports there." and neither the dialog nor the notification
 offers them. Sources shown: "Found in OneDrive's settings", "Found in Dropbox's settings", "Found in Google
 Drive's settings", "Found at the usual place", "Added by you". **Nothing is guessed silently**:
@@ -350,10 +352,11 @@ Unit (vitest, each failing without its code):
 * `shareService.test.ts` — copy then post with the place, cancel, notification extras (none when
   auto, at most 3), the run cap.
 * `redact.test` addition — webhook URLs redacted.
+* `shareSeen.test.ts` — the found folders count as seen only after staying on screen for `SEEN_MS`.
 
 End-to-end (`tests/e2e/share.e2e.cjs`, Linux under Xvfb, real built app): a fake Windows profile
 (`SSW_SHARE_FAKE_CLOUD`) with OneDrive and Dropbox folders; Settings › Share lists them with their
-sources; a picked folder is added; a Slack webhook is added (masked), tested against a local mock
+sources, and they are offered only once scrolled into view; a picked folder is added; a Slack webhook is added (masked), tested against a local mock
 (`SSW_SHARE_WEBHOOK_ORIGIN`), a non-Slack URL refused; an export with "Copy to OneDrive" and "Post to
 #demos" chosen ends with the file in `OneDrive/Flown`, the mock received the message with "Saved to
 OneDrive › Flown" and no path; choices remembered for the preset and not for another; a second

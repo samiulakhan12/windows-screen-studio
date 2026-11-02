@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react'
 import type { ShareHookInfo, ShareTargets } from '../../../shared/api/share'
 import { sourceText } from '../../../shared/share/cloudFolders'
+import { whenOnScreen } from '../../../shared/share/onScreen'
 import { SHARE_LIMITS, WEBHOOK_SERVICES } from '../../../shared/share/webhooks'
 import { ipcMessage } from '../settings/providerText'
 import { useShareTargets } from './useShare'
@@ -14,7 +15,10 @@ type TestState = { busy: true } | { busy: false; ok: boolean; message: string }
  * (typed once, then only shown masked). Esc closes the add form first, as the AI providers do.
  */
 export function ShareSection(): JSX.Element {
-  const { targets, error, set } = useShareTargets(true)
+  // Found folders are offered once their list has been on screen, not when Settings opens elsewhere.
+  const [folderList, setFolderList] = useState<HTMLUListElement | null>(null)
+  const [seen, setSeen] = useState(false)
+  const { targets, error, set } = useShareTargets(seen)
   const [adding, setAdding] = useState(false)
   const [tests, setTests] = useState<Record<string, TestState>>({})
   const [removing, setRemoving] = useState<ShareHookInfo | null>(null)
@@ -58,6 +62,9 @@ export function ShareSection(): JSX.Element {
   const folders = targets?.folders ?? []
   const hooks = targets?.hooks ?? []
   const found = folders.filter((f) => f.source !== 'picked')
+  const watch = found.length > 0 && targets?.reviewed === false && !seen
+
+  useEffect(() => (folderList && watch ? whenOnScreen(folderList, () => setSeen(true), IntersectionObserver) : undefined), [folderList, watch])
 
   return (
     <section
@@ -87,7 +94,7 @@ export function ShareSection(): JSX.Element {
       <h4>Cloud folders</h4>
       {targets && found.length === 0 && <p className="settings-empty">No OneDrive, Dropbox or Google Drive folder was found on this PC. Add any folder instead.</p>}
       {folders.length > 0 && (
-        <ul className="share-list" aria-label="Cloud folders">
+        <ul className="share-list" aria-label="Cloud folders" ref={setFolderList}>
           {folders.map((f) => (
             <li key={f.id} className="share-item" data-share-folder={f.id}>
               <div className="share-item-main">

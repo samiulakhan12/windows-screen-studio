@@ -32,19 +32,22 @@ export function actionTitle(t: ShareTargets | null, id: string): string {
   return h ? `Post the title, length and where it was saved to ${h.label} (${h.masked}). The video is not uploaded.` : ''
 }
 
-/** The destinations; `fromSettings` when Settings › Share shows them (found folders are offered from then on). */
-export function useShareTargets(fromSettings = false): { targets: ShareTargets | null; error: string | null; reload: (refresh?: boolean) => void; set: (t: ShareTargets) => void } {
+/**
+ * The destinations; `seen` once Settings › Share has been on screen (found folders are offered from
+ * then on). Turning it on loads them again, which tells main.
+ */
+export function useShareTargets(seen = false): { targets: ShareTargets | null; error: string | null; reload: (refresh?: boolean) => void; set: (t: ShareTargets) => void } {
   const [targets, setTargets] = useState<ShareTargets | null>(null)
   const [error, setError] = useState<string | null>(null)
   const reload = useCallback((refresh = false) => {
-    window.api.shareTargets(refresh, fromSettings).then(
+    window.api.shareTargets(refresh, seen).then(
       (t) => {
         setTargets(t)
         setError(null)
       },
       (err: unknown) => setError(ipcMessage(err))
     )
-  }, [fromSettings])
+  }, [seen])
   useEffect(() => reload(), [reload])
   return { targets, error, reload, set: setTargets }
 }

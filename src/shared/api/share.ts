@@ -28,7 +28,7 @@ export interface ShareHookInfo {
 export interface ShareTargets {
   folders: ShareFolderInfo[]
   hooks: ShareHookInfo[]
-  /** Settings › Share has been opened; until then found folders are listed but not offered. */
+  /** Settings › Share has been on screen; until then found folders are listed but not offered. */
   reviewed: boolean
 }
 

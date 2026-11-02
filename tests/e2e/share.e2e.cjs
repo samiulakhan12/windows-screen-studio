@@ -81,6 +81,15 @@ const run = async () => {
         h.assert(items.length === 2, `two folders found: ${items}`)
         h.assert(items[0].includes('OneDrive') && items[0].includes(cloud.onedrive) && items[0].includes("Found in OneDrive's settings"), `OneDrive from the registry: ${items[0]}`)
         h.assert(items[1].includes('Dropbox') && items[1].includes(cloud.dropbox) && items[1].includes("Found in Dropbox's settings"), `Dropbox from info.json: ${items[1]}`)
+        // Settings opens at the top, Share further down: opening it does not count as seeing them.
+        const shareJson = path.join(home, '.config', 'Flown', 'share.json')
+        const reviewed = () => fs.existsSync(shareJson) && JSON.parse(fs.readFileSync(shareJson, 'utf8')).reviewed === true
+        await h.sleep(1500)
+        h.assert(!reviewed(), 'found folders are not offered before they have been on screen')
+        h.assert((await win.locator('.share-settings [data-share-folder] input:checked').count()) === 0, 'not on before they have been seen')
+        await win.locator('.share-settings [aria-label="Cloud folders"]').scrollIntoViewIfNeeded()
+        await ef.waitFor(async () => reviewed(), 'found folders offered once they were on screen')
+        await ef.waitFor(async () => (await win.locator('.share-settings [data-share-folder] input:checked').count()) === 2, 'both found folders on once seen')
 
         // A folder of the user's own, with the folder dialog.
         await app.evaluate(({ dialog }, target) => {
@@ -178,8 +187,8 @@ const run = async () => {
         h.assert(refused[0].includes('Only files exported') && refused[1].includes('incoming webhook'), `refused: ${refused}`)
 
         // The webhook's secret is nowhere on disk in plain text.
-        const shareJson = fs.readFileSync(path.join(home, '.config', 'Flown', 'share.json'), 'utf8')
-        h.assert(!shareJson.includes('hooks.slack.com') && !shareJson.includes('e2eSecret'), 'share.json holds no plain webhook')
+        const stored = fs.readFileSync(shareJson, 'utf8')
+        h.assert(!stored.includes('hooks.slack.com') && !stored.includes('e2eSecret'), 'share.json holds no plain webhook')
         await h.sleep(800)
         const log = fs.readFileSync(path.join(home, '.config', 'Flown', 'logs', 'main.log'), 'utf8')
         h.assert(!log.includes('e2eSecret'), 'the log holds no webhook secret')

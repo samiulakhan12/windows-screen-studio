@@ -118,7 +118,7 @@ export class ShareStore {
     return this.load().reviewed
   }
 
-  /** Settings › Share was opened: the folders found are now offered (each can be turned off there). */
+  /** Settings › Share was on screen: the folders found are now offered (each can be turned off there). */
   markReviewed(): void {
     const d = this.load()
     if (!d.reviewed) this.write({ ...d, reviewed: true })
