@@ -57,9 +57,9 @@ export function PublishDialog({ project, request, onClose, onGenerateCaptions }:
   const { providers } = useAiProviders()
   const [prefs, setPrefs] = useState<PublishPrefs>(loadPublishPrefs)
   const items = usePackItems(project.id)
-  // What the edited video says: nothing that was cut is sent.
-  const { transcript, clips } = project
-  const segments = useMemo(() => publishSegments({ transcript, clips }), [transcript, clips])
+  // What the edited video says: nothing that was cut is sent, and bleeped words go masked (made again when the bleeps change).
+  const { transcript, clips, bleeps } = project
+  const segments = useMemo(() => publishSegments({ transcript, clips, bleeps }), [transcript, clips, bleeps])
   const blocker = publishBlocker(project, segments)
   const list = providers ?? []
   const chosen = list.find((p) => p.id === prefs.provider) ?? list[0] ?? null

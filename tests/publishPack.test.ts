@@ -10,6 +10,10 @@ import { createQueue, CancelledError } from '../src/shared/publish/queue'
 import { cutAt, fitX, plainText, xLength, X_LIMIT } from '../src/shared/publish/text'
 import { composeYoutubeDescription, descriptionBody, exportDescription, parseTags, projectYoutubeChapters, tagsText, YOUTUBE_DESCRIPTION_MAX } from '../src/shared/publish/youtube'
 import type { CaptionSegment, Clip } from '../src/shared/types'
+import { readCleanupChoices, tidyCaptions } from '../src/shared/captions/cleanup'
+import { languageSubtitleFile } from '../src/shared/captions/subtitles'
+import { linksToCheck, saidLinks } from '../src/shared/publish/check'
+import { studioProject } from './p4Fixtures'
 
 const seg = (id: string, start: number, end: number, text: string): CaptionSegment => ({ id, start, end, text })
 const SEGS = [seg('a', 0, 4, 'Today I show how to add a user.'), seg('b', 5, 9, 'Open Settings at https://example.com/settings and click Users.'), seg('c', 10, 14, 'Then press Save.')]
@@ -535,6 +539,58 @@ describe('pack choices and blockers', () => {
     const most = { ...project, clips: [clip(0, 3.5)] }
     expect(publishBlocker(most, publishSegments(most))).toBe('too-little')
     expect(publishSegments({ clips: [clip(0, 3)] })).toEqual([])
+  })
+})
+
+describe("the pack and Captions Studio's bleeps (§11.7)", () => {
+  /** A caption with its words 0.5 s apart from `start`. */
+  const spoken = (id: string, start: number, text: string, extra: Partial<CaptionSegment> = {}): CaptionSegment => {
+    const words = text.split(' ').map((w, i) => ({ text: w, start: start + i * 0.5, end: start + i * 0.5 + 0.4 }))
+    return { id, start, end: words[words.length - 1].end, text, words, ...extra }
+  }
+  const clip = (start: number, end: number): Clip => ({ id: `${start}`, start, end, speed: 1 })
+
+  it('writes from the captions as the video and its subtitle files say them: bleeped words masked, aiLinks on their caption, cut words left out', () => {
+    const captions = [
+      spoken('a', 0, 'Today this fucking tool works really well.'),
+      // An AI wrote this link into the caption: never trusted, masked or not.
+      spoken('b', 5, 'Get the fucking files at paypal-login.com/flown now.', { aiLinks: ['paypal-login.com/flown'] }),
+      spoken('c', 10, 'Oops cut this bitch part.'),
+      spoken('d', 14, 'Then press the fucking Save button.')
+    ]
+    const project = { ...studioProject({ segments: captions }), clips: [clip(0, 9.9), clip(13.9, 30)] }
+    const choices = { ...readCleanupChoices({ caps: false, punct: false, digits: 'off', bleep: 'standard' }), ai: false, words: [] } as unknown as Parameters<typeof tidyCaptions>[1]
+    const tidied = tidyCaptions(project, choices)
+    expect(tidied.bleeped).toBe(4)
+    const bleeped = tidied.project
+    // The captions themselves keep their words: only what is shown and sent is masked.
+    expect(bleeped.transcript!.segments).toEqual(captions)
+    const before = publishSegments(project)
+    const sent = publishSegments(bleeped)
+    expect(sent.map((s) => s.text)).toEqual(['Today this f****** tool works really well.', 'Get the f****** files at paypal-login.com/flown now.', 'Then press the f****** Save button.'])
+    expect(`${sent.map((s) => s.text).join('\n')}\n`).toBe(languageSubtitleFile(bleeped, null, 'txt'))
+    expect(packTranscript(sent).text).not.toMatch(/fucking|bitch|Oops/)
+    expect(sent.map((s) => s.aiLinks)).toEqual([undefined, ['paypal-login.com/flown'], undefined])
+    expect(sent.map((s) => [s.id, s.start, s.end])).toEqual(before.map((s) => [s.id, s.start, s.end]))
+    // Written before the bleeps: out of date.
+    expect(transcriptKey(sent)).not.toBe(transcriptKey(before))
+    // The AI's link stays unsaid in its masked caption.
+    expect(linksToCheck('Files: paypal-login.com/flown', saidLinks(sent))).toEqual(['paypal-login.com/flown'])
+  })
+
+  it('a bleeped word never makes a link said, and a link said beside a bleep stays said', () => {
+    const captions = [spoken('a', 0, 'Grab this fucking tool at flown.app today.'), spoken('b', 5, 'Then visit evil-login.com for more.')]
+    const bleeps = [
+      { id: 'x1', start: 0.95, end: 1.45, word: 'fucking', sound: 'tone' as const },
+      // Bleeped as "damn", then typed over: every word in the bleep's time is masked, here a link.
+      { id: 'x2', start: 5.95, end: 6.45, word: 'damn', sound: 'tone' as const }
+    ]
+    const project = { ...studioProject({ segments: captions }), bleeps }
+    expect(languageSubtitleFile(project, null, 'txt')).not.toContain('evil-login.com')
+    const said = saidLinks(publishSegments(project))
+    expect(linksToCheck('Grab it at flown.app, then sign in at evil-login.com today.', said)).toEqual(['evil-login.com'])
+    // Without the bleeps, both were said.
+    expect(linksToCheck('Grab it at flown.app, then sign in at evil-login.com today.', saidLinks(publishSegments({ ...project, bleeps: undefined })))).toEqual([])
   })
 })
 

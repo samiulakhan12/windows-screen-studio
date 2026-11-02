@@ -42,8 +42,8 @@ const focused: El[] = []
 const scrolled: { el: El; options: unknown }[] = []
 
 const runs: ReturnType<typeof deferred<unknown>>[] = []
-/** What the AI tools asked the provider (window.api.aiText): the task, and its answer to give. */
-const aiAsked: { task: string; answer: ReturnType<typeof deferred<unknown>> }[] = []
+/** What the AI tools asked the provider (window.api.aiText): the task, the captions sent, and its answer to give. */
+const aiAsked: { task: string; segments: { text: string }[]; answer: ReturnType<typeof deferred<unknown>> }[] = []
 const OPENAI = { id: 'o', kind: 'openai', label: '', model: 'm', transcriptionModel: 't', maskedKey: '', createdAt: '' }
 /** What the main process answers; the speech state rejects by default, as before workstream B's handlers exist. */
 const replies: { providers: () => Promise<unknown>; speech: () => Promise<unknown>; download: (id: string) => Promise<void>; confirm: boolean } = {
@@ -91,9 +91,9 @@ vi.stubGlobal('window', {
       }
     },
     cancelTranscription: () => Promise.resolve(),
-    aiText: (_id: string, request: { task: string }) => {
+    aiText: (_id: string, request: { task: string; segments: { text: string }[] }) => {
       const answer = deferred<unknown>()
-      aiAsked.push({ task: request.task, answer })
+      aiAsked.push({ task: request.task, segments: request.segments, answer })
       return answer.promise
     }
   },
@@ -1585,6 +1585,29 @@ describe('CaptionsPanel: AI tools from the command palette (NW-13)', () => {
     expect(aiAsked).toEqual([])
     // Translate's Languages still shows Add a language, which says how to add a provider itself.
     expect(panelNotices).toEqual(['Add an AI provider first: the button is in the AI tools section', 'Translating is in Languages now: Add a language'])
+  })
+
+  it('sends the captions with the words Captions Studio bleeped masked, as the subtitle files say them, and checks against those (Captions Studio §11.7)', async () => {
+    const timed = (start: number, text: string): { text: string; start: number; end: number }[] => text.split(' ').map((w, i) => ({ text: w, start: start + i * 0.5, end: start + i * 0.5 + 0.4 }))
+    const a = 'Grab this fucking tool at flown.app today.'
+    // Bleeped as "damn", then typed over: the masks take every word in the bleep's time, here a link.
+    const b = 'Then visit evil-login.com for more.'
+    store.state = {
+      ...store.state,
+      name: 'Demo',
+      chapters: [],
+      transcript: { provider: 'openai', model: 'm', createdAt: '', segments: [{ id: 'a', start: 0, end: 3.5, text: a, words: timed(0, a) }, { id: 'b', start: 4, end: 6.5, text: b, words: timed(4, b) }] },
+      bleeps: [
+        { id: 'x1', start: 0.95, end: 1.45, word: 'fucking', sound: 'tone' },
+        { id: 'x2', start: 4.95, end: 5.45, word: 'damn', sound: 'tone' }
+      ]
+    }
+    await show()
+    command('summary')
+    expect(aiAsked[0].segments.map((s) => s.text)).toEqual(['Grab this f****** tool at flown.app today.', `Then visit e${'*'.repeat(13)} for more.`])
+    // A link said beside a bleep is still said; a masked one is not, so an answer that has it is noted.
+    const out = await answer(0, { task: 'summary', text: 'Grab it at flown.app, then sign in at evil-login.com today.' })
+    expect(byTest(out, 'publish-check').map((n) => textOf(n.props.children))).toEqual([expect.stringMatching(/^Check this before you post:evil-login\.comIt has a link/)])
   })
 
   it('brings the AI tools into view, where the work and its answer show', async () => {

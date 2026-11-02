@@ -12,10 +12,10 @@ import { useModalFocus } from '../editor/modalFocus'
 import './publish.css'
 
 /**
- * What was said in `project`, for the check: the captions of the edited video (but those an AI wrote
- * a link into), the recording's name and its chapter titles.
+ * What was said in `project`, for the check: the captions of the edited video as they are sent, bleeped
+ * words masked (but those an AI wrote a link into), the recording's name and its chapter titles.
  */
-export const projectSaid = (project: Pick<Project, 'transcript' | 'clips' | 'freezes' | 'chapters' | 'name'>): Said =>
+export const projectSaid = (project: Pick<Project, 'transcript' | 'clips' | 'bleeps' | 'freezes' | 'chapters' | 'name'>): Said =>
   saidLinks(publishSegments(project), { title: project.name, chapters: projectYoutubeChapters(project).chapters.map((c) => c.title) })
 
 /**

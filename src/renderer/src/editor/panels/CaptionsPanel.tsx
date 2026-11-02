@@ -3,7 +3,7 @@ import type { AiProviderInfo, AiTextRequest, AiTextResult, TranscribeOptions } f
 import { cleanCaptionText, CAPTION_MAX_CHARS } from '../../../../shared/captions/captionData'
 import { findInCaptions, mergeWithNext, readSuggestedChapters, readSuggestedText, replaceInCaptions, splitCaption, typedCaption } from '../../../../shared/captions/edit'
 import { captionIndexAt } from '../../../../shared/captions/layout'
-import { languageSubtitleFile, SUBTITLE_FORMATS, type SubtitleFormat } from '../../../../shared/captions/subtitles'
+import { languageSubtitleFile, spokenSegments, SUBTITLE_FORMATS, type SubtitleFormat } from '../../../../shared/captions/subtitles'
 import { displayTime } from '../../../../shared/editor/clips'
 import { undoHint, withShortcut } from '../../../../shared/editor/shortcuts'
 import { chapterNear, createChapter } from '../../../../shared/editor/titles'
@@ -1060,7 +1060,9 @@ function AiToolsSection({
     setTitle(null)
     setSummary(null)
     setChapters(null)
-    const request: AiTextRequest = { task, segments: before.segments }
+    // The captions as the subtitle files say them: words Captions Studio bleeped go masked, as the link check reads them
+    // (projectSaid). Source times, as chapters are placed.
+    const request: AiTextRequest = { task, segments: [...spokenSegments(store.state)] }
     let result: AiTextResult
     try {
       result = await window.api.aiText(chosen.id, request)

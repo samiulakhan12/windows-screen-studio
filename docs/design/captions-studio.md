@@ -2816,7 +2816,9 @@ Offline rules, each optional (§2.9). The choices are `CleanupChoices` (`caps`, 
      sound is muted. Masks ("f***": first letter and asterisks, the same number of graphemes;
      "****" in scripts without case) apply in the burned-in captions on every look (through
      `burnedSegments`, §14.2), in SRT, VTT and text exports (`subtitles.ts`), in subtitle streams,
-     and in Review rows and their accessible names. The transcript keeps the real word. Motion
+     in Review rows and their accessible names, and in what the publishing pack and the Captions
+     tab's Suggest chapters, Suggest a title and Summarize send to an AI provider and check links
+     against (`publishSegments`, `spokenSegments`). The transcript keeps the real word. Motion
      graphics never show one (`wordsBleeped`): Make my captions great makes no keyword pop-up, AI
      list card or quote card with a bleeped word, an offline list card shows it masked, and a
      counter drops it as its label; a keyword pop-up made before the bleep is not drawn (nor its

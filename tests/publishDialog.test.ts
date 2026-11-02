@@ -773,6 +773,23 @@ describe('Publish dialog: what is sent is what the edited video says (§4.2)', (
       ])
     }
   })
+
+  it('masks the words Captions Studio bleeps, as the subtitle files do, also bleeped while the dialog is open', async () => {
+    const text = 'Open the fucking settings page first and look at the list.'
+    const words = text.split(' ').map((w, i) => ({ text: w, start: i * 0.3, end: i * 0.3 + 0.25 }))
+    current = { ...current, transcript: { ...base.transcript!, segments: [{ id: 'a', start: 0, end: 4, text, words }, base.transcript!.segments[1]] } }
+    let out = await opened()
+    press(card(out, 'linkedin'), 'Write')
+    render()
+    expect(asked[0].segments[0].text).toBe(text)
+    // Bleeped now: the captions and the clips are the same as before, only the bleeps are new.
+    current = { ...current, bleeps: [{ id: 'x', start: 0.55, end: 0.9, word: 'fucking', sound: 'tone' }] }
+    out = render()
+    press(card(out, 'xpost'), 'Write')
+    render()
+    expect(asked.map((a) => a.task)).toEqual(['linkedin', 'xpost'])
+    expect(asked[1].segments.map((s) => s.text)).toEqual(['Open the f****** settings page first and look at the list.', 'Then turn on the new reports and press save.'])
+  })
 })
 
 describe('Publish dialog: a palette command shows the card it writes (§5.2)', () => {

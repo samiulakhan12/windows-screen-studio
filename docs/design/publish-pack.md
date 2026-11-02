@@ -231,6 +231,11 @@ existing tasks do.
 
 The captions as the edited video says them (`publishSegments(project)`, the export's subtitle
 cues: captions and words that were cut are left out, so nothing cut is sent or written about).
+Words Captions Studio bleeped are sent masked ("f***"), as the video and its subtitle files show
+them (`spokenSegments`, captions-studio.md §11.7); the masked captions keep their times and
+aiLinks. The link check's said set is read from the same masked captions, so a bleeped word never
+makes a link said. The Captions tab's *Suggest chapters*, *Suggest a title* and *Summarize* send
+`spokenSegments(project)` too (in source time, as chapters are placed).
 `packTranscript(segments)`: the segments' cleaned text joined by spaces. When it is longer than
 `PACK_TRANSCRIPT_MAX` = 60 000 characters, evenly spaced segments are kept (every k-th, k the
 smallest step that fits), joined with ` … `, and `shortened: true` tells the model they are
