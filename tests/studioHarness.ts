@@ -150,6 +150,8 @@ function standIn(el: El): Record<string, unknown> {
     clientWidth: 280,
     focus: () => focused.push(stand.el as El),
     contains: () => false,
+    // Nothing covers a stand-in (no inert part of the page above it).
+    closest: () => null,
     scrollIntoView: () => undefined,
     getBoundingClientRect: () => ({ left: 0, top: 0, width: 280, height: 96, right: 280, bottom: 96 }),
     querySelector: (sel: string) => {

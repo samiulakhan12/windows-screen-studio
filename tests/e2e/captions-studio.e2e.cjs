@@ -21,6 +21,9 @@
 //   7. The options left open as Shift+R opens the Review panel over the Inspector keep no keys: Tab
 //      and Shift+Tab move in the panel, Esc closes only the panel, and the options then keep Tab
 //      and close on Esc again.
+//   8. Caption styles… from the palette puts the focus on the checked tile (§2.14), also when the
+//      Review panel is open over the Captions tab or another tab: the panel closes first; the
+//      request is taken once, so the panel opened and closed again later keeps its own focus.
 //
 // SSW_E2E_ONLY=<part of a test name> runs one test; SSW_E2E_DOC_SHOTS=1 also writes the pictures
 // docs/screenshots/captions-studio-*.png.
@@ -123,6 +126,19 @@ const NO_FX = { motionBlur: 0, keystrokes: { show: false, position: 'bottom', si
 
 const projectFile = (home, id) => path.join(h.projectsRoot(home), id, 'project.json')
 
+/** Two automatic cuts, so the Review panel has rows, their buttons and a footer. */
+const TO_REVIEW = {
+  clips: [
+    { id: 'k0', start: 0, end: 3.1, speed: 1 },
+    { id: 'k1', start: 3.4, end: 6.8, speed: 1 },
+    { id: 'k2', start: 7.2, end: 10, speed: 1 }
+  ],
+  autoCuts: [
+    { id: 'a1', by: 'silences', action: 'cut', start: 3.1, end: 3.4, was: [{ start: 3.1, end: 3.4, speed: 1 }] },
+    { id: 'a2', by: 'silences', action: 'cut', start: 6.8, end: 7.2, was: [{ start: 6.8, end: 7.2, speed: 1 }] }
+  ]
+}
+
 /** A 10 s grey project (1280×720, or 720×1280 when `tall`) with `extra` merged into project.json. */
 function seed(home, { id, name, tall = false, extra = {} }) {
   const width = tall ? 720 : 1280
@@ -212,6 +228,16 @@ async function tabTo(win, from, selector, max = 250) {
 
 const focusedTile = (win) => win.evaluate(() => document.activeElement?.getAttribute('data-tile') ?? null)
 const focusedTestId = (win) => win.evaluate(() => document.activeElement?.closest('[data-testid]')?.getAttribute('data-testid') ?? null)
+
+/** Runs the palette's command titled `title`, found by typing `query`. */
+async function runCommand(win, query, title) {
+  await win.keyboard.press('Control+k')
+  await win.waitForSelector('.command-palette[role="dialog"]', { timeout: 5000 })
+  await win.keyboard.type(query)
+  await f.waitFor(async () => (await win.$eval('.command-palette [role="option"] .palette-title', (e) => e.textContent).catch(() => '')) === title, `"${query}" lists ${title} first`, 3000)
+  await win.keyboard.press('Enter')
+  await f.waitFor(async () => !(await win.$('.command-palette')), 'the palette closes after running', 3000)
+}
 const noticeHas = (win, text, what) => f.waitFor(async () => ((await win.textContent('.notice-slot').catch(() => '')) || '').includes(text), what, 15000)
 
 /** Exports the open project as MP4 at 720p and `fps` to `out`, and closes the dialog. */
@@ -626,17 +652,7 @@ async function keyboardTests() {
   }))
 
   await test('the options left open under the Review panel keep no keys: Tab moves in the panel, Esc closes only the panel', fx.withHome('cs-review', async (ctx, home) => {
-    // Two automatic cuts, so the Review panel has rows, their buttons and a footer.
-    const clips = [
-      { id: 'k0', start: 0, end: 3.1, speed: 1 },
-      { id: 'k1', start: 3.4, end: 6.8, speed: 1 },
-      { id: 'k2', start: 7.2, end: 10, speed: 1 }
-    ]
-    const autoCuts = [
-      { id: 'a1', by: 'silences', action: 'cut', start: 3.1, end: 3.4, was: [{ start: 3.1, end: 3.4, speed: 1 }] },
-      { id: 'a2', by: 'silences', action: 'cut', start: 6.8, end: 7.2, was: [{ start: 6.8, end: 7.2, speed: 1 }] }
-    ]
-    seed(home, { id: 'rec-review', name: 'Review', extra: { transcript: transcript([C1, C2]), clips, autoCuts } })
+    seed(home, { id: 'rec-review', name: 'Review', extra: { transcript: transcript([C1, C2]), ...TO_REVIEW } })
     const { win } = await launch(ctx, home)
     await open(win, 'Review')
     await captionsTab(win)
@@ -666,6 +682,51 @@ async function keyboardTests() {
     await win.keyboard.press('Escape')
     await win.waitForSelector('[data-testid="great-options"]', { state: 'detached', timeout: 5000 })
     h.assert((await focusedTestId(win)) === 'captions-great-options', `Esc returns the focus to its button (got ${await focusedTestId(win)})`)
+  }))
+
+  await test('Caption styles… puts the focus on the checked tile, also with the Review panel open: the panel closes first', fx.withHome('cs-styles', async (ctx, home) => {
+    seed(home, { id: 'rec-styles', name: 'Styles', extra: { transcript: transcript([C1, C2]), ...TO_REVIEW } })
+    const { win } = await launch(ctx, home)
+    await open(win, 'Styles')
+    await captionsTab(win)
+    const checked = await win.getAttribute('[data-testid="caption-gallery"] [role="radio"][aria-checked="true"]', 'data-tile')
+    h.assert(!!checked, 'a tile is checked')
+    const tabButton = (name) => `.insp-tabs button:has-text("${name}")`
+    const openReview = async () => {
+      await win.keyboard.press('Shift+R')
+      await win.waitForSelector('[data-testid="review-panel"]', { timeout: 5000 })
+      await f.waitFor(() => win.evaluate(() => !!document.activeElement?.closest('.review-item')), 'the focus moves to the first row to review')
+      h.assert((await win.getAttribute('.editor-body > .inspector', 'inert')) !== null, 'the panel puts the Inspector out of reach')
+    }
+    /** Runs Caption styles… and checks the focus ends (and stays) on the checked tile. */
+    const styles = async (what) => {
+      await runCommand(win, 'Caption styles', 'Caption styles…')
+      await win.waitForSelector('[data-testid="review-panel"]', { state: 'detached', timeout: 5000 })
+      await f.waitFor(async () => (await focusedTile(win)) === checked, `${what}: the focus on the checked tile ${checked} (got ${await focusedTestId(win)})`, 3000)
+      // Nothing moves it on afterwards (the Review panel's close sends the focus to its button only when nothing has it).
+      await h.sleep(500)
+      h.assert((await focusedTile(win)) === checked, `${what}: the focus stays on the checked tile (got ${await focusedTestId(win)})`)
+    }
+
+    // The Review panel closed: at once.
+    await win.focus(tabButton('Captions'))
+    await styles('without the Review panel')
+    // The panel open over the Captions tab, whose gallery is under it: once the panel has gone.
+    await win.focus(tabButton('Captions'))
+    await openReview()
+    await styles('with the Review panel open over the Captions tab')
+    // The panel open over another tab: the Captions tab shows as the panel goes.
+    await win.click(tabButton('Style'))
+    await openReview()
+    await styles('with the Review panel open over the Style tab')
+
+    // Each request is taken once: the panel opened and closed again later sends the focus to its button.
+    await win.focus(tabButton('Captions'))
+    await openReview()
+    await win.keyboard.press('Escape')
+    await win.waitForSelector('[data-testid="review-panel"]', { state: 'detached', timeout: 5000 })
+    await h.sleep(500)
+    h.assert((await focusedTestId(win)) === 'review-open', `Esc from the panel puts the focus on its button, not back in the gallery (got ${await focusedTestId(win)})`)
   }))
 }
 

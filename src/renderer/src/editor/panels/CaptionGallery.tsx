@@ -284,6 +284,15 @@ export function CaptionGallery(props: {
     setFocusId(id)
     gridRef.current?.querySelector<HTMLElement>(`[data-tile="${id}"]`)?.focus()
   }
+  // Under the Review panel the Inspector is inert, where focus() does nothing. Caption styles…
+  // closes the panel, which takes the inert away only as it unmounts: the request waits for that
+  // (still within FOCUS_WAIT) and is taken then, once.
+  const covered = useRef<MutationObserver | null>(null)
+  const stopWaiting = (): void => {
+    covered.current?.disconnect()
+    covered.current = null
+  }
+  useEffect(() => stopWaiting, [])
   // Caption styles…: the focus goes to the checked tile once the gallery shows, on the checked
   // tile's filter (switched to for this, not remembered).
   const takeFocus = (): void => {
@@ -295,6 +304,17 @@ export function CaptionGallery(props: {
     }
     const id = shown.find((t) => t.id === checked)?.id ?? stop
     if (!id) return
+    const cover = gridRef.current?.closest('[inert]')
+    if (cover) {
+      if (covered.current) return
+      covered.current = new MutationObserver(() => {
+        stopWaiting()
+        takeRef.current()
+      })
+      covered.current.observe(cover, { attributes: true, attributeFilter: ['inert'] })
+      return
+    }
+    stopWaiting()
     focusTaken()
     gridRef.current?.querySelector<HTMLElement>(`[data-tile="${id}"]`)?.focus()
   }

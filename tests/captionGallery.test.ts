@@ -275,6 +275,62 @@ describe('the checked look, wherever it comes in its filter (§2.5, §2.14, §2.
     await settle(gallery({ frame: SQUARE, value: highlight }))
     expect(focused).toEqual([])
   })
+
+  it('Caption styles… with the gallery under the Review panel (the Inspector inert) waits for the panel to go, then focuses the checked tile once', async () => {
+    // What watches the inert attribute: `changed` stands for the attribute changing.
+    const watchers: { changed: () => void; on: boolean }[] = []
+    const g = globalThis as { MutationObserver?: unknown }
+    g.MutationObserver = class {
+      w: { changed: () => void; on: boolean }
+      constructor(changed: () => void) {
+        this.w = { changed, on: false }
+        watchers.push(this.w)
+      }
+      observe(): void {
+        this.w.on = true
+      }
+      disconnect(): void {
+        this.w.on = false
+      }
+    }
+    try {
+      const els = await settle(gallery({ frame: SQUARE, value: highlight }))
+      let inert = true
+      const inspector = {}
+      ;(grid(els).ref as { current: { closest(sel: string): unknown } }).current.closest = (sel) => (sel === '[inert]' && inert ? inspector : null)
+      const watching = (): number => watchers.filter((w) => w.on).length
+      focused.length = 0
+      // Under the panel no focus() is tried (it would do nothing there), and the request is kept.
+      focusGallery()
+      focusGallery()
+      expect(focused).toEqual([])
+      expect(watching()).toBe(1)
+      // The panel has gone: the checked tile takes the focus, and nothing watches any more.
+      inert = false
+      watchers[0].changed()
+      expect(focused.map((e) => e.props['data-tile'])).toEqual(['highlight-box'])
+      expect(watching()).toBe(0)
+      // Taken once: the panel opened and closed again later moves nothing.
+      inert = true
+      render(gallery({ frame: SQUARE, value: highlight }))
+      inert = false
+      watchers[0].changed()
+      expect(focused).toHaveLength(1)
+      // A request that expires while the panel stays open is dropped, not taken when it goes later.
+      inert = true
+      vi.useFakeTimers()
+      focusGallery()
+      vi.advanceTimersByTime(FOCUS_WAIT + 1)
+      vi.useRealTimers()
+      expect(watching()).toBe(1)
+      inert = false
+      watchers.at(-1)!.changed()
+      expect(focused).toHaveLength(1)
+      expect(watching()).toBe(0)
+    } finally {
+      delete g.MutationObserver
+    }
+  })
 })
 
 describe('the keyboard (§2.15)', () => {

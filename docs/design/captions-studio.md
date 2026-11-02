@@ -618,7 +618,9 @@ letter falls back to the letter, `shortcuts.ts:331`):
 `captionStyles` opens the Captions tab, opens Look and focuses the checked tile, switching to its
 filter first when another one is shown (not remembered as the user's filter). A request no gallery
 takes within 1 s (the Selection view hides the Captions tab) is dropped, so the focus does not jump
-into the gallery when it shows later.
+into the gallery when it shows later. With the Review panel open the command closes it first; the
+gallery under it is inert until the panel has gone, so the request waits for that and is taken
+then, once.
 
 Two publish-pack commands change target (ids, titles and keywords stay):
 
