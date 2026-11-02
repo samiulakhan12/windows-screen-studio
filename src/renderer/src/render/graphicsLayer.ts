@@ -20,12 +20,14 @@ import { counterValue, EASE, itemPose, listWindows, seedOf, type ChunkPose } fro
 import { captionObstacles } from '../../../shared/captions/studioLayout'
 import { STUDIO_BASE } from '../../../shared/captions/studioPresets'
 import { scriptOf, withDigits } from '../../../shared/captions/words'
-import type { Rect } from '../../../shared/engine/layout'
+import { visibleSize } from '../../../shared/engine/crop'
+import { outputSize, type Rect } from '../../../shared/engine/layout'
 import { isTall } from '../../../shared/engine/reframeData'
 import { DEFAULT_ZOOM_SETTINGS } from '../../../shared/engine/zoom'
 import { actionRects } from '../../../shared/render/actionRects'
 import { counterText, GRAPHIC_DEFAULTS, graphicCandidates, placeGraphic } from '../../../shared/render/graphics'
 import { graphicDrawn } from '../../../shared/render/popSound'
+import { textArea } from '../../../shared/render/safeZones'
 import { fontOf } from '../../../shared/render/fonts'
 import type { CaptionStudio, CounterGraphic, Graphic, KeywordGraphic, ListGraphic, Project } from '../../../shared/types'
 import { captionBlockAt } from './captionsLayer'
@@ -261,8 +263,8 @@ function placeOf(ctx: Ctx, project: Project, g: Graphic, shape: Shape, w: number
   const seg = { id: `graphic:${g.id}`, start: g.start, end: g.end, text: '' }
   const cam = captionObstacles(project, seg, w, h, { titles: [], keys: null, action: [] }).camera
   const action = withAction ? actionRects(fc!.scene, fc!.cursor.valid ? fc!.cursor : null, project.zoomSettings?.auto ?? DEFAULT_ZOOM_SETTINGS.auto, w, h, fc!.vw, fc!.vh, g.start, g.end, project.clips).map((a) => a.rect) : []
-  // A keyword that replaces its chunk takes the chunk's place (§10.1, §10.3).
-  const replacing = g.kind === 'keyword' && g.anchor && g.replace !== false ? (studioWordPlace(ctx, project, g.anchor.caption, g.anchor.from, w, h, area)?.block ?? undefined) : undefined
+  // A keyword that replaces its chunk takes the chunk's place (§10.1, §10.3); one moved off that chunk's time is free.
+  const replacing = g.kind === 'keyword' && g.anchor && replacedWindow(ctx, project, g, w, h, area) ? (studioWordPlace(ctx, project, g.anchor.caption, g.anchor.from, w, h, area)?.block ?? undefined) : undefined
   const candidates = graphicCandidates(g.kind, w, h, { camera: union(cam), action: union(action) }, replacing)
   const inset = 0.06 * Math.min(w, h)
   const room = area ?? { x: inset, y: inset, w: w - inset * 2, h: h - inset * 2 }
@@ -283,27 +285,51 @@ interface Shown {
 }
 
 /**
- * The window of `g` showing at `t` (a list card's windows, §10.1), or null. A keyword that replaces
- * its chunk shows only while that chunk would, as the Studio look draws it: the card takes the
- * chunk's place and is never drawn over another chunk's words when its stored time (from the
- * planner's estimate, or a later look or frame) and the drawn chunk differ. The Studio layer hides
- * that chunk for the same window (chunkReplaced).
+ * The window a keyword that replaces its chunk shows in, or null when it replaces nothing here. It
+ * shows only while that chunk would, as the Studio look draws it: the card takes the chunk's place
+ * and is never drawn over another chunk's words when its stored time (from the planner's estimate,
+ * or a later look or frame) and the drawn chunk differ. The Studio layer hides that chunk for the
+ * same window (chunkReplaced). A card whose time misses that chunk (moved on the Graphics row)
+ * replaces nothing: it shows at its own time as a free pop-up, and the chunk shows as it is.
  */
+function replacedWindow(ctx: Ctx, project: Project, g: Graphic, w: number, h: number, area: Rect | null): { start: number; end: number } | null {
+  if (g.kind !== 'keyword' || !g.anchor || g.replace === false) return null
+  const chunk = studioWordChunk(ctx, project, g.anchor.caption, g.anchor.from, w, h, area)
+  if (!chunk) return null
+  const start = Math.max(g.start, chunk.start)
+  const end = Math.min(g.end, chunk.end)
+  return end > start ? { start, end } : null
+}
+
+/** The window of `g` showing at `t` (a list card's windows, §10.1; a keyword's replacedWindow), or null. */
 function windowAt(ctx: Ctx, g: Graphic, t: number, project: Project, w: number, h: number, area: Rect | null): { start: number; end: number } | null {
   if (g.kind === 'list') {
     for (const win of listWindows(g, project.clips)) if (t >= win.start && t < win.end) return win
     return null
   }
   if (!(t >= g.start && t < g.end)) return null
-  if (g.kind === 'keyword' && g.anchor && g.replace !== false) {
-    const chunk = studioWordChunk(ctx, project, g.anchor.caption, g.anchor.from, w, h, area)
-    if (chunk) {
-      const start = Math.max(g.start, chunk.start)
-      const end = Math.min(g.end, chunk.end)
-      return t >= start && t < end ? { start, end } : null
-    }
-  }
-  return { start: g.start, end: g.end }
+  const win = replacedWindow(ctx, project, g, w, h, area) ?? { start: g.start, end: g.end }
+  return t >= win.start && t < win.end ? win : null
+}
+
+/** A canvas context to measure text with, for graphicShown. */
+let measureCtx: Ctx | null = null
+
+/**
+ * The time graphic `g` shows (source seconds), as this layer draws it in a `size` frame (by default
+ * the project's output size): a keyword that replaces its chunk while both hold (replacedWindow),
+ * any other its own time (a list card from its start). Its pop sounds when it starts (§10.6) in
+ * the preview and the export, and a click on its block shows it.
+ */
+export function graphicShown(project: Project, g: Graphic, size?: { width: number; height: number }): { start: number; end: number } {
+  const own = { start: g.start, end: g.end }
+  if (g.kind !== 'keyword' || !g.anchor || g.replace === false || !project.captions?.studio) return own
+  // The recording as drawn (cropped: the crop's size), as the preview and the export size their frames.
+  const shown = visibleSize(project)
+  const { width: w, height: h } = size ?? outputSize(project.style.aspectRatio, shown.width, shown.height, project.height)
+  measureCtx ??= document.createElement('canvas').getContext('2d')
+  if (!measureCtx || !(w > 0 && h > 0)) return own
+  return replacedWindow(measureCtx, project, g, w, h, textArea(project, w, h, shown.width, shown.height, g.start)) ?? own
 }
 
 interface Placement {

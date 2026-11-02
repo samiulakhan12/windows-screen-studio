@@ -35,7 +35,13 @@ const { drawStudioCaptions, drawStudioSample, studioBlockAt, studioWordChunk } =
   studioBlockAt: (ctx: unknown, p: Project, t: number, w: number, h: number) => { box: { y: number; h: number } } | null
   studioWordChunk: (ctx: unknown, p: Project, caption: string, word: number, w: number, h: number, area: null) => { start: number; end: number } | null
 }
-const { drawGraphicsLayer } = (await import(/* @vite-ignore */ `${R}graphicsLayer`)) as { drawGraphicsLayer: Draw }
+const { drawGraphicsLayer, graphicRects, graphicShown } = (await import(/* @vite-ignore */ `${R}graphicsLayer`)) as {
+  drawGraphicsLayer: Draw
+  graphicRects: (ctx: unknown, p: Project, t: number, w: number, h: number) => { id: string; rect: { x: number; y: number; w: number; h: number } }[]
+  graphicShown: (p: Project, g: KeywordGraphic, size?: { width: number; height: number }) => { start: number; end: number }
+}
+const EDITOR = '../src/renderer/src/editor/'
+const { showGraphic } = (await import(/* @vite-ignore */ `${EDITOR}graphicItems`)) as { showGraphic: (player: { time: number; seek(t: number): void }, p: Project, g: KeywordGraphic) => void }
 const { drawTitleCardsLayer } = (await import(/* @vite-ignore */ `${R}titleCardLayer`)) as { drawTitleCardsLayer: Draw }
 const { drawKeystrokes } = (await import(/* @vite-ignore */ `${R}textOverlays`)) as { drawKeystrokes: (ctx: unknown, w: number, h: number, t: number, p: Project, cursor: CursorTrack) => void }
 const { captionBlockAt } = (await import(/* @vite-ignore */ `${R}captionsLayer`)) as { captionBlockAt: (ctx: unknown, p: Project, t: number, w: number, h: number) => { position: string } | null }
@@ -370,5 +376,41 @@ describe('a keyword card that replaces its chunk shows only while the drawn chun
       const during = Math.min(chunk.start + 0.3, (chunk.start + chunk.end) / 2)
       expect(drawsOn(drawGraphicsLayer, p, during, w, h)).toBe(true)
       expect(drawsOn(drawStudioCaptions, p, during, w, h)).toBe(false)
+    })
+
+  for (const [w, h] of [
+    [1080, 1920],
+    [1920, 1080]
+  ])
+    it(`Bold Pop in ${w}x${h}: a click on the card's block shows it, and a card moved off its chunk shows at its own time, free`, () => {
+      const at = (start: number, end: number): Project => project([seg], 'en', { preset: 'bold', studio: look('bold-pop') }, { graphics: [{ ...card, start, end }], width: w, height: h } as Partial<Project>)
+      const p = at(card.start, card.end)
+      const chunk = studioWordChunk(contextOf(canvas(w, h)), p, 'c1', 7, w, h, null)!
+      expect(graphicShown(p, card, { width: w, height: h })).toEqual({ start: chunk.start, end: chunk.end })
+      // A click on its block (or its row in the Graphics tab) moves the playhead to where it shows.
+      const player = { time: 0, seek(t: number): void { this.time = t } }
+      showGraphic(player, p, card)
+      expect(player.time).toBeGreaterThanOrEqual(chunk.start)
+      expect(player.time).toBeLessThan(chunk.end)
+      expect(drawsOn(drawGraphicsLayer, p, player.time, w, h)).toBe(true)
+      // Dragged on the Graphics row before its word's chunk, or after the caption: drawn at its own time.
+      for (const [start, end] of [
+        [0.6, 2],
+        [chunk.end + 2, chunk.end + 4]
+      ]) {
+        const moved = at(start, end)
+        const shown: number[] = []
+        for (let t = 0; t < 9; t += 0.05) if (drawsOn(drawGraphicsLayer, moved, t, w, h)) shown.push(t)
+        expect(shown.length, `moved to ${start}-${end} s`).toBeGreaterThan(0)
+        expect(Math.min(...shown)).toBeGreaterThanOrEqual(start)
+        expect(Math.max(...shown)).toBeLessThan(end)
+        expect(graphicShown(moved, moved.graphics![0] as KeywordGraphic, { width: w, height: h })).toEqual({ start, end })
+      }
+      // It replaces nothing there: the caption shows with it, and the card keeps clear of its block.
+      const moved = at(0.6, 2)
+      expect(drawsOn(drawStudioCaptions, moved, 1.5, w, h)).toBe(true)
+      const rect = graphicRects(contextOf(canvas(w, h)), moved, 1.5, w, h)[0].rect
+      const block = studioBlockAt(contextOf(canvas(w, h)), moved, 1.5, w, h)!.box
+      expect(rect.y + rect.h <= block.y || rect.y >= block.y + block.h).toBe(true)
     })
 })

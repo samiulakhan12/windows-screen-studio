@@ -2362,7 +2362,10 @@ the reference machine before P2 merges, and written into this table.
   without the look's real font, and the look or the frame may change later, so the stored time
   and the drawn chunk can differ: the card shows only while both its own time and the chunk
   holding the anchor's first word, as the look draws it, hold, and the chunk is hidden for
-  exactly that window. The card is never drawn over another chunk's words. Keyword pop-ups are generated only for looks of *A few words*, *One
+  exactly that window. The card is never drawn over another chunk's words. A card whose own time
+  misses that chunk altogether (moved on the Graphics row) replaces nothing: it shows at its own
+  time as a free pop-up, placed clear of the captions. A click on a card's block or row moves the
+  playhead into the time it shows (`graphicShown`). Keyword pop-ups are generated only for looks of *A few words*, *One
   word* and *Stacked* (a *Phrases* chunk is a whole sentence, too long to replace; there the word
   is emphasised in the caption instead). Generated keywords are never also emphasised.
 - An automatic quote card (`auto.by: 'quote'`): while it shows, its caption is not drawn, on

@@ -83,7 +83,7 @@ export function GraphicsTrack({ px, win, duration, selection, onSelect, scrub, s
       () => {
         store.endGesture()
         // A plain click also moves the playhead into the graphic, so it shows on the preview.
-        if (!moved) showGraphic(player, store.state.clips, g)
+        if (!moved) showGraphic(player, store.state, g)
       }
     )
   }

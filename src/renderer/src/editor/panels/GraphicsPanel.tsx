@@ -321,7 +321,7 @@ function GraphicsList({ project }: { project: Project }): JSX.Element | null {
                 className={list.member(key) ? 'active' : ''}
                 {...list.row(key, () => {
                   group.select([key], key)
-                  showGraphic(player, project.clips, g)
+                  showGraphic(player, project, g)
                 })}
               >
                 <GraphicKindIcon kind={g.kind} />

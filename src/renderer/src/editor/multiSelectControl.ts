@@ -146,7 +146,7 @@ function plainClick({ store, player }: EditorServices, key: ItemKey): void {
     }
     case 'graphic': {
       const g = p.graphics?.find((x) => x.id === k.id)
-      if (g) showGraphic(player, p.clips, g)
+      if (g) showGraphic(player, p, g)
       return
     }
     case 'zoom':

@@ -3,7 +3,8 @@ import { addGraphic } from '../../../shared/editor/graphicsEdit'
 import { MAX_GRAPHICS } from '../../../shared/captions/studioData'
 import { outputToSource } from '../../../shared/engine/timeline'
 import { viewingTime } from '../../../shared/render/overlays'
-import type { Clip, Graphic } from '../../../shared/types'
+import type { Graphic, Project } from '../../../shared/types'
+import { graphicShown } from '../render/graphicsLayer'
 import type { EditorServices } from './context'
 import type { PreviewPlayer } from './player'
 import type { Selection } from './selection'
@@ -16,11 +17,15 @@ import type { Selection } from './selection'
 /** Said when a project already has the most graphics a project keeps. */
 export const GRAPHICS_FULL = `This video already has ${MAX_GRAPHICS} pop-ups.`
 
-/** Moves the playhead to where `g` is shown after its entrance, unless the preview is already inside it. */
-export function showGraphic(player: PreviewPlayer, clips: Clip[], g: Pick<Graphic, 'start' | 'end' | 'enter'>): void {
-  if (player.time >= g.start && player.time < g.end) return
-  const at = outputToSource(clips, viewingTime(clips, g.start) + g.enter.duration).time
-  player.seek(Math.min(Math.max(at, g.start), g.end - 1e-3))
+/**
+ * Moves the playhead to where `g` is shown after its entrance, unless the preview is already inside
+ * it: inside the time it shows (graphicShown: a keyword that replaces its chunk while that chunk shows).
+ */
+export function showGraphic(player: PreviewPlayer, project: Project, g: Graphic): void {
+  const { start, end } = graphicShown(project, g)
+  if (player.time >= start && player.time < end) return
+  const at = outputToSource(project.clips, viewingTime(project.clips, start) + g.enter.duration).time
+  player.seek(Math.min(Math.max(at, start), end - 1e-3))
 }
 
 /**
@@ -45,6 +50,6 @@ export function addGraphicAt(
   if (!id) return null
   opts.onSelect({ kind: 'graphic', id })
   const g = store.state.graphics?.find((x) => x.id === id)
-  if (g) showGraphic(player, store.state.clips, g)
+  if (g) showGraphic(player, store.state, g)
   return id
 }
