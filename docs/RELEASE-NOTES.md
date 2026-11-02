@@ -46,6 +46,11 @@
   put switchable subtitle tracks inside MP4, MOV and WebM.
 - **Fonts work offline**: the caption fonts and colour emoji ship with Flown; Chinese, Japanese and
   Korean fonts download on demand from a pinned source and are checked before use.
+- **Unwanted sounds** (F-17): *Find unwanted sounds* in the Audio tab lists the coughs, sneezes,
+  typing, notification sounds, phones, dogs, knocks and background music in your recording, on this
+  PC (nothing is uploaded or downloaded). Speech is never listed. Play each one, then *Mute* it,
+  *Duck* it, *Cut* it or *Ignore* it; every choice is one undo step, and the preview sounds exactly
+  like the export. The list comes back at once when you open the recording again.
 
 ## 0.7.1
 

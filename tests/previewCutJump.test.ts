@@ -121,6 +121,7 @@ const PLAYER = '../src/renderer/src/editor/player'
 type Player = {
   time: number
   playing: boolean
+  seeks: number
   seek(t: number): void
   play(): void
   attachCanvas(c: unknown): void
@@ -313,5 +314,22 @@ describe('a cut shorter than a frame', () => {
     expect(v.screen.seeks).toEqual([3.0125])
     expect(draws.slice(-2)).toEqual([3.0125, 181 / fps])
     expect(v.player.playing).toBe(true)
+  })
+})
+
+describe('moves of the playhead', () => {
+  it('are counted for each seek, and the jump over a cut is none (Play on a found sound lets go on a seek)', () => {
+    const v = setUp(OFF_GRID, true)
+    seekTo(v, 1.9)
+    const before = v.player.seeks
+    v.player.play()
+    for (let k = 114; k <= 119; k++) v.screen.show(k / FPS)
+    v.screen.show(180 / FPS)
+    expect(v.player.time).toBe(3.0125)
+    expect(v.player.seeks).toBe(before)
+    // A click on the timeline while playing.
+    v.player.seek(10)
+    expect(v.player.playing).toBe(true)
+    expect(v.player.seeks).toBe(before + 1)
   })
 })

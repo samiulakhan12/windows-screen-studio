@@ -7,6 +7,7 @@ import { readItems, readShape, readSpotlight } from './shapeData'
 import { readTilt } from './tilt'
 import { readChapter, readTitleCard } from './titleData'
 import { readDirectorSettings } from './directorData'
+import { readSoundEdits } from '../audio/soundsEdit'
 import { readCopyOf, readReframe } from './reframeData'
 import { readCrop } from './crop'
 import { readFreezes } from './freezeData'
@@ -135,7 +136,7 @@ export function migrateProject(raw: unknown): Project {
   const duration = Number.isFinite(p.duration) && p.duration > 0 ? p.duration : 0.1
   const listed = objects<Clip>(p.clips).filter((c) => Number.isFinite(c.start) && Number.isFinite(c.end))
   const clips = listed.length ? listed : [{ ...fullClip(duration), start: p.trim?.start ?? 0, end: p.trim?.end ?? duration }]
-  const { trim: _legacyTrim, audioStems, transcript, captions, captionMarks, captionPlaces, graphics, captionTracks, bleeps, captionAuto, inputEdits, director, script, crop, freezes, overlays, fonts, brand, reframe, copyOf, publish, autoCuts, autoCutOutcomes, ...rest } = p
+  const { trim: _legacyTrim, audioStems, transcript, captions, captionMarks, captionPlaces, graphics, captionTracks, bleeps, captionAuto, inputEdits, director, script, crop, freezes, overlays, fonts, brand, reframe, copyOf, publish, autoCuts, autoCutOutcomes, sounds, ...rest } = p
   void _legacyTrim
   // Read once: the transcript, and the Captions Studio records that point at its captions.
   const transcriptRead = readTranscript(transcript, duration)
@@ -188,6 +189,8 @@ export function migrateProject(raw: unknown): Project {
     ...optional('script', readProjectScript(script)),
     // The copy pack's saved YouTube description, cleaned (absent: none).
     ...optional('publish', readPublish(publish)),
+    // Unwanted sounds muted, lowered or ignored, sanitised (absent: none).
+    ...optional('sounds', readSoundEdits(sounds, duration)),
     effects: {
       ...DEFAULT_EFFECTS,
       ...p.effects,

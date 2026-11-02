@@ -1184,6 +1184,8 @@ export interface Project {
   autoCutOutcomes?: AutoCutOutcome[]
   /** The publishing copy pack's saved choices (NW-13). Absent: none (every project from before it). */
   publish?: ProjectPublish
+  /** Unwanted sounds muted, lowered or ignored (F-17, docs/design/sound-finder.md). Absent: none (every project from before). */
+  sounds?: SoundEdits
 }
 
 /** What the publishing copy pack keeps with the project (docs/design/publish-pack.md §3). */
@@ -1286,4 +1288,21 @@ export interface AutoCut {
 export interface AutoCutOutcome {
   id: string
   outcome: 'kept' | 'removed'
+}
+
+/** What the unwanted-sound finder changed (F-17, docs/design/sound-finder.md §3.1). */
+export interface SoundEdits {
+  /** Stretches of the recording's sound that are muted or lowered (source seconds, sorted by start). */
+  spans: SoundSpan[]
+  /** Keys of found sounds the user chose to keep as they are (Ignore). */
+  ignored: string[]
+}
+
+/** A muted or lowered stretch of the recording's sound. */
+export interface SoundSpan {
+  start: number
+  end: number
+  action: 'mute' | 'duck'
+  /** The found sound it came from (`<kind>-<start in centiseconds>`). */
+  key: string
 }

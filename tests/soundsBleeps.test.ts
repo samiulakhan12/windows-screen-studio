@@ -1,0 +1,205 @@
+import { spawnSync } from 'node:child_process'
+import { mkdtempSync, rmSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import path from 'node:path'
+import { afterAll, describe, expect, it, vi } from 'vitest'
+import { ffmpegPath } from '../src/main/ffmpeg'
+import type { ExportJob } from '../src/shared/api/export'
+import { DUCK_GAIN, soundGainFilters, soundGains } from '../src/shared/audio/soundsEdit'
+import { createProject } from '../src/shared/engine/project'
+import { planSoundtrack } from '../src/shared/render/audioPlan'
+import { toneJob } from '../src/shared/render/popSound'
+import type { Bleep, Project, SoundSpan } from '../src/shared/types'
+
+/*
+ * Captions Studio's bleeps and the unwanted-sound finder's Mute and Duck on the same stretch
+ * (docs/design/captions-studio.md §11.7, docs/design/sound-finder.md §4.6). In this version a bleep
+ * only adds its tone (muting the word through the sound finder's gains is Captions Studio phase B):
+ * the recording's gain there is the sound finder's alone, applied once, and the tone is the same
+ * whether the stretch under it is muted or not, in the preview and in the export.
+ */
+
+class FakeParam {
+  value = 1
+  cancelScheduledValues(): void {}
+  setValueAtTime(v: number): void {
+    this.value = v
+  }
+  linearRampToValueAtTime(): void {}
+}
+class FakeNode {
+  gain = new FakeParam()
+  curve: unknown = null
+  to: unknown = null
+  constructor(readonly kind: string) {}
+  connect<T>(n: T): T {
+    this.to = n
+    return n
+  }
+  disconnect(): void {}
+}
+class FakeAudioContext {
+  static last: FakeAudioContext
+  currentTime = 0
+  destination = {}
+  readonly nodes: FakeNode[] = []
+  constructor() {
+    FakeAudioContext.last = this
+  }
+  private node(kind: string): FakeNode {
+    const n = new FakeNode(kind)
+    this.nodes.push(n)
+    return n
+  }
+  createGain = (): FakeNode => this.node('gain')
+  createWaveShaper = (): FakeNode => this.node('shaper')
+  createMediaElementSource = (): FakeNode => this.node('source')
+  resume = (): Promise<void> => Promise.resolve()
+  suspend = (): Promise<void> => Promise.resolve()
+  close = (): Promise<void> => Promise.resolve()
+}
+vi.stubGlobal('AudioContext', FakeAudioContext)
+vi.mock('../src/renderer/src/editor/audioAnalysis', () => ({ loadAudioAnalysis: async () => ({}) }))
+
+// Renderer code (DOM types): imported at run time so the Node typecheck of tests/ does not follow it.
+const AUDIO = '../src/renderer/src/editor/previewAudio'
+type Sound = { setProject(p: Project): void; dispose(): void; effectsOf(): { tones: { start: number; end: number }[] } }
+const { PreviewAudio } = (await import(/* @vite-ignore */ AUDIO)) as { PreviewAudio: new (s: unknown, p: Project) => Sound }
+
+const SECONDS = 6
+const BLEEP: Bleep = { id: 'b1', start: 2, end: 3, word: 'damn', sound: 'tone' }
+
+function project(bleeps: Bleep[], spans: SoundSpan['action'][]): Project {
+  const p = createProject({
+    id: 'p',
+    name: 'p',
+    duration: SECONDS,
+    width: 1920,
+    height: 1080,
+    hasWebcam: false,
+    hasAudio: true,
+    webcamOffset: 0,
+    zooms: [],
+    cursorValid: false,
+    capture: { method: 'native', cursorInVideo: false, region: null, fps: 30 }
+  })
+  p.clips = [{ id: 'c', start: 0, end: SECONDS, speed: 1 }]
+  p.audio = { ...p.audio, volume: 1, muted: false }
+  if (bleeps.length) p.bleeps = bleeps
+  if (spans.length) p.sounds = { spans: spans.map((action) => ({ start: 2, end: 3, action, key: 'typing-200' })), ignored: [] }
+  return p
+}
+
+/** The recording's chain in the graph `ctx`: its gain, the cut fades' and the unwanted sounds' gains. */
+function chain(ctx: FakeAudioContext): number[] {
+  const screen = ctx.nodes.find((n) => n.kind === 'source')!.to as FakeNode
+  const rec = screen.to as FakeNode
+  const cut = rec.to as FakeNode
+  const sounds = cut.to as FakeNode
+  return [rec.gain.value, cut.gain.value, sounds.gain.value]
+}
+
+describe('a bleep and a muted or lowered sound on the same stretch, in the preview', () => {
+  it('the recording takes the sound finder gain once; the tone is unchanged', async () => {
+    const heard = (p: Project): { chain: number[]; tones: { start: number; end: number }[] } => {
+      const before = FakeAudioContext.last
+      const sound = new PreviewAudio({ currentTime: 2.5, muted: false, volume: 1 }, p)
+      try {
+        // Each of these plays through a graph of its own (a bleep's tone or the sound finder's curve).
+        expect(FakeAudioContext.last).not.toBe(before)
+        return { chain: chain(FakeAudioContext.last), tones: sound.effectsOf().tones }
+      } finally {
+        sound.dispose()
+      }
+    }
+    const bleepOnly = heard(project([BLEEP], []))
+    expect(bleepOnly.chain).toEqual([1, 1, 1])
+    expect(bleepOnly.tones).toEqual([{ start: 2, end: 3 }])
+    for (const action of ['mute', 'duck'] as const) {
+      const both = heard(project([BLEEP], [action]))
+      const spanOnly = heard(project([], [action]))
+      expect(both.chain[2]).toBeCloseTo(action === 'mute' ? 0 : DUCK_GAIN, 9)
+      expect(both.chain).toEqual(spanOnly.chain)
+      expect(both.tones).toEqual(bleepOnly.tones)
+    }
+  })
+
+  it('bleeping, muting and undoing them in any order keeps one graph going', () => {
+    const states = [project([BLEEP], []), project([BLEEP], ['mute']), project([], ['mute']), project([BLEEP], ['duck']), project([], []), project([], ['duck'])]
+    const sound = new PreviewAudio({ currentTime: 2.5, muted: false, volume: 1 }, states[0])
+    // The bleep's tone made the graph; it stays, and plays the sound finder's curve alone.
+    const ctx = FakeAudioContext.last
+    try {
+      for (const p of [...states, ...states.slice().reverse()]) {
+        sound.setProject(p)
+        const muted = p.sounds?.spans[0].action
+        expect(FakeAudioContext.last).toBe(ctx)
+        expect(chain(ctx)[2]).toBeCloseTo(muted === 'mute' ? 0 : muted === 'duck' ? DUCK_GAIN : 1, 9)
+        expect(sound.effectsOf().tones).toEqual(p.bleeps ? [{ start: 2, end: 3 }] : [])
+      }
+    } finally {
+      sound.dispose()
+    }
+  })
+})
+
+const RATE = 48000
+const ff = ffmpegPath()
+const dir = mkdtempSync(path.join(tmpdir(), 'sounds-bleeps-'))
+afterAll(() => rmSync(dir, { recursive: true, force: true }))
+
+/** The recording: a 300 Hz sine at 0.5, mono. */
+const RECORDING = path.join(dir, 'screen.wav')
+spawnSync(ff, ['-v', 'error', '-y', '-f', 'lavfi', '-i', `aevalsrc=0.5*sin(2*PI*300*t):d=${SECONDS}:s=${RATE}`, '-ac', '1', RECORDING])
+
+/** The export's soundtrack of `p` (the job the exporter makes of it), as mono samples. */
+function exported(p: Project, withTones: boolean): { samples: Float32Array; graph: string } {
+  const tones = withTones ? toneJob(p) : []
+  const job: ExportJob = {
+    width: 0,
+    height: 0,
+    fps: 30,
+    frames: SECONDS * 30,
+    format: 'm4a',
+    quality: 'high',
+    video: { kind: 'none' },
+    outputPath: '/o.m4a',
+    audio: { clips: p.clips, volume: 1, ...(p.sounds?.spans.length ? { sounds: soundGains(p) } : {}) },
+    ...(tones.length ? { tones } : {})
+  }
+  const plan = planSoundtrack(job, { mix: RECORDING }, 0)
+  const r = spawnSync(ff, ['-v', 'error', ...plan.args, '-filter_complex', plan.graph!, '-map', '[aout]', '-ac', '1', '-ar', String(RATE), '-f', 'f32le', '-'], { maxBuffer: 1 << 28 })
+  expect(r.status, r.stderr.toString()).toBe(0)
+  return { samples: new Float32Array(r.stdout.buffer, r.stdout.byteOffset, r.stdout.length / 4), graph: plan.graph! }
+}
+const peak = (s: Float32Array, from: number, to: number, minus?: Float32Array): number => {
+  let m = 0
+  for (let i = Math.round(from * RATE); i < Math.round(to * RATE); i++) m = Math.max(m, Math.abs(s[i] - (minus ? minus[i] : 0)))
+  return m
+}
+
+describe('a bleep and a muted or lowered sound on the same stretch, in the export', () => {
+  it('one gain filter on the recording; the tone added on top, the same over a muted stretch', () => {
+    const plain = exported(project([BLEEP], []), false).samples
+    const full = peak(plain, 4, 5)
+    expect(full).toBeGreaterThan(0.3)
+    const toneAlone = (p: Project): Float32Array => {
+      const a = exported(p, true).samples
+      const b = exported(p, false).samples
+      return a.map((v, i) => v - b[i])
+    }
+    const tone = toneAlone(project([BLEEP], []))
+    expect(peak(tone, 2.1, 2.9)).toBeGreaterThan(0.1)
+    expect(peak(tone, 3.5, 5)).toBeLessThan(1e-4)
+    for (const action of ['mute', 'duck'] as const) {
+      const p = project([BLEEP], [action])
+      const { graph } = exported(p, true)
+      // The sound finder's gain appears once; the bleep adds no gain of its own to the recording.
+      expect(graph.split(soundGainFilters(soundGains(p))).length).toBe(2)
+      const under = exported(p, false).samples
+      expect(peak(under, 2.1, 2.9) / full).toBeCloseTo(action === 'mute' ? 0 : DUCK_GAIN, 2)
+      expect(peak(under, 4, 5)).toBeCloseTo(full, 3)
+      expect(peak(toneAlone(p), 0, SECONDS, tone)).toBeLessThan(1e-4)
+    }
+  })
+})

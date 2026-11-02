@@ -14,6 +14,7 @@ import { pctFmt, Section, Slider, Toggle } from '../controls'
 import { EditorIcon } from '../EditorIcon'
 import { mediaDuration } from '../media'
 import { VoiceSection } from './VoiceSection'
+import { SoundsSection } from '../sounds/SoundsSection'
 import './audioPanel.css'
 
 const STEM_NAMES: Record<StemKind, string> = { mic: 'Microphone', system: 'System sound' }
@@ -120,6 +121,8 @@ export function AudioPanel({ project }: { project: Project }): JSX.Element {
       />
 
       <VoiceSection project={project} />
+
+      <SoundsSection project={project} />
 
       <Section title="Clean up">
         <Slider

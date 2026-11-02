@@ -862,6 +862,16 @@ packages under the same licence.
 
 ------------------------------------------------------------------------------
 
+MediaPipe Tasks Audio (@mediapipe/tasks-audio) and the YAMNet sound event model
+https://github.com/google-ai-edge/mediapipe and https://github.com/tensorflow/models/tree/master/research/audioset/yamnet
+Bundled into the app for the unwanted-sound finder (its WebAssembly runtime and the YAMNet model,
+yamnet.tflite, 4,126,810 bytes, SHA-256
+4d8b4a53282dc83ef04e3e7dbc4fbc98082e34e44ed798e16c3a0cdd4c584faf, run on this PC). Copyright The
+MediaPipe Authors and The TensorFlow Authors. Licensed under the Apache License, Version 2.0, whose
+full text is reproduced below with the npm packages under the same licence.
+
+------------------------------------------------------------------------------
+
 Caption data (Captions Studio)
 https://www.unicode.org/Public/18.0.0/emoji/emoji-test.txt
 Flown's caption emoji list (src/shared/captions/emojiList.ts) is generated from Unicode's
@@ -3988,6 +3998,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ------------------------------------------------------------------------------
 
 These packages carry no licence file; the licence each declares applies:
+  @mediapipe/tasks-audio 1.0.1 (Apache-2.0) https://www.npmjs.com/package/@mediapipe/tasks-audio
   @mediapipe/tasks-vision 1.0.1 (Apache-2.0) https://www.npmjs.com/package/@mediapipe/tasks-vision
   data-uri-to-buffer 4.0.1 (MIT) git://github.com/TooTallNate/node-data-uri-to-buffer
   lazy-val 1.0.5 (MIT) develar/lazy-val

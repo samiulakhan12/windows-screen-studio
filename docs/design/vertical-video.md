@@ -594,6 +594,7 @@ the `projects:duplicateProgress` event:
 | Every other `MEDIA_FILE_RE` name (`mediaProtocol.ts:11-12`): `background.*`, `cursor.*`, `watermark(-n).*`, `music(-n).*`, `overlay-n.*`, `font-n.*` | Copied | Small; some reuse their name when replaced (`copyIntoProject`, `projectsIpc.ts:148`). Unreferenced ones are copied too: cheap, never wrong. |
 | `script.txt` (`SCRIPT_FILE`, `projects.ts:188`) | Copied | The speaker notes kept with the recording. |
 | `.cache/speech.json` (`speech/vad.ts:26`) | Copied into a new `.cache` | Saves re-running the speech detector; keyed by the media file's size and time, kept exactly by a link. |
+| `.cache/sounds.json` (`SOUNDS_CACHE_FILE`, docs/design/sound-finder.md §3.3) | Copied into a new `.cache` | The unwanted-sound finder's scores, keyed the same way: the copy keeps the muted and lowered stretches, and shows their rows (with Restore) at once instead of after listening again. |
 | `.cache/transcript-parts/` | Not copied | Only resumes an unfinished caption run. |
 | `recording.json`, `screen.webm`, `native.mp4`, `webcam.webm`, `audio.webm` | Not copied | Exist only in unfinished recordings, which cannot be opened. |
 | Anything else, symlinks, other folders | Not copied | Unknown files are never copied. |
@@ -1566,8 +1567,8 @@ build`, then under `xvfb-run`: `vertical-video`, `render`, `crop`, `camera`, `ca
 
 **`tests/projectCopy.test.ts`** (P4, main; electron mocked as in `tests/appSettings.test.ts`, temporary folders)
 
-61. Media are linked (same `ino`); `cursor.json`, assets, `script.txt` and `.cache/speech.json` are
-    copied (different `ino`, same bytes, same `mtime` to the millisecond); `transcript-parts`, raw
+61. Media are linked (same `ino`); `cursor.json`, assets, `script.txt`, `.cache/speech.json` and
+    `.cache/sounds.json` are copied (different `ino`, same bytes, same `mtime` to the millisecond); `transcript-parts`, raw
     files, `recording.json`, `desktop.ini`, symlinks and other folders are not.
 62. `project.json` is written last (a spy on the order) with the new id, `createdAt` = now,
     `copyOf` from disk (the renderer's ignored), the name trimmed; the marker exists during the copy

@@ -101,6 +101,16 @@ const SEGMENTATION_FILES = [
 const segmentationMissing = SEGMENTATION_FILES.filter((f) => !assetFiles.some((a) => f.re.test(a.name) && a.size >= f.min))
 if (segmentationMissing.length) fail(`app.asar lacks the background blur files: ${segmentationMissing.map((f) => f.label).join(', ')}`)
 else ok(`background blur: worker, WebAssembly runtime and model in out/renderer/assets (${mb(assetFiles.filter((a) => SEGMENTATION_FILES.some((f) => f.re.test(a.name))).reduce((t, a) => t + a.size, 0))})`)
+// The unwanted-sound finder (docs/design/sound-finder.md) is bundled the same way.
+const SOUND_FILES = [
+  { label: 'sound finder worker', re: /^sounds\.worker-[\w-]+\.js$/, min: 30e3 },
+  { label: 'MediaPipe audio WebAssembly loader', re: /^audio_wasm_module_internal-[\w-]+\.js$/, min: 100e3 },
+  { label: 'MediaPipe audio WebAssembly runtime', re: /^audio_wasm_module_internal-[\w-]+\.wasm$/, min: 4e6 },
+  { label: 'YAMNet sound model', re: /^yamnet-[\w-]+\.tflite$/, min: 4e6 }
+]
+const soundMissing = SOUND_FILES.filter((f) => !assetFiles.some((a) => f.re.test(a.name) && a.size >= f.min))
+if (soundMissing.length) fail(`app.asar lacks the sound finder files: ${soundMissing.map((f) => f.label).join(', ')}`)
+else ok(`sound finder: worker, WebAssembly runtime and model in out/renderer/assets (${mb(assetFiles.filter((a) => SOUND_FILES.some((f) => f.re.test(a.name))).reduce((t, a) => t + a.size, 0))})`)
 
 // 1b. Captions Studio's caption fonts (docs/design/captions-studio.md §6.9): every catalogue font
 // inside app.asar (out/renderer/assets/<name>-<hash>.woff2, Vite's names) is the pinned file, by
