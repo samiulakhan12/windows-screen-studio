@@ -11,6 +11,7 @@ import wasmBinaryUrl from '@mediapipe/tasks-audio/audio_wasm_module_internal.was
 import modelUrl from '../../../../../resources/sounds/yamnet.tflite?url'
 import { SCAN, SOUND_MODEL } from '../../../../shared/audio/sounds'
 import { SoundScanner } from '../../../../shared/audio/soundsScan'
+import { keepOffline } from './offline'
 import type { FromWorker, ToWorker } from './protocol'
 
 /** The parts of the worker scope used here (the renderer is type-checked with the DOM library). */
@@ -18,6 +19,9 @@ const scope = self as unknown as {
   onmessage: ((e: MessageEvent<ToWorker>) => void) | null
   postMessage(message: FromWorker, transfer?: Transferable[]): void
 }
+
+// Before anything loads: MediaPipe's usage statistics stay on this PC.
+keepOffline(self)
 
 const absolute = (url: string): string => new URL(url, self.location.href).href
 

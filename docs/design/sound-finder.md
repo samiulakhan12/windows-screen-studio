@@ -388,7 +388,10 @@ the project. Play, Show ignored and the scan state are view state.
 - Export jobs: `sounds` is validated in `exportJob.ts` (at most 4000 entries, `0 ≤ start < end ≤ 1e7`,
   `0 ≤ gain ≤ 1`). The expression is built from numbers only.
 - The model and the runtime ship inside the app; nothing is downloaded. The worker loads only
-  bundled URLs.
+  bundled URLs, and its `fetch` reaches only the app's own files (`keepOffline`, `offline.ts`):
+  MediaPipe Tasks posts usage statistics to Google (`odml.pa.googleapis.com`) once a minute while a
+  classifier is alive, and the page's Content Security Policy does not cover a module worker loaded
+  from file://. MediaPipe takes the refusal as a failed send and stops; listening goes on.
 
 ## 8. Performance (measured here; a Windows PC of the same class should be close)
 
@@ -427,8 +430,8 @@ shares (ducking, Remove silences) and keeps in `.cache/speech.json`; listening i
 - `src/shared/api/sounds.ts`: `SOUNDS_CHANNELS`, `SoundsApi`.
 - `src/preload/sounds.ts`; `src/main/sounds/soundsIpc.ts` (`registerSoundsIpc`, `stopSoundScans`,
   `SoundStreams`).
-- `src/renderer/src/editor/sounds/`: `sounds.worker.ts`, `protocol.ts`, `soundScan.ts`,
-  `SoundsSection.tsx`, `sounds.css`.
+- `src/renderer/src/editor/sounds/`: `sounds.worker.ts`, `offline.ts` (`keepOffline`), `protocol.ts`,
+  `soundScan.ts`, `SoundsSection.tsx`, `sounds.css`.
 - `resources/sounds/yamnet.tflite`, `resources/sounds/MODEL.md`, `resources/notices/34-yamnet.txt`.
 - Tests: `tests/sounds*.test.ts`, `tests/e2e/sound-finder.e2e.cjs`.
 
@@ -484,6 +487,8 @@ Unit (vitest), each failing without its code:
 - main: streams (chunks, end, errors, backpressure, per-window ownership, limits, idle close,
   stop), cache read/save validation and stat check (with a fake ffmpeg).
 - copy: contrast of the state text tokens (AA).
+- worker: its `fetch` refuses every other host (MediaPipe's usage statistics) from the moment it
+  starts, and still reaches the app's own files, installed and in development.
 
 End to end (`tests/e2e/sound-finder.e2e.cjs`, the built app under Xvfb):
 - a recording with stems: speech on the microphone, a ding and music on the system sound. Find →
@@ -525,6 +530,8 @@ End to end (`tests/e2e/sound-finder.e2e.cjs`, the built app under Xvfb):
   levels and the speech detector, and one closed while listening could end as a false failure.
   A span no found row claims (its key changed with the speech ranges) is listed with Restore; before,
   it stayed in the preview and the export with nothing in the panel to show or undo it.
+  The worker's `fetch` reaches only the app's own files (§7); before, MediaPipe posted usage
+  statistics to Google when listening to a source took more than a minute.
 - `@mediapipe/tasks-audio` is pinned at 1.0.1 (the version of `@mediapipe/tasks-vision` in use);
   `scripts/notices.mjs` names it among the bundled packages and `resources/THIRD_PARTY_NOTICES.txt`
   is regenerated; `resources/notices/34-yamnet.txt` names the model.
