@@ -1,0 +1,440 @@
+import fsCallbacks, { existsSync, mkdirSync, mkdtempSync, promises as fsp, readdirSync, readFileSync, rmSync, statSync, symlinkSync, writeFileSync } from 'node:fs'
+import http from 'node:http'
+import type { AddressInfo } from 'node:net'
+import os from 'node:os'
+import path from 'node:path'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { CANCELLED, copyIntoFolder, SPARE_BYTES } from '../src/main/share/copyToFolder'
+import { postToWebhook } from '../src/main/share/webhookPost'
+import { stepText } from '../src/shared/share/steps'
+
+const signal = (): AbortSignal => new AbortController().signal
+const plenty = async (): Promise<number> => 1e12
+
+describe('copyIntoFolder', () => {
+  let dir: string
+  let video: string
+  let root: string
+  beforeEach(() => {
+    dir = mkdtempSync(path.join(os.tmpdir(), 'ssw-sharecopy-'))
+    mkdirSync(path.join(dir, 'exports'))
+    video = path.join(dir, 'exports', 'Demo.mp4')
+    writeFileSync(video, Buffer.alloc(3 * 1024 * 1024, 7))
+    root = path.join(dir, 'OneDrive')
+    mkdirSync(root)
+  })
+  afterEach(() => rmSync(dir, { recursive: true, force: true }))
+
+  it('copies into the Flown folder with progress, and never replaces a file', async () => {
+    const seen: number[] = []
+    let t = 0
+    const first = await copyIntoFolder(video, root, 'OneDrive', { signal: signal(), freeBytes: plenty, onProgress: (f) => seen.push(f), now: () => (t += 1000) })
+    expect(first).toEqual({ dest: path.join(root, 'Flown', 'Demo.mp4'), bytes: 3 * 1024 * 1024, already: false })
+    expect(readFileSync(first.dest).equals(readFileSync(video))).toBe(true)
+    expect(seen[0]).toBe(0)
+    expect(seen[seen.length - 1]).toBe(1)
+    expect(seen.some((f) => f > 0 && f < 1)).toBe(true)
+    const second = await copyIntoFolder(video, root, 'OneDrive', { signal: signal(), freeBytes: plenty })
+    expect(second.dest).toBe(path.join(root, 'Flown', 'Demo (2).mp4'))
+    // No partial file is left behind.
+    expect(readdirSync(path.join(root, 'Flown')).sort()).toEqual(['Demo (2).mp4', 'Demo.mp4'])
+  })
+
+  it('says it is already there when the video was exported into the folder', async () => {
+    mkdirSync(path.join(root, 'Flown'))
+    const inside = path.join(root, 'Flown', 'Clip.mp4')
+    writeFileSync(inside, 'x')
+    expect(await copyIntoFolder(inside, root, 'OneDrive', { signal: signal(), freeBytes: plenty })).toMatchObject({ already: true, dest: inside })
+    expect(readdirSync(path.join(root, 'Flown'))).toEqual(['Clip.mp4'])
+  })
+
+  it('deletes the partial file when cancelled', async () => {
+    const controller = new AbortController()
+    const run = copyIntoFolder(video, root, 'OneDrive', { signal: controller.signal, freeBytes: plenty, onProgress: (f) => f > 0 && controller.abort() , now: () => Date.now() + Math.random() * 1e6 })
+    await expect(run).rejects.toThrow(CANCELLED)
+    expect(readdirSync(path.join(root, 'Flown'))).toEqual([])
+  })
+
+  it('refuses a name Flown does not export, a missing folder and too little space', async () => {
+    const odd = path.join(dir, 'exports', 'notes.txt')
+    writeFileSync(odd, 'x')
+    await expect(copyIntoFolder(odd, root, 'OneDrive', { signal: signal(), freeBytes: plenty })).rejects.toThrow('its name')
+    await expect(copyIntoFolder(video, path.join(dir, 'gone'), 'Dropbox', { signal: signal(), freeBytes: plenty })).rejects.toThrow('The Dropbox folder is not there any more.')
+    await expect(copyIntoFolder(video, root, 'OneDrive', { signal: signal(), freeBytes: async () => 1000 })).rejects.toThrow('not enough space on the drive of OneDrive')
+    expect(existsSync(path.join(root, 'Flown', 'Demo.mp4'))).toBe(false)
+  })
+
+  it('counts the bytes copies to the same drive still have to write', async () => {
+    const size = 3 * 1024 * 1024
+    // Room for one copy, not two.
+    const free = size + SPARE_BYTES + size / 2
+    const dropbox = path.join(dir, 'Dropbox')
+    mkdirSync(dropbox)
+    let secondChecking = (): void => undefined
+    const checking = new Promise<void>((r) => (secondChecking = r))
+    let firstWriting = (): void => undefined
+    const writing = new Promise<void>((r) => (firstWriting = r))
+    // The second copy checks the space just as the first starts writing.
+    const second = copyIntoFolder(video, dropbox, 'Dropbox', {
+      signal: signal(),
+      freeBytes: async () => {
+        secondChecking()
+        await writing
+        return free
+      }
+    })
+    const first = copyIntoFolder(video, root, 'OneDrive', {
+      signal: signal(),
+      freeBytes: async () => {
+        await checking
+        return free
+      },
+      onProgress: (f) => f === 0 && firstWriting()
+    })
+    const [late, early] = await Promise.allSettled([second, first])
+    expect(late.status === 'rejected' && String(late.reason)).toContain('There is not enough space on the drive of Dropbox')
+    expect(early.status === 'fulfilled' && early.value.dest).toBe(path.join(root, 'Flown', 'Demo.mp4'))
+    expect(readdirSync(path.join(dropbox, 'Flown'))).toEqual([])
+
+    // Finished and cancelled copies count no more.
+    const controller = new AbortController()
+    const cancelled = copyIntoFolder(video, root, 'OneDrive', { signal: controller.signal, freeBytes: async () => free, onProgress: (f) => f > 0 && controller.abort(), now: () => Date.now() + Math.random() * 1e6 })
+    await expect(cancelled).rejects.toThrow(CANCELLED)
+    const exact = async (): Promise<number> => size + SPARE_BYTES
+    expect((await copyIntoFolder(video, dropbox, 'Dropbox', { signal: signal(), freeBytes: exact })).dest).toBe(path.join(dropbox, 'Flown', 'Demo.mp4'))
+  })
+
+  // A second drive where the test machine has one (Linux's /dev/shm).
+  const shm = process.platform === 'linux' && existsSync('/dev/shm') ? '/dev/shm' : ''
+  it.skipIf(!shm)('does not count copies to another drive', async () => {
+    const other = mkdtempSync(path.join(shm, 'ssw-sharedrive-'))
+    try {
+      if (statSync(other).dev === statSync(root).dev) return
+      const exact = 3 * 1024 * 1024 + SPARE_BYTES
+      let secondChecking = (): void => undefined
+      const checking = new Promise<void>((r) => (secondChecking = r))
+      let firstWriting = (): void => undefined
+      const writing = new Promise<void>((r) => (firstWriting = r))
+      const second = copyIntoFolder(video, other, 'USB', {
+        signal: signal(),
+        freeBytes: async () => {
+          secondChecking()
+          await writing
+          return exact
+        }
+      })
+      const first = copyIntoFolder(video, root, 'OneDrive', {
+        signal: signal(),
+        freeBytes: async () => {
+          await checking
+          return exact
+        },
+        onProgress: (f) => f === 0 && firstWriting()
+      })
+      const [late, early] = await Promise.allSettled([second, first])
+      expect(late.status === 'fulfilled' && late.value.dest).toBe(path.join(other, 'Flown', 'Demo.mp4'))
+      expect(early.status === 'fulfilled' && early.value.dest).toBe(path.join(root, 'Flown', 'Demo.mp4'))
+    } finally {
+      rmSync(other, { recursive: true, force: true })
+    }
+  })
+
+  it.skipIf(process.platform === 'win32')('refuses a Flown folder that is a link to somewhere else', async () => {
+    const elsewhere = path.join(dir, 'elsewhere')
+    mkdirSync(elsewhere)
+    symlinkSync(elsewhere, path.join(root, 'Flown'))
+    await expect(copyIntoFolder(video, root, 'OneDrive', { signal: signal(), freeBytes: plenty })).rejects.toThrow('leads somewhere else')
+    expect(readdirSync(elsewhere)).toEqual([])
+  })
+
+  describe('on a drive where the system cannot give the real path (RAM disks, virtual drives)', () => {
+    const native = (): ReturnType<typeof vi.spyOn> =>
+      vi.spyOn(fsp, 'realpath').mockImplementation(async (p) => {
+        throw Object.assign(new Error(`EISDIR: illegal operation on a directory, realpath '${String(p)}'`), { code: 'EISDIR' })
+      })
+    afterEach(() => vi.restoreAllMocks())
+
+    it('still copies', async () => {
+      const spy = native()
+      const done = await copyIntoFolder(video, root, 'OneDrive', { signal: signal(), freeBytes: plenty })
+      expect(spy).toHaveBeenCalled()
+      expect(done).toMatchObject({ dest: path.join(root, 'Flown', 'Demo.mp4'), already: false })
+      expect(readFileSync(done.dest).equals(readFileSync(video))).toBe(true)
+    })
+
+    it.skipIf(process.platform === 'win32')('still refuses a Flown folder that is a link to somewhere else', async () => {
+      native()
+      const elsewhere = path.join(dir, 'elsewhere')
+      mkdirSync(elsewhere)
+      symlinkSync(elsewhere, path.join(root, 'Flown'))
+      await expect(copyIntoFolder(video, root, 'OneDrive', { signal: signal(), freeBytes: plenty })).rejects.toThrow('leads somewhere else')
+      expect(readdirSync(elsewhere)).toEqual([])
+    })
+
+    it('says so plainly, without the path, when no way works', async () => {
+      native()
+      const lstat = fsCallbacks.lstat
+      vi.spyOn(fsCallbacks, 'lstat').mockImplementation(((p: string, ...rest: unknown[]) => {
+        const cb = rest[rest.length - 1] as (e: Error | null) => void
+        if (String(p).startsWith(root)) return cb(Object.assign(new Error('EIO: i/o error'), { code: 'EIO' }))
+        return (lstat as (...a: unknown[]) => void)(p, ...rest)
+      }) as typeof fsCallbacks.lstat)
+      const err = await copyIntoFolder(video, root, 'OneDrive', { signal: signal(), freeBytes: plenty }).catch((e: Error) => e)
+      expect((err as Error).message).toBe('The OneDrive folder could not be opened.')
+    })
+  })
+})
+
+describe('postToWebhook', () => {
+  let server: http.Server
+  let origin: string
+  let received: { path: string; body: string; type: string | undefined }[]
+  let reply: (res: http.ServerResponse) => void
+  beforeEach(async () => {
+    received = []
+    reply = (res) => res.writeHead(200).end('ok')
+    server = http.createServer((req, res) => {
+      let body = ''
+      req.on('data', (c) => (body += c))
+      req.on('end', () => {
+        received.push({ path: req.url ?? '', body, type: req.headers['content-type'] })
+        reply(res)
+      })
+    })
+    await new Promise<void>((r) => server.listen(0, '127.0.0.1', r))
+    origin = `http://127.0.0.1:${(server.address() as AddressInfo).port}`
+  })
+  afterEach(() => new Promise<void>((r) => server.close(() => r())))
+
+  const SLACK = 'https://hooks.slack.com/services/T0001/B0002/secretPART'
+  const deps = (over = {}): Parameters<typeof postToWebhook>[4] => ({ fetch: (url, init) => fetch(url, init), origin, ...over })
+
+  it('posts JSON to the webhook path', async () => {
+    await postToWebhook('slack', SLACK, ['New video: Demo (0:05)'], signal(), deps())
+    expect(received).toEqual([{ path: '/services/T0001/B0002/secretPART', body: '{"text":"New video: Demo (0:05)"}', type: 'application/json' }])
+  })
+
+  it('checks the URL again before posting', async () => {
+    await expect(postToWebhook('slack', 'https://example.com/services/x', ['x'], signal(), deps())).rejects.toThrow('incoming webhook')
+    await expect(postToWebhook('discord', SLACK, ['x'], signal(), deps())).rejects.toThrow()
+    expect(received).toEqual([])
+  })
+
+  it('never follows a redirect', async () => {
+    reply = (res) => res.writeHead(302, { location: `${origin}/elsewhere` }).end()
+    await expect(postToWebhook('slack', SLACK, ['x'], signal(), deps())).rejects.toThrow('Could not reach Slack')
+    expect(received.map((r) => r.path)).toEqual(['/services/T0001/B0002/secretPART'])
+  })
+
+  it('turns statuses into messages without the URL', async () => {
+    reply = (res) => res.writeHead(404).end('no_service')
+    const err = await postToWebhook('slack', SLACK, ['x'], signal(), deps()).catch((e: Error) => e)
+    expect((err as Error).message).toBe('This webhook no longer exists. Paste a new one in Settings › Share.')
+    expect((err as Error).message).not.toContain('secretPART')
+  })
+
+  it('reads at most a little of a long answer', async () => {
+    reply = (res) => {
+      res.writeHead(200)
+      res.end(Buffer.alloc(5 * 1024 * 1024, 97))
+    }
+    await expect(postToWebhook('slack', SLACK, ['x'], signal(), deps())).resolves.toBeUndefined()
+  })
+
+  it('gives up after the time limit', async () => {
+    reply = () => undefined
+    await expect(postToWebhook('slack', SLACK, ['x'], signal(), deps({ timeoutMs: 200 }))).rejects.toThrow('did not answer in 15 s')
+  })
+
+  it('says when the chat cannot be reached', async () => {
+    await expect(postToWebhook('slack', SLACK, ['x'], signal(), deps({ origin: 'http://127.0.0.1:9' }))).rejects.toThrow('Could not reach Slack')
+  })
+})
+
+describe('quitting during a copy', () => {
+  it('deletes the partial file at once', async () => {
+    const { removePartialCopies } = await import('../src/main/share/copyToFolder')
+    const dir = mkdtempSync(path.join(os.tmpdir(), 'ssw-sharequit-'))
+    try {
+      const video = path.join(dir, 'Big.mp4')
+      writeFileSync(video, Buffer.alloc(8 * 1024 * 1024, 1))
+      const root = path.join(dir, 'Drive')
+      mkdirSync(root)
+      const controller = new AbortController()
+      let partial = ''
+      const run = copyIntoFolder(video, root, 'Drive', {
+        signal: controller.signal,
+        freeBytes: plenty,
+        now: () => Date.now() + Math.random() * 1e6,
+        onProgress: (f) => {
+          if (f > 0 && !partial) {
+            partial = readdirSync(path.join(root, 'Flown')).find((n) => n.includes('.partial-')) ?? 'none'
+            removePartialCopies()
+            controller.abort()
+          }
+        }
+      })
+      await expect(run).rejects.toThrow()
+      expect(partial).toMatch(/^\.~Big\.partial-.*\.tmp$/)
+      expect(readdirSync(path.join(root, 'Flown'))).toEqual([])
+    } finally {
+      rmSync(dir, { recursive: true, force: true })
+    }
+  })
+})
+
+describe('claiming the name', () => {
+  it('never replaces a file that appears while copying, and sweeps old partial files', async () => {
+    const { claimName, partialName, STALE_PARTIAL_MS } = await import('../src/main/share/copyToFolder')
+    const { utimesSync } = await import('node:fs')
+    const dir = mkdtempSync(path.join(os.tmpdir(), 'ssw-shareclaim-'))
+    try {
+      const temp = partialName(path.join(dir, 'Demo.mp4'))
+      expect(path.basename(temp)).toMatch(/^\.~Demo\.partial-\d+-[0-9a-z]+\.tmp$/)
+      writeFileSync(temp, 'new')
+      writeFileSync(path.join(dir, 'Demo.mp4'), 'theirs')
+      expect(await claimName(temp, dir, 'Demo.mp4')).toBe(path.join(dir, 'Demo (2).mp4'))
+      expect(readFileSync(path.join(dir, 'Demo.mp4'), 'utf8')).toBe('theirs')
+      expect(readFileSync(path.join(dir, 'Demo (2).mp4'), 'utf8')).toBe('new')
+      expect(existsSync(temp)).toBe(false)
+
+      // A file that appears after the name was checked is still not replaced.
+      const temp2 = partialName(path.join(dir, 'Demo.mp4'))
+      writeFileSync(temp2, 'newer')
+      let first = true
+      const raced = await claimName(temp2, dir, 'Demo.mp4', (f) => (first ? ((first = false), false) : existsSync(f)))
+      expect(raced).toBe(path.join(dir, 'Demo (3).mp4'))
+      expect(readFileSync(path.join(dir, 'Demo.mp4'), 'utf8')).toBe('theirs')
+
+      // A copy into the folder removes partial files a crash left there an hour ago, not newer ones.
+      const root = path.join(dir, 'Drive')
+      mkdirSync(path.join(root, 'Flown'), { recursive: true })
+      const old = path.join(root, 'Flown', '.~Old.partial-1-abc.tmp')
+      const fresh = path.join(root, 'Flown', '.~Fresh.partial-1-abd.tmp')
+      writeFileSync(old, 'x')
+      writeFileSync(fresh, 'x')
+      const t = (Date.now() - STALE_PARTIAL_MS - 60_000) / 1000
+      utimesSync(old, t, t)
+      const video = path.join(dir, 'Demo.mp4')
+      await copyIntoFolder(video, root, 'Drive', { signal: signal(), freeBytes: plenty })
+      expect(existsSync(old)).toBe(false)
+      expect(existsSync(fresh)).toBe(true)
+    } finally {
+      rmSync(dir, { recursive: true, force: true })
+    }
+  })
+
+  // EISDIR: Windows on a FAT or exFAT drive; UNKNOWN: an error Node does not name (virtual drives).
+  it.each(['EISDIR', 'UNKNOWN'])('renames into place on a drive where Windows refuses the link with %s', async (code) => {
+    const dir = mkdtempSync(path.join(os.tmpdir(), 'ssw-sharefat-'))
+    const link = vi.spyOn(fsp, 'link').mockRejectedValue(Object.assign(new Error(`${code}: link`), { code }))
+    try {
+      const video = path.join(dir, 'Demo.mp4')
+      writeFileSync(video, 'video')
+      const root = path.join(dir, 'USB')
+      mkdirSync(path.join(root, 'Flown'), { recursive: true })
+      writeFileSync(path.join(root, 'Flown', 'Demo.mp4'), 'theirs')
+      const done = await copyIntoFolder(video, root, 'USB', { signal: signal(), freeBytes: plenty })
+      expect(link).toHaveBeenCalled()
+      expect(done.dest).toBe(path.join(root, 'Flown', 'Demo (2).mp4'))
+      expect(readFileSync(done.dest, 'utf8')).toBe('video')
+      expect(readFileSync(path.join(root, 'Flown', 'Demo.mp4'), 'utf8')).toBe('theirs')
+      expect(readdirSync(path.join(root, 'Flown')).sort()).toEqual(['Demo (2).mp4', 'Demo.mp4'])
+    } finally {
+      link.mockRestore()
+      rmSync(dir, { recursive: true, force: true })
+    }
+  })
+
+  it('tries the rename again while a scanner holds the fresh file, and never replaces one that appears meanwhile', async () => {
+    const dir = mkdtempSync(path.join(os.tmpdir(), 'ssw-shareheld-'))
+    const link = vi.spyOn(fsp, 'link').mockRejectedValue(Object.assign(new Error('EISDIR: link'), { code: 'EISDIR' }))
+    const realRename = fsp.rename.bind(fsp)
+    const rename = vi.spyOn(fsp, 'rename')
+    try {
+      const video = path.join(dir, 'Demo.mp4')
+      writeFileSync(video, 'video')
+      const root = path.join(dir, 'USB')
+      mkdirSync(root)
+      // Held once: the copy still lands.
+      rename.mockRejectedValueOnce(Object.assign(new Error('EBUSY: rename'), { code: 'EBUSY' }))
+      const done = await copyIntoFolder(video, root, 'USB', { signal: signal(), freeBytes: plenty })
+      expect(done.dest).toBe(path.join(root, 'Flown', 'Demo.mp4'))
+      expect(readFileSync(done.dest, 'utf8')).toBe('video')
+      expect(readdirSync(path.join(root, 'Flown'))).toEqual(['Demo.mp4'])
+
+      // A file that appears while waiting keeps its name; the copy takes the next one.
+      rename.mockReset()
+      rename.mockImplementationOnce(async (_from, to) => {
+        writeFileSync(String(to), 'theirs')
+        throw Object.assign(new Error('EBUSY: rename'), { code: 'EBUSY' })
+      })
+      rename.mockImplementation(realRename)
+      const { claimName, partialName } = await import('../src/main/share/copyToFolder')
+      const temp = partialName(path.join(dir, 'Clip.mp4'))
+      writeFileSync(temp, 'new')
+      expect(await claimName(temp, dir, 'Clip.mp4', existsSync, 1)).toBe(path.join(dir, 'Clip (2).mp4'))
+      expect(readFileSync(path.join(dir, 'Clip.mp4'), 'utf8')).toBe('theirs')
+      expect(readFileSync(path.join(dir, 'Clip (2).mp4'), 'utf8')).toBe('new')
+    } finally {
+      rename.mockRestore()
+      link.mockRestore()
+      rmSync(dir, { recursive: true, force: true })
+    }
+  })
+
+  it('names the destination once when the copy fails', async () => {
+    const dir = mkdtempSync(path.join(os.tmpdir(), 'ssw-sharefail-'))
+    const link = vi.spyOn(fsp, 'link')
+    const rename = vi.spyOn(fsp, 'rename')
+    try {
+      const video = path.join(dir, 'Demo.mp4')
+      writeFileSync(video, 'video')
+      const root = path.join(dir, 'OneDrive')
+      mkdirSync(root)
+      const failed = async (): Promise<string> => {
+        const err = await copyIntoFolder(video, root, 'OneDrive', { signal: signal(), freeBytes: plenty }).catch((e: Error) => e)
+        expect(err).toBeInstanceOf(Error)
+        return stepText({ target: 'cf0000000001', kind: 'copy', service: 'onedrive', label: 'OneDrive', state: 'failed', message: (err as Error).message })
+      }
+      // Held for good (the cloud app keeps the file open).
+      link.mockRejectedValue(Object.assign(new Error('EISDIR: link'), { code: 'EISDIR' }))
+      rename.mockRejectedValue(Object.assign(new Error('EPERM: rename'), { code: 'EPERM' }))
+      expect(await failed()).toBe('Could not copy to OneDrive: the folder is read-only or a file there is in use.')
+      // Any other failure.
+      link.mockRejectedValue(Object.assign(new Error('EEXIST: link'), { code: 'EEXIST' }))
+      expect(await failed()).toBe('Could not copy to OneDrive: No free file name was found.')
+      expect(readdirSync(path.join(root, 'Flown'))).toEqual([])
+    } finally {
+      rename.mockRestore()
+      link.mockRestore()
+      rmSync(dir, { recursive: true, force: true })
+    }
+  })
+
+  it('deletes the partial name at quit when a scanner held it after the link', async () => {
+    const { removePartialCopies } = await import('../src/main/share/copyToFolder')
+    const dir = mkdtempSync(path.join(os.tmpdir(), 'ssw-sharelinked-'))
+    const realRm = fsp.rm.bind(fsp)
+    const rm = vi.spyOn(fsp, 'rm').mockImplementation(async (file, opts) => {
+      if (String(file).includes('.partial-')) throw Object.assign(new Error('EBUSY: rm'), { code: 'EBUSY' })
+      return realRm(file, opts)
+    })
+    try {
+      const video = path.join(dir, 'Demo.mp4')
+      writeFileSync(video, 'video')
+      const root = path.join(dir, 'OneDrive')
+      mkdirSync(root)
+      const done = await copyIntoFolder(video, root, 'OneDrive', { signal: signal(), freeBytes: plenty })
+      expect(done.dest).toBe(path.join(root, 'Flown', 'Demo.mp4'))
+      expect(readdirSync(path.join(root, 'Flown')).some((n) => n.includes('.partial-'))).toBe(true)
+      rm.mockRestore()
+      removePartialCopies()
+      expect(readdirSync(path.join(root, 'Flown'))).toEqual(['Demo.mp4'])
+      expect(readFileSync(done.dest, 'utf8')).toBe('video')
+    } finally {
+      rm.mockRestore()
+      rmSync(dir, { recursive: true, force: true })
+    }
+  }, 20_000)
+})

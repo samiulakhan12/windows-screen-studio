@@ -73,7 +73,7 @@ page for a manual reinstall.
 |---|---|---|
 | Check | 30 s after start, then every 4 h, and on *Check for updates* | Packaged Windows builds only; never in development or tests (a fake updater, §6). |
 | Download | at once when an update is found and *Update Flown automatically* is on; otherwise on *Download* | One at a time; progress shown in Settings. |
-| Install | when Flown quits (`autoInstallOnAppQuit`), or on *Restart now* | *Restart now* is refused while anything is running: a recording (until it has been saved and processed), an export, captions or analysis, an import, Clean voice, or a copy being made. The button says why. |
+| Install | when Flown quits (`autoInstallOnAppQuit`), or on *Restart now* | *Restart now* is refused while anything is running: a recording (until it has been saved and processed), an export, captions or analysis, an import, Clean voice, a copy being made, or a share still copying or posting. The button says why. |
 
 The four-hour period and the 30 s delay keep start-up quick and the number of requests small
 (electron-updater reads the repository's public releases feed, its latest release and
@@ -166,7 +166,8 @@ now); while it waits it is `aria-disabled`, not removed or disabled, so the keyb
   handler uses) and the event `updates:changed` to every window.
 - Busy check (`busyReason()`): `jobsSnapshot()` (exports, captions, analysis), plus small read-only
   getters added to the features that own the state: `exportRunning()` (exportIpc),
-  `importRunning()` (importVideo), `voiceCleaner.busy` (voice), `copyRunning()` (projectsIpc), and
+  `importRunning()` (importVideo), `voiceCleaner.busy` (voice), `copyRunning()` (projectsIpc),
+  `shareRunning()` (share: a copy into a cloud folder or a chat post still running), and
   for a recording `isToolbarVisible()` (the recording bar shows from the countdown until the
   recording ends; afterwards it is only hidden, kept for the next one, so an open bar is not a
   recording). The steps on either side of the bar (a recording being prepared, then saved and

@@ -1,0 +1,141 @@
+/**
+ * The page side of "Share without a server" (F-22, docs/design/share.md): the destinations set up
+ * in Settings › Share, the export dialog's "After export" choices remembered per preset, and the
+ * share runs main reports for a file.
+ */
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import type { ShareMeta, ShareRunView, ShareTargets } from '../../../shared/api/share'
+import { choicesFor, readShareChoices, withChoices } from '../../../shared/share/choices'
+import { folderPlaces, hookPlaces, withPlace } from '../../../shared/share/names'
+import { ipcMessage } from '../settings/providerText'
+
+const CHOICES_KEY = 'export-share'
+
+/** Folders that are on and chats that can be read, as offered (folders first). */
+export function offeredIds(t: ShareTargets | null): string[] {
+  if (!t) return []
+  return [...t.folders.filter((f) => f.on).map((f) => f.id), ...t.hooks.filter((h) => h.readable).map((h) => h.id)]
+}
+
+/**
+ * "Copy to OneDrive" / "Post to #demos" for a destination id; a label two destinations share says
+ * where each is ("Copy to Google Drive (H:)"), as main's steps and notification buttons do.
+ */
+export function actionLabel(t: ShareTargets | null, id: string): string {
+  if (!t) return 'Share'
+  const f = t.folders.find((x) => x.id === id)
+  if (f) return `Copy to ${withPlace(f.label, folderPlaces(t.folders).get(id))}`
+  const h = t.hooks.find((x) => x.id === id)
+  return h ? `Post to ${withPlace(h.label, hookPlaces(t.hooks.filter((x) => x.readable)).get(id))}` : 'Share'
+}
+
+/** The tooltip of a destination: the folder's path, or the chat's service and masked webhook. */
+export function actionTitle(t: ShareTargets | null, id: string): string {
+  const f = t?.folders.find((x) => x.id === id)
+  if (f) return `Copy the video into ${f.path}${f.path.includes('\\') ? '\\' : '/'}Flown`
+  const h = t?.hooks.find((x) => x.id === id)
+  return h ? `Post the title, length and where it was saved to ${h.label} (${h.masked}). The video is not uploaded.` : ''
+}
+
+/**
+ * The destinations; `seen` once Settings › Share has been on screen (found folders are offered from
+ * then on). Turning it on loads them again, which tells main.
+ */
+export function useShareTargets(seen = false): { targets: ShareTargets | null; error: string | null; reload: (refresh?: boolean) => void; set: (t: ShareTargets) => void } {
+  const [targets, setTargets] = useState<ShareTargets | null>(null)
+  const [error, setError] = useState<string | null>(null)
+  const reload = useCallback((refresh = false) => {
+    window.api.shareTargets(refresh, seen).then(
+      (t) => {
+        setTargets(t)
+        setError(null)
+      },
+      (err: unknown) => setError(ipcMessage(err))
+    )
+  }, [seen])
+  useEffect(() => reload(), [reload])
+  return { targets, error, reload, set: setTargets }
+}
+
+function readChoices(): ReturnType<typeof readShareChoices> {
+  try {
+    return readShareChoices(JSON.parse(localStorage.getItem(CHOICES_KEY) ?? '{}'))
+  } catch {
+    return readShareChoices({})
+  }
+}
+
+export interface AfterExport {
+  targets: ShareTargets | null
+  offered: string[]
+  chosen: string[]
+  toggle: (id: string) => void
+  /**
+   * After a single export: tells main about the file (the notification then offers the
+   * destinations not chosen) and starts the chosen ones without waiting for them. Never throws;
+   * a share that could not start is said in `error` (the done view shows it).
+   */
+  begin: (file: string, meta: ShareMeta) => Promise<void>
+  error: string | null
+}
+
+/** The export dialog's "After export" row, remembered for `preset`. */
+export function useAfterExport(preset: string | undefined): AfterExport {
+  const { targets } = useShareTargets()
+  const [choices, setChoices] = useState(readChoices)
+  const [error, setError] = useState<string | null>(null)
+  const offered = useMemo(() => offeredIds(targets), [targets])
+  const chosen = useMemo(() => choicesFor(choices, preset, offered), [choices, preset, offered])
+  // An export's start keeps the `begin` of the render Export was pressed in; this is what is shown now.
+  const latest = useRef({ targets, choices, preset })
+  latest.current = { targets, choices, preset }
+  const toggle = (id: string): void => {
+    const ids = chosen.includes(id) ? chosen.filter((x) => x !== id) : [...chosen, id]
+    const next = withChoices(choices, preset, ids, offered)
+    setChoices(next)
+    try {
+      localStorage.setItem(CHOICES_KEY, JSON.stringify(next))
+    } catch {
+      // Not remembered; the choice still applies now.
+    }
+  }
+  const begin = async (file: string, meta: ShareMeta): Promise<void> => {
+    setError(null)
+    const fail = (err: unknown): void => setError(`Could not share: ${ipcMessage(err)}`)
+    // Export may have been pressed before the destinations loaded: what is chosen is read as the
+    // export ends, and destinations still loading then are waited for (no remembered choice skipped).
+    const now = latest.current
+    const t = now.targets ?? (await window.api.shareTargets().catch(() => null))
+    const ids = choicesFor(now.choices, now.preset, offeredIds(t))
+    await window.api.shareOffer(file, meta, ids.length > 0).catch(fail)
+    if (ids.length) void window.api.shareStart(file, ids, meta).catch(fail)
+  }
+  return { targets, offered, chosen, toggle, begin, error }
+}
+
+/** The share runs of `file`, kept up to date (main notifies how a run ended while none shows it). */
+export function useShareRuns(file: string): ShareRunView[] {
+  const [runs, setRuns] = useState<ShareRunView[]>([])
+  useEffect(() => {
+    let live = true
+    void window.api.shareWatch(file, true).catch(() => undefined)
+    const off = window.api.onShareUpdate((run) => {
+      if (run.file !== file) return
+      setRuns((list) => (list.some((r) => r.id === run.id) ? list.map((r) => (r.id === run.id ? run : r)) : [...list, run]))
+    })
+    window.api.shareRuns(file).then(
+      (list) => {
+        if (!live) return
+        // Updates that came in meanwhile are newer than the list.
+        setRuns((now) => list.map((r) => now.find((x) => x.id === r.id) ?? r).concat(now.filter((x) => !list.some((r) => r.id === x.id))))
+      },
+      () => undefined
+    )
+    return () => {
+      live = false
+      off()
+      void window.api.shareWatch(file, false).catch(() => undefined)
+    }
+  }, [file])
+  return runs
+}

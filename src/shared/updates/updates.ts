@@ -195,7 +195,7 @@ export function spokenStatus(s: UpdateState): string {
  * What keeps Restart now from running (main checks it again when it is pressed). 'processing' (a
  * recording being saved or processed) is the page's check: main cannot see that step.
  */
-export type BusyKind = 'recording' | 'processing' | 'export' | 'captions' | 'analysis' | 'import' | 'voice' | 'copy'
+export type BusyKind = 'recording' | 'processing' | 'export' | 'captions' | 'analysis' | 'import' | 'voice' | 'copy' | 'share'
 
 export const BUSY_COPY: Record<BusyKind, string> = {
   recording: 'Stop the recording first.',
@@ -205,5 +205,6 @@ export const BUSY_COPY: Record<BusyKind, string> = {
   analysis: 'Wait for the sound analysis to finish.',
   import: 'Wait for the import to finish, or cancel it.',
   voice: 'Wait for Clean voice to finish.',
-  copy: 'Wait for the copy to finish, or cancel it.'
+  copy: 'Wait for the copy to finish, or cancel it.',
+  share: 'Wait for the share to finish.'
 }

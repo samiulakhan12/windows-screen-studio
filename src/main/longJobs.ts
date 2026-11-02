@@ -35,12 +35,23 @@ export interface TaskbarPort {
   isFocused(): boolean
   /** Flashes the taskbar button until the window is focused. */
   flash(): void
-  notify(copy: NotificationCopy, handlers: { open: () => void; show: () => void }): void
+  notify(copy: NotificationCopy, handlers: { open: () => void; show: () => void; extras?: NotificationExtra[] }): void
   keepAwake(on: boolean): void
   onPower(listener: (event: PowerEvent) => void): void
   /** Opens / shows an exported file (shell.openPath / showItemInFolder). */
   openFile(file: string): void
   showFile(file: string): void
+}
+
+/** A button after Open / Show in folder on "Export finished" (F-22 share, docs/design/share.md §2.7). */
+export interface NotificationExtra {
+  text: string
+  run: () => void
+}
+let extrasFor: ((file: string) => Promise<NotificationExtra[]>) | null = null
+/** Sets what adds buttons to a single file's "Export finished" notification (share). */
+export function setNotificationExtras(provider: ((file: string) => Promise<NotificationExtra[]>) | null): void {
+  extrasFor = provider
 }
 
 /** The page that drives a job: it gets the commands, and its going away ends the job. */
@@ -236,9 +247,11 @@ async function endJob(job: Job, outcome: JobOutcome): Promise<void> {
   if (!copy) return
   port.flash()
   const first = files[0]?.path
+  const extras = files.length === 1 && extrasFor ? await extrasFor(files[0].path).catch(() => []) : []
   port.notify(copy, {
     open: () => first && port?.openFile(first),
-    show: () => first && port?.showFile(first)
+    show: () => first && port?.showFile(first),
+    ...(extras.length ? { extras } : {})
   })
 }
 

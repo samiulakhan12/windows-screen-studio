@@ -25,6 +25,10 @@ src/main/               Electron main process
                           project folders, load/save with Windows lock retries, saved style defaults
   projectCopy.ts          Duplicate / Make a vertical version: a new folder, media hard-linked or copied,
                           project.json last (docs/design/vertical-video.md §4.7)
+  share/                  Share without a server (docs/design/share.md): cloud folders found (registry
+                          via reg.exe, Dropbox info.json, usual places), copies into <folder>\Flown,
+                          chat webhooks (Slack, Discord, Teams; URLs encrypted in userData/share.json),
+                          the share runs and the "Export finished" notification's buttons
   proxyArgs.ts            WebM / native MP4 -> 60 fps short-GOP proxy (GPU encoder when available, crop, fit)
   exportIpc.ts, exportArgs.ts, exportJob.ts, exportClipboard.ts, ffmpeg.ts, hwEncoders.ts
                           export encoder processes, safe temp output, clipboard, GPU encoder detection

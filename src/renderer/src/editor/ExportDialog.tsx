@@ -48,6 +48,9 @@ import { tickedExportLanguages } from '../../../shared/captions/captionTracks'
 import { partSource, partThumbnailFrame, writeBundle } from './exportBundleRun'
 import { bundleKinds, chapterParts, chaptersNote, normalizeBundle, partFileNames, perChapterBlocked, stillAcrossChapters, type BundleOptions } from '../../../shared/render/exportBundle'
 import { FORMAT_EXTENSIONS } from '../../../shared/render/exportPresets'
+import { ShareAfterExport } from '../share/ShareAfterExport'
+import { ShareDone } from '../share/ShareDone'
+import { useAfterExport } from '../share/useShare'
 import type { BatchExtras } from './exporter'
 import './exportDialog.css'
 import './handsOff.css'
@@ -279,6 +282,8 @@ export function ExportDialog(props: Props): JSX.Element {
   const [bundle, setBundle] = useState<BundleOptions>(() => withoutLanguages(normalizeBundle(readJson(BUNDLE_KEY, {}))))
   // Also inside the video (Captions Studio §2.13): off when the dialog opens.
   const [streams, setStreams] = useState(false)
+  // Share without a server (F-22): copy to a cloud folder and post to a chat after export, per preset.
+  const share = useAfterExport(options.preset)
   const { project } = props
   const clips = project.clips
   // Fonts text uses that cannot be loaded (their text is drawn with the default font) and images
@@ -447,6 +452,7 @@ export function ExportDialog(props: Props): JSX.Element {
       link?.progress(null, false)
       const kinds = bundleKinds(bundle, options.format, bundleHas)
       const extras = await writeBundle(outputPath, { project, kinds, title: project.name, thumbnail: thumbnailOf(options), ...bundleLanguages })
+      await share.begin(outputPath, { title: project.name, seconds: length })
       void link?.end({ kind: 'done', files: [outputPath] })
       setPhase({ kind: 'done', path: outputPath, targetMB: options.targetSizeMB, limit: preset?.limits?.maxMB ? { label: preset.label, maxMB: preset.limits.maxMB } : undefined, extras, ...result })
     } catch (err) {
@@ -964,6 +970,7 @@ export function ExportDialog(props: Props): JSX.Element {
                       chapterCount={parts.length}
                       savedDescription={!!project.publish?.description}
                     />
+                    <ShareAfterExport share={share} single={mode === 'single' && !perChapter} />
                   </div>
                 )}
               </div>
@@ -1013,6 +1020,7 @@ export function ExportDialog(props: Props): JSX.Element {
             </p>
             <SizeReport result={phase} />
             <ExtrasReport extras={phase.extras} />
+            <ShareDone file={phase.path} meta={{ title: project.name, seconds: length }} targets={share.targets} startError={share.error} />
             {!gif && <ChapterCopy chapters={chapters} length={length} gif={false} />}
             {copy.kind === 'failed' && <p className="hint warn">{copy.message}</p>}
             <footer className="modal-foot">
