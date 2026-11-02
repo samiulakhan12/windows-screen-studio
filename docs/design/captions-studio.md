@@ -663,8 +663,10 @@ Keys inside panels: `Ctrl+B` and `Ctrl+Shift+B` in the Transcript word list (§2
 - **Translate** and **Translate again** are off while a translation runs. One started with the
   keyboard gives the focus back when it ends: done, to Add a language as above; failed or
   cancelled, to **Translate**; from Translate again, to that row's Translate again, or its Show on
-  the video once it is up to date. Focus moved elsewhere meanwhile stays there, and a click since
-  leaves it where the click left it.
+  the video once it is up to date. Focus moved elsewhere meanwhile stays there. A click, or a key
+  other than Tab, Shift+Tab or Enter on **Cancel** (an editor shortcut, such as Right stepping a
+  frame), pressed while it runs leaves the focus where it is, so the next Right still steps a frame
+  and does not switch the captions shown on the video.
 - Each **Show on the video** radio is named with its row: "Show on the video, Bengali ·
   translated with Gemini". All four arrow keys move between them (Left and Right do not step the
   playhead there).

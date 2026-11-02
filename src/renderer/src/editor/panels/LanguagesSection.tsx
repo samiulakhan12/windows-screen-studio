@@ -25,6 +25,9 @@ import { useReturnFocus } from '../returnFocus'
  */
 const OFFLINE_TRANSLATION = false
 
+/** Keys pressed on their own before another (Shift before Shift+Tab). */
+const MODIFIER_KEYS = new Set(['Shift', 'Control', 'Alt', 'Meta'])
+
 const KIND_NAMES: Record<AiProviderInfo['kind'], string> = { openai: 'OpenAI', gemini: 'Gemini', anthropic: 'Claude' }
 export const providerName = (p: AiProviderInfo): string => p.label || KIND_NAMES[p.kind]
 
@@ -78,6 +81,7 @@ export function LanguagesSection({ project }: { project: Project }): JSX.Element
   const [status, setStatus] = useState('')
   const select = useRef<HTMLSelectElement>(null)
   const translateButton = useRef<HTMLButtonElement>(null)
+  const cancelButton = useRef<HTMLButtonElement>(null)
   const rowsBox = useRef<HTMLDivElement>(null)
   const focusSelect = useRef(false)
   // Closed with Close from the keyboard, the form gives the focus back to Add a language.
@@ -188,10 +192,27 @@ export function LanguagesSection({ project }: { project: Project }): JSX.Element
     const again = rowsBox.current?.querySelector<HTMLButtonElement>(`[id="${name}-again"]`)
     return again && !again.disabled ? again : (rowsBox.current?.querySelector<HTMLElement>(`[id="${name}-show-radio"]`) ?? null)
   }
+  // While it runs, a click or a key other than Tab (an editor shortcut, such as Right stepping a
+  // frame) means the user has moved on: the focus then stays where it is when the translation ends,
+  // so a later Right steps a frame instead of picking another radio. Enter on Cancel still lands.
+  useEffect(() => {
+    if (!job) return
+    const movedOn = (): void => void (landing.current = null)
+    const onKey = (e: KeyboardEvent): void => {
+      if (e.key === 'Tab' || MODIFIER_KEYS.has(e.key) || (e.key === 'Enter' && e.target === cancelButton.current)) return
+      movedOn()
+    }
+    window.addEventListener('keydown', onKey, true)
+    window.addEventListener('pointerdown', movedOn, true)
+    return () => {
+      window.removeEventListener('keydown', onKey, true)
+      window.removeEventListener('pointerdown', movedOn, true)
+    }
+  }, [job])
   // When it ends (done, failed or cancelled) with the focus still on the page, the keyboard goes
   // back: to Translate while the form stays open, to Add a language once it closed (or to the new
   // row when the project's translations are full), to its row for Translate again. Focus moved
-  // elsewhere, or a click since, is left alone.
+  // elsewhere, or a click or a shortcut since, is left alone.
   useEffect(() => {
     const to = landing.current
     if (!to || job) return
@@ -336,7 +357,7 @@ export function LanguagesSection({ project }: { project: Project }): JSX.Element
             <span className="hint" role="status">
               Translating {job.count} {job.count === 1 ? 'caption' : 'captions'} into {languageName(job.language)}…
             </span>
-            <button className="btn small ghost" onClick={cancel}>
+            <button ref={cancelButton} className="btn small ghost" onClick={cancel}>
               Cancel
             </button>
           </div>

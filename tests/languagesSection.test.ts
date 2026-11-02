@@ -8,8 +8,8 @@ import { button, byTestId, contexts, focused, key, mockReact, settle, testStore,
  * keeps Left and Right (the editor would step the playhead), and the forms that open in place of
  * their button (Add a language, Add a word) give the keyboard back to it when the keyboard closes
  * them, or to what took the button's place once it is off; a click does not. A translation the
- * keyboard started puts the focus back when it ends, done, failed or cancelled. Clean up's hints
- * name nothing this version lacks.
+ * keyboard started puts the focus back when it ends, done, failed or cancelled, unless a click or
+ * an editor shortcut came meanwhile. Clean up's hints name nothing this version lacks.
  */
 
 // Whether the last input was a key (focus.ts keeps it from the window's events, which these tests have not).
@@ -19,7 +19,14 @@ vi.mock('../src/renderer/src/editor/focus', async (importOriginal) => ({ ...(awa
 const sent: unknown[] = []
 // A translation answers at once, or once `ai.wait` settles; it fails when `ai.fail` is set.
 const ai: { wait: Promise<void> | null; fail: boolean } = { wait: null, fail: false }
-vi.stubGlobal('document', { activeElement: null, body: {} })
+/** The page (document.body). */
+const page = {}
+vi.stubGlobal('document', { activeElement: null, body: page })
+/** The window's listeners, by event type. */
+const listeners: Record<string, Set<(e: unknown) => void>> = {}
+/** A key or a pointer press as the window hears it: `target` is what had the focus (the page by default). */
+const fire = (type: 'keydown' | 'pointerdown', e: { key?: string; shiftKey?: boolean; target?: unknown } = {}): void =>
+  listeners[type]?.forEach((fn) => fn({ type, target: page, ...e }))
 /** What has the focus: null stands for the page (the focused control went, or was turned off). */
 const setActive = (el: unknown): void => void ((globalThis as unknown as { document: { activeElement: unknown } }).document.activeElement = el)
 vi.stubGlobal('window', {
@@ -34,8 +41,8 @@ vi.stubGlobal('window', {
       return { task: 'translate', segments: req.segments.map((s) => ({ id: s.id, start: s.start, end: s.end, text: `bn ${s.text}` })) }
     }
   },
-  addEventListener: () => undefined,
-  removeEventListener: () => undefined,
+  addEventListener: (type: string, fn: (e: unknown) => void) => void (listeners[type] ??= new Set()).add(fn),
+  removeEventListener: (type: string, fn: (e: unknown) => void) => void listeners[type]?.delete(fn),
   dispatchEvent: () => true
 })
 
@@ -154,6 +161,11 @@ describe('Add a language gives the keyboard back to its button (§2.15)', () => 
     let els = await openForm()
     ;(byTestId(els, 'track-translate')!.props.onClick as () => void)()
     els = await settle(languages())
+    // Tab, Tab and Shift+Tab look for the focus: Cancel.
+    fire('keydown', { key: 'Tab' })
+    fire('keydown', { key: 'Tab' })
+    fire('keydown', { key: 'Shift', shiftKey: true })
+    fire('keydown', { key: 'Tab', shiftKey: true })
     setActive(button(els, 'Cancel'))
     release()
     await answer()
@@ -181,7 +193,9 @@ describe('Add a language gives the keyboard back to its button (§2.15)', () => 
     let els = await openForm()
     ;(byTestId(els, 'track-translate')!.props.onClick as () => void)()
     els = await settle(languages())
-    ;(button(els, 'Cancel')!.props.onClick as () => void)()
+    const cancel = button(els, 'Cancel')!
+    fire('keydown', { key: 'Enter', target: (cancel.ref as { current?: unknown } | null)?.current })
+    ;(cancel.props.onClick as () => void)()
     els = await settle(languages())
     expect(textOf(els.find((e) => e.props.role === 'alert'))).toBe('Could not translate: it was cancelled.')
     expect(focused.at(-1)?.props['data-testid']).toBe('track-translate')
@@ -209,6 +223,41 @@ describe('Add a language gives the keyboard back to its button (§2.15)', () => 
     expect(store.state.captionTracks).toHaveLength(1)
     expect(focused).toEqual([])
   })
+
+  it('… also when keys follow the click', async () => {
+    keys.last = true
+    let release = (): void => undefined
+    ai.wait = new Promise((r) => (release = r))
+    const els = await openForm()
+    focused.length = 0
+    ;(byTestId(els, 'track-translate')!.props.onClick as () => void)()
+    await settle(languages())
+    fire('pointerdown')
+    // Space plays, Right steps a frame: the last input is a key again.
+    fire('keydown', { key: ' ' })
+    fire('keydown', { key: 'ArrowRight' })
+    release()
+    await settle(languages())
+    expect(store.state.captionTracks).toHaveLength(1)
+    expect(focused).toEqual([])
+  })
+
+  it('a shortcut pressed on the page while it runs leaves the focus there, so the next one does not pick a radio', async () => {
+    store.state = { ...base(), captionTracks: ['bn', 'hi', 'es', 'fr', 'de', 'pt', 'it'].map(track) }
+    keys.last = true
+    let release = (): void => undefined
+    ai.wait = new Promise((r) => (release = r))
+    const els = await openForm()
+    focused.length = 0
+    ;(byTestId(els, 'track-translate')!.props.onClick as () => void)()
+    await settle(languages())
+    fire('keydown', { key: 'ArrowLeft' })
+    release()
+    const after = await settle(languages())
+    expect(store.state.captionTracks).toHaveLength(8)
+    expect(byTestId(after, 'track-add')!.props.disabled).toBe(true)
+    expect(focused).toEqual([])
+  })
 })
 
 describe('Translate again from the keyboard (§2.15)', () => {
@@ -231,6 +280,23 @@ describe('Translate again from the keyboard (§2.15)', () => {
     expect(byTestId(els, 'track-retranslate')!.props.disabled).toBe(true)
     expect(focused.at(-1)?.props['data-testid']).toBe('track-show')
     expect(nameOf(els, focused.at(-1))).toBe('Show on the video, Bengali · translated with Gemini')
+  })
+
+  it('stays on the page when a shortcut was pressed there while it ran (Right steps frames, it does not switch the captions)', async () => {
+    store.state = { ...base(), captionTracks: [track('bn'), track('hi')] }
+    keys.last = true
+    let release = (): void => undefined
+    ai.wait = new Promise((r) => (release = r))
+    const els = await settle(languages())
+    focused.length = 0
+    ;(byTestId(els, 'track-retranslate')!.props.onClick as () => void)()
+    await settle(languages())
+    fire('keydown', { key: 'ArrowRight' })
+    fire('keydown', { key: 'ArrowRight' })
+    release()
+    await settle(languages())
+    expect(store.state.captionTracks?.[0].segments).toHaveLength(1)
+    expect(focused).toEqual([])
   })
 })
 
