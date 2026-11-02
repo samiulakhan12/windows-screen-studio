@@ -199,10 +199,18 @@
   font-weight: var(--weight-semibold);
 }
 
+/* A noted piece as written; the runs that make it link-like are marked (check.ts pieceParts). */
 .publish-check code {
-  color: var(--warning-text);
+  color: var(--text-1);
   font-family: var(--font-mono, ui-monospace, monospace);
   overflow-wrap: anywhere;
+}
+
+.publish-check mark {
+  background: transparent;
+  color: var(--warning-text);
+  font-weight: var(--weight-semibold);
+  text-decoration: underline;
 }
 
 /* What the card's last action did ("X post copied"); empty otherwise. */
@@ -294,6 +302,10 @@
   color: var(--text-2);
   overflow-wrap: anywhere;
   white-space: pre-wrap;
+}
+
+.publish-confirm-piece {
+  color: var(--text-1);
 }
 
 .publish-confirm-list mark {

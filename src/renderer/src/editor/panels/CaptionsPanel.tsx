@@ -1036,8 +1036,12 @@ function AiToolsSection({
   // was said is read once, when the answer comes (the note speaks for the captions it was written from), never while
   // the captions are edited or dragged; Rename and Copy read it again, and ask first when the check notes anything.
   const [said, setSaid] = useState<Said | null>(null)
+  // Suggested chapters whose titles the check notes: shown with their note, and added only when asked (never a confirm
+  // that opens by itself when the answer comes, while the user may be typing).
+  const [chapters, setChapters] = useState<{ t: number; title: string }[] | null>(null)
   const titleChecks = useMemo(() => (title && said ? linksToCheck(title, said) : []), [title, said])
   const summaryChecks = useMemo(() => (summary && said ? linksToCheck(summary, said) : []), [summary, said])
+  const chapterChecks = useMemo(() => (chapters && said ? linksToCheck(chapters.map((c) => c.title).join('\n'), said) : []), [chapters, said])
   const [ask, setAsk] = useState<NotedAsk | null>(null)
   /** Runs `run` at once when `text` has nothing the check notes against what is said now, else after the confirm. */
   const confirmed = (what: string, action: NotedAsk['action'], text: string, run: () => void): void => {
@@ -1050,12 +1054,25 @@ function AiToolsSection({
   const list = providers ?? []
   const chosen = list.find((p) => p.id === provider) ?? list[0] ?? null
   const live = useRef(true)
+  // Suggested chapters not added yet: when the tab closes with them, the editor says so (they are not kept).
+  const pendingChapters = useRef(false)
+  pendingChapters.current = !!chapters
   useEffect(
     () => () => {
       live.current = false
+      if (pendingChapters.current) onNotice('Suggested chapters not added: open the Captions tab and suggest them again to add them.')
     },
-    []
+    [] // eslint-disable-line react-hooks/exhaustive-deps
   )
+  /** The suggested chapters `found` not near a chapter the recording has now. */
+  const newChapters = (found: readonly { t: number; title: string }[]): ReturnType<typeof createChapter>[] => {
+    const existing = store.state.chapters ?? []
+    return found.filter((c, i) => !chapterNear(existing, c.t) && !found.slice(0, i).some((d) => Math.abs(d.t - c.t) < 0.1)).map((c) => createChapter(c.t, c.title))
+  }
+  const addChapters = (added: ReturnType<typeof createChapter>[]): void => {
+    store.update((p) => ({ ...p, chapters: [...(p.chapters ?? []), ...added] }))
+    onNotice(`Added ${added.length} ${added.length === 1 ? 'chapter' : 'chapters'} (see the Text tab)`)
+  }
   useEffect(() => {
     remembered.textProvider = provider
     remembered.translateTo = translateTo
@@ -1069,6 +1086,7 @@ function AiToolsSection({
     setError(null)
     setTitle(null)
     setSummary(null)
+    setChapters(null)
     const request: AiTextRequest = { task, segments: before.segments }
     // The language's name: the provider is told to translate "into" it, and a code such as 'it' or 'id' reads as a word.
     if (task === 'translate') request.targetLanguage = CAPTION_LANGUAGES.find((l) => l.code === translateTo)?.name ?? translateTo
@@ -1096,14 +1114,15 @@ function AiToolsSection({
       onNotice(result.task === 'translate' ? `Captions translated to ${name} (Undo brings the original back)` : 'Captions fixed (Undo brings the original back)')
     } else if (result.task === 'chapters') {
       const found = readSuggestedChapters(result.chapters, store.state.duration)
-      const existing = store.state.chapters ?? []
-      const added = found.filter((c, i) => !chapterNear(existing, c.t) && !found.slice(0, i).some((d) => Math.abs(d.t - c.t) < 0.1)).map((c) => createChapter(c.t, c.title))
+      const added = newChapters(found)
       if (!added.length) return fail(found.length ? 'The suggested chapters are already there.' : 'The provider suggested no chapters.')
-      // Chapter titles count as said once they are the recording's: asked about first when the check notes anything in them.
-      confirmed('Suggested chapters', 'Use anyway', added.map((c) => c.title).join('\n'), () => {
-        store.update((p) => ({ ...p, chapters: [...(p.chapters ?? []), ...added] }))
-        onNotice(`Added ${added.length} ${added.length === 1 ? 'chapter' : 'chapters'} (see the Text tab)`)
-      })
+      // Chapter titles count as said once they are the recording's. With nothing the check notes they are added at once;
+      // else they are shown with the note, and Add the chapters asks first.
+      const now = projectSaid(store.state)
+      if (!notedPieces(added.map((c) => c.title).join('\n'), now).length) return addChapters(added)
+      if (!live.current) return onNotice('Suggested chapters not added: there is a link, address or file name nobody said to check. Run it again with the Captions tab open.')
+      setSaid(now)
+      setChapters(added.map((c) => ({ t: c.t, title: c.title })))
     } else if (result.task === 'title') {
       const text = readSuggestedText('title', result.text)
       if (!text) return fail('The provider suggested no title.')
@@ -1208,6 +1227,42 @@ function AiToolsSection({
                   Rename the recording
                 </button>
                 <button className="btn small ghost" aria-describedby={titleChecks.length ? 'captions-title-check' : undefined} onClick={() => setTitle(null)}>
+                  Dismiss
+                </button>
+              </div>
+            </div>
+          )}
+          {chapters && (
+            <div className="captions-suggestion" role="status" data-testid="captions-chapters-suggestion">
+              <p>Suggested chapters:</p>
+              <ol className="captions-chapter-list">
+                {chapters.map((c) => (
+                  <li key={c.t}>
+                    <span className="captions-chapter-time">{formatTime(c.t, false)}</span> {c.title}
+                  </li>
+                ))}
+              </ol>
+              {checkNote(chapterChecks, 'captions-chapters-check')}
+              <div className="row start">
+                <button
+                  className="btn small primary"
+                  aria-describedby={chapterChecks.length ? 'captions-chapters-check' : undefined}
+                  onClick={() => {
+                    // Against the chapters the recording has now: one added meanwhile near the same time stays alone.
+                    const added = newChapters(chapters)
+                    if (!added.length) {
+                      setChapters(null)
+                      return onNotice('The suggested chapters are already there.')
+                    }
+                    confirmed('Suggested chapters', 'Use anyway', added.map((c) => c.title).join('\n'), () => {
+                      setChapters(null)
+                      addChapters(added)
+                    })
+                  }}
+                >
+                  Add the chapters
+                </button>
+                <button className="btn small ghost" aria-describedby={chapterChecks.length ? 'captions-chapters-check' : undefined} onClick={() => setChapters(null)}>
                   Dismiss
                 </button>
               </div>

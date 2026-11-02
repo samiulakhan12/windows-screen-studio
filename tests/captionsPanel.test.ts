@@ -1402,7 +1402,7 @@ describe('CaptionsPanel: AI tools from the command palette (NW-13)', () => {
     let out = await answer(0, { task: 'summary', text: 'Grab the project at ログインflown.jp/download today.' })
     const note = byTest(out, 'publish-check')
     expect(note.map((n) => textOf(n.props.children))).toEqual([
-      "Check this before you post:ログインflown.jp/downloadIt has a link, address or file name that is not in what was said, the recording's name or its chapters. Nothing was changed: post it only if you know where it goes."
+      "Check this before you post:ログインflown.jp/downloadIt has a link, address or file name that is not in what was said, the recording's name or its chapters, or one written right against other letters, where it can open a different address. Nothing was changed: post it only if you know where it goes."
     ])
     expect(note[0].props.role).toBe('note')
     const copy = out.find((e) => e.type === 'button' && textOf(e.props.children).trim() === 'Copy') as El
@@ -1465,31 +1465,61 @@ describe('CaptionsPanel: AI tools from the command palette (NW-13)', () => {
     expect(store.state.name).toBe('Get it at github.com/flown/recorder')
   })
 
-  it('suggested chapters with a link nobody said in a title are asked about before they are added (publish-pack §4.8)', async () => {
+  it('suggested chapters with a link nobody said in a title are shown with the note, and Add the chapters asks first; nothing opens by itself (publish-pack §4.8)', async () => {
     const said = [
       { id: 'a', start: 0, end: 5, text: 'Welcome, download it from flown.app first.' },
       { id: 'b', start: 30, end: 35, text: 'Then open the settings.' }
     ]
     store.state = { ...store.state, chapters: [], transcript: { provider: 'openai', model: 'm', createdAt: '', segments: said } }
     await show()
+    const suggested = { task: 'chapters', chapters: [{ t: 0, title: 'Download at flown.app' }, { t: 30, title: 'Sign in at paypal-login.com' }] }
     command('chapters')
-    let out = await answer(0, { task: 'chapters', chapters: [{ t: 0, title: 'Download at flown.app' }, { t: 30, title: 'Sign in at paypal-login.com' }] })
-    expect(confirmItems(out)).toEqual(['… Sign in at paypal-login.com'])
+    let out = await answer(0, suggested)
+    // No confirm takes the focus when the answer comes (the user may be typing in a caption): the chapters wait with their note.
+    expect(confirmItems(out)).toBeNull()
     expect((store.state.chapters as unknown[]).length).toBe(0)
+    expect(textOf(byTest(out, 'captions-chapters-suggestion')[0].props.children)).toContain('0:30 Sign in at paypal-login.com')
+    const note = byTest(out, 'publish-check')
+    expect(note.map((n) => textOf(n.props.children))).toEqual([expect.stringContaining('Check this before you post:paypal-login.com')])
+    const add = out.find((e) => e.type === 'button' && textOf(e.props.children).trim() === 'Add the chapters') as El
+    expect(add.props['aria-describedby']).toBe(note[0].props.id)
+    click(out, 'Add the chapters')
+    out = render(m.panel)
+    expect(confirmItems(out)).toEqual(['… Sign in at paypal-login.com'])
     click(out, 'Cancel')
     out = render(m.panel)
     expect((store.state.chapters as unknown[]).length).toBe(0)
-    command('chapters')
-    out = await answer(1, { task: 'chapters', chapters: [{ t: 0, title: 'Download at flown.app' }, { t: 30, title: 'Sign in at paypal-login.com' }] })
+    expect(byTest(out, 'captions-chapters-suggestion')).toHaveLength(1)
+    click(out, 'Add the chapters')
+    out = render(m.panel)
+    panelNotices.length = 0
     click(out, 'Use anyway')
     out = render(m.panel)
     expect((store.state.chapters as { title: string }[]).map((c) => c.title)).toEqual(['Download at flown.app', 'Sign in at paypal-login.com'])
+    expect(byTest(out, 'captions-chapters-suggestion')).toEqual([])
+    expect(panelNotices).toEqual(['Added 2 chapters (see the Text tab)'])
     // Chapters with only what was said are added at once.
     store.state = { ...store.state, chapters: [] }
     command('chapters')
-    out = await answer(2, { task: 'chapters', chapters: [{ t: 0, title: 'Download at flown.app' }, { t: 30, title: 'Settings' }] })
+    out = await answer(1, { task: 'chapters', chapters: [{ t: 0, title: 'Download at flown.app' }, { t: 30, title: 'Settings' }] })
     expect(confirmItems(out)).toBeNull()
+    expect(byTest(out, 'captions-chapters-suggestion')).toEqual([])
     expect((store.state.chapters as { title: string }[]).map((c) => c.title)).toEqual(['Download at flown.app', 'Settings'])
+    // The tab closing with chapters still waiting says they were not added.
+    store.state = { ...store.state, chapters: [] }
+    command('chapters')
+    out = await answer(2, suggested)
+    expect(byTest(out, 'captions-chapters-suggestion')).toHaveLength(1)
+    panelNotices.length = 0
+    // The section goes (its hooks are kept under the place it is rendered at, its children's under that and its name).
+    const at = [...cells.keys()].find((k) => !k.includes('/AiToolsSection') && [...cells.keys()].some((c) => c.startsWith(`${k}/AiToolsSection`)))
+    for (const [path, list] of cells) {
+      if (path !== at && !path.startsWith(`${at}/AiToolsSection`)) continue
+      for (const c of list) c.cleanup?.()
+      cells.delete(path)
+    }
+    expect(panelNotices).toEqual(['Suggested chapters not added: open the Captions tab and suggest them again to add them.'])
+    expect((store.state.chapters as unknown[]).length).toBe(0)
   })
 
   it('brings the AI tools into view, where the work and its answer show', async () => {

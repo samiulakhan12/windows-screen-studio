@@ -1484,8 +1484,10 @@ function EditorSession({
         return
       }
       // The palette and the shortcuts dialog handle their own keys (Esc closes them); the window of a
-      // copy being made keeps the keyboard to itself.
-      if (L.dialog || L.copying) return
+      // copy being made keeps the keyboard to itself, and so does any other modal dialog open over the
+      // editor (the link check's confirm in the Captions tab, Settings): Space presses its focused
+      // button, and nothing behind it plays, is deleted or is unselected.
+      if (L.dialog || L.copying || document.querySelector('[aria-modal="true"]')) return
       const target = e.target instanceof Element ? e.target : null
       const chord = chordFromEvent(e)
       const id = chord ? matchShortcut(L.shortcuts, chord) : null

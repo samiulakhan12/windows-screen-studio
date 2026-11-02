@@ -51,9 +51,12 @@ describe('Publish dialog text fields (publish-pack §5.4)', () => {
       expect(contrast(colour(field, 'color'), fill), field).toBeGreaterThanOrEqual(4.5)
       expect(contrast(colour(`${field}::placeholder`, 'color'), fill), `${field}::placeholder`).toBeGreaterThanOrEqual(4.5)
     }
-    // The safety net's note (§4.8): its title, its text and the links in it.
+    // The link check's note (§4.8): its title, its text, the pieces in it and the runs marked in them.
     const note = colour('.publish-check', 'background')
-    for (const sel of ['.publish-check', '.publish-check-title', '.publish-check code']) expect(contrast(colour(sel, 'color'), note), sel).toBeGreaterThanOrEqual(4.5)
+    for (const sel of ['.publish-check', '.publish-check-title', '.publish-check code', '.publish-check mark']) expect(contrast(colour(sel, 'color'), note), sel).toBeGreaterThanOrEqual(4.5)
+    // The confirm: the context, the piece and its marked runs, on the dialog.
+    const box = colour('.publish-confirm', 'background')
+    for (const sel of ['.publish-confirm-list code', '.publish-confirm-piece', '.publish-confirm-list mark']) expect(contrast(colour(sel, 'color'), box), sel).toBeGreaterThanOrEqual(4.5)
     const fill = colour('.publish-text', 'background')
     for (const status of ['waiting', 'writing']) {
       const sel = `.publish-card[data-status='${status}'] .publish-text`

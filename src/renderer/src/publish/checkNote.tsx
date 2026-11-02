@@ -4,7 +4,7 @@
  * text: the note names what to check, and the confirm asks before noted text is copied or used.
  */
 import { useEffect, useRef } from 'react'
-import { inContext, saidLinks, shownRun, type Noted, type Said } from '../../../shared/publish/check'
+import { inContext, pieceParts, saidLinks, type Noted, type Said } from '../../../shared/publish/check'
 import { publishSegments } from '../../../shared/publish/pack'
 import { projectYoutubeChapters } from '../../../shared/publish/youtube'
 import type { Project } from '../../../shared/types'
@@ -18,11 +18,17 @@ import './publish.css'
 export const projectSaid = (project: Pick<Project, 'transcript' | 'clips' | 'freezes' | 'chapters' | 'name'>): Said =>
   saidLinks(publishSegments(project), { title: project.name, chapters: projectYoutubeChapters(project).chapters.map((c) => c.title) })
 
-/** Why a piece is listed, for one piece or several. */
+/**
+ * Why a piece is listed, for one piece or several: a link nobody said, or one written right against
+ * other letters (most notes in languages written without spaces), which can open another address.
+ */
 const why = (count: number): string =>
   count === 1
-    ? "It has a link, address or file name that is not in what was said, the recording's name or its chapters. Nothing was changed: post it only if you know where it goes."
-    : "Each has a link, address or file name that is not in what was said, the recording's name or its chapters. Nothing was changed: post them only if you know where they go."
+    ? "It has a link, address or file name that is not in what was said, the recording's name or its chapters, or one written right against other letters, where it can open a different address. Nothing was changed: post it only if you know where it goes."
+    : "Each has a link, address or file name that is not in what was said, the recording's name or its chapters, or one written right against other letters, where it can open a different address. Nothing was changed: post them only if you know where they go."
+
+/** A noted piece exactly as written (invisible characters by their code), its link-like runs marked (pieceParts). */
+const shownPiece = (piece: string): JSX.Element[] => pieceParts(piece).map((p, i) => (p.marked ? <mark key={i}>{p.text}</mark> : <span key={i}>{p.text}</span>))
 
 /**
  * The note under a text the check notes `pieces` in (null for none). `id` is for the aria-describedby
@@ -37,7 +43,7 @@ export function checkNote(pieces: readonly string[], id: string): JSX.Element | 
       <ul>
         {pieces.map((piece) => (
           <li key={piece}>
-            <code>{shownRun(piece)}</code>
+            <code>{shownPiece(piece)}</code>
           </li>
         ))}
       </ul>
@@ -73,19 +79,28 @@ export function NotedConfirm({ ask, onClose }: { ask: NotedAsk; onClose: () => v
   }, [])
   return (
     <div className="overlay modal-backdrop publish-confirm-scrim">
-      <div className="publish-confirm" role="alertdialog" aria-modal="true" aria-labelledby="publish-confirm-title" aria-describedby="publish-confirm-why" ref={boxRef} data-testid="publish-confirm">
+      <div
+        className="publish-confirm"
+        role="alertdialog"
+        aria-modal="true"
+        aria-labelledby="publish-confirm-title"
+        // The why and the pieces: a screen reader hears what to check with the focus on Cancel.
+        aria-describedby="publish-confirm-why publish-confirm-list"
+        ref={boxRef}
+        data-testid="publish-confirm"
+      >
         <h2 id="publish-confirm-title">
           {ask.what}: check {ask.pieces.length === 1 ? 'this' : 'these'} before you {ask.action === 'Copy anyway' ? 'copy it' : 'use it'}
         </h2>
         <p id="publish-confirm-why">{why(ask.pieces.length)}</p>
-        <ul className="publish-confirm-list">
+        <ul className="publish-confirm-list" id="publish-confirm-list">
           {ask.pieces.map((p) => {
             const shown = inContext(ask.text, p)
             return (
               <li key={`${p.start}:${p.end}`}>
                 <code>
                   <span className="publish-confirm-context">{shown.before}</span>
-                  <mark>{shown.piece}</mark>
+                  <span className="publish-confirm-piece">{shownPiece(p.text)}</span>
                   <span className="publish-confirm-context">{shown.after}</span>
                 </code>
               </li>

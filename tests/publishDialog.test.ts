@@ -474,8 +474,13 @@ describe("Publish dialog: what a card's buttons did is said on that card (§5.1)
     let ask = confirmOf(out)
     expect(ask.box.props.role).toBe('alertdialog')
     expect(ask.box.props['aria-modal']).toBe('true')
+    // A screen reader hears why and what to check (the list) with the focus on Cancel.
+    expect(ask.box.props['aria-describedby']).toBe('publish-confirm-why publish-confirm-list')
+    expect(ask.els.filter((e) => e.props.id === 'publish-confirm-list').map((e) => e.type)).toEqual(['ul'])
     expect(textOf(ask.box.props.children)).toContain('LinkedIn post: check this before you copy it')
     expect(ask.items).toEqual(['…s are here: paypal-login.com/verify'])
+    // The piece's link-like run is marked; the context around it is not.
+    expect(ask.els.filter((e) => e.type === 'mark').map((e) => textOf(e.props.children))).toEqual(['paypal-login.com/verify'])
     expect(focused).toBe('Cancel')
     press(ask.els, 'Cancel')
     await flush()
@@ -517,13 +522,13 @@ describe("Publish dialog: what a card's buttons did is said on that card (§5.1)
     type(card(out, 'linkedin'), 'LinkedIn post text', 'Files at evil.com and paypal-login.com/verify')
     out = render()
     expect(note(card(out, 'linkedin'))).toBe(
-      "Check these before you post:evil.compaypal-login.com/verifyEach has a link, address or file name that is not in what was said, the recording's name or its chapters. Nothing was changed: post them only if you know where they go."
+      "Check these before you post:evil.compaypal-login.com/verifyEach has a link, address or file name that is not in what was said, the recording's name or its chapters, or one written right against other letters, where it can open a different address. Nothing was changed: post them only if you know where they go."
     )
     // Two file names in one piece of Chinese text: one item, which is "this".
     type(card(out, 'linkedin'), 'LinkedIn post text', '第一步，打开README.md。第二步，在config.yaml里修改码率。第三步，运行main.py。整个导出大约需要2.5分钟。')
     out = render()
     expect(note(card(out, 'linkedin'))).toBe(
-      "Check this before you post:第一步，打开README.md。第二步，在config.yaml里修改码率。第三步，运行main.py。整个导出大约需要2.5分钟。It has a link, address or file name that is not in what was said, the recording's name or its chapters. Nothing was changed: post it only if you know where it goes."
+      "Check this before you post:第一步，打开README.md。第二步，在config.yaml里修改码率。第三步，运行main.py。整个导出大约需要2.5分钟。It has a link, address or file name that is not in what was said, the recording's name or its chapters, or one written right against other letters, where it can open a different address. Nothing was changed: post it only if you know where it goes."
     )
   })
 
