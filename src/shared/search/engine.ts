@@ -212,13 +212,15 @@ export class SearchIndex {
       if (!docs.size) return []
     }
     // Score every candidate first; moments and snippets only for those returned.
-    const scored: { doc: Doc; score: number }[] = []
+    const scored: { doc: Doc; score: number; typos: number }[] = []
     for (const doc of candidates ?? []) {
       if (options.only && !options.only.has(doc.id)) continue
-      const score = docScore(doc, matches)
-      if (score !== null) scored.push({ doc, score })
+      const s = docScore(doc, matches)
+      if (s) scored.push({ doc, ...s })
     }
-    scored.sort((a, b) => b.score - a.score || b.doc.entry.createdAt.localeCompare(a.doc.entry.createdAt) || a.doc.id.localeCompare(b.doc.id))
+    // Recordings holding the words as typed (exactly or by prefix) come before typo guesses, however
+    // many captions guess: "come" said ten times never hides the one recording that says "code".
+    scored.sort((a, b) => a.typos - b.typos || b.score - a.score || b.doc.entry.createdAt.localeCompare(a.doc.entry.createdAt) || a.doc.id.localeCompare(b.doc.id))
     return scored.slice(0, options.hits ?? SEARCH_LIMITS.hits).map(({ doc, score }) => hitOf(doc, score, matches, options.moments ?? SEARCH_LIMITS.moments))
   }
 }
@@ -229,7 +231,7 @@ export function isCut(kept: readonly (readonly [number, number])[], start: numbe
   return !kept.some(([s, e]) => (end > start ? s < end && e > start : start >= s && start < e))
 }
 
-/** A unit's score and how many query words it holds; `found` is set for each word it holds. */
+/** A unit's score and how many query words it holds. */
 interface UnitScore {
   unit: number
   score: number
@@ -250,8 +252,8 @@ function hasPhrase(at: Int8Array, length: number, n: number): boolean {
 let bestBuffer = new Float32Array(8)
 let atBuffer = new Int8Array(256)
 
-/** Scores unit `u` of `doc`; marks the words it holds in `found`. Null when it holds none. */
-function scoreUnit(doc: Doc, u: number, matches: TermMatches[], found: boolean[] | null): UnitScore | null {
+/** Scores unit `u` of `doc`; keeps in `found` the best match quality of each word so far. Null when it holds none. */
+function scoreUnit(doc: Doc, u: number, matches: TermMatches[], found: number[] | null): UnitScore | null {
   const kind = doc.entry.units[u].kind
   const strong = STRONG_KINDS.has(kind)
   const from = doc.bounds[u]
@@ -280,7 +282,7 @@ function scoreUnit(doc: Doc, u: number, matches: TermMatches[], found: boolean[]
     if (best[i] > 0) {
       terms++
       sum += best[i]
-      if (found) found[i] = true
+      if (found && best[i] > found[i]) found[i] = best[i]
     }
   }
   const weight = KIND_WEIGHT[kind]
@@ -289,7 +291,7 @@ function scoreUnit(doc: Doc, u: number, matches: TermMatches[], found: boolean[]
 }
 
 /** The units of `doc` holding any query word. */
-function matchingUnits(doc: Doc, matches: TermMatches[], found: boolean[] | null): UnitScore[] {
+function matchingUnits(doc: Doc, matches: TermMatches[], found: number[] | null): UnitScore[] {
   const out: UnitScore[] = []
   for (let u = 0; u < doc.entry.units.length; u++) {
     const s = scoreUnit(doc, u, matches, found)
@@ -298,14 +300,18 @@ function matchingUnits(doc: Doc, matches: TermMatches[], found: boolean[] | null
   return out
 }
 
-/** The recording's score (§2.6), or null when one of the words is in none of its units. */
-function docScore(doc: Doc, matches: TermMatches[]): number | null {
-  const found = new Array<boolean>(matches.length).fill(false)
+/**
+ * The recording's score (§2.6) and how many query words it holds only by a typo; null when one of
+ * the words is in none of its units.
+ */
+function docScore(doc: Doc, matches: TermMatches[]): { score: number; typos: number } | null {
+  const found = new Array<number>(matches.length).fill(0)
   const units = matchingUnits(doc, matches, found)
-  if (!found.every(Boolean)) return null
+  if (!found.every((q) => q > 0)) return null
   let best: UnitScore = units[0]
   for (const s of units) if (s.score > best.score) best = s
-  return best.score + OTHER_UNIT_BONUS * Math.min(OTHER_UNITS_COUNTED, units.length - 1) + (best.terms === matches.length ? ALL_TERMS_BONUS : 0)
+  const score = best.score + OTHER_UNIT_BONUS * Math.min(OTHER_UNITS_COUNTED, units.length - 1) + (best.terms === matches.length ? ALL_TERMS_BONUS : 0)
+  return { score, typos: found.filter((q) => q < QUALITY.prefixBase).length }
 }
 
 /** The ranges of the matched words in unit `u`. */

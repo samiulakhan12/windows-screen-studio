@@ -129,6 +129,19 @@ describe('SearchIndex', () => {
     expect(r.search('savex').map((h) => h.id)).toEqual(['named', 'exact', 'prefix'])
   })
 
+  it('puts the word as typed above typo matches, however many captions they fill', () => {
+    const typos = (name: string): IndexedProject => entry(name, [said(1, 'come here'), said(5, 'come back'), said(9, 'come on'), said(12, 'the model and the node')])
+    const r = index({ exact: entry('A', [said(1, 'open the code')], { createdAt: '2025-01-01T00:00:00.000Z' }), typo: typos('B') })
+    expect(r.search('code').map((h) => h.id)).toEqual(['exact', 'typo'])
+    // Sixty recordings of guesses do not push it out of the 50 returned.
+    const many: Record<string, IndexedProject> = { exact: entry('A', [said(1, 'the code for the login page')], { createdAt: '2025-01-01T00:00:00.000Z' }) }
+    for (let i = 0; i < 60; i++) many[`t${i}`] = typos(`T${i}`)
+    expect(index(many).search('code')[0].id).toBe('exact')
+    // Bangla: "আমার" (my) above three of "আমরা" (we).
+    const bn = index({ exact: entry('A', [said(1, 'আমার নাম')], { createdAt: '2025-01-01T00:00:00.000Z' }), typo: entry('B', [said(1, 'আমরা যাই'), said(3, 'আমরা খাই'), said(5, 'আমরা পড়ি')]) })
+    expect(bn.search('আমার').map((h) => h.id)).toEqual(['exact', 'typo'])
+  })
+
   it('a one-letter word matches by prefix only in names, titles and chapters', () => {
     const r = index({ a: entry('Onboarding', [said(1, 'open the menu')]), b: entry('Other', [{ kind: 'title', start: 0, end: 1, text: 'Overview' }]) })
     expect(r.search('o').map((h) => h.id).sort()).toEqual(['a', 'b'])

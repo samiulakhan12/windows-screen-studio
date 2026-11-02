@@ -144,7 +144,9 @@ For each recording:
 - The recording matches when **every** query term is matched in at least one of its units.
 - **Recording score** = the best unit score + 0.25 × the number of other matching units (at most
   8 count), + 0.5 when the best unit holds every term.
-- Recordings are sorted by score, then newest first. At most 50 recordings are returned.
+- Recordings are sorted by how many query terms they hold **only by a typo** (fewest first), then
+  by score, then newest first: many captions with a typo neighbour ("come" for `code`) never
+  outrank the recording that says the word. At most 50 recordings are returned.
 - Moments of a recording are its matching units with a time or a kind of their own, sorted by the
   number of terms they hold, then their score, then time; at most 50 are returned and Home shows 4
   until "more" is pressed. `name` and `file` units are not listed as moments (the name is the
@@ -398,6 +400,8 @@ No new dependency: `Intl.Segmenter` is in Electron's ICU, and the rest is small 
   every recording and write an empty index.
 - A project folder named `__proto__` is stored like any other.
 - Snippets in scripts without spaces keep their text before the match and never cut a surrogate pair.
+- A recording holding the words as typed is never ranked below one that only holds typo neighbours
+  ("come", "model" for `code`), however many of its captions hold them (§2.6).
 - The live region stays quiet while the index is built; Ctrl+F does nothing on an empty library.
 - Writing the file is synchronous, like every state file (37–55 ms for 500 recordings, at most every
   3 s and only after a change); an asynchronous write is left for later.
