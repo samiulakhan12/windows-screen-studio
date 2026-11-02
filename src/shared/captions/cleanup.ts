@@ -382,7 +382,7 @@ interface TeamList {
   holders: readonly string[]
   /** Everyday words that start with a stem: never bleeped. */
   everyday: readonly string[]
-  /** Nouns that also begin everyday words (বাল: বালক, বালিশ): matched whole, in every form nounForms gives. */
+  /** Nouns matched whole, in every form nounForms gives: those that also begin everyday words (বাল: বালক, বালিশ), English ones written in Bengali script. */
   nouns: readonly string[]
   /**
    * Words rude only before certain nouns, each [the words, the nouns]: matched whole, as written,
@@ -487,8 +487,10 @@ const TEAM_LISTS: Readonly<Record<string, TeamList>> = {
       // words, and quoted in the news (চুদুরবুদুর চলবে না).
       ...['চুদুরবুদুর', 'চুদুরবুদুরি'].flatMap(nounForms)
     ],
-    // বালছাল written with স for ছ too, as Dhaka writes করসি and গেসে.
-    nouns: ['বাল', 'বালছাল', 'বালসাল'],
+    // বালছাল written with স for ছ too, as Dhaka writes করসি and গেসে. English rude words as the
+    // Bangla model writes them, in Bengali script; never the bare ফাক, which also spells ফাঁক, "a
+    // gap" (এই ফাকে, "meanwhile"), beside ফাকা and ফাঁকা, "empty".
+    nouns: ['বাল', 'বালছাল', 'বালসাল', 'ফাকিং', 'ফাকিন', 'মাদারফাকার', 'বাস্টার্ড'],
     // শুয়োরের, with ও or ই, is rude in শুয়োরের বাচ্চা only: শুয়োর, "pig", is an everyday word
     // (শুয়োরের মাংস, pork; শুয়োরের খামার, a pig farm; বুনো শুয়োরের আক্রমণ, a wild boar's attack).
     // কুত্তার the same way (কুত্তার কামড়, a dog's bite).

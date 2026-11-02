@@ -103,6 +103,11 @@ const COMPOUND_FORMS = [...COMPOUNDS.flatMap(nounForms), ...COMPOUNDS.map((c) =>
 /** Nouns that begin everyday words too (বালক, বালিশ): matched whole, in every form; বালছাল written with স for ছ as well, as Dhaka writes করসি and গেসে. */
 const WHOLE_NOUNS = ['বাল', 'বালছাল', 'বালসাল']
 /**
+ * English rude words as the Bangla model writes them, in Bengali script: matched whole, in every
+ * form, and never the bare ফাক, which also spells ফাঁক, "a gap" (এই ফাকে, "meanwhile").
+ */
+const TRANSLITERATED = ['ফাকিং', 'ফাকিন', 'মাদারফাকার', 'বাস্টার্ড']
+/**
  * শুয়োরের, "pig's", as it is spelled (শুওরের in West Bengal, শুয়ারের in Bangladesh, শুকরের and
  * শূকরের from শূকর, the standard word), with ও or ই: rude only before বাচ্চা (শুয়োরের বাচ্চা),
  * never in শুয়োরের মাংস (pork) or শুয়োরের খামার (a pig farm). Written together with বাচ্চা, it is rude anywhere.
@@ -142,6 +147,7 @@ const RUDE = [
     ...STEM_NOUNS.flatMap(nounForms),
     ...COMPOUND_FORMS,
     ...WHOLE_NOUNS.flatMap(nounForms),
+    ...TRANSLITERATED.flatMap(nounForms),
     ...DHAKA_PARTICIPLES,
     ...ANIMAL_JOINED,
     ...REVIEW
@@ -171,6 +177,8 @@ const DITHER = [...new Set(['চুদুরবুদুর', 'চুদুর�
 
 /** Everyday words that share letters with a rude word, each never bleeped. */
 const LOOK_ALIKES = [
+  // ফাঁক "a gap" (also written ফাক: এই ফাকে, "meanwhile"), ফাঁকা "empty", ফাঁকি "shirking", বাস "a bus", বাস্তব "real".
+  ...['ফাঁক', 'ফাক', 'ফাঁকে', 'ফাকে', 'ফাঁকা', 'ফাকা', 'ফাঁকি', 'ফাকি', 'ফাঁকিবাজ', 'ফাকিবাজ', 'ফাঁকির', 'বাস', 'বাস্তব'],
   // Nicknames with দা, "elder brother", after them (বাচ্চু, পাঁচু).
   ...['বাচ্চুদা', 'বাচ্চুদার', 'বাচ্চুদাকে', 'পাঁচুদা', 'পাঁচুদার', 'বাচ্চু'],
   // চোদ্দ and চৌদ্দ, "fourteen" (the stem's দ takes a virama), also after another number, and other words starting চো, চু.
@@ -475,6 +483,11 @@ describe('Bangla bleeping: stems, compounds and every generated form', () => {
       ['ওই বান্চোত কোথায় গেলি', 'বান্চোত'],
       ['ওই বান্\u200Cচুদ কোথায় গেলি', 'বান্\u200Cচুদ'],
       ['ওই বাচ্চুদা কেমন আছেন', ''],
+      ['হোয়াট দ্য ফাকিং প্রবলেম', 'ফাকিং'],
+      ['ওই মাদারফাকার আবার আসছে', 'মাদারফাকার'],
+      ['একটা বাস্টার্ড', 'বাস্টার্ড'],
+      ['ঘরটা একদম ফাঁকা', ''],
+      ['এই ফাকে একটু চা খাই', ''],
       ['পাঁচুদা কাল আসবেন', ''],
       ['ওই বইনচোদ চুপ কর', 'বইনচোদ'],
       ['এইসব বালসাল কথা বাদ দে', 'বালসাল'],
