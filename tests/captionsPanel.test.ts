@@ -1575,6 +1575,18 @@ describe('CaptionsPanel: AI tools from the command palette (NW-13)', () => {
     expect(aiAsked.map((a) => a.task)).toEqual(['summary'])
   })
 
+  it('Fix captions from the palette with no AI provider says to add one first: Clean up has no AI tick box yet', async () => {
+    replies.providers = () => Promise.resolve([])
+    const out = await show()
+    expect(buttons(out)).toContain('Add an AI provider')
+    panelNotices.length = 0
+    command('cleanup')
+    command('translate')
+    expect(aiAsked).toEqual([])
+    // Translate's Languages still shows Add a language, which says how to add a provider itself.
+    expect(panelNotices).toEqual(['Add an AI provider first: the button is in the AI tools section', 'Translating is in Languages now: Add a language'])
+  })
+
   it('brings the AI tools into view, where the work and its answer show', async () => {
     await show()
     // The tab may be scrolled to its captions: the tools come to its top, with the answer's room under them.

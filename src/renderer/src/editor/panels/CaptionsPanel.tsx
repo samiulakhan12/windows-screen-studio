@@ -1111,6 +1111,9 @@ function AiToolsSection({
     handled.current = request.n
     onRequestHandled?.()
     const task = request.task
+    // Clean up shows its AI tick box only once there is a provider, so without one that comes first. (Languages'
+    // Add a language says itself how to add a provider.)
+    if (task === 'cleanup' && !chosen) return onNotice('Add an AI provider first: the button is in the AI tools section')
     if (task === 'cleanup') return onNotice('Fix captions is in Clean up now: tick “Also fix spelling and misheard words with AI”, then Tidy captions')
     if (task === 'translate') return onNotice('Translating is in Languages now: Add a language')
     if (!chosen) return onNotice('Add an AI provider first: the button is in the AI tools section')
