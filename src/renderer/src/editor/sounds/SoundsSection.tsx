@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import { scanSources, type SoundRow } from '../../../../shared/audio/sounds'
 import { actionText, foundText, lengthText, listeningText, rowName, showIgnoredText, SOUNDS_COPY, SOUND_LABELS } from '../../../../shared/audio/soundsCopy'
-import { addSpans, bringBack, cutRow, ignoreRow, removeSpan, restoreCut, rowState, type RowState } from '../../../../shared/audio/soundsEdit'
+import { addSpans, bringBack, cutRow, ignoreRow, listedRows, removeSpan, restoreCut, rowState, type RowState } from '../../../../shared/audio/soundsEdit'
 import { outputTimeAt } from '../../../../shared/editor/clips'
 import { editToVideo, planOf } from '../../../../shared/engine/freeze'
 import { formatTime } from '../../../../shared/engine/project'
@@ -84,7 +84,8 @@ export function SoundsSection({ project }: { project: Project }): JSX.Element {
     stopPlay.current = stop
   }
 
-  const rows = state.status === 'done' ? state.rows : []
+  // Muted or lowered stretches no found row claims any more are listed too, so they can be restored.
+  const rows = state.status === 'done' ? listedRows(project, state.rows) : []
   const states = new Map<string, RowState>(rows.map((r) => [r.key, rowState(project, r)]))
   const ignoredCount = rows.filter((r) => states.get(r.key) === 'ignored').length
   const shown = rows.filter((r) => showIgnored || states.get(r.key) !== 'ignored')

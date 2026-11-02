@@ -265,6 +265,11 @@ From the project, per row: **muted** / **ducked** (a span with its key), else **
 any of it), else **ignored** (its key in `ignored`), else **open**. Times shown are the timeline's
 (output) time of the row's start (`sourceToOutput`; a cut row shows where the cut is).
 
+A span whose key no found row has is listed as a row of its own, muted or lowered, with **Restore**
+(`listedRows`): a key depends on the speech ranges, so a row muted when the speech detector could
+not run comes back under another key once it can, and a row can fall past the 400 listed. Every
+stretch the preview and the export lower is therefore in the list and can be restored.
+
 ### 4.5 Actions (`soundsEdit.ts`, each one `store.update`)
 
 | Action | Project change |
@@ -518,6 +523,8 @@ End to end (`tests/e2e/sound-finder.e2e.cjs`, the built app under Xvfb):
   microphone; before, a music or ping row could run over their words. Closing the editor cancels a
   scan; before, one closed while the recording was got ready went on in the background without the
   levels and the speech detector, and one closed while listening could end as a false failure.
+  A span no found row claims (its key changed with the speech ranges) is listed with Restore; before,
+  it stayed in the preview and the export with nothing in the panel to show or undo it.
 - `@mediapipe/tasks-audio` is pinned at 1.0.1 (the version of `@mediapipe/tasks-vision` in use);
   `scripts/notices.mjs` names it among the bundled packages and `resources/THIRD_PARTY_NOTICES.txt`
   is regenerated; `resources/notices/34-yamnet.txt` names the model.

@@ -10,7 +10,7 @@ import { cutRange } from '../engine/timeline'
 import type { SoundGain } from '../api/export'
 import type { Clip, Project, SoundEdits, SoundSpan } from '../types'
 import { gainAt, type Keyframe } from './automation'
-import { KEY_RE, type SoundRow } from './sounds'
+import { KEY_RE, SOUND_KIND_ORDER, type SoundKind, type SoundRow } from './sounds'
 
 /** Seconds of the ramp before a muted or lowered stretch and after it. */
 export const SOUND_FADE = 0.02
@@ -81,6 +81,24 @@ export function rowState(p: Pick<Project, 'sounds' | 'clips'>, r: Pick<SoundRow,
   if (whollyCut(p.clips, r.start, r.end)) return 'cut'
   if (p.sounds?.ignored.includes(r.key)) return 'ignored'
   return 'open'
+}
+
+/**
+ * The rows the panel lists: the found ones, and one for each muted or lowered stretch whose key no
+ * found row has (a row of an earlier listen made with other speech ranges, or one past the most rows
+ * listed), so every stretch the preview and the export lower is shown and can be restored. By time.
+ */
+export function listedRows(p: Pick<Project, 'sounds'>, rows: readonly SoundRow[]): readonly SoundRow[] {
+  const keys = new Set(rows.map((r) => r.key))
+  const earlier: SoundRow[] = []
+  for (const s of p.sounds?.spans ?? []) {
+    const kind = s.key.slice(0, s.key.lastIndexOf('-')) as SoundKind
+    if (keys.has(s.key) || !SOUND_KIND_ORDER.includes(kind)) continue
+    keys.add(s.key)
+    earlier.push({ key: s.key, kind, start: s.start, end: s.end, score: 0, source: 'mix' })
+  }
+  if (earlier.length === 0) return rows
+  return [...rows, ...earlier].sort((a, b) => a.start - b.start || SOUND_KIND_ORDER.indexOf(a.kind) - SOUND_KIND_ORDER.indexOf(b.kind))
 }
 
 /* ---------- actions (each one store update) ---------- */

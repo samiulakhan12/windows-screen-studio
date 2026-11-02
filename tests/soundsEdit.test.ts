@@ -2,7 +2,7 @@
 // (docs/design/sound-finder.md §3, §4.4–4.6), plus the cache entries (§3.3).
 import { describe, expect, it } from 'vitest'
 import { gainAt } from '../src/shared/audio/automation'
-import { SCORE_COLUMNS, SOUND_MODEL } from '../src/shared/audio/sounds'
+import { SCORE_COLUMNS, SOUND_MODEL, type SoundRow } from '../src/shared/audio/sounds'
 import { cacheEntry, cacheMatches, entryScores, fromBase64, MAX_WINDOWS, readCacheEntry, toBase64 } from '../src/shared/audio/soundsCache'
 import {
   addSpans,
@@ -11,6 +11,7 @@ import {
   DUCK_GAIN,
   ignoreRow,
   joinGains,
+  listedRows,
   readSoundEdits,
   removeSpan,
   restoreCut,
@@ -139,6 +140,29 @@ describe('rows and actions', () => {
     expect('sounds' in bringBack(ig, 'ping-100')).toBe(false)
     // Muting an ignored row takes it off the ignored list.
     expect(addSpans(ig, [row('ping-100', 1, 1.2)], 'mute').sounds!.ignored).toEqual([])
+  })
+
+  it('lists a muted or lowered stretch that no found row has any more, so it can be restored', () => {
+    // Muted when the cough was found without the speech detector; found again with it, its key differs.
+    const p = addSpans(project(), [row('cough-497', 4.975, 5.2625)], 'mute')
+    const found: SoundRow[] = [
+      { key: 'cough-470', kind: 'cough', start: 4.7, end: 5.5, score: 0.8, source: 'mic' },
+      { key: 'dog-1000', kind: 'dog', start: 10, end: 10.5, score: 0.6, source: 'mic' }
+    ]
+    const listed = listedRows(p, found)
+    expect(listed.map((r) => [r.key, r.kind, r.start, r.end])).toEqual([
+      ['cough-470', 'cough', 4.7, 5.5],
+      ['cough-497', 'cough', 4.975, 5.2625],
+      ['dog-1000', 'dog', 10, 10.5]
+    ])
+    expect(listed.map((r) => rowState(p, r))).toEqual(['open', 'muted', 'open'])
+    // Restore takes it off the list, and nothing is lowered any more.
+    const back = removeSpan(p, 'cough-497')
+    expect(soundGains(back)).toEqual([])
+    expect(listedRows(back, found)).toEqual(found)
+    // The stretch of a found row is that row; a key of no kind the finder has is no row.
+    expect(listedRows(addSpans(back, [found[1]], 'duck'), found)).toEqual(found)
+    expect(listedRows(project({ sounds: { spans: [{ start: 1, end: 2, action: 'mute', key: 'hum-100' }], ignored: [] } }), found)).toEqual(found)
   })
 })
 
