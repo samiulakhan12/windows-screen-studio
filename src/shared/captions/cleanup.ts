@@ -356,68 +356,140 @@ export function bleepKey(word: string): string {
   return out
 }
 
+/** U+09CD, the Bangla virama: a consonant that takes it joins the next one (দ্দ in চোদ্দ, fourteen). */
+const VIRAMA = '\u09CD'
+/** A word ending in a Bangla consonant (with its nukta when য়, ড়, ঢ় are written in two parts), or ৎ. */
+const BN_CONSONANT_END = /[\u0995-\u09B9\u09BC\u09CE]$/u
+
 /**
- * Words the team writes for languages LDNOOBW lacks (Written for Flown, CC0-1.0; they start small
- * and need a native speaker's check before release, §0.3 decision 4). Matched whole, as Strict's are:
- * each form a word takes is listed, since stems such as বাল and চোদ begin everyday words (বালক,
- * বালিশ, চোদ্দ). The forms are made from the stems, so every person and tense is there: the verb
- * stems চোদ and চুদ take each ending after a consonant (চোদব, চুদছি, চুদেছে, চোদলাম, চুদতাম), the
- * causative চোদা each ending after a vowel (চোদাই, চোদায়, চোদাচ্ছে, চোদাবো, চোদালো) and the Dhaka
- * ones (চোদাইছে, চোদাইস, চোদমু, চুদতেছি, চুদিয়া); the nouns each case and plural ending, the
- * Dhaka ডা and গুলা, and the particles ও and ই (খানকিকে, চোদনার, হারামজাদাদের, মাগিগো, হারামিডা,
- * খানকিও). A noun written with ী as well as ি (মাগী, খানকী) has both spellings listed, and the
- * common compounds (বোকাচোদা, মাদারচোদ, খানকিরপোলা) are listed whole.
+ * A list the team writes for a language LDNOOBW lacks (Written for Flown, CC0-1.0; it starts small
+ * and needs a native speaker's check before release, §0.3 decision 4). Bangla builds many forms
+ * from one word (case endings, plurals and classifiers with particles stacked after them, every
+ * person and tense, the Dhaka forms, causatives, compounds, spelling variants), so its rude words
+ * are stems matched at a word's start, not lists of whole forms that can never be complete.
  */
-const BN_NOUN_ENDINGS = ['', 'র', 'রা', 'রে', 'দের', 'কে', 'টা', 'টাকে', 'টার', 'ডা', 'ডার', 'ডারে', 'গো', 'গুলো', 'গুলোর', 'গুলোকে', 'গুলা', 'ও', 'ই']
-/** A verb's endings after a stem ending in a consonant: present, continuous, perfect, past, habitual, future, the infinitive, the negative, the participle and the Dhaka forms. */
-const BN_VERB_ENDINGS = [
-  ...['', 'ি', 'িস', 'ে', 'ো', 'েন', 'িনি', 'িনা', 'স', 'োস', 'সনা', 'ুম', 'মু'],
-  ...['ছ', 'ছি', 'ছিস', 'ছে', 'ছো', 'ছেন', 'ছস', 'ছোস', 'ছিল', 'ছিলো', 'ছিলাম', 'ছিলি', 'ছিলে', 'ছিলেন'],
-  ...['েছ', 'েছি', 'েছিস', 'েছে', 'েছো', 'েছেন', 'েছিল', 'েছিলো', 'েছিলাম', 'েছিলি', 'েছিলে', 'েছিলেন'],
-  ...['িয়ে', 'িয়া', 'িয়েছে', 'িয়েছি', 'িয়েছিস'],
-  ...['ল', 'লো', 'লাম', 'লি', 'লে', 'লেন', 'লা'],
-  ...['ত', 'তো', 'তাম', 'তিস', 'তে', 'তেন', 'তাছে', 'তাছি', 'তাছস', 'তেছে', 'তেছি', 'তেছিস', 'তেছো'],
-  ...['ব', 'বো', 'বি', 'বে', 'বেন', 'বা']
-]
-/** A verb's endings after a stem ending in আ (the causative চোদা): its vowels written in full (চোদাই, চোদাও, চোদায়), and the Dhaka -ই- forms. */
-const BN_VERB_VOWEL_ENDINGS = [
-  ...['', 'ই', 'স', 'য়', 'ও', 'ন', 'ইনি', 'সনা'],
-  ...['চ্ছ', 'চ্ছি', 'চ্ছিস', 'চ্ছে', 'চ্ছো', 'চ্ছেন', 'চ্ছিল', 'চ্ছিলো'],
-  ...['ল', 'লো', 'লাম', 'লি', 'লে', 'লেন'],
-  ...['ত', 'তো', 'তাম', 'তিস', 'তে', 'তেন'],
-  ...['ব', 'বো', 'বি', 'বে', 'বেন'],
-  ...['নো', 'নোর', 'নি', 'র'],
-  ...['ইছ', 'ইছি', 'ইছে', 'ইছস', 'ইছো', 'ইস', 'ইতে', 'ইতাছে', 'ইল', 'ইলো', 'ইলাম', 'ইয়া', 'ইবি', 'ইমু']
-]
-const TEAM_WORDS: Readonly<Record<string, readonly string[]>> = {
-  bn: [
-    ...['চোদ', 'চুদ'].flatMap((stem) => BN_VERB_ENDINGS.map((end) => stem + end)),
-    ...['চোদা', 'চুদা'].flatMap((stem) => BN_VERB_VOWEL_ENDINGS.map((end) => stem + end)),
-    'চোদন', 'চোদনের', 'চুদির', 'চুদিরে',
-    ...['চোদনা', 'চোদাচুদি', 'খানকি', 'খানকী', 'মাগি', 'মাগী', 'হারামি', 'হারামী', 'হারামজাদা', 'হারামজাদি', 'হারামজাদী']
-      .flatMap((noun) => BN_NOUN_ENDINGS.map((end) => noun + end)),
-    ...['বোকাচোদা', 'বানচোদ', 'মাদারচোদ', 'চুদমারানি', 'চুতমারানি', 'খানকিরপোলা'].flatMap((noun) => BN_NOUN_ENDINGS.map((end) => noun + end)),
-    'খানকিপনা', 'মাগিবাজ', 'হারামিপনা',
-    ...['', 'ের', 'ে', 'ও', 'টা', 'টার', 'টাকে', 'ডা', 'ডার', 'ছাল'].map((end) => 'বাল' + end),
-    'শুয়োরের'
-  ]
+interface TeamList {
+  /** Spellings of one word, folded for matching only (each [written, as matched]): a caption keeps its own. */
+  fold: readonly (readonly [string, string])[]
+  /**
+   * Words rude in every form: a word starting with one is bleeped, unless the stem ends in a
+   * consonant that takes a virama there (চোদ in চোদ্দ, fourteen).
+   */
+  stems: readonly string[]
+  /** Compounds written as one word: a word holding one anywhere is bleeped, with the same guard. */
+  compounds: readonly string[]
+  /** Everyday words that start with a stem: never bleeped. */
+  everyday: readonly string[]
+  /** Nouns that also begin everyday words (বাল: বালক, বালিশ): matched whole, in every form nounForms gives. */
+  nouns: readonly string[]
+  /** Other words matched whole, as written. */
+  words: readonly string[]
+}
+
+/**
+ * The forms of a Bangla noun: each classifier or plural (টা and টি "the", the Dhaka ডা, গুলো,
+ * গুলা and গুলি "the ones", the Dhaka গো "of them") with each case ending (র "of", the Dhaka রে
+ * "to", কে "to", তে and য় "in"; য় after আ and ও only), or a plural that is a case already (রা,
+ * দের, দেরকে); then the particle ও "also" or ই "only" (বালটারেও, বালগুলোরই). After a consonant,
+ * র, রা, রে and তে are written ের, েরা, েরে and ে as well (বালের, বালে).
+ */
+const BN_NUMBERS = ['', 'টা', 'টি', 'ডা', 'গুলো', 'গুলা', 'গুলি', 'গো']
+const BN_CASES = ['', 'র', 'রে', 'কে', 'তে', 'য়']
+const BN_PLURAL_CASES = ['রা', 'দের', 'দেরকে']
+const BN_AFTER_CONSONANT = ['ের', 'েরা', 'েরে', 'ে']
+const BN_PARTICLES = ['', 'ও', 'ই']
+function nounForms(noun: string): string[] {
+  const ends = BN_NUMBERS.flatMap((n) => BN_CASES.filter((c) => c !== 'য়' || /[াো]$/u.test(n || noun)).map((c) => n + c))
+  ends.push(...BN_PLURAL_CASES)
+  if (BN_CONSONANT_END.test(noun)) ends.push(...BN_AFTER_CONSONANT)
+  return ends.flatMap((e) => BN_PARTICLES.map((p) => noun + e + p))
+}
+
+const TEAM_LISTS: Readonly<Record<string, TeamList>> = {
+  bn: {
+    // ী and ি, ূ and ু: one word either way (মাগী and মাগি, খানকীপনা and খানকিপনা).
+    fold: [['ী', 'ি'], ['ূ', 'ু']],
+    // The verb চোদা in every person and tense, its causative and the Dhaka forms (চোদব, চুদতেছস,
+    // চুদিয়েছিল, চোদাইলি), the nouns made from it (চোদন, চোদনা, চুদির, চোদাচুদি), and the nouns
+    // in every form (খানকিরাও, মাগিটারে, হারামিগুলোরে, হারামজাদাদেরকে, মাগীবাজ, হারামিপনা).
+    stems: ['চোদ', 'চুদ', 'খানকি', 'মাগি', 'হারামি', 'হারামজাদা', 'হারামজাদি'],
+    compounds: [...['বোকা', 'বান', 'মাদার'].flatMap((w) => [w + 'চোদ', w + 'চুদ']), 'চুদমারানি', 'চুতমারানি', 'খানকিরপোলা'],
+    everyday: [
+      // মাগা, "to beg, to ask for" (in songs, poems and the old written style): its forms that start with মাগি.
+      'মাগিনা', // "(I) do not ask"
+      'মাগিয়া', // "having asked"
+      'মাগিল', 'মাগিলা', 'মাগিলাম', 'মাগিলেন', 'মাগিলে', // "asked"; মাগিলে also "if (one) asks"
+      'মাগিব', 'মাগিবে', 'মাগিবেন', // "will ask"
+      'মাগিত', 'মাগিতাম', 'মাগিতেন', // "used to ask"
+      'মাগিতেছে', 'মাগিতেছি', // "is asking", "am asking"
+      'মাগিয়াছে', 'মাগিয়াছি', 'মাগিয়াছিল', 'মাগিয়াছিলেন' // "has asked", "had asked"
+    ],
+    nouns: ['বাল', 'বালছাল'],
+    // শুয়োরের (in শুয়োরের বাচ্চা), and with ও or ই: শুয়োর, "pig", is an everyday word.
+    words: BN_PARTICLES.map((p) => 'শুয়োরের' + p)
+  }
+}
+
+/** A stem as matched: folded as words are, and whether it ends in a consonant (which a virama joins to the next). */
+interface Stem {
+  key: string
+  consonant: boolean
+}
+/** A team list ready to match: its words and stems folded as words are. */
+interface TeamRules {
+  fold: (key: string) => string
+  stems: readonly Stem[]
+  compounds: readonly Stem[]
+  everyday: ReadonlySet<string>
+  whole: ReadonlySet<string>
+}
+const teamRules = new Map<string, TeamRules | null>()
+function teamRulesOf(lang: string): TeamRules | null {
+  let r = teamRules.get(lang)
+  if (r !== undefined) return r
+  const list = TEAM_LISTS[lang]
+  if (!list) r = null
+  else {
+    // After the punctuation goes, NFC again joins a vowel sign written in two parts around a joiner.
+    const fold = (key: string): string => list.fold.reduce((k, [from, to]) => k.replaceAll(from, to), key.normalize('NFC'))
+    const keyOf = (w: string): string => fold(bleepKey(w))
+    const everyday = new Set(list.everyday.map(keyOf))
+    const stem = (w: string): Stem => ({ key: keyOf(w), consonant: BN_CONSONANT_END.test(keyOf(w)) })
+    r = {
+      fold,
+      stems: list.stems.map(stem),
+      compounds: list.compounds.map(stem),
+      everyday,
+      whole: new Set([...list.nouns.flatMap(nounForms), ...list.words].map(keyOf).filter((k) => k && !everyday.has(k)))
+    }
+  }
+  teamRules.set(lang, r)
+  return r
+}
+
+/** Whether `stem` is at `at` in `key`, its last consonant taking no virama there. */
+const stemAt = (key: string, stem: Stem, at: number): boolean => key.startsWith(stem.key, at) && !(stem.consonant && key[at + stem.key.length] === VIRAMA)
+
+/** Whether a word's key is rude by the team's list for `lang`. */
+function teamMatch(key: string, lang: string): boolean {
+  const r = teamRulesOf(lang)
+  if (!r) return false
+  const k = r.fold(key)
+  if (r.everyday.has(k)) return false
+  if (r.whole.has(k)) return true
+  for (const stem of r.stems) if (stemAt(k, stem, 0)) return true
+  for (const c of r.compounds) {
+    for (let at = k.indexOf(c.key); at >= 0; at = k.indexOf(c.key, at + 1)) if (stemAt(k, c, at)) return true
+  }
+  return false
 }
 
 const standardRes = STANDARD_WORDS.map((w) => ({ word: w.word, res: w.patterns.map((p) => new RegExp(p, 'u')), safe: w.safe.map((s) => bleepKey(s)) }))
-const teamSets = new Map<string, ReadonlySet<string>>()
-function teamSet(lang: string): ReadonlySet<string> {
-  let s = teamSets.get(lang)
-  if (!s) {
-    s = new Set((TEAM_WORDS[lang] ?? []).map(bleepKey).filter(Boolean))
-    teamSets.set(lang, s)
-  }
-  return s
-}
 const strictSets = new Map<string, ReadonlySet<string>>()
 function strictSet(lang: string): ReadonlySet<string> {
   let s = strictSets.get(lang)
   if (!s) {
-    s = new Set([...(STRICT_WORDS[lang] ?? []), ...(TEAM_WORDS[lang] ?? [])].map(bleepKey).filter(Boolean))
+    s = new Set((STRICT_WORDS[lang] ?? []).map(bleepKey).filter(Boolean))
     strictSets.set(lang, s)
   }
   return s
@@ -434,7 +506,7 @@ export function isSwearWord(word: string, mode: 'standard' | 'strict', language?
   }
   const lang = baseLanguage(language)
   // Bangla and the languages LDNOOBW lacks have the team's lists in Standard too.
-  if (teamSet(lang).has(key)) return true
+  if (teamMatch(key, lang)) return true
   if (mode === 'strict') {
     if (strictSet(lang).has(key) || (lang !== 'en' && strictSet('en').has(key))) return true
   }

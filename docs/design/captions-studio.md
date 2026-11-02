@@ -2810,9 +2810,25 @@ Offline rules, each optional (§2.9). The choices are `CleanupChoices` (`caps`, 
      `NN-caption-data.txt`, §6.9; 28 languages, no bn, ur, ta, te or mr). Bangla and the missing
      languages: short lists the team writes (CC0-1.0). The user's own words can be added.
    - Matching: lower case, punctuation removed, repeated letters collapsed, safe look-alikes
-     checked. The team's lists match whole words, each form listed (বালের, চোদেন, চোদায়; a noun
-     with each case and plural ending: খানকিকে, চোদনার, হারামজাদাদের), never as a prefix: বাল and চোদ
-     begin everyday words such as বালক, বালিশ and চোদ্দ.
+     checked. Other languages match whole words. Bangla builds many forms from one word (case
+     endings, plurals and classifiers with particles stacked after them, every person and tense,
+     Dhaka forms, causatives, compounds, spelling variants), so a list of whole forms is never
+     complete; the team's Bangla list (`TEAM_LISTS.bn`, `cleanup.ts`) has three kinds of entry,
+     matched after both the word and the list are normalised, for matching only (NFC, so য় as
+     U+09DF or U+09AF U+09BC and ো or ৌ in one or two parts are one spelling; ী read as ি and ূ as
+     ু); the caption keeps its own spelling and the bleep its word.
+     - **Stems** rude in every form (চোদ, চুদ, খানকি, মাগি, হারামি, হারামজাদা, হারামজাদি): a
+       word starting with one is bleeped (চুদতেছস, চুদিয়েছিল, চোদাইলি, খানকিরাও, হারামিগুলোরে,
+       মাগীবাজ), and a **compound** written as one word (বোকাচোদ, বানচোদ, মাদারচোদ, চুতমারানি,
+       খানকিরপোলা) anywhere in a word. Guards: no bleep where a stem's last consonant takes a
+       virama (চোদ্দ, চোদ্দো: fourteen), nor for a short list of everyday words that start with a
+       stem, each with its meaning in the list (মাগিনা, মাগিল: মাগা, "to ask", in songs and the
+       old written style).
+     - **Nouns that begin everyday words** (বাল: বালক, বালিশ, বালতি, বালি): matched whole, every
+       form generated: each classifier or plural (টা, টি, ডা, গুলো, গুলা, গুলি, গো; রা, দের,
+       দেরকে), case ending (র, রে, কে, তে, য়) and particle (ও, ই) Bangla allows (বালের,
+       বালটারেও).
+     - Other whole words (শুয়োরের, with ও or ই).
    - **A bleep is time-based** (`Bleep`, §4.1): its source-time span is the word's time ± 0.05 s
      (± 0.15 s for estimated times, with the notice "Some bleeped words have estimated times, so a
      little more is bleeped"), and it keeps the matched word in lower case. It carries no caption
@@ -3410,7 +3426,7 @@ May touch additively: `commands.ts` only to fix wording found in review (ids are
 | `native/speech/src/args.rs`, `src/main/speech/localClient.ts`, `src/main/ai/openai.ts`, `src/main/ai/gemini.ts` | The word list as a prompt (§11.7 rule 4). |
 | `scripts/build-emoji-data.mjs` | Generates `emojiData.ts` and the number tables from CLDR 49; `--check` (§11.3). |
 | `tests/e2e/captions.e2e.cjs`, the publish-pack command tests | "Translate to…" and "Fix captions" move to Languages and Clean up (§2.14). |
-| Tests | `tests/emphasis.test.ts`, `tests/emoji.test.ts`, `tests/numbers.test.ts`, `tests/lists.test.ts`, `tests/graphicRules.test.ts`, `tests/autoStyle.test.ts`, `tests/cleanup.test.ts`, `tests/great.test.ts`, `tests/captionAutoSettle.test.ts`, `tests/reviewCaptions.test.ts`, `tests/marksTask.test.ts`, `tests/captionTracks.test.ts`, `tests/polishCaptionLook.test.ts`, `tests/translateCatalog.test.ts`, `tests/translator.test.ts` (gated) |
+| Tests | `tests/emphasis.test.ts`, `tests/emoji.test.ts`, `tests/numbers.test.ts`, `tests/lists.test.ts`, `tests/graphicRules.test.ts`, `tests/autoStyle.test.ts`, `tests/cleanup.test.ts`, `tests/bleepBangla.test.ts`, `tests/great.test.ts`, `tests/captionAutoSettle.test.ts`, `tests/reviewCaptions.test.ts`, `tests/marksTask.test.ts`, `tests/captionTracks.test.ts`, `tests/polishCaptionLook.test.ts`, `tests/translateCatalog.test.ts`, `tests/translator.test.ts` (gated) |
 
 **The translation spike** comes first in P4 and takes at most one day: build the runtime from
 `mozilla/translations` at a pinned commit with the scripted build, record the emsdk version and
@@ -3606,7 +3622,10 @@ under `xvfb-run`: `captions-studio`, `captions`, `edit-by-text`, `transcription`
     `autoStyleOnFirstCaptions` runs in `transcribe` and in Polish's captions step and writes no
     record.
 41. Clean-up: capitals, end marks per language, digits above ten with merged word times, the word
-    list, bleep masks; the AI fix's changes get `captionAuto.text` records.
+    list, bleep masks; the AI fix's changes get `captionAuto.text` records. Bangla bleeping
+    (`tests/bleepBangla.test.ts`): every form generated from each stem, compound and whole noun is
+    bleeped in Standard and Strict (bn, bn-BD, and a mostly Bangla transcript naming no language),
+    written either way; over 300 everyday words, those sharing letters with a stem among them, never.
 42. Make my captions great: the order; one update; **a second run returns the same project
     object** (content ids); a second style change keeps the first `was`; the summary; in a
     screen-led tall project emoji and keyword pop-ups resolve off and counters and lists on.
