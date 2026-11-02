@@ -155,6 +155,20 @@ describe('ShareService', () => {
     expect(f.notes).toEqual([{ title: 'Could not share', body: '#demos: Slack is busy. Try again in a minute.' }])
   })
 
+  it('forgets what was shared of an earlier export saved at the same path', async () => {
+    const s = setup()
+    s.service.offer(FILE, META, true)
+    await s.service.start(FILE, [ONEDRIVE.id], META)
+    await s.settled()
+    // Exported again over the same file, now with only the chat chosen.
+    const v2 = { title: 'Demo v2', seconds: 160 }
+    s.service.offer(FILE, v2, true)
+    expect(s.service.runsFor(FILE)).toEqual([])
+    await s.service.start(FILE, ['whkchat'], v2)
+    await s.settled()
+    expect(s.posts.at(-1)?.lines).toEqual(['New video: Demo v2 (2:40)'])
+  })
+
   it('lists the runs of a file', async () => {
     const s = setup()
     const run = await s.service.start(FILE, [ONEDRIVE.id], META)

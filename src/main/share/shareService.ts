@@ -61,9 +61,15 @@ export class ShareService {
 
   constructor(private readonly deps: ShareDeps) {}
 
-  /** Remembers what a message says about `file` (and whether the page shares it itself). */
+  /**
+   * Remembers what a message says about `file` (and whether the page shares it itself). It is a new
+   * export: what was shared of an earlier one saved at the same path is forgotten, so its copies are
+   * neither shown nor named in a post as this one's.
+   */
   offer(file: unknown, meta: unknown, auto: unknown): void {
     if (typeof file !== 'string' || !this.deps.isExported(file)) return
+    this.places.delete(file)
+    for (const [id, r] of this.runs) if (r.view.file === file && r.view.finished) this.runs.delete(id)
     this.offers.set(file, { meta: validMeta(meta), auto: auto === true })
     while (this.offers.size > MAX_OFFERS) this.offers.delete(this.offers.keys().next().value as string)
   }
