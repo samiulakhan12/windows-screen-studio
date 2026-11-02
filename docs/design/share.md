@@ -91,8 +91,10 @@ Drive's settings", "Found at the usual place", "Added by you". **Nothing is gues
 every folder Flown would copy into is listed in Settings › Share with its full path and its source,
 can be turned off there ("Use" switch), and the export chip's tooltip shows the full path. A folder
 the user added stays theirs when a cloud app reports it too (their name, "Added by you", their
-switch, offered as before); removing it forgets its switch, so if it is found it starts as the other
-found folders do.
+switch, offered as before). Removing it never turns a copy on: before the found folders were seen it
+forgets its switch, so if it is found it starts as the other found folders do; a folder turned off
+stays off once they were seen, and removing one that a cloud app reports counts as seeing them (it
+stays in the found list in front of the user).
 
 * Registry values are read with `%SystemRoot%\System32\reg.exe export <key> <temp file> /y`: a fixed
   program path, fixed arguments (three keys, never built from user data; the temp file in the OS temp
@@ -187,7 +189,7 @@ choose Share (OneDrive), Copy Dropbox link (Dropbox) or Share › Copy link (Goo
 ```jsonc
 { "version": 1,
   "folders": [ { "id": "cf1a2b3c4d", "path": "D:\\Team share", "label": "Team share", "addedAt": "…" } ],
-  "off": [ "cf9f8e7d6c" ],                 // folders the user turned off (a removed one's id goes)
+  "off": [ "cf9f8e7d6c" ],                 // folders the user turned off (kept after review, also when removed)
   "hooks": [ { "id": "whk…", "service": "slack", "label": "#demos", "url": "<base64 safeStorage>", "createdAt": "…" } ] }
 ```
 * A found folder's id is `cf` + 10 hex characters of two FNV-1a hashes of its normalised path

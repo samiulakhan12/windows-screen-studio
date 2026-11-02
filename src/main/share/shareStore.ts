@@ -138,10 +138,14 @@ export class ShareStore {
     this.write({ ...d, off, folders: [...d.folders, { id, path: folder, label: cleanLabel(label, 'Folder'), addedAt: now.toISOString() }] })
   }
 
-  /** Forgets a folder the user added, its switch too: should it be found, it starts as found folders do. */
+  /**
+   * Forgets a folder the user added. Before the found folders were seen its switch goes too, so
+   * should it be found it starts as found folders do; after that a folder turned off stays off,
+   * also once a cloud app reports it, so Remove never turns a copy on.
+   */
   removeFolder(id: string): void {
     const d = this.load()
-    if (d.folders.some((f) => f.id === id)) this.write({ ...d, folders: d.folders.filter((f) => f.id !== id), off: d.off.filter((x) => x !== id) })
+    if (d.folders.some((f) => f.id === id)) this.write({ ...d, folders: d.folders.filter((f) => f.id !== id), off: d.reviewed ? d.off : d.off.filter((x) => x !== id) })
   }
 
   /** Turns a folder on or off (found folders are remembered by id). */

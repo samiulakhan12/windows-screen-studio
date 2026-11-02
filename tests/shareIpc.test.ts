@@ -104,11 +104,11 @@ describe('Settings › Share found folders', () => {
     expect(shareJson()).toMatchObject({ reviewed: true, off: expect.arrayContaining([dropbox.id]) })
   })
 
-  it('take in a removed folder of the user’s own that is found too, as any found folder', async () => {
+  it('take in a removed folder of the user’s own that is found too, as any found folder, still off as the user left it', async () => {
     const id = folderId(h.picked)
     const removed = await call('share:setFolder', id, null)
-    expect(removed.folders.find((f) => f.id === id)).toMatchObject({ label: 'Dropbox (work)', source: 'app', on: true })
-    expect(shareJson().off).not.toContain(id)
+    expect(removed.folders.find((f) => f.id === id)).toMatchObject({ label: 'Dropbox (work)', source: 'app', on: false })
+    expect(shareJson().off).toContain(id)
   })
 })
 

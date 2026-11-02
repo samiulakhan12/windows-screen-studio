@@ -152,8 +152,12 @@ export function registerShareIpc(): void {
   handle('share:setFolder', async (id, on) => {
     if (typeof id !== 'string') throw new Error('Invalid folder')
     const s = shareStore()
-    if (on === null) s.removeFolder(id)
-    else if (typeof on === 'boolean') {
+    if (on === null) {
+      // A folder turned off that a cloud app reports stays in the found list in front of the user:
+      // removing it is seeing that list, so it stays off rather than coming back on.
+      if (s.isOff(id) && (await foundFolders()).some((c) => folderId(c.path) === id)) s.markReviewed()
+      s.removeFolder(id)
+    } else if (typeof on === 'boolean') {
       const folder = (await folderInfos()).find((f) => f.id === id)
       if (!folder) throw new Error('This folder is not there any more.')
       // A found folder's switch sits in their list, shown as it will be once seen: changing it is seeing them.
