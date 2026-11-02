@@ -53,10 +53,12 @@ function foundFolders(refresh = false): Promise<CloudCandidate[]> {
 async function folderInfos(refresh = false): Promise<ShareFolderInfo[]> {
   const s = shareStore()
   const out: ShareFolderInfo[] = []
+  // A folder the user added stays theirs, as they set it, when its cloud app reports it too.
+  const added = new Set(s.folders().map((f) => f.id))
   for (const c of await foundFolders(refresh)) {
     const id = folderId(c.path)
     // Nothing is offered that the user has not seen: found folders wait for Settings › Share.
-    if (!out.some((f) => f.id === id)) out.push({ id, service: c.service, label: c.label, path: c.path, source: c.source, on: s.reviewed() && !s.isOff(id) })
+    if (!added.has(id) && !out.some((f) => f.id === id)) out.push({ id, service: c.service, label: c.label, path: c.path, source: c.source, on: s.reviewed() && !s.isOff(id) })
   }
   for (const f of s.folders()) {
     if (!out.some((x) => x.id === f.id)) out.push({ id: f.id, service: 'folder', label: f.label, path: f.path, source: 'picked', on: !s.isOff(f.id) })

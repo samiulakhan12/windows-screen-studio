@@ -138,9 +138,10 @@ export class ShareStore {
     this.write({ ...d, off, folders: [...d.folders, { id, path: folder, label: cleanLabel(label, 'Folder'), addedAt: now.toISOString() }] })
   }
 
+  /** Forgets a folder the user added, its switch too: should it be found, it starts as found folders do. */
   removeFolder(id: string): void {
     const d = this.load()
-    if (d.folders.some((f) => f.id === id)) this.write({ ...d, folders: d.folders.filter((f) => f.id !== id) })
+    if (d.folders.some((f) => f.id === id)) this.write({ ...d, folders: d.folders.filter((f) => f.id !== id), off: d.off.filter((x) => x !== id) })
   }
 
   /** Turns a folder on or off (found folders are remembered by id). */

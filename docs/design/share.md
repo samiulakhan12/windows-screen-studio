@@ -89,7 +89,10 @@ PC. Check them in Settings › Share to copy exports there." and neither the dia
 offers them. Sources shown: "Found in OneDrive's settings", "Found in Dropbox's settings", "Found in Google
 Drive's settings", "Found at the usual place", "Added by you". **Nothing is guessed silently**:
 every folder Flown would copy into is listed in Settings › Share with its full path and its source,
-can be turned off there ("Use" switch), and the export chip's tooltip shows the full path.
+can be turned off there ("Use" switch), and the export chip's tooltip shows the full path. A folder
+the user added stays theirs when a cloud app reports it too (their name, "Added by you", their
+switch, offered as before); removing it forgets its switch, so if it is found it starts as the other
+found folders do.
 
 * Registry values are read with `%SystemRoot%\System32\reg.exe export <key> <temp file> /y`: a fixed
   program path, fixed arguments (three keys, never built from user data; the temp file in the OS temp
@@ -184,7 +187,7 @@ choose Share (OneDrive), Copy Dropbox link (Dropbox) or Share › Copy link (Goo
 ```jsonc
 { "version": 1,
   "folders": [ { "id": "cf1a2b3c4d", "path": "D:\\Team share", "label": "Team share", "addedAt": "…" } ],
-  "off": [ "cf9f8e7d6c" ],                 // found folders the user turned off
+  "off": [ "cf9f8e7d6c" ],                 // folders the user turned off (a removed one's id goes)
   "hooks": [ { "id": "whk…", "service": "slack", "label": "#demos", "url": "<base64 safeStorage>", "createdAt": "…" } ] }
 ```
 * A found folder's id is `cf` + 10 hex characters of two FNV-1a hashes of its normalised path
@@ -390,7 +393,8 @@ Unit (vitest, each failing without its code):
 * `shareSeen.test.ts` — the found folders count as seen only after staying on screen for `SEEN_MS`;
   their switches show them on before that.
 * `shareIpc.test.ts` — changing a found folder's switch counts as seeing them, in the same step
-  (turning one off leaves only the others offered); a folder of the user's own does not. A done
+  (turning one off leaves only the others offered); a folder of the user's own does not, and stays
+  theirs, as they set it, when its cloud app reports it too (once removed it is a found folder). A done
   view's `shareWatch` counts for its page and is forgotten when that page reloads, crashes or closes.
 * `shareAfterExport.test.ts` — Export pressed before the destinations loaded still shares to the
   remembered choice, waiting for them when they are still loading as the export ends.

@@ -1,18 +1,23 @@
 /**
  * Settings › Share through main's IPC handlers (docs/design/share.md §2.2): found folders (a fake
  * Windows profile, as the e2e uses) are offered only once their list has been seen, and changing
- * one of their "Use" switches counts as seeing them.
+ * one of their "Use" switches counts as seeing them. A folder the user added stays theirs when its
+ * cloud app reports it too.
  */
 import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
 import type { ShareTargets } from '../src/shared/api/share'
+import { folderId } from '../src/shared/share/cloudFolders'
+import { switchOn } from '../src/shared/share/onScreen'
 
 const h = vi.hoisted(() => ({
   root: require('node:fs').mkdtempSync(require('node:path').join(require('node:os').tmpdir(), 'ssw-share-ipc-')) as string,
   handlers: new Map<string, (...args: unknown[]) => unknown>(),
-  picked: ''
+  picked: '',
+  dropbox: '',
+  info: ''
 }))
 
 vi.mock('electron', () => ({
@@ -43,10 +48,11 @@ beforeAll(() => {
   const profile = path.join(h.root, 'winprofile')
   const roaming = path.join(profile, 'AppData', 'Roaming')
   const onedrive = path.join(profile, 'OneDrive')
-  const dropbox = path.join(profile, 'Dropbox (Personal)')
+  h.dropbox = path.join(profile, 'Dropbox (Personal)')
   h.picked = path.join(h.root, 'Team share')
-  for (const d of [onedrive, dropbox, path.join(roaming, 'Dropbox'), h.picked]) mkdirSync(d, { recursive: true })
-  writeFileSync(path.join(roaming, 'Dropbox', 'info.json'), JSON.stringify({ personal: { path: dropbox } }))
+  h.info = path.join(roaming, 'Dropbox', 'info.json')
+  for (const d of [onedrive, h.dropbox, path.join(roaming, 'Dropbox'), h.picked]) mkdirSync(d, { recursive: true })
+  writeFileSync(h.info, JSON.stringify({ personal: { path: h.dropbox } }))
   const reg = ['HKEY_CURRENT_USER\\Software\\Microsoft\\OneDrive\\Accounts\\Personal', `    UserFolder    REG_SZ    ${onedrive}`, ''].join('\r\n')
   const fake = path.join(h.root, 'fake-cloud.json')
   writeFileSync(fake, JSON.stringify({ env: { USERPROFILE: profile, APPDATA: roaming }, registry: { 'HKCU\\Software\\Microsoft\\OneDrive\\Accounts': reg } }))
@@ -73,12 +79,36 @@ describe('Settings › Share found folders', () => {
     expect(shareJson().reviewed).toBe(false)
   })
 
+  it('leave a folder of the user’s own as they set it when its cloud app reports it too', async () => {
+    // Dropbox now names "Team share" as its work folder.
+    writeFileSync(h.info, JSON.stringify({ personal: { path: h.dropbox }, business: { path: h.picked } }))
+    const later = await call('share:targets', true)
+    const team = later.folders.find((f) => f.id === folderId(h.picked))!
+    expect(team).toMatchObject({ label: 'Team share', source: 'picked', on: false })
+    expect(later.folders.filter((f) => f.id === team.id)).toHaveLength(1)
+    // Its switch shows it off, as it will stay once the found folders are seen.
+    expect(later.reviewed).toBe(false)
+    expect(switchOn(team, later.reviewed)).toBe(false)
+    // Turned on, it is offered at once, as before it was found: it is not waiting to be seen.
+    const onAgain = await call('share:setFolder', team.id, true)
+    expect(onAgain.reviewed).toBe(false)
+    expect(on(onAgain)).toEqual({ OneDrive: false, Dropbox: false, 'Team share': true })
+    expect(on(await call('share:setFolder', team.id, false))).toEqual({ OneDrive: false, Dropbox: false, 'Team share': false })
+  })
+
   it('are seen when one of their switches is changed: the one turned off stays off, the others are offered', async () => {
     const dropbox = (await call('share:targets')).folders.find((f) => f.label === 'Dropbox')!
     const next = await call('share:setFolder', dropbox.id, false)
     expect(next.reviewed).toBe(true)
     expect(on(next)).toEqual({ OneDrive: true, Dropbox: false, 'Team share': false })
     expect(shareJson()).toMatchObject({ reviewed: true, off: expect.arrayContaining([dropbox.id]) })
+  })
+
+  it('take in a removed folder of the user’s own that is found too, as any found folder', async () => {
+    const id = folderId(h.picked)
+    const removed = await call('share:setFolder', id, null)
+    expect(removed.folders.find((f) => f.id === id)).toMatchObject({ label: 'Dropbox (work)', source: 'app', on: true })
+    expect(shareJson().off).not.toContain(id)
   })
 })
 

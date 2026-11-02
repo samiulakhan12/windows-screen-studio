@@ -91,6 +91,20 @@ describe('ShareStore', () => {
     expect(again.folders()).toEqual([])
   })
 
+  it('forgets a removed folder’s switch, so it starts as found folders do if it is found later', () => {
+    const store = new ShareStore(file, fakeBox())
+    const team = path.join(dir, 'Team share')
+    store.addFolder(team, 'Team share')
+    store.setOff(folderId(team), true)
+    store.setOff('cf0123456789', true)
+    store.removeFolder(folderId(team))
+    // A found folder's id is not one the user added: removing it changes nothing.
+    store.removeFolder('cf0123456789')
+    const again = new ShareStore(file, fakeBox())
+    expect(again.isOff(folderId(team))).toBe(false)
+    expect(again.isOff('cf0123456789')).toBe(true)
+  })
+
   it('remembers that Settings › Share was seen', () => {
     const store = new ShareStore(file, fakeBox())
     expect(store.reviewed()).toBe(false)
