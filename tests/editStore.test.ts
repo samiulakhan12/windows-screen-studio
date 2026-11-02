@@ -272,6 +272,54 @@ describe('EditStore', () => {
     expect(t.state).toBe(20)
   })
 
+  // The palette's Undo and the title bar's buttons ask canUndo and canRedo (§4.3): Remove all as the
+  // first edit since the project opened still has an undo, which waits for it.
+  it('while held, an undo is always there (it waits for the edit); a redo only for an edit made meanwhile or after an undo that waits, else refused at once', () => {
+    const { s } = store()
+    let heard = 0
+    s.subscribeHistory(() => heard++)
+    expect(s.canUndo).toBe(false)
+    let release = s.hold()
+    expect(heard).toBe(1)
+    expect(s.canUndo).toBe(true)
+    expect(s.canRedo).toBe(false)
+    expect(s.redo()).toBe(false) // nothing to bring back after the work's edit: refused at once
+    expect(s.undo()).toBe(true) // waits
+    expect(heard).toBe(2)
+    expect(s.canRedo).toBe(true) // after the undo that waits
+    expect(s.redo()).toBe(true) // waits
+    expect(s.canRedo).toBe(false)
+    expect(s.redo()).toBe(false)
+    s.update(() => 1) // the work's edit
+    release()
+    expect(s.held).toBe(false)
+    expect(s.state).toBe(1) // undone, then redone
+    expect(s.canRedo).toBe(false)
+    expect(heard).toBeGreaterThanOrEqual(6) // the edit, the undo, the redo, the release
+    // A redo list from before the work: its edit empties it, so a redo meanwhile is refused.
+    s.undo()
+    expect(s.canRedo).toBe(true)
+    release = s.hold()
+    expect(s.canRedo).toBe(false)
+    expect(s.redo()).toBe(false)
+    // An undo, then a Keep that waits (an edit): no redo after it either.
+    s.undo()
+    expect(s.canRedo).toBe(true)
+    s.whenFree(() => s.update((v) => v + 10))
+    expect(s.canRedo).toBe(false)
+    expect(s.redo()).toBe(false)
+    // An edit made meanwhile and taken back at once comes back at once.
+    s.update(() => 5)
+    s.undo()
+    expect(s.canRedo).toBe(true)
+    expect(s.redo()).toBe(true)
+    expect(s.state).toBe(5)
+    s.update(() => 7) // the work's edit
+    release()
+    expect(s.state).toBe(15) // the undo took the work's edit back (to the edit made meanwhile), then the Keep was made
+    expect(s.canRedo).toBe(false)
+  })
+
   it('finish has each work holding the store make its edit and let go at once', () => {
     const { s } = store()
     s.update(() => 1)

@@ -329,6 +329,10 @@ function EditorSession({
 }): JSX.Element {
   const { data, store, saver, player } = session
   const project = useSyncExternalStore(store.subscribe, store.getSnapshot)
+  // Undo and Redo for the title bar's buttons: also while work holds the project (Review mode's
+  // Remove all), when they wait for its edit (docs/design/review-mode.md §4.3).
+  const canUndo = useSyncExternalStore(store.subscribeHistory, () => store.canUndo)
+  const canRedo = useSyncExternalStore(store.subscribeHistory, () => store.canRedo)
   const services = useMemo<EditorServices>(() => ({ store, player }), [store, player])
   // cursor.json as recorded; never changed. Everything that shows or uses input reads `cursor`:
   // the recording with the project's input edits (ignored clicks, straightened moves) applied.
@@ -1613,10 +1617,10 @@ function EditorSession({
           />
           <CopyMenu project={project} vw={shown.vw} vh={shown.vh} run={(kind) => void makeCopy(kind)} />
           <div className="history-buttons">
-            <button className="btn ghost icon-btn" onClick={actions.undo} disabled={!store.canUndo} title={withShortcut('Undo', keymap.undo)} aria-label="Undo">
+            <button className="btn ghost icon-btn" onClick={actions.undo} disabled={!canUndo} title={withShortcut('Undo', keymap.undo)} aria-label="Undo">
               <EditorIcon name="undo" />
             </button>
-            <button className="btn ghost icon-btn" onClick={actions.redo} disabled={!store.canRedo} title={withShortcut('Redo', keymap.redo)} aria-label="Redo">
+            <button className="btn ghost icon-btn" onClick={actions.redo} disabled={!canRedo} title={withShortcut('Redo', keymap.redo)} aria-label="Redo">
               <EditorIcon name="redo" />
             </button>
           </div>

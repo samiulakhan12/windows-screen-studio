@@ -279,7 +279,7 @@ describe('heldInSlices', () => {
     expect(store.state).toBe(kept)
   })
 
-  it('stopped, nothing changes and the redo list stays; a redo that waited finds nothing above the Remove all', () => {
+  it('stopped, nothing changes and the redo list stays; a redo asked for while it works finds nothing above the Remove all', () => {
     const { p, kept, rows, store, t, stop } = underWay()
     stop()
     t.runAll()
@@ -289,52 +289,17 @@ describe('heldInSlices', () => {
     const t2 = handTasks(true)
     const { stop: stop2 } = heldInSlices(store, (q) => removeSteps(q, pending(q, rows)), () => store.update((q) => removeItems(q, pending(q, rows))), t2, 1)
     t2.queue.shift()!()
-    expect(store.redo()).toBe(true) // waits
+    // The Remove all, made first, empties the redo list: Nothing to redo, said at once.
+    expect(store.canRedo).toBe(false)
+    expect(store.redo()).toBe(false)
     expect(store.state).toBe(p)
     stop2()
     t2.runAll()
-    // Nothing of the work, and the redo was for after it (which would have emptied the list): the Keep is still there to redo.
+    // Nothing of the work: the Keep is still there to redo.
     expect(store.state).toBe(p)
     expect(store.canRedo).toBe(true)
     store.redo()
     expect(store.state).toBe(kept)
   })
 
-  it('a Remove all that finds nothing left to change makes no step, and an undo that waited for it takes nothing back', () => {
-    const { kept, rows, store, t } = underWay()
-    expect(store.undo()).toBe(true) // waits, for the Remove all
-    // Then every silence row kept from outside the panel: the work starts over and finds nothing to remove.
-    store.update((q) => keepItems(q, pending(q, rows)))
-    const all = store.state
-    t.runAll()
-    expect(store.held).toBe(false)
-    expect(store.state).toBe(all) // no step of its own, and the undo took nothing back
-    store.undo()
-    expect(store.state).toBe(kept)
-  })
-
-  it('finish (the editor closing) makes the Remove all at once, then what waited', () => {
-    const { kept, rows, store, t } = underWay()
-    store.whenFree(() => store.update((q) => (reviewStatus(q, rows[1]) === 'pending' ? keepItems(q, [rows[1]]) : q)))
-    store.finish()
-    expect(store.held).toBe(false)
-    expect(rows.slice(1).every((i) => reviewStatus(store.state, i) === 'removed')).toBe(true)
-    expect(reviewStatus(store.state, rows[0])).toBe('kept')
-    t.runAll() // nothing more
-    store.undo()
-    expect(store.state).toBe(kept)
-  })
-
-  it('while it works, Ctrl+Z after an edit made meanwhile takes that edit back at once; the Remove all then lands on the project as it was', () => {
-    const { kept, rows, store, t } = underWay()
-    store.update((q) => ({ ...q, name: 'renamed' })) // an edit outside the panel (a zoom added, the name)
-    expect(store.undo()).toBe(true)
-    expect(store.state).toBe(kept) // taken back at once
-    t.runAll()
-    // The Remove all, on top of the Keep; one Ctrl+Z takes it back to the Keep.
-    expect(rows.slice(1).every((i) => reviewStatus(store.state, i) === 'removed')).toBe(true)
-    expect(store.state.name).toBe(kept.name)
-    store.undo()
-    expect(store.state).toBe(kept)
-  })
 })

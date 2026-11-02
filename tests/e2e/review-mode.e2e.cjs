@@ -179,6 +179,23 @@ function seedMixed(home, name, cuts) {
   fs.writeFileSync(file, JSON.stringify(p))
   return id
 }
+/**
+ * A long recording sped up by Polish (docs/design/review-mode.md §4.3): three auto zooms at the
+ * start, then `count` speed-ups at 4×, 4 s apart, each its record; Remove all takes seconds.
+ */
+function seedSpeed(home, name, count) {
+  const clips = Array.from({ length: count }, (_, k) => [
+    { id: `n${k}`, start: 4 * k, end: 4 * k + 2, speed: 1 },
+    { id: `f${k}`, start: 4 * k + 2, end: 4 * k + 4, speed: 4 }
+  ]).flat()
+  const zooms = [0, 1, 2].map((j) => ({ id: `z${j}`, start: 0.1 + 0.5 * j, end: 0.5 + 0.5 * j, scale: 2, focus: { mode: 'cursor' }, auto: true, anchor: { t: 0.2 + 0.5 * j, x: 0.2, y: 0.8 } }))
+  const id = f.seedProject(home, { id: `rec-speed-${count}`, name, seconds: 4 * count, width: 128, height: 72, fps: 1, clips, zooms, cursor: f.cursorTrack(2) })
+  const file = path.join(h.projectsRoot(home), id, 'project.json')
+  const p = JSON.parse(fs.readFileSync(file, 'utf8'))
+  p.autoCuts = Array.from({ length: count }, (_, k) => ({ id: `a${k}`, by: 'polish', action: 4, start: 4 * k + 2, end: 4 * k + 4, was: [{ start: 4 * k + 2, end: 4 * k + 4, speed: 1 }] }))
+  fs.writeFileSync(file, JSON.stringify(p))
+  return id
+}
 /** The focused row's key and whether it is fully in view, once the list has stopped measuring and scrolling. */
 async function settled(win) {
   let last = null
@@ -829,6 +846,81 @@ async function main() {
     const saved = h.readProject(home, closed)
     h.assert(saved.autoCuts.length === MIXED_SILENCES, `the Remove all saved on closing: ${saved.autoCuts.length} records`)
     h.assert(saved.zooms.find((z) => z.id === 'z0')?.auto === false, 'the Keep that waited saved')
+  })
+
+  // Remove all over 5,000 speed-ups takes seconds. While it works, as the first edit since the
+  // project opened: Undo from the palette and the title bar's Undo wait for it and take it back;
+  // Redo with nothing to bring back after it says so at once.
+  await test('review mode: 5000 speed-ups: Undo from the palette and the title bar, and Redo, while Remove all works', async (ctx) => {
+    const home = h.tempHome('review-speed-busy')
+    const count = 5000
+    const total = count + 3
+    const name = 'Sped up while busy'
+    const id = seedSpeed(home, name, count)
+    const { app, win, logs } = await h.launch({ home })
+    ctx.app = app
+    ctx.logs = logs
+    await f.openProject(win, name)
+    await win.click('.timecode').catch(() => undefined)
+    await win.evaluate(() => (document.activeElement instanceof HTMLElement ? document.activeElement.blur() : undefined))
+    await win.keyboard.press('Shift+R')
+    await win.waitForSelector('[data-testid="review-panel"] [data-testid="review-row"]', { timeout: 20000 })
+    h.assert((await progressOf(win)) === `0 of ${total} reviewed`, 'every row listed')
+    const undoButton = 'header button[aria-label="Undo"]'
+    const redoButton = 'header button[aria-label="Redo"]'
+    const disabled = (sel) => win.$eval(sel, (e) => e.disabled)
+    h.assert(await disabled(undoButton), 'nothing to undo yet')
+    /** Remove all silence cuts from the last row, pressed with Enter. */
+    const removeAll = async () => {
+      await win.focus('[data-testid="review-row"] .review-item[tabindex="0"]')
+      await win.keyboard.press('End')
+      await settled(win)
+      await watchBusy(win)
+      await win.focus('[data-testid="review-remove-kind"]')
+      h.assert((await win.textContent('[data-testid="review-remove-kind"]')) === 'Remove all silence cuts', 'Remove all silence cuts')
+      await win.keyboard.press('Enter')
+    }
+    const busyNow = async () => !!(await win.$('[data-testid="review-panel"] [aria-busy="true"]'))
+
+    // Undo from the palette while it works, the first edit: listed, it waits and takes it back.
+    await removeAll()
+    const buttons = { undo: !(await disabled(undoButton)), redo: !(await disabled(redoButton)), busy: await busyNow() }
+    await win.keyboard.press('Control+k')
+    await win.waitForSelector('.command-palette[role="dialog"]', { timeout: 5000 })
+    await win.keyboard.type('Undo')
+    await f.waitFor(async () => (await win.$$eval('.command-palette [role="option"] .palette-title', (els) => els.map((e) => e.textContent)))[0] === 'Undo', 'the palette lists Undo first', 3000)
+    const option = await win.$eval('.command-palette [role="option"]', (e) => e.getAttribute('aria-disabled'))
+    await win.keyboard.press('Enter')
+    const palAt = await pressedAfter(win)
+    await idle(win, 60000)
+    h.assert(palAt[palAt.length - 1] === 'Enter:true', `the palette's Enter pressed while it worked: ${JSON.stringify(palAt)}`)
+    h.assert(option === null, `the palette's Undo available while it works: aria-disabled ${option}`)
+    await f.waitFor(async () => (await progressOf(win)) === `0 of ${total} reviewed`, 'the Undo from the palette took the Remove all back once done', 5000).catch(() => undefined)
+    h.assert((await progressOf(win)) === `0 of ${total} reviewed`, `the palette's Undo waited and took the Remove all back: ${await progressOf(win)}`)
+    h.assert(buttons.busy && buttons.undo && !buttons.redo, `while it works the title bar's Undo is enabled, Redo not: ${JSON.stringify(buttons)}`)
+    h.assert(await disabled(undoButton), 'nothing to undo again')
+
+    // Ctrl+Y while it works, the Remove all undone before it: its edit empties the redo list, so
+    // Nothing to redo, said at once. Then the title bar's Undo: it waits and takes it back.
+    await removeAll()
+    await win.keyboard.press('Control+y')
+    const notice = await f.waitFor(async () => (await win.textContent('.notice-live .notice-text').catch(() => '')) || null, 'a notice', 3000).catch(() => '')
+    const redoBusy = await busyNow()
+    h.assert(!(await disabled(undoButton)), 'the title bar Undo enabled while it works')
+    await win.click(undoButton)
+    const undoAt = await pressedAfter(win)
+    await idle(win, 60000)
+    h.assert(notice === 'Nothing to redo' && redoBusy, `Ctrl+Y said Nothing to redo at once, while it worked: ${JSON.stringify(notice)} ${redoBusy}`)
+    h.assert(same(undoAt, ['y:true', 'click:true']), `Ctrl+Y and the click pressed while it worked: ${JSON.stringify(undoAt)}`)
+    await f.waitFor(async () => (await progressOf(win)) === `0 of ${total} reviewed`, 'the title bar Undo took the Remove all back once done', 5000).catch(() => undefined)
+    h.assert((await progressOf(win)) === `0 of ${total} reviewed`, `the title bar's Undo waited and took the Remove all back: ${await progressOf(win)}`)
+    await win.evaluate(() => (document.activeElement instanceof HTMLElement ? document.activeElement.blur() : undefined))
+    await win.keyboard.press('Control+y')
+    await f.waitFor(async () => (await progressOf(win)) === `${count} of ${total} reviewed`, 'Ctrl+Y brings it back', 10000)
+    await win.keyboard.press('Control+z')
+    await f.waitFor(async () => (await progressOf(win)) === `0 of ${total} reviewed`, 'and Ctrl+Z takes it back', 10000)
+
+    h.assert(!logs.some((l) => l.includes('[pageerror]')), `no page errors: ${logs.filter((l) => l.includes('pageerror'))}`)
   })
 
   const mock = await startMockAi({ ffmpeg: FF })

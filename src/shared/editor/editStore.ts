@@ -23,10 +23,12 @@ import { History } from '../engine/history'
  * mode's Remove all over thousands of rows, a slice of time at a time) holds the store while it
  * works. Undo and redo asked for meanwhile, and what is handed to `whenFree`, wait and are then
  * done in order, after the work's own edit, as if asked for once it was done: Ctrl+Z then undoes
- * that edit, and the step before it, or the redo list, is never taken by the wait. Other edits are
- * not held (the work lands on top of them); an undo takes back at once such an edit made after the
- * last thing that waits, and a redo brings back one it took, as if done in that order after the
- * work's edit. Work let go without its edit (stopped,
+ * that edit, and the step before it, or the redo list, is never taken by the wait. A redo with
+ * nothing to bring back once the work's edit is made (it empties the redo list, as any edit does) is
+ * refused at once (false). Other edits are not held (the work lands on top of them, its edit made
+ * on the state they leave); an undo takes back at once such an edit made after the last thing that
+ * waits, and a redo brings back one it took while the work goes on (once the work's edit is made,
+ * that empties the redo list too). Work let go without its edit (stopped,
  * or it found nothing to change) leaves what waited to be done as if the edit had been made: an
  * undo that would take it back, or a redo it would have found nothing for, does nothing, and the
  * step before it and the redo list stay. `finish` has the work make its edit at once (the editor
@@ -35,6 +37,8 @@ import { History } from '../engine/history'
 export class EditStore<T> {
   private readonly history: History<T>
   private readonly listeners = new Set<() => void>()
+  /** Told when `canUndo` or `canRedo` may have changed (subscribeHistory). */
+  private readonly historyListeners = new Set<() => void>()
   private holds = 0
   /** What waits for the store to be let go, in the order it was asked for. */
   private readonly waiting: (() => void)[] = []
@@ -46,6 +50,11 @@ export class EditStore<T> {
    */
   private ownSteps = 0
   private ownRedos = 0
+  /**
+   * While held: the steps the undos that wait leave for a redo after them, less the redos that wait
+   * for them (the work's edit empties the redo list first; so does a Keep or Remove that waits).
+   */
+  private waitRedos = 0
   /**
    * While what waited for work let go without its edit is done: that edit's place in the history
    * (`W`) among the steps made meanwhile (`R`), above the history as it was, and in the redo list.
@@ -73,12 +82,20 @@ export class EditStore<T> {
     return this.history.present
   }
 
+  /** Whether an undo would be done: while held, always (it waits for the work's edit, which it then takes back). */
   get canUndo(): boolean {
-    return this.history.canUndo
+    return this.holds > 0 || this.history.canUndo
   }
 
+  /** Whether a redo would be done: while held, one that brings back an edit made meanwhile, or one that waits after an undo that waits. */
   get canRedo(): boolean {
-    return this.history.canRedo
+    return this.holds > 0 ? this.ownRedos > 0 || this.waitRedos > 0 : this.history.canRedo
+  }
+
+  /** Calls `listener` whenever `canUndo` or `canRedo` may have changed (an edit, undo, redo, the store held or let go, an undo or redo that waits). */
+  subscribeHistory = (listener: () => void): (() => void) => {
+    this.historyListeners.add(listener)
+    return () => this.historyListeners.delete(listener)
   }
 
   subscribe = (listener: () => void): (() => void) => {
@@ -142,7 +159,7 @@ export class EditStore<T> {
         this.ownRedos++
         return true
       }
-      this.wait(() => void this.undo())
+      this.wait(() => void this.undo(), 'undo')
       return true
     }
     const ph = this.phantom
@@ -161,8 +178,10 @@ export class EditStore<T> {
   }
 
   /**
-   * Goes forward a step; false when there is none. While the store is held it waits (true), unless
-   * an undo since the last thing that waits took back an edit made meanwhile: that comes back at once.
+   * Goes forward a step; false when there is none. While the store is held it waits (true) for an
+   * undo that waits before it, unless an undo since the last thing that waits took back an edit made
+   * meanwhile: that comes back at once. Else it is refused at once (false): the work's edit, made
+   * before it, empties the redo list.
    */
   redo = (): boolean => {
     if (this.holds > 0) {
@@ -172,7 +191,8 @@ export class EditStore<T> {
         this.ownSteps++
         return true
       }
-      this.wait(() => void this.redo())
+      if (this.waitRedos === 0) return false
+      this.wait(() => void this.redo(), 'redo')
       return true
     }
     const ph = this.phantom
@@ -186,11 +206,17 @@ export class EditStore<T> {
     return true
   }
 
-  /** Has `fn` wait for the store to be let go; an undo or redo after it waits too (it comes after `fn`). */
-  private wait(fn: () => void): void {
+  /**
+   * Has `fn` wait for the store to be let go; an undo or redo after it waits too (it comes after
+   * `fn`). `what` it is: an undo leaves a step for a redo after it, a redo takes one, anything else
+   * (a Keep or Remove, an edit) empties the redo list.
+   */
+  private wait(fn: () => void, what: 'undo' | 'redo' | 'other'): void {
     this.waiting.push(fn)
     this.ownSteps = 0
     this.ownRedos = 0
+    this.waitRedos = what === 'undo' ? this.waitRedos + 1 : what === 'redo' ? this.waitRedos - 1 : 0
+    this.historyChanged()
   }
 
   private step(way: 'undo' | 'redo'): boolean {
@@ -216,9 +242,11 @@ export class EditStore<T> {
     if (this.holds === 0) {
       this.ownSteps = 0
       this.ownRedos = 0
+      this.waitRedos = 0
     }
     this.holds++
     if (finish) this.finishers.add(finish)
+    this.historyChanged()
     let held = true
     return (made = true) => {
       if (!held) return
@@ -231,6 +259,7 @@ export class EditStore<T> {
         while (this.holds === 0 && this.waiting.length > 0) this.waiting.shift()!()
       } finally {
         this.phantom = null
+        this.historyChanged()
       }
     }
   }
@@ -242,7 +271,7 @@ export class EditStore<T> {
 
   /** Runs `fn` now, or, while the store is held, once it is let go, in turn with the undo and redo that wait. */
   whenFree = (fn: () => void): void => {
-    if (this.holds > 0) this.wait(fn)
+    if (this.holds > 0) this.wait(fn, 'other')
     else fn()
   }
 
@@ -281,5 +310,10 @@ export class EditStore<T> {
   private changed(): void {
     this.revision++
     for (const l of [...this.listeners]) l()
+    this.historyChanged()
+  }
+
+  private historyChanged(): void {
+    for (const l of [...this.historyListeners]) l()
   }
 }
