@@ -1,5 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import type { SoundsApi } from '../src/shared/api/sounds'
+import { SCORE_COLUMNS, SOUND_KIND_ORDER } from '../src/shared/audio/sounds'
+import { cacheEntry } from '../src/shared/audio/soundsCache'
 import { createProject } from '../src/shared/engine/project'
 import type { Project } from '../src/shared/types'
 
@@ -87,8 +89,9 @@ type ScanProject = Pick<Project, 'id' | 'hasAudio' | 'audioStems' | 'duration'>
 type Listener = { info: Promise<{ size: number; mtimeMs: number }>; done: Promise<{ n: number; scores: Uint8Array }>; stop(): void }
 type ListenFn = (api: SoundsApi, project: ScanProject, source: string, skip: unknown, onSeconds: (s: number) => void) => Listener
 const { PreviewPlayer } = (await import(/* @vite-ignore */ PLAYER)) as { PreviewPlayer: new (s: FakeVideo, w: FakeVideo | null, p: Project) => { dispose(): void } }
-const { scanState, startScan } = (await import(/* @vite-ignore */ SCAN)) as {
-  scanState(id: string): { status: string; preparing?: boolean; message?: string }
+const { checkStored, scanState, startScan } = (await import(/* @vite-ignore */ SCAN)) as {
+  checkStored(api: SoundsApi, p: ScanProject): Promise<void>
+  scanState(id: string): { status: string; preparing?: boolean; checking?: boolean; message?: string }
   startScan(api: SoundsApi, p: ScanProject, listen: ListenFn): Promise<void>
 }
 
@@ -151,5 +154,29 @@ describe('closing the editor during a search for unwanted sounds', () => {
     await run
     expect(stopped).toContain('mix')
     expect(scanState(p.id)).toEqual({ status: 'idle' })
+  })
+
+  it('stops a check for sounds found before: no list is made without the levels and the speech detector', async () => {
+    const p = project('close-checking')
+    const player = new PreviewPlayer(new FakeVideo(), null, p)
+    // Found in an earlier run on a recording with no words (nothing skipped as speech).
+    const COLS = SCORE_COLUMNS.length
+    const scores = new Uint8Array(60 * COLS)
+    for (const i of [20, 21]) scores[i * COLS + 1 + SOUND_KIND_ORDER.indexOf('ping')] = 200
+    const stored = { soundsCached: vi.fn(async () => cacheEntry({ size: 1, mtimeMs: 1 }, 'none', 60, scores)) } as unknown as SoundsApi
+    analysis.hold = true
+    const run = checkStored(stored, p)
+    await vi.waitFor(() => expect(analysis.release).toHaveLength(1))
+    expect(scanState(p.id)).toEqual({ status: 'idle', checking: true })
+    player.dispose()
+    for (const release of analysis.release.splice(0)) release()
+    await run
+    expect(scanState(p.id)).toEqual({ status: 'idle' })
+    // Opened again: it checks afresh, with the levels measured again.
+    const again = checkStored(stored, p)
+    await vi.waitFor(() => expect(analysis.release).toHaveLength(1))
+    analysis.hold = false
+    for (const release of analysis.release.splice(0)) release()
+    await again
   })
 })

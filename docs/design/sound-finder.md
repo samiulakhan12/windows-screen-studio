@@ -335,7 +335,9 @@ mapped back through the clips.
 5. **Cancel** terminates the workers and closes the streams (ffmpeg is killed); nothing is saved.
    Closing the editor cancels the scan the same way (the player's `dispose`, next to `stopAnalysis`,
    which stops main's ffmpeg and the level and speech measurement), also while the recording is
-   still being got ready. A failure ("Could not listen to the recording: …") offers Try again.
+   still being got ready. It stops a check for sounds found before as well (the Audio tab's look at
+   the stored scores waits for the same levels and speech detector), so the next opening checks
+   afresh. A failure ("Could not listen to the recording: …") offers Try again.
 6. The state is per project and lives outside the panel (switching tabs does not stop it).
 
 ---
@@ -541,6 +543,9 @@ End to end (`tests/e2e/sound-finder.e2e.cjs`, the built app under Xvfb):
   microphone; before, a music or ping row could run over their words. Closing the editor cancels a
   scan; before, one closed while the recording was got ready went on in the background without the
   levels and the speech detector, and one closed while listening could end as a false failure.
+  Closing the editor while the Audio tab looks for sounds found before stops that look too; before,
+  it made a list without the levels and the speech detector (unfitted, longer rows) that stayed
+  until the app restarted.
   A span no found row claims (its key changed with the speech ranges) is listed with Restore; before,
   it stayed in the preview and the export with nothing in the panel to show or undo it. Restoring the
   last such row sends the focus to the sentence, not to the page.

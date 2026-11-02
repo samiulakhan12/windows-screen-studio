@@ -267,10 +267,13 @@ export async function startScan(api: SoundsApi, project: ScanProject, listen: Li
   }
 }
 
-/** Cancel: the workers stop, the decoding stops, nothing is kept. */
+/**
+ * Cancel: the workers stop, the decoding stops, nothing is kept. A check for stored scores stops too
+ * (closing the editor stops the levels and the speech detector it waits for).
+ */
 export function cancelScan(id: string): void {
   const e = entries.get(id)
-  if (!e || e.state.status !== 'listening') return
+  if (!e || !(e.state.status === 'listening' || (e.state.status === 'idle' && e.state.checking))) return
   e.epoch++
   for (const l of e.listeners) l.stop()
   e.listeners = []
