@@ -41,4 +41,25 @@ describe('the Inspector tab rail', () => {
     const threshold = Number(/@container inspector \(max-height: (\d+)px\)/.exec(editor)?.[1])
     expect(threshold).toBeGreaterThanOrEqual(Math.ceil(rail))
   })
+
+  // The Inspector of ui.e2e's recording with every timeline row but Graphics (the Selection tab
+  // shown nowhere): 661 px on a 1360 x 1040 window, 301 px on the minimum one (1040 x 680).
+  it('keeps the labels on a 1040 px window, and fits thirteen compact tabs at the minimum window size', () => {
+    const threshold = Number(/@container inspector \(max-height: (\d+)px\)/.exec(editor)?.[1])
+    expect(threshold).toBeLessThan(661)
+    const compact = editor.slice(editor.indexOf('@container inspector'))
+    const rule = (selector: string): string => [...compact.matchAll(/([^{}]+)\{([^{}]*)\}/g)].find((m) => m[1].trim() === selector)?.[2] ?? ''
+    const decl = (body: string, prop: string): number[] | null => {
+      const m = new RegExp(`(?:^|;)\\s*${prop}:\\s*([^;]+)`).exec(body)
+      return m ? px(m[1].trim()) : null
+    }
+    const button = rule('.insp-tabs button')
+    // The least a compact tab takes: its min-height when it may shrink, else its padding and icon.
+    const pad = decl(button, 'padding') ?? px(value('.insp-tabs button', 'padding'))
+    const tab = decl(button, 'min-height')?.[0] ?? pad[0] + 17 + (pad[2] ?? pad[0])
+    expect(tab).toBeGreaterThan(20)
+    const rail = rule('.insp-tabs')
+    const fits = (decl(rail, 'padding') ?? [0])[0] * 2 + 12 * (decl(rail, 'gap') ?? [0])[0] + 13 * tab
+    expect(fits).toBeLessThanOrEqual(301)
+  })
 })

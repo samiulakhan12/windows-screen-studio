@@ -315,7 +315,7 @@
   container: inspector / size;
 }
 
-/* Icon rail: twelve tabs with short labels; the full name is in the tooltip. */
+/* Icon rail: thirteen tabs with short labels; the full name is in the tooltip. */
 .insp-tabs {
   width: 64px;
   flex: none;
@@ -335,7 +335,7 @@
   flex-direction: column;
   align-items: center;
   gap: 3px;
-  padding: 7px 0 5px;
+  padding: 6px 0 4px;
   border: none;
   border-radius: var(--radius-md);
   background: transparent;
@@ -382,19 +382,30 @@
   background: var(--accent-500);
 }
 
-/* The labelled rail needs 667 px (thirteen tabs and the Selection tab, 44.6 px each). Below that
-   (short windows, a recording with a camera and captions) it turns into a compact icon rail that
-   still fits every tab at the minimum window size; anything shorter scrolls, with a visible
+/* The labelled rail needs 639 px (thirteen tabs and the Selection tab, 42.6 px each), so a 1040 px
+   window keeps the labels with every timeline row but Graphics (an Inspector 661 px tall). Below
+   that (short windows, a recording with a camera and captions) it turns into a compact icon rail
+   that still fits every tab at the minimum window size; anything shorter scrolls, with a visible
    scrollbar. */
-@container inspector (max-height: 667px) {
+@container inspector (max-height: 639px) {
   .insp-tabs {
     gap: 1px;
     padding: 6px;
   }
 
-  /* Twelve tabs fit the minimum window (1040 x 680) without scrolling. */
+  /* A tab is 23 px tall where there is room and gives up to 2 px where there is not, so thirteen
+     tabs fit the minimum window (1040 x 680, an Inspector 301 px tall) without scrolling. */
   .insp-tabs button {
-    padding: 3px 0;
+    flex: 0 1 23px;
+    min-height: 21px;
+    padding: 0;
+    justify-content: center;
+  }
+
+  /* The active tab's marker stays 3 px long on a shorter tab. */
+  .insp-tabs button.active::before {
+    top: calc(50% - 1.5px);
+    bottom: calc(50% - 1.5px);
   }
 
   .insp-tabs button span {
