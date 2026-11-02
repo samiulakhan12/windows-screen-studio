@@ -920,17 +920,28 @@ function chunkStickersPast(chunk: StudioChunk, studio: CaptionStudio, px: number
   return { rise, drop }
 }
 
+const NO_PAST: Readonly<{ rise: number; drop: number }> = Object.freeze({ rise: 0, drop: 0 })
+/** stickersPast over a layout's chunks, made once per layout, look and frame width (placeStudio runs every frame). */
+const pasts = new WeakMap<StudioLayout, { studio: CaptionStudio; w: number; past: { rise: number; drop: number } }>()
+
 /** For Stickers, how far the stickers of `chunk` and of every chunk of its caption reach above their block's top and below its bottom at their largest, px; 0 for other looks. */
-function stickersPast(layout: StudioLayout, chunk: StudioChunk, studio: CaptionStudio, w: number): { rise: number; drop: number } {
-  if (studio.box.kind !== 'word') return { rise: 0, drop: 0 }
-  let rise = 0
-  let drop = 0
-  for (const c of [chunk, ...layout.chunks]) {
-    const p = chunkStickersPast(c, studio, layout.px, w)
-    rise = Math.max(rise, p.rise)
-    drop = Math.max(drop, p.drop)
+function stickersPast(layout: StudioLayout, chunk: StudioChunk, studio: CaptionStudio, w: number): Readonly<{ rise: number; drop: number }> {
+  if (studio.box.kind !== 'word') return NO_PAST
+  let hit = pasts.get(layout)
+  if (!hit || hit.studio !== studio || hit.w !== w) {
+    let rise = 0
+    let drop = 0
+    for (const c of layout.chunks) {
+      const p = chunkStickersPast(c, studio, layout.px, w)
+      rise = Math.max(rise, p.rise)
+      drop = Math.max(drop, p.drop)
+    }
+    pasts.set(layout, (hit = { studio, w, past: { rise, drop } }))
   }
-  return { rise, drop }
+  if (layout.chunks.includes(chunk)) return hit.past
+  // A chunk that is not one of the layout's (a look tile's first lines) counts too.
+  const p = chunkStickersPast(chunk, studio, layout.px, w)
+  return { rise: Math.max(hit.past.rise, p.rise), drop: Math.max(hit.past.drop, p.drop) }
 }
 
 /** Where `chunk` goes (§8.5, §8.6): its lines, block and the edge key presses keep clear of. */
