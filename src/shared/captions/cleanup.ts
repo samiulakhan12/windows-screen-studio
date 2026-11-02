@@ -462,14 +462,21 @@ const TEAM_LISTS: Readonly<Record<string, TeamList>> = {
     // চুদিয়েছিল, চোদাইলি; the participle with ই after the vowel, its দ doubled or with য-ফলা, as
     // কইরা and মাইরা: চুইদা, চুইদ্দা, চুইদ্যা), the nouns made from it (চোদন, চোদনা, চুদির,
     // চোদাচুদি), the nouns in every form (খানকিরাও, খাংকির, মাগিটারে, হারামিগুলোরে,
-    // হারামজাদাদেরকে, মাগীবাজ, হারামিপনা), and বাল's compounds (বালপাকনা, বালপাকা: a know-it-all child).
-    stems: ['চোদ', 'চুদ', 'চুইদ', 'চুইদ্দ', 'চুইদ্য', ...BN_KHANKI, 'মাগি', 'হারামি', 'হারামজাদা', 'হারামজাদি', 'বালপাক'],
+    // হারামজাদাদেরকে, মাগীবাজ, হারামিপনা), and বাল's compounds (বালপাকনা, বালপাকা: a know-it-all child);
+    // the common borrowed and regional insults (চুতিয়া, চুতিয়াগিরি, গান্ডু written with ন্ড or ণ্ড, the
+    // Kolkata ঢ্যামনা, the Dhaka জাউরা, বেজন্মা), the body words ল্যাওড়া (also লেওড়া, লাওড়া) and the
+    // Dhaka পুটকি, and মাচুদা, the ু spelling of the compound after মা, matched at a word's start
+    // only (মাচা, a platform; মাচুয়া).
+    stems: [
+      ...['চোদ', 'চুদ', 'চুইদ', 'চুইদ্দ', 'চুইদ্য', ...BN_KHANKI, 'মাগি', 'হারামি', 'হারামজাদা', 'হারামজাদি', 'বালপাক'],
+      ...['চুতিয়', 'গান্ডু', 'গাণ্ডু', 'ঢ্যামনা', 'জাউরা', 'বেজন্মা', 'ল্যাওড়', 'লেওড়', 'লাওড়', 'পুটকি', 'মাচুদ']
+    ],
     // চোদ after any first part (বোকাচোদা, বোকাচ্চোদা, আবালচোদা; বানচোদ, বাইনচোদ, বেঞ্চোদ, and
     // বেইনচোদ, বইনচোদ or বোনচোদ in Dhaka; মাদারচোদ, মাচোদা); চুদ, চোত and চোৎ (ৎ also written ত্
     // and a joiner, বাঞ্চোত্‍) after the first parts that take them (বানচোত and বাঞ্চোৎ in West
     // Bengal; আবাল, বোকাচ্চ's doubled চ, and the Dhaka বইন, বেইন, বোন, বেহেন and বাপ; বান্, বাইন্,
     // বেন্ and মাদার্ written with a hasanta, as বান্চোত), not anywhere: বাচ্চুদা and পাঁচুদা are
-    // nicknames; চুদমারানি with দ, ত, ৎ or ত্,
+    // nicknames; চুদমারানি with দ, ত, ৎ or ত্, and গুদমারানি,
     // খানকিরপোলা as খানকি is written, and শুয়োরেরবাচ্চা and কুত্তারবাচ্চা written as one word.
     compounds: [
       'চোদ',
@@ -479,6 +486,7 @@ const TEAM_LISTS: Readonly<Record<string, TeamList>> = {
         ...['বান্', 'বাইন্', 'বেন্', 'মাদার্']
       ].flatMap((w) => ['চুদ', 'চোত', 'চোৎ', 'চোত্'].map((c) => w + c)),
       ...['চুদ', 'চুত', 'চুৎ', 'চুত্'].map((c) => c + 'মারানি'),
+      'গুদমারানি',
       ...BN_KHANKI.map((k) => k + 'রপোলা'),
       ...BN_ANIMALS.flatMap((w) => BN_KID.map((k) => w + k))
     ],
@@ -491,12 +499,19 @@ const TEAM_LISTS: Readonly<Record<string, TeamList>> = {
       ...literaryForms('মাগ').filter((w) => !BN_MAGI.has(w)),
       // চুদুরবুদুর, "stalling, dithering" (টালবাহানা): in the Bangla Academy's dictionary of regional
       // words, and quoted in the news (চুদুরবুদুর চলবে না).
-      ...['চুদুরবুদুর', 'চুদুরবুদুরি'].flatMap(nounForms)
+      ...['চুদুরবুদুর', 'চুদুরবুদুরি'].flatMap(nounForms),
+      // ভোদাই, "a fool", a mild everyday word, is also ভোদা's ই form.
+      'ভোদাই'
     ],
     // বালছাল written with স for ছ too, as Dhaka writes করসি and গেসে. English rude words as the
     // Bangla model writes them, in Bengali script; never the bare ফাক, which also spells ফাঁক, "a
-    // gap" (এই ফাকে, "meanwhile"), beside ফাকা and ফাঁকা, "empty".
-    nouns: ['বাল', 'বালছাল', 'বালসাল', 'ফাকিং', 'ফাকিন', 'মাদারফাকার', 'বাস্টার্ড'],
+    // gap" (এই ফাকে, "meanwhile"), beside ফাকা and ফাঁকা, "empty". The body words, matched whole as
+    // some begin everyday words (গুদাম, a warehouse; ধোনি, the cricketer), and রেন্ডি (রেন্ডিশন, a
+    // rendition).
+    nouns: [
+      ...['বাল', 'বালছাল', 'বালসাল', 'ফাকিং', 'ফাকিন', 'মাদারফাকার', 'বাস্টার্ড', 'অ্যাসহোল', 'এসহোল', 'ফাকার', 'ফাকড'],
+      ...['গুদ', 'ভোদা', 'ধোন', 'বাঁড়া', 'পোঁদ', 'গাঁড়', 'রেন্ডি']
+    ],
     // শুয়োরের, with ও or ই, is rude in শুয়োরের বাচ্চা only: শুয়োর, "pig", is an everyday word
     // (শুয়োরের মাংস, pork; শুয়োরের খামার, a pig farm; বুনো শুয়োরের আক্রমণ, a wild boar's attack).
     // কুত্তার the same way (কুত্তার কামড়, a dog's bite).

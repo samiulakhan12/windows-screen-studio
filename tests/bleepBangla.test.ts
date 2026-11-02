@@ -79,6 +79,10 @@ const STEM_NOUNS = [...KHANKI, 'খানকী', 'মাগি', 'মাগী'
 STEM_NOUNS.push('খানকিপনা', 'খানকীপনা', 'মাগিবাজ', 'মাগীবাজ', 'হারামিপনা', 'হারামীপনা')
 // বাল's compounds, Bangladesh slang for a know-it-all child (বালপাকনা পোলাপান).
 STEM_NOUNS.push('বালপাকনা', 'বালপাকা', 'বালপাকনামি')
+// The common borrowed and regional insults (চুতিয়া, গান্ডু written with ন্ড or ণ্ড, the Kolkata ঢ্যামনা,
+// the Dhaka জাউরা, বেজন্মা), the body words with their spellings (ল্যাওড়া, লেওড়া, লাওড়া, the Dhaka
+// পুটকি), and the ু spelling of the compound after মা, as a stem (মাচুদা).
+STEM_NOUNS.push('চুতিয়া', 'চুতিয়াগিরি', 'গান্ডু', 'গাণ্ডু', 'ঢ্যামনা', 'জাউরা', 'বেজন্মা', 'ল্যাওড়া', 'লেওড়া', 'লাওড়া', 'পুটকি', 'মাচুদা')
 /**
  * Compounds written as one word, also after another word written together with them: চোদ, চুদ,
  * চোত and চোৎ after each first part (বানচোদ, বাইনচোদ, বাইঞ্চোদ and বেঞ্চোদ in Bangladesh, বানচোত and
@@ -98,16 +102,23 @@ const COMPOUNDS = [
   ...['বোকাচোদা', 'বোকাচুদা'],
   ...['আবালচোদা', 'বোকাচ্চোদা', 'বেইনচোদ', 'বইনচোদ', 'বোনচোদ', 'বেহেনচোদ', 'মাচোদা', 'বাপচোদা', 'খানকিচোদা'],
   ...['চুদ', 'চুত', 'চুৎ', 'চুত্'].map((c) => c + 'মারানি'),
+  'গুদমারানি',
   ...KHANKI.map((k) => k + 'রপোলা')
 ]
 const COMPOUND_FORMS = [...COMPOUNDS.flatMap(nounForms), ...COMPOUNDS.map((c) => 'শালা' + c), 'চুত্\u200Dমারানি', 'চুত্\u200Dমারানির']
-/** Nouns that begin everyday words too (বালক, বালিশ): matched whole, in every form; বালছাল written with স for ছ as well, as Dhaka writes করসি and গেসে. */
-const WHOLE_NOUNS = ['বাল', 'বালছাল', 'বালসাল']
+/**
+ * Nouns that begin everyday words too (বালক, বালিশ; গুদাম "a warehouse", ধোনি the cricketer;
+ * রেন্ডিশন "a rendition"): matched whole, in every form; বালছাল written with স for ছ as well, as
+ * Dhaka writes করসি and গেসে; the body words. ভোদাই, "a fool", is ভোদা's ই form too: an everyday
+ * word, left out.
+ */
+const WHOLE_NOUNS = ['বাল', 'বালছাল', 'বালসাল', 'গুদ', 'ভোদা', 'ধোন', 'বাঁড়া', 'পোঁদ', 'গাঁড়', 'রেন্ডি']
+const FOOL = 'ভোদাই'
 /**
  * English rude words as the Bangla model writes them, in Bengali script: matched whole, in every
  * form, and never the bare ফাক, which also spells ফাঁক, "a gap" (এই ফাকে, "meanwhile").
  */
-const TRANSLITERATED = ['ফাকিং', 'ফাকিন', 'মাদারফাকার', 'বাস্টার্ড']
+const TRANSLITERATED = ['ফাকিং', 'ফাকিন', 'মাদারফাকার', 'বাস্টার্ড', 'অ্যাসহোল', 'এসহোল', 'ফাকার', 'ফাকড']
 /**
  * শুয়োরের, "pig's", as it is spelled (শুওরের in West Bengal, শুয়ারের in Bangladesh, শুকরের and
  * শূকরের from শূকর, the standard word), with ও or ই: rude only before বাচ্চা (শুয়োরের বাচ্চা),
@@ -152,7 +163,7 @@ const RUDE = [
     ...CAUSATIVES.flatMap((s) => VOWEL_ENDINGS.map((e) => s + e)),
     ...STEM_NOUNS.flatMap(nounForms),
     ...COMPOUND_FORMS,
-    ...WHOLE_NOUNS.flatMap(nounForms),
+    ...WHOLE_NOUNS.flatMap(nounForms).filter((w) => w !== FOOL),
     ...TRANSLITERATED.flatMap(nounForms),
     ...DHAKA_PARTICIPLES,
     ...ANIMAL_JOINED,
@@ -214,7 +225,14 @@ const LOOK_ALIKES = [
   // শুয়োর "pig" (য় written either way), শুয়ে "lying down".
   ...['শুয়োর', 'শু\u09DFোর', 'শূকর', 'শুকর', 'শুয়ে', 'শুয়েছিল', 'শুকনো', 'শুক্রবার', 'শুভ', 'শুরু'],
   // কুকুর "dog" (কুকুরের বাচ্চা, a puppy), কুকুরছানা "a puppy".
-  ...['কুকুর', 'কুকুরের', 'কুকুরছানা']
+  ...['কুকুর', 'কুকুরের', 'কুকুরছানা'],
+  // Beside the body words, the insults and মাচুদা: a warehouse, Dhoni (the cricketer), the surname
+  // বাঁড়ুজ্যে, to increase, a house (বাড়ি), a car, wealth, a bundle, a fool (ভোদাই), the bow গাণ্ডীব,
+  // a rendition, a reindeer, a platform (মাচা), a small fish (পুঁটি), okra, and others that share
+  // their letters.
+  ...['গুদাম', 'গুদামঘর', 'গুদামে', 'ধোনি', 'ধোনির', 'বাঁড়ুজ্যে', 'বাড়া', 'বাড়ানো', 'বাড়ির', 'বাড়িতে', 'গাড়ি', 'গাড়ির', 'গাড়িটা'],
+  ...['ধন', 'ধনের', 'পোঁটলা', FOOL, 'ভোদাইটা', 'গাণ্ডীব', 'গাণ্ডীবধারী', 'রেন্ডিশন', 'রেনডিয়ার', 'জারুল', 'জাউ', 'লাওয়ারিশ'],
+  ...['মাচা', 'মাচায়', 'মাচুয়া', 'পুঁটি', 'পুঁটিমাছ', 'পুটুস', 'ঢ্যাঁড়স', 'বেজায়', 'চুটিয়ে']
 ]
 const EVERYDAY = [
   ...LOOK_ALIKES,
@@ -558,6 +576,28 @@ describe('Bangla bleeping: stems, compounds and every generated form', () => {
       ['ওই বাঞ্চোত্\u200D কোথায় গেলি', 'বাঞ্চোত্\u200D'],
       ['এই মাদারচোত্\u200D চুপ কর', 'মাদারচোত্\u200D'],
       ['ওই কুত্তার বাচ্চা কোথায় গেলি', 'কুত্তার'],
+      // The body words, the common insults, in Bangla and Banglish captions, and English in Bengali script.
+      ['কি গুদমারানি কাণ্ড', 'গুদমারানি'],
+      ['তোর মায়ের ভোদা', 'ভোদা'],
+      ['আমার ধোন জানে', 'ধোন'],
+      ['বাঁড়া কী করছিস তুই', 'বাঁড়া'],
+      ['ল্যাওড়া এটা কী হল', 'ল্যাওড়া'],
+      ['পোঁদে লাথি মারব', 'পোঁদে'],
+      ['তোর পুটকি মারুম', 'পুটকি'],
+      ['গাঁড় মেরে দেব', 'গাঁড়'],
+      ['শালা চুতিয়া একটা', 'চুতিয়া'],
+      ['ও একটা গান্ডু', 'গান্ডু'],
+      ['ওই জাউরা পোলা কই গেলি', 'জাউরা'],
+      ['বেজন্মা কোথাকার', 'বেজন্মা'],
+      ['ঢ্যামনা ছেলে একটা', 'ঢ্যামনা'],
+      ['ওই রেন্ডির বাচ্চা', 'রেন্ডির'],
+      ['bro এই video টা একদম চুতিয়া', 'চুতিয়া'],
+      ['bro তুই একটা গান্ডু', 'গান্ডু'],
+      ['ভাই seriously বাঁড়া', 'বাঁড়া'],
+      ['সব ফাকড আপ হয়ে গেছে', 'ফাকড'],
+      ['ইউ অ্যাসহোল', 'অ্যাসহোল'],
+      ['ওই ফাকার আবার আসছে', 'ফাকার'],
+      ['ওই মাচুদা কই যাস', 'মাচুদা'],
       ['কুত্তারবাচ্চা একটা', 'কুত্তারবাচ্চা'],
       // Everyday: none.
       ['ওসব চুদুরবুদুর চলবে না, সোজা কথা বলুন।', ''],
@@ -572,6 +612,22 @@ describe('Bangla bleeping: stems, compounds and every generated form', () => {
       ['বালসা কাঠ খুব হালকা', ''],
       ['শূকরের মাংস খাওয়া হারাম', ''],
       ['কুকুরের বাচ্চা খুব সুন্দর', ''],
+      ['গুদামে মাল আছে', ''],
+      ['দাম বাড়া কমা', ''],
+      ['ধোনি ছক্কা মারল', ''],
+      ['বাঁড়ুজ্যে মশাই', ''],
+      ['গাড়িটা নতুন', ''],
+      ['ধন সম্পদ', ''],
+      ['পোঁটলা বাঁধো', ''],
+      ['বোকা ভোদাই একটা', ''],
+      ['চুটিয়ে আড্ডা দিলাম', ''],
+      ['জারুল গাছ', ''],
+      ['রেনডিয়ার দেখলাম', ''],
+      ['ফাঁকা মাঠ', ''],
+      ['এই ফাকে বলে রাখি', ''],
+      ['মাচা বাঁধো', ''],
+      ['ফাকা রাস্তা', ''],
+      ['গানটার নতুন রেন্ডিশন শুনলাম', ''],
       ['কুত্তার কামড়ে দুজন আহত', ''],
       ['পুলিশ নিখোঁজ বালককে উদ্ধার করেছে।', ''],
       ['শিক্ষক বালককেও পুরস্কার দিলেন।', ''],
