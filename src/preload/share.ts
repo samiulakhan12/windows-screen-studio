@@ -13,5 +13,6 @@ export const shareApi: ShareApi = {
   shareStart: (file, targets, meta) => ipcRenderer.invoke('share:start', file, targets, meta),
   shareCancel: (runId) => ipcRenderer.invoke('share:cancel', runId),
   shareRuns: (file) => ipcRenderer.invoke('share:runs', file),
+  shareWatch: (file, on) => ipcRenderer.invoke('share:watch', file, on),
   onShareUpdate: (listener) => subscribe('share:update', listener)
 }

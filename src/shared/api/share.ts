@@ -91,6 +91,11 @@ export interface ShareApi {
   shareCancel(runId: string): Promise<void>
   /** The runs of this session for `file` (the latest last). */
   shareRuns(file: string): Promise<ShareRunView[]>
+  /**
+   * A Share block showing `file`'s runs came on screen (`on`) or went away: a run that ends while
+   * none shows it is said by a notification even when the window is focused.
+   */
+  shareWatch(file: string, on: boolean): Promise<void>
   /** Run updates. */
   onShareUpdate(listener: (run: ShareRunView) => void): () => void
 }

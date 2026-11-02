@@ -169,6 +169,25 @@ describe('ShareService', () => {
     expect(s.posts.at(-1)?.lines).toEqual(['New video: Demo v2 (2:40)'])
   })
 
+  it('notifies the result while focused when no Share block shows the file', async () => {
+    // The export dialog was closed while the copy ran: nothing on screen says how it ended.
+    const s = setup({ post: async () => Promise.reject(new Error('Could not reach Slack. Check the connection.')) })
+    await s.service.start(FILE, [ONEDRIVE.id, 'whkchat'], META)
+    await s.settled()
+    expect(s.notes).toEqual([{ title: 'Could not share', body: '#demos: Could not reach Slack. Check the connection.', show: 'C:\\OneDrive\\Flown\\Demo.mp4' }])
+    // While its done view shows the run, the view says it.
+    const w = setup()
+    w.service.watch(FILE, true)
+    await w.service.start(FILE, [ONEDRIVE.id], META)
+    await w.settled()
+    expect(w.notes).toEqual([])
+    w.service.watch(FILE, false)
+    w.sent.length = 0
+    await w.service.start(FILE, ['whkchat'], META)
+    await w.settled()
+    expect(w.notes).toEqual([{ title: 'Shared', body: 'Posted to #demos' }])
+  })
+
   it('lists the runs of a file', async () => {
     const s = setup()
     const run = await s.service.start(FILE, [ONEDRIVE.id], META)

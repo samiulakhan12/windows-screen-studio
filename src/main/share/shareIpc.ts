@@ -174,6 +174,7 @@ export function registerShareIpc(): void {
   handle('share:start', (file, ids, meta) => shares().start(file, ids, meta))
   handle('share:cancel', (id) => shares().cancel(id))
   handle('share:runs', (file) => shares().runsFor(file))
+  handle('share:watch', (file, on) => shares().watch(file, on))
   setNotificationExtras((file) => shares().extras(file))
 }
 

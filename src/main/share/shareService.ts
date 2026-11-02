@@ -57,9 +57,19 @@ export class ShareService {
   private offers = new Map<string, { meta: ShareMeta; auto: boolean }>()
   /** Where each file was last copied this session, for later posts. */
   private places = new Map<string, SharePlace>()
+  /** How many Share blocks on screen show each file's runs (the export dialog's done view). */
+  private watchers = new Map<string, number>()
   private counter = 0
 
   constructor(private readonly deps: ShareDeps) {}
+
+  /** A Share block showing `file`'s runs came on screen (`on`) or went away. */
+  watch(file: unknown, on: unknown): void {
+    if (typeof file !== 'string' || !this.deps.isExported(file)) return
+    const n = (this.watchers.get(file) ?? 0) + (on === true ? 1 : -1)
+    if (n > 0) this.watchers.set(file, n)
+    else this.watchers.delete(file)
+  }
 
   /**
    * Remembers what a message says about `file` (and whether the page shares it itself). It is a new
@@ -216,7 +226,9 @@ export class ShareService {
     }
     run.view.finished = true
     this.emit(run)
-    if (this.deps.isFocused() || signal.aborted) return
+    // Said here unless a Share block on screen shows it: the window is in the background, or the
+    // export dialog was closed while the run went on.
+    if (signal.aborted || (this.deps.isFocused() && this.watchers.has(file))) return
     const failed = run.view.steps.find((s) => s.state === 'failed')
     const copied = run.view.steps.find((s) => s.kind === 'copy' && s.state === 'done' && s.dest)
     if (failed) this.deps.notify({ title: 'Could not share', body: `${failed.label}: ${failed.message ?? ''}`.slice(0, 200), ...(copied?.dest ? { show: copied.dest } : {}) })

@@ -217,6 +217,8 @@ choose Share (OneDrive), Copy Dropbox link (Dropbox) or Share › Copy link (Goo
   folder, **at most 3** (Windows shows 5 buttons). A click runs that step in main; when it ends with
   the window still in the background a second notification says "Saved to OneDrive › Flown" /
   "Posted to #demos" (or "Could not share" and the reason), with **Show in folder** for a copy.
+  Any run that ends while no done view shows its file (the export dialog was closed while it ran:
+  the page tells main with `shareWatch`) is said the same way, even with the window focused.
 * A post after a copy (in the same run, or later for the same file in this session) uses that copy's
   place; main remembers the last place per exported file for the session. An export saved over the
   same path is a new file: when it registers (`shareOffer`), main forgets the earlier one's place and
@@ -360,7 +362,8 @@ Unit (vitest, each failing without its code):
 * `sharePost.test.ts` — no redirect, time limit, response cap, status → message, re-validation
   before posting, test-origin rewrite only when allowed.
 * `shareService.test.ts` — copy then post with the place, cancel, notification extras (none when
-  auto, at most 3), the run cap, an export saved over the same path forgetting the earlier place.
+  auto, at most 3), the run cap, an export saved over the same path forgetting the earlier place, the result notified
+  when no done view shows the file.
 * `redact.test` addition — webhook URLs redacted.
 * `shareSeen.test.ts` — the found folders count as seen only after staying on screen for `SEEN_MS`.
 

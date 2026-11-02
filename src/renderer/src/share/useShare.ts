@@ -100,11 +100,12 @@ export function useAfterExport(preset: string | undefined): AfterExport {
   return { targets, offered, chosen, toggle, begin, error }
 }
 
-/** The share runs of `file`, kept up to date. */
+/** The share runs of `file`, kept up to date (main notifies how a run ended while none shows it). */
 export function useShareRuns(file: string): ShareRunView[] {
   const [runs, setRuns] = useState<ShareRunView[]>([])
   useEffect(() => {
     let live = true
+    void window.api.shareWatch(file, true).catch(() => undefined)
     const off = window.api.onShareUpdate((run) => {
       if (run.file !== file) return
       setRuns((list) => (list.some((r) => r.id === run.id) ? list.map((r) => (r.id === run.id ? run : r)) : [...list, run]))
@@ -120,6 +121,7 @@ export function useShareRuns(file: string): ShareRunView[] {
     return () => {
       live = false
       off()
+      void window.api.shareWatch(file, false).catch(() => undefined)
     }
   }, [file])
   return runs
