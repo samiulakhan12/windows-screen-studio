@@ -522,6 +522,37 @@ describe('Bangla bleeping: stems, compounds and every generated form', () => {
     for (const bleep of ['standard', 'strict'] as const) expect(bleptUnnamed(EVERYDAY, bleep), bleep).toEqual([])
   })
 
+  it('checks an English word written together with a Bangla ending (Banglish: videoটা, file-টা) by the English rules, as the bare word', () => {
+    const rude = ['fuck', 'shit', 'bullshit', 'whore', 'prick', 'cock', 'bitch', 'bastard']
+    const everyday = ['class', 'classic', 'assassin', 'video', 'file', 'cocktail', 'pass', 'shuttle']
+    for (const mode of ['standard', 'strict'] as const) {
+      expect(everyday.filter((w) => isSwearWord(w, mode, 'en')), mode).toEqual([])
+    }
+    expect(rude.filter((w) => !isSwearWord(w, 'strict', 'en'))).toEqual([])
+    const ENDS = ['টা', '-টা', 'টার', 'টারে', 'গুলো', '-গুলা', 'কে', 'রা', '-এর', 'ই', '-ও']
+    for (const mode of ['standard', 'strict'] as const) {
+      for (const lang of ['bn', 'bn-BD', 'en', undefined]) {
+        const wrong = [...rude, ...everyday].flatMap((w) => ENDS.map((e) => [w, w + e, w.toUpperCase() + e] as const)).filter(([w, ...glued]) => glued.some((g) => isSwearWord(g, mode, lang) !== isSwearWord(w, mode, 'en')))
+        expect(wrong.map(([, g]) => g), `${mode} ${lang}`).toEqual([])
+      }
+    }
+    const lines = [
+      ['এই whore-টা কে', 'whore-টা', 'whore-টা'],
+      ['ওই prickটা আবার আসছে', 'prickটা', 'prickটা'],
+      ['এই bullshit-টা বন্ধ কর', '', 'bullshit-টা'],
+      ['এই shitটা দেখ', '', 'shitটা'],
+      ['এই videoটা দেখ, this classটা is good', '', '']
+    ]
+    const segs = lines.map(([text], i) => timed(String(i), i * 5, text))
+    for (const language of ['bn', 'en', undefined]) {
+      for (const [bleep, col] of [['standard', 1], ['strict', 2]] as const) {
+        const want = lines.flatMap((l, i) => (l[col] ? [[bleepKey(l[col]), i]] : []))
+        const out = tidyCaptions(project(segs, language), { ...OFF, bleep, words: [] }).project.bleeps ?? []
+        expect(out.map((b) => [b.word, Math.floor((b.start + 0.1) / 5)]), `${language} ${bleep}`).toEqual(want)
+      }
+    }
+  })
+
   it('folds spellings for matching only: the captions keep their text and the bleep its word as written', () => {
     const p = project([timed('a', 0, 'ওই মাগীটারে ধর'), timed('b', 5, 'এই চ\u09C7\u09BEদা\u09DF কেন')], 'bn')
     const out = tidyCaptions(p, { ...OFF, bleep: 'standard', words: [] })

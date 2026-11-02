@@ -644,6 +644,7 @@ function strictSet(lang: string): ReadonlySet<string> {
 }
 
 const BENGALI = /\p{Script=Bengali}/u
+const LATIN_RUN = /\p{Script=Latin}+/gu
 
 /**
  * Whether a word is bleeped by `mode` in `language`. `next` is the word after it ('' for none): in
@@ -660,6 +661,9 @@ export function isSwearWord(word: string, mode: 'standard' | 'strict', language?
     if (w.safe.some((s) => s && key.includes(s))) continue
     return true
   }
+  // An English word written together with a Bangla ending, as Banglish writes videoটা and file-টা:
+  // its Latin letters are checked by the English rules, as the bare word is.
+  if (BENGALI.test(key)) for (const run of key.match(LATIN_RUN) ?? []) if (isSwearWord(run, mode, 'en')) return true
   // A word written in Bengali script is Bangla whatever the transcript's language (an English
   // transcript quoting a Bangla word, a mixed one that names no language), but in Assamese, which
   // is written in the same script.
