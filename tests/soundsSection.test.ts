@@ -350,3 +350,61 @@ describe('a refused action', () => {
     expect(byTestId('sounds-refused')).toBeUndefined()
   })
 })
+
+describe('Play', () => {
+  // Kept 0–55 s of 60 s: the end, typing while the recording was stopped, is trimmed.
+  const trimmed = (): Project => project([{ id: 'a', start: 0, end: 55, speed: 1 }], 60)
+
+  it('plays a sound with half a second around it', () => {
+    store.state = trimmed()
+    scan.state = done([row('cough-1000', 10, 10.4)])
+    view()
+    click(buttonOf('cough-1000', 'Play'))
+    view()
+    expect(player.calls).toEqual(['pause', 'seek 9.5', 'play'])
+    expect(player.playing).toBe(true)
+  })
+
+  it('says a sound in a trimmed end is cut out, rather than playing the whole video from its start', () => {
+    store.state = trimmed()
+    scan.state = done([row('typing-5700', 57, 57.6)])
+    view()
+    click(buttonOf('typing-5700', 'Play'))
+    view()
+    expect(player.calls).toEqual([])
+    expect(player.playing).toBe(false)
+    expect(textOf(byTestId('sounds-refused')?.el.props.children)).toBe(SOUNDS_COPY.playCut)
+    expect(said()).toBe(SOUNDS_COPY.playCut)
+  })
+
+  it('also when only the edit’s last frame is left before it, where the player starts the video over', () => {
+    store.state = trimmed()
+    scan.state = done([row('typing-5548', 55.48, 56)])
+    view()
+    click(buttonOf('typing-5548', 'Play'))
+    view()
+    // The playhead is put back where it was asked to go, and nothing plays.
+    expect(player.playing).toBe(false)
+    expect(player.time).toBeCloseTo(54.98, 6)
+    expect(textOf(byTestId('sounds-refused')?.el.props.children)).toBe(SOUNDS_COPY.playCut)
+  })
+
+  it('plays the kept half second before a sound that is cut, and says nothing of a cut around it all', () => {
+    store.state = project([
+      { id: 'a', start: 0, end: 10, speed: 1 },
+      { id: 'b', start: 20, end: 60, speed: 1 }
+    ])
+    scan.state = done([row('dog-1010', 10.1, 10.3), row('dog-1400', 14, 15)])
+    view()
+    click(buttonOf('dog-1010', 'Play'))
+    view()
+    expect(player.calls).toEqual(['pause', 'seek 9.6', 'play'])
+    expect(byTestId('sounds-refused')).toBeUndefined()
+    player.calls = []
+    // Cut with the half second around it: playing would only jump to 20 s.
+    click(buttonOf('dog-1400', 'Play'))
+    view()
+    expect(player.calls).toEqual([])
+    expect(textOf(byTestId('sounds-refused')?.el.props.children)).toBe(SOUNDS_COPY.playCut)
+  })
+})

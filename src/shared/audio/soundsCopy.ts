@@ -37,6 +37,7 @@ export const SOUNDS_COPY = {
   bringBackTitle: 'Put it back on the list',
   wholeVideo: 'That would cut the whole video',
   restoreCutFailed: 'Use Undo to bring this back',
+  playCut: 'That part is cut out of the video',
   states: { muted: 'Muted', ducked: 'Lowered', cut: 'Cut', ignored: 'Ignored' }
 } as const
 

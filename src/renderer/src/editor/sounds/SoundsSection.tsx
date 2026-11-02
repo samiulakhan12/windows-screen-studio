@@ -5,6 +5,7 @@ import { addSpans, bringBack, cutRow, ignoreRow, listedRows, removeSpan, restore
 import { outputTimeAt } from '../../../../shared/editor/clips'
 import { editToVideo, planOf } from '../../../../shared/engine/freeze'
 import { formatTime } from '../../../../shared/engine/project'
+import { playableFrom } from '../../../../shared/engine/timeline'
 import type { Project } from '../../../../shared/types'
 import { useEditor } from '../context'
 import { Section } from '../controls'
@@ -74,11 +75,23 @@ export function SoundsSection({ project }: { project: Project }): JSX.Element {
   }
 
   const play = (r: SoundRow): void => {
+    const from = Math.max(0, r.start - PLAY_AROUND)
+    const until = r.end + PLAY_AROUND
+    // Nothing of it or of the half second around it is in the video (a trimmed end): the player
+    // would play the whole video from its start instead.
+    const kept = playableFrom(project.clips, from)
+    if (!kept || kept.time >= until) return refuse(SOUNDS_COPY.playCut)
     stopPlay.current?.()
     player.pause()
-    player.seek(Math.max(0, r.start - PLAY_AROUND))
+    player.seek(from)
     player.play()
-    const until = r.end + PLAY_AROUND
+    if (player.time < kept.time - 1e-3) {
+      // Only the edit's last frame was left: the player started the video over.
+      player.pause()
+      player.seek(from)
+      return refuse(SOUNDS_COPY.playCut)
+    }
+    setRefused('')
     const timer = window.setInterval(() => {
       if (!player.playing || player.time >= until) {
         stop()
