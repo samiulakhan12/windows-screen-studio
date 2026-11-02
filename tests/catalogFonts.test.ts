@@ -192,6 +192,27 @@ describe('catalogFontsFor (§6.8)', () => {
     expect(fonts.catalogFontsFor(project({ transcript: vi, graphics: [keyword({ font: 'cat:bebas-neue' })] } as Partial<Project>))).toContain('oswald')
   })
 
+  it('adds the partner for the language of the graphic’s own words, never a shown translation’s, and for its own Cyrillic or Greek', () => {
+    const track = (language: string, text: string): Partial<Project> =>
+      ({ captionTracks: [{ language, by: 'openai', model: 'm', createdAt: '2026-11-01T00:00:00Z', segments: [{ id: 'c1', text, src: 'x' }] }] }) as Partial<Project>
+    const shown = (p: Project, language: string): Project => ({ ...p, captions: { ...p.captions!, track: language } })
+    // Russian speech with its English translation shown: the Russian pop-up still draws in Oswald.
+    const ru = { language: 'ru', segments: [{ id: 'c1', start: 0, end: 2, text: 'Продажи выросли' }] }
+    const ruShown = shown(withStudio(look('subtitle'), { transcript: ru, graphics: [keyword({ text: 'Продажи', font: 'cat:anton' })], ...track('en', 'Sales grew') } as Partial<Project>), 'en')
+    expect(fonts.catalogFontsFor(ruShown)).toEqual(expect.arrayContaining(['anton', 'oswald']))
+    // English speech with its Russian translation shown: the English pop-up draws in Anton alone.
+    const en = { language: 'en', segments: [{ id: 'c1', start: 0, end: 2, text: 'Sales grew' }] }
+    const enShown = shown(project({ transcript: en, graphics: [keyword({ text: 'Sales', font: 'cat:anton' })], ...track('ru', 'Продажи выросли') } as Partial<Project>), 'ru')
+    expect(fonts.catalogFontsFor(enShown)).toContain('anton')
+    expect(fonts.catalogFontsFor(enShown)).not.toContain('oswald')
+    // A graphic of the Russian track (its own language) draws in Oswald.
+    const own = shown(project({ transcript: en, graphics: [keyword({ text: 'Продажи', lang: 'ru', font: 'cat:anton' })], ...track('ru', 'Продажи выросли') } as Partial<Project>), 'ru')
+    expect(fonts.catalogFontsFor(own)).toContain('oswald')
+    // Cyrillic or Greek typed into a graphic of English speech: Oswald, and Inter Tight for Greek.
+    expect(fonts.catalogFontsFor(project({ transcript: en, graphics: [keyword({ text: 'Экспорт', font: 'cat:anton' })] } as Partial<Project>))).toContain('oswald')
+    expect(fonts.catalogFontsFor(project({ transcript: en, graphics: [keyword({ text: 'Ωmega', font: 'cat:anton' })] } as Partial<Project>))).toContain('inter-tight')
+  })
+
   it('adds the partners of partners the drawing walks to: Anton → Oswald → Inter Tight for Greek', () => {
     const el = { language: 'el', segments: [{ id: 'c1', start: 0, end: 2, text: 'Καλημέρα σε όλους σήμερα' }] }
     expect(fonts.catalogFontsFor(withStudio(look('one-word'), { transcript: el } as Partial<Project>))).toEqual(expect.arrayContaining(['anton', 'oswald', 'inter-tight']))

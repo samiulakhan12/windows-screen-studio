@@ -310,14 +310,19 @@ describe('a selected graphic', () => {
     for (const label of ['From', 'To', 'Before', 'After', 'Label', 'Count for']) expect(byLabel(els, label), label).toBeDefined()
     expect(allByTestId(els, 'graphic-place')).toHaveLength(1)
   })
-  it('the Font menu’s note follows the caption track shown on the video, as graphics are drawn', async () => {
+  it('the Font menu’s note follows the language of the graphic’s own words, as graphics are drawn', async () => {
     const track = (language: string, text: string): CaptionTrack => ({ language, by: 'openai', model: 'gpt-4.1-mini', createdAt: '2026-11-01T00:00:00Z', segments: [{ id: 'c1', text, src: 'x' }] })
-    const noteLanguage = async (): Promise<unknown> => (await settle(view({ kind: 'graphic', id: 'k1' }), SKIP)).find((e) => e.props.testId === 'graphic-font')!.props.language
-    // English speech with its Russian translation shown: graphics, like the captions, need Russian letters.
+    const picker = async (): Promise<{ language?: unknown; letters?: unknown }> => (await settle(view({ kind: 'graphic', id: 'k1' }), SKIP)).find((e) => e.props.testId === 'graphic-font')!.props
+    // Graphics hold the spoken words, never a shown translation's: English speech with its Russian
+    // translation shown keeps 'Auto Save' English (no note for Anton).
     store.state = { ...store.state, captions: { ...DEFAULT_CAPTIONS, track: 'ru' }, captionTracks: [track('ru', 'Продажи выросли')] }
-    expect(await noteLanguage()).toBe('ru')
-    // Russian speech with its English translation shown.
+    expect((await picker()).language).toBe('en')
+    expect((await picker()).letters).toBe('Auto Save')
+    // Russian speech with its English translation shown: the Russian pop-up still needs Russian letters.
     store.state = { ...store.state, transcript: { ...transcript!, language: 'ru' }, captions: { ...DEFAULT_CAPTIONS, track: 'en' }, captionTracks: [track('en', 'Sales grew')] }
-    expect(await noteLanguage()).toBe('en')
+    expect((await picker()).language).toBe('ru')
+    // A graphic of a track (its own language) follows that language.
+    store.state = { ...store.state, graphics: (store.state.graphics ?? []).map((g) => (g.id === 'k1' ? { ...g, lang: 'en' } : g)) }
+    expect((await picker()).language).toBe('en')
   })
 })

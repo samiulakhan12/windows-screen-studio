@@ -4,8 +4,10 @@
  */
 import type { Rect } from '../engine/layout'
 import { isTall } from '../engine/reframeData'
+import { transcriptLanguage } from '../captions/captionTracks'
+import { coverageNeeded } from '../captions/fontStack'
 import { numberingFor } from '../captions/words'
-import type { CounterGraphic, Graphic, ItemMotion } from '../types'
+import type { CounterGraphic, Graphic, ItemMotion, Project } from '../types'
 import { keepInArea } from './safeZones'
 
 const pop: ItemMotion = { kind: 'pop', duration: 0.24, strength: 1 }
@@ -150,4 +152,34 @@ export function counterText(g: CounterGraphic, value: number, digits?: 'native' 
   }
   const text = `${g.prefix}${formatted}${g.suffix}`
   return { text, cells: (formatted.match(/\p{Nd}/gu) ?? []).length }
+}
+
+/** The words a graphic writes: a keyword's text, a list's title and items, a counter's prefix, suffix and label. */
+export function graphicWords(g: Graphic): string[] {
+  if (g.kind === 'keyword') return [g.text]
+  if (g.kind === 'list') return [g.title ?? '', ...g.items.map((i) => i.text)]
+  if (g.kind === 'counter') return [g.prefix, g.suffix, g.label ?? '']
+  return []
+}
+
+/**
+ * The language of a graphic's words: its own, else the spoken language (transcriptLanguage).
+ * Graphics hold the spoken words (planGraphics makes them from the transcript, and nothing
+ * translates them), so a translated caption track shown on the video never changes it.
+ */
+export function graphicLanguage(project: Pick<Project, 'transcript'>, g: Pick<Graphic, 'lang'>): string | undefined {
+  return g.lang || transcriptLanguage(project.transcript)
+}
+
+/**
+ * The letters a graphic's font must have beyond Latin (§6.6 rule 2): those of its language
+ * (graphicLanguage), and Cyrillic or Greek when its own words have them, as the captions add them
+ * from their letters (lookFont). A graphic whose font lacks them draws in the font's partner.
+ */
+export function graphicNeeds(project: Pick<Project, 'transcript'>, g: Graphic): string[] {
+  const needs = coverageNeeded(graphicLanguage(project, g), '')
+  const words = graphicWords(g).join('\n')
+  if (/\p{Script=Cyrillic}/u.test(words) && !needs.includes('cyrillic')) needs.push('cyrillic')
+  if (/\p{Script=Greek}/u.test(words) && !needs.includes('greek')) needs.push('greek')
+  return needs
 }

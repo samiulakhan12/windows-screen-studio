@@ -12,7 +12,7 @@ import type { ScriptTag } from '../src/shared/captions/words'
 
 // Renderer code: imported at run time so the Node typecheck of tests/ does not follow it.
 const PICKER = '../src/renderer/src/editor/panels/FontPicker'
-const { coverageNote } = (await import(/* @vite-ignore */ PICKER)) as { coverageNote(font: CatalogFont, language: string | undefined, bangla?: string): string | null }
+const { coverageNote } = (await import(/* @vite-ignore */ PICKER)) as { coverageNote(font: CatalogFont, language: string | undefined, bangla?: string, letters?: string): string | null }
 
 const font = (id: string): CatalogFont => catalogFont(id)!
 const drawn = (id: string, language: string): string => catalogFont(catalogId(partnerFor(`cat:${id}`, coverageNeeded(language, '')))!)!.family
@@ -25,6 +25,16 @@ describe('the coverage note (§6.6)', () => {
       const note = coverageNote(font(id), language)
       expect(note, `${id} ${language}`).toBe(`Doesn't have ${language === 'vi' ? 'Vietnamese' : language === 'uk' ? 'Ukrainian' : 'Russian'} letters: Flown uses ${drawn(id, language)} for them`)
     }
+  })
+
+  it("names the partner for a text's own Cyrillic or Greek letters, as a graphic is drawn (graphicNeeds)", () => {
+    // A pop-up of English speech with Russian typed in: Anton draws it in Oswald; Greek walks on to Inter Tight.
+    expect(coverageNote(font('anton'), 'en', undefined, 'Экспорт')).toBe("Doesn't have Cyrillic letters: Flown uses Oswald for them")
+    expect(coverageNote(font('anton'), 'en', undefined, 'Ωmega')).toBe("Doesn't have Greek letters: Flown uses Inter Tight for them")
+    expect(coverageNote(font('anton'), 'ru', undefined, 'Экспорт')).toBe("Doesn't have Russian letters: Flown uses Oswald for them")
+    // English letters, or a font with Cyrillic: no note.
+    expect(coverageNote(font('anton'), 'en', undefined, 'Export')).toBeNull()
+    expect(coverageNote(font('montserrat'), 'en', undefined, 'Экспорт')).toBeNull()
   })
 
   it('names the script font for a script, and nothing when the font has the letters', () => {

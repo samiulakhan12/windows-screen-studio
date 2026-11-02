@@ -65,16 +65,28 @@ export function fontBadges(font: CatalogFont): { coverage: string; oneWeight: bo
   return { coverage: words.join(' · '), oneWeight: Array.isArray(font.weights) && font.weights.length === 1 }
 }
 
+/** Letters a text may hold beyond its language's: its font's partner draws them (graphicNeeds, lookFont). */
+const SCRIPT_LETTERS: readonly { test: RegExp; need: { coverage: FontCoverage; name: string } }[] = [
+  { test: /\p{Script=Cyrillic}/u, need: { coverage: 'cyrillic', name: 'Cyrillic' } },
+  { test: /\p{Script=Greek}/u, need: { coverage: 'greek', name: 'Greek' } }
+]
+
 /**
  * "Doesn't have Bengali letters: Flown uses Hind Siliguri for them", or null when the font has the
  * language's letters. `bangla` is the look's Bangla font (§0.2), which draws the Bangla the font lacks.
+ * `letters` is the text drawn (a graphic's words): its own Cyrillic or Greek letters count too.
  */
-export function coverageNote(font: CatalogFont, language: string | undefined, bangla?: string): string | null {
-  const need = language ? LANGUAGE_LETTERS[language.split('-')[0].toLowerCase()] : undefined
-  if (!need || font.coverage.includes(need.coverage)) return null
-  // The font the captions draw those letters with (Anton → Oswald for Russian), as partnerFor picks it.
+export function coverageNote(font: CatalogFont, language: string | undefined, bangla?: string, letters = ''): string | null {
+  const byLanguage = language ? LANGUAGE_LETTERS[language.split('-')[0].toLowerCase()] : undefined
+  const needs: { coverage: FontCoverage; name: string; partner?: string }[] = byLanguage ? [byLanguage] : []
+  for (const s of SCRIPT_LETTERS) if (s.test.test(letters) && !needs.some((n) => n.coverage === s.need.coverage)) needs.push(s.need)
+  const need = needs.find((n) => !font.coverage.includes(n.coverage))
+  if (!need) return null
+  // The font the captions draw those letters with (Anton → Oswald for Russian), as partnerFor picks it
+  // for every letter no script font draws.
   const own = need.coverage === 'bengali' ? catalogId(bangla) : null
-  const partnerId = own ?? need.partner ?? catalogId(partnerFor(`${CATALOG_PREFIX}${font.id}`, [need.coverage]))
+  const walk = needs.filter((n) => !n.partner).map((n) => n.coverage)
+  const partnerId = own ?? need.partner ?? catalogId(partnerFor(`${CATALOG_PREFIX}${font.id}`, walk))
   const partner = (partnerId && catalogFont(partnerId)?.family) ?? 'another font'
   return `Doesn't have ${need.name} letters: Flown uses ${partner} for them`
 }
@@ -204,6 +216,7 @@ export function FontPicker({
   label = 'Font',
   catalogue = false,
   language,
+  letters,
   bangla,
   testId = 'font-picker',
   defaultLabel
@@ -213,8 +226,10 @@ export function FontPicker({
   apply: (p: Project, id: string | undefined) => Project
   label?: string
   catalogue?: boolean
-  /** The captions' language, for the coverage note. */
+  /** The captions' language (a graphic's: its words'), for the coverage note. */
   language?: string
+  /** The text drawn, when its own letters may need more than its language's (a graphic's words), for the coverage note. */
+  letters?: string
   /** The look's Bangla font (§0.2), which the coverage note names for Bangla. */
   bangla?: string
   testId?: string
@@ -232,7 +247,7 @@ export function FontPicker({
   const catId = catalogue ? catalogId(value) : null
   const cat = catId ? catalogFont(catId) : undefined
   const badges = cat ? fontBadges(cat) : null
-  const note = cat ? coverageNote(cat, language, bangla) : null
+  const note = cat ? coverageNote(cat, language, bangla, letters) : null
 
   const addFont = async (): Promise<void> => {
     if (busy) return

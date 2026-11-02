@@ -8,13 +8,14 @@
  * so everything measured while a font was still loading is measured again once it is ready.
  */
 import { assetFontFile } from '../../../shared/api/assets'
-import { burnedSegments, captionLanguage } from '../../../shared/captions/captionTracks'
+import { burnedSegments } from '../../../shared/captions/captionTracks'
 import { catalogFamily, catalogFont, catalogId, type CatalogFile, type CatalogFont } from '../../../shared/captions/fontCatalog'
 import { coverageNeeded, partnerFor } from '../../../shared/captions/fontStack'
 import { effectiveStudio, STUDIO_BASE } from '../../../shared/captions/studioPresets'
 import { fontFamily, fontOf, fontStack } from '../../../shared/render/fonts'
+import { graphicNeeds, graphicWords } from '../../../shared/render/graphics'
 import { MEDIA_SCHEME, mediaUrl } from '../../../shared/mediaUrl'
-import type { Graphic, Project, ProjectFont, TitleCard } from '../../../shared/types'
+import type { Project, ProjectFont, TitleCard } from '../../../shared/types'
 import { BUNDLED_FONT_URLS } from './catalogFonts'
 import { notifyStyleAssetsChanged } from './watermarkLayer'
 
@@ -291,13 +292,6 @@ function cjkFont(language: string | undefined, text: string): string | null {
   return null
 }
 
-/** The texts a graphic draws (keyword, list title and items, counter label, prefix and suffix). */
-function graphicTexts(g: Graphic): string[] {
-  if (g.kind === 'keyword') return [g.text]
-  if (g.kind === 'list') return [g.title ?? '', ...g.items.map((i) => i.text)]
-  if (g.kind === 'counter') return [g.prefix, g.suffix, g.label ?? '']
-  return []
-}
 
 /** The brand font ids (ProjectFont ids) of the Studio look and the graphics (FlownFontW-, §6.7). */
 function studioBrandIds(project: Pick<Project, 'captions' | 'graphics' | 'fonts'>): string[] {
@@ -389,11 +383,11 @@ function catalogIdsOf(project: Project, captions: boolean, asIs = false): string
   const graphics = project.graphics ?? []
   for (const g of graphics) {
     // A graphic without a font takes the look's (Subtitle's on a legacy look), and draws in its
-    // partner when the language needs letters it lacks (graphicsLayer's fontRef).
+    // partner when its words need letters it lacks (graphicNeeds, as graphicsLayer's fontRef).
     const font = g.font ?? studio?.text.font ?? STUDIO_BASE.text.font
     add(font)
-    add(partnerFor(font, coverageNeeded(captionLanguage(project), '')))
-    texts.push(...graphicTexts(g))
+    add(partnerFor(font, graphicNeeds(project, g)))
+    texts.push(...graphicWords(g))
   }
   for (const c of project.titles ?? []) {
     const id = titleCatalogId(c)
