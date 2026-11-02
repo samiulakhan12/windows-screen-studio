@@ -152,6 +152,45 @@ describe('inSlices', () => {
     expect(t.queue).toEqual([])
   })
 
+  it('with a gate shut once the steps are done, gives what they give only once it opens, from the state as it is then; finish does not wait', () => {
+    const t = handTasks()
+    const state = { v: 1 }
+    let open = false
+    let opened: (() => void) | null = null
+    const gate = { open: () => open, whenOpen: (fn: () => void) => void (opened = fn) }
+    const starts: number[] = []
+    const got: [number, number][] = []
+    inSlices(
+      () => state.v,
+      (b) => {
+        starts.push(b)
+        return work(t, b, 20)
+      },
+      (b, value) => got.push([b, value]),
+      t,
+      10,
+      gate
+    )
+    t.runAll()
+    expect(got).toEqual([])
+    expect(t.queue).toEqual([]) // nothing runs meanwhile
+    expect(opened).not.toBeNull()
+    state.v = 2
+    open = true
+    opened!()
+    t.runAll()
+    expect(starts).toEqual([1, 2])
+    expect(got).toEqual([[2, 20]])
+    // finish lands at once, the gate shut.
+    open = false
+    const got2: number[] = []
+    const { finish } = inSlices(() => 5, (b) => work(t, b, 20), (_, value) => got2.push(value), t, 10, gate)
+    t.runAll()
+    expect(got2).toEqual([])
+    finish()
+    expect(got2).toEqual([50])
+  })
+
   it('finish takes the steps left at once, from the state as it is, and gives what they give once', () => {
     const t = handTasks()
     const state = { v: 1 }
@@ -302,4 +341,72 @@ describe('heldInSlices', () => {
     expect(store.state).toBe(kept)
   })
 
+  it('makes its edit only once no pointer gesture is open: a drag held as it ends is not written over, and it lands on the state the drag leaves', () => {
+    const { kept, rows, store, t } = underWay()
+    // A trim drag begins: each move writes clips worked out from those at its start.
+    const initial = store.state.clips
+    const trim = (by: number) => store.update((q) => ({ ...q, clips: [{ ...initial[0], start: initial[0].start + by }, ...initial.slice(1)] }), 'trim-start')
+    store.beginGesture()
+    trim(0.1)
+    expect(store.gesturing).toBe(true)
+    t.runAll()
+    // The steps are done but the edit waits for the drag, which goes on.
+    expect(store.held).toBe(true)
+    expect(t.queue).toEqual([])
+    expect(pending(store.state, rows).length).toBe(rows.length - 1)
+    trim(0.2)
+    store.endGesture()
+    expect(store.held).toBe(true) // goes on from the state the drag left, in tasks of its own
+    t.runAll()
+    expect(store.held).toBe(false)
+    // The trim and the Remove all, both: the cut footage back and its records gone.
+    expect(rows.slice(1).every((i) => reviewStatus(store.state, i) === 'removed')).toBe(true)
+    expect(store.state.clips[0].start).toBeCloseTo(initial[0].start + 0.2)
+    const trimmed = { ...kept, clips: [{ ...initial[0], start: initial[0].start + 0.2 }, ...initial.slice(1)] }
+    expect(store.state.clips).toEqual(settle(removeItems(trimmed, pending(trimmed, rows)), trimmed).clips)
+    // Its own undo step, on top of the drag's.
+    store.undo()
+    expect(store.state.clips[0].start).toBeCloseTo(initial[0].start + 0.2)
+    expect(pending(store.state, rows).length).toBe(rows.length - 1)
+    store.undo()
+    expect(store.state).toBe(kept)
+  })
+
+  it('a Remove all that finds nothing left to change makes no step, and an undo that waited for it takes nothing back', () => {
+    const { kept, rows, store, t } = underWay()
+    expect(store.undo()).toBe(true) // waits, for the Remove all
+    // Then every silence row kept from outside the panel: the work starts over and finds nothing to remove.
+    store.update((q) => keepItems(q, pending(q, rows)))
+    const all = store.state
+    t.runAll()
+    expect(store.held).toBe(false)
+    expect(store.state).toBe(all) // no step of its own, and the undo took nothing back
+    store.undo()
+    expect(store.state).toBe(kept)
+  })
+
+  it('finish (the editor closing) makes the Remove all at once, then what waited', () => {
+    const { kept, rows, store, t } = underWay()
+    store.whenFree(() => store.update((q) => (reviewStatus(q, rows[1]) === 'pending' ? keepItems(q, [rows[1]]) : q)))
+    store.finish()
+    expect(store.held).toBe(false)
+    expect(rows.slice(1).every((i) => reviewStatus(store.state, i) === 'removed')).toBe(true)
+    expect(reviewStatus(store.state, rows[0])).toBe('kept')
+    t.runAll() // nothing more
+    store.undo()
+    expect(store.state).toBe(kept)
+  })
+
+  it('while it works, Ctrl+Z after an edit made meanwhile takes that edit back at once; the Remove all then lands on the project as it was', () => {
+    const { kept, rows, store, t } = underWay()
+    store.update((q) => ({ ...q, name: 'renamed' })) // an edit outside the panel (a zoom added, the name)
+    expect(store.undo()).toBe(true)
+    expect(store.state).toBe(kept) // taken back at once
+    t.runAll()
+    // The Remove all, on top of the Keep; one Ctrl+Z takes it back to the Keep.
+    expect(rows.slice(1).every((i) => reviewStatus(store.state, i) === 'removed')).toBe(true)
+    expect(store.state.name).toBe(kept.name)
+    store.undo()
+    expect(store.state).toBe(kept)
+  })
 })

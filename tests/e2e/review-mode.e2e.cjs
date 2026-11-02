@@ -850,8 +850,9 @@ async function main() {
 
   // Remove all over 5,000 speed-ups takes seconds. While it works, as the first edit since the
   // project opened: Undo from the palette and the title bar's Undo wait for it and take it back;
-  // Redo with nothing to bring back after it says so at once; Export makes it first.
-  await test('review mode: 5000 speed-ups: Undo from the palette and the title bar, Redo and Export while Remove all works', async (ctx) => {
+  // Redo with nothing to bring back after it says so at once; Export makes it first; a timeline drag
+  // held as it would land has it wait for the drag.
+  await test('review mode: 5000 speed-ups: Undo from the palette and the title bar, Redo, Export and a drag while Remove all works', async (ctx) => {
     const home = h.tempHome('review-speed-busy')
     const count = 5000
     const total = count + 3
@@ -935,6 +936,40 @@ async function main() {
     await win.evaluate(() => (document.activeElement instanceof HTMLElement ? document.activeElement.blur() : undefined))
     await win.keyboard.press('Control+z')
     await f.waitFor(async () => (await progressOf(win)) === `0 of ${total} reviewed`, 'the Remove all undone', 10000)
+
+    // A trim drag held while it works: its edit waits for the drag to end (the drag's next move,
+    // from the clips at its start, would bring the speed-ups back with their records gone), then
+    // lands on top of the trim.
+    await removeAll()
+    const handle = await win.$('.trim-handle.start')
+    const hb = await handle.boundingBox()
+    const x = hb.x + hb.width / 2
+    const y = hb.y + hb.height / 2
+    await win.mouse.move(x, y)
+    await win.mouse.down()
+    await win.mouse.move(x + 4, y, { steps: 2 })
+    const dragAt = await pressedAfter(win)
+    const t0 = Date.now()
+    while (Date.now() - t0 < 12000 && (await busyNow())) await h.sleep(200)
+    const heldBusy = await busyNow()
+    await win.mouse.move(x + 12, y, { steps: 3 })
+    await win.mouse.up()
+    await idle(win, 60000)
+    h.assert(same(dragAt, []), `nothing else pressed: ${JSON.stringify(dragAt)}`)
+    await h.sleep(1500)
+    await f.waitFor(async () => (await win.getAttribute('.save-state', 'data-state').catch(() => '')) === 'saved', 'saved', 15000)
+    const dragged = h.readProject(home, id)
+    const fast = dragged.clips.filter((c) => (c.speed ?? 1) !== 1).length
+    h.assert((dragged.autoCuts ?? []).length === 0 && dragged.clips[0].start > 0 && fast === 0, `the trim, and the speed-ups gone with their records: ${(dragged.autoCuts ?? []).length} records, ${fast} sped up, start ${dragged.clips[0].start}`)
+    h.assert(heldBusy, 'the Remove all waits while the drag is held')
+    h.assert((await progressOf(win)) === `${count} of ${total} reviewed`, `all removed: ${await progressOf(win)}`)
+    await win.evaluate(() => (document.activeElement instanceof HTMLElement ? document.activeElement.blur() : undefined))
+    await win.keyboard.press('Control+z')
+    await f.waitFor(async () => (await progressOf(win)) !== `${count} of ${total} reviewed`, 'one Ctrl+Z takes the Remove all back', 10000)
+    const trimmed = await savedWhen(home, id, (q) => (q.autoCuts ?? []).length > 0, 'the records back')
+    h.assert(trimmed.clips[0].start === dragged.clips[0].start, `the trim stays: ${trimmed.clips[0].start}`)
+    await win.keyboard.press('Control+z')
+    await f.waitFor(async () => (await progressOf(win)) === `0 of ${total} reviewed`, 'then the trim', 10000)
 
     h.assert(!logs.some((l) => l.includes('[pageerror]')), `no page errors: ${logs.filter((l) => l.includes('pageerror'))}`)
   })

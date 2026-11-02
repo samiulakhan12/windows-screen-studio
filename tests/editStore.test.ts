@@ -320,6 +320,25 @@ describe('EditStore', () => {
     expect(s.canRedo).toBe(false)
   })
 
+  it('afterGestures runs what waits once the last open pointer gesture ends, its run settled; at once when none is open', () => {
+    const { s } = store()
+    const order: string[] = []
+    s.afterGestures(() => order.push('now'))
+    expect(order).toEqual(['now'])
+    s.beginGesture()
+    s.beginGesture()
+    expect(s.gesturing).toBe(true)
+    s.update(() => 1, 'drag')
+    s.afterGestures(() => order.push(`after ${s.state}`))
+    s.endGesture()
+    expect(order).toEqual(['now'])
+    s.endGesture()
+    expect(s.gesturing).toBe(false)
+    expect(order).toEqual(['now', 'after 1'])
+    s.endGesture() // one too many: nothing more
+    expect(order).toEqual(['now', 'after 1'])
+  })
+
   it('finish has each work holding the store make its edit and let go at once', () => {
     const { s } = store()
     s.update(() => 1)

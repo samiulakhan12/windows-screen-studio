@@ -32,7 +32,9 @@ import { History } from '../engine/history'
  * or it found nothing to change) leaves what waited to be done as if the edit had been made: an
  * undo that would take it back, or a redo it would have found nothing for, does nothing, and the
  * step before it and the redo list stay. `finish` has the work make its edit at once (the editor
- * closing saves it).
+ * closing saves it). Held work does not make its edit while a pointer gesture is open
+ * (`gesturing`, `afterGestures`): the drag's next move, worked out from where it started, would
+ * write over it.
  */
 export class EditStore<T> {
   private readonly history: History<T>
@@ -61,6 +63,8 @@ export class EditStore<T> {
    */
   private phantom: { past: ('W' | 'R')[]; future: ('W' | 'R')[] } | null = null
   private gestures = 0
+  /** What waits for the pointer gestures open to end (afterGestures). */
+  private readonly gestureEnds: (() => void)[] = []
   private lastKey: string | null = null
   private lastAt = 0
   /** The state before the held gesture run whose states wait to be settled (none: null). */
@@ -281,7 +285,20 @@ export class EditStore<T> {
 
   endGesture = (): void => {
     this.gestures = Math.max(0, this.gestures - 1)
-    if (this.gestures === 0) this.seal()
+    if (this.gestures > 0) return
+    this.seal()
+    while (this.gestures === 0 && this.gestureEnds.length > 0) this.gestureEnds.shift()!()
+  }
+
+  /** Whether a pointer gesture is open (a drag: each move writes a state worked out from where it started). */
+  get gesturing(): boolean {
+    return this.gestures > 0
+  }
+
+  /** Runs `fn` once no pointer gesture is open: at once when none is, else as the last one ends (its run settled). */
+  afterGestures = (fn: () => void): void => {
+    if (this.gestures === 0) fn()
+    else this.gestureEnds.push(fn)
   }
 
   /** Closes the current merge run so the next edit is a separate undo step. */
