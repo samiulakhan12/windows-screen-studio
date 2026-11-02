@@ -132,6 +132,17 @@ export function removePartialCopies(): void {
   writing.clear()
 }
 
+/**
+ * Bytes that copies running now still have to write, per drive (stat's `dev`): each free-space check
+ * counts them, so copies started together cannot fill a drive between them.
+ */
+const pending = new Map<number, number>()
+function reserve(drive: number, bytes: number): void {
+  const left = (pending.get(drive) ?? 0) + bytes
+  if (left > 0) pending.set(drive, left)
+  else pending.delete(drive)
+}
+
 /** "1.2 GB" */
 const gb = (n: number): string => (n >= 1e9 ? `${(n / 1e9).toFixed(1)} GB` : `${Math.max(1, Math.round(n / 1e6))} MB`)
 
@@ -156,17 +167,21 @@ export async function copyIntoFolder(file: string, root: string, label: string, 
   if (!reals) throw new Error(`The ${label} folder could not be opened.`)
   const [realRoot, realSub] = reals
   if (!sameDir(realSub, path.join(realRoot, SHARE_SUBFOLDER))) throw new Error(`The ${SHARE_SUBFOLDER} folder in ${label} leads somewhere else, so nothing was copied.`)
-  if (!(await fs.stat(realSub).catch(() => null))?.isDirectory()) throw new Error(`Could not make the ${SHARE_SUBFOLDER} folder in ${label}.`)
+  const subSt = await fs.stat(realSub).catch(() => null)
+  if (!subSt?.isDirectory()) throw new Error(`Could not make the ${SHARE_SUBFOLDER} folder in ${label}.`)
 
   const realFile = await realPath(file).catch(() => null)
   if (!realFile) throw new Error('The exported file is not there any more.')
   if (sameDir(path.dirname(realFile), realSub)) return { dest: realFile, bytes: st.size, already: true }
 
-  const free = await (opts.freeBytes ?? realFree)(realSub)
-  if (free !== null && free < st.size + SPARE_BYTES) throw new Error(`There is not enough space on the drive of ${label} (needs ${gb(st.size + SPARE_BYTES)}).`)
-
   signal.throwIfAborted()
   await sweepStale(realSub, Date.now())
+  const drive = subSt.dev
+  const free = await (opts.freeBytes ?? realFree)(realSub)
+  if (free !== null && free - (pending.get(drive) ?? 0) < st.size + SPARE_BYTES) throw new Error(`There is not enough space on the drive of ${label} (needs ${gb(st.size + SPARE_BYTES)}).`)
+  // Counted before anything else is awaited, so a copy that checks meanwhile sees these bytes.
+  let left = st.size
+  reserve(drive, left)
   const temp = partialName(path.join(realSub, name))
   const now = opts.now ?? Date.now
   let dest = ''
@@ -175,6 +190,10 @@ export async function copyIntoFolder(file: string, root: string, label: string, 
   const count = new Transform({
     transform(chunk: Buffer, _enc, cb) {
       done += chunk.length
+      // Written bytes show in the drive's free space from now on.
+      const n = Math.min(chunk.length, left)
+      left -= n
+      reserve(drive, -n)
       const t = now()
       if (t - last >= PROGRESS_MS) {
         last = t
@@ -199,6 +218,8 @@ export async function copyIntoFolder(file: string, root: string, label: string, 
     // The done view and the notification name the destination themselves ("Could not copy to OneDrive: …").
     if (code === 'EBUSY' || code === 'EPERM' || code === 'EACCES') throw new Error('the folder is read-only or a file there is in use.')
     throw new Error((e as Error).message.split('\n')[0].replace(/'[^']*'/g, '').trim() || 'something went wrong.')
+  } finally {
+    reserve(drive, -left)
   }
   return { dest, bytes: st.size, already: false }
 }

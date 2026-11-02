@@ -1,10 +1,10 @@
-import fsCallbacks, { existsSync, mkdirSync, mkdtempSync, promises as fsp, readdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs'
+import fsCallbacks, { existsSync, mkdirSync, mkdtempSync, promises as fsp, readdirSync, readFileSync, rmSync, statSync, symlinkSync, writeFileSync } from 'node:fs'
 import http from 'node:http'
 import type { AddressInfo } from 'node:net'
 import os from 'node:os'
 import path from 'node:path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { CANCELLED, copyIntoFolder } from '../src/main/share/copyToFolder'
+import { CANCELLED, copyIntoFolder, SPARE_BYTES } from '../src/main/share/copyToFolder'
 import { postToWebhook } from '../src/main/share/webhookPost'
 import { stepText } from '../src/shared/share/steps'
 
@@ -62,6 +62,81 @@ describe('copyIntoFolder', () => {
     await expect(copyIntoFolder(video, path.join(dir, 'gone'), 'Dropbox', { signal: signal(), freeBytes: plenty })).rejects.toThrow('The Dropbox folder is not there any more.')
     await expect(copyIntoFolder(video, root, 'OneDrive', { signal: signal(), freeBytes: async () => 1000 })).rejects.toThrow('not enough space on the drive of OneDrive')
     expect(existsSync(path.join(root, 'Flown', 'Demo.mp4'))).toBe(false)
+  })
+
+  it('counts the bytes copies to the same drive still have to write', async () => {
+    const size = 3 * 1024 * 1024
+    // Room for one copy, not two.
+    const free = size + SPARE_BYTES + size / 2
+    const dropbox = path.join(dir, 'Dropbox')
+    mkdirSync(dropbox)
+    let secondChecking = (): void => undefined
+    const checking = new Promise<void>((r) => (secondChecking = r))
+    let firstWriting = (): void => undefined
+    const writing = new Promise<void>((r) => (firstWriting = r))
+    // The second copy checks the space just as the first starts writing.
+    const second = copyIntoFolder(video, dropbox, 'Dropbox', {
+      signal: signal(),
+      freeBytes: async () => {
+        secondChecking()
+        await writing
+        return free
+      }
+    })
+    const first = copyIntoFolder(video, root, 'OneDrive', {
+      signal: signal(),
+      freeBytes: async () => {
+        await checking
+        return free
+      },
+      onProgress: (f) => f === 0 && firstWriting()
+    })
+    const [late, early] = await Promise.allSettled([second, first])
+    expect(late.status === 'rejected' && String(late.reason)).toContain('There is not enough space on the drive of Dropbox')
+    expect(early.status === 'fulfilled' && early.value.dest).toBe(path.join(root, 'Flown', 'Demo.mp4'))
+    expect(readdirSync(path.join(dropbox, 'Flown'))).toEqual([])
+
+    // Finished and cancelled copies count no more.
+    const controller = new AbortController()
+    const cancelled = copyIntoFolder(video, root, 'OneDrive', { signal: controller.signal, freeBytes: async () => free, onProgress: (f) => f > 0 && controller.abort(), now: () => Date.now() + Math.random() * 1e6 })
+    await expect(cancelled).rejects.toThrow(CANCELLED)
+    const exact = async (): Promise<number> => size + SPARE_BYTES
+    expect((await copyIntoFolder(video, dropbox, 'Dropbox', { signal: signal(), freeBytes: exact })).dest).toBe(path.join(dropbox, 'Flown', 'Demo.mp4'))
+  })
+
+  // A second drive where the test machine has one (Linux's /dev/shm).
+  const shm = process.platform === 'linux' && existsSync('/dev/shm') ? '/dev/shm' : ''
+  it.skipIf(!shm)('does not count copies to another drive', async () => {
+    const other = mkdtempSync(path.join(shm, 'ssw-sharedrive-'))
+    try {
+      if (statSync(other).dev === statSync(root).dev) return
+      const exact = 3 * 1024 * 1024 + SPARE_BYTES
+      let secondChecking = (): void => undefined
+      const checking = new Promise<void>((r) => (secondChecking = r))
+      let firstWriting = (): void => undefined
+      const writing = new Promise<void>((r) => (firstWriting = r))
+      const second = copyIntoFolder(video, other, 'USB', {
+        signal: signal(),
+        freeBytes: async () => {
+          secondChecking()
+          await writing
+          return exact
+        }
+      })
+      const first = copyIntoFolder(video, root, 'OneDrive', {
+        signal: signal(),
+        freeBytes: async () => {
+          await checking
+          return exact
+        },
+        onProgress: (f) => f === 0 && firstWriting()
+      })
+      const [late, early] = await Promise.allSettled([second, first])
+      expect(late.status === 'fulfilled' && late.value.dest).toBe(path.join(other, 'Flown', 'Demo.mp4'))
+      expect(early.status === 'fulfilled' && early.value.dest).toBe(path.join(root, 'Flown', 'Demo.mp4'))
+    } finally {
+      rmSync(other, { recursive: true, force: true })
+    }
   })
 
   it.skipIf(process.platform === 'win32')('refuses a Flown folder that is a link to somewhere else', async () => {

@@ -113,8 +113,10 @@ can be turned off there ("Use" switch), and the export chip's tooltip shows the 
   again up to 4 times (150 ms × n, the name checked before each try) while an antivirus scan or the
   cloud app holds the fresh file (`EBUSY`, `EPERM`, `EACCES`), as the export's own rename is. Cancel or failure deletes the partial file; one the cloud app holds open is retried at
   quit, and partial files over an hour old are removed by the next copy into that folder.
-* Before copying: free space at the target (`fs.statfs`) must be ≥ size + **64 MB**, else
-  "There is not enough space on the drive of OneDrive (needs 1.2 GB)."
+* Before copying: free space at the target (`fs.statfs`), less the bytes other running copies to the
+  same drive (`stat`'s `dev`) still have to write, must be ≥ size + **64 MB**, else
+  "There is not enough space on the drive of OneDrive (needs 1.2 GB)." (Shares run in parallel, so
+  without that two copies started together could each pass and fill the drive.)
 * **Containment:** the real path (`fs.realpath`) of `<root>\Flown` must be `<real root>` + `\Flown`
   (a junction or link named `Flown` that points elsewhere is refused). Where the system call fails
   (RAM disks, WinFsp and other virtual drives answer `EISDIR`), Node's own walk, which still follows
