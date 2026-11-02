@@ -230,6 +230,34 @@ describe('ShareService', () => {
     }
   })
 
+  it('forgets the Share blocks of a page that went away without saying so', async () => {
+    vi.useFakeTimers()
+    try {
+      // A page showing the done view reloaded (or crashed): its clean-up never ran.
+      const s = setup({ post: async () => Promise.reject(new Error('Could not reach Slack. Check the connection.')) })
+      s.service.watch(FILE, true, 7)
+      s.service.unwatchPage(7)
+      // Exported again to the same path; the done view is closed while the post runs.
+      s.service.offer(FILE, META, true)
+      s.service.watch(FILE, true, 7)
+      const run = s.service.start(FILE, ['whkchat'], META)
+      s.service.watch(FILE, false, 7)
+      await run
+      await vi.advanceTimersByTimeAsync(WATCH_GRACE_MS)
+      expect(s.notes).toEqual([{ title: 'Could not share', body: '#demos: Could not reach Slack. Check the connection.' }])
+      // Another page's Share block still counts.
+      const w = setup()
+      w.service.watch(FILE, true, 7)
+      w.service.watch(FILE, true, 8)
+      w.service.unwatchPage(8)
+      await w.service.start(FILE, ['whkchat'], META)
+      await vi.advanceTimersByTimeAsync(WATCH_GRACE_MS)
+      expect(w.notes).toEqual([])
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
   it('is busy while a share runs, so Restart now waits for it', async () => {
     let done: () => void = () => undefined
     const s = setup({ copy: () => new Promise((resolve) => (done = () => resolve({ dest: 'C:\\OneDrive\\Flown\\Demo.mp4', bytes: 10, already: false }))) })

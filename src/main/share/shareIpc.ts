@@ -4,7 +4,7 @@
  * Only the app's own page may call these handlers; it sends ids, never paths or URLs to act on
  * (except a webhook URL typed in Settings, checked and encrypted at once).
  */
-import { app, dialog, ipcMain, Notification, net, safeStorage, shell, type IpcMainInvokeEvent } from 'electron'
+import { app, dialog, ipcMain, Notification, net, safeStorage, shell, type IpcMainInvokeEvent, type WebContents } from 'electron'
 import { promises as fs } from 'node:fs'
 import path from 'node:path'
 import type { ShareFolderInfo, ShareRunView, ShareTargets } from '../../shared/api/share'
@@ -125,6 +125,23 @@ const handle = (channel: string, fn: (...args: unknown[]) => unknown): void => {
   })
 }
 
+/** Pages whose Share blocks are counted, each watched once for going away. */
+const watchedPages = new Set<number>()
+
+/** A page that reloads or crashes takes its Share blocks away without saying so (no clean-up runs). */
+function watchPage(wc: WebContents): void {
+  if (watchedPages.has(wc.id)) return
+  watchedPages.add(wc.id)
+  const id = wc.id
+  const gone = (): void => shares().unwatchPage(id)
+  wc.on('did-navigate', gone)
+  wc.on('render-process-gone', gone)
+  wc.once('destroyed', () => {
+    gone()
+    watchedPages.delete(id)
+  })
+}
+
 export function registerShareIpc(): void {
   handle('share:targets', (refresh, fromSettings) => {
     if (fromSettings === true) shareStore().markReviewed()
@@ -177,7 +194,11 @@ export function registerShareIpc(): void {
   handle('share:start', (file, ids, meta) => shares().start(file, ids, meta))
   handle('share:cancel', (id) => shares().cancel(id))
   handle('share:runs', (file) => shares().runsFor(file))
-  handle('share:watch', (file, on) => shares().watch(file, on))
+  ipcMain.handle('share:watch', (e, file: unknown, on: unknown) => {
+    fromApp(e)
+    watchPage(e.sender)
+    shares().watch(file, on, e.sender.id)
+  })
   setNotificationExtras((file) => shares().extras(file))
 }
 

@@ -60,18 +60,31 @@ export class ShareService {
   private offers = new Map<string, { meta: ShareMeta; auto: boolean }>()
   /** Where each file was last copied this session, for later posts. */
   private places = new Map<string, SharePlace>()
-  /** How many Share blocks on screen show each file's runs (the export dialog's done view). */
-  private watchers = new Map<string, number>()
+  /** How many Share blocks on screen show each file's runs (the export dialog's done view), by page. */
+  private watchers = new Map<number, Map<string, number>>()
   private counter = 0
 
   constructor(private readonly deps: ShareDeps) {}
 
-  /** A Share block showing `file`'s runs came on screen (`on`) or went away. */
-  watch(file: unknown, on: unknown): void {
+  /** A Share block showing `file`'s runs came on screen (`on`) or went away, on `page`. */
+  watch(file: unknown, on: unknown, page = 0): void {
     if (typeof file !== 'string' || !this.deps.isExported(file)) return
-    const n = (this.watchers.get(file) ?? 0) + (on === true ? 1 : -1)
-    if (n > 0) this.watchers.set(file, n)
-    else this.watchers.delete(file)
+    const counts = this.watchers.get(page) ?? new Map<string, number>()
+    const n = (counts.get(file) ?? 0) + (on === true ? 1 : -1)
+    if (n > 0) counts.set(file, n)
+    else counts.delete(file)
+    if (counts.size > 0) this.watchers.set(page, counts)
+    else this.watchers.delete(page)
+  }
+
+  /** `page` went away (reloaded, crashed or closed): its Share blocks went with it, unsaid. */
+  unwatchPage(page: number): void {
+    this.watchers.delete(page)
+  }
+
+  /** Whether a Share block on any page shows `file`'s runs. */
+  private watched(file: string): boolean {
+    return [...this.watchers.values()].some((counts) => counts.has(file))
   }
 
   /**
@@ -259,7 +272,7 @@ export class ShareService {
     // Said here unless a Share block on screen shows it: the window is in the background, or the
     // export dialog was closed while the run went on. A done view that has just opened may not have
     // said so yet (a quick run can end first), so with the window focused it gets a moment.
-    const quiet = (): boolean => signal.aborted || (this.deps.isFocused() && this.watchers.has(file))
+    const quiet = (): boolean => signal.aborted || (this.deps.isFocused() && this.watched(file))
     if (quiet()) return
     if (this.deps.isFocused()) await new Promise((resolve) => setTimeout(resolve, WATCH_GRACE_MS))
     if (quiet()) return

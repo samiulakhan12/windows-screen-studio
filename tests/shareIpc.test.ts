@@ -29,7 +29,9 @@ vi.mock('../src/main/windows', () => ({ getMainWindow: () => ({ isDestroyed: () 
 vi.mock('../src/main/exportIpc', () => ({ isExportedFile: () => false }))
 vi.mock('../src/main/longJobs', () => ({ setNotificationExtras: () => undefined }))
 
+import { EventEmitter } from 'node:events'
 import { registerShareIpc } from '../src/main/share/shareIpc'
+import { ShareService } from '../src/main/share/shareService'
 
 const appEvent = { senderFrame: { url: pathToFileURL(path.join(__dirname, '../src/renderer/index.html')).href } }
 const call = (channel: string, ...args: unknown[]): Promise<ShareTargets> => Promise.resolve(h.handlers.get(channel)!(appEvent, ...args) as ShareTargets)
@@ -77,5 +79,32 @@ describe('Settings › Share found folders', () => {
     expect(next.reviewed).toBe(true)
     expect(on(next)).toEqual({ OneDrive: true, Dropbox: false, 'Team share': false })
     expect(shareJson()).toMatchObject({ reviewed: true, off: expect.arrayContaining([dropbox.id]) })
+  })
+})
+
+describe('the done view’s Share block', () => {
+  it('is counted for its page, and forgotten when that page reloads, crashes or closes', async () => {
+    const watch = vi.spyOn(ShareService.prototype, 'watch')
+    const unwatch = vi.spyOn(ShareService.prototype, 'unwatchPage')
+    const page = Object.assign(new EventEmitter(), { id: 7 })
+    const fromPage = { ...appEvent, sender: page }
+    const file = path.join(h.root, 'Demo.mp4')
+    await h.handlers.get('share:watch')!(fromPage, file, true)
+    await h.handlers.get('share:watch')!(fromPage, file, false)
+    expect(watch.mock.calls).toEqual([
+      [file, true, 7],
+      [file, false, 7]
+    ])
+    // Each page is watched once, however many done views it shows.
+    expect(page.listenerCount('did-navigate')).toBe(1)
+    for (const event of ['did-navigate', 'render-process-gone', 'destroyed']) {
+      unwatch.mockClear()
+      page.emit(event)
+      expect(unwatch.mock.calls).toEqual([[7]])
+    }
+    // Only the app's own page may say what it shows.
+    expect(() => h.handlers.get('share:watch')!({ senderFrame: { url: 'https://example.com/' }, sender: page }, file, true)).toThrow('Not allowed')
+    watch.mockRestore()
+    unwatch.mockRestore()
   })
 })
