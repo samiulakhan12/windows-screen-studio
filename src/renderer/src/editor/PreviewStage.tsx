@@ -22,7 +22,7 @@ import { frameCamera } from '../../../shared/engine/frameView'
 import { outputSize, type Rect, type SceneLayout } from '../../../shared/engine/layout'
 import { useSceneView } from './sceneRect'
 import { clamp } from '../../../shared/engine/math'
-import { isTall, withoutFollow } from '../../../shared/engine/reframeData'
+import { isTall, tallAs, withoutFollow } from '../../../shared/engine/reframeData'
 import { cameraFor, zoomAt, zoomTargetScale, type Camera } from '../../../shared/engine/zoom'
 import { ANNOTATION_FONT } from '../../../shared/render/overlays'
 import { cursorOverVideoAt, spotlightArea, visibleCursorAt } from '../../../shared/render/shapes'
@@ -40,6 +40,7 @@ import { releaseFocus } from './focus'
 import type { PreviewPlayer } from './player'
 import { followPointer } from './pointer'
 import { SafeZoneOverlay } from './SafeZoneOverlay'
+import { GraphicHandles, PreviewLookLabel } from './GraphicHandle'
 import { useSafeZoneChoice } from './safeZonePref'
 import type { Selection } from './selection'
 import { usePlaying } from './Transport'
@@ -193,7 +194,7 @@ export const PreviewStage = memo(function PreviewStage({ project, pickZoom: pick
       const dpr = window.devicePixelRatio || 1
       const k = Math.min(1, out.width / (w * dpr), out.height / (h * dpr))
       const bw = Math.max(2, Math.round(w * dpr * k))
-      const bh = Math.max(2, Math.round(h * dpr * k))
+      const bh = tallAs(bw, Math.max(2, Math.round(h * dpr * k)), out.width, out.height)
       if (canvas.width !== bw || canvas.height !== bh) {
         canvas.width = bw
         canvas.height = bh
@@ -447,6 +448,7 @@ export const PreviewStage = memo(function PreviewStage({ project, pickZoom: pick
       <div className="canvas-box" style={{ width: box.w, height: box.h }}>
         <canvas ref={canvasRef} className="preview-canvas" />
         {safeZones !== 'off' && isTall(out.width, out.height) && <SafeZoneOverlay choice={safeZones} box={box} />}
+        <PreviewLookLabel />
         <div
           className={['preview-overlay', pickZoom && 'picking', canDragView && 'view-drag', dragging && 'dragging'].filter(Boolean).join(' ')}
           onPointerDown={onOverlayDown}
@@ -455,6 +457,8 @@ export const PreviewStage = memo(function PreviewStage({ project, pickZoom: pick
         >
           {pickZoom?.focus.mode === 'region' && <RegionEditor zoom={pickZoom} region={pickZoom.focus} rect={rect} onDone={onExitPick} sourceAt={sourceAt} setRegion={setRegion} />}
           {pickZoom && pickZoom.focus.mode !== 'region' && <FocusPicker zoom={pickZoom} rect={rect} onDone={onExitPick} />}
+          {/* Under the selected item's handles (later in the overlay), so a drag there moves the item, not the captions. */}
+          {!pickZoom && !cropTool && <GraphicHandles project={drawn} box={box} out={{ w: out.width, h: out.height }} selection={selection} onSelect={onSelect} onTogglePlay={onTogglePlay} paused={!playing} />}
           {!pickZoom && !cropTool && selectedAnnotation && <AnnotationHandle annotation={selectedAnnotation} project={drawn} box={box} />}
           {!pickZoom && !cropTool && <OverlayEditor project={drawn} selection={selection} box={box} onDone={() => onSelect?.(null)} />}
           {editItem && view && mapping && <ShapeEditor edit={editItem} view={view} mapping={mapping} crop={crop} clip={slot} box={box} onDone={() => onSelect?.(null)} />}

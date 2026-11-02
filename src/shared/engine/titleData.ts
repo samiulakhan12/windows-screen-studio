@@ -3,6 +3,8 @@
  * entries that cannot be shown rejected. One rule for loading a project (project.ts) and for the
  * editor (editor/titles.ts), like shapeData.ts for shapes.
  */
+import { catalogId, CATALOG_PREFIX } from '../captions/fontCatalog'
+import { readAutoOrigin } from '../captions/studioData'
 import { readFontId } from '../render/fonts'
 import type { Chapter, TitleCard, TitleCardStyle } from '../types'
 
@@ -20,7 +22,7 @@ export const cleanTitle = (text: string): string => text.replace(/\r/g, '').slic
 export const cleanChapterName = (name: string): string => name.replace(/[\u0000-\u001f\u007f]+/g, ' ').slice(0, CHAPTER_MAX_CHARS)
 
 const finite = (v: unknown): v is number => typeof v === 'number' && Number.isFinite(v)
-const STYLES: TitleCardStyle[] = ['centered', 'lower-third', 'big']
+const STYLES: TitleCardStyle[] = ['centered', 'lower-third', 'big', 'quote']
 const BACKGROUNDS: TitleCard['background'][] = ['blur', 'solid', 'style']
 
 /**
@@ -44,9 +46,13 @@ export function readTitleCard(raw: Partial<TitleCard> | null | undefined, durati
   if (typeof raw.subtitle === 'string') card.subtitle = cleanTitle(raw.subtitle)
   if (typeof raw.color === 'string' && HEX_COLOR.test(raw.color)) card.color = raw.color
   if (typeof raw.textColor === 'string' && HEX_COLOR.test(raw.textColor)) card.textColor = raw.textColor
-  const font = readFontId(raw.font)
+  // A brand font, or a Captions Studio catalogue font ('cat:<id>'; an unknown one is dropped, so the card uses its default font).
+  const font = typeof raw.font === 'string' && raw.font.startsWith(CATALOG_PREFIX) ? (catalogId(raw.font) ? raw.font : undefined) : readFontId(raw.font)
   if (font) card.font = font
   if (raw.brand === 'intro' || raw.brand === 'outro') card.brand = raw.brand
+  // Made automatically and not reviewed yet (Captions Studio §11.8): kept when `by` and `via` are valid.
+  const auto = readAutoOrigin(raw.auto)
+  if (auto) card.auto = auto
   return card
 }
 

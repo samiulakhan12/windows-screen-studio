@@ -18,6 +18,7 @@ const STEP_LABEL: Record<PolishStep, string> = {
   zoom: 'Auto zoom',
   silences: 'Remove silences',
   captions: 'Captions',
+  captionLook: 'Caption look',
   director: 'Camera director'
 }
 
@@ -74,7 +75,7 @@ const minSilence = `${SILENCE_LENGTH.default.toFixed(1)} s`
 export function polishHint(
   step: PolishStep,
   /** `bangla`: On this PC makes the captions with the Bangla model (Bengali chosen in the Captions tab). */
-  state: { silenceAction: SmartSpeedAction; autoZoomOn: boolean; provider: Pick<AiProviderInfo, 'label' | 'kind'> | null; local?: boolean; bangla?: boolean }
+  state: { silenceAction: SmartSpeedAction; autoZoomOn: boolean; provider: Pick<AiProviderInfo, 'label' | 'kind'> | null; local?: boolean; bangla?: boolean; wide?: boolean }
 ): string {
   switch (step) {
     case 'style':
@@ -88,6 +89,9 @@ export function polishHint(
     case 'captions':
       if (state.local) return state.bangla ? SPEECH_COPY.readyHintBangla : SPEECH_COPY.readyHint
       return `The sound is sent to ${state.provider ? providerName(state.provider) : 'the provider'} with your key and billed to your account.`
+    case 'captionLook':
+      // In wide frames Polish adds no pop-ups (Captions Studio §2.8, §11.8).
+      return state.wide ? 'Style, emphasis and tidy text for your captions.' : 'Style, emphasis and pop-ups for your captions.'
     case 'director':
       return 'Uses your Camera tab options: intro and outro, bubble corners, hiding in long silences, centring your face. Camera blocks you placed or changed are kept.'
   }
@@ -116,6 +120,8 @@ export function polishSkipText(step: PolishStep, reason: PolishSkip, error?: str
       return CAPTIONS_SKIPPED_NO_MODEL
     case 'busy':
       return 'A transcription is already running in the Captions tab'
+    case 'no-captions':
+      return 'This video has no captions to style'
     case 'failed': {
       const why = error?.replace(/[.\s]+$/, '')
       if (step !== 'captions') return why ? `It failed: ${why}` : 'It failed'
@@ -190,6 +196,8 @@ function resultText(summary: PolishSummary, r: PolishStepResult): string {
       const left = at === null ? '' : `. A project keeps at most ${MAX_CAPTIONS} captions, so the captions after ${formatTime(at, false)} were left out.`
       return `Captions: ${plural(summary.captions, 'caption')}${left}`
     }
+    case 'captionLook':
+      return changed ? 'Caption look: done' : 'Caption look: unchanged'
     case 'director': {
       const f = summary.framing
       const face = f?.status === 'framed' ? `face centred (${zoomText(f.zoom)})` : ''

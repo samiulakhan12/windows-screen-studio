@@ -573,9 +573,13 @@ async function main() {
     await win.waitForSelector('select[aria-label="AI provider for text"]')
 
     // The tab's dropdowns show the global chevron; the caption lane and its label use the timeline's look and the caption hue.
-    for (const label of ['AI provider for text', 'Translate to']) {
-      const bg = await win.$eval(`select[aria-label="${label}"]`, (e) => getComputedStyle(e).backgroundImage)
-      h.assert(/svg/.test(bg), `the "${label}" dropdown has its arrow: ${bg}`)
+    // (Translate to… and Fix captions moved to Languages and Clean up: Captions Studio §2.3, §2.14.)
+    const cleanup = '[data-testid="caption-cleanup"]'
+    const languages = '[data-testid="caption-languages"]'
+    await win.click(`${languages} [data-testid="track-add"]`)
+    for (const sel of ['select[aria-label="AI provider for text"]', `${languages} select`]) {
+      const bg = await win.$eval(sel, (e) => getComputedStyle(e).backgroundImage)
+      h.assert(/svg/.test(bg), `the "${sel}" dropdown has its arrow: ${bg}`)
     }
     const look = await win.evaluate(() => {
       const css = (sel, prop) => getComputedStyle(document.querySelector(sel)).getPropertyValue(prop).trim()
@@ -596,17 +600,23 @@ async function main() {
     await win.keyboard.press('Control+z')
     await saved(home, id, (q) => q.transcript.segments.length === 2 && q.transcript.segments[1].text === 'secnd one', 'one undo brings it back')
 
+    // Fix captions is Clean up's AI fix (§2.9); its offline rules are off here, so only the AI changes the text.
+    await win.uncheck(`${cleanup} [data-testid="cleanup-caps"]`)
+    await win.uncheck(`${cleanup} [data-testid="cleanup-punct"]`)
+    await win.click(`${cleanup} [data-testid="cleanup-digits"] button:has-text("Off")`)
+    await win.check(`${cleanup} [data-testid="cleanup-ai"]`)
+
     // Times changed: refused, nothing replaced.
     await answer("return { task: 'cleanup', segments: request.segments.map((s) => ({ ...s, start: s.start + 0.5, text: 'x' })) }")
-    await win.click('button:has-text("Fix captions")')
-    await win.waitForSelector('.hint.warn:has-text("timing")')
+    await win.click(`${cleanup} [data-testid="cleanup-run"]`)
+    await win.waitForSelector(`${cleanup} .captions-error:has-text("timing")`)
     h.assert(h.readProject(home, id).transcript.segments[0].text === 'helo wrld', 'a result with other times is not applied')
-    const warn = await win.$eval('.hint.warn', (e) => [getComputedStyle(e).color, getComputedStyle(e.nextElementSibling).color])
+    const warn = await win.$eval(`${cleanup} .captions-error`, (e) => [getComputedStyle(e).color, getComputedStyle(e.nextElementSibling).color])
     h.assert(warn[0] !== warn[1], `the error stands out from the hint under it: ${warn}`)
 
     // Matching ids and times: the texts are replaced, once.
     await answer("return { task: 'cleanup', segments: request.segments.map((s) => ({ ...s, text: s.id === 'a' ? 'Hello world' : 'Second one' })) }")
-    await win.click('button:has-text("Fix captions")')
+    await win.click(`${cleanup} [data-testid="cleanup-run"]`)
     await saved(home, id, (q) => q.transcript.segments.map((s) => s.text).join('|') === 'Hello world|Second one', 'the fixed captions')
     const req = await app.evaluate(() => globalThis.__aiRequests)
     h.assert(req[req.length - 1].providerId === 'p-claude' && req[req.length - 1].request.task === 'cleanup' && req[req.length - 1].request.segments.length === 2, 'the request names the provider and sends the captions')
@@ -614,12 +624,21 @@ async function main() {
     await win.keyboard.press('Control+z')
     await saved(home, id, (q) => q.transcript.segments[0].text === 'helo wrld', 'one undo brings the original back')
 
-    // Translation to Bengali (the provider is told the language's name) keeps the times and sets the language.
-    await win.selectOption('select[aria-label="Translate to"]', 'bn')
+    // Translation to Bengali (the provider is told the language's name) writes a Bengali track (§2.10, §11.9):
+    // the captions keep their text, language and times.
+    await win.selectOption(`${languages} select`, 'bn')
     await answer("return request.targetLanguage === 'Bengali' ? { task: 'translate', segments: request.segments.map((s) => ({ ...s, text: 'হ্যালো ' + s.id })) } : null")
-    await win.click('button:has-text("Translate to…")')
-    let p = await saved(home, id, (q) => q.transcript.segments[0].text === 'হ্যালো a', 'the translated captions')
-    h.assert(p.transcript.language === 'bn' && p.transcript.segments[1].start === 3, 'the language is set and the times kept')
+    await win.click(`${languages} [data-testid="track-translate"]`)
+    let p = await saved(home, id, (q) => (q.captionTracks || []).length === 1, 'the Bengali track')
+    const track = p.captionTracks[0]
+    h.assert(track.language === 'bn' && track.by === 'anthropic' && track.segments.map((s) => s.text).join('|') === 'হ্যালো a|হ্যালো b', `the track: ${JSON.stringify(track)}`)
+    h.assert(p.transcript.segments[0].text === 'helo wrld' && p.transcript.language !== 'bn' && p.transcript.segments[1].start === 3, 'the captions keep their text, language and times')
+    // Drawn on the video: one undo step.
+    await win.check(`${languages} [data-track="bn"] [data-testid="track-show"]`)
+    p = await saved(home, id, (q) => !!q.captions && q.captions.track === 'bn', 'the Bengali captions are drawn')
+    await win.keyboard.press('Escape')
+    await win.keyboard.press('Control+z')
+    p = await saved(home, id, (q) => !q.captions || !q.captions.track, 'one undo draws the spoken captions again')
 
     // Chapters are added in one step; a title is offered and renames the recording.
     await answer("return { task: 'chapters', chapters: [{ t: 0, title: 'Intro' }, { t: 3, title: 'Second part' }] }")
@@ -711,8 +730,8 @@ async function main() {
 
     // A provider error is shown as it is.
     await answer("throw new Error('The key was refused')")
-    await win.click('button:has-text("Fix captions")')
-    await win.waitForSelector('.hint.warn:has-text("The key was refused")')
+    await win.click(`${cleanup} [data-testid="cleanup-run"]`)
+    await win.waitForSelector(`${cleanup} .captions-error:has-text("The key was refused")`)
   }))
 }
 

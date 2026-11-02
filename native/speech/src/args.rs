@@ -4,8 +4,12 @@
 //!   ssw-speech cpu
 //!   ssw-speech vad --vad-model P --audio <wav|-> [--format f32le] [--threads 1] [--low-priority] [--parent-pid N]
 //!   ssw-speech transcribe --model-dir D --model F --audio W --vad-model P [--lang auto|xx] [--threads N]
-//!                         [--max-chunk S] [--no-timestamps] [--low-priority] [--stdin-control] [--parent-pid N]
-//!   debug only: --dtw auto|off|<preset>, --beam N, --prompt S, --verbose
+//!                         [--max-chunk S] [--no-timestamps] [--prompt S] [--low-priority] [--stdin-control] [--parent-pid N]
+//!   debug only: --dtw auto|off|<preset>, --beam N, --verbose
+//!
+//! `--prompt S` (at most 1,024 bytes, no NUL) is whisper.cpp's initial prompt: the app passes the
+//! caption word list as "Glossary: Flown, Qbexel." so those words are spelled as written
+//! (docs/design/captions-studio.md §11.7 rule 4; whisper keeps at most 224 prompt tokens).
 //!
 //! `--max-chunk S` (1..29.5 s, default 29) is the longest chunk handed to whisper.cpp, and
 //! `--no-timestamps` decodes without timestamp tokens (word times come from DTW either way); the
@@ -16,6 +20,9 @@ use std::ffi::OsString;
 use std::path::PathBuf;
 
 use crate::protocol::{Code, Failure};
+
+/// The longest `--prompt` (bytes of UTF-8): the app's word-list hint is at most 911 bytes.
+pub const MAX_PROMPT_BYTES: usize = 1024;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Cmd {
@@ -211,6 +218,9 @@ pub fn parse(argv: Vec<OsString>) -> Result<Args, Failure> {
         if p.contains('\0') {
             return Err(bad("--prompt holds a NUL character"));
         }
+        if p.len() > MAX_PROMPT_BYTES {
+            return Err(bad("--prompt is longer than 1024 bytes"));
+        }
     }
     match cmd {
         Cmd::Cpu => {}
@@ -383,6 +393,25 @@ mod tests {
         on.push("--no-timestamps");
         assert_eq!(p(&on).unwrap_err().code, Code::Args, "given twice");
         let vad = p(&["vad", "--vad-model", "m", "--audio", "-", "--no-timestamps"]);
+        assert_eq!(vad.unwrap_err().code, Code::Args);
+    }
+
+    #[test]
+    fn reads_the_word_list_prompt_for_transcribe_only() {
+        let base = ["transcribe", "--model-dir", "d", "--model", "m.bin", "--audio", "a.wav", "--vad-model", "v"];
+        let with = |s: &str| {
+            let mut v = base.to_vec();
+            v.extend(["--prompt", s]);
+            p(&v)
+        };
+        assert_eq!(p(&base).unwrap().prompt, None);
+        assert_eq!(with("Glossary: Flown, Qbexel.").unwrap().prompt.as_deref(), Some("Glossary: Flown, Qbexel."));
+        // Bangla is three bytes a letter: the limit is on bytes.
+        let long = "অ".repeat(MAX_PROMPT_BYTES / 3);
+        assert!(with(&long).is_ok());
+        assert_eq!(with(&format!("{long}অ")).unwrap_err().code, Code::Args);
+        assert_eq!(with("a\0b").unwrap_err().code, Code::Args);
+        let vad = p(&["vad", "--vad-model", "m", "--audio", "-", "--prompt", "x"]);
         assert_eq!(vad.unwrap_err().code, Code::Args);
     }
 

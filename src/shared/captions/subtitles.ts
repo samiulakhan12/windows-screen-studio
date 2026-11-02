@@ -4,9 +4,11 @@
  * a cut are dropped, a caption across a cut keeps only what shows (and the words that were
  * spoken there, as the Transcript tab shows them), and each piece is scaled by its clip's speed. Pure.
  */
-import { editToVideo, NO_FREEZES, type FreezePlan } from '../engine/freeze'
+import { editToVideo, NO_FREEZES, planOf, type FreezePlan } from '../engine/freeze'
 import { captionsWords, cutFlags, MIN_CUE } from '../editor/transcript'
-import type { CaptionSegment, Clip } from '../types'
+import type { CaptionSegment, Clip, Project } from '../types'
+import { maskedSegments } from './cleanup'
+import { trackCues } from './trackCues'
 
 export type SubtitleFormat = 'srt' | 'vtt' | 'txt'
 
@@ -29,6 +31,11 @@ export interface Cue {
 export interface SubtitleOptions {
   /** SRT and text: each caption starts with its speaker's name ("Priya: Hello"). WebVTT always names the speaker. */
   speakerNames?: boolean
+  /**
+   * WebVTT: the speaker's name written in the cue's text ("Priya: Hello") instead of a voice tag,
+   * for MP4 and MOV subtitle streams, whose mov_text drops voice tags (Captions Studio §11.10).
+   */
+  namesInText?: boolean
 }
 
 /** Output time of source time `s` inside clip `i` that starts at output time `at`. */
@@ -142,9 +149,13 @@ export function toSrt(cues: readonly Cue[], options: SubtitleOptions = {}): stri
 
 const escapeVtt = (s: string): string => safeText(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
 
-export function toVtt(cues: readonly Cue[]): string {
-  // A speaker is a voice tag on the cue: <v Priya>Hello (the name escaped like the text).
-  const body = msCues(cues).map((c) => `${formatTimestamp(c.start, '.')} --> ${formatTimestamp(c.end, '.')}\n${c.speaker ? `<v ${escapeVtt(c.speaker)}>` : ''}${subtitleLines(escapeVtt(c.text)).join('\n')}\n`)
+export function toVtt(cues: readonly Cue[], options: SubtitleOptions = {}): string {
+  // A speaker is a voice tag on the cue: <v Priya>Hello (the name escaped like the text); or, for mov_text, "Priya: Hello".
+  const body = msCues(cues).map((c) => {
+    const voice = c.speaker && !options.namesInText ? `<v ${escapeVtt(c.speaker)}>` : ''
+    const text = options.namesInText ? named(c, true) : c.text
+    return `${formatTimestamp(c.start, '.')} --> ${formatTimestamp(c.end, '.')}\n${voice}${subtitleLines(escapeVtt(text)).join('\n')}\n`
+  })
   return ['WEBVTT\n', ...body].join('\n')
 }
 
@@ -160,7 +171,26 @@ export function toPlainText(cues: readonly Cue[], options: SubtitleOptions = {})
 export function subtitleFile(segments: readonly CaptionSegment[], clips: readonly Clip[], format: SubtitleFormat, plan: FreezePlan = NO_FREEZES, options: SubtitleOptions = {}): string {
   const edited = outputCues(segments, clips)
   const cues = plan.holds.length ? edited.map((c) => ({ ...c, start: editToVideo(plan, c.start), end: editToVideo(plan, c.end) })) : edited
-  return format === 'srt' ? toSrt(cues, options) : format === 'vtt' ? toVtt(cues) : toPlainText(cues, options)
+  return format === 'srt' ? toSrt(cues, options) : format === 'vtt' ? toVtt(cues, options) : toPlainText(cues, options)
+}
+
+/**
+ * The spoken captions as subtitle files and streams carry them: bleeped words masked (Captions
+ * Studio §11.7, through the same masks as the burned-in captions); the transcript's own array
+ * without bleeps.
+ */
+export function spokenSegments(project: Pick<Project, 'transcript' | 'bleeps'>): readonly CaptionSegment[] {
+  return maskedSegments(project.transcript?.segments ?? [], project.bleeps)
+}
+
+/**
+ * The subtitle file of one language (Captions Studio §11.10): the spoken captions (masked), or a
+ * translated track's text on the spoken cues' times (trackCues: in the exported video's time).
+ */
+export function languageSubtitleFile(project: Project, language: string | null, format: SubtitleFormat, options: SubtitleOptions = {}): string {
+  if (!language) return subtitleFile(spokenSegments(project), project.clips, format, planOf(project), options)
+  const cues = trackCues(project, language)
+  return format === 'srt' ? toSrt(cues, options) : format === 'vtt' ? toVtt(cues, options) : toPlainText(cues, options)
 }
 
 /** Largest subtitle file accepted, in characters (5000 captions are well under 2 MB). */

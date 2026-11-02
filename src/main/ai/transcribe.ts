@@ -55,6 +55,7 @@ import { clientFor } from './providers'
 import type { AiClient, PartProgress } from './types'
 import { cancelled } from './request'
 import { modelDefaults } from './modelList'
+import { glossaryTerms } from '../../shared/captions/cleanup'
 
 const RATE = 16000
 /** Bytes per second of the decoded sound (16-bit mono). */
@@ -79,7 +80,7 @@ const processes = new ProjectProcesses()
 const isObject = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null && !Array.isArray(v)
 
 /** TranscribeOptions from the renderer, checked; throws a message to show. */
-export function validateTranscribeOptions(raw: unknown): Required<Pick<TranscribeOptions, 'providerId' | 'source'>> & Pick<TranscribeOptions, 'language' | 'model'> {
+export function validateTranscribeOptions(raw: unknown): Required<Pick<TranscribeOptions, 'providerId' | 'source'>> & Pick<TranscribeOptions, 'language' | 'model' | 'glossary'> {
   if (!isObject(raw) || typeof raw.providerId !== 'string' || raw.providerId.length > 64) throw new Error('Choose an AI provider for the transcription.')
   const source = raw.source === undefined ? 'auto' : raw.source
   if (!SOURCES.includes(source as (typeof SOURCES)[number])) throw new Error('Invalid sound source.')
@@ -97,7 +98,9 @@ export function validateTranscribeOptions(raw: unknown): Required<Pick<Transcrib
     if (spec.language && language && language.split('-')[0].toLowerCase() !== spec.language) throw new Error(`${tierLabel(spec.id)} makes captions in Bangla only.`)
     model = raw.model as string
   }
-  return { providerId: raw.providerId, source: source as TranscribeOptions['source'] & string, ...(language ? { language } : {}), ...(model ? { model } : {}) }
+  // The caption word list as a spelling hint (Captions Studio §11.7 rule 4): plain terms only, capped.
+  const glossary = glossaryTerms(raw.glossary)
+  return { providerId: raw.providerId, source: source as TranscribeOptions['source'] & string, ...(language ? { language } : {}), ...(model ? { model } : {}), ...(glossary.length ? { glossary } : {}) }
 }
 
 /** Runs ffmpeg for project `id`; rejects as cancelled when `signal` aborts (ffmpeg is killed). */
@@ -303,7 +306,14 @@ async function runJob(
       }
       const answer = await client.transcribe!(
         { file, mimeType: wav ? 'audio/wav' : 'audio/mpeg', bytes, seconds },
-        { language: options.language, signal, onUpload: () => send('uploading', part.index, parts.length), part: { index: part.index, count: parts.length }, ...(wav ? { onProgress } : {}) }
+        {
+          language: options.language,
+          signal,
+          onUpload: () => send('uploading', part.index, parts.length),
+          part: { index: part.index, count: parts.length },
+          ...(wav ? { onProgress } : {}),
+          ...(options.glossary ? { glossary: options.glossary } : {})
+        }
       )
       let transcript = answer
       if (answer.untimed) {

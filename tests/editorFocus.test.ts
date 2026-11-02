@@ -11,6 +11,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 interface Focus {
   installFocusRelease: () => () => void
   isKeyboardToggle: (el: unknown) => boolean
+  lastInputWasKey: () => boolean
 }
 
 /* ---------- a page small enough for focus.ts: elements, focus and the window's listeners ---------- */
@@ -101,7 +102,7 @@ function press(target: FakeElement, focuses: FakeElement = target): void {
 
 // Renderer code: imported at run time so the Node typecheck of tests/ does not follow it.
 const FOCUS = '../src/renderer/src/editor/focus'
-const { installFocusRelease, isKeyboardToggle } = (await import(/* @vite-ignore */ FOCUS)) as Focus
+const { installFocusRelease, isKeyboardToggle, lastInputWasKey } = (await import(/* @vite-ignore */ FOCUS)) as Focus
 
 let text: FakeElement
 let toggle: FakeInput
@@ -179,6 +180,31 @@ describe('Space on a toggle', () => {
     uninstall()
     expect(isKeyboardToggle(toggle)).toBe(false)
     uninstall = installFocusRelease()
+  })
+})
+
+/*
+ * A form that opens in place of its button (Save as my style, Add a word, Add a language) gives
+ * the keyboard back to that button when a key closes it, not when a click does
+ * (docs/design/captions-studio.md §2.15, returnFocus.ts): told by the last input.
+ */
+describe('the last input', () => {
+  it('is a key after a key press and a pointer press after one', () => {
+    expect(lastInputWasKey()).toBe(false)
+    key()
+    expect(lastInputWasKey()).toBe(true)
+    press(new FakeButton())
+    expect(lastInputWasKey()).toBe(false)
+    key(() => move(toggle))
+    expect(lastInputWasKey()).toBe(true)
+  })
+
+  it('is no key once the editor is gone', () => {
+    key()
+    uninstall()
+    expect(lastInputWasKey()).toBe(false)
+    uninstall = installFocusRelease()
+    expect(lastInputWasKey()).toBe(false)
   })
 })
 

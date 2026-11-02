@@ -17,6 +17,12 @@ import type { CursorTrack, Project } from '../src/shared/types'
  * live for the editor session).
  */
 
+// The Caption look step runs Captions Studio's planner: part P1's word times and twins (stand-ins
+// only while P1's functions are stubs, tests/p1Fillins.ts).
+vi.mock('../src/shared/captions/words', async (o) => (await import('./p1Fillins')).fillWords(await o()))
+vi.mock('../src/shared/captions/studioLayout', async (o) => (await import('./p1Fillins')).fillLayout(await o(), await import('../src/shared/captions/words')))
+vi.mock('../src/shared/captions/studioEdit', async (o) => (await import('./p1Fillins')).fillEdit(await o()))
+
 function deferred<T>(): { promise: Promise<T>; resolve: (v: T) => void; reject: (e: unknown) => void } {
   let resolve!: (v: T) => void
   let reject!: (e: unknown) => void
@@ -223,6 +229,21 @@ describe('runPolish', () => {
     await flush()
     expect(rows).toHaveLength(seen)
     expect(store.state).toBe(before)
+  })
+
+  it('plans its changes a step at a time, so Cancel while it applies writes nothing (Captions Studio §9.8)', async () => {
+    analyzeAudio.mockResolvedValue({ mic: talking(), system: talking() })
+    const { store, run, rows } = start()
+    const before = store.state
+    await flush()
+    calls.transcribe[0].resolve(answer(2))
+    for (let i = 0; i < 50 && rows.at(-1)?.captionLook.text !== 'Applying…'; i++) await flush()
+    expect(rows.at(-1)?.captionLook).toMatchObject({ phase: 'working', text: 'Applying…' })
+    expect(store.state).toBe(before)
+    run.cancel()
+    await expect(run.done).resolves.toBeNull()
+    expect(store.state).toBe(before)
+    expect(store.canUndo).toBe(false)
   })
 
   it('makes captions with the Bangla model in Bengali when it is the choice; others get no language, as before (§14.4)', async () => {

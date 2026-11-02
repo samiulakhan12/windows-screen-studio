@@ -124,6 +124,7 @@ export function projectSnapSegments(p: Project, opts: { layouts: boolean }): Sna
   for (const s of p.spotlights ?? []) out.push({ owner: `spotlight:${s.id}`, label: s.mode === 'cursor' ? 'Cursor spotlight' : 'Spotlight', start: s.start, end: s.end })
   add('overlay', 'Image', p.overlays)
   add('title', 'Title card', p.titles)
+  add('graphic', 'Pop-up', p.graphics)
   add('caption', 'Caption', p.transcript?.segments)
   if (opts.layouts) add('layout', 'Camera layout', p.layouts)
   return out

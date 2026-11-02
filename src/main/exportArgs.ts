@@ -2,6 +2,8 @@ import { AUDIO_RATE, planSoundtrack, type SoundFiles } from '../shared/render/au
 import { vp9MetadataFilter } from '../shared/render/codec'
 import type { ColorTags, ExportJob, FfmpegVideoEncoder, H264Encoder } from '../shared/api/export'
 import type { OutputChapter } from '../shared/render/chapters'
+import { ISO_639_2 } from '../shared/captions/captionTracks'
+import type { ExportFormat } from '../shared/types'
 import { encoderPixelFormat, gpuEncoderOptions } from './hwEncoders'
 
 export { AUDIO_RATE, audioFilterGraph, clickPositions, clickTrackGraph, soundtrackGraph } from '../shared/render/audioPlan'
@@ -108,6 +110,8 @@ export interface ExportIo {
   music?: string | null
   /** The job's chapters as an ffmetadata file (chapterMetadata), written before ffmpeg starts. */
   chapters?: string | null
+  /** The job's subtitle streams as WebVTT files, written before ffmpeg starts (Captions Studio §11.10). */
+  subtitles?: readonly SubtitleTrack[] | null
   /** Where ffmpeg writes (a temporary file next to the target). */
   output: string
 }
@@ -216,6 +220,7 @@ export function exportArgs(job: ExportJob, io: ExportIo): string[] {
   args.push(...sound.args)
   const chapters = chapterArgs(io, inputCount(args))
   args.push(...chapters.input)
+  const subtitles = subtitleArgs({ inputs: args }, inputCount(args), io.subtitles ?? [], job.format)
 
   const graphs: string[] = []
   if (v.kind === 'raw') graphs.push(`[0:v]${yuvFilter(pixelFormatFor(v.encoder))}[vout]`)
@@ -226,7 +231,7 @@ export function exportArgs(job: ExportJob, io: ExportIo): string[] {
   else if (hasVideo) args.push('-map', '0:v:0', ...copyVideoArgs(job))
   if (sound.graph) args.push('-map', '[aout]', ...audioCodecArgs(job))
   if (!hasVideo && !sound.graph) throw new Error('This recording has no sound to export.')
-  args.push(...chapters.map, ...containerArgs(job, io.output))
+  args.push(...subtitles, ...chapters.map, ...containerArgs(job, io.output))
   return args
 }
 
@@ -394,8 +399,13 @@ export function ffmpegPlan(job: ExportJob, given: PlanPaths): FfmpegPlan {
   // Chapters go in through an ffmetadata file written next to the graph script.
   const metadata = job.chapters?.length ? chapterMetadata(job.chapters, job.frames / job.fps) : null
   const chapterFile = metadata ? { path: `${tempStem}.chapters.txt`, content: metadata } : null
-  const paths: PlanPaths = { ...given, chapters: chapterFile?.path ?? null }
-  const extra = chapterFile ? [chapterFile] : []
+  // Subtitle streams go in as WebVTT files next to it (Captions Studio §11.10; never in a GIF or an M4A).
+  const subtitleFiles = (job.format === 'mp4' || job.format === 'mov' || job.format === 'webm' ? (job.subtitles ?? []) : []).map((t, k) => ({
+    file: { path: `${tempStem}.sub${k}.vtt`, content: t.vtt },
+    track: { file: `${tempStem}.sub${k}.vtt`, iso: iso6392(t.language), name: t.name, default: t.default }
+  }))
+  const paths: PlanPaths = { ...given, chapters: chapterFile?.path ?? null, subtitles: subtitleFiles.map((s) => s.track) }
+  const extra = [...(chapterFile ? [chapterFile] : []), ...subtitleFiles.map((s) => s.file)]
   if (!isTwoPass(job) || job.video.kind !== 'raw') {
     const { args, script: s } = externalizeGraph(exportArgs(job, paths), script)
     const scripts = [...extra, ...(s ? [s] : [])]
@@ -415,12 +425,54 @@ export function ffmpegPlan(job: ExportJob, given: PlanPaths): FfmpegPlan {
   const pass2 = [...HEAD, '-i', intermediate, ...sound.args]
   const chapters = chapterArgs(paths, inputCount(pass2))
   pass2.push(...chapters.input)
+  const subtitles = subtitleArgs({ inputs: pass2 }, inputCount(pass2), paths.subtitles ?? [], job.format)
   if (sound.graph) pass2.push('-filter_complex', sound.graph)
   pass2.push('-map', '0:v:0', ...encoderArgs(encoder, job, 2), '-pass', '2', '-passlogfile', log, ...encodedColorArgs(encoder))
   if (sound.graph) pass2.push('-map', '[aout]', ...audioCodecArgs(job))
-  pass2.push(...chapters.map, ...containerArgs(job, paths.output))
+  pass2.push(...subtitles, ...chapters.map, ...containerArgs(job, paths.output))
   const { args, script: s } = externalizeGraph(pass2, script)
   const logs = [`${log}-0.log`, `${log}-0.log.temp`, `${log}-0.log.mbtree`, `${log}-0.log.mbtree.temp`]
   const scripts = [...extra, ...(s ? [s] : [])]
   return { capture, passes: [pass1, args], scripts, temps: [intermediate, ...logs, ...scripts.map((f) => f.path)] }
+}
+
+/** A subtitle stream as ffmpeg takes it: its WebVTT file, ISO 639-2 language, name and whether it is the default. */
+export interface SubtitleTrack {
+  file: string
+  iso: string
+  name: string
+  default: boolean
+}
+
+/**
+ * The ISO 639-2 code of a BCP-47 language for a subtitle stream (Captions Studio §11.10): the MP4
+ * muxer silently drops two-letter codes; a language outside the map is 'und'.
+ */
+export function iso6392(language: string): string {
+  return ISO_639_2[language.toLowerCase().split('-')[0]] ?? 'und'
+}
+
+/**
+ * The subtitle streams' arguments (Captions Studio §11.10): each WebVTT file is added to
+ * `io.inputs` as an input (`-f webvtt -i <file>`, the first one input number `from`, after the
+ * chapters); the arguments returned map them (`-map <n>:s`), encode them as mov_text (MP4, MOV)
+ * or webvtt (WebM), and give each its ISO 639-2 language, its name (handler_name in MP4 and MOV,
+ * title in WebM) and its disposition (the default one, else none). The same in both passes of a
+ * two-pass encode. Nothing for GIF and M4A, or without tracks.
+ */
+export function subtitleArgs(io: { inputs: string[] }, from: number, tracks: readonly { file: string; iso: string; name: string; default: boolean }[], format: ExportFormat): string[] {
+  if (!tracks.length || (format !== 'mp4' && format !== 'mov' && format !== 'webm')) return []
+  const webm = format === 'webm'
+  const out: string[] = []
+  tracks.forEach((t, k) => {
+    io.inputs.push('-f', 'webvtt', '-i', t.file)
+    out.push('-map', `${from + k}:s`)
+  })
+  out.push('-c:s', webm ? 'webvtt' : 'mov_text')
+  tracks.forEach((t, k) => {
+    out.push(`-metadata:s:s:${k}`, `language=${t.iso}`)
+    out.push(`-metadata:s:s:${k}`, `${webm ? 'title' : 'handler_name'}=${t.name}`)
+    out.push(`-disposition:s:${k}`, t.default ? 'default' : '0')
+  })
+  return out
 }

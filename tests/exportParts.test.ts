@@ -74,6 +74,8 @@ describe('one file per chapter: what the export dialog says', () => {
   type Options = (props: Record<string, unknown>) => unknown
   // Renderer code: imported at run time so the Node typecheck of tests/ does not follow it.
   const OPTIONS = '../src/renderer/src/editor/ExportBundleOptions'
+  // The captions' SRT and VTT chips are in the Subtitles field beside it (Captions Studio §2.13).
+  const SUBTITLES = '../src/renderer/src/editor/panels/SubtitlesField'
   const elements = (node: unknown, out: El[] = []): El[] => {
     if (Array.isArray(node)) node.forEach((n) => elements(n, out))
     else if (node && typeof node === 'object' && 'props' in node) {
@@ -84,7 +86,12 @@ describe('one file per chapter: what the export dialog says', () => {
   }
   const render = async (value: BundleOptions, has: BundleSources = { captions: false, chapters: true }, savedDescription?: boolean): Promise<El[]> => {
     const { ExportBundleOptions } = (await import(/* @vite-ignore */ OPTIONS)) as { ExportBundleOptions: Options }
-    return elements(ExportBundleOptions({ value, onChange: () => undefined, format: 'mp4', has, mode: 'single', chapterCount: 3, savedDescription }))
+    const { SubtitlesField } = (await import(/* @vite-ignore */ SUBTITLES)) as { SubtitlesField: Options }
+    const project = { clips: [], ...(has.captions ? { transcript: { language: 'en', provider: 'local', model: 'm', createdAt: '', segments: [{ id: 'a', start: 0, end: 1, text: 'Hi' }] } } : {}) }
+    return [
+      ...elements(SubtitlesField({ project, value, onChange: () => undefined, format: 'mp4', streams: false, onStreams: () => undefined })),
+      ...elements(ExportBundleOptions({ value, onChange: () => undefined, format: 'mp4', has, mode: 'single', chapterCount: 3, savedDescription }))
+    ]
   }
   const chip = (tree: El[], kind: string): El => tree.find((e) => e.props['data-sidecar'] === kind)!
   const thumbnailTitle = async (perChapter: boolean): Promise<string> =>

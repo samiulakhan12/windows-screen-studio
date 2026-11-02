@@ -1,18 +1,17 @@
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
 import type { AiProviderInfo, AiTextRequest, AiTextResult, TranscribeOptions } from '../../../../shared/api/ai'
 import { cleanCaptionText, CAPTION_MAX_CHARS } from '../../../../shared/captions/captionData'
-import { applyTextResult, findInCaptions, mergeWithNext, readSuggestedChapters, readSuggestedText, replaceInCaptions, splitCaption, typedCaption } from '../../../../shared/captions/edit'
+import { findInCaptions, mergeWithNext, readSuggestedChapters, readSuggestedText, replaceInCaptions, splitCaption, typedCaption } from '../../../../shared/captions/edit'
 import { captionIndexAt } from '../../../../shared/captions/layout'
-import { CAPTION_COLORS, CAPTION_PRESETS, CAPTION_SIZE, captionsOf, HIGHLIGHT_COLORS, withPreset } from '../../../../shared/captions/settings'
-import { subtitleFile, SUBTITLE_FORMATS, type SubtitleFormat } from '../../../../shared/captions/subtitles'
+import { languageSubtitleFile, SUBTITLE_FORMATS, type SubtitleFormat } from '../../../../shared/captions/subtitles'
 import { displayTime } from '../../../../shared/editor/clips'
-import { withShortcut } from '../../../../shared/editor/shortcuts'
+import { undoHint, withShortcut } from '../../../../shared/editor/shortcuts'
 import { chapterNear, createChapter } from '../../../../shared/editor/titles'
 import { planOf, videoTimeAt } from '../../../../shared/engine/freeze'
 import { formatTime } from '../../../../shared/engine/project'
 import { NOTES_COPY } from '../../../../shared/notes/notesCopy'
 import { linksToCheck, notedPieces, type Said } from '../../../../shared/publish/check'
-import type { CaptionPreset, CaptionSegment, CaptionSettings, Project, Transcript } from '../../../../shared/types'
+import type { CaptionSegment, Project, Transcript } from '../../../../shared/types'
 import { Icon } from '../../components/Icon'
 import { SearchIcon } from '../CommandPalette'
 import {
@@ -22,6 +21,7 @@ import {
   onCaptionsRequest,
   onTranscriptionJob,
   showCaption,
+  peekCaptionsRequest,
   takeCaptionsRequest,
   transcribe,
   transcriptionJob,
@@ -29,8 +29,7 @@ import {
   type CaptionsRequest
 } from '../captionItems'
 import { useEditor } from '../context'
-import { Chips, Section, Slider, Toggle } from '../controls'
-import { FontPicker } from './FontPicker'
+import { Chips, Section } from '../controls'
 import { EditorIcon } from '../EditorIcon'
 import type { InspectorProps } from '../Inspector'
 import { useKeymap } from '../keymapContext'
@@ -56,7 +55,13 @@ import {
 import { BanglaOffer, banglaOfferApplies, isSmallTier, LocalAction, LocalQuality, LocalRunning } from './LocalCaptions'
 import '../captions.css'
 import { estimatedShare, providerTiming, TIMING_COPY } from '../../../../shared/captions/transcriptTiming'
-import { CaptionSpeakerSelect, ShowSpeakerToggle, SpeakerNamesToggle, speakerFileOptions, SpeakersSection, speakersShown } from './SpeakersSection'
+import { CaptionSpeakerSelect, SpeakerNamesToggle, speakerFileOptions, SpeakersSection, speakersShown } from './SpeakersSection'
+import { editorFrame } from '../../../../shared/editor/followEdit'
+import { visibleSize } from '../../../../shared/engine/crop'
+import { cancelCaptionsGreat, startCaptionsGreat, useCaptionsGreatBusy } from '../captionsGreat'
+import { CaptionLookSection } from './CaptionLookSection'
+import { CleanupSection } from './CleanupSection'
+import { LanguagesSection } from './LanguagesSection'
 
 /* ---------- Captions and transcript ---------- */
 
@@ -100,11 +105,10 @@ const openAiSettings = (): void => void window.dispatchEvent(new CustomEvent('ss
  * Choices remembered for this session (the tab is unmounted while another one is open). The
  * spoken language is kept in speechState.ts (spokenLanguage), which Polish reads too.
  */
-const remembered: { provider: string; source: TranscribeOptions['source']; textProvider: string; translateTo: string; format: SubtitleFormat } = {
+const remembered: { provider: string; source: TranscribeOptions['source']; textProvider: string; format: SubtitleFormat } = {
   provider: '',
   source: 'auto',
   textProvider: '',
-  translateTo: 'en',
   format: 'srt'
 }
 
@@ -179,11 +183,32 @@ export function CaptionsPanel(props: InspectorProps): JSX.Element {
       if (r.kind === 'focus') setFocusId(r.id)
       else if (r.kind === 'export') setExportNow((n) => n + 1)
       else if (r.kind === 'ai') setAiNow({ task: r.task, n: ++aiCount.current })
-      else setGenerateNow((n) => n + 1)
+      else if (r.kind === 'generate') setGenerateNow((n) => n + 1)
     }
-    take()
-    return onCaptionsRequest(take)
+    // 'language' and 'cleanup' (Captions Studio §2.14): the Languages and Clean up sections take
+    // their own copy (takeSectionRequest); the tab brings that section into view once, taking the
+    // request so the next visit to the tab opens at the top again.
+    const route = (): void => {
+      const r = peekCaptionsRequest()
+      if (r?.kind === 'language' || r?.kind === 'cleanup') {
+        takeCaptionsRequest()
+        const id = r.kind === 'language' ? 'caption-languages' : 'caption-cleanup'
+        requestAnimationFrame(() => document.querySelector<HTMLElement>(`[data-testid="${id}"]`)?.scrollIntoView({ block: 'start' }))
+        return
+      }
+      take()
+    }
+    route()
+    return onCaptionsRequest(route)
   }, [])
+  // Make my captions great (Captions Studio §2.8): one run at a time, its notice in the editor's live region.
+  const greatBusy = useCaptionsGreatBusy()
+  const keymap = useKeymap()
+  const shown = visibleSize(project)
+  const onGreat = (): void => {
+    const f = editorFrame(services.store.state)
+    void startCaptionsGreat({ store: services.store, frame: { w: f.outW, h: f.outH }, notice: props.onNotice, undo: undoHint(keymap) })
+  }
 
   const selectedId = props.selection?.kind === 'caption' ? props.selection.id : null
 
@@ -193,7 +218,8 @@ export function CaptionsPanel(props: InspectorProps): JSX.Element {
       <GenerateSection project={project} providers={providers} listError={listError} reload={reload} request={generateNow} />
       {transcript && (
         <>
-          <LookSection project={project} />
+          <CaptionLookSection project={project} vw={shown.width} vh={shown.height} onGreat={onGreat} greatBusy={greatBusy} onGreatCancel={cancelCaptionsGreat} />
+          <CleanupSection project={project} />
           <TranscriptSection
             project={project}
             transcript={transcript}
@@ -204,6 +230,7 @@ export function CaptionsPanel(props: InspectorProps): JSX.Element {
             onNotice={props.onNotice}
           />
           {speakersShown(project) && <SpeakersSection project={project} onNotice={props.onNotice} />}
+          <LanguagesSection project={project} />
           <AiToolsSection providers={providers} onNotice={props.onNotice} services={services} request={aiNow} onRequestHandled={() => setAiNow(null)} />
           <ExportSection project={project} transcript={transcript} request={exportNow} onNotice={props.onNotice} />
         </>
@@ -734,103 +761,6 @@ function GenerateSection({
   )
 }
 
-/* ---------- look ---------- */
-
-function LookSection({ project }: { project: Project }): JSX.Element {
-  const { store } = useEditor()
-  const s = captionsOf(project)
-  const set = (patch: Partial<CaptionSettings>, key?: string): void => store.update((p) => ({ ...p, captions: { ...captionsOf(p), ...patch } }), key)
-  return (
-    <Section title="Look">
-      <Toggle label="Show captions" checked={s.show} onChange={(show) => set({ show })} title="Draw the captions on the video (preview and export)" />
-      <div className="field">
-        <span>Style</span>
-        <div className="caption-presets" role="group" aria-label="Caption style">
-          {CAPTION_PRESETS.map((p) => (
-            <button
-              key={p.value}
-              className={`caption-preset ${p.value} ${s.preset === p.value ? 'active' : ''}`}
-              aria-pressed={s.preset === p.value}
-              title={p.title}
-              onClick={() => store.update((q) => ({ ...q, captions: withPreset(captionsOf(q), p.value) }))}
-            >
-              <PresetSample preset={p.value} />
-              <span>{p.label}</span>
-            </button>
-          ))}
-        </div>
-      </div>
-      <Chips<CaptionSettings['position']>
-        label="Position"
-        value={s.position}
-        onChange={(position) => set({ position })}
-        options={[
-          { value: 'bottom', label: 'Bottom' },
-          { value: 'middle', label: 'Middle' },
-          { value: 'top', label: 'Top' }
-        ]}
-      />
-      <FontPicker project={project} value={s.font} apply={(p, font) => ({ ...p, captions: { ...captionsOf(p), font } })} />
-      <Slider label="Size" value={s.size} min={CAPTION_SIZE.min} max={CAPTION_SIZE.max} step={0.001} format={(v) => `${Math.round(v * 1000) / 10}%`} onChange={(size) => set({ size }, 'caption-size')} />
-      <div className="field">
-        <span>Text colour</span>
-        <ColorDots label="Text colour" value={s.color} presets={CAPTION_COLORS} onChange={(color, key) => set({ color }, key ?? undefined)} mergeKey="caption-color" />
-      </div>
-      <div className="field">
-        <span>Highlight colour</span>
-        <ColorDots label="Highlight colour" value={s.highlightColor} presets={HIGHLIGHT_COLORS} onChange={(highlightColor, key) => set({ highlightColor }, key ?? undefined)} mergeKey="caption-highlight" />
-        {!(s.preset === 'karaoke' || s.preset === 'bold') && <span className="hint">Lights up the spoken word in the Bold and Karaoke styles.</span>}
-      </div>
-      <Chips<CaptionSettings['background']>
-        label="Background"
-        value={s.background}
-        onChange={(background) => set({ background })}
-        options={[
-          { value: 'none', label: 'None', title: 'Text with a thin outline' },
-          { value: 'box', label: 'Box', title: 'A dark box behind each line' },
-          { value: 'shadow', label: 'Shadow', title: 'A soft shadow behind the text' }
-        ]}
-      />
-      <Chips<CaptionSettings['maxLines']>
-        label="Lines"
-        value={s.maxLines}
-        onChange={(maxLines) => set({ maxLines })}
-        options={[
-          { value: 1, label: 'One line' },
-          { value: 2, label: 'Up to two lines' }
-        ]}
-      />
-      <ShowSpeakerToggle project={project} />
-      <p className="hint">Long captions show part by part. The preview shows them as the export draws them.</p>
-    </Section>
-  )
-}
-
-/** "Aa" in the preset's look. */
-function PresetSample({ preset }: { preset: CaptionPreset }): JSX.Element {
-  return (
-    <span className={`caption-sample ${preset}`} aria-hidden="true">
-      {preset === 'bold' ? 'AA' : preset === 'karaoke' ? <><em>A</em>a</> : 'Aa'}
-    </span>
-  )
-}
-
-/** Preset colours and a "pick any colour" dot (the look of the Shapes panel's). */
-function ColorDots({ label, value, presets, onChange, mergeKey }: { label: string; value: string; presets: string[]; onChange: (color: string, key: string | null) => void; mergeKey: string }): JSX.Element {
-  const v = value.toLowerCase()
-  const custom = !presets.includes(v)
-  return (
-    <div className="shape-colors" role="group" aria-label={label}>
-      {presets.map((c) => (
-        <button key={c} className={`shape-color ${v === c ? 'active' : ''}`} style={{ background: c }} title={c} aria-label={`${label} ${c}`} aria-pressed={v === c} onClick={() => onChange(c, null)} />
-      ))}
-      <label className={`shape-color custom ${custom ? 'active' : ''}`} title="Pick any colour" style={custom ? { background: value } : undefined}>
-        <input type="color" aria-label={`${label} (any colour)`} value={value} onChange={(e) => onChange(e.target.value.toLowerCase(), mergeKey)} />
-      </label>
-    </div>
-  )
-}
-
 /* ---------- transcript ---------- */
 
 /** Captions listed at once; the list pages through longer transcripts. */
@@ -1034,7 +964,8 @@ function TranscriptSection({
 
 /* ---------- AI tools ---------- */
 
-type AiTask = CaptionsAiTask
+/** Translate to… and Fix captions moved to Languages and Clean up (Captions Studio §2.3). */
+type AiTask = Extract<CaptionsAiTask, 'chapters' | 'title' | 'summary'>
 
 function AiToolsSection({
   providers,
@@ -1053,7 +984,6 @@ function AiToolsSection({
 }): JSX.Element {
   const { store } = services
   const [provider, setProvider] = useState(remembered.textProvider)
-  const [translateTo, setTranslateTo] = useState(remembered.translateTo)
   const [busy, setBusy] = useState<AiTask | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [title, setTitle] = useState<string | null>(null)
@@ -1119,8 +1049,7 @@ function AiToolsSection({
   }
   useEffect(() => {
     remembered.textProvider = provider
-    remembered.translateTo = translateTo
-  }, [provider, translateTo])
+  }, [provider])
 
   const run = async (task: AiTask): Promise<void> => {
     if (!chosen || busy) return
@@ -1132,8 +1061,6 @@ function AiToolsSection({
     setSummary(null)
     setChapters(null)
     const request: AiTextRequest = { task, segments: before.segments }
-    // The language's name: the provider is told to translate "into" it, and a code such as 'it' or 'id' reads as a word.
-    if (task === 'translate') request.targetLanguage = CAPTION_LANGUAGES.find((l) => l.code === translateTo)?.name ?? translateTo
     let result: AiTextResult
     try {
       result = await window.api.aiText(chosen.id, request)
@@ -1147,16 +1074,7 @@ function AiToolsSection({
     if (live.current) setBusy(null)
     const fail = (message: string): void => (live.current ? setError(message) : onNotice(message))
     if (!result || typeof result !== 'object' || result.task !== task) return fail('The provider answered something else; nothing was changed.')
-    if (result.task === 'cleanup' || result.task === 'translate') {
-      // Only onto the captions it was made from: edits made meanwhile would be lost.
-      if (store.state.transcript?.segments !== before.segments) return fail('The captions changed while the provider worked; nothing was replaced. Try again.')
-      const next = applyTextResult(before.segments, result.segments)
-      if (!next) return fail('The provider changed the captions’ timing or left some out, so its answer was not used.')
-      const language = result.task === 'translate' ? translateTo : before.language
-      store.update((p) => (p.transcript ? { ...p, transcript: { ...p.transcript, segments: next, ...(language ? { language } : {}) } } : p))
-      const name = CAPTION_LANGUAGES.find((l) => l.code === translateTo)?.name ?? translateTo
-      onNotice(result.task === 'translate' ? `Captions translated to ${name} (Undo brings the original back)` : 'Captions fixed (Undo brings the original back)')
-    } else if (result.task === 'chapters') {
+    if (result.task === 'chapters') {
       const found = readSuggestedChapters(result.chapters, store.state.duration)
       const added = newChapters(found)
       if (!added.length) return fail(found.length ? 'The suggested chapters are already there.' : 'The provider suggested no chapters.')
@@ -1184,21 +1102,22 @@ function AiToolsSection({
     }
   }
 
-  // A tool the command palette asked for (NW-13): translate only shows the language list, as a language must be chosen.
-  const translateRef = useRef<HTMLSelectElement>(null)
+  // A tool the command palette asked for (NW-13). Fix captions and Translate to… are not here any more (Captions
+  // Studio §2.3): the notice says where they are.
   const toolsRef = useRef<HTMLLabelElement>(null)
   const handled = useRef(0)
   useEffect(() => {
     if (!request || request.n === handled.current || providers === null) return
     handled.current = request.n
     onRequestHandled?.()
+    const task = request.task
+    if (task === 'cleanup') return onNotice('Fix captions is in Clean up now: tick “Also fix spelling and misheard words with AI”, then Tidy captions')
+    if (task === 'translate') return onNotice('Translating is in Languages now: Add a language')
     if (!chosen) return onNotice('Add an AI provider first: the button is in the AI tools section')
     if (busy) return onNotice('An AI tool is already working')
     // The tab may be scrolled to its captions: the tools come into view, with their progress and the answer under them.
     toolsRef.current?.scrollIntoView({ block: 'start' })
-    if (request.task !== 'translate') return void run(request.task)
-    translateRef.current?.scrollIntoView({ block: 'nearest' })
-    translateRef.current?.focus()
+    void run(task)
   }, [request, providers]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const label = (task: AiTask, text: string): string => (busy === task ? 'Working…' : text)
@@ -1206,7 +1125,7 @@ function AiToolsSection({
     <Section title="AI tools">
       {providers !== null && list.length === 0 ? (
         <div className="captions-empty">
-          <p>Add an AI provider to fix, translate and summarise your captions. OpenAI, Gemini and Claude all can.</p>
+          <p>Add an AI provider to suggest chapters, a title and a summary from your captions. OpenAI, Gemini and Claude all can.</p>
           <button className="btn" onClick={openAiSettings}>
             <EditorIcon name="gear" size={15} /> Add an AI provider
           </button>
@@ -1224,21 +1143,6 @@ function AiToolsSection({
             </select>
           </label>
           <div className="captions-ai">
-            <button className="btn" disabled={!chosen || !!busy} onClick={() => void run('cleanup')} title="Fix spelling, punctuation and misheard words; the timing stays">
-              {label('cleanup', 'Fix captions')}
-            </button>
-            <div className="captions-translate">
-              <button className="btn" disabled={!chosen || !!busy} onClick={() => void run('translate')} title="Replace the text with a translation; the timing stays">
-                {label('translate', 'Translate to…')}
-              </button>
-              <select ref={translateRef} className="captions-select" aria-label="Translate to" value={translateTo} onChange={(e) => setTranslateTo(e.target.value)}>
-                {CAPTION_LANGUAGES.map((l) => (
-                  <option key={l.code} value={l.code}>
-                    {l.name}
-                  </option>
-                ))}
-              </select>
-            </div>
             <button ref={chaptersTool} className="btn" disabled={!chosen || !!busy} onClick={() => void run('chapters')} title="Chapters from what is said, added to the chapter strip">
               {label('chapters', 'Suggest chapters')}
             </button>
@@ -1366,7 +1270,8 @@ function ExportSection({ project, transcript, request, onNotice }: { project: Pr
     if (!segments.length) return onNotice('There are no captions to export')
     setSaving(true)
     try {
-      const file = await window.api.saveCaptions(p.name, f, subtitleFile(segments, p.clips, f, planOf(p), speakerFileOptions()))
+      // The spoken captions with bleeped words masked, as the export's subtitle files carry them (§11.7).
+      const file = await window.api.saveCaptions(p.name, f, languageSubtitleFile(p, null, f, speakerFileOptions()))
       if (file) onNotice(`Captions saved: ${file}`)
     } catch (err) {
       onNotice(`The captions could not be saved: ${ipcMessage(err)}`)

@@ -3,8 +3,6 @@ import type { ExportFormat } from '../../../shared/types'
 import { Icon } from '../components/Icon'
 
 const TITLES: Record<string, string> = {
-  srt: 'Save the captions as an SRT file next to the video (YouTube, Vimeo, most players)',
-  vtt: 'Save the captions as a WebVTT file next to the video (web players)',
   chapters: 'Save the chapters as YouTube timestamps (0:00 Intro…) in a text file',
   thumbnail: 'Save the frame chosen above as a PNG at the export size',
   description: 'Save a description with the title, length and chapters, ready to paste'
@@ -18,6 +16,9 @@ const PART_TITLES: Partial<Record<SidecarKind, string>> = {
 const SAVED_DESCRIPTION_TITLE = "Save the description written in Publish, with this export's chapters, ready to paste"
 /** One file per chapter: a part is one chapter, so no chapter list is saved (bundleKinds). */
 const PART_NO_CHAPTER_LIST = 'Each file is one chapter, so it has no chapter list'
+
+/** The "Also save" chips: the captions' SRT and VTT moved to the Subtitles field (Captions Studio §2.13, SubtitlesField.tsx). */
+const ALSO_SAVE: readonly SidecarKind[] = SIDECAR_KINDS.filter((k) => k !== 'srt' && k !== 'vtt')
 
 /**
  * "Also save" in the export dialog's settings (F-11): files written next to the video, and one
@@ -45,14 +46,14 @@ export function ExportBundleOptions({
   const perOn = value.perChapter && !perBlocked
   const blockedOf = (k: SidecarKind): string | null => sidecarBlocked(k, format, has) ?? (perOn && k === 'chapters' ? PART_NO_CHAPTER_LIST : null)
   // Why chips are off, as text everyone can read (a disabled button's tooltip is not announced).
-  const reasons = format === 'gif' ? [] : [...new Set(SIDECAR_KINDS.map(blockedOf).filter((r): r is string => !!r))]
+  const reasons = format === 'gif' ? [] : [...new Set(ALSO_SAVE.map(blockedOf).filter((r): r is string => !!r))]
   return (
     <>
       <div className="form-row export-bundle">
         <span>Also save</span>
         <div className="export-stack">
           <div className="chips" role="group" aria-label="Also save">
-            {SIDECAR_KINDS.map((k) => {
+            {ALSO_SAVE.map((k) => {
               const blocked = blockedOf(k)
               const on = value[k] && !blocked
               return (

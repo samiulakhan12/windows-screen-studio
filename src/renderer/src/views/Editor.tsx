@@ -77,6 +77,7 @@ import { KeymapContext } from '../editor/keymapContext'
 import { showLayout } from '../editor/LayoutTrack'
 import { createVideo, loadImage } from '../editor/media'
 import { PreviewPlayer } from '../editor/player'
+import { releaseContrastSource, setContrastSource, type ContrastSource } from '../render/contrastProbe'
 import { addShapeAt, addSpotlightAt } from '../editor/playheadItems'
 import { FollowEnvContext, type FollowEnv } from '../editor/panels/FollowSection'
 import { PolishDialog } from '../editor/PolishDialog'
@@ -94,6 +95,9 @@ import { addChapterAt, addTitleAt, brandFontFor } from '../editor/titleItems'
 import { OverlayDropZone } from '../editor/OverlayDropZone'
 import { ipcMessage, noteItemCopy, pasteClipboardImage } from '../editor/overlayItems'
 import { requestCaptions, type CaptionsAiTask } from '../editor/captionItems'
+import { captionCommands } from '../editor/captionCommands'
+import { usePreviewLook } from '../editor/previewLook'
+import { settleCaptionAuto } from '../../../shared/captions/captionAutoSettle'
 import { Timeline, type TimelineHandle } from '../editor/Timeline'
 import { Transport } from '../editor/Transport'
 import { videoTrackDuration } from '../editor/videoTrack'
@@ -110,6 +114,8 @@ interface Session {
   store: EditStore<Project>
   saver: Autosaver<Project>
   player: PreviewPlayer
+  /** The preview's frame for the contrast meter (Captions Studio §7.3), registered while the session is open. */
+  contrast: ContrastSource
 }
 
 type LoadState = { kind: 'loading' } | { kind: 'error'; message: string } | { kind: 'ready'; session: Session }
@@ -184,9 +190,11 @@ async function openSession(projectId: string): Promise<Session> {
   // Likewise without its camera when the camera file is missing (its layouts then leave the screen be).
   const opened = openedWithoutCamera(openedWithoutStems(data.project, data.missingStems), !data.webcamUrl)
   const project = correctProjectMedia(opened, { duration, width: screen.videoWidth, height: screen.videoHeight })
-  // Words deleted in the Transcript tab keep their mark only while they are cut (edit-by-text.md §4.2).
-  // Review mode (E-02): records of automatic cuts whose change is gone are dropped in the same step.
-  const store = new EditStore(project, undefined, undefined, undefined, (next: Project, prev: Project) => settleAutoCuts(settleDeletedWords(next, prev), prev))
+  // Words deleted in the Transcript tab keep their mark only while they are cut (edit-by-text.md §4.2);
+  // then automatic caption changes become the user's when edited by hand, and marks, word anchors and
+  // per-caption places follow their words (Captions Studio §11.8). Review mode (E-02): records of
+  // automatic cuts whose change is gone are dropped. Each is part of the edit's undo step.
+  const store = new EditStore(project, undefined, undefined, undefined, (next: Project, prev: Project) => settleAutoCuts(settleCaptionAuto(settleDeletedWords(next, prev), prev), prev))
   const recorded = (p: Project): Project => withRecordedCamera(withRecordedStems(withSavedName(p), data.project), data.project)
   const saver = new Autosaver(store, {
     save: (p, meta) => window.api.saveProject(recorded(p), meta),
@@ -194,7 +202,9 @@ async function openSession(projectId: string): Promise<Session> {
   })
   if (project !== opened) saver.markDirty()
   const player = new PreviewPlayer(screen, webcam, project, data.missingStems)
-  return { data, store, saver, player }
+  const contrast: ContrastSource = () => player.pausedFrame()
+  setContrastSource(contrast)
+  return { data, store, saver, player, contrast }
 }
 
 function closeSession(s: Session): void {
@@ -203,6 +213,7 @@ function closeSession(s: Session): void {
   try {
     s.store.finish()
   } finally {
+    releaseContrastSource(s.contrast)
     s.player.dispose()
     // Normally already flushed by Back; this covers any other way the editor goes away.
     if (s.saver.dirty) void s.saver.flush().finally(() => s.saver.dispose())
@@ -453,9 +464,13 @@ function EditorSession({
     () => ({ project: drawn.project, cursor: drawn.cursor, cursorPath, focusPath, ...(drawn.crop ? { crop: drawn.crop } : {}) }),
     [drawn, cursorPath, focusPath]
   )
+  // A caption look hovered or focused in the gallery shows on the preview only (Captions Studio
+  // §2.5): the export, the project and the undo stack never see it.
+  const previewLook = usePreviewLook()
+  const previewScene: RenderScene = useMemo(() => (previewLook ? { ...scene, project: { ...scene.project, captions: previewLook.captions } } : scene), [scene, previewLook])
 
   useEffect(() => player.setProject(project), [player, project])
-  useEffect(() => player.setScene(scene, background), [player, scene, background])
+  useEffect(() => player.setScene(previewScene, background), [player, previewScene, background])
   const sceneRef = useRef(scene)
   sceneRef.current = scene
   // The frame as drawn: a tall one gets the safe-zone toggle (docs/design/vertical-video.md §2.8).
@@ -1271,6 +1286,18 @@ function EditorSession({
         reveal('captions')
         requestCaptions({ kind: 'export' })
       },
+      // Captions Studio (docs/design/captions-studio.md §2.14): each opens its tab and does what its button does.
+      ...captionCommands({
+        store,
+        // Review covers the Inspector: it closes before the tab shows (reveal).
+        setTab: reveal,
+        notice: showNotice,
+        frame: () => {
+          const f = editorFrame(store.state)
+          return { w: f.outW, h: f.outH }
+        },
+        undo: () => undoHint(latest.current.keymap)
+      }),
       showCaptions: showTab('captions'),
       showStyle: showTab('style'),
       showCursor: showTab('cursor'),
@@ -1433,6 +1460,13 @@ function EditorSession({
       exportCaptions: p.transcript?.segments.length ? null : 'No captions yet',
       // NW-13: the Captions tab's AI tools need captions (the Publish dialog says what to do without them).
       ...Object.fromEntries((['aiCleanup', 'aiTranslate', 'aiChapters', 'aiTitle', 'aiSummary'] as const).map((k) => [k, p.transcript?.segments.length ? null : 'No captions yet'])),
+      captionsGreat: p.transcript?.segments.length ? null : 'No captions yet',
+      captionStyles: p.transcript?.segments.length ? null : 'No captions yet',
+      captionEmphasis: p.transcript?.segments.length ? null : 'No captions yet',
+      captionGraphics: p.transcript?.segments.length ? null : 'No captions yet',
+      captionTidy: p.transcript?.segments.length ? null : 'No captions yet',
+      captionLanguage: p.transcript?.segments.length ? null : 'No captions yet',
+      saveCaptionStyle: p.transcript?.segments.length ? null : 'No captions yet',
       toggleClickAtPlayhead: cursor.valid ? null : noCursor,
       findStrayClicks: cursor.valid ? null : noCursor,
       useAllClicks: !cursor.valid ? noCursor : rows.some((r) => r.ignored) ? null : 'No click is ignored',
@@ -1687,7 +1721,7 @@ function EditorSession({
               selectedAnnotation={selectedAnnotation}
               onTogglePlay={actions.togglePlay}
               onExitPick={exitPick}
-              scene={scene}
+              scene={previewScene}
               selection={selection}
               onSelect={setSelection}
               cropTool={cropTool}

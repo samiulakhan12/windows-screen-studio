@@ -213,7 +213,7 @@ and preview speed, E-10 crop the recording, E-11 freeze frame.
 - **Risks:** needs a release feed (GitHub Releases or a static host) and signed builds. A bad update must be easy to roll back. A remote model list must come from a trusted, integrity-checked location.
 
 ### X-02 · Caption emphasis
-**AI · S · planned**
+**AI · S · shipped (next release, Captions Studio phase A)**: see [FEATURES.md](FEATURES.md) (Captions Studio, Emphasis, Pop-ups from captions, Make my captions great) and `docs/design/captions-studio.md`. Key words are picked on this PC (stop-word lists for en, bn, hi, es, fr, de and pt); an AI provider only improves the picks (the `marks` text task, checked against the caption's words). Emoji and pop-ups come from the captions. Left for phase B (after the review-mode, publishing-pack, sound-finder and versions branches merge): Review mode's group rows for the automatic marks and pop-ups, muting a bleeped word's own sound (the sound finder's gains), Versions' caption areas, and moving the publishing pack's *Translate* and *Fix captions* commands to Languages and Clean up.
 
 - **What:** picks the key words in each caption to colour, enlarge or pair with an emoji in the bold and karaoke styles, the social-caption look.
 - **Works with:** OpenAI, Gemini or Claude.
@@ -303,7 +303,7 @@ stay available as the premium option.
 |---|---|---|---|---|
 | F-14 | **Start recording from anywhere** | Global start hotkey per preset, "record the last area again", tray menu, taskbar jump list, start quietly with Windows | Electron globalShortcut, Tray, setUserTasks, setLoginItemSettings; a tested argument parser shared with F-23 | S |
 | F-15 | **Face and expression tracking** | Face centring, screen-only when the presenter looks away, no blink freeze frames, thumbnail picks with eyes open and smiling | MediaPipe Face Landmarker (Apache-2.0, 3.76 MB) in the existing worker; blaze_face (0.23 MB) if only centring is needed | S |
-| F-16 | **Offline caption translation** | Captions and titles in other languages, timings kept | Mozilla Bergamot (MPL-2.0) built to WASM with the fallback GEMM, models re-hosted (15–40 MB per pair); opus-mt (CC-BY-4.0) for gaps; avoid NLLB (non-commercial) | M–L |
+| F-16 | **Offline caption translation** · *waiting for the owner's licence decision* (MPL-2.0 runtime and models, BSD-3-Clause PCRE2; `docs/design/captions-studio.md` §0.3 item 5, §18 item 1). Translation with an AI provider shipped with Captions Studio | Captions and titles in other languages, timings kept | Mozilla Bergamot (MPL-2.0) built to WASM with the fallback GEMM, models re-hosted (15–40 MB per pair); opus-mt (CC-BY-4.0) for gaps; avoid NLLB (non-commercial) | M–L |
 | F-17 | **Unwanted-sound finder** | Lists pings, buzzes, coughs, barks and background music with Mute, Cut or Duck | YAMNet (Apache-2.0, 4.1 MB) via MediaPipe tasks-audio (adds about 11 MB to the installer) | S |
 | F-18 | **Search every recording** | Find a moment by meaning or by on-screen text across the library | Local index of transcripts, OCR, UIA labels and titles; small embedding model via transformers.js | M |
 | F-19 | **Profiles per app and per client** | The right style, export preset and folder picked by the app being recorded or the client | Rules in settings; process name and foreground hook in the helper (new subcommand) | M |
@@ -357,7 +357,7 @@ stay available as the premium option.
 
 | Id | Feature | What it does | Size |
 |---|---|---|---|
-| LT-10 | **Subtitle tracks in several languages** | Keeps one transcript per language. Export adds switchable subtitle tracks, or writes SRT/VTT for every language. | M |
+| LT-10 | **Subtitle tracks in several languages** · *partly shipped (next release, Captions Studio)*: caption tracks translated with your AI provider, one SRT/VTT per language and switchable subtitle streams in MP4, MOV and WebM; translating on this PC waits for F-16 | Keeps one transcript per language. Export adds switchable subtitle tracks, or writes SRT/VTT for every language. | M |
 | LT-11 | **Animated callouts and a chapter progress bar** | Enter and exit animations for text, shapes and titles; step badges; speech bubbles; a chapter progress bar. | M |
 | LT-12 | **Magnifier (loupe) zoom** | A round magnifier over a small detail while the rest of the screen stays visible. | S |
 | LT-13 | **Built-in music and sound-effects library** | Royalty-free (CC0) music beds, plus optional whoosh and pop sounds on zooms and titles. | S |

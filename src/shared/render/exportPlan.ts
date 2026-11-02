@@ -1,6 +1,7 @@
 import type { ExportCapabilities, FfmpegVideoEncoder } from '../api/export'
 import { visibleSize } from '../engine/crop'
 import { outputSize } from '../engine/layout'
+import { tallAs } from '../engine/reframeData'
 import type { AspectRatio, ExportFormat, Project } from '../types'
 import type { ExportOptions } from './exportPresets'
 
@@ -60,6 +61,18 @@ export function exportSize(project: Project, settings: ExportOptions): ExportSiz
     size = { width: Math.max(2, settings.maxWidth - (settings.maxWidth % 2)), height: even(size.height * k) }
   }
   return { ...capSize(size), fps: gif ? GIF_FPS : settings.fps }
+}
+
+/**
+ * The export dialog's picture of a `size` frame, as large as fits `box`: its CSS size, and its
+ * canvas's pixels at display scale `dpr`, tall exactly when the frame is (tallAs: 4:5 sits on the
+ * line), so Studio captions are laid out in the picture as in the file.
+ */
+export function exportPreviewSize(size: { width: number; height: number }, box: { width: number; height: number }, dpr: number): { css: { width: number; height: number }; pixels: { width: number; height: number } } {
+  const k = Math.min(box.width / size.width, box.height / size.height)
+  const css = { width: Math.max(1, Math.round(size.width * k)), height: Math.max(1, Math.round(size.height * k)) }
+  const width = Math.max(2, Math.round(css.width * dpr))
+  return { css, pixels: { width, height: tallAs(width, Math.max(2, Math.round(css.height * dpr)), size.width, size.height) } }
 }
 
 /** Effective export parameters. */

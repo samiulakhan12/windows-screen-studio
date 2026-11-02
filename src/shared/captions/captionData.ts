@@ -18,7 +18,8 @@ export const MAX_CAPTIONS = 5000
 const MAX_WORDS = 400
 
 const KINDS: Transcript['provider'][] = ['openai', 'gemini', 'anthropic', 'local']
-const LANGUAGE = /^[a-z]{2,3}(-[a-z0-9]{1,8})*$/i
+/** A BCP-47 language code as stored ("en", "bn", "pt-BR", "zh-Hant"). */
+export const LANGUAGE_RE = /^[a-z]{2,3}(-[a-z0-9]{1,8})*$/i
 
 const finite = (v: unknown): v is number => typeof v === 'number' && Number.isFinite(v)
 
@@ -65,7 +66,7 @@ export const newCaptionId = (): string => `cap${Date.now().toString(36)}${(idCou
  * the recording (a trim of the caption leaves it where it was said: edit.ts retimeWords), sorted;
  * null when none are usable.
  */
-function readWords(raw: unknown, start: number, end: number, duration: number): CaptionWord[] | null {
+export function readWords(raw: unknown, start: number, end: number, duration: number): CaptionWord[] | null {
   if (!Array.isArray(raw)) return null
   const out: CaptionWord[] = []
   for (const w of raw.slice(0, MAX_WORDS * 2)) {
@@ -149,6 +150,6 @@ export function readTranscript(raw: unknown, duration = Infinity): Transcript | 
     createdAt: typeof r.createdAt === 'string' ? r.createdAt.slice(0, 64) : '',
     segments: readCaptionSegments(r.segments, duration)
   }
-  if (typeof r.language === 'string' && r.language.length <= 35 && LANGUAGE.test(r.language)) t.language = r.language
+  if (typeof r.language === 'string' && r.language.length <= 35 && LANGUAGE_RE.test(r.language)) t.language = r.language
   return t
 }

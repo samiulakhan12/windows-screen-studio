@@ -21,15 +21,26 @@ export interface BundleOptions {
   description: boolean
   /** One file per chapter: "01 Intro.mp4", "02 Billing.mp4" into a folder. */
   perChapter: boolean
+  /** The subtitle languages for files and streams (Captions Studio §11.10); absent: the spoken language only, as today. */
+  languages?: string[]
 }
 
 export const NO_BUNDLE: BundleOptions = { srt: false, vtt: false, chapters: false, thumbnail: false, description: false, perChapter: false }
 
-/** Stored choices with anything unknown or missing turned off. */
+/** A subtitle language's part of a file name ("Demo.bn.srt", "Demo.pt-BR.vtt"): BCP-47 language and an optional region or script (Captions Studio §11.10). */
+export const SUBTITLE_LANGUAGE_RE = /^[a-z]{2,3}(-[A-Za-z0-9]{1,8})?$/
+/** Most subtitle languages of one export (files and streams, §12). */
+export const MAX_SUBTITLE_LANGUAGES = 8
+
+/** Stored choices with anything unknown or missing turned off; the subtitle languages kept when well-formed (at most 8, each once). */
 export function normalizeBundle(raw: unknown): BundleOptions {
   const r = (raw && typeof raw === 'object' ? raw : {}) as Record<string, unknown>
-  const out = { ...NO_BUNDLE }
-  for (const k of Object.keys(NO_BUNDLE) as (keyof BundleOptions)[]) out[k] = r[k] === true
+  const out: BundleOptions = { ...NO_BUNDLE }
+  for (const k of Object.keys(NO_BUNDLE) as Exclude<keyof BundleOptions, 'languages'>[]) out[k] = r[k] === true
+  if (Array.isArray(r.languages)) {
+    const languages = [...new Set(r.languages.filter((l): l is string => typeof l === 'string' && SUBTITLE_LANGUAGE_RE.test(l)))].slice(0, MAX_SUBTITLE_LANGUAGES)
+    if (languages.length) out.languages = languages
+  }
   return out
 }
 
@@ -90,11 +101,76 @@ const SUFFIX: Record<SidecarKind, string> = {
   description: ' - description.txt'
 }
 
-/** "Demo.mp4" → "Demo.srt", "Demo - chapters.txt", "Demo - thumbnail.png", ... */
-export function sidecarName(videoFile: string, kind: SidecarKind): string {
+/**
+ * "Demo.mp4" → "Demo.srt", "Demo - chapters.txt", "Demo - thumbnail.png", ...; a translated
+ * caption track's subtitles carry its language (Captions Studio §11.10): "Demo.bn.srt",
+ * "Demo.bn.vtt". Without `language` (the spoken language) the name is today's.
+ */
+export function sidecarName(videoFile: string, kind: SidecarKind, language?: string): string {
   const dot = videoFile.lastIndexOf('.')
   const stem = dot > 0 ? videoFile.slice(0, dot) : videoFile
-  return `${stem}${SUFFIX[kind]}`
+  const lang = language && (kind === 'srt' || kind === 'vtt') && SUBTITLE_LANGUAGE_RE.test(language) ? `.${language}` : ''
+  return `${stem}${lang}${SUFFIX[kind]}`
+}
+
+/* ---------- subtitles in several languages (Captions Studio §11.10) ---------- */
+
+/** The code of a spoken language the transcript does not name (ISO 639-2 "undetermined"): never a track's language. */
+export const UNKNOWN_SPOKEN = 'und'
+
+/**
+ * The language a project's captions are spoken in, UNKNOWN_SPOKEN when the transcript does not
+ * say (automatic detection with a model that does not tell): a track in any language, English
+ * included, then stays a language of its own.
+ */
+export const spokenLanguage = (project: Pick<Project, 'transcript'>): string => project.transcript?.language || UNKNOWN_SPOKEN
+
+/** What the spoken captions are called when the transcript does not name their language. */
+export const UNKNOWN_SPOKEN_NAME = 'Spoken language'
+
+/**
+ * The subtitle languages of an export, the spoken language first: the ticked ones that are the
+ * spoken language or have a caption track, else the spoken language alone (as before).
+ */
+export function subtitleLanguages(project: Pick<Project, 'transcript' | 'captionTracks'>, ticked: readonly string[] | undefined): string[] {
+  const spoken = spokenLanguage(project)
+  const tracks = new Set((project.captionTracks ?? []).map((t) => t.language))
+  const out = (ticked ?? []).filter((l) => l === spoken || tracks.has(l))
+  const list = out.length ? [...new Set(out)] : [spoken]
+  return [...list.filter((l) => l === spoken), ...list.filter((l) => l !== spoken)].slice(0, MAX_SUBTITLE_LANGUAGES)
+}
+
+/** A language's name for a subtitle stream ("English", "Bangla"); its code when the platform does not know it. */
+export function languageName(language: string): string {
+  try {
+    return new Intl.DisplayNames(['en'], { type: 'language' }).of(language) ?? language
+  } catch {
+    return language
+  }
+}
+
+/**
+ * The subtitle streams of an export (§11.10): only with **Also inside the video**
+ * (`subtitleStreams`), in MP4, MOV and WebM, one per subtitle language with its WebVTT (from
+ * `vtt`; a language without one is left out). The default stream is the spoken language's, none
+ * when the captions are burned in. Empty otherwise: the job is then exactly as before.
+ */
+export function subtitleStreams(
+  project: Pick<Project, 'transcript' | 'captionTracks' | 'captions'>,
+  settings: { format: ExportFormat; subtitleStreams?: true },
+  ticked: readonly string[] | undefined,
+  vtt: (language: string, spoken: boolean) => string | null
+): { language: string; name: string; vtt: string; default: boolean }[] {
+  if (!settings.subtitleStreams || (settings.format !== 'mp4' && settings.format !== 'mov' && settings.format !== 'webm')) return []
+  if (!project.transcript?.segments.length) return []
+  const spoken = spokenLanguage(project)
+  const burned = !!project.captions?.show
+  const out: { language: string; name: string; vtt: string; default: boolean }[] = []
+  for (const language of subtitleLanguages(project, ticked)) {
+    const text = vtt(language, language === spoken)
+    if (text) out.push({ language, name: language === UNKNOWN_SPOKEN ? UNKNOWN_SPOKEN_NAME : languageName(language), vtt: text, default: !burned && language === spoken })
+  }
+  return out
 }
 
 /** A part of "one file per chapter": the chapter's range of the video. */

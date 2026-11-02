@@ -37,6 +37,8 @@ Terms used below:
   (`src/shared/captions/settings.ts:9-10`).
 - **em**: the drawn text size in px. Outline, shadow, padding, glow and offsets are in em.
 - **Tall frame**: height ≥ 1.25 × width (`isTall`, `src/shared/engine/reframeData.ts`): 9:16 and 4:5.
+  The editor's preview and the export dialog's picture are tall exactly when their file is (`tallAs`):
+  a 4:5 picture whose rounded height falls a pixel short of the line is made a pixel taller.
 - **Source time, viewing time**: as in `edit-by-text.md`. Every animation runs in viewing time
   (`viewingTime`, `src/shared/render/overlays.ts`), like the caption fade today
   (`captionAlpha`, `src/shared/captions/layout.ts:89-103`).
@@ -80,13 +82,13 @@ where a mock-up colour fails it, darken or lighten it until it passes and say so
 | Look (preset id) | Group | From the mock-up |
 |---|---|---|
 | Gradient (`gradient`) | Short clips | Archivo Black capitals, a pink→orange gradient fill, a dark offset shadow. Uses the Gradient spoken option of §5.6 as its whole-text fill. |
-| Stickers (`stickers`) | Short clips | Lilita One; each word a white rounded sticker with a dark 3 px border and a hard offset shadow, alternately tilted −4° / +3°; the spoken word's sticker turns yellow and grows 1.12×. Tilt comes from the word's index, never from a random number (§9: deterministic). |
+| Stickers (`stickers`) | Short clips | Lilita One; each word a white rounded sticker with a dark 3 px border and a hard offset shadow, alternately tilted −4° / +3°; the spoken word's sticker turns yellow and grows 1.12×. Neighbouring stickers stand 0.2 em apart, edge to edge (more.html), and each line's width counts them. A sticker reaches 0.62 em above the line's middle, and 0.8 em for a Bangla or Hindi word (0.92 em Thai), so vowel signs, the reph and tone marks stay clear of its border. Tilt comes from the word's index, never from a random number (§9: deterministic). |
 | Speech Bubble (`bubble-speech`) | Long videos | A white rounded bubble with a tail pointing at the camera bubble; dark text; the spoken words in the accent colour. With no camera on screen the tail points down. Keeps clear of the camera bubble like every look. |
 | Chat (`chat`) | Long videos | For calls: each caption is a chat bubble, You (from NW-09 speakers) on the right in blue, Others on the left in light grey, with the speaker name above. Without speakers it falls back to Subtitle. |
 | Spotlight Word (`spotlight-word`) | Short clips | Poppins 800; words not spoken yet dimmed (contrast checked on the dimmed colour against the outline), the spoken word bigger, full white with a soft blue glow. Reduce motion: no size change. |
 | Cinema (`cinema`) | Long videos | Film subtitles: Inter 600, warm yellow #ffe680, a strong shadow, low on the frame; optional letterbox bars are not drawn (the look only places the text where bars would be). |
 | Retro Pixel (`retro-pixel`) | Short clips | Press Start 2P (OFL; add it to §6.1), a static red/cyan offset of 3 px at 1080p and a hard dark drop; the spoken word yellow. The offset never moves (not the left-out glitch). |
-| Gold (`gold`) | Long videos | Playfair Display 900 with a gold vertical gradient and a dark soft shadow; for titles and launches. |
+| Gold (`gold`) | Long videos | Playfair Display 900 with a gold vertical gradient (stops at 0, 45, 55 and 100%: a metal band at the middle of the letters) and a dark soft shadow; for titles and launches. |
 | 3D Block (`block-3d`) | Short clips | Rubik 900 capitals (OFL; add it) with a six-step extrusion in a darker shade of the fill and a soft shadow; the spoken word changes to yellow with its own darker extrusion. |
 | Bubble (`bubble-round`) | Short clips | Fredoka 700 in pastel pink with a thick white outline and a soft drop; the spoken word purple. |
 | Circle (`circle`) | Long videos | Clean white text with a dark outline; emphasised words (§2.7) get a hand-drawn red ellipse drawn around them in 0.3 s; the path is fixed per word (from the word's index), never random. |
@@ -207,7 +209,8 @@ translation if the owner approves its licences.
    under 0.2 s for a 10-minute video. The captions now have about one emphasised word in eight,
    three emoji next to key words, a counter where the speaker said "grew 300 percent" and a list
    card where they said "three steps". Notice: "Captions: Bold Pop, 38 words emphasised, 3 emoji,
-   1 counter, 1 list. Review (Shift+R) · Undo".
+   1 counter, 1 list. Review (Shift+R) · Undo" (phase A, before Review mode: "… 1 list · Ctrl + Z
+   to undo", §2.8).
 3. They press **Shift+R**. Review mode lists the changes: one row "Emphasis: 38 words" (it opens
    to the single words), and one row per emoji, counter and list ("Emoji 💡 on “tip”", "Counter
    300%", "List: 3 steps"). They remove one emoji with **Delete**.
@@ -254,7 +257,7 @@ Shown only with a transcript, as today. `data-testid="caption-look"`.
 | Button `captions-great` | **Make my captions great** | Primary button, sparkle icon. The hint under it is built from the options as they resolve for this project (§2.8). Wide frame with the defaults: "Emphasises key words, tidies the text and adds lower thirds. You can review every change." Tall camera-led frame: "Picks a style, emphasises key words and adds emoji and pop-ups. You can review every change." |
 | Icon button `captions-great-options` | aria-label and title "Choose what Make my captions great does" | Opens the options popover (§2.8). |
 | Chips `caption-gallery-filter` | **Long videos** · **Short clips** · **Classic** · **Mine** · **Brand** · **All** | *Mine* only when the user saved a look; *Brand* only when the brand kit has a caption style. *Classic* holds the five legacy looks; *All* holds every look except Classic. On first open the filter is the frame's group (*Short clips* for tall and square frames, *Long videos* for wide ones); after that the last choice is remembered per window (`localStorage` `captions-gallery-filter`). |
-| Grid `caption-gallery` | Tiles (§2.5) | `role="radiogroup"`, aria-label "Caption style". Shows two rows; **Show all styles** (`caption-gallery-more`, `aria-expanded`) shows the rest of the filter's tiles, so Text and Layout stay in reach. |
+| Grid `caption-gallery` | Tiles (§2.5) | `role="radiogroup"`, aria-label "Caption style". Shows two rows; **Show all styles** (`caption-gallery-more`, `aria-expanded`) shows the rest of the filter's tiles, so Text and Layout stay in reach. The checked tile is always among the two rows (in the last place when it comes later in the filter), so the radio group's tab stop is the checked radio. So is the tile focused last, so an undo or redo that moves the checked look never takes away the tile with the focus: a later tile takes the last place neither holds. When the focused tile leaves the filter itself (an undo or redo to a Studio look takes away the Classic "Your current style" tile), the focus goes to the tab stop, the checked tile, and never falls to the page. |
 | Line `caption-style-name` | "Bold Pop" or "Bold Pop (edited)" | With **Reset** (`caption-style-reset`, title "Go back to Bold Pop as it comes") while edited. |
 | Button `caption-style-save` | **Save as my style** | Asks for a name in an inline field ("Name", default "My style 1"), **Save**, **Cancel**. At most 50 saved looks: "You have 50 saved styles. Delete one first." |
 | Section `caption-text` | **Text** | §2.6. |
@@ -284,7 +287,9 @@ state is remembered in `localStorage` `captions-look-open`.
   picture (#2a2d34 with a soft diagonal gradient to #3b3f48). `drawStudioSample` (§14.2) draws it
   with the real word sprites.
 - Thumbnails are drawn once per look, theme, frame shape and `fontGeneration()` into cached data
-  URLs, in idle time, about 2 ms each. A font that finishes loading therefore redraws them.
+  URLs, in idle time, about 2 ms each. A font that finishes loading therefore redraws them. A
+  font that could not load (a download not made) is not tried again when a thumbnail is drawn:
+  that would change `fontGeneration()` and draw every tile again, for ever.
 - **Animated thumbnails.** When a tile is hovered or focused, it plays its look over a 2.4 s loop
   at 30 fps, again with the real renderer. Only one tile plays at a time. A loop never runs
   longer than 5 s without a hover or focus. Under `prefers-reduced-motion: reduce` thumbnails stay
@@ -292,14 +297,18 @@ state is remembered in `localStorage` `captions-look-open`.
   "Play a preview of Bold Pop", naming the focused tile, else the checked one) plays one loop.
 - **Preview on the video.** While a tile is hovered or focused for more than 300 ms, the main
   preview draws that look at the playhead, with the label "Previewing Bold Pop · Enter uses it"
-  over the preview. The project does not change and no undo step is made. Leaving the tile,
-  moving focus out of the grid or **Escape** restores the preview. The export never sees it.
+  over the preview ("Previewing Bold Pop · Click to use it" while only hovered: Enter acts on the
+  focused tile, not the hovered one). The project does not change and no undo step is made.
+  Leaving the tile, moving focus out of the grid or **Escape** restores the preview. The export
+  never sees it.
 - One tile carries a badge "Suggested" (`aria-describedby` text "Suggested for tall videos",
   "Suggested for wide videos" or "Suggested when you are on camera"): the look Auto style would
   pick for this project, except in a wide camera-led project, where it is Karaoke Fill while
   Auto style itself keeps Subtitle (§11.6).
 - When the project uses a Classic look, its tile is shown first in every filter, labelled "Your
-  current style".
+  current style" on a line under its name (next to it, the name's ellipsis cut it off) and in its
+  accessible name ("Boxed, classic: text on a dark box, like TV subtitles, your current
+  style").
 - The current look's tile is checked (`aria-checked="true"`). Picking a tile is one undo step
   (§5.8 says which fields it keeps).
 - Each tile's accessible name is its name, its group and its one-line description, for example
@@ -329,7 +338,7 @@ buttons do not set it.
 
 | Control (`data-testid`) | Copy | Values |
 |---|---|---|
-| Font menu `caption-font` | **Font** | Groups "Caption fonts" (bundled), "Your brand fonts" (project and brand kit), "Download" (Chinese, Japanese, Korean, with size). Each name is drawn in its own font. Badges: script coverage ("Latin · Cyrillic · Vietnamese"), "One weight". A font without the caption language's letters shows "Doesn't have Bengali letters: Flown uses Noto Sans Bengali for them". |
+| Font menu `caption-font` | **Font** | Groups "Caption fonts" (bundled), "Your brand fonts" (project and brand kit), "Download" (Chinese, Japanese, Korean, with size). Each name is drawn in its own font. Badges: script coverage ("Latin · Cyrillic · Vietnamese"), "One weight". A font without the caption language's letters (the language shown on the video: a shown translation's, §11.9) shows "Doesn't have Bengali letters: Flown uses Hind Siliguri for them", naming the font the captions draw them with (for Bangla the look's own Bangla font of §0.2, Hind Siliguri in Subtitle, else Noto Sans Bengali; for Russian, Ukrainian and Vietnamese the font's own partner of §6.6: Anton → Oswald). The graphics' Font menu names the same fonts, as graphics draw with them. |
 | Select `caption-weight` | **Weight** | Only the weights the font has: Light 300, Regular 400, Medium 500, Semibold 600, Bold 700, Extra bold 800, Black 900. |
 | Slider `caption-size` | **Size** `8.5%` | 2.5–22% of the shorter side, step 0.1%. In a tall frame it shows and sets the size drawn there (`size × tall`, §4.1). Merge key `caption-size`. |
 | Chips `caption-case` | **Case**: **As written** · **CAPITALS** · **lowercase** | Hidden for scripts without case. |
@@ -342,7 +351,7 @@ buttons do not set it.
 | Swatches `caption-theme` | **Theme** | The eight themes of §7.1, plus **Brand** when the brand kit has two or more colours. One undo step. |
 | Colour dots `caption-color-text`, `-spoken`, `-emphasis`, `-emphasis2` | **Words**, **Spoken word**, **Emphasis**, **Second emphasis** | Five presets each plus any colour, like today's `ColorDots`. Merge keys `caption-color-*`. *Second emphasis* is the colour of words emphasised with Ctrl+Shift+B (§2.7); absent in a look, it starts as the emphasis colour. |
 | Colour dot and slider `caption-outline` | **Outline** `6%` | Colour; thickness 0–20% of the size. |
-| Chips `caption-shadow` | **Shadow**: **Off** · **Soft** · **Strong** · **Hard** | Off; Soft (0, 0.05, 0.30 em) α 0.7; Strong (0, 0.06, 0.4 em) α 0.85; Hard (0.06, 0.08, 0 em) α 1. One undo step per chip. |
+| Chips `caption-shadow` | **Shadow**: **Off** · **Soft** · **Strong** · **Hard** | Off (a shadow of α 0, so Bangla words get no soft one either; a look with no shadow at all shows Off and lends Bangla the Soft one, §0.2); Soft (0, 0.05, 0.30 em) α 0.7; Strong (0, 0.06, 0.4 em) α 0.85; Hard (0.06, 0.08, 0 em) α 1. One undo step per chip. |
 | Chips `caption-box` | **Background**: **None** · **Box per line** · **One box** · **Glass** · **Band** | With an opacity slider (30–100%, merge key `caption-box-alpha`) and the box colour. |
 | Slider `caption-glow` | **Glow** | 0–100%, only for looks with a glow or the Glow spoken mark. |
 | Swatches `caption-gradient` | **Gradient** | Only with the Gradient spoken mark: Sunset, Ocean, Candy, Brand. |
@@ -447,7 +456,9 @@ built from the resolved choices.
 
 **After it runs:** one undo step and the notice "Captions: Bold Pop, 38 words emphasised, 3 emoji,
 1 counter, 1 list, 12 captions tidied. Review (Shift+R) · Undo". Parts that changed nothing are
-left out. With nothing to do: "Your captions already have all of this." When the provider fails,
+left out. Phase A, until Review mode and its Shift+R are in (§0.4), ends the notice with the undo
+key instead, as Polish does: "…, 12 captions tidied · Ctrl + Z to undo" (the user's own key; no
+hint when Undo has none). Shift+R alone would run Hold the view (`R`) meanwhile. With nothing to do: "Your captions already have all of this." When the provider fails,
 the offline picks are used and the notice ends "The AI provider could not be reached, so Flown
 picked on this PC."
 
@@ -479,7 +490,7 @@ Section **Clean up** (`caption-cleanup`), shown with a transcript:
 | Chips `cleanup-bleep-sound` | **Bleep sound**: **Tone** · **Silence** | Tone. Only when bleeping is on. |
 | Checkbox `cleanup-ai` | **Also fix spelling and misheard words with AI** | Off. Shown only when an AI provider is set up, with a provider select (`cleanup-ai-provider`). This is today's **Fix captions** of the AI tools (`cleanup` task), moved here. |
 | Button `cleanup-run` | **Tidy captions** | One undo step (the AI fix, when ticked, is applied with the rest once its answer arrives; **Cancel** beside the button while it waits). Notice "Tidied 12 captions, bleeped 2 words" or "Nothing to tidy". |
-| Hint | "Tidy changes are listed in Review mode. The word list also helps Generate captions spell these words." | |
+| Hint | "Tidy changes are listed in Review mode. The word list also helps Generate captions spell these words." | Phase A, until Review mode is in (§0.4): only "The word list also helps Generate captions spell these words." The Graphics tab's hints leave Review mode out the same way. |
 
 The choices above (not the word list) are saved in prefs `captionCleanup` (§4.6) and used by Make
 my captions great's tidy step. Changes made by the AI fix are recorded like the offline ones
@@ -544,7 +555,10 @@ text blocks; multi-select, snapping, copy and paste and Delete as for the other 
 **Preview.** Clicking a graphic selects it. Dragging moves it (paused): one undo step, and its
 position becomes "Placed by you". The focused selection handle moves it with the arrow keys (1% of
 the frame, Shift 10%). Dragging the caption block (paused, on the caption) sets the captions'
-position to *dragged*: one undo step.
+position to *dragged*: one undo step. A plain click on the captions still plays or pauses, and
+Ctrl or Shift+click goes on to the preview (adding or removing the item under the pointer). The
+selected item's handles lie above the caption block, so dragging them where they overlap the
+captions moves the item.
 
 ### 2.12 The Style tab, Settings and the brand kit
 
@@ -565,7 +579,10 @@ position to *dragged*: one undo step.
 The subtitle part of the export options becomes one field **Subtitles** (`export-subtitles`):
 
 - **Languages**: one checkbox per caption language ("English", "Bengali"). Default: the spoken
-  language, plus the burned-in track's language when one is shown on the video.
+  language, plus the burned-in track's language when one is shown on the video. When the
+  transcript does not name the spoken language (Detect automatically with a model that does not
+  say), the spoken captions are "Spoken language" with the code `und`, never a track's language,
+  so an English track is a language of its own; its stream is tagged `und`.
 - **As files**: the existing **SRT** and **VTT** checkboxes. Each writes one file per ticked
   language (§11.10). This is what YouTube creators upload.
 - **Also inside the video (players can switch them)** (`export-subtitle-streams`, MP4, MOV and
@@ -575,9 +592,13 @@ The subtitle part of the export options becomes one field **Subtitles** (`export
 GIF and M4A keep today's options: no languages, no streams. When the burned-in track lacks some
 captions, the export notes "3 captions are not translated into Bengali: they show in English."
 
-When the captions use a downloadable font that is missing, the existing missing-font note
-(`missingFonts`, `fontLoader.ts:140-144`) lists it: "Captions use Noto Sans JP, which is not
-downloaded: they will use Yu Gothic UI."
+When the captions use a downloadable font that is missing, the export dialog's missing-font notes
+(`missingCatalogNotes` beside `missingFonts`, `fontLoader.ts`) list it once the dialog has tried
+the project's catalogue fonts as the export does: "Captions use Noto Sans JP, which is not
+downloaded: they will use Yu Gothic UI." A bundled caption font whose file fails to load says
+"Font missing: Bangers. Text that uses it is drawn with another font." With Show captions off,
+a font only the captions use is not named: it still loads (graphics made from the captions are
+placed by their words), but nothing on the video is drawn with it.
 
 ### 2.14 Command palette and keys
 
@@ -594,7 +615,10 @@ letter falls back to the letter, `shortcuts.ts:331`):
 | `captionLanguage` | Add a caption language… | translate subtitles track |
 | `saveCaptionStyle` | Save caption style as mine | preset save |
 
-`captionStyles` opens the Captions tab, opens Look and focuses the checked tile.
+`captionStyles` opens the Captions tab, opens Look and focuses the checked tile, switching to its
+filter first when another one is shown (not remembered as the user's filter). A request no gallery
+takes within 1 s (the Selection view hides the Captions tab) is dropped, so the focus does not jump
+into the gallery when it shows later.
 
 Two publish-pack commands change target (ids, titles and keywords stay):
 
@@ -628,7 +652,24 @@ Keys inside panels: `Ctrl+B` and `Ctrl+Shift+B` in the Transcript word list (§2
   0:42".
 - New CSS passes `tests/labelContrast.test.ts` (AA, 4.5:1 for text, 3:1 for control edges).
 - The Graphics list and the timeline row both lead to the same inspector, so nothing needs a
-  mouse.
+  mouse. A pop-up added from the **Add** menu with the keyboard puts the focus in its first field
+  (Text, the emoji search, From or Title), as the menu item that had it goes.
+- A form that opens in place of its button (**Save as my style**, **Add a word**, **Add a
+  language**) focuses its first field (Save as my style's name selected; Escape there cancels).
+  Closed with the keyboard (Save, Cancel, Close, Escape, or Translate once it is done), the focus
+  goes back to that button, not to the page, where typed keys would run editor shortcuts. When the
+  button has turned off (the 8th translation, the 500th word), it goes to the new row's **Show on
+  the video** or the new word's **Remove**.
+- **Translate** and **Translate again** are off while a translation runs. One started with the
+  keyboard gives the focus back when it ends: done, to Add a language as above; failed or
+  cancelled, to **Translate**; from Translate again, to that row's Translate again, or its Show on
+  the video once it is up to date. Focus moved elsewhere meanwhile stays there. A click, or a key
+  other than Tab, Shift+Tab or Enter on **Cancel** (an editor shortcut, such as Right stepping a
+  frame), pressed while it runs leaves the focus where it is, so the next Right still steps a frame
+  and does not switch the captions shown on the video.
+- Each **Show on the video** radio is named with its row: "Show on the video, Bengali ·
+  translated with Gemini". All four arrow keys move between them (Left and Right do not step the
+  playhead there).
 - Burned-in captions and graphics are pixels: screen readers cannot read them in the video. The
   export keeps offering SRT and VTT, and now subtitle tracks, for that reason.
 
@@ -793,7 +834,7 @@ export interface StudioTheme {
   upcoming?: string
   /** The spoken mark: the word's colour ('color', 'glow', 'weight'), the fill, or the box, pill or underline colour. */
   spoken: string
-  /** Text on a spoken box or pill; absent: #111111 or #ffffff, whichever contrasts more with `spoken`. */
+  /** Text on a spoken box or pill, or on Stickers' spoken sticker; absent: #111111 or #ffffff, whichever contrasts more with `spoken`. */
   spokenText?: string
   emphasis: string
   /** Text on an emphasis marker or box; absent: by contrast, as spokenText. */
@@ -1000,7 +1041,7 @@ export interface CounterGraphic extends GraphicBase {
   prefix: string
   suffix: string
   label?: string
-  /** BCP-47 locale for digits and grouping, fixed per item. */
+  /** BCP-47 locale for grouping, and for digits unless the captions' Digits choice (§0.2) sets them. */
   locale: string
   /** Output seconds the count takes, 0.4..5. */
   countFor: number
@@ -1231,7 +1272,10 @@ const transcriptRead = readTranscript(transcript, duration)
 - `BrandKit` (`src/shared/editor/brandKit.ts:45-60`) gains `captionStyle?: { name: string; look:
   CaptionStudio }`, read by `sanitizeBrandKit` through `readCaptionStudio`. `applyBrandKit`
   (`brandKit.ts:204-240`) sets `captions.studio` from it (with `from: 'brand'`, keeping `show`,
-  `showSpeaker`, `track` and the dragged `place`) when present; without it, applying is as today.
+  `showSpeaker`, `track` and the dragged `place`) when present; without it, applying is as today:
+  the body font goes to `captions.font`, and to the text font of a Studio look not picked by hand
+  (an automatic look, or a Classic look's twin; to its emphasis font too when that is the text's),
+  since a Studio look draws in its own fonts. A look picked by hand keeps its fonts.
   A brand look counts as chosen, so applying it also sets `picked: true` and Auto style never
   replaces it (§5.7). When `applyBrandKit` rewrites a font on an automatic title card or on
   captions that carry a
@@ -1368,7 +1412,13 @@ turns green".
 - Edge: outline 0.085 α 1; shadow (0, 0.04, 0.12) α 0.55.
 - Words: a few words, 3 words, 1 line, 16 / 14, lower.
 - Motion: spoken colour; in pop, out fade; word pulse; emphasis pop; upcoming 1; tilt 3° on
-  emphasised words.
+  emphasised words; the spoken word pops as in `APPROVED-LOOK.md` (more.html `pop()`): from 0.70
+  to 1.28 in 0.06 s, back to 1.18 by 0.2 s along a quarter sine, and held while spoken
+  (`spokenScale` 1.18 with the word pulse: this pop is the spoken word's pulse, not added to it;
+  ×1.14 in Bangla, the dip and the peak in proportion; by strength). Once the next word starts it
+  goes back to its size over 0.1 s from where it had got to. The layout keeps room for the 1.28
+  peak beside it and past a line's first and last words (§8.4); while spoken it also
+  tilts −2° (`spokenTilt` −2; not on Bangla words, as the approved Bangla pop).
 
 **Clean Short** (`clean-short`, fallback `clean`): "Calm sentence-case words with a soft
 shadow". The default for tall and square screen recordings (§5.5).
@@ -1466,7 +1516,7 @@ or in a camera-only or large-camera layout, for at least 50% of the viewing time
 | Frame | New captions get | Notes |
 |---|---|---|
 | Wide (16:9, 4:3, 21:9 and anything not tall or square) | **Subtitle** | Long tutorials need full phrases with read-ahead. With two or more named speakers: speaker names and colours on. When camera-led, Karaoke Fill carries the "Suggested" badge, but Subtitle stays the pick. |
-| Tall (9:16, 4:5), camera-led | **Bold Pop** | With more than 50% estimated word times: spoken mark and word motion off. With speech faster than 190 words a minute: 4 words. |
+| Tall (9:16, 4:5), camera-led | **Bold Pop** | With more than 50% estimated word times: spoken mark, word motion and the growing, tilting spoken word off. With speech faster than 190 words a minute: 4 words. |
 | Tall, screen-led | **Clean Short** | Heavy capitals would compete with the small UI text of a reframed screen recording. |
 | Square (1:1) | **Highlight Box** with 5 words and 2 lines when camera-led; **Clean Short** with 4 words otherwise | |
 
@@ -1661,13 +1711,18 @@ Montserrat, Oswald and Nunito.
    Thai; Chinese, Japanese, Korean → the downloaded Noto Sans font of the language, else the
    Windows font. This puts the vertical metrics of the script that is drawn under the `middle`
    baseline (`captionsLayer.ts:134`). Line height follows the caption's main script (at least 50%
-   of its letters, `mainScript`).
+   of its letters, `mainScript`), and a line is never shorter than any script on it needs: a Bangla
+   word in a mostly English caption gives its line the Bangla 1.4.
 2. **The look's font**, or its **partner** when the caption's language needs letters the font
    lacks. The whole font is swapped, never single letters inside a word. Partners: Anton, Bebas
    Neue → Oswald; Bangers, Luckiest Guy, Outfit, Poppins → Montserrat; Permanent Marker, Caveat,
    Instrument Serif, Montserrat, Nunito, Oswald → Inter Tight. Needs: vi → Vietnamese; ru, uk →
    Cyrillic; pl, tr and any letter outside Latin-1 → Latin ext; Greek letters → Greek.
 3. The other bundled script fonts (for mixed text such as an English product name in Bangla).
+   For Bangla this is the look's Bangla font (§0.2), else Noto Sans Bengali, so the Bangla of a
+   mixed word such as "Windows-এ" draws like the Bangla words around it. A word with any Bangla
+   letter also follows Bangla's limits (`sizeScript`): the thin outline, and ×1.14 at most when
+   emphasised or spoken, in the layout's room, the motion and the paint alike.
 4. `FlownCat-noto-color-emoji`: always, after the text fonts. Without it, emoji fall back to
    Segoe UI Emoji (tested: the system font took over).
 5. The language's Windows fonts: Nirmala UI (Tamil, Telugu and other Indic scripts), Leelawadee UI
@@ -1696,16 +1751,27 @@ Per-script rules:
 ### 6.8 Loading before drawing and export
 
 - `catalogFontsFor(project)` (§14.2) lists what the project needs: the look's font and emphasis
-  font; every graphic's font (list items included); the catalogue fonts of title cards (the quote
+  font, of the look the captions draw with (Chat with no speaker in the transcript draws as
+  Subtitle, so Subtitle's fonts and Bangla font load; a gallery tile draws Chat itself and loads
+  Chat's, `sampleCatalogFonts`); every graphic's font (list items included), with the partner it draws with when the
+  language needs letters it lacks; the catalogue fonts of title cards (the quote
   style's `cat:instrument-serif-italic` and any `cat:` font a card was given); the script fonts
   for the scripts found in the burned-in captions, graphics and titles (Unicode script of each
-  letter); the partner fonts; and the emoji font whenever the project has a Studio look or any
-  graphic. The emoji face is not chosen by scanning for emoji: keycaps, U+FE0F sequences and
-  text-presentation symbols have no "emoji script", and a scan would miss them.
+  letter); the partner fonts, with their own partners down to Inter Tight (a partner may lack
+  the letters too: Anton → Oswald → Inter Tight for Greek), whenever the text has letters beyond
+  Latin-1 or the language needs letters the drawing goes by (`coverageNeeded`, §6.6 rule 2: an
+  Estonian caption written only in Latin-1 still draws with the partner); and the emoji font whenever the
+  project has a Studio look or any graphic. The emoji face is not chosen by scanning for emoji:
+  keycaps, U+FE0F sequences and text-presentation symbols have no "emoji script", and a scan
+  would miss them.
 - The editor loads them when the project opens (all 24 bundled files load in 155 ms on the test
   PC; a typical project needs 2–4 files). Until a face is ready the fallback draws, and the load
   bumps `fontGeneration()` (`fontLoader.ts:29-35`) so cached widths and thumbnails are made
   again.
+- A download made from the Font menu is loaded (`loadCatalogFont`) as soon as it is on disk, so
+  the preview, the export dialog's preview and the gallery draw with it at once, as the export
+  does. A Font menu made again while the download runs (another panel and back) follows it to
+  its end: done, or the reason it stopped.
 - The export awaits `prepareCaptionFonts(project)` in `prepare` (`exporter.ts:92-101`) beside
   `prepareProjectFonts`. It waits for every catalogue face above and for the `FlownFontW-<id>`
   faces of brand fonts used by Studio looks, graphics and title cards (§6.7). Those entries are
@@ -1807,7 +1873,9 @@ upcoming words at their opacity, spoken text, emphasis, text on a box or marker)
 against its **surround** over any video, with the WCAG formula:
 
 1. A box (line, chunk, glass, band) or a spoken or emphasis box or marker: the box colour at its
-   alpha over white and over black; the worse of the two. Glass counts as its tint alone.
+   alpha over white and over black; the worse of the two. Glass counts as its tint alone. On
+   Stickers every spoken mark but None and Underline turns the spoken word's sticker `spoken`,
+   so that word is drawn in `spokenText` (a gradient keeps its stops) and judged on `spoken`.
 2. Else an outline of at least 0.04 em: the outline colour at its alpha over white and black.
 3. Else the video itself: white and black.
 
@@ -1846,13 +1914,17 @@ A theme or colour the user picks can fail; the meter then says so and offers **F
 **A colour for each speaker** works only while **Show speaker names** is on (§2.6), so colour is
 never the only cue. The speakers in the order they first speak (`speakersOf`, `speakers.ts:25`)
 take colours from the palette #ffffff, #ffe14d, #5ce1e6, #8be28b, #ff9fb2, #c4a7ff, then again
-from the first. A palette colour is skipped when it is too close to the look's spoken or
-emphasis colour: both saturated (HSV saturation 0.25 or more) with hues less than 30° apart, or
+from the first. A palette colour is skipped when it does not reach 4.5:1 against the look's
+surround (§7.2; without a box or outline, against black; in Chat, against the "You" bubbles too),
+and when it is too close to the look's spoken or emphasis colour: both saturated (HSV saturation 0.25 or more) with hues less than 30° apart, or
 both unsaturated with a contrast ratio under 1.5:1 between them. (Contrast alone cannot judge
 this: bright colours of different hues, such as #ffe14d and #5ce1e6, are only 1.2:1 apart.)
 Examples: in Karaoke Fill (spoken #ffe14d) the second speaker gets #5ce1e6, so the fill stays
 visible; in Bold Pop (spoken #39e508, emphasis #ffe14d) #ffe14d and #8be28b (13° from the green)
-are skipped.
+are skipped. When fewer than two colours are left (light boxes and outlines: Chat, Text Box,
+Stickers, both Bubbles, the Ink theme; Glass Pill's tint), speakers keep the look's own text
+colour, and the panel says so ("Speaker colours would be hard to read on this look, so it keeps
+its own text colour.").
 The colour replaces the words' colour for that speaker's captions; the spoken mark still applies.
 The name label ("Priya:") uses the same colour at α 0.85, weight 700. Each palette colour reaches
 at least 10:1 against black.
@@ -1870,7 +1942,9 @@ time-based, §11.7.)
 1. Split on white space.
 2. A piece longer than 4 graphemes in a script written without spaces (Han, Hiragana, Katakana,
    Thai, Lao, Khmer, Myanmar) is split with `Intl.Segmenter(language, { granularity: 'word' })`.
-   Punctuation stays with the word before it.
+   Punctuation stays with the word before it, except opening brackets and quotes (「 『 （ “),
+   which go with the word after them, as in `transcriptTiming.ts` (§8.3: no chunk or line ends
+   on one).
 3. Each word remembers whether white space came before it in the text (`gap`). Words split out
    of one piece by step 2 have `gap: false`. NW-09 text-only answers and local whisper join
    Chinese, Japanese and Thai words without spaces (`transcription.md` §3.3), so those captions
@@ -1907,7 +1981,7 @@ Legacy looks keep `captionTokens` unchanged.
 | **Phrase** | Lines no wider than the room (§8.4) and no longer than `chars` (`tallChars` in tall frames); `lines` lines per chunk; breaks chosen by the phrase cost (§8.3). |
 | **A few words** | A chunk ends at the first of: `words` words; the end of a sentence (`.` `!` `?` `…` `।` `۔` `。` `！` `？`); a pause of 0.15 s or more before the next word; the line limits. A Latin word of 1–2 letters never ends a chunk: it joins the next word. |
 | **One word** | One word per chunk. A Latin word of 1–3 letters joins the next word ("IN THE"). Chinese, Japanese and Thai: Segmenter words, 2–4 characters. |
-| **Stacked** | `words` words (4–8) on up to `lines` lines (2–4). An emphasised word gets a line of its own. Each line is sized to fill `fit` × the room: its size is the room divided by its width at 1 px, clamped to 0.6–2.2 × the look's size. |
+| **Stacked** | `words` words (4–8) on up to `lines` lines (2–4). An emphasised word gets a line of its own. Each line is sized to fill `fit` × the room: its size is the room divided by its width at 1 px, clamped to 0.6–2.2 × the look's size (and never wider than the room, §8.4). |
 
 Chunk times follow `captionLayout` (`layout.ts:359-387`): a chunk starts at its first word, chunks
 that start together share the time, each shows at least min(0.4 s, caption / chunks), and a chunk
@@ -1926,8 +2000,9 @@ Breaks are chosen by dynamic programming over the words of a caption, minimising
 | After `,` `;` `:` `–` `—` | −3 |
 | A pause of 0.25 s or more after the word (0.15 s: −1) | −3 |
 | Before a word of the language's join list (en: and, but, or, so, because, that, which, when, while, if, to, of, in, on, at, for, with, from, by, about, into, than) | −1 |
-| After a word of that list (a line ends in "the", "to", "and") | +4 |
+| After a word of that list, an article, or Hindi's के, की, का (a line ends in "the", "to", "and", or "के" of "के साथ") | +4 |
 | Between a number and its unit or currency ("300 percent", "$ 5") | +8 |
+| Before a postposition, which goes with the word before it (bn: জন্য, থেকে, দিয়ে, সাথে; hi: के, की, का, में, से, पर; "ঢাকা থেকে"), but not after a sentence or clause end (Hindi "पर" there is "but") | +8 |
 | Inside a run of capitalised words ("Visual Studio Code") | +4 |
 
 - **Two-line chunks** are bottom-heavy: +2 when the top line is wider than the bottom one by more
@@ -1937,9 +2012,9 @@ Breaks are chosen by dynamic programming over the words of a caption, minimising
   never after opening punctuation (「『（【〈《〔). Such a break is not allowed at all (infinite
   cost). Korean uses its spaces like Latin.
 
-Join lists (`phraseWords.ts`) exist for en, bn (এবং, কিন্তু, অথবা, যে, কারণ, জন্য, থেকে, দিয়ে,
-সাথে), hi (और, लेकिन, या, कि, क्योंकि, के, की, का, में, से, पर), es, fr, de and pt. Other
-languages use punctuation and pauses only. A caption of up to 400 words (`MAX_WORDS`) is broken in
+Join lists (`phraseWords.ts`) exist for en, bn (এবং, কিন্তু, অথবা, যে, কারণ), hi (और, लेकिन, या,
+कि, क्योंकि), es, fr, de and pt; the postposition lists for bn and hi. Other languages use
+punctuation and pauses only. A caption of up to 400 words (`MAX_WORDS`) is broken in
 under 1 ms.
 
 ### 8.4 Size and room
@@ -1948,6 +2023,15 @@ under 1 ms.
   scale, and the layout measures them at that size.
 - The room is today's: min(0.84 W, W − 0.12 u) less the box padding, inside the text area when
   there is one (`captionMetrics`, `layout.ts:292-310`).
+- No line is wider than the room. A line holding a word too long for it ("TROUBLESHOOTING" in
+  Bold Pop in a tall frame, a long address) is drawn smaller, to the room's width; in One Word
+  and Stacked that goes below their 0.6 floor when it must. A spoken word that grows also stays
+  inside the room at its peak size (Bold Pop's 1.28 pop, Spotlight Word's 1.28), so
+  it never runs past the frame or the text area: a word alone on its line, or a line whose first
+  or last word would grow past the room, is drawn just small enough for it to fit. First and last
+  are where the words show: a run read the other way is mirrored, so in "go الإعدادات في" the
+  Arabic run reads right to left and الإعدادات ends the line. Lines that fit, with their words
+  grown, keep their size.
 - Widths are measured once at 100 px per (font stack, weight, letter spacing, text) and scaled.
   The cache key adds the letter spacing, which today's key lacks (`captionsLayer.ts:25`).
 - Light to Bold measures every word at its spoken weight, so lines never re-break while weights
@@ -1969,8 +2053,10 @@ under 1 ms.
 - **Legacy anchors**: with `layout.legacyAnchor` (a Studio twin, §5.8), the block uses today's
   `placeChunk` anchors for top, middle and bottom instead of the table above.
 - **Dragged**: `place` is the block's centre, normalised. Lines are centred on its x. The block is
-  clamped to stay 0.06 u inside the frame (and inside the text area when there is one). A dragged
-  block does not avoid obstacles: the user put it there.
+  clamped to stay 0.06 u inside the frame (and inside the text area when there is one), with its
+  spoken words at their largest: a block dragged against a side moves in by as far as a line's
+  grown edge word reaches past the block (§8.4), so Bold Pop's popped TROUBLESHOOTING is never cut
+  off. A dragged block does not avoid obstacles: the user put it there.
 - **One caption at the top or the bottom** (`captionPlaces`, §2.7): that caption uses the Top or
   Bottom anchor whatever the look's position, and does not move to avoid obstacles. Legacy looks
   honour it too (`placeOf`, §14.2): `placeChunk` gets 'top' or 'bottom' for that caption.
@@ -2019,7 +2105,9 @@ Then:
 
 The action ranks just below the camera: a block is never moved onto the camera to clear the
 cursor. The result is cached per caption, look, frame size, text area, obstacle boxes and the
-clips (cuts and speed change which samples fall inside the caption's viewing time). Legacy looks
+project (its clips: cuts and speed change which samples fall inside the caption's viewing time;
+its zooms, style, crop and follow settings: they change where the camera shows the action), so
+any edit places the caption again. Legacy looks
 do not keep clear of the action: their placement is pinned by the guard (§16.2); a per-caption
 position works for them.
 
@@ -2063,10 +2151,11 @@ position works for them.
    `itemPose`, `counterValue` and the pop sound times (`popJob`) all use that time. So in a
    continue freeze an emoji stays with its word, a counter keeps counting with the speech, and its
    pop sounds when it appears.
-7. **Estimated words** (`estimated`, NW-09 `fromSound`) get calm word motion (§9.5) and their fill
-   becomes a whole-word colour change. **A translated track** (`captions.track`, §11.9) has no
-   word times at all: while it is shown, spoken marks and word motion are off (chunk entrances and
-   exits stay), and the legacy Bold and Karaoke looks draw no lit word either.
+7. **Estimated words** (`estimated`, NW-09 `fromSound`) get calm word motion (§9.5, so a spoken
+   word does not grow) and their fill becomes a whole-word colour change. **A translated track**
+   (`captions.track`, §11.9) has no word times at all: while it is shown, spoken marks, word
+   motion and the colour of words to come (`theme.upcoming`) are off (chunk entrances and exits
+   stay), and the legacy Bold and Karaoke looks draw no lit word either.
 8. **Speaker labels** take the chunk's pose only.
 9. Preview and export can differ in `t` by up to half a frame (the preview draws at
    `meta.mediaTime`, the export at frame times, `player.ts:474-487`, `exporter.ts:473`), as every
@@ -2114,13 +2203,15 @@ Two looks hand over between chunks: News Bar pushes the old chunk up and out whi
 rises in (0.2 s), and Glass Pill glides the box's width from the old chunk's to the new one's
 (0.16 s). For these, `captionPoses` also returns the outgoing chunk and its pose (`out?: { chunk;
 pose }`) for the first 0.2 s of a chunk. So at most two chunks are drawn at a time, and only
-during such a hand-over.
+during such a hand-over. Glass Pill's old words are not drawn; its pills keep full opacity while
+the new words play the entrance (`box?`: the chunk's pose without its entrance, on every chunk
+after the first), each pill's width going from the old chunk's line of the same index to its own.
 
 **Word motion** (at the word's start; an entrance when the word was hidden or dim, else a beat):
 
 | Kind | d | Pose |
 |---|---|---|
-| pulse | 0.18 s | scale 1 → 1 + 0.08 s over 0.08 s (out), back to 1 over 0.10 s |
+| pulse | 0.18 s | scale 1 → 1 + 0.08 s over 0.08 s (out), back to 1 over 0.10 s; with a spoken size (`spokenScale`, Bold Pop) the spoken word's pop of §5.4 instead |
 | pop | 0.22 s | scale = lerp(0.6, 1, back(p, 1.7 s)) as an entrance, from 0.9 as a beat; alpha = min(1, 3p) |
 | bounce | 0.35 s | dy = −0.035 u · s · (1 − spring(p)) |
 | rise | 0.25 s | dy = (1 − e) · 0.3 em · s; alpha = e; emphDecel |
@@ -2151,7 +2242,9 @@ Shake uses 5 and 7 Hz, under the 12 Hz limit of a 24 fps export, so it never ali
 - Emphasised words use the emphasis colour, font, weight and size, their mark (marker, underline,
   box; drawn with the wipe timing) and `motion.emphasis` instead of `motion.word`.
 - **Tilt**: a seeded angle in [−tilt, +tilt] degrees × strength, on chunks (Comic, Handwritten)
-  or on emphasised words (Bold Pop). Fixed for the chunk or word's whole time.
+  or on emphasised words (Bold Pop). Fixed for the chunk or word's whole time. `spokenTilt`
+  (Bold Pop −2°) turns the word being spoken while it is spoken, × strength; none with calm
+  motion, on estimated words or on Bangla words.
 
 ### 9.5 Strength, speed, calm and reduced motion
 
@@ -2179,7 +2272,11 @@ small (0.006 sr, taken as 341 × 256 px on a 1024 × 768 screen: 2.78% of the sc
    more than 2.5% of the frame. A big mark stays on a word for at least **0.34 s of viewing
    time**. When words come faster, the mark covers the words together instead of jumping.
 2. A **big chunk** (block larger than 2.5% of the frame; One Word is always one) shows for at
-   least 0.34 s of viewing time. A shorter chunk is merged with the next one.
+   least 0.34 s of viewing time. A shorter chunk is merged with the next one. A merged chunk
+   stacks the lines of the chunks it holds; when that block is taller than its place leaves it
+   (the frame, or the text area, at the look's position, a forced position or the dragged place),
+   the whole chunk is drawn smaller to fit (`fitChunk`), so fast speech on a sped-up clip never
+   runs past the frame.
 3. Nothing blinks faster than 3 Hz (the typewriter caret blinks at 0.94 Hz).
 4. Quote cards and chapter titles fade in and out over at least 0.2 s. A keyword card that
    replaces its chunk (§10.1) counts as a big chunk under rule 2.
@@ -2246,11 +2343,18 @@ about 2× slower.
 | **Typical** (1–3 words moving, the rest at rest, one graphic) | about 1.3 ms | |
 | Sprite memory | 'CHANNEL' at px 76: 486 × 215 px, 408 KiB | LRU 64 MB at 1080p, up to 256 MB at 4K |
 | Action obstacles for one caption (§8.6): 30 cursor samples, `frameView` each | to be measured | ≤ 0.2 ms, once per caption (cached) |
-| Make my captions great, offline, 5,000 captions | 78 ms (prototype, Node 22) | Under 200 ms |
+| Make my captions great, offline, 5,000 captions | 78 ms (prototype, Node 22). This build, Node on a shared 4-core box, first run / later runs: 0.18 / 0.09 s wide, 0.20 / 0.12 s tall, 0.24 / 0.15 s tall and camera-led (at 6a92df5: 0.20 / 0.13, 0.33 / 0.23, 0.41 / 0.31 s; before the first fixes of test greatPerf: 0.54 / 0.40 s wide, 1.07 / 0.94 s tall and camera-led). Planned a step at a time with the editor free between the steps: the longest, emphasis, 0.08–0.12 s for the test's denser captions in a tall, camera-led frame (0.20–0.35 s for the whole plan). Polish with an hour's clicks (5,000): 0.17–0.28 s, was 0.56–0.74 s | Under 200 ms holding the editor |
 | Export of 10 min at 1080p30 with Bold Pop | | Logged by the e2e test, target within 5% of the same export with Clean |
 
 A vitest performance test (test 30) lays out 5,000 captions and evaluates poses for 10,000 frames
-under a 6× margin on CI. The rows "to be measured" are measured by the e2e export log (§16.3) on
+under a 6× margin on CI. `tests/greatPerf.test.ts` plans 5,000 captions in a wide frame and in a
+tall, camera-led one under the same margin, checks that no step of the plan takes half of it, and
+counts what made the planner slow, so it cannot come back: a grapheme segmenter for plain ASCII
+words, a number format made per caption, the sensitive words tried stem by stem, a spelled-out
+number read on past a word that is no number, the word scores made twice, a caption's words made
+again by every rule (`studioTokens` keeps the last ones of each caption), each word compared with
+every click, each pop-up's start with every other start (both now found by halving a sorted list),
+and the digits of every word rewritten. The rows "to be measured" are measured by the e2e export log (§16.3) on
 the reference machine before P2 merges, and written into this table.
 
 ---
@@ -2261,21 +2365,26 @@ the reference machine before P2 merges, and written into this table.
 
 | Kind | What it draws | Defaults |
 |---|---|---|
-| **Keyword pop-up** (`graphic`, `keyword`) | A word or a short phrase (at most 40 characters), in the caption look's font. Looks: **Card** (box colour α 0.85, radius 0.3 em, padding 0.4 / 0.25 em, text in the emphasis colour), **Plain** (text colour, outline 0.08 em α 1), **Outline** (hollow, as the Outline look), **Tag** (a pill in the spoken colour, spoken text colour). | Size 0.09 u (×1.2 tall); in pop 0.24 s, out fade 0.18 s. Made from captions: exactly the time of the chunk that holds its words. Added by hand: 1.6 s. |
+| **Keyword pop-up** (`graphic`, `keyword`) | A word or a short phrase (at most 40 characters), in the caption look's font; Bangla the font lacks in the look's Bangla font, as in its captions (§0.2), and the font's partner when the caption language needs letters it lacks, as in its captions (§6.6 rule 2: Anton → Oswald for Russian); the same for counters and list cards. Looks: **Card** (box colour α 0.85, radius 0.3 em, padding 0.4 / 0.25 em, text in the emphasis colour), **Plain** (text colour, outline 0.08 em α 1), **Outline** (hollow, as the Outline look), **Tag** (a pill in the spoken colour, spoken text colour). | Size 0.09 u (×1.2 tall); in pop 0.24 s, out fade 0.18 s. Made from captions: exactly the time of the chunk that holds its words. Added by hand: 1.6 s. |
 | **Emoji** (`emoji`) | One emoji from the bundled emoji font alone. Anchored to a caption word, or free. | Size 0.12 u; in pop (0 → 1.15 → 1 over 0.24 s, back 2.2); a seeded bob of ±0.04 em at 0.8 Hz while shown (off with calm motion or strength 0); out fade; 1.2 s. |
-| **Counter** (`counter`) | A number counting from `from` to `to` over `countFor` (out easing), then holding; an optional label line at 0.45× under it; on a card. Digits sit in fixed cells as wide as the font's widest digit, so the number never jitters (canvas has no tabular-figure switch). Formatted with `Intl.NumberFormat(locale)` and fixed decimals: Bengali digits for `bn` (১২,৩৪,৫৬৭.৫), Devanagari for `mr`, Arabic-Indic for `ar-EG`. | Size 0.11 u; count for max(1.2 s, min(2.0 s, 0.3 s per digit)); then 1.0 s held. |
+| **Counter** (`counter`) | A number counting from `from` to `to` over `countFor` (out easing), then holding; an optional label line at 0.45× under it, spaced 0.15 em (0 in Bangla, Hindi and Arabic, whose letters join, §6.6); on a card. Digits sit in fixed cells as wide as the font's widest digit, so the number never jitters (canvas has no tabular-figure switch); the text between digits is drawn whole, so its letters join and shape (টাকা, লক্ষ, लाख). Formatted with `Intl.NumberFormat(locale)` and fixed decimals: Bengali digits for `bn` (১২,৩৪,৫৬৭.৫), Devanagari for `mr`, Arabic-Indic for `ar-EG`. The captions' Digits choice (§0.2) sets the digits: Western 0–9, or the native digits of the language of the captions on the video (`captionLanguage`), as the captions write theirs, whatever `locale` the counter was made with. | Size 0.11 u; count for max(1.2 s, min(2.0 s, 0.3 s per digit)); then 1.0 s held. |
 | **List card** (`list`) | A card with an optional title (1.1×, 200 heavier) and 1–7 items. Each item appears at its `at` (rise, 0.22 s); the card grows to fit (0.18 s). Markers: 1 2 3, bullets or ticks. | Item size 0.045 u (×1.25 tall); card width 0.42 W (0.8 W tall). Shown from its start; when no item has appeared for 6 s it fades out, and it comes back (with its entrance, showing every item so far) 0.3 s before the next item; it ends 2.0 s after the last item. These windows are a pure function of the items (`listWindows`, §14.1). |
-| **Lower third** (title card, `lower-third`) | The speaker's name, as today's lower thirds draw. | 3.0 s from the speaker's first caption. |
+| **Lower third** (title card, `lower-third`) | The speaker's name, as today's lower thirds draw; Bangla in the caption look's Bangla font (§0.2), as in a chapter title. | 3.0 s from the speaker's first caption. |
 | **Chapter title** (title card, `lower-third`, new source) | The chapter's title at the start of each chapter (`Project.chapters`, made by hand or by AI chapter suggestion). | 2.5 s from 0.3 s after the chapter's `t`; fades over 0.25 s. |
-| **Quote card** (title card, `quote`, new style) | A pull quote, not a full-frame card: a panel at most 0.8 W wide in the caption look's box colour at α 0.85 (radius 0.3 em), centred at 0.72 H in wide frames and 0.45 H in tall ones; the quote in `cat:instrument-serif-italic` at 0.06 u, an opening “ in the emphasis colour at 1.6×, and "— Name" under it at 0.6×. | The quoted caption's time plus 0.5 s, at most 6 s; fades over at least 0.2 s (§9.6). |
+| **Quote card** (title card, `quote`, new style) | A pull quote, not a full-frame card: a panel at most 0.8 W wide in the caption look's box colour at α 0.85 (radius 0.3 em), centred at 0.72 H in wide frames and 0.45 H in tall ones; the quote in `cat:instrument-serif-italic` at 0.06 u (Bangla in `cat:noto-serif-bengali`), an opening “ in the emphasis colour at 1.6×, and "— Name" under it at 0.6×. | The quoted caption's time plus 0.5 s, at most 6 s; fades over at least 0.2 s (§9.6). |
 
 **Nothing is read twice.** A card made from caption words replaces those words while it shows:
 
 - A keyword pop-up with an `anchor` (and `replace` not false): while it shows, the Studio layer
   does not draw the chunk that holds the anchor's first word. Its time is that chunk's time when
-  it is made, so no words are lost and the card takes the chunk's place. If the look changes
-  later and the chunk boundaries move, the rule still holds at every frame: the chunk is hidden
-  only while the card shows. Keyword pop-ups are generated only for looks of *A few words*, *One
+  it is made, so no words are lost and the card takes the chunk's place. The planner measures
+  without the look's real font, and the look or the frame may change later, so the stored time
+  and the drawn chunk can differ: the card shows only while both its own time and the chunk
+  holding the anchor's first word, as the look draws it, hold, and the chunk is hidden for
+  exactly that window. The card is never drawn over another chunk's words. A card whose own time
+  misses that chunk altogether (moved on the Graphics row) replaces nothing: it shows at its own
+  time as a free pop-up, placed clear of the captions. A click on a card's block or row moves the
+  playhead into the time it shows (`graphicShown`). Keyword pop-ups are generated only for looks of *A few words*, *One
   word* and *Stacked* (a *Phrases* chunk is a whole sentence, too long to replace; there the word
   is emphasised in the caption instead). Generated keywords are never also emphasised.
 - An automatic quote card (`auto.by: 'quote'`): while it shows, its caption is not drawn, on
@@ -2301,7 +2410,7 @@ the options of Make my captions great:
 | `emoji` | Emoji, anchored to their word | At most one per 8 s (§11.3). |
 | `speakers` | Lower thirds | At each speaker's first caption, only for names the user typed (not "You", "Others" or "Speaker 2", NW-09's default names). |
 | `chapters` | Chapter titles | Every chapter except one that starts in the first 2 s; at most one per 30 s. |
-| `quotes` | Quote cards | Only with a provider (the AI `marks` answer, §11.2), at most one per 2 minutes. Off by default. |
+| `quotes` | Quote cards | Only with a provider (the AI `marks` answer, §11.2), at most one per 2 minutes; a run without that answer keeps the quote cards made. Off by default. |
 
 - **Timing.** A graphic starts 0.1 s before its word, in source seconds (a keyword: its chunk's
   time).
@@ -2347,8 +2456,13 @@ Candidate centres:
 The first candidate with no overlap wins. Else the first is shrunk with `keepInArea`
 (`safeZones.ts:138-149`, down to 0.6). Else the candidate with the least overlap that never
 covers a caption. Priority: captions, then the camera and face, then the action, then app safe
-zones, then other graphics. The place is computed once per (graphic, frame size, caption layout,
-camera layouts, action boxes, clips) and cached, so a graphic never moves while it shows. A
+zones, then other graphics. The place is computed once per (graphic, frame size, project, action
+boxes) and cached, so a graphic never moves while it shows; any edit places it again, as it does a
+caption (§8.6), since the zooms, style, crop, follow settings and title cards move the action and
+the captions. Only the graphics a frame shows are placed, each after the earlier graphics that
+overlap it in time (and theirs), so an edit costs the few graphics on screen, not every graphic
+of the project; the places of a few frame sizes are kept, so the preview and its handles at the
+output size do not place each other's graphics again. A
 dragged graphic (`place: { x, y }`) stays where the user put it, kept inside the frame. A list
 card's place is computed over its whole time, so it does not move between its windows.
 
@@ -2389,7 +2503,8 @@ work between graphics.
 ones are refitted like images (`refitItems`, `duplicate.ts:97-124`). The caption look is chosen
 again for the new shape when it was not picked by hand (`captions.picked` absent) or is an
 unedited built-in tile: the copy gets what Auto style gives the new frame (§11.6), with the notice
-"Captions: Bold Pop for the vertical version". An edited, saved or brand look is kept.
+"Captions: Bold Pop for the vertical version". An edited, saved or brand look is kept, a brand
+look given by Auto style (rule 1, not picked by hand) too.
 
 ### 10.6 Sound on pops
 
@@ -2402,9 +2517,10 @@ unedited built-in tile: the copy gets what Auto style gives the new frame (§11.
 | Pop | 520, 0.55, 0.040 s · 1040, 0.25, 0.020 s · 2600, 0.08, 0.006 s | 0.12 s |
 | Ding | 1320, 0.40, 0.35 s · 2640, 0.12, 0.18 s · 3960, 0.05, 0.08 s | 0.90 s |
 
-- Each plays when its graphic appears, at volume 0.35. Its output time is the graphic's start
-  mapped to output time on the captions' clock (in a continue freeze, the sound time), so the pop
-  and the picture agree. The export mixes them with the click-track builder (`clickTrackGraph`,
+- Each plays when its graphic appears, at volume 0.35. Its output time is the time the graphic
+  starts to show (`graphicShown`: its own start, or for a keyword that replaces its chunk the
+  start of that chunk as the look draws it in the frame, §10.1) mapped to output time on the
+  captions' clock (in a continue freeze, the sound time), so the pop and the picture agree. The export mixes them with the click-track builder (`clickTrackGraph`,
   `audioPlan.ts:261`) as one more track; the preview plays them with Web Audio like clicks.
 - A list card plays its sound once, at its start.
 - Wave 10's sound library (LT-13) adds sound files later under new ids.
@@ -2456,6 +2572,14 @@ give (`migrateProject(JSON.parse(JSON.stringify(p)))` for these fields; test 49)
 3. Else the record is dropped (a mark deleted; an anchor removed, so the graphic stays free; a
    keyword then replaces nothing).
 
+Only a record the previous project had (the same id on the same words) is remapped: one the
+update itself made or moved already names the new captions' words and is only checked. Make my
+captions great (and Polish's Caption look) tidies first, moves the marks and anchors already there
+onto the tidied words, and picks its emphasis, keywords and emoji on the tidied text; the AI's
+`marks` task is asked on the captions as that tidy leaves them, so its word indexes are the
+planner's ("twenty five" sent as "25"). An automatic mark that tidy moves gets a new id from its
+new words, so the settle reads it as automation's change and it stays automatic (§11.8 rule 3).
+
 Per-caption positions (`captionPlaces`) follow their caption the same way: after a split both
 halves keep the position, after a merge the merged caption keeps the first one's, and a caption
 that is gone drops its entry. Bleeps need none of this: they are time-based (§11.7).
@@ -2503,8 +2627,11 @@ Batches of 150 captions and 12,000 characters (`transcriptText.ts:27-28`); for l
    words for emphasis, 8 for numbers and list items, 20 for quotes.
 2. Punctuation-only tokens dropped; repeats removed; at most 3 emphasised words per caption and
    20% of all words (over that, the offline scores decide).
-3. An emoji must equal one entry of Flown's emoji list after removing U+FE0F; anything with a
-   letter (`\p{L}`) or not in the list is refused. At most 1 per caption and 1 per 8 s. Captions
+3. An emoji must equal one entry of Flown's emoji list after removing U+FE0F: one of the chosen
+   emoji of §11.3 (the trigger words' emoji, none of its never list), not merely one the font
+   draws, so flags, alcohol, skin tones and gender variants are refused too (`chosenEmoji`, checked
+   again when the planner places it); anything with a letter (`\p{L}`) or not in the list is
+   refused. At most 1 per caption and 1 per 8 s. Captions
    the offline filter marks sensitive get none.
 4. Numbers: the span must hold a digit or a number word the local parser reads, and pass the
    statistics rule of §11.4. **The value is always computed locally.**
@@ -2573,8 +2700,9 @@ answer, `requestId` and `cancelAiText` (publish-pack), keys kept in main.
   CLDR's number-spelling rules (`cldr-rbnf` 49.0.0, Unicode-3.0; `bn-SpelloutRules.txt` lists
   0–99 and শো, হাজার, লাখ, কোটি), under 10 KB.
 - **Fields**: `to` = the value, `decimals` from the text (0–2), `prefix` and `suffix` from the
-  sign and unit as written ("$", "%", "M"), `locale` = the transcript's language, `label` = the
-  noun after the number when there is one ("users").
+  sign and unit as written ("$", "%", "M"), `locale` = the transcript's language (`bn` when it
+  names none and is mostly Bangla, as the captions read it; `en` otherwise), `label` = the
+  noun after the number when there is one ("users"). A counter added by hand takes the same `locale`.
 - Prototype: "300%" → 300 with suffix %; "$1.2M" → prefix $, 1.2, suffix M; "৩০০ শতাংশ" → 300;
   "2" and "2024" left out as a label and a year; "300 pixels" and "12 options" left out.
 
@@ -2606,7 +2734,10 @@ captions, Make my captions great or Polish) or the legacy fields equal `DEFAULT_
 from `show`, `showSpeaker`, `track` and `font` (a project still on the default). Every change in
 the Look section sets `picked` (§2.6, §5.8), so a look picked by hand, Clean included, is never
 replaced; an old project whose user chose Boxed in 0.8 has legacy fields that differ from the
-default and is never replaced either.
+default and is never replaced either. The Studio twin that emphasis makes of a Classic look
+(Ctrl+B, Find important words, Make my captions great's emphasis step; its `from` is the Classic
+preset) is neither a pick nor automation's: the Classic look's rule still applies to it, so that
+Boxed stays protected after Ctrl+B, and a twin of the default Clean can still be restyled.
 A brand kit's body font (written into every new recording's `captions.font` by
 `applyBrandKitToNew`) is not a pick: Auto style carries it into the new look's text font (and
 into the emphasis font when the look's emphasis uses the text's font). Old projects have no
@@ -2624,7 +2755,7 @@ Rules, first match wins, with the reason shown in the notice and in Review:
 | # | Condition | Look | Reason text |
 |---|---|---|---|
 | 1 | The brand kit has a caption style | Brand | "Your brand kit's caption style" |
-| 2a | Tall frame, camera-led | Bold Pop; 4 words when speech is faster than 190 words a minute; spoken mark and word motion off when more than 50% of word times are estimated (`estimatedShare`, NW-09) | "Bold Pop: you are on camera in a tall video" |
+| 2a | Tall frame, camera-led | Bold Pop; 4 words when speech is faster than 190 words a minute; spoken mark, word motion and the growing, tilting spoken word off when more than 50% of word times are estimated (`estimatedShare`, NW-09) | "Bold Pop: you are on camera in a tall video" |
 | 2b | Tall frame, not camera-led | Clean Short | "Clean Short: a screen recording for phones" |
 | 3 | Square frame | Camera-led: Highlight Box, 5 words, 2 lines; else Clean Short, 4 words | "Highlight Box: a square video for feeds" / "Clean Short: a square screen recording" |
 | 4 | Wide frame, two or more named speakers | Subtitle with speaker names and a colour per speaker (§7.4) | "Subtitle with names and a colour per speaker" |
@@ -2655,8 +2786,10 @@ Offline rules, each optional (§2.9). The choices are `CleanupChoices` (`caps`, 
    (Netflix's guides: 1–10 written out in most languages, 1–12 in Norwegian). "one" in "this one"
    and "one of the" stays a word. When words join ("twenty five" → "25"), their times merge (first
    start to last end), so word timing survives.
-4. **Word list**: whole words replaced without regard to case; close misspellings (one letter off)
-   for words of 5 letters or more; each term's "also heard as" forms. The list also steers
+4. **Word list**: whole words replaced without regard to case, and the term's "also heard as" forms
+   matched as written ("qbexl" → "Qbexel" when listed). A word one letter away from a term is never
+   taken for it: that is often another real word ("start" and Stuart, "seven" and Steven, "plant"
+   and Planet, "stack" and Slack), so a mishearing goes in "also heard as". The list also steers
    transcription: the local engine's `--prompt` (`native/speech/src/args.rs:185-212`) becomes a
    supported option fed "Glossary: Flown, Qbexel." (Whisper keeps at most 224 prompt tokens);
    OpenAI's transcription `prompt` field; a "Spell these names as written" line in Gemini's data
@@ -2667,7 +2800,9 @@ Offline rules, each optional (§2.9). The choices are `CleanupChoices` (`caps`, 
      `NN-caption-data.txt`, §6.9; 28 languages, no bn, ur, ta, te or mr). Bangla and the missing
      languages: short lists the team writes (CC0-1.0). The user's own words can be added.
    - Matching: lower case, punctuation removed, repeated letters collapsed, safe look-alikes
-     checked.
+     checked. The team's lists match whole words, each form listed (বালের, চোদেন, চোদায়; a noun
+     with each case and plural ending: খানকিকে, চোদনার, হারামজাদাদের), never as a prefix: বাল and চোদ
+     begin everyday words such as বালক, বালিশ and চোদ্দ.
    - **A bleep is time-based** (`Bleep`, §4.1): its source-time span is the word's time ± 0.05 s
      (± 0.15 s for estimated times, with the notice "Some bleeped words have estimated times, so a
      little more is bleeped"), and it keeps the matched word in lower case. It carries no caption
@@ -2679,7 +2814,14 @@ Offline rules, each optional (§2.9). The choices are `CleanupChoices` (`caps`, 
      sound is muted. Masks ("f***": first letter and asterisks, the same number of graphemes;
      "****" in scripts without case) apply in the burned-in captions on every look (through
      `burnedSegments`, §14.2), in SRT, VTT and text exports (`subtitles.ts`), in subtitle streams,
-     and in Review rows and their accessible names. The transcript keeps the real word.
+     and in Review rows and their accessible names. The transcript keeps the real word. Motion
+     graphics never show one (`wordsBleeped`): Make my captions great makes no keyword pop-up, AI
+     list card or quote card with a bleeped word, an offline list card shows it masked, and a
+     counter drops it as its label; a keyword pop-up made before the bleep is not drawn (nor its
+     pop sound), so the caption's chunk shows with the mask. Any other text drawn from caption
+     words (a list card's title and items, a counter label, a free keyword, a quote card) masks
+     each word a bleep is for as it is drawn (`maskBleeped`, by the bleep's `word`), so a card made
+     before the bleep shows the mask too.
    - **Sound.** Both choices mute the recording's sound over the span with the sound finder's
      mechanism (F-17, `rev/sound-finder`): `bleepGains(project)` gives a `SoundGain` of gain 0 per
      bleep, and `soundGains` (`soundsEdit.ts:136`) joins them with the found sounds' spans through
@@ -2692,7 +2834,8 @@ Offline rules, each optional (§2.9). The choices are `CleanupChoices` (`caps`, 
 6. **AI fix** (`ai`, off by default, needs a provider): today's **Fix captions** (`cleanup`
    text task, `transcriptText.ts`), checked by `applyTextResult` (`edit.ts:156-175`) as today.
    It runs after rules 1–4 inside the same Tidy captions action, and its changes are recorded with
-   theirs.
+   theirs. The provider is sent the captions as rules 1–4 leave them, so its answer keeps the word
+   list's terms, the digits, the capitals and the full stops.
 
 The clean-up is one undo step. Each caption it changed gets a `captionAuto.text` record with its
 text and words before.
@@ -2745,10 +2888,14 @@ deep-equal project and the store, which skips an update only when `next === prev
 (`editStore.ts:71`), adds no undo step. Review's merge of what is pending then sees the same keys.
 
 **Runner** (`src/renderer/src/editor/greatRun.ts`): first gathers the slow input (the AI `marks`
-answer, with a `requestId` so **Cancel** works; nothing else waits), then `store.seal();
-store.update((p) => planCaptionsGreat({ ...input, project: p }, options).project); store.seal()`,
-as Polish does (polish-in-one-click decision 3): **one undo step**. AI marks for a caption whose
-text changed while waiting are dropped (a hash of the caption text is compared).
+answer, with a `requestId` so **Cancel** works; nothing else waits), then plans the project as it
+is a step at a time (`planCaptionsGreatSteps`: tidy; style and emphasis; each kind of graphic),
+with the editor free between the steps (§9.8; **Cancel** there changes nothing), then `store.seal();
+store.update((p) => (p === from ? planned : planCaptionsGreat({ ...input, project: p },
+options)).project); store.seal()`, as Polish does (polish-in-one-click decision 3): **one undo
+step**, planned again at once from an edit made while it planned. AI marks for a caption whose
+text changed while waiting are dropped (a hash of the caption text is compared). Polish's runner
+plans its Caption look in the same steps (`planPolishSteps`).
 
 **Records and the settle rule.** `settleCaptionAuto(next, prev)` (`src/shared/captions/
 captionAutoSettle.ts`) joins the store's settle chain after `settleDeletedWords` and
@@ -2955,7 +3102,10 @@ translation is applied when the worker or provider has finished.
   `.part` file resumed with Range, the hash computed while the bytes stream, the size checked
   before more bytes are written than pinned, fsync, rename with retries, a disk-space check with
   64 MB spare, three retries. A mismatch deletes the file: "The download did not match the
-  expected file, so it was deleted."
+  expected file, so it was deleted." A font download the last source refuses says "GitHub or your
+  network refused the download (HTTP 403). A proxy or firewall may be blocking it."; one no longer
+  there says "The font is no longer at its address (HTTP 404)." (the speech store's words name a
+  model and Hugging Face).
 - **Hosts**: `downloadPinned` gains an `allow(url)` option and a list of sources tried in order.
   Caption assets allow only https on port 443 without credentials and exactly these prefixes:
   1. the Qbexel mirror on Hugging Face at a pinned commit
@@ -2976,7 +3126,9 @@ translation is applied when the worker or provider has finished.
   passes the pinned unpacked size, then hashed against the registry's SHA-256.
 - **Storage**: `userData/caption-assets/` with an `assets.json` of verified `{ bytes, mtimeMs }`
   records, read through a sanitiser; stale `.part` files removed as the speech store does
-  (`STALE_PART_MS`, `src/main/speech/models.ts:27-31`).
+  (`STALE_PART_MS`, `src/main/speech/models.ts:27-31`). Each change of `assets.json` is read,
+  changed and written in one main-process turn (`writeFileAtomicSync`, its rename tried again
+  while Windows briefly locks the file), so two downloads ending together keep both records.
 - **Nothing downloaded runs.** Fonts go to `FontFace(bytes)`, where Chromium's sanitiser (OTS)
   checks every table. Model files are data for the bundled WebAssembly runtime, which runs in a
   worker without IPC. The runtime itself is bundled.
@@ -3089,15 +3241,68 @@ start. Changed later only with every part's agreement, recorded in this section.
   output for the pinned inputs; `emojiList.ts` equals `build-emoji-data.mjs --check`'s.
 - The `data-testid` list of §2 as a comment block at the top of `tests/e2e/captions-studio.e2e.cjs`.
 
+#### 14.0.1 The contracts as built for phase A (31 October 2026)
+
+What the contracts commits on `feat/captions-studio` froze beyond the text above, so the parts build
+on the same thing:
+
+- **Types the approved looks need** (§0.1, §0.2; every parameter that draws stays in the look):
+  `StudioBoxKind` gains `'word'` (Stickers), `'bubble'` (Speech Bubble) and `'chat'` (Chat);
+  `EmphasisMark` gains `'circle'` (Circle; `theme.emphasisText` is then the words' colour);
+  `WordMotion` gains `'grow'` (Editorial's emphasis). `StudioText.spokenWeight` (Light to Bold's
+  700) and `StudioText.scripts.bengali` (`StudioScriptFont`: the look's Bangla font, weight and
+  width). `StudioTheme.fill` (a gradient text fill, `across` or `down`: Gradient, Gold; optional stop places `at`, 0..1 and never going back, which Gold's 0, 45, 55 and 100% use), `border`,
+  `youBox` and `youText` (Chat), `extrude` and `spokenExtrude`, `split`. `StudioEdge.extrude`
+  (3D Block) and `split` (Retro Pixel). `StudioBox.gap`, `shadow` (a shadow under each box) and
+  `tail`; the border limit is 0.12 em. `CaptionMotion.wordTilt` (Stickers' −4° / +3° by word
+  index), `spokenScale` (1..1.3) and `spokenTilt` (degrees, −8..8: Bold Pop's −2° while spoken). `CaptionSettings.digits` (`'native'` or `'western'`, §0.2),
+  in the language of the captions on the video (`captionLanguage`: the shown track's, else the
+  transcript's, else Bangla when the transcript names none and is mostly Bangla); the Digits, Case
+  and Letter spacing controls follow the same language. In captions and chapter titles a Latin
+  word keeps its own digits ("MP3", "1080p"), and a word whose digits change takes their script.
+  `STUDIO_LIMITS` holds the new limits.
+- **Readers**: an unknown `cat:` emphasis font is dropped (the text's font draws); repeated ids
+  become `id~2`, `id~3`; overlapping marks keep the first one's id and tone, `auto` only when both
+  were; a mark or anchor text cut at 80 characters names the start of its words; emoji keys are
+  lower case without FE0F and leading zeros; a track with an unknown `by` reads `'local'`, and a
+  track keeps its row with no segments left.
+- **Fonts** (§0.3 decision 2): `fontCatalog.ts` lists 40 fonts; each `CatalogFile` pins the upstream
+  TTF (`path`, `bytes`, `sha256`) and, for the 36 bundled fonts, the committed WOFF2 (`woff2.file`,
+  `bytes`, `sha256`; 42 files, 7.47 MB). The WOFF2 files keep every TTF table byte for byte (null
+  transforms), so `node scripts/fonts.mjs check` proves each against its TTF. Besides §6 and the
+  seven Bangla families, the looks of §0.1 bring Archivo Black, Lilita One, Press Start 2P, Rubik,
+  Playfair Display and Fredoka. WOFF2 does not compress further: the fonts add about 7.45 MB to the
+  installer (brotli q11), so `CAPTIONS_BUDGET` (§6.9) is sized by P2 from these numbers.
+- **The word splitter** (`studioWords`, `studioWordTexts`, §8.1) is written in the contracts,
+  because the readers check marks and anchors with it; P1 writes the rest of `words.ts`.
+- **Looks**: Glass Pill's words not yet spoken are at 0.8 (0.78 is 4.50:1 on its tint over white);
+  Text Box's soft shadow is the boxes' (`box.shadow`); Terminal's 0.2 s fade is `speed` 0.6. Of the
+  approved looks, Chat's blue, Bubble's pink and purple and 3D Block's edge were darkened, and
+  Retro Pixel, Gold, Gradient, Spotlight Word and Cinema have a dark edge, so each passes §7.2
+  (each look says so in `studioPresets.ts`). Chat and Cinema draw Bangla in Noto Sans Bengali.
+- **Stubs** return their input on the legacy drawing's identity paths (`burnedSegments`,
+  `placeOf`, `maskedSegments`, `replacedAt`), so a part merged before another never changes how
+  old projects draw. `'marks'` is in `AiTextTask` but joins `AI_TEXT_TASKS` with P4's prompt. The
+  seven commands open the Captions tab until P3 wires them. Polish's Caption look skips until P4
+  makes it run; it is available with a transcript or when the Captions step can make one.
+- **Phase B** (after the review-mode, publishing-pack, sound-finder and versions branches merge):
+  the review kinds and `ReviewItem.members`, the smaller `CaptionsAiTask`, test 1's fixtures of
+  those branches' projects, `bleepGains` returning the sound finder's `SoundGain` (a local type
+  until then, `TODO(phase B)`), and offline translation with its catalogue (`catalog.ts`,
+  `resources/translate/models.json`, `scripts/build-translate-catalog.mjs`). The inputs are
+  checked: the saved registry is the pinned 188,342 bytes, and the archived
+  mozilla/firefox-translations-models at `e7957fc407441a5e3e35bbcbf9d60d9b35764618` serves the
+  pinned `by-hash.json` and Git LFS pointers (en → bn's model: `df17fb75…`, 12,821,521 bytes).
+
 ### 14.1 Part P1 · Look, layout and motion engine (pure, `src/shared`)
 
 | File | Exports |
 |---|---|
 | `src/shared/captions/words.ts` (new) | `type ScriptTag = 'latin' \| 'cyrillic' \| 'greek' \| 'arabic' \| 'hebrew' \| 'devanagari' \| 'bengali' \| 'tamil' \| 'telugu' \| 'thai' \| 'han' \| 'kana' \| 'hangul' \| 'other'`; `interface StudioToken extends CaptionToken { word: number; gap: boolean; estimated?: true; dir: 'l' \| 'r'; script: ScriptTag }`; `function studioWordTexts(text: string, language?: string): string[]`; `function studioWords(text: string, language?: string): { text: string; gap: boolean }[]`; `function studioTokens(seg: Pick<CaptionSegment, 'start' \| 'end' \| 'text' \| 'words' \| 'speaker'>, language?: string, withLabel?: boolean): StudioToken[]`; `function scriptOf(text: string): ScriptTag`; `function mainScript(text: string): { script: ScriptTag; share: number }`; `function scriptsIn(texts: Iterable<string>): Set<ScriptTag>`; `function prefixDrawsSame(script: ScriptTag): boolean` |
 | `src/shared/captions/phraseWords.ts` (new) | `const JOIN_WORDS: Readonly<Record<string, readonly string[]>>`; `const SENTENCE_END: RegExp`; `const CLAUSE_END: RegExp`; `const NO_LINE_START: RegExp`; `const NO_LINE_END: RegExp` (kinsoku, §8.3) |
-| `src/shared/captions/studioLayout.ts` (new) | `interface StudioFace { stack: string; weight: number; tracking: number }`; `type StudioMeasure = (text: string, px: number, face: StudioFace) => number`; `interface StudioWordBox { token: number; text: string; x: number; w: number; px: number; face: StudioFace; role: 'text' \| 'emphasis'; tone?: 2 }`; `interface StudioLine { words: StudioWordBox[]; width: number; height: number; px: number }`; `interface StudioChunk { start: number; end: number; lines: StudioLine[]; first: number; last: number; width: number; height: number }`; `interface StudioLayout { tokens: StudioToken[]; chunks: StudioChunk[]; px: number; lineHeight: number; rtl: boolean; dirs: ('l' \| 'r')[]; emphasis: (0 \| 1 \| 2)[] }`; `function studioMetrics(studio: CaptionStudio, w: number, h: number, area?: Rect \| null, script?: ScriptTag): { px: number; lineHeight: number; maxWidth: number; maxChars: number; tall: boolean }`; `function studioLayout(seg: CaptionSegment, studio: CaptionStudio, w: number, h: number, measure: StudioMeasure, opts: { faceOf: (token: StudioToken, role: 'text' \| 'emphasis') => StudioFace; area?: Rect \| null; marks?: readonly { from: number; to: number; tone?: 2 }[]; language?: string; showSpeaker?: boolean; spoken?: boolean }): StudioLayout`; `function breakPhrases(widths: number[], tokens: StudioToken[], room: number, maxChars: number, lines: number, language?: string): [number, number][][]`; `function studioChunkAt(layout: StudioLayout, t: number): number`; `function placeStudio(layout: StudioLayout, chunk: StudioChunk, studio: CaptionStudio, w: number, h: number, opts: { area?: Rect \| null; obstacles?: CaptionObstacles; forced?: 'top' \| 'bottom'; legacyAnchor?: (position: CaptionSettings['position']) => number }): { lines: { x: number; y: number; width: number }[]; top: number; height: number; box: Rect; edge: 'top' \| 'middle' \| 'bottom' }`; `interface CaptionObstacles { camera: readonly Rect[]; titles: readonly Rect[]; keys: Rect \| null; action: readonly { t: number; rect: Rect }[] }`; `function captionObstacles(project: Project, seg: CaptionSegment, w: number, h: number, given: { titles: readonly { start: number; end: number; box: Rect }[]; keys: Rect \| null; action: readonly { t: number; rect: Rect }[] }): CaptionObstacles`; `function blockEdge(position: StudioPosition \| null, centreY: number, h: number): 'top' \| 'middle' \| 'bottom'` (for `captionBlockAt`, §8.5) |
+| `src/shared/captions/studioLayout.ts` (new) | `interface StudioFace { stack: string; weight: number; tracking: number }`; `type StudioMeasure = (text: string, px: number, face: StudioFace) => number`; `interface StudioWordBox { token: number; text: string; x: number; w: number; px: number; face: StudioFace; role: 'text' \| 'emphasis'; tone?: 2 }`; `interface StudioLine { words: StudioWordBox[]; width: number; height: number; px: number }`; `interface StudioChunk { start: number; end: number; lines: StudioLine[]; first: number; last: number; width: number; height: number }`; `interface StudioLayout { tokens: StudioToken[]; chunks: StudioChunk[]; px: number; lineHeight: number; rtl: boolean; dirs: ('l' \| 'r')[]; emphasis: (0 \| 1 \| 2)[] }`; `function studioMetrics(studio: CaptionStudio, w: number, h: number, area?: Rect \| null, script?: ScriptTag): { px: number; lineHeight: number; maxWidth: number; maxChars: number; tall: boolean }`; `function studioLayout(seg: CaptionSegment, studio: CaptionStudio, w: number, h: number, measure: StudioMeasure, opts: { faceOf: (token: StudioToken, role: 'text' \| 'emphasis') => StudioFace; area?: Rect \| null; marks?: readonly { from: number; to: number; tone?: 2 }[]; language?: string; showSpeaker?: boolean; spoken?: boolean }): StudioLayout`; `function breakPhrases(widths: number[], tokens: StudioToken[], room: number, maxChars: number, lines: number, language?: string): [number, number][][]`; `function studioChunkAt(layout: StudioLayout, t: number): number`; `function fitChunk(layout: StudioLayout, chunk: StudioChunk, studio: CaptionStudio, w: number, h: number, opts: { area?: Rect \| null; forced?: 'top' \| 'bottom'; legacyAnchor?: (position: CaptionSettings['position']) => number }): StudioChunk` (§9.6 rule 2); `function placeStudio(layout: StudioLayout, chunk: StudioChunk, studio: CaptionStudio, w: number, h: number, opts: { area?: Rect \| null; obstacles?: CaptionObstacles; forced?: 'top' \| 'bottom'; legacyAnchor?: (position: CaptionSettings['position']) => number }): { lines: { x: number; y: number; width: number }[]; top: number; height: number; box: Rect; edge: 'top' \| 'middle' \| 'bottom' }`; `interface CaptionObstacles { camera: readonly Rect[]; titles: readonly Rect[]; keys: Rect \| null; action: readonly { t: number; rect: Rect }[] }`; `function captionObstacles(project: Project, seg: CaptionSegment, w: number, h: number, given: { titles: readonly { start: number; end: number; box: Rect }[]; keys: Rect \| null; action: readonly { t: number; rect: Rect }[] }): CaptionObstacles`; `function blockEdge(position: StudioPosition \| null, centreY: number, h: number): 'top' \| 'middle' \| 'bottom'` (for `captionBlockAt`, §8.5) |
 | `src/shared/render/actionRects.ts` (new) | `function actionRects(scene: ViewScene, cursor: CursorTrack \| null, zoom: AutoZoomSettings, w: number, h: number, vw: number, vh: number, t0: number, t1: number, clips: Clip[]): { t: number; rect: Rect }[]` (§8.6: cursor every 0.1 s, clicks, typing places, in output pixels after zoom and pan, padded by 0.08 u; skips cut time) |
-| `src/shared/captions/motion.ts` (new) | `const EASE: Record<'out' \| 'outQuart' \| 'inCubic' \| 'outExpo' \| 'emphDecel' \| 'emphAccel', (p: number) => number>`; `function back(p: number, c: number): number`; `function spring(p: number): number`; `function seedOf(key: string): number`; `function clipsKey(clips: readonly Clip[]): string`; `interface WordPose { token: number; dx: number; dy: number; scale: number; scaleX: number; rotate: number; alpha: number; blur: number; reveal: number; fill: number; weight: number; mark: number }`; `interface ChunkPose { alpha: number; dx: number; dy: number; scale: number; scaleX: number; rotate: number; blur: number; reveal: number }`; `interface MarkBox { x: number; w: number; line: number; alpha: number; first: number; last: number }`; `function captionPoses(layout: StudioLayout, chunk: number, t: number, clips: Clip[], studio: CaptionStudio, u: number, nextStart: number \| null, opts?: { spoken: boolean }): { chunk: ChunkPose; words: WordPose[]; mark: MarkBox \| null; out?: { chunk: number; pose: ChunkPose } }`; `function itemPose(start: number, end: number, t: number, clips: Clip[], enter: ItemMotion, exit: ItemMotion, u: number, calm: boolean): ChunkPose \| null`; `function counterValue(g: CounterGraphic, t: number, clips: Clip[]): number`; `function listWindows(g: ListGraphic, clips: Clip[]): { start: number; end: number }[]`; `function calmed(m: CaptionMotion): CaptionMotion`; `function flashSafeChunks(layout: StudioLayout, clips: Clip[], frameArea: number, boxArea: (chunk: number) => number): StudioLayout`; `function typewriterClip(word: { graphemes: number; prefixAdvances?: readonly number[]; width: number }, k: number): number` |
+| `src/shared/captions/motion.ts` (new) | `const EASE: Record<'out' \| 'outQuart' \| 'inCubic' \| 'outExpo' \| 'emphDecel' \| 'emphAccel', (p: number) => number>`; `function back(p: number, c: number): number`; `function spring(p: number): number`; `function seedOf(key: string): number`; `function clipsKey(clips: readonly Clip[]): string`; `interface WordPose { token: number; dx: number; dy: number; scale: number; scaleX: number; rotate: number; alpha: number; blur: number; reveal: number; fill: number; weight: number; mark: number }`; `interface ChunkPose { alpha: number; dx: number; dy: number; scale: number; scaleX: number; rotate: number; blur: number; reveal: number }`; `interface MarkBox { x: number; w: number; line: number; alpha: number; first: number; last: number }`; `function captionPoses(layout: StudioLayout, chunk: number, t: number, clips: Clip[], studio: CaptionStudio, u: number, nextStart: number \| null, opts?: { spoken: boolean }): { chunk: ChunkPose; words: WordPose[]; mark: MarkBox \| null; out?: { chunk: number; pose: ChunkPose }; box?: ChunkPose }`; `function itemPose(start: number, end: number, t: number, clips: Clip[], enter: ItemMotion, exit: ItemMotion, u: number, calm: boolean): ChunkPose \| null`; `function counterValue(g: CounterGraphic, t: number, clips: Clip[]): number`; `function listWindows(g: ListGraphic, clips: Clip[]): { start: number; end: number }[]`; `function calmed(m: CaptionMotion): CaptionMotion`; `function flashSafeChunks(layout: StudioLayout, clips: Clip[], frameArea: number, boxArea: (chunk: number) => number, fit?: (chunk: StudioChunk) => StudioChunk): StudioLayout`; `function typewriterClip(word: { graphemes: number; prefixAdvances?: readonly number[]; width: number }, k: number): number` |
 | `src/shared/captions/colors.ts` (new) | `function contrastRatio(a: string, b: string): number`; `function over(color: string, alpha: number, under: string): string`; `function staticContrast(studio: CaptionStudio): { worst: number; colour: string; against: string }`; `function measuredContrast(studio: CaptionStudio, pixels: Uint8ClampedArray): number`; `function contrastFix(studio: CaptionStudio): CaptionStudio`; `function withTheme(studio: CaptionStudio, theme: StudioTheme): CaptionStudio`; `function brandTheme(colors: readonly string[], studio: CaptionStudio): { theme: StudioTheme; lightened: string[] } \| null`; `function textOn(background: string): '#111111' \| '#ffffff'`; `function speakerColors(studio: CaptionStudio, speakers: number): string[]` (§7.4) |
 | `src/shared/captions/fontStack.ts` (new) | `function wordFace(studio: CaptionStudio, role: 'text' \| 'emphasis', script: ScriptTag, ctx: { language?: string; scripts: Set<ScriptTag>; fonts?: readonly ProjectFont[]; downloaded: (id: string) => boolean }): StudioFace` (§6.5: the font drawing that script first, the weight clamped against it); `function studioFontStack(studio: CaptionStudio, role: 'text' \| 'emphasis', ctx: { language?: string; scripts: Set<ScriptTag>; main: { script: ScriptTag; share: number }; fonts?: readonly ProjectFont[]; downloaded: (id: string) => boolean }): string`; `function clampWeight(font: string, weight: number): number`; `function coverageNeeded(language: string \| undefined, text: string): string[]`; `function partnerFor(font: string, needs: string[]): string`; `function scriptLineHeight(script: ScriptTag, lineHeight: number): number`; `function trackingFor(script: ScriptTag, tracking: number): number` |
 | `src/shared/captions/studioEdit.ts` (new) | `function legacyTwin(settings: CaptionSettings): CaptionStudio` (sets `legacyAnchor`); `function withStudioTile(settings: CaptionSettings, tile: string, frame: { w: number; h: number }, opts?: { saved?: readonly { id: string; look: CaptionStudio }[]; brand?: CaptionStudio }): CaptionSettings` (sets `picked`); `function withLegacyTile(settings: CaptionSettings, preset: CaptionPreset): CaptionSettings`; `function editStudio(settings: CaptionSettings, patch: (s: CaptionStudio) => CaptionStudio): CaptionSettings` (twin when needed, `picked`); `function studioEdited(studio: CaptionStudio, saved?: readonly { id: string; look: CaptionStudio }[]): boolean`; `function studioSize(studio: CaptionStudio, w: number, h: number): number`; `function setStudioSize(studio: CaptionStudio, shown: number, w: number, h: number): CaptionStudio`; `function lineLengthOf(studio: CaptionStudio): 'short' \| 'medium' \| 'long' \| null`; `function withLineLength(studio: CaptionStudio, l: 'short' \| 'medium' \| 'long'): CaptionStudio`; `function withSpeakerNames(settings: CaptionSettings, on: boolean): CaptionSettings` (off also clears `speakerColors`) |
@@ -3119,11 +3324,11 @@ May touch additively: none beyond its own files.
 | `src/renderer/src/render/graphicsLayer.ts` (new) | `export function drawGraphicsLayer(fc: FrameContext): void`; `export function graphicRects(ctx: CanvasRenderingContext2D, project: Project, t: number, w: number, h: number): { id: string; rect: Rect }[]` (hit tests) |
 | `src/renderer/src/render/compositor.ts` | `drawGraphicsLayer(soundTime === t ? top : { ...top, t: soundTime })` between `drawAnnotations` and `drawCaptionsLayer` (§9.1 rule 6). |
 | `src/renderer/src/render/titleCardLayer.ts`, `src/shared/render/titleCards.ts` | The `quote` panel style (§10.1); `cat:` fonts on title cards; `export function blurredFrameOf(ctx: CanvasRenderingContext2D, size: 256 \| 128): HTMLCanvasElement` shared with Glass. |
-| `src/renderer/src/render/fontLoader.ts` | `export function catalogFontsFor(project: Project): string[]` (captions, graphics, title cards, scripts, partners, the emoji face with any Studio look or graphic, §6.8); `export function loadCatalogFont(id: string): Promise<void>`; `export function catalogFontReady(id: string): boolean`; `export async function prepareCaptionFonts(project: Project): Promise<void>` (never rejects; waits for catalogue faces and the `FlownFontW-` faces, keyed by project); `export function missingCatalogFonts(project: Project): CatalogFont[]`; `usedFontIds` reads `captions.studio`, graphics and title cards; Studio brand families `FlownFontW-<id>`. |
+| `src/renderer/src/render/fontLoader.ts` | `export function catalogFontsFor(project: Project): string[]` (captions, graphics, title cards, scripts, partners, the emoji face with any Studio look or graphic, §6.8; the captions' fonts are those of the look they draw with, Subtitle for Chat with no speaker); `export function sampleCatalogFonts(project: Project): string[]` (the same for a gallery tile, which draws the look itself); `export function loadCatalogFont(id: string): Promise<void>`; `export function catalogFontReady(id: string): boolean`; `export async function prepareCaptionFonts(project: Project): Promise<void>` (never rejects; waits for catalogue faces and the `FlownFontW-` faces, keyed by project); `export function missingCatalogFonts(project: Project): CatalogFont[]`; `usedFontIds` reads `captions.studio`, graphics and title cards; Studio brand families `FlownFontW-<id>`. |
 | `src/renderer/src/render/catalogFonts.ts` (new) | `export const BUNDLED_FONT_URLS: Readonly<Record<string, string>>` (`?url` imports). |
 | `src/renderer/src/render/contrastProbe.ts` (new) | `export function probeContrast(project: Project, t: number, studio: CaptionStudio): Promise<{ ratio: number; at: number } \| null>` (paused and after a seek only, on a `willReadFrequently` canvas, §7.3). |
 | `src/renderer/src/editor/exporter.ts` | `prepareCaptionFonts` in `prepare`; the sprite cap from the output size; pops, bleep tones and subtitle streams passed into the job. |
-| `src/shared/render/popSound.ts` (new) | `export const POP_SOUNDS: Readonly<Record<'pop' \| 'ding', { partials: readonly { freq: number; amp: number; tau: number }[]; duration: number }>>`; `export function popJob(project: Project): { times: number[]; sound: 'pop' \| 'ding' }[]` (output times on the captions' clock); `export function toneJob(project: Project): { start: number; end: number }[]` (bleep tones, output time, split at cuts); `export function popWaveform(sound: 'pop' \| 'ding', rate: number): Float32Array`; `export function popSoundSource(sound: 'pop' \| 'ding'): string` |
+| `src/shared/render/popSound.ts` (new) | `export const POP_SOUNDS: Readonly<Record<'pop' \| 'ding', { partials: readonly { freq: number; amp: number; tau: number }[]; duration: number }>>`; `export function popJob(project: Project, startOf?: (g: Graphic) => number): { times: number[]; sound: 'pop' \| 'ding' }[]` (output times on the captions' clock; `startOf` is when a graphic starts to show, the graphics layer's `graphicShown`); `export function toneJob(project: Project): { start: number; end: number }[]` (bleep tones, output time, split at cuts); `export function popWaveform(sound: 'pop' \| 'ding', rate: number): Float32Array`; `export function popSoundSource(sound: 'pop' \| 'ding'): string` |
 | `src/shared/audio/soundsEdit.ts` (sound-finder) | `soundGains(p)` also returns `bleepGains(p)` (P4, §11.7), joined by `joinGains`. P2 owns this reconciliation with F-17. |
 | `src/shared/render/audioPlan.ts`, `src/renderer/src/editor/previewAudio.ts` | The pop and tone tracks (built like `clickTrackGraph`); no second muting path (bleeps reach the `sounds` gains above). The preview reschedules its `sounds` curve when `bleeps` change, as it does for `sounds`. |
 | `src/shared/audio/settings.ts` | `needsAudioGraph` is true with bleeps or with pop sounds, so the preview builds its graph for them. |
@@ -3497,8 +3702,10 @@ nearest fixture colour; shares are compared within the caption band.
 5. **Deterministic.** Export *Wide* at 30 fps and at 60 fps: the frames at 1.0 s and 1.7 s agree
    in 99.5% of pixels within 3 levels. Exporting twice gives identical decoded frames.
 6. **Motion.** In *Tall*, pick Bold Pop: the caption's ink box at the chunk start + 0.033 s is
-   smaller than at + 0.3 s and centred within 2 px; green (#39e508) pixels at 1.1 s lie in the
-   middle third of the line and at 1.6 s further right.
+   smaller than at + 0.3 s and centred on the line: the spoken first word, held at 1.18 by + 0.3 s,
+   widens the ink on the left only, so the early centre lies between the later ink's centre and
+   the line's (a quarter of that word's growth to the right), within 3 px; green (#39e508) pixels
+   at 1.1 s lie in the middle third of the line and at 1.6 s further right.
 7. **Reduced motion.** With `reducedMotion: 'reduce'` emulated: picking Bold Pop writes no
    `motion.calm`; the Motion section shows "Your PC asks for less animation…"; a focused tile's
    thumbnail does not change over 600 ms; turning Calm motion on writes `calm: true`, and then the

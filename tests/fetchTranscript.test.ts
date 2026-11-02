@@ -18,14 +18,22 @@ function deferred<T>(): { promise: Promise<T>; resolve: (v: T) => void; reject: 
   return { promise, resolve, reject }
 }
 
-const calls = { transcribe: [] as ReturnType<typeof deferred<unknown>>[], cancel: [] as ReturnType<typeof deferred<void>>[] }
+const calls = { transcribe: [] as ReturnType<typeof deferred<unknown>>[], cancel: [] as ReturnType<typeof deferred<void>>[], options: [] as unknown[] }
 const listeners = new Set<(p: TranscribeProgress) => void>()
 const progress = (p: TranscribeProgress): void => listeners.forEach((l) => l(p))
+/** The caption word list in the prefs (Captions Studio §2.9), read when captionItems loads. */
+const prefs: Record<string, unknown> = { captionWordList: [{ term: 'Flown', heard: ['flow in'] }, { term: 'Qbexel', heard: [] }] }
 vi.stubGlobal('window', {
   api: {
-    transcribe: () => {
+    getPref: (key: string) => Promise.resolve(prefs[key] ?? null),
+    setPref: (key: string, value: unknown) => {
+      prefs[key] = value
+      return Promise.resolve()
+    },
+    transcribe: (_id: string, options: unknown) => {
       const d = deferred<unknown>()
       calls.transcribe.push(d)
+      calls.options.push(options)
       return d.promise
     },
     cancelTranscription: () => {
@@ -42,7 +50,9 @@ vi.stubGlobal('window', {
 
 type Fetched = { transcript: { segments: { text: string }[] }; leftOut: boolean } | { error: string } | { cancelled: true }
 interface Items {
-  fetchTranscript(projectId: string, duration: number, options: { providerId: string }): Promise<Fetched>
+  fetchTranscript(projectId: string, duration: number, options: { providerId: string; glossary?: string[] }): Promise<Fetched>
+  loadWordList(): Promise<readonly { term: string; heard: string[] }[]>
+  saveWordList(list: readonly { term: string; heard: string[] }[]): Promise<void>
   cancelTranscription(): void
   transcriptionJob(): { running: boolean; progress: TranscribeProgress | null; error: string | null; stopping?: boolean } | null
   clearTranscriptionError(): void
@@ -69,6 +79,7 @@ beforeEach(async () => {
   }
   calls.transcribe.length = 0
   calls.cancel.length = 0
+  calls.options.length = 0
 })
 
 describe('fetchTranscript', () => {
@@ -127,5 +138,28 @@ describe('fetchTranscript', () => {
     expect(items.transcriptionJob()).toMatchObject({ running: true, error: null })
     calls.transcribe[0].resolve(answer(1))
     expect('transcript' in (await first)).toBe(true)
+  })
+})
+
+describe('fetchTranscript: the caption word list as a spelling hint (Captions Studio §11.7 rule 4)', () => {
+  it("sends the word list's terms with every transcription", async () => {
+    expect(await items.loadWordList()).toEqual([{ term: 'Flown', heard: ['flow in'] }, { term: 'Qbexel', heard: [] }])
+    const run = items.fetchTranscript('p1', 100, { providerId: 'x' })
+    expect(calls.options[0]).toEqual({ providerId: 'x', glossary: ['Flown', 'Qbexel'] })
+    calls.transcribe[0].resolve(answer(1))
+    await run
+  })
+
+  it('a saved list is used at once; an empty one sends nothing', async () => {
+    await items.saveWordList([{ term: 'Flown', heard: [] }])
+    expect(prefs.captionWordList).toEqual([{ term: 'Flown', heard: [] }])
+    const one = items.fetchTranscript('p1', 100, { providerId: 'x' })
+    calls.transcribe[0].resolve(answer(1))
+    await one
+    await items.saveWordList([])
+    const none = items.fetchTranscript('p1', 100, { providerId: 'x' })
+    calls.transcribe[1].resolve(answer(1))
+    await none
+    expect(calls.options).toEqual([{ providerId: 'x', glossary: ['Flown'] }, { providerId: 'x' }])
   })
 })

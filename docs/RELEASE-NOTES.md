@@ -24,6 +24,28 @@
   Gemini or Claude key. Pick a tone and a length, edit any of it, copy it in one click, or regenerate
   one item. *Use for exports* saves the YouTube description as the export's description file. Every
   AI text tool is now in the command palette (Ctrl+K).
+- **Captions Studio**: Captions › Look has a gallery of 30 new caption looks for long videos and
+  short clips (Bold Pop, Karaoke Fill, Glass Pill, Stickers, Speech Bubble, Neon, Cinema, Gold and
+  more), each shown by a moving thumbnail. Hover a tile to preview it on the video; pick it with a
+  click or the keyboard. Change any look's font, colours, layout and motion, see how readable it is
+  over your video (with *Fix*), and save it as your own or in the brand kit. Classic looks and every
+  older project draw exactly as before.
+- **Make my captions great**: one click picks a look for the video's shape, emphasises key words,
+  adds emoji and pop-ups, and tidies the text, on your PC with no AI needed. One undo step.
+- **Emphasis**: mark words in the Transcript tab with `Ctrl+B` (a second colour with
+  `Ctrl+Shift+B`), or let *Find important words* pick them.
+- **Pop-ups from captions**: keyword cards, emoji, counters that count up to a spoken number and
+  list cards for spoken steps, on a new Graphics tab and timeline row, with an optional pop sound.
+- **Bangla captions look right**: nine Bangla font families come with Flown, twelve looks draw
+  Bangla in their own Bangla font, and a *Digits* choice writes numbers as ০–৯ or 0–9 in captions,
+  counters, list numbers and chapter titles.
+- **Clean up and languages**: tidy capitals, punctuation and numbers, keep a word list that also
+  helps transcription spell names, and bleep swear words in captions and subtitle files (with a
+  tone; muting the word's own sound comes in a later version). Translate captions with your AI
+  provider into separate language tracks; the export writes one subtitle file per language and can
+  put switchable subtitle tracks inside MP4, MOV and WebM.
+- **Fonts work offline**: the caption fonts and colour emoji ship with Flown; Chinese, Japanese and
+  Korean fonts download on demand from a pinned source and are checked before use.
 
 ## 0.7.1
 

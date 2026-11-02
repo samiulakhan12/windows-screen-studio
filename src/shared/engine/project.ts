@@ -1,5 +1,6 @@
 import { readTranscript } from '../captions/captionData'
 import { readCaptionSettings } from '../captions/settings'
+import { readBleeps, readCaptionAuto, readCaptionMarks, readCaptionPlaces, readCaptionTracks, readGraphics } from '../captions/studioData'
 import type { CaptureInfo, Clip, CursorSettings, CursorTrack, Project, ZoomSegment } from '../types'
 import { readInputEdits, readScrolls } from './inputData'
 import { readItems, readShape, readSpotlight } from './shapeData'
@@ -134,8 +135,10 @@ export function migrateProject(raw: unknown): Project {
   const duration = Number.isFinite(p.duration) && p.duration > 0 ? p.duration : 0.1
   const listed = objects<Clip>(p.clips).filter((c) => Number.isFinite(c.start) && Number.isFinite(c.end))
   const clips = listed.length ? listed : [{ ...fullClip(duration), start: p.trim?.start ?? 0, end: p.trim?.end ?? duration }]
-  const { trim: _legacyTrim, audioStems, transcript, captions, inputEdits, director, script, crop, freezes, overlays, fonts, brand, reframe, copyOf, publish, autoCuts, autoCutOutcomes, ...rest } = p
+  const { trim: _legacyTrim, audioStems, transcript, captions, captionMarks, captionPlaces, graphics, captionTracks, bleeps, captionAuto, inputEdits, director, script, crop, freezes, overlays, fonts, brand, reframe, copyOf, publish, autoCuts, autoCutOutcomes, ...rest } = p
   void _legacyTrim
+  // Read once: the transcript, and the Captions Studio records that point at its captions.
+  const transcriptRead = readTranscript(transcript, duration)
   return {
     ...rest,
     ...migrateStems(audioStems),
@@ -170,8 +173,15 @@ export function migrateProject(raw: unknown): Project {
     // Clamped, with defaults for broken fields; anything that is not a tilt is dropped.
     tilt: readTilt(p.tilt),
     // Captions inside the recording, sorted, with unique ids; their look sanitised (absent = defaults).
-    ...optional('transcript', readTranscript(transcript, duration)),
+    ...optional('transcript', transcriptRead),
     ...optional('captions', readCaptionSettings(captions)),
+    // Captions Studio (docs/design/captions-studio.md §4.3): each absent unless set.
+    ...optional('captionMarks', readCaptionMarks(captionMarks, transcriptRead)),
+    ...optional('captionPlaces', readCaptionPlaces(captionPlaces, transcriptRead)),
+    ...optional('graphics', readGraphics(graphics, duration, transcriptRead)),
+    ...optional('captionTracks', readCaptionTracks(captionTracks, transcriptRead)),
+    ...optional('bleeps', readBleeps(bleeps, duration)),
+    ...optional('captionAuto', readCaptionAuto(captionAuto, transcriptRead)),
     // The camera director's options, sanitised (absent: never directed).
     ...optional('director', readDirectorSettings(director)),
     // The speaker notes read while recording, cleaned (absent: recorded without notes).

@@ -1,6 +1,7 @@
 /**
  * The brand kit (E-03, docs/design/brand-kit.md): a logo, colours, fonts, an intro and an outro
- * title card and a style preset, saved once in Settings and applied to a project in one step.
+ * title card, a style preset and a caption style (Captions Studio, docs/design/captions-studio.md
+ * §4.6), saved once in Settings and applied to a project in one step.
  * Pure: the file and its folder live in src/main/brandKit.ts; this module reads a stored kit
  * and applies one to a project.
  */
@@ -10,8 +11,12 @@ import { keptBounds, outputDuration, outputToSource } from '../engine/timeline'
 import { cleanTitle } from '../engine/titleData'
 import { DEFAULT_WATERMARK, WATERMARK_LIMITS, WATERMARK_POSITIONS } from '../engine/watermark'
 import { captionsOf } from '../captions/settings'
+import { cleanPrefText } from '../captions/captionPrefs'
+import { withStudioTile, withTextFont } from '../captions/studioEdit'
+import { readCaptionStudio } from '../captions/studioData'
+import { outputSize } from '../engine/layout'
 import { cleanFontName, FONT_FILE_RE, MAX_PROJECT_FONTS, newFontId, readFontId } from '../render/fonts'
-import type { Corner, Project, ProjectFont, TitleCard, TitleCardStyle, WatermarkSettings } from '../types'
+import type { CaptionStudio, Corner, Project, ProjectFont, TitleCard, TitleCardStyle, WatermarkSettings } from '../types'
 import { applyPreset, presetName, sanitizePresetLook, type PresetLook } from './stylePresets'
 import { createTitleCard } from './titles'
 
@@ -55,6 +60,8 @@ export interface BrandKit {
   outro?: BrandCard
   /** A style preset, its look copied in (deleting the preset later does not change the kit). */
   preset?: { name: string; look: PresetLook }
+  /** A caption look (a saved look or the project's), copied in: the gallery's Brand tile; applying the kit picks it. */
+  captionStyle?: { name: string; look: CaptionStudio }
   /** New recordings start with the kit applied. */
   autoApply: boolean
 }
@@ -65,7 +72,9 @@ export const DEFAULT_BRAND_LOGO: Omit<BrandLogo, 'file'> = { position: 'bottom-r
 
 const isObject = (v: unknown): v is Record<string, unknown> => !!v && typeof v === 'object' && !Array.isArray(v)
 const num = (v: unknown, l: { min: number; max: number }, d: number): number => (typeof v === 'number' && Number.isFinite(v) ? clamp(v, l.min, l.max) : d)
-const STYLES: TitleCardStyle[] = ['centered', 'big', 'lower-third']
+const STYLES: TitleCardStyle[] = ['centered', 'big', 'lower-third', 'quote']
+/** A caption style's name, characters. */
+export const CAPTION_STYLE_NAME_MAX = 40
 const BACKGROUNDS: TitleCard['background'][] = ['solid', 'blur', 'style']
 
 function readLogo(v: unknown): BrandLogo | undefined {
@@ -128,7 +137,17 @@ export function sanitizeBrandKit(raw: unknown): BrandKit {
     const look = sanitizePresetLook(raw.preset.look)
     if (name && look) kit.preset = { name, look }
   }
+  const captionStyle = readCaptionStyle(raw.captionStyle)
+  if (captionStyle) kit.captionStyle = captionStyle
   return kit
+}
+
+/** The kit's caption style: a name and a look read like a project's (§4.2 rule 2), from 'brand'. */
+function readCaptionStyle(v: unknown): BrandKit['captionStyle'] {
+  if (!isObject(v)) return undefined
+  const name = cleanPrefText(v.name, CAPTION_STYLE_NAME_MAX)
+  const look = readCaptionStudio(v.look)
+  return name && look ? { name, look: { ...look, from: 'brand' } } : undefined
 }
 
 /**
@@ -143,7 +162,7 @@ export function shownBrandKit(stored: BrandKit, edited: BrandKit): BrandKit {
 }
 
 /** True when applying the kit would change nothing (nothing set up yet). */
-export const brandKitIsEmpty = (kit: BrandKit): boolean => !kit.logo && !kit.colors.length && !kit.fonts.length && !kit.intro && !kit.outro && !kit.preset
+export const brandKitIsEmpty = (kit: BrandKit): boolean => !kit.logo && !kit.colors.length && !kit.fonts.length && !kit.intro && !kit.outro && !kit.preset && !kit.captionStyle
 
 /** The kit's files as copied into a project: the logo's project file, and each kit font's. */
 export interface BrandFiles {
@@ -195,11 +214,15 @@ export const brandFontsLeftOut = (project: Project, kit: BrandKit, files: BrandF
 
 /**
  * The project with the brand kit applied (docs/design/brand-kit.md §2 decision 20), in this order:
- * the style preset; the logo as the watermark; the kit's fonts added, captions and the text and
- * title cards that use the default font switched to the body and heading fonts (a font chosen by
- * hand is kept); the kit's earlier intro and outro replaced by the current ones; the colours and
- * fonts kept on the project for the pickers. Parts whose files were not copied (`files`) are left
- * out. Returns `project` itself when nothing changes.
+ * the style preset; the logo as the watermark; the kit's fonts added, captions (and a Studio look
+ * not picked by hand) and the text and title cards that use the default font switched to the body
+ * and heading fonts (a font chosen by hand is kept); the kit's earlier intro and outro replaced by the current ones; the colours and
+ * fonts kept on the project for the pickers; the caption style picked (Captions Studio §4.6: the
+ * Brand tile, as the gallery picks it, so show, speaker names, the burned-in track and a dragged
+ * place stay, and `picked` is set). A font rewritten on an automatic title card, or on captions
+ * that carry an automatic style record, gets a copy of its `auto` object or record, so the settle
+ * rule of §11.8 keeps them automatic. Parts whose files were not copied (`files`) are left out.
+ * Returns `project` itself when nothing changes.
  */
 export function applyBrandKit(project: Project, kit: BrandKit, files: BrandFiles): Project {
   if (brandKitIsEmpty(kit)) return project
@@ -213,12 +236,21 @@ export function applyBrandKit(project: Project, kit: BrandKit, files: BrandFiles
   const heading = kit.headingFont ? ids[kit.headingFont] : undefined
   const body = kit.bodyFont ? ids[kit.bodyFont] : undefined
   if (body) {
-    p.captions = { ...captionsOf(p), font: body }
+    const c = captionsOf(p)
+    // A Studio look draws in its own font: one not picked by hand (automatic, or a Classic look's twin) takes the body font too.
+    p.captions = { ...c, font: body, ...(c.studio && !c.picked ? { studio: withTextFont(c.studio, body) } : {}) }
     p.annotations = p.annotations.map((a) => (a.font ? a : { ...a, font: body }))
+  }
+  if (kit.captionStyle) {
+    const frame = outputSize(p.style.aspectRatio, p.width, p.height, 1080)
+    p.captions = withStudioTile(captionsOf(p), 'brand', { w: frame.width, h: frame.height }, { brand: kit.captionStyle.look })
+  } else if (body && p.captionAuto?.style) {
+    // Only the font changed: the look stays automatic (§4.6, §11.8 rule 1).
+    p.captionAuto = { ...p.captionAuto, style: { ...p.captionAuto.style } }
   }
   const headingOrBody = heading ?? body
   const others = (p.titles ?? []).filter((c) => !c.brand)
-  const titles: TitleCard[] = headingOrBody ? others.map((c) => (c.font ? c : { ...c, font: headingOrBody })) : others
+  const titles: TitleCard[] = headingOrBody ? others.map((c) => (c.font ? c : { ...c, font: headingOrBody, ...(c.auto ? { auto: { ...c.auto } } : {}) })) : others
   const color = kit.colors[0]
   for (const which of ['intro', 'outro'] as const) {
     const card = kit[which]

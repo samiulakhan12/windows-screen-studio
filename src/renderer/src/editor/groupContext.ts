@@ -20,8 +20,8 @@ export interface GroupApi {
    * a group. `reveal: false` keeps the Inspector on what it shows (list rows, the Selection view's own buttons).
    */
   select(keys: readonly ItemKey[], anchor: ItemKey | null, opts?: { reveal?: boolean }): void
-  /** Shows a notice in the transport's live region. */
-  notice(message: string): void
+  /** Shows a notice in the transport's live region; `opts.action`: a button in it (Undo of a deleted saved caption style). */
+  notice(message: string, opts?: { action?: { label: string; run: () => void } }): void
   /** Runs an editor command (the look buttons and the Selection view run the same handlers as the keys). */
   command(id: CommandId): void
 }

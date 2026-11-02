@@ -26,6 +26,7 @@ import { ShapeIcon } from '../shapeIcons'
 import '../multiSelect.css'
 import '../shapes.css'
 import { overlayLabel } from '../../../../shared/editor/overlays'
+import { graphicLabel } from './GraphicsPanel'
 
 /** Section titles of the look classes, in their order (§4.9 item 5). */
 const CLASS_TITLE: Readonly<Record<LookClass, string>> = {
@@ -36,11 +37,12 @@ const CLASS_TITLE: Readonly<Record<LookClass, string>> = {
   spotlight: 'Spotlights',
   image: 'Images',
   title: 'Title cards',
-  freeze: 'Freeze frames'
+  freeze: 'Freeze frames',
+  graphic: 'Pop-ups'
 }
 
 /** Kinds with a start and an end (Length applies to them). */
-const SPAN_KINDS: readonly GroupKind[] = ['zoom', 'annotation', 'shape', 'spotlight', 'overlay', 'title']
+const SPAN_KINDS: readonly GroupKind[] = ['zoom', 'annotation', 'shape', 'spotlight', 'overlay', 'title', 'graphic']
 
 /** A row's icon: the kind's track icon, or the shape's own. */
 function KindIcon({ kind, project, id }: { kind: GroupKind; project: Project; id: string }): JSX.Element {
@@ -52,6 +54,7 @@ function KindIcon({ kind, project, id }: { kind: GroupKind; project: Project; id
   if (kind === 'zoom') return <Icon name="zoom" size={14} />
   if (kind === 'freeze') return <Icon name="pause" size={14} />
   if (kind === 'overlay') return <EditorIcon name="image" size={14} />
+  if (kind === 'graphic') return <EditorIcon name="burst" size={14} />
   return <EditorIcon name="text" size={14} />
 }
 
@@ -81,6 +84,10 @@ function itemName(p: Project, e: ItemEntry): string {
     case 'overlay': {
       const o = p.overlays?.find((x) => x.id === e.id)
       return o ? overlayLabel(o) : 'Image'
+    }
+    case 'graphic': {
+      const g = p.graphics?.find((x) => x.id === e.id)
+      return g ? graphicLabel(g) : 'Pop-up'
     }
   }
 }

@@ -56,6 +56,13 @@ export function readCopyOf(raw: unknown): ProjectCopyOf | undefined {
 
 export const isTall = (w: number, h: number): boolean => h >= TALL * w
 
+/**
+ * The height of a `w` px wide picture of an `outW` x `outH` frame, `h` as rounded, moved by the
+ * pixel the rounding may have cost so the picture is tall exactly when the frame is (4:5 sits on
+ * the line): the preview then lays captions out as the export does. Never above `outH` when `w` <= `outW`.
+ */
+export const tallAs = (w: number, h: number, outW: number, outH: number): number => (isTall(outW, outH) ? Math.max(h, Math.ceil(TALL * w)) : Math.min(h, Math.ceil(TALL * w) - 1))
+
 /** Settings when following is turned on in a w × h frame: existing ones with mode 'follow', else DEFAULT_REFRAME (camera 'bubble' and appSafe false when the frame is not tall). */
 export function reframeOn(project: Pick<Project, 'reframe'>, outW: number, outH: number): ReframeSettings {
   if (project.reframe) return { ...project.reframe, mode: 'follow' }

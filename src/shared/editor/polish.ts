@@ -15,6 +15,9 @@ import type { AiProviderInfo } from '../api/ai'
 import { LOCAL_TRANSCRIBER_ID, type SpeechState } from '../api/speech'
 import { activitySources } from '../audio/settings'
 import type { DirectorSpeech } from '../audio/speech'
+import { autoStyleOnFirstCaptions, captionFrame } from '../captions/autoStyle'
+import { DEFAULT_CLEANUP, type CleanupChoices, type WordListEntry } from '../captions/cleanup'
+import { DEFAULT_GREAT_OPTIONS, planCaptionsGreatSteps, type GreatOptions } from '../captions/great'
 import { captionsOf } from '../captions/settings'
 import { cropView, regenerateInFrame } from '../engine/crop'
 import { directorSettingsOf } from '../engine/directorData'
@@ -22,7 +25,7 @@ import { freezeKeepRanges, planOf, videoDuration, videoTimeAt } from '../engine/
 import { effectiveTrack } from '../engine/inputTrack'
 import { isZoomClick, zoomSettingsOf } from '../engine/zoom'
 import type { FramingOutcome } from '../render/faceFraming'
-import type { CursorTrack, Project, Transcript } from '../types'
+import type { CaptionStudio, CursorTrack, Project, Transcript } from '../types'
 import { applyDirectorPlan, planDirector, type DirectorPlan } from './cameraDirector'
 import { speechModel, type SpeechModelId } from '../speech/catalog'
 import { canTranscribeNow, pickTranscriber as pickSpeechTranscriber } from '../speech/transcriber'
@@ -30,9 +33,10 @@ import { applySmartSpeed, planSilences, SILENCE_LENGTH, SILENCE_PADDING, SMART_S
 import { applyPreset, presetMatches, type PresetLook } from './stylePresets'
 import { recordAutoCuts } from '../review/autoCuts'
 
-export type PolishStep = 'style' | 'zoom' | 'silences' | 'captions' | 'director'
+/** 'captionLook': Make my captions great, offline (docs/design/captions-studio.md §11.8). */
+export type PolishStep = 'style' | 'zoom' | 'silences' | 'captions' | 'captionLook' | 'director'
 /** Run order (decision 2); the dialog lists rows in this order too. */
-export const POLISH_STEPS: readonly PolishStep[] = ['style', 'zoom', 'silences', 'captions', 'director']
+export const POLISH_STEPS: readonly PolishStep[] = ['style', 'zoom', 'silences', 'captions', 'captionLook', 'director']
 
 export interface PolishOptions {
   /** A style preset id (BUILT_IN_PRESETS or the user's), or null: keep the current look. */
@@ -44,6 +48,8 @@ export interface PolishOptions {
   captions: boolean
   /** Transcription provider id; null or no longer able to transcribe: the first that can (pickTranscriber). */
   captionsProvider: string | null
+  /** Caption look: style, emphasis and pop-ups for the captions (Captions Studio §11.8); saved options without it read false. */
+  captionLook: boolean
   director: boolean
 }
 
@@ -54,6 +60,7 @@ export const DEFAULT_POLISH_OPTIONS: Readonly<PolishOptions> = Object.freeze({
   silenceAction: 'cut',
   captions: true,
   captionsProvider: null,
+  captionLook: true,
   director: true
 })
 
@@ -81,6 +88,8 @@ export type PolishSkip =
   | 'busy'
   /** the provider failed (PolishInput.errors.captions) */
   | 'failed'
+  /** Caption look: there are no captions to style */
+  | 'no-captions'
   /** skipped by the user while it ran */
   | 'cancelled'
   /** no camera (project.hasWebcam false, or the file is missing) */
@@ -112,6 +121,12 @@ export interface PolishInput {
   errors?: Partial<Record<PolishStep, string>>
   /** Ids of new director segments (tests inject a counter). */
   newId?: () => string
+  /**
+   * What the Caption look step and the first captions' style use (Captions Studio §11.6, §11.8): the
+   * saved Make my captions great options, Clean up choices and word list, and the brand kit's
+   * caption style. Absent: the defaults, no brand look.
+   */
+  captionLook?: { great: GreatOptions; cleanup: CleanupChoices; words: readonly WordListEntry[]; brand?: CaptionStudio | null }
 }
 
 export interface PolishStepResult {
@@ -175,6 +190,16 @@ const SILENCES = { minLength: SILENCE_LENGTH.default, padding: SILENCE_PADDING.d
  * polishing a polished project again changes nothing.
  */
 export function planPolish(input: PolishInput, options: PolishOptions): PolishResult {
+  const steps = planPolishSteps(input, options)
+  for (let r = steps.next(); ; r = steps.next()) if (r.done) return r.value
+}
+
+/**
+ * planPolish a step at a time, the caption look in the steps of its planner: polishRunner runs it
+ * with a moment between them, so a long project's captions never hold the editor (Captions
+ * Studio §9.8).
+ */
+export function* planPolishSteps(input: PolishInput, options: PolishOptions): Generator<void, PolishResult, void> {
   const base = input.project
   let p = base
   const steps: PolishStepResult[] = []
@@ -248,11 +273,29 @@ export function planPolish(input: PolishInput, options: PolishOptions): PolishRe
   else if (!input.transcript) skip('captions', 'failed', input.errors?.captions)
   else {
     const transcript = input.transcript
-    ran('captions', { ...p, transcript, captions: { ...captionsOf(p), show: true } })
+    // The first transcript gets Auto style's look (Captions Studio §11.6), with no record.
+    const written = { ...p, transcript, captions: { ...captionsOf(p), show: true } }
+    ran('captions', autoStyleOnFirstCaptions(p, written, captionFrame(p), input.captionLook?.brand ?? null))
     summary.captions = transcript.segments.length
     const last = transcript.segments[transcript.segments.length - 1]
     // The clips are final here: only remove silences changes them, and it ran.
     if (input.transcriptLeftOut && last) summary.captionsLeftOutAfter = videoTimeAt(p.clips, planOf(p), last.end)
+  }
+
+  // Caption look (Captions Studio §11.8): Make my captions great, offline, with the saved options
+  // (no provider, no quotes); in wide frames the planner runs only style, emphasis and tidy.
+  if (!options.captionLook) skip('captionLook', 'off')
+  else if (!p.transcript?.segments.length) skip('captionLook', 'no-captions')
+  else {
+    yield
+    const look = input.captionLook
+    const great = { ...(look?.great ?? DEFAULT_GREAT_OPTIONS), provider: null, quotes: false }
+    const planned = yield* planCaptionsGreatSteps(
+      { project: p, frame: captionFrame(p), brand: look?.brand ?? null, cleanup: look?.cleanup ?? DEFAULT_CLEANUP, words: look?.words ?? [], by: 'polish', cursor: effectiveTrack(input.recorded, p) },
+      great
+    )
+    ran('captionLook', planned.project)
+    yield
   }
 
   // Camera director, last: it plans in output seconds on the final clips, finds the demo from the
@@ -298,6 +341,8 @@ export function readPolishOptions(raw: unknown): PolishOptions {
     silenceAction: SMART_SPEED_ACTIONS.find((a) => a === o.silenceAction) ?? D.silenceAction,
     captions: flag(o.captions, D.captions),
     captionsProvider: isId(o.captionsProvider) ? o.captionsProvider : null,
+    // Saved before the step existed: off, so a saved Polish does what it did (Captions Studio §11.8).
+    captionLook: flag(o.captionLook, false),
     director: flag(o.director, D.director)
   }
 }
@@ -320,6 +365,8 @@ export function polishAvailability(project: Project, recorded: CursorTrack, ctx:
     zoom: autoZoomHasInput(recorded) ? null : 'no-input',
     silences: !project.hasAudio ? 'no-sound' : activitySources(project).length === 0 ? 'muted' : null,
     captions: captions(),
+    // It styles the captions there are, or the ones the captions step makes in the same run.
+    captionLook: project.transcript?.segments.length || captions() === null ? null : 'no-captions',
     director: !ctx.hasCameraFile || !project.hasWebcam ? 'no-camera' : !project.webcam.show ? 'camera-hidden' : null
   }
 }

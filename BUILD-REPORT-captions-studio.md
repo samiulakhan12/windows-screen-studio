@@ -1,0 +1,232 @@
+# Build report: Captions Studio, phase A (wave 9)
+
+Branch `feat/captions-studio`, built on the default branch (Flown 0.7.1 with NW-09's speakers and
+estimated word times) from the contracts commit `dd7bf23`. Design: `docs/design/captions-studio.md`
+(§0 holds the owner's approved looks, the Bangla requirements and the build order). Nothing was
+pushed.
+
+## What was built
+
+Four parts were built in parallel on the frozen contracts and merged here one at a time with
+`git merge --no-ff`, in the design's order (§14.5: P1, P2, P4, then P3, because P3 mounts P4's
+sections):
+
+| Merge | Part | What it brings |
+|---|---|---|
+| `ec675c6` | P1, look, layout and motion engine (`src/shared`) | Words with their times and scripts, the Digits choice, phrase breaks by dynamic programming, the four chunk modes, placement that keeps clear of the camera, lower thirds, key presses and the action, the motion engine (easings, entrances, word motion, spoken marks, the flash rule, calm motion), contrast and themes, a font face per word with the looks' Bangla fonts, the Studio twins of the Classic looks, emphasis marks that follow their words, graphics placement and editing, the action under a caption. |
+| `a48dcd1` | P2, drawing, fonts, downloads, export | The Studio caption layer (word sprites with poses, boxes, glass, bubble, chat, spoken and emphasis marks), the graphics layer (keyword cards, emoji, counters, list cards), quote cards, the 42 bundled WOFF2 fonts registered before drawing and exporting, gallery thumbnails, the contrast measurement, pinned downloads with SHA-256 and size caps, pops and bleep tones, subtitle files per language and subtitle streams, the caption fonts' installer budget. |
+| `d790ac6` | P4, automation and languages | Offline emphasis, emoji, numbers and lists (CLDR 49 data), Auto style, Tidy captions and bleeping, caption tracks translated through the AI provider, the `marks` AI task, Make my captions great and its settle rule, Polish's Caption look step, the word list as a transcription prompt, the Clean up, Languages, options and Subtitles UI. |
+| `c18a55c` | P3, editor UI | The Look section and gallery, the Text, Colours, Layout, Motion, Emphasis and Speakers controls, the Graphics tab and timeline row, graphics on the preview, emphasis in the Transcript tab, the four caption preferences and saved looks, the brand kit's caption look, the seven commands, the hovered-look preview, the caption look of a vertical version, Settings › Downloads for captions. |
+
+Merging: P1, P2 and P4 merged without conflicts. P3 conflicted in one place,
+`src/renderer/src/render/studioLayer.ts`: P3 had added a `language` argument to the stub of
+`drawStudioSample` while P2 wrote its body. P2's body is kept and now draws the Bangla sample of
+the approved `bangla.html` ("আপনার ভিডিও শেয়ার করার জন্য তৈরি", "শেয়ার" spoken) for `bn`.
+
+### Integration fixes (found by running the parts together)
+
+Each fix has a test that fails without it (checked by removing the code and running the test),
+with two exceptions: the masking rule behind 7 is tested (`languageSubtitleFile` in
+`tests/subtitleArgs.test.ts`), but the one-line call in the Captions tab that now uses it has no
+test of its own; 9 is checked by the e2e only.
+
+1. **The spoken word never lit up** in Bold Pop, Neon, Spotlight Word, Stickers and every other
+   colour, glow or sticker look. P1's `WordPose.fill` is the spoken colour's share (its doc says so)
+   and `mark` the emphasis mark's; the Studio layer read `mark`. Each part's tests used its own
+   reading, so all passed. Found by the new e2e (no green in Bold Pop's export). The layer now reads
+   `fill`; P2's stand-in poses follow motion.ts; `tests/captionsStudioIntegration.test.ts` checks
+   the lit word on P1's real poses (`cb75c17`).
+2. **A mouse click on a gallery tile did nothing** (keyboard picks worked). Pressing a tile focuses
+   it and starts it playing, which replaced the thumbnail's `img` with a `canvas` between press and
+   release, so Chromium sent no click. The picture no longer takes the pointer (`6c18dc6`).
+3. **The Digits choice reached nothing but list numbers in Bangla.** The Studio layer did not pass
+   it to the layout, counters ignored it, list numbers used the locale's default (Latin digits for
+   Hindi) and chapter titles never changed. All four now follow it; without the choice every drawing
+   is as before (`f7e3513`).
+4. **Digits on a Classic look** wrote `digits` that the legacy drawing never shows; it now makes the
+   look's Studio twin in the same undo step, like every change below today's controls (`62cc9bc`).
+5. **The hint under Make my captions great** only changed when the window next got focus; it now
+   reads P4's options store and changes as soon as the options are saved (`62cc9bc`).
+6. **The contrast meter never measured**: nothing called P2's `setContrastSource`. The editor now
+   registers the paused preview's frame; closing an editor releases only its own source (`3f6a486`).
+7. **Save captions wrote bleeped words in full**; it now writes the spoken captions with the bleep
+   masks, as the export's subtitle files do (`3f6a486`).
+8. **`NOTICE_NAMES`** now requires CLDR, obscenity and LDNOOBW, named by P4's data notice
+   (`3f6a486`).
+9. **Clean up says what a bleep does in this version**: the word is masked in captions and subtitle
+   files and the tone plays over it, but its own sound is not muted until phase B (see below)
+   (`7c33649`).
+10. **Make my captions great's options dialog** was squeezed to about 150 px beside its buttons
+    (labels wrapping word by word); it now opens on a line of its own (`7c33649`).
+
+## Phase B, left out by design (§0.4), with seams
+
+- **Review mode group rows** (`review.ts`, `copy.ts`, `ReviewPanel.tsx`, test 44): not built.
+- **The sound finder's bleep gains**: `bleepGains` in `src/shared/captions/cleanup.ts` returns a
+  local `SoundGain` (`TODO(phase B)`); until the sound finder (F-17) merges, **a bleep does not mute
+  the spoken word**: Tone plays over it and Silence adds nothing. Clean up says so
+  (`cleanup-bleep-note`, `TODO(phase B)` in `CleanupSection.tsx`).
+- **`versions.ts` areas** (test 56): not built (the versions branch is not merged).
+- **The publishing pack's `aiTranslate` and `aiCleanup` commands**: not retargeted. Cancel in
+  Make my captions great, Clean up and Languages drops the AI answer; stopping the provider's own
+  request needs the publishing pack's `requestId` and `cancelAiText` (`TODO(phase B)` in
+  `greatRun.ts`, `CleanupSection.tsx`, `LanguagesSection.tsx`).
+- **Offline translation** (F-16): waits for the owner's licence decision (§0.3 item 5).
+  `LanguagesSection.tsx` has `OFFLINE_TRANSLATION = false`, `captionCommands.ts`
+  `localTranslationOffered()` returns false, and the asset store has the seam for translation models
+  (`TODO(phase B)` in `assetStore.ts`); `TRANSLATE_BUDGET` is checked only when
+  `resources/translate/` exists.
+
+Other things the parts left open, for the lead:
+
+- P1's phrase costs depart from §8.3 (a break inside a run of capitalised words +8, +5 per chunk,
+  +6 for breaking a line that fits); test 7 pins the result. §8.6 rule 3 (a narrower free span)
+  only moves a block sideways that already fits.
+- P1's contract additions (`StudioFace.stretch`, `StudioLayout.caption/speaker/bigMark`,
+  `breakPhrases(…, spaces)`, `studioLayout`'s `digits`, `counterText(…, digits)`), P2's
+  (`assetFontFile`, the language argument of `writeSidecar`, `ExportInput.subtitleLanguages`), P3's
+  (`drawStudioSample`'s `language`) and P4's (`SubtitlesField`'s props, `tidyCaptions`'s `fix` and
+  `estimated`, `planCaptionsGreat`'s `marksVia` and `cursor`, `TranscribeOptions.glossary`) are not
+  yet recorded in §14.0.1.
+- Quote cards from the Graphics tab need P4's AI marks answer there; Make my captions great makes
+  them. Group edits of graphics have no font control.
+- The design's 136 × 96 px tiles shrink to the column width in the Inspector's default 251 px
+  body (the sample text stays at 18 px).
+
+## Tests
+
+### Unit tests (vitest)
+
+After the four merges, before any integration fix: 340 files, 4,525 tests, all passing (the parts'
+tests largely replace each other's functions with stand-ins, which is why the seams above slipped
+through). Final: **341 files, 4,552 tests, all passing**.
+
+New or extended here; each new rule's test was checked to fail without its code (the key-press
+checks and "a typed title keeps its digits" guard merged behaviour that needed no new code):
+
+- `tests/captionsStudioIntegration.test.ts` (new, 22 tests): the drawing on the parts' real code
+  with no stand-ins: the Digits choice in captions, counters, list numbers and chapter titles (and
+  a typed title keeps its digits); the spoken word lit on P1's real poses for Bold Pop, Spotlight
+  Word and Neon; the gallery's Bangla sample in Baloo Da 2; key presses clear of a block P1 placed
+  (Editorial, Bold Pop, Subtitle at Lower and Bottom, 16:9 and 9:16; test 54 on the real layout).
+- `tests/captionLookSection.test.ts`: the hint follows saved options at once; Digits on a Classic
+  look makes the twin in one undo step.
+- `tests/captionGallery.test.ts`: a press on a tile's picture keeps its click; the options dialog
+  gets its own line.
+- `tests/contrastProbe.test.ts`: an editor closing releases only its own frame source.
+- `tests/packaging.test.ts`: `NOTICE_NAMES` with CLDR, obscenity and LDNOOBW (a pinned list,
+  stated anew and stricter).
+- `tests/studioFakes.ts`: P2's stand-in poses follow motion.ts's meaning of `fill`.
+
+The equivalence guards (`tests/captionsStudioEquivalence.test.ts`, `tests/verticalEquivalence.test.ts`)
+pass unchanged; their snapshots were not touched.
+
+`tests/aiProviders.test.ts` fails 6 of 33 tests when run against the machine's shared `/tmp`: it
+fails when any `ssw-transcribe-*` folder exists there, and ten were left by other runs on this
+machine between 19:02 and 19:54 the day before this build. With a private `TMPDIR` all 33 pass; the
+full-suite numbers above use a private `TMPDIR`.
+
+### End to end
+
+`tests/e2e/captions-studio.e2e.cjs` (new; §16.3 phase A): six tests over grey 10 s fixtures with
+seeded transcripts (no network, no AI provider):
+
+1. An old project (0.8.0's boxed captions) opens and closes with `project.json` byte for byte
+   unchanged, its Classic tile checked, first, "Your current style"; the export draws the legacy box
+   where the legacy layout puts it, and exporting does not rewrite `project.json`.
+2. A tutorial look by keyboard: Tab reaches the gallery, the arrows reach Karaoke Fill, Enter picks
+   it (`preset` karaoke, `picked`); Ctrl+Z and Ctrl+Y each take one step. Preview equals export: the
+   paused preview at 1.95 s and the 60 fps export's frame at the same time have the same shares of
+   spoken yellow, white and ink in the caption band.
+3. A Short look: in a 9:16 project the gallery opens on Short clips; Bold Pop pops in (its ink is
+   narrower at +0.033 s than at +0.3 s, about the same centre) and the spoken word is green; Make my
+   captions great (offline) adds emphasis and a 0–300 % counter for "300 percent", keeps the picked
+   look, and one Ctrl+Z takes the whole run back.
+4. Bangla: Bold Pop draws Bangla in Baloo Da 2 (loaded from the app's files); the Digits choice draws
+   ৩০০ (the preview's band changes; Western draws it as written); the export draws both captions; no
+   http(s) request from the window throughout.
+5. Pop-ups: a keyword, an emoji and a counter added from the Graphics tab's Add menu by keyboard
+   start at the playhead and show in the export at their times (the emoji in colour); nothing is
+   drawn between the caption and the first pop-up.
+6. Keyboard and the hovered look: Tab reaches Make my captions great, its options, the filters, the
+   gallery and Show all styles on the way to Play; the options popover keeps the focus through 40
+   Tabs and Esc returns it to its button; hovering Karaoke Fill shows "Previewing Karaoke Fill" and
+   its look on the preview, leaving restores it, and the project and the undo stack are unchanged;
+   Clean up's bleep note.
+
+Not covered here from §16.3 (phase B or left for a later pass): Shift+R group rows (10), the
+Graphics row drags (11), downloads from a local server (13), subtitle streams and files (14), a
+burned-in track (15), bleep audio (16), continue freeze (18), fonts before the first frame of a
+quote card (19), key presses (20; covered in vitest on the real layout), the palette (22), reduced
+motion (7), the 30/60 fps determinism check (5).
+
+Results under `xvfb-run -a -s "-screen 0 1920x1080x24"` on the built app (a failing file was run
+again alone before being treated as real):
+
+| File | Result | Notes |
+|---|---|---|
+| `captions-studio` | 6 of 6 pass (about 80 s) | Preview vs export at 1.95 s: yellow 0.97 % vs 0.95 %, white 0.63 % vs 0.67 %, ink 4.01 % vs 3.98 % of the caption band. Bold Pop's ink 506 px wide at +0.033 s, 546 px at +0.3 s. |
+| `captions` | 9 of 9 pass | Run again on the final build. |
+| `edit-by-text` | 4 of 4 pass | |
+| `one-click-polish` | 3 of 3 pass | Failed first: Polish's Caption look step now tidies the captions (designed, §11.8); the assertion states it (`a0698d8`). |
+| `bangla-captions` | 4 of 4 pass | |
+| `offline-captions` | 11 of 11 pass with a private `TMPDIR` | Against the shared `/tmp`, "cancel keeps the finished parts…" fails twice in a row on the same leftover `ssw-transcribe-*` folders as `aiProviders.test.ts` (the step checks that none exists). |
+| `transcription` | 4 of 4 pass | Failed first: two named speakers now get Subtitle with names and colours (§11.6 rule 4); the test states it and still checks names widen the caption (`a0698d8`). |
+| `brand-kit` | 6 of 6 pass | |
+| `vertical-video` | 1 of 1 pass | Failed first: the vertical copy now gets Bold Pop (§10.5); the test states it and still checks the caption stays in the text area (`a0698d8`). |
+
+Not run here: the rest of §14.5's list (`review-mode`, `publish-pack`, `titles`, `multi-select`,
+`polish`, `export`, `export-pack`, `render`, `commands`, `freeze`, `audio-pack`, `clean-voice`,
+`sound-finder`, `versions`, `ai`, `search`); several belong to branches not merged yet.
+
+## Verification output
+
+```
+$ npm run typecheck
+> tsc --noEmit -p tsconfig.node.json && tsc --noEmit -p tsconfig.web.json
+(exit 0)
+
+$ TMPDIR=<private> npx vitest run --maxWorkers=2
+ Test Files  341 passed (341)
+      Tests  4552 passed (4552)
+   Duration  124.20s
+
+$ npm run build
+✓ built in 4.82s   (main)   ✓ built in 32ms (preload)   ✓ built in 3.30s (renderer)
+(42 caption WOFF2 files emitted under out/renderer/assets; only Vite's usual >500 kB chunk warning)
+
+$ node scripts/build-emoji-data.mjs --check
+build-emoji-data: the generated files are up to date
+$ node scripts/notices.mjs --check
+notices: resources/THIRD_PARTY_NOTICES.txt is up to date (201514 bytes)
+$ node scripts/fonts.mjs check
+fonts: 42 WOFF2 files match their pins
+```
+
+Screenshots (each under 300 KB): `docs/screenshots/captions-studio-classic-current.png`,
+`-gallery.png`, `-karaoke-fill-preview.png`, `-bold-pop-tall.png`, `-bangla-digits.png`,
+`-bangla-look.png`, `-graphics-panel.png`, `-great-options.png`, `-hover-preview.png`, written by
+`SSW_E2E_DOC_SHOTS=1 node tests/e2e/captions-studio.e2e.cjs`.
+
+Not run: `npm run dist:win` and `verify:dist` (Windows packaging; see below), the native speech
+tests.
+
+## What needs a real Windows PC
+
+- **Performance (§9.8, §18 item 6)**: the per-frame budget (at most 3 ms at 1080p; Bold Pop, Glass
+  Pill and Bold Pop at 4K tall next to Clean) was measured on Linux only (P1: layout 0.03–0.07 ms
+  per 12-word caption, poses 6–12 µs per frame). Measure the preview and the export on a Windows
+  laptop with a GPU, and with the software canvas.
+- **Installer size**: `CAPTIONS_BUDGET` (8.0 MB compressed, 8.5 MB installed) was sized from Linux
+  measurements of the 42 WOFF2 files (7,449,971 B brotli). Confirm in a real `npm run dist:win` and
+  `npm run verify:dist` (font hashes inside `app.asar`).
+- **Fonts on Windows**: Bangla shaping and the nine Bangla families, Noto Color Emoji (COLRv1) in
+  captions and pop-ups, CJK downloads, and the fallback to Windows' own fonts (Nirmala UI and
+  others) for scripts without a bundled font, in DirectWrite-backed Chromium.
+- **Downloads**: CJK fonts from `raw.githubusercontent.com` behind Windows proxies and antivirus,
+  Retry-After on 429/503, and files under `%APPDATA%`.
+- **Subtitle streams**: switchable `mov_text` tracks in MP4 and MOV and WebVTT in WebM in Films &
+  TV, VLC and the browsers; the language names they show.
+- **Keyboard and screen readers**: the gallery's radio group, the sliders' spoken values and the
+  options popover with NVDA and Narrator; Ctrl+B and Ctrl+Shift+B on AZERTY and other layouts.
+- **High contrast and scaling**: the Look section at 125 % and 150 % display scaling.

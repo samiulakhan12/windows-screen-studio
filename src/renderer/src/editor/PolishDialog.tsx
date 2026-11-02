@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import type { AiProviderInfo } from '../../../shared/api/ai'
+import { captionFrame, frameShape } from '../../../shared/captions/autoStyle'
 import { DEFAULT_POLISH_OPTIONS, polishAvailability, polishTranscriber, POLISH_STEPS, readPolishOptions, type PolishOptions, type PolishResult, type PolishStep, type PolishSummary } from '../../../shared/editor/polish'
 import {
   CANCELLED_NOTICE,
@@ -204,7 +205,9 @@ export function PolishDialog(props: {
             autoZoomOn: zoomSettingsOf(project).auto.enabled,
             provider,
             local: chosenId === LOCAL_TRANSCRIBER_ID,
-            bangla: !!transcriber && 'model' in transcriber && transcriber.model === BANGLA_MODEL
+            bangla: !!transcriber && 'model' in transcriber && transcriber.model === BANGLA_MODEL,
+            // In wide frames Polish's caption look adds no pop-ups (Captions Studio §11.8).
+            wide: frameShape(captionFrame(project)) === 'wide'
           })
     const disabled = !ready || loading || !!why
     return (

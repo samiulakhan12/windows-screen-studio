@@ -5,7 +5,7 @@
 //   node scripts/verify-dist.mjs [dist directory]      (default: dist)
 // Exits 1 on a problem. Prints the install and installer sizes.
 import { createHash } from 'node:crypto'
-import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs'
+import { closeSync, existsSync, openSync, readFileSync, readSync, readdirSync, statSync } from 'node:fs'
 import { createRequire } from 'node:module'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -17,6 +17,8 @@ const { checkWindowsExe, parsePe, readIconGroups, readImports, readVersionString
 const { parseIco } = require('./lib/ico.cjs')
 const { updateMetaProblems } = require('./lib/updateMeta.cjs')
 const {
+  CAPTIONS_BUDGET,
+  captionFontProblems,
   FFMPEG_EXE,
   missingSpeechOptions,
   nativeHelper,
@@ -99,6 +101,45 @@ const SEGMENTATION_FILES = [
 const segmentationMissing = SEGMENTATION_FILES.filter((f) => !assetFiles.some((a) => f.re.test(a.name) && a.size >= f.min))
 if (segmentationMissing.length) fail(`app.asar lacks the background blur files: ${segmentationMissing.map((f) => f.label).join(', ')}`)
 else ok(`background blur: worker, WebAssembly runtime and model in out/renderer/assets (${mb(assetFiles.filter((a) => SEGMENTATION_FILES.some((f) => f.re.test(a.name))).reduce((t, a) => t + a.size, 0))})`)
+
+// 1b. Captions Studio's caption fonts (docs/design/captions-studio.md §6.9): every catalogue font
+// inside app.asar (out/renderer/assets/<name>-<hash>.woff2, Vite's names) is the pinned file, by
+// bytes and SHA-256, and together they stay within CAPTIONS_BUDGET. fontCatalog.ts is read with
+// Node's type stripping (Node 22.18 or later), as scripts/fonts.mjs reads it.
+{
+  const { CATALOG_FONTS } = await import(new URL('../src/shared/captions/fontCatalog.ts', import.meta.url).href)
+  const pins = CATALOG_FONTS.flatMap((f) => f.files.flatMap((x) => (x.woff2 ? [x.woff2] : [])))
+  // A file's bytes start after the archive's header (8 bytes, then the header pickle) at its offset.
+  const head = Buffer.alloc(8)
+  const fd = openSync(asarFile, 'r')
+  readSync(fd, head, 0, 8, 0)
+  const dataStart = 8 + head.readUInt32LE(4)
+  const header = readAsarHeader(asarFile)
+  const nodeOf = (p) => p.split('/').filter(Boolean).reduce((n, part) => n?.files?.[part], header)
+  const found = []
+  const bufs = []
+  for (const pin of pins) {
+    // Vite names a copy <name>-<8-character hash>.woff2 ("instrument-serif-" never matches "instrument-serif-italic-").
+    const stem = pin.file.replace(/\.woff2$/, '')
+    const entry = entries.find((e) => !e.dir && e.path.startsWith('/out/renderer/assets/') && e.path.split('/').pop().startsWith(`${stem}-`) && /^[\w-]{8}\.woff2$/.test(e.path.split('/').pop().slice(stem.length + 1)))
+    const node = entry ? nodeOf(entry.path) : null
+    if (!node || node.unpacked) continue
+    const buf = Buffer.alloc(Number(node.size))
+    readSync(fd, buf, 0, buf.length, dataStart + Number(node.offset))
+    found.push({ name: pin.file, bytes: buf.length, sha256: createHash('sha256').update(buf).digest('hex') })
+    bufs.push(buf)
+  }
+  closeSync(fd)
+  const problems = captionFontProblems(found, pins)
+  if (problems.length) fail(`caption fonts in app.asar: ${problems.join('; ')}`)
+  else ok(`caption fonts: ${found.length} files in out/renderer/assets match their pins in fontCatalog.ts`)
+  const all = Buffer.concat(bufs)
+  const raw = all.length
+  const packed = brotliCompressSync(all, { params: { [zlib.BROTLI_PARAM_QUALITY]: 11, [zlib.BROTLI_PARAM_LGWIN]: 24, [zlib.BROTLI_PARAM_SIZE_HINT]: raw } }).length
+  const line = `caption fonts: ${raw} B installed (budget ${CAPTIONS_BUDGET.installed} B), ${packed} B brotli-compressed (budget ${CAPTIONS_BUDGET.compressed} B)`
+  if (raw > CAPTIONS_BUDGET.installed || packed > CAPTIONS_BUDGET.compressed) fail(line)
+  else ok(line)
+}
 
 // 2. ffmpeg.exe is the pinned Windows x64 build, unpacked next to the archive (F43).
 const ffmpegDir = path.join(unpacked, 'resources', 'app.asar.unpacked', 'node_modules', 'ffmpeg-static')

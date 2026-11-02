@@ -80,7 +80,7 @@ export function captionTokens(seg: Pick<CaptionSegment, 'start' | 'end' | 'text'
 /* ---------- fades ---------- */
 
 /** Viewing (output) time at which source time `t` is on screen; source time itself without clips. */
-const viewAt = (clips: Clip[], t: number): number => (clips.length ? viewingTime(clips, t) : t)
+export const viewAt = (clips: Clip[], t: number): number => (clips.length ? viewingTime(clips, t) : t)
 
 /**
  * Opacity of caption `i` at source time `t` (0..1): it fades in and out over CAPTION_FADE seconds
@@ -185,11 +185,12 @@ function piecesOf(tokens: CaptionToken[], maxWidth: number, width: (s: string) =
 }
 
 /** The first strong letter is from a right-to-left script (Hebrew, Arabic, Syriac, Thaana, N'Ko and their presentation forms). */
-const RTL_FIRST = /^[^\p{L}]*[\u0590-\u08ff\ufb1d-\ufdff\ufe70-\ufeff]/u
+export const RTL_FIRST = /^[^\p{L}]*[\u0590-\u08ff\ufb1d-\ufdff\ufe70-\ufeff]/u
 /** A letter of those scripts. */
-const RTL_LETTER = /[\u0590-\u08ff\ufb1d-\ufdff\ufe70-\ufeff]/u
+export const RTL_LETTER = /[\u0590-\u08ff\ufb1d-\ufdff\ufe70-\ufeff]/u
 
-type Dir = 'l' | 'r'
+/** A reading direction: left to right or right to left. */
+export type Dir = 'l' | 'r'
 
 /**
  * The reading direction of each token, a word-level shortcut of the Unicode bidi algorithm (which
@@ -197,7 +198,7 @@ type Dir = 'l' | 'r'
  * before it ('Windows 11' in an Arabic caption, a count between Arabic words); anything else
  * without a letter (a dash, an emoji) goes the way of its neighbours when both agree, else the caption's.
  */
-function tokenDirs(tokens: CaptionToken[], caption: Dir): Dir[] {
+export function tokenDirs(tokens: CaptionToken[], caption: Dir): Dir[] {
   const dirs = tokens.map((t): Dir | null => {
     const letter = /\p{L}/u.exec(t.text)
     return letter ? (RTL_LETTER.test(letter[0]) ? 'r' : 'l') : null
@@ -226,7 +227,7 @@ function tokenDirs(tokens: CaptionToken[], caption: Dir): Dir[] {
  * in an Arabic caption, Arabic in an English one) is mirrored within the room it takes, so the
  * run keeps its own order (in an Arabic caption, 'Visual Studio Code' still reads left to right).
  */
-function displayOrder(words: CaptionWordBox[], width: number, dirs: Dir[], caption: Dir): void {
+export function displayOrder(words: CaptionWordBox[], width: number, dirs: Dir[], caption: Dir): void {
   if (caption === 'r') for (const wd of words) wd.x = width - wd.x - wd.w
   for (let s = 0; s < words.length; ) {
     if (dirs[words[s].token] === caption) {

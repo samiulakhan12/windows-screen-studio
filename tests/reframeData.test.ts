@@ -2,7 +2,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { migrateProject } from '../src/shared/engine/project'
-import { DEFAULT_REFRAME, followApplies, readCopyOf, readReframe, reframeOn, withoutFollow, withReframe } from '../src/shared/engine/reframeData'
+import { DEFAULT_REFRAME, followApplies, isTall, readCopyOf, readReframe, reframeOn, tallAs, withoutFollow, withReframe } from '../src/shared/engine/reframeData'
 import type { ReframeSettings } from '../src/shared/types'
 
 /*
@@ -93,5 +93,45 @@ describe('turning following on, and when a frame follows (test 3)', () => {
     expect(r).not.toHaveProperty('reframe')
     expect(r).toEqual(p)
     expect(q.reframe).toEqual({ ...DEFAULT_REFRAME, pace: 'lively' })
+  })
+})
+
+describe('the preview is tall exactly when the export is', () => {
+  it('a 4:5 preview a pixel short of 1.25 is made tall, as its 1080 x 1350 export', () => {
+    expect(isTall(403, 503)).toBe(false)
+    expect(tallAs(403, 503, 1080, 1350)).toBe(504)
+    expect(tallAs(1080, 1348, 1080, 1350)).toBe(1350)
+    // A frame just wide of the line stays wide when rounding takes its picture over it.
+    expect(tallAs(400, 500, 1000, 1249)).toBe(499)
+  })
+
+  it('keeps the preview canvas tall or wide as its output, never above its size, for every pane and display scale', () => {
+    let checked = 0
+    for (const out of [{ width: 1080, height: 1350 }, { width: 1080, height: 1920 }, { width: 1920, height: 1080 }, { width: 1080, height: 1080 }, { width: 1000, height: 1249 }, { width: 1000, height: 1250 }]) {
+      for (const dpr of [1, 1.1, 1.25, 1.5, 1.75, 2]) {
+        for (let pane = 120; pane <= 1400; pane += 7) {
+          for (const [availW, availH] of [[pane, 2000], [2000, pane]]) {
+            // PreviewStage's sizing: the pane's box at the output's ratio, then its backing pixels.
+            const ratio = out.width / out.height
+            let w = availW
+            let h = w / ratio
+            if (h > availH) {
+              h = availH
+              w = h * ratio
+            }
+            w = Math.floor(w)
+            h = Math.floor(h)
+            const k = Math.min(1, out.width / (w * dpr), out.height / (h * dpr))
+            const bw = Math.max(2, Math.round(w * dpr * k))
+            const bh = tallAs(bw, Math.max(2, Math.round(h * dpr * k)), out.width, out.height)
+            expect(isTall(bw, bh), `${out.width}x${out.height} in ${availW}x${availH} at ${dpr}`).toBe(isTall(out.width, out.height))
+            expect(bh).toBeLessThanOrEqual(out.height)
+            expect(Math.abs(bh / bw - out.height / out.width)).toBeLessThan(0.02)
+            checked++
+          }
+        }
+      }
+    }
+    expect(checked).toBeGreaterThan(1000)
   })
 })

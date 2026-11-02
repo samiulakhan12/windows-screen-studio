@@ -40,6 +40,7 @@ const EFFORT: Record<AiTextRequest['task'], TextEffort> = {
   chapters: 'medium',
   title: 'low',
   summary: 'low',
+  marks: 'low',
   // The publishing copy pack (NW-13): the longer pieces think a little more than the posts.
   youtube: 'medium',
   linkedin: 'low',

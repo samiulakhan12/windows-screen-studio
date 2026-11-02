@@ -1560,11 +1560,57 @@ describe('CaptionsPanel: AI tools from the command palette (NW-13)', () => {
     expect(last()).toBe('Suggest a title')
   })
 
+  it('Fix captions and Translate from the palette say where those tools are now, and send nothing (Captions Studio §2.3)', async () => {
+    await show()
+    panelNotices.length = 0
+    command('cleanup')
+    command('translate')
+    expect(aiAsked).toEqual([])
+    expect(panelNotices).toEqual([
+      'Fix captions is in Clean up now: tick “Also fix spelling and misheard words with AI”, then Tidy captions',
+      'Translating is in Languages now: Add a language'
+    ])
+    // The tools still here run as before.
+    command('summary')
+    expect(aiAsked.map((a) => a.task)).toEqual(['summary'])
+  })
+
   it('brings the AI tools into view, where the work and its answer show', async () => {
     await show()
     // The tab may be scrolled to its captions: the tools come to its top, with the answer's room under them.
     const out = command('summary')
     expect(scrolled.map((s) => ({ text: textOf(s.el.props.children), options: s.options }))).toEqual([{ text: expect.stringMatching(/^Provider/), options: { block: 'start' } }])
     expect(buttons(out)).toContain('Working…')
+  })
+})
+
+describe('CaptionsPanel: Add a caption language… (Captions Studio §2.14)', () => {
+  it('brings Languages into view once; the next visit to the tab opens at the top, and Languages still takes its request', () => {
+    // The module CaptionsPanel was imported with (later tests import fresh copies).
+    const requests = items as unknown as { requestCaptions(r: unknown): void; takeSectionRequest(kind: string): unknown; takeCaptionsRequest(): unknown }
+    const scrolled: string[] = []
+    const g = globalThis as { requestAnimationFrame?: unknown }
+    const doc = page as { querySelector?: unknown }
+    g.requestAnimationFrame = (fn: () => void) => {
+      fn()
+      return 0
+    }
+    doc.querySelector = (sel: string) => ({ scrollIntoView: () => scrolled.push(sel) })
+    try {
+      requests.requestCaptions({ kind: 'language', via: 'ai' })
+      render()
+      expect(scrolled).toEqual(['[data-testid="caption-languages"]'])
+      // Another tab, then Captions again: the panel mounts afresh.
+      for (const list of cells.values()) for (const c of list) c.cleanup?.()
+      cells.clear()
+      render()
+      expect(scrolled).toHaveLength(1)
+      expect(requests.takeSectionRequest('language')).toEqual({ kind: 'language', via: 'ai' })
+    } finally {
+      delete g.requestAnimationFrame
+      delete doc.querySelector
+      requests.takeSectionRequest('language')
+      requests.takeCaptionsRequest()
+    }
   })
 })

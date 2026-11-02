@@ -171,3 +171,62 @@
   gap: 4px;
   flex-shrink: 0;
 }
+
+/* ---------- Captions Studio: emphasised words and one caption's place (docs/design/captions-studio.md §2.7) ---------- */
+
+/* Bold, and underlined in the second colour: the cue is never colour alone. */
+.tw.emphasis,
+.tw.emphasis2 {
+  font-weight: 700;
+}
+
+.tw.emphasis2 {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.transcript-emphasis {
+  align-items: center;
+}
+
+.transcript-menu {
+  position: relative;
+}
+
+.transcript-menu-list {
+  position: absolute;
+  z-index: 20;
+  top: calc(100% + 4px);
+  left: 0;
+  display: flex;
+  flex-direction: column;
+  min-width: 250px;
+  padding: 4px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-md);
+  background: var(--surface-3);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+}
+
+.transcript-menu-list [role='menuitem'] {
+  padding: 6px var(--space-2);
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-1);
+  text-align: left;
+  cursor: pointer;
+}
+
+.transcript-menu-list [role='menuitem']:hover,
+.transcript-menu-list [role='menuitem']:focus-visible {
+  background: var(--surface-4);
+}
+
+.transcript-place {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--text-2);
+  font-size: var(--text-xs);
+}

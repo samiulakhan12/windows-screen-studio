@@ -22,7 +22,9 @@ const PATHS: Record<string, string> = {
   keyboard: 'M3 6h18v12H3zM7 10h.01M11 10h.01M15 10h.01M7 14h10',
   shapes: 'M3 11h9v10H3zM16 3a5 5 0 1 1 0 10 5 5 0 0 1 0-10z',
   image: 'M3 5h18v14H3zM8.5 8a1.5 1.5 0 1 1 0 3 1.5 1.5 0 0 1 0-3zM21 15l-5-5L5 19',
-  transcript: 'M4 6h16M4 10h16M4 14h9M4 18h7M17 13v8M15 13h4M15 21h4'
+  transcript: 'M4 6h16M4 10h16M4 14h9M4 18h7M17 13v8M15 13h4M15 21h4',
+  // A pop-up bursting out (Captions Studio's Graphics tab and row).
+  burst: 'M12 2l1.6 4.6L18 4.8l-1.8 4.4L21 11l-4.8 1.6L18 17l-4.4-1.8L12 20l-1.6-4.8L6 17l1.8-4.4L3 11l4.8-1.8L6 4.8l4.4 1.8zM12 10v2.5M12 14.5v.01'
 }
 
 export function EditorIcon({ name, size = 18 }: { name: string; size?: number }): JSX.Element {

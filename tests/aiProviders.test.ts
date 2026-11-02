@@ -325,6 +325,20 @@ describe('transcription', () => {
     expect(sent[0].fields).not.toHaveProperty('languages[]')
   }, 60_000)
 
+  it('sends the caption word list as OpenAI\'s prompt and as a Gemini data part (Captions Studio §11.7 rule 4)', async () => {
+    const before = mock.requests.length
+    await call<Transcript>('ai:transcribe', 'rec-words', { providerId: providers.OpenAI.id, glossary: ['Flown', 'Qbexel', 7, 'flown'] })
+    const sent = mock.requests.slice(before).filter((r) => r.route === '/audio/transcriptions')
+    expect(sent.every((r) => r.fields.prompt === 'Glossary: Flown, Qbexel.')).toBe(true)
+    await call<Transcript>('ai:transcribe', 'rec-words', { providerId: providers.Gemini.id, glossary: ['Flown'] })
+    const gemini = mock.requests.filter((r) => r.provider === 'gemini' && /generateContent/.test(r.route)).at(-1)!
+    expect(gemini.json.contents[0].parts.slice(1).map((p: { text: string }) => p.text).at(-1)).toBe('Spell these names as written: Flown.')
+    // Without a word list nothing is added.
+    const plain = mock.requests.length
+    await call<Transcript>('ai:transcribe', 'rec-words', { providerId: providers.OpenAI.id })
+    expect(mock.requests.slice(plain).filter((r) => r.route === '/audio/transcriptions')[0].fields).not.toHaveProperty('prompt')
+  }, 60_000)
+
   it('labels Gemini speakers', async () => {
     const t = await call<Transcript>('ai:transcribe', 'rec-words', { providerId: providers.Gemini.id })
     expect(t.segments.map((s) => s.speaker)).toEqual(STARTS.map((_, k) => `Speaker ${k % 2 === 0 ? 1 : 2}`))
@@ -457,6 +471,9 @@ describe('transcription options and part arguments (On this PC)', () => {
     for (const bad of ['whisper-huge', '../ggml-base.bin', 'https://huggingface.co/x', 7]) expect(() => validateTranscribeOptions({ providerId: 'local', model: bad })).toThrow('Unknown speech model.')
     expect(validateTranscribeOptions({ providerId: 'aiabc', model: 'whisper-base', language: 'pt-BR' })).toEqual({ providerId: 'aiabc', source: 'auto', language: 'pt-BR' })
     expect(validateTranscribeOptions({ providerId: 'aiabc', model: 'anything' })).toEqual({ providerId: 'aiabc', source: 'auto' })
+    // The caption word list: plain terms only (Captions Studio §11.7 rule 4).
+    expect(validateTranscribeOptions({ providerId: 'aiabc', glossary: [' Flown\u0000 ', 'Q\u202ebexel', 3, 'x'.repeat(50)] }).glossary).toEqual(['Flown', 'Q bexel', 'x'.repeat(40)])
+    expect(validateTranscribeOptions({ providerId: 'aiabc', glossary: 'Flown' })).toEqual({ providerId: 'aiabc', source: 'auto' })
   })
 
   it('the Bangla model makes captions in Bangla only (§14)', () => {

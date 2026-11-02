@@ -1,4 +1,6 @@
-import { useEffect, useRef, useState } from 'react'
+import { useContext, useEffect, useRef, useState } from 'react'
+import { captionsOf } from '../../../shared/captions/settings'
+import { legacyTwin } from '../../../shared/captions/studioEdit'
 import { BRAND_CARD_LENGTH, DEFAULT_BRAND_LOGO, MAX_BRAND_COLORS, MAX_BRAND_FONTS, shownBrandKit, type BrandCard, type BrandKit, type BrandLogo } from '../../../shared/editor/brandKit'
 import { BUILT_IN_PRESETS, parseUserPresets, type StylePreset } from '../../../shared/editor/stylePresets'
 import { TITLE_BACKGROUNDS, TITLE_STYLES } from '../../../shared/editor/titles'
@@ -6,6 +8,9 @@ import { WATERMARK_LIMITS } from '../../../shared/engine/watermark'
 import { cleanFontName, fontFamily } from '../../../shared/render/fonts'
 import type { ProjectFont } from '../../../shared/types'
 import { checkKitLogo } from '../render/watermarkLayer'
+import { useSavedLooks } from '../editor/captionPresets'
+import { EditorContext } from '../editor/context'
+import { lookName } from '../editor/panels/captionTiles'
 import { BRAND_KIT_CHANGED_EVENT } from './brandKitEvents'
 import './brandKit.css'
 
@@ -307,12 +312,60 @@ export function BrandKitSection({ reveal = false }: { reveal?: boolean }): JSX.E
         </label>
       </div>
 
+      <CaptionStyleBlock value={kit.captionStyle} onChange={(captionStyle) => update({ captionStyle })} />
+
       <label className="toggle brand-auto">
         <span>Apply to new recordings</span>
         <input type="checkbox" aria-label="Apply to new recordings" checked={kit.autoApply} onChange={(e) => update({ autoApply: e.target.checked })} />
       </label>
       <p className="settings-empty small">{kit.autoApply ? 'New recordings start with your brand kit.' : 'New recordings start without it; apply it from the editor.'}</p>
     </section>
+  )
+}
+
+/**
+ * Caption style (Captions Studio, docs/design/captions-studio.md §2.12, §4.6): None or a saved
+ * look, or the open project's look copied in. Applying the kit picks it (the gallery's Brand tile).
+ */
+function CaptionStyleBlock({ value, onChange }: { value: BrandKit['captionStyle']; onChange: (v: BrandKit['captionStyle']) => void }): JSX.Element {
+  const editor = useContext(EditorContext)
+  const { looks } = useSavedLooks()
+  const match = value ? looks.find((s) => s.name === value.name) : undefined
+  const useProject = (): void => {
+    if (!editor) return
+    const settings = captionsOf(editor.store.state)
+    const look = settings.studio ?? legacyTwin(settings)
+    onChange({ name: lookName(settings, looks).name, look: { ...look, from: 'brand' } })
+  }
+  return (
+    <div className="brand-block" data-testid="brand-caption-style">
+      <h4>Caption style</h4>
+      <label className="brand-field">
+        <span className="settings-label">Captions get this look with the kit</span>
+        <select
+          value={value ? (match?.id ?? '__kept__') : ''}
+          onChange={(e) => {
+            if (e.target.value === '__kept__') return
+            const s = looks.find((x) => x.id === e.target.value)
+            onChange(s ? { name: s.name, look: { ...s.look, from: 'brand' } } : undefined)
+          }}
+        >
+          <option value="">None (keep the video's caption style)</option>
+          {value && !match && <option value="__kept__">{value.name}</option>}
+          {looks.map((s) => (
+            <option key={s.id} value={s.id}>
+              {s.name}
+            </option>
+          ))}
+        </select>
+      </label>
+      {editor && (
+        <button type="button" className="btn settings-small" data-testid="brand-caption-style-use" onClick={useProject}>
+          Use the current project's caption style
+        </button>
+      )}
+      <p className="settings-empty small">Save a caption style in the editor's Captions tab to pick it here.</p>
+    </div>
   )
 }
 

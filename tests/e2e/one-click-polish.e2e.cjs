@@ -172,7 +172,10 @@ async function main() {
       for (const t of [2.2, 8.6]) h.assert(auto.some((z) => z.start <= t && z.end >= t), `an automatic zoom covers the click at ${t}: ${JSON.stringify(auto)}`)
       h.assert(!auto.some((z) => z.start < ZM.end && z.end > ZM.start), 'no automatic zoom over yours')
       h.assert(p.autoZoom === true, 'auto zoom on')
-      h.assert(same(p.transcript.segments.map((s) => s.text), ['Word 0', 'Word 1', 'Word 2', 'Word 3']), `captions: ${JSON.stringify(p.transcript.segments.map((s) => s.text))}`)
+      // The transcribed captions, tidied by Polish's Caption look step (Captions Studio §11.7, §11.8):
+      // a full stop where a pause of at least 0.7 s follows, and after the last caption.
+      h.assert(same(p.transcript.segments.map((s) => s.text), ['Word 0', 'Word 1.', 'Word 2', 'Word 3.']), `captions: ${JSON.stringify(p.transcript.segments.map((s) => s.text))}`)
+      h.assert((await status('captionLook')) === 'changed', `the Caption look step ran: ${lines}`)
       h.assert(p.captions.show === true, 'captions shown')
       h.assert(same(p.style.background, { type: 'wallpaper', id: 'violet-mesh' }), `Studio background: ${JSON.stringify(p.style.background)}`)
       h.assert(p.style.aspectRatio === 'auto', 'the aspect ratio stays')

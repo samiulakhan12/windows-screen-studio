@@ -34,6 +34,7 @@ import type { Selection } from './selection'
 import type { SnapController, SnapSession } from './snapControl'
 import { showTitle } from './titleItems'
 import { showOverlay } from './overlayItems'
+import { showGraphic } from './graphicItems'
 
 export type { RefusedKind } from '../../../shared/editor/multiSelectCopy'
 
@@ -81,7 +82,8 @@ const BLOCKS: readonly [attr: string, kind: Parameters<typeof trackOfKind>[0]][]
   ['overlay', 'overlay'],
   ['title', 'title'],
   ['chapter', 'chapter'],
-  ['freeze', 'freeze']
+  ['freeze', 'freeze'],
+  ['graphic', 'graphic']
 ]
 const BLOCK_SELECTOR = BLOCKS.map(([a]) => `[data-${a}]`).join(', ')
 
@@ -140,6 +142,11 @@ function plainClick({ store, player }: EditorServices, key: ItemKey): void {
     case 'freeze': {
       const f = p.freezes?.find((x) => x.id === k.id)
       if (f) player.seek(f.at)
+      return
+    }
+    case 'graphic': {
+      const g = p.graphics?.find((x) => x.id === k.id)
+      if (g) showGraphic(player, p, g)
       return
     }
     case 'zoom':

@@ -382,11 +382,11 @@
   background: var(--accent-500);
 }
 
-/* The labelled rail needs 620 px (twelve tabs and the Selection tab, 44.6 px each). Below that
+/* The labelled rail needs 667 px (thirteen tabs and the Selection tab, 44.6 px each). Below that
    (short windows, a recording with a camera and captions) it turns into a compact icon rail that
    still fits every tab at the minimum window size; anything shorter scrolls, with a visible
    scrollbar. */
-@container inspector (max-height: 620px) {
+@container inspector (max-height: 667px) {
   .insp-tabs {
     gap: 1px;
     padding: 6px;

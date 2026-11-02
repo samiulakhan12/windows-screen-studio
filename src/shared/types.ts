@@ -377,6 +377,390 @@ export interface CaptionSettings {
   font?: string
   /** Draw the speaker's name before each labelled caption (off when absent). */
   showSpeaker?: true
+  /** Captions Studio look (docs/design/captions-studio.md §4.1); absent: `preset` draws exactly as before. */
+  studio?: CaptionStudio
+  /** The caption track drawn on the video (CaptionTrack.language); absent: the spoken transcript. */
+  track?: string
+  /** The look was chosen or changed by hand in the Look section, or is the brand kit's: automation never replaces it (§11.6). */
+  picked?: true
+  /**
+   * Digits in Studio captions, counters, list numbers and chapter titles (§0.2): 'native' the
+   * language's own (Bangla ০–৯), 'western' 0–9. Absent: as written (counters: the locale's).
+   */
+  digits?: 'native' | 'western'
+}
+
+/* ---------- Captions Studio (docs/design/captions-studio.md §4.1, §0.1, §0.2) ---------- */
+
+/** Letter case of caption words; scripts without case ignore it. */
+export type StudioCase = 'asis' | 'upper' | 'lower'
+/** How words are grouped on screen (§8.2). */
+export type StudioChunk = 'phrase' | 'words' | 'word' | 'stack'
+/** Where the caption block sits (§8.5). */
+export type StudioPosition = 'top' | 'upper' | 'middle' | 'lower' | 'bottom'
+/**
+ * The background: none, a rounded box per line, one box per chunk, frosted glass per line, a band
+ * across the frame (§4.1); and the looks of §0.1: a box per word (Stickers), one bubble per chunk
+ * with a tail toward the camera bubble, pointing down without one (Speech Bubble), and a chat
+ * bubble per chunk, the captions of "You" (NW-09's microphone speaker) on the right in
+ * `theme.youBox`, others on the left in `box`, with the speaker's name above (Chat; captions
+ * without speakers draw as Subtitle, STUDIO_BASE).
+ */
+export type StudioBoxKind = 'none' | 'line' | 'chunk' | 'glass' | 'band' | 'word' | 'bubble' | 'chat'
+/** How the spoken word shows (§9.3). */
+export type SpokenMark = 'none' | 'color' | 'fill' | 'box' | 'pill' | 'underline' | 'weight' | 'glow' | 'gradient'
+/**
+ * What marks an emphasised word besides its colour, font and size; 'circle' (§0.1, the Circle
+ * look): a hand-drawn ellipse in the emphasis colour drawn around the word over 0.3 s, its path
+ * fixed by the word's index (never random).
+ */
+export type EmphasisMark = 'none' | 'marker' | 'underline' | 'box' | 'circle'
+export type ChunkEnter = 'none' | 'fade' | 'rise' | 'drop' | 'slide' | 'pop' | 'squeeze' | 'grow' | 'blur' | 'wipe' | 'slam'
+export type ChunkExit = 'none' | 'fade' | 'rise' | 'shrink' | 'blur'
+/** 'grow' (Editorial's emphasis, §5.3): scale 0.96 → 1 over 0.20 s, emphDecel, as the chunk entrance. */
+export type WordMotion = 'none' | 'pulse' | 'pop' | 'bounce' | 'rise' | 'slide' | 'fade' | 'typewriter' | 'blur' | 'shake' | 'wipe' | 'grow'
+
+/**
+ * The font a look draws the words of one script with (§0.2: the look's Bangla font). Emphasised
+ * words of the script draw at the heavier of `weight` and StudioEmphasis.weight (clamped).
+ */
+export interface StudioScriptFont {
+  /** 'cat:<id>' of a catalogue font that has the script's letters. */
+  font: string
+  /** 100..1000, clamped to the weights the font has (§6.5). */
+  weight: number
+  /** Width (the font's wdth axis), percent, 62.5..125; absent: 100 (Stacked's Anek Bangla: 75). */
+  width?: number
+}
+
+export interface StudioText {
+  /** 'cat:<id>' (fontCatalog.ts), a ProjectFont id (a brand font), or 'system' (CAPTION_FONT). */
+  font: string
+  /** 100..1000; drawn clamped to the weights the font has (§6.5). */
+  weight: number
+  case: StudioCase
+  /** Letter spacing, em, -0.05..0.15 (0 in joined scripts, §6.6). */
+  tracking: number
+  /** Line height as a multiple of the size, 0.8..1.8 (raised for some scripts, §6.6). */
+  lineHeight: number
+  /** Text size as a fraction of the output's shorter side in frames that are not tall, 0.025..0.22. */
+  size: number
+  /** Size multiplier in tall frames, 1..1.6. */
+  tall: number
+  /** The 'weight' spoken mark's weight, 100..1000 (Light to Bold: 700); absent: `weight` + 300, at most 900. */
+  spokenWeight?: number
+  /**
+   * The look's own font for words of a script (§0.2): a Bangla word draws in `bengali` instead of
+   * the script's default (Noto Sans Bengali, or Baloo Da 2 at 700 or more, §6.6). English words in
+   * a Bangla caption keep `font`. Absent: the defaults.
+   */
+  scripts?: { bengali?: StudioScriptFont }
+}
+
+export interface StudioEmphasis {
+  /** Font of emphasised words; absent: the text's. */
+  font?: string
+  weight: number
+  /** Size of emphasised words relative to the text, 1..1.6 (part of the layout). */
+  scale: number
+  mark: EmphasisMark
+}
+
+/** Colours, #rrggbb. Geometry is in StudioEdge and StudioBox, so a theme can be swapped alone. */
+export interface StudioTheme {
+  text: string
+  /** Words not yet spoken; absent: `text` (with CaptionMotion.upcoming as their opacity). */
+  upcoming?: string
+  /** The spoken mark: the word's colour ('color', 'glow', 'weight'), the fill, or the box, pill or underline colour. */
+  spoken: string
+  /** Text on a spoken box or pill, or on Stickers' spoken sticker; absent: #111111 or #ffffff, whichever contrasts more with `spoken`. */
+  spokenText?: string
+  emphasis: string
+  /**
+   * Text on an emphasis marker or box; absent: by contrast, as spokenText. With the 'circle' mark:
+   * the colour of the words the circle goes around (`emphasis` is the circle's); absent: `text`.
+   */
+  emphasisText?: string
+  /** Colour of words emphasised with tone 2 (Ctrl+Shift+B); absent: `emphasis`. */
+  emphasis2?: string
+  outline: string
+  shadow: string
+  box: string
+  glow: string
+  /** 2..6 stops for the 'gradient' mark, swept in reading direction. */
+  gradient?: string[]
+  /**
+   * Every word filled with a gradient instead of `text` (§0.1: Gradient across the reading
+   * direction, Gold from top to bottom): 2..6 stops, each passing the contrast rule. Absent: solid.
+   * `at`: each stop's place along the axis, 0..1, never going back (Gold's metal band: 0, 0.45,
+   * 0.55, 1); absent: evenly spaced.
+   */
+  fill?: { stops: string[]; at?: number[]; axis: 'across' | 'down' }
+  /** The border of the boxes (StudioBox.border); absent: #ffffff at α 0.28 (glass). */
+  border?: string
+  /** Chat: the bubble and text colours of the captions of "You"; absent: `box` and `text`. */
+  youBox?: string
+  youText?: string
+  /** The extrusion (StudioEdge.extrude) of words, and of the spoken word; absent: `shadow`. */
+  extrude?: string
+  spokenExtrude?: string
+  /** The two copies of a colour split (StudioEdge.split), left and right of the word. */
+  split?: [string, string]
+}
+
+export interface StudioEdge {
+  /** Outline outside the glyph, em, 0..0.2 (canvas lineWidth = 2 × outline × px, round joins). */
+  outline: number
+  outlineAlpha: number
+  /** dx, dy, blur in em (blur 0: a hard shadow); alpha 0..1. Absent: none. */
+  shadow?: { x: number; y: number; blur: number; alpha: number }
+  /** Glow of the spoken word ('glow' mark), em of the widest layer, 0..1; 0: none. */
+  glow: number
+  /** Words not yet spoken are drawn as an outline only (the Outline look). */
+  hollow?: true
+  /** A solid extrusion under each word (3D Block): `steps` copies (1..12), each moved by x, y em (-0.05..0.05). */
+  extrude?: { steps: number; x: number; y: number }
+  /** A static colour split (Retro Pixel): copies of each word in theme.split moved this far left and right, em, 0..0.1. It never moves. */
+  split?: number
+}
+
+export interface StudioBox {
+  kind: StudioBoxKind
+  /** Opacity of the box colour (the glass tint), 0..1. */
+  alpha: number
+  /** Padding, em. */
+  padX: number
+  padY: number
+  /** Corner radius, em, 0..2; clamped to half the box's height when drawn (2: a pill). */
+  radius: number
+  /** A border in theme.border (glass: a light one), em, 0..0.12; 0: none. */
+  border: number
+  /** Space between the boxes of two lines, em, 0..0.3; absent: 0. */
+  gap?: number
+  /** A shadow under each box in theme.shadow (Stickers: hard; Speech Bubble: soft), em; absent: none. */
+  shadow?: { x: number; y: number; blur: number; alpha: number }
+  /** 'bubble': the length of its tail, em, 0..1.5. */
+  tail?: number
+}
+
+export interface StudioLayout {
+  chunk: StudioChunk
+  /** Most words per chunk: 1..6 for 'words', 4..8 for 'stack'; ignored otherwise. */
+  words: number
+  /** Most lines per chunk: 1..2 for 'phrase' and 'words', 2..4 for 'stack'; ignored for 'word'. */
+  lines: number
+  /** Most characters per line in frames that are not tall, and in tall frames; 0: only the width limits. */
+  chars: number
+  tallChars: number
+  position: StudioPosition
+  /** Centre of the block dragged in the preview, normalised to the output frame; absent: `position`. */
+  place?: { x: number; y: number }
+  /**
+   * Place the block with today's anchors (placeChunk's top, middle, bottom from the legacy
+   * `position`), as the legacy look did. Set by a Studio twin (§5.8); cleared by Position or a drag.
+   */
+  legacyAnchor?: true
+  /** Keep clear of the action, the camera bubble, the face area, lower-third titles and key presses (§8.6). */
+  avoid: boolean
+  /** 'word' and 'stack': fit each chunk to this share of the line width, 0.5..0.95; absent: no fitting. */
+  fit?: number
+}
+
+export interface CaptionMotion {
+  enter: ChunkEnter
+  /** Played only before a gap of CAPTION_JOIN or more (§9.3). */
+  exit: ChunkExit
+  /** At each word's start: an entrance when the word was hidden or dim, a beat when it was shown. */
+  word: WordMotion
+  /** Instead of `word` for emphasised words. */
+  emphasis: WordMotion
+  /** Opacity of words not yet spoken: 1 shown, 0.55 dim, 0 hidden. */
+  upcoming: number
+  /** 0..1: scales every displacement, overshoot and rotation; 0 leaves colour and fade only. */
+  strength: number
+  /** 0.5..2: divides every duration (at least 0.06 s). */
+  speed: number
+  /** Seeded rotation in degrees, 0..8, of chunks or of emphasised words (§9.4); 0: none. */
+  tilt: number
+  tiltOn: 'chunk' | 'emphasis'
+  /**
+   * A fixed tilt of every word by its index (Stickers, §0.1): words at even indexes turn by the
+   * first angle, odd ones by the second, degrees, -8..8; scaled by strength, none with calm.
+   * Never from a random number. Absent: none.
+   */
+  wordTilt?: [number, number]
+  /**
+   * The spoken word grows to this size while it is spoken, 1..1.3 (Stickers 1.12, Spotlight Word
+   * 1.28; at most 1.14 for Bangla words, §0.2). The layout keeps room for it, so a grown word never
+   * touches its neighbours. Calm motion: 1. Absent: 1.
+   */
+  spokenScale?: number
+  /**
+   * The spoken word's tilt while it is spoken, degrees, -8..8 (Bold Pop -2, APPROVED-LOOK.md; not
+   * on Bangla words, as the approved Bangla pop); scaled by strength, none with calm motion and on
+   * estimated words. Absent: none.
+   */
+  spokenTilt?: number
+  /** Calm motion: the clamp of §9.5. */
+  calm?: true
+}
+
+/** A Captions Studio look. Every parameter that draws is here; nothing is looked up by name. */
+export interface CaptionStudio {
+  /** The gallery tile it started from: a built-in id (studioPresets.ts), 'mine:<id>' or 'brand'. Informational. */
+  from: string
+  text: StudioText
+  emphasis: StudioEmphasis
+  theme: StudioTheme
+  edge: StudioEdge
+  box: StudioBox
+  spoken: SpokenMark
+  layout: StudioLayout
+  motion: CaptionMotion
+  /** A colour per speaker (§7.4); absent: off. */
+  speakerColors?: true
+}
+
+/** Emphasis on words of a caption (§11.1). */
+export interface CaptionMark {
+  id: string
+  /** CaptionSegment.id. */
+  caption: string
+  /** First and last word, as indexes into studioWordTexts(caption text) (§8.1). */
+  from: number
+  to: number
+  /** The words as marked, at most 80 characters: checked against the indexes, re-found by text and time after edits (§11.1). */
+  text: string
+  /** 2: the second emphasis colour (StudioTheme.emphasis2); absent: the first. */
+  tone?: 2
+  /** Made by Find important words or Make my captions great, not reviewed yet. */
+  auto?: true
+}
+
+/** One caption placed at the top or the bottom by hand (§2.7); absent: the look decides. */
+export interface CaptionPlace {
+  caption: string
+  position: 'top' | 'bottom'
+}
+
+/** Where an automatic item came from (Review mode titles; replaced by the next run while `auto`). */
+export interface AutoOrigin {
+  by: 'keyword' | 'emoji' | 'number' | 'list' | 'speaker' | 'chapter' | 'quote'
+  via: 'rules' | AiProviderKind
+  /** CaptionSegment.id it was made from. */
+  caption?: string
+  /** Chapter.id it was made from ('chapter'). */
+  chapter?: string
+}
+
+/** Caption words a graphic was made from. Remapped like marks (§11.1). */
+export interface WordAnchor {
+  caption: string
+  /** Word indexes into studioWordTexts (§8.1). */
+  from: number
+  to: number
+  /** The words as written, at most 80 characters. */
+  text: string
+}
+
+export type ItemMotionKind = 'none' | 'fade' | 'pop' | 'rise' | 'drop' | 'slide-left' | 'slide-right' | 'grow' | 'blur' | 'typewriter'
+export interface ItemMotion {
+  kind: ItemMotionKind
+  /** Output seconds, 0.1..1.5. */
+  duration: number
+  /** 0..1. */
+  strength: number
+}
+
+interface GraphicBase {
+  id: string
+  /** Source seconds, like every timed item. */
+  start: number
+  end: number
+  /** 'auto': placed per frame size, clear of captions, the action, the camera and safe zones (§10.3); else its centre, normalised. */
+  place: 'auto' | { x: number; y: number }
+  /** Text or emoji size as a fraction of the output's shorter side, 0.02..0.3. */
+  size: number
+  /** #rrggbb; absent: from the caption look's theme. */
+  color?: string
+  accent?: string
+  /** 'cat:<id>' or a ProjectFont id; absent: the caption look's font. */
+  font?: string
+  enter: ItemMotion
+  exit: ItemMotion
+  sound?: 'pop' | 'ding'
+  /** BCP-47 language of its text; drawn only while the burned-in track has this language. */
+  lang?: string
+  /** Made automatically and not reviewed yet (§11.8). */
+  auto?: AutoOrigin
+}
+export interface KeywordGraphic extends GraphicBase {
+  kind: 'keyword'
+  text: string
+  look: 'card' | 'plain' | 'outline' | 'tag'
+  /** The caption words it was made from; while it shows, the chunk holding them is not drawn (§10.1). */
+  anchor?: WordAnchor
+  /** false: the caption stays while the card shows; absent: it is replaced. */
+  replace?: false
+}
+export interface EmojiGraphic extends GraphicBase {
+  kind: 'emoji'
+  /** Code points in hex joined by '-', without FE0F (e.g. '1f525'). Drawn only when it is in the emoji list (§11.3). */
+  emoji: string
+  /** The caption word it sits above while that word's chunk shows (`from` = `to`). */
+  anchor?: WordAnchor
+}
+export interface CounterGraphic extends GraphicBase {
+  kind: 'counter'
+  from: number
+  to: number
+  decimals: 0 | 1 | 2
+  prefix: string
+  suffix: string
+  label?: string
+  /** BCP-47 locale for grouping, and for digits unless the captions' Digits choice (§0.2) sets them. */
+  locale: string
+  /** Output seconds the count takes, 0.4..5. */
+  countFor: number
+}
+export interface ListGraphic extends GraphicBase {
+  kind: 'list'
+  title?: string
+  marker: 'number' | 'bullet' | 'check'
+  /** 1..7 items; each shows from `at` (source seconds) to the graphic's end. */
+  items: { text: string; at: number }[]
+}
+export type Graphic = KeywordGraphic | EmojiGraphic | CounterGraphic | ListGraphic
+
+/** A translated caption track (§11.9). */
+export interface CaptionTrack {
+  /** BCP-47 code, unique among the tracks and not the spoken language. */
+  language: string
+  by: 'local' | AiProviderKind
+  model: string
+  createdAt: string
+  /** One text per spoken caption; `src` is a hash of the spoken text it was made from (out of date when it differs). */
+  segments: { id: string; text: string; src: string }[]
+}
+
+/** A word bleeped in the sound and masked in the captions (§11.7). Time-based: no caption id or word index. */
+export interface Bleep {
+  id: string
+  /** Source seconds, the word's time widened (0.05 s; 0.15 s for estimated times). */
+  start: number
+  end: number
+  /** The word as matched, lower case, at most 40 characters (Review titles, masking checks). */
+  word: string
+  sound: 'tone' | 'silence'
+  auto?: true
+}
+
+/** What automation replaced, so Review › Remove can put it back (§11.8). */
+export interface CaptionAuto {
+  /** The caption settings before Make my captions great or Polish changed the look (null: none were set). */
+  style?: { was: CaptionSettings | null; by: 'great' | 'polish'; name: string }
+  /** Captions whose text a clean-up changed: their text and words before. */
+  text?: { caption: string; text: string; words?: CaptionWord[] }[]
 }
 
 /** A 3D tilt of the recording card (degrees), for a perspective "product shot" look. */
@@ -392,7 +776,8 @@ export interface TiltSettings {
   animate: 'none' | 'cursor' | 'zoom'
 }
 
-export type TitleCardStyle = 'centered' | 'lower-third' | 'big'
+/** 'quote': a pull quote on a panel (Captions Studio §10.1). */
+export type TitleCardStyle = 'centered' | 'lower-third' | 'big' | 'quote'
 
 /** A full-frame or lower-third title shown between `start` and `end` (source seconds). */
 export interface TitleCard {
@@ -406,10 +791,12 @@ export interface TitleCard {
   background: 'blur' | 'solid' | 'style'
   color?: string
   textColor?: string
-  /** A ProjectFont id (Project.fonts); absent or unknown = the built-in title font. */
+  /** A ProjectFont id (Project.fonts) or 'cat:<id>' (Captions Studio's catalogue); absent or unknown = the built-in title font. */
   font?: string
   /** Set on the intro or outro card the brand kit placed: applying the kit again replaces it. */
   brand?: 'intro' | 'outro'
+  /** Made automatically (a lower third from a speaker, a chapter title, a quote) and not reviewed yet (Captions Studio §11.8). */
+  auto?: AutoOrigin
 }
 
 /** A named chapter starting at `t` (source seconds). */
@@ -775,6 +1162,18 @@ export interface Project {
   /** What was said, from a transcription provider (edited by the user). */
   transcript?: Transcript
   captions?: CaptionSettings
+  /** Emphasised words (Captions Studio §4.1); absent: none. */
+  captionMarks?: CaptionMark[]
+  /** Captions placed at the top or the bottom by hand; absent: none. */
+  captionPlaces?: CaptionPlace[]
+  /** Motion graphics made from captions; absent: none. */
+  graphics?: Graphic[]
+  /** Translated caption tracks; absent: only the spoken transcript. */
+  captionTracks?: CaptionTrack[]
+  /** Bleeped words; absent: none. */
+  bleeps?: Bleep[]
+  /** What automation replaced, for Review; absent: nothing. */
+  captionAuto?: CaptionAuto
   /** The speaker notes read while recording (kept when "Keep a copy with the recording" was on). */
   script?: ProjectScript
   /** Where the video came from when Flown did not record it. Absent: recorded in Flown (every project from before NW-07). */
@@ -854,6 +1253,8 @@ export interface ExportSettings {
   preset?: string
   /** Aim for this file size (MB) instead of a quality level (two-pass bitrate). */
   targetSizeMB?: number
+  /** Also mux the subtitle languages (BundleOptions.languages) as subtitle streams (MP4, MOV, WebM); absent: no (Captions Studio §11.10). */
+  subtitleStreams?: true
 }
 
 export interface RecordingStatus {

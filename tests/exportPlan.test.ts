@@ -4,7 +4,10 @@ import type { ExportCapabilities, ExportJob } from '../src/shared/api/export'
 import { outputSize } from '../src/shared/engine/layout'
 import { createProject } from '../src/shared/engine/project'
 import { avcLevel, colorTagsFrom } from '../src/shared/render/codec'
-import { capSize, exportDimensions, exportRoutes, exportSize, MAX_EXPORT_SIDE, routeLabel } from '../src/shared/render/exportPlan'
+import { studioMetrics } from '../src/shared/captions/studioLayout'
+import { studioPreset } from '../src/shared/captions/studioPresets'
+import { isTall } from '../src/shared/engine/reframeData'
+import { capSize, exportDimensions, exportPreviewSize, exportRoutes, exportSize, MAX_EXPORT_SIDE, routeLabel } from '../src/shared/render/exportPlan'
 import type { ExportSettings } from '../src/shared/types'
 
 const settings: ExportSettings = { format: 'mp4', resolution: 1080, fps: 60, quality: 'high', encoder: 'auto' }
@@ -163,5 +166,47 @@ describe('colorTagsFrom', () => {
   it('leaves matrix and range alone when the encoder does not report them', () => {
     expect(colorTagsFrom(undefined)).toEqual({ primaries: 1, transfer: 1, matrix: null, fullRange: null })
     expect(colorTagsFrom({ matrix: 'something-new' })).toEqual({ primaries: 1, transfer: 1, matrix: null, fullRange: null })
+  })
+})
+
+describe("the export dialog's picture", () => {
+  // ExportDialog's box for its frame picture.
+  const box = { width: 236, height: 236 }
+
+  it('of a 4:5 export is tall at every display scale, so Bold Pop is sized and wrapped as in the file', () => {
+    const look = studioPreset('bold-pop')!.look
+    const out = { width: 1080, height: 1350 }
+    const file = studioMetrics(look, out.width, out.height)
+    expect(file.tall).toBe(true)
+    for (const dpr of [1, 1.25, 1.5, 1.75, 2]) {
+      const { css, pixels } = exportPreviewSize(out, box, dpr)
+      expect(css).toEqual({ width: 189, height: 236 })
+      const m = studioMetrics(look, pixels.width, pixels.height)
+      expect(m.tall, `at ${dpr}: ${pixels.width}x${pixels.height}`).toBe(true)
+      expect(m.px / pixels.width).toBeCloseTo(file.px / out.width, 3)
+      expect(m.maxChars).toBe(file.maxChars)
+    }
+  })
+
+  it('is tall or wide as its export, in its shape, for every size, box and display scale', () => {
+    let checked = 0
+    for (const out of [{ width: 1080, height: 1350 }, { width: 864, height: 1080 }, { width: 1080, height: 1920 }, { width: 1920, height: 1080 }, { width: 1080, height: 1080 }, { width: 1000, height: 1249 }, { width: 1000, height: 1250 }, { width: 2, height: 2 }]) {
+      for (const dpr of [1, 1.1, 1.25, 1.5, 1.75, 2, 3]) {
+        for (let side = 40; side <= 600; side += 13) {
+          for (const b of [box, { width: side, height: side }, { width: side, height: 236 }, { width: 236, height: side }]) {
+            const { css, pixels } = exportPreviewSize(out, b, dpr)
+            expect(isTall(pixels.width, pixels.height), `${out.width}x${out.height} in ${b.width}x${b.height} at ${dpr}`).toBe(isTall(out.width, out.height))
+            expect(pixels.width).toBe(Math.max(2, Math.round(css.width * dpr)))
+            // The height moves only toward the export's side of the line, by at most the pixels rounding cost.
+            const move = pixels.height - Math.max(2, Math.round(css.height * dpr))
+            expect(isTall(out.width, out.height) ? move : -move).toBeGreaterThanOrEqual(0)
+            expect(Math.abs(move)).toBeLessThanOrEqual(2)
+            expect(Math.abs((pixels.height / pixels.width) * (out.width / out.height) - 1)).toBeLessThan(0.04)
+            checked++
+          }
+        }
+      }
+    }
+    expect(checked).toBeGreaterThan(1000)
   })
 })

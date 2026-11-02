@@ -5,6 +5,8 @@ import { createRequire } from 'node:module'
 import os from 'node:os'
 import path from 'node:path'
 import { pathToFileURL } from 'node:url'
+import { createHash } from 'node:crypto'
+import { brotliCompressSync, constants as zlibConstants } from 'node:zlib'
 import { afterEach, describe, expect, it } from 'vitest'
 import { APP_USER_MODEL_ID } from '../src/shared/brand'
 
@@ -66,6 +68,9 @@ const packaging = require('../scripts/lib/packaging.cjs') as {
   noticesResource(): { from: string; to: string; filter: string[] }
   noticesProblems(text: string): string[]
   NOTICE_NAMES: string[]
+  CAPTIONS_BUDGET: { compressed: number; installed: number }
+  TRANSLATE_BUDGET: { compressed: number; installed: number }
+  captionFontProblems(found: { name: string; bytes: number; sha256: string }[], pins: { file: string; bytes: number; sha256: string }[]): string[]
   VAD_PIN: { file: string; bytes: number; sha256: string }
   SPEECH_IMPORTS: string[]
   SPEECH_BUDGET: { compressed: number; installed: number }
@@ -668,8 +673,12 @@ describe('speech packaging (docs/design/offline-captions.md §6)', () => {
   it('commits third-party notices that name what ships, and checks them', () => {
     const text = readFileSync(path.join(ROOT, 'resources', 'THIRD_PARTY_NOTICES.txt'), 'utf8')
     expect(packaging.noticesProblems(text)).toEqual([])
-    expect(packaging.NOTICE_NAMES).toEqual(['whisper.cpp', 'ggml', 'Silero VAD', 'OpenAI Whisper', 'Bengali.AI', 'mingw-w64', 'FFmpeg', 'Electron', 'React', 'MediaPipe'])
-    expect(packaging.noticesProblems('React and Electron')).toEqual(['only 18 bytes (at least 10 KB expected)', 'does not name whisper.cpp, ggml, Silero VAD, OpenAI Whisper, Bengali.AI, mingw-w64, FFmpeg, MediaPipe'])
+    // Captions Studio's data (resources/notices/35-caption-data.txt): CLDR, obscenity and LDNOOBW.
+    expect(packaging.NOTICE_NAMES).toEqual(['whisper.cpp', 'ggml', 'Silero VAD', 'OpenAI Whisper', 'Bengali.AI', 'mingw-w64', 'FFmpeg', 'Electron', 'React', 'MediaPipe', 'SIL Open Font License', 'Noto', 'Unicode', 'CLDR', 'obscenity', 'LDNOOBW'])
+    expect(packaging.noticesProblems('React and Electron')).toEqual([
+      'only 18 bytes (at least 10 KB expected)',
+      'does not name whisper.cpp, ggml, Silero VAD, OpenAI Whisper, Bengali.AI, mingw-w64, FFmpeg, MediaPipe, SIL Open Font License, Noto, Unicode, CLDR, obscenity, LDNOOBW'
+    ])
     // The hand-written entries are part of it.
     for (const f of readdirSync(path.join(ROOT, 'resources', 'notices'))) {
       expect(text).toContain(readFileSync(path.join(ROOT, 'resources', 'notices', f), 'utf8').trim().split('\n')[0])
@@ -882,4 +891,41 @@ describe('asar', () => {
     expect(list.find((e) => e.path.endsWith('ffmpeg.exe'))).toMatchObject({ size: 99, unpacked: true, dir: false })
     expect(() => asar.parseAsarHeader(Buffer.from('nope, not an archive'))).toThrow()
   })
+})
+
+/* ---------- Captions Studio's fonts (docs/design/captions-studio.md §6.9, test 58) ---------- */
+
+describe('caption fonts in the package', () => {
+  const pinsOf = async (): Promise<{ file: string; bytes: number; sha256: string }[]> => {
+    const { CATALOG_FONTS } = await import('../src/shared/captions/fontCatalog')
+    return CATALOG_FONTS.flatMap((f) => f.files.flatMap((x) => (x.woff2 ? [x.woff2] : [])))
+  }
+  const onDisk = (pins: { file: string }[]): { name: string; buf: Buffer }[] => pins.map((p) => ({ name: p.file, buf: readFileSync(path.join(ROOT, 'resources', 'fonts', p.file)) }))
+
+  it('finds every bundled font file as pinned, and names a missing, changed or extra one', async () => {
+    const pins = await pinsOf()
+    const found = onDisk(pins).map((f) => ({ name: f.name, bytes: f.buf.length, sha256: createHash('sha256').update(f.buf).digest('hex') }))
+    expect(packaging.captionFontProblems(found, pins)).toEqual([])
+    const changed = found.map((f, i) => (i === 0 ? { ...f, sha256: '0'.repeat(64) } : f))
+    expect(packaging.captionFontProblems(changed.slice(0, -1).concat({ name: 'stray.woff2', bytes: 1, sha256: 'x' }), pins)).toEqual([
+      `${pins[0].file} is not the pinned file (${pins[0].bytes} bytes, SHA-256 ${'0'.repeat(64)})`,
+      `${pins[pins.length - 1].file} is missing`,
+      'stray.woff2 is not in the catalogue'
+    ])
+    // verify-dist checks the copies inside app.asar the same way.
+    expect(readFileSync(path.join(ROOT, 'scripts', 'verify-dist.mjs'), 'utf8')).toContain('captionFontProblems(found, pins)')
+  })
+
+  it('keeps the fonts within CAPTIONS_BUDGET, measured as the installer compresses them, and a 2 MB regression fails it', async () => {
+    const bufs = onDisk(await pinsOf()).map((f) => f.buf)
+    const all = Buffer.concat(bufs)
+    const packed = brotliCompressSync(all, { params: { [zlibConstants.BROTLI_PARAM_QUALITY]: 11, [zlibConstants.BROTLI_PARAM_LGWIN]: 24, [zlibConstants.BROTLI_PARAM_SIZE_HINT]: all.length } }).length
+    const budget = packaging.CAPTIONS_BUDGET
+    expect(all.length).toBeLessThanOrEqual(budget.installed)
+    expect(packed).toBeLessThanOrEqual(budget.compressed)
+    expect(all.length + 2e6).toBeGreaterThan(budget.installed)
+    expect(packed + 2e6).toBeGreaterThan(budget.compressed)
+    // The translation runtime's budget is its own, checked only when resources/translate/ exists.
+    expect(packaging.TRANSLATE_BUDGET).toEqual({ compressed: 2.3e6, installed: 6e6 })
+  }, 60_000)
 })

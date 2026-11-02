@@ -339,17 +339,20 @@ The dialog reads the providers (`window.api.listAiProviders()`) and the options 
      - `{ cancelled }` → `'cancelled'`.
      - When no provider is passed: `'no-provider'`.
 2. **Speech.** Call `loadDirectorSpeech({ ...p, transcript: fetched ?? p.transcript }, effectiveTrack(recorded, p))`. The levels are already cached, and the transcript refines the speech.
-3. **Probe.** Run `planPolish({ …, framing: { status: 'skipped' } }, options)`. If `probe.directorPlan` exists, `directorSettingsOf(probe.project).frameFace` is true and `player.webcam` exists:
+3. **Probe.** Run `planPolish({ …, framing: { status: 'skipped' } }, options)`, a step at a time as in 4. If `probe.directorPlan` exists, `directorSettingsOf(probe.project).frameFace` is true and `player.webcam` exists:
    - `times = faceSampleTimes(probe.directorPlan.cameraShown, speech?.ranges ?? null, p.webcamOffset, player.webcam.duration || p.duration)`. That is `FACE.minSamples` (6) to `FACE.maxSamples` (16) samples.
    - `framing = await measureFraming(player.webcam.currentSrc || player.webcam.src, times, probe.directorPlan.framingCap, { onProgress, signal: faceSignal })`.
    - `measureFraming` allows 3 s per seek and 10 s for the video to load. It never rejects and resolves `'skipped'` on abort. These are exactly the calls `direct()` makes.
-4. **Commit**, unless the run was aborted:
+4. **Commit**, unless the run was aborted. The plan is first made from the project as it is a step
+   at a time (`planPolishSteps`, its Caption look in the steps of its planner: Captions Studio
+   §9.8), with the editor free between the steps; Cancel there writes nothing. Then:
 
    ```ts
    store.seal()
    let result: PolishResult | null = null
    try {
-     store.update((p) => (result = planPolish({ ...gathered, project: p }, options)).project)
+     // Planned again at once from an edit made while it planned.
+     store.update((p) => (result = p === from ? planned : planPolish({ ...gathered, project: p }, options)).project)
    } catch (err) {
      // EditStore.update calls fn once, before any push: a throw leaves the project untouched.
      return showError(`Polish failed: ${message(err)}. Nothing was changed.`)

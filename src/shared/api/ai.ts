@@ -39,6 +39,8 @@ export interface TranscribeOptions {
   source?: 'auto' | 'mic' | 'mixed'
   /** On this PC only: the speech model (a catalog id, speech/catalog.ts); absent = the default model. Ignored for providers. */
   model?: string
+  /** The caption word list's terms (prefs captionWordList), a spelling hint for every route (Captions Studio §11.7 rule 4). */
+  glossary?: string[]
 }
 
 export interface TranscribeProgress {
@@ -58,7 +60,11 @@ export interface TranscribeProgress {
   resumed?: number
 }
 
-export type AiTextTask = 'cleanup' | 'translate' | 'chapters' | 'title' | 'summary' | PackTextTask
+/**
+ * 'marks' (Captions Studio §11.2): emphasis, emoji, numbers, lists and quotes picked by word
+ * index, checked by validateMarksAnswer (transcriptText.ts).
+ */
+export type AiTextTask = 'cleanup' | 'translate' | 'chapters' | 'title' | 'summary' | 'marks' | PackTextTask
 
 /** The publishing copy pack's own tasks (NW-13, docs/design/publish-pack.md). */
 export type PackTextTask = 'youtube' | 'linkedin' | 'xpost' | 'article' | 'releaseNotes'
@@ -74,6 +80,28 @@ export interface AiTextRequest {
   length?: PublishLength
   /** For the pack's tasks: the recording's name and its chapter titles, sent as data. */
   context?: { title?: string; chapters?: string[] }
+  /** For 'marks': the words of each caption, sent as data. */
+  marks?: MarksBatch
+}
+
+/**
+ * One batch of the 'marks' task (Captions Studio §11.2): each caption's words as studioWordTexts
+ * splits them, numbered from 0. No times are sent.
+ */
+export interface MarksBatch {
+  language?: string
+  captions: { id: string; w: string[] }[]
+}
+
+/**
+ * The 'marks' answer as validateMarksAnswer leaves it: word indexes and listed emoji only, so
+ * nothing the provider writes can reach the video (§11.2).
+ */
+export interface MarksAnswer {
+  captions: { id: string; emphasis: number[]; emoji: string; emojiWord: number }[]
+  numbers: { id: string; from: number; to: number }[]
+  lists: { id: string; from: number; to: number; items: { id: string; from: number; to: number }[] }[]
+  quotes: { id: string; from: number; to: number }[]
 }
 
 export type AiTextResult =
@@ -82,6 +110,8 @@ export type AiTextResult =
   /** 'chapters': chapter starts (source seconds) with titles. */
   | { task: 'chapters'; chapters: { t: number; title: string }[] }
   | { task: 'title' | 'summary'; text: string }
+  /** 'marks': the checked picks. */
+  | { task: 'marks'; answer: MarksAnswer }
   /** The pack (NW-13): checked, cleaned plain text; the YouTube description's text has no chapters (Flown adds them). */
   | { task: 'youtube'; text: string; tags: string[] }
   | { task: 'linkedin' | 'xpost' | 'article' | 'releaseNotes'; text: string }
@@ -173,7 +203,7 @@ export const AI_PROVIDER_KINDS: Record<AiProviderKind, AiProviderKindInfo> = {
   }
 }
 
-export const AI_TEXT_TASKS: readonly AiTextTask[] = ['cleanup', 'translate', 'chapters', 'title', 'summary', 'youtube', 'linkedin', 'xpost', 'article', 'releaseNotes']
+export const AI_TEXT_TASKS: readonly AiTextTask[] = ['cleanup', 'translate', 'chapters', 'title', 'summary', 'marks', 'youtube', 'linkedin', 'xpost', 'article', 'releaseNotes']
 
 /** Limits of what the renderer may send (checked again in the main process). */
 export const AI_LIMITS = {
