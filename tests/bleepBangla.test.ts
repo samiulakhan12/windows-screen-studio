@@ -99,11 +99,11 @@ const COMPOUND_FORMS = [...COMPOUNDS.flatMap(nounForms), ...COMPOUNDS.map((c) =>
 /** Nouns that begin everyday words too (বালক, বালিশ): matched whole, in every form; বালছাল written with স for ছ as well, as Dhaka writes করসি and গেসে. */
 const WHOLE_NOUNS = ['বাল', 'বালছাল', 'বালসাল']
 /**
- * শুয়োরের, "pig's", as it is spelled (শুওরের in West Bengal, শুয়ারের in Bangladesh), with ও or ই:
- * rude only before বাচ্চা (শুয়োরের বাচ্চা), never in শুয়োরের মাংস (pork) or শুয়োরের খামার (a pig farm).
- * Written together with বাচ্চা, it is rude anywhere.
+ * শুয়োরের, "pig's", as it is spelled (শুওরের in West Bengal, শুয়ারের in Bangladesh, শুকরের and
+ * শূকরের from শূকর, the standard word), with ও or ই: rude only before বাচ্চা (শুয়োরের বাচ্চা),
+ * never in শুয়োরের মাংস (pork) or শুয়োরের খামার (a pig farm). Written together with বাচ্চা, it is rude anywhere.
  */
-const PIG = ['শুয়োরের', 'শুওরের', 'শুয়রের', 'শুয়ারের']
+const PIG = ['শুয়োরের', 'শুওরের', 'শুয়রের', 'শুয়ারের', 'শুকরের', 'শূকরের']
 const PIG_GENITIVES = PIG.flatMap((w) => PARTICLES.map((p) => w + p))
 const KIDS = ['বাচ্চা', 'বাচ্ছা'].flatMap(nounForms)
 const PIG_JOINED = [...PIG.flatMap((w) => KIDS.map((k) => w + k)), ...PIG.map((w) => 'শালা' + w + 'বাচ্চা')]
@@ -185,7 +185,7 @@ const LOOK_ALIKES = [
   ...['বালি', 'বালির', 'বালিতে', 'বালু', 'বালুর', 'বালুচর', 'বালুকা', 'বালুকাবেলা', 'বালা', 'বালাই', 'বালাম'],
   ...['বাল্য', 'বাল্যকাল', 'বাল্যবিবাহ', 'বাল্যবন্ধু', 'বালিগঞ্জ', 'বালিয়াডাঙ্গী', 'বালসা'],
   // শুয়োর "pig" (য় written either way), শুয়ে "lying down".
-  ...['শুয়োর', 'শু\u09DFোর', 'শুয়ে', 'শুয়েছিল', 'শুকনো', 'শুক্রবার', 'শুভ', 'শুরু']
+  ...['শুয়োর', 'শু\u09DFোর', 'শূকর', 'শুকর', 'শুয়ে', 'শুয়েছিল', 'শুকনো', 'শুক্রবার', 'শুভ', 'শুরু']
 ]
 const EVERYDAY = [
   ...LOOK_ALIKES,
@@ -433,6 +433,8 @@ describe('Bangla bleeping: stems, compounds and every generated form', () => {
       ['কি বোকাচ্চোদা রে তুই', 'বোকাচ্চোদা'],
       ['ওই বইনচোদ চুপ কর', 'বইনচোদ'],
       ['এইসব বালসাল কথা বাদ দে', 'বালসাল'],
+      ['শুকরের বাচ্চা কোথাকার', 'শুকরের'],
+      ['শূকরের বাচ্চা একটা', 'শূকরের'],
       ['ওই বাঞ্চোত্\u200D কোথায় গেলি', 'বাঞ্চোত্\u200D'],
       ['এই মাদারচোত্\u200D চুপ কর', 'মাদারচোত্\u200D'],
       // Everyday: none.
@@ -445,7 +447,8 @@ describe('Bangla bleeping: stems, compounds and every generated form', () => {
       ['চোদ্দ-চোদ্দ টাকা', ''],
       ['তেরো-চোদ্দ বছরের ছেলে', ''],
       ['ধিয়ো যো নঃ প্রচোদয়াৎ', ''],
-      ['বালসা কাঠ খুব হালকা', '']
+      ['বালসা কাঠ খুব হালকা', ''],
+      ['শূকরের মাংস খাওয়া হারাম', '']
     ]
     const segs = lines.map(([text], i) => timed(String(i), i * 5, text))
     const want = lines.flatMap(([, w], i) => (w ? [[bleepKey(w), i]] : []))

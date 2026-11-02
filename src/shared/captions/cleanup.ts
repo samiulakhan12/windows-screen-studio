@@ -437,8 +437,11 @@ function literaryForms(root: string): string[] {
 const BN_MAGI = new Set(nounForms('মাগি'))
 /** খানকি as it is written: with ং, a conjunct or a hasanta too (খাংকির পোলা, খাঙ্কি, খান্কি). */
 const BN_KHANKI = ['খানকি', 'খাংকি', 'খাঙ্কি', 'খান্কি']
-/** শুয়োরের, "pig's", as it is spelled: শুওরের in West Bengal, শুয়ারের in Bangladesh (শুয়ারের বাচ্চা). */
-const BN_PIG = ['শুয়োরের', 'শুওরের', 'শুয়রের', 'শুয়ারের']
+/**
+ * শুয়োরের, "pig's", as it is spelled: শুওরের in West Bengal, শুয়ারের in Bangladesh (শুয়ারের বাচ্চা),
+ * and শুকরের from শূকর, the standard word (শূকরের by the fold).
+ */
+const BN_PIG = ['শুয়োরের', 'শুওরের', 'শুয়রের', 'শুয়ারের', 'শুকরের']
 /** বাচ্চা, "child", as it is spelled. */
 const BN_KID = ['বাচ্চা', 'বাচ্ছা']
 
