@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { editDistance, prefixDistance } from '../src/shared/search/distance'
-import { normalizeText, queryTerms, tokenize } from '../src/shared/search/normalize'
+import { normalizeText, queryRetries, queryTerms, tokenize } from '../src/shared/search/normalize'
 
 const terms = (s: string): string[] => tokenize(s).map((t) => t.term)
 
@@ -87,6 +87,24 @@ describe('queryTerms', () => {
 
   it('reads at most 200 characters', () => {
     expect(queryTerms(`${'x'.repeat(199)} later`)).toEqual(['x'.repeat(40)])
+  })
+})
+
+describe('queryRetries', () => {
+  it('joins the pieces of a last word written without spaces from the end, one more each time', () => {
+    // open, ตั้ง, ค่า, โปร, แก: the word breaker splits "โปรแกรม" typed so far.
+    const pieces = queryTerms('open ตั้งค่าโปรแก')
+    expect(pieces.length).toBeGreaterThan(3)
+    const expected: string[][] = []
+    for (let j = pieces.length - 2; j >= 1; j--) expected.push([...pieces.slice(0, j), pieces.slice(j).join('')])
+    expect(queryRetries('open ตั้งค่าโปรแก')).toEqual(expected)
+    expect(expected[expected.length - 1]).toEqual(['open', 'ตั้งค่าโปรแก'])
+  })
+
+  it('has none for words with spaces, or a last word in one piece', () => {
+    expect(queryRetries('setting pag')).toEqual([])
+    expect(queryRetries('โปรแก open')).toEqual([])
+    expect(queryRetries('東')).toEqual([])
   })
 })
 

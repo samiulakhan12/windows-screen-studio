@@ -101,7 +101,10 @@ image overlays (no text); the cursor and keystrokes (keystrokes never record whi
    included, Thai, Lao, Khmer, Myanmar), that piece goes through `Intl.Segmenter(…, 'word')`
    (ICU's dictionary word breaker, in Electron's full ICU) and its word-like segments are the
    terms. A query is split the same way, and prefix matching lets the first characters of a word
-   find it.
+   find it. The breaker splits a word cut short into a word and a piece no word starts with
+   (`โปรแก` → `โปร` + `แก`, `東京タ` → `東京` + `タ`), so when a query finds nothing and its last
+   word is in one of these scripts, its pieces are joined from the end, one more each time, into
+   one prefix term until something is found (`queryRetries`).
 7. Terms longer than 40 code points are cut to 40.
 
 Every term keeps its character range in the original text, so snippets highlight the original
@@ -360,7 +363,7 @@ New:
 - `src/shared/search/types.ts`: `SearchKind`, `SearchUnit`, `IndexedProject`, `SearchMoment`,
   `SearchHit`, `SearchResponse`, `SearchStatus`, `SnippetPart`, `SEARCH_INDEX_VERSION`,
   `SEARCH_LIMITS`.
-- `src/shared/search/normalize.ts`: `normalizeText(s)`, `tokenize(s): Token[]` (`{ term, start, end }`), `queryTerms(q)`.
+- `src/shared/search/normalize.ts`: `normalizeText(s)`, `tokenize(s): Token[]` (`{ term, start, end }`), `queryTerms(q)`, `queryRetries(q)`.
 - `src/shared/search/extract.ts`: `projectUnits(project: unknown): SearchUnit[]`, `indexedProject(project, stamp)`.
 - `src/shared/search/distance.ts`: `prefixDistance(query, term, max)`, `editDistance(a, b, max)`.
 - `src/shared/search/engine.ts`: `class SearchIndex { add(id, entry); remove(id); has(id); ids(); search(query, opts): SearchHit[] }`.
@@ -411,6 +414,8 @@ No new dependency: `Intl.Segmenter` is in Electron's ICU, and the rest is small 
 - A moment's time was its second in the recording, so after a trim, a speed change or a pause it
   differed from the editor's timecode, the caption and chapter lists and the exported video. It is
   now the time in the edited video (§2.2); the index file went to version 2 and is built again.
+- A Thai or Japanese word found nothing while it was typed (`โปรแก`, `บันทึ`, `東京タ`): the word
+  breaker split it into pieces, one of which starts no word. Its pieces are now joined again (§2.3).
 - A recording holding the words as typed is never ranked below one that only holds typo neighbours
   ("come", "model" for `code`), however many of its captions hold them (§2.6).
 - The live region stays quiet while the index is built; Ctrl+F does nothing on an empty library.

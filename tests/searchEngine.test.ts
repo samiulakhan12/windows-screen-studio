@@ -156,6 +156,24 @@ describe('SearchIndex', () => {
     expect(r.search('喜')).toHaveLength(1)
   })
 
+  it('finds a Thai or Japanese word while it is typed, letter by letter', () => {
+    const r = index({
+      th: entry('Demo', [said(1, 'วันนี้เราจะมาตั้งค่าโปรแกรมบันทึกหน้าจอ'), said(5, 'ขอบคุณที่รับชมครับ')]),
+      ja: entry('Trip', [said(1, '東京タワーに行きました')])
+    })
+    for (const [word, id] of [['โปรแกรม', 'th'], ['บันทึก', 'th'], ['ขอบคุณ', 'th'], ['ตั้งค่าโปรแกรม', 'th'], ['東京タワー', 'ja']]) {
+      const letters = [...word]
+      for (let n = 1; n <= letters.length; n++) {
+        const typed = letters.slice(0, n).join('')
+        expect(r.search(typed).map((h) => h.id), typed).toContain(id)
+      }
+    }
+    // The word it found is marked whole.
+    expect(hits(r.search('โปรแก')[0].moments[0].snippet)).toEqual(['โปรแกรม'])
+    // A query that finds something is never read another way.
+    expect(r.search('ขอบคุณ').map((h) => h.id)).toEqual(['th'])
+  })
+
   it('puts moments with more of the words first, and a phrase above scattered words', () => {
     const r = index({
       p: entry('P', [said(1, 'open now the settings'), said(5, 'open settings now'), said(9, 'settings')])

@@ -4,7 +4,7 @@
  * required, recordings and their moments ranked. Pure: the main process feeds it entries and asks.
  */
 import { prefixDistance } from './distance'
-import { codePoints, isNumeric, queryTerms, tokenize } from './normalize'
+import { codePoints, isNumeric, queryRetries, queryTerms, tokenize } from './normalize'
 import { markRanges, snippetOf, type Range } from './snippet'
 import { SEARCH_LIMITS, type IndexedProject, type SearchHit, type SearchKind, type SearchMoment, type SearchUnit } from './types'
 
@@ -200,9 +200,25 @@ export class SearchIndex {
   }
 
   search(query: string, options: SearchOptions = {}): SearchHit[] {
-    const words = queryTerms(query)
+    const known = new Map<string, TermMatches>()
+    const hits = this.searchTerms(queryTerms(query), options, known)
+    if (hits.length) return hits
+    // A word of Thai or Japanese still being typed (§2.3): its pieces joined from the end.
+    for (const words of queryRetries(query)) {
+      const retry = this.searchTerms(words, options, known)
+      if (retry.length) return retry
+    }
+    return []
+  }
+
+  /** The recordings holding every one of `words` (`known`: the words matched so far in this search). */
+  private searchTerms(words: string[], options: SearchOptions, known: Map<string, TermMatches>): SearchHit[] {
     if (!words.length) return []
-    const matches = words.map((q) => this.match(q))
+    const matches = words.map((q) => {
+      let m = known.get(q)
+      if (!m) known.set(q, (m = this.match(q)))
+      return m
+    })
     // Recordings holding every word somewhere (strong-only matches are checked per unit below).
     let candidates: Set<Doc> | null = null
     for (const m of matches) {

@@ -101,15 +101,45 @@ export function tokenize(text: string): Token[] {
   return out
 }
 
+/** Each term once, in order, at most queryTerms of them. */
+function capTerms(terms: Iterable<string>): string[] {
+  const seen = new Set<string>()
+  for (const t of terms) {
+    if (seen.size === SEARCH_LIMITS.queryTerms) break
+    seen.add(t)
+  }
+  return [...seen]
+}
+
 /** The terms of a query: capped in length and number, each once, in the order typed. */
 export function queryTerms(query: string): string[] {
   if (typeof query !== 'string') return []
-  const seen = new Set<string>()
-  for (const t of tokenize(query.slice(0, SEARCH_LIMITS.queryChars))) {
-    if (seen.size === SEARCH_LIMITS.queryTerms) break
-    seen.add(t.term)
+  return capTerms(tokenize(query.slice(0, SEARCH_LIMITS.queryChars)).map((t) => t.term))
+}
+
+/**
+ * Other readings of a query that found nothing, most likely first. Its last word, in a script
+ * written without spaces, may be half typed, and the word breaker splits a word cut short into a
+ * word and a piece no word starts with (โปรแก → โปร + แก, 東京タ → 東京 + タ). The pieces are joined
+ * from the end, one more each time, into one term matched by prefix (โปรแก finds "โปรแกรม").
+ */
+export function queryRetries(query: string): string[][] {
+  if (typeof query !== 'string') return []
+  const q = query.slice(0, SEARCH_LIMITS.queryChars)
+  let run: RegExpExecArray | undefined
+  for (const r of q.matchAll(RUN_RE)) run = r
+  if (!run || !UNSPACED_RE.test(run[0])) return []
+  const runEnd = run.index + run[0].length
+  const tokens = tokenize(q)
+  const first = tokens.findIndex((t) => t.start >= run.index)
+  const out: string[][] = []
+  for (let j = tokens.length - 2; first >= 0 && j >= first; j--) {
+    const joined = [...normalizeText(q.slice(tokens[j].start, runEnd)).matchAll(TERM_RE)].map((m) => m[0]).join('')
+    // Longer than a term can be: no word starts with it.
+    if (codePoints(joined) > SEARCH_LIMITS.termCodePoints) break
+    out.push(capTerms([...tokens.slice(0, j).map((t) => t.term), joined]))
   }
-  return [...seen]
+  return out
 }
 
 /** Number of code points of `s`. */
