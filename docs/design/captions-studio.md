@@ -1994,9 +1994,9 @@ Breaks are chosen by dynamic programming over the words of a caption, minimising
 | After `,` `;` `:` `–` `—` | −3 |
 | A pause of 0.25 s or more after the word (0.15 s: −1) | −3 |
 | Before a word of the language's join list (en: and, but, or, so, because, that, which, when, while, if, to, of, in, on, at, for, with, from, by, about, into, than) | −1 |
-| After a word of that list (a line ends in "the", "to", "and") | +4 |
+| After a word of that list, an article, or Hindi's के, की, का (a line ends in "the", "to", "and", or "के" of "के साथ") | +4 |
 | Between a number and its unit or currency ("300 percent", "$ 5") | +8 |
-| Before a postposition, which goes with the word before it (bn: জন্য, থেকে, দিয়ে, সাথে; hi: के, की, का, में, से, पर; "ঢাকা থেকে") | +8 |
+| Before a postposition, which goes with the word before it (bn: জন্য, থেকে, দিয়ে, সাথে; hi: के, की, का, में, से, पर; "ঢাকা থেকে"), but not after a sentence or clause end (Hindi "पर" there is "but") | +8 |
 | Inside a run of capitalised words ("Visual Studio Code") | +4 |
 
 - **Two-line chunks** are bottom-heavy: +2 when the top line is wider than the bottom one by more

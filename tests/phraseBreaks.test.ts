@@ -123,4 +123,36 @@ describe('phrase breaks (§8.3)', () => {
           for (const line of lines) expect(post.has(line.split(' ')[0]), `${w}x${h} ${chars}: ${lines.join(' | ')}`).toBe(false)
         }
   })
+
+  it('after a sentence or clause end, a word that looks like a postposition starts something new: the break stays at the end mark', () => {
+    const cases: [string, string, string][] = [
+      ['मैं वहाँ समय पर गया। पर कोई नहीं मिला', 'hi', 'गया।'],
+      ['मैंने उसे बहुत बार बुलाया, पर वह नहीं आया', 'hi', 'बुलाया,'],
+      ['हमने बहुत कोशिश की, पर कुछ नहीं हुआ', 'hi', 'की,'],
+      ['আমি অনেক চেষ্টা করেছি। থেকে যাও আরও কিছুক্ষণ', 'bn', 'করেছি।']
+    ]
+    // From 20 characters on, the words up to the end mark fit one line.
+    for (const [text, language, end] of cases)
+      for (const [w, h] of [[1920, 1080], [1080, 1920]])
+        for (const chars of [20, 24, 28, 32]) {
+          const lines = allLines(layout(text, subtitle(chars), w, h, {}, language))
+          if (lines.length > 1) expect(lines.some((line) => line.endsWith(end)), `${w}x${h} ${chars}: ${lines.join(' | ')}`).toBe(true)
+        }
+  })
+
+  it('in Hindi no line ends with के, की or का: they stay with the word after them ("के साथ", "की मदद से")', () => {
+    const cases = [
+      'मैंने यह वीडियो अपने सभी दोस्तों के लिए बनाया है',
+      'हम मीटिंग के बाद इस प्रोजेक्ट के बारे में बात करेंगे',
+      'यह ऐप स्क्रीन रिकॉर्डिंग के साथ वीडियो एडिटिंग भी करता है',
+      'आप इस बटन की मदद से नया प्रोजेक्ट बना सकते हैं',
+      'फाइल सेव करने के बाद एक्सपोर्ट बटन दबाइए'
+    ]
+    for (const text of cases)
+      for (const [w, h] of [[1920, 1080], [1080, 1920]])
+        for (const chars of [16, 20, 24, 28, 32]) {
+          const lines = allLines(layout(text, subtitle(chars), w, h, {}, 'hi'))
+          for (const line of lines.slice(0, -1)) expect(['के', 'की', 'का'].includes(line.split(' ').pop()!), `${w}x${h} ${chars}: ${lines.join(' | ')}`).toBe(false)
+        }
+  })
 })

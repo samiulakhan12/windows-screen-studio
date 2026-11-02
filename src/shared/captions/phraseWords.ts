@@ -18,10 +18,12 @@ export const JOIN_WORDS: Readonly<Record<string, readonly string[]>> = {
 /**
  * Words a line should not end with though a line may well start with them (§8.3: "a line ends in
  * 'the'"): articles and determiners, by language. Like the join words, a break after one costs +4,
- * but a break before one earns nothing.
+ * but a break before one earns nothing. Hindi's के, की and का also go with the word after them
+ * ("के साथ", "की मदद से"); as postpositions a line does not start with them either.
  */
 export const END_WORDS: Readonly<Record<string, readonly string[]>> = {
   en: ['the', 'a', 'an', 'my', 'your', 'our', 'their', 'its', 'his', 'her'],
+  hi: ['के', 'की', 'का'],
   es: ['el', 'la', 'los', 'las', 'un', 'una', 'unos', 'unas', 'mi', 'tu', 'su'],
   fr: ['le', 'la', 'les', 'un', 'une', 'des', 'mon', 'ma', 'mes', 'ton', 'ta', 'son', 'sa', 'ses', 'ce', 'cette'],
   de: ['der', 'die', 'das', 'den', 'dem', 'des', 'ein', 'eine', 'einen', 'einem', 'einer', 'mein', 'dein', 'sein', 'ihr'],
@@ -30,7 +32,8 @@ export const END_WORDS: Readonly<Record<string, readonly string[]>> = {
 
 /**
  * Postpositions, which go with the word before them ("ঢাকা থেকে", "दिल्ली से"): a line should not
- * start with one (§8.3), so a break before one costs +4, by language.
+ * start with one (§8.3), so a break before one costs +8, by language; not after a sentence or
+ * clause end, where the word starts something new (Hindi "पर" there is "but").
  */
 export const POST_WORDS: Readonly<Record<string, readonly string[]>> = {
   bn: ['জন্য', 'থেকে', 'দিয়ে', 'সাথে'],

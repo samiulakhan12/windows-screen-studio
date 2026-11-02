@@ -167,7 +167,7 @@ function breakCost(tokens: readonly StudioToken[], i: number, language: string |
   const wa = bare(a.text)
   const wb = bare(b.text)
   if (join?.includes(wb)) cost -= 1
-  if (POST_WORDS[lang]?.includes(wb)) cost += 8
+  if (POST_WORDS[lang]?.includes(wb) && !SENTENCE_END.test(a.text) && !CLAUSE_END.test(a.text)) cost += 8
   if (!SENTENCE_END.test(a.text) && !CLAUSE_END.test(a.text) && (join?.includes(wa) || ends?.includes(wa))) cost += 4
   // A number and its unit or currency ("300 percent", "$ 5").
   if ((isNumber(a.text) && !CLAUSE_END.test(a.text) && !SENTENCE_END.test(a.text) && (UNIT_WORDS.has(wb) || /^[%‰]/.test(b.text))) || (CURRENCY.test(a.text) && isNumber(b.text))) cost += 8
