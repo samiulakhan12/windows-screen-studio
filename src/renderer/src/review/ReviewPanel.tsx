@@ -159,6 +159,7 @@ export function ReviewPanel({ onClose }: { onClose: () => void }): JSX.Element {
   }, [])
   useLayoutEffect(() => {
     const key = focusLater.current
+    if (key !== null && !indexOf.has(key)) focusLater.current = null
     if (key === null || key !== activeKey) return
     const el = rows.current.get(key)
     if (!el) return
@@ -325,7 +326,9 @@ export function ReviewPanel({ onClose }: { onClose: () => void }): JSX.Element {
   }
 
   useLayoutEffect(() => {
-    if (!focusWasIn.current) return
+    // A focus waiting for its row (focusLater) goes there once it is drawn; the focused item's row
+    // here would be the one it moves on from (Remove all done, the focus on a row's Remove it took).
+    if (!focusWasIn.current || focusLater.current !== null) return
     focusWasIn.current = false
     const el = document.activeElement
     if (el && el !== document.body && !(el instanceof HTMLButtonElement && el.disabled)) return

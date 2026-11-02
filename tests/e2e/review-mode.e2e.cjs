@@ -217,6 +217,8 @@ async function watchBusy(win) {
     new MutationObserver(() => window.__said.push(said.textContent)).observe(said, { childList: true, subtree: true, characterData: true })
   })
 }
+/** What watchBusy recorded after the first press (Enter on Remove all), without the modifier keys. */
+const pressedAfter = (win) => win.evaluate(() => window.__busyAt.slice(1).filter((k) => !/^(Shift|Control):/.test(k)))
 const idle = (win, timeout = 30000) => f.waitFor(async () => !(await win.$('[data-testid="review-panel"] [aria-busy="true"]')), 'Keep all or Remove all done', timeout)
 const progressOf = (win) => win.textContent('[data-testid="review-progress"]')
 
@@ -665,6 +667,30 @@ async function main() {
         }
         await win.keyboard.press('Control+z')
         await f.waitFor(async () => (await progressOf(win)) === `1 of ${total} reviewed`, 'then the Remove all', 5000)
+
+        // Shift+Tab back to the last row's Remove while Remove all works: once done, that row is
+        // removed and the focus moves on to the next row to review (the second zoom, not drawn),
+        // not left on the removed row.
+        await win.keyboard.press('End')
+        await settled(win)
+        await watchBusy(win)
+        await win.focus('[data-testid="review-remove-kind"]')
+        await win.keyboard.press('Enter')
+        await win.keyboard.press('Shift+Tab')
+        await win.keyboard.press('Shift+Tab')
+        const backOn = await focused(win)
+        await idle(win, 60000)
+        const backKeys = await pressedAfter(win)
+        h.assert(same(backKeys, ['Tab:true', 'Tab:true']) && backOn.startsWith('Remove: '), `Shift+Tab twice to the row's Remove while it worked: ${JSON.stringify(backKeys)} ${backOn}`)
+        await f.waitFor(async () => (await focusOn(win)) === 'zoom:z1', 'the focus on to the next row to review', 3000).catch(() => undefined)
+        h.assert((await focusOn(win)) === 'zoom:z1', `from the removed row's Remove, the focus moved on to the next row to review: ${await focusOn(win)}`)
+        h.assert((await settled(win)).inView, 'in view')
+        const snapped = await win.getAttribute('[data-testid="snap-toggle"]', 'aria-pressed')
+        await win.keyboard.press('n')
+        await f.waitFor(async () => (await focusOn(win)) === 'zoom:z2', 'N moves on in the list', 3000)
+        h.assert((await win.getAttribute('[data-testid="snap-toggle"]', 'aria-pressed')) === snapped, 'Snapping untouched')
+        await win.keyboard.press('Control+z')
+        await f.waitFor(async () => (await progressOf(win)) === `1 of ${total} reviewed`, 'Remove all undone', 10000)
       }
       await win.keyboard.press('Escape')
       await f.waitFor(async () => !(await win.$('[data-testid="review-panel"]')), 'the panel closed')
