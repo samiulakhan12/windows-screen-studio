@@ -566,14 +566,16 @@ const heldAt = (holders: readonly string[], key: string, c: Stem, at: number): b
 /**
  * Whether a word's key is rude by a team list, `next` the key of the word after it ('' when there is
  * none; not known when undefined, and then a word rude only before some words is taken as rude).
+ * `apart`: a pause is between them (a sentence mark, a comma or a !, or a caption's end), so a word
+ * never rude before some words is rude whatever comes next (বাল। বাচ্চাটা: no name).
  */
-function teamMatch(r: TeamRules, key: string, next: string | undefined): boolean {
+function teamMatch(r: TeamRules, key: string, next: string | undefined, apart = false): boolean {
   const k = r.fold(key)
   if (r.everyday.has(k)) return false
   const n = next === undefined ? undefined : r.fold(next)
   const only = r.onlyBefore.get(k)
   if (only) return n === undefined || only.has(n)
-  if (n !== undefined && r.notBefore.get(k)?.has(n)) return false
+  if (n !== undefined && !apart && r.notBefore.get(k)?.has(n)) return false
   if (r.whole.has(k)) return true
   for (const stem of r.stems) if (stemAt(k, stem, 0)) return true
   for (const c of r.compounds) {
@@ -588,23 +590,38 @@ const BETWEEN_WORDS = /[^\p{L}\p{N}\p{M}\p{Cf}]+/u
 /** Text between words that is more than hyphens and dashes (খান,কিন্তু; মা।গিয়ে): two words, never one written in parts. */
 const APART = /[^\p{L}\p{N}\p{M}\p{Cf}]*[^\p{L}\p{N}\p{M}\p{Cf}\-\u2010-\u2015][^\p{L}\p{N}\p{M}\p{Cf}]*/u
 
+/** A pause between words: a sentence mark, a comma, a !, ;, : or … (বাল। বাচ্চাটা, বাল, পাল বাবু), not a hyphen, dash or quotation mark. */
+const PAUSE = /[\p{Terminal_Punctuation}\u2026]/u
+/** A word's text after its last letter, digit, mark or joiner, and the next word's before its first. */
+const AFTER_WORD = /[^\p{L}\p{N}\p{M}\p{Cf}]*$/u
+const BEFORE_WORD = /^[^\p{L}\p{N}\p{M}\p{Cf}]*/u
+
 /** The key of the word `text` begins with: its first part when words are written together (বাচ্চা-টা); '' for none. */
 const firstKey = (text: string): string => text.split(BETWEEN_WORDS).map(bleepKey).find(Boolean) ?? ''
 
 /**
  * Whether a word is rude by the team's list for `lang` (`key` its key, `next` the key of the word
- * after it, as teamMatch takes it). Words written together with a dash or a । and no space
+ * after it and `apart` whether a pause is before it, as teamMatch takes them; a pause after the
+ * word's last letter counts too). Words written together with a dash or a । and no space
  * (ধুর—বাল, বাল।এটা, শালা-খানকি, শুয়োরের-বাচ্চা) are rude when one of them is, each before the
  * next. Parts joined by hyphens or dashes only are one word as well (হারাম-জাদা, বান-চোত), unless
  * the first is an everyday word that starts with a stem (মাগিনা-এটা); words joined by anything else
  * (a comma, a ।, ? or /) never are: খান,কিন্তু and মা।গিয়ে are everyday words.
  */
-function teamWordMatch(word: string, key: string, lang: string, next: string | undefined): boolean {
+function teamWordMatch(word: string, key: string, lang: string, next: string | undefined, apart: boolean): boolean {
   const r = teamRulesOf(lang)
   if (!r) return false
-  if (!JOINED.test(word)) return teamMatch(r, key, next)
-  const parts = word.split(BETWEEN_WORDS).map(bleepKey).filter(Boolean)
-  if (parts.some((p, i) => teamMatch(r, p, i + 1 < parts.length ? parts[i + 1] : next))) return true
+  if (!JOINED.test(word)) return teamMatch(r, key, next, apart || PAUSE.test(AFTER_WORD.exec(word)?.[0] ?? ''))
+  // Each part's key and whether a pause follows it, the text between parts kept by the split.
+  const parts: { key: string; pause: boolean }[] = []
+  word.split(/([^\p{L}\p{N}\p{M}\p{Cf}]+)/u).forEach((bit, i) => {
+    const last = parts[parts.length - 1]
+    if (i % 2) {
+      if (last && PAUSE.test(bit)) last.pause = true
+    } else if (bleepKey(bit)) parts.push({ key: bleepKey(bit), pause: false })
+  })
+  const end = parts.length - 1
+  if (parts.some((p, i) => teamMatch(r, p.key, i < end ? parts[i + 1].key : next, p.pause || (i === end && apart)))) return true
   const groups = word.split(APART).filter((g) => bleepKey(g))
   return groups.some((g, i) => JOINED.test(g) && !r.everyday.has(r.fold(firstKey(g))) && teamMatch(r, bleepKey(g), i + 1 < groups.length ? firstKey(groups[i + 1]) : next))
 }
@@ -626,8 +643,10 @@ const BENGALI = /\p{Script=Bengali}/u
  * Whether a word is bleeped by `mode` in `language`. `next` is the word after it ('' for none): in
  * Bangla it decides for a word rude only before certain words (শুয়োরের in শুয়োরের বাচ্চা) or
  * never before certain words (বাল in বাল গঙ্গাধর তিলক); without it, such a word is taken as rude.
+ * `apart` is true when the next word is in the next caption: as after a sentence mark, a comma or
+ * a !, then, a word never rude before certain words is rude whatever the next word is.
  */
-export function isSwearWord(word: string, mode: 'standard' | 'strict', language?: string, next?: string): boolean {
+export function isSwearWord(word: string, mode: 'standard' | 'strict', language?: string, next?: string, apart = false): boolean {
   const key = bleepKey(word)
   if (!key) return false
   for (const w of standardRes) {
@@ -641,7 +660,8 @@ export function isSwearWord(word: string, mode: 'standard' | 'strict', language?
   const named = baseLanguage(language)
   const lang = named !== 'as' && BENGALI.test(key) ? 'bn' : named
   // Bangla and the languages LDNOOBW lacks have the team's lists in Standard too.
-  if (teamWordMatch(word, key, lang, next === undefined ? undefined : firstKey(next))) return true
+  const pause = apart || (next !== undefined && PAUSE.test(BEFORE_WORD.exec(next)?.[0] ?? ''))
+  if (teamWordMatch(word, key, lang, next === undefined ? undefined : firstKey(next), pause)) return true
   if (mode === 'strict') {
     if (strictSet(lang).has(key) || (lang !== 'en' && strictSet('en').has(key))) return true
   }
@@ -664,16 +684,24 @@ function findBleeps(
   estimated?: Set<string>
 ): Bleep[] {
   const out: Bleep[] = []
-  const words = segments.flatMap((seg) => captionWordTimes(seg))
+  const captions = segments.map((seg) => captionWordTimes(seg))
+  const words = captions.flat()
+  const captionOf = captions.flatMap((ws, c) => ws.map(() => c))
   // The word after each, past the deleted ones and into the next caption ('' after the last): it
-  // decides for some words (শুয়োরের বাচ্চা).
+  // decides for some words (শুয়োরের বাচ্চা). A caption's end sets them apart as a full stop does
+  // (বাল before a name).
   const after: string[] = new Array(words.length)
-  for (let i = words.length - 1, next = ''; i >= 0; i--) {
+  const apart: boolean[] = new Array(words.length)
+  for (let i = words.length - 1, next = '', nextCaption = -1; i >= 0; i--) {
     after[i] = next
-    if (!words[i].deleted) next = words[i].text
+    apart[i] = nextCaption !== captionOf[i]
+    if (!words[i].deleted) {
+      next = words[i].text
+      nextCaption = captionOf[i]
+    }
   }
   words.forEach((w, i) => {
-    if (w.deleted || !isSwearWord(w.text, mode, language, after[i])) return
+    if (w.deleted || !isSwearWord(w.text, mode, language, after[i], apart[i])) return
     const pad = w.estimated ? WIDEN_ESTIMATED : WIDEN
     const start = Math.max(0, w.start - pad)
     const end = Math.min(duration > 0 ? duration : Infinity, w.end + pad)

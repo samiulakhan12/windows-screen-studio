@@ -369,6 +369,18 @@ describe('Bangla bleeping: stems, compounds and every generated form', () => {
     for (const [mode, lang] of MODES) {
       expect(BAL_NAMES.filter((n) => isSwearWord('বাল', mode, lang, n)), `${mode} ${lang}`).toEqual([])
       for (const next of ['বলিস', 'ছিঁড়বি', 'কথা', '', undefined]) expect(isSwearWord('বাল', mode, lang, next), `${mode} ${lang} ${next}`).toBe(true)
+      // A sentence mark, a comma or a ! between them, with or without a space, or the end of the
+      // caption: বাল ends its phrase, and the word after it is no name of its.
+      for (const mark of ['।', ',', '!', '?', '.', ';', ':', '…', '॥', '!"', '।’']) {
+        const missed = BAL_NAMES.filter(
+          (n) => !isSwearWord('বাল' + mark, mode, lang, n) || !isSwearWord('বাল', mode, lang, mark + n) || !isSwearWord('বাল' + mark + n, mode, lang) || !isSwearWord('ধুর-বাল' + mark + n, mode, lang)
+        )
+        expect(missed, `${mode} ${lang} ${mark}`).toEqual([])
+      }
+      expect(BAL_NAMES.filter((n) => !isSwearWord('বাল', mode, lang, n, true)), `${mode} ${lang}`).toEqual([])
+      // Written apart by a space, a hyphen, a dash or a quotation mark, they are the name still.
+      const names = BAL_NAMES.filter((n) => ['-', '—', '‐'].some((j) => isSwearWord(`বাল${j}${n}`, mode, lang)) || isSwearWord('বাল”', mode, lang, n) || isSwearWord('বাল', mode, lang, `“${n}”`))
+      expect(names, `${mode} ${lang}`).toEqual([])
     }
     const named = [
       'বাল গঙ্গাধর তিলক স্বাধীনতা আন্দোলনের নেতা ছিলেন।',
@@ -378,12 +390,25 @@ describe('Bangla bleeping: stems, compounds and every generated form', () => {
       'বাল বাচ্চা নিয়ে আমরা গ্রামে বেড়াতে গেলাম।',
       'বাল-গোপাল'
     ]
-    const rude = ['কি বাল বলিস', 'বাল!', 'বাল ছিঁড়বি তুই']
-    const segs = [...named, ...rude].map((text, i) => timed(String(i), i * 5, text))
+    const rude = [
+      ['কি বাল বলিস', 'বাল'],
+      ['বাল!', 'বাল'],
+      ['বাল ছিঁড়বি তুই', 'বাল'],
+      // A sentence mark, a comma or a ! after it: the next word is no name of its.
+      ['কি বাল, বাচ্চাদের মতো কথা বলিস', 'বাল'],
+      ['ধুর বাল। বাচ্চাটা আবার কান্দে', 'বাল'],
+      ['ধুর বাল! পাল বাবু আসছেন', 'বাল'],
+      ['বাল।বাচ্চাটা', 'বাল।বাচ্চাটা'],
+      // The end of a caption too.
+      ['কি বাল', 'বাল'],
+      ['বাচ্চারা সব বাইরে খেলতেছে', '']
+    ]
+    const segs = [...named, ...rude.map(([text]) => text)].map((text, i) => timed(String(i), i * 5, text))
+    const want = rude.flatMap(([, w], i) => (w ? [[bleepKey(w), named.length + i]] : []))
     for (const language of ['bn', 'bn-BD', undefined]) {
       for (const bleep of ['standard', 'strict'] as const) {
         const out = tidyCaptions(project(segs, language), { ...OFF, bleep, words: [] }).project.bleeps ?? []
-        expect(out.map((b) => [b.word, Math.floor((b.start + 0.1) / 5)]), `${language} ${bleep}`).toEqual([6, 7, 8].map((i) => [bleepKey('বাল'), i]))
+        expect(out.map((b) => [b.word, Math.floor((b.start + 0.1) / 5)]), `${language} ${bleep}`).toEqual(want)
       }
     }
   })
