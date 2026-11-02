@@ -96,8 +96,8 @@ const COMPOUNDS = [
   ...KHANKI.map((k) => k + 'রপোলা')
 ]
 const COMPOUND_FORMS = [...COMPOUNDS.flatMap(nounForms), ...COMPOUNDS.map((c) => 'শালা' + c), 'চুত্\u200Dমারানি', 'চুত্\u200Dমারানির']
-/** Nouns that begin everyday words too (বালক, বালিশ): matched whole, in every form. */
-const WHOLE_NOUNS = ['বাল', 'বালছাল']
+/** Nouns that begin everyday words too (বালক, বালিশ): matched whole, in every form; বালছাল written with স for ছ as well, as Dhaka writes করসি and গেসে. */
+const WHOLE_NOUNS = ['বাল', 'বালছাল', 'বালসাল']
 /**
  * শুয়োরের, "pig's", as it is spelled (শুওরের in West Bengal, শুয়ারের in Bangladesh), with ও or ই:
  * rude only before বাচ্চা (শুয়োরের বাচ্চা), never in শুয়োরের মাংস (pork) or শুয়োরের খামার (a pig farm).
@@ -183,7 +183,7 @@ const LOOK_ALIKES = [
   // বাল-: boy, girl, pillow, bucket, sand, bangle, trouble, childhood, and places.
   ...['বালক', 'বালকটি', 'বালকের', 'বালকেরা', 'বালকদের', 'বালিকা', 'বালিকাদের', 'বালিকারা', 'বালিশ', 'বালিশের', 'বালতি', 'বালতিতে'],
   ...['বালি', 'বালির', 'বালিতে', 'বালু', 'বালুর', 'বালুচর', 'বালুকা', 'বালুকাবেলা', 'বালা', 'বালাই', 'বালাম'],
-  ...['বাল্য', 'বাল্যকাল', 'বাল্যবিবাহ', 'বাল্যবন্ধু', 'বালিগঞ্জ', 'বালিয়াডাঙ্গী'],
+  ...['বাল্য', 'বাল্যকাল', 'বাল্যবিবাহ', 'বাল্যবন্ধু', 'বালিগঞ্জ', 'বালিয়াডাঙ্গী', 'বালসা'],
   // শুয়োর "pig" (য় written either way), শুয়ে "lying down".
   ...['শুয়োর', 'শু\u09DFোর', 'শুয়ে', 'শুয়েছিল', 'শুকনো', 'শুক্রবার', 'শুভ', 'শুরু']
 ]
@@ -432,6 +432,7 @@ describe('Bangla bleeping: stems, compounds and every generated form', () => {
       ['তুই একটা আবালচোদা', 'আবালচোদা'],
       ['কি বোকাচ্চোদা রে তুই', 'বোকাচ্চোদা'],
       ['ওই বইনচোদ চুপ কর', 'বইনচোদ'],
+      ['এইসব বালসাল কথা বাদ দে', 'বালসাল'],
       ['ওই বাঞ্চোত্\u200D কোথায় গেলি', 'বাঞ্চোত্\u200D'],
       ['এই মাদারচোত্\u200D চুপ কর', 'মাদারচোত্\u200D'],
       // Everyday: none.
@@ -443,7 +444,8 @@ describe('Bangla bleeping: stems, compounds and every generated form', () => {
       ['জাহাজটা বানচাল হয়ে গেল', ''],
       ['চোদ্দ-চোদ্দ টাকা', ''],
       ['তেরো-চোদ্দ বছরের ছেলে', ''],
-      ['ধিয়ো যো নঃ প্রচোদয়াৎ', '']
+      ['ধিয়ো যো নঃ প্রচোদয়াৎ', ''],
+      ['বালসা কাঠ খুব হালকা', '']
     ]
     const segs = lines.map(([text], i) => timed(String(i), i * 5, text))
     const want = lines.flatMap(([, w], i) => (w ? [[bleepKey(w), i]] : []))

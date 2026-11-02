@@ -474,7 +474,8 @@ const TEAM_LISTS: Readonly<Record<string, TeamList>> = {
       // words, and quoted in the news (চুদুরবুদুর চলবে না).
       ...['চুদুরবুদুর', 'চুদুরবুদুরি'].flatMap(nounForms)
     ],
-    nouns: ['বাল', 'বালছাল'],
+    // বালছাল written with স for ছ too, as Dhaka writes করসি and গেসে.
+    nouns: ['বাল', 'বালছাল', 'বালসাল'],
     // শুয়োরের, with ও or ই, is rude in শুয়োরের বাচ্চা only: শুয়োর, "pig", is an everyday word
     // (শুয়োরের মাংস, pork; শুয়োরের খামার, a pig farm; বুনো শুয়োরের আক্রমণ, a wild boar's attack).
     onlyBefore: [[BN_PIG.flatMap((w) => BN_PARTICLES.map((p) => w + p)), BN_KID]],
