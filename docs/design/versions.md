@@ -136,7 +136,8 @@ export interface VersionSummary {
     (only when it removes something: refused with "That would cut the whole video", it keeps none);
   * **Remove all** of a kind in Review mode (E-02: every automatic cut, speed-up, zoom or camera
     change of a kind put back in one step): "Before removing automatic changes", kept from the edit
-    just before it once it is made (a long one made in slices, docs/design/review-mode.md §4.3, keeps
+    just before the first one of each opening of the panel (later ones in the same opening keep none,
+    so a pass over every kind never crowds out older automatic versions) once it is made (a long one made in slices, docs/design/review-mode.md §4.3, keeps
     none when the panel closes and stops it; one made at once for Open this version keeps it
     without ever pruning the version being opened). Keep all and a row's Keep or Remove keep none;
   * **Make my captions great** (Captions Studio §2.8: restyles, adds emphasis and pop-ups and, with

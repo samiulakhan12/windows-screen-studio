@@ -517,6 +517,23 @@ async function main() {
     h.assert(same(versions, [['Before removing automatic changes', true, 'review', LONG_ROWS]]), `the edit before Remove all kept as a version: ${JSON.stringify(versions)}`)
     await win.keyboard.press('Control+z')
     await f.waitFor(async () => (await win.textContent('[data-testid="review-progress"]')) === `1 of ${LONG_ROWS} reviewed`, 'one Ctrl+Z brings them all back', 5000)
+    // A second Remove all in the same opening of the panel, on a different edit (one more row kept),
+    // keeps no second version: one pass keeps one, so it never crowds out older automatic versions (E-12).
+    await win.focus('[data-testid="review-row"] .review-item[tabindex="0"]')
+    await win.keyboard.press('End')
+    await f.waitFor(async () => (await focused(win)) === longName(LONG_ROWS - 1, 'not reviewed'), 'End on the last row again', 3000)
+    await win.keyboard.press('k')
+    await f.waitFor(async () => (await win.textContent('[data-testid="review-progress"]')) === `2 of ${LONG_ROWS} reviewed`, 'one more row kept', 5000)
+    await win.focus('[data-testid="review-remove-kind"]')
+    await win.keyboard.press('Enter')
+    await f.waitFor(async () => (await win.textContent('[data-testid="review-progress"]')) === `${LONG_ROWS} of ${LONG_ROWS} reviewed`, 'all removed again', 15000)
+    await h.sleep(1500)
+    const again = JSON.parse(fs.readFileSync(index, 'utf8')).items.map((v) => v.name)
+    h.assert(same(again, ['Before removing automatic changes']), `still one version after a second Remove all: ${JSON.stringify(again)}`)
+    await win.keyboard.press('Control+z')
+    await f.waitFor(async () => (await win.textContent('[data-testid="review-progress"]')) === `2 of ${LONG_ROWS} reviewed`, 'Ctrl+Z takes back the second Remove all', 5000)
+    await win.keyboard.press('Control+z')
+    await f.waitFor(async () => (await win.textContent('[data-testid="review-progress"]')) === `1 of ${LONG_ROWS} reviewed`, 'and the keep', 5000)
 
     // Escape closes and gives the focus back to the button.
     await win.focus('[data-testid="review-row"] .review-item[tabindex="0"]')

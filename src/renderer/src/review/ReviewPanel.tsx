@@ -91,6 +91,8 @@ export function ReviewPanel({ onClose, onNotice }: { onClose: () => void; /** Sh
   const saying = useRef<string[]>([])
   /** Once the panel is closing, where what it says goes instead (the editor's notice). */
   const sayAfter = useRef<string[] | null>(null)
+  /** Whether Remove all kept its automatic version during this opening of the panel (E-12). */
+  const versionKept = useRef(false)
   const say = (text: string): void => {
     if (sayAfter.current) return void sayAfter.current.push(text)
     saying.current.push(text)
@@ -312,10 +314,15 @@ export function ReviewPanel({ onClose, onNotice }: { onClose: () => void; /** Sh
     const apply = (p: Project, items: readonly ReviewItem[]): Project => (action === 'keep' ? keepItems(p, items) : removeItems(p, items))
     // E-12: Remove all keeps the edit before it as a version once it is made (docs/design/versions.md
     // §2.4); Keep all changes no footage, and work stopped (the panel closed) keeps none.
+    // One version per opening of the panel: it holds the edit before the whole pass, so a pass over
+    // every kind never crowds out older automatic versions such as "Before Polish in one click".
     const commit = (fn: (p: Project) => Project): void => {
       const before = store.state
       store.update(fn)
-      if (action === 'remove' && store.state !== before) void keepVersionBefore(before, 'review')
+      if (action === 'remove' && store.state !== before && !versionKept.current) {
+        versionKept.current = true
+        void keepVersionBefore(before, 'review')
+      }
     }
     if (count <= BUSY_FROM) {
       commit((p) => apply(p, targets(p)))
