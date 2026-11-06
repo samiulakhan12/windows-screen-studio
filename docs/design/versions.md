@@ -129,10 +129,13 @@ export interface VersionSummary {
   "Saved “v1 for client”".
 * **Automatic versions** are made just before:
   * **Polish in one click** — when **Polish** is pressed in its dialog: "Before Polish in one click";
-  * **Remove all** in the Transcript tab's review list (fillers and retakes): "Before removing fillers and retakes";
+  * **Remove all** in the Transcript tab's review list (fillers and retakes): "Before removing fillers and retakes"
+    (only when it removes something: refused with "That would cut the whole video", it keeps none);
   * **Make a vertical version** / **Make a square version**: "Before making a vertical version" /
     "Before making a square version" (the source is not changed by a copy, but the copy is made
-    from this moment: the user can always find the edit it came from);
+    from this moment: the user can always find the edit it came from). It is kept once the copy
+    is made, from the edit the copy was made from: a copy cancelled, not confirmed or failed keeps
+    none, so it never takes the place of an older automatic version;
   * **Open this version**: "Before opening “v1 for client”".
 
   The snapshot is taken synchronously (the IPC message is sent with the state before the action

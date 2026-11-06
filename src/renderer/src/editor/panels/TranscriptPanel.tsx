@@ -235,10 +235,11 @@ function TranscriptEditor({
   const removeAll = (): void => {
     const items = shownReview ?? []
     if (items.length === 0) return
-    // E-12: the edit before is kept as a version (docs/design/versions.md §2.4).
-    void keepVersionBefore(store.state, 'fillers')
+    const before = store.state
     const saved = removeSuggestions(items)
     if (saved === null) return
+    // E-12: the edit before is kept as a version once it changed (docs/design/versions.md §2.4).
+    void keepVersionBefore(before, 'fillers')
     setReview(null)
     onNotice(`Removed ${items.length} (${seconds(saved)})`)
   }

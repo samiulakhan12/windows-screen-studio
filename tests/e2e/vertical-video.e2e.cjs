@@ -503,7 +503,9 @@ h.run(
     }
     h.assert(fs.readFileSync(path.join(camDir, 'cursor.json')).equals(fs.readFileSync(path.join(copyDir, 'cursor.json'))), 'cursor.json is the same')
     h.assert(!fs.existsSync(path.join(copyDir, '.copying')), 'the copy is finished')
-    // The one change: the edit the copy was made from is kept as an automatic version (E-12, docs/design/versions.md §2.4).
+    // The one change: the edit the copy was made from is kept as an automatic version (E-12, docs/design/versions.md §2.4),
+    // once the copy is made (so a moment after it).
+    await f.waitFor(() => fs.existsSync(path.join(camDir, 'versions', 'index.json')), 'the version of the original', 10000)
     const camAfter = snapshot(camDir)
     const versionFiles = Object.keys(camAfter).filter((p) => p.startsWith(`versions${path.sep}`))
     for (const p of versionFiles) delete camAfter[p]

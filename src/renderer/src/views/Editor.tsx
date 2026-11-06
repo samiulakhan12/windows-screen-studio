@@ -529,8 +529,6 @@ function EditorSession({
       const { vw, vh } = editorFrame(p)
       const can = canCopyAs(p, kind, vw, vh)
       if (!can.ok) return showNotice(can.reason)
-      // E-12: the edit the copy is made from is kept as a version (docs/design/versions.md §2.4).
-      if (kind !== 'copy') void keepVersionBefore(p, kind)
       player.pause()
       const abort = new AbortController()
       copyAbort.current = abort
@@ -546,6 +544,9 @@ function EditorSession({
         })
         // Cancelled, or not confirmed: nothing to say.
         if (!made) return
+        // E-12: the edit the copy was made from (`p`) is kept as a version, once there is a copy
+        // (docs/design/versions.md §2.4): a cancelled or failed copy never takes an automatic slot.
+        if (kind !== 'copy') void keepVersionBefore(p, kind)
         if (onOpenProject) onOpenProject(made.id, made.notice)
         else showNotice(made.notice)
       } catch (err) {
