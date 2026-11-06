@@ -183,6 +183,9 @@ describe('comparing', () => {
       expect(changedAreas(a, { ...a, sounds: { ...a.sounds!, ignored: ['typing-50', 'click-150'] } })).toEqual(['ignored sounds'])
       expect(changedAreas(p20(), { ...p20(), sounds: { spans: [], ignored: ['click-150'] } })).toEqual(['ignored sounds'])
       expect(changedAreas(a, { ...a, sounds: undefined })).toEqual(['sound', 'ignored sounds'])
+      // The same sounds ignored in another order (Bring back, then Ignore again) are the same.
+      const two = { ...a, sounds: { ...a.sounds!, ignored: ['click-150', 'typing-50'] } }
+      expect(changedAreas(two, { ...a, sounds: { ...a.sounds!, ignored: ['typing-50', 'click-150'] } })).toEqual([])
       expect(changedAreas(a, { ...a, publish: { description: 'Another text.' } })).toEqual(['export description'])
       expect(changedAreas(a, { ...a, publish: undefined })).toEqual(['export description'])
       // Keep in Review mode: the record goes and the choice stays, the clips are the same.

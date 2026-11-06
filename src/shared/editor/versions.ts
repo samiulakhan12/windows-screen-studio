@@ -166,7 +166,7 @@ const AREAS: readonly { name: string; keys: readonly (keyof Project)[]; of?: (p:
   { name: 'cursor', keys: ['cursor', 'inputEdits'] },
   { name: 'camera', keys: ['webcam', 'layouts', 'director'] },
   { name: 'sound', keys: ['audio', 'sounds'], of: (p) => [p.audio, p.sounds?.spans ?? []] },
-  { name: 'ignored sounds', keys: ['sounds'], of: (p) => p.sounds?.ignored ?? [] },
+  { name: 'ignored sounds', keys: ['sounds'], of: (p) => [...(p.sounds?.ignored ?? [])].sort() },
   { name: 'effects', keys: ['effects'] },
   { name: 'zoom settings', keys: ['zoomSettings', 'autoZoom'] },
   { name: 'captions look', keys: ['captions'] },
