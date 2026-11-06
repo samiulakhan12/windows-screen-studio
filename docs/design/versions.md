@@ -157,8 +157,10 @@ export interface VersionSummary {
   | … only the counts that differ … |
 
   followed by "Also different: style, camera." (`changedAreas`: style, cursor, camera, sound,
-  effects, captions look, crop, vertical framing, brand, watermark, transcript text) or "Same as your
-  edit now." when nothing differs.
+  effects, captions look, crop, vertical framing, brand, watermark, transcript text; clips, zooms,
+  texts and titles, shapes and spotlights, images, chapters and freeze frames that moved or changed
+  while their count stayed the same; "other settings" for any other part of the edit) or "Same as
+  your edit now." when nothing differs.
 * **Rename:** the name turns into a field (Enter saves, Esc cancels); same rules as §2.3.
 * **Delete:** the row asks "Delete “v1”? This cannot be undone." with **Delete** and **Keep**.
   Deleting is permanent: a version is a few hundred kilobytes of text, and the confirmation is

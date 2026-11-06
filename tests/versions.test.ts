@@ -90,6 +90,32 @@ describe('comparing', () => {
     const b: Project = { ...a, style: { ...a.style, padding: 0.2 }, webcam: { ...a.webcam, show: !a.webcam.show }, crop: { x: 0, y: 0, w: 0.5, h: 0.5 } }
     expect(changedAreas(a, b)).toEqual(['style', 'camera', 'crop'])
   })
+  it('names items moved or changed while they count the same, and only then', () => {
+    const version = p20({ zooms: [zoom('z', 1, 2)], annotations: [text('t', 1, 2, { text: 'Hello' })], titles: [title('ti', 0, 2, { title: 'Intro' })] })
+    const now: Project = {
+      ...p20({ zooms: [zoom('z', 10, 12)], annotations: [text('t', 1, 2, { text: 'Bye' })], titles: [title('ti', 0, 2, { title: 'Totally different' })] }),
+      // The cut moved from 8-10 s to 4-6 s: as long, as many cuts.
+      clips: [
+        { id: 'c0', start: 0, end: 4, speed: 1 },
+        { id: 'c1', start: 6, end: 20, speed: 1 }
+      ]
+    }
+    expect(compareSummaries(versionSummary(version), versionSummary(now))).toEqual([])
+    expect(changedAreas(version, now)).toEqual(['clips', 'zooms', 'texts and titles'])
+    expect(changedAreas(version, structuredClone(version))).toEqual([])
+    // A count that differs says so in its row: not named again.
+    const more = { ...version, zooms: [zoom('z', 1, 2), zoom('y', 5, 6)], shapes: [shape('s', 'arrow', 3, 4)] }
+    expect(changedAreas(version, more)).toEqual([])
+    // An empty list and none are the same.
+    expect(changedAreas({ ...version, chapters: [] }, { ...version, chapters: undefined })).toEqual([])
+    expect(changedAreas({ ...version, chapters: [chapter('c', 1)] }, { ...version, chapters: [chapter('c', 2)] })).toEqual(['chapters'])
+    expect(changedAreas({ ...version, freezes: [freeze('f', 2)] }, { ...version, freezes: [freeze('f', 3)] })).toEqual(['freeze frames'])
+  })
+  it('says "other settings" for a part of the edit no list names, never for the recording’s fields', () => {
+    const a = p20()
+    expect(changedAreas(a, { ...a, newerField: 1 } as unknown as Project)).toEqual(['other settings'])
+    expect(changedAreas(a, { ...a, name: 'Renamed', createdAt: '2020-01-01T00:00:00.000Z' })).toEqual([])
+  })
   it('notices caption text that changed with the same count', () => {
     const seg = (t: string) => ({ segments: [{ id: 'a', start: 0, end: 1, text: t }] }) as unknown as Project['transcript']
     expect(changedAreas({ ...p20(), transcript: seg('hi') }, { ...p20(), transcript: seg('hello') })).toEqual(['caption text'])

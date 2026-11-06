@@ -162,17 +162,43 @@ const AREAS: readonly { name: string; keys: readonly (keyof Project)[] }[] = [
   { name: 'watermark', keys: ['watermark'] }
 ]
 
+/**
+ * Items the counts show, by the name the comparison uses: named when they moved or changed while
+ * their counts stayed the same (a count that differs says so already).
+ */
+const ITEMS: readonly { name: string; keys: readonly (keyof Project)[]; counts: readonly (keyof VersionSummary)[] }[] = [
+  { name: 'clips', keys: ['clips'], counts: ['cuts', 'trimmed'] },
+  { name: 'zooms', keys: ['zooms'], counts: ['zooms'] },
+  { name: 'texts and titles', keys: ['annotations', 'titles'], counts: ['texts'] },
+  { name: 'shapes and spotlights', keys: ['shapes', 'spotlights'], counts: ['shapes'] },
+  { name: 'images', keys: ['overlays'], counts: ['images'] },
+  { name: 'chapters', keys: ['chapters'], counts: ['chapters'] },
+  { name: 'freeze frames', keys: ['freezes'], counts: ['freezes'] }
+]
+
 const same = (a: unknown, b: unknown): boolean => a === b || JSON.stringify(a) === JSON.stringify(b)
 
 /**
- * The other parts of the edit that differ ("style", "camera"…), and "caption text" when the captions
- * count the same but say something else; empty when only the counts (or nothing) differ.
+ * The other parts of the edit that differ ("style", "camera"…): items moved or changed while they
+ * count the same ("zooms"), "caption text" when the captions count the same but say something else,
+ * and "other settings" for a part none of these name; empty when only the counts (or nothing) differ.
  */
 export function changedAreas(version: Project, now: Project): string[] {
   const out = AREAS.filter((a) => a.keys.some((k) => !same(version[k], now[k]))).map((a) => a.name)
+  const vc = versionSummary(version)
+  const nc = versionSummary(now)
+  for (const item of ITEMS) {
+    if (item.counts.some((c) => vc[c] !== nc[c])) continue
+    if (item.keys.some((k) => !same(version[k] ?? [], now[k] ?? []))) out.push(item.name)
+  }
   const vs = version.transcript?.segments ?? []
   const ns = now.transcript?.segments ?? []
   if (vs.length === ns.length && vs.length > 0 && !same(vs, ns)) out.push('caption text')
+  // A part of the edit no list here names (a newer field): never "Same as your edit now".
+  const named = new Set<string>([...AREAS, ...ITEMS].flatMap((a) => a.keys).concat(RECORDING_FIELDS, 'transcript'))
+  const v = version as unknown as Record<string, unknown>
+  const n = now as unknown as Record<string, unknown>
+  if ([...Object.keys(v), ...Object.keys(n)].some((k) => !named.has(k) && !same(v[k], n[k]))) out.push('other settings')
   return out
 }
 
