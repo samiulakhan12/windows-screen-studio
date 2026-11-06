@@ -28,8 +28,14 @@ function deferred<T>(): { promise: Promise<T>; resolve: (v: T) => void; reject: 
 
 const asked: { provider: string; request: AiTextRequest; answer: ReturnType<typeof deferred<AiTextResult>> }[] = []
 const prefs: Record<string, unknown> = {}
+/** The automatic versions kept (E-12, docs/design/versions.md §2.4). */
+const kept: { id: string; project: Project; opts: unknown }[] = []
 vi.stubGlobal('window', {
   api: {
+    saveVersion: (id: string, project: Project, opts: unknown) => {
+      kept.push({ id, project, opts })
+      return Promise.resolve({ saved: null, removed: [] })
+    },
     getPref: (key: string) => Promise.resolve(prefs[key] ?? null),
     setPref: (key: string, value: unknown) => {
       prefs[key] = value
@@ -81,6 +87,7 @@ const undoSteps = (s: EditStore<Project>): number => {
 
 beforeEach(() => {
   asked.length = 0
+  kept.length = 0
 })
 
 describe('runCaptionsGreat', () => {
@@ -91,6 +98,8 @@ describe('runCaptionsGreat', () => {
     expect(asked).toHaveLength(0)
     expect(out?.notice).toMatch(/^Captions: Clean Short, \d+ words? emphasised.* · Ctrl \+ Z to undo$/)
     expect(store.state.captionMarks?.length).toBeGreaterThan(0)
+    // The edit before it is kept as an automatic version, as before Polish (versions.md §2.4).
+    expect(kept).toEqual([{ id: start.id, project: start, opts: { reason: 'captions' } }])
     expect(undoSteps(store)).toBe(1)
     expect(store.state).toBe(start)
   })
@@ -99,9 +108,12 @@ describe('runCaptionsGreat', () => {
     const store = storeOf(studioProject({ segments: captions(TEXTS) }))
     await runCaptionsGreat({ store, frame: TALL, options: OFFLINE, signal: new AbortController().signal })
     const once = store.state
+    expect(kept).toHaveLength(1)
     const out = await runCaptionsGreat({ store, frame: TALL, options: OFFLINE, signal: new AbortController().signal })
     expect(store.state).toBe(once)
     expect(out?.notice).toBe('Your captions already have all of this.')
+    // Nothing changed: no version kept for it.
+    expect(kept).toHaveLength(1)
     expect(undoSteps(store)).toBe(1)
   })
 
@@ -156,6 +168,7 @@ describe('runCaptionsGreat', () => {
     expect(await run).toBeNull()
     expect(store.state).toBe(start)
     expect(store.canUndo).toBe(false)
+    expect(kept).toEqual([])
   })
 
   it('plans with the editor free between its steps, and Cancel then changes nothing (§9.8)', async () => {
@@ -181,7 +194,10 @@ describe('runCaptionsGreat', () => {
     for (let i = 0; i < 100 && !pause.mock.calls.length; i++) await Promise.resolve()
     pause.mockRestore()
     store.update((p) => ({ ...p, transcript: { ...p.transcript!, segments: p.transcript!.segments.map((s) => (s.id === 'c2' ? { ...s, text: 'click Save and you are finished' } : s)) } }))
+    const edited = store.state
     expect((await run)?.notice).toMatch(/^Captions: /)
+    // The version kept is the edit just before it, the one made meanwhile included.
+    expect(kept.map((k) => k.project)).toEqual([edited])
     // The edit, tidied by the plan made from it (a capital at the start).
     expect(store.state.transcript!.segments[2].text).toMatch(/^Click Save and you are finished/)
     expect(store.state.captionMarks?.length).toBeGreaterThan(0)

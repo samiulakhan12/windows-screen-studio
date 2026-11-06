@@ -93,7 +93,7 @@ export interface VersionMeta {
   hash: string          // sha-256 (hex) of the snapshot's project JSON
   summary: VersionSummary
 }
-export type AutoReason = 'polish' | 'fillers' | 'vertical' | 'square' | 'open'
+export type AutoReason = 'polish' | 'fillers' | 'review' | 'captions' | 'vertical' | 'square' | 'open'
 export interface VersionSummary {
   duration: number   // video length in seconds (edit plus freeze holds), as the export makes it
   cuts: number       // cuts between clips (timelineGaps kind 'cut')
@@ -134,6 +134,15 @@ export interface VersionSummary {
   * **Polish in one click** — when **Polish** is pressed in its dialog: "Before Polish in one click";
   * **Remove all** in the Transcript tab's review list (fillers and retakes): "Before removing fillers and retakes"
     (only when it removes something: refused with "That would cut the whole video", it keeps none);
+  * **Remove all** of a kind in Review mode (E-02: every automatic cut, speed-up, zoom or camera
+    change of a kind put back in one step): "Before removing automatic changes", kept from the edit
+    just before it once it is made (a long one made in slices, docs/design/review-mode.md §4.3, keeps
+    none when the panel closes and stops it; one made at once for Open this version keeps it
+    without ever pruning the version being opened). Keep all and a row's Keep or Remove keep none;
+  * **Make my captions great** (Captions Studio §2.8: restyles, adds emphasis and pop-ups and, with
+    Tidy on, rewrites caption text in one step): "Before Make my captions great", from the edit just
+    before its update once it changed something (Cancel, or a run that changes nothing, keeps none).
+    Polish's Caption look step runs inside Polish, which keeps its own;
   * **Make a vertical version** / **Make a square version**: "Before making a vertical version" /
     "Before making a square version" (the source is not changed by a copy, but the copy is made
     from this moment: the user can always find the edit it came from). It is kept once the copy
@@ -382,7 +391,7 @@ New:
 * `src/main/versionsIpc.ts` — `registerVersionsIpc()`.
 * `src/shared/api/versions.ts`, `src/preload/versions.ts` — `VersionsApi`.
 * `src/renderer/src/versions/VersionsDialog.tsx`, `versions.css`, `autoVersion.ts`
-  (`keepVersionBefore(project, reason, about?)`), `VersionsIcon.tsx`.
+  (`keepVersionBefore(project, reason, about?, protect?)`, `protecting(id, fn)`), `VersionsIcon.tsx`.
 * `src/main/filmstrip.ts` — `filmstripPlan(duration, w, h, keyInterval)`, `filmstripArgs(…)`,
   `countShowinfo(log)`, `getFilmstrip(id)`, `stopFilmstrip(id)`, `registerFilmstripIpc()`.
 * `src/shared/editor/filmstrip.ts` — `FilmstripMeta`, `filmstripTiles(meta, win, px, tileW, total)`.
@@ -393,8 +402,8 @@ New:
 
 Additive lines in shared files: `commands.ts` (seven commands), `shortcuts.ts` (`Ctrl+Shift+S`,
 `NUDGE_OF`, `nudgeInstead`, `commandKeys`), `Editor.tsx` (the button, the dialog, the commands, the
-key swap), `Timeline.tsx` (`<Filmstrip>`), `TranscriptPanel.tsx` and `PolishDialog.tsx` (one call
-each), `projectCopy.ts` (`NOT_COPIED_DIRS`), `storage.ts` and `shared/storage/rules.ts`
+key swap), `Timeline.tsx` (`<Filmstrip>`), `TranscriptPanel.tsx`, `PolishDialog.tsx`,
+`ReviewPanel.tsx` and `greatRun.ts` (one call each), `projectCopy.ts` (`NOT_COPIED_DIRS`), `storage.ts` and `shared/storage/rules.ts`
 (`versionBytes`), `StorageSection.tsx` (one line), `analysisIpc.ts` (stop the filmstrip),
 `index.ts`, `preload/index.ts`, `api.ts`. No new dependency.
 

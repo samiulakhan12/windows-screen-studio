@@ -17,7 +17,7 @@ import type { Project } from '../../../shared/types'
 import { Icon } from '../components/Icon'
 import { ipcMessage } from '../editor/captionItems'
 import { useModalFocus } from '../editor/modalFocus'
-import { keepVersionBefore, onVersionsChanged, versionsChanged } from './autoVersion'
+import { keepVersionBefore, onVersionsChanged, protecting, versionsChanged } from './autoVersion'
 import './versions.css'
 
 /** What a row shows below itself: nothing, the comparison, the rename field or the delete question. */
@@ -126,8 +126,9 @@ export function VersionsDialog({
     setBusy(true)
     setError(null)
     try {
-      // The edit now first: going back to it is always possible. Without it, nothing is opened.
-      settle?.()
+      // The edit now first: going back to it is always possible. Without it, nothing is opened. Work
+      // holding the edit makes it first, and the version it keeps (Remove all) never prunes this one.
+      if (settle) protecting(v.id, settle)
       const kept = await keepVersionBefore(getProject(), 'open', v.name, v.id)
       if (kept && 'failed' in kept) throw new Error(`your edit now could not be kept as a version first (${kept.failed})`)
       const read = await window.api.readVersion(projectId, v.id)

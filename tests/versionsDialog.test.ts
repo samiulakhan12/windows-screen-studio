@@ -97,15 +97,16 @@ const V2 = meta('v-mabc13-4567abcd', 'Second')
 let edit: Project = project
 
 /** The main process: the kept versions, renames that finish when the test says, the project a version holds. */
-const api = { renames: [] as { id: string; name: string; finish: () => void }[], kept: project, saved: [] as { project: Project; reason: string | null }[] }
+const api = { renames: [] as { id: string; name: string; finish: () => void }[], kept: project, saved: [] as { project: Project; reason: string | null }[], protects: [] as (string | null)[] }
 vi.stubGlobal('window', {
   api: {
     listVersions: () => Promise.resolve([V1, V2]),
     renameVersion: (_project: string, id: string, name: string) => new Promise<void>((resolve) => api.renames.push({ id, name, finish: resolve })),
     readVersion: () => Promise.resolve({ project: api.kept, changed: [] }),
     deleteVersion: () => Promise.resolve(),
-    saveVersion: (_project: string, p: Project, opts: { name?: string; reason?: string }) => {
+    saveVersion: (_project: string, p: Project, opts: { name?: string; reason?: string; protect?: string }) => {
       api.saved.push({ project: p, reason: opts.reason ?? null })
+      api.protects.push(opts.protect ?? null)
       return Promise.resolve({ saved: null })
     }
   }
@@ -116,6 +117,8 @@ const DIALOG = '../src/renderer/src/versions/VersionsDialog'
 const { VersionsDialog } = (await import(/* @vite-ignore */ DIALOG)) as {
   VersionsDialog: (props: { getProject(): Project; settle?(): void; focusName: boolean; onOpen(v: unknown): void; onNotice(t: string): void; onClose(): void }) => unknown
 }
+const AUTO = '../src/renderer/src/versions/autoVersion'
+const { keepVersionBefore } = (await import(/* @vite-ignore */ AUTO)) as { keepVersionBefore(p: Project, reason: string): Promise<unknown> }
 
 /* ---------- a tiny renderer ---------- */
 
@@ -221,6 +224,7 @@ beforeEach(() => {
   page.activeElement = null
   api.renames.length = 0
   api.saved.length = 0
+  api.protects.length = 0
   api.kept = project
   edit = project
   settle = () => undefined
@@ -372,5 +376,27 @@ describe('work holding the edit (Review mode’s Remove all, docs/design/version
     await flush()
     expect(api.saved).toEqual([{ project: removed, reason: 'open' }])
     expect(openedVersions).toHaveLength(1)
+  })
+
+  it('the version Remove all keeps as it makes its edit never prunes the one being opened', async () => {
+    // Review mode's Remove all keeps the edit before it (E-12), the oldest automatic version possibly
+    // going to make room: never the one about to be read.
+    settle = () => {
+      void keepVersionBefore(edit, 'review')
+      edit = removed
+    }
+    const out = await opened()
+    click(out, 'Open First')
+    await flush()
+    await flush()
+    expect(api.saved).toEqual([
+      { project, reason: 'review' },
+      { project: removed, reason: 'open' }
+    ])
+    expect(api.protects).toEqual([V1.id, V1.id])
+    expect(openedVersions).toHaveLength(1)
+    // Outside an opening, nothing is protected.
+    void keepVersionBefore(edit, 'review')
+    expect(api.protects[2]).toBeNull()
   })
 })

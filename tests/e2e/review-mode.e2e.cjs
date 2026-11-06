@@ -18,7 +18,8 @@
 // draws only the rows near the view: the focus starts on the first row, End, P, Home and a held
 // arrow move it with its accessible name and place in the list (aria-posinset, aria-setsize), each
 // in view; K keeps and moves on; scrolled away, N brings the next row into view; Remove all says it
-// is working, then what it did, and one Ctrl+Z takes it back; Escape closes. Long lists of rows of
+// is working, then what it did, keeps the edit before it as an automatic version, and one Ctrl+Z
+// takes it back; Escape closes. Long lists of rows of
 // different heights (400, 2,000 and 6,000 rows, retakes whose words wrap): the scroll bar dragged to
 // the bottom shows the last row whole, the view still at the end; End, End again, End once
 // scrolled away, K, Home, P and a held arrow each leave the focused row fully in view; Remove all
@@ -366,6 +367,8 @@ async function main() {
     const kept = await savedWhen(home, id, (p) => !('autoCuts' in p), 'everything kept')
     h.assert(kept.clips.length === 2, 'the cut stays, as a plain cut')
     h.assert(JSON.stringify(kept.autoCutOutcomes) === JSON.stringify([{ id: 's1', outcome: 'kept' }]), `the choice saved: ${JSON.stringify(kept.autoCutOutcomes)}`)
+    // Keep all changes no footage and one row's Remove is one change: neither keeps a version (E-12).
+    h.assert(!fs.existsSync(path.join(h.projectsRoot(home), id, 'versions')), 'no version kept for Keep all or one Remove')
     if (SHOTS) await win.screenshot({ path: path.join(SHOTS, 'review-mode-reviewed.png') })
 
     // Undo and redo take a row in and out of review under the focus: Ctrl+Z gives the cut its Keep
@@ -441,7 +444,7 @@ async function main() {
 
   await test('review mode: a long list draws the rows in view; keys, names, place and Escape as before', async (ctx) => {
     const home = h.tempHome('review-long')
-    seedLong(home)
+    const longId = seedLong(home)
     const { app, win, logs } = await h.launch({ home })
     ctx.app = app
     ctx.logs = logs
@@ -507,6 +510,11 @@ async function main() {
     h.assert(same(said, [`Removing ${pending} silence cuts… Keep, Remove, Undo and Redo wait until it is done. Closing the panel stops it.`, `Removed ${pending} silence cuts.`]), `said what it does and what waits, then what it did: ${JSON.stringify(said)}`)
     h.assert(await win.evaluate(() => window.__busy), 'the button said it was working')
     h.assert((await win.textContent('[data-testid="review-remove-kind"]')) === 'Remove all silence cuts', 'the button back')
+    // The edit before it is kept as an automatic version, every cut still in it (E-12, docs/design/versions.md §2.4).
+    const index = path.join(h.projectsRoot(home), longId, 'versions', 'index.json')
+    await f.waitFor(async () => fs.existsSync(index), 'a version kept before Remove all', 5000)
+    const versions = JSON.parse(fs.readFileSync(index, 'utf8')).items.map((v) => [v.name, v.auto, v.reason, v.summary.cuts])
+    h.assert(same(versions, [['Before removing automatic changes', true, 'review', LONG_ROWS]]), `the edit before Remove all kept as a version: ${JSON.stringify(versions)}`)
     await win.keyboard.press('Control+z')
     await f.waitFor(async () => (await win.textContent('[data-testid="review-progress"]')) === `1 of ${LONG_ROWS} reviewed`, 'one Ctrl+Z brings them all back', 5000)
 

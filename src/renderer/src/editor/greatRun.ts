@@ -14,6 +14,7 @@ import { readCaptionStudio } from '../../../shared/captions/studioData'
 import type { BrandKit } from '../../../shared/editor/brandKit'
 import type { EditStore } from '../../../shared/editor/editStore'
 import type { CaptionStudio, Project } from '../../../shared/types'
+import { keepVersionBefore } from '../versions/autoVersion'
 
 /** The saved choices the caption automation uses. */
 export interface GreatInputs {
@@ -177,6 +178,7 @@ export async function runCaptionsGreat(deps: { store: EditStore<Project>; frame:
   let changed = false
   // One undo step (polish-in-one-click decision 3); planned again at once from an edit made meanwhile.
   store.seal()
+  const before = store.getSnapshot()
   store.update((p) => {
     const out = p === from ? planned : planCaptionsGreat(input(p), options)
     summary = out.summary
@@ -184,6 +186,8 @@ export async function runCaptionsGreat(deps: { store: EditStore<Project>; frame:
     return out.project
   })
   store.seal()
+  // E-12: the edit before it is kept as a version once it changed it (docs/design/versions.md §2.4).
+  if (store.getSnapshot() !== before) void keepVersionBefore(before, 'captions')
   if (!summary) return null
   const failed = providerFailed ? { providerFailed: true as const } : {}
   return { notice: greatNotice(changed ? { ...(summary as GreatSummary), ...failed } : { ...NOTHING, ...failed }, deps.undo) }

@@ -72,6 +72,17 @@ describe('automatic versions', () => {
     const auto = saveVersion(dir, 'p20', edit(2), { reason: 'open', about: 'v1', now: at(2) }).saved!
     expect(auto).toMatchObject({ auto: true, reason: 'open', name: 'Before opening “v1”' })
     expect(listVersions(dir).map((v) => v.id)).toEqual([auto.id, named.id])
+    // Review mode's Remove all and Make my captions great keep theirs too, listed with their reason.
+    const review = saveVersion(dir, 'p20', edit(3), { reason: 'review', now: at(3) }).saved!
+    const captions = saveVersion(dir, 'p20', edit(4), { reason: 'captions', now: at(4) }).saved!
+    expect(review).toMatchObject({ auto: true, reason: 'review', name: 'Before removing automatic changes' })
+    expect(captions).toMatchObject({ auto: true, reason: 'captions', name: 'Before Make my captions great' })
+    expect(listVersions(dir).map((v) => [v.id, v.reason])).toEqual([
+      [captions.id, 'captions'],
+      [review.id, 'review'],
+      [auto.id, 'open'],
+      [named.id, undefined]
+    ])
   })
 
   it('treat the same edit with its fields in another order as the same', () => {

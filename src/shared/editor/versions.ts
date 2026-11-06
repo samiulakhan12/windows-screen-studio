@@ -9,8 +9,8 @@ import type { CaptionSegment, Project } from '../types'
 import { timelineGaps } from './clips'
 
 /** Why Flown kept a version by itself (§2.4). */
-export type AutoReason = 'polish' | 'fillers' | 'vertical' | 'square' | 'open'
-export const AUTO_REASONS: readonly AutoReason[] = ['polish', 'fillers', 'vertical', 'square', 'open']
+export type AutoReason = 'polish' | 'fillers' | 'review' | 'captions' | 'vertical' | 'square' | 'open'
+export const AUTO_REASONS: readonly AutoReason[] = ['polish', 'fillers', 'review', 'captions', 'vertical', 'square', 'open']
 
 /** The counts a version's row and the comparison show. */
 export interface VersionSummary {
@@ -83,6 +83,10 @@ export function autoVersionName(reason: AutoReason, about?: string): string {
       return 'Before Polish in one click'
     case 'fillers':
       return 'Before removing fillers and retakes'
+    case 'review':
+      return 'Before removing automatic changes'
+    case 'captions':
+      return 'Before Make my captions great'
     case 'vertical':
       return 'Before making a vertical version'
     case 'square':
