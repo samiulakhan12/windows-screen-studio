@@ -61,6 +61,8 @@ test of its own; 9 is checked by the e2e only.
 
 ## Phase B, left out by design (§0.4), with seams
 
+(As phase A left it. What phase B built is in the section **Phase B** at the end.)
+
 - **Review mode group rows** (`review.ts`, `copy.ts`, `ReviewPanel.tsx`, test 44): not built.
 - **The sound finder's bleep gains**: `bleepGains` in `src/shared/captions/cleanup.ts` returns a
   local `SoundGain` (`TODO(phase B)`); until the sound finder (F-17) merges, **a bleep does not mute
@@ -230,3 +232,116 @@ tests.
 - **Keyboard and screen readers**: the gallery's radio group, the sliders' spoken values and the
   options popover with NVDA and Narrator; Ctrl+B and Ctrl+Shift+B on AZERTY and other layouts.
 - **High contrast and scaling**: the Look section at 125 % and 150 % display scaling.
+
+## Phase B
+
+Branch `feat/cs-phase-b` from `a988af4` (wave 8 merged: review mode, publishing pack, sound finder,
+share, search; and Captions Studio phase A). Built here: §0.4's phase B parts that wait for no
+other branch. Not built: `versions.ts` areas (test 56; the versions branch is not merged, and no
+file had to call it, so no seam was added) and offline translation (waits for the owner's licence
+decision; its `TODO(phase B)` seams in `LanguagesSection.tsx`, `captionCommands.ts` and
+`assetStore.ts` are left as they were). Nothing was pushed.
+
+### What was built
+
+| Commit | What |
+|---|---|
+| `f1b26f1`, `7abe3af` | **Bleeps mute their words** (§11.7 rule 5). `bleepGains` returns the sound finder's `SoundGain` (the local type is gone); `soundGains` joins the bleeps with the muted and lowered stretches through `joinGains`, so the preview's `sounds` gain node and the export's one `soundGainFilters` chain play the same curve; Tone still adds its 1 kHz sine. `jobSoundGains` gives the job's `RecordingSound.sounds` only when there are stretches or bleeps (a project with neither gets the job of before), and never more pieces than main's `validSoundGains` accepts (`MAX_SOUND_GAINS`): past that, the unjoined stretches and bleeps go, which main joins into the same curve. The preview's loudness hears bleeps muted, as the export's loudnorm does; the music keeps ducking under a bleeped word (a word inside speech). The preview's memo key includes the bleeps. Clean up's note that the word's sound is not muted is gone. |
+| `3fab7b6` | **Palette commands retargeted** (§2.14): `aiTranslate` sends `{ kind: 'language', via: 'ai' }` (Languages › Add a language, first provider chosen, language select focused); `aiCleanup` sends `{ kind: 'cleanup', ai: true }` (Clean up's AI fix ticked, saved and focused; without a provider Clean up says to add one first). Both live in `aiCaptionCommands` (`captionCommands.ts`). `CaptionsAiTask` is `'chapters' \| 'title' \| 'summary'`; the AI tools' "is in Clean up now" notices are gone. |
+| `2a18861` | **Cancel stops the provider's request**: Make my captions great's marks request (`greatRun.ts`), Clean up's AI fix and Languages' translations each send their own `requestId` and call `cancelAiText` with it on Cancel, and when their section goes while the request runs. |
+| `72655b5`, `2a01ced` | **Review mode rows** (§11.8, `src/shared/review/captionReview.ts`): kinds `style`, `emphasis`, `text`, `emoji`, `graphic`, `bleep` after Review's own; `ReviewItem.members` (and `parts`, the items as listed); emphasis and text fixes as one group row each whose Keep and Remove do all pending items in one edit, and each item inside with its own. Keep drops records and clears `auto`; Remove puts back the look (`captions` = `was`, absent for `null`) and the text and words, and deletes marks, graphics, title cards and bleeps; Remove on every row of a Make my captions great run gives the project from before it. A bleeped word is masked in its row and accessible name. The panel shows a group's items under a disclosure (`aria-expanded`, `aria-controls`); `K` and `Delete` on an item act on it; the focus moves to the next item to review. Chips use the track tokens. |
+| `ecd23fe` | **Notice and hints**: Make my captions great's notice ends "Review (Shift + R) · Ctrl + Z to undo" with the user's keys (`reviewHint`; "Review mode lists them" without a key), from the button and the palette. Clean up's "Tidy changes are listed in Review mode." and the Graphics tab's two Review hints are back. |
+| `ed85ce4`, `3ed2f6d` | **Test 1's wave 8 fixtures** and test 55's Review title (below). |
+
+Expectations changed because they were phase A's interim behaviour, each said so in its commit and
+in the test: `soundsBleeps.test.ts` (a bleep added only its tone), two Captions tab tests of the
+"is in Clean up / Languages now" notices (replaced by one that the AI tools send and say nothing),
+`great.test.ts` (the notice named no Review key), and the Graphics and Clean up hint tests (no hint
+named Review mode).
+
+### Tests
+
+Unit tests (vitest), each new rule checked to fail with its source change reverted:
+
+- Test 27 (`soundsBleeps.test.ts`, `bleepExportJob.test.ts`, `audioLevels.test.ts`): the preview's
+  sounds gain is 0 under a bleep, alone or inside a muted or lowered stretch, Tone or Silence, and
+  follows bleeps added and removed; the export graph has one gain chain and no `volume=enable`, and
+  the 300 Hz recording is silent under the bleep through the pinned ffmpeg; the exporter's own job
+  (caught at `exportStart`) carries the joined curve, the tone spans, nothing without bleeps or
+  stretches, and at most `MAX_SOUND_GAINS` pieces for 2,000 ducks around 2,000 bleeps (same
+  filters); loudness hears bleeps muted; ducking ignores them.
+- Test 44 (`captionReview.test.ts`, 15 tests; `reviewPanelGroups.test.ts`): titles per kind
+  (masked bleeps, "was" names), statuses, Keep and Remove per kind, the group rows (on the row and on
+  one item, mixed groups read kept), "n of N" counts a group once, `mergeSnapshot` keeps a group's
+  reviewed items and takes in new ones, one undo step per press through the editor's settle chain,
+  undo and redo; the panel's disclosure and an item's Remove.
+- Test 57 (`aiCaptionCommands.test.ts`): both commands' requests, the Languages form with the first
+  provider chosen after another was picked, Clean up's AI fix ticked, saved and focused, the
+  no-provider message, and no captions.
+- Cancel (`greatRun.test.ts`, `cleanupAiFix.test.ts`, `languagesSection.test.ts`): the request id
+  is valid and the one stopped; a run that ends by itself stops nothing; a section that goes stops
+  its request.
+- Test 1 (`captionsStudioEquivalence.test.ts`, `tests/fixtures/wave8-old-projects.json`): a
+  publishing pack project, a review-mode project and a sound-finder project migrate to the keys and
+  JSON digests that each branch's own code gave before Captions Studio merged (computed with
+  `2cd2a3f`'s `src/shared` for the first two and `d58aac1`'s for the third), with no Captions Studio
+  key, and read again unchanged.
+- Test 55 (`graphicRules.test.ts`): Review lists "Chapter title: Export settings".
+- The notice and hints (`great.test.ts`, `commandsCaptions.test.ts`, `graphicsPanel.test.ts`,
+  `languagesSection.test.ts`).
+
+End to end, extended: `captions-studio` (the Short look test: the notice names Review; Shift+R
+lists one emphasis group row, the counter and the list card, no style row; the group opens to its
+items; Remove deletes the list card, Ctrl+Z brings it back; a second run adds no undo step; Clean
+up's hint), `review-mode` (new test: the style row, the emphasis group by keyboard, Delete and K on
+one item, the group counted once, undo, Remove on the style row and the group, a masked bleep),
+`sound-finder` (new test: a bleeped word in a 440 Hz recording is over 40 dB lower in the M4A with
+a 1 kHz tone, or none with Silence, the rest unchanged; the preview schedules the gain of 0) and
+`publish-pack` (new test: both palette commands).
+
+### Verification output
+
+```
+$ npm run -s typecheck
+(exit 0)
+
+$ TMPDIR=<private> npx vitest run --maxWorkers=2
+ Test Files  405 passed (405)
+      Tests  5514 passed (5514)
+   Duration  147.57s
+
+$ npm run -s build
+✓ built in 4.62s (main)   ✓ built in 37ms (preload)   ✓ built in 4.05s (renderer)
+(exit 0; only Vite's usual >500 kB chunk warning)
+```
+
+An earlier full run with the default worker count (4 CPUs shared with other agents) had one
+failure: `bleepBangla.test.ts` › "bleeps them written another way…" took 6.9 s against vitest's
+5 s limit. It is untouched by phase B and passes alone (15 of 15, 20 s for the file), and in the run
+above; it is a timing limit under load, not a wrong result.
+
+End to end on the built app, under `xvfb-run -a -s "-screen 0 1920x1080x24"`, each file once and
+alone (none had to be run again):
+
+| File | Result | Notes |
+|---|---|---|
+| `captions-studio` | 8 of 8 pass (88 s) | The Short look test now covers Review (Shift+R) on the run. |
+| `review-mode` | 9 of 9 pass (105 s) | Includes the new Captions Studio rows test. |
+| `sound-finder` | 5 of 5 pass (35 s) | Bleep: 440 Hz under the bleep −10.5 dB → −137.7 dB; 1 kHz tone at −12.0 dB; outside unchanged (−10.5 / −10.5 dB). |
+| `publish-pack` | 4 of 4 pass (31 s) | Includes the new palette test. |
+
+Not run here: the rest of the e2e suite, `npm run dist:win`.
+
+### Left
+
+- `versions.ts` areas (test 56) when the versions branch merges; offline translation (tests 48,
+  58's translation part, `captionLanguage` choosing On this PC) when the owner decides.
+- A quote card's Review row reads "Quote: “…”" with its words (the design's example says only
+  "Quote"); list cards read "List: <title>" or "List: n items" as the Graphics tab names them.
+- The style row sits at the first caption's time; a look has no time of its own.
+- The music's ducking does not treat a bleeped word as silence (a choice: a bleep is a word inside
+  speech); the design does not say.
+- Contract additions not yet recorded in §14.0.1: `ReviewItem.parts`, `words`, `style` and `text`
+  (beside the design's `members`), `jobSoundGains`, `aiCaptionCommands`, `reviewHint` and
+  `greatNotice`'s `review` argument.
+
