@@ -10,9 +10,12 @@
  * it back (the look before, the text before, the item deleted). Each is one project out, so a press
  * is one undo step; a group's Keep or Remove does all its pending items in that one step.
  */
+import { lookOf } from '../captions/captionAutoSettle'
 import { maskBleeped, maskWord } from '../captions/cleanup'
 import { emojiEntry } from '../captions/emojiList'
 import { deepEqual } from '../captions/graphicRules'
+import { DEFAULT_CAPTIONS } from '../captions/settings'
+import { legacyTwin } from '../captions/studioEdit'
 import { LEGACY_TILES, studioPreset } from '../captions/studioPresets'
 import type { Bleep, CaptionAuto, CaptionMark, CaptionSegment, CaptionSettings, Graphic, Project, TitleCard } from '../types'
 import type { ReviewItem, ReviewKind, ReviewStatus } from './review'
@@ -214,8 +217,29 @@ export function captionPendingCount(project: Project): number {
 
 /* ---------- statuses ---------- */
 
-/** Whether `c` is the look `was` (absent when `was` is null). */
-const sameLook = (c: CaptionSettings | undefined, was: CaptionSettings | null): boolean => (was === null ? c === undefined : deepEqual(c, was))
+/** The Studio look of `c` without its dragged place. */
+const unplaced = (c: CaptionSettings): CaptionSettings['studio'] => lookOf(c)?.studio
+
+/**
+ * Whether `c` draws its Classic look through that look's twin as Ctrl+B or emphasis made it (§5.8),
+ * unedited: with `placed`, a dragged place counts as an edit.
+ */
+function plainTwin(c: CaptionSettings, placed: boolean): boolean {
+  if (!c.studio) return false
+  const { studio, ...classic } = c
+  const twin = legacyTwin(classic)
+  return placed ? deepEqual(studio, twin) : deepEqual(unplaced(c), twin)
+}
+
+/** The look `c` shows (no settings: the default), an unedited Classic twin read as its Classic look. */
+function shownLook(c: CaptionSettings | null | undefined): unknown {
+  const s = c ?? DEFAULT_CAPTIONS
+  const look = lookOf(s)
+  return plainTwin(s, false) ? { ...look, studio: undefined } : look
+}
+
+/** Whether `c` shows the look `was` (null: the default look), whatever else the user changed since. */
+const sameLook = (c: CaptionSettings | undefined, was: CaptionSettings | null): boolean => deepEqual(shownLook(c), shownLook(was))
 
 /** An item of one of these kinds (a group row, or one item inside one), read from `project`. */
 export function captionItemStatus(project: Project, item: ReviewItem): ReviewStatus {
@@ -325,9 +349,67 @@ export function keepCaptionItems(project: Project, items: readonly ReviewItem[])
   return next
 }
 
+/** `now` with the look (lookOf's fields) of `from`; the rest of the settings stays as the user left it. */
+function withLookOf(now: CaptionSettings, from: CaptionSettings): CaptionSettings {
+  const { studio: _s, font: _f, ...rest } = now
+  void _s
+  void _f
+  return {
+    ...rest,
+    preset: from.preset,
+    color: from.color,
+    highlightColor: from.highlightColor,
+    background: from.background,
+    size: from.size,
+    maxLines: from.maxLines,
+    ...(from.font !== undefined ? { font: from.font } : {}),
+    ...(from.studio ? { studio: from.studio } : {})
+  }
+}
+
+/** `c` with its Studio look's dragged place set to `place` (none: the look's own anchors). */
+function withPlace(c: CaptionSettings, place: { x: number; y: number } | undefined): CaptionSettings {
+  if (!c.studio || deepEqual(c.studio.layout.place, place)) return c
+  const { place: _p, ...layout } = c.studio.layout
+  void _p
+  return { ...c, studio: { ...c.studio, layout: place ? { ...layout, place: { ...place } } : layout } }
+}
+
+/**
+ * The caption settings after a Remove of the style row (`style`) or of emphasis (§11.8). The style
+ * row puts back only the look from before the first automatic change: showing or hiding captions,
+ * speaker names, the track, the digits and the dragged place stay as the user left them, as the
+ * settle rule keeps the record through them. Marks left on a Classic look get its twin, so they still
+ * draw (as Ctrl+B does, §5.8); with no marks left, an unedited twin goes back to its Classic look,
+ * so removing every row of a run gives back the settings from before it.
+ */
+function lookAfterRemove(p: Project, style: StyleRecord | undefined): Project {
+  const now = p.captions
+  let c: CaptionSettings | undefined = now
+  if (style) c = withLookOf(now ?? DEFAULT_CAPTIONS, style.was ?? DEFAULT_CAPTIONS)
+  if (!c) return p
+  const marks = !!p.captionMarks?.length
+  if (style && marks && !c.studio) c = { ...c, studio: legacyTwin(c) }
+  if (!marks && plainTwin(c, true)) {
+    const { studio: _s, ...classic } = c
+    void _s
+    c = classic
+  }
+  if (style) c = withPlace(c, now?.studio?.layout.place)
+  if (style?.was && deepEqual(c, style.was)) c = style.was
+  if (style && style.was === null && deepEqual(c, DEFAULT_CAPTIONS)) {
+    if (!now) return p
+    const { captions: _c, ...rest } = p
+    void _c
+    return rest
+  }
+  return deepEqual(c, now) ? p : { ...p, captions: c }
+}
+
 /**
  * The project with Captions Studio's pending `items` (single items, not groups) removed: the look
- * before the first automatic change put back (no captions settings when there were none), the text
+ * before the first automatic change put back (no captions settings when there were none; only the
+ * look, lookAfterRemove), the text
  * and words before put back on each tidied caption, and the marks, graphics, title cards and bleeps
  * deleted. Records go with what they record. `project` itself when nothing changes.
  */
@@ -336,13 +418,6 @@ export function removeCaptionItems(project: Project, items: readonly ReviewItem[
   let next = project
   const texts = idsOf(items, 'text:')
   const style = items.some((i) => i.key === STYLE_KEY) ? next.captionAuto?.style : undefined
-  if (style) {
-    if (style.was === null) {
-      const { captions: _c, ...rest } = next
-      void _c
-      next = rest
-    } else next = { ...next, captions: style.was }
-  }
   if (texts.size && next.transcript) {
     const back = new Map((next.captionAuto?.text ?? []).filter((r) => texts.has(r.caption)).map((r) => [r.caption, r]))
     const segments = next.transcript.segments.map((s) => {
@@ -364,6 +439,7 @@ export function removeCaptionItems(project: Project, items: readonly ReviewItem[
   const drop = <T extends { id: string }>(list: readonly T[] | undefined, ids: ReadonlySet<string>): T[] | null => (ids.size && list ? list.filter((x) => !ids.has(x.id)) : null)
   const marks = drop(next.captionMarks, idsOf(items, 'emphasis:'))
   if (marks) next = withList(next, 'captionMarks', marks)
+  if (style || marks) next = lookAfterRemove(next, style)
   const graphics = drop(next.graphics, idsOf(items, 'graphic:'))
   if (graphics) next = withList(next, 'graphics', graphics)
   // Title cards stay a list (a new project has `titles: []`), as Make my captions great leaves it.

@@ -8,6 +8,8 @@ import { describe, expect, it } from 'vitest'
 import { settleCaptionAuto } from '../src/shared/captions/captionAutoSettle'
 import { DEFAULT_CLEANUP } from '../src/shared/captions/cleanup'
 import { DEFAULT_GREAT_OPTIONS, planCaptionsGreat } from '../src/shared/captions/great'
+import { DEFAULT_CAPTIONS } from '../src/shared/captions/settings'
+import { legacyTwin } from '../src/shared/captions/studioEdit'
 import { EditStore } from '../src/shared/editor/editStore'
 import { settleDeletedWords } from '../src/shared/editor/transcript'
 import { settleAutoCuts } from '../src/shared/review/autoCuts'
@@ -180,6 +182,65 @@ describe('Keep and Remove, per kind', () => {
     const kept = keepItems(p, [style])
     expect(kept.captions).toBe(p.captions)
     expect(reviewStatus(kept, style)).toBe('kept')
+  })
+
+  it('Remove on the style row puts back only the look: hidden captions, the track, speaker names and a dragged place stay', () => {
+    const store = storeOf(great)
+    const place = { x: 0.5, y: 0.3 }
+    // None of these is a look change: the settle rule keeps the record through them (§11.8 rule 1).
+    store.update((p) => ({ ...p, captions: { ...p.captions!, show: false, track: 'bn', showSpeaker: true, digits: 'western', studio: { ...p.captions!.studio!, layout: { ...p.captions!.studio!.layout, place } } } }))
+    expect(store.state.captionAuto?.style).toBeDefined()
+    const style = row(reviewItems(store.state), STYLE_KEY)
+    expect(reviewStatus(store.state, style)).toBe('pending')
+    store.update((p) => removeItems(p, [style]))
+    const c = store.state.captions!
+    expect(c).toMatchObject({ show: false, track: 'bn', showSpeaker: true, digits: 'western', preset: 'clean', color: DEFAULT_CAPTIONS.color, background: DEFAULT_CAPTIONS.background })
+    // The emphasis still pending draws on the Classic look's twin, which keeps the dragged place.
+    const twin = legacyTwin({ ...c, studio: undefined })
+    expect(c.studio).toEqual({ ...twin, layout: { ...twin.layout, place } })
+    expect(store.state.captionAuto?.style).toBeUndefined()
+    expect(reviewStatus(store.state, style)).toBe('removed')
+    // Without later changes and without marks, the settings from before come back: none at all here.
+    const plain = removeItems(great, [row(reviewItems(great), STYLE_KEY), row(reviewItems(great), EMPHASIS_GROUP)])
+    expect(plain.captions).toBeUndefined()
+  })
+
+  it('kept or pending emphasis still draws after Remove on the style row: the old look gets its Studio twin', () => {
+    const items = reviewItems(great)
+    const style = row(items, STYLE_KEY)
+    const emphasis = row(items, EMPHASIS_GROUP)
+    const kept = removeItems(keepItems(great, [emphasis]), [style])
+    expect(kept.captionMarks!.length).toBe(great.captionMarks!.length)
+    // Only Studio looks draw marks (captionsLayer): the default Clean look as its twin.
+    expect(kept.captions).toEqual({ ...DEFAULT_CAPTIONS, studio: legacyTwin(DEFAULT_CAPTIONS) })
+    expect(reviewStatus(kept, style)).toBe('removed')
+    expect(reviewStatus(kept, emphasis)).toBe('kept')
+    // Still pending: the same, and removing the emphasis afterwards takes the twin away again.
+    const pending = removeItems(great, [style])
+    expect(pending.captions?.studio).toEqual(legacyTwin(DEFAULT_CAPTIONS))
+    const after = removeItems(pending, [emphasis])
+    expect(after.captionMarks).toBeUndefined()
+    expect(after.captions?.studio).toBeUndefined()
+    expect(reviewStatus(after, style)).toBe('removed')
+  })
+
+  it('Remove on every row gives back a Classic look the run turned into its twin for emphasis (no style row)', () => {
+    const boxed: Project = { ...before, captions: { ...DEFAULT_CAPTIONS, preset: 'boxed', background: 'box', picked: true } }
+    const clean: Project = { ...before, captions: { ...DEFAULT_CAPTIONS } }
+    for (const [start, frame, options] of [
+      [boxed, TALL, DEFAULT_GREAT_OPTIONS],
+      [clean, WIDE, { ...DEFAULT_GREAT_OPTIONS, style: false }]
+    ] as const) {
+      const run = planCaptionsGreat({ project: start, frame, cleanup: DEFAULT_CLEANUP, words: [], by: 'great' }, options).project
+      expect(run.captions!.studio!.from).toBe(start.captions!.preset)
+      const items = reviewItems(run)
+      expect(items.some((i) => i.key === STYLE_KEY)).toBe(false)
+      expect(removeItems(run, items)).toEqual(start)
+      // Removing only the emphasis does it too; a twin the user edited (here dragged) stays.
+      expect(removeItems(run, [row(items, EMPHASIS_GROUP)]).captions).toEqual(start.captions)
+      const dragged: Project = { ...run, captions: { ...run.captions!, studio: { ...run.captions!.studio!, layout: { ...run.captions!.studio!.layout, place: { x: 0.4, y: 0.2 } } } } }
+      expect(removeItems(dragged, [row(items, EMPHASIS_GROUP)]).captions).toBe(dragged.captions)
+    }
   })
 
   it('graphics, title cards and bleeps: Keep clears auto, Remove deletes; others are left alone', () => {

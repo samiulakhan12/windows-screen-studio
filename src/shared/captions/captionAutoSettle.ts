@@ -11,8 +11,13 @@ import type { CaptionMark, CaptionSettings, CaptionWord, Graphic, Project, Title
 import { deepEqual } from './graphicRules'
 import { remapAnchors } from './marks'
 
-/** The fields of the caption settings that make the look (§11.8 rule 1): not show, speaker names, the track or a dragged place. */
-function lookOf(c: CaptionSettings | undefined): unknown {
+/**
+ * The look of the caption settings (§11.8 rule 1): `studio` without its dragged place, `preset`,
+ * `color`, `highlightColor`, `background`, `size`, `maxLines` and `font`. Showing or hiding
+ * captions, the position, speaker names, the track, the digits and a dragged place are not the look.
+ * Null for no settings. Review's Remove on the style row puts back these fields only.
+ */
+export function lookOf(c: CaptionSettings | undefined): Pick<CaptionSettings, 'studio' | 'preset' | 'color' | 'highlightColor' | 'background' | 'size' | 'maxLines' | 'font'> | null {
   if (!c) return null
   const studio = c.studio ? { ...c.studio, layout: { ...c.studio.layout, place: undefined } } : undefined
   return { studio, preset: c.preset, color: c.color, highlightColor: c.highlightColor, background: c.background, size: c.size, maxLines: c.maxLines, font: c.font }

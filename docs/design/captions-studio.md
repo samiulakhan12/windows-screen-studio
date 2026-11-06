@@ -3016,8 +3016,8 @@ own Keep and Remove. Things with a time and a place on screen keep a row each.
 
 | Kind | Rows | Title example | Pending while | Keep | Remove |
 |---|---|---|---|---|---|
-| `style` | one | Caption style: Bold Pop (was Clean) | `captionAuto.style` present | drops the record | `captions` = `was` (absent when `null`), record dropped |
-| `emphasis` | one group | Emphasis: 38 words (items: Emphasis on “Export”) | marks with `auto` exist | clears `auto` on all (or one) | deletes all (or one) |
+| `style` | one | Caption style: Bold Pop (was Clean) | `captionAuto.style` present | drops the record | the look of `was` put back (rule 1's look fields; `captions` absent when `was` is `null` and nothing else changed): showing or hiding, speaker names, the track, the digits and a dragged place stay as the user left them; marks left over get the old look's Studio twin (§5.8), so they still draw; record dropped |
+| `emphasis` | one group | Emphasis: 38 words (items: Emphasis on “Export”) | marks with `auto` exist | clears `auto` on all (or one) | deletes all (or one); with no marks left, an unedited Studio twin of a Classic look (the one emphasis made) goes back to the Classic look |
 | `text` | one group | Text: 12 captions tidied (items: Fixed “flown” → “Flown”) | `captionAuto.text` records exist | drops the records (or one) | text and words put back for all (or one) |
 | `emoji` | one each | Emoji 💡 on “tip” | the graphic exists with `auto` | clears `auto` | deletes it |
 | `graphic` | one each | Counter 300% · List: 3 steps · Pop-up “Auto Save” · Lower third: Priya · Chapter title: Export settings · Quote | as above (graphics and title cards) | clears `auto` | deletes it |
