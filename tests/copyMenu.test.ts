@@ -342,6 +342,22 @@ describe('the copy menu (test 65)', () => {
     expect(ran).toEqual([])
   })
 
+  it('keeps Left and Right from the editor, which would move the selected items', () => {
+    const view = menu()
+    ;(byId(render(view), 'copy-menu')!.props.onKeyDown as (e: Key) => void)(key('ArrowDown'))
+    let out = render(view)
+    for (const k of ['ArrowLeft', 'ArrowRight']) {
+      const e = key(k)
+      ;(menuOf(out)!.props.onKeyDown as (e: Key) => void)(e)
+      out = render(view)
+      expect([e.prevented, e.stopped]).toEqual([true, true])
+    }
+    // Nothing else happened: the menu is open on its first item.
+    expect(menuOf(out)).toBeDefined()
+    expect(focused).toBe('copy-vertical')
+    expect(ran).toEqual([])
+  })
+
   it('does not run an item that cannot run, by key or by click', () => {
     const view = menu(following('9:16'))
     ;(byId(render(view), 'copy-menu')!.props.onClick as () => void)()

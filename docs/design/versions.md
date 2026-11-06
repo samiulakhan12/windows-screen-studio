@@ -308,7 +308,8 @@ through `projectDir`; requests for the same proxy share one run.
   *… ten frames earlier / later*, Edit), which a user may bind to other keys; they show the step
   keys as theirs (`commandKeys`) while those are bound. If a user binds the step keys elsewhere,
   the nudge follows the step command's keys (`nudgeInstead()` in `shortcuts.ts`).
-* Text fields and focused sliders keep their arrows (unchanged rules).
+* Text fields and focused sliders keep their arrows (unchanged rules), and so does the open copy
+  menu in the title bar (← / → do nothing there).
 * *Rejected:* Alt + arrows (Premiere's choice): Alt + ← is "Back" in Chromium and in many mice
   bindings, and the arrows are what the roadmap and users expect.
 
