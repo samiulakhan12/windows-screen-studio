@@ -368,3 +368,28 @@ with its source change reverted (checked).
 Verification after the round: typecheck exit 0; full vitest 405 files, 5526 tests pass; build
 exit 0; e2e on the built app, each file once: `review-mode` 10 of 10, `publish-pack` 4 of 4,
 `sound-finder` 5 of 5, `captions-studio` 8 of 8.
+
+### Fixer round 2
+
+The checkers' nine problems, each reproduced with their probes first (the review probes also at
+`9ed0094`); each fix has a test that fails with its source change reverted (checked, part by part
+for the Remove rules).
+
+| Problem | Outcome |
+|---|---|
+| style-remove-keeps-auto-speaker-names (medium) | Fixed (`2e9a858`). The style record notes `names: true` when the run turned speaker names on with its look (Auto style's speakers rule; kept through a later run), and Remove on the style row drops them unless the look from before had them. Names the user had or turned on stay; the reader keeps the note. |
+| emphasis-remove-drops-digits-twin (medium) | Fixed (`60928a0`). The twin automation makes for its emphasis is recorded (`captionAuto.twin`, `none` when there were no caption settings): Make my captions great and Find important words write it (`withAutoTwin`), and so does Remove on the style row when it gives the look put back a twin for emphasis still pending. Remove takes away only that twin, unedited, and only when no marks, digits (other than as written) or dragged place need it; a twin the user had (Ctrl+B twice, the Digits choice) stays. With `none`, Remove on every row in any order gives back no caption settings (round 1 wrote the defaults out). Settle rule 5 drops the record once no mark is pending or the captions have no Studio look; Keep drops it too. The `review-mode` e2e step that asked for no `captionAuto` after Remove on the style row held round 1's behaviour; it now expects the twin record, and no settings and no record after the emphasis is removed (`785cbd9`). |
+| style-remove-loses-drag-without-marks (low) | Fixed (`60928a0`). A dragged place counts as needing the twin on the style path, so the Classic look put back gets its twin with the place, also with no marks left. |
+| twin-named-your-style (low) | Fixed (`69cd6c8`). `lookName` names a Studio look whose `from` is a Classic preset by the Classic look ("was Clean", "was Boxed"), in the row and its accessible name. |
+| point-word-bleep-dropped-without-cut (medium) | Fixed (`623a27e`). For a word timed with no length, `bleepCutOut` keeps the bleep while a kept clip reaches its instant: a split on the word or deleting the word before leaves it muted and toned; a cut over it still drops it. |
+| riding-swear-word-unbleeped-after-delete (low) | Fixed (`9759977`). Tidy captions skips a swear word only for its own bleep: one of the same word over its middle, centred in it or over all of it. A short word right after another swear word (different or the same word) gets its own bleep, masked and muted over all its time, also after the first is deleted; a second Tidy adds nothing. |
+| CMD2-R1 (medium) | Fixed (`f4207ad`). Every Languages request sets a counter, so it renders and its focus moves at once; no focus is left waiting for the next edit. The unit harness gains `renderIfChanged` (renders only after a state change, as React does), and `publish-pack` e2e runs the command again from a caption and types there (fails without the fix). |
+| CMD2-R2 (low) | Fixed (`f4207ad`). "A project keeps at most 8 translations…" (and "Every language on the list is added already") goes once it no longer holds. |
+| CMD1-T (low) | Fixed (`86946b4`). A unit test with the saved Clean up choices unreadable: the AI fix ticked and focused, nothing saved. It fails with either mutation the checker named. |
+
+Contract additions: `CaptionAuto.twin`, `CaptionAuto.style.names`, `withAutoTwin` (`marks.ts`),
+`settleTwinRecord` (`captionAutoSettle.ts`), and the test harness's `renderIfChanged`.
+
+Verification after the round: typecheck exit 0; full vitest 405 files, 5541 tests pass; build
+exit 0; e2e on the built app, each file once: `review-mode` 10 of 10, `publish-pack` 4 of 4,
+`sound-finder` 5 of 5, `captions-studio` 8 of 8.
