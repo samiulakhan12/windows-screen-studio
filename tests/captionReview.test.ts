@@ -134,6 +134,20 @@ describe('the rows (titles and statuses)', () => {
     expect(lookName({ ...before.captions!, preset: 'boxed' } as never)).toBe('Boxed')
     expect(lookName(great.captions)).toBe('Clean Short')
     expect(lookName({ ...great.captions!, studio: { ...great.captions!.studio!, from: 'mine:abc' } })).toBe('your style')
+    // A Classic look drawn through its Studio twin (emphasis, Ctrl+B or the Digits choice made it) by its Classic name.
+    const boxed = { ...DEFAULT_CAPTIONS, preset: 'boxed' as const, background: 'box' as const }
+    expect(lookName({ ...DEFAULT_CAPTIONS, studio: legacyTwin(DEFAULT_CAPTIONS) })).toBe('Clean')
+    expect(lookName({ ...boxed, studio: legacyTwin(boxed) })).toBe('Boxed')
+  })
+
+  it('a run after the style was removed with the emphasis kept names the Classic look it replaced', () => {
+    const items = reviewItems(great)
+    const reviewed = removeItems(keepItems(great, [row(items, EMPHASIS_GROUP)]), [row(items, STYLE_KEY)])
+    expect(reviewed.captions?.studio?.from).toBe('clean')
+    const again = planCaptionsGreat({ project: reviewed, frame: TALL, cleanup: DEFAULT_CLEANUP, words: [], by: 'polish' }, DEFAULT_GREAT_OPTIONS).project
+    const style = row(reviewItems(again), STYLE_KEY)
+    expect(style.title).toBe('Caption style: Clean Short (was Clean)')
+    expect(itemAccessibleName(style, '0:00.0', 'pending')).toContain('(was Clean)')
   })
 
   it('a text fix names the words that changed', () => {

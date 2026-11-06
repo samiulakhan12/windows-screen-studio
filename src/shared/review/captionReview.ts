@@ -85,14 +85,17 @@ const idOf = (key: string): string => key.slice(key.indexOf(':') + 1)
 
 /* ---------- titles ---------- */
 
-/** A look's name for "was …": the gallery tile it came from, else the Classic look, else Clean (no captions settings: today's default). */
+/**
+ * A look's name for "was …": the gallery tile it came from (a Classic look drawn through its Studio
+ * twin by its Classic name), else the Classic look, else Clean (no captions settings: today's default).
+ */
 export function lookName(c: CaptionSettings | null | undefined): string {
   if (!c) return 'Clean'
   if (c.studio) {
     const from = c.studio.from
     if (from === 'brand') return 'Brand'
     if (from.startsWith('mine:')) return 'your style'
-    return studioPreset(from)?.name ?? 'your style'
+    return LEGACY_TILES.find((t) => t.preset === from)?.name ?? studioPreset(from)?.name ?? 'your style'
   }
   return LEGACY_TILES.find((t) => t.preset === c.preset)?.name ?? 'Clean'
 }
