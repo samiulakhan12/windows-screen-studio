@@ -170,6 +170,25 @@ function seedLong(home) {
   fs.writeFileSync(file, JSON.stringify(p))
   return id
 }
+/** A long list (260 cuts, windowed) and an emphasis group of 150 items, one mark on each of 150 captions. */
+const GROUPS_NAME = 'Groups long'
+function seedGroupsLong(home) {
+  const cuts = 260
+  const clips = Array.from({ length: cuts + 1 }, (_, k) => ({ id: `c${k}`, start: 3 * k, end: 3 * k + 2, speed: 1 }))
+  const id = f.seedProject(home, { id: 'rec-groups-long', name: GROUPS_NAME, seconds: 3 * cuts + 3, width: 128, height: 72, fps: 1, clips, cursor: f.cursorTrack(2) })
+  const file = path.join(h.projectsRoot(home), id, 'project.json')
+  const p = JSON.parse(fs.readFileSync(file, 'utf8'))
+  p.autoCuts = Array.from({ length: cuts }, (_, k) => ({ id: `s${k}`, by: 'silences', action: 'cut', start: 3 * k + 2, end: 3 * k + 3, was: [{ start: 3 * k + 2, end: 3 * k + 3, speed: 1 }] }))
+  const segments = Array.from({ length: 150 }, (_, k) => {
+    const start = 3 * k + 0.2
+    const text = `Click Save number ${k} now`
+    return { id: `t${k}`, start, end: start + 1.5, text, words: text.split(' ').map((w, i) => ({ text: w, start: +(start + i * 0.3).toFixed(2), end: +(start + i * 0.3 + 0.25).toFixed(2) })) }
+  })
+  p.transcript = { provider: 'openai', model: 'test-model', createdAt: '2026-10-01T09:00:00.000Z', language: 'en', segments }
+  p.captionMarks = segments.map((seg, k) => ({ id: `m${k}`, caption: seg.id, from: 1, to: 1, text: 'Save', auto: true }))
+  fs.writeFileSync(file, JSON.stringify(p))
+  return id
+}
 /** Row k's accessible name. */
 const longName = (k, status) => {
   const t = 2 * (k + 1)
@@ -506,17 +525,74 @@ async function main() {
     await savedWhen(home, id, (q) => q.captionMarks?.length === 2, 'Ctrl+Z brings the removed mark back')
     await f.waitFor(async () => (await win.$$eval('[data-testid="review-part"]', (els) => els.map((e) => e.dataset.status))).join() === 'pending,pending', 'both items to review again', 3000)
 
-    // Delete on the style row puts back the look from before (none: no captions settings) and drops its record.
+    // Delete on the style row puts back the look from before (none: the default Clean) and drops its
+    // record; the emphasis still to review keeps drawing on the Clean look's Studio twin.
     await win.click('[data-testid="review-row"][data-key="style:look"] .review-item')
     await win.keyboard.press('Delete')
-    p = await savedWhen(home, id, (q) => !q.captions && !q.captionAuto, 'Remove on the style row restores the look from before')
+    p = await savedWhen(home, id, (q) => !q.captionAuto && q.captions?.preset === 'clean' && q.captions?.studio?.from === 'clean', 'Remove on the style row restores the look from before')
+    h.assert(p.captions.background === 'shadow' && p.captions.highlightColor === '#facc15' && p.captions.show === true, `the default look, captions still shown: ${JSON.stringify(p.captions)}`)
     h.assert(same(await rows(win), ['style:look=removed', 'group:emphasis=pending', 'bleep:b1=pending']), `the style row reads removed: ${await rows(win)}`)
-    // Remove on the group's row removes all its marks in one step.
+    // Remove on the group's row removes all its marks in one step, and the twin goes with them.
     await win.click('[data-testid="review-row"][data-key="group:emphasis"] [data-testid="review-remove"]')
-    p = await savedWhen(home, id, (q) => !q.captionMarks, 'Remove on the group removes every automatic mark')
+    p = await savedWhen(home, id, (q) => !q.captionMarks && !q.captions?.studio, 'Remove on the group removes every automatic mark')
     h.assert(same(await rows(win), ['style:look=removed', 'group:emphasis=removed', 'bleep:b1=pending']), `the group reads removed: ${await rows(win)}`)
     await win.keyboard.press('Escape')
     await f.waitFor(async () => !(await win.$('[data-testid="review-panel"]')), 'Escape closes the panel', 3000)
+    h.assert(!logs.some((l) => l.includes('[pageerror]')), `no page errors: ${logs.filter((l) => l.includes('pageerror'))}`)
+    await app.close()
+    ctx.app = null
+    fs.rmSync(home, { recursive: true, force: true })
+  })
+
+  await test('review mode: an emphasis group of 150 items in a long list, with the mouse: the focus stays in the panel, the list its length', async (ctx) => {
+    const home = h.tempHome('review-groups-long')
+    const id = seedGroupsLong(home)
+    const { app, win, logs } = await h.launch({ home })
+    ctx.app = app
+    ctx.logs = logs
+    await f.openProject(win, GROUPS_NAME)
+    await win.evaluate(() => (document.activeElement instanceof HTMLElement ? document.activeElement.blur() : undefined))
+    await win.keyboard.press('Shift+R')
+    await win.waitForSelector('[data-testid="review-panel"] .review-list.windowed', { timeout: 5000 })
+    const listHeight = () => win.$eval('.review-list', (ul) => ul.scrollHeight)
+    const activeRow = () => win.evaluate(() => document.querySelector('.review-row.active')?.dataset.key ?? null)
+    const group = '[data-testid="review-row"][data-key="group:emphasis"]'
+    // A cut row is the focused one; the group is opened with a click on its disclosure.
+    await win.click('[data-testid="review-row"][data-key="cut:s1"] .review-item')
+    await f.waitFor(async () => (await activeRow()) === 'cut:s1', 'the clicked cut row is the focused one', 3000)
+    await h.sleep(300)
+    const closed = await listHeight()
+    await win.click(`${group} [data-testid="review-toggle"]`)
+    await win.waitForSelector('[data-testid="review-part"]', { timeout: 5000 })
+    await f.waitFor(async () => (await focused(win)) === 'Hide the 150 items: Emphasis: 150 words', 'the focus comes back to the disclosure after the click', 3000)
+    h.assert((await activeRow()) === 'group:emphasis', `the group is the focused row: ${await activeRow()}`)
+    // The open group's height is not taken for every row not measured yet: the list grows by about the group's items.
+    await h.sleep(500)
+    const groupHeight = await win.$eval(group, (li) => li.getBoundingClientRect().height)
+    const open = await listHeight()
+    h.assert(open < closed + groupHeight + 500, `the list grows by the open group (${closed} + ${groupHeight.toFixed(0)}), not ${open} px`)
+
+    // Another row focused (below the open group: scrolled to), then Keep on an item with the mouse: the
+    // group is the focused row, the focus on its next item.
+    await win.$eval('.review-list', (ul, y) => (ul.scrollTop = y), groupHeight)
+    await win.waitForSelector('[data-testid="review-row"][data-key="cut:s2"]', { timeout: 5000 })
+    await win.click('[data-testid="review-row"][data-key="cut:s2"] .review-item')
+    await f.waitFor(async () => (await activeRow()) === 'cut:s2', 'the clicked cut row is the focused one', 3000)
+    await win.$eval('.review-list', (ul) => (ul.scrollTop = 0))
+    await h.sleep(300)
+    await win.click(`${group} [data-testid="review-part"]:nth-child(3) [data-testid="review-part-keep"]`)
+    await savedWhen(home, id, (q) => q.captionMarks.filter((m) => !m.auto).length === 1, 'Keep on an item keeps that mark')
+    await f.waitFor(async () => /^Keep: Emphasis on/.test(await focused(win)), 'the focus moves to the next item to review', 3000)
+    h.assert((await activeRow()) === 'group:emphasis', `the group is the focused row: ${await activeRow()}`)
+    // Scrolled far from it, the group stays drawn with the focus in it, and K keeps the focused item.
+    for (const at of [0.5, 0.9]) {
+      await win.$eval('.review-list', (ul, a) => (ul.scrollTop = ul.scrollHeight * a), at)
+      await h.sleep(400)
+    }
+    h.assert(!!(await win.$(group)), 'the focused group stays drawn')
+    h.assert(/^Keep: Emphasis on/.test(await focused(win)), `the focus stays on the item: ${await focused(win)}`)
+    await win.keyboard.press('k')
+    await savedWhen(home, id, (q) => q.captionMarks.filter((m) => !m.auto).length === 2, 'K keeps the focused item')
     h.assert(!logs.some((l) => l.includes('[pageerror]')), `no page errors: ${logs.filter((l) => l.includes('pageerror'))}`)
     await app.close()
     ctx.app = null

@@ -13,7 +13,7 @@ import { EditStore } from '../src/shared/editor/editStore'
 import { DEFAULT_KEYMAP } from '../src/shared/editor/shortcuts'
 import { EMPHASIS_GROUP } from '../src/shared/review/captionReview'
 import type { Project } from '../src/shared/types'
-import { allByTestId, byTestId, contexts, mockReact, render, textOf, unmountAll, useEditorContexts, type El } from './studioHarness'
+import { allByTestId, byTestId, contexts, focused, mockReact, render, textOf, unmountAll, useEditorContexts, type El } from './studioHarness'
 import { captions, studioProject, TALL } from './p4Fixtures'
 
 vi.stubGlobal('document', { activeElement: null, body: {}, querySelector: () => null })
@@ -25,7 +25,10 @@ vi.stubGlobal('HTMLButtonElement', class {})
 mockReact()
 // Renderer code: imported at run time so the Node typecheck of tests/ does not follow it.
 const PANEL = '../src/renderer/src/review/ReviewPanel'
-const { ReviewPanel } = (await import(/* @vite-ignore */ PANEL)) as { ReviewPanel: (p: unknown) => unknown }
+const { ReviewPanel, placesOf } = (await import(/* @vite-ignore */ PANEL)) as {
+  ReviewPanel: (p: unknown) => unknown
+  placesOf: (list: readonly { key: string; parts?: unknown[] }[], sizes: { byKey: Map<string, number>; sum: number }) => Float64Array
+}
 await useEditorContexts()
 
 const TEXTS = ['today i will show you three ways to make reports faster', 'First, open the Settings page and click Export.', 'Second, turn on Auto Save so you never lose work.', 'Last quarter our sign-ups grew 300% and revenue hit $1.2M.']
@@ -104,5 +107,37 @@ describe('a group row in the Review panel', () => {
     expect(allByTestId(els, 'review-part').slice(1).every((p) => p.props['data-status'] === 'kept')).toBe(true)
     expect(progress()).toBe(`1 of ${total} reviewed`)
     expect(undoSteps(store)).toBe(2)
+  })
+})
+
+describe('a group row with the mouse', () => {
+  it('a click on its disclosure makes it the focused row and puts the focus back on the disclosure, where the panel’s keys reach it', async () => {
+    // What earlier tests' clicks left to do is done first.
+    await new Promise((r) => setTimeout(r, 0))
+    let els = render(panel())
+    // Another row is the focused one (the first to review: the caption style).
+    expect(rowOf(els, EMPHASIS_GROUP).props.className).not.toContain('active')
+    press(inside(rowOf(els, EMPHASIS_GROUP)).find((e) => e.props['data-testid'] === 'review-toggle'))
+    els = render(panel())
+    expect(rowOf(els, EMPHASIS_GROUP).props.className).toContain('active')
+    // The click's focus release leaves the focus on the page; it comes back to the disclosure after it.
+    focused.length = 0
+    await new Promise((r) => setTimeout(r, 0))
+    expect(focused.map((e) => e.props['data-testid'])).toEqual(['review-toggle'])
+    expect(focused[0].props['aria-controls']).toBe(inside(rowOf(els, EMPHASIS_GROUP)).find((e) => e.type === 'ul')!.props.id)
+  })
+})
+
+describe('a long list (windowed)', () => {
+  it('places the rows not measured yet at the mean of the others, an open group row left out', () => {
+    const list = [{ key: 'cut:0' }, { key: EMPHASIS_GROUP, parts: [] }, ...Array.from({ length: 298 }, (_, k) => ({ key: `cut:${k + 1}` }))]
+    // Ten rows measured at 50 px, and the group with its 150 items shown.
+    const byKey = new Map<string, number>([[EMPHASIS_GROUP, 9000], ...Array.from({ length: 10 }, (_, k): [string, number] => [`cut:${k}`, 50])])
+    const places = placesOf(list, { byKey, sum: 9500 })
+    const gap = places[1] - 50
+    expect(places[2] - places[1]).toBe(9000 + gap)
+    // A row not measured: as tall as the measured ones, not (9000 + 500) / 11.
+    expect(places[200] - places[199]).toBe(50 + gap)
+    expect(places[list.length]).toBe(300 * (50 + gap) + 9000 - 50)
   })
 })

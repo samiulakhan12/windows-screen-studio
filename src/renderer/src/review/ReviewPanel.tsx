@@ -100,13 +100,6 @@ export function ReviewPanel({ onClose, onNotice }: { onClose: () => void; /** Sh
   }, [list, project, plan])
   // The group rows whose items are shown.
   const [open, setOpen] = useState<ReadonlySet<string>>(() => new Set())
-  const onToggle = useCallback((key: string) => {
-    setOpen((was) => {
-      const next = new Set(was)
-      if (!next.delete(key)) next.add(key)
-      return next
-    })
-  }, [])
 
   const [activeKey, setActiveKey] = useState<string | null>(() => list.find((_, i) => statuses[i] === 'pending')?.key ?? list[0]?.key ?? null)
   const active = (activeKey !== null ? indexOf.get(activeKey) : undefined) ?? 0
@@ -188,6 +181,27 @@ export function ReviewPanel({ onClose, onNotice }: { onClose: () => void; /** Sh
     if (focusLater.current !== key) focusLater.current = null
     setActiveKey(key)
   }, [])
+  /**
+   * Shows or hides a group row's items, the group becoming the focused row (its keys and buttons go
+   * with it, and a long list keeps it drawn). A click hands the focus back to the editor once
+   * released (focus.ts installFocusRelease); the list's keys need it in the panel, so it comes back
+   * to the toggle after that, as it does to a clicked row (choose).
+   */
+  const onToggle = useCallback(
+    (key: string, toggle: HTMLButtonElement | null) => {
+      setOpen((was) => {
+        const next = new Set(was)
+        if (!next.delete(key)) next.add(key)
+        return next
+      })
+      pick(key)
+      window.setTimeout(() => {
+        const el = document.activeElement
+        if (toggle && toggle.isConnected !== false && (!el || el === document.body)) toggle.focus()
+      }, 0)
+    },
+    [pick]
+  )
   useLayoutEffect(() => {
     const key = focusLater.current
     if (key !== null && !indexOf.has(key)) focusLater.current = null
@@ -318,6 +332,9 @@ export function ReviewPanel({ onClose, onNotice }: { onClose: () => void; /** Sh
       return
     }
     stopStretch()
+    // Pressed (a click may come while another row is the focused one), the group becomes the focused
+    // row: a long list keeps it drawn, so the focus moved into it below is not lost, and its keys reach it.
+    if (!waited) pick(groupKey)
     store.update((p) => (action === 'keep' ? keepItems(p, [part]) : removeItems(p, [part])))
     const done = reviewProgress(list.map((i) => reviewStatus(store.state, i)))
     say(actedMessage(action, done.reviewed, done.total))
@@ -599,14 +616,26 @@ const ROW_GAP = 4
 /** How far beyond the visible area rows are drawn (px), above and below. */
 const OVERSCAN = 360
 
-interface Sizes {
+export interface Sizes {
   byKey: Map<string, number>
   sum: number
 }
 
-/** Where each row starts (px) in the whole list, and where the list ends (the last entry, plus a gap). */
-function placesOf(list: readonly ReviewItem[], sizes: Sizes): Float64Array {
-  const guess = sizes.byKey.size > 0 ? sizes.sum / sizes.byKey.size : ROW_GUESS
+/**
+ * Where each row starts (px) in the whole list, and where the list ends (the last entry, plus a gap).
+ * A row not measured yet is placed at the mean of those measured, group rows left out: one with its
+ * items shown can be thousands of pixels tall, which would make every other row's guess as tall.
+ */
+export function placesOf(list: readonly ReviewItem[], sizes: Sizes): Float64Array {
+  let sum = sizes.sum
+  let count = sizes.byKey.size
+  for (const i of list) {
+    const size = i.parts ? sizes.byKey.get(i.key) : undefined
+    if (size === undefined) continue
+    sum -= size
+    count--
+  }
+  const guess = count > 0 ? sum / count : ROW_GUESS
   const tops = new Float64Array(list.length + 1)
   for (let k = 0; k < list.length; k++) tops[k + 1] = tops[k] + (sizes.byKey.get(list[k].key) ?? guess) + ROW_GAP
   return tops
@@ -657,7 +686,7 @@ interface ListProps {
   /** Group rows' items, by the group's key, and the groups whose items are shown. */
   groups: ReadonlyMap<string, PartView[]>
   open: ReadonlySet<string>
-  onToggle: (key: string) => void
+  onToggle: (key: string, toggle: HTMLButtonElement | null) => void
   onPartAct: (groupKey: string, partKey: string, action: 'keep' | 'remove') => void
 }
 
@@ -835,7 +864,7 @@ interface RowProps {
   /** A group row's items (Captions Studio's emphasis and text fixes), whether they are shown, and their Keep and Remove. */
   parts?: readonly PartView[]
   expanded: boolean
-  onToggle: (key: string) => void
+  onToggle: (key: string, toggle: HTMLButtonElement | null) => void
   onPartAct: (groupKey: string, partKey: string, action: 'keep' | 'remove') => void
 }
 
@@ -861,6 +890,7 @@ const ReviewRow = memo(function ReviewRow({
   onPartAct
 }: RowProps): JSX.Element {
   const ref = useCallback((el: HTMLButtonElement | null) => setRef(itemKey, el), [setRef, itemKey])
+  const toggleRef = useRef<HTMLButtonElement>(null)
   const partsId = `review-parts-${itemKey.replace(/[^A-Za-z0-9_-]/g, '-')}`
   return (
     <li
@@ -911,7 +941,8 @@ const ReviewRow = memo(function ReviewRow({
           aria-controls={partsId}
           aria-label={`${expanded ? 'Hide' : 'Show'} the ${parts.length} ${parts.length === 1 ? 'item' : 'items'}: ${title}`}
           data-testid="review-toggle"
-          onClick={() => onToggle(itemKey)}
+          ref={toggleRef}
+          onClick={() => onToggle(itemKey, toggleRef.current)}
         >
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
             <path d={expanded ? 'M6 15l6-6 6 6' : 'M6 9l6 6 6-6'} />
