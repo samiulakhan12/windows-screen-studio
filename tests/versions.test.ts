@@ -2,12 +2,14 @@ import { describe, expect, it } from 'vitest'
 import {
   autoVersionName,
   changedAreas,
+  changedFilesNotice,
   cleanVersionName,
   compareSummaries,
   defaultVersionName,
   missingFilesNotice,
   namedFiles,
   prunedAutos,
+  replacedInPlace,
   restoreVersion,
   sanitizeMeta,
   summaryLine,
@@ -153,6 +155,22 @@ describe('files a version names', () => {
     }
     expect(namedFiles(q).map((f) => f.file)).toEqual(['background.png', 'cursor.png', 'watermark-2.png', 'music-3.mp3', 'overlay-1.png', 'font-1.ttf'])
     expect(namedFiles(p20())).toEqual([])
+  })
+  it('tells which a later pick writes over, and which changed since', () => {
+    const p = p20()
+    const q: Project = {
+      ...p,
+      style: { ...p.style, background: { type: 'image', path: 'background.png' } },
+      cursor: { ...p.cursor, style: 'custom', customImage: 'cursor.png' },
+      audio: { ...p.audio, music: { path: 'music-3.mp3', volume: 1, ducking: 0, loop: true, fadeIn: 0, fadeOut: 0 } }
+    }
+    expect(replacedInPlace(q)).toEqual([
+      { file: 'background.png', what: 'background image' },
+      { file: 'cursor.png', what: 'cursor image' }
+    ])
+    expect(changedFilesNotice([])).toBe('')
+    expect(changedFilesNotice(['background image'])).toBe('Its background image has changed since it was kept.')
+    expect(changedFilesNotice(['background image', 'cursor image'])).toBe('Its background image and cursor image have changed since it was kept.')
   })
   it('says which are missing', () => {
     expect(missingFilesNotice([])).toBe('')

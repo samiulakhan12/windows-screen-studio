@@ -8,6 +8,8 @@ export interface ReadVersion {
   project: Project
   /** What the files it names that are gone from the project folder are ('music', 'logo'…). */
   missing: string[]
+  /** What the files it names that a later pick wrote over since it was kept are ('background image', 'cursor image'). */
+  changed: string[]
 }
 
 /** Versions of the open project's edit (E-12); only the main window's editor may call these. */

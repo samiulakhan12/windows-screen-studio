@@ -2,7 +2,7 @@ import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { canonicalJson, deleteVersion, hashProject, listVersions, readVersion, renameVersion, saveVersion, versionsDir, VersionError } from '../src/main/versions'
+import { canonicalJson, changedFiles, deleteVersion, hashProject, inPlaceHashes, listVersions, readVersion, renameVersion, saveVersion, versionsDir, VersionError } from '../src/main/versions'
 import { restoreVersion, VERSION_ID_RE, VERSION_LIMITS } from '../src/shared/editor/versions'
 import type { Project } from '../src/shared/types'
 import { p20, zoom } from './groupFixture'
@@ -286,5 +286,59 @@ describe('a version file Windows holds (an indexer, antivirus, OneDrive)', () =>
     expect(() => deleteVersion(dir, v.id)).toThrow('EBUSY')
     vi.restoreAllMocks()
     expect(listVersions(dir).map((x) => x.id)).toEqual([v.id])
+  })
+})
+
+describe('images a later pick writes over (background.<ext>, cursor.<ext>)', () => {
+  const withImages = (p: Project): Project => ({
+    ...p,
+    style: { ...p.style, background: { type: 'image', path: 'background.png' } },
+    cursor: { ...p.cursor, style: 'custom', customImage: 'cursor.png' }
+  })
+  const keep = async (p: Project, name: string, minute: number) => saveVersion(dir, 'p20', p, { name, files: await inPlaceHashes(dir, p), now: at(minute) }).saved!
+
+  it('are kept as hashes, so opening or comparing a version says which changed since', async () => {
+    fs.writeFileSync(path.join(dir, 'background.png'), 'picture A')
+    fs.writeFileSync(path.join(dir, 'cursor.png'), 'arrow')
+    const p = withImages(edit(1))
+    const v = await keep(p, 'v1 for client', 0)
+    let r = await readVersion(dir, 'p20', v.id)
+    expect(Object.keys(r.files)).toEqual(['background.png', 'cursor.png'])
+    expect(await changedFiles(dir, r.project, r.files)).toEqual([])
+    // Picture B, also a PNG, is picked: it is written over background.png.
+    fs.writeFileSync(path.join(dir, 'background.png'), 'picture B')
+    r = await readVersion(dir, 'p20', v.id)
+    expect(await changedFiles(dir, r.project, r.files)).toEqual(['background image'])
+    // A new name keeps them (they are in the version's file).
+    renameVersion(dir, v.id, 'Final cut')
+    fs.writeFileSync(path.join(dir, 'cursor.png'), 'hand')
+    r = await readVersion(dir, 'p20', v.id)
+    expect(await changedFiles(dir, r.project, r.files)).toEqual(['background image', 'cursor image'])
+    // Picture A picked again: the same as kept. A file gone is left to the missing notice.
+    fs.writeFileSync(path.join(dir, 'background.png'), 'picture A')
+    fs.rmSync(path.join(dir, 'cursor.png'))
+    expect(await changedFiles(dir, r.project, r.files)).toEqual([])
+  })
+
+  it('keeps nothing for an edit without them, nor for a version kept before them', async () => {
+    const plain = await keep(edit(1), 'plain', 0)
+    expect(fs.readFileSync(path.join(folder(), `${plain.id}.json`), 'utf8')).not.toContain('"files"')
+    expect((await readVersion(dir, 'p20', plain.id)).files).toEqual({})
+    // A version file written before (no "files"): nothing is said to have changed.
+    fs.writeFileSync(path.join(dir, 'background.png'), 'picture B')
+    const old = saveVersion(dir, 'p20', withImages(edit(2)), { name: 'old', now: at(1) }).saved!
+    const r = await readVersion(dir, 'p20', old.id)
+    expect(r.files).toEqual({})
+    expect(await changedFiles(dir, r.project, r.files)).toEqual([])
+  })
+
+  it('hashes only the names a pick writes over, and keeps only hashes of files the edit names', async () => {
+    fs.writeFileSync(path.join(dir, 'screen.mp4'), 'video')
+    const odd: Project = { ...edit(1), style: { ...edit(1).style, background: { type: 'image', path: 'screen.mp4' } } }
+    expect(await inPlaceHashes(dir, odd)).toEqual({})
+    expect(await inPlaceHashes(dir, { not: 'a project' })).toEqual({})
+    const hash = 'a'.repeat(64)
+    const v = saveVersion(dir, 'p20', withImages(edit(1)), { name: 'v', files: { 'screen.mp4': hash, 'background.png': 'not a hash', 'cursor.png': hash, '../x.png': hash }, now: at(0) }).saved!
+    expect((await readVersion(dir, 'p20', v.id)).files).toEqual({ 'cursor.png': hash })
   })
 })

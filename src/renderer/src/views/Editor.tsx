@@ -99,7 +99,7 @@ import { setWaveformShown, waveformShown } from '../editor/waveformPref'
 // E-12 versions, E-07 filmstrip, E-09 nudge (docs/design/versions.md).
 import { filmstripShown, setFilmstripShown } from '../editor/filmstripPref'
 import { nudgeSelected } from '../editor/nudgeCommand'
-import { missingFilesNotice, restoreVersion } from '../../../shared/editor/versions'
+import { changedFilesNotice, missingFilesNotice, restoreVersion } from '../../../shared/editor/versions'
 import { NUDGE_STEPS, nudgeInstead } from '../../../shared/editor/shortcuts'
 import type { ReadVersion } from '../../../shared/api/versions'
 import { keepVersionBefore } from '../versions/autoVersion'
@@ -1368,13 +1368,14 @@ function EditorSession({
   const closeDialog = useCallback(() => setDialog(null), [])
   /** E-12: puts a version in place as one undo step (the edit before it is already kept as a version). */
   const openVersion = useCallback(
-    ({ meta, project: version, missing }: ReadVersion) => {
+    ({ meta, project: version, missing, changed }: ReadVersion) => {
       store.seal()
       store.update((p) => restoreVersion(p, version))
       store.seal()
       setSelection(null)
       setDialog(null)
-      const gone = missingFilesNotice(missing)
+      // Files gone, and images a later pick wrote over (the version shows today's).
+      const gone = [missingFilesNotice(missing), changedFilesNotice(changed)].filter(Boolean).join(' ')
       showNotice(`Opened “${meta.name}”. Your edit before it is kept as a version${undoHint(keymap)}${gone ? ` · ${gone}` : ''}`, { ms: 8000 })
     },
     [store, setSelection, showNotice, keymap]

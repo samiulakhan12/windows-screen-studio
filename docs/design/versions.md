@@ -31,7 +31,9 @@ localStorage (the filmstrip toggle).
   change) redraw correctly (`Editor.tsx`, the background effect keyed on its path).
 * **Assets stay in the folder**, except picked music and logos: `assetIpc.ts` `prunePicks`
   keeps the latest few picks and the saved one. An older edit may therefore name a music or logo
-  file that is gone (§2.6).
+  file that is gone (§2.6). A background or cursor image pick is written over the file of its
+  format (`projectsIpc.ts` `importBackgroundImage`, `importCursorImage`: `background.<ext>`,
+  `cursor.<ext>`), so an older edit may name a file that now holds another picture (§2.4).
 * **Duplicate** (`projectCopy.ts`) copies only allow-listed top-level files and the speech cache
   (`planFiles`): any other folder is left out today.
 * **Storage** (`src/main/storage.ts`) counts every byte under a recording folder (`folderSize`) and
@@ -61,8 +63,9 @@ localStorage (the filmstrip toggle).
 ### 2.1 Where versions live — **the project folder, `versions/`, one file per version plus an index**
 
 * *Chosen:* `<project>/versions/<versionId>.json` holds one version: `{ "format":
-  "flown-version", "v": 1, "meta": {…}, "project": {…} }`, the project exactly as the editor had
-  it. `<project>/versions/index.json` lists the metas (`{ "v": 1, "items": [...] }`) so the list
+  "flown-version", "v": 1, "meta": {…}, "files": {…}, "project": {…} }`, the project exactly as
+  the editor had it; `files` (only when there are any) holds the SHA-256 of the background and
+  cursor images it names, by name, as they were (a later pick writes over them, §1). `<project>/versions/index.json` lists the metas (`{ "v": 1, "items": [...] }`) so the list
   opens without reading every snapshot. The folder is the unit the user moves, backs up and
   deletes, so the versions go with it.
 * *Rejected:* versions inside `project.json`: every autosave (one per edit) would rewrite every
@@ -171,6 +174,10 @@ export interface VersionSummary {
 * **Files a version names that are gone** (a music or logo file pruned since, §1): opening says
   "Opened “v1”. Its music file is no longer in the project folder." (`missingFiles` checks the
   background, cursor, logo, music, image overlays and fonts the version names).
+* **Images written over since** (a background or cursor image of the same format picked since,
+  §1): the version opens with the picture there now, and says "Its background image has changed
+  since it was kept." (`changedFiles` hashes them again); Compare lists "background image" /
+  "cursor image" among what is different. A version kept without `files` says nothing.
 
 ### 2.5 IPC and security
 
@@ -184,6 +191,9 @@ export interface VersionSummary {
   folder (`lstat`, not a link or junction); a snapshot file must be a regular file of at most 64 MB
   before it is read.
 * **Values:** the snapshot as in §2.2; names as in §2.3; a `reason` outside `AutoReason` is refused.
+  Main hashes the background and cursor images itself (`inPlaceHashes`: only `background.<ext>` /
+  `cursor.<ext>` names, regular files of at most 100 MB, read in pieces before the synchronous
+  write), and keeps only hashes of files the snapshot names.
 * **Writes** are synchronous and atomic (`writeFileAtomicSync`): the snapshot first, then the
   index, so two requests can never interleave and a crash leaves either the old state or a
   snapshot the next listing adopts. A write that fails (a full disk) removes its part-written
@@ -383,6 +393,8 @@ each), `projectCopy.ts` (`NOT_COPIED_DIRS`), `storage.ts` and `shared/storage/ru
 * A preview thumbnail per version.
 * Versions in the Home library (open an older version from the list of recordings).
 * Keeping music and logo picks that versions name (`prunePicks` reading the versions).
+* Keeping the background and cursor images a version names (numbered picks, as `watermark-<n>`),
+  so opening it brings its own picture back instead of saying it changed.
 * A finer filmstrip when zoomed far in (a second sheet of a part of the recording).
 
 ## 9. Old projects and settings

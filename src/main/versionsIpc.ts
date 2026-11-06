@@ -12,7 +12,7 @@ import { namedFiles, type VersionMeta } from '../shared/editor/versions'
 import { MEDIA_FILE_RE } from './mediaProtocol'
 import { projectDir } from './projects'
 import { isAppUrl } from './security'
-import { deleteVersion, listVersions, readVersion, renameVersion, saveVersion, type SaveVersionResult } from './versions'
+import { changedFiles, deleteVersion, inPlaceHashes, listVersions, readVersion, renameVersion, saveVersion, type SaveVersionResult } from './versions'
 import { getMainWindow } from './windows'
 
 /** Whether a message comes from the main window's own page (the rule of projectsIpc.ts fromMainWindow). */
@@ -42,16 +42,18 @@ async function missingFiles(dir: string, names: { file: string; what: string }[]
 
 export function registerVersionsIpc(): void {
   ipcMain.handle('versions:list', (e, id: unknown): VersionMeta[] => listVersions(folderFor(e, id)))
-  ipcMain.handle('versions:save', (e, id: unknown, project: unknown, opts: unknown): SaveVersionResult => {
+  ipcMain.handle('versions:save', async (e, id: unknown, project: unknown, opts: unknown): Promise<SaveVersionResult> => {
     const dir = folderFor(e, id)
     const o = (opts && typeof opts === 'object' ? opts : {}) as { name?: unknown; reason?: unknown; about?: unknown; protect?: unknown }
-    return saveVersion(dir, id as string, project, { name: o.name, reason: o.reason, about: o.about, protect: o.protect })
+    // The background and cursor images as they are now: a later pick writes over them (§2.4).
+    const files = await inPlaceHashes(dir, project)
+    return saveVersion(dir, id as string, project, { name: o.name, reason: o.reason, about: o.about, protect: o.protect, files })
   })
   ipcMain.handle('versions:rename', (e, id: unknown, versionId: unknown, name: unknown): VersionMeta => renameVersion(folderFor(e, id), versionId as string, name))
   ipcMain.handle('versions:delete', (e, id: unknown, versionId: unknown): void => deleteVersion(folderFor(e, id), versionId as string))
   ipcMain.handle('versions:read', async (e, id: unknown, versionId: unknown): Promise<ReadVersion> => {
     const dir = folderFor(e, id)
-    const r = await readVersion(dir, id as string, versionId as string)
-    return { ...r, missing: await missingFiles(dir, namedFiles(r.project)) }
+    const { meta, project, files } = await readVersion(dir, id as string, versionId as string)
+    return { meta, project, missing: await missingFiles(dir, namedFiles(project)), changed: await changedFiles(dir, project, files) }
   })
 }

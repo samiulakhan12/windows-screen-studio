@@ -124,7 +124,9 @@ export function VersionsDialog({
     try {
       const r = await window.api.readVersion(projectId, v.id)
       const now = getProject()
-      const result = { changes: compareSummaries(versionSummary(r.project), versionSummary(now)), areas: changedAreas(r.project, now) }
+      // Also a background or cursor image a later pick wrote over: the same name, another picture.
+      const areas = [...changedAreas(r.project, now), ...r.changed]
+      const result = { changes: compareSummaries(versionSummary(r.project), versionSummary(now)), areas }
       setRow((cur) => (cur?.id === v.id && cur.kind === 'compare' ? { ...cur, result } : cur))
     } catch (err) {
       setRow((cur) => (cur?.id === v.id && cur.kind === 'compare' ? { ...cur, result: { error: ipcMessage(err) } } : cur))

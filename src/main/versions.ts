@@ -18,6 +18,7 @@ import {
   cleanVersionName,
   defaultVersionName,
   prunedAutos,
+  replacedInPlace,
   sanitizeMeta,
   VERSION_ID_RE,
   VERSION_LIMITS,
@@ -75,6 +76,69 @@ export function canonicalJson(value: unknown): string {
 }
 
 export const hashProject = (p: Project): string => createHash('sha256').update(canonicalJson(p)).digest('hex')
+
+/** Names a later pick writes over (projectsIpc.ts importBackgroundImage, importCursorImage): the only files hashed. */
+const IN_PLACE_RE = /^(background\.(png|jpe?g|webp)|cursor\.(png|jpe?g|webp|svg|ico|cur))$/i
+/** Largest file hashed (a background image is at most 100 MB). */
+const IN_PLACE_MAX = 100 * 1024 * 1024
+const SHA256_RE = /^[0-9a-f]{64}$/
+
+/** SHA-256 (hex) of the regular file `file`, read a piece at a time; null when it is not one or cannot be read. */
+async function fileSha256(file: string): Promise<string | null> {
+  try {
+    const st = await fs.promises.lstat(file)
+    if (!st.isFile() || st.size > IN_PLACE_MAX) return null
+    const hash = createHash('sha256')
+    for await (const chunk of fs.createReadStream(file)) hash.update(chunk as Buffer)
+    return hash.digest('hex')
+  } catch {
+    return null
+  }
+}
+
+/**
+ * The SHA-256 of each file the edit `raw` names that a later pick writes over (replacedInPlace), by
+ * its name, as the file is now in `dir`: what a version keeps to tell later whether it changed (§2.4).
+ */
+export async function inPlaceHashes(dir: string, raw: unknown): Promise<Record<string, string>> {
+  let names: string[]
+  try {
+    names = replacedInPlace(raw as Project)
+      .map((f) => f.file)
+      .filter((f) => IN_PLACE_RE.test(f))
+  } catch {
+    return {}
+  }
+  const out: Record<string, string> = {}
+  for (const name of names) {
+    const hash = await fileSha256(path.join(dir, name))
+    if (hash) out[name] = hash
+  }
+  return out
+}
+
+/** `raw` as the hashes a version of `p` keeps: only of the files `p` names that a pick writes over. */
+function keptHashes(p: Project, raw: unknown): Record<string, string> {
+  const r = (raw && typeof raw === 'object' ? raw : {}) as Record<string, unknown>
+  const out: Record<string, string> = {}
+  for (const { file } of replacedInPlace(p)) {
+    if (!IN_PLACE_RE.test(file)) continue
+    const h = r[file]
+    if (typeof h === 'string' && SHA256_RE.test(h)) out[file] = h
+  }
+  return out
+}
+
+/**
+ * What the files version `project` names that were written over since it was kept are ('background
+ * image', 'cursor image'), from `kept` (its hashes); a file that is gone is left to missingFiles.
+ */
+export async function changedFiles(dir: string, project: Project, kept: Record<string, string>): Promise<string[]> {
+  const now = await inPlaceHashes(dir, project)
+  return replacedInPlace(project)
+    .filter(({ file }) => kept[file] && now[file] && now[file] !== kept[file])
+    .map((f) => f.what)
+}
 
 /** A new version id: the time, then random hex (§2.2). */
 export const newVersionId = (now: number = Date.now()): string => `v-${now.toString(36)}-${randomBytes(4).toString('hex')}`
@@ -186,6 +250,8 @@ export interface SaveVersionOptions {
   about?: unknown
   /** A version that must stay (the one being opened): never pruned to make room. */
   protect?: unknown
+  /** The SHA-256 of the files the edit names that a later pick writes over, by name (inPlaceHashes). */
+  files?: unknown
   now?: Date
 }
 
@@ -238,7 +304,9 @@ export function saveVersion(dir: string, projectId: string, raw: unknown, opts: 
     hash,
     summary: versionSummary(project)
   }
-  const body = `{"format":"${FORMAT}","v":1,"meta":${JSON.stringify(meta)},"project":${json}}`
+  const files = keptHashes(project, opts.files)
+  const kept = Object.keys(files).length > 0 ? `"files":${JSON.stringify(files)},` : ''
+  const body = `{"format":"${FORMAT}","v":1,"meta":${JSON.stringify(meta)},${kept}"project":${json}}`
   meta.bytes = Buffer.byteLength(body)
   // The size in the file's own meta is left 0: the listing reads it from the file.
   writeAtomic(fileOf(folder, id), body)
@@ -289,8 +357,11 @@ export function deleteVersion(dir: string, id: string): void {
   writeIndex(folder, listVersions(dir).filter((v) => v.id !== id))
 }
 
-/** The project kept as version `id`, read and checked; its id is the folder's (`projectId`). */
-export async function readVersion(dir: string, projectId: string, id: string): Promise<{ meta: VersionMeta; project: Project }> {
+/**
+ * The project kept as version `id`, read and checked; its id is the folder's (`projectId`). `files`:
+ * the hashes it kept of the files a later pick writes over (none in a version kept before them).
+ */
+export async function readVersion(dir: string, projectId: string, id: string): Promise<{ meta: VersionMeta; project: Project; files: Record<string, string> }> {
   if (typeof id !== 'string' || !VERSION_ID_RE.test(id)) throw new VersionError('Unknown version')
   const folder = versionsDir(dir)
   if (!folder) throw new VersionError('This version is no longer there.')
@@ -303,10 +374,11 @@ export async function readVersion(dir: string, projectId: string, id: string): P
   }
   if (!st.isFile() || st.size > VERSION_LIMITS.bytes + 64 * 1024) throw new VersionError('This version could not be read.')
   try {
-    const raw = JSON.parse(await fs.promises.readFile(file, 'utf8')) as { format?: unknown; meta?: unknown; project?: unknown }
+    const raw = JSON.parse(await fs.promises.readFile(file, 'utf8')) as { format?: unknown; meta?: unknown; project?: unknown; files?: unknown }
     const meta = raw?.format === FORMAT ? sanitizeMeta(raw.meta) : null
     if (!meta || meta.id !== id) throw new Error('not a version')
-    return { meta: { ...meta, bytes: st.size }, project: { ...migrateProject(raw.project), id: projectId } }
+    const project = { ...migrateProject(raw.project), id: projectId }
+    return { meta: { ...meta, bytes: st.size }, project, files: keptHashes(project, raw.files) }
   } catch {
     throw new VersionError('This version could not be read.')
   }

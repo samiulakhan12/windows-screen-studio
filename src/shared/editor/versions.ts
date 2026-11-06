@@ -246,6 +246,20 @@ export function namedFiles(p: Project): { file: string; what: string }[] {
   return out
 }
 
+/**
+ * The files `p` names that a later pick writes over (background.<ext>, cursor.<ext>: one name per
+ * format, unlike the numbered logo, music, image and font picks). A version keeps their SHA-256,
+ * so opening or comparing it can say when one has changed since (§2.4).
+ */
+export const replacedInPlace = (p: Project): { file: string; what: string }[] => namedFiles(p).filter((f) => f.what === 'background image' || f.what === 'cursor image')
+
+/** "Its background image has changed since it was kept." for the files of `changed` (namedFiles' `what`). */
+export function changedFilesNotice(changed: readonly string[]): string {
+  const kinds = [...new Set(changed)]
+  if (kinds.length === 0) return ''
+  return `Its ${kinds.join(' and ')} ${kinds.length === 1 ? 'has' : 'have'} changed since it was kept.`
+}
+
 /** "Its music file is no longer in the project folder." for the files of `missing` (namedFiles' `what`). */
 export function missingFilesNotice(missing: readonly string[]): string {
   if (missing.length === 0) return ''
