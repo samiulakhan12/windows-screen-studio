@@ -149,7 +149,8 @@ export function VersionsDialog({
     renameCancelled.current = v.id
     try {
       await window.api.renameVersion(projectId, v.id, renameText)
-      setRow(null)
+      // Only the rename field: a question or comparison opened meanwhile (the click that left the field) stays.
+      setRow((cur) => (cur?.id === v.id && cur.kind === 'rename' ? null : cur))
       versionsChanged()
     } catch (err) {
       renameCancelled.current = null

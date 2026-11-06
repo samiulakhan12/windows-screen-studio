@@ -271,3 +271,37 @@ describe('the focus when a row’s question or rename field closes', () => {
     expect(focused).toEqual([])
   })
 })
+
+describe('a rename saved as its field loses the focus', () => {
+  it('keeps the delete question the click that left the field opened', async () => {
+    let out = await opened()
+    click(out, 'Rename First')
+    out = render()
+    ;(renameField(out, V1)!.props.onChange as (e: unknown) => void)({ target: { value: 'Final cut' } })
+    out = render()
+    // Pressing Delete takes the focus from the field (the rename starts), then the click opens the question.
+    ;(renameField(out, V1)!.props.onBlur as () => void)()
+    click(out, 'Delete First')
+    out = render()
+    expect(question(out, V1)).toBeDefined()
+    api.renames[0].finish()
+    await flush()
+    out = render()
+    expect(api.renames.map((r) => [r.id, r.name])).toEqual([[V1.id, 'Final cut']])
+    expect(question(out, V1)).toBeDefined()
+  })
+
+  it('keeps the rename field of the row whose Rename the click pressed', async () => {
+    let out = await opened()
+    click(out, 'Rename First')
+    out = render()
+    ;(renameField(out, V1)!.props.onBlur as () => void)()
+    click(out, 'Rename Second')
+    out = render()
+    ;(renameField(out, V2)!.props.onChange as (e: unknown) => void)({ target: { value: 'Second take' } })
+    api.renames[0].finish()
+    await flush()
+    out = render()
+    expect(renameField(out, V2)?.props.value).toBe('Second take')
+  })
+})
