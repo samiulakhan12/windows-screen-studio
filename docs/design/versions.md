@@ -218,7 +218,9 @@ export interface VersionSummary {
 A **Versions** button in the editor's title bar, after Undo / Redo (a clock icon with "Versions"),
 and two palette commands: *Save a version…* (Ctrl + Shift + S, opens the dialog with the name field
 focused) and *Versions…*. The dialog (`src/renderer/src/versions/VersionsDialog.tsx`) is a modal like
-the shortcuts dialog (`useModalFocus`: Tab stays inside, Esc closes, focus goes back).
+the shortcuts dialog (`useModalFocus`: Tab stays inside, Esc closes, focus goes back). When a
+row's question or rename field closes (Keep, Esc, a rename saved with Enter), the focus goes back
+to that row's Delete or Rename button, not to the page.
 
 Copy:
 

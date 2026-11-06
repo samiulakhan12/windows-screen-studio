@@ -80,6 +80,17 @@ export function VersionsDialog({
   useEffect(() => {
     ;(focusName ? nameRef.current : boxRef.current)?.focus({ preventScroll: true })
   }, [focusName])
+  // Keep, Esc or a finished rename takes the focused control away with the row's view: the focus
+  // goes back to that row's own button, not to the page (a row that went, or a focus that moved
+  // on, is left alone).
+  const lastRow = useRef<RowView | null>(null)
+  useEffect(() => {
+    const was = lastRow.current
+    lastRow.current = row
+    if (!was || row || document.activeElement !== document.body) return
+    const label = was.kind === 'rename' ? 'Rename' : was.kind === 'delete' ? 'Delete' : 'Compare'
+    boxRef.current?.querySelector<HTMLElement>(`[data-version="${was.id}"] button[aria-label^="${label}"]`)?.focus({ preventScroll: true })
+  }, [row])
 
   const named = (list ?? []).filter((v) => !v.auto).length
   const full = named >= VERSION_LIMITS.named
