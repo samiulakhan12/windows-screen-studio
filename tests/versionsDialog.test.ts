@@ -70,8 +70,9 @@ vi.doMock('../src/renderer/src/editor/modalFocus', () => ({ useModalFocus: () =>
 const page: { body: object; activeElement: unknown } = { body: {}, activeElement: null }
 vi.stubGlobal('document', page)
 
-const { createProject } = await import('../src/shared/engine/project')
+const { createProject, migrateProject } = await import('../src/shared/engine/project')
 const { versionSummary } = await import('../src/shared/editor/versions')
+const { freezeAtPlayhead, moveFreeze } = await import('../src/shared/editor/freezeEdit')
 type Project = import('../src/shared/types').Project
 type VersionMeta = import('../src/shared/editor/versions').VersionMeta
 
@@ -92,13 +93,16 @@ const meta = (id: string, name: string): VersionMeta => ({ id, name, auto: false
 const V1 = meta('v-mabc12-0123abcd', 'First')
 const V2 = meta('v-mabc13-4567abcd', 'Second')
 
-/** The main process: the kept versions, and renames that finish when the test says. */
-const api = { renames: [] as { id: string; name: string; finish: () => void }[] }
+/** The edit now (what getProject gives). */
+let edit: Project = project
+
+/** The main process: the kept versions, renames that finish when the test says, the project a version holds. */
+const api = { renames: [] as { id: string; name: string; finish: () => void }[], kept: project }
 vi.stubGlobal('window', {
   api: {
     listVersions: () => Promise.resolve([V1, V2]),
     renameVersion: (_project: string, id: string, name: string) => new Promise<void>((resolve) => api.renames.push({ id, name, finish: resolve })),
-    readVersion: () => Promise.resolve({ project, changed: [] }),
+    readVersion: () => Promise.resolve({ project: api.kept, changed: [] }),
     deleteVersion: () => Promise.resolve(),
     saveVersion: () => Promise.resolve({ saved: null })
   }
@@ -167,7 +171,7 @@ function expand(node: unknown, out: El[]): void {
   expand(el.props.children, out)
 }
 
-const dialog = (): unknown => VersionsDialog({ getProject: () => project, focusName: false, onOpen: () => undefined, onNotice: () => undefined, onClose: () => undefined })
+const dialog = (): unknown => VersionsDialog({ getProject: () => edit, focusName: false, onOpen: () => undefined, onNotice: () => undefined, onClose: () => undefined })
 
 /** The dialog, rendered until its state and effects settle. */
 function render(): El[] {
@@ -209,6 +213,8 @@ beforeEach(() => {
   focused.length = 0
   page.activeElement = null
   api.renames.length = 0
+  api.kept = project
+  edit = project
 })
 
 describe('the focus when a row’s question or rename field closes', () => {
@@ -303,5 +309,35 @@ describe('a rename saved as its field loses the focus', () => {
     await flush()
     out = render()
     expect(renameField(out, V2)?.props.value).toBe('Second take')
+  })
+})
+
+describe('Compare', () => {
+  /** What the compare row of the version says. */
+  const comparison = (out: El[]): string => textOf(out.find((e) => e.props['data-testid'] === 'version-compare')?.props.children)
+  /** `p` kept as saveVersion and readVersion do: migrated, written as JSON, read back and migrated. */
+  const kept = (p: Project): Project => migrateProject(JSON.parse(JSON.stringify(migrateProject(JSON.parse(JSON.stringify(p))))))
+
+  it('says a version kept just now is the same with a freeze frame at the edit’s end', async () => {
+    // The edit ends at a playhead time that is not whole ms; the freeze there holds its last frame.
+    const end = 17.3333333
+    const added = freezeAtPlayhead({ ...project, clips: [{ ...project.clips[0], end }] }, end)
+    if ('refused' in added) throw new Error(added.refused)
+    edit = added.project
+    api.kept = kept(edit)
+    let out = await opened()
+    click(out, 'Compare First with your edit now')
+    await flush()
+    out = render()
+    expect(comparison(out)).toBe('Same as your edit now.')
+
+    // A freeze moved since is still named.
+    edit = moveFreeze(edit, added.id, 5)
+    click(out, 'Compare First with your edit now')
+    out = render()
+    click(out, 'Compare First with your edit now')
+    await flush()
+    out = render()
+    expect(comparison(out)).toContain('freeze frames')
   })
 })

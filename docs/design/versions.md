@@ -166,9 +166,11 @@ export interface VersionSummary {
   effects, captions look, crop, vertical framing, brand, watermark, transcript text; clips, zooms,
   texts and titles, shapes and spotlights, images, chapters and freeze frames that moved or changed
   while their count stayed the same; "other settings" for any other part of the edit) or "Same as
-  your edit now." when nothing differs. Parts are compared as `canonicalJson` writes them, so the
-  order their fields were set in never counts (a version is read back through `migrateProject`,
-  which rebuilds title cards and other items in its own key order).
+  your edit now." when nothing differs. The edit now is compared as it would be kept, through
+  `migrateProject` (so a freeze frame at the edit's end, kept to 1 ms, is the same), and parts are
+  compared as `canonicalJson` writes them, so the order their fields were set in never counts (a
+  version is read back through `migrateProject`, which rebuilds title cards and other items in its
+  own key order).
 * **Rename:** the name turns into a field (Enter saves, Esc cancels, leaving it saves); same rules
   as §2.3. A question, comparison or other rename field that the click leaving it opened stays open.
 * **Delete:** the row asks "Delete “v1”? This cannot be undone." with **Delete** and **Keep**.

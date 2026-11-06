@@ -11,6 +11,7 @@ import {
   type SummaryChange,
   type VersionMeta
 } from '../../../shared/editor/versions'
+import { migrateProject } from '../../../shared/engine/project'
 import { formatBytes } from '../../../shared/storage/rules'
 import type { Project } from '../../../shared/types'
 import { Icon } from '../components/Icon'
@@ -134,7 +135,8 @@ export function VersionsDialog({
     setRow({ id: v.id, kind: 'compare', result: 'loading' })
     try {
       const r = await window.api.readVersion(projectId, v.id)
-      const now = getProject()
+      // The edit now as it would be kept (saveVersion stores it migrated): a freeze at the edit's end is kept to 1 ms.
+      const now = migrateProject(getProject())
       // Also a background or cursor image a later pick wrote over: the same name, another picture.
       const areas = [...changedAreas(r.project, now), ...r.changed]
       const result = { changes: compareSummaries(versionSummary(r.project), versionSummary(now)), areas }
