@@ -69,7 +69,8 @@ export function sourceActivity(project: Omit<SoundProject, 'clips'>, analysis: A
  */
 export function heardActivity(project: Omit<SoundProject, 'clips'>, analysis: AudioAnalysis): Range[] | null {
   const ranges = sourceActivity(project, analysis)
-  const muted = soundGains({ sounds: project.sounds }).filter((g) => g.gain <= 0)
+  // Without the bleeps: a bleeped word is heard (so the clips, which only pick the bleeps heard, do not matter).
+  const muted = soundGains({ sounds: project.sounds, clips: [] }).filter((g) => g.gain <= 0)
   return ranges && muted.length > 0 ? subtractRanges(ranges, muted) : ranges
 }
 

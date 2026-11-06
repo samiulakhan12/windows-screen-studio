@@ -10,7 +10,7 @@
 import type { AiTextResult } from '../api/ai'
 import type { SoundGain } from '../api/export'
 import { alignKey, captionWordTimes } from '../editor/transcript'
-import type { Bleep, CaptionAuto, CaptionSegment, CaptionSettings, CaptionWord, Project } from '../types'
+import type { Bleep, CaptionAuto, CaptionSegment, CaptionSettings, CaptionWord, Clip, Project } from '../types'
 import { STANDARD_WORDS, STRICT_WORDS } from './bleepWords'
 import { applyTextResult } from './edit'
 import { parseNumberWords } from './numbers'
@@ -876,11 +876,31 @@ export function wordsBleeped(project: Pick<Project, 'transcript' | 'bleeps'>, sp
 }
 
 /**
- * A gain of 0 over each bleep (Tone and Silence both mute the word), for the sound finder's one
- * muting path: soundGains (soundsEdit.ts) joins these with its own stretches (§11.7 rule 5).
+ * Whether the edit cuts all of bleep `b`'s word: its time without the WIDEN a bleep adds on each
+ * side (§11.7). Nothing of the word is heard then, so the bleep makes no sound: no tone at the cut,
+ * and the ends of the words around it, which the widening reaches, are not muted. A word the edit
+ * keeps any part of keeps its whole bleep. (A bleep of an estimated time, widened by
+ * WIDEN_ESTIMATED, goes once its word and the extra 0.1 s each side are cut.)
  */
-export function bleepGains(project: Pick<Project, 'bleeps'>): SoundGain[] {
-  return (project.bleeps ?? []).map((b) => ({ start: b.start, end: b.end, gain: 0 }))
+export function bleepCutOut(b: Pick<Bleep, 'start' | 'end'>, clips: readonly Pick<Clip, 'start' | 'end'>[]): boolean {
+  const mid = (b.start + b.end) / 2
+  const from = Math.min(mid, b.start + WIDEN)
+  const to = Math.max(mid, b.end - WIDEN)
+  return clips.every((c) => c.end <= from + 1e-6 || c.start >= to - 1e-6)
+}
+
+/** The bleeps the preview and the export sound: those whose word the edit keeps some of (bleepCutOut). */
+export function heardBleeps(project: Pick<Project, 'bleeps' | 'clips'>): readonly Bleep[] {
+  const bleeps = project.bleeps ?? []
+  return bleeps.some((b) => bleepCutOut(b, project.clips)) ? bleeps.filter((b) => !bleepCutOut(b, project.clips)) : bleeps
+}
+
+/**
+ * A gain of 0 over each bleep heard (Tone and Silence both mute the word), for the sound finder's
+ * one muting path: soundGains (soundsEdit.ts) joins these with its own stretches (§11.7 rule 5).
+ */
+export function bleepGains(project: Pick<Project, 'bleeps' | 'clips'>): SoundGain[] {
+  return heardBleeps(project).map((b) => ({ start: b.start, end: b.end, gain: 0 }))
 }
 
 /* ---------- the action ---------- */

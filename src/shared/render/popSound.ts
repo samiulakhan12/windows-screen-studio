@@ -7,7 +7,7 @@
  * (§9.1 rule 6): a graphic appears when the sound time reaches its start, so in a continue freeze
  * its pop sounds with the speech, and a pop at a pause freeze sounds when the freeze starts.
  */
-import { wordsBleeped } from '../captions/cleanup'
+import { heardBleeps, wordsBleeped } from '../captions/cleanup'
 import { EMOJI_KEYS } from '../captions/emojiList'
 import { editToVideo, planOf, type FreezePlan } from '../engine/freeze'
 import { outputDuration, playableFrom, sourceToOutput } from '../engine/timeline'
@@ -162,14 +162,15 @@ export function popJob(project: Project, startOf?: (g: Graphic) => number): { ti
 }
 
 /**
- * The bleep tones (output seconds, split at cuts): each bleep whose sound is a tone, over the
- * parts of its span the edit keeps, mapped to the video's clock; a pause freeze inside a span
- * splits it too (the sound waits during the freeze). Overlapping spans are joined.
+ * The bleep tones (output seconds, split at cuts): each bleep whose sound is a tone and whose word
+ * the edit keeps some of (heardBleeps: a word cut out has no tone), over the parts of its span the
+ * edit keeps, mapped to the video's clock; a pause freeze inside a span splits it too (the sound
+ * waits during the freeze). Overlapping spans are joined.
  */
 export function toneJob(project: Project): { start: number; end: number }[] {
-  const bleeps = project.bleeps
   const clips = project.clips
-  if (!bleeps?.length || clips.length === 0) return []
+  if (!project.bleeps?.length || clips.length === 0) return []
+  const bleeps = heardBleeps(project)
   const plan = planOf(project)
   const edits: { start: number; end: number }[] = []
   for (const b of bleeps) {

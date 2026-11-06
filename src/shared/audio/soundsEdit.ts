@@ -5,7 +5,7 @@
  * keyframes for Web Audio, an ffmpeg expression for the export. Captions Studio's bleeps
  * (docs/design/captions-studio.md §11.7) mute their words through the same curve.
  */
-import { bleepGains } from '../captions/cleanup'
+import { bleepGains, heardBleeps } from '../captions/cleanup'
 import { restoreRange } from '../editor/clips'
 import { editToVideo, type FreezePlan } from '../engine/freeze'
 import { cutRange } from '../engine/timeline'
@@ -155,29 +155,29 @@ export function bringBack(p: Project, key: string): Project {
 /* ---------- the gain curve ---------- */
 
 /**
- * The project's stretches as gains (mute 0, duck DUCK_GAIN) and its bleeps (0, bleepGains), made
- * piecewise (joinGains), so a mute inside a lowered stretch silences only itself and a bleep over a
- * muted stretch mutes it once. Source seconds, sorted.
+ * The project's stretches as gains (mute 0, duck DUCK_GAIN) and its bleeps (0, bleepGains: those
+ * whose word the edit keeps some of), made piecewise (joinGains), so a mute inside a lowered stretch
+ * silences only itself and a bleep over a muted stretch mutes it once. Source seconds, sorted.
  */
-export function soundGains(p: Pick<Project, 'sounds' | 'bleeps'>): SoundGain[] {
+export function soundGains(p: Pick<Project, 'sounds' | 'bleeps' | 'clips'>): SoundGain[] {
   return joinGains(gainsOf(p))
 }
 
 /** The stretches and the bleeps as gains, not joined: at most MAX_SOUND_SPANS + MAX_BLEEPS. */
-function gainsOf(p: Pick<Project, 'sounds' | 'bleeps'>): SoundGain[] {
+function gainsOf(p: Pick<Project, 'sounds' | 'bleeps' | 'clips'>): SoundGain[] {
   const spans = (p.sounds?.spans ?? []).map((s) => ({ start: s.start, end: s.end, gain: s.action === 'mute' ? 0 : DUCK_GAIN }))
   return p.bleeps?.length ? [...spans, ...bleepGains(p)] : spans
 }
 
 /**
  * An export job's `RecordingSound.sounds`: the curve of soundGains when the project has muted or
- * lowered stretches or bleeps, else undefined, so a project with neither gets the job of before.
+ * lowered stretches or bleeps heard, else undefined, so a project with neither gets the job of before.
  * Joined, a lowered stretch around each of thousands of bleeps can make more pieces than a job may
  * carry (MAX_SOUND_GAINS); the stretches and bleeps then go as they are (at most MAX_SOUND_SPANS +
  * MAX_BLEEPS), and soundGainFilters joins them into the same curve.
  */
-export function jobSoundGains(p: Pick<Project, 'sounds' | 'bleeps'>): SoundGain[] | undefined {
-  if (!p.sounds?.spans.length && !p.bleeps?.length) return undefined
+export function jobSoundGains(p: Pick<Project, 'sounds' | 'bleeps' | 'clips'>): SoundGain[] | undefined {
+  if (!p.sounds?.spans.length && !(p.bleeps?.length && heardBleeps(p).length)) return undefined
   const joined = soundGains(p)
   return joined.length <= MAX_SOUND_GAINS ? joined : gainsOf(p)
 }

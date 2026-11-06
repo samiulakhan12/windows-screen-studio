@@ -2921,7 +2921,11 @@ Offline rules, each optional (§2.9). The choices are `CleanupChoices` (`caps`, 
      `sounds` gain node plays the same curve (`soundOutputKeyframes`, `previewAudio.ts`). There
      is one muting path, so preview and export agree around cuts, holds and speed changes. *Tone*
      adds a 1 kHz sine at 0.25 over each span's output time (split at cuts), built and previewed
-     like the pop sounds (§10.6).
+     like the pop sounds (§10.6). A bleep whose word the edit cuts out (its span without the
+     0.05 s each side, `bleepCutOut`; deleted in the Transcript tab or cut on the timeline) makes
+     no sound at all: no tone at the cut and no muting of the words around it, which its widening
+     reaches (`heardBleeps`, used by `bleepGains` and `toneJob`). A word the edit keeps any part of
+     keeps its whole bleep.
 6. **AI fix** (`ai`, off by default, needs a provider): today's **Fix captions** (`cleanup`
    text task, `transcriptText.ts`), checked by `applyTextResult` (`edit.ts:156-175`) as today.
    It runs after rules 1–4 inside the same Tidy captions action, and its changes are recorded with

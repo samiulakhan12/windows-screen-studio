@@ -6,7 +6,10 @@ import { afterAll, describe, expect, it, vi } from 'vitest'
 import { ffmpegPath } from '../src/main/ffmpeg'
 import type { ExportJob } from '../src/shared/api/export'
 import { DUCK_GAIN, jobSoundGains, soundGainFilters, soundGains } from '../src/shared/audio/soundsEdit'
+import { DEFAULT_CLEANUP, tidyCaptions } from '../src/shared/captions/cleanup'
+import { cutWords, transcriptWords } from '../src/shared/editor/transcript'
 import { createProject } from '../src/shared/engine/project'
+import { cutRange } from '../src/shared/engine/timeline'
 import { planSoundtrack } from '../src/shared/render/audioPlan'
 import { toneJob } from '../src/shared/render/popSound'
 import type { Bleep, Project, SoundSpan } from '../src/shared/types'
@@ -227,5 +230,69 @@ describe('a bleep and a muted or lowered sound on the same stretch, in the expor
     const { graph } = exported(p, true)
     expect(graph).not.toContain('volume=volume=')
     expect(graph).not.toContain('asetnsamples')
+  })
+})
+
+describe('a bleeped word the edit cuts out', () => {
+  // "this is fuck good stuff" with 30 ms between the words, as a provider times speech: the bleep's
+  // 0.05 s on each side of "fuck" reaches the end of "is" and the start of "good".
+  const said = (): Project => ({
+    ...project([], []),
+    transcript: {
+      language: 'en',
+      segments: [
+        {
+          id: 's1',
+          start: 1,
+          end: 2.6,
+          text: 'this is fuck good stuff',
+          words: [
+            { text: 'this', start: 1, end: 1.3 },
+            { text: 'is', start: 1.33, end: 1.5 },
+            { text: 'fuck', start: 1.53, end: 1.9 },
+            { text: 'good', start: 1.93, end: 2.2 },
+            { text: 'stuff', start: 2.23, end: 2.6 }
+          ]
+        }
+      ]
+    }
+  })
+  const bleeped = (): Project => tidyCaptions(said(), { ...DEFAULT_CLEANUP, caps: false, punct: false, digits: 'off', bleep: 'standard', bleepSound: 'tone', words: [] }).project
+
+  it('deleted in the Transcript tab: no tone at the cut and nothing muted around it, in the preview and the export', () => {
+    const p = bleeped()
+    expect(p.bleeps).toEqual([expect.objectContaining({ start: 1.48, end: 1.95, sound: 'tone' })])
+    // The Transcript tab's cut: from the middle of the pause before the word to the middle of the one after.
+    const cut: Project = { ...p, clips: cutWords(p.clips, transcriptWords(p.transcript), [[2, 2]], p.duration) }
+    expect(cut.clips.map((c) => [c.start, c.end])).toEqual([
+      [0, expect.closeTo(1.515, 9)],
+      [expect.closeTo(1.915, 9), SECONDS]
+    ])
+    expect(toneJob(cut)).toEqual([])
+    expect(soundGains(cut)).toEqual([])
+    expect(jobSoundGains(cut)).toBeUndefined()
+    // The preview's tones (its gain curve is soundGains through the clips: none here).
+    const sound = new PreviewAudio({ currentTime: 1.5, muted: false, volume: 1 }, cut)
+    try {
+      expect(sound.effectsOf().tones).toEqual([])
+    } finally {
+      sound.dispose()
+    }
+    // The export plays exactly what the edit without the bleep plays: "is" and "good" whole, no tone.
+    const { bleeps: _b, ...plain } = cut
+    void _b
+    const out = exported(cut, true).samples
+    expect(peak(out, 0, SECONDS - 0.5, exported(plain, true).samples)).toBeLessThan(1e-4)
+    expect(peak(out, 1.49, 1.51)).toBeGreaterThan(0.3)
+  })
+
+  it('a word the edit keeps part of keeps its whole bleep: muted and toned over what is kept', () => {
+    const p = bleeped()
+    const part: Project = { ...p, clips: cutRange(p.clips, 1.7, 2.1) }
+    expect(soundGains(part)).toEqual([{ start: 1.48, end: 1.95, gain: 0 }])
+    expect(toneJob(part)).toEqual([{ start: expect.closeTo(1.48, 9), end: expect.closeTo(1.7, 9) }])
+    const out = exported(part, false).samples
+    // From 1.48 to the cut at 1.7 (output time) the recording is silent.
+    expect(peak(out, 1.5, 1.68)).toBeLessThan(1e-3)
   })
 })

@@ -92,14 +92,16 @@ describe('the export job of a project with bleeps', () => {
     // A lowered stretch around each of the most bleeps a project keeps: joined, three pieces each.
     const spans = Array.from({ length: MAX_SOUND_SPANS }, (_, i) => ({ start: i * 2, end: i * 2 + 1.5, action: 'duck' as const, key: `typing-${i}` }))
     const bleeps: Bleep[] = Array.from({ length: MAX_BLEEPS }, (_, i) => ({ id: `b${i}`, start: i * 2 + 0.6, end: i * 2 + 0.9, word: 'damn', sound: 'silence' }))
-    const p = { sounds: { spans, ignored: [] }, bleeps }
+    // One clip keeps everything: every bleep's word is heard.
+    const clips = [{ id: 'all', start: 0, end: MAX_BLEEPS * 2, speed: 1 }]
+    const p = { sounds: { spans, ignored: [] }, bleeps, clips }
     expect(soundGains(p).length).toBeGreaterThan(MAX_SOUND_GAINS)
     const job = jobSoundGains(p)!
     expect(job.length).toBeLessThanOrEqual(MAX_SOUND_GAINS)
     expect(validSoundGains(job)).toBe(true)
     expect(soundGainFilters(job)).toBe(soundGainFilters(soundGains(p)))
     // Within the limit the job carries the joined curve, as before.
-    const few = { sounds: { spans: spans.slice(0, 3), ignored: [] }, bleeps: bleeps.slice(0, 3) }
+    const few = { sounds: { spans: spans.slice(0, 3), ignored: [] }, bleeps: bleeps.slice(0, 3), clips }
     expect(jobSoundGains(few)).toEqual(soundGains(few))
   })
 
