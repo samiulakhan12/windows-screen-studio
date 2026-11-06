@@ -152,18 +152,21 @@ export function compareSummaries(version: VersionSummary, now: VersionSummary): 
 }
 
 /**
- * Parts of the edit the counts do not show, by the name the comparison uses. Every field is saved
- * with the edit (none is state of one editor session): the unwanted sounds muted or lowered (F-17)
- * are part of the sound, the publishing pack's export description (NW-13) its own part, and Review
- * mode's records of automatic changes and the choices made for them (E-02) what Review lists.
+ * Parts of the edit the counts do not show, by the name the comparison uses (`of`: the part of
+ * its fields compared, when not all of them). Every field is saved with the edit (none is state of
+ * one editor session): the unwanted sounds muted or lowered (F-17) are part of the sound, and those
+ * the finder was told to leave as they are (Ignore) a part of their own, as nothing heard changes;
+ * the publishing pack's export description (NW-13) is its own part, and Review mode's records of
+ * automatic changes and the choices made for them (E-02) what Review lists.
  * Captions Studio's own parts (marks, places, pop-ups, languages, bleeps, its automatic changes)
  * come with its phase B; until then a difference there is "other settings".
  */
-const AREAS: readonly { name: string; keys: readonly (keyof Project)[] }[] = [
+const AREAS: readonly { name: string; keys: readonly (keyof Project)[]; of?: (p: Project) => unknown }[] = [
   { name: 'style', keys: ['style', 'tilt'] },
   { name: 'cursor', keys: ['cursor', 'inputEdits'] },
   { name: 'camera', keys: ['webcam', 'layouts', 'director'] },
-  { name: 'sound', keys: ['audio', 'sounds'] },
+  { name: 'sound', keys: ['audio', 'sounds'], of: (p) => [p.audio, p.sounds?.spans ?? []] },
+  { name: 'ignored sounds', keys: ['sounds'], of: (p) => p.sounds?.ignored ?? [] },
   { name: 'effects', keys: ['effects'] },
   { name: 'zoom settings', keys: ['zoomSettings', 'autoZoom'] },
   { name: 'captions look', keys: ['captions'] },
@@ -213,7 +216,7 @@ const unlabelled = (s: CaptionSegment): Omit<CaptionSegment, 'speaker'> => {
  * of these name; empty when only the counts (or nothing) differ.
  */
 export function changedAreas(version: Project, now: Project): string[] {
-  const out = AREAS.filter((a) => a.keys.some((k) => !same(version[k], now[k]))).map((a) => a.name)
+  const out = AREAS.filter((a) => (a.of ? !same(a.of(version), a.of(now)) : a.keys.some((k) => !same(version[k], now[k])))).map((a) => a.name)
   const vc = versionSummary(version)
   const nc = versionSummary(now)
   for (const item of ITEMS) {

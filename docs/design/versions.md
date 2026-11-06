@@ -182,7 +182,8 @@ export interface VersionSummary {
   | … only the counts that differ … |
 
   followed by "Also different: style, camera." (`changedAreas`: style, cursor, camera, sound (with
-  the unwanted sounds muted or lowered, F-17), effects, captions look (with *Show speaker names*),
+  the unwanted sounds muted or lowered, F-17), ignored sounds (the found sounds the finder was told
+  to leave as they are: nothing heard changes, so never "sound"), effects, captions look (with *Show speaker names*),
   crop, vertical framing, brand, watermark, export description (the publishing pack's, NW-13),
   automatic changes to review (Review mode's records and the choices made for them, E-02), caption
   text, speaker names (captions labelled with other speakers, NW-09: not "caption text"); clips,

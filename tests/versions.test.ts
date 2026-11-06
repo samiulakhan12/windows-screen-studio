@@ -179,7 +179,10 @@ describe('comparing', () => {
     it('names the unwanted sounds as the sound, the export description and the automatic changes to review', () => {
       const a = full()
       expect(changedAreas(a, { ...a, sounds: { spans: [], ignored: ['typing-50'] } })).toEqual(['sound'])
-      expect(changedAreas(a, { ...a, sounds: undefined })).toEqual(['sound'])
+      // A sound the finder was told to ignore changes nothing heard: named apart, never "sound".
+      expect(changedAreas(a, { ...a, sounds: { ...a.sounds!, ignored: ['typing-50', 'click-150'] } })).toEqual(['ignored sounds'])
+      expect(changedAreas(p20(), { ...p20(), sounds: { spans: [], ignored: ['click-150'] } })).toEqual(['ignored sounds'])
+      expect(changedAreas(a, { ...a, sounds: undefined })).toEqual(['sound', 'ignored sounds'])
       expect(changedAreas(a, { ...a, publish: { description: 'Another text.' } })).toEqual(['export description'])
       expect(changedAreas(a, { ...a, publish: undefined })).toEqual(['export description'])
       // Keep in Review mode: the record goes and the choice stays, the clips are the same.
