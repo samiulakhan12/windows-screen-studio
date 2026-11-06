@@ -176,7 +176,15 @@ const ITEMS: readonly { name: string; keys: readonly (keyof Project)[]; counts: 
   { name: 'freeze frames', keys: ['freezes'], counts: ['freezes'] }
 ]
 
-const same = (a: unknown, b: unknown): boolean => a === b || JSON.stringify(a) === JSON.stringify(b)
+/** JSON with every object's keys sorted: the same edit gives the same text whatever order its fields were set in. */
+export function canonicalJson(value: unknown): string {
+  return JSON.stringify(value, (_k, v: unknown) =>
+    v && typeof v === 'object' && !Array.isArray(v) ? Object.fromEntries(Object.keys(v).sort().map((k) => [k, (v as Record<string, unknown>)[k]])) : v
+  )
+}
+
+// Key order is not compared: a version read back from its file (migrateProject) and the edit now set the same fields in different orders.
+const same = (a: unknown, b: unknown): boolean => a === b || canonicalJson(a) === canonicalJson(b)
 
 /**
  * The other parts of the edit that differ ("style", "camera"…): items moved or changed while they

@@ -15,6 +15,7 @@ import { migrateProject } from '../shared/engine/project'
 import {
   AUTO_REASONS,
   autoVersionName,
+  canonicalJson,
   cleanVersionName,
   defaultVersionName,
   prunedAutos,
@@ -68,12 +69,7 @@ const fileOf = (folder: string, id: string): string => {
   return path.join(folder, `${id}.json`)
 }
 
-/** JSON with every object's keys sorted: the same edit gives the same text whatever order its fields were set in. */
-export function canonicalJson(value: unknown): string {
-  return JSON.stringify(value, (_k, v: unknown) =>
-    v && typeof v === 'object' && !Array.isArray(v) ? Object.fromEntries(Object.keys(v).sort().map((k) => [k, (v as Record<string, unknown>)[k]])) : v
-  )
-}
+export { canonicalJson }
 
 export const hashProject = (p: Project): string => createHash('sha256').update(canonicalJson(p)).digest('hex')
 

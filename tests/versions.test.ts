@@ -18,6 +18,9 @@ import {
   VERSION_ID_RE,
   type VersionMeta
 } from '../src/shared/editor/versions'
+import { applyBrandKit, EMPTY_BRAND_KIT, type BrandKit } from '../src/shared/editor/brandKit'
+import { createTitleCard } from '../src/shared/editor/titles'
+import { migrateProject } from '../src/shared/engine/project'
 import type { Project } from '../src/shared/types'
 import { chapter, freeze, p20, shape, spot, text, title, zoom } from './groupFixture'
 
@@ -117,6 +120,19 @@ describe('comparing', () => {
     const a = p20()
     expect(changedAreas(a, { ...a, newerField: 1 } as unknown as Project)).toEqual(['other settings'])
     expect(changedAreas(a, { ...a, name: 'Renamed', createdAt: '2020-01-01T00:00:00.000Z' })).toEqual([])
+  })
+  it('does not count the order fields were set in: a version kept just now is the same as the edit', () => {
+    // The file is read back through migrateProject, which rebuilds each title card in its own key order.
+    const roundTrip = (p: Project): Project => ({ ...migrateProject(JSON.parse(JSON.stringify(migrateProject(JSON.parse(JSON.stringify(p)))))), id: p.id })
+    const kit = { ...EMPTY_BRAND_KIT, colors: ['#7c3aed'], intro: { title: 'Acme', subtitle: 'Weekly demo', style: 'centered', background: 'solid', length: 3 } } as BrandKit
+    const branded = applyBrandKit(p20(), kit, { fonts: {} })
+    expect(branded.titles).toHaveLength(1)
+    expect(changedAreas(roundTrip(branded), branded)).toEqual([])
+    // TextPanel: a colour picked, then a subtitle typed ({ ...card, ...patch }).
+    const card = { ...{ ...createTitleCard(1, 20), color: '#7c3aed' }, subtitle: 'Part one' }
+    const typed = p20({ titles: [card] })
+    expect(changedAreas(roundTrip(typed), typed)).toEqual([])
+    expect(changedAreas(roundTrip(typed), p20({ titles: [{ ...card, subtitle: 'Part two' }] }))).toEqual(['texts and titles'])
   })
   it('notices caption text that changed with the same count', () => {
     const seg = (t: string) => ({ segments: [{ id: 'a', start: 0, end: 1, text: t }] }) as unknown as Project['transcript']
