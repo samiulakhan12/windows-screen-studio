@@ -2888,7 +2888,11 @@ Offline rules, each optional (§2.9). The choices are `CleanupChoices` (`caps`, 
    - **A bleep is time-based** (`Bleep`, §4.1): its source-time span is the word's time ± 0.05 s
      (± 0.15 s for estimated times, with the notice "Some bleeped words have estimated times, so a
      little more is bleeped"), and it keeps the matched word in lower case. It carries no caption
-     id or word index, so splits, merges, edits and regenerating captions cannot orphan it.
+     id or word index, so splits, merges, edits and regenerating captions cannot orphan it. Tidy
+     captions adds no bleep for a word that has its own already: a bleep of the same word over its
+     middle, centred in it or over all of it. A bleep of the word before, whose widening reaches
+     the middle of a short word right after it, is not that word's own, so that word gets its own
+     bleep and is masked and muted over all its time, also when the word before is cut out.
    - **Masking follows the time.** Wherever spoken-track words are shown, a word is masked when at
      least half of its time lies inside a bleep's span and its text, normalised, equals the
      bleep's word; when no word there matches (the caption was edited), every word with at least

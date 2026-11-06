@@ -8,6 +8,8 @@ import { mergeWithNext, splitCaption } from '../src/shared/captions/edit'
 import { readBleeps } from '../src/shared/captions/studioData'
 import { languageSubtitleFile } from '../src/shared/captions/subtitles'
 import { studioProject } from './p4Fixtures'
+import { joinGains, soundGainAt, soundGains } from '../src/shared/audio/soundsEdit'
+import { cutFlags, cutWords, transcriptWords } from '../src/shared/editor/transcript'
 import { DEFAULT_CAPTIONS } from '../src/shared/captions/settings'
 import type { Bleep, CaptionSegment, Project } from '../src/shared/types'
 
@@ -359,6 +361,36 @@ describe('bleeping (tests 41, 50)', () => {
       expect(shown).toContain('f***')
       expect(shown).not.toContain('fuck')
       expect(readBleeps(JSON.parse(JSON.stringify(q.bleeps)), q.duration)).toEqual(q.bleeps)
+    }
+  })
+
+  it('a short swear word right after a bleeped one gets its own bleep: masked and muted over all its time, also with the one before deleted', () => {
+    // The words touching, as a provider often times them: the middle of the short word after the
+    // first one is inside the first one's bleep (its 0.05 s widening), another word's or the same one's.
+    for (const [first, second] of [['fucking', 'bitch'], ['fuck', 'fuck']]) {
+      const words = [
+        { text: 'this', start: 1, end: 1.3 },
+        { text: first, start: 1.33, end: 1.7 },
+        { text: second, start: 1.7, end: 1.8 },
+        { text: 'is', start: 1.83, end: 1.95 }
+      ]
+      const said = project([{ id: 's1', start: 1, end: 1.95, text: words.map((w) => w.text).join(' '), words }])
+      const tidy = (q: Project): Project => tidyCaptions(q, { ...OFF, bleep: 'standard', bleepSound: 'tone', words: [] }).project
+      const p = tidy(said)
+      expect(p.bleeps!.map((b) => [b.word, b.start, b.end])).toEqual([
+        [bleepKey(first), expect.closeTo(1.28, 9), expect.closeTo(1.75, 9)],
+        [bleepKey(second), expect.closeTo(1.65, 9), expect.closeTo(1.85, 9)]
+      ])
+      expect(maskedSegments(p.transcript!.segments, p.bleeps)[0].text).toBe(`this ${maskWord(first)} ${maskWord(second)} is`)
+      const gains = joinGains(soundGains(p))
+      for (const t of [1.71, 1.74, 1.76, 1.79]) expect(soundGainAt(gains, t)).toBe(0)
+      // Tidy captions again adds nothing.
+      expect(tidy(p).bleeps).toEqual(p.bleeps)
+      // The first word deleted in the Transcript tab: the second is still muted over all its time.
+      const cut: Project = { ...p, clips: cutWords(p.clips, transcriptWords(p.transcript), [[1, 1]], p.duration) }
+      expect(cutFlags(transcriptWords(cut.transcript), cut.clips)).toEqual([false, true, false, false])
+      const left = joinGains(soundGains(cut))
+      for (const t of [1.71, 1.74, 1.76, 1.79]) expect(soundGainAt(left, t)).toBe(0)
     }
   })
 })

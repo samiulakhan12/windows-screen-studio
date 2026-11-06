@@ -718,6 +718,19 @@ export function isSwearWord(word: string, mode: 'standard' | 'strict', language?
 const WIDEN = 0.05
 const WIDEN_ESTIMATED = 0.15
 
+/**
+ * Whether `b` is word `w`'s own bleep (the word `key`): a bleep of the same word over its middle,
+ * centred in it or over all of it. A bleep of the word before, whose widening reaches this word's
+ * middle, is not: a swear word right after another one gets a bleep of its own, so it stays masked
+ * and muted over all its time, also when the one before is cut out (bleepCutOut).
+ */
+function ownBleep(b: Bleep, w: { start: number; end: number }, key: string): boolean {
+  const mid = (w.start + w.end) / 2
+  if (b.word !== key || b.start > mid || b.end < mid) return false
+  const centre = (b.start + b.end) / 2
+  return (centre >= w.start - 1e-6 && centre <= w.end + 1e-6) || (b.start <= w.start + 1e-6 && b.end >= w.end - 1e-6)
+}
+
 /** The bleeps the captions' words need, for the words not bleeped yet. */
 function findBleeps(
   segments: readonly CaptionSegment[],
@@ -754,8 +767,7 @@ function findBleeps(
     const start = Math.max(0, w.start - pad)
     const end = Math.min(duration > 0 ? duration : Infinity, w.end + pad)
     const word = bleepKey(w.text).slice(0, 40) || w.text.toLowerCase().slice(0, 40)
-    const mid = (w.start + w.end) / 2
-    if (have.some((b) => b.start <= mid && b.end >= mid) || out.some((b) => b.start <= mid && b.end >= mid)) return
+    if (have.some((b) => ownBleep(b, w, word)) || out.some((b) => ownBleep(b, w, word))) return
     const id = `b-${textHash(`${start.toFixed(3)}|${end.toFixed(3)}|${word}`)}`
     if (w.estimated) estimated?.add(id)
     out.push({ id, start, end, word, sound, auto: true })
