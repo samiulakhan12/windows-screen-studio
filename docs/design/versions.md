@@ -235,9 +235,11 @@ Copy:
 ### 3.1 Making the frames — **one ffmpeg run on the proxy's key frames, tiled into one JPEG**
 
 * *Chosen:* main runs ffmpeg once per proxy:
-  `-skip_frame nokey -i screen.mp4 -an -vf fps=R,scale=W:H:flags=area,showinfo,tile=CxR -frames:v 1 -q:v 5`.
+  `-skip_frame nokey -i screen.mp4 -an -vf fps=R:round=up,scale=W:H:flags=area,showinfo,tile=CxR -frames:v 1 -q:v 5`.
   Only key frames are decoded (one per 0.25 s, §1): a one-hour recording decodes 14 400 frames,
-  not 216 000. `fps=R` picks the frame nearest each step; `tile` packs them into one sheet (a
+  not 216 000. `fps=R:round=up` puts on frame `i` the last key frame at or before `i × interval`
+  (fps's default rounding would take the last one before `(i + 0.5) × interval`: half a step late
+  once steps are longer than 0.25 s); `tile` packs them into one sheet (a
   sheet left part-filled is written at the end of the input; `showinfo` counts the frames).
   ffmpeg runs at below-normal priority (`os.setPriority`), so editing and playback keep the CPU.
 * **Numbers:** step `interval = max(key interval, duration / 400)` (at most **400 frames**; 0.25 s
@@ -245,7 +247,8 @@ Copy:
   scale), width from the recording's aspect, `W = clamp(round(72 × aspect / 2) × 2, 24, 256)`;
   **20 columns**. A 16:9 sheet of 400 frames is 2560 × 1440 px, about 0.5–1 MB as JPEG.
 * **Cache:** `.cache/filmstrip.jpg` and `.cache/filmstrip.json` (`{ v, key, interval, count, cols,
-  tileW, tileH }`), `key` = the proxy's size and modification time plus the numbers above. Written
+  tileW, tileH }`), `key` = the proxy's size and modification time plus the numbers above (and
+  `up`, so sheets made with the old rounding are made again). Written
   through temporary files and renames, the JSON last. A matching cache is returned without running
   ffmpeg; anything else (no cache, another proxy, unreadable) runs it again. The cache rule of
   Settings › Storage may remove it: it is made again the next time.

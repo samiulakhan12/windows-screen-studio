@@ -25,7 +25,12 @@ const MAX_JPEG = 16 * 1024 * 1024
 /** Frames between the proxy's key frames (proxyArgs.ts `-g 15`). */
 const GOP = 15
 
-/** ffmpeg arguments: key frames only, one every `plan.interval` s, scaled and tiled into `out` (§3.1). */
+/**
+ * ffmpeg arguments: key frames only, one every `plan.interval` s, scaled and tiled into `out` (§3.1).
+ * `round=up` puts on frame i the last key frame at or before i * interval (the default, nearest,
+ * takes the last one before (i + 0.5) * interval: half a step late once steps are longer than the
+ * key frames' spacing).
+ */
 export function filmstripArgs(file: string, plan: FilmstripPlan, out: string): string[] {
   return [
     '-hide_banner',
@@ -35,7 +40,7 @@ export function filmstripArgs(file: string, plan: FilmstripPlan, out: string): s
     '-i', file,
     '-map', '0:v:0',
     '-an', '-sn', '-dn',
-    '-vf', `fps=fps=${+(1 / plan.interval).toFixed(6)},scale=${plan.tileW}:${plan.tileH}:flags=area,showinfo,tile=${plan.cols}x${plan.rows}`,
+    '-vf', `fps=fps=${+(1 / plan.interval).toFixed(6)}:round=up,scale=${plan.tileW}:${plan.tileH}:flags=area,showinfo,tile=${plan.cols}x${plan.rows}`,
     '-frames:v', '1',
     '-q:v', '5',
     '-y',
@@ -48,9 +53,9 @@ export function countShowinfo(log: string): number {
   return (log.match(/Parsed_showinfo[^\n]*\bn:\s*\d+/g) ?? []).length
 }
 
-/** The cache key: the proxy's size and time and the plan's numbers. */
+/** The cache key: the proxy's size and time and the plan's numbers (`up`: sheets whose frames were picked at or before each step). */
 export const filmstripKey = (size: number, mtimeMs: number, plan: FilmstripPlan): string =>
-  `${size}:${Math.round(mtimeMs)}:${plan.interval.toFixed(6)}:${plan.tileW}x${plan.tileH}:${plan.cols}x${plan.rows}`
+  `${size}:${Math.round(mtimeMs)}:${plan.interval.toFixed(6)}:${plan.tileW}x${plan.tileH}:${plan.cols}x${plan.rows}:up`
 
 const running = new ProjectProcesses()
 const inFlight = new Map<string, Promise<{ meta: FilmstripMeta; jpeg: Uint8Array } | null>>()

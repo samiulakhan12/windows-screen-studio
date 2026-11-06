@@ -1,4 +1,4 @@
-import { execFileSync } from 'node:child_process'
+import { execFileSync, spawnSync } from 'node:child_process'
 import { mkdirSync, readFileSync, rmSync, statSync, symlinkSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import { pathToFileURL } from 'node:url'
@@ -54,7 +54,7 @@ describe('the sheet plan', () => {
   it('builds ffmpeg arguments that decode key frames only', () => {
     const args = filmstripArgs('in.mp4', filmstripPlan(60, 1920, 1080, 0.25), 'out.jpg')
     expect(args.slice(args.indexOf('-skip_frame'), args.indexOf('-skip_frame') + 2)).toEqual(['-skip_frame', 'nokey'])
-    expect(args[args.indexOf('-vf') + 1]).toBe('fps=fps=4,scale=128:72:flags=area,showinfo,tile=20x13')
+    expect(args[args.indexOf('-vf') + 1]).toBe('fps=fps=4:round=up,scale=128:72:flags=area,showinfo,tile=20x13')
     expect(args.slice(-1)).toEqual(['out.jpg'])
   })
   it('counts showinfo frames', () => {
@@ -127,6 +127,30 @@ describe('making the sheet', () => {
     writeFileSync(path.join(dir, '.cache', 'filmstrip.json'), JSON.stringify({ ...first!.meta, key: 'old' }))
     const again = await getFilmstrip('rec-film-2')
     expect(again!.meta.key).toBe(first!.meta.key)
+  })
+
+  it('puts on frame i the last key frame at or before i * interval', () => {
+    // Key frames every 0.25 s; steps that are and are not a multiple of it (the 1 s step is what
+    // a 400 s recording gets). A showinfo before and after the sheet's fps filter maps each frame
+    // of the sheet back to its source time by checksum.
+    const dir = seed('rec-film-steps')
+    for (const interval of [0.25, 1, 0.6]) {
+      const args = filmstripArgs(path.join(dir, 'screen.mp4'), { ...filmstripPlan(12, 1920, 1080, 0.25), interval }, path.join(dir, 'steps.jpg'))
+      const [fps, ...rest] = args[args.indexOf('-vf') + 1].split(',')
+      args[args.indexOf('-vf') + 1] = ['showinfo', fps, 'showinfo', ...rest].join(',')
+      const log = spawnSync(ffmpegPath(), args, { encoding: 'utf8' }).stderr
+      const source = new Map<string, number>()
+      const frames: [number, number][] = []
+      for (const m of log.matchAll(/Parsed_showinfo_(\d+)[^\]]*\]\s*n:\s*(\d+)[^\n]*?pts_time:([\d.]+)[^\n]*?checksum:([0-9A-F]+)/g)) {
+        if (m[1] === '0') source.set(m[4], Number(m[3]))
+        else if (m[1] === '2') frames.push([Number(m[2]), source.get(m[4])!])
+      }
+      expect(frames.length).toBeGreaterThan(10)
+      for (const [i, t] of frames) {
+        expect(t).toBeLessThanOrEqual(i * interval + 0.01)
+        expect(t).toBeGreaterThanOrEqual(i * interval - 0.25 - 0.01)
+      }
+    }
   })
 
   it('shares one run between requests at once', async () => {
