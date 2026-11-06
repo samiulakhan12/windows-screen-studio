@@ -148,6 +148,8 @@ function standIn(el: El): Record<string, unknown> {
       return !!(stand.el as El).props.disabled
     },
     clientWidth: 280,
+    // No child nodes are laid out here (a list's rows are read from its elements instead).
+    children: [],
     focus: () => focused.push(stand.el as El),
     contains: () => false,
     // Nothing covers a stand-in (no inert part of the page above it).
