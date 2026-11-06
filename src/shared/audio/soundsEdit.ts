@@ -160,16 +160,26 @@ export function bringBack(p: Project, key: string): Project {
  * muted stretch mutes it once. Source seconds, sorted.
  */
 export function soundGains(p: Pick<Project, 'sounds' | 'bleeps'>): SoundGain[] {
+  return joinGains(gainsOf(p))
+}
+
+/** The stretches and the bleeps as gains, not joined: at most MAX_SOUND_SPANS + MAX_BLEEPS. */
+function gainsOf(p: Pick<Project, 'sounds' | 'bleeps'>): SoundGain[] {
   const spans = (p.sounds?.spans ?? []).map((s) => ({ start: s.start, end: s.end, gain: s.action === 'mute' ? 0 : DUCK_GAIN }))
-  return joinGains(p.bleeps?.length ? [...spans, ...bleepGains(p)] : spans)
+  return p.bleeps?.length ? [...spans, ...bleepGains(p)] : spans
 }
 
 /**
  * An export job's `RecordingSound.sounds`: the curve of soundGains when the project has muted or
  * lowered stretches or bleeps, else undefined, so a project with neither gets the job of before.
+ * Joined, a lowered stretch around each of thousands of bleeps can make more pieces than a job may
+ * carry (MAX_SOUND_GAINS); the stretches and bleeps then go as they are (at most MAX_SOUND_SPANS +
+ * MAX_BLEEPS), and soundGainFilters joins them into the same curve.
  */
 export function jobSoundGains(p: Pick<Project, 'sounds' | 'bleeps'>): SoundGain[] | undefined {
-  return p.sounds?.spans.length || p.bleeps?.length ? soundGains(p) : undefined
+  if (!p.sounds?.spans.length && !p.bleeps?.length) return undefined
+  const joined = soundGains(p)
+  return joined.length <= MAX_SOUND_GAINS ? joined : gainsOf(p)
 }
 
 /**
