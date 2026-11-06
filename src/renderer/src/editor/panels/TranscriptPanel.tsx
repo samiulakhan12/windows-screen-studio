@@ -578,6 +578,9 @@ function TranscriptEditor({
 }
 
 /** The menu next to Emphasise: Emphasise in the second colour (Ctrl+Shift+B, §2.7). Escape closes it and returns to its button. */
+/** The keys the More emphasis menu keeps besides Escape and Tab (its one item: they move nothing there). */
+const EMPHASIS_MENU_KEYS = new Set(['ArrowDown', 'ArrowUp', 'ArrowLeft', 'ArrowRight', 'Home', 'End'])
+
 function EmphasisMenu({ disabled, onSecond }: { disabled: boolean; onSecond: () => void }): JSX.Element {
   const [open, setOpen] = useState(false)
   const buttonRef = useRef<HTMLButtonElement>(null)
@@ -606,6 +609,13 @@ function EmphasisMenu({ disabled, onSecond }: { disabled: boolean; onSecond: () 
           role="menu"
           aria-label="More emphasis"
           onKeyDown={(e) => {
+            // The menu's keys are its own, as the Graphics tab's Add menu's: never the editor's
+            // shortcuts (Left and Right move the selected items, Home and End the playhead).
+            if (EMPHASIS_MENU_KEYS.has(e.key)) {
+              e.preventDefault()
+              e.stopPropagation()
+              return
+            }
             if (e.key !== 'Escape' && e.key !== 'Tab') return
             if (e.key === 'Escape') {
               e.preventDefault()

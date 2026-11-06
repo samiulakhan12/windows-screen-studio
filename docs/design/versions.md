@@ -345,8 +345,8 @@ through `projectDir`; requests for the same proxy share one run.
   keys as theirs (`commandKeys`) while those are bound. If a user binds the step keys elsewhere,
   the nudge follows the step command's keys (`nudgeInstead()` in `shortcuts.ts`).
 * Text fields and focused sliders keep their arrows (unchanged rules), and so does the open copy
-  menu in the title bar (← / → do nothing there), and the Graphics tab's open **Add** menu (Home
-  and End too). Keys other panels keep as their own never nudge: the Captions Studio gallery and
+  menu in the title bar (← / → do nothing there), the Graphics tab's open **Add** menu and the
+  Transcript tab's open **More emphasis** menu (Home and End too). Keys other panels keep as their own never nudge: the Captions Studio gallery and
   *Show on the video* radios, a focused pop-up handle on the preview (its arrows move it on the
   frame, Captions Studio §2.11) and Review mode's list (↑ / ↓, Home, End; ← / → go on to the
   editor, which nudges the selected items or steps the playhead, as anywhere else). A pop-up
