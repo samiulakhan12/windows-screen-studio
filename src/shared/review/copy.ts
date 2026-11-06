@@ -5,11 +5,16 @@
 import type { AutoCut, CameraLayout, Corner, LayoutSegment, ZoomSegment } from '../types'
 import { formatLevel } from '../editor/zoomEdit'
 
-export type ReviewKind = 'zoom' | 'camera' | 'silence' | 'idle' | 'words'
+/**
+ * Review mode's own kinds, then Captions Studio's (docs/design/captions-studio.md §11.8): the look,
+ * the automatic emphasis and the text fixes (one group row each), emoji, the other graphics and
+ * title cards, and bleeps.
+ */
+export type ReviewKind = 'zoom' | 'camera' | 'silence' | 'idle' | 'words' | 'style' | 'emphasis' | 'text' | 'emoji' | 'graphic' | 'bleep'
 export type ReviewStatus = 'pending' | 'kept' | 'removed'
 
-/** Kinds in the order items at the same time are listed. */
-export const REVIEW_KINDS: readonly ReviewKind[] = ['camera', 'zoom', 'silence', 'idle', 'words']
+/** Kinds in the order items at the same time are listed (Captions Studio's after the others). */
+export const REVIEW_KINDS: readonly ReviewKind[] = ['camera', 'zoom', 'silence', 'idle', 'words', 'style', 'emphasis', 'text', 'emoji', 'graphic', 'bleep']
 
 /** Each kind's chip, its name in a sentence, and its plural on "Remove all …". */
 export const KIND_WORDS: Record<ReviewKind, { chip: string; name: string; all: string; one: string; plural: string }> = {
@@ -17,7 +22,14 @@ export const KIND_WORDS: Record<ReviewKind, { chip: string; name: string; all: s
   camera: { chip: 'Camera', name: 'camera', all: 'Remove all camera changes', one: 'camera change', plural: 'camera changes' },
   silence: { chip: 'Silence', name: 'silence', all: 'Remove all silence cuts', one: 'silence cut', plural: 'silence cuts' },
   idle: { chip: 'Idle', name: 'idle time', all: 'Remove all idle-time changes', one: 'idle-time change', plural: 'idle-time changes' },
-  words: { chip: 'Words', name: 'words', all: 'Remove all word cuts', one: 'word cut', plural: 'word cuts' }
+  words: { chip: 'Words', name: 'words', all: 'Remove all word cuts', one: 'word cut', plural: 'word cuts' },
+  style: { chip: 'Style', name: 'caption style', all: 'Remove all caption style changes', one: 'caption style change', plural: 'caption style changes' },
+  // One group row each: its Remove is the same as Remove all of the kind.
+  emphasis: { chip: 'Emphasis', name: 'emphasis', all: 'Remove all emphasis', one: 'emphasis', plural: 'emphasis' },
+  text: { chip: 'Text', name: 'text fixes', all: 'Remove all text fixes', one: 'text fix', plural: 'text fixes' },
+  emoji: { chip: 'Emoji', name: 'emoji', all: 'Remove all emoji', one: 'emoji', plural: 'emoji' },
+  graphic: { chip: 'Pop-up', name: 'pop-up', all: 'Remove all pop-ups', one: 'pop-up', plural: 'pop-ups' },
+  bleep: { chip: 'Bleep', name: 'bleep', all: 'Remove all bleeps', one: 'bleep', plural: 'bleeps' }
 }
 
 export const STATUS_WORDS: Record<ReviewStatus, string> = { pending: 'not reviewed', kept: 'kept', removed: 'removed' }

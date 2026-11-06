@@ -187,6 +187,21 @@
 .review-chip.kind-words {
   --chip: var(--track-caption);
 }
+/* Captions Studio's automatic changes (docs/design/captions-studio.md §11.8). */
+.review-chip.kind-style {
+  --chip: var(--track-title);
+}
+.review-chip.kind-emphasis,
+.review-chip.kind-text {
+  --chip: var(--track-caption);
+}
+.review-chip.kind-emoji,
+.review-chip.kind-graphic {
+  --chip: var(--track-text);
+}
+.review-chip.kind-bleep {
+  --chip: var(--track-chapter);
+}
 
 .review-text {
   flex: 1;
@@ -267,6 +282,50 @@
 .review-foot .btn[aria-busy='true'] {
   opacity: 1;
   cursor: progress;
+}
+
+/* A group row (emphasis, text fixes): its items open under it, each with its own Keep and Remove. */
+.review-row.group {
+  flex-wrap: wrap;
+}
+
+.review-toggle {
+  flex: none;
+  padding: 4px;
+}
+
+.review-toggle:focus-visible,
+.review-part .btn:focus-visible {
+  outline: var(--focus-ring-width) solid var(--focus-ring);
+  outline-offset: var(--focus-ring-offset);
+}
+
+.review-parts {
+  flex-basis: 100%;
+  margin: 2px 0 2px 62px;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  border-left: 2px solid var(--border-default);
+}
+
+.review-part {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 4px 3px 8px;
+}
+
+.review-part.removed .review-title {
+  text-decoration: line-through;
+  color: var(--text-2);
+}
+
+.review-part .review-actions .btn {
+  padding: 3px 7px;
+  font-size: 12px;
 }
 
 @media (prefers-reduced-motion: reduce) {

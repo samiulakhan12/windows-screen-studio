@@ -8,12 +8,17 @@
  * (Project.autoCuts, autoCuts.ts). Keeping makes a change the user's, as an edit by hand does;
  * removing puts back what was there before. For a cut or speed-up the choice itself is recorded
  * (Project.autoCutOutcomes) in the same edit, since the footage alone cannot always tell.
+ *
+ * Captions Studio's automatic changes (captionReview.ts, docs/design/captions-studio.md §11.8) are
+ * listed after them at equal times; its emphasis and text fixes are group rows (`members`), whose
+ * Keep or Remove does all their pending items in one edit.
  */
 import { framingIsDirectors, framingUntouched } from '../engine/directorData'
-import type { AutoCut, AutoCutOutcome, LayoutSegment, Project } from '../types'
+import type { AutoCut, AutoCutOutcome, CaptionAuto, LayoutSegment, Project } from '../types'
 import { byHand, cornerOnly } from '../editor/layouts'
 import { withOutcomes } from './autoCutData'
 import { changeGone, finish, liveAutoCuts, staleAmong, takeBackSteps, withAutoCuts, withSpeedUpsKept } from './autoCuts'
+import { captionItemStatus, captionPendingCount, captionReviewItems, expandGroups, isCaptionKind, keepCaptionItems, mergeGroup, removeCaptionItems } from './captionReview'
 import {
   cutDetail,
   cutKind,
@@ -33,7 +38,11 @@ export type { ReviewKind, ReviewStatus } from './copy'
 export const FRAMING_KEY = 'camera:framing'
 
 export interface ReviewItem {
-  /** 'zoom:<id>', 'camera:<id>', 'camera:framing' or 'cut:<id>'. */
+  /**
+   * 'zoom:<id>', 'camera:<id>', 'camera:framing' or 'cut:<id>'; Captions Studio's 'style:look',
+   * 'group:emphasis' and 'group:text' (group rows), 'emphasis:<mark id>' and 'text:<caption id>'
+   * (their items), 'graphic:<id>', 'card:<title card id>' and 'bleep:<id>'.
+   */
   key: string
   kind: ReviewKind
   /** Source seconds. */
@@ -50,6 +59,16 @@ export interface ReviewItem {
    * how it read in the first state without its record (mergeSnapshot), kept as a choice is.
    */
   went?: 'kept' | 'removed'
+  /** A group row (Captions Studio's emphasis and text fixes): the keys of its items, `emphasis:<mark id>` or `text:<caption id>`. */
+  members?: string[]
+  /** A group row's items as listed (titles and times), in time order: those it listed and those pending now. */
+  parts?: ReviewItem[]
+  /** An emphasis item: how many words it marks (its group's title counts them). */
+  words?: number
+  /** The style row: the record as listed (Remove put its `was` back when the look reads so). */
+  style?: NonNullable<CaptionAuto['style']>
+  /** A text-fix item: the record as listed (Remove put its text back when the caption reads so). */
+  text?: NonNullable<CaptionAuto['text']>[number]
 }
 
 const EPS = 1e-6
@@ -78,6 +97,7 @@ export function reviewItems(project: Project): ReviewItem[] {
   for (const c of liveAutoCuts(project)) {
     if (!chosen.has(c.id)) items.push({ key: `cut:${c.id}`, kind: cutKind(c), start: c.start, end: c.end, title: cutTitle(c), detail: cutDetail(c), cut: c })
   }
+  items.push(...captionReviewItems(project))
   return items.sort(byTime)
 }
 
@@ -93,7 +113,7 @@ export function pendingCount(project: Project): number {
   if (directorsFraming(project)) n++
   const chosen = outcomesOf(project)
   for (const c of liveAutoCuts(project)) if (!chosen.has(c.id)) n++
-  return n
+  return n + captionPendingCount(project)
 }
 
 const idOf = (key: string): string => key.slice(key.indexOf(':') + 1)
@@ -130,6 +150,7 @@ function outcomesOf(project: Pick<Project, 'autoCutOutcomes'>): ReadonlyMap<stri
  * kept otherwise.
  */
 export function reviewStatus(project: Project, item: ReviewItem): ReviewStatus {
+  if (isCaptionKind(item.kind)) return captionItemStatus(project, item)
   if (item.key === FRAMING_KEY) {
     if (directorsFraming(project)) return 'pending'
     return framingUntouched(project.webcam) ? 'removed' : 'kept'
@@ -185,13 +206,21 @@ export function mergeSnapshot(shown: readonly ReviewItem[], project: Project): R
     records ??= new Set((project.autoCuts ?? []).map((c) => c.id))
     return records.has(i.cut.id) ? i : { ...i, went: changeGone(i.cut, project.clips) ? 'removed' : 'kept' }
   }
-  const out = shown.map((i) => now.get(i.key) ?? went(i))
+  // A group row keeps the items it listed (reviewed ones marked) and takes those pending now.
+  const out = shown.map((i) => (i.parts ? mergeGroup(i, now.get(i.key)) : (now.get(i.key) ?? went(i))))
   for (const i of current) if (!keys.has(i.key)) out.push(i)
   return out.sort(byTime)
 }
 
 /** The items of `items` still pending in `project`. */
 const pendingOf = (project: Project, items: readonly ReviewItem[]): ReviewItem[] => items.filter((i) => reviewStatus(project, i) === 'pending')
+
+/** Captions Studio's single items among pending `todo`, group rows given as their items still pending (each once). */
+function captionTodo(project: Project, todo: readonly ReviewItem[]): ReviewItem[] {
+  const out = new Map<string, ReviewItem>()
+  for (const i of pendingOf(project, expandGroups(todo.filter((t) => isCaptionKind(t.kind))))) if (!out.has(i.key)) out.set(i.key, i)
+  return [...out.values()]
+}
 
 /**
  * The project with `items` kept (§2.4): zooms and camera segments no longer automatic (as an edit
@@ -204,7 +233,8 @@ export function keepItems(project: Project, items: readonly ReviewItem[]): Proje
   const todo = pendingOf(project, items)
   if (todo.length === 0) return project
   const keys = new Set(todo.map((i) => i.key))
-  let next = project
+  // Captions Studio's: a group row is its items still pending.
+  let next = keepCaptionItems(project, captionTodo(project, todo))
   if (todo.some((i) => i.kind === 'zoom')) next = { ...next, zooms: next.zooms.map((z) => (keys.has(`zoom:${z.id}`) ? { ...z, auto: false } : z)) }
   if (todo.some((i) => i.kind === 'camera' && i.key !== FRAMING_KEY)) {
     next = { ...next, layouts: (next.layouts ?? []).map((s) => (keys.has(`camera:${s.id}`) ? byHand(s) : s)) }
@@ -247,7 +277,8 @@ export function* removeSteps(project: Project, items: readonly ReviewItem[]): Ge
   const todo = pendingOf(project, items)
   if (todo.length === 0) return project
   const keys = new Set(todo.map((i) => i.key))
-  let next = project
+  // Captions Studio's: a group row is its items still pending.
+  let next = removeCaptionItems(project, captionTodo(project, todo))
   if (todo.some((i) => i.kind === 'zoom')) next = { ...next, zooms: next.zooms.filter((z) => !keys.has(`zoom:${z.id}`)) }
   const segIds = todo.filter((i) => i.kind === 'camera' && i.key !== FRAMING_KEY).map((i) => idOf(i.key))
   if (segIds.length) next = { ...next, layouts: withoutSegments(next.layouts ?? [], segIds) }

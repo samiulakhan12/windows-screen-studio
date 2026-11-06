@@ -10,6 +10,10 @@
  * A long recording lists thousands of rows: a list longer than WINDOW_FROM draws only the rows near
  * the visible area, and the focused row (ReviewList), each row saying where it is in the whole list
  * (aria-posinset, aria-setsize); a row draws again only when what it shows changes (ReviewRow).
+ *
+ * Captions Studio's emphasis and text fixes are group rows (docs/design/captions-studio.md §11.8):
+ * Keep and Remove on the row do all of it, and a disclosure (aria-expanded) lists its single items,
+ * each with its own Keep and Remove (K and Delete on one of them act on it). Each is one undo step.
  */
 import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
 import type React from 'react'
@@ -27,6 +31,7 @@ import {
   REVIEW_HINT,
   REVIEW_TITLE,
   staleMessage,
+  STATUS_WORDS,
   stillBusyMessage,
   stoppedMessage,
   waitMessage
@@ -80,6 +85,28 @@ export function ReviewPanel({ onClose, onNotice }: { onClose: () => void; /** Sh
   const plan = planOf(project)
   // Every row's time, in one pass over the clips, kept for the same clips and plan (times.ts).
   const times = useMemo(() => rowTimes(list, project.clips, plan), [list, project.clips, plan])
+  // Group rows' items as they show (time and status), by the group's key.
+  const groups = useMemo(() => {
+    const out = new Map<string, PartView[]>()
+    for (const i of list) {
+      if (!i.parts) continue
+      const at = rowTimes(i.parts, project.clips, plan)
+      out.set(
+        i.key,
+        i.parts.map((p, k) => ({ key: p.key, title: p.title, time: at[k], status: reviewStatus(project, p) }))
+      )
+    }
+    return out
+  }, [list, project, plan])
+  // The group rows whose items are shown.
+  const [open, setOpen] = useState<ReadonlySet<string>>(() => new Set())
+  const onToggle = useCallback((key: string) => {
+    setOpen((was) => {
+      const next = new Set(was)
+      if (!next.delete(key)) next.add(key)
+      return next
+    })
+  }, [])
 
   const [activeKey, setActiveKey] = useState<string | null>(() => list.find((_, i) => statuses[i] === 'pending')?.key ?? list[0]?.key ?? null)
   const active = (activeKey !== null ? indexOf.get(activeKey) : undefined) ?? 0
@@ -275,6 +302,40 @@ export function ReviewPanel({ onClose, onNotice }: { onClose: () => void; /** Sh
     }
   }
 
+  /**
+   * Keep or Remove one item inside a group row (one undo step), say so, and move the focus on to the
+   * next item of the group still to review (else the group's row). One asked while Keep all or
+   * Remove all works waits for it, as a row's does.
+   */
+  const actPart = (groupKey: string, partKey: string, action: 'keep' | 'remove', waited = false): void => {
+    const { list, indexOf } = latest.current
+    const k = indexOf.get(groupKey)
+    const part = k !== undefined ? list[k].parts?.find((p) => p.key === partKey) : undefined
+    if (!part) return
+    const status = reviewStatus(store.state, part)
+    if (status !== 'pending') {
+      if (waited) say(staleMessage(action, status))
+      return
+    }
+    stopStretch()
+    store.update((p) => (action === 'keep' ? keepItems(p, [part]) : removeItems(p, [part])))
+    const done = reviewProgress(list.map((i) => reviewStatus(store.state, i)))
+    say(actedMessage(action, done.reviewed, done.total))
+    if (waited) return
+    const parts = list[k!].parts ?? []
+    const from = parts.findIndex((p) => p.key === partKey)
+    const next = [...parts.slice(from + 1), ...parts.slice(0, from)].find((p) => reviewStatus(store.state, p) === 'pending')
+    const button = next ? panelRef.current?.querySelector<HTMLButtonElement>(`[data-member-key="${CSS.escape(next.key)}"] button`) : null
+    if (button) button.focus()
+    else focusKey(groupKey)
+  }
+  const askPart = (groupKey: string, partKey: string, action: 'keep' | 'remove'): void => {
+    if (!store.held) return actPart(groupKey, partKey, action)
+    stopStretch()
+    if (busy) say(waitMessage(action, busy.action))
+    store.whenFree(() => latest.current.actPart(groupKey, partKey, action, true))
+  }
+
   // Keep all and Remove all over more than BUSY_FROM rows (§4.3): the button says it is working and
   // the live region what it does and what waits for it, drawn before the work starts; then the work
   // goes a slice of time at a time (Remove all: removeSteps, one cut or speed-up a step), the page
@@ -388,8 +449,8 @@ export function ReviewPanel({ onClose, onNotice }: { onClose: () => void; /** Sh
 
   // The rows' handlers stay the same function from render to render, so a row draws again only
   // when what it shows changes (N redraws the two rows whose focus moved, not the whole list).
-  const latest = useRef({ choose, act, ask, list, indexOf, active })
-  latest.current = { choose, act, ask, list, indexOf, active }
+  const latest = useRef({ choose, act, ask, actPart, askPart, list, indexOf, active })
+  latest.current = { choose, act, ask, actPart, askPart, list, indexOf, active }
   const onRowChoose = useCallback((key: string) => {
     const { list, indexOf, choose } = latest.current
     const k = indexOf.get(key)
@@ -400,6 +461,7 @@ export function ReviewPanel({ onClose, onNotice }: { onClose: () => void; /** Sh
     const k = indexOf.get(key)
     if (k !== undefined) ask(list[k], action)
   }, [])
+  const onPartAct = useCallback((groupKey: string, partKey: string, action: 'keep' | 'remove') => latest.current.askPart(groupKey, partKey, action), [])
   const setRow = useCallback((key: string, el: HTMLButtonElement | null) => {
     if (el) rows.current.set(key, el)
     else rows.current.delete(key)
@@ -411,6 +473,10 @@ export function ReviewPanel({ onClose, onNotice }: { onClose: () => void; /** Sh
     e.preventDefault()
     e.stopPropagation()
     if (e.repeat && !key.again) return
+    // K and Delete on an item inside a group row act on that item.
+    const member = e.target instanceof HTMLElement ? e.target.closest<HTMLElement>('[data-member-key]') : null
+    const owner = member?.closest<HTMLElement>('li[data-key]')?.dataset.key
+    if (member && owner && (key.action === 'keep' || key.action === 'remove')) return askPart(owner, member.dataset.memberKey ?? '', key.action)
     if (key.action === 'next') move(active + 1)
     else if (key.action === 'previous') move(active - 1)
     else if (key.action === 'first') move(0)
@@ -486,6 +552,10 @@ export function ReviewPanel({ onClose, onNotice }: { onClose: () => void; /** Sh
             onAct={onRowAct}
             onFocusRow={pick}
             setRef={setRow}
+            groups={groups}
+            open={open}
+            onToggle={onToggle}
+            onPartAct={onPartAct}
           />
           <div className="review-foot">
             <button
@@ -563,6 +633,14 @@ function rowAt(tops: Float64Array, y: number): number {
   return lo
 }
 
+/** An item inside a group row, as it shows. */
+interface PartView {
+  key: string
+  title: string
+  time: string
+  status: ReviewStatus
+}
+
 interface ListProps {
   list: readonly ReviewItem[]
   indexOf: ReadonlyMap<string, number>
@@ -576,6 +654,11 @@ interface ListProps {
   onAct: (key: string, action: 'keep' | 'remove') => void
   onFocusRow: (key: string) => void
   setRef: (key: string, el: HTMLButtonElement | null) => void
+  /** Group rows' items, by the group's key, and the groups whose items are shown. */
+  groups: ReadonlyMap<string, PartView[]>
+  open: ReadonlySet<string>
+  onToggle: (key: string) => void
+  onPartAct: (groupKey: string, partKey: string, action: 'keep' | 'remove') => void
 }
 
 /**
@@ -588,7 +671,7 @@ interface ListProps {
  * after that is read, so a shorter list has not pulled the scroll position back yet. A row moved to
  * (`reveal`) is then brought fully into view once the rows drawn are all measured.
  */
-function ReviewList({ list, indexOf, statuses, times, active, reveal, onKeyDown, onChoose, onAct, onFocusRow, setRef }: ListProps): JSX.Element {
+function ReviewList({ list, indexOf, statuses, times, active, reveal, onKeyDown, onChoose, onAct, onFocusRow, setRef, groups, open, onToggle, onPartAct }: ListProps): JSX.Element {
   const n = list.length
   const windowed = n > WINDOW_FROM
   const ul = useRef<HTMLUListElement>(null)
@@ -695,6 +778,10 @@ function ReviewList({ list, indexOf, statuses, times, active, reveal, onKeyDown,
       onAct={onAct}
       onFocusRow={onFocusRow}
       setRef={setRef}
+      parts={groups.get(list[k].key)}
+      expanded={open.has(list[k].key)}
+      onToggle={onToggle}
+      onPartAct={onPartAct}
     />
   )
 
@@ -745,14 +832,39 @@ interface RowProps {
   onAct: (key: string, action: 'keep' | 'remove') => void
   onFocusRow: (key: string) => void
   setRef: (key: string, el: HTMLButtonElement | null) => void
+  /** A group row's items (Captions Studio's emphasis and text fixes), whether they are shown, and their Keep and Remove. */
+  parts?: readonly PartView[]
+  expanded: boolean
+  onToggle: (key: string) => void
+  onPartAct: (groupKey: string, partKey: string, action: 'keep' | 'remove') => void
 }
 
 /** One row: drawn again only when what it shows changes (its props are values and stable handlers). */
-const ReviewRow = memo(function ReviewRow({ itemKey, kind, title, detail, time, status, isActive, pos, size, top, onChoose, onAct, onFocusRow, setRef }: RowProps): JSX.Element {
+const ReviewRow = memo(function ReviewRow({
+  itemKey,
+  kind,
+  title,
+  detail,
+  time,
+  status,
+  isActive,
+  pos,
+  size,
+  top,
+  onChoose,
+  onAct,
+  onFocusRow,
+  setRef,
+  parts,
+  expanded,
+  onToggle,
+  onPartAct
+}: RowProps): JSX.Element {
   const ref = useCallback((el: HTMLButtonElement | null) => setRef(itemKey, el), [setRef, itemKey])
+  const partsId = `review-parts-${itemKey.replace(/[^A-Za-z0-9_-]/g, '-')}`
   return (
     <li
-      className={`review-row ${status}${isActive ? ' active' : ''}`}
+      className={`review-row ${status}${isActive ? ' active' : ''}${parts ? ' group' : ''}`}
       data-testid="review-row"
       data-key={itemKey}
       data-status={status}
@@ -789,15 +901,63 @@ const ReviewRow = memo(function ReviewRow({ itemKey, kind, title, detail, time, 
           </button>
         </span>
       ) : (
-        <span className={`review-mark ${status}`}>
-          {status === 'kept' && (
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-              <path d="M5 12l5 5 9-10" />
-            </svg>
-          )}
-          {status === 'kept' ? 'Kept' : 'Removed'}
-        </span>
+        <ReviewMark status={status} />
+      )}
+      {parts && (
+        <button
+          className="btn ghost review-toggle"
+          tabIndex={isActive ? 0 : -1}
+          aria-expanded={expanded}
+          aria-controls={partsId}
+          aria-label={`${expanded ? 'Hide' : 'Show'} the ${parts.length} ${parts.length === 1 ? 'item' : 'items'}: ${title}`}
+          data-testid="review-toggle"
+          onClick={() => onToggle(itemKey)}
+        >
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <path d={expanded ? 'M6 15l6-6 6 6' : 'M6 9l6 6 6-6'} />
+          </svg>
+        </button>
+      )}
+      {parts && expanded && (
+        <ul id={partsId} className="review-parts" aria-label={title}>
+          {parts.map((p) => (
+            <li key={p.key} className={`review-part ${p.status}`} data-member-key={p.key} data-testid="review-part" data-status={p.status}>
+              <span className="review-text">
+                <span className="review-title">{p.title}</span>
+                <span className="review-meta">
+                  {p.time} · {STATUS_WORDS[p.status]}
+                </span>
+              </span>
+              {p.status === 'pending' ? (
+                <span className="review-actions">
+                  <button className="btn" tabIndex={isActive ? 0 : -1} aria-label={`Keep: ${p.title}`} data-testid="review-part-keep" onClick={() => onPartAct(itemKey, p.key, 'keep')}>
+                    Keep
+                  </button>
+                  <button className="btn" tabIndex={isActive ? 0 : -1} aria-label={`Remove: ${p.title}`} data-testid="review-part-remove" onClick={() => onPartAct(itemKey, p.key, 'remove')}>
+                    Remove
+                  </button>
+                </span>
+              ) : (
+                <ReviewMark status={p.status} />
+              )}
+            </li>
+          ))}
+        </ul>
       )}
     </li>
   )
 })
+
+/** Kept (with a tick) or Removed, where Keep and Remove were. */
+function ReviewMark({ status }: { status: ReviewStatus }): JSX.Element {
+  return (
+    <span className={`review-mark ${status}`}>
+      {status === 'kept' && (
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+          <path d="M5 12l5 5 9-10" />
+        </svg>
+      )}
+      {status === 'kept' ? 'Kept' : 'Removed'}
+    </span>
+  )
+}
