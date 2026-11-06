@@ -718,17 +718,38 @@ export function isSwearWord(word: string, mode: 'standard' | 'strict', language?
 const WIDEN = 0.05
 const WIDEN_ESTIMATED = 0.15
 
+/** A word's place for its bleep: its time and its middle, and the span its bleep has (widened, inside the recording). */
+interface BleepPlace {
+  start: number
+  end: number
+  mid: number
+  span: { start: number; end: number }
+}
+
 /**
- * Whether `b` is word `w`'s own bleep (the word `key`): a bleep of the same word over its middle,
- * centred in it or over all of it. A bleep of the word before, whose widening reaches this word's
- * middle, is not: a swear word right after another one gets a bleep of its own, so it stays masked
- * and muted over all its time, also when the one before is cut out (bleepCutOut).
+ * The places of bleep `b`'s word (`places`: every word of the captions that is the same word,
+ * deleted or not) that `b` is the own bleep of: never a neighbour's, whatever their order and
+ * however short either is. A bleep is for one place, so a short swear word next to the same word
+ * gets a bleep of its own, and stays masked and muted over all its time when the other is cut out
+ * (bleepCutOut drops the other's bleep then). Of the places whose middle it covers, `b` is the own
+ * bleep of the places it was made for (its span theirs: several only when they are at one
+ * instant); else, for a bleep made before the words were timed again, of the places its centre
+ * lies in; else of the one place whose whole span it covers (a bleep a little wider) with its
+ * middle nearest to the bleep's centre.
  */
-function ownBleep(b: Bleep, w: { start: number; end: number }, key: string): boolean {
-  const mid = (w.start + w.end) / 2
-  if (b.word !== key || b.start > mid || b.end < mid) return false
+function bleepPlaces(b: Bleep, places: readonly BleepPlace[]): ReadonlySet<BleepPlace> {
+  const under = places.filter((w) => b.start <= w.mid && b.end >= w.mid)
+  const made = under.filter((w) => Math.abs(b.start - w.span.start) <= 1e-6 && Math.abs(b.end - w.span.end) <= 1e-6)
+  if (made.length) return new Set(made)
   const centre = (b.start + b.end) / 2
-  return (centre >= w.start - 1e-6 && centre <= w.end + 1e-6) || (b.start <= w.start + 1e-6 && b.end >= w.end - 1e-6)
+  const centred = under.filter((w) => centre >= w.start - 1e-6 && centre <= w.end + 1e-6)
+  if (centred.length) return new Set(centred)
+  let best: BleepPlace | undefined
+  for (const w of under) {
+    if (b.start > w.span.start + 1e-6 || b.end < w.span.end - 1e-6) continue
+    if (!best || Math.abs(w.mid - centre) < Math.abs(best.mid - centre)) best = w
+  }
+  return new Set(best ? [best] : [])
 }
 
 /** The bleeps the captions' words need, for the words not bleeped yet. */
@@ -761,13 +782,34 @@ function findBleeps(
       nextStart = words[i].start
     }
   }
+  // Every word's place by its bleep key (Bleep.word), the deleted ones too: a bleep made for a word
+  // deleted since is still that word's, never its neighbour's. Made once (long transcripts).
+  const keyOf = (text: string): string => bleepKey(text).slice(0, 40) || text.toLowerCase().slice(0, 40)
+  const last = duration > 0 ? duration : Infinity
+  const places = words.map((w): BleepPlace => {
+    const pad = w.estimated ? WIDEN_ESTIMATED : WIDEN
+    return { start: w.start, end: w.end, mid: (w.start + w.end) / 2, span: { start: Math.max(0, w.start - pad), end: Math.min(last, w.end + pad) } }
+  })
+  const keyAt = words.map((w) => keyOf(w.text))
+  const keys = new Map<string, BleepPlace[]>()
+  keyAt.forEach((k, i) => {
+    const list = keys.get(k)
+    if (list) list.push(places[i])
+    else keys.set(k, [places[i]])
+  })
+  const owners = new Map<Bleep, ReadonlySet<BleepPlace>>()
+  const owns = (b: Bleep, key: string, place: BleepPlace): boolean => {
+    if (b.word !== key) return false
+    let set = owners.get(b)
+    if (!set) owners.set(b, (set = bleepPlaces(b, keys.get(key) ?? [])))
+    return set.has(place)
+  }
   words.forEach((w, i) => {
     if (w.deleted || !isSwearWord(w.text, mode, language, after[i], apart[i])) return
-    const pad = w.estimated ? WIDEN_ESTIMATED : WIDEN
-    const start = Math.max(0, w.start - pad)
-    const end = Math.min(duration > 0 ? duration : Infinity, w.end + pad)
-    const word = bleepKey(w.text).slice(0, 40) || w.text.toLowerCase().slice(0, 40)
-    if (have.some((b) => ownBleep(b, w, word)) || out.some((b) => ownBleep(b, w, word))) return
+    const word = keyAt[i]
+    const place = places[i]
+    if (have.some((b) => owns(b, word, place)) || out.some((b) => owns(b, word, place))) return
+    const { start, end } = place.span
     const id = `b-${textHash(`${start.toFixed(3)}|${end.toFixed(3)}|${word}`)}`
     if (w.estimated) estimated?.add(id)
     out.push({ id, start, end, word, sound, auto: true })

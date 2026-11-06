@@ -2897,10 +2897,15 @@ Offline rules, each optional (§2.9). The choices are `CleanupChoices` (`caps`, 
      (± 0.15 s for estimated times, with the notice "Some bleeped words have estimated times, so a
      little more is bleeped"), and it keeps the matched word in lower case. It carries no caption
      id or word index, so splits, merges, edits and regenerating captions cannot orphan it. Tidy
-     captions adds no bleep for a word that has its own already: a bleep of the same word over its
-     middle, centred in it or over all of it. A bleep of the word before, whose widening reaches
-     the middle of a short word right after it, is not that word's own, so that word gets its own
-     bleep and is masked and muted over all its time, also when the word before is cut out.
+     captions adds no bleep for a word that has its own already. A bleep is the own bleep of one
+     place of its word only (places at one instant share it): of the places whose middle it
+     covers, the one it was made for (its span that place's, widened and kept inside the
+     recording), else the one its centre lies in (words timed again since), else the one whose
+     whole span it covers with its middle nearest the bleep's centre. A bleep of a neighbour,
+     another word or the same one, whose widening reaches the middle of a short word next to it
+     (before or after, however short, start == end included) is not that word's own, so that word
+     gets its own bleep and is masked and muted over all its time, also when the neighbour is cut
+     out.
    - **Masking follows the time.** Wherever spoken-track words are shown, a word is masked when at
      least half of its time lies inside a bleep's span and its text, normalised, equals the
      bleep's word; when no word there matches (the caption was edited), every word with at least

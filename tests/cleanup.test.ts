@@ -9,7 +9,7 @@ import { readBleeps } from '../src/shared/captions/studioData'
 import { languageSubtitleFile } from '../src/shared/captions/subtitles'
 import { studioProject } from './p4Fixtures'
 import { joinGains, soundGainAt, soundGains } from '../src/shared/audio/soundsEdit'
-import { cutFlags, cutWords, transcriptWords } from '../src/shared/editor/transcript'
+import { anchorCutWords, cutFlags, cutWords, settleDeletedWords, transcriptWords } from '../src/shared/editor/transcript'
 import { DEFAULT_CAPTIONS } from '../src/shared/captions/settings'
 import type { Bleep, CaptionSegment, Project } from '../src/shared/types'
 
@@ -392,6 +392,56 @@ describe('bleeping (tests 41, 50)', () => {
       const left = joinGains(soundGains(cut))
       for (const t of [1.71, 1.74, 1.76, 1.79]) expect(soundGainAt(left, t)).toBe(0)
     }
+  })
+
+  it('the same swear word twice, either one short or with no length, in either order: each bleeped for itself, muted over all its time with the other deleted', () => {
+    // Providers squeeze fast repeats ("fuck fuck"), or give a word start == end. The other word's
+    // bleep (its 0.05 s widening) can cover all of the short one: it is still not the short one's,
+    // since deleting the other word drops it (bleepCutOut). Also when an earlier Tidy captions
+    // bleeped only the other word, and Tidy run again adds nothing.
+    const tidy = (q: Project): Project => tidyCaptions(q, { ...OFF, bleep: 'standard', bleepSound: 'tone', words: [] }).project
+    const inside = (w: { start: number; end: number }): number[] =>
+      w.end - w.start > 0.004 ? [w.start + 0.002, (w.start + w.end) / 2, w.end - 0.002] : [(w.start + w.end) / 2]
+    let cases = 0
+    for (const shortFirst of [false, true])
+      for (const short of [0, 0.005, 0.01, 0.02, 0.03, 0.04, 0.05, 0.06, 0.08, 0.1])
+        for (const long of [0.1, 0.3])
+          for (const gap of [0, 0.01, 0.03, 0.05]) {
+            const at = 1.33
+            const [a, b] = shortFirst ? [short, long] : [long, short]
+            const words = [
+              { text: 'this', start: 1, end: 1.3 },
+              { text: 'fuck', start: at, end: at + a },
+              { text: 'fuck', start: at + a + gap, end: at + a + gap + b },
+              { text: 'is', start: at + a + gap + b + 0.03, end: at + a + gap + b + 0.2 }
+            ]
+            const said = project([{ id: 's1', start: 1, end: words[3].end, text: words.map((w) => w.text).join(' '), words }])
+            const fresh = tidy(said)
+            // An earlier Tidy captions bleeped only the long word: the short one is bleeped now.
+            const longWord = words[shortFirst ? 2 : 1]
+            const earlier = { ...fresh, bleeps: fresh.bleeps!.filter((x) => x.start < longWord.start && x.end > longWord.end) }
+            const name = `${shortFirst ? 'short first' : 'short second'}, short ${short} s, long ${long} s, gap ${gap} s`
+            expect(earlier.bleeps, name).toHaveLength(1)
+            for (const p of [fresh, tidy(earlier)]) {
+              expect(maskedSegments(p.transcript!.segments, p.bleeps)[0].text, name).toBe('this f*** f*** is')
+              expect(p.bleeps, name).toHaveLength(2)
+              expect(tidy(p).bleeps, `${name}: Tidy again`).toEqual(p.bleeps)
+              // Either word deleted in the Transcript tab: the other stays muted over all its time.
+              for (const [gone, kept] of [[1, 2], [2, 1]]) {
+                const clips = cutWords(p.clips, transcriptWords(p.transcript), [[gone, gone]], p.duration)
+                const cut = settleDeletedWords({ ...p, clips, transcript: anchorCutWords(p.transcript, p.clips, clips, [[gone, gone]]) }, p)
+                const flags = cutFlags(transcriptWords(cut.transcript), cut.clips)
+                // A word with no length touching the other keeps its instant in the edit (the cut
+                // ends there), and deleting it can also cut the other: nothing to check then.
+                if (!flags[gone] || flags[kept]) continue
+                const gains = joinGains(soundGains(cut))
+                for (const t of inside(words[kept])) expect(soundGainAt(gains, t), `${name}: word ${kept} at ${t} with word ${gone} deleted`).toBe(0)
+                cases++
+              }
+            }
+          }
+    // 640 deletions in all: nearly every one leaves the other word in the edit.
+    expect(cases).toBeGreaterThan(600)
   })
 })
 
