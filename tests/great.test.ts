@@ -7,7 +7,7 @@ import { DEFAULT_CLEANUP } from '../src/shared/captions/cleanup'
 import { DEFAULT_GREAT_OPTIONS, greatHint, greatNotice, planCaptionsGreat, readGreatOptions, resolveGreatOptions, type GreatSummary } from '../src/shared/captions/great'
 import { DEFAULT_CAPTIONS } from '../src/shared/captions/settings'
 import { studioWordTexts } from '../src/shared/captions/words'
-import { chordFromEvent, DEFAULT_KEYMAP, matchShortcut, shortcutIndex, undoHint } from '../src/shared/editor/shortcuts'
+import { chordFromEvent, DEFAULT_KEYMAP, matchShortcut, reviewHint, shortcutIndex, undoHint } from '../src/shared/editor/shortcuts'
 import type { Graphic, Project } from '../src/shared/types'
 import { captions, studioProject, TALL, WIDE } from './p4Fixtures'
 
@@ -160,12 +160,24 @@ describe('Make my captions great (test 42)', () => {
     expect(greatNotice({ ...s, providerFailed: true })).toBe('Captions: Bold Pop, 38 words emphasised, 3 emoji, 1 counter, 1 list, 12 captions tidied. The AI provider could not be reached, so Flown picked on this PC.')
   })
 
-  it('the notice asks for no other key: Shift+R is Review mode\'s, which the notice names only in phase B', () => {
+  // Until Captions Studio phase B the notice named only the undo key: Review mode did not list caption changes.
+  it('the notice names Review mode and its key (Shift+R), with the user\'s keys (§2.8)', () => {
     const s: GreatSummary = { style: 'Bold Pop', emphasised: 38, emoji: 3, counters: 1, lists: 1, keywords: 0, lowerThirds: 0, chapters: 0, quotes: 0, tidied: 12, bleeped: 0 }
     const shiftR = { key: 'R', code: 'KeyR', ctrlKey: false, shiftKey: true, altKey: false, metaKey: false }
-    // Review mode (E-02) owns Shift+R since wave 8 merged; Hold the view keeps R alone.
+    // Review mode (E-02) owns Shift+R; Hold the view keeps R alone.
     expect(matchShortcut(shortcutIndex(DEFAULT_KEYMAP), chordFromEvent(shiftR)!)).toBe('review')
-    for (const notice of [greatNotice(s, undoHint(DEFAULT_KEYMAP)), greatNotice({ ...s, providerFailed: true }, undoHint(DEFAULT_KEYMAP))]) expect(notice).not.toMatch(/Shift\+R|Review|· Undo/)
+    expect(greatNotice(s, undoHint(DEFAULT_KEYMAP), reviewHint(DEFAULT_KEYMAP))).toBe(
+      'Captions: Bold Pop, 38 words emphasised, 3 emoji, 1 counter, 1 list, 12 captions tidied. Review (Shift + R) · Ctrl + Z to undo'
+    )
+    expect(greatNotice({ ...s, providerFailed: true }, undoHint(DEFAULT_KEYMAP), reviewHint(DEFAULT_KEYMAP))).toBe(
+      'Captions: Bold Pop, 38 words emphasised, 3 emoji, 1 counter, 1 list, 12 captions tidied. Review (Shift + R) · Ctrl + Z to undo. The AI provider could not be reached, so Flown picked on this PC.'
+    )
+    // The user's own Review key; none: the notice still says where the changes are listed.
+    expect(reviewHint({ ...DEFAULT_KEYMAP, review: ['Ctrl+Shift+V'] })).toBe('. Review (Ctrl + Shift + V)')
+    expect(reviewHint({ ...DEFAULT_KEYMAP, review: [] })).toBe('. Review mode lists them')
+    // Nothing changed: nothing to review.
+    const none: GreatSummary = { ...s, style: null, emphasised: 0, emoji: 0, counters: 0, lists: 0, tidied: 0 }
+    expect(greatNotice(none, undoHint(DEFAULT_KEYMAP), reviewHint(DEFAULT_KEYMAP))).toBe('Your captions already have all of this.')
   })
 
   it('the hint follows the resolved options', () => {

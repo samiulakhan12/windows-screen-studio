@@ -325,11 +325,10 @@ describe('Translate again from the keyboard (§2.15)', () => {
 })
 
 describe('Clean up’s hints (§2.9, §0.4)', () => {
-  // Review mode comes in phase B: until then no hint sends the user looking for it.
-  it('point to nothing this version lacks', async () => {
+  // Until Captions Studio phase B, Review mode did not list tidy changes and the hint left it out.
+  it('say tidy changes are listed in Review mode', async () => {
     const hints = (await settle(cleanup())).filter((e) => e.type === 'p' && e.props.className === 'hint').map(textOf)
-    expect(hints).toContain('The word list also helps Generate captions spell these words.')
-    for (const hint of hints) expect(hint).not.toMatch(/Review/)
+    expect(hints).toContain('Tidy changes are listed in Review mode. The word list also helps Generate captions spell these words.')
   })
 })
 

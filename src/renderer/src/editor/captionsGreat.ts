@@ -18,16 +18,16 @@ const publish = (): void => {
 
 /**
  * Runs Make my captions great on `store` for a `frame`-sized output and shows its notice, ending
- * with `undo` (undoHint); nothing while a run goes on.
+ * with `review` (reviewHint) and `undo` (undoHint); nothing while a run goes on.
  */
-export async function startCaptionsGreat(deps: { store: EditStore<Project>; frame: { w: number; h: number }; notice: (message: string) => void; undo?: string }): Promise<void> {
+export async function startCaptionsGreat(deps: { store: EditStore<Project>; frame: { w: number; h: number }; notice: (message: string) => void; undo?: string; review?: string }): Promise<void> {
   if (running) return
   const ctrl = new AbortController()
   running = ctrl
   publish()
   try {
     const options = readGreatOptions(await window.api.getPref('captionsGreat').catch(() => null))
-    const r = await runCaptionsGreat({ store: deps.store, frame: deps.frame, options, signal: ctrl.signal, undo: deps.undo ?? '' })
+    const r = await runCaptionsGreat({ store: deps.store, frame: deps.frame, options, signal: ctrl.signal, undo: deps.undo ?? '', review: deps.review ?? '' })
     if (r && !ctrl.signal.aborted) deps.notice(r.notice)
   } catch (err) {
     if (!ctrl.signal.aborted) deps.notice(`Make my captions great could not finish: ${err instanceof Error ? err.message : String(err)}`)

@@ -252,6 +252,14 @@ export function orPress(text: string, accelerators: readonly string[] | undefine
   return accelerators?.length ? `${text}, or press ${shortcutLabel(accelerators[0])}` : text
 }
 
+/**
+ * ". Review (Shift + R)", for a notice after automatic changes Review mode lists (Captions Studio
+ * §2.8), with the user's key; ". Review mode lists them" when Review has none.
+ */
+export function reviewHint(keymap: Keymap): string {
+  return keymap.review.length ? `. Review (${shortcutLabel(keymap.review[0])})` : '. Review mode lists them'
+}
+
 /** " · Ctrl + Z to undo", for a notice after a big change; empty when Undo has no shortcut. */
 export function undoHint(keymap: Keymap): string {
   return keymap.undo.length ? ` · ${shortcutLabel(keymap.undo[0])} to undo` : ''

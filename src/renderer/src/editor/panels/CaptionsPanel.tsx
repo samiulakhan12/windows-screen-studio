@@ -5,7 +5,7 @@ import { findInCaptions, mergeWithNext, readSuggestedChapters, readSuggestedText
 import { captionIndexAt } from '../../../../shared/captions/layout'
 import { languageSubtitleFile, spokenSegments, SUBTITLE_FORMATS, type SubtitleFormat } from '../../../../shared/captions/subtitles'
 import { displayTime } from '../../../../shared/editor/clips'
-import { undoHint, withShortcut } from '../../../../shared/editor/shortcuts'
+import { reviewHint, undoHint, withShortcut } from '../../../../shared/editor/shortcuts'
 import { chapterNear, createChapter } from '../../../../shared/editor/titles'
 import { planOf, videoTimeAt } from '../../../../shared/engine/freeze'
 import { formatTime } from '../../../../shared/engine/project'
@@ -207,7 +207,7 @@ export function CaptionsPanel(props: InspectorProps): JSX.Element {
   const shown = visibleSize(project)
   const onGreat = (): void => {
     const f = editorFrame(services.store.state)
-    void startCaptionsGreat({ store: services.store, frame: { w: f.outW, h: f.outH }, notice: props.onNotice, undo: undoHint(keymap) })
+    void startCaptionsGreat({ store: services.store, frame: { w: f.outW, h: f.outH }, notice: props.onNotice, undo: undoHint(keymap), review: reviewHint(keymap) })
   }
 
   const selectedId = props.selection?.kind === 'caption' ? props.selection.id : null

@@ -225,16 +225,16 @@ describe('with nothing selected', () => {
   })
 })
 
-describe('the hints (§0.4)', () => {
-  // Review mode comes in phase B: until then no hint sends the user looking for it.
-  it('point to nothing this version lacks, with nothing selected and on a pop-up made automatically', async () => {
+describe('the hints (§2.11, §0.4)', () => {
+  // Until Captions Studio phase B, Review mode did not list caption changes and no hint named it;
+  // it lists them now, and the hints say so again.
+  it('say Review mode lists pop-ups, with nothing selected and on a pop-up made automatically', async () => {
     const panel = hints(await settle(view(), SKIP))
-    expect(panel).toContain('Drag one in the preview to place it yourself.')
+    expect(panel).toContain('Pop-ups made here are listed in Review mode. Drag one in the preview to place it yourself.')
     unmountAll()
     store.state = { ...store.state, graphics: [counterOf('c9', 1, 4)] }
     const selectedHints = hints(await settle(view({ kind: 'graphic', id: 'c9' }), SKIP))
-    expect(selectedHints).toContain('Made automatically. Editing it makes it yours.')
-    for (const hint of [...panel, ...selectedHints]) expect(hint).not.toMatch(/Review/)
+    expect(selectedHints).toContain('Made automatically. Editing it makes it yours; Review mode lists it until then.')
   })
 })
 

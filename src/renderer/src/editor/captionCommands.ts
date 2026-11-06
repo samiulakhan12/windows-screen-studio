@@ -27,6 +27,8 @@ export interface CaptionCommandDeps {
   frame(): { w: number; h: number }
   /** " · Ctrl + Z to undo" with the user's keys (undoHint), for a notice after a big change. */
   undo?(): string
+  /** ". Review (Shift + R)" with the user's keys (reviewHint), for a notice after automatic changes. */
+  review?(): string
 }
 
 const words = (n: number): string => `${n} ${n === 1 ? 'word' : 'words'}`
@@ -117,7 +119,7 @@ export function captionCommands(deps: CaptionCommandDeps): Record<CaptionCommand
   return {
     captionsGreat: () => {
       deps.setTab('captions')
-      void startCaptionsGreat({ store: deps.store, frame: deps.frame(), notice: deps.notice, undo: deps.undo?.() ?? '' })
+      void startCaptionsGreat({ store: deps.store, frame: deps.frame(), notice: deps.notice, undo: deps.undo?.() ?? '', review: deps.review?.() ?? '' })
     },
     captionStyles: () => {
       deps.setTab('captions')

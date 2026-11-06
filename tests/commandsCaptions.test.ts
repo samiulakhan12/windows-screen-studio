@@ -10,9 +10,9 @@ import { contexts, key, mockReact, render, testStore, unmountAll, useEditorConte
 
 const p4 = vi.hoisted(() => ({ great: [] as unknown[], plans: [] as unknown[], tidies: [] as unknown[] }))
 vi.mock('../src/renderer/src/editor/greatRun', () => ({
-  runCaptionsGreat: async (deps: { options: unknown; frame: unknown; undo?: string }) => {
+  runCaptionsGreat: async (deps: { options: unknown; frame: unknown; undo?: string; review?: string }) => {
     p4.great.push(deps)
-    return { notice: `Captions: Bold Pop, 38 words emphasised${deps.undo ?? ''}` }
+    return { notice: `Captions: Bold Pop, 38 words emphasised${deps.review ?? ''}${deps.undo ?? ''}` }
   }
 }))
 vi.mock('../src/shared/captions/great', async (importOriginal) => ({
@@ -87,7 +87,14 @@ const base = (captions?: CaptionSettings): Project => ({
 let store: ReturnType<typeof testStore<Project>>
 const tabs: string[] = []
 const notices: string[] = []
-const deps = (): unknown => ({ store, setTab: (t: string) => tabs.push(t), notice: (m: string) => notices.push(m), frame: () => ({ w: 1080, h: 1920 }), undo: () => ' · Ctrl + Z to undo' })
+const deps = (): unknown => ({
+  store,
+  setTab: (t: string) => tabs.push(t),
+  notice: (m: string) => notices.push(m),
+  frame: () => ({ w: 1080, h: 1920 }),
+  undo: () => ' · Ctrl + Z to undo',
+  review: () => '. Review (Shift + R)'
+})
 const flush = async (): Promise<void> => {
   for (let i = 0; i < 6; i++) await Promise.resolve()
   await new Promise((r) => setTimeout(r, 0))
@@ -120,8 +127,8 @@ describe('the seven Captions commands', () => {
     await flush()
     expect(tabs).toEqual(['captions'])
     expect(p4.great).toHaveLength(1)
-    expect(p4.great[0]).toMatchObject({ options: { read: { emoji: true } }, frame: { w: 1080, h: 1920 }, undo: ' · Ctrl + Z to undo' })
-    expect(notices).toEqual(['Captions: Bold Pop, 38 words emphasised · Ctrl + Z to undo'])
+    expect(p4.great[0]).toMatchObject({ options: { read: { emoji: true } }, frame: { w: 1080, h: 1920 }, undo: ' · Ctrl + Z to undo', review: '. Review (Shift + R)' })
+    expect(notices).toEqual(['Captions: Bold Pop, 38 words emphasised. Review (Shift + R) · Ctrl + Z to undo'])
   })
 
   it('Add a caption language… asks Languages for the AI route while On this PC is not offered', () => {

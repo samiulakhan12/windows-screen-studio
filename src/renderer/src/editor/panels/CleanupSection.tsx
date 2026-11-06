@@ -319,8 +319,7 @@ export function CleanupSection({ project }: { project: Project }): JSX.Element {
         <p className="hint" role="status">
           {status}
         </p>
-        {/* TODO(phase B): "Tidy changes are listed in Review mode." comes back with Review mode (§2.9). */}
-        <p className="hint">The word list also helps Generate captions spell these words.</p>
+        <p className="hint">Tidy changes are listed in Review mode. The word list also helps Generate captions spell these words.</p>
       </Section>
     </div>
   )

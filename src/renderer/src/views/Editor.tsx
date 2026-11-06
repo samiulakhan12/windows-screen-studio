@@ -38,6 +38,7 @@ import {
   standardEditCommand,
   withShortcut,
   zoomLevelKeysHint,
+  reviewHint,
   undoHint,
   type Keymap
 } from '../../../shared/editor/shortcuts'
@@ -1305,7 +1306,8 @@ function EditorSession({
           const f = editorFrame(store.state)
           return { w: f.outW, h: f.outH }
         },
-        undo: () => undoHint(latest.current.keymap)
+        undo: () => undoHint(latest.current.keymap),
+        review: () => reviewHint(latest.current.keymap)
       }),
       showCaptions: showTab('captions'),
       showStyle: showTab('style'),
