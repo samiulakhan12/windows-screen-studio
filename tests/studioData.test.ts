@@ -486,6 +486,14 @@ describe('readCaptionAuto (rule 8)', () => {
     expect(readCaptionAuto({ style: { was: 7, by: 'great', name: 'x' } }, transcript)).toBeUndefined()
     expect(readCaptionAuto({ style: { was: null, by: 'robot', name: 'x' } }, transcript)).toBeUndefined()
   })
+
+  it('reads the speaker names a run turned on with its look', () => {
+    const out = readCaptionAuto({ style: { was: null, by: 'great', name: 'Subtitle', names: true } }, transcript)
+    expect(out).toEqual({ style: { was: null, by: 'great', name: 'Subtitle', names: true } })
+    expect(readCaptionAuto(JSON.parse(JSON.stringify(out)), transcript)).toEqual(out)
+    // Only `true` counts.
+    expect(readCaptionAuto({ style: { was: null, by: 'great', name: 'x', names: 'yes' } }, transcript)).toEqual({ style: { was: null, by: 'great', name: 'x' } })
+  })
 })
 
 describe('long marks and anchors', () => {

@@ -352,11 +352,15 @@ export function keepCaptionItems(project: Project, items: readonly ReviewItem[])
   return next
 }
 
-/** `now` with the look (lookOf's fields) of `from`; the rest of the settings stays as the user left it. */
-function withLookOf(now: CaptionSettings, from: CaptionSettings): CaptionSettings {
+/**
+ * `now` with the look (lookOf's fields) of `from`; the rest of the settings stays as the user left
+ * it, but speaker names the run turned on with its look (`names`) go with it.
+ */
+function withLookOf(now: CaptionSettings, from: CaptionSettings, names: boolean): CaptionSettings {
   const { studio: _s, font: _f, ...rest } = now
   void _s
   void _f
+  if (names && !from.showSpeaker) delete rest.showSpeaker
   return {
     ...rest,
     preset: from.preset,
@@ -381,15 +385,15 @@ function withPlace(c: CaptionSettings, place: { x: number; y: number } | undefin
 /**
  * The caption settings after a Remove of the style row (`style`) or of emphasis (§11.8). The style
  * row puts back only the look from before the first automatic change: showing or hiding captions,
- * speaker names, the track, the digits and the dragged place stay as the user left them, as the
- * settle rule keeps the record through them. Marks left on a Classic look get its twin, so they still
+ * speaker names (but those the run turned on), the track, the digits and the dragged place stay as
+ * the user left them, as the settle rule keeps the record through them. Marks left on a Classic look get its twin, so they still
  * draw (as Ctrl+B does, §5.8); with no marks left, an unedited twin goes back to its Classic look,
  * so removing every row of a run gives back the settings from before it.
  */
 function lookAfterRemove(p: Project, style: StyleRecord | undefined): Project {
   const now = p.captions
   let c: CaptionSettings | undefined = now
-  if (style) c = withLookOf(now ?? DEFAULT_CAPTIONS, style.was ?? DEFAULT_CAPTIONS)
+  if (style) c = withLookOf(now ?? DEFAULT_CAPTIONS, style.was ?? DEFAULT_CAPTIONS, !!style.names)
   if (!c) return p
   const marks = !!p.captionMarks?.length
   if (style && marks && !c.studio) c = { ...c, studio: legacyTwin(c) }

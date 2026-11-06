@@ -765,7 +765,7 @@ export function readCaptionAuto(raw: unknown, transcript: Transcript | undefined
   let style: CaptionAuto['style']
   if (isObj(raw.style) && (raw.style.by === 'great' || raw.style.by === 'polish')) {
     const was = raw.style.was === null ? null : readCaptionSettings(raw.style.was)
-    if (was !== undefined) style = { was, by: raw.style.by, name: oneLine(raw.style.name, 64) }
+    if (was !== undefined) style = { was, by: raw.style.by, name: oneLine(raw.style.name, 64), ...opt('names', raw.style.names === true ? (true as const) : undefined) }
   }
   const text: NonNullable<CaptionAuto['text']> = []
   if (Array.isArray(raw.text) && transcript) {

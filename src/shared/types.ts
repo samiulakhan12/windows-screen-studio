@@ -757,8 +757,12 @@ export interface Bleep {
 
 /** What automation replaced, so Review › Remove can put it back (§11.8). */
 export interface CaptionAuto {
-  /** The caption settings before Make my captions great or Polish changed the look (null: none were set). */
-  style?: { was: CaptionSettings | null; by: 'great' | 'polish'; name: string }
+  /**
+   * The caption settings before Make my captions great or Polish changed the look (null: none were
+   * set). `names`: the run turned speaker names on with its look (Auto style's speakers rule), so
+   * Remove turns them off again.
+   */
+  style?: { was: CaptionSettings | null; by: 'great' | 'polish'; name: string; names?: true }
   /** Captions whose text a clean-up changed: their text and words before. */
   text?: { caption: string; text: string; words?: CaptionWord[] }[]
 }

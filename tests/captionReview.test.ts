@@ -257,6 +257,27 @@ describe('Keep and Remove, per kind', () => {
     }
   })
 
+  it('speaker names the run turned on with its look go on Remove of the style row; names the user had stay', () => {
+    const named = captions(['Hi, I am Priya and today we look at reports.', 'Thanks Priya, I am Sam. First open Settings.', 'Then click Export and pick a folder.', 'And that is all, thanks Sam.']).map((c, i) => ({ ...c, speaker: i % 2 ? 'Sam' : 'Priya' }))
+    const start = studioProject({ segments: named })
+    // Two speakers in a wide frame: Subtitle with a colour for each speaker and their names (§11.6).
+    const run = planCaptionsGreat({ project: start, frame: WIDE, cleanup: DEFAULT_CLEANUP, words: [], by: 'great' }, DEFAULT_GREAT_OPTIONS).project
+    expect(run.captions).toMatchObject({ showSpeaker: true, studio: { from: 'subtitle', speakerColors: true } })
+    expect(run.captionAuto?.style?.names).toBe(true)
+    const style = row(reviewItems(run), STYLE_KEY)
+    const r = removeItems(run, [style])
+    expect(r.captions?.showSpeaker).toBeUndefined()
+    expect(reviewStatus(r, style)).toBe('removed')
+    expect(removeItems(run, reviewItems(run))).toEqual(start)
+    // Names on before the run are the user's: they stay, and the run records none.
+    const had: Project = { ...start, captions: { ...DEFAULT_CAPTIONS, showSpeaker: true } }
+    const run2 = planCaptionsGreat({ project: had, frame: WIDE, cleanup: DEFAULT_CLEANUP, words: [], by: 'great' }, DEFAULT_GREAT_OPTIONS).project
+    expect(run2.captionAuto?.style).toBeDefined()
+    expect(run2.captionAuto?.style?.names).toBeUndefined()
+    expect(removeItems(run2, [row(reviewItems(run2), STYLE_KEY)]).captions?.showSpeaker).toBe(true)
+    expect(removeItems(run2, reviewItems(run2))).toEqual(had)
+  })
+
   it('graphics, title cards and bleeps: Keep clears auto, Remove deletes; others are left alone', () => {
     const p: Project = {
       ...before,

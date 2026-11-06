@@ -209,9 +209,12 @@ export function* planCaptionsGreatSteps(input: GreatInput, options: GreatOptions
   if (o.style) {
     const s = autoStyleSettings(p, input.frame, input.brand)
     if (s && !deepEqual(s.settings, p.captions)) {
-      const was = p.captionAuto?.style ? p.captionAuto.style.was : (p.captions ?? null)
+      const had = p.captionAuto?.style
+      const was = had ? had.was : (p.captions ?? null)
       const name = s.tile === 'brand' ? 'Brand' : (studioPreset(s.tile)?.name ?? s.tile)
-      p = { ...p, captions: s.settings, captionAuto: { ...p.captionAuto, style: { was, by: input.by, name } } }
+      // Speaker names the speakers rule turned on go with the look on Remove (also from an earlier run).
+      const names = had?.names || (s.settings.showSpeaker === true && p.captions?.showSpeaker !== true)
+      p = { ...p, captions: s.settings, captionAuto: { ...p.captionAuto, style: { was, by: input.by, name, ...(names ? { names: true as const } : {}) } } }
       summary.style = name
     }
   }
