@@ -62,11 +62,21 @@ export function useTextProviders(): AiProviderInfo[] | null {
 /** Opens Settings at the AI providers. */
 export const openAiSettings = (): void => void window.dispatchEvent(new CustomEvent(OPEN_SETTINGS_EVENT, { detail: { section: 'ai' } }))
 
-/** A translation under way: its language and how many captions it sends. */
+/** A translation under way: its language, how many captions it sends, and its request id (cancelAiText). */
 interface Job {
   language: string
   count: number
   cancelled: boolean
+  id: string
+}
+
+/** Numbers the translations, so each request has its own id. */
+let translateSeq = 0
+
+/** Drops a translation's answer and stops the provider's request. */
+function stopJob(job: Job): void {
+  job.cancelled = true
+  void window.api.cancelAiText(job.id).catch(() => undefined)
 }
 
 export function LanguagesSection({ project }: { project: Project }): JSX.Element {
@@ -98,8 +108,8 @@ export function LanguagesSection({ project }: { project: Project }): JSX.Element
   useEffect(
     () => () => {
       live.current = false
-      // A translation still under way is dropped with the section.
-      if (running.current) running.current.cancelled = true
+      // A translation still under way is dropped with the section, and the provider's request stopped.
+      if (running.current) stopJob(running.current)
     },
     []
   )
@@ -136,7 +146,7 @@ export function LanguagesSection({ project }: { project: Project }): JSX.Element
       setStatus(`The ${languageName(code)} captions are up to date`)
       return
     }
-    const mine: Job = { language: code, count: sent.length, cancelled: false }
+    const mine: Job = { language: code, count: sent.length, cancelled: false, id: `captions-translate-${++translateSeq}` }
     running.current = mine
     landing.current = lastInputWasKey() ? { language: code, again } : null
     setJob(mine)
@@ -144,8 +154,7 @@ export function LanguagesSection({ project }: { project: Project }): JSX.Element
     setStatus('')
     let result: AiTextResult
     try {
-      // TODO(phase B): pass a requestId so Cancel also stops the provider's request (cancelAiText, publishing pack).
-      result = await window.api.aiText(provider.id, { task: 'translate', segments: sent, targetLanguage: languageName(code) })
+      result = await window.api.aiText(provider.id, { task: 'translate', segments: sent, targetLanguage: languageName(code) }, mine.id)
     } catch (err) {
       if (!mine.cancelled && live.current) setError(`Could not translate: ${ipcMessage(err).replace(/\.?$/, '.')}`)
       return
@@ -173,7 +182,7 @@ export function LanguagesSection({ project }: { project: Project }): JSX.Element
   const cancel = (): void => {
     const j = running.current
     if (!j) return
-    j.cancelled = true
+    stopJob(j)
     running.current = null
     setJob(null)
     setError('Could not translate: it was cancelled.')

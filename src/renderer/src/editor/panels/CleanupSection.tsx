@@ -40,6 +40,15 @@ function Check(props: { testid: string; label: string; title?: string; checked: 
   )
 }
 
+/** Numbers the AI fix's requests, so each has its own request id. */
+let cleanupSeq = 0
+
+/** Drops a run's answer and stops the provider's request (cancelAiText). */
+function stopRun(run: { cancelled: boolean; id: string }): void {
+  run.cancelled = true
+  void window.api.cancelAiText(run.id).catch(() => undefined)
+}
+
 /** "flow in, flowen" → ["flow in", "flowen"]. */
 const heardForms = (text: string): string[] => text.split(',').map((s) => s.trim()).filter(Boolean).slice(0, WORD_LIST_LIMITS.heard)
 
@@ -67,11 +76,12 @@ export function CleanupSection({ project }: { project: Project }): JSX.Element {
   }
   const focusAi = useRef(false)
   const live = useRef(true)
-  const run = useRef<{ cancelled: boolean } | null>(null)
+  /** The AI fix under way: its request id, so Cancel (or the section going) stops the provider's request too. */
+  const run = useRef<{ cancelled: boolean; id: string } | null>(null)
   useEffect(
     () => () => {
       live.current = false
-      if (run.current) run.current.cancelled = true
+      if (run.current) stopRun(run.current)
     },
     []
   )
@@ -134,12 +144,11 @@ export function CleanupSection({ project }: { project: Project }): JSX.Element {
     // (rule 6) and keeps the word list's terms, the digits, the capitals and the full stops.
     const asked = ai && chosen ? (tidyCaptions(store.state, { ...choices, ai: false, bleep: 'off', words: list }).project.transcript?.segments ?? before) : before
     if (ai && chosen) {
-      const mine = { cancelled: false }
+      const mine = { cancelled: false, id: `captions-cleanup-${++cleanupSeq}` }
       run.current = mine
       setBusy(true)
       try {
-        // TODO(phase B): pass a requestId so Cancel also stops the provider's request (cancelAiText, publishing pack).
-        const result = await window.api.aiText(chosen.id, { task: 'cleanup', segments: asked })
+        const result = await window.api.aiText(chosen.id, { task: 'cleanup', segments: asked }, mine.id)
         if (mine.cancelled || !live.current) return
         if (result.task === 'cleanup') fix = result
         else leftOut = 'The AI fix was left out: the provider answered something else.'
@@ -178,7 +187,7 @@ export function CleanupSection({ project }: { project: Project }): JSX.Element {
   }
 
   const cancel = (): void => {
-    if (run.current) run.current.cancelled = true
+    if (run.current) stopRun(run.current)
     run.current = null
     setBusy(false)
     setStatus('Tidy captions was cancelled; nothing was changed.')

@@ -90,21 +90,31 @@ export async function loadGreatInputs(): Promise<GreatInputs> {
   return { great: readGreatOptions(great), cleanup: readCleanupChoices(cleanup), words: readWordList(words), brand }
 }
 
+/** Numbers the marks requests, so each has its own request id. */
+let marksSeq = 0
+
 /**
  * The AI marks for the project's captions from `provider`, with a hash of each caption's text as it
  * was when asked. The provider reads the captions as the planner's tidy step leaves them
- * ("twenty five" as "25"), so its word indexes name the words the planner picks from.
+ * ("twenty five" as "25"), so its word indexes name the words the planner picks from. The request
+ * is named, so Cancel (`signal`) stops the provider's own request too (cancelAiText).
  */
-async function requestMarks(project: Project, provider: string, tidy: { cleanup: CleanupChoices; words: readonly WordListEntry[] } | null): Promise<{ answer: MarksAnswer; sent: Map<string, string> }> {
+async function requestMarks(project: Project, provider: string, tidy: { cleanup: CleanupChoices; words: readonly WordListEntry[] } | null, signal: AbortSignal): Promise<{ answer: MarksAnswer; sent: Map<string, string> }> {
   const own = project.transcript?.segments ?? []
   const segments = tidy ? (tidyCaptions(project, { ...tidy.cleanup, ai: false, bleep: 'off', words: tidy.words }).project.transcript?.segments ?? own) : own
   const language = project.transcript?.language
   const request: AiTextRequest = { task: 'marks', segments, marks: { ...(language ? { language } : {}), captions: [] } }
   const sent = new Map(own.map((s) => [s.id, textHash(s.text)]))
-  // TODO(phase B): pass a requestId and call cancelAiText on Cancel once the publishing pack has merged.
-  const result = await window.api.aiText(provider, request)
-  if (result.task !== 'marks') throw new Error('The AI provider answered another task.')
-  return { answer: result.answer, sent }
+  const id = `captions-great-${++marksSeq}`
+  const stop = (): void => void window.api.cancelAiText(id).catch(() => undefined)
+  signal.addEventListener('abort', stop)
+  try {
+    const result = await window.api.aiText(provider, request, id)
+    if (result.task !== 'marks') throw new Error('The AI provider answered another task.')
+    return { answer: result.answer, sent }
+  } finally {
+    signal.removeEventListener('abort', stop)
+  }
 }
 
 /** The answer without captions whose text changed while it was asked (a hash of the text is compared). */
@@ -153,7 +163,7 @@ export async function runCaptionsGreat(deps: { store: EditStore<Project>; frame:
   let providerFailed = false
   if (options.provider) {
     try {
-      const [answer, kind] = await Promise.all([requestMarks(start, options.provider, options.tidy ? inputs : null), providerKind(options.provider)])
+      const [answer, kind] = await Promise.all([requestMarks(start, options.provider, options.tidy ? inputs : null, signal), providerKind(options.provider)])
       if (signal.aborted) return null
       asked = answer
       marksVia = kind

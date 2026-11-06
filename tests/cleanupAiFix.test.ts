@@ -11,6 +11,8 @@ import { button, byTestId, contexts, mockReact, settle, testStore, unmountAll, u
 
 type Sent = { task: string; segments: { id: string; start: number; end: number; text: string }[] }
 const sent: Sent[] = []
+/** The request ids the fixes were sent with, and those cancelAiText was asked to stop. */
+const ids = { sent: [] as unknown[], stopped: [] as unknown[] }
 // While `hold.on`, the provider's answers wait until the test lets each one go.
 const hold = { on: false, answers: [] as (() => void)[] }
 vi.stubGlobal('document', { activeElement: null, body: {} })
@@ -20,11 +22,13 @@ vi.stubGlobal('window', {
     setPref: async () => undefined,
     listAiProviders: async () => [{ id: 'g1', kind: 'gemini', label: '', model: 'gemini-x' }],
     // The provider fixes one misspelt word and keeps the rest as it was sent.
-    aiText: async (_id: string, req: Sent) => {
+    aiText: async (_id: string, req: Sent, requestId?: string) => {
       sent.push(req)
+      ids.sent.push(requestId)
       if (hold.on) await new Promise<void>((go) => hold.answers.push(go))
       return { task: 'cleanup', segments: req.segments.map((s) => ({ ...s, text: s.text.replace('reprots', 'reports') })) }
-    }
+    },
+    cancelAiText: async (requestId: string) => void ids.stopped.push(requestId)
   },
   addEventListener: () => undefined,
   removeEventListener: () => undefined,
@@ -48,6 +52,8 @@ const cleanup = (): unknown => ({ type: CleanupSection, props: { project: store.
 beforeEach(() => {
   unmountAll()
   sent.length = 0
+  ids.sent.length = 0
+  ids.stopped.length = 0
   hold.on = false
   hold.answers.length = 0
   store = testStore(base())
@@ -77,6 +83,10 @@ describe('Tidy captions with the AI fix (§11.7 rule 6)', () => {
     ;(button(els, 'Cancel')!.props.onClick as () => void)()
     els = await settle(cleanup())
     expect(byTestId(els, 'cleanup-run')?.props.disabled).toBe(false)
+    // Cancel also stops the provider's own request, by the id it was sent with.
+    expect(ids.sent).toHaveLength(1)
+    expect(ids.sent[0]).toMatch(/^[A-Za-z0-9_-]{1,64}$/)
+    expect(ids.stopped).toEqual(ids.sent)
     ;(byTestId(els, 'cleanup-run')!.props.onClick as () => void)()
     els = await settle(cleanup())
     expect(sent).toHaveLength(2)
@@ -92,5 +102,20 @@ describe('Tidy captions with the AI fix (§11.7 rule 6)', () => {
     expect(button(els, 'Cancel')).toBeUndefined()
     expect(store.state.transcript!.segments.map((s) => s.text)).toEqual(['We use Qbexel for 25 reports.'])
     expect(store.steps).toBe(1)
+    // The second run had its own id, and ended by itself: only the first was stopped.
+    expect(ids.sent[1]).not.toBe(ids.sent[0])
+    expect(ids.stopped).toEqual([ids.sent[0]])
+  })
+
+  it('a fix still under way when the section goes stops the provider’s request', async () => {
+    hold.on = true
+    let els = await settle(cleanup())
+    els = await settle(cleanup())
+    ;(byTestId(els, 'cleanup-run')!.props.onClick as () => void)()
+    await settle(cleanup())
+    expect(ids.sent).toHaveLength(1)
+    expect(ids.stopped).toEqual([])
+    unmountAll()
+    expect(ids.stopped).toEqual(ids.sent)
   })
 })

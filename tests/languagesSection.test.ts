@@ -17,6 +17,8 @@ const keys = vi.hoisted(() => ({ last: false }))
 vi.mock('../src/renderer/src/editor/focus', async (importOriginal) => ({ ...(await importOriginal<Record<string, unknown>>()), lastInputWasKey: () => keys.last }))
 
 const sent: unknown[] = []
+/** The request ids each translation was sent with, and those cancelAiText was asked to stop. */
+const ids = { sent: [] as unknown[], stopped: [] as unknown[] }
 // A translation answers at once, or once `ai.wait` settles; it fails when `ai.fail` is set.
 const ai: { wait: Promise<void> | null; fail: boolean } = { wait: null, fail: false }
 /** The page (document.body). */
@@ -34,12 +36,14 @@ vi.stubGlobal('window', {
     getPref: async () => null,
     setPref: async () => undefined,
     listAiProviders: async () => [{ id: 'g1', kind: 'gemini', label: '', model: 'gemini-x' }],
-    aiText: async (_id: string, req: { segments: { id: string; start: number; end: number; text: string }[] }) => {
+    aiText: async (_id: string, req: { segments: { id: string; start: number; end: number; text: string }[] }, requestId?: string) => {
       sent.push(req)
+      ids.sent.push(requestId)
       if (ai.wait) await ai.wait
       if (ai.fail) throw new Error('the provider is busy')
       return { task: 'translate', segments: req.segments.map((s) => ({ id: s.id, start: s.start, end: s.end, text: `bn ${s.text}` })) }
-    }
+    },
+    cancelAiText: async (requestId: string) => void ids.stopped.push(requestId)
   },
   addEventListener: (type: string, fn: (e: unknown) => void) => void (listeners[type] ??= new Set()).add(fn),
   removeEventListener: (type: string, fn: (e: unknown) => void) => void listeners[type]?.delete(fn),
@@ -86,6 +90,8 @@ beforeEach(() => {
   unmountAll()
   keys.last = false
   sent.length = 0
+  ids.sent.length = 0
+  ids.stopped.length = 0
   ai.wait = null
   ai.fail = false
   setActive(null)
@@ -199,6 +205,10 @@ describe('Add a language gives the keyboard back to its button (§2.15)', () => 
     els = await settle(languages())
     expect(textOf(els.find((e) => e.props.role === 'alert'))).toBe('Could not translate: it was cancelled.')
     expect(focused.at(-1)?.props['data-testid']).toBe('track-translate')
+    // Cancel also stops the provider's own request, by the id it was sent with.
+    expect(ids.sent).toHaveLength(1)
+    expect(ids.sent[0]).toMatch(/^[A-Za-z0-9_-]{1,64}$/)
+    expect(ids.stopped).toEqual(ids.sent)
 
     focused.length = 0
     ai.wait = null
@@ -207,6 +217,20 @@ describe('Add a language gives the keyboard back to its button (§2.15)', () => 
     els = await settle(languages())
     expect(textOf(els.find((e) => e.props.role === 'alert'))).toBe('Could not translate: the provider is busy.')
     expect(focused.map((e) => e.props['data-testid'])).toEqual(['track-translate'])
+    // Each translation has its own id; one that ended by itself is not stopped.
+    expect(ids.sent).toHaveLength(2)
+    expect(ids.sent[1]).not.toBe(ids.sent[0])
+    expect(ids.stopped).toEqual([ids.sent[0]])
+  })
+
+  it('a translation still under way when the section goes stops the provider’s request', async () => {
+    ai.wait = new Promise(() => undefined)
+    const els = await openForm()
+    ;(byTestId(els, 'track-translate')!.props.onClick as () => void)()
+    await settle(languages())
+    expect(ids.stopped).toEqual([])
+    unmountAll()
+    expect(ids.stopped).toEqual(ids.sent)
   })
 
   it('a click while the translation runs leaves the focus where the click left it', async () => {

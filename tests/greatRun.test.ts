@@ -26,7 +26,9 @@ function deferred<T>(): { promise: Promise<T>; resolve: (v: T) => void; reject: 
   return { promise, resolve, reject }
 }
 
-const asked: { provider: string; request: AiTextRequest; answer: ReturnType<typeof deferred<AiTextResult>> }[] = []
+const asked: { provider: string; request: AiTextRequest; id?: string; answer: ReturnType<typeof deferred<AiTextResult>> }[] = []
+/** The request ids cancelAiText was asked to stop. */
+const stopped: string[] = []
 const prefs: Record<string, unknown> = {}
 vi.stubGlobal('window', {
   api: {
@@ -37,10 +39,14 @@ vi.stubGlobal('window', {
     },
     getBrandKit: () => Promise.resolve({}),
     listAiProviders: () => Promise.resolve([{ id: 'g1', kind: 'gemini', label: 'Gemini' }] as AiProviderInfo[]),
-    aiText: (provider: string, request: AiTextRequest) => {
+    aiText: (provider: string, request: AiTextRequest, id?: string) => {
       const answer = deferred<AiTextResult>()
-      asked.push({ provider, request, answer })
+      asked.push({ provider, request, id, answer })
       return answer.promise
+    },
+    cancelAiText: (id: string) => {
+      stopped.push(id)
+      return Promise.resolve()
     }
   }
 })
@@ -81,6 +87,7 @@ const undoSteps = (s: EditStore<Project>): number => {
 
 beforeEach(() => {
   asked.length = 0
+  stopped.length = 0
 })
 
 describe('runCaptionsGreat', () => {
@@ -151,11 +158,30 @@ describe('runCaptionsGreat', () => {
     const cancel = new AbortController()
     const run = runCaptionsGreat({ store, frame: TALL, options: AI, signal: cancel.signal })
     await flush()
+    expect(stopped).toEqual([])
     cancel.abort()
+    // Cancel also stops the provider's own request, by the id it was sent with.
+    expect(asked[0].id).toMatch(/^[A-Za-z0-9_-]{1,64}$/)
+    expect(stopped).toEqual([asked[0].id])
     asked[0].answer.resolve({ task: 'marks', answer: MARKS })
     expect(await run).toBeNull()
     expect(store.state).toBe(start)
     expect(store.canUndo).toBe(false)
+  })
+
+  it('a run that ends by itself stops no request; each run has its own id', async () => {
+    const store = storeOf(studioProject({ segments: captions(TEXTS) }))
+    const cancel = new AbortController()
+    for (let i = 0; i < 2; i++) {
+      const run = runCaptionsGreat({ store, frame: TALL, options: AI, signal: cancel.signal })
+      await flush()
+      asked[i].answer.resolve({ task: 'marks', answer: MARKS })
+      await run
+    }
+    expect(asked[1].id).not.toBe(asked[0].id)
+    // Aborting after the runs ended stops nothing (their listeners are gone).
+    cancel.abort()
+    expect(stopped).toEqual([])
   })
 
   it('plans with the editor free between its steps, and Cancel then changes nothing (§9.8)', async () => {
