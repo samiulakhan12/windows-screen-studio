@@ -57,7 +57,11 @@ const CLEANUP = '../src/renderer/src/editor/panels/CleanupSection'
 const ITEMS = '../src/renderer/src/editor/captionItems'
 const { LanguagesSection } = (await import(/* @vite-ignore */ LANGUAGES)) as { LanguagesSection: (p: unknown) => unknown }
 const { CleanupSection } = (await import(/* @vite-ignore */ CLEANUP)) as { CleanupSection: (p: unknown) => unknown }
-const { saveWordList } = (await import(/* @vite-ignore */ ITEMS)) as { saveWordList: (next: readonly { term: string; heard: string[] }[]) => Promise<void> }
+const { saveWordList, requestCaptions, takeCaptionsRequest } = (await import(/* @vite-ignore */ ITEMS)) as {
+  saveWordList: (next: readonly { term: string; heard: string[] }[]) => Promise<void>
+  requestCaptions: (r: { kind: 'language'; via: 'ai' }) => void
+  takeCaptionsRequest: () => unknown
+}
 await useEditorContexts()
 const { createProject } = await import('../src/shared/engine/project')
 const { languageName } = await import('../src/shared/captions/captionTracks')
@@ -281,6 +285,41 @@ describe('Add a language gives the keyboard back to its button (§2.15)', () => 
     expect(store.state.captionTracks).toHaveLength(8)
     expect(byTestId(after, 'track-add')!.props.disabled).toBe(true)
     expect(focused).toEqual([])
+  })
+})
+
+describe('a project with the most translations (§2.10, §2.14)', () => {
+  const FULL = 'A project keeps at most 8 translations: remove one to add another'
+  const eight = ['bn', 'hi', 'es', 'fr', 'de', 'pt', 'it', 'ja'].map(track)
+
+  it('Translate captions with AI… says so and focuses the list instead of opening Add a language; nothing is sent', async () => {
+    store.state = { ...base(), captionTracks: eight }
+    let els = await settle(languages())
+    expect(byTestId(els, 'track-add')!.props).toMatchObject({ disabled: true, title: FULL })
+    focused.length = 0
+    requestCaptions({ kind: 'language', via: 'ai' })
+    takeCaptionsRequest()
+    els = await settle(languages())
+    expect(byTestId(els, 'track-translate')).toBeUndefined()
+    expect(textOf(els.find((e) => e.props.role === 'status' && e.type === 'p'))).toBe(FULL)
+    // The radio of the row drawn on the video (the spoken captions).
+    expect(focused.at(-1)?.props['data-testid']).toBe('track-show')
+    expect(nameOf(els, focused.at(-1))).toBe('Show on the video, English · spoken')
+    expect(sent).toHaveLength(0)
+  })
+
+  it('Translate in a form left open when the project filled sends nothing and says why', async () => {
+    store.state = { ...base(), captionTracks: eight.slice(0, 7) }
+    let els = await settle(languages())
+    ;(byTestId(els, 'track-add')!.props.onClick as () => void)()
+    els = await settle(languages())
+    store.state = { ...store.state, captionTracks: eight }
+    els = await settle(languages())
+    ;(byTestId(els, 'track-translate')!.props.onClick as () => void)()
+    els = await settle(languages())
+    expect(sent).toHaveLength(0)
+    expect(textOf(els.find((e) => e.props.role === 'alert'))).toBe(`Could not translate: a project keeps at most 8 translations: remove one to add another.`)
+    expect(store.state.captionTracks).toHaveLength(8)
   })
 })
 

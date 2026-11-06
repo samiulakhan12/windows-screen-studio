@@ -70,6 +70,16 @@ interface Job {
   id: string
 }
 
+/** Why a project cannot take a translation into another language. */
+const FULL = `A project keeps at most ${MAX_TRACKS} translations: remove one to add another`
+
+/** Why Add a language is off for `project`, or null when it has room for another language. */
+function noRoom(project: Project): string | null {
+  if ((project.captionTracks?.length ?? 0) >= MAX_TRACKS) return FULL
+  if (languagesToAdd(project).length === 0) return 'Every language on the list is added already'
+  return null
+}
+
 /** Numbers the translations, so each request has its own id. */
 let translateSeq = 0
 
@@ -118,11 +128,22 @@ export function LanguagesSection({ project }: { project: Project }): JSX.Element
   const chosenLanguage = offered.some((l) => l.code === language) ? language : (offered[0]?.code ?? '')
   const chosenVia = list.find((p) => p.id === via) ?? list[0] ?? null
 
+  /** The rows take the focus on the next render (a request the project has no room for). */
+  const focusRows = useRef(false)
+
   // Translate captions with AI… and Add a caption language… open the form (§2.14), also when asked before the tab opened.
   useEffect(() => {
     const take = (): void => {
       const r = takeSectionRequest('language')
       if (!r) return
+      // As Add a language is off then, a project with no room for another language says so instead, and nothing is sent.
+      const room = noRoom(store.state)
+      if (room) {
+        setError(null)
+        setStatus(room)
+        focusRows.current = true
+        return
+      }
       setAdding(true)
       // On this PC when it is offered and asked for; else (and for 'ai') the first provider.
       setVia(null)
@@ -137,10 +158,21 @@ export function LanguagesSection({ project }: { project: Project }): JSX.Element
       focusSelect.current = false
       select.current.focus()
     }
+    if (focusRows.current && rowsBox.current) {
+      focusRows.current = false
+      // The radio of the row drawn on the video: the list's place in the Tab order.
+      const shown = Math.max(0, rows.findIndex((r) => r.shown))
+      rowsBox.current.querySelector<HTMLElement>(`[id="${group}-track-${shown}-show-radio"]`)?.focus()
+    }
   })
 
   const translate = async (code: string, provider: AiProviderInfo, again: boolean): Promise<void> => {
     if (running.current) return
+    // A new language when the project keeps the most: the answer could not be kept, so nothing is sent.
+    if (!trackOf(store.state, code) && (store.state.captionTracks?.length ?? 0) >= MAX_TRACKS) {
+      setError(`Could not translate: ${FULL.charAt(0).toLowerCase()}${FULL.slice(1)}.`)
+      return
+    }
     const sent = captionsToTranslate(store.state, code)
     if (!sent.length) {
       setStatus(`The ${languageName(code)} captions are up to date`)
@@ -308,7 +340,7 @@ export function LanguagesSection({ project }: { project: Project }): JSX.Element
               className="btn small"
               data-testid="track-add"
               disabled={full || offered.length === 0}
-              title={full ? `A project keeps at most ${MAX_TRACKS} translations` : undefined}
+              title={full ? FULL : undefined}
               onClick={() => {
                 setAdding(true)
                 setError(null)
