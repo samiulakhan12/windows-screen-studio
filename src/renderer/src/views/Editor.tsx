@@ -95,7 +95,7 @@ import { addChapterAt, addTitleAt, brandFontFor } from '../editor/titleItems'
 import { OverlayDropZone } from '../editor/OverlayDropZone'
 import { ipcMessage, noteItemCopy, pasteClipboardImage } from '../editor/overlayItems'
 import { requestCaptions, type CaptionsAiTask } from '../editor/captionItems'
-import { captionCommands } from '../editor/captionCommands'
+import { aiCaptionCommands, captionCommands } from '../editor/captionCommands'
 import { usePreviewLook } from '../editor/previewLook'
 import { settleCaptionAuto } from '../../../shared/captions/captionAutoSettle'
 import { Timeline, type TimelineHandle } from '../editor/Timeline'
@@ -1001,7 +1001,13 @@ function EditorSession({
       reveal('captions')
       requestCaptions({ kind: 'ai', task })
     }
-    const aiToolCommands = { aiCleanup: aiTool('cleanup'), aiTranslate: aiTool('translate'), aiChapters: aiTool('chapters'), aiTitle: aiTool('title'), aiSummary: aiTool('summary') }
+    const aiToolCommands = {
+      aiChapters: aiTool('chapters'),
+      aiTitle: aiTool('title'),
+      aiSummary: aiTool('summary'),
+      // Captions Studio §2.14: these two open Languages › Add a language and Clean up's AI fix.
+      ...aiCaptionCommands({ store, setTab: reveal, notice: showNotice })
+    }
     const writeInPublish = (kind: PublishKind): void => {
       setPublishRequest((was) => ({ kind, n: (was?.n ?? 0) + 1 }))
       setDialog('publish')

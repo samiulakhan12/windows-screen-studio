@@ -11,7 +11,7 @@ import { captionsOf } from '../../../shared/captions/settings'
 import { legacyTwin } from '../../../shared/captions/studioEdit'
 import type { EditStore } from '../../../shared/editor/editStore'
 import type { Project } from '../../../shared/types'
-import { requestCaptions } from './captionItems'
+import { requestCaptions, type CaptionsRequest } from './captionItems'
 import { loadSavedLooks, nextLookName, saveLook } from './captionPresets'
 import { startCaptionsGreat } from './captionsGreat'
 import { addedNotice, madeCount } from './panels/GraphicsPanel'
@@ -95,6 +95,22 @@ export async function saveCurrentLook(deps: CaptionCommandDeps): Promise<void> {
  * TODO(phase B): offline translation (part P4's translator and its catalogue) answers this.
  */
 export const localTranslationOffered = (): boolean => false
+
+/**
+ * The publishing pack's two caption commands (NW-13), retargeted to Captions Studio's sections
+ * (§2.14; ids, titles and keywords unchanged): Translate captions with AI… opens Languages › Add a
+ * language with the first AI provider chosen and the language select focused; Fix captions with AI
+ * opens Clean up with Also fix spelling and misheard words with AI ticked and focused. Without
+ * captions they say so, as the AI tools do.
+ */
+export function aiCaptionCommands(deps: Pick<CaptionCommandDeps, 'store' | 'setTab' | 'notice'>): Record<'aiTranslate' | 'aiCleanup', () => void> {
+  const open = (request: CaptionsRequest) => (): void => {
+    if (!deps.store.state.transcript?.segments.length) return deps.notice('This video has no captions yet: generate them in the Captions tab')
+    deps.setTab('captions')
+    requestCaptions(request)
+  }
+  return { aiTranslate: open({ kind: 'language', via: 'ai' }), aiCleanup: open({ kind: 'cleanup', ai: true }) }
+}
 
 /** The seven commands, by id. */
 export function captionCommands(deps: CaptionCommandDeps): Record<CaptionCommandId, () => void> {

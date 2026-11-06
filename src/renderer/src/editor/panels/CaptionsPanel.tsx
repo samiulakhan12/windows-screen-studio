@@ -964,8 +964,8 @@ function TranscriptSection({
 
 /* ---------- AI tools ---------- */
 
-/** Translate to… and Fix captions moved to Languages and Clean up (Captions Studio §2.3). */
-type AiTask = Extract<CaptionsAiTask, 'chapters' | 'title' | 'summary'>
+/** Translate to… and Fix captions are Languages' Add a language and Clean up's AI fix (Captions Studio §2.3, §2.14). */
+type AiTask = CaptionsAiTask
 
 function AiToolsSection({
   providers,
@@ -1104,8 +1104,8 @@ function AiToolsSection({
     }
   }
 
-  // A tool the command palette asked for (NW-13). Fix captions and Translate to… are not here any more (Captions
-  // Studio §2.3): the notice says where they are.
+  // A tool the command palette asked for (NW-13). Fix captions and Translate to… open Clean up and Languages
+  // instead (Captions Studio §2.14).
   const toolsRef = useRef<HTMLLabelElement>(null)
   const handled = useRef(0)
   useEffect(() => {
@@ -1113,11 +1113,6 @@ function AiToolsSection({
     handled.current = request.n
     onRequestHandled?.()
     const task = request.task
-    // Clean up shows its AI tick box only once there is a provider, so without one that comes first. (Languages'
-    // Add a language says itself how to add a provider.)
-    if (task === 'cleanup' && !chosen) return onNotice('Add an AI provider first: the button is in the AI tools section')
-    if (task === 'cleanup') return onNotice('Fix captions is in Clean up now: tick “Also fix spelling and misheard words with AI”, then Tidy captions')
-    if (task === 'translate') return onNotice('Translating is in Languages now: Add a language')
     if (!chosen) return onNotice('Add an AI provider first: the button is in the AI tools section')
     if (busy) return onNotice('An AI tool is already working')
     // The tab may be scrolled to its captions: the tools come into view, with their progress and the answer under them.

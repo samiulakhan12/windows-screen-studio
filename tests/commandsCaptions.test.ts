@@ -5,7 +5,7 @@ import { contexts, key, mockReact, render, testStore, unmountAll, useEditorConte
 /*
  * The Captions commands of the palette (docs/design/captions-studio.md §2.14, test 57's phase-A
  * part) and the graphics' handles on the preview (§2.11). Parts P1, P2 and P4 are stand-ins.
- * Retargeting the publishing pack's aiTranslate and aiCleanup waits for phase B (§0.4).
+ * The publishing pack's aiTranslate and aiCleanup, retargeted in phase B: aiCaptionCommands.test.ts.
  */
 
 const p4 = vi.hoisted(() => ({ great: [] as unknown[], plans: [] as unknown[], tidies: [] as unknown[] }))

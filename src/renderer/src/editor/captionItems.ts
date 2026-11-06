@@ -23,7 +23,9 @@ import type { PreviewPlayer } from './player'
 /**
  * 'generate' and 'export' from the commands; `focus` a caption's text (a double-click on the
  * track); `ai` runs an AI tool (NW-13 palette); 'language' and 'cleanup' open Captions Studio's
- * Languages › Add a language and Clean up (docs/design/captions-studio.md §2.14).
+ * Languages › Add a language and Clean up (docs/design/captions-studio.md §2.14): the palette's
+ * Translate captions with AI… sends `{ kind: 'language', via: 'ai' }` and Fix captions with AI
+ * `{ kind: 'cleanup', ai: true }`.
  */
 export type CaptionsRequest =
   | { kind: 'generate' }
@@ -33,8 +35,8 @@ export type CaptionsRequest =
   | { kind: 'language'; via: 'ai' | 'local' }
   | { kind: 'cleanup'; ai: true }
 
-/** The Captions tab's AI tools (NW-13). Fix captions and Translate to… moved to Clean up and Languages (Captions Studio §2.3): the AI tools section says so. */
-export type CaptionsAiTask = 'cleanup' | 'translate' | 'chapters' | 'title' | 'summary'
+/** The Captions tab's AI tools (NW-13). Fix captions and Translate to… are Clean up's AI fix and Languages' Add a language (Captions Studio §2.3, §2.14). */
+export type CaptionsAiTask = 'chapters' | 'title' | 'summary'
 
 let pending: CaptionsRequest | null = null
 const requestListeners = new Set<() => void>()

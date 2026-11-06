@@ -45,7 +45,8 @@ const heardForms = (text: string): string[] => text.split(',').map((s) => s.trim
 
 export function CleanupSection({ project }: { project: Project }): JSX.Element {
   const { store } = useEditor()
-  const providers = useTextProviders() ?? []
+  const listed = useTextProviders()
+  const providers = listed ?? []
   const [choices, setChoices] = useState<CleanupChoices>({ ...DEFAULT_CLEANUP })
   const words = useSyncExternalStore(onWordList, currentWordList)
   const [provider, setProvider] = useState<string | null>(null)
@@ -102,6 +103,10 @@ export function CleanupSection({ project }: { project: Project }): JSX.Element {
     if (focusAi.current && aiBox.current) {
       focusAi.current = false
       aiBox.current.focus()
+    } else if (focusAi.current && listed?.length === 0) {
+      // No provider: the tick box is not shown, so there is nothing to focus; say what comes first.
+      focusAi.current = false
+      setStatus('To fix spelling with AI, add an AI provider first: the button is in the AI tools section.')
     }
   })
   useEffect(() => {

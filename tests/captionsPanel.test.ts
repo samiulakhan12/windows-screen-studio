@@ -340,7 +340,7 @@ function speechState(over: Partial<SpeechState> & { statuses?: Partial<Record<Sp
 
 interface Mods {
   panel: (props: unknown) => unknown
-  items: { requestCaptions(r: { kind: 'generate' } | { kind: 'ai'; task: string }): void; clearTranscriptionError(): void }
+  items: { requestCaptions(r: { kind: 'generate' } | { kind: 'ai'; task: string } | { kind: 'cleanup'; ai: true } | { kind: 'language'; via: 'ai' }): void; clearTranscriptionError(): void }
   speech: { useCaptionsHost(projectId: string, onNotice: (m: string) => void, open: boolean): unknown; captionsIntent(projectId: string): { model: string; options: unknown } | null; spokenLanguage(): string }
 }
 
@@ -1560,31 +1560,33 @@ describe('CaptionsPanel: AI tools from the command palette (NW-13)', () => {
     expect(last()).toBe('Suggest a title')
   })
 
-  it('Fix captions and Translate from the palette say where those tools are now, and send nothing (Captions Studio §2.3)', async () => {
+  // Until Captions Studio phase B, Fix captions and Translate from the palette reached the AI tools here,
+  // which said where those tools had gone; they now open Clean up and Languages themselves (§2.14,
+  // tests/aiCaptionCommands.test.ts), so the AI tools never see them.
+  it('Fix captions and Translate from the palette go to Clean up and Languages: the AI tools send and say nothing (Captions Studio §2.14)', async () => {
     await show()
     panelNotices.length = 0
-    command('cleanup')
-    command('translate')
+    // The tab brings the section into view on the next frame.
+    const g = globalThis as { requestAnimationFrame?: unknown }
+    g.requestAnimationFrame = () => 0
+    try {
+      m.items.requestCaptions({ kind: 'cleanup', ai: true })
+      render(m.panel)
+      m.items.requestCaptions({ kind: 'language', via: 'ai' })
+      render(m.panel)
+      await flush()
+    } finally {
+      delete g.requestAnimationFrame
+    }
     expect(aiAsked).toEqual([])
-    expect(panelNotices).toEqual([
-      'Fix captions is in Clean up now: tick “Also fix spelling and misheard words with AI”, then Tidy captions',
-      'Translating is in Languages now: Add a language'
-    ])
+    expect(panelNotices).toEqual([])
+    // The sections' own copies wait for them (not mounted here).
+    const sections = m.items as unknown as { takeSectionRequest(kind: string): unknown }
+    expect(sections.takeSectionRequest('language')).toEqual({ kind: 'language', via: 'ai' })
+    expect(sections.takeSectionRequest('cleanup')).toBeNull()
     // The tools still here run as before.
     command('summary')
     expect(aiAsked.map((a) => a.task)).toEqual(['summary'])
-  })
-
-  it('Fix captions from the palette with no AI provider says to add one first: Clean up has no AI tick box yet', async () => {
-    replies.providers = () => Promise.resolve([])
-    const out = await show()
-    expect(buttons(out)).toContain('Add an AI provider')
-    panelNotices.length = 0
-    command('cleanup')
-    command('translate')
-    expect(aiAsked).toEqual([])
-    // Translate's Languages still shows Add a language, which says how to add a provider itself.
-    expect(panelNotices).toEqual(['Add an AI provider first: the button is in the AI tools section', 'Translating is in Languages now: Add a language'])
   })
 
   it('sends the captions with the words Captions Studio bleeped masked, as the subtitle files say them, and checks against those (Captions Studio §11.7)', async () => {
