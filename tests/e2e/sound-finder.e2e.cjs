@@ -4,12 +4,16 @@
 // without listening; Mute (keyboard) silences the ding in the export as one undo step, Duck lowers
 // the music by about 14 dB, Cut is an ordinary cut, Ignore hides a row and Show ignored brings it
 // back; Cancel stops a long one and keeps nothing; an old project opens and saves unchanged.
+// Captions Studio's bleeps mute their words through the same curve (captions-studio.md §11.7): a
+// bleeped word is silent in the exported sound, with Tone a 1 kHz tone over it, and the preview
+// schedules the same gain of 0.
 const fs = require('node:fs')
 const path = require('node:path')
 const { execFileSync } = require('node:child_process')
 const h = require('./helpers.cjs')
 const sp = require('./speech-fixtures.cjs')
 const fx = require('./render-fixtures.cjs')
+const f = require('./editor-fixtures.cjs')
 
 const FF = require(path.join(h.APP_DIR, 'node_modules/ffmpeg-static'))
 const RATE = 48000
@@ -147,6 +151,35 @@ async function exportM4a(app, win, out) {
   h.assert(res.ok, `export finished: ${res.text}`)
   await win.locator('.modal button', { hasText: /^(Done|Cancel)$/ }).first().click()
   await win.waitForSelector('.modal', { state: 'detached' })
+}
+
+/** A 6 s grey video whose sound is a 440 Hz sine at 0.3, in its mixed track only (cached). */
+function toneMedia() {
+  const dir = path.join(fx.MEDIA_CACHE, 'bleep-440-v1')
+  const out = path.join(dir, 'screen.mp4')
+  if (fs.existsSync(out)) return out
+  fs.mkdirSync(dir, { recursive: true })
+  ff(['-f', 'lavfi', '-i', 'color=c=gray:size=640x360:rate=30', '-f', 'lavfi', '-i', `aevalsrc=0.3*sin(2*PI*440*t):s=${RATE}:d=6`, '-t', '6', '-c:v', 'libx264', '-preset', 'ultrafast', '-g', '15', '-pix_fmt', 'yuv420p', '-c:a', 'aac', '-b:a', '160k', '-movflags', '+faststart', `${out}.part.mp4`])
+  fs.renameSync(`${out}.part.mp4`, out)
+  return out
+}
+
+/** The level (dB, relative to full scale) of a sine at `freq` Hz in [from, to) seconds (Goertzel). */
+function toneLevel(s, freq, from, to) {
+  const a = Math.round(from * RATE)
+  const b = Math.min(s.length, Math.round(to * RATE))
+  const w = (2 * Math.PI * freq) / RATE
+  const c = 2 * Math.cos(w)
+  let s1 = 0
+  let s2 = 0
+  for (let i = a; i < b; i++) {
+    const s0 = s[i] + c * s1 - s2
+    s2 = s1
+    s1 = s0
+  }
+  const power = s1 * s1 + s2 * s2 - c * s1 * s2
+  const amplitude = (2 * Math.sqrt(Math.max(0, power))) / Math.max(1, b - a)
+  return 20 * Math.log10(amplitude + 1e-12)
 }
 
 /** The rows as listed: [{ kind, key, state }]. */
@@ -311,6 +344,99 @@ async function main() {
     h.assert(list.some((r) => r.kind === 'ping') && list.some((r) => r.kind === 'music'), `found on the mixed track: ${JSON.stringify(list)}`)
     const cache = JSON.parse(fs.readFileSync(path.join(dir, '.cache', 'sounds.json'), 'utf8'))
     h.assert(Object.keys(cache.entries).join() === 'mix', 'kept for the mixed track')
+  }))
+
+  await test('bleeps: a bleeped word is silent in the exported sound, toned with Tone, by the curve the preview plays (Captions Studio §11.7)', fx.withHome('sf-bleep', async (ctx, home) => {
+    const id = 'rec-bleep'
+    const dir = path.join(h.projectsRoot(home), id)
+    fs.mkdirSync(dir, { recursive: true })
+    fs.symlinkSync(toneMedia(), path.join(dir, 'screen.mp4'))
+    const words = 'oh fuck this is broken'.split(' ').map((w, i) => ({ text: w, start: 1 + i * 0.5, end: 1.4 + i * 0.5 }))
+    const project = {
+      version: 2,
+      id,
+      name: 'Bleep demo',
+      createdAt: new Date().toISOString(),
+      duration: 6,
+      width: 640,
+      height: 360,
+      hasWebcam: false,
+      hasAudio: true,
+      webcamOffset: 0,
+      capture: { method: 'chromium', cursorInVideo: true, region: null },
+      clips: [{ id: 'c0', start: 0, end: 6, speed: 1 }],
+      zooms: [],
+      autoZoom: false,
+      annotations: [],
+      style: { background: { type: 'color', color: '#000000' }, padding: 0, cornerRadius: 0, shadow: 0, aspectRatio: 'auto' },
+      cursor: { show: false, size: 1.4, smoothing: 0.6, clickEffect: false, hideWhenIdle: true },
+      webcam: { show: false, corner: 'bottom-right', size: 0.24, shape: 'circle' },
+      effects: { motionBlur: 0, keystrokes: { show: false, position: 'bottom', size: 0.035 } },
+      audio: { volume: 1, muted: false },
+      transcript: { provider: 'openai', model: 'test-model', createdAt: '2026-10-01T09:00:00.000Z', language: 'en', segments: [{ id: 's1', start: 1, end: 3.4, text: 'oh fuck this is broken', words }] }
+    }
+    fs.writeFileSync(path.join(dir, 'project.json'), JSON.stringify(project, null, 2))
+    fs.writeFileSync(path.join(dir, 'cursor.json'), JSON.stringify({ samples: [], clicks: [], keys: [], shapes: [], scale: 1, valid: false }))
+    const { app, win } = await openEditor(ctx, home, 'Bleep demo')
+    const plain = path.join(home, 'plain.m4a')
+    await exportM4a(app, win, plain)
+
+    // Clean up › Bleep swear words › Standard, Tone; Tidy captions: one bleep, over the word's time.
+    const tidy = async (sound) => {
+      await win.click('.insp-tabs button:has-text("Captions")')
+      await win.waitForSelector('[data-testid="caption-cleanup"]', { timeout: 10000 })
+      await win.locator('[data-testid="cleanup-bleep"] button', { hasText: 'Standard' }).click()
+      await win.locator('[data-testid="cleanup-bleep-sound"] button', { hasText: sound }).click()
+      h.assert(!(await win.$('[data-testid="cleanup-bleep-note"]')), "no note that the word's own sound is not muted: it is")
+      await win.click('[data-testid="cleanup-run"]')
+      return f.waitFor(() => {
+        try {
+          const p = h.readProject(home, id)
+          return p.bleeps?.length === 1 ? p.bleeps[0] : null
+        } catch {
+          return null
+        }
+      }, `one bleep saved (${sound})`, 10000)
+    }
+    const bleep = await tidy('Tone')
+    h.assert(bleep.word === 'fuck' && bleep.sound === 'tone' && bleep.start < 1.5 && bleep.end > 1.9 && bleep.end < 2.0, `the bleep covers the word: ${JSON.stringify(bleep)}`)
+
+    // The preview schedules the bleep's gain of 0 on the sounds gain node as it plays.
+    await win.evaluate(() => (window.__ramps = []))
+    await win.click('button[aria-label="Play"]')
+    await win.waitForFunction(() => window.__ramps.includes(0), null, { timeout: 10000 })
+    await win.click('button[aria-label="Pause"]')
+
+    const inside = [bleep.start + 0.05, bleep.end - 0.05]
+    const toned = path.join(home, 'toned.m4a')
+    await exportM4a(app, win, toned)
+    const a = pcm(plain)
+    const b = pcm(toned)
+    const before = toneLevel(a, 440, ...inside)
+    const after = toneLevel(b, 440, ...inside)
+    console.log(`    440 Hz under the bleep ${before.toFixed(1)} -> ${after.toFixed(1)} dB; 1 kHz ${toneLevel(b, 1000, ...inside).toFixed(1)} dB; outside ${toneLevel(a, 440, 3.5, 5).toFixed(1)} / ${toneLevel(b, 440, 3.5, 5).toFixed(1)} dB`)
+    h.assert(before - after >= 40, `the word's own sound is at least 40 dB lower (${(before - after).toFixed(1)} dB)`)
+    h.assert(toneLevel(b, 1000, ...inside) > -20, 'a 1 kHz tone plays over it')
+    h.assert(Math.abs(toneLevel(a, 440, 3.5, 5) - toneLevel(b, 440, 3.5, 5)) < 0.5 && Math.abs(toneLevel(a, 440, 0.2, 1.3) - toneLevel(b, 440, 0.2, 1.3)) < 0.5, 'the sound outside the bleep is unchanged')
+    h.assert(toneLevel(b, 1000, 3.5, 5) < -50, 'no tone outside the bleep')
+
+    // Silence: undo the tidy, bleep again with Silence: as quiet, and no tone.
+    await win.click('.insp-tabs button:has-text("Captions")')
+    await win.keyboard.press('Control+z')
+    await f.waitFor(() => {
+      try {
+        return !h.readProject(home, id).bleeps
+      } catch {
+        return false
+      }
+    }, 'one Ctrl+Z takes the tidy back, its bleep with it', 10000)
+    const silent = await tidy('Silence')
+    h.assert(silent.sound === 'silence', 'bleeped with Silence')
+    const quiet = path.join(home, 'quiet.m4a')
+    await exportM4a(app, win, quiet)
+    const c = pcm(quiet)
+    h.assert(before - toneLevel(c, 440, ...inside) >= 40, `Silence mutes the word too (${(before - toneLevel(c, 440, ...inside)).toFixed(1)} dB)`)
+    h.assert(toneLevel(c, 1000, ...inside) < -50, 'Silence adds no tone')
   }))
 
   await test('sound finder: a recording without sound says so', fx.withHome('sf-silent', async (ctx, home) => {

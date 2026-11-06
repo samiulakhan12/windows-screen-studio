@@ -24,6 +24,10 @@
 //   8. Caption styles… from the palette puts the focus on the checked tile (§2.14), also when the
 //      Review panel is open over the Captions tab or another tab: the panel closes first; the
 //      request is taken once, so the panel opened and closed again later keeps its own focus.
+//   Phase B (§0.4): Make my captions great's notice names Review (Shift + R); Shift+R lists the run
+//   (one emphasis group row whose items open under it, the counter and the list card); Remove there
+//   deletes the list card and Ctrl+Z brings it back; a second run adds no undo step. The bleep's own
+//   sound and the palette's AI commands are in sound-finder.e2e.cjs and publish-pack.e2e.cjs.
 //
 // SSW_E2E_ONLY=<part of a test name> runs one test; SSW_E2E_DOC_SHOTS=1 also writes the pictures
 // docs/screenshots/captions-studio-*.png.
@@ -490,13 +494,54 @@ async function shortTests() {
     h.assert(spoken.count(lowBand(spoken), GREEN).n > 150, 'the spoken word is green at 1.1 s')
     h.assert(settled.count({ x: 0, y: 0, w: settled.width, h: settled.height * 0.5 }, INK).n === 0, 'nothing drawn in the top half')
 
-    // Make my captions great, offline: marks and a counter for "300 percent", in one undo step.
+    // Make my captions great, offline: marks, a counter for "300 percent" and a list card for c3, in one undo step.
     await win.click('[data-testid="captions-great"]')
     const p = await saved(home, 'rec-tall', (q) => (q.graphics ?? []).some((g) => g.kind === 'counter'), 'Make my captions great adds a counter', 20000)
     const counter = p.graphics.find((g) => g.kind === 'counter')
+    const list = p.graphics.find((g) => g.kind === 'list')
     h.assert(counter.to === 300 && counter.suffix === '%', `the counter counts to 300 % (got ${counter.to} ${counter.suffix})`)
+    h.assert(list && list.items.length === 3, `a list card with 3 items for c3 (got ${JSON.stringify(list?.items)})`)
     h.assert((p.captionMarks ?? []).length > 0, 'it emphasised words')
     h.assert(p.captions.studio.from === 'bold-pop', 'the look picked by hand is kept')
+    // The notice names Review mode and its key (§2.8).
+    await noticeHas(win, 'Review (Shift + R)', 'the notice names Review mode and Shift+R')
+
+    // Shift+R lists the run: one emphasis group row, the counter and the list, and no style row (the look did not change).
+    await win.evaluate(() => document.activeElement instanceof HTMLElement && document.activeElement.blur())
+    await win.keyboard.press('Shift+R')
+    await win.waitForSelector('[data-testid="review-panel"]', { timeout: 5000 })
+    const rows = () => win.$$eval('[data-testid="review-row"]', (els) => els.map((e) => ({ key: e.dataset.key, status: e.dataset.status, title: e.querySelector('.review-title')?.textContent })))
+    let listed = await rows()
+    const group = listed.find((r) => r.key === 'group:emphasis')
+    const words = p.captionMarks.filter((m) => m.auto).reduce((n, m) => n + m.to - m.from + 1, 0)
+    h.assert(group && group.title === `Emphasis: ${words} ${words === 1 ? 'word' : 'words'}`, `one emphasis group row (got ${JSON.stringify(listed)})`)
+    h.assert(listed.filter((r) => r.key.startsWith('emphasis:')).length === 0, 'no row per emphasised word')
+    h.assert(listed.some((r) => r.key === `graphic:${counter.id}` && r.title === 'Counter 300%'), `the counter row (got ${JSON.stringify(listed)})`)
+    h.assert(listed.some((r) => r.key === `graphic:${list.id}` && r.title.startsWith('List: ')), `the list row (got ${JSON.stringify(listed)})`)
+    h.assert(!listed.some((r) => r.key === 'style:look'), 'no style row: the look picked by hand did not change')
+    // Opening the group lists its items, each with Keep and Remove.
+    const toggle = '[data-testid="review-row"][data-key="group:emphasis"] [data-testid="review-toggle"]'
+    h.assert((await win.getAttribute(toggle, 'aria-expanded')) === 'false', 'the group starts closed')
+    await win.click(toggle)
+    h.assert((await win.getAttribute(toggle, 'aria-expanded')) === 'true', 'the toggle says it is open')
+    const parts = await win.$$eval('[data-testid="review-part"]', (els) => els.length)
+    h.assert(parts === p.captionMarks.filter((m) => m.auto).length, `the group lists its ${parts} items`)
+    await docShot(win, 'review-groups', win.locator('[data-testid="review-panel"]'))
+    // Remove on the list deletes it; Ctrl+Z brings it back.
+    await win.click(`[data-testid="review-row"][data-key="graphic:${list.id}"] [data-testid="review-remove"]`)
+    await saved(home, 'rec-tall', (q) => !(q.graphics ?? []).some((g) => g.kind === 'list'), 'Remove in Review deletes the list card')
+    listed = await rows()
+    h.assert(listed.find((r) => r.key === `graphic:${list.id}`)?.status === 'removed', 'its row reads removed')
+    await win.keyboard.press('Control+z')
+    await saved(home, 'rec-tall', (q) => (q.graphics ?? []).some((g) => g.kind === 'list'), 'Ctrl+Z brings the list card back')
+    await f.waitFor(async () => (await rows()).find((r) => r.key === `graphic:${list.id}`)?.status === 'pending', 'its row is to review again')
+    await win.keyboard.press('Escape')
+    await win.waitForSelector('[data-testid="review-panel"]', { state: 'detached', timeout: 5000 })
+
+    // A second click finds the same things: no undo step. One Ctrl+Z after it undoes the first run.
+    await win.click('[data-testid="captions-great"]')
+    await noticeHas(win, 'Your captions already have all of this.', 'the second run changes nothing')
+    await win.evaluate(() => document.activeElement instanceof HTMLElement && document.activeElement.blur())
     await win.keyboard.press('Control+z')
     await saved(home, 'rec-tall', (q) => !(q.graphics ?? []).length && !(q.captionMarks ?? []).length, 'one Ctrl+Z takes the whole run back')
   }))
@@ -645,10 +690,12 @@ async function keyboardTests() {
     await h.sleep(1500)
     h.assert(Buffer.compare(before, fs.readFileSync(projectFile(home, 'rec-keys'))) === 0, 'the project is unchanged, and the preview left nothing to undo')
 
-    // Clean up's bleep says plainly what it does in this version (the word's sound is muted in phase B).
+    // Clean up's bleep mutes the word's own sound now (phase B; sound-finder.e2e.cjs exports it): no note says otherwise.
     await win.locator('[data-testid="cleanup-bleep"] button', { hasText: 'Standard' }).click()
-    const note = await win.textContent('[data-testid="cleanup-bleep-note"]')
-    h.assert(/not muted yet/.test(note), `the bleep note says the word's sound is not muted yet (got ${note})`)
+    await win.waitForSelector('[data-testid="cleanup-bleep-sound"]', { timeout: 5000 })
+    h.assert(!(await win.$('[data-testid="cleanup-bleep-note"]')), 'no note that the word\'s own sound is not muted')
+    const tidyHint = await win.textContent('[data-testid="caption-cleanup"]')
+    h.assert(tidyHint.includes('Tidy changes are listed in Review mode.'), 'Clean up says its changes are listed in Review mode')
   }))
 
   await test('the options left open under the Review panel keep no keys: Tab moves in the panel, Esc closes only the panel', fx.withHome('cs-review', async (ctx, home) => {

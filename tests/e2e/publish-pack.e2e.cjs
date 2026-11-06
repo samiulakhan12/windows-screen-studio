@@ -363,6 +363,41 @@ async function main() {
         h.assert((await win.textContent('.captions-summary')) === 'A mock summary of the recording.', 'the Captions tab shows the summary')
       })
     )
+
+    await test(
+      'publish: Translate captions with AI… and Fix captions with AI open Captions Studio\'s Languages and Clean up (§2.14)',
+      fx.withHome('pub-captions', async (ctx, home) => {
+        seedChaptered(home, 'rec-cap', 'Captioned')
+        const { win } = await launch(ctx, home, mock)
+        await addProvider(win, 'sk-test-captions-key-0001')
+        await fx.openProject(win, 'Captioned')
+        const sent = mock.requests.length
+        const focused = () =>
+          win.evaluate(() => ({ tag: document.activeElement?.tagName, testid: document.activeElement?.getAttribute('data-testid'), section: document.activeElement?.closest('[data-testid]')?.getAttribute('data-testid') }))
+
+        // Translate captions with AI…: Languages › Add a language with the provider chosen and the language select focused.
+        await runCommand(win, 'translate captions with ai', 'Translate captions with AI…')
+        await win.waitForSelector('[data-testid="caption-languages"] [data-testid="track-translate"]', { timeout: 10000 })
+        await f.waitFor(async () => {
+          const at = await focused()
+          return at.tag === 'SELECT' && at.section === 'caption-languages'
+        }, 'the language select has the focus', 5000)
+        const chips = await win.$$eval('[data-testid="caption-languages"] .chips[aria-label="Translate with"] button', (els) => els.map((e) => [e.textContent, e.getAttribute('aria-pressed')]))
+        h.assert(JSON.stringify(chips) === JSON.stringify([['OpenAI', 'true']]), `the AI provider is chosen: ${JSON.stringify(chips)}`)
+        const notice = async () => (await win.textContent('.notice-slot').catch(() => '')) || ''
+        h.assert(!/now: Add a language/.test(await notice()), `no notice sends the user elsewhere: ${await notice()}`)
+
+        // Fix captions with AI: Clean up with "Also fix spelling and misheard words with AI" ticked and focused.
+        await runCommand(win, 'fix captions with ai', 'Fix captions with AI')
+        await f.waitFor(async () => (await focused()).testid === 'cleanup-ai', 'the AI fix tick box has the focus', 5000)
+        h.assert(await win.isChecked('[data-testid="cleanup-ai"]'), 'the AI fix is ticked')
+        h.assert(await win.isVisible('[data-testid="cleanup-ai-provider"]'), 'its provider select shows')
+        h.assert(!/Clean up now/.test(await notice()), `no notice sends the user elsewhere: ${await notice()}`)
+        // Neither sends anything by itself.
+        await h.sleep(500)
+        h.assert(mock.requests.length === sent, `nothing was sent to the provider: ${mock.requests.slice(sent).map((r) => r.route)}`)
+      })
+    )
   } finally {
     await mock.close()
   }

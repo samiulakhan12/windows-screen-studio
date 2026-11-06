@@ -29,7 +29,10 @@
 // step, while Keep all pressed meanwhile says it is still working. On 5,000 speed-ups, while Remove
 // all works as the first edit: Undo from the palette and the title bar wait and take it back; Ctrl+Y
 // with nothing to bring back after it says so at once; Export makes it first; a trim drag held keeps
-// it waiting, and it lands on the trim; a Keep chosen meanwhile keeps the focus.
+// it waiting, and it lands on the trim; a Keep chosen meanwhile keeps the focus. Captions Studio's
+// automatic changes (captions-studio.md §11.8): the style row, the emphasis group row whose items
+// open under its disclosure (Delete and K on one item act on it, each one undo step; the group counts
+// once) and a bleep masked in its accessible name; Remove on the style row puts the look back.
 const fs = require('node:fs')
 const path = require('node:path')
 const { execFileSync } = require('node:child_process')
@@ -73,6 +76,26 @@ function seed(home) {
   const p = JSON.parse(fs.readFileSync(file, 'utf8'))
   p.layouts = [{ id: 'l1', start: 5, end: 7, layout: 'default', corner: 'top-left', auto: true }]
   p.autoCuts = [{ id: 's1', by: 'silences', action: 'cut', start: 8, end: 10.4, was: [{ start: 8, end: 10.4, speed: 1 }] }]
+  fs.writeFileSync(file, JSON.stringify(p, null, 2))
+  return id
+}
+
+const CAPTIONS_NAME = 'Review my captions'
+/** Captions Studio's automatic changes as Make my captions great and Tidy captions save them: the look, two emphasis marks and a bleep (§11.8). */
+function seedCaptions(home) {
+  const id = f.seedProject(home, { id: 'rec-captions', name: CAPTIONS_NAME, seconds: SECONDS, width: 640, height: 360, fps: 30 })
+  const file = path.join(h.projectsRoot(home), id, 'project.json')
+  const p = JSON.parse(fs.readFileSync(file, 'utf8'))
+  const timed = (start, text) => text.split(' ').map((w, i) => ({ text: w, start: +(start + i * 0.5).toFixed(2), end: +(start + i * 0.5 + 0.4).toFixed(2) }))
+  const seg = (sid, start, text) => ({ id: sid, start, end: +(start + text.split(' ').length * 0.5).toFixed(2), text, words: timed(start, text) })
+  p.transcript = { provider: 'openai', model: 'test-model', createdAt: '2026-10-01T09:00:00.000Z', language: 'en', segments: [seg('c1', 0.5, 'Click Save to keep your work'), seg('c2', 4, 'Export the video when you are done'), seg('c3', 8, 'damn that was quick')] }
+  p.captions = { show: true, preset: 'bold', position: 'bottom', size: 0.05, color: '#ffffff', highlightColor: '#39e508', background: 'none', maxLines: 2 }
+  p.captionAuto = { style: { was: null, by: 'great', name: 'Clean Short' } }
+  p.captionMarks = [
+    { id: 'm1', caption: 'c1', from: 1, to: 1, text: 'Save', auto: true },
+    { id: 'm2', caption: 'c2', from: 0, to: 0, text: 'Export', auto: true }
+  ]
+  p.bleeps = [{ id: 'b1', start: 7.95, end: 8.45, word: 'damn', sound: 'tone', auto: true }]
   fs.writeFileSync(file, JSON.stringify(p, null, 2))
   return id
 }
@@ -437,6 +460,67 @@ async function main() {
     await h.sleep(100)
     h.assert((await focused(win)) === 'Keyboard shortcuts', `the focus back where it was: ${await focused(win)}`)
     h.assert(!logs.some((l) => l.includes('[pageerror]')), `no page errors: ${logs.filter((l) => l.includes('pageerror'))}`)
+  })
+
+  await test("review mode: Captions Studio's automatic changes: the style row, the emphasis group by keyboard, a masked bleep", async (ctx) => {
+    const home = h.tempHome('review-captions')
+    const id = seedCaptions(home)
+    const { app, win, logs } = await h.launch({ home })
+    ctx.app = app
+    ctx.logs = logs
+    await f.openProject(win, CAPTIONS_NAME)
+    h.assert((await win.textContent('[data-testid="review-count"]')) === '3', `the button counts the style, the emphasis group and the bleep: ${await win.textContent('[data-testid="review-count"]')}`)
+    await win.evaluate(() => (document.activeElement instanceof HTMLElement ? document.activeElement.blur() : undefined))
+    await win.keyboard.press('Shift+R')
+    await win.waitForSelector('[data-testid="review-panel"]', { timeout: 5000 })
+    h.assert(same(await rows(win), ['style:look=pending', 'group:emphasis=pending', 'bleep:b1=pending']), `rows in time order, the look first at equal times: ${await rows(win)}`)
+    h.assert((await focused(win)) === 'Caption style: Clean Short (was Clean), caption style, at 0:00.5, Make my captions great, not reviewed', `the focus starts on the style row: ${await focused(win)}`)
+    const bleepName = await win.getAttribute('[data-testid="review-row"][data-key="bleep:b1"] .review-item', 'aria-label')
+    h.assert(/^Bleeped “d\*\*\*”, bleep, at 0:0[78]\.\d, Captions Studio, not reviewed$/.test(bleepName) && !bleepName.includes('damn'), `the bleeped word is masked in its accessible name: ${bleepName}`)
+
+    // N to the emphasis group; Tab, Tab, Tab to its disclosure; Enter opens it.
+    await win.keyboard.press('n')
+    h.assert((await focused(win)).startsWith('Emphasis: 2 words, emphasis, at 0:00.5'), `N moves to the group: ${await focused(win)}`)
+    for (let i = 0; i < 3; i++) await win.keyboard.press('Tab')
+    h.assert((await focused(win)) === 'Show the 2 items: Emphasis: 2 words', `Tab reaches the disclosure: ${await focused(win)}`)
+    await win.keyboard.press('Enter')
+    await win.waitForSelector('[data-testid="review-part"]', { timeout: 5000 })
+    h.assert((await win.getAttribute('[data-testid="review-toggle"]', 'aria-expanded')) === 'true', 'the disclosure says it is open')
+    // Into the first item: Delete removes that mark only, one undo step; the focus moves to the next item.
+    await win.keyboard.press('Tab')
+    h.assert((await focused(win)) === 'Keep: Emphasis on “Save”', `Tab reaches the first item's Keep: ${await focused(win)}`)
+    await win.keyboard.press('Delete')
+    let p = await savedWhen(home, id, (q) => (q.captionMarks ?? []).length === 1, 'Delete on an item removes that mark only')
+    h.assert(p.captionMarks[0].id === 'm2' && p.captionMarks[0].auto === true, `the other mark stays automatic: ${JSON.stringify(p.captionMarks)}`)
+    await f.waitFor(async () => (await focused(win)) === 'Keep: Emphasis on “Export”', 'the focus moves to the next item to review', 3000)
+    h.assert(same(await rows(win), ['style:look=pending', 'group:emphasis=pending', 'bleep:b1=pending']), `the group is still to review: ${await rows(win)}`)
+    // K keeps it: the group is reviewed, counted once.
+    await win.keyboard.press('k')
+    p = await savedWhen(home, id, (q) => q.captionMarks?.length === 1 && !q.captionMarks[0].auto, 'K on an item keeps that mark')
+    await f.waitFor(async () => (await progressOf(win)) === '1 of 3 reviewed', 'the group counts once', 3000)
+    h.assert(same(await rows(win), ['style:look=pending', 'group:emphasis=kept', 'bleep:b1=pending']), `the group reads kept: ${await rows(win)}`)
+    // Ctrl+Z takes the Keep back, then the Remove: each one step.
+    await win.keyboard.press('Control+z')
+    await savedWhen(home, id, (q) => q.captionMarks?.length === 1 && q.captionMarks[0].auto === true, 'Ctrl+Z takes the Keep back')
+    await win.keyboard.press('Control+z')
+    await savedWhen(home, id, (q) => q.captionMarks?.length === 2, 'Ctrl+Z brings the removed mark back')
+    await f.waitFor(async () => (await win.$$eval('[data-testid="review-part"]', (els) => els.map((e) => e.dataset.status))).join() === 'pending,pending', 'both items to review again', 3000)
+
+    // Delete on the style row puts back the look from before (none: no captions settings) and drops its record.
+    await win.click('[data-testid="review-row"][data-key="style:look"] .review-item')
+    await win.keyboard.press('Delete')
+    p = await savedWhen(home, id, (q) => !q.captions && !q.captionAuto, 'Remove on the style row restores the look from before')
+    h.assert(same(await rows(win), ['style:look=removed', 'group:emphasis=pending', 'bleep:b1=pending']), `the style row reads removed: ${await rows(win)}`)
+    // Remove on the group's row removes all its marks in one step.
+    await win.click('[data-testid="review-row"][data-key="group:emphasis"] [data-testid="review-remove"]')
+    p = await savedWhen(home, id, (q) => !q.captionMarks, 'Remove on the group removes every automatic mark')
+    h.assert(same(await rows(win), ['style:look=removed', 'group:emphasis=removed', 'bleep:b1=pending']), `the group reads removed: ${await rows(win)}`)
+    await win.keyboard.press('Escape')
+    await f.waitFor(async () => !(await win.$('[data-testid="review-panel"]')), 'Escape closes the panel', 3000)
+    h.assert(!logs.some((l) => l.includes('[pageerror]')), `no page errors: ${logs.filter((l) => l.includes('pageerror'))}`)
+    await app.close()
+    ctx.app = null
+    fs.rmSync(home, { recursive: true, force: true })
   })
 
   await test('review mode: a long list draws the rows in view; keys, names, place and Escape as before', async (ctx) => {
