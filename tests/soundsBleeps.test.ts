@@ -239,6 +239,9 @@ describe('a bleeped word the edit cuts out', () => {
   const said = (): Project => ({
     ...project([], []),
     transcript: {
+      provider: 'openai',
+      model: 'test-model',
+      createdAt: '2026-10-01T09:00:00.000Z',
       language: 'en',
       segments: [
         {
