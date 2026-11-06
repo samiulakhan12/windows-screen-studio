@@ -31,7 +31,10 @@
   over your video (with *Fix*), and save it as your own or in the brand kit. Classic looks and every
   older project draw exactly as before.
 - **Make my captions great**: one click picks a look for the video's shape, emphasises key words,
-  adds emoji and pop-ups, and tidies the text, on your PC with no AI needed. One undo step.
+  adds emoji and pop-ups, and tidies the text, on your PC with no AI needed. One undo step, and
+  Review mode (`Shift+R`) lists what it did: the look, the emphasis and the text fixes as one row
+  each (open a row to keep or remove single words or captions), and every pop-up, lower third,
+  chapter title and bleep on its own row.
 - **Emphasis**: mark words in the Transcript tab with `Ctrl+B` (a second colour with
   `Ctrl+Shift+B`), or let *Find important words* pick them.
 - **Pop-ups from captions**: keyword cards, emoji, counters that count up to a spoken number and
@@ -40,10 +43,12 @@
   Bangla in their own Bangla font, and a *Digits* choice writes numbers as ০–৯ or 0–9 in captions,
   counters, list numbers and chapter titles.
 - **Clean up and languages**: tidy capitals, punctuation and numbers, keep a word list that also
-  helps transcription spell names, and bleep swear words in captions and subtitle files (with a
-  tone; muting the word's own sound comes in a later version). Translate captions with your AI
-  provider into separate language tracks; the export writes one subtitle file per language and can
-  put switchable subtitle tracks inside MP4, MOV and WebM.
+  helps transcription spell names, and bleep swear words: the word is masked in captions and
+  subtitle files and its own sound is muted in the preview and the export, with a tone over it or
+  silence. Translate captions with your AI provider into separate language tracks; the export writes
+  one subtitle file per language and can put switchable subtitle tracks inside MP4, MOV and WebM.
+  *Translate captions with AI…* and *Fix captions with AI* in the command palette open these, and
+  *Cancel* stops the provider's request too.
 - **Fonts work offline**: the caption fonts and colour emoji ship with Flown; Chinese, Japanese and
   Korean fonts download on demand from a pinned source and are checked before use.
 - **Unwanted sounds** (F-17): *Find unwanted sounds* in the Audio tab lists the coughs, sneezes,
