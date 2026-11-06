@@ -719,6 +719,54 @@ describe('the Transcript tab', () => {
     expect(log.notices[1]).toBe('Already cut. Press Restore to bring it back')
   })
 
+  it('Remove all keeps the edit before it as a version only when it removes something (E-12)', () => {
+    const kept: { id: string; project: Project; opts: unknown }[] = []
+    const w = (globalThis as unknown as { window: { api?: unknown } }).window
+    w.api = {
+      saveVersion: async (id: string, project: Project, opts: unknown) => {
+        kept.push({ id, project, opts })
+        return { saved: null, removed: [] }
+      }
+    }
+    try {
+      // The only part left of the recording is the filler: removing it would cut the whole video.
+      useProject(10, [
+        seg('a', 1, 4, [
+          ['So', 1, 1.2],
+          ['um', 1.5, 1.7],
+          ['this', 2, 2.2]
+        ])
+      ], [{ id: 'c', start: 1.45, end: 1.75, speed: 1 }])
+      render()
+      click('Find fillers and retakes')
+      expect(log.notices.at(-1)).toBe('Found 1 filler or retake')
+      const unchanged = store.state
+      click('Remove all')
+      expect(log.notices.at(-1)).toBe('That would cut the whole video')
+      expect(store.state).toBe(unchanged)
+      expect(kept).toEqual([])
+
+      unmount()
+      useProject(10, [
+        seg('a', 1, 4, [
+          ['So', 1, 1.2],
+          ['um', 1.5, 1.7],
+          ['this', 2, 2.2],
+          ['works.', 2.3, 2.6]
+        ])
+      ])
+      render()
+      click('Find fillers and retakes')
+      const before = store.state
+      click('Remove all')
+      expect(store.state.clips).not.toEqual(before.clips)
+      // The edit as it was before Remove all.
+      expect(kept).toEqual([{ id: 'p1', project: before, opts: { reason: 'fillers' } }])
+    } finally {
+      delete w.api
+    }
+  })
+
   it('Find lists a filler shown kept whose guessed time a timeline cut covers; Remove and Remove all mark it deleted without changing the clips', () => {
     // The Smart speed cut of 11.85-13.75 s covers the guess for "um" (12.9-13.2 s), which may still be heard.
     for (const label of ['Remove', 'Remove all']) {

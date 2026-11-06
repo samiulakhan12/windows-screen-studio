@@ -637,7 +637,10 @@ Two publish-pack commands change target (ids, titles and keywords stay):
 tests are updated in the same part (§14.4).
 
 Keys inside panels: `Ctrl+B` and `Ctrl+Shift+B` in the Transcript word list (§2.7); arrow keys,
-`Home`, `End`, `Enter` and `Space` in the gallery; arrow keys on a focused graphic handle.
+`Home`, `End`, `Enter` and `Space` in the gallery; arrow keys on a focused graphic handle; arrow
+keys, `Home`, `End` and `Esc` in the Graphics tab's open **Add** menu, which keeps them from the
+editor (Left and Right do nothing there: they never nudge the selected items behind it, nor step
+the playhead; docs/design/versions.md §4.1).
 
 ### 2.15 Keyboard and screen readers
 

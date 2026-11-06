@@ -25,6 +25,7 @@ import { cropFilter } from './proxyArgs'
 import { isAppUrl } from './security'
 import { stopVoiceClean } from './voice/voiceIpc'
 import { stopSoundScans } from './sounds/soundsIpc'
+import { stopFilmstrip } from './filmstrip'
 
 /** Shortest still stretch looked for: longer minimums are filtered from the same result. */
 const DETECT_MIN = 0.5
@@ -201,11 +202,11 @@ export const stopStillDetection = (id: string): Promise<void> => running.stop(id
 
 /**
  * Stops every analysis reading project `id`'s files (still detection, sound levels, a
- * transcription, a Clean voice render) and waits until they have let go of them: the editor closed, or the project is
- * about to be deleted.
+ * transcription, a Clean voice render, an unwanted-sound scan, the filmstrip) and waits until they
+ * have let go of them: the editor closed, or the project is about to be deleted.
  */
 export async function stopAnalyses(id: string): Promise<void> {
-  await Promise.all([stopStillDetection(id), stopAudioAnalysisFor(id), stopTranscription(id), stopVoiceClean(id), stopSoundScans(id)])
+  await Promise.all([stopStillDetection(id), stopAudioAnalysisFor(id), stopTranscription(id), stopVoiceClean(id), stopSoundScans(id), stopFilmstrip(id)])
 }
 
 export function registerAnalysisIpc(): void {

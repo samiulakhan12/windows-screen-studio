@@ -207,6 +207,25 @@ describe('with nothing selected', () => {
     expect(byLabel(els, 'Text')!.props.autoFocus).not.toBe(true)
   })
 
+  it('keeps its keys from the editor: Left and Right never move selected items or the playhead behind it, nor Home and End', async () => {
+    let els = await settle(view(), SKIP)
+    ;(byTestId(els, 'graphics-add')!.props.onClick as () => void)()
+    els = await settle(view(), SKIP)
+    const menu = els.find((e) => e.props.role === 'menu')!
+    for (const key of ['ArrowLeft', 'ArrowRight', 'ArrowDown', 'ArrowUp', 'Home', 'End']) {
+      const e = { key, prevented: false, stopped: false, preventDefault: () => void (e.prevented = true), stopPropagation: () => void (e.stopped = true) }
+      ;(menu.props.onKeyDown as (e: unknown) => void)(e)
+      expect([key, e.prevented, e.stopped]).toEqual([key, true, true])
+    }
+    // Other keys go on to the editor (Space plays).
+    const space = { key: ' ', prevented: false, stopped: false, preventDefault: () => void (space.prevented = true), stopPropagation: () => void (space.stopped = true) }
+    ;(menu.props.onKeyDown as (e: unknown) => void)(space)
+    expect([space.prevented, space.stopped]).toEqual([false, false])
+    els = await settle(view(), SKIP)
+    expect(els.some((e) => e.props.role === 'menu')).toBe(true)
+    expect(store.steps).toBe(0)
+  })
+
   it('a pop-up added from the Add menu with a click leaves the focus alone', async () => {
     let els = await settle(view(), SKIP)
     ;(byTestId(els, 'graphics-add')!.props.onClick as () => void)()

@@ -96,8 +96,9 @@ export function CopyMenu(props: { project: Project; vw: number; vh: number; run(
     else if (e.key === 'Enter' || e.key === ' ') {
       if (active >= 0) choose(active)
     } else if (e.key === 'Escape' || e.key === 'Tab') close(true)
-    else return
-    // The menu's keys are its own: never the editor's shortcuts (Esc clears the selection there).
+    else if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return
+    // The menu's keys are its own: never the editor's shortcuts (Esc clears the selection there,
+    // Left and Right move the selected items).
     e.preventDefault()
     e.stopPropagation()
     if (next !== null) setActive(next)

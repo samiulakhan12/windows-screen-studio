@@ -32,6 +32,7 @@ import { toggleEmphasis, withCaptionPlace } from '../../../../shared/captions/ma
 import { captionsOf } from '../../../../shared/captions/settings'
 import { LEGACY_TILES } from '../../../../shared/captions/studioPresets'
 import { emphasisNotice, removesEmphasis, selectionSpans, wordEmphasis } from './transcriptMarks'
+import { keepVersionBefore } from '../../versions/autoVersion'
 
 /*
  * Edit by text (NW-04, NW-01; docs/design/edit-by-text.md): the transcript word by word. Deleting
@@ -271,8 +272,11 @@ function TranscriptEditor({
   const removeAll = (): void => {
     const items = shownReview ?? []
     if (items.length === 0) return
+    const before = store.state
     const saved = removeSuggestions(items, true)
     if (saved === null) return
+    // E-12: the edit before is kept as a version once it changed (docs/design/versions.md §2.4).
+    void keepVersionBefore(before, 'fillers')
     setReview(null)
     onNotice(`Removed ${items.length} (${seconds(saved)})`)
   }
@@ -574,6 +578,9 @@ function TranscriptEditor({
 }
 
 /** The menu next to Emphasise: Emphasise in the second colour (Ctrl+Shift+B, §2.7). Escape closes it and returns to its button. */
+/** The keys the More emphasis menu keeps besides Escape and Tab (its one item: they move nothing there). */
+const EMPHASIS_MENU_KEYS = new Set(['ArrowDown', 'ArrowUp', 'ArrowLeft', 'ArrowRight', 'Home', 'End'])
+
 function EmphasisMenu({ disabled, onSecond }: { disabled: boolean; onSecond: () => void }): JSX.Element {
   const [open, setOpen] = useState(false)
   const buttonRef = useRef<HTMLButtonElement>(null)
@@ -602,6 +609,13 @@ function EmphasisMenu({ disabled, onSecond }: { disabled: boolean; onSecond: () 
           role="menu"
           aria-label="More emphasis"
           onKeyDown={(e) => {
+            // The menu's keys are its own, as the Graphics tab's Add menu's: never the editor's
+            // shortcuts (Left and Right move the selected items, Home and End the playhead).
+            if (EMPHASIS_MENU_KEYS.has(e.key)) {
+              e.preventDefault()
+              e.stopPropagation()
+              return
+            }
             if (e.key !== 'Escape' && e.key !== 'Tab') return
             if (e.key === 'Escape') {
               e.preventDefault()

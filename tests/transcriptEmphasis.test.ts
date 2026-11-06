@@ -156,6 +156,25 @@ describe('Ctrl+B and Emphasise', () => {
     ;(byTestId(els, 'transcript-emphasise-second')!.props.onClick as () => void)()
     expect(p1.toggles[0][1]).toBe(2)
   })
+
+  it('the menu keeps its keys from the editor: Left and Right never move selected items behind it, nor Home and End the playhead', async () => {
+    let els = await selectWords(0, 0)
+    ;(els.find((e) => e.props['aria-label'] === 'More emphasis' && e.type === 'button')!.props.onClick as () => void)()
+    els = await settle(view(), SKIP)
+    const menu = els.find((e) => e.props.role === 'menu')!
+    for (const k of ['ArrowLeft', 'ArrowRight', 'ArrowDown', 'ArrowUp', 'Home', 'End']) {
+      const e = { key: k, prevented: false, stopped: false, preventDefault: () => void (e.prevented = true), stopPropagation: () => void (e.stopped = true) }
+      ;(menu.props.onKeyDown as (e: unknown) => void)(e)
+      expect([k, e.prevented, e.stopped]).toEqual([k, true, true])
+    }
+    // Other keys go on to the editor (Space plays), and the menu stays open.
+    const space = { key: ' ', prevented: false, stopped: false, preventDefault: () => void (space.prevented = true), stopPropagation: () => void (space.stopped = true) }
+    ;(menu.props.onKeyDown as (e: unknown) => void)(space)
+    expect([space.prevented, space.stopped]).toEqual([false, false])
+    els = await settle(view(), SKIP)
+    expect(els.some((e) => e.props.role === 'menu')).toBe(true)
+    expect(p1.toggles).toEqual([])
+  })
 })
 
 describe('one caption’s position', () => {

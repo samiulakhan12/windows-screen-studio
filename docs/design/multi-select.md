@@ -889,6 +889,7 @@ Every notice goes through `showNotice` into the Transport's polite live region
 - **Moving:**
   - "The selection stops here: a zoom is in the way" (variants in §4.8)
   - "Moved 0.6 s later: a zoom is in the way"
+  - "Moved 0.02 s later: a zoom is in the way" (a move shorter than 0.05 s; "less than 0.01 s" below that)
 - **Delete, cut, copy, paste:**
   - "Deleted 5 items · Ctrl+Z to undo" / "Cut 5 items · Ctrl+Z to undo"
   - "Copied 4 items" / "Select items to copy"

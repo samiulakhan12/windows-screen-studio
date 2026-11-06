@@ -68,6 +68,15 @@
   cards, text on screen, speaker notes and names. Results show the time and the words in context;
   Enter opens the recording in the editor right at that moment. Small typos are forgiven, and Bangla,
   Chinese, Japanese and Thai work too. Everything stays on your PC.
+- **Versions** (E-12): save named versions of an edit (*Versions* in the title bar, or
+  `Ctrl+Shift+S`), compare any of them with the edit now, and open one again: your edit is kept as a
+  version first, and `Ctrl+Z` goes straight back. Flown also keeps a version before Polish in one
+  click, Make my captions great, *Remove all* in the Transcript tab (fillers and retakes) or in
+  Review mode (automatic changes of a kind), and Make a vertical or square version.
+- **Filmstrip** (E-07): small frames along the clip track to find a moment by sight; *Frames on the
+  clip track* in the command palette hides them.
+- **Nudge by one frame** (E-09): with items selected, `←` / `→` move them one frame and `Shift+←` /
+  `Shift+→` ten frames; with nothing selected the keys step the playhead as before.
 
 ## 0.7.1
 

@@ -236,6 +236,9 @@ function GenerateSection({ project }: { project: Project }): JSX.Element {
   )
 }
 
+/** The keys the Add menu keeps (Left and Right do nothing there). */
+const MENU_KEYS = new Set(['Escape', 'ArrowDown', 'ArrowUp', 'ArrowLeft', 'ArrowRight', 'Home', 'End'])
+
 /** The Add menu (§2.11): Keyword pop-up, Emoji, Counter, List card; arrow keys move, Escape closes and returns to the button. */
 function AddMenu({ onAdd }: { onAdd: (kind: Graphic['kind'], byKey: boolean) => void }): JSX.Element {
   const [open, setOpen] = useState(false)
@@ -249,19 +252,18 @@ function AddMenu({ onAdd }: { onAdd: (kind: Graphic['kind'], byKey: boolean) => 
     if (refocus) buttonRef.current?.focus()
   }
   const onKeyDown = (e: ReactKeyboardEvent): void => {
+    if (e.key === 'Tab') return close(false)
+    if (!MENU_KEYS.has(e.key)) return
+    // The menu's keys are its own, as the copy menu's: never the editor's shortcuts (Home and End
+    // move the playhead there; Left and Right move the selected pop-up, or step a frame).
+    e.preventDefault()
+    e.stopPropagation()
+    if (e.key === 'Escape') return close(true)
     const items = [...(menuRef.current?.querySelectorAll<HTMLElement>('[role="menuitem"]') ?? [])]
+    if (items.length === 0) return
     const i = items.indexOf(document.activeElement as HTMLElement)
-    if (e.key === 'Escape') {
-      e.preventDefault()
-      e.stopPropagation()
-      close(true)
-    } else if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
-      e.preventDefault()
-      items[(i + (e.key === 'ArrowDown' ? 1 : items.length - 1)) % items.length]?.focus()
-    } else if (e.key === 'Home' || e.key === 'End') {
-      e.preventDefault()
-      items[e.key === 'Home' ? 0 : items.length - 1]?.focus()
-    } else if (e.key === 'Tab') close(false)
+    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') items[(i + (e.key === 'ArrowDown' ? 1 : items.length - 1)) % items.length]?.focus()
+    else if (e.key === 'Home' || e.key === 'End') items[e.key === 'Home' ? 0 : items.length - 1]?.focus()
   }
   return (
     <div className="graphics-add">
