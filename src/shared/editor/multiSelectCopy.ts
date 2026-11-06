@@ -32,7 +32,12 @@ export function stopNotice(why: StopReason): string {
   return `The selection stops here: ${STOP_WHY[why]}`
 }
 
-const secs = (v: number): string => `${+Math.abs(v).toFixed(1)} s`
+/** "0.6 s"; a move too short for that keeps a figure that is not 0 ("0.02 s", "less than 0.01 s"). */
+const secs = (v: number): string => {
+  const a = Math.abs(v)
+  if (a >= 0.05) return `${+a.toFixed(1)} s`
+  return a >= 0.005 ? `${+a.toFixed(2)} s` : 'less than 0.01 s'
+}
 
 /** After Starts at or ±1 s: what happened when a limit cut the move short (null when it went as asked). */
 export function movedNotice(moved: number, stopped: StopReason | null): string | null {

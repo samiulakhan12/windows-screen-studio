@@ -52,6 +52,9 @@ describe('notices', () => {
     expect(movedNotice(0.6, 'zoom')).toBe('Moved 0.6 s later: a zoom is in the way')
     expect(movedNotice(-0.25, 'start')).toBe('Moved 0.3 s earlier: the start of the recording')
     expect(movedNotice(0, 'end')).toBe('Not moved: the end of the recording')
+    // A move shorter than 0.05 s keeps a figure that is not 0.
+    expect(movedNotice(0.0167, 'zoom')).toBe('Moved 0.02 s later: a zoom is in the way')
+    expect(movedNotice(-0.003, 'start')).toBe('Moved less than 0.01 s earlier: the start of the recording')
   })
   it('Ctrl+A says what it selected', () => {
     const text = Array.from({ length: 12 }, (_, i) => itemKey('annotation', `a${i}`))

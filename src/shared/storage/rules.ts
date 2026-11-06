@@ -67,6 +67,8 @@ export interface RecordingUsage {
   capped: boolean
   /** Files counted in `bytes` that also have a name in another recording's folder (absent: none). */
   shared?: SharedFile[]
+  /** Of `bytes`, in versions/: kept versions of the edit, never a cache (absent: none; docs/design/versions.md §2.6). */
+  versionBytes?: number
 }
 
 /** The latest of the times given (ms or ISO), ignoring missing ones; 0 when none. */

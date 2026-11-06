@@ -1,0 +1,11 @@
+/* Frames of the recording on the clip track (Filmstrip.tsx). Over the clip and gap blocks, under the
+   waveform (the same z-index, earlier in the track), path bars, click markers, trim handles, range
+   selection and playhead. Its left and width are set inline, its height here. */
+.clip-track .clip-film {
+  position: absolute;
+  top: 0;
+  height: 100%;
+  pointer-events: none;
+  z-index: 1;
+  border-radius: var(--radius-md);
+}

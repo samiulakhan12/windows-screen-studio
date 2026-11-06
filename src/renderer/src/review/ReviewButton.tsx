@@ -25,7 +25,7 @@ export const ReviewButton = forwardRef<HTMLButtonElement, { project: Project; sh
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
           <path d="M9 6h11M9 12h11M9 18h11M3.5 6l1 1 2-2M3.5 12l1 1 2-2M3.5 18l1 1 2-2" />
         </svg>
-        Review
+        <span className="tb-label">Review</span>
         {count > 0 && (
           <span className="review-count" aria-hidden="true" data-testid="review-count">
             {count > 99 ? '99+' : count}

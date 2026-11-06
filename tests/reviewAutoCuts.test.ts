@@ -284,14 +284,15 @@ describe('readAutoCutOutcomes (migration)', () => {
     }
   })
 
-  it('only Review mode and the migration read the choices: never rendering, export, captions or the audio plan', () => {
+  it('only Review mode, the migration and the comparison of versions read the choices: never rendering, export, captions or the audio plan', () => {
     const root = path.resolve(__dirname, '../src')
     const files = (dir: string): string[] => readdirSync(dir, { withFileTypes: true }).flatMap((e) => (e.isDirectory() ? files(path.join(dir, e.name)) : /\.tsx?$/.test(e.name) ? [path.join(dir, e.name)] : []))
     const readers = files(root)
       .filter((f) => readFileSync(f, 'utf8').includes('autoCutOutcomes'))
       .map((f) => path.relative(root, f).split(path.sep).join('/'))
       .sort()
-    expect(readers.filter((f) => !f.startsWith('shared/review/'))).toEqual(['shared/engine/project.ts', 'shared/types.ts'])
+    // Versions (E-12) name them in Compare's "automatic changes to review" (versions.ts AREAS): a part of the edit, never acted on.
+    expect(readers.filter((f) => !f.startsWith('shared/review/'))).toEqual(['shared/editor/versions.ts', 'shared/engine/project.ts', 'shared/types.ts'])
   })
 })
 
