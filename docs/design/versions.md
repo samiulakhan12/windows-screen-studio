@@ -326,12 +326,15 @@ twice as far as the item.
 (`groupAccepts`, then no move), `moveGroup`. Zooms become yours (`auto: false`), as with a drag. A
 move cut short says why with the multi-select wording ("Moved 0.1 s later: the end of the
 recording"), at most once per run of presses; a move that is not possible says "Not moved: …".
+A move shorter than 0.05 s keeps a figure that is not 0 ("Moved 0.02 s earlier: …", "Moved less
+than 0.01 s earlier: …").
 
 ### 4.4 Undo — **one step per run of presses**
 
 Each nudge is a `store.update(…, 'nudge:<sorted keys>')`: presses less than 800 ms apart (holding
 the key repeats every ~33 ms; tapping) are one undo step; a pause, another edit or another
-selection starts a new one.
+selection starts a new one. The notice's frame count follows the same run: after an undo or
+another edit it counts from 1 again.
 
 ---
 

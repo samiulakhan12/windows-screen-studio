@@ -93,6 +93,44 @@ describe('one undo step per run of presses', () => {
   })
 })
 
+// Renderer code: imported at run time so the Node typecheck of tests/ does not follow it.
+const COMMAND = '../src/renderer/src/editor/nudgeCommand'
+const { nudgeSelected } = (await import(/* @vite-ignore */ COMMAND)) as {
+  nudgeSelected: (store: EditStore<Project>, keys: readonly ItemKey[], frames: number, notice: (text: string) => void, now?: number) => void
+}
+
+describe('the notice of a run of presses', () => {
+  it('counts from the undo: a press after Ctrl+Z starts a new count', () => {
+    let now = 10_000
+    const store = new EditStore<Project>(p20({ annotations: [text('t', 5, 6)] }), 200, 800, () => now)
+    const said: string[] = []
+    const press = (frames: number): void => {
+      nudgeSelected(store, [k('annotation:t')], frames, (t) => said.push(t), now)
+      now += 200
+    }
+    press(1)
+    press(1)
+    press(1)
+    store.undo()
+    press(1)
+    expect(said).toEqual(['Moved 1 item 1 frame later', 'Moved 1 item 2 frames later', 'Moved 1 item 3 frames later', 'Moved 1 item 1 frame later'])
+    expect(store.state.annotations[0].start).toBeCloseTo(5 + 1 / 30, 6)
+    // Another edit in between starts a new count too.
+    store.update((p) => ({ ...p, name: 'Renamed' }))
+    press(1)
+    expect(said.at(-1)).toBe('Moved 1 item 1 frame later')
+  })
+
+  it('says how far a press cut short moved, never "0 s"', () => {
+    const store = new EditStore<Project>(p20({ annotations: [text('t', 0.02, 1)] }))
+    const said: string[] = []
+    nudgeSelected(store, [k('annotation:t')], -1, (t) => said.push(t), 50_000)
+    expect(store.state.annotations[0].start).toBe(0)
+    nudgeSelected(store, [k('annotation:t')], -1, (t) => said.push(t), 50_100)
+    expect(said).toEqual(['Moved 0.02 s earlier: the start of the recording', 'Not moved: the start of the recording'])
+  })
+})
+
 describe('the step keys nudge while items are selected', () => {
   it('swaps the four step commands only', () => {
     expect(nudgeInstead('stepBack', true)).toBe('nudgeBack')
