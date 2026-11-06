@@ -27,11 +27,14 @@ import {
 } from '../shared/editor/versions'
 import type { Project } from '../shared/types'
 import { writeFileAtomicSync } from './atomicWrite'
+import { removeSyncWithRetries } from './exportCleanup'
 
 export const VERSIONS_DIR = 'versions'
 const INDEX = 'index.json'
 const FORMAT = 'flown-version'
 const FILE_RE = /^(v-[0-9a-z]{6,12}-[0-9a-f]{8})\.json$/
+/** Removing a version file Windows briefly holds: three tries, at most 75 ms of waiting (as atomicWrite.ts). */
+const RM_RETRIES = { attempts: 3, delayMs: 25 }
 /** A version's temporary file: left behind only by a crash (writes are synchronous, so never one in progress). */
 const TMP_RE = /^v-[0-9a-z]{6,12}-[0-9a-f]{8}\.json\.tmp$/
 
@@ -243,8 +246,12 @@ export function saveVersion(dir: string, projectId: string, raw: unknown, opts: 
   const next = [meta, ...list].sort(newestFirst)
   // Never the version just kept, nor the one being opened (it would be gone before it is read).
   const keep = new Set([id, typeof opts.protect === 'string' ? opts.protect : ''])
-  const removed = reason ? prunedAutos(next, keep) : []
-  for (const old of removed) fs.rmSync(fileOf(folder, old), { force: true, maxRetries: 3 })
+  const removed: string[] = []
+  for (const old of reason ? prunedAutos(next, keep) : []) {
+    // Best effort: the version is kept already. One Windows still holds stays listed and goes next time.
+    if (removeSyncWithRetries(fileOf(folder, old), RM_RETRIES)) removed.push(old)
+    else console.warn('Could not remove an old automatic version; it goes next time:', old)
+  }
   writeIndex(folder, next.filter((v) => !removed.includes(v.id)))
   return { saved: meta, removed }
 }
@@ -276,7 +283,9 @@ export function deleteVersion(dir: string, id: string): void {
   if (typeof id !== 'string' || !VERSION_ID_RE.test(id)) throw new VersionError('Unknown version')
   const folder = versionsDir(dir)
   if (!folder) return
-  fs.rmSync(fileOf(folder, id), { force: true, maxRetries: 3 })
+  const file = fileOf(folder, id)
+  // Retried while Windows briefly holds it (an indexer, antivirus, OneDrive); a last try throws its own error.
+  if (!removeSyncWithRetries(file, RM_RETRIES)) fs.rmSync(file, { force: true })
   writeIndex(folder, listVersions(dir).filter((v) => v.id !== id))
 }
 

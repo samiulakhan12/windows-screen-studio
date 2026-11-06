@@ -183,6 +183,9 @@ export interface VersionSummary {
   index, so two requests can never interleave and a crash leaves either the old state or a
   snapshot the next listing adopts. A write that fails (a full disk) removes its part-written
   `.tmp` file; one a crash left behind (`v-….json.tmp`) is removed by the next listing.
+  Removing a version file is retried while Windows briefly holds it (`removeSyncWithRetries`);
+  an old automatic version still held stays listed and goes with the next one, and never fails
+  the save of the new version.
 
 ### 2.6 Duplicate, Make a vertical version, storage
 

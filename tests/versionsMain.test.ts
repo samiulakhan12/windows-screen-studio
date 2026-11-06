@@ -237,3 +237,54 @@ describe('a write that fails', () => {
     expect(fs.readdirSync(folder()).filter((n) => n.endsWith('.tmp'))).toEqual(['notes.json.tmp'])
   })
 })
+
+describe('a version file Windows holds (an indexer, antivirus, OneDrive)', () => {
+  const locked = (code: string): NodeJS.ErrnoException => Object.assign(new Error(`${code}: resource busy or locked`), { code })
+
+  it('is pruned next time: the version just kept is still saved, listed and returned', () => {
+    const autos = [1, 2, 3, 4, 5].map((n) => saveVersion(dir, 'p20', edit(n), { reason: 'polish', now: at(n) }).saved!)
+    const held = path.join(folder(), `${autos[0].id}.json`)
+    const rm = fs.rmSync.bind(fs)
+    vi.spyOn(fs, 'rmSync').mockImplementation((file, opts) => {
+      if (String(file) === held) throw locked('EPERM')
+      return rm(file, opts)
+    })
+    const r = saveVersion(dir, 'p20', edit(6), { reason: 'open', about: 'v', now: at(6) })
+    expect(r.saved).toMatchObject({ name: 'Before opening “v”' })
+    expect(r.removed).toEqual([])
+    expect(listVersions(dir).map((v) => v.id)).toContain(r.saved!.id)
+    expect(fs.existsSync(held)).toBe(true)
+    vi.restoreAllMocks()
+    // Let go: the next automatic version removes it, and the one after it beyond five.
+    const next = saveVersion(dir, 'p20', edit(7), { reason: 'polish', now: at(7) })
+    expect(next.removed).toEqual([autos[0].id, autos[1].id])
+    expect(listVersions(dir).filter((v) => v.auto)).toHaveLength(5)
+  })
+
+  it('is deleted once it is let go a moment later', () => {
+    const v = saveVersion(dir, 'p20', edit(1), { name: 'a', now: at(0) }).saved!
+    const file = path.join(folder(), `${v.id}.json`)
+    const rm = fs.rmSync.bind(fs)
+    let tries = 0
+    vi.spyOn(fs, 'rmSync').mockImplementation((f, opts) => {
+      if (String(f) === file && ++tries < 3) throw locked('EBUSY')
+      return rm(f, opts)
+    })
+    deleteVersion(dir, v.id)
+    expect(fs.existsSync(file)).toBe(false)
+    expect(listVersions(dir)).toEqual([])
+  })
+
+  it('still says why when it stays held', () => {
+    const v = saveVersion(dir, 'p20', edit(1), { name: 'a', now: at(0) }).saved!
+    const file = path.join(folder(), `${v.id}.json`)
+    const rm = fs.rmSync.bind(fs)
+    vi.spyOn(fs, 'rmSync').mockImplementation((f, opts) => {
+      if (String(f) === file) throw locked('EBUSY')
+      return rm(f, opts)
+    })
+    expect(() => deleteVersion(dir, v.id)).toThrow('EBUSY')
+    vi.restoreAllMocks()
+    expect(listVersions(dir).map((x) => x.id)).toEqual([v.id])
+  })
+})
