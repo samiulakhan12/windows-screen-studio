@@ -72,11 +72,12 @@ interface Job {
 
 /** Why a project cannot take a translation into another language. */
 const FULL = `A project keeps at most ${MAX_TRACKS} translations: remove one to add another`
+const ALL_ADDED = 'Every language on the list is added already'
 
 /** Why Add a language is off for `project`, or null when it has room for another language. */
 function noRoom(project: Project): string | null {
   if ((project.captionTracks?.length ?? 0) >= MAX_TRACKS) return FULL
-  if (languagesToAdd(project).length === 0) return 'Every language on the list is added already'
+  if (languagesToAdd(project).length === 0) return ALL_ADDED
   return null
 }
 
@@ -130,12 +131,17 @@ export function LanguagesSection({ project }: { project: Project }): JSX.Element
 
   /** The rows take the focus on the next render (a request the project has no room for). */
   const focusRows = useRef(false)
+  // Each request renders, so its focus moves at once also when the section already shows what it
+  // asks for (React skips a render whose state is unchanged): left pending, it would take the
+  // focus from wherever the user is typing at the next project change.
+  const [, setAsked] = useState(0)
 
   // Translate captions with AI… and Add a caption language… open the form (§2.14), also when asked before the tab opened.
   useEffect(() => {
     const take = (): void => {
       const r = takeSectionRequest('language')
       if (!r) return
+      setAsked((n) => n + 1)
       // As Add a language is off then, a project with no room for another language says so instead, and nothing is sent.
       const room = noRoom(store.state)
       if (room) {
@@ -153,6 +159,11 @@ export function LanguagesSection({ project }: { project: Project }): JSX.Element
     take()
     return onSectionRequest(take)
   }, [])
+  // Why a request opened nothing goes once it no longer holds (a translation removed, by hand or by Undo).
+  const roomNow = noRoom(project)
+  useEffect(() => {
+    if ((status === FULL || status === ALL_ADDED) && status !== roomNow) setStatus('')
+  }, [status, roomNow])
   useEffect(() => {
     if (adding && focusSelect.current && select.current) {
       focusSelect.current = false

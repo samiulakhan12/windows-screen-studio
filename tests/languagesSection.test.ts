@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { Project } from '../src/shared/types'
-import { button, byTestId, contexts, focused, key, mockReact, settle, testStore, textOf, unmountAll, useEditorContexts, type El } from './studioHarness'
+import { button, byTestId, contexts, focused, key, mockReact, render, renderIfChanged, settle, testStore, textOf, unmountAll, useEditorContexts, type El } from './studioHarness'
 
 /*
  * Captions › Languages and Clean up's word list from the keyboard (docs/design/captions-studio.md
@@ -320,6 +320,67 @@ describe('a project with the most translations (§2.10, §2.14)', () => {
     expect(sent).toHaveLength(0)
     expect(textOf(els.find((e) => e.props.role === 'alert'))).toBe(`Could not translate: a project keeps at most 8 translations: remove one to add another.`)
     expect(store.state.captionTracks).toHaveLength(8)
+  })
+
+  it('says so only while it holds: a translation removed, the status goes and Add a language opens without it', async () => {
+    store.state = { ...base(), captionTracks: eight }
+    await settle(languages())
+    requestCaptions({ kind: 'language', via: 'ai' })
+    takeCaptionsRequest()
+    let els = await settle(languages())
+    const status = (e: El[]): string => textOf(e.find((x) => x.props.role === 'status' && x.type === 'p'))
+    expect(status(els)).toBe(FULL)
+    ;(els.filter((e) => e.props['data-testid'] === 'track-remove')[0].props.onClick as () => void)()
+    els = await settle(languages())
+    expect(byTestId(els, 'track-add')!.props.disabled).toBe(false)
+    expect(status(els)).toBe('')
+    ;(byTestId(els, 'track-add')!.props.onClick as () => void)()
+    els = await settle(languages())
+    expect(byTestId(els, 'track-translate')).toBeDefined()
+    expect(status(els)).toBe('')
+  })
+})
+
+describe('a request again with Languages open (§2.14)', () => {
+  /** Translate captions with AI… from the palette, the Captions tab open. */
+  const ask = (): void => {
+    requestCaptions({ kind: 'language', via: 'ai' })
+    takeCaptionsRequest()
+  }
+  /** A keystroke in a caption box: a project change, which renders the section. */
+  const typed = (): El[] => {
+    store.state = { ...store.state, transcript: { ...store.state.transcript!, segments: [{ id: 'c1', start: 0, end: 2, text: 'Make every word count. Now' }] } }
+    return render(languages())
+  }
+
+  it('no room: the list takes the focus at once, and a later edit keeps its focus', async () => {
+    store.state = { ...base(), captionTracks: ['bn', 'hi', 'es', 'fr', 'de', 'pt', 'it', 'ja'].map(track) }
+    await settle(languages())
+    ask()
+    await settle(languages())
+    expect(focused.at(-1)?.props['data-testid']).toBe('track-show')
+    // The user clicks into a caption, then asks again: the request renders on its own, as React would.
+    focused.length = 0
+    ask()
+    expect(renderIfChanged(languages())).not.toBeNull()
+    expect(focused.map((e) => e.props['data-testid'])).toEqual(['track-show'])
+    focused.length = 0
+    typed()
+    expect(focused).toEqual([])
+  })
+
+  it('room left, the form open: the language select takes the focus at once, and a later edit keeps its focus', async () => {
+    await settle(languages())
+    ask()
+    await settle(languages())
+    expect(focused.at(-1)?.type).toBe('select')
+    focused.length = 0
+    ask()
+    expect(renderIfChanged(languages())).not.toBeNull()
+    expect(focused.map((e) => e.type)).toEqual(['select'])
+    focused.length = 0
+    typed()
+    expect(focused).toEqual([])
   })
 })
 

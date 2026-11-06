@@ -215,6 +215,15 @@ export function render(root: unknown, skip: readonly string[] = []): El[] {
   throw new Error('the render did not settle')
 }
 
+/**
+ * After an event outside a render (a palette command, a store update), renders `root` again only
+ * when a state changed since the last render, as React does: a setState to the value it already
+ * has renders nothing, so effects wait for the next render. Null when nothing rendered.
+ */
+export function renderIfChanged(root: unknown, skip: readonly string[] = []): El[] | null {
+  return dirty ? render(root, skip) : null
+}
+
 /** Forgets every component's state (a fresh mount). */
 export function unmountAll(): void {
   for (const list of cells.values()) for (const c of list) c.cleanup?.()

@@ -401,6 +401,24 @@ async function main() {
         h.assert(JSON.stringify(chips) === JSON.stringify([['OpenAI', 'true']]), `the AI provider is chosen: ${JSON.stringify(chips)}`)
         h.assert(!/now: Add a language/.test(await notice()), `no notice sends the user elsewhere: ${await notice()}`)
 
+        // Asked again with the tab open, from a caption's text: the select takes the focus at once, and
+        // typing in a caption afterwards keeps the keys there (no focus is left waiting for the next edit).
+        const box = win.locator('textarea.caption-text').first()
+        await box.click()
+        await win.keyboard.press('End')
+        await runCommand(win, 'translate captions with ai', 'Translate captions with AI…')
+        await f.waitFor(async () => {
+          const at = await focused()
+          return at.tag === 'SELECT' && at.section === 'caption-languages'
+        }, 'the language select has the focus again', 3000)
+        const typedBefore = await box.inputValue()
+        await box.click()
+        await win.keyboard.press('End')
+        await win.keyboard.type(' Now', { delay: 40 })
+        await h.sleep(300)
+        h.assert((await focused()).tag === 'TEXTAREA', `typing keeps the focus in the caption: ${JSON.stringify(await focused())}`)
+        h.assert((await box.inputValue()) === `${typedBefore} Now`, `the caption has what was typed: ${await box.inputValue()}`)
+
         // Neither sends anything by itself.
         await h.sleep(500)
         h.assert(mock.requests.length === sent, `nothing was sent to the provider: ${mock.requests.slice(sent).map((r) => r.route)}`)
