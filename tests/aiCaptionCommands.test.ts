@@ -14,11 +14,20 @@ import { byTestId, contexts, focused, mockReact, settle, testStore, unmountAll, 
 
 const providers = vi.hoisted(() => ({ list: [] as AiProviderInfo[] }))
 const prefs: Record<string, unknown> = {}
+/** Preferences that cannot be read (getPref rejects), and every setPref call. */
+const unreadable = new Set<string>()
+const saves: [string, unknown][] = []
 vi.stubGlobal('document', { activeElement: null, body: {} })
 vi.stubGlobal('window', {
   api: {
-    getPref: async (k: string) => prefs[k] ?? null,
-    setPref: async (k: string, v: unknown) => void (prefs[k] = v),
+    getPref: async (k: string) => {
+      if (unreadable.has(k)) throw new Error('unreadable')
+      return prefs[k] ?? null
+    },
+    setPref: async (k: string, v: unknown) => {
+      saves.push([k, v])
+      prefs[k] = v
+    },
     listAiProviders: async () => providers.list,
     aiText: async () => {
       throw new Error('nothing is sent')
@@ -67,6 +76,8 @@ beforeEach(() => {
   tabs.length = 0
   notices.length = 0
   for (const k of Object.keys(prefs)) delete prefs[k]
+  unreadable.clear()
+  saves.length = 0
   providers.list = [GEMINI, OPENAI]
   items.takeSectionRequest('language')
   items.takeSectionRequest('cleanup')
@@ -143,6 +154,18 @@ describe('Fix captions with AI (aiCleanup)', () => {
     els = await settle(cleanup())
     expect(byTestId(els, 'cleanup-ai')?.props.checked).toBe(true)
     expect(prefs.captionCleanup).toMatchObject({ bleep: 'off', ai: true })
+  })
+
+  it('from another tab with the saved choices unreadable: ticks the AI fix for this visit and saves nothing over them', async () => {
+    unreadable.add('captionCleanup')
+    focused.length = 0
+    commands().aiCleanup()
+    let els = await settle(cleanup())
+    els = await settle(cleanup())
+    expect(byTestId(els, 'cleanup-ai')?.props.checked).toBe(true)
+    expect(focused.at(-1)?.props['data-testid']).toBe('cleanup-ai')
+    // The defaults (Bleep off) are not written over the choices that could not be read.
+    expect(saves.filter(([k]) => k === 'captionCleanup')).toEqual([])
   })
 
   it('without an AI provider says to add one first (the tick box is not shown), and focuses nothing', async () => {
