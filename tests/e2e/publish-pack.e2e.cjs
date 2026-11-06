@@ -375,6 +375,21 @@ async function main() {
         const focused = () =>
           win.evaluate(() => ({ tag: document.activeElement?.tagName, testid: document.activeElement?.getAttribute('data-testid'), section: document.activeElement?.closest('[data-testid]')?.getAttribute('data-testid') }))
 
+        const notice = async () => (await win.textContent('.notice-slot').catch(() => '')) || ''
+
+        // Fix captions with AI, run from the editor's first tab (Clean up mounts on the request): Clean up
+        // with "Also fix spelling and misheard words with AI" ticked and focused, the saved choices kept.
+        const saved = { caps: true, punct: true, digits: 'above-ten', bleep: 'standard', bleepSound: 'tone', ai: false }
+        await win.evaluate((v) => window.api.setPref('captionCleanup', v), saved)
+        h.assert(!(await win.isVisible('[data-testid="cleanup-ai"]').catch(() => false)), 'Clean up is not shown before the command')
+        await runCommand(win, 'fix captions with ai', 'Fix captions with AI')
+        await f.waitFor(async () => (await focused()).testid === 'cleanup-ai', 'the AI fix tick box has the focus', 5000)
+        await f.waitFor(() => win.isChecked('[data-testid="cleanup-ai"]'), 'the AI fix is ticked', 5000)
+        h.assert(await win.isVisible('[data-testid="cleanup-ai-provider"]'), 'its provider select shows')
+        h.assert(!/Clean up now/.test(await notice()), `no notice sends the user elsewhere: ${await notice()}`)
+        const pref = await win.evaluate(() => window.api.getPref('captionCleanup'))
+        h.assert(JSON.stringify(pref) === JSON.stringify({ ...saved, ai: true }), `the saved choices keep their bleeping: ${JSON.stringify(pref)}`)
+
         // Translate captions with AI…: Languages › Add a language with the provider chosen and the language select focused.
         await runCommand(win, 'translate captions with ai', 'Translate captions with AI…')
         await win.waitForSelector('[data-testid="caption-languages"] [data-testid="track-translate"]', { timeout: 10000 })
@@ -384,15 +399,8 @@ async function main() {
         }, 'the language select has the focus', 5000)
         const chips = await win.$$eval('[data-testid="caption-languages"] .chips[aria-label="Translate with"] button', (els) => els.map((e) => [e.textContent, e.getAttribute('aria-pressed')]))
         h.assert(JSON.stringify(chips) === JSON.stringify([['OpenAI', 'true']]), `the AI provider is chosen: ${JSON.stringify(chips)}`)
-        const notice = async () => (await win.textContent('.notice-slot').catch(() => '')) || ''
         h.assert(!/now: Add a language/.test(await notice()), `no notice sends the user elsewhere: ${await notice()}`)
 
-        // Fix captions with AI: Clean up with "Also fix spelling and misheard words with AI" ticked and focused.
-        await runCommand(win, 'fix captions with ai', 'Fix captions with AI')
-        await f.waitFor(async () => (await focused()).testid === 'cleanup-ai', 'the AI fix tick box has the focus', 5000)
-        h.assert(await win.isChecked('[data-testid="cleanup-ai"]'), 'the AI fix is ticked')
-        h.assert(await win.isVisible('[data-testid="cleanup-ai-provider"]'), 'its provider select shows')
-        h.assert(!/Clean up now/.test(await notice()), `no notice sends the user elsewhere: ${await notice()}`)
         // Neither sends anything by itself.
         await h.sleep(500)
         h.assert(mock.requests.length === sent, `nothing was sent to the provider: ${mock.requests.slice(sent).map((r) => r.route)}`)

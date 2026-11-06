@@ -86,24 +86,49 @@ export function CleanupSection({ project }: { project: Project }): JSX.Element {
     []
   )
 
+  /** The saved choices have been read; until then a request for the AI fix waits for them (`wantAi`). */
+  const loaded = useRef(false)
+  const wantAi = useRef(false)
+  /** The AI fix ticked on top of `c`, and saved: the other choices stay as they were. */
+  const tickAi = (c: CleanupChoices): CleanupChoices => {
+    const next = { ...c, ai: true }
+    void window.api.setPref('captionCleanup', next).catch(() => undefined)
+    return next
+  }
+
   // The saved choices and the word list.
   useEffect(() => {
     void loadWordList()
     window.api
       .getPref('captionCleanup')
-      .then((raw) => live.current && setChoices(readCleanupChoices(raw)))
-      .catch(() => undefined)
+      .then((raw) => {
+        if (!live.current) return
+        loaded.current = true
+        const saved = readCleanupChoices(raw)
+        // A request that came while they loaded ticks the AI fix on top of them, not of the defaults.
+        if (wantAi.current) {
+          wantAi.current = false
+          setChoices(tickAi(saved))
+        } else setChoices(saved)
+      })
+      .catch(() => {
+        if (!live.current) return
+        loaded.current = true
+        // Unread, the saved choices are not overwritten: the AI fix is ticked for this visit only.
+        if (wantAi.current) {
+          wantAi.current = false
+          setChoices((c) => ({ ...c, ai: true }))
+        }
+      })
   }, [])
 
   // Fix captions with AI (aiCleanup) opens Clean up with the AI fix ticked and focused (§2.14).
   useEffect(() => {
     const take = (): void => {
       if (!takeSectionRequest('cleanup')) return
-      setChoices((c) => {
-        const next = { ...c, ai: true }
-        void window.api.setPref('captionCleanup', next).catch(() => undefined)
-        return next
-      })
+      // Mounted by the request, the section has not read the saved choices yet: the tick waits for them.
+      if (loaded.current) setChoices(tickAi)
+      else wantAi.current = true
       focusAi.current = true
     }
     take()

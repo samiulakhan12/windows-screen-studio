@@ -124,6 +124,27 @@ describe('Fix captions with AI (aiCleanup)', () => {
     expect(prefs.captionCleanup).toMatchObject({ ai: true })
   })
 
+  it('from another tab, where Clean up mounts on the request: ticks the AI fix on the saved choices, which keep their bleeping', async () => {
+    const saved = { caps: false, punct: true, digits: 'off', bleep: 'strict', bleepSound: 'silence', ai: false }
+    prefs.captionCleanup = saved
+    focused.length = 0
+    commands().aiCleanup()
+    let els = await settle(cleanup())
+    els = await settle(cleanup())
+    expect(byTestId(els, 'cleanup-ai')?.props.checked).toBe(true)
+    expect(focused.at(-1)?.props['data-testid']).toBe('cleanup-ai')
+    expect(prefs.captionCleanup).toEqual({ ...saved, ai: true })
+    expect(els.find((e) => e.props['aria-pressed'] === true && text(e) === 'Strict')).toBeDefined()
+  })
+
+  it('from another tab with nothing saved: the defaults with the AI fix ticked', async () => {
+    commands().aiCleanup()
+    let els = await settle(cleanup())
+    els = await settle(cleanup())
+    expect(byTestId(els, 'cleanup-ai')?.props.checked).toBe(true)
+    expect(prefs.captionCleanup).toMatchObject({ bleep: 'off', ai: true })
+  })
+
   it('without an AI provider says to add one first (the tick box is not shown), and focuses nothing', async () => {
     providers.list = []
     commands().aiCleanup()
