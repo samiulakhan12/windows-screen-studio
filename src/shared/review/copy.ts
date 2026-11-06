@@ -28,7 +28,8 @@ export const KIND_WORDS: Record<ReviewKind, { chip: string; name: string; all: s
   emphasis: { chip: 'Emphasis', name: 'emphasis', all: 'Remove all emphasis', one: 'emphasis', plural: 'emphasis' },
   text: { chip: 'Text', name: 'text fixes', all: 'Remove all text fixes', one: 'text fix', plural: 'text fixes' },
   emoji: { chip: 'Emoji', name: 'emoji', all: 'Remove all emoji', one: 'emoji', plural: 'emoji' },
-  graphic: { chip: 'Pop-up', name: 'pop-up', all: 'Remove all pop-ups', one: 'pop-up', plural: 'pop-ups' },
+  // Pop-ups, counters, list cards and the title cards made from captions (lower thirds, chapter titles, quotes): §10.1's graphics.
+  graphic: { chip: 'Graphic', name: 'graphic', all: 'Remove all graphics', one: 'graphic', plural: 'graphics' },
   bleep: { chip: 'Bleep', name: 'bleep', all: 'Remove all bleeps', one: 'bleep', plural: 'bleeps' }
 }
 

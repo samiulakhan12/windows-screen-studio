@@ -368,10 +368,22 @@ describe('undo: one step per press, statuses follow', () => {
 })
 
 describe('the words of the new kinds', () => {
+  it('a lower third or chapter title row names its kind for what Remove all takes: every automatic graphic, title cards with pop-ups', () => {
+    const p: Project = { ...before, graphics: [keyword('k1', 'Auto Save')], titles: [card('t1', 'speaker', 'Priya', 1), card('t2', 'chapter', 'Export settings', 8)] }
+    const items = reviewItems(p)
+    const lower = row(items, 'card:t1')
+    expect(itemAccessibleName(lower, '0:01.0', 'pending')).toBe('Lower third: Priya, graphic, at 0:01.0, Captions Studio, not reviewed')
+    // The footer's Remove all on that row (ReviewPanel's removeKind: every pending row of its kind).
+    const all = items.filter((i) => i.kind === lower.kind)
+    expect(all.map((i) => i.title)).toEqual(['Lower third: Priya', 'Chapter title: Export settings', 'Pop-up “Auto Save”'])
+    expect(KIND_WORDS[lower.kind]).toMatchObject({ chip: 'Graphic', all: 'Remove all graphics' })
+    expect(removeItems(p, all)).toMatchObject({ titles: [] })
+  })
+
   it('have chips, names and Remove all', () => {
     expect(KIND_WORDS.style.all).toBe('Remove all caption style changes')
     expect(KIND_WORDS.emoji.all).toBe('Remove all emoji')
-    expect(KIND_WORDS.graphic.all).toBe('Remove all pop-ups')
+    expect(KIND_WORDS.graphic.all).toBe('Remove all graphics')
     expect(KIND_WORDS.bleep.all).toBe('Remove all bleeps')
   })
 })
