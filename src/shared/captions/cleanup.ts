@@ -886,6 +886,8 @@ export function bleepCutOut(b: Pick<Bleep, 'start' | 'end'>, clips: readonly Pic
   const mid = (b.start + b.end) / 2
   const from = Math.min(mid, b.start + WIDEN)
   const to = Math.max(mid, b.end - WIDEN)
+  // A word timed with no length (start == end) is kept by a clip that reaches its instant.
+  if (to - from <= 1e-6) return !clips.some((c) => c.start <= to + 1e-6 && c.end >= from - 1e-6)
   return clips.every((c) => c.end <= from + 1e-6 || c.start >= to - 1e-6)
 }
 

@@ -2925,7 +2925,9 @@ Offline rules, each optional (§2.9). The choices are `CleanupChoices` (`caps`, 
      0.05 s each side, `bleepCutOut`; deleted in the Transcript tab or cut on the timeline) makes
      no sound at all: no tone at the cut and no muting of the words around it, which its widening
      reaches (`heardBleeps`, used by `bleepGains` and `toneJob`). A word the edit keeps any part of
-     keeps its whole bleep.
+     keeps its whole bleep; a word timed with no length (start = end, as a provider can time one)
+     keeps it while a kept clip reaches its instant, so a split on the word or a cut that ends
+     where it starts leaves it bleeped.
 6. **AI fix** (`ai`, off by default, needs a provider): today's **Fix captions** (`cleanup`
    text task, `transcriptText.ts`), checked by `applyTextResult` (`edit.ts:156-175`) as today.
    It runs after rules 1–4 inside the same Tidy captions action, and its changes are recorded with

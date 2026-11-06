@@ -7,9 +7,9 @@ import { ffmpegPath } from '../src/main/ffmpeg'
 import type { ExportJob } from '../src/shared/api/export'
 import { DUCK_GAIN, jobSoundGains, soundGainFilters, soundGains } from '../src/shared/audio/soundsEdit'
 import { DEFAULT_CLEANUP, tidyCaptions } from '../src/shared/captions/cleanup'
-import { cutWords, transcriptWords } from '../src/shared/editor/transcript'
+import { cutFlags, cutWords, transcriptWords } from '../src/shared/editor/transcript'
 import { createProject } from '../src/shared/engine/project'
-import { cutRange } from '../src/shared/engine/timeline'
+import { cutRange, splitAt } from '../src/shared/engine/timeline'
 import { planSoundtrack } from '../src/shared/render/audioPlan'
 import { toneJob } from '../src/shared/render/popSound'
 import type { Bleep, Project, SoundSpan } from '../src/shared/types'
@@ -297,5 +297,38 @@ describe('a bleeped word the edit cuts out', () => {
     const out = exported(part, false).samples
     // From 1.48 to the cut at 1.7 (output time) the recording is silent.
     expect(peak(out, 1.5, 1.68)).toBeLessThan(1e-3)
+  })
+
+  it('a word timed with no length keeps its bleep while the edit holds its instant: a split on it, the word before deleted', () => {
+    // A provider can time a word with no length, and readCaptionSegments gives one to a word that
+    // starts before its caption when captions overlap.
+    const words = [
+      { text: 'this', start: 1, end: 1.3 },
+      { text: 'is', start: 1.33, end: 1.53 },
+      { text: 'fuck', start: 1.53, end: 1.53 },
+      { text: 'good', start: 1.53, end: 1.9 },
+      { text: 'stuff', start: 1.93, end: 2.3 }
+    ]
+    const s = said()
+    const q: Project = { ...s, transcript: { ...s.transcript!, segments: [{ id: 's1', start: 1, end: 2.3, text: words.map((w) => w.text).join(' '), words }] } }
+    const p = tidyCaptions(q, { ...DEFAULT_CLEANUP, caps: false, punct: false, digits: 'off', bleep: 'standard', bleepSound: 'tone', words: [] }).project
+    expect(p.bleeps).toEqual([expect.objectContaining({ word: 'fuck', start: expect.closeTo(1.48, 9), end: expect.closeTo(1.58, 9) })])
+    const heard = [{ start: expect.closeTo(1.48, 9), end: expect.closeTo(1.58, 9), gain: 0 }]
+    // The word clicked in the Transcript tab (the playhead on its start) and S: nothing is cut.
+    const split: Project = { ...p, clips: splitAt(p.clips, 1.53) }
+    expect(split.clips.map((c) => [c.start, c.end])).toEqual([[0, 1.53], [1.53, SECONDS]])
+    expect(cutFlags(transcriptWords(split.transcript), split.clips)).toEqual([false, false, false, false, false])
+    expect(soundGains(split)).toEqual(heard)
+    expect(jobSoundGains(split)).toBeDefined()
+    expect(toneJob(split).length).toBeGreaterThan(0)
+    // "is" deleted: its cut ends where the word is, and the Transcript tab still shows the word heard.
+    const after: Project = { ...p, clips: cutWords(p.clips, transcriptWords(p.transcript), [[1, 1]], p.duration) }
+    expect(cutFlags(transcriptWords(after.transcript), after.clips)[2]).toBe(false)
+    expect(soundGains(after)).toEqual(heard)
+    expect(toneJob(after).length).toBeGreaterThan(0)
+    // Cut out with the words around it, it makes no sound.
+    const gone: Project = { ...p, clips: cutRange(p.clips, 1.4, 1.7) }
+    expect(soundGains(gone)).toEqual([])
+    expect(toneJob(gone)).toEqual([])
   })
 })
