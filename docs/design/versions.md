@@ -181,7 +181,8 @@ export interface VersionSummary {
 * **Values:** the snapshot as in §2.2; names as in §2.3; a `reason` outside `AutoReason` is refused.
 * **Writes** are synchronous and atomic (`writeFileAtomicSync`): the snapshot first, then the
   index, so two requests can never interleave and a crash leaves either the old state or a
-  snapshot the next listing adopts.
+  snapshot the next listing adopts. A write that fails (a full disk) removes its part-written
+  `.tmp` file; one a crash left behind (`v-….json.tmp`) is removed by the next listing.
 
 ### 2.6 Duplicate, Make a vertical version, storage
 

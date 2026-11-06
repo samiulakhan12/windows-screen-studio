@@ -1,7 +1,7 @@
 import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { canonicalJson, deleteVersion, hashProject, listVersions, readVersion, renameVersion, saveVersion, versionsDir, VersionError } from '../src/main/versions'
 import { restoreVersion, VERSION_ID_RE, VERSION_LIMITS } from '../src/shared/editor/versions'
 import type { Project } from '../src/shared/types'
@@ -11,7 +11,10 @@ let dir: string
 beforeEach(() => {
   dir = fs.mkdtempSync(path.join(os.tmpdir(), 'flown-versions-'))
 })
-afterEach(() => fs.rmSync(dir, { recursive: true, force: true }))
+afterEach(() => {
+  vi.restoreAllMocks()
+  fs.rmSync(dir, { recursive: true, force: true })
+})
 
 const at = (minute: number): Date => new Date(Date.UTC(2026, 9, 30, 10, minute))
 const edit = (n: number): Project => p20({ zooms: Array.from({ length: n }, (_, i) => zoom(`z${i}`, i, i + 0.5)) })
@@ -207,5 +210,30 @@ describe('the versions folder', () => {
   })
   it('is not made in a recording folder that is gone', () => {
     expect(() => versionsDir(path.join(dir, 'gone'), true)).toThrow('no longer exists')
+  })
+})
+
+describe('a write that fails', () => {
+  const failure = (code: string): NodeJS.ErrnoException => Object.assign(new Error(`${code}: simulated`), { code })
+
+  it('leaves no part-written temporary file (a full disk), and a listing removes one a crash left', () => {
+    saveVersion(dir, 'p20', edit(1), { name: 'small', now: at(0) })
+    const write = fs.writeFileSync.bind(fs)
+    vi.spyOn(fs, 'writeFileSync').mockImplementation((file, data, opts) => {
+      // The disk fills up part-way through a version's temporary file.
+      if (/^v-.*\.json\.tmp$/.test(path.basename(String(file)))) {
+        write(file, String(data).slice(0, 100))
+        throw failure('ENOSPC')
+      }
+      return write(file, data, opts)
+    })
+    for (let i = 0; i < 3; i++) expect(() => saveVersion(dir, 'p20', edit(2 + i), { reason: 'polish', now: at(1 + i) })).toThrow('ENOSPC')
+    vi.restoreAllMocks()
+    expect(fs.readdirSync(folder()).filter((n) => n.endsWith('.tmp'))).toEqual([])
+    // One left by a crash (or an older build) goes with the next listing; other names stay.
+    fs.writeFileSync(path.join(folder(), 'v-aaaaaaaa-00000000.json.tmp'), 'part')
+    fs.writeFileSync(path.join(folder(), 'notes.json.tmp'), 'mine')
+    expect(listVersions(dir)).toHaveLength(1)
+    expect(fs.readdirSync(folder()).filter((n) => n.endsWith('.tmp'))).toEqual(['notes.json.tmp'])
   })
 })

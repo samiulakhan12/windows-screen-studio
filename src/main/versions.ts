@@ -32,6 +32,8 @@ export const VERSIONS_DIR = 'versions'
 const INDEX = 'index.json'
 const FORMAT = 'flown-version'
 const FILE_RE = /^(v-[0-9a-z]{6,12}-[0-9a-f]{8})\.json$/
+/** A version's temporary file: left behind only by a crash (writes are synchronous, so never one in progress). */
+const TMP_RE = /^v-[0-9a-z]{6,12}-[0-9a-f]{8}\.json\.tmp$/
 
 /** A refusal whose message is the sentence to show. */
 export class VersionError extends Error {}
@@ -90,10 +92,19 @@ function readFileMeta(file: string, id: string): VersionMeta | null {
 
 const newestFirst = (a: VersionMeta, b: VersionMeta): number => b.createdAt.localeCompare(a.createdAt) || b.id.localeCompare(a.id)
 
-/** writeFileAtomicSync, after removing whatever holds its temporary name (a link planted there is never written through). */
+/**
+ * writeFileAtomicSync, after removing whatever holds its temporary name (a link planted there is
+ * never written through). A write that fails (a full disk) leaves no part-written temporary file:
+ * each version has a new name, so nothing else would ever remove it.
+ */
 function writeAtomic(file: string, data: string): void {
   fs.rmSync(`${file}.tmp`, { force: true })
-  writeFileAtomicSync(file, data, { attempts: 4 })
+  try {
+    writeFileAtomicSync(file, data, { attempts: 4 })
+  } catch (err) {
+    fs.rmSync(`${file}.tmp`, { force: true })
+    throw err
+  }
 }
 
 function writeIndex(folder: string, items: readonly VersionMeta[]): void {
@@ -115,6 +126,13 @@ export function listVersions(dir: string): VersionMeta[] {
   for (const name of fs.readdirSync(folder)) {
     const m = FILE_RE.exec(name)
     if (m) files.set(m[1], name)
+    else if (TMP_RE.test(name)) {
+      try {
+        fs.rmSync(path.join(folder, name), { force: true })
+      } catch (err) {
+        console.warn('Could not remove a leftover version file:', err)
+      }
+    }
   }
   let indexed: VersionMeta[] = []
   let stale = false
