@@ -10,7 +10,7 @@ import { POP_SOUNDS, POP_VOLUME, popSoundSource, toneSoundSource } from '../src/
  * graphics' pops and the bleep tones are mixed like the click track; a job without them builds
  * exactly the graph of before; the tone track's spans land on their samples. The graphs are run
  * through the pinned ffmpeg. (Muting the recording under a bleep goes through the sound finder's
- * gains, phase B.)
+ * gains: tests/soundsBleeps.test.ts and tests/bleepExportJob.test.ts.)
  */
 
 const RATE = 48000

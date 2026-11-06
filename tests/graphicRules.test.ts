@@ -10,6 +10,7 @@ import { DEFAULT_CAPTIONS } from '../src/shared/captions/settings'
 import { replacedAt } from '../src/shared/captions/replaced'
 import { captionWordTimes } from '../src/shared/editor/transcript'
 import { graphicDrawn } from '../src/shared/render/popSound'
+import { reviewItems } from '../src/shared/review/review'
 import type { Bleep, CaptionSegment, Graphic, Project } from '../src/shared/types'
 import { captions, studioProject } from './p4Fixtures'
 
@@ -159,6 +160,8 @@ describe('graphic generation (§10.2)', () => {
     expect(t.start).toBeCloseTo(10.3)
     expect(t.end - t.start).toBeCloseTo(2.5)
     expect('sound' in t).toBe(false)
+    // Review mode lists each one (phase B): "Chapter title: <name>".
+    expect(reviewItems(out).filter((i) => i.key.startsWith('card:')).map((i) => i.title)).toEqual(['Chapter title: Export settings', 'Chapter title: Wrap up'])
   })
 
   it('density: 1.5 s apart, none on sensitive captions, none just after a pause freeze', () => {
