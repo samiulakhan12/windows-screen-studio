@@ -258,7 +258,9 @@ Copy:
 
 * Title "Versions"; intro "A version keeps this edit as it is now. Your recording is never changed."
 * Empty list: "No versions yet. Save one before a big change, so you can always go back."
-* Footer hint: "Flown also keeps a version before Polish, Remove all and Make a vertical version (the last 5)."
+* Footer hint: "Flown also keeps a version before Polish, Make my captions great, Remove all in the
+  Transcript tab or Review, and Make a vertical or square version (the last 5)." (each tool by name:
+  other buttons called Remove all, such as the Zoom tab's, keep none).
 * Buttons: "Save version", "Open", "Compare", "Rename", "Delete", "Keep", "Close".
 * Errors: "Could not save the version: …", "Could not open this version: …".
 

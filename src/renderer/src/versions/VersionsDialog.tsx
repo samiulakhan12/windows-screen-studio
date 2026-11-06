@@ -304,7 +304,9 @@ export function VersionsDialog({
           )}
         </div>
         <footer className="modal-foot versions-foot">
-          <p className="hint">Flown also keeps a version before Polish, Remove all and Make a vertical version (the last {VERSION_LIMITS.auto}).</p>
+          <p className="hint" data-testid="versions-auto-hint">
+            Flown also keeps a version before Polish, Make my captions great, Remove all in the Transcript tab or Review, and Make a vertical or square version (the last {VERSION_LIMITS.auto}).
+          </p>
           <button type="button" className="btn" onClick={onClose}>
             Close
           </button>

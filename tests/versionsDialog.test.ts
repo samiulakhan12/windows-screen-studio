@@ -356,6 +356,16 @@ describe('Compare', () => {
   })
 })
 
+describe('the footer (docs/design/versions.md §2.7)', () => {
+  it('names each tool that keeps a version by itself, not every button called Remove all', async () => {
+    const out = await opened()
+    // Review mode's Keep all and the Zoom tab's Remove all keep none: the tools are named where they are.
+    expect(textOf(out.find((e) => e.props['data-testid'] === 'versions-auto-hint')?.props.children)).toBe(
+      'Flown also keeps a version before Polish, Make my captions great, Remove all in the Transcript tab or Review, and Make a vertical or square version (the last 5).'
+    )
+  })
+})
+
 describe('work holding the edit (Review mode’s Remove all, docs/design/versions.md §2.4)', () => {
   /** The edit once the work has made its edit. */
   const removed: Project = { ...project, clips: [{ ...project.clips[0], end: 12 }] }
