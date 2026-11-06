@@ -75,14 +75,14 @@ describe('versionSummary', () => {
     expect(versionSummary(p)).toMatchObject({ cuts: 0, trimmed: true })
   })
   it('sums up in one line, zero counts left out, five parts at most', () => {
-    const s = { duration: 133.4, cuts: 3, trimmed: false, zooms: 5, captions: 42, texts: 0, shapes: 1, images: 2, chapters: 4, freezes: 0 }
+    const s = { duration: 133.4, cuts: 3, trimmed: false, zooms: 5, captions: 42, graphics: 0, texts: 0, shapes: 1, images: 2, chapters: 4, freezes: 0 }
     expect(summaryLine(s)).toBe('2:13 · 3 cuts · 5 zooms · 42 captions · 1 shape')
     expect(summaryLine({ ...s, cuts: 1, zooms: 0, captions: 0, shapes: 0, images: 0, chapters: 0 })).toBe('2:13 · 1 cut')
   })
 })
 
 describe('comparing', () => {
-  const base = { duration: 133.4, cuts: 3, trimmed: false, zooms: 5, captions: 42, texts: 0, shapes: 0, images: 0, chapters: 0, freezes: 0 }
+  const base = { duration: 133.4, cuts: 3, trimmed: false, zooms: 5, captions: 42, graphics: 0, texts: 0, shapes: 0, images: 0, chapters: 0, freezes: 0 }
   it('lists only the counts that differ, the length first', () => {
     expect(compareSummaries(base, { ...base, duration: 118.2, cuts: 5 })).toEqual([
       { label: 'Length', version: '2:13.4', now: '1:58.2' },
@@ -202,11 +202,11 @@ describe('comparing', () => {
       expect(changedAreas(a, { ...a, captions: { ...a.captions!, showSpeaker: undefined } })).toEqual(['captions look'])
     })
 
-    it('says "other settings" for Captions Studio’s own parts until they have names of their own', () => {
+    it('names Captions Studio’s own parts as the captions look, never "other settings" (test 56: tests/versionsCaptions.test.ts)', () => {
       const a = full()
-      expect(changedAreas(a, { ...a, captionMarks: undefined })).toEqual(['other settings'])
-      expect(changedAreas(a, { ...a, captionPlaces: [{ caption: 's1', position: 'bottom' }] })).toEqual(['other settings'])
-      expect(changedAreas(a, { ...a, bleeps: undefined })).toEqual(['other settings'])
+      expect(changedAreas(a, { ...a, captionMarks: undefined })).toEqual(['captions look'])
+      expect(changedAreas(a, { ...a, captionPlaces: [{ caption: 's1', position: 'bottom' }] })).toEqual(['captions look'])
+      expect(changedAreas(a, { ...a, bleeps: undefined })).toEqual(['captions look'])
     })
   })
 })

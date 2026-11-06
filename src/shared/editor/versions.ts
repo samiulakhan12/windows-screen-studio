@@ -23,6 +23,8 @@ export interface VersionSummary {
   zooms: number
   /** Caption segments. */
   captions: number
+  /** Captions Studio's motion graphics (pop-ups, counters and list cards made from the captions). */
+  graphics: number
   /** Text annotations and title cards. */
   texts: number
   /** Shapes and spotlights. */
@@ -105,6 +107,7 @@ export function versionSummary(p: Project): VersionSummary {
     trimmed: gaps.some((g) => g.kind !== 'cut'),
     zooms: p.zooms.length,
     captions: p.transcript?.segments.length ?? 0,
+    graphics: p.graphics?.length ?? 0,
     texts: p.annotations.length + (p.titles?.length ?? 0),
     shapes: (p.shapes?.length ?? 0) + (p.spotlights?.length ?? 0),
     images: p.overlays?.length ?? 0,
@@ -117,6 +120,7 @@ const COUNTS: readonly { key: Exclude<keyof VersionSummary, 'duration' | 'trimme
   { key: 'cuts', one: 'cut', many: 'cuts', label: 'Cuts' },
   { key: 'zooms', one: 'zoom', many: 'zooms', label: 'Zooms' },
   { key: 'captions', one: 'caption', many: 'captions', label: 'Captions' },
+  { key: 'graphics', one: 'pop-up', many: 'pop-ups', label: 'Pop-ups' },
   { key: 'texts', one: 'text', many: 'texts', label: 'Text and titles' },
   { key: 'shapes', one: 'shape', many: 'shapes', label: 'Shapes and spotlights' },
   { key: 'images', one: 'image', many: 'images', label: 'Images' },
@@ -158,8 +162,9 @@ export function compareSummaries(version: VersionSummary, now: VersionSummary): 
  * the finder was told to leave as they are (Ignore) a part of their own, as nothing heard changes;
  * the publishing pack's export description (NW-13) is its own part, and Review mode's records of
  * automatic changes and the choices made for them (E-02) what Review lists.
- * Captions Studio's own parts (marks, places, pop-ups, languages, bleeps, its automatic changes)
- * come with its phase B; until then a difference there is "other settings".
+ * Captions Studio's emphasis, captions placed by hand, bleeped words and the record of what its
+ * automation replaced are part of the captions' look; its translated tracks are the caption
+ * languages; its pop-ups are counted (ITEMS). A list left empty and none are the same.
  */
 const AREAS: readonly { name: string; keys: readonly (keyof Project)[]; of?: (p: Project) => unknown }[] = [
   { name: 'style', keys: ['style', 'tilt'] },
@@ -169,7 +174,12 @@ const AREAS: readonly { name: string; keys: readonly (keyof Project)[]; of?: (p:
   { name: 'ignored sounds', keys: ['sounds'], of: (p) => [...(p.sounds?.ignored ?? [])].sort() },
   { name: 'effects', keys: ['effects'] },
   { name: 'zoom settings', keys: ['zoomSettings', 'autoZoom'] },
-  { name: 'captions look', keys: ['captions'] },
+  {
+    name: 'captions look',
+    keys: ['captions', 'captionMarks', 'captionPlaces', 'captionAuto', 'bleeps'],
+    of: (p) => [p.captions, p.captionMarks ?? [], p.captionPlaces ?? [], p.captionAuto ?? {}, p.bleeps ?? []]
+  },
+  { name: 'caption languages', keys: ['captionTracks'], of: (p) => p.captionTracks ?? [] },
   { name: 'crop', keys: ['crop'] },
   { name: 'vertical framing', keys: ['reframe'] },
   { name: 'brand', keys: ['brand', 'fonts'] },
@@ -188,6 +198,7 @@ const ITEMS: readonly { name: string; keys: readonly (keyof Project)[]; counts: 
   { name: 'texts and titles', keys: ['annotations', 'titles'], counts: ['texts'] },
   { name: 'shapes and spotlights', keys: ['shapes', 'spotlights'], counts: ['shapes'] },
   { name: 'images', keys: ['overlays'], counts: ['images'] },
+  { name: 'pop-ups', keys: ['graphics'], counts: ['graphics'] },
   { name: 'chapters', keys: ['chapters'], counts: ['chapters'] },
   { name: 'freeze frames', keys: ['freezes'], counts: ['freezes'] }
 ]
@@ -316,6 +327,8 @@ export function sanitizeSummary(raw: unknown): VersionSummary {
     trimmed: s.trimmed === true,
     zooms: count(s.zooms),
     captions: count(s.captions),
+    // A version kept before Captions Studio has no count of its pop-ups: it had none.
+    graphics: count(s.graphics),
     texts: count(s.texts),
     shapes: count(s.shapes),
     images: count(s.images),

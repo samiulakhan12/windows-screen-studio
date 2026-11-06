@@ -334,8 +334,8 @@ Not run here: the rest of the e2e suite, `npm run dist:win`.
 
 ### Left
 
-- `versions.ts` areas (test 56) when the versions branch merges; offline translation (tests 48,
-  58's translation part, `captionLanguage` choosing On this PC) when the owner decides.
+- Offline translation (tests 48, 58's translation part, `captionLanguage` choosing On this PC)
+  when the owner decides. (`versions.ts` areas, test 56: built after the versions merge, below.)
 - A quote card's Review row reads "Quote: “…”" with its words (the design's example says only
   "Quote"); list cards read "List: <title>" or "List: n items" as the Graphics tab names them.
 - The style row sits at the first caption's time; a look has no time of its own.

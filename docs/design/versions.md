@@ -100,6 +100,7 @@ export interface VersionSummary {
   trimmed: boolean   // the start or the end is trimmed
   zooms: number
   captions: number   // transcript segments
+  graphics: number   // Captions Studio's pop-ups (label "Pop-ups"); 0 when a kept summary has none
   texts: number      // text annotations plus title cards
   shapes: number     // shapes plus spotlights
   images: number     // image overlays
@@ -184,15 +185,17 @@ export interface VersionSummary {
 
   followed by "Also different: style, camera." (`changedAreas`: style, cursor, camera, sound (with
   the unwanted sounds muted or lowered, F-17), ignored sounds (the found sounds the finder was told
-  to leave as they are: nothing heard changes, so never "sound"), effects, captions look (with *Show speaker names*),
-  crop, vertical framing, brand, watermark, export description (the publishing pack's, NW-13),
-  automatic changes to review (Review mode's records and the choices made for them, E-02), caption
-  text, speaker names (captions labelled with other speakers, NW-09: not "caption text"); clips,
-  zooms, texts and titles, shapes and spotlights, images, chapters and freeze frames that moved or
-  changed while their count stayed the same; "other settings" for any other part of the edit,
-  Captions Studio's own parts among them until its phase B names them) or "Same as your edit now."
-  when nothing differs. Every one of these parts is saved with the edit (none is state of one
-  editor session), so a version kept just now reads "Same". The edit now is compared as it would be kept, through
+  to leave as they are: nothing heard changes, so never "sound"), effects, captions look (with
+  *Show speaker names*, and Captions Studio's emphasis, captions placed by hand, bleeped words and
+  the record of what its automation replaced), caption languages (Captions Studio's translated
+  tracks), crop, vertical framing, brand, watermark, export description (the publishing pack's,
+  NW-13), automatic changes to review (Review mode's records and the choices made for them, E-02),
+  caption text, speaker names (captions labelled with other speakers, NW-09: not "caption text");
+  clips, zooms, texts and titles, shapes and spotlights, images, pop-ups, chapters and freeze
+  frames that moved or changed while their count stayed the same; "other settings" for any other
+  part of the edit) or "Same as your edit now." when nothing differs. Every one of these parts is
+  saved with the edit (none is state of one editor session), so a version kept just now reads
+  "Same". The edit now is compared as it would be kept, through
   `migrateProject` (so a freeze frame at the edit's end, kept to 1 ms, is the same), and parts are
   compared as `canonicalJson` writes them, so the order their fields were set in never counts (a
   version is read back through `migrateProject`, which rebuilds title cards and other items in its
