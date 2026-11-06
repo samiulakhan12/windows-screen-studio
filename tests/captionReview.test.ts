@@ -8,7 +8,8 @@ import { describe, expect, it } from 'vitest'
 import { settleCaptionAuto } from '../src/shared/captions/captionAutoSettle'
 import { DEFAULT_CLEANUP } from '../src/shared/captions/cleanup'
 import { DEFAULT_GREAT_OPTIONS, planCaptionsGreat } from '../src/shared/captions/great'
-import { toggleEmphasis } from '../src/shared/captions/marks'
+import { pickEmphasis } from '../src/shared/captions/emphasis'
+import { toggleEmphasis, withAutoTwin } from '../src/shared/captions/marks'
 import { captionsOf, DEFAULT_CAPTIONS } from '../src/shared/captions/settings'
 import { legacyTwin } from '../src/shared/captions/studioEdit'
 import { EditStore } from '../src/shared/editor/editStore'
@@ -362,6 +363,43 @@ describe('Keep and Remove, per kind', () => {
     s.update((p) => removeItems(p, [row(items, STYLE_KEY)]))
     expect(s.state.captions).toBeUndefined()
     expect(s.state.captionAuto?.twin).toBeUndefined()
+  })
+
+  it('two automatic changes: the twin the first made, kept in the later run’s style record, goes with Remove in any order', () => {
+    // Find important words (captionCommands.findImportantWords), or a run with Style off, makes the
+    // Clean twin and its record; a later run with the defaults changes the look, so its style row
+    // puts back that twin. Removing the emphasis first then the style row gives back the settings
+    // from before both, as the other order does.
+    const findWords = (p: Project): Project => withAutoTwin({ ...p, captionMarks: [...(p.captionMarks ?? []), ...pickEmphasis(p)] })
+    const run = (frame: { w: number; h: number }, options = DEFAULT_GREAT_OPTIONS) => (p: Project): Project =>
+      planCaptionsGreat({ project: p, frame, cleanup: DEFAULT_CLEANUP, words: [], by: 'great' }, options).project
+    const clean: Project = { ...before, captions: { ...DEFAULT_CAPTIONS } }
+    let checked = 0
+    for (const start of [before, clean])
+      for (const first of [findWords, run(WIDE, { ...DEFAULT_GREAT_OPTIONS, style: false })])
+        for (const frame of [WIDE, TALL]) {
+          const s0 = storeOf(start)
+          s0.update(first)
+          expect(s0.state.captionAuto?.twin).toEqual(start.captions ? {} : { none: true })
+          s0.update(run(frame))
+          const both = s0.state
+          const items = reviewItems(both)
+          const styleRow = row(items, STYLE_KEY)
+          expect(styleRow.title).toMatch(/\(was Clean\)$/)
+          const emphasisFirst = [row(items, EMPHASIS_GROUP), ...items.filter((i) => i.key !== EMPHASIS_GROUP)]
+          for (const order of [emphasisFirst, [...emphasisFirst.slice(0, 1), ...emphasisFirst.slice(1).reverse()], [...items].reverse(), items]) {
+            const s = storeOf(both)
+            for (const item of order) {
+              s.update((p) => removeItems(p, [item]))
+              // The style row still names the look it replaced while it waits.
+              if (item.key === EMPHASIS_GROUP && reviewStatus(s.state, styleRow) === 'pending') expect(row(reviewItems(s.state), STYLE_KEY).title).toBe(styleRow.title)
+            }
+            expect(s.state.captions).toEqual(start.captions)
+            expect(s.state.captionAuto).toBeUndefined()
+            checked++
+          }
+        }
+    expect(checked).toBe(32)
   })
 
   it('the twin record goes when no emphasis is pending: Keep, a hand edit or deleting the marks; the twin stays', () => {

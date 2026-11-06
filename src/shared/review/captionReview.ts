@@ -392,7 +392,9 @@ function withPlace(c: CaptionSettings, place: { x: number; y: number } | undefin
  * for them (as Ctrl+B does, §5.8). With none of them left, the twin automation made for its emphasis
  * (`captionAuto.twin`), unedited, goes back to its Classic look, and to no settings when there were
  * none, so removing every row of a run gives back the settings from before it; a twin the user had
- * or made stays.
+ * or made stays. A later run that changed the look keeps that twin in its style record (`was`):
+ * with the last of the emphasis removed first, the record is handed to `was`, which then reads as
+ * the Classic look (or no settings), so Remove on the style row later puts back no twin either.
  */
 function lookAfterRemove(p: Project, style: StyleRecord | undefined): Project {
   const now = p.captions
@@ -417,12 +419,21 @@ function lookAfterRemove(p: Project, style: StyleRecord | undefined): Project {
     c = classic
     none ||= !!record.none
   }
+  // The twin the record is for, kept in the style record of a later run (`was`), unedited: with no
+  // emphasis pending any more it goes back to its Classic look there, as it would here.
+  let handed: StyleRecord | undefined
+  const later = p.captionAuto?.style
+  if (!style && !pending && record && later?.was && plainTwin(later.was, true)) {
+    const { studio: _s, ...classic } = later.was
+    void _s
+    handed = { ...later, was: record.none && deepEqual(classic, DEFAULT_CAPTIONS) ? null : classic }
+  }
   if (!pending) record = undefined
   let out: Project = p
-  if (record !== p.captionAuto?.twin) {
+  if (record !== p.captionAuto?.twin || handed) {
     const { twin: _t, ...auto } = p.captionAuto ?? {}
     void _t
-    out = withAuto(out, record ? { ...auto, twin: record } : auto)
+    out = withAuto(out, { ...auto, ...(handed ? { style: handed } : {}), ...(record ? { twin: record } : {}) })
   }
   if (style?.was && deepEqual(c, style.was)) c = style.was
   if (none && deepEqual(c, DEFAULT_CAPTIONS)) {
