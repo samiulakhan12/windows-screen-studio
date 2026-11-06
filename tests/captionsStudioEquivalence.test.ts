@@ -134,6 +134,19 @@ interface OldFixture {
 
 const OLD: OldFixture[] = JSON.parse(fs.readFileSync(path.join(__dirname, 'fixtures', 'captions-old-projects.json'), 'utf8'))
 const VERTICAL_OLD: OldFixture[] = JSON.parse(fs.readFileSync(path.join(__dirname, 'fixtures', 'vertical-old-projects.json'), 'utf8'))
+/** Projects as wave 8's branches save them: a publishing pack project, a review-mode project and a sound-finder project. */
+const WAVE8_OLD: OldFixture[] = JSON.parse(fs.readFileSync(path.join(__dirname, 'fixtures', 'wave8-old-projects.json'), 'utf8'))
+
+/**
+ * The digests of migrateProject's output for WAVE8_OLD, taken with each branch's own code before
+ * Captions Studio merged (Captions Studio phase B): the publishing pack and review mode at 2cd2a3f
+ * (both merged, Captions Studio not yet), the sound finder at its branch's tip d58aac1.
+ */
+const WAVE8_SNAPSHOT: Record<string, { keys: string; migrated: string }> = {
+  'publish-pack': { keys: '435823fbb83692fed4d613961c870edc', migrated: '0734ea033ee5306563158006e66c1b97' },
+  'review-mode': { keys: '11cde37fc77f5bf03c50e2339472fd1a', migrated: 'ee713de7cd94ad7e484552efd63474ea' },
+  'sound-finder': { keys: '64cb00781dcc324f43f147ef7a5c8dfb', migrated: '225c27befc771ad0ddac4c8abc6fded9' }
+}
 
 describe('old projects load as before (test 1)', () => {
   it('has the NW-09, tall karaoke, captionData, default-look and hidden-minimal projects', () => {
@@ -154,6 +167,31 @@ describe('old projects load as before (test 1)', () => {
       pin('keys', f.name, digest(Object.keys(p)))
       pin('migrated', f.name, digest(JSON.stringify(p)))
       // Saved and opened again: the same project (a partial hand-edited file may list its keys in another order).
+      const again = migrateProject(JSON.parse(JSON.stringify(p))) as unknown as Record<string, unknown>
+      expect(again).toEqual(p)
+    })
+  }
+
+  it('has the publishing pack, review mode and sound finder projects, each with its branch\'s data', () => {
+    expect(WAVE8_OLD.map((f) => f.name)).toEqual(['publish-pack', 'review-mode', 'sound-finder'])
+    const [pub, rev, snd] = WAVE8_OLD.map((f) => f.raw)
+    expect(pub.publish).toBeDefined()
+    expect(rev.autoCuts).toBeDefined()
+    expect(rev.autoCutOutcomes).toBeDefined()
+    expect((rev.zooms as { auto?: boolean }[]).some((z) => z.auto)).toBe(true)
+    expect(snd.sounds).toBeDefined()
+  })
+
+  for (const f of WAVE8_OLD) {
+    it(`wave 8 ${f.name}: the same keys and byte-equal JSON as its branch read it, no Captions Studio key`, () => {
+      const p = migrateProject(structuredClone(f.raw)) as unknown as Record<string, unknown>
+      for (const k of NEW_PROJECT_KEYS) expect(p, k).not.toHaveProperty(k)
+      if (p.captions) for (const k of NEW_CAPTION_KEYS) expect(p.captions, k).not.toHaveProperty(k)
+      for (const t of (p.titles as Record<string, unknown>[]) ?? []) expect(t).not.toHaveProperty('auto')
+      // The branch's own data is read as the branch read it.
+      for (const k of ['publish', 'autoCuts', 'autoCutOutcomes', 'sounds']) if (k in f.raw) expect(p, k).toHaveProperty(k)
+      expect(digest(Object.keys(p)), `keys ${f.name}`).toBe(WAVE8_SNAPSHOT[f.name].keys)
+      expect(digest(JSON.stringify(p)), `migrated ${f.name}`).toBe(WAVE8_SNAPSHOT[f.name].migrated)
       const again = migrateProject(JSON.parse(JSON.stringify(p))) as unknown as Record<string, unknown>
       expect(again).toEqual(p)
     })

@@ -1,0 +1,664 @@
+[
+  {
+    "name": "publish-pack",
+    "raw": {
+      "version": 2,
+      "id": "publish-pack",
+      "name": "publish-pack",
+      "createdAt": "2026-10-20T09:00:00.000Z",
+      "duration": 30,
+      "width": 1920,
+      "height": 1080,
+      "hasWebcam": true,
+      "hasAudio": true,
+      "webcamOffset": 0,
+      "capture": {
+        "method": "native",
+        "cursorInVideo": false,
+        "region": null
+      },
+      "clips": [
+        {
+          "id": "cmvwgyukx0",
+          "start": 0,
+          "end": 30,
+          "speed": 1
+        }
+      ],
+      "zooms": [],
+      "autoZoom": true,
+      "zoomSettings": {
+        "defaultScale": 2,
+        "easing": "smooth",
+        "transition": 0.7,
+        "auto": {
+          "enabled": true,
+          "scale": 1.8,
+          "clusterGap": 3,
+          "leadIn": 0.9,
+          "hold": 1.8,
+          "rightClicks": false,
+          "onTyping": true,
+          "onMarks": true,
+          "scrolling": "zoom-out"
+        }
+      },
+      "annotations": [],
+      "shapes": [],
+      "spotlights": [],
+      "layouts": [],
+      "titles": [
+        {
+          "id": "t1",
+          "start": 0.5,
+          "end": 3.5,
+          "title": "Priya Sharma",
+          "subtitle": "Designer",
+          "style": "lower-third",
+          "background": "blur",
+          "font": "f1"
+        }
+      ],
+      "chapters": [
+        {
+          "id": "ch-intro",
+          "t": 0,
+          "title": "Intro"
+        },
+        {
+          "id": "ch-export",
+          "t": 12,
+          "title": "Export settings"
+        }
+      ],
+      "style": {
+        "background": {
+          "type": "gradient",
+          "preset": "aurora"
+        },
+        "padding": 0.07,
+        "cornerRadius": 14,
+        "shadow": 0.6,
+        "aspectRatio": "auto"
+      },
+      "cursor": {
+        "show": true,
+        "size": 1.4,
+        "smoothing": 0.6,
+        "clickEffect": true,
+        "hideWhenIdle": true,
+        "style": "auto",
+        "highlight": {
+          "enabled": false,
+          "color": "#facc15",
+          "size": 1,
+          "opacity": 0.35
+        },
+        "clickStyle": "ripple",
+        "clickColor": "#ffffff",
+        "clickSound": false,
+        "clickSoundVolume": 0.6,
+        "loopHome": false,
+        "tilt": false,
+        "trail": false
+      },
+      "webcam": {
+        "show": true,
+        "corner": "bottom-right",
+        "size": 0.24,
+        "shape": "circle"
+      },
+      "effects": {
+        "motionBlur": 0.5,
+        "keystrokes": {
+          "show": true,
+          "position": "bottom",
+          "size": 0.035
+        }
+      },
+      "audio": {
+        "volume": 1,
+        "muted": false
+      },
+      "fonts": [
+        {
+          "id": "f1",
+          "name": "Brand Sans",
+          "file": "font-1.ttf"
+        }
+      ],
+      "brand": {
+        "colors": [
+          "#1d4ed8",
+          "#f97316"
+        ],
+        "bodyFont": "f1",
+        "headingFont": "f1"
+      },
+      "transcript": {
+        "language": "en",
+        "provider": "local",
+        "model": "speech-small",
+        "createdAt": "2026-10-20T09:05:00.000Z",
+        "segments": [
+          {
+            "id": "c1",
+            "start": 0.5,
+            "end": 3,
+            "text": "Make every word count today",
+            "speaker": "You",
+            "words": [
+              {
+                "text": "Make",
+                "start": 0.5,
+                "end": 0.9
+              },
+              {
+                "text": "every",
+                "start": 1,
+                "end": 1.4
+              },
+              {
+                "text": "word",
+                "start": 1.5,
+                "end": 1.9
+              },
+              {
+                "text": "count",
+                "start": 2,
+                "end": 2.4
+              },
+              {
+                "text": "today",
+                "start": 2.5,
+                "end": 2.9
+              }
+            ]
+          },
+          {
+            "id": "c2",
+            "start": 3.5,
+            "end": 6.5,
+            "text": "Sales grew 300 percent this year",
+            "speaker": "Priya",
+            "words": [
+              {
+                "text": "Sales",
+                "start": 3.5,
+                "end": 3.9,
+                "estimated": true,
+                "fromSound": true
+              },
+              {
+                "text": "grew",
+                "start": 4,
+                "end": 4.4,
+                "estimated": true,
+                "fromSound": true
+              },
+              {
+                "text": "really",
+                "start": 4.4,
+                "end": 4.6,
+                "estimated": true,
+                "deleted": true
+              },
+              {
+                "text": "300",
+                "start": 4.6,
+                "end": 5.1,
+                "estimated": true
+              },
+              {
+                "text": "percent",
+                "start": 5.1,
+                "end": 5.6,
+                "estimated": true
+              },
+              {
+                "text": "this",
+                "start": 5.6,
+                "end": 6,
+                "estimated": true
+              },
+              {
+                "text": "year",
+                "start": 6,
+                "end": 6.4,
+                "estimated": true
+              }
+            ]
+          },
+          {
+            "id": "c3",
+            "start": 7,
+            "end": 9.8,
+            "text": "Three steps: first open settings, second click export, finally save",
+            "speaker": "You"
+          },
+          {
+            "id": "c4",
+            "start": 12,
+            "end": 14,
+            "text": "Others talk here",
+            "speaker": "Others"
+          }
+        ]
+      },
+      "captions": {
+        "show": true,
+        "preset": "boxed",
+        "position": "bottom",
+        "size": 0.05,
+        "color": "#ffffff",
+        "highlightColor": "#facc15",
+        "background": "box",
+        "maxLines": 2,
+        "font": "f1",
+        "showSpeaker": true
+      },
+      "publish": {
+        "description": "Three ways to make reports faster.\n\nChapters\n0:00 Intro\n0:12 Export settings"
+      }
+    }
+  },
+  {
+    "name": "review-mode",
+    "raw": {
+      "version": 2,
+      "id": "review-mode",
+      "name": "review-mode",
+      "createdAt": "2026-10-20T09:00:00.000Z",
+      "duration": 12,
+      "width": 1080,
+      "height": 1080,
+      "hasWebcam": true,
+      "hasAudio": true,
+      "webcamOffset": 0,
+      "capture": {
+        "method": "native",
+        "cursorInVideo": false,
+        "region": null
+      },
+      "clips": [
+        {
+          "id": "k0",
+          "start": 0,
+          "end": 2,
+          "speed": 1
+        },
+        {
+          "id": "k1",
+          "start": 3,
+          "end": 6,
+          "speed": 1
+        },
+        {
+          "id": "k2",
+          "start": 6,
+          "end": 9,
+          "speed": 2
+        },
+        {
+          "id": "k3",
+          "start": 9,
+          "end": 12,
+          "speed": 1
+        }
+      ],
+      "zooms": [
+        {
+          "id": "z-auto",
+          "start": 1,
+          "end": 2.5,
+          "scale": 2,
+          "focus": {
+            "mode": "follow"
+          },
+          "auto": true,
+          "anchor": {
+            "x": 0.7,
+            "y": 0.3
+          }
+        },
+        {
+          "id": "z-mine",
+          "start": 9.5,
+          "end": 11,
+          "scale": 1.6,
+          "focus": {
+            "mode": "fixed",
+            "x": 0.4,
+            "y": 0.6
+          }
+        }
+      ],
+      "autoZoom": true,
+      "zoomSettings": {
+        "defaultScale": 2,
+        "easing": "smooth",
+        "transition": 0.7,
+        "auto": {
+          "enabled": true,
+          "scale": 1.8,
+          "clusterGap": 3,
+          "leadIn": 0.9,
+          "hold": 1.8,
+          "rightClicks": false,
+          "onTyping": true,
+          "onMarks": true,
+          "scrolling": "zoom-out"
+        }
+      },
+      "annotations": [],
+      "shapes": [],
+      "spotlights": [],
+      "layouts": [
+        {
+          "id": "l-auto",
+          "start": 4,
+          "end": 5.5,
+          "layout": "camera-large",
+          "auto": true
+        }
+      ],
+      "titles": [],
+      "chapters": [],
+      "style": {
+        "background": {
+          "type": "gradient",
+          "preset": "aurora"
+        },
+        "padding": 0.07,
+        "cornerRadius": 14,
+        "shadow": 0.6,
+        "aspectRatio": "1:1"
+      },
+      "cursor": {
+        "show": true,
+        "size": 1.4,
+        "smoothing": 0.6,
+        "clickEffect": true,
+        "hideWhenIdle": true,
+        "style": "auto",
+        "highlight": {
+          "enabled": false,
+          "color": "#facc15",
+          "size": 1,
+          "opacity": 0.35
+        },
+        "clickStyle": "ripple",
+        "clickColor": "#ffffff",
+        "clickSound": false,
+        "clickSoundVolume": 0.6,
+        "loopHome": false,
+        "tilt": false,
+        "trail": false
+      },
+      "webcam": {
+        "show": true,
+        "corner": "bottom-right",
+        "size": 0.24,
+        "shape": "circle"
+      },
+      "effects": {
+        "motionBlur": 0.5,
+        "keystrokes": {
+          "show": true,
+          "position": "bottom",
+          "size": 0.035
+        }
+      },
+      "audio": {
+        "volume": 1,
+        "muted": false
+      },
+      "transcript": {
+        "provider": "openai",
+        "model": "whisper-1",
+        "createdAt": "2026-10-22T08:00:00.000Z",
+        "segments": [
+          {
+            "id": "d1",
+            "start": 0.2,
+            "end": 2.5,
+            "text": "Click the Save button, then open the Export dialog"
+          }
+        ]
+      },
+      "autoCuts": [
+        {
+          "id": "cut-silence",
+          "by": "silences",
+          "action": "cut",
+          "start": 2,
+          "end": 3,
+          "was": [
+            {
+              "start": 2,
+              "end": 3,
+              "speed": 1
+            }
+          ]
+        },
+        {
+          "id": "cut-idle",
+          "by": "smart-speed",
+          "action": 2,
+          "start": 6,
+          "end": 9,
+          "was": [
+            {
+              "start": 6,
+              "end": 9,
+              "speed": 1
+            }
+          ]
+        },
+        {
+          "id": "cut-um",
+          "by": "filler",
+          "action": "cut",
+          "start": 10.2,
+          "end": 10.5,
+          "was": [
+            {
+              "start": 10.2,
+              "end": 10.5,
+              "speed": 1
+            }
+          ],
+          "words": "um"
+        }
+      ],
+      "autoCutOutcomes": [
+        {
+          "id": "cut-um",
+          "outcome": "kept"
+        },
+        {
+          "id": "cut-old",
+          "outcome": "removed"
+        }
+      ]
+    }
+  },
+  {
+    "name": "sound-finder",
+    "raw": {
+      "version": 2,
+      "id": "sound-finder",
+      "name": "sound-finder",
+      "createdAt": "2026-10-20T09:00:00.000Z",
+      "duration": 20,
+      "width": 1080,
+      "height": 1920,
+      "hasWebcam": true,
+      "hasAudio": true,
+      "webcamOffset": 0,
+      "capture": {
+        "method": "native",
+        "cursorInVideo": false,
+        "region": null
+      },
+      "clips": [
+        {
+          "id": "cmvwgyukx1",
+          "start": 0,
+          "end": 20,
+          "speed": 1
+        }
+      ],
+      "zooms": [],
+      "autoZoom": true,
+      "zoomSettings": {
+        "defaultScale": 2,
+        "easing": "smooth",
+        "transition": 0.7,
+        "auto": {
+          "enabled": true,
+          "scale": 1.8,
+          "clusterGap": 3,
+          "leadIn": 0.9,
+          "hold": 1.8,
+          "rightClicks": false,
+          "onTyping": true,
+          "onMarks": true,
+          "scrolling": "zoom-out"
+        }
+      },
+      "annotations": [],
+      "shapes": [],
+      "spotlights": [],
+      "layouts": [],
+      "titles": [],
+      "chapters": [],
+      "style": {
+        "background": {
+          "type": "gradient",
+          "preset": "aurora"
+        },
+        "padding": 0.07,
+        "cornerRadius": 14,
+        "shadow": 0.6,
+        "aspectRatio": "9:16"
+      },
+      "cursor": {
+        "show": true,
+        "size": 1.4,
+        "smoothing": 0.6,
+        "clickEffect": true,
+        "hideWhenIdle": true,
+        "style": "auto",
+        "highlight": {
+          "enabled": false,
+          "color": "#facc15",
+          "size": 1,
+          "opacity": 0.35
+        },
+        "clickStyle": "ripple",
+        "clickColor": "#ffffff",
+        "clickSound": false,
+        "clickSoundVolume": 0.6,
+        "loopHome": false,
+        "tilt": false,
+        "trail": false
+      },
+      "webcam": {
+        "show": true,
+        "corner": "bottom-right",
+        "size": 0.24,
+        "shape": "circle"
+      },
+      "effects": {
+        "motionBlur": 0.5,
+        "keystrokes": {
+          "show": true,
+          "position": "bottom",
+          "size": 0.035
+        }
+      },
+      "audio": {
+        "volume": 1,
+        "muted": false
+      },
+      "transcript": {
+        "language": "bn",
+        "provider": "gemini",
+        "model": "gemini-3.8-flash",
+        "createdAt": "2026-10-21T10:00:00.000Z",
+        "segments": [
+          {
+            "id": "b1",
+            "start": 1,
+            "end": 4,
+            "text": "আমরা আজ Flown শিখব",
+            "words": [
+              {
+                "text": "আমরা",
+                "start": 1,
+                "end": 1.6
+              },
+              {
+                "text": "আজ",
+                "start": 1.7,
+                "end": 2.1
+              },
+              {
+                "text": "Flown",
+                "start": 2.2,
+                "end": 2.9
+              },
+              {
+                "text": "শিখব",
+                "start": 3,
+                "end": 3.8
+              }
+            ]
+          },
+          {
+            "id": "b2",
+            "start": 5,
+            "end": 8,
+            "text": "مرحبا بالعالم من Flown"
+          },
+          {
+            "id": "b3",
+            "start": 9,
+            "end": 12,
+            "text": "এক ক্লিকে সুন্দর ভিডিও"
+          }
+        ]
+      },
+      "captions": {
+        "show": true,
+        "preset": "karaoke",
+        "position": "top",
+        "size": 0.07,
+        "color": "#ffffff",
+        "highlightColor": "#22d3ee",
+        "background": "box",
+        "maxLines": 1
+      },
+      "sounds": {
+        "spans": [
+          {
+            "start": 3.2,
+            "end": 4.0,
+            "action": "duck",
+            "key": "typing-3200"
+          },
+          {
+            "start": 1.0,
+            "end": 1.4,
+            "action": "mute",
+            "key": "cough-1000"
+          }
+        ],
+        "ignored": [
+          "music-12000"
+        ]
+      }
+    }
+  }
+]
