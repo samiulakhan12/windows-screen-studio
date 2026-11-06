@@ -31,7 +31,7 @@ import { loadAudioAnalysis } from './audioAnalysis'
 import { createVideo, mediaDuration, SCREEN_PROXY_FPS, WEBCAM_PROXY_FPS, whenReady } from './media'
 import type { PauseGate } from '../../../shared/jobs/pauseGate'
 import { voiceStems } from './voiceStems'
-import { soundGains } from '../../../shared/audio/soundsEdit'
+import { jobSoundGains } from '../../../shared/audio/soundsEdit'
 
 export { exportDimensions, GIF_FPS, GIF_MAX_HEIGHT } from '../../../shared/render/exportPlan'
 
@@ -139,8 +139,9 @@ async function soundOf(input: ExportInput, format: ExportOptions['format']): Pro
     if (voice) audio.voice = voice
     // Smooth cuts (NW-06): a short fade at every cut (no change to an edit without cuts).
     audio.cutFade = CUT_FADE
-    // Unwanted sounds (F-17): muted and lowered stretches, the curve the preview plays.
-    if (project.sounds?.spans.length) audio.sounds = soundGains(project)
+    // Unwanted sounds (F-17) and bleeped words (Captions Studio §11.7): muted and lowered stretches, the curve the preview plays.
+    const sounds = jobSoundGains(project)
+    if (sounds) audio.sounds = sounds
   }
   const job = clickSoundJob(project, input.scene.cursor, project.clips)
   // In video time: a click exactly at a pause freeze sounds when the freeze starts.

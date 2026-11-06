@@ -5,7 +5,7 @@ import path from 'node:path'
 import { afterAll, describe, expect, it, vi } from 'vitest'
 import { ffmpegPath } from '../src/main/ffmpeg'
 import type { ExportJob } from '../src/shared/api/export'
-import { DUCK_GAIN, soundGainFilters, soundGains } from '../src/shared/audio/soundsEdit'
+import { DUCK_GAIN, jobSoundGains, soundGainFilters, soundGains } from '../src/shared/audio/soundsEdit'
 import { createProject } from '../src/shared/engine/project'
 import { planSoundtrack } from '../src/shared/render/audioPlan'
 import { toneJob } from '../src/shared/render/popSound'
@@ -13,10 +13,13 @@ import type { Bleep, Project, SoundSpan } from '../src/shared/types'
 
 /*
  * Captions Studio's bleeps and the unwanted-sound finder's Mute and Duck on the same stretch
- * (docs/design/captions-studio.md §11.7, docs/design/sound-finder.md §4.6). In this version a bleep
- * only adds its tone (muting the word through the sound finder's gains is Captions Studio phase B):
- * the recording's gain there is the sound finder's alone, applied once, and the tone is the same
- * whether the stretch under it is muted or not, in the preview and in the export.
+ * (docs/design/captions-studio.md §11.7, docs/design/sound-finder.md §4.6). A bleep mutes its word
+ * through the sound finder's gains (bleepGains joined by soundGains): the recording's gain there is
+ * 0 whether the stretch under it is muted, lowered or neither, applied once by one gain filter, and
+ * the tone is added on top, the same over a muted stretch, in the preview and in the export.
+ *
+ * Until Captions Studio phase B a bleep only added its tone (the word's own sound was not muted, and
+ * Clean up said so); these expectations were that interim behaviour and changed with it.
  */
 
 class FakeParam {
@@ -100,10 +103,10 @@ function chain(ctx: FakeAudioContext): number[] {
 }
 
 describe('a bleep and a muted or lowered sound on the same stretch, in the preview', () => {
-  it('the recording takes the sound finder gain once; the tone is unchanged', async () => {
-    const heard = (p: Project): { chain: number[]; tones: { start: number; end: number }[] } => {
+  it('the bleep mutes the recording, also inside a lowered stretch, once; the tone is unchanged', async () => {
+    const heard = (p: Project, at = 2.5): { chain: number[]; tones: { start: number; end: number }[] } => {
       const before = FakeAudioContext.last
-      const sound = new PreviewAudio({ currentTime: 2.5, muted: false, volume: 1 }, p)
+      const sound = new PreviewAudio({ currentTime: at, muted: false, volume: 1 }, p)
       try {
         // Each of these plays through a graph of its own (a bleep's tone or the sound finder's curve).
         expect(FakeAudioContext.last).not.toBe(before)
@@ -113,26 +116,33 @@ describe('a bleep and a muted or lowered sound on the same stretch, in the previ
       }
     }
     const bleepOnly = heard(project([BLEEP], []))
-    expect(bleepOnly.chain).toEqual([1, 1, 1])
+    expect(bleepOnly.chain).toEqual([1, 1, 0])
     expect(bleepOnly.tones).toEqual([{ start: 2, end: 3 }])
+    // Outside the bleep the recording is as it was.
+    expect(heard(project([BLEEP], []), 4.5).chain).toEqual([1, 1, 1])
+    // A Silence bleep mutes the same, with no tone.
+    const silent = heard(project([{ ...BLEEP, sound: 'silence' }], []))
+    expect(silent.chain).toEqual([1, 1, 0])
+    expect(silent.tones).toEqual([])
     for (const action of ['mute', 'duck'] as const) {
       const both = heard(project([BLEEP], [action]))
       const spanOnly = heard(project([], [action]))
-      expect(both.chain[2]).toBeCloseTo(action === 'mute' ? 0 : DUCK_GAIN, 9)
-      expect(both.chain).toEqual(spanOnly.chain)
+      expect(spanOnly.chain[2]).toBeCloseTo(action === 'mute' ? 0 : DUCK_GAIN, 9)
+      expect(both.chain[2]).toBe(0)
+      expect(both.chain.slice(0, 2)).toEqual(spanOnly.chain.slice(0, 2))
       expect(both.tones).toEqual(bleepOnly.tones)
     }
   })
 
   it('bleeping, muting and undoing them in any order keeps one graph going', () => {
-    const states = [project([BLEEP], []), project([BLEEP], ['mute']), project([], ['mute']), project([BLEEP], ['duck']), project([], []), project([], ['duck'])]
+    const states = [project([BLEEP], []), project([BLEEP], ['mute']), project([], ['mute']), project([BLEEP], ['duck']), project([], []), project([BLEEP], []), project([], ['duck'])]
     const sound = new PreviewAudio({ currentTime: 2.5, muted: false, volume: 1 }, states[0])
-    // The bleep's tone made the graph; it stays, and plays the sound finder's curve alone.
+    // The bleep made the graph; it stays, and plays the sound finder's curve alone once the bleep goes.
     const ctx = FakeAudioContext.last
     try {
       for (const p of [...states, ...states.slice().reverse()]) {
         sound.setProject(p)
-        const muted = p.sounds?.spans[0].action
+        const muted = p.bleeps ? 'mute' : p.sounds?.spans[0].action
         expect(FakeAudioContext.last).toBe(ctx)
         expect(chain(ctx)[2]).toBeCloseTo(muted === 'mute' ? 0 : muted === 'duck' ? DUCK_GAIN : 1, 9)
         expect(sound.effectsOf().tones).toEqual(p.bleeps ? [{ start: 2, end: 3 }] : [])
@@ -164,7 +174,7 @@ function exported(p: Project, withTones: boolean): { samples: Float32Array; grap
     quality: 'high',
     video: { kind: 'none' },
     outputPath: '/o.m4a',
-    audio: { clips: p.clips, volume: 1, ...(p.sounds?.spans.length ? { sounds: soundGains(p) } : {}) },
+    audio: { clips: p.clips, volume: 1, ...(jobSoundGains(p) ? { sounds: jobSoundGains(p) } : {}) },
     ...(tones.length ? { tones } : {})
   }
   const plan = planSoundtrack(job, { mix: RECORDING }, 0)
@@ -179,10 +189,17 @@ const peak = (s: Float32Array, from: number, to: number, minus?: Float32Array): 
 }
 
 describe('a bleep and a muted or lowered sound on the same stretch, in the export', () => {
-  it('one gain filter on the recording; the tone added on top, the same over a muted stretch', () => {
-    const plain = exported(project([BLEEP], []), false).samples
-    const full = peak(plain, 4, 5)
+  it('one gain filter on the recording mutes the bleep; the tone added on top, the same over a muted stretch', () => {
+    const none = exported(project([], []), false)
+    const full = peak(none.samples, 4, 5)
     expect(full).toBeGreaterThan(0.3)
+    const plain = exported(project([BLEEP], []), false)
+    // The bleep alone mutes its word through the sound finder's one gain filter (no volume=enable).
+    expect(plain.graph.split(soundGainFilters(soundGains(project([BLEEP], [])))).length).toBe(2)
+    expect(plain.graph).not.toContain('volume=enable')
+    expect(peak(plain.samples, 2.1, 2.9) / full).toBeLessThan(1e-3)
+    expect(peak(plain.samples, 4, 5)).toBeCloseTo(full, 3)
+    expect(peak(plain.samples, 0.5, 1.9)).toBeCloseTo(full, 3)
     const toneAlone = (p: Project): Float32Array => {
       const a = exported(p, true).samples
       const b = exported(p, false).samples
@@ -194,12 +211,21 @@ describe('a bleep and a muted or lowered sound on the same stretch, in the expor
     for (const action of ['mute', 'duck'] as const) {
       const p = project([BLEEP], [action])
       const { graph } = exported(p, true)
-      // The sound finder's gain appears once; the bleep adds no gain of its own to the recording.
+      // One gain on the recording: the bleep and the sound finder's stretch joined into one curve.
       expect(graph.split(soundGainFilters(soundGains(p))).length).toBe(2)
+      expect(graph.match(/volume=volume=/g)?.length).toBe(1)
       const under = exported(p, false).samples
-      expect(peak(under, 2.1, 2.9) / full).toBeCloseTo(action === 'mute' ? 0 : DUCK_GAIN, 2)
+      expect(peak(under, 2.1, 2.9) / full).toBeLessThan(1e-3)
       expect(peak(under, 4, 5)).toBeCloseTo(full, 3)
       expect(peak(toneAlone(p), 0, SECONDS, tone)).toBeLessThan(1e-4)
     }
+  })
+
+  it('a project without bleeps or muted stretches builds the job and the graph of before', () => {
+    const p = project([], [])
+    expect(jobSoundGains(p)).toBeUndefined()
+    const { graph } = exported(p, true)
+    expect(graph).not.toContain('volume=volume=')
+    expect(graph).not.toContain('asetnsamples')
   })
 })

@@ -165,7 +165,7 @@ export class PreviewAudio {
    */
   private curveMemo: Memo<Curves> = { key: '', value: { master: [], musicFade: [], duck: [], sounds: [] } }
   /** The identity of the project's muted and lowered stretches (a new array on every change). */
-  private soundSpans: { spans: unknown; key: string } = { spans: undefined, key: '' }
+  private soundSpans: { spans: unknown; bleeps: unknown; key: string } = { spans: undefined, bleeps: undefined, key: '' }
   private sourceActivity: Memo<Range[] | null> = { key: '', value: null }
   private activity: Memo<Range[] | null> = { key: '', value: null }
   private heard: Memo<AudioLevels | null> = { key: '', value: null }
@@ -532,11 +532,15 @@ export class PreviewAudio {
     return key === 'no-sounds' ? key : `${key}|${this.clipsKey}`
   }
 
-  /** The unwanted sounds' muted and lowered stretches (F-17), as a key. */
+  /** The unwanted sounds' muted and lowered stretches (F-17) and the bleeped words (Captions Studio §11.7), as a key. */
   private spansKey(): string {
     const spans = this.project.sounds?.spans
-    if (!spans?.length) return 'no-sounds'
-    if (this.soundSpans.spans !== spans) this.soundSpans = { spans, key: spans.map((s) => `${s.start},${s.end},${s.action}`).join(';') }
+    const bleeps = this.project.bleeps
+    if (!spans?.length && !bleeps?.length) return 'no-sounds'
+    if (this.soundSpans.spans !== spans || this.soundSpans.bleeps !== bleeps) {
+      const key = (spans ?? []).map((s) => `${s.start},${s.end},${s.action}`).join(';') + (bleeps?.length ? `|${bleeps.map((b) => `${b.start},${b.end}`).join(';')}` : '')
+      this.soundSpans = { spans, bleeps, key }
+    }
     return this.soundSpans.key
   }
 

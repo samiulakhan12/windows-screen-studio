@@ -15,7 +15,7 @@ import { speechActivity, trustSpeech } from './voice'
 /** Measured levels per recorded source (only the ones asked for). */
 export type AudioAnalysis = Partial<Record<AudioSource, AudioLevels>>
 
-type SoundProject = Pick<Project, 'hasAudio' | 'audioStems' | 'audio' | 'clips' | 'sounds'>
+type SoundProject = Pick<Project, 'hasAudio' | 'audioStems' | 'audio' | 'clips' | 'sounds' | 'bleeps'>
 
 /** Sources whose levels these functions need for `project` right now. */
 export function analysisSources(project: SoundProject): AudioSource[] {
@@ -63,11 +63,13 @@ export function sourceActivity(project: Omit<SoundProject, 'clips'>, analysis: A
 
 /**
  * sourceActivity without the stretches muted with the unwanted-sound finder (F-17): they are
- * silent in the edit, so the music does not duck under them. Lowered stretches are still heard.
+ * silent in the edit, so the music does not duck under them. Lowered stretches are still heard, and
+ * so are bleeped words (Captions Studio §11.7): a word inside speech, with its tone or a moment of
+ * silence, under which the music stays down as around it.
  */
 export function heardActivity(project: Omit<SoundProject, 'clips'>, analysis: AudioAnalysis): Range[] | null {
   const ranges = sourceActivity(project, analysis)
-  const muted = soundGains(project).filter((g) => g.gain <= 0)
+  const muted = soundGains({ sounds: project.sounds }).filter((g) => g.gain <= 0)
   return ranges && muted.length > 0 ? subtractRanges(ranges, muted) : ranges
 }
 
@@ -139,8 +141,8 @@ export function editLoudness(levels: AudioLevels, clips: readonly Clip[], gains:
 
 /**
  * Integrated loudness (LUFS) of the recording as it is heard in the edit (heardLevels over
- * the kept clips, with the unwanted sounds muted or lowered). Null when silent or when levels
- * are missing.
+ * the kept clips, with the unwanted sounds and the bleeped words muted or lowered, as the export's
+ * loudnorm hears them). Null when silent or when levels are missing.
  */
 export function recordingLoudness(project: SoundProject, analysis: AudioAnalysis): number | null {
   const levels = heardLevels(project, analysis)

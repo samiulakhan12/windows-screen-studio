@@ -8,6 +8,7 @@
  * are shown; the transcript keeps the real word.
  */
 import type { AiTextResult } from '../api/ai'
+import type { SoundGain } from '../api/export'
 import { alignKey, captionWordTimes } from '../editor/transcript'
 import type { Bleep, CaptionAuto, CaptionSegment, CaptionSettings, CaptionWord, Project } from '../types'
 import { STANDARD_WORDS, STRICT_WORDS } from './bleepWords'
@@ -35,17 +36,6 @@ export interface WordListEntry {
 
 /** The AI fix's answer (today's `cleanup` text task). */
 export type TextResult = Extract<AiTextResult, { task: 'cleanup' | 'translate' }>
-
-/**
- * A stretch of the recording's sound at `gain` (source seconds), as the sound finder's SoundGain.
- * TODO(phase B): use SoundGain from src/shared/api/export.ts once the sound finder (F-17) has
- * merged; soundGains then joins these with its own (§11.7, §14.2).
- */
-export interface SoundGain {
-  start: number
-  end: number
-  gain: number
-}
 
 export const DEFAULT_CLEANUP: Readonly<CleanupChoices> = Object.freeze({ caps: true, punct: true, digits: 'above-ten', bleep: 'off', bleepSound: 'tone', ai: false })
 
@@ -885,8 +875,11 @@ export function wordsBleeped(project: Pick<Project, 'transcript' | 'bleeps'>, sp
   return false
 }
 
-/** A gain of 0 over each bleep, for the sound finder's one muting path. */
-export function bleepGains(project: Project): SoundGain[] {
+/**
+ * A gain of 0 over each bleep (Tone and Silence both mute the word), for the sound finder's one
+ * muting path: soundGains (soundsEdit.ts) joins these with its own stretches (§11.7 rule 5).
+ */
+export function bleepGains(project: Pick<Project, 'bleeps'>): SoundGain[] {
   return (project.bleeps ?? []).map((b) => ({ start: b.start, end: b.end, gain: 0 }))
 }
 

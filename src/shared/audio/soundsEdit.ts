@@ -2,8 +2,10 @@
  * What the unwanted-sound finder changes in a project (docs/design/sound-finder.md §3, §4.4–4.6):
  * reading `Project.sounds` from disk, each row's state, the actions (each a pure function of the
  * project, run as one store update), and the one gain curve the preview and the export both play:
- * keyframes for Web Audio, an ffmpeg expression for the export.
+ * keyframes for Web Audio, an ffmpeg expression for the export. Captions Studio's bleeps
+ * (docs/design/captions-studio.md §11.7) mute their words through the same curve.
  */
+import { bleepGains } from '../captions/cleanup'
 import { restoreRange } from '../editor/clips'
 import { editToVideo, type FreezePlan } from '../engine/freeze'
 import { cutRange } from '../engine/timeline'
@@ -153,11 +155,21 @@ export function bringBack(p: Project, key: string): Project {
 /* ---------- the gain curve ---------- */
 
 /**
- * The project's stretches as gains (mute 0, duck DUCK_GAIN), made piecewise (joinGains), so a mute
- * inside a lowered stretch silences only itself. Source seconds, sorted.
+ * The project's stretches as gains (mute 0, duck DUCK_GAIN) and its bleeps (0, bleepGains), made
+ * piecewise (joinGains), so a mute inside a lowered stretch silences only itself and a bleep over a
+ * muted stretch mutes it once. Source seconds, sorted.
  */
-export function soundGains(p: Pick<Project, 'sounds'>): SoundGain[] {
-  return joinGains((p.sounds?.spans ?? []).map((s) => ({ start: s.start, end: s.end, gain: s.action === 'mute' ? 0 : DUCK_GAIN })))
+export function soundGains(p: Pick<Project, 'sounds' | 'bleeps'>): SoundGain[] {
+  const spans = (p.sounds?.spans ?? []).map((s) => ({ start: s.start, end: s.end, gain: s.action === 'mute' ? 0 : DUCK_GAIN }))
+  return joinGains(p.bleeps?.length ? [...spans, ...bleepGains(p)] : spans)
+}
+
+/**
+ * An export job's `RecordingSound.sounds`: the curve of soundGains when the project has muted or
+ * lowered stretches or bleeps, else undefined, so a project with neither gets the job of before.
+ */
+export function jobSoundGains(p: Pick<Project, 'sounds' | 'bleeps'>): SoundGain[] | undefined {
+  return p.sounds?.spans.length || p.bleeps?.length ? soundGains(p) : undefined
 }
 
 /**

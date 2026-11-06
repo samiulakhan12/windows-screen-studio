@@ -266,10 +266,6 @@ export function CleanupSection({ project }: { project: Project }): JSX.Element {
           <div className="field" data-testid="cleanup-bleep-sound">
             <span>Bleep sound</span>
             <Chips label="Bleep sound" value={choices.bleepSound} options={BLEEP_SOUND} onChange={(bleepSound) => choose({ bleepSound })} />
-            {/* TODO(phase B): the sound finder (F-17) mutes the word itself (bleepGains); then this note goes. */}
-            <p className="hint" data-testid="cleanup-bleep-note">
-              Bleeped words are masked in the captions and subtitle files, and Tone plays over them. Their own sound is not muted yet.
-            </p>
           </div>
         )}
 

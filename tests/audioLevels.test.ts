@@ -455,6 +455,10 @@ describe('shared preview/export sound decisions', () => {
     // Without stretches: as before.
     expect(editLoudness(music, p.clips, [])).toBe(editLoudness(music, p.clips))
     expect(recordingLoudness(withSpans(p), { mix: music })).toBe(editLoudness(music, p.clips))
+    // Bleeped words (Captions Studio §11.7) are muted through the same curve, so the loudness hears them muted too.
+    const bleeped: Project = { ...p, bleeps: [{ id: 'b', start: 0, end: 40, word: 'damn', sound: 'tone' }] }
+    expect(recordingLoudness(bleeped, { mix: music })!).toBeCloseTo(narration, 1)
+    expect(recordingLoudness(bleeped, { mix: music })).toBe(recordingLoudness(muted, { mix: music }))
   })
 
   it('does not duck the music under recorded sound that is muted, only under what is heard', () => {
@@ -471,6 +475,10 @@ describe('shared preview/export sound decisions', () => {
     expect(musicDucking(muted, soundActivity(muted, { mix }))!.ranges).toEqual(musicDucking(p, [{ start: 40, end: 45 }])!.ranges)
     // Part of it muted: the rest is still heard.
     expect(soundActivity(withSpans(p, [15, 20, 'mute']), { mix })).toEqual([{ start: 10, end: 15 }, { start: 20, end: 30 }, { start: 40, end: 45 }])
+    // A bleeped word is a word inside speech: the music stays down under it as around it.
+    const bleeped: Project = { ...p, bleeps: [{ id: 'b', start: 15, end: 15.4, word: 'damn', sound: 'silence' }] }
+    expect(soundActivity(bleeped, { mix })).toEqual(all)
+    expect(soundActivity({ ...bleeped, sounds: muted.sounds }, { mix })).toEqual([{ start: 40, end: 45 }])
     // Lowered is still heard; a mute inside a lowered stretch silences only itself.
     expect(soundActivity(withSpans(p, [10, 30, 'duck']), { mix })).toEqual(all)
     expect(soundActivity(withSpans(p, [10, 30, 'duck'], [12, 13, 'mute']), { mix })).toEqual([{ start: 10, end: 12 }, { start: 13, end: 30 }, { start: 40, end: 45 }])
