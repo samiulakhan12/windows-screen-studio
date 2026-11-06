@@ -1,5 +1,5 @@
 import { execFileSync, spawnSync } from 'node:child_process'
-import { mkdirSync, readFileSync, rmSync, statSync, symlinkSync, writeFileSync } from 'node:fs'
+import { mkdirSync, promises as fsp, readdirSync, readFileSync, rmSync, statSync, symlinkSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
@@ -173,6 +173,61 @@ describe('making the sheet', () => {
     symlinkSync(elsewhere, path.join(dir, '.cache'), 'dir')
     expect(await getFilmstrip('rec-film-link')).toBeNull()
     expect(require('node:fs').readdirSync(elsewhere)).toEqual([])
+  })
+
+  /** fs.promises.rename failing with `code` while `held(to)` says the target is held. */
+  function holdRename(code: string, held: (to: string) => boolean) {
+    const rename = fsp.rename
+    return vi.spyOn(fsp, 'rename').mockImplementation(async (from, to) => {
+      if (held(String(to))) throw Object.assign(new Error(`${code}: rename`), { code })
+      return rename(from, to)
+    })
+  }
+  const toSheet = (to: string): boolean => path.basename(to) === 'filmstrip.jpg'
+
+  it('keeps a sheet another app holds for a moment', async () => {
+    const dir = seed('rec-film-held')
+    let times = 2
+    const spy = holdRename('EPERM', (to) => toSheet(to) && times-- > 0)
+    try {
+      const r = await getFilmstrip('rec-film-held')
+      expect(r!.meta.count).toBeGreaterThan(0)
+      expect(readdirSync(path.join(dir, '.cache')).sort()).toEqual(['filmstrip.jpg', 'filmstrip.json'])
+      expect(readFileSync(path.join(dir, '.cache', 'filmstrip.jpg'))).toEqual(Buffer.from(r!.jpeg))
+    } finally {
+      spy.mockRestore()
+    }
+  })
+
+  it('still shows a sheet it cannot keep, and leaves nothing behind', async () => {
+    const dir = seed('rec-film-locked')
+    const spy = holdRename('EBUSY', toSheet)
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined)
+    try {
+      const r = await getFilmstrip('rec-film-locked')
+      expect([...r!.jpeg.slice(0, 3)]).toEqual([0xff, 0xd8, 0xff])
+      expect(spy.mock.calls.filter(([, to]) => toSheet(String(to)))).toHaveLength(5)
+      // Nothing kept: the next open makes it again.
+      expect(readdirSync(path.join(dir, '.cache'))).toEqual([])
+    } finally {
+      spy.mockRestore()
+      warn.mockRestore()
+    }
+  })
+
+  it('stops waiting for a held sheet when the editor closes', async () => {
+    const dir = seed('rec-film-held-stop')
+    const spy = holdRename('EPERM', (to) => {
+      if (toSheet(to)) void stopFilmstrip('rec-film-held-stop')
+      return toSheet(to)
+    })
+    try {
+      expect(await getFilmstrip('rec-film-held-stop')).toBeNull()
+      expect(spy.mock.calls).toHaveLength(1)
+      expect(readdirSync(path.join(dir, '.cache'))).toEqual([])
+    } finally {
+      spy.mockRestore()
+    }
   })
 
   it('is stopped with the project’s other analyses', async () => {

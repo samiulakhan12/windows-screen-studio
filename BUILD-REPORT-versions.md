@@ -112,6 +112,6 @@ Three existing e2e files needed changes for the new behaviour. None is loosened:
 
 * `os.setPriority(BELOW_NORMAL)` on the ffmpeg run, and the time a one-hour proxy takes (expected:
   seconds).
-* Renaming over `.cache/filmstrip.jpg` while Defender or the indexer holds it. If that fails, the
-  strip is simply not shown that session.
+* Renaming over `.cache/filmstrip.jpg` while Defender or the indexer holds it. The rename is tried
+  again for a moment; if it still fails, the strip is shown that session and made again next time.
 * The arrow keys on non-US layouts, and with a focused Inspector list.

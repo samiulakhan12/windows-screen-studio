@@ -117,6 +117,25 @@ async function cacheDir(dir: string): Promise<string> {
   return cache
 }
 
+/**
+ * Renames `from` to `to`, trying again for a moment while another app holds a file (on Windows an
+ * antivirus scan, the indexer or OneDrive can open a file ffmpeg just closed; as importVideo's
+ * renameCopy). False, without renaming, once `stopped` says so.
+ */
+async function renameRetrying(from: string, to: string, stopped: () => boolean): Promise<boolean> {
+  for (let attempt = 1; ; attempt++) {
+    try {
+      await fs.rename(from, to)
+      return true
+    } catch (err) {
+      const code = (err as NodeJS.ErrnoException).code
+      if (attempt >= 5 || (code !== 'EBUSY' && code !== 'EPERM' && code !== 'EACCES')) throw err
+      await new Promise((r) => setTimeout(r, 150 * attempt))
+      if (stopped()) return false
+    }
+  }
+}
+
 async function readCached(cache: string, key: string): Promise<{ meta: FilmstripMeta; jpeg: Uint8Array } | null> {
   try {
     const meta = sanitizeFilmstripMeta(JSON.parse(await fs.readFile(path.join(cache, FILMSTRIP_JSON), 'utf8')))
@@ -171,11 +190,22 @@ export async function getFilmstrip(id: unknown): Promise<{ meta: FilmstripMeta; 
       return null
     }
     const meta: FilmstripMeta = { v: 1, key, interval: plan.interval, count: Math.min(r.count, plan.cols * plan.rows), cols: plan.cols, tileW: plan.tileW, tileH: plan.tileH }
-    await fs.rename(part, path.join(cache, FILMSTRIP_JPG))
+    const jpeg = await fs.readFile(part)
+    const sheet = jpeg.length > MAX_JPEG ? null : { meta, jpeg: new Uint8Array(jpeg) }
+    try {
+      if (!(await renameRetrying(part, path.join(cache, FILMSTRIP_JPG), () => running.generation(id) !== generation))) {
+        await fs.rm(part, { force: true }).catch(() => undefined)
+        return null
+      }
+    } catch (err) {
+      // Still held (an image viewer has the old sheet open): shown this time, made again next time.
+      await fs.rm(part, { force: true }).catch(() => undefined)
+      console.warn('The filmstrip could not be kept:', err)
+      return sheet
+    }
     // The numbers last: until they are written, the sheet is not used.
     writeFileAtomicSync(path.join(cache, FILMSTRIP_JSON), JSON.stringify(meta))
-    const jpeg = await fs.readFile(path.join(cache, FILMSTRIP_JPG))
-    return jpeg.length > MAX_JPEG ? null : { meta, jpeg: new Uint8Array(jpeg) }
+    return sheet
   })()
     .catch((err: unknown) => {
       console.warn('The filmstrip could not be made:', err)
