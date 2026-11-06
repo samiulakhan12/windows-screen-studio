@@ -526,15 +526,17 @@ async function main() {
     await f.waitFor(async () => (await win.$$eval('[data-testid="review-part"]', (els) => els.map((e) => e.dataset.status))).join() === 'pending,pending', 'both items to review again', 3000)
 
     // Delete on the style row puts back the look from before (none: the default Clean) and drops its
-    // record; the emphasis still to review keeps drawing on the Clean look's Studio twin.
+    // record; the emphasis still to review keeps drawing on the Clean look's Studio twin, recorded as
+    // made for it (with no caption settings before), so it goes with that emphasis.
     await win.click('[data-testid="review-row"][data-key="style:look"] .review-item')
     await win.keyboard.press('Delete')
-    p = await savedWhen(home, id, (q) => !q.captionAuto && q.captions?.preset === 'clean' && q.captions?.studio?.from === 'clean', 'Remove on the style row restores the look from before')
+    p = await savedWhen(home, id, (q) => !q.captionAuto?.style && q.captionAuto?.twin?.none === true && q.captions?.preset === 'clean' && q.captions?.studio?.from === 'clean', 'Remove on the style row restores the look from before')
     h.assert(p.captions.background === 'shadow' && p.captions.highlightColor === '#facc15' && p.captions.show === true, `the default look, captions still shown: ${JSON.stringify(p.captions)}`)
     h.assert(same(await rows(win), ['style:look=removed', 'group:emphasis=pending', 'bleep:b1=pending']), `the style row reads removed: ${await rows(win)}`)
-    // Remove on the group's row removes all its marks in one step, and the twin goes with them.
+    // Remove on the group's row removes all its marks in one step, and the twin goes with them: no
+    // caption settings, as before Make my captions great, and no record left.
     await win.click('[data-testid="review-row"][data-key="group:emphasis"] [data-testid="review-remove"]')
-    p = await savedWhen(home, id, (q) => !q.captionMarks && !q.captions?.studio, 'Remove on the group removes every automatic mark')
+    p = await savedWhen(home, id, (q) => !q.captionMarks && !q.captions && !q.captionAuto, 'Remove on the group removes every automatic mark')
     h.assert(same(await rows(win), ['style:look=removed', 'group:emphasis=removed', 'bleep:b1=pending']), `the group reads removed: ${await rows(win)}`)
     await win.keyboard.press('Escape')
     await f.waitFor(async () => !(await win.$('[data-testid="review-panel"]')), 'Escape closes the panel', 3000)
