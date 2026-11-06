@@ -101,6 +101,8 @@ export function LanguagesSection({ project }: { project: Project }): JSX.Element
   const [error, setError] = useState<string | null>(null)
   const [status, setStatus] = useState('')
   const select = useRef<HTMLSelectElement>(null)
+  /** The form's Add an AI provider, shown when there is none. */
+  const addProvider = useRef<HTMLButtonElement>(null)
   const translateButton = useRef<HTMLButtonElement>(null)
   const cancelButton = useRef<HTMLButtonElement>(null)
   const rowsBox = useRef<HTMLDivElement>(null)
@@ -165,9 +167,13 @@ export function LanguagesSection({ project }: { project: Project }): JSX.Element
     if ((status === FULL || status === ALL_ADDED) && status !== roomNow) setStatus('')
   }, [status, roomNow])
   useEffect(() => {
-    if (adding && focusSelect.current && select.current) {
+    // The request is used up on the render that shows its form, once the providers are known: the
+    // language select, or with no provider (nothing can be sent) the form's Add an AI provider.
+    // Left waiting, it would pull the focus to the select when a provider is added later, out of
+    // the Settings dialog still open over the editor.
+    if (adding && focusSelect.current && providers !== null) {
       focusSelect.current = false
-      select.current.focus()
+      ;(list.length === 0 && !OFFLINE_TRANSLATION ? addProvider.current : select.current)?.focus()
     }
     if (focusRows.current && rowsBox.current) {
       focusRows.current = false
@@ -365,7 +371,7 @@ export function LanguagesSection({ project }: { project: Project }): JSX.Element
           <div ref={back.form} className="captions-empty">
             <p>Add an AI provider to translate your captions. OpenAI, Gemini and Claude all can.</p>
             <div className="row start">
-              <button className="btn small" onClick={openAiSettings}>
+              <button ref={addProvider} className="btn small" data-testid="track-add-provider" onClick={openAiSettings}>
                 Add an AI provider
               </button>
               <button className="btn small ghost" onClick={() => close()}>

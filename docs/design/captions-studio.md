@@ -626,8 +626,11 @@ Two publish-pack commands change target (ids, titles and keywords stay):
 
 - `aiTranslate` ("Translate captions with AI…") opens Languages › Add a language with the first AI
   provider chip chosen and focuses the language select. It used to focus the AI tools' "Translate
-  to" select, which is gone. `captionLanguage` opens the same form with *On this PC* chosen when
-  it is offered. `CaptionsAiTask` loses `'translate'`; `CaptionsRequest` gains `{ kind:
+  to" select, which is gone. With no AI provider the form says to add one and its **Add an AI
+  provider** takes the focus (Add a language pressed does the same): the request is used up on the
+  render that shows the form once the providers are known, so a provider added later (in Settings,
+  still open) never pulls the focus to the select behind the dialog. `captionLanguage` opens the
+  same form with *On this PC* chosen when it is offered. `CaptionsAiTask` loses `'translate'`; `CaptionsRequest` gains `{ kind:
   'language'; via: 'ai' | 'local' }` (`captionItems.ts`).
 - `aiCleanup` opens Clean up with **Also fix spelling and misheard words with AI** ticked and
   focused. `CaptionsAiTask` loses `'cleanup'`; `CaptionsRequest` gains `{ kind: 'cleanup'; ai:

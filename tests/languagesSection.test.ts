@@ -17,6 +17,9 @@ const keys = vi.hoisted(() => ({ last: false }))
 vi.mock('../src/renderer/src/editor/focus', async (importOriginal) => ({ ...(await importOriginal<Record<string, unknown>>()), lastInputWasKey: () => keys.last }))
 
 const sent: unknown[] = []
+const GEMINI = { id: 'g1', kind: 'gemini', label: '', model: 'gemini-x' }
+/** The AI providers listAiProviders answers with (one by default), or a promise of them still loading. */
+const providers: { list: unknown[] | Promise<unknown[]> } = { list: [GEMINI] }
 /** The request ids each translation was sent with, and those cancelAiText was asked to stop. */
 const ids = { sent: [] as unknown[], stopped: [] as unknown[] }
 // A translation answers at once, or once `ai.wait` settles; it fails when `ai.fail` is set.
@@ -35,7 +38,7 @@ vi.stubGlobal('window', {
   api: {
     getPref: async () => null,
     setPref: async () => undefined,
-    listAiProviders: async () => [{ id: 'g1', kind: 'gemini', label: '', model: 'gemini-x' }],
+    listAiProviders: async () => providers.list,
     aiText: async (_id: string, req: { segments: { id: string; start: number; end: number; text: string }[] }, requestId?: string) => {
       sent.push(req)
       ids.sent.push(requestId)
@@ -66,6 +69,8 @@ await useEditorContexts()
 const { createProject } = await import('../src/shared/engine/project')
 const { languageName } = await import('../src/shared/captions/captionTracks')
 const { WORD_LIST_MAX } = await import('../src/shared/captions/cleanup')
+const SETTINGS = '../src/renderer/src/settings/SettingsButton'
+const { AI_PROVIDERS_CHANGED_EVENT } = (await import(/* @vite-ignore */ SETTINGS)) as { AI_PROVIDERS_CHANGED_EVENT: string }
 
 const base = (): Project => ({
   ...createProject({ id: 'p', name: 'p', duration: 10, width: 1920, height: 1080, hasWebcam: false, hasAudio: true, webcamOffset: 0, zooms: [], cursorValid: true, capture: { method: 'native', cursorInVideo: false, region: null } }),
@@ -93,6 +98,7 @@ const answer = (): Promise<void> => new Promise((r) => setTimeout(r, 0))
 beforeEach(() => {
   unmountAll()
   keys.last = false
+  providers.list = [GEMINI]
   sent.length = 0
   ids.sent.length = 0
   ids.stopped.length = 0
@@ -381,6 +387,71 @@ describe('a request again with Languages open (§2.14)', () => {
     focused.length = 0
     typed()
     expect(focused).toEqual([])
+  })
+})
+
+describe('a request with no AI provider (§2.14): no focus waits for one', () => {
+  /** A provider added in Settings, the dialog still open over the editor: Settings announces it. */
+  const providerAdded = (): void => {
+    providers.list = [GEMINI]
+    listeners[AI_PROVIDERS_CHANGED_EVENT]?.forEach((fn) => fn({}))
+  }
+  const named = (e: El | undefined): string => (e ? String(e.props['data-testid'] ?? e.type) : 'nothing')
+
+  it('Translate captions with AI…: the form says to add one and its Add an AI provider takes the focus; a provider added later moves none', async () => {
+    providers.list = []
+    await settle(languages())
+    focused.length = 0
+    requestCaptions({ kind: 'language', via: 'ai' })
+    takeCaptionsRequest()
+    let els = await settle(languages())
+    expect(els.some((e) => e.type === 'select')).toBe(false)
+    expect(textOf(byTestId(els, 'track-add-provider'))).toBe('Add an AI provider')
+    expect(focused.map(named)).toEqual(['track-add-provider'])
+    focused.length = 0
+    providerAdded()
+    els = await settle(languages())
+    expect(els.some((e) => e.type === 'select')).toBe(true)
+    expect(focused.map(named)).toEqual([])
+    expect(sent).toHaveLength(0)
+  })
+
+  it('Add a language pressed: the same, the button it replaces gone', async () => {
+    providers.list = []
+    let els = await settle(languages())
+    focused.length = 0
+    ;(byTestId(els, 'track-add')!.props.onClick as () => void)()
+    els = await settle(languages())
+    expect(byTestId(els, 'track-add')).toBeUndefined()
+    expect(focused.map(named)).toEqual(['track-add-provider'])
+    focused.length = 0
+    providerAdded()
+    await settle(languages())
+    expect(focused.map(named)).toEqual([])
+  })
+
+  it('a request while the providers still load takes the focus once they are known: the select, or Add an AI provider when there is none', async () => {
+    for (const [list, to] of [
+      [[GEMINI], 'select'],
+      [[], 'track-add-provider']
+    ] as const) {
+      unmountAll()
+      let loaded!: (v: unknown[]) => void
+      providers.list = new Promise<unknown[]>((r) => (loaded = r))
+      await settle(languages())
+      requestCaptions({ kind: 'language', via: 'ai' })
+      takeCaptionsRequest()
+      await settle(languages())
+      // The form shows the select while the list loads; the focus waits for the list, not longer.
+      expect(focused.map(named)).toEqual([])
+      loaded([...list])
+      await settle(languages())
+      expect(focused.map(named)).toEqual([to])
+      focused.length = 0
+      providerAdded()
+      await settle(languages())
+      expect(focused.map(named)).toEqual([])
+    }
   })
 })
 
