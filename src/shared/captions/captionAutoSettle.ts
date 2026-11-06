@@ -44,7 +44,20 @@ function settleItems<T extends { id: string; auto?: unknown }>(next: readonly T[
   return changed ? out : undefined
 }
 
-/** `next` settled against `prev` (rules 1–4 of §11.8); `next` itself when nothing changes. */
+/**
+ * `p` without its `captionAuto.twin` record once the record has nothing to go with: no mark is
+ * pending any more (kept, edited or deleted) or the captions have no Studio look. The twin stays
+ * as it is: the user's from then on.
+ */
+export function settleTwinRecord(p: Project): Project {
+  const auto = p.captionAuto
+  if (!auto?.twin || (p.captions?.studio && p.captionMarks?.some((m) => m.auto))) return p
+  const { twin: _t, ...rest } = auto
+  void _t
+  return withAuto(p, rest)
+}
+
+/** `next` settled against `prev` (rules 1–5 of §11.8); `next` itself when nothing changes. */
 export function settleCaptionAuto(next: Project, prev: Project): Project {
   if (next === prev) return next
   let out = next
@@ -86,12 +99,14 @@ export function settleCaptionAuto(next: Project, prev: Project): Project {
   if (titles) out = { ...out, titles }
   // Rule 4: marks, word anchors and per-caption places follow their words.
   out = remapAnchors(out, prev)
+  // Rule 5: the record of a twin made for automatic emphasis goes when no mark is pending.
+  out = settleTwinRecord(out)
   return out
 }
 
 /** The project with these records (none: the field removed). */
 function withAuto(p: Project, auto: NonNullable<Project['captionAuto']>): Project {
-  if (auto.style || auto.text?.length) return { ...p, captionAuto: auto }
+  if (auto.style || auto.text?.length || auto.twin) return { ...p, captionAuto: auto }
   const { captionAuto: _gone, ...rest } = p
   void _gone
   return rest

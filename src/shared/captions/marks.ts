@@ -55,6 +55,19 @@ function withMarks(project: Project, marks: CaptionMark[], twin: boolean): Proje
 }
 
 /**
+ * `project` with its Classic look turned into the Studio twin for automatic emphasis (Make my
+ * captions great, Find important words), recorded in `captionAuto.twin` (with `none` when there
+ * were no caption settings), so Review's Remove of that emphasis takes the twin away again while
+ * it is unedited (§11.8). A look that has its Studio look already is left as it is.
+ */
+export function withAutoTwin(project: Project): Project {
+  if (project.captions?.studio) return project
+  const captions = captionsOf(project)
+  const twin = project.captionAuto?.twin ?? (project.captions ? {} : { none: true as const })
+  return { ...project, captions: { ...captions, studio: legacyTwin(captions) }, captionAuto: { ...project.captionAuto, twin } }
+}
+
+/**
  * Emphasis toggled on the words of `spans` (§2.7): removed when every selected word is already
  * emphasised, else added (tone 2 with Ctrl+Shift+B), one mark per span, replacing the marks under
  * it. On a legacy look the captions become its Studio twin in the same update, so emphasis can

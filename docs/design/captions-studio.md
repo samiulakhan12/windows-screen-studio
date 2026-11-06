@@ -1082,10 +1082,15 @@ export interface Bleep {
 
 /** What automation replaced, so Review › Remove can put it back (§11.8). */
 export interface CaptionAuto {
-  /** The caption settings before Make my captions great or Polish changed the look (null: none were set). */
-  style?: { was: CaptionSettings | null; by: 'great' | 'polish'; name: string }
+  /**
+   * The caption settings before Make my captions great or Polish changed the look (null: none were
+   * set). `names`: the run turned speaker names on with its look (Auto style's speakers rule).
+   */
+  style?: { was: CaptionSettings | null; by: 'great' | 'polish'; name: string; names?: true }
   /** Captions whose text a clean-up changed: their text and words before. */
   text?: { caption: string; text: string; words?: CaptionWord[] }[]
+  /** The Studio twin automation gave a Classic look for its pending emphasis; `none`: no caption settings before (§11.8). */
+  twin?: { none?: true }
 }
 
 export type TitleCardStyle = 'centered' | 'lower-third' | 'big' | 'quote'
@@ -3013,6 +3018,11 @@ captionAutoSettle.ts`) joins the store's settle chain after `settleDeletedWords`
    `auto` stayed the same object (a hand edit makes it the user's). `applyBrandKit` copies the
    `auto` objects and records it touches (§4.6), so a brand-kit font rewrite keeps them automatic.
 4. Remaps marks, word anchors and per-caption positions of captions that changed (§11.1).
+5. Drops `captionAuto.twin` once no mark is pending (kept, edited or deleted) or the captions have
+   no Studio look. That record is written when Make my captions great or Find important words
+   turns a Classic look into its twin for automatic emphasis (`withAutoTwin`, with `none` when the
+   project had no caption settings), and when Review's Remove on the style row gives the look put
+   back its twin for emphasis still pending. The twin itself stays: the user's from then on.
 
 Automation's own update changes the record and the item together, so rules 1–3 keep them.
 
@@ -3026,8 +3036,8 @@ own Keep and Remove. Things with a time and a place on screen keep a row each.
 
 | Kind | Rows | Title example | Pending while | Keep | Remove |
 |---|---|---|---|---|---|
-| `style` | one | Caption style: Bold Pop (was Clean) | `captionAuto.style` present | drops the record | the look of `was` put back (rule 1's look fields; `captions` absent when `was` is `null` and nothing else changed): showing or hiding, speaker names, the track, the digits and a dragged place stay as the user left them; marks left over get the old look's Studio twin (§5.8), so they still draw; record dropped |
-| `emphasis` | one group | Emphasis: 38 words (items: Emphasis on “Export”) | marks with `auto` exist | clears `auto` on all (or one) | deletes all (or one); with no marks left, an unedited Studio twin of a Classic look (the one emphasis made) goes back to the Classic look |
+| `style` | one | Caption style: Bold Pop (was Clean) | `captionAuto.style` present | drops the record | the look of `was` put back (rule 1's look fields; `captions` absent when `was` is `null` and nothing else changed): showing or hiding, speaker names, the track, the digits and a dragged place stay as the user left them, but speaker names the run turned on with its look (`names`) go with it; marks left over, digits other than as written and a dragged place get the old look's Studio twin (§5.8), so they still draw; record dropped |
+| `emphasis` | one group | Emphasis: 38 words (items: Emphasis on “Export”) | marks with `auto` exist | clears `auto` on all (or one) | deletes all (or one); with no marks left (and no digits or dragged place needing it), the Studio twin automation made for the emphasis (`captionAuto.twin`), unedited, goes back to its Classic look, or to no caption settings when there were none; a twin the user had or made (Ctrl+B, the Digits choice) stays |
 | `text` | one group | Text: 12 captions tidied (items: Fixed “flown” → “Flown”) | `captionAuto.text` records exist | drops the records (or one) | text and words put back for all (or one) |
 | `emoji` | one each | Emoji 💡 on “tip” | the graphic exists with `auto` | clears `auto` | deletes it |
 | `graphic` | one each | Counter 300% · List: 3 steps · Pop-up “Auto Save” · Lower third: Priya · Chapter title: Export settings · Quote | as above (graphics and title cards) | clears `auto` | deletes it |

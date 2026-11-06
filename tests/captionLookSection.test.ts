@@ -13,7 +13,10 @@ import { byTestId, contexts, descendants, focused, key, mockReact, settle, testS
 const p4 = vi.hoisted(() => ({ marks: [] as unknown[] }))
 vi.mock('../src/shared/captions/studioEdit', async () => await import('./studioStandIns'))
 vi.mock('../src/shared/captions/colors', async () => await import('./studioStandIns'))
-vi.mock('../src/shared/captions/marks', () => ({ clearEmphasis: (p: Project) => ({ ...p, captionMarks: undefined }) }))
+vi.mock('../src/shared/captions/marks', async (importOriginal) => ({
+  withAutoTwin: (await importOriginal<typeof import('../src/shared/captions/marks')>()).withAutoTwin,
+  clearEmphasis: (p: Project) => ({ ...p, captionMarks: undefined })
+}))
 vi.mock('../src/shared/captions/emphasis', () => ({ pickEmphasis: () => p4.marks }))
 vi.mock('../src/shared/captions/great', async (importOriginal) => ({
   ...(await importOriginal<Record<string, unknown>>()),
@@ -286,6 +289,8 @@ describe('Emphasis', () => {
     expect(store.state.captionMarks).toEqual(marks)
     expect(store.state.captions?.studio?.from).toBe('clean')
     expect(store.state.captions).not.toHaveProperty('picked')
+    // Recorded, so Review's Remove of the picks takes the twin away again (§11.8).
+    expect(store.state.captionAuto?.twin).toEqual({})
     expect(notices).toEqual(['Emphasised 3 words'])
   })
 

@@ -767,6 +767,7 @@ export function readCaptionAuto(raw: unknown, transcript: Transcript | undefined
     const was = raw.style.was === null ? null : readCaptionSettings(raw.style.was)
     if (was !== undefined) style = { was, by: raw.style.by, name: oneLine(raw.style.name, 64), ...opt('names', raw.style.names === true ? (true as const) : undefined) }
   }
+  const twin: CaptionAuto['twin'] = isObj(raw.twin) ? (raw.twin.none === true ? { none: true } : {}) : undefined
   const text: NonNullable<CaptionAuto['text']> = []
   if (Array.isArray(raw.text) && transcript) {
     const seen = new Set<string>()
@@ -783,6 +784,6 @@ export function readCaptionAuto(raw: unknown, transcript: Transcript | undefined
     const order = new Map(transcript.segments.map((s, i) => [s.id, i]))
     text.sort((a, b) => order.get(a.caption)! - order.get(b.caption)!)
   }
-  if (!style && !text.length) return undefined
-  return { ...opt('style', style), ...opt('text', text.length ? text : undefined) }
+  if (!style && !text.length && !twin) return undefined
+  return { ...opt('style', style), ...opt('text', text.length ? text : undefined), ...opt('twin', twin) }
 }

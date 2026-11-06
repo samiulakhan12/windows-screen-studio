@@ -8,7 +8,8 @@ import { describe, expect, it } from 'vitest'
 import { settleCaptionAuto } from '../src/shared/captions/captionAutoSettle'
 import { DEFAULT_CLEANUP } from '../src/shared/captions/cleanup'
 import { DEFAULT_GREAT_OPTIONS, planCaptionsGreat } from '../src/shared/captions/great'
-import { DEFAULT_CAPTIONS } from '../src/shared/captions/settings'
+import { toggleEmphasis } from '../src/shared/captions/marks'
+import { captionsOf, DEFAULT_CAPTIONS } from '../src/shared/captions/settings'
 import { legacyTwin } from '../src/shared/captions/studioEdit'
 import { EditStore } from '../src/shared/editor/editStore'
 import { settleDeletedWords } from '../src/shared/editor/transcript'
@@ -276,6 +277,116 @@ describe('Keep and Remove, per kind', () => {
     expect(run2.captionAuto?.style?.names).toBeUndefined()
     expect(removeItems(run2, [row(reviewItems(run2), STYLE_KEY)]).captions?.showSpeaker).toBe(true)
     expect(removeItems(run2, reviewItems(run2))).toEqual(had)
+  })
+
+  it('a Studio twin the user had before the run stays after Remove: Ctrl+B and Ctrl+B again, or Digits chosen on a Classic look', () => {
+    const only = { ...DEFAULT_GREAT_OPTIONS, tidy: false, counters: false, lists: false, keywords: false, emoji: false, speakers: false, chapters: false, style: false }
+    const marked = toggleEmphasis({ ...before, captions: { ...DEFAULT_CAPTIONS } }, [{ caption: 'c1', from: 1, to: 1 }])
+    const ctrlB = toggleEmphasis(marked, [{ caption: 'c1', from: 1, to: 1 }])
+    expect(ctrlB.captionMarks).toBeUndefined()
+    expect(ctrlB.captions?.studio).toEqual(legacyTwin(DEFAULT_CAPTIONS))
+    // The Digits control (StudioControls) makes the twin of a Classic look, which cannot draw other digits.
+    const digits = (c: Project['captions']): Project => {
+      const s = { ...DEFAULT_CAPTIONS, ...c }
+      return { ...before, captions: { ...s, studio: legacyTwin(s), digits: 'western', picked: true } }
+    }
+    const boxed = digits({ ...DEFAULT_CAPTIONS, preset: 'boxed', background: 'box' })
+    for (const [start, frame, options] of [
+      [ctrlB, WIDE, only],
+      [digits(DEFAULT_CAPTIONS), WIDE, DEFAULT_GREAT_OPTIONS],
+      [boxed, TALL, DEFAULT_GREAT_OPTIONS]
+    ] as const) {
+      const run = planCaptionsGreat({ project: start, frame, cleanup: DEFAULT_CLEANUP, words: [], by: 'great' }, options).project
+      expect(run.captionMarks!.some((m) => m.auto)).toBe(true)
+      expect(run.captionAuto?.twin).toBeUndefined()
+      expect(removeItems(run, [row(reviewItems(run), EMPHASIS_GROUP)]).captions).toEqual(start.captions)
+      expect(removeItems(run, reviewItems(run))).toEqual(start)
+    }
+  })
+
+  it('Digits chosen after the run keep the twin they draw on through Remove, in either order', () => {
+    const digits = (p: Project): Project => {
+      const { digits: _d, ...rest } = captionsOf(p)
+      void _d
+      return { ...p, captions: { ...rest, studio: rest.studio ?? legacyTwin(rest), digits: 'western', picked: true } }
+    }
+    // A picked Boxed look: the run makes its twin for the emphasis (no style row).
+    const boxed: Project = { ...before, captions: { ...DEFAULT_CAPTIONS, preset: 'boxed', background: 'box', picked: true } }
+    const run = planCaptionsGreat({ project: boxed, frame: TALL, cleanup: DEFAULT_CLEANUP, words: [], by: 'great' }, DEFAULT_GREAT_OPTIONS).project
+    expect(run.captionAuto?.twin).toEqual({})
+    const s = storeOf(run)
+    s.update(digits)
+    s.update((p) => removeItems(p, [row(reviewItems(p), EMPHASIS_GROUP)]))
+    expect(s.state.captions).toMatchObject({ preset: 'boxed', digits: 'western', studio: legacyTwin(boxed.captions!) })
+    // Review top-down after the default run (a style row): Remove the style, then the emphasis.
+    const t = storeOf(great)
+    t.update(digits)
+    expect(t.state.captionAuto?.style).toBeDefined()
+    const items = reviewItems(t.state)
+    t.update((p) => removeItems(p, [row(items, STYLE_KEY)]))
+    t.update((p) => removeItems(p, [row(items, EMPHASIS_GROUP)]))
+    expect(t.state.captions).toMatchObject({ preset: 'clean', digits: 'western', studio: legacyTwin(DEFAULT_CAPTIONS) })
+  })
+
+  it('a block dragged after the run stays where the user left it after Remove on the style row with no marks left', () => {
+    const place = { x: 0.5, y: 0.25 }
+    const drag = (p: Project): Project => ({ ...p, captions: { ...p.captions!, studio: { ...p.captions!.studio!, layout: { ...p.captions!.studio!.layout, place } } } })
+    // The emphasis removed first, then the style.
+    const s = storeOf(great)
+    s.update(drag)
+    const items = reviewItems(s.state)
+    s.update((p) => removeItems(p, [row(items, EMPHASIS_GROUP)]))
+    s.update((p) => removeItems(p, [row(items, STYLE_KEY)]))
+    expect(s.state.captions?.studio?.layout.place).toEqual(place)
+    expect(s.state.captions?.preset).toBe('clean')
+    expect(reviewStatus(s.state, row(items, STYLE_KEY))).toBe('removed')
+    // A run without emphasis.
+    const noMarks = planCaptionsGreat({ project: before, frame: TALL, cleanup: DEFAULT_CLEANUP, words: [], by: 'great' }, { ...DEFAULT_GREAT_OPTIONS, emphasis: false }).project
+    const dragged = drag(noMarks)
+    const r = removeItems(dragged, [row(reviewItems(dragged), STYLE_KEY)])
+    expect(r.captions?.studio).toEqual({ ...legacyTwin(DEFAULT_CAPTIONS), layout: { ...legacyTwin(DEFAULT_CAPTIONS).layout, place } })
+  })
+
+  it('Remove on every row gives back no caption settings when there were none, in any order', () => {
+    const noStyle = planCaptionsGreat({ project: before, frame: WIDE, cleanup: DEFAULT_CLEANUP, words: [], by: 'great' }, { ...DEFAULT_GREAT_OPTIONS, style: false }).project
+    expect(noStyle.captionAuto?.twin).toEqual({ none: true })
+    expect(removeItems(noStyle, reviewItems(noStyle))).toEqual(before)
+    // The style first, then the emphasis: the twin made for the pending emphasis is recorded and goes with it.
+    const items = reviewItems(great)
+    const styleFirst = removeItems(great, [row(items, STYLE_KEY)])
+    expect(styleFirst.captionAuto?.twin).toEqual({ none: true })
+    expect(removeItems(styleFirst, [row(items, EMPHASIS_GROUP)]).captions).toBeUndefined()
+    expect(removeItems(styleFirst, items.filter((i) => i.key !== STYLE_KEY))).toEqual(before)
+    const s = storeOf(great)
+    s.update((p) => removeItems(p, [row(items, EMPHASIS_GROUP)]))
+    s.update((p) => removeItems(p, [row(items, STYLE_KEY)]))
+    expect(s.state.captions).toBeUndefined()
+    expect(s.state.captionAuto?.twin).toBeUndefined()
+  })
+
+  it('the twin record goes when no emphasis is pending: Keep, a hand edit or deleting the marks; the twin stays', () => {
+    const noStyle = planCaptionsGreat({ project: before, frame: WIDE, cleanup: DEFAULT_CLEANUP, words: [], by: 'great' }, { ...DEFAULT_GREAT_OPTIONS, style: false }).project
+    const emphasis = row(reviewItems(noStyle), EMPHASIS_GROUP)
+    const kept = keepItems(noStyle, [emphasis])
+    expect(kept.captionAuto?.twin).toBeUndefined()
+    expect(kept.captions).toBe(noStyle.captions)
+    // Keeping one mark leaves the record while others are pending.
+    expect(keepItems(noStyle, [emphasis.parts![0]]).captionAuto?.twin).toEqual({ none: true })
+    // Through the store's settle rule: every mark edited by hand, or all deleted.
+    const s = storeOf(noStyle)
+    s.update((p) => ({ ...p, captionMarks: p.captionMarks!.map((m) => ({ ...m, tone: 2 as const })) }))
+    expect(s.state.captionMarks!.some((m) => m.auto)).toBe(false)
+    expect(s.state.captionAuto?.twin).toBeUndefined()
+    expect(s.state.captionAuto?.text).toEqual(noStyle.captionAuto?.text)
+    expect(s.state.captions).toBe(noStyle.captions)
+    const t = storeOf(noStyle)
+    t.update((p) => ({ ...p, captionMarks: undefined }))
+    expect(t.state.captionAuto?.twin).toBeUndefined()
+    // A twin made for the user's own marks (Remove on the style with the emphasis kept) is not recorded.
+    const items = reviewItems(great)
+    const own = removeItems(keepItems(great, [row(items, EMPHASIS_GROUP)]), [row(items, STYLE_KEY)])
+    expect(own.captions?.studio).toEqual(legacyTwin(DEFAULT_CAPTIONS))
+    expect(own.captionAuto?.twin).toBeUndefined()
   })
 
   it('graphics, title cards and bleeps: Keep clears auto, Remove deletes; others are left alone', () => {

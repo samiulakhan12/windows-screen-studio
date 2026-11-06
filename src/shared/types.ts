@@ -765,6 +765,12 @@ export interface CaptionAuto {
   style?: { was: CaptionSettings | null; by: 'great' | 'polish'; name: string; names?: true }
   /** Captions whose text a clean-up changed: their text and words before. */
   text?: { caption: string; text: string; words?: CaptionWord[] }[]
+  /**
+   * The Studio twin automation gave a Classic look so its pending emphasis draws (§5.8, §11.8);
+   * `none`: the project had no caption settings before. Review's Remove of the last of that
+   * emphasis takes the twin away again while it is unedited; a twin the user made stays.
+   */
+  twin?: { none?: true }
 }
 
 /** A 3D tilt of the recording card (degrees), for a perspective "product shot" look. */

@@ -494,6 +494,15 @@ describe('readCaptionAuto (rule 8)', () => {
     // Only `true` counts.
     expect(readCaptionAuto({ style: { was: null, by: 'great', name: 'x', names: 'yes' } }, transcript)).toEqual({ style: { was: null, by: 'great', name: 'x' } })
   })
+
+  it('reads the record of the twin made for automatic emphasis, alone too', () => {
+    const out = readCaptionAuto({ style: { was: null, by: 'great', name: 'Subtitle' }, twin: { none: true } }, transcript)
+    expect(out).toEqual({ style: { was: null, by: 'great', name: 'Subtitle' }, twin: { none: true } })
+    expect(readCaptionAuto(JSON.parse(JSON.stringify(out)), transcript)).toEqual(out)
+    expect(readCaptionAuto({ twin: { none: 1 } }, transcript)).toEqual({ twin: {} })
+    expect(readCaptionAuto({ twin: {} }, transcript)).toEqual({ twin: {} })
+    expect(readCaptionAuto({ twin: 'yes' }, transcript)).toBeUndefined()
+  })
 })
 
 describe('long marks and anchors', () => {

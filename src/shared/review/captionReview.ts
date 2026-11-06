@@ -10,7 +10,7 @@
  * it back (the look before, the text before, the item deleted). Each is one project out, so a press
  * is one undo step; a group's Keep or Remove does all its pending items in that one step.
  */
-import { lookOf } from '../captions/captionAutoSettle'
+import { lookOf, settleTwinRecord } from '../captions/captionAutoSettle'
 import { maskBleeped, maskWord } from '../captions/cleanup'
 import { emojiEntry } from '../captions/emojiList'
 import { deepEqual } from '../captions/graphicRules'
@@ -296,7 +296,7 @@ export function expandGroups(items: readonly ReviewItem[]): ReviewItem[] {
 
 /** The project with these records (none: the field removed). */
 function withAuto(p: Project, auto: CaptionAuto): Project {
-  if (auto.style || auto.text?.length) return { ...p, captionAuto: auto }
+  if (auto.style || auto.text?.length || auto.twin) return { ...p, captionAuto: auto }
   if (!p.captionAuto) return p
   const { captionAuto: _gone, ...rest } = p
   void _gone
@@ -349,7 +349,8 @@ export function keepCaptionItems(project: Project, items: readonly ReviewItem[])
   if (cards.size && next.titles) next = { ...next, titles: cleared(next.titles, cards) }
   const bleeps = idsOf(items, 'bleep:')
   if (bleeps.size && next.bleeps) next = { ...next, bleeps: cleared(next.bleeps, bleeps) }
-  return next
+  // With no emphasis pending, a twin made for it is the user's (kept marks draw on it).
+  return marks.size ? settleTwinRecord(next) : next
 }
 
 /**
@@ -386,31 +387,51 @@ function withPlace(c: CaptionSettings, place: { x: number; y: number } | undefin
  * The caption settings after a Remove of the style row (`style`) or of emphasis (§11.8). The style
  * row puts back only the look from before the first automatic change: showing or hiding captions,
  * speaker names (but those the run turned on), the track, the digits and the dragged place stay as
- * the user left them, as the settle rule keeps the record through them. Marks left on a Classic look get its twin, so they still
- * draw (as Ctrl+B does, §5.8); with no marks left, an unedited twin goes back to its Classic look,
- * so removing every row of a run gives back the settings from before it.
+ * the user left them, as the settle rule keeps the record through them. Only a Studio look draws
+ * marks, digits other than as written and a dragged place, so a Classic look put back gets its twin
+ * for them (as Ctrl+B does, §5.8). With none of them left, the twin automation made for its emphasis
+ * (`captionAuto.twin`), unedited, goes back to its Classic look, and to no settings when there were
+ * none, so removing every row of a run gives back the settings from before it; a twin the user had
+ * or made stays.
  */
 function lookAfterRemove(p: Project, style: StyleRecord | undefined): Project {
   const now = p.captions
   let c: CaptionSettings | undefined = now
   if (style) c = withLookOf(now ?? DEFAULT_CAPTIONS, style.was ?? DEFAULT_CAPTIONS, !!style.names)
   if (!c) return p
-  const marks = !!p.captionMarks?.length
-  if (style && marks && !c.studio) c = { ...c, studio: legacyTwin(c) }
-  if (!marks && plainTwin(c, true)) {
+  const marks = p.captionMarks ?? []
+  const pending = marks.some((m) => m.auto)
+  let record = p.captionAuto?.twin
+  const place = style ? now?.studio?.layout.place : undefined
+  const needed = marks.length > 0 || !!c.digits || !!place
+  if (style && needed && !c.studio) {
+    c = { ...c, studio: legacyTwin(c) }
+    // Made for the run's emphasis still pending: it goes again with the last of it.
+    if (pending && !record) record = style.was === null ? { none: true } : {}
+  }
+  if (style) c = withPlace(c, place)
+  let none = style?.was === null
+  if (!needed && record && plainTwin(c, true)) {
     const { studio: _s, ...classic } = c
     void _s
     c = classic
+    none ||= !!record.none
   }
-  if (style) c = withPlace(c, now?.studio?.layout.place)
+  if (!pending) record = undefined
+  let out: Project = p
+  if (record !== p.captionAuto?.twin) {
+    const { twin: _t, ...auto } = p.captionAuto ?? {}
+    void _t
+    out = withAuto(out, record ? { ...auto, twin: record } : auto)
+  }
   if (style?.was && deepEqual(c, style.was)) c = style.was
-  if (style && style.was === null && deepEqual(c, DEFAULT_CAPTIONS)) {
-    if (!now) return p
-    const { captions: _c, ...rest } = p
+  if (none && deepEqual(c, DEFAULT_CAPTIONS)) {
+    if (!out.captions) return out
+    const { captions: _c, ...rest } = out
     void _c
     return rest
   }
-  return deepEqual(c, now) ? p : { ...p, captions: c }
+  return deepEqual(c, now) ? out : { ...out, captions: c }
 }
 
 /**

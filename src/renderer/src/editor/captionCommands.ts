@@ -6,6 +6,7 @@ import { readGreatOptions, resolveGreatOptions } from '../../../shared/captions/
 import { readCleanupChoices, tidyCaptions } from '../../../shared/captions/cleanup'
 import { readWordList } from '../../../shared/captions/captionPrefs'
 import { pickEmphasis } from '../../../shared/captions/emphasis'
+import { withAutoTwin } from '../../../shared/captions/marks'
 import { planGraphics } from '../../../shared/captions/graphicRules'
 import { captionsOf } from '../../../shared/captions/settings'
 import { legacyTwin } from '../../../shared/captions/studioEdit'
@@ -37,7 +38,8 @@ const marked = (marks: Project['captionMarks']): number => (marks ?? []).reduce(
 
 /**
  * Find important words (§2.7): the offline picks for captions without emphasis, one undo step; on
- * a Classic look its Studio twin in the same step (emphasis buttons do not set `picked`).
+ * a Classic look its Studio twin in the same step (emphasis buttons do not set `picked`), recorded
+ * so Review's Remove of the picks takes it away again (withAutoTwin).
  */
 export function findImportantWords(store: EditStore<Project>, notice: (message: string) => void): void {
   let added = 0
@@ -45,8 +47,7 @@ export function findImportantWords(store: EditStore<Project>, notice: (message: 
     const marks = pickEmphasis(p)
     added = marked(marks)
     if (!marks.length) return p
-    const c = captionsOf(p)
-    return { ...p, captionMarks: [...(p.captionMarks ?? []), ...marks], captions: c.studio ? c : { ...c, studio: legacyTwin(c) } }
+    return withAutoTwin({ ...p, captionMarks: [...(p.captionMarks ?? []), ...marks] })
   })
   notice(added ? `Emphasised ${words(added)}` : 'No words stood out')
 }

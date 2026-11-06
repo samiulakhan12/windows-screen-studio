@@ -12,10 +12,8 @@ import { autoStyleSettings, cameraLed, frameShape } from './autoStyle'
 import { tidyCaptions, type CleanupChoices, type WordListEntry } from './cleanup'
 import { markId, pickEmphasis } from './emphasis'
 import { deepEqual, planGraphicsSteps } from './graphicRules'
-import { remapAnchors } from './marks'
-import { captionsOf } from './settings'
+import { remapAnchors, withAutoTwin } from './marks'
 import { studioPreset } from './studioPresets'
-import { legacyTwin } from './studioEdit'
 import { studioWordTexts } from './words'
 
 /** A choice that can be resolved per project ('auto', §2.8). */
@@ -227,7 +225,7 @@ export function* planCaptionsGreatSteps(input: GreatInput, options: GreatOptions
     const picks = fromAi.length ? fromAi : pickEmphasis(base, { cursor: input.cursor })
     const marks = sortMarks(p, [...own, ...picks])
     if (!deepEqual(marks, p.captionMarks ?? [])) p = marks.length ? { ...p, captionMarks: marks } : withoutMarks(p)
-    if (picks.length && !captionsOf(p).studio) p = { ...p, captions: { ...captionsOf(p), studio: legacyTwin(captionsOf(p)) } }
+    if (picks.length) p = withAutoTwin(p)
   }
 
   yield
