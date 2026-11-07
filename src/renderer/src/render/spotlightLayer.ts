@@ -11,8 +11,10 @@ import {
   visibleCursorAt,
   type IntRect
 } from '../../../shared/render/shapes'
+import { isMagnifier } from '../../../shared/render/magnifier'
 import type { Spotlight } from '../../../shared/types'
 import type { FrameContext } from './frameContext'
+import { activeLens, addLensPath, type LensBox } from './magnifierLayer'
 
 type Ctx = CanvasRenderingContext2D
 
@@ -24,6 +26,8 @@ interface Lit {
   rx: number
   ry: number
   feather: number
+  /** A magnifier's lens (editing polish §6.4): lit exactly inside the lens's outline, with no soft edge. */
+  lens?: boolean
 }
 
 /** "How lit" (0..1) -> the colour painted there. */
@@ -35,6 +39,9 @@ type Paint = (lit: number) => string
  * the cursor layer draws, or the real one baked into the video), and fades out while that is
  * off the recording; a region spotlight stays on its content while the camera moves.
  * Spotlights fade in and out over SPOTLIGHT_FADE; several at once light up all their areas.
+ * A magnifier's Darkness (editing polish §6.4) lights its lens as drawn: the box scaled by the
+ * lens's size factor, with no soft edge, at the lens's opacity, so the dimming grows and shrinks
+ * with the lens and no ring of bright, unmagnified screen shows around it.
  */
 export function drawSpotlightLayer(fc: FrameContext): void {
   const list = projectSpotlights(fc.project)
@@ -55,11 +62,26 @@ export function drawSpotlightLayer(fc: FrameContext): void {
   const cursor = fc.cursor.valid ? visibleCursorAt(project, samples, path, t) : null
   // A cursor spotlight fades out while the cursor is off the recording (the cursor layer hides it then).
   let presence = -1
+  const presenceNow = (): number => {
+    if (presence < 0) presence = cursorSpotlightPresence(project, samples, path, t)
+    return presence
+  }
+  // A magnifier's lens at t (its size and opacity from magnifierPhase), worked out once per frame.
+  const lenses = new Map<Spotlight, { box: LensBox; alpha: number } | null>()
+  const lensOf = (s: Spotlight): { box: LensBox; alpha: number } | null => {
+    if (!lenses.has(s)) lenses.set(s, activeLens(fc, s, cursor, presenceNow))
+    return lenses.get(s) ?? null
+  }
   const alphaOf = (s: Spotlight): number => {
+    if (isMagnifier(s)) return lensOf(s)?.alpha ?? 0
     const a = spotlightAlpha(s, t, speed)
     if (s.mode !== 'cursor' || !cursor || a <= 0) return a
-    if (presence < 0) presence = cursorSpotlightPresence(project, samples, path, t)
-    return a * presence
+    return a * presenceNow()
+  }
+  const areaOf = (s: Spotlight): Lit => {
+    if (!isMagnifier(s)) return litArea(fc, s, cursor)
+    const box = lensOf(s)?.box ?? { cx: 0, cy: 0, rx: 0, ry: 0 }
+    return { shape: s.shape, cx: box.cx, cy: box.cy, rx: box.rx, ry: box.ry, feather: 0, lens: true }
   }
   const { ctx } = fc
   ctx.save()
@@ -67,7 +89,7 @@ export function drawSpotlightLayer(fc: FrameContext): void {
     // The usual case: one spotlight, painted straight onto the frame.
     const s = list[first]
     const dim = s.dim * alphaOf(s)
-    if (dim > 0.002) paintField(ctx, litArea(fc, s, cursor), (lit) => `rgba(0,0,0,${(dim * (1 - lit)).toFixed(4)})`, { x0: 0, y0: 0, x1: fc.w, y1: fc.h })
+    if (dim > 0.002) paintField(ctx, areaOf(s), (lit) => `rgba(0,0,0,${(dim * (1 - lit)).toFixed(4)})`, { x0: 0, y0: 0, x1: fc.w, y1: fc.h })
     ctx.restore()
     return
   }
@@ -84,7 +106,7 @@ export function drawSpotlightLayer(fc: FrameContext): void {
     l.globalCompositeOperation = 'destination-out'
     active.forEach((s, i) => {
       const clear = levels.clear[i]
-      if (clear > 0.002) paintField(l, litArea(fc, s, cursor), (lit) => `rgba(0,0,0,${(clear * lit).toFixed(4)})`, null)
+      if (clear > 0.002) paintField(l, areaOf(s), (lit) => `rgba(0,0,0,${(clear * lit).toFixed(4)})`, null)
     })
     l.globalCompositeOperation = 'source-over'
     ctx.globalAlpha = levels.dim
@@ -124,8 +146,30 @@ function layerFor(target: Ctx, w: number, h: number): { canvas: HTMLCanvasElemen
  * eased across the soft edge. With `cover`, the rest of that rectangle gets the unlit paint too.
  */
 function paintField(ctx: Ctx, g: Lit, paint: Paint, cover: IntRect | null): void {
-  if (g.shape === 'ellipse') ellipseField(ctx, g, paint, cover)
+  if (g.lens) lensField(ctx, g, paint, cover)
+  else if (g.shape === 'ellipse') ellipseField(ctx, g, paint, cover)
   else rectField(ctx, g, paint, cover)
+}
+
+/**
+ * A magnifier's lens, lit exactly inside its outline (the path the magnifier layer clips to):
+ * with `cover`, the unlit paint everywhere in that rectangle but the lens; without, the lit paint
+ * inside the lens.
+ */
+function lensField(ctx: Ctx, g: Lit, paint: Paint, cover: IntRect | null): void {
+  ctx.save()
+  ctx.beginPath()
+  if (cover) {
+    ctx.rect(cover.x0, cover.y0, cover.x1 - cover.x0, cover.y1 - cover.y0)
+    if (g.rx >= 0.5 && g.ry >= 0.5) addLensPath(ctx, g, g.shape)
+    ctx.fillStyle = paint(0)
+    ctx.fill('evenodd')
+  } else if (g.rx >= 0.5 && g.ry >= 0.5) {
+    addLensPath(ctx, g, g.shape)
+    ctx.fillStyle = paint(1)
+    ctx.fill()
+  }
+  ctx.restore()
 }
 
 function addStops(grad: CanvasGradient, paint: Paint): CanvasGradient {
