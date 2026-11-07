@@ -3063,7 +3063,8 @@ own Keep and Remove. Things with a time and a place on screen keep a row each.
 
 `ReviewItem` gains `members?: string[]` (the keys of a group's items, `emphasis:<mark id>` and
 `text:<caption id>`); `keepItems` and `removeItems` expand a group key to its members, so one
-press on a group row is one undo step. "n of N reviewed" counts a group as one. `KIND_WORDS` gains
+press on a group row is one undo step. "n of N reviewed" counts a group as one; what Keep all and
+Remove all say counts its items still to review ("Removed 38 emphasis.", "Kept 52 changes."). `KIND_WORDS` gains
 "Remove all caption style changes", "Remove all emoji", "Remove all graphics" (pop-ups, counters, list cards and the title cards: chip "Graphic") and "Remove all
 bleeps"; emphasis and text need none (their group row is that). Status is derived from the
 project (review-mode §2.3), so undo and redo just work. A 10-minute tutorial with the wide

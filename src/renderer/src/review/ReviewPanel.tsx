@@ -402,14 +402,23 @@ export function ReviewPanel({ onClose, onNotice }: { onClose: () => void; /** Sh
         void keepVersionBefore(before, 'review')
       }
     }
+    // What is said counts a group row as its items still to review ("Removed 38 emphasis."); `count`
+    // (rows) only decides whether the work runs in slices.
+    const units = (p: Project, items: readonly ReviewItem[]): number => items.reduce((n, i) => n + (i.parts ? i.parts.filter((x) => reviewStatus(p, x) === 'pending').length : 1), 0)
     if (count <= BUSY_FROM) {
-      commit((p) => apply(p, targets(p)))
-      say(bulkMessage(action, count, kind))
+      let done = 0
+      commit((p) => {
+        const items = targets(p)
+        done = units(p, items)
+        return apply(p, items)
+      })
+      say(bulkMessage(action, done, kind))
       after({ moves: true })
       return
     }
-    setBusy({ action, count, kind })
-    say(busyMessage(action, count, kind))
+    const todo = units(store.state, targets(store.state))
+    setBusy({ action, count: todo, kind })
+    say(busyMessage(action, todo, kind))
     const work = heldInSlices(
       store,
       (p) =>
@@ -420,7 +429,7 @@ export function ReviewPanel({ onClose, onNotice }: { onClose: () => void; /** Sh
             })(),
       (base, next) => {
         working.current = null
-        const done = targets(base).length
+        const done = units(base, targets(base))
         commit((p) => (p === base ? next : apply(p, targets(p))))
         setBusy(null)
         say(bulkMessage(action, done, kind))

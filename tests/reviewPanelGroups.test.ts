@@ -62,7 +62,7 @@ const undoSteps = (s: EditStore<Project>): number => {
 beforeEach(() => {
   unmountAll()
   store = new EditStore(great, undefined, undefined, undefined, (next, prev) => settleCaptionAuto(next, prev))
-  contexts.editor = { store, player: { time: 0, moving: false, subscribe: () => () => undefined, pause: () => undefined, seek: () => undefined } }
+  contexts.editor = { store, player: { time: 0, moving: false, subscribe: () => () => undefined, play: () => undefined, pause: () => undefined, seek: () => undefined } }
   contexts.keymap = DEFAULT_KEYMAP
 })
 
@@ -139,5 +139,26 @@ describe('a long list (windowed)', () => {
     // A row not measured: as tall as the measured ones, not (9000 + 500) / 11.
     expect(places[200] - places[199]).toBe(50 + gap)
     expect(places[list.length]).toBe(300 * (50 + gap) + 9000 - 50)
+  })
+})
+
+describe('Remove all and Keep all on group rows', () => {
+  it('say how many items they did, not how many rows', async () => {
+    await new Promise((r) => setTimeout(r, 0))
+    const marks = great.captionMarks!.filter((m) => m.auto).length
+    expect(marks).toBeGreaterThan(1)
+    let els = render(panel())
+    press(inside(rowOf(els, EMPHASIS_GROUP)).find((e) => e.props.className === 'review-item'))
+    els = render(panel())
+    expect(textOf(byTestId(els, 'review-remove-kind'))).toBe('Remove all emphasis')
+    press(byTestId(els, 'review-remove-kind'))
+    expect(store.state.captionMarks?.some((m) => m.auto)).toBeFalsy()
+    expect(textOf(byTestId(render(panel()), 'review-said'))).toBe(`Removed ${marks} emphasis.`)
+    // Keep all: each row left, the text group as its captions.
+    store.undo()
+    const rows = render(panel()).filter((e) => e.type === 'li' && e.props['data-key'] && e.props['data-status'] === 'pending').length
+    const items = rows - 2 + marks + great.captionAuto!.text!.length
+    press(byTestId(render(panel()), 'review-keep-all'))
+    expect(textOf(byTestId(render(panel()), 'review-said'))).toBe(`Kept ${items} changes.`)
   })
 })
