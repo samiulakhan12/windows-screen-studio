@@ -2,6 +2,7 @@ import { CaptionTrack, CaptionTrackLabel } from './CaptionTrack'
 import { GraphicsTrack, GraphicsTrackLabel } from './GraphicsTrack'
 import { ClipWaveform, useWaveformHint } from './ClipWaveform'
 import { Filmstrip } from './Filmstrip'
+import { CutMarkers } from './CutMarkers'
 import { LayoutTrack, LayoutTrackLabel } from './LayoutTrack'
 import { TitleTrack, TitleTrackLabel } from './TitleTrack'
 import { OverlayTrack, OverlayTrackLabel } from './OverlayTrack'
@@ -668,6 +669,8 @@ export const Timeline = memo(
                     )
                   })}
                 <Filmstrip px={px} win={win} duration={duration} />
+                {/* Smooth cuts (editing polish §2.1): a marker of fixed size on every cut. */}
+                <CutMarkers px={px} win={win} selection={selection} onSelect={onSelect} />
                 <ClipWaveform px={px} win={win} duration={duration} />
                 {gaps.map((g) => (
                   <GapBlock
