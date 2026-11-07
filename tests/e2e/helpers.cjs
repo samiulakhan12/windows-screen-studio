@@ -37,10 +37,11 @@ function projectsRoot(home) {
   return path.join(home, 'Videos', 'Flown')
 }
 
-async function launch({ home, args = [], env = {} } = {}) {
+/** Launches the built app (`appDir`: another checkout's build, e.g. a baseline to compare with). */
+async function launch({ home, args = [], env = {}, appDir = APP_DIR } = {}) {
   const app = await electron.launch({
-    executablePath: path.join(APP_DIR, 'node_modules/electron/dist/electron'),
-    args: [APP_DIR, '--no-sandbox', ...args],
+    executablePath: path.join(appDir, 'node_modules/electron/dist/electron'),
+    args: [appDir, '--no-sandbox', ...args],
     env: { ...process.env, HOME: home, ...env },
     timeout: 60000
   })

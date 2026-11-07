@@ -1,7 +1,8 @@
 // Editing polish (wave 10), end to end in the built app (docs/design/editing-polish.md §19.3):
 // smooth cuts, the magnifier, animated callouts and the progress bar, colour and looks, the music
 // and sound-effects library, Polish's Smooth cuts step and Review mode, keyboard and versions.
-// Steps E1 to E18 are written by the parts (P1 to P5, §17) on this file.
+// Steps E2 to E16 are written by the parts (P1 to P5, §17); E1, E17 and E18, which span the parts,
+// are in editing-polish-whole.cjs.
 //
 // The data-testid values of §2 (frozen by the contracts commit; the UI parts use exactly these):
 //
@@ -325,6 +326,10 @@ const waitSaved = (win) => win.waitForSelector('.save-state[data-state="saved"]'
 const liveText = (win) => win.evaluate(() => document.querySelector('.music-library-section [role="status"]')?.textContent ?? '')
 
 async function main() {
+  // E1 (old projects) first; E17 and E18 at the end (editing-polish-whole.cjs).
+  const whole = require('./editing-polish-whole.cjs')
+  await whole.oldProjectStep(test)
+
   // P1, smooth cuts: E2, E3, E4, E5, E15 and E16 (editing-polish-cuts.cjs).
   await require('./editing-polish-cuts.cjs').cutsSteps(test)
 
@@ -911,6 +916,9 @@ async function main() {
     await again.win.waitForSelector('[data-testid="sfx-count-zoomIn"]')
     h.assert((await again.win.textContent('[data-testid="sfx-count-zoomIn"]')) === 'Plays 2 times', 'four zooms 1 s apart play 2 times')
   }))
+
+  // E17 (Versions) and E18 (cost), across the parts.
+  await whole.laterSteps(test)
 }
 
 main().catch((err) => {

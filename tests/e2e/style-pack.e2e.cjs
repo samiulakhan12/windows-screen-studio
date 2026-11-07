@@ -416,12 +416,16 @@ async function main() {
   await test('style pack: presets apply as one undo step; your own presets are saved, renamed and deleted', async (ctx) => {
     const home = h.tempHome('style-presets')
     f.seedProject(home, { id: 'rec-p', name: 'Presets', seconds: 4 })
-    const { app, win } = await launch(ctx, home)
-    // A preferences file with one good preset of your own and some junk (written before the editor reads it).
+    // A preferences file with one good preset of your own and some junk, written while the app is
+    // closed: main reads the file once and keeps it (Home already reads other preferences).
     const look = { style: { background: { type: 'color', color: '#ff8800' }, padding: 0.05 }, cursor: {}, zoom: { defaultScale: 1.5 } }
-    const realUserData = await app.evaluate(({ app: a }) => a.getPath('userData'))
+    const first = await launch(ctx, home)
+    const realUserData = await first.app.evaluate(({ app: a }) => a.getPath('userData'))
+    await first.app.close()
+    ctx.app = null
     fs.mkdirSync(realUserData, { recursive: true })
     fs.writeFileSync(path.join(realUserData, 'editor-prefs.json'), JSON.stringify({ stylePresets: [{ id: 'mine1', name: 'Orange', look }, { id: 'bad' }, 42, { id: 'x y', name: 'Bad id', look }] }))
+    const { app, win } = await launch(ctx, home)
     await f.openProject(win, 'Presets')
     // The gallery opens from the current look's name.
     h.assert((await win.textContent('.preset-summary')).includes('Custom look'), 'a seeded project matches no preset')

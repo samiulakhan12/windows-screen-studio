@@ -9,6 +9,8 @@ const h = require('./helpers.cjs')
 const f = require('./editor-fixtures.cjs')
 
 const MEDIA_CACHE = path.join(require('node:os').tmpdir(), 'ssw-e2e-media')
+/** A new arrow's entrance: Draw over 0.35 s (docs/design/editing-polish.md §2.3, §7.1). */
+const ARROW_DRAW = 0.35
 
 /** A 16 s test pattern whose picture freezes from 3 s to 9 s and from 11 s to the end (cached). */
 function stillVideo() {
@@ -201,8 +203,9 @@ async function main() {
     await runCommand(win, 'add arrow', 'Add arrow')
     await waitSaved(win)
     const shapes = disk(home, id).shapes || []
-    // Like the Shapes panel's: it starts one fade (0.15 s) early, so it is fully shown at the playhead.
-    h.assert(shapes.length === 1 && shapes[0].kind === 'arrow' && Math.abs(shapes[0].start - 2.85) < 0.05 && shapes[0].end > 3, `arrow added at the playhead: ${JSON.stringify(shapes)}`)
+    // Like the Shapes panel's: it starts one entrance early (editing polish §7.1: a new arrow draws
+    // itself over 0.35 s), so it is fully shown at the playhead.
+    h.assert(shapes.length === 1 && shapes[0].kind === 'arrow' && Math.abs(shapes[0].start - (3 - ARROW_DRAW)) < 0.05 && shapes[0].end > 3, `arrow added at the playhead: ${JSON.stringify(shapes)}`)
     h.assert((await activeTab(win)) === 'Shapes', 'the new shape is selected (Shapes tab)')
     await win.keyboard.press('Control+z')
     await waitSaved(win)
@@ -272,7 +275,7 @@ async function main() {
     let p = await saved((q) => q.shapes?.length === 1, 'the arrow')
     const arrow = p.shapes[0]
     const cursor = { x: 0.5 + 0.3 * Math.sin(3), y: 0.5 + 0.3 * Math.cos(3 * 0.7) }
-    h.assert(Math.abs(arrow.start - 2.85) < 0.02 && arrow.end > 3, `fully shown at 3 s: ${arrow.start}..${arrow.end}`)
+    h.assert(Math.abs(arrow.start - (3 - ARROW_DRAW)) < 0.02 && arrow.end > 3, `fully shown at 3 s: ${arrow.start}..${arrow.end}`)
     h.assert(Math.hypot(arrow.x + arrow.w - cursor.x, arrow.y + arrow.h - cursor.y) < 0.05, `points at the cursor ${JSON.stringify(cursor)}: ${JSON.stringify(arrow)}`)
 
     // A cursor spotlight fully faded in at the playhead and round on screen (not 16:9-shaped).
