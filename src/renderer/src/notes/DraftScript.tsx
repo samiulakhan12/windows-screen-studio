@@ -1,13 +1,13 @@
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { SCRIPT_DRAFT_MAX_NOTES, type AiProviderInfo } from '../../../shared/api/ai'
 import { hasNotesText } from '../../../shared/notes/notes'
 import { NOTES_COPY } from '../../../shared/notes/notesCopy'
 import { AI_PROVIDERS_CHANGED_EVENT, OPEN_SETTINGS_EVENT } from '../settings/SettingsButton'
 import { ipcMessage } from '../settings/providerText'
-import { placeOf } from '../ai/textChoices'
+import { textChoicesOf } from '../ai/textChoices'
+import { useLocalAiReady } from '../ai/localAiState'
 import { LocalProgress } from '../ai/LocalProgress'
-
-const KIND_NAMES: Record<AiProviderInfo['kind'], string> = { openai: 'OpenAI', gemini: 'Gemini', anthropic: 'Claude' }
+import { CostLine } from '../ai/CostLine'
 
 /** The provider picked last, for this session. */
 let rememberedProvider = ''
@@ -96,10 +96,13 @@ export function DraftScript({ text, onReplace, disabled }: { text: string; onRep
   const request = useRef(0)
   const textRef = useRef(text)
   textRef.current = text
-  const list = providers ?? []
+  // The providers, services and On this PC (smart-tools.md §20.0). Draft script is no text task of its own: it is
+  // offered where a summary is.
+  const localReady = useLocalAiReady()
+  const list = useMemo(() => textChoicesOf(providers ?? [], 'summary', localReady), [providers, localReady])
   const chosen = list.find((p) => p.id === provider) ?? list[0] ?? null
-  // Where the notes go, by the name every hint uses (smart-tools.md §20.0: a service's host, never "OpenAI" for it).
-  const name = chosen ? (chosen.service ? placeOf(chosen) : chosen.label || KIND_NAMES[chosen.kind]) : 'the provider'
+  // Where the notes go, by the name every hint uses (smart-tools.md §20.0: a service's host, never "OpenAI" for it, never "undefined").
+  const name = chosen ? (chosen.host ? chosen.place : chosen.label) : 'the provider'
   // The draft running now: its progress on this PC and Stop find it by this id.
   const [running, setRunning] = useState<string | null>(null)
 
@@ -187,7 +190,16 @@ export function DraftScript({ text, onReplace, disabled }: { text: string; onRep
             <LocalProgress requestId={running} onStop={() => running && void window.api.cancelAiText(running)} />
           </>
         ) : (
-          <button ref={draftButton} type="button" className="btn notes-draft-btn" disabled={disabled || empty || tooLong} title={blockedTitle} onClick={() => void start()}>
+          <button
+            ref={draftButton}
+            id="notes-draft"
+            type="button"
+            className="btn notes-draft-btn"
+            aria-describedby={chosen ? 'notes-draft-cost-draft' : undefined}
+            disabled={disabled || empty || tooLong}
+            title={blockedTitle}
+            onClick={() => void start()}
+          >
             <svg width={15} height={15} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
               <path d="M12 3l1.8 4.7L18.5 9.5l-4.7 1.8L12 16l-1.8-4.7L5.5 9.5l4.7-1.8zM19 15l.8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8z" />
             </svg>
@@ -207,7 +219,7 @@ export function DraftScript({ text, onReplace, disabled }: { text: string; onRep
           >
             {list.map((p) => (
               <option key={p.id} value={p.id}>
-                {p.label || KIND_NAMES[p.kind]}
+                {p.label}
               </option>
             ))}
           </select>
@@ -248,7 +260,9 @@ export function DraftScript({ text, onReplace, disabled }: { text: string; onRep
           {draft.message}
         </p>
       )}
-      {chosen && !tooLong && draft.kind !== 'explain' && <p className="hint">{NOTES_COPY.draftHint(name)}</p>}
+      {chosen && !tooLong && draft.kind !== 'explain' && <p className="hint">{chosen.kind === 'local' ? NOTES_COPY.draftHintLocal : NOTES_COPY.draftHint(name)}</p>}
+      {/* What Draft script sends, where, and what it costs (smart-tools.md §11.5), part P5's: no text task of its own, so no request to estimate yet. */}
+      {chosen && !tooLong && <CostLine id="notes-draft-cost" choice={chosen} full actions={[{ key: 'draft', label: 'Draft script', buttonId: 'notes-draft', request: null }]} />}
     </div>
   )
 }

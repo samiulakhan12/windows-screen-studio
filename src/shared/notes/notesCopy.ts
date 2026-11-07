@@ -47,6 +47,8 @@ export const NOTES_COPY = {
   drafting: 'Drafting…',
   cancel: 'Cancel',
   draftHint: (provider: string): string => `Turns your bullet points into sentences to read aloud. Only these notes are sent to ${provider}, with your key.`,
+  /** With AI on this PC (smart-tools.md §2.5): nothing leaves the PC. */
+  draftHintLocal: 'Turns your bullet points into sentences to read aloud, on this PC: nothing is sent.',
   noProvider: 'Draft script needs an AI provider with your own key: OpenAI, Gemini or Claude.',
   addProvider: 'Add an AI provider',
   draftEmpty: 'Write a few bullet points first.',
