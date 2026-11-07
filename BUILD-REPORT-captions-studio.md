@@ -459,3 +459,40 @@ Verification: typecheck exit 0; full vitest (3 workers) 415 files, 5,697 tests p
 had one timeout at 5 s in `tests/exportFormats.test.ts`'s real ffmpeg M4A export under load, which
 passes alone, 34 of 34, and in the second full run); build exit 0; e2e on the built app, each file
 once: `captions-studio` 8 of 8, `review-mode` 10 of 10, `versions` 3 of 3.
+
+### Word maps, checker round
+
+Six checker findings on the word maps, each reproduced at `18b17fd` with the checkers' probes, then
+fixed at its cause with a test that fails without the fix:
+
+| Finding | Cause and fix | Commit |
+|---|---|---|
+| A multi-word term the caption already had, or had in other capitals ("visual studio" → "Visual Studio"), widened marks and keyword pop-ups on one of its words to the whole term and dropped emoji anchors, on the tidy and on Remove; a kept and a pending mark on its two words merged (F1, whole-term-widening, medium) | The tidy writes every matched term as a whole. `pieceRanges` now maps by the characters without case first, then by the letters and digits without punctuation (a term a full stop then ends), and gives each word the whole only when they differ; a comma written apart after a term written as a whole goes with its last word only, so a term a second tidy matches again maps as after one tidy | `3266b54` |
+| A mark or anchor beside a word the AI fix took out or put in widened onto it ("we" → "we really" on the tidy, "So" → "so um" on Remove); the same for punctuation written apart ("app," → "app ,") (ai-fix-neighbour-widening, medium) | A map covers every word of both texts, so those words share a neighbour's range. `textSteps` narrows each end of a record's words, inside the range the map gives it, to the one word there that is the same word (`narrowedWords`); terms and numbers keep the whole range | `cafe3f8` |
+| Bangla, Hindi and Thai vowel signs and tone marks were read as punctuation: "এগারো" → "১১ো", "अस्सी" → "80ी", heard forms "ফ্লো ইন" and "ไลน์" never matched (F2, high) | `LEADING` and `TRAILING` in `cleanup.ts` now keep `\p{M}` in the word | `71521f5` |
+| Numbers said one after the other were added up: "nineteen ninety nine" → 118, "between ten and twenty" → 30, "five six seven eight" → 26, "twenty-first" → 20 (F3, medium) | `parseEnglish` and `parseTable` read one number only: a number word joins at the start, after "hundred" or a scale, or as a unit after a tens word; "and" only after "hundred" or a scale; otherwise no number, as for an ordinal in two words ("twenty first", not "second", also a unit of time). The tidy and counters leave the following number words as written too | `3f4f69b` |
+| An emoji whose word came back, or was tidied, as several words lost its anchor (F4, low) | `remapAnchors` keeps a moved emoji anchor above the first of the words | `9c0641a` |
+
+Expectations changed because they asserted the bugs: `tests/cleanupTextMap.test.ts` ("Visual ←
+visual studio", now "Visual ← visual", "Studio ← studio"); `tests/captionTextMapRemove.test.ts`
+(the "visual studio" case word by word; "Google" of "Google Docs" from "google dogs" now goes back
+onto "google"); the oracle of `tests/captionTextMapRandom.test.ts` (a term said as its own words is
+a piece per word, a comma written apart goes with the last word of its piece, an end found as the
+same word inside its piece stays on it). New tests: `textMap.test.ts` (pieceRanges for terms and
+commas, `narrowedWords`), `cleanupTextMap.test.ts` (terms already written, through two tidies),
+`captionTextMapRemove.test.ts` (terms already written with marks, keyword and emoji anchors and a
+kept and a pending mark; the AI fix taking out and putting in words; emoji anchors over several
+words), `cleanup.test.ts` (vowel signs; numbers said one after the other), `numbers.test.ts` (one
+number only, in English, Bangla and Hindi; no counter for numbers said in a row).
+
+The checkers' probes on the result: the findings probe passes all four; the AI-fix differential
+probe has 0 of 3,282 checks wrong; the multi-language random probe (1,614 scenarios, 4,499 checks)
+has no emoji dropped, and its 96 differences from its piece-level oracle are all the narrower words
+above (79 a comma written apart, 17 "dogs" of "google dogs"); the old-project, fixture and
+round-trip probes give the same output as before.
+
+Verification: typecheck exit 0; touched unit files 6 of 6 (87 tests); full vitest (3 workers) 415
+files, 5,709 tests pass (a first run had one timeout at 5 s in `tests/bleepBangla.test.ts`, whose
+code path these changes do not touch and which takes 4.5 s alone; it passed alone twice and in the
+second full run); build exit 0; e2e on the built app, each file once: `captions-studio` 8 of 8,
+`review-mode` 10 of 10.
