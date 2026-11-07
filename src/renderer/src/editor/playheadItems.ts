@@ -1,5 +1,6 @@
 import { displayTime } from '../../../shared/editor/clips'
-import { revealKeptTime, shapeForPlayhead, SPOTLIGHT_FADE, spotlightForPlayhead } from '../../../shared/editor/shapes'
+import { revealKeptTime, SPOTLIGHT_FADE, spotlightForPlayhead } from '../../../shared/editor/shapes'
+import { newShapeForPlayhead } from '../../../shared/editor/calloutsEdit'
 import { cropOf, cropProject, cropTrack, cropView, geometryFromCrop } from '../../../shared/engine/crop'
 import { magnifierView } from '../../../shared/editor/magnifierEdit'
 import { MAGNIFIER, newMagnifier } from '../../../shared/render/magnifier'
@@ -81,7 +82,8 @@ export function addShapeAt({ store, player }: EditorServices, kind: ShapeKind, c
   const { t, speed } = anchor(p.clips, opts.at ?? player.time)
   const crop = cropOf(p)
   const view = cropProject(p)
-  const s = geometryFromCrop(crop, shapeForPlayhead(kind, t, view, cursor ? cursorPosFor(view, cropTrack(cursor, crop), t) : null, speed))
+  // With its kind's motion (editing polish §7.1): an arrow draws itself, a box its outline, a highlight wipes in.
+  const s = geometryFromCrop(crop, newShapeForPlayhead(kind, t, view, cursor ? cursorPosFor(view, cropTrack(cursor, crop), t) : null, speed))
   store.update((q) => ({ ...q, shapes: [...(q.shapes ?? []), s] }))
   opts.onSelect({ kind: 'shape', id: s.id })
   revealItem(player, p.clips, s, kind, t)

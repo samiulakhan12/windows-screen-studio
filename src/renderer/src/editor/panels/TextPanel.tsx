@@ -136,7 +136,7 @@ function SelectedText(props: InspectorProps): JSX.Element {
     <Section title="Selected text" aside={<span className="muted small">{formatTime(ann.start)} – {formatTime(ann.end)}</span>}>
       <label className="field">
         <span>Text</span>
-        <textarea className="text-field" rows={2} value={ann.text} onChange={(e) => set({ text: e.target.value }, `annotation-text:${ann.id}`)} placeholder="Type your text" />
+        <textarea className="text-field" rows={2} value={ann.text} onChange={(e) => set({ text: e.target.value }, `annotation-text:${ann.id}`)} placeholder={ann.style === 'bubble' ? "Type the bubble's text" : 'Type your text'} />
       </label>
       <Chips<AnnotationStyle>
         label="Text style"
@@ -144,7 +144,9 @@ function SelectedText(props: InspectorProps): JSX.Element {
         onChange={(style) => set({ style })}
         options={[
           { value: 'pill', label: 'Caption pill' },
-          { value: 'title', label: 'Title' }
+          { value: 'title', label: 'Title' },
+          { value: 'badge', label: 'Step badge' },
+          { value: 'bubble', label: 'Speech bubble' }
         ]}
       />
       <FontPicker project={project} value={ann.font} apply={(p, font) => ({ ...p, annotations: p.annotations.map((a) => (a.id === ann.id ? { ...a, font } : a)) })} />

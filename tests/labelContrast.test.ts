@@ -89,6 +89,16 @@ describe('label contrast on coloured fills', () => {
   })
 })
 
+describe('Editing polish (docs/design/editing-polish.md §12): the callout panels\' error text', () => {
+  const vars = tokens(css('styles.css'))
+
+  it('"At most 3 letters" on the Inspector', () => {
+    const panel = resolve('var(--surface-1)', vars)
+    const error = resolve(declared(css('editor/panels/callouts.css'), '.callout-error', 'color'), vars)
+    expect(contrast(error, panel)).toBeGreaterThanOrEqual(4.5)
+  })
+})
+
 describe('Captions Studio (docs/design/captions-studio.md §2.15, §7.3): the new labels on fills', () => {
   const studio = css('editor/panels/captionStudio.css')
   const graphics = css('editor/panels/graphics.css')

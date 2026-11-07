@@ -1,0 +1,91 @@
+/* Animated callouts in the Inspector and the preview (docs/design/editing-polish.md §2.3, §12). */
+
+.callout-mount {
+  display: contents;
+}
+
+.callout-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.callout-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.callout-field select,
+.callout-field input[type='text'],
+.callout-field input[type='number'] {
+  min-height: 28px;
+}
+
+.callout-sound-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+}
+
+.callout-sound-row .callout-field {
+  flex: 1;
+  min-width: 0;
+}
+
+.callout-play {
+  min-height: 28px;
+}
+
+.callout-error {
+  color: var(--danger-text);
+  font-size: var(--text-sm);
+}
+
+.callout-swatch {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--border-strong);
+  vertical-align: middle;
+}
+
+.callout-add {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+/* ---------- the preview's handles ---------- */
+
+.callout-handle {
+  position: absolute;
+  box-sizing: border-box;
+  border: 1.5px dashed var(--accent-2);
+  border-radius: var(--radius-md);
+  background: var(--accent-softer);
+  cursor: move;
+}
+
+.callout-handle.badge {
+  border-radius: var(--radius-pill);
+}
+
+.callout-handle:focus-visible,
+.callout-tip:focus-visible {
+  outline: var(--focus-ring-width) solid var(--focus-ring);
+  outline-offset: var(--focus-ring-offset);
+}
+
+.callout-tip {
+  position: absolute;
+  width: 14px;
+  height: 14px;
+  margin: -7px 0 0 -7px;
+  border-radius: var(--radius-pill);
+  background: var(--text-on-accent);
+  border: 2px solid var(--accent);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
+  cursor: grab;
+}

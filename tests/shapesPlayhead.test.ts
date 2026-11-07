@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
+import { CALLOUT_DEFAULTS } from '../src/shared/render/callouts'
 
 // Cursor sprites are Path2D shapes; only whether they are drawn matters here.
 vi.stubGlobal(
@@ -9,7 +10,7 @@ vi.stubGlobal(
 )
 
 import { EditStore } from '../src/shared/editor/editStore'
-import { fadeLead, revealKeptTime, revealTime, SHAPE_FADE, SPOTLIGHT_FADE } from '../src/shared/editor/shapes'
+import { fadeLead, revealKeptTime, revealTime, SPOTLIGHT_FADE } from '../src/shared/editor/shapes'
 import { SmoothedTrack } from '../src/shared/engine/cursor'
 import { createProject } from '../src/shared/engine/project'
 import { cursorOverVideoAt, cursorPresence, cursorSpotlightPresence, shapeAlpha, spotlightAlpha } from '../src/shared/render/shapes'
@@ -131,7 +132,8 @@ describe('adding at the playhead (Shapes panel, timeline and commands alike)', (
   it('fully shown at the playhead, selected, the playhead left where it is', () => {
     const { services, store, player, selected, onSelect } = setup(project(), 5)
     const s = addShapeAt(services, 'rect', null, { onSelect })
-    expect(s.start).toBeCloseTo(5 - SHAPE_FADE)
+    // One entrance earlier (editing polish §7.1: a new box draws its outline over 0.45 s).
+    expect(s.start).toBeCloseTo(5 - CALLOUT_DEFAULTS.box.enter.duration)
     expect(shapeAlpha(s, 5)).toBe(1)
     expect(store.state.shapes).toEqual([s])
     expect(selected).toEqual([{ kind: 'shape', id: s.id }])
@@ -179,7 +181,8 @@ describe('adding at the playhead (Shapes panel, timeline and commands alike)', (
   it('an arrow double-clicked on the timeline goes where it was clicked', () => {
     const { services, player, onSelect } = setup(project(), 1)
     const s = addShapeAt(services, 'arrow', null, { at: 6, onSelect })
-    expect(s.start).toBeCloseTo(6 - SHAPE_FADE)
+    // One entrance earlier (editing polish §7.1: a new arrow draws itself over 0.35 s).
+    expect(s.start).toBeCloseTo(6 - CALLOUT_DEFAULTS.arrow.enter.duration)
     expect(player.time).toBe(6)
   })
 
