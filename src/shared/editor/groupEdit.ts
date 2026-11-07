@@ -13,7 +13,7 @@ import { MAX_TRANSITION, MIN_TRANSITION, ZOOM_MAX_SCALE, ZOOM_MIN_SCALE, zoomEas
 import { OVERLAY_LIMITS } from '../engine/overlayData'
 import { stickerOf } from '../render/stickers'
 import { captionsOf } from '../captions/settings'
-import type { Annotation, Background, Chapter, Freeze, Graphic, ImageOverlay, ItemMotion, NormRect, Project, Shape, Spotlight, TitleCard, ZoomSegment } from '../types'
+import type { Annotation, Background, CalloutMotion, CalloutMotionKind, Chapter, Freeze, Graphic, ImageOverlay, ItemMotion, NormRect, Project, Shape, Spotlight, TitleCard, ZoomSegment } from '../types'
 import { ANNOTATION_SIZE } from './annotations'
 import { setZoomLevelInView } from './cropEdit'
 import { removeFreeze, setFreezeLength, setFreezeSound } from './freezeEdit'
@@ -22,6 +22,11 @@ import { sizeForAspect } from './overlays'
 import { hasStroke, HIGHLIGHT_COLORS, isPrivacyKind, SHAPE_COLORS, shapeLabel, STROKE_LIMITS } from './shapes'
 import { TITLE_BACKGROUNDS, TITLE_COLORS, TITLE_STYLES, TITLE_TEXT_COLORS, titleColorOf, titleTextColorOf } from './titles'
 import { formatLevel } from './zoomEdit'
+import { annotationItem, CALLOUT_ALLOWED, calloutOf, shapeItem, type CalloutItem } from '../render/calloutData'
+import { BADGE_FILL, BUBBLE_FILL } from '../render/callouts'
+import { SOUND_EFFECTS } from '../audio/soundLibrary'
+import { readItemSound } from '../audio/soundFxData'
+import { pickedMotion } from './calloutsEdit'
 
 /** Items that share a look: shapes split into marks and privacy shapes; chapters have none. */
 export type LookClass = 'zoom' | 'text' | 'mark' | 'privacy' | 'spotlight' | 'image' | 'title' | 'freeze' | 'graphic'
@@ -61,6 +66,8 @@ export interface GroupField {
   presets?(targets: readonly unknown[]): readonly string[]
   /** The row shows only when every item of its section takes it (a title card's Colour: every card solid). */
   onlyWhenAll?: boolean
+  /** The field for these items (`targets`): a callout's Comes in and Goes out offer the motions every one of them allows (editing polish §7.1). */
+  narrow?(targets: readonly unknown[]): GroupField
 }
 
 /** A copied look: its class, the values of the class's look fields, and the item's name ("Box"). */
@@ -156,6 +163,107 @@ function lookPoint(z: ZoomSegment, ctx: FieldCtx): { x: number; y: number } {
   if (f.mode === 'fixed') return { x: f.x, y: f.y }
   return toCrop(ctx.crop, ctx.focusFor ? ctx.focusFor(z) : fromCrop(ctx.crop, { x: 0.5, y: 0.5 }))
 }
+
+/* ---------- animated callouts (docs/design/editing-polish.md §2.3, §7.1) ---------- */
+
+/** Comes in and Goes out: Default (today's fade), then the Graphics tab's motion names, Draw and Wipe. */
+export const CALLOUT_MOTIONS: readonly { value: CalloutMotionKind | 'default'; label: string }[] = [
+  { value: 'default', label: 'Default' },
+  ...ITEM_MOTIONS.filter((o) => o.value !== 'none' && o.value !== 'blur'),
+  { value: 'draw', label: 'Draw' },
+  { value: 'wipe', label: 'Wipe' }
+]
+/** A callout's Sound: the project's rule, none, or an effect of the library. */
+export const CALLOUT_SOUNDS: readonly { value: string; label: string }[] = [
+  { value: 'project', label: 'Same as the project' },
+  { value: 'none', label: 'None' },
+  ...SOUND_EFFECTS.map((e) => ({ value: `sfx:${e.id}`, label: e.title }))
+]
+/** A badge's or a bubble's fill: the default blue, white, dark, then the shape colours. */
+export const CALLOUT_COLORS: readonly string[] = [BADGE_FILL, BUBBLE_FILL, '#1d1d24', ...SHAPE_COLORS.filter((c) => c.toLowerCase() !== BADGE_FILL)]
+/** Count with: Western digits, letters, Bangla digits. */
+export const BADGE_NUMBERINGS: readonly { value: string; label: string }[] = [
+  { value: '1', label: '1 2 3' },
+  { value: 'A', label: 'A B C' },
+  { value: 'bn', label: '১ ২ ৩' }
+]
+
+/** The callout item of a text, a mark or a title card in a group (null: a privacy shape). */
+function itemOfField(cls: 'text' | 'mark' | 'title', item: unknown): CalloutItem | null {
+  if (cls === 'text') return annotationItem(calloutOf(item as Annotation).style)
+  if (cls === 'mark') return shapeItem((item as Shape).kind)
+  return 'title'
+}
+
+/** The motion kinds every item of `items` allows on `side`, in the menu's order. */
+export function sharedMotions(cls: 'text' | 'mark' | 'title', side: 'enter' | 'exit', items: readonly unknown[]): (CalloutMotionKind | 'default')[] {
+  const lists = items.map((i) => itemOfField(cls, i)).map((it) => (it ? CALLOUT_ALLOWED[it][side] : []))
+  return CALLOUT_MOTIONS.map((o) => o.value).filter((v) => v === 'default' || lists.every((l) => l.includes(v as CalloutMotionKind)))
+}
+
+/** The motion stored on an item's side (annotations through calloutOf, so a damaged one reads as Default). */
+const motionOf = (cls: 'text' | 'mark' | 'title', item: unknown, side: 'enter' | 'exit'): CalloutMotion | undefined =>
+  cls === 'text' ? calloutOf(item as Annotation)[side] : (item as Shape | TitleCard)[side]
+
+/** `item` without `key` (the same object when it has none). */
+function without<T extends object>(item: T, key: string): T {
+  if (!(key in item)) return item
+  const { [key]: _gone, ...rest } = item as Record<string, unknown>
+  void _gone
+  return rest as T
+}
+
+/** A group's Comes in or Goes out: offers the motions every selected item allows; one value written to each (Default removes it). */
+function motionField(cls: 'text' | 'mark' | 'title', side: 'enter' | 'exit'): GroupField {
+  const base = {
+    id: `${cls}.${side}`,
+    cls,
+    label: side === 'enter' ? 'Comes in' : 'Goes out',
+    look: true,
+    applies: (item: unknown) => itemOfField(cls, item) !== null,
+    read: (item: unknown) => motionOf(cls, item, side)?.kind ?? 'default',
+    write: {
+      item: (item: unknown, v: unknown) => {
+        const it = itemOfField(cls, item)
+        if (!it) return item
+        if (v === 'default') return without(item as object, side)
+        if (!CALLOUT_ALLOWED[it][side].includes(v as CalloutMotionKind)) return item
+        return { ...(item as object), [side]: pickedMotion(it, side, v as CalloutMotionKind, motionOf(cls, item, side)) }
+      }
+    }
+  }
+  const field: GroupField = {
+    ...base,
+    control: { type: 'chips', options: CALLOUT_MOTIONS },
+    narrow: (targets) => {
+      const ok = new Set(sharedMotions(cls, side, targets))
+      return { ...field, control: { type: 'chips', options: CALLOUT_MOTIONS.filter((o) => ok.has(o.value)) } }
+    }
+  }
+  return field
+}
+
+/** A group's Sound: the project's rule, None or an effect, one value written to each. */
+function soundField(cls: 'text' | 'mark' | 'title'): GroupField {
+  return {
+    id: `${cls}.sound`,
+    cls,
+    label: 'Sound',
+    control: { type: 'chips', options: CALLOUT_SOUNDS },
+    look: true,
+    applies: (item) => itemOfField(cls, item) !== null,
+    read: (item) => (cls === 'text' ? calloutOf(item as Annotation).sound : (item as Shape | TitleCard).sound) ?? 'project',
+    write: {
+      item: (item, v) => {
+        if (v === 'project') return without(item as object, 'sound')
+        const sound = readItemSound(v)
+        return sound ? { ...(item as object), sound } : item
+      }
+    }
+  }
+}
+
+const isBadgeOrBubble = (a: Annotation): boolean => a.style === 'badge' || a.style === 'bubble'
 
 /**
  * The fields a group edits, in section and row order (§4.9.1). Ranges are the single panels'
@@ -264,6 +372,37 @@ export const GROUP_FIELDS: readonly GroupField[] = [
     read: (a) => a.y,
     patch: (a, v) => ({ ...a, y: v as number })
   }),
+  motionField('text', 'enter'),
+  motionField('text', 'exit'),
+  soundField('text'),
+  patchField<Annotation>({
+    id: 'text.color',
+    cls: 'text',
+    label: 'Colour',
+    control: { type: 'color', presets: CALLOUT_COLORS },
+    look: true,
+    applies: isBadgeOrBubble,
+    read: (a) => calloutOf(a).color ?? (a.style === 'badge' ? BADGE_FILL : BUBBLE_FILL),
+    eq: sameColor,
+    patch: (a, v) => ({ ...a, color: (v as string).toLowerCase() })
+  }),
+  {
+    ...patchField<Annotation>({
+      id: 'text.numbering',
+      cls: 'text',
+      label: 'Count with',
+      control: { type: 'chips', options: BADGE_NUMBERINGS },
+      look: true,
+      applies: (a) => a.style === 'badge',
+      read: (a) => calloutOf(a).numbering,
+      patch: (a, v) => (v === '1' ? without(a, 'numbering') : { ...a, numbering: v as string })
+    }),
+    // A language of the selected badges' own (Hindi digits, say) is offered beside the three.
+    narrow(targets) {
+      const extra = [...new Set(targets.map((a) => calloutOf(a as Annotation).numbering))].filter((n) => !BADGE_NUMBERINGS.some((o) => o.value === n))
+      return extra.length ? { ...this, control: { type: 'chips', options: [...BADGE_NUMBERINGS, ...extra.map((n) => ({ value: n, label: n }))] } } : this
+    }
+  },
 
   patchField<Shape>({
     id: 'mark.color',
@@ -308,6 +447,9 @@ export const GROUP_FIELDS: readonly GroupField[] = [
     read: (s) => s.opacity,
     patch: (s, v) => ({ ...s, opacity: v as number })
   }),
+  motionField('mark', 'enter'),
+  motionField('mark', 'exit'),
+  soundField('mark'),
 
   patchField<Shape>({
     id: 'privacy.kind',
@@ -475,6 +617,9 @@ export const GROUP_FIELDS: readonly GroupField[] = [
     eq: sameColor,
     patch: (c, v) => ({ ...c, textColor: (v as string).toLowerCase() })
   }),
+  motionField('title', 'enter'),
+  motionField('title', 'exit'),
+  soundField('title'),
 
   {
     id: 'freeze.length',
@@ -672,6 +817,7 @@ export function fieldsFor(p: Project, keys: readonly ItemKey[]): { cls: LookClas
     const fields = GROUP_FIELDS.filter((f) => f.cls === cls)
       .map((field) => ({ field, targets: members.filter((k) => field.applies(items.get(k), p)) }))
       .filter(({ field, targets }) => targets.length > 0 && (!field.onlyWhenAll || targets.length === members.length))
+      .map(({ field, targets }) => ({ field: field.narrow ? field.narrow(targets.map((k) => items.get(k))) : field, targets }))
     return { cls, keys: members, fields }
   })
 }
