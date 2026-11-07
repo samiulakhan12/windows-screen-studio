@@ -120,6 +120,11 @@ export interface MusicPart {
   fadeOut: number
   /** ffmpeg expression in `t` for its ducked gain (see duckExpression). */
   duck?: string
+  /**
+   * A library bed whose file main checked against the catalogue (editing polish §10.4): its loop in
+   * samples at 48 kHz (it repeats from `start` to `end`) and whether it repeats; bedGraph plays it.
+   */
+  bed?: { start: number; end: number; loop: boolean }
 }
 
 /**
@@ -298,16 +303,41 @@ const DUCK_FRAME = 256
  * with silence to exactly `duration`.
  */
 export function musicGraph(m: MusicPart, duration: number, out = 'mus'): string {
+  return `${[`[${m.input}]aresample=async=1:first_pts=0`, STEREO, ...musicTail(m, duration)].join(',')}[${out}]`
+}
+
+/** What follows the music's source in its chain: cut where it ends, its volume, fades and ducking, padded to `duration`. */
+function musicTail(m: MusicPart, duration: number): string[] {
   const end = Math.max(0, Math.min(duration, m.end))
   const f = fitFades(end, m.fadeIn, m.fadeOut)
-  const chain = [`[${m.input}]aresample=async=1:first_pts=0`, STEREO, `atrim=end=${sec(end)}`]
+  const chain = [`atrim=end=${sec(end)}`]
   if (Math.abs(m.volume - 1) > 1e-6) chain.push(`volume=${+m.volume.toFixed(4)}`)
   if (f.fadeIn > 0) chain.push(`afade=t=in:st=0:d=${sec(f.fadeIn)}`)
   if (f.fadeOut > 0) chain.push(`afade=t=out:st=${sec(end - f.fadeOut)}:d=${sec(f.fadeOut)}`)
   if (m.duck && m.duck !== '1') chain.push(`asetnsamples=n=${DUCK_FRAME}:p=0`, `volume=volume='${m.duck}':eval=frame`)
   chain.push(`apad=whole_dur=${sec(duration)}`, `atrim=end=${sec(duration)}`)
-  return `${chain.join(',')}[${out}]`
+  return chain
 }
+
+/**
+ * A library bed (editing polish §10.4) from the start of the output: its file at 48 kHz stereo, cut
+ * at the loop's end E (the pad after it is never played). With `looping`, the first pass is followed
+ * by the body from S to E repeated sample for sample (aloop), so the file's baked crossfade runs
+ * straight on at S, with no -stream_loop; without it, the bed stops at E. Then the music's volume,
+ * fades, ducking and padding as musicGraph's.
+ */
+export function bedGraph(m: MusicPart, loop: { start: number; end: number }, looping: boolean, duration: number, out = 'mus'): string {
+  const e = Math.max(1, Math.round(loop.end))
+  const s = Math.min(e - 1, Math.max(0, Math.round(loop.start)))
+  const head = `[${m.input}]aresample=${AUDIO_RATE},aformat=sample_fmts=fltp:channel_layouts=stereo,atrim=end_sample=${e}`
+  const source = looping
+    ? `${head},asplit[bedhead][bedbody];[bedbody]atrim=start_sample=${s},asetpts=PTS-STARTPTS,aloop=loop=-1:size=${e - s}[bedloop];[bedhead][bedloop]concat=n=2:v=0:a=1`
+    : head
+  return `${[source, ...musicTail(m, duration)].join(',')}[${out}]`
+}
+
+/** The music's branch: a library bed's graph, or musicGraph. */
+const musicBranch = (m: MusicPart, duration: number, out: string): string => (m.bed ? bedGraph(m, m.bed, m.bed.loop, duration, out) : musicGraph(m, duration, out))
 
 /** Linear fades of the whole soundtrack (afade's default curve), or ''. */
 function fadeFilters(duration: number, fadeIn = 0, fadeOut = 0): string {
@@ -379,6 +409,8 @@ export function soundtrackGraph(opts: {
   pops?: readonly { sounds: ClickSounds; input: string }[]
   /** The bleep tones: output spans, cut from the tone source `input`. */
   tones?: { spans: readonly { start: number; end: number }[]; input: string }
+  /** The library's sound effects (editing polish §10.8): one track per effect file, its times at its gain. */
+  effects?: readonly { sounds: ClickSounds; input: string }[]
   fadeIn?: number
   fadeOut?: number
 }): string | null {
@@ -387,15 +419,16 @@ export function soundtrackGraph(opts: {
   const hasClicks = !!clicks && clickPositions(clicks.sounds.times, duration).length > 0
   const pops = (opts.pops ?? []).filter((p) => clickPositions(p.sounds.times, duration).length > 0)
   const tones = opts.tones && toneTrackGraph(opts.tones.spans, duration, opts.tones.input) ? opts.tones : undefined
+  const effects = (opts.effects ?? []).filter((e) => clickPositions(e.sounds.times, duration).length > 0)
   // A single source without fades ends in [aout] directly (the graph earlier versions made).
-  const solo = (audio ? 1 : 0) + (music ? 1 : 0) + (hasClicks ? 1 : 0) + pops.length + (tones ? 1 : 0) === 1 && !fades
+  const solo = (audio ? 1 : 0) + (music ? 1 : 0) + (hasClicks ? 1 : 0) + pops.length + (tones ? 1 : 0) + effects.length === 1 && !fades
   const branches: { label: string; graph: string }[] = []
   if (audio) {
     // Under stereo music, a mono recording is made stereo too (see STEREO).
     const graph = recordingGraph(audio, duration, solo ? 'aout' : music ? 'rec0' : 'rec')
     branches.push({ label: 'rec', graph: music && !solo ? `${graph};[rec0]${STEREO}[rec]` : graph })
   }
-  if (music) branches.push({ label: 'mus', graph: musicGraph(music, duration, solo ? 'aout' : 'mus') })
+  if (music) branches.push({ label: 'mus', graph: musicBranch(music, duration, solo ? 'aout' : 'mus') })
   // amix gives all its inputs one channel layout: a mono click (pop, tone) would make the whole
   // soundtrack mono. It takes the layout of the sound it joins, at full level on each side as the
   // preview plays it (aresample's own mono upmix is 3 dB lower): it is made stereo (see STEREO),
@@ -414,6 +447,11 @@ export function soundtrackGraph(opts: {
     const graph = toneTrackGraph(tones.spans, duration, tones.input, solo ? 'aout' : 'tone0')!
     branches.push({ label: 'tone', graph: solo ? graph : `${graph};[tone0]${join}[tone]` })
   }
+  // The library's effects: a mono click track each (cut short where its next sound starts), joined like the pops.
+  effects.forEach((e, i) => {
+    const graph = clickTrackGraph(e.sounds, duration, e.input, solo ? 'aout' : `sfx${i}0`)!
+    branches.push({ label: `sfx${i}`, graph: solo ? graph : `${graph};[sfx${i}0]${join}[sfx${i}]` })
+  })
   if (branches.length === 0) return null
   if (solo) return branches[0].graph
   const inputs = branches.map((b) => `[${b.label}]`).join('')
@@ -428,6 +466,13 @@ export interface SoundFiles {
   /** The stems the job asks for. */
   stems?: Partial<Record<StemKind, string>>
   music?: string | null
+  /**
+   * The library bed the music file is, its hash checked against the catalogue by main (editing
+   * polish §10.4): its loop in samples at 48 kHz, read from the catalogue. Absent: a user's own file.
+   */
+  bed?: { start: number; end: number } | null
+  /** The library's sound effects' files by catalogue id (the bundled folder), as main resolved them (§10.8). */
+  effects?: Readonly<Record<string, string>>
 }
 
 /**
@@ -462,10 +507,22 @@ export function planSoundtrack(job: ExportJob, files: SoundFiles, first: number)
   let music: MusicPart | undefined
   if (job.music && files.music) {
     const m = job.music
-    if (m.loop) args.push('-stream_loop', '-1')
+    // A library bed loops in its graph (bedGraph), from its own loop start; any other music by the demuxer.
+    const bed = files.bed && files.bed.end > files.bed.start ? files.bed : null
+    if (m.loop && !bed) args.push('-stream_loop', '-1')
     args.push('-vn', '-i', files.music)
     const duck = m.duck && m.duck.depth > 0 ? duckExpression(m.duck.ranges, m.duck) : undefined
-    music = { input: `${next++}:a`, volume: m.volume, end: musicEnd(duration, m.duration, m.loop), fadeIn: m.fadeIn, fadeOut: m.fadeOut, ...(duck ? { duck } : {}) }
+    // A bed's one pass is E / 48000, never the file's length (its pad is never played).
+    const length = bed ? bed.end / AUDIO_RATE : m.duration
+    music = {
+      input: `${next++}:a`,
+      volume: m.volume,
+      end: musicEnd(duration, length, m.loop),
+      fadeIn: m.fadeIn,
+      fadeOut: m.fadeOut,
+      ...(duck ? { duck } : {}),
+      ...(bed ? { bed: { start: bed.start, end: bed.end, loop: m.loop } } : {})
+    }
   }
   let clicks: { sounds: ClickSounds; input: string } | undefined
   if (job.clicks && clickPositions(job.clicks.times, duration).length > 0) {
@@ -484,8 +541,27 @@ export function planSoundtrack(job: ExportJob, files: SoundFiles, first: number)
     args.push('-f', 'lavfi', '-i', toneSoundSource(longestTone(job.tones)))
     tones = { spans: job.tones, input: `${next++}:a` }
   }
+  // Editing polish (§10.8): one input per library effect that sounds in the export, at the file main resolved.
+  const effects: { sounds: ClickSounds; input: string }[] = []
+  for (const e of job.effects ?? []) {
+    if (clickPositions(e.times, duration).length === 0) continue
+    const file = files.effects?.[e.id]
+    if (!file) throw new Error('A sound effect of the library is missing from this installation. Reinstall Flown to bring it back.')
+    args.push('-vn', '-i', file)
+    effects.push({ sounds: { times: e.times, volume: e.gain }, input: `${next++}:a` })
+  }
   return {
     args,
-    graph: soundtrackGraph({ duration, audio, clicks, music, ...(pops.length ? { pops } : {}), ...(tones ? { tones } : {}), fadeIn: job.fadeIn, fadeOut: job.fadeOut })
+    graph: soundtrackGraph({
+      duration,
+      audio,
+      clicks,
+      music,
+      ...(pops.length ? { pops } : {}),
+      ...(tones ? { tones } : {}),
+      ...(effects.length ? { effects } : {}),
+      fadeIn: job.fadeIn,
+      fadeOut: job.fadeOut
+    })
   }
 }
