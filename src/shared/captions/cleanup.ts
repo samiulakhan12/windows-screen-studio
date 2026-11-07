@@ -125,9 +125,15 @@ const baseLanguage = (language: string | undefined): string => (language ?? 'en'
 /** Scripts with capital letters. */
 const CASED = /[\p{Script=Latin}\p{Script=Cyrillic}\p{Script=Greek}\p{Script=Armenian}]/u
 const SENTENCE_END = /[.!?…।۔。！？]["'”’)\]]*$/u
-/** Punctuation and symbols before and after a word's letters: never its vowel signs or tone marks (\p{M}: "এগারো", "अस्सी", "ไลน์"). */
-const LEADING = /^[^\p{L}\p{N}\p{M}]*/u
-const TRAILING = /[^\p{L}\p{N}\p{M}]*$/u
+/**
+ * Punctuation and symbols before and after a word's letters, each with the combining marks (\p{M})
+ * after it: a mark goes with the character before it, so a vowel sign or tone mark stays in its
+ * word ("এগারো", "अस्सी", "ไลน์") and an emoji's variation selector (U+FE00–U+FE0F,
+ * U+E0100–U+E01EF) or keycap stays with the emoji ("flown❤️", "docs✔️", "#️⃣"). Skin tones, the
+ * joiner of an emoji sequence and tag characters are symbols or format characters themselves.
+ */
+const LEADING = /^(?:[^\p{L}\p{N}\p{M}]\p{M}*)*/u
+const TRAILING = /(?:[^\p{L}\p{N}\p{M}]\p{M}*)*$/u
 /** Punctuation that never has a space before it. */
 const CLOSING = /^[.,;:!?…।۔。、，！？％%)\]}”’]+$/u
 

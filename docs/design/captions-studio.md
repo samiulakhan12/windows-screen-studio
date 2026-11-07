@@ -2887,7 +2887,10 @@ Offline rules, each optional (§2.9). The choices are `CleanupChoices` (`caps`, 
    seven and twelve" → "ages seven and 12").
 4. **Word list**: whole words replaced without regard to case, and the term's "also heard as" forms
    matched as written ("qbexl" → "Qbexel" when listed), vowel signs and tone marks included
-   ("ফ্লো ইন" → "Flown", "ไลน์" → "LINE"). A word one letter away from a term is never
+   ("ফ্লো ইন" → "Flown", "ไลน์" → "LINE"). An emoji glued to a word stays its punctuation with
+   its variation selector, skin tone, keycap and joiners ("flown❤️" → "Flown❤️", "google docs✔️"
+   → "Google Docs✔️", "ไลน์❤️" → "LINE❤️"): a combining mark goes with the character before it,
+   the letter's or the emoji's. A word one letter away from a term is never
    taken for it: that is often another real word ("start" and Stuart, "seven" and Steven, "plant"
    and Planet, "stack" and Slack), so a mishearing goes in "also heard as". The list also steers
    transcription: the local engine's `--prompt` (`native/speech/src/args.rs:185-212`) becomes a
