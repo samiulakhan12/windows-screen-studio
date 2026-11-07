@@ -337,7 +337,10 @@ export function remapAnchors(next: Project, prev: Project): Project {
   // Graphic anchors.
   const graphicsIn = next.graphics?.map((g): Graphic => {
     if ((g.kind !== 'keyword' && g.kind !== 'emoji') || !g.anchor) return g
-    const a = move<WordAnchor>(g.anchor, prevAnchors.get(g.id))
+    const moved = move<WordAnchor>(g.anchor, prevAnchors.get(g.id))
+    // An emoji sits above one word: moved onto several (a term or number put back, a word a tidy
+    // wrote as two), it stays above the first of them.
+    const a = moved && moved !== g.anchor && g.kind === 'emoji' && moved.from !== moved.to ? { ...moved, to: moved.from, text: textOf({ caption: moved.caption, from: moved.from, to: moved.from }) } : moved
     return a ? (a === g.anchor ? g : { ...g, anchor: a }) : dropAnchor(g)
   })
   const graphics = graphicsIn ? readGraphics(graphicsIn, next.duration, nt) : undefined

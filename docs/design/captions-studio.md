@@ -2630,8 +2630,9 @@ give (`migrateProject(JSON.parse(JSON.stringify(p)))` for these fields; test 49)
      one: a record on one of its words stays on that word through the tidy and Remove, and so
      does a term a first tidy wrote and a second matches again. A caption tidied twice keeps its first record with the two maps composed, and its records
      go through the words before the first tidy. Kept and pending marks, keyword and emoji anchors
-     move alike; an emoji anchor that comes back over several words is dropped by its reader rule
-     (the emoji stays, free).
+     move alike; an emoji sits above one word, so an emoji anchor that comes back over several
+     words, or that a tidy moves onto several ("vscode" → "VS Code"), stays above the first of
+     them ("Flown" → "flow", "VS Code" → "VS").
    - **Otherwise** (typing, a deleted word, or a record with no usable map): the record's words
      are found again with the longest common subsequence of words (`lcsPairs`,
      `transcript.ts:62`): found in order and next to each other → new indexes.

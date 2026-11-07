@@ -140,6 +140,28 @@ describe('Remove of a text fix by its word map', () => {
   })
 })
 
+describe('an emoji sits above one word', () => {
+  it('an emoji on a word Remove puts back as several, or a tidy writes as several, stays above the first of them', () => {
+    for (const times of TIMES) {
+      const s = tidied(CASES[2], times)
+      // "Open Flown in 20 seconds": an emoji on "Flown", one on "20".
+      s.update((q) => ({ ...q, graphics: [{ ...pop(q, 'emoji', 1), id: 'e1' }, { ...pop(q, 'emoji', 3), id: 'e2' }] }))
+      s.update((q) => removeItems(q, [row(q, TEXT_GROUP)]))
+      expect(s.state.transcript!.segments[0].text).toBe(CASES[2].text)
+      expect([anchorText(s.state, 'e1'), anchorText(s.state, 'e2')], times).toEqual(['flow', 'twenty'])
+      expect(s.state.graphics!.map((g) => (g.kind === 'emoji' ? [g.anchor!.from, g.anchor!.to] : null)), times).toEqual([[1, 1], [4, 4]])
+      // Forward: an emoji on "vscode" stays above "VS" of "VS Code", and comes back onto "vscode".
+      const t = storeOf(studioProject({ segments: segmentsOf(['we open vscode today', 'click save and you are done'], times) }))
+      t.update((q) => ({ ...q, graphics: [pop(q, 'emoji', 2)] }))
+      t.update((q) => tidyCaptions(q, { ...DEFAULT_CLEANUP, words: [{ term: 'VS Code', heard: ['vscode'] }] }).project)
+      expect(t.state.transcript!.segments[0].text).toBe('We open VS Code today')
+      expect(anchorText(t.state, 'emoji'), times).toBe('VS')
+      t.update((q) => removeItems(q, [row(q, TEXT_GROUP)]))
+      expect(anchorText(t.state, 'emoji'), times).toBe('vscode')
+    }
+  })
+})
+
 describe('a word-list term the caption already had, or had in other capitals', () => {
   const words = [{ term: 'Visual Studio', heard: [] }, { term: 'Google Docs', heard: ['google dogs'] }]
 
