@@ -256,3 +256,6 @@ From the parts' reports, still true after the merge:
   as it did before wave 10 (4.3 s at `dd368c7`), and timed out once (5.07 s) while the suite ran on
   the shared machine. It passed in the final full run; it was not changed.
 * **The Music library command** opens the Audio tab; it does not scroll to the Library.
+* **Four merge commit messages** (`5fc2e3d`, `90dd941`, `3143ae0`, `5dd8d0e`, the merges that had
+  conflicts) end with git's "# Conflicts:" list after the two attribution lines, because they were
+  committed with `--no-edit`. History was not rewritten to change them.
