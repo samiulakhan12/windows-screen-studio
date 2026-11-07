@@ -20,6 +20,7 @@ import { checkFont, FONT_FILE_RE, FONT_MAX_BYTES } from '../shared/render/fonts'
 import { CubeError, CUBE_LIMITS, parseCube } from '../shared/render/cubeLut'
 import { LUT_FILE_RE } from '../shared/render/gradeData'
 import type { Project } from '../shared/types'
+import { importLut, LUT_PICKS } from './lutImport'
 import { mediaUrl } from './mediaProtocol'
 import * as projects from './projects'
 import { isAppUrl } from './security'
@@ -160,15 +161,18 @@ interface Picks {
 // pickNumber reads the number from the first group, "-<n>".
 const OVERLAY_PICKS: PickedFiles = { base: 'overlay', re: /^overlay(-[1-9][0-9]{0,8})\.(png|jpg|webp|svg|gif)$/i, keep: Infinity }
 const FONT_PICKS: PickedFiles = { base: 'font', re: /^font(-[1-9][0-9]{0,8})\.(ttf|otf|woff2)$/i, keep: Infinity }
-// LUTs prune like music: the three newest picks, and every LUT the saved project names (editing polish §4.6).
-const LUT_PICKS: PickedFiles = { base: 'lut', re: /^lut(-[1-9][0-9]{0,8})\.cube$/, keep: 3 }
 const PICKS: Record<AssetKind, Picks> = {
   watermark: { next: nextWatermarkFile, stale: staleWatermarkFiles, saved: (p) => p.watermark?.path },
   music: { next: nextMusicFile, stale: staleMusicFiles, saved: (p) => p.audio?.music?.path },
   // Never removed: several are in use at once, and undo can bring any of them back.
   overlay: { next: (existing, ext) => nextPickFile(OVERLAY_PICKS, existing, ext), stale: () => [], saved: () => undefined },
   font: { next: (existing, ext) => nextPickFile(FONT_PICKS, existing, ext), stale: () => [], saved: () => undefined },
-  lut: { next: (existing, ext) => nextPickFile(LUT_PICKS, existing, ext), stale: (existing, keep) => stalePickFiles(LUT_PICKS, existing, keep), saved: (p) => [p.grade?.screen?.lut?.file, p.grade?.camera?.lut?.file] }
+  // LUTs prune like music: the three newest imports, and every LUT the saved project names (editing polish §4.6; lutImport.ts).
+  lut: {
+    next: (existing, ext) => nextPickFile(LUT_PICKS, existing, ext),
+    stale: (existing, keep) => stalePickFiles(LUT_PICKS, existing, keep),
+    saved: (p) => [p.grade?.screen?.lut?.file, p.grade?.camera?.lut?.file, p.grade?.auto?.camera?.lut?.file]
+  }
 }
 
 /** Kinds stored once per content: an identical file already in the folder is used again. */
@@ -287,7 +291,14 @@ export async function importAsset(id: string, kind: AssetKind, src: string, { re
   if (!isKind(kind)) throw new Error('Unknown asset kind')
   projects.projectDir(id)
   const name = path.basename(src)
-  // Checked in full (a LUT): read once, and the bytes checked are the bytes stored.
+  // A LUT (editing polish §9.5): read once with its size checked first, parsed in full before
+  // anything is copied, hashed and stored from the same bytes; what it read goes back with it.
+  if (kind === 'lut') {
+    const dir = projects.projectDir(id)
+    const lut = await inFolder(dir, () => importLut(dir, src))
+    return { url: mediaUrl(id, lut.file), path: lut.file, name, lut: { sha256: lut.sha256, title: lut.title, size: lut.size } }
+  }
+  // Checked in full: read once, and the bytes checked are the bytes stored.
   if (ASSET_SPECS[kind].whole) {
     const { ext, data } = await readWholeAsset(kind, src)
     return { ...(await store(id, kind, ext, data)), name }

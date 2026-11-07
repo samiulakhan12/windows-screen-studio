@@ -100,6 +100,8 @@ export interface PickedAsset {
   url: string
   path: string
   name?: string
+  /** A LUT (kind 'lut', docs/design/editing-polish.md §9.5): its SHA-256, title and 3D size, as main read them before copying it. */
+  lut?: { sha256: string; title: string; size: number }
 }
 
 /** A stretch of the recording (source seconds) where the picture stays the same. */
