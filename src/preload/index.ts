@@ -22,7 +22,8 @@ import { soundsApi } from './sounds'
 import { shareApi } from './share'
 import { searchApi } from './search'
 import { filmstripApi, versionsApi } from './versions'
+import { soundLibraryApi } from './soundLibrary'
 
-const api: StudioApi = { platform: process.platform, ...recordingApi, ...projectsApi, ...exportApi, ...prefsApi, ...aiApi, ...captionsApi, ...brandApi, ...brandKitApi, ...notesApi, ...speechApi, ...jobsApi, ...exportBundleApi, ...diagnosticsApi, ...storageApi, ...importApi, ...voiceApi, ...updatesApi, ...assetsApi, ...soundsApi, ...shareApi, ...searchApi, ...versionsApi, ...filmstripApi }
+const api: StudioApi = { platform: process.platform, ...recordingApi, ...projectsApi, ...exportApi, ...prefsApi, ...aiApi, ...captionsApi, ...brandApi, ...brandKitApi, ...notesApi, ...speechApi, ...jobsApi, ...exportBundleApi, ...diagnosticsApi, ...storageApi, ...importApi, ...voiceApi, ...updatesApi, ...assetsApi, ...soundsApi, ...shareApi, ...searchApi, ...versionsApi, ...filmstripApi, ...soundLibraryApi }
 
 contextBridge.exposeInMainWorld('api', api)

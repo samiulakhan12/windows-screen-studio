@@ -672,6 +672,126 @@ export interface ItemMotion {
   strength: number
 }
 
+/* ---------- Editing polish (wave 10, docs/design/editing-polish.md §4.1) ---------- */
+
+/**
+ * How the picture goes from one clip to the next at a cut (§5). 'cut' is a hard cut (used to give
+ * one cut no style while every other cut has one, and stored by "Use hard cuts everywhere").
+ * 'smooth' is a crossfade or a punch-in, chosen per cut (§5.2).
+ */
+export type JoinKind = 'cut' | 'smooth' | 'crossfade' | 'dip' | 'slide' | 'punch'
+export type SlideFrom = 'left' | 'right' | 'top' | 'bottom'
+
+/** How the picture goes from one clip to the next at a cut. */
+export interface CutJoin {
+  kind: JoinKind
+  /**
+   * Output seconds. crossfade, and smooth's crossfades: 0.05..0.5 (0.15); dip 0.2..1.2 (0.5, both
+   * halves); slide 0.25..0.7 (0.4). Absent: the kind's default.
+   */
+  duration?: number
+  /** dip: #rrggbb; absent: #000000. */
+  color?: string
+  /** slide: the side the next clip comes in from; absent: 'right'. */
+  from?: SlideFrom
+  /** punch, and smooth's punch-ins: 1.05..1.2; absent: 1.1. */
+  scale?: number
+}
+
+/** A cut's own style: the cut just before clip `clip`. */
+export interface CutStyle extends CutJoin {
+  /** Clip.id of the clip after the cut (B). */
+  clip: string
+}
+
+export interface ProjectJoins {
+  /** What every cut without its own style gets; absent: a hard cut. */
+  all?: CutJoin
+  /** Cuts with their own style: at most one per clip id. */
+  cuts?: CutStyle[]
+  /** Polish set `all` and Review has not kept or removed it: what `all` was before (null: absent). */
+  auto?: { by: 'polish'; was: CutJoin | null }
+}
+
+/** The motions of an animated callout (§7.1): Captions Studio's item motions, plus 'draw' and 'wipe' (enter only). */
+export type CalloutMotionKind = ItemMotionKind | 'draw' | 'wipe'
+export interface CalloutMotion {
+  kind: CalloutMotionKind
+  /** Viewing seconds, 0.1..1.5. */
+  duration: number
+  /** 0..1. */
+  strength: number
+}
+
+/** A sound effect of the library (src/shared/audio/soundLibrary.ts): 'sfx:' + its id. */
+export type SfxRef = `sfx:${string}`
+
+/** The progress bar (shown to users as "Progress bar"; split at the chapters, §8). */
+export interface ChapterBar {
+  show: boolean
+  /** 'auto': the top, or the bottom when the captions sit in the top half. */
+  place: 'auto' | 'top' | 'bottom'
+  style: 'float' | 'edge'
+  labels: 'none' | 'current' | 'all'
+  /** The played part, #rrggbb; absent: the brand's first colour, else #ffffff. */
+  color?: string
+  /** Shown for 3 s after each chapter starts, then hidden. */
+  onlyAtChapters?: boolean
+}
+
+export type LookId = 'natural' | 'warm' | 'cool' | 'vivid' | 'soft' | 'cinematic' | 'mono' | 'vintage'
+
+/** Colour correction of one picture (§9). */
+export interface ColorGrade {
+  /** Each −1..1; absent: 0. */
+  temperature?: number
+  tint?: number
+  brightness?: number
+  contrast?: number
+  saturation?: number
+  highlights?: number
+  shadows?: number
+  vibrance?: number
+  /** Camera only: −2..2 stops. */
+  exposure?: number
+  /** The screen takes 'natural', 'vivid' and 'mono' only (the reader drops the others there). */
+  look?: LookId
+  /** 0..1; absent: 1. */
+  lookStrength?: number
+  lut?: ColorLut
+}
+
+/** A user's own .cube LUT, copied into the project (§9.5). */
+export interface ColorLut {
+  /** Project file lut-<n>.cube. */
+  file: string
+  /** Lower-case hex SHA-256 of the file as imported. */
+  sha256: string
+  /** The file's TITLE, else its name: plain text, at most 80 characters. */
+  title: string
+  /** LUT_3D_SIZE, 2..65. */
+  size: number
+  /** 0..1; absent: 1. */
+  strength?: number
+}
+
+export interface ProjectGrade {
+  screen?: ColorGrade
+  camera?: ColorGrade
+  /** Auto colour set the camera grade and Review has not kept or removed it: the grade before its first run (null: none). */
+  auto?: { camera: ColorGrade | null }
+}
+
+/** Sound effects the project plays by rule (§10.6). */
+export interface SoundFx {
+  zoomIn?: SfxRef
+  zoomOut?: SfxRef
+  titles?: SfxRef
+  callouts?: SfxRef
+  /** 0..1; absent: 0.35. */
+  volume?: number
+}
+
 interface GraphicBase {
   id: string
   /** Source seconds, like every timed item. */
@@ -688,7 +808,8 @@ interface GraphicBase {
   font?: string
   enter: ItemMotion
   exit: ItemMotion
-  sound?: 'pop' | 'ding'
+  /** 'pop' and 'ding': the synthesised sounds of Captions Studio, unchanged; an SfxRef: an effect of the sound library (editing polish §10.7). */
+  sound?: 'pop' | 'ding' | SfxRef
   /** BCP-47 language of its text; drawn only while the burned-in track has this language. */
   lang?: string
   /** Made automatically and not reviewed yet (§11.8). */
@@ -818,6 +939,11 @@ export interface TitleCard {
   brand?: 'intro' | 'outro'
   /** Made automatically (a lower third from a speaker, a chapter title, a quote) and not reviewed yet (Captions Studio §11.8). */
   auto?: AutoOrigin
+  /** How it comes in and goes out (editing polish §7.1); absent: today's fade and rise (titlePhase). */
+  enter?: CalloutMotion
+  exit?: CalloutMotion
+  /** Sound as it appears: 'none', or an effect; absent: the project's rule (SoundFx.titles). */
+  sound?: 'none' | SfxRef
 }
 
 /** A named chapter starting at `t` (source seconds). */
@@ -856,7 +982,8 @@ export interface Clip {
   speed: number
 }
 
-export type AnnotationStyle = 'pill' | 'title'
+/** 'badge': a numbered step badge; 'bubble': a speech bubble (editing polish §7.3, §7.4). */
+export type AnnotationStyle = 'pill' | 'title' | 'badge' | 'bubble'
 
 /** Text overlay shown between `start` and `end` (source seconds). */
 export interface Annotation {
@@ -872,6 +999,27 @@ export interface Annotation {
   style: AnnotationStyle
   /** A ProjectFont id (Project.fonts); absent or unknown = the built-in text font. */
   font?: string
+  /** How it comes in and goes out (editing polish §7.1); absent: today's fade (ANNOTATION_FADE) and grow, drawn by today's code. */
+  enter?: CalloutMotion
+  exit?: CalloutMotion
+  /** 'badge' and 'bubble': the fill, #rrggbb; absent: badge #0060df, bubble #ffffff. */
+  color?: string
+  /** 'badge': 'auto' numbers it (§7.3); absent: `text` is drawn (at most 3 graphemes). */
+  number?: 'auto'
+  /** 'badge' digits: '1', 'A', or a language code with digits of its own (nativeNumbering: 'bn', 'hi', 'ar', 'fa'); absent: '1'. */
+  numbering?: string
+  /** 'badge': this badge takes this number, and automatic badges after it count on (1..999). */
+  startAt?: number
+  /**
+   * A point of the recording, normalised like shapes, so it stays on its content while the camera
+   * zooms. 'badge': its centre. 'bubble': its tail's tip. Absent: a badge sits at x, y (it does
+   * not follow the zoom); a bubble has no tail.
+   */
+  pin?: { x: number; y: number }
+  /** 'bubble' with a pin: the body's centre relative to the tip, in units of S (the frame's shorter side). */
+  body?: { dx: number; dy: number }
+  /** Sound as it appears: 'none', or an effect; absent: the project's rule (SoundFx.callouts). */
+  sound?: 'none' | SfxRef
 }
 
 /**
@@ -931,6 +1079,10 @@ export interface EffectSettings {
   /** 0 = off, 1 = strong. Applied to camera (zoom/pan) motion. */
   motionBlur: number
   keystrokes: KeystrokeSettings
+  /** Calm motion for callouts, the magnifier and slide cuts (editing polish §7.5); absent: off. Captions keep their own. */
+  calm?: boolean
+  /** Automatic step badges start again at 1 at each chapter; absent: yes when the project has chapters. */
+  badgesByChapter?: boolean
 }
 
 export interface AudioTrackSettings {
@@ -951,6 +1103,8 @@ export interface MusicSettings {
   /** Fade lengths in seconds. */
   fadeIn: number
   fadeOut: number
+  /** A library bed (editing polish §10): its catalogue id. `path` is its copy in the project (music-<n>.ogg). Absent: the user's own file. */
+  library?: { id: string }
 }
 
 export interface AudioSettings {
@@ -1006,6 +1160,11 @@ export interface Shape {
   opacity: number
   /** Blur radius or pixel size of 'blur' and 'pixelate', 0..1. */
   strength: number
+  /** How it comes in and goes out (editing polish §7.1). Never on 'blur' or 'pixelate' (the reader drops them). Absent: today's fade (SHAPE_FADE). */
+  enter?: CalloutMotion
+  exit?: CalloutMotion
+  /** Sound as it appears: 'none', or an effect; absent: the project's rule (SoundFx.callouts). Never on privacy shapes. */
+  sound?: 'none' | SfxRef
 }
 
 /** Darkens everything but one area: around the cursor or a fixed region. */
@@ -1024,6 +1183,11 @@ export interface Spotlight {
   dim: number
   /** Edge softness, 0..1. */
   feather: number
+  /**
+   * A magnifier (editing polish §6): the lit area (x, y, w, h, or the area around the cursor) shows
+   * what is under its centre this many times larger, 1.5..4. Absent: a plain spotlight.
+   */
+  magnify?: number
 }
 
 /** Normalised rectangle (0..1) relative to the captured display. */
@@ -1207,6 +1371,14 @@ export interface Project {
   publish?: ProjectPublish
   /** Unwanted sounds muted, lowered or ignored (F-17, docs/design/sound-finder.md). Absent: none (every project from before). */
   sounds?: SoundEdits
+  /** Cut styles (NW-06, docs/design/editing-polish.md §5). Absent: every cut is a hard cut (every project from before). */
+  joins?: ProjectJoins
+  /** Colour of the screen and the camera (LT-16, §9). Absent: none. */
+  grade?: ProjectGrade
+  /** The progress bar (LT-11, §8). Absent: none. */
+  chapterBar?: ChapterBar
+  /** Sound effects on zooms, titles and callouts (LT-13, §10). Absent: none. */
+  soundFx?: SoundFx
 }
 
 /** What the publishing copy pack keeps with the project (docs/design/publish-pack.md §3). */

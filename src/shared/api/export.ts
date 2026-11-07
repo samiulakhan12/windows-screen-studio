@@ -102,6 +102,8 @@ export interface MusicSound {
   duration: number | null
   /** Lowered by `depth` (0..1) during `ranges` (output seconds, where the recording has sound). */
   duck?: { depth: number; attack: number; release: number; ranges: Range[] }
+  /** The library bed this file is (editing polish §10.4): main reads its loop from the catalogue and checks the file's hash. */
+  bed?: string
 }
 
 export interface ExportJob {
@@ -135,6 +137,8 @@ export interface ExportJob {
   pops?: { times: number[]; sound: 'pop' | 'ding' }[]
   /** Bleep tones (Captions Studio §11.7): output seconds, split at cuts. */
   tones?: { start: number; end: number }[]
+  /** Library sound effects (editing polish §10.8): each effect once, output seconds, its gain. Main maps ids to files. */
+  effects?: { id: string; times: number[]; gain: number }[]
   /** Subtitle streams (Captions Studio §11.10): WebVTT per language, at most 8. */
   subtitles?: { language: string; name: string; vtt: string; default: boolean }[]
   outputPath: string
