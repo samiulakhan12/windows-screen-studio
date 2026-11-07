@@ -130,7 +130,7 @@ describe('which addresses a download may use (test 67)', () => {
 
 describe('downloads (test 67)', () => {
   it('follows a 302 from the prefix to the CDN with its query, checks the pin, records it', async () => {
-    const s = server((url) => (url.startsWith(PREFIX) ? { status: 302, headers: { location: CDN } } : { status: 200, headers: { 'content-length': String(FILE.length) }, body: FILE }))
+    const s = server((url) => (url.startsWith(PREFIX) ? { status: 302, headers: { location: CDN } as Record<string, string> } : { status: 200, headers: { 'content-length': String(FILE.length) } as Record<string, string>, body: FILE }))
     use(s.get)
     const seen: number[] = []
     const state = await store.downloadBed('test-bed', { signal: new AbortController().signal, onProgress: (p) => seen.push(p) })
