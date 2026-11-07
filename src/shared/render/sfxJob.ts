@@ -167,6 +167,25 @@ export function sfxJob(project: Project, startOf?: (g: Graphic) => number): { id
   return out.sort((a, b) => a.times[0] - b.times[0] || (a.id < b.id ? -1 : 1)).slice(0, MAX_SFX)
 }
 
+const anyLibraryRef = (items: readonly { sound?: string }[] | undefined): boolean => !!items?.some((i) => typeof i.sound === 'string' && i.sound.startsWith('sfx:'))
+const heard = new WeakMap<Project, boolean>()
+
+/**
+ * Whether any library effect sounds in the project (the export then has a soundtrack, and the
+ * preview plays through its audio graph). Old projects answer at once; else once per project state.
+ */
+export function hasLibrarySounds(project: Project): boolean {
+  const fx = project.soundFx
+  const rules = !!fx && SFX_RULES.some((r) => !!fx[r])
+  if (!rules && !anyLibraryRef(project.annotations) && !anyLibraryRef(project.shapes) && !anyLibraryRef(project.titles) && !anyLibraryRef(project.graphics)) return false
+  let v = heard.get(project)
+  if (v === undefined) {
+    v = sfxJob(project).length > 0
+    heard.set(project, v)
+  }
+  return v
+}
+
 /** How many times each rule's sound plays ("Plays 24 times"). */
 export function sfxCounts(project: Project, startOf?: (g: Graphic) => number): Readonly<Record<'zoomIn' | 'zoomOut' | 'titles' | 'callouts', number>> {
   const { rules } = hits(project, startOf)
