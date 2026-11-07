@@ -125,8 +125,9 @@ const baseLanguage = (language: string | undefined): string => (language ?? 'en'
 /** Scripts with capital letters. */
 const CASED = /[\p{Script=Latin}\p{Script=Cyrillic}\p{Script=Greek}\p{Script=Armenian}]/u
 const SENTENCE_END = /[.!?…।۔。！？]["'”’)\]]*$/u
-const LEADING = /^[^\p{L}\p{N}]*/u
-const TRAILING = /[^\p{L}\p{N}]*$/u
+/** Punctuation and symbols before and after a word's letters: never its vowel signs or tone marks (\p{M}: "এগারো", "अस्सी", "ไลน์"). */
+const LEADING = /^[^\p{L}\p{N}\p{M}]*/u
+const TRAILING = /[^\p{L}\p{N}\p{M}]*$/u
 /** Punctuation that never has a space before it. */
 const CLOSING = /^[.,;:!?…।۔。、，！？％%)\]}”’]+$/u
 

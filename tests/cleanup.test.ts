@@ -3,7 +3,7 @@
  * rules, the word list, bleeping, masks by time, and the AI fix's records.
  */
 import { describe, expect, it } from 'vitest'
-import { bleepGains, bleepKey, cleanupNotice, glossaryLine, glossaryTerms, GLOSSARY_BYTES, isSwearWord, maskBleeped, maskedSegments, maskWord, readCleanupChoices, readWordList, tidyCaptions, type CleanupChoices } from '../src/shared/captions/cleanup'
+import { bleepGains, bleepKey, cleanupNotice, DEFAULT_CLEANUP, glossaryLine, glossaryTerms, GLOSSARY_BYTES, isSwearWord, maskBleeped, maskedSegments, maskWord, readCleanupChoices, readWordList, tidyCaptions, type CleanupChoices } from '../src/shared/captions/cleanup'
 import { mergeWithNext, splitCaption } from '../src/shared/captions/edit'
 import { readBleeps } from '../src/shared/captions/studioData'
 import { languageSubtitleFile } from '../src/shared/captions/subtitles'
@@ -80,6 +80,21 @@ describe('tidyCaptions (test 41)', () => {
     expect(texts(tidyCaptions(zh, { ...OFF, punct: true, words: [] }).project)).toEqual(['我们今天学习。'])
     const th = project([{ id: 'a', start: 0, end: 2, text: 'สวัสดี' }], 'th')
     expect(tidyCaptions(th, { ...OFF, punct: true, words: [] }).changed).toBe(0)
+  })
+
+  it('vowel signs and tone marks are part of a word, never its punctuation: Bangla and Hindi numbers, word-list heard forms', () => {
+    const tidy = (language: string, text: string, words: { term: string; heard: string[] }[] = []): string =>
+      texts(tidyCaptions(project([{ id: 'a', start: 0, end: 2, text }, { id: 'b', start: 2.2, end: 3, text: 'শেষ' }], language), { ...DEFAULT_CLEANUP, words }).project)[0]
+    expect(tidy('bn', 'আমার বয়স এগারো বছর')).toBe('আমার বয়স ১১ বছর')
+    expect(tidy('bn', 'বারো আর পনেরো')).toBe('১২ আর ১৫')
+    expect(tidy('bn', 'দাম আশি টাকা')).toBe('দাম ৮০ টাকা')
+    expect(tidy('bn', 'একশো টাকা')).toBe('১০০ টাকা')
+    expect(tidy('hi', 'उम्र अस्सी साल')).toBe('उम्र 80 साल')
+    expect(tidy('bn', 'আমরা ফ্লো ইন ব্যবহার করি', [{ term: 'Flown', heard: ['ফ্লো ইন'] }])).toBe('আমরা Flown ব্যবহার করি')
+    expect(tidy('hi', 'हम फ्लो इन खोलते हैं', [{ term: 'Flown', heard: ['फ्लो इन'] }])).toBe('हम Flown खोलते हैं')
+    expect(tidy('th', 'เปิด ไลน์ แล้ว', [{ term: 'LINE', heard: ['ไลน์'] }])).toBe('เปิด LINE แล้ว')
+    // Punctuation after the sign still stays punctuation.
+    expect(tidy('bn', 'বয়স এগারো, তাই')).toBe('বয়স ১১, তাই')
   })
 
   it('numbers above ten become digits and their word times merge', () => {

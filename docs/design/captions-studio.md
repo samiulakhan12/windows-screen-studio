@@ -2874,9 +2874,11 @@ Offline rules, each optional (§2.9). The choices are `CleanupChoices` (`caps`, 
 3. **Numbers as digits**: "Above ten" (default), "All" or "Off". The cut-off is per language
    (Netflix's guides: 1–10 written out in most languages, 1–12 in Norwegian). "one" in "this one"
    and "one of the" stays a word. When words join ("twenty five" → "25"), their times merge (first
-   start to last end), so word timing survives.
+   start to last end), so word timing survives. A word's vowel signs and tone marks are part of
+   it, never punctuation kept after the digits: "এগারো" → "১১", "একশো" → "১০০", "अस्सी" → "80".
 4. **Word list**: whole words replaced without regard to case, and the term's "also heard as" forms
-   matched as written ("qbexl" → "Qbexel" when listed). A word one letter away from a term is never
+   matched as written ("qbexl" → "Qbexel" when listed), vowel signs and tone marks included
+   ("ফ্লো ইন" → "Flown", "ไลน์" → "LINE"). A word one letter away from a term is never
    taken for it: that is often another real word ("start" and Stuart, "seven" and Steven, "plant"
    and Planet, "stack" and Slack), so a mishearing goes in "also heard as". The list also steers
    transcription: the local engine's `--prompt` (`native/speech/src/args.rs:185-212`) becomes a
