@@ -412,3 +412,50 @@ opening of the panel before Remove all; the Graphics tab's Add menu keeps its ar
 Verification: typecheck exit 0; full vitest 411 files, 5,658 tests pass; build exit 0; e2e on
 the built app, each file once: `captions-studio` 8 of 8, `review-mode` 10 of 10, `versions` 3 of
 3, `sound-finder` 5 of 5, `publish-pack` 4 of 4, `editor` 13 of 13.
+
+### Text records' word maps
+
+Four review rounds of Review's Remove on a text fix each found new captions where marks and
+anchors came back on the wrong words: numbers ("250" against "two hundred and fifty"), word-list
+and brand-kit terms written with a space ("Google Docs", "R&D", "Flown"), repeated words, exact
+against estimated word times, captions with no stored times. The last open finding: `1e69ee7`
+made exact-time captions with a multi-word term compare no times, so after Keep then Remove the
+mark on "50" covered "a and fifty" and the one on "R&D" covered "r" (its probe, run again here,
+gave that before this change and "fifty" and "r and d" in every mode and frame after it). The
+cause was that the mapping was guessed after the fact; it is now recorded by the tidy.
+
+| Change | Outcome |
+|---|---|
+| Word maps (`c480156`) | `src/shared/captions/textMap.ts`: a text record's optional `map`, runs `[newFrom, newTo, oldFrom, oldTo]` over words as marks count them (studioWords, the transcript's language). Read strictly (`wordRanges`: four integers, in range, in order, covering both texts), written as the fewest runs, composed, and used both ways. `lcsFewestRuns` moved here unchanged. `CaptionAuto.text[].map?: TextMapRun[]` in `types.ts`. |
+| Reader (`ae41a26`) | `readCaptionAuto` keeps a map only when it maps the caption's words now onto the record text's words; an invalid one is dropped and the record kept. A record without `map` reads and writes as before (no key). |
+| The tidy writes it (`a111bfb`) | Each tidy token carries the caption words it was made of. The word list and numbers write their token as a whole, punctuation joined to the word before it follows the letters (a Japanese "。" goes with the last word), capitals and full stops are word for word. The AI fix's words are found in the text it was sent and its map is composed with the rules'. A second tidy keeps the first record and composes its map. |
+| Remove and the tidy use it (`04aa552`) | `remapAnchors` takes each changed caption's step from its text records: Remove takes each word back to exactly the words it came from, a tidy takes each word to every word made from it, a second tidy goes through the words before the first. No times are compared and nothing is found again. The settle no longer works out which captions were put back itself (`textPutBack` removed). Side effect: a mark on "fifty" made before a tidy now moves onto "50" rather than being dropped. |
+| Fallback for old records (`4eaa81b`) | Records without a map still use the guess. Its regression from `1e69ee7` is fixed (the checker's patch): a caption's times count as stored when its stored words hold the same text split differently ("Google Docs" as one stored word). |
+| Spec (`f34aa16`) | §4.1 `TextMapRun` and `map`; §4.2 rule 8; §11.1 rule 1 (the map first, the guess and its limits only for records without one); §11.7 (how each step and the AI fix write the map, composition); §11.8 rules 2 and 4 and the text row. |
+
+Tests, each checked failing with its source change reverted (the module tests fail without the
+module; the randomized test fails 826 checks with the source as it was at `1e69ee7`):
+
+- `tests/textMap.test.ts` (12): strict reading (22 bad maps), runs that read back as their ranges (2,000 random maps), composing, moving words both ways (every piece there and back to itself), letter alignment, the AI alignment (added, removed, changed and repeated words; 1,500 random edits give valid maps).
+- `tests/studioData.test.ts` (+1): a valid map kept (English and Chinese), eight invalid ones dropped without the record, an old record byte for byte.
+- `tests/cleanupTextMap.test.ts` (9): the map of every step: word list with spaces and punctuation and one word to two, numbers of every length (one word, two, many, hyphenated, millions; above ten), capitals and punctuation, repeated words, Bangla, Hindi and Japanese, the AI fix after the rules, words-only changes, two tidies in a row, old and invalid records through a second tidy.
+- `tests/captionTextMapRemove.test.ts` (7): a kept or pending mark on every tidied word of six captions (the finding's included) goes back onto exactly its words with exact, estimated and no word times; a mark over several words, a keyword and an emoji anchor, and the caption's place; Make my captions great in wide and tall frames; a tidy moving marks onto the merged words and back; two tidies in a row; old records (load and save as before, the guess, the documented limit, and the same caption exact with its map); a dropped invalid map falling back with stored times for a term with a space.
+- `tests/captionTextMapRandom.test.ts` (1): 600 seeded scenarios of random captions (plain words, heard forms and terms, spelled numbers, commas written apart), random Digits and word lists, one or two tidies, exact, estimated or no times, marks before or after the tidy, keyword anchors, places, and random Keep and Remove orders (items or the group row) through the store. Every mark and anchor ends on exactly the words it covered before the tidy (all of a piece the tidy wrote as one), places stay, and the project equals what saving and reopening gives; all 24 mixes come up.
+
+Expectations changed, both because the record now carries its map: `tests/cleanup.test.ts`
+"records each changed caption once" expects the map `[[0, 2, 0, 2]]`, and
+`tests/captionAutoSettle.test.ts` "a second tidy keeps a caption's first record" expects the
+record's text and words unchanged and its map composed (`[[0, 2, 0, 2], [3, 3, 3, 4]]` for
+"Flown" from "flow in"), where it held the whole record unchanged.
+
+Left as they are: the AI fix gives no account of its words, so its map is found from the two
+texts (recorded once, then used exactly). A mark on part of what a tidy writes as one ("Docs" of
+"Google Docs", "a" of "q and a") covers all of it afterwards. Through a second tidy, a mark on one
+word of a first-tidy term that became several words ("VS" of "VS Code") widens to the whole term.
+The number rule's own joins ("seven and twelve and twenty five" read as one number) are recorded
+as they happen; the parser is unchanged. Records saved without a map keep §11.1's limits.
+
+Verification: typecheck exit 0; full vitest (3 workers) 415 files, 5,697 tests pass (a first run
+had one timeout at 5 s in `tests/exportFormats.test.ts`'s real ffmpeg M4A export under load, which
+passes alone, 34 of 34, and in the second full run); build exit 0; e2e on the built app, each file
+once: `captions-studio` 8 of 8, `review-mode` 10 of 10, `versions` 3 of 3.
