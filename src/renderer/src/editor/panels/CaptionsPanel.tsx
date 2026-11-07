@@ -62,6 +62,9 @@ import { cancelCaptionsGreat, startCaptionsGreat, useCaptionsGreatBusy } from '.
 import { CaptionLookSection } from './CaptionLookSection'
 import { CleanupSection } from './CleanupSection'
 import { LanguagesSection } from './LanguagesSection'
+import { choiceOf, placeOf } from '../../ai/textChoices'
+import { CostLine } from '../../ai/CostLine'
+import { LocalProgress } from '../../ai/LocalProgress'
 
 /* ---------- Captions and transcript ---------- */
 
@@ -714,7 +717,7 @@ function GenerateSection({
                   </button>
                 )}
               </div>
-              <p className="hint">The recording&apos;s sound is sent to {chosen ? KIND_NAMES[chosen.kind] : 'the provider'} with your key; it is billed to your account.</p>
+              <p className="hint">The recording&apos;s sound is sent to {chosen ? placeOf(chosen) : 'the provider'} with your key; it is billed to your account.</p>
               {chosen?.transcriptionModel && providerTiming(chosen.kind, chosen.transcriptionModel) === 'text' && (
                 <p className="hint" data-testid="estimated-times-hint">
                   {TIMING_COPY.formHint(chosen.transcriptionModel)}{' '}
@@ -1010,6 +1013,10 @@ function AiToolsSection({
   }
   const list = providers ?? []
   const chosen = list.find((p) => p.id === provider) ?? list[0] ?? null
+  // The request running now (smart-tools.md §20.0): AI on this PC shows its progress beside the buttons, and Stop reaches it.
+  const runs = useRef(0)
+  const [running, setRunning] = useState<string | null>(null)
+  const choice = useMemo(() => (chosen ? choiceOf(chosen) : null), [chosen])
   const live = useRef(true)
   // The tools that make a suggestion: when its block goes (used, added or dismissed, also after the link check's confirm),
   // the focus, which was on a button in it or in the confirm, goes back to the tool that made it, not to the page (§4.8).
@@ -1062,18 +1069,25 @@ function AiToolsSection({
     setChapters(null)
     // The captions as the subtitle files say them: words Captions Studio bleeped go masked, as the link check reads them
     // (projectSaid). Source times, as chapters are placed.
-    const request: AiTextRequest = { task, segments: [...spokenSegments(store.state)] }
+    // Every run is named (smart-tools.md §20.0), so its progress on this PC and Stop find it.
+    const requestId = `captions-${task}-${++runs.current}`
+    setRunning(requestId)
+    const request: AiTextRequest = { task, segments: [...spokenSegments(store.state)], requestId }
     let result: AiTextResult
     try {
-      result = await window.api.aiText(chosen.id, request)
+      result = await window.api.aiText(chosen.id, request, requestId)
     } catch (err) {
       if (live.current) {
         setBusy(null)
+        setRunning(null)
         setError(ipcMessage(err))
       }
       return
     }
-    if (live.current) setBusy(null)
+    if (live.current) {
+      setBusy(null)
+      setRunning(null)
+    }
     const fail = (message: string): void => (live.current ? setError(message) : onNotice(message))
     if (!result || typeof result !== 'object' || result.task !== task) return fail('The provider answered something else; nothing was changed.')
     if (result.task === 'chapters') {
@@ -1143,16 +1157,28 @@ function AiToolsSection({
             </select>
           </label>
           <div className="captions-ai">
-            <button ref={chaptersTool} className="btn" disabled={!chosen || !!busy} onClick={() => void run('chapters')} title="Chapters from what is said, added to the chapter strip">
+            <button ref={chaptersTool} id="captions-ai-chapters" aria-describedby="captions-ai-cost-chapters" className="btn" disabled={!chosen || !!busy} onClick={() => void run('chapters')} title="Chapters from what is said, added to the chapter strip">
               {label('chapters', 'Suggest chapters')}
             </button>
-            <button ref={titleTool} className="btn" disabled={!chosen || !!busy} onClick={() => void run('title')} title="A name for this recording from what is said">
+            <button ref={titleTool} id="captions-ai-title" aria-describedby="captions-ai-cost-title" className="btn" disabled={!chosen || !!busy} onClick={() => void run('title')} title="A name for this recording from what is said">
               {label('title', 'Suggest a title')}
             </button>
-            <button ref={summaryTool} className="btn" disabled={!chosen || !!busy} onClick={() => void run('summary')} title="A short summary of what is said, to copy into a description">
+            <button ref={summaryTool} id="captions-ai-summary" aria-describedby="captions-ai-cost-summary" className="btn" disabled={!chosen || !!busy} onClick={() => void run('summary')} title="A short summary of what is said, to copy into a description">
               {label('summary', 'Summarize')}
             </button>
+            <LocalProgress requestId={running} onStop={() => running && void window.api.cancelAiText(running)} />
           </div>
+          {/* What the group sends, where, and what each action costs (smart-tools.md §11.5), part P5's. */}
+          <CostLine
+            id="captions-ai-cost"
+            choice={choice}
+            actions={(['chapters', 'title', 'summary'] as const).map((task) => ({
+              key: task,
+              label: task === 'chapters' ? 'Chapters' : task === 'title' ? 'Title' : 'Summary',
+              buttonId: `captions-ai-${task}`,
+              request: () => ({ task, segments: [...spokenSegments(store.state)] })
+            }))}
+          />
           {title && (
             <div className="captions-suggestion" role="status">
               <p>
@@ -1247,7 +1273,7 @@ function AiToolsSection({
               {error}
             </p>
           )}
-          <p className="hint">Each tool sends the caption text (not the sound) to {chosen ? KIND_NAMES[chosen.kind] : 'the provider'}. Undo reverts any change.</p>
+          <p className="hint">Each tool sends the caption text (not the sound) to {choice ? choice.place : 'the provider'}. Undo reverts any change.</p>
           {ask && <NotedConfirm ask={ask} onClose={() => setAsk(null)} />}
         </>
       )}

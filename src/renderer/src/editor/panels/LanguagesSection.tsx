@@ -18,6 +18,7 @@ import { useEditor } from '../context'
 import { Section } from '../controls'
 import { lastInputWasKey } from '../focus'
 import { useReturnFocus } from '../returnFocus'
+import { placeOf } from '../../ai/textChoices'
 
 /**
  * Whether On this PC is offered. TODO(phase B): Mozilla's translation models and runtime
@@ -398,7 +399,7 @@ export function LanguagesSection({ project }: { project: Project }): JSX.Element
                 </button>
               ))}
             </div>
-            {chosenVia && <p className="hint">The captions' text is sent to {providerName(chosenVia)} with your key; their timing stays.</p>}
+            {chosenVia && <p className="hint">The captions' text is sent to {placeOf(chosenVia)} with your key; their timing stays.</p>}
             <div className="row start">
               <button ref={translateButton} className="btn small primary" data-testid="track-translate" disabled={!chosenLanguage || !chosenVia || !!job} onClick={() => chosenVia && void translate(chosenLanguage, chosenVia, false)}>
                 Translate

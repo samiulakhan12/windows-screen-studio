@@ -4,6 +4,8 @@ import { hasNotesText } from '../../../shared/notes/notes'
 import { NOTES_COPY } from '../../../shared/notes/notesCopy'
 import { AI_PROVIDERS_CHANGED_EVENT, OPEN_SETTINGS_EVENT } from '../settings/SettingsButton'
 import { ipcMessage } from '../settings/providerText'
+import { placeOf } from '../ai/textChoices'
+import { LocalProgress } from '../ai/LocalProgress'
 
 const KIND_NAMES: Record<AiProviderInfo['kind'], string> = { openai: 'OpenAI', gemini: 'Gemini', anthropic: 'Claude' }
 
@@ -96,7 +98,10 @@ export function DraftScript({ text, onReplace, disabled }: { text: string; onRep
   textRef.current = text
   const list = providers ?? []
   const chosen = list.find((p) => p.id === provider) ?? list[0] ?? null
-  const name = chosen ? chosen.label || KIND_NAMES[chosen.kind] : 'the provider'
+  // Where the notes go, by the name every hint uses (smart-tools.md §20.0: a service's host, never "OpenAI" for it).
+  const name = chosen ? (chosen.service ? placeOf(chosen) : chosen.label || KIND_NAMES[chosen.kind]) : 'the provider'
+  // The draft running now: its progress on this PC and Stop find it by this id.
+  const [running, setRunning] = useState<string | null>(null)
 
   // Nothing to restore any more once the text was edited after the draft.
   useEffect(() => {
@@ -130,8 +135,11 @@ export function DraftScript({ text, onReplace, disabled }: { text: string; onRep
     // Negative while a request is under way.
     request.current = -n
     setDraft({ kind: 'busy' })
+    // Named, so cancelAiText stops it as it stops the text tools (smart-tools.md §20.0).
+    const requestId = `draft-script-${n}`
+    setRunning(requestId)
     try {
-      const result = await window.api.draftScript(chosen.id, { notes: before })
+      const result = await window.api.draftScript(chosen.id, { notes: before, requestId })
       if (request.current !== -n) return
       request.current = n
       const after = typeof result?.text === 'string' ? result.text : ''
@@ -149,6 +157,8 @@ export function DraftScript({ text, onReplace, disabled }: { text: string; onRep
       if (request.current !== -n) return
       request.current = n
       setDraft({ kind: 'error', message: ipcMessage(err) })
+    } finally {
+      setRunning((r) => (r === requestId ? null : r))
     }
   }, [chosen, onReplace])
 
@@ -174,6 +184,7 @@ export function DraftScript({ text, onReplace, disabled }: { text: string; onRep
             <button ref={cancelButton} type="button" className="btn" onClick={cancel}>
               {NOTES_COPY.cancel}
             </button>
+            <LocalProgress requestId={running} onStop={() => running && void window.api.cancelAiText(running)} />
           </>
         ) : (
           <button ref={draftButton} type="button" className="btn notes-draft-btn" disabled={disabled || empty || tooLong} title={blockedTitle} onClick={() => void start()}>

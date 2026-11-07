@@ -1,7 +1,8 @@
 /**
  * The cost line under a group of AI tools (docs/design/smart-tools.md §2.7, §11.5): what is sent
- * and where, each action's cost or time, and each button's own sentence. Part P5 writes it; the
- * contracts' stub shows nothing.
+ * and where, each action's cost or time, and each button's own sentence. Each action's sentence has
+ * the id `${id}-${key}`, which its button (`buttonId`) names in aria-describedby. Part P5 writes it;
+ * the contracts' stub shows nothing.
  */
 import type { AiTextRequest, TextChoice } from '../../../shared/api/ai'
 
