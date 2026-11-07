@@ -1089,6 +1089,16 @@ export interface Bleep {
   auto?: true
 }
 
+/**
+ * A run of a text record's word map: the caption's words newFrom..newTo came from the words
+ * oldFrom..oldTo of the record's text (inclusive; words as marks count them, studioWords in the
+ * transcript's language). Sides of the same length pair the words one for one ("so" → "So");
+ * otherwise each new word came from all the old ones ("two hundred and fifty" → "250"). Two new
+ * words that share old words they do not split ("google dogs" → "Google Docs") are a run each.
+ * The runs are in order and cover every word of both texts.
+ */
+export type TextMapRun = [newFrom: number, newTo: number, oldFrom: number, oldTo: number]
+
 /** What automation replaced, so Review › Remove can put it back (§11.8). */
 export interface CaptionAuto {
   /**
@@ -1096,8 +1106,12 @@ export interface CaptionAuto {
    * set). `names`: the run turned speaker names on with its look (Auto style's speakers rule).
    */
   style?: { was: CaptionSettings | null; by: 'great' | 'polish'; name: string; names?: true }
-  /** Captions whose text a clean-up changed: their text and words before. */
-  text?: { caption: string; text: string; words?: CaptionWord[] }[]
+  /**
+   * Captions whose text a clean-up changed: their text and words before, and `map`: which words of
+   * that text each word of the caption's text came from, as the tidy wrote it (§11.1 rule 1).
+   * Absent in records saved before maps were written.
+   */
+  text?: { caption: string; text: string; words?: CaptionWord[]; map?: TextMapRun[] }[]
   /** The Studio twin automation gave a Classic look for its pending emphasis; `none`: no caption settings before (§11.8). */
   twin?: { none?: true }
 }
@@ -1200,6 +1214,13 @@ Rules, as the other readers (`readReframe`, `readTitleCard`):
    characters and lower-cased, at most `MAX_BLEEPS`, in time order.
 8. `readCaptionAuto`: `style.was` read with `readCaptionSettings` (one level; its own `studio` read
    as in rule 2) or `null`; `text` records for existing caption ids only, words through `readWords`.
+   A record's `map` is kept, as a copy of its runs, only when it is a map of the caption's words
+   now onto the words of the record's text (`readTextMap`, `textMap.ts`): runs of four integers,
+   the new words in order with no gap or repeat, each new word's old words never before the
+   previous word's, no old word skipped, every word of both texts covered, at most one run per
+   word. Any other map is dropped and the record kept (Remove then finds the words again, §11.1
+   rule 1). A record without `map` reads and writes as before, with no `map` key, so a project
+   saved before maps were written loads, saves and draws byte for byte as before.
 9. Every reader is idempotent: reading its own output gives a deep-equal value.
 
 `readCaptionSettings` (`settings.ts:81-99`) appends, after NW-09's `showSpeaker`:
@@ -2587,24 +2608,42 @@ change to the transcript's captions remaps them in the store's settle (§11.8), 
 step as the change, so the project in memory always equals what saving and reopening it would
 give (`migrateProject(JSON.parse(JSON.stringify(p)))` for these fields; test 49):
 
-1. **Same caption, text changed** (typing, Tidy, a deleted word): the record's words are found
-   again with the longest common subsequence of words (`lcsPairs`, `transcript.ts:62`): found in
-   order and next to each other → new indexes. When the change takes a text fix back (the
-   caption's text is its `captionAuto.text` record's text again: Review's Remove, §11.8), words
-   the fix changed span the words they were, from the last word found before them to the next one
-   after ("120" is "one hundred and twenty" again), so kept and pending marks and anchors on
-   them stay. Of the longest common subsequences, the one that leaves the fewest runs of words
-   not found is used, so a word next to the fix that is also inside the words put back is found
-   outside them: "250 and then" against "two hundred and fifty and then" finds the second "and",
-   and the mark on "250" covers all of "two hundred and fifty". When several leave as few runs,
-   the one finding the most words at the same times wins (a word the fix left keeps its stored
-   time, exact or estimated), then the one whose words sit nearest where the words found once in
-   both put them, then the earliest: "110 and 120" against "a hundred and ten and a hundred and
-   twenty" finds the middle "and", so the marks on "110" and "120" cover "a hundred and ten" and
-   "a hundred and twenty". Times are compared only when both captions store one time for each
-   word (times spread over a caption say nothing of which word stayed). A caption without them
-   can still take the wrong word when the word beside a fix is also inside it: a mark on "Flown"
-   in "Open Flown in 20 seconds" (from "open flow in in twenty seconds") ends on "flow" alone.
+1. **Same caption, text changed.**
+   - **By a text record's word map** (Tidy captions, Make my captions great's tidy, Review's
+     Remove of a text fix, §11.8). The tidy records which words before each tidied word came from
+     at the moment it changes the caption (`captionAuto.text[].map`, §4.1, written by
+     `tidyCaptions`; `src/shared/captions/textMap.ts`), so nothing is found again. A tidy that
+     writes a record moves each record onto every tidied word made from its words: a mark on
+     "fifty" is on "50", one on "a" alone of "q and a" is on "Q&A". Remove (the caption's text is
+     its record's text again) moves each record back onto exactly the words its tidied words came
+     from: "50" on "fifty", "Q&A" on "q and a", "Google Docs" (one stored word of two) on
+     "google dogs", "Flown" on "flow in", "R&D" on "r and d". Exact, estimated and missing word
+     times give the same words, and so do repeated words ("Flown in Flown", "110 and 120"). A
+     record on part of what the tidy wrote as one ("Docs" of "Google Docs") goes back onto all of
+     it. A caption tidied twice keeps its first record with the two maps composed, and its records
+     go through the words before the first tidy. Kept and pending marks, keyword and emoji anchors
+     move alike; an emoji anchor that comes back over several words is dropped by its reader rule
+     (the emoji stays, free).
+   - **Otherwise** (typing, a deleted word, or a record with no usable map): the record's words
+     are found again with the longest common subsequence of words (`lcsPairs`,
+     `transcript.ts:62`): found in order and next to each other → new indexes.
+   - **A record saved before maps were written** (no `map`, or one the reader dropped because it
+     no longer fits its caption's words) put back by Remove: words the fix changed span the words
+     they were, from the last word found before them to the next one after ("120" is "one
+     hundred and twenty" again), so kept and pending marks and anchors on them stay. Of the
+     longest common subsequences, the one that leaves the fewest runs of words not found is used,
+     so a word next to the fix that is also inside the words put back is found outside them: "250
+     and then" against "two hundred and fifty and then" finds the second "and". When several
+     leave as few runs, the one finding the most words at the same times wins (a word the fix left
+     keeps its stored time, exact or estimated), then the one whose words sit nearest where the
+     words found once in both put them, then the earliest: "110 and 120" against "a hundred and
+     ten and a hundred and twenty" finds the middle "and". Times are compared only when both
+     captions take their times from stored words: one for each word, or the same text split
+     differently (a term written with a space, such as "Google Docs", is one stored word). The
+     limits of this guess stay for these records only: a caption without stored times can take
+     the wrong word when the word beside a fix is also inside it (a mark on "Flown" in "Open Flown
+     in 20 seconds", from "open flow in in twenty seconds", ends on "flow" alone), and a fix much
+     longer than the one beside it can too.
 2. **Caption gone or not found there** (split: the second half gets a new id, `edit.ts:91`;
    merge: the second caption's id goes, `edit.ts:107`; Generate captions again): the record's time
    span is taken from the previous project (its words' times, or the caption's time spread by
@@ -2623,7 +2662,8 @@ new words, so the settle reads it as automation's change and it stays automatic 
 
 Per-caption positions (`captionPlaces`) follow their caption the same way: after a split both
 halves keep the position, after a merge the merged caption keeps the first one's, and a caption
-that is gone drops its entry. Bleeps need none of this: they are time-based (§11.7).
+that is gone drops its entry. A tidy and Review's Remove keep every caption's id, so its position
+stays. Bleeps need none of this: they are time-based (§11.7).
 
 ### 11.2 Emphasis and emoji with an AI provider: the `marks` text task
 
@@ -2973,7 +3013,18 @@ Offline rules, each optional (§2.9). The choices are `CleanupChoices` (`caps`, 
    list's terms, the digits, the capitals and the full stops.
 
 The clean-up is one undo step. Each caption it changed gets a `captionAuto.text` record with its
-text and words before.
+text and words before, and its word map: which words before each word of the tidied text came
+from (§4.1, §11.1 rule 1). Every word of the tidy remembers the caption words it was made of: the
+word list (rule 4) and numbers (rule 3) write their word as a whole, so each of its words came
+from all the words they replaced ("google dogs" → "Google Docs", "two hundred and fifty" →
+"250"); punctuation joined to the word before it follows the letters ("word ," → "word,", a
+Japanese "。" with the last word); capitals and full stops change words one for one. The AI fix
+(rule 6) gives no such account, so its words are found in the text it was sent (the longest
+common subsequence with the fewest runs; changed words come from the words they replace, an added
+word from the word before it, a word taken out goes with the word before it) and that map is
+composed with the rules'. A caption tidied again keeps its first record, its map composed with
+the new tidy's, so it still maps onto the text before the first tidy; a record without a map stays
+without one.
 
 ### 11.8 Make my captions great, Review mode and Polish
 
@@ -3044,12 +3095,14 @@ captionAutoSettle.ts`) joins the store's settle chain after `settleDeletedWords`
    flags included) changed and the record did not. So Review › Remove never puts back words
    without the cuts the user made since. An update that writes the records itself (a new
    `captionAuto.text` array: a tidy run, Review's Remove) is automation's and keeps them; a tidy
-   that tidies a caption again keeps its first record, so Remove puts back the words from before
-   the first tidy.
+   that tidies a caption again keeps its first record (its word map composed with the new tidy's),
+   so Remove puts back the words from before the first tidy. While a record exists its caption's
+   text is exactly the text its word map was written for.
 3. Clears `auto` on a mark, graphic, bleep or title card that changed in any other field while its
    `auto` stayed the same object (a hand edit makes it the user's). `applyBrandKit` copies the
    `auto` objects and records it touches (§4.6), so a brand-kit font rewrite keeps them automatic.
-4. Remaps marks, word anchors and per-caption positions of captions that changed (§11.1).
+4. Remaps marks, word anchors and per-caption positions of captions that changed (§11.1): through
+   a tidy and onto the words a Remove puts back by the text records' word maps (rule 1).
 5. Drops `captionAuto.twin` once no mark is pending (kept, edited or deleted) or the captions have
    no Studio look. That record is written when Make my captions great or Find important words
    turns a Classic look into its twin for automatic emphasis (`withAutoTwin`, with `none` when the
@@ -3070,7 +3123,7 @@ own Keep and Remove. Things with a time and a place on screen keep a row each.
 |---|---|---|---|---|---|
 | `style` | one | Caption style: Bold Pop (was Clean) | `captionAuto.style` present | drops the record | the look of `was` put back (rule 1's look fields; `captions` absent when `was` is `null` and nothing else changed): showing or hiding, speaker names, the track, the digits and a dragged place stay as the user left them, but speaker names the run turned on with its look (`names`) go with it; marks left over, digits other than as written and a dragged place get the old look's Studio twin (§5.8), so they still draw; record dropped |
 | `emphasis` | one group | Emphasis: 38 words (items: Emphasis on “Export”) | marks with `auto` exist | clears `auto` on all (or one) | deletes all (or one); with no marks left (and no digits or dragged place needing it), the Studio twin automation made for the emphasis (`captionAuto.twin`), unedited, goes back to its Classic look, or to no caption settings when there were none; a twin the user had or made (Ctrl+B, the Digits choice) stays. When a later run changed the look, that twin is kept in its style record (`was`): removed before the style row, the emphasis hands the record over and `was` reads as the Classic look (or none), so the style row then puts back no twin |
-| `text` | one group | Text: 12 captions tidied (items: Fixed “flown” → “Flown”) | `captionAuto.text` records exist | drops the records (or one) | text and words put back for all (or one); marks and anchors on the words a fix changed move onto the words put back (§11.1 rule 1), kept or pending as they were |
+| `text` | one group | Text: 12 captions tidied (items: Fixed “flown” → “Flown”) | `captionAuto.text` records exist | drops the records (or one) | text and words put back for all (or one); marks and anchors move back onto exactly the words their words came from, by the record's word map (§11.1 rule 1), kept or pending as they were |
 | `emoji` | one each | Emoji 💡 on “tip” | the graphic exists with `auto` | clears `auto` | deletes it |
 | `graphic` | one each | Counter 300% · List: 3 steps · Pop-up “Auto Save” · Lower third: Priya · Chapter title: Export settings · Quote | as above (graphics and title cards) | clears `auto` | deletes it |
 | `bleep` | one each | Bleeped “f***” (masked in the row and its accessible name) | the bleep exists with `auto` | clears `auto` | deletes it |
