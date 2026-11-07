@@ -5,9 +5,8 @@
  * Contracts step: the exported signature of part P2 (§17.2). It returns at once when no spotlight
  * has `magnify` (every project from before); the stub draws nothing. Part P2 writes the body.
  */
-import type { FrameContext } from "./frameContext";
+import type { FrameContext } from './frameContext'
 
 export function drawMagnifierLayer(fc: FrameContext): void {
-  if (!(fc.project.spotlights ?? []).some((s) => s.magnify !== undefined))
-    return;
+  if (!(fc.project.spotlights ?? []).some((s) => s.magnify !== undefined)) return
 }

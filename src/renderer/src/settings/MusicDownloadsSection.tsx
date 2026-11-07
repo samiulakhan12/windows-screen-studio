@@ -6,5 +6,5 @@
  * shows nothing. Part P5 writes the body.
  */
 export function MusicDownloadsSection(): JSX.Element {
-  return <></>;
+  return <></>
 }

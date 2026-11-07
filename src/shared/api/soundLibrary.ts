@@ -9,38 +9,36 @@
 /** Where one library bed is on this PC. */
 export interface SoundLibraryState {
   /** A MUSIC_BEDS id. */
-  id: string;
+  id: string
   /** 'bundled': in the installer; 'downloaded': in userData/sound-library/ and checked; 'missing': neither; 'downloading': under way. */
-  state: "bundled" | "downloaded" | "missing" | "downloading";
+  state: 'bundled' | 'downloaded' | 'missing' | 'downloading'
   /** The prepared file's pinned size. */
-  bytes: number;
+  bytes: number
   /** 0..1 while downloading. */
-  progress?: number;
+  progress?: number
 }
 
 export const SOUND_LIBRARY_CHANNELS = {
   /** invoke () → SoundLibraryState[]: every bed of the catalogue */
-  list: "soundLibrary:list",
+  list: 'soundLibrary:list',
   /** invoke (id) → SoundLibraryState: downloads a bed from the pinned source; progress arrives on `progress` */
-  download: "soundLibrary:download",
+  download: 'soundLibrary:download',
   /** invoke (id) → void: stops that bed's download (its .part file is deleted) */
-  cancel: "soundLibrary:cancel",
+  cancel: 'soundLibrary:cancel',
   /** invoke () → void: deletes every downloaded bed (Settings › Downloads › More music › Remove) */
-  remove: "soundLibrary:remove",
+  remove: 'soundLibrary:remove',
   /** invoke (projectId, id) → { file }: the bed copied into the project as music-<n>.ogg, its hash checked again */
-  useBed: "soundLibrary:useBed",
+  useBed: 'soundLibrary:useBed',
   /** main → renderer: SoundLibraryState of a bed whose download moved on */
-  progress: "soundLibrary:progress",
-} as const;
+  progress: 'soundLibrary:progress'
+} as const
 
 export interface SoundLibraryApi {
-  soundLibraryList(): Promise<SoundLibraryState[]>;
-  soundLibraryDownload(id: string): Promise<SoundLibraryState>;
-  soundLibraryCancel(id: string): Promise<void>;
-  soundLibraryRemove(): Promise<void>;
-  soundLibraryUseBed(projectId: string, id: string): Promise<{ file: string }>;
+  soundLibraryList(): Promise<SoundLibraryState[]>
+  soundLibraryDownload(id: string): Promise<SoundLibraryState>
+  soundLibraryCancel(id: string): Promise<void>
+  soundLibraryRemove(): Promise<void>
+  soundLibraryUseBed(projectId: string, id: string): Promise<{ file: string }>
   /** Listens for download progress; returns the function that stops listening. */
-  onSoundLibraryProgress(
-    listener: (state: SoundLibraryState) => void,
-  ): () => void;
+  onSoundLibraryProgress(listener: (state: SoundLibraryState) => void): () => void
 }

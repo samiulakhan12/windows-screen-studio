@@ -4,9 +4,9 @@
  * Contracts step: the exported signature of part P5 (§17.5), mounted by AudioPanel; the stub shows
  * nothing. Part P5 writes the body.
  */
-import type { Project } from "../../../../shared/types";
+import type { Project } from '../../../../shared/types'
 
 export function MusicLibrarySection(props: { project: Project }): JSX.Element {
-  void props;
-  return <></>;
+  void props
+  return <></>
 }

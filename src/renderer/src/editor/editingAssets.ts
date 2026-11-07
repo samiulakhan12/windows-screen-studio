@@ -6,14 +6,13 @@
  * captions' fonts (fontLoader's catalogIdsOf adds editingFontIds). A project without a LUT (every
  * project from before) does no work here.
  */
-import type { Project } from "../../../shared/types";
-import { prepareLuts } from "../render/lutCache";
+import type { Project } from '../../../shared/types'
+import { prepareLuts } from '../render/lutCache'
 
 /** Whether `project` has anything to load before its first frame. */
-export const needsEditingAssets = (project: Project): boolean =>
-  !!(project.grade?.screen?.lut || project.grade?.camera?.lut);
+export const needsEditingAssets = (project: Project): boolean => !!(project.grade?.screen?.lut || project.grade?.camera?.lut)
 
 export async function prepareEditingAssets(project: Project): Promise<void> {
-  if (!needsEditingAssets(project)) return;
-  await prepareLuts(project);
+  if (!needsEditingAssets(project)) return
+  await prepareLuts(project)
 }

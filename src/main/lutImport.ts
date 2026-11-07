@@ -6,11 +6,8 @@
  * Contracts step: the exported signature of part P4 (§17.4), a stub that refuses. Part P4 writes
  * the body.
  */
-export async function importLut(
-  projectDir: string,
-  source: string,
-): Promise<{ file: string; sha256: string; title: string; size: number }> {
-  void projectDir;
-  void source;
-  throw new Error("Importing LUTs is not available yet.");
+export async function importLut(projectDir: string, source: string): Promise<{ file: string; sha256: string; title: string; size: number }> {
+  void projectDir
+  void source
+  throw new Error('Importing LUTs is not available yet.')
 }

@@ -5,5 +5,5 @@
  * shows nothing. Part P2 writes the body.
  */
 export function ProgressBarLink(): JSX.Element {
-  return <></>;
+  return <></>
 }

@@ -5,5 +5,5 @@
  * nothing. Part P2 writes the body.
  */
 export function MagnifierZoomRow(): JSX.Element {
-  return <></>;
+  return <></>
 }

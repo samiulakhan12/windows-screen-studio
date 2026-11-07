@@ -6,50 +6,36 @@
  * Contracts step: the exported signatures of part P1 (§17.1). drawFrame calls beginJoin and endJoin
  * only for a frame inside a join; the stubs draw nothing. Part P1 writes the bodies.
  */
-import type { JoinWindow } from "../../../shared/render/joins";
-import type { FrameExtras, FrameImage, RenderScene } from "./compositor";
+import type { JoinWindow } from '../../../shared/render/joins'
+import type { FrameExtras, FrameImage, RenderScene } from './compositor'
 
 /** Before the picture: a slide's offset of the live picture. */
-export function beginJoin(
-  ctx: CanvasRenderingContext2D,
-  w: number,
-  h: number,
-  join: FrameExtras["join"],
-): void {
-  void ctx;
-  void w;
-  void h;
-  void join;
+export function beginJoin(ctx: CanvasRenderingContext2D, w: number, h: number, join: FrameExtras['join']): void {
+  void ctx
+  void w
+  void h
+  void join
 }
 
 /** After the picture, before the overlays: A* at its alpha and offset, or the dip's colour. */
-export function endJoin(
-  ctx: CanvasRenderingContext2D,
-  w: number,
-  h: number,
-  join: FrameExtras["join"],
-): void {
-  void ctx;
-  void w;
-  void h;
-  void join;
+export function endJoin(ctx: CanvasRenderingContext2D, w: number, h: number, join: FrameExtras['join']): void {
+  void ctx
+  void w
+  void h
+  void join
 }
 
 /** The one scratch target of a raster mode that A* is composed on. */
-export function scratchTarget(
-  raster: "gpu" | "cpu",
-  w: number,
-  h: number,
-): CanvasRenderingContext2D {
-  const canvas = document.createElement("canvas");
-  canvas.width = w;
-  canvas.height = h;
-  const ctx = canvas.getContext("2d", {
+export function scratchTarget(raster: 'gpu' | 'cpu', w: number, h: number): CanvasRenderingContext2D {
+  const canvas = document.createElement('canvas')
+  canvas.width = w
+  canvas.height = h
+  const ctx = canvas.getContext('2d', {
     alpha: false,
-    willReadFrequently: raster === "cpu",
-  });
-  if (!ctx) throw new Error("Could not create a drawing surface");
-  return ctx;
+    willReadFrequently: raster === 'cpu'
+  })
+  if (!ctx) throw new Error('Could not create a drawing surface')
+  return ctx
 }
 
 /** Drops the scratch targets and their layers' copies (releaseTilt, releaseGrade). */
@@ -64,14 +50,14 @@ export function composeJoinStill(
   window: JoinWindow,
   scene: RenderScene,
   stills: { screen: FrameImage; camera: FrameImage | null },
-  background: HTMLImageElement | null,
+  background: HTMLImageElement | null
 ): void {
-  void scratch;
-  void out;
-  void w;
-  void h;
-  void window;
-  void scene;
-  void stills;
-  void background;
+  void scratch
+  void out
+  void w
+  void h
+  void window
+  void scene
+  void stills
+  void background
 }
