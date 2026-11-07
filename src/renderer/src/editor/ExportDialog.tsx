@@ -52,7 +52,9 @@ import { ShareAfterExport } from '../share/ShareAfterExport'
 import { ShareDone } from '../share/ShareDone'
 import { useAfterExport } from '../share/useShare'
 import type { BatchExtras } from './exporter'
+import { missingLutQuestion, prepareLuts } from '../render/lutCache'
 import './exportDialog.css'
+import './panels/colour.css'
 import './handsOff.css'
 import './titles.css'
 
@@ -463,6 +465,21 @@ export function ExportDialog(props: Props): JSX.Element {
     } finally {
       if (abort.current === controller) abort.current = null
     }
+  }
+
+  // A grade's LUT that is missing or has changed (editing polish §9.5): asked about before any export starts.
+  const [lutAsk, setLutAsk] = useState<{ question: string; go: () => void } | null>(null)
+  const withLuts = async (go: () => Promise<void>): Promise<void> => {
+    await prepareLuts(project)
+    const question = missingLutQuestion(project)
+    if (!question) return go()
+    setLutAsk({
+      question,
+      go: () => {
+        setLutAsk(null)
+        void go()
+      }
+    })
   }
 
   const items = useMemo(() => batchItems(batch.presets, batch.aspects, options), [batch, options])
@@ -975,16 +992,17 @@ export function ExportDialog(props: Props): JSX.Element {
                 )}
               </div>
             </div>
+            {lutAsk && <LutQuestion question={lutAsk.question} onExport={lutAsk.go} onCancel={() => setLutAsk(null)} />}
             <footer className="modal-foot">
               <button className="btn" onClick={props.onClose}>
                 Cancel
               </button>
               {mode === 'single' ? (
-                <button ref={primary} className="btn primary" onClick={() => void start()} disabled={audioOnly && !hasSound}>
+                <button ref={primary} className="btn primary" onClick={() => void withLuts(start)} disabled={audioOnly && !hasSound}>
                   {perChapter ? <Icon name="folder" size={16} /> : <Icon name="download" size={16} />} {perChapter ? `Export ${parts.length} chapter${parts.length === 1 ? '' : 's'}…` : exportLabel}
                 </button>
               ) : (
-                <button ref={primary} className="btn primary" onClick={() => void startBatch()} disabled={items.length === 0}>
+                <button ref={primary} className="btn primary" onClick={() => void withLuts(startBatch)} disabled={items.length === 0}>
                   <Icon name="folder" size={16} /> Export {items.length} file{items.length === 1 ? '' : 's'}…
                 </button>
               )}
@@ -1316,3 +1334,25 @@ function RunningView({
   )
 }
 
+/**
+ * The question asked before an export when a grade's LUT is missing or has changed (editing polish
+ * §9.5): "The camera's LUT is missing or has changed. Export without it?" Export without it, or Cancel.
+ */
+function LutQuestion(props: { question: string; onExport: () => void; onCancel: () => void }): JSX.Element {
+  const go = useRef<HTMLButtonElement>(null)
+  useEffect(() => go.current?.focus(), [])
+  const them = props.question.endsWith('without them?')
+  return (
+    <div className="export-lut-ask" role="alertdialog" aria-label="A LUT is missing" aria-describedby="export-lut-question" data-testid="export-lut-ask">
+      <p id="export-lut-question">{props.question}</p>
+      <div className="export-lut-ask-buttons">
+        <button ref={go} type="button" className="btn primary" data-testid="export-lut-go" onClick={props.onExport}>
+          {them ? 'Export without them' : 'Export without it'}
+        </button>
+        <button type="button" className="btn" data-testid="export-lut-cancel" onClick={props.onCancel}>
+          Cancel
+        </button>
+      </div>
+    </div>
+  )
+}

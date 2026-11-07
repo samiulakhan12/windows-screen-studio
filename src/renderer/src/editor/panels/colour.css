@@ -1,0 +1,171 @@
+/* ---------- Screen colour and the camera's Colour (docs/design/editing-polish.md §2.5) ---------- */
+
+.colour-controls {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.colour-row-label {
+  color: var(--text-2);
+  font-size: var(--text-sm);
+}
+
+/* The looks: chips with a picture and a name (never colour alone). */
+.colour-looks {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+}
+
+.colour-look {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 4px;
+  min-width: 0;
+  padding: 4px 4px 5px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-default);
+  background: var(--surface-2);
+  color: var(--text-2);
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.colour-look:hover {
+  color: var(--text-1);
+  border-color: var(--border-strong);
+}
+
+.colour-look.active {
+  color: var(--text-1);
+  border-color: var(--accent-500);
+  box-shadow: inset 0 0 0 1px var(--accent-500);
+}
+
+.colour-look:focus-visible {
+  outline: var(--focus-ring-width) solid var(--focus-ring);
+  outline-offset: var(--focus-ring-offset);
+}
+
+.colour-look-thumb {
+  display: block;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 16 / 9;
+  border-radius: var(--radius-xs);
+  background: var(--surface-sunken);
+}
+
+.colour-look-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: center;
+}
+
+/* A slider and, when it is not at 0, its own Reset. */
+.colour-slider-row {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--space-2);
+}
+
+.colour-slider-row > .slider {
+  flex: 1;
+  min-width: 0;
+}
+
+.colour-reset-one {
+  flex: none;
+  padding: 2px 6px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-default);
+  background: var(--surface-2);
+  color: var(--text-2);
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.colour-reset-one:hover {
+  color: var(--text-1);
+}
+
+.colour-more {
+  align-self: flex-start;
+  padding: 2px 0;
+  border: none;
+  background: none;
+  color: var(--accent-text);
+  font-size: var(--text-sm);
+  cursor: pointer;
+}
+
+.colour-lut {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.colour-lut-line {
+  display: flex;
+  gap: var(--space-2);
+  justify-content: space-between;
+  margin: 0;
+  font-size: var(--text-sm);
+}
+
+.colour-lut-title {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text-1);
+}
+
+.colour-problem {
+  margin: 0;
+  color: var(--warning-text);
+  font-size: var(--text-sm);
+}
+
+.colour-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.colour-buttons .btn[aria-pressed='true'] {
+  color: var(--text-1);
+  border-color: var(--accent-500);
+  background: var(--accent-soft);
+}
+
+.hint.colour-cpu-note {
+  color: var(--warning-text);
+}
+
+/* ---------- The export dialog's question about a missing LUT (§9.5) ---------- */
+
+.export-lut-ask {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin: 0 var(--space-4) var(--space-3);
+  padding: var(--space-3);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--warning);
+  background: var(--surface-2);
+}
+
+.export-lut-ask p {
+  margin: 0;
+  color: var(--text-1);
+}
+
+.export-lut-ask-buttons {
+  display: flex;
+  gap: var(--space-2);
+  justify-content: flex-end;
+}
