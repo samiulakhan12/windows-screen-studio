@@ -450,7 +450,9 @@ record's text and words unchanged and its map composed (`[[0, 2, 0, 2], [3, 3, 3
 
 Left as they are: the AI fix gives no account of its words, so its map is found from the two
 texts (recorded once, then used exactly). A mark on part of what a tidy writes as one ("Docs" of
-"Google Docs", "a" of "q and a") covers all of it afterwards. Through a second tidy, a mark on one
+"Google Docs", "a" of "q and a") covers all of it afterwards (since `18fc9f9` a term written in
+place of as many words maps word for word, so "Docs" goes back onto "dogs": see "Word maps, two
+lows" below). Through a second tidy, a mark on one
 word of a first-tidy term that became several words ("VS" of "VS Code") widens to the whole term.
 The number rule's own joins ("seven and twelve and twenty five" read as one number) are recorded
 as they happen; the parser is unchanged. Records saved without a map keep §11.1's limits.
@@ -469,7 +471,7 @@ fixed at its cause with a test that fails without the fix:
 |---|---|---|
 | A multi-word term the caption already had, or had in other capitals ("visual studio" → "Visual Studio"), widened marks and keyword pop-ups on one of its words to the whole term and dropped emoji anchors, on the tidy and on Remove; a kept and a pending mark on its two words merged (F1, whole-term-widening, medium) | The tidy writes every matched term as a whole. `pieceRanges` now maps by the characters without case first, then by the letters and digits without punctuation (a term a full stop then ends), and gives each word the whole only when they differ; a comma written apart after a term written as a whole goes with its last word only, so a term a second tidy matches again maps as after one tidy | `3266b54` |
 | A mark or anchor beside a word the AI fix took out or put in widened onto it ("we" → "we really" on the tidy, "So" → "so um" on Remove); the same for punctuation written apart ("app," → "app ,") (ai-fix-neighbour-widening, medium) | A map covers every word of both texts, so those words share a neighbour's range. `textSteps` narrows each end of a record's words, inside the range the map gives it, to the one word there that is the same word (`narrowedWords`); terms and numbers keep the whole range | `cafe3f8` |
-| Bangla, Hindi and Thai vowel signs and tone marks were read as punctuation: "এগারো" → "১১ো", "अस्सी" → "80ी", heard forms "ফ্লো ইন" and "ไลน์" never matched (F2, high) | `LEADING` and `TRAILING` in `cleanup.ts` now keep `\p{M}` in the word | `71521f5` |
+| Bangla, Hindi and Thai vowel signs and tone marks were read as punctuation: "এগারো" → "১১ো", "अस्सी" → "80ी", heard forms "ফ্লো ইন" and "ไลน์" never matched (F2, high) | `LEADING` and `TRAILING` in `cleanup.ts` now keep `\p{M}` in the word (since `d039b52`, a mark goes with the character before it, so an emoji's variation selector stays with the emoji: see "Word maps, two lows" below) | `71521f5` |
 | Numbers said one after the other were added up: "nineteen ninety nine" → 118, "between ten and twenty" → 30, "five six seven eight" → 26, "twenty-first" → 20 (F3, medium) | `parseEnglish` and `parseTable` read one number only: a number word joins at the start, after "hundred" or a scale, or as a unit after a tens word; "and" only after "hundred" or a scale; otherwise no number, as for an ordinal in two words ("twenty first", not "second", also a unit of time). The tidy and counters leave the following number words as written too | `3f4f69b` |
 | An emoji whose word came back, or was tidied, as several words lost its anchor (F4, low) | `remapAnchors` keeps a moved emoji anchor above the first of the words | `9c0641a` |
 
@@ -496,3 +498,35 @@ files, 5,709 tests pass (a first run had one timeout at 5 s in `tests/bleepBangl
 code path these changes do not touch and which takes 4.5 s alone; it passed alone twice and in the
 second full run); build exit 0; e2e on the built app, each file once: `captions-studio` 8 of 8,
 `review-mode` 10 of 10.
+
+### Word maps, two lows
+
+Two low findings left by this branch's own recent commits, each reproduced with the checkers'
+probes (`r2check/probe/vs16.probe.ts`, `asym.probe.ts`), fixed at its cause, with a test that fails
+without the fix (checked by reverting the source change):
+
+| Finding | Cause and fix | Commit |
+|---|---|---|
+| A word-list or brand term glued to an emoji ending in U+FE0F was no longer matched: "flown❤️", "google docs✔️" and "☀️flown" stayed as said, "i❤️" stayed lower case mid-sentence and "❤️we" lost its capital (R1-vs16-emoji-glued-term, low; new in `71521f5`) | `LEADING` and `TRAILING` kept every `\p{M}` in the word, and U+FE0F is one. Each piece of punctuation now takes the marks after it: a vowel sign or tone mark stays with its letter ("এগারো", "अस्सी", "ไลน์"), a variation selector (U+FE00–U+FE0F, U+E0100–U+E01EF) or keycap with its emoji; skin tones, joiners and tag characters are not marks and stay punctuation as before. The probe's five phrases now give `1e69ee7`'s output; `71521f5`'s vowel-sign test passes unchanged | `d039b52` |
+| A term written in place of as many words ("google dogs" → "Google Docs") mapped as a whole, so a kept mark on "Google" and a pending one on "Docs" overlapped after Remove (or on the tidy, when made before it) and became one kept mark; the emphasis row was gone (R2-replaced-term-two-marks-merge, low) | The tidy now hands a token's words split on spaces to `spacedPieceRanges`, which pairs a term of as many words as it replaced by position (punctuation written apart after it with the last word), each pair by `pieceRanges`; terms of other words and numbers keep the whole-term mapping ("flow in" → "Flown", "vscode" → "VS Code", "250", a Japanese term of one word). With it the probe's scenario A gives `1e69ee7`'s two marks and emphasis row, and scenario B, which also merged at `1e69ee7`, keeps both | `18fc9f9` |
+
+Expectations changed because they encoded R2 ("Docs" from "google dogs", now from "dogs"):
+`tests/cleanupTextMap.test.ts` (the word list, a term a second tidy matches again, two tidies in a
+row), `tests/captionTextMapRemove.test.ts` (CASES words 5 and 7, a mark the tidy moves, two tidies
+in a row) and the oracle of `tests/captionTextMapRandom.test.ts` (a heard form of as many words is
+a piece per word). `narrowedWords` is unchanged (only its test's comment, which named the old map
+for "Google Docs"). New tests: `cleanup.test.ts`
+(emoji with a variation selector, joiner, skin tone or keycap beside a term, "I" and a first
+letter, and the Thai, Bangla and Hindi signs before one), `captionTextMapRemove.test.ts`
+(scenarios A and B in exact, estimated and no word times; a comma written apart beside a paired
+term and a term of other words), `textMap.test.ts` (`spacedPieceRanges`). The randomized test
+keeps its 600 seeds and now also gives some captions a second mark right after the first (kept
+beside a pending one, or pending beside the user's) where the pieces keep them apart, drawn from
+a second generator so the other draws stay as they were, and checks both marks and the emphasis
+row; 23 of them sit on the two words of "Google Docs" (9 made before the tidy, 14 after). Without
+the fix it reports 117 failures, among them 22 marks gone and 6 emphasis rows gone. Stored maps are
+read and used as before; only new tidies write paired runs.
+
+Verification: typecheck exit 0; touched unit files 5 of 5 (78 tests); full vitest (3 workers) 415
+files, 5,715 tests pass; build exit 0; e2e on the built app, each file once: `captions-studio` 8
+of 8, `review-mode` 10 of 10.
