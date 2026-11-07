@@ -61,6 +61,7 @@ const DATA_LINE = new RegExp(`^[ \\t]*${NUM}[ \\t]+${NUM}[ \\t]+${NUM}[ \\t]*\\r
 const INTEGER = /^\d{1,6}$/
 const UNSAFE_TEXT = /[\u0000-\u001f\u007f-\u009f‪-‮⁦-⁩]/g
 const KEYWORD_START = /^[A-Za-z_]/
+const NOT_A_NUMBER = /^(nan|inf|infinity)$/i
 const SPACE = /[ \t]+/
 
 /** A keyword as shown in an error: letters, digits and underscores only, at most 40. */
@@ -82,7 +83,7 @@ function numbers(tokens: readonly string[], count: number, line: number, what: s
 function size(tokens: readonly string[], line: number, range: { min: number; max: number }, what: string): number {
   if (tokens.length !== 1 || !INTEGER.test(tokens[0])) throw new CubeError(line, `has no whole number for ${what}`)
   const n = Number(tokens[0])
-  if (n < range.min || n > range.max) throw new CubeError(line, `sets ${what} to ${n}, outside ${range.min}..${range.max.toLocaleString('en-US')}`)
+  if (n < range.min || n > range.max) throw new CubeError(line, `sets ${what} to ${n.toLocaleString('en-US')}, outside ${range.min}..${range.max.toLocaleString('en-US')}`)
   return n
 }
 
@@ -155,7 +156,8 @@ export function parseCube(bytes: Uint8Array): CubeLut {
       if (end === text.length) break
       continue
     }
-    if (KEYWORD_START.test(trimmed)) {
+    // A keyword line; "NaN" and "Infinity" are numbers the data may not hold, so they are read as data and refused there.
+    if (KEYWORD_START.test(trimmed) && !NOT_A_NUMBER.test(trimmed.split(SPACE, 1)[0])) {
       const keyword = trimmed.split(SPACE, 1)[0].toUpperCase()
       if (table) throw new CubeError(lineNo, `has the keyword ${shown(keyword)} after the data`)
       if (seen.has(keyword)) throw new CubeError(lineNo, `repeats ${shown(keyword)}`)

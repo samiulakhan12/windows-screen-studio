@@ -2379,6 +2379,38 @@ part afterwards.
 - `tests/editingContracts.test.ts` (§19.1 tests 1–7).
 - The `data-testid` list of §2 as a comment block at the top of `tests/e2e/editing-polish.e2e.cjs`.
 
+**As made on `feat/wave10`** (the names the parts build on, where this section left a choice):
+
+- Commands: `smoothAllCuts`, `hardCutsEverywhere`, `nextCut`, `previousCut`, `playCut`, `addMagnifier`,
+  `addMagnifierCursor`, `addStepBadge`, `addSpeechBubble`, `toggleProgressBar`, `compareColour`,
+  `autoColour`, `musicLibrary`.
+- Readers: `joinData.ts` also exports `JOIN_LENGTHS` and `PUNCH_LIMITS` (P1's `JOIN_DEFAULTS` and
+  `PUNCH_SCALE` are them), `JOIN_KINDS`, `SLIDE_FROM`; `calloutData.ts` exports `CALLOUT_ALLOWED`
+  (P3's `CALLOUT_KINDS` is it), `readCalloutFields`, `isCallout` (the drawing code's test),
+  `graphemesOf`, `calmOf`, `badgesByChapterOf`; `soundFxData.ts` `readItemSound` and
+  `readGraphicSound`; `gradeData.ts` `LUT_FILE_RE`, `GRADE_SLIDERS`, `cleanLutTitle`;
+  `shapeData.ts` `MAGNIFY_RANGE`.
+- Catalogue: `BED_SOURCES`, `EFFECT_SOURCES`, `SFX_UPSTREAM` (by file name), `ARTISTS`,
+  `REJECTED_ARTISTS` and `REJECTED_EVIDENCE`, `MOODS`, `LIBRARY_RATE`, `BED_PAD`; each bed's analysed
+  loop as `loop { start, end }`; prepared files are `bed-<id>.ogg` and `sfx-<id>.ogg`, their pins in
+  the JSON block `PREPARED` (`PREPARED_PINS`) that the build script writes once per id. The chosen
+  release is `SOUND_LIBRARY_RELEASE`; `SOUND_LIBRARY_SOURCE` stays null until it exists.
+- The build script runs 7-Zip's `7zz` when one is given (`--7zz`, `SEVEN_ZIP`) or on the PATH, else
+  the system's libarchive through Python's ctypes (`scripts/sound-library/libarchive.py`); either way
+  every archive is listed and checked first, and `SOUNDS.md` records the extractor that ran, its
+  version and its SHA-256.
+- `drawFramePicture` leaves the context saved once; `drawFrame` restores it after
+  `drawFrameOverlays`. `drawAnnotations` takes the frame context as an optional last argument.
+  `textAreaWithoutBar` is exported from `safeZones.ts`. `RenderScene.compare` is set by the
+  player's `setCompare(on)`.
+- Polish: `PolishSummary.smoothCuts?` (the cuts smoothed); until P1 the step is skipped as `'off'`
+  and `polishAvailability` gives it `'off'`.
+- Assets: an `AssetSpec` with `whole: true` (the LUT) is checked on its whole file, read once and
+  stored from the same bytes; LUT picks prune to the three newest plus the saved project's two.
+- The sound library's API: `soundLibraryList`, `soundLibraryDownload`, `soundLibraryCancel`,
+  `soundLibraryRemove`, `soundLibraryUseBed`, `onSoundLibraryProgress` (channel
+  `soundLibrary:progress`).
+
 ### 17.1 Part P1 · Smooth cuts
 
 | File | Exports or change |
