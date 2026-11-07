@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import type { AiProviderInfo, AiTextTask, TextChoice } from '../src/shared/api/ai'
 import type { Chapter, Project } from '../src/shared/types'
 
 /*
@@ -271,5 +272,145 @@ describe('the readers keep what is valid and drop the rest (test 2)', () => {
     const old = [{ id: 'a', t: 0, title: 'Intro' }]
     expect(userChapters({ chapters: old })).toBe(old)
     expect(pendingChapters({ chapters: old })).toEqual([])
+  })
+})
+
+/* ---------- tests 4, 101, 103 and the contracts' declarations ---------- */
+
+const { changedAreas } = await import('../src/shared/editor/versions')
+const { badgeLabels } = await import('../src/shared/render/callouts')
+const { resolveGreatOptions, DEFAULT_GREAT_OPTIONS } = await import('../src/shared/captions/great')
+const { reviewItems, pendingCount } = await import('../src/shared/review/review')
+const { REVIEW_KINDS, KIND_WORDS, cutKind, cutTitle, CUT_DETAILS } = await import('../src/shared/review/copy')
+const { joinReviewItems } = await import('../src/shared/review/joinReview')
+const { POLISH_STEPS, DEFAULT_POLISH_OPTIONS, readPolishOptions, planPolish, polishAvailability } = await import('../src/shared/editor/polish')
+const { polishStepLabel, polishSkipText } = await import('../src/shared/editor/polishCopy')
+const { COMMANDS } = await import('../src/shared/editor/commands')
+const { DEFAULT_KEYMAP, findConflicts } = await import('../src/shared/editor/shortcuts')
+// Renderer code: imported at run time so the Node typecheck of tests/ does not follow it.
+const TEXT_CHOICES = '../src/renderer/src/ai/textChoices'
+const { textChoicesOf, LOCAL_CHOICE_LABEL } = (await import(/* @vite-ignore */ TEXT_CHOICES)) as {
+  textChoicesOf(providers: readonly AiProviderInfo[], task: AiTextTask, localReady: boolean, opts?: { pictures?: boolean }): TextChoice[]
+  LOCAL_CHOICE_LABEL: string
+}
+
+const found = (t: number, title: string): Chapter => ({ id: `f${t}`, t, title, auto: { by: 'find', from: ['page'], name: 'sentence' } })
+const badge = (i: number) => ({ id: `b${i}`, start: 5 + i * 10, end: 8 + i * 10, text: '', x: 0.5, y: 0.5, size: 0.045, style: 'badge' as const, number: 'auto' as const })
+
+describe('versions (test 4)', () => {
+  it('a changed guide gives "guide", a changed clipOf nothing, a kept found chapter "chapters"', () => {
+    const p = base()
+    expect(changedAreas(p, { ...p, guide: { title: 'Billing' } })).toEqual(['guide'])
+    expect(changedAreas(p, { ...p, clipOf: { kind: 'moment', start: 0, end: 20 } })).toEqual([])
+    const withFound = { ...p, chapters: [{ id: 'c', t: 0, title: 'Intro' }, found(30, 'Billing')] }
+    const kept = { ...withFound, chapters: withFound.chapters.map(({ auto: _a, ...c }) => c) }
+    expect(changedAreas(withFound, kept)).toEqual(['chapters'])
+  })
+})
+
+describe('pending chapters change nothing until kept (test 101)', () => {
+  it('badge labels and Auto chapter titles count user chapters only', () => {
+    const p = { ...base(), clips: [{ id: 'c', start: 0, end: 120, speed: 1 }], annotations: Array.from({ length: 6 }, (_, i) => badge(i)) } as Project
+    const before = [...badgeLabels(p)]
+    const pending = { ...p, chapters: [found(0, 'Intro'), found(30, 'Billing'), found(60, 'Sharing')] }
+    expect([...badgeLabels(pending)]).toEqual(before)
+    expect(resolveGreatOptions(DEFAULT_GREAT_OPTIONS, pending, { w: 1920, h: 1080 }).chapters).toBe(false)
+    const kept = { ...pending, chapters: pending.chapters.map(({ auto: _a, ...c }) => c) }
+    expect([...badgeLabels(kept)]).not.toEqual(before)
+    expect(resolveGreatOptions(DEFAULT_GREAT_OPTIONS, kept, { w: 1920, h: 1080 }).chapters).toBe(true)
+  })
+})
+
+describe("Review's new kinds and words (§13.1)", () => {
+  it("lists 'chapter' and 'short' last, with their words; a 'short' cut is its own kind", () => {
+    expect(REVIEW_KINDS.slice(-2)).toEqual(['chapter', 'short'])
+    expect(KIND_WORDS.chapter).toEqual({ chip: 'Chapter', name: 'found chapter', all: 'Remove all found chapters', one: 'found chapter', plural: 'found chapters' })
+    expect(KIND_WORDS.short).toEqual({ chip: 'Short', name: 'shorter-version cut', all: 'Remove all shorter-version cuts', one: 'shorter-version cut', plural: 'shorter-version cuts' })
+    const cut = { id: 'x', by: 'short' as const, action: 'cut' as const, start: 1, end: 5.2, was: [{ start: 1, end: 5.2, speed: 1 }] }
+    expect(cutKind(cut)).toBe('short')
+    expect(cutTitle(cut)).toBe('Cut 4.2 s for the shorter version')
+    expect(CUT_DETAILS.short).toBe('Make a shorter version')
+  })
+
+  it("the shorter version's cuts and smooth cuts are listed with their detail; a project without found chapters lists no chapter row", () => {
+    const p = { ...base(), clips: [{ id: 'a', start: 0, end: 10, speed: 1 }, { id: 'b', start: 20, end: 120, speed: 1 }], autoCuts: [{ id: 's1', by: 'short', action: 'cut', start: 10, end: 20, was: [{ start: 10, end: 20, speed: 1 }] }], joins: { all: { kind: 'smooth' }, auto: { by: 'short', was: null } } } as Project
+    const items = reviewItems(p)
+    expect(items.map((i) => [i.kind, i.title, i.detail])).toEqual([
+      ['short', 'Cut 10.0 s for the shorter version', 'Make a shorter version'],
+      ['join', 'Smooth cuts at 1 cut', 'Make a shorter version']
+    ])
+    expect(joinReviewItems({ ...p, joins: { all: { kind: 'smooth' }, auto: { by: 'polish', was: null } } } as Project)[0].detail).toBe('Polish')
+    expect(pendingCount(p)).toBe(2)
+    expect(reviewItems({ ...p, chapters: [{ id: 'c', t: 0, title: 'Intro' }] }).some((i) => i.kind === 'chapter')).toBe(false)
+  })
+})
+
+describe("Polish's Find chapters step (§13.3)", () => {
+  it('is declared after Captions and before Caption look, on for new options, off for saved ones', () => {
+    expect(POLISH_STEPS.slice(POLISH_STEPS.indexOf('captions'), POLISH_STEPS.indexOf('captionLook') + 1)).toEqual(['captions', 'chapters', 'captionLook'])
+    expect(DEFAULT_POLISH_OPTIONS.chapters).toBe(true)
+    expect(readPolishOptions({ zoom: true }).chapters).toBe(false)
+    expect(readPolishOptions({ chapters: true }).chapters).toBe(true)
+    expect(polishStepLabel('chapters')).toBe('Find chapters')
+    expect(polishSkipText('chapters', 'has-chapters')).toBe('Your chapters are kept')
+    expect(polishSkipText('chapters', 'short-video')).toBe('Under 2 minutes: no chapters needed')
+    expect(polishSkipText('chapters', 'no-speech')).toBe('No captions to name chapters from')
+  })
+
+  it('skips with user chapters, under 2 minutes and without captions; found chapters do not count as the user\'s', () => {
+    const p = { ...base(), clips: [{ id: 'c', start: 0, end: 120, speed: 1 }] } as Project
+    const run = (project: Project) =>
+      planPolish({ project, recorded: { samples: [], clicks: [], keys: [], valid: false }, sound: null, transcript: null, speech: null, framing: { status: 'skipped' }, preset: null }, { ...DEFAULT_POLISH_OPTIONS, zoom: false, silences: false, smoothCuts: false, captions: false, captionLook: false, director: false }).summary.steps.find((s) => s.step === 'chapters')
+    const segments = [{ id: 's', start: 1, end: 3, text: 'Now we set up billing' }]
+    const transcript = { provider: 'openai' as const, model: 'w', createdAt: '', segments }
+    expect(run({ ...p, transcript, chapters: [{ id: 'u', t: 0, title: 'Mine' }] })).toEqual({ step: 'chapters', status: 'skipped', reason: 'has-chapters' })
+    expect(run({ ...p, transcript, clips: [{ id: 'c', start: 0, end: 119, speed: 1 }] })).toEqual({ step: 'chapters', status: 'skipped', reason: 'short-video' })
+    expect(run(p)).toEqual({ step: 'chapters', status: 'skipped', reason: 'no-speech' })
+    expect(run({ ...p, transcript, chapters: [found(0, 'Intro')] })?.status).toBe('unchanged')
+    expect(polishAvailability({ ...p, transcript }, { samples: [], clicks: [], keys: [], valid: false }, { hasCameraFile: false, transcribers: [], transcribing: false }).chapters).toBeNull()
+  })
+})
+
+describe("the palette's eight commands (§2.8)", () => {
+  it('come after editing polish\'s, with no default keys and no conflicts', () => {
+    const NEW = ['guide', 'demo', 'bugReport', 'findChapters', 'shortClips', 'shortVersion', 'localAi', 'aiService']
+    const ids = COMMANDS.map((c) => c.id as string)
+    expect(ids.slice(-NEW.length)).toEqual(NEW)
+    expect(ids.indexOf('musicLibrary')).toBe(ids.length - NEW.length - 1)
+    for (const id of NEW) expect(DEFAULT_KEYMAP[id as keyof typeof DEFAULT_KEYMAP], id).toEqual([])
+    expect(COMMANDS.find((c) => c.id === 'guide')).toMatchObject({ title: 'Make a step-by-step guide…', category: 'Publish' })
+    expect(COMMANDS.find((c) => c.id === 'findChapters')).toMatchObject({ title: 'Find chapters', category: 'Add' })
+    expect(COMMANDS.find((c) => c.id === 'aiChapters')).toMatchObject({ title: 'Suggest chapters with AI' })
+    expect([...findConflicts(DEFAULT_KEYMAP).entries()]).toEqual([])
+  })
+})
+
+describe('text choices name the place (test 103)', () => {
+  const openai = { id: 'ai1', kind: 'openai' as const, label: 'My OpenAI', model: 'gpt-6.1-sol', maskedKey: '…', createdAt: '' }
+  const groq = { ...openai, id: 'svc1', label: 'Groq', model: 'llama', service: { preset: 'groq' as const, baseUrl: 'https://api.groq.com/openai/v1', host: 'api.groq.com', loopback: false, json: 'schema' as const } }
+  it('a Groq service is "api.groq.com", never "OpenAI"; On this PC is "this PC", never undefined', () => {
+    const choices = textChoicesOf([openai, groq], 'title', true)
+    expect(choices.map((c) => c.place)).toEqual(['OpenAI', 'api.groq.com', 'this PC'])
+    expect(choices[1]).toMatchObject({ id: 'svc1', kind: 'openai', host: 'api.groq.com' })
+    expect(choices[2]).toMatchObject({ id: 'local', kind: 'local', label: LOCAL_CHOICE_LABEL, pictures: false })
+  })
+  it("On this PC is never offered for 'chapters' or 'marks', nor when no model is ready; pictures only from services and providers", () => {
+    expect(textChoicesOf([openai], 'chapters', true).map((c) => c.id)).toEqual(['ai1'])
+    expect(textChoicesOf([openai], 'marks', true).map((c) => c.id)).toEqual(['ai1'])
+    expect(textChoicesOf([openai], 'title', false).map((c) => c.id)).toEqual(['ai1'])
+    expect(textChoicesOf([openai, groq], 'names', true, { pictures: true }).map((c) => c.id)).toEqual(['ai1', 'svc1'])
+  })
+})
+
+describe("the link check counts the user's chapters only (§7.7)", () => {
+  it('a pending chapter named "see example.com" never vouches for the link; once kept it does', async () => {
+    const CHECK_NOTE = '../src/renderer/src/publish/checkNote'
+    const { projectSaid } = (await import(/* @vite-ignore */ CHECK_NOTE)) as { projectSaid(p: Project): import('../src/shared/publish/check').Said }
+    const { notedPieces } = await import('../src/shared/publish/check')
+    const p = { ...base(), clips: [{ id: 'c', start: 0, end: 120, speed: 1 }] } as Project
+    const pending = { ...p, chapters: [found(0, 'Intro'), found(40, 'see example.com')] }
+    expect(notedPieces('Visit example.com', projectSaid(pending))).toHaveLength(1)
+    const kept = { ...pending, chapters: pending.chapters.map(({ auto: _a, ...c }) => c) }
+    expect(notedPieces('Visit example.com', projectSaid(kept))).toHaveLength(0)
   })
 })
