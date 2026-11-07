@@ -14,7 +14,7 @@ import {
   type ShuttleKey,
   type ShuttleStep
 } from '../../../shared/editor/shuttle'
-import { pictureTime, planOf, type FreezePlan, type Hold } from '../../../shared/engine/freeze'
+import { pictureTime, planOf, videoToSource, type FreezePlan, type Hold } from '../../../shared/engine/freeze'
 import { croppedFrameSize } from '../../../shared/engine/crop'
 import { cameraShownAt } from '../../../shared/engine/layout'
 import { clamp } from '../../../shared/engine/math'
@@ -26,11 +26,13 @@ import { cursorLook } from '../../../shared/render/cursorFx'
 import { JUMP_SLACK } from '../../../shared/render/cutFades'
 import { frameSeekTime } from '../../../shared/render/frameTiming'
 import type { Clip, Project } from '../../../shared/types'
-import { drawFrame, type DrawOptions, type FrameImage, type RenderScene, type RenderSources } from '../render/compositor'
+import { frameVideoTime, joinAt, joinPlan, type JoinWindow } from '../../../shared/render/joins'
+import { drawFrame, type DrawOptions, type FrameExtras, type FrameImage, type RenderScene, type RenderSources } from '../render/compositor'
 import { onCursorAssetsChanged } from '../render/cursorLayer'
-import { heldLivePicture, onCameraMasksChanged } from '../render/segmentation/cameraMasks'
+import { CameraMaskPreparer, heldLivePicture, onCameraMasksChanged } from '../render/segmentation/cameraMasks'
 import { onStyleAssetsChanged } from '../render/watermarkLayer'
 import { FreezeStills } from './freezeStills'
+import { JoinStills } from './joinStills'
 import { PreviewAudio } from './previewAudio'
 import { cancelScan } from './sounds/soundScan'
 
@@ -40,6 +42,10 @@ const SOURCE_FPS = 60
 const WEBCAM_DRIFT = 0.15
 /** A frozen frame (E-11) is drawn sharp, as the export draws it: no motion blur. */
 const FROZEN: DrawOptions = { blurSamples: 1 }
+/** Cuts ahead of the playhead whose A* stills are made before playback reaches them (editing polish §5.7). */
+const STILLS_AHEAD = 3
+/** Play this cut: seconds of video before and after the cut. */
+const AROUND_CUT = 1
 
 const hasVideoFrameCallback = typeof HTMLVideoElement !== 'undefined' && 'requestVideoFrameCallback' in HTMLVideoElement.prototype
 
@@ -157,6 +163,19 @@ export class PreviewPlayer {
   private holdFrom = 0
   private stills: FreezeStills | null = null
   private disposed = false
+  /**
+   * Smooth cuts (editing polish §5.7): the A* stills of the joins, made ahead; the scene they were
+   * last asked for; the window the playing preview is in, and one whose A* was late at its first
+   * frame (it stays a hard cut to its end); the video time of the last frame drawn; Play this cut's
+   * end and where it goes back to; the camera stills' person masks.
+   */
+  private joinStills: JoinStills | null = null
+  private joinScene: RenderScene | null = null
+  private inWindow: JoinWindow | null = null
+  private lateWindow: JoinWindow | null = null
+  private lastVideo = 0
+  private stopAt: { video: number; back: number } | null = null
+  private masker: CameraMaskPreparer | null = null
 
   constructor(
     readonly screen: HTMLVideoElement,
@@ -275,6 +294,7 @@ export class PreviewPlayer {
 
   seek(t: number): void {
     this.seeks++
+    this.stopAt = null
     // A seek leaves a pause freeze (E-11); playback goes on from the new place.
     const held = this.clearHold()
     this.time = clamp(t, 0, this.project.duration)
@@ -303,6 +323,7 @@ export class PreviewPlayer {
       const anchor = this.plan.holds.some((h) => !h.end && h.at === this.time)
       this.seekVideo(anchor ? frameSeekTime(this.time, 1 / this.frame) : this.frameTimeFor(displayTime(clips, this.time)))
     }
+    this.prepareJoins()
     this.emit()
   }
 
@@ -336,6 +357,8 @@ export class PreviewPlayer {
       if (!(err instanceof DOMException && err.name === 'AbortError')) this.stopPlaying()
     })
     if (this.webcam && this.webcamInRange(from.time)) void this.webcam.play().catch(() => undefined)
+    this.inWindow = null
+    this.prepareJoins()
     this.scheduleFrame()
     this.emit()
   }
@@ -347,6 +370,7 @@ export class PreviewPlayer {
       return
     }
     if (!this.playing) return
+    this.stopAt = null
     this.stopPlaying()
     // In a pause freeze (E-11) the playhead stays on its frame.
     if (!this.hold) this.time = this.screen.currentTime
@@ -432,12 +456,13 @@ export class PreviewPlayer {
     const s = this.hold ? this.heldTime(this.hold.h) : t
     const p = pictureTime(this.project.clips, this.plan, s)
     const still = p !== s ? this.stills?.get(p) : null
+    const drawn = this.comparedScene(this.noZoom ? this.unzoomedScene(scene) : this.flat ? this.untiltedScene(scene) : scene)
     drawFrame(
       ctx,
       canvas.width,
       canvas.height,
       still ? p : s,
-      this.comparedScene(this.noZoom ? this.unzoomedScene(scene) : this.flat ? this.untiltedScene(scene) : scene),
+      drawn,
       {
         screen: this.screen,
         webcam: this.webcam,
@@ -446,8 +471,88 @@ export class PreviewPlayer {
         ...(still && { screenFrame: { image: still, width: still.width, height: still.height } })
       },
       this.hold || still ? FROZEN : undefined,
-      s
+      s,
+      this.extrasAt(s, drawn, canvas.width, canvas.height)
     )
+  }
+
+  /**
+   * The frame's video time and its join (editing polish §5.7): through a pause hold, and with the
+   * hold just left counted. A* when it is ready; paused, a window whose A* is not ready yet draws a
+   * hard cut and redraws when it is; playing, a window whose A* was not ready at its first frame
+   * stays a hard cut to its end, so the old frame never comes back after the new one showed.
+   * Undefined for a project without joins or a progress bar (the frame is drawn as before).
+   */
+  private extrasAt(s: number, scene: RenderScene, w: number, h: number): FrameExtras | undefined {
+    const project = this.project
+    if (!project.joins && !project.chapterBar?.show) return undefined
+    const hold = this.hold ? { start: this.hold.h.start, elapsed: this.hold.elapsed } : null
+    const video = frameVideoTime(project.clips, this.plan, s, hold, this.passed?.at ?? null)
+    this.lastVideo = video
+    const windows = joinPlan(project)
+    if (windows.length === 0) return { video }
+    if (scene !== this.joinScene) this.prepareJoins(scene)
+    const at = joinAt(windows, video)
+    if (!at) {
+      this.inWindow = null
+      return { video }
+    }
+    let still = at.window.still ? (this.joinStills?.still(at.window, w, h) ?? null) : null
+    if (this.playing && !this.hold) {
+      if (this.inWindow !== at.window) {
+        this.inWindow = at.window
+        this.lateWindow = at.window.still && !still ? at.window : null
+      }
+      if (this.lateWindow === at.window) still = null
+    } else {
+      this.inWindow = null
+      this.lateWindow = null
+    }
+    return { video, join: { at, still } }
+  }
+
+  /** Asks for the A* stills of the next cuts after the playhead (at play, after every jump and seek). */
+  private prepareJoins(scene: RenderScene | null = this.joinScene ?? this.scene): void {
+    const { canvas } = this
+    if (!scene || !canvas || this.disposed) return
+    const windows = joinPlan(this.project)
+    if (!windows.some((w) => w.still)) return
+    this.joinScene = scene
+    const at = this.playing ? this.lastVideo : frameVideoTime(this.project.clips, this.plan, this.time, null, null)
+    const ahead = windows.filter((w) => w.still && w.to > at).slice(0, STILLS_AHEAD)
+    this.joinStills ??= new JoinStills(this.screen.currentSrc || this.screen.src, this.webcam ? this.webcam.currentSrc || this.webcam.src : null, this.invalidate, this.segmentStill)
+    this.joinStills.prepare(ahead, scene, canvas.width, canvas.height, this.background)
+  }
+
+  /** A camera still's person mask, when the camera's background is blurred (the preview's A* then shows it blurred). */
+  private segmentStill = async (still: ImageBitmap): Promise<void> => {
+    if (!(webcamLook(this.project.webcam).backgroundBlur > 0)) return
+    this.masker ??= new CameraMaskPreparer()
+    if (!(await this.masker.start())) return
+    await this.masker.prepare({ image: still, width: still.width, height: still.height })
+  }
+
+  /**
+   * Play this cut (editing polish §2.1): plays from 1 s of video before the cut at video time `video`
+   * to 1 s after it, then stops back where the playhead was.
+   */
+  playCut(video: number): void {
+    const back = this.time
+    const from = videoToSource(this.project.clips, this.plan, Math.max(0, video - AROUND_CUT)).time
+    if (this.moving) this.pause()
+    this.seek(from)
+    this.play()
+    this.stopAt = { video: video + AROUND_CUT, back }
+  }
+
+  /** Play this cut's end reached: stop, and go back where the playhead was. */
+  private stopAfterCut(video: number): boolean {
+    const stop = this.stopAt
+    if (!stop || video < stop.video) return false
+    this.stopAt = null
+    this.pause()
+    this.seek(stop.back)
+    return true
   }
 
   /**
@@ -564,6 +669,7 @@ export class PreviewPlayer {
     this.syncWebcam(t, false)
     this.leavePassed(t)
     this.draw(t)
+    if (this.stopAt && this.stopAfterCut(frameVideoTime(this.project.clips, this.plan, t, null, this.passed?.at ?? null))) return
     // Clicks land on their frames at the element's rate; none while the sound is off.
     if (this.audible) this.playClicks(t, rate === clip.speed ? clip : { ...clip, speed: rate })
     else this.clickSounds.reset()
@@ -600,6 +706,7 @@ export class PreviewPlayer {
     this.screen.currentTime = time
     this.sound.jump(time, this.rateFor(this.project.clips[index].speed))
     this.syncWebcam(time, true)
+    this.prepareJoins()
   }
 
   /** Stops at the end of the edit and shows its last frame. */
@@ -964,6 +1071,9 @@ export class PreviewPlayer {
     hold.elapsed += ((now - hold.t0) / 1000) * (Math.abs(this.viewRate) || 1)
     hold.t0 = now
     if (hold.elapsed >= hold.h.length) return this.leaveHold()
+    if (this.stopAt && this.stopAfterCut(hold.h.start + hold.elapsed)) return
+    // Video time runs on through the hold: a join over the held frame (or the progress bar) moves.
+    if (this.project.chapterBar?.show || joinAt(joinPlan(this.project), hold.h.start + hold.elapsed)) this.invalidate()
     this.sound.hold(hold.h, hold.elapsed)
     this.sound.frame()
     this.emit()
@@ -1095,6 +1205,7 @@ export class PreviewPlayer {
     cancelAnimationFrame(this.drawRaf)
     cancelAnimationFrame(this.holdRaf)
     this.stills?.dispose()
+    this.joinStills?.dispose()
     this.screen.removeEventListener('seeked', this.onSeeked)
     this.screen.removeEventListener('loadeddata', this.invalidate)
     this.screen.removeEventListener('ended', this.onEnded)

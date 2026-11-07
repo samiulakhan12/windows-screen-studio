@@ -19,6 +19,7 @@ import { dragView, holdViewAt } from '../../../shared/editor/followEdit'
 import { dragRegion, formatLevel, regionFromPoints, type Box as RegionBox, type RegionHandle, type ZoomRegion } from '../../../shared/editor/zoomEdit'
 import { croppedFrameSize, fromCrop, geometryFromCrop } from '../../../shared/engine/crop'
 import { frameCamera } from '../../../shared/engine/frameView'
+import { punchedCamera } from '../../../shared/render/joins'
 import { outputSize, type Rect, type SceneLayout } from '../../../shared/engine/layout'
 import { useSceneView } from './sceneRect'
 import { clamp } from '../../../shared/engine/math'
@@ -131,8 +132,8 @@ function useStageView(player: PreviewPlayer, project: Project, scene: RenderScen
         last = 'none'
         return
       }
-      // The same camera and cursor position the compositor uses for this frame.
-      const cam = frameCamera(scene, layout, t)
+      // The same camera and cursor position the compositor uses for this frame (a cut's punch-in included).
+      const cam = punchedCamera(frameCamera(scene, layout, t), scene.project, t)
       const follows = item.type === 'spotlight' && item.item.mode === 'cursor' && scene.cursor.valid
       const cursor = follows ? visibleCursorAt(project, scene.cursor.samples, scene.cursorPath, t) : null
       // The same rule the spotlight layer fades it out by.
@@ -358,7 +359,7 @@ export const PreviewStage = memo(function PreviewStage({ project, pickZoom: pick
     const py = e.clientY - r.top
     if (px < slot.x || px > slot.x + slot.w || py < slot.y || py > slot.y + slot.h) return false
     const t = displayTime(drawn.clips, player.time)
-    const cam = frameCamera(scene, sceneView, t)
+    const cam = punchedCamera(frameCamera(scene, sceneView, t), scene.project, t)
     // Recording units (as drawn) per overlay pixel, through the camera and the virtual rectangle.
     const ux = 1 / (cam.scale * rect.w)
     const uy = 1 / (cam.scale * rect.h)
@@ -824,7 +825,7 @@ function ShapeEditor({
  */
 function previewBoxes(drawn: Project, scene: RenderScene, layout: SceneLayout, box: Box, t: number): KeyRect[] {
   if (box.w === 0) return []
-  const cam = frameCamera(scene, layout, t)
+  const cam = punchedCamera(frameCamera(scene, layout, t), scene.project, t)
   const m = mappingFor(cam, layout.screen)
   const out: KeyRect[] = []
   const mapped = (key: ItemKey, b: { x: number; y: number; w: number; h: number }): void => {

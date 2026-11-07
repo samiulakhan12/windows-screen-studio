@@ -35,6 +35,9 @@ import { jobSoundGains } from '../../../shared/audio/soundsEdit'
 import { soundBed } from '../../../shared/audio/soundLibrary'
 import { sfxJob } from '../../../shared/render/sfxJob'
 import { prepareEditingAssets } from './editingAssets'
+import { joinFeed, joinPlan, trackTimes, type JoinWindow } from '../../../shared/render/joins'
+import { releaseScratch, composeJoinStill, scratchTarget } from '../render/joinLayer'
+import { ExportJoins } from './joinExport'
 
 export { exportDimensions, GIF_FPS, GIF_MAX_HEIGHT } from '../../../shared/render/exportPlan'
 
@@ -273,6 +276,8 @@ interface JobPlan {
   rate: Pick<ExportJob, 'bitrate' | 'maxBytes'>
   chapters: Pick<ExportJob, 'chapters'>
   subtitles: Pick<ExportJob, 'subtitles'>
+  /** The windows of the cuts' joins (smooth cuts, editing polish §5.8); none without joins. */
+  windows: readonly JoinWindow[]
 }
 
 async function planJob(input: ExportInput): Promise<JobPlan> {
@@ -280,7 +285,7 @@ async function planJob(input: ExportInput): Promise<JobPlan> {
   const { times, pictures, held } = videoFrames(input.project.clips, planOf(input.project), fps)
   const sound = await soundOf(input, input.settings.format)
   const rate = rateOf(input.settings, times.length, { width, height, fps }, hasSound(sound))
-  return { width, height, fps, times, pictures, held, sound, rate, chapters: chaptersOf(input.project, input.settings.format), subtitles: subtitlesOf(input) }
+  return { width, height, fps, times, pictures, held, sound, rate, chapters: chaptersOf(input.project, input.settings.format), subtitles: subtitlesOf(input), windows: joinPlan(input.project) }
 }
 
 /**
@@ -395,13 +400,8 @@ async function openElementSource(url: string, times: number[], fps: number): Pro
  * created so they can be released. `fallbackFps` is the proxy's usual frame rate,
  * used by the seeking path when the file's own rate cannot be read.
  */
-async function openSource(url: string, times: number[], caps: ExportCapabilities, videos: HTMLVideoElement[], fallbackFps: number): Promise<FrameSource> {
-  let media: MediaTrack | null = null
-  try {
-    media = await openTrack(url)
-  } catch (e) {
-    console.warn('Could not index the video for WebCodecs decoding, seeking the video element instead:', e)
-  }
+async function openSource(url: string, times: number[], caps: ExportCapabilities, videos: HTMLVideoElement[], fallbackFps: number, opened?: MediaTrack | null): Promise<FrameSource> {
+  const media = opened === undefined ? await indexTrack(url) : opened
   const fps = media?.fps ?? fallbackFps
   const element = async (): Promise<FrameSource> => {
     const { source, video } = await openElementSource(url, times, fps)
@@ -417,6 +417,16 @@ async function openSource(url: string, times: number[], caps: ExportCapabilities
     }
   }
   return element()
+}
+
+/** The video's track, indexed for WebCodecs decoding, or null (the seeking path is used then). */
+async function indexTrack(url: string): Promise<MediaTrack | null> {
+  try {
+    return await openTrack(url)
+  } catch (e) {
+    console.warn('Could not index the video for WebCodecs decoding, seeking the video element instead:', e)
+    return null
+  }
 }
 
 /**
@@ -457,9 +467,24 @@ async function renderAll(
 
   const useWebcam = !!input.webcamUrl && project.webcam.show && project.hasWebcam
   const videos: HTMLVideoElement[] = []
+  // Smooth cuts (editing polish §5.8): each window's A* frames go into the feeds where they fall, from
+  // each track's own frame times, so the decoders only ever go forward. Without joins the feeds are
+  // the pictures and the camera times as they are.
+  const screenMedia = await indexTrack(input.screenUrl)
+  const cameraMedia = useWebcam ? await indexTrack(input.webcamUrl!) : null
+  const cameraTimes = useWebcam ? times.map((t) => t - project.webcamOffset) : null
+  const feed = joinFeed({
+    pictures,
+    cameraTimes,
+    windows: plan.windows,
+    fps,
+    screen: trackTimes(screenMedia?.track?.samples ?? null, SCREEN_PROXY_FPS, project.duration),
+    camera: useWebcam ? trackTimes(cameraMedia?.track?.samples ?? null, WEBCAM_PROXY_FPS, project.duration) : null
+  })
   // The screen shows the pictures (a freeze's still); the camera follows the sound's clock.
-  const screen = await openSource(input.screenUrl, pictures, caps, videos, SCREEN_PROXY_FPS)
+  const screen = await openSource(input.screenUrl, feed.screen, caps, videos, SCREEN_PROXY_FPS, screenMedia)
   let camera: FrameSource | null = null
+  let joins: ExportJoins | null = null
   // drawFrame wants an element even when it draws decoded frames; this one is never shown.
   const placeholder = document.createElement('video')
   let sink: FrameSink | null = null
@@ -467,7 +492,7 @@ async function renderAll(
   const onAbort = (): void => void window.api.exportCancel()
   signal.addEventListener('abort', onAbort)
   try {
-    if (useWebcam) camera = await openSource(input.webcamUrl!, times.map((t) => t - project.webcamOffset), caps, videos, WEBCAM_PROXY_FPS)
+    if (useWebcam) camera = await openSource(input.webcamUrl!, feed.camera, caps, videos, WEBCAM_PROXY_FPS, cameraMedia)
     const masks = await cameraMasks(project, !!camera)
     if (signal.aborted) throw abortError()
 
@@ -505,6 +530,34 @@ async function renderAll(
     const startJob = (job: ExportJob): Promise<void> => window.api.exportStart(project.id, job)
     sink = makeSink(canvas, ctx, startJob, base)
 
+    // A* of each window: the still frames copied as the feeds reach them, composed on the scratch
+    // target of this canvas's raster mode before the window's first frame (§5.8).
+    if (feed.stills.length > 0) {
+      joins = new ExportJoins(feed, plan.windows, {
+        copy: copyFrame,
+        prepareMask: async (frame) => {
+          await masks?.prepare(frame)
+        },
+        compose: (window, stills) => {
+          const out = document.createElement('canvas')
+          composeJoinStill(scratchTarget(cpu ? 'cpu' : 'gpu', width, height), out, width, height, window, input.scene, stills, input.background)
+          return out
+        },
+        drop: dropCanvas
+      })
+    }
+    // Where each source is in its feed (the next position not got yet), and the feed's positions only stills ask for.
+    let posS = 0
+    let posC = 0
+    const reach = async (source: FrameSource, kind: 'screen' | 'camera', from: number, to: number): Promise<number> => {
+      for (let p = from; p < to; p++) {
+        if (!joins?.stillOnly(kind, p)) continue
+        joins.took(kind, p, await source.get(p))
+        source.next()
+      }
+      return to
+    }
+
     const options = { frameInterval: 1 / fps, blurSamples: EXPORT_BLUR_SAMPLES }
     // A frozen frame is drawn sharp: a hold on a moving zoom would otherwise show a smeared still.
     const frozen = { ...options, blurSamples: 1 }
@@ -517,9 +570,9 @@ async function renderAll(
     }
     // The next camera frame and its mask, made while this frame is encoded (errors surface on its own get).
     let ahead: Promise<unknown> | null = null
-    const cameraFrame = async (i: number): Promise<FrameImage | null> => {
+    const cameraFrame = async (pos: number): Promise<FrameImage | null> => {
       await ahead
-      return camera!.get(i)
+      return camera!.get(pos)
     }
     // Speed over the last ~1 s of frames, for the fps readout and the ETA.
     const stamps: number[] = []
@@ -530,15 +583,34 @@ async function renderAll(
       if (await input.pause?.wait(signal)) stamps.length = 0
       if (signal.aborted) throw abortError()
       const a = performance.now()
-      const [screenFrame, webcamFrame] = await Promise.all([screen.get(i), camera ? cameraFrame(i) : null])
+      const atS = feed.draw.screen[i]
+      const atC = camera ? feed.draw.camera[i] : -1
+      // Positions only stills ask for, before this frame's: got, copied and passed.
+      posS = await reach(screen, 'screen', posS, atS)
+      if (camera) posC = await reach(camera, 'camera', posC, atC)
+      const [screenFrame, webcamFrame] = await Promise.all([screen.get(atS), camera ? cameraFrame(atC) : null])
+      if (joins) {
+        joins.took('screen', atS, screenFrame)
+        if (camera) joins.took('camera', atC, webcamFrame)
+        await joins.ready()
+      }
       // The person mask of the camera frame, before drawing (drawFrame never waits); quick when made ahead.
       if (masked(i, screenFrame)) await masks!.prepare(webcamFrame)
       const b = performance.now()
-      drawFrame(ctx, width, height, pictures[i], input.scene, { ...sources, screenFrame, webcamFrame }, held?.[i] ? frozen : options, times[i])
+      // Frame i shows video time i / fps; inside a cut's window, its join (null: none).
+      const video = i / fps
+      drawFrame(ctx, width, height, pictures[i], input.scene, { ...sources, screenFrame, webcamFrame }, held?.[i] ? frozen : options, times[i], {
+        video,
+        join: joins ? joins.joinAt(video) : null
+      })
       // The canvas holds the pixels now: let the sources start on the next frame.
       screen.next()
       camera?.next()
-      ahead = camera && i + 1 < times.length && masked(i + 1, screenFrame) ? camera.get(i + 1).then((f) => masks!.prepare(f)).catch(() => undefined) : null
+      posS = atS + 1
+      posC = atC + 1
+      // The next camera frame ahead, unless a still's own position comes first.
+      const nextC = i + 1 < times.length && camera ? feed.draw.camera[i + 1] : -1
+      ahead = camera && nextC === posC && masked(i + 1, screenFrame) ? camera.get(nextC).then((f) => masks!.prepare(f)).catch(() => undefined) : null
       const c = performance.now()
       await sink.push(i)
       spent.decode += b - a
@@ -573,6 +645,9 @@ async function renderAll(
     sink?.close()
     // The 3D tilt's WebGL context and card canvas for this canvas are not needed any more.
     if (drawn) releaseTilt(drawn)
+    // A* and its scratch target (editing polish §5.6).
+    joins?.dispose()
+    if (feed.stills.length > 0) releaseScratch()
     // The word sprites go back to the preview's cache (its cap and raster mode).
     STUDIO_SPRITES.setReadFrequently(false)
     STUDIO_SPRITES.setCap(spriteCap(0, 0))
@@ -580,6 +655,20 @@ async function renderAll(
     camera?.close()
     videos.forEach(disposeVideo)
   }
+}
+
+/** A copy of `frame` into a canvas of its size (one drawImage), valid after the source moved on. */
+function copyFrame(frame: FrameImage): FrameImage {
+  const canvas = document.createElement('canvas')
+  canvas.width = frame.width
+  canvas.height = frame.height
+  canvas.getContext('2d', { alpha: false })?.drawImage(frame.image, 0, 0, frame.width, frame.height)
+  return { image: canvas, width: frame.width, height: frame.height }
+}
+
+/** Lets go of a canvas's pixels at once. */
+function dropCanvas(image: CanvasImageSource): void {
+  if (typeof HTMLCanvasElement !== 'undefined' && image instanceof HTMLCanvasElement) image.width = image.height = 0
 }
 
 /* ---------- Thumbnail ---------- */
