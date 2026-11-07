@@ -1035,6 +1035,46 @@ LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
 OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
+------------------------------------------------------------------------------
+
+Music beds and sound effects (the sound library)
+All of them are dedicated to the public domain under CC0 1.0 Universal
+(https://creativecommons.org/publicdomain/zero/1.0/): no credit is required. They are listed
+for provenance, each with its author and source page (resources/sound-library/SOUNDS.md has
+the files' sizes and SHA-256).
+
+Music beds:
+  bed-calm-spring-on-the-horizon.ogg: "Spring On The Horizon" by HoliznaCC0 (Background Music), CC0 1.0, https://freemusicarchive.org/music/holiznacc0/background-music/spring-on-the-horizon/
+  bed-calm-drifting-piano.ogg: "Drifting Piano" by HoliznaCC0 (Background Music), CC0 1.0, https://freemusicarchive.org/music/holiznacc0/background-music/drifting-piano/
+  bed-calm-old-key.ogg: "Old Key" by Loyalty Freak Music (MINIMAL AMBIENT BOUNCE), CC0 1.0, https://freemusicarchive.org/music/Loyalty_Freak_Music/MINIMAL_AMBIENT_BOUNCE/Loyalty_Freak_Music_-_MINIMAL_AMBIENT_BOUNCE_-_03_Old_Key/
+  bed-upbeat-sweet-sun.ogg: "Sweet Sun" by Loyalty Freak Music (POSITIVE ATTITUDE !), CC0 1.0, https://freemusicarchive.org/music/Loyalty_Freak_Music/POSITIVE_ATTITUDE_/Loyalty_Freak_Music_-_POSITIVE_ATTITUDE__-_04_Sweet_Sun/
+  bed-upbeat-go-to-the-picnic.ogg: "Go to the Picnic" by Loyalty Freak Music (POSITIVE ATTITUDE !), CC0 1.0, https://freemusicarchive.org/music/Loyalty_Freak_Music/POSITIVE_ATTITUDE_/Loyalty_Freak_Music_-_POSITIVE_ATTITUDE__-_01_Go_to_the_Picnic/
+  bed-corporate-one-cool-minute.ogg: "One Cool Minute" by Loyalty Freak Music (MINIMAL AMBIENT BOUNCE), CC0 1.0, https://freemusicarchive.org/music/Loyalty_Freak_Music/MINIMAL_AMBIENT_BOUNCE/Loyalty_Freak_Music_-_MINIMAL_AMBIENT_BOUNCE_-_02_One_Cool_Minute/
+  bed-corporate-work.ogg: "Work" by Loyalty Freak Music (MELODIES WITH A BEAT), CC0 1.0, https://freemusicarchive.org/music/Loyalty_Freak_Music/MELODIES_WITH_A_BEAT/Loyalty_Freak_Music_-_MELODIES_WITH_A_BEAT_-_13_Work/
+  bed-lofi-coexistenz.ogg: "Coexistenz" by Loyalty Freak Music (TO CHILL AND STAY AWAKE), CC0 1.0, https://freemusicarchive.org/music/Loyalty_Freak_Music/TO_CHILL_AND_STAY_AWAKE/Loyalty_Freak_Music_-_TO_CHILL_AND_STAY_AWAKE_-_01_Coexistenz/
+  bed-lofi-find-your-peace.ogg: "Find Your Peace" by HoliznaCC0 (Be Happy With Who You Are), CC0 1.0, https://freemusicarchive.org/music/holiznacc0/be-happy-with-who-you-are/find-your-peace/
+  bed-lofi-walking-away.ogg: "Walking Away" by HoliznaCC0 (Public Domain Lofi), CC0 1.0, https://freemusicarchive.org/music/holiznacc0/public-domain-lofi/walking-away-lofi-peaceful-motivating/
+  bed-cinematic-lullabies-5.ogg: "Lullabies For The End Of The World #5" by HoliznaCC0 (Lullabies For The End Of The World), CC0 1.0, https://freemusicarchive.org/music/holiznacc0/lullabies-for-the-end-of-the-world/lullabies-for-the-end-of-the-world-5/
+  bed-cinematic-dangerous-voyage.ogg: "Dangerous Voyage" by HoliznaCC0 (Background Music), CC0 1.0, https://freemusicarchive.org/music/holiznacc0/background-music/dangerous-voyage/
+
+Sound effects:
+  sfx-whoosh-in.ogg: "Whoosh", qubodup, "Swish - bamboo stick weapon swhoshes", swosh-03, CC0 1.0, https://opengameart.org/content/swish-bamboo-stick-weapon-swhoshes
+  sfx-whoosh-out.ogg: "Whoosh out", qubodup, "Swish - bamboo stick weapon swhoshes", swosh-13, CC0 1.0, https://opengameart.org/content/swish-bamboo-stick-weapon-swhoshes
+  sfx-whoosh-soft.ogg: "Soft whoosh", qubodup, "Swish - bamboo stick weapon swhoshes", swosh-16, CC0 1.0, https://opengameart.org/content/swish-bamboo-stick-weapon-swhoshes
+  sfx-swish-quick.ogg: "Quick swish", artisticdude, "Swishes Sound Pack", swish-9, CC0 1.0, https://opengameart.org/content/swishes-sound-pack
+  sfx-pop.ogg: "Pop", cogitollc, "Pop sounds", pop1, CC0 1.0, https://opengameart.org/content/pop-sounds
+  sfx-pop-soft.ogg: "Soft pop", cogitollc, "Pop sounds", pop3, CC0 1.0, https://opengameart.org/content/pop-sounds
+  sfx-pop-bubble.ogg: "Bubble pop", wubitog, "3 Pop Sounds", pop1, CC0 1.0, https://opengameart.org/content/3-pop-sounds
+  sfx-click.ogg: "Click", Kenney, Interface Sounds, click_001, CC0 1.0, https://opengameart.org/content/interface-sounds
+  sfx-tick.ogg: "Tick", Kenney, Interface Sounds, tick_002, CC0 1.0, https://opengameart.org/content/interface-sounds
+  sfx-bell.ogg: "Bell", PWL, "Bell dings/chimes", bell_ding2, CC0 1.0, https://opengameart.org/content/bell-dingschimes
+  sfx-chime.ogg: "Chime", Kenney, Interface Sounds, confirmation_001, CC0 1.0, https://opengameart.org/content/interface-sounds
+  sfx-success.ogg: "Success", qubodup, "6 user interface ding clicks", dingCling-positive, CC0 1.0, https://opengameart.org/content/6-user-interface-ding-clicks
+  sfx-rise.ogg: "Rise", Kenney, Interface Sounds, maximize_004, CC0 1.0, https://opengameart.org/content/interface-sounds
+  sfx-fall.ogg: "Fall", Kenney, Interface Sounds, minimize_004, CC0 1.0, https://opengameart.org/content/interface-sounds
+  sfx-bubble-in.ogg: "Bubble", Kenney, Interface Sounds, question_001, CC0 1.0, https://opengameart.org/content/interface-sounds
+  sfx-drop.ogg: "Drop", Kenney, Interface Sounds, drop_002, CC0 1.0, https://opengameart.org/content/interface-sounds
+
 
 ==============================================================================
 Rust crates compiled into the native helpers (ssw-capture.exe, ssw-speech.exe, ssw-speech-compat.exe)

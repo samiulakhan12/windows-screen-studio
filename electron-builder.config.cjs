@@ -3,7 +3,7 @@
 'use strict'
 
 const { resolveWindowsSigning } = require('./scripts/lib/signing.cjs')
-const { appFiles, nativeHelper, nativeHelperResource, nativeHelperStatus, noticesResource, SIGN_EXTS, speechHelperStatus, speechResources } = require('./scripts/lib/packaging.cjs')
+const { appFiles, nativeHelper, nativeHelperResource, nativeHelperStatus, noticesResource, SIGN_EXTS, soundLibraryResource, speechHelperStatus, speechResources } = require('./scripts/lib/packaging.cjs')
 
 const signing = resolveWindowsSigning(process.env, { projectDir: __dirname })
 for (const w of signing.warnings) console.warn(`  • code signing: ${w}`)
@@ -46,7 +46,7 @@ module.exports = {
   // Directory form on purpose: electron-builder copies a single-file `from` without its signing
   // transformer, so a file entry would ship the helpers unsigned in signed builds. The speech
   // helpers, the speech detector model and the notices live outside app.asar (docs/design/offline-captions.md §6.2).
-  extraResources: [...(helperStatus.bundle ? [nativeHelperResource()] : []), ...speechResources(), noticesResource()],
+  extraResources: [...(helperStatus.bundle ? [nativeHelperResource()] : []), ...speechResources(), soundLibraryResource(), noticesResource()],
   // The UI is English-only: Chromium's other 54 locale packs are ~50 MB of dead weight.
   electronLanguages: ['en-US'],
   compression: 'maximum',

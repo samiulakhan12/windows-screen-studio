@@ -842,6 +842,8 @@ describe('electron-builder.config.cjs', () => {
     expect(config.extraResources).toEqual([
       ...(packaging.nativeHelperStatus().bundle ? [packaging.nativeHelperResource()] : []),
       ...packaging.speechResources(),
+      // The sound library's bundled beds and effects (docs/design/editing-polish.md §10.3), outside app.asar.
+      packaging.soundLibraryResource(),
       packaging.noticesResource()
     ])
     // Nothing of the speech feature goes into app.asar or asarUnpack.

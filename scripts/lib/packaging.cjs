@@ -212,6 +212,19 @@ function noticesProblems(text) {
   return out
 }
 
+/**
+ * The sound library's bundled files (docs/design/editing-polish.md §10.3): 4 music beds and 16
+ * effects in resources/sound-library/ with SOUNDS.md, shipped outside app.asar because ffmpeg, a
+ * separate process, reads them from a real path. Opus does not compress further, so the installer
+ * grows by about the files' size: 2,776,628 bytes of sound, under these limits.
+ */
+const SOUND_LIBRARY_BUDGET = { compressed: 2.9e6, installed: 2.9e6 }
+
+/** The extraResources entry of the sound library: resources/sound-library/ at resources/sound-library. */
+function soundLibraryResource() {
+  return { from: 'resources/sound-library', to: 'sound-library', filter: ['*.ogg', 'SOUNDS.md'] }
+}
+
 /** The third-party notices (scripts/notices.mjs), shown from About: resources/THIRD_PARTY_NOTICES.txt. */
 function noticesResource() {
   return { from: 'resources', to: '.', filter: ['THIRD_PARTY_NOTICES.txt'] }
@@ -335,6 +348,8 @@ module.exports = {
   staleSpeechHelper,
   speechResources,
   noticesResource,
+  soundLibraryResource,
+  SOUND_LIBRARY_BUDGET,
   noticesProblems,
   NOTICE_NAMES,
   CAPTIONS_BUDGET,

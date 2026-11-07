@@ -1,0 +1,70 @@
+Licence evidence for the sound library (docs/design/editing-polish.md §10.1).
+Artist: John Bartmann (rejected)
+Page: https://www.johnbartmann.com/faq
+Fetched: 2026-11-06
+Quote: Creative Commons CC-BY 4.0 or public domain. Do credit me
+What follows is the page's text as fetched, with its markup removed.
+
+Create Next App JOHN BARTMANN
+WORK
+MUSIC
+CONTACT
+FAQ
+Find answers to questions about using my original music in your production.
+If I use your music, will I get flagged for copyright on YouTube?
+No. If you credit the music correctly, you won't get flagged.
+To credit the music correctly, copy this line of attribution to the description section of your video or project:
+Music by John Bartmann https://youtube.com/johnbartmannmusic is licensed as CC-BY 4.0 .
+If you're unable to do that, your video will get flagged by We Are Era Music (aka Frequency Digital).
+Can I use your music for free in my non-commercial video, film, promotional video, podcast, game, app, branded video on YouTube, TikTok, Instagram, Facebook or anywhere else online?
+Yes, but only when you add this link to the description section of your production:
+Music by John Bartmann https://youtube.com/johnbartmannmusic is licensed as CC-BY 4.0
+Can I monetize my YouTube videos?
+Yes, but only when you add this link to the description section of your production:
+Music by John Bartmann https://youtube.com/johnbartmannmusic is licensed as CC-BY 4.0
+When can I NOT use your music for free?
+When you're being hired to produce something with it. In that case, you'll need to get a license. View the ratecard.
+Do I need to ask pay to use your music in my commercial or sponsored projects?
+Yes, and I'll send you a license document and official email within 24 hours of payment. View the ratecard.
+What is the license type of your music?
+Creative Commons CC-BY 4.0 or public domain. Do credit me when you use them in your productions.
+Do you own the rights to reproduce this music?
+Yes. All the music was written and recorded by me or someone I’ve hired.
+Can I resell your music?
+No. All tracks have their own ISRC numbers, and are copyright protected for unauthorized use. For business inquiries, Contact me
+Can I add your music to my own music-related website?
+Yes, but only when you add this link to every track of mine which appears on your website:
+Music by John Bartmann https://youtube.com/johnbartmannmusic is licensed as CC-BY 4.0
+If I want to credit you, how exactly do I do it?
+Add this link to the description section of your production:
+Music by John Bartmann https://youtube.com/johnbartmannmusic is licensed as CC-BY 4.0
+Do I need to credit you if I purchase the music?
+No. If you have paid and received a copyright notification, contact me with the email address you used during the paid download and I'll whitelist you.
+How do I download MIDI, sheet music or MusicXML?
+Contact me directly for any of the above.
+Am I able to re-use the music multiple times?
+Yes, but only when you add this link to the description section of each episode:
+Music by John Bartmann https://youtube.com/johnbartmannmusic is licensed as CC-BY 4.0
+Can I please have a written license documentation with my purchase?
+Yes. Contact me to acquire your license.
+Am I able to specify a license holder other than myself?
+Yes.
+Can you compose new music specifically for my project?
+Sure. Contact me with a proposal to write some original music.
+How much do you charge to write original music?
+Commissions start at US$200 and depend on how urgently you need the composition, how sophisticated it needs to be and what the intended usage is. Contact me .
+Can I submit my own music to be published on your site?
+No
+How do I pay you or buy something from you?
+Your options are: 1. Purchase the files directly on Gumroad, Bandcamp, Patreon or wherever else you find them. You will then have unlimited access to the files. 2. Pay me directly via PayPal, Wise or bank transfer. I will send you the files in a zip folder.
+Am I able to download music on an iPad or iPhone?
+No, you’ll need to use a desktop computer, laptop or Android device.
+Can I use your music in my commercial, sponsored, promotional or otherwise licensed production?
+Yes, but not for free. For example, if you're making a TV show for a web streaming service, you'll need to get a license. Here's the ratecard.
+Can I release your music as part of my own song?
+Yes, but you can't release it on streaming services.
+Can I edit your music in my production?
+Yes. You can cut, loop, and use additional effects on any of the downloaded tracks in your production. For example, you might want to loop a track to fit the length of your video or podcast segment.
+I have a question you didn’t answer here
+OK, contact me directly.
+© 2024 John Bartmann
