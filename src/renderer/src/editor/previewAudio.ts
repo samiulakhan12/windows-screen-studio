@@ -3,17 +3,19 @@ import { duckKeyframes, fadeGainAt, fadeKeyframes, gainAt, keyIndexAt, type Keyf
 import { normalizeGain, type AudioLevels } from '../../../shared/audio/loudness'
 import { activitySources, audioLook, musicEnd, needsAudioGraph, recordingMix, SOURCE_FILES, STEM_KINDS, type AudioLook, type AudioSource, type StemKind } from '../../../shared/audio/settings'
 import { analysisSources, editLoudness, heardActivity, heardLevels, musicDucking, type AudioAnalysis } from '../../../shared/audio/soundtrack'
+import { bedLoop, bedSeconds, bedTime, LIBRARY_RATE, soundBed, soundEffect, type MusicBed } from '../../../shared/audio/soundLibrary'
 import { voiceLook, voiceTarget, withCleanVoice, type VoiceSource } from '../../../shared/audio/voiceClean'
 import { soundGains, soundOutputKeyframes } from '../../../shared/audio/soundsEdit'
 import { MAX_ELEMENT_RATE, MIN_ELEMENT_RATE } from '../../../shared/editor/shuttle'
 import { editToVideo, NO_FREEZES, planOf, videoDuration, type FreezePlan, type Hold } from '../../../shared/engine/freeze'
 import { clamp } from '../../../shared/engine/math'
 import { outputDuration, playableFrom, sourceToOutput } from '../../../shared/engine/timeline'
-import { mediaUrl } from '../../../shared/mediaUrl'
+import { MEDIA_SCHEME, mediaUrl } from '../../../shared/mediaUrl'
 import type { Project } from '../../../shared/types'
 import { fadesInAfterHold } from '../../../shared/render/audioPlan'
 import { POP_VOLUME, popJob, popWaveform, toneJob, toneWaveform } from '../../../shared/render/popSound'
 import { CUT_FADE, cutFadeAhead, editHasCuts } from '../../../shared/render/cutFades'
+import { sfxJob } from '../../../shared/render/sfxJob'
 import { fontGeneration } from '../render/fontLoader'
 import { graphicShown } from '../render/graphicsLayer'
 import { loadAudioAnalysis } from './audioAnalysis'
@@ -54,13 +56,35 @@ interface Graph {
   /** Captions Studio's pops (at POP_VOLUME) and bleep tones (their gain is in their samples), under the soundtrack's fades as exported. */
   pops: GainNode
   tones: GainNode
+  /** The library's sound effects at the effects' volume (editing polish §10.9); made when the first one plays, so an old project's graph is as before. */
+  sfx: GainNode | null
 }
 
-/** The pops and bleep tones of the project in output seconds (popJob, toneJob), and what they were made from. */
+/** The pops, bleep tones and library effects of the project in output seconds (popJob, toneJob, sfxJob), and what they were made from. */
 interface Effects {
   from: readonly unknown[]
   pops: { times: number[]; sound: 'pop' | 'ding' }[]
   tones: { start: number; end: number }[]
+  sfx: { id: string; times: number[]; gain: number }[]
+}
+
+/**
+ * A library bed (editing polish §10.4): its file decoded once and played by a buffer node that loops
+ * from S to E, on the music's gain chain. Its position is tracked from where the node started and
+ * every rate change, wrapped at the loop, so the drift loop can compare it with bedTime(out).
+ */
+interface Bed {
+  bed: MusicBed
+  path: string
+  buffer: AudioBuffer | null
+  /** Decoding failed, or the file is not the catalogue's (its length differs): it plays as a user's own file. */
+  failed: boolean
+  node: AudioBufferSourceNode | null
+  /** The node's position: `offset` seconds into the buffer at context time `at`, moving at `rate`. */
+  pos: { at: number; offset: number; rate: number } | null
+  gain: GainNode
+  fade: GainNode
+  duck: GainNode
 }
 
 interface Source {
@@ -190,6 +214,16 @@ export class PreviewAudio {
   private effectsUntil: number | null = null
   private readonly effectVoices = new Set<AudioBufferSourceNode>()
   private readonly popBuffers = new Map<'pop' | 'ding', AudioBuffer>()
+  /** The library's effects, decoded once from the sounds host (null: failed), by id. */
+  private readonly sfxBuffers = new Map<string, AudioBuffer | null>()
+  private readonly sfxLoading = new Set<string>()
+  /** A library bed in use (editing polish §10.4), in place of the music element. */
+  private bed: Bed | null = null
+  /** Bed files whose decoded length is not the catalogue's: they play as users' own files. */
+  private readonly notBeds = new Set<string>()
+  /** The video waits for data (waiting, stalled): the bed stops until it plays again. */
+  private stalled = false
+  private readonly offScreen: () => void
 
   constructor(
     private readonly screen: HTMLVideoElement,
@@ -200,6 +234,21 @@ export class PreviewAudio {
     this.plan = planOf(project)
     this.length = videoDuration(project.clips, this.plan)
     this.clipsKey = clipsKeyOf(project)
+    // The video's clock stops while it waits for data; the context's does not: a bed waits too (§10.4).
+    const stall = (): void => this.setStalled(true)
+    const resume = (): void => this.setStalled(false)
+    const el = screen as Partial<HTMLVideoElement>
+    if (typeof el.addEventListener === 'function') {
+      el.addEventListener('waiting', stall)
+      el.addEventListener('stalled', stall)
+      el.addEventListener('playing', resume)
+    }
+    this.offScreen = () => {
+      if (typeof el.removeEventListener !== 'function') return
+      el.removeEventListener('waiting', stall)
+      el.removeEventListener('stalled', stall)
+      el.removeEventListener('playing', resume)
+    }
     this.apply()
   }
 
@@ -209,8 +258,17 @@ export class PreviewAudio {
     const prev = this.project
     this.project = project
     const timing = project.clips !== prev.clips || project.freezes !== prev.freezes
-    // Captions Studio's pops and bleeps play through the graph too (needsAudioGraph).
-    const effects = project.graphics !== prev.graphics || project.bleeps !== prev.bleeps || project.captions !== prev.captions || project.transcript !== prev.transcript
+    // Captions Studio's pops and bleeps play through the graph too (needsAudioGraph), and the library's effects.
+    const effects =
+      project.graphics !== prev.graphics ||
+      project.bleeps !== prev.bleeps ||
+      project.captions !== prev.captions ||
+      project.transcript !== prev.transcript ||
+      project.soundFx !== prev.soundFx ||
+      project.zooms !== prev.zooms ||
+      project.annotations !== prev.annotations ||
+      project.shapes !== prev.shapes ||
+      project.titles !== prev.titles
     if (project.audio !== prev.audio || project.hasAudio !== prev.hasAudio || project.audioStems !== prev.audioStems || timing || effects || project.sounds !== prev.sounds) {
       this.look = audioLook(project.audio)
       this.plan = planOf(project)
@@ -234,6 +292,8 @@ export class PreviewAudio {
   /** Loads the music file again (a new pick replaced it under the same name). */
   reloadMusic(): void {
     this.disposeMusic()
+    this.disposeBed()
+    this.notBeds.clear()
     this.apply()
   }
 
@@ -381,7 +441,7 @@ export class PreviewAudio {
       this.screen.muted = this.silent
       this.screen.volume = 1
       if (!this.playing && !this.silent) void ctx.suspend()
-      this.graph = { ctx, screen, rec, limiter, master, cut, sounds, pops, tones }
+      this.graph = { ctx, screen, rec, limiter, master, cut, sounds, pops, tones, sfx: null }
     } catch (err) {
       // Without Web Audio the preview plays the video's own track; the export applies everything.
       console.warn('Sound effects are not available in the preview:', err)
@@ -406,10 +466,20 @@ export class PreviewAudio {
     return stem
   }
 
+  /** The library bed the music is (a catalogue id, its file not found to differ), or null: a user's own file. */
+  private bedOf(): MusicBed | null {
+    const m = this.look.music
+    const bed = m?.library ? soundBed(m.library.id) : null
+    return bed && m && !this.notBeds.has(m.path) ? bed : null
+  }
+
   private applyMusic(g: Graph): void {
     const m = this.look.music
-    if (this.music && (!m || m.path !== this.music.path)) this.disposeMusic()
+    const bed = this.bedOf()
+    if (this.bed && (!m || !bed || m.path !== this.bed.path || bed.id !== this.bed.bed.id)) this.disposeBed()
+    if (this.music && (!m || m.path !== this.music.path || bed)) this.disposeMusic()
     if (!m) return
+    if (bed) return this.applyBed(g, bed, m)
     if (m.volume <= 0) {
       // Turned all the way down: silent and idle, ready to come back.
       if (this.music) {
@@ -453,6 +523,144 @@ export class PreviewAudio {
     m.duck.disconnect()
     m.el.removeAttribute('src')
     m.el.load()
+  }
+
+  /* ---------- a library bed (editing polish §10.4) ---------- */
+
+  /** The bed's chain (today's music gains), its file decoded once from the project. */
+  private applyBed(g: Graph, bed: MusicBed, m: NonNullable<AudioLook['music']>): void {
+    if (!this.bed) {
+      const gain = g.ctx.createGain()
+      const fade = g.ctx.createGain()
+      const duck = g.ctx.createGain()
+      gain.connect(fade).connect(duck).connect(g.master)
+      const b: Bed = { bed, path: m.path, buffer: null, failed: false, node: null, pos: null, gain, fade, duck }
+      this.bed = b
+      this.scheduledKey = ''
+      void this.decodeBed(g, b)
+    }
+    this.bed.gain.gain.value = m.volume
+    if (m.volume <= 0) return this.stopBed()
+    if (this.playing) this.syncBed(false)
+  }
+
+  private async decodeBed(g: Graph, b: Bed): Promise<void> {
+    try {
+      const data = await (await fetch(mediaUrl(this.project.id, b.path))).arrayBuffer()
+      const buffer = await g.ctx.decodeAudioData(data)
+      if (this.bed !== b || this.disposed) return
+      // The catalogue's file holds E + pad samples at 48 kHz; any other plays as a user's own file.
+      if (Math.abs(buffer.duration - b.bed.prepared.samples / LIBRARY_RATE) > 0.01) {
+        console.warn('The music file is not the library bed it names; it plays as your own file.')
+        this.notBeds.add(b.path)
+        this.disposeBed()
+        this.apply()
+        return
+      }
+      b.buffer = buffer
+      if (this.playing) this.syncBed(true)
+    } catch (err) {
+      if (this.bed !== b) return
+      b.failed = true
+      console.warn('The background music could not be played in the preview:', err)
+    }
+  }
+
+  /** Where the bed's node is in its buffer now (seconds), wrapped at the loop. */
+  private bedPosition(b: Bed, now: number): number | null {
+    const pos = b.pos
+    if (!pos) return null
+    const p = pos.offset + pos.rate * (now - pos.at)
+    const { start, end } = bedLoop(b.bed)
+    const s = start / LIBRARY_RATE
+    const e = end / LIBRARY_RATE
+    if (b.node?.loop && p >= e && e > s) return s + ((p - s) % (e - s))
+    return p
+  }
+
+  /** A new node playing the bed from buffer second `at` (bedTime), now. */
+  private startBed(g: Graph, b: Bed, at: number, loop: boolean): void {
+    this.stopBed()
+    if (!b.buffer) return
+    const node = g.ctx.createBufferSource()
+    node.buffer = b.buffer
+    const { start, end } = bedLoop(b.bed)
+    node.loop = loop
+    if (loop) {
+      node.loopStart = start / LIBRARY_RATE
+      node.loopEnd = end / LIBRARY_RATE
+    }
+    node.playbackRate.value = this.view
+    node.connect(b.gain)
+    const now = g.ctx.currentTime
+    // Without Loop it stops at E: the pad after it is never played.
+    if (loop) node.start(now, at)
+    else node.start(now, at, Math.max(0, end / LIBRARY_RATE - at))
+    b.node = node
+    b.pos = { at: now, offset: at, rate: this.view }
+  }
+
+  private stopBed(): void {
+    const b = this.bed
+    if (!b?.node) return
+    try {
+      b.node.stop()
+    } catch {
+      // Already stopped.
+    }
+    b.node.disconnect()
+    b.node = null
+    b.pos = null
+  }
+
+  private disposeBed(): void {
+    const b = this.bed
+    if (!b) return
+    this.stopBed()
+    this.bed = null
+    b.duck.disconnect()
+    b.buffer = null
+  }
+
+  /**
+   * Keeps the bed at bedTime(out) of source time `t` (the video's clock): within MUSIC_SEEK its
+   * rate is nudged, beyond it a new node starts there; `hard` starts one at once.
+   */
+  private syncBed(hard: boolean, t = this.screen.currentTime): void {
+    const g = this.graph
+    const b = this.bed
+    const m = this.look.music
+    if (!g || !b || !b.buffer || !m || m.volume <= 0 || !this.playing) return
+    if (this.stalled) return this.stopBed()
+    const out = this.outputAt(t)
+    const end = musicEnd(this.length, bedSeconds(b.bed), m.loop)
+    if (out >= end - 1e-3) return this.stopBed()
+    const want = bedTime(b.bed, out, m.loop)
+    const now = g.ctx.currentTime
+    const at = this.bedPosition(b, now)
+    if (hard || at === null || !b.node || b.node.loop !== m.loop) return this.startBed(g, b, want, m.loop)
+    let drift = at - want
+    if (m.loop) {
+      // Inside the loop, the shorter way round.
+      const { start, end: e } = bedLoop(b.bed)
+      const body = (e - start) / LIBRARY_RATE
+      if (at >= start / LIBRARY_RATE && want >= start / LIBRARY_RATE && body > 0) drift = ((((drift + body / 2) % body) + body) % body) - body / 2
+    }
+    if (Math.abs(drift) > MUSIC_SEEK) return this.startBed(g, b, want, m.loop)
+    const rate = clamp(this.view * nudge(drift, MUSIC_NUDGE), MIN_ELEMENT_RATE, MAX_ELEMENT_RATE)
+    const pos = b.pos!
+    if (Math.abs(pos.rate - rate) > 1e-4) {
+      b.pos = { at: now, offset: at, rate }
+      b.node.playbackRate.value = rate
+    }
+  }
+
+  /** The video waits for data (or plays again): the bed stops meanwhile and starts again where the video is. */
+  private setStalled(on: boolean): void {
+    if (this.stalled === on) return
+    this.stalled = on
+    if (on) this.stopBed()
+    else if (this.playing) this.syncBed(true)
   }
 
   /* ---------- measurements ---------- */
@@ -520,7 +728,7 @@ export class PreviewAudio {
       look.fadeIn,
       look.fadeOut,
       length,
-      m ? [m.path, m.loop, m.fadeIn, m.fadeOut, m.ducking, this.music?.duration].join() : '',
+      m ? [m.path, m.loop, m.fadeIn, m.fadeOut, m.ducking, this.musicLength()].join() : '',
       this.ducks && this.soundRanges() ? this.activity.key : 'none',
       this.soundSpansKey()
     ].join('|')
@@ -550,7 +758,7 @@ export class PreviewAudio {
     if (this.curveMemo.key === key) return this.curveMemo.value
     const { look, length } = this
     const m = look.music
-    const end = m ? musicEnd(length, this.music?.duration ?? null, m.loop) : length
+    const end = m ? musicEnd(length, this.musicLength(), m.loop) : length
     const duck = this.ducks ? musicDucking(this.project, this.soundRanges()) : null
     const value: Curves = {
       master: fadeKeyframes(length, look.fadeIn, look.fadeOut),
@@ -560,6 +768,11 @@ export class PreviewAudio {
     }
     this.curveMemo = { key, value }
     return value
+  }
+
+  /** The music's length: a bed's one pass (E / 48000, §10.4), else the file's once known. */
+  private musicLength(): number | null {
+    return this.bed ? bedSeconds(this.bed.bed) : (this.music?.duration ?? null)
   }
 
   /** Schedules the automation again when the curves or the edit's timing (the playhead's output time) changed. */
@@ -583,6 +796,10 @@ export class PreviewAudio {
     if (this.music) {
       this.ramp(this.music.fade.gain, c.musicFade, out, now)
       this.ramp(this.music.duck.gain, c.duck, out, now)
+    }
+    if (this.bed) {
+      this.ramp(this.bed.fade.gain, c.musicFade, out, now)
+      this.ramp(this.bed.duck.gain, c.duck, out, now)
     }
   }
 
@@ -660,6 +877,7 @@ export class PreviewAudio {
     this.playing = false
     for (const stem of this.stems.values()) stem.el.pause()
     this.music?.el.pause()
+    this.stopBed()
     this.stopEffects()
     const g = this.graph
     if (!g) return
@@ -820,6 +1038,7 @@ export class PreviewAudio {
 
   /** Keeps the music at the output time of source time `t`; `hard` moves it there at once. */
   private syncMusic(hard: boolean, t = this.screen.currentTime): void {
+    if (this.bed) return this.syncBed(hard, t)
     const music = this.music
     const m = this.look.music
     if (!music || music.failed || !m || m.volume <= 0 || !this.playing) return
@@ -852,10 +1071,33 @@ export class PreviewAudio {
    */
   private effectsOf(): Effects {
     const p = this.project
-    const from = [p.graphics, p.bleeps, p.clips, p.freezes, p.captions, p.transcript, p.style, p.crop, p.reframe, p.captionMarks, p.fonts, fontGeneration()]
+    const from = [
+      p.graphics,
+      p.bleeps,
+      p.clips,
+      p.freezes,
+      p.captions,
+      p.transcript,
+      p.style,
+      p.crop,
+      p.reframe,
+      p.captionMarks,
+      p.fonts,
+      fontGeneration(),
+      // The library's effects (editing polish §10.9): sfxJob's inputs, and the progress bar's band, which moves the graphics.
+      p.zooms,
+      p.zoomSettings,
+      p.annotations,
+      p.shapes,
+      p.titles,
+      p.soundFx,
+      p.effects,
+      p.chapterBar
+    ]
     const e = this.effects
     if (e && e.from.length === from.length && e.from.every((v, i) => v === from[i])) return e
-    this.effects = { from, pops: popJob(p, (g) => graphicShown(p, g).start), tones: toneJob(p) }
+    const startOf = (g: Parameters<typeof graphicShown>[1]): number => graphicShown(p, g).start
+    this.effects = { from, pops: popJob(p, startOf), tones: toneJob(p), sfx: sfxJob(p, startOf) }
     return this.effects
   }
 
@@ -867,7 +1109,8 @@ export class PreviewAudio {
   private effectsStep(g: Graph, t: number): void {
     if (this.silent) return
     const fx = this.effectsOf()
-    if (fx.pops.length === 0 && fx.tones.length === 0) return
+    if (fx.pops.length === 0 && fx.tones.length === 0 && fx.sfx.length === 0) return
+    for (const e of fx.sfx) this.loadSfx(g, e.id)
     const out = this.outputAt(t)
     const now = g.ctx.currentTime
     const upto = out + EFFECTS_AHEAD * this.view
@@ -889,10 +1132,21 @@ export class PreviewAudio {
       if (tone.start < from || (!fresh && tone.start === from) || tone.start > upto) continue
       this.startVoice(g, g.tones, this.toneBuffer(g, tone.end - tone.start), at(tone.start), 0)
     }
+    // The library's effects (editing polish §10.9): each voice stops where the next sound of its effect starts, as the export's click track cuts it.
+    for (const e of fx.sfx) {
+      const buffer = this.sfxBuffers.get(e.id)
+      if (!buffer) continue
+      const into = this.sfxGain(g, e.gain)
+      e.times.forEach((time, i) => {
+        if (time < from || (!fresh && time === from) || time > upto) return
+        const next = e.times[i + 1]
+        this.startVoice(g, into, buffer, at(time), 0, next !== undefined ? at(next) : undefined)
+      })
+    }
     this.effectsUntil = upto
   }
 
-  private startVoice(g: Graph, into: GainNode, buffer: AudioBuffer, when: number, offset: number): void {
+  private startVoice(g: Graph, into: GainNode, buffer: AudioBuffer, when: number, offset: number, until?: number): void {
     const voice = g.ctx.createBufferSource()
     voice.buffer = buffer
     // At the preview's speed (E-08) a sound plays at its own pitch and length, as a click does.
@@ -903,6 +1157,36 @@ export class PreviewAudio {
     }
     this.effectVoices.add(voice)
     voice.start(when, Math.max(0, offset))
+    if (until !== undefined) voice.stop(until)
+  }
+
+  /** The library effects' gain node (made when the first one plays, into the master as the pops'). */
+  private sfxGain(g: Graph, gain: number): GainNode {
+    if (!g.sfx) {
+      g.sfx = g.ctx.createGain()
+      g.sfx.connect(g.master)
+    }
+    if (g.sfx.gain.value !== gain) g.sfx.gain.value = gain
+    return g.sfx
+  }
+
+  /** Decodes library effect `id` once, from the sounds host of the media protocol. */
+  private loadSfx(g: Graph, id: string): void {
+    if (this.sfxBuffers.has(id) || this.sfxLoading.has(id)) return
+    const fx = soundEffect(id)
+    if (!fx) return
+    this.sfxLoading.add(id)
+    void (async () => {
+      try {
+        const data = await (await fetch(`${MEDIA_SCHEME}://sounds/${encodeURIComponent(fx.prepared.file)}`)).arrayBuffer()
+        this.sfxBuffers.set(id, await g.ctx.decodeAudioData(data))
+      } catch (err) {
+        this.sfxBuffers.set(id, null)
+        console.warn('A sound effect could not be played in the preview:', err)
+      } finally {
+        this.sfxLoading.delete(id)
+      }
+    })()
   }
 
   private popBuffer(g: Graph, sound: 'pop' | 'ding'): AudioBuffer {
@@ -954,6 +1238,8 @@ export class PreviewAudio {
     }
     this.stems.clear()
     this.disposeMusic()
+    this.disposeBed()
+    this.offScreen()
     this.stopEffects()
     void this.graph?.ctx.close()
     this.graph = null
