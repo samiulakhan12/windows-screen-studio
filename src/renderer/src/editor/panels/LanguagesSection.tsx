@@ -8,7 +8,7 @@
  * licences (§0.3 item 5): OFFLINE_TRANSLATION is its seam.
  */
 import { useCallback, useEffect, useId, useRef, useState } from 'react'
-import type { AiProviderInfo, AiTextResult } from '../../../../shared/api/ai'
+import type { AiProviderInfo, AiTextResult, TextChoice } from '../../../../shared/api/ai'
 import { captionsToTranslate, languageName, languagesToAdd, trackOf, trackRows, withoutTrack, withShownTrack, withTranslation } from '../../../../shared/captions/captionTracks'
 import { MAX_TRACKS } from '../../../../shared/captions/studioData'
 import type { Project } from '../../../../shared/types'
@@ -18,7 +18,9 @@ import { useEditor } from '../context'
 import { Section } from '../controls'
 import { lastInputWasKey } from '../focus'
 import { useReturnFocus } from '../returnFocus'
-import { placeOf } from '../../ai/textChoices'
+import { madeBy, sentHint, useTextChoiceList } from '../../ai/textChoices'
+import { CostLine } from '../../ai/CostLine'
+import { LocalProgress } from '../../ai/LocalProgress'
 
 /**
  * Whether On this PC is offered. TODO(phase B): Mozilla's translation models and runtime
@@ -93,7 +95,8 @@ function stopJob(job: Job): void {
 
 export function LanguagesSection({ project }: { project: Project }): JSX.Element {
   const { store } = useEditor()
-  const providers = useTextProviders()
+  // The providers, services and On this PC (smart-tools.md §20.0), each named by the place its text goes.
+  const providers = useTextChoiceList('translate')
   const list = providers ?? []
   const [adding, setAdding] = useState(false)
   const [language, setLanguage] = useState('')
@@ -184,7 +187,7 @@ export function LanguagesSection({ project }: { project: Project }): JSX.Element
     }
   })
 
-  const translate = async (code: string, provider: AiProviderInfo, again: boolean): Promise<void> => {
+  const translate = async (code: string, provider: TextChoice, again: boolean): Promise<void> => {
     if (running.current) return
     // A new language when the project keeps the most: the answer could not be kept, so nothing is sent.
     if (!trackOf(store.state, code) && (store.state.captionTracks?.length ?? 0) >= MAX_TRACKS) {
@@ -213,11 +216,14 @@ export function LanguagesSection({ project }: { project: Project }): JSX.Element
       if (live.current) setJob((j) => (j === mine ? null : j))
     }
     if (mine.cancelled || !live.current) return
+    // Who made it (smart-tools.md §10.6): the provider's kind, a service's host, or this PC with its model.
+    const maker = await madeBy(provider)
+    if (mine.cancelled || !live.current) return
     let used = false
     // One undo step; nothing changes when the answer cannot be used.
     store.update((p) => {
       const next =
-        result.task === 'translate' ? withTranslation(p, { language: code, by: provider.kind, model: provider.model, createdAt: new Date().toISOString(), sent, answer: result.segments }) : null
+        result.task === 'translate' ? withTranslation(p, { language: code, ...maker, createdAt: new Date().toISOString(), sent, answer: result.segments }) : null
       used = !!next
       return next ?? p
     })
@@ -241,9 +247,10 @@ export function LanguagesSection({ project }: { project: Project }): JSX.Element
   const rows = trackRows(project)
   const full = (project.captionTracks?.length ?? 0) >= MAX_TRACKS
   const noProviders = providers !== null && list.length === 0
-  const againWith = (code: string): AiProviderInfo | null => {
+  const againWith = (code: string): TextChoice | null => {
     const track = trackOf(project, code)
-    return list.find((p) => p.kind === track?.by) ?? list[0] ?? null
+    // The same provider kind, through the same service when it says one (smart-tools.md §10.6).
+    return list.find((p) => p.kind === track?.by && p.host === track?.host) ?? list.find((p) => p.kind === track?.by) ?? list[0] ?? null
   }
   /** Track row `code`'s Translate again when it can take the focus, else its Show on the video radio. */
   const rowControl = (code: string): HTMLElement | null => {
@@ -395,19 +402,41 @@ export function LanguagesSection({ project }: { project: Project }): JSX.Element
             <div className="chips" role="group" aria-label="Translate with">
               {list.map((p) => (
                 <button key={p.id} className={`chip ${chosenVia?.id === p.id ? 'active' : ''}`} aria-pressed={chosenVia?.id === p.id} disabled={!!job} onClick={() => setVia(p.id)}>
-                  {providerName(p)}
+                  {p.label}
                 </button>
               ))}
             </div>
-            {chosenVia && <p className="hint">The captions' text is sent to {placeOf(chosenVia)} with your key; their timing stays.</p>}
+            {chosenVia && <p className="hint">{sentHint(chosenVia, "The captions' text", '; their timing stays')}</p>}
             <div className="row start">
-              <button ref={translateButton} className="btn small primary" data-testid="track-translate" disabled={!chosenLanguage || !chosenVia || !!job} onClick={() => chosenVia && void translate(chosenLanguage, chosenVia, false)}>
+              <button
+                ref={translateButton}
+                id={`${group}-translate`}
+                className="btn small primary"
+                data-testid="track-translate"
+                aria-describedby={chosenVia ? `${group}-cost-translate` : undefined}
+                disabled={!chosenLanguage || !chosenVia || !!job}
+                onClick={() => chosenVia && void translate(chosenLanguage, chosenVia, false)}
+              >
                 Translate
               </button>
               <button className="btn small ghost" disabled={!!job} onClick={() => close()}>
                 Close
               </button>
             </div>
+            {/* What Translate sends, where, and what it costs (smart-tools.md §11.5), part P5's. */}
+            <CostLine
+              id={`${group}-cost`}
+              choice={chosenVia}
+              full
+              actions={[
+                {
+                  key: 'translate',
+                  label: 'Translate',
+                  buttonId: `${group}-translate`,
+                  request: chosenLanguage ? () => ({ task: 'translate', segments: captionsToTranslate(store.state, chosenLanguage), targetLanguage: languageName(chosenLanguage) }) : null
+                }
+              ]}
+            />
           </div>
         )}
 
@@ -419,6 +448,7 @@ export function LanguagesSection({ project }: { project: Project }): JSX.Element
             <button ref={cancelButton} className="btn small ghost" onClick={cancel}>
               Cancel
             </button>
+            <LocalProgress requestId={job.id} onStop={cancel} />
           </div>
         )}
         {error && (

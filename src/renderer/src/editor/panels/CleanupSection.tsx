@@ -13,7 +13,9 @@ import { currentWordList, ipcMessage, loadWordList, onSectionRequest, onWordList
 import { useEditor } from '../context'
 import { useReturnFocus } from '../returnFocus'
 import { Chips, Section } from '../controls'
-import { providerName, useTextProviders } from './LanguagesSection'
+import { useTextChoiceList } from '../../ai/textChoices'
+import { CostLine } from '../../ai/CostLine'
+import { LocalProgress } from '../../ai/LocalProgress'
 
 const DIGITS: { value: CleanupChoices['digits']; label: string }[] = [
   { value: 'above-ten', label: 'Above ten' },
@@ -57,12 +59,15 @@ const heardForms = (text: string): string[] => text.split(',').map((s) => s.trim
 
 export function CleanupSection({ project }: { project: Project }): JSX.Element {
   const { store } = useEditor()
-  const listed = useTextProviders()
+  // The providers, services and On this PC (smart-tools.md §20.0), each named by the place its text goes.
+  const listed = useTextChoiceList('cleanup')
   const providers = listed ?? []
   const [choices, setChoices] = useState<CleanupChoices>({ ...DEFAULT_CLEANUP })
   const words = useSyncExternalStore(onWordList, currentWordList)
   const [provider, setProvider] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
+  /** The AI fix's request id while it runs: AI on this PC shows its progress beside Cancel, and Stop reaches it. */
+  const [running, setRunning] = useState<string | null>(null)
   const [status, setStatus] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [addingWord, setAddingWord] = useState(false)
@@ -179,6 +184,7 @@ export function CleanupSection({ project }: { project: Project }): JSX.Element {
       const mine = { cancelled: false, id: `captions-cleanup-${++cleanupSeq}` }
       run.current = mine
       setBusy(true)
+      setRunning(mine.id)
       try {
         const result = await window.api.aiText(chosen.id, { task: 'cleanup', segments: asked }, mine.id)
         if (mine.cancelled || !live.current) return
@@ -191,7 +197,10 @@ export function CleanupSection({ project }: { project: Project }): JSX.Element {
         // Only the run still going: a cancelled run's late answer leaves the next run busy (and its Cancel).
         if (run.current === mine) {
           run.current = null
-          if (live.current) setBusy(false)
+          if (live.current) {
+            setBusy(false)
+            setRunning(null)
+          }
         }
       }
     }
@@ -222,6 +231,7 @@ export function CleanupSection({ project }: { project: Project }): JSX.Element {
     if (run.current) stopRun(run.current)
     run.current = null
     setBusy(false)
+    setRunning(null)
     setStatus('Tidy captions was cancelled; nothing was changed.')
   }
 
@@ -324,7 +334,7 @@ export function CleanupSection({ project }: { project: Project }): JSX.Element {
                 <select className="captions-select" data-testid="cleanup-ai-provider" value={chosen?.id ?? ''} onChange={(e) => setProvider(e.target.value)}>
                   {providers.map((p) => (
                     <option key={p.id} value={p.id}>
-                      {providerName(p)}
+                      {p.label}
                     </option>
                   ))}
                 </select>
@@ -334,7 +344,14 @@ export function CleanupSection({ project }: { project: Project }): JSX.Element {
         )}
 
         <div className="row start">
-          <button className="btn small primary" data-testid="cleanup-run" disabled={busy || !project.transcript?.segments.length} onClick={() => void tidy()}>
+          <button
+            id="cleanup-run"
+            className="btn small primary"
+            data-testid="cleanup-run"
+            aria-describedby={ai ? 'cleanup-cost-fix' : undefined}
+            disabled={busy || !project.transcript?.segments.length}
+            onClick={() => void tidy()}
+          >
             {busy ? 'Working…' : 'Tidy captions'}
           </button>
           {busy && (
@@ -342,7 +359,17 @@ export function CleanupSection({ project }: { project: Project }): JSX.Element {
               Cancel
             </button>
           )}
+          <LocalProgress requestId={running} onStop={cancel} />
         </div>
+        {/* What Fix spelling with AI sends, where, and what it costs (smart-tools.md §11.5), part P5's. */}
+        {ai && (
+          <CostLine
+            id="cleanup-cost"
+            choice={chosen}
+            full
+            actions={[{ key: 'fix', label: 'Fix spelling', buttonId: 'cleanup-run', request: () => ({ task: 'cleanup', segments: store.state.transcript?.segments ?? [] }) }]}
+          />
+        )}
         {error && (
           <p className="captions-error" role="alert">
             {error}

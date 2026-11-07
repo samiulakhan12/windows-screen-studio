@@ -14,6 +14,12 @@ export interface FindChapterOptions {
   split?: string
 }
 
+/**
+ * Whether Find chapters is built (part P2 sets it to true with runFindChapters' body). Until then
+ * the Captions tab's Suggest chapters runs the chapters task alone, as before (§7.6.1).
+ */
+export const FIND_CHAPTERS_BUILT: boolean = false
+
 export async function runFindChapters(deps: {
   store: EditStore<Project>
   recorded: CursorTrack

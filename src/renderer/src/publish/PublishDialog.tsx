@@ -4,7 +4,7 @@
  * copied exactly as shown; the YouTube description gets its chapter timestamps from the timeline.
  */
 import { useEffect, useMemo, useRef, useState } from 'react'
-import type { AiProviderInfo } from '../../../shared/api/ai'
+import type { AiTextRequest, TextChoice } from '../../../shared/api/ai'
 import { notedPieces, saidLinks, type Noted, type Said as Spoken } from '../../../shared/publish/check'
 import { BLOCKER_TEXT, PUBLISH_KINDS, PUBLISH_LABELS, PUBLISH_LENGTHS, PUBLISH_TONES, publishBlocker, publishSegments, transcriptKey, type PublishKind, type PublishPrefs } from '../../../shared/publish/pack'
 import { plainText, xLength, X_LIMIT } from '../../../shared/publish/text'
@@ -19,11 +19,17 @@ import { useModalFocus } from '../editor/modalFocus'
 import { useAiProviders } from '../editor/panels/CaptionsPanel'
 import { checkNote, NotedConfirm, type NotedAsk } from './checkNote'
 import { loadPublishPrefs, savePublishPrefs } from './publishPrefs'
-import { editItem, isRunning, seedItem, stopAll, stopItem, usePackItems, writeItem, type PackItem, type WriteContext } from './publishRun'
+import { editItem, isRunning, itemRequestId, packRequest, seedItem, stopAll, stopItem, usePackItems, writeItem, type PackItem, type WriteContext } from './publishRun'
+import { textChoicesOf } from '../ai/textChoices'
+import { useLocalAiReady } from '../ai/localAiState'
+import { CostLine } from '../ai/CostLine'
+import { LocalProgress } from '../ai/LocalProgress'
 import './publish.css'
 
-const KIND_NAMES: Record<AiProviderInfo['kind'], string> = { openai: 'OpenAI', gemini: 'Gemini', anthropic: 'Claude' }
-const providerLabel = (p: AiProviderInfo): string => `${p.label || KIND_NAMES[p.kind]} · ${p.model || KIND_NAMES[p.kind]}`
+/** A choice in the provider list: its name and model ("OpenAI · gpt-…"), or On this PC alone (smart-tools.md §20.0). */
+const providerLabel = (c: TextChoice): string => (c.kind === 'local' ? c.label : `${c.label} · ${c.model || c.place}`)
+/** Where the copy pack's text goes, by the chosen place (never "OpenAI" for a service, test 103). */
+const sendsText = (c: TextChoice): string => (c.kind === 'local' ? 'Writes from the caption text on this PC: nothing is sent.' : `Sends the caption text (not the sound) to ${c.place}.`)
 const openAiSettings = (): void => void window.dispatchEvent(new CustomEvent('ssw:open-settings', { detail: { section: 'ai' } }))
 
 /** Most characters each card's counter measures against (X counts its own way). */
@@ -60,13 +66,16 @@ export function PublishDialog({ project, request, onClose, onGenerateCaptions, o
   const boxRef = useRef<HTMLDivElement>(null)
   const firstRef = useRef<HTMLButtonElement>(null)
   const { providers } = useAiProviders()
+  // The providers, services and On this PC (smart-tools.md §20.0); null while the providers are read.
+  const localReady = useLocalAiReady()
+  const choices = useMemo(() => (providers === null ? null : textChoicesOf(providers, 'youtube', localReady)), [providers, localReady])
   const [prefs, setPrefs] = useState<PublishPrefs>(loadPublishPrefs)
   const items = usePackItems(project.id)
   // What the edited video says: nothing that was cut is sent, and bleeped words go masked (made again when the bleeps change).
   const { transcript, clips, bleeps } = project
   const segments = useMemo(() => publishSegments({ transcript, clips, bleeps }), [transcript, clips, bleeps])
   const blocker = publishBlocker(project, segments)
-  const list = providers ?? []
+  const list = choices ?? []
   const chosen = list.find((p) => p.id === prefs.provider) ?? list[0] ?? null
   const key = useMemo(() => transcriptKey(segments), [segments])
   const youtube = useMemo(() => projectYoutubeChapters(project), [project])
@@ -107,9 +116,13 @@ export function PublishDialog({ project, request, onClose, onGenerateCaptions, o
 
   const context = (): WriteContext | null => {
     if (!chosen || blocker) return null
+    return contextFor(chosen)
+  }
+  /** What a run with `c` sends besides the item (also the cost line's requests). */
+  const contextFor = (c: TextChoice): WriteContext => {
     const chapters = chapterTitles
     return {
-      providerId: chosen.id,
+      providerId: c.id,
       segments,
       tone: prefs.tone,
       length: prefs.length,
@@ -229,7 +242,7 @@ export function PublishDialog({ project, request, onClose, onGenerateCaptions, o
           </div>
         </div>
         <div className="publish-run">
-          <button ref={firstRef} className="btn primary" data-testid="publish-write-all" disabled={!chosen} onClick={() => write(PUBLISH_KINDS)}>
+          <button ref={firstRef} className="btn primary" data-testid="publish-write-all" aria-describedby={chosen ? 'publish-cost' : undefined} disabled={!chosen} onClick={() => write(PUBLISH_KINDS)}>
             <EditorIcon name="sparkle" size={15} /> {done ? 'Write all again' : 'Write all'}
           </button>
           <span className="publish-progress" role="status" data-testid="publish-progress">
@@ -288,9 +301,22 @@ export function PublishDialog({ project, request, onClose, onGenerateCaptions, o
                 })
               }
               onFindChapters={onFindChapters}
+              requestId={isRunning(items[kind].status) ? itemRequestId(project.id, kind) : null}
+              costId={chosen ? `publish-cost-${kind}` : undefined}
             />
           ))}
         </div>
+        {/* What each card's Write sends, where, and what it costs, with Write all (smart-tools.md §11.5), part P5's. */}
+        <CostLine
+          id="publish-cost"
+          choice={chosen}
+          actions={PUBLISH_KINDS.map((kind) => ({
+            key: kind,
+            label: PUBLISH_LABELS[kind],
+            buttonId: `publish-${kind}-write`,
+            request: chosen && !blocker ? (): AiTextRequest => packRequest(kind, contextFor(chosen)) : null
+          }))}
+        />
         {onShortClips && (
           <p className="hint">
             <button type="button" className="link" data-testid="publish-short-clips" onClick={onShortClips}>
@@ -324,7 +350,7 @@ export function PublishDialog({ project, request, onClose, onGenerateCaptions, o
         <p className="hint">Text to post with your video, written from its captions and chapters. Check it before you post.</p>
         {body}
         <footer className="modal-foot">
-          <p className="hint publish-sends">{chosen && !blocker ? `Sends the caption text (not the sound) to ${KIND_NAMES[chosen.kind]}.` : ''}</p>
+          <p className="hint publish-sends">{chosen && !blocker ? sendsText(chosen) : ''}</p>
           <button className="btn" onClick={close}>
             Close
           </button>
@@ -357,6 +383,10 @@ interface CardProps {
   onRename: (name: string) => void
   /** Opens Find chapters (the YouTube card of a video without chapters). */
   onFindChapters?: () => void
+  /** The card's run now (AI on this PC shows its progress beside Stop, smart-tools.md §20.0), or null. */
+  requestId?: string | null
+  /** The cost line's sentence for this card's Write. */
+  costId?: string
 }
 
 /** notedPieces, remembered for the last texts of each `said` (a card is drawn again on every change of the dialog). */
@@ -378,7 +408,7 @@ const STATUS_TEXT: Record<PackItem['status'], string> = { idle: 'Not written yet
 /** "Written" only for new text: a stopped run says so, and a card the user emptied is not written. */
 const statusText = (item: PackItem): string => (item.stopped ? 'Stopped' : item.status === 'done' && !item.text.trim() ? STATUS_TEXT.idle : STATUS_TEXT[item.status])
 
-function Card({ kind, item, stale, canWrite, youtube, saved, spoken, said, onWrite, onStop, onEdit, onCopy, onUseForExports, onStopForExports, onRename, onFindChapters }: CardProps): JSX.Element {
+function Card({ kind, item, stale, canWrite, youtube, saved, spoken, said, onWrite, onStop, onEdit, onCopy, onUseForExports, onStopForExports, onRename, onFindChapters, requestId = null, costId }: CardProps): JSX.Element {
   const label = PUBLISH_LABELS[kind]
   const id = `publish-${kind}`
   const busy = isRunning(item.status)
@@ -470,11 +500,14 @@ function Card({ kind, item, stale, canWrite, youtube, saved, spoken, said, onWri
           </button>
         )}
         {busy ? (
-          <button className="btn small" onClick={onStop}>
-            Stop
-          </button>
+          <>
+            <button className="btn small" onClick={onStop}>
+              Stop
+            </button>
+            <LocalProgress requestId={requestId} onStop={onStop} />
+          </>
         ) : (
-          <button className="btn small" disabled={!canWrite} onClick={onWrite}>
+          <button id={`publish-${kind}-write`} className="btn small" aria-describedby={costId} disabled={!canWrite} onClick={onWrite}>
             {item.text ? 'Regenerate' : 'Write'}
           </button>
         )}

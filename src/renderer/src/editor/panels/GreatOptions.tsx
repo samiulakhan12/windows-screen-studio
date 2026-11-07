@@ -11,7 +11,8 @@ import type { Project } from '../../../../shared/types'
 import { EditorIcon } from '../EditorIcon'
 import { currentGreatOptions, loadGreatOptions, onGreatOptions, saveGreatOptions } from '../greatRun'
 import { useModalFocus } from '../modalFocus'
-import { providerName, useTextProviders } from './LanguagesSection'
+import { sentHint, useTextChoices } from '../../ai/textChoices'
+import { CostLine } from '../../ai/CostLine'
 
 type Flag = 'style' | 'emphasis' | 'speakers' | 'quotes' | 'tidy'
 type AutoKey = 'emoji' | 'keywords' | 'counters' | 'lists' | 'chapters'
@@ -81,13 +82,15 @@ function OptionsDialog({ project, onClose }: { project: Project; onClose: () => 
   const box = useRef<HTMLDivElement>(null)
   useModalFocus(box, onClose)
   const options = useSyncExternalStore(onGreatOptions, currentGreatOptions)
-  const providers = useTextProviders() ?? []
+  // The providers and services (smart-tools.md §20.0); never On this PC: its only AI task, emphasis marks, the small models do poorly (§2.5).
+  const providers = useTextChoices('marks')
   const resolved = resolveGreatOptions(options, project, captionFrame(project))
   const first = useRef<HTMLInputElement>(null)
   useEffect(() => first.current?.focus(), [])
   const set = (patch: Partial<GreatOptions>): void => void saveGreatOptions({ ...options, ...patch }).catch(() => undefined)
   // A provider that was removed reads as On this PC.
   const provider = providers.some((p) => p.id === options.provider) ? options.provider : null
+  const choice = providers.find((p) => p.id === provider) ?? null
   return (
     <div
       ref={box}
@@ -144,16 +147,32 @@ function OptionsDialog({ project, onClose }: { project: Project; onClose: () => 
       </label>
       <label className="field">
         <span>Better picks with AI</span>
-        <select className="captions-select" data-testid="great-provider" value={provider ?? ''} onChange={(e) => set({ provider: e.target.value || null })}>
+        <select
+          id="great-provider"
+          className="captions-select"
+          data-testid="great-provider"
+          aria-describedby={choice ? 'great-cost-marks' : undefined}
+          value={provider ?? ''}
+          onChange={(e) => set({ provider: e.target.value || null })}
+        >
           <option value="">No, on this PC only</option>
           {providers.map((p) => (
             <option key={p.id} value={p.id}>
-              {providerName(p)}
+              {p.label}
             </option>
           ))}
         </select>
       </label>
-      {provider && <p className="hint">The captions' words are sent to the provider with your key; only the picks come back.</p>}
+      {choice && <p className="hint">{sentHint(choice, "The captions' words", '; only the picks come back', true)}</p>}
+      {/* What the AI picks send, where, and what they cost (smart-tools.md §11.5), part P5's. */}
+      {choice && (
+        <CostLine
+          id="great-cost"
+          choice={choice}
+          full
+          actions={[{ key: 'marks', label: 'AI picks', buttonId: 'great-provider', request: () => ({ task: 'marks', segments: project.transcript?.segments ?? [], marks: { ...(project.transcript?.language ? { language: project.transcript.language } : {}), captions: [] } }) }]}
+        />
+      )}
       <div className="row start">
         <button type="button" className="btn small" onClick={onClose}>
           Done

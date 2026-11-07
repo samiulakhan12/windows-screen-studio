@@ -25,6 +25,8 @@ import { BUILT_IN_PRESETS, parseUserPresets, type StylePreset } from '../../../s
 import { zoomSettingsOf } from '../../../shared/engine/zoom'
 import type { CursorTrack, Project } from '../../../shared/types'
 import { OPEN_SETTINGS_EVENT } from '../settings/SettingsButton'
+import { choiceOf } from '../ai/textChoices'
+import { CostLine } from '../ai/CostLine'
 import { onTranscriptionJob, transcriptionJob } from './captionItems'
 import { useEditor } from './context'
 import { Chips } from './controls'
@@ -239,7 +241,15 @@ export function PolishDialog(props: {
         ) : (
           <label className={`toggle ${disabled ? 'disabled' : ''}`}>
             <span>{label}</span>
-            <input type="checkbox" aria-label={label} checked={isOn(step)} disabled={disabled} onChange={(e) => set({ [step]: e.target.checked })} />
+            <input
+              id={`polish-step-${step}`}
+              type="checkbox"
+              aria-label={label}
+              aria-describedby={step === 'captions' && provider && isOn(step) ? 'polish-cost-captions' : undefined}
+              checked={isOn(step)}
+              disabled={disabled}
+              onChange={(e) => set({ [step]: e.target.checked })}
+            />
           </label>
         )}
         <p className="hint">{hint}</p>
@@ -254,6 +264,10 @@ export function PolishDialog(props: {
               </option>
             ))}
           </select>
+        )}
+        {/* What the Captions step sends to its provider, and what it costs (smart-tools.md §11.5), part P5's. */}
+        {step === 'captions' && !why && provider && isOn(step) && (
+          <CostLine id="polish-cost" choice={choiceOf(provider)} full actions={[{ key: 'captions', label: 'Captions', buttonId: 'polish-step-captions', request: null }]} transcribeSeconds={project.duration} />
         )}
         {step === 'captions' && why === 'no-provider' && (
           <button className="btn small" onClick={addProvider}>

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
-import type { AiProviderInfo, AiTextRequest, AiTextResult, TranscribeOptions } from '../../../../shared/api/ai'
+import type { AiProviderInfo, AiTextRequest, AiTextResult, TextChoice, TranscribeOptions } from '../../../../shared/api/ai'
 import { cleanCaptionText, CAPTION_MAX_CHARS } from '../../../../shared/captions/captionData'
 import { findInCaptions, mergeWithNext, readSuggestedChapters, readSuggestedText, replaceInCaptions, splitCaption, typedCaption } from '../../../../shared/captions/edit'
 import { captionIndexAt } from '../../../../shared/captions/layout'
@@ -11,7 +11,7 @@ import { planOf, videoTimeAt } from '../../../../shared/engine/freeze'
 import { formatTime } from '../../../../shared/engine/project'
 import { NOTES_COPY } from '../../../../shared/notes/notesCopy'
 import { linksToCheck, notedPieces, type Said } from '../../../../shared/publish/check'
-import type { CaptionSegment, Project, Transcript } from '../../../../shared/types'
+import type { CaptionSegment, CursorTrack, Project, Transcript } from '../../../../shared/types'
 import { Icon } from '../../components/Icon'
 import { SearchIcon } from '../CommandPalette'
 import {
@@ -62,7 +62,10 @@ import { cancelCaptionsGreat, startCaptionsGreat, useCaptionsGreatBusy } from '.
 import { CaptionLookSection } from './CaptionLookSection'
 import { CleanupSection } from './CleanupSection'
 import { LanguagesSection } from './LanguagesSection'
-import { choiceOf, placeOf } from '../../ai/textChoices'
+import { choiceOf, placeOf, textChoicesOf } from '../../ai/textChoices'
+import { useLocalAiReady } from '../../ai/localAiState'
+import { FIND_CHAPTERS_BUILT, runFindChapters } from '../chaptersRun'
+import { sanitizeSmartPref, DEFAULT_FIND_CHAPTERS, type FindChaptersPref } from '../../../../shared/smart/smartPrefs'
 import { CostLine } from '../../ai/CostLine'
 import { LocalProgress } from '../../ai/LocalProgress'
 
@@ -165,6 +168,8 @@ export function useAiProviders(): { providers: AiProviderInfo[] | null; error: s
 }
 
 const providerLabel = (p: AiProviderInfo, transcription = false): string => `${p.label || KIND_NAMES[p.kind]} · ${(transcription ? p.transcriptionModel : p.model) || KIND_NAMES[p.kind]}`
+/** A text choice as the AI tools list it: providerLabel's form, or On this PC alone (smart-tools.md §20.0). */
+const choiceLabel = (c: TextChoice): string => (c.kind === 'local' ? c.label : `${c.label} · ${c.model || c.place}`)
 
 export function CaptionsPanel(props: InspectorProps): JSX.Element {
   const { project } = props
@@ -234,7 +239,7 @@ export function CaptionsPanel(props: InspectorProps): JSX.Element {
           />
           {speakersShown(project) && <SpeakersSection project={project} onNotice={props.onNotice} />}
           <LanguagesSection project={project} />
-          <AiToolsSection providers={providers} onNotice={props.onNotice} services={services} request={aiNow} onRequestHandled={() => setAiNow(null)} />
+          <AiToolsSection providers={providers} recorded={props.recorded} onNotice={props.onNotice} services={services} request={aiNow} onRequestHandled={() => setAiNow(null)} />
           <ExportSection project={project} transcript={transcript} request={exportNow} onNotice={props.onNotice} />
         </>
       )}
@@ -708,7 +713,7 @@ function GenerateSection({
             <>
               {!project.hasAudio && <p className="hint warn">This recording has no sound to transcribe.</p>}
               <div className="row start captions-actions">
-                <button ref={generateRef} className="btn primary" disabled={!project.hasAudio} onClick={start}>
+                <button ref={generateRef} id="captions-generate" aria-describedby={chosen ? 'captions-generate-cost-transcribe' : undefined} className="btn primary" disabled={!project.hasAudio} onClick={start}>
                   <EditorIcon name="captions" size={15} /> {hasTranscript ? 'Regenerate' : 'Generate captions'}
                 </button>
                 {hasTranscript && (
@@ -718,6 +723,10 @@ function GenerateSection({
                 )}
               </div>
               <p className="hint">The recording&apos;s sound is sent to {chosen ? placeOf(chosen) : 'the provider'} with your key; it is billed to your account.</p>
+              {/* What Generate captions sends to its provider, and what it costs (smart-tools.md §11.5), part P5's. */}
+              {chosen && project.hasAudio && (
+                <CostLine id="captions-generate-cost" choice={choiceOf(chosen)} full actions={[{ key: 'transcribe', label: 'Captions', buttonId: 'captions-generate', request: null }]} transcribeSeconds={project.duration} />
+              )}
               {chosen?.transcriptionModel && providerTiming(chosen.kind, chosen.transcriptionModel) === 'text' && (
                 <p className="hint" data-testid="estimated-times-hint">
                   {TIMING_COPY.formHint(chosen.transcriptionModel)}{' '}
@@ -972,12 +981,15 @@ type AiTask = CaptionsAiTask
 
 function AiToolsSection({
   providers,
+  recorded,
   onNotice,
   services,
   request,
   onRequestHandled
 }: {
   providers: AiProviderInfo[] | null
+  /** cursor.json as recorded: Suggest chapters reads the screen and the input through Find chapters (smart-tools.md §7.6.1). */
+  recorded: CursorTrack
   onNotice: (message: string) => void
   services: ReturnType<typeof useEditor>
   /** A tool the command palette asked for (NW-13): run once the providers are known. */
@@ -1011,12 +1023,20 @@ function AiToolsSection({
     // The tab is gone (the answer came after it closed): nothing to ask in, so nothing is used.
     else onNotice(`${what} not used: there is a link, address or file name nobody said to check. Run it again with the Captions tab open.`)
   }
-  const list = providers ?? []
+  // The providers, services and On this PC (smart-tools.md §7.6.1: the shared select is useTextChoices('title')).
+  const localReady = useLocalAiReady()
+  const list = useMemo(() => textChoicesOf(providers ?? [], 'title', localReady), [providers, localReady])
   const chosen = list.find((p) => p.id === provider) ?? list[0] ?? null
   // The request running now (smart-tools.md §20.0): AI on this PC shows its progress beside the buttons, and Stop reaches it.
   const runs = useRef(0)
   const [running, setRunning] = useState<string | null>(null)
-  const choice = useMemo(() => (chosen ? choiceOf(chosen) : null), [chosen])
+  /** Suggest chapters through Find chapters (§7.6.1): Stop cancels its scan and its AI request. */
+  const chaptersRun = useRef<AbortController | null>(null)
+  const choice = chosen
+  const stopRun = (): void => {
+    chaptersRun.current?.abort()
+    if (running) void window.api.cancelAiText(running).catch(() => undefined)
+  }
   const live = useRef(true)
   // The tools that make a suggestion: when its block goes (used, added or dismissed, also after the link check's confirm),
   // the focus, which was on a button in it or in the confirm, goes back to the tool that made it, not to the page (§4.8).
@@ -1058,8 +1078,50 @@ function AiToolsSection({
     remembered.textProvider = provider
   }, [provider])
 
+  /**
+   * Suggest chapters as Find chapters with this choice's suggestions (smart-tools.md §7.6.1): a
+   * service or provider splits with its chapters task beside the offline signals, On this PC splits
+   * offline and names the parts; the chapters are found chapters, listed in Review.
+   */
+  const suggestChapters = async (choice: NonNullable<typeof chosen>): Promise<void> => {
+    setBusy('chapters')
+    setError(null)
+    setTitle(null)
+    setSummary(null)
+    setChapters(null)
+    const requestId = `captions-chapters-${++runs.current}`
+    setRunning(requestId)
+    const controller = new AbortController()
+    chaptersRun.current = controller
+    try {
+      const saved = (sanitizeSmartPref('findChapters', await window.api.getPref('findChapters').catch(() => null)) as FindChaptersPref | null) ?? DEFAULT_FIND_CHAPTERS
+      const local = choice.kind === 'local'
+      const out = await runFindChapters({
+        store,
+        recorded,
+        options: { density: saved.density, use: { ...saved.use }, names: local ? choice.id : 'offline', ...(local ? {} : { split: choice.id }) },
+        signal: controller.signal,
+        requestId,
+        onProgress: () => undefined
+      })
+      if (controller.signal.aborted) return
+      if ('needsCaptions' in out) setError('Make captions first: chapters are named from what is said.')
+      else onNotice(out.notice)
+    } catch (err) {
+      if (!controller.signal.aborted && live.current) setError(ipcMessage(err))
+    } finally {
+      if (chaptersRun.current === controller) chaptersRun.current = null
+      if (live.current) {
+        setBusy(null)
+        setRunning(null)
+      }
+    }
+  }
+
   const run = async (task: AiTask): Promise<void> => {
     if (!chosen || busy) return
+    // Until part P2 builds Find chapters, Suggest chapters runs the chapters task alone, as before.
+    if (task === 'chapters' && FIND_CHAPTERS_BUILT) return suggestChapters(chosen)
     const before = store.state.transcript
     if (!before?.segments.length) return
     setBusy(task)
@@ -1151,7 +1213,7 @@ function AiToolsSection({
             <select className="captions-select" aria-label="AI provider for text" value={chosen?.id ?? ''} onChange={(e) => setProvider(e.target.value)} disabled={!list.length}>
               {list.map((p) => (
                 <option key={p.id} value={p.id}>
-                  {providerLabel(p)}
+                  {choiceLabel(p)}
                 </option>
               ))}
             </select>
@@ -1166,7 +1228,7 @@ function AiToolsSection({
             <button ref={summaryTool} id="captions-ai-summary" aria-describedby="captions-ai-cost-summary" className="btn" disabled={!chosen || !!busy} onClick={() => void run('summary')} title="A short summary of what is said, to copy into a description">
               {label('summary', 'Summarize')}
             </button>
-            <LocalProgress requestId={running} onStop={() => running && void window.api.cancelAiText(running)} />
+            <LocalProgress requestId={running} onStop={stopRun} />
           </div>
           {/* What the group sends, where, and what each action costs (smart-tools.md §11.5), part P5's. */}
           <CostLine
@@ -1273,7 +1335,7 @@ function AiToolsSection({
               {error}
             </p>
           )}
-          <p className="hint">Each tool sends the caption text (not the sound) to {choice ? choice.place : 'the provider'}. Undo reverts any change.</p>
+          <p className="hint">{`${choice?.kind === 'local' ? 'Each tool reads the caption text on this PC: nothing is sent.' : `Each tool sends the caption text (not the sound) to ${choice ? choice.place : 'the provider'}.`} Undo reverts any change.`}</p>
           {ask && <NotedConfirm ask={ask} onClose={() => setAsk(null)} />}
         </>
       )}

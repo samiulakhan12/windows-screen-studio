@@ -54,8 +54,39 @@ export function textChoicesOf(providers: readonly AiProviderInfo[], task: AiText
 
 /** The choices a text tool offers for `task`, kept up to date as providers change and a model gets ready. */
 export function useTextChoices(task: AiTextTask, opts?: { pictures?: boolean }): TextChoice[] {
+  return useTextChoiceList(task, opts) ?? NO_CHOICES
+}
+
+const NO_CHOICES: TextChoice[] = []
+
+/** useTextChoices, null while the providers are first read (a tool waits for them before saying there is none). */
+export function useTextChoiceList(task: AiTextTask, opts?: { pictures?: boolean }): TextChoice[] | null {
   const providers = useTextProviders()
   const localReady = useLocalAiReady()
   const pictures = !!opts?.pictures
-  return useMemo(() => textChoicesOf(providers ?? [], task, localReady, { pictures }), [providers, task, localReady, pictures])
+  return useMemo(() => (providers === null ? null : textChoicesOf(providers, task, localReady, { pictures })), [providers, task, localReady, pictures])
+}
+
+/**
+ * Who a result made with `choice` says made it (smart-tools.md §10.6, test 97): the provider's kind
+ * with a service's host, or 'local' with the model AI on this PC used (read after the run, as main
+ * picks it at run time).
+ */
+export async function madeBy(choice: TextChoice): Promise<{ by: AiProviderInfo['kind'] | 'local'; model: string; host?: string }> {
+  if (choice.kind !== 'local') return { by: choice.kind, model: choice.model, ...(choice.host ? { host: choice.host } : {}) }
+  const active = await window.api.localAiState().then(
+    (s) => s?.active ?? null,
+    () => null
+  )
+  return { by: 'local', model: active ?? '' }
+}
+
+/**
+ * The hint under a tool that sends `what` with `choice` ("The captions' text is sent to
+ * api.groq.com with your key"), or that it stays on this PC: never "OpenAI" for a service, never
+ * "undefined" (test 103). `plural`: "The captions' words are sent…".
+ */
+export function sentHint(choice: TextChoice, what: string, rest = '', plural = false): string {
+  if (choice.kind === 'local') return `${what} ${plural ? 'stay' : 'stays'} on this PC: nothing is sent${rest}.`
+  return `${what} ${plural ? 'are' : 'is'} sent to ${choice.place}${choice.free ? '' : ' with your key'}${rest}.`
 }

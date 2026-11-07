@@ -4,7 +4,7 @@
  * requests at a time, each one stoppable. Answers are cleaned again here before they are shown.
  */
 import { useSyncExternalStore } from 'react'
-import type { AiTextRequest, AiTextResult } from '../../../shared/api/ai'
+import { LOCAL_TEXT_ID, type AiTextRequest, type AiTextResult } from '../../../shared/api/ai'
 import { PUBLISH_KINDS, taskOfKind, type PublishKind, type PublishLength, type PublishTone } from '../../../shared/publish/pack'
 import { CancelledError, createQueue } from '../../../shared/publish/queue'
 import { plainText } from '../../../shared/publish/text'
@@ -90,8 +90,11 @@ export interface WriteContext {
   key: string
 }
 
-/** Text requests go out two at a time (§2.1). */
+/** Text requests go out two at a time (§2.1); to AI on this PC one at a time, as its helper runs one (smart-tools.md §20.0, test 99). */
 const queue = createQueue(2)
+const localQueue = createQueue(1)
+/** The queue a run with `providerId` waits in. */
+const queueOf = (providerId: string): typeof queue => (providerId === LOCAL_TEXT_ID ? localQueue : queue)
 let seq = 0
 /** The job of each item now: a stopped or replaced job's late answer is dropped. */
 const current = new Map<string, string>()
@@ -119,16 +122,8 @@ export function cardText(result: AiTextResult): { text: string; tags: string } {
   }
 }
 
-/** Writes item `kind` (stopping a run of it already queued or running). */
-export function writeItem(projectId: string, kind: PublishKind, ctx: WriteContext): Promise<void> {
-  const id = `pub-${++seq}`
-  const key = slot(projectId, kind)
-  const before = current.get(key)
-  if (before) queue.cancel(before)
-  current.set(key, id)
-  const mine = (): boolean => current.get(key) === id
-  const had = packItems(projectId)[kind]
-  patch(projectId, kind, { status: 'waiting', error: null, stopped: false })
+/** What a run of item `kind` sends with `ctx` (the cost line estimates the same request). */
+export function packRequest(kind: PublishKind, ctx: WriteContext): AiTextRequest {
   const task = taskOfKind(kind)
   const request: AiTextRequest = { task, segments: ctx.segments }
   if (task !== 'title' && task !== 'summary') {
@@ -136,7 +131,22 @@ export function writeItem(projectId: string, kind: PublishKind, ctx: WriteContex
     request.length = ctx.length
     if (ctx.context) request.context = ctx.context
   }
-  return queue
+  return request
+}
+
+/** Writes item `kind` (stopping a run of it already queued or running). */
+export function writeItem(projectId: string, kind: PublishKind, ctx: WriteContext): Promise<void> {
+  const id = `pub-${++seq}`
+  const key = slot(projectId, kind)
+  const before = current.get(key)
+  if (before) cancelRun(before)
+  current.set(key, id)
+  const mine = (): boolean => current.get(key) === id
+  const had = packItems(projectId)[kind]
+  patch(projectId, kind, { status: 'waiting', error: null, stopped: false })
+  const task = taskOfKind(kind)
+  const request = packRequest(kind, ctx)
+  return queueOf(ctx.providerId)
     .add({
       id,
       run: (signal) => {
@@ -170,11 +180,20 @@ export function writeItem(projectId: string, kind: PublishKind, ctx: WriteContex
     )
 }
 
+/** Stops run `id`, in whichever queue it waits or runs. */
+function cancelRun(id: string): void {
+  queue.cancel(id)
+  localQueue.cancel(id)
+}
+
 /** Stops item `kind` of `projectId`, waiting or running. */
 export function stopItem(projectId: string, kind: PublishKind): void {
   const id = current.get(slot(projectId, kind))
-  if (id) queue.cancel(id)
+  if (id) cancelRun(id)
 }
+
+/** The request id of item `kind`'s run now, waiting or running (AI on this PC's progress beside its card), or null. */
+export const itemRequestId = (projectId: string, kind: PublishKind): string | null => current.get(slot(projectId, kind)) ?? null
 
 /** Stops every item of `projectId`. */
 export function stopAll(projectId: string): void {
