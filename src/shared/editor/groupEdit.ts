@@ -188,6 +188,11 @@ export const BADGE_NUMBERINGS: readonly { value: string; label: string }[] = [
   { value: 'bn', label: '১ ২ ৩' }
 ]
 
+/** The choices of Comes in or Goes out for one item (§2.3): Default, then what its kind allows, in the menu's order. */
+export function motionChoices(item: CalloutItem, side: 'enter' | 'exit'): { value: CalloutMotionKind | 'default'; label: string }[] {
+  return CALLOUT_MOTIONS.filter((o) => o.value === 'default' || CALLOUT_ALLOWED[item][side].includes(o.value as CalloutMotionKind))
+}
+
 /** The callout item of a text, a mark or a title card in a group (null: a privacy shape). */
 function itemOfField(cls: 'text' | 'mark' | 'title', item: unknown): CalloutItem | null {
   if (cls === 'text') return annotationItem(calloutOf(item as Annotation).style)

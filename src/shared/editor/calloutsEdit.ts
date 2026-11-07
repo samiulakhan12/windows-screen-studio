@@ -231,6 +231,36 @@ function mapById(project: Project, ref: { kind: 'annotation' | 'shape' | 'title'
   return changed ? { ...project, titles } : project
 }
 
+/** What the Animation section edits (§2.3): a text, a shape or a title card, its item (null: blur or pixelate) and its motions and sound. */
+export interface CalloutTarget {
+  ref: { kind: 'annotation' | 'shape' | 'title'; id: string }
+  item: CalloutItem | null
+  enter?: CalloutMotion
+  exit?: CalloutMotion
+  sound?: 'none' | SfxRef
+}
+
+/** The callout a selection names, or null for anything else. */
+export function calloutTarget(project: Project, sel: { kind: string; id?: string } | null): CalloutTarget | null {
+  if (!sel || typeof sel.id !== 'string') return null
+  const id = sel.id
+  if (sel.kind === 'annotation') {
+    const a = project.annotations.find((x) => x.id === id)
+    if (!a) return null
+    const c = calloutOf(a)
+    return { ref: { kind: 'annotation', id }, item: annotationItem(c.style), enter: c.enter, exit: c.exit, sound: c.sound }
+  }
+  if (sel.kind === 'shape') {
+    const s = (project.shapes ?? []).find((x) => x.id === id)
+    return s ? { ref: { kind: 'shape', id }, item: shapeItem(s.kind), enter: s.enter, exit: s.exit, sound: s.sound } : null
+  }
+  if (sel.kind === 'title') {
+    const c = (project.titles ?? []).find((x) => x.id === id)
+    return c ? { ref: { kind: 'title', id }, item: 'title', enter: c.enter, exit: c.exit, sound: c.sound } : null
+  }
+  return null
+}
+
 /** The motion a pick of `kind` writes on `item`'s `side`: the item's own length and strength when it has a motion there, else its kind's default length. */
 export function pickedMotion(item: CalloutItem, side: 'enter' | 'exit', kind: CalloutMotion['kind'], current: CalloutMotion | undefined): CalloutMotion {
   if (current) return { kind, duration: current.duration, strength: current.strength }

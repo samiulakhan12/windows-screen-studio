@@ -86,6 +86,7 @@ import { PolishDialog } from '../editor/PolishDialog'
 import { ReviewButton } from '../review/ReviewButton'
 import { settleAutoCuts } from '../../../shared/review/autoCuts'
 import { settleJoins } from '../../../shared/editor/joinsEdit'
+import { calloutCommands } from '../editor/calloutCommands'
 import { settleGrade } from '../../../shared/editor/colourEdit'
 import { ReviewPanel } from '../review/ReviewPanel'
 import { PreviewStage } from '../editor/PreviewStage'
@@ -483,6 +484,9 @@ function EditorSession({
     () => ({ project: drawn.project, cursor: drawn.cursor, cursorPath, focusPath, ...(drawn.crop ? { crop: drawn.crop } : {}) }),
     [drawn, cursorPath, focusPath]
   )
+  // The scene new step badges and speech bubbles are placed in (calloutCommands, editing polish §2.3).
+  const calloutScene = useRef(scene)
+  calloutScene.current = scene
   // A caption look hovered or focused in the gallery shows on the preview only (Captions Studio
   // §2.5): the export, the project and the undo stack never see it.
   const previewLook = usePreviewLook()
@@ -1380,8 +1384,8 @@ function EditorSession({
       playCut: showTab('clip'),
       addMagnifier: showTab('shapes'),
       addMagnifierCursor: showTab('shapes'),
-      addStepBadge: showTab('text'),
-      addSpeechBubble: showTab('text'),
+      // Step badges and speech bubbles (part P3, §2.3): placed by the cursor, selected, a bubble's text focused.
+      ...calloutCommands({ store, player, cursor, scene: () => calloutScene.current, select: setSelection, reveal: () => reveal('text') }),
       toggleProgressBar: showTab('text'),
       compareColour: showTab('effects'),
       autoColour: showTab('camera'),

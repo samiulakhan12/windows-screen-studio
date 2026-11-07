@@ -462,7 +462,7 @@ export const PreviewStage = memo(function PreviewStage({ project, pickZoom: pick
           {!pickZoom && !cropTool && <GraphicHandles project={drawn} box={box} out={{ w: out.width, h: out.height }} selection={selection} onSelect={onSelect} onTogglePlay={onTogglePlay} paused={!playing} />}
           {/* Step badge and speech-bubble tail handles (editing polish §2.3). */}
           {!pickZoom && !cropTool && <CalloutHandles project={drawn} selection={selection ?? null} view={sceneView} />}
-          {!pickZoom && !cropTool && selectedAnnotation && <AnnotationHandle annotation={selectedAnnotation} project={drawn} box={box} />}
+          {!pickZoom && !cropTool && selectedAnnotation && selectedAnnotation.style !== 'badge' && selectedAnnotation.style !== 'bubble' && <AnnotationHandle annotation={selectedAnnotation} project={drawn} box={box} />}
           {!pickZoom && !cropTool && <OverlayEditor project={drawn} selection={selection} box={box} onDone={() => onSelect?.(null)} />}
           {editItem && view && mapping && <ShapeEditor edit={editItem} view={view} mapping={mapping} crop={crop} clip={slot} box={box} onDone={() => onSelect?.(null)} />}
           {cropTool && <CropEditor recorded={{ width: project.width, height: project.height }} rect={rect} {...cropTool} />}

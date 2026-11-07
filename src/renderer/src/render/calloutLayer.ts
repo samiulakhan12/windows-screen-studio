@@ -51,7 +51,7 @@ const inside = (r: Rect, p: { x: number; y: number }): boolean => p.x >= r.x && 
  * nothing in a layout whose camera covers the screen (camera only). A pin outside it is not on
  * the picture: a badge there is not drawn, and a bubble's tail is left out.
  */
-export function visiblePicture(fc: FrameContext): { seen: Rect; visible: (p: { x: number; y: number }) => boolean } {
+export function visiblePicture(fc: Pick<FrameContext, 'rect' | 'cam' | 'layout' | 'project'>): { seen: Rect; visible: (p: { x: number; y: number }) => boolean } {
   const card = cardOf(fc.rect, fc.cam)
   const slot = fc.layout.follow?.slot
   const seen = slot ? intersectRect(slot, card) : card
