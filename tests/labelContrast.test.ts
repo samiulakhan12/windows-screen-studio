@@ -123,3 +123,21 @@ describe('Captions Studio (docs/design/captions-studio.md §2.15, §7.3): the ne
     }
   })
 })
+
+describe('Editing polish (docs/design/editing-polish.md §12): the colour controls', () => {
+  const colour = css('editor/panels/colour.css')
+  const vars = tokens(css('styles.css'))
+  const panel = resolve('var(--surface-1)', vars)
+
+  it('look chips, Reset and More read on their fills; the LUT problem and the CPU note on the Inspector', () => {
+    for (const sel of ['.colour-look', '.colour-look.active', '.colour-reset-one']) {
+      const fill = resolve(declared(colour, sel === '.colour-look.active' ? '.colour-look' : sel, 'background'), vars)
+      expect(contrast(resolve(declared(colour, sel, 'color'), vars), fill), sel).toBeGreaterThanOrEqual(4.5)
+    }
+    for (const sel of ['.colour-more', '.colour-problem', '.hint.colour-cpu-note', '.colour-row-label']) {
+      expect(contrast(resolve(declared(colour, sel, 'color'), vars), panel), sel).toBeGreaterThanOrEqual(4.5)
+    }
+    // The export dialog's question about a missing LUT.
+    expect(contrast(resolve(declared(colour, '.export-lut-ask p', 'color'), vars), resolve(declared(colour, '.export-lut-ask', 'background'), vars))).toBeGreaterThanOrEqual(4.5)
+  })
+})

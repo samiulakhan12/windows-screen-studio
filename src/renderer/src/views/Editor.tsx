@@ -87,6 +87,8 @@ import { ReviewButton } from '../review/ReviewButton'
 import { settleAutoCuts } from '../../../shared/review/autoCuts'
 import { settleJoins } from '../../../shared/editor/joinsEdit'
 import { settleGrade } from '../../../shared/editor/colourEdit'
+import { autoColourBusy, startAutoColour, stopAutoColour } from '../editor/autoColourRun'
+import { toggleCompare } from '../editor/compareColour'
 import { ReviewPanel } from '../review/ReviewPanel'
 import { PreviewStage } from '../editor/PreviewStage'
 import { SaveIndicator } from '../editor/SaveIndicator'
@@ -227,6 +229,8 @@ async function openSession(projectId: string): Promise<Session> {
 function closeSession(s: Session): void {
   // A Make my captions great run on this project stops with it (its provider's request too).
   cancelCaptionsGreatFor(s.store)
+  // So does Auto colour (it changes nothing then).
+  stopAutoColour()
   // Work still holding the project (Review mode's Remove all) makes its edit now, to be saved, and
   // what waits for it is done (before the player goes: a waiting Keep stops the panel's stretch).
   try {
@@ -1383,8 +1387,12 @@ function EditorSession({
       addStepBadge: showTab('text'),
       addSpeechBubble: showTab('text'),
       toggleProgressBar: showTab('text'),
-      compareColour: showTab('effects'),
-      autoColour: showTab('camera'),
+      // Part P4, colour (§2.5): Compare is the preview's alone (never saved, never exported); Auto colour is one update.
+      compareColour: () => turned('Compare with original colour', toggleCompare(player)),
+      autoColour: () => {
+        reveal('camera')
+        void startAutoColour({ store, webcamUrl: data.webcamUrl, notice: showNotice })
+      },
       musicLibrary: showTab('audio'),
 
       // E-04 waveform: a view preference, so not an undo step (like the timeline zoom)
@@ -1604,7 +1612,8 @@ function EditorSession({
     on.toggleFilmstrip = filmstripShown()
     // Editing polish's toggles (§2.8): the progress bar; Compare is the preview's (part P4 wires it).
     on.toggleProgressBar = !!p.chapterBar?.show
-    on.compareColour = false
+    on.compareColour = player.comparing
+    unavailable.autoColour = data.webcamUrl && p.hasWebcam ? (autoColourBusy() ? 'Auto colour is running' : null) : 'This recording has no camera'
     for (const k of ['nudgeBack', 'nudgeForward', 'nudgeBackTen', 'nudgeForwardTen'] as const) unavailable[k] = picked.length ? null : 'Select items to move them'
     // NW-05 and X-04: the copies (with the menu's reasons), following and the safe zones.
     const frame = editorFrame(p)

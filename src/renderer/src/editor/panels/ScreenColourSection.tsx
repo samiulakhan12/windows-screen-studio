@@ -1,12 +1,18 @@
 /**
- * Effects tab: Screen colour (docs/design/editing-polish.md §2.5).
- *
- * Contracts step: the exported signature of part P4 (§17.4), mounted by EffectsPanel; the stub
- * shows nothing. Part P4 writes the body.
+ * Effects tab: Screen colour (docs/design/editing-polish.md §2.5): looks (None, Natural, Vivid,
+ * Mono), the sliders, a LUT, Compare and Reset colour for the recording of the screen. Captions,
+ * the background and overlays are never graded.
  */
 import type { Project } from '../../../../shared/types'
+import { Section } from '../controls'
+import { ColourControls } from './ColourControls'
 
 export function ScreenColourSection(props: { project: Project }): JSX.Element {
-  void props
-  return <></>
+  return (
+    <Section title="Screen colour">
+      <div data-testid="screen-colour-section">
+        <ColourControls project={props.project} which="screen" />
+      </div>
+    </Section>
+  )
 }
