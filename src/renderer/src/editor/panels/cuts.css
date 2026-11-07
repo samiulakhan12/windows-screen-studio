@@ -105,10 +105,11 @@
 
 /* ---------- the timeline's cut markers ---------- */
 
-/* A 24 × 24 px target centred on the cut block at the clip track's top edge, whatever its width. */
+/* A 24 × 24 px target centred on the cut block, whatever its width, its glyph on the clip track's
+   top edge; it reaches only 6 px into the ruler, whose middle stays free for scrubbing. */
 .cut-marker {
   position: absolute;
-  top: -12px;
+  top: -6px;
   width: 24px;
   height: 24px;
   margin-left: -12px;
