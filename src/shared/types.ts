@@ -755,6 +755,13 @@ export interface Bleep {
   auto?: true
 }
 
+/**
+ * A run of a text record's word map (§11.1 rule 1): the caption's words newFrom..newTo came from
+ * the words oldFrom..oldTo of the text before the tidy (inclusive, as marks count words). Sides of
+ * the same length pair the words one for one; otherwise each new word came from all the old ones.
+ */
+export type TextMapRun = [newFrom: number, newTo: number, oldFrom: number, oldTo: number]
+
 /** What automation replaced, so Review › Remove can put it back (§11.8). */
 export interface CaptionAuto {
   /**
@@ -763,8 +770,12 @@ export interface CaptionAuto {
    * Remove turns them off again.
    */
   style?: { was: CaptionSettings | null; by: 'great' | 'polish'; name: string; names?: true }
-  /** Captions whose text a clean-up changed: their text and words before. */
-  text?: { caption: string; text: string; words?: CaptionWord[] }[]
+  /**
+   * Captions whose text a clean-up changed: their text and words before, and `map`, which words of
+   * that text each word of the caption's text came from (as the tidy wrote it; textMap.ts). Absent
+   * in records saved before the tidy wrote it: Remove then finds the words again (§11.1 rule 1).
+   */
+  text?: { caption: string; text: string; words?: CaptionWord[]; map?: TextMapRun[] }[]
   /**
    * The Studio twin automation gave a Classic look so its pending emphasis draws (§5.8, §11.8);
    * `none`: the project had no caption settings before. Review's Remove of the last of that
