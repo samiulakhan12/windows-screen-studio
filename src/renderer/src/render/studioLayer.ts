@@ -44,6 +44,7 @@ import { catalogFontReady, ensureCaptionFonts, ensureCatalogFont, fontGeneration
 import type { FrameContext } from './frameContext'
 import { blurredFrameOf, lowerThirdBoxes } from './titleCardLayer'
 import { blurredSprite, STUDIO_SPRITES } from './wordSprites'
+import { bubblePath } from './bubblePath'
 
 type Ctx = CanvasRenderingContext2D
 
@@ -1073,37 +1074,6 @@ function cameraCentre(s: Shown, frame: FrameContext | null): { x: number; y: num
   const cam = frame?.layout.camera
   if (!frame || !cam || !s.project.webcam?.show || cam.opacity <= 0.01) return null
   return { x: cam.rect.x + cam.rect.w / 2, y: cam.rect.y + cam.rect.h / 2 }
-}
-
-/** A rounded bubble with a tail of `tail` px pointing at `target` (straight down without one). */
-function bubblePath(c: Ctx, r: Rect, radius: number, tail: number, target: { x: number; y: number } | null): void {
-  c.beginPath()
-  c.roundRect(r.x, r.y, r.w, r.h, radius)
-  if (tail <= 0) return
-  const cx = r.x + r.w / 2
-  const cy = r.y + r.h / 2
-  const to = target ?? { x: cx, y: r.y + r.h + tail * 4 }
-  const dx = to.x - cx
-  const dy = to.y - cy
-  const half = Math.min(tail * 0.55, Math.min(r.w, r.h) / 4)
-  const inset = Math.min(radius + half, Math.min(r.w, r.h) / 2)
-  // On the side facing the target, its base slid toward the target, clear of the corners; the tip leans toward it.
-  if (Math.abs(dx) / Math.max(1, r.w) > Math.abs(dy) / Math.max(1, r.h)) {
-    const dir = dx > 0 ? 1 : -1
-    const sx = dx > 0 ? r.x + r.w : r.x
-    const by = Math.max(r.y + inset, Math.min(r.y + r.h - inset, to.y))
-    c.moveTo(sx - dir, by - half)
-    c.lineTo(sx + dir * tail, by + Math.max(-half, Math.min(half, (to.y - by) * 0.3)))
-    c.lineTo(sx - dir, by + half)
-  } else {
-    const dir = dy > 0 ? 1 : -1
-    const sy = dy > 0 ? r.y + r.h : r.y
-    const bx = Math.max(r.x + inset, Math.min(r.x + r.w - inset, to.x))
-    c.moveTo(bx - half, sy - dir)
-    c.lineTo(bx + Math.max(-half, Math.min(half, (to.x - bx) * 0.3)), sy + dir * tail)
-    c.lineTo(bx + half, sy - dir)
-  }
-  c.closePath()
 }
 
 /** The frame's blurred copy for glass (once per frame, whatever number of pills uses it). */
