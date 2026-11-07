@@ -3,7 +3,7 @@
  * them strictly, writing them as runs, composing two tidies, and moving words both ways.
  */
 import { describe, expect, it } from 'vitest'
-import { alignedRanges, composeRanges, newWordsOf, oldWordsOf, pieceRanges, readTextMap, oneToOne, textMapRuns, wordRanges } from '../src/shared/captions/textMap'
+import { alignedRanges, composeRanges, narrowedWords, newWordsOf, oldWordsOf, pieceRanges, readTextMap, oneToOne, textMapRuns, wordKey, wordRanges } from '../src/shared/captions/textMap'
 
 /** A small seeded generator (mulberry32). */
 function rng(seed: number): () => number {
@@ -142,6 +142,31 @@ describe('composing and moving words', () => {
         expect(oldWordsOf(map, x, y)).toEqual([a, b])
       }
     }
+  })
+})
+
+describe('narrowedWords', () => {
+  const keys = (text: string): string[] => text.split(' ').map(wordKey)
+  it('each end stays on the one word there that is the same word; else all the words the map gives it', () => {
+    // "so um we open" → "So we really open": So ← so um, we ← we, really ← we, open ← open.
+    const ranges: [number, number][] = [[0, 1], [2, 2], [2, 2], [3, 3]]
+    const was = keys('so um we open')
+    const now = keys('So we really open')
+    const back = narrowedWords((i) => oldWordsOf(ranges, i, i), now, was)
+    expect(back(0, 0)).toEqual([0, 0])
+    expect(back(0, 1)).toEqual([0, 2])
+    expect(back(2, 2)).toEqual([2, 2])
+    const tidy = narrowedWords((i) => newWordsOf(ranges, i, i), was, now)
+    expect(tidy(2, 2)).toEqual([1, 1])
+    expect(tidy(1, 1)).toEqual([0, 0])
+    expect(tidy(0, 3)).toEqual([0, 3])
+    // A term written as a whole: "Google" onto "google", "Docs" onto both.
+    const term: [number, number][] = [[0, 1], [0, 1]]
+    const back2 = narrowedWords((i) => oldWordsOf(term, i, i), keys('Google Docs'), keys('google dogs'))
+    expect([back2(0, 0), back2(1, 1), back2(0, 1)]).toEqual([[0, 0], [0, 1], [0, 1]])
+    // The same word twice there: all of them.
+    const twice = narrowedWords((i) => oldWordsOf([[0, 1]], i, i), keys('So'), keys('so so'))
+    expect(twice(0, 0)).toEqual([0, 1])
   })
 })
 

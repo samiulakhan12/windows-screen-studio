@@ -5,13 +5,14 @@
  * one or two tidies, random marks (before the tidy or on the tidied words), keyword anchors and
  * places, then Keep and Remove in a random order through the editor's store. Checked against the
  * pieces the captions were made of: after Remove every mark and anchor covers exactly the words it
- * covered before the tidy (a mark on part of a piece the tidy wrote as one, the whole piece; a term
- * said as its own words, in lower case, is a piece per word; a comma written apart goes with the
- * last word of its piece).
+ * covered before the tidy (a mark on part of a piece the tidy wrote as one, the whole piece, but
+ * an end on a word found the same there, that word; a term said as its own words, in lower case,
+ * is a piece per word; a comma written apart goes with the last word of its piece).
  */
 import { describe, expect, it } from 'vitest'
 import { settleCaptionAuto } from '../src/shared/captions/captionAutoSettle'
 import { tidyCaptions, type CleanupChoices, type WordListEntry } from '../src/shared/captions/cleanup'
+import { wordKey } from '../src/shared/captions/textMap'
 import { studioWordTexts } from '../src/shared/captions/words'
 import { EditStore } from '../src/shared/editor/editStore'
 import { settleDeletedWords } from '../src/shared/editor/transcript'
@@ -127,12 +128,17 @@ function caption(r: () => number, digits: CleanupChoices['digits'], entries: Wor
 
 /**
  * For each word index, its piece; for each piece, its first word (as said, and as tidied); and
- * where words go: `tidy`, said words a..b as tidied words (each piece's words onto all of its
- * tidied words, a comma written apart onto the last only); `back`, tidied words a..b as said words
- * (each onto all of its piece's words, but a tidied word before the last of a piece with a comma
- * written apart, which leaves the comma out).
+ * where words go, given the tidied words (`tidiedWords`): `tidy`, said words a..b as tidied words,
+ * `back`, tidied words a..b as said words. A word goes onto the words of its piece on the other
+ * side (a comma written apart onto the last tidied word only; a tidied word before the last of a
+ * piece with a comma written apart, back onto the piece without it), and each end of a..b onto
+ * the one word of those that is the same word, when there is exactly one ("google" and "Google"
+ * of "google dogs" and "Google Docs", "save" and "save," of "save ,").
  */
-function index(pieces: Piece[]): {
+function index(
+  pieces: Piece[],
+  tidiedWords: readonly string[]
+): {
   saidPiece: number[]
   tidiedPiece: number[]
   saidAt: number[]
@@ -152,16 +158,25 @@ function index(pieces: Piece[]): {
   })
   saidAt.push(saidPiece.length)
   tidiedAt.push(tidiedPiece.length)
-  const tidy = (a: number, b: number): [number, number] => {
-    const p = saidPiece[a]
-    const comma = pieces[p].comma && a === saidAt[p + 1] - 1 && saidAt[p + 1] - saidAt[p] > 1
-    return [comma ? tidiedAt[p + 1] - 1 : tidiedAt[p], tidiedAt[saidPiece[b] + 1] - 1]
+  const said = pieces.flatMap((p) => p.words).map(wordKey)
+  const tidied = tidiedWords.map(wordKey)
+  // The one word of `from..to` in `keys` that is `key`, or undefined.
+  const one = (keys: string[], from: number, to: number, key: string): number | undefined => {
+    const hits = keys.slice(from, to + 1).flatMap((k, i) => (k === key ? [from + i] : []))
+    return hits.length === 1 ? hits[0] : undefined
   }
-  const back = (a: number, b: number): [number, number] => {
-    const p = tidiedPiece[b]
-    const comma = pieces[p].comma && b < tidiedAt[p + 1] - 1
-    return [saidAt[tidiedPiece[a]], saidAt[p + 1] - (comma ? 2 : 1)]
+  const tidiedOf = (i: number): [number, number] => {
+    const p = saidPiece[i]
+    const comma = pieces[p].comma && i === saidAt[p + 1] - 1 && saidAt[p + 1] - saidAt[p] > 1
+    return [comma ? tidiedAt[p + 1] - 1 : tidiedAt[p], tidiedAt[p + 1] - 1]
   }
+  const saidOf = (j: number): [number, number] => {
+    const p = tidiedPiece[j]
+    const comma = pieces[p].comma && j < tidiedAt[p + 1] - 1
+    return [saidAt[p], saidAt[p + 1] - (comma ? 2 : 1)]
+  }
+  const tidy = (a: number, b: number): [number, number] => [one(tidied, ...tidiedOf(a), said[a]) ?? tidiedOf(a)[0], one(tidied, ...tidiedOf(b), said[b]) ?? tidiedOf(b)[1]]
+  const back = (a: number, b: number): [number, number] => [one(said, ...saidOf(a), tidied[a]) ?? saidOf(a)[0], one(said, ...saidOf(b), tidied[b]) ?? saidOf(b)[1]]
   return { saidPiece, tidiedPiece, saidAt, tidiedAt, tidy, back }
 }
 
@@ -203,8 +218,10 @@ function run(seed: number): Scenario {
   const wordsAt = (q: Project, id: string, from: number, to: number): string => studioWordTexts(textOf(q, id), 'en').slice(from, to + 1).join(' ')
   // Marks before the tidy (the user's), or on the tidied words (automatic, as Make my captions great picks them).
   const before = r() < 0.5
-  // Each mark's words once Remove put the text back, and (made before the tidy) once tidied.
+  // Each mark's words once Remove put the text back, and (made before the tidy) once tidied; the
+  // words of the marks made before the tidy.
   const marks = new Map<string, { said: [number, number]; tidied?: [number, number] }>()
+  const made = new Map<string, [number, number]>()
   const pick = (n: number): [number, number] => {
     const a = Math.floor(r() * n)
     const b = Math.min(n - 1, a + Math.floor(r() * 3))
@@ -218,11 +235,7 @@ function run(seed: number): Scenario {
       })
       return { ...q, captionMarks: list, captionPlaces: shapes.map((_, i) => ({ caption: `c${i}`, position: i % 2 ? 'top' : 'bottom' })) }
     })
-    for (const m of s.state.captionMarks ?? []) {
-      const ix = index(shapes[+m.caption.slice(1)])
-      const tidied = ix.tidy(m.from, m.to)
-      marks.set(m.id, { said: ix.back(...tidied), tidied })
-    }
+    for (const m of s.state.captionMarks ?? []) made.set(m.id, [m.from, m.to])
   }
   // One tidy, or two: the first with capitals and part of the word list only.
   const all: CleanupChoices = { caps: true, punct: true, digits, bleep: 'off', bleepSound: 'tone', ai: false }
@@ -239,6 +252,14 @@ function run(seed: number): Scenario {
     if (want !== have) fail(`c${i} “${segments[i].text}” → “${textOf(s.state, `c${i}`)}”: ${have} words, expected ${want}`)
   })
   if (failures.length) return { seed, failures, kind: '' }
+  const indexOf = (caption: string): ReturnType<typeof index> => index(shapes[+caption.slice(1)], studioWordTexts(textOf(s.state, caption), 'en'))
+  for (const m of s.state.captionMarks ?? []) {
+    const raw = made.get(m.id)
+    if (!raw) continue
+    const ix = indexOf(m.caption)
+    const tidied = ix.tidy(...raw)
+    marks.set(m.id, { said: ix.back(...tidied), tidied })
+  }
   // Marks before the tidy are on the tidied words of their pieces now.
   for (const m of s.state.captionMarks ?? []) {
     const want = marks.get(m.id)?.tidied
@@ -254,10 +275,7 @@ function run(seed: number): Scenario {
       }),
       captionPlaces: shapes.map((_, i) => ({ caption: `c${i}`, position: i % 2 ? 'top' : 'bottom' }))
     }))
-    for (const m of s.state.captionMarks ?? []) {
-      const ix = index(shapes[+m.caption.slice(1)])
-      marks.set(m.id, { said: ix.back(m.from, m.to) })
-    }
+    for (const m of s.state.captionMarks ?? []) marks.set(m.id, { said: indexOf(m.caption).back(m.from, m.to) })
   }
   // A keyword pop-up anchored on the tidied words of each caption.
   const anchors = new Map<string, [number, number]>()
@@ -272,8 +290,7 @@ function run(seed: number): Scenario {
   }))
   for (const g of s.state.graphics ?? []) {
     if (g.kind !== 'keyword' || !g.anchor) continue
-    const ix = index(shapes[+g.anchor.caption.slice(1)])
-    anchors.set(g.id, ix.back(g.anchor.from, g.anchor.to))
+    anchors.set(g.id, indexOf(g.anchor.caption).back(g.anchor.from, g.anchor.to))
   }
   const tidiedMarks = new Map((s.state.captionMarks ?? []).map((m) => [m.id, [m.from, m.to] as [number, number]]))
   const tidiedAnchors = new Map((s.state.graphics ?? []).flatMap((g) => (g.kind === 'keyword' && g.anchor ? [[g.id, [g.anchor.from, g.anchor.to] as [number, number]] as const] : [])))

@@ -98,6 +98,35 @@ export function newWordsOf(ranges: WordRanges, from: number, to: number): [numbe
 }
 
 /**
+ * Words from..to of one text as words of another, each end narrowed within the words the map
+ * gives it (`one`: the words of the other text for one word) to the one word there that is the
+ * same word (`fromKeys`, `toKeys`: the texts' words as compared, wordKey), when there is exactly
+ * one. A map gives a word taken out to the word before it and an added word the word before it
+ * as its source ("So" from "so um", "we" made into "we really" by the AI fix), and punctuation
+ * written apart to the word it joined ("app," from "app ,"): a record on the word stays on it.
+ * Words that are not found the same (a term, a number) keep all the words the map gives them.
+ */
+export function narrowedWords(one: (i: number) => readonly [number, number], fromKeys: readonly string[], toKeys: readonly string[]): (from: number, to: number) => [number, number] {
+  const same = (i: number): number | undefined => {
+    const [a, b] = one(i)
+    let found: number | undefined
+    for (let k = a; k <= b; k++) {
+      if (toKeys[k] !== fromKeys[i]) continue
+      if (found !== undefined) return undefined
+      found = k
+    }
+    return found
+  }
+  return (from, to) => {
+    const a0 = one(from)[0]
+    const b0 = one(to)[1]
+    const a = same(from) ?? a0
+    const b = same(to) ?? b0
+    return a <= b ? [a, b] : [a0, b0]
+  }
+}
+
+/**
  * For each word of `next`, the words of `was` holding its characters (`keep` gives the characters
  * that count, the same in both), or null when they are not the same characters. A word with none
  * comes from the last word the word before it came from (at the start, the words before the first

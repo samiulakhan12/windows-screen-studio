@@ -2620,7 +2620,12 @@ give (`migrateProject(JSON.parse(JSON.stringify(p)))` for these fields; test 49)
      "google dogs", "Flown" on "flow in", "R&D" on "r and d". Exact, estimated and missing word
      times give the same words, and so do repeated words ("Flown in Flown", "110 and 120"). A
      record on part of what the tidy wrote as one ("Docs" of "Google Docs") goes back onto all of
-     it, but a comma written apart after it goes with its last word only. A term the caption
+     it, but a comma written apart after it goes with its last word only. Each end of a record's
+     words stays on its own word when the words the map gives it hold that same word once
+     (`narrowedWords`): a word the AI fix took out or put in beside it is not taken along ("So"
+     goes back onto "so" of "so um", and "we" stays "we" when the fix writes "we really"), nor
+     punctuation written apart ("app," goes back onto "app" of "app ,"), and "Google" of "Google
+     Docs" goes back onto "google" of "google dogs". A term the caption
      already had, or had in other capitals ("visual studio" → "Visual Studio"), is not written as
      one: a record on one of its words stays on that word through the tidy and Remove, and so
      does a term a first tidy wrote and a second matches again. A caption tidied twice keeps its first record with the two maps composed, and its records
@@ -3027,8 +3032,8 @@ before it follows the letters ("word ," → "word,", a Japanese "。" with the l
 and full stops change words one for one. The AI fix
 (rule 6) gives no such account, so its words are found in the text it was sent (the longest
 common subsequence with the fewest runs; changed words come from the words they replace, an added
-word from the word before it, a word taken out goes with the word before it) and that map is
-composed with the rules'. A caption tidied again keeps its first record, its map composed with
+word from the word before it, a word taken out goes with the word before it, while a record on
+the word before it stays on that word, §11.1 rule 1) and that map is composed with the rules'. A caption tidied again keeps its first record, its map composed with
 the new tidy's, so it still maps onto the text before the first tidy; a record without a map stays
 without one.
 

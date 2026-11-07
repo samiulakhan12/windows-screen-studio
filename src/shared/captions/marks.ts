@@ -9,7 +9,7 @@ import { captionsOf } from './settings'
 import { ANCHOR_TEXT_MAX, readCaptionMarks, readCaptionPlaces, readGraphics } from './studioData'
 import { legacyTwin } from './studioEdit'
 import { seedOf } from './motion'
-import { lcsFewestRuns, newWordsOf, oldWordsOf, wordCount, wordKey, wordRanges } from './textMap'
+import { lcsFewestRuns, narrowedWords, newWordsOf, oldWordsOf, wordCount, wordKey, wordRanges } from './textMap'
 import { studioTokens, studioWords } from './words'
 
 /** The marks of each caption, by caption id, each list in word order. */
@@ -164,8 +164,10 @@ type TextStep = { exact: (from: number, to: number) => [number, number] } | 'put
  * The text steps of the captions whose text changed from `prev` to `next`, read from their text
  * records: Remove put a record's text back (`prev`'s record and map: each word back to the words it
  * came from); a tidy wrote a record (`next`'s new records: each word to every word made from it),
- * or tidied a caption again (both maps, through the words before the first tidy). A map that does
- * not fit its caption's words is not used.
+ * or tidied a caption again (both maps, through the words before the first tidy). Each end of a
+ * record's words stays on its own word when the words the map gives it hold it once (narrowedWords:
+ * not onto a word the AI fix took out or put in beside it). A map that does not fit its caption's
+ * words is not used.
  */
 function textSteps(next: Project, prev: Project, prevWords: Map<string, Words>, nextWords: Map<string, Words>): Map<string, TextStep> {
   const out = new Map<string, TextStep>()
@@ -183,14 +185,14 @@ function textSteps(next: Project, prev: Project, prevWords: Map<string, Words>, 
     const p = was.get(id)
     const pMap = p?.map ? wordRanges(p.map, before.keys.length, wordCount(p.text, prevLang)) : null
     if (p && now.seg.text === p.text) {
-      out.set(id, pMap ? { exact: (from, to) => oldWordsOf(pMap, from, to) } : 'putBack')
+      out.set(id, pMap ? { exact: narrowedWords((i) => oldWordsOf(pMap, i, i), before.keys, now.keys) } : 'putBack')
       continue
     }
     const n = own.get(id)
     const nMap = n?.map ? wordRanges(n.map, now.keys.length, wordCount(n.text, lang)) : null
     if (!n || !nMap) continue
-    if (before.seg.text === n.text) out.set(id, { exact: (from, to) => newWordsOf(nMap, from, to) })
-    else if (p && pMap && p.text === n.text) out.set(id, { exact: (from, to) => newWordsOf(nMap, ...oldWordsOf(pMap, from, to)) })
+    if (before.seg.text === n.text) out.set(id, { exact: narrowedWords((i) => newWordsOf(nMap, i, i), before.keys, now.keys) })
+    else if (p && pMap && p.text === n.text) out.set(id, { exact: narrowedWords((i) => newWordsOf(nMap, ...oldWordsOf(pMap, i, i)), before.keys, now.keys) })
   }
   return out
 }

@@ -46,19 +46,23 @@ const anchorText = (q: Project, id: string): string | undefined => {
   return g && (g.kind === 'keyword' || g.kind === 'emoji') ? g.anchor?.text : undefined
 }
 
-/** The finding's captions and others: the text, the word list, the tidied text, and for each tidied word the words it came from. */
+/**
+ * The finding's captions and others: the text, the word list, the tidied text, and for each tidied
+ * word the words a mark on it goes back onto: the words it came from, or the one of them that is
+ * the same word ("Google" of "Google Docs" onto "google" of "google dogs").
+ */
 const CASES: { text: string; words: WordListEntry[]; cleanup?: Partial<CleanupChoices>; tidied: string; back: string[] }[] = [
   {
     text: 'our q and a and fifty google dogs users',
     words: [{ term: 'Q&A', heard: ['q and a'] }, { term: 'Google Docs', heard: ['google dogs'] }],
     tidied: 'Our Q&A and 50 Google Docs users',
-    back: ['our', 'q and a', 'and', 'fifty', 'google dogs', 'google dogs', 'users']
+    back: ['our', 'q and a', 'and', 'fifty', 'google', 'google dogs', 'users']
   },
   {
     text: 'the r and d and ops teams use google dogs',
     words: [{ term: 'R&D', heard: ['r and d'] }, { term: 'DevOps', heard: ['ops'] }, { term: 'Google Docs', heard: ['google dogs'] }],
     tidied: 'The R&D and DevOps teams use Google Docs',
-    back: ['the', 'r and d', 'and', 'ops', 'teams', 'use', 'google dogs', 'google dogs']
+    back: ['the', 'r and d', 'and', 'ops', 'teams', 'use', 'google', 'google dogs']
   },
   // The limit §11.1 named for captions without word times: "Flown" back on "flow" alone.
   { text: 'open flow in in twenty seconds', words: [{ term: 'Flown', heard: ['flow in'] }], tidied: 'Open Flown in 20 seconds', back: ['open', 'flow in', 'in', 'twenty', 'seconds'] },
@@ -214,6 +218,30 @@ describe('a tidy moves marks onto the words made from theirs', () => {
       s.update((q) => removeItems(q, [row(q, TEXT_GROUP)]))
       expect(s.state.transcript!.segments[0].text).toBe('open google dogs with flow in two hundred times')
       expect(Object.fromEntries(s.state.captionMarks!.map((m) => [m.id, m.text])), times).toEqual({ docs: 'google dogs', late: 'flow in', early: 'two hundred' })
+    }
+  })
+})
+
+describe('the AI fix took words out or put words in', () => {
+  it('a mark or anchor beside a word it took out or put in stays on its own word, on the tidy and on Remove', () => {
+    for (const times of TIMES) {
+      const base = studioProject({ segments: segmentsOf(['so um we open the app ,', 'click save and you are done'], times) })
+      const asked = tidyCaptions(base, { ...DEFAULT_CLEANUP, words: [] }).project.transcript!.segments
+      expect(asked[0].text).toBe('So um we open the app,')
+      const fix = { task: 'cleanup' as const, segments: asked.map((x) => ({ ...x, text: x.id === 'c0' ? 'So we really open the app,' : x.text })) }
+      const s = storeOf(base)
+      // A kept mark on "we" and an emoji on "open" made before the tidy.
+      s.update((q) => ({ ...q, captionMarks: [mark(q, 2, 2, false, 'we')], graphics: [pop(q, 'emoji', 3)] }))
+      s.update((q) => tidyCaptions(q, { ...DEFAULT_CLEANUP, words: [], ai: true, fix }).project)
+      expect(s.state.transcript!.segments[0].text).toBe('So we really open the app,')
+      expect(s.state.captionMarks!.map((m) => m.text), times).toEqual(['we'])
+      expect(anchorText(s.state, 'emoji'), times).toBe('open')
+      // Marks on "So" and "app," and a pop-up on "So" made after the tidy, then Remove.
+      s.update((q) => ({ ...q, captionMarks: [...q.captionMarks!, mark(q, 0, 0, true, 'so'), mark(q, 5, 5, true, 'app')], graphics: [...q.graphics!, pop(q, 'keyword', 0)] }))
+      s.update((q) => removeItems(q, [row(q, TEXT_GROUP)]))
+      expect(s.state.transcript!.segments[0].text).toBe('so um we open the app ,')
+      expect(Object.fromEntries(s.state.captionMarks!.map((m) => [m.id, m.text])), times).toEqual({ so: 'so', we: 'we', app: 'app' })
+      expect([anchorText(s.state, 'keyword'), anchorText(s.state, 'emoji')], times).toEqual(['so', 'open'])
     }
   })
 })
