@@ -311,7 +311,10 @@ describe('bubbles (test 41, the pure part)', () => {
       expect(lines.join('')).toBe(text)
       for (const l of lines) expect(l.startsWith('্') || l.startsWith('ষ') || l.endsWith('ক')).toBe(false)
       expect(lines.some((l) => l.includes('ক্ষ'))).toBe(true)
+      for (const l of lines) expect(mono(l)).toBeLessThanOrEqual(Math.max(width, 10))
     }
+    expect(wrapCallout(text, 10, mono)).toEqual(['ক্ষ', 'ম', 'তা'])
+    expect(wrapCallout(text, 20, mono)).toEqual(['ক্ষম', 'তা'])
   })
 
   it('wraps Chinese between graphemes, filling each line', () => {
@@ -320,6 +323,10 @@ describe('bubbles (test 41, the pure part)', () => {
     expect(lines.join('')).toBe(text)
     for (const l of lines) expect(mono(l)).toBeLessThanOrEqual(50)
     expect(lines.length).toBeLessThanOrEqual(5)
+    // Narrower than a word: between its graphemes.
+    const narrow = wrapCallout(text, 15, mono)
+    expect(narrow.join('')).toBe(text)
+    expect(narrow.every((l) => [...l].length === 1)).toBe(true)
   })
 
   it('keeps the body inside the area, moved by the least amount', () => {
