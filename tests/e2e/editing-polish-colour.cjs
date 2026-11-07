@@ -156,12 +156,17 @@ async function colourSteps(test) {
     seed(home, 'rec-mono', 'Mono screen', { grade: { screen: { look: 'mono' } } })
     const out = (k) => path.join(home, `${k}.mp4`)
     let { app, win, warnings } = await launch(ctx, home)
+    let timing = fx.exportTimings(win)
     const previews = {}
     for (const [name, key] of [['Plain', 'plain'], ['Warm camera', 'warm'], ['Mono screen', 'mono']]) {
       await fx.openProject(win, name)
       await settled()
       previews[key] = { screen: await previewAt(win, [0.25, 0.25]) }
       await exportOpen(app, win, out(key))
+      // The cost of grading (§15): the export's per-frame times, WebGL2 under SwiftShader here.
+      const t = timing.last()
+      console.log(`  ${key} (WebGL2): draw ${t.draw} ms, decode ${t.decode} ms, encode ${t.encode} ms a frame`)
+      h.assert(!(t.draw > 400), `a generous ceiling on the draw (${t.draw} ms)`)
       await backHome(win)
     }
     h.assert(!warnings.some((m) => m.includes('Colour grading uses the CPU')), `the shader grades under SwiftShader (${warnings.filter((m) => m.includes('Colour')).join(' | ')})`)
@@ -214,9 +219,12 @@ async function colourSteps(test) {
 
     // A PC without WebGL2: the CPU path, the panel's note, and the same export within one level.
     ;({ app, win, warnings } = await launch(ctx, home, { noGl: true }))
+    timing = fx.exportTimings(win)
     for (const [name, key] of [['Warm camera', 'warm-cpu'], ['Mono screen', 'mono-cpu']]) {
       await fx.openProject(win, name)
       await exportOpen(app, win, out(key))
+      const t = timing.last()
+      console.log(`  ${key}: draw ${t.draw} ms, decode ${t.decode} ms, encode ${t.encode} ms a frame`)
       await backHome(win)
     }
     h.assert(warnings.some((m) => m === 'Colour grading uses the CPU: no WebGL2 context'), `the log says why (${warnings.join(' | ')})`)
