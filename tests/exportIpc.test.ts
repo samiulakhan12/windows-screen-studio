@@ -105,6 +105,16 @@ vi.mock('../src/main/ffmpeg', async (orig) => {
   return { ...real, FrameEncoder, startFfmpeg }
 })
 
+// A user's own looping Opus music is decoded before the encoder starts (editing polish §0 decision 2): a stand-in that waits for the export's signal.
+const loops = vi.hoisted(() => ({ calls: [] as { file: string; seconds: number; signal: AbortSignal }[] }))
+vi.mock('../src/main/musicLoopCache', () => ({
+  loopableMusic: (_dir: string, file: string, _ff: string, opts: { seconds: number; signal: AbortSignal }) =>
+    new Promise<string>((_resolve, reject) => {
+      loops.calls.push({ file, seconds: opts.seconds, signal: opts.signal })
+      opts.signal.addEventListener('abort', () => reject(new Error('The export was cancelled.')), { once: true })
+    })
+}))
+
 import { disposeExport, registerExportIpc } from '../src/main/exportIpc'
 import { partialPath, tempStem } from '../src/main/exportJob'
 
@@ -155,6 +165,24 @@ beforeAll(async () => {
 afterAll(() => rmSync(h.root, { recursive: true, force: true }))
 
 describe('export clean-up in the main process', () => {
+  it("cancel while a looping Opus music is decoded before the export stops the decode, and starts nothing", async () => {
+    const dir = path.join(h.root, 'projects', 'p1')
+    mkdirSync(dir, { recursive: true })
+    writeFileSync(path.join(dir, 'music-1.opus'), 'OggS')
+    const file = path.join(out, 'Looped.mp4')
+    h.saveTo = file
+    await invoke('export:choosePath', {}, 'x', 'mp4')
+    const encoders = h.encoders.length
+    const started = invoke('export:start', { sender: renderer() }, 'p1', { ...jobFor(file), music: { file: 'music-1.opus', volume: 0.35, loop: true, fadeIn: 0, fadeOut: 0, duration: null } })
+    await tick()
+    expect(loops.calls.map((c) => [c.file, c.seconds])).toEqual([['music-1.opus', 1]])
+    await invoke('export:cancel')
+    await expect(started).rejects.toThrow(/cancelled/)
+    expect(loops.calls[0].signal.aborted).toBe(true)
+    expect(h.encoders.length).toBe(encoders)
+    expect(partials()).toEqual([])
+  })
+
   it('deletes what an earlier run left behind at start-up (audit-B-1)', () => {
     expect(existsSync(stalePartial)).toBe(false)
     expect(existsSync(staleGif)).toBe(false)

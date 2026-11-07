@@ -98,3 +98,39 @@ describe('the music credit (test 71, owner decision 4)', () => {
     expect(text.endsWith('\n\nMusic: Sweet Sun by Loyalty Freak Music (CC0)')).toBe(true)
   })
 })
+
+describe('the library edits (§2.6, §16)', () => {
+  const base = studioProject({ segments: captions(['Hello']), duration: 60 })
+  const music: MusicSettings = { path: 'music-2.ogg', volume: 0.6, ducking: 0.4, loop: false, fadeIn: 3, fadeOut: 4, library: { id: 'lofi-coexistenz' } }
+
+  it('your own file keeps the music settings and leaves the bed behind (no credit, no bed graph)', async () => {
+    const { withOwnMusic, withLibraryBed, libraryBedOf } = await import('../src/shared/audio/soundFxEdit')
+    const p = { ...base, audio: { ...base.audio, music } }
+    const own = withOwnMusic(p, 'music-3.mp3')
+    expect(own.audio.music).toEqual({ path: 'music-3.mp3', volume: 0.6, ducking: 0.4, loop: false, fadeIn: 3, fadeOut: 4 })
+    expect(libraryBedOf(own)).toBeNull()
+    expect(musicCredit(own)).toBeNull()
+    // A bed over no music takes today's defaults; an unknown id changes nothing.
+    expect(withLibraryBed(base, 'upbeat-sweet-sun', 'music-1.ogg').audio.music).toEqual({ volume: 0.35, ducking: 0.7, loop: true, fadeIn: 1, fadeOut: 2, path: 'music-1.ogg', library: { id: 'upbeat-sweet-sun' } })
+    expect(withLibraryBed(base, 'nope', 'music-1.ogg')).toBe(base)
+  })
+
+  it('a rule set to a catalogue effect or None, the volume clamped; nothing set leaves no field', async () => {
+    const { withSoundRule, withSfxVolume } = await import('../src/shared/audio/soundFxEdit')
+    const a = withSoundRule(base, 'titles', 'sfx:bell')
+    expect(a.soundFx).toEqual({ titles: 'sfx:bell' })
+    expect(withSoundRule(a, 'titles', 'sfx:bell')).toBe(a)
+    expect(withSoundRule(a, 'zoomIn', 'sfx:nope' as never).soundFx).toEqual({ titles: 'sfx:bell' })
+    expect('soundFx' in withSoundRule(a, 'titles', null)).toBe(false)
+    expect(withSfxVolume(base, 3).soundFx).toEqual({ volume: 1 })
+    expect(withSfxVolume(base, -1).soundFx).toEqual({ volume: 0 })
+  })
+
+  it('lengths and sizes as the list shows and says them', async () => {
+    const { bedLength, megabytes } = await import('../src/shared/audio/soundFxEdit')
+    const { soundBed } = await import('../src/shared/audio/soundLibrary')
+    expect(bedLength(soundBed('upbeat-sweet-sun')!)).toEqual({ text: '1:43', spoken: '1 minute 43 seconds' })
+    expect(bedLength(soundBed('corporate-one-cool-minute')!)).toEqual({ text: '1:06', spoken: '1 minute 6 seconds' })
+    expect(megabytes(1025969)).toEqual({ text: '1.0 MB', spoken: '1.0 megabytes' })
+  })
+})

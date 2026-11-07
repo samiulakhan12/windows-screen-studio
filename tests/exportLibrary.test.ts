@@ -2,7 +2,7 @@ import { spawnSync } from 'node:child_process'
 import { chmodSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
-import { afterAll, describe, expect, it } from 'vitest'
+import { afterAll, describe, expect, it, vi } from 'vitest'
 import { ffmpegPath } from '../src/main/ffmpeg'
 import { isLibraryBed, resolveSoundInputs, validateJob, validEffects } from '../src/main/exportJob'
 import { CACHE_SPARE_BYTES, loopableMusic, loopsCleanly, MUSIC_CACHE_COPY, parseMusicProbe } from '../src/main/musicLoopCache'
@@ -10,6 +10,14 @@ import { copiedFile } from '../src/main/projectCopy'
 import type { ExportJob, MusicSound } from '../src/shared/api/export'
 import { bedLoop, soundBed, soundEffect } from '../src/shared/audio/soundLibrary'
 import { planSoundtrack } from '../src/shared/render/audioPlan'
+
+// One more effect than the sixteen of today's catalogue, so a job can name 17 different ones.
+vi.mock('../src/shared/audio/soundLibrary', async (original) => {
+  const real = await original<typeof import('../src/shared/audio/soundLibrary')>()
+  const extra = { ...real.SOUND_EFFECTS[0], id: 'test-extra', prepared: { ...real.SOUND_EFFECTS[0].prepared, file: 'sfx-test-extra.ogg' } }
+  const effects = [...real.SOUND_EFFECTS, extra]
+  return { ...real, SOUND_EFFECTS: effects, soundEffect: (id: string) => effects.find((e) => e.id === id) ?? null }
+})
 
 /*
  * Editing polish, part P5 (docs/design/editing-polish.md §0 decision 2, §10.4, §10.8, §19.1 tests
@@ -60,6 +68,10 @@ describe('validEffects and the bed in the job (test 65)', () => {
     const ids = ['whoosh-in', 'whoosh-out', 'whoosh-soft', 'swish-quick', 'pop', 'pop-soft', 'pop-bubble', 'click', 'tick', 'bell', 'chime', 'success', 'rise', 'fall', 'bubble-in', 'drop']
     expect(validEffects(ids.map((id) => ({ id, times: [1], gain: 1 })))).toBe(true)
     expect(validEffects([...ids, 'whoosh-in'].map((id) => ({ id, times: [1], gain: 1 })))).toBe(false)
+    // Seventeen different effects of the catalogue: one too many.
+    expect(soundEffect('test-extra')).not.toBeNull()
+    expect(validEffects([...ids, 'test-extra'].map((id) => ({ id, times: [1], gain: 1 })))).toBe(false)
+    expect(validEffects([...ids.slice(1), 'test-extra'].map((id) => ({ id, times: [1], gain: 1 })))).toBe(true)
     expect(validEffects([{ ...ok, times: Array.from({ length: 501 }, (_, i) => i) }])).toBe(false)
     expect(validEffects([{ ...ok, times: Array.from({ length: 500 }, (_, i) => i) }])).toBe(true)
     expect(validEffects([{ ...ok, gain: 2.1 }])).toBe(false)
@@ -211,8 +223,11 @@ describe("users' own looping music (test 66, §0 decision 2)", () => {
     const signal = new AbortController()
     const run = loopableMusic(dir, 'music-1.opus', fake.bin, { seconds: 42.5, signal: signal.signal, timeoutMs: 60_000 })
     await new Promise((r) => setTimeout(r, 300))
+    const stopped = Date.now()
     signal.abort()
     await expect(run).rejects.toThrow(MUSIC_CACHE_COPY.cancelled)
+    // The decode was killed at once (the stand-in would sleep for 30 s).
+    expect(Date.now() - stopped).toBeLessThan(5000)
     const decode = fake.calls().find((c) => c.includes('-c:a'))!
     expect(decode).toContain('-t 42.5')
     expect(decode).toContain(`-i ${path.join(dir, 'music-1.opus')}`)
