@@ -60,6 +60,13 @@ const replacedFiles = new Map<string, Set<string>>()
 
 /** Whether `file` was exported in this session (F-11 sidecar files, F-12 notifications). */
 export const isExportedFile = (file: string): boolean => exportedFiles.has(file)
+/**
+ * Adds a file main itself wrote this session to the exported files (smart-tools.md §5.8: a saved
+ * guide's PDF, HTML or demo), so Show in folder and Share accept it, and nothing else.
+ */
+export function rememberExported(file: string): void {
+  exportedFiles.add(file)
+}
 /** Whether `kind` next to `file` may be replaced: its export replaced a file the user chose to replace. Each kind once. */
 export const replacedExport = (file: string, kind: string): boolean => replacedFiles.get(file)?.delete(kind) === true
 

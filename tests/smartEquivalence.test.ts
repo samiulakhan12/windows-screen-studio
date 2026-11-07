@@ -23,7 +23,6 @@ const { reviewItems, pendingCount, reviewStatus, keepItems, removeItems } = awai
 const { changedAreas } = await import('../src/shared/editor/versions')
 const { textPrompt, runTextTask } = await import('../src/shared/captions/transcriptText')
 const { packPrompt } = await import('../src/shared/publish/prompts')
-const { AI_TEXT_TASKS } = await import('../src/shared/api/ai')
 const { badgeLabels } = await import('../src/shared/render/callouts')
 const { resolveGreatOptions, DEFAULT_GREAT_OPTIONS } = await import('../src/shared/captions/great')
 const { planPolish, DEFAULT_POLISH_OPTIONS } = await import('../src/shared/editor/polish')
@@ -257,11 +256,13 @@ function answerFor(prompt: TextPrompt): unknown {
 }
 
 const PACK_TASKS: readonly PackTextTask[] = ['youtube', 'linkedin', 'xpost', 'article', 'releaseNotes']
+/** Every text task from before this wave, in AI_TEXT_TASKS' order at 044018d (the names task is new). */
+const EXISTING_TASKS: readonly AiTextTask[] = ['cleanup', 'translate', 'chapters', 'title', 'summary', 'marks', 'youtube', 'linkedin', 'xpost', 'article', 'releaseNotes']
 
 /** The requests of every existing task over `segments`, with the pack's choices. */
 function requests(segments: CaptionSegment[]): { key: string; request: AiTextRequest }[] {
   const out: { key: string; request: AiTextRequest }[] = []
-  for (const task of AI_TEXT_TASKS as readonly AiTextTask[]) {
+  for (const task of EXISTING_TASKS) {
     if ((PACK_TASKS as readonly string[]).includes(task)) {
       for (const tone of ['friendly', 'formal', 'excited'] as const)
         for (const length of ['short', 'normal'] as const) out.push({ key: `${task} ${tone} ${length}`, request: { task, segments, tone, length, context: { title: 'Billing demo', chapters: ['Intro', 'Billing'] } } as AiTextRequest })

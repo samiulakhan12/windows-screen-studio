@@ -149,7 +149,8 @@ export async function listProjects(): Promise<ProjectSummary[]> {
   for (const name of await projectFolders()) {
     try {
       const p = await readProject(name)
-      out.push({ id: p.id, name: p.name, createdAt: p.createdAt, duration: p.duration, dir: projectDir(name) })
+      // What it was copied from, and whether it is a short clip (smart-tools.md §4.1: Made from this video).
+      out.push({ id: p.id, name: p.name, createdAt: p.createdAt, duration: p.duration, dir: projectDir(name), ...(p.copyOf ? { copyOf: p.copyOf } : {}), ...(p.clipOf ? { clip: true as const } : {}) })
     } catch {
       // Not a finished project; unfinished recordings are listed by listUnfinished().
     }

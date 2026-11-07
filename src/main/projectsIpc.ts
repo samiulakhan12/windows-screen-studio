@@ -3,7 +3,8 @@ import { existsSync, promises as fs } from 'node:fs'
 import path from 'node:path'
 import { SOURCE_FILES, stemsOf, type StemKind } from '../shared/audio/settings'
 import type { SaveMeta, SyncSaveResult } from '../shared/editor/autosave'
-import type { DuplicateResult, LoadedProject } from '../shared/api/projects'
+import { SMART_PROJECT_CHANNELS, type DuplicateResult, type LoadedProject } from '../shared/api/projects'
+import { copyCost } from './clips/copyCost'
 import type { Project } from '../shared/types'
 import { stopAnalyses } from './analysisIpc'
 import { imageType } from './assetIpc'
@@ -157,6 +158,11 @@ export function registerProjectsIpc(): void {
   ipcMain.handle('projects:duplicateCancel', (e) => {
     if (!fromMainWindow(e)) throw new Error('Not allowed')
     copying?.abort()
+  })
+  // What copies cost on disk before Short clips makes them (smart-tools.md §8.5 step 6): part P3's copyCost.
+  ipcMain.handle(SMART_PROJECT_CHANNELS.copyCost, (e, id: unknown) => {
+    if (!fromMainWindow(e)) throw new Error('Not allowed')
+    return copyCost(id)
   })
 
   ipcMain.handle('styleDefaults:get', () => loadStyleDefaults())

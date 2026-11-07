@@ -1,4 +1,5 @@
 import type { ModelList } from '../ai/modelList'
+import type { PriceList } from '../ai/prices'
 import type { AiProviderKind, CaptionSegment, Transcript } from '../types'
 import type { PublishLength, PublishTone } from '../publish/pack'
 
@@ -17,6 +18,8 @@ export interface AiProviderInfo {
   createdAt: string
   /** Whether it can transcribe sound (OpenAI and Gemini; Claude cannot). Added in wave 4. */
   canTranscribe?: boolean
+  /** A service reached at a base URL (docs/design/smart-tools.md §10): `kind` is then 'openai', the API it speaks. */
+  service?: ServiceInfo
 }
 
 export interface AiProviderInput {
@@ -28,6 +31,67 @@ export interface AiProviderInput {
   apiKey?: string
   model?: string
   transcriptionModel?: string
+  /** A service (§10.1): saved to ai-services.json, never to ai-providers.json; `kind` must be 'openai'. */
+  service?: { preset: ServicePreset; baseUrl: string; keepNoData?: boolean }
+}
+
+/** The id of AI on this PC among text providers (§9.6): the same string as LOCAL_TRANSCRIBER_ID; stored ids (^ai…, ^svc…) never collide with it. */
+export const LOCAL_TEXT_ID = 'local'
+
+/** The services More services offers (§10.5). */
+export type ServicePreset = 'azure' | 'openrouter' | 'groq' | 'together' | 'ollama' | 'lmstudio' | 'other'
+
+/** A service as the renderer sees it (§10.1): never its key. */
+export interface ServiceInfo {
+  preset: ServicePreset
+  /** Normalised (§10.2). */
+  baseUrl: string
+  /** ASCII (an internationalised name in its xn-- form): where the key and the text go. */
+  host: string
+  /** localhost, 127.0.0.0/8 or [::1]: plain http allowed, the key optional. */
+  loopback: boolean
+  /** How it answers in JSON, found by Save and check (§10.3): 'text' until checked. */
+  json: 'schema' | 'object' | 'text'
+  /** OpenRouter: provider.data_collection 'deny' is sent (§0 decision 5). */
+  keepNoData?: true
+}
+
+/**
+ * One choice in a text tool's provider list (§20.0): a provider, a service, or On this PC. `place`
+ * is the one name every hint and cost line uses: "OpenAI", "api.groq.com", "Ollama on this PC" or
+ * "this PC".
+ */
+export interface TextChoice {
+  /** A provider's or service's id, or LOCAL_TEXT_ID. */
+  id: string
+  label: string
+  kind: AiProviderKind | 'local'
+  model: string
+  /** A service's host. */
+  host?: string
+  place: string
+  /** No cost: a free model, or Ollama or LM Studio on this PC (§11.5). */
+  free?: true
+  /** It can send pictures (§5.3.1): a service or built-in provider, never On this PC. */
+  pictures?: boolean
+}
+
+/** Whose models to list (§10.4): a saved provider or service, or a form not saved yet. */
+export type ModelListTarget = { providerId: string } | { draft: AiProviderInput }
+
+/** One model of a provider's list. */
+export interface ListedModel {
+  id: string
+  /** US$ per million tokens (OpenRouter), or 'varies' for its router models. */
+  prices?: { input: number; output: number } | 'varies'
+  /** It accepts a strict JSON schema (OpenRouter's structured_outputs). */
+  schema?: boolean
+}
+
+/** Tokens a provider reported for an action's requests, summed (§11.6). */
+export interface AiUsage {
+  input: number
+  output: number
 }
 
 export interface TranscribeOptions {
@@ -64,7 +128,7 @@ export interface TranscribeProgress {
  * 'marks' (Captions Studio §11.2): emphasis, emoji, numbers, lists and quotes picked by word
  * index, checked by validateMarksAnswer (transcriptText.ts).
  */
-export type AiTextTask = 'cleanup' | 'translate' | 'chapters' | 'title' | 'summary' | 'marks' | PackTextTask
+export type AiTextTask = 'cleanup' | 'translate' | 'chapters' | 'title' | 'summary' | 'marks' | PackTextTask | 'names'
 
 /** The publishing copy pack's own tasks (NW-13, docs/design/publish-pack.md). */
 export type PackTextTask = 'youtube' | 'linkedin' | 'xpost' | 'article' | 'releaseNotes'
@@ -82,6 +146,21 @@ export interface AiTextRequest {
   context?: { title?: string; chapters?: string[] }
   /** For 'marks': the words of each caption, sent as data. */
   marks?: MarksBatch
+  /** For 'names' (smart-tools.md §5.3, §5.4, §7.6, §8.4): what to name, sent as data; `segments` may be empty. */
+  names?: NamesRequest
+  /** Lets cancelAiText and the progress of AI on this PC find this request (§20.0). */
+  requestId?: string
+}
+
+/**
+ * The 'names' task: a short name for each item from the words said in it (a chapter, a short clip,
+ * a guide's step) or a short note (a step's note). `action` is a step's action in words ("click,
+ * top right of the screen"); `image` its screenshot as JPEG (§5.3.1, part P6).
+ */
+export interface NamesRequest {
+  kind: 'chapter' | 'clip' | 'step' | 'note'
+  language?: string
+  items: { id: string; text: string; action?: string; image?: Uint8Array }[]
 }
 
 /**
@@ -115,11 +194,15 @@ export type AiTextResult =
   /** The pack (NW-13): checked, cleaned plain text; the YouTube description's text has no chapters (Flown adds them). */
   | { task: 'youtube'; text: string; tags: string[] }
   | { task: 'linkedin' | 'xpost' | 'article' | 'releaseNotes'; text: string }
+  /** 'names': a checked name for each item named (validateNamesAnswer: known ids once, no private-like text). */
+  | { task: 'names'; names: { id: string; name: string }[] }
 
 /** "Draft script" (speaker notes): the presenter's notes or bullet points, sent only on that click. */
 export interface ScriptDraftRequest {
   /** 1 to SCRIPT_DRAFT_MAX_NOTES characters, not only white space. */
   notes: string
+  /** Lets cancelAiText stop this draft, as it stops aiText's requests (smart-tools.md §20.0). */
+  requestId?: string
 }
 
 /** A script to read aloud: paragraphs separated by a blank line, covering the notes' points in order. */
@@ -142,8 +225,12 @@ export interface AiApi {
   transcribe(projectId: string, options: TranscribeOptions): Promise<Transcript>
   cancelTranscription(projectId: string): Promise<void>
   onTranscribeProgress(listener: (progress: TranscribeProgress) => void): () => void
-  /** `requestId` (optional, `^[A-Za-z0-9_-]{1,64}$`) lets cancelAiText stop it; a second request with the same id stops the first. */
-  aiText(providerId: string, request: AiTextRequest, requestId?: string): Promise<AiTextResult>
+  /**
+   * `requestId` (optional, `^[A-Za-z0-9_-]{1,64}$`) lets cancelAiText stop it; a second request with
+   * the same id stops the first. `providerId` may be LOCAL_TEXT_ID (AI on this PC). `usage`: the
+   * tokens the provider reported for its requests, summed, when it reported them.
+   */
+  aiText(providerId: string, request: AiTextRequest, requestId?: string): Promise<AiTextResult & { usage?: AiUsage }>
   /** Stops text request `requestId` (it then rejects); nothing when none runs. */
   cancelAiText(requestId: string): Promise<void>
   /**
@@ -153,7 +240,19 @@ export interface AiApi {
   draftScript(providerId: string, request: ScriptDraftRequest): Promise<ScriptDraftResult>
   /** Stops the draft in progress (it then rejects); nothing when none runs. */
   cancelScriptDraft(): Promise<void>
+  /** The models a provider, a service or a form not saved yet can use (§10.4); rejects with a message to show. */
+  listModels(target: ModelListTarget): Promise<ListedModel[]>
+  /** The price list (§11.4): the newer of the bundled and downloaded lists. */
+  getAiPriceList(): Promise<PriceList>
 }
+
+/** Smart tools' AI channels (§20.0, §21). */
+export const AI_SMART_CHANNELS = {
+  /** invoke (target) → ListedModel[]: part P5's listModels */
+  listModels: 'ai:listModels',
+  /** invoke () → PriceList: part P5's priceList().shown */
+  priceList: 'ai:priceList'
+} as const
 
 /** What each kind of provider is called, can do and uses by default (shown in Settings). */
 export interface AiProviderKindInfo {
@@ -203,7 +302,7 @@ export const AI_PROVIDER_KINDS: Record<AiProviderKind, AiProviderKindInfo> = {
   }
 }
 
-export const AI_TEXT_TASKS: readonly AiTextTask[] = ['cleanup', 'translate', 'chapters', 'title', 'summary', 'marks', 'youtube', 'linkedin', 'xpost', 'article', 'releaseNotes']
+export const AI_TEXT_TASKS: readonly AiTextTask[] = ['cleanup', 'translate', 'chapters', 'title', 'summary', 'marks', 'youtube', 'linkedin', 'xpost', 'article', 'releaseNotes', 'names']
 
 /** Limits of what the renderer may send (checked again in the main process). */
 export const AI_LIMITS = {
@@ -213,5 +312,10 @@ export const AI_LIMITS = {
   modelLength: 100,
   maxSegments: 20000,
   segmentTextLength: 2000,
-  languageLength: 60
+  languageLength: 60,
+  /**
+   * The 'names' task (§20.0): at most 200 items of 1,500 characters and an action of 80, 320,000
+   * characters in all; pictures JPEG, at most 512 KB each, 50 a request and 200 in all.
+   */
+  names: { items: 200, text: 1500, total: 320_000, action: 80, image: 512 * 1024, imagesPerRequest: 50, images: 200 }
 } as const

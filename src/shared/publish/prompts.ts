@@ -6,7 +6,7 @@
  * block, never instructions; every answer is checked, capped and cleaned before it is used.
  */
 import type { AiTextRequest, AiTextResult, PackTextTask } from '../api/ai'
-import { AiOutputError, type TextPrompt } from '../captions/transcriptText'
+import { AiOutputError, type TextLimits, type TextPrompt } from '../captions/transcriptText'
 import type { CaptionSegment } from '../types'
 import type { PublishLength, PublishTone } from './pack'
 import { cutAt, fitX, plainText, typedText, X_LIMIT } from './text'
@@ -129,6 +129,33 @@ export function packTranscript(segments: readonly Pick<CaptionSegment, 'text'>[]
     if (text.length <= max) return { text, shortened: true }
   }
   return { text: cutAt(texts[0] ?? '', max), shortened: true }
+}
+
+/** Characters a token at least, for a token budget (smart-tools.md §9.6): Latin script, and every other (Bangla 2.04 for Qwen, the lowest measured). */
+const LATIN_CHARS_PER_TOKEN = 3.5
+const OTHER_CHARS_PER_TOKEN = 2.0
+
+/**
+ * How many characters of `text` surely fit in `tokens` tokens of any tokenizer Flown runs on this PC:
+ * by its share of Latin characters (3.5 a token) and others (2.0), lower than every measured ratio,
+ * so excerpts cut by it stay within the budget.
+ */
+export function charsWithinTokens(text: string, tokens: number): number {
+  let latin = 0
+  let other = 0
+  for (const ch of text) {
+    if ((ch.codePointAt(0) ?? 0) < 0x0250) latin++
+    else other++
+  }
+  const n = latin + other
+  const perToken = n ? n / (latin / LATIN_CHARS_PER_TOKEN + other / OTHER_CHARS_PER_TOKEN) : LATIN_CHARS_PER_TOKEN
+  return Math.max(0, Math.floor(Math.max(0, tokens) * perToken))
+}
+
+/** The pack's transcript cap (§20.0): from `limits.transcriptTokens` when set (AI on this PC), else PACK_TRANSCRIPT_MAX. */
+export function packTranscriptMax(segments: readonly Pick<CaptionSegment, 'text'>[], limits?: Pick<TextLimits, 'transcriptTokens'>): number {
+  if (limits?.transcriptTokens == null) return PACK_TRANSCRIPT_MAX
+  return Math.min(PACK_TRANSCRIPT_MAX, charsWithinTokens(segments.map((s) => s.text).join(' '), limits.transcriptTokens))
 }
 
 /** One line of what the user typed: control and direction characters removed, line breaks and tabs as spaces, capped. Links, emphasis and code stay. */
@@ -293,7 +320,12 @@ export function validatePackAnswer(task: PackTextTask, answer: unknown): AiTextR
   }
 }
 
+/** The pack prompt of `request` within `limits` (the transcript's excerpts cut by packTranscriptMax). */
+export function packPromptWithin(request: AiTextRequest & { task: PackTextTask }, limits?: Pick<TextLimits, 'transcriptTokens'>): TextPrompt {
+  return limits?.transcriptTokens == null ? packPrompt(request) : packPrompt(request, packTranscript(request.segments, packTranscriptMax(request.segments, limits)))
+}
+
 /** Runs pack task `request.task` with `ask` (one request) and checks the answer. */
-export async function runPackTask(request: AiTextRequest & { task: PackTextTask }, ask: (prompt: TextPrompt) => Promise<unknown>): Promise<AiTextResult> {
-  return validatePackAnswer(request.task, await ask(packPrompt(request)))
+export async function runPackTask(request: AiTextRequest & { task: PackTextTask }, ask: (prompt: TextPrompt) => Promise<unknown>, limits?: Pick<TextLimits, 'transcriptTokens'>): Promise<AiTextResult> {
+  return validatePackAnswer(request.task, await ask(packPromptWithin(request, limits)))
 }

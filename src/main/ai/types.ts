@@ -1,3 +1,4 @@
+import type { AiUsage, ListedModel } from '../../shared/api/ai'
 import type { RawTranscript } from '../../shared/captions/transcriptParse'
 import type { TextPrompt } from '../../shared/captions/transcriptText'
 
@@ -46,12 +47,25 @@ export interface PartProgress {
 /** How hard the model should think about a text task (Claude's effort; others ignore it). */
 export type TextEffort = 'low' | 'medium' | 'high'
 
+/**
+ * What a text request is refused with when its prompt carries pictures (smart-tools.md §5.3.1) and
+ * the client cannot send them (every client until part P6 sets `pictures`).
+ */
+export const NO_PICTURES_MESSAGE = 'This model does not read pictures. Choose another model, or untick Also send the screenshots.'
+
 /** One provider, set up with the user's key. Every call retries and reports failures as AiError. */
 export interface AiClient {
   /** Checks the key (and model) with a tiny request; resolves with what was checked. */
   test(signal: AbortSignal): Promise<string>
-  /** Runs a text task prompt and returns the parsed JSON answer. */
-  json(prompt: TextPrompt, opts: { signal: AbortSignal; effort: TextEffort }): Promise<unknown>
+  /**
+   * Runs a text task prompt and returns the parsed JSON answer. `onUsage` hears the tokens the
+   * provider reported for the request, when it reported them (smart-tools.md §11.6).
+   */
+  json(prompt: TextPrompt, opts: { signal: AbortSignal; effort: TextEffort; onUsage?: (u: AiUsage) => void }): Promise<unknown>
+  /** The models it can use (smart-tools.md §10.4), from the provider. */
+  models?: (signal: AbortSignal) => Promise<ListedModel[]>
+  /** It sends a prompt's pictures (§5.3.1, part P6); without it a prompt with pictures is refused (NO_PICTURES_MESSAGE). */
+  pictures?: boolean
   /** Transcribes one part (times from its start); absent for providers that cannot. */
   transcribe?: (part: AudioPart, call: TranscribeCall) => Promise<RawTranscript>
   partLimits?: PartLimits

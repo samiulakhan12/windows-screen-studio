@@ -1,5 +1,5 @@
 import { ipcRenderer, type IpcRendererEvent } from 'electron'
-import type { AiApi, TranscribeProgress } from '../shared/api/ai'
+import { AI_SMART_CHANNELS, type AiApi, type TranscribeProgress } from '../shared/api/ai'
 
 export const aiApi: AiApi = {
   listAiProviders: () => ipcRenderer.invoke('ai:listProviders'),
@@ -17,5 +17,8 @@ export const aiApi: AiApi = {
   aiText: (providerId, request, requestId) => ipcRenderer.invoke('ai:text', providerId, request, requestId),
   cancelAiText: (requestId) => ipcRenderer.invoke('ai:cancelText', requestId),
   draftScript: (providerId, request) => ipcRenderer.invoke('ai:draftScript', providerId, request),
-  cancelScriptDraft: () => ipcRenderer.invoke('ai:cancelScriptDraft')
+  cancelScriptDraft: () => ipcRenderer.invoke('ai:cancelScriptDraft'),
+  // Smart tools (docs/design/smart-tools.md §10.4, §11.4).
+  listModels: (target) => ipcRenderer.invoke(AI_SMART_CHANNELS.listModels, target),
+  getAiPriceList: () => ipcRenderer.invoke(AI_SMART_CHANNELS.priceList)
 }

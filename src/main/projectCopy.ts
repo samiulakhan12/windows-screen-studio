@@ -35,8 +35,10 @@ const SPEECH_CACHE = '.cache/speech.json'
  * and lowered stretches, and its rows (with Restore) show at once instead of after listening again.
  */
 const SOUNDS_CACHE = `.cache/${SOUNDS_CACHE_FILE}`
-/** Small files kept with a recording besides its assets: the cursor track, the speaker notes, the speech and sound caches. */
-const COPIED = new Set(['cursor.json', projects.SCRIPT_FILE, SPEECH_CACHE, SOUNDS_CACHE])
+/** The scene scan's screen changes (smart-tools.md §7.2, §4.6), keyed by the media's size, time and crop: a copy reads them at once. */
+const SCENES_CACHE = '.cache/scenes.json'
+/** Small files kept with a recording besides its assets: the cursor track, the speaker notes, the speech, sound and scene caches. */
+const COPIED = new Set(['cursor.json', projects.SCRIPT_FILE, SPEECH_CACHE, SOUNDS_CACHE, SCENES_CACHE])
 /** Room left on the drive besides the copied bytes. */
 const SPARE_BYTES = 64 * 1024 * 1024
 /** A copy whose marker is older than this was left by a crash. */
@@ -114,7 +116,7 @@ async function planFiles(src: string): Promise<Planned[]> {
     if (NOT_COPIED_DIRS.includes(entry)) continue
     if (entry !== '.cache') await add(entry)
     else if ((await fs.lstat(path.join(src, entry))).isDirectory()) {
-      for (const cache of [SPEECH_CACHE, SOUNDS_CACHE]) {
+      for (const cache of [SPEECH_CACHE, SOUNDS_CACHE, SCENES_CACHE]) {
         await add(cache).catch((err: NodeJS.ErrnoException) => {
           if (err.code !== 'ENOENT') throw err
         })

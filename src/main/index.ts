@@ -1,3 +1,5 @@
+// First: a packaged app never runs with certificate checks off (docs/design/smart-tools.md §16).
+import './ai/tlsGuard'
 import { app, BrowserWindow } from 'electron'
 import path from 'node:path'
 import { APP_NAME, APP_USER_MODEL_ID, LEGACY_APP_NAME } from '../shared/brand'
@@ -36,6 +38,10 @@ import { disposeSearch, registerSearchIpc } from './search/searchIpc'
 import { registerVersionsIpc } from './versionsIpc'
 import { registerFilmstripIpc } from './filmstrip'
 import { registerSoundLibraryIpc } from './soundLibrary/ipc'
+import { registerGuideIpc } from './guide/guideIpc'
+import { PRINT_DIR, sweepGuidePrint } from './guide/printPdf'
+import { registerLocalAiIpc } from './localAi/localAiIpc'
+import { registerSceneIpc } from './sceneScan'
 
 // The app was called "Screen Studio for Windows" before: its userData folder moves to Flown's
 // before anything reads it, and before the single-instance lock, which lives in it.
@@ -105,6 +111,13 @@ if (!app.requestSingleInstanceLock()) {
     registerFilmstripIpc()
     // The music and sound-effects library (docs/design/editing-polish.md §10.3).
     registerSoundLibraryIpc()
+    // Smart tools (docs/design/smart-tools.md §20.0): guides, AI on this PC and the scene scan. The
+    // AI channels ai:listModels and ai:priceList are registered with the others (registerAiIpc).
+    registerGuideIpc()
+    registerLocalAiIpc()
+    registerSceneIpc()
+    // A guide's print file that a crash or a kill left behind (§5.7).
+    void sweepGuidePrint(path.join(app.getPath('userData'), PRINT_DIR)).catch((err: unknown) => console.warn('Could not sweep the guide print files:', err))
     openMainWindow()
     app.on('activate', () => {
       if (BrowserWindow.getAllWindows().length === 0) openMainWindow()

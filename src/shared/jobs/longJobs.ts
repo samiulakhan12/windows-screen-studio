@@ -3,7 +3,11 @@
  * the notifications show for the jobs running now. Pure; src/main/longJobs.ts applies it.
  */
 
-export type JobKind = 'export' | 'captions' | 'analysis'
+/** 'ai': a request to AI on this PC expected to take more than 10 s (docs/design/smart-tools.md §9.2). */
+export type JobKind = 'export' | 'captions' | 'analysis' | 'ai'
+
+/** What each kind of job is doing, in words. */
+export const JOB_WORDS: Readonly<Record<JobKind, string>> = { export: 'Exporting', captions: 'Making captions', analysis: 'Reading the recording', ai: 'Writing with AI on this PC' }
 
 /** What a running job looks like to the taskbar. */
 export interface JobView {
@@ -38,11 +42,11 @@ export interface TaskbarState {
   value: number
 }
 
-const ORDER: Record<JobKind, number> = { export: 0, captions: 1, analysis: 2 }
+const ORDER: Record<JobKind, number> = { export: 0, captions: 1, analysis: 2, ai: 3 }
 
 const clamp01 = (v: number): number => (Number.isFinite(v) ? Math.min(1, Math.max(0, v)) : 0)
 
-/** The job the taskbar speaks for: exports first, then captions, then analysis; the oldest of a kind. */
+/** The job the taskbar speaks for: exports first, then captions, then analysis, then AI on this PC; the oldest of a kind. */
 export function leadJob(jobs: readonly JobView[], now: number): JobView | null {
   const shown = jobs.filter((j) => now - j.startedAt >= JOB_TIMING.showAfterMs)
   if (!shown.length) return null
@@ -82,7 +86,7 @@ export function thumbarButtons(jobs: readonly JobView[], now: number): ThumbButt
   if (lead.kind === 'export') {
     out.push(lead.paused ? { action: 'resume', tooltip: 'Resume export', enabled: true } : { action: 'pause', tooltip: 'Pause export', enabled: lead.pausable })
   }
-  if (lead.stoppable) out.push({ action: 'stop', tooltip: lead.kind === 'export' ? 'Stop export' : 'Stop making captions', enabled: true })
+  if (lead.stoppable) out.push({ action: 'stop', tooltip: lead.kind === 'export' ? 'Stop export' : lead.kind === 'ai' ? 'Stop writing with AI on this PC' : 'Stop making captions', enabled: true })
   return out
 }
 
@@ -110,11 +114,11 @@ export function sizeText(bytes: number): string {
 }
 
 /**
- * The notification for a finished job, or null for none (cancelled, analysis, an export that wrote
+ * The notification for a finished job, or null for none (cancelled, analysis, AI on this PC, whose result shows in the editor, an export that wrote
  * nothing). `files` are the job's checked files with their sizes; `name` a captions job's recording.
  */
 export function notificationFor(kind: JobKind, outcome: JobOutcome, files: readonly { path: string; bytes: number }[], name = ''): NotificationCopy | null {
-  if (outcome.kind === 'cancelled' || kind === 'analysis') return null
+  if (outcome.kind === 'cancelled' || kind === 'analysis' || kind === 'ai') return null
   if (outcome.kind === 'failed') {
     const reason = outcome.message.split(/\n/)[0].trim().slice(0, 200)
     return { title: kind === 'export' ? 'Export failed' : 'Captions failed', body: reason || 'Something went wrong.', actions: [] }

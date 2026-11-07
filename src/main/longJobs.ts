@@ -64,6 +64,7 @@ export interface JobOwner {
 }
 
 export interface JobSpec {
+  /** 'ai': a long request to AI on this PC (JOB_WORDS.ai, "Writing with AI on this PC"; smart-tools.md §9.2), begun in main by part P4. */
   kind: JobKind
   pausable?: boolean
   stoppable?: boolean
