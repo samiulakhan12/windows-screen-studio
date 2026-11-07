@@ -205,6 +205,10 @@ describe('Smooth by layout (test 75)', () => {
     // Camera-large to the bubble layout: a crossfade.
     const mixed = smooth({ layouts: [seg('L', 0, 4.5, 'camera-large')] })
     expect(resolvedJoin(mixed, 1)?.kind).toBe('crossfade')
+    // And the bubble layout to camera-large: the camera leads on one side only.
+    const into = smooth({ layouts: [seg('L', 4.5, 20, 'camera-large')] })
+    expect(resolvedJoin(into, 1)?.kind).toBe('crossfade')
+    expect(resolvedJoin(into, 2)?.kind).toBe('punch')
     // A hidden camera: a crossfade.
     const hidden = smooth({ layouts: [seg('L', 0, 20, 'camera-only')], webcam: { show: false, corner: 'bottom-right', size: 0.24, shape: 'circle' } })
     expect(resolvedJoin(hidden, 1)?.kind).toBe('crossfade')
