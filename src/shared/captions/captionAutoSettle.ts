@@ -99,11 +99,22 @@ export function settleCaptionAuto(next: Project, prev: Project): Project {
   if (bleeps) out = { ...out, bleeps }
   const titles = settleItems<TitleCard>(next.titles, prev.titles)
   if (titles) out = { ...out, titles }
-  // Rule 4: marks, word anchors and per-caption places follow their words.
-  out = remapAnchors(out, prev)
+  // Rule 4: marks, word anchors and per-caption places follow their words, also onto the words a
+  // text fix taken back puts back.
+  out = remapAnchors(out, prev, textPutBack(next, prev))
   // Rule 5: the record of a twin made for automatic emphasis goes when no mark is pending.
   out = settleTwinRecord(out)
   return out
+}
+
+/** The captions of `prev`'s text records whose text `next` puts back (Review's Remove of a text fix); undefined for none. */
+function textPutBack(next: Project, prev: Project): ReadonlySet<string> | undefined {
+  const records = prev.captionAuto?.text
+  if (!records?.length || !next.transcript || next.transcript === prev.transcript) return undefined
+  const was = new Map((prev.transcript?.segments ?? []).map((s) => [s.id, s.text]))
+  const now = new Map(next.transcript.segments.map((s) => [s.id, s.text]))
+  const out = new Set(records.filter((r) => now.get(r.caption) === r.text && was.get(r.caption) !== r.text).map((r) => r.caption))
+  return out.size ? out : undefined
 }
 
 /** The project with these records (none: the field removed). */

@@ -145,7 +145,7 @@ function wordsOf(seg: CaptionSegment, language: string | undefined): Words {
 /** Where a record's words are in `next` (§11.1 rules 1–3), or null when they are gone. */
 type Found = { caption: string; from: number; to: number }
 
-function relocate(rec: { caption: string; from: number; to: number }, prev: Map<string, Words>, next: Map<string, Words>, nextList: Words[]): Found | null {
+function relocate(rec: { caption: string; from: number; to: number }, prev: Map<string, Words>, next: Map<string, Words>, nextList: Words[], putBack: boolean): Found | null {
   const before = prev.get(rec.caption)
   if (!before || rec.from < 0 || rec.to >= before.keys.length || rec.from > rec.to) return null
   const want = before.keys.slice(rec.from, rec.to + 1)
@@ -162,6 +162,18 @@ function relocate(rec: { caption: string; from: number; to: number }, prev: Map<
       mapped.push(j)
     }
     if (mapped.length === want.length && mapped.every((j, k) => k === 0 || j === mapped[k - 1] + 1)) return { caption: rec.caption, from: mapped[0], to: mapped[mapped.length - 1] }
+    // A text fix taken back (`putBack`): words the fix changed span the words they were ("120" is
+    // "one hundred and twenty" again), from the last word found before them to the next one after.
+    if (putBack) {
+      let from = map.get(rec.from)
+      if (from === undefined) {
+        from = 0
+        for (const [i, j] of pairs) if (i < rec.from) from = j + 1
+      }
+      let to = map.get(rec.to)
+      if (to === undefined) to = (pairs.find(([i]) => i > rec.to)?.[1] ?? same.keys.length) - 1
+      if (from <= to) return { caption: rec.caption, from, to }
+    }
   }
   // Rule 2: the words' time span, and their text looked for in the captions of `next` over it, nearest first.
   const span = { start: before.times[rec.from].start, end: before.times[rec.to].end }
@@ -216,11 +228,12 @@ const same = (a: unknown, b: unknown): boolean => JSON.stringify(a) === JSON.str
  * is looked for by its text in the captions over its old time, nearest first; else it is dropped
  * (a graphic then stays free). Places follow their caption, both halves of a split keep one, a
  * caption that is gone loses its. Only a mark or anchor `prev` had (same id, same words) is
- * remapped: one this update made or moved already names `next`'s words and is only checked. The
- * result is what reading the saved project gives for these fields; `next` itself when nothing
- * changed.
+ * remapped: one this update made or moved already names `next`'s words and is only checked. On the
+ * captions in `putBack` (a text fix taken back: Review's Remove), words the fix changed span the
+ * words they were. The result is what reading the saved project gives for these fields; `next`
+ * itself when nothing changed.
  */
-export function remapAnchors(next: Project, prev: Project): Project {
+export function remapAnchors(next: Project, prev: Project, putBack?: ReadonlySet<string>): Project {
   const nt = next.transcript
   const pt = prev.transcript
   if (nt === pt || !pt) return next
@@ -249,7 +262,7 @@ export function remapAnchors(next: Project, prev: Project): Project {
   const fromPrev = (rec: Spot, was: Spot | undefined): boolean => !!was && was.caption === rec.caption && was.from === rec.from && was.to === rec.to && was.text === rec.text
   const move = <T extends Spot>(rec: T, was: Spot | undefined): T | null => {
     if (!fromPrev(rec, was)) return rec
-    const f = relocate(rec, prevWords, nextWords, nextList)
+    const f = relocate(rec, prevWords, nextWords, nextList, !!putBack?.has(rec.caption))
     if (!f) return null
     if (f.caption === rec.caption && f.from === rec.from && f.to === rec.to && nextWords.get(f.caption)!.seg.text === prevWords.get(rec.caption)?.seg.text) return rec
     return { ...rec, caption: f.caption, from: f.from, to: f.to, text: textOf(f) }

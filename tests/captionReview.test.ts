@@ -488,6 +488,38 @@ describe('the emphasis and text group rows', () => {
     expect(reviewStatus(kept, text)).toBe('kept')
   })
 
+  it('Remove on the text group keeps the emphasis and anchors on words it puts back, kept or pending', () => {
+    const texts = ['today i will show you how we saved one hundred and twenty dollars a month', 'and three hundred customers signed up in the first week']
+    const run = planCaptionsGreat({ project: studioProject({ segments: captions(texts) }), frame: WIDE, cleanup: DEFAULT_CLEANUP, words: [], by: 'great' }, DEFAULT_GREAT_OPTIONS).project
+    expect(run.transcript!.segments.map((s) => s.text)).toEqual(['Today I will show you how we saved 120 dollars a month', 'and 300 customers signed up in the first week.'])
+    expect(run.captionMarks?.find((m) => m.text === '120')?.auto).toBe(true)
+    const pop = { ...keyword('k1', '300'), start: 4, end: 6, anchor: { caption: 'c1', from: 1, to: 1, text: '300' } } as Graphic
+    const p: Project = { ...run, graphics: [...(run.graphics ?? []), pop] }
+    const marksOn = (q: Project): string[] => (q.captionMarks ?? []).map((m) => `${m.text}${m.auto ? '' : ' (kept)'}`)
+    const emphasis = row(reviewItems(p), EMPHASIS_GROUP)
+    const text = row(reviewItems(p), TEXT_GROUP)
+    const was = marksOn(p).length
+    // Kept first: the user's marks follow their words back.
+    const kept = storeOf(p)
+    kept.update((q) => keepItems(q, [emphasis]))
+    kept.update((q) => removeItems(q, [text]))
+    expect(kept.state.transcript!.segments.map((s) => s.text)).toEqual(texts)
+    expect(marksOn(kept.state)).toContain('one hundred and twenty (kept)')
+    expect(marksOn(kept.state)).toHaveLength(was)
+    for (const part of emphasis.parts!) expect(reviewStatus(kept.state, part)).toBe('kept')
+    // Pending: the marks and the pop-up's anchor stay automatic on the words put back, for Keep all later.
+    const pending = storeOf(p)
+    pending.update((q) => removeItems(q, [text]))
+    expect(marksOn(pending.state)).toContain('one hundred and twenty')
+    expect(marksOn(pending.state)).toHaveLength(was)
+    for (const part of emphasis.parts!) expect(reviewStatus(pending.state, part)).toBe('pending')
+    const moved = pending.state.graphics!.find((g) => g.id === 'k1')!
+    expect(moved.kind === 'keyword' && moved.anchor).toEqual({ caption: 'c1', from: 1, to: 2, text: 'three hundred' })
+    expect(moved.auto).toBeDefined()
+    pending.update((q) => keepItems(q, [emphasis]))
+    expect(marksOn(pending.state)).toContain('one hundred and twenty (kept)')
+  })
+
   it('"n of N reviewed" counts a group once', () => {
     const items = reviewItems(great)
     const emphasis = row(items, EMPHASIS_GROUP)

@@ -2586,7 +2586,11 @@ give (`migrateProject(JSON.parse(JSON.stringify(p)))` for these fields; test 49)
 
 1. **Same caption, text changed** (typing, Tidy, a deleted word): the record's words are found
    again with the longest common subsequence of words (`lcsPairs`, `transcript.ts:62`): found in
-   order and next to each other → new indexes.
+   order and next to each other → new indexes. When the change takes a text fix back (the
+   caption's text is its `captionAuto.text` record's text again: Review's Remove, §11.8), words
+   the fix changed span the words they were, from the last word found before them to the next one
+   after ("120" is "one hundred and twenty" again), so kept and pending marks and anchors on
+   them stay.
 2. **Caption gone or not found there** (split: the second half gets a new id, `edit.ts:91`;
    merge: the second caption's id goes, `edit.ts:107`; Generate captions again): the record's time
    span is taken from the previous project (its words' times, or the caption's time spread by
@@ -3052,7 +3056,7 @@ own Keep and Remove. Things with a time and a place on screen keep a row each.
 |---|---|---|---|---|---|
 | `style` | one | Caption style: Bold Pop (was Clean) | `captionAuto.style` present | drops the record | the look of `was` put back (rule 1's look fields; `captions` absent when `was` is `null` and nothing else changed): showing or hiding, speaker names, the track, the digits and a dragged place stay as the user left them, but speaker names the run turned on with its look (`names`) go with it; marks left over, digits other than as written and a dragged place get the old look's Studio twin (§5.8), so they still draw; record dropped |
 | `emphasis` | one group | Emphasis: 38 words (items: Emphasis on “Export”) | marks with `auto` exist | clears `auto` on all (or one) | deletes all (or one); with no marks left (and no digits or dragged place needing it), the Studio twin automation made for the emphasis (`captionAuto.twin`), unedited, goes back to its Classic look, or to no caption settings when there were none; a twin the user had or made (Ctrl+B, the Digits choice) stays. When a later run changed the look, that twin is kept in its style record (`was`): removed before the style row, the emphasis hands the record over and `was` reads as the Classic look (or none), so the style row then puts back no twin |
-| `text` | one group | Text: 12 captions tidied (items: Fixed “flown” → “Flown”) | `captionAuto.text` records exist | drops the records (or one) | text and words put back for all (or one) |
+| `text` | one group | Text: 12 captions tidied (items: Fixed “flown” → “Flown”) | `captionAuto.text` records exist | drops the records (or one) | text and words put back for all (or one); marks and anchors on the words a fix changed move onto the words put back (§11.1 rule 1), kept or pending as they were |
 | `emoji` | one each | Emoji 💡 on “tip” | the graphic exists with `auto` | clears `auto` | deletes it |
 | `graphic` | one each | Counter 300% · List: 3 steps · Pop-up “Auto Save” · Lower third: Priya · Chapter title: Export settings · Quote | as above (graphics and title cards) | clears `auto` | deletes it |
 | `bleep` | one each | Bleeped “f***” (masked in the row and its accessible name) | the bleep exists with `auto` | clears `auto` | deletes it |
