@@ -261,7 +261,7 @@ export function shaperSample(lut: CubeLut, v: number, channel: 0 | 1 | 2): numbe
  * its grey diagonal into six tetrahedra, and the one holding the point is used. Exact on the grid
  * and along the grey axis. The shader takes the same branches (gradeLayer.ts).
  */
-function tetrahedral(lut: CubeLut, x: number, y: number, z: number): [number, number, number] {
+function tetrahedral(lut: CubeLut, x: number, y: number, z: number, out: [number, number, number]): [number, number, number] {
   const n = lut.size
   const d = lut.data
   const tr = x * (n - 1)
@@ -334,22 +334,22 @@ function tetrahedral(lut: CubeLut, x: number, y: number, z: number): [number, nu
   }
   p1 += c000
   p2 += c000
-  return [
-    w0 * d[c000] + w1 * d[p1] + w2 * d[p2] + w3 * d[c111],
-    w0 * d[c000 + 1] + w1 * d[p1 + 1] + w2 * d[p2 + 1] + w3 * d[c111 + 1],
-    w0 * d[c000 + 2] + w1 * d[p1 + 2] + w2 * d[p2 + 2] + w3 * d[c111 + 2]
-  ]
+  out[0] = w0 * d[c000] + w1 * d[p1] + w2 * d[p2] + w3 * d[c111]
+  out[1] = w0 * d[c000 + 1] + w1 * d[p1 + 1] + w2 * d[p2 + 1] + w3 * d[c111 + 1]
+  out[2] = w0 * d[c000 + 2] + w1 * d[p1 + 2] + w2 * d[p2 + 2] + w3 * d[c111 + 2]
+  return out
 }
 
 /** A LUT's value for an encoded colour (shaper, then the table's domain, then tetrahedral). */
-export function lutSample(lut: CubeLut, r: number, g: number, b: number): [number, number, number] {
+export function lutSample(lut: CubeLut, r: number, g: number, b: number, out: [number, number, number] = [0, 0, 0]): [number, number, number] {
   const lo = lut.domainMin
   const hi = lut.domainMax
   return tetrahedral(
     lut,
     clamp01((shaperSample(lut, r, 0) - lo[0]) / (hi[0] - lo[0])),
     clamp01((shaperSample(lut, g, 1) - lo[1]) / (hi[1] - lo[1])),
-    clamp01((shaperSample(lut, b, 2) - lo[2]) / (hi[2] - lo[2]))
+    clamp01((shaperSample(lut, b, 2) - lo[2]) / (hi[2] - lo[2])),
+    out
   )
 }
 
@@ -435,16 +435,24 @@ export function gradeEncoded(e: readonly [number, number, number], g: ResolvedGr
 
 /* ---------- the CPU path ---------- */
 
-let encodeTable: Float64Array | null = null
+/** The CPU path's colour cache: 2^16 slots of 24-bit colours (0: empty; a key is the colour + 1). */
+const CACHE_BITS = 16
+const CACHE_SIZE = 1 << CACHE_BITS
+const CACHE_SHIFT = 32 - CACHE_BITS
+let cacheKeys: Int32Array | null = null
+let cacheValues: Int32Array | null = null
 
-/** The CPU path's encoder: 4,097 exact values, linear between them (a few thousandths of a level off at most). */
+/** The CPU path's encode table: 4,097 exact values (plus one, so the step after the last is there). */
+const ENCODE = Float64Array.from({ length: ENCODE_STEPS + 2 }, (_, i) => encodeSrgb(i / ENCODE_STEPS))
+
+/** The CPU path's encoder: linear between the table's values (a few thousandths of a level off at most). */
 function tableEncode(l: number): number {
-  const t = (encodeTable ??= Float64Array.from({ length: ENCODE_STEPS + 1 }, (_, i) => encodeSrgb(i / ENCODE_STEPS)))
   if (!(l > 0)) return 0
   if (l >= 1) return 1
   const x = l * ENCODE_STEPS
-  const i = Math.floor(x)
-  return t[i] + (t[i + 1] - t[i]) * (x - i)
+  const i = x | 0
+  const a = ENCODE[i]
+  return a + (ENCODE[i + 1] - a) * (x - i)
 }
 
 /**
@@ -465,18 +473,87 @@ export function gradePixelsCpu(data: Uint8ClampedArray, g: ResolvedGrade, table:
     }
     return
   }
-  const l: [number, number, number] = [0, 0, 0]
+  // The same arithmetic as mix() and to8(), in the same order, without calls or arrays per pixel
+  // (it runs for every pixel of every frame on a PC without WebGL2).
+  const saturating = g.saturation !== 0 || g.vibrance !== 0
+  const splitting = g.split.kS !== 0 || g.split.kH !== 0
+  const S0 = 1 + g.saturation
+  const { vibrance: vib } = g
+  const { kS, kH } = g.split
+  const [W0, W1, W2] = LUMA
+  const [T0, T1, T2] = TEAL
+  const useLut = !!lut && g.lutStrength > 0
+  const mixBy = g.lutStrength
+  const m: [number, number, number] = [0, 0, 0]
+  const E = ENCODE
+  const STEPS = ENCODE_STEPS
+  // A pixel's result depends on its colour alone: colours met again (most of a screen recording's
+  // flat areas) are taken from a small cache of this call, keyed by the 24-bit colour.
+  const keys = (cacheKeys ??= new Int32Array(CACHE_SIZE)).fill(0)
+  const vals = (cacheValues ??= new Int32Array(CACHE_SIZE))
   for (let p = 0; p < n; p += 4) {
-    const r = data[p]
-    const gr = data[p + 1]
-    const b = data[p + 2]
-    l[0] = table[r]
-    l[1] = table[256 + gr]
-    l[2] = table[512 + b]
-    const e = mix(l, saturationOf(r, gr, b), g, lut, tableEncode)
-    data[p] = to8(e[0])
-    data[p + 1] = to8(e[1])
-    data[p + 2] = to8(e[2])
+    const r8 = data[p]
+    const g8 = data[p + 1]
+    const b8 = data[p + 2]
+    const key = (r8 << 16) | (g8 << 8) | b8
+    const slot = Math.imul(key, 0x9e3779b1) >>> CACHE_SHIFT
+    if (keys[slot] === key + 1) {
+      const v = vals[slot]
+      data[p] = v >>> 16
+      data[p + 1] = (v >>> 8) & 255
+      data[p + 2] = v & 255
+      continue
+    }
+    let r = table[r8]
+    let gr = table[256 + g8]
+    let b = table[512 + b8]
+    if (saturating || splitting) {
+      const Y = W0 * r + W1 * gr + W2 * b
+      if (saturating) {
+        const mx = r8 > g8 ? (r8 > b8 ? r8 : b8) : g8 > b8 ? g8 : b8
+        const mn = r8 < g8 ? (r8 < b8 ? r8 : b8) : g8 < b8 ? g8 : b8
+        const u = 1 - (mx > 0 ? (mx - mn) / mx : 0)
+        const S = S0 * (1 + vib * u * u)
+        r = Y + (r - Y) * S
+        gr = Y + (gr - Y) * S
+        b = Y + (b - Y) * S
+        if (r < 0) r = 0
+        if (gr < 0) gr = 0
+        if (b < 0) b = 0
+      }
+      if (splitting) {
+        const y = tableEncode(Y)
+        const k = kS * (1 - y) * (1 - y) - kH * y * y
+        r += k * T0
+        gr += k * T1
+        b += k * T2
+      }
+    }
+    // Encoded through the table (tableEncode, written out).
+    let x = r > 0 ? (r < 1 ? r * STEPS : -1) : -2
+    let i = x | 0
+    let er = x === -2 ? 0 : x === -1 ? 1 : E[i] + (E[i + 1] - E[i]) * (x - i)
+    x = gr > 0 ? (gr < 1 ? gr * STEPS : -1) : -2
+    i = x | 0
+    let eg = x === -2 ? 0 : x === -1 ? 1 : E[i] + (E[i + 1] - E[i]) * (x - i)
+    x = b > 0 ? (b < 1 ? b * STEPS : -1) : -2
+    i = x | 0
+    let eb = x === -2 ? 0 : x === -1 ? 1 : E[i] + (E[i + 1] - E[i]) * (x - i)
+    if (useLut) {
+      lutSample(lut!, er, eg, eb, m)
+      er = er + (m[0] - er) * mixBy
+      eg = eg + (m[1] - eg) * mixBy
+      eb = eb + (m[2] - eb) * mixBy
+    }
+    // Clamped and rounded to 8 bits (to8: Math.round of a value ≥ 0 is ⌊v + 0.5⌋).
+    const o0 = er > 0 ? (er < 1 ? (er * 255 + 0.5) | 0 : 255) : 0
+    const o1 = eg > 0 ? (eg < 1 ? (eg * 255 + 0.5) | 0 : 255) : 0
+    const o2 = eb > 0 ? (eb < 1 ? (eb * 255 + 0.5) | 0 : 255) : 0
+    data[p] = o0
+    data[p + 1] = o1
+    data[p + 2] = o2
+    keys[slot] = key + 1
+    vals[slot] = (o0 << 16) | (o1 << 8) | o2
   }
 }
 
