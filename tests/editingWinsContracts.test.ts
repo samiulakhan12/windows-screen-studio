@@ -387,12 +387,14 @@ describe('the polish preference', () => {
   it("is a known preference key, read back sanitised", () => {
     expect(PREF_KEYS).toContain('polish')
     // Captions Studio's Caption look runs between Captions and the director (docs/design/captions-studio.md §11.8).
-    expect(POLISH_STEPS).toEqual(['style', 'zoom', 'silences', 'captions', 'captionLook', 'director'])
+    // Editing polish's Smooth cuts runs after Remove silences (docs/design/editing-polish.md §11).
+    expect(POLISH_STEPS).toEqual(['style', 'zoom', 'silences', 'smoothCuts', 'captions', 'captionLook', 'director'])
     for (const bad of [undefined, null, 'x', [], 3]) expect(readPolishOptions(bad)).toEqual(DEFAULT_POLISH_OPTIONS)
     const raw = { styleId: 'studio', zoom: false, silences: 'yes', silenceAction: 4, captions: false, captionsProvider: '', director: false, extra: 1 }
     const read = readPolishOptions(raw)
-    expect(read).toEqual({ styleId: 'studio', zoom: false, silences: true, silenceAction: 4, captions: false, captionsProvider: null, captionLook: false, director: false })
+    // Saved before Smooth cuts existed: it reads as off, as Caption look does.
+    expect(read).toEqual({ styleId: 'studio', zoom: false, silences: true, silenceAction: 4, smoothCuts: false, captions: false, captionsProvider: null, captionLook: false, director: false })
     expect(readPolishOptions(read)).toEqual(read)
-    expect(readPolishOptions({ silenceAction: 3, styleId: 'x'.repeat(65) })).toEqual({ ...DEFAULT_POLISH_OPTIONS, captionLook: false })
+    expect(readPolishOptions({ silenceAction: 3, styleId: 'x'.repeat(65) })).toEqual({ ...DEFAULT_POLISH_OPTIONS, captionLook: false, smoothCuts: false })
   })
 })
