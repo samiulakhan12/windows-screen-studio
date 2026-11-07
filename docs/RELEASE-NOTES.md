@@ -77,6 +77,36 @@
   clip track* in the command palette hides them.
 - **Nudge by one frame** (E-09): with items selected, `←` / `→` move them one frame and `Shift+←` /
   `Shift+→` ten frames; with nothing selected the keys step the playhead as before.
+- **Smooth cuts**: every cut can now have a style: *Hard cut* (as before), *Smooth* (a crossfade
+  where the screen fills the picture, a punch-in where the camera does), *Crossfade*, *Dip to
+  colour*, *Slide* or *Punch-in*. Set one style for every cut in the Clip tab (*Smooth all cuts* does
+  it in one click), or select a cut to give it its own and step from cut to cut with *Previous cut*,
+  *Next cut* and *Play this cut*. Every cut has a marker on the timeline. The video keeps its length,
+  nothing you cut out comes back, and captions, chapters and clicks keep their times. *Polish in one
+  click* has a new *Smooth cuts* step (on for new Polish options), and Review mode lists it.
+- **Magnifier**: *Add magnifier* (Shapes tab, also in the Zoom tab) shows a detail 1.5 to 4 times
+  larger in a round or rounded lens, from the recording's own pixels, while the rest of the screen
+  stays in view. *Add magnifier on the cursor* lands it on the pointer and can follow it. Blurred and
+  pixelated areas stay hidden inside it.
+- **Animated callouts**: texts, shapes and title cards can come in and go out with a fade, pop, rise,
+  drop, slide, grow, typewriter, *Draw* (arrows, lines, boxes and ellipses draw themselves) or *Wipe*,
+  with an optional sound. Two new text styles: **Step badge** (numbered 1 2 3, A B C or ১ ২ ৩,
+  in time order, again at each chapter) and **Speech bubble** with a tail that points at its spot.
+  Both stay on their spot while the camera zooms. Items made before keep their fades exactly.
+- **Progress bar on the video**: a thin bar that fills as the video plays, split at your chapters,
+  with the current chapter's name (or all, or none). At the top unless your captions are there,
+  inside the safe zones, and hidden under full-frame title cards (Text tab › Chapters).
+- **Colour**: temperature, tint, brightness, contrast, saturation, highlights, shadows and vibrance
+  for the screen and the camera separately, looks (eight for the camera; Natural, Vivid and Mono for
+  the screen), your own `.cube` LUTs, *Compare* with the original, and *Auto colour* for the camera
+  (on this PC, listed in Review mode). Captions, the background and overlays are never graded.
+- **Music and sound effects**: a music library in the Audio tab with four CC0 beds in the installer,
+  each prepared to loop seamlessly, with a mood filter and previews; a credit line goes into the
+  YouTube description by default. Sixteen CC0 sound effects can play on zooms, title cards, texts and
+  shapes as they appear, and on Captions Studio's pop-ups; a sound set by a rule plays at most once
+  every 3 seconds. Eight more beds will download on request once their download page exists.
+- **Fixed: a click where your own music loops**: Opus and M4A music that repeats under a longer
+  video no longer glitches at each loop point in the export.
 
 ## 0.7.1
 

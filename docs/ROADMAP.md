@@ -111,7 +111,7 @@ and preview speed, E-10 crop the recording, E-11 freeze frame.
 - **Seen in:** Camtasia cursor path editing, Rapidemo "disable accidental clicks".
 
 ### NW-06 · Smooth cuts
-**Editing · M · audio fades shipped (0.7.0: 10 ms out and in at every cut, export and preview)**; the video cross-dissolve, per-cut styles and "Smooth all cuts" are still planned (`docs/design/edit-by-text.md` §12).
+**Editing · M · shipped**: audio fades in 0.7.0 (10 ms out and in at every cut, export and preview); cut styles (Smooth, Crossfade, Dip to colour, Slide, Punch-in), *Smooth all cuts*, cut markers and Polish's Smooth cuts step in the next release (wave 10, `docs/design/editing-polish.md` §2.1, §5). See [FEATURES.md](FEATURES.md) (Smooth cuts). Left for later: a glide and a cross-zoom, sound with dips, J and L cuts.
 
 - **What:** each cut can get a short crossfade, zoom punch-in, slide or dip to colour, and "Smooth all cuts" applies one style to every cut. Ship first: always-on 5–15 ms audio fades at every cut. Today `audioPlan.ts` joins clips with a plain concat, so silence removal can leave clicks.
 - **Builds on:** `Clip` (`{id, start, end, speed}`, no transition field); the compositor's existing blends for zoom and layout transitions.
@@ -359,10 +359,10 @@ stay available as the premium option.
 | Id | Feature | What it does | Size |
 |---|---|---|---|
 | LT-10 | **Subtitle tracks in several languages** · *partly shipped (next release, Captions Studio)*: caption tracks translated with your AI provider, one SRT/VTT per language and switchable subtitle streams in MP4, MOV and WebM; translating on this PC waits for F-16 | Keeps one transcript per language. Export adds switchable subtitle tracks, or writes SRT/VTT for every language. | M |
-| LT-11 | **Animated callouts and a chapter progress bar** | Enter and exit animations for text, shapes and titles; step badges; speech bubbles; a chapter progress bar. | M |
-| LT-12 | **Magnifier (loupe) zoom** | A round magnifier over a small detail while the rest of the screen stays visible. | S |
-| LT-13 | **Built-in music and sound-effects library** | Royalty-free (CC0) music beds, plus optional whoosh and pop sounds on zooms and titles. | S |
-| LT-16 | **Colour correction and looks** | Brightness, contrast, saturation, temperature and LUTs, separately for camera and screen. | M |
+| LT-11 · *shipped (next release, wave 10)*: see [FEATURES.md](FEATURES.md) (Animated callouts, Progress bar on the video) and `docs/design/editing-polish.md` §2.3, §2.4; later: "during" motions, right-to-left wipes and bar | **Animated callouts and a chapter progress bar** | Enter and exit animations for text, shapes and titles; step badges; speech bubbles; a chapter progress bar. | M |
+| LT-12 · *shipped (next release, wave 10)*: see [FEATURES.md](FEATURES.md) (Magnifier) and `docs/design/editing-polish.md` §2.2 | **Magnifier (loupe) zoom** | A round magnifier over a small detail while the rest of the screen stays visible. | S |
+| LT-13 · *shipped (next release, wave 10)*: see [FEATURES.md](FEATURES.md) (Music library and sound effects) and `docs/design/editing-polish.md` §2.6, §10; the eight download beds wait for their release (`samiulakhan12/flown-sound-library`, not made yet) and a listening pass | **Built-in music and sound-effects library** | Royalty-free (CC0) music beds, plus optional whoosh and pop sounds on zooms and titles. | S |
+| LT-16 · *shipped (next release, wave 10)*: see [FEATURES.md](FEATURES.md) (Colour) and `docs/design/editing-polish.md` §2.5, §9; later: colour in style presets and the brand kit, film looks | **Colour correction and looks** | Brightness, contrast, saturation, temperature and LUTs, separately for camera and screen. | M |
 
 ### Sharing and output
 
