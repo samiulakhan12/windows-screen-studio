@@ -328,3 +328,11 @@ export function barLabels(layout: BarLayout, state: { current: number }, video: 
   at(cur, state.current === 0 ? 1 : p)
   return out
 }
+
+/** The bar a project gets when it is first turned on (§2.4): Auto, Floating, the current chapter's name. */
+export const NEW_CHAPTER_BAR: Readonly<ChapterBar> = Object.freeze({ show: true, place: 'auto', style: 'float', labels: 'current' })
+
+/** The project with its bar changed by `patch` (from NEW_CHAPTER_BAR when it has none yet): one update. */
+export function withChapterBar(project: Project, patch: Partial<ChapterBar>): Project {
+  return { ...project, chapterBar: { ...(project.chapterBar ?? NEW_CHAPTER_BAR), ...patch } }
+}

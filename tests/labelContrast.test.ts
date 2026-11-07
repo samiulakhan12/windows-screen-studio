@@ -123,3 +123,13 @@ describe('Captions Studio (docs/design/captions-studio.md §2.15, §7.3): the ne
     }
   })
 })
+
+describe('Editing polish (docs/design/editing-polish.md §12): the magnifier panel\'s note', () => {
+  const vars = tokens(css('styles.css'))
+
+  it('"it may look soft" on the Inspector', () => {
+    const panel = resolve('var(--surface-1)', vars)
+    const note = resolve(declared(css('editor/panels/magnifier.css'), '.magnifier-soft', 'color'), vars)
+    expect(contrast(note, panel)).toBeGreaterThanOrEqual(4.5)
+  })
+})
