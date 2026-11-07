@@ -6,6 +6,7 @@
 import { catalogId, CATALOG_PREFIX } from '../captions/fontCatalog'
 import { readAutoOrigin } from '../captions/studioData'
 import { readFontId } from '../render/fonts'
+import { readCalloutFields } from '../render/calloutData'
 import type { Chapter, TitleCard, TitleCardStyle } from '../types'
 
 /** Longest title or subtitle kept, in characters. */
@@ -53,6 +54,8 @@ export function readTitleCard(raw: Partial<TitleCard> | null | undefined, durati
   // Made automatically and not reviewed yet (Captions Studio §11.8): kept when `by` and `via` are valid.
   const auto = readAutoOrigin(raw.auto)
   if (auto) card.auto = auto
+  // How it comes in and goes out, and its sound (editing polish §7.1), when readable.
+  Object.assign(card, readCalloutFields(raw as Record<string, unknown>, 'title'))
   return card
 }
 

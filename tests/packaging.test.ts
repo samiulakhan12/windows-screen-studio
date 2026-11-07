@@ -66,6 +66,8 @@ const packaging = require('../scripts/lib/packaging.cjs') as {
   staleSpeechHelper(from: string, missing: string[]): string
   speechResources(rootDir?: string): { from: string; to: string; filter: string[] }[]
   noticesResource(): { from: string; to: string; filter: string[] }
+  soundLibraryResource(): { from: string; to: string; filter: string[] }
+  SOUND_LIBRARY_BUDGET: { compressed: number; installed: number }
   noticesProblems(text: string): string[]
   NOTICE_NAMES: string[]
   CAPTIONS_BUDGET: { compressed: number; installed: number }

@@ -18,6 +18,10 @@ import { readLayouts, readWebcam } from './webcamData'
 import { DEFAULT_ZOOM_SETTINGS } from './zoom'
 import { fullClip, normalizeClips } from './timeline'
 import { readAutoCutOutcomes, readAutoCuts } from '../review/autoCutData'
+import { readJoins } from './joinData'
+import { readProjectGrade } from '../render/gradeData'
+import { readChapterBar } from '../render/chapterBarData'
+import { readSoundFx } from '../audio/soundFxData'
 
 export const PROJECT_VERSION = 2
 
@@ -136,7 +140,7 @@ export function migrateProject(raw: unknown): Project {
   const duration = Number.isFinite(p.duration) && p.duration > 0 ? p.duration : 0.1
   const listed = objects<Clip>(p.clips).filter((c) => Number.isFinite(c.start) && Number.isFinite(c.end))
   const clips = listed.length ? listed : [{ ...fullClip(duration), start: p.trim?.start ?? 0, end: p.trim?.end ?? duration }]
-  const { trim: _legacyTrim, audioStems, transcript, captions, captionMarks, captionPlaces, graphics, captionTracks, bleeps, captionAuto, inputEdits, director, script, crop, freezes, overlays, fonts, brand, reframe, copyOf, publish, autoCuts, autoCutOutcomes, sounds, ...rest } = p
+  const { trim: _legacyTrim, audioStems, transcript, captions, captionMarks, captionPlaces, graphics, captionTracks, bleeps, captionAuto, inputEdits, director, script, crop, freezes, overlays, fonts, brand, reframe, copyOf, publish, autoCuts, autoCutOutcomes, sounds, joins, grade, chapterBar, soundFx, ...rest } = p
   void _legacyTrim
   // Read once: the transcript, and the Captions Studio records that point at its captions.
   const transcriptRead = readTranscript(transcript, duration)
@@ -200,7 +204,14 @@ export function migrateProject(raw: unknown): Project {
     // Cuts and speed-ups Flown made by itself, for Review mode, sanitised (absent: none recorded).
     ...optional('autoCuts', readAutoCuts(autoCuts, duration)),
     // What was chosen for them in the Review panel, sanitised (absent: nothing chosen).
-    ...optional('autoCutOutcomes', readAutoCutOutcomes(autoCutOutcomes))
+    ...optional('autoCutOutcomes', readAutoCutOutcomes(autoCutOutcomes)),
+    // Editing polish (docs/design/editing-polish.md §4.3): cut styles, colour, the progress bar and
+    // sound effects, each absent unless set (effects.calm, effects.badgesByChapter and
+    // audio.music.library pass through their spread objects above).
+    ...optional('joins', readJoins(joins)),
+    ...optional('grade', readProjectGrade(grade)),
+    ...optional('chapterBar', readChapterBar(chapterBar)),
+    ...optional('soundFx', readSoundFx(soundFx))
   }
 }
 

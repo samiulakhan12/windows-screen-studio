@@ -439,7 +439,8 @@ function SelectedGraphic({ project, graphic: g }: { project: Project; graphic: G
       </div>
       <div className="field">
         <span>Sound</span>
-        <Chips<'none' | 'pop' | 'ding'> label="Sound" value={g.sound ?? 'none'} onChange={(v) => set({ sound: v === 'none' ? undefined : v })} options={[...GRAPHIC_SOUNDS]} />
+        {/* A library effect (an SfxRef, editing polish §10.7) gets its own choices from part P5; until then the chips show the original sounds. */}
+        <Chips<'none' | 'pop' | 'ding'> label="Sound" value={g.sound === 'pop' || g.sound === 'ding' ? g.sound : 'none'} onChange={(v) => set({ sound: v === 'none' ? undefined : v })} options={[...GRAPHIC_SOUNDS]} />
       </div>
       {g.auto && <p className="hint">Made automatically. Editing it makes it yours; Review mode lists it until then.</p>}
       <LookButtons itemKey={itemKey('graphic', id)} />

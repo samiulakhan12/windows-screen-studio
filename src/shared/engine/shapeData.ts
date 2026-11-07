@@ -4,6 +4,7 @@
  * drawing it (render/shapes.ts), so the timeline lists exactly what the canvas draws.
  */
 import type { Shape, ShapeKind, Spotlight } from '../types'
+import { readCalloutFields, shapeItem } from '../render/calloutData'
 import { clamp } from './math'
 
 const KINDS: ShapeKind[] = ['arrow', 'line', 'rect', 'ellipse', 'highlight', 'blur', 'pixelate']
@@ -11,11 +12,15 @@ const HEX = /^#[0-9a-f]{6}$/i
 const finite = (v: unknown): v is number => typeof v === 'number' && Number.isFinite(v)
 const num = (v: unknown, fallback: number, min: number, max: number): number => (finite(v) ? clamp(v, min, max) : fallback)
 
-/** A shape with every field usable, or null when it cannot be drawn (hand-edited or damaged files). */
+/**
+ * A shape with every field usable, or null when it cannot be drawn (hand-edited or damaged files).
+ * Its motions and sound (editing polish §7.1) are kept when readable, never on blur and pixelate.
+ */
 export function readShape(raw: Partial<Shape> | null | undefined): Shape | null {
   if (!raw || typeof raw !== 'object' || !KINDS.includes(raw.kind as ShapeKind)) return null
   if (!finite(raw.start) || !finite(raw.end) || !(raw.end > raw.start)) return null
   if (!finite(raw.x) || !finite(raw.y) || !finite(raw.w) || !finite(raw.h)) return null
+  const item = shapeItem(raw.kind as ShapeKind)
   return {
     id: typeof raw.id === 'string' ? raw.id : '',
     kind: raw.kind as ShapeKind,
@@ -29,11 +34,15 @@ export function readShape(raw: Partial<Shape> | null | undefined): Shape | null 
     strokeWidth: num(raw.strokeWidth, 6, 0.5, 64),
     fill: raw.fill === true,
     opacity: num(raw.opacity, 1, 0, 1),
-    strength: num(raw.strength, 0.5, 0, 1)
+    strength: num(raw.strength, 0.5, 0, 1),
+    ...(item ? readCalloutFields(raw as Record<string, unknown>, item) : {})
   }
 }
 
-/** A spotlight with every field usable, or null when it cannot be drawn. */
+/** The zoom of a magnifier (editing polish §6.1). */
+export const MAGNIFY_RANGE = { min: 1.5, max: 4 } as const
+
+/** A spotlight with every field usable, or null when it cannot be drawn. A magnifier keeps `magnify`, clamped to 1.5..4. */
 export function readSpotlight(raw: Partial<Spotlight> | null | undefined): Spotlight | null {
   if (!raw || typeof raw !== 'object' || (raw.mode !== 'cursor' && raw.mode !== 'region')) return null
   if (!finite(raw.start) || !finite(raw.end) || !(raw.end > raw.start)) return null
@@ -48,7 +57,8 @@ export function readSpotlight(raw: Partial<Spotlight> | null | undefined): Spotl
     h: num(raw.h, 0.4, 0.005, 2),
     shape: raw.shape === 'rect' ? 'rect' : 'ellipse',
     dim: num(raw.dim, 0.6, 0, 1),
-    feather: num(raw.feather, 0.4, 0, 1)
+    feather: num(raw.feather, 0.4, 0, 1),
+    ...(finite(raw.magnify) ? { magnify: clamp(raw.magnify, MAGNIFY_RANGE.min, MAGNIFY_RANGE.max) } : {})
   }
 }
 

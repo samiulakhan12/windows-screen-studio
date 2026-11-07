@@ -6,6 +6,7 @@ import { catalogFamily, catalogId } from '../../../shared/captions/fontCatalog'
 import { STUDIO_BASE } from '../../../shared/captions/studioPresets'
 import { withWordDigits } from '../../../shared/captions/words'
 import { quoteName, quotePanel, TITLE_FONT, titleLayout, titlePhase, type MeasureText, type TextBlock, type TitleLayout, type TitlePhase } from '../../../shared/render/titleCards'
+import { CALLOUT_FALLBACK_IDS } from '../../../shared/render/editingFonts'
 import type { Rect } from '../../../shared/engine/layout'
 import type { TitleCard } from '../../../shared/types'
 import type { Project } from '../../../shared/types'
@@ -24,7 +25,7 @@ const widths = new Map<string, number>()
 /** The quote style's font (captions-studio.md §10.1). */
 const QUOTE_FONT = 'instrument-serif-italic'
 /** After a catalogue font: the bundled script fonts and the colour emoji face (§6.6), then the title font. */
-const CATALOG_FALLBACK = ['noto-sans-bengali', 'noto-sans-devanagari', 'noto-sans-arabic', 'noto-sans-hebrew', 'noto-sans-thai', 'noto-color-emoji'].map((id) => `"${catalogFamily(id)}"`).join(', ')
+export const CATALOG_FALLBACK = CALLOUT_FALLBACK_IDS.map((id) => `"${catalogFamily(id)}"`).join(', ')
 
 const BENGALI = /\p{Script=Bengali}/u
 
@@ -34,7 +35,7 @@ const BENGALI = /\p{Script=Bengali}/u
  * Bangla on a card without a font of its own (BANGLA-NOTES): a quote's in Noto Serif Bengali, an
  * automatic lower third's or chapter title's in the caption look's Bangla font (§0.2).
  */
-function cardFont(project: Pick<Project, 'id' | 'fonts' | 'captions'>, card: TitleCard): string {
+export function cardFont(project: Pick<Project, 'id' | 'fonts' | 'captions'>, card: TitleCard): string {
   const quote = card.style === 'quote' && !card.font
   const cat = catalogId(card.font) ?? (quote ? QUOTE_FONT : null)
   if (cat) return `"${catalogFamily(cat)}", ${quote ? `"${catalogFamily('noto-serif-bengali')}", ` : ''}${CATALOG_FALLBACK}, ${TITLE_FONT}`

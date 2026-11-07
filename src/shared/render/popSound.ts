@@ -144,7 +144,8 @@ export function popJob(project: Project, startOf?: (g: Graphic) => number): { ti
   const total = outputDuration(project.clips)
   const bySound: Record<'pop' | 'ding', number[]> = { pop: [], ding: [] }
   for (const g of graphics) {
-    if (!g.sound || !graphicDrawn(project, g)) continue
+    // Today's synthesised sounds only: a library effect (an SfxRef) sounds through sfxJob (editing polish §10.7).
+    if ((g.sound !== 'pop' && g.sound !== 'ding') || !graphicDrawn(project, g)) continue
     // A list card sounds once, when it first appears (§10.6).
     const at = shownFrom(project.clips, startOf ? startOf(g) : g.start)
     if (at === null || at >= total) continue

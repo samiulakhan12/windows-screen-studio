@@ -40,6 +40,7 @@ import { readCaptionSettings } from './settings'
 import { STUDIO_BASE } from './studioPresets'
 import { readTextMap } from './textMap'
 import { studioWords } from './words'
+import { readGraphicSound } from '../audio/soundFxData'
 
 export const STUDIO_LIMITS = {
   size: { min: 0.025, max: 0.22 },
@@ -615,7 +616,8 @@ function readGraphic(v: Obj, duration: number, transcript: Transcript | undefine
     ...opt('font', font),
     enter: readItemMotion(v.enter, d.enter),
     exit: readItemMotion(v.exit, d.exit),
-    ...opt('sound', pick(v.sound, ['pop', 'ding'] as const, undefined)),
+    // 'pop' and 'ding', or an effect of the sound library (editing polish §10.7); anything else is dropped.
+    ...opt('sound', readGraphicSound(v.sound)),
     ...opt('lang', lang),
     ...opt('auto', auto)
   }

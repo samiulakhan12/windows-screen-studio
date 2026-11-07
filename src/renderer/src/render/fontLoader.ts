@@ -16,6 +16,7 @@ import { fontFamily, fontOf, fontStack } from '../../../shared/render/fonts'
 import { counterText, graphicNeeds, graphicWords, listNumberText } from '../../../shared/render/graphics'
 import { MEDIA_SCHEME, mediaUrl } from '../../../shared/mediaUrl'
 import type { Graphic, Project, ProjectFont, TitleCard } from '../../../shared/types'
+import { editingFontIds } from '../../../shared/render/editingFonts'
 import { BUNDLED_FONT_URLS } from './catalogFonts'
 import { notifyStyleAssetsChanged } from './watermarkLayer'
 
@@ -431,6 +432,8 @@ function catalogIdsOf(project: Project, captions: boolean, asIs = false): string
     for (const f of [shown.text.font, shown.emphasis.font]) for (const partner of partnersOf(f)) ids.add(partner)
   }
   if (shown || graphics.length) ids.add('noto-color-emoji')
+  // Step badges, speech bubbles and the progress bar's names (editing polish §7.6); none for older projects.
+  for (const id of editingFontIds(project)) ids.add(id)
   return [...ids].filter((id) => !!catalogFont(id)).sort()
 }
 
