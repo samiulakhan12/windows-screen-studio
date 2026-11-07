@@ -64,6 +64,7 @@ import type { CameraLayout, NormRect, PathMode, Project, ShapeKind, Spotlight, Z
 import { Icon } from '../components/Icon'
 import { CommandPalette, SearchIcon, type PaletteEntry } from '../editor/CommandPalette'
 import { CopyMenu, CopyProgress } from '../editor/CopyMenu'
+import { cancelCaptionsGreatFor } from '../editor/captionsGreat'
 import { EditorContext, type EditorServices } from '../editor/context'
 import { CropBar, type CropTool } from '../editor/CropEditor'
 import { EditorIcon } from '../editor/EditorIcon'
@@ -219,6 +220,8 @@ async function openSession(projectId: string): Promise<Session> {
 }
 
 function closeSession(s: Session): void {
+  // A Make my captions great run on this project stops with it (its provider's request too).
+  cancelCaptionsGreatFor(s.store)
   // Work still holding the project (Review mode's Remove all) makes its edit now, to be saved, and
   // what waits for it is done (before the player goes: a waiting Keep stops the panel's stretch).
   try {

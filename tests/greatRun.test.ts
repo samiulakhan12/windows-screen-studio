@@ -5,6 +5,8 @@
  * provider that fails leaves the offline picks and says so; Cancel changes nothing; a second run
  * with the same result adds no undo step.
  */
+import { readFileSync } from 'node:fs'
+import path from 'node:path'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { AiProviderInfo, AiTextRequest, AiTextResult, MarksAnswer } from '../src/shared/api/ai'
 import { DEFAULT_GREAT_OPTIONS, type GreatOptions } from '../src/shared/captions/great'
@@ -257,5 +259,50 @@ describe('the saved options (prefs captionsGreat, §2.8)', () => {
     } finally {
       delete prefs.captionsGreat
     }
+  })
+})
+
+interface Starter {
+  startCaptionsGreat(deps: { store: EditStore<Project>; frame: { w: number; h: number }; notice: (message: string) => void }): Promise<void>
+  cancelCaptionsGreatFor(store: EditStore<Project>): void
+  captionsGreatBusy(): boolean
+}
+const START = '../src/renderer/src/editor/captionsGreat'
+const starter = (await import(/* @vite-ignore */ START)) as Starter
+
+describe("the editor's run (captionsGreat.ts)", () => {
+  it("closing the project stops its run and the provider's request: nothing is written or kept, and the next project's button is free", async () => {
+    prefs.captionsGreat = AI
+    try {
+      const start = studioProject({ segments: captions(TEXTS) })
+      const store = storeOf(start)
+      const notices: string[] = []
+      const run = starter.startCaptionsGreat({ store, frame: TALL, notice: (m) => notices.push(m) })
+      for (let i = 0; i < 20 && !asked.length; i++) await flush()
+      expect(asked).toHaveLength(1)
+      expect(starter.captionsGreatBusy()).toBe(true)
+      // Another project's editor closing leaves the run be.
+      starter.cancelCaptionsGreatFor(storeOf(start))
+      expect(stopped).toEqual([])
+      // Its own project's editor closing (Editor.tsx closeSession) stops it, the provider's request too.
+      starter.cancelCaptionsGreatFor(store)
+      expect(stopped).toEqual([asked[0].id])
+      // A late answer changes nothing.
+      asked[0].answer.resolve({ task: 'marks', answer: MARKS })
+      await run
+      expect(starter.captionsGreatBusy()).toBe(false)
+      expect(store.state).toBe(start)
+      expect(store.canUndo).toBe(false)
+      expect(kept).toEqual([])
+      expect(notices).toEqual([])
+    } finally {
+      delete prefs.captionsGreat
+    }
+  })
+
+  it("is stopped when the editor's session closes (Back, another project, the window going)", () => {
+    const source = readFileSync(path.resolve(__dirname, '../src/renderer/src/views/Editor.tsx'), 'utf8')
+    const close = /\nfunction closeSession\(s: Session\): void \{([\s\S]*?)\n\}/.exec(source)?.[1] ?? ''
+    expect(close).toContain('cancelCaptionsGreatFor(s.store)')
   })
 })

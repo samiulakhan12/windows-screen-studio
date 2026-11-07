@@ -11,6 +11,8 @@ import type { Project } from '../../../shared/types'
 import { runCaptionsGreat } from './greatRun'
 
 let running: AbortController | null = null
+/** The project the run edits: closing its editor stops the run (cancelCaptionsGreatFor). */
+let runningStore: EditStore<Project> | null = null
 const listeners = new Set<() => void>()
 const publish = (): void => {
   for (const l of listeners) l()
@@ -24,6 +26,7 @@ export async function startCaptionsGreat(deps: { store: EditStore<Project>; fram
   if (running) return
   const ctrl = new AbortController()
   running = ctrl
+  runningStore = deps.store
   publish()
   try {
     const options = readGreatOptions(await window.api.getPref('captionsGreat').catch(() => null))
@@ -33,6 +36,7 @@ export async function startCaptionsGreat(deps: { store: EditStore<Project>; fram
     if (!ctrl.signal.aborted) deps.notice(`Make my captions great could not finish: ${err instanceof Error ? err.message : String(err)}`)
   } finally {
     running = null
+    runningStore = null
     publish()
   }
 }
@@ -40,6 +44,14 @@ export async function startCaptionsGreat(deps: { store: EditStore<Project>; fram
 /** Cancel: stops a run waiting for an AI provider or still planning (nothing is changed). */
 export function cancelCaptionsGreat(): void {
   running?.abort()
+}
+
+/**
+ * Closing `store`'s editor stops its run, and the provider's request with it: nothing is written,
+ * no version is kept, and the next project's button is free once it ends.
+ */
+export function cancelCaptionsGreatFor(store: EditStore<Project>): void {
+  if (runningStore === store) running?.abort()
 }
 
 export const captionsGreatBusy = (): boolean => running !== null

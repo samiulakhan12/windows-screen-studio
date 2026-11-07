@@ -431,7 +431,9 @@ now your own version of Clean, which can show emphasis."
 
 **The button** runs the steps ticked in its options with the saved choices. While it runs, the
 button reads **Working…** and **Cancel** appears beside it (only when it waits for an AI
-provider). Without a provider it finishes in under 0.2 s for 10 minutes of captions.
+provider). Closing the project (Back, opening another one) stops the run as Cancel does: the
+provider's request ends, nothing is changed and no version is kept. Without a provider it finishes
+in under 0.2 s for 10 minutes of captions.
 
 **Options popover** (`great-options`, `role="dialog"`, focus trapped, Esc closes and returns
 focus to the options button). Choices are saved in prefs `captionsGreat`.
