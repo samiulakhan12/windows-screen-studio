@@ -38,6 +38,7 @@ import { CAPTION_MAX_CHARS, cleanCaptionText, LANGUAGE_RE, readWords } from './c
 import { catalogId, CATALOG_PREFIX } from './fontCatalog'
 import { readCaptionSettings } from './settings'
 import { STUDIO_BASE } from './studioPresets'
+import { readTextMap } from './textMap'
 import { studioWords } from './words'
 
 export const STUDIO_LIMITS = {
@@ -758,7 +759,8 @@ export function readBleeps(raw: unknown, duration: number): Bleep[] | undefined 
 /**
  * The stored records of what automation replaced (rule 8): the look before (read with
  * readCaptionSettings, one level, or null) and the captions' text and words before, for captions
- * that still exist (one record each).
+ * that still exist (one record each), with their word map when it is a valid map of the caption's
+ * words onto the words before (readTextMap; an invalid one is dropped, the record kept).
  */
 export function readCaptionAuto(raw: unknown, transcript: Transcript | undefined): CaptionAuto | undefined {
   if (!isObj(raw)) return undefined
@@ -779,7 +781,9 @@ export function readCaptionAuto(raw: unknown, transcript: Transcript | undefined
       if (!t) continue
       seen.add(v.caption)
       const words: CaptionWord[] | null = readWords(v.words, seg.start, seg.end, Infinity)
-      text.push({ caption: v.caption, text: t, ...opt('words', words ?? undefined) })
+      // The word map, when it is one from the caption's words now onto the words of `t` (else dropped).
+      const map = v.map === undefined ? undefined : readTextMap(v.map, captionWords(transcript, v.caption)!.length, studioWords(t, transcript.language).length)
+      text.push({ caption: v.caption, text: t, ...opt('words', words ?? undefined), ...opt('map', map) })
     }
     const order = new Map(transcript.segments.map((s, i) => [s.id, i]))
     text.sort((a, b) => order.get(a.caption)! - order.get(b.caption)!)

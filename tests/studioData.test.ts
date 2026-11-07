@@ -487,6 +487,35 @@ describe('readCaptionAuto (rule 8)', () => {
     expect(readCaptionAuto({ style: { was: null, by: 'robot', name: 'x' } }, transcript)).toBeUndefined()
   })
 
+  it('keeps a text record’s word map when it maps the caption’s words onto the words before; drops an invalid one, never the record', () => {
+    // c2 reads "Sales grew 300 percent this year, thanks to Auto Save." (10 words); before: 11 words.
+    const before = 'sales grew three hundred percent this year, thanks to auto save'
+    const map = [[0, 1, 0, 1], [2, 2, 2, 3], [3, 9, 4, 10]]
+    // c3, Chinese, as marks count its words: 我们 今天 学习 | 如何 导出 视频.
+    const zhMap = [[0, 5, 0, 5]]
+    const out = readCaptionAuto({ text: [{ caption: 'c2', text: before, map }, { caption: 'c3', text: '我们今天学习 如何导出视频', map: zhMap }] }, transcript)!
+    expect(out.text).toEqual([{ caption: 'c2', text: before, map }, { caption: 'c3', text: '我们今天学习 如何导出视频', map: zhMap }])
+    expect(out.text![0].map).not.toBe(map)
+    expect(readCaptionAuto(JSON.parse(JSON.stringify(out)), transcript)).toEqual(out)
+    const bad: unknown[] = [
+      'map',
+      [],
+      [[0, 1, 0, 1], [2, 2, 2, 3], [3, 8, 4, 9]],
+      [[0, 1, 0, 1], [2, 2, 2, 3], [3, 9, 4, 11]],
+      [[0, 1, 0, 1], [2, 2, 3, 3], [3, 9, 4, 10]],
+      [[0, 1, 0, 1], [2, 2, 2, 3], [3, 9, 4, 10], [10, 10, 10, 10]],
+      [[0, 1, 0, 1], [2, 2, 2, 3], [3, 9, 4, '10']],
+      null
+    ]
+    for (const m of bad) {
+      const read = readCaptionAuto({ text: [{ caption: 'c2', text: before, map: m }] }, transcript)!
+      expect(JSON.stringify(read), JSON.stringify(m)).toBe(JSON.stringify({ text: [{ caption: 'c2', text: before }] }))
+    }
+    // A record saved before maps were written reads, and writes, as it did: no `map` key.
+    const old = { text: [{ caption: 'c1', text: 'make every word count today', words: [{ text: 'make', start: 0.5, end: 0.9 }] }] }
+    expect(JSON.stringify(readCaptionAuto(JSON.parse(JSON.stringify(old)), transcript))).toBe(JSON.stringify(old))
+  })
+
   it('reads the speaker names a run turned on with its look', () => {
     const out = readCaptionAuto({ style: { was: null, by: 'great', name: 'Subtitle', names: true } }, transcript)
     expect(out).toEqual({ style: { was: null, by: 'great', name: 'Subtitle', names: true } })
