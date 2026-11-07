@@ -137,7 +137,17 @@ function beginsEnglish(bare: string): boolean {
   return !head || has(EN_SMALL, head) || head === 'a' || head === 'an'
 }
 
-/** English: "twenty five", "twenty-five", "one hundred and five", "a thousand". */
+/** The units an English ordinal after a tens word ends in ("twenty first"); not "second", which is also a unit of time ("a thirty second clip"). */
+const EN_ORDINAL_UNITS = new Set(['first', 'third', 'fourth', 'fifth', 'sixth', 'seventh', 'eighth', 'ninth'])
+
+/**
+ * English: "twenty five", "twenty-five", "one hundred and five", "a thousand", "nineteen hundred".
+ * One number only: a number word joins at the start, after "hundred" or a scale, or a unit after a
+ * tens word ("twenty five"); "and" only after "hundred" or a scale. Numbers said one after the
+ * other ("nineteen ninety nine", "five six seven", "twenty twenty four") and an ordinal said in
+ * two words ("twenty first") give none: they are never added up. A word only partly made of
+ * number words ("twenty-first", "nine-to-five") is never read.
+ */
 function parseEnglish(words: readonly string[]): { value: number; used: number } | null {
   // A first word that cannot begin a number (most words: a caption is parsed from each of them)
   // gives none. A word of punctuation alone is read past, as below.
@@ -146,37 +156,58 @@ function parseEnglish(words: readonly string[]): { value: number; used: number }
   for (let k = 0; k < words.length && parts.length < 40; k++) {
     const end = ENDS_CLAUSE.test(words[k])
     const pieces = bareWord(words[k]).split('-').filter(Boolean)
-    pieces.forEach((w, j) => parts.push({ w, end: end && j === pieces.length - 1, index: k }))
     // The words after one that is no number word are never read: a caption is parsed from each of
     // its words, and reading on to the clause's end (up to 40 words) read each word many times.
-    if (end || !pieces.every(enNumberish)) break
+    if (!pieces.every(enNumberish)) break
+    pieces.forEach((w, j) => parts.push({ w, end: end && j === pieces.length - 1, index: k }))
+    if (end) break
   }
   let total = 0
   let group = 0
   let used = 0
   let any = false
+  // What the last number word was: nothing yet, a unit (1–9, zero, "a"), a teen or ten, a tens
+  // word, "hundred", or a scale.
+  let last: 'start' | 'unit' | 'teen' | 'tens' | 'hundred' | 'scale' = 'start'
   for (let i = 0; i < parts.length; i++) {
     const { w, end, index } = parts[i]
     const next = parts[i + 1]?.w
-    if (has(EN_SMALL, w)) group += EN_SMALL[w]
-    else if (w === 'hundred' && any) group = group * 100
-    else if (has(EN_SCALES, w) && any) {
+    if (has(EN_SMALL, w)) {
+      const v = EN_SMALL[w]
+      const kind = v >= 20 ? 'tens' : v >= 10 ? 'teen' : 'unit'
+      const joins = last === 'start' || last === 'hundred' || last === 'scale' || (last === 'tens' && kind === 'unit' && v > 0)
+      // Two numbers said one after the other: none.
+      if (!joins) return null
+      group += v
+      last = kind
+    } else if (w === 'hundred' && (last === 'unit' || last === 'teen' || last === 'tens')) {
+      group = group * 100
+      last = 'hundred'
+    } else if (has(EN_SCALES, w) && last !== 'start' && last !== 'scale') {
       total += group * EN_SCALES[w]
       group = 0
+      last = 'scale'
     } else if ((w === 'a' || w === 'an') && !any && next && (next === 'hundred' || has(EN_SCALES, next))) {
       group = 1
       any = true
+      last = 'unit'
       continue
-    } else if (w === 'and' && any && next && has(EN_SMALL, next)) continue
+    } else if (w === 'and' && (last === 'hundred' || last === 'scale') && next && has(EN_SMALL, next)) continue
     else break
     any = true
     used = index + 1
     if (end) break
   }
+  // "twenty first", "forty fifth": an ordinal, not 20 and a word.
+  if (last === 'tens' && used && !ENDS_CLAUSE.test(words[used - 1]) && EN_ORDINAL_UNITS.has(bareWord(words[used] ?? ''))) return null
   return any && used ? { value: total + group, used } : null
 }
 
-/** Bangla and Hindi from CLDR's tables: "তিনশো", "দুই হাজার", "तीन सौ", "पाँच लाख". */
+/**
+ * Bangla and Hindi from CLDR's tables: "তিনশো", "দুই হাজার", "तीन सौ", "पाँच लाख". One number only,
+ * as in English: a word for 0–99 joins at the start or after a hundred or a scale; numbers said one
+ * after the other ("এক দুই তিন") give none.
+ */
 function parseTable(words: readonly string[], lang: 'bn' | 'hi'): { value: number; used: number } | null {
   const t = NUMBER_WORDS[lang]
   const extra = EXTRA[lang]
@@ -187,21 +218,31 @@ function parseTable(words: readonly string[], lang: 'bn' | 'hi'): { value: numbe
   let group = 0
   let used = 0
   let any = false
+  let last: 'start' | 'small' | 'hundred' | 'scale' = 'start'
   for (let k = 0; k < words.length; k++) {
     const w = bareWord(words[k])
     let v = small(w)
+    let fused = false
     // A hundred written onto its multiplier: তিনশো, দুইশ.
     if (v === undefined)
       for (const h of hundreds)
         if (w.length > h.length && w.endsWith(h) && small(w.slice(0, -h.length)) !== undefined) {
           v = small(w.slice(0, -h.length))! * 100
+          fused = true
           break
         }
-    if (v !== undefined) group += v
-    else if (hundreds.includes(w) && any) group = group * 100
-    else if (scale(w) !== undefined && any) {
+    if (v !== undefined) {
+      // Two numbers said one after the other: none.
+      if (!(last === 'start' || last === 'scale' || (last === 'hundred' && !fused))) return null
+      group += v
+      last = fused ? 'hundred' : 'small'
+    } else if (hundreds.includes(w) && last === 'small') {
+      group = group * 100
+      last = 'hundred'
+    } else if (scale(w) !== undefined && (last === 'small' || last === 'hundred')) {
       total += group * scale(w)!
       group = 0
+      last = 'scale'
     } else break
     any = true
     used = k + 1
@@ -319,6 +360,9 @@ export function findNumbers(seg: CaptionSegment, language?: string): FoundNumber
         num = { value: w.value, decimals: 0, prefix: '', unit: '', plain: true }
         last = i + w.used - 1
         spelled = true
+      } else if (!w && parseNumberWords([words[i]], language)) {
+        // Numbers said one after the other ("nineteen ninety nine"): none of them is a counter.
+        while (i + 1 < words.length && !ENDS_CLAUSE.test(words[i]) && parseNumberWords([words[i + 1]], language)) i++
       }
     }
     if (!num) {

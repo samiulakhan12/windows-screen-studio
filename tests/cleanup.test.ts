@@ -97,6 +97,28 @@ describe('tidyCaptions (test 41)', () => {
     expect(tidy('bn', 'বয়স এগারো, তাই')).toBe('বয়স ১১, তাই')
   })
 
+  it('numbers said one after the other are never added up; ordinals in two words stay words', () => {
+    const tidy = (text: string, digits: CleanupChoices['digits'] = 'above-ten'): string => texts(tidyCaptions(project([{ id: 'a', start: 0, end: 2, text }]), { ...OFF, digits, words: [] }).project)[0]
+    expect(tidy('back in nineteen ninety nine we started')).toBe('back in nineteen ninety nine we started')
+    expect(tidy('in twenty twenty four we shipped it')).toBe('in twenty twenty four we shipped it')
+    expect(tidy('five six seven eight', 'all')).toBe('five six seven eight')
+    expect(tidy('chapter twelve thirteen')).toBe('chapter twelve thirteen')
+    expect(tidy('between ten and twenty seconds')).toBe('between ten and 20 seconds')
+    expect(tidy('between ten and twenty seconds', 'all')).toBe('between 10 and 20 seconds')
+    expect(tidy('between twenty and thirty people came')).toBe('between 20 and 30 people came')
+    expect(tidy('ages seven and twelve')).toBe('ages seven and 12')
+    expect(tidy('the twenty first century')).toBe('the twenty first century')
+    expect(tidy('the twenty-first century')).toBe('the twenty-first century')
+    expect(tidy('this one, twenty more')).toBe('this one, 20 more')
+    // One number each, as before.
+    expect(tidy('about two hundred and fifty people')).toBe('about 250 people')
+    expect(tidy('we have twenty five users')).toBe('we have 25 users')
+    expect(tidy('a thirty second clip')).toBe('a 30 second clip')
+    expect(tidy('prices were a hundred and ten and a hundred and twenty')).toBe('prices were 110 and 120')
+    expect(tidy('three thousand four hundred or forty two thousand')).toBe('3400 or 42000')
+    expect(texts(tidyCaptions(project([{ id: 'a', start: 0, end: 2, text: 'এক দুই তিন বারো' }], 'bn'), { ...OFF, digits: 'all', words: [] }).project)[0]).toBe('এক দুই তিন বারো')
+  })
+
   it('numbers above ten become digits and their word times merge', () => {
     const p = project([timed('a', 0, 'we have twenty five users and three teams')])
     const out = tidyCaptions(p, { ...OFF, digits: 'above-ten', words: [] }).project

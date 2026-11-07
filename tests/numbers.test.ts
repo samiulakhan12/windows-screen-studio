@@ -110,4 +110,38 @@ describe('parseNumberWords (test 38)', () => {
     expect(parseNumberWords(['तीन', 'सौ'], 'hi')).toEqual({ value: 300, used: 2 })
     expect(parseNumberWords(['पाँच', 'लाख'], 'hi')).toEqual({ value: 500000, used: 2 })
   })
+
+  it('reads one number only: numbers said one after the other and ordinals in two words give none', () => {
+    const en = (text: string): ReturnType<typeof parseNumberWords> => parseNumberWords(text.split(' '))
+    for (const text of ['nineteen ninety nine', 'twenty twenty four', 'five six seven eight', 'seven twelve', 'eleven twelve', 'twenty five six', 'one twenty', 'twenty first century', 'forty fifth president', 'twenty-first century', 'nine-to-five'])
+      expect(en(text), text).toBeNull()
+    // "and" joins after a hundred or a scale only: two numbers with "and" between are two numbers.
+    expect(en('ten and twenty seconds')).toEqual({ value: 10, used: 1 })
+    expect(en('twenty and thirty')).toEqual({ value: 20, used: 1 })
+    expect(en('a hundred and ten and a hundred and twenty')).toEqual({ value: 110, used: 4 })
+    // Still one number.
+    expect(en('nineteen hundred and ninety nine')).toEqual({ value: 1999, used: 5 })
+    expect(en('twenty five hundred')).toEqual({ value: 2500, used: 3 })
+    expect(en('two hundred and fifty five people')).toEqual({ value: 255, used: 5 })
+    expect(en('one thousand two hundred and thirty four')).toEqual({ value: 1234, used: 7 })
+    expect(en('forty two thousand')).toEqual({ value: 42000, used: 3 })
+    expect(en('three thousand four hundred')).toEqual({ value: 3400, used: 4 })
+    expect(en('five hundred thousand')).toEqual({ value: 500000, used: 3 })
+    expect(en('twenty one pilots')).toEqual({ value: 21, used: 2 })
+    // "second" is also a unit of time; a clause between them keeps the number.
+    expect(en('thirty second clip')).toEqual({ value: 30, used: 1 })
+    expect(en('twenty, first')).toEqual({ value: 20, used: 1 })
+    // Bangla and Hindi alike.
+    expect(parseNumberWords(['এক', 'দুই', 'তিন'], 'bn')).toBeNull()
+    expect(parseNumberWords(['দুই', 'তিনশো'], 'bn')).toBeNull()
+    expect(parseNumberWords(['দুই', 'হাজার', 'পাঁচশো'], 'bn')).toEqual({ value: 2500, used: 3 })
+    expect(parseNumberWords(['দুই', 'শো', 'পঞ্চাশ'], 'bn')).toEqual({ value: 250, used: 3 })
+    expect(parseNumberWords(['दो', 'तीन'], 'hi')).toBeNull()
+    expect(parseNumberWords(['दो', 'सौ', 'पचास'], 'hi')).toEqual({ value: 250, used: 3 })
+  })
+
+  it('gives no counter for numbers said one after the other', () => {
+    expect(findNumbers(seg('we grew from nineteen ninety nine users to five six percent'), 'en')).toEqual([])
+    expect(findNumbers(seg('revenue grew twenty five percent'), 'en')).toMatchObject([{ value: 25 }])
+  })
 })

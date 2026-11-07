@@ -248,8 +248,12 @@ function applyDigits(tokens: Tok[], mode: CleanupChoices['digits'], language: st
   let i = 0
   while (i < tokens.length) {
     const texts = tokens.slice(i).map((t) => t.text)
+    // A number word right after one left as written, with nothing between (numbers said one after
+    // the other: "nineteen ninety nine", "seven twelve") is left as written too: never "nineteen 99".
+    const before = tokens[i - 1]
+    const inRun = !!before && out[out.length - 1] === before && !TRAILING.exec(before.text)?.[0] && parseNumberWords([before.text], language) !== null
     // A word starting with a letter only: "twenty-five", not "25".
-    const parsed = /^[^\p{N}]*\p{L}/u.test(texts[0]) ? parseNumberWords(texts, language) : null
+    const parsed = !inRun && /^[^\p{N}]*\p{L}/u.test(texts[0]) ? parseNumberWords(texts, language) : null
     if (!parsed || !joinable(tokens, i, i + parsed.used - 1)) {
       out.push(tokens[i])
       i++

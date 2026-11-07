@@ -2876,6 +2876,14 @@ Offline rules, each optional (§2.9). The choices are `CleanupChoices` (`caps`, 
    and "one of the" stays a word. When words join ("twenty five" → "25"), their times merge (first
    start to last end), so word timing survives. A word's vowel signs and tone marks are part of
    it, never punctuation kept after the digits: "এগারো" → "১১", "একশো" → "১০০", "अस्सी" → "80".
+   One number at a time (`parseNumberWords`, also read by counters, §11.4): a number word joins
+   at the start, after "hundred" or a scale, or as a unit after a tens word ("twenty five",
+   "nineteen hundred and ninety nine"), and "and" joins only after "hundred" or a scale. Numbers
+   said one after the other are never added up and stay words, every one of them ("nineteen
+   ninety nine", "twenty twenty four", "five six seven eight", "এক দুই তিন"), as does an ordinal
+   said in two words ("twenty first", "forty fifth"; not "second", also a unit of time: "a thirty
+   second clip" → "a 30 second clip"); two numbers with "and" between are two numbers ("ages
+   seven and twelve" → "ages seven and 12").
 4. **Word list**: whole words replaced without regard to case, and the term's "also heard as" forms
    matched as written ("qbexl" → "Qbexel" when listed), vowel signs and tone marks included
    ("ফ্লো ইন" → "Flown", "ไลน์" → "LINE"). A word one letter away from a term is never
