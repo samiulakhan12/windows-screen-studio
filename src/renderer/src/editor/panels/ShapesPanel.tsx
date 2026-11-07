@@ -31,6 +31,8 @@ import { LookButtons } from '../LookButtons'
 import { addShapeAt, addSpotlightAt, cursorPosFor, revealItem } from '../playheadItems'
 import { ShapeIcon } from '../shapeIcons'
 import '../shapes.css'
+import { MagnifierSection } from './MagnifierSection'
+import { CalloutSection } from './CalloutSection'
 
 type Item = { type: 'shape'; item: Shape } | { type: 'spotlight'; item: Spotlight }
 
@@ -74,6 +76,9 @@ export function ShapesPanel(props: InspectorProps): JSX.Element {
     <>
       {shape && <SelectedShape project={project} shape={shape} onSelect={props.onSelect} />}
       {spot && <SelectedSpotlight project={project} spot={spot} cursorValid={cursor.valid} cursorPos={cursorPos} onSelect={props.onSelect} />}
+      {/* Editing polish (docs/design/editing-polish.md §2.2, §2.3): the magnifier, and a shape's animation. */}
+      <MagnifierSection project={project} selection={selection ?? null} />
+      <CalloutSection project={project} selection={selection ?? null} />
 
       <Section title="Add at playhead">
         <div className="shape-tools" role="group" aria-label="Add a shape">

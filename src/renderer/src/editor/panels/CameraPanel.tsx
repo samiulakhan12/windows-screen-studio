@@ -24,6 +24,7 @@ import { followPointer } from '../pointer'
 import { IMPORTED_COPY, isImported } from '../../../../shared/import/imported'
 import '../camera.css'
 import './cursorPanel.css'
+import { CameraColourSection } from './CameraColourSection'
 
 const L = LOOK_LIMITS
 const BORDER_COLORS = [DEFAULT_WEBCAM_BORDER.color, '#000000', '#8b5cf6', '#22d3ee', '#facc15', '#f43f5e']
@@ -104,6 +105,8 @@ export function CameraPanel({ project, cursor, recorded, hasWebcam, selection, o
 
       <FramingSection project={project} off={off} set={set} />
       <BlurSection value={look.backgroundBlur} off={off} set={set} />
+      {/* The camera's colour and Auto colour (docs/design/editing-polish.md §2.5). */}
+      <CameraColourSection project={project} />
       {hasWebcam && <LayoutSection project={project} selection={selection} onSelect={onSelect} onNotice={onNotice} band={band} />}
       {hasWebcam && <PositionSection project={project} selection={selection} onSelect={onSelect} onNotice={onNotice} band={band} />}
     </>

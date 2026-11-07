@@ -35,6 +35,7 @@ import { disposeShare, registerShareIpc } from './share/shareIpc'
 import { disposeSearch, registerSearchIpc } from './search/searchIpc'
 import { registerVersionsIpc } from './versionsIpc'
 import { registerFilmstripIpc } from './filmstrip'
+import { registerSoundLibraryIpc } from './soundLibrary/ipc'
 
 // The app was called "Screen Studio for Windows" before: its userData folder moves to Flown's
 // before anything reads it, and before the single-instance lock, which lives in it.
@@ -102,6 +103,8 @@ if (!app.requestSingleInstanceLock()) {
     // Versions of an edit (docs/design/versions.md).
     registerVersionsIpc()
     registerFilmstripIpc()
+    // The music and sound-effects library (docs/design/editing-polish.md §10.3).
+    registerSoundLibraryIpc()
     openMainWindow()
     app.on('activate', () => {
       if (BrowserWindow.getAllWindows().length === 0) openMainWindow()

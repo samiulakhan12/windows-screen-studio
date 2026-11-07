@@ -115,6 +115,9 @@ export class PreviewPlayer {
   private noZoom = false
   /** Draw without the 3D tilt (while something is edited on the preview, so handles line up). */
   private flat = false
+  /** Compare (docs/design/editing-polish.md §2.5): the preview shows the pictures without their colour. Never saved, never exported. */
+  private compare = false
+  private compared: { from: RenderScene; scene: RenderScene } | null = null
   private flatScene: RenderScene | null = null
   private readonly listeners = new Set<() => void>()
   private drawRaf = 0
@@ -228,6 +231,18 @@ export class PreviewPlayer {
     this.flatScene = null
     this.background = background
     this.invalidate()
+  }
+
+  /** Compare with original colour (editing polish §2.5): while on, the preview draws the screen and the camera without their grades; the export never does. */
+  setCompare(on: boolean): void {
+    if (this.compare === on) return
+    this.compare = on
+    this.invalidate()
+  }
+
+  /** Whether Compare is on. */
+  get comparing(): boolean {
+    return this.compare
   }
 
   /** Shows the frame without zoom, and the whole recording without following the action (while the user picks a zoom's focus point on it). */
@@ -422,7 +437,7 @@ export class PreviewPlayer {
       canvas.width,
       canvas.height,
       still ? p : s,
-      this.noZoom ? this.unzoomedScene(scene) : this.flat ? this.untiltedScene(scene) : scene,
+      this.comparedScene(this.noZoom ? this.unzoomedScene(scene) : this.flat ? this.untiltedScene(scene) : scene),
       {
         screen: this.screen,
         webcam: this.webcam,
@@ -471,6 +486,13 @@ export class PreviewPlayer {
     if (webcamLook(scene.project.webcam).backgroundBlur > 0 && heldLivePicture(cam)) return { image: cam, width: cam.videoWidth, height: cam.videoHeight }
     const held = this.heldCam
     return held ? { image: held, width: held.displayWidth, height: held.displayHeight } : null
+  }
+
+  /** `scene` with Compare's flag while it is on (made once per scene), else `scene` itself. */
+  private comparedScene(scene: RenderScene): RenderScene {
+    if (!this.compare) return scene
+    if (this.compared?.from !== scene) this.compared = { from: scene, scene: { ...scene, compare: true } }
+    return this.compared.scene
   }
 
   private unzoomedScene(scene: RenderScene): RenderScene {

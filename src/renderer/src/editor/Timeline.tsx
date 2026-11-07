@@ -45,6 +45,7 @@ import { itemKey, type GroupKind, type ItemTrack } from '../../../shared/editor/
 import type { ClickRow } from '../../../shared/engine/inputData'
 import type { ScrollSession } from '../../../shared/engine/scroll'
 import type { Annotation, Clip, CursorTrack, Shape, ShapeKind, Spotlight, ZoomSegment } from '../../../shared/types'
+import { spotlightIcon, spotlightName } from '../../../shared/render/magnifier'
 import { Icon } from '../components/Icon'
 import { useEditor } from './context'
 import { EditorIcon } from './EditorIcon'
@@ -140,8 +141,9 @@ function trackItems(shapes: Shape[], spotlights: Spotlight[]): TrackItem[] {
       id: s.id,
       start: s.start,
       end: s.end,
-      label: s.mode === 'cursor' ? 'Cursor spotlight' : 'Spotlight',
-      icon: s.mode === 'cursor' ? 'spotlight-cursor' : 'spotlight-region',
+      // A magnifier is a spotlight with `magnify` (editing polish §2.2): its name and icon from magnifier.ts.
+      label: spotlightName(s),
+      icon: spotlightIcon(s) === 'magnifier' ? 'magnifier' : s.mode === 'cursor' ? 'spotlight-cursor' : 'spotlight-region',
       look: 'spotlight',
       kind: 'spotlight'
     }))

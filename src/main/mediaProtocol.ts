@@ -5,12 +5,13 @@ import { Readable } from 'node:stream'
 import { MEDIA_SCHEME } from '../shared/mediaUrl'
 import { assetPath } from './assets/assetStore'
 import { projectDir } from './projects'
+import { soundPath } from './soundLibrary/paths'
 
 export { MEDIA_SCHEME, mediaUrl } from '../shared/mediaUrl'
 
-/** Project files the renderer may load: the proxies, a background image, a custom cursor image, picked assets, image overlays, fonts and cleaned voices. */
+/** Project files the renderer may load: the proxies, a background image, a custom cursor image, picked assets, image overlays, fonts, cleaned voices and colour LUTs (editing polish §4.6). */
 export const MEDIA_FILE_RE =
-  /^(screen\.mp4|webcam\.mp4|background\.(png|jpe?g|webp)|cursor\.(png|jpe?g|webp|svg|ico|cur)|watermark(-[1-9][0-9]{0,8})?\.(png|jpg|webp|svg)|music(-[1-9][0-9]{0,8})?\.(mp3|m4a|aac|wav|ogg|opus|flac)|(mic|system)\.m4a|overlay-[1-9][0-9]{0,8}\.(png|jpg|webp|svg|gif)|font-[1-9][0-9]{0,8}\.(ttf|otf|woff2)|voice-[0-9a-f]{16}\.m4a)$/i
+  /^(screen\.mp4|webcam\.mp4|background\.(png|jpe?g|webp)|cursor\.(png|jpe?g|webp|svg|ico|cur)|watermark(-[1-9][0-9]{0,8})?\.(png|jpg|webp|svg)|music(-[1-9][0-9]{0,8})?\.(mp3|m4a|aac|wav|ogg|opus|flac)|(mic|system)\.m4a|overlay-[1-9][0-9]{0,8}\.(png|jpg|webp|svg|gif)|font-[1-9][0-9]{0,8}\.(ttf|otf|woff2)|voice-[0-9a-f]{16}\.m4a|lut-[1-9][0-9]{0,8}\.cube)$/i
 const MIME: Record<string, string> = {
   '.mp4': 'video/mp4',
   '.png': 'image/png',
@@ -62,6 +63,14 @@ function servedAsset(parts: string[]): string | null {
   return parts.length === 1 ? assetPath(parts[0]) : null
 }
 
+/**
+ * A file of the sound library (editing polish §10.9, §14 rule 2): studio-media://sounds/<file>,
+ * only the catalogue's names, from the bundled folder or the downloaded beds (soundPath).
+ */
+function servedSound(parts: string[]): string | null {
+  return parts.length === 1 ? soundPath(parts[0]) : null
+}
+
 export function registerMediaScheme(): void {
   protocol.registerSchemesAsPrivileged([
     { scheme: MEDIA_SCHEME, privileges: { standard: true, secure: true, supportFetchAPI: true, stream: true, corsEnabled: true } }
@@ -77,7 +86,7 @@ export function handleMediaProtocol(): void {
     try {
       const url = new URL(request.url)
       const parts = url.pathname.split('/').filter(Boolean).map(decodeURIComponent)
-      const filePath = url.host === 'assets' ? servedAsset(parts) : servedProjectFile(parts, url.host)
+      const filePath = url.host === 'assets' ? servedAsset(parts) : url.host === 'sounds' ? servedSound(parts) : servedProjectFile(parts, url.host)
       if (!filePath) return new Response('Not found', { status: 404 })
       const file = path.basename(filePath)
       const { size } = await fs.stat(filePath)

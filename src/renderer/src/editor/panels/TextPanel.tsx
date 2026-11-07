@@ -34,6 +34,10 @@ import { TitleStyleIcon } from '../TitleTrack'
 import { FontPicker, withBrandColors } from './FontPicker'
 import '../shapes.css'
 import '../titles.css'
+import { CalloutSection } from './CalloutSection'
+import { BadgeSection } from './BadgeSection'
+import { BubbleSection } from './BubbleSection'
+import { ChapterBarSection } from './ChapterBarSection'
 
 /* ---------- Text, title cards and chapters ---------- */
 
@@ -51,9 +55,14 @@ export function TextPanel(props: InspectorProps): JSX.Element {
       {ann && <SelectedText {...props} />}
       {card && <SelectedTitle project={project} card={card} onSelect={props.onSelect} />}
       {chapter && <SelectedChapter project={project} chapter={chapter} onSelect={props.onSelect} />}
+      {/* Editing polish (docs/design/editing-polish.md §2.3, §2.4): a text's or title's animation, step badges, speech bubbles, the progress bar. */}
+      <CalloutSection project={project} selection={selection ?? null} />
+      <BadgeSection project={project} selection={selection ?? null} />
+      <BubbleSection project={project} selection={selection ?? null} />
       <TextSection {...props} selectedId={ann?.id ?? null} />
       <TitlesSection project={project} selectedId={card?.id ?? null} onSelect={props.onSelect} />
       <ChaptersSection project={project} selectedId={chapter?.id ?? null} onSelect={props.onSelect} onNotice={props.onNotice} />
+      <ChapterBarSection project={project} />
     </>
   )
 }

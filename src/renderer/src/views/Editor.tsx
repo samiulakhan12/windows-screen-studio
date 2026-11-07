@@ -85,6 +85,8 @@ import { FollowEnvContext, type FollowEnv } from '../editor/panels/FollowSection
 import { PolishDialog } from '../editor/PolishDialog'
 import { ReviewButton } from '../review/ReviewButton'
 import { settleAutoCuts } from '../../../shared/review/autoCuts'
+import { settleJoins } from '../../../shared/editor/joinsEdit'
+import { settleGrade } from '../../../shared/editor/colourEdit'
 import { ReviewPanel } from '../review/ReviewPanel'
 import { PreviewStage } from '../editor/PreviewStage'
 import { SaveIndicator } from '../editor/SaveIndicator'
@@ -206,7 +208,10 @@ async function openSession(projectId: string): Promise<Session> {
   // then automatic caption changes become the user's when edited by hand, and marks, word anchors and
   // per-caption places follow their words (Captions Studio §11.8). Review mode (E-02): records of
   // automatic cuts whose change is gone are dropped. Each is part of the edit's undo step.
-  const store = new EditStore(project, undefined, undefined, undefined, (next: Project, prev: Project) => settleAutoCuts(settleCaptionAuto(settleDeletedWords(next, prev), prev), prev))
+  // Editing polish's settle steps last (docs/design/editing-polish.md §11): each returns `next` itself when nothing applies.
+  const store = new EditStore(project, undefined, undefined, undefined, (next: Project, prev: Project) =>
+    settleGrade(settleJoins(settleAutoCuts(settleCaptionAuto(settleDeletedWords(next, prev), prev), prev), prev), prev)
+  )
   const recorded = (p: Project): Project => withRecordedCamera(withRecordedStems(withSavedName(p), data.project), data.project)
   const saver = new Autosaver(store, {
     save: (p, meta) => window.api.saveProject(recorded(p), meta),
@@ -1367,6 +1372,21 @@ function EditorSession({
       saveVersion: () => setDialog('saveVersion'),
       versions: () => setDialog('versions'),
 
+      // Editing polish (docs/design/editing-polish.md §2.8): each opens its tab until its part wires it.
+      smoothAllCuts: showTab('clip'),
+      hardCutsEverywhere: showTab('clip'),
+      nextCut: showTab('clip'),
+      previousCut: showTab('clip'),
+      playCut: showTab('clip'),
+      addMagnifier: showTab('shapes'),
+      addMagnifierCursor: showTab('shapes'),
+      addStepBadge: showTab('text'),
+      addSpeechBubble: showTab('text'),
+      toggleProgressBar: showTab('text'),
+      compareColour: showTab('effects'),
+      autoColour: showTab('camera'),
+      musicLibrary: showTab('audio'),
+
       // E-04 waveform: a view preference, so not an undo step (like the timeline zoom)
       toggleWaveform: () => {
         if (!store.state.hasAudio) return showNotice('This recording has no sound')
@@ -1582,6 +1602,9 @@ function EditorSession({
     }
     on.toggleWaveform = p.hasAudio && waveformShown()
     on.toggleFilmstrip = filmstripShown()
+    // Editing polish's toggles (§2.8): the progress bar; Compare is the preview's (part P4 wires it).
+    on.toggleProgressBar = !!p.chapterBar?.show
+    on.compareColour = false
     for (const k of ['nudgeBack', 'nudgeForward', 'nudgeBackTen', 'nudgeForwardTen'] as const) unavailable[k] = picked.length ? null : 'Select items to move them'
     // NW-05 and X-04: the copies (with the menu's reasons), following and the safe zones.
     const frame = editorFrame(p)

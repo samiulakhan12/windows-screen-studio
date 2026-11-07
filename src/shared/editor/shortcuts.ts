@@ -71,7 +71,21 @@ export const DEFAULT_KEYMAP: Keymap = Object.freeze({
   about: [],
   commandPalette: ['Ctrl+K', 'Ctrl+Shift+P'],
   // E-12 versions (docs/design/versions.md §2.7).
-  saveVersion: ['Ctrl+Shift+S']
+  saveVersion: ['Ctrl+Shift+S'],
+  // Editing polish (docs/design/editing-polish.md §2.8): no default keys, so no one's keys change.
+  smoothAllCuts: [],
+  hardCutsEverywhere: [],
+  nextCut: [],
+  previousCut: [],
+  playCut: [],
+  addMagnifier: [],
+  addMagnifierCursor: [],
+  addStepBadge: [],
+  addSpeechBubble: [],
+  toggleProgressBar: [],
+  compareColour: [],
+  autoColour: [],
+  musicLibrary: []
 })
 
 /* ---------- key names ---------- */

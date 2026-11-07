@@ -16,6 +16,8 @@ import { mediaDuration } from '../media'
 import { VoiceSection } from './VoiceSection'
 import { SoundsSection } from '../sounds/SoundsSection'
 import './audioPanel.css'
+import { MusicLibrarySection } from './MusicLibrarySection'
+import { SoundEffectsSection } from './SoundEffectsSection'
 
 const STEM_NAMES: Record<StemKind, string> = { mic: 'Microphone', system: 'System sound' }
 
@@ -107,6 +109,8 @@ export function AudioPanel({ project }: { project: Project }): JSX.Element {
         </Section>
       ))}
 
+      {/* The music library and sound effects (docs/design/editing-polish.md §2.6). */}
+      <MusicLibrarySection project={project} />
       <MusicSection
         project={project}
         music={look.music}
@@ -147,6 +151,7 @@ export function AudioPanel({ project }: { project: Project }): JSX.Element {
         <Slider label="Fade out at end" value={look.fadeOut} {...AUDIO_LIMITS.fade} step={0.1} format={secondsFmt} onChange={(v) => setAudio({ fadeOut: v }, 'audio.fadeOut')} />
         <p className="hint">Fades the whole soundtrack, music and click sounds included.</p>
       </Section>
+      <SoundEffectsSection project={project} />
     </>
   )
 }

@@ -170,7 +170,22 @@ const COMMAND_LIST = [
   { id: 'nudgeForwardTen', title: 'Move selected items ten frames later', category: 'Edit', keywords: 'nudge shift right arrow frames item selection later', repeat: true },
   { id: 'toggleFilmstrip', title: 'Frames on the clip track', category: 'Timeline', keywords: 'filmstrip thumbnails pictures preview video frames show hide', toggle: true },
   { id: 'saveVersion', title: 'Save a version…', category: 'General', keywords: 'snapshot history checkpoint backup keep edit restore' },
-  { id: 'versions', title: 'Versions…', category: 'General', keywords: 'history snapshot restore go back compare checkpoint earlier edit' }
+  { id: 'versions', title: 'Versions…', category: 'General', keywords: 'history snapshot restore go back compare checkpoint earlier edit' },
+
+  // Editing polish (docs/design/editing-polish.md §2.8): no default keys (users give them keys in the shortcuts editor).
+  { id: 'smoothAllCuts', title: 'Smooth all cuts', category: 'Playback', keywords: 'cut style crossfade transition punch-in jump cut soften every' },
+  { id: 'hardCutsEverywhere', title: 'Use hard cuts everywhere', category: 'Playback', keywords: 'cut style no transition plain jump every' },
+  { id: 'nextCut', title: 'Go to next cut', category: 'Playback', keywords: 'cut jump skip forward following transition style' },
+  { id: 'previousCut', title: 'Go to previous cut', category: 'Playback', keywords: 'cut jump skip back earlier transition style' },
+  { id: 'playCut', title: 'Play this cut', category: 'Playback', keywords: 'cut preview listen watch transition around' },
+  { id: 'addMagnifier', title: 'Add magnifier', category: 'Add', keywords: 'magnify loupe zoom lens detail larger bigger glass' },
+  { id: 'addMagnifierCursor', title: 'Add magnifier on the cursor', category: 'Add', keywords: 'magnify loupe zoom lens pointer mouse follow glass' },
+  { id: 'addStepBadge', title: 'Add step badge', category: 'Add', keywords: 'number step badge callout 1 2 3 sequence marker' },
+  { id: 'addSpeechBubble', title: 'Add speech bubble', category: 'Add', keywords: 'callout bubble balloon tail comment note text' },
+  { id: 'toggleProgressBar', title: 'Progress bar on the video', category: 'Effects', keywords: 'progress chapter bar chapters timeline played', toggle: true },
+  { id: 'compareColour', title: 'Compare with original colour', category: 'Effects', keywords: 'color colour grade look before after original lut', toggle: true },
+  { id: 'autoColour', title: 'Auto colour for the camera', category: 'Camera', keywords: 'color colour white balance auto correct webcam exposure' },
+  { id: 'musicLibrary', title: 'Music library…', category: 'Panels', keywords: 'music bed background song track library sound audio' }
 ] as const satisfies readonly CommandSpec[]
 
 export type CommandId = (typeof COMMAND_LIST)[number]['id']

@@ -14,9 +14,11 @@ import path from 'node:path'
 import type { AssetKind, PickedAsset } from '../shared/api/projects'
 import { MUSIC_FILE_RE, nextMusicFile, staleMusicFiles } from '../shared/audio/settings'
 import { OVERLAY_FILE_RE, OVERLAY_MAX_BYTES, OVERLAY_SVG_MAX_BYTES } from '../shared/engine/overlayData'
-import { nextPickFile, type PickedFiles } from '../shared/engine/picks'
+import { nextPickFile, stalePickFiles, type PickedFiles } from '../shared/engine/picks'
 import { nextWatermarkFile, staleWatermarkFiles, WATERMARK_FILE_RE, WATERMARK_MAX_BYTES, watermarkPickNumber } from '../shared/engine/watermark'
 import { checkFont, FONT_FILE_RE, FONT_MAX_BYTES } from '../shared/render/fonts'
+import { CubeError, CUBE_LIMITS, parseCube } from '../shared/render/cubeLut'
+import { LUT_FILE_RE } from '../shared/render/gradeData'
 import type { Project } from '../shared/types'
 import { mediaUrl } from './mediaProtocol'
 import * as projects from './projects'
@@ -32,6 +34,18 @@ interface AssetSpec {
   formats: string
   /** Why a file with these first bytes and extension is refused, or null when it looks right. */
   check: (head: Buffer, ext: string) => string | null
+  /** The check reads the whole file, not its first bytes (a LUT is parsed in full before anything is copied). */
+  whole?: boolean
+}
+
+/** A .cube LUT parsed strictly (editing polish §9.5, §14 rule 1): the parser's reason when it is refused. */
+export function checkCube(data: Buffer): string | null {
+  try {
+    parseCube(new Uint8Array(data.buffer, data.byteOffset, data.byteLength))
+    return null
+  } catch (err) {
+    return err instanceof CubeError ? err.message : 'This LUT could not be used.'
+  }
 }
 
 const starts = (head: Buffer, ...bytes: number[]): boolean => bytes.every((b, i) => head[i] === b)
@@ -115,6 +129,15 @@ export const ASSET_SPECS: Record<AssetKind, AssetSpec> = {
     formats: 'an MP3, M4A, AAC, WAV, Ogg, Opus or FLAC file',
     // Audio decoders read the container from the content, whatever the extension says.
     check: (head) => (looksLikeAudio(head) ? null : `This file could not be read as ${ASSET_SPECS.music.formats}.`)
+  },
+  lut: {
+    title: 'Import a LUT',
+    filterName: 'Cube LUTs',
+    extensions: ['cube'],
+    maxBytes: CUBE_LIMITS.maxBytes,
+    formats: 'a .cube LUT',
+    whole: true,
+    check: checkCube
   }
 }
 
@@ -122,7 +145,7 @@ export const ASSET_SPECS: Record<AssetKind, AssetSpec> = {
 const SVG_MAX_BYTES: Partial<Record<AssetKind, number>> = { overlay: OVERLAY_SVG_MAX_BYTES }
 
 /** Asset files the media protocol may serve. */
-export const isAssetFile = (file: string): boolean => WATERMARK_FILE_RE.test(file) || MUSIC_FILE_RE.test(file) || OVERLAY_FILE_RE.test(file) || FONT_FILE_RE.test(file)
+export const isAssetFile = (file: string): boolean => WATERMARK_FILE_RE.test(file) || MUSIC_FILE_RE.test(file) || OVERLAY_FILE_RE.test(file) || FONT_FILE_RE.test(file) || LUT_FILE_RE.test(file)
 
 const isKind = (kind: unknown): kind is AssetKind => typeof kind === 'string' && Object.prototype.hasOwnProperty.call(ASSET_SPECS, kind)
 
@@ -131,18 +154,21 @@ interface Picks {
   next: (existing: readonly string[], ext: string) => string
   /** Earlier picks a new one makes unneeded: all but the latest few and the ones in `keep`. */
   stale: (existing: readonly string[], keep: ReadonlySet<string>) => string[]
-  /** The pick a saved project uses. */
-  saved: (p: Project) => string | undefined
+  /** The picks a saved project uses. */
+  saved: (p: Project) => string | readonly (string | undefined)[] | undefined
 }
 // pickNumber reads the number from the first group, "-<n>".
 const OVERLAY_PICKS: PickedFiles = { base: 'overlay', re: /^overlay(-[1-9][0-9]{0,8})\.(png|jpg|webp|svg|gif)$/i, keep: Infinity }
 const FONT_PICKS: PickedFiles = { base: 'font', re: /^font(-[1-9][0-9]{0,8})\.(ttf|otf|woff2)$/i, keep: Infinity }
+// LUTs prune like music: the three newest picks, and every LUT the saved project names (editing polish §4.6).
+const LUT_PICKS: PickedFiles = { base: 'lut', re: /^lut(-[1-9][0-9]{0,8})\.cube$/, keep: 3 }
 const PICKS: Record<AssetKind, Picks> = {
   watermark: { next: nextWatermarkFile, stale: staleWatermarkFiles, saved: (p) => p.watermark?.path },
   music: { next: nextMusicFile, stale: staleMusicFiles, saved: (p) => p.audio?.music?.path },
   // Never removed: several are in use at once, and undo can bring any of them back.
   overlay: { next: (existing, ext) => nextPickFile(OVERLAY_PICKS, existing, ext), stale: () => [], saved: () => undefined },
-  font: { next: (existing, ext) => nextPickFile(FONT_PICKS, existing, ext), stale: () => [], saved: () => undefined }
+  font: { next: (existing, ext) => nextPickFile(FONT_PICKS, existing, ext), stale: () => [], saved: () => undefined },
+  lut: { next: (existing, ext) => nextPickFile(LUT_PICKS, existing, ext), stale: (existing, keep) => stalePickFiles(LUT_PICKS, existing, keep), saved: (p) => [p.grade?.screen?.lut?.file, p.grade?.camera?.lut?.file] }
 }
 
 /** Kinds stored once per content: an identical file already in the folder is used again. */
@@ -197,7 +223,8 @@ const storedExt = (ext: string): string => (ext === 'jpeg' ? 'jpg' : ext)
 
 /** Checks the first bytes of `kind` with extension `ext`; throws the reason when refused. */
 function checkHead(kind: AssetKind, head: Buffer, ext: string): void {
-  const problem = ASSET_SPECS[kind].check(head.subarray(0, 4096), ext)
+  const spec = ASSET_SPECS[kind]
+  const problem = spec.check(spec.whole ? head : head.subarray(0, 4096), ext)
   if (problem) throw new Error(problem)
 }
 
@@ -259,8 +286,13 @@ async function store(id: string, kind: AssetKind, ext: string, data: Buffer | { 
 export async function importAsset(id: string, kind: AssetKind, src: string, { reuseLatest = false } = {}): Promise<PickedAsset> {
   if (!isKind(kind)) throw new Error('Unknown asset kind')
   projects.projectDir(id)
-  const ext = await checkAssetFile(kind, src)
   const name = path.basename(src)
+  // Checked in full (a LUT): read once, and the bytes checked are the bytes stored.
+  if (ASSET_SPECS[kind].whole) {
+    const { ext, data } = await readWholeAsset(kind, src)
+    return { ...(await store(id, kind, ext, data)), name }
+  }
+  const ext = await checkAssetFile(kind, src)
   // Overlays, fonts and logos are small enough to read whole (25 MB at most): hashed from memory.
   const whole = DEDUPED.has(kind) || reuseLatest
   return { ...(await store(id, kind, ext, whole ? await fs.readFile(src) : { file: src }, reuseLatest)), name }
@@ -273,6 +305,7 @@ export async function importAsset(id: string, kind: AssetKind, src: string, { re
 export async function checkAssetFile(kind: AssetKind, src: string): Promise<string> {
   if (!isKind(kind)) throw new Error('Unknown asset kind')
   const spec = ASSET_SPECS[kind]
+  if (spec.whole) return (await readWholeAsset(kind, src)).ext
   const ext = extOf(src)
   if (!spec.extensions.includes(ext)) throw new Error(`Choose ${spec.formats}.`)
   const st = await fs.stat(src)
@@ -288,6 +321,25 @@ export async function checkAssetFile(kind: AssetKind, src: string): Promise<stri
     await handle.close()
   }
   return ext
+}
+
+/**
+ * A `kind` asset checked in full (spec.whole): the extension and the size first (never more than
+ * the kind's limit is read), then the whole content. Throws the reason it is refused.
+ */
+async function readWholeAsset(kind: AssetKind, src: string): Promise<{ ext: string; data: Buffer }> {
+  const spec = ASSET_SPECS[kind]
+  const ext = extOf(src)
+  if (!spec.extensions.includes(ext)) throw new Error(`Choose ${spec.formats}.`)
+  const st = await fs.stat(src)
+  if (!st.isFile()) throw new Error(`Choose ${spec.formats}.`)
+  const tooBig = sizeProblem(kind, ext, st.size)
+  if (tooBig) throw new Error(tooBig)
+  const data = await fs.readFile(src)
+  const grown = sizeProblem(kind, ext, data.byteLength)
+  if (grown) throw new Error(grown)
+  checkHead(kind, data, ext)
+  return { ext, data }
 }
 
 /** Kinds that can arrive as bytes (a dropped or pasted image, a dropped font). */
@@ -321,7 +373,7 @@ async function prunePicks(id: string, kind: AssetKind, dir: string, picked: stri
   try {
     const keep = new Set([picked])
     const saved = await projects.readProject(id).then(PICKS[kind].saved, () => undefined)
-    if (typeof saved === 'string') keep.add(saved)
+    for (const file of [saved ?? []].flat()) if (typeof file === 'string') keep.add(file)
     for (const name of PICKS[kind].stale(await fs.readdir(dir), keep)) await fs.rm(path.join(dir, name), { force: true })
   } catch (err) {
     console.warn(`Could not remove earlier ${kind} picks:`, err)

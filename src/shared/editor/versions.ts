@@ -170,7 +170,8 @@ const AREAS: readonly { name: string; keys: readonly (keyof Project)[]; of?: (p:
   { name: 'style', keys: ['style', 'tilt'] },
   { name: 'cursor', keys: ['cursor', 'inputEdits'] },
   { name: 'camera', keys: ['webcam', 'layouts', 'director'] },
-  { name: 'sound', keys: ['audio', 'sounds'], of: (p) => [p.audio, p.sounds?.spans ?? []] },
+  // Editing polish's sound effects are part of the sound (docs/design/editing-polish.md §4.6).
+  { name: 'sound', keys: ['audio', 'sounds', 'soundFx'], of: (p) => [p.audio, p.sounds?.spans ?? [], p.soundFx ?? {}] },
   { name: 'ignored sounds', keys: ['sounds'], of: (p) => [...(p.sounds?.ignored ?? [])].sort() },
   { name: 'effects', keys: ['effects'] },
   { name: 'zoom settings', keys: ['zoomSettings', 'autoZoom'] },
@@ -185,7 +186,11 @@ const AREAS: readonly { name: string; keys: readonly (keyof Project)[]; of?: (p:
   { name: 'brand', keys: ['brand', 'fonts'] },
   { name: 'watermark', keys: ['watermark'] },
   { name: 'export description', keys: ['publish'] },
-  { name: 'automatic changes to review', keys: ['autoCuts', 'autoCutOutcomes'] }
+  { name: 'automatic changes to review', keys: ['autoCuts', 'autoCutOutcomes'] },
+  // Editing polish (§4.6): cut styles, colour and the progress bar.
+  { name: 'smooth cuts', keys: ['joins'] },
+  { name: 'colour', keys: ['grade'] },
+  { name: 'progress bar', keys: ['chapterBar'] }
 ]
 
 /**
@@ -290,6 +295,9 @@ export function namedFiles(p: Project): { file: string; what: string }[] {
   add(p.audio.music?.path, 'music')
   for (const o of p.overlays ?? []) add(o.file, 'image')
   for (const f of p.fonts ?? []) add(f.file, 'font')
+  // The grades' LUT files (editing polish §4.6).
+  add(p.grade?.screen?.lut?.file, 'colour LUT')
+  add(p.grade?.camera?.lut?.file, 'colour LUT')
   return out
 }
 

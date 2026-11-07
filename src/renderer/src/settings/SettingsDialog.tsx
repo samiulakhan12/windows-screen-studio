@@ -7,6 +7,7 @@ import { BrandKitSection } from './BrandKitSection'
 import { HealthSections } from './HealthSections'
 import { SpeechModelsSection } from './SpeechModelsSection'
 import { CaptionDownloadsSection } from './CaptionDownloadsSection'
+import { MusicDownloadsSection } from './MusicDownloadsSection'
 import { ShareSection } from '../share/ShareSection'
 import './settings.css'
 
@@ -49,6 +50,8 @@ export function SettingsDialog({ section, onClose, onProvidersChanged }: { secti
           <AiProvidersSection onChanged={onProvidersChanged} autoFocus={section === 'ai'} />
           <SpeechModelsSection reveal={section === 'speech'} />
           <CaptionDownloadsSection />
+          {/* More music for the library (docs/design/editing-polish.md §2.6): hidden until its download source exists. */}
+          <MusicDownloadsSection />
           <BrandKitSection reveal={section === 'brand'} />
           <ShareSection />
           <HealthSections />

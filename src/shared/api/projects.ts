@@ -92,7 +92,8 @@ export interface DuplicateResult {
 }
 
 /** Kinds of user files a project can hold (copied in as `<kind>-<n>.<ext>`). */
-export type AssetKind = 'watermark' | 'music' | 'overlay' | 'font'
+/** 'lut': a colour LUT (.cube) for the screen or the camera (docs/design/editing-polish.md §9.5). */
+export type AssetKind = 'watermark' | 'music' | 'overlay' | 'font' | 'lut'
 
 /** A file copied into a project: its studio-media URL, its project-relative path and the name it had. */
 export interface PickedAsset {

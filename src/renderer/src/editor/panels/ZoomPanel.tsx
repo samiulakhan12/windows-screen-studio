@@ -45,6 +45,7 @@ import { LookButtons } from '../LookButtons'
 import { ShortcutKeys } from '../ShortcutKeys'
 import { IMPORTED_COPY, isImported } from '../../../../shared/import/imported'
 import '../zoom.css'
+import { MagnifierZoomRow } from './MagnifierZoomRow'
 
 const secFmt = (v: number): string => `${v.toFixed(2)} s`
 const plural = (n: number, word: string): string => `${n} ${word}${n === 1 ? '' : 's'}`
@@ -91,6 +92,8 @@ export function ZoomPanel(props: InspectorProps): JSX.Element {
         </p>
       )}
       <ZoomStyleSection project={project} onNotice={props.onNotice} />
+      {/* The magnifier, where users look for it (docs/design/editing-polish.md §2.2). */}
+      <MagnifierZoomRow />
       <AutoZoomSection
         project={project}
         cursor={props.cursor}

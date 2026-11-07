@@ -41,6 +41,7 @@ import type { PreviewPlayer } from './player'
 import { followPointer } from './pointer'
 import { SafeZoneOverlay } from './SafeZoneOverlay'
 import { GraphicHandles, PreviewLookLabel } from './GraphicHandle'
+import { CalloutHandles } from './CalloutHandles'
 import { useSafeZoneChoice } from './safeZonePref'
 import type { Selection } from './selection'
 import { usePlaying } from './Transport'
@@ -459,6 +460,8 @@ export const PreviewStage = memo(function PreviewStage({ project, pickZoom: pick
           {pickZoom && pickZoom.focus.mode !== 'region' && <FocusPicker zoom={pickZoom} rect={rect} onDone={onExitPick} />}
           {/* Under the selected item's handles (later in the overlay), so a drag there moves the item, not the captions. */}
           {!pickZoom && !cropTool && <GraphicHandles project={drawn} box={box} out={{ w: out.width, h: out.height }} selection={selection} onSelect={onSelect} onTogglePlay={onTogglePlay} paused={!playing} />}
+          {/* Step badge and speech-bubble tail handles (editing polish §2.3). */}
+          {!pickZoom && !cropTool && <CalloutHandles project={drawn} selection={selection ?? null} view={sceneView} />}
           {!pickZoom && !cropTool && selectedAnnotation && <AnnotationHandle annotation={selectedAnnotation} project={drawn} box={box} />}
           {!pickZoom && !cropTool && <OverlayEditor project={drawn} selection={selection} box={box} onDone={() => onSelect?.(null)} />}
           {editItem && view && mapping && <ShapeEditor edit={editItem} view={view} mapping={mapping} crop={crop} clip={slot} box={box} onDone={() => onSelect?.(null)} />}

@@ -39,6 +39,8 @@ import { FreezeSection } from './FreezeSection'
 import { recordAutoCuts } from '../../../../shared/review/autoCuts'
 import './clipPanel.css'
 import './silences.css'
+import { CutsSection } from './CutsSection'
+import { CutStyleSection } from './CutStyleSection'
 
 const GAP_TITLE: Record<Gap['kind'], string> = { 'trim-start': 'Trimmed start', cut: 'Cut', 'trim-end': 'Trimmed end' }
 
@@ -65,6 +67,8 @@ export function ClipPanel(props: InspectorProps): JSX.Element {
       <p className="hint">
         Video length <strong>{formatTime(length)}</strong> of {formatTime(project.duration)} recorded.
       </p>
+      {/* Smooth cuts (docs/design/editing-polish.md §2.1): every cut's style. */}
+      {selection?.kind !== 'gap' && <CutsSection project={project} />}
       {clip ? (
         <Section title={`Clip ${clipIndex + 1} of ${clips.length}`}>
           <p className="hint">
@@ -91,6 +95,7 @@ export function ClipPanel(props: InspectorProps): JSX.Element {
           <button className="btn" onClick={() => props.onRestore(selection.start, selection.end)}>
             <EditorIcon name="restore" size={16} /> Restore
           </button>
+          <CutStyleSection project={project} gap={{ start: selection.start, end: selection.end }} />
         </Section>
       ) : selection?.kind === 'range' ? (
         <Section title="Selected range">

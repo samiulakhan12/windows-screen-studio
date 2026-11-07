@@ -1,7 +1,7 @@
 import type { ShapeKind } from '../../../shared/types'
 
 // Glyphs for the shape tools (24x24, stroked like EditorIcon).
-const PATHS: Record<ShapeKind | 'spotlight-cursor' | 'spotlight-region' | 'duplicate', string> = {
+const PATHS: Record<ShapeKind | 'spotlight-cursor' | 'spotlight-region' | 'magnifier' | 'duplicate', string> = {
   arrow: 'M5 19L18 6M10 6h8v8',
   line: 'M5 19L19 5',
   rect: 'M4 6.5A1.5 1.5 0 0 1 5.5 5h13A1.5 1.5 0 0 1 20 6.5v11a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 4 17.5z',
@@ -11,6 +11,8 @@ const PATHS: Record<ShapeKind | 'spotlight-cursor' | 'spotlight-region' | 'dupli
   pixelate: 'M4 4h5v5H4zM9 9h6v6H9zM15 4h5v5h-5zM4 15h5v5H4zM15 15h5v5h-5z',
   'spotlight-cursor': 'M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM10 9l6 3-2.5.8L12.5 16z',
   'spotlight-region': 'M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM8.5 9.5h7v5h-7z',
+  // A magnifier (editing polish §2.2): a lens and its handle.
+  magnifier: 'M10.5 4a6.5 6.5 0 1 0 0 13 6.5 6.5 0 0 0 0-13zM15.3 15.3L20 20',
   duplicate: 'M8 8h11v11H8zM5 15V5h10'
 }
 

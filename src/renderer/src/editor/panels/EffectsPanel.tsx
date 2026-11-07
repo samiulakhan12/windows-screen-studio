@@ -8,6 +8,9 @@ import { useEditor } from '../context'
 import { Chips, pctFmt, Section, Slider, Toggle } from '../controls'
 import { IMPORTED_COPY, isImported } from '../../../../shared/import/imported'
 import './tiltPanel.css'
+import { ScreenColourSection } from './ScreenColourSection'
+import { CalmMotionRow } from './CalmMotionRow'
+import { ProgressBarLink } from './ProgressBarLink'
 
 const L = LOOK_LIMITS
 
@@ -21,6 +24,8 @@ export function EffectsPanel({ project, cursor }: { project: Project; cursor: Cu
     store.update((p) => ({ ...p, effects: { ...p.effects, keystrokes: { ...p.effects.keystrokes, ...patch } } }), key)
   return (
     <>
+      {/* Editing polish (docs/design/editing-polish.md §2.4, §2.5, §7.5): the screen's colour, Calm motion and the progress bar's row. */}
+      <ScreenColourSection project={project} />
       <TiltSection project={project} cursor={cursor} />
       <Section title="Motion blur">
         <Slider
@@ -50,6 +55,8 @@ export function EffectsPanel({ project, cursor }: { project: Project; cursor: Cu
         />
         <Slider label="Size" value={effects.keystrokes.size} {...L.keystrokeSize} step={0.001} format={(v) => `${Math.round(v * 1000) / 10}%`} disabled={!effects.keystrokes.show} onChange={(v) => setKeys({ size: v }, 'effects.keys.size')} />
       </Section>
+      <CalmMotionRow project={project} />
+      <ProgressBarLink />
     </>
   )
 }
