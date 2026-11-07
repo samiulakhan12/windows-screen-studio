@@ -6,7 +6,6 @@
 import { describe, expect, it } from 'vitest'
 import { createProject } from '../src/shared/engine/project'
 import { editToVideo, planOf, videoFrames, type FreezePlan } from '../src/shared/engine/freeze'
-import { viewSource } from '../src/renderer/src/render/compositor'
 import { planFeed } from '../src/shared/render/feedPlan'
 import { frameIndexAt } from '../src/shared/render/frameTiming'
 import { presentationIndex, type VideoSample } from '../src/shared/render/mp4'
@@ -27,7 +26,15 @@ import {
   type JoinWindow,
   type TrackTimes
 } from '../src/shared/render/joins'
+import type { Camera } from '../src/shared/engine/zoom'
+import type { Rect } from '../src/shared/engine/layout'
 import type { Clip, CutJoin, Freeze, LayoutSegment, Project, ProjectJoins } from '../src/shared/types'
+
+// The renderer's compositor (DOM types) is loaded by path, so the node typecheck does not follow it.
+const COMPOSITOR = '../src/renderer/src/render/compositor'
+const { viewSource } = (await import(/* @vite-ignore */ COMPOSITOR)) as {
+  viewSource: (c: Camera, rect: Rect) => { sx: number; sy: number; sw: number; sh: number; dx: number; dy: number; dw: number; dh: number } | null
+}
 
 function base(over: Partial<Project> = {}): Project {
   const p = createProject({

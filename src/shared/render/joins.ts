@@ -299,7 +299,7 @@ export interface TrackTimes {
 export function trackTimes(samples: readonly { time: number; duration: number }[] | null, fallbackFps: number, seconds: number): TrackTimes {
   if (samples && samples.length > 0) {
     const starts = Float64Array.from(samples, (s) => s.time).sort()
-    return { starts, half: (frameDuration(samples as { duration: number }[]) ?? 1 / 60) / 2 }
+    return { starts, half: (frameDuration([...samples]) ?? 1 / 60) / 2 }
   }
   const fps = fallbackFps > 0 ? fallbackFps : 60
   const n = Math.max(1, Math.ceil(Math.max(0, seconds) * fps) + 2)
