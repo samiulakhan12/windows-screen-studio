@@ -401,7 +401,13 @@ async function openElementSource(url: string, times: number[], fps: number): Pro
  * created so they can be released. `fallbackFps` is the proxy's usual frame rate,
  * used by the seeking path when the file's own rate cannot be read.
  */
-async function openSource(url: string, times: number[], caps: ExportCapabilities, videos: HTMLVideoElement[], fallbackFps: number, opened?: MediaTrack | null): Promise<FrameSource> {
+/**
+ * The guide's screenshots are drawn by this export's own path (smart-tools.md §5.5.6): part P1
+ * prepares its input with prepareFrames and reads the shots' times with one openSource pass.
+ */
+export { prepare as prepareFrames }
+
+export async function openSource(url: string, times: number[], caps: ExportCapabilities, videos: HTMLVideoElement[], fallbackFps: number, opened?: MediaTrack | null): Promise<FrameSource> {
   const media = opened === undefined ? await indexTrack(url) : opened
   const fps = media?.fps ?? fallbackFps
   const element = async (): Promise<FrameSource> => {

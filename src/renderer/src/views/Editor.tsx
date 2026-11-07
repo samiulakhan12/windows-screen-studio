@@ -1845,7 +1845,7 @@ function EditorSession({
               if (!store.state.name.trim()) store.update((p) => ({ ...p, name: UNTITLED }), 'name')
             }}
           />
-          <CopyMenu project={project} vw={shown.vw} vh={shown.vh} run={(kind) => void makeCopy(kind)} />
+          <CopyMenu project={project} vw={shown.vw} vh={shown.vh} run={(kind) => void makeCopy(kind)} onClips={openClips} onShort={() => setDialog('shortVersion')} />
           <div className="history-buttons">
             <button className="btn ghost icon-btn" onClick={actions.undo} disabled={!canUndo} title={withShortcut('Undo', keymap.undo)} aria-label="Undo">
               <EditorIcon name="undo" />
@@ -2026,6 +2026,10 @@ function EditorSession({
             webcamUrl={data.webcamUrl}
             background={background}
             onClose={() => setExporting(false)}
+            onShortClips={() => {
+              setExporting(false)
+              openClips()
+            }}
           />
         )}
         <OverlayDropZone onSelect={setSelection} onNotice={showNotice} />
@@ -2051,6 +2055,18 @@ function EditorSession({
               setReviewOpen(false)
               setTab('captions')
               requestCaptions({ kind: 'generate' })
+            }}
+            onFindChapters={() => {
+              setPublishRequest(null)
+              setDialog(null)
+              setReviewOpen(false)
+              setSmartPanel(null)
+              setTab('text')
+            }}
+            onShortClips={() => {
+              setPublishRequest(null)
+              setDialog(null)
+              openClips()
             }}
           />
         )}

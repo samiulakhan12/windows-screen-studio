@@ -12,7 +12,14 @@ import './copy.css'
  * CopyProgress while a copy runs; duplicateFlow.ts makes the copy.
  */
 
-const LABEL = 'Duplicate or make a vertical version'
+/** The button's label, tooltip and menu name (smart-tools.md §2.4: the copies now include short clips). */
+const LABEL = 'Copies: vertical, square, short clips'
+
+/** Smart tools' two items after Make a square version (smart-tools.md §2.4), shown when the editor gives their actions. */
+const CLIPS_ITEM = { testId: 'copy-clips', title: 'Find short clips…', hint: 'The best 15 to 90 second moments, each as a copy' }
+const SHORT_ITEM = { testId: 'copy-short', title: 'Make a shorter version…', hint: '30, 60 or 90 seconds, the most useful sentences in order' }
+/** Why Make a shorter version cannot run: it keeps sentences, so it needs captions. */
+export const SHORT_NEEDS_CAPTIONS = 'Needs captions: make them first'
 
 /** The menu's items in order, with their two lines (§2.2). */
 const ITEMS: readonly { kind: CopyKind; testId: string; title: string; hint: string }[] = [
@@ -39,15 +46,33 @@ function CopyIcon(): JSX.Element {
  * End to the ends), Enter runs one, Esc or Tab closes it and gives the focus back to the button.
  * An item that cannot run says why in its second line and stays focusable (aria-disabled).
  */
-export function CopyMenu(props: { project: Project; vw: number; vh: number; run(kind: CopyKind): void }): JSX.Element {
-  const { project, vw, vh, run } = props
+export function CopyMenu(props: {
+  project: Project
+  vw: number
+  vh: number
+  run(kind: CopyKind): void
+  /** Find short clips… (smart-tools.md §2.4): opens the Short clips panel. */
+  onClips?(): void
+  /** Make a shorter version…: opens its dialog. */
+  onShort?(): void
+}): JSX.Element {
+  const { project, vw, vh, run, onClips, onShort } = props
   const [open, setOpen] = useState(false)
   /** The focused item, or -1 for the menu itself (just opened by a click or Enter). */
   const [active, setActive] = useState(-1)
   const buttonRef = useRef<HTMLButtonElement>(null)
   const menuRef = useRef<HTMLDivElement>(null)
   const itemRefs = useRef<(HTMLButtonElement | null)[]>([])
-  const items = ITEMS.map((item) => ({ ...item, can: canCopyAs(project, item.kind, vw, vh) }))
+  type Item = { key: string; testId: string; title: string; hint: string; can: { ok: true } | { ok: false; reason: string }; act(): void }
+  const copies: Item[] = ITEMS.map((item) => ({ key: item.kind, testId: item.testId, title: item.title, hint: item.hint, can: canCopyAs(project, item.kind, vw, vh), act: () => run(item.kind) }))
+  const smart: Item[] = [
+    ...(onClips ? [{ key: 'clips', ...CLIPS_ITEM, can: { ok: true as const }, act: onClips }] : []),
+    ...(onShort
+      ? [{ key: 'short', ...SHORT_ITEM, can: project.transcript?.segments.length ? { ok: true as const } : { ok: false as const, reason: SHORT_NEEDS_CAPTIONS }, act: onShort }]
+      : [])
+  ]
+  // After Make a square version, before Duplicate.
+  const items: Item[] = [...copies.slice(0, 2), ...smart, ...copies.slice(2)]
 
   const close = (refocus: boolean): void => {
     setOpen(false)
@@ -58,7 +83,7 @@ export function CopyMenu(props: { project: Project; vw: number; vh: number; run(
     const item = items[i]
     if (!item?.can.ok) return
     close(true)
-    run(item.kind)
+    item.act()
   }
 
   useEffect(() => {
@@ -118,13 +143,13 @@ export function CopyMenu(props: { project: Project; vw: number; vh: number; run(
         onClick={() => (open ? close(false) : setOpen(true))}
         onKeyDown={onButtonKey}
       >
-        <CopyIcon />
+        <CopyIcon /> <span className="tb-label">Copies</span>
       </button>
       {open && (
         <div ref={menuRef} id="copy-menu-list" className="copy-menu" role="menu" aria-label={LABEL} tabIndex={-1} onKeyDown={onMenuKey}>
           {items.map((item, i) => (
             <button
-              key={item.kind}
+              key={item.key}
               ref={(el) => {
                 itemRefs.current[i] = el
               }}

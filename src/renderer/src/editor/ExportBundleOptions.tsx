@@ -31,6 +31,7 @@ export function ExportBundleOptions({
   has,
   mode,
   chapterCount,
+  pendingChapters = 0,
   savedDescription = false
 }: {
   value: BundleOptions
@@ -39,6 +40,8 @@ export function ExportBundleOptions({
   has: BundleSources
   mode: 'single' | 'batch'
   chapterCount: number
+  /** Found chapters not reviewed yet (smart-tools.md §2.3): the chapter note says how many. */
+  pendingChapters?: number
   /** The project has a description saved in Publish (project.publish), which the description file uses. */
   savedDescription?: boolean
 }): JSX.Element {
@@ -93,6 +96,7 @@ export function ExportBundleOptions({
             </button>
           </div>
           {value.perChapter && !perBlocked && <p className="hint">{chapterCount} files into a folder you choose. Music and sound fades start again in each file.</p>}
+          {pendingChapters > 0 && <p className="hint">{pendingChapters} of them not reviewed yet: Review lists them.</p>}
           {perBlocked && <p className="hint">{perBlocked}.</p>}
         </div>
       </div>

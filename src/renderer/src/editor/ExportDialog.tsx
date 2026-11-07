@@ -50,6 +50,7 @@ import { bundleKinds, chapterParts, chaptersNote, normalizeBundle, partFileNames
 import { FORMAT_EXTENSIONS } from '../../../shared/render/exportPresets'
 import { ShareAfterExport } from '../share/ShareAfterExport'
 import { ShareDone } from '../share/ShareDone'
+import { pendingChapters } from '../../../shared/chapters/pending'
 import { useAfterExport } from '../share/useShare'
 import type { BatchExtras } from './exporter'
 import { missingLutQuestion, prepareLuts } from '../render/lutCache'
@@ -65,6 +66,8 @@ interface Props {
   webcamUrl: string | null
   background: HTMLImageElement | null
   onClose: () => void
+  /** Closes the dialog and opens the Short clips panel (smart-tools.md §2.4: the done view's link). */
+  onShortClips?: () => void
 }
 
 type Phase =
@@ -985,6 +988,7 @@ export function ExportDialog(props: Props): JSX.Element {
                       has={bundleHas}
                       mode={mode}
                       chapterCount={parts.length}
+                      pendingChapters={pendingChapters(project).length}
                       savedDescription={!!project.publish?.description}
                     />
                     <ShareAfterExport share={share} single={mode === 'single' && !perChapter} />
@@ -1040,6 +1044,13 @@ export function ExportDialog(props: Props): JSX.Element {
             <ExtrasReport extras={phase.extras} />
             <ShareDone file={phase.path} meta={{ title: project.name, seconds: length }} targets={share.targets} startError={share.error} />
             {!gif && <ChapterCopy chapters={chapters} length={length} gif={false} />}
+            {props.onShortClips && (
+              <p className="hint">
+                <button type="button" className="link" data-testid="export-short-clips" onClick={props.onShortClips}>
+                  Make short clips for Shorts and Reels…
+                </button>
+              </p>
+            )}
             {copy.kind === 'failed' && <p className="hint warn">{copy.message}</p>}
             <footer className="modal-foot">
               <button className="btn" onClick={() => void copyFile(phase.path)} disabled={copy.kind === 'busy'} title="Copy the file to paste it into a chat, an email or a folder">

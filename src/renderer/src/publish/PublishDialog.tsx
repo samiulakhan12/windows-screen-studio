@@ -42,6 +42,10 @@ export interface PublishDialogProps {
   onClose: () => void
   /** Closes the dialog and runs the Captions tab's Generate captions. */
   onGenerateCaptions: () => void
+  /** Closes the dialog and opens Text › Chapters at Find chapters (smart-tools.md §2.3). */
+  onFindChapters?: () => void
+  /** Closes the dialog and opens the Short clips panel (smart-tools.md §2.4). */
+  onShortClips?: () => void
 }
 
 /** What a card's last action did, said on that card; `alert` when it failed. */
@@ -51,7 +55,7 @@ interface Said {
   alert?: boolean
 }
 
-export function PublishDialog({ project, request, onClose, onGenerateCaptions }: PublishDialogProps): JSX.Element {
+export function PublishDialog({ project, request, onClose, onGenerateCaptions, onFindChapters, onShortClips }: PublishDialogProps): JSX.Element {
   const { store } = useEditor()
   const boxRef = useRef<HTMLDivElement>(null)
   const firstRef = useRef<HTMLButtonElement>(null)
@@ -283,9 +287,17 @@ export function PublishDialog({ project, request, onClose, onGenerateCaptions }:
                   say(kind, 'Recording renamed')
                 })
               }
+              onFindChapters={onFindChapters}
             />
           ))}
         </div>
+        {onShortClips && (
+          <p className="hint">
+            <button type="button" className="link" data-testid="publish-short-clips" onClick={onShortClips}>
+              Make short clips for Shorts and Reels…
+            </button>
+          </p>
+        )}
       </>
     )
   }
@@ -323,6 +335,9 @@ export function PublishDialog({ project, request, onClose, onGenerateCaptions }:
   )
 }
 
+/** From this video length (seconds) the YouTube card offers Find chapters when there are none (smart-tools.md §2.3). */
+const FIND_CHAPTERS_FROM = 120
+
 interface CardProps {
   kind: PublishKind
   item: PackItem
@@ -340,6 +355,8 @@ interface CardProps {
   onUseForExports: (text: string) => void
   onStopForExports: () => void
   onRename: (name: string) => void
+  /** Opens Find chapters (the YouTube card of a video without chapters). */
+  onFindChapters?: () => void
 }
 
 /** notedPieces, remembered for the last texts of each `said` (a card is drawn again on every change of the dialog). */
@@ -361,7 +378,7 @@ const STATUS_TEXT: Record<PackItem['status'], string> = { idle: 'Not written yet
 /** "Written" only for new text: a stopped run says so, and a card the user emptied is not written. */
 const statusText = (item: PackItem): string => (item.stopped ? 'Stopped' : item.status === 'done' && !item.text.trim() ? STATUS_TEXT.idle : STATUS_TEXT[item.status])
 
-function Card({ kind, item, stale, canWrite, youtube, saved, spoken, said, onWrite, onStop, onEdit, onCopy, onUseForExports, onStopForExports, onRename }: CardProps): JSX.Element {
+function Card({ kind, item, stale, canWrite, youtube, saved, spoken, said, onWrite, onStop, onEdit, onCopy, onUseForExports, onStopForExports, onRename, onFindChapters }: CardProps): JSX.Element {
   const label = PUBLISH_LABELS[kind]
   const id = `publish-${kind}`
   const busy = isRunning(item.status)
@@ -421,6 +438,14 @@ function Card({ kind, item, stale, canWrite, youtube, saved, spoken, said, onWri
                 </p>
               ))}
             </>
+          ) : youtube.duration >= FIND_CHAPTERS_FROM && onFindChapters ? (
+            // A video of 2 minutes or more with no chapters (smart-tools.md §2.3).
+            <p className="hint">
+              Add chapters so viewers can jump:{' '}
+              <button type="button" className="link" data-testid="publish-find-chapters" onClick={onFindChapters}>
+                Find chapters
+              </button>
+            </p>
           ) : (
             <p className="hint">No chapters: add some in the Text tab and they appear here with their times.</p>
           )}

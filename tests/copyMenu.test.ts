@@ -259,7 +259,8 @@ describe('the copy menu (test 65)', () => {
     const view = menu()
     let out = render(view)
     const button = byId(out, 'copy-menu')!
-    expect(button.props).toMatchObject({ title: 'Duplicate or make a vertical version', 'aria-label': 'Duplicate or make a vertical version', 'aria-haspopup': 'menu', 'aria-expanded': false })
+    // Renamed for short clips (docs/design/smart-tools.md §2.4); its two items show when the editor gives them (smartContracts).
+    expect(button.props).toMatchObject({ title: 'Copies: vertical, square, short clips', 'aria-label': 'Copies: vertical, square, short clips', 'aria-haspopup': 'menu', 'aria-expanded': false })
     expect(menuOf(out)).toBeUndefined()
     ;(button.props.onClick as () => void)()
     out = render(view)

@@ -18,7 +18,8 @@ import { planOf, videoTimeAt } from '../../../../shared/engine/freeze'
 import { formatTime } from '../../../../shared/engine/project'
 import { itemKey } from '../../../../shared/editor/multiSelect'
 import { chapterInVideo } from '../../../../shared/render/chapters'
-import type { AnnotationStyle, Chapter, Clip, Project, TitleCard } from '../../../../shared/types'
+import type { AnnotationStyle, Chapter, Clip, CursorTrack, Project, TitleCard } from '../../../../shared/types'
+import { FindChapters } from './FindChapters'
 import { Icon } from '../../components/Icon'
 import { useEditor } from '../context'
 import { Chips, pctFmt, Section, Slider } from '../controls'
@@ -61,7 +62,7 @@ export function TextPanel(props: InspectorProps): JSX.Element {
       <BubbleSection project={project} selection={selection ?? null} />
       <TextSection {...props} selectedId={ann?.id ?? null} />
       <TitlesSection project={project} selectedId={card?.id ?? null} onSelect={props.onSelect} />
-      <ChaptersSection project={project} selectedId={chapter?.id ?? null} onSelect={props.onSelect} onNotice={props.onNotice} />
+      <ChaptersSection project={project} cursor={props.cursor} selectedId={chapter?.id ?? null} onSelect={props.onSelect} onNotice={props.onNotice} />
       <ChapterBarSection project={project} />
     </>
   )
@@ -383,11 +384,13 @@ function SelectedChapter({ project, chapter, onSelect }: { project: Project; cha
 
 function ChaptersSection({
   project,
+  cursor,
   selectedId,
   onSelect,
   onNotice
 }: {
   project: Project
+  cursor: CursorTrack
   selectedId: string | null
   onSelect: (sel: Selection) => void
   onNotice: (message: string) => void
@@ -409,6 +412,8 @@ function ChaptersSection({
           <EditorIcon name="plus" size={16} /> Add chapter at playhead
         </button>
       </div>
+      {/* Find chapters (docs/design/smart-tools.md §2.3), part P2's. */}
+      <FindChapters project={project} cursor={cursor} onNotice={onNotice} />
       <p className="hint">
         <PressOr accelerators={keymap.addChapter} /> the strip above the title cards to add one. Chapters go into MP4, MOV, WebM and M4A exports, and the
         Export dialog copies them as YouTube timestamps.
@@ -433,9 +438,13 @@ function ChaptersSection({
               >
                 {formatTime(videoTimeAt(project.clips, planOf(project), c.t), false)}
               </button>
+              {/* A found chapter not reviewed yet (smart-tools.md §2.3): said in words, not only colour; a weak name asks to be renamed. */}
+              {c.auto && <span className="chip chapter-found">Found</span>}
               <input
+                id={chapterNameId(c.id)}
                 className="tc-input"
                 aria-label={`Name of the chapter at ${formatTime(c.t, false)}`}
+                aria-describedby={c.auto && weakChapterName(c) ? `${chapterNameId(c.id)}-rename` : undefined}
                 value={c.title}
                 placeholder="Chapter name"
                 onChange={(e) => {
@@ -454,6 +463,11 @@ function ChaptersSection({
               >
                 <Icon name="trash" size={15} />
               </button>
+              {c.auto && weakChapterName(c) && (
+                <span id={`${chapterNameId(c.id)}-rename`} className="hint chapter-rename">
+                  Rename?
+                </span>
+              )}
             </li>
           ))}
         </ul>
@@ -461,6 +475,12 @@ function ChaptersSection({
     </Section>
   )
 }
+
+/** The id of chapter `id`'s name field: Find chapters moves the focus to the first weak name after a run (smart-tools.md §2.3). */
+export const chapterNameId = (id: string): string => `chapter-name-${id}`
+
+/** A found chapter named from a sentence cut short or a number (smart-tools.md §7.5): the list asks "Rename?". */
+const weakChapterName = (c: Chapter): boolean => c.auto?.name === 'cut' || c.auto?.name === 'number'
 
 /** A list header's "Select all": every item of the list together (E-06). */
 function SelectAllButton({ keys, what }: { keys: ReturnType<typeof itemKey>[]; what: string }): JSX.Element | null {
