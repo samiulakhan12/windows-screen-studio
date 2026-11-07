@@ -20,6 +20,7 @@ import type { CameraLayout, Corner, NormRect, Project } from '../types'
 import { followGeometry, layoutPhaseAt, type Rect } from '../engine/layout'
 import { clamp, easeInOutCubic, lerp } from '../engine/math'
 import { followApplies, isTall } from '../engine/reframeData'
+import { barBand } from './chapterBar'
 
 export type SafePlatform = 'tiktok' | 'reels' | 'shorts'
 export type SafeChoice = SafePlatform | 'all'
@@ -93,6 +94,19 @@ export function zonesFor(choice: SafeChoice): SafeBox[] {
  * jumps, as a band hides and shows.
  */
 export function textArea(project: Project, w: number, h: number, vw: number, vh: number, t: number): Rect | null {
+  const area = textAreaWithoutBar(project, w, h, vw, vh, t)
+  // The progress bar's band (docs/design/editing-polish.md §8, "Room for the bar"): the text keeps
+  // clear of it. Without chapterBar.show, today's area exactly.
+  if (!project.chapterBar?.show) return area
+  const band = barBand(project, w, h)
+  if (!band || !(band.size > 0)) return area
+  const r = area ?? { x: 0, y: 0, w, h }
+  const size = Math.min(band.size, r.h)
+  return band.edge === 'top' ? { ...r, y: r.y + size, h: r.h - size } : { ...r, h: r.h - size }
+}
+
+/** textArea without the progress bar's band: where the bar itself lays out (chapterBar.ts). */
+export function textAreaWithoutBar(project: Project, w: number, h: number, vw: number, vh: number, t: number): Rect | null {
   const reframe = project.reframe
   if (!reframe || !(w > 0 && h > 0)) return null
   const tall = isTall(w, h)

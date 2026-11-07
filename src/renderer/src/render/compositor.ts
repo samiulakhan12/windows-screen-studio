@@ -23,6 +23,13 @@ import { drawTitleCardsLayer } from './titleCardLayer'
 import { drawWatermarkLayer } from './watermarkLayer'
 import { drawWebcamLayer } from './webcamLayer'
 import { drawOverlaysLayer } from './overlayLayer'
+import { planOf, videoTimeAt } from '../../../shared/engine/freeze'
+import { punchedCamera, type JoinAt } from '../../../shared/render/joins'
+import { beginJoin, endJoin } from './joinLayer'
+import { drawMagnifierLayer } from './magnifierLayer'
+import { drawChapterBar } from './chapterBarLayer'
+import { gradeScreen } from './gradeLayer'
+import { lutFor } from './lutCache'
 
 export interface RenderScene {
   project: Project
@@ -33,6 +40,8 @@ export interface RenderScene {
   focusPath: SmoothedTrack
   /** The crop of each decoded screen frame that is drawn (cropOf; the view's positions are relative to it); absent = all of it. */
   crop?: NormRect
+  /** The preview's Compare (docs/design/editing-polish.md §2.5): the pictures drawn without their colour. Never saved, never set by the export. */
+  compare?: boolean
 }
 
 /** A decoded frame and its display size. */
@@ -64,6 +73,14 @@ export interface DrawOptions {
 
 const DEFAULT_OPTIONS: Required<DrawOptions> = { frameInterval: 1 / 60, blurSamples: 4 }
 
+/** What a frame needs beyond its time (docs/design/editing-polish.md §5.6). */
+export interface FrameExtras {
+  /** Video seconds of this frame (holds included). Absent: videoTimeAt(soundTime) (wrong only inside a pause hold). */
+  video?: number
+  /** The join this frame is in (joinAt) and A* as composed (composeJoinStill); a null still draws a hard cut. */
+  join?: { at: JoinAt; still: CanvasImageSource | null } | null
+}
+
 function screenImage(src: RenderSources): FrameImage | null {
   if (src.screenFrame) return src.screenFrame
   const v = src.screen
@@ -83,6 +100,10 @@ function webcamImage(src: RenderSources): FrameImage | null {
  * (t, scene, sources, options): preview and export call the same code. What the frame shows (the
  * project as drawn, the layout and the camera) comes from frameView, so a view that follows the
  * action (docs/design/vertical-video.md) is drawn the same way in both.
+ *
+ * The picture (drawFramePicture) and what goes over it (drawFrameOverlays) are drawn in turn; a
+ * frame inside a cut's join (docs/design/editing-polish.md §5.6) has the join drawn between them,
+ * so captions, texts, titles and graphics are never faded, moved or doubled by it.
  */
 export function drawFrame(
   ctx: CanvasRenderingContext2D,
@@ -96,23 +117,59 @@ export function drawFrame(
    * Source time of the sound at this frame (E-11 freeze frames): while the picture holds `t`, the
    * burned-in captions and the animated background follow it. Defaults to `t`.
    */
-  soundTime: number = t
+  soundTime: number = t,
+  /** The frame's video time and its join (editing polish); absent for every frame outside a join. */
+  extras?: FrameExtras
 ): void {
+  const join = extras?.join ?? null
+  if (join) beginJoin(ctx, w, h, join)
+  const top = drawFramePicture(ctx, w, h, t, scene, src, options, soundTime)
+  if (join) endJoin(ctx, w, h, join)
+  // Only the progress bar reads the video time (a pause hold included): worked out for it alone.
+  const video = extras?.video ?? (top.project.chapterBar?.show ? videoTimeAt(top.project.clips, planOf(top.project), soundTime) : soundTime)
+  drawFrameOverlays(top, soundTime, video)
+  ctx.restore()
+}
+
+/**
+ * The frame's picture: the background, the card and the recording on it (graded, through the
+ * camera, with privacy shapes, the cursor, magnifiers, shapes and spotlights), the 3D tilt and the
+ * camera. Returns the frame context the overlays draw with. Leaves `ctx` saved once: drawFrame
+ * restores it after the overlays (a caller drawing the picture alone, such as A* of a join,
+ * restores it itself).
+ */
+export function drawFramePicture(
+  ctx: CanvasRenderingContext2D,
+  w: number,
+  h: number,
+  t: number,
+  scene: RenderScene,
+  src: RenderSources,
+  options: DrawOptions = DEFAULT_OPTIONS,
+  soundTime: number = t
+): FrameContext {
   const { cursor } = scene
   const opts = { ...DEFAULT_OPTIONS, ...options }
   const k = Math.min(w, h) / 1080
   const full = screenImage(src)
   // A crop is drawn from a 1:1 copy of its pixels (cropFrame), so nothing outside it is ever sampled.
   const crop = scene.crop ?? null
-  const screen = full && crop ? cropFrame(ctx, full, crop) : full
+  const cropped = full && crop ? cropFrame(ctx, full, crop) : full
+  // The screen's colour (editing polish §9.1), graded once from that copy: everything below draws
+  // the graded picture. Without a grade it is the picture itself.
+  const grade = scene.project.grade?.screen
+  const screen = cropped && grade ? gradeScreen(ctx, cropped, grade, lutFor(scene.project, 'screen'), scene.compare) : cropped
   const shown = croppedFrameSize(crop, src.screen.videoWidth, src.screen.videoHeight, scene.project)
   const vw = screen?.width || shown.width
   const vh = screen?.height || shown.height
 
   ctx.save()
   // While following: framed zooms, no device frame or tilt; the recording drawn into the virtual
-  // rectangle around the screen's slot, the camera resting on the follow plan.
-  const { project, layout, cam } = frameView(scene, w, h, vw, vh, t)
+  // rectangle around the screen's slot, the camera resting on the follow plan. A punch-in at a cut
+  // (editing polish §5.6) shows the content closer: the camera, not the composition.
+  const view = frameView(scene, w, h, vw, vh, t)
+  const { project, layout } = view
+  const cam = punchedCamera(view.cam, project, t)
   const { style } = project
   const rect = layout.screen
   const slot = layout.follow?.slot
@@ -160,7 +217,7 @@ export function drawFrame(
       const v = viewSource(view, rect, slot)
       if (v) c.drawImage(image, v.sx * vw, v.sy * vh, v.sw * vw, v.sh * vh, v.dx, v.dy, v.dw, v.dh)
     }
-    const samples = motionSamples(scene, project, layout, t, cam, opts)
+    const samples = motionSamples(scene, project, layout, t, cam, opts).map((s) => (s === cam ? s : punchedCamera(s, project, t)))
     if (samples.length <= 1) {
       drawView(cam)
     } else {
@@ -211,6 +268,8 @@ export function drawFrame(
 
   drawPrivacyLayer(fc)
   drawCursorLayer(fc)
+  // Magnifiers (editing polish §6.4): over the cursor, under the shapes; nothing without one.
+  drawMagnifierLayer(fc)
   drawShapesLayer(fc)
   drawSpotlightLayer(fc)
   c.restore()
@@ -223,19 +282,30 @@ export function drawFrame(
   }
 
   drawWebcamLayer(top, project.webcam.show ? webcamImage(src) : null)
+  return top
+}
+
+/**
+ * What goes over the picture, in order: image overlays, key presses, texts, graphics, captions,
+ * title cards, the progress bar (at video time `video`) and the watermark. Captions and graphics
+ * run on the sound's clock, `soundTime`.
+ */
+export function drawFrameOverlays(top: FrameContext, soundTime: number, video: number): void {
+  const { ctx, w, h, t, project, cursor } = top
   drawOverlaysLayer(top)
 
   // Captions and graphics run on the sound's clock (E-11 freezes; Captions Studio §9.1 rule 6).
   const spoken = soundTime === t ? top : { ...top, t: soundTime }
   // Key presses ask where a Captions Studio block is before it is drawn: it is placed with this frame's obstacles.
   noteStudioFrame(spoken)
-  drawKeystrokes(ctx, w, h, t, project, cursor, fc.textArea)
-  drawAnnotations(ctx, w, h, t, project)
+  drawKeystrokes(ctx, w, h, t, project, cursor, top.textArea)
+  drawAnnotations(ctx, w, h, t, project, top)
   drawGraphicsLayer(spoken)
   drawCaptionsLayer(spoken)
   drawTitleCardsLayer(top)
+  // The progress bar (editing polish §8): under the watermark; nothing without chapterBar.show.
+  drawChapterBar(top, video)
   drawWatermarkLayer(top)
-  ctx.restore()
 }
 
 const cropCopies = new WeakMap<CanvasRenderingContext2D, HTMLCanvasElement>()

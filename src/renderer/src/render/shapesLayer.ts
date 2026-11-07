@@ -15,6 +15,11 @@ import {
   type Box
 } from '../../../shared/render/shapes'
 import type { Shape } from '../../../shared/types'
+import { punchedCamera } from '../../../shared/render/joins'
+import { back, EASE } from '../../../shared/captions/motion'
+import { ellipsePerimeter, rectPerimeter, type CalloutPose } from '../../../shared/render/callouts'
+import { calmOf } from '../../../shared/render/calloutData'
+import { shapeCalloutPose } from './calloutLayer'
 import type { FrameImage } from './compositor'
 import type { FrameContext } from './frameContext'
 
@@ -69,7 +74,8 @@ function shutterCameras(fc: FrameContext): Camera[] {
   const opts = fc.options ?? { frameInterval: 1 / 60, blurSamples: 4 }
   if (!(strength > 0) || opts.blurSamples <= 1 || (!fc.following && project.zooms.length === 0)) return []
   const half = (strength * opts.frameInterval * speedAt(project.clips, t)) / 2
-  return [frameCamera(fc.scene, fc.layout, t - half, t), frameCamera(fc.scene, fc.layout, t + half, t)]
+  // A punch-in shows them closer like the frame's own camera (editing polish §5.6).
+  return [frameCamera(fc.scene, fc.layout, t - half, t), frameCamera(fc.scene, fc.layout, t + half, t)].map((c) => punchedCamera(c, project, t))
 }
 
 /* ---------- blur and pixelate ---------- */
@@ -202,12 +208,20 @@ export function drawShapesLayer(fc: FrameContext): void {
   for (const s of shapes) {
     if (isPrivacyKind(s.kind) || !(fc.t >= s.start && fc.t < s.end)) continue
     speed ||= speedAt(fc.project.clips, fc.t)
-    const alpha = shapeAlpha(s, fc.t, speed) * s.opacity
-    if (alpha > 0.003) drawShape(fc, s, alpha)
+    // A shape with a motion of its own (editing polish §7.2) takes its pose; null: today's fade.
+    const pose = s.enter || s.exit ? shapeCalloutPose(fc, s) : null
+    const alpha = (pose ? pose.alpha : shapeAlpha(s, fc.t, speed)) * s.opacity
+    if (alpha > 0.003) drawShape(fc, s, alpha, pose)
   }
 }
 
-function drawShape(fc: FrameContext, s: Shape, alpha: number): void {
+/** A Draw's arrowhead size (§7.2): it appears once 80 % of the shaft is drawn, overshooting a little (eased out with Calm motion). */
+function headScale(drawn: number, calm: boolean): number {
+  const p = Math.min(1, Math.max(0, (drawn - 0.8) / 0.2))
+  return 0.6 + 0.4 * (calm ? EASE.out(p) : back(p, 1.7))
+}
+
+function drawShape(fc: FrameContext, s: Shape, alpha: number, pose: CalloutPose | null = null): void {
   const { ctx } = fc
   // Output pixels per 1080p-referenced pixel, following the camera.
   const u = fc.k * fc.cam.scale
@@ -215,6 +229,9 @@ function drawShape(fc: FrameContext, s: Shape, alpha: number): void {
   const a = fc.toOut(s.x, s.y)
   const b = fc.toOut(s.x + s.w, s.y + s.h)
   ctx.save()
+  if (pose) applyShapePose(ctx, a, b, pose)
+  const drawn = pose ? Math.min(1, Math.max(0, pose.drawn)) : 1
+  const reveal = pose ? Math.min(1, Math.max(0, pose.reveal)) : 1
   ctx.globalAlpha = alpha
   ctx.fillStyle = s.color
   ctx.strokeStyle = s.color
@@ -223,6 +240,13 @@ function drawShape(fc: FrameContext, s: Shape, alpha: number): void {
   if (s.kind === 'highlight') {
     // A highlighter: tints what is under it (white turns yellow, dark text stays dark).
     ctx.globalCompositeOperation = 'multiply'
+    if (reveal < 1) {
+      // Wipe (editing polish §7.2): revealed left to right.
+      const x0 = Math.min(a.x, b.x)
+      ctx.beginPath()
+      ctx.rect(x0, Math.min(a.y, b.y), Math.abs(b.x - a.x) * reveal, Math.abs(b.y - a.y))
+      ctx.clip()
+    }
     ctx.beginPath()
     ctx.roundRect(Math.min(a.x, b.x), Math.min(a.y, b.y), Math.abs(b.x - a.x), Math.abs(b.y - a.y), Math.min(4 * u, Math.abs(b.x - a.x) / 2, Math.abs(b.y - a.y) / 2))
     ctx.fill()
@@ -233,7 +257,29 @@ function drawShape(fc: FrameContext, s: Shape, alpha: number): void {
   ctx.shadowColor = 'rgba(0, 0, 0, 0.32)'
   ctx.shadowBlur = 8 * u
   ctx.shadowOffsetY = 2 * u
-  if (s.kind === 'arrow') {
+  if (drawn < 1 && (s.kind === 'arrow' || s.kind === 'line')) {
+    // Draw (editing polish §7.2): the shaft from the tail toward the tip, then an arrow's head.
+    const p = { x: a.x + (b.x - a.x) * drawn, y: a.y + (b.y - a.y) * drawn }
+    ctx.lineWidth = lw
+    ctx.beginPath()
+    ctx.moveTo(a.x, a.y)
+    ctx.lineTo(p.x, p.y)
+    ctx.stroke()
+    const g = s.kind === 'arrow' && drawn >= 0.8 ? arrowGeometry(a, b, lw, 14 * u) : null
+    if (g) {
+      const k = headScale(drawn, calmOf(fc.project.effects))
+      ctx.shadowColor = 'transparent'
+      ctx.translate(b.x, b.y)
+      ctx.scale(k, k)
+      ctx.translate(-b.x, -b.y)
+      ctx.beginPath()
+      ctx.moveTo(g.head[0].x, g.head[0].y)
+      ctx.lineTo(g.head[1].x, g.head[1].y)
+      ctx.lineTo(g.head[2].x, g.head[2].y)
+      ctx.closePath()
+      ctx.fill()
+    }
+  } else if (s.kind === 'arrow') {
     const g = arrowGeometry(a, b, lw, 14 * u)
     if (g) {
       ctx.beginPath()
@@ -264,14 +310,42 @@ function drawShape(fc: FrameContext, s: Shape, alpha: number): void {
     const w = Math.abs(b.x - a.x)
     const h = Math.abs(b.y - a.y)
     ctx.beginPath()
-    if (s.kind === 'ellipse') ctx.ellipse(x + w / 2, y + h / 2, w / 2, h / 2, 0, 0, Math.PI * 2)
+    if (drawn < 1 && s.kind === 'ellipse') ctx.ellipse(x + w / 2, y + h / 2, w / 2, h / 2, 0, (-3 * Math.PI) / 4, (5 * Math.PI) / 4)
+    else if (s.kind === 'ellipse') ctx.ellipse(x + w / 2, y + h / 2, w / 2, h / 2, 0, 0, Math.PI * 2)
     else ctx.roundRect(x, y, w, h, Math.min(6 * u, w / 2, h / 2))
     if (s.fill) {
-      ctx.fill()
+      if (drawn < 1) {
+        // Draw on a filled shape: its fill revealed left to right.
+        ctx.save()
+        ctx.beginPath()
+        ctx.rect(x, y, w * drawn, h)
+        ctx.clip()
+        ctx.beginPath()
+        if (s.kind === 'ellipse') ctx.ellipse(x + w / 2, y + h / 2, w / 2, h / 2, 0, 0, Math.PI * 2)
+        else ctx.roundRect(x, y, w, h, Math.min(6 * u, w / 2, h / 2))
+        ctx.fill()
+        ctx.restore()
+      } else ctx.fill()
     } else {
       ctx.lineWidth = lw
+      if (drawn < 1) {
+        // Draw (editing polish §7.2): the outline traced clockwise, from the top-left corner (an ellipse from half past ten).
+        const L = s.kind === 'ellipse' ? ellipsePerimeter(w / 2, h / 2) : rectPerimeter(w, h)
+        ctx.lineCap = 'round'
+        ctx.setLineDash([L * drawn, L])
+      }
       ctx.stroke()
     }
   }
   ctx.restore()
+}
+
+/** A callout pose (editing polish §7.2) about the shape's box centre: its offset, scale and rotation. */
+function applyShapePose(ctx: Ctx, a: { x: number; y: number }, b: { x: number; y: number }, pose: CalloutPose): void {
+  const cx = (a.x + b.x) / 2
+  const cy = (a.y + b.y) / 2
+  ctx.translate(cx + pose.dx, cy + pose.dy)
+  if (pose.rotate) ctx.rotate((pose.rotate * Math.PI) / 180)
+  ctx.scale(pose.scale * pose.scaleX, pose.scale)
+  ctx.translate(-cx, -cy)
 }

@@ -12,6 +12,8 @@ import type { TitleCard } from '../../../shared/types'
 import type { Project } from '../../../shared/types'
 import { ensureCaptionFonts, fontGeneration, projectFontStack } from './fontLoader'
 import type { FrameContext } from './frameContext'
+import type { CalloutPose } from '../../../shared/render/callouts'
+import { titleCalloutPose } from './calloutLayer'
 import { paintBackgroundLayer } from './staticLayer'
 
 type Ctx = CanvasRenderingContext2D
@@ -248,6 +250,26 @@ const glyphPad = (l: TitleLayout): number => Math.ceil(Math.max(l.title.px, l.su
 
 /* ---------- drawing ---------- */
 
+/**
+ * A card's motion of its own (docs/design/editing-polish.md §7.2): its text (and a lower third's
+ * band) moved, scaled and turned about `box`'s centre, and revealed from the left; nothing without
+ * a pose.
+ */
+function applyPose(ctx: Ctx, box: Rect, pose: CalloutPose | null): void {
+  if (!pose) return
+  const cx = box.x + box.w / 2
+  const cy = box.y + box.h / 2
+  ctx.translate(cx + pose.dx, cy + pose.dy)
+  if (pose.rotate) ctx.rotate((pose.rotate * Math.PI) / 180)
+  ctx.scale(pose.scale * pose.scaleX, pose.scale)
+  ctx.translate(-cx, -cy)
+  if (pose.reveal < 1) {
+    ctx.beginPath()
+    ctx.rect(box.x, box.y - box.h, box.w * Math.max(0, pose.reveal), box.h * 3)
+    ctx.clip()
+  }
+}
+
 /** Darkening over the blurred video (and a project background picture), so white text reads on any picture. */
 const BLUR_TINT = 'rgba(10, 10, 16, 0.42)'
 const BAND_TINT = 'rgba(12, 12, 18, 0.5)'
@@ -300,7 +322,7 @@ function drawText(ctx: Ctx, l: TitleLayout, x: number, top: number, align: Canva
   }
 }
 
-function drawFullFrame(fc: FrameContext, card: TitleCard, phase: TitlePhase, l: TitleLayout, font: string): void {
+function drawFullFrame(fc: FrameContext, card: TitleCard, phase: TitlePhase, l: TitleLayout, font: string, pose: CalloutPose | null = null): void {
   const { ctx, w, h } = fc
   if (phase.background > 0.002) {
     ctx.save()
@@ -327,18 +349,23 @@ function drawFullFrame(fc: FrameContext, card: TitleCard, phase: TitlePhase, l: 
   }
   const key = JSON.stringify(['full', w, h, card.style, card.title, card.subtitle ?? '', color, shadowed, fontKey(font)])
   const pad = glyphPad(l) + (shadowed ? Math.ceil(blur * 1.5 + drop) : 0)
-  const sprite = spriteOf(key, { x: (w - l.width) / 2, y: top, w: l.width, h: l.height }, pad, (c) => paint(c, 1, 0))
+  const box = { x: (w - l.width) / 2, y: top, w: l.width, h: l.height }
+  const sprite = spriteOf(key, box, pad, (c) => paint(c, 1, 0))
   if (!sprite) {
+    if (pose) ctx.save()
+    applyPose(ctx, box, pose)
     paint(ctx, phase.text, phase.rise * l.rise)
+    if (pose) ctx.restore()
     return
   }
   ctx.save()
+  applyPose(ctx, box, pose)
   ctx.globalAlpha = phase.text
   drawSprite(ctx, sprite, phase.rise * l.rise)
   ctx.restore()
 }
 
-function drawLowerThird(fc: FrameContext, card: TitleCard, phase: TitlePhase, l: TitleLayout, font: string): void {
+function drawLowerThird(fc: FrameContext, card: TitleCard, phase: TitlePhase, l: TitleLayout, font: string, pose: CalloutPose | null = null): void {
   const { ctx, w, h } = fc
   const band = l.band
   if (!band || phase.text <= 0.002 || l.height <= 0) return
@@ -372,6 +399,7 @@ function drawLowerThird(fc: FrameContext, card: TitleCard, phase: TitlePhase, l:
   }
   const y = band.y + phase.rise * l.rise
   ctx.save()
+  applyPose(ctx, band, pose)
   ctx.globalAlpha = phase.text
   if (!solid) {
     // The band shows the frame (or the project's background) behind it, so it is drawn every frame.
@@ -434,9 +462,13 @@ export function drawTitleCardsLayer(fc: FrameContext): void {
     const font = cardFont(fc.project, card)
     const lower = card.style === 'lower-third'
     const l = layoutOf(fc.ctx, card, fc.w, fc.h, font, lower ? fc.textArea : null)
-    if (lower) drawLowerThird(fc, card, phase, l, font)
-    else if (card.style === 'quote') drawQuote(fc, card, phase, l, font)
-    else drawFullFrame(fc, card, phase, l, font)
+    // A card with a motion of its own (editing polish §7.2): its text and a lower third's band take
+    // the pose; a full-frame card's background keeps titlePhase's fade. Null: today's fade and rise.
+    const pose = card.enter || card.exit ? titleCalloutPose(fc, card) : null
+    const shown = pose ? { ...phase, text: pose.alpha, rise: 0 } : phase
+    if (lower) drawLowerThird(fc, card, shown, l, font, pose)
+    else if (card.style === 'quote') drawQuote(fc, card, shown, l, font, pose)
+    else drawFullFrame(fc, card, shown, l, font, pose)
   }
 }
 
@@ -449,7 +481,7 @@ const lightColour = (hex: string): boolean => luminance(hex) > 0.45
  * colour at 1.6×, and "— Name" under it at 0.6×; no full-frame background. It fades over
  * TITLE_FADE (at least 0.2 s, §9.6) and rises in like the other cards.
  */
-function drawQuote(fc: FrameContext, card: TitleCard, phase: TitlePhase, l: TitleLayout, font: string): void {
+function drawQuote(fc: FrameContext, card: TitleCard, phase: TitlePhase, l: TitleLayout, font: string, pose: CalloutPose | null = null): void {
   const { ctx, w, h } = fc
   if (phase.text <= 0.002 || l.height <= 0) return
   const look = fc.project.captions?.studio ?? STUDIO_BASE
@@ -476,10 +508,14 @@ function drawQuote(fc: FrameContext, card: TitleCard, phase: TitlePhase, l: Titl
   const key = JSON.stringify(['quote', w, h, card.title, card.subtitle ?? '', panelColour, textColour, markColour, fontKey(font), l])
   const sprite = spriteOf(key, q.panel, Math.ceil(q.mark.px * 0.5), (c) => paint(c, 1, 0))
   if (!sprite) {
+    if (pose) ctx.save()
+    applyPose(ctx, q.panel, pose)
     paint(ctx, phase.text, phase.rise * l.rise)
+    if (pose) ctx.restore()
     return
   }
   ctx.save()
+  applyPose(ctx, q.panel, pose)
   ctx.globalAlpha = phase.text
   drawSprite(ctx, sprite, phase.rise * l.rise)
   ctx.restore()

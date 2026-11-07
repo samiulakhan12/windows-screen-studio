@@ -6,19 +6,31 @@ import { ANNOTATION_FADE, ANNOTATION_FONT, annotationAlpha, annotationMetrics, k
 import { keepInArea, TEXT_INSET } from '../../../shared/render/safeZones'
 import { captionBlockAt } from './captionsLayer'
 import { projectFontStack } from './fontLoader'
+import { isCallout } from '../../../shared/render/calloutData'
+import { badgeLabels } from '../../../shared/render/callouts'
+import { drawCallout } from './calloutLayer'
+import type { FrameContext } from './frameContext'
 
 type Ctx = CanvasRenderingContext2D
 
 /**
  * Text annotations, in output-frame space (the zoom camera does not move them).
  * Geometry matches the editor's drag handle: centred on (x, y), padded box.
+ * A text with a motion of its own, a step badge or a speech bubble (docs/design/editing-polish.md
+ * §7.2) is drawn by the callout code with the frame's context `top`; every other text by the lines
+ * below, as always.
  */
-export function drawAnnotations(ctx: Ctx, w: number, h: number, t: number, project: Project): void {
+export function drawAnnotations(ctx: Ctx, w: number, h: number, t: number, project: Project, top?: FrameContext): void {
   if (project.annotations.length === 0) return
   const speed = speedAt(project.clips, t)
   // A pause freeze holding the edit's last moments (E-11): a text running to the end does not fade out there.
   const steady = noFadeOutFrom(project.clips, planOf(project), ANNOTATION_FADE)
+  let labels: ReadonlyMap<string, string> | null = null
   for (const a of project.annotations) {
+    if (top && isCallout(a)) {
+      if (a.style === 'badge') labels ??= badgeLabels(project)
+      if (drawCallout(ctx, top, a, labels?.get(a.id) ?? null)) continue
+    }
     const alpha = annotationAlpha(a.end >= steady ? { ...a, end: a.end + ANNOTATION_FADE * speed } : a, t, speed)
     if (alpha <= 0.002 || !a.text.trim()) continue
     const m = annotationMetrics(a, w, h)

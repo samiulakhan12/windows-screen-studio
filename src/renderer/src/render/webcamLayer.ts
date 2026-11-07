@@ -7,6 +7,10 @@ import type { FrameContext } from './frameContext'
 import { livePicture, maskOf, releaseLivePicture } from './segmentation/cameraMasks'
 import type { PersonMask } from './segmentation/personSegmenter'
 import { roundRectPath } from './staticLayer'
+import { punchAt } from '../../../shared/render/joins'
+import { gradeKey, resolveGrade } from '../../../shared/render/colorGrade'
+import { gradeCamera } from './gradeLayer'
+import { lutFor } from './lutCache'
 
 type Ctx = CanvasRenderingContext2D
 type Shadow = NonNullable<ReturnType<typeof cameraShadow>>
@@ -33,10 +37,12 @@ interface BlurState {
   /** The mask as segmentation returned it, and softened by a pixel so its steps do not show when scaled up. */
   rawMask: HTMLCanvasElement
   mask: HTMLCanvasElement
-  /** What the canvases hold now: redone only for a new camera frame, mask or blur amount. */
+  /** What the canvases hold now: redone only for a new camera frame, mask, blur amount or colour. */
   image: unknown
   pixels: ImageData | null
   amount: number
+  /** The camera's colour it was made with (gradeKey; '' without one): a graded picture is a reused canvas, so the raw frame and this tell frames apart. */
+  grade: string
 }
 
 const states = new WeakMap<Ctx, LayerState>()
@@ -80,9 +86,15 @@ export function drawWebcamLayer(fc: FrameContext, camera: FrameImage | null): vo
   if (!cameraBoxShown(box)) return
   const look = webcamLook(project.webcam)
   const state = stateOf(ctx)
-  const { picture, mask } = pictureOf(camera, look.backgroundBlur, state)
+  const { picture: raw, mask } = pictureOf(camera, look.backgroundBlur, state)
+  // The camera's colour (editing polish §9.1), after its mask was looked up with the raw frame.
+  const grade = project.grade?.camera
+  const lut = grade ? lutFor(project, 'camera') : null
+  const picture = grade ? gradeCamera(ctx, raw, grade, lut, fc.scene.compare) : raw
+  const colour = grade && !fc.scene.compare ? gradeKey(resolveGrade(grade, 'camera'), lut) : ''
   const r = box.rect
-  const settled = layoutPhaseAt(project, fc.t).progress >= 1
+  const phase = layoutPhaseAt(project, fc.t)
+  const settled = phase.progress >= 1
 
   ctx.save()
   if (box.opacity < 1) ctx.globalAlpha = box.opacity
@@ -101,9 +113,14 @@ export function drawWebcamLayer(fc: FrameContext, camera: FrameImage | null): vo
   ctx.imageSmoothingQuality = 'high'
   // While following, the face framing zooms less in a box narrower than square, whose cover crop
   // is narrow already (the camera filling a tall frame, docs/design/vertical-video.md §5.14).
-  const framing = fc.following ? { ...look, zoom: narrowBoxZoom(look.zoom, r.w / r.h) } : look
+  // A punch-in at a cut (editing polish §5.6) zooms the camera's framing, about its own centre, in
+  // the layouts where the camera leads or sits beside the screen (the screen is not punched then).
+  const punch = punchAt(project, fc.t)
+  const led = phase.to === 'camera-only' || phase.to === 'camera-large' || phase.to === 'side-by-side'
+  const punched = punch !== 1 && led ? { ...look, zoom: look.zoom * punch } : look
+  const framing = fc.following ? { ...punched, zoom: narrowBoxZoom(punched.zoom, r.w / r.h) } : punched
   const src = cameraSourceRect(picture.width, picture.height, r.w, r.h, framing)
-  if (mask && look.backgroundBlur > 0 && hasDocument()) drawBlurred(ctx, state, picture, mask, look.backgroundBlur, src, r)
+  if (mask && look.backgroundBlur > 0 && hasDocument()) drawBlurred(ctx, state, picture, mask, look.backgroundBlur, src, r, { image: raw.image, grade: colour })
   else ctx.drawImage(picture.image, src.x, src.y, src.w, src.h, r.x, r.y, r.w, r.h)
   ctx.restore()
 
@@ -199,7 +216,7 @@ function drawShadow(ctx: Ctx, state: LayerState, r: Rect, radius: number, s: Sha
  * camera's own size (unmirrored, uncropped) once per camera frame, so a paused preview, a crop
  * or a layout change reuses it; the shown part is then drawn into the box like the plain picture.
  */
-function drawBlurred(ctx: Ctx, state: LayerState, pic: FrameImage, mask: PersonMask, amount: number, src: Rect, r: Rect): void {
+function drawBlurred(ctx: Ctx, state: LayerState, pic: FrameImage, mask: PersonMask, amount: number, src: Rect, r: Rect, made: { image: unknown; grade: string } = { image: pic.image, grade: '' }): void {
   const W = pic.width
   const H = pic.height
   const sw = Math.max(1, Math.ceil(W * BLUR_DOWNSCALE))
@@ -208,7 +225,7 @@ function drawBlurred(ctx: Ctx, state: LayerState, pic: FrameImage, mask: PersonM
   const margin = Math.ceil(sigma * 3)
   if (!state.blur) {
     const c = (): HTMLCanvasElement => document.createElement('canvas')
-    state.blur = { person: c(), tmp: c(), blurred: c(), rawMask: c(), mask: c(), image: null, pixels: null, amount: NaN }
+    state.blur = { person: c(), tmp: c(), blurred: c(), rawMask: c(), mask: c(), image: null, pixels: null, amount: NaN, grade: '' }
   }
   const b = state.blur
   // A resized canvas is cleared: what it held is made again.
@@ -219,7 +236,7 @@ function drawBlurred(ctx: Ctx, state: LayerState, pic: FrameImage, mask: PersonM
   let maskCleared = resize(b.rawMask, mask.pixels.width, mask.pixels.height)
   maskCleared = resize(b.mask, mask.pixels.width, mask.pixels.height) || maskCleared
   if (maskCleared) b.pixels = null
-  if (b.image !== pic.image || b.pixels !== mask.pixels || b.amount !== amount) {
+  if (b.image !== made.image || b.grade !== made.grade || b.pixels !== mask.pixels || b.amount !== amount) {
     const pctx = b.person.getContext('2d')
     const tctx = b.tmp.getContext('2d')
     const bctx = b.blurred.getContext('2d')
@@ -256,7 +273,8 @@ function drawBlurred(ctx: Ctx, state: LayerState, pic: FrameImage, mask: PersonM
     pctx.globalCompositeOperation = 'destination-over'
     pctx.drawImage(b.blurred, margin, margin, sw, sh, 0, 0, W, H)
     pctx.globalCompositeOperation = 'source-over'
-    b.image = pic.image
+    b.image = made.image
+    b.grade = made.grade
     b.pixels = mask.pixels
     b.amount = amount
   }
