@@ -145,7 +145,8 @@ async function polishSilences(win) {
   const dialog = win.locator('.polish-dialog[role="dialog"]')
   await dialog.waitFor({ timeout: 10000 })
   await win.waitForSelector('.polish-dialog .modal-foot button.primary:not([disabled])', { timeout: 10000 })
-  for (const step of ['zoom', 'captions', 'director']) {
+  // Smooth cuts (editing polish §11) is on for new Polish options: off here, as the others are.
+  for (const step of ['zoom', 'smoothCuts', 'captions', 'director']) {
     const box = win.locator(`[data-testid="polish-row-${step}"] input[type="checkbox"]`)
     if ((await box.count()) && (await box.isChecked().catch(() => false))) await box.uncheck()
   }

@@ -1,0 +1,164 @@
+/* Smooth cuts (docs/design/editing-polish.md §2.1, §12): the Clip tab's Cuts and Cut style, and the
+   timeline's cut markers. Colours are the tokens of styles.css only. */
+
+.cut-every select {
+  width: 100%;
+}
+
+.cut-options {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin: var(--space-2) 0;
+}
+
+.cut-nav {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin: var(--space-2) 0;
+}
+
+.cut-number {
+  color: var(--text-1);
+  font-weight: var(--weight-semibold);
+  margin-right: auto;
+}
+
+/* Radio chips: the native radio is kept (arrows move between them) but drawn as a chip. */
+.cut-radios {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: var(--space-2);
+}
+
+.cut-radios .chip {
+  display: inline-flex;
+  align-items: center;
+  position: relative;
+}
+
+.cut-radios input[type='radio'] {
+  position: absolute;
+  inset: 0;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.cut-radios .chip:focus-within,
+.cut-swatch:focus-within {
+  outline: var(--focus-ring-width) solid var(--focus-ring);
+  outline-offset: var(--focus-ring-offset);
+}
+
+.cut-swatches {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.cut-swatch {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 28px;
+  height: 28px;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--border-strong);
+  background: var(--surface-2);
+  cursor: pointer;
+}
+
+.cut-swatch.active {
+  border-color: var(--accent-text);
+  box-shadow: 0 0 0 1px var(--accent-text);
+}
+
+.cut-swatch input {
+  position: absolute;
+  inset: 0;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.cut-swatch-dot {
+  width: 18px;
+  height: 18px;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--border-strong);
+}
+
+.cut-swatch.other {
+  padding: 0 10px;
+}
+
+.cut-swatch-other {
+  color: var(--text-1);
+  font-size: var(--text-sm);
+}
+
+/* ---------- the timeline's cut markers ---------- */
+
+/* A 24 × 24 px target centred on the cut block, whatever its width, its glyph on the clip track's
+   top edge; it reaches only 6 px into the ruler, whose middle stays free for scrubbing. */
+.cut-marker {
+  position: absolute;
+  top: -6px;
+  width: 24px;
+  height: 24px;
+  margin-left: -12px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: transparent;
+  color: var(--text-1);
+  cursor: pointer;
+  z-index: 5;
+}
+
+.cut-marker-glyph {
+  display: inline-flex;
+  width: 14px;
+  height: 14px;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-xs);
+  background: var(--surface-3);
+  border: 1px solid var(--border-strong);
+  color: var(--text-1);
+}
+
+.cut-marker:hover .cut-marker-glyph,
+.cut-marker.selected .cut-marker-glyph {
+  background: var(--accent-600);
+  color: var(--text-on-accent);
+}
+
+.cut-marker:focus-visible {
+  outline: var(--focus-ring-width) solid var(--focus-ring);
+  outline-offset: 0;
+  border-radius: var(--radius-sm);
+}
+
+.cut-marker-count {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  min-width: 14px;
+  height: 14px;
+  padding: 0 3px;
+  border-radius: var(--radius-pill);
+  background: var(--accent-600);
+  color: var(--text-on-accent);
+  font-size: 9px;
+  font-weight: var(--weight-semibold);
+  line-height: 14px;
+}

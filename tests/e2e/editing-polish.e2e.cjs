@@ -95,6 +95,8 @@ function test(name, body) {
 async function main() {
   // P4, colour: E9, E10, E11 and the colour sliders' keys of E16 (editing-polish-colour.cjs).
   await require('./editing-polish-colour.cjs').colourSteps(test)
+  // P1, smooth cuts: E2, E3, E4, E5, E15 and E16 (editing-polish-cuts.cjs).
+  await require('./editing-polish-cuts.cjs').cutsSteps(test)
 }
 
 main().catch((err) => {

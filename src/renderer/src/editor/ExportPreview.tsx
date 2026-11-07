@@ -3,9 +3,13 @@ import { exportPreviewSize, exportProject, exportSize } from '../../../shared/re
 import type { ExportOptions } from '../../../shared/render/exportPresets'
 import type { Project } from '../../../shared/types'
 import { drawFrame, type RenderScene } from '../render/compositor'
-import { onCameraMasksChanged } from '../render/segmentation/cameraMasks'
+import { CameraMaskPreparer, onCameraMasksChanged } from '../render/segmentation/cameraMasks'
+import { webcamLook } from '../../../shared/engine/webcamData'
 import { onStyleAssetsChanged } from '../render/watermarkLayer'
 import { createVideo, SCREEN_PROXY_FPS, seekToFrame, WEBCAM_PROXY_FPS, whenReady } from './media'
+import { planOf } from '../../../shared/engine/freeze'
+import { frameVideoTime, joinAt, joinPlan } from '../../../shared/render/joins'
+import { JoinStills } from './joinStills'
 
 interface Props {
   project: Project
@@ -24,6 +28,16 @@ interface Props {
   box: { width: number; height: number }
 }
 
+/** A camera still's person mask, when the camera's background is blurred (A* shows it blurred, as the export does). */
+function segmentStill(project: Project): (still: ImageBitmap) => Promise<void> {
+  let masker: CameraMaskPreparer | null = null
+  return async (still) => {
+    if (!(webcamLook(project.webcam).backgroundBlur > 0)) return
+    masker ??= new CameraMaskPreparer()
+    if (await masker.start()) await masker.prepare({ image: still, width: still.width, height: still.height })
+  }
+}
+
 /**
  * The export's frame at `time` in its own shape (a Reels preset shows 9:16), drawn by the
  * same compositor at a small size. It owns two paused video elements, so the editor's
@@ -32,6 +46,9 @@ interface Props {
 export function ExportPreview(props: Props): JSX.Element {
   const canvas = useRef<HTMLCanvasElement>(null)
   const media = useRef<{ screen: HTMLVideoElement; webcam: HTMLVideoElement | null } | null>(null)
+  // Smooth cuts (editing polish §5.8): A* of a cut whose window holds the frame, made on demand.
+  const joinStills = useRef<JoinStills | null>(null)
+  const [stillsReady, setStillsReady] = useState(0)
   const [frameTime, setFrameTime] = useState<{ t: number; sound: number } | null>(null)
   // The camera's background blur: redraw when a frame's person mask arrives.
   const [masks, setMasks] = useState(0)
@@ -57,6 +74,8 @@ export function ExportPreview(props: Props): JSX.Element {
     media.current = { screen, webcam }
     return () => {
       media.current = null
+      joinStills.current?.dispose()
+      joinStills.current = null
       for (const v of [screen, webcam]) {
         if (!v) continue
         v.removeAttribute('src')
@@ -96,8 +115,22 @@ export function ExportPreview(props: Props): JSX.Element {
     if (c.height !== h) c.height = h
     const ctx = c.getContext('2d', { alpha: false })
     if (!ctx) return
-    drawFrame(ctx, w, h, frameTime.t, scene, { screen: m.screen, webcam: m.webcam, background: props.background }, { frameInterval: 1 / size.fps, blurSamples: props.held ? 1 : 4 }, frameTime.sound)
-  }, [frameTime, scene, props.background, props.held, pixels.width, pixels.height, size.fps, masks, assets])
+    // The frame's video time and the join it is in, with A* once it is ready (a hard cut until then).
+    const windows = joinPlan(project)
+    let extras: Parameters<typeof drawFrame>[8]
+    if (windows.length > 0) {
+      const video = frameVideoTime(project.clips, planOf(project), frameTime.sound, null, null)
+      const at = joinAt(windows, video)
+      let still: CanvasImageSource | null = null
+      if (at?.window.still) {
+        joinStills.current ??= new JoinStills(props.screenUrl, props.webcamUrl, () => setStillsReady((n) => n + 1), segmentStill(project))
+        joinStills.current.prepare([at.window], scene, w, h, props.background)
+        still = joinStills.current.still(at.window, w, h)
+      }
+      extras = { video, join: at ? { at, still } : null }
+    }
+    drawFrame(ctx, w, h, frameTime.t, scene, { screen: m.screen, webcam: m.webcam, background: props.background }, { frameInterval: 1 / size.fps, blurSamples: props.held ? 1 : 4 }, frameTime.sound, extras)
+  }, [frameTime, scene, project, props.background, props.held, props.screenUrl, props.webcamUrl, pixels.width, pixels.height, size.fps, masks, assets, stillsReady])
 
   return <canvas ref={canvas} className="export-preview-canvas" style={{ width: css.width, height: css.height }} />
 }

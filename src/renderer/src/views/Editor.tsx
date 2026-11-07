@@ -86,6 +86,7 @@ import { PolishDialog } from '../editor/PolishDialog'
 import { ReviewButton } from '../review/ReviewButton'
 import { settleAutoCuts } from '../../../shared/review/autoCuts'
 import { settleJoins } from '../../../shared/editor/joinsEdit'
+import { cutCommands } from '../editor/cutCommands'
 import { settleGrade } from '../../../shared/editor/colourEdit'
 import { autoColourBusy, startAutoColour, stopAutoColour } from '../editor/autoColourRun'
 import { toggleCompare } from '../editor/compareColour'
@@ -1377,11 +1378,16 @@ function EditorSession({
       versions: () => setDialog('versions'),
 
       // Editing polish (docs/design/editing-polish.md §2.8): each opens its tab until its part wires it.
-      smoothAllCuts: showTab('clip'),
-      hardCutsEverywhere: showTab('clip'),
-      nextCut: showTab('clip'),
-      previousCut: showTab('clip'),
-      playCut: showTab('clip'),
+      // Smooth cuts (§2.1): the Clip tab's buttons and the timeline's markers run the same handlers.
+      ...cutCommands({
+        store,
+        player,
+        reveal: () => reveal('clip'),
+        select: setSelection,
+        selection: () => latest.current.selection,
+        notice: showNotice,
+        undo: () => undoHint(latest.current.keymap)
+      }),
       addMagnifier: showTab('shapes'),
       addMagnifierCursor: showTab('shapes'),
       addStepBadge: showTab('text'),

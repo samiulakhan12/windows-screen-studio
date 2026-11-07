@@ -43,7 +43,7 @@ const SOUND = [
   { start: 7.5, end: 11.9 }
 ]
 /** Every step off: tests turn on the ones they look at. */
-const NONE: PolishOptions = { ...DEFAULT_POLISH_OPTIONS, styleId: null, zoom: false, silences: false, captions: false, captionLook: false, director: false }
+const NONE: PolishOptions = { ...DEFAULT_POLISH_OPTIONS, styleId: null, zoom: false, silences: false, smoothCuts: false, captions: false, captionLook: false, director: false }
 
 function counter(prefix = 'a'): () => string {
   let n = 0
@@ -379,8 +379,8 @@ describe('planPolish: the whole run', () => {
       ['style', 'changed'],
       ['zoom', 'changed'],
       ['silences', 'changed'],
-      // Smooth cuts (editing polish §11): declared by the contracts step, skipped as not selected until part P1 makes it run.
-      ['smoothCuts', 'skipped'],
+      // Smooth cuts (editing polish §11): the cuts Remove silences just made are smoothed.
+      ['smoothCuts', 'changed'],
       ['captions', 'changed'],
       // Caption look (Captions Studio §11.8): style, emphasis and tidy on the new captions.
       ['captionLook', 'changed'],
@@ -466,8 +466,8 @@ describe('polishAvailability', () => {
   const recorded = track(12, { clicks: [{ t: 1, x: 0.5, y: 0.5, button: 'left' }] })
 
   it('offers every step of a recording that has everything', () => {
-    // Smooth cuts: not offered until part P1 makes it run (editing polish §17.0).
-    expect(polishAvailability(e2eProject(), recorded, ctx)).toEqual({ style: null, zoom: null, silences: null, smoothCuts: 'off', captions: null, captionLook: null, director: null })
+    // Smooth cuts (editing polish §11): offered, since Remove silences can make cuts to smooth.
+    expect(polishAvailability(e2eProject(), recorded, ctx)).toEqual({ style: null, zoom: null, silences: null, smoothCuts: null, captions: null, captionLook: null, director: null })
   })
 
   it('says why a row is disabled', () => {

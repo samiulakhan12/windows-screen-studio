@@ -374,7 +374,7 @@ describe('previewStretch', () => {
 })
 
 describe('recording at the sources', () => {
-  const NONE: PolishOptions = { ...DEFAULT_POLISH_OPTIONS, styleId: null, zoom: false, silences: false, captions: false, director: false }
+  const NONE: PolishOptions = { ...DEFAULT_POLISH_OPTIONS, styleId: null, zoom: false, silences: false, smoothCuts: false, captions: false, director: false }
   const input = (p: Project) => ({
     project: p,
     recorded: { samples: [], clicks: [], keys: [], valid: false },

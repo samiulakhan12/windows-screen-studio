@@ -923,9 +923,10 @@ describe('the contracts change nothing for a project from before (test 7)', () =
     expect(DEFAULT_POLISH_OPTIONS.smoothCuts).toBe(true)
     expect(readPolishOptions({}).smoothCuts).toBe(false)
     const project = migrateProject(JSON.parse(JSON.stringify(studioProject())))
+    // Part P1 makes the step run when it is selected (tests/joinsPolish.test.ts): not selected, it is skipped as 'off'.
     const r = planPolish(
       { project, recorded: { samples: [], clicks: [], keys: [], shapes: [], scale: 1, valid: false }, sound: null, transcript: null, speech: null, framing: { status: 'skipped' }, preset: null },
-      DEFAULT_POLISH_OPTIONS
+      { ...DEFAULT_POLISH_OPTIONS, smoothCuts: false }
     )
     expect(r.summary.steps.find((s) => s.step === 'smoothCuts')).toEqual({ step: 'smoothCuts', status: 'skipped', reason: 'off' })
   })

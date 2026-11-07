@@ -32,6 +32,7 @@ import { canTranscribeNow, pickTranscriber as pickSpeechTranscriber } from '../s
 import { applySmartSpeed, planSilences, SILENCE_LENGTH, SILENCE_PADDING, SMART_SPEED_ACTIONS, type SmartSpeedAction, type TimeRange } from './smartSpeed'
 import { applyPreset, presetMatches, type PresetLook } from './stylePresets'
 import { recordAutoCuts } from '../review/autoCuts'
+import { cutCount, cutsWithoutOwnStyle } from './joinsEdit'
 
 /**
  * 'captionLook': Make my captions great, offline (docs/design/captions-studio.md §11.8).
@@ -279,8 +280,15 @@ export function* planPolishSteps(input: PolishInput, options: PolishOptions): Ge
     ran('silences', clips === p.clips ? p : recordAutoCuts(p, clips, plan.parts.flatMap((x) => x.pieces), options.silenceAction, 'polish'))
   }
 
-  // Smooth cuts (editing polish §11): part P1 makes it run; until then it is skipped as not selected.
-  skip('smoothCuts', 'off')
+  // Smooth cuts (editing polish §11): every cut set to Smooth, the cuts Remove silences just made
+  // included; a cut style the user chose (Hard cut included) is kept. Review mode lists the record.
+  if (!options.smoothCuts) skip('smoothCuts', 'off')
+  else if (cutCount(p) === 0) skip('smoothCuts', 'no-cuts')
+  else if (p.joins?.all) skip('smoothCuts', 'kept-style')
+  else {
+    summary.smoothCuts = cutsWithoutOwnStyle(p)
+    ran('smoothCuts', { ...p, joins: { ...p.joins, all: { kind: 'smooth' }, auto: { by: 'polish', was: null } } })
+  }
 
   // Captions: the Captions tab's write. A transcript already there holds your edits: never replaced.
   if (!options.captions) skip('captions', 'off')
@@ -371,6 +379,9 @@ export function readPolishOptions(raw: unknown): PolishOptions {
  * the director's is directUnavailable's. While `ctx.transcribers` is null the Captions row is
  * available here and the dialog shows it as still looking.
  */
+/** Why Remove silences cannot run on `project` (null: it can). */
+const silencesUnavailable = (project: Project): PolishSkip | null => (!project.hasAudio ? 'no-sound' : activitySources(project).length === 0 ? 'muted' : null)
+
 export function polishAvailability(project: Project, recorded: CursorTrack, ctx: PolishContext): Record<PolishStep, PolishSkip | null> {
   const captions = (): PolishSkip | null => {
     if (project.transcript) return 'has-captions'
@@ -382,9 +393,9 @@ export function polishAvailability(project: Project, recorded: CursorTrack, ctx:
   return {
     style: null,
     zoom: autoZoomHasInput(recorded) ? null : 'no-input',
-    silences: !project.hasAudio ? 'no-sound' : activitySources(project).length === 0 ? 'muted' : null,
-    // Smooth cuts: part P1 says when it cannot run; until then the row is not offered.
-    smoothCuts: 'off',
+    silences: silencesUnavailable(project),
+    // Smooth cuts: a cut style chosen is kept; with no cuts it runs only after Remove silences makes some.
+    smoothCuts: project.joins?.all ? 'kept-style' : cutCount(project) === 0 && silencesUnavailable(project) ? 'no-cuts' : null,
     captions: captions(),
     // It styles the captions there are, or the ones the captions step makes in the same run.
     captionLook: project.transcript?.segments.length || captions() === null ? null : 'no-captions',
