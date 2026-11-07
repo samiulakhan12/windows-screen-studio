@@ -3024,7 +3024,10 @@ captionAutoSettle.ts`) joins the store's settle chain after `settleDeletedWords`
    and dragging the block are not look changes and keep the record.
 2. Drops a `captionAuto.text` record when its caption's text or its words (their `deleted`
    flags included) changed and the record did not. So Review › Remove never puts back words
-   without the cuts the user made since.
+   without the cuts the user made since. An update that writes the records itself (a new
+   `captionAuto.text` array: a tidy run, Review's Remove) is automation's and keeps them; a tidy
+   that tidies a caption again keeps its first record, so Remove puts back the words from before
+   the first tidy.
 3. Clears `auto` on a mark, graphic, bleep or title card that changed in any other field while its
    `auto` stayed the same object (a hand edit makes it the user's). `applyBrandKit` copies the
    `auto` objects and records it touches (§4.6), so a brand-kit font rewrite keeps them automatic.

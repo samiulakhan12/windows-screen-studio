@@ -5,7 +5,7 @@
  * mode's settleAutoCuts), so every update ends with the project saving and reopening would give.
  *
  * Automation's own updates change a record and its item together (a new record object, a new
- * `auto` object or a new id), so rules 1–3 keep them.
+ * records array, a new `auto` object or a new id), so rules 1–3 keep them.
  */
 import type { CaptionMark, CaptionSettings, CaptionWord, Graphic, Project, TitleCard } from '../types'
 import { deepEqual } from './graphicRules'
@@ -69,8 +69,10 @@ export function settleCaptionAuto(next: Project, prev: Project): Project {
     out = withAuto(out, auto)
   }
   // Rule 2: a caption whose text or words changed drops its record when the record did not change.
+  // An update that writes the records itself is automation's (a tidy run keeps a caption's first
+  // record when it tidies it again; Review's Remove puts text back): it keeps them.
   const records = out.captionAuto?.text
-  if (records?.length && next.transcript !== prev.transcript) {
+  if (records?.length && next.transcript !== prev.transcript && next.captionAuto?.text === prev.captionAuto?.text) {
     const before = new Map((prev.captionAuto?.text ?? []).map((r) => [r.caption, r]))
     const was = new Map((prev.transcript?.segments ?? []).map((s) => [s.id, s]))
     const now = new Map((next.transcript?.segments ?? []).map((s) => [s.id, s]))

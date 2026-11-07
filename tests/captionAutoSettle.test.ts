@@ -4,6 +4,8 @@
  */
 import { describe, expect, it, vi } from 'vitest'
 import { settleCaptionAuto } from '../src/shared/captions/captionAutoSettle'
+import { DEFAULT_CLEANUP, tidyCaptions, type WordListEntry } from '../src/shared/captions/cleanup'
+import { captionReviewItems, expandGroups, removeCaptionItems } from '../src/shared/review/captionReview'
 import { DEFAULT_CAPTIONS } from '../src/shared/captions/settings'
 import { studioPreset } from '../src/shared/captions/studioPresets'
 import type { Bleep, CaptionMark, Graphic, Project, TitleCard } from '../src/shared/types'
@@ -97,5 +99,21 @@ describe('settleCaptionAuto (test 43)', () => {
     const segments = [segs[0], { ...segs[1], text: 'A Second caption here' }]
     const out = settleCaptionAuto({ ...p, transcript: { ...p.transcript!, segments } }, p)
     expect(out.captionMarks![0]).toMatchObject({ caption: 'c1', from: 1, to: 1, text: 'Second', auto: true })
+  })
+
+  it('a second tidy keeps a caption’s first record; Remove then puts back the words from before the first tidy', () => {
+    const p0 = studioProject({ segments: captions(['today we open flow in', 'then flow in opens them']) })
+    const tidy = (p: Project, words: WordListEntry[]): Project => settleCaptionAuto(tidyCaptions(p, { ...DEFAULT_CLEANUP, words }).project, p)
+    const once = tidy(p0, [])
+    expect(once.captionAuto?.text?.map((r) => r.text)).toEqual(['today we open flow in', 'then flow in opens them'])
+    const twice = tidy(once, [{ term: 'Flown', heard: ['flow in'] }])
+    expect(twice.transcript!.segments.map((s) => s.text)).not.toEqual(once.transcript!.segments.map((s) => s.text))
+    expect(twice.captionAuto?.text).toEqual(once.captionAuto?.text)
+    const back = settleCaptionAuto(removeCaptionItems(twice, expandGroups(captionReviewItems(twice))), twice)
+    expect(back.transcript!.segments.map((s) => s.text)).toEqual(['today we open flow in', 'then flow in opens them'])
+    expect(back.captionAuto).toBeUndefined()
+    // A hand edit afterwards still makes that caption the user's.
+    const segments = twice.transcript!.segments.map((s) => (s.id === 'c0' ? { ...s, text: 'Hand edited' } : s))
+    expect(settleCaptionAuto({ ...twice, transcript: { ...twice.transcript!, segments } }, twice).captionAuto?.text?.map((r) => r.caption)).toEqual(['c1'])
   })
 })
