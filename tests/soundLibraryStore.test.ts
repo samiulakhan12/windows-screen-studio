@@ -175,6 +175,8 @@ describe('downloads (test 67)', () => {
     await expect(store.downloadBed('../x', quiet())).rejects.toThrow(store.LIBRARY_COPY.notOffered)
     await expect(store.downloadBed(BUNDLED.id, quiet())).rejects.toThrow(store.LIBRARY_COPY.notOffered)
     expect(store.downloadsOffered()).toBe(false)
+    // Its row is not listed: the bundled beds work alone.
+    expect(await store.listLibrary()).toEqual([{ id: BUNDLED.id, state: 'bundled', bytes: BUNDLED.prepared.bytes }])
   })
 
   it('Remove deletes every downloaded bed and its record', async () => {

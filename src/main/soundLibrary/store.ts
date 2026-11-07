@@ -160,16 +160,22 @@ async function verified(bed: MusicBed, records: Records): Promise<boolean> {
 /** Downloads under way, by id. */
 const active = new Map<string, { controller: AbortController; done: Promise<SoundLibraryState>; progress: number }>()
 
-/** Every bed of the catalogue as it stands on this PC. */
+/**
+ * Every bed of the catalogue as it stands on this PC. While no source is offered (§0 decision 1:
+ * SOUND_LIBRARY_SOURCE is null), a bed that is not here is left out, so its row is not shown and
+ * the bundled beds work alone.
+ */
 export async function listLibrary(): Promise<SoundLibraryState[]> {
   const records = readRecords()
+  const offered = downloadsOffered()
   const out: SoundLibraryState[] = []
   for (const bed of deps.beds()) {
     const bytes = bed.prepared.bytes
     const running = active.get(bed.id)
     if (bed.bundled) out.push({ id: bed.id, state: 'bundled', bytes })
     else if (running) out.push({ id: bed.id, state: 'downloading', bytes, progress: running.progress })
-    else out.push({ id: bed.id, state: (await verified(bed, records)) ? 'downloaded' : 'missing', bytes })
+    else if (await verified(bed, records)) out.push({ id: bed.id, state: 'downloaded', bytes })
+    else if (offered) out.push({ id: bed.id, state: 'missing', bytes })
   }
   return out
 }

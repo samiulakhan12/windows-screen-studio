@@ -1,5 +1,5 @@
 import { useEffect, useState, useSyncExternalStore } from 'react'
-import { activitySources, AUDIO_LIMITS, audioLook, DEFAULT_MUSIC, recordingMix, SOURCE_FILES, STEM_KINDS, stemsOf, type StemKind } from '../../../../shared/audio/settings'
+import { activitySources, AUDIO_LIMITS, audioLook, recordingMix, SOURCE_FILES, STEM_KINDS, stemsOf, type StemKind } from '../../../../shared/audio/settings'
 import type { AudioAnalysis } from '../../../../shared/audio/soundtrack'
 import { soundDetector, type SoundDetector } from '../../../../shared/audio/voice'
 import { DUCKING_VOICE_HINT } from '../../../../shared/speech/speechCopy'
@@ -16,7 +16,8 @@ import { mediaDuration } from '../media'
 import { VoiceSection } from './VoiceSection'
 import { SoundsSection } from '../sounds/SoundsSection'
 import './audioPanel.css'
-import { MusicLibrarySection } from './MusicLibrarySection'
+import { BedMissingNotice, MusicCredit, MusicLibrarySection } from './MusicLibrarySection'
+import { withOwnMusic } from '../../../../shared/audio/soundFxEdit'
 import { SoundEffectsSection } from './SoundEffectsSection'
 
 const STEM_NAMES: Record<StemKind, string> = { mic: 'Microphone', system: 'System sound' }
@@ -116,8 +117,8 @@ export function AudioPanel({ project }: { project: Project }): JSX.Element {
         music={look.music}
         canDuck={recordingOn}
         onPicked={(path) => {
-          // A new file keeps the settings of the one it replaces.
-          store.update((p) => ({ ...p, audio: { ...p.audio, music: { ...DEFAULT_MUSIC, ...audioLook(p.audio).music, path } } }))
+          // A new file keeps the settings of the one it replaces (and is no library bed: editing polish §2.6).
+          store.update((p) => withOwnMusic(p, path))
           player.reloadMusic()
         }}
         onRemove={() => setAudio({ music: null })}
@@ -237,8 +238,8 @@ function MusicSection(props: {
       {!music ? (
         <div className="music-empty">
           <p className="hint">A track under the whole video. It runs on through cuts and dips automatically while the recording has sound.</p>
-          <button className="btn" disabled={busy} onClick={() => void pick()}>
-            <MusicIcon /> Choose music…
+          <button className="btn" data-testid="music-own-file" disabled={busy} onClick={() => void pick()}>
+            <MusicIcon /> Your own file…
           </button>
         </div>
       ) : (
@@ -263,12 +264,16 @@ function MusicSection(props: {
               </button>
             </span>
           </div>
-          {missing && (
-            <p className="callout" role="alert" data-testid="music-missing">
-              <EditorIcon name="alert" size={16} />
-              <span>This music file is no longer in the recording's folder, so it cannot play or be exported. Choose it again with Replace…</span>
-            </p>
-          )}
+          <MusicCredit project={project} />
+          {missing &&
+            (music.library ? (
+              <BedMissingNotice project={project} />
+            ) : (
+              <p className="callout" role="alert" data-testid="music-missing">
+                <EditorIcon name="alert" size={16} />
+                <span>This music file is no longer in the recording's folder, so it cannot play or be exported. Choose it again with Replace…</span>
+              </p>
+            ))}
           <Slider label="Music volume" value={music.volume} {...AUDIO_LIMITS.volume} step={0.05} format={pctFmt} onChange={(v) => setMusic({ volume: v }, 'audio.music.volume')} />
           <Slider
             label="Lower under speech"
