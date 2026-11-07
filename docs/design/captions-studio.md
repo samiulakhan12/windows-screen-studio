@@ -2620,7 +2620,10 @@ give (`migrateProject(JSON.parse(JSON.stringify(p)))` for these fields; test 49)
      "google dogs", "Flown" on "flow in", "R&D" on "r and d". Exact, estimated and missing word
      times give the same words, and so do repeated words ("Flown in Flown", "110 and 120"). A
      record on part of what the tidy wrote as one ("Docs" of "Google Docs") goes back onto all of
-     it. A caption tidied twice keeps its first record with the two maps composed, and its records
+     it, but a comma written apart after it goes with its last word only. A term the caption
+     already had, or had in other capitals ("visual studio" → "Visual Studio"), is not written as
+     one: a record on one of its words stays on that word through the tidy and Remove, and so
+     does a term a first tidy wrote and a second matches again. A caption tidied twice keeps its first record with the two maps composed, and its records
      go through the words before the first tidy. Kept and pending marks, keyword and emoji anchors
      move alike; an emoji anchor that comes back over several words is dropped by its reader rule
      (the emoji stays, free).
@@ -3017,8 +3020,11 @@ text and words before, and its word map: which words before each word of the tid
 from (§4.1, §11.1 rule 1). Every word of the tidy remembers the caption words it was made of: the
 word list (rule 4) and numbers (rule 3) write their word as a whole, so each of its words came
 from all the words they replaced ("google dogs" → "Google Docs", "two hundred and fifty" →
-"250"); punctuation joined to the word before it follows the letters ("word ," → "word,", a
-Japanese "。" with the last word); capitals and full stops change words one for one. The AI fix
+"250"), and a comma written apart after them, joined to the last word, from that word only; a
+term the caption already had, in any capitals, keeps each word from its own ("visual studio" →
+"Visual Studio", "Visual Studio." when a full stop then ends it); punctuation joined to the word
+before it follows the letters ("word ," → "word,", a Japanese "。" with the last word); capitals
+and full stops change words one for one. The AI fix
 (rule 6) gives no such account, so its words are found in the text it was sent (the longest
 common subsequence with the fewest runs; changed words come from the words they replace, an added
 word from the word before it, a word taken out goes with the word before it) and that map is

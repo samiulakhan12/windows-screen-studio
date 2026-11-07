@@ -53,12 +53,28 @@ describe('the word map of each tidy step', () => {
       'VS ← vscode',
       'Code ← vscode',
       'and ← and',
-      'Visual ← visual studio',
-      'Studio ← visual studio',
+      'Visual ← visual',
+      'Studio ← studio',
       'for ← for',
       'the ← the',
       'Q&A. ← q and a'
     ])
+  })
+
+  it('a term the caption already had, or had in other capitals: each of its words from its own word, through two tidies too', () => {
+    const words = [{ term: 'Visual Studio', heard: [] }, { term: 'Google Docs', heard: ['google dogs'] }]
+    for (const text of ['we open Visual Studio and google docs', 'we open visual studio and Google Docs']) {
+      const p = tidy([text], { ...OFF, caps: true, words })
+      expect(p.transcript!.segments[0].text).toBe('We open Visual Studio and Google Docs')
+      expect(sources(p)).toEqual(['We ← we', 'open ← open', `Visual ← ${text.split(' ')[2]}`, `Studio ← ${text.split(' ')[3]}`, 'and ← and', `Google ← ${text.split(' ')[5]}`, `Docs ← ${text.split(' ')[6]}`])
+    }
+    // Written by a first tidy and matched again by a second, which joins the comma written apart:
+    // the term's words from the words the first replaced, the comma with the word before it only.
+    const once = tidy(['open google dogs , then save'], { ...OFF, words })
+    expect(once.transcript!.segments[0].text).toBe('open Google Docs , then save')
+    const twice = tidyCaptions(once, { ...OFF, punct: true, caps: true, words }).project
+    expect(twice.transcript!.segments[0].text).toBe('Open Google Docs, then save.')
+    expect(sources(twice)).toEqual(['Open ← open', 'Google ← google dogs', 'Docs, ← google dogs ,', 'then ← then', 'save. ← save'])
   })
 
   it('numbers as digits, of every length: one word, two, many, hyphenated, millions', () => {

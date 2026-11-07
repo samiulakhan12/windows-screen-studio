@@ -69,7 +69,7 @@ const CASES: { text: string; words: WordListEntry[]; cleanup?: Partial<CleanupCh
     back: ['prices', 'were', 'a hundred and ten', 'and', 'a hundred and twenty']
   },
   { text: 'the q and a and ten others', words: [{ term: 'Q&A', heard: ['q and a'] }], cleanup: { digits: 'all' }, tidied: 'The Q&A and 10 others', back: ['the', 'q and a', 'and', 'ten', 'others'] },
-  { text: 'open flow in in visual studio today', words: [{ term: 'Flown', heard: ['flow in'] }, { term: 'Visual Studio', heard: [] }], tidied: 'Open Flown in Visual Studio today', back: ['open', 'flow in', 'in', 'visual studio', 'visual studio', 'today'] }
+  { text: 'open flow in in visual studio today', words: [{ term: 'Flown', heard: ['flow in'] }, { term: 'Visual Studio', heard: [] }], tidied: 'Open Flown in Visual Studio today', back: ['open', 'flow in', 'in', 'visual', 'studio', 'today'] }
 ]
 
 /** A two-caption project with the case tidied through the store (the second caption is unchanged by the word list). */
@@ -132,6 +132,48 @@ describe('Remove of a text fix by its word map', () => {
       expect(s.state.transcript!.segments.map((x) => x.text)).toEqual(['our q and a and fifty google dogs users', 'the r and d and ops teams use google dogs'])
       expect(s.state.captionMarks!.find((m) => m.id === 'u')?.text, `${times} ${frame.w}`).toBe('fifty')
       expect(s.state.captionMarks!.find((m) => m.caption === 'c1')?.text, `${times} ${frame.w}`).toBe('r and d')
+    }
+  })
+})
+
+describe('a word-list term the caption already had, or had in other capitals', () => {
+  const words = [{ term: 'Visual Studio', heard: [] }, { term: 'Google Docs', heard: ['google dogs'] }]
+
+  it('marks, keyword and emoji anchors on one of its words stay on that word through the tidy and Remove', () => {
+    for (const text of ['we open Visual Studio and build it', 'we open visual studio and build it']) {
+      for (const times of TIMES) {
+        // Made before the tidy, on "Studio".
+        const s = storeOf(studioProject({ segments: segmentsOf([text, 'click save and you are done'], times) }))
+        s.update((q) => ({ ...q, captionMarks: [mark(q, 3, 3, false)], graphics: [pop(q, 'keyword', 3), pop(q, 'emoji', 3)] }))
+        s.update((q) => tidyCaptions(q, { ...DEFAULT_CLEANUP, words }).project)
+        expect(s.state.transcript!.segments[0].text).toBe('We open Visual Studio and build it')
+        expect([s.state.captionMarks?.[0]?.text, anchorText(s.state, 'keyword'), anchorText(s.state, 'emoji')], `${text} ${times} tidy`).toEqual(['Studio', 'Studio', 'Studio'])
+        s.update((q) => removeItems(q, [row(q, TEXT_GROUP)]))
+        const back = text.split(' ')[3]
+        expect([s.state.captionMarks?.[0]?.text, anchorText(s.state, 'keyword'), anchorText(s.state, 'emoji')], `${text} ${times} back`).toEqual([back, back, back])
+        // Made after the tidy, on "Visual", then Remove.
+        const t = tidied({ text, words, tidied: '', back: [] }, times)
+        t.update((q) => ({ ...q, captionMarks: [mark(q, 2)], graphics: [pop(q, 'keyword', 2), pop(q, 'emoji', 2)] }))
+        t.update((q) => removeItems(q, [row(q, TEXT_GROUP)]))
+        const was = text.split(' ')[2]
+        expect([t.state.captionMarks?.[0]?.text, anchorText(t.state, 'keyword'), anchorText(t.state, 'emoji')], `${text} ${times} remove`).toEqual([was, was, was])
+      }
+    }
+  })
+
+  it('a kept mark on one of its words and a pending mark on the other stay two marks, and Remove keeps the pending one', () => {
+    for (const times of TIMES) {
+      const s = storeOf(studioProject({ segments: segmentsOf(['we share google docs with the team', 'click save and you are done'], times) }))
+      s.update((q) => tidyCaptions(q, { ...DEFAULT_CLEANUP, words }).project)
+      expect(s.state.transcript!.segments[0].text).toBe('We share Google Docs with the team')
+      s.update((q) => ({ ...q, captionMarks: [{ ...mark(q, 2, 2, false, 'kept'), tone: 2 as const }, mark(q, 3, 3, true, 'pending')] }))
+      s.update((q) => removeItems(q, [row(q, TEXT_GROUP)]))
+      expect(s.state.transcript!.segments[0].text).toBe('we share google docs with the team')
+      expect(s.state.captionMarks!.map((m) => [m.id, m.text, !!m.auto]), times).toEqual([
+        ['kept', 'google', false],
+        ['pending', 'docs', true]
+      ])
+      expect(reviewItems(s.state).some((x) => x.key === EMPHASIS_GROUP)).toBe(true)
     }
   })
 })

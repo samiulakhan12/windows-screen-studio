@@ -5,7 +5,9 @@
  * one or two tidies, random marks (before the tidy or on the tidied words), keyword anchors and
  * places, then Keep and Remove in a random order through the editor's store. Checked against the
  * pieces the captions were made of: after Remove every mark and anchor covers exactly the words it
- * covered before the tidy (a mark on part of a piece the tidy wrote as one, the whole piece).
+ * covered before the tidy (a mark on part of a piece the tidy wrote as one, the whole piece; a term
+ * said as its own words, in lower case, is a piece per word; a comma written apart goes with the
+ * last word of its piece).
  */
 import { describe, expect, it } from 'vitest'
 import { settleCaptionAuto } from '../src/shared/captions/captionAutoSettle'
@@ -71,6 +73,10 @@ const PLAIN = ['open', 'and', 'in', 'the', 'save', 'users', 'click', 'then', 'd'
 interface Piece {
   words: string[]
   tidied: number
+  /** A term said as its own words ("visual studio"): each word is a piece of its own once punctuated. */
+  apart?: true
+  /** A comma written apart at its end: it joins the last tidied word alone. */
+  comma?: true
 }
 
 /** A random caption of pieces, with the word-list entries it uses, for a Digits choice. */
@@ -95,7 +101,9 @@ function caption(r: () => number, digits: CleanupChoices['digits'], entries: Wor
     if (roll < 0.55 && entries.length) {
       const e = entries[Math.floor(r() * entries.length)]
       const said = e.heard.length && r() < 0.8 ? e.heard[Math.floor(r() * e.heard.length)] : e.term.toLowerCase()
-      pieces.push({ words: said.split(' '), tidied: studioWordTexts(e.term, 'en').length })
+      const tidied = studioWordTexts(e.term, 'en').length
+      const words = said.split(' ')
+      pieces.push({ words, tidied, ...(said === e.term.toLowerCase() && words.length === tidied && tidied > 1 ? { apart: true as const } : {}) })
     } else {
       const w = PLAIN[Math.floor(r() * PLAIN.length)]
       // "and" after a number is fine, but a number may not follow it.
@@ -108,13 +116,30 @@ function caption(r: () => number, digits: CleanupChoices['digits'], entries: Wor
   for (const p of pieces) {
     const roll = r()
     if (roll < 0.1) p.words = [...p.words.slice(0, -1), `${p.words[p.words.length - 1]},`]
-    else if (roll < 0.17) p.words = [...p.words, ',']
+    else if (roll < 0.17) {
+      p.words = [...p.words, ',']
+      p.comma = true
+    }
   }
-  return pieces
+  // A term said as its own words keeps each word on its own; a comma written apart goes with the last.
+  return pieces.flatMap((p) => (p.apart ? Array.from({ length: p.tidied }, (_, k) => ({ words: k < p.tidied - 1 ? [p.words[k]] : p.words.slice(k), tidied: 1, ...(k === p.tidied - 1 && p.comma ? { comma: true as const } : {}) })) : [p]))
 }
 
-/** For each word index, its piece; for each piece, its first word (as said, and as tidied). */
-function index(pieces: Piece[]): { saidPiece: number[]; tidiedPiece: number[]; saidAt: number[]; tidiedAt: number[] } {
+/**
+ * For each word index, its piece; for each piece, its first word (as said, and as tidied); and
+ * where words go: `tidy`, said words a..b as tidied words (each piece's words onto all of its
+ * tidied words, a comma written apart onto the last only); `back`, tidied words a..b as said words
+ * (each onto all of its piece's words, but a tidied word before the last of a piece with a comma
+ * written apart, which leaves the comma out).
+ */
+function index(pieces: Piece[]): {
+  saidPiece: number[]
+  tidiedPiece: number[]
+  saidAt: number[]
+  tidiedAt: number[]
+  tidy: (a: number, b: number) => [number, number]
+  back: (a: number, b: number) => [number, number]
+} {
   const saidPiece: number[] = []
   const tidiedPiece: number[] = []
   const saidAt: number[] = []
@@ -127,7 +152,17 @@ function index(pieces: Piece[]): { saidPiece: number[]; tidiedPiece: number[]; s
   })
   saidAt.push(saidPiece.length)
   tidiedAt.push(tidiedPiece.length)
-  return { saidPiece, tidiedPiece, saidAt, tidiedAt }
+  const tidy = (a: number, b: number): [number, number] => {
+    const p = saidPiece[a]
+    const comma = pieces[p].comma && a === saidAt[p + 1] - 1 && saidAt[p + 1] - saidAt[p] > 1
+    return [comma ? tidiedAt[p + 1] - 1 : tidiedAt[p], tidiedAt[saidPiece[b] + 1] - 1]
+  }
+  const back = (a: number, b: number): [number, number] => {
+    const p = tidiedPiece[b]
+    const comma = pieces[p].comma && b < tidiedAt[p + 1] - 1
+    return [saidAt[tidiedPiece[a]], saidAt[p + 1] - (comma ? 2 : 1)]
+  }
+  return { saidPiece, tidiedPiece, saidAt, tidiedAt, tidy, back }
 }
 
 /** JSON with keys in order: the same data whatever order its fields were set in. */
@@ -168,7 +203,8 @@ function run(seed: number): Scenario {
   const wordsAt = (q: Project, id: string, from: number, to: number): string => studioWordTexts(textOf(q, id), 'en').slice(from, to + 1).join(' ')
   // Marks before the tidy (the user's), or on the tidied words (automatic, as Make my captions great picks them).
   const before = r() < 0.5
-  const marks = new Map<string, { said: [number, number] }>()
+  // Each mark's words once Remove put the text back, and (made before the tidy) once tidied.
+  const marks = new Map<string, { said: [number, number]; tidied?: [number, number] }>()
   const pick = (n: number): [number, number] => {
     const a = Math.floor(r() * n)
     const b = Math.min(n - 1, a + Math.floor(r() * 3))
@@ -184,7 +220,8 @@ function run(seed: number): Scenario {
     })
     for (const m of s.state.captionMarks ?? []) {
       const ix = index(shapes[+m.caption.slice(1)])
-      marks.set(m.id, { said: [ix.saidAt[ix.saidPiece[m.from]], ix.saidAt[ix.saidPiece[m.to] + 1] - 1] })
+      const tidied = ix.tidy(m.from, m.to)
+      marks.set(m.id, { said: ix.back(...tidied), tidied })
     }
   }
   // One tidy, or two: the first with capitals and part of the word list only.
@@ -204,10 +241,8 @@ function run(seed: number): Scenario {
   if (failures.length) return { seed, failures, kind: '' }
   // Marks before the tidy are on the tidied words of their pieces now.
   for (const m of s.state.captionMarks ?? []) {
-    const ix = index(shapes[+m.caption.slice(1)])
-    const said = marks.get(m.id)?.said
-    if (!said) continue
-    const want = [ix.tidiedAt[ix.saidPiece[said[0]]], ix.tidiedAt[ix.saidPiece[said[1]] + 1] - 1]
+    const want = marks.get(m.id)?.tidied
+    if (!want) continue
     if (m.from !== want[0] || m.to !== want[1]) fail(`tidy moved mark ${m.id} to ${m.from}..${m.to}, expected ${want}`)
   }
   if (!before) {
@@ -221,7 +256,7 @@ function run(seed: number): Scenario {
     }))
     for (const m of s.state.captionMarks ?? []) {
       const ix = index(shapes[+m.caption.slice(1)])
-      marks.set(m.id, { said: [ix.saidAt[ix.tidiedPiece[m.from]], ix.saidAt[ix.tidiedPiece[m.to] + 1] - 1] })
+      marks.set(m.id, { said: ix.back(m.from, m.to) })
     }
   }
   // A keyword pop-up anchored on the tidied words of each caption.
@@ -238,7 +273,7 @@ function run(seed: number): Scenario {
   for (const g of s.state.graphics ?? []) {
     if (g.kind !== 'keyword' || !g.anchor) continue
     const ix = index(shapes[+g.anchor.caption.slice(1)])
-    anchors.set(g.id, [ix.saidAt[ix.tidiedPiece[g.anchor.from]], ix.saidAt[ix.tidiedPiece[g.anchor.to] + 1] - 1])
+    anchors.set(g.id, ix.back(g.anchor.from, g.anchor.to))
   }
   const tidiedMarks = new Map((s.state.captionMarks ?? []).map((m) => [m.id, [m.from, m.to] as [number, number]]))
   const tidiedAnchors = new Map((s.state.graphics ?? []).flatMap((g) => (g.kind === 'keyword' && g.anchor ? [[g.id, [g.anchor.from, g.anchor.to] as [number, number]] as const] : [])))

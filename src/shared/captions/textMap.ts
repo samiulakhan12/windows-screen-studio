@@ -98,31 +98,59 @@ export function newWordsOf(ranges: WordRanges, from: number, to: number): [numbe
 }
 
 /**
+ * For each word of `next`, the words of `was` holding its characters (`keep` gives the characters
+ * that count, the same in both), or null when they are not the same characters. A word with none
+ * comes from the last word the word before it came from (at the start, the words before the first
+ * word's), and a word of `was` with none goes with the new word before it (the first at the start).
+ */
+function byCharacters(was: readonly string[], next: readonly string[], keep: (s: string) => string): [number, number][] | null {
+  const kept = was.map(keep)
+  const joined = kept.join('')
+  if (!joined || joined !== next.map(keep).join('')) return null
+  // owner[k]: the old word holding character k of the joined text.
+  const owner: number[] = []
+  kept.forEach((w, i) => {
+    for (let k = 0; k < w.length; k++) owner.push(i)
+  })
+  let at = 0
+  const out = next.map((w): [number, number] | null => {
+    const n = keep(w).length
+    if (!n) return null
+    at += n
+    return [owner[at - n], owner[at - 1]]
+  })
+  const first = out.find((r) => r)!
+  for (let j = 0; j < out.length; j++) {
+    const r = out[j] ?? (j ? [out[j - 1]![1], out[j - 1]![1]] : [0, Math.max(0, first[0] - 1)])
+    if (j === 0) r[0] = 0
+    // Old words between this word's and the one before go with the one before.
+    else if (r[0] > out[j - 1]![1] + 1) out[j - 1]![1] = r[0] - 1
+    out[j] = r
+  }
+  out[out.length - 1]![1] = was.length - 1
+  return out as [number, number][]
+}
+
+/**
  * For each word of a tidied piece (`next`, its words), the words of the piece before (`was`) it
- * came from. Written in place of them as a whole (`whole`: a word-list term, a number), each word
- * comes from all of them. Else, with the same letters (punctuation joined to the word before it,
- * "word ," → "word,"), by the letters; with as many words (capitals, a full stop), word for word;
- * else each word from all of them.
+ * came from. With the same characters, case aside, by the characters: punctuation joined to the
+ * word before it ("word ," → "word,"), and a word-list term the caption already had, or had in
+ * other capitals ("visual studio" → "Visual Studio": each word from its own). Else, with the same
+ * letters and digits once punctuation is set aside, by them: a term the caption had that a full
+ * stop then ends ("visual studio" → "Visual Studio."). Else, written in place of them as a whole
+ * (`whole`: a word-list term, a number), each word from all of them but punctuation written apart
+ * after them, which joined the last word ("google dogs ," → "Google Docs,": "Google" from
+ * "google dogs", "Docs," from "google dogs ,"); with as many words (capitals, a full stop), word
+ * for word; else each word from all of them.
  */
 export function pieceRanges(was: readonly string[], next: readonly string[], whole: boolean): [number, number][] {
-  if (whole) return next.map(() => [0, was.length - 1] as [number, number])
-  const strip = (s: string): string => s.replace(/\s+/g, '')
-  if (was.map(strip).join('') === next.map(strip).join('')) {
-    // owner[k]: the old word holding letter k of the joined text.
-    const owner: number[] = []
-    was.forEach((w, i) => {
-      for (let k = 0; k < strip(w).length; k++) owner.push(i)
-    })
-    let at = 0
-    return next.map((w) => {
-      const n = Math.max(1, strip(w).length)
-      const range: [number, number] = [owner[Math.min(at, owner.length - 1)], owner[Math.min(at + n - 1, owner.length - 1)]]
-      at += n
-      return range
-    })
-  }
-  if (was.length === next.length) return oneToOne(next.length)
-  return next.map(() => [0, was.length - 1] as [number, number])
+  const letters = (s: string): string => s.toLowerCase().replace(/[^\p{L}\p{N}\p{M}]+/gu, '')
+  const same = byCharacters(was, next, (s) => s.replace(/\s+/g, '').toLowerCase()) ?? byCharacters(was, next, letters)
+  if (same) return same
+  if (!whole && was.length === next.length) return oneToOne(next.length)
+  let head = was.length
+  if (whole) while (head > 1 && !letters(was[head - 1])) head--
+  return next.map((_, j) => [0, j === next.length - 1 ? was.length - 1 : head - 1] as [number, number])
 }
 
 /**

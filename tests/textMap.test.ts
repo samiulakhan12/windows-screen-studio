@@ -156,6 +156,23 @@ describe('pieceRanges', () => {
     expect(pieceRanges(['বলব'], ['বলব।'], false)).toEqual([[0, 0]])
     expect(pieceRanges(['a', 'b', 'c'], ['x', 'y'], false)).toEqual([[0, 2], [0, 2]])
   })
+
+  it('a term the piece already had, in any capitals: each word from its own, with a full stop or a comma joined too', () => {
+    for (const was of [['visual', 'studio'], ['Visual', 'Studio'], ['VISUAL', 'studio']]) expect(pieceRanges(was, ['Visual', 'Studio'], true)).toEqual([[0, 0], [1, 1]])
+    expect(pieceRanges(['visual', 'studio'], ['Visual', 'Studio.'], true)).toEqual([[0, 0], [1, 1]])
+    expect(pieceRanges(['visual', 'studio,'], ['Visual', 'Studio.'], true)).toEqual([[0, 0], [1, 1]])
+    expect(pieceRanges(['visual', 'studio', ','], ['Visual', 'Studio.'], true)).toEqual([[0, 0], [1, 2]])
+    expect(pieceRanges(['Google', 'Docs', ','], ['Google', 'Docs,'], true)).toEqual([[0, 0], [1, 2]])
+    // Letters written apart or together: by the letters.
+    expect(pieceRanges(['vscode'], ['VS', 'Code'], true)).toEqual([[0, 0], [0, 0]])
+    expect(pieceRanges(['face', 'book'], ['Facebook'], true)).toEqual([[0, 1]])
+  })
+
+  it('a term written as a whole after which a comma was written apart: the comma goes with its last word only', () => {
+    expect(pieceRanges(['google', 'dogs', ','], ['Google', 'Docs,'], true)).toEqual([[0, 1], [0, 2]])
+    expect(pieceRanges(['vscode', ','], ['VS', 'Code,'], true)).toEqual([[0, 0], [0, 1]])
+    expect(pieceRanges(['two', 'hundred', ','], ['200,'], true)).toEqual([[0, 2]])
+  })
 })
 
 describe('alignedRanges (the AI fix)', () => {
