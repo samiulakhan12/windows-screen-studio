@@ -520,6 +520,33 @@ describe('the emphasis and text group rows', () => {
     expect(marksOn(pending.state)).toContain('one hundred and twenty (kept)')
   })
 
+  it('Remove on the text group puts marks and anchors on all the words it puts back, also when the next word is one of them', () => {
+    // "and" after "250" is also inside "two hundred and fifty"; "in" after "Flown" is also inside "flow in".
+    const texts = ['sign ups went up to two hundred and fifty and then they dropped', 'we now have three hundred and twenty and counting', 'open flow in in the app']
+    const run = planCaptionsGreat({ project: studioProject({ segments: captions(texts) }), frame: WIDE, cleanup: DEFAULT_CLEANUP, words: [{ term: 'Flown', heard: ['flow in'] }], by: 'great' }, DEFAULT_GREAT_OPTIONS).project
+    expect(run.transcript!.segments.map((s) => s.text)).toEqual(['Sign ups went up to 250 and then they dropped', 'we now have 320 and counting', 'open Flown in the app.'])
+    const pop = { ...keyword('k1', '320'), start: 4, end: 6, anchor: { caption: 'c1', from: 3, to: 3, text: '320' } } as Graphic
+    const p: Project = { ...run, graphics: [...(run.graphics ?? []), pop] }
+    const marksOn = (q: Project): string[] => (q.captionMarks ?? []).map((m) => `${m.text}${m.auto ? '' : ' (kept)'}`)
+    const anchorOf = (q: Project): unknown => {
+      const g = q.graphics!.find((x) => x.id === 'k1')!
+      return g.kind === 'keyword' && g.anchor
+    }
+    expect(marksOn(p)).toEqual(['250', 'Flown'])
+    const emphasis = row(reviewItems(p), EMPHASIS_GROUP)
+    const text = row(reviewItems(p), TEXT_GROUP)
+    const kept = storeOf(p)
+    kept.update((q) => keepItems(q, [emphasis]))
+    kept.update((q) => removeItems(q, [text]))
+    expect(kept.state.transcript!.segments.map((s) => s.text)).toEqual(texts)
+    expect(marksOn(kept.state)).toEqual(['two hundred and fifty (kept)', 'flow in (kept)'])
+    expect(anchorOf(kept.state)).toEqual({ caption: 'c1', from: 3, to: 6, text: 'three hundred and twenty' })
+    const pending = storeOf(p)
+    pending.update((q) => removeItems(q, [text]))
+    expect(marksOn(pending.state)).toEqual(['two hundred and fifty', 'flow in'])
+    expect(anchorOf(pending.state)).toEqual({ caption: 'c1', from: 3, to: 6, text: 'three hundred and twenty' })
+  })
+
   it('"n of N reviewed" counts a group once', () => {
     const items = reviewItems(great)
     const emphasis = row(items, EMPHASIS_GROUP)

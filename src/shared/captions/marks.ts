@@ -142,6 +142,54 @@ function wordsOf(seg: CaptionSegment, language: string | undefined): Words {
   return { seg, keys: tokens.map((t) => norm(t.text)), times: tokens.map((t) => ({ start: t.start, end: t.end })) }
 }
 
+/**
+ * Longest common subsequence pairs of `a` and `b` that leave the fewest runs of unpaired words;
+ * of those, the one pairing earliest. Words a text fix puts back stay one run: "250 and then"
+ * against "two hundred and fifty and then" pairs the second "and", not the one inside the number.
+ */
+function lcsFewestRuns(a: readonly string[], b: readonly string[]): [number, number][] {
+  const n = a.length
+  const m = b.length
+  const w = m + 1
+  // A pair scores more than all the runs can take off, so length comes first. `paired`: the best
+  // from (i, j) right after a pair (or at the start), where skipping a word starts a run (-1);
+  // `open`: inside a run, where skipping more words is free.
+  const unit = n + m + 2
+  const paired = new Int32Array((n + 1) * w)
+  const open = new Int32Array((n + 1) * w)
+  const pairAt = (k: number, i: number, j: number): number => (i < n && j < m && a[i] === b[j] ? unit + paired[k + w + 1] : -Infinity)
+  for (let i = n; i >= 0; i--) {
+    for (let j = m; j >= 0; j--) {
+      if (i === n && j === m) continue
+      const k = i * w + j
+      const skip = Math.max(i < n ? open[k + w] : -Infinity, j < m ? open[k + 1] : -Infinity)
+      const pair = pairAt(k, i, j)
+      open[k] = Math.max(pair, skip)
+      paired[k] = Math.max(pair, skip - 1)
+    }
+  }
+  const pairs: [number, number][] = []
+  let i = 0
+  let j = 0
+  let inRun = false
+  while (i < n && j < m) {
+    const k = i * w + j
+    const best = inRun ? open[k] : paired[k]
+    const cost = inRun ? 0 : 1
+    if (pairAt(k, i, j) === best) {
+      pairs.push([i, j])
+      i++
+      j++
+      inRun = false
+    } else {
+      if (open[k + w] - cost === best) i++
+      else j++
+      inRun = true
+    }
+  }
+  return pairs
+}
+
 /** Where a record's words are in `next` (§11.1 rules 1–3), or null when they are gone. */
 type Found = { caption: string; from: number; to: number }
 
@@ -153,7 +201,8 @@ function relocate(rec: { caption: string; from: number; to: number }, prev: Map<
   // Rule 1: the same caption, its text changed: the words found again in order and next to each other.
   if (same) {
     if (same.seg.text === before.seg.text) return { caption: rec.caption, from: rec.from, to: rec.to }
-    const pairs = lcsPairs(before.keys, same.keys)
+    // Text put back pairs words so that the words it puts back stay together.
+    const pairs = putBack ? lcsFewestRuns(before.keys, same.keys) : lcsPairs(before.keys, same.keys)
     const map = new Map(pairs)
     const mapped: number[] = []
     for (let i = rec.from; i <= rec.to; i++) {
