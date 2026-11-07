@@ -80,7 +80,8 @@ import { showLayout } from '../editor/LayoutTrack'
 import { createVideo, loadImage } from '../editor/media'
 import { PreviewPlayer } from '../editor/player'
 import { releaseContrastSource, setContrastSource, type ContrastSource } from '../render/contrastProbe'
-import { addShapeAt, addSpotlightAt } from '../editor/playheadItems'
+import { addMagnifierAt, addShapeAt, addSpotlightAt } from '../editor/playheadItems'
+import { withChapterBar } from '../../../shared/render/chapterBar'
 import { FollowEnvContext, type FollowEnv } from '../editor/panels/FollowSection'
 import { PolishDialog } from '../editor/PolishDialog'
 import { ReviewButton } from '../review/ReviewButton'
@@ -1388,11 +1389,24 @@ function EditorSession({
         notice: showNotice,
         undo: () => undoHint(latest.current.keymap)
       }),
-      addMagnifier: showTab('shapes'),
-      addMagnifierCursor: showTab('shapes'),
+      // The magnifier (part P2, §2.2): added at the playhead, its panel shown in the Shapes tab.
+      addMagnifier: () => {
+        addMagnifierAt({ store, player }, 'region', cursor, { onSelect: setSelection })
+        reveal('shapes')
+      },
+      addMagnifierCursor: () => {
+        if (!cursor.valid) return showNotice(`${noCursorText(store.state)}: add a magnifier on a place instead`)
+        addMagnifierAt({ store, player }, 'cursor', cursor, { onSelect: setSelection })
+        reveal('shapes')
+      },
       addStepBadge: showTab('text'),
       addSpeechBubble: showTab('text'),
-      toggleProgressBar: showTab('text'),
+      // The progress bar (part P2, §2.4): one undo step.
+      toggleProgressBar: () => {
+        const on = store.state.chapterBar?.show !== true
+        store.update((p) => withChapterBar(p, { show: on }))
+        turned('Progress bar', on)
+      },
       // Part P4, colour (§2.5): Compare is the preview's alone (never saved, never exported); Auto colour is one update.
       compareColour: () => turned('Compare with original colour', toggleCompare(player)),
       autoColour: () => {
@@ -1550,6 +1564,7 @@ function EditorSession({
       cutRange: selection?.kind === 'range' ? null : 'Select a range first: Shift+drag on the clip track',
       restoreAll: edited ? null : 'Nothing is cut, trimmed or re-timed',
       addCursorSpotlight: cursor.valid ? null : noCursor,
+      addMagnifierCursor: cursor.valid ? null : noCursor,
       toggleCursor: smoothCursor ? null : cursor.valid ? 'The recorded cursor is already in the video' : noCursor,
       toggleClickEffects: cursor.valid ? null : noCursor,
       toggleWebcam: data.webcamUrl ? null : 'This recording has no camera',

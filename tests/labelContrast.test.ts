@@ -141,3 +141,13 @@ describe('Editing polish (docs/design/editing-polish.md §12): the colour contro
     expect(contrast(resolve(declared(colour, '.export-lut-ask p', 'color'), vars), resolve(declared(colour, '.export-lut-ask', 'background'), vars))).toBeGreaterThanOrEqual(4.5)
   })
 })
+
+describe('Editing polish (docs/design/editing-polish.md §12): the magnifier panel\'s note', () => {
+  const vars = tokens(css('styles.css'))
+
+  it('"it may look soft" on the Inspector', () => {
+    const panel = resolve('var(--surface-1)', vars)
+    const note = resolve(declared(css('editor/panels/magnifier.css'), '.magnifier-soft', 'color'), vars)
+    expect(contrast(note, panel)).toBeGreaterThanOrEqual(4.5)
+  })
+})

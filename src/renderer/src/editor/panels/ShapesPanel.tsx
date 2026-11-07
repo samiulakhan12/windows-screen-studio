@@ -32,11 +32,13 @@ import { addShapeAt, addSpotlightAt, cursorPosFor, revealItem } from '../playhea
 import { ShapeIcon } from '../shapeIcons'
 import '../shapes.css'
 import { MagnifierSection } from './MagnifierSection'
+import { isMagnifier, spotlightName } from '../../../../shared/render/magnifier'
 import { CalloutSection } from './CalloutSection'
 
 type Item = { type: 'shape'; item: Shape } | { type: 'spotlight'; item: Spotlight }
 
-const spotlightLabel = (s: Spotlight): string => (s.mode === 'cursor' ? 'Cursor spotlight' : 'Spotlight')
+/** A spotlight's name in the list: today's, or "Magnifier, 2 times" (editing polish §2.2). */
+const spotlightLabel = (s: Spotlight): string => spotlightName(s)
 
 /** Which command adds each kind (its shortcut, if the user gave it one, goes in the tooltip). */
 const ADD_COMMAND: Record<ShapeKind, CommandId> = {
@@ -75,9 +77,9 @@ export function ShapesPanel(props: InspectorProps): JSX.Element {
   return (
     <>
       {shape && <SelectedShape project={project} shape={shape} onSelect={props.onSelect} />}
-      {spot && <SelectedSpotlight project={project} spot={spot} cursorValid={cursor.valid} cursorPos={cursorPos} onSelect={props.onSelect} />}
-      {/* Editing polish (docs/design/editing-polish.md §2.2, §2.3): the magnifier, and a shape's animation. */}
-      <MagnifierSection project={project} selection={selection ?? null} />
+      {spot && !isMagnifier(spot) && <SelectedSpotlight project={project} spot={spot} cursorValid={cursor.valid} cursorPos={cursorPos} onSelect={props.onSelect} />}
+      {/* Editing polish (docs/design/editing-polish.md §2.2, §2.3): the magnifier (a selected one's panel too), and a shape's animation. */}
+      <MagnifierSection project={project} selection={selection ?? null} cursor={cursor} />
       <CalloutSection project={project} selection={selection ?? null} />
 
       <Section title="Add at playhead">
@@ -163,7 +165,7 @@ function ShapeList({ project, items, selId, onSelect }: { project: Project; item
                   revealItem(player, project.clips, item, type === 'spotlight' ? 'spotlight' : (item as Shape).kind)
                 }, selId === item.id)}
               >
-                <ShapeIcon name={type === 'shape' ? (item as Shape).kind : (item as Spotlight).mode === 'cursor' ? 'spotlight-cursor' : 'spotlight-region'} size={15} />
+                <ShapeIcon name={type === 'shape' ? (item as Shape).kind : isMagnifier(item as Spotlight) ? 'magnifier' : (item as Spotlight).mode === 'cursor' ? 'spotlight-cursor' : 'spotlight-region'} size={15} />
                 <span>{type === 'shape' ? shapeLabel((item as Shape).kind) : spotlightLabel(item as Spotlight)}</span>
                 <span className="muted">
                   {formatTime(item.start, false)} – {formatTime(item.end, false)}
@@ -353,7 +355,7 @@ function SelectedSpotlight({
  * The selected item is edited on the preview while the frame there shows it: when it does not,
  * a link moves the playhead there (onto a kept frame where it is fully shown).
  */
-function OnPreview({ item, kind, clips }: { item: { start: number; end: number }; kind: ShapeKind | 'spotlight'; clips: Clip[] }): JSX.Element | null {
+export function OnPreview({ item, kind, clips }: { item: { start: number; end: number }; kind: ShapeKind | 'spotlight'; clips: Clip[] }): JSX.Element | null {
   const { player } = useEditor()
   // The frame the preview shows (inside a cut, the next kept one), as the preview's handles use.
   const [inside, setInside] = useState(() => itemVisibleAt(item, displayTime(clips, player.time)))
@@ -375,7 +377,7 @@ function OnPreview({ item, kind, clips }: { item: { start: number; end: number }
 }
 
 /** Start and end in seconds, typed or set from the playhead. */
-function TimeFields({ project, item, onChange }: { project: Project; item: { start: number; end: number }; onChange: (t: { start: number; end: number }) => void }): JSX.Element {
+export function TimeFields({ project, item, onChange }: { project: Project; item: { start: number; end: number }; onChange: (t: { start: number; end: number }) => void }): JSX.Element {
   const { player } = useEditor()
   const len = Math.min(MIN_SHAPE_LENGTH, project.duration)
   const row = (edge: 'start' | 'end', label: string): JSX.Element => (
@@ -449,7 +451,7 @@ function TimeField({
   )
 }
 
-function ItemActions({ onDuplicate, onDelete, what }: { onDuplicate: () => void; onDelete: () => void; what: string }): JSX.Element {
+export function ItemActions({ onDuplicate, onDelete, what }: { onDuplicate: () => void; onDelete: () => void; what: string }): JSX.Element {
   const keymap = useKeymap()
   return (
     <div className="row start shape-actions">

@@ -1,0 +1,50 @@
+/* The magnifier and the progress bar in the Inspector (docs/design/editing-polish.md §2.2, §2.4). */
+
+.magnifier-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.magnifier-soft:empty {
+  display: none;
+}
+
+.magnifier-soft {
+  color: var(--warning-text);
+}
+
+.magnifier-zoom-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 4px 0 12px;
+  color: var(--muted);
+  font-size: var(--text-sm);
+}
+
+.magnifier-zoom-row .btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.progress-bar-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.progress-bar-colours {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.progress-bar-link {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}

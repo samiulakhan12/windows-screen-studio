@@ -1,6 +1,8 @@
 import { displayTime } from '../../../shared/editor/clips'
-import { revealKeptTime, shapeForPlayhead, spotlightForPlayhead } from '../../../shared/editor/shapes'
-import { cropOf, cropProject, cropTrack, geometryFromCrop } from '../../../shared/engine/crop'
+import { revealKeptTime, shapeForPlayhead, SPOTLIGHT_FADE, spotlightForPlayhead } from '../../../shared/editor/shapes'
+import { cropOf, cropProject, cropTrack, cropView, geometryFromCrop } from '../../../shared/engine/crop'
+import { magnifierView } from '../../../shared/editor/magnifierEdit'
+import { MAGNIFIER, newMagnifier } from '../../../shared/render/magnifier'
 import { SmoothedTrack } from '../../../shared/engine/cursor'
 import { speedAt } from '../../../shared/render/overlays'
 import { cursorOverVideoAt, visibleCursorAt } from '../../../shared/render/shapes'
@@ -94,5 +96,29 @@ export function addSpotlightAt({ store, player }: EditorServices, mode: Spotligh
   store.update((q) => ({ ...q, spotlights: [...(q.spotlights ?? []), s] }))
   opts.onSelect({ kind: 'spotlight', id: s.id })
   revealItem(player, p.clips, s, 'spotlight', t)
+  return s
+}
+
+/**
+ * Adds a magnifier (docs/design/editing-polish.md §2.2, §6.1) fully grown at the playhead: 0.30 S
+ * across in the view the preview shows there, on the cursor when it shows in that view (else on
+ * the view's centre), at the zoom picked from the recording's resolution; `mode` 'cursor' makes it
+ * follow the cursor. Selected and shown like addSpotlightAt, in one undo step.
+ */
+export function addMagnifierAt({ store, player }: EditorServices, mode: Spotlight['mode'], cursor: CursorTrack | null, opts: AddOptions): Spotlight {
+  const p = store.state
+  const { t } = anchor(p.clips, opts.at ?? player.time)
+  const view = magnifierView(p, cursor, t)
+  const drawn = cursor ? cropView(p, cursor) : null
+  const at = drawn ? cursorPosFor(drawn.project, drawn.cursor, t) : null
+  const { project, id } = newMagnifier(p, t, { rect: view.rect, cam: view.cam, w: view.w, h: view.h, centre: view.centre, cursor: at }, mode)
+  const s = project.spotlights!.find((x) => x.id === id)!
+  store.update((q) => ({ ...q, spotlights: [...(q.spotlights ?? []), s] }))
+  opts.onSelect({ kind: 'spotlight', id: s.id })
+  // Shown fully grown: the playhead moves past the grow-in when it is inside it (an item added at
+  // the very start of the video cannot start earlier). The reveal rule's lead is a spotlight's fade,
+  // so the item it is asked about starts that much later than the grow-in's end.
+  const lead = (MAGNIFIER.enter - SPOTLIGHT_FADE) * speedAt(p.clips, t)
+  revealItem(player, p.clips, { start: s.start + lead, end: s.end }, 'spotlight', t)
   return s
 }
