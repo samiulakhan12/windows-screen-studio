@@ -1,8 +1,8 @@
 import { displayTime } from '../../../shared/editor/clips'
-import { revealKeptTime, shapeForPlayhead, spotlightForPlayhead } from '../../../shared/editor/shapes'
+import { revealKeptTime, shapeForPlayhead, SPOTLIGHT_FADE, spotlightForPlayhead } from '../../../shared/editor/shapes'
 import { cropOf, cropProject, cropTrack, cropView, geometryFromCrop } from '../../../shared/engine/crop'
 import { magnifierView } from '../../../shared/editor/magnifierEdit'
-import { newMagnifier } from '../../../shared/render/magnifier'
+import { MAGNIFIER, newMagnifier } from '../../../shared/render/magnifier'
 import { SmoothedTrack } from '../../../shared/engine/cursor'
 import { speedAt } from '../../../shared/render/overlays'
 import { cursorOverVideoAt, visibleCursorAt } from '../../../shared/render/shapes'
@@ -115,6 +115,10 @@ export function addMagnifierAt({ store, player }: EditorServices, mode: Spotligh
   const s = project.spotlights!.find((x) => x.id === id)!
   store.update((q) => ({ ...q, spotlights: [...(q.spotlights ?? []), s] }))
   opts.onSelect({ kind: 'spotlight', id: s.id })
-  revealItem(player, p.clips, s, 'spotlight', t)
+  // Shown fully grown: the playhead moves past the grow-in when it is inside it (an item added at
+  // the very start of the video cannot start earlier). The reveal rule's lead is a spotlight's fade,
+  // so the item it is asked about starts that much later than the grow-in's end.
+  const lead = (MAGNIFIER.enter - SPOTLIGHT_FADE) * speedAt(p.clips, t)
+  revealItem(player, p.clips, { start: s.start + lead, end: s.end }, 'spotlight', t)
   return s
 }

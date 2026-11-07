@@ -258,4 +258,13 @@ describe('addMagnifierAt', () => {
     expect(s.y + s.h / 2).toBeCloseTo(0.6, 6)
     expect(player.time).toBe(4)
   })
+
+  it('at the very start of the video it cannot start earlier: the playhead moves to where it is fully grown', () => {
+    store.state = project({ spotlights: [] })
+    player.time = 0
+    const s = addMagnifierAt({ store, player }, 'region', TRACK, { onSelect: () => undefined })
+    expect(s.start).toBe(0)
+    expect(player.time).toBeGreaterThanOrEqual(0.3)
+    expect(magnifierPhase(s, player.time, store.state.clips, false)!.r).toBe(1)
+  })
 })
