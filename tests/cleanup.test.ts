@@ -121,6 +121,21 @@ describe('tidyCaptions (test 41)', () => {
     expect(tidy('हम फ्लो❤️ खोलते हैं', 'hi', [{ term: 'Flow', heard: ['फ्लो'] }])).toBe('हम Flow❤️ खोलते हैं')
   })
 
+  it('a multi-word term is not matched across punctuation or an emoji before one of its later words, which would be lost', () => {
+    const list = [{ term: 'Google Docs', heard: ['google dogs'] }, { term: 'Flown', heard: ['flow in'] }]
+    const tidy = (text: string): string =>
+      texts(tidyCaptions(project([{ id: 'a', start: 0, end: 2, text }, { id: 'b', start: 2.2, end: 3, text: 'end' }]), { ...DEFAULT_CLEANUP, punct: false, words: list }).project)[0]
+    expect(tidy('we use google "docs" daily')).toBe('We use google "docs" daily')
+    expect(tidy('we use google (docs) daily')).toBe('We use google (docs) daily')
+    expect(tidy('we use google ✔️docs daily')).toBe('We use google ✔️docs daily')
+    expect(tidy('we use flow ❤️in daily')).toBe('We use flow ❤️in daily')
+    expect(tidy('we use google 🔥docs daily')).toBe('We use google 🔥docs daily')
+    // Punctuation before the first word and after the last word stays, and the term is still matched.
+    expect(tidy('we use "google docs" daily')).toBe('We use "Google Docs" daily')
+    expect(tidy('we use (google dogs) daily')).toBe('We use (Google Docs) daily')
+    expect(tidy('we use ✔️flow in✔️ daily')).toBe('We use ✔️Flown✔️ daily')
+  })
+
   it('numbers said one after the other are never added up; ordinals in two words stay words', () => {
     const tidy = (text: string, digits: CleanupChoices['digits'] = 'above-ten'): string => texts(tidyCaptions(project([{ id: 'a', start: 0, end: 2, text }]), { ...OFF, digits, words: [] }).project)[0]
     expect(tidy('back in nineteen ninety nine we started')).toBe('back in nineteen ninety nine we started')

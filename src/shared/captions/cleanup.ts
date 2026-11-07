@@ -207,8 +207,9 @@ function applyWordList(tokens: Tok[], words: readonly WordListEntry[]): Tok[] {
       let match = true
       for (let k = 0; k < n && match; k++) {
         const core = coreOf(tokens[i + k].text).toLowerCase()
-        // The last part may end in punctuation; inner parts may not.
-        if ((k < n - 1 && TRAILING.exec(tokens[i + k].text)?.[0]) || core !== f.parts[k]) match = false
+        // The first part may start and the last part may end in punctuation; nothing in between may,
+        // since only the first part's leading and the last part's trailing punctuation are kept.
+        if ((k > 0 && LEADING.exec(tokens[i + k].text)?.[0]) || (k < n - 1 && TRAILING.exec(tokens[i + k].text)?.[0]) || core !== f.parts[k]) match = false
       }
       if (!match || !joinable(tokens, i, i + n - 1)) continue
       const first = tokens[i].text
