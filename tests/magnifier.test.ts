@@ -218,8 +218,8 @@ describe('a magnifier is a spotlight for every edit (test 30)', () => {
     expect(moved.spotlights![0]).toMatchObject({ start: 4, end: 6, magnify: 2 })
   })
 
-  it('is a snapping target like a spotlight', () => {
-    expect(projectSnapSegments(base(), { layouts: false })).toContainEqual({ owner: 'spotlight:l1', label: 'Spotlight', start: 3, end: 5 })
+  it('is a snapping target like a spotlight, named as on its block', () => {
+    expect(projectSnapSegments(base(), { layouts: false })).toContainEqual({ owner: 'spotlight:l1', label: 'Magnifier, 2 times', start: 3, end: 5 })
   })
 
   it('survives a load and a save', () => {

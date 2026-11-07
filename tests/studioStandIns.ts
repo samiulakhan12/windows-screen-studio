@@ -6,7 +6,7 @@
  */
 import { withPreset } from '../src/shared/captions/settings'
 import { LINE_LENGTHS, studioPreset, type SavedLook } from '../src/shared/captions/studioPresets'
-import type { CaptionPreset, CaptionSettings, CaptionStudio, StudioTheme } from '../src/shared/types'
+import type { CaptionPreset, CaptionSettings, CaptionStudio } from '../src/shared/types'
 
 export const calls: Record<string, unknown[][]> = {}
 const record = (name: string, args: unknown[]): void => void (calls[name] ??= []).push(args)
@@ -70,15 +70,6 @@ export function withSpeakerNames(settings: CaptionSettings, on: boolean): Captio
   return { ...rest, studio }
 }
 
-/* ---------- part P1: colors.ts, marks.ts ---------- */
+/* ---------- part P1: colors.ts, marks.ts (in studioColourStandIns.ts) ---------- */
 
-export const withTheme = (s: CaptionStudio, theme: StudioTheme): CaptionStudio => ({ ...s, theme: { ...s.theme, ...theme } })
-export const brandTheme = (colors: readonly string[], s: CaptionStudio): { theme: StudioTheme; lightened: string[] } | null => (colors.length >= 2 ? { theme: { ...s.theme, spoken: colors[0], emphasis: colors[1] }, lightened: [] } : null)
-// None on Chat, as colors.ts gives none where no two palette colours read on the look.
-export const speakerColors = (s: CaptionStudio, n: number): string[] => (s.box.kind === 'chat' ? [] : ['#ffffff', '#5ce1e6', '#8be28b'].slice(0, n))
-export const staticContrast = (s: CaptionStudio): { worst: number; colour: string; against: string } => ({ worst: s.edge.outline >= 0.04 ? 13.6 : 1.2, colour: s.theme.text, against: s.theme.outline })
-export const contrastFix = (s: CaptionStudio): CaptionStudio => ({ ...s, edge: { ...s.edge, outline: Math.max(0.06, s.edge.outline), outlineAlpha: 1 } })
-export const textOn = (): '#111111' => '#111111'
-export const contrastRatio = (): number => 4.5
-export const over = (c: string): string => c
-export const measuredContrast = (): number => 4.5
+export { withTheme, brandTheme, speakerColors, staticContrast, contrastFix, textOn, contrastRatio, over, measuredContrast } from './studioColourStandIns'

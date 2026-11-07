@@ -11,6 +11,7 @@ import { freezePlan, freezeSnapTargets, planOf } from '../engine/freeze'
 import type { ClickRow } from '../engine/inputData'
 import { formatTime } from '../engine/project'
 import { chapterInVideo, MIN_CHAPTER_GAP } from '../render/chapters'
+import { spotlightName } from '../render/magnifier'
 import { viewingTime } from '../render/overlays'
 import type { Chapter, Clip, Project } from '../types'
 import { timelineGaps } from './clips'
@@ -121,7 +122,8 @@ export function projectSnapSegments(p: Project, opts: { layouts: boolean }): Sna
   add('zoom', 'Zoom', p.zooms)
   add('annotation', 'Text', p.annotations)
   for (const s of p.shapes ?? []) out.push({ owner: `shape:${s.id}`, label: shapeLabel(s.kind), start: s.start, end: s.end })
-  for (const s of p.spotlights ?? []) out.push({ owner: `spotlight:${s.id}`, label: s.mode === 'cursor' ? 'Cursor spotlight' : 'Spotlight', start: s.start, end: s.end })
+  // A magnifier is named as on its block ("Magnifier, 2 times", editing polish §2.2).
+  for (const s of p.spotlights ?? []) out.push({ owner: `spotlight:${s.id}`, label: spotlightName(s), start: s.start, end: s.end })
   add('overlay', 'Image', p.overlays)
   add('title', 'Title card', p.titles)
   add('graphic', 'Pop-up', p.graphics)

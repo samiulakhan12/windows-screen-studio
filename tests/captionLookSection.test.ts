@@ -12,7 +12,8 @@ import { byTestId, contexts, descendants, focused, key, mockReact, settle, testS
 
 const p4 = vi.hoisted(() => ({ marks: [] as unknown[] }))
 vi.mock('../src/shared/captions/studioEdit', async () => await import('./studioStandIns'))
-vi.mock('../src/shared/captions/colors', async () => await import('./studioStandIns'))
+// The colour stand-ins alone: the caption settings studioStandIns imports reach colors.ts again.
+vi.mock('../src/shared/captions/colors', async () => await import('./studioColourStandIns'))
 vi.mock('../src/shared/captions/marks', async (importOriginal) => ({
   withAutoTwin: (await importOriginal<typeof import('../src/shared/captions/marks')>()).withAutoTwin,
   clearEmphasis: (p: Project) => ({ ...p, captionMarks: undefined })

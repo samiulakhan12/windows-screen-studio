@@ -13,7 +13,7 @@ import { MAX_TRANSITION, MIN_TRANSITION, ZOOM_MAX_SCALE, ZOOM_MIN_SCALE, zoomEas
 import { OVERLAY_LIMITS } from '../engine/overlayData'
 import { stickerOf } from '../render/stickers'
 import { captionsOf } from '../captions/settings'
-import type { Annotation, Background, CalloutMotion, CalloutMotionKind, Chapter, Freeze, Graphic, ImageOverlay, ItemMotion, NormRect, Project, Shape, Spotlight, TitleCard, ZoomSegment } from '../types'
+import type { Annotation, Background, CalloutMotion, CalloutMotionKind, Chapter, Freeze, Graphic, ImageOverlay, ItemMotion, NormRect, Project, SfxRef, Shape, Spotlight, TitleCard, ZoomSegment } from '../types'
 import { ANNOTATION_SIZE } from './annotations'
 import { setZoomLevelInView } from './cropEdit'
 import { removeFreeze, setFreezeLength, setFreezeSound } from './freezeEdit'
@@ -25,7 +25,8 @@ import { formatLevel } from './zoomEdit'
 import { annotationItem, CALLOUT_ALLOWED, calloutOf, shapeItem, type CalloutItem } from '../render/calloutData'
 import { BADGE_FILL, BUBBLE_FILL } from '../render/callouts'
 import { SOUND_EFFECTS } from '../audio/soundLibrary'
-import { readItemSound } from '../audio/soundFxData'
+import { readGraphicSound, readItemSound } from '../audio/soundFxData'
+import { ORIGINAL_SOUNDS, sfxGroupsFor } from '../audio/sfxChoices'
 import { pickedMotion } from './calloutsEdit'
 
 /** Items that share a look: shapes split into marks and privacy shapes; chapters have none. */
@@ -113,11 +114,15 @@ export const ITEM_MOTIONS: readonly { value: ItemMotion['kind']; label: string }
   { value: 'blur', label: 'Blur' },
   { value: 'typewriter', label: 'Typewriter' }
 ]
-/** Sound on a pop-up (§2.11): absent is None. */
-export const GRAPHIC_SOUNDS: readonly { value: 'none' | 'pop' | 'ding'; label: string }[] = [
+/**
+ * Sound on a pop-up (§2.11): absent is None. Then Captions Studio's own sounds, as they always
+ * sounded, and the library's effects, pop-ups' first (editing polish §2.6, §10.7), as the Graphics
+ * tab's select offers them.
+ */
+export const GRAPHIC_SOUNDS: readonly { value: 'none' | 'pop' | 'ding' | SfxRef; label: string }[] = [
   { value: 'none', label: 'None' },
-  { value: 'pop', label: 'Pop' },
-  { value: 'ding', label: 'Ding' }
+  ...ORIGINAL_SOUNDS,
+  ...sfxGroupsFor('pop-ups').flatMap((g) => g.options)
 ]
 /** A graphic's text colour when it has none: the caption look's (so writing it keeps "Same as the captions"). */
 export const captionTextColor = (p: Project): string => {
@@ -711,7 +716,10 @@ export const GROUP_FIELDS: readonly GroupField[] = [
     look: true,
     read: (g) => g.sound ?? 'none',
     patch: (g, v) => {
-      if (v !== 'none') return { ...g, sound: v as 'pop' | 'ding' }
+      if (v !== 'none') {
+        const sound = readGraphicSound(v)
+        return sound ? { ...g, sound } : g
+      }
       const { sound: _s, ...rest } = g
       void _s
       return rest as Graphic

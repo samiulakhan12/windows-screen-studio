@@ -3,6 +3,8 @@ import { readGraphicSound } from '../src/shared/audio/soundFxData'
 import { ORIGINAL_SOUNDS, sfxGroups, sfxGroupsFor } from '../src/shared/audio/sfxChoices'
 import { musicCredit, SOUND_EFFECTS } from '../src/shared/audio/soundLibrary'
 import { DEFAULT_GREAT_OPTIONS, readGreatOptions } from '../src/shared/captions/great'
+import { applyField, fieldValue, GROUP_FIELDS, type FieldCtx } from '../src/shared/editor/groupEdit'
+import { itemKey } from '../src/shared/editor/multiSelect'
 import { planGraphics, type GraphicOptions } from '../src/shared/captions/graphicRules'
 import { composeYoutubeDescription, descriptionToCheck, exportDescription, projectYoutubeChapters, YOUTUBE_DESCRIPTION_MAX } from '../src/shared/publish/youtube'
 import { reviewItems } from '../src/shared/review/review'
@@ -54,6 +56,35 @@ describe('library sounds on pop-ups (test 70)', () => {
     // What a select gives back is read as stored: a catalogue effect, the originals, or nothing.
     for (const v of all) expect(readGraphicSound(v)).toBe(v)
     expect(readGraphicSound('none')).toBeUndefined()
+  })
+})
+
+describe('several pop-ups selected: their Sound offers the same list (§2.6, §10.7)', () => {
+  const field = GROUP_FIELDS.find((f) => f.id === 'graphic.sound')!
+  const ctx = (p: Project): FieldCtx => ({ crop: null, cursorValid: true, style: { defaultScale: 2, easing: 'smooth', transition: 0.6 } as never, background: p.style.background })
+
+  it('None, Original pop and Original ding, then every library effect, pop-ups first', () => {
+    const options = field.control.type === 'chips' ? field.control.options : []
+    expect(options.slice(0, 3)).toEqual([
+      { value: 'none', label: 'None' },
+      { value: 'pop', label: 'Original pop' },
+      { value: 'ding', label: 'Original ding' }
+    ])
+    expect(options.slice(3).map((o) => o.value)).toEqual(sfxGroupsFor('pop-ups').flatMap((g) => g.options.map((o) => o.value)))
+  })
+
+  it('writes a library effect to each, reads it back, and never writes an unknown one', () => {
+    const p = studioProject({ segments: captions(['Revenue grew 300% this year', 'Costs fell 20% too'], 'c', 5) })
+    const made = planGraphics(p, { ...NONE, counters: true, sound: 'pop' })
+    const keys = made.graphics!.map((g) => itemKey('graphic', g.id))
+    expect(keys.length).toBeGreaterThan(1)
+    const soft = applyField(made, field, keys, 'sfx:pop-soft', ctx(made)).project
+    expect(soft.graphics!.map((g) => g.sound)).toEqual(keys.map(() => 'sfx:pop-soft'))
+    expect(fieldValue(soft, field, keys, ctx(soft))).toEqual({ mixed: false, value: 'sfx:pop-soft' })
+    const bad = applyField(soft, field, keys, 'sfx:../nope', ctx(soft)).project
+    expect(bad.graphics!.map((g) => g.sound)).toEqual(keys.map(() => 'sfx:pop-soft'))
+    const ding = applyField(soft, field, keys, 'ding', ctx(soft)).project
+    expect(ding.graphics!.map((g) => g.sound)).toEqual(keys.map(() => 'ding'))
   })
 })
 

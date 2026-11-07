@@ -13,6 +13,7 @@ import type { ExportOptions } from '../../../shared/render/exportPresets'
 import type { Graphic, Project, VoiceStrength } from '../../../shared/types'
 import { drawFrame, type FrameImage, type RenderScene } from '../render/compositor'
 import { releaseTilt } from '../render/tiltLayer'
+import { releaseGrade } from '../render/gradeLayer'
 import { prepareCursorAssets } from '../render/cursorLayer'
 import { prepareStyleAssets } from '../render/watermarkLayer'
 import { prepareCaptionFonts, prepareProjectFonts } from '../render/fontLoader'
@@ -643,8 +644,12 @@ async function renderAll(
   } finally {
     signal.removeEventListener('abort', onAbort)
     sink?.close()
-    // The 3D tilt's WebGL context and card canvas for this canvas are not needed any more.
-    if (drawn) releaseTilt(drawn)
+    // The 3D tilt's WebGL context and card canvas for this canvas are not needed any more, nor the
+    // grade's copies for it (editing polish §9.3).
+    if (drawn) {
+      releaseTilt(drawn)
+      releaseGrade(drawn)
+    }
     // A* and its scratch target (editing polish §5.6).
     joins?.dispose()
     if (feed.stills.length > 0) releaseScratch()
@@ -719,8 +724,12 @@ export async function renderThumbnail(raw: ThumbnailInput): Promise<{ png: Uint8
     if (!blob) throw new Error('Could not encode the thumbnail')
     return { png: new Uint8Array(await blob.arrayBuffer()), width, height }
   } finally {
-    // The 3D tilt's WebGL context and card canvas for this canvas are not needed any more.
-    if (drawn) releaseTilt(drawn)
+    // The 3D tilt's WebGL context and card canvas for this canvas are not needed any more, nor the
+    // grade's copies for it (editing polish §9.3).
+    if (drawn) {
+      releaseTilt(drawn)
+      releaseGrade(drawn)
+    }
     screen.close()
     camera?.close()
     videos.forEach(disposeVideo)
