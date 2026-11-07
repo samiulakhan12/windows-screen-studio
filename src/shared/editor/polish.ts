@@ -33,15 +33,23 @@ import { applySmartSpeed, planSilences, SILENCE_LENGTH, SILENCE_PADDING, SMART_S
 import { applyPreset, presetMatches, type PresetLook } from './stylePresets'
 import { recordAutoCuts } from '../review/autoCuts'
 import { cutCount, cutsWithoutOwnStyle } from './joinsEdit'
+import type { SceneScan } from '../api/projects'
+import { polishChapters } from '../chapters/chapterAuto'
+import { userChapters } from '../chapters/pending'
 
 /**
  * 'captionLook': Make my captions great, offline (docs/design/captions-studio.md §11.8).
  * 'smoothCuts': every cut set to Smooth (docs/design/editing-polish.md §11), after Remove silences
  * so the cuts it makes are smoothed too.
+ * 'chapters': Find chapters, offline (docs/design/smart-tools.md §13.3), after the captions (the
+ * transcript and the cuts are final) and before the caption look.
  */
-export type PolishStep = 'style' | 'zoom' | 'silences' | 'smoothCuts' | 'captions' | 'captionLook' | 'director'
+export type PolishStep = 'style' | 'zoom' | 'silences' | 'smoothCuts' | 'captions' | 'chapters' | 'captionLook' | 'director'
 /** Run order (decision 2); the dialog lists rows in this order too. */
-export const POLISH_STEPS: readonly PolishStep[] = ['style', 'zoom', 'silences', 'smoothCuts', 'captions', 'captionLook', 'director']
+export const POLISH_STEPS: readonly PolishStep[] = ['style', 'zoom', 'silences', 'smoothCuts', 'captions', 'chapters', 'captionLook', 'director']
+
+/** Videos shorter than this (video seconds) get no chapters from Polish (smart-tools.md §13.3). */
+export const POLISH_CHAPTERS_MIN = 120
 
 export interface PolishOptions {
   /** A style preset id (BUILT_IN_PRESETS or the user's), or null: keep the current look. */
@@ -57,6 +65,8 @@ export interface PolishOptions {
   captionsProvider: string | null
   /** Caption look: style, emphasis and pop-ups for the captions (Captions Studio §11.8); saved options without it read false. */
   captionLook: boolean
+  /** Find chapters (smart-tools.md §13.3, §0 decision 8): on for new options; saved options without it read false. */
+  chapters: boolean
   director: boolean
 }
 
@@ -69,6 +79,7 @@ export const DEFAULT_POLISH_OPTIONS: Readonly<PolishOptions> = Object.freeze({
   captions: true,
   captionsProvider: null,
   captionLook: true,
+  chapters: true,
   director: true
 })
 
@@ -110,6 +121,12 @@ export type PolishSkip =
   | 'no-cuts'
   /** Smooth cuts: every cut's style was chosen (joins.all is set, Hard cut included) */
   | 'kept-style'
+  /** Find chapters: the project has chapters of the user's (found ones waiting for review do not count, and are replaced) */
+  | 'has-chapters'
+  /** Find chapters: the video is under 2 minutes */
+  | 'short-video'
+  /** Find chapters: no captions to name chapters from, or every name would be a number (so nothing is added) */
+  | 'no-speech'
 
 export interface PolishInput {
   project: Project
@@ -139,6 +156,8 @@ export interface PolishInput {
    * caption style. Absent: the defaults, no brand look.
    */
   captionLook?: { great: GreatOptions; cleanup: CleanupChoices; words: readonly WordListEntry[]; brand?: CaptionStudio | null }
+  /** The scene scan for Find chapters (smart-tools.md §7.2), fetched with the other analyses; null or absent: none (pauses and words only). */
+  scan?: SceneScan | null
 }
 
 export interface PolishStepResult {
@@ -161,6 +180,8 @@ export interface PolishSummary {
   silenceAction: SmartSpeedAction
   /** Cuts Smooth cuts smoothed (those without their own style); absent or 0 unless the step changed the project. */
   smoothCuts?: number
+  /** Chapters Find chapters found ("Found 6 chapters"); absent or 0 unless the step changed the project. */
+  chapters?: number
   /** Zooms after polishing: automatic ones, and the user's (auto: false). */
   zooms: { auto: number; kept: number }
   /** The director's parts after polishing (DirectorPlan.parts, by kind). */
@@ -223,6 +244,7 @@ export function* planPolishSteps(input: PolishInput, options: PolishOptions): Ge
     silences: 0,
     silenceAction: options.silenceAction,
     smoothCuts: 0,
+    chapters: 0,
     zooms: { auto: 0, kept: 0 },
     camera: { intro: false, outro: false, hidden: 0, moves: 0 },
     framing: null,
@@ -307,6 +329,20 @@ export function* planPolishSteps(input: PolishInput, options: PolishOptions): Ge
     if (input.transcriptLeftOut && last) summary.captionsLeftOutAfter = videoTimeAt(p.clips, planOf(p), last.end)
   }
 
+  // Find chapters (smart-tools.md §13.3): offline, Normal, every signal, by 'polish', in this one
+  // update (part P2's polishChapters). Found chapters are pending, so the caption look after it makes
+  // no chapter-title card from them and the step badges keep their numbers (§0 decision 8's guards);
+  // without words, or when every name would be a number, it adds nothing.
+  if (!options.chapters) skip('chapters', 'off')
+  else if (userChapters(p).length) skip('chapters', 'has-chapters')
+  else if (videoDuration(p.clips, planOf(p)) < POLISH_CHAPTERS_MIN) skip('chapters', 'short-video')
+  else if (!p.transcript?.segments.some((s) => s.text.trim())) skip('chapters', 'no-speech')
+  else {
+    const next = polishChapters(p, { ...input, project: p, scan: input.scan ?? null })
+    if (next !== p) summary.chapters = (next.chapters ?? []).filter((c) => c.auto?.by === 'polish').length
+    ran('chapters', next)
+  }
+
   // Caption look (Captions Studio §11.8): Make my captions great, offline, with the saved options
   // (no provider, no quotes); in wide frames the planner runs only style, emphasis and tidy.
   if (!options.captionLook) skip('captionLook', 'off')
@@ -370,6 +406,8 @@ export function readPolishOptions(raw: unknown): PolishOptions {
     captionsProvider: isId(o.captionsProvider) ? o.captionsProvider : null,
     // Saved before the step existed: off, so a saved Polish does what it did (Captions Studio §11.8).
     captionLook: flag(o.captionLook, false),
+    // Saved before the step existed: off (smart-tools.md §13.3).
+    chapters: flag(o.chapters, false),
     director: flag(o.director, D.director)
   }
 }
@@ -397,6 +435,15 @@ export function polishAvailability(project: Project, recorded: CursorTrack, ctx:
     // Smooth cuts: a cut style chosen is kept; with no cuts it runs only after Remove silences makes some.
     smoothCuts: project.joins?.all ? 'kept-style' : cutCount(project) === 0 && silencesUnavailable(project) ? 'no-cuts' : null,
     captions: captions(),
+    // Find chapters: never over your own chapters, nor in videos under 2 minutes; without captions it
+    // can still run when the captions step makes them in the same run.
+    chapters: userChapters(project).length
+      ? 'has-chapters'
+      : videoDuration(project.clips, planOf(project)) < POLISH_CHAPTERS_MIN
+        ? 'short-video'
+        : project.transcript?.segments.length || captions() === null
+          ? null
+          : 'no-speech',
     // It styles the captions there are, or the ones the captions step makes in the same run.
     captionLook: project.transcript?.segments.length || captions() === null ? null : 'no-captions',
     director: !ctx.hasCameraFile || !project.hasWebcam ? 'no-camera' : !project.webcam.show ? 'camera-hidden' : null

@@ -16,6 +16,7 @@ import { deepEqual, planGraphicsSteps } from './graphicRules'
 import { remapAnchors, withAutoTwin } from './marks'
 import { studioPreset } from './studioPresets'
 import { studioWordTexts } from './words'
+import { userChapters } from '../chapters/pending'
 
 /** A choice that can be resolved per project ('auto', §2.8). */
 export type Auto = boolean | 'auto'
@@ -121,7 +122,8 @@ export function resolveGreatOptions(o: GreatOptions, project: Project, frame: { 
     keywords: pick(o.keywords, () => short && camera()),
     counters: pick(o.counters, () => short),
     lists: pick(o.lists, () => short),
-    chapters: pick(o.chapters, () => !short && !!project.chapters?.length),
+    // Auto: wide videos with chapters of the user's; found chapters waiting for review switch nothing on (smart-tools.md §7.7).
+    chapters: pick(o.chapters, () => !short && userChapters(project).length > 0),
     quotes: o.quotes && o.provider !== null
   }
 }
@@ -170,6 +172,8 @@ export interface GreatInput {
   by: 'great' | 'polish'
   /** The provider kind the AI marks came from (their items' `auto.via`). */
   marksVia?: AiProviderKind
+  /** The marks came through a service (smart-tools.md §10.6): its host, carried by the AI picks' `auto`. */
+  marksHost?: string
   /** The recording's cursor: words said near a click score more (§11.1). */
   cursor?: CursorTrack
 }
@@ -244,7 +248,8 @@ export function* planCaptionsGreatSteps(input: GreatInput, options: GreatOptions
       quotes: o.quotes && !!input.marks,
       sound: o.sound,
       ...(input.marks ? { marks: input.marks } : {}),
-      ...(input.marksVia ? { marksVia: input.marksVia } : {})
+      ...(input.marksVia ? { marksVia: input.marksVia } : {}),
+      ...(input.marksHost ? { marksHost: input.marksHost } : {})
     })
     // A keyword pop-up's words are never also emphasised (§10.1).
     const anchored = (p.graphics ?? []).filter((g): g is Extract<Graphic, { kind: 'keyword' }> => g.kind === 'keyword' && !!g.auto && !!g.anchor)

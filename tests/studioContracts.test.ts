@@ -314,7 +314,9 @@ describe('commands, preferences and the Polish step', () => {
   })
 
   it('runs Caption look after Captions and before the director, skipped without captions', () => {
-    expect(POLISH_STEPS.indexOf('captionLook')).toBe(POLISH_STEPS.indexOf('captions') + 1)
+    // After Captions, with smart tools' Find chapters between them (docs/design/smart-tools.md §13.3), and before the director.
+    expect(POLISH_STEPS.indexOf('chapters')).toBe(POLISH_STEPS.indexOf('captions') + 1)
+    expect(POLISH_STEPS.indexOf('captionLook')).toBe(POLISH_STEPS.indexOf('chapters') + 1)
     expect(POLISH_STEPS.indexOf('director')).toBe(POLISH_STEPS.indexOf('captionLook') + 1)
     expect(DEFAULT_POLISH_OPTIONS.captionLook).toBe(true)
     const project = { transcript: undefined, hasAudio: false, clips: [], zooms: [], titles: [], webcam: { show: false }, hasWebcam: false, audio: { muted: false, volume: 1 } } as unknown as Project

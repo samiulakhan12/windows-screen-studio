@@ -8,10 +8,12 @@ import { HealthSections } from './HealthSections'
 import { SpeechModelsSection } from './SpeechModelsSection'
 import { CaptionDownloadsSection } from './CaptionDownloadsSection'
 import { MusicDownloadsSection } from './MusicDownloadsSection'
+import { LocalAiSection } from './LocalAiSection'
 import { ShareSection } from '../share/ShareSection'
 import './settings.css'
 
-export type SettingsSection = 'ai' | 'speech' | 'brand' | 'about'
+/** 'localAi': AI on this PC (docs/design/smart-tools.md §2.5): the palette's Set up AI on this PC… and every "use AI on this PC" link. */
+export type SettingsSection = 'ai' | 'speech' | 'localAi' | 'brand' | 'about'
 
 /**
  * App settings: the AI providers (the user's own API keys for transcription and text tasks),
@@ -49,6 +51,7 @@ export function SettingsDialog({ section, onClose, onProvidersChanged }: { secti
         <div className="settings-body">
           <AiProvidersSection onChanged={onProvidersChanged} autoFocus={section === 'ai'} />
           <SpeechModelsSection reveal={section === 'speech'} />
+          <LocalAiSection reveal={section === 'localAi'} />
           <CaptionDownloadsSection />
           {/* More music for the library (docs/design/editing-polish.md §2.6): hidden until its download source exists. */}
           <MusicDownloadsSection />

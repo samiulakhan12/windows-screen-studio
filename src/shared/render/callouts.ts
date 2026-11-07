@@ -14,6 +14,7 @@ import { withDigits } from '../captions/words'
 import type { Annotation, AnnotationStyle, CalloutMotion, CalloutMotionKind, Clip, ItemMotion, Project, Shape, ShapeKind } from '../types'
 import { annotationItem, badgesByChapterOf, CALLOUT_ALLOWED, calloutOf, graphemesOf, shapeItem, type CalloutItem } from './calloutData'
 import { outputChapters } from './chapters'
+import { userChapters } from '../chapters/pending'
 import { annotationMetrics } from './overlays'
 
 export type { CalloutItem } from './calloutData'
@@ -155,8 +156,8 @@ const labelMemo = new WeakMap<readonly Annotation[], LabelMemo>()
 
 /**
  * The label each automatic badge draws, by annotation id (§7.3): automatic badges in start-time
- * order (ties by id) count 1, 2, 3…; the count starts again at each chapter's start (in the
- * video's time) unless `effects.badgesByChapter` is false or the project has fewer than two
+ * order (ties by id) count 1, 2, 3…; the count starts again at each of the user's chapters' start
+ * (in the video's time; found chapters waiting for review do not count, smart-tools.md §7.7) unless `effects.badgesByChapter` is false or the project has fewer than two
  * chapters; a badge with `startAt` takes that number and the next count on from it. Badges with
  * their own text do not count. Memoised on the annotations, chapters, clips, freezes and effects.
  */
@@ -168,7 +169,8 @@ export function badgeLabels(project: Project): ReadonlyMap<string, string> {
   const out = new Map<string, string>()
   if (autos.length) {
     const plan = planOf(project)
-    const chapters = project.clips.length ? outputChapters(project.chapters ?? [], project.clips, plan) : []
+    // The user's chapters only: a found chapter waiting for review restarts no number (smart-tools.md §7.7).
+    const chapters = project.clips.length ? outputChapters(userChapters(project), project.clips, plan) : []
     const byChapter = chapters.length >= 2 && badgesByChapterOf(project.effects ?? {}, chapters.length)
     const starts = byChapter ? chapters.map((c) => c.start) : []
     let chapter = -1

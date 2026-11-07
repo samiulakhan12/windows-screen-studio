@@ -130,10 +130,11 @@ function stillValid(answer: MarksAnswer, sent: ReadonlyMap<string, string>, proj
   }
 }
 
-/** The provider's kind (the automatic items' `auto.via`), or undefined. */
-async function providerKind(id: string): Promise<AiProviderInfo['kind'] | undefined> {
+/** The provider's kind (the automatic items' `auto.via`) and a service's host (smart-tools.md §10.6), or undefined. */
+async function providerKind(id: string): Promise<{ kind: AiProviderInfo['kind']; host?: string } | undefined> {
   try {
-    return (await window.api.listAiProviders()).find((p) => p.id === id)?.kind
+    const info = (await window.api.listAiProviders()).find((p) => p.id === id)
+    return info ? { kind: info.kind, ...(info.service ? { host: info.service.host } : {}) } : undefined
   } catch {
     return undefined
   }
@@ -169,13 +170,15 @@ export async function runCaptionsGreat(deps: {
   if (signal.aborted) return null
   let asked: { answer: MarksAnswer; sent: Map<string, string> } | undefined
   let marksVia: AiProviderInfo['kind'] | undefined
+  let marksHost: string | undefined
   let providerFailed = false
   if (options.provider) {
     try {
       const [answer, kind] = await Promise.all([requestMarks(start, options.provider, options.tidy ? inputs : null, signal), providerKind(options.provider)])
       if (signal.aborted) return null
       asked = answer
-      marksVia = kind
+      marksVia = kind?.kind
+      marksHost = kind?.host
     } catch {
       if (signal.aborted) return null
       // The offline picks are used, and the notice says so (§2.8).
@@ -186,7 +189,7 @@ export async function runCaptionsGreat(deps: {
   /** The planner's input for `project`: the AI's marks of captions not edited since they were asked. */
   const input = (project: Project): GreatInput => {
     const marks = asked ? stillValid(asked.answer, asked.sent, project) : undefined
-    return { project, frame, brand: inputs.brand, cleanup: inputs.cleanup, words: inputs.words, by: 'great', ...(marks ? { marks } : {}), ...(marksVia ? { marksVia } : {}) }
+    return { project, frame, brand: inputs.brand, cleanup: inputs.cleanup, words: inputs.words, by: 'great', ...(marks ? { marks } : {}), ...(marksVia ? { marksVia } : {}), ...(marksHost ? { marksHost } : {}) }
   }
   // Planned from the project as it is now, a step at a time (§9.8).
   const from = store.getSnapshot()

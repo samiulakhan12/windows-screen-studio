@@ -19,6 +19,7 @@ const STEP_LABEL: Record<PolishStep, string> = {
   silences: 'Remove silences',
   smoothCuts: 'Smooth cuts',
   captions: 'Captions',
+  chapters: 'Find chapters',
   captionLook: 'Caption look',
   director: 'Camera director'
 }
@@ -92,6 +93,8 @@ export function polishHint(
     case 'captions':
       if (state.local) return state.bangla ? SPEECH_COPY.readyHintBangla : SPEECH_COPY.readyHint
       return `The sound is sent to ${state.provider ? providerName(state.provider) : 'the provider'} with your key and billed to your account.`
+    case 'chapters':
+      return 'Splits the video where the screen changes and where you start something new, and names each part from what you say. Review lists each one.'
     case 'captionLook':
       // In wide frames Polish adds no pop-ups (Captions Studio §2.8, §11.8).
       return state.wide ? 'Style, emphasis and tidy text for your captions.' : 'Style, emphasis and pop-ups for your captions.'
@@ -111,6 +114,12 @@ export function polishSkipText(step: PolishStep, reason: PolishSkip, error?: str
       return 'No cuts to smooth'
     case 'kept-style':
       return 'Your cut style is kept'
+    case 'has-chapters':
+      return 'Your chapters are kept'
+    case 'short-video':
+      return 'Under 2 minutes: no chapters needed'
+    case 'no-speech':
+      return 'No captions to name chapters from'
     case 'no-sound':
       return 'This recording has no sound'
     case 'muted':
@@ -205,6 +214,8 @@ function resultText(summary: PolishSummary, r: PolishStepResult): string {
       const left = at === null ? '' : `. A project keeps at most ${MAX_CAPTIONS} captions, so the captions after ${formatTime(at, false)} were left out.`
       return `Captions: ${plural(summary.captions, 'caption')}${left}`
     }
+    case 'chapters':
+      return changed ? `Found ${plural(summary.chapters ?? 0, 'chapter')}` : 'Find chapters: no new chapters'
     case 'captionLook':
       return changed ? 'Caption look: done' : 'Caption look: unchanged'
     case 'director': {
@@ -249,6 +260,7 @@ export function polishNotice(summary: PolishSummary, changed: boolean, undo: str
       parts.push(summary.silenceAction === 'cut' ? `${n} cut` : `${n} sped up ${summary.silenceAction}×`)
     }
     if (step === 'captions') parts.push(plural(summary.captions, 'caption'))
+    if (step === 'chapters' && summary.chapters) parts.push(`${plural(summary.chapters, 'chapter')} found`)
     if (step === 'director') {
       const n = cameraChanges(summary.camera)
       const face = summary.framing?.status === 'framed'

@@ -60,6 +60,19 @@ interface AddOptions {
   /** Source time to add at (where the timeline was double-clicked); the playhead by default. */
   at?: number
   onSelect: (sel: Selection) => void
+  /**
+   * The shape's box, as fractions of the recorded frame (smart-tools.md §5.5.8: the Guide panel's Blur
+   * an area… over the click); absent: the shape's default place.
+   */
+  box?: { x: number; y: number; w: number; h: number }
+}
+
+/** `box` kept inside the recorded frame, at least a pixel's worth wide and high. */
+function boxInFrame(box: NonNullable<AddOptions['box']>): { x: number; y: number; w: number; h: number } {
+  const fin = (v: number, d: number): number => (Number.isFinite(v) ? v : d)
+  const w = Math.min(1, Math.max(0.001, fin(box.w, 0.3)))
+  const h = Math.min(1, Math.max(0.001, fin(box.h, 0.1)))
+  return { x: Math.min(1 - w, Math.max(0, fin(box.x, 0))), y: Math.min(1 - h, Math.max(0, fin(box.y, 0))), w, h }
 }
 
 /**
@@ -83,7 +96,9 @@ export function addShapeAt({ store, player }: EditorServices, kind: ShapeKind, c
   const crop = cropOf(p)
   const view = cropProject(p)
   // With its kind's motion (editing polish §7.1): an arrow draws itself, a box its outline, a highlight wipes in.
-  const s = geometryFromCrop(crop, newShapeForPlayhead(kind, t, view, cursor ? cursorPosFor(view, cropTrack(cursor, crop), t) : null, speed))
+  const made = geometryFromCrop(crop, newShapeForPlayhead(kind, t, view, cursor ? cursorPosFor(view, cropTrack(cursor, crop), t) : null, speed))
+  // A box given (the Guide panel's blur over a click) is the shape's place in the recorded frame.
+  const s = opts.box ? { ...made, ...boxInFrame(opts.box) } : made
   store.update((q) => ({ ...q, shapes: [...(q.shapes ?? []), s] }))
   opts.onSelect({ kind: 'shape', id: s.id })
   revealItem(player, p.clips, s, kind, t)

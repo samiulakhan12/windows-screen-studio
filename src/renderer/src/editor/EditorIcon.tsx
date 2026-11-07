@@ -1,6 +1,8 @@
 // Icons used only by the editor (24x24, stroked like components/Icon).
 const PATHS: Record<string, string> = {
   captions: 'M3 5h18v14H3zM7 12h3M7 15h6M13 12h4M15 15h2',
+  // A numbered list (smart tools' Guide button).
+  steps: 'M10 6h11M10 12h11M10 18h11M4 5l1-1v4M4 8h2M4 14.5a1 1 0 0 1 2 0c0 1-2 1.5-2 3.5h2',
   gear: 'M12 9a3 3 0 1 1 0 6 3 3 0 0 1 0-6zM12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1L7 17M17 7l2.1-2.1',
   undo: 'M9 14L4 9l5-5M4 9h10.5a5.5 5.5 0 0 1 0 11H11',
   redo: 'M15 14l5-5-5-5M20 9H9.5a5.5 5.5 0 0 0 0 11H13',

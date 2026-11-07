@@ -11,7 +11,7 @@ import { CAPTION_MAX_CHARS, cleanCaptionText } from './captionData'
 import { maskedSegments } from './cleanup'
 import { captionsOf } from './settings'
 import { applyTextResult } from './edit'
-import { MAX_TRACKS } from './studioData'
+import { MAX_TRACKS, readHost } from './studioData'
 
 /** FNV-1a, 32 bits, as 8 hex digits. */
 function fnv1a(text: string): string {
@@ -136,7 +136,8 @@ export function captionsToTranslate(project: Project, language: string): Caption
  */
 export function withTranslation(
   project: Project,
-  t: { language: string; by: CaptionTrack['by']; model: string; createdAt: string; sent: readonly CaptionSegment[]; answer: unknown }
+  /** `host`: a service's (smart-tools.md §10.6), with `by: 'openai'`; the track then says "translated with <host>". */
+  t: { language: string; by: CaptionTrack['by']; model: string; createdAt: string; sent: readonly CaptionSegment[]; answer: unknown; host?: string }
 ): Project | null {
   const spoken = project.transcript?.language
   if (!project.transcript || (spoken && sameLanguage(spoken, t.language))) return null
@@ -154,7 +155,8 @@ export function withTranslation(
     const seg = fresh.get(s.id) ?? kept.get(s.id)
     return seg ? [seg] : []
   })
-  const next = withTrack(project, { language: t.language, by: t.by, model: t.model.slice(0, 200), createdAt: t.createdAt, segments })
+  const host = t.by === 'openai' ? readHost(t.host) : undefined
+  const next = withTrack(project, { language: t.language, by: t.by, model: t.model.slice(0, 200), createdAt: t.createdAt, segments, ...(host ? { host } : {}) })
   return next === project ? null : next
 }
 
@@ -201,7 +203,9 @@ export function trackRows(project: Project): TrackRow[] {
     if (changed) notes.push(`${plural(changed, 'caption')} changed since`)
     if (missing) notes.push(untranslated(missing, spoken))
     if (project.bleeps?.length) notes.push('Bleeped words are not masked in translations')
-    rows.push({ language: t.language, label: `${languageName(t.language)} · translated ${t.by === 'local' ? 'on this PC' : `with ${PROVIDER_NAMES[t.by]}`}`, changed, missing, shown: shown === t.language, notes })
+    // A service's results say its host (smart-tools.md §10.6): "translated with api.groq.com".
+    const via = t.by === 'local' ? 'on this PC' : `with ${t.by === 'openai' && t.host ? t.host : PROVIDER_NAMES[t.by]}`
+    rows.push({ language: t.language, label: `${languageName(t.language)} · translated ${via}`, changed, missing, shown: shown === t.language, notes })
   }
   return rows
 }

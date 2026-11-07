@@ -16,6 +16,8 @@ import { planPolish, planPolishSteps, polishAvailability, POLISH_STEPS, type Pol
 import { polishSkipText, transcribePhaseText } from '../../../shared/editor/polishCopy'
 import { BUILT_IN_PRESETS, type StylePreset } from '../../../shared/editor/stylePresets'
 import { effectiveTrack } from '../../../shared/engine/inputTrack'
+import { cropOf } from '../../../shared/engine/crop'
+import type { SceneScan } from '../../../shared/api/projects'
 import { faceSampleTimes, type FramingOutcome } from '../../../shared/render/faceFraming'
 import type { CursorTrack, Project } from '../../../shared/types'
 import { loadAudioAnalysis } from './audioAnalysis'
@@ -155,11 +157,29 @@ export function runPolish(
     }
   }
 
+  /**
+   * The scene scan Find chapters reads (smart-tools.md §7.2, §13.3), with the other analyses: read
+   * once per recording and kept; a failed scan is not fatal (chapters then come from pauses and
+   * what was said).
+   */
+  const fetchScan = async (): Promise<SceneScan | null> => {
+    if (!runs('chapters')) return null
+    setRow('chapters', { phase: 'working', text: 'Looking at the screen…' })
+    try {
+      return await window.api.detectScenes(start.id, cropOf(start))
+    } catch (err) {
+      console.warn('Could not read the screen:', err)
+      return null
+    } finally {
+      setRow('chapters', WAITING)
+    }
+  }
+
   const work = async (): Promise<{ before: Project; after: Project; result: PolishResult } | null> => {
-    // 1. Sound and captions, side by side.
-    const collected = await until(Promise.all([measureSound(), fetchCaptions()]))
+    // 1. Sound, captions and the screen, side by side.
+    const collected = await until(Promise.all([measureSound(), fetchCaptions(), fetchScan()]))
     if (!collected || run.signal.aborted) return null
-    const [sound, fetched] = collected
+    const [sound, fetched, scan] = collected
     const transcript = fetched && 'transcript' in fetched ? fetched.transcript : null
     if (transcript) setRow('captions', { phase: 'done', text: plural(transcript.segments.length, 'caption') })
     else if (fetched && 'error' in fetched) {
@@ -193,7 +213,9 @@ export function runPolish(
       blocked,
       errors,
       // The saved caption choices and brand look (Captions Studio §11.6, §11.8).
-      ...(options.captionLook || options.captions ? { captionLook: await loadGreatInputs() } : {})
+      ...(options.captionLook || options.captions ? { captionLook: await loadGreatInputs() } : {}),
+      // The screen's changes for Find chapters (smart-tools.md §13.3).
+      ...(runs('chapters') ? { scan } : {})
     }
     const framing = await until(measureFace(gathered, speech))
     if (!framing || run.signal.aborted) return null

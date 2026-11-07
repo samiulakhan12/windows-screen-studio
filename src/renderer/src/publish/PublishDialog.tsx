@@ -9,6 +9,7 @@ import { notedPieces, saidLinks, type Noted, type Said as Spoken } from '../../.
 import { BLOCKER_TEXT, PUBLISH_KINDS, PUBLISH_LABELS, PUBLISH_LENGTHS, PUBLISH_TONES, publishBlocker, publishSegments, transcriptKey, type PublishKind, type PublishPrefs } from '../../../shared/publish/pack'
 import { plainText, xLength, X_LIMIT } from '../../../shared/publish/text'
 import { composeYoutubeDescription, descriptionBody, descriptionToCheck, parseTags, projectYoutubeChapters, YOUTUBE_DESCRIPTION_MAX } from '../../../shared/publish/youtube'
+import { userChapters } from '../../../shared/chapters/pending'
 import { youtubeChapters } from '../../../shared/render/chapters'
 import type { Project } from '../../../shared/types'
 import { useEditor } from '../editor/context'
@@ -66,9 +67,14 @@ export function PublishDialog({ project, request, onClose, onGenerateCaptions }:
   const key = useMemo(() => transcriptKey(segments), [segments])
   const youtube = useMemo(() => projectYoutubeChapters(project), [project])
   const chapterTitles = useMemo(() => youtube.chapters.map((c) => c.title), [youtube])
+  // The user's chapters only vouch for a link: a found chapter waiting for review never does (smart-tools.md §7.7).
+  const userTitles = useMemo(
+    () => (project.chapters?.some((c) => c.auto) ? projectYoutubeChapters({ ...project, chapters: userChapters(project) }).chapters.map((c) => c.title) : chapterTitles),
+    [project, chapterTitles]
+  )
   // What was said, for the link check (§4.8): the captions (not those an AI wrote a link into), the name, the chapter
   // titles. Read once per change of the captions, name or chapters, never per keystroke in a card.
-  const said = useMemo(() => saidLinks(segments, { title: project.name, chapters: chapterTitles }), [segments, project.name, chapterTitles])
+  const said = useMemo(() => saidLinks(segments, { title: project.name, chapters: userTitles }), [segments, project.name, userTitles])
   // The confirm a noted text asks for before it is copied or used (§4.8).
   const [ask, setAsk] = useState<NotedAsk | null>(null)
   /** Runs `run` at once when `text` has nothing the check notes, else after the confirm. */

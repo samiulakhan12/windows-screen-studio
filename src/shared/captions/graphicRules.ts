@@ -36,6 +36,8 @@ export type GraphicOptions = {
   sound: 'none' | 'pop' | 'ding' | SfxRef
   marks?: MarksAnswer
   marksVia?: AiProviderKind
+  /** The AI marks came through a service (smart-tools.md §10.6): its host, written with `via: 'openai'`. */
+  marksHost?: string
 }
 
 /** No graphic starts within this of another's start (§10.2). */
@@ -109,6 +111,8 @@ export function* planGraphicsSteps(project: Project, opts: GraphicOptions): Gene
   const keptTitles = (project.titles ?? []).filter((c) => !c.auto || !on(c.auto.by))
   const via: AutoOrigin['via'] = 'rules'
   const aiVia: AutoOrigin['via'] = opts.marksVia ?? 'rules'
+  /** An AI pick's origin, with the service's host when the marks came through one (smart-tools.md §10.6). */
+  const aiOrigin = (o: AutoOrigin): AutoOrigin => (o.via === 'openai' && opts.marksHost ? { ...o, host: opts.marksHost } : o)
   const frame = outputSize(project.style.aspectRatio, project.width, project.height, 1080)
   const tall = isTall(frame.width, frame.height)
   const sensitive = new Set(segments.filter((s) => isSensitive(s.text, language)).map((s) => s.id))
@@ -172,7 +176,7 @@ export function* planGraphicsSteps(project: Project, opts: GraphicOptions): Gene
       const item: ListGraphic = {
         id: graphicId('list', seg.id, 0, `${title}|${items.map((i) => i.text).join('|')}`),
         kind: 'list',
-        ...base('list', start, end, { by: 'list', via: opts.marks?.lists.length ? aiVia : via, caption: seg.id }),
+        ...base('list', start, end, opts.marks?.lists.length ? aiOrigin({ by: 'list', via: aiVia, caption: seg.id }) : { by: 'list', via, caption: seg.id }),
         ...(title ? { title } : {}),
         marker: 'number',
         items
@@ -231,7 +235,7 @@ export function* planGraphicsSteps(project: Project, opts: GraphicOptions): Gene
   // Emoji: the AI's picks where it gave a listed emoji on a word, else the offline words (§11.3).
   if (opts.emoji) {
     const offline = suggestEmoji(project)
-    const fromAi = aiEmoji(project, opts.marks, aiVia)
+    const fromAi = aiEmoji(project, opts.marks, aiVia).map((g) => (g.auto ? { ...g, auto: aiOrigin(g.auto) } : g))
     const covered = new Set(fromAi.map((g) => g.auto?.caption))
     for (const item of [...fromAi, ...offline.filter((g) => !covered.has(g.auto?.caption))]) candidates.push({ item: sound ? { ...item, sound } : item, rank: 3, caption: item.auto?.caption })
   }
@@ -289,7 +293,7 @@ export function* planGraphicsSteps(project: Project, opts: GraphicOptions): Gene
       const text = words.slice(q.from, q.to + 1).join(' ').trim()
       if (!text) continue
       lastQuote = seg.start
-      const card = titleCard('quote', seg.id, text, seg.start, Math.min(seg.end + 0.5, seg.start + QUOTE_MAX), 'quote', { by: 'quote', via: aiVia, caption: seg.id }, duration)
+      const card = titleCard('quote', seg.id, text, seg.start, Math.min(seg.end + 0.5, seg.start + QUOTE_MAX), 'quote', aiOrigin({ by: 'quote', via: aiVia, caption: seg.id }), duration)
       titles.push(seg.speaker && !DEFAULT_SPEAKER.test(seg.speaker) ? { ...card, subtitle: `— ${seg.speaker}` } : card)
     }
   }

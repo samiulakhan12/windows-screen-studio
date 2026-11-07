@@ -93,9 +93,10 @@ describe('the rows (titles and statuses)', () => {
     expect(pendingCount(great)).toBe(items.length)
     // Time order, Captions Studio's kinds after the others at equal times.
     expect(items.map((i) => i.start)).toEqual([...items.map((i) => i.start)].sort((a, b) => a - b))
-    expect(REVIEW_KINDS.slice(-8, -2)).toEqual(['style', 'emphasis', 'text', 'emoji', 'graphic', 'bleep'])
-    // Editing polish's kinds come after Captions Studio's (docs/design/editing-polish.md §11).
-    expect(REVIEW_KINDS.slice(-2)).toEqual(['join', 'colour'])
+    expect(REVIEW_KINDS.slice(-10, -4)).toEqual(['style', 'emphasis', 'text', 'emoji', 'graphic', 'bleep'])
+    // Editing polish's kinds come after Captions Studio's (docs/design/editing-polish.md §11), then smart tools' (smart-tools.md §13.1).
+    expect(REVIEW_KINDS.slice(-4, -2)).toEqual(['join', 'colour'])
+    expect(REVIEW_KINDS.slice(-2)).toEqual(['chapter', 'short'])
   })
 
   it('names emoji, pop-ups, lower thirds, chapter titles, quotes and bleeps; a bleeped word is masked in the row and its accessible name', () => {

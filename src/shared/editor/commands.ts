@@ -185,7 +185,17 @@ const COMMAND_LIST = [
   { id: 'toggleProgressBar', title: 'Progress bar on the video', category: 'Effects', keywords: 'progress chapter bar chapters timeline played', toggle: true },
   { id: 'compareColour', title: 'Compare with original colour', category: 'Effects', keywords: 'color colour grade look before after original lut', toggle: true },
   { id: 'autoColour', title: 'Auto colour for the camera', category: 'Camera', keywords: 'color colour white balance auto correct webcam exposure' },
-  { id: 'musicLibrary', title: 'Music library…', category: 'Panels', keywords: 'music bed background song track library sound audio' }
+  { id: 'musicLibrary', title: 'Music library…', category: 'Panels', keywords: 'music bed background song track library sound audio' },
+
+  // Smart tools (docs/design/smart-tools.md §2.8): no default keys. The existing aiChapters keeps its id and title and runs Suggest chapters (§7.6.1).
+  { id: 'guide', title: 'Make a step-by-step guide…', category: 'Publish', keywords: 'how to steps screenshots pdf markdown html instructions document tutorial copy paste' },
+  { id: 'demo', title: 'Make a click-through demo…', category: 'Publish', keywords: 'interactive walkthrough hotspot offline html tour' },
+  { id: 'bugReport', title: 'Write a bug report with steps…', category: 'Publish', keywords: 'steps to reproduce issue ticket expected actual jira' },
+  { id: 'findChapters', title: 'Find chapters', category: 'Add', keywords: 'chapter markers sections youtube timestamps split auto scenes pauses' },
+  { id: 'shortClips', title: 'Find short clips…', category: 'General', keywords: 'highlights moments shorts reels tiktok best parts copy vertical' },
+  { id: 'shortVersion', title: 'Make a shorter version…', category: 'General', keywords: 'short summary cut down highlights 30 60 90 seconds copy' },
+  { id: 'localAi', title: 'Set up AI on this PC…', category: 'General', keywords: 'offline local model no key download private gemma qwen' },
+  { id: 'aiService', title: 'Add an AI service…', category: 'General', keywords: 'openrouter groq together azure ollama lm studio openai compatible api key provider model' }
 ] as const satisfies readonly CommandSpec[]
 
 export type CommandId = (typeof COMMAND_LIST)[number]['id']

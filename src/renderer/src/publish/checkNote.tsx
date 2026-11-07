@@ -7,16 +7,18 @@ import { useEffect, useRef } from 'react'
 import { inContext, pieceParts, saidLinks, type Noted, type Said } from '../../../shared/publish/check'
 import { publishSegments } from '../../../shared/publish/pack'
 import { projectYoutubeChapters } from '../../../shared/publish/youtube'
+import { userChapters } from '../../../shared/chapters/pending'
 import type { Project } from '../../../shared/types'
 import { useModalFocus } from '../editor/modalFocus'
 import './publish.css'
 
 /**
  * What was said in `project`, for the check: the captions of the edited video as they are sent, bleeped
- * words masked (but those an AI wrote a link into), the recording's name and its chapter titles.
+ * words masked (but those an AI wrote a link into), the recording's name and its chapter titles: the
+ * user's chapters only, as a found chapter waiting for review never vouches for a link (smart-tools.md §7.7).
  */
 export const projectSaid = (project: Pick<Project, 'transcript' | 'clips' | 'bleeps' | 'freezes' | 'chapters' | 'name'>): Said =>
-  saidLinks(publishSegments(project), { title: project.name, chapters: projectYoutubeChapters(project).chapters.map((c) => c.title) })
+  saidLinks(publishSegments(project), { title: project.name, chapters: projectYoutubeChapters({ ...project, chapters: userChapters(project) }).chapters.map((c) => c.title) })
 
 /**
  * Why a piece is listed, for one piece or several: a link nobody said, or one written right against

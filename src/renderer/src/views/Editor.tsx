@@ -125,6 +125,11 @@ import type { RenderScene } from '../render/compositor'
 import { noCursorText } from '../../../shared/import/imported'
 import '../editor/editor.css'
 import { PublishDialog } from '../publish/PublishDialog'
+import { GuidePanel } from '../guide/GuidePanel'
+import { ShortClipsPanel } from '../clips/ShortClipsPanel'
+import { ShortVersionDialog } from '../clips/ShortVersionDialog'
+import { settleChapters } from '../../../shared/chapters/chapterAuto'
+import { requestFindChapters } from '../editor/smartRequests'
 import type { PublishKind } from '../../../shared/publish/pack'
 import { useSearchMoment } from '../search/useSearchMoment'
 
@@ -213,9 +218,10 @@ async function openSession(projectId: string): Promise<Session> {
   // then automatic caption changes become the user's when edited by hand, and marks, word anchors and
   // per-caption places follow their words (Captions Studio §11.8). Review mode (E-02): records of
   // automatic cuts whose change is gone are dropped. Each is part of the edit's undo step.
-  // Editing polish's settle steps last (docs/design/editing-polish.md §11): each returns `next` itself when nothing applies.
+  // Editing polish's settle steps last (docs/design/editing-polish.md §11), then smart tools' found
+  // chapters (docs/design/smart-tools.md §13.2): each returns `next` itself when nothing applies.
   const store = new EditStore(project, undefined, undefined, undefined, (next: Project, prev: Project) =>
-    settleGrade(settleJoins(settleAutoCuts(settleCaptionAuto(settleDeletedWords(next, prev), prev), prev), prev), prev)
+    settleChapters(settleGrade(settleJoins(settleAutoCuts(settleCaptionAuto(settleDeletedWords(next, prev), prev), prev), prev), prev), prev)
   )
   const recorded = (p: Project): Project => withRecordedCamera(withRecordedStems(withSavedName(p), data.project), data.project)
   const saver = new Autosaver(store, {
@@ -433,12 +439,26 @@ function EditorSession({
   const [notice, setNotice] = useState<Notice | null>(null)
   const timelineRef = useRef<TimelineHandle>(null)
   const [tab, setTab] = useState<InspectorTab>('style')
-  const [dialog, setDialog] = useState<'palette' | 'shortcuts' | 'polish' | 'publish' | 'versions' | 'saveVersion' | null>(null)
+  const [dialog, setDialog] = useState<'palette' | 'shortcuts' | 'polish' | 'publish' | 'versions' | 'saveVersion' | 'shortVersion' | null>(null)
   // NW-13: the item a palette command asked the Publish dialog to write.
   const [publishRequest, setPublishRequest] = useState<{ kind: PublishKind; n: number } | null>(null)
   const [smartSpeedRequest, setSmartSpeedRequest] = useState(0)
   // E-02 Review mode (docs/design/review-mode.md): the panel over the Inspector, and its button.
   const [reviewOpen, setReviewOpen] = useState(false)
+  /**
+   * Smart tools' docked panels (docs/design/smart-tools.md §2.1, §2.4), in Review mode's place: at
+   * most one panel is open, so opening one closes Review and the other.
+   */
+  const [smartPanel, setSmartPanel] = useState<{ kind: 'guide'; start: 'guide' | 'demo' | 'bug' } | { kind: 'clips' } | null>(null)
+  const guideButton = useRef<HTMLButtonElement>(null)
+  const openGuide = useCallback((start: 'guide' | 'demo' | 'bug'): void => {
+    setReviewOpen(false)
+    setSmartPanel({ kind: 'guide', start })
+  }, [])
+  const openClips = useCallback((): void => {
+    setReviewOpen(false)
+    setSmartPanel({ kind: 'clips' })
+  }, [])
   const reviewButton = useRef<HTMLButtonElement>(null)
   // When the panel closes under the focus (a command that shows an Inspector tab), the focus goes to
   // its button, as Esc does. Run after the unmount cleanups: a palette closing with it has given the
@@ -1366,8 +1386,25 @@ function EditorSession({
 
       // E-01 polish
       polish: () => setDialog('polish'),
-      // E-02 review mode
-      review: () => setReviewOpen(true),
+      // E-02 review mode (it takes the place of smart tools' panels)
+      review: () => {
+        setSmartPanel(null)
+        setReviewOpen(true)
+      },
+
+      // Smart tools (docs/design/smart-tools.md §2.8)
+      guide: () => openGuide('guide'),
+      demo: () => openGuide('demo'),
+      bugReport: () => openGuide('bug'),
+      findChapters: () => {
+        setSmartPanel(null)
+        reveal('text')
+        requestFindChapters()
+      },
+      shortClips: () => openClips(),
+      shortVersion: () => setDialog('shortVersion'),
+      localAi: () => void window.dispatchEvent(new CustomEvent(OPEN_SETTINGS_EVENT, { detail: { section: 'localAi' } })),
+      aiService: () => void window.dispatchEvent(new CustomEvent(OPEN_SETTINGS_EVENT, { detail: { section: 'ai' } })),
 
       // E-09 nudge, E-07 filmstrip, E-12 versions (docs/design/versions.md)
       nudgeBack: () => nudge(NUDGE_STEPS.nudgeBack.frames),
@@ -1831,12 +1868,31 @@ function EditorSession({
           <button className="btn ghost icon-btn" onClick={() => setDialog('shortcuts')} title={withShortcut('Keyboard shortcuts', keymap.shortcuts)} aria-label="Keyboard shortcuts">
             <EditorIcon name="keyboard" />
           </button>
-          <ReviewButton ref={reviewButton} project={project} shortcuts={keymap.review} open={reviewOpen} onToggle={() => setReviewOpen((o) => !o)} />
+          <ReviewButton
+            ref={reviewButton}
+            project={project}
+            shortcuts={keymap.review}
+            open={reviewOpen}
+            onToggle={() => {
+              setSmartPanel(null)
+              setReviewOpen((o) => !o)
+            }}
+          />
           <button className="btn" data-testid="polish-open" onClick={() => setDialog('polish')} title={withShortcut(POLISH_BUTTON_TITLE, keymap.polish)}>
             <EditorIcon name="sparkle" size={16} /> <span className="tb-label">Polish</span>
           </button>
           <button className="btn" data-testid="publish-open" onClick={() => commandsRef.current.publishPack()} title={withShortcut('Write the text to post with the video', keymap.publishPack)}>
             <EditorIcon name="transcript" size={16} /> <span className="tb-label">Publish</span>
+          </button>
+          <button
+            ref={guideButton}
+            className="btn"
+            data-testid="guide-open"
+            aria-pressed={smartPanel?.kind === 'guide'}
+            onClick={() => (smartPanel?.kind === 'guide' ? setSmartPanel(null) : openGuide('guide'))}
+            title={withShortcut('Make a step-by-step guide or a click-through demo from your clicks', keymap.guide)}
+          >
+            <EditorIcon name="steps" size={16} /> <span className="tb-label">Guide</span>
           </button>
           <button className="btn primary" onClick={openExport} title={withShortcut('Export the video', keymap.export)}>
             <Icon name="download" size={16} /> Export
@@ -1918,6 +1974,28 @@ function EditorSession({
               onNotice={showNotice}
             />
           )}
+          {smartPanel?.kind === 'guide' && (
+            <GuidePanel
+              project={project}
+              cursor={recorded}
+              start={smartPanel.start}
+              onClose={() => {
+                setSmartPanel(null)
+                guideButton.current?.focus()
+              }}
+              onNotice={showNotice}
+            />
+          )}
+          {smartPanel?.kind === 'clips' && (
+            <ShortClipsPanel
+              project={project}
+              cursor={recorded}
+              vw={shown.vw}
+              vh={shown.vh}
+              onClose={() => setSmartPanel(null)}
+              onOpen={(id) => void leave(() => onOpenProject?.(id))}
+            />
+          )}
         </div>
 
         <Timeline
@@ -1975,6 +2053,9 @@ function EditorSession({
               requestCaptions({ kind: 'generate' })
             }}
           />
+        )}
+        {dialog === 'shortVersion' && (
+          <ShortVersionDialog project={project} cursor={recorded} vw={shown.vw} vh={shown.vh} onClose={closeDialog} onOpen={(id) => void leave(() => onOpenProject?.(id))} />
         )}
         {dialog === 'polish' && (
           <PolishDialog

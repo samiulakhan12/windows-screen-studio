@@ -190,7 +190,10 @@ const AREAS: readonly { name: string; keys: readonly (keyof Project)[]; of?: (p:
   // Editing polish (§4.6): cut styles, colour and the progress bar.
   { name: 'smooth cuts', keys: ['joins'] },
   { name: 'colour', keys: ['grade'] },
-  { name: 'progress bar', keys: ['chapterBar'] }
+  { name: 'progress bar', keys: ['chapterBar'] },
+  // Smart tools (docs/design/smart-tools.md §4.6): the step-by-step guide's choices and edits. A found
+  // chapter that only lost its `auto` (kept) makes "chapters" differ, as a kept zoom does "zooms".
+  { name: 'guide', keys: ['guide'] }
 ]
 
 /**
@@ -269,6 +272,8 @@ export const RECORDING_FIELDS = [
   'audioStems',
   'source',
   'copyOf',
+  // What a short clip or shorter version was made from (smart-tools.md §4.6): not part of an edit.
+  'clipOf',
   'script',
   'version'
 ] as const satisfies readonly (keyof Project)[]

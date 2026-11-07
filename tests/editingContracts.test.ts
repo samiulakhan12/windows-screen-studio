@@ -948,8 +948,9 @@ describe('the contracts change nothing for a project from before (test 7)', () =
       ['musicLibrary', 'Panels', 'Music library…']
     ]
     const ids = COMMANDS.map((c) => c.id as string)
-    expect(ids.slice(-NEW.length)).toEqual(NEW.map((n) => n[0]))
-    expect(ids.indexOf('versions')).toBe(ids.length - NEW.length - 1)
+    // Right after the versions commands (smart tools' commands follow them, docs/design/smart-tools.md §2.8).
+    const at = ids.indexOf('versions') + 1
+    expect(ids.slice(at, at + NEW.length)).toEqual(NEW.map((n) => n[0]))
     for (const [id, category, title, toggle] of NEW) {
       const c = COMMANDS.find((x) => x.id === id)!
       expect(c.category, id).toBe(category)
