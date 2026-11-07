@@ -130,20 +130,21 @@ export function clearEmphasis(project: Project): Project {
 
 const norm = (text: string): string => text.normalize('NFKC').toLowerCase().replace(/^[\p{P}\p{S}\s]+|[\p{P}\p{S}\s]+$/gu, '')
 
-/** A caption's words: their texts (as compared) and times. */
+/** A caption's words: their texts (as compared) and times; `stored` when the times are its stored words', one for each word (else spread over the caption). */
 interface Words {
   seg: CaptionSegment
   keys: string[]
-  times: { start: number; end: number; estimated: boolean }[]
+  times: { start: number; end: number }[]
+  stored: boolean
 }
 
 function wordsOf(seg: CaptionSegment, language: string | undefined): Words {
   const tokens = studioTokens(seg, language)
-  return { seg, keys: tokens.map((t) => norm(t.text)), times: tokens.map((t) => ({ start: t.start, end: t.end, estimated: !!t.estimated })) }
+  return { seg, keys: tokens.map((t) => norm(t.text)), times: tokens.map((t) => ({ start: t.start, end: t.end })), stored: seg.words?.length === tokens.length }
 }
 
-/** Whether two words have the same times, both timed (not estimated): a word a tidy left as it was keeps its times. */
-const sameTimes = (x: Words['times'][number], y: Words['times'][number]): boolean => !x.estimated && !y.estimated && Math.abs(x.start - y.start) < 1e-6 && Math.abs(x.end - y.end) < 1e-6
+/** Whether two stored words have the same times, exact or estimated: a word a tidy left as it was keeps its times. */
+const sameTimes = (x: Words['times'][number], y: Words['times'][number]): boolean => Math.abs(x.start - y.start) < 1e-6 && Math.abs(x.end - y.end) < 1e-6
 
 /**
  * Longest common subsequence pairs of `a` and `b` that leave the fewest runs of unpaired words.
@@ -236,8 +237,10 @@ function relocate(rec: { caption: string; from: number; to: number }, prev: Map<
   // Rule 1: the same caption, its text changed: the words found again in order and next to each other.
   if (same) {
     if (same.seg.text === before.seg.text) return { caption: rec.caption, from: rec.from, to: rec.to }
-    // Text put back pairs words so that the words it puts back stay together.
-    const pairs = putBack ? lcsFewestRuns(before.keys, same.keys, (i, j) => sameTimes(before.times[i], same.times[j])) : lcsPairs(before.keys, same.keys)
+    // Text put back pairs words so that the words it puts back stay together. Times spread over a
+    // caption say nothing of which word stayed, so only stored times are compared.
+    const sameTime = before.stored && same.stored ? (i: number, j: number): boolean => sameTimes(before.times[i], same.times[j]) : (): boolean => false
+    const pairs = putBack ? lcsFewestRuns(before.keys, same.keys, sameTime) : lcsPairs(before.keys, same.keys)
     const map = new Map(pairs)
     const mapped: number[] = []
     for (let i = rec.from; i <= rec.to; i++) {

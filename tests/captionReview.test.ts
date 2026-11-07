@@ -577,6 +577,34 @@ describe('the emphasis and text group rows', () => {
     }
   })
 
+  it('Remove on the text group puts a mark on all its words when the words have estimated times', () => {
+    // Text-only transcription (and words timed again after a hand edit) stores estimated times;
+    // the tidy keeps each word it leaves, so their times still tell which "and" or "in" stayed.
+    const estimated = (texts: string[]): ReturnType<typeof captions> =>
+      captions(texts).map((s) => {
+        const words = s.text.split(' ')
+        const step = (s.end - s.start) / words.length
+        return { ...s, words: words.map((text, i) => ({ text, start: s.start + i * step, end: s.start + (i + 1) * step, estimated: true as const })) }
+      })
+    const cases: { text: string; tidied: string; marked: number; back: string; words: { term: string; heard: string[] }[] }[] = [
+      { text: 'open flow in in twenty seconds', tidied: 'Open Flown in 20 seconds.', marked: 1, back: 'flow in', words: [{ term: 'Flown', heard: ['flow in'] }] },
+      { text: 'our q and a and fifty people joined', tidied: 'Our Q&A and 50 people joined.', marked: 3, back: 'fifty', words: [{ term: 'Q&A', heard: ['q and a'] }] },
+      { text: 'the r and d and ops teams', tidied: 'The R&D and DevOps teams.', marked: 1, back: 'r and d', words: [{ term: 'R&D', heard: ['r and d'] }, { term: 'DevOps', heard: ['ops'] }] }
+    ]
+    for (const c of cases) {
+      // A pending mark, and one the user kept.
+      for (const auto of [true, false]) {
+        const run = planCaptionsGreat({ project: studioProject({ segments: estimated([c.text]) }), frame: WIDE, cleanup: DEFAULT_CLEANUP, words: c.words, by: 'great' }, DEFAULT_GREAT_OPTIONS).project
+        expect(run.transcript!.segments[0].text).toBe(c.tidied)
+        const captionMarks = [{ id: 'm', caption: 'c0', from: c.marked, to: c.marked, text: c.tidied.split(' ')[c.marked], ...(auto ? { auto: true as const } : {}) }]
+        const s = storeOf({ ...run, captionMarks })
+        s.update((q) => removeItems(q, [row(reviewItems(q), TEXT_GROUP)]))
+        expect(s.state.transcript!.segments[0].text).toBe(c.text)
+        expect((s.state.captionMarks ?? []).map((m) => m.text), `${c.text}${auto ? '' : ' (kept)'}`).toEqual([c.back])
+      }
+    }
+  })
+
   it('"n of N reviewed" counts a group once', () => {
     const items = reviewItems(great)
     const emphasis = row(items, EMPHASIS_GROUP)

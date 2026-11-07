@@ -2597,11 +2597,14 @@ give (`migrateProject(JSON.parse(JSON.stringify(p)))` for these fields; test 49)
    not found is used, so a word next to the fix that is also inside the words put back is found
    outside them: "250 and then" against "two hundred and fifty and then" finds the second "and",
    and the mark on "250" covers all of "two hundred and fifty". When several leave as few runs,
-   the one finding the most words at the same times wins (a word the fix left keeps its times),
-   then the one whose words sit nearest where the words found once in both put them, then the
-   earliest: "110 and 120" against "a hundred and ten and a hundred and twenty" finds the middle
-   "and", so the marks on "110" and "120" cover "a hundred and ten" and "a hundred and twenty".
-   Without word times, a fix much longer than the one beside it can still take the wrong "and".
+   the one finding the most words at the same times wins (a word the fix left keeps its stored
+   time, exact or estimated), then the one whose words sit nearest where the words found once in
+   both put them, then the earliest: "110 and 120" against "a hundred and ten and a hundred and
+   twenty" finds the middle "and", so the marks on "110" and "120" cover "a hundred and ten" and
+   "a hundred and twenty". Times are compared only when both captions store one time for each
+   word (times spread over a caption say nothing of which word stayed). A caption without them
+   can still take the wrong word when the word beside a fix is also inside it: a mark on "Flown"
+   in "Open Flown in 20 seconds" (from "open flow in in twenty seconds") ends on "flow" alone.
 2. **Caption gone or not found there** (split: the second half gets a new id, `edit.ts:91`;
    merge: the second caption's id goes, `edit.ts:107`; Generate captions again): the record's time
    span is taken from the previous project (its words' times, or the caption's time spread by
