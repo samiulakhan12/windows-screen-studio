@@ -9,12 +9,14 @@ import type { AiProviderInfo } from '../../../../shared/api/ai'
 import { graphicLanguage, graphicWords } from '../../../../shared/render/graphics'
 import { emojiEntry, EMOJI_LIST } from '../../../../shared/captions/emojiList'
 import { DEFAULT_GREAT_OPTIONS, readGreatOptions, resolveGreatOptions, type GreatOptions } from '../../../../shared/captions/great'
+import { readGraphicSound } from '../../../../shared/audio/soundFxData'
+import { ORIGINAL_SOUNDS, sfxGroupsFor } from '../../../../shared/audio/sfxChoices'
 import { planGraphics } from '../../../../shared/captions/graphicRules'
 import { GRAPHIC_TEXT_MAX, LIST_ITEM_MAX } from '../../../../shared/captions/studioData'
 import { STUDIO_BASE } from '../../../../shared/captions/studioPresets'
 import { displayTime } from '../../../../shared/editor/clips'
 import { editorFrame } from '../../../../shared/editor/followEdit'
-import { captionAccentColor, captionTextColor, GRAPHIC_COLORS, GRAPHIC_NAMES, GRAPHIC_SIZE, GRAPHIC_SOUNDS, ITEM_MOTIONS } from '../../../../shared/editor/groupEdit'
+import { captionAccentColor, captionTextColor, GRAPHIC_COLORS, GRAPHIC_NAMES, GRAPHIC_SIZE, ITEM_MOTIONS } from '../../../../shared/editor/groupEdit'
 import { deleteGraphics, placeGraphicAt, updateGraphic } from '../../../../shared/editor/graphicsEdit'
 import { itemKey } from '../../../../shared/editor/multiSelect'
 import { withShortcut } from '../../../../shared/editor/shortcuts'
@@ -206,12 +208,8 @@ function GenerateSection({ project }: { project: Project }): JSX.Element {
       </div>
       <label className="field">
         <span>Sound on pop-ups</span>
-        <select data-testid="graphics-sound" value={great.options.sound} onChange={(e) => great.save({ sound: e.target.value as GreatOptions['sound'] })}>
-          {GRAPHIC_SOUNDS.map((s) => (
-            <option key={s.value} value={s.value}>
-              {s.label}
-            </option>
-          ))}
+        <select data-testid="graphics-sound" value={great.options.sound} onChange={(e) => great.save({ sound: (readGraphicSound(e.target.value) ?? 'none') as GreatOptions['sound'] })}>
+          <PopUpSoundOptions />
         </select>
       </label>
       <div className="graphics-actions">
@@ -437,11 +435,13 @@ function SelectedGraphic({ project, graphic: g }: { project: Project; graphic: G
         </p>
         {g.place === 'auto' && <p className="hint">Kept clear of the captions, the cursor and your camera. Drag it in the preview to place it yourself.</p>}
       </div>
-      <div className="field">
+      <label className="field">
         <span>Sound</span>
-        {/* A library effect (an SfxRef, editing polish §10.7) gets its own choices from part P5; until then the chips show the original sounds. */}
-        <Chips<'none' | 'pop' | 'ding'> label="Sound" value={g.sound === 'pop' || g.sound === 'ding' ? g.sound : 'none'} onChange={(v) => set({ sound: v === 'none' ? undefined : v })} options={[...GRAPHIC_SOUNDS]} />
-      </div>
+        {/* None, the Original group (as they always sounded), then the library's effects (editing polish §10.7). */}
+        <select aria-label="Sound" value={g.sound ?? 'none'} onChange={(e) => set({ sound: readGraphicSound(e.target.value) })}>
+          <PopUpSoundOptions />
+        </select>
+      </label>
       {g.auto && <p className="hint">Made automatically. Editing it makes it yours; Review mode lists it until then.</p>}
       <LookButtons itemKey={itemKey('graphic', id)} />
       <button
@@ -656,5 +656,30 @@ function ColorDots({ label, value, onChange, mergeKey }: { label: string; value:
         <input type="color" aria-label={`${label} (any colour)`} value={value} onChange={(e) => onChange(e.target.value.toLowerCase(), mergeKey)} />
       </label>
     </div>
+  )
+}
+
+/** The sounds a pop-up can have: None, Captions Studio's own (Original), then the library's effects, pop-ups' first (§10.7). */
+function PopUpSoundOptions(): JSX.Element {
+  return (
+    <>
+      <option value="none">None</option>
+      <optgroup label="Original">
+        {ORIGINAL_SOUNDS.map((s) => (
+          <option key={s.value} value={s.value}>
+            {s.label}
+          </option>
+        ))}
+      </optgroup>
+      {sfxGroupsFor('pop-ups').map((g) => (
+        <optgroup key={g.label} label={g.label}>
+          {g.options.map((o) => (
+            <option key={o.value} value={o.value}>
+              {o.label}
+            </option>
+          ))}
+        </optgroup>
+      ))}
+    </>
   )
 }

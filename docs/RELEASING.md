@@ -65,3 +65,32 @@ ones keep the one they shipped with for that provider. For example
 `"openai": { "model": "gpt-6.1-sol", "transcriptionModel": "gpt-transcribe", "minApp": "0.8.0" }`.
 `BUNDLED_MODEL_LIST` keeps this version's own suggestion for that provider until `package.json`
 reaches x.y.z; from that version on it has the new one.
+
+## The music library's downloads
+
+Four music beds and sixteen sound effects ship in the installer (`resources/sound-library/`,
+checked by `scripts/verify-dist.mjs` against the pins in `src/shared/audio/soundLibrary.ts`). Eight
+more beds download when a user asks, from a release of a separate repository, so publishing them
+never touches this repository's update feed (docs/design/editing-polish.md §0 decision 1, §10.3):
+`samiulakhan12/flown-sound-library`, tag `sound-library-1`, with GitHub's immutable releases turned
+on. Until that release exists, `SOUND_LIBRARY_SOURCE` stays `null`: the app offers no download (the
+eight rows are hidden, Settings › Downloads shows no More music group) and the four bundled beds work
+alone. To turn the downloads on:
+
+1. Create the repository and turn on immutable releases. Make the release `sound-library-1` and
+   upload the eight prepared files (`bed-<id>.ogg`) **unchanged**: their bytes and SHA-256 must be
+   exactly the `PREPARED` pins in `soundLibrary.ts`. A tag is never reused; a changed file is a new
+   id in the catalogue and a new tag (`sound-library-2`).
+2. The release check: before setting the source, download one real asset from the live host through
+   the app's own path, `downloadPinned` with `allowSoundUrl`. In an unpackaged app, set
+   `SOUND_LIBRARY_SOURCE` to `SOUND_LIBRARY_RELEASE` locally, open Settings › Downloads › More music,
+   download one bed, and check that it is listed as downloaded and plays (its SHA-256 was checked
+   on the way in). GitHub answers the release URL with a redirect to
+   `release-assets.githubusercontent.com` (or `objects.githubusercontent.com`) and a signed query:
+   if it ever redirects somewhere else, the download is refused, and `cdnHosts` must be reviewed
+   before going on. Had the beds been published as a release of this repository instead (decision 1
+   (b)), also check that `https://api.github.com/repos/samiulakhan12/windows-screen-studio/releases/latest`
+   still names the app's own version tag, or every installed Flown would stop updating.
+3. Set `SOUND_LIBRARY_SOURCE = SOUND_LIBRARY_RELEASE` in `soundLibrary.ts`, run
+   `npx vitest run tests/soundLibraryStore.test.ts tests/editingContracts.test.ts`, and release
+   the app as usual.

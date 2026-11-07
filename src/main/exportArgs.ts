@@ -108,6 +108,10 @@ export interface ExportIo {
   stems?: SoundFiles['stems']
   /** The background music file. */
   music?: string | null
+  /** The music is a library bed main checked: its loop (editing polish §10.4). */
+  bed?: SoundFiles['bed']
+  /** The library's sound effects' files by id (editing polish §10.8). */
+  effects?: SoundFiles['effects']
   /** The job's chapters as an ffmetadata file (chapterMetadata), written before ffmpeg starts. */
   chapters?: string | null
   /** The job's subtitle streams as WebVTT files, written before ffmpeg starts (Captions Studio §11.10). */
@@ -161,7 +165,7 @@ const inputCount = (args: readonly string[]): number => args.filter((a) => a ===
 
 /** Audio inputs (recording, music, clicks) after `first` other inputs, and the graph that mixes them into [aout]. */
 function audioInputs(job: ExportJob, io: ExportIo, first: number): { args: string[]; graph: string | null } {
-  return planSoundtrack(job, { mix: io.audioInput, stems: io.stems, music: io.music }, first)
+  return planSoundtrack(job, { mix: io.audioInput, stems: io.stems, music: io.music, ...(io.bed ? { bed: io.bed } : {}), ...(io.effects ? { effects: io.effects } : {}) }, first)
 }
 
 /** Audio codec settings of `job`'s container. */

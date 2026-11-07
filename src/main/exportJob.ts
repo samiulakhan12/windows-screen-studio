@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto'
 import { promises as fs } from 'node:fs'
 import path from 'node:path'
 import type { ColorTags, ExportJob, FfmpegVideoEncoder, MusicSound, RecordingSound, VideoInput } from '../shared/api/export'
@@ -15,6 +16,8 @@ import { FfmpegFailure } from './ffmpeg'
 import { isVoiceStrength } from '../shared/audio/voiceClean'
 import { HARDWARE_ENCODERS } from './hwEncoders'
 import { validSoundGains } from '../shared/audio/soundsEdit'
+import { bedLoop, soundBed, soundEffect } from '../shared/audio/soundLibrary'
+import { MAX_SFX } from '../shared/render/sfxJob'
 
 let counter = 0
 const uniqueSuffix = (): string => `${process.pid}-${Date.now().toString(36)}${(counter++).toString(36)}`
@@ -151,6 +154,8 @@ function validMusic(m: MusicSound): boolean {
     isNum(m.fadeIn, 0, AUDIO_LIMITS.musicFade.max) &&
     isNum(m.fadeOut, 0, AUDIO_LIMITS.musicFade.max) &&
     (m.duration === null || isNum(m.duration, 0, 1e7)) &&
+    // A library bed is named by its catalogue id only (editing polish §10.8); main reads its loop.
+    (m.bed === undefined || (typeof m.bed === 'string' && soundBed(m.bed) !== null)) &&
     (d === undefined ||
       (isNum(d.depth, 0, 1) &&
         isNum(d.attack, 0, 5) &&
@@ -187,6 +192,22 @@ function validPops(list: unknown): boolean {
     if (!p || typeof p !== 'object' || (p.sound !== 'pop' && p.sound !== 'ding') || sounds.has(p.sound)) return false
     sounds.add(p.sound)
     if (!Array.isArray(p.times) || p.times.length > MAX_POP_TIMES || !p.times.every((t: unknown) => isNum(t, 0, 1e7))) return false
+  }
+  return true
+}
+
+/**
+ * The library's sound effects (editing polish §10.8): at most MAX_SFX, each a catalogue effect named
+ * by its id once (never a path), at most MAX_POP_TIMES output seconds in 0..1e7, a gain in 0..2.
+ */
+export function validEffects(list: unknown): boolean {
+  if (!Array.isArray(list) || list.length > MAX_SFX) return false
+  const ids = new Set<string>()
+  for (const e of list) {
+    if (!e || typeof e !== 'object' || typeof e.id !== 'string' || ids.has(e.id) || !soundEffect(e.id)) return false
+    ids.add(e.id)
+    if (!Array.isArray(e.times) || e.times.length > MAX_POP_TIMES || !e.times.every((t: unknown) => isNum(t, 0, 1e7))) return false
+    if (!isNum(e.gain, 0, 2)) return false
   }
   return true
 }
@@ -242,9 +263,10 @@ export function validateJob(job: ExportJob): void {
     (job.chapters === undefined || (job.format !== 'gif' && validChapters(job.chapters))) &&
     (job.pops === undefined || (job.format !== 'gif' && validPops(job.pops))) &&
     (job.tones === undefined || (job.format !== 'gif' && validTones(job.tones))) &&
+    (job.effects === undefined || (job.format !== 'gif' && validEffects(job.effects))) &&
     (job.subtitles === undefined || validSubtitles(job.subtitles, job.format))
   if (!ok) throw new Error('Invalid export settings')
-  if (audioOnly && !job.audio && !job.clicks && !job.music && !job.pops?.length && !job.tones?.length) throw new Error('This recording has no sound to export.')
+  if (audioOnly && !job.audio && !job.clicks && !job.music && !job.pops?.length && !job.tones?.length && !job.effects?.length) throw new Error('This recording has no sound to export.')
 }
 
 /** The files a job's soundtrack reads, inside the project folder. */
@@ -254,6 +276,37 @@ export interface SoundInputs {
   audioInput: string | null
   stems?: Partial<Record<StemKind, string>>
   music?: string | null
+  /** The music is the library bed the job names, its file checked against the catalogue: its loop (editing polish §10.4). */
+  bed?: { start: number; end: number } | null
+  /** The library's effects' files by id, in the bundled folder (§10.8). */
+  effects?: Record<string, string>
+}
+
+/** Where the library's files are and how looping music is prepared (editing polish §10.4, §10.8). */
+export interface LibraryInputs {
+  /** The bundled library folder (resources/sound-library). */
+  soundDir: string
+  /** The file the export reads for the project's music file `file` looping over `seconds` (musicLoopCache.loopableMusic). */
+  loopable?: (file: string, seconds: number) => Promise<string>
+  /** Reads a project file whole (the bed check); default fs.readFile. */
+  readFile?: (file: string) => Promise<Buffer>
+}
+
+export const LIBRARY_COPY = {
+  missingEffect: 'A sound effect of the library is missing from this installation. Reinstall Flown to bring it back.'
+}
+
+/**
+ * Whether project file `file` is exactly library bed `id` (editing polish §10.4): its size and
+ * SHA-256 are the catalogue's. A bed whose file differs plays as a user's own file.
+ */
+export async function isLibraryBed(file: string, id: string, readFile: (file: string) => Promise<Buffer> = (f) => fs.readFile(f)): Promise<boolean> {
+  const bed = soundBed(id)
+  if (!bed) return false
+  const st = await fs.stat(file).catch(() => null)
+  if (!st?.isFile() || st.size !== bed.prepared.bytes) return false
+  const data = await readFile(file).catch(() => null)
+  return !!data && data.length === bed.prepared.bytes && createHash('sha256').update(data).digest('hex') === bed.prepared.sha256
 }
 
 const SOURCE_NAMES: Record<StemKind, string> = { mic: 'microphone', system: 'system sound' }
@@ -267,8 +320,12 @@ const SOURCE_NAMES: Record<StemKind, string> = { mic: 'microphone', system: 'sys
  * the user muted or turned down: that is refused with a message instead (the editor opens a
  * project with a missing stem without its stems, and says so). Missing music is an error the
  * user can act on.
+ *
+ * Editing polish (§10.4, §10.8), with `library`: a bed the music names is checked against the
+ * catalogue (else the job plays the file as a user's own), the library's effects are mapped by id
+ * to the bundled folder, and a user's own looping music is read through `library.loopable`.
  */
-export async function resolveSoundInputs(job: ExportJob, dir: string, exists: (file: string) => Promise<boolean>, recorded: readonly StemKind[]): Promise<SoundInputs> {
+export async function resolveSoundInputs(job: ExportJob, dir: string, exists: (file: string) => Promise<boolean>, recorded: readonly StemKind[], library?: LibraryInputs): Promise<SoundInputs> {
   const audioInput = job.audio ? path.join(dir, SOURCE_FILES.mix) : null
   let out: SoundInputs = { job, audioInput }
   const wanted = job.audio?.stems ? STEM_KINDS.filter((k) => job.audio?.stems?.[k] !== undefined) : []
@@ -296,6 +353,30 @@ export async function resolveSoundInputs(job: ExportJob, dir: string, exists: (f
     const music = path.join(dir, job.music.file)
     if (!(await exists(music))) throw new Error('The background music file is missing. Choose it again in the Audio panel.')
     out.music = music
+    const named = out.job.music
+    if (named?.bed !== undefined) {
+      const bed = soundBed(named.bed)
+      if (bed && (await isLibraryBed(music, named.bed, library?.readFile))) out.bed = bedLoop(bed)
+      else {
+        // Not the catalogue's file (changed, or replaced): it plays as a user's own file.
+        const { bed: _dropped, ...own } = named
+        void _dropped
+        out = { ...out, job: { ...out.job, music: own } }
+      }
+    }
+    // A user's own looping music that does not loop cleanly is read from its decoded copy (§0 decision 2).
+    if (!out.bed && job.music.loop && library?.loopable) out.music = await library.loopable(job.music.file, job.frames / job.fps)
+  }
+  if (job.effects?.length) {
+    const files: Record<string, string> = {}
+    for (const e of job.effects) {
+      const fx = soundEffect(e.id)
+      if (!fx) throw new Error('Invalid export settings')
+      const file = library ? path.join(library.soundDir, fx.prepared.file) : null
+      if (!file || !(await exists(file))) throw new Error(LIBRARY_COPY.missingEffect)
+      files[e.id] = file
+    }
+    out.effects = files
   }
   return out
 }

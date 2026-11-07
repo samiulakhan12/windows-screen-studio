@@ -27,6 +27,7 @@ const {
   runtimePackages,
   signedFiles,
   SPEECH_BUDGET,
+  SOUND_LIBRARY_BUDGET,
   SPEECH_HELPER_OPTIONS,
   SPEECH_IMPORTS,
   speechHelperStatus,
@@ -148,6 +149,32 @@ else ok(`sound finder: worker, WebAssembly runtime and model in out/renderer/ass
   const packed = brotliCompressSync(all, { params: { [zlib.BROTLI_PARAM_QUALITY]: 11, [zlib.BROTLI_PARAM_LGWIN]: 24, [zlib.BROTLI_PARAM_SIZE_HINT]: raw } }).length
   const line = `caption fonts: ${raw} B installed (budget ${CAPTIONS_BUDGET.installed} B), ${packed} B brotli-compressed (budget ${CAPTIONS_BUDGET.compressed} B)`
   if (raw > CAPTIONS_BUDGET.installed || packed > CAPTIONS_BUDGET.compressed) fail(line)
+  else ok(line)
+}
+
+// 1c. The music and sound-effects library (docs/design/editing-polish.md §10.3): every bundled bed
+// and effect in resources/sound-library/ is the file its catalogue entry pins, by bytes and SHA-256,
+// nothing else is there but SOUNDS.md, and together they stay within SOUND_LIBRARY_BUDGET. The
+// catalogue is read with Node's type stripping, as scripts/build-sound-library.mjs reads it.
+{
+  const { MUSIC_BEDS, SOUND_EFFECTS } = await import(new URL('../src/shared/audio/soundLibrary.ts', import.meta.url).href)
+  const soundPins = [...MUSIC_BEDS.filter((b) => b.bundled), ...SOUND_EFFECTS].map((x) => x.prepared)
+  const dir = path.join(unpacked, 'resources', 'sound-library')
+  const names = existsSync(dir) ? readdirSync(dir) : []
+  if (!names.includes('SOUNDS.md')) fail('resources/sound-library/SOUNDS.md is missing')
+  const foundSounds = names
+    .filter((n) => n !== 'SOUNDS.md')
+    .map((name) => {
+      const buf = readFileSync(path.join(dir, name))
+      return { name, bytes: buf.length, sha256: createHash('sha256').update(buf).digest('hex'), buf }
+    })
+  const problems = captionFontProblems(foundSounds, soundPins)
+  if (problems.length) fail(`sound library in resources/sound-library: ${problems.join('; ')}`)
+  else ok(`sound library: ${foundSounds.length} files in resources/sound-library match their pins in soundLibrary.ts`)
+  const all = Buffer.concat(foundSounds.map((f) => f.buf))
+  const packed = brotliCompressSync(all, { params: { [zlib.BROTLI_PARAM_QUALITY]: 11, [zlib.BROTLI_PARAM_LGWIN]: 24, [zlib.BROTLI_PARAM_SIZE_HINT]: all.length } }).length
+  const line = `sound library: ${all.length} B installed (budget ${SOUND_LIBRARY_BUDGET.installed} B), ${packed} B brotli-compressed (budget ${SOUND_LIBRARY_BUDGET.compressed} B)`
+  if (all.length > SOUND_LIBRARY_BUDGET.installed || packed > SOUND_LIBRARY_BUDGET.compressed) fail(line)
   else ok(line)
 }
 

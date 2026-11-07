@@ -161,3 +161,14 @@ describe('Editing polish (docs/design/editing-polish.md §12): the magnifier pan
     expect(contrast(note, panel)).toBeGreaterThanOrEqual(4.5)
   })
 })
+
+describe('the music library (docs/design/editing-polish.md §2.6, §12): its words on its rows', () => {
+  const library = css('editor/panels/soundLibrary.css')
+  const vars = tokens(css('styles.css'))
+  it('the title, the artist and length, and the mood on a row, and the credit on the Inspector', () => {
+    const row = resolve(declared(library, '.music-row', 'background'), vars)
+    for (const sel of ['.music-row-title', '.music-row-meta', '.music-mood']) expect(contrast(resolve(declared(library, sel, 'color'), vars), row), sel).toBeGreaterThanOrEqual(4.5)
+    const panel = resolve('var(--surface-1)', vars)
+    expect(contrast(resolve(declared(library, '.music-credit', 'color'), vars), panel)).toBeGreaterThanOrEqual(4.5)
+  })
+})

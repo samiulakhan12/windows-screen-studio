@@ -12,7 +12,7 @@ import { outputSize } from '../engine/layout'
 import { isTall } from '../engine/reframeData'
 import { GRAPHIC_DEFAULTS } from '../render/graphics'
 import { viewingTime } from '../render/overlays'
-import type { AiProviderKind, AutoOrigin, CaptionSegment, CounterGraphic, Graphic, KeywordGraphic, ListGraphic, Project, TitleCard } from '../types'
+import type { AiProviderKind, AutoOrigin, CaptionSegment, CounterGraphic, Graphic, KeywordGraphic, ListGraphic, Project, SfxRef, TitleCard } from '../types'
 import { textHash, transcriptLanguage } from './captionTracks'
 import { maskedSegments, wordsBleeped } from './cleanup'
 import { chosenEmoji, isSensitive, LEAD, suggestEmoji } from './emoji'
@@ -32,7 +32,8 @@ export type GraphicOptions = {
   speakers: boolean
   chapters: boolean
   quotes: boolean
-  sound: 'none' | 'pop' | 'ding'
+  /** Today's synthesised pop or ding, or a library effect (editing polish §10.7). */
+  sound: 'none' | 'pop' | 'ding' | SfxRef
   marks?: MarksAnswer
   marksVia?: AiProviderKind
 }

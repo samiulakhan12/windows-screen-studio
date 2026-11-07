@@ -17,6 +17,9 @@ import { beginJob, setExportedFileCheck } from './longJobs'
 import { SIDECAR_KINDS } from '../shared/render/exportBundle'
 import { cleanVoiceInputs } from './voice/voiceIpc'
 import { getMainWindow } from './windows'
+import { ffmpegPath } from './ffmpeg'
+import { loopableMusic } from './musicLoopCache'
+import { bundledSoundDir } from './soundLibrary/paths'
 
 interface ActiveExport {
   job: ExportJob
@@ -33,6 +36,10 @@ interface ActiveExport {
 }
 
 let active: ActiveExport | null = null
+/** Stops the work an export does before its encoder starts (decoding looping music, editing polish §10.4). */
+let starting: AbortController | null = null
+/** Longest a looping music file may take to decode before an export. */
+const MUSIC_DECODE_TIMEOUT_MS = 5 * 60 * 1000
 /** Whether an export runs (Restart to update waits for it). */
 export const exportRunning = (): boolean => active !== null
 let approvedExportPath: string | null = null
@@ -91,6 +98,8 @@ async function removeFiles(files: string[]): Promise<void> {
  * not wait for it to close its handles). Resolves when the files are gone.
  */
 function cancelActive(): Promise<void> {
+  starting?.abort()
+  starting = null
   const job = active
   active = null
   if (!job) return Promise.resolve()
@@ -253,9 +262,23 @@ export function registerExportIpc(): void {
     const tempPath = partialPath(finalPath)
     // The stems the recording kept: a missing one may only fall back to the mixed sound when that sounds the same.
     const recorded = await projects.readProject(projectId).then(stemsOf, () => [])
-    const sound = await cleanVoiceInputs(await resolveSoundInputs(requested, projects.projectDir(projectId), fileExists, recorded), projectId, requested)
+    // The library's files, and a user's own looping music decoded once so it loops cleanly (editing polish §10.4, §10.8).
+    const dir = projects.projectDir(projectId)
+    const prep = new AbortController()
+    starting = prep
+    const library = {
+      // Asked for only when the job has library effects.
+      get soundDir() {
+        return bundledSoundDir()
+      },
+      loopable: (file: string, seconds: number) => loopableMusic(dir, file, ffmpegPath(), { seconds, signal: prep.signal, timeoutMs: MUSIC_DECODE_TIMEOUT_MS })
+    }
+    const sound = await cleanVoiceInputs(await resolveSoundInputs(requested, dir, fileExists, recorded, library), projectId, requested).finally(() => {
+      if (starting === prep) starting = null
+    })
+    if (prep.signal.aborted) throw new Error(CANCELLED)
     const { job } = sound
-    const plan = ffmpegPlan(job, { audioInput: sound.audioInput, stems: sound.stems, music: sound.music, output: tempPath, tempStem: tempStem(app.getPath('temp')) })
+    const plan = ffmpegPlan(job, { audioInput: sound.audioInput, stems: sound.stems, music: sound.music, bed: sound.bed, effects: sound.effects, output: tempPath, tempStem: tempStem(app.getPath('temp')) })
     // Logged before ffmpeg creates them, so a crash from here on is cleaned up at the next start.
     log?.add(tempFiles({ tempPath, plan }))
     for (const s of plan.scripts) await fs.writeFile(s.path, s.content, 'utf8')

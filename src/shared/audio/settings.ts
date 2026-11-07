@@ -5,7 +5,9 @@
  */
 import { nextPickFile, stalePickFiles, type PickedFiles } from '../engine/picks'
 import { outputDuration } from '../engine/timeline'
+import { hasLibrarySounds } from '../render/sfxJob'
 import type { AudioSettings, AudioTrackSettings, MusicSettings, Project } from '../types'
+import { soundBed } from './soundLibrary'
 
 /** The recorded sources: the screen proxy's mixed track, or the separately kept stems. */
 export type AudioSource = 'mix' | 'mic' | 'system'
@@ -66,13 +68,16 @@ const trackOf = (t: AudioTrackSettings | undefined): AudioTrackSettings => ({
 
 function musicOf(m: MusicSettings | null | undefined): MusicSettings | null {
   if (!m || typeof m.path !== 'string' || !MUSIC_FILE_RE.test(m.path)) return null
+  // A library bed (editing polish §4.2): an id of the catalogue; any other plays as a user's own file.
+  const id = m.library?.id
   return {
     path: m.path,
     volume: finiteIn(m.volume, 0, 2, DEFAULT_MUSIC.volume),
     ducking: finiteIn(m.ducking, 0, 1, DEFAULT_MUSIC.ducking),
     loop: m.loop !== false,
     fadeIn: finiteIn(m.fadeIn, 0, AUDIO_LIMITS.musicFade.max, DEFAULT_MUSIC.fadeIn),
-    fadeOut: finiteIn(m.fadeOut, 0, AUDIO_LIMITS.musicFade.max, DEFAULT_MUSIC.fadeOut)
+    fadeOut: finiteIn(m.fadeOut, 0, AUDIO_LIMITS.musicFade.max, DEFAULT_MUSIC.fadeOut),
+    ...(typeof id === 'string' && soundBed(id) ? { library: { id } } : {})
   }
 }
 
@@ -166,22 +171,25 @@ export function musicEnd(outputLength: number, musicLength: number | null, loop:
   return Math.min(outputLength, musicLength)
 }
 
-/** Whether the export has a soundtrack at all (recording, music or click sounds). */
+/** Whether the export has a soundtrack at all (recording, music, click sounds, or the library's effects: editing polish §10.8). */
 export function hasSoundtrack(project: Project, clickSounds: boolean): boolean {
   const look = audioLook(project.audio)
-  return recordingMix(project).kind !== 'none' || (!!look.music && look.music.volume > 0) || clickSounds
+  return recordingMix(project).kind !== 'none' || (!!look.music && look.music.volume > 0) || clickSounds || hasLibrarySounds(project)
 }
 
 /**
  * Whether the preview needs its Web Audio graph: per-source gains, music, fades, loudness
  * normalisation or a gain above 100%; and Captions Studio's bleeps and the graphics' pop sounds
- * (§14.2), which play through it. Without it the video element plays its own track.
+ * (§14.2) and the library's effects, which play through it. Without it the video element plays its
+ * own track.
  */
 export function needsAudioGraph(project: Project): boolean {
   const look = audioLook(project.audio)
   const mix = recordingMix(project)
   if (look.music && look.music.volume > 0) return true
   if (project.bleeps?.length || project.graphics?.some((g) => !!g.sound)) return true
+  // The library's effects play through it too (editing polish §10.9); a bed is music.
+  if (hasLibrarySounds(project)) return true
   if (mix.kind === 'none') return false
   return mix.kind === 'stems' || mix.volume > 1 || look.normalize || look.fadeIn > 0 || look.fadeOut > 0
 }

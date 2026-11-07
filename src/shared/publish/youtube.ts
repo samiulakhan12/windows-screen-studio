@@ -4,6 +4,7 @@
  * Copy and the export bundle's description file both use composeYoutubeDescription, so they never
  * disagree. Pure.
  */
+import { musicCredit } from '../audio/soundLibrary'
 import { planOf, videoDuration } from '../engine/freeze'
 import { outputChapters, youtubeChapters, type OutputChapter } from '../render/chapters'
 import { descriptionText } from '../render/exportBundle'
@@ -16,10 +17,19 @@ export const YOUTUBE_DESCRIPTION_MAX = 5000
 /** The heading line above the timestamps. */
 export const CHAPTERS_HEADING = 'Chapters'
 
-/** The chapters of the edited `project` (output seconds) and its length, as the export writes them. */
-export function projectYoutubeChapters(project: Pick<Project, 'clips' | 'freezes' | 'chapters'>): { chapters: OutputChapter[]; duration: number } {
+/**
+ * The music credit the description ends with (editing polish §10.10, owner decision 4): "Music:
+ * <title> by <artist> (CC0)" while a library bed is the music, else null. Loyalty Freak Music asks
+ * for credit where possible, and it is the best answer to a false Content ID claim.
+ */
+export function youtubeMusicCredit(project: Partial<Pick<Project, 'audio'>>): string | null {
+  return project.audio ? musicCredit(project as Project) : null
+}
+
+/** The chapters of the edited `project` (output seconds), its length, and the music credit, as the export writes them. */
+export function projectYoutubeChapters(project: Pick<Project, 'clips' | 'freezes' | 'chapters'> & Partial<Pick<Project, 'audio'>>): { chapters: OutputChapter[]; duration: number; credit: string | null } {
   const plan = planOf(project)
-  return { chapters: outputChapters(project.chapters ?? [], project.clips, plan), duration: videoDuration(project.clips, plan) }
+  return { chapters: outputChapters(project.chapters ?? [], project.clips, plan), duration: videoDuration(project.clips, plan), credit: youtubeMusicCredit(project) }
 }
 
 /**
@@ -34,16 +44,25 @@ const withoutAngleBrackets = (s: string): string => s.replace(/</g, '‹').repla
 /**
  * The description: `text`, then (with chapters) a blank line, "Chapters" and one "0:00 Intro" line
  * per chapter, with "<" and ">" as "‹" and "›" ("Settings › Export"). Over YouTube's 5 000
- * characters, the text is cut to fit (the timestamps are kept whole: cutAt).
+ * characters, the text is cut to fit (the timestamps are kept whole: cutAt). With a music `credit`
+ * (youtubeMusicCredit), it is the last line, after a blank line, and the rest makes room for it.
  */
-export function composeYoutubeDescription(text: string, chapters: readonly OutputChapter[], duration: number): string {
+export function composeYoutubeDescription(text: string, chapters: readonly OutputChapter[], duration: number, credit: string | null = null): string {
+  const last = credit ? withoutAngleBrackets(credit.replace(/\s+/g, ' ').trim()) : ''
+  if (!last) return composeWithin(text, chapters, duration, YOUTUBE_DESCRIPTION_MAX)
+  const rest = composeWithin(text, chapters, duration, YOUTUBE_DESCRIPTION_MAX - [...last].length - 2)
+  return rest ? `${rest}\n\n${last}` : last
+}
+
+/** composeYoutubeDescription without the credit, in at most `max` characters. */
+function composeWithin(text: string, chapters: readonly OutputChapter[], duration: number, max: number): string {
   const body = withoutAngleBrackets(text.trim())
   const list = chapters.length ? withoutAngleBrackets(youtubeChapters(chapters, duration).text) : ''
-  if (!list) return cutAt(body, YOUTUBE_DESCRIPTION_MAX)
+  if (!list) return cutAt(body, max)
   const tail = `${CHAPTERS_HEADING}\n${list}`
-  if (!body) return cutAt(tail, YOUTUBE_DESCRIPTION_MAX)
-  const room = YOUTUBE_DESCRIPTION_MAX - [...tail].length - 2
-  if (room <= 0) return cutAt(tail, YOUTUBE_DESCRIPTION_MAX)
+  if (!body) return cutAt(tail, max)
+  const room = max - [...tail].length - 2
+  if (room <= 0) return cutAt(tail, max)
   return `${cutAt(body, room)}\n\n${tail}`
 }
 
@@ -53,9 +72,9 @@ export function composeYoutubeDescription(text: string, chapters: readonly Outpu
  * the text to fit them, the rest of the text from the piece the cut fell in, which an export with
  * fewer chapters, or none, writes too. So Use for exports asks about all of it.
  */
-export function descriptionToCheck(text: string, chapters: readonly OutputChapter[], duration: number): string {
-  const composed = composeYoutubeDescription(text, chapters, duration)
-  const whole = composeYoutubeDescription(text, [], duration)
+export function descriptionToCheck(text: string, chapters: readonly OutputChapter[], duration: number, credit: string | null = null): string {
+  const composed = composeYoutubeDescription(text, chapters, duration, credit)
+  const whole = composeYoutubeDescription(text, [], duration, credit)
   if (!whole || composed === whole || composed.startsWith(`${whole}\n\n`)) return composed
   let same = 0
   while (same < whole.length && composed[same] === whole[same]) same++
@@ -68,13 +87,13 @@ export function descriptionToCheck(text: string, chapters: readonly OutputChapte
  * the standard description (exportBundle.ts descriptionText).
  */
 export function exportDescription(
-  project: Pick<Project, 'publish'>,
+  project: Pick<Project, 'publish'> & Partial<Pick<Project, 'audio'>>,
   title: string,
   length: number,
   chapters: readonly OutputChapter[],
   part?: { index: number; count: number; of: string }
 ): string {
-  if (project.publish?.description && !part) return `${composeYoutubeDescription(project.publish.description, chapters, length)}\n`
+  if (project.publish?.description && !part) return `${composeYoutubeDescription(project.publish.description, chapters, length, youtubeMusicCredit(project))}\n`
   return descriptionText(title, length, chapters, part)
 }
 

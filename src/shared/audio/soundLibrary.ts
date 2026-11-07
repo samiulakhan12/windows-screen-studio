@@ -733,6 +733,35 @@ export function sfxTitle(ref: SfxRef | 'pop' | 'ding'): string {
   return soundEffect(ref.slice(4))?.title ?? 'Sound effect'
 }
 
+/* ---------- a bed's timing (§10.4) ---------- */
+
+/** The loop of a bed's prepared file in samples at 48 kHz: it repeats from `start` (S) to `end` (E). */
+export function bedLoop(bed: MusicBed): { start: number; end: number } {
+  return { start: bed.prepared.loopStart, end: bed.prepared.loopEnd }
+}
+
+/** One pass of a bed, in seconds: E / 48000 (the pad after E is never played). */
+export function bedSeconds(bed: MusicBed): number {
+  return bed.prepared.loopEnd / LIBRARY_RATE
+}
+
+/**
+ * Where in the bed's file output second `out` plays: `out` itself during the first pass; after E,
+ * from S again (S / 48000 + (out − S / 48000) mod ((E − S) / 48000)) with Loop on, or E / 48000
+ * (it has stopped) with Loop off. Continuous at E, since the file's end runs straight on at S.
+ */
+export function bedTime(bed: MusicBed, out: number, loop: boolean): number {
+  const { start, end } = bedLoop(bed)
+  const t = Number.isFinite(out) ? Math.max(0, out) : 0
+  const e = end / LIBRARY_RATE
+  if (t < e) return t
+  if (!loop || end <= start) return e
+  // In samples, so a long video lands on the loop where the export's aloop does.
+  const body = end - start
+  const past = t * LIBRARY_RATE - start
+  return (start + (((past % body) + body) % body)) / LIBRARY_RATE
+}
+
 /** "Music: <title> by <artist> (CC0)" for a library bed in use (§10.10), else null. */
 export function musicCredit(project: Project): string | null {
   const music = project.audio.music

@@ -933,3 +933,47 @@ describe('caption fonts in the package', () => {
     expect(packaging.TRANSLATE_BUDGET).toEqual({ compressed: 2.3e6, installed: 6e6 })
   }, 60_000)
 })
+
+/* ---------- the music and sound-effects library (docs/design/editing-polish.md §10.3, test 72) ---------- */
+
+describe('the sound library in the package (test 72)', () => {
+  const pinsOf = async (): Promise<{ file: string; bytes: number; sha256: string }[]> => {
+    const { MUSIC_BEDS, SOUND_EFFECTS } = await import('../src/shared/audio/soundLibrary')
+    return [...MUSIC_BEDS.filter((b) => b.bundled), ...SOUND_EFFECTS].map((x) => x.prepared)
+  }
+  const dir = path.join(ROOT, 'resources', 'sound-library')
+
+  it('ships resources/sound-library outside app.asar, within SOUND_LIBRARY_BUDGET as the installer compresses it', async () => {
+    // electron-builder's extraResources holds it (the config's own test checks the whole list).
+    expect(packaging.soundLibraryResource()).toEqual({ from: 'resources/sound-library', to: 'sound-library', filter: ['*.ogg', 'SOUNDS.md'] })
+    const line = readFileSync(path.join(ROOT, 'electron-builder.config.cjs'), 'utf8').split('\n').find((l) => l.trim().startsWith('extraResources:'))
+    expect(line).toContain('soundLibraryResource()')
+    const bufs = (await pinsOf()).map((p) => readFileSync(path.join(dir, p.file)))
+    const all = Buffer.concat(bufs)
+    const packed = brotliCompressSync(all, { params: { [zlibConstants.BROTLI_PARAM_QUALITY]: 11, [zlibConstants.BROTLI_PARAM_LGWIN]: 24, [zlibConstants.BROTLI_PARAM_SIZE_HINT]: all.length } }).length
+    expect(all.length).toBeLessThanOrEqual(packaging.SOUND_LIBRARY_BUDGET.installed)
+    expect(packed).toBeLessThanOrEqual(packaging.SOUND_LIBRARY_BUDGET.compressed)
+    // Opus barely compresses: the budget is the installer's growth (2.78 MB, under the 5 MB line).
+    expect(packed).toBeGreaterThan(0.98 * all.length)
+    expect(packaging.SOUND_LIBRARY_BUDGET).toEqual({ compressed: 2.9e6, installed: 2.9e6 })
+  }, 60_000)
+
+  it('verify-dist checks every bundled file against its pin, and names a changed, missing or stray one', async () => {
+    const pins = await pinsOf()
+    const found = pins.map((p) => {
+      const buf = readFileSync(path.join(dir, p.file))
+      return { name: p.file, bytes: buf.length, sha256: createHash('sha256').update(buf).digest('hex') }
+    })
+    expect(packaging.captionFontProblems(found, pins)).toEqual([])
+    const changed = found.map((f, i) => (i === 0 ? { ...f, sha256: '0'.repeat(64) } : f)).slice(0, -1).concat({ name: 'bed-calm-old-key.ogg', bytes: 1, sha256: 'x' })
+    expect(packaging.captionFontProblems(changed, pins)).toEqual([
+      `${pins[0].file} is not the pinned file (${pins[0].bytes} bytes, SHA-256 ${'0'.repeat(64)})`,
+      `${pins[pins.length - 1].file} is missing`,
+      'bed-calm-old-key.ogg is not in the catalogue'
+    ])
+    const verify = readFileSync(path.join(ROOT, 'scripts', 'verify-dist.mjs'), 'utf8')
+    expect(verify).toContain("path.join(unpacked, 'resources', 'sound-library')")
+    expect(verify).toContain('captionFontProblems(foundSounds, soundPins)')
+    expect(verify).toContain('SOUND_LIBRARY_BUDGET.installed')
+  })
+})
