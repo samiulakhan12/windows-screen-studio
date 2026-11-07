@@ -2594,9 +2594,14 @@ give (`migrateProject(JSON.parse(JSON.stringify(p)))` for these fields; test 49)
    the fix changed span the words they were, from the last word found before them to the next one
    after ("120" is "one hundred and twenty" again), so kept and pending marks and anchors on
    them stay. Of the longest common subsequences, the one that leaves the fewest runs of words
-   not found is used (then the earliest), so a word next to the fix that is also inside the words
-   put back is found outside them: "250 and then" against "two hundred and fifty and then" finds
-   the second "and", and the mark on "250" covers all of "two hundred and fifty".
+   not found is used, so a word next to the fix that is also inside the words put back is found
+   outside them: "250 and then" against "two hundred and fifty and then" finds the second "and",
+   and the mark on "250" covers all of "two hundred and fifty". When several leave as few runs,
+   the one finding the most words at the same times wins (a word the fix left keeps its times),
+   then the one whose words sit nearest where the words found once in both put them, then the
+   earliest: "110 and 120" against "a hundred and ten and a hundred and twenty" finds the middle
+   "and", so the marks on "110" and "120" cover "a hundred and ten" and "a hundred and twenty".
+   Without word times, a fix much longer than the one beside it can still take the wrong "and".
 2. **Caption gone or not found there** (split: the second half gets a new id, `edit.ts:91`;
    merge: the second caption's id goes, `edit.ts:107`; Generate captions again): the record's time
    span is taken from the previous project (its words' times, or the caption's time spread by

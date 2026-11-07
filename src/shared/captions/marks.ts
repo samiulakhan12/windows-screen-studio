@@ -134,30 +134,65 @@ const norm = (text: string): string => text.normalize('NFKC').toLowerCase().repl
 interface Words {
   seg: CaptionSegment
   keys: string[]
-  times: { start: number; end: number }[]
+  times: { start: number; end: number; estimated: boolean }[]
 }
 
 function wordsOf(seg: CaptionSegment, language: string | undefined): Words {
   const tokens = studioTokens(seg, language)
-  return { seg, keys: tokens.map((t) => norm(t.text)), times: tokens.map((t) => ({ start: t.start, end: t.end })) }
+  return { seg, keys: tokens.map((t) => norm(t.text)), times: tokens.map((t) => ({ start: t.start, end: t.end, estimated: !!t.estimated })) }
 }
 
+/** Whether two words have the same times, both timed (not estimated): a word a tidy left as it was keeps its times. */
+const sameTimes = (x: Words['times'][number], y: Words['times'][number]): boolean => !x.estimated && !y.estimated && Math.abs(x.start - y.start) < 1e-6 && Math.abs(x.end - y.end) < 1e-6
+
 /**
- * Longest common subsequence pairs of `a` and `b` that leave the fewest runs of unpaired words;
- * of those, the one pairing earliest. Words a text fix puts back stay one run: "250 and then"
- * against "two hundred and fifty and then" pairs the second "and", not the one inside the number.
+ * Longest common subsequence pairs of `a` and `b` that leave the fewest runs of unpaired words.
+ * Words a text fix puts back stay one run: "250 and then" against "two hundred and fifty and then"
+ * pairs the second "and", not the one inside the number. Of those, the one pairing the most words
+ * at the same times (`sameTime`); then the one whose words sit nearest where the words found once
+ * in each put them, so "110 and 120" against "a hundred and ten and a hundred and twenty" pairs
+ * the middle "and"; last, the earliest.
  */
-function lcsFewestRuns(a: readonly string[], b: readonly string[]): [number, number][] {
+function lcsFewestRuns(a: readonly string[], b: readonly string[], sameTime: (i: number, j: number) => boolean): [number, number][] {
   const n = a.length
   const m = b.length
   const w = m + 1
-  // A pair scores more than all the runs can take off, so length comes first. `paired`: the best
-  // from (i, j) right after a pair (or at the start), where skipping a word starts a run (-1);
-  // `open`: inside a run, where skipping more words is free.
-  const unit = n + m + 2
-  const paired = new Int32Array((n + 1) * w)
-  const open = new Int32Array((n + 1) * w)
-  const pairAt = (k: number, i: number, j: number): number => (i < n && j < m && a[i] === b[j] ? unit + paired[k + w + 1] : -Infinity)
+  // Where each word of `a` is expected in `b`: words found once in each, in order, stay as they
+  // are; the words between two of them spread evenly over the words between those in `b`.
+  const count = (xs: readonly string[]): Map<string, number> => {
+    const c = new Map<string, number>()
+    for (const x of xs) c.set(x, (c.get(x) ?? 0) + 1)
+    return c
+  }
+  const inA = count(a)
+  const inB = count(b)
+  const at = new Map(b.map((x, j) => [x, j]))
+  const fixed: [number, number][] = [[-1, -1]]
+  a.forEach((x, i) => {
+    const j = at.get(x)
+    if (j !== undefined && inA.get(x) === 1 && inB.get(x) === 1 && j > fixed[fixed.length - 1][1]) fixed.push([i, j])
+  })
+  fixed.push([n, m])
+  const expected = new Float64Array(n)
+  for (let i = 0, f = 0; i < n; i++) {
+    while (fixed[f + 1][0] <= i) f++
+    const [i0, j0] = fixed[f]
+    const [i1, j1] = fixed[f + 1]
+    expected[i] = j0 + ((i - i0) * (j1 - j0)) / (i1 - i0)
+  }
+  // A pair scores more than all the runs can take off, so length comes first; a run more than all
+  // the same times can add; a same time more than all the places. A place scores more the nearer
+  // it is to where its word is expected, by half words. `paired`: the best from (i, j) right after
+  // a pair (or at the start), where skipping a word starts a run; `open`: inside a run, where
+  // skipping more words is free.
+  const near = 2 * (m + 1)
+  const time = (Math.min(n, m) + 1) * near
+  const run = (Math.min(n, m) + 1) * (time + near)
+  const unit = (n + m + 2) * run
+  const score = (i: number, j: number): number => unit + (sameTime(i, j) ? time : 0) + near - Math.min(near, Math.round(2 * Math.abs(j - expected[i])))
+  const paired = new Float64Array((n + 1) * w)
+  const open = new Float64Array((n + 1) * w)
+  const pairAt = (k: number, i: number, j: number): number => (i < n && j < m && a[i] === b[j] ? score(i, j) + paired[k + w + 1] : -Infinity)
   for (let i = n; i >= 0; i--) {
     for (let j = m; j >= 0; j--) {
       if (i === n && j === m) continue
@@ -165,7 +200,7 @@ function lcsFewestRuns(a: readonly string[], b: readonly string[]): [number, num
       const skip = Math.max(i < n ? open[k + w] : -Infinity, j < m ? open[k + 1] : -Infinity)
       const pair = pairAt(k, i, j)
       open[k] = Math.max(pair, skip)
-      paired[k] = Math.max(pair, skip - 1)
+      paired[k] = Math.max(pair, skip - run)
     }
   }
   const pairs: [number, number][] = []
@@ -175,7 +210,7 @@ function lcsFewestRuns(a: readonly string[], b: readonly string[]): [number, num
   while (i < n && j < m) {
     const k = i * w + j
     const best = inRun ? open[k] : paired[k]
-    const cost = inRun ? 0 : 1
+    const cost = inRun ? 0 : run
     if (pairAt(k, i, j) === best) {
       pairs.push([i, j])
       i++
@@ -202,7 +237,7 @@ function relocate(rec: { caption: string; from: number; to: number }, prev: Map<
   if (same) {
     if (same.seg.text === before.seg.text) return { caption: rec.caption, from: rec.from, to: rec.to }
     // Text put back pairs words so that the words it puts back stay together.
-    const pairs = putBack ? lcsFewestRuns(before.keys, same.keys) : lcsPairs(before.keys, same.keys)
+    const pairs = putBack ? lcsFewestRuns(before.keys, same.keys, (i, j) => sameTimes(before.times[i], same.times[j])) : lcsPairs(before.keys, same.keys)
     const map = new Map(pairs)
     const mapped: number[] = []
     for (let i = rec.from; i <= rec.to; i++) {

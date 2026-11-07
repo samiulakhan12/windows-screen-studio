@@ -547,6 +547,36 @@ describe('the emphasis and text group rows', () => {
     expect(anchorOf(pending.state)).toEqual({ caption: 'c1', from: 3, to: 6, text: 'three hundred and twenty' })
   })
 
+  it('Remove on the text group puts each mark on its own words when the word between two fixes is inside both', () => {
+    // The "and" between "110" and "120" is also inside "a hundred and ten" and "a hundred and twenty".
+    const timed = (texts: string[]): ReturnType<typeof captions> =>
+      captions(texts).map((s) => {
+        const words = s.text.split(' ')
+        const step = (s.end - s.start) / words.length
+        return { ...s, words: words.map((text, i) => ({ text, start: s.start + i * step, end: s.start + (i + 1) * step })) }
+      })
+    const cases: { text: string; tidied: string; marked: number[]; back: string[]; words?: { term: string; heard: string[] }[]; digits?: 'all'; timedOnly?: true }[] = [
+      { text: 'prices were a hundred and ten and a hundred and twenty', tidied: 'Prices were 110 and 120.', marked: [2, 4], back: ['a hundred and ten', 'a hundred and twenty'] },
+      { text: 'our q and a and r and d teams met today', tidied: 'Our Q&A and R&D teams met today.', marked: [1, 3], back: ['q and a', 'r and d'], words: [{ term: 'Q&A', heard: ['q and a'] }, { term: 'R&D', heard: ['r and d'] }] },
+      { text: 'open flow in in flow in today', tidied: 'Open Flown in Flown today.', marked: [1, 3], back: ['flow in', 'flow in'], words: [{ term: 'Flown', heard: ['flow in'] }] },
+      // One fix longer than the other: the words' times tell which "and" stayed.
+      { text: 'the q and a and ten others', tidied: 'The Q&A and 10 others.', marked: [1, 3], back: ['q and a', 'ten'], words: [{ term: 'Q&A', heard: ['q and a'] }], digits: 'all', timedOnly: true }
+    ]
+    for (const c of cases) {
+      for (const withTimes of c.timedOnly ? [true] : [false, true]) {
+        const segments = withTimes ? timed([c.text]) : captions([c.text])
+        const run = planCaptionsGreat({ project: studioProject({ segments }), frame: WIDE, cleanup: { ...DEFAULT_CLEANUP, ...(c.digits ? { digits: c.digits } : {}) }, words: c.words ?? [], by: 'great' }, DEFAULT_GREAT_OPTIONS).project
+        expect(run.transcript!.segments[0].text).toBe(c.tidied)
+        const tidied = c.tidied.split(' ')
+        const captionMarks = c.marked.map((i) => ({ id: `m${i}`, caption: 'c0', from: i, to: i, text: tidied[i].replace(/\.$/, ''), auto: true as const }))
+        const s = storeOf({ ...run, captionMarks })
+        s.update((q) => removeItems(q, [row(reviewItems(q), TEXT_GROUP)]))
+        expect(s.state.transcript!.segments[0].text).toBe(c.text)
+        expect((s.state.captionMarks ?? []).map((m) => m.text), `${c.text}${withTimes ? ' (timed)' : ''}`).toEqual(c.back)
+      }
+    }
+  })
+
   it('"n of N reviewed" counts a group once', () => {
     const items = reviewItems(great)
     const emphasis = row(items, EMPHASIS_GROUP)
