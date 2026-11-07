@@ -203,7 +203,7 @@ describe('barState (test 32)', () => {
   })
 
   it('names hide while an automatic chapter-title card shows', () => {
-    const card: TitleCard = { id: 't', start: 6, end: 9, title: 'Setup', style: 'lower-third', background: 'blur', auto: { by: 'chapter', via: 'chapters', chapter: 'a' } as TitleCard['auto'] }
+    const card: TitleCard = { id: 't', start: 6, end: 9, title: 'Setup', style: 'lower-third', background: 'blur', auto: { by: 'chapter', via: 'rules', chapter: 'a' } }
     const q = { ...p, titles: [card] }
     expect(barState(l, 7, 7, q).labelAlpha).toBe(0)
     expect(barState(l, 10, 10, q).labelAlpha).toBe(1)
