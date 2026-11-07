@@ -14,6 +14,7 @@ import { withDigits } from '../captions/words'
 import type { Annotation, AnnotationStyle, CalloutMotion, CalloutMotionKind, Clip, ItemMotion, Project, Shape, ShapeKind } from '../types'
 import { annotationItem, badgesByChapterOf, CALLOUT_ALLOWED, calloutOf, graphemesOf, shapeItem, type CalloutItem } from './calloutData'
 import { outputChapters } from './chapters'
+import { annotationMetrics } from './overlays'
 
 export type { CalloutItem } from './calloutData'
 
@@ -336,8 +337,8 @@ export function bubbleTail(
 /** Whether a bubble of `fill` gets a thin outline (a fill lighter than 0.7, so it shows on white app pages). */
 export const bubbleOutlined = (fill: string): boolean => HEX.test(fill) && luminance(fill) > 0.7
 
-/** The line height of a bubble's text, in units of its font: 1.4 with Bengali, Devanagari or Thai, else 1.3. */
-export const bubbleLineHeight = (text: string): number => (/[ऀ-৿฀-๿]/u.test(text) ? 1.4 : 1.3)
+/** The line height of a bubble's text, in units of its font: 1.4 with Bengali, Devanagari or Thai, else 1.3 (annotationMetrics). */
+export const bubbleLineHeight = (text: string): number => annotationMetrics({ size: 1, style: 'bubble', text }, 1, 1).lineHeight
 
 /* ---------- where a badge or a bubble is drawn (§7.3, §7.4) ---------- */
 
@@ -401,12 +402,13 @@ export function calloutPlace(a: Annotation, label: string | null, frame: Callout
   const c = calloutOf(a)
   if (c.style !== 'badge' && c.style !== 'bubble') return null
   const S = Math.min(frame.w, frame.h)
-  const f = Math.max(1, a.size * S)
+  const m = annotationMetrics({ size: a.size, style: c.style, text: c.text }, frame.w, frame.h)
+  const f = Math.max(1, m.px)
   const at = pinOut(a, frame)
   if (c.style === 'badge') {
     if (at && !frame.visible(at)) return null
     const text = label ?? c.text
-    const box = badgeBox(text, f, (s, px) => measure(s, px, 700))
+    const box = badgeBox(text, f, (s, px) => measure(s, px, m.weight))
     const centre = at ?? { x: a.x * frame.w, y: a.y * frame.h }
     const fill = c.color ?? BADGE_FILL
     return {
@@ -425,11 +427,11 @@ export function calloutPlace(a: Annotation, label: string | null, frame: Callout
   }
   const area = frame.area ?? { x: 0, y: 0, w: frame.w, h: frame.h }
   const maxBody = (frame.w >= frame.h ? 0.42 : 0.8) * frame.w
-  const padX = 0.7 * f
-  const padY = 0.45 * f
-  const lh = bubbleLineHeight(c.text) * f
-  const lines = c.text.trim() ? wrapCallout(c.text, Math.max(f, maxBody - 2 * padX), (s) => measure(s, f, 600)) : ['']
-  const textW = Math.max(2 * f, ...lines.map((l) => measure(l || ' ', f, 600)))
+  const padX = m.padX
+  const padY = m.padY
+  const lh = m.lineHeight
+  const lines = c.text.trim() ? wrapCallout(c.text, Math.max(f, maxBody - 2 * padX), (s) => measure(s, f, m.weight)) : ['']
+  const textW = Math.max(2 * f, ...lines.map((l) => measure(l || ' ', f, m.weight)))
   const size = { w: Math.min(Math.max(maxBody, 2 * f + 2 * padX), textW + 2 * padX), h: lines.length * lh + 2 * padY }
   const radius = Math.min(0.5 * size.h, 0.6 * f)
   const fill = c.color ?? BUBBLE_FILL

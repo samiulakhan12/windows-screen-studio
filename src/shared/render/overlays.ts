@@ -114,12 +114,23 @@ export interface TextBoxMetrics {
   weight: number
 }
 
-/** Font metrics for an annotation in an output frame of the given size (matches the editor's drag handle). */
-export function annotationMetrics(a: Pick<Annotation, 'size' | 'style'>, w: number, h: number): TextBoxMetrics {
+/**
+ * Font metrics for an annotation in an output frame of the given size (matches the editor's drag
+ * handle). A step badge (editing polish §7.3): weight 700, its text in a circle 1.75 px across. A
+ * speech bubble (§7.4): weight 600, padded 0.7 px across and 0.45 px down, lines 1.3 px apart (1.4
+ * with Bengali, Devanagari or Thai). Where they are drawn, through the frame's camera for a pin,
+ * is callouts.ts calloutPlace, which builds on these.
+ */
+export function annotationMetrics(a: Pick<Annotation, 'size' | 'style'> & { text?: string }, w: number, h: number): TextBoxMetrics {
   const px = a.size * Math.min(w, h)
+  if (a.style === 'badge') return { px, lineHeight: px, padX: px * 0.375, padY: px * 0.375, weight: 700 }
+  if (a.style === 'bubble') return { px, lineHeight: px * (BIG_LINES.test(a.text ?? '') ? 1.4 : 1.3), padX: px * 0.7, padY: px * 0.45, weight: 600 }
   const pill = a.style === 'pill'
   return { px, lineHeight: px * 1.3, padX: pill ? px * 0.7 : px * 0.2, padY: pill ? px * 0.35 : px * 0.1, weight: pill ? 600 : 700 }
 }
+
+/** Scripts whose marks above and below need taller lines in a speech bubble: Bengali, Devanagari, Thai. */
+const BIG_LINES = /[\u0900-\u09ff\u0e00-\u0e7f]/u
 
 export const ANNOTATION_FONT = "'Segoe UI', system-ui, sans-serif"
 

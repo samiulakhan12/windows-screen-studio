@@ -194,7 +194,19 @@ function badge(start: number, extra: Partial<Annotation> & Record<string, unknow
   return { id: `b${String(++seq).padStart(3, '0')}`, start, end: start + 3, text: '', x: 0.5, y: 0.5, size: 0.045, style: 'badge', number: 'auto', ...extra } as Annotation
 }
 function projectWith(annotations: Annotation[], patch: Partial<Project> = {}): Project {
-  const p = createProject({ id: 'p1', name: 'P', duration: 120, width: 1920, height: 1080, hasWebcam: false, hasAudio: false, zooms: [], cursorValid: false })
+  const p = createProject({
+    id: 'p1',
+    name: 'P',
+    duration: 120,
+    width: 1920,
+    height: 1080,
+    hasWebcam: false,
+    hasAudio: false,
+    webcamOffset: 0,
+    zooms: [],
+    cursorValid: false,
+    capture: { method: 'native', cursorInVideo: false, region: null, fps: 30 }
+  })
   return { ...p, annotations, ...patch }
 }
 

@@ -9,6 +9,7 @@ import { clamp, easeOutCubic } from '../engine/math'
 import { keptBounds, outputToSource } from '../engine/timeline'
 import type { Clip, TitleCard, TitleCardStyle } from '../types'
 import { viewingTime } from './overlays'
+import { calloutPose, type CalloutPose } from './callouts'
 
 /** Seconds (of viewing time) a card takes to fade and rise in, and to fade out. */
 export const TITLE_FADE = 0.35
@@ -64,14 +65,34 @@ export function titlePhase(card: Pick<TitleCard, 'start' | 'end' | 'style'>, t: 
 }
 
 /**
- * Where a playhead at source time `t` goes to show `card` fully on the preview (past its fade-in,
- * before its fade-out, as titlePhase fades it): `t` itself when the frame shown there already
- * does, else just past the fade-in (the middle of a card too short to hold).
+ * A card with a motion of its own (docs/design/editing-polish.md §7.2): the pose of its text (and a
+ * lower third's band) at source time `t` (callouts.ts calloutPose, in viewing time; a side without
+ * a motion fades over TITLE_FADE), or null without one, when titlePhase's fade and rise draw it as
+ * always. A full-frame card's background keeps titlePhase's opacity either way. `em` is the card's
+ * title size in px (titleEm); `calm`: Calm motion.
  */
-export function titleShowTime(card: Pick<TitleCard, 'start' | 'end'>, t: number, clips: Clip[]): number {
+export function titleMotionPose(card: Pick<TitleCard, 'start' | 'end' | 'enter' | 'exit'>, t: number, clips: Clip[], em: number, calm: boolean): CalloutPose | null {
+  if (!card.enter && !card.exit) return null
+  return calloutPose(card.start, card.end, t, clips, card.enter, card.exit, em, calm, TITLE_FADE)
+}
+
+/** A card's title size in px in a w × h frame (its style's size of the shorter side): the em its motion moves by. */
+export function titleEm(card: Pick<TitleCard, 'style'>, w: number, h: number): number {
+  return (METRICS[card.style] ?? METRICS.centered).title * Math.min(w, h)
+}
+
+/**
+ * Where a playhead at source time `t` goes to show `card` fully on the preview (past its fade-in,
+ * before its fade-out, as titlePhase fades it, or past its own motions, editing polish §7.1): `t`
+ * itself when the frame shown there already does, else just past the fade-in (the middle of a card
+ * too short to hold).
+ */
+export function titleShowTime(card: Pick<TitleCard, 'start' | 'end'> & Partial<Pick<TitleCard, 'enter' | 'exit'>>, t: number, clips: Clip[]): number {
   const { from, to, fade } = titleTiming(card, clips)
-  const lo = from + fade + 0.01
-  const hi = to - fade - 0.01
+  // A motion of its own may run longer than the fade (each side at most half the card).
+  const side = (m: TitleCard['enter']): number => (m ? Math.max(1e-3, Math.min(m.duration, (to - from) / 2)) : fade)
+  const lo = from + (card.enter || card.exit ? side(card.enter) : fade) + 0.01
+  const hi = to - (card.enter || card.exit ? side(card.exit) : fade) - 0.01
   const now = viewAt(clips, t)
   if (now >= lo && now <= hi) return t
   const at = lo <= hi ? lo : (from + to) / 2
