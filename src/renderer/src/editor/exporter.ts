@@ -10,7 +10,7 @@ import { outputChapters } from '../../../shared/render/chapters'
 import { clickSoundJob } from '../../../shared/render/clickSound'
 import { exportDimensions, exportProject, exportRoutes, isAudioOnly, MB, routeLabel, targetBitrates, type ExportRoute } from '../../../shared/render/exportPlan'
 import type { ExportOptions } from '../../../shared/render/exportPresets'
-import type { Project, VoiceStrength } from '../../../shared/types'
+import type { Graphic, Project, VoiceStrength } from '../../../shared/types'
 import { drawFrame, type FrameImage, type RenderScene } from '../render/compositor'
 import { releaseTilt } from '../render/tiltLayer'
 import { prepareCursorAssets } from '../render/cursorLayer'
@@ -32,6 +32,9 @@ import { createVideo, mediaDuration, SCREEN_PROXY_FPS, WEBCAM_PROXY_FPS, whenRea
 import type { PauseGate } from '../../../shared/jobs/pauseGate'
 import { voiceStems } from './voiceStems'
 import { jobSoundGains } from '../../../shared/audio/soundsEdit'
+import { soundBed } from '../../../shared/audio/soundLibrary'
+import { sfxJob } from '../../../shared/render/sfxJob'
+import { prepareEditingAssets } from './editingAssets'
 
 export { exportDimensions, GIF_FPS, GIF_MAX_HEIGHT } from '../../../shared/render/exportPlan'
 
@@ -107,13 +110,15 @@ async function prepare<T extends ExportSource & { settings: Pick<ExportOptions, 
   // frame: brand fonts, and Captions Studio's catalogue faces and FlownFontW- faces (§6.8), so the
   // font generation never changes between two exported frames.
   await Promise.all([prepareOverlays(project), prepareProjectFonts(project), prepareCaptionFonts(project)])
+  // Editing polish (§17.0): the grades' LUTs, so frame 0 is graded with them (nothing without one).
+  await prepareEditingAssets(project)
   return { ...input, project, scene }
 }
 
-type SoundParts = Pick<ExportJob, 'audio' | 'clicks' | 'music' | 'fadeIn' | 'fadeOut' | 'pops' | 'tones'>
+type SoundParts = Pick<ExportJob, 'audio' | 'clicks' | 'music' | 'fadeIn' | 'fadeOut' | 'pops' | 'tones' | 'effects'>
 
-/** Whether a job's soundtrack has anything in it. */
-const hasSound = (s: SoundParts): boolean => !!(s.audio || s.clicks || s.music || s.pops?.length || s.tones?.length)
+/** Whether a job's soundtrack has anything in it (a library effect alone counts: editing polish §10.8). */
+export const hasSound = (s: SoundParts): boolean => !!(s.audio || s.clicks || s.music || s.pops?.length || s.tones?.length || s.effects?.length)
 
 /**
  * The soundtrack parts of a job: the edited recording (the mixed track, or the stems with
@@ -159,13 +164,17 @@ async function soundOf(input: ExportInput, format: ExportOptions['format']): Pro
 }
 
 /**
- * The pops of graphics and the bleep tones of a project, in the export's video time; nothing
- * without them. A pop sounds when its graphic starts to show in the `size` frame (graphicShown).
+ * The pops of graphics, the bleep tones and the library's sound effects of a project (editing
+ * polish §10.6), in the export's video time; nothing without them. A pop or a graphic's library
+ * effect sounds when its graphic starts to show in the `size` frame (graphicShown), the same
+ * `startOf` for both.
  */
-function studioSounds(project: Project, size: { width: number; height: number }): Pick<ExportJob, 'pops' | 'tones'> {
-  const pops = popJob(project, (g) => graphicShown(project, g, size.width > 0 && size.height > 0 ? size : undefined).start)
+function studioSounds(project: Project, size: { width: number; height: number }): Pick<ExportJob, 'pops' | 'tones' | 'effects'> {
+  const startOf = (g: Graphic): number => graphicShown(project, g, size.width > 0 && size.height > 0 ? size : undefined).start
+  const pops = popJob(project, startOf)
   const tones = toneJob(project)
-  return { ...(pops.length ? { pops } : {}), ...(tones.length ? { tones } : {}) }
+  const effects = sfxJob(project, startOf)
+  return { ...(pops.length ? { pops } : {}), ...(tones.length ? { tones } : {}), ...(effects.length ? { effects } : {}) }
 }
 
 /**
@@ -223,8 +232,16 @@ async function musicOf({ project }: ExportSource): Promise<MusicSound | undefine
     fadeIn: m.fadeIn,
     fadeOut: m.fadeOut,
     duration: m.loop ? null : await mediaDuration(mediaUrl(project.id, m.path)),
-    ...(duck ? { duck: { depth: duck.shape.depth, attack: duck.shape.attack, release: duck.shape.release, ranges: duck.ranges } } : {})
+    ...(duck ? { duck: { depth: duck.shape.depth, attack: duck.shape.attack, release: duck.shape.release, ranges: duck.ranges } } : {}),
+    // A library bed (editing polish §10.4): main reads its loop from the catalogue and checks the file.
+    ...(bedOf(project) ? { bed: bedOf(project)! } : {})
   }
+}
+
+/** The catalogue id of the library bed in use, or undefined (the user's own file). */
+function bedOf(project: Project): string | undefined {
+  const id = project.audio.music?.library?.id
+  return typeof id === 'string' && soundBed(id) ? id : undefined
 }
 
 /** The chapters written into the file (every format but GIF), in output seconds. */

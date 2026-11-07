@@ -379,6 +379,8 @@ describe('planPolish: the whole run', () => {
       ['style', 'changed'],
       ['zoom', 'changed'],
       ['silences', 'changed'],
+      // Smooth cuts (editing polish §11): declared by the contracts step, skipped as not selected until part P1 makes it run.
+      ['smoothCuts', 'skipped'],
       ['captions', 'changed'],
       // Caption look (Captions Studio §11.8): style, emphasis and tidy on the new captions.
       ['captionLook', 'changed'],
@@ -447,10 +449,15 @@ describe('readPolishOptions', () => {
     expect(readPolishOptions({ captionsProvider: 'x'.repeat(65) }).captionsProvider).toBeNull()
     const read = readPolishOptions({ styleId: 'u1', zoom: false, silenceAction: 8, captionsProvider: 'p1', director: false })
     // Saved before Caption look existed: it reads as off, so a saved Polish does what it did.
-    expect(read).toEqual({ ...DEFAULT_POLISH_OPTIONS, styleId: 'u1', zoom: false, silenceAction: 8, captionsProvider: 'p1', captionLook: false, director: false })
+    // Smooth cuts too (editing polish §11, §0 decision 3).
+    expect(read).toEqual({ ...DEFAULT_POLISH_OPTIONS, styleId: 'u1', zoom: false, silenceAction: 8, captionsProvider: 'p1', captionLook: false, smoothCuts: false, director: false })
     expect(readPolishOptions(read)).toEqual(read)
     expect(readPolishOptions({ captionLook: true }).captionLook).toBe(true)
     expect(DEFAULT_POLISH_OPTIONS.captionLook).toBe(true)
+    // New Polish options smooth the cuts; a saved choice is kept.
+    expect(DEFAULT_POLISH_OPTIONS.smoothCuts).toBe(true)
+    expect(readPolishOptions({ smoothCuts: true }).smoothCuts).toBe(true)
+    expect(readPolishOptions({ smoothCuts: 'yes' }).smoothCuts).toBe(false)
   })
 })
 
@@ -459,7 +466,8 @@ describe('polishAvailability', () => {
   const recorded = track(12, { clicks: [{ t: 1, x: 0.5, y: 0.5, button: 'left' }] })
 
   it('offers every step of a recording that has everything', () => {
-    expect(polishAvailability(e2eProject(), recorded, ctx)).toEqual({ style: null, zoom: null, silences: null, captions: null, captionLook: null, director: null })
+    // Smooth cuts: not offered until part P1 makes it run (editing polish §17.0).
+    expect(polishAvailability(e2eProject(), recorded, ctx)).toEqual({ style: null, zoom: null, silences: null, smoothCuts: 'off', captions: null, captionLook: null, director: null })
   })
 
   it('says why a row is disabled', () => {

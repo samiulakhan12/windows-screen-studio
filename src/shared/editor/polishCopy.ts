@@ -17,6 +17,7 @@ const STEP_LABEL: Record<PolishStep, string> = {
   style: 'Style',
   zoom: 'Auto zoom',
   silences: 'Remove silences',
+  smoothCuts: 'Smooth cuts',
   captions: 'Captions',
   captionLook: 'Caption look',
   director: 'Camera director'
@@ -86,6 +87,8 @@ export function polishHint(
       const action = state.silenceAction
       return `${action === 'cut' ? 'Cuts' : 'Plays'} pauses of ${minSilence} or more${action === 'cut' ? '' : ` ${action}× as fast`}, keeping a quarter second next to the sound.`
     }
+    case 'smoothCuts':
+      return 'Crossfades on the screen, punch-ins on the camera'
     case 'captions':
       if (state.local) return state.bangla ? SPEECH_COPY.readyHintBangla : SPEECH_COPY.readyHint
       return `The sound is sent to ${state.provider ? providerName(state.provider) : 'the provider'} with your key and billed to your account.`
@@ -104,6 +107,10 @@ export function polishSkipText(step: PolishStep, reason: PolishSkip, error?: str
       return step === 'style' ? 'The current look is kept' : 'Not selected'
     case 'no-input':
       return 'No clicks were captured'
+    case 'no-cuts':
+      return 'No cuts to smooth'
+    case 'kept-style':
+      return 'Your cut style is kept'
     case 'no-sound':
       return 'This recording has no sound'
     case 'muted':
@@ -191,6 +198,8 @@ function resultText(summary: PolishSummary, r: PolishStepResult): string {
       const what = action === 'cut' ? `Cut ${plural(summary.silences, 'silence')}` : `Sped up ${plural(summary.silences, 'silence')} ${action}×`
       return `${what}: ${shorter(summary.saved)} shorter`
     }
+    case 'smoothCuts':
+      return changed ? `Smooth cuts at ${plural(summary.smoothCuts ?? 0, 'cut')}` : 'Smooth cuts: unchanged'
     case 'captions': {
       const at = summary.captionsLeftOutAfter
       const left = at === null ? '' : `. A project keeps at most ${MAX_CAPTIONS} captions, so the captions after ${formatTime(at, false)} were left out.`

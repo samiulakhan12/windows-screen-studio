@@ -13,6 +13,7 @@
 import { measuredContrast } from '../../../shared/captions/colors'
 import type { CaptionStudio, Project } from '../../../shared/types'
 import { drawFrame, type RenderScene, type RenderSources } from './compositor'
+import { prepareEditingAssets } from '../editor/editingAssets'
 import { studioBlockAt } from './studioLayer'
 
 /** Where the preview's frame comes from: the scene it draws and its sources at the playhead. */
@@ -59,6 +60,8 @@ export async function probeContrast(project: Project, t: number, studio: Caption
   const h = Math.max(2, Math.round(from.height * scale))
   const c = probeCanvas(w, h)
   if (!c) return null
+  // Its LUTs loaded first (editing polish §9.5), so the frame is graded as the export grades it.
+  await prepareEditingAssets(project)
   // The frame without captions, as the preview and the export draw it.
   const hidden: Project = { ...from.scene.project, captions: { ...project.captions, show: false } }
   drawFrame(c, w, h, t, { ...from.scene, project: hidden }, from.sources, { blurSamples: 1 })

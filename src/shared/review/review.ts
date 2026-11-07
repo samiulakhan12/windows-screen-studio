@@ -19,6 +19,7 @@ import { byHand, cornerOnly } from '../editor/layouts'
 import { withOutcomes } from './autoCutData'
 import { changeGone, finish, liveAutoCuts, staleAmong, takeBackSteps, withAutoCuts, withSpeedUpsKept } from './autoCuts'
 import { captionItemStatus, captionPendingCount, captionReviewItems, expandGroups, isCaptionKind, keepCaptionItems, mergeGroup, removeCaptionItems } from './captionReview'
+import { editingItemStatus, editingPendingCount, editingReviewItems, isEditingKind, keepEditingItems, removeEditingItems } from './editingReview'
 import {
   cutDetail,
   cutKind,
@@ -98,6 +99,8 @@ export function reviewItems(project: Project): ReviewItem[] {
     if (!chosen.has(c.id)) items.push({ key: `cut:${c.id}`, kind: cutKind(c), start: c.start, end: c.end, title: cutTitle(c), detail: cutDetail(c), cut: c })
   }
   items.push(...captionReviewItems(project))
+  // Editing polish's (editingReview.ts): Polish's cut style and Auto colour, after Captions Studio's at equal times.
+  items.push(...editingReviewItems(project))
   return items.sort(byTime)
 }
 
@@ -113,7 +116,7 @@ export function pendingCount(project: Project): number {
   if (directorsFraming(project)) n++
   const chosen = outcomesOf(project)
   for (const c of liveAutoCuts(project)) if (!chosen.has(c.id)) n++
-  return n + captionPendingCount(project)
+  return n + captionPendingCount(project) + editingPendingCount(project)
 }
 
 const idOf = (key: string): string => key.slice(key.indexOf(':') + 1)
@@ -151,6 +154,7 @@ function outcomesOf(project: Pick<Project, 'autoCutOutcomes'>): ReadonlyMap<stri
  */
 export function reviewStatus(project: Project, item: ReviewItem): ReviewStatus {
   if (isCaptionKind(item.kind)) return captionItemStatus(project, item)
+  if (isEditingKind(item.kind)) return editingItemStatus(project, item)
   if (item.key === FRAMING_KEY) {
     if (directorsFraming(project)) return 'pending'
     return framingUntouched(project.webcam) ? 'removed' : 'kept'
@@ -235,6 +239,8 @@ export function keepItems(project: Project, items: readonly ReviewItem[]): Proje
   const keys = new Set(todo.map((i) => i.key))
   // Captions Studio's: a group row is its items still pending.
   let next = keepCaptionItems(project, captionTodo(project, todo))
+  // Editing polish's: one project out (itself when none is pending).
+  next = keepEditingItems(next, todo.filter((i) => isEditingKind(i.kind)))
   if (todo.some((i) => i.kind === 'zoom')) next = { ...next, zooms: next.zooms.map((z) => (keys.has(`zoom:${z.id}`) ? { ...z, auto: false } : z)) }
   if (todo.some((i) => i.kind === 'camera' && i.key !== FRAMING_KEY)) {
     next = { ...next, layouts: (next.layouts ?? []).map((s) => (keys.has(`camera:${s.id}`) ? byHand(s) : s)) }
@@ -279,6 +285,8 @@ export function* removeSteps(project: Project, items: readonly ReviewItem[]): Ge
   const keys = new Set(todo.map((i) => i.key))
   // Captions Studio's: a group row is its items still pending.
   let next = removeCaptionItems(project, captionTodo(project, todo))
+  // Editing polish's: one project out (itself when none is pending).
+  next = removeEditingItems(next, todo.filter((i) => isEditingKind(i.kind)))
   if (todo.some((i) => i.kind === 'zoom')) next = { ...next, zooms: next.zooms.filter((z) => !keys.has(`zoom:${z.id}`)) }
   const segIds = todo.filter((i) => i.kind === 'camera' && i.key !== FRAMING_KEY).map((i) => idOf(i.key))
   if (segIds.length) next = { ...next, layouts: withoutSegments(next.layouts ?? [], segIds) }

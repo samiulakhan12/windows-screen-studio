@@ -33,10 +33,14 @@ import { applySmartSpeed, planSilences, SILENCE_LENGTH, SILENCE_PADDING, SMART_S
 import { applyPreset, presetMatches, type PresetLook } from './stylePresets'
 import { recordAutoCuts } from '../review/autoCuts'
 
-/** 'captionLook': Make my captions great, offline (docs/design/captions-studio.md §11.8). */
-export type PolishStep = 'style' | 'zoom' | 'silences' | 'captions' | 'captionLook' | 'director'
+/**
+ * 'captionLook': Make my captions great, offline (docs/design/captions-studio.md §11.8).
+ * 'smoothCuts': every cut set to Smooth (docs/design/editing-polish.md §11), after Remove silences
+ * so the cuts it makes are smoothed too.
+ */
+export type PolishStep = 'style' | 'zoom' | 'silences' | 'smoothCuts' | 'captions' | 'captionLook' | 'director'
 /** Run order (decision 2); the dialog lists rows in this order too. */
-export const POLISH_STEPS: readonly PolishStep[] = ['style', 'zoom', 'silences', 'captions', 'captionLook', 'director']
+export const POLISH_STEPS: readonly PolishStep[] = ['style', 'zoom', 'silences', 'smoothCuts', 'captions', 'captionLook', 'director']
 
 export interface PolishOptions {
   /** A style preset id (BUILT_IN_PRESETS or the user's), or null: keep the current look. */
@@ -45,6 +49,8 @@ export interface PolishOptions {
   silences: boolean
   /** What happens to each silence (smartSpeed.ts). */
   silenceAction: SmartSpeedAction
+  /** Smooth cuts (editing polish §11, §0 decision 3); saved options without it read false. */
+  smoothCuts: boolean
   captions: boolean
   /** Transcription provider id; null or no longer able to transcribe: the first that can (pickTranscriber). */
   captionsProvider: string | null
@@ -58,6 +64,7 @@ export const DEFAULT_POLISH_OPTIONS: Readonly<PolishOptions> = Object.freeze({
   zoom: true,
   silences: true,
   silenceAction: 'cut',
+  smoothCuts: true,
   captions: true,
   captionsProvider: null,
   captionLook: true,
@@ -98,6 +105,10 @@ export type PolishSkip =
   | 'camera-hidden'
   /** options.styleId names a preset that no longer exists */
   | 'no-preset'
+  /** Smooth cuts: the video has no cuts */
+  | 'no-cuts'
+  /** Smooth cuts: every cut's style was chosen (joins.all is set, Hard cut included) */
+  | 'kept-style'
 
 export interface PolishInput {
   project: Project
@@ -147,6 +158,8 @@ export interface PolishSummary {
   /** Silences acted on, and how. */
   silences: number
   silenceAction: SmartSpeedAction
+  /** Cuts Smooth cuts smoothed (those without their own style); absent or 0 unless the step changed the project. */
+  smoothCuts?: number
   /** Zooms after polishing: automatic ones, and the user's (auto: false). */
   zooms: { auto: number; kept: number }
   /** The director's parts after polishing (DirectorPlan.parts, by kind). */
@@ -208,6 +221,7 @@ export function* planPolishSteps(input: PolishInput, options: PolishOptions): Ge
     saved: 0,
     silences: 0,
     silenceAction: options.silenceAction,
+    smoothCuts: 0,
     zooms: { auto: 0, kept: 0 },
     camera: { intro: false, outro: false, hidden: 0, moves: 0 },
     framing: null,
@@ -264,6 +278,9 @@ export function* planPolishSteps(input: PolishInput, options: PolishOptions): Ge
     // Remembered as automatic, for Review mode (docs/design/review-mode.md §4.1).
     ran('silences', clips === p.clips ? p : recordAutoCuts(p, clips, plan.parts.flatMap((x) => x.pieces), options.silenceAction, 'polish'))
   }
+
+  // Smooth cuts (editing polish §11): part P1 makes it run; until then it is skipped as not selected.
+  skip('smoothCuts', 'off')
 
   // Captions: the Captions tab's write. A transcript already there holds your edits: never replaced.
   if (!options.captions) skip('captions', 'off')
@@ -339,6 +356,8 @@ export function readPolishOptions(raw: unknown): PolishOptions {
     zoom: flag(o.zoom, D.zoom),
     silences: flag(o.silences, D.silences),
     silenceAction: SMART_SPEED_ACTIONS.find((a) => a === o.silenceAction) ?? D.silenceAction,
+    // Saved before the step existed: off, so a saved Polish does what it did (editing polish §11).
+    smoothCuts: flag(o.smoothCuts, false),
     captions: flag(o.captions, D.captions),
     captionsProvider: isId(o.captionsProvider) ? o.captionsProvider : null,
     // Saved before the step existed: off, so a saved Polish does what it did (Captions Studio §11.8).
@@ -364,6 +383,8 @@ export function polishAvailability(project: Project, recorded: CursorTrack, ctx:
     style: null,
     zoom: autoZoomHasInput(recorded) ? null : 'no-input',
     silences: !project.hasAudio ? 'no-sound' : activitySources(project).length === 0 ? 'muted' : null,
+    // Smooth cuts: part P1 says when it cannot run; until then the row is not offered.
+    smoothCuts: 'off',
     captions: captions(),
     // It styles the captions there are, or the ones the captions step makes in the same run.
     captionLook: project.transcript?.segments.length || captions() === null ? null : 'no-captions',

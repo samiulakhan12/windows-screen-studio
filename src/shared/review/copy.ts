@@ -8,13 +8,14 @@ import { formatLevel } from '../editor/zoomEdit'
 /**
  * Review mode's own kinds, then Captions Studio's (docs/design/captions-studio.md §11.8): the look,
  * the automatic emphasis and the text fixes (one group row each), emoji, the other graphics and
- * title cards, and bleeps.
+ * title cards, and bleeps; then editing polish's (docs/design/editing-polish.md §11): Polish's cut
+ * style and Auto colour.
  */
-export type ReviewKind = 'zoom' | 'camera' | 'silence' | 'idle' | 'words' | 'style' | 'emphasis' | 'text' | 'emoji' | 'graphic' | 'bleep'
+export type ReviewKind = 'zoom' | 'camera' | 'silence' | 'idle' | 'words' | 'style' | 'emphasis' | 'text' | 'emoji' | 'graphic' | 'bleep' | 'join' | 'colour'
 export type ReviewStatus = 'pending' | 'kept' | 'removed'
 
 /** Kinds in the order items at the same time are listed (Captions Studio's after the others). */
-export const REVIEW_KINDS: readonly ReviewKind[] = ['camera', 'zoom', 'silence', 'idle', 'words', 'style', 'emphasis', 'text', 'emoji', 'graphic', 'bleep']
+export const REVIEW_KINDS: readonly ReviewKind[] = ['camera', 'zoom', 'silence', 'idle', 'words', 'style', 'emphasis', 'text', 'emoji', 'graphic', 'bleep', 'join', 'colour']
 
 /** Each kind's chip, its name in a sentence, and its plural on "Remove all …". */
 export const KIND_WORDS: Record<ReviewKind, { chip: string; name: string; all: string; one: string; plural: string }> = {
@@ -30,7 +31,10 @@ export const KIND_WORDS: Record<ReviewKind, { chip: string; name: string; all: s
   emoji: { chip: 'Emoji', name: 'emoji', all: 'Remove all emoji', one: 'emoji', plural: 'emoji' },
   // Pop-ups, counters, list cards and the title cards made from captions (lower thirds, chapter titles, quotes): §10.1's graphics.
   graphic: { chip: 'Graphic', name: 'graphic', all: 'Remove all graphics', one: 'graphic', plural: 'graphics' },
-  bleep: { chip: 'Bleep', name: 'bleep', all: 'Remove all bleeps', one: 'bleep', plural: 'bleeps' }
+  bleep: { chip: 'Bleep', name: 'bleep', all: 'Remove all bleeps', one: 'bleep', plural: 'bleeps' },
+  // Editing polish: Polish's Smooth cuts step, and Auto colour on the camera.
+  join: { chip: 'Cuts', name: 'cut style', all: 'Remove all cut styles', one: 'cut style', plural: 'cut styles' },
+  colour: { chip: 'Colour', name: 'colour', all: 'Remove all colour changes', one: 'colour change', plural: 'colour changes' }
 }
 
 export const STATUS_WORDS: Record<ReviewStatus, string> = { pending: 'not reviewed', kept: 'kept', removed: 'removed' }

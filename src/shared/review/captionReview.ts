@@ -19,6 +19,7 @@ import { legacyTwin } from '../captions/studioEdit'
 import { LEGACY_TILES, studioPreset } from '../captions/studioPresets'
 import type { Bleep, CaptionAuto, CaptionMark, CaptionSegment, CaptionSettings, Graphic, Project, TitleCard } from '../types'
 import type { ReviewItem, ReviewKind, ReviewStatus } from './review'
+import { sfxTitle } from '../audio/soundLibrary'
 
 /** The kinds of this module, in the order items at the same time are listed (after Review mode's own). */
 export const CAPTION_KINDS: readonly ReviewKind[] = ['style', 'emphasis', 'text', 'emoji', 'graphic', 'bleep']
@@ -195,7 +196,9 @@ export function captionReviewItems(project: Project): ReviewItem[] {
   }
   for (const g of project.graphics ?? []) {
     if (!g.auto) continue
-    items.push({ key: `graphic:${g.id}`, kind: g.kind === 'emoji' ? 'emoji' : 'graphic', start: g.start, end: g.end, title: graphicTitle(g, bleeps), detail: viaDetail(g.auto.via) })
+    // A pop-up with a library sound names it (editing polish §10.7): "Pop-up “Save” (with Soft pop)".
+    const sound = g.sound && g.sound !== 'pop' && g.sound !== 'ding' ? ` (with ${sfxTitle(g.sound)})` : ''
+    items.push({ key: `graphic:${g.id}`, kind: g.kind === 'emoji' ? 'emoji' : 'graphic', start: g.start, end: g.end, title: graphicTitle(g, bleeps) + sound, detail: viaDetail(g.auto.via) })
   }
   for (const c of project.titles ?? []) {
     if (!c.auto) continue
