@@ -45,7 +45,11 @@ function canvas(): Record<string, unknown> {
       if (prop === 'measureText') return (s: string) => ({ width: String(s).length * 9, actualBoundingBoxAscent: 7, actualBoundingBoxDescent: 2 })
       if (prop === 'getTransform') return () => ({ a: 1, b: 0, c: 0, d: 1, e: 0, f: 0 })
       if (prop === 'getLineDash') return () => []
-      if (prop === 'save') return () => void stack.push({ ...target }) ?? calls.push({ canvas: id, name: 'save', args: [] })
+      if (prop === 'save')
+        return () => {
+          stack.push({ ...target })
+          calls.push({ canvas: id, name: 'save', args: [] })
+        }
       if (prop === 'restore')
         return () => {
           const back = stack.pop()
