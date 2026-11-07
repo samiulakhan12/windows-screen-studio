@@ -9,7 +9,7 @@ import { captionsOf } from './settings'
 import { ANCHOR_TEXT_MAX, readCaptionMarks, readCaptionPlaces, readGraphics } from './studioData'
 import { legacyTwin } from './studioEdit'
 import { seedOf } from './motion'
-import { lcsFewestRuns, wordKey } from './textMap'
+import { lcsFewestRuns, newWordsOf, oldWordsOf, wordCount, wordKey, wordRanges } from './textMap'
 import { studioTokens, studioWords } from './words'
 
 /** The marks of each caption, by caption id, each list in word order. */
@@ -148,7 +148,50 @@ const sameTimes = (x: Words['times'][number], y: Words['times'][number]): boolea
 /** Where a record's words are in `next` (§11.1 rules 1–3), or null when they are gone. */
 type Found = { caption: string; from: number; to: number }
 
-function relocate(rec: { caption: string; from: number; to: number }, prev: Map<string, Words>, next: Map<string, Words>, nextList: Words[], putBack: boolean): Found | null {
+/**
+ * How a caption's words in `prev` became its words in `next` when a text record says so (§11.1
+ * rule 1): `exact`, words from..to → the words they are now, from a record's word map; `putBack`,
+ * a record without a map put back (Review's Remove of a record saved before maps were written),
+ * whose words are found again with lcsFewestRuns.
+ */
+type TextStep = { exact: (from: number, to: number) => [number, number] } | 'putBack'
+
+/**
+ * The text steps of the captions whose text changed from `prev` to `next`, read from their text
+ * records: Remove put a record's text back (`prev`'s record and map: each word back to the words it
+ * came from); a tidy wrote a record (`next`'s new records: each word to every word made from it),
+ * or tidied a caption again (both maps, through the words before the first tidy). A map that does
+ * not fit its caption's words is not used.
+ */
+function textSteps(next: Project, prev: Project, prevWords: Map<string, Words>, nextWords: Map<string, Words>): Map<string, TextStep> {
+  const out = new Map<string, TextStep>()
+  const prevRecords = prev.captionAuto?.text ?? []
+  // Only records this update wrote describe its change (a hand edit drops the record, settle rule 2).
+  const ownRecords = next.captionAuto?.text !== prev.captionAuto?.text ? (next.captionAuto?.text ?? []) : []
+  if (!prevRecords.length && !ownRecords.length) return out
+  const was = new Map(prevRecords.map((r) => [r.caption, r]))
+  const own = new Map(ownRecords.map((r) => [r.caption, r]))
+  const prevLang = prev.transcript?.language
+  const lang = next.transcript?.language
+  for (const [id, now] of nextWords) {
+    const before = prevWords.get(id)
+    if (!before || before.seg.text === now.seg.text) continue
+    const p = was.get(id)
+    const pMap = p?.map ? wordRanges(p.map, before.keys.length, wordCount(p.text, prevLang)) : null
+    if (p && now.seg.text === p.text) {
+      out.set(id, pMap ? { exact: (from, to) => oldWordsOf(pMap, from, to) } : 'putBack')
+      continue
+    }
+    const n = own.get(id)
+    const nMap = n?.map ? wordRanges(n.map, now.keys.length, wordCount(n.text, lang)) : null
+    if (!n || !nMap) continue
+    if (before.seg.text === n.text) out.set(id, { exact: (from, to) => newWordsOf(nMap, from, to) })
+    else if (p && pMap && p.text === n.text) out.set(id, { exact: (from, to) => newWordsOf(nMap, ...oldWordsOf(pMap, from, to)) })
+  }
+  return out
+}
+
+function relocate(rec: { caption: string; from: number; to: number }, prev: Map<string, Words>, next: Map<string, Words>, nextList: Words[], step: TextStep | undefined): Found | null {
   const before = prev.get(rec.caption)
   if (!before || rec.from < 0 || rec.to >= before.keys.length || rec.from > rec.to) return null
   const want = before.keys.slice(rec.from, rec.to + 1)
@@ -156,6 +199,12 @@ function relocate(rec: { caption: string; from: number; to: number }, prev: Map<
   // Rule 1: the same caption, its text changed: the words found again in order and next to each other.
   if (same) {
     if (same.seg.text === before.seg.text) return { caption: rec.caption, from: rec.from, to: rec.to }
+    // A text record's word map says where the words are: no finding them again.
+    if (step && step !== 'putBack') {
+      const [from, to] = step.exact(rec.from, rec.to)
+      return { caption: rec.caption, from, to }
+    }
+    const putBack = step === 'putBack'
     // Text put back pairs words so that the words it puts back stay together. Times spread over a
     // caption say nothing of which word stayed, so only stored times are compared.
     const sameTime = before.stored && same.stored ? (i: number, j: number): boolean => sameTimes(before.times[i], same.times[j]) : (): boolean => false
@@ -234,12 +283,14 @@ const same = (a: unknown, b: unknown): boolean => JSON.stringify(a) === JSON.str
  * is looked for by its text in the captions over its old time, nearest first; else it is dropped
  * (a graphic then stays free). Places follow their caption, both halves of a split keep one, a
  * caption that is gone loses its. Only a mark or anchor `prev` had (same id, same words) is
- * remapped: one this update made or moved already names `next`'s words and is only checked. On the
- * captions in `putBack` (a text fix taken back: Review's Remove), words the fix changed span the
- * words they were. The result is what reading the saved project gives for these fields; `next`
- * itself when nothing changed.
+ * remapped: one this update made or moved already names `next`'s words and is only checked. A
+ * caption whose text a tidy changed or Review's Remove put back follows its text record's word map
+ * instead (textSteps): exactly onto the words made from them, or back onto the words they came
+ * from. A record without a map put back (saved before maps were written) finds the words again,
+ * words the fix changed spanning the words they were. The result is what reading the saved project
+ * gives for these fields; `next` itself when nothing changed.
  */
-export function remapAnchors(next: Project, prev: Project, putBack?: ReadonlySet<string>): Project {
+export function remapAnchors(next: Project, prev: Project): Project {
   const nt = next.transcript
   const pt = prev.transcript
   if (nt === pt || !pt) return next
@@ -256,6 +307,7 @@ export function remapAnchors(next: Project, prev: Project, putBack?: ReadonlySet
   const prevWords = new Map(pt.segments.map((s) => [s.id, wordsOf(s, pt.language)]))
   const nextList = nt.segments.map((s) => wordsOf(s, lang))
   const nextWords = new Map(nextList.map((w) => [w.seg.id, w]))
+  const steps = textSteps(next, prev, prevWords, nextWords)
   const textOf = (f: Found): string => {
     const words = studioWords(nextWords.get(f.caption)!.seg.text, lang)
     return wordsText(words, f.from, f.to)
@@ -268,7 +320,7 @@ export function remapAnchors(next: Project, prev: Project, putBack?: ReadonlySet
   const fromPrev = (rec: Spot, was: Spot | undefined): boolean => !!was && was.caption === rec.caption && was.from === rec.from && was.to === rec.to && was.text === rec.text
   const move = <T extends Spot>(rec: T, was: Spot | undefined): T | null => {
     if (!fromPrev(rec, was)) return rec
-    const f = relocate(rec, prevWords, nextWords, nextList, !!putBack?.has(rec.caption))
+    const f = relocate(rec, prevWords, nextWords, nextList, steps.get(rec.caption))
     if (!f) return null
     if (f.caption === rec.caption && f.from === rec.from && f.to === rec.to && nextWords.get(f.caption)!.seg.text === prevWords.get(rec.caption)?.seg.text) return rec
     return { ...rec, caption: f.caption, from: f.from, to: f.to, text: textOf(f) }
