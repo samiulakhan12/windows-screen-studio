@@ -3,7 +3,7 @@
  * them strictly, writing them as runs, composing two tidies, and moving words both ways.
  */
 import { describe, expect, it } from 'vitest'
-import { alignedRanges, composeRanges, narrowedWords, newWordsOf, oldWordsOf, pieceRanges, readTextMap, oneToOne, textMapRuns, wordKey, wordRanges } from '../src/shared/captions/textMap'
+import { alignedRanges, composeRanges, narrowedWords, newWordsOf, oldWordsOf, pieceRanges, readTextMap, oneToOne, spacedPieceRanges, textMapRuns, wordKey, wordRanges } from '../src/shared/captions/textMap'
 
 /** A small seeded generator (mulberry32). */
 function rng(seed: number): () => number {
@@ -160,7 +160,7 @@ describe('narrowedWords', () => {
     expect(tidy(2, 2)).toEqual([1, 1])
     expect(tidy(1, 1)).toEqual([0, 0])
     expect(tidy(0, 3)).toEqual([0, 3])
-    // A term written as a whole: "Google" onto "google", "Docs" onto both.
+    // Two words that each come from both (a piece written as a whole): "Google" onto "google", "Docs", found in neither, onto both.
     const term: [number, number][] = [[0, 1], [0, 1]]
     const back2 = narrowedWords((i) => oldWordsOf(term, i, i), keys('Google Docs'), keys('google dogs'))
     expect([back2(0, 0), back2(1, 1), back2(0, 1)]).toEqual([[0, 0], [0, 1], [0, 1]])
@@ -197,6 +197,36 @@ describe('pieceRanges', () => {
     expect(pieceRanges(['google', 'dogs', ','], ['Google', 'Docs,'], true)).toEqual([[0, 1], [0, 2]])
     expect(pieceRanges(['vscode', ','], ['VS', 'Code,'], true)).toEqual([[0, 0], [0, 1]])
     expect(pieceRanges(['two', 'hundred', ','], ['200,'], true)).toEqual([[0, 2]])
+  })
+})
+
+describe('spacedPieceRanges', () => {
+  /** Words split on spaces, each as one word (English). */
+  const spaced = (text: string): string[][] => text.split(' ').map((w) => [w])
+
+  it('a term written in place of as many words split on spaces: word for word, a comma written apart with the last', () => {
+    expect(spacedPieceRanges(spaced('google dogs'), spaced('Google Docs'), true)).toEqual([[0, 0], [1, 1]])
+    expect(spacedPieceRanges(spaced('google dogs ,'), spaced('Google Docs,'), true)).toEqual([[0, 0], [1, 2]])
+    expect(spacedPieceRanges(spaced('google dogs , ,'), spaced('Google Docs,,'), true)).toEqual([[0, 0], [1, 3]])
+    expect(spacedPieceRanges(spaced('"google dogs"'), spaced('"Google Docs".'), true)).toEqual([[0, 0], [1, 1]])
+    expect(spacedPieceRanges(spaced('the best app'), spaced('The Best App'), true)).toEqual([[0, 0], [1, 1], [2, 2]])
+    // Already written so, in other capitals: the same as by the characters.
+    expect(spacedPieceRanges(spaced('visual studio ,'), spaced('Visual Studio,'), true)).toEqual(pieceRanges(['visual', 'studio', ','], ['Visual', 'Studio,'], true))
+    // Each pair by pieceRanges: a word split differently on each side goes whole within its pair.
+    expect(spacedPieceRanges([['open'], ['グーグル']], [['Open'], ['東京', 'スカイ', 'ツリー']], true)).toEqual([[0, 0], [1, 1], [1, 1], [1, 1]])
+  })
+
+  it('any other piece: pieceRanges of all its words', () => {
+    // Other numbers of words: each word from all of them.
+    expect(spacedPieceRanges(spaced('flow in'), spaced('Flown'), true)).toEqual([[0, 1]])
+    expect(spacedPieceRanges(spaced('vscode'), spaced('VS Code'), true)).toEqual([[0, 0], [0, 0]])
+    expect(spacedPieceRanges(spaced('q and a ,'), spaced('Q&A,'), true)).toEqual([[0, 3]])
+    expect(spacedPieceRanges(spaced('two hundred and fifty'), spaced('250'), true)).toEqual([[0, 3]])
+    // One word split three ways on each side: all of them, as before.
+    expect(spacedPieceRanges([['東京タワー', 'へ', 'ようこそ']], [['東京', 'スカイ', 'ツリー']], true)).toEqual([[0, 2], [0, 2], [0, 2]])
+    // Not written as a whole: as pieceRanges.
+    expect(spacedPieceRanges(spaced('works ,'), spaced('works,'), false)).toEqual([[0, 1]])
+    expect(spacedPieceRanges(spaced('word'), spaced('Word.'), false)).toEqual([[0, 0]])
   })
 })
 

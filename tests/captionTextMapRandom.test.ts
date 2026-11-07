@@ -7,7 +7,11 @@
  * pieces the captions were made of: after Remove every mark and anchor covers exactly the words it
  * covered before the tidy (a mark on part of a piece the tidy wrote as one, the whole piece, but
  * an end on a word found the same there, that word; a term said as its own words, in lower case,
- * is a piece per word; a comma written apart goes with the last word of its piece).
+ * or as a heard form of as many words ("google dogs" for "Google Docs"), is a piece per word; a
+ * comma written apart goes with the last word of its piece). Some captions get a second mark
+ * right after the first, kept where the first is pending and pending where the first is the
+ * user's (a kept and a pending mark on the two words of "Google Docs" among them), when the
+ * pieces keep the two apart: both stay, and the emphasis row stays while one is pending.
  */
 import { describe, expect, it } from 'vitest'
 import { settleCaptionAuto } from '../src/shared/captions/captionAutoSettle'
@@ -74,8 +78,12 @@ const PLAIN = ['open', 'and', 'in', 'the', 'save', 'users', 'click', 'then', 'd'
 interface Piece {
   words: string[]
   tidied: number
-  /** A term said as its own words ("visual studio"): each word is a piece of its own once punctuated. */
+  /** A term said as its own words ("visual studio") or heard as as many words ("google dogs"): each word is a piece of its own. */
   apart?: true
+  /** Which word of such a term the piece is (0 for the first), once each is a piece of its own. */
+  termWord?: number
+  /** Such a term heard as other words ("google dogs"), which the tidy writes in their place. */
+  replaced?: true
   /** A comma written apart at its end: it joins the last tidied word alone. */
   comma?: true
 }
@@ -104,7 +112,7 @@ function caption(r: () => number, digits: CleanupChoices['digits'], entries: Wor
       const said = e.heard.length && r() < 0.8 ? e.heard[Math.floor(r() * e.heard.length)] : e.term.toLowerCase()
       const tidied = studioWordTexts(e.term, 'en').length
       const words = said.split(' ')
-      pieces.push({ words, tidied, ...(said === e.term.toLowerCase() && words.length === tidied && tidied > 1 ? { apart: true as const } : {}) })
+      pieces.push({ words, tidied, ...(words.length === tidied && tidied > 1 ? { apart: true as const, ...(said !== e.term.toLowerCase() ? { replaced: true as const } : {}) } : {}) })
     } else {
       const w = PLAIN[Math.floor(r() * PLAIN.length)]
       // "and" after a number is fine, but a number may not follow it.
@@ -122,8 +130,9 @@ function caption(r: () => number, digits: CleanupChoices['digits'], entries: Wor
       p.comma = true
     }
   }
-  // A term said as its own words keeps each word on its own; a comma written apart goes with the last.
-  return pieces.flatMap((p) => (p.apart ? Array.from({ length: p.tidied }, (_, k) => ({ words: k < p.tidied - 1 ? [p.words[k]] : p.words.slice(k), tidied: 1, ...(k === p.tidied - 1 && p.comma ? { comma: true as const } : {}) })) : [p]))
+  // A term said as its own words, or as a heard form of as many, keeps each word on its own; a comma
+  // written apart goes with the last.
+  return pieces.flatMap((p) => (p.apart ? Array.from({ length: p.tidied }, (_, k) => ({ words: k < p.tidied - 1 ? [p.words[k]] : p.words.slice(k), tidied: 1, termWord: k, ...(p.replaced ? { replaced: true as const } : {}), ...(k === p.tidied - 1 && p.comma ? { comma: true as const } : {}) })) : [p]))
 }
 
 /**
@@ -192,6 +201,8 @@ interface Scenario {
   failures: string[]
   /** What the scenario covered: marks before or after the tidy, the word times, one tidy or two, Remove on the group or on items. */
   kind: string
+  /** Second marks that start on the second word of a term written in place of as many words, the first mark ending on its first. */
+  termPairs: number
 }
 
 function run(seed: number): Scenario {
@@ -218,13 +229,35 @@ function run(seed: number): Scenario {
   const wordsAt = (q: Project, id: string, from: number, to: number): string => studioWordTexts(textOf(q, id), 'en').slice(from, to + 1).join(' ')
   // Marks before the tidy (the user's), or on the tidied words (automatic, as Make my captions great picks them).
   const before = r() < 0.5
-  // Each mark's words once Remove put the text back, and (made before the tidy) once tidied; the
-  // words of the marks made before the tidy.
-  const marks = new Map<string, { said: [number, number]; tidied?: [number, number] }>()
+  // Each mark's words once Remove put the text back, (made before the tidy) once tidied, and
+  // whether it was made pending; the words of the marks made before the tidy.
+  const marks = new Map<string, { said: [number, number]; tidied?: [number, number]; pending: boolean }>()
   const made = new Map<string, [number, number]>()
+  const pendingMade = new Set<string>()
   const pick = (n: number): [number, number] => {
     const a = Math.floor(r() * n)
     const b = Math.min(n - 1, a + Math.floor(r() * 3))
+    return [a, b]
+  }
+  // A second mark right after the first in some captions, drawn from its own generator so the
+  // scenarios stay as they were: one or two words, kept only where the pieces keep the two marks
+  // apart once tidied and once put back (`onSaid`: the marks are on the words before the tidy).
+  const r2 = rng(seed + 0x9e3779b9)
+  let termPairs = 0
+  // Marks in caption order, then by their first word, as the project reader keeps them.
+  const inOrder = (list: CaptionMark[]): CaptionMark[] => [...list].sort((x, y) => +x.caption.slice(1) - +y.caption.slice(1) || x.from - y.from)
+  const second = (i: number, first: [number, number], n: number, ix: ReturnType<typeof index>, onSaid: boolean): [number, number] | null => {
+    const pieceOf = onSaid ? ix.saidPiece : ix.tidiedPiece
+    // Always after a first mark that ends on the first word of a term written in place of as many words.
+    const end = shapes[i][pieceOf[first[1]]]
+    if ((r2() >= 0.6 && !(end.replaced && end.termWord === 0)) || first[1] + 1 >= n) return null
+    const a = first[1] + 1
+    const b = Math.min(n - 1, a + Math.floor(r2() * 2))
+    const t1 = onSaid ? ix.tidy(...first) : first
+    const t2 = onSaid ? ix.tidy(a, b) : ([a, b] as [number, number])
+    if (t1[1] >= t2[0] || ix.back(...t1)[1] >= ix.back(...t2)[0]) return null
+    const p = shapes[i][pieceOf[a]]
+    if (p.replaced && (p.termWord ?? 0) > 0 && pieceOf[first[1]] === pieceOf[a] - 1) termPairs++
     return [a, b]
   }
   if (before) {
@@ -240,42 +273,54 @@ function run(seed: number): Scenario {
   // One tidy, or two: the first with capitals and part of the word list only.
   const all: CleanupChoices = { caps: true, punct: true, digits, bleep: 'off', bleepSound: 'tone', ai: false }
   const twice = r() < 0.4
-  if (twice) {
-    const first = entries.filter(() => r() < 0.5)
-    s.update((q) => tidyCaptions(q, { ...all, punct: false, digits: 'off', words: first }).project)
+  const tidies = [...(twice ? [{ ...all, punct: false, digits: 'off' as const, words: entries.filter(() => r() < 0.5) }] : []), { ...all, words: entries }]
+  if (before) {
+    // Pending (automatic) marks right after the user's, where the tidied text keeps them apart.
+    const dry = tidies.reduce((q, c) => tidyCaptions(q, c).project, s.state)
+    const pending = shapes.flatMap((pieces, i): CaptionMark[] => {
+      const got = second(i, made.get(`m${i}`)!, pieces.flatMap((p) => p.words).length, index(pieces, studioWordTexts(textOf(dry, `c${i}`), 'en')), true)
+      return got ? [{ id: `n${i}`, caption: `c${i}`, from: got[0], to: got[1], text: wordsAt(s.state, `c${i}`, ...got), auto: true }] : []
+    })
+    if (pending.length) s.update((q) => ({ ...q, captionMarks: inOrder([...q.captionMarks!, ...pending]) }))
+    for (const m of pending) {
+      made.set(m.id, [m.from, m.to])
+      pendingMade.add(m.id)
+    }
   }
-  s.update((q) => tidyCaptions(q, { ...all, words: entries }).project)
+  for (const c of tidies) s.update((q) => tidyCaptions(q, c).project)
   // The pieces as tidied: as many words as expected.
   shapes.forEach((pieces, i) => {
     const want = pieces.reduce((n, p) => n + p.tidied, 0)
     const have = studioWordTexts(textOf(s.state, `c${i}`), 'en').length
     if (want !== have) fail(`c${i} “${segments[i].text}” → “${textOf(s.state, `c${i}`)}”: ${have} words, expected ${want}`)
   })
-  if (failures.length) return { seed, failures, kind: '' }
+  if (failures.length) return { seed, failures, kind: '', termPairs }
   const indexOf = (caption: string): ReturnType<typeof index> => index(shapes[+caption.slice(1)], studioWordTexts(textOf(s.state, caption), 'en'))
-  for (const m of s.state.captionMarks ?? []) {
-    const raw = made.get(m.id)
-    if (!raw) continue
-    const ix = indexOf(m.caption)
+  for (const [id, raw] of made) {
+    const ix = indexOf(`c${id.slice(1)}`)
     const tidied = ix.tidy(...raw)
-    marks.set(m.id, { said: ix.back(...tidied), tidied })
+    marks.set(id, { said: ix.back(...tidied), tidied, pending: pendingMade.has(id) })
   }
-  // Marks before the tidy are on the tidied words of their pieces now.
-  for (const m of s.state.captionMarks ?? []) {
-    const want = marks.get(m.id)?.tidied
-    if (!want) continue
-    if (m.from !== want[0] || m.to !== want[1]) fail(`tidy moved mark ${m.id} to ${m.from}..${m.to}, expected ${want}`)
+  // Marks before the tidy are on the tidied words of their pieces now, none of them merged.
+  for (const [id, { tidied: want }] of marks) {
+    const m = s.state.captionMarks?.find((x) => x.id === id)
+    if (!m) fail(`tidy merged or dropped mark ${id}`)
+    else if (m.from !== want![0] || m.to !== want![1]) fail(`tidy moved mark ${m.id} to ${m.from}..${m.to}, expected ${want}`)
   }
   if (!before) {
-    s.update((q) => ({
-      ...q,
-      captionMarks: shapes.map((pieces, i): CaptionMark => {
+    s.update((q) => {
+      const list = shapes.map((pieces, i): CaptionMark => {
         const [a, b] = pick(pieces.reduce((n, p) => n + p.tidied, 0))
         return { id: `m${i}`, caption: `c${i}`, from: a, to: b, text: wordsAt(q, `c${i}`, a, b), auto: true }
-      }),
-      captionPlaces: shapes.map((_, i) => ({ caption: `c${i}`, position: i % 2 ? 'top' : 'bottom' }))
-    }))
-    for (const m of s.state.captionMarks ?? []) marks.set(m.id, { said: indexOf(m.caption).back(m.from, m.to) })
+      })
+      // A kept mark (tone 2) right after the pending one, where putting the text back keeps them apart.
+      const kept = list.flatMap((m, i): CaptionMark[] => {
+        const got = second(i, [m.from, m.to], shapes[i].reduce((n, p) => n + p.tidied, 0), indexOf(m.caption), false)
+        return got ? [{ id: `n${i}`, caption: m.caption, from: got[0], to: got[1], text: wordsAt(q, m.caption, ...got), tone: 2 }] : []
+      })
+      return { ...q, captionMarks: inOrder([...list, ...kept]), captionPlaces: shapes.map((_, i) => ({ caption: `c${i}`, position: i % 2 ? 'top' : 'bottom' })) }
+    })
+    for (const m of s.state.captionMarks ?? []) marks.set(m.id, { said: indexOf(m.caption).back(m.from, m.to), pending: !!m.auto })
   }
   // A keyword pop-up anchored on the tidied words of each caption.
   const anchors = new Map<string, [number, number]>()
@@ -329,13 +374,13 @@ function run(seed: number): Scenario {
   })
   // Every mark and anchor on exactly its words.
   const marksNow = new Map((s.state.captionMarks ?? []).map((m) => [m.id, m]))
-  for (const [id, { said }] of marks) {
+  for (const [id, { said, pending }] of marks) {
     const m = marksNow.get(id)
     const caption = `c${id.slice(1)}`
     const want = removed.has(caption) ? said : tidiedMarks.get(id)!
     if (!m) fail(`mark ${id} gone`)
     else if (m.caption !== caption || m.from !== want[0] || m.to !== want[1]) fail(`mark ${id} on ${m.from}..${m.to} “${m.text}” of “${textOf(s.state, caption)}”, expected ${want} (${removed.has(caption) ? 'removed' : 'kept'})`)
-    else if (!!m.auto !== (!before && !keepEmphasis)) fail(`mark ${id} auto ${!!m.auto}`)
+    else if (!!m.auto !== (pending && !keepEmphasis)) fail(`mark ${id} auto ${!!m.auto}`)
   }
   for (const [id, said] of anchors) {
     const g = s.state.graphics?.find((x) => x.id === id)
@@ -344,25 +389,33 @@ function run(seed: number): Scenario {
     const a = g && g.kind === 'keyword' ? g.anchor : undefined
     if (!a || a.from !== want[0] || a.to !== want[1]) fail(`anchor ${id} on ${a ? `${a.from}..${a.to}` : 'nothing'}, expected ${want}`)
   }
+  // The emphasis row stays while a mark is pending.
+  const pendingLeft = [...marks.values()].some((m) => m.pending && !keepEmphasis)
+  if (reviewItems(s.state).some((x) => x.key === EMPHASIS_GROUP) !== pendingLeft) fail(`emphasis row ${pendingLeft ? 'gone' : 'left'}`)
   // Places stay with their captions.
   if (JSON.stringify(s.state.captionPlaces) !== JSON.stringify(shapes.map((_, i) => ({ caption: `c${i}`, position: i % 2 ? 'top' : 'bottom' })))) fail('places moved')
   // The project in memory is what saving and reopening gives.
   const saved = migrateProject(JSON.parse(JSON.stringify(s.state)))
   for (const key of ['captionMarks', 'captionPlaces', 'graphics', 'captionAuto'] as const) if (canonical(saved[key]) !== canonical(s.state[key])) fail(`${key} differs once saved: ${canonical(s.state[key])} → ${canonical(saved[key])}`)
-  return { seed, failures, kind: `${before ? 'before' : 'after'} ${times} ${twice ? 'twice' : 'once'} ${byGroup ? 'group' : 'items'}` }
+  return { seed, failures, kind: `${before ? 'before' : 'after'} ${times} ${twice ? 'twice' : 'once'} ${byGroup ? 'group' : 'items'}`, termPairs }
 }
 
 describe('word maps: random captions, word lists, numbers, marks and orders (seeded)', () => {
   it('after Remove every mark and anchor covers exactly the words it covered before the tidy', () => {
     const failures: string[] = []
     const kinds = new Map<string, number>()
+    let termPairs = 0
     for (let seed = 1; seed <= 600; seed++) {
       const out = run(seed)
       failures.push(...out.failures)
       kinds.set(out.kind, (kinds.get(out.kind) ?? 0) + 1)
+      termPairs += out.termPairs
     }
     expect(failures.slice(0, 20), `${failures.length} failures`).toEqual([])
     // Every mix of marks before or after, word times, one tidy or two, and group or item Remove came up.
     expect(kinds.size).toBe(2 * 3 * 2 * 2)
+    // A kept and a pending mark on the two words of a term written in place of as many words
+    // ("google dogs" → "Google Docs") came up, before the tidy and after it (23 times).
+    expect(termPairs).toBeGreaterThanOrEqual(20)
   })
 })

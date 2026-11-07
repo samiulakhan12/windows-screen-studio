@@ -6,9 +6,10 @@
  *
  * A map is stored as runs [newFrom, newTo, oldFrom, oldTo] (inclusive), in order, covering every
  * word of both texts: a run whose sides have as many words pairs them word for word ("so" →
- * "So"); any other run gives each of its new words all of its old words ("two hundred and fifty"
- * → "250", "flow in" → "Flown"). Two new words that share old words they do not split ("google
- * dogs" → "Google Docs") are written as one run each.
+ * "So", and "google dogs" → "Google Docs", a term of as many words); any other run gives each of
+ * its new words all of its old words ("two hundred and fifty" → "250", "flow in" → "Flown"). As
+ * many new words that share as many old words they do not split ("東京タワーへようこそ" →
+ * "東京スカイツリー", three words each, one split on spaces) are written as two runs.
  */
 import type { TextMapRun } from '../types'
 import { studioWordTexts } from './words'
@@ -160,6 +161,9 @@ function byCharacters(was: readonly string[], next: readonly string[], keep: (s:
   return out as [number, number][]
 }
 
+/** A word's letters and digits, lower case, with their marks: what pieceRanges compares once punctuation is set aside. */
+const letters = (s: string): string => s.toLowerCase().replace(/[^\p{L}\p{N}\p{M}]+/gu, '')
+
 /**
  * For each word of a tidied piece (`next`, its words), the words of the piece before (`was`) it
  * came from. With the same characters, case aside, by the characters: punctuation joined to the
@@ -168,18 +172,41 @@ function byCharacters(was: readonly string[], next: readonly string[], keep: (s:
  * letters and digits once punctuation is set aside, by them: a term the caption had that a full
  * stop then ends ("visual studio" → "Visual Studio."). Else, written in place of them as a whole
  * (`whole`: a word-list term, a number), each word from all of them but punctuation written apart
- * after them, which joined the last word ("google dogs ," → "Google Docs,": "Google" from
- * "google dogs", "Docs," from "google dogs ,"); with as many words (capitals, a full stop), word
- * for word; else each word from all of them.
+ * after them, which joined the last word ("vscode ," → "VS Code,": "VS" from "vscode", "Code,"
+ * from "vscode ,"); with as many words (capitals, a full stop), word for word; else each word from
+ * all of them. A term of as many words split on spaces as it replaced is paired before this
+ * (spacedPieceRanges).
  */
 export function pieceRanges(was: readonly string[], next: readonly string[], whole: boolean): [number, number][] {
-  const letters = (s: string): string => s.toLowerCase().replace(/[^\p{L}\p{N}\p{M}]+/gu, '')
   const same = byCharacters(was, next, (s) => s.replace(/\s+/g, '').toLowerCase()) ?? byCharacters(was, next, letters)
   if (same) return same
   if (!whole && was.length === next.length) return oneToOne(next.length)
   let head = was.length
   if (whole) while (head > 1 && !letters(was[head - 1])) head--
   return next.map((_, j) => [0, j === next.length - 1 ? was.length - 1 : head - 1] as [number, number])
+}
+
+/**
+ * pieceRanges of a tidied piece given as its words split on spaces (`was`, `next`: each of them as
+ * the words studioWords splits it into). A piece written as a whole in as many words split on
+ * spaces as it replaced, punctuation written apart after them aside ("google dogs" → "Google
+ * Docs", "google dogs ," → "Google Docs,"), is paired word for word by position, each pair by
+ * pieceRanges and punctuation written apart with the last; any other piece is mapped by
+ * pieceRanges of all its words ("flow in" → "Flown", "vscode" → "VS Code", a number, and
+ * "東京タワーへようこそ" → "東京スカイツリー", one word for one split three ways each).
+ */
+export function spacedPieceRanges(was: readonly (readonly string[])[], next: readonly (readonly string[])[], whole: boolean): [number, number][] {
+  let head = was.length
+  while (head > 1 && !was[head - 1].some((w) => letters(w))) head--
+  if (!whole || head !== next.length) return pieceRanges(was.flat(), next.flat(), whole)
+  const out: [number, number][] = []
+  let at = 0
+  next.forEach((words, k) => {
+    const from = k < next.length - 1 ? was[k] : was.slice(k).flat()
+    for (const [a, b] of pieceRanges(from, words, true)) out.push([at + a, at + b])
+    at += was[k].length
+  })
+  return out
 }
 
 /**

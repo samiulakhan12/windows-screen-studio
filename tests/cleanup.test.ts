@@ -97,6 +97,45 @@ describe('tidyCaptions (test 41)', () => {
     expect(tidy('bn', 'বয়স এগারো, তাই')).toBe('বয়স ১১, তাই')
   })
 
+  it('an emoji glued to a word stays its punctuation with its variation selector, skin tone, keycap and joiners; the word’s own signs stay in the word', () => {
+    const words = [{ term: 'Flown', heard: [] }, { term: 'Google Docs', heard: [] }]
+    const tidy = (text: string, language = 'en', list: { term: string; heard: string[] }[] = words): string =>
+      texts(tidyCaptions(project([{ id: 'a', start: 0, end: 2, text }, { id: 'b', start: 2.2, end: 3, text: 'end' }], language), { ...DEFAULT_CLEANUP, punct: false, words: list }).project)[0]
+    // U+FE0F after the emoji (❤️ ✔️ ☀️), after the word and before it.
+    expect(tidy('we love flown❤️ so much')).toBe('We love Flown❤️ so much')
+    expect(tidy('try google docs✔️ today')).toBe('Try Google Docs✔️ today')
+    expect(tidy('we open ☀️flown today')).toBe('We open ☀️Flown today')
+    expect(tidy('☀️flown is here')).toBe('☀️Flown is here')
+    // English "I" and a sentence's first letter beside one.
+    expect(tidy('so i❤️ this app')).toBe('So I❤️ this app')
+    expect(tidy('❤️we love it')).toBe('❤️We love it')
+    // A joiner sequence, a skin tone, a keycap, a text-style selector, an emoji without a selector.
+    expect(tidy('we love flown❤️‍🔥 so much')).toBe('We love Flown❤️‍🔥 so much')
+    expect(tidy('thanks flown👍🏽 a lot')).toBe('Thanks Flown👍🏽 a lot')
+    expect(tidy('press flown#️⃣ now')).toBe('Press Flown#️⃣ now')
+    expect(tidy('we love flown☺︎ so much')).toBe('We love Flown☺︎ so much')
+    expect(tidy('we love flown🔥 so much')).toBe('We love Flown🔥 so much')
+    // The word's own vowel sign or tone mark before the emoji stays in the word.
+    expect(tidy('เปิด ไลน์❤️ แล้ว', 'th', [{ term: 'LINE', heard: ['ไลน์'] }])).toBe('เปิด LINE❤️ แล้ว')
+    expect(tidy('আমরা ফ্লো ইন✔️ ব্যবহার করি', 'bn', [{ term: 'Flown', heard: ['ফ্লো ইন'] }])).toBe('আমরা Flown✔️ ব্যবহার করি')
+    expect(tidy('हम फ्लो❤️ खोलते हैं', 'hi', [{ term: 'Flow', heard: ['फ्लो'] }])).toBe('हम Flow❤️ खोलते हैं')
+  })
+
+  it('a multi-word term is not matched across punctuation or an emoji before one of its later words, which would be lost', () => {
+    const list = [{ term: 'Google Docs', heard: ['google dogs'] }, { term: 'Flown', heard: ['flow in'] }]
+    const tidy = (text: string): string =>
+      texts(tidyCaptions(project([{ id: 'a', start: 0, end: 2, text }, { id: 'b', start: 2.2, end: 3, text: 'end' }]), { ...DEFAULT_CLEANUP, punct: false, words: list }).project)[0]
+    expect(tidy('we use google "docs" daily')).toBe('We use google "docs" daily')
+    expect(tidy('we use google (docs) daily')).toBe('We use google (docs) daily')
+    expect(tidy('we use google ✔️docs daily')).toBe('We use google ✔️docs daily')
+    expect(tidy('we use flow ❤️in daily')).toBe('We use flow ❤️in daily')
+    expect(tidy('we use google 🔥docs daily')).toBe('We use google 🔥docs daily')
+    // Punctuation before the first word and after the last word stays, and the term is still matched.
+    expect(tidy('we use "google docs" daily')).toBe('We use "Google Docs" daily')
+    expect(tidy('we use (google dogs) daily')).toBe('We use (Google Docs) daily')
+    expect(tidy('we use ✔️flow in✔️ daily')).toBe('We use ✔️Flown✔️ daily')
+  })
+
   it('numbers said one after the other are never added up; ordinals in two words stay words', () => {
     const tidy = (text: string, digits: CleanupChoices['digits'] = 'above-ten'): string => texts(tidyCaptions(project([{ id: 'a', start: 0, end: 2, text }]), { ...OFF, digits, words: [] }).project)[0]
     expect(tidy('back in nineteen ninety nine we started')).toBe('back in nineteen ninety nine we started')

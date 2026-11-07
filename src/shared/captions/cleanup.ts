@@ -16,7 +16,7 @@ import { applyTextResult } from './edit'
 import { parseNumberWords } from './numbers'
 import { textHash, transcriptLanguage } from './captionTracks'
 import { MAX_BLEEPS } from './studioData'
-import { alignedTextRanges, composeRanges, oneToOne, pieceRanges, textMapRuns, wordCount, wordRanges } from './textMap'
+import { alignedTextRanges, composeRanges, oneToOne, spacedPieceRanges, textMapRuns, wordCount, wordRanges } from './textMap'
 import { studioWordTexts } from './words'
 
 /** The Clean up section's choices (prefs `captionCleanup`, §2.9). */
@@ -125,9 +125,15 @@ const baseLanguage = (language: string | undefined): string => (language ?? 'en'
 /** Scripts with capital letters. */
 const CASED = /[\p{Script=Latin}\p{Script=Cyrillic}\p{Script=Greek}\p{Script=Armenian}]/u
 const SENTENCE_END = /[.!?…।۔。！？]["'”’)\]]*$/u
-/** Punctuation and symbols before and after a word's letters: never its vowel signs or tone marks (\p{M}: "এগারো", "अस्सी", "ไลน์"). */
-const LEADING = /^[^\p{L}\p{N}\p{M}]*/u
-const TRAILING = /[^\p{L}\p{N}\p{M}]*$/u
+/**
+ * Punctuation and symbols before and after a word's letters, each with the combining marks (\p{M})
+ * after it: a mark goes with the character before it, so a vowel sign or tone mark stays in its
+ * word ("এগারো", "अस्सी", "ไลน์") and an emoji's variation selector (U+FE00–U+FE0F,
+ * U+E0100–U+E01EF) or keycap stays with the emoji ("flown❤️", "docs✔️", "#️⃣"). Skin tones, the
+ * joiner of an emoji sequence and tag characters are symbols or format characters themselves.
+ */
+const LEADING = /^(?:[^\p{L}\p{N}\p{M}]\p{M}*)*/u
+const TRAILING = /(?:[^\p{L}\p{N}\p{M}]\p{M}*)*$/u
 /** Punctuation that never has a space before it. */
 const CLOSING = /^[.,;:!?…।۔。、，！？％%)\]}”’]+$/u
 
@@ -201,8 +207,9 @@ function applyWordList(tokens: Tok[], words: readonly WordListEntry[]): Tok[] {
       let match = true
       for (let k = 0; k < n && match; k++) {
         const core = coreOf(tokens[i + k].text).toLowerCase()
-        // The last part may end in punctuation; inner parts may not.
-        if ((k < n - 1 && TRAILING.exec(tokens[i + k].text)?.[0]) || core !== f.parts[k]) match = false
+        // The first part may start and the last part may end in punctuation; nothing in between may,
+        // since only the first part's leading and the last part's trailing punctuation are kept.
+        if ((k > 0 && LEADING.exec(tokens[i + k].text)?.[0]) || (k < n - 1 && TRAILING.exec(tokens[i + k].text)?.[0]) || core !== f.parts[k]) match = false
       }
       if (!match || !joinable(tokens, i, i + n - 1)) continue
       const first = tokens[i].text
@@ -977,8 +984,9 @@ export function bleepGains(project: Pick<Project, 'bleeps' | 'clips'>): SoundGai
 
 /**
  * For each word of the caption `tokens` make (as marks count words, studioWords), the words of
- * `before` it came from: a token written as a whole (a term, a number) from all of its words;
- * else by the letters, or word for word (pieceRanges).
+ * `before` it came from: a term written in place of as many words, word for word ("google dogs"
+ * → "Google Docs"); any other token written as a whole (a term of other words, a number) from all
+ * of its words; else by the letters, or word for word (spacedPieceRanges, pieceRanges).
  */
 function tokenRanges(before: string, tokens: readonly Tok[], language: string | undefined): [number, number][] {
   const pieces = before.split(/\s+/).filter(Boolean).map((p) => studioWordTexts(p, language))
@@ -991,7 +999,8 @@ function tokenRanges(before: string, tokens: readonly Tok[], language: string | 
   const out: [number, number][] = []
   for (const t of tokens) {
     const [a, b] = t.src
-    for (const [from, to] of pieceRanges(pieces.slice(a, b + 1).flat(), studioWordTexts(t.text, language), !!t.whole)) out.push([first[a] + from, first[a] + to])
+    const words = t.text.split(/\s+/).filter(Boolean).map((p) => studioWordTexts(p, language))
+    for (const [from, to] of spacedPieceRanges(pieces.slice(a, b + 1), words, !!t.whole)) out.push([first[a] + from, first[a] + to])
   }
   return out
 }

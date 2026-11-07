@@ -9,9 +9,9 @@ Order of releases: **0.7.1** (auto-update) → **0.8.0** (wave 8: captions that 
 pack, review mode, versions and filmstrip, sound finder, share, search) → **0.9.0** (wave 9, Captions Studio) → later
 waves.
 
-## Checkpoint (2 November 2026, updated at the pause)
+## Checkpoint (7 November 2026)
 
-Work is **paused** at the user's request until they say continue.
+Work is **running** again (the user said continue on 6 November).
 
 **Merged and pushed** on `ccr-b6df7cf7-yked87`, each reviewed through several lenses (every finding checked twice),
 fixed, merged with a check for lost behaviour and feature interactions, and verified with typecheck, the full unit
@@ -34,6 +34,13 @@ suite, the build and the end-to-end files it touches:
   and opens the editor at that moment. Text a bleep is for is masked in on-screen results as the video draws it.
 - The Inspector rail shows its tab labels on a tall window again (Captions Studio's Graphics tab had pushed it past
   its limit).
+- **E-12/E-07/E-09 Versions, filmstrip and frame nudge**: saved copies of an edit (by hand and before big tools),
+  compare and restore; thumbnails along the timeline; arrow keys move the selected item. With it, Review mode keeps
+  one version per opening of its panel.
+- **Wave 9, Captions Studio phase B**: Review mode lists Captions Studio's automatic changes (group rows, exact
+  Remove: the tidy records which words each tidied word came from); bleeped words are silenced or toned through
+  the sound finder's gain curve, the same in preview and export; *Translate captions* and *Fix captions* open
+  Languages and Clean up; Cancel stops the AI service's request; Compare names Captions Studio's parts.
 
 **Known minor issues** (all low; none loses work):
 
@@ -44,8 +51,11 @@ suite, the build and the end-to-end files it touches:
   Japanese text cut to fit can lose a little more than needed or get a note with no link; the highlight on a
   look-alike host stops at its non-ASCII letters.
 - Captions Studio: Stickers at a very large size with very fast speech can reach past the frame edge, and a wide
-  dragged Stickers block is pinned to the left; the palette's *Fix captions* and *Translate* commands point to
-  Clean up and Languages until phase B.
+  dragged Stickers block is pinned to the left. A spelled number glued to an emoji with a variation selector
+  ("twenty five❤️") is only partly turned into digits; two marks on neighbouring words of a word-list term that
+  has more words than what was heard ("visual code" → "Visual Studio Code") merge when Review removes the text
+  fix; an emoji glued after a bleeped word is masked with it; a keycap digit glued to a term stops the term
+  matching; music keeps ducking under a bleeped word.
 - Bangla bleeping: Bangla written in Latin letters is not bleeped; the bustard bird's name, everyday words joined by
   an en or em dash, the locative of "boy" (spelled like a form of a listed word) and the literal "piglets" and
   "puppies" can be bleeped.
@@ -58,13 +68,16 @@ suite, the build and the end-to-end files it touches:
 - Inspector rail: at the minimum window size the compact tabs are about 21 px apart, under the 24 px target-size
   spacing; a two-column compact rail or a taller Inspector would restore it.
 
-**Built, review part-way** (resumes its review run; worktree clean):
+**Being built**: wave 10, editing polish (`docs/design/editing-polish.md`, branch `feat/wave10`), with the owner's
+answers to its §0 as recommended: the eight extra music beds stay hidden until `samiulakhan12/flown-sound-library`
+exists; the loop glitch in users' own Opus/M4A music is fixed; Polish's *Smooth cuts* step is on by default; the CC0
+music is used with its credit line on.
 
-| Feature | Branch | Worktree | Review run |
-| --- | --- | --- | --- |
-| E-12/E-07/E-09 Versions and filmstrip | `rev/versions` | `/home/user/wt-ver` | `wf_918b72cf-295` |
+**Designed, next**: wave 11, smart tools (`docs/design/smart-tools.md`, branch `rev/wave11-design`), with its §0
+answered as recommended. Then wave 12 and auto-blur of private information last.
 
-**Then**: Captions Studio phase B, waves 10–12 below, and auto-blur of private information last.
+**Waiting for the owner**: offline caption translation (MPL-2.0 and BSD licences); whether to create the
+sound-library repository and a Qbexel Hugging Face mirror of the local AI models.
 
 **Open items**: #61, an intermittent 20 ms microphone stem offset (Chromium capture); `tests/aiProviders.test.ts` and
 one offline-captions e2e step read leftover `ssw-transcribe-*` folders in the shared temp folder (run unit tests

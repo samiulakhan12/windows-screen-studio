@@ -48,21 +48,21 @@ const anchorText = (q: Project, id: string): string | undefined => {
 
 /**
  * The finding's captions and others: the text, the word list, the tidied text, and for each tidied
- * word the words a mark on it goes back onto: the words it came from, or the one of them that is
- * the same word ("Google" of "Google Docs" onto "google" of "google dogs").
+ * word the words a mark on it goes back onto: the words it came from ("Google" and "Docs" of
+ * "Google Docs", a term of as many words, each onto its own word of "google dogs").
  */
 const CASES: { text: string; words: WordListEntry[]; cleanup?: Partial<CleanupChoices>; tidied: string; back: string[] }[] = [
   {
     text: 'our q and a and fifty google dogs users',
     words: [{ term: 'Q&A', heard: ['q and a'] }, { term: 'Google Docs', heard: ['google dogs'] }],
     tidied: 'Our Q&A and 50 Google Docs users',
-    back: ['our', 'q and a', 'and', 'fifty', 'google', 'google dogs', 'users']
+    back: ['our', 'q and a', 'and', 'fifty', 'google', 'dogs', 'users']
   },
   {
     text: 'the r and d and ops teams use google dogs',
     words: [{ term: 'R&D', heard: ['r and d'] }, { term: 'DevOps', heard: ['ops'] }, { term: 'Google Docs', heard: ['google dogs'] }],
     tidied: 'The R&D and DevOps teams use Google Docs',
-    back: ['the', 'r and d', 'and', 'ops', 'teams', 'use', 'google', 'google dogs']
+    back: ['the', 'r and d', 'and', 'ops', 'teams', 'use', 'google', 'dogs']
   },
   // The limit §11.1 named for captions without word times: "Flown" back on "flow" alone.
   { text: 'open flow in in twenty seconds', words: [{ term: 'Flown', heard: ['flow in'] }], tidied: 'Open Flown in 20 seconds', back: ['open', 'flow in', 'in', 'twenty', 'seconds'] },
@@ -204,6 +204,64 @@ describe('a word-list term the caption already had, or had in other capitals', (
   })
 })
 
+describe('a word-list term written in place of as many words ("google dogs" → "Google Docs")', () => {
+  const words = [{ term: 'Google Docs', heard: ['google dogs'] }]
+  const marksOf = (q: Project): [string, string, boolean][] => q.captionMarks!.map((m) => [m.id, m.text, !!m.auto])
+
+  it('a kept mark on one of its words and a pending mark on the other stay two marks through Remove, and the emphasis row stays', () => {
+    for (const times of TIMES) {
+      const s = storeOf(studioProject({ segments: segmentsOf(['we share google dogs with the team', 'click save and you are done'], times) }))
+      s.update((q) => tidyCaptions(q, { ...DEFAULT_CLEANUP, words }).project)
+      expect(s.state.transcript!.segments[0].text).toBe('We share Google Docs with the team')
+      expect(s.state.captionAuto!.text![0].map).toEqual([[0, 6, 0, 6]])
+      s.update((q) => ({ ...q, captionMarks: [{ ...mark(q, 2, 2, false, 'kept'), tone: 2 as const }, mark(q, 3, 3, true, 'pending')] }))
+      s.update((q) => removeItems(q, [row(q, TEXT_GROUP)]))
+      expect(s.state.transcript!.segments[0].text).toBe('we share google dogs with the team')
+      expect(marksOf(s.state), times).toEqual([
+        ['kept', 'google', false],
+        ['pending', 'dogs', true]
+      ])
+      expect(s.state.captionMarks![0].tone).toBe(2)
+      expect(reviewItems(s.state).some((x) => x.key === EMPHASIS_GROUP), times).toBe(true)
+    }
+  })
+
+  it('the same two marks made before the tidy stay two marks on the tidy and on Remove', () => {
+    for (const times of TIMES) {
+      const s = storeOf(studioProject({ segments: segmentsOf(['we share google dogs with the team', 'click save and you are done'], times) }))
+      s.update((q) => ({ ...q, captionMarks: [{ ...mark(q, 2, 2, false, 'kept'), tone: 2 as const }, mark(q, 3, 3, true, 'pending')] }))
+      s.update((q) => tidyCaptions(q, { ...DEFAULT_CLEANUP, words }).project)
+      expect(s.state.transcript!.segments[0].text).toBe('We share Google Docs with the team')
+      expect(marksOf(s.state), times).toEqual([
+        ['kept', 'Google', false],
+        ['pending', 'Docs', true]
+      ])
+      expect(reviewItems(s.state).some((x) => x.key === EMPHASIS_GROUP), times).toBe(true)
+      s.update((q) => removeItems(q, [row(q, TEXT_GROUP)]))
+      expect(marksOf(s.state), times).toEqual([
+        ['kept', 'google', false],
+        ['pending', 'dogs', true]
+      ])
+      expect(reviewItems(s.state).some((x) => x.key === EMPHASIS_GROUP), times).toBe(true)
+    }
+  })
+
+  it('with a comma written apart after it, the comma goes with its last word; a term of other words than it replaced still maps as a whole', () => {
+    for (const times of TIMES) {
+      const s = storeOf(studioProject({ segments: segmentsOf(['open google dogs , then flow in today', 'click save and you are done'], times) }))
+      s.update((q) => tidyCaptions(q, { ...DEFAULT_CLEANUP, words: [...words, { term: 'Flown', heard: ['flow in'] }] }).project)
+      expect(s.state.transcript!.segments[0].text).toBe('Open Google Docs, then Flown today')
+      s.update((q) => ({ ...q, captionMarks: [mark(q, 1, 1, false, 'g'), mark(q, 2, 2, true, 'd'), mark(q, 4, 4, true, 'f')] }))
+      s.update((q) => removeItems(q, [row(q, TEXT_GROUP)]))
+      expect(marksOf(s.state), times).toEqual([
+        ['g', 'google', false],
+        ['d', 'dogs ,', true],
+        ['f', 'flow in', true]
+      ])
+    }
+  })
+})
+
 describe('a tidy moves marks onto the words made from theirs', () => {
   it('marks on words a tidy writes as one go onto it, and Remove puts them back on their own words', () => {
     for (const times of TIMES) {
@@ -212,7 +270,7 @@ describe('a tidy moves marks onto the words made from theirs', () => {
       const spans: [number, number, string, string][] = [
         [5, 5, '50', 'fifty'],
         [1, 3, 'Q&A', 'q and a'],
-        [7, 7, 'Google Docs', 'google dogs'],
+        [7, 7, 'Docs', 'dogs'],
         [3, 3, 'Q&A', 'q and a'],
         [8, 8, 'users', 'users']
       ]
@@ -239,7 +297,7 @@ describe('a tidy moves marks onto the words made from theirs', () => {
       s.update((q) => ({ ...q, captionMarks: [...q.captionMarks!, mark(q, 4, 4, true, 'late'), mark(q, 2, 2, true, 'docs')] }))
       s.update((q) => removeItems(q, [row(q, TEXT_GROUP)]))
       expect(s.state.transcript!.segments[0].text).toBe('open google dogs with flow in two hundred times')
-      expect(Object.fromEntries(s.state.captionMarks!.map((m) => [m.id, m.text])), times).toEqual({ docs: 'google dogs', late: 'flow in', early: 'two hundred' })
+      expect(Object.fromEntries(s.state.captionMarks!.map((m) => [m.id, m.text])), times).toEqual({ docs: 'dogs', late: 'flow in', early: 'two hundred' })
     }
   })
 })
