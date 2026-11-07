@@ -108,7 +108,11 @@ describe('settleCaptionAuto (test 43)', () => {
     expect(once.captionAuto?.text?.map((r) => r.text)).toEqual(['today we open flow in', 'then flow in opens them'])
     const twice = tidy(once, [{ term: 'Flown', heard: ['flow in'] }])
     expect(twice.transcript!.segments.map((s) => s.text)).not.toEqual(once.transcript!.segments.map((s) => s.text))
-    expect(twice.captionAuto?.text).toEqual(once.captionAuto?.text)
+    // The first records stay, their word maps composed with the second tidy's: "Flown" came from "flow in".
+    const withoutMap = (q: Project): unknown => q.captionAuto?.text?.map(({ map: _m, ...r }) => r)
+    expect(withoutMap(twice)).toEqual(withoutMap(once))
+    expect(once.captionAuto?.text?.map((r) => r.map)).toEqual([[[0, 4, 0, 4]], [[0, 4, 0, 4]]])
+    expect(twice.captionAuto?.text?.map((r) => r.map)).toEqual([[[0, 2, 0, 2], [3, 3, 3, 4]], [[0, 0, 0, 0], [1, 1, 1, 2], [2, 3, 3, 4]]])
     const back = settleCaptionAuto(removeCaptionItems(twice, expandGroups(captionReviewItems(twice))), twice)
     expect(back.transcript!.segments.map((s) => s.text)).toEqual(['today we open flow in', 'then flow in opens them'])
     expect(back.captionAuto).toBeUndefined()

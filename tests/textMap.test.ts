@@ -3,7 +3,7 @@
  * them strictly, writing them as runs, composing two tidies, and moving words both ways.
  */
 import { describe, expect, it } from 'vitest'
-import { alignedRanges, composeRanges, newWordsOf, oldWordsOf, pieceRanges, readTextMap, sameWords, textMapRuns, wordRanges } from '../src/shared/captions/textMap'
+import { alignedRanges, composeRanges, newWordsOf, oldWordsOf, pieceRanges, readTextMap, oneToOne, textMapRuns, wordRanges } from '../src/shared/captions/textMap'
 
 /** A small seeded generator (mulberry32). */
 function rng(seed: number): () => number {
@@ -35,7 +35,7 @@ describe('wordRanges and readTextMap: strict', () => {
   it('reads runs that pair words one for one, and runs whose new words share old words', () => {
     // "our q and a and fifty users" → "Our Q&A and 50 users".
     expect(wordRanges([[0, 0, 0, 0], [1, 1, 1, 3], [2, 2, 4, 4], [3, 3, 5, 5], [4, 4, 6, 6]], 5, 7)).toEqual([[0, 0], [1, 3], [4, 4], [5, 5], [6, 6]])
-    expect(wordRanges([[0, 4, 0, 4]], 5, 5)).toEqual(sameWords(5))
+    expect(wordRanges([[0, 4, 0, 4]], 5, 5)).toEqual(oneToOne(5))
     // "google dogs" → "Google Docs": each new word from both.
     expect(wordRanges([[0, 0, 0, 1], [1, 1, 0, 1]], 2, 2)).toEqual([[0, 1], [0, 1]])
     // "flown" → "Flow In" (one word to two) and two words to three.
@@ -93,7 +93,7 @@ describe('wordRanges and readTextMap: strict', () => {
 
 describe('textMapRuns', () => {
   it('writes the fewest runs: word for word, and shared words', () => {
-    expect(textMapRuns(sameWords(6))).toEqual([[0, 5, 0, 5]])
+    expect(textMapRuns(oneToOne(6))).toEqual([[0, 5, 0, 5]])
     expect(textMapRuns([[0, 0], [1, 3], [4, 4], [5, 5]])).toEqual([[0, 0, 0, 0], [1, 1, 1, 3], [2, 3, 4, 5]])
     // Two new words sharing two old ones are a run each: [0, 1, 0, 1] would pair them.
     expect(textMapRuns([[0, 1], [0, 1]])).toEqual([[0, 0, 0, 1], [1, 1, 0, 1]])
@@ -118,8 +118,8 @@ describe('composing and moving words', () => {
     const first: [number, number][] = [[0, 3], [4, 4], [5, 5]]
     const second: [number, number][] = [[0, 0], [1, 2], [1, 2]]
     expect(composeRanges(second, first)).toEqual([[0, 3], [4, 5], [4, 5]])
-    expect(composeRanges(sameWords(3), first)).toEqual(first)
-    expect(composeRanges(first, sameWords(6))).toEqual(first)
+    expect(composeRanges(oneToOne(3), first)).toEqual(first)
+    expect(composeRanges(first, oneToOne(6))).toEqual(first)
   })
 
   it('Remove takes words back to the words they came from; a tidy takes words to every word made from them', () => {
@@ -162,7 +162,7 @@ describe('alignedRanges (the AI fix)', () => {
   it('words found again come from themselves; changed words from the words they replace', () => {
     expect(alignedRanges(['helo', 'world'], ['hello', 'world'])).toEqual([[0, 0], [1, 1]])
     expect(alignedRanges(['i', 'm', 'gonna', 'go'], ["I'm", 'going', 'to', 'go'])).toEqual([[0, 2], [0, 2], [0, 2], [3, 3]])
-    expect(alignedRanges(['so', 'we', 'can', 'start'], ['So', 'we', 'can', 'start.'])).toEqual(sameWords(4))
+    expect(alignedRanges(['so', 'we', 'can', 'start'], ['So', 'we', 'can', 'start.'])).toEqual(oneToOne(4))
   })
 
   it('a word added comes from the word before it (or the first); a word taken out goes with the word before it (or the next)', () => {
@@ -176,7 +176,7 @@ describe('alignedRanges (the AI fix)', () => {
 
   it('repeated words: the words a change spans stay together', () => {
     // "and" is said twice; the change is the number.
-    expect(alignedRanges(['two', 'and', 'three', 'and', 'four'], ['two', 'and', '3', 'and', 'four'])).toEqual(sameWords(5))
+    expect(alignedRanges(['two', 'and', 'three', 'and', 'four'], ['two', 'and', '3', 'and', 'four'])).toEqual(oneToOne(5))
     expect(alignedRanges(['the', 'the', 'end'], ['the', 'end'])).toEqual([[0, 1], [2, 2]])
   })
 

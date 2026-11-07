@@ -76,7 +76,7 @@ export function textMapRuns(ranges: WordRanges): TextMapRun[] {
 }
 
 /** Each word of n, from the same word. */
-export const sameWords = (n: number): [number, number][] => Array.from({ length: n }, (_, i) => [i, i] as [number, number])
+export const oneToOne = (n: number): [number, number][] => Array.from({ length: n }, (_, i) => [i, i] as [number, number])
 
 /** `outer` (new → middle) then `inner` (middle → old): new → old. */
 export function composeRanges(outer: WordRanges, inner: WordRanges): [number, number][] {
@@ -121,7 +121,7 @@ export function pieceRanges(was: readonly string[], next: readonly string[], who
       return range
     })
   }
-  if (was.length === next.length) return sameWords(next.length)
+  if (was.length === next.length) return oneToOne(next.length)
   return next.map(() => [0, was.length - 1] as [number, number])
 }
 

@@ -16,6 +16,7 @@ import { applyTextResult } from './edit'
 import { parseNumberWords } from './numbers'
 import { textHash, transcriptLanguage } from './captionTracks'
 import { MAX_BLEEPS } from './studioData'
+import { alignedTextRanges, composeRanges, oneToOne, pieceRanges, textMapRuns, wordCount, wordRanges } from './textMap'
 import { studioWordTexts } from './words'
 
 /** The Clean up section's choices (prefs `captionCleanup`, §2.9). */
@@ -129,28 +130,36 @@ const TRAILING = /[^\p{L}\p{N}]*$/u
 /** Punctuation that never has a space before it. */
 const CLOSING = /^[.,;:!?…।۔。、，！？％%)\]}”’]+$/u
 
-/** A word of a caption with its time when the caption has word times that match its text. */
+/**
+ * A word of a caption with its time when the caption has word times that match its text, and
+ * where it came from: `src`, the first and last words of the caption (split on spaces) it was made
+ * of; `whole`, written in place of them as a whole (a word-list term, a number).
+ */
 interface Tok {
   text: string
   word?: CaptionWord
+  src: readonly [number, number]
+  whole?: true
 }
 
 /** The words of a caption as written, with times when its words match them one to one. */
 function tokensOf(seg: CaptionSegment): Tok[] {
   const texts = seg.text.split(/\s+/).filter(Boolean)
   const timed = seg.words && seg.words.length === texts.length ? seg.words : null
-  return texts.map((text, i) => (timed ? { text, word: timed[i] } : { text }))
+  return texts.map((text, i) => (timed ? { text, word: timed[i], src: [i, i] } : { text, src: [i, i] }))
 }
 
-/** One token for tokens[a..b], their times joined (first start to last end). */
-function joined(tokens: readonly Tok[], a: number, b: number, text: string): Tok {
+/** One token for tokens[a..b], their times joined (first start to last end); made of all their words, as a whole when `whole` or when one of them was. */
+function joined(tokens: readonly Tok[], a: number, b: number, text: string, whole = false): Tok {
+  const src = [tokens[a].src[0], tokens[b].src[1]] as const
+  const made = whole || tokens.slice(a, b + 1).some((t) => t.whole) ? { src, whole: true as const } : { src }
   const ws = tokens.slice(a, b + 1).map((t) => t.word)
-  if (ws.some((w) => !w)) return { text }
+  if (ws.some((w) => !w)) return { text, ...made }
   const words = ws as CaptionWord[]
   const w: CaptionWord = { text, start: words[0].start, end: words[words.length - 1].end }
   if (words.some((x) => x.estimated)) w.estimated = true
   if (w.estimated && words.every((x) => x.fromSound)) w.fromSound = true
-  return { text, word: w }
+  return { text, word: w, ...made }
 }
 
 /** Whether tokens a..b may join: none is deleted in the Transcript tab. */
@@ -198,7 +207,7 @@ function applyWordList(tokens: Tok[], words: readonly WordListEntry[]): Tok[] {
       const first = tokens[i].text
       const last = tokens[i + n - 1].text
       const text = (LEADING.exec(first)?.[0] ?? '') + f.term + (TRAILING.exec(last)?.[0] ?? '')
-      out.push(n === 1 ? { ...tokens[i], text, ...(tokens[i].word ? { word: { ...tokens[i].word!, text } } : {}) } : joined(tokens, i, i + n - 1, text))
+      out.push(n === 1 ? { ...tokens[i], text, whole: true, ...(tokens[i].word ? { word: { ...tokens[i].word!, text } } : {}) } : joined(tokens, i, i + n - 1, text, true))
       i += n
       continue outer
     }
@@ -257,7 +266,7 @@ function applyDigits(tokens: Tok[], mode: CleanupChoices['digits'], language: st
       continue
     }
     const text = (LEADING.exec(texts[0])?.[0] ?? '') + fmt.format(parsed.value) + (TRAILING.exec(texts[parsed.used - 1])?.[0] ?? '')
-    out.push(parsed.used === 1 ? { ...tokens[i], text, ...(tokens[i].word ? { word: { ...tokens[i].word!, text } } : {}) } : joined(tokens, i, i + parsed.used - 1, text))
+    out.push(parsed.used === 1 ? { ...tokens[i], text, whole: true, ...(tokens[i].word ? { word: { ...tokens[i].word!, text } } : {}) } : joined(tokens, i, i + parsed.used - 1, text, true))
     i += parsed.used
   }
   return out
@@ -310,7 +319,7 @@ function applySpaces(tokens: Tok[]): Tok[] {
     const prev = out[out.length - 1]
     if (prev && CLOSING.test(t.text) && !t.word?.deleted && !prev.word?.deleted) {
       const text = prev.text + t.text
-      out[out.length - 1] = prev.word && t.word ? joined([prev, t], 0, 1, text) : { text }
+      out[out.length - 1] = prev.word && t.word ? joined([prev, t], 0, 1, text) : { text, src: [prev.src[0], t.src[1]], ...(prev.whole || t.whole ? { whole: true as const } : {}) }
     } else out.push(t)
   }
   return out
@@ -961,6 +970,46 @@ export function bleepGains(project: Pick<Project, 'bleeps' | 'clips'>): SoundGai
 
 /* ---------- the action ---------- */
 
+/**
+ * For each word of the caption `tokens` make (as marks count words, studioWords), the words of
+ * `before` it came from: a token written as a whole (a term, a number) from all of its words;
+ * else by the letters, or word for word (pieceRanges).
+ */
+function tokenRanges(before: string, tokens: readonly Tok[], language: string | undefined): [number, number][] {
+  const pieces = before.split(/\s+/).filter(Boolean).map((p) => studioWordTexts(p, language))
+  const first: number[] = []
+  let n = 0
+  for (const p of pieces) {
+    first.push(n)
+    n += p.length
+  }
+  const out: [number, number][] = []
+  for (const t of tokens) {
+    const [a, b] = t.src
+    for (const [from, to] of pieceRanges(pieces.slice(a, b + 1).flat(), studioWordTexts(t.text, language), !!t.whole)) out.push([first[a] + from, first[a] + to])
+  }
+  return out
+}
+
+type TextRecord = NonNullable<CaptionAuto['text']>[number]
+
+/**
+ * A caption's first record kept by a later tidy that changed it again (`ranges`: its words now,
+ * onto its words before this tidy, `was`): the record's map composed with them, so it still maps
+ * onto the text before the first tidy. A record without a valid map stays without one.
+ */
+function recordAgain(had: TextRecord, ranges: [number, number][], was: string, language: string | undefined): TextRecord {
+  const inner = had.map ? wordRanges(had.map, wordCount(was, language), wordCount(had.text, language)) : null
+  if (!inner) {
+    if (!had.map) return had
+    const { map: _m, ...rest } = had
+    void _m
+    return rest
+  }
+  const map = textMapRuns(composeRanges(ranges, inner))
+  return JSON.stringify(map) === JSON.stringify(had.map) ? had : { ...had, map }
+}
+
 const sameWords = (a: CaptionWord[] | undefined, b: CaptionWord[] | undefined): boolean =>
   a === b || (!!a && !!b && a.length === b.length && a.every((w, i) => w.text === b[i].text && w.start === b[i].start && w.end === b[i].end && !!w.deleted === !!b[i].deleted))
 
@@ -978,7 +1027,11 @@ export function tidyCaptions(
   // As the captions read them (§0.2): Bangla for a mostly Bangla transcript that names no language,
   // so its swear words are bleeped from the Bangla list and its sentences end with ।.
   const language = transcriptLanguage(transcript)
+  // Words as marks count them (in the transcript's own language), for the records' word maps.
+  const wordsIn = transcript.language
   const segs = transcript.segments
+  // Each caption changed: its words, onto its words before this tidy.
+  const steps: ([number, number][] | undefined)[] = []
   let tidied: CaptionSegment[] = segs.map((seg, i) => {
     let tokens = tokensOf(seg)
     if (!tokens.length) return seg
@@ -997,12 +1050,21 @@ export function tidyCaptions(
     const timed = !!seg.words && seg.words.length === seg.text.split(/\s+/).filter(Boolean).length
     const words = timed ? tokens.map((t) => t.word ?? { text: t.text, start: seg.start, end: seg.end, estimated: true as const }) : seg.words
     if (text === seg.text && sameWords(words, seg.words)) return seg
+    steps[i] = tokenRanges(seg.text, tokens, wordsIn)
     return { ...seg, text, ...(words ? { words } : {}) }
   })
-  // Rule 6: the AI fix, on the tidied captions.
+  // Rule 6: the AI fix, on the tidied captions; its words are found in the text it was given.
   if (opts.ai && opts.fix?.task === 'cleanup') {
     const fixed = applyTextResult(tidied, opts.fix.segments)
-    if (fixed) tidied = fixed.map((s, i) => (s.text === tidied[i].text && sameWords(s.words, tidied[i].words) ? tidied[i] : s))
+    if (fixed)
+      tidied = fixed.map((s, i) => {
+        if (s.text === tidied[i].text && sameWords(s.words, tidied[i].words)) return tidied[i]
+        if (s.text !== tidied[i].text) {
+          const ai = alignedTextRanges(tidied[i].text, s.text, wordsIn)
+          steps[i] = steps[i] ? composeRanges(ai, steps[i]!) : ai
+        }
+        return s
+      })
   }
   let changed = 0
   const before = new Map((project.captionAuto?.text ?? []).map((r) => [r.caption, r]))
@@ -1012,10 +1074,13 @@ export function tidyCaptions(
     const differs = s !== old && (s.text !== old.text || !sameWords(s.words, old.words))
     if (differs) changed++
     else tidied[i] = old
-    // A caption tidied before keeps its first record: Remove puts back the text from before the first tidy.
+    // Which words before each word came from (§11.1 rule 1): one for one when only words' times changed.
+    const ranges = differs ? (steps[i] ?? oneToOne(wordCount(old.text, wordsIn))) : undefined
+    // A caption tidied before keeps its first record: Remove puts back the text from before the
+    // first tidy, its map composed with this tidy's.
     const had = before.get(old.id)
-    if (had) records.push(had)
-    else if (differs) records.push({ caption: old.id, text: old.text, ...(old.words ? { words: old.words } : {}) })
+    if (had) records.push(ranges ? recordAgain(had, ranges, old.text, wordsIn) : had)
+    else if (ranges) records.push({ caption: old.id, text: old.text, ...(old.words ? { words: old.words } : {}), map: textMapRuns(ranges) })
   })
   let next: Project = project
   if (changed) {

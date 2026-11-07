@@ -130,7 +130,8 @@ describe('tidyCaptions (test 41)', () => {
   it('records each changed caption once, keeping the first text across runs', () => {
     const p = project([timed('a', 0, 'so i think'), timed('b', 5, 'Fine.')])
     const once = tidyCaptions(p, { ...OFF, caps: true, words: [] }).project
-    expect(once.captionAuto?.text).toEqual([{ caption: 'a', text: 'so i think', words: p.transcript!.segments[0].words }])
+    // With which words before each word came from: "So I think" word for word.
+    expect(once.captionAuto?.text).toEqual([{ caption: 'a', text: 'so i think', words: p.transcript!.segments[0].words, map: [[0, 2, 0, 2]] }])
     const twice = tidyCaptions(once, { ...OFF, caps: true, punct: true, words: [] }).project
     expect(twice.captionAuto?.text?.[0].text).toBe('so i think')
   })
