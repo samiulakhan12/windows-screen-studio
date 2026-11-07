@@ -258,7 +258,7 @@ export function PublishDialog({ project, request, onClose, onGenerateCaptions }:
                 const description = descriptionBody(text)
                 if (!description) return
                 // What any export's description file can have (with these chapters, or fewer): asked about first when the check notes anything in it.
-                confirmed(PUBLISH_LABELS[kind], 'Use anyway', descriptionToCheck(description, youtube.chapters, youtube.duration), () => {
+                confirmed(PUBLISH_LABELS[kind], 'Use anyway', descriptionToCheck(description, youtube.chapters, youtube.duration, youtube.credit), () => {
                   store.update((p) => ({ ...p, publish: { description } }))
                   say(kind, "The export's description file will use this text")
                 })
@@ -363,7 +363,8 @@ function Card({ kind, item, stale, canWrite, youtube, saved, spoken, said, onWri
   const chapters = isYoutube && youtube.chapters.length ? youtubeChapters(youtube.chapters, youtube.duration) : null
   // The YouTube text is saved for exports and copied the same way, so the export's file is what Copy gives.
   const body = isYoutube ? descriptionBody(item.text) : ''
-  const copied = isYoutube ? composeYoutubeDescription(body, youtube.chapters, youtube.duration) : item.text.trim()
+  // With a library bed, its credit is the last line (editing polish §10.10).
+  const copied = isYoutube ? composeYoutubeDescription(body, youtube.chapters, youtube.duration, youtube.credit) : item.text.trim()
   const limit = LIMITS[kind]
   const count = kind === 'xpost' ? xLength(item.text.trim()) : [...copied].length
   const over = limit !== undefined && count > limit
@@ -372,7 +373,7 @@ function Card({ kind, item, stale, canWrite, youtube, saved, spoken, said, onWri
   const cleanTitle = kind === 'title' ? plainText(item.text, { max: 150, oneLine: true }) : ''
   const isSaved = saved !== null && saved === body
   // The link check (§4.8): what is copied or used for exports, read for anything link-like nobody said. Never changes the text.
-  const checks = [...new Set(piecesOf(isYoutube ? `${descriptionToCheck(body, youtube.chapters, youtube.duration)}\n${tags.join(', ')}` : copied, spoken).map((p) => p.text))]
+  const checks = [...new Set(piecesOf(isYoutube ? `${descriptionToCheck(body, youtube.chapters, youtube.duration, youtube.credit)}\n${tags.join(', ')}` : copied, spoken).map((p) => p.text))]
 
   return (
     <section className="publish-card" data-publish-card={kind} data-status={item.status} aria-labelledby={`${id}-title`}>
@@ -416,6 +417,11 @@ function Card({ kind, item, stale, canWrite, youtube, saved, spoken, said, onWri
             </>
           ) : (
             <p className="hint">No chapters: add some in the Text tab and they appear here with their times.</p>
+          )}
+          {youtube.credit && (
+            <p className="hint">
+              Last line, for the music: {youtube.credit}
+            </p>
           )}
           <label className="field">
             <span>Tags</span>

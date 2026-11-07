@@ -310,8 +310,15 @@ describe('a selected graphic', () => {
 
   it('sets the sound and the size with their own undo steps', async () => {
     const els = await settle(view({ kind: 'graphic', id: 'l1' }), SKIP)
-    ;(chip(els, 'Ding')!.props.onClick as () => void)()
+    // The Sound select (editing polish §10.7): None, the Original group, then the library's effects.
+    const sound = byLabel(els, 'Sound')!
+    expect(sound.type).toBe('select')
+    ;(sound.props.onChange as (e: unknown) => void)({ target: { value: 'ding' } })
     expect(store.state.graphics![1].sound).toBe('ding')
+    ;(sound.props.onChange as (e: unknown) => void)({ target: { value: 'sfx:pop-soft' } })
+    expect(store.state.graphics![1].sound).toBe('sfx:pop-soft')
+    ;(sound.props.onChange as (e: unknown) => void)({ target: { value: 'sfx:nope' } })
+    expect(store.state.graphics![1].sound).toBeUndefined()
     const size = els.find((e) => e.type === 'input' && e.props['aria-label'] === 'Size')!
     ;(size.props.onChange as (e: unknown) => void)({ target: { value: '0.06' } })
     expect(store.updates.at(-1)!.key).toBe('graphic-size:l1')

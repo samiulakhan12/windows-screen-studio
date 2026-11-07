@@ -7,7 +7,8 @@
  * whose result is the previous state).
  */
 import type { MarksAnswer } from '../api/ai'
-import type { AiProviderKind, CaptionMark, CaptionStudio, CursorTrack, Graphic, Project } from '../types'
+import type { AiProviderKind, CaptionMark, CaptionStudio, CursorTrack, Graphic, Project, SfxRef } from '../types'
+import { readSfxRef } from '../audio/soundFxData'
 import { autoStyleSettings, cameraLed, frameShape } from './autoStyle'
 import { tidyCaptions, type CleanupChoices, type WordListEntry } from './cleanup'
 import { markId, pickEmphasis } from './emphasis'
@@ -34,8 +35,8 @@ export interface GreatOptions {
   /** Needs a provider. */
   quotes: boolean
   tidy: boolean
-  /** Sound given to the pop-ups this run makes. */
-  sound: 'none' | 'pop' | 'ding'
+  /** Sound given to the pop-ups this run makes: today's synthesised ones, or a library effect (editing polish §10.7). */
+  sound: 'none' | 'pop' | 'ding' | SfxRef
   /** AI provider id, or null: on this PC only. */
   provider: string | null
 }
@@ -102,7 +103,8 @@ export function readGreatOptions(raw: unknown): GreatOptions {
     chapters: auto(o.chapters, D.chapters),
     quotes: flag(o.quotes, D.quotes),
     tidy: flag(o.tidy, D.tidy),
-    sound: o.sound === 'pop' || o.sound === 'ding' || o.sound === 'none' ? o.sound : D.sound,
+    // A library effect only when it is in the catalogue (editing polish §10.7).
+    sound: o.sound === 'pop' || o.sound === 'ding' || o.sound === 'none' ? o.sound : (readSfxRef(o.sound) ?? D.sound),
     provider: typeof o.provider === 'string' && /^[A-Za-z0-9_-]{1,64}$/.test(o.provider) ? o.provider : null
   }
 }
