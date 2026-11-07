@@ -16,7 +16,7 @@ import { bubbleOutlined, calloutPlace, calloutPose, graphemes, OLD_FADE, type Ca
 import { ANNOTATION_FADE, ANNOTATION_FONT, annotationMetrics } from '../../../shared/render/overlays'
 import { titleEm, titleMotionPose } from '../../../shared/render/titleCards'
 import type { Annotation, CalloutMotion, Shape, TitleCard } from '../../../shared/types'
-import { fontGeneration, projectFontStack } from './fontLoader'
+import { ensureCaptionFonts, fontGeneration, projectFontStack } from './fontLoader'
 import type { FrameContext } from './frameContext'
 import { calloutBubblePath } from './bubblePath'
 import { CATALOG_FALLBACK } from './titleCardLayer'
@@ -160,6 +160,8 @@ export function drawCallout(c: Ctx, top: FrameContext, a: Annotation, label: str
   if (!(top.t >= a.start && top.t < a.end)) return true
   const co = calloutOf(a)
   if (co.style === 'badge' || co.style === 'bubble') {
+    // The bundled script fonts (editingFontIds): the export waits for them; the preview starts them here.
+    ensureCaptionFonts(top.project)
     const stack = calloutStack(top.project, a)
     c.save()
     const place = calloutPlace(a, co.style === 'badge' ? label : null, calloutFrame(top), measurer(c, stack))

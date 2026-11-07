@@ -41,19 +41,26 @@ export function CalloutHandles(props: { project: Project; selection: Selection; 
   const { store, player } = useEditor()
   const group = useGroup()
   // Re-drawn when the playhead stops somewhere else, or starts or stops moving (never every frame of playback).
-  const [, setKey] = useState('')
+  const [key, setKey] = useState('')
   useEffect(() => {
     const check = (): void => setKey(player.moving ? 'moving' : `${player.time}`)
     check()
     return player.subscribe(check)
   }, [player])
   const sel = props.selection
-  const a = sel?.kind === 'annotation' ? props.project.annotations.find((x) => x.id === sel.id) : undefined
-  if (!a || (a.style !== 'badge' && a.style !== 'bubble') || player.moving) return null
+  const found = sel?.kind === 'annotation' ? props.project.annotations.find((x) => x.id === sel.id) : undefined
+  const a = found && (found.style === 'badge' || found.style === 'bubble') && !player.moving ? found : null
   const t = displayTime(props.project.clips, player.time)
-  if (!(t >= a.start && t < a.end)) return null
-  const scene = pausedScene(player)
-  if (!scene) return null
+  const shows = !!a && t >= a.start && t < a.end
+  const scene = shows ? pausedScene(player) : null
+  // The preview holds no frame yet (a seek still running): look again shortly.
+  const waiting = shows && !scene
+  useEffect(() => {
+    if (!waiting) return
+    const id = window.setTimeout(() => setKey((k) => `${k}+`), 150)
+    return () => window.clearTimeout(id)
+  }, [waiting, key])
+  if (!a || !scene) return null
   const m = calloutMapping(scene, t)
   const place = calloutPlace(a, a.style === 'badge' ? (badgeLabels(props.project).get(a.id) ?? null) : null, m.frame, measureOf(calloutStack(props.project, a)))
   if (!place) return null
