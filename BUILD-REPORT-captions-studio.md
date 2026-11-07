@@ -237,8 +237,8 @@ tests.
 
 Branch `feat/cs-phase-b` from `a988af4` (wave 8 merged: review mode, publishing pack, sound finder,
 share, search; and Captions Studio phase A). Built here: §0.4's phase B parts that wait for no
-other branch. Not built: `versions.ts` areas (test 56; the versions branch is not merged, and no
-file had to call it, so no seam was added) and offline translation (waits for the owner's licence
+other branch. Not built at first: `versions.ts` areas (test 56; the versions branch was not merged
+yet; built after it merged, see **After the versions merge**) and offline translation (waits for the owner's licence
 decision; its `TODO(phase B)` seams in `LanguagesSection.tsx`, `captionCommands.ts` and
 `assetStore.ts` are left as they were). Nothing was pushed.
 
@@ -393,3 +393,22 @@ Contract additions: `CaptionAuto.twin`, `CaptionAuto.style.names`, `withAutoTwin
 Verification after the round: typecheck exit 0; full vitest 405 files, 5541 tests pass; build
 exit 0; e2e on the built app, each file once: `review-mode` 10 of 10, `publish-pack` 4 of 4,
 `sound-finder` 5 of 5, `captions-studio` 8 of 8.
+
+### After the versions merge
+
+`integ/wave8` at `84b8862` (versions, filmstrip and frame nudge) merged in `7623c2c`. Only
+`tests/greatRun.test.ts` had markers; both sides' behaviour stays everywhere: Make my captions
+great names its request and stops it on Cancel, and keeps an automatic version of the edit before
+it only once the run changed the edit; Review's group rows stay, with one automatic version per
+opening of the panel before Remove all; the Graphics tab's Add menu keeps its arrows, Home and End.
+
+| Change | Outcome |
+|---|---|
+| `versions.ts` areas, test 56 (`a718b59`) | `VersionSummary.graphics` counts pop-ups ("Pop-ups" in Compare, "3 pop-ups" in the row; an older summary reads 0). Emphasis, captions placed by hand, bleeps and `captionAuto` compare as the captions look, translated tracks as caption languages, and pop-ups moved while they count the same as pop-ups; none of them is "other settings" any more. A version kept just now, read back through `migrateProject`, still reads "Same as your edit now", whatever order its fields were set in (`tests/versionsCaptions.test.ts`). The versions test that expected "other settings" for these parts follows them. |
+| short-repeat-swear-word-unbleeped-after-delete (medium) | Fixed (`f3c3eeb`). A bleep belongs to one place of its word: the one it was made for (its span that place's), else the one its centre lies in, else the one whose whole span it covers nearest its centre; deleted words keep theirs. The same word said twice gets a bleep for each, whichever is short (0 to 0.1 s, start == end included), in either order, also when an earlier Tidy bleeped only one; either deleted, the other stays muted over all its time, and a second Tidy adds nothing (632 deletions checked in one test). |
+| CMD3-NP (medium) | Fixed (`7c34105`). A Languages request is used up on the render that shows its form once the providers are known: the select, or with no provider the form's Add an AI provider. A provider added later in Settings no longer pulls the focus behind the dialog. |
+| twin-record-lost-when-emphasis-removed-before-later-style-row (low) | Fixed (`36a2bc6`). With the emphasis removed before a later run's style row, the twin record is handed to that row's `was`, which then reads as the Classic look (or no settings); the row keeps its title. The checker's fuzz probes give 0 failures in 600 (and in 3,000 with three other seeds); 110 and 144 of 3,000 failed before. |
+
+Verification: typecheck exit 0; full vitest 411 files, 5,658 tests pass; build exit 0; e2e on
+the built app, each file once: `captions-studio` 8 of 8, `review-mode` 10 of 10, `versions` 3 of
+3, `sound-finder` 5 of 5, `publish-pack` 4 of 4, `editor` 13 of 13.
