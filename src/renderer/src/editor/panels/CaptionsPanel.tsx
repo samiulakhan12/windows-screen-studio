@@ -167,7 +167,8 @@ export function useAiProviders(): { providers: AiProviderInfo[] | null; error: s
   return { providers, error, reload }
 }
 
-const providerLabel = (p: AiProviderInfo, transcription = false): string => `${p.label || KIND_NAMES[p.kind]} · ${(transcription ? p.transcriptionModel : p.model) || KIND_NAMES[p.kind]}`
+/** "Work key · gpt-…": a provider's name and model; a service is named by its place, never "OpenAI" (smart-tools.md §20.0). */
+const providerLabel = (p: AiProviderInfo, transcription = false): string => `${p.label || placeOf(p)} · ${(transcription ? p.transcriptionModel : p.model) || placeOf(p)}`
 /** A text choice as the AI tools list it: providerLabel's form, or On this PC alone (smart-tools.md §20.0). */
 const choiceLabel = (c: TextChoice): string => (c.kind === 'local' ? c.label : `${c.label} · ${c.model || c.place}`)
 
