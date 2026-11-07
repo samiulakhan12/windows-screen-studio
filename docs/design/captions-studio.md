@@ -635,8 +635,9 @@ Two publish-pack commands change target (ids, titles and keywords stay):
   same form with *On this PC* chosen when it is offered. `CaptionsAiTask` loses `'translate'`; `CaptionsRequest` gains `{ kind:
   'language'; via: 'ai' | 'local' }` (`captionItems.ts`).
 - `aiCleanup` opens Clean up with **Also fix spelling and misheard words with AI** ticked and
-  focused. `CaptionsAiTask` loses `'cleanup'`; `CaptionsRequest` gains `{ kind: 'cleanup'; ai:
-  true }`.
+  focused. With no AI provider its status says to add one first; that message goes once a provider
+  is added (the box then shows, ticked, and the focus stays where it is). `CaptionsAiTask` loses
+  `'cleanup'`; `CaptionsRequest` gains `{ kind: 'cleanup'; ai: true }`.
 
 `tests/e2e/captions.e2e.cjs:576-621` (which clicks "Translate to…") and the publish-pack command
 tests are updated in the same part (§14.4).

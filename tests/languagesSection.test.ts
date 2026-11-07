@@ -62,7 +62,7 @@ const { LanguagesSection } = (await import(/* @vite-ignore */ LANGUAGES)) as { L
 const { CleanupSection } = (await import(/* @vite-ignore */ CLEANUP)) as { CleanupSection: (p: unknown) => unknown }
 const { saveWordList, requestCaptions, takeCaptionsRequest } = (await import(/* @vite-ignore */ ITEMS)) as {
   saveWordList: (next: readonly { term: string; heard: string[] }[]) => Promise<void>
-  requestCaptions: (r: { kind: 'language'; via: 'ai' }) => void
+  requestCaptions: (r: { kind: 'language'; via: 'ai' } | { kind: 'cleanup'; ai: true }) => void
   takeCaptionsRequest: () => unknown
 }
 await useEditorContexts()
@@ -452,6 +452,22 @@ describe('a request with no AI provider (§2.14): no focus waits for one', () =>
       await settle(languages())
       expect(focused.map(named)).toEqual([])
     }
+  })
+
+  it('Fix captions with AI: Clean up says to add one first; a provider added later takes that back and moves no focus', async () => {
+    providers.list = []
+    requestCaptions({ kind: 'cleanup', ai: true })
+    takeCaptionsRequest()
+    let els = await settle(cleanup())
+    const status = (): string => textOf(els.find((e) => e.props.role === 'status'))
+    expect(byTestId(els, 'cleanup-ai')).toBeUndefined()
+    expect(status()).toBe('To fix spelling with AI, add an AI provider first: the button is in the AI tools section.')
+    focused.length = 0
+    providerAdded()
+    els = await settle(cleanup())
+    expect(byTestId(els, 'cleanup-ai')?.props.checked).toBe(true)
+    expect(status()).toBe('')
+    expect(focused.map(named)).toEqual([])
   })
 })
 

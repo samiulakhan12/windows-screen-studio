@@ -40,6 +40,9 @@ function Check(props: { testid: string; label: string; title?: string; checked: 
   )
 }
 
+/** Why Fix captions with AI ticked nothing; it goes once a provider is added. */
+const NO_PROVIDER = 'To fix spelling with AI, add an AI provider first: the button is in the AI tools section.'
+
 /** Numbers the AI fix's requests, so each has its own request id. */
 let cleanupSeq = 0
 
@@ -141,9 +144,13 @@ export function CleanupSection({ project }: { project: Project }): JSX.Element {
     } else if (focusAi.current && listed?.length === 0) {
       // No provider: the tick box is not shown, so there is nothing to focus; say what comes first.
       focusAi.current = false
-      setStatus('To fix spelling with AI, add an AI provider first: the button is in the AI tools section.')
+      setStatus(NO_PROVIDER)
     }
   })
+  // Added in Settings over the editor, a provider makes that message wrong: it goes (the focus stays put).
+  useEffect(() => {
+    if (status === NO_PROVIDER && listed?.length) setStatus('')
+  }, [status, listed])
   useEffect(() => {
     if (addingWord) termBox.current?.focus()
   }, [addingWord])
