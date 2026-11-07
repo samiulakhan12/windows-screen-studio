@@ -150,6 +150,20 @@ describe('the music library (test 73)', () => {
     click(inRow(els, 'upbeat-sweet-sun', 'music-play'))
     els = render(lib())
     expect(played.at(-1)!.paused).toBe(true)
+    // Space on the toggle plays and stops the preview (it does not reach the editor, where Space plays the video).
+    const space = key(' ')
+    ;(inRow(els, 'lofi-coexistenz', 'music-play')!.props.onKeyDown as (e: unknown) => void)(space)
+    expect(space.prevented).toBe(true)
+    els = render(lib())
+    expect(played.at(-1)!.url).toBe('studio-media://sounds/bed-lofi-coexistenz.ogg')
+    expect(live(els)).toBe('Playing preview: Coexistenz, 1 minute 32 seconds')
+    ;(inRow(els, 'lofi-coexistenz', 'music-play')!.props.onKeyDown as (e: unknown) => void)(key(' '))
+    els = render(lib())
+    expect(played.at(-1)!.paused).toBe(true)
+    // Other keys are left to the editor.
+    const k = key('k')
+    ;(inRow(els, 'lofi-coexistenz', 'music-play')!.props.onKeyDown as (e: unknown) => void)(k)
+    expect(k.prevented).toBe(false)
   })
 
   it('Use is one update that keeps volume, ducking, loop and fades, and the credit shows', async () => {

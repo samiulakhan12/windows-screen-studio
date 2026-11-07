@@ -15,7 +15,7 @@ import type { Project, SfxRef } from '../../../../shared/types'
 import { useEditor } from '../context'
 import { Slider } from '../controls'
 import { createAudio } from '../media'
-import { librarySoundUrl } from './MusicLibrarySection'
+import { librarySoundUrl, spaceToggles } from './MusicLibrarySection'
 import './soundLibrary.css'
 
 const RULES: readonly { rule: SfxRule; label: string; use: SfxUse }[] = [
@@ -100,6 +100,7 @@ export function SoundEffectsSection(props: { project: Project }): JSX.Element {
                 aria-label={ref ? `Play ${title}` : `Play the sound for ${label.toLowerCase()}`}
                 disabled={!ref}
                 onClick={() => play(rule, ref)}
+                onKeyDown={(e) => spaceToggles(e, () => play(rule, ref))}
               >
                 {playing === rule ? 'Stop' : 'Play'}
               </button>

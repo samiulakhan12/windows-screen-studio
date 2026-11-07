@@ -23,6 +23,17 @@ const FILTERS: readonly { id: Filter; label: string }[] = [{ id: 'all', label: '
 /** A library file through the media protocol's sounds host (catalogue names only). */
 export const librarySoundUrl = (file: string): string => `${MEDIA_SCHEME}://sounds/${encodeURIComponent(file)}`
 
+/**
+ * Space on a Play toggle plays or stops its preview (§12), where Space elsewhere in the editor plays
+ * the video: the key stops here, and the button's own click on key up is cancelled.
+ */
+export function spaceToggles(e: ReactKeyboardEvent, toggle: () => void): void {
+  if (e.key !== ' ' || e.ctrlKey || e.altKey || e.metaKey || e.shiftKey) return
+  e.preventDefault()
+  e.stopPropagation()
+  toggle()
+}
+
 const ipcMessage = (err: unknown): string => (err instanceof Error ? err.message : String(err)).replace(/^Error invoking remote method '[^']+': (Error: )?/, '')
 
 /** Copies bed `id` into the project (downloading it first when it is not on this PC) and makes it the music: one undo step. */
@@ -185,6 +196,7 @@ export function MusicLibrarySection(props: { project: Project }): JSX.Element {
                     aria-disabled={!here || undefined}
                     aria-describedby={here ? undefined : hintId}
                     onClick={() => togglePlay(bed, here)}
+                    onKeyDown={(e) => spaceToggles(e, () => togglePlay(bed, here))}
                   >
                     {playing === bed.id ? 'Stop' : 'Play'}
                   </button>
