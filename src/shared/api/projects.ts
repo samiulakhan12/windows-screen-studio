@@ -75,6 +75,45 @@ export interface ProjectsApi {
   onDuplicateProgress(listener: (p: DuplicateProgress) => void): () => void
   /** Stops the running copy; its promise rejects with an AbortError and the new folder is removed. */
   cancelDuplicate(): void
+  /**
+   * How much of the picture changes at each sample and where it stays still (docs/design/smart-tools.md
+   * §7.2), inside `crop` when given; read once per recording and kept in `.cache/scenes.json`.
+   * Rejects with a readable message; stopAnalysis stops it.
+   */
+  detectScenes(id: string, crop: NormRect | null): Promise<SceneScan>
+  /** Progress of a running scene scan (0..1 of the recording); returns an unsubscribe function. */
+  onSceneProgress(listener: (p: { id: string; fraction: number }) => void): () => void
+  /** Whether copies of project `id` can share its files, the bytes a full copy takes, and the free space (§8.5 step 6). */
+  copyCost(id: string): Promise<CopyCost>
+}
+
+/** Smart tools' project channels (docs/design/smart-tools.md §20.0, §21). */
+export const SMART_PROJECT_CHANNELS = {
+  /** invoke (id, crop) → SceneScan: registered by part P2's registerSceneIpc (src/main/sceneScan.ts) */
+  detectScenes: 'projects:detectScenes',
+  /** event { id, fraction }: a running scene scan's progress, at most every 250 ms */
+  sceneProgress: 'projects:sceneProgress',
+  /** invoke (id) → CopyCost: registered by the contracts (projectsIpc.ts) to part P3's copyCost */
+  copyCost: 'projects:copyCost'
+} as const
+
+/**
+ * One reading of the screen (smart-tools.md §7.2): samples `step` seconds apart (0.25 s, or the
+ * key-frame spacing at 60 fps and above) at source times `t`, the share of the picture that
+ * changed since the sample before (`changed`, whole numbers 0..100), and the still stretches.
+ */
+export interface SceneScan {
+  step: number
+  t: number[]
+  changed: number[]
+  stills: { start: number; end: number }[]
+}
+
+/** What copies of a project cost on disk (§8.5 step 6): `linked` files share the original's, else each copy takes `bytes`; `free` bytes on the drive. */
+export interface CopyCost {
+  linked: boolean
+  bytes: number
+  free: number
 }
 
 /** How far the running copy is (Duplicate, Make a vertical version): bytes copied of the bytes to copy. */

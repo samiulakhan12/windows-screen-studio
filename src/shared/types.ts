@@ -651,6 +651,8 @@ export interface AutoOrigin {
   caption?: string
   /** Chapter.id it was made from ('chapter'). */
   chapter?: string
+  /** via 'openai' through a service (smart-tools.md §10.6, decision 20): its host, ASCII, at most 253 characters. Absent for OpenAI itself. */
+  host?: string
 }
 
 /** Caption words a graphic was made from. Remapped like marks (§11.1). */
@@ -709,8 +711,8 @@ export interface ProjectJoins {
   all?: CutJoin
   /** Cuts with their own style: at most one per clip id. */
   cuts?: CutStyle[]
-  /** Polish set `all` and Review has not kept or removed it: what `all` was before (null: absent). */
-  auto?: { by: 'polish'; was: CutJoin | null }
+  /** Polish (or Make a shorter version, smart-tools.md §8.6) set `all` and Review has not kept or removed it: what `all` was before (null: absent). */
+  auto?: { by: 'polish' | 'short'; was: CutJoin | null }
 }
 
 /** The motions of an animated callout (§7.1): Captions Studio's item motions, plus 'draw' and 'wipe' (enter only). */
@@ -862,6 +864,8 @@ export interface CaptionTrack {
   createdAt: string
   /** One text per spoken caption; `src` is a hash of the spoken text it was made from (out of date when it differs). */
   segments: { id: string; text: string; src: string }[]
+  /** by 'openai' through a service (smart-tools.md §10.6): its host ("translated with api.groq.com"). Absent for OpenAI itself. */
+  host?: string
 }
 
 /** A word bleeped in the sound and masked in the captions (§11.7). Time-based: no caption id or word index. */
@@ -946,11 +950,114 @@ export interface TitleCard {
   sound?: 'none' | SfxRef
 }
 
+/** What a found chapter's start was found from (Review's detail line), strongest first (smart-tools.md §4.1). */
+export type ChapterSignal = 'start' | 'page' | 'screen' | 'pause' | 'idle' | 'cue' | 'section' | 'topic' | 'card' | 'ai'
+
+/** A chapter Find chapters or Polish made and the user has not reviewed yet (smart-tools.md §7.7). */
+export interface ChapterOrigin {
+  by: 'find' | 'polish'
+  /** At most 3, strongest first. */
+  from: ChapterSignal[]
+  /**
+   * Where its name came from: a title card, the first sentence, a phrase said in it, a sentence cut
+   * short, a number ("Part 3"), an AI. 'cut' and 'number' are weak: the chapter list says "Rename?".
+   */
+  name: 'card' | 'sentence' | 'phrase' | 'cut' | 'number' | 'ai'
+  /** name 'ai' or from 'ai': the provider kind, or 'local' for AI on this PC. */
+  via?: AiProviderKind | 'local'
+  /** via 'openai' through a service (§10): its host, ASCII, at most 253 characters. */
+  host?: string
+}
+
 /** A named chapter starting at `t` (source seconds). */
 export interface Chapter {
   id: string
   t: number
   title: string
+  /** Found automatically and not reviewed yet; absent: the user's (every chapter from before wave 11). */
+  auto?: ChapterOrigin
+}
+
+/** The step-by-step guide's choices and edits (smart-tools.md §5). Absent: none made. */
+export interface GuideSettings {
+  /** The guide's heading; absent: the recording's name. */
+  title?: string
+  /** A paragraph under the heading. */
+  intro?: string
+  /** 'bug': steps to reproduce with Expected and Actual. Absent: a guide. */
+  kind?: 'bug'
+  expected?: string
+  actual?: string
+  /** Bug report: source seconds of the screen shown under Actual. */
+  actualAt?: number
+  /** Bug report: the detail lines, as edited; absent: the three of §5.6, all included. */
+  details?: { text: string; off?: true }[]
+  /** The guide's own words; absent: Bangla for Bangla captions, else English. */
+  language?: 'en' | 'bn'
+  /** 'badges': steps from the auto-numbered step badges (§5.1 rule 11); absent: from every click. */
+  from?: 'badges'
+  /** false: the brand kit is not used; absent: used when one exists. */
+  brand?: false
+  /** The demo's end screen (§6.1). */
+  end?: GuideEnd
+  /** Edits of found steps, by step key (§5.1). */
+  steps?: GuideStepEdit[]
+  /** Steps added by hand at a time. */
+  added?: GuideAddedStep[]
+}
+
+export interface GuideEnd {
+  heading: string
+  /** The button; with no `url`, the end screen has the heading and Start again only. */
+  label?: string
+  /** https only, checked by readLinkUrl (§4.2). The only link a guide can hold. */
+  url?: string
+}
+
+export interface GuideStepEdit {
+  /** 'c<ms>' click, 'k<ms>' key press, 't<ms>' typing, 's<ms>' screen change, 'b<ms>' badge (§5.1). */
+  key: string
+  title?: string
+  text?: string
+  /** Typing steps: what to type, written by the user only. */
+  type?: string
+  /** The note holds everything said since the previous step (absent: the short note, §5.4). */
+  full?: true
+  /** Left out of every output. */
+  hidden?: true
+  /** A typing step's screenshot after the typing (absent: before). */
+  after?: true
+  /** The guide's shot shows the whole screen (absent: zoomed to the action). */
+  whole?: true
+  /** The demo's shot is zoomed to the action (absent: the whole screen). */
+  demoZoom?: true
+  /** Adjust (§5.5.3): the crop, as fractions of the recorded frame; at least 0.05 wide and high. */
+  rect?: { x: number; y: number; w: number; h: number }
+  /** Adjust: the ring's centre, as fractions of the recorded frame. */
+  ring?: { x: number; y: number }
+  /** The title was written by an AI and not edited since (the row's "AI" chip). */
+  ai?: AiProviderKind | 'local'
+  /** The note was written by Tidy notes and not edited since. */
+  textAi?: AiProviderKind | 'local'
+}
+
+export interface GuideAddedStep {
+  /** 'a<ms>' of its time. */
+  key: string
+  /** Source seconds. */
+  t: number
+  title: string
+  text?: string
+}
+
+/** On a copy made by Find short clips or Make a shorter version: what it was made from (smart-tools.md §8.5). */
+export interface ClipOrigin {
+  kind: 'moment' | 'short'
+  /** Source seconds of the original. */
+  start: number
+  end: number
+  /** The reasons listed when it was picked ("Opens with a question · 6 clicks"), at most 120 characters. */
+  why?: string
 }
 
 /** What the recording's sound does while a freeze frame holds (E-11). */
@@ -1309,6 +1416,8 @@ export interface Project {
   reframe?: ReframeSettings
   /** Set on a copy made by Duplicate, Make a vertical version or Make a square version. */
   copyOf?: ProjectCopyOf
+  /** Set on a copy made by Find short clips or Make a shorter version (smart-tools.md §8.5): what it was made from. Absent: not a clip. */
+  clipOf?: ClipOrigin
   /** Kept ranges of the recording (trim + cuts + speed). Never empty. */
   clips: Clip[]
   zooms: ZoomSegment[]
@@ -1369,6 +1478,8 @@ export interface Project {
   autoCutOutcomes?: AutoCutOutcome[]
   /** The publishing copy pack's saved choices (NW-13). Absent: none (every project from before it). */
   publish?: ProjectPublish
+  /** The step-by-step guide's choices and edits (smart-tools.md §5). Absent: none (every project from before wave 11). */
+  guide?: GuideSettings
   /** Unwanted sounds muted, lowered or ignored (F-17, docs/design/sound-finder.md). Absent: none (every project from before). */
   sounds?: SoundEdits
   /** Cut styles (NW-06, docs/design/editing-polish.md §5). Absent: every cut is a hard cut (every project from before). */
@@ -1423,6 +1534,10 @@ export interface ProjectSummary {
   createdAt: string
   duration: number
   dir: string
+  /** The project this one is a copy of (smart-tools.md §4.1: Made from this video). */
+  copyOf?: ProjectCopyOf
+  /** The copy is a short clip or a shorter version (Project.clipOf). */
+  clip?: true
 }
 
 export interface CaptureSource {
@@ -1458,7 +1573,7 @@ export interface RecordingStatus {
 }
 
 /** What made an automatic cut or speed-up (docs/design/review-mode.md §3). */
-export type AutoCutSource = 'silences' | 'smart-speed' | 'polish' | 'filler' | 'retake' | 'repeat'
+export type AutoCutSource = 'silences' | 'smart-speed' | 'polish' | 'filler' | 'retake' | 'repeat' | 'short'
 
 /** A cut or speed-up Flown made by itself, in source seconds; Review mode keeps or undoes it. */
 export interface AutoCut {

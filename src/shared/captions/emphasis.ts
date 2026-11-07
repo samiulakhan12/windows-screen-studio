@@ -180,7 +180,11 @@ function scoreWord(
   return score
 }
 
-/** Word indexes (into ts) that are the object of a button or menu verb (en), or come before a polite command (bn, hi). */
+/**
+ * Word indexes (into ts) that are the object of a button or menu verb (en), or come before a polite
+ * command (bn, hi). Exported as uiObjects for the guide's step titles and the chapters' names
+ * (docs/design/smart-tools.md §5.2, §7.5), unchanged.
+ */
 function objectIndexes(ts: readonly StudioToken[], lang: string): number[] {
   const out: number[] = []
   if (lang === 'bn' || lang === 'hi') {
@@ -271,4 +275,9 @@ export function pickEmphasis(project: Project, opts?: { maxShare?: number; curso
     const text = spanText(words.get(c.caption)!, c.word, c.to)
     return { id: markId(c.caption, c.word, text), caption: c.caption, from: c.word, to: c.to, text, auto: true as const }
   })
+}
+
+/** objectIndexes for smart tools (§20.0): the UI verbs' objects, the same answer Captions Studio's emphasis uses. */
+export function uiObjects(tokens: readonly StudioToken[], language: string): number[] {
+  return objectIndexes(tokens, language)
 }

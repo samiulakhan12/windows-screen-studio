@@ -7,7 +7,8 @@ import { clamp } from '../engine/math'
 import { MAX_SPEED, MIN_SPEED } from '../engine/timeline'
 import type { AutoCut, AutoCutOutcome, AutoCutSource } from '../types'
 
-export const AUTO_CUT_SOURCES: readonly AutoCutSource[] = ['silences', 'smart-speed', 'polish', 'filler', 'retake', 'repeat']
+/** 'short': the cuts of Make a shorter version (smart-tools.md §8.6). */
+export const AUTO_CUT_SOURCES: readonly AutoCutSource[] = ['silences', 'smart-speed', 'polish', 'filler', 'retake', 'repeat', 'short']
 export const AUTO_CUT_ACTIONS: readonly AutoCut['action'][] = ['cut', 2, 4, 8]
 export const AUTO_CUT_OUTCOMES: readonly AutoCutOutcome['outcome'][] = ['kept', 'removed']
 

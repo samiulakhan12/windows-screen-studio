@@ -570,7 +570,26 @@ export function readItemMotion(raw: unknown, fallback: ItemMotion): ItemMotion {
   }
 }
 
-/** A stored automatic origin (Review), or undefined when `by` or `via` is not one of theirs. */
+/** Longest host kept (a DNS name). */
+const HOST_MAX = 253
+const HOST_RE = /^[a-z0-9.-]+$/
+const IPV6_RE = /^\[[0-9a-f:.]+\]$/
+
+/**
+ * A service's host as stored with a result made through it (smart-tools.md §4.2, decision 20): 1 to
+ * 253 characters of lower-case ASCII letters, digits, '.' and '-' (an internationalised name in its
+ * xn-- form), or a bracketed IPv6 literal; else undefined. Shared by readChapterOrigin, readAutoOrigin
+ * and the caption track reader.
+ */
+export function readHost(raw: unknown): string | undefined {
+  if (typeof raw !== 'string' || !raw || raw.length > HOST_MAX) return undefined
+  return HOST_RE.test(raw) || IPV6_RE.test(raw) ? raw : undefined
+}
+
+/**
+ * A stored automatic origin (Review), or undefined when `by` or `via` is not one of theirs. A
+ * service's `host` is kept with `via: 'openai'` when readHost accepts it, else left out.
+ */
 export function readAutoOrigin(v: unknown): AutoOrigin | undefined {
   if (!isObj(v)) return undefined
   const by = pick(v.by, ['keyword', 'emoji', 'number', 'list', 'speaker', 'chapter', 'quote'] as const, null)
@@ -578,7 +597,8 @@ export function readAutoOrigin(v: unknown): AutoOrigin | undefined {
   if (!by || !via) return undefined
   const caption = idOf(v.caption)
   const chapter = idOf(v.chapter)
-  return { by, via, ...opt('caption', caption || undefined), ...opt('chapter', chapter || undefined) }
+  const host = via === 'openai' ? readHost(v.host) : undefined
+  return { by, via, ...opt('caption', caption || undefined), ...opt('chapter', chapter || undefined), ...opt('host', host) }
 }
 
 /** A well-formed emoji key (§4.2 rule 5): 1–10 hex code points of 1–6 digits joined by '-', each a scalar value, lower case, without FE0F; else null. */
@@ -719,12 +739,16 @@ export function readCaptionTracks(raw: unknown, transcript: Transcript | undefin
       segments.push({ id: s.id, text, src: typeof s.src === 'string' ? s.src.slice(0, 64) : '' })
     }
     segments.sort((a, b) => order.get(a.id)! - order.get(b.id)!)
+    const by = v.by === 'local' ? 'local' : pick(v.by, PROVIDERS, 'local')
+    // A service's host (smart-tools.md §10.6): kept with by 'openai' when readHost accepts it.
+    const host = by === 'openai' ? readHost(v.host) : undefined
     out.push({
       language: v.language,
-      by: v.by === 'local' ? 'local' : pick(v.by, PROVIDERS, 'local'),
+      by,
       model: typeof v.model === 'string' ? v.model.slice(0, 200) : '',
       createdAt: typeof v.createdAt === 'string' ? v.createdAt.slice(0, 64) : '',
-      segments
+      segments,
+      ...opt('host', host)
     })
   }
   return out.length ? out : undefined

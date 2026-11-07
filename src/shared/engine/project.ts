@@ -22,6 +22,7 @@ import { readJoins } from './joinData'
 import { readProjectGrade } from '../render/gradeData'
 import { readChapterBar } from '../render/chapterBarData'
 import { readSoundFx } from '../audio/soundFxData'
+import { readClipOrigin, readGuideSettings } from '../guide/guideData'
 
 export const PROJECT_VERSION = 2
 
@@ -140,7 +141,7 @@ export function migrateProject(raw: unknown): Project {
   const duration = Number.isFinite(p.duration) && p.duration > 0 ? p.duration : 0.1
   const listed = objects<Clip>(p.clips).filter((c) => Number.isFinite(c.start) && Number.isFinite(c.end))
   const clips = listed.length ? listed : [{ ...fullClip(duration), start: p.trim?.start ?? 0, end: p.trim?.end ?? duration }]
-  const { trim: _legacyTrim, audioStems, transcript, captions, captionMarks, captionPlaces, graphics, captionTracks, bleeps, captionAuto, inputEdits, director, script, crop, freezes, overlays, fonts, brand, reframe, copyOf, publish, autoCuts, autoCutOutcomes, sounds, joins, grade, chapterBar, soundFx, ...rest } = p
+  const { trim: _legacyTrim, audioStems, transcript, captions, captionMarks, captionPlaces, graphics, captionTracks, bleeps, captionAuto, inputEdits, director, script, crop, freezes, overlays, fonts, brand, reframe, copyOf, clipOf, publish, guide, autoCuts, autoCutOutcomes, sounds, joins, grade, chapterBar, soundFx, ...rest } = p
   void _legacyTrim
   // Read once: the transcript, and the Captions Studio records that point at its captions.
   const transcriptRead = readTranscript(transcript, duration)
@@ -156,6 +157,8 @@ export function migrateProject(raw: unknown): Project {
     ...optional('reframe', readReframe(reframe)),
     // The project this one was copied from (absent: an original).
     ...optional('copyOf', readCopyOf(copyOf)),
+    // A short clip or shorter version: what it was made from (smart-tools.md §4.3; absent: not a clip).
+    ...optional('clipOf', readClipOrigin(clipOf)),
     clips: normalizeClips(clips, duration),
     zooms: objects(p.zooms),
     // Ignored clicks and straightened cursor paths, cleaned (absent: the input as recorded).
@@ -193,6 +196,8 @@ export function migrateProject(raw: unknown): Project {
     ...optional('script', readProjectScript(script)),
     // The copy pack's saved YouTube description, cleaned (absent: none).
     ...optional('publish', readPublish(publish)),
+    // The step-by-step guide's choices and edits, sanitised (smart-tools.md §4.3; absent: none made).
+    ...optional('guide', readGuideSettings(guide, duration)),
     // Unwanted sounds muted, lowered or ignored, sanitised (absent: none).
     ...optional('sounds', readSoundEdits(sounds, duration)),
     effects: {

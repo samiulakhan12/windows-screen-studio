@@ -1,5 +1,5 @@
 import { ipcRenderer } from 'electron'
-import type { DuplicateProgress, ProjectsApi } from '../shared/api/projects'
+import { SMART_PROJECT_CHANNELS, type DuplicateProgress, type ProjectsApi } from '../shared/api/projects'
 import { subscribe } from './ipc'
 
 export const projectsApi: ProjectsApi = {
@@ -32,5 +32,9 @@ export const projectsApi: ProjectsApi = {
   onDuplicateProgress: (listener) => subscribe<DuplicateProgress>('projects:duplicateProgress', listener),
   cancelDuplicate: () => {
     void ipcRenderer.invoke('projects:duplicateCancel').catch(() => undefined)
-  }
+  },
+  // Smart tools (docs/design/smart-tools.md §20.0): the scene scan (part P2) and what copies cost (part P3).
+  detectScenes: (id, crop) => ipcRenderer.invoke(SMART_PROJECT_CHANNELS.detectScenes, id, crop),
+  onSceneProgress: (listener) => subscribe<{ id: string; fraction: number }>(SMART_PROJECT_CHANNELS.sceneProgress, listener),
+  copyCost: (id) => ipcRenderer.invoke(SMART_PROJECT_CHANNELS.copyCost, id)
 }

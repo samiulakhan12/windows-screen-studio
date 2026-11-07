@@ -9,13 +9,14 @@ import { formatLevel } from '../editor/zoomEdit'
  * Review mode's own kinds, then Captions Studio's (docs/design/captions-studio.md §11.8): the look,
  * the automatic emphasis and the text fixes (one group row each), emoji, the other graphics and
  * title cards, and bleeps; then editing polish's (docs/design/editing-polish.md §11): Polish's cut
- * style and Auto colour.
+ * style and Auto colour; then smart tools' (docs/design/smart-tools.md §13.1): found chapters and
+ * the shorter version's cuts.
  */
-export type ReviewKind = 'zoom' | 'camera' | 'silence' | 'idle' | 'words' | 'style' | 'emphasis' | 'text' | 'emoji' | 'graphic' | 'bleep' | 'join' | 'colour'
+export type ReviewKind = 'zoom' | 'camera' | 'silence' | 'idle' | 'words' | 'style' | 'emphasis' | 'text' | 'emoji' | 'graphic' | 'bleep' | 'join' | 'colour' | 'chapter' | 'short'
 export type ReviewStatus = 'pending' | 'kept' | 'removed'
 
 /** Kinds in the order items at the same time are listed (Captions Studio's after the others). */
-export const REVIEW_KINDS: readonly ReviewKind[] = ['camera', 'zoom', 'silence', 'idle', 'words', 'style', 'emphasis', 'text', 'emoji', 'graphic', 'bleep', 'join', 'colour']
+export const REVIEW_KINDS: readonly ReviewKind[] = ['camera', 'zoom', 'silence', 'idle', 'words', 'style', 'emphasis', 'text', 'emoji', 'graphic', 'bleep', 'join', 'colour', 'chapter', 'short']
 
 /** Each kind's chip, its name in a sentence, and its plural on "Remove all …". */
 export const KIND_WORDS: Record<ReviewKind, { chip: string; name: string; all: string; one: string; plural: string }> = {
@@ -34,7 +35,10 @@ export const KIND_WORDS: Record<ReviewKind, { chip: string; name: string; all: s
   bleep: { chip: 'Bleep', name: 'bleep', all: 'Remove all bleeps', one: 'bleep', plural: 'bleeps' },
   // Editing polish: Polish's Smooth cuts step, and Auto colour on the camera.
   join: { chip: 'Cuts', name: 'cut style', all: 'Remove all cut styles', one: 'cut style', plural: 'cut styles' },
-  colour: { chip: 'Colour', name: 'colour', all: 'Remove all colour changes', one: 'colour change', plural: 'colour changes' }
+  colour: { chip: 'Colour', name: 'colour', all: 'Remove all colour changes', one: 'colour change', plural: 'colour changes' },
+  // Smart tools: chapters Find chapters or Polish found, and Make a shorter version's cuts.
+  chapter: { chip: 'Chapter', name: 'found chapter', all: 'Remove all found chapters', one: 'found chapter', plural: 'found chapters' },
+  short: { chip: 'Short', name: 'shorter-version cut', all: 'Remove all shorter-version cuts', one: 'shorter-version cut', plural: 'shorter-version cuts' }
 }
 
 export const STATUS_WORDS: Record<ReviewStatus, string> = { pending: 'not reviewed', kept: 'kept', removed: 'removed' }
@@ -90,6 +94,8 @@ export const DIRECTOR_DETAIL = 'Camera director'
 export function cutKind(cut: Pick<AutoCut, 'by'>): ReviewKind {
   if (cut.by === 'silences' || cut.by === 'polish') return 'silence'
   if (cut.by === 'smart-speed') return 'idle'
+  // Make a shorter version (smart-tools.md §13.1).
+  if (cut.by === 'short') return 'short'
   return 'words'
 }
 
@@ -107,17 +113,19 @@ export function cutTitle(cut: AutoCut): string {
     if (cut.by === 'repeat') return `Removed a repeat: ${said}`
     return `Removed ${said}`
   }
+  if (kind === 'short') return `Cut ${cutSeconds(cut)} for the shorter version`
   const what = kind === 'silence' ? 'silence' : 'idle time'
   return cut.action === 'cut' ? `Cut ${cutSeconds(cut)} of ${what}` : `Sped up ${cutSeconds(cut)} of ${what} ${cut.action}×`
 }
 
-const CUT_DETAILS: Record<AutoCut['by'], string> = {
+export const CUT_DETAILS: Record<AutoCut['by'], string> = {
   silences: 'Remove silences',
   polish: 'Polish',
   'smart-speed': 'Smart speed',
   filler: 'Filler',
   retake: 'Retake',
-  repeat: 'Repeat'
+  repeat: 'Repeat',
+  short: 'Make a shorter version'
 }
 
 export const cutDetail = (cut: Pick<AutoCut, 'by'>): string => CUT_DETAILS[cut.by]

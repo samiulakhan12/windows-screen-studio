@@ -61,7 +61,7 @@ function readCutStyle(raw: unknown): CutStyle | null {
 /**
  * Project.joins as stored, or undefined when it is not an object or nothing readable is left.
  * `cuts` keeps at most MAX_CUT_STYLES entries and the first of a repeated clip; `auto` needs
- * `by: 'polish'` and `was` a readable join or null.
+ * `by: 'polish'` or `'short'` and `was` a readable join or null.
  */
 export function readJoins(raw: unknown): ProjectJoins | undefined {
   if (!isObject(raw)) return undefined
@@ -80,9 +80,10 @@ export function readJoins(raw: unknown): ProjectJoins | undefined {
     }
     if (cuts.length) out.cuts = cuts
   }
-  if (isObject(raw.auto) && raw.auto.by === 'polish') {
+  // 'short': Make a shorter version's smooth cuts (smart-tools.md §8.6).
+  if (isObject(raw.auto) && (raw.auto.by === 'polish' || raw.auto.by === 'short')) {
     const was = raw.auto.was === null ? null : readCutJoin(raw.auto.was)
-    if (was !== null || raw.auto.was === null) out.auto = { by: 'polish', was }
+    if (was !== null || raw.auto.was === null) out.auto = { by: raw.auto.by, was }
   }
   return Object.keys(out).length ? out : undefined
 }

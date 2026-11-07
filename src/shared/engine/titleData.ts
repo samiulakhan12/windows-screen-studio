@@ -4,10 +4,10 @@
  * editor (editor/titles.ts), like shapeData.ts for shapes.
  */
 import { catalogId, CATALOG_PREFIX } from '../captions/fontCatalog'
-import { readAutoOrigin } from '../captions/studioData'
+import { readAutoOrigin, readHost } from '../captions/studioData'
 import { readFontId } from '../render/fonts'
 import { readCalloutFields } from '../render/calloutData'
-import type { Chapter, TitleCard, TitleCardStyle } from '../types'
+import type { Chapter, ChapterOrigin, ChapterSignal, TitleCard, TitleCardStyle } from '../types'
 
 /** Longest title or subtitle kept, in characters. */
 export const TITLE_MAX_CHARS = 200
@@ -59,12 +59,46 @@ export function readTitleCard(raw: Partial<TitleCard> | null | undefined, durati
   return card
 }
 
-/** A stored chapter inside the recording, or null when its time is unusable. */
+const ORIGIN_BY: readonly ChapterOrigin['by'][] = ['find', 'polish']
+const SIGNALS: readonly ChapterSignal[] = ['start', 'page', 'screen', 'pause', 'idle', 'cue', 'section', 'topic', 'card', 'ai']
+const NAMES: readonly ChapterOrigin['name'][] = ['card', 'sentence', 'phrase', 'cut', 'number', 'ai']
+const VIA: readonly NonNullable<ChapterOrigin['via']>[] = ['openai', 'gemini', 'anthropic', 'local']
+
+/**
+ * A found chapter's stored origin (smart-tools.md §4.2), or undefined: `by` in its list; `from` 1 to
+ * 3 known signals in their order (unknown ones dropped; none left drops the origin); `name` in its
+ * list; `via` a provider kind or 'local'; `host` as readHost reads it. Any other failure drops the
+ * origin, never the chapter, which is then the user's.
+ */
+export function readChapterOrigin(raw: unknown): ChapterOrigin | undefined {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return undefined
+  const o = raw as Record<string, unknown>
+  if (!ORIGIN_BY.includes(o.by as ChapterOrigin['by']) || !NAMES.includes(o.name as ChapterOrigin['name']) || !Array.isArray(o.from)) return undefined
+  const from: ChapterSignal[] = []
+  for (const f of o.from) if (SIGNALS.includes(f as ChapterSignal) && !from.includes(f as ChapterSignal) && from.length < 3) from.push(f as ChapterSignal)
+  if (!from.length) return undefined
+  const origin: ChapterOrigin = { by: o.by as ChapterOrigin['by'], from, name: o.name as ChapterOrigin['name'] }
+  if (o.via !== undefined) {
+    if (!VIA.includes(o.via as NonNullable<ChapterOrigin['via']>)) return undefined
+    origin.via = o.via as ChapterOrigin['via']
+  }
+  if (o.host !== undefined) {
+    const host = readHost(o.host)
+    if (!host) return undefined
+    origin.host = host
+  }
+  return origin
+}
+
+/** A stored chapter inside the recording, or null when its time is unusable. A found chapter keeps its readable `auto` (§4.2). */
 export function readChapter(raw: Partial<Chapter> | null | undefined, duration = Infinity): Chapter | null {
   if (!raw || typeof raw !== 'object' || !finite(raw.t)) return null
-  return {
+  const chapter: Chapter = {
     id: typeof raw.id === 'string' ? raw.id : '',
     t: Math.min(Math.max(0, raw.t), Math.max(0, duration)),
     title: typeof raw.title === 'string' ? cleanChapterName(raw.title) : 'Chapter'
   }
+  const auto = readChapterOrigin(raw.auto)
+  if (auto) chapter.auto = auto
+  return chapter
 }

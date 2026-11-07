@@ -11,7 +11,8 @@
  *
  * Captions Studio's automatic changes (captionReview.ts, docs/design/captions-studio.md §11.8) are
  * listed after them at equal times; its emphasis and text fixes are group rows (`members`), whose
- * Keep or Remove does all their pending items in one edit.
+ * Keep or Remove does all their pending items in one edit. Editing polish's (editingReview.ts) and
+ * smart tools' (smartReview.ts, docs/design/smart-tools.md §13.1: found chapters) follow them.
  */
 import { framingIsDirectors, framingUntouched } from '../engine/directorData'
 import type { AutoCut, AutoCutOutcome, CaptionAuto, LayoutSegment, Project } from '../types'
@@ -20,6 +21,7 @@ import { withOutcomes } from './autoCutData'
 import { changeGone, finish, liveAutoCuts, staleAmong, takeBackSteps, withAutoCuts, withSpeedUpsKept } from './autoCuts'
 import { captionItemStatus, captionPendingCount, captionReviewItems, expandGroups, isCaptionKind, keepCaptionItems, mergeGroup, removeCaptionItems } from './captionReview'
 import { editingItemStatus, editingPendingCount, editingReviewItems, isEditingKind, keepEditingItems, removeEditingItems } from './editingReview'
+import { isSmartKind, keepSmartItems, removeSmartItems, smartItemStatus, smartPendingCount, smartReviewItems } from './smartReview'
 import {
   cutDetail,
   cutKind,
@@ -101,6 +103,8 @@ export function reviewItems(project: Project): ReviewItem[] {
   items.push(...captionReviewItems(project))
   // Editing polish's (editingReview.ts): Polish's cut style and Auto colour, after Captions Studio's at equal times.
   items.push(...editingReviewItems(project))
+  // Smart tools' (smartReview.ts): found chapters, after editing polish's at equal times.
+  items.push(...smartReviewItems(project))
   return items.sort(byTime)
 }
 
@@ -116,7 +120,7 @@ export function pendingCount(project: Project): number {
   if (directorsFraming(project)) n++
   const chosen = outcomesOf(project)
   for (const c of liveAutoCuts(project)) if (!chosen.has(c.id)) n++
-  return n + captionPendingCount(project) + editingPendingCount(project)
+  return n + captionPendingCount(project) + editingPendingCount(project) + smartPendingCount(project)
 }
 
 const idOf = (key: string): string => key.slice(key.indexOf(':') + 1)
@@ -155,6 +159,7 @@ function outcomesOf(project: Pick<Project, 'autoCutOutcomes'>): ReadonlyMap<stri
 export function reviewStatus(project: Project, item: ReviewItem): ReviewStatus {
   if (isCaptionKind(item.kind)) return captionItemStatus(project, item)
   if (isEditingKind(item.kind)) return editingItemStatus(project, item)
+  if (isSmartKind(item.kind)) return smartItemStatus(project, item)
   if (item.key === FRAMING_KEY) {
     if (directorsFraming(project)) return 'pending'
     return framingUntouched(project.webcam) ? 'removed' : 'kept'
@@ -241,6 +246,8 @@ export function keepItems(project: Project, items: readonly ReviewItem[]): Proje
   let next = keepCaptionItems(project, captionTodo(project, todo))
   // Editing polish's: one project out (itself when none is pending).
   next = keepEditingItems(next, todo.filter((i) => isEditingKind(i.kind)))
+  // Smart tools': found chapters (itself when none is pending).
+  next = keepSmartItems(next, todo)
   if (todo.some((i) => i.kind === 'zoom')) next = { ...next, zooms: next.zooms.map((z) => (keys.has(`zoom:${z.id}`) ? { ...z, auto: false } : z)) }
   if (todo.some((i) => i.kind === 'camera' && i.key !== FRAMING_KEY)) {
     next = { ...next, layouts: (next.layouts ?? []).map((s) => (keys.has(`camera:${s.id}`) ? byHand(s) : s)) }
@@ -287,6 +294,8 @@ export function* removeSteps(project: Project, items: readonly ReviewItem[]): Ge
   let next = removeCaptionItems(project, captionTodo(project, todo))
   // Editing polish's: one project out (itself when none is pending).
   next = removeEditingItems(next, todo.filter((i) => isEditingKind(i.kind)))
+  // Smart tools': found chapters and their pending chapter-title cards (itself when none is pending).
+  next = removeSmartItems(next, todo)
   if (todo.some((i) => i.kind === 'zoom')) next = { ...next, zooms: next.zooms.filter((z) => !keys.has(`zoom:${z.id}`)) }
   const segIds = todo.filter((i) => i.kind === 'camera' && i.key !== FRAMING_KEY).map((i) => idOf(i.key))
   if (segIds.length) next = { ...next, layouts: withoutSegments(next.layouts ?? [], segIds) }
