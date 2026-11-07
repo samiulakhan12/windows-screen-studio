@@ -16,7 +16,7 @@ import { applyTextResult } from './edit'
 import { parseNumberWords } from './numbers'
 import { textHash, transcriptLanguage } from './captionTracks'
 import { MAX_BLEEPS } from './studioData'
-import { alignedTextRanges, composeRanges, oneToOne, pieceRanges, textMapRuns, wordCount, wordRanges } from './textMap'
+import { alignedTextRanges, composeRanges, oneToOne, spacedPieceRanges, textMapRuns, wordCount, wordRanges } from './textMap'
 import { studioWordTexts } from './words'
 
 /** The Clean up section's choices (prefs `captionCleanup`, §2.9). */
@@ -983,8 +983,9 @@ export function bleepGains(project: Pick<Project, 'bleeps' | 'clips'>): SoundGai
 
 /**
  * For each word of the caption `tokens` make (as marks count words, studioWords), the words of
- * `before` it came from: a token written as a whole (a term, a number) from all of its words;
- * else by the letters, or word for word (pieceRanges).
+ * `before` it came from: a term written in place of as many words, word for word ("google dogs"
+ * → "Google Docs"); any other token written as a whole (a term of other words, a number) from all
+ * of its words; else by the letters, or word for word (spacedPieceRanges, pieceRanges).
  */
 function tokenRanges(before: string, tokens: readonly Tok[], language: string | undefined): [number, number][] {
   const pieces = before.split(/\s+/).filter(Boolean).map((p) => studioWordTexts(p, language))
@@ -997,7 +998,8 @@ function tokenRanges(before: string, tokens: readonly Tok[], language: string | 
   const out: [number, number][] = []
   for (const t of tokens) {
     const [a, b] = t.src
-    for (const [from, to] of pieceRanges(pieces.slice(a, b + 1).flat(), studioWordTexts(t.text, language), !!t.whole)) out.push([first[a] + from, first[a] + to])
+    const words = t.text.split(/\s+/).filter(Boolean).map((p) => studioWordTexts(p, language))
+    for (const [from, to] of spacedPieceRanges(pieces.slice(a, b + 1), words, !!t.whole)) out.push([first[a] + from, first[a] + to])
   }
   return out
 }

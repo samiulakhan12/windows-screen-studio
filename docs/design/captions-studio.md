@@ -1092,10 +1092,11 @@ export interface Bleep {
 /**
  * A run of a text record's word map: the caption's words newFrom..newTo came from the words
  * oldFrom..oldTo of the record's text (inclusive; words as marks count them, studioWords in the
- * transcript's language). Sides of the same length pair the words one for one ("so" → "So");
- * otherwise each new word came from all the old ones ("two hundred and fifty" → "250"). Two new
- * words that share old words they do not split ("google dogs" → "Google Docs") are a run each.
- * The runs are in order and cover every word of both texts.
+ * transcript's language). Sides of the same length pair the words one for one ("so" → "So",
+ * "google dogs" → "Google Docs"); otherwise each new word came from all the old ones ("two
+ * hundred and fifty" → "250"). As many new words that share as many old words they do not split
+ * ("東京タワーへようこそ" → "東京スカイツリー", one word written for one, three words each) are two
+ * runs, the last word on its own. The runs are in order and cover every word of both texts.
  */
 export type TextMapRun = [newFrom: number, newTo: number, oldFrom: number, oldTo: number]
 
@@ -2619,13 +2620,17 @@ give (`migrateProject(JSON.parse(JSON.stringify(p)))` for these fields; test 49)
      from: "50" on "fifty", "Q&A" on "q and a", "Google Docs" (one stored word of two) on
      "google dogs", "Flown" on "flow in", "R&D" on "r and d". Exact, estimated and missing word
      times give the same words, and so do repeated words ("Flown in Flown", "110 and 120"). A
-     record on part of what the tidy wrote as one ("Docs" of "Google Docs") goes back onto all of
-     it, but a comma written apart after it goes with its last word only. Each end of a record's
-     words stays on its own word when the words the map gives it hold that same word once
-     (`narrowedWords`): a word the AI fix took out or put in beside it is not taken along ("So"
-     goes back onto "so" of "so um", and "we" stays "we" when the fix writes "we really"), nor
-     punctuation written apart ("app," goes back onto "app" of "app ,"), and "Google" of "Google
-     Docs" goes back onto "google" of "google dogs". A term the caption
+     word-list term written in place of as many words, split on spaces, pairs them word for word
+     by position: "Google" of "Google Docs" goes back onto "google" of "google dogs" and "Docs"
+     onto "dogs", so a kept mark on one and a pending mark on the other stay two marks, on the
+     tidy and on Remove, and the emphasis row stays. A record on part of what the tidy wrote as
+     one, a term of other words or a number ("Code" of "VS Code", "スカイ" of "東京スカイツリー"
+     from "東京タワーへようこそ"), goes back onto all of it, but a comma written apart after it
+     goes with its last word only. Each end of a record's words stays on its own word when the
+     words the map gives it hold that same word once (`narrowedWords`): a word the AI fix took
+     out or put in beside it is not taken along ("So" goes back onto "so" of "so um", and "we"
+     stays "we" when the fix writes "we really"), nor punctuation written apart ("app," goes back
+     onto "app" of "app ,"). A term the caption
      already had, or had in other capitals ("visual studio" → "Visual Studio"), is not written as
      one: a record on one of its words stays on that word through the tidy and Remove, and so
      does a term a first tidy wrote and a second matches again. A caption tidied twice keeps its first record with the two maps composed, and its records
@@ -3038,8 +3043,12 @@ The clean-up is one undo step. Each caption it changed gets a `captionAuto.text`
 text and words before, and its word map: which words before each word of the tidied text came
 from (§4.1, §11.1 rule 1). Every word of the tidy remembers the caption words it was made of: the
 word list (rule 4) and numbers (rule 3) write their word as a whole, so each of its words came
-from all the words they replaced ("google dogs" → "Google Docs", "two hundred and fifty" →
-"250"), and a comma written apart after them, joined to the last word, from that word only; a
+from all the words they replaced ("flow in" → "Flown", "vscode" → "VS Code", "two hundred and
+fifty" → "250"), and a comma written apart after them, joined to the last word, from that word
+only; a term written in place of as many words, split on spaces, takes them word for word by
+position ("google dogs" → "Google Docs": "Google" from "google", "Docs" from "dogs", "Docs," from
+"dogs ," when a comma written apart joins it), each pair as above (a Japanese term of one word
+for a heard form of one word, split differently, from all of it); a
 term the caption already had, in any capitals, keeps each word from its own ("visual studio" →
 "Visual Studio", "Visual Studio." when a full stop then ends it); punctuation joined to the word
 before it follows the letters ("word ," → "word,", a Japanese "。" with the last word); capitals

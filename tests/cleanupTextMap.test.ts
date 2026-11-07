@@ -33,7 +33,7 @@ const tidy = (texts: string[], opts: Partial<CleanupChoices> & { words?: WordLis
 }
 
 describe('the word map of each tidy step', () => {
-  it('the word list: terms with spaces, heard forms of several words, punctuation around them, one word to two', () => {
+  it('the word list: terms with spaces, heard forms of several words, punctuation around them, one word to two, a term of as many words word for word', () => {
     const words = [
       { term: 'Google Docs', heard: ['google dogs'] },
       { term: 'Flown', heard: ['flow in'] },
@@ -45,8 +45,8 @@ describe('the word map of each tidy step', () => {
     expect(p.transcript!.segments[0].text).toBe('Open "Google Docs" and Flown, then VS Code and Visual Studio for the Q&A.')
     expect(sources(p)).toEqual([
       'Open ← open',
-      '"Google ← "google dogs"',
-      'Docs" ← "google dogs"',
+      '"Google ← "google',
+      'Docs" ← dogs"',
       'and ← and',
       'Flown, ← flow in,',
       'then ← then',
@@ -69,12 +69,13 @@ describe('the word map of each tidy step', () => {
       expect(sources(p)).toEqual(['We ← we', 'open ← open', `Visual ← ${text.split(' ')[2]}`, `Studio ← ${text.split(' ')[3]}`, 'and ← and', `Google ← ${text.split(' ')[5]}`, `Docs ← ${text.split(' ')[6]}`])
     }
     // Written by a first tidy and matched again by a second, which joins the comma written apart:
-    // the term's words from the words the first replaced, the comma with the word before it only.
+    // each of the term's words from the word the first replaced in its place, the comma with the
+    // word before it only.
     const once = tidy(['open google dogs , then save'], { ...OFF, words })
     expect(once.transcript!.segments[0].text).toBe('open Google Docs , then save')
     const twice = tidyCaptions(once, { ...OFF, punct: true, caps: true, words }).project
     expect(twice.transcript!.segments[0].text).toBe('Open Google Docs, then save.')
-    expect(sources(twice)).toEqual(['Open ← open', 'Google ← google dogs', 'Docs, ← google dogs ,', 'then ← then', 'save. ← save'])
+    expect(sources(twice)).toEqual(['Open ← open', 'Google ← google', 'Docs, ← dogs ,', 'then ← then', 'save. ← save'])
   })
 
   it('numbers as digits, of every length: one word, two, many, hyphenated, millions', () => {
@@ -138,7 +139,7 @@ describe('two tidies in a row', () => {
     const twice = tidyCaptions(once, { ...OFF, punct: true, digits: 'all', words: [{ term: 'Flown', heard: ['flow in'] }] }).project
     expect(twice.transcript!.segments[0].text).toBe('Open Google Docs with Flown 200 times.')
     expect(twice.captionAuto!.text![0].text).toBe('open google dogs with flow in two hundred times')
-    expect(sources(twice)).toEqual(['Open ← open', 'Google ← google dogs', 'Docs ← google dogs', 'with ← with', 'Flown ← flow in', '200 ← two hundred', 'times. ← times'])
+    expect(sources(twice)).toEqual(['Open ← open', 'Google ← google', 'Docs ← dogs', 'with ← with', 'Flown ← flow in', '200 ← two hundred', 'times. ← times'])
     // A third tidy that changes nothing keeps the record as it is.
     expect(tidyCaptions(twice, { ...OFF, punct: true, digits: 'all', words: [] }).project).toBe(twice)
   })
