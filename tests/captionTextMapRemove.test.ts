@@ -203,4 +203,24 @@ describe('records saved before maps were written', () => {
     now.update((q) => removeItems(q, [row(q, TEXT_GROUP)]))
     expect(now.state.captionMarks!.map((m) => m.text)).toEqual(['flow in'])
   })
+
+  it('a map that does not fit its caption is dropped on load; Remove then finds the words again by their stored times, a term with a space included', () => {
+    const s = tidied(CASES[0], 'exact')
+    const bad = { ...s.state, captionAuto: { text: s.state.captionAuto!.text!.map((r) => ({ ...r, map: [[0, 0, 0, 0]] as [number, number, number, number][] })) } }
+    const read = migrateProject(JSON.parse(JSON.stringify(bad)))
+    expect(read.captionAuto!.text!.map((r) => r.text)).toEqual(['our q and a and fifty google dogs users', 'click save and you are done'])
+    expect(read.captionAuto!.text!.every((r) => !('map' in r))).toBe(true)
+    // "Google Docs" is one stored word of two: the times are still the stored ones.
+    for (const [j, back] of [[1, 'q and a'], [3, 'fifty']] as const) {
+      const t = storeOf(read)
+      t.update((q) => ({ ...q, captionMarks: [mark(q, j)] }))
+      t.update((q) => removeItems(q, [row(q, TEXT_GROUP)]))
+      expect(t.state.captionMarks!.map((m) => m.text)).toEqual([back])
+    }
+    const r = tidied(CASES[1], 'estimated')
+    const old = storeOf(withoutMaps(r.state))
+    old.update((q) => ({ ...q, captionMarks: [mark(q, 1)] }))
+    old.update((q) => removeItems(q, [row(q, TEXT_GROUP)]))
+    expect(old.state.captionMarks!.map((m) => m.text)).toEqual(['r and d'])
+  })
 })

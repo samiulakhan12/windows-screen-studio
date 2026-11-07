@@ -129,7 +129,7 @@ export function clearEmphasis(project: Project): Project {
 
 /* ---------- records follow their words (§11.1) ---------- */
 
-/** A caption's words: their texts (as compared) and times; `stored` when the times are its stored words', one for each word (else spread over the caption). */
+/** A caption's words: their texts (as compared) and times; `stored` when the times are its stored words' (else spread over the caption). */
 interface Words {
   seg: CaptionSegment
   keys: string[]
@@ -139,7 +139,11 @@ interface Words {
 
 function wordsOf(seg: CaptionSegment, language: string | undefined): Words {
   const tokens = studioTokens(seg, language)
-  return { seg, keys: tokens.map((t) => wordKey(t.text)), times: tokens.map((t) => ({ start: t.start, end: t.end })), stored: seg.words?.length === tokens.length }
+  // Stored when the times come from its stored words: one for each word, or the same text split
+  // differently (a word-list term written with a space is one stored word).
+  const strip = (s: string): string => s.replace(/\s+/g, '')
+  const stored = !!seg.words?.length && (seg.words.length === tokens.length || seg.words.map((w) => strip(w.text)).join('') === tokens.map((t) => strip(t.text)).join(''))
+  return { seg, keys: tokens.map((t) => wordKey(t.text)), times: tokens.map((t) => ({ start: t.start, end: t.end })), stored }
 }
 
 /** Whether two stored words have the same times, exact or estimated: a word a tidy left as it was keeps its times. */
