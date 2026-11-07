@@ -84,4 +84,20 @@
 // addMagnifier, addMagnifierCursor, addStepBadge, addSpeechBubble, toggleProgressBar, compareColour,
 // autoColour, musicLibrary.
 
-console.log('editing-polish e2e: the steps E1 to E18 are written with the parts (docs/design/editing-polish.md §19.3).')
+const h = require('./helpers.cjs')
+
+function test(name, body) {
+  const only = process.env.SSW_E2E_ONLY
+  if (only && !name.includes(only)) return Promise.resolve()
+  return h.run(name, body)
+}
+
+async function main() {
+  // P1, smooth cuts: E2, E3, E4, E5, E15 and E16 (editing-polish-cuts.cjs).
+  await require('./editing-polish-cuts.cjs').cutsSteps(test)
+}
+
+main().catch((err) => {
+  console.error(err)
+  process.exitCode = 1
+})

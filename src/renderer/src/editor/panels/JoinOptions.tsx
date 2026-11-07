@@ -54,6 +54,16 @@ function JoinSlider(props: {
 
 const SLIDES: readonly SlideFrom[] = ['right', 'left', 'top', 'bottom']
 
+const ARROWS = new Set(['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'])
+
+/**
+ * A radio group keeps its arrow keys (they move the choice, §12): the editor's step keys, which
+ * listen on the window, never see them.
+ */
+export function keepArrows(e: KeyboardEvent<HTMLElement>): void {
+  if (ARROWS.has(e.key) && !e.ctrlKey && !e.altKey && !e.metaKey) e.stopPropagation()
+}
+
 /**
  * The options of `join` (none for a hard cut), and its hint. `onChange(next, key)`: the new join,
  * with the merge key of a slider's gesture (absent: one step of its own).
@@ -109,7 +119,7 @@ export function JoinOptions(props: { join: CutJoin; brand: readonly string[]; na
           <span className="field-label" id={`${name}-dip-label`}>
             Colour
           </span>
-          <div className="cut-swatches" role="radiogroup" aria-labelledby={`${name}-dip-label`} data-testid="cut-dip-colour">
+          <div className="cut-swatches" role="radiogroup" aria-labelledby={`${name}-dip-label`} data-testid="cut-dip-colour" onKeyDown={keepArrows}>
             {swatches.map((s) => (
               <label key={s.color} className={`cut-swatch ${s.color === colour ? 'active' : ''}`} title={s.label}>
                 <input type="radio" name={`${name}-dip`} aria-label={s.label} checked={s.color === colour} onChange={() => onChange({ ...join, color: s.color })} />
@@ -129,7 +139,7 @@ export function JoinOptions(props: { join: CutJoin; brand: readonly string[]; na
           <span className="field-label" id={`${name}-from-label`}>
             Comes in from
           </span>
-          <div className="cut-radios" role="radiogroup" aria-labelledby={`${name}-from-label`} data-testid="cut-slide-from">
+          <div className="cut-radios" role="radiogroup" aria-labelledby={`${name}-from-label`} data-testid="cut-slide-from" onKeyDown={keepArrows}>
             {SLIDES.map((side) => (
               <label key={side} className={`chip ${(join.from ?? 'right') === side ? 'active' : ''}`}>
                 <input type="radio" name={`${name}-from`} checked={(join.from ?? 'right') === side} onChange={() => onChange({ ...join, from: side })} />

@@ -10,7 +10,7 @@ import { resolvedJoin } from '../../../../shared/render/joins'
 import type { CutJoin, JoinKind, Project } from '../../../../shared/types'
 import { useEditor } from '../context'
 import { useGroup } from '../groupContext'
-import { JoinOptions } from './JoinOptions'
+import { JoinOptions, keepArrows } from './JoinOptions'
 import './cuts.css'
 
 export function CutStyleSection(props: { project: Project; gap: { start: number; end: number } }): JSX.Element | null {
@@ -48,7 +48,7 @@ export function CutStyleSection(props: { project: Project; gap: { start: number;
       <span className="field-label" aria-hidden="true">
         Cut style
       </span>
-      <div className="cut-radios cut-style" role="radiogroup" aria-label="Cut style" data-testid="cut-style">
+      <div className="cut-radios cut-style" role="radiogroup" aria-label="Cut style" data-testid="cut-style" onKeyDown={keepArrows}>
         <label className={`chip ${choice === 'same' ? 'active' : ''}`} data-kind="same">
           <input type="radio" name="cut-style" checked={choice === 'same'} onChange={() => set(null)} />
           Same as every cut ({joinName(every?.kind ?? 'cut')})
