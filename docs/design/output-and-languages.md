@@ -98,6 +98,19 @@ digit-width screenshots, and the text of Microsoft's Bangla (India) style guide)
 
 ## 0. Decisions for the owner
 
+**Decided by the owner on 9 November 2026: every recommendation below is accepted.** HEVC through the
+graphics card only for now and an `ffmpeg.exe` without libx265 and the HEVC decoder in the first
+release after this wave (1 a, then c); no ProRes, CineForm for editing (2 c); `ffmpeg.exe` built in CI
+from a pinned public script with its source published (3 b, with 3 a until then); no DNxHR (4);
+Bangla first, then Spanish and Hindi (5); two reviewers per language with signed rights (6); the
+shipping rule of 7; offer a language once and never switch (8); Bangla digits for prose quantities (9);
+exported files stay English (10); the recording side is asked now and Bangla ships as a preview until
+it is translated (11); the English UI unchanged (12); one fixed gain for stems (13); the checks of 14
+before release (15 as written). Still needed from people: the second Bangla reviewer and the signed
+rights of both (6), the other account's agreement for the recording side (11), and the checks on
+Windows and in other editors (14). Until the reviewers approve, Bangla does not reach the picker
+(the shipping rule of 7); the build ends at step S4 (section 10.4).
+
 Nothing in this wave changes how an existing project looks or sounds, and nothing changes the English
 UI that exists today. Every new codec runs through an encoder already inside the shipped `ffmpeg.exe`
 (gyan.dev 6.1.1 "essentials", GPL v3, 82,797,568 bytes, pinned in `scripts/lib/packaging.cjs:18-22`).
