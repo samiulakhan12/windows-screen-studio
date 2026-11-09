@@ -235,8 +235,6 @@ From the parts' reports, still true after the merge:
   a new still is made (preview only; the export prepares the mask on every compose).
 * **A new magnifier starts one grow-in before the playhead** (0.3 s) so it is fully shown where it
   is added (E6 expects it shown at 2×); §2.2 says it starts at the playhead.
-* **Title cards' Wipe always starts from the left** (titleCardLayer.ts is frozen), and a card's
-  Typewriter shows whole graphemes in proportion rather than by measured advances.
 * **A selected badge in the Text tab** shows TextPanel's own text field beside the badge's
   grapheme-checked *Your own text* field.
 * **Follows the zoom** (a badge) and **Tail** (a bubble) need a frame held in the preview; while it

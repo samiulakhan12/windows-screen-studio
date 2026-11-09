@@ -1274,6 +1274,12 @@ the table's rows, plus *Default*), and each change is one update. *Copy look* ca
   `globalAlpha = alpha`, and with `reveal < 1` a clip from the reading start (the right edge for
   right-to-left text) to `reveal · boxW`. Typewriter reveals whole graphemes through
   `typewriterClip` (`motion.ts:983`), with the prefix advances measured once per text and font.
+- **Title cards** (`drawTitleCardsLayer`): Wipe clips the card (with a lower third's band or a
+  quote's panel) from its reading start, the right edge when the card's first letter is from a
+  right-to-left script. Typewriter keeps the band, panel and quote mark whole and types the lines,
+  the title's and then the subtitle's, by whole graphemes in reading order, each clipped from its
+  own reading start (`typewriterWidths`); while it types, the lines are drawn as they come rather
+  than from the card's cached picture.
 - **Arrows and lines** (`drawShapesLayer`): the shaft is drawn from the tail to
   `tail + (tip − tail) · drawn`. The head (`arrowGeometry`, `src/shared/render/shapes.ts:167`)
   appears when `drawn ≥ 0.8`, scaled `0.6 + 0.4 · back((drawn − 0.8) / 0.2, 1.7)` about the tip

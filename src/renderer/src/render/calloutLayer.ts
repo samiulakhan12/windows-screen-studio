@@ -330,12 +330,9 @@ export function shapeCalloutPose(fc: FrameContext, s: Shape): CalloutPose | null
 }
 
 /**
- * A title card's pose at fc.t (it has a motion), or null: today's fade and rise. A typewriter
- * reveals whole graphemes of the card's text (k of n).
+ * A title card's pose at fc.t (it has a motion), or null: today's fade and rise. titleCardLayer
+ * turns a typewriter's reveal into whole graphemes of each line it draws (typewriterWidths).
  */
 export function titleCalloutPose(fc: FrameContext, card: TitleCard): CalloutPose | null {
-  const pose = titleMotionPose(card, fc.t, fc.project.clips, titleEm(card, fc.w, fc.h), calmOf(fc.project.effects))
-  if (!pose || card.enter?.kind !== 'typewriter' || pose.reveal >= 1) return pose
-  const n = Math.max(1, graphemes(`${card.title}${card.subtitle ?? ''}`).length)
-  return { ...pose, reveal: Math.round(pose.reveal * n) / n }
+  return titleMotionPose(card, fc.t, fc.project.clips, titleEm(card, fc.w, fc.h), calmOf(fc.project.effects))
 }

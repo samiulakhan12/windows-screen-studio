@@ -445,6 +445,87 @@ describe('title cards with a motion (test 43)', () => {
   })
 })
 
+describe("title cards' Wipe and Typewriter come in from the reading start (§7.2, §13)", () => {
+  const wipe = { kind: 'wipe', duration: 1, strength: 1 } as const
+  const typewriter = { kind: 'typewriter', duration: 1, strength: 1 } as const
+  /** Each rectangle the frame clips to, and the call after its clip. */
+  const clips = (list: Call[]): { rect: Call; next: Call | undefined }[] =>
+    list.flatMap((c, i) => (c.name === 'rect' && list[i + 1]?.name === 'clip' ? [{ rect: c, next: list[i + 2] }] : []))
+  const fills = (list: Call[]): Call[] => list.filter((c) => c.name === 'fillText')
+  const count = (s: string): number => [...new Intl.Segmenter(undefined, { granularity: 'grapheme' }).segment(s)].length
+  /** A line's width as the layout measures it (the canvases here: 10 px per grapheme at 100 px). */
+  const lineWidth = (fill: Call): number => (count(fill.args[0] as string) * Number(/(\d+(?:\.\d+)?)px/.exec(fill.font as string)![1])) / 10
+  const revealAt = (c: TitleCard, p: Project, t: number): number => titleMotionPose(c, t, p.clips, titleEm(c, 1920, 1080), false)!.reveal
+
+  it('Wipe: from the left edge for left-to-right text, from the right edge for right-to-left text', () => {
+    for (const [title, rtl] of [['Wipe from the left', false], ['مرحبا بكم في الدرس', true]] as const) {
+      const c = card({ title, enter: wipe })
+      const p = project({ titles: [c] })
+      const t = 4.3
+      const r = revealAt(c, p, t)
+      expect(r).toBeGreaterThan(0.05)
+      expect(r).toBeLessThan(0.95)
+      const [x, , shown] = clips(frame(p, t)).at(-1)!.rect.args as number[]
+      // A centred card: its box is boxW wide about the frame's middle, and boxW · reveal of it shows.
+      const boxW = shown / r
+      if (rtl) expect(x + shown, title).toBeCloseTo((1920 + boxW) / 2, 6)
+      else expect(x, title).toBeCloseTo((1920 - boxW) / 2, 6)
+    }
+  })
+
+  it('Typewriter: whole graphemes, line by line in reading order, each from its own reading start', () => {
+    const c = card({ title: 'Typed title', subtitle: 'Then its subtitle', enter: typewriter })
+    const p = project({ titles: [c] })
+    const n = count('Typed title') + count('Then its subtitle')
+    // Part of the title typed: only the title is drawn, clipped at whole graphemes from its left edge.
+    let t = 4.05
+    let k = Math.round(revealAt(c, p, t) * n)
+    expect(k).toBeGreaterThan(0)
+    expect(k).toBeLessThan(count('Typed title'))
+    let list = frameAll(p, t)
+    expect(fills(list).map((f) => f.args[0])).toEqual(['Typed title'])
+    const [first] = clips(list)
+    expect(first.next!.name).toBe('fillText')
+    const title = first.next!
+    expect(first.rect.args[0] as number).toBeCloseTo((title.args[1] as number) - lineWidth(title) / 2, 6)
+    // Whole graphemes: the advance of the first k (10 px each on these canvases), short of the line.
+    expect(10 * k).toBeLessThan(lineWidth(title))
+    expect(first.rect.args[2]).toBeCloseTo(10 * k, 6)
+    // Further on: the title whole, the subtitle from its own left edge.
+    t = 4.2
+    k = Math.round(revealAt(c, p, t) * n)
+    expect(k).toBeGreaterThan(count('Typed title'))
+    expect(k).toBeLessThan(n)
+    list = frameAll(p, t)
+    const lines = clips(list).filter((x) => x.next?.name === 'fillText')
+    expect(lines.map((x) => x.next!.args[0])).toEqual(['Typed title', 'Then its subtitle'])
+    expect(lines[0].rect.args[2]).toBeCloseTo(lineWidth(lines[0].next!), 6)
+    const sub = lines[1].next!
+    expect(lines[1].rect.args[0] as number).toBeCloseTo((sub.args[1] as number) - lineWidth(sub) / 2, 6)
+    expect(10 * (k - count('Typed title'))).toBeLessThan(lineWidth(sub))
+    expect(lines[1].rect.args[2]).toBeCloseTo(10 * (k - count('Typed title')), 6)
+    // Typed in: the card's picture again, as before.
+    expect(fills(frame(p, 6))).toEqual([])
+  })
+
+  it("Typewriter in a right-to-left script: from the line's right edge, k of its n graphemes", () => {
+    const text = 'مرحبا بكم'
+    const c = card({ title: text, enter: typewriter })
+    const p = project({ titles: [c] })
+    const n = count(text)
+    const t = 4.3
+    const k = Math.round(revealAt(c, p, t) * n)
+    expect(k).toBeGreaterThan(0)
+    expect(k).toBeLessThan(n)
+    const [line] = clips(frame(p, t)).filter((x) => x.next?.name === 'fillText')
+    const fill = line.next!
+    const w = lineWidth(fill)
+    const [x, , shown] = line.rect.args as number[]
+    expect(x + shown).toBeCloseTo((fill.args[1] as number) + w / 2, 6)
+    expect(shown).toBeCloseTo((w * k) / n, 6)
+  })
+})
+
 /* ---------- test 44 ---------- */
 
 describe("Captions Studio's Speech Bubble look (test 44)", () => {
