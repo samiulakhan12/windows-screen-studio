@@ -108,9 +108,12 @@ export async function recordUsage(key: string, estimated: { input: number; outpu
 /**
  * After a request a provider reported its tokens for: compares them with the estimate of the prompt
  * sent and of the answer written (tokens.ts) and keeps the ratios under (kind or host, model, the
- * prompt's task). Never throws; nothing of the text is kept.
+ * prompt's task). A prompt with pictures (smart-tools.md §5.3.1) is left out: their tokens follow
+ * each provider's own rule, not the text's, and would skew the text's ratio. Never throws; nothing
+ * of the text is kept.
  */
-export function noteUsage(kindOrHost: string, model: string, prompt: Pick<TextPrompt, 'name' | 'system' | 'user' | 'schema'>, answer: string, used: AiUsage): void {
+export function noteUsage(kindOrHost: string, model: string, prompt: Pick<TextPrompt, 'name' | 'system' | 'user' | 'schema' | 'images'>, answer: string, used: AiUsage): void {
+  if (prompt.images?.length) return
   try {
     const key = usageKey(kindOrHost, model, prompt.name)
     if (!key) return

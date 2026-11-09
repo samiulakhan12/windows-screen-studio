@@ -22,6 +22,8 @@ import { fetchModelJson, MODEL_LIST_MAX_IDS, MODEL_LIST_TIMEOUT_MS, readListedId
 import { registerSecret } from './secrets'
 import { noteUsage } from './usage'
 import type { ListedModel } from '../../shared/api/ai'
+import type { TextPrompt } from '../../shared/captions/transcriptText'
+import { claudeImageBlock, sendingPictures, withPictures } from './images'
 
 const OFFICIAL_URL = 'https://api.anthropic.com'
 const PROVIDER = AI_PROVIDER_KINDS.anthropic.label
@@ -51,8 +53,11 @@ export function anthropicFailure(err: unknown): FailureInfo {
   return { message: err instanceof Error ? err.message : String(err) }
 }
 
-/** The request body of a text task for `model`. */
-export function claudeRequest(model: string, prompt: { system: string; user: string; schema: Record<string, unknown> }, effort: 'low' | 'medium' | 'high'): Anthropic.Beta.Messages.MessageCreateParamsStreaming {
+/**
+ * The request body of a text task for `model`. A prompt with pictures (the names task, smart-tools.md
+ * §5.3.1) sends its text, then each picture as an image block after the line naming its item.
+ */
+export function claudeRequest(model: string, prompt: Pick<TextPrompt, 'system' | 'user' | 'schema' | 'images'>, effort: 'low' | 'medium' | 'high'): Anthropic.Beta.Messages.MessageCreateParamsStreaming {
   const adaptive = ADAPTIVE_RE.test(model)
   const fallback = FALLBACK_RE.test(model)
   return {
@@ -63,7 +68,14 @@ export function claudeRequest(model: string, prompt: { system: string; user: str
     output_config: { ...(adaptive ? { effort } : {}), format: { type: 'json_schema', schema: prompt.schema } },
     ...(fallback ? { betas: ['server-side-fallback-2026-07-01'], fallbacks: 'default' as const } : {}),
     system: prompt.system,
-    messages: [{ role: 'user', content: prompt.user }]
+    messages: [
+      {
+        role: 'user',
+        content: prompt.images?.length
+          ? withPictures<Anthropic.Beta.Messages.BetaContentBlockParam>(prompt, (text) => ({ type: 'text', text }), claudeImageBlock)
+          : prompt.user
+      }
+    ]
   }
 }
 
@@ -114,8 +126,12 @@ export function anthropicClient(apiKey: string, model: string): AiClient {
       return out
     },
 
+    // Pictures of the names task go with their items (smart-tools.md §5.3.1).
+    pictures: true,
+
     async json(prompt, { signal, effort, onUsage }) {
-      const message = await callWithRetry((s) => client.beta.messages.stream(claudeRequest(model, prompt, effort), { signal: s }).finalMessage(), {
+      const body = claudeRequest(model, prompt, effort)
+      const message = await callWithRetry((s) => sendingPictures(prompt, anthropicFailure, () => client.beta.messages.stream(body, { signal: s }).finalMessage()), {
         ...base,
         signal,
         timeoutMs: 15 * 60_000

@@ -12,7 +12,8 @@
  * A request to a retired model fails with a plain message (retiredModel.ts).
  * Text tasks: the Responses API with a strict JSON schema (text.format type "json_schema");
  * a refusal comes back as a "refusal" content item instead of the JSON
- * (https://developers.openai.com/api/docs/guides/structured-outputs).
+ * (https://developers.openai.com/api/docs/guides/structured-outputs). The names task's pictures
+ * (smart-tools.md §5.3.1) go as input_image parts after the text (images.ts).
  */
 import { readFile } from 'node:fs/promises'
 import OpenAI, { toFile } from 'openai'
@@ -29,6 +30,7 @@ import { UNUSED_MODEL_RE } from '../../shared/ai/modelFilter'
 import { fetchModelJson, MODEL_LIST_TIMEOUT_MS, readListedIds, noRedirectFetch } from './listFetch'
 import { registerSecret } from './secrets'
 import { noteUsage } from './usage'
+import { openAiImagePart, sendingPictures, withPictures } from './images'
 
 const OFFICIAL_URL = 'https://api.openai.com/v1'
 const PROVIDER = AI_PROVIDER_KINDS.openai.label
@@ -116,17 +118,26 @@ export function openAiClient(apiKey: string, model: string, transcriptionModel: 
       return readListedIds(data).filter((m) => !UNUSED_MODEL_RE.test(m.id))
     },
 
+    // Pictures of the names task go with their items (smart-tools.md §5.3.1).
+    pictures: true,
+
     async json(prompt, { signal, onUsage }) {
+      // A prompt with pictures: its text, then each picture as an input_image part; else the text as before.
+      const input: string | OpenAI.Responses.ResponseInputItem[] = prompt.images?.length
+        ? [{ role: 'user', content: withPictures<OpenAI.Responses.ResponseInputContent>(prompt, (text) => ({ type: 'input_text', text }), openAiImagePart) }]
+        : prompt.user
       const response = await callWithRetry(
         (s) =>
-          client.responses.create(
-            {
-              model,
-              instructions: prompt.system,
-              input: prompt.user,
-              text: { format: { type: 'json_schema', name: prompt.name, schema: prompt.schema, strict: true } }
-            },
-            { signal: s }
+          sendingPictures(prompt, openAiFailure, () =>
+            client.responses.create(
+              {
+                model,
+                instructions: prompt.system,
+                input,
+                text: { format: { type: 'json_schema', name: prompt.name, schema: prompt.schema, strict: true } }
+              },
+              { signal: s }
+            )
           ),
         { ...base, model, signal, timeoutMs: 10 * 60_000 }
       ).catch(retired('text', model))

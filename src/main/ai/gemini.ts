@@ -9,7 +9,8 @@
  * https://ai.google.dev/api/generate-content).
  * Text tasks: generateContent with the task's JSON schema
  * (https://ai.google.dev/gemini-api/docs/structured-output). A blocked prompt or answer is
- * reported (promptFeedback.blockReason, finishReason SAFETY and the like) rather than parsed.
+ * reported (promptFeedback.blockReason, finishReason SAFETY and the like) rather than parsed. The
+ * names task's pictures (smart-tools.md §5.3.1) go as inline_data parts after the text (images.ts).
  * NW-09 (docs/design/transcription.md §4, §6.2): each segment also names its speaker ("Speaker 1"),
  * implausible word times are replaced by estimates, and a retired model fails with a plain message.
  */
@@ -27,6 +28,7 @@ import type { ListedModel } from '../../shared/api/ai'
 import { fetchModelJson, MODEL_LIST_MAX_IDS, MODEL_LIST_TIMEOUT_MS, readListedIds, noRedirectFetch } from './listFetch'
 import { registerSecret } from './secrets'
 import { noteUsage } from './usage'
+import { geminiImagePart, sendingPictures, withPictures } from './images'
 
 const OFFICIAL_URL = 'https://generativelanguage.googleapis.com/'
 const PROVIDER = AI_PROVIDER_KINDS.gemini.label
@@ -183,14 +185,21 @@ export function geminiClient(apiKey: string, model: string, transcriptionModel: 
       return out
     },
 
+    // Pictures of the names task go with their items (smart-tools.md §5.3.1).
+    pictures: true,
+
     async json(prompt, { signal, onUsage }) {
+      // A prompt with pictures: its text, then each picture as an inline_data part; else the text as before.
+      const contents = prompt.images?.length ? [{ role: 'user', parts: withPictures<Part>(prompt, (text) => ({ text }), geminiImagePart) }] : prompt.user
       const response = await callWithRetry(
         (s) =>
-          ai.models.generateContent({
-            model,
-            contents: prompt.user,
-            config: { systemInstruction: prompt.system, responseMimeType: 'application/json', responseJsonSchema: prompt.schema, abortSignal: s }
-          }),
+          sendingPictures(prompt, geminiFailure, () =>
+            ai.models.generateContent({
+              model,
+              contents,
+              config: { systemInstruction: prompt.system, responseMimeType: 'application/json', responseJsonSchema: prompt.schema, abortSignal: s }
+            })
+          ),
         { ...base, model, signal, timeoutMs: 10 * 60_000 }
       ).catch((err: unknown) => {
         throw retiredFailure(err, 'gemini', model, 'text')

@@ -14,6 +14,8 @@
  * - Every answer still goes through the task's validator; OpenRouter with `keepNoData` asks for hosts
  *   that do not keep prompts (provider.data_collection 'deny'); the tokens a service reports are
  *   passed to onUsage. A service on this PC without a key sends no Authorization header.
+ * - The names task's pictures (§5.3.1) go as image_url parts after the text (images.ts); a 400
+ *   naming the image says the model does not read pictures, and never drops the JSON mode.
  */
 import OpenAI from 'openai'
 import type { AiProviderInfo, ListedModel, ServiceInfo } from '../../shared/api/ai'
@@ -30,6 +32,7 @@ import { registerSecret } from './secrets'
 import { noteUsage } from './usage'
 import type { ServiceStore } from './serviceStore'
 import type { AiClient } from './types'
+import { chatImagePart, noPictures, refusesPictures, withPictures } from './images'
 
 /** A failure of a service's request as a FailureInfo: a refused redirect or origin in its own words, the rest as OpenAI's. */
 function serviceFailure(err: unknown): FailureInfo {
@@ -131,11 +134,13 @@ export function compatibleClient(info: AiProviderInfo, apiKey: string | null, st
 
   /** One request of `prompt` at JSON mode `at`; the raw failure of a refused response format is carried out as FormatRefused. */
   async function ask(prompt: TextPrompt, at: ServiceInfo['json'], signal: AbortSignal, timeoutMs: number, anyBadRequest = false): Promise<OpenAI.Chat.Completions.ChatCompletion> {
+    // A prompt with pictures (smart-tools.md §5.3.1): its text, then each picture as an image_url part.
+    const user = prompt.images?.length ? withPictures<unknown>(prompt, (text) => ({ type: 'text', text }), chatImagePart) : prompt.user
     const body: Record<string, unknown> = {
       model,
       messages: [
         { role: 'system', content: at === 'schema' ? prompt.system : withSchema(prompt) },
-        { role: 'user', content: prompt.user }
+        { role: 'user', content: user }
       ],
       ...(at === 'schema' ? { response_format: { type: 'json_schema', json_schema: { name: prompt.name, schema: prompt.schema, strict: true } } } : {}),
       ...(at === 'object' ? { response_format: { type: 'json_object' } } : {}),
@@ -146,6 +151,8 @@ export function compatibleClient(info: AiProviderInfo, apiKey: string | null, st
         try {
           return await client.chat.completions.create(body as unknown as OpenAI.Chat.Completions.ChatCompletionCreateParamsNonStreaming, { signal: s })
         } catch (err) {
+          // A refusal of the pictures is said as one, never taken for one of the JSON mode.
+          if (prompt.images?.length && !(err instanceof AiError) && refusesPictures(serviceFailure(err))) throw noPictures()
           if (at !== 'text' && formatRefused(err, anyBadRequest)) throw new FormatRefused(err)
           throw err
         }
@@ -201,7 +208,8 @@ export function compatibleClient(info: AiProviderInfo, apiKey: string | null, st
   }
 
   return {
-    pictures: false,
+    // Pictures of the names task go with their items (smart-tools.md §5.3.1).
+    pictures: true,
     probe,
 
     async test(signal) {
