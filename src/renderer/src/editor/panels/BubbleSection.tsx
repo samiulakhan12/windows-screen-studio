@@ -88,12 +88,13 @@ function Bubble({ project, bubble, update, player }: { project: Project; bubble:
             const S = Math.min(m.view.w, m.view.h)
             update((p) => setBubbleTail(p, id, null, { x: (tip.x + body.dx * S) / m.view.w, y: (tip.y + body.dy * S) / m.view.h }))
           } else if (v === 'pointing' && !c.pin) {
-            // A tail pointing down from the body, at what shows just below it.
+            // A tail pointing down from the body, at what shows just below it: kept on the picture (off it, no tail is drawn), the body above it.
             const m = calloutMapping(scene, bubble.start)
             const S = Math.min(m.view.w, m.view.h)
-            const tip = { x: bubble.x, y: Math.min(1, bubble.y + (0.12 * S) / m.view.h) }
-            const pin = pinUnder(scene, bubble.start, tip)
-            update((p) => setBubbleTail(p, id, { pin, body: { dx: 0, dy: -0.12 } }, { x: bubble.x, y: bubble.y }))
+            const body = { dx: 0, dy: -0.12 }
+            const pin = pinUnder(scene, bubble.start, { x: bubble.x, y: bubble.y - (body.dy * S) / m.view.h })
+            const tip = m.view.toOut(pin.x, pin.y)
+            update((p) => setBubbleTail(p, id, { pin, body }, { x: tip.x / m.view.w, y: (tip.y + body.dy * S) / m.view.h }))
           }
         }}
       />

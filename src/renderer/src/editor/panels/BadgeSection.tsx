@@ -157,9 +157,9 @@ function Badge({
         onChange={(on) => {
           const scene = pausedScene(player)
           if (!scene) return
-          // Where it shows at its start: the point of the recording there, or that place in the frame.
-          const at = { x: badge.x, y: badge.y }
-          const m = { pin: c.pin ?? pinUnder(scene, badge.start, at), shownAt: c.pin ? shownAt(scene, badge.start, c.pin) : at }
+          // Where it shows at its start: the point of the recording there (kept on the picture, as off it the badge is not drawn), or that place in the frame.
+          const pin = c.pin ?? pinUnder(scene, badge.start, { x: badge.x, y: badge.y })
+          const m = { pin, shownAt: shownAt(scene, badge.start, pin) }
           update((p) => setFollowsZoom(p, id, on, m))
         }}
       />

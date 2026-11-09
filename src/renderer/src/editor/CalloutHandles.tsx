@@ -9,13 +9,13 @@
 import { useEffect, useState, type KeyboardEvent, type PointerEvent as ReactPointerEvent } from 'react'
 import { moveBody, movePin, setFollowsZoom } from '../../../shared/editor/calloutsEdit'
 import { displayTime } from '../../../shared/editor/clips'
-import type { Rect, SceneLayout } from '../../../shared/engine/layout'
+import type { SceneLayout } from '../../../shared/engine/layout'
 import { clamp } from '../../../shared/engine/math'
 import { calloutOf } from '../../../shared/render/calloutData'
 import { badgeLabels, BUBBLE_BODY, bubbleAnchor, calloutPlace, type CalloutPlace } from '../../../shared/render/callouts'
 import type { Project } from '../../../shared/types'
 import { calloutStack, measurer } from '../render/calloutLayer'
-import { calloutMapping, pausedScene, type CalloutMapping } from './calloutView'
+import { calloutMapping, onPicture, pausedScene, type CalloutMapping } from './calloutView'
 import { holdGesture, useEditor } from './context'
 import { releaseFocus } from './focus'
 import { useGroup } from './groupContext'
@@ -32,12 +32,6 @@ let measureCtx: CanvasRenderingContext2D | null = null
 const measureOf = (stack: string): ((text: string, px: number, weight: number) => number) => {
   measureCtx ??= document.createElement('canvas').getContext('2d')
   return measureCtx ? measurer(measureCtx, stack) : (text, px) => text.length * px * 0.55
-}
-
-/** `p` kept on the visible picture `r`, half a pixel in, so the way back through the camera never lands it just off it. */
-const onPicture = (p: Point, r: Rect): Point => {
-  const e = Math.min(0.5, r.w / 2, r.h / 2)
-  return { x: clamp(p.x, r.x + e, r.x + r.w - e), y: clamp(p.y, r.y + e, r.y + r.h - e) }
 }
 
 /** "52 %, 40 %": a place in the frame for screen readers. */

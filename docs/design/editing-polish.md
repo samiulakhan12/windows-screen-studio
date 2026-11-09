@@ -314,7 +314,8 @@ stays on its spot in the recording while the camera zooms and pans, as shapes do
   from** (a number): this badge takes that number, and the automatic badges after it count on.
 - **Colour**: the brand colours first, then the shape palette. A new badge takes the brand kit's
   first colour, else #0060df.
-- **Follows the zoom** (switch, on). Off: it stays at one place in the frame.
+- **Follows the zoom** (switch, on). Off: it stays at one place in the frame. Turned on for a
+  badge outside the picture (on the padding), it takes the picture's nearest point at its start.
 - In the preview, its handle is dragged or moved with the arrow keys (1 % of the frame, Shift
   10 %). While it follows the zoom it stays on the picture: dragged or moved past the picture's
   edge it stops there (off the picture it would not be drawn), and its handle keeps the focus.
@@ -329,7 +330,9 @@ is dragged to point at something (arrow keys move it 1 % of the frame, Shift 10 
 picture's edge, as a badge does); dragging the body moves it around the tip. While a zoom or the
 layout hides the tip, dragging the body still moves only the body (beside the picture's edge, where
 it is drawn then); the tip stays on its spot. **Colour**: *White* (default, dark text, a thin outline), *Dark*
-(#1d1d24, white text), the brand colours. **Tail**: *Pointing* (default) or *None*.
+(#1d1d24, white text), the brand colours. **Tail**: *Pointing* (default) or *None*. *Pointing*
+on a bubble without a tail points down at what shows 0.12 S below the body, kept on the picture
+at the bubble's start (a bubble near the bottom points at the picture's edge, its body above it).
 
 ### 2.4 Progress bar
 

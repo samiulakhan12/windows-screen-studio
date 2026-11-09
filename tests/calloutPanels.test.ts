@@ -1,8 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { cropView } from '../src/shared/engine/crop'
+import { SmoothedTrack } from '../src/shared/engine/cursor'
 import { createProject } from '../src/shared/engine/project'
 import { copyLook, GROUP_FIELDS, ITEM_MOTIONS, pasteLook, type FieldCtx } from '../src/shared/editor/groupEdit'
-import { DEFAULT_ZOOM_STYLE } from '../src/shared/engine/zoom'
-import type { Annotation, Project, Shape, TitleCard } from '../src/shared/types'
+import { DEFAULT_ZOOM_STYLE, focusPathFor } from '../src/shared/engine/zoom'
+import { calloutPlace } from '../src/shared/render/callouts'
+import type { Annotation, CursorTrack, Project, Shape, TitleCard } from '../src/shared/types'
 
 /*
  * The callout panels (docs/design/editing-polish.md §2.3, §12, §19.1 test 45) without a DOM: the
@@ -16,7 +19,7 @@ interface El {
 }
 
 let store: { state: Project; updates: number; keys: (string | undefined)[]; update: (fn: (p: Project) => Project, key?: string) => void; beginGesture(): void; endGesture(): void }
-const player = { time: 4, moving: false, pausedFrame: () => null, subscribe: () => () => undefined }
+const player = { time: 4, moving: false, pausedFrame: (): { scene: unknown } | null => null, subscribe: () => () => undefined }
 const commands: string[] = []
 const contexts: { group?: unknown; keymap?: unknown } = {}
 
@@ -42,6 +45,7 @@ const { CalloutSection, PRIVACY_NOTE } = (await import(/* @vite-ignore */ `${P}p
 const { BadgeSection } = (await import(/* @vite-ignore */ `${P}panels/BadgeSection`)) as { BadgeSection: Component }
 const { BubbleSection } = (await import(/* @vite-ignore */ `${P}panels/BubbleSection`)) as { BubbleSection: Component }
 const { CalmMotionRow, CALM_HINT } = (await import(/* @vite-ignore */ `${P}panels/CalmMotionRow`)) as { CalmMotionRow: Component; CALM_HINT: string }
+const { calloutMapping } = (await import(/* @vite-ignore */ `${P}calloutView`)) as { calloutMapping: (scene: unknown, t: number) => { frame: Parameters<typeof calloutPlace>[2] } }
 contexts.group = ((await import(/* @vite-ignore */ `${P}groupContext`)) as { GroupContext: unknown }).GroupContext
 contexts.keymap = ((await import(/* @vite-ignore */ `${P}keymapContext`)) as { KeymapContext: unknown }).KeymapContext
 
@@ -97,6 +101,7 @@ function project(extra: Partial<Project> = {}): Project {
 
 beforeEach(() => {
   commands.length = 0
+  player.pausedFrame = () => null
   store = {
     state: project(),
     updates: 0,
@@ -243,5 +248,61 @@ describe('BadgeSection, BubbleSection and Calm motion', () => {
     ;(byId(render({ type: CalmMotionRow, props: { project: store.state } }), 'calm-motion')!.props.onChange as (e: unknown) => void)({ target: { checked: false } })
     expect('calm' in store.state.effects).toBe(false)
     expect(store.updates).toBe(2)
+  })
+})
+
+describe('Follows the zoom and Tail: Pointing keep the pin on the picture (§2.3)', () => {
+  const track = { valid: false, samples: [], clicks: [], keys: [] } as unknown as CursorTrack
+  /** The editor's scene for `p` (the drawn project in the crop's view), as the paused preview holds it. */
+  const sceneOf = (p: Project): unknown => {
+    const view = cropView(p, track)
+    return { project: view.project, cursor: view.cursor, cursorPath: new SmoothedTrack(view.cursor.samples, p.duration, p.cursor.smoothing), focusPath: focusPathFor(view.cursor.samples, p.duration), ...(view.crop ? { crop: view.crop } : {}) }
+  }
+  /** How annotation `id` is drawn at its start (null: not drawn). */
+  const placeAtStart = (id: string): ReturnType<typeof calloutPlace> => {
+    const a = store.state.annotations.find((x) => x.id === id)!
+    return calloutPlace(a, a.style === 'badge' ? '1' : null, calloutMapping(sceneOf(store.state), a.start).frame, (t, px) => t.length * px * 0.55)
+  }
+
+  it('a badge on the padding turned to follow the zoom is still drawn, on the picture’s edge', () => {
+    store.state = project({ annotations: [text('b1', { style: 'badge', number: 'auto', text: '', x: 0.02, y: 0.5 })] })
+    player.pausedFrame = () => ({ scene: sceneOf(store.state) })
+    expect(placeAtStart('b1')).not.toBeNull()
+    const els = render({ type: BadgeSection, props: { project: store.state, selection: { kind: 'annotation', id: 'b1' } } })
+    ;(byId(els, 'badge-follows-zoom')!.props.onChange as (e: unknown) => void)({ target: { checked: true } })
+    const a = store.state.annotations[0]
+    expect(store.updates).toBe(1)
+    expect(a.pin!.x).toBeGreaterThanOrEqual(0)
+    expect(placeAtStart('b1')).not.toBeNull()
+    // Where it shows at its start is written to x, y: where it is drawn, beside the padding.
+    expect(a.x).toBeGreaterThan(0.02)
+    expect(a.y).toBeCloseTo(0.5, 6)
+  })
+
+  it('Tail: Pointing on a bubble near the bottom points at the picture, the body above its tip', () => {
+    store.state = project({ annotations: [text('u2', { style: 'bubble', text: 'Click', x: 0.5, y: 0.97 })] })
+    player.pausedFrame = () => ({ scene: sceneOf(store.state) })
+    const els = render({ type: BubbleSection, props: { project: store.state, selection: { kind: 'annotation', id: 'u2' } } })
+    ;(radios(els, 'bubble-tail')[0].props.onClick as () => void)()
+    const a = store.state.annotations[0]
+    expect(store.updates).toBe(1)
+    expect(a.pin!.y).toBeLessThanOrEqual(1)
+    expect(a.body).toEqual({ dx: 0, dy: -0.12 })
+    const place = placeAtStart('u2')!
+    expect(place.pin).not.toBeNull()
+    expect(place.tail).not.toBeNull()
+    // x, y: where the body shows at its start, 0.12 S above the tip.
+    const S = 1080
+    expect(a.x).toBeCloseTo(place.pin!.x / 1920, 6)
+    expect(a.y).toBeCloseTo((place.pin!.y - 0.12 * S) / 1080, 6)
+    // Away from the edges it is as before: the tip 0.12 S below the body, which stays where it is.
+    store.state = project({ annotations: [text('u3', { style: 'bubble', text: 'Click', x: 0.5, y: 0.4 })] })
+    player.pausedFrame = () => ({ scene: sceneOf(store.state) })
+    const mid = render({ type: BubbleSection, props: { project: store.state, selection: { kind: 'annotation', id: 'u3' } } })
+    ;(radios(mid, 'bubble-tail')[0].props.onClick as () => void)()
+    const b = store.state.annotations[0]
+    expect(b.x).toBeCloseTo(0.5, 9)
+    expect(b.y).toBeCloseTo(0.4, 9)
+    expect(placeAtStart('u3')!.tail).not.toBeNull()
   })
 })
