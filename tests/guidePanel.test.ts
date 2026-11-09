@@ -1,0 +1,412 @@
+import { readFileSync } from 'node:fs'
+import path from 'node:path'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+import type { CursorTrack, Project } from '../src/shared/types'
+import { byTestId, allByTestId, contexts, mockReact, render, settle, testStore, textOf, unmountAll, useEditorContexts, type El } from './studioHarness'
+
+/*
+ * The Guide panel (docs/design/smart-tools.md §2.1, §5.3, §5.4, §5.8) without a DOM: tests 107 and
+ * 108, the renderer side of 110 and Adjust from the panel (112) of §22.1, with Esc, the edits' undo
+ * steps, the questions before a Save, the fonts a PDF embeds and the contrast of the panel's chips.
+ * The screenshots are faked (guideStills.ts draws them with the export's own path in the app;
+ * tests/e2e/guides.e2e.cjs runs it).
+ */
+
+const calls = {
+  aiText: [] as { id: string; request: { task: string; names?: { kind: string; items: { id: string; text: string; action?: string }[] } }; requestId?: string }[],
+  cancelled: [] as string[],
+  copied: [] as { html: string; text: string }[],
+  saved: [] as Record<string, unknown>[],
+  prefs: [] as unknown[],
+  focused: [] as string[],
+  encoded: [] as { mime: string; maxWidth: number }[],
+  fonts: [] as string[]
+}
+/** What the AI answers: a name for each item sent. */
+let answer = (items: { id: string }[]): { id: string; name: string }[] => items.map((i) => ({ id: i.id, name: `AI ${i.id}` }))
+
+vi.stubGlobal('HTMLElement', class {})
+vi.stubGlobal('document', {
+  activeElement: null,
+  body: {},
+  getElementById: (id: string) => ({ focus: () => calls.focused.push(id) })
+})
+vi.stubGlobal('fetch', async (url: string) => {
+  calls.fonts.push(url)
+  return { ok: true, arrayBuffer: async () => new Uint8Array([0x77, 0x4f, 0x46, 0x32]).buffer }
+})
+vi.stubGlobal('window', {
+  api: {
+    detectScenes: async () => Promise.reject(new Error('Reading the screen is not part of this build.')),
+    getPref: async () => null,
+    setPref: async (key: string, value: unknown) => void calls.prefs.push({ key, value }),
+    listAiProviders: async () => [{ id: 'o1', kind: 'openai', label: '', model: 'gpt-x' }],
+    aiText: async (id: string, request: (typeof calls.aiText)[number]['request'], requestId?: string) => {
+      calls.aiText.push({ id, request, requestId })
+      return { task: 'names', names: answer(request.names?.items ?? []) }
+    },
+    cancelAiText: async (id: string) => void calls.cancelled.push(id),
+    copyGuide: async (clip: { html: string; text: string }) => void calls.copied.push(clip),
+    copyGuideImage: async () => undefined,
+    saveGuide: async (payload: Record<string, unknown>) => (calls.saved.push(payload), { path: `/out/${payload.name}.pdf`, bytes: 1000 }),
+    showGuideFile: async () => undefined,
+    getBrandKit: async () => ({ colors: [], fonts: [], autoApply: false }),
+    brandFile: async () => null,
+    localAiState: async () => null
+  },
+  addEventListener: () => undefined,
+  removeEventListener: () => undefined,
+  dispatchEvent: () => true
+})
+
+const PNG = (w: number): Uint8Array => new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, w & 255, w >> 8])
+
+mockReact()
+vi.doMock('../src/renderer/src/guide/guideStills', () => ({
+  async *renderGuideStills(_input: unknown, shots: { key: string; rect: { w: number; h: number } }[], opts: { maxWidth: number; mime: string }) {
+    for (const s of shots) {
+      const w = Math.min(opts.maxWidth, Math.round(s.rect.w))
+      yield { key: s.key, image: { bytes: PNG(w), mime: opts.mime, width: w, height: Math.round((w * s.rect.h) / s.rect.w) } }
+    }
+  },
+  async encodeImage(image: { width: number; height: number }, mime: string, _q: number, maxWidth: number) {
+    calls.encoded.push({ mime, maxWidth })
+    const w = Math.min(maxWidth, image.width)
+    return { bytes: PNG(w), mime, width: w, height: Math.round((w * image.height) / image.width) }
+  },
+  canvasBytes: async () => new Uint8Array(),
+  drawMarks: () => undefined
+}))
+// Renderer code: imported at run time so the Node typecheck of tests/ does not follow it.
+const PANEL = '../src/renderer/src/guide/GuidePanel'
+const { GuidePanel, stepsLine, checkQuestion, checkOrder, nextUntitled, defaultPage } = (await import(/* @vite-ignore */ PANEL)) as {
+  GuidePanel: (p: unknown) => unknown
+  stepsLine: (c: { steps: number; hidden: number; untitled: number; typed: number }) => string
+  checkQuestion: (c: { unchecked: number; typed: number; whole: number }) => string | null
+  checkOrder: (keys: string[], typed: Set<string>, whole: Set<string>) => string[]
+  nextUntitled: (keys: string[], untitled: Set<string>, from: string | null) => string | null
+  defaultPage: (locale?: string) => 'A4' | 'Letter'
+}
+await useEditorContexts()
+const { createProject } = await import('../src/shared/engine/project')
+
+const words = (start: number, end: number, text: string): { text: string; start: number; end: number }[] => {
+  const parts = text.split(' ')
+  const d = (end - start) / parts.length
+  return parts.map((w, i) => ({ text: w, start: start + i * d, end: start + (i + 1) * d - 0.01 }))
+}
+
+function project(withWords = true): Project {
+  const p = createProject({
+    id: 'p',
+    name: 'Secret',
+    duration: 40,
+    width: 1920,
+    height: 1080,
+    hasWebcam: false,
+    hasAudio: true,
+    webcamOffset: 0,
+    zooms: [],
+    cursorValid: true,
+    capture: { method: 'native', cursorInVideo: false, region: null, target: 'screen', fps: 60 }
+  })
+  return {
+    ...p,
+    transcript: {
+      language: 'en',
+      provider: 'local',
+      model: 'test',
+      createdAt: '2026-11-07T00:00:00Z',
+      segments: withWords ? [{ id: 's1', start: 2.2, end: 3.4, text: 'Now click the Export button', words: words(2.2, 3.4, 'Now click the Export button') }] : []
+    }
+  }
+}
+
+const cursor: CursorTrack = {
+  samples: [
+    { t: 0, x: 0.5, y: 0.5 },
+    { t: 40, x: 0.5, y: 0.5 }
+  ],
+  clicks: [
+    { t: 3, x: 0.5, y: 0.5, button: 'left' },
+    { t: 12, x: 0.8, y: 0.2, button: 'left' },
+    { t: 25, x: 0.2, y: 0.8, button: 'left' }
+  ],
+  keys: [],
+  valid: true,
+  scale: 1
+}
+
+let store: ReturnType<typeof testStore<Project>>
+const player = { time: 7.5, seeks: [] as number[], seek: (t: number) => void player.seeks.push(t), subscribe: () => () => undefined }
+const closed: number[] = []
+const panel = (start: 'guide' | 'demo' | 'bug' = 'guide'): unknown => ({ type: GuidePanel, props: { project: store.state, cursor, start, onClose: () => closed.push(1), onNotice: () => undefined } })
+const said = (els: El[]): string => textOf(byTestId(els, 'guide-said'))
+const click = (el: El | undefined): unknown => (el!.props.onClick as () => unknown)()
+
+/** Lets a run's answers arrive, then renders the panel with the project as it now is. */
+async function after(): Promise<El[]> {
+  await settle(panel())
+  return render(panel())
+}
+
+/** Renders until the faked screenshots arrive (made after the plans stay still for 250 ms). */
+async function ready(start: 'guide' | 'demo' | 'bug' = 'guide'): Promise<El[]> {
+  await settle(panel(start))
+  await new Promise((r) => setTimeout(r, 300))
+  for (let i = 0; i < 5; i++) await Promise.resolve()
+  return settle(panel(start))
+}
+
+beforeEach(() => {
+  unmountAll()
+  for (const list of Object.values(calls)) list.length = 0
+  closed.length = 0
+  player.seeks.length = 0
+  answer = (items) => items.map((i) => ({ id: i.id, name: `AI ${i.id}` }))
+  store = testStore(project())
+  contexts.editor = { store, player }
+  contexts.group = { select: () => undefined, command: () => undefined, notice: () => undefined, keys: new Set(), single: null, group: { keys: [] } }
+})
+
+describe('the panel', () => {
+  it('lists a row per step, named by its number, time and chips, with its screenshot', async () => {
+    const els = await ready()
+    const rows = allByTestId(els, 'guide-step')
+    expect(rows).toHaveLength(3)
+    expect(rows.map((r) => r.props['aria-label'])).toEqual(['Step 1, 0:03', 'Step 2, 0:12, needs a title', 'Step 3, 0:25, needs a title'])
+    expect(allByTestId(els, 'guide-step-title').map((e) => e.props.value)).toEqual(['Click “Export”', 'Click near the top right', 'Click near the bottom left'])
+    expect(allByTestId(els, 'guide-shot').every((e) => e.props.disabled === false)).toBe(true)
+    expect(textOf(byTestId(els, 'guide-count'))).toBe('3 steps · 2 need a title')
+  })
+
+  it('Esc closes it', async () => {
+    const els = await ready()
+    const e = { key: 'Escape', preventDefault: () => undefined, stopPropagation: () => undefined }
+    ;(byTestId(els, 'guide-panel')!.props.onKeyDown as (e: unknown) => void)(e)
+    expect(closed).toEqual([1])
+  })
+
+  it('Go to moves the playhead to the step’s shot time; a title edit is one step merged by its key', async () => {
+    let els = await ready()
+    click(allByTestId(els, 'guide-goto')[1])
+    expect(player.seeks).toEqual([12 - 1 / 60])
+    const title = allByTestId(els, 'guide-step-title')[1]
+    ;(title.props.onChange as (e: unknown) => void)({ target: { value: 'Open s' } })
+    els = render(panel())
+    ;(allByTestId(els, 'guide-step-title')[1].props.onChange as (e: unknown) => void)({ target: { value: 'Open settings' } })
+    expect(store.steps).toBe(1)
+    expect(store.updates.map((u) => u.key)).toEqual(['guide-title:c12000', 'guide-title:c12000'])
+    expect(store.state.guide!.steps).toEqual([{ key: 'c12000', title: 'Open settings' }])
+  })
+})
+
+describe('test 112: Adjust from the panel', () => {
+  it('Done stores the crop and the ring in one update; Reset removes them in one more', async () => {
+    let els = await ready()
+    click(allByTestId(els, 'guide-shot')[0])
+    els = render(panel())
+    click(byTestId(els, 'guide-viewer-adjust'))
+    els = render(panel())
+    const before = store.steps
+    const ringKey = { key: 'ArrowRight', shiftKey: true, altKey: false, ctrlKey: false, metaKey: false, preventDefault: () => undefined, stopPropagation: () => undefined }
+    ;(byTestId(els, 'guide-adjust-ring')!.props.onKeyDown as (e: unknown) => void)(ringKey)
+    els = render(panel())
+    click(byTestId(els, 'guide-adjust-done'))
+    els = render(panel())
+    expect(store.steps - before).toBe(1)
+    const edit = store.state.guide!.steps![0]
+    expect(edit.key).toBe('c3000')
+    expect(edit.ring).toEqual({ x: 0.6, y: 0.5 })
+    expect(edit.rect!.w).toBeGreaterThanOrEqual(0.05)
+    expect(said(els)).toBe('Adjusted the screenshot.')
+    // The viewer stays on the step while its shot is made again.
+    expect(textOf(els.find((e) => e.props.id === 'guide-viewer-title'))).toBe('Screenshot for step 1 of 3')
+    expect(byTestId(els, 'guide-viewer-image')).toBeUndefined()
+    els = await ready()
+    expect(byTestId(els, 'guide-viewer-image')).toBeDefined()
+    click(byTestId(els, 'guide-viewer-adjust'))
+    els = render(panel())
+    click(byTestId(els, 'guide-adjust-reset'))
+    expect(store.steps - before).toBe(2)
+    expect(store.state.guide).toBeUndefined()
+  })
+})
+
+describe('test 107: placeholders and Write titles', () => {
+  it('the line counts the steps that need a title; Next step without a title wraps', async () => {
+    let els = await ready()
+    expect(stepsLine({ steps: 30, hidden: 4, untitled: 12, typed: 3 })).toBe('30 steps · 4 hidden · 12 need a title · 3 may show typing')
+    expect(stepsLine({ steps: 1, hidden: 0, untitled: 1, typed: 0 })).toBe('1 step · 1 needs a title')
+    click(byTestId(els, 'guide-next-untitled'))
+    els = render(panel())
+    expect(said(els)).toBe('Step 2 needs a title')
+    click(byTestId(els, 'guide-next-untitled'))
+    els = render(panel())
+    expect(said(els)).toBe('Step 3 needs a title')
+    click(byTestId(els, 'guide-next-untitled'))
+    els = render(panel())
+    expect(said(els)).toBe('Step 2 needs a title')
+    await new Promise((r) => setTimeout(r, 0))
+    expect(calls.focused.at(-1)).toMatch(/-title-c12000$/)
+    expect(nextUntitled(['a', 'b', 'c'], new Set(['a']), 'c')).toBe('a')
+    expect(nextUntitled(['a'], new Set(), null)).toBeNull()
+  })
+
+  it('Write titles is disabled with "Nothing was said near these steps." when no step has words', async () => {
+    store = testStore(project(false))
+    contexts.editor = { store, player }
+    let els = await ready()
+    ;(byTestId(els, 'guide-titles-ai')!.props.onChange as () => void)()
+    els = await settle(panel())
+    const write = byTestId(els, 'guide-write-titles')!
+    expect(write.props.disabled).toBe(true)
+    const why = byTestId(els, 'guide-write-why')!
+    expect(textOf(why)).toBe('Nothing was said near these steps.')
+    expect(write.props['aria-describedby']).toBe(why.props.id)
+  })
+
+  it('a run sends only the steps with words, writes their titles in one update with `ai`; the others keep their offline titles', async () => {
+    let els = await ready()
+    ;(byTestId(els, 'guide-titles-ai')!.props.onChange as () => void)()
+    els = await settle(panel())
+    expect(byTestId(els, 'guide-write-titles')!.props.disabled).toBe(false)
+    const before = store.steps
+    click(byTestId(els, 'guide-write-titles'))
+    els = await after()
+    expect(calls.aiText).toHaveLength(1)
+    const sent = calls.aiText[0]
+    expect(sent.id).toBe('o1')
+    expect(sent.request.task).toBe('names')
+    expect(sent.request.names!.kind).toBe('step')
+    expect(sent.request.names!.items.map((i) => i.id)).toEqual(['c3000'])
+    expect(sent.requestId).toMatch(/^guide-titles-/)
+    expect(store.steps - before).toBe(1)
+    expect(allByTestId(els, 'guide-step-title').map((e) => e.props.value)).toEqual(['AI c3000', 'Click near the top right', 'Click near the bottom left'])
+    expect(store.state.guide!.steps).toEqual([{ key: 'c3000', title: 'AI c3000', ai: 'openai' }])
+    expect(allByTestId(els, 'guide-step')[0].props['aria-label']).toBe('Step 1, 0:03, written by AI')
+    expect(said(els)).toBe('Wrote 1 title with OpenAI.')
+    // Use offline titles: one update.
+    click(byTestId(els, 'guide-offline-titles'))
+    expect(store.state.guide).toBeUndefined()
+  })
+})
+
+describe('test 108: notes', () => {
+  it('Use everything I said sets full', async () => {
+    const els = await ready()
+    click(allByTestId(els, 'guide-full')[0])
+    expect(store.state.guide!.steps).toEqual([{ key: 'c3000', full: true }])
+  })
+
+  it('Tidy notes sends kind note with each step’s full words and title, writes textAi; a hand edit clears it', async () => {
+    let els = await ready()
+    click(byTestId(els, 'guide-tidy'))
+    els = await after()
+    expect(calls.aiText).toHaveLength(1)
+    const names = calls.aiText[0].request.names!
+    expect(names.kind).toBe('note')
+    expect(names.items).toEqual([{ id: 'c3000', text: 'Now click the Export button', action: 'Click “Export”' }])
+    expect(store.state.guide!.steps).toEqual([{ key: 'c3000', text: 'AI c3000', textAi: 'openai' }])
+    const note = allByTestId(els, 'guide-step-note')[0]
+    expect(note.props.value).toBe('AI c3000')
+    ;(note.props.onChange as (e: unknown) => void)({ target: { value: 'Mine.' } })
+    expect(store.state.guide!.steps).toEqual([{ key: 'c3000', text: 'Mine.' }])
+  })
+})
+
+describe('test 110: Copy guide (renderer)', () => {
+  it('asks first about unchecked screenshots, then copies HTML with one PNG at most 1200 px wide a step and the numbered titles', async () => {
+    let els = await ready()
+    click(byTestId(els, 'guide-copy'))
+    els = render(panel())
+    const q = byTestId(els, 'guide-question')!
+    expect(textOf(q)).toContain('3 screenshots have not been checked at full size. Check them now?')
+    click(byTestId(els, 'guide-save-anyway'))
+    els = await after()
+    expect(calls.copied).toHaveLength(1)
+    const { html, text } = calls.copied[0]
+    expect((html.match(/<img src="data:image\/png;base64,/g) ?? []).length).toBe(3)
+    for (const w of html.matchAll(/width="(\d+)"/g)) expect(Number(w[1])).toBeLessThanOrEqual(1200)
+    expect(calls.encoded.every((e) => e.mime === 'image/png' && e.maxWidth === 1200)).toBe(true)
+    expect(html).not.toContain('<script')
+    expect(text).toContain('1. Click “Export”\n')
+    expect(text).toContain('2. Click near the top right\n')
+    expect(said(els)).toBe('Copied the guide with 3 screenshots.')
+    // The question is asked once a session.
+    click(byTestId(els, 'guide-copy'))
+    els = await after()
+    expect(byTestId(els, 'guide-question')).toBeUndefined()
+    expect(calls.copied).toHaveLength(2)
+  })
+
+  it('a title with a link nobody said asks before saving: Go back sends nothing', async () => {
+    store.update((p) => ({ ...p, guide: { steps: [{ key: 'c3000', title: 'Open example.com' }] } }))
+    let els = await ready()
+    click(byTestId(els, 'guide-save'))
+    els = render(panel())
+    click(byTestId(els, 'guide-save-anyway'))
+    els = render(panel())
+    expect(textOf(byTestId(els, 'guide-question'))).toContain('This guide has a link, address or file name nobody said. Save anyway?')
+    click(byTestId(els, 'guide-go-back'))
+    els = await after()
+    expect(calls.saved).toEqual([])
+    click(byTestId(els, 'guide-save'))
+    els = render(panel())
+    click(byTestId(els, 'guide-link-anyway'))
+    await after()
+    expect(calls.saved).toHaveLength(1)
+    expect(calls.saved[0]).toMatchObject({ format: 'pdf', name: 'Secret guide' })
+    // The PDF embeds the bundled Hind Siliguri, 400 and 600 (owner decision 7).
+    expect(calls.fonts).toEqual(['/resources/fonts/hind-siliguri-400.woff2', '/resources/fonts/hind-siliguri-600.woff2'])
+    expect((String(calls.saved[0].html).match(/@font-face/g) ?? []).length).toBe(2)
+  })
+})
+
+describe('the helpers', () => {
+  it('the check question counts unchecked, typing and whole-screen shots', () => {
+    expect(checkQuestion({ unchecked: 18, typed: 3, whole: 5 })).toBe('18 screenshots have not been checked at full size. 3 may show what you typed; 5 show the whole screen. Check them now?')
+    expect(checkQuestion({ unchecked: 0, typed: 0, whole: 0 })).toBeNull()
+  })
+
+  it('Check screenshots walks typing steps first, then whole-screen shots, then the rest', () => {
+    expect(checkOrder(['a', 'b', 'c', 'd'], new Set(['c']), new Set(['b', 'c']))).toEqual(['c', 'b', 'a', 'd'])
+  })
+
+  it('A4 unless the region is the US, Canada, Mexico or the Philippines', () => {
+    expect(defaultPage('en-GB')).toBe('A4')
+    expect(defaultPage('bn-BD')).toBe('A4')
+    for (const l of ['en-US', 'fr-CA', 'es-MX', 'fil-PH']) expect(defaultPage(l)).toBe('Letter')
+  })
+})
+
+describe('contrast of the panel’s chips (WCAG AA)', () => {
+  type RGB = [number, number, number]
+  const css = (file: string): string => readFileSync(path.join(__dirname, '../src/renderer/src', file), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '')
+  const vars: Record<string, string> = {}
+  for (const m of css('styles.css').matchAll(/(--[\w-]+):\s*([^;]+);/g)) vars[m[1]] ??= m[2].trim()
+  const resolve = (v: string): RGB => {
+    const ref = /^var\((--[\w-]+)\)$/.exec(v)
+    if (ref) return resolve(vars[ref[1]])
+    return [1, 3, 5].map((i) => parseInt(v.slice(i, i + 2), 16)) as RGB
+  }
+  const lum = (c: RGB): number => {
+    const [r, g, b] = c.map((x) => (x / 255 <= 0.03928 ? x / 255 / 12.92 : ((x / 255 + 0.055) / 1.055) ** 2.4))
+    return 0.2126 * r + 0.7152 * g + 0.0722 * b
+  }
+  const contrast = (a: RGB, b: RGB): number => (Math.max(lum(a), lum(b)) + 0.05) / (Math.min(lum(a), lum(b)) + 0.05)
+  const decl = (selector: string, prop: string): string => {
+    let value = ''
+    for (const m of css('guide/guide.css').matchAll(/([^{}]+)\{([^}]*)\}/g)) {
+      if (!m[1].split(',').some((s) => s.trim() === selector)) continue
+      for (const d of m[2].matchAll(new RegExp(`(?:^|;)\\s*${prop}:\\s*([^;]+)`, 'g'))) value = d[1].trim()
+    }
+    return value
+  }
+
+  it('the chips’ words read at 4.5:1 on their fill', () => {
+    expect(contrast(resolve(decl('.guide-chip', 'color')), resolve(decl('.guide-chip', 'background')))).toBeGreaterThanOrEqual(4.5)
+    expect(contrast(resolve(decl('.guide-chip.warn', 'color')), resolve(decl('.guide-chip.warn', 'background')))).toBeGreaterThanOrEqual(4.5)
+    expect(contrast(resolve(decl('.guide-count', 'color')), resolve('var(--surface-1)'))).toBeGreaterThanOrEqual(4.5)
+  })
+})
