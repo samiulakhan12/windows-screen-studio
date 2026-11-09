@@ -251,6 +251,37 @@ describe('Find chapters runs (test 118: the first weak chapter for the focus)', 
     expect(await run(store, noScreen)).toEqual({ notice: `${FIND_WORDS.already} ${FIND_WORDS.removed}`, weak: null })
     expect(store.state.chapters!.map((c) => [c.t, c.title, c.auto])).toEqual([[40, 'Mine', undefined]])
   })
+
+  it('a chapter the user adds while the names are written holds: the run plans again on the project as it is then; a start found again keeps its written name', async () => {
+    fake.scan = scanOf(180, { 60.5: 62, 120.5: 70 })
+    const said = [
+      { t: 61, text: 'Open the quarterly billing report for the team now.' },
+      { t: 121, text: 'Finally we export the report.' }
+    ]
+    let open!: () => void
+    const gate = new Promise<void>((r) => (open = r))
+    fake.answer = async (request) => {
+      await gate
+      const names = request.names as { items: { id: string }[] }
+      return { task: 'names', names: names.items.map((i) => ({ id: i.id, name: i.id === '1' ? 'Billing report' : 'Exporting' })) }
+    }
+    const store = new EditStore<Project>(projectOf(180, said))
+    const pending = run(store, { ...OPTIONS, names: 'local' })
+    await vi.waitFor(() => expect(fake.ai).toHaveLength(1))
+    // 3 s after the found start at 61 s.
+    store.update((p) => ({ ...p, chapters: [...(p.chapters ?? []), { id: 'mine', t: 64, title: 'Mine' }] }))
+    open()
+    const out = (await pending) as { notice: string }
+    const chapters = [...store.state.chapters!].sort((a, b) => a.t - b.t)
+    expect(chapters.map((c) => [c.t, c.auto ? 'found' : c.title])).toEqual([
+      [0, 'found'],
+      [64, 'Mine'],
+      [121, 'found']
+    ])
+    expect(chapters[2]).toMatchObject({ title: 'Exporting', auto: { name: 'ai', via: 'local' } })
+    expect(chapters.map((c) => c.title)).not.toContain('Billing report')
+    expect(out.notice).toBe('Found 2 chapters. Review lists them: keep or remove each one.')
+  })
 })
 
 describe('words or not (test 120)', () => {

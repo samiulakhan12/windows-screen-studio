@@ -12,7 +12,7 @@ import { spokenSegments } from '../../../shared/captions/subtitles'
 import { withFoundChapters, withoutPendingChapters } from '../../../shared/chapters/chapterAuto'
 import { chapterNames, namesRequestForChapters, weakName, withAiNames } from '../../../shared/chapters/names'
 import { pendingChapters } from '../../../shared/chapters/pending'
-import { planChapters } from '../../../shared/chapters/plan'
+import { planChapters, type ChapterPlan } from '../../../shared/chapters/plan'
 import { CHAPTER_RULES } from '../../../shared/chapters/signals'
 import { cropOf } from '../../../shared/engine/crop'
 import { planOf, videoDuration } from '../../../shared/engine/freeze'
@@ -51,6 +51,9 @@ export const FIND_WORDS = {
 } as const
 
 const plural = (n: number, one: string): string => `${n} ${one}${n === 1 ? '' : 's'}`
+
+/** A start planned again this close (s) is the same start: the name written for it stays. */
+const SAME_START = 0.05
 
 /**
  * The notice after a run that added `count` found chapters, `all` chapters in the video then (§2.3):
@@ -109,10 +112,11 @@ async function readScreen(project: Project, signal: AbortSignal, onProgress: (te
 /**
  * Finds chapters in the project of `store` (§7.8) and applies them in one update: the chapters
  * found replace those an earlier run found that are still pending, also when none are found; the
- * user's stay. Without captions, when speech is heard and words are wanted (or an AI is to suggest
- * from them), says captions are needed instead and changes nothing. Rejects when stopped (nothing
- * changes; the AI request is cancelled) or when an AI request fails. `weak` is the id of the first
- * found chapter whose name is weak, for the focus.
+ * user's stay. A project edited while the names were written is planned again as it is then, so
+ * the user's chapters and cuts made meanwhile hold. Without captions, when speech is heard and
+ * words are wanted (or an AI is to suggest from them), says captions are needed instead and changes
+ * nothing. Rejects when stopped (nothing changes; the AI request is cancelled) or when an AI request
+ * fails. `weak` is the id of the first found chapter whose name is weak, for the focus.
  */
 export async function runFindChapters(deps: {
   store: EditStore<Project>
@@ -164,7 +168,8 @@ export async function runFindChapters(deps: {
     // 4. The plan, on the project as it is now.
     onProgress(FIND_WORDS.finding, null)
     project = store.state
-    const plan = planChapters({ project, track: effectiveTrack(recorded, project), scan, speech, density: options.density, use: options.use, ...(ai ? { ai } : {}) })
+    const planOn = (p: Project): ChapterPlan => planChapters({ project: p, track: effectiveTrack(recorded, p), scan, speech, density: options.density, use: options.use, ...(ai ? { ai } : {}) })
+    const plan = planOn(project)
     const screenFailed = options.use.screen && !scan
     /** The notice when nothing is added (§2.3); `removed` says the chapters found before went. */
     const notFound = (reason: 'too-short' | 'nothing' | 'already', removed: boolean): string => {
@@ -179,12 +184,11 @@ export async function runFindChapters(deps: {
       return { notice: notFound(plan.reason, had), weak: null }
     }
 
-    // 5. The names: offline (an AI's suggested title where it suggested the start), then an AI's for the chapters with words when asked.
-    const offline = chapterNames(project, plan.starts)
-    const madeBy: (TextChoice | null)[] = offline.map((n) => (n.name === 'ai' ? splitChoice : null))
-    let names: { title: string; name: ChapterOrigin['name'] }[] = offline
+    // 5. The names: an AI's for the chapters with words when asked (by the planned starts' index).
+    let namesChoice: TextChoice | null = null
+    let answer: readonly { id: string; name: string }[] = []
     if (options.names !== 'offline') {
-      const namesChoice = await choiceFor(options.names)
+      namesChoice = await choiceFor(options.names)
       const request = namesRequestForChapters(
         project,
         plan.starts.map((s) => s.t)
@@ -193,31 +197,49 @@ export async function runFindChapters(deps: {
         onProgress(FIND_WORDS.naming(namesChoice.place), null)
         const result = await window.api.aiText(options.names, { task: 'names', names: request, segments: [], requestId }, requestId)
         check()
-        if (result.task === 'names') {
-          const named = withAiNames(offline, result.names)
-          named.forEach((n, i) => {
-            if (n.ai) madeBy[i] = namesChoice
-          })
-          names = named
-        }
+        if (result.task === 'names') answer = result.names
       }
     }
+    /** The found chapters of `starts` on `p`: named offline (an AI's suggested title where it suggested the start), then with the names the AI wrote; a start planned again keeps the name written for it. */
+    const foundOn = (p: Project, starts: Extract<ChapterPlan, { ok: true }>['starts']): { t: number; title: string; origin: ChapterOrigin }[] => {
+      const answered =
+        p === project
+          ? answer
+          : answer.flatMap((a) => {
+              const t = plan.starts[Number(a.id)]?.t
+              const i = t === undefined ? -1 : starts.findIndex((s) => Math.abs(s.t - t) <= SAME_START)
+              return i < 0 ? [] : [{ id: String(i), name: a.name }]
+            })
+      const names = withAiNames(chapterNames(p, starts), answered)
+      return starts.map((s, i) => {
+        const by = names[i].ai ? namesChoice : names[i].name === 'ai' || s.from.includes('ai') ? splitChoice : null
+        const origin: ChapterOrigin = { by: 'find', from: s.from, name: names[i].name, ...(by ? viaOf(by) : {}) }
+        return { t: s.t, title: names[i].title, origin }
+      })
+    }
 
-    // 6. One update; the notice; the focus on the first weak name.
-    const found = plan.starts.map((s, i) => {
-      const by = madeBy[i] ?? (s.from.includes('ai') ? splitChoice : null)
-      const origin: ChapterOrigin = { by: 'find', from: s.from, name: names[i].name, ...(by ? viaOf(by) : {}) }
-      return { t: s.t, title: names[i].title, origin }
-    })
+    // 6. One update, planned again on a project edited while the names were written (EditStore.update
+    // calls the function once); the notice; the focus on the first weak name.
     check()
-    store.update((p) => withFoundChapters(p, found))
+    let planned = plan as ChapterPlan
+    let found = foundOn(project, plan.starts)
+    let removed = false
+    store.update((p) => {
+      if (p === project) return withFoundChapters(p, found)
+      planned = planOn(p)
+      if (!planned.ok && planned.reason === 'too-short') return p
+      found = planned.ok ? foundOn(p, planned.starts) : []
+      removed = !planned.ok && pendingChapters(p).length > 0
+      return withFoundChapters(p, found)
+    })
+    if (!planned.ok) return { notice: notFound(planned.reason, removed), weak: null }
     const after = store.state
     const weak = pendingChapters(after)
       .filter((c) => c.auto && weakName(c.auto.name))
       .sort((a, b) => a.t - b.t)[0]
     const chapters = after.chapters ?? []
     const firstAtZero = chapters.some((c) => Math.abs(c.t - (after.clips[0]?.start ?? 0)) < 0.05)
-    return { notice: foundNotice(found.length, chapters.length, plan.youtube, firstAtZero, screenFailed), weak: weak?.id ?? null }
+    return { notice: foundNotice(found.length, chapters.length, planned.youtube, firstAtZero, screenFailed), weak: weak?.id ?? null }
   } finally {
     signal.removeEventListener('abort', cancel)
   }

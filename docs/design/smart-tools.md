@@ -1513,7 +1513,9 @@ or not it was said**, so the guarantee of §7.5 holds for every name. The origin
 4. `planChapters` (pure) gives the starts and their signals, or why none.
 5. `chapterNames` names them offline; with *Names: With …*, the `names` task names those with words.
 6. `withFoundChapters` applies them in one update; the notice of §2.3, and focus on the first weak
-   name.
+   name. When the project was edited while the names were written (editing goes on meanwhile), step 4
+   plans again on the project as it is then and a start found again keeps the name written for it,
+   so a chapter added or a part cut meanwhile holds YouTube's rules and the user's chapters.
 
 A failed scene scan is not fatal: "Could not read the screen: chapters come from pauses and what you
 say." Stop cancels the scan and the AI request; nothing changes.
