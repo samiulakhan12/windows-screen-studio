@@ -24,7 +24,7 @@ import { pointFromShown, pointInShown, rectFromShown, rectInShown } from '../../
 import { autoBadgeCount, findSteps, STEP_RULES, typedBefore, typingRuns, type GuideStep } from '../../../shared/guide/steps'
 import { namesRequestForSteps, needsTitle, shownTitles, stepIncluded, stepText, type ShownTitle } from '../../../shared/guide/stepTitles'
 import { notedPieces } from '../../../shared/publish/check'
-import { pathLike } from '../../../shared/smart/privateText'
+import { pathLike, readLinkUrl } from '../../../shared/smart/privateText'
 import { itemKey } from '../../../shared/editor/multiSelect'
 import type { GuidePref } from '../../../shared/smart/smartPrefs'
 import type { CursorTrack, GuideStepEdit, Project } from '../../../shared/types'
@@ -1241,9 +1241,10 @@ function EndScreen(props: { project: Project; onField(patch: Parameters<typeof w
   const [open, setOpen] = useState(!!end)
   const [url, setUrl] = useState(end?.url ?? '')
   // An Undo or Redo of the link shows in the field; a link typed before the heading stays while there is no end screen.
+  // Compared as the store keeps it, so typing ("https://e" kept as "https://e/", or a link not valid yet) never rewrites the field.
   const stored = end?.url ?? ''
   useEffect(() => {
-    if (end && stored !== url.trim()) setUrl(stored)
+    if (end && stored !== (readLinkUrl(url.trim()) ?? '')) setUrl(stored)
   }, [stored, !!end]) // eslint-disable-line react-hooks/exhaustive-deps
   const set = (patch: Partial<{ heading: string; label: string; url: string }>, gesture?: string): void => {
     // The link as the field shows it: one typed before the heading is not stored yet.

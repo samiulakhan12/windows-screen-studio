@@ -441,6 +441,29 @@ describe('the demo’s end screen (docs/design/smart-tools.md §6.1)', () => {
     type(els, 'guide-end-label', 'Start')
     expect(store.state.guide!.end).toEqual({ heading: 'You are ready', label: 'Start' })
   })
+
+  it('a link typed one key at a time keeps what is typed, and an http link pasted over a saved one stays and is marked', async () => {
+    const type = (els: El[], id: string, value: string): void => (byTestId(els, id)!.props.onChange as (e: unknown) => void)({ target: { value } })
+    let els = await settle(panel('demo'))
+    click(byTestId(els, 'guide-end-toggle'))
+    els = render(panel('demo'))
+    type(els, 'guide-end-heading', 'You are ready')
+    els = render(panel('demo'))
+    type(els, 'guide-end-label', 'Sign up')
+    els = render(panel('demo'))
+    // Each key goes after what the field shows, as it does with the caret at the end.
+    for (const ch of 'https://example.com/signup') {
+      type(els, 'guide-end-url', String(byTestId(els, 'guide-end-url')!.props.value) + ch)
+      els = render(panel('demo'))
+    }
+    expect(byTestId(els, 'guide-end-url')!.props.value).toBe('https://example.com/signup')
+    expect(store.state.guide!.end).toEqual({ heading: 'You are ready', label: 'Sign up', url: 'https://example.com/signup' })
+    type(els, 'guide-end-url', 'http://example.com/signup')
+    els = render(panel('demo'))
+    expect(byTestId(els, 'guide-end-url')!.props.value).toBe('http://example.com/signup')
+    expect(byTestId(els, 'guide-end-url')!.props['aria-invalid']).toBe(true)
+    expect(store.state.guide!.end).toEqual({ heading: 'You are ready', label: 'Sign up' })
+  })
 })
 
 describe('the bug report’s Actual screenshot (docs/design/smart-tools.md §2.1, §12 rule 2)', () => {
