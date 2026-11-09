@@ -78,7 +78,7 @@ const { SmoothedTrack } = await import('../src/shared/engine/cursor')
 const { createProject } = await import('../src/shared/engine/project')
 const { joinAt, joinPlan } = await import('../src/shared/render/joins')
 const { DEFAULT_EXPORT_OPTIONS } = await import('../src/shared/render/exportPresets')
-const { alphaOf, alphaScene } = await import('../src/shared/render/alpha')
+const { alphaOf } = await import('../src/shared/render/alpha')
 import type { CursorTrack, Project, ProjectJoins } from '../src/shared/types'
 import type { JoinAt, JoinWindow } from '../src/shared/render/joins'
 
@@ -161,8 +161,9 @@ describe('joins in a transparent export (test 28)', () => {
       joinLayer.composeJoinStill(joinLayer.scratchTarget('cpu', W, H), out, W, H, w, exportScene, STILLS, null)
       return out
     })
-    // The dialog's preview: its scene from the export's options, A* composed as JoinStills does (on the GPU scratch target).
-    const previewScene = alphaScene(baseScene(p), TRANSPARENT)
+    // The dialog's preview: its scene with the alpha of the export's options (ExportPreview), A* composed as JoinStills does (on the GPU scratch target).
+    const alpha = alphaOf(TRANSPARENT)
+    const previewScene: ReturnType<typeof baseScene> & { alpha?: 'background' | 'overlays' } = alpha ? { ...baseScene(p), alpha } : baseScene(p)
     const previewed = drawn(p, previewScene, mid, true, (w) => {
       const out = canvas()
       joinLayer.composeJoinStill(joinLayer.scratchTarget('gpu', W, H), out, W, H, w, previewScene, STILLS, null)

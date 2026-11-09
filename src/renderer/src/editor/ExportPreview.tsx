@@ -9,7 +9,10 @@ import { onStyleAssetsChanged } from '../render/watermarkLayer'
 import { createVideo, SCREEN_PROXY_FPS, seekToFrame, WEBCAM_PROXY_FPS, whenReady } from './media'
 import { planOf } from '../../../shared/engine/freeze'
 import { frameVideoTime, joinAt, joinPlan } from '../../../shared/render/joins'
+import { alphaOf } from '../../../shared/render/alpha'
+import { t } from '../../../shared/i18n/t'
 import { JoinStills } from './joinStills'
+import './alphaPreview.css'
 
 interface Props {
   project: Project
@@ -42,12 +45,18 @@ function segmentStill(project: Project): (still: ImageBitmap) => Promise<void> {
  * The export's frame at `time` in its own shape (a Reels preset shows 9:16), drawn by the
  * same compositor at a small size. It owns two paused video elements, so the editor's
  * player is never moved; nothing is drawn unless the time or the look changes.
+ *
+ * A transparent export (output-and-languages §6.5) is drawn with the export's own RenderScene.alpha
+ * into a canvas with alpha, with a checkerboard behind it in CSS: the canvas holds the export's
+ * pixels, the checkerboard is never drawn into them.
  */
 export function ExportPreview(props: Props): JSX.Element {
   const canvas = useRef<HTMLCanvasElement>(null)
   const media = useRef<{ screen: HTMLVideoElement; webcam: HTMLVideoElement | null } | null>(null)
   // Smooth cuts (editing polish §5.8): A* of a cut whose window holds the frame, made on demand.
   const joinStills = useRef<JoinStills | null>(null)
+  // The see-through background its stills were composed with: an opaque and a transparent A* are never the same still.
+  const joinStillsAlpha = useRef<RenderScene['alpha']>(undefined)
   const [stillsReady, setStillsReady] = useState(0)
   const [frameTime, setFrameTime] = useState<{ t: number; sound: number } | null>(null)
   // The camera's background blur: redraw when a frame's person mask arrives.
@@ -62,7 +71,12 @@ export function ExportPreview(props: Props): JSX.Element {
     () => (props.scene.project === props.project ? project : exportProject(props.scene.project, { aspect: props.options.aspect })),
     [project, props.project, props.scene.project, props.options.aspect]
   )
-  const scene = useMemo(() => (drawn === props.scene.project ? props.scene : { ...props.scene, project: drawn }), [drawn, props.scene])
+  // A transparent export's see-through background, as the exporter sets it on its scene (§6.5).
+  const alpha = alphaOf(props.options)
+  const scene = useMemo(() => {
+    const shaped = drawn === props.scene.project ? props.scene : { ...props.scene, project: drawn }
+    return alpha ? { ...shaped, alpha } : shaped
+  }, [drawn, props.scene, alpha])
   const size = exportSize(project, props.options)
   const { css, pixels } = exportPreviewSize(size, props.box, window.devicePixelRatio || 1)
 
@@ -113,7 +127,8 @@ export function ExportPreview(props: Props): JSX.Element {
     const { width: w, height: h } = pixels
     if (c.width !== w) c.width = w
     if (c.height !== h) c.height = h
-    const ctx = c.getContext('2d', { alpha: false })
+    // Each look has a canvas of its own (keyed below): a context keeps the alpha it was made with.
+    const ctx = c.getContext('2d', { alpha: !!scene.alpha })
     if (!ctx) return
     // The frame's video time and the join it is in, with A* once it is ready (a hard cut until then).
     const windows = joinPlan(project)
@@ -123,6 +138,11 @@ export function ExportPreview(props: Props): JSX.Element {
       const at = joinAt(windows, video)
       let still: CanvasImageSource | null = null
       if (at?.window.still) {
+        if (joinStills.current && joinStillsAlpha.current !== scene.alpha) {
+          joinStills.current.dispose()
+          joinStills.current = null
+        }
+        joinStillsAlpha.current = scene.alpha
         joinStills.current ??= new JoinStills(props.screenUrl, props.webcamUrl, () => setStillsReady((n) => n + 1), segmentStill(project))
         joinStills.current.prepare([at.window], scene, w, h, props.background)
         still = joinStills.current.still(at.window, w, h)
@@ -132,5 +152,6 @@ export function ExportPreview(props: Props): JSX.Element {
     drawFrame(ctx, w, h, frameTime.t, scene, { screen: m.screen, webcam: m.webcam, background: props.background }, { frameInterval: 1 / size.fps, blurSamples: props.held ? 1 : 4 }, frameTime.sound, extras)
   }, [frameTime, scene, project, props.background, props.held, props.screenUrl, props.webcamUrl, pixels.width, pixels.height, size.fps, masks, assets, stillsReady])
 
-  return <canvas ref={canvas} className="export-preview-canvas" style={{ width: css.width, height: css.height }} />
+  if (scene.alpha) return <canvas key="alpha" ref={canvas} className="export-preview-canvas alpha-preview" role="img" aria-label={t('alpha.preview.name')} style={{ width: css.width, height: css.height }} />
+  return <canvas key="opaque" ref={canvas} className="export-preview-canvas" style={{ width: css.width, height: css.height }} />
 }

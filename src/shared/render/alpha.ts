@@ -22,16 +22,6 @@ export function alphaOf(o: ExportOptions): 'background' | 'overlays' | undefined
   return canAlpha(o.format, codecOf(o)) ? alpha : undefined
 }
 
-/**
- * `scene` with the see-through background `o` asks for, as the exporter sets it before drawing
- * (exporter.ts withAlpha): the export dialog's preview draws the same scene. An opaque export's
- * scene is `scene` itself, so nothing else changes for it.
- */
-export function alphaScene<S extends object>(scene: S, o: ExportOptions): S & { alpha?: 'background' | 'overlays' } {
-  const alpha = alphaOf(o)
-  return alpha ? { ...scene, alpha } : scene
-}
-
 /** Points tested across the frame, per side (a 9 × 9 grid of pixel centres, the edges included). */
 const GRID = 8
 
