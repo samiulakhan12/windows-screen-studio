@@ -45,7 +45,7 @@ beforeAll(async () => {
     requests.push({ path: url.pathname, range: req.headers.range })
     const m = /^bytes=(\d+)-$/.exec(req.headers.range ?? '')
     const from = m ? Number(m[1]) : 0
-    const body = url.pathname === '/flip' ? Buffer.from(BODY).fill(7, 5000, 5001) : BODY
+    const body = url.pathname === '/flip' ? Buffer.from(BODY).fill(BODY[5000] ^ 0xff, 5000, 5001) : BODY
     if (from > 0) res.writeHead(206, { 'content-range': `bytes ${from}-${body.length - 1}/${body.length}`, 'content-length': body.length - from })
     else res.writeHead(200, { 'content-length': body.length })
     res.end(body.subarray(from))
