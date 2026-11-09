@@ -134,11 +134,18 @@ export function ProviderForm({
     if (!labelEdited) setLabel(freeName(SERVICE_PRESETS[p].label, existing))
   }
 
+  /**
+   * Whether the edit stays in the same store: a provider of another kind is changed in place (main
+   * asks for the new kind's key, keyStore.ts), a service moved to a provider or back is saved anew
+   * and the old one then removed.
+   */
+  const sameStore = !!editing && !!editing.service === isService
+
   /** What the form would save, as main reads it (also the model lists' draft). */
   const input = (withKey: boolean): AiProviderInput | null => {
     if (isService && !url?.ok) return null
     return {
-      ...(editing && sameKind ? { id: editing.id } : {}),
+      ...(editing && sameStore ? { id: editing.id } : {}),
       kind: apiKind,
       label: label.trim(),
       ...(withKey && apiKey.trim() ? { apiKey: apiKey.trim() } : {}),
@@ -180,6 +187,8 @@ export function ProviderForm({
       const saved = await window.api.saveAiProvider(body)
       // The key is not kept here a moment longer than needed.
       setApiKey('')
+      // Edited into the other store: the provider it was is gone, not left beside it.
+      if (editing && saved.id !== editing.id) await window.api.removeAiProvider(editing.id).catch(() => undefined)
       await savePrices(saved.id).catch(() => undefined)
       let check: CheckResult | undefined
       if (isService) {

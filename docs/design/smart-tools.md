@@ -1969,7 +1969,9 @@ interface StoredService {
   (`AI_LIMITS.maxProviders`).
 - `saveAiProvider` with `service` set goes to this store. Changing the base URL to another origin
   needs the key again ("Enter the API key for the new address."), as changing the kind does today
-  (`keyStore.ts:184`).
+  (`keyStore.ts:184`). The form keeps the id for an edit within one store, so a provider changed to
+  another kind is that provider changed in place; an edit from a provider to a service (or back) is
+  saved in the other store and the one it was is then removed, and Settings shows it in that row.
 - An empty key is allowed only for a loopback origin.
 - Older Flown never reads this file, so it cannot drop entries or send a service's key elsewhere
   (decision 19).

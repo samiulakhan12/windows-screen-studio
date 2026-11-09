@@ -10,7 +10,7 @@ import { mockReact, settle, textOf, unmountAll, type El } from './studioHarness'
  * "Works; Flown checks its answers more closely." with how the service answers in JSON.
  */
 
-const api = vi.hoisted(() => ({ saved: [] as Record<string, unknown>[], tested: [] as string[], check: { ok: true, message: 'Works.\nAnswers in JSON with a schema.' }, prefs: [] as [string, unknown][] }))
+const api = vi.hoisted(() => ({ saved: [] as Record<string, unknown>[], removed: [] as string[], listed: [] as unknown[], tested: [] as string[], check: { ok: true, message: 'Works.\nAnswers in JSON with a schema.' }, prefs: [] as [string, unknown][] }))
 vi.stubGlobal('window', {
   api: {
     getAiModelList: async () => null,
@@ -19,6 +19,8 @@ vi.stubGlobal('window', {
       const service = input.service as { preset: string; baseUrl: string } | undefined
       return { id: (input.id as string) ?? 'svcnew', kind: 'openai', label: input.label, model: input.model, maskedKey: '…1234', createdAt: '', ...(service ? { service: { ...service, host: new URL(service.baseUrl).host, loopback: false, json: 'text' } } : {}) }
     },
+    removeAiProvider: async (id: string) => void api.removed.push(id),
+    listAiProviders: async () => api.listed,
     testAiProvider: async (id: string) => {
       api.tested.push(id)
       return api.check
@@ -55,6 +57,7 @@ beforeEach(() => {
   unmountAll()
   done = []
   api.saved.length = 0
+  api.removed.length = 0
   api.tested.length = 0
   api.prefs.length = 0
   api.check = { ok: true, message: 'Works.\nAnswers in JSON with a schema.' }
@@ -164,5 +167,58 @@ describe('Add a provider › More services (test 95)', () => {
     els = await submit(form(editing))
     expect(api.saved).toHaveLength(0)
     expect(textOf(els.find((e) => e.props.role === 'alert')!)).toBe('Enter the API key for the new address.')
+  })
+
+  it('a provider edited into a service is saved as the service and the provider it was removed, not left beside it', async () => {
+    const editing = { id: 'ai1', kind: 'openai', label: 'Work', model: 'gpt-6.1-sol', maskedKey: '…abcd', createdAt: '' } as AiProviderInfo
+    let els = await settle(form(editing))
+    ;(radio(els, 'More services').props.onClick as () => void)()
+    els = await settle(form(editing))
+    type(inputBy(els, (p) => p.type === 'password' || String(p.id).endsWith('-key'))!, 'sk-or-v1-0123456789abcdef0123456789')
+    els = await settle(form(editing))
+    type(inputBy(els, (p) => String(p.id).endsWith('-model'))!, 'openrouter/auto')
+    await submit(form(editing))
+    // A service lives in its own store: saved there anew, then the provider removed.
+    expect(api.saved).toHaveLength(1)
+    expect(api.saved[0]).not.toHaveProperty('id')
+    expect(api.saved[0]).toHaveProperty('service')
+    expect(api.removed).toEqual(['ai1'])
+    expect(done.map((d) => d.saved.id)).toEqual(['svcnew'])
+  })
+
+  it('a service saved in place removes nothing', async () => {
+    const editing = { id: 'svc1', kind: 'openai', label: 'Groq', model: 'llama-4-scout', maskedKey: '…6789', createdAt: '', service: { preset: 'groq', baseUrl: 'https://api.groq.com/openai/v1', host: 'api.groq.com', loopback: false, json: 'schema' } } as AiProviderInfo
+    const els = await settle(form(editing))
+    type(inputBy(els, (p) => String(p.id).endsWith('-model'))!, 'llama-4-maverick')
+    await submit(form(editing))
+    expect(api.saved[0].id).toBe('svc1')
+    expect(api.removed).toEqual([])
+  })
+
+  it('Settings shows the service in the row of the provider edited into it, and that provider no more', async () => {
+    const work = { id: 'ai1', kind: 'openai', label: 'Work', model: 'gpt-6.1-sol', maskedKey: '…abcd', createdAt: '' } as AiProviderInfo
+    const other = { id: 'ai2', kind: 'gemini', label: 'Home', model: 'gemini-3-flash', maskedKey: '…wxyz', createdAt: '' } as AiProviderInfo
+    api.listed = [work, other]
+    // The page's focus lookups after the form closes.
+    Object.defineProperty(globalThis, 'document', { configurable: true, value: { querySelector: () => null, activeElement: null } })
+    Object.defineProperty(globalThis, 'CSS', { configurable: true, value: { escape: (v: string) => v } })
+    try {
+      const { AiProvidersSection } = (await import(/* @vite-ignore */ '../src/renderer/src/settings/AiProvidersSection')) as { AiProvidersSection: (p: unknown) => unknown }
+      const root = { type: AiProvidersSection, props: { autoFocus: false } }
+      const skip = ['ProviderForm', 'LocalAiRow']
+      let els = await settle(root, skip)
+      ;(els.find((e) => e.props['aria-label'] === 'Edit Work')!.props.onClick as () => void)()
+      els = await settle(root, skip)
+      const formEl = els.find((e) => (e.type as { name?: string }).name === 'ProviderForm')!
+      const service = { id: 'svcnew', kind: 'openai', label: 'Work', model: 'openrouter/auto', maskedKey: '…6789', createdAt: '', service: { preset: 'openrouter', baseUrl: 'https://openrouter.ai/api/v1', host: 'openrouter.ai', loopback: false, json: 'schema' } } as AiProviderInfo
+      ;(formEl.props.onSaved as (saved: AiProviderInfo) => void)(service)
+      els = await settle(root, skip)
+      const rows = els.filter((e) => e.type === 'li' && typeof e.props['data-provider-id'] === 'string').map((e) => e.props['data-provider-id'])
+      expect(rows).toEqual(['svcnew', 'ai2'])
+    } finally {
+      delete (globalThis as { document?: unknown }).document
+      delete (globalThis as { CSS?: unknown }).CSS
+      api.listed = []
+    }
   })
 })

@@ -173,7 +173,8 @@ export function AiProvidersSection({ onChanged, autoFocus = true }: { onChanged?
           onSaved={(saved, check?: CheckResult) => {
             setProviders((list) => {
               const rest = (list ?? []).filter((p) => p.id !== saved.id)
-              return mode.kind === 'edit' ? (list ?? []).map((p) => (p.id === saved.id ? saved : p)) : [...rest, saved]
+              // An edit takes the row it was opened from (a service edited into a provider is saved under a new id).
+              return mode.kind === 'edit' ? (list ?? []).map((p) => (p.id === mode.provider.id ? saved : p)) : [...rest, saved]
             })
             setTests((t) => {
               const { [saved.id]: _gone, ...rest } = t

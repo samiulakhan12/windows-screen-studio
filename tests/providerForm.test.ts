@@ -36,7 +36,7 @@ const MOVED: ModelList = {
   updated: '2027-02-01',
   providers: { ...BUNDLED_MODEL_LIST.providers, openai: { ...BUNDLED_MODEL_LIST.providers.openai, transcriptionModel: 'gpt-transcribe' } }
 }
-const main = { list: WHISPER, store: null as unknown as AiProviderStore, sent: [] as Record<string, unknown>[] }
+const main = { list: WHISPER, store: null as unknown as AiProviderStore, sent: [] as Record<string, unknown>[], removed: [] as string[] }
 const box: SecretBox = {
   isEncryptionAvailable: () => true,
   encryptString: (plain) => Buffer.from(`v10${plain}`),
@@ -48,6 +48,11 @@ vi.stubGlobal('window', {
     saveAiProvider: (input: Record<string, unknown>) => {
       main.sent.push(input)
       return Promise.resolve(main.store.save(structuredClone(input)))
+    },
+    removeAiProvider: (id: string) => {
+      main.removed.push(id)
+      main.store.remove(id)
+      return Promise.resolve()
     }
   }
 })
@@ -154,6 +159,7 @@ describe('Settings › AI provider form: the suggested transcription model follo
     main.list = WHISPER
     main.store = new AiProviderStore(file, box, (kind) => main.list.providers[kind])
     main.sent = []
+    main.removed = []
   })
   afterEach(() => {
     unmount()
@@ -226,5 +232,21 @@ describe('Settings › AI provider form: the suggested transcription model follo
       ['Chosen 2', 'gpt-4o-transcribe']
     ])
     expect(onDisk().map((p) => p.transcriptionModel)).toEqual([undefined, 'gpt-4o-transcribe'])
+  })
+
+  it('an edit to another kind changes that provider, with the new kind\'s key: no second provider is added (smart-tools.md §10.1)', async () => {
+    const openai = main.store.save({ kind: 'openai', label: 'OpenAI', apiKey: 'sk-proj-THISISASECRETKEY1234abcd' })
+    const { render, saved } = mount(openai)
+    render()
+    await flush()
+    const radio = (out: El[], label: string): El => out.find((e) => e.props.role === 'radio' && e.props.children === label)!
+    ;(radio(render(), 'Google Gemini').props.onClick as () => void)()
+    // A new kind needs its own key: the stored one is OpenAI's.
+    type(input(render(), (p) => p.id === ':f:-key'), 'AIzaSyTHISISAGEMINIKEY0123456789abcdef')
+    await submit(render)
+    expect(main.sent[0].id).toBe(openai.id)
+    expect(main.store.list().map((p) => [p.id, p.kind, p.label])).toEqual([[openai.id, 'gemini', 'OpenAI']])
+    expect(saved.map((p) => p.id)).toEqual([openai.id])
+    expect(main.removed).toEqual([])
   })
 })
