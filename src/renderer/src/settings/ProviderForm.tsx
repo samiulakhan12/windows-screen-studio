@@ -157,7 +157,9 @@ export function ProviderForm({
     }
   }
   const draft = input(true)
-  const target: ModelListTarget | null = draft ? { draft: { ...draft, label: draft.label || 'draft' } } : null
+  // Load models: a draft of another kind names no provider (main lends a stored key only to its own kind; this one needs its key typed).
+  const { id: _stored, ...unnamed } = draft ?? {}
+  const target: ModelListTarget | null = draft ? { draft: { ...(sameKind ? draft : (unnamed as AiProviderInput)), label: draft.label || 'draft' } } : null
 
   /**
    * Keeps the prices typed for provider `pid` (pref aiPrices), or forgets them when cleared, or when

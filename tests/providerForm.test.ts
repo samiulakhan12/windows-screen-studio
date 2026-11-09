@@ -36,7 +36,7 @@ const MOVED: ModelList = {
   updated: '2027-02-01',
   providers: { ...BUNDLED_MODEL_LIST.providers, openai: { ...BUNDLED_MODEL_LIST.providers.openai, transcriptionModel: 'gpt-transcribe' } }
 }
-const main = { list: WHISPER, store: null as unknown as AiProviderStore, sent: [] as Record<string, unknown>[], removed: [] as string[] }
+const main = { list: WHISPER, store: null as unknown as AiProviderStore, sent: [] as Record<string, unknown>[], removed: [] as string[], listed: [] as { draft?: Record<string, unknown> }[] }
 const box: SecretBox = {
   isEncryptionAvailable: () => true,
   encryptString: (plain) => Buffer.from(`v10${plain}`),
@@ -48,6 +48,10 @@ vi.stubGlobal('window', {
     saveAiProvider: (input: Record<string, unknown>) => {
       main.sent.push(input)
       return Promise.resolve(main.store.save(structuredClone(input)))
+    },
+    listModels: (target: { draft?: Record<string, unknown> }) => {
+      main.listed.push(structuredClone(target))
+      return Promise.resolve([])
     },
     removeAiProvider: (id: string) => {
       main.removed.push(id)
@@ -160,6 +164,7 @@ describe('Settings › AI provider form: the suggested transcription model follo
     main.store = new AiProviderStore(file, box, (kind) => main.list.providers[kind])
     main.sent = []
     main.removed = []
+    main.listed = []
   })
   afterEach(() => {
     unmount()
@@ -240,7 +245,18 @@ describe('Settings › AI provider form: the suggested transcription model follo
     render()
     await flush()
     const radio = (out: El[], label: string): El => out.find((e) => e.props.role === 'radio' && e.props.children === label)!
+    const loadModels = (): void => (render().find((e) => e.type === 'button' && e.props.children === 'Load models')!.props.onClick as () => void)()
+    // Load models of the same kind names the provider (main lends it its stored key)…
+    loadModels()
+    await flush()
     ;(radio(render(), 'Google Gemini').props.onClick as () => void)()
+    // … of another kind it does not: that kind's key is typed first ("Enter the API key.").
+    loadModels()
+    await flush()
+    expect(main.listed.map((t) => [t.draft?.kind, t.draft?.id])).toEqual([
+      ['openai', openai.id],
+      ['gemini', undefined]
+    ])
     // A new kind needs its own key: the stored one is OpenAI's.
     type(input(render(), (p) => p.id === ':f:-key'), 'AIzaSyTHISISAGEMINIKEY0123456789abcdef')
     await submit(render)
