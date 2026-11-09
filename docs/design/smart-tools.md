@@ -1017,7 +1017,8 @@ So nothing that was blurred or pixelated in the video can appear in a guide (tes
   the shown part is not the recorded frame). Dragging snaps to the frame's edges within 8 px. Keys: Tab
   moves between the crop and the ring; arrows move the focused one by 1% of the frame (Shift: 10%);
   Alt with arrows resizes the crop. **Done** stores `rect` and `ring` (fractions of the recorded
-  frame) in one update; **Reset** removes them. A crop under 5% of the frame is refused.
+  frame) in one update; **Reset** removes them. A crop under 5% of the frame is refused. *Adjust*
+  puts the focus on the crop; Done, Reset and Cancel put it back on the picture.
 - Output width: the crop's, at most 1600 px (twice an 800 px column in HTML; 223 ppi across 182 mm),
   scaled down with high-quality smoothing.
 - A click outside the picture (outside the recorded region, or cropped away by `project.crop`) keeps
@@ -2321,7 +2322,7 @@ joins `tests/labelContrast.test.ts`.
 | Screenshot | button "View screenshot for step 3 full size" holding the `img` (alt "Screenshot for step 3"), or `aria-busy` while made | Enter, Space | — |
 | Next step without a title, Check screenshots | buttons | Enter | live: "Step 7 needs a title" when focus moves |
 | Full-size viewer | `dialog` "Screenshot for step 3 of 30", modal (`useModalFocus`); the image area a focusable `group` "Screenshot, 100%" | arrows, Page Up, Page Down, Home, End pan; Esc closes and returns focus to the row's screenshot button | live: "Checked 12 of 30" in *Check screenshots* |
-| Adjust | the crop and the ring as two focusable buttons whose names hold their place: "Crop, 45% wide, from 20% across and 10% down", "Ring at 42% across, 30% down"; Done and Reset buttons | Tab between them; arrows move by 1% (Shift 10%); Alt + arrows resize the crop; Enter is Done | live: the new place after each move |
+| Adjust | the crop and the ring as two focusable buttons whose names hold their place: "Crop, 45% wide, from 20% across and 10% down", "Ring at 42% across, 30% down"; Done and Reset buttons | Adjust focuses the crop; Tab between them; arrows move by 1% (Shift 10%); Alt + arrows resize the crop; Enter is Done; Done, Reset and Cancel focus the picture again | live: the new place after each move |
 | Screenshots progress | `progressbar` "Making screenshots", value text "12 of 30" | — | live (polite) at the end: "Screenshots ready" |
 | Save, Copy guide, Copy screenshot | buttons | Enter | live: "Saved “Billing guide.pdf”." with Show in folder; "Copied the guide with 12 screenshots." |
 | Find chapters | button; Options a disclosure button `aria-expanded` | Enter, Space | live: the notice text |

@@ -107,6 +107,28 @@ describe('test 112: Adjust', () => {
     expect(byTestId(render(viewer()), 'guide-adjust-ring')).toBeUndefined()
   })
 
+  it('Adjust takes the focus to the crop, and Done or Cancel gives it back to the screenshot', () => {
+    const at = (): unknown => focused.at(-1)?.props['data-testid']
+    let els = render(viewer())
+    expect(at()).toBe('guide-viewer-area')
+    click(byTestId(els, 'guide-viewer-adjust'))
+    els = render(viewer())
+    expect(at()).toBe('guide-adjust-crop')
+    // A move keeps it there; Enter is Done.
+    press(byTestId(els, 'guide-adjust-crop'), 'ArrowLeft')
+    els = render(viewer())
+    expect(at()).toBe('guide-adjust-crop')
+    press(byTestId(els, 'guide-adjust-crop'), 'Enter')
+    render(viewer())
+    expect(at()).toBe('guide-viewer-area')
+    click(byTestId(render(viewer()), 'guide-viewer-adjust'))
+    els = render(viewer())
+    expect(at()).toBe('guide-adjust-crop')
+    click(els.find((e) => e.type === 'button' && textOf(e) === 'Cancel'))
+    render(viewer())
+    expect(at()).toBe('guide-viewer-area')
+  })
+
   it('Reset removes them (null): the shot is zoomed to the click again', () => {
     click(byTestId(render(viewer()), 'guide-viewer-adjust'))
     click(byTestId(render(viewer()), 'guide-adjust-reset'))

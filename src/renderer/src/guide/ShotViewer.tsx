@@ -4,8 +4,9 @@
  * the keyboard (arrows pan 40 px, Page Up and Down a screen, Home and End to the edges), Fit,
  * Previous and Next, *Blur an area…*, and *Adjust*: the crop as a rectangle with 8 handles and the
  * ring as a movable circle over the whole frame, moved by the keyboard (arrows 1%, Shift 10%, Alt
- * resizes the crop, Enter is Done) or the pointer. In *Check screenshots* a line counts the shots
- * seen at 100%. Esc closes it and the focus goes back to the screenshot button that opened it.
+ * resizes the crop, Enter is Done) or the pointer; Adjust puts the focus on the crop, and Done, Reset
+ * or Cancel puts it back on the picture. In *Check screenshots* a line counts the shots seen at 100%.
+ * Esc closes it and the focus goes back to the screenshot button that opened it.
  *
  * The send form (`mode: 'send'`, part P6, §5.3.1): titled "These screenshots go to OpenAI", every
  * picture that would go, one at a time, as the very bytes that go, with Previous, Next and a checkbox
@@ -108,6 +109,16 @@ export function ShotViewer(props: {
     if (sending && (opening || !(document.activeElement as HTMLButtonElement | null)?.disabled)) return
     areaRef.current?.focus()
   }, [at, sending])
+  // Adjust takes the focus to the crop; Done, Reset or Cancel gives it back to the screenshot (the
+  // button that had it is gone).
+  const cropRef = useRef<HTMLButtonElement>(null)
+  const isAdjusting = !!adjusting
+  const wasAdjusting = useRef(false)
+  useEffect(() => {
+    if (isAdjusting === wasAdjusting.current) return
+    wasAdjusting.current = isAdjusting
+    ;(isAdjusting ? cropRef.current : areaRef.current)?.focus()
+  }, [isAdjusting])
 
   if (!shot) return <></>
   const total = props.total ?? shots.length
@@ -274,6 +285,7 @@ export function ShotViewer(props: {
               {frameUrl && <img src={frameUrl} alt={`The whole screen for ${shot.label}`} width={shot.adjust.frame.width} height={shot.adjust.frame.height} draggable={false} />}
               <button
                 type="button"
+                ref={cropRef}
                 className="guide-adjust-crop"
                 aria-label={cropName(adjusting.rect)}
                 data-testid="guide-adjust-crop"
