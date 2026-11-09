@@ -2213,10 +2213,14 @@ one line. Its parts:
   *Never*. On this PC, over 10 minutes: "This takes about 25 minutes on this PC. You can keep editing
   meanwhile. Start?". A palette command that runs one of these tools (*Find chapters*, *Suggest
   chapters with AI*, the title and the summary, the Publish dialog's *Write* commands) presses the
-  tool's button, so the same question comes first. A run no line's button starts asks it itself
-  (`confirmRequest`, from the request it sends): *Make my captions great* with AI picks, from its
-  button or the palette (its line is in the options popover), and a caption language's *Translate
-  again*. Polish's line holds a click on **Polish**, which starts the paid Captions step.
+  tool's button, so the same question comes first. It waits until the providers and the cost
+  settings are read (`useCostDataRead`), so the question follows *Always ask* also when no cost line
+  was shown yet; *Find chapters* also waits for its options as last used (and, with names on this
+  PC, for AI on this PC's state), so the run uses them when the Text tab was not open. A run no
+  line's button starts asks it itself (`confirmRequest`, from the request it sends): *Make my
+  captions great* with AI picks, from its button or the palette (its line is in the options
+  popover), and a caption language's *Translate again*. Polish's line holds a click on **Polish**,
+  which starts the paid Captions step.
 - Where the line appears (each tied to its buttons by `aria-describedby`):
 
 | Place | Group or action |

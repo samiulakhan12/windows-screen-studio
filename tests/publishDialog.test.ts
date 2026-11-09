@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, onTestFinished, vi } from 'vitest'
 import { createProject } from '../src/shared/engine/project'
 import { composeYoutubeDescription, exportDescription, projectYoutubeChapters } from '../src/shared/publish/youtube'
 import type { CaptionSegment, Project } from '../src/shared/types'
@@ -43,6 +43,8 @@ function deferred<T>(): { promise: Promise<T>; resolve: (v: T) => void; reject: 
 const OPENAI = { id: 'o', kind: 'openai', label: '', model: 'm', transcriptionModel: 't', maskedKey: '', createdAt: '' }
 /** The providers list waits for this. */
 let providersGate = deferred<void>()
+/** While set, reading pref aiConfirm waits for it (the cost settings still being read). */
+let confirmGate: Promise<void> | null = null
 /** What the AI provider was asked (window.api.aiText), each with the captions sent and its answer to give. */
 const asked: { task: string; segments: CaptionSegment[]; answer: ReturnType<typeof deferred<unknown>> }[] = []
 /** Whether the clipboard takes the text. */
@@ -52,6 +54,7 @@ let clipboardText = ''
 vi.stubGlobal('window', {
   api: {
     listAiProviders: () => providersGate.promise.then(() => [OPENAI]),
+    getPref: (key: string) => (key === 'aiConfirm' && confirmGate ? confirmGate.then(() => null) : Promise.resolve(null)),
     aiText: (_provider: string, request: { task: string; segments: CaptionSegment[] }) => {
       const answer = deferred<unknown>()
       asked.push({ task: request.task, segments: request.segments, answer })
@@ -174,6 +177,8 @@ vi.doMock('../src/renderer/src/editor/modalFocus', () => ({ useModalFocus: () =>
 // Renderer code: imported at run time so the Node typecheck of tests/ does not follow it.
 const DIALOG = '../src/renderer/src/publish/PublishDialog'
 const { PublishDialog } = (await import(/* @vite-ignore */ DIALOG)) as { PublishDialog: (props: unknown) => unknown }
+const USE_COST = '../src/renderer/src/ai/useCost'
+const { refreshCostData } = (await import(/* @vite-ignore */ USE_COST)) as { refreshCostData(): Promise<void> }
 
 const textOf = (node: unknown): string =>
   Array.isArray(node) ? node.map(textOf).join('') : typeof node === 'string' || typeof node === 'number' ? String(node) : node && typeof node === 'object' && 'props' in node ? textOf((node as El).props.children) : ''
@@ -847,6 +852,23 @@ describe('Publish dialog: a palette command shows the card it writes (§5.2)', (
     // Cancel: nothing is sent.
     expect(asked).toEqual([])
     expect(focused).toBe('Release notes text')
+  })
+
+  it('a command given as the dialog opens waits for the cost settings too, so the cost line asks as they say (smart-tools.md §11.5)', async () => {
+    // The cost settings still being read, as when no cost line has read them yet this session.
+    let read!: () => void
+    confirmGate = new Promise((r) => (read = r))
+    onTestFinished(() => void (confirmGate = null))
+    void refreshCostData()
+    request = { kind: 'releaseNotes', n: 1 }
+    held = true
+    await opened()
+    expect(pressed).toEqual([])
+    read()
+    await flush()
+    render()
+    expect(pressed).toEqual(['publish-releaseNotes-write'])
+    expect(asked).toEqual([])
   })
 
   it('"Write release notes": that card stays in view, with the focus on its text, not on Write all', async () => {

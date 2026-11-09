@@ -43,6 +43,8 @@ const scrolled: { el: El; options: unknown }[] = []
 /** Buttons pressed through their ref (click()); while `held.on`, the click is held, as the cost line holds one to ask first. */
 const pressed: El[] = []
 const held = { on: false }
+/** While set, reading pref aiConfirm waits for it (the cost settings still being read). */
+const prefGate: { aiConfirm: Promise<void> | null } = { aiConfirm: null }
 
 const runs: ReturnType<typeof deferred<unknown>>[] = []
 /** What the AI tools asked the provider (window.api.aiText): the task, the captions sent, and its answer to give. */
@@ -95,7 +97,7 @@ vi.stubGlobal('window', {
     },
     cancelTranscription: () => Promise.resolve(),
     // Find chapters' options, as last used (none saved: the defaults).
-    getPref: () => Promise.resolve(null),
+    getPref: (key: string) => (key === 'aiConfirm' && prefGate.aiConfirm ? prefGate.aiConfirm.then(() => null) : Promise.resolve(null)),
     aiText: (_id: string, request: { task: string; segments: { text: string }[] }) => {
       const answer = deferred<unknown>()
       aiAsked.push({ task: request.task, segments: request.segments, answer })
@@ -1423,6 +1425,22 @@ describe('CaptionsPanel: AI tools from the command palette (NW-13)', () => {
     held.on = false
     command('title')
     expect(aiAsked.map((a) => a.task)).toEqual(['title'])
+  })
+
+  it('a command given as the tab opens waits for the cost settings, so the cost line asks as they say (smart-tools.md §11.5)', async () => {
+    // The cost settings still being read: no cost line has read them yet this session.
+    let read!: () => void
+    prefGate.aiConfirm = new Promise((r) => (read = r))
+    onTestFinished(() => void (prefGate.aiConfirm = null))
+    pressed.length = 0
+    m.items.requestCaptions({ kind: 'ai', task: 'summary' })
+    await show()
+    expect(pressed).toEqual([])
+    expect(aiAsked).toEqual([])
+    read()
+    await show()
+    expect(pressed.map((b) => b.props.id)).toEqual(['captions-ai-summary'])
+    expect(aiAsked.map((a) => a.task)).toEqual(['summary'])
   })
 
   /** The link check's confirm (publish-pack §4.8): the pieces it lists, or null when none shows. */
