@@ -544,7 +544,8 @@ export function ShortClipsPanel(props: { project: Project; cursor: CursorTrack; 
           {moments.length > 0 && (
             <div className="clips-foot">
               <div className="clips-make">
-                {/* With names from an AI, Make also reads what it sends and costs (§11.5): the cost line's sentence.
+                {/* With names from an AI, Make also reads what it sends and costs (§11.5): the cost line's sentence; when the
+                    copies would not fit, the space line that says so (§14).
                     While the copies are made it waits with aria-disabled: a disabled button would drop the keyboard focus to the page. */}
                 <button
                   type="button"
@@ -553,7 +554,7 @@ export function ShortClipsPanel(props: { project: Project; cursor: CursorTrack; 
                   data-testid="clips-make"
                   disabled={n === 0 || !!space?.blocked}
                   aria-disabled={busy || undefined}
-                  aria-describedby={namesChoice ? `${ids}-cost-names` : undefined}
+                  aria-describedby={[space?.blocked ? `${ids}-space` : '', namesChoice ? `${ids}-cost-names` : ''].filter(Boolean).join(' ') || undefined}
                   onClick={() => void make()}
                 >
                   {makeLabel}
@@ -567,7 +568,7 @@ export function ShortClipsPanel(props: { project: Project; cursor: CursorTrack; 
                 <LocalProgress requestId={naming} onStop={stop} />
               </div>
               {space && (
-                <p className={space.blocked ? 'clips-space blocked' : 'clips-space'} data-testid="clips-space">
+                <p id={`${ids}-space`} className={space.blocked ? 'clips-space blocked' : 'clips-space'} data-testid="clips-space">
                   {space.text}
                 </p>
               )}

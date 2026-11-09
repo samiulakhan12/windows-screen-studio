@@ -139,6 +139,10 @@ describe('the panel (test 125)', () => {
     out = await settle(view())
     expect(textOf(byTestId(out, 'clips-space'))).toBe('These 2 copies need 2.4 GB; 2.1 GB is free.')
     expect(byTestId(out, 'clips-make')!.props.disabled).toBe(true)
+    // The disabled button reads why (§14).
+    const spaceId = byTestId(out, 'clips-space')!.props.id
+    expect(spaceId).toEqual(expect.any(String))
+    expect(String(byTestId(out, 'clips-make')!.props['aria-describedby']).split(/\s+/)).toContain(spaceId)
   })
 
   it('Made from this video lists copies of this project only, each with Open', async () => {
