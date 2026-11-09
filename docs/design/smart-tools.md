@@ -2223,8 +2223,10 @@ one line. Its parts:
   chapters with AI*, the title and the summary, the Publish dialog's *Write* commands) presses the
   tool's button, so the same question comes first. It waits until the providers and the cost
   settings are read (`useCostDataRead`), so the question follows *Always ask* also when no cost line
-  was shown yet; *Find chapters* also waits for its options as last used (and, with names on this
-  PC, for AI on this PC's state), so the run uses them when the Text tab was not open. A run no
+  was shown yet, and, when the saved choice is On this PC, until AI on this PC's state is read, so
+  the run never goes to the first provider meanwhile (*Find chapters*' names, the Publish dialog's
+  provider); *Find chapters* also waits for its options as last used, so the run uses them when the
+  Text tab was not open. A run no
   line's button starts asks it itself (`confirmRequest`, from the request it sends): *Make my
   captions great* with AI picks, from its button or the palette (its line is in the options
   popover), and a caption language's *Translate again*. Polish's line holds a click on **Polish**,

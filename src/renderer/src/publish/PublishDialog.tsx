@@ -4,7 +4,7 @@
  * copied exactly as shown; the YouTube description gets its chapter timestamps from the timeline.
  */
 import { useEffect, useMemo, useRef, useState } from 'react'
-import type { AiTextRequest, TextChoice } from '../../../shared/api/ai'
+import { LOCAL_TEXT_ID, type AiTextRequest, type TextChoice } from '../../../shared/api/ai'
 import { notedPieces, saidLinks, type Noted, type Said as Spoken } from '../../../shared/publish/check'
 import { BLOCKER_TEXT, PUBLISH_KINDS, PUBLISH_LABELS, PUBLISH_LENGTHS, PUBLISH_TONES, publishBlocker, publishSegments, transcriptKey, type PublishKind, type PublishPrefs } from '../../../shared/publish/pack'
 import { plainText, xLength, X_LIMIT } from '../../../shared/publish/text'
@@ -22,7 +22,7 @@ import { checkNote, NotedConfirm, type NotedAsk } from './checkNote'
 import { loadPublishPrefs, savePublishPrefs } from './publishPrefs'
 import { editItem, isRunning, itemRequestId, packRequest, seedItem, stopAll, stopItem, usePackItems, writeItem, type PackItem, type WriteContext } from './publishRun'
 import { textChoicesOf } from '../ai/textChoices'
-import { useLocalAiReady } from '../ai/localAiState'
+import { useLocalAi, useLocalAiReady } from '../ai/localAiState'
 import { CostLine } from '../ai/CostLine'
 import { useCostDataRead } from '../ai/useCost'
 import { LocalProgress, LocalWritten } from '../ai/LocalProgress'
@@ -149,19 +149,21 @@ export function PublishDialog({ project, request, onClose, onGenerateCaptions, o
     focusFirst()
   }, [providers === null, !!blocker]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // The item a palette command asked for, once the providers and the cost settings are read: its card is
-  // shown, with the focus on its text. After the focus above, which would scroll the dialog back to Write
-  // all. Its Write is pressed, so the cost line asks its question first, as for a click (smart-tools.md §11.5).
+  // The item a palette command asked for, once the providers and the cost settings are read (and, with On
+  // this PC saved, its state, so the run does not go to the first provider meanwhile): its card is shown,
+  // with the focus on its text. After the focus above, which would scroll the dialog back to Write all. Its
+  // Write is pressed, so the cost line asks its question first, as for a click (smart-tools.md §11.5).
   const handled = useRef(0)
   const costRead = useCostDataRead()
+  const localRead = useLocalAi().status !== 'loading'
   useEffect(() => {
-    if (!request || request.n === handled.current || providers === null || !costRead) return
+    if (!request || request.n === handled.current || providers === null || !costRead || (prefs.provider === LOCAL_TEXT_ID && !localRead)) return
     handled.current = request.n
     if (context()) document.getElementById(`publish-${request.kind}-write`)?.click()
     const card = document.querySelector<HTMLElement>(`[data-publish-card="${request.kind}"]`)
     card?.scrollIntoView({ block: 'nearest' })
     card?.querySelector<HTMLElement>('.publish-text')?.focus({ preventScroll: true })
-  }, [request, providers, costRead]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [request, providers, costRead, localRead]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const running = PUBLISH_KINDS.filter((k) => isRunning(items[k].status))
   const done = PUBLISH_KINDS.filter((k) => items[k].status === 'done').length

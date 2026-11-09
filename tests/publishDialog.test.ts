@@ -45,8 +45,8 @@ const OPENAI = { id: 'o', kind: 'openai', label: '', model: 'm', transcriptionMo
 let providersGate = deferred<void>()
 /** While set, reading pref aiConfirm waits for it (the cost settings still being read). */
 let confirmGate: Promise<void> | null = null
-/** What the AI provider was asked (window.api.aiText), each with the captions sent and its answer to give. */
-const asked: { task: string; segments: CaptionSegment[]; answer: ReturnType<typeof deferred<unknown>> }[] = []
+/** What the AI provider was asked (window.api.aiText), each with where it went, the captions sent and its answer to give. */
+const asked: { provider: string; task: string; segments: CaptionSegment[]; answer: ReturnType<typeof deferred<unknown>> }[] = []
 /** Whether the clipboard takes the text. */
 let clipboardTakes = true
 /** What the clipboard took last. */
@@ -55,9 +55,9 @@ vi.stubGlobal('window', {
   api: {
     listAiProviders: () => providersGate.promise.then(() => [OPENAI]),
     getPref: (key: string) => (key === 'aiConfirm' && confirmGate ? confirmGate.then(() => null) : Promise.resolve(null)),
-    aiText: (_provider: string, request: { task: string; segments: CaptionSegment[] }) => {
+    aiText: (provider: string, request: { task: string; segments: CaptionSegment[] }) => {
       const answer = deferred<unknown>()
-      asked.push({ task: request.task, segments: request.segments, answer })
+      asked.push({ provider, task: request.task, segments: request.segments, answer })
       return answer.promise
     },
     cancelAiText: () => Promise.resolve()
@@ -182,6 +182,10 @@ const DIALOG = '../src/renderer/src/publish/PublishDialog'
 const { PublishDialog } = (await import(/* @vite-ignore */ DIALOG)) as { PublishDialog: (props: unknown) => unknown }
 const USE_COST = '../src/renderer/src/ai/useCost'
 const { refreshCostData } = (await import(/* @vite-ignore */ USE_COST)) as { refreshCostData(): Promise<void> }
+const PREFS = '../src/renderer/src/publish/publishPrefs'
+const { savePublishPrefs } = (await import(/* @vite-ignore */ PREFS)) as { savePublishPrefs(prefs: { tone: string; length: string; provider: string }): void }
+const LOCAL_AI = '../src/renderer/src/ai/localAiState'
+const { setLocalAiState } = (await import(/* @vite-ignore */ LOCAL_AI)) as { setLocalAiState(state: unknown): void }
 
 const textOf = (node: unknown): string =>
   Array.isArray(node) ? node.map(textOf).join('') : typeof node === 'string' || typeof node === 'number' ? String(node) : node && typeof node === 'object' && 'props' in node ? textOf((node as El).props.children) : ''
@@ -906,6 +910,39 @@ describe('Publish dialog: a palette command shows the card it writes (§5.2)', (
     render()
     expect(pressed).toEqual(['publish-releaseNotes-write'])
     expect(asked).toEqual([])
+  })
+
+  it('with On this PC saved, a command waits for the state of AI on this PC, so the captions go there and not to the first provider (smart-tools.md §11.5)', async () => {
+    // The cost settings were read earlier this session, by a cost line that does not read the state of AI on this PC (Polish's).
+    await refreshCostData()
+    // The provider saved last time is On this PC, and its state is still being read as the dialog opens.
+    const stored = new Map<string, string>()
+    const g = globalThis as { localStorage?: unknown }
+    g.localStorage = { getItem: (k: string) => stored.get(k) ?? null, setItem: (k: string, v: string) => void stored.set(k, v) }
+    savePublishPrefs({ tone: 'friendly', length: 'normal', provider: 'local' })
+    const api = (globalThis as unknown as { window: { api: Record<string, unknown> } }).window.api
+    let readState!: () => void
+    const state = new Promise<void>((r) => (readState = r))
+    api.localAiState = () => state.then(() => ({ models: [{ id: 'gemma4-e2b', state: 'ready', bytes: 1, block: null }], use: 'auto', active: null, pc: {}, speeds: {} }))
+    onTestFinished(() => {
+      delete g.localStorage
+      delete api.localAiState
+      // No model is ready for the tests after this one: none of them offers On this PC.
+      setLocalAiState({ models: [], use: 'auto', active: null, pc: {}, speeds: {} })
+    })
+    request = { kind: 'youtube', n: 1 }
+    await opened()
+    await flush()
+    render()
+    // Not yet known whether On this PC is offered: nothing is pressed, so nothing goes to OpenAI.
+    expect(pressed).toEqual([])
+    expect(asked).toEqual([])
+    readState()
+    await flush()
+    const out = render()
+    expect(pressed).toEqual(['publish-youtube-write'])
+    expect(asked.map((a) => [a.provider, a.task])).toEqual([['local', 'youtube']])
+    expect(out.find((e) => e.type === 'select' && e.props.value === 'local')).toBeTruthy()
   })
 
   it('"Write release notes": that card stays in view, with the focus on its text, not on Write all', async () => {
