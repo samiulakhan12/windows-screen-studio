@@ -23,6 +23,10 @@ import { AiError, callWithRetry, isNetworkError, sleep } from './request'
 import { retiredFailure } from './retired'
 import type { AiClient, AudioPart } from './types'
 import { glossaryLine } from '../../shared/captions/cleanup'
+import type { ListedModel } from '../../shared/api/ai'
+import { fetchModelJson, MODEL_LIST_MAX_IDS, MODEL_LIST_TIMEOUT_MS, readListedIds, noRedirectFetch } from './listFetch'
+import { registerSecret } from './secrets'
+import { noteUsage } from './usage'
 
 const OFFICIAL_URL = 'https://generativelanguage.googleapis.com/'
 const PROVIDER = AI_PROVIDER_KINDS.gemini.label
@@ -93,7 +97,10 @@ const TRANSCRIBE_PROMPT =
 
 export function geminiClient(apiKey: string, model: string, transcriptionModel: string): AiClient {
   // Explicit base URL: GOOGLE_GEMINI_BASE_URL in the user's environment must not redirect their key.
-  const ai = new GoogleGenAI({ apiKey, vertexai: false, httpOptions: { baseUrl: baseUrlOverride('gemini') ?? OFFICIAL_URL, retryOptions: { attempts: 1 } } })
+  const baseUrl = baseUrlOverride('gemini') ?? OFFICIAL_URL
+  const ai = new GoogleGenAI({ apiKey, vertexai: false, httpOptions: { baseUrl, retryOptions: { attempts: 1 } } })
+  // Taken out of logs and of any failure message that repeats it (smart-tools.md §16.5).
+  registerSecret(apiKey)
   const base = { provider: PROVIDER, toFailure: geminiFailure }
   const inlineMax = testLimit('SSW_AI_GEMINI_INLINE_BYTES') ?? INLINE_MAX
 
@@ -156,7 +163,27 @@ export function geminiClient(apiKey: string, model: string, transcriptionModel: 
       }
     },
 
-    async json(prompt, { signal }) {
+    // The models that write text (generateContent), without "models/" (smart-tools.md §10.4), page by page.
+    async models(signal) {
+      const stop = AbortSignal.any([signal, AbortSignal.timeout(MODEL_LIST_TIMEOUT_MS)])
+      const root = baseUrl.replace(/\/+$/, '')
+      const fetchFn = noRedirectFetch(new URL(root).origin)
+      const out: ListedModel[] = []
+      let token: string | null = null
+      for (let page = 0; page < 20 && out.length < MODEL_LIST_MAX_IDS; page++) {
+        const url = `${root}/v1beta/models?pageSize=1000${token ? `&pageToken=${encodeURIComponent(token)}` : ''}`
+        const body = (await fetchModelJson(url, { 'x-goog-api-key': apiKey, Accept: 'application/json' }, stop, fetchFn, PROVIDER)) as { models?: unknown; nextPageToken?: unknown } | null
+        const models = Array.isArray(body?.models) ? body.models : []
+        const writers = models.filter((m) => isObject(m) && Array.isArray(m.supportedGenerationMethods) && m.supportedGenerationMethods.includes('generateContent'))
+        const listed = readListedIds(writers, () => ({}), (m) => (isObject(m) && typeof m.name === 'string' ? m.name.replace(/^models\//, '') : null))
+        for (const m of listed) if (out.length < MODEL_LIST_MAX_IDS && !out.some((x) => x.id === m.id)) out.push(m)
+        if (typeof body?.nextPageToken !== 'string' || !body.nextPageToken) break
+        token = body.nextPageToken
+      }
+      return out
+    },
+
+    async json(prompt, { signal, onUsage }) {
       const response = await callWithRetry(
         (s) =>
           ai.models.generateContent({
@@ -168,7 +195,15 @@ export function geminiClient(apiKey: string, model: string, transcriptionModel: 
       ).catch((err: unknown) => {
         throw retiredFailure(err, 'gemini', model, 'text')
       })
-      return parseJson(answerText(response))
+      // The tokens it reports, its thinking counted as output (smart-tools.md §11.6).
+      const u = response.usageMetadata
+      const text = answerText(response)
+      if (u && Number.isFinite(u.promptTokenCount) && Number.isFinite(u.candidatesTokenCount)) {
+        const used = { input: u.promptTokenCount!, output: u.candidatesTokenCount! + (u.thoughtsTokenCount ?? 0) }
+        onUsage?.(used)
+        noteUsage('gemini', model, prompt, text, used)
+      }
+      return parseJson(text)
     }
   }
 }

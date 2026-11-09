@@ -18,6 +18,10 @@ import type { FailureInfo } from '../../shared/captions/transcriptErrors'
 import { baseUrlOverride } from './endpoints'
 import { AiError, callWithRetry, isNetworkError, retryAfterSeconds } from './request'
 import type { AiClient } from './types'
+import { fetchModelJson, MODEL_LIST_MAX_IDS, MODEL_LIST_TIMEOUT_MS, readListedIds, noRedirectFetch } from './listFetch'
+import { registerSecret } from './secrets'
+import { noteUsage } from './usage'
+import type { ListedModel } from '../../shared/api/ai'
 
 const OFFICIAL_URL = 'https://api.anthropic.com'
 const PROVIDER = AI_PROVIDER_KINDS.anthropic.label
@@ -82,21 +86,46 @@ export function claudeAnswerText(message: Pick<Anthropic.Beta.Messages.BetaMessa
 export function anthropicClient(apiKey: string, model: string): AiClient {
   // Explicit base URL and no auth token: ANTHROPIC_BASE_URL / ANTHROPIC_AUTH_TOKEN in the user's
   // environment must not apply; and no logging, whatever ANTHROPIC_LOG says.
-  const client = new Anthropic({ apiKey, authToken: null, baseURL: baseUrlOverride('anthropic') ?? OFFICIAL_URL, maxRetries: 0, timeout: 30 * 60_000, logLevel: 'off' })
+  const baseURL = baseUrlOverride('anthropic') ?? OFFICIAL_URL
+  const client = new Anthropic({ apiKey, authToken: null, baseURL, maxRetries: 0, timeout: 30 * 60_000, logLevel: 'off' })
   const base = { provider: PROVIDER, model, toFailure: anthropicFailure }
+  // Taken out of logs and of any failure message that repeats it (smart-tools.md §16.5).
+  registerSecret(apiKey)
   return {
     async test(signal) {
       await callWithRetry((s) => client.models.retrieve(model, {}, { signal: s }), { ...base, signal, timeoutMs: 30_000, attempts: 2 })
       return `The key works, and “${model}” is available. Claude can clean up, translate and summarise transcripts; it cannot transcribe sound.`
     },
 
-    async json(prompt, { signal, effort }) {
+    // The models the key can use (smart-tools.md §10.4), page by page.
+    async models(signal) {
+      const stop = AbortSignal.any([signal, AbortSignal.timeout(MODEL_LIST_TIMEOUT_MS)])
+      const fetchFn = noRedirectFetch(new URL(baseURL).origin)
+      const out: ListedModel[] = []
+      let after: string | null = null
+      for (let page = 0; page < 20 && out.length < MODEL_LIST_MAX_IDS; page++) {
+        const url = `${baseURL}/v1/models?limit=1000${after ? `&after_id=${encodeURIComponent(after)}` : ''}`
+        const body = (await fetchModelJson(url, { 'x-api-key': apiKey, 'anthropic-version': '2023-06-01', Accept: 'application/json' }, stop, fetchFn, PROVIDER)) as { data?: unknown; has_more?: unknown; last_id?: unknown } | null
+        const data = Array.isArray(body?.data) ? body.data : []
+        for (const m of readListedIds(data)) if (out.length < MODEL_LIST_MAX_IDS && !out.some((x) => x.id === m.id)) out.push(m)
+        if (body?.has_more !== true || typeof body.last_id !== 'string') break
+        after = body.last_id
+      }
+      return out
+    },
+
+    async json(prompt, { signal, effort, onUsage }) {
       const message = await callWithRetry((s) => client.beta.messages.stream(claudeRequest(model, prompt, effort), { signal: s }).finalMessage(), {
         ...base,
         signal,
         timeoutMs: 15 * 60_000
       })
+      // The tokens it reports, cached input included (smart-tools.md §11.6).
+      const u = message.usage as { input_tokens?: number; output_tokens?: number; cache_creation_input_tokens?: number | null; cache_read_input_tokens?: number | null } | undefined
+      const used = u && Number.isFinite(u.input_tokens) && Number.isFinite(u.output_tokens) ? { input: u.input_tokens! + (u.cache_creation_input_tokens ?? 0) + (u.cache_read_input_tokens ?? 0), output: u.output_tokens! } : null
+      if (used) onUsage?.(used)
       const text = claudeAnswerText(message)
+      if (used) noteUsage('anthropic', model, prompt, text, used)
       try {
         return JSON.parse(text)
       } catch {

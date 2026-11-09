@@ -8,7 +8,7 @@
  * licences (§0.3 item 5): OFFLINE_TRANSLATION is its seam.
  */
 import { useCallback, useEffect, useId, useRef, useState } from 'react'
-import type { AiProviderInfo, AiTextResult, TextChoice } from '../../../../shared/api/ai'
+import type { AiProviderInfo, AiTextResult, AiUsage, TextChoice } from '../../../../shared/api/ai'
 import { captionsToTranslate, languageName, languagesToAdd, trackOf, trackRows, withoutTrack, withShownTrack, withTranslation } from '../../../../shared/captions/captionTracks'
 import { MAX_TRACKS } from '../../../../shared/captions/studioData'
 import type { Project } from '../../../../shared/types'
@@ -20,6 +20,7 @@ import { lastInputWasKey } from '../focus'
 import { useReturnFocus } from '../returnFocus'
 import { madeBy, sentHint, useTextChoiceList } from '../../ai/textChoices'
 import { CostLine } from '../../ai/CostLine'
+import { runCostText } from '../../ai/useCost'
 import { LocalProgress } from '../../ai/LocalProgress'
 
 /**
@@ -232,7 +233,9 @@ export function LanguagesSection({ project }: { project: Project }): JSX.Element
       return
     }
     setAdding(false)
-    setStatus(`${again ? 'Translated again' : 'Translated'} ${sent.length} ${sent.length === 1 ? 'caption' : 'captions'} into ${languageName(code)}`)
+    // What the run cost (smart-tools.md §11.6), when the provider said.
+    const cost = runCostText((result as { usage?: AiUsage }).usage, provider)
+    setStatus(`${again ? 'Translated again' : 'Translated'} ${sent.length} ${sent.length === 1 ? 'caption' : 'captions'} into ${languageName(code)}${cost ? `. ${cost}` : ''}`)
   }
 
   const cancel = (): void => {

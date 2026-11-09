@@ -9,6 +9,7 @@ import { promises as fs } from 'node:fs'
 import os from 'node:os'
 import { formatDiagnostics, gpuDevice, type DiagnosticsReport, type Part } from '../shared/diagnostics/report'
 import { redactLine, type RedactRoots } from '../shared/diagnostics/redact'
+import { secretValues } from './ai/secrets'
 import { isImported } from '../shared/import/imported'
 import type { CaptureInfo } from '../shared/types'
 import { appLog } from './appLog'
@@ -92,7 +93,7 @@ export async function collectDiagnostics(deps: DiagnosticsDeps, timeoutMs = PART
 export function diagnosticsText(report: DiagnosticsReport, roots: RedactRoots, names: readonly string[] = []): string {
   return formatDiagnostics(report)
     .split('\n')
-    .map((l) => redactLine(l, roots, names))
+    .map((l) => redactLine(l, roots, names, secretValues()))
     .join('\n')
 }
 

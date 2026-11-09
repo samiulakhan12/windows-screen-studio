@@ -25,6 +25,10 @@ import { AiError, callWithRetry, isNetworkError, retryAfterSeconds } from './req
 import { retiredFailure } from './retired'
 import type { AiClient } from './types'
 import { glossaryLine } from '../../shared/captions/cleanup'
+import { UNUSED_MODEL_RE } from '../../shared/ai/modelFilter'
+import { fetchModelJson, MODEL_LIST_TIMEOUT_MS, readListedIds, noRedirectFetch } from './listFetch'
+import { registerSecret } from './secrets'
+import { noteUsage } from './usage'
 
 const OFFICIAL_URL = 'https://api.openai.com/v1'
 const PROVIDER = AI_PROVIDER_KINDS.openai.label
@@ -44,7 +48,10 @@ export function openAiFailure(err: unknown): FailureInfo {
 export function openAiClient(apiKey: string, model: string, transcriptionModel: string): AiClient {
   // An explicit base URL: OPENAI_BASE_URL in the user's environment must not redirect their key;
   // and no logging, whatever OPENAI_LOG says (requests carry the key).
-  const client = new OpenAI({ apiKey, baseURL: baseUrlOverride('openai') ?? OFFICIAL_URL, maxRetries: 0, timeout: 30 * 60_000, logLevel: 'off' })
+  const baseURL = baseUrlOverride('openai') ?? OFFICIAL_URL
+  const client = new OpenAI({ apiKey, baseURL, maxRetries: 0, timeout: 30 * 60_000, logLevel: 'off' })
+  // Taken out of logs and of any failure message that repeats it (smart-tools.md §16.5).
+  registerSecret(apiKey)
   const base = { provider: PROVIDER, toFailure: openAiFailure }
   // Text without times: short parts, timed from the sound by the job.
   const textOnly = isTextOnlyOpenAiModel(transcriptionModel)
@@ -102,7 +109,14 @@ export function openAiClient(apiKey: string, model: string, transcriptionModel: 
       return parseOpenAiTranscription(json, part.seconds)
     },
 
-    async json(prompt, { signal }) {
+    // The models the key can use (smart-tools.md §10.4): neither field offers speech, picture, embedding or moderation models.
+    async models(signal) {
+      const body = await fetchModelJson(`${baseURL}/models`, { Authorization: `Bearer ${apiKey}`, Accept: 'application/json' }, AbortSignal.any([signal, AbortSignal.timeout(MODEL_LIST_TIMEOUT_MS)]), noRedirectFetch(new URL(baseURL).origin), PROVIDER)
+      const data = body && typeof body === 'object' && Array.isArray((body as { data?: unknown }).data) ? (body as { data: unknown[] }).data : []
+      return readListedIds(data).filter((m) => !UNUSED_MODEL_RE.test(m.id))
+    },
+
+    async json(prompt, { signal, onUsage }) {
       const response = await callWithRetry(
         (s) =>
           client.responses.create(
@@ -129,6 +143,12 @@ export function openAiClient(apiKey: string, model: string, transcriptionModel: 
           retryable: false,
           message: reason === 'content_filter' ? `${PROVIDER} declined this request.` : `${PROVIDER} stopped before finishing the answer (${reason ?? 'incomplete'}). Try a shorter transcript.`
         })
+      }
+      // The tokens it reports (smart-tools.md §11.6).
+      const usage = response.usage
+      if (usage && Number.isFinite(usage.input_tokens) && Number.isFinite(usage.output_tokens)) {
+        onUsage?.({ input: usage.input_tokens, output: usage.output_tokens })
+        noteUsage('openai', model, prompt, response.output_text ?? '', { input: usage.input_tokens, output: usage.output_tokens })
       }
       try {
         return JSON.parse(response.output_text)

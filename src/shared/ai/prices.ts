@@ -168,3 +168,42 @@ export function readOpenRouterPrice(raw: unknown): { input: number; output: numb
   const output = perMillion(p.completion)
   return input === null || output === null ? 'varies' : { input, output }
 }
+
+/**
+ * The list a confirm and the high end of an estimate use (§11.4): every model of either list at the
+ * higher of the two prices (confirmPrice), dated as the newer list. Without a downloaded list, the
+ * bundled one.
+ */
+export function confirmList(bundled: PriceList, downloaded: PriceList | null): PriceList {
+  if (!downloaded || downloaded === bundled) return bundled
+  const models: PriceEntry[] = []
+  const seen = new Set<string>()
+  for (const e of [...bundled.models, ...downloaded.models]) {
+    const key = `${e.service}\u0000${e.prefix ? '*' : ''}${e.model}`
+    if (seen.has(key)) continue
+    seen.add(key)
+    const b = bundled.models.find((x) => x.service === e.service && x.model === e.model && !!x.prefix === !!e.prefix) ?? null
+    const d = downloaded.models.find((x) => x.service === e.service && x.model === e.model && !!x.prefix === !!e.prefix) ?? null
+    models.push(higherEntry(b, d))
+  }
+  return { version: 1, updated: newerList(bundled, downloaded).updated, currency: 'USD', models }
+}
+
+/** Of two entries for the same model, each price the higher, a downloaded 0 ignored where the bundled one has a price. */
+function higherEntry(b: PriceEntry | null, d: PriceEntry | null): PriceEntry {
+  if (!b || !d) return (b ?? d)!
+  const out: PriceEntry = { ...b }
+  for (const k of ['input', 'output', 'perMinute'] as const) {
+    const bv = b[k]
+    const dv = d[k]
+    if (dv === undefined || (dv === 0 && bv !== undefined)) continue
+    out[k] = bv === undefined ? dv : Math.max(bv, dv)
+  }
+  if (!out.imageTokens && d.imageTokens) out.imageTokens = d.imageTokens
+  return out
+}
+
+/** Of the bundled and a downloaded list, the one with the later `updated` (the bundled one on a tie): the list shown. */
+export function newerList(bundled: PriceList, downloaded: PriceList | null): PriceList {
+  return downloaded && downloaded.updated > bundled.updated ? downloaded : bundled
+}

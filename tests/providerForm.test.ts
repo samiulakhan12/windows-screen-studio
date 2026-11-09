@@ -74,6 +74,17 @@ vi.doMock('react', async (importOriginal) => ({
       c.cleanup?.()
       c.cleanup = fn()
     })
+  },
+  // The model comboboxes inside the form (smart-tools.md §2.6) keep a ref and a filtered list.
+  useRef: (init: unknown) => {
+    const c = cell() as Cell & { current?: unknown }
+    if (!('current' in c)) c.current = init
+    return c
+  },
+  useMemo: (fn: () => unknown, deps: unknown[]) => {
+    const c = cell()
+    if (changed(c.deps, deps)) Object.assign(c, { value: fn(), deps })
+    return c.value
   }
 }))
 
@@ -89,6 +100,8 @@ function walk(node: unknown, out: El[]): El[] {
   }
   if (!node || typeof node !== 'object' || !('props' in node)) return out
   const el = node as El
+  // A component inside the form (the model comboboxes): rendered in place, its hooks after the form's.
+  if (typeof el.type === 'function') return walk((el.type as (p: unknown) => unknown)(el.props), out)
   out.push(el)
   walk(el.props.children, out)
   return out
@@ -121,7 +134,8 @@ function unmount(): void {
 }
 
 const input = (out: El[], test: (p: Record<string, unknown>) => boolean): El => out.find((e) => e.type === 'input' && test(e.props))!
-const transcription = (out: El[]): El => input(out, (p) => p['aria-describedby'] === ':f:-tm-hint')
+/** The transcription model's field (a combobox since smart tools, §2.6), by its id. */
+const transcription = (out: El[]): El => input(out, (p) => p.id === ':f:-tm')
 const type = (el: El, value: string): void => (el.props.onChange as (e: unknown) => void)({ target: { value } })
 async function submit(render: () => El[]): Promise<void> {
   const form = render().find((e) => e.type === 'form')!
