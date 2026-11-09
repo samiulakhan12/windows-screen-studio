@@ -464,6 +464,28 @@ describe('the demo’s end screen (docs/design/smart-tools.md §6.1)', () => {
     expect(byTestId(els, 'guide-end-url')!.props['aria-invalid']).toBe(true)
     expect(store.state.guide!.end).toEqual({ heading: 'You are ready', label: 'Sign up' })
   })
+  it('marks every link the demo will not keep: too long, with a user name, a bad port or a hidden character', async () => {
+    const type = (els: El[], id: string, value: string): void => (byTestId(els, id)!.props.onChange as (e: unknown) => void)({ target: { value } })
+    let els = await settle(panel('demo'))
+    click(byTestId(els, 'guide-end-toggle'))
+    els = render(panel('demo'))
+    type(els, 'guide-end-heading', 'H')
+    els = render(panel('demo'))
+    type(els, 'guide-end-label', 'Go')
+    els = render(panel('demo'))
+    for (const link of [`https://example.com/${'a'.repeat(300)}`, 'https://user@example.com/x', 'https://example.com:99999/x', 'https://example.com/a\u200bb', 'https://example.com/a\u00adb']) {
+      type(els, 'guide-end-url', link)
+      els = render(panel('demo'))
+      expect(byTestId(els, 'guide-end-url')!.props.value, link).toBe(link)
+      // The store refuses it, so the field says so instead of looking accepted.
+      expect(store.state.guide!.end, link).toEqual({ heading: 'H', label: 'Go' })
+      expect(byTestId(els, 'guide-end-url')!.props['aria-invalid'], link).toBe(true)
+    }
+    type(els, 'guide-end-url', 'https://example.com/signup')
+    els = render(panel('demo'))
+    expect(byTestId(els, 'guide-end-url')!.props['aria-invalid']).toBe(false)
+    expect(store.state.guide!.end).toEqual({ heading: 'H', label: 'Go', url: 'https://example.com/signup' })
+  })
 })
 
 describe('the bug report’s Actual screenshot (docs/design/smart-tools.md §2.1, §12 rule 2)', () => {

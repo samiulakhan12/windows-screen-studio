@@ -1253,7 +1253,8 @@ function EndScreen(props: { project: Project; onField(patch: Parameters<typeof w
     if (!next.url) delete (next as { url?: string }).url
     props.onField({ end: next.heading.trim() ? next : undefined }, gesture)
   }
-  const bad = url.trim() !== '' && !/^https:\/\/\S+$/i.test(url.trim())
+  // The field is marked whenever the store would refuse the link (readLinkUrl), so nothing it shows is quietly dropped.
+  const bad = url.trim() !== '' && readLinkUrl(url.trim()) === null
   return (
     <div className="guide-end">
       <button type="button" className="btn ghost small" aria-expanded={open} onClick={() => setOpen(!open)} data-testid="guide-end-toggle">
@@ -1283,7 +1284,7 @@ function EndScreen(props: { project: Project; onField(patch: Parameters<typeof w
               data-testid="guide-end-url"
             />
           </label>
-          {bad && <p className="hint guide-error">Use an https:// link.</p>}
+          {bad && <p className="hint guide-error">Use a plain https:// link of up to 300 characters, with no name or password in it.</p>}
         </div>
       )}
     </div>
