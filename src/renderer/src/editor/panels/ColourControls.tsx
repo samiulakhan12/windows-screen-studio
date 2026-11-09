@@ -230,8 +230,10 @@ export function ColourControls(props: { project: Project; which: 'screen' | 'cam
   const onLookKeys = (e: KeyboardEvent<HTMLDivElement>): void => {
     const i = looks.indexOf(look)
     const next = e.key === 'ArrowRight' || e.key === 'ArrowDown' ? i + 1 : e.key === 'ArrowLeft' || e.key === 'ArrowUp' ? i - 1 : e.key === 'Home' ? 0 : e.key === 'End' ? looks.length - 1 : null
-    if (next === null) return
+    if (next === null || e.ctrlKey || e.altKey || e.metaKey) return
+    // The group's own keys (§12): the editor's step keys on the window never see them.
     e.preventDefault()
+    e.stopPropagation()
     const to = looks[(next + looks.length) % looks.length]
     pick(to)
     const chips = groupRef.current?.querySelectorAll?.('[role="radio"]')

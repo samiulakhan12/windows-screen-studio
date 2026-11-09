@@ -93,9 +93,26 @@ describe('the colour controls (test 82)', () => {
     const again = await screen()
     expect(chips(again)[3].props['aria-checked']).toBe(true)
     expect(chips(again)[3].props.tabIndex).toBe(0)
-    press(byTestId(again, 'colour-look')!, 'ArrowLeft')
+    // The group keeps its keys from the editor's step keys on the window (which would also move the
+    // playhead, or nudge the selected items).
+    expect(press(byTestId(again, 'colour-look')!, 'ArrowLeft')).toMatchObject({ prevented: true, stopped: true })
     expect(store.state.grade).toEqual({ screen: { look: 'vivid' } })
     expect(store.steps).toBe(2)
+    unmountAll()
+    expect(press(byTestId(await screen(), 'colour-look')!, 'End')).toMatchObject({ prevented: true, stopped: true })
+    expect(store.state.grade).toEqual({ screen: { look: 'mono' } })
+    unmountAll()
+    expect(press(byTestId(await screen(), 'colour-look')!, 'Home')).toMatchObject({ prevented: true, stopped: true })
+    expect(store.state.grade).toBeUndefined()
+    expect(store.steps).toBe(4)
+    // Other keys, and Ctrl or Alt with an arrow, stay the editor's.
+    unmountAll()
+    const look = byTestId(await screen(), 'colour-look')!
+    for (const e of [key('ArrowRight', { ctrlKey: true }), key('ArrowLeft', { altKey: true }), key(' ')]) {
+      ;(look.props.onKeyDown as (e: unknown) => void)(e)
+      expect(e).toMatchObject({ prevented: false, stopped: false })
+    }
+    expect(store.steps).toBe(4)
     // No exposure on the screen.
     unmountAll()
     const more = await screen()
