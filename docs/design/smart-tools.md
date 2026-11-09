@@ -2201,7 +2201,9 @@ one line. Its parts:
   *Never*. On this PC, over 10 minutes: "This takes about 25 minutes on this PC. You can keep editing
   meanwhile. Start?". A palette command that runs one of these tools (*Find chapters*, *Suggest
   chapters with AI*, the title and the summary) presses the tool's button, so the same question comes
-  first.
+  first. A run no line's button starts asks it itself (`confirmRequest`, from the request it sends):
+  *Make my captions great* with AI picks, from its button or the palette (its line is in the options
+  popover). Polish's line holds a click on **Polish**, which starts the paid Captions step.
 - Where the line appears (each tied to its buttons by `aria-describedby`):
 
 | Place | Group or action |
@@ -2212,7 +2214,7 @@ one line. Its parts:
 | Captions › Make my captions great | with AI picks |
 | Publish dialog | each card's Write and Regenerate as one group, with Write all (the sum) |
 | Notes › Draft script | Draft script |
-| Polish dialog | the Captions step with a provider |
+| Polish dialog | the Captions step with a provider (the Polish button) |
 | Text › Chapters | Find chapters with AI names |
 | Guide panel | Write titles (with or without screenshots); Tidy notes |
 | Short clips panel | names with AI |

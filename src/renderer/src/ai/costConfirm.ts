@@ -7,10 +7,11 @@
  */
 import { createElement } from 'react'
 import { createRoot } from 'react-dom/client'
-import type { TextChoice } from '../../../shared/api/ai'
+import type { AiTextRequest, TextChoice } from '../../../shared/api/ai'
 import { confirmText, needsConfirm, type CostEstimate } from '../../../shared/ai/cost'
 import { CONFIRM_PREFS, DEFAULT_CONFIRM, type ConfirmPref } from '../../../shared/smart/smartPrefs'
 import { CostConfirm } from './CostConfirm'
+import { estimateFor, readCostData } from './useCost'
 
 /** Providers and models whose unknown cost was asked about and run this session. */
 const askedUnknown = new Set<string>()
@@ -61,4 +62,14 @@ export async function confirmCost(estimate: CostEstimate, choice: TextChoice, as
   const run = await ask(confirmText(estimate, choice.model || choice.place))
   if (run && !estimate.seconds && !estimate.usd) askedUnknown.add(key)
   return run
+}
+
+/**
+ * The question before a run no cost line's button starts (Make my captions great from its button or
+ * the palette, a caption language's Translate again): what `request` costs with `choice`, from the
+ * price data once read; true when nothing needs asking, else the answer.
+ */
+export async function confirmRequest(choice: TextChoice, request: AiTextRequest, ask: AskCost = askInDialog): Promise<boolean> {
+  const estimate = estimateFor(choice, request, await readCostData())
+  return !estimate || (await confirmCost(estimate, choice, ask))
 }

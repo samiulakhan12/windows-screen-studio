@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { CostEstimate } from '../src/shared/ai/cost'
-import type { TextChoice } from '../src/shared/api/ai'
+import type { AiTextRequest, TextChoice } from '../src/shared/api/ai'
 import { sanitizeSmartPref } from '../src/shared/smart/smartPrefs'
 import { byTestId, focused, mockReact, render, settle, textOf, unmountAll, type El } from './studioHarness'
 
@@ -32,8 +32,9 @@ mockReact()
 const COST_CONFIRM = '../src/renderer/src/ai/costConfirm'
 const DIALOG = '../src/renderer/src/ai/CostConfirm'
 const SECTION = '../src/renderer/src/settings/AiProvidersSection'
-const { confirmCost, resetAskedCosts } = (await import(/* @vite-ignore */ COST_CONFIRM)) as {
+const { confirmCost, confirmRequest, resetAskedCosts } = (await import(/* @vite-ignore */ COST_CONFIRM)) as {
   confirmCost: (e: CostEstimate, c: TextChoice, ask?: (q: { text: string; action: string }) => Promise<boolean>) => Promise<boolean>
+  confirmRequest: (c: TextChoice, r: AiTextRequest, ask?: (q: { text: string; action: string }) => Promise<boolean>) => Promise<boolean>
   resetAskedCosts: () => void
 }
 const { CostConfirm } = (await import(/* @vite-ignore */ DIALOG)) as { CostConfirm: (p: unknown) => unknown }
@@ -91,6 +92,26 @@ describe('when a run asks first (test 92)', () => {
     expect(asked).toEqual(['Flown does not know what this costs with openrouter/auto. Run it? [Run]', 'Flown does not know what this costs with openrouter/auto. Run it? [Run]'])
     await confirmCost(UNKNOWN, { ...OR, model: 'other/model' }, ask)
     expect(asked).toHaveLength(3)
+  })
+
+  it("a run no cost line's button starts (Make my captions great, Translate again) is asked about from its request", async () => {
+    const segments = Array.from({ length: 400 }, (_, i) => ({ id: `c${i}`, start: i * 3, end: i * 3 + 3, text: 'Open the quarterly billing report and export it for the whole team today.' }))
+    const request: AiTextRequest = { task: 'translate', segments, targetLanguage: 'Bengali' }
+    prefs.values.set('aiConfirm', 'always')
+    reply = false
+    expect(await confirmRequest(CLAUDE, request, ask)).toBe(false)
+    expect(asked).toHaveLength(1)
+    expect(asked[0]).toMatch(/^This costs up to about US\$\d+\.\d\d with claude-opus-5-5\. Run it\? \[Run\]$/)
+    // The amount set in Settings: above it nothing is asked.
+    prefs.values.set('aiConfirm', '5')
+    asked = []
+    expect(await confirmRequest(CLAUDE, request, ask)).toBe(true)
+    expect(asked).toEqual([])
+    // A model Flown has no price for asks once.
+    prefs.values.set('aiConfirm', '1')
+    reply = true
+    expect(await confirmRequest(OR, request, ask)).toBe(true)
+    expect(asked).toEqual(['Flown does not know what this costs with openrouter/auto. Run it? [Run]'])
   })
 
   it('on this PC, a run over 10 minutes asks to start', async () => {

@@ -40,6 +40,9 @@ import { runPolish, type PolishRowState, type PolishRun } from './polishRunner'
 import './polish.css'
 import { keepVersionBefore } from '../versions/autoVersion'
 
+/** The Polish button: the Captions step's cost line holds its click to ask before a paid run (smart-tools.md §11.5). */
+const POLISH_START = 'polish-start'
+
 type View =
   | { kind: 'options' }
   | { kind: 'running'; rows: Record<PolishStep, PolishRowState> }
@@ -265,9 +268,9 @@ export function PolishDialog(props: {
             ))}
           </select>
         )}
-        {/* What the Captions step sends to its provider, and what it costs (smart-tools.md §11.5), part P5's. */}
+        {/* What the Captions step sends to its provider, and what it costs (smart-tools.md §11.5), part P5's: Polish asks first. */}
         {step === 'captions' && !why && provider && isOn(step) && (
-          <CostLine id="polish-cost" choice={choiceOf(provider)} full actions={[{ key: 'captions', label: 'Captions', buttonId: 'polish-step-captions', request: null }]} transcribeSeconds={project.duration} />
+          <CostLine id="polish-cost" choice={choiceOf(provider)} full actions={[{ key: 'captions', label: 'Captions', buttonId: POLISH_START, request: null }]} transcribeSeconds={project.duration} />
         )}
         {step === 'captions' && why === 'no-provider' && (
           <button className="btn small" onClick={addProvider}>
@@ -309,7 +312,15 @@ export function PolishDialog(props: {
         <button className="btn" onClick={cancel}>
           Cancel
         </button>
-        <button ref={mainRef} className="btn primary" disabled={!ready || !anything} title={ready && !anything ? NOTHING_CHOSEN : undefined} onClick={start}>
+        <button
+          ref={mainRef}
+          id={POLISH_START}
+          className="btn primary"
+          disabled={!ready || !anything}
+          title={ready && !anything ? NOTHING_CHOSEN : undefined}
+          aria-describedby={provider && isOn('captions') ? 'polish-cost-captions' : undefined}
+          onClick={start}
+        >
           <EditorIcon name="sparkle" size={16} /> Polish
         </button>
       </>

@@ -91,6 +91,15 @@ export async function loadGreatInputs(): Promise<GreatInputs> {
   return { great: readGreatOptions(great), cleanup: readCleanupChoices(cleanup), words: readWordList(words), brand }
 }
 
+/**
+ * What the AI picks send for `project`, as their cost line and the question before a run count it
+ * (smart-tools.md §11.5): the captions, with their language.
+ */
+export function marksCostRequest(project: Project): AiTextRequest {
+  const language = project.transcript?.language
+  return { task: 'marks', segments: project.transcript?.segments ?? [], marks: { ...(language ? { language } : {}), captions: [] } }
+}
+
 /** Numbers the marks requests, so each has its own request id. */
 let marksSeq = 0
 

@@ -46,7 +46,8 @@ vi.stubGlobal('window', {
       return Promise.resolve()
     },
     getBrandKit: () => Promise.resolve({}),
-    listAiProviders: () => Promise.resolve([{ id: 'g1', kind: 'gemini', label: 'Gemini' }] as AiProviderInfo[]),
+    // A model Flown has a price for: the run's question before a paid run (captionsGreat.ts) has nothing to ask at US$1.
+    listAiProviders: () => Promise.resolve([{ id: 'g1', kind: 'gemini', label: 'Gemini', model: 'gemini-3.8-flash' }] as AiProviderInfo[]),
     aiText: (provider: string, request: AiTextRequest, id?: string) => {
       const answer = deferred<AiTextResult>()
       asked.push({ provider, request, id, answer })

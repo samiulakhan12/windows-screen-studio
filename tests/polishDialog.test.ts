@@ -41,11 +41,13 @@ let gate = deferred()
 let remembered: unknown = null
 /** The speech state the main process answers; null: no handler (On this PC unavailable, as in the focus tests). */
 let speechReply: SpeechState | null = null
+/** The AI providers set up (none by default). */
+let providersReply: unknown[] = []
 vi.stubGlobal('window', {
   api: {
     getPref: (key: string) => gate.promise.then(() => (key === 'polish' ? remembered : null)),
     setPref: () => Promise.resolve(),
-    listAiProviders: () => gate.promise.then(() => []),
+    listAiProviders: () => gate.promise.then(() => providersReply),
     getSpeechState: () => (speechReply ? Promise.resolve(speechReply) : Promise.reject(new Error('No handler registered for speech:state'))),
     onSpeechState: () => () => undefined
   },
@@ -186,6 +188,7 @@ beforeEach(() => {
   gate = deferred()
   remembered = null
   speechReply = null
+  providersReply = []
   current = project
 })
 
@@ -208,6 +211,25 @@ describe('Polish dialog: the focus when it opens (E-01-2)', () => {
     expect(button?.props.disabled).toBe(true)
     expect(button?.props.title).toBe('Choose at least one step')
     expect(focused).toBe('panel')
+  })
+})
+
+describe('Polish dialog: the question before a paid Captions step (smart-tools.md §11.5)', () => {
+  it("the Captions step's cost line holds a click on Polish, which starts the paid run, and Polish reads its sentence", async () => {
+    current = { ...project, hasAudio: true }
+    providersReply = [{ id: 'o1', kind: 'openai', label: 'OpenAI', model: 'gpt-6.1-sol', transcriptionModel: 'whisper-1', maskedKey: '…abcd', createdAt: '' }]
+    remembered = { captionsProvider: 'o1' }
+    gate.resolve()
+    render()
+    await flush()
+    const out = render()
+    const line = out.find((e) => (e.type as { name?: string }).name === 'CostLine')
+    expect(line).toBeDefined()
+    const polish = polishButton(out)!
+    expect(polish.props.disabled).toBe(false)
+    // CostLine holds a click on the button its action names (CostLine.tsx): Polish's own, not the step's checkbox.
+    expect((line!.props.actions as { buttonId: string }[]).map((a) => a.buttonId)).toEqual([polish.props.id])
+    expect(String(polish.props['aria-describedby']).split(' ')).toContain(`${line!.props.id}-captions`)
   })
 })
 

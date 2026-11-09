@@ -5,10 +5,13 @@
  * step). While it runs the button reads Working… and Cancel stops it.
  */
 import { useSyncExternalStore } from 'react'
+import type { AiProviderInfo } from '../../../shared/api/ai'
 import { readGreatOptions } from '../../../shared/captions/great'
 import type { EditStore } from '../../../shared/editor/editStore'
 import type { Project } from '../../../shared/types'
-import { runCaptionsGreat } from './greatRun'
+import { confirmRequest } from '../ai/costConfirm'
+import { choiceOf } from '../ai/textChoices'
+import { marksCostRequest, runCaptionsGreat } from './greatRun'
 
 let running: AbortController | null = null
 /** The project the run edits: closing its editor stops the run (cancelCaptionsGreatFor). */
@@ -16,6 +19,17 @@ let runningStore: EditStore<Project> | null = null
 const listeners = new Set<() => void>()
 const publish = (): void => {
   for (const l of listeners) l()
+}
+
+/**
+ * The question before a paid run (smart-tools.md §11.5) for the AI picks of `provider`: asked here,
+ * as the button and the palette start the run and the options' cost line is shown only with them.
+ * True when nothing needs asking (no captions, a provider no longer there) or on Run.
+ */
+async function confirmPicks(project: Project, provider: string): Promise<boolean> {
+  if (!project.transcript?.segments.length) return true
+  const info = (await window.api.listAiProviders().catch((): AiProviderInfo[] => [])).find((p) => p.id === provider)
+  return !info || (await confirmRequest(choiceOf(info), marksCostRequest(project)))
 }
 
 /**
@@ -30,6 +44,8 @@ export async function startCaptionsGreat(deps: { store: EditStore<Project>; fram
   publish()
   try {
     const options = readGreatOptions(await window.api.getPref('captionsGreat').catch(() => null))
+    // With AI picks, the question before a paid run first; Cancel changes and sends nothing.
+    if (options.provider && !(await confirmPicks(deps.store.state, options.provider))) return
     const r = await runCaptionsGreat({ store: deps.store, frame: deps.frame, options, signal: ctrl.signal, undo: deps.undo ?? '', review: deps.review ?? '' })
     if (r && !ctrl.signal.aborted) deps.notice(r.notice)
   } catch (err) {

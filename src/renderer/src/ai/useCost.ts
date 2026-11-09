@@ -83,6 +83,12 @@ export function rememberListedModels(providerId: string, models: readonly Listed
 /** The cost data now (tests, and code outside React). */
 export const costData = (): CostData => data
 
+/** The cost data once read (read now when no cost line has read it yet): for a run asked about outside a cost line. */
+export async function readCostData(): Promise<CostData> {
+  await (loading ?? refreshCostData())
+  return data
+}
+
 /** The cost data, kept up to date: read on first use, again when providers or prices change. */
 export function useCostData(): CostData {
   const [, setTick] = useState(0)

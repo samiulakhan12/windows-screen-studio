@@ -9,7 +9,7 @@ import { captionFrame } from '../../../../shared/captions/autoStyle'
 import { resolveGreatOptions, type Auto, type GreatOptions } from '../../../../shared/captions/great'
 import type { Project } from '../../../../shared/types'
 import { EditorIcon } from '../EditorIcon'
-import { currentGreatOptions, loadGreatOptions, onGreatOptions, saveGreatOptions } from '../greatRun'
+import { currentGreatOptions, loadGreatOptions, marksCostRequest, onGreatOptions, saveGreatOptions } from '../greatRun'
 import { useModalFocus } from '../modalFocus'
 import { sentHint, useTextChoices } from '../../ai/textChoices'
 import { CostLine } from '../../ai/CostLine'
@@ -164,15 +164,8 @@ function OptionsDialog({ project, onClose }: { project: Project; onClose: () => 
         </select>
       </label>
       {choice && <p className="hint">{sentHint(choice, "The captions' words", '; only the picks come back', true)}</p>}
-      {/* What the AI picks send, where, and what they cost (smart-tools.md §11.5), part P5's. */}
-      {choice && (
-        <CostLine
-          id="great-cost"
-          choice={choice}
-          full
-          actions={[{ key: 'marks', label: 'AI picks', buttonId: 'great-provider', request: () => ({ task: 'marks', segments: project.transcript?.segments ?? [], marks: { ...(project.transcript?.language ? { language: project.transcript.language } : {}), captions: [] } }) }]}
-        />
-      )}
+      {/* What the AI picks send, where, and what they cost (smart-tools.md §11.5), part P5's. A run asks its question itself (captionsGreat.ts). */}
+      {choice && <CostLine id="great-cost" choice={choice} full actions={[{ key: 'marks', label: 'AI picks', buttonId: 'great-provider', request: () => marksCostRequest(project) }]} />}
       <div className="row start">
         <button type="button" className="btn small" onClick={onClose}>
           Done
