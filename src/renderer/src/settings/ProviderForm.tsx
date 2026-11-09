@@ -143,8 +143,8 @@ export function ProviderForm({
 
   /**
    * Whether the edit stays in the same store: a provider of another kind is changed in place (main
-   * asks for the new kind's key, keyStore.ts), a service moved to a provider or back is saved anew
-   * and the old one then removed.
+   * asks for the new kind's key, keyStore.ts), a provider moved to a service or back is saved anew
+   * in place of the old one, which main then removes.
    */
   const sameStore = !!editing && !!editing.service === isService
 
@@ -201,11 +201,10 @@ export function ProviderForm({
     if (!body) return
     setSaving('saving')
     try {
-      const saved = await window.api.saveAiProvider(body)
+      // Edited into the other store: it takes the place of the one it was, which main then removes.
+      const saved = await window.api.saveAiProvider(body, editing && !sameStore ? editing.id : undefined)
       // The key is not kept here a moment longer than needed.
       setApiKey('')
-      // Edited into the other store: the provider it was is gone, not left beside it.
-      if (editing && saved.id !== editing.id) await window.api.removeAiProvider(editing.id).catch(() => undefined)
       await savePrices(saved.id).catch(() => undefined)
       let check: CheckResult | undefined
       if (isService) {

@@ -10,12 +10,15 @@ import { mockReact, settle, textOf, unmountAll, type El } from './studioHarness'
  * "Works; Flown checks its answers more closely." with how the service answers in JSON.
  */
 
-const api = vi.hoisted(() => ({ saved: [] as Record<string, unknown>[], removed: [] as string[], listed: [] as unknown[], values: {} as Record<string, unknown>, tested: [] as string[], check: { ok: true, message: 'Works.\nAnswers in JSON with a schema.' }, prefs: [] as [string, unknown][] }))
+const api = vi.hoisted(() => ({ saved: [] as Record<string, unknown>[], replaced: [] as (string | undefined)[], removed: [] as string[], listed: [] as unknown[], values: {} as Record<string, unknown>, tested: [] as string[], check: { ok: true, message: 'Works.\nAnswers in JSON with a schema.' }, prefs: [] as [string, unknown][] }))
 vi.stubGlobal('window', {
   api: {
     getAiModelList: async () => null,
-    saveAiProvider: async (input: Record<string, unknown>) => {
+    saveAiProvider: async (input: Record<string, unknown>, replaces?: string) => {
       api.saved.push(input)
+      api.replaced.push(replaces)
+      // Main removes the one an edit into the other store replaced, once this one is saved (aiIpc.ts).
+      if (replaces !== undefined) api.removed.push(replaces)
       const service = input.service as { preset: string; baseUrl: string } | undefined
       return { id: (input.id as string) ?? 'svcnew', kind: 'openai', label: input.label, model: input.model, maskedKey: '…1234', createdAt: '', ...(service ? { service: { ...service, host: new URL(service.baseUrl).host, loopback: false, json: 'text' } } : {}) }
     },
@@ -59,6 +62,7 @@ beforeEach(() => {
   unmountAll()
   done = []
   api.saved.length = 0
+  api.replaced.length = 0
   api.removed.length = 0
   api.tested.length = 0
   api.prefs.length = 0
@@ -199,10 +203,11 @@ describe('Add a provider › More services (test 95)', () => {
     els = await settle(form(editing))
     type(inputBy(els, (p) => String(p.id).endsWith('-model'))!, 'openrouter/auto')
     await submit(form(editing))
-    // A service lives in its own store: saved there anew, then the provider removed.
+    // A service lives in its own store: saved there anew in place of the provider, which main then removes (one step, so the cap counts it once).
     expect(api.saved).toHaveLength(1)
     expect(api.saved[0]).not.toHaveProperty('id')
     expect(api.saved[0]).toHaveProperty('service')
+    expect(api.replaced).toEqual(['ai1'])
     expect(api.removed).toEqual(['ai1'])
     expect(done.map((d) => d.saved.id)).toEqual(['svcnew'])
   })
@@ -213,6 +218,7 @@ describe('Add a provider › More services (test 95)', () => {
     type(inputBy(els, (p) => String(p.id).endsWith('-model'))!, 'llama-4-maverick')
     await submit(form(editing))
     expect(api.saved[0].id).toBe('svc1')
+    expect(api.replaced).toEqual([undefined])
     expect(api.removed).toEqual([])
   })
 

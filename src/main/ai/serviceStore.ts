@@ -250,15 +250,19 @@ export class ServiceStore {
     throw new Error(entry ? SERVICE_MESSAGES.newAddress : SERVICE_MESSAGES.key)
   }
 
-  /** Adds or updates a service from the renderer's input; returns what the renderer may see. */
-  save(raw: unknown, now = new Date()): AiProviderInfo {
+  /**
+   * Adds or updates a service from the renderer's input; returns what the renderer may see.
+   * `replacesProvider`: it takes the place of a provider (one edited into a service), which is then
+   * removed, so that one is not counted toward the cap.
+   */
+  save(raw: unknown, now = new Date(), replacesProvider = false): AiProviderInfo {
     const input = validateServiceInput(raw)
     const url = readBaseUrl(input.service.baseUrl)
     if (!url.ok) throw new Error(url.message)
     const entries = this.load()
     const existing = input.id !== undefined ? entries.find((e) => e.id === input.id) : undefined
     if (input.id !== undefined && !existing) throw new Error(SERVICE_MESSAGES.gone)
-    if (!existing && entries.length + this.providerCount() >= AI_LIMITS.maxProviders) throw new Error(SERVICE_MESSAGES.full)
+    if (!existing && entries.length + this.providerCount() - (replacesProvider ? 1 : 0) >= AI_LIMITS.maxProviders) throw new Error(SERVICE_MESSAGES.full)
     let key: string | undefined
     if (input.apiKey) key = this.encrypt(input.apiKey)
     else if (existing && existing.origin === url.origin) key = existing.key

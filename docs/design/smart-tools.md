@@ -1987,7 +1987,9 @@ interface StoredService {
   needs the key again ("Enter the API key for the new address."), as changing the kind does today
   (`keyStore.ts:184`). The form keeps the id for an edit within one store, so a provider changed to
   another kind is that provider changed in place; an edit from a provider to a service (or back) is
-  saved in the other store and the one it was is then removed, and Settings shows it in that row.
+  saved in the other store with `replaces` (the id it was), and main removes that one once the new
+  one is saved, in the same call, not counting it toward the cap (an edit at 20 is not refused).
+  Settings shows it in that row.
 - An empty key is allowed only for a loopback origin.
 - Older Flown never reads this file, so it cannot drop entries or send a service's key elsewhere
   (decision 19).

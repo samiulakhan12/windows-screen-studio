@@ -45,9 +45,15 @@ const box: SecretBox = {
 vi.stubGlobal('window', {
   api: {
     getAiModelList: () => Promise.resolve(main.list),
-    saveAiProvider: (input: Record<string, unknown>) => {
+    saveAiProvider: (input: Record<string, unknown>, replaces?: string) => {
       main.sent.push(input)
-      return Promise.resolve(main.store.save(structuredClone(input)))
+      const saved = main.store.save(structuredClone(input))
+      // Main removes the one an edit into the other store replaced, once this one is saved (aiIpc.ts).
+      if (replaces !== undefined) {
+        main.removed.push(replaces)
+        main.store.remove(replaces)
+      }
+      return Promise.resolve(saved)
     },
     listModels: (target: { draft?: Record<string, unknown> }) => {
       main.listed.push(structuredClone(target))

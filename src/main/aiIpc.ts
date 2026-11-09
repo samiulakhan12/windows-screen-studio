@@ -219,11 +219,23 @@ export function registerAiIpc(): void {
     fromApp(e)
     return listAiProviders()
   })
-  ipcMain.handle('ai:saveProvider', (e, input: unknown) => {
+  ipcMain.handle('ai:saveProvider', (e, input: unknown, replaces?: unknown) => {
     fromApp(e)
     // A service goes to its own store (§10.1); a provider is saved exactly as before.
     const service = !!input && typeof input === 'object' && (input as { service?: unknown }).service !== undefined
-    return service ? services().save(input) : providers().save(input)
+    // An edit into the other store (a provider made a service, or back) takes the place of the one
+    // it was: that one is not counted toward the cap, and goes once this one is saved.
+    const other = service ? providers() : services()
+    const old = typeof replaces === 'string' && isServiceId(replaces) !== service && other.list().some((p) => p.id === replaces) ? replaces : null
+    const saved = service ? services().save(input, new Date(), old !== null) : providers().save(input)
+    if (old !== null) {
+      try {
+        other.remove(old)
+      } catch {
+        console.warn('Could not remove the AI provider an edit replaced')
+      }
+    }
+    return saved
   })
   ipcMain.handle('ai:removeProvider', (e, id: unknown) => {
     fromApp(e)

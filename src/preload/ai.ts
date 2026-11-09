@@ -4,7 +4,7 @@ import { AI_SMART_CHANNELS, type AiApi, type TranscribeProgress } from '../share
 export const aiApi: AiApi = {
   listAiProviders: () => ipcRenderer.invoke('ai:listProviders'),
   getAiModelList: () => ipcRenderer.invoke('ai:modelList'),
-  saveAiProvider: (input) => ipcRenderer.invoke('ai:saveProvider', input),
+  saveAiProvider: (input, replaces) => ipcRenderer.invoke('ai:saveProvider', input, replaces),
   removeAiProvider: (id) => ipcRenderer.invoke('ai:removeProvider', id),
   testAiProvider: (id) => ipcRenderer.invoke('ai:testProvider', id),
   transcribe: (projectId, options) => ipcRenderer.invoke('ai:transcribe', projectId, options),

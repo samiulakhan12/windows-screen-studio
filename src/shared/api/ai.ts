@@ -217,7 +217,12 @@ export interface AiApi {
   listAiProviders(): Promise<AiProviderInfo[]>
   /** The suggested models and the retiring ones (NW-15; bundled, or refreshed from GitHub). */
   getAiModelList(): Promise<ModelList>
-  saveAiProvider(input: AiProviderInput): Promise<AiProviderInfo>
+  /**
+   * Adds or updates a provider or a service. `replaces`: the id of the one in the other store that
+   * an edit turned into this one (a provider made a service, or back); main removes it once this one
+   * is saved, and does not count it toward the cap.
+   */
+  saveAiProvider(input: AiProviderInput, replaces?: string): Promise<AiProviderInfo>
   removeAiProvider(id: string): Promise<void>
   /** Checks the key with a tiny request. */
   testAiProvider(id: string): Promise<{ ok: boolean; message: string }>
