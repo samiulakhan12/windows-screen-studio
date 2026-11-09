@@ -532,8 +532,9 @@ async function renderAll(
     sink = makeSink(canvas, ctx, startJob, base)
 
     // A* of each window: the still frames copied as the feeds reach them, composed on the scratch
-    // target of this canvas's raster mode before the window's first frame (§5.8).
-    if (feed.stills.length > 0) {
+    // target of this canvas's raster mode before the window's first frame (§5.8). A dip needs no
+    // still, so the joins are made whenever there is a window: a project of dips only has none.
+    if (plan.windows.length > 0) {
       joins = new ExportJoins(feed, plan.windows, {
         copy: copyFrame,
         prepareMask: async (frame) => {
