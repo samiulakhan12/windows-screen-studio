@@ -10,10 +10,15 @@ import { CaptionDownloadsSection } from './CaptionDownloadsSection'
 import { MusicDownloadsSection } from './MusicDownloadsSection'
 import { LocalAiSection } from './LocalAiSection'
 import { ShareSection } from '../share/ShareSection'
+import { LanguageSection } from './LanguageSection'
+import { currentUiInfo, showLanguageSection } from '../i18n/boot'
 import './settings.css'
 
-/** 'localAi': AI on this PC (docs/design/smart-tools.md §2.5): the palette's Set up AI on this PC… and every "use AI on this PC" link. */
-export type SettingsSection = 'ai' | 'speech' | 'localAi' | 'brand' | 'about'
+/**
+ * 'localAi': AI on this PC (docs/design/smart-tools.md §2.5): the palette's Set up AI on this PC… and every "use AI on this PC" link.
+ * 'language': the language of Flown (output-and-languages §2.5), first, and only once a language other than English ships.
+ */
+export type SettingsSection = 'language' | 'ai' | 'speech' | 'localAi' | 'brand' | 'about'
 
 /**
  * App settings: the AI providers (the user's own API keys for transcription and text tasks),
@@ -49,6 +54,7 @@ export function SettingsDialog({ section, onClose, onProvidersChanged }: { secti
           </button>
         </header>
         <div className="settings-body">
+          {showLanguageSection(currentUiInfo()) && <LanguageSection />}
           <AiProvidersSection onChanged={onProvidersChanged} autoFocus={section === 'ai'} />
           <SpeechModelsSection reveal={section === 'speech'} />
           <LocalAiSection reveal={section === 'localAi'} />

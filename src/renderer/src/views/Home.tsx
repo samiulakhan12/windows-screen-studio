@@ -14,6 +14,8 @@ import { cameras, listInputDevices, meterMicrophone, microphones, onDevicesChang
 import { CameraPreview, Keys, RecordingOptions } from '../recorder/RecordingOptions'
 import { BrandLogo } from '../components/BrandLogo'
 import { RecordingPresets } from '../recorder/RecordingPresets'
+import { LanguageOffer } from '../home/LanguageOffer'
+import { uiLanguage } from '../../../shared/i18n/t'
 import { NotesCard } from '../notes/NotesCard'
 import { friendlyError, PROCESSING_DEFERRED, SOURCE_GONE, type RecorderError } from '../../../shared/recording/errors'
 import { hotkeyLabel, type HotkeyAction } from '../../../shared/recording/hotkeys'
@@ -733,6 +735,8 @@ export function Home({ onOpenProject }: { onOpenProject: (id: string) => void })
         ? `Area ${region.width} × ${region.height}${sourceName ? ` on ${sourceName}` : ''}`
         : 'Pick a screen, then drag out an area'
       : (sourceName ?? (tab === 'window' ? 'Pick a window to record' : 'No screen found'))
+  // In a translated UI the recording side's panels are marked English (§9.5); English adds no attribute.
+  const recordingLang = uiLanguage() === 'en' ? undefined : 'en'
 
   return (
     <div className="app">
@@ -746,6 +750,7 @@ export function Home({ onOpenProject }: { onOpenProject: (id: string) => void })
       </header>
 
       <main className="home">
+        <LanguageOffer />
         <div className="home-main">
           <section className="panel sources" aria-label="What to record">
             <div className="home-section-head">
@@ -975,24 +980,29 @@ export function Home({ onOpenProject }: { onOpenProject: (id: string) => void })
               </div>
             </div>
             <NotesCard disabled={!idle} />
-            <RecordingPresets
-              presets={presets}
-              active={activePreset}
-              suggestedName={lastPresetName}
-              disabled={!idle}
-              onApply={applyPreset}
-              onSave={savePreset}
-              onDelete={(p) => void deletePreset(p)}
-            />
-            <RecordingOptions
-              settings={settings}
-              open={prefs.optionsOpen}
-              onToggle={() => update({ optionsOpen: !prefs.optionsOpen })}
-              onChange={(patch) => void updateSettings(patch)}
-              onHotkey={setHotkey}
-              disabled={!idle}
-              isWindows={isWindows}
-            />
+            {/* The recording side stays English until it is translated (output-and-languages §9.5): its panels say so to screen readers in a translated UI. */}
+            <div lang={recordingLang} style={{ display: 'contents' }}>
+              <RecordingPresets
+                presets={presets}
+                active={activePreset}
+                suggestedName={lastPresetName}
+                disabled={!idle}
+                onApply={applyPreset}
+                onSave={savePreset}
+                onDelete={(p) => void deletePreset(p)}
+              />
+            </div>
+            <div lang={recordingLang} style={{ display: 'contents' }}>
+              <RecordingOptions
+                settings={settings}
+                open={prefs.optionsOpen}
+                onToggle={() => update({ optionsOpen: !prefs.optionsOpen })}
+                onChange={(patch) => void updateSettings(patch)}
+                onHotkey={setHotkey}
+                disabled={!idle}
+                isWindows={isWindows}
+              />
+            </div>
             {notices.length > 0 && (
               <div className="notice">
                 {notices.map((n) => (

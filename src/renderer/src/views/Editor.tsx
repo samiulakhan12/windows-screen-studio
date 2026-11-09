@@ -8,6 +8,7 @@ import { createAnnotation } from '../../../shared/editor/annotations'
 import { Autosaver } from '../../../shared/editor/autosave'
 import { canSplitAt, clipAt, correctProjectMedia, displayTime, restoreRange, stepOutput } from '../../../shared/editor/clips'
 import { commandInfo, PALETTE_COMMANDS, type CommandId } from '../../../shared/editor/commands'
+import { currentUiInfo, noteProjectLanguages, showLanguageSection } from '../i18n/boot'
 import { cropNotice, setCrop, setZoomLevelInView, snapCrop, taskbarCrop, type CropDraft } from '../../../shared/editor/cropEdit'
 import { directUnavailable } from '../../../shared/editor/directorCopy'
 import { FREEZE_REFUSAL_TEXT, freezeRefusal, removeFreeze } from '../../../shared/editor/freezeEdit'
@@ -214,6 +215,8 @@ async function openSession(projectId: string): Promise<Session> {
   // Likewise without its camera when the camera file is missing (its layouts then leave the screen be).
   const opened = openedWithoutCamera(openedWithoutStems(data.project, data.missingStems), !data.webcamUrl)
   const project = correctProjectMedia(opened, { duration, width: screen.videoWidth, height: screen.videoHeight })
+  // A project with captions or a transcript in a shipped language tells Home's offer what the user works in (output-and-languages §2.7).
+  noteProjectLanguages(project)
   // Words deleted in the Transcript tab keep their mark only while they are cut (edit-by-text.md §4.2);
   // then automatic caption changes become the user's when edited by hand, and marks, word anchors and
   // per-caption places follow their words (Captions Studio §11.8). Review mode (E-02): records of
@@ -1404,6 +1407,7 @@ function EditorSession({
       shortClips: () => openClips(),
       shortVersion: () => setDialog('shortVersion'),
       localAi: () => void window.dispatchEvent(new CustomEvent(OPEN_SETTINGS_EVENT, { detail: { section: 'localAi' } })),
+      language: () => void window.dispatchEvent(new CustomEvent(OPEN_SETTINGS_EVENT, { detail: { section: 'language' } })),
       aiService: () => void window.dispatchEvent(new CustomEvent(OPEN_SETTINGS_EVENT, { detail: { section: 'ai' } })),
 
       // E-09 nudge, E-07 filmstrip, E-12 versions (docs/design/versions.md)
@@ -1693,7 +1697,9 @@ function EditorSession({
     unavailable.toggleSafeZones = isTall(frame.outW, frame.outH) ? null : SAFE_ZONES_TALL
     on.toggleFollow = followable && p.reframe?.mode === 'follow'
     on.toggleSafeZones = isTall(frame.outW, frame.outH) && safeZoneChoice() !== 'off'
-    return PALETTE_COMMANDS.map((info) => ({ info, shortcuts: commandKeys(keymap, info.id), unavailable: unavailable[info.id] ?? null, on: info.toggle ? !!on[info.id] : undefined }))
+    // Language… exists only while Settings has a Language section (output-and-languages §2.5).
+    const listed = showLanguageSection(currentUiInfo()) ? [...PALETTE_COMMANDS, commandInfo('language')] : PALETTE_COMMANDS
+    return listed.map((info) => ({ info, shortcuts: commandKeys(keymap, info.id), unavailable: unavailable[info.id] ?? null, on: info.toggle ? !!on[info.id] : undefined }))
     // Recomputed when the palette opens or something it shows changes, not on every playhead move.
   }, [dialog, project, selection, group, keymap, cursor.valid, rows, data.webcamUrl, store, player, cropDraft, recorded.scale, copy])
 

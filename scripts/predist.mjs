@@ -14,6 +14,8 @@
 //      with a warning, unless SSW_REQUIRE_NATIVE=1).
 //   3. The icon files exist (npm run icons).
 //   4. The code-signing environment is consistent (unsigned builds are fine).
+//   5. Every UI text has a key and the catalogues match their sources (scripts/i18n/check.mjs,
+//      docs/design/output-and-languages.md §16.4): a report until step S4 turns the scanner to "fail".
 import { spawnSync } from 'node:child_process'
 import { createHash } from 'node:crypto'
 import { existsSync, readFileSync, rmSync, statSync } from 'node:fs'
@@ -180,11 +182,18 @@ function checkSigning() {
   if (!signing.errors.length) log(`code signing: ${signing.summary}`)
 }
 
+// 5. Strings and catalogues -------------------------------------------------------------------
+function checkStrings() {
+  const r = spawnSync(process.execPath, [path.join(root, 'scripts', 'i18n', 'check.mjs'), '--report'], { cwd: root, stdio: 'inherit' })
+  if (r.status !== 0) fail('the string and catalogue checks failed (scripts/i18n/check.mjs, see above).')
+}
+
 ensureFfmpeg()
 buildNativeHelper()
 checkSpeech()
 checkIcons()
 checkSigning()
+checkStrings()
 if (failures.length) {
   console.error(`\npredist: ${failures.length} problem(s) must be fixed before packaging (see above).`)
   process.exit(1)

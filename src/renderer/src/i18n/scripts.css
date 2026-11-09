@@ -1,0 +1,5 @@
+/*
+ * Fonts, line heights and the type scale of the Bangla and Devanagari UI
+ * (docs/design/output-and-languages.md §12.1-12.2), under :lang(bn) and :lang(hi) only, so English
+ * is unchanged. Part P6 writes the rules; imported once from main.tsx.
+ */

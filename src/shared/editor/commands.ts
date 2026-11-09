@@ -163,6 +163,9 @@ const COMMAND_LIST = [
   { id: 'publishArticle', title: 'Write a help-centre article', category: 'Publish', keywords: 'ai copy help center knowledge base docs how to steps guide' },
   { id: 'publishReleaseNotes', title: 'Write release notes', category: 'Publish', keywords: 'ai copy changelog what changed update new fixed improved product' },
 
+  // Output and languages (docs/design/output-and-languages.md §2.5): listed only while Settings has a Language section.
+  { id: 'language', title: 'Language…', category: 'General', keywords: 'language ভাষা bangla বাংলা english español हिन्दी' },
+
   // E-09 nudge, E-07 filmstrip, E-12 versions (docs/design/versions.md): the step keys nudge while items are selected (shortcuts.ts NUDGE_STEPS).
   { id: 'nudgeBack', title: 'Move selected items one frame earlier', category: 'Edit', keywords: 'nudge shift left arrow frame item selection earlier', repeat: true },
   { id: 'nudgeForward', title: 'Move selected items one frame later', category: 'Edit', keywords: 'nudge shift right arrow frame item selection later', repeat: true },
@@ -212,7 +215,10 @@ export function commandInfo(id: CommandId): CommandInfo {
 }
 
 /** Commands the palette offers. */
-export const PALETTE_COMMANDS: readonly CommandInfo[] = COMMANDS.filter((c) => !c.hidden)
+/** Commands that exist only while a language other than English ships (output-and-languages §2.5): left out of the palette and the shortcuts editor until then. */
+export const LANGUAGE_COMMANDS: readonly CommandId[] = ['language']
+
+export const PALETTE_COMMANDS: readonly CommandInfo[] = COMMANDS.filter((c) => !c.hidden && !LANGUAGE_COMMANDS.includes(c.id))
 
 /* ---------- fuzzy search ---------- */
 

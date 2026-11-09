@@ -7,6 +7,7 @@
  */
 import type { ExportJob, FfmpegVideoEncoder } from '../shared/api/export'
 import type { FfmpegPlan, PlanPaths } from './exportArgs'
+import { t } from '../shared/i18n/t'
 
 /** Encoder arguments of `encoder` for `job` (§5.4). Part P1. */
 export function proVideoArgs(job: ExportJob, encoder: FfmpegVideoEncoder): string[] {
@@ -29,6 +30,7 @@ export function copyProArgs(kind: 'hevc' | 'av1'): string[] {
 
 /** Every ffmpeg process of a job with a non-default codec or a transparent background (§5). Part P1. */
 export function proPlan(job: ExportJob, given: PlanPaths): FfmpegPlan {
+  void job
   void given
-  throw new Error(`This export's codec (${job.codec ?? 'transparent'}) is not available yet.`)
+  throw new Error(t('errors.feature.notReady'))
 }

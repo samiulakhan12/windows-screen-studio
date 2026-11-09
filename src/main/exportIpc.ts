@@ -21,6 +21,7 @@ import { ffmpegPath } from './ffmpeg'
 import { loopableMusic } from './musicLoopCache'
 import { bundledSoundDir } from './soundLibrary/paths'
 import { writeStemsStep } from './stemsRun'
+import { t } from '../shared/i18n/t'
 
 interface ActiveExport {
   /** The project the export draws (the stems are cut from its recordings). */
@@ -103,7 +104,7 @@ export function saveFilters(): Record<ExportFormat | 'png', Electron.FileFilter>
     webm: { name: 'WebM video', extensions: ['webm'] },
     mov: { name: 'QuickTime movie', extensions: ['mov'] },
     m4a: { name: 'M4A audio', extensions: ['m4a'] },
-    wav: { name: 'WAV audio', extensions: ['wav'] },
+    wav: { name: t('main.saveFilter.wav'), extensions: ['wav'] },
     png: { name: 'PNG image', extensions: ['png'] }
   }
 }

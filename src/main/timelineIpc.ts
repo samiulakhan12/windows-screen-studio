@@ -10,6 +10,7 @@ import type { TimelineEditor, TimelineRequest, TimelineResult } from '../shared/
 import type { VoiceStrength } from '../shared/types'
 import type { TimelineMedia } from '../shared/interchange/timelinePlan'
 import { isAppUrl } from './security'
+import { t } from '../shared/i18n/t'
 
 /** What the writer reads and runs (tests replace them). Part P4 fills it in. */
 export interface TimelineDeps {
@@ -20,7 +21,7 @@ export interface TimelineDeps {
 export async function writeTimeline(request: TimelineRequest, deps?: TimelineDeps): Promise<TimelineResult> {
   void request
   void deps
-  return { files: [], problem: 'Timelines are not available yet.' }
+  return { files: [], problem: t('errors.feature.notReady') }
 }
 
 /** Copies the recordings of `projectId` into `folder` for "The original recordings" (§8.1). Part P4. */

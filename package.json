@@ -29,7 +29,13 @@
     "icons": "electron --no-sandbox scripts/icons/render-icons.cjs",
     "predist": "node scripts/predist.mjs",
     "dist:win": "npm run predist && electron-vite build && electron-builder --win --x64 --publish never --config electron-builder.config.cjs && node scripts/verify-dist.mjs",
-    "verify:dist": "node scripts/verify-dist.mjs"
+    "verify:dist": "node scripts/verify-dist.mjs",
+    "i18n:check": "node scripts/i18n/check.mjs",
+    "i18n:build": "node scripts/i18n/build-catalogues.mjs",
+    "i18n:sheet": "node scripts/i18n/sheet.mjs",
+    "i18n:pack": "node scripts/i18n/pack.mjs",
+    "i18n:pseudo": "node scripts/i18n/pseudo.mjs",
+    "i18n:extract": "node scripts/i18n/extract.mjs"
   },
   "dependencies": {
     "electron-updater": "6.8.10",

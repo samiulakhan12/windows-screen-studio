@@ -4,6 +4,7 @@
  * the contracts' stub refuses, so no transparent export can start before P2.
  */
 import type { FrameSink, StartJob } from './encoders'
+import { t } from '../../../shared/i18n/t'
 
 /** The raw sink of a transparent job: each frame read back and unpremultiplied as getImageData rounds (§6.3). Part P2. */
 export function alphaRawSink(canvas: HTMLCanvasElement, ctx: CanvasRenderingContext2D, startJob: StartJob, readback?: 'videoframe' | 'imagedata'): FrameSink {
@@ -11,7 +12,7 @@ export function alphaRawSink(canvas: HTMLCanvasElement, ctx: CanvasRenderingCont
   void ctx
   void startJob
   void readback
-  throw new Error('Transparent videos are not available yet.')
+  throw new Error(t('errors.feature.notReady'))
 }
 
 /** Premultiplied 4-byte pixels of `src` to straight ones in `out`: c' = round(c × 255 / a), 0 where a is 0. Part P2. */

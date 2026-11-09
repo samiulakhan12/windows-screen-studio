@@ -11,6 +11,7 @@ import type { RelaunchResult, UiInfo, UiLanguage } from '../shared/api/ui'
 import { readUiPrefs, resolveUiLanguage } from '../shared/i18n/locale'
 import { readPrefSync, writePrefSync } from './prefsIpc'
 import { isAppUrl } from './security'
+import { t } from '../shared/i18n/t'
 
 let info: UiInfo | null = null
 
@@ -28,7 +29,7 @@ export function relaunchBlocker(): string | null {
 /** Relaunches Flown, reopening `reopenProjectId` after the restart, unless something is busy. Part P6; the stub refuses. */
 export function relaunchApp(reopenProjectId?: string): RelaunchResult {
   void reopenProjectId
-  return { ok: false, reason: 'Restarting to change the language is not available yet.' }
+  return { ok: false, reason: t('errors.feature.notReady') }
 }
 
 /** Languages Flown knows offline that the user works in: speech models made for one, and `UiPrefs.seen` (§2.7). Part P6. */

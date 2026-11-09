@@ -2441,8 +2441,9 @@ callout's text reachable by Tab and read after the step's announcement.
 
   Places: top left উপরে বাঁদিকে, top উপরে, top right উপরে ডানদিকে, left বাঁদিকে, middle মাঝখানে, right
   ডানদিকে, bottom left নিচে বাঁদিকে, bottom নিচে, bottom right নিচে ডানদিকে. A native speaker checks every
-  one before release (§0 decision 9). Other languages use the English words with their own narration
-  until the app is translated (X-05, wave 12).
+  one before release (§0 decision 9). Other languages use the English words with their own narration:
+  exported files stay English in every UI language (docs/design/output-and-languages.md §0 decision 10),
+  and a "language of exported files" choice is listed for later there (§24).
 - **Digits**: step numbers ("৩", "৩.১"), chapter numbers ("অংশ ৩") and page numbers follow the
   captions' `digits` choice (`withDigits`, `src/shared/captions/words.ts:259`): Bangla digits by
   default for Bangla.

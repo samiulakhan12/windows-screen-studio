@@ -11,6 +11,8 @@ import { chapterListText, partProject, sidecarName, spokenLanguage, subtitleLang
 import type { Project } from '../../../shared/types'
 import { exportDescription } from '../../../shared/publish/youtube'
 import type { BatchExtras } from './exporter'
+import type { TimelineRequest } from '../../../shared/api/export'
+import { writeTimelineStep } from './timelineRun'
 
 /**
  * What one file per chapter exports for `part`: the part's project (its clips and freezes give the
@@ -47,6 +49,8 @@ export interface BundleRequest {
   thumbnail: () => Promise<Uint8Array>
   /** The subtitle languages ticked (Captions Studio §11.10, BundleOptions.languages): one SRT or VTT each; absent: the spoken language's alone. */
   languages?: readonly string[]
+  /** Also save a timeline for other editors (output-and-languages §8.7), written after the other files; absent: none. */
+  timeline?: { request: Omit<TimelineRequest, 'plan'>; exported: { fps: number; frames: number; width: number; height: number } }
 }
 
 const baseName = (file: string): string => file.split(/[\\/]/).pop() ?? file
@@ -69,7 +73,7 @@ export function sidecarText(kind: SidecarKind, req: BundleRequest, language?: st
 
 /** Saves every file of `req` next to `anchor`, one after another. */
 export async function writeBundle(anchor: string, req: BundleRequest): Promise<BatchExtras | undefined> {
-  if (!req.kinds.length) return undefined
+  if (!req.kinds.length && !req.timeline) return undefined
   const saved: string[] = []
   const failed: string[] = []
   const spoken = spokenLanguage(req.project)
@@ -86,6 +90,12 @@ export async function writeBundle(anchor: string, req: BundleRequest): Promise<B
         failed.push(`${sidecarName(baseName(anchor), kind, translated)}: ${reason}`)
       }
     }
+  }
+  // The timeline after the video, the stems and the sidecars (output-and-languages §8.7); a failure never undoes the video.
+  if (req.timeline) {
+    const result = await writeTimelineStep(req.project, req.timeline.request, req.timeline.exported)
+    saved.push(...result.files.map((f) => f.path))
+    if (result.problem) failed.push(result.problem)
   }
   return { saved, failed }
 }

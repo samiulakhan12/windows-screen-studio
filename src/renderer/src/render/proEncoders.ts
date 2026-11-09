@@ -11,6 +11,7 @@ import type { ExportSettings } from '../../../shared/types'
 import type { CodecCaps } from '../../../shared/render/codecRoutes'
 import type { ExportRoute } from '../../../shared/render/exportPlan'
 import { RawFrameSink, type FrameSink, type JobBase, type StartJob } from './encoders'
+import { t } from '../../../shared/i18n/t'
 
 /** WebCodecs configurations for HEVC on the GPU, Annex B, best first (§5.4). Part P1. */
 export function hevcConfigs(width: number, height: number, fps: number, bitrate: number): VideoEncoderConfig[] {
@@ -61,5 +62,6 @@ export function proSink(route: Extract<ExportRoute, { video: 'webcodecs' }>, can
   void fps
   void bitrate
   void startJob
-  throw new Error(`WebCodecs ${route.codec} is not available yet.`)
+  void route
+  throw new Error(t('errors.feature.notReady'))
 }

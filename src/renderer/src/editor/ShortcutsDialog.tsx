@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react'
-import { COMMAND_CATEGORIES, COMMANDS, commandInfo, type CommandId, type CommandInfo } from '../../../shared/editor/commands'
+import { COMMAND_CATEGORIES, COMMANDS, commandInfo, LANGUAGE_COMMANDS, type CommandId, type CommandInfo } from '../../../shared/editor/commands'
+import { currentUiInfo, showLanguageSection } from '../i18n/boot'
 import {
   addBinding,
   checkShortcut,
@@ -248,7 +249,9 @@ export function ShortcutsDialog({ keymap, onChange, onClose }: { keymap: Keymap;
       const text = `${c.title} ${c.category} ${c.keywords ?? ''} ${keymap[c.id].map((a) => `${a} ${shortcutLabel(a)}`).join(' ')}`.toLowerCase()
       return words.every((w) => text.includes(w))
     }
-    return COMMAND_CATEGORIES.map((category) => ({ category, commands: COMMANDS.filter((c) => c.category === category && matches(c)) })).filter((g) => g.commands.length)
+    // Language… is listed only while Settings has a Language section (output-and-languages §2.5).
+    const listed = showLanguageSection(currentUiInfo()) ? COMMANDS : COMMANDS.filter((c) => !LANGUAGE_COMMANDS.includes(c.id))
+    return COMMAND_CATEGORIES.map((category) => ({ category, commands: listed.filter((c) => c.category === category && matches(c)) })).filter((g) => g.commands.length)
   }, [query, keymap])
 
   const modified = Object.keys(keymapOverrides(keymap)).length > 0

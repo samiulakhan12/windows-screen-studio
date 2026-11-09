@@ -6,6 +6,7 @@
  */
 import type { ExportJob, SoundStem } from '../shared/api/export'
 import type { FfmpegPlan, PlanPaths } from './exportArgs'
+import { t } from '../shared/i18n/t'
 
 /** The output arguments of one stem written to `path` (§7.2). Part P3. */
 export function stemOutputArgs(stem: SoundStem, path: string): string[] {
@@ -18,7 +19,7 @@ export function stemOutputArgs(stem: SoundStem, path: string): string[] {
 export function wavPlan(job: ExportJob, given: PlanPaths): FfmpegPlan {
   void job
   void given
-  throw new Error('WAV export is not available yet.')
+  throw new Error(t('errors.feature.notReady'))
 }
 
 /** Free paths next to `output` for `stems` ("Demo - Voice.wav", " (2)" when taken), never the video's own (§7.1). Part P3. */

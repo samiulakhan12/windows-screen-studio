@@ -2,6 +2,8 @@
 import './ai/tlsGuard'
 // Then the English guard's fixed clock (SSW_FIXED_NOW, unpackaged runs only), before any module reads the time.
 import './fixedNow'
+// Then main's English messages (common, errors, main), before any module makes text (output-and-languages §9.1).
+import '../shared/i18n/messages/en/main'
 import { app, BrowserWindow } from 'electron'
 import path from 'node:path'
 import { APP_NAME, APP_USER_MODEL_ID, LEGACY_APP_NAME } from '../shared/brand'

@@ -7,6 +7,7 @@
  */
 import type { SoundStem } from '../api/export'
 import type { Project } from '../types'
+import { t } from '../i18n/t'
 
 export type TimelineMedia = 'video' | 'screen' | 'camera' | SoundStem
 
@@ -66,12 +67,14 @@ export interface TimelinePlan {
 export function exportTimeline(project: Project, exported: { fps: number; frames: number; width: number; height: number }, stems: readonly SoundStem[]): TimelinePlan {
   void project
   void stems
-  throw new Error(`Timelines are not available yet (${exported.frames} frames).`)
+  void exported
+  throw new Error(t('errors.feature.notReady'))
 }
 
 /** The timeline over the original recordings: Flown's cuts, speeds and holds (§8.2 rules 1-6). Part P4. */
 export function recordingsTimeline(project: Project, fps: number, media: TimelinePlan['media']): TimelinePlan {
   void project
   void media
-  throw new Error(`Timelines are not available yet (${fps} fps).`)
+  void fps
+  throw new Error(t('errors.feature.notReady'))
 }

@@ -2854,6 +2854,43 @@ afterwards unless §21.9 names that part as its owner.
 - Contracts tests: 1–8, and the tour of 9–10 without a baseline. Both typechecks and all of vitest
   pass.
 
+**What the contracts step settled (9 November 2026).** Recorded here for every part; each is in the
+code and its tests:
+
+1. **The message formatter.** `intl-messageformat` could not be added to this checkout (dependencies
+   are not installed in the build worktrees), so `src/shared/i18n/icu.ts` parses and formats the
+   subset §9.3 allows (arguments, `plural` with `=n` and `offset`, `select`, the four rich tags, ICU's
+   apostrophe quoting), with the same syntax. P7's checks parse with its `parseIcu` and `argumentsOf`.
+   Adding `intl-messageformat` 12.1.4 later replaces `icu.ts` only; `scripts/notices.mjs` gains it then.
+2. **`setCatalogue` takes `user`** (key → placeholders holding the user's text, from the meta files'
+   `user`), because meta files are never imported at runtime; P7's build writes it into the built
+   catalogue next to `latn`.
+3. **`writeStemsStep(job, output, signal, projectId)` and `renderStems(…, signal, projectId)`** take the
+   project: the stems are cut from its recordings, which a job does not name.
+4. **`ExportInput.stems?: true`** asks the exporter for stems (P5 sets it from *Also save*); `soundOf`
+   calls `stemJobOf`, and loads the sound analysis for its fixed gain, only then.
+5. **`rawSinkFor`'s route is `Extract<ExportRoute, { video: 'ffmpeg' }>`** (raw frames go to ffmpeg).
+6. **`ffmpegPlan` sends a transparent job to `proPlan`** as well as a non-default codec: WebM's VP9 with
+   alpha keeps the default codec.
+7. **`fmt`'s English profile** needs the shapes today's helpers have: `clock(seconds, style)` with the
+   five `ClockStyle`s (formatTime, formatClock and both tenths, clockTime, share's lengthText) in place
+   of `hours?`, `tick` (formatTick), `seconds` (the sounds list's lengthText), `factor` (formatLevel,
+   formatRate, zoomText), `count(n, { grouping })` (`toLocaleString('en-US')` of notes and script
+   drafts) and `time(ms, 'short' | 'seconds')`; `relative` is storage's usedAgo in English. P6 writes
+   the other languages' branch of each.
+8. **`readPresetFile`** returns presets with id `''` and saved `0`; `importPresets` makes both.
+9. **`boot.ts` also exports `currentUiInfo()`**: Settings, the palette and the shortcuts editor read the
+   booted info. *Language…* is in `COMMAND_LIST` and left out of the palette and the shortcuts editor
+   through `LANGUAGE_COMMANDS` until `showLanguageSection` is true.
+10. **The batch reader** is `readBatchChoice` (`exportPresets.ts`), used by the dialog's `loadBatch`.
+11. **Stubs that would run a new path before its part** throw `errors.feature.notReady`; every other stub
+    keeps today's behaviour.
+12. **`checkTimelinePlan`** also refuses an event past the plan's end, an event whose media the plan does
+    not describe, and more than 16 tracks; source files may be up to 16,384 pixels a side (the
+    sequence keeps to `MAX_EXPORT_SIDE`).
+13. **The recording panels on Home** are wrapped in `display: contents` elements that carry `lang` in a
+    translated UI only, since their files are the other account's.
+
 ### 21.1 Part P1 · Codecs, frame rates and 4:5
 
 | File | Exports or change |
