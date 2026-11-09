@@ -128,10 +128,11 @@ export interface LocalModelDeps {
   /** The helper has `file` loaded: stop it before the file goes (Remove). */
   unload?: (file: string) => Promise<void>
   /**
-   * The model file the helper holds now (loaded, or loading), or null: its memory counts as free,
-   * as the next run uses it or the helper gives it back before another model loads (§9.5).
+   * The model file the helper holds now, and whether it has finished loading, or null: its memory
+   * counts as free, as the next run uses it or the helper gives it back before another model
+   * loads; while it still loads, only for that same model (§9.5).
    */
-  held?: () => string | null
+  held?: () => { file: string; loaded: boolean } | null
   /** Something Settings shows changed (a download's progress included). */
   onChange?: () => void
   download?: { stallMs?: number; retryDelaysMs?: readonly number[] }
@@ -232,11 +233,23 @@ export class LocalModelStore {
       if (disk === 'ready') ready.push(spec.id)
       models.push({ id: spec.id, state: disk, bytes: spec.bytes, block })
     }
-    // The memory the helper holds is not lost to the next run: count the peak of its model as free.
-    const held = this.deps.held?.() ?? null
-    const heldSpec = held ? this.specs().find((spec) => ready.includes(spec.id) && this.fileOf(spec) === held) : undefined
-    if (heldSpec) pc.freeMemBytes = Math.min(pc.totalMemBytes, pc.freeMemBytes + heldSpec.peakMB * 2 ** 20)
     const s = this.settings()
+    // The memory the helper holds is not lost to the next run: count the peak of its model as free.
+    // While the model still loads, most of that memory is not taken yet, so the peak counts only for
+    // that model (the run waits for it); any other model is measured against the memory free now.
+    const held = this.deps.held?.() ?? null
+    const heldSpec = held ? this.specs().find((spec) => ready.includes(spec.id) && this.fileOf(spec) === held.file) : undefined
+    if (held && heldSpec) {
+      const peak = heldSpec.peakMB * 2 ** 20
+      const withHeld = Math.min(pc.totalMemBytes, pc.freeMemBytes + peak)
+      const pick = (free: number, ids: readonly LocalModelId[] = ready): LocalModelId | null => pickLocalModel(s.use, ids, { ...pc, freeMemBytes: free })
+      if (held.loaded || pick(withHeld) === heldSpec.id) pc.freeMemBytes = withHeld
+      else if (!pick(pc.freeMemBytes) && pick(withHeld, [heldSpec.id]) === heldSpec.id) {
+        // Automatic would take a bigger model on the memory the loading one is about to use: stay below that model's peak.
+        const bigger = Math.min(...this.specs().filter((spec) => spec.id !== heldSpec.id && ready.includes(spec.id)).map((spec) => spec.peakMB * 2 ** 20))
+        pc.freeMemBytes = Math.max(peak, Math.min(withHeld, bigger - 1))
+      }
+    }
     return { models, use: s.use, active: pickLocalModel(s.use, ready, pc), pc, speeds: { ...s.speeds } }
   }
 

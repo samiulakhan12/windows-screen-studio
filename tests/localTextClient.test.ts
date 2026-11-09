@@ -60,6 +60,7 @@ function fakeEngine(answers: ((c: Call) => Partial<LlmAnswer>)[], progress: Loca
   return {
     calls,
     loadedModel: null as string | null,
+    loadFinished: false,
     async run(req: Call & { onProgress(p: LocalAiProgress): void }): Promise<LlmAnswer> {
       calls.push(req)
       for (const p of progress) req.onProgress(p)
@@ -381,6 +382,7 @@ describe('the helper as the app runs it (§9.2, §9.5, §9.9)', () => {
     await first.json(titlePrompt(), opts())
     // The helper keeps the model: the free memory falls by its peak.
     engine.loadedModel = path.join(modelsDir, 'tiny.gguf')
+    engine.loadFinished = true
     pc.freeMemBytes = 3.5 * GIB - small.peakMB * 2 ** 20
     const second = await localTextClient(ctx())
     expect(second.model).toBe('qwen3.5-2b')
@@ -390,6 +392,27 @@ describe('the helper as the app runs it (§9.2, §9.5, §9.9)', () => {
     // A file the helper holds that is not the model on disk adds nothing.
     engine.loadedModel = path.join(h.userData, 'elsewhere', 'tiny.gguf')
     await expect(localTextClient(ctx())).rejects.toThrow('AI on this PC needs about 2.2 GB of free memory and 1.3 GB is free. Close some apps.')
+  })
+
+  it('while the helper still loads its model, that memory is not free for a bigger one: the next run waits for the same model', async () => {
+    register()
+    const both = path.join(h.userData, 'test-catalog-both.json')
+    const entry = { bytes: BODY.length, sha256: SHA, url: 'http://127.0.0.1:9/m.gguf' }
+    writeFileSync(both, JSON.stringify([{ id: 'gemma4-e2b', file: 'big.gguf', ...entry }, { id: 'qwen3.5-2b', file: 'tiny.gguf', ...entry }]))
+    process.env.SSW_TEXT_MODEL_TEST_CATALOG = both
+    withModel()
+    writeFileSync(path.join(modelsDir, 'big.gguf'), BODY)
+    const engine = fakeEngine([() => ({})])
+    setLocalEngine(engine as never)
+    // A first tool took Small (Recommended's 3.8 GB did not fit) and the helper is loading it: most
+    // of its memory is not taken yet, so Recommended would not fit once Small is let go either.
+    engine.loadedModel = path.join(modelsDir, 'tiny.gguf')
+    pc.freeMemBytes = 1.8 * GIB
+    expect((await localTextClient(ctx())).model).toBe('qwen3.5-2b')
+    expect((await localAiState()).active).toBe('qwen3.5-2b')
+    // Loaded: Small holds its 2.2 GB, which the helper gives back before Recommended loads.
+    engine.loadFinished = true
+    expect((await localTextClient(ctx())).model).toBe('gemma4-e2b')
   })
 
   it('the PC resuming from sleep starts the watchdog of a running request again', () => {

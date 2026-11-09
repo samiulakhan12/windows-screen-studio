@@ -147,6 +147,11 @@ export class LlmEngine {
     return this.proc && !this.proc.exited ? this.proc.model : null
   }
 
+  /** Whether the helper has said `loaded` for loadedModel (until then most of its memory is not taken yet). */
+  get loadFinished(): boolean {
+    return !!this.proc && !this.proc.exited && this.proc.loaded
+  }
+
   /**
    * Runs one request: its turn in the queue ("waiting"), the model loaded when it is not
    * ("loading"), the prompt read ("reading") and the answer written ("writing"). Rejects with a

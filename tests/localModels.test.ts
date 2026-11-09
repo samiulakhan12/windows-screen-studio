@@ -28,7 +28,7 @@ vi.mock('electron', () => ({
 import { LocalModelStore, MODELS_FILE, readTestCatalog, sanitizeModelsFile, SPEED_BLEND, testCatalog, type LocalModelDeps, type TestModelSpec } from '../src/main/localAi/models'
 import type { HttpGet } from '../src/main/speech/download'
 import { LOCAL_MODELS } from '../src/shared/localAi/catalog'
-import { diskMessage } from '../src/shared/localAi/messages'
+import { diskMessage, localRunProblem } from '../src/shared/localAi/messages'
 
 const BODY = Buffer.concat([Buffer.from('GGUF'), randomBytes(200_000)])
 const SHA = createHash('sha256').update(BODY).digest('hex')
@@ -236,6 +236,41 @@ describe('the files on disk (test 71)', () => {
     expect(existsSync(path.join(dir, 'test-small.gguf'))).toBe(false)
     expect(existsSync(path.join(dir, 'test-small.gguf.part'))).toBe(false)
     expect(state.models[1].state).toBe('missing')
+  })
+
+  it('the memory the helper holds counts as free once its model has loaded; while it loads, only for that model (§9.5)', async () => {
+    put('test-big.gguf', BODY)
+    put('test-small.gguf', BODY)
+    const ready = ['gemma4-e2b', 'qwen3.5-2b'] as const
+    const smallFile = path.join(dir, 'test-small.gguf')
+    const smallPeak = LOCAL_MODELS[1].peakMB * 2 ** 20
+    let free = 3 * GIB
+    let held: { file: string; loaded: boolean } | null = null
+    const s = store(undefined, { pc: () => ({ totalMemBytes: 16 * GIB, freeMemBytes: free, helper: true }), held: () => held })
+    // 3 GB free: Recommended (3.8 GB) does not fit, Small does.
+    expect((await s.state()).active).toBe('qwen3.5-2b')
+    // Small starts loading and has taken almost nothing yet: its peak is not memory Recommended could use.
+    held = { file: smallFile, loaded: false }
+    let st = await s.state()
+    expect(st.active).toBe('qwen3.5-2b')
+    expect(localRunProblem(st.use, ready, st.pc)).toEqual({ id: 'qwen3.5-2b' })
+    // Further into the load: what is free now fits neither model, yet the next run waits for Small.
+    free = 1.8 * GIB
+    st = await s.state()
+    expect(st.active).toBe('qwen3.5-2b')
+    expect(localRunProblem(st.use, ready, st.pc)).toEqual({ id: 'qwen3.5-2b' })
+    // Loaded: Small holds its peak, which counts as free again, and still picks Small.
+    held = { file: smallFile, loaded: true }
+    free = 3 * GIB - smallPeak
+    st = await s.state()
+    expect(st.pc.freeMemBytes).toBe(3 * GIB)
+    expect(st.active).toBe('qwen3.5-2b')
+    // Recommended pinned while Small loads: measured against the memory free now.
+    await s.setUse('gemma4-e2b')
+    held = { file: smallFile, loaded: false }
+    free = 3 * GIB
+    st = await s.state()
+    expect(localRunProblem(st.use, ready, st.pc)).toEqual({ message: 'AI on this PC needs about 3.8 GB of free memory and 3.0 GB is free. Close some apps.' })
   })
 
   it('Use: Automatic by default; only a downloaded model can be pinned; removing the pinned one goes back to Automatic', async () => {

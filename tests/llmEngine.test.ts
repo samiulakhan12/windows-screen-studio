@@ -219,6 +219,19 @@ describe('LlmEngine with a fake helper (test 65)', () => {
     expect(starts()).toHaveLength(2)
   })
 
+  it('loadFinished: false while the helper loads the model, true once it said `loaded`, false once it is gone', async () => {
+    process.env.FAKE_LLM_LOAD_MS = '300'
+    const e = engine({ idleMs: 150 })
+    expect(e.loadFinished).toBe(false)
+    const run = e.run(request())
+    expect(e.loadedModel).toBe(path.join(dir, spec.file))
+    expect(e.loadFinished).toBe(false)
+    await run
+    expect(e.loadFinished).toBe(true)
+    await waitFor(() => e.loadedModel === null)
+    expect(e.loadFinished).toBe(false)
+  })
+
   it('a crash fails the request with §9.9’s words, and the next request starts a new helper', async () => {
     process.env.FAKE_LLM_MODE = 'crash'
     const e = engine()
