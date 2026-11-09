@@ -1085,6 +1085,8 @@ the session, live frames are drawn unblurred today, and A\* is the same.
   When a window's screen and camera copies both exist, it prepares the camera mask, composes A\* on
   the scratch target into an `out` canvas, and drops the copies. A\* waits there until the window's
   first output frame `i0 = ⌈T · fps − 1e-9⌉`.
+- Every output frame inside a window draws its join, also when no window has a still: a project
+  whose cuts are all dips has no A\*, and each dip still draws its colour.
 - Thumbnails (`renderThumbnail`, `:583`) and the contrast probe never draw a join.
 - The export dialog's preview (`ExportPreview.tsx:99`) uses its own `JoinStills`.
 
