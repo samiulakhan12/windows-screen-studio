@@ -154,6 +154,31 @@ describe('Add a provider › More services (test 95)', () => {
     expect(api.saved.at(-1)!.service).toEqual({ preset: 'other', baseUrl: 'https://openrouter.ai/api/v1', keepNoData: true })
   })
 
+  it('a saved service edited to OpenRouter, by its preset or its address, starts ticked; a saved OpenRouter keeps its own choice', async () => {
+    const groq = { id: 'svc1', kind: 'openai', label: 'Groq', model: 'llama-4-scout', maskedKey: '…6789', createdAt: '', service: { preset: 'groq', baseUrl: 'https://api.groq.com/openai/v1', host: 'api.groq.com', loopback: false, json: 'schema' } } as AiProviderInfo
+    for (const [preset, address] of [['openrouter', null], ['other', 'https://openrouter.ai/api/v1']] as const) {
+      unmountAll()
+      let els = await settle(form(groq))
+      expect(inputBy(els, (p) => p.type === 'checkbox')).toBeUndefined()
+      type(inputBy(els, (p) => p['data-testid'] === 'service-preset')!, preset)
+      els = await settle(form(groq))
+      if (address) type(inputBy(els, (p) => String(p.id).endsWith('-url'))!, address)
+      els = await settle(form(groq))
+      expect(inputBy(els, (p) => p.type === 'checkbox')!.props.checked).toBe(true)
+      type(inputBy(els, (p) => String(p.id).endsWith('-key'))!, 'sk-or-0123456789')
+      await submit(form(groq))
+      expect(api.saved.at(-1)!.service).toEqual({ preset, baseUrl: 'https://openrouter.ai/api/v1', keepNoData: true })
+    }
+    // An OpenRouter entry saved without it was unticked by the user: it opens unticked, and a saved tick stays ticked.
+    const unticked = { ...groq, label: 'OpenRouter', service: { preset: 'other', baseUrl: 'https://openrouter.ai/api/v1', host: 'openrouter.ai', loopback: false, json: 'schema' } } as AiProviderInfo
+    const ticked = { ...unticked, service: { ...unticked.service!, preset: 'openrouter', keepNoData: true } } as AiProviderInfo
+    for (const [editing, checked] of [[unticked, false], [{ ...unticked, service: { ...unticked.service!, preset: 'openrouter' } }, false], [ticked, true]] as const) {
+      unmountAll()
+      const els = await settle(form(editing as AiProviderInfo))
+      expect(inputBy(els, (p) => p.type === 'checkbox')!.props.checked).toBe(checked)
+    }
+  })
+
   it('Save and check saves the service, checks it, and hands the row what the check said', async () => {
     let els = await settle(form())
     ;(radio(els, 'More services').props.onClick as () => void)()

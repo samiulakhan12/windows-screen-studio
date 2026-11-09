@@ -482,7 +482,7 @@ OpenAI-compatible address". Choosing it shows:
 | **API key** | As today; optional for a service on this PC ("No key needed for Ollama and LM Studio on this PC"). After the base URL changes to another address: "Enter the API key for the new address." |
 | **Model** | A combobox (below). |
 | **Prices** | Disclosure "Prices (US$ per million tokens)": **Input** and **Output** number fields, filled from the price list when it knows the model, else empty with "Not in Flown's price list: add them to see costs." |
-| OpenRouter only | Checkbox **Only use hosts that do not keep my prompts** (on). Shown for the OpenRouter preset and for any service whose address is openrouter.ai (Other address included). |
+| OpenRouter only | Checkbox **Only use hosts that do not keep my prompts** (on). Shown for the OpenRouter preset and for any service whose address is openrouter.ai (Other address included). Editing a saved service that was not OpenRouter starts it ticked; a saved OpenRouter service opens with the user's own choice. |
 | **Save and check** | Saves, then checks the key and what the service can answer in (§10.3): "Works." / "Works; Flown checks its answers more closely." with a details line "Answers in JSON with a schema" / "in plain JSON" / "in plain text". |
 
 Under the form, always: "Your key and the text you send go to **api.groq.com**." (the ASCII host).

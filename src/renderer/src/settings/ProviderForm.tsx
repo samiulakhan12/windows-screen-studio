@@ -65,7 +65,10 @@ export function ProviderForm({
   const [preset, setPreset] = useState<ServicePreset>(editing?.service?.preset ?? 'openrouter')
   const [baseUrl, setBaseUrl] = useState(editing?.service?.baseUrl ?? SERVICE_PRESETS.openrouter.baseUrl ?? '')
   const [resource, setResource] = useState(editing?.service ? (azureResource(editing.service.baseUrl) ?? '') : '')
-  const [keepNoData, setKeepNoData] = useState(editing?.service ? editing.service.keepNoData === true : true)
+  // OpenRouter keeps no prompts by default (§0 decision 5): only an entry that was OpenRouter already
+  // holds the user's own choice; any other entry never had the option, so it starts ticked.
+  const wasOpenRouter = !!editing?.service && (editing.service.preset === 'openrouter' || presetAt(editing.service.host) === 'openrouter')
+  const [keepNoData, setKeepNoData] = useState(wasOpenRouter ? editing?.service?.keepNoData === true : true)
   const [label, setLabel] = useState(editing?.label ?? freeName('OpenAI', existing))
   const [labelEdited, setLabelEdited] = useState(!!editing)
   const [apiKey, setApiKey] = useState('')
