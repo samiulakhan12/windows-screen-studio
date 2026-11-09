@@ -266,11 +266,14 @@ export function GuidePanel(props: { project: Project; cursor: CursorTrack; start
   const [saying, setSaying] = useState({ text: '', n: 0 })
   const say = useCallback((text: string) => setSaying((s) => ({ text, n: s.n + 1 })), [])
   const shotsDone = shots.total > 0 && shots.ready === shots.total
+  // The progress the rows wait on: the demo's shots in the demo format.
+  const pass = format === 'demo' ? demoShots : shots
+  const passDone = pass.total > 0 && pass.ready === pass.total
   const wasDone = useRef(false)
   useEffect(() => {
-    if (shotsDone && !wasDone.current) say('Screenshots ready')
-    wasDone.current = shotsDone
-  }, [shotsDone, say])
+    if (passDone && !wasDone.current) say('Screenshots ready')
+    wasDone.current = passDone
+  }, [passDone, say])
 
   // Rows drawn 20 at a time as the list scrolls.
   const [shown, setShown] = useState(ROWS_AT_A_TIME)
@@ -703,12 +706,12 @@ export function GuidePanel(props: { project: Project; cursor: CursorTrack; start
           <p className="guide-count" data-testid="guide-count">
             {stepsLine({ steps: rows.length, hidden: rows.length - included.length, untitled: untitled.size, typed: typedKeys.size })}
           </p>
-          {shots.total > 0 && (
-            <div className="guide-progress" role="progressbar" aria-label="Making screenshots" aria-valuemin={0} aria-valuemax={shots.total} aria-valuenow={shots.ready} aria-valuetext={`${shots.ready} of ${shots.total}`}>
-              <div style={{ width: `${(100 * shots.ready) / Math.max(1, shots.total)}%` }} />
+          {pass.total > 0 && (
+            <div className="guide-progress" role="progressbar" aria-label="Making screenshots" aria-valuemin={0} aria-valuemax={pass.total} aria-valuenow={pass.ready} aria-valuetext={`${pass.ready} of ${pass.total}`}>
+              <div style={{ width: `${(100 * pass.ready) / Math.max(1, pass.total)}%` }} />
             </div>
           )}
-          {shots.failed && <p className="hint guide-error">{`Could not make the screenshots: ${shots.failed}`}</p>}
+          {pass.failed && <p className="hint guide-error">{`Could not make the screenshots: ${pass.failed}`}</p>}
           <div className="guide-buttons">
             <button type="button" className="btn ghost" onClick={nextNeedingTitle} data-testid="guide-next-untitled">
               Next step without a title

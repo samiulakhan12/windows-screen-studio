@@ -309,7 +309,12 @@ describe('the click-through demo’s own shots (docs/design/smart-tools.md §5.5
     // The demo saves the whole screen: step 2 may show the typing, and nothing of it was checked.
     const demo = els.filter((e) => e.type === 'input' && String(e.props.name).endsWith('-format'))[3]
     ;(demo.props.onChange as () => void)()
+    els = render(panel())
+    // The progress is the demo's shots', which the rows now wait on.
+    expect(els.find((e) => e.props.role === 'progressbar')!.props['aria-valuetext']).toBe('0 of 2')
+    expect(allByTestId(els, 'guide-shot').every((e) => e.props.disabled === true)).toBe(true)
     els = await ready()
+    expect(els.find((e) => e.props.role === 'progressbar')!.props['aria-valuetext']).toBe('2 of 2')
     expect(allByTestId(els, 'guide-step')[1].props['aria-label']).toBe('Step 2, 0:08, needs a title, may show what you typed in step 1, whole screen')
     expect(allByTestId(els, 'guide-blur-typed')).toHaveLength(1)
     expect(textOf(byTestId(els, 'guide-count'))).toContain('1 may show typing')
