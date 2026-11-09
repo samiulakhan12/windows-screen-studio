@@ -188,8 +188,11 @@ async function ready(start: 'guide' | 'demo' | 'bug' = 'guide'): Promise<El[]> {
   return settle(panel(start))
 }
 
-const { resetAskedCosts } = (await import(/* @vite-ignore */ '../src/renderer/src/ai/costConfirm')) as { resetAskedCosts: () => void }
-const { refreshCostData } = (await import(/* @vite-ignore */ '../src/renderer/src/ai/useCost')) as { refreshCostData: () => Promise<void> }
+// Renderer code, by a path held in a constant as PANEL is, so the Node typecheck of tests/ does not follow it.
+const COST_CONFIRM = '../src/renderer/src/ai/costConfirm'
+const USE_COST = '../src/renderer/src/ai/useCost'
+const { resetAskedCosts } = (await import(/* @vite-ignore */ COST_CONFIRM)) as { resetAskedCosts: () => void }
+const { refreshCostData } = (await import(/* @vite-ignore */ USE_COST)) as { refreshCostData: () => Promise<void> }
 
 beforeEach(() => {
   unmountAll()
