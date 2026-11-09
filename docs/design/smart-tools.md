@@ -2163,6 +2163,9 @@ Gemini, 32 input tokens a second of sound plus the words written (§11.2).
 - **OpenRouter**: the prices its model list gives (§10.4) win over the file for that session, when
   they are known; unknown stays unknown.
 - **The user's own prices** (pref `aiPrices`, Settings › the provider's *Prices*) win over everything.
+  They belong to the model (and kind or address) they were typed for: the form shows them only for
+  that model, and a provider saved with another one and no prices typed loses them, so a small
+  model's prices never under-count a bigger one.
 - Shown with their date: "prices of 7 November 2026".
 
 ### 11.5 The line, the confirm and the time on this PC (`CostLine`, `src/renderer/src/ai/CostLine.tsx`)

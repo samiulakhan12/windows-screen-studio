@@ -105,7 +105,9 @@ export function ProviderForm({
 
   // The prices Flown knows for this model (the user's own first), shown until the user types others.
   const priceService = isService ? (url?.ok ? SERVICE_PRESETS[presetAt(url.host)].priceService : null) : apiKind
-  const ownPrice = editing ? costData().own[editing.id] : undefined
+  // The user's own prices are for the model they were typed for, where it ran: another model, kind or address has none of them.
+  const ownHolds = !!editing && model.trim() === editing.model && (editing.service ? sameOrigin : sameKind)
+  const ownPrice = ownHolds ? costData().own[editing.id] : undefined
   const listed = priceService ? priceOf(costData().shown, priceService, model.trim()) : null
   const known = ownPrice ?? (listed && listed.input !== undefined && listed.output !== undefined ? { input: listed.input, output: listed.output } : null)
   const priceFields = prices ?? { input: known ? String(known.input) : '', output: known ? String(known.output) : '' }
@@ -157,14 +159,21 @@ export function ProviderForm({
   const draft = input(true)
   const target: ModelListTarget | null = draft ? { draft: { ...draft, label: draft.label || 'draft' } } : null
 
-  /** Keeps the prices typed for provider `pid` (pref aiPrices), or forgets them when cleared. */
+  /**
+   * Keeps the prices typed for provider `pid` (pref aiPrices), or forgets them when cleared, or when
+   * none were typed and those it had were for another model or address (they would under-count it).
+   */
   const savePrices = async (pid: string): Promise<void> => {
-    if (!prices) return
     const own = { ...costData().own }
-    const inP = priceOk(prices.input)
-    const outP = priceOk(prices.output)
-    if (inP === null || outP === null) delete own[pid]
-    else own[pid] = { input: inP, output: outP }
+    if (!prices) {
+      if (ownHolds || !own[pid]) return
+      delete own[pid]
+    } else {
+      const inP = priceOk(prices.input)
+      const outP = priceOk(prices.output)
+      if (inP === null || outP === null) delete own[pid]
+      else own[pid] = { input: inP, output: outP }
+    }
     await window.api.setPref('aiPrices', own)
     await refreshCostData()
   }

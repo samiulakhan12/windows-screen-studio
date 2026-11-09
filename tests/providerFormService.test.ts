@@ -10,7 +10,7 @@ import { mockReact, settle, textOf, unmountAll, type El } from './studioHarness'
  * "Works; Flown checks its answers more closely." with how the service answers in JSON.
  */
 
-const api = vi.hoisted(() => ({ saved: [] as Record<string, unknown>[], removed: [] as string[], listed: [] as unknown[], tested: [] as string[], check: { ok: true, message: 'Works.\nAnswers in JSON with a schema.' }, prefs: [] as [string, unknown][] }))
+const api = vi.hoisted(() => ({ saved: [] as Record<string, unknown>[], removed: [] as string[], listed: [] as unknown[], values: {} as Record<string, unknown>, tested: [] as string[], check: { ok: true, message: 'Works.\nAnswers in JSON with a schema.' }, prefs: [] as [string, unknown][] }))
 vi.stubGlobal('window', {
   api: {
     getAiModelList: async () => null,
@@ -26,7 +26,7 @@ vi.stubGlobal('window', {
       return api.check
     },
     setPref: async (k: string, v: unknown) => void api.prefs.push([k, v]),
-    getPref: async () => null,
+    getPref: async (k: string) => api.values[k] ?? null,
     getAiPriceList: async () => null,
     localAiState: async () => null,
     listModels: async () => []
@@ -219,6 +219,36 @@ describe('Add a provider › More services (test 95)', () => {
       delete (globalThis as { document?: unknown }).document
       delete (globalThis as { CSS?: unknown }).CSS
       api.listed = []
+    }
+  })
+
+  it("the user's own prices stay with the model they were typed for: another model shows and keeps none of them", async () => {
+    const { refreshCostData } = (await import(/* @vite-ignore */ '../src/renderer/src/ai/useCost')) as { refreshCostData(): Promise<void> }
+    api.values.aiPrices = { svc1: { input: 0.1, output: 0.5 }, svc2: { input: 1, output: 2 } }
+    await refreshCostData()
+    const editing = { id: 'svc1', kind: 'openai', label: 'Box', model: 'small-8b', maskedKey: '…6789', createdAt: '', service: { preset: 'other', baseUrl: 'https://llm.example.com/v1', host: 'llm.example.com', loopback: false, json: 'schema' } } as AiProviderInfo
+    try {
+      let els = await settle(form(editing))
+      ;(els.find((e) => e.type === 'button' && textOf(e) === 'Prices (US$ per million tokens)')!.props.onClick as () => void)()
+      els = await settle(form(editing))
+      const prices = (): unknown[] => els.filter((e) => e.type === 'input' && e.props.type === 'number').map((n) => n.props.value)
+      expect(prices()).toEqual(['0.1', '0.5'])
+      // A bigger model: the small one's prices are not its own.
+      type(inputBy(els, (p) => String(p.id).endsWith('-model'))!, 'large-405b')
+      els = await settle(form(editing))
+      expect(prices()).toEqual(['', ''])
+      expect(text(els)).toContain("Not in Flown's price list: add them to see costs.")
+      await submit(form(editing))
+      expect(api.saved[0]).toMatchObject({ id: 'svc1', model: 'large-405b' })
+      expect(api.prefs).toEqual([['aiPrices', { svc2: { input: 1, output: 2 } }]])
+      // The same model saved again keeps them.
+      unmountAll()
+      api.prefs.length = 0
+      await submit(form(editing))
+      expect(api.prefs).toEqual([])
+    } finally {
+      delete api.values.aiPrices
+      await refreshCostData()
     }
   })
 })
