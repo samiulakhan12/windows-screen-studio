@@ -26,6 +26,7 @@ import { modelDefaults } from './ai/modelList'
 import { ServiceStore } from './ai/serviceStore'
 import { listModels } from './ai/modelLists'
 import { priceList } from './ai/priceList'
+import { usageRatios } from './ai/usage'
 import { localTextClient } from './localAi/localTextClient'
 
 /** safeStorage (DPAPI on Windows). On Linux without a keyring it falls back to a fixed key: a packaged app refuses that. */
@@ -316,6 +317,11 @@ export function registerAiIpc(): void {
   ipcMain.handle(AI_SMART_CHANNELS.priceList, (e) => {
     fromApp(e)
     return priceList().shown
+  })
+  // The usage ratios (§11.6): later estimates are multiplied by them.
+  ipcMain.handle(AI_SMART_CHANNELS.usage, (e) => {
+    fromApp(e)
+    return usageRatios()
   })
   // Requests and ffmpeg must not outlive the app, nor their temporary files.
   void sweepTranscribeTemp(os.tmpdir())

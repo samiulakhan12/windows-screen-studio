@@ -2,7 +2,7 @@
  * How far the token estimates were off (docs/design/smart-tools.md §11.6): userData/ai-usage.json
  * keeps, per (kind or host, model, task), the ratio of the tokens a provider reported to the tokens
  * estimated, for input and output, blended (0.7 × old + 0.3 × new) and clamped to 0.5..2.0. Later
- * estimates are multiplied by it. It holds no text: keys are made of a provider kind or host, a model
+ * estimates are multiplied by it (the renderer reads the ratios through ai:usage). It holds no text: keys are made of a provider kind or host, a model
  * name and a task, each checked. At most 200 entries, the oldest dropped. Written atomically.
  */
 import { app } from 'electron'
@@ -10,14 +10,14 @@ import fs from 'node:fs'
 import path from 'node:path'
 import type { AiUsage } from '../../shared/api/ai'
 import { estimateTokens } from '../../shared/ai/tokens'
+import { USAGE_KEY_RE as KEY_RE, USAGE_RATIO, usageKey, type UsageRatios } from '../../shared/ai/usageKey'
 import type { TextPrompt } from '../../shared/captions/transcriptText'
 import { writeFileAtomicSync } from '../atomicWrite'
 
-export const USAGE_FILE = 'ai-usage.json'
-export const USAGE_LIMITS = { entries: 200, min: 0.5, max: 2, keep: 0.7 } as const
+export { usageKey } from '../../shared/ai/usageKey'
 
-/** A key: kind or host, model, task, joined by "|"; nothing else (no text). */
-const KEY_RE = /^[a-z0-9.:[\]-]{1,260}\|[A-Za-z0-9][A-Za-z0-9._:/@-]{0,99}\|[a-z_]{1,40}$/
+export const USAGE_FILE = 'ai-usage.json'
+export const USAGE_LIMITS = { entries: USAGE_RATIO.entries, min: USAGE_RATIO.min, max: USAGE_RATIO.max, keep: 0.7 } as const
 
 interface Entry {
   input: number
@@ -47,12 +47,6 @@ function fileOf(): string | null {
 const ratioOk = (n: unknown): n is number => typeof n === 'number' && Number.isFinite(n) && n >= USAGE_LIMITS.min && n <= USAGE_LIMITS.max
 const clamp = (n: number): number => Math.min(USAGE_LIMITS.max, Math.max(USAGE_LIMITS.min, n))
 
-/** The key of a provider's model and task: "openai|gpt-6.1-sol|summary", "api.groq.com|llama|names"; null when any part is not one. */
-export function usageKey(kindOrHost: string, model: string, task: string): string | null {
-  const key = `${kindOrHost.toLowerCase()}|${model}|${task}`
-  return KEY_RE.test(key) ? key : null
-}
-
 function load(): Map<string, Entry> {
   if (entries) return entries
   entries = new Map()
@@ -78,6 +72,13 @@ function load(): Map<string, Entry> {
 export function calibration(key: string): { input: number; output: number } {
   const e = load().get(key)
   return e ? { input: e.input, output: e.output } : { input: 1, output: 1 }
+}
+
+/** Every key's ratios (ai:usage), for the estimates the renderer makes: no dates, no text. */
+export function usageRatios(): UsageRatios {
+  const out: Record<string, { input: number; output: number }> = {}
+  for (const [key, e] of load()) out[key] = { input: e.input, output: e.output }
+  return out
 }
 
 /**

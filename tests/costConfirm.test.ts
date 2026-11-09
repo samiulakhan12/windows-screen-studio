@@ -11,12 +11,13 @@ import { byTestId, focused, mockReact, render, settle, textOf, unmountAll, type 
  * minutes; Cancel has the focus. Settings shows and saves the five choices; anything else reads as US$1.
  */
 
-const prefs = vi.hoisted(() => ({ values: new Map<string, unknown>(), set: [] as [string, unknown][] }))
+const prefs = vi.hoisted(() => ({ values: new Map<string, unknown>(), set: [] as [string, unknown][], usage: {} as Record<string, unknown> }))
 vi.stubGlobal('window', {
   api: {
     getPref: async (k: string) => prefs.values.get(k) ?? null,
     setPref: async (k: string, v: unknown) => void prefs.set.push([k, v]),
     getAiPriceList: async () => null,
+    getAiUsage: async () => prefs.usage,
     localAiState: async () => null,
     listAiProviders: async () => [],
     getAiModelList: async () => null
@@ -112,6 +113,26 @@ describe('when a run asks first (test 92)', () => {
     reply = true
     expect(await confirmRequest(OR, request, ask)).toBe(true)
     expect(asked).toEqual(['Flown does not know what this costs with openrouter/auto. Run it? [Run]'])
+  })
+
+  it('how far earlier estimates were off (ai:usage) counts: a run that reports twice the tokens estimated asks next time', async () => {
+    const SOL: TextChoice = { id: 'ai1', label: 'OpenAI', kind: 'openai', model: 'gpt-6.1-sol', place: 'OpenAI', pictures: true }
+    const segments = Array.from({ length: 100 }, (_, i) => ({ id: `s${i}`, start: i * 3, end: i * 3 + 2.5, text: `Now click the Export button and choose the report number ${i}.` }))
+    const request: AiTextRequest = { task: 'cleanup', segments }
+    prefs.values.set('aiConfirm', '0.1')
+    // About US$0.06 at most as estimated: nothing asked.
+    expect(await confirmRequest(SOL, request, ask)).toBe(true)
+    expect(asked).toEqual([])
+    // Ratios that are not ones are left out.
+    prefs.usage = { 'openai|gpt-6.1-sol|cleaned_captions': { input: 40, output: 40 }, 'openai|gpt-6.1-sol|Click Export': { input: 2, output: 2 } }
+    expect(await confirmRequest(SOL, request, ask)).toBe(true)
+    expect(asked).toEqual([])
+    // Main kept a ratio of 2 after earlier runs: read again before the question, it doubles the estimate.
+    prefs.usage = { 'openai|gpt-6.1-sol|cleaned_captions': { input: 2, output: 2 } }
+    expect(await confirmRequest(SOL, request, ask)).toBe(true)
+    expect(asked).toHaveLength(1)
+    expect(asked[0]).toMatch(/^This costs up to about US\$0\.1\d with gpt-6\.1-sol\. Run it\? \[Run\]$/)
+    prefs.usage = {}
   })
 
   it('on this PC, a run over 10 minutes asks to start', async () => {

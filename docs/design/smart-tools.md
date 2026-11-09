@@ -2230,7 +2230,12 @@ one line. Its parts:
   reported them) to the result. The notice adds "Cost about US$0.03 (12,400 tokens)."
 - `userData/ai-usage.json` keeps, per (kind or host, model, task), the ratio of reported to estimated
   tokens for input and output, blended (0.7 × old + 0.3 × new) and clamped to 0.5..2.0; later
-  estimates are multiplied by it. It holds no text. At most 200 entries, the oldest dropped.
+  estimates are multiplied by it. It holds no text. At most 200 entries, the oldest dropped. The
+  key's task is the prompt's name (`cleaned_captions`, `names`, `spoken_script`...). The renderer
+  reads the ratios through `ai:usage` (`usageRatios()`: the ratios alone, no dates) when the cost
+  data is first read, as each cost line opens and before a question (`useCost.ts`), and the
+  estimate of a choice's kind or host, model and prompt is multiplied by its ratios (the text's
+  tokens only: prompts with pictures are not counted, so pictures keep their own rule).
 
 ---
 
@@ -2502,7 +2507,7 @@ callout's text reachable by Tab and read after the step's announcement.
     source must be the open project, `within`).
 13. **IPC**: new channels `guide:save`, `guide:showItem`, `guide:copy`, `guide:copyImage`,
     `localAi:state`, `localAi:download`, `localAi:cancel`, `localAi:remove`, `localAi:setUse`,
-    `ai:listModels`, `ai:priceList`, `projects:detectScenes`, `projects:copyCost`. Each checks the
+    `ai:listModels`, `ai:priceList`, `ai:usage`, `projects:detectScenes`, `projects:copyCost`. Each checks the
     sender with `fromApp` (`aiIpc.ts:133`), validates every argument (ids against their pattern or
     catalog; sizes capped: HTML 64 MB, images 16 MB and 300, Markdown 2 MB, 256 MB in all for one
     save, clipboard text 2 MB, names 120 characters, §5.3.1's pictures 512 KB, 50 a request and 200 in
@@ -2999,7 +3004,7 @@ LLM helper, `npm run notices -- --check`, and under `xvfb-run`: `smart-tools`, `
 | Screenshots | wave 10's colour grade, magnifiers, crossfades | grade kept, magnifiers and crossfades dropped from the derived project (§5.5.2) |
 | The shorter version | wave 10's smooth cuts | set on the copy when it has no cut style (§8.6) |
 | Captions Studio runners | phase B's `requestId` and `cancelAiText` in `greatRun.ts`, `CleanupSection.tsx`, `LanguagesSection.tsx` | the same for the Captions tab's own tools and *Draft script*, and `LocalProgress` beside each (§20.0) |
-| IPC names | `soundLibrary:*` | `guide:*`, `localAi:*`, `ai:listModels`, `ai:priceList`, `projects:detectScenes`, `projects:copyCost` |
+| IPC names | `soundLibrary:*` | `guide:*`, `localAi:*`, `ai:listModels`, `ai:priceList`, `ai:usage`, `projects:detectScenes`, `projects:copyCost` |
 
 ---
 

@@ -18,6 +18,7 @@ import { scriptPrompt } from '../notes/scriptDraft'
 import { presetAt, SERVICE_PRESETS } from './presets'
 import { BUNDLED_PRICE_LIST, priceOf, type PriceEntry, type PriceList } from './prices'
 import { blendedRatio, countWords, estimateTokens, imageTokens, jpegSize, tokenFamily, tokenRatio, type TokenFamily } from './tokens'
+import { usageKey, type UsageRatios } from './usageKey'
 import type { ConfirmPref } from '../smart/smartPrefs'
 
 export type { ConfirmPref } from '../smart/smartPrefs'
@@ -106,6 +107,8 @@ export function typicalRatio(script: ScriptTag, family: TokenFamily): number {
 
 /** What a request sends, measured once per request object (§11.1): the estimate updates as the user edits without delay. */
 interface Measure {
+  /** The prompts' name (the task part of a usage key, §11.6); null when nothing is sent. */
+  name: string | null
   requests: number
   words: number
   pictures: number
@@ -167,6 +170,7 @@ function measurePrompts(prompts: readonly TextPrompt[], content: { text: string;
     }
   }
   return {
+    name: prompts[0]?.name ?? null,
     requests: prompts.length,
     words: countWords(content.text),
     pictures,
@@ -257,6 +261,18 @@ function pricesFor(
 
 const round = (n: number): number => Math.max(0, Math.round(n))
 
+const NO_CALIBRATION = { input: 1, output: 1 } as const
+
+/**
+ * The ratios an estimate of `choice` is multiplied by (§11.6): those main kept for its kind or
+ * host, model and prompt `name`; 1 and 1 when none were kept, and on this PC (nothing reports there).
+ */
+function calibrationOf(choice: TextChoice, name: string | null, usage: UsageRatios | undefined): { input: number; output: number } {
+  if (!usage || !name || choice.kind === 'local') return NO_CALIBRATION
+  const key = usageKey(choice.host ?? choice.kind, choice.model, name)
+  return key && Object.prototype.hasOwnProperty.call(usage, key) ? usage[key] : NO_CALIBRATION
+}
+
 /**
  * The estimate of `request` with `target.choice` (§11.1–11.5): its requests, the words and pictures
  * sent, input and output tokens (each a range), and its cost in US$ or, on this PC, its time.
@@ -272,6 +288,8 @@ export function estimateText(
     own?: { input: number; output: number }
     speed?: { read: number; write: number }
     calibration?: { input: number; output: number }
+    /** The ratios main kept (ai:usage): the one of this choice's model and task applies when `calibration` is not given. */
+    usage?: UsageRatios
     live?: { input: number; output: number } | 'varies'
   }
 ): CostEstimate {
@@ -300,16 +318,17 @@ export function estimateText(
 
 /** The rest of an estimate once what is sent and what comes back are known. */
 function finish(
-  m: Pick<Measure, 'requests' | 'words' | 'pictures' | 'promptTokens' | 'pictureTokens'> & { pictureTokensHigh?: number },
+  m: Pick<Measure, 'name' | 'requests' | 'words' | 'pictures' | 'promptTokens' | 'pictureTokens'> & { pictureTokensHigh?: number },
   out: [number, number],
   choice: TextChoice,
-  target: { prices: PriceList; confirmPrices: PriceList; own?: Rates; speed?: { read: number; write: number }; calibration?: { input: number; output: number }; live?: Rates | 'varies' }
+  target: { prices: PriceList; confirmPrices: PriceList; own?: Rates; speed?: { read: number; write: number }; calibration?: { input: number; output: number }; usage?: UsageRatios; live?: Rates | 'varies' }
 ): CostEstimate {
   const spread = choice.host ? INPUT_SPREAD.service : INPUT_SPREAD.known
-  const cal = target.calibration ?? { input: 1, output: 1 }
+  const cal = target.calibration ?? calibrationOf(choice, m.name, target.usage)
+  // The ratios are of text alone (prompts with pictures are not counted, usage.ts): pictures keep their own rule.
   const inputTokens: [number, number] = [
-    round((m.promptTokens * (1 - spread) + m.pictureTokens * (1 - INPUT_SPREAD.pictures)) * cal.input),
-    round((m.promptTokens * (1 + spread) + (m.pictureTokensHigh ?? m.pictureTokens) * (1 + INPUT_SPREAD.pictures)) * cal.input)
+    round(m.promptTokens * (1 - spread) * cal.input + m.pictureTokens * (1 - INPUT_SPREAD.pictures)),
+    round(m.promptTokens * (1 + spread) * cal.input + (m.pictureTokensHigh ?? m.pictureTokens) * (1 + INPUT_SPREAD.pictures))
   ]
   const outputTokens: [number, number] = [round(out[0] * cal.output), round(out[1] * cal.output)]
   const base = { requests: m.requests, words: m.words, pictures: m.pictures, inputTokens, outputTokens }
@@ -337,7 +356,7 @@ function finish(
  */
 export function estimateScript(
   notes: string,
-  target: { choice: TextChoice; prices: PriceList; confirmPrices: PriceList; own?: Rates; speed?: { read: number; write: number }; calibration?: { input: number; output: number }; live?: Rates | 'varies' }
+  target: { choice: TextChoice; prices: PriceList; confirmPrices: PriceList; own?: Rates; speed?: { read: number; write: number }; calibration?: { input: number; output: number }; usage?: UsageRatios; live?: Rates | 'varies' }
 ): CostEstimate {
   const { choice } = target
   const family = tokenFamily(choice.kind, choice.model)

@@ -2,15 +2,17 @@
  * What an AI action would cost with a choice (docs/design/smart-tools.md §11.1, §11.4): the estimate
  * of its request from the price list main shows, the higher prices a confirm uses (the bundled list's
  * and the downloaded one's, per model), the user's own prices (pref aiPrices, by provider), a
- * service's live prices this session (OpenRouter's, from its model list), and on this PC the speeds
- * measured. The data is read once and shared by every cost line; estimates are remembered per
- * request, so the line follows edits without delay.
+ * service's live prices this session (OpenRouter's, from its model list), on this PC the speeds
+ * measured, and how far earlier estimates were off (§11.6, read again as each cost line opens and
+ * before a question). The data is read once and shared by every cost line; estimates are remembered
+ * per request, so the line follows edits without delay.
  */
 import { useEffect, useMemo, useState } from 'react'
 import type { AiTextRequest, AiUsage, ListedModel, TextChoice } from '../../../shared/api/ai'
 import type { LocalAiState } from '../../../shared/api/localAi'
 import { estimateScript, estimateText, estimateTranscription, usageText, type CostEstimate } from '../../../shared/ai/cost'
 import { BUNDLED_PRICE_LIST, confirmList, parsePriceList, type PriceList } from '../../../shared/ai/prices'
+import { readUsageRatios, type UsageRatios } from '../../../shared/ai/usageKey'
 import { DEFAULT_TEXT_LIMITS } from '../../../shared/captions/transcriptText'
 import { DEFAULT_CONFIRM, sanitizeSmartPref, type ConfirmPref } from '../../../shared/smart/smartPrefs'
 import type { AiProviderKind } from '../../../shared/types'
@@ -30,11 +32,13 @@ export interface CostData {
   listed: ReadonlyMap<string, readonly ListedModel[]>
   /** When a click asks first (pref aiConfirm). */
   ask: ConfirmPref
+  /** How far earlier estimates were off, by kind or host, model and prompt (ai:usage): later estimates are multiplied by it. */
+  usage?: UsageRatios
 }
 
 const today = (): string => new Date().toISOString().slice(0, 10)
 
-let data: CostData = { shown: BUNDLED_PRICE_LIST, confirm: BUNDLED_PRICE_LIST, own: {}, local: { active: null, speeds: {} }, listed: new Map(), ask: DEFAULT_CONFIRM }
+let data: CostData = { shown: BUNDLED_PRICE_LIST, confirm: BUNDLED_PRICE_LIST, own: {}, local: { active: null, speeds: {} }, listed: new Map(), ask: DEFAULT_CONFIRM, usage: {} }
 let loading: Promise<void> | null = null
 const listeners = new Set<() => void>()
 
@@ -43,10 +47,32 @@ const changed = (patch: Partial<CostData>): void => {
   for (const l of [...listeners]) l()
 }
 
-/** Reads the price list, the user's prices and this PC's speeds again (each kept as it was when it cannot be read). */
+const apiOf = (): Partial<typeof window.api> => (typeof window !== 'undefined' ? (window as { api?: Partial<typeof window.api> }).api : undefined) ?? {}
+
+let usageReading: Promise<void> | null = null
+
+/** Reads how far earlier estimates were off again (ai:usage; kept as it was when it cannot be read): main updates it after each run. */
+export function refreshUsage(): Promise<void> {
+  const api = apiOf()
+  usageReading ??= Promise.resolve()
+    .then(() => api.getAiUsage?.())
+    .then((raw) => {
+      if (raw === undefined) return
+      const usage = readUsageRatios(raw)
+      if (JSON.stringify(usage) !== JSON.stringify(data.usage ?? {})) changed({ usage })
+    })
+    .catch(() => undefined)
+    .finally(() => {
+      usageReading = null
+    })
+  return usageReading
+}
+
+/** Reads the price list, the user's prices, this PC's speeds and the usage ratios again (each kept as it was when it cannot be read). */
 export function refreshCostData(): Promise<void> {
-  const api = (typeof window !== 'undefined' ? (window as { api?: Partial<typeof window.api> }).api : undefined) ?? {}
+  const api = apiOf()
   loading = Promise.all([
+    refreshUsage(),
     Promise.resolve()
       .then(() => api.getAiPriceList?.())
       .then((raw) => {
@@ -83,9 +109,9 @@ export function rememberListedModels(providerId: string, models: readonly Listed
 /** The cost data now (tests, and code outside React). */
 export const costData = (): CostData => data
 
-/** The cost data once read (read now when no cost line has read it yet): for a run asked about outside a cost line. */
+/** The cost data once read (read now when no cost line has read it yet), with the usage ratios as they are now: for a run asked about outside a cost line. */
 export async function readCostData(): Promise<CostData> {
-  await (loading ?? refreshCostData())
+  await (loading ? Promise.all([loading, refreshUsage()]) : refreshCostData())
   return data
 }
 
@@ -95,7 +121,9 @@ export function useCostData(): CostData {
   useEffect(() => {
     const l = (): void => setTick((n) => n + 1)
     listeners.add(l)
+    // The usage ratios change after each run: read again as each cost line opens.
     if (!loading) void refreshCostData()
+    else void refreshUsage()
     const again = (): void => void refreshCostData()
     if (typeof window !== 'undefined' && typeof window.addEventListener === 'function') window.addEventListener(AI_PROVIDERS_CHANGED_EVENT, again)
     return () => {
@@ -118,7 +146,7 @@ function targetOf(choice: TextChoice, d: CostData) {
   const live = liveOf(choice, d)
   const speed = choice.kind === 'local' && d.local.active ? d.local.speeds[d.local.active as keyof LocalAiState['speeds']] : undefined
   const local: TextChoice = choice.kind === 'local' && d.local.active ? { ...choice, model: d.local.active } : choice
-  return { choice: local, prices: d.shown, confirmPrices: d.confirm, ...(own ? { own } : {}), ...(live ? { live } : {}), ...(speed ? { speed } : {}) }
+  return { choice: local, prices: d.shown, confirmPrices: d.confirm, ...(own ? { own } : {}), ...(live ? { live } : {}), ...(speed ? { speed } : {}), ...(d.usage ? { usage: d.usage } : {}) }
 }
 
 /**

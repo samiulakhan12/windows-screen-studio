@@ -10,7 +10,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
  */
 
 vi.mock('electron', () => ({ app: { isPackaged: false, getPath: () => { throw new Error('no userData in tests') } } }))
-const { calibration, noteUsage, recordUsage, usageKey, useUsageFile, USAGE_LIMITS } = await import('../src/main/ai/usage')
+const { calibration, noteUsage, recordUsage, usageKey, usageRatios, useUsageFile, USAGE_LIMITS } = await import('../src/main/ai/usage')
+const { estimateText } = await import('../src/shared/ai/cost')
+const { BUNDLED_PRICE_LIST } = await import('../src/shared/ai/prices')
+const { DEFAULT_TEXT_LIMITS, textPrompts } = await import('../src/shared/captions/transcriptText')
 
 let dir: string
 let file: string
@@ -58,6 +61,27 @@ describe('usage calibration (test 93)', () => {
     const text = fs.readFileSync(file, 'utf8')
     expect(text).not.toMatch(/salary|Sam|quarterly|Captions/i)
     expect(Object.keys(JSON.parse(text).entries)).toEqual(['openai|gpt-6.1-sol|title'])
+  })
+
+  it('the ratios kept are what later estimates of the same provider, model and task are multiplied by (ai:usage)', async () => {
+    const segments = Array.from({ length: 30 }, (_, i) => ({ id: `s${i}`, start: i * 3, end: i * 3 + 2.5, text: `Now click the Export button and choose report ${i}.` }))
+    const request = { task: 'cleanup' as const, segments }
+    const choice = { id: 'ai1', label: 'OpenAI', kind: 'openai' as const, model: 'gpt-6.1-sol', place: 'OpenAI' }
+    const target = { choice, limits: DEFAULT_TEXT_LIMITS, prices: BUNDLED_PRICE_LIST, confirmPrices: BUNDLED_PRICE_LIST }
+    expect(usageRatios()).toEqual({})
+    // A model that reports twice the tokens estimated, run after run, through the prompt main sends.
+    const prompt = textPrompts(request)[0]
+    for (let i = 0; i < 12; i++) noteUsage('openai', 'gpt-6.1-sol', prompt, '{"segments":[]}', { input: 1e6, output: 1e6 })
+    await vi.waitFor(() => expect(calibration('openai|gpt-6.1-sol|cleaned_captions')).toEqual({ input: USAGE_LIMITS.max, output: USAGE_LIMITS.max }))
+    const ratios = usageRatios()
+    expect(Object.keys(ratios)).toEqual(['openai|gpt-6.1-sol|cleaned_captions'])
+    expect(ratios['openai|gpt-6.1-sol|cleaned_captions']).toEqual({ input: USAGE_LIMITS.max, output: USAGE_LIMITS.max })
+    // No dates, nothing else.
+    expect(Object.keys(ratios['openai|gpt-6.1-sol|cleaned_captions'])).toEqual(['input', 'output'])
+    const plain = estimateText(request, target)
+    const kept = estimateText(request, { ...target, usage: ratios })
+    expect(Math.abs(kept.inputTokens[1] - plain.inputTokens[1] * 2)).toBeLessThanOrEqual(1)
+    expect(Math.abs(kept.outputTokens[1] - plain.outputTokens[1] * 2)).toBeLessThanOrEqual(1)
   })
 
   it('keeps at most 200 entries, the oldest dropped', async () => {

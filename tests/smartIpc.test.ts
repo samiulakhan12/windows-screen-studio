@@ -68,7 +68,8 @@ const APP_PAGE_CHANNELS = [
   LOCAL_AI_CHANNELS.setUse,
   SMART_PROJECT_CHANNELS.detectScenes,
   AI_SMART_CHANNELS.listModels,
-  AI_SMART_CHANNELS.priceList
+  AI_SMART_CHANNELS.priceList,
+  AI_SMART_CHANNELS.usage
 ]
 
 describe("smart tools' channels answer only the app's page", () => {
@@ -92,6 +93,8 @@ describe("smart tools' channels answer only the app's page", () => {
     // The state of AI on this PC and the price list answer even before their parts.
     expect(await outcome(LOCAL_AI_CHANNELS.state, event(MAIN, APP))).toMatchObject({ ok: true, value: { models: expect.any(Array), use: 'auto' } })
     expect(await outcome(AI_SMART_CHANNELS.priceList, event(MAIN, APP))).toMatchObject({ ok: true, value: { version: 1, currency: 'USD' } })
+    // The usage ratios: none before any run, and only the ratios (no dates, no text).
+    expect(await outcome(AI_SMART_CHANNELS.usage, event(MAIN, APP))).toEqual({ ok: true, value: {} })
   })
 
   it('projects:copyCost answers only the main window at the app page', async () => {

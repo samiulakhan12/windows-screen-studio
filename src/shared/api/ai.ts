@@ -245,6 +245,8 @@ export interface AiApi {
   listModels(target: ModelListTarget): Promise<ListedModel[]>
   /** The price list (§11.4): the newer of the bundled and downloaded lists. */
   getAiPriceList(): Promise<PriceList>
+  /** How far the token estimates were off (§11.6): ratios by kind or host, model and prompt; no text. */
+  getAiUsage(): Promise<Record<string, { input: number; output: number }>>
 }
 
 /** Smart tools' AI channels (§20.0, §21). */
@@ -252,7 +254,9 @@ export const AI_SMART_CHANNELS = {
   /** invoke (target) → ListedModel[]: part P5's listModels */
   listModels: 'ai:listModels',
   /** invoke () → PriceList: part P5's priceList().shown */
-  priceList: 'ai:priceList'
+  priceList: 'ai:priceList',
+  /** invoke () → Record<key, { input, output }>: the usage ratios estimates are multiplied by (usage.ts) */
+  usage: 'ai:usage'
 } as const
 
 /** What each kind of provider is called, can do and uses by default (shown in Settings). */

@@ -20,5 +20,6 @@ export const aiApi: AiApi = {
   cancelScriptDraft: () => ipcRenderer.invoke('ai:cancelScriptDraft'),
   // Smart tools (docs/design/smart-tools.md §10.4, §11.4).
   listModels: (target) => ipcRenderer.invoke(AI_SMART_CHANNELS.listModels, target),
-  getAiPriceList: () => ipcRenderer.invoke(AI_SMART_CHANNELS.priceList)
+  getAiPriceList: () => ipcRenderer.invoke(AI_SMART_CHANNELS.priceList),
+  getAiUsage: () => ipcRenderer.invoke(AI_SMART_CHANNELS.usage)
 }

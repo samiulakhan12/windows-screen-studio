@@ -111,6 +111,33 @@ describe('what comes back, per task (test 91)', () => {
     // gpt-6.1-sol thinks: 300 + 500 at the high end, halved.
     expect(cal.outputTokens).toEqual([40, 400])
   })
+
+  it("the ratios main kept (ai:usage) multiply the estimate of their kind or host, model and prompt, and no other's", () => {
+    const r = req({ task: 'summary' })
+    const base = estimateText(r, target(PRICED))
+    // A model that reports twice the tokens estimated: the line and the question count them.
+    const usage = { 'openai|gpt-6.1-sol|summary': { input: 2, output: 2 } }
+    const kept = estimateText(r, target(PRICED, { usage }))
+    expect(Math.abs(kept.inputTokens[1] - base.inputTokens[1] * 2)).toBeLessThanOrEqual(1)
+    expect(kept.outputTokens).toEqual([base.outputTokens[0] * 2, base.outputTokens[1] * 2])
+    expect(kept.usd![1]).toBeGreaterThan(base.usd![1] * 1.9)
+    // Clean-up of 100 captions: about US$0.06 at most as estimated, over US$0.10 once the ratios count, so the question is asked.
+    const cleanup = req({ task: 'cleanup', segments: Array.from({ length: 100 }, (_, i) => seg(i, `Now click the Export button and choose the report number ${i}.`)) })
+    expect(needsConfirm(estimateText(cleanup, target(PRICED)), '0.1', false)).toBe(false)
+    expect(needsConfirm(estimateText(cleanup, target(PRICED, { usage: { 'openai|gpt-6.1-sol|cleaned_captions': { input: 2, output: 2 } } })), '0.1', false)).toBe(true)
+    // Another task, model or provider keeps its own (none here).
+    expect(estimateText(req({ task: 'title' }), target(PRICED, { usage })).inputTokens).toEqual(estimateText(req({ task: 'title' }), target(PRICED)).inputTokens)
+    expect(estimateText(r, target(OPENAI, { usage })).inputTokens).toEqual(estimateText(r, target(OPENAI)).inputTokens)
+    expect(estimateText(r, target(service('api.groq.com', 'gpt-6.1-sol'), { usage })).inputTokens).toEqual(estimateText(r, target(service('api.groq.com', 'gpt-6.1-sol'))).inputTokens)
+    // A service by its host; Draft script by its prompt.
+    const groq = service('api.groq.com', 'openai/gpt-oss-20b')
+    expect(estimateText(r, target(groq, { usage: { 'api.groq.com|openai/gpt-oss-20b|summary': { input: 1.5, output: 1 } } })).inputTokens[1]).toBeCloseTo(estimateText(r, target(groq)).inputTokens[1] * 1.5, -1)
+    const notes = 'Open the report. Click Export. Choose PDF and save it in Documents.'
+    const script = { choice: PRICED, prices: BUNDLED_PRICE_LIST, confirmPrices: BUNDLED_PRICE_LIST }
+    expect(estimateScript(notes, { ...script, usage: { 'openai|gpt-6.1-sol|spoken_script': { input: 1, output: 2 } } }).outputTokens[1]).toBe(estimateScript(notes, script).outputTokens[1] * 2)
+    // An explicit calibration wins over the kept ratios.
+    expect(estimateText(r, target(PRICED, { usage, calibration: { input: 1, output: 1 } })).inputTokens).toEqual(base.inputTokens)
+  })
 })
 
 const known = (low: number, high: number): CostEstimate => ({ requests: 1, words: 8200, pictures: 0, inputTokens: [1, 2], outputTokens: [1, 2], usd: [low, high], price: { entry: { input: 2, output: 10 }, updated: '2026-11-07' } })
