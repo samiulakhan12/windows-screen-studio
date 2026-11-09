@@ -1,0 +1,344 @@
+{
+  "format.wav.label": {
+    "description": "The WAV chip of the Format row.",
+    "screen": "export-settings",
+    "dnt": [
+      "WAV"
+    ]
+  },
+  "format.wav.title": {
+    "description": "Tooltip of the WAV format chip.",
+    "screen": "export-settings",
+    "dnt": [
+      "WAV"
+    ],
+    "digits": "latn"
+  },
+  "format.made": {
+    "description": "Tooltip of the selected format chip when its codec is not the default: what the file is made of. {codec} is a codec name (HEVC, CineForm…).",
+    "screen": "export-settings"
+  },
+  "row.codec": {
+    "description": "Label of the Codec row of the export settings.",
+    "screen": "export-settings"
+  },
+  "codec.h264.label": {
+    "description": "Codec chip.",
+    "screen": "export-settings",
+    "dnt": [
+      "H.264"
+    ]
+  },
+  "codec.h264.title": {
+    "description": "Tooltip of the H.264 codec chip.",
+    "screen": "export-settings"
+  },
+  "codec.hevc.label": {
+    "description": "Codec chip.",
+    "screen": "export-settings",
+    "dnt": [
+      "HEVC"
+    ]
+  },
+  "codec.hevc.title": {
+    "description": "Tooltip of the HEVC codec chip.",
+    "screen": "export-settings",
+    "dnt": [
+      "H.264",
+      "HEVC",
+      "Windows",
+      "Microsoft"
+    ]
+  },
+  "codec.av1.label": {
+    "description": "Codec chip.",
+    "screen": "export-settings",
+    "dnt": [
+      "AV1"
+    ]
+  },
+  "codec.av1.title": {
+    "description": "Tooltip of the AV1 codec chip.",
+    "screen": "export-settings",
+    "dnt": [
+      "H.264",
+      "Windows",
+      "Windows 11",
+      "YouTube"
+    ]
+  },
+  "codec.vp9.label": {
+    "description": "Codec chip.",
+    "screen": "export-settings",
+    "dnt": [
+      "VP9"
+    ]
+  },
+  "codec.vp9.title": {
+    "description": "Tooltip of the VP9 codec chip.",
+    "screen": "export-settings"
+  },
+  "codec.cineform.label": {
+    "description": "Codec chip; \"CineForm\" is GoPro's name and stays as it is.",
+    "screen": "export-settings",
+    "dnt": [
+      "CineForm"
+    ]
+  },
+  "codec.cineform.title": {
+    "description": "Tooltip of the CineForm codec chip.",
+    "screen": "export-settings",
+    "dnt": [
+      "CineForm",
+      "GoPro",
+      "Premiere Pro",
+      "DaVinci Resolve",
+      "After Effects"
+    ]
+  },
+  "codec.animation.label": {
+    "description": "Codec chip for QuickTime Animation.",
+    "screen": "export-settings"
+  },
+  "codec.animation.title": {
+    "description": "Tooltip of the Lossless codec chip.",
+    "screen": "export-settings",
+    "dnt": [
+      "QuickTime Animation"
+    ]
+  },
+  "codec.prores422.label": {
+    "description": "Codec chip (shown only if the owner turns ProRes on).",
+    "screen": "export-settings",
+    "dnt": [
+      "ProRes"
+    ],
+    "digits": "latn"
+  },
+  "codec.prores422.title": {
+    "description": "Tooltip of the ProRes 422 chip.",
+    "screen": "export-settings",
+    "dnt": [
+      "ProRes",
+      "Apple",
+      "Final Cut Pro",
+      "FFmpeg"
+    ]
+  },
+  "codec.prores4444.label": {
+    "description": "Codec chip (shown only if the owner turns ProRes on).",
+    "screen": "export-settings",
+    "dnt": [
+      "ProRes"
+    ],
+    "digits": "latn"
+  },
+  "codec.prores4444.title": {
+    "description": "Tooltip of the ProRes 4444 chip.",
+    "screen": "export-settings",
+    "dnt": [
+      "ProRes",
+      "Apple",
+      "FFmpeg"
+    ]
+  },
+  "hevc.probing": {
+    "description": "Tooltip of the HEVC chip while Flown looks for an HEVC encoder on the graphics card.",
+    "screen": "export-settings",
+    "dnt": [
+      "HEVC"
+    ]
+  },
+  "notice.cannotMake": {
+    "description": "Under the Codec row when stored settings ask for a codec this PC cannot make. {codec} and {fallback} are codec names.",
+    "screen": "export-settings"
+  },
+  "hint.hevcGpu": {
+    "description": "Hint under the Codec row. {names} lists encoders: \"NVENC, QSV\".",
+    "screen": "export-settings",
+    "dnt": [
+      "HEVC"
+    ],
+    "digits": "latn"
+  },
+  "hint.av1Gpu": {
+    "description": "Hint under the Codec row. {names} lists encoders: \"NVENC, QSV\".",
+    "screen": "export-settings",
+    "dnt": [
+      "AV1"
+    ],
+    "digits": "latn"
+  },
+  "hint.av1Cpu": {
+    "description": "Hint under the Codec row when no graphics card makes AV1. {time} is a duration (\"4 min\").",
+    "screen": "export-settings",
+    "dnt": [
+      "H.264",
+      "AV1"
+    ],
+    "digits": "latn"
+  },
+  "hint.cineform": {
+    "description": "Hint under the Codec row for CineForm. {size} is a file size, {length} the video length.",
+    "screen": "export-settings",
+    "digits": "latn"
+  },
+  "hint.animation": {
+    "description": "Hint under the Codec row for Lossless.",
+    "screen": "export-settings",
+    "digits": "latn"
+  },
+  "hint.prores": {
+    "description": "Hint under the Codec row for ProRes.",
+    "screen": "export-settings",
+    "digits": "latn"
+  },
+  "fps.chip": {
+    "description": "A Frame rate chip: \"24 fps\".",
+    "screen": "export-settings",
+    "dnt": [
+      "fps"
+    ],
+    "digits": "latn"
+  },
+  "fps.24.title": {
+    "description": "Tooltip of the 24 fps chip.",
+    "screen": "export-settings",
+    "digits": "latn"
+  },
+  "fps.25.title": {
+    "description": "Tooltip of the 25 fps chip.",
+    "screen": "export-settings"
+  },
+  "fps.120.title": {
+    "description": "Tooltip of the 120 fps chip.",
+    "screen": "export-settings",
+    "dnt": [
+      "fps"
+    ],
+    "digits": "latn"
+  },
+  "fps.no4k120": {
+    "description": "Under the Frame rate row, why 120 fps is disabled.",
+    "screen": "export-settings",
+    "dnt": [
+      "H.264",
+      "HEVC",
+      "AV1",
+      "4K",
+      "1440p",
+      "fps"
+    ],
+    "digits": "latn"
+  },
+  "fps.4kAt60": {
+    "description": "Hint after picking 4K while H.264 was at 120 fps.",
+    "screen": "export-settings",
+    "dnt": [
+      "H.264",
+      "4K",
+      "fps"
+    ],
+    "digits": "latn"
+  },
+  "aspect.45.label": {
+    "description": "Aspect chip.",
+    "screen": "export-settings",
+    "digits": "latn"
+  },
+  "aspect.45.title": {
+    "description": "Tooltip of the 4:5 aspect chip.",
+    "screen": "export-settings",
+    "dnt": [
+      "1080p"
+    ],
+    "digits": "latn"
+  },
+  "quality.best": {
+    "description": "Quality chip of the editing formats.",
+    "screen": "export-settings"
+  },
+  "quality.high": {
+    "description": "Quality chip of the editing formats.",
+    "screen": "export-settings"
+  },
+  "quality.medium": {
+    "description": "Quality chip of the editing formats.",
+    "screen": "export-settings"
+  },
+  "quality.cineform.film1": {
+    "description": "Tooltip of the Best chip with CineForm.",
+    "screen": "export-settings",
+    "dnt": [
+      "CineForm"
+    ]
+  },
+  "quality.cineform.high": {
+    "description": "Tooltip of the High chip with CineForm.",
+    "screen": "export-settings",
+    "dnt": [
+      "CineForm"
+    ]
+  },
+  "quality.cineform.medium": {
+    "description": "Tooltip of the Medium chip with CineForm.",
+    "screen": "export-settings",
+    "dnt": [
+      "CineForm"
+    ]
+  },
+  "quality.prores.hq": {
+    "description": "Tooltip of the Best chip with ProRes 422.",
+    "screen": "export-settings",
+    "dnt": [
+      "ProRes"
+    ],
+    "digits": "latn"
+  },
+  "quality.prores.standard": {
+    "description": "Tooltip of the High chip with ProRes 422.",
+    "screen": "export-settings",
+    "dnt": [
+      "ProRes"
+    ],
+    "digits": "latn"
+  },
+  "quality.prores.lt": {
+    "description": "Tooltip of the Medium chip with ProRes 422.",
+    "screen": "export-settings",
+    "dnt": [
+      "ProRes"
+    ],
+    "digits": "latn"
+  },
+  "target.editing": {
+    "description": "Why Target size is disabled for the editing formats.",
+    "screen": "export-settings"
+  },
+  "target.transparent": {
+    "description": "Why Target size is disabled for transparent videos.",
+    "screen": "export-settings"
+  },
+  "target.wav": {
+    "description": "Why Target size is disabled for WAV.",
+    "screen": "export-settings",
+    "dnt": [
+      "WAV"
+    ]
+  },
+  "encoder.hevcSoftware": {
+    "description": "Why the Software encoder chip is disabled for HEVC.",
+    "screen": "export-settings",
+    "dnt": [
+      "HEVC"
+    ]
+  },
+  "sizeLine.withCodec": {
+    "description": "The size line under the preview with a codec other than the default: \"1080×1350 · 30 fps · HEVC · 2:14\".",
+    "screen": "export-settings",
+    "dnt": [
+      "fps"
+    ],
+    "digits": "latn"
+  }
+}

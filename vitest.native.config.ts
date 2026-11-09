@@ -5,5 +5,5 @@ import { defineConfig } from 'vitest/config'
 // `npm run build:speech-host` and `npm run fetch:test-speech` first, and fail (never skip)
 // without them.
 export default defineConfig({
-  test: { include: ['tests/native/*.spec.ts'], environment: 'node', testTimeout: 120_000, hookTimeout: 120_000, fileParallelism: false }
+  test: { include: ['tests/native/*.spec.ts'], environment: 'node', setupFiles: ['tests/setup/i18n.ts'], testTimeout: 120_000, hookTimeout: 120_000, fileParallelism: false }
 })

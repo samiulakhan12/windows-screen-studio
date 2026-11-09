@@ -1,0 +1,180 @@
+{
+  "chip.label": {
+    "description": "Chip of the Also save row.",
+    "screen": "export-also-save"
+  },
+  "chip.title": {
+    "description": "Tooltip of the Timeline chip.",
+    "screen": "export-also-save",
+    "dnt": [
+      "Final Cut Pro",
+      "Premiere Pro",
+      "DaVinci Resolve"
+    ]
+  },
+  "row.openIn": {
+    "description": "Label of the editors row under Timeline.",
+    "screen": "export-also-save"
+  },
+  "editor.resolve.label": {
+    "description": "Editor chip.",
+    "screen": "export-also-save",
+    "dnt": [
+      "DaVinci Resolve"
+    ]
+  },
+  "editor.resolve.title": {
+    "description": "Tooltip of the DaVinci Resolve chip. Menu names stay as the editor shows them.",
+    "screen": "export-also-save",
+    "dnt": [
+      "FCPXML"
+    ]
+  },
+  "editor.premiere.label": {
+    "description": "Editor chip.",
+    "screen": "export-also-save",
+    "dnt": [
+      "Premiere Pro"
+    ]
+  },
+  "editor.premiere.title": {
+    "description": "Tooltip of the Premiere Pro chip.",
+    "screen": "export-also-save"
+  },
+  "editor.finalcut.label": {
+    "description": "Editor chip.",
+    "screen": "export-also-save",
+    "dnt": [
+      "Final Cut Pro"
+    ]
+  },
+  "editor.finalcut.title": {
+    "description": "Tooltip of the Final Cut Pro chip.",
+    "screen": "export-also-save",
+    "dnt": [
+      "FCPXML",
+      "Windows"
+    ]
+  },
+  "editor.edl.label": {
+    "description": "Editor chip.",
+    "screen": "export-also-save",
+    "dnt": [
+      "EDL"
+    ]
+  },
+  "editor.edl.title": {
+    "description": "Tooltip of the Other editor chip.",
+    "screen": "export-also-save",
+    "dnt": [
+      "EDL"
+    ],
+    "digits": "latn"
+  },
+  "row.uses": {
+    "description": "Label of the media row under Timeline.",
+    "screen": "export-also-save"
+  },
+  "uses.export.label": {
+    "description": "Radio of the Uses row.",
+    "screen": "export-also-save"
+  },
+  "uses.export.hint": {
+    "description": "Hint of This export.",
+    "screen": "export-also-save"
+  },
+  "uses.recordings.label": {
+    "description": "Radio of the Uses row.",
+    "screen": "export-also-save"
+  },
+  "uses.recordings.hint": {
+    "description": "Hint of The original recordings.",
+    "screen": "export-also-save"
+  },
+  "uses.premierePitch": {
+    "description": "Extra hint line with Premiere Pro and the recordings.",
+    "screen": "export-also-save",
+    "dnt": [
+      "Premiere Pro"
+    ]
+  },
+  "blocked.needsVideo": {
+    "description": "Why Timeline is disabled for M4A and WAV.",
+    "screen": "export-also-save"
+  },
+  "blocked.finalcutCodec": {
+    "description": "Why the Final Cut Pro chip is disabled. {codec} is a codec name.",
+    "screen": "export-also-save",
+    "dnt": [
+      "H.264",
+      "HEVC",
+      "Final Cut Pro"
+    ]
+  },
+  "blocked.edlRecordings": {
+    "description": "Why the EDL chip is disabled with the recordings.",
+    "screen": "export-also-save",
+    "dnt": [
+      "EDL"
+    ]
+  },
+  "unchecked": {
+    "description": "Warning under an editor chip not checked with this codec. {editor} is an editor name, {codec} a codec name.",
+    "screen": "export-also-save"
+  },
+  "running.timeline": {
+    "description": "Step of the running view.",
+    "screen": "export-also-save"
+  },
+  "running.copying": {
+    "description": "Step of the running view in recordings mode.",
+    "screen": "export-also-save"
+  },
+  "done.resolve": {
+    "description": "How to open the FCPXML in Resolve (done view).",
+    "screen": "export-also-save",
+    "dnt": [
+      "DaVinci Resolve"
+    ]
+  },
+  "done.finalcut": {
+    "description": "How to open the FCPXML in Final Cut Pro (done view).",
+    "screen": "export-also-save",
+    "dnt": [
+      "Final Cut Pro"
+    ]
+  },
+  "done.premiere": {
+    "description": "How to open the XML in Premiere (done view).",
+    "screen": "export-also-save",
+    "dnt": [
+      "Premiere Pro"
+    ]
+  },
+  "done.edl": {
+    "description": "How to open the EDL (done view). {video} is the exported file's name.",
+    "screen": "export-also-save",
+    "dnt": [
+      "EDL"
+    ],
+    "user": [
+      "video"
+    ]
+  },
+  "done.markers": {
+    "description": "How to import the markers EDL into Resolve (done view).",
+    "screen": "export-also-save",
+    "dnt": [
+      "EDL",
+      "DaVinci Resolve"
+    ]
+  },
+  "done.media": {
+    "description": "Done view line for the copied media folder.",
+    "screen": "export-also-save"
+  },
+  "done.failed": {
+    "description": "Done view line when the timeline step failed. {reason} is why.",
+    "screen": "export-also-save"
+  }
+}

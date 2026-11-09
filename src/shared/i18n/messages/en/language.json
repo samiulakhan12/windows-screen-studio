@@ -1,0 +1,22 @@
+{
+  "section.title": "Language",
+  "select.label": "Language of Flown",
+  "option.system": "Follow Windows ({name})",
+  "option.english": "English",
+  "option.named": "{own} ({english})",
+  "option.preview": "{own} · {english} (preview)",
+  "digits.label": "Digits",
+  "digits.western": "Western 0123",
+  "restart.notice": "Flown switches to {name} when it restarts.",
+  "restart.button": "Restart now",
+  "note.untranslated": "Text that is not translated yet stays in English. This setting does not change your recordings, captions or exported files.",
+  "note.preview": "The recording controls are not translated yet.",
+  "note.screenReader": "To hear Flown in Bangla, use a screen reader with a Bangla voice, such as NVDA.",
+  "command.title": "Language…",
+  "command.keywords": "language, ভাষা, Bangla, বাংলা, English, Español, हिन्दी",
+  "offer.region": "Language",
+  "offer.available": "Flown is available in {english}.",
+  "offer.use": "Use {english}",
+  "offer.notNow": "Not now",
+  "offer.nextStart": "Flown opens in {english} the next time it starts."
+}

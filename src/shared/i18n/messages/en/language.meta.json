@@ -1,0 +1,102 @@
+{
+  "section.title": {
+    "description": "Heading of the Language section; outside English it keeps the English word: \"ভাষা · Language\".",
+    "screen": "settings-language"
+  },
+  "select.label": {
+    "description": "Label of the language select; outside English it keeps the English words.",
+    "screen": "settings-language",
+    "dnt": [
+      "Flown"
+    ]
+  },
+  "option.system": {
+    "description": "Option of the language select. {name} is the language Windows would give.",
+    "screen": "settings-language",
+    "dnt": [
+      "Windows"
+    ]
+  },
+  "option.english": {
+    "description": "Option of the language select.",
+    "screen": "settings-language"
+  },
+  "option.named": {
+    "description": "Option for a shipped language: its own name, then its name in the UI language: \"বাংলা (Bangla)\".",
+    "screen": "settings-language"
+  },
+  "option.preview": {
+    "description": "Option for a language shown as a preview: \"বাংলা (প্রিভিউ) · Bangla (preview)\".",
+    "screen": "settings-language"
+  },
+  "digits.label": {
+    "description": "Label of the digits radio group.",
+    "screen": "settings-language"
+  },
+  "digits.western": {
+    "description": "Radio for Western digits; the digits are shown as they are.",
+    "screen": "settings-language",
+    "digits": "latn"
+  },
+  "restart.notice": {
+    "description": "Notice after a change. {name} is the chosen language.",
+    "screen": "settings-language",
+    "dnt": [
+      "Flown"
+    ]
+  },
+  "restart.button": {
+    "description": "Restarts Flown to switch the language.",
+    "screen": "settings-language"
+  },
+  "note.untranslated": {
+    "description": "Note under the language controls.",
+    "screen": "settings-language"
+  },
+  "note.preview": {
+    "description": "Note while the language is a preview.",
+    "screen": "settings-language"
+  },
+  "note.screenReader": {
+    "description": "Note with Bangla chosen.",
+    "screen": "settings-language",
+    "dnt": [
+      "NVDA",
+      "Flown"
+    ]
+  },
+  "command.title": {
+    "description": "Command palette entry that opens Settings › Language.",
+    "screen": "settings-language"
+  },
+  "command.keywords": {
+    "description": "Search words of the Language… command, comma separated; keep the language names.",
+    "screen": "settings-language"
+  },
+  "offer.region": {
+    "description": "Accessible name of the language offer on Home.",
+    "screen": "settings-language"
+  },
+  "offer.available": {
+    "description": "The English half of the offer on Home. {english} is the language's English name.",
+    "screen": "settings-language",
+    "dnt": [
+      "Flown"
+    ]
+  },
+  "offer.use": {
+    "description": "The English half of the offer's button.",
+    "screen": "settings-language"
+  },
+  "offer.notNow": {
+    "description": "The English half of the offer's second button.",
+    "screen": "settings-language"
+  },
+  "offer.nextStart": {
+    "description": "The English half of the line shown when Flown cannot restart now.",
+    "screen": "settings-language",
+    "dnt": [
+      "Flown"
+    ]
+  }
+}

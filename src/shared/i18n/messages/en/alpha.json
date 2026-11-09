@@ -1,0 +1,14 @@
+{
+  "row.background": "Background",
+  "background.with.label": "With background",
+  "background.with.title": "The background as in the preview",
+  "background.transparent.label": "Transparent",
+  "background.transparent.title": "No background: the recording, the camera and everything over them stay; around them the video is see-through",
+  "background.overlays.label": "Overlays only",
+  "background.overlays.title": "Only what goes over the recording: the camera, captions, texts, images, key presses, title cards and the progress bar. No recording and no background. For laying over another video",
+  "hint.keeps": "{codec} keeps the transparency.",
+  "hint.back": "Back to {codec}.",
+  "hint.plays": "Plays transparent in Chrome, Edge and Firefox (WebM), and in editing software (MOV). Safari shows WebM on black.",
+  "hint.fills": "With no padding the recording fills the frame: nothing will be see-through. Add padding in Style, or choose Overlays only.",
+  "preview.name": "Preview of a transparent video"
+}

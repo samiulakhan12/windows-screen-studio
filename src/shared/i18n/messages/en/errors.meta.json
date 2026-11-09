@@ -1,0 +1,30 @@
+{
+  "disk.space": {
+    "description": "Shown when the target folder has too little free space. {size} and {free} are file sizes.",
+    "screen": "export-errors"
+  },
+  "stems.failed": {
+    "description": "Reason when writing the stems failed.",
+    "screen": "export-errors"
+  },
+  "stems.noSound": {
+    "description": "Reason when no stem had sound.",
+    "screen": "export-errors"
+  },
+  "timeline.invalid": {
+    "description": "Reason when main refused a timeline plan.",
+    "screen": "export-errors"
+  },
+  "timeline.media": {
+    "description": "Reason when the media disagree with the plan.",
+    "screen": "export-errors"
+  },
+  "presetFile.notSaved": {
+    "description": "Reason when a preset file could not be written.",
+    "screen": "export-errors"
+  },
+  "feature.notReady": {
+    "description": "Shown if a setting of this release is used before its part is built (development only).",
+    "screen": "export-errors"
+  }
+}

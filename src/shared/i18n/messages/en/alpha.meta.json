@@ -1,0 +1,58 @@
+{
+  "row.background": {
+    "description": "Label of the Background row (MOV and WebM).",
+    "screen": "export-settings"
+  },
+  "background.with.label": {
+    "description": "Background chip.",
+    "screen": "export-settings"
+  },
+  "background.with.title": {
+    "description": "Tooltip of the With background chip.",
+    "screen": "export-settings"
+  },
+  "background.transparent.label": {
+    "description": "Background chip.",
+    "screen": "export-settings"
+  },
+  "background.transparent.title": {
+    "description": "Tooltip of the Transparent chip.",
+    "screen": "export-settings"
+  },
+  "background.overlays.label": {
+    "description": "Background chip.",
+    "screen": "export-settings"
+  },
+  "background.overlays.title": {
+    "description": "Tooltip of the Overlays only chip.",
+    "screen": "export-settings"
+  },
+  "hint.keeps": {
+    "description": "Hint after the codec was switched to one that carries transparency. {codec} is a codec name.",
+    "screen": "export-settings"
+  },
+  "hint.back": {
+    "description": "Hint after With background put the replaced codec back.",
+    "screen": "export-settings"
+  },
+  "hint.plays": {
+    "description": "Hint while the background is transparent.",
+    "screen": "export-settings",
+    "dnt": [
+      "WebM",
+      "MOV",
+      "Chrome",
+      "Edge",
+      "Firefox",
+      "Safari"
+    ]
+  },
+  "hint.fills": {
+    "description": "Hint when Transparent would leave nothing see-through.",
+    "screen": "export-settings"
+  },
+  "preview.name": {
+    "description": "Accessible name of the export preview of a transparent video.",
+    "screen": "export-settings"
+  }
+}

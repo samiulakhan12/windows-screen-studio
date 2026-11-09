@@ -1,0 +1,17 @@
+{
+  "chip.label": "Sound stems (WAV)",
+  "chip.title": "One 32-bit float WAV file per sound, to mix in other software: voice, system sound, music and effects",
+  "hint.saves": "Saves {list} (32-bit float WAV, about {size} each).",
+  "hint.notEvened": "The stems are not evened out like the video's sound, so their level can differ a little.",
+  "name.voice": "Voice",
+  "name.system": "System sound",
+  "name.recording": "Recording",
+  "name.music": "Music",
+  "name.effects": "Effects",
+  "blocked.gif": "GIFs are saved alone",
+  "blocked.batch": "Stems and timelines work with One file",
+  "blocked.perChapter": "Stems and timelines are saved with one file",
+  "blocked.silent": "This video has no sound",
+  "running": "Writing sound stems…",
+  "done.failed": "The sound stems could not be saved: {reason}"
+}

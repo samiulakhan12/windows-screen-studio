@@ -1,0 +1,9 @@
+{
+  "disk.space": "This export needs about {size} and the folder has {free} free. Choose another folder or a smaller format.",
+  "stems.failed": "The sound stems could not be written.",
+  "stems.noSound": "The recording has no sound to write as stems.",
+  "timeline.invalid": "The timeline could not be written: its plan is not valid.",
+  "timeline.media": "The timeline could not be written: a file it uses has changed.",
+  "presetFile.notSaved": "The presets could not be saved to this file.",
+  "feature.notReady": "This export setting is not available yet."
+}

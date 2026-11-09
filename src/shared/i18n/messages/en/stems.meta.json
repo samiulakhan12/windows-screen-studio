@@ -1,0 +1,72 @@
+{
+  "chip.label": {
+    "description": "Chip of the Also save row.",
+    "screen": "export-also-save",
+    "dnt": [
+      "WAV"
+    ]
+  },
+  "chip.title": {
+    "description": "Tooltip of the Sound stems chip.",
+    "screen": "export-also-save",
+    "dnt": [
+      "WAV"
+    ],
+    "digits": "latn"
+  },
+  "hint.saves": {
+    "description": "What Sound stems will write. {list} is a list of stem names (\"Voice, System sound and Music\"), {size} a file size.",
+    "screen": "export-also-save",
+    "dnt": [
+      "WAV"
+    ]
+  },
+  "hint.notEvened": {
+    "description": "Second hint line when Even out loudness is on.",
+    "screen": "export-also-save"
+  },
+  "name.voice": {
+    "description": "Name of a stem in the hint list.",
+    "screen": "export-also-save"
+  },
+  "name.system": {
+    "description": "Name of a stem in the hint list.",
+    "screen": "export-also-save"
+  },
+  "name.recording": {
+    "description": "Name of a stem in the hint list.",
+    "screen": "export-also-save"
+  },
+  "name.music": {
+    "description": "Name of a stem in the hint list.",
+    "screen": "export-also-save"
+  },
+  "name.effects": {
+    "description": "Name of a stem in the hint list.",
+    "screen": "export-also-save"
+  },
+  "blocked.gif": {
+    "description": "Why Sound stems and Timeline are disabled for a GIF.",
+    "screen": "export-also-save"
+  },
+  "blocked.batch": {
+    "description": "Why Sound stems and Timeline are disabled in batch mode.",
+    "screen": "export-also-save"
+  },
+  "blocked.perChapter": {
+    "description": "Why Sound stems and Timeline are disabled with one file per chapter.",
+    "screen": "export-also-save"
+  },
+  "blocked.silent": {
+    "description": "Why Sound stems is disabled for a silent project.",
+    "screen": "export-also-save"
+  },
+  "running": {
+    "description": "Step of the running view after the video.",
+    "screen": "export-also-save"
+  },
+  "done.failed": {
+    "description": "Done view line when the stem step failed. {reason} is why.",
+    "screen": "export-also-save"
+  }
+}

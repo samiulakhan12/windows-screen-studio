@@ -1,0 +1,150 @@
+{
+  "destination.portrait.label": {
+    "description": "Destination card.",
+    "screen": "export-presets"
+  },
+  "destination.portrait.title": {
+    "description": "Tooltip of the Portrait post card.",
+    "screen": "export-presets",
+    "digits": "latn"
+  },
+  "destination.editing.label": {
+    "description": "Destination card.",
+    "screen": "export-presets"
+  },
+  "destination.editing.title": {
+    "description": "Tooltip of the For editing card.",
+    "screen": "export-presets",
+    "dnt": [
+      "MOV",
+      "Premiere Pro",
+      "DaVinci Resolve",
+      "After Effects"
+    ]
+  },
+  "destination.overlay.label": {
+    "description": "Destination card.",
+    "screen": "export-presets"
+  },
+  "destination.overlay.title": {
+    "description": "Tooltip of the Transparent overlay card.",
+    "screen": "export-presets"
+  },
+  "meta.line": {
+    "description": "Meta line of a card: \"MOV · CineForm · 1080p60\".",
+    "screen": "export-presets",
+    "dnt": [
+      "fps"
+    ],
+    "digits": "latn"
+  },
+  "save.button": {
+    "description": "Button after the Settings header.",
+    "screen": "export-presets"
+  },
+  "save.field": {
+    "description": "Label and placeholder of the preset name field.",
+    "screen": "export-presets"
+  },
+  "save.save": {
+    "description": "Saves the preset.",
+    "screen": "export-presets"
+  },
+  "save.cancel": {
+    "description": "Closes the name field.",
+    "screen": "export-presets"
+  },
+  "save.full": {
+    "description": "Why Save as preset is disabled at the limit. {n} is the limit (50).",
+    "screen": "export-presets"
+  },
+  "header.named": {
+    "description": "Settings header with a saved preset selected. {name} is the preset name.",
+    "screen": "export-presets",
+    "user": [
+      "name"
+    ]
+  },
+  "yours.heading": {
+    "description": "Heading of the user presets.",
+    "screen": "export-presets"
+  },
+  "more.name": {
+    "description": "Accessible name of a preset card's menu button.",
+    "screen": "export-presets",
+    "user": [
+      "name"
+    ]
+  },
+  "menu.update": {
+    "description": "Preset menu item.",
+    "screen": "export-presets"
+  },
+  "menu.rename": {
+    "description": "Preset menu item.",
+    "screen": "export-presets"
+  },
+  "menu.save": {
+    "description": "Preset menu item.",
+    "screen": "export-presets"
+  },
+  "menu.delete": {
+    "description": "Preset menu item.",
+    "screen": "export-presets"
+  },
+  "delete.ask": {
+    "description": "Inline question before deleting a preset.",
+    "screen": "export-presets",
+    "user": [
+      "name"
+    ]
+  },
+  "delete.confirm": {
+    "description": "Deletes the preset.",
+    "screen": "export-presets"
+  },
+  "delete.cancel": {
+    "description": "Keeps the preset.",
+    "screen": "export-presets"
+  },
+  "import.link": {
+    "description": "Link under the preset grid.",
+    "screen": "export-presets"
+  },
+  "import.done": {
+    "description": "Notice after an import. {n} is the formatted count.",
+    "screen": "export-presets"
+  },
+  "import.none": {
+    "description": "Notice when a file had no readable preset.",
+    "screen": "export-presets",
+    "dnt": [
+      "Flown"
+    ]
+  },
+  "import.tooLarge": {
+    "description": "Notice when a file is over 64 KB.",
+    "screen": "export-presets",
+    "dnt": [
+      "Flown"
+    ]
+  },
+  "import.overLimit": {
+    "description": "Notice when an import went over the limit. {limit} is 50, {n} the formatted count left out.",
+    "screen": "export-presets"
+  },
+  "import.changed": {
+    "description": "Notice when imported presets asked for ProRes. {n} is the formatted count.",
+    "screen": "export-presets",
+    "dnt": [
+      "CineForm",
+      "ProRes",
+      "MOV",
+      "Flown"
+    ]
+  },
+  "notice.cannotMake": {
+    "description": "Under the Codec row when a preset asks for a codec this PC cannot make.",
+    "screen": "export-presets"
+  }
+}

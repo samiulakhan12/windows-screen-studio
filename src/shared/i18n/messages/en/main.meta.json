@@ -1,0 +1,32 @@
+{
+  "saveFilter.wav": {
+    "description": "File type name in the save dialog for a WAV export.",
+    "screen": "main-dialogs",
+    "dnt": [
+      "WAV"
+    ]
+  },
+  "presetFile.saveTitle": {
+    "description": "Title of the dialog that saves presets to a file.",
+    "screen": "main-dialogs"
+  },
+  "presetFile.openTitle": {
+    "description": "Title of the dialog that opens a preset file.",
+    "screen": "main-dialogs"
+  },
+  "presetFile.filter": {
+    "description": "File type name of .flownpreset files.",
+    "screen": "main-dialogs",
+    "dnt": [
+      "Flown"
+    ]
+  },
+  "relaunch.download": {
+    "description": "Why Flown cannot restart now.",
+    "screen": "main-dialogs"
+  },
+  "confirm.cancel": {
+    "description": "Cancel button of a confirmation in a translated UI.",
+    "screen": "main-dialogs"
+  }
+}
