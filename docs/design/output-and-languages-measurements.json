@@ -1,0 +1,53 @@
+{
+ "S0": {
+  "at": "2026-11-09T22:27:23.361Z",
+  "commit": "31c4b0d",
+  "sizes": {
+   "renderer": {
+    "bytes": 2715936,
+    "gzip": 894569
+   },
+   "rendererChunks": 1,
+   "main": {
+    "bytes": 5770527,
+    "gzip": 1264843
+   },
+   "preload": {
+    "bytes": 25303,
+    "gzip": 6062
+   }
+  },
+  "mainFirstRenderMs": 256,
+  "toolbarFirstRenderMs": 68,
+  "runs": [
+   {
+    "main": 352,
+    "toolbar": 112
+   },
+   {
+    "main": 260,
+    "toolbar": 68
+   },
+   {
+    "main": 248,
+    "toolbar": 60
+   },
+   {
+    "main": 228,
+    "toolbar": 72
+   },
+   {
+    "main": 260,
+    "toolbar": 68
+   },
+   {
+    "main": 256,
+    "toolbar": 80
+   },
+   {
+    "main": 248,
+    "toolbar": 56
+   }
+  ]
+ }
+}
