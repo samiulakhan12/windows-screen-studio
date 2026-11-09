@@ -146,7 +146,7 @@ interface Row {
   typedIn: string | null
   /** The guide's shot. */
   plan: ShotPlan
-  /** The shot the chosen format saves: the demo's in the demo format (the whole screen unless *Zoom to the click in the demo*), else the guide's. */
+  /** The shot the chosen format saves and copies: the demo's in the demo format (the whole screen unless *Zoom to the click in the demo*), else the guide's. */
   shot: ShotPlan
 }
 
@@ -442,16 +442,15 @@ export function GuidePanel(props: { project: Project; cursor: CursorTrack; start
   const saveAc = useRef<AbortController | null>(null)
   useEffect(() => () => saveAc.current?.abort(), [])
   /**
-   * The pictures a Save or Copy in `fmt` shares (§5.5.6): each included step's in that format's view
-   * (the demo's, else the guide's) and the bug report's Actual, any not made yet made now; `missing`:
-   * how many still could not be, and why.
+   * The pictures a Save or Copy shares (§5.5.6): the ones the rows show and the question before it
+   * counts (each included step's in the format's view, the demo's in the demo format) and the bug
+   * report's Actual, any not made yet made now; `missing`: how many still could not be, and why.
    */
-  const docImages = async (fmt: GuideFormat, signal: AbortSignal): Promise<{ images: Map<string, GuideImage>; missing: number; failed: string | null }> => {
-    const demo = fmt === 'demo'
-    const want = [...included.map((r) => (demo ? r.shot : r.plan)), ...(actualPlan ? [actualPlan] : [])]
+  const docImages = async (signal: AbortSignal): Promise<{ images: Map<string, GuideImage>; missing: number; failed: string | null }> => {
+    const want = [...included.map((r) => r.shot), ...(actualPlan ? [actualPlan] : [])]
     const made = new Map<string, GuideImage>()
     for (const p of want) {
-      const image = (demo && p.key !== ACTUAL_KEY ? demoShots : shots).images.get(p.key)
+      const image = imageOf(p.key)
       if (image) made.set(p.key, image)
     }
     const { images, failed } = await shotsFor(project, track, want, made, signal)
@@ -483,7 +482,7 @@ export function GuidePanel(props: { project: Project; cursor: CursorTrack; start
     const ac = new AbortController()
     saveAc.current = ac
     try {
-      const { images, missing, failed } = await docImages(format, ac.signal)
+      const { images, missing, failed } = await docImages(ac.signal)
       if (ac.signal.aborted) return
       const result = await saveGuide(format, { project: docProject(), steps, images, scale, page, signal: ac.signal, smaller })
       if (!result) return
@@ -500,7 +499,7 @@ export function GuidePanel(props: { project: Project; cursor: CursorTrack; start
     const ac = new AbortController()
     saveAc.current = ac
     try {
-      const pictures = await docImages('html', ac.signal)
+      const pictures = await docImages(ac.signal)
       if (ac.signal.aborted) return
       const { images } = await copyGuide({ project: docProject(), steps, images: pictures.images })
       say(`Copied the guide with ${images} ${images === 1 ? 'screenshot' : 'screenshots'}.${missingNote(pictures.missing, pictures.failed)}`)

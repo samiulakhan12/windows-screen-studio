@@ -342,6 +342,34 @@ describe('the click-through demo’s own shots (docs/design/smart-tools.md §5.5
   })
 })
 
+describe('Copy guide in the click-through demo format (docs/design/smart-tools.md §2.1.2, §5.8)', () => {
+  it('copies the pictures the rows show and Check screenshots walked: the demo’s own, never a guide shot nobody saw', async () => {
+    // Step 1's guide shot is the whole screen and its demo shot is zoomed to the click; steps 2 and 3
+    // are zoomed in the guide and whole in the demo.
+    store = testStore({ ...project(), guide: { steps: [{ key: 'c3000', whole: true, demoZoom: true }] } })
+    contexts.editor = { store, player }
+    let els = await ready('demo')
+    click(byTestId(els, 'guide-check'))
+    els = await settle(panel('demo'))
+    for (let i = 0; i < 2; i++) {
+      click(byTestId(els, 'guide-viewer-next'))
+      els = await settle(panel('demo'))
+    }
+    expect(textOf(byTestId(els, 'guide-checked'))).toBe('Checked 3 of 3')
+    click(byTestId(els, 'guide-viewer-close'))
+    els = await settle(panel('demo'))
+    click(byTestId(els, 'guide-copy'))
+    els = render(panel('demo'))
+    // Every picture that goes was seen at 100%: nothing to ask.
+    expect(byTestId(els, 'guide-question')).toBeUndefined()
+    for (let i = 0; i < 20 && !calls.copied.length; i++) els = await settle(panel('demo'))
+    const widths = [...calls.copied[0].html.matchAll(/<img [^>]*width="(\d+)"/g)].map((m) => m[1])
+    // The demo's: step 1 zoomed (950 px), steps 2 and 3 whole (1600 px, copied at most 1200 px).
+    expect(widths).toEqual(['950', '1200', '1200'])
+    expect(said(els)).toBe('Copied the guide with 3 screenshots.')
+  })
+})
+
 describe('a shot made again differently is not checked (docs/design/smart-tools.md §2.1.2)', () => {
   it('Whole screen on a step checked at 100%: the question before a Copy counts its new picture', async () => {
     let els = await ready()

@@ -275,7 +275,8 @@ Review mode's does.
 - With the *Click-through demo* format the rows, the viewer and *Check screenshots* show the demo's
   own shots (the whole screen unless *Zoom to the click in the demo*), and the *May show what you
   typed* and *Whole screen* marks, the line under the list and the question below count them: those
-  are the pictures the demo saves. Seeing a step's zoomed guide shot does not check its demo shot.
+  are the pictures the demo saves, and the ones *Copy guide* copies then. Seeing a step's zoomed guide
+  shot does not check its demo shot.
 - A bug report's Actual screenshot shows under the Actual buttons as a button "View the Actual
   screenshot full size, whole screen" that opens it in the viewer (titled "The Actual screenshot",
   with *Blur an area…* at its time and no *Adjust*); *Check screenshots* walks it with the
