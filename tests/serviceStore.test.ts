@@ -151,6 +151,20 @@ describe('ServiceStore (test 82)', () => {
     expect(() => store.keyForDraft({ ...groq({ apiKey: undefined }) } as never)).toThrow(SERVICE_MESSAGES.key)
     expect(store.keyForDraft({ ...groq({ id: s.id, apiKey: undefined, service: { preset: 'ollama', baseUrl: 'http://localhost:11434/v1' } }) } as never)).toBeNull()
   })
+
+  it('keyForDraft: a service saved with a key, its address edited to another one on this PC, needs the key again (§22.3 step 17)', () => {
+    const store = new ServiceStore(file, box)
+    const s = store.save(groq({ service: { preset: 'other', baseUrl: 'http://127.0.0.1:8080/v1' } }))
+    expect(store.keyForDraft({ ...groq({ id: s.id, apiKey: undefined, service: { preset: 'other', baseUrl: 'http://127.0.0.1:8080/v1' } }) } as never)).toBe(GROQ_KEY)
+    // Another port on this PC: nothing may be sent there until a key is typed.
+    expect(() => store.keyForDraft({ ...groq({ id: s.id, apiKey: undefined, service: { preset: 'other', baseUrl: 'http://127.0.0.1:9090/v1' } }) } as never)).toThrow(SERVICE_MESSAGES.newAddress)
+    expect(store.keyForDraft({ ...groq({ id: s.id, apiKey: 'own_key_123456789', service: { preset: 'other', baseUrl: 'http://127.0.0.1:9090/v1' } }) } as never)).toBe('own_key_123456789')
+    // A service on this PC saved without a key moves to another port without one.
+    const keyless = store.save(groq({ apiKey: undefined, label: 'Local', service: { preset: 'other', baseUrl: 'http://127.0.0.1:8081/v1' } }))
+    expect(store.keyForDraft({ ...groq({ id: keyless.id, apiKey: undefined, label: 'Local', service: { preset: 'other', baseUrl: 'http://127.0.0.1:9091/v1' } }) } as never)).toBeNull()
+    // A new form on this PC without a key needs none.
+    expect(store.keyForDraft({ ...groq({ apiKey: undefined, service: { preset: 'other', baseUrl: 'http://127.0.0.1:9092/v1' } }) } as never)).toBeNull()
+  })
 })
 
 describe('providers and services listed together (test 83)', () => {

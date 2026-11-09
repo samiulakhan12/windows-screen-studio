@@ -228,7 +228,10 @@ export class ServiceStore {
    * The key a model list for `draft` (a form not saved yet) may use (§10.4): the draft's own; else
    * the stored key of the entry `draft.id` names, only when the draft is a service at that entry's
    * origin; null for a service on this PC without a key. Anything else is refused, so an edited
-   * address, typed wrong or sent by a compromised page, never receives the stored key.
+   * address, typed wrong or sent by a compromised page, never receives the stored key. A service
+   * saved with a key whose address moves to another one on this PC is asked for the key again
+   * ("Enter the API key for the new address.", as its form says) and nothing is sent there, unless
+   * its preset needs no key (Ollama, LM Studio).
    */
   keyForDraft(draft: AiProviderInput): string | null {
     const input = validateServiceInput({ ...draft, model: typeof draft?.model === 'string' && draft.model.trim() ? draft.model : 'x' })
@@ -241,6 +244,7 @@ export class ServiceStore {
       if (!key) throw new Error(SERVICE_MESSAGES.newAddress)
       return key
     }
+    if (entry && entry.key !== undefined && SERVICE_PRESETS[input.service.preset].keyNeeded) throw new Error(SERVICE_MESSAGES.newAddress)
     if (url.loopback) return null
     throw new Error(entry ? SERVICE_MESSAGES.newAddress : SERVICE_MESSAGES.key)
   }
