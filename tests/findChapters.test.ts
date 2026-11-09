@@ -227,6 +227,30 @@ describe('Find chapters runs (test 118: the first weak chapter for the focus)', 
     expect(chapters[2].auto!.via).toBeUndefined()
     expect(chapterReviewItems(store.state).find((r) => r.key === `chapter:${chapters[1].id}`)!.detail).toBe('Find chapters · page change · named on this PC')
   })
+
+  it("a run again that finds nothing removes the chapters found before that are still pending, and says so; the user's stay (§2.3)", async () => {
+    fake.scan = scanOf(120, { 40: 62, 80: 73 })
+    const noScreen = { ...OPTIONS, use: { screen: false, pauses: true, words: true } }
+    let store = new EditStore<Project>(projectOf(120))
+    await run(store)
+    expect(store.state.chapters).toHaveLength(3)
+    expect(await run(store, noScreen)).toEqual({ notice: `${FIND_WORDS.nothing} ${FIND_WORDS.removed}`, weak: null })
+    expect(store.state.chapters).toEqual([])
+    // One undo step brings them back.
+    store.undo()
+    expect(store.state.chapters).toHaveLength(3)
+    // With none pending, nothing changes and the notice is the plain one.
+    store.redo()
+    const before = store.state
+    expect(await run(store, noScreen)).toEqual({ notice: FIND_WORDS.nothing, weak: null })
+    expect(store.state).toBe(before)
+    // The user kept the 40 s chapter: it stays; the other two go.
+    store = new EditStore<Project>(projectOf(120))
+    await run(store)
+    store.update((p) => ({ ...p, chapters: p.chapters!.map((c) => (c.t === 40 ? { id: c.id, t: c.t, title: 'Mine' } : c)) }))
+    expect(await run(store, noScreen)).toEqual({ notice: `${FIND_WORDS.already} ${FIND_WORDS.removed}`, weak: null })
+    expect(store.state.chapters!.map((c) => [c.t, c.title, c.auto])).toEqual([[40, 'Mine', undefined]])
+  })
 })
 
 describe('words or not (test 120)', () => {

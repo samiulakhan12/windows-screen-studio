@@ -9,7 +9,7 @@ import type { SceneScan } from '../../../shared/api/projects'
 import type { AudioLevels } from '../../../shared/audio/loudness'
 import { speechFromLevels, speechLevelSource } from '../../../shared/audio/speech'
 import { spokenSegments } from '../../../shared/captions/subtitles'
-import { withFoundChapters } from '../../../shared/chapters/chapterAuto'
+import { withFoundChapters, withoutPendingChapters } from '../../../shared/chapters/chapterAuto'
 import { chapterNames, namesRequestForChapters, weakName, withAiNames } from '../../../shared/chapters/names'
 import { pendingChapters } from '../../../shared/chapters/pending'
 import { planChapters } from '../../../shared/chapters/plan'
@@ -43,6 +43,7 @@ export const FIND_WORDS = {
   noScreen: 'Could not read the screen: chapters come from pauses and what you say.',
   needsCaptions: 'Make captions first: chapter names come from what you say.',
   firstAtZero: 'YouTube needs the first chapter at 0:00.',
+  removed: 'Removed the chapters found before.',
   looking: 'Looking at the screen…',
   asking: (place: string): string => `Asking ${place}…`,
   naming: (place: string): string => `Naming the chapters with ${place}…`,
@@ -107,11 +108,11 @@ async function readScreen(project: Project, signal: AbortSignal, onProgress: (te
 
 /**
  * Finds chapters in the project of `store` (§7.8) and applies them in one update: the chapters
- * found replace those an earlier run found that are still pending; the user's stay. Without
- * captions, when speech is heard and words are wanted (or an AI is to suggest from them), says
- * captions are needed instead and changes nothing. Rejects when stopped (nothing changes; the AI
- * request is cancelled) or when an AI request fails. `weak` is the id of the first found chapter
- * whose name is weak, for the focus.
+ * found replace those an earlier run found that are still pending, also when none are found; the
+ * user's stay. Without captions, when speech is heard and words are wanted (or an AI is to suggest
+ * from them), says captions are needed instead and changes nothing. Rejects when stopped (nothing
+ * changes; the AI request is cancelled) or when an AI request fails. `weak` is the id of the first
+ * found chapter whose name is weak, for the focus.
  */
 export async function runFindChapters(deps: {
   store: EditStore<Project>
@@ -165,9 +166,17 @@ export async function runFindChapters(deps: {
     project = store.state
     const plan = planChapters({ project, track: effectiveTrack(recorded, project), scan, speech, density: options.density, use: options.use, ...(ai ? { ai } : {}) })
     const screenFailed = options.use.screen && !scan
+    /** The notice when nothing is added (§2.3); `removed` says the chapters found before went. */
+    const notFound = (reason: 'too-short' | 'nothing' | 'already', removed: boolean): string => {
+      if (reason === 'too-short') return FIND_WORDS.tooShort
+      return [reason === 'already' ? FIND_WORDS.already : FIND_WORDS.nothing, ...(removed ? [FIND_WORDS.removed] : []), ...(screenFailed ? [FIND_WORDS.noScreen] : [])].join(' ')
+    }
     if (!plan.ok) {
-      const why = plan.reason === 'too-short' ? FIND_WORDS.tooShort : plan.reason === 'already' ? FIND_WORDS.already : FIND_WORDS.nothing
-      return { notice: screenFailed && plan.reason !== 'too-short' ? `${why} ${FIND_WORDS.noScreen}` : why, weak: null }
+      if (plan.reason === 'too-short') return { notice: notFound(plan.reason, false), weak: null }
+      // The run replaces the chapters found before that are still pending: with none found, they go, in one update.
+      const had = pendingChapters(store.state).length > 0
+      store.update(withoutPendingChapters)
+      return { notice: notFound(plan.reason, had), weak: null }
     }
 
     // 5. The names: offline (an AI's suggested title where it suggested the start), then an AI's for the chapters with words when asked.

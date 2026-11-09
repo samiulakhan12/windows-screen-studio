@@ -345,7 +345,8 @@ the other, as the HTML guide does. The words are the guide's language: *Back*, *
   "Intro", "Part 2"…).
 
 Running *Find chapters* again replaces the chapters it found that are still pending; user chapters
-stay and are worked around.
+stay and are worked around. A run that adds nothing (other than "Too short…") removes the pending
+ones too, in one undo step, and its notice then says "Removed the chapters found before."
 
 **The Captions tab's *Suggest chapters*** runs the same tool (§7.6.1): with a service, the AI's
 suggested starts join the candidates and its titles name them; with On this PC, Find chapters splits
