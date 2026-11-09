@@ -26,6 +26,7 @@ import { useTextChoices } from '../ai/textChoices'
 import { loadAudioAnalysis } from '../editor/audioAnalysis'
 import { useEditor } from '../editor/context'
 import { useGroup } from '../editor/groupContext'
+import { useStopFocus } from '../editor/returnFocus'
 import { playStretch } from '../review/playStretch'
 import '../review/review.css'
 import './clips.css'
@@ -355,6 +356,8 @@ export function ShortClipsPanel(props: { project: Project; cursor: CursorTrack; 
     }
   }
   const stop = (): void => controller.current?.abort()
+  // Stop pressed with the keyboard, or the copies done while it is on Stop: the focus goes back to Make.
+  const stopFocus = useStopFocus(busy, `${ids}-make`)
 
   const onKeyDown = (e: KeyboardEvent): void => {
     if (e.key !== 'Escape' || e.defaultPrevented) return
@@ -570,7 +573,7 @@ export function ShortClipsPanel(props: { project: Project; cursor: CursorTrack; 
                   {makeLabel}
                 </button>
                 {busy && (
-                  <button type="button" className="btn ghost" onClick={stop} data-testid="clips-stop">
+                  <button type="button" className="btn ghost" onClick={stop} {...stopFocus} data-testid="clips-stop">
                     Stop
                   </button>
                 )}

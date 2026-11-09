@@ -5,7 +5,7 @@
  * leaves the focus where clicks leave it (focus.ts), and focus the user has already moved
  * elsewhere (a save ending later) stays there.
  */
-import { useEffect, useRef, type RefObject } from 'react'
+import { useEffect, useRef, type FocusEvent, type RefObject } from 'react'
 import { lastInputWasKey } from './focus'
 
 export interface ReturnFocus<F extends HTMLElement> {
@@ -49,4 +49,40 @@ export function useReturnFocus<F extends HTMLElement = HTMLElement>(open: boolea
     back.current = keyed && byKey()
   }
   return { opener, form, byKey, closing }
+}
+
+/**
+ * A button shown only while a tool works (its Stop, Cancel): when it goes, pressed or with the work
+ * ending, while the keyboard is on it, the focus goes to the element with the id `to` (the tool's
+ * own button, working again by then) instead of falling to the page, where typed keys would run
+ * editor shortcuts. A click leaves the focus where clicks leave it (focus.ts), and focus moved
+ * elsewhere stays there. Spread the result on the button; call it whether or not the button shows.
+ */
+export function useStopFocus(shown: boolean, to: string | undefined): { onFocus(): void; onBlur(e: FocusEvent<HTMLElement>): void } {
+  /** Whether the button has the focus (kept when it goes with it, cleared when the focus moved on). */
+  const focused = useRef(false)
+  const backTo = useRef(to)
+  if (shown) backTo.current = to
+  useEffect(() => {
+    if (!shown) return
+    return () => {
+      const had = focused.current
+      focused.current = false
+      if (!had || !lastInputWasKey()) return
+      const active = document.activeElement
+      if (active && active !== document.body) return
+      const el = backTo.current ? document.getElementById(backTo.current) : null
+      el?.focus({ preventScroll: true })
+    }
+  }, [shown])
+  return {
+    onFocus: () => void (focused.current = true),
+    onBlur: (e) => {
+      // Focus that moved elsewhere leaves the button in place; a button taken away with the focus on it is not there any more.
+      const button = e.currentTarget
+      setTimeout(() => {
+        if (button.isConnected && document.activeElement !== button) focused.current = false
+      }, 0)
+    }
+  }
 }

@@ -11,12 +11,11 @@
  * beside the choice (LocalNote), and "Written on this PC: check it before you use it." with a
  * result (LocalWritten).
  */
-import { useEffect, useRef } from 'react'
 import type { AiTextTask, NamesRequest, TextChoice } from '../../../shared/api/ai'
 import type { LocalAiProgress, LocalAiState } from '../../../shared/api/localAi'
 import { LOCAL_MODELS } from '../../../shared/localAi/catalog'
 import { LOCAL_MESSAGES, progressWords, timeLeft } from '../../../shared/localAi/messages'
-import { lastInputWasKey } from '../editor/focus'
+import { useStopFocus } from '../editor/returnFocus'
 import { localNote, modelInUse, useLocalAi, useLocalAiProgress } from './localAiState'
 import './localAi.css'
 
@@ -57,21 +56,7 @@ export function LocalProgress(props: { requestId: string | null; onStop(): void;
   const progress = useLocalAiProgress(props.requestId)
   const local = useLocalAi()
   const shown = !!props.requestId && !!progress
-  /** Whether Stop has the focus (kept when Stop goes with it, cleared when the focus moved on). */
-  const stopFocused = useRef(false)
-  const backTo = useRef(props.returnFocus)
-  if (shown) backTo.current = props.returnFocus
-  useEffect(() => {
-    if (!shown) return
-    return () => {
-      const had = stopFocused.current
-      stopFocused.current = false
-      const active = document.activeElement
-      if (!had || !lastInputWasKey() || (active && active !== document.body)) return
-      const to = backTo.current ? document.getElementById(backTo.current) : null
-      to?.focus({ preventScroll: true })
-    }
-  }, [shown])
+  const stopFocus = useStopFocus(shown, props.returnFocus)
   if (!shown) return null
   const low = local.status === 'ready' && progress.phase !== 'waiting' && memoryLow(local.state)
   // Waiting and loading have no amount to show: the bar is indeterminate.
@@ -90,14 +75,7 @@ export function LocalProgress(props: { requestId: string | null; onStop(): void;
         type="button"
         className="btn ghost settings-small"
         onClick={props.onStop}
-        onFocus={() => void (stopFocused.current = true)}
-        onBlur={(e) => {
-          // Focus that moved elsewhere leaves Stop in place; Stop taken away with the focus on it is not there any more.
-          const stop = e.currentTarget
-          setTimeout(() => {
-            if (stop.isConnected && document.activeElement !== stop) stopFocused.current = false
-          }, 0)
-        }}
+        {...stopFocus}
         aria-label="Stop AI on this PC"
       >
         Stop

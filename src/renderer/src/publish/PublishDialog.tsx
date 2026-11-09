@@ -16,6 +16,7 @@ import { useEditor } from '../editor/context'
 import { Chips } from '../editor/controls'
 import { EditorIcon } from '../editor/EditorIcon'
 import { useModalFocus } from '../editor/modalFocus'
+import { useStopFocus } from '../editor/returnFocus'
 import { useAiProviders } from '../editor/panels/CaptionsPanel'
 import { checkNote, NotedConfirm, type NotedAsk } from './checkNote'
 import { loadPublishPrefs, savePublishPrefs } from './publishPrefs'
@@ -415,6 +416,8 @@ function Card({ kind, item, stale, canWrite, youtube, saved, spoken, said, onWri
   const label = PUBLISH_LABELS[kind]
   const id = `publish-${kind}`
   const busy = isRunning(item.status)
+  // Stop pressed with the keyboard, or the writing done while it is on Stop: the focus goes to Write (Regenerate).
+  const stopFocus = useStopFocus(busy, `${id}-write`)
   const isYoutube = kind === 'youtube'
   const chapters = isYoutube && youtube.chapters.length ? youtubeChapters(youtube.chapters, youtube.duration) : null
   // The YouTube text is saved for exports and copied the same way, so the export's file is what Copy gives.
@@ -505,7 +508,7 @@ function Card({ kind, item, stale, canWrite, youtube, saved, spoken, said, onWri
         )}
         {busy ? (
           <>
-            <button className="btn small" onClick={onStop}>
+            <button className="btn small" onClick={onStop} {...stopFocus}>
               Stop
             </button>
             <LocalProgress requestId={requestId} onStop={onStop} returnFocus={`publish-${kind}-write`} />

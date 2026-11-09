@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, onTestFinished, vi } from 'vitest'
 import type { Project } from '../src/shared/types'
 import { button, byTestId, contexts, mockReact, settle, testStore, unmountAll, useEditorContexts } from './studioHarness'
 
@@ -16,6 +16,9 @@ const ids = { sent: [] as unknown[], stopped: [] as unknown[] }
 // While `hold.on`, the provider's answers wait until the test lets each one go.
 const hold = { on: false, answers: [] as (() => void)[] }
 vi.stubGlobal('document', { activeElement: null, body: {} })
+/** Whether the last input was a key (focus.ts reads it from the real page's events). */
+const keys = vi.hoisted(() => ({ last: false }))
+vi.mock('../src/renderer/src/editor/focus', async (importOriginal) => ({ ...(await importOriginal<Record<string, unknown>>()), lastInputWasKey: () => keys.last }))
 vi.stubGlobal('window', {
   api: {
     getPref: async (key: string) => (key === 'captionCleanup' ? { ai: true } : key === 'captionWordList' ? [{ term: 'Qbexel', heard: ['cubexel'] }] : null),
@@ -105,6 +108,41 @@ describe('Tidy captions with the AI fix (§11.7 rule 6)', () => {
     // The second run had its own id, and ended by itself: only the first was stopped.
     expect(ids.sent[1]).not.toBe(ids.sent[0])
     expect(ids.stopped).toEqual([ids.sent[0]])
+  })
+
+  it('Cancel pressed with the keyboard gives the focus to Tidy captions, never the page; a click leaves it alone', async () => {
+    const page = (globalThis as unknown as { document: { body: unknown; activeElement: unknown; getElementById?: (id: string) => unknown } }).document
+    const focusedIds: string[] = []
+    page.getElementById = (id: string) => ({ focus: () => void focusedIds.push(id) })
+    onTestFinished(() => {
+      delete page.getElementById
+      page.activeElement = null
+      keys.last = false
+    })
+    hold.on = true
+    const cancelWith = async (key: boolean): Promise<void> => {
+      page.activeElement = null
+      let els = await settle(cleanup())
+      els = await settle(cleanup())
+      ;(byTestId(els, 'cleanup-run')!.props.onClick as () => void)()
+      els = await settle(cleanup())
+      // Tab to Cancel, Enter: the tidy stops, Cancel goes, and the focus that fell to the page goes to Tidy captions.
+      const cancel = button(els, 'Cancel')!
+      ;(cancel.props.onFocus as () => void)()
+      keys.last = key
+      page.activeElement = page.body
+      ;(cancel.props.onClick as () => void)()
+      els = await settle(cleanup())
+      expect(button(els, 'Cancel')).toBeUndefined()
+      expect(byTestId(els, 'cleanup-run')?.props.disabled).toBe(false)
+    }
+    await cancelWith(true)
+    expect(focusedIds).toEqual(['cleanup-run'])
+    // A click on Cancel: the focus stays where clicks leave it.
+    focusedIds.length = 0
+    await cancelWith(false)
+    expect(focusedIds).toEqual([])
+    expect(store.state.transcript!.segments.map((s) => s.text)).toEqual(['we use cubexel for twenty five reprots'])
   })
 
   it('a fix still under way when the section goes stops the provider’s request', async () => {

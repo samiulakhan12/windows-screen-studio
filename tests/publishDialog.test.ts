@@ -73,6 +73,9 @@ let windowFocused = true
 /** The page: `activeElement` is the stand-in that has the focus, or the body; querySelector finds a card. */
 const page: { body: object; activeElement: unknown; querySelector?: (sel: string) => unknown; getElementById?: (id: string) => unknown; hasFocus: () => boolean } = { body: {}, activeElement: null, hasFocus: () => windowFocused }
 vi.stubGlobal('document', page)
+/** Whether the last input was a key (focus.ts reads it from the real page's events). */
+const keys = vi.hoisted(() => ({ last: false }))
+vi.mock('../src/renderer/src/editor/focus', async (importOriginal) => ({ ...(await importOriginal<Record<string, unknown>>()), lastInputWasKey: () => keys.last }))
 vi.stubGlobal('navigator', {
   clipboard: {
     writeText: (text: string) => {
@@ -702,6 +705,40 @@ describe('Publish dialog: a card says when its text is written (§5.2)', () => {
 
   /** The text in the card's field. */
   const field = (els: El[]): unknown => els.find((e) => e.type === 'textarea' && String(e.props.className).includes('publish-text'))?.props.value
+
+  it("a card's Stop pressed with the keyboard gives the focus to its Write, never the page; a click leaves it alone", async () => {
+    const before = page.getElementById
+    page.getElementById = (id: string) => {
+      const el = tree.find((e) => e.props.id === id)
+      return el ? standIn(el) : null
+    }
+    onTestFinished(() => {
+      page.getElementById = before
+      keys.last = false
+    })
+    let out = await opened()
+    const stopWith = async (kind: string, key: boolean): Promise<void> => {
+      press(card(out, kind), 'Write')
+      out = render()
+      // Tab to Stop, Enter: the writing stops, Stop goes, and the focus that fell to the page goes to Write.
+      const stop = card(out, kind).find((e) => e.type === 'button' && textOf(e.props.children).trim() === 'Stop')!
+      ;(stop.props.onFocus as () => void)()
+      page.activeElement = stop
+      keys.last = key
+      press(card(out, kind), 'Stop')
+      await flush()
+      out = render()
+      expect(state(card(out, kind))).toBe('Stopped')
+    }
+    await stopWith('linkedin', true)
+    expect(focused).toBe('Write')
+    expect((page.activeElement as { name?: string }).name).toBe('Write')
+    // A click on Stop: the focus stays where clicks leave it (the page).
+    focused = null
+    await stopWith('xpost', false)
+    expect(focused).toBeNull()
+    expect(page.activeElement).toBe(page.body)
+  })
 
   it('says Stopped, not Written, when a run is stopped, and Not written yet when the text is cleared', async () => {
     let out = await opened()

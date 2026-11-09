@@ -7,12 +7,16 @@
  */
 import { readFileSync } from 'node:fs'
 import path from 'node:path'
-import { beforeEach, describe, expect, it, onTestFinished } from 'vitest'
+import { beforeEach, describe, expect, it, onTestFinished, vi } from 'vitest'
 import { projectCopy } from '../src/shared/editor/duplicate'
 import type { Project } from '../src/shared/types'
 import { clipProject, steadyTalk, trackOf } from './clipFixtures'
 import { bench, change, closes, CopyMenu, el, editing, fake, frame, mount, narrated, opened, player, press, reset, SHORT_NEEDS_CAPTIONS, ShortClipsPanel } from './clipsUi'
 import { button, byLabel, byTestId, focused, render, settle, textOf, unmountAll } from './studioHarness'
+
+/** Whether the last input was a key (focus.ts reads it from the real page's events). */
+const keys = vi.hoisted(() => ({ last: false }))
+vi.mock('../src/renderer/src/editor/focus', async (importOriginal) => ({ ...(await importOriginal<Record<string, unknown>>()), lastInputWasKey: () => keys.last }))
 
 beforeEach(reset)
 
@@ -201,6 +205,49 @@ describe('names with an AI (tests 102 and 125)', () => {
     out = await settle(view(), skip)
     expect(fake.copies).toHaveLength(0)
     expect(out.find((e) => (e.type as { name?: string }).name === 'LocalProgress')!.props.requestId).toBeNull()
+  })
+
+  it('Stop pressed with the keyboard gives the focus to Make, never the page; a click leaves it alone', async () => {
+    const page = (globalThis as unknown as { document: { body: unknown; activeElement: unknown; getElementById?: (id: string) => unknown } }).document
+    const focusedIds: string[] = []
+    page.getElementById = (id: string) => ({ focus: () => void focusedIds.push(id) })
+    onTestFinished(() => {
+      delete page.getElementById
+      page.activeElement = null
+      keys.last = false
+    })
+    fake.providers = [OPENAI]
+    fake.prefs.set('shortClips', { length: 'any', shape: 'vertical', names: 'o1', captions: true })
+    const skip = ['LocalProgress', 'CostLine']
+    const stopWith = async (key: boolean): Promise<string> => {
+      unmountAll()
+      page.activeElement = null
+      let answer!: (v: unknown) => void
+      fake.answer = () => new Promise((r) => (answer = r))
+      const view = mount(narrated())
+      let out = await settle(view(), skip)
+      change(byLabel(out, 'Make clip 1'), true)
+      out = await settle(view(), skip)
+      press(byTestId(out, 'clips-make'))
+      out = await settle(view(), skip)
+      // Tab to Stop, Enter: the naming stops, Stop goes, and the focus that fell to the page goes to Make.
+      const stop = byTestId(out, 'clips-stop')!
+      ;(stop.props.onFocus as () => void)()
+      keys.last = key
+      page.activeElement = page.body
+      press(stop)
+      answer({ task: 'names', names: [{ id: '0', name: 'Too late' }] })
+      out = await settle(view(), skip)
+      expect(byTestId(out, 'clips-stop')).toBeUndefined()
+      return String(byTestId(out, 'clips-make')!.props.id)
+    }
+    const makeId = await stopWith(true)
+    expect(focusedIds).toEqual([makeId])
+    // A click on Stop: the focus stays where clicks leave it.
+    focusedIds.length = 0
+    await stopWith(false)
+    expect(focusedIds).toEqual([])
+    expect(fake.copies).toHaveLength(0)
   })
 
   it('Make reads its cost sentence when an AI names the copies (§11.5), and only then', async () => {

@@ -459,7 +459,9 @@ choice ("Small: titles often repeat the first sentence").
 **While it runs**, beside every busy button of those tools (`LocalProgress`, §20.0): "On this PC:
 loading the model…", "reading the captions… 45%", "writing… about 2 minutes left", and **Stop**. When
 Stop goes (pressed, or the run ended) with the keyboard on it, the focus goes back to the tool's
-button, never to the page. A run longer than 10 seconds is a long job: the taskbar button shows its
+button, never to the page; so does it from the tool's own Stop or Cancel beside it (Find chapters,
+Short clips, Clean up, a Publish card), whatever does the work (`useStopFocus`,
+`src/renderer/src/editor/returnFocus.ts`). A run longer than 10 seconds is a long job: the taskbar button shows its
 progress and the PC stays awake (`src/main/longJobs.ts`). Results say "Written on this PC: check it
 before you use it." (`LocalWritten`): under the Captions tab's suggestions, Clean up's and
 Languages' status, a Publish card's text, Draft script's "Script drafted", Short clips' "Made …

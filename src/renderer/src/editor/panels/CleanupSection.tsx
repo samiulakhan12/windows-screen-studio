@@ -11,7 +11,7 @@ import { applyTextResult } from '../../../../shared/captions/edit'
 import type { Project } from '../../../../shared/types'
 import { currentWordList, ipcMessage, loadWordList, onSectionRequest, onWordList, saveWordList, takeSectionRequest } from '../captionItems'
 import { useEditor } from '../context'
-import { useReturnFocus } from '../returnFocus'
+import { useReturnFocus, useStopFocus } from '../returnFocus'
 import { Chips, Section } from '../controls'
 import { useTextChoiceList } from '../../ai/textChoices'
 import { CostLine } from '../../ai/CostLine'
@@ -244,6 +244,8 @@ export function CleanupSection({ project }: { project: Project }): JSX.Element {
     setStatus('Tidy captions was cancelled; nothing was changed.')
     setWrittenHere(false)
   }
+  // Cancel pressed with the keyboard, or the run ending while it is on Cancel: the focus goes back to Tidy captions.
+  const cancelFocus = useStopFocus(busy, 'cleanup-run')
 
   const saveWords = (next: readonly WordListEntry[]): Promise<void> =>
     saveWordList(next).catch((err: unknown) => setError(`The word list could not be saved: ${ipcMessage(err)}`))
@@ -365,7 +367,7 @@ export function CleanupSection({ project }: { project: Project }): JSX.Element {
             {busy ? 'Working…' : 'Tidy captions'}
           </button>
           {busy && (
-            <button className="btn small ghost" onClick={cancel}>
+            <button className="btn small ghost" onClick={cancel} {...cancelFocus}>
               Cancel
             </button>
           )}

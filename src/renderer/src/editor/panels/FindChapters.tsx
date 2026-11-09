@@ -21,6 +21,7 @@ import { FIND_WORDS, runFindChapters, type FindChapterOptions } from '../chapter
 import { useEditor } from '../context'
 import { useGroup } from '../groupContext'
 import { onFindChaptersRequest, takeFindChaptersRequest } from '../smartRequests'
+import { useStopFocus } from '../returnFocus'
 import './findChapters.css'
 
 export const FIND_HINT = 'Splits the video where the screen changes and where you start something new, and names each part from what you say. Works offline, also for recordings without sound.'
@@ -170,6 +171,8 @@ export function FindChapters({ project, cursor, onNotice }: { project: Project; 
   }, [namesChoice, project, pref.density])
 
   const busy = running !== null
+  // Stop pressed with the keyboard, or the run ending while it is on Stop: the focus goes back to Find chapters.
+  const stopFocus = useStopFocus(busy, `${ids}-run`)
   const hintId = `${ids}-hint`
   return (
     <div className="find-chapters" data-testid="find-chapters-section">
@@ -184,7 +187,7 @@ export function FindChapters({ project, cursor, onNotice }: { project: Project; 
             <span className="find-chapters-progress" role="status" aria-live="polite" data-testid="find-chapters-progress">
               {progress ?? FIND_WORDS.finding}
             </span>
-            <button className="btn ghost" onClick={stop} data-testid="find-chapters-stop">
+            <button className="btn ghost" onClick={stop} {...stopFocus} data-testid="find-chapters-stop">
               Stop
             </button>
           </>

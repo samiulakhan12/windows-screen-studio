@@ -87,6 +87,10 @@ vi.mock('../src/renderer/src/ai/costConfirm', () => ({
   resetAskedCosts: () => undefined
 }))
 
+/** Whether the last input was a key (focus.ts reads it from the real page's events). */
+const keys = vi.hoisted(() => ({ last: false }))
+vi.mock('../src/renderer/src/editor/focus', async (importOriginal) => ({ ...(await importOriginal<Record<string, unknown>>()), lastInputWasKey: () => keys.last }))
+
 mockReact()
 // Renderer code: imported at run time so the Node typecheck of tests/ does not follow it.
 const RUN = '../src/renderer/src/editor/chaptersRun'
@@ -431,6 +435,42 @@ describe('the Find chapters panel (§2.3)', () => {
     expect(store.state.chapters).toEqual([])
     expect(notices).toEqual([])
     expect(byTestId(els, 'find-chapters-stop')).toBeUndefined()
+  })
+
+  it('Stop pressed with the keyboard gives the focus to Find chapters, never the page; a click leaves it alone', async () => {
+    const focusedIds: string[] = []
+    const page = { body: {}, activeElement: {} as unknown, getElementById: (id: string) => ({ focus: () => void focusedIds.push(id) }) }
+    Object.defineProperty(globalThis, 'document', { configurable: true, value: page })
+    onTestFinished(() => {
+      unmountAll()
+      delete (globalThis as { document?: unknown }).document
+      keys.last = false
+    })
+    fake.scan = scanOf(120, { 40: 62, 80: 73 })
+    const stopWith = async (key: boolean): Promise<void> => {
+      let open!: () => void
+      fake.scanGate = new Promise((r) => (open = r))
+      let els = await settle(panel(), SKIP)
+      click(byTestId(els, 'find-chapters'))
+      els = await settle(panel(), SKIP)
+      // Tab to Stop, Enter: the run stops, Stop goes, and the focus that fell to the page goes to Find chapters.
+      const stop = byTestId(els, 'find-chapters-stop')!
+      ;(stop.props.onFocus as () => void)()
+      keys.last = key
+      page.activeElement = page.body
+      click(stop)
+      open()
+      els = await settle(panel(), SKIP)
+      expect(byTestId(els, 'find-chapters-stop')).toBeUndefined()
+    }
+    await stopWith(true)
+    const runId = byTestId(await settle(panel(), SKIP), 'find-chapters')!.props.id
+    expect(focusedIds).toEqual([runId])
+    // A click on Stop: the focus stays where clicks leave it.
+    focusedIds.length = 0
+    await stopWith(false)
+    expect(focusedIds).toEqual([])
+    expect(store.state.chapters).toEqual([])
   })
 
   it('speech without captions: "Make captions first" with Make captions and Split without words', async () => {
