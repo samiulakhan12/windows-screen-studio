@@ -272,6 +272,22 @@
   height: auto;
 }
 
+/* The send form (§5.3.1): where it is, the typing note and the checkbox on one wrapping row. */
+.guide-send-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+}
+
+.guide-send-head .guide-chip {
+  margin: 0;
+}
+
+.guide-send-cost {
+  flex-basis: 100%;
+}
+
 .guide-viewer-checked,
 .guide-viewer-said {
   margin: 0;

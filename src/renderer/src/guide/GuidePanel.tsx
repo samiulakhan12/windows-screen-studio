@@ -7,7 +7,7 @@
  * usable beside it. Every edit is one store update (one undo step). Esc closes it.
  */
 import { useCallback, useEffect, useId, useMemo, useRef, useState, type KeyboardEvent } from 'react'
-import type { TextChoice } from '../../../shared/api/ai'
+import type { AiTextRequest, TextChoice } from '../../../shared/api/ai'
 import type { GuideFormat } from '../../../shared/api/guide'
 import type { SceneScan } from '../../../shared/api/projects'
 import { cropOf } from '../../../shared/engine/crop'
@@ -28,6 +28,9 @@ import { itemKey } from '../../../shared/editor/multiSelect'
 import type { GuidePref } from '../../../shared/smart/smartPrefs'
 import type { CursorTrack, GuideStepEdit, Project } from '../../../shared/types'
 import { CostLine } from '../ai/CostLine'
+import { confirmCost } from '../ai/costConfirm'
+import { estimateFor, useCostData } from '../ai/useCost'
+import { costLineText } from '../../../shared/ai/cost'
 import { LocalProgress } from '../ai/LocalProgress'
 import { useTextChoices } from '../ai/textChoices'
 import { useEditor } from '../editor/context'
@@ -37,6 +40,7 @@ import { projectSaid } from '../publish/checkNote'
 import { BIG_FILE, blurArea, blurTypedText, copyGuide, saveGuide, tidyNotes, writeStepTitles } from './guideRun'
 import { ShotViewer } from './ShotViewer'
 import { useGuideShots } from './useGuideShots'
+import { namesWithPictures, pictureImage, pictureSteps, picturesToSend } from './visionTitles'
 import '../review/review.css'
 import './guide.css'
 
@@ -54,6 +58,10 @@ export const LINK_QUESTION = 'This guide has a link, address or file name nobody
 export const OUTSIDE_NOTE = 'The click was outside the recorded area.'
 export const TYPED_HINT = 'Later screenshots can still show what you typed.'
 export const BLUR_HINT = 'Drag the box over what to hide. The guide and the video both hide it.'
+/** Titles from the screenshots (§5.3.1): the checkbox, and why Write titles waits. */
+export const SEND_SHOTS_LABEL = 'Also send the screenshots'
+export const PREPARING_PICTURES = 'Getting the screenshots ready to send…'
+export const NO_PICTURES = 'No screenshot is ready to send.'
 
 const FORMATS: readonly { id: GuideFormat; label: string; save: string }[] = [
   { id: 'pdf', label: 'PDF', save: 'Save PDF…' },
@@ -257,12 +265,53 @@ export function GuidePanel(props: { project: Project; cursor: CursorTrack; start
 
   // AI titles and notes.
   const choices = useTextChoices('names')
+  const costData = useCostData()
   const titleChoice: TextChoice | null = choices.find((c) => c.id === titleSource) ?? null
   const notesChoice: TextChoice | null = choices.find((c) => c.id === notesSource) ?? choices[0] ?? null
+  // Titles from the screenshots (§5.3.1, part P6): offered only with a choice that sends pictures
+  // (a service or built-in provider, never On this PC), off until ticked, never remembered, and off
+  // again after a run. Once the shots are made, the pictures that would go are made from them (the
+  // JPEGs the send viewer shows and Send sends); the cost line counts the ones ticked at the start.
+  const canSendShots = !!titleChoice?.pictures && titleChoice.kind !== 'local'
+  const [sendShots, setSendShots] = useState(false)
+  const shotsOn = sendShots && canSendShots
+  // A choice that cannot send them (On this PC) takes the box away; it comes back off.
+  useEffect(() => {
+    if (!canSendShots) setSendShots(false)
+  }, [canSendShots])
+  const pictureList = useMemo(() => pictureSteps(project, steps), [project, steps])
+  const pictureSig = pictureList.map((s) => s.key).join('|')
+  const typedOf = useMemo(() => new Map(rows.flatMap((r) => (r.typedIn ? [[r.step.key, r.typedIn] as const] : []))), [rows])
+  const typedSig = [...typedOf].map(([k, v]) => `${k}>${v}`).join('|')
+  const latestPictures = useRef({ pictureList, typedOf })
+  latestPictures.current = { pictureList, typedOf }
+  const shotsSettled = shotsDone || !!shots.failed
+  const [pictures, setPictures] = useState<{ key: string; jpeg: Uint8Array; ticked: boolean }[] | null>(null)
+  useEffect(() => {
+    setPictures(null)
+    if (!shotsOn || !shotsSettled) return
+    let live = true
+    const { pictureList: list, typedOf: typed } = latestPictures.current
+    picturesToSend(list, shots.images, typed).then(
+      (made) => {
+        if (live) setPictures(made)
+      },
+      () => {
+        if (live) setPictures([])
+      }
+    )
+    return () => {
+      live = false
+    }
+  }, [shotsOn, shotsSettled, shots.images, pictureSig, typedSig])
+  const preparing = shotsOn && !pictures
   const titleRequest = useMemo(() => {
-    const names = namesRequestForSteps(project, steps, 'step')
+    const ticked = shotsOn && pictures ? new Map(pictures.filter((p) => p.ticked).map((p) => [p.key, p.jpeg])) : null
+    const names = ticked?.size ? namesWithPictures(project, steps, ticked) : namesRequestForSteps(project, steps, 'step')
     return names.items.length ? { task: 'names' as const, segments: [], names } : null
-  }, [project, steps])
+  }, [project, steps, shotsOn, pictures])
+  /** The send viewer (§5.3.1): every picture that would go, the ones ticked at the start, and their bytes. */
+  const [sending, setSending] = useState<{ shots: { key: string; label: string; image: GuideImage; note?: string }[]; ticked: ReadonlySet<string>; jpegs: ReadonlyMap<string, Uint8Array> } | null>(null)
   const notesRequest = useMemo(() => {
     const names = namesRequestForSteps(project, steps, 'note')
     return names.items.length ? { task: 'names' as const, segments: [], names } : null
@@ -270,21 +319,62 @@ export function GuidePanel(props: { project: Project; cursor: CursorTrack; start
   const [busy, setBusy] = useState<{ what: 'titles' | 'notes'; requestId: string; ac: AbortController } | null>(null)
   // The question before a run (§11.5) is the cost line's: it holds a click on the buttons it names
   // and lets it through after Run, so the run itself never asks again.
-  const runAi = async (what: 'titles' | 'notes'): Promise<void> => {
+  const runAi = async (what: 'titles' | 'notes', sent: ReadonlyMap<string, Uint8Array> | null = null): Promise<void> => {
     const choice = what === 'titles' ? titleChoice : notesChoice
     if (!choice || busy) return
+    // Pictures only to a choice that sends them, and only those the send viewer let through.
+    const pictures = what === 'titles' && sent?.size && choice.pictures && choice.kind !== 'local' ? sent : null
     const requestId = `guide-${what}-${++requestSeq}`
     const ac = new AbortController()
     setBusy({ what, requestId, ac })
     try {
       const deps = { store, steps, choice, signal: ac.signal, requestId }
-      const { notice } = what === 'titles' ? await writeStepTitles({ ...deps, pictures: null }) : await tidyNotes(deps)
+      const { notice } = what === 'titles' ? await writeStepTitles({ ...deps, pictures }) : await tidyNotes(deps)
       say(notice)
     } catch (err) {
       say(ac.signal.aborted ? 'Stopped. Nothing was changed.' : err instanceof Error ? err.message : String(err))
     } finally {
       setBusy(null)
     }
+  }
+  /** Write titles: with the screenshots, first the send viewer (nothing goes before Send); else the run. */
+  const writeTitles = (): void => {
+    if (busy) return
+    if (!shotsOn) return void runAi('titles')
+    if (!pictures?.length) return
+    const byKey = new Map(rows.map((r) => [r.step.key, r]))
+    setSending({
+      shots: pictures.map((p) => {
+        const r = byKey.get(p.key)
+        return { key: p.key, label: `step ${r?.n ?? ''}`, image: pictureImage(p.jpeg), ...(r?.typedIn ? { note: `May show what you typed in step ${typedN(r.typedIn)}` } : {}) }
+      }),
+      ticked: new Set(pictures.filter((p) => p.ticked).map((p) => p.key)),
+      jpegs: new Map(pictures.map((p) => [p.key, p.jpeg]))
+    })
+  }
+  /** Write titles' request with the pictures of `keys` (what the send viewer has ticked). */
+  const requestWith = (jpegs: ReadonlyMap<string, Uint8Array>): AiTextRequest => ({ task: 'names', segments: [], names: namesWithPictures(store.state, steps, jpegs) })
+  const jpegsOf = (open: NonNullable<typeof sending>, keys: readonly string[]): Map<string, Uint8Array> => new Map(keys.flatMap((k) => (open.jpegs.has(k) ? [[k, open.jpegs.get(k)!] as const] : [])))
+  /** The send viewer's cost line: what the pictures still ticked would cost (§5.3.1). */
+  const sendCost = (keys: readonly string[]): string => {
+    const estimate = sending && titleChoice ? estimateFor(titleChoice, requestWith(jpegsOf(sending, keys)), costData) : null
+    return estimate && titleChoice ? costLineText([{ label: 'Titles', estimate }], titleChoice.place, "the steps' narration", titleChoice.model, true) : ''
+  }
+  /**
+   * The send viewer closed: Send runs with the pictures still ticked (and the box is off again);
+   * Cancel sends nothing. Ticking more than the line counted asks the question before a run again
+   * for the larger cost (§11.5), as the click asked it for the line's.
+   */
+  const sendClosed = async (result?: { send: readonly string[] }): Promise<void> => {
+    const open = sending
+    setSending(null)
+    if (!open || !result?.send.length || !titleChoice) return
+    const sent = jpegsOf(open, result.send)
+    const chosen = estimateFor(titleChoice, requestWith(sent), costData)
+    const counted = estimateFor(titleChoice, titleRequest, costData)
+    if (chosen && (chosen.usd?.[1] ?? 0) > (counted?.usd?.[1] ?? 0) && !(await confirmCost(chosen, titleChoice))) return
+    setSendShots(false)
+    void runAi('titles', sent)
   }
   const stopAi = (): void => {
     if (!busy) return
@@ -360,7 +450,7 @@ export function GuidePanel(props: { project: Project; cursor: CursorTrack; start
     onClose()
   }
   const onKeyDown = (e: KeyboardEvent<HTMLElement>): void => {
-    if (e.key !== 'Escape' || viewer || question) return
+    if (e.key !== 'Escape' || viewer || sending || question) return
     e.preventDefault()
     e.stopPropagation()
     close()
@@ -432,6 +522,8 @@ export function GuidePanel(props: { project: Project; cursor: CursorTrack; start
     }
   }
 
+  // Why Write titles cannot run now: nothing said (unless the screenshots go), or their pictures not ready.
+  const writeWhy = preparing ? PREPARING_PICTURES : shotsOn ? (pictures!.length || titleRequest ? null : NO_PICTURES) : titleRequest ? null : NOTHING_SAID
   const heading = props.start === 'demo' ? 'Click-through demo' : props.start === 'bug' ? 'Bug report' : 'Step-by-step guide'
   const usable = track.valid && track.clicks.length > 0
   const nothing = steps.length === 0
@@ -620,9 +712,9 @@ export function GuidePanel(props: { project: Project; cursor: CursorTrack; start
                 type="button"
                 className="btn"
                 id={`${ids}-write`}
-                disabled={!titleRequest || !!busy}
-                aria-describedby={titleRequest ? `${ids}-titles-cost-titles` : `${ids}-write-why`}
-                onClick={() => void runAi('titles')}
+                disabled={!!busy || !!writeWhy}
+                aria-describedby={writeWhy ? `${ids}-write-why` : `${ids}-titles-cost-titles`}
+                onClick={writeTitles}
                 data-testid="guide-write-titles"
               >
                 {busy?.what === 'titles' ? 'Writing…' : 'Write titles'}
@@ -630,9 +722,15 @@ export function GuidePanel(props: { project: Project; cursor: CursorTrack; start
               <LocalProgress requestId={busy?.what === 'titles' ? busy.requestId : null} onStop={stopAi} />
             </div>
           )}
-          {titleChoice && !titleRequest && (
+          {canSendShots && (
+            <label className="guide-check">
+              <input type="checkbox" checked={shotsOn} disabled={!!busy} onChange={(e) => setSendShots(e.target.checked)} data-testid="guide-send-shots" />
+              {SEND_SHOTS_LABEL}
+            </label>
+          )}
+          {titleChoice && writeWhy && (
             <p className="hint" id={`${ids}-write-why`} data-testid="guide-write-why">
-              {NOTHING_SAID}
+              {writeWhy}
             </p>
           )}
           {titleChoice && <CostLine id={`${ids}-titles-cost`} choice={titleChoice} actions={[{ key: 'titles', label: 'Titles', buttonId: `${ids}-write`, request: titleRequest }]} />}
@@ -793,6 +891,19 @@ export function GuidePanel(props: { project: Project; cursor: CursorTrack; start
             edit(key, e ? { rect: e.rect, ring: e.ring } : { rect: undefined, ring: undefined })
             say(e ? 'Adjusted the screenshot.' : 'The screenshot is zoomed to the click again.')
           }}
+        />
+      )}
+      {sending && (
+        <ShotViewer
+          shots={sending.shots}
+          index={0}
+          mode="send"
+          place={titleChoice?.place}
+          ticked={sending.ticked}
+          onClose={(result) => void sendClosed(result)}
+          sendCost={sendCost}
+          onBlur={() => undefined}
+          onAdjust={() => undefined}
         />
       )}
       {question && (

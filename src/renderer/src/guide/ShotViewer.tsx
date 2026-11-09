@@ -6,7 +6,12 @@
  * ring as a movable circle over the whole frame, moved by the keyboard (arrows 1%, Shift 10%, Alt
  * resizes the crop, Enter is Done) or the pointer. In *Check screenshots* a line counts the shots
  * seen at 100%. Esc closes it and the focus goes back to the screenshot button that opened it.
- * Part P6 adds the send form (`mode: 'send'`).
+ *
+ * The send form (`mode: 'send'`, part P6, §5.3.1): titled "These screenshots go to OpenAI", every
+ * picture that would go, one at a time, as the very bytes that go, with Previous, Next and a checkbox
+ * "Send step 3's screenshot" on each (the ones `ticked` names start ticked); **Send 12 screenshots**
+ * closes it with the keys still ticked, **Cancel** (focused at the start) or Esc with nothing, and
+ * nothing is sent before Send. Seeing a picture here does not count as checking its shot.
  */
 import { useEffect, useMemo, useRef, useState, type KeyboardEvent, type PointerEvent as ReactPointerEvent } from 'react'
 import { cropName, cropOk, fitCrop, nudgeCrop, nudgeRing, ringName, snapCrop } from '../../../shared/guide/adjust'
@@ -23,6 +28,7 @@ export interface ShotAdjust {
 }
 
 const PAN = 40
+const cap = (s: string): string => (s ? s[0].toUpperCase() + s.slice(1) : s)
 const HANDLES = ['nw', 'n', 'ne', 'e', 'se', 's', 'sw', 'w'] as const
 type Handle = (typeof HANDLES)[number]
 
@@ -34,11 +40,20 @@ function useImageUrl(image: GuideImage | null | undefined): string | null {
 }
 
 export function ShotViewer(props: {
-  /** Each shot in the order Previous and Next walk; `image` is null while it is made again (after an edit). */
-  shots: readonly { key: string; label: string; image: GuideImage | null; adjust?: ShotAdjust }[]
+  /**
+   * Each shot in the order Previous and Next walk; `image` is null while it is made again (after an
+   * edit). `note`: a line shown with it (in the send form: that it may show what was typed).
+   */
+  shots: readonly { key: string; label: string; image: GuideImage | null; adjust?: ShotAdjust; note?: string }[]
   index: number
   mode: 'view' | 'check' | 'send'
+  /**
+   * The send form: where the pictures go (the choice's place, "OpenAI"), the keys ticked at the start,
+   * and the cost line of what the ticked ones would send.
+   */
   place?: string
+  ticked?: ReadonlySet<string>
+  sendCost?(keys: readonly string[]): string
   /** How many steps the guide has, for the title ("Screenshot for step 3 of 30"). */
   total?: number
   /** In Check screenshots: how many have been seen at 100%, and that a shot was. */
@@ -49,28 +64,46 @@ export function ShotViewer(props: {
   onAdjust(key: string, edit: Pick<GuideStepEdit, 'rect' | 'ring'> | null): void
 }): JSX.Element {
   const { shots, onClose, onShown } = props
+  const sending = props.mode === 'send'
   const [at, setAt] = useState(() => Math.min(Math.max(0, props.index), Math.max(0, shots.length - 1)))
   const [fit, setFit] = useState(false)
   const [adjusting, setAdjusting] = useState<{ rect: NormRect; ring: { x: number; y: number } | null } | null>(null)
   const [said, setSaid] = useState('')
+  // The send form's ticks: what goes on Send.
+  const [ticks, setTicks] = useState<ReadonlySet<string>>(() => new Set(props.ticked ?? []))
   const boxRef = useRef<HTMLDivElement>(null)
   const areaRef = useRef<HTMLDivElement>(null)
   useModalFocus(boxRef, () => onClose())
   const shot = shots[at] ?? null
   const url = useImageUrl(shot?.image)
   const frameUrl = useImageUrl(adjusting ? shot?.adjust?.frame : null)
-  // A shot counts as checked once shown at 100%.
-  const shown = shot?.image ? shot.key : null
+  // A shot counts as checked once shown at 100% (not a picture in the send form: it is smaller).
+  const shown = shot?.image && !sending ? shot.key : null
   useEffect(() => {
     if (shown && !fit && !adjusting) onShown?.(shown)
   }, [shown, fit, adjusting, onShown])
+  const first = useRef(true)
   useEffect(() => {
+    const opening = first.current
+    first.current = false
+    // The send form opens on Cancel; later, the picture takes the focus only from a button Previous or Next disabled.
+    if (sending && (opening || !(document.activeElement as HTMLButtonElement | null)?.disabled)) return
     areaRef.current?.focus()
-  }, [at])
+  }, [at, sending])
 
   if (!shot) return <></>
   const total = props.total ?? shots.length
-  const title = `Screenshot for ${shot.label} of ${total}`
+  const title = sending ? `These screenshots go to ${props.place ?? 'the AI service'}` : `Screenshot for ${shot.label} of ${total}`
+  const sendKeys = shots.map((s) => s.key).filter((k) => ticks.has(k))
+  const tick = (on: boolean): void => {
+    setTicks((t) => {
+      const next = new Set(t)
+      if (on) next.add(shot.key)
+      else next.delete(shot.key)
+      return next
+    })
+    setSaid(`${cap(shot.label)}'s screenshot ${on ? 'will be sent' : 'will not be sent'}.`)
+  }
 
   const pan = (e: KeyboardEvent<HTMLDivElement>): void => {
     const el = areaRef.current as (HTMLDivElement & { scrollBy?: (x: number, y: number) => void }) | null
@@ -195,6 +228,27 @@ export function ShotViewer(props: {
             Checked {props.checked ?? 0} of {total}
           </p>
         )}
+        {sending && (
+          <div className="guide-send-head">
+            <p className="guide-viewer-checked" role="status" aria-live="polite" data-testid="guide-send-where">
+              {`Picture ${at + 1} of ${shots.length}: ${shot.label}`}
+            </p>
+            {shot.note && (
+              <p className="guide-chip warn" data-testid="guide-send-note">
+                {shot.note}
+              </p>
+            )}
+            <label className="guide-check">
+              <input type="checkbox" checked={ticks.has(shot.key)} onChange={(e) => tick(e.target.checked)} data-testid="guide-send-tick" />
+              {`Send ${shot.label}'s screenshot`}
+            </label>
+            {props.sendCost && (
+              <p className="guide-viewer-checked guide-send-cost" id="guide-send-cost" data-testid="guide-send-cost">
+                {props.sendCost(sendKeys)}
+              </p>
+            )}
+          </div>
+        )}
         {adjusting && shot.adjust ? (
           <div className="guide-adjust">
             <p className="hint">Move the crop and the ring with the arrow keys (Shift: further, Alt: resize the crop), or drag them. Enter is Done.</p>
@@ -237,7 +291,7 @@ export function ShotViewer(props: {
             data-testid="guide-viewer-area"
           >
             {url && shot.image ? (
-              <img src={url} alt={`Screenshot for ${shot.label}`} width={shot.image.width} height={shot.image.height} data-testid="guide-viewer-image" />
+              <img src={url} alt={sending ? `The screenshot for ${shot.label} as it would be sent` : `Screenshot for ${shot.label}`} width={shot.image.width} height={shot.image.height} data-testid="guide-viewer-image" />
             ) : (
               <span className="guide-shot-wait">Making the screenshot…</span>
             )}
@@ -247,7 +301,23 @@ export function ShotViewer(props: {
           {said}
         </p>
         <footer className="modal-foot guide-viewer-foot">
-          {adjusting ? (
+          {sending ? (
+            <>
+              <button type="button" className="btn ghost" disabled={at === 0} onClick={() => setAt(at - 1)} data-testid="guide-viewer-prev">
+                Previous
+              </button>
+              <button type="button" className="btn ghost" disabled={at >= shots.length - 1} onClick={() => setAt(at + 1)} data-testid="guide-viewer-next">
+                Next
+              </button>
+              <button type="button" className="btn primary" disabled={!sendKeys.length} aria-describedby={props.sendCost ? 'guide-send-cost' : undefined} onClick={() => onClose({ send: sendKeys })} data-testid="guide-send">
+                {`Send ${sendKeys.length} ${sendKeys.length === 1 ? 'screenshot' : 'screenshots'}`}
+              </button>
+              {/* The send form opens on Cancel (§5.3.1): nothing goes by a stray Enter. */}
+              <button type="button" className="btn" autoFocus onClick={() => onClose()} data-testid="guide-send-cancel">
+                Cancel
+              </button>
+            </>
+          ) : adjusting ? (
             <>
               <button type="button" className="btn ghost" onClick={reset} data-testid="guide-adjust-reset">
                 Reset
