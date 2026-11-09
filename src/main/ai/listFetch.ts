@@ -6,7 +6,7 @@
  */
 import { describeFailure } from '../../shared/captions/transcriptErrors'
 import type { ListedModel } from '../../shared/api/ai'
-import { AiError } from './request'
+import { AiError, certificateFailure } from './request'
 import { scrubSecrets } from './secrets'
 
 export const MODEL_LIST_TIMEOUT_MS = 20_000
@@ -62,6 +62,8 @@ export async function fetchModelJson(url: string, headers: Record<string, string
       throw new AiError(describeFailure(reason?.name === 'TimeoutError' ? { timeout: true } : { cancelled: true }, provider))
     }
     if (isRedirectError(err)) throw fail(`${provider}: ${REDIRECT_MESSAGE}`)
+    const certificate = certificateFailure(err)
+    if (certificate) throw new AiError(describeFailure(certificate, provider))
     if (err instanceof Error && !/fetch failed/i.test(err.message)) throw fail(err.message)
     throw new AiError(describeFailure({ network: true }, provider))
   }

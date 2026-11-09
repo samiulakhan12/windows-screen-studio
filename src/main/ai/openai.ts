@@ -22,7 +22,7 @@ import type { FailureInfo } from '../../shared/captions/transcriptErrors'
 import { parseOpenAiText, parseOpenAiTranscription } from '../../shared/captions/transcriptParse'
 import { isTextOnlyOpenAiModel, TEXT_PART_SECONDS } from '../../shared/captions/transcriptTiming'
 import { baseUrlOverride } from './endpoints'
-import { AiError, callWithRetry, isNetworkError, retryAfterSeconds } from './request'
+import { AiError, callWithRetry, certificateFailure, isNetworkError, retryAfterSeconds } from './request'
 import { retiredFailure } from './retired'
 import type { AiClient } from './types'
 import { glossaryLine } from '../../shared/captions/cleanup'
@@ -39,6 +39,8 @@ const MAX_UPLOAD = 25 * 1024 * 1024
 
 /** An SDK error as a FailureInfo (abort and time-outs are handled by callWithRetry). */
 export function openAiFailure(err: unknown): FailureInfo {
+  const certificate = certificateFailure(err)
+  if (certificate) return certificate
   if (err instanceof OpenAI.APIConnectionError) return { network: true }
   if (err instanceof OpenAI.APIError) {
     return { status: err.status, code: err.code ?? err.type ?? undefined, message: err.message, retryAfter: retryAfterSeconds(err.headers?.get('retry-after')) }

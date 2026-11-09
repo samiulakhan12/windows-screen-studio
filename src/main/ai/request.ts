@@ -99,6 +99,21 @@ export function retryAfterSeconds(value: string | null | undefined, now = Date.n
   return Number.isFinite(t) ? Math.max(0, (t - now) / 1000) : undefined
 }
 
+/** The codes of a certificate refused in the handshake: self-signed, expired, from an issuer this PC does not trust, or for another name. */
+const CERTIFICATE_RE = /CERT|SELF_SIGNED|UNABLE_TO_VERIFY|ALTNAME/
+
+/**
+ * A request refused in the handshake because the address's certificate is not trusted (a company's
+ * TLS inspection, a proxy or a server on the network with its own certificate): named, and never
+ * tried again, as trying again cannot help and the connection is fine. Null for anything else.
+ */
+export function certificateFailure(err: unknown): FailureInfo | null {
+  for (let e = err as { code?: unknown; cause?: unknown } | null | undefined, i = 0; e && typeof e === 'object' && i < 5; e = e.cause as typeof e, i++) {
+    if (typeof e.code === 'string' && CERTIFICATE_RE.test(e.code)) return { message: `its certificate is not trusted on this PC (${e.code}), so nothing was sent.` }
+  }
+  return null
+}
+
 /** Whether `err` is a failed connection (fetch's TypeError, a socket error code) rather than an answer. */
 export function isNetworkError(err: unknown): boolean {
   if (!(err instanceof Error)) return false

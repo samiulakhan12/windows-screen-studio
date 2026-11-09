@@ -170,6 +170,40 @@ describe('a service through Chat Completions (test 84)', () => {
     expect(server.headers[0].authorization).toBeUndefined()
   })
 
+  it('a certificate this PC does not trust is named, nothing is sent and nothing is tried again (a proxy or TLS inspection)', async () => {
+    // Node's own fetch, which does not trust the test certificate (as a company's own certificate is not).
+    let tries = 0
+    const untrusted = ((input: string | URL | Request, init?: RequestInit) => {
+      tries++
+      return globalThis.fetch(input, init)
+    }) as typeof fetch
+    const prior = process.env.NODE_TLS_REJECT_UNAUTHORIZED
+    delete process.env.NODE_TLS_REJECT_UNAUTHORIZED
+    try {
+      const client = compatibleClient(service('schema'), 'sk-local-0123456789', { setJsonMode: () => undefined }, untrusted)
+      const failure = async (run: Promise<unknown>): Promise<{ kind: string; retryable: boolean; message: string }> => {
+        try {
+          await run
+        } catch (err) {
+          return (err as { failure: { kind: string; retryable: boolean; message: string } }).failure
+        }
+        throw new Error('It did not fail')
+      }
+      const named = /^localhost:\d+ failed: its certificate is not trusted on this PC \(DEPTH_ZERO_SELF_SIGNED_CERT\), so nothing was sent\.$/
+      const asked = await failure(client.json(TITLE, opts()))
+      expect(asked).toMatchObject({ kind: 'other', retryable: false })
+      expect(asked.message).toMatch(named)
+      expect(tries).toBe(1)
+      // Save and check and Load models say the same, once each.
+      expect((await failure(client.test(AbortSignal.timeout(10_000)))).message).toMatch(named)
+      expect((await failure(client.models!(AbortSignal.timeout(10_000)))).message).toMatch(named)
+      expect(tries).toBe(3)
+      expect(server.bodies).toEqual([])
+    } finally {
+      if (prior !== undefined) process.env.NODE_TLS_REJECT_UNAUTHORIZED = prior
+    }
+  })
+
   it('firstObject reads the first balanced object, braces in strings ignored', () => {
     expect(firstObject('x {"a":{"b":"}"}} y {"c":1}')).toBe('{"a":{"b":"}"}}')
     expect(firstObject('no json')).toBeNull()

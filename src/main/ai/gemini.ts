@@ -20,7 +20,7 @@ import { AI_PROVIDER_KINDS } from '../../shared/api/ai'
 import type { FailureInfo } from '../../shared/captions/transcriptErrors'
 import { GEMINI_TRANSCRIPT_SCHEMA, parseGeminiTranscription } from '../../shared/captions/transcriptParse'
 import { baseUrlOverride, testLimit } from './endpoints'
-import { AiError, callWithRetry, isNetworkError, sleep } from './request'
+import { AiError, callWithRetry, certificateFailure, isNetworkError, sleep } from './request'
 import { retiredFailure } from './retired'
 import type { AiClient, AudioPart } from './types'
 import { glossaryLine } from '../../shared/captions/cleanup'
@@ -67,6 +67,8 @@ export function geminiFailure(err: unknown): FailureInfo {
     }
     return { status: err.status, code, message, ...(retryAfter !== undefined ? { retryAfter } : {}) }
   }
+  const certificate = certificateFailure(err)
+  if (certificate) return certificate
   if (isNetworkError(err)) return { network: true }
   return { message: err instanceof Error ? err.message : String(err) }
 }

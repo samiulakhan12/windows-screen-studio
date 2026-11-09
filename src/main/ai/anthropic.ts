@@ -16,7 +16,7 @@ import Anthropic from '@anthropic-ai/sdk'
 import { AI_PROVIDER_KINDS } from '../../shared/api/ai'
 import type { FailureInfo } from '../../shared/captions/transcriptErrors'
 import { baseUrlOverride } from './endpoints'
-import { AiError, callWithRetry, isNetworkError, retryAfterSeconds } from './request'
+import { AiError, callWithRetry, certificateFailure, isNetworkError, retryAfterSeconds } from './request'
 import type { AiClient } from './types'
 import { fetchModelJson, MODEL_LIST_MAX_IDS, MODEL_LIST_TIMEOUT_MS, readListedIds, noRedirectFetch } from './listFetch'
 import { registerSecret } from './secrets'
@@ -37,6 +37,8 @@ const STREAM_ERROR_STATUS: Record<string, number> = { overloaded_error: 529, api
 
 /** An SDK error as a FailureInfo (abort and time-outs are handled by callWithRetry). */
 export function anthropicFailure(err: unknown): FailureInfo {
+  const certificate = certificateFailure(err)
+  if (certificate) return certificate
   // APIConnectionError (and its time-out subclass) extends APIError: checked first.
   if (err instanceof Anthropic.APIConnectionError) return { network: true }
   if (err instanceof Anthropic.APIError) {

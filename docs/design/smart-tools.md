@@ -2442,7 +2442,12 @@ callout's text reachable by Tab and read after the step's announcement.
 4. **TLS**: in a packaged app, main deletes `NODE_TLS_REJECT_UNAUTHORIZED` from its environment at
    start (`src/main/ai/tlsGuard.ts`, imported first by `src/main/index.ts`), as `endpoints.ts`
    ignores base-URL variables there (measured: `=0` silently turns off certificate checks for fetch).
-   Flown never offers "ignore certificate errors".
+   Flown never offers "ignore certificate errors". A certificate refused in the handshake (a code
+   with CERT, SELF_SIGNED, UNABLE_TO_VERIFY or ALTNAME in a failure's causes: a proxy, a company's TLS
+   inspection, a server with its own certificate) is named and never tried again
+   (`certificateFailure`, `src/main/ai/request.ts`): "api.example.com failed: its certificate is not
+   trusted on this PC (DEPTH_ZERO_SELF_SIGNED_CERT), so nothing was sent.", not "Check the internet
+   connection".
 5. **Logs and errors**: a service is logged by its origin only. `redactLine` (`redact.ts:56`) keeps
    its signature and gains a fourth parameter: `redactLine(line, roots = {}, names = [], secrets:
    readonly string[] = [])`, so its callers (`appLog.ts:56`, `:139`, `diagnostics.ts:95`) keep their
