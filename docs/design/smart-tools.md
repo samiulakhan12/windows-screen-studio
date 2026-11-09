@@ -926,7 +926,9 @@ name, no window title.
   screenshots go to OpenAI": every picture that would go, one at a time, with **Previous**, **Next**,
   a checkbox "Send step 3's screenshot" on each (steps marked *May show what you typed* start
   unticked), and **Send 12 screenshots** / **Cancel** (Cancel focused at the start). Nothing is sent
-  before *Send*.
+  before *Send*. When no picture could be made (the shots failed, or no step left has one), it runs
+  with the words alone, as its cost line then says; with no words either, it is disabled with "No
+  screenshot is ready to send."
 - The pictures are the guide's own shots (zoomed, ring drawn, every blur and pixelate shape applied,
   §5.5.2), scaled to at most 768 px on the longer side, JPEG quality 0.8. A whole-screen step sends
   its whole-screen shot at that size.

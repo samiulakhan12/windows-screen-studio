@@ -23,6 +23,8 @@ const calls = {
 let jpegBytes = (_w: number, _h: number, _q: number): number => 2000
 let providerModel = 'gpt-x'
 let costAnswer = true
+/** The shots cannot be made (guideStills fails). */
+let failShots = false
 const prefs = new Map<string, unknown>()
 
 /** A JPEG's header with a baseline frame (SOF0) of `w` × `h`, padded to `size` bytes. */
@@ -109,6 +111,7 @@ vi.doMock('../src/renderer/src/ai/costConfirm', async (importOriginal) => {
 })
 vi.doMock('../src/renderer/src/guide/guideStills', () => ({
   async *renderGuideStills(_input: unknown, shots: { key: string; rect: { w: number; h: number } }[], opts: { maxWidth: number; mime: string }) {
+    if (failShots) throw new Error('The recording could not be read.')
     for (const s of shots) {
       const w = Math.min(opts.maxWidth, Math.round(s.rect.w))
       const h = Math.round((w * s.rect.h) / s.rect.w)
@@ -240,6 +243,7 @@ beforeEach(() => {
   jpegBytes = () => 2000
   providerModel = 'gpt-x'
   costAnswer = true
+  failShots = false
   prefs.clear()
   resetAskedCosts()
   clickListeners = []
@@ -445,6 +449,23 @@ describe('the Guide panel: Also send the screenshots', () => {
     expect(byTestId(els, 'guide-write-why')).toBeUndefined()
     const line = els.find((e) => typeof e.props.id === 'string' && (e.props.id as string).endsWith('-titles-cost'))
     expect(textOf(line)).toMatch(/^Sends \d+ screenshots? to OpenAI · /)
+  })
+
+  it('ticked but no screenshot could be made: Write titles runs with the words alone, as its cost line says', async () => {
+    failShots = true
+    let els = await withAiTitles()
+    change(byTestId(els, 'guide-send-shots'), { checked: true })
+    els = await later()
+    const write = byTestId(els, 'guide-write-titles')!
+    expect(write.props.disabled).toBe(false)
+    const line = els.find((e) => typeof e.props.id === 'string' && (e.props.id as string).endsWith('-titles-cost'))
+    expect(textOf(line)).toMatch(/^Sends about \d+ words of the steps' narration to OpenAI · /)
+    click(write)
+    els = await later()
+    expect(byTestId(els, 'guide-viewer')).toBeUndefined()
+    expect(calls.aiText).toHaveLength(1)
+    expect(calls.aiText[0].request.names!.items.some((i) => i.image)).toBe(false)
+    expect(textOf(byTestId(els, 'guide-said'))).toMatch(/^Wrote \d+ titles? with OpenAI\.$/)
   })
 })
 

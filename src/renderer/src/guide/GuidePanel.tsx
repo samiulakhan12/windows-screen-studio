@@ -380,11 +380,15 @@ export function GuidePanel(props: { project: Project; cursor: CursorTrack; start
       setBusy(null)
     }
   }
-  /** Write titles: with the screenshots, first the send viewer (nothing goes before Send); else the run. */
+  /**
+   * Write titles: with the screenshots, first the send viewer (nothing goes before Send); else, or
+   * when no picture could be made, the run with the words alone (what the cost line then counts).
+   */
   const writeTitles = (): void => {
     if (busy) return
     if (!shotsOn) return void runAi('titles')
-    if (!pictures?.length) return
+    if (!pictures) return
+    if (!pictures.length) return void runAi('titles')
     const byKey = new Map(rows.map((r) => [r.step.key, r]))
     setSending({
       shots: pictures.map((p) => {
