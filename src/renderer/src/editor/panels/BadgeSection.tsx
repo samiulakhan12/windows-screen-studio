@@ -5,6 +5,7 @@
  * Follows the zoom. Each change is one update.
  */
 import { useState } from 'react'
+import { pendingChapters, userChapters } from '../../../../shared/chapters/pending'
 import { badgeTextError, countWithOptions, setFollowsZoom, withBadge, withBadgesByChapter } from '../../../../shared/editor/calloutsEdit'
 import { SHAPE_COLORS } from '../../../../shared/editor/shapes'
 import { badgesByChapterOf, calloutOf } from '../../../../shared/render/calloutData'
@@ -27,8 +28,11 @@ export function badgeSwatches(project: Pick<Project, 'brand'>): { color: string;
   return out
 }
 
-/** How many chapters the video has (the restart switch is offered from two). */
-const chapterCount = (p: Project): number => (p.clips.length ? outputChapters(p.chapters ?? [], p.clips, planOf(p)).length : 0)
+/**
+ * How many of the user's chapters the video has (the restart switch is offered from two): as the
+ * numbering counts them, a found chapter waiting for review restarts nothing (smart-tools.md §7.7).
+ */
+const chapterCount = (p: Project): number => (p.clips.length ? outputChapters(userChapters(p), p.clips, planOf(p)).length : 0)
 
 export function BadgeSection(props: { project: Project; selection: Selection }): JSX.Element | null {
   const { store, player } = useEditor()
@@ -125,7 +129,7 @@ function Badge({
             label="Restart at each chapter"
             checked={restart && chapters >= 2}
             disabled={chapters < 2}
-            hint={chapters < 2 ? 'Add two chapters or more to count again in each.' : undefined}
+            hint={chapters < 2 ? (pendingChapters(project).length ? 'Keep or add two chapters or more to count again in each.' : 'Add two chapters or more to count again in each.') : undefined}
             onChange={(on) => update((p) => withBadgesByChapter(p, on))}
           />
           <label className="field callout-field">

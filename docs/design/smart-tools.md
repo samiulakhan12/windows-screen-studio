@@ -1494,7 +1494,10 @@ or not it was said**, so the guarantee of §7.5 holds for every name. The origin
     or AI-named chapter can never vouch for a link;
   - Captions Studio's *Auto* chapter titles (`resolveGreatOptions`, `great.ts:124`): Auto means "on in
     wide videos that have user chapters";
-  - wave 10's step-badge numbering (`badgeLabels`): the count starts again at user chapters only.
+  - wave 10's step-badge numbering (`badgeLabels`): the count starts again at user chapters only,
+    and the badge's *Restart at each chapter* switch counts them the same way (offered from two user
+    chapters; with found ones pending its hint reads "Keep or add two chapters or more to count
+    again in each.").
   The chapter row's detail adds "· keeping it restarts step numbers here" when the project has
   automatically numbered badges and `badgesByChapter` is not `false`.
 - The Export dialog's chapter note adds "3 of them not reviewed yet" while any are pending.

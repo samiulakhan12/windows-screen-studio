@@ -5,7 +5,7 @@ import { createProject } from '../src/shared/engine/project'
 import { copyLook, GROUP_FIELDS, ITEM_MOTIONS, pasteLook, type FieldCtx } from '../src/shared/editor/groupEdit'
 import { DEFAULT_ZOOM_STYLE, focusPathFor } from '../src/shared/engine/zoom'
 import { calloutPlace } from '../src/shared/render/callouts'
-import type { Annotation, CursorTrack, Project, Shape, TitleCard } from '../src/shared/types'
+import type { Annotation, Chapter, CursorTrack, Project, Shape, TitleCard } from '../src/shared/types'
 
 /*
  * The callout panels (docs/design/editing-polish.md §2.3, §12, §19.1 test 45) without a DOM: the
@@ -220,6 +220,18 @@ describe('BadgeSection, BubbleSection and Calm motion', () => {
     expect(store.updates).toBe(3)
     // Not shown for anything but a badge.
     expect(render({ type: BadgeSection, props: { project: store.state, selection: { kind: 'annotation', id: 't1' } } })).toEqual([])
+  })
+
+  it("Restart at each chapter counts the user's chapters, as the numbering does: found chapters waiting for review restart nothing (smart-tools.md §7.7)", () => {
+    const found = (id: string, t: number): Chapter => ({ id, t, title: `Part ${id}`, auto: { by: 'find', from: ['page'], name: 'number' } })
+    const badge = (): El[] => render({ type: BadgeSection, props: { project: store.state, selection: { kind: 'annotation', id: 'b1' } } })
+    const restart = (): El => byId(badge(), 'badge-restart')!
+    store.state = project({ chapters: [found('f1', 0), found('f2', 4), found('f3', 7)] })
+    expect(restart().props).toMatchObject({ disabled: true, checked: false, 'aria-describedby': 'badge-restart-hint' })
+    expect(textOf(badge().find((e) => e.props.id === 'badge-restart-hint'))).toBe('Keep or add two chapters or more to count again in each.')
+    // Two kept: offered, and on as the numbering then restarts.
+    store.state = { ...store.state, chapters: store.state.chapters!.map((c) => (c.id === 'f3' ? c : { id: c.id, t: c.t, title: c.title })) }
+    expect(restart().props).toMatchObject({ disabled: false, checked: true })
   })
 
   it("a bubble's Colour and Tail; Add step badge and Add speech bubble run the commands", () => {
