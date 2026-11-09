@@ -1,0 +1,150 @@
+{
+ "settings": [
+  "{\"format\":\"mp4\",\"resolution\":1080,\"fps\":60,\"quality\":\"high\",\"encoder\":\"auto\"}",
+  "{\"format\":\"mp4\",\"resolution\":1080,\"fps\":60,\"quality\":\"high\",\"encoder\":\"auto\",\"aspect\":\"16:9\",\"preset\":\"youtube-1080\"}",
+  "{\"format\":\"mp4\",\"resolution\":2160,\"fps\":60,\"quality\":\"high\",\"encoder\":\"software\",\"aspect\":\"16:9\",\"preset\":\"youtube-4k\"}",
+  "{\"format\":\"mp4\",\"resolution\":1080,\"fps\":60,\"quality\":\"medium\",\"encoder\":\"auto\",\"aspect\":\"16:9\",\"preset\":\"x\"}",
+  "{\"format\":\"mp4\",\"resolution\":1080,\"fps\":30,\"quality\":\"medium\",\"encoder\":\"software\",\"aspect\":\"16:9\",\"preset\":\"linkedin\"}",
+  "{\"format\":\"mp4\",\"resolution\":1080,\"fps\":30,\"quality\":\"high\",\"encoder\":\"auto\",\"aspect\":\"9:16\",\"preset\":\"reels\"}",
+  "{\"format\":\"mp4\",\"resolution\":1080,\"fps\":30,\"quality\":\"high\",\"encoder\":\"software\",\"aspect\":\"9:16\",\"preset\":\"tiktok\"}",
+  "{\"format\":\"mp4\",\"resolution\":1080,\"fps\":60,\"quality\":\"high\",\"encoder\":\"auto\",\"aspect\":\"9:16\",\"preset\":\"shorts\"}",
+  "{\"format\":\"mp4\",\"resolution\":1080,\"fps\":30,\"quality\":\"medium\",\"encoder\":\"software\",\"aspect\":\"1:1\",\"preset\":\"square\"}",
+  "{\"format\":\"gif\",\"resolution\":720,\"fps\":30,\"quality\":\"medium\",\"encoder\":\"auto\",\"targetSizeMB\":15,\"maxWidth\":720,\"preset\":\"slack-gif\"}",
+  "{\"format\":\"mp4\",\"resolution\":720,\"fps\":30,\"quality\":\"small\",\"encoder\":\"software\",\"targetSizeMB\":25,\"preset\":\"email\"}",
+  "{\"format\":\"mov\",\"resolution\":1440,\"fps\":30,\"quality\":\"medium\",\"encoder\":\"software\"}",
+  "{\"format\":\"webm\",\"resolution\":720,\"fps\":60,\"quality\":\"small\",\"encoder\":\"auto\"}",
+  "{\"format\":\"webm\",\"resolution\":2160,\"fps\":30,\"quality\":\"high\",\"encoder\":\"software\",\"targetSizeMB\":100}",
+  "{\"format\":\"gif\",\"resolution\":720,\"fps\":30,\"quality\":\"medium\",\"encoder\":\"auto\",\"maxWidth\":640}",
+  "{\"format\":\"gif\",\"resolution\":1080,\"fps\":60,\"quality\":\"high\",\"encoder\":\"auto\",\"targetSizeMB\":15}",
+  "{\"format\":\"m4a\",\"resolution\":1080,\"fps\":60,\"quality\":\"high\",\"encoder\":\"auto\"}",
+  "{\"format\":\"m4a\",\"resolution\":720,\"fps\":30,\"quality\":\"small\",\"encoder\":\"software\",\"targetSizeMB\":5}",
+  "{\"format\":\"mp4\",\"resolution\":1080,\"fps\":60,\"quality\":\"high\",\"encoder\":\"auto\",\"aspect\":\"auto\"}",
+  "{\"format\":\"mp4\",\"resolution\":1440,\"fps\":30,\"quality\":\"medium\",\"encoder\":\"auto\",\"aspect\":\"4:3\"}",
+  "{\"format\":\"mp4\",\"resolution\":720,\"fps\":30,\"quality\":\"small\",\"encoder\":\"software\",\"aspect\":\"1:1\"}",
+  "{\"format\":\"mov\",\"resolution\":2160,\"fps\":60,\"quality\":\"high\",\"encoder\":\"auto\",\"aspect\":\"9:16\",\"targetSizeMB\":500}",
+  "{\"format\":\"mp4\",\"resolution\":1080,\"fps\":60,\"quality\":\"medium\",\"encoder\":\"auto\",\"targetSizeMB\":25}",
+  "{\"format\":\"mp4\",\"resolution\":2160,\"fps\":60,\"quality\":\"high\",\"encoder\":\"software\",\"aspect\":\"16:9\",\"preset\":\"youtube-4k\"}",
+  "{\"format\":\"mp4\",\"resolution\":720,\"fps\":30,\"quality\":\"small\",\"encoder\":\"software\",\"targetSizeMB\":25,\"preset\":\"email\"}"
+ ],
+ "batch": [
+  "{\"presets\":[],\"aspects\":[]}",
+  "{\"presets\":[\"youtube-1080\"],\"aspects\":[]}",
+  "{\"presets\":[\"reels\",\"tiktok\",\"shorts\"],\"aspects\":[\"9:16\"]}",
+  "{\"presets\":[\"youtube-1080\",\"youtube-4k\",\"x\",\"linkedin\",\"reels\",\"tiktok\",\"shorts\",\"square\",\"slack-gif\",\"email\"],\"aspects\":[]}",
+  "{\"presets\":[],\"aspects\":[\"16:9\",\"9:16\",\"1:1\",\"4:3\"]}",
+  "{\"presets\":[\"slack-gif\",\"email\"],\"aspects\":[\"1:1\"]}",
+  "{\"presets\":[\"linkedin\",\"x\"],\"aspects\":[\"4:3\",\"16:9\"]}",
+  "{\"presets\":[\"square\"],\"aspects\":[\"9:16\",\"1:1\"]}"
+ ],
+ "bundle": [
+  "{\"srt\":false,\"vtt\":false,\"chapters\":false,\"thumbnail\":false,\"description\":false,\"perChapter\":false}",
+  "{\"srt\":true,\"vtt\":true,\"chapters\":false,\"thumbnail\":false,\"description\":false,\"perChapter\":false}",
+  "{\"srt\":false,\"vtt\":false,\"chapters\":true,\"thumbnail\":true,\"description\":true,\"perChapter\":false}",
+  "{\"srt\":true,\"vtt\":true,\"chapters\":true,\"thumbnail\":true,\"description\":true,\"perChapter\":true}",
+  "{\"srt\":false,\"vtt\":false,\"chapters\":true,\"thumbnail\":false,\"description\":false,\"perChapter\":true}",
+  "{\"srt\":false,\"vtt\":false,\"chapters\":false,\"thumbnail\":true,\"description\":false,\"perChapter\":false}",
+  "{\"srt\":true,\"vtt\":false,\"chapters\":false,\"thumbnail\":false,\"description\":true,\"perChapter\":false}"
+ ],
+ "odd": [
+  {
+   "key": "settings",
+   "stored": "{}"
+  },
+  {
+   "key": "settings",
+   "stored": "{\"format\":\"avi\"}"
+  },
+  {
+   "key": "settings",
+   "stored": "{\"fps\":23.976}"
+  },
+  {
+   "key": "settings",
+   "stored": "{\"fps\":45}"
+  },
+  {
+   "key": "settings",
+   "stored": "{\"format\":\"mp4\",\"resolution\":1080,\"fps\":60,\"quality\":\"high\",\"encoder\":\"auto\",\"subtitleStreams\":true}"
+  },
+  {
+   "key": "settings",
+   "stored": "{\"targetSizeMB\":0.5}"
+  },
+  {
+   "key": "settings",
+   "stored": "{\"targetSizeMB\":9000}"
+  },
+  {
+   "key": "settings",
+   "stored": "{\"preset\":\"nope\"}"
+  },
+  {
+   "key": "settings",
+   "stored": "{\"format\":\"mp4\",\"resolution\":1080,\"fps\":30,\"quality\":\"high\",\"encoder\":\"auto\",\"preset\":\"youtube-1080\",\"aspect\":\"16:9\"}"
+  },
+  {
+   "key": "settings",
+   "stored": "{\"maxWidth\":99999}"
+  },
+  {
+   "key": "settings",
+   "stored": "{\"maxWidth\":333.6}"
+  },
+  {
+   "key": "settings",
+   "stored": "null"
+  },
+  {
+   "key": "settings",
+   "stored": "\"string\""
+  },
+  {
+   "key": "settings",
+   "stored": "{\"resolution\":480}"
+  },
+  {
+   "key": "settings",
+   "stored": "{\"quality\":\"ultra\"}"
+  },
+  {
+   "key": "settings",
+   "stored": "{\"encoder\":\"gpu\"}"
+  },
+  {
+   "key": "settings",
+   "stored": "{\"format\":\"mp4\",\"codec\":\"h264\"}"
+  },
+  {
+   "key": "settings",
+   "stored": "{\"format\":\"mp4\",\"alpha\":\"background\"}"
+  },
+  {
+   "key": "settings",
+   "stored": "{\"format\":\"mp4\",\"codec\":\"vp9\"}"
+  },
+  {
+   "key": "settings",
+   "stored": "{\"aspect\":\"tall\"}"
+  },
+  {
+   "key": "bundle",
+   "stored": "{}"
+  },
+  {
+   "key": "bundle",
+   "stored": "{\"srt\":\"yes\",\"vtt\":1}"
+  },
+  {
+   "key": "bundle",
+   "stored": "{\"srt\":true,\"languages\":[\"bn\",\"en\"]}"
+  },
+  {
+   "key": "bundle",
+   "stored": "null"
+  },
+  {
+   "key": "bundle",
+   "stored": "{\"perChapter\":true,\"extra\":3}"
+  }
+ ]
+}
