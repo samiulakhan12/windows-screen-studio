@@ -148,6 +148,14 @@ describe('Suggest chapters through a service (test 119)', () => {
     expect(store.state.chapters!.filter((c) => c.auto).every((c) => c.auto!.from.includes('ai'))).toBe(true)
   })
 
+  it('a video under 30 s: too short for chapters, nothing read or sent', async () => {
+    fake.suggested = [{ t: 0, title: 'Intro' }]
+    const store = new EditStore<Project>({ ...chapterProject({ duration: 29, said: [{ t: 1, text: 'Hello there.' }] }), id: 'suggest-short' })
+    expect(await run(store, { split: 'svc1' })).toEqual({ notice: 'Too short for chapters: YouTube needs at least 30 seconds.', weak: null })
+    expect(fake.asked).toEqual([])
+    expect(store.state.chapters).toEqual([])
+  })
+
   it('without captions, Suggest chapters asks for them and sends nothing', async () => {
     const store = new EditStore<Project>({ ...chapterProject({ duration: 180 }), id: 'suggest-none' })
     expect(await run(store, { split: 'svc1' })).toEqual({ needsCaptions: true })

@@ -13,7 +13,9 @@ import { withFoundChapters } from '../../../shared/chapters/chapterAuto'
 import { chapterNames, namesRequestForChapters, weakName, withAiNames } from '../../../shared/chapters/names'
 import { pendingChapters } from '../../../shared/chapters/pending'
 import { planChapters } from '../../../shared/chapters/plan'
+import { CHAPTER_RULES } from '../../../shared/chapters/signals'
 import { cropOf } from '../../../shared/engine/crop'
+import { planOf, videoDuration } from '../../../shared/engine/freeze'
 import { effectiveTrack } from '../../../shared/engine/inputTrack'
 import type { EditStore } from '../../../shared/editor/editStore'
 import { speechHeard } from '../../../shared/smart/speechHeard'
@@ -128,6 +130,8 @@ export async function runFindChapters(deps: {
   try {
     check()
     let project = store.state
+    // Too short for chapters: nothing is read or sent.
+    if (!project.clips?.length || videoDuration(project.clips, planOf(project)) < CHAPTER_RULES.minVideo - 1e-9) return { notice: FIND_WORDS.tooShort, weak: null }
     const hasWords = !!project.transcript?.segments.some((s) => s.text.trim())
 
     // 1. Words or not: the levels the silence tools read, only when they are needed.
