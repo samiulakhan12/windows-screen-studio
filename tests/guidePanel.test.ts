@@ -79,6 +79,10 @@ vi.stubGlobal('window', {
 const PNG = (w: number): Uint8Array => new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, w & 255, w >> 8])
 /** Why the faked screenshots cannot be made (null: they are). */
 let stillsFail: string | null = null
+/** Holds the faked screenshots back until it settles (null: they come at once). */
+let stillsGate: Promise<void> | null = null
+/** Each pass of faked screenshots: its shots, and the blur boxes of the project it is drawn from. */
+const drawn: { keys: string[]; blurs: number }[] = []
 
 mockReact()
 // P5's question before a run, with its own logic; only the dialog is answered here (no DOM).
@@ -94,8 +98,10 @@ vi.doMock('../src/renderer/src/ai/costConfirm', async (importOriginal) => {
   }
 })
 vi.doMock('../src/renderer/src/guide/guideStills', () => ({
-  async *renderGuideStills(_input: unknown, shots: { key: string; rect: { w: number; h: number } }[], opts: { maxWidth: number; mime: string }) {
+  async *renderGuideStills(input: { project: Project }, shots: { key: string; rect: { w: number; h: number } }[], opts: { maxWidth: number; mime: string }) {
     if (stillsFail) throw new Error(stillsFail)
+    drawn.push({ keys: shots.map((s) => s.key), blurs: (input.project.shapes ?? []).filter((x) => x.kind === 'blur').length })
+    if (stillsGate) await stillsGate
     for (const s of shots) {
       const w = Math.min(opts.maxWidth, Math.round(s.rect.w))
       yield { key: s.key, image: { bytes: PNG(w), mime: opts.mime, width: w, height: Math.round((w * s.rect.h) / s.rect.w) } }
@@ -216,6 +222,8 @@ beforeEach(() => {
   for (const list of Object.values(calls)) list.length = 0
   costAnswer = true
   stillsFail = null
+  stillsGate = null
+  drawn.length = 0
   providerModel = 'gpt-x'
   resetAskedCosts()
   prefs.clear()
@@ -474,6 +482,84 @@ describe('saving before the screenshots are made (docs/design/smart-tools.md §5
     expect(calls.saved).toHaveLength(1)
     expect(String(calls.saved[0].html)).not.toContain('<img src=')
     expect(said(els)).toBe('Saved “Secret demo.pdf”. 3 screenshots could not be made: The video could not be read.')
+  })
+})
+
+describe('edits made while saving or copying (docs/design/smart-tools.md §5.5.6)', () => {
+  /** Typing into a field at the top right, then a click at the bottom left: the demo's step 2 may show the typing. */
+  const typing = (): CursorTrack => ({
+    ...cursor,
+    clicks: [
+      { t: 3, x: 0.9, y: 0.1, button: 'left' },
+      { t: 8, x: 0.1, y: 0.9, button: 'left' }
+    ],
+    typing: [{ t: 3.5, end: 5 }]
+  })
+  /** The guide shots made, the demo chosen, and its own shots held back while they are made. */
+  const demoHeld = async (): Promise<{ els: El[]; release: () => void }> => {
+    panelCursor = typing()
+    const els = await ready()
+    const demo = els.filter((e) => e.type === 'input' && String(e.props.name).endsWith('-format'))[3]
+    ;(demo.props.onChange as () => void)()
+    let release!: () => void
+    stillsGate = new Promise<void>((r) => (release = r))
+    return { els: render(panel()), release }
+  }
+  /** A new title and Blur the typed text on step 2, while the demo's pictures are made. */
+  const editMeanwhile = (els: El[]): void => {
+    ;(byTestId(els, 'guide-title')!.props.onChange as (e: unknown) => void)({ target: { value: 'Billing' } })
+    click(byTestId(render(panel()), 'guide-blur-typed'))
+    render(panel())
+    expect(store.state.guide!.title).toBe('Billing')
+    expect(store.state.shapes!.filter((x) => x.kind === 'blur')).toHaveLength(1)
+  }
+
+  it('Save demo… writes the project as it was at the click, its text and its pictures alike, and says the changes are not in it', async () => {
+    let { els, release } = await demoHeld()
+    click(byTestId(els, 'guide-save'))
+    els = render(panel())
+    click(byTestId(els, 'guide-save-anyway'))
+    els = await settle(panel())
+    expect(textOf(byTestId(els, 'guide-save'))).toBe('Saving…')
+    editMeanwhile(els)
+    stillsGate = null
+    release()
+    for (let i = 0; i < 50 && !calls.saved.length; i++) els = await after()
+    els = await after()
+    // The pictures were drawn before the blur, so the file's name is the title of that moment too.
+    expect(drawn[0]).toEqual({ keys: ['c3000', 'c8000'], blurs: 0 })
+    expect(calls.saved).toHaveLength(1)
+    expect(calls.saved[0].name).toBe('Secret demo')
+    expect(said(els)).toBe('Saved “Secret demo.pdf”. Changes made while saving are not in it: save again to add them.')
+  })
+
+  it('Copy guide likewise copies the guide as it was at the click and says the changes are not in it', async () => {
+    let { els, release } = await demoHeld()
+    click(byTestId(els, 'guide-copy'))
+    els = render(panel())
+    click(byTestId(els, 'guide-save-anyway'))
+    els = await settle(panel())
+    editMeanwhile(els)
+    stillsGate = null
+    release()
+    for (let i = 0; i < 50 && !calls.copied.length; i++) els = await after()
+    els = await after()
+    expect(drawn[0]).toEqual({ keys: ['c3000', 'c8000'], blurs: 0 })
+    expect(calls.copied).toHaveLength(1)
+    expect(calls.copied[0].html).not.toContain('Billing')
+    expect(said(els)).toBe('Copied the guide with 2 screenshots. Changes made while copying are not in it: copy again to add them.')
+  })
+
+  it('nothing changed meanwhile: no such line', async () => {
+    let { els, release } = await demoHeld()
+    click(byTestId(els, 'guide-save'))
+    els = render(panel())
+    click(byTestId(els, 'guide-save-anyway'))
+    stillsGate = null
+    release()
+    for (let i = 0; i < 50 && !calls.saved.length; i++) els = await after()
+    els = await after()
+    expect(said(els)).toBe('Saved “Secret demo.pdf”.')
   })
 })
 

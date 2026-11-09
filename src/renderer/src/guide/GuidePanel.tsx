@@ -444,7 +444,8 @@ export function GuidePanel(props: { project: Project; cursor: CursorTrack; start
   /**
    * The pictures a Save or Copy shares (§5.5.6): the ones the rows show and the question before it
    * counts (each included step's in the format's view, the demo's in the demo format) and the bug
-   * report's Actual, any not made yet made now; `missing`: how many still could not be, and why.
+   * report's Actual, any not made yet made now from the project as it is at the click; `missing`: how
+   * many still could not be, and why.
    */
   const docImages = async (signal: AbortSignal): Promise<{ images: Map<string, GuideImage>; missing: number; failed: string | null }> => {
     const want = [...included.map((r) => r.shot), ...(actualPlan ? [actualPlan] : [])]
@@ -458,6 +459,11 @@ export function GuidePanel(props: { project: Project; cursor: CursorTrack; start
   }
   /** " 2 screenshots could not be made: …" after a Save or Copy that lacks some, else nothing. */
   const missingNote = (missing: number, failed: string | null): string => (missing ? ` ${missing} ${missing === 1 ? 'screenshot' : 'screenshots'} could not be made${failed ? `: ${failed}` : '.'}` : '')
+  /**
+   * A Save or Copy writes the project as it was at the click, its text and its pictures alike; an
+   * edit made while the pictures were made (a blur, a title) is not in it, and this says so.
+   */
+  const changedNote = (at: Project, doing: 'saving' | 'copying'): string => (store.state !== at ? ` Changes made while ${doing} are not in it: ${doing === 'saving' ? 'save' : 'copy'} again to add them.` : '')
   /** The project the document is built from: a bug report's default details with the recording's real scale. */
   const docProject = (): Project => {
     const p = store.state
@@ -481,13 +487,15 @@ export function GuidePanel(props: { project: Project; cursor: CursorTrack; start
     setSaving('save')
     const ac = new AbortController()
     saveAc.current = ac
+    const at = store.state
+    const doc = docProject()
     try {
       const { images, missing, failed } = await docImages(ac.signal)
       if (ac.signal.aborted) return
-      const result = await saveGuide(format, { project: docProject(), steps, images, scale, page, signal: ac.signal, smaller })
+      const result = await saveGuide(format, { project: doc, steps, images, scale, page, signal: ac.signal, smaller })
       if (!result) return
       setSaved({ ...result, format })
-      say(`Saved “${result.path.split(/[\\/]/).pop() ?? result.path}”.${missingNote(missing, failed)}`)
+      say(`Saved “${result.path.split(/[\\/]/).pop() ?? result.path}”.${missingNote(missing, failed)}${changedNote(at, 'saving')}`)
     } catch (err) {
       say(message(err))
     } finally {
@@ -498,11 +506,13 @@ export function GuidePanel(props: { project: Project; cursor: CursorTrack; start
     setSaving('copy')
     const ac = new AbortController()
     saveAc.current = ac
+    const at = store.state
+    const doc = docProject()
     try {
       const pictures = await docImages(ac.signal)
       if (ac.signal.aborted) return
-      const { images } = await copyGuide({ project: docProject(), steps, images: pictures.images })
-      say(`Copied the guide with ${images} ${images === 1 ? 'screenshot' : 'screenshots'}.${missingNote(pictures.missing, pictures.failed)}`)
+      const { images } = await copyGuide({ project: doc, steps, images: pictures.images })
+      say(`Copied the guide with ${images} ${images === 1 ? 'screenshot' : 'screenshots'}.${missingNote(pictures.missing, pictures.failed)}${changedNote(at, 'copying')}`)
     } catch (err) {
       say(message(err))
     } finally {

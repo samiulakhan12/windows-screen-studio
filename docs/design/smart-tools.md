@@ -1068,6 +1068,10 @@ A Save or Copy never waits on the pass and never goes without a picture the pass
 after choosing the demo, while a shot is made again after an edit, or one dropped past the cap): it
 makes those first (`shotsFor`), while the button reads "Saving…". One that cannot be made is left out,
 and the line after saving says so: "Saved “Billing demo.html”. 2 screenshots could not be made: …".
+The file is the project as it was at the click, its text and its pictures alike: an edit made while
+"Saving…" shows (a blur, a title) is not in it, and the line says so: "Saved “Billing demo.html”.
+Changes made while saving are not in it: save again to add them." (*Copy guide*: "… while copying …
+copy again …").
 
 #### 5.5.7 Shots that may show typing (`typedBefore`)
 
