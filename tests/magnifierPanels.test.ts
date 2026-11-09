@@ -252,6 +252,50 @@ describe('ChapterBarSection and ProgressBarLink (test 35)', () => {
     expect(store.state.chapterBar).toEqual({ show: true, place: 'bottom', style: 'edge', labels: 'current', color: '#ffffff', onlyAtChapters: true })
   })
 
+  it('Colour is a radio group with one tab stop whose arrows, Home and End choose (and never reach the editor); Other colour sits after it', () => {
+    store.state = { ...store.state, chapterBar: { ...NEW_CHAPTER_BAR }, brand: { colors: ['#0060df', '#e4572e'] } }
+    const group = (): El => byId(bar(), 'progress-bar-colour')!
+    expect(radios(bar(), 'progress-bar-colour').map((r) => [r.props['aria-label'], r.props['aria-checked'], r.props.tabIndex])).toEqual([
+      ['Brand colour 1, #0060df', true, 0],
+      ['Brand colour 2, #e4572e', false, -1],
+      ['White', false, -1]
+    ])
+    // Any other colour is a control of its own, not a radio of the group.
+    expect(render({ type: 'div', props: { children: group().props.children } }).some((e) => e.props.type === 'color')).toBe(false)
+    expect(bar().some((e) => e.type === 'input' && e.props.type === 'color' && e.props['aria-label'] === 'Other colour')).toBe(true)
+    const key = (name: string, mods: Record<string, boolean> = {}): { prevented: boolean; stopped: boolean } => {
+      const e = { key: name, ...mods, prevented: false, stopped: false, preventDefault: () => void (e.prevented = true), stopPropagation: () => void (e.stopped = true) }
+      ;(group().props.onKeyDown as (e: unknown) => void)(e)
+      return e
+    }
+    const colour = (): string | undefined => store.state.chapterBar!.color
+    // The editor's step keys listen on the window: the group keeps its keys from them.
+    expect(key('ArrowRight')).toMatchObject({ prevented: true, stopped: true })
+    expect(colour()).toBe('#e4572e')
+    key('End')
+    expect(colour()).toBe('#ffffff')
+    key('ArrowDown')
+    expect(colour()).toBe('#0060df')
+    key('ArrowLeft')
+    expect(colour()).toBe('#ffffff')
+    key('Home')
+    expect(colour()).toBe('#0060df')
+    expect(store.updates).toBe(5)
+    // With a colour of its own, the first swatch is the tab stop and the arrows start from the ends.
+    store.state = { ...store.state, chapterBar: { ...store.state.chapterBar!, color: '#123456' } }
+    expect(radios(bar(), 'progress-bar-colour').map((r) => [r.props['aria-checked'], r.props.tabIndex])).toEqual([
+      [false, 0],
+      [false, -1],
+      [false, -1]
+    ])
+    key('ArrowUp')
+    expect(colour()).toBe('#ffffff')
+    // Other keys and Ctrl+arrow stay the editor's.
+    expect(key('ArrowLeft', { ctrlKey: true })).toMatchObject({ prevented: false, stopped: false })
+    expect(key(' ')).toMatchObject({ prevented: false, stopped: false })
+    expect(colour()).toBe('#ffffff')
+  })
+
   it('the Effects tab\'s Progress bar… opens the Text tab', () => {
     const link = render({ type: ProgressBarLink, props: {} })
     ;(byId(link, 'progress-bar-link')!.props.onClick as () => void)()
