@@ -2219,7 +2219,7 @@ still, previews never play by themselves); the video's motion is the project's C
   inside a cluster: a conjunct or a vowel sign stays with its letter. Line height 1.4 with Bengali,
   Devanagari or Thai. Right-to-left text is drawn right-to-left. The font stack ends in the bundled
   script fonts (§7.6), loaded before the export's first frame.
-- **Typewriter and Wipe** on texts reveal whole graphemes, from the reading start.
+- **Typewriter and Wipe** on texts reveal whole graphemes, from the reading start. Typewriter types each line from its own reading start, so a text or bubble with one language on each line types each line from its own edge.
 - **Progress bar names**: `cardFont`'s stack with the bundled script fonts; shortened by graphemes;
   right-to-left names drawn right-to-left. The bar itself fills left to right in every language in
   this wave (§20).

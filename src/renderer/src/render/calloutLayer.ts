@@ -241,7 +241,10 @@ function drawBubble(c: Ctx, top: FrameContext, place: CalloutPlace, pose: Callou
     if (shown[i] <= 0) return
     c.save()
     c.beginPath()
-    c.rect(rtl ? x - shown[i] : x, y - place.lineHeight, shown[i], place.lineHeight * 2)
+    // Typewriter: each line from its own reading start (a line may be in another script than the bubble).
+    const lw = lineWidths[i]
+    const left = rtl ? x - lw : x
+    c.rect(RTL_FIRST.test(line) ? left + lw - shown[i] : left, y - place.lineHeight, shown[i], place.lineHeight * 2)
     c.clip()
     c.fillText(line, x, y)
     c.restore()
@@ -312,7 +315,8 @@ function drawMovingText(c: Ctx, top: FrameContext, a: Annotation): void {
     if (shown[i] <= 0) return
     c.save()
     c.beginPath()
-    c.rect(rtl ? lw / 2 - shown[i] : -lw / 2, y - m.lineHeight, shown[i], m.lineHeight * 2)
+    // Typewriter: each line from its own reading start (a text may hold one language on each line).
+    c.rect(RTL_FIRST.test(line) ? lw / 2 - shown[i] : -lw / 2, y - m.lineHeight, shown[i], m.lineHeight * 2)
     c.clip()
     c.fillText(line, 0, y)
     c.restore()

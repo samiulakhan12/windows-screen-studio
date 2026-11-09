@@ -584,6 +584,34 @@ describe("title cards' Wipe and Typewriter come in from the reading start (§7.2
       for (const line of title.split('\n')) expect(typed.has(line), `${style}: ${line}`).toBe(true)
     }
   })
+
+  it('Typewriter in a pill text or a bubble with one language on each line: each line from its own reading start', () => {
+    const arabic = (s: string): boolean => /[؀-ۿ]/.test(s)
+    for (const make of [text, bubble]) {
+      for (const words of ['Click Save\nانقر حفظ', 'انقر حفظ\nClick Save']) {
+        const a = make({ text: words, enter: typewriter })
+        const p = project({ annotations: [a] })
+        const typed = new Set<string>()
+        for (let i = 1; i < 50; i++) {
+          const t = 2 + i * 0.02
+          for (const { rect, next } of clips(frameAll(p, t))) {
+            if (next?.name !== 'fillText') continue
+            const line = next.args[0] as string
+            // The canvases here measure 10 px a grapheme.
+            const w = count(line) * 10
+            const [x, , shown] = rect.args as number[]
+            if (shown >= w - 1e-6) continue
+            const at = next.args[1] as number
+            const left = next.align === 'center' ? at - w / 2 : next.align === 'right' ? at - w : at
+            if (arabic(line)) expect(x + shown, `${a.style}: ${line} at ${t}`).toBeCloseTo(left + w, 6)
+            else expect(x, `${a.style}: ${line} at ${t}`).toBeCloseTo(left, 6)
+            typed.add(line)
+          }
+        }
+        for (const line of words.split('\n')) expect(typed.has(line), `${a.style}: ${line}`).toBe(true)
+      }
+    }
+  })
 })
 
 /* ---------- test 44 ---------- */
