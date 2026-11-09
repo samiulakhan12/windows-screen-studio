@@ -505,6 +505,13 @@ describe('text tasks', () => {
     { id: 't3', start: 200, end: 201, text: 'word two' }
   ]
 
+  /** The tokens each provider's mock reports for a request (smart-tools.md §11.6): main adds them to the result. */
+  const USAGE: Record<string, { usage: { input: number; output: number } }> = {
+    OpenAI: { usage: { input: 10, output: 10 } },
+    Gemini: { usage: { input: 10, output: 10 } },
+    Claude: { usage: { input: 20, output: 30 } }
+  }
+
   for (const name of ['OpenAI', 'Gemini', 'Claude']) {
     it(`runs cleanup, translation, chapters, title and summary with ${name}`, async () => {
       const id = providers[name].id
@@ -515,13 +522,14 @@ describe('text tasks', () => {
           { id: 't1', start: 1, end: 2.2, text: 'Word zero.', words: [{ text: 'Word', start: 1, end: 1.6 }, { text: 'zero.', start: 1.6, end: 2.2 }] },
           { id: 't2', start: 30, end: 31.2, text: 'Word one.' },
           { id: 't3', start: 200, end: 201, text: 'Word two.' }
-        ]
+        ],
+        ...USAGE[name]
       })
       const translated = await call<AiTextResult>('ai:text', id, { task: 'translate', segments, targetLanguage: 'Bengali' })
-      expect(translated).toEqual({ task: 'translate', segments: segments.map(({ words: _w, ...s }) => ({ ...s, text: `[Bengali] ${s.text}` })) })
-      expect(await call('ai:text', id, { task: 'chapters', segments })).toEqual({ task: 'chapters', chapters: [{ t: 1, title: 'Introduction' }, { t: 30, title: 'Main part' }] })
-      expect(await call('ai:text', id, { task: 'title', segments })).toEqual({ task: 'title', text: 'Mock title' })
-      expect(await call('ai:text', id, { task: 'summary', segments })).toEqual({ task: 'summary', text: 'A mock summary of the recording.' })
+      expect(translated).toEqual({ task: 'translate', segments: segments.map(({ words: _w, ...s }) => ({ ...s, text: `[Bengali] ${s.text}` })), ...USAGE[name] })
+      expect(await call('ai:text', id, { task: 'chapters', segments })).toEqual({ task: 'chapters', chapters: [{ t: 1, title: 'Introduction' }, { t: 30, title: 'Main part' }], ...USAGE[name] })
+      expect(await call('ai:text', id, { task: 'title', segments })).toEqual({ task: 'title', text: 'Mock title', ...USAGE[name] })
+      expect(await call('ai:text', id, { task: 'summary', segments })).toEqual({ task: 'summary', text: 'A mock summary of the recording.', ...USAGE[name] })
     }, 30_000)
   }
 
@@ -540,8 +548,8 @@ describe('text tasks', () => {
 
   it("joins the partial answer and the fallback model's continuation, and reports refusals", async () => {
     const fb = await add('Claude fallback', 'anthropic', 'fallback-claude-key-1')
-    expect(await call('ai:text', fb.id, { task: 'title', segments })).toEqual({ task: 'title', text: 'Mock title' })
-    expect(await call('ai:text', fb.id, { task: 'chapters', segments })).toEqual({ task: 'chapters', chapters: [{ t: 1, title: 'Introduction' }, { t: 30, title: 'Main part' }] })
+    expect(await call('ai:text', fb.id, { task: 'title', segments })).toEqual({ task: 'title', text: 'Mock title', ...USAGE.Claude })
+    expect(await call('ai:text', fb.id, { task: 'chapters', segments })).toEqual({ task: 'chapters', chapters: [{ t: 1, title: 'Introduction' }, { t: 30, title: 'Main part' }], ...USAGE.Claude })
     const content = [
       { type: 'text', text: 'ab', citations: null },
       { type: 'fallback', from: { model: 'claude-opus-5-5' }, to: { model: 'claude-opus-4-8' } },
@@ -556,10 +564,11 @@ describe('text tasks', () => {
   }, 30_000)
 
   it('retries an overloaded error that arrives mid-stream from Claude, and a per-minute rate limit from Gemini', async () => {
-    for (const [name, kind, key] of [['Claude mid-stream', 'anthropic', 'midstream-claude-key-1'], ['Gemini per-minute', 'gemini', 'ratemin-gemini-key-1']] as const) {
+    for (const [name, kind, key, used] of [['Claude mid-stream', 'anthropic', 'midstream-claude-key-1', USAGE.Claude], ['Gemini per-minute', 'gemini', 'ratemin-gemini-key-1', USAGE.Gemini]] as const) {
       const p = await add(name, kind, key)
       const before = mock.requests.length
-      expect(await call('ai:text', p.id, { task: 'title', segments })).toEqual({ task: 'title', text: 'Mock title' })
+      // The tokens of the request that answered (the failed attempt reported none).
+      expect(await call('ai:text', p.id, { task: 'title', segments })).toEqual({ task: 'title', text: 'Mock title', ...used })
       expect(mock.requests.slice(before).filter((r) => r.key === key).length).toBe(2)
     }
   }, 30_000)
@@ -570,12 +579,12 @@ describe('text tasks', () => {
       const id = providers[name].id
       const opts = { segments, tone: 'professional', length: 'short' }
       const yt = await call<AiTextResult>('ai:text', id, { task: 'youtube', ...opts })
-      expect(yt).toEqual({ task: 'youtube', text: 'Mock description (professional short, 6 words). <img src=x onerror="document.title=\'pwned\'"> See https://evil.example/x now.', tags: ['mock', 'flown demo', 'btag/b'] })
-      expect(await call('ai:text', id, { task: 'linkedin', ...opts })).toEqual({ task: 'linkedin', text: 'Mock LinkedIn post (professional short).\n\n#flown' })
+      expect(yt).toEqual({ task: 'youtube', text: 'Mock description (professional short, 6 words). <img src=x onerror="document.title=\'pwned\'"> See https://evil.example/x now.', tags: ['mock', 'flown demo', 'btag/b'], ...USAGE[name] })
+      expect(await call('ai:text', id, { task: 'linkedin', ...opts })).toEqual({ task: 'linkedin', text: 'Mock LinkedIn post (professional short).\n\n#flown', ...USAGE[name] })
       const x = await call<AiTextResult>('ai:text', id, { task: 'xpost', ...opts })
       expect(x.task === 'xpost' && x.text.startsWith('Mock X post (professional short) word') && x.text.endsWith('…') && x.text.length <= 280).toBe(true)
-      expect(await call('ai:text', id, { task: 'article', ...opts })).toEqual({ task: 'article', text: '# Mock article\n\nWritten professional short.\n\n## Get started\n1. Open Flown\n2. Press Record' })
-      expect(await call('ai:text', id, { task: 'releaseNotes', ...opts })).toEqual({ task: 'releaseNotes', text: 'Mock release\n\nNotes professional short.\n\nNew\n- A mock feature\n\nFixed\n- A mock bug' })
+      expect(await call('ai:text', id, { task: 'article', ...opts })).toEqual({ task: 'article', text: '# Mock article\n\nWritten professional short.\n\n## Get started\n1. Open Flown\n2. Press Record', ...USAGE[name] })
+      expect(await call('ai:text', id, { task: 'releaseNotes', ...opts })).toEqual({ task: 'releaseNotes', text: 'Mock release\n\nNotes professional short.\n\nNew\n- A mock feature\n\nFixed\n- A mock bug', ...USAGE[name] })
     }, 30_000)
   }
 

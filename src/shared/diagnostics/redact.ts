@@ -48,13 +48,25 @@ const SECRETS: [RegExp, string][] = [
   [/(?<![A-Za-z0-9+/_-])[A-Za-z0-9+/_-]{32,}={0,2}/g, '<secret>']
 ]
 
+/** The name and password of `scheme://user:password@host` (smart-tools.md §16.5). */
+const URL_CREDENTIALS = /\b([a-z][a-z0-9+.-]*:\/\/)[^\s/?#@]+@/gi
+/** A secret value shorter than this is not taken out: it would take ordinary words with it. */
+const SECRET_MIN = 8
+
 /**
  * `line` with secrets, e-mail addresses and paths outside `roots` taken out. `names` (the home folder
  * and the user's account name) are a last guard: wherever they still appear, in any case and with
- * any separators, they become <path> and <user>.
+ * any separators, they become <path> and <user>. `secrets` (the API keys main has read or saved,
+ * smart-tools.md §16.5) are taken out first, as they are, longest first, so a key shorter than the
+ * generic rules' 32 characters, or one holding a slash, is caught too; and the name and password of
+ * any `scheme://user:password@host`.
  */
-export function redactLine(line: string, roots: RedactRoots = {}, names: readonly string[] = []): string {
+export function redactLine(line: string, roots: RedactRoots = {}, names: readonly string[] = [], secrets: readonly string[] = []): string {
   let out = line
+  for (const s of [...secrets].sort((a, b) => b.length - a.length)) {
+    if (typeof s === 'string' && s.length >= SECRET_MIN && out.includes(s)) out = out.split(s).join('<secret>')
+  }
+  out = out.replace(URL_CREDENTIALS, '$1<secret>@')
   const ordered = Object.entries(roots)
     .filter(([, dir]) => typeof dir === 'string' && dir.length > 0)
     .sort((a, b) => b[1].length - a[1].length)

@@ -7,6 +7,7 @@
  */
 import { AiOutputError } from '../../shared/captions/transcriptText'
 import { describeFailure, retryDelay, type Failure, type FailureInfo } from '../../shared/captions/transcriptErrors'
+import { scrubSecrets } from './secrets'
 
 /** A failed request, with its kind; the message is meant for the user. */
 export class AiError extends Error {
@@ -52,7 +53,17 @@ export interface CallOptions {
 const stopped = (o: CallOptions): AiError =>
   (o.signal.reason as { name?: unknown } | undefined)?.name === 'TimeoutError' ? new AiError(describeFailure({ timeout: true }, o.provider, o.model)) : cancelled()
 
-/** Runs `fn` (given a signal that aborts on cancel or time-out) until it succeeds or fails for good. */
+/** `err` with any API key it repeats taken out of its message (smart-tools.md §10.3, §16.5): a gateway may echo the request's key. */
+function scrubbed(err: AiError): AiError {
+  const message = scrubSecrets(err.failure.message)
+  return message === err.failure.message ? err : new AiError({ ...err.failure, message })
+}
+
+/**
+ * Runs `fn` (given a signal that aborts on cancel or time-out) until it succeeds or fails for good.
+ * Every failure message is passed through scrubSecrets before it leaves, so a key a provider or a
+ * gateway echoed back never reaches the renderer.
+ */
 export async function callWithRetry<T>(fn: (signal: AbortSignal) => Promise<T>, o: CallOptions): Promise<T> {
   const attempts = o.attempts ?? 4
   for (let attempt = 1; ; attempt++) {
@@ -64,9 +75,11 @@ export async function callWithRetry<T>(fn: (signal: AbortSignal) => Promise<T>, 
       return await fn(AbortSignal.any([o.signal, timeout.signal]))
     } catch (err) {
       if (o.signal.aborted) throw stopped(o)
-      if (err instanceof AiError || err instanceof AiOutputError) throw err
+      if (err instanceof AiError) throw scrubbed(err)
+      if (err instanceof AiOutputError) throw err
       const info: FailureInfo = timeout.signal.aborted ? { timeout: true } : o.toFailure(err)
       failure = describeFailure(info, o.provider, o.model)
+      failure = { ...failure, message: scrubSecrets(failure.message) }
     } finally {
       clearTimeout(timer)
     }
