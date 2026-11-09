@@ -501,3 +501,24 @@ export function usageText(usage: AiUsage | null | undefined, price: CostEstimate
   if (cost <= 0) return `No cost (${tokens}).`
   return `Cost ${cost < 0.01 ? 'under US$0.01' : `about ${usd(cost)}`} (${tokens}).`
 }
+
+/** Several actions run at once (Write all): their requests, tokens, cost and time added up; unknown when any is. */
+export function sumEstimates(list: readonly CostEstimate[]): CostEstimate | null {
+  if (!list.length) return null
+  const add = (a: [number, number], b: [number, number]): [number, number] => [a[0] + b[0], a[1] + b[1]]
+  let out: CostEstimate = { ...list[0] }
+  for (const e of list.slice(1)) {
+    out = {
+      ...out,
+      requests: out.requests + e.requests,
+      words: Math.max(out.words, e.words),
+      pictures: out.pictures + e.pictures,
+      inputTokens: add(out.inputTokens, e.inputTokens),
+      outputTokens: add(out.outputTokens, e.outputTokens),
+      usd: out.usd && e.usd ? add(out.usd, e.usd) : null,
+      ...(out.usd && e.usd ? {} : { unknown: out.unknown ?? e.unknown ?? 'no-price' }),
+      ...(out.seconds || e.seconds ? { seconds: add(out.seconds ?? [0, 0], e.seconds ?? [0, 0]) } : {})
+    }
+  }
+  return out
+}
