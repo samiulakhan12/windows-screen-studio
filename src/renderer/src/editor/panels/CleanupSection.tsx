@@ -15,6 +15,7 @@ import { useReturnFocus } from '../returnFocus'
 import { Chips, Section } from '../controls'
 import { useTextChoiceList } from '../../ai/textChoices'
 import { CostLine } from '../../ai/CostLine'
+import { runCostText } from '../../ai/useCost'
 import { LocalProgress } from '../../ai/LocalProgress'
 
 const DIGITS: { value: CleanupChoices['digits']; label: string }[] = [
@@ -175,6 +176,7 @@ export function CleanupSection({ project }: { project: Project }): JSX.Element {
     setStatus('')
     const list = currentWordList()
     let fix: TextResult | undefined
+    let cost = ''
     let leftOut: string | undefined
     const before = store.state.transcript.segments
     // The provider fixes the captions as rules 1–4 leave them, so its answer goes on top of them
@@ -188,6 +190,8 @@ export function CleanupSection({ project }: { project: Project }): JSX.Element {
       try {
         const result = await window.api.aiText(chosen.id, { task: 'cleanup', segments: asked }, mine.id)
         if (mine.cancelled || !live.current) return
+        // What the run cost, for the notice (smart-tools.md §11.6).
+        cost = runCostText(result.usage, chosen)
         if (result.task === 'cleanup') fix = result
         else leftOut = 'The AI fix was left out: the provider answered something else.'
       } catch (err) {
@@ -222,7 +226,7 @@ export function CleanupSection({ project }: { project: Project }): JSX.Element {
     })
     store.seal()
     const r = out as ReturnType<typeof tidyCaptions> | null
-    if (r) setStatus(cleanupNotice({ changed: r.changed, bleeped: r.bleeped, estimated: r.estimated }))
+    if (r) setStatus([cleanupNotice({ changed: r.changed, bleeped: r.bleeped, estimated: r.estimated }), fix ? cost : ''].filter(Boolean).join(' '))
     // A fix left out stands out from the notice.
     if (leftOut) setError(leftOut)
   }

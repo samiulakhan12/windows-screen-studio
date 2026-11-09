@@ -7,9 +7,9 @@
  * request, so the line follows edits without delay.
  */
 import { useEffect, useMemo, useState } from 'react'
-import type { AiTextRequest, ListedModel, TextChoice } from '../../../shared/api/ai'
+import type { AiTextRequest, AiUsage, ListedModel, TextChoice } from '../../../shared/api/ai'
 import type { LocalAiState } from '../../../shared/api/localAi'
-import { estimateScript, estimateText, estimateTranscription, type CostEstimate } from '../../../shared/ai/cost'
+import { estimateScript, estimateText, estimateTranscription, usageText, type CostEstimate } from '../../../shared/ai/cost'
 import { BUNDLED_PRICE_LIST, confirmList, parsePriceList, type PriceList } from '../../../shared/ai/prices'
 import { DEFAULT_TEXT_LIMITS } from '../../../shared/captions/transcriptText'
 import { DEFAULT_CONFIRM, sanitizeSmartPref, type ConfirmPref } from '../../../shared/smart/smartPrefs'
@@ -177,4 +177,23 @@ export function estimateSound(kind: AiProviderKind, model: string, seconds: numb
 export function useCost(choice: TextChoice | null, request: AiTextRequest | null): CostEstimate | null {
   const d = useCostData()
   return useMemo(() => estimateFor(choice, request, d), [choice, request, d])
+}
+
+/** The price an estimate of `choice` uses now (the user's own, a live list's, or the price list's), or null. */
+export function priceFor(choice: TextChoice, d: CostData = data): CostEstimate['price'] | null {
+  if (choice.kind === 'local') return null
+  const t = targetOf(choice, d)
+  if (t.own) return { entry: t.own }
+  if (t.live && t.live !== 'varies') return { entry: t.live }
+  const e = estimateText({ task: 'title', segments: [] }, { ...t, limits: DEFAULT_TEXT_LIMITS })
+  return e.price ?? null
+}
+
+/**
+ * What a finished run cost (§11.6), for the tool's notice: "Cost about US$0.03 (12,400 tokens)." from
+ * the tokens the provider reported; empty on this PC, at no cost, or when nothing was reported.
+ */
+export function runCostText(usage: AiUsage | null | undefined, choice: TextChoice | null): string {
+  if (!usage || !choice || choice.kind === 'local' || choice.free) return ''
+  return usageText(usage, priceFor(choice))
 }

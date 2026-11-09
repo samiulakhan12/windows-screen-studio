@@ -240,3 +240,34 @@ describe('a click above the amount set asks first (test 92)', () => {
     expect(click(button('other', 'something-else')).prevented).toBe(false)
   })
 })
+
+describe('after a run with a service (§11.6)', () => {
+  it('the notice adds what the tokens reported cost; nothing on this PC or without usage', async () => {
+    const { runCostText } = (await import(/* @vite-ignore */ USE_COST)) as { runCostText: (u: unknown, c: TextChoice | null) => string }
+    const groq = choice({ id: 'svc1', model: 'openai/gpt-oss-20b', host: 'api.groq.com', place: 'api.groq.com' })
+    expect(runCostText({ input: 10_000, output: 2_400 }, choice())).toBe('Cost about US$0.04 (12,400 tokens).')
+    expect(runCostText({ input: 1000, output: 200 }, groq)).toBe('Cost under US$0.01 (1,200 tokens).')
+    expect(runCostText({ input: 1000, output: 200 }, choice({ model: 'not-listed' }))).toBe('It used 1,200 tokens.')
+    expect(runCostText(undefined, choice())).toBe('')
+    expect(runCostText({ input: 5, output: 5 }, { id: 'local', label: 'On this PC', kind: 'local', model: '', place: 'this PC' })).toBe('')
+  })
+
+  it('Languages says what a translation cost', async () => {
+    const store = testStore(base())
+    contexts.editor = { store, player: { time: 0, subscribe: () => () => undefined } }
+    env.providers = [GROQ]
+    const api = (globalThis as unknown as { window: { api: Record<string, unknown> } }).window.api
+    const before = api.aiText
+    api.aiText = async (_id: string, r: { segments: { id: string; start: number; end: number; text: string }[] }) => ({ task: 'translate', segments: r.segments.map((s) => ({ ...s, text: `bn ${s.text}` })), usage: { input: 1000, output: 200 } })
+    try {
+      let els = await settle({ type: LanguagesSection, props: { project: store.state } }, ['LocalProgress'])
+      ;(byTestId(els, 'track-add')!.props.onClick as () => void)()
+      els = await settle({ type: LanguagesSection, props: { project: store.state } }, ['LocalProgress'])
+      ;(byTestId(els, 'track-translate')!.props.onClick as () => void)()
+      els = await settle({ type: LanguagesSection, props: { project: store.state } }, ['LocalProgress'])
+      expect(hostText(els)).toMatch(/Translated 60 captions into \w+\. Cost under US\$0\.01 \(1,200 tokens\)\./)
+    } finally {
+      api.aiText = before
+    }
+  })
+})
