@@ -6,7 +6,8 @@ import { describe, expect, it, vi } from 'vitest'
 import { SmoothedTrack } from '../src/shared/engine/cursor'
 import { createProject } from '../src/shared/engine/project'
 import { focusPathFor } from '../src/shared/engine/zoom'
-import { arrowOf, blurBoxes, guideProject, ringColour, ringOf, shotRect, shotTime, SHOT } from '../src/shared/guide/shots'
+import { pointFromShown, pointInShown, rectFromShown, rectInShown } from '../src/shared/guide/adjust'
+import { arrowOf, blurBoxes, guideProject, planFrame, planShot, ringColour, ringOf, shotRect, shotTime, SHOT } from '../src/shared/guide/shots'
 import type { GuideStep } from '../src/shared/guide/steps'
 import type { Clip, CursorTrack, Project, Shape } from '../src/shared/types'
 
@@ -209,6 +210,33 @@ describe('test 16: shotRect', () => {
     const inCrop = shotRect(click(1, 0.75, 0.5), frame, crop, 1, { whole: false })
     expect(inCrop.outside).toBe(false)
     expect(inCrop.rect.x).toBeGreaterThanOrEqual(960)
+  })
+})
+
+describe('Adjust’s picture (§5.5.3)', () => {
+  it('planFrame: the whole shown part at the step’s shot time, no ring or arrow', () => {
+    const crop = { x: 0.5, y: 0, w: 0.5, h: 1 }
+    const step = click(3, 0.75, 0.5)
+    const p = project({ crop })
+    const f = planFrame(step, p, undefined)
+    expect(f.rect).toEqual({ x: 960, y: 0, w: 960, h: 1080 })
+    expect([f.ring, f.arrow, f.whole]).toEqual([null, null, true])
+    expect(f.t).toBe(planShot(step, p, undefined, 1, 'guide').t)
+    // A crop or ring stored by Adjust does not change it (it is the picture they are drawn over).
+    expect(planFrame(step, p, { key: step.key, rect: { x: 0.6, y: 0.1, w: 0.2, h: 0.2 }, ring: { x: 0.7, y: 0.2 } }).sig).toBe(f.sig)
+  })
+
+  it('a crop and a ring as fractions of the shown part, and back', () => {
+    const frame = { w: W, h: H }
+    const shown = { x: 960, y: 0, w: 960, h: 1080 }
+    expect(pointInShown({ x: 0.75, y: 0.5 }, frame, shown)).toEqual({ x: 0.5, y: 0.5 })
+    expect(pointFromShown({ x: 0.5, y: 0.5 }, frame, shown)).toEqual({ x: 0.75, y: 0.5 })
+    expect(rectInShown({ x: 0.5, y: 0, w: 0.25, h: 0.5 }, frame, shown)).toEqual({ x: 0, y: 0, w: 0.5, h: 0.5 })
+    expect(rectFromShown({ x: 0, y: 0, w: 0.5, h: 0.5 }, frame, shown)).toEqual({ x: 0.5, y: 0, w: 0.25, h: 0.5 })
+    // Without a crop nothing changes.
+    const all = { x: 0, y: 0, w: W, h: H }
+    expect(rectInShown({ x: 0.3, y: 0.2, w: 0.5, h: 0.5 }, frame, all)).toEqual({ x: 0.3, y: 0.2, w: 0.5, h: 0.5 })
+    expect(pointFromShown({ x: 0.6, y: 0.5 }, frame, all)).toEqual({ x: 0.6, y: 0.5 })
   })
 })
 

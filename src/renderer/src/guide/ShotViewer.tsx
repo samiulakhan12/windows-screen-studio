@@ -70,6 +70,8 @@ export function ShotViewer(props: {
   /** In Check screenshots: how many have been seen at 100%, and that a shot was. */
   checked?: number
   onShown?(key: string): void
+  /** The shot now shown (the panel makes Adjust's picture of the whole frame for it). */
+  onAt?(key: string): void
   onClose(result?: { send: readonly string[] }): void
   onBlur(key: string): void
   onAdjust(key: string, edit: Pick<GuideStepEdit, 'rect' | 'ring'> | null): void
@@ -93,6 +95,11 @@ export function ShotViewer(props: {
   useEffect(() => {
     if (shown && !fit && !adjusting) onShown?.(shown)
   }, [shown, fit, adjusting, onShown])
+  const onAt = props.onAt
+  const atKey = shot?.key ?? null
+  useEffect(() => {
+    if (atKey) onAt?.(atKey)
+  }, [atKey, onAt])
   const first = useRef(true)
   useEffect(() => {
     const opening = first.current

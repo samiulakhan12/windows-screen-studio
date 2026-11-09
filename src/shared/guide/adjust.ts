@@ -75,6 +75,25 @@ export function snapCrop(rect: NormRect, frame: { w: number; h: number }): NormR
   return fitCrop({ x, y, w, h })
 }
 
+/**
+ * Adjust draws over the part of the recorded frame the video shows (`shown`, pixels of `frame`, the
+ * crop's), while a step's `rect` and `ring` are stored as fractions of the recorded frame: a point as
+ * fractions of the shown part, and back.
+ */
+export function pointInShown(p: { x: number; y: number }, frame: { w: number; h: number }, shown: { x: number; y: number; w: number; h: number }): { x: number; y: number } {
+  return { x: round((p.x * frame.w - shown.x) / shown.w), y: round((p.y * frame.h - shown.y) / shown.h) }
+}
+export function pointFromShown(p: { x: number; y: number }, frame: { w: number; h: number }, shown: { x: number; y: number; w: number; h: number }): { x: number; y: number } {
+  return { x: round((shown.x + p.x * shown.w) / frame.w), y: round((shown.y + p.y * shown.h) / frame.h) }
+}
+/** A crop as fractions of the shown part (pointInShown), and back. */
+export function rectInShown(r: NormRect, frame: { w: number; h: number }, shown: { x: number; y: number; w: number; h: number }): NormRect {
+  return { ...pointInShown(r, frame, shown), w: round((r.w * frame.w) / shown.w), h: round((r.h * frame.h) / shown.h) }
+}
+export function rectFromShown(r: NormRect, frame: { w: number; h: number }, shown: { x: number; y: number; w: number; h: number }): NormRect {
+  return { ...pointFromShown(r, frame, shown), w: round((r.w * shown.w) / frame.w), h: round((r.h * shown.h) / frame.h) }
+}
+
 /** Whether a crop drawn by hand is big enough to keep (§5.5.3: under 5% of the frame is refused). */
 export const cropOk = (rect: NormRect): boolean => rect.w >= MIN_CROP - 1e-9 && rect.h >= MIN_CROP - 1e-9
 

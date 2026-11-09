@@ -272,19 +272,33 @@ export function planShot(step: GuideStep, project: Project, edit: GuideStepEdit 
   const outW = shotSize(rect).w
   const ring = ringOf(step, rect, outW, frame, crop, edit?.ring)
   const arrow = arrowOf(step, rect, outW, frame, crop, edit?.ring)
-  const sig = JSON.stringify({
+  return { key: step.key, t, rect, whole: whole || outside, outside, ring, arrow, sig: shotSig(project, t, rect, ring, arrow) }
+}
+
+/** What a shot's picture depends on (ShotPlan.sig). */
+function shotSig(project: Project, t: number, rect: Rect, ring: ShotPlan['ring'], arrow: ShotPlan['arrow']): string {
+  return JSON.stringify({
     t,
     rect,
     ring,
     arrow,
     privacy: privacyAt(project, t).map((s) => [s.id, s.kind, s.start, s.end, s.x, s.y, s.w, s.h, s.strength]),
-    crop,
+    crop: project.crop ?? null,
     grade: project.grade?.screen ?? null,
     cursor: [project.cursor.show, project.cursor.size, project.cursor.style ?? null],
     inputEdits: project.inputEdits ?? null,
     colour: ringColour(project)
   })
-  return { key: step.key, t, rect, whole: whole || outside, outside, ring, arrow, sig }
+}
+
+/**
+ * The picture *Adjust* draws its crop and ring over (§5.5.3): the whole part of the frame the video
+ * shows (`project.crop`) at the step's shot time, with no ring or arrow (Adjust draws its own).
+ */
+export function planFrame(step: GuideStep, project: Project, edit: GuideStepEdit | undefined): ShotPlan {
+  const t = shotTime(step, project.clips, project.capture?.fps ?? 60, !!edit?.after)
+  const rect = visibleRect({ w: project.width, h: project.height }, project.crop ?? null)
+  return { key: step.key, t, rect, whole: true, outside: false, ring: null, arrow: null, sig: shotSig(project, t, rect, null, null) }
 }
 
 /** The bug report's Actual shot (§5.5.1): the whole screen at `actualAt`, no ring. */

@@ -19,7 +19,8 @@ import { GUIDE_LIMITS } from '../../../shared/guide/guideData'
 import { ACTUAL_KEY, defaultDetails, stepNumbers, type GuideImage } from '../../../shared/guide/guideDoc'
 import { withAddedStep, withGuideFields, withoutAiTitles, withStepEdit } from '../../../shared/guide/guideEdit'
 import { guideLanguage } from '../../../shared/guide/guideWords'
-import { planActual, planShot, type ShotPlan } from '../../../shared/guide/shots'
+import { planActual, planFrame, planShot, visibleRect, type ShotPlan } from '../../../shared/guide/shots'
+import { pointFromShown, pointInShown, rectFromShown, rectInShown } from '../../../shared/guide/adjust'
 import { autoBadgeCount, findSteps, STEP_RULES, typedBefore, typingRuns, type GuideStep } from '../../../shared/guide/steps'
 import { namesRequestForSteps, needsTitle, shownTitles, stepIncluded, stepText, type ShownTitle } from '../../../shared/guide/stepTitles'
 import { notedPieces } from '../../../shared/publish/check'
@@ -291,6 +292,15 @@ export function GuidePanel(props: { project: Project; cursor: CursorTrack; start
     const id = seenId(key, sigs.current)
     setChecked((c) => (c.has(id) ? c : new Set([...c, id])))
   }, [])
+  // Adjust's picture of the whole shown frame (§5.5.3), made for the step the viewer is on.
+  const [viewing, setViewing] = useState<string | null>(null)
+  const framePlans = useMemo(() => {
+    const r = viewer && viewing ? rows.find((x) => x.step.key === viewing) : undefined
+    return r ? [planFrame(r.step, project, r.edit)] : []
+  }, [viewer, viewing, rows, project])
+  const frames = useGuideShots(project, track, framePlans, framePlans.length > 0)
+  /** The part of the recorded frame Adjust's picture shows (pixels): its crop and ring are drawn as fractions of it. */
+  const shownPart = visibleRect(frame, project.crop ?? null)
 
   // AI titles and notes.
   const choices = useTextChoices('names')
@@ -895,8 +905,9 @@ export function GuidePanel(props: { project: Project; cursor: CursorTrack; start
             if (!r) return []
             // A shot being made again after an edit keeps its place in the list (the viewer says so).
             const image = viewImages.get(k) ?? null
-            const whole = demoShots.images.get(k) ?? image
+            const whole = frames.images.get(k)
             const point = r.step.x !== undefined && r.step.y !== undefined ? { x: r.step.x, y: r.step.y } : (r.step.place ?? null)
+            const ring = r.edit?.ring ?? (r.plan.ring ? point : null)
             return [
               {
                 key: k,
@@ -906,8 +917,8 @@ export function GuidePanel(props: { project: Project; cursor: CursorTrack; start
                   ? {
                       adjust: {
                         frame: whole,
-                        rect: r.edit?.rect ?? { x: r.plan.rect.x / frame.w, y: r.plan.rect.y / frame.h, w: r.plan.rect.w / frame.w, h: r.plan.rect.h / frame.h },
-                        ring: r.edit?.ring ?? (r.plan.ring ? point : null)
+                        rect: rectInShown(r.edit?.rect ?? { x: r.plan.rect.x / frame.w, y: r.plan.rect.y / frame.h, w: r.plan.rect.w / frame.w, h: r.plan.rect.h / frame.h }, frame, shownPart),
+                        ring: ring ? pointInShown(ring, frame, shownPart) : null
                       }
                     }
                   : {})
@@ -919,6 +930,7 @@ export function GuidePanel(props: { project: Project; cursor: CursorTrack; start
           total={shared.length}
           checked={shared.filter(isChecked).length}
           onShown={markChecked}
+          onAt={setViewing}
           onClose={() => setViewer(null)}
           onBlur={(key) => {
             setViewer(null)
@@ -927,7 +939,7 @@ export function GuidePanel(props: { project: Project; cursor: CursorTrack; start
             else if (key === ACTUAL_KEY && actualPlan) blurAt({ key, t: actualPlan.t, kind: 'added' }, false)
           }}
           onAdjust={(key, e) => {
-            edit(key, e ? { rect: e.rect, ring: e.ring } : { rect: undefined, ring: undefined })
+            edit(key, e ? { rect: e.rect ? rectFromShown(e.rect, frame, shownPart) : undefined, ring: e.ring ? pointFromShown(e.ring, frame, shownPart) : undefined } : { rect: undefined, ring: undefined })
             say(e ? 'Adjusted the screenshot.' : 'The screenshot is zoomed to the click again.')
           }}
         />

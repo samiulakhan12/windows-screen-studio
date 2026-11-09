@@ -373,9 +373,12 @@ describe('test 112: Adjust from the panel', () => {
   it('Done stores the crop and the ring in one update; Reset removes them in one more', async () => {
     let els = await ready()
     click(allByTestId(els, 'guide-shot')[0])
-    els = render(panel())
+    // Adjust waits for its picture of the whole frame (the zoomed shot is 950 px of the 1920).
+    els = await ready()
     click(byTestId(els, 'guide-viewer-adjust'))
     els = render(panel())
+    const whole = els.find((e) => e.type === 'img' && e.props.alt === 'The whole screen for step 1')!
+    expect([whole.props.width, whole.props.height]).toEqual([1600, 900])
     const before = store.steps
     const ringKey = { key: 'ArrowRight', shiftKey: true, altKey: false, ctrlKey: false, metaKey: false, preventDefault: () => undefined, stopPropagation: () => undefined }
     ;(byTestId(els, 'guide-adjust-ring')!.props.onKeyDown as (e: unknown) => void)(ringKey)
@@ -398,6 +401,31 @@ describe('test 112: Adjust from the panel', () => {
     click(byTestId(els, 'guide-adjust-reset'))
     expect(store.steps - before).toBe(2)
     expect(store.state.guide).toBeUndefined()
+  })
+
+  it('with a crop, Adjust draws over the whole shown part and Done stores fractions of the recorded frame', async () => {
+    // The video shows the right half of the recording; step 1's click is on its left edge.
+    store = testStore({ ...project(), crop: { x: 0.5, y: 0, w: 0.5, h: 1 } })
+    contexts.editor = { store, player }
+    let els = await ready()
+    click(allByTestId(els, 'guide-shot')[0])
+    els = await ready()
+    click(byTestId(els, 'guide-viewer-adjust'))
+    els = render(panel())
+    const whole = els.find((e) => e.type === 'img' && e.props.alt === 'The whole screen for step 1')!
+    expect([whole.props.width, whole.props.height]).toEqual([960, 1080])
+    // The zoomed shot (950 px from the crop's left edge) and the ring on the click, over the shown half.
+    const crop = byTestId(els, 'guide-adjust-crop')!.props.style as Record<string, string>
+    expect([crop.left, crop.width]).toEqual(['0.000%', '98.958%'])
+    expect((byTestId(els, 'guide-adjust-ring')!.props.style as Record<string, string>).left).toBe('0.000%')
+    const ringKey = { key: 'ArrowRight', shiftKey: true, altKey: false, ctrlKey: false, metaKey: false, preventDefault: () => undefined, stopPropagation: () => undefined }
+    ;(byTestId(els, 'guide-adjust-ring')!.props.onKeyDown as (e: unknown) => void)(ringKey)
+    els = render(panel())
+    click(byTestId(els, 'guide-adjust-done'))
+    const edit = store.state.guide!.steps![0]
+    // 10% of the shown half to the right is 5% of the recording.
+    expect(edit.ring).toEqual({ x: 0.55, y: 0.5 })
+    expect(edit.rect).toEqual({ x: 0.5, y: 0.005208, w: 0.494792, h: 0.989583 })
   })
 })
 

@@ -1006,7 +1006,11 @@ So nothing that was blurred or pixelated in the video can appear in a guide (tes
   screen* on any step does too. The demo shows the whole screen unless *Zoom to the click in the
   demo* is on (§6.1).
 - **Adjust** (in the full-size viewer): the crop shows as a rectangle with 8 handles and the ring as a
-  movable circle, over the whole frame. Dragging snaps to the frame's edges within 8 px. Keys: Tab
+  movable circle, over the whole frame: a picture of the whole part the video shows (`project.crop`)
+  at the step's shot time, without the ring (`planFrame`), made when the viewer reaches the step
+  (*Adjust* shows once it is ready), whatever the format. The crop and ring are drawn and moved as
+  fractions of that picture and turned into fractions of the recorded frame when stored (with a crop,
+  the shown part is not the recorded frame). Dragging snaps to the frame's edges within 8 px. Keys: Tab
   moves between the crop and the ring; arrows move the focused one by 1% of the frame (Shift: 10%);
   Alt with arrows resizes the crop. **Done** stores `rect` and `ring` (fractions of the recorded
   frame) in one update; **Reset** removes them. A crop under 5% of the frame is refused.
