@@ -130,6 +130,9 @@ export function hasPrivateText(texts: readonly string[], said: ReturnType<typeof
   return texts.some((t) => notedPieces(t, said).length > 0 || pathLike(t))
 }
 
+/** A shot as Check screenshots counts it: its key and what its picture depends on (`ShotPlan.sig`). */
+const seenId = (key: string, sigs: ReadonlyMap<string, string>): string => `${key}\n${sigs.get(key) ?? ''}`
+
 interface Row {
   step: GuideStep
   index: number
@@ -139,7 +142,10 @@ interface Row {
   edit: GuideStepEdit | undefined
   included: boolean
   typedIn: string | null
+  /** The guide's shot. */
   plan: ShotPlan
+  /** The shot the chosen format saves: the demo's in the demo format (the whole screen unless *Zoom to the click in the demo*), else the guide's. */
+  shot: ShotPlan
 }
 
 let requestSeq = 0
@@ -211,8 +217,12 @@ export function GuidePanel(props: { project: Project; cursor: CursorTrack; start
   const ns = useMemo(() => stepNumbers(project, steps), [project, steps])
   const titles = useMemo(() => shownTitles(project, steps, ns, { scale }), [project, steps, ns, scale])
   const plans = useMemo(() => steps.map((s) => planShot(s, project, edits.get(s.key), scale, 'guide')), [steps, project, edits, scale])
+  // The demo saves its own view of each step: the rows, the marks, Check screenshots and the question before a Save are about it.
+  const demoAll = useMemo(() => (format === 'demo' ? steps.map((s) => planShot(s, project, edits.get(s.key), scale, 'demo')) : null), [format, steps, project, edits, scale])
   const actualPlan = useMemo(() => (guide.kind === 'bug' && guide.actualAt !== undefined ? planActual(project, guide.actualAt) : null), [guide.kind, guide.actualAt, project])
-  const typed = useMemo(() => typedBefore(steps, new Map(plans.map((p) => [p.key, { t: p.t, rect: p.rect, whole: p.whole }])), scan, frame, runs), [steps, plans, scan, frame, runs])
+  // Shots that may show typing: the guide's (the pictures §5.3.1 sends), and the ones the format saves.
+  const typed = useMemo(() => typedBefore(steps, new Map(plans.map((p) => [p.key, p])), scan, frame, runs), [steps, plans, scan, frame, runs])
+  const typedShown = useMemo(() => (demoAll ? typedBefore(steps, new Map(demoAll.map((p) => [p.key, p])), scan, frame, runs) : typed), [demoAll, typed, steps, scan, frame, runs])
   const rows: Row[] = useMemo(
     () =>
       steps.map((step, index) => {
@@ -226,26 +236,26 @@ export function GuidePanel(props: { project: Project; cursor: CursorTrack; start
           note: edit?.text ?? added?.text ?? stepText(steps, index, project, !!edit?.full),
           edit,
           included: stepIncluded(step, edit),
-          typedIn: typed.get(step.key) ?? null,
-          plan: plans[index]
+          typedIn: typedShown.get(step.key) ?? null,
+          plan: plans[index],
+          shot: demoAll?.[index] ?? plans[index]
         }
       }),
-    [steps, edits, guide.added, ns, titles, project, typed, plans]
+    [steps, edits, guide.added, ns, titles, project, typedShown, plans, demoAll]
   )
   const included = rows.filter((r) => r.included)
   const untitled = new Set(included.filter((r) => !r.title.own && needsTitle(r.title.from)).map((r) => r.step.key))
   const typedKeys = new Set(included.filter((r) => r.typedIn).map((r) => r.step.key))
-  const wholeKeys = new Set(included.filter((r) => r.plan.whole).map((r) => r.step.key))
+  const wholeKeys = new Set(included.filter((r) => r.shot.whole).map((r) => r.step.key))
   const said = useMemo(() => projectSaid(project), [project])
 
   // Screenshots: the guide's view, the demo's when the format is the demo, and the bug report's Actual.
   const guidePlans = useMemo(() => [...plans, ...(actualPlan ? [actualPlan] : [])], [plans, actualPlan])
   const shots = useGuideShots(project, track, guidePlans)
-  const demoPlans = useMemo(
-    () => (format === 'demo' ? rows.filter((r) => r.included).map((r) => planShot(r.step, project, r.edit, scale, 'demo')) : []),
-    [format, rows, project, scale]
-  )
+  const demoPlans = useMemo(() => (demoAll ? rows.filter((r) => r.included).map((r) => r.shot) : []), [demoAll, rows])
   const demoShots = useGuideShots(project, track, demoPlans, format === 'demo')
+  /** The shots the chosen format saves: what the rows and the viewer show. */
+  const viewImages = format === 'demo' ? demoShots.images : shots.images
 
   // The live region: each message a new node, so the same words twice are read twice.
   const [saying, setSaying] = useState({ text: '', n: 0 })
@@ -265,10 +275,18 @@ export function GuidePanel(props: { project: Project; cursor: CursorTrack; start
     if (el && el.scrollTop + el.clientHeight >= el.scrollHeight - 600 && shown < rows.length) setShown((n) => Math.min(rows.length, n + ROWS_AT_A_TIME))
   }
 
-  // The full-size viewer and what was seen at 100% this session.
+  // The full-size viewer and what was seen at 100% this session: each shot by what its picture
+  // depends on, so the demo's whole-screen shot, or a shot made again differently, is not checked
+  // by having seen another picture of the step.
   const [viewer, setViewer] = useState<{ keys: string[]; index: number; mode: 'view' | 'check' } | null>(null)
   const [checked, setChecked] = useState<ReadonlySet<string>>(() => new Set())
-  const markChecked = useCallback((key: string) => setChecked((c) => (c.has(key) ? c : new Set([...c, key]))), [])
+  const sigs = useRef(new Map<string, string>())
+  sigs.current = new Map(rows.map((r) => [r.step.key, r.shot.sig]))
+  const isChecked = (key: string): boolean => checked.has(seenId(key, sigs.current))
+  const markChecked = useCallback((key: string) => {
+    const id = seenId(key, sigs.current)
+    setChecked((c) => (c.has(id) ? c : new Set([...c, id])))
+  }, [])
 
   // AI titles and notes.
   const choices = useTextChoices('names')
@@ -288,7 +306,8 @@ export function GuidePanel(props: { project: Project; cursor: CursorTrack; start
   }, [canSendShots])
   const pictureList = useMemo(() => pictureSteps(project, steps), [project, steps])
   const pictureSig = pictureList.map((s) => s.key).join('|')
-  const typedOf = useMemo(() => new Map(rows.flatMap((r) => (r.typedIn ? [[r.step.key, r.typedIn] as const] : []))), [rows])
+  // The pictures sent are the guide's shots: their marks are the guide's.
+  const typedOf = typed
   const typedSig = [...typedOf].map(([k, v]) => `${k}>${v}`).join('|')
   const latestPictures = useRef({ pictureList, typedOf })
   latestPictures.current = { pictureList, typedOf }
@@ -353,7 +372,8 @@ export function GuidePanel(props: { project: Project; cursor: CursorTrack; start
     setSending({
       shots: pictures.map((p) => {
         const r = byKey.get(p.key)
-        return { key: p.key, label: `step ${r?.n ?? ''}`, image: pictureImage(p.jpeg), ...(r?.typedIn ? { note: typedNote(typedN(r.typedIn)) } : {}) }
+        const typedIn = typedOf.get(p.key)
+        return { key: p.key, label: `step ${r?.n ?? ''}`, image: pictureImage(p.jpeg), ...(typedIn ? { note: typedNote(typedN(typedIn)) } : {}) }
       }),
       ticked: new Set(pictures.filter((p) => p.ticked).map((p) => p.key)),
       jpegs: new Map(pictures.map((p) => [p.key, p.jpeg]))
@@ -413,7 +433,7 @@ export function GuidePanel(props: { project: Project; cursor: CursorTrack; start
   }
   /** Asks what must be asked before a Save or Copy (§2.1.2, §12 rule 3), then runs it. */
   const guarded = (run: () => void): void => {
-    const unchecked = included.filter((r) => !checked.has(r.step.key))
+    const unchecked = included.filter((r) => !isChecked(r.step.key))
     const ask = askedCheck ? null : checkQuestion({ unchecked: unchecked.length, typed: unchecked.filter((r) => typedKeys.has(r.step.key)).length, whole: unchecked.filter((r) => wholeKeys.has(r.step.key)).length })
     const linkStep = (): void => {
       if (hasPrivateText(guideTexts(store.state, included), said)) setQuestion({ kind: 'link', text: LINK_QUESTION, go: run })
@@ -487,16 +507,16 @@ export function GuidePanel(props: { project: Project; cursor: CursorTrack; start
   }
   const checkShots = (): void => {
     const order = checkOrder(
-      included.map((r) => r.step.key).filter((k) => shots.images.has(k)),
+      included.map((r) => r.step.key).filter((k) => viewImages.has(k)),
       typedKeys,
       wholeKeys
     )
     if (!order.length) return say('The screenshots are not ready yet.')
-    const first = Math.max(0, order.findIndex((k) => !checked.has(k)))
+    const first = Math.max(0, order.findIndex((k) => !isChecked(k)))
     setViewer({ keys: order, index: first, mode: 'check' })
   }
   const viewShot = (key: string): void => {
-    const keys = included.map((r) => r.step.key).filter((k) => shots.images.has(k))
+    const keys = included.map((r) => r.step.key).filter((k) => viewImages.has(k))
     const index = keys.indexOf(key)
     if (index >= 0) setViewer({ keys, index, mode: 'view' })
   }
@@ -519,7 +539,7 @@ export function GuidePanel(props: { project: Project; cursor: CursorTrack; start
     say('Blurred the typed text.')
   }
   const copyShot = async (key: string): Promise<void> => {
-    const img = shots.images.get(key)
+    const img = viewImages.get(key)
     if (!img) return
     try {
       const png = img.mime === 'image/png' ? img.bytes : null
@@ -629,7 +649,7 @@ export function GuidePanel(props: { project: Project; cursor: CursorTrack; start
               row={r}
               ids={ids}
               time={vt(r.step.t)}
-              image={shots.images.get(r.step.key) ?? null}
+              image={viewImages.get(r.step.key) ?? null}
               demo={format === 'demo'}
               said={said}
               typedN={typedN(r.typedIn)}
@@ -865,7 +885,7 @@ export function GuidePanel(props: { project: Project; cursor: CursorTrack; start
             const r = rows.find((x) => x.step.key === k)
             if (!r) return []
             // A shot being made again after an edit keeps its place in the list (the viewer says so).
-            const image = shots.images.get(k) ?? null
+            const image = viewImages.get(k) ?? null
             const whole = demoShots.images.get(k) ?? image
             const point = r.step.x !== undefined && r.step.y !== undefined ? { x: r.step.x, y: r.step.y } : (r.step.place ?? null)
             return [
@@ -888,7 +908,7 @@ export function GuidePanel(props: { project: Project; cursor: CursorTrack; start
           index={viewer.index}
           mode={viewer.mode}
           total={included.length}
-          checked={included.filter((r) => checked.has(r.step.key)).length}
+          checked={included.filter((r) => isChecked(r.step.key)).length}
           onShown={markChecked}
           onClose={() => setViewer(null)}
           onBlur={(key) => {
@@ -975,7 +995,7 @@ function StepRow(props: {
   const typingStep = !!r.step.typing
   const ai = !!(r.title.ai || r.edit?.textAi)
   const typedChip = r.typedIn ? typedNote(props.typedN) : ''
-  const chips = [untitled ? 'needs a title' : '', typedChip && `m${typedChip.slice(1)}`, ai ? 'written by AI' : '', r.plan.whole ? 'whole screen' : ''].filter(Boolean)
+  const chips = [untitled ? 'needs a title' : '', typedChip && `m${typedChip.slice(1)}`, ai ? 'written by AI' : '', r.shot.whole ? 'whole screen' : ''].filter(Boolean)
   const name = [`Step ${n}`, props.time, ...(r.included ? [] : ['left out']), ...chips].join(', ')
   const flagged = (text: string): boolean => !!text && (notedPieces(text, props.said).length > 0 || pathLike(text))
   const linkNote = flagged(r.title.title) || flagged(r.note) || flagged(r.edit?.type ?? '') ? `${ids}-link-${key}` : undefined
@@ -1007,7 +1027,7 @@ function StepRow(props: {
           {untitled && <span className="guide-chip warn">Needs a title</span>}
           {r.typedIn && <span className="guide-chip warn">{typedChip}</span>}
           {ai && <span className="guide-chip">AI</span>}
-          {r.plan.whole && <span className="guide-chip">Whole screen</span>}
+          {r.shot.whole && <span className="guide-chip">Whole screen</span>}
         </p>
       )}
       <input

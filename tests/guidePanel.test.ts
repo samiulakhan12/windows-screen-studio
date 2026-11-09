@@ -277,6 +277,50 @@ describe('typing no listed step holds (docs/design/smart-tools.md §5.5.7)', () 
   })
 })
 
+describe('the click-through demo’s own shots (docs/design/smart-tools.md §5.5.6, §5.5.7, §12 rule 2)', () => {
+  it('the rows, the marks, Check screenshots and the question before a Save are about the whole-screen shots the demo saves', async () => {
+    // Typing into a field at the top right, then a click at the bottom left: the guide's zoomed shot
+    // of step 2 does not show the field; the demo's whole screen does.
+    panelCursor = {
+      ...cursor,
+      clicks: [
+        { t: 3, x: 0.9, y: 0.1, button: 'left' },
+        { t: 8, x: 0.1, y: 0.9, button: 'left' }
+      ],
+      typing: [{ t: 3.5, end: 5 }]
+    }
+    let els = await ready()
+    expect(allByTestId(els, 'guide-step')[1].props['aria-label']).toBe('Step 2, 0:08, needs a title')
+    // Every zoomed guide shot seen at 100%.
+    click(byTestId(els, 'guide-check'))
+    els = await settle(panel())
+    expect(byTestId(els, 'guide-viewer-image')!.props.width).toBe(950)
+    click(byTestId(els, 'guide-viewer-next'))
+    els = await settle(panel())
+    expect(textOf(byTestId(els, 'guide-checked'))).toBe('Checked 2 of 2')
+    // Back to the first before closing (this harness keeps a closed viewer's place for the next one).
+    click(byTestId(els, 'guide-viewer-prev'))
+    els = await settle(panel())
+    click(byTestId(els, 'guide-viewer-close'))
+    // The demo saves the whole screen: step 2 may show the typing, and nothing of it was checked.
+    const demo = els.filter((e) => e.type === 'input' && String(e.props.name).endsWith('-format'))[3]
+    ;(demo.props.onChange as () => void)()
+    els = await ready()
+    expect(allByTestId(els, 'guide-step')[1].props['aria-label']).toBe('Step 2, 0:08, needs a title, may show what you typed in step 1, whole screen')
+    expect(allByTestId(els, 'guide-blur-typed')).toHaveLength(1)
+    expect(textOf(byTestId(els, 'guide-count'))).toContain('1 may show typing')
+    click(byTestId(els, 'guide-save'))
+    els = render(panel())
+    expect(textOf(byTestId(els, 'guide-question'))).toContain('2 screenshots have not been checked at full size. 1 may show what you typed; 2 show the whole screen. Check them now?')
+    click(byTestId(els, 'guide-check-now'))
+    els = await settle(panel())
+    // Check now opens on the demo's own picture of step 2 (it may show typing), 1600 px wide.
+    expect(textOf(els.find((e) => e.props.id === 'guide-viewer-title'))).toBe('Screenshot for step 2 of 2')
+    expect(byTestId(els, 'guide-viewer-image')!.props.width).toBe(1600)
+    expect(calls.saved).toEqual([])
+  })
+})
+
 describe('the screen read (docs/design/smart-tools.md §7.1)', () => {
   it('asks for the scan with the crop Find chapters, Short clips and Polish send, so all four share the one kept scan', async () => {
     // A crop that is not on whole pixels: main keys its kept scans by the crop's filter, so the raw
