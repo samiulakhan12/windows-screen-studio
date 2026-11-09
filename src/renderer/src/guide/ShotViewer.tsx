@@ -27,6 +27,16 @@ export interface ShotAdjust {
   ring: { x: number; y: number } | null
 }
 
+/** A shot the viewer shows. */
+export interface ViewerShot {
+  key: string
+  label: string
+  title?: string
+  image: GuideImage | null
+  adjust?: ShotAdjust
+  note?: string
+}
+
 const PAN = 40
 const cap = (s: string): string => (s ? s[0].toUpperCase() + s.slice(1) : s)
 const HANDLES = ['nw', 'n', 'ne', 'e', 'se', 's', 'sw', 'w'] as const
@@ -42,9 +52,10 @@ function useImageUrl(image: GuideImage | null | undefined): string | null {
 export function ShotViewer(props: {
   /**
    * Each shot in the order Previous and Next walk; `image` is null while it is made again (after an
-   * edit). `note`: a line shown with it (in the send form: that it may show what was typed).
+   * edit). `note`: a line shown with it (in the send form: that it may show what was typed). `title`:
+   * the dialog's title for a shot that is not a step's (the bug report's Actual).
    */
-  shots: readonly { key: string; label: string; image: GuideImage | null; adjust?: ShotAdjust; note?: string }[]
+  shots: readonly ViewerShot[]
   index: number
   mode: 'view' | 'check' | 'send'
   /**
@@ -93,7 +104,7 @@ export function ShotViewer(props: {
 
   if (!shot) return <></>
   const total = props.total ?? shots.length
-  const title = sending ? `These screenshots go to ${props.place ?? 'the AI service'}` : `Screenshot for ${shot.label} of ${total}`
+  const title = sending ? `These screenshots go to ${props.place ?? 'the AI service'}` : (shot.title ?? `Screenshot for ${shot.label} of ${total}`)
   const sendKeys = shots.map((s) => s.key).filter((k) => ticks.has(k))
   const tick = (on: boolean): void => {
     setTicks((t) => {

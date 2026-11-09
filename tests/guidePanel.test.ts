@@ -321,6 +321,33 @@ describe('the click-through demo’s own shots (docs/design/smart-tools.md §5.5
   })
 })
 
+describe('the bug report’s Actual screenshot (docs/design/smart-tools.md §2.1, §12 rule 2)', () => {
+  it('is shown under Actual, counted by the question before a Save and walked first by Check screenshots, as a whole-screen shot', async () => {
+    store = testStore({ ...project(), guide: { kind: 'bug', actualAt: 20 } })
+    contexts.editor = { store, player }
+    let els = await ready('bug')
+    const thumb = byTestId(els, 'guide-actual-shot')!
+    expect(thumb.props.disabled).toBe(false)
+    expect(thumb.props['aria-label']).toBe('View the Actual screenshot full size, whole screen')
+    click(byTestId(els, 'guide-save'))
+    els = render(panel('bug'))
+    expect(textOf(byTestId(els, 'guide-question'))).toContain('4 screenshots have not been checked at full size. 1 shows the whole screen. Check them now?')
+    click(byTestId(els, 'guide-check-now'))
+    els = await settle(panel('bug'))
+    expect(textOf(els.find((e) => e.props.id === 'guide-viewer-title'))).toBe('The Actual screenshot')
+    expect(byTestId(els, 'guide-viewer-image')!.props.width).toBe(1600)
+    expect(textOf(byTestId(els, 'guide-checked'))).toBe('Checked 1 of 4')
+    // Blur an area… on it: a blur box covering the Actual's frame.
+    click(byTestId(els, 'guide-viewer-blur'))
+    els = render(panel('bug'))
+    expect(byTestId(els, 'guide-viewer')).toBeUndefined()
+    const blur = store.state.shapes!.at(-1)!
+    expect(blur.kind).toBe('blur')
+    expect(blur.start).toBeCloseTo(20 - 1 / 60, 6)
+    expect(calls.saved).toEqual([])
+  })
+})
+
 describe('the screen read (docs/design/smart-tools.md §7.1)', () => {
   it('asks for the scan with the crop Find chapters, Short clips and Polish send, so all four share the one kept scan', async () => {
     // A crop that is not on whole pixels: main keys its kept scans by the crop's filter, so the raw

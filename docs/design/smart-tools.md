@@ -276,6 +276,10 @@ Review mode's does.
   own shots (the whole screen unless *Zoom to the click in the demo*), and the *May show what you
   typed* and *Whole screen* marks, the line under the list and the question below count them: those
   are the pictures the demo saves. Seeing a step's zoomed guide shot does not check its demo shot.
+- A bug report's Actual screenshot shows under the Actual buttons as a button "View the Actual
+  screenshot full size, whole screen" that opens it in the viewer (titled "The Actual screenshot",
+  with *Blur an area…* at its time and no *Adjust*); *Check screenshots* walks it with the
+  whole-screen shots, and the line "Checked 12 of 31" and the question below count it.
 - The first Save or Copy of a session with unchecked shots asks: "18 screenshots have not been
   checked at full size. 3 may show what you typed; 5 show the whole screen. Check them now?"
   (**Check now**, **Save anyway**; Check now focused).

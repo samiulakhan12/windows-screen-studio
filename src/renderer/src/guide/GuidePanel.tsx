@@ -38,7 +38,7 @@ import { useGroup } from '../editor/groupContext'
 import { keepArrows } from '../editor/panels/JoinOptions'
 import { projectSaid } from '../publish/checkNote'
 import { BIG_FILE, blurArea, blurTypedText, copyGuide, saveGuide, tidyNotes, writeStepTitles } from './guideRun'
-import { ShotViewer } from './ShotViewer'
+import { ShotViewer, type ViewerShot } from './ShotViewer'
 import { useGuideShots } from './useGuideShots'
 import { namesWithPictures, pictureImage, pictureSteps, picturesToSend } from './visionTitles'
 import '../review/review.css'
@@ -246,7 +246,8 @@ export function GuidePanel(props: { project: Project; cursor: CursorTrack; start
   const included = rows.filter((r) => r.included)
   const untitled = new Set(included.filter((r) => !r.title.own && needsTitle(r.title.from)).map((r) => r.step.key))
   const typedKeys = new Set(included.filter((r) => r.typedIn).map((r) => r.step.key))
-  const wholeKeys = new Set(included.filter((r) => r.shot.whole).map((r) => r.step.key))
+  // The bug report's Actual is a whole-screen shot too.
+  const wholeKeys = new Set([...included.filter((r) => r.shot.whole).map((r) => r.step.key), ...(actualPlan ? [ACTUAL_KEY] : [])])
   const said = useMemo(() => projectSaid(project), [project])
 
   // Screenshots: the guide's view, the demo's when the format is the demo, and the bug report's Actual.
@@ -256,6 +257,9 @@ export function GuidePanel(props: { project: Project; cursor: CursorTrack; start
   const demoShots = useGuideShots(project, track, demoPlans, format === 'demo')
   /** The shots the chosen format saves: what the rows and the viewer show. */
   const viewImages = format === 'demo' ? demoShots.images : shots.images
+  /** Every shot a Save or Copy shares, in the document's order: each included step's, then the bug report's Actual. */
+  const shared = [...included.map((r) => r.step.key), ...(actualPlan ? [ACTUAL_KEY] : [])]
+  const imageOf = (key: string): GuideImage | undefined => (key === ACTUAL_KEY ? shots.images : viewImages).get(key)
 
   // The live region: each message a new node, so the same words twice are read twice.
   const [saying, setSaying] = useState({ text: '', n: 0 })
@@ -281,7 +285,7 @@ export function GuidePanel(props: { project: Project; cursor: CursorTrack; start
   const [viewer, setViewer] = useState<{ keys: string[]; index: number; mode: 'view' | 'check' } | null>(null)
   const [checked, setChecked] = useState<ReadonlySet<string>>(() => new Set())
   const sigs = useRef(new Map<string, string>())
-  sigs.current = new Map(rows.map((r) => [r.step.key, r.shot.sig]))
+  sigs.current = new Map([...rows.map((r) => [r.step.key, r.shot.sig] as const), ...(actualPlan ? [[ACTUAL_KEY, actualPlan.sig] as const] : [])])
   const isChecked = (key: string): boolean => checked.has(seenId(key, sigs.current))
   const markChecked = useCallback((key: string) => {
     const id = seenId(key, sigs.current)
@@ -433,8 +437,8 @@ export function GuidePanel(props: { project: Project; cursor: CursorTrack; start
   }
   /** Asks what must be asked before a Save or Copy (§2.1.2, §12 rule 3), then runs it. */
   const guarded = (run: () => void): void => {
-    const unchecked = included.filter((r) => !isChecked(r.step.key))
-    const ask = askedCheck ? null : checkQuestion({ unchecked: unchecked.length, typed: unchecked.filter((r) => typedKeys.has(r.step.key)).length, whole: unchecked.filter((r) => wholeKeys.has(r.step.key)).length })
+    const unchecked = shared.filter((k) => !isChecked(k))
+    const ask = askedCheck ? null : checkQuestion({ unchecked: unchecked.length, typed: unchecked.filter((k) => typedKeys.has(k)).length, whole: unchecked.filter((k) => wholeKeys.has(k)).length })
     const linkStep = (): void => {
       if (hasPrivateText(guideTexts(store.state, included), said)) setQuestion({ kind: 'link', text: LINK_QUESTION, go: run })
       else run()
@@ -507,7 +511,7 @@ export function GuidePanel(props: { project: Project; cursor: CursorTrack; start
   }
   const checkShots = (): void => {
     const order = checkOrder(
-      included.map((r) => r.step.key).filter((k) => viewImages.has(k)),
+      shared.filter((k) => imageOf(k)),
       typedKeys,
       wholeKeys
     )
@@ -516,13 +520,15 @@ export function GuidePanel(props: { project: Project; cursor: CursorTrack; start
     setViewer({ keys: order, index: first, mode: 'check' })
   }
   const viewShot = (key: string): void => {
-    const keys = included.map((r) => r.step.key).filter((k) => viewImages.has(k))
+    const keys = shared.filter((k) => imageOf(k))
     const index = keys.indexOf(key)
     if (index >= 0) setViewer({ keys, index, mode: 'view' })
   }
-  const blurStep = (r: Row): void => {
-    blurArea(services, r.step, {
-      after: !!r.edit?.after,
+  const blurStep = (r: Row): void => blurAt(r.step, !!r.edit?.after)
+  /** *Blur an area…* at a step's shot (or the Actual's, as a step at its time). */
+  const blurAt = (step: GuideStep, after: boolean): void => {
+    blurArea(services, step, {
+      after,
       scale,
       onSelect: (sel) => {
         if (sel?.kind === 'shape') group.select([itemKey('shape', sel.id)], itemKey('shape', sel.id))
@@ -640,7 +646,9 @@ export function GuidePanel(props: { project: Project; cursor: CursorTrack; start
           {steps.length >= STEP_RULES.maxSteps && <p className="hint">{TOO_MANY_NOTE}</p>}
         </section>
 
-        {guide.kind === 'bug' && <BugFields project={project} scale={scale} onField={field} onActual={() => field({ actualAt: player.time })} />}
+        {guide.kind === 'bug' && (
+          <BugFields project={project} scale={scale} image={shots.images.get(ACTUAL_KEY) ?? null} onField={field} onActual={() => field({ actualAt: player.time })} onView={() => viewShot(ACTUAL_KEY)} />
+        )}
 
         <ol className="guide-steps" aria-label="Steps" data-testid="guide-steps">
           {rows.slice(0, shown).map((r) => (
@@ -881,7 +889,8 @@ export function GuidePanel(props: { project: Project; cursor: CursorTrack; start
       </div>
       {viewer && (
         <ShotViewer
-          shots={viewer.keys.flatMap((k) => {
+          shots={viewer.keys.flatMap((k): ViewerShot[] => {
+            if (k === ACTUAL_KEY) return actualPlan ? [{ key: k, label: 'Actual', title: 'The Actual screenshot', image: shots.images.get(k) ?? null }] : []
             const r = rows.find((x) => x.step.key === k)
             if (!r) return []
             // A shot being made again after an edit keeps its place in the list (the viewer says so).
@@ -907,14 +916,15 @@ export function GuidePanel(props: { project: Project; cursor: CursorTrack; start
           })}
           index={viewer.index}
           mode={viewer.mode}
-          total={included.length}
-          checked={included.filter((r) => isChecked(r.step.key)).length}
+          total={shared.length}
+          checked={shared.filter(isChecked).length}
           onShown={markChecked}
           onClose={() => setViewer(null)}
           onBlur={(key) => {
             setViewer(null)
             const r = rows.find((x) => x.step.key === key)
             if (r) blurStep(r)
+            else if (key === ACTUAL_KEY && actualPlan) blurAt({ key, t: actualPlan.t, kind: 'added' }, false)
           }}
           onAdjust={(key, e) => {
             edit(key, e ? { rect: e.rect, ring: e.ring } : { rect: undefined, ring: undefined })
@@ -1114,8 +1124,20 @@ function StepRow(props: {
 }
 
 /** The bug report's fields (§2.1): Expected, Actual, the Actual screenshot and the details. */
-function BugFields(props: { project: Project; scale: number; onField(patch: Parameters<typeof withGuideFields>[1], gesture?: string): void; onActual(): void }): JSX.Element {
+function BugFields(props: {
+  project: Project
+  scale: number
+  image: GuideImage | null
+  onField(patch: Parameters<typeof withGuideFields>[1], gesture?: string): void
+  onActual(): void
+  onView(): void
+}): JSX.Element {
   const g = props.project.guide ?? {}
+  const url = useMemo(
+    () => (props.image && typeof URL !== 'undefined' && URL.createObjectURL ? URL.createObjectURL(new Blob([new Uint8Array(props.image.bytes)], { type: props.image.mime })) : null),
+    [props.image]
+  )
+  useEffect(() => () => void (url && URL.revokeObjectURL(url)), [url])
   const details: { text: string; off?: true }[] = g.details ?? defaultDetails(props.project, props.scale).map((text) => ({ text }))
   const setDetail = (i: number, next: { text: string; off?: true }, gesture?: string): void => props.onField({ details: details.map((d, k) => (k === i ? next : d)) }, gesture)
   return (
@@ -1138,6 +1160,11 @@ function BugFields(props: { project: Project; scale: number; onField(patch: Para
           </button>
         )}
       </div>
+      {g.actualAt !== undefined && (
+        <button type="button" className="guide-shot" aria-label="View the Actual screenshot full size, whole screen" aria-busy={!url} disabled={!url} onClick={props.onView} data-testid="guide-actual-shot">
+          {url ? <img src={url} alt="Actual screenshot" /> : <span className="guide-shot-wait">Making the screenshot…</span>}
+        </button>
+      )}
       <div className="guide-details" role="group" aria-label="Details">
         <span className="field-label" aria-hidden="true">
           Details
