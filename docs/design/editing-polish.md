@@ -1302,7 +1302,8 @@ the code they call lives in P3's new `calloutLayer.ts` (§17.3).
   starts again at 1 at each chapter's start (output time, `outputChapters`) unless
   `effects.badgesByChapter === false` or the project has fewer than two chapters. A badge with
   `startAt` shows that number and the next counts on from it. Badges with their own text do not
-  count.
+  count, nor do badges a cut removes whole (no kept moment: the video never shows them, so they
+  get no number and the steps seen go 1, 2, 3 without a gap).
 - **Digits**: `'1'` Western; `'A'` A–Z, then AA, AB…; a language code: `withDigits(String(k),
   'native', code)` (`src/shared/captions/words.ts:259`), so `'bn'` gives ১ ২ ৩. *Count with* always
   offers Bangla digits, and the digits of the caption and transcript languages when they have their

@@ -158,7 +158,8 @@ const labelMemo = new WeakMap<readonly Annotation[], LabelMemo>()
  * order (ties by id) count 1, 2, 3…; the count starts again at each chapter's start (in the
  * video's time) unless `effects.badgesByChapter` is false or the project has fewer than two
  * chapters; a badge with `startAt` takes that number and the next count on from it. Badges with
- * their own text do not count. Memoised on the annotations, chapters, clips, freezes and effects.
+ * their own text do not count, nor do badges a cut removes whole (never seen, they get no label).
+ * Memoised on the annotations, chapters, clips, freezes and effects.
  */
 export function badgeLabels(project: Project): ReadonlyMap<string, string> {
   const annotations = project.annotations ?? []
@@ -174,8 +175,11 @@ export function badgeLabels(project: Project): ReadonlyMap<string, string> {
     let chapter = -1
     let k = 0
     for (const a of autos) {
+      const from = viewAt(project.clips, a.start)
+      // No kept moment: the video never shows it, so it uses up no number.
+      if (!(viewAt(project.clips, a.end) > from)) continue
       if (byChapter) {
-        const at = editToVideo(plan, viewAt(project.clips, a.start))
+        const at = editToVideo(plan, from)
         let i = -1
         while (i + 1 < starts.length && starts[i + 1] <= at + 1e-6) i++
         if (i !== chapter) {

@@ -244,6 +244,21 @@ describe('badges (test 40)', () => {
     expect(['a', 'b', 'c', 'd'].map((id) => badgeLabels(one).get(id))).toEqual(['1', '2', '3', '4'])
   })
 
+  it('a badge a cut removes whole takes no number; one partly kept counts', () => {
+    const list = [badge(10, { id: 'a' }), badge(13, { id: 'edge' }), badge(20, { id: 'gone' }), badge(40, { id: 'c' })]
+    // 15–30 s cut (as Polish removing a silence): 'gone' (20–23 s) is never seen, 'edge' (13–16 s) shows until the cut.
+    const clips: Clip[] = [
+      { id: 'c1', start: 0, end: 15, speed: 1 },
+      { id: 'c2', start: 30, end: 120, speed: 1 }
+    ]
+    const labels = badgeLabels(projectWith(list, { clips }))
+    expect([labels.get('a'), labels.get('edge'), labels.get('c')]).toEqual(['1', '2', '3'])
+    expect(labels.has('gone')).toBe(false)
+    // Past the last clip too.
+    const short = badgeLabels(projectWith(list, { clips: [{ id: 'c1', start: 0, end: 15, speed: 1 }] }))
+    expect([short.get('a'), short.get('edge'), short.has('gone'), short.has('c')]).toEqual(['1', '2', false, false])
+  })
+
   it('startAt 5 gives 5, 6, 7; own-text badges do not count', () => {
     const list = [badge(1, { id: 'a', startAt: 5 }), badge(2, { id: 'own', number: undefined, text: 'Go' }), badge(3, { id: 'b' }), badge(4, { id: 'c' })]
     const labels = badgeLabels(projectWith(list))
