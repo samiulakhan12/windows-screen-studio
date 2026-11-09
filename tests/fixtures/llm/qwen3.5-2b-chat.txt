@@ -1,0 +1,9 @@
+<|im_start|>system
+SYSTEM TEXT<|im_end|>
+<|im_start|>user
+USER TEXT<|im_end|>
+<|im_start|>assistant
+<think>
+
+</think>
+
