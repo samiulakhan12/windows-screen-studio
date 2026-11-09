@@ -294,6 +294,28 @@ describe('smooth cuts in the shorter version (test 124)', () => {
     expect(removeItems(copy, rows).joins).toBeUndefined()
   })
 
+  it("an original with Polish's smooth cuts still pending: the short keeps that row, and Auto colour's, the caption look's and the face framing's (all of the whole video)", () => {
+    const p = simple({
+      joins: { all: { kind: 'smooth' }, auto: { by: 'polish', was: null } },
+      grade: { camera: { exposure: 0.2 }, auto: { camera: null } },
+      captionAuto: { style: { was: null, by: 'polish', name: 'Bold' } },
+      webcam: { ...simple().webcam, zoom: 1.6, cropX: 0.4, cropY: 0.45 },
+      director: { intro: 'off', corners: 'auto', hideAfter: 0, frameFace: true, framed: { zoom: 1.6, cropX: 0.4, cropY: 0.45 } }
+    })
+    const whole = ['join:all', 'colour:camera', 'style:look', 'camera:framing']
+    expect(reviewItems(p).map((r) => r.key)).toEqual(expect.arrayContaining(whole))
+    const copy = shortCopy(p, PLAN, { shape: 'same', captions: true, measure: null })
+    const rows = reviewItems(copy).filter((r) => !r.cut)
+    expect(rows.map((r) => r.key)).toEqual(expect.arrayContaining(whole))
+    // The smooth cuts at the short's cuts are Polish's, listed once, and Remove puts back what was there.
+    expect(copy.joins).toEqual({ all: { kind: 'smooth' }, auto: { by: 'polish', was: null } })
+    const join = rows.filter((r) => r.key === JOIN_ALL_KEY)
+    expect(join).toHaveLength(1)
+    expect(join[0].detail).toBe('Polish')
+    expect(removeItems(copy, join).joins).toBeUndefined()
+    expect(copy.grade?.auto).toEqual({ camera: null })
+  })
+
   it('an original with its own joins.all keeps it and has no row', () => {
     const p = simple({ joins: { all: { kind: 'crossfade', duration: 0.3 } } })
     const copy = shortCopy(p, PLAN, { shape: 'same', captions: true, measure: null })

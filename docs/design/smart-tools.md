@@ -1591,7 +1591,9 @@ For each ticked moment, one after another (Duplicate makes one copy at a time,
    outcome recorded, so Remove in the copy can never bring back footage from outside it. Every other
    pending Review item (automatic zooms, camera moves, Captions Studio's automatic items, cut styles)
    whose time range lies wholly outside the moment is settled with Review's own `keepItems`, which only
-   drops its record; what lies inside stays listed. The copy's Review count is then about the copy.
+   drops its record; what lies inside stays listed, as do the rows of changes made to the whole video
+   (the caption look, Auto colour, the smooth cuts, the face framing), which are listed at one time
+   but still change every frame of the copy. The copy's Review count is then about the copy.
 4. **Captions** (the panel's checkbox, on when there are captions): `captions.show = true`.
    `projectCopy` already gives a copy in another shape the look Auto style picks for its frame
    (`withCopyLook`, `duplicate.ts:109`) unless the user picked one by hand.

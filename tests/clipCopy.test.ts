@@ -186,6 +186,23 @@ describe('clip copies keep only their own pending changes (test 122)', () => {
     ])
   })
 
+  it('the changes made to the whole video stay listed: the caption look (listed at the first caption, before the moment), Auto colour and smooth cuts', () => {
+    const p = original({
+      joins: { all: { kind: 'smooth' }, auto: { by: 'polish', was: null } },
+      grade: { camera: { exposure: 0.2 }, auto: { camera: null } },
+      captionAuto: { style: { was: null, by: 'polish', name: 'Bold' } }
+    })
+    const whole = ['style:look', 'colour:camera', 'join:all']
+    expect(reviewItems(p).map((r) => r.key)).toEqual(expect.arrayContaining(whole))
+    expect(reviewItems(p).find((r) => r.key === 'style:look')!.start).toBeLessThan(MOMENT.start)
+    const copy = clipCopy(p, MOMENT, { shape: 'same', captions: true, measure: null })
+    expect(reviewItems(copy).map((r) => r.key)).toEqual(expect.arrayContaining(whole))
+    // Each still has its record, so Remove in the copy can put back what was there.
+    expect(copy.captionAuto?.style).toEqual(p.captionAuto!.style)
+    expect(copy.grade?.auto).toEqual({ camera: null })
+    expect(copy.joins?.auto).toEqual({ by: 'polish', was: null })
+  })
+
   it('Captions: shown when ticked, hidden when not; a recording without captions is left alone', () => {
     const p = { ...original(), captions: { ...original().captions!, show: false } }
     expect(clipCopy(p, MOMENT, { shape: 'same', captions: true, measure: null }).captions!.show).toBe(true)

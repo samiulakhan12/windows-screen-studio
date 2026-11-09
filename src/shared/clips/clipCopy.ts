@@ -10,8 +10,10 @@ import { outputTimeAt } from '../editor/clips'
 import { newClipId } from '../engine/timeline'
 import { clipsBetween } from '../render/exportBundle'
 import { withAutoCuts } from '../review/autoCuts'
-import { expandGroups } from '../review/captionReview'
-import { keepItems, reviewItems, type ReviewItem } from '../review/review'
+import { expandGroups, STYLE_KEY } from '../review/captionReview'
+import { COLOUR_KEY } from '../review/colourReview'
+import { JOIN_ALL_KEY } from '../review/joinReview'
+import { FRAMING_KEY, keepItems, reviewItems, type ReviewItem } from '../review/review'
 import type { Clip, Freeze, Project } from '../types'
 import type { Moment } from './moments'
 
@@ -78,6 +80,12 @@ export function piecesClips(project: Pick<Project, 'clips' | 'freezes'>, pieces:
   return withFreezesIn({ clips }, project.freezes)
 }
 
+/**
+ * The rows of changes made to the whole video (the caption look, Auto colour, the smooth cuts and
+ * the director's face framing): listed at one time, they still change every frame of a copy.
+ */
+const WHOLE_VIDEO_KEYS: ReadonlySet<string> = new Set([STYLE_KEY, COLOUR_KEY, JOIN_ALL_KEY, FRAMING_KEY])
+
 /** Whether [a, b] lies inside one of `ranges` (1 µs slack). */
 const insideOne = (a: number, b: number, ranges: readonly { start: number; end: number }[]): boolean => ranges.some((r) => a >= r.start - EPS && b <= r.end + EPS)
 /** Whether [a, b] (a point when a = b) shares no time with any of `ranges`. */
@@ -90,14 +98,15 @@ const outsideAll = (a: number, b: number, ranges: readonly { start: number; end:
  * Remove in the copy never brings back footage from outside them); every other pending Review item
  * (automatic zooms, camera moves, Captions Studio's automatic items, cut styles) lying wholly
  * outside them settled by Review's own Keep, which only drops its record. What lies inside stays
- * listed. `copy` itself when nothing changes.
+ * listed, as do the changes made to the whole video, which the copy still shows. `copy` itself when
+ * nothing changes.
  */
 export function withinRange(copy: Project, ranges: readonly { start: number; end: number }[]): Project {
   let next = copy
   const records = copy.autoCuts ?? []
   const inside = records.filter((c) => insideOne(c.start, c.end, ranges))
   if (inside.length !== records.length) next = withAutoCuts(next, inside)
-  const outside: ReviewItem[] = expandGroups(reviewItems(next)).filter((i) => !i.cut && outsideAll(i.start, i.end, ranges))
+  const outside: ReviewItem[] = expandGroups(reviewItems(next)).filter((i) => !i.cut && !WHOLE_VIDEO_KEYS.has(i.key) && outsideAll(i.start, i.end, ranges))
   return outside.length ? keepItems(next, outside) : next
 }
 
