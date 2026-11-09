@@ -438,12 +438,13 @@ function ChaptersSection({
               >
                 {formatTime(videoTimeAt(project.clips, planOf(project), c.t), false)}
               </button>
-              {/* A found chapter not reviewed yet (smart-tools.md §2.3): said in words, not only colour; a weak name asks to be renamed. */}
+              {/* A found chapter not reviewed yet (smart-tools.md §2.3): said in words, not only colour, also in its name field's
+                  name (§14); a weak name asks to be renamed. */}
               {c.auto && <span className="chip chapter-found">Found</span>}
               <input
                 id={chapterNameId(c.id)}
                 className="tc-input"
-                aria-label={`Name of the chapter at ${formatTime(c.t, false)}`}
+                aria-label={`Name of the chapter at ${formatTime(c.t, false)}${c.auto ? ', found, not reviewed' : ''}`}
                 aria-describedby={c.auto && weakChapterName(c) ? `${chapterNameId(c.id)}-rename` : undefined}
                 value={c.title}
                 placeholder="Chapter name"
