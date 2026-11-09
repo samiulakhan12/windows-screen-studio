@@ -1,10 +1,66 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useId, useRef, useState } from 'react'
 import { AI_PROVIDER_KINDS, type AiProviderInfo } from '../../../shared/api/ai'
-import { ProviderForm } from './ProviderForm'
+import { ProviderForm, type CheckResult } from './ProviderForm'
 import { canDo, ipcMessage } from './providerText'
 import { SPEECH_COPY } from '../../../shared/speech/speechCopy'
 import { BUNDLED_MODEL_LIST, retiringNotes } from '../../../shared/ai/modelList'
+import { presetApplies, SERVICE_PRESETS } from '../../../shared/ai/presets'
+import { CONFIRM_PREFS, DEFAULT_CONFIRM, type ConfirmPref } from '../../../shared/smart/smartPrefs'
+import { refreshCostData } from '../ai/useCost'
+import { LocalAiRow } from './LocalAiSection'
+import { OPEN_SETTINGS_EVENT } from './brandKitEvents'
 import { today, useModelList } from './useModelList'
+
+/** Settings › AI providers › Ask before a run that costs more than (pref aiConfirm, §2.6). */
+export const CONFIRM_LABELS: Readonly<Record<ConfirmPref, string>> = { always: 'Always ask', '0.1': 'US$0.10', '1': 'US$1', '5': 'US$5', never: 'Never' }
+
+/** The amount a run may cost before Flown asks, kept in pref aiConfirm (US$1 by default). */
+function ConfirmSetting(): JSX.Element {
+  const id = useId()
+  const [value, setValue] = useState<ConfirmPref>(DEFAULT_CONFIRM)
+  useEffect(() => {
+    let live = true
+    Promise.resolve()
+      .then(() => window.api.getPref('aiConfirm'))
+      .then((v) => live && setValue(CONFIRM_PREFS.includes(v as ConfirmPref) ? (v as ConfirmPref) : DEFAULT_CONFIRM))
+      .catch(() => undefined)
+    return () => {
+      live = false
+    }
+  }, [])
+  return (
+    <label className="field ai-confirm-setting" htmlFor={`${id}-confirm`}>
+      <span>Ask before a run that costs more than</span>
+      <select
+        id={`${id}-confirm`}
+        className="settings-input"
+        data-testid="ai-confirm"
+        value={value}
+        onChange={(e) => {
+          const next = e.target.value as ConfirmPref
+          setValue(next)
+          void Promise.resolve()
+            .then(() => window.api.setPref('aiConfirm', next))
+            .then(() => refreshCostData())
+            .catch(() => undefined)
+        }}
+      >
+        {CONFIRM_PREFS.map((p) => (
+          <option key={p} value={p}>
+            {CONFIRM_LABELS[p]}
+          </option>
+        ))}
+      </select>
+    </label>
+  )
+}
+
+/** A provider's kind as its row names it: a service by its preset (Other address by its host). */
+const kindLabel = (p: AiProviderInfo): string => {
+  const s = p.service
+  if (!s) return AI_PROVIDER_KINDS[p.kind].label
+  return s.preset !== 'other' && (presetApplies(s.preset, s.host) || s.preset === 'azure') ? SERVICE_PRESETS[s.preset].label : 'Service'
+}
 
 type TestState = { busy: true } | { busy: false; ok: boolean; message: string }
 type Mode = { kind: 'list' } | { kind: 'add' } | { kind: 'edit'; provider: AiProviderInfo }
@@ -106,21 +162,26 @@ export function AiProvidersSection({ onChanged, autoFocus = true }: { onChanged?
       <p className="settings-privacy">
         <span aria-hidden="true">🔒</span> Keys are stored encrypted on this PC and are only sent to the provider you pick.
       </p>
+      {/* AI on this PC first (smart-tools.md §2.5): part P4's row, which opens its section. */}
+      <LocalAiRow onOpen={() => window.dispatchEvent(new CustomEvent(OPEN_SETTINGS_EVENT, { detail: { section: 'localAi' } }))} />
 
       {mode.kind !== 'list' ? (
         <ProviderForm
           editing={mode.kind === 'edit' ? mode.provider : null}
           existing={providers ?? []}
           onCancel={() => closeForm(mode.kind === 'edit' ? `edit:${mode.provider.id}` : '')}
-          onSaved={(saved) => {
+          onSaved={(saved, check?: CheckResult) => {
             setProviders((list) => {
               const rest = (list ?? []).filter((p) => p.id !== saved.id)
               return mode.kind === 'edit' ? (list ?? []).map((p) => (p.id === saved.id ? saved : p)) : [...rest, saved]
             })
             setTests((t) => {
               const { [saved.id]: _gone, ...rest } = t
-              return rest
+              // Save and check: what the check said shows under the service.
+              return check ? { ...rest, [saved.id]: { busy: false, ...check } } : rest
             })
+            // A check saved how the service answers in JSON: the row shows it after the list is read again.
+            if (check) load()
             closeForm(`test:${saved.id}`)
             onChanged?.()
           }}
@@ -142,10 +203,19 @@ export function AiProvidersSection({ onChanged, autoFocus = true }: { onChanged?
                     <div className="ai-provider-main">
                       <div className="ai-provider-title">
                         <strong className="ai-provider-name">{p.label}</strong>
-                        <span className={`ai-kind ai-kind-${p.kind}`}>{AI_PROVIDER_KINDS[p.kind].label}</span>
+                        <span className={`ai-kind ai-kind-${p.kind}`}>{kindLabel(p)}</span>
                       </div>
                       <div className="ai-provider-meta">
-                        <span title="API key (only the end is shown)">Key {p.maskedKey === 'unreadable' ? <em className="error">cannot be read: edit and enter it again</em> : <code>{p.maskedKey}</code>}</span>
+                        {p.service && (
+                          <span title="Where its key and the text you send go">
+                            Address <code>{p.service.host}</code>
+                          </span>
+                        )}
+                        {p.maskedKey === 'none' ? (
+                          <span>No key</span>
+                        ) : (
+                          <span title="API key (only the end is shown)">Key {p.maskedKey === 'unreadable' ? <em className="error">cannot be read: edit and enter it again</em> : <code>{p.maskedKey}</code>}</span>
+                        )}
                         <span>
                           Text model <code>{p.model}</code>
                         </span>
@@ -155,7 +225,7 @@ export function AiProvidersSection({ onChanged, autoFocus = true }: { onChanged?
                           </span>
                         )}
                       </div>
-                      <div className="ai-provider-can">{canDo(p.kind)}.</div>
+                      <div className="ai-provider-can">{p.service ? 'Clean-up, translation, chapters, titles and summaries of a transcript' : canDo(p.kind)}.</div>
                       {retiringNotes(modelList, p, day).map((note) => (
                         <p key={note} className="ai-retiring" data-testid="ai-retiring">
                           {note}
@@ -227,6 +297,7 @@ export function AiProvidersSection({ onChanged, autoFocus = true }: { onChanged?
               + Add provider
             </button>
           </div>
+          <ConfirmSetting />
         </>
       )}
     </section>
