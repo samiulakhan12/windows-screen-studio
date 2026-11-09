@@ -363,7 +363,7 @@ export function CleanupSection({ project }: { project: Project }): JSX.Element {
               Cancel
             </button>
           )}
-          <LocalProgress requestId={running} onStop={cancel} />
+          <LocalProgress requestId={running} onStop={cancel} returnFocus="cleanup-run" />
         </div>
         {/* What Fix spelling with AI sends, where, and what it costs (smart-tools.md §11.5), part P5's. */}
         {ai && (

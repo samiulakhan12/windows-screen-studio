@@ -565,7 +565,7 @@ export function ShortClipsPanel(props: { project: Project; cursor: CursorTrack; 
                   </button>
                 )}
                 {/* The progress of AI on this PC naming the clips (it shows nothing for a service). */}
-                <LocalProgress requestId={naming} onStop={stop} />
+                <LocalProgress requestId={naming} onStop={stop} returnFocus={makeId} />
               </div>
               {space && (
                 <p id={`${ids}-space`} className={space.blocked ? 'clips-space blocked' : 'clips-space'} data-testid="clips-space">

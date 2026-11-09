@@ -233,6 +233,25 @@ describe('Add a language gives the keyboard back to its button (§2.15)', () => 
     expect(ids.stopped).toEqual([ids.sent[0]])
   })
 
+  it('… and Stop of AI on this PC beside Cancel, pressed with the keyboard, focuses Translate again too', async () => {
+    keys.last = true
+    ai.wait = new Promise(() => undefined)
+    let els = await openForm()
+    ;(byTestId(els, 'track-translate')!.props.onClick as () => void)()
+    els = await settle(languages())
+    // Stop (LocalProgress) sits in the running translation's row, beside Cancel; its onStop is Cancel's.
+    const cancel = button(els, 'Cancel')!
+    const row = els.find((e) => e.props.className === 'row start' && (e.props.children as unknown[]).some?.((c) => (c as El | null)?.props?.onClick === cancel.props.onClick))!
+    const stop = { stop: true }
+    const rowNode = (row.ref as { current?: { contains: (t: unknown) => boolean } } | undefined)?.current
+    if (rowNode) rowNode.contains = (t) => t === stop
+    fire('keydown', { key: 'Enter', target: stop })
+    ;(cancel.props.onClick as () => void)()
+    els = await settle(languages())
+    expect(textOf(els.find((e) => e.props.role === 'alert'))).toBe('Could not translate: it was cancelled.')
+    expect(focused.at(-1)?.props['data-testid']).toBe('track-translate')
+  })
+
   it('a translation still under way when the section goes stops the provider’s request', async () => {
     ai.wait = new Promise(() => undefined)
     const els = await openForm()

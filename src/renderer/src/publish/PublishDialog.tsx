@@ -504,7 +504,7 @@ function Card({ kind, item, stale, canWrite, youtube, saved, spoken, said, onWri
             <button className="btn small" onClick={onStop}>
               Stop
             </button>
-            <LocalProgress requestId={requestId} onStop={onStop} />
+            <LocalProgress requestId={requestId} onStop={onStop} returnFocus={`publish-${kind}-write`} />
           </>
         ) : (
           <button id={`publish-${kind}-write`} className="btn small" aria-describedby={costId} disabled={!canWrite} onClick={onWrite}>

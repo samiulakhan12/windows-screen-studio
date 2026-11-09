@@ -177,7 +177,7 @@ export function FindChapters({ project, cursor, onNotice }: { project: Project; 
             </button>
           </>
         )}
-        {namesChoice?.kind === 'local' && <LocalProgress requestId={running} onStop={stop} />}
+        {namesChoice?.kind === 'local' && <LocalProgress requestId={running} onStop={stop} returnFocus={`${ids}-run`} />}
       </div>
       <p className="hint" id={hintId}>
         {FIND_HINT}

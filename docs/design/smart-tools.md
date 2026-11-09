@@ -453,8 +453,9 @@ chapters (§9.7). When On this PC is chosen, the catalogue's note for that task 
 choice ("Small: titles often repeat the first sentence").
 
 **While it runs**, beside every busy button of those tools (`LocalProgress`, §20.0): "On this PC:
-loading the model…", "reading the captions… 45%", "writing… about 2 minutes left", and **Stop**. A run
-longer than 10 seconds is a long job: the taskbar button shows its progress and the PC stays awake
+loading the model…", "reading the captions… 45%", "writing… about 2 minutes left", and **Stop**. When
+Stop goes (pressed, or the run ended) with the keyboard on it, the focus goes back to the tool's
+button, never to the page. A run longer than 10 seconds is a long job: the taskbar button shows its progress and the PC stays awake
 (`src/main/longJobs.ts`). Results say "Written on this PC: check it before you use it."
 
 ### 2.6 Any AI service
@@ -2887,7 +2888,7 @@ May touch additively: none.
 | `src/main/localAi/localAiIpc.ts` (new) | `export function registerLocalAiIpc(): void` |
 | `src/renderer/src/settings/LocalAiSection.tsx` (new), `localAi.css` | `export function LocalAiSection(props: { reveal: boolean }): JSX.Element`; `export function LocalAiRow(props: { onOpen(): void }): JSX.Element` |
 | `src/renderer/src/ai/localAiState.ts` (new) | `export function useLocalAiReady(): boolean`; `export function useLocalAiProgress(requestId: string \| null): LocalAiProgress \| null`; `export function useLocalNote(task: AiTextTask, kind?: NamesRequest['kind']): string \| null` |
-| `src/renderer/src/ai/LocalProgress.tsx` (new) | `export function LocalProgress(props: { requestId: string \| null; onStop(): void }): JSX.Element \| null` |
+| `src/renderer/src/ai/LocalProgress.tsx` (new) | `export function LocalProgress(props: { requestId: string \| null; onStop(): void; returnFocus?: string }): JSX.Element \| null` (`returnFocus`: the id of the tool's button) |
 | Tests | `tests/localCatalog.test.ts`, `tests/localProtocol.test.ts`, `tests/llmEngine.test.ts` (a fake helper), `tests/llmHelper.test.ts` (the real helper, with `SSW_LLM_TEST_MODEL`), `tests/chatFormat.test.ts`, `tests/localGrammar.test.ts`, `tests/localBudget.test.ts`, `tests/localModels.test.ts`, `tests/localTextClient.test.ts`, `tests/localAiSection.test.ts`, `tests/llmPackaging.test.ts`, `native/llm/tests/` |
 
 May touch additively: `src/main/speech/download.ts`, only to export what `models.ts` reuses

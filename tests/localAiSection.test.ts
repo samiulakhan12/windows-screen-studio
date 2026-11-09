@@ -56,6 +56,9 @@ vi.stubGlobal('window', {
   removeEventListener: () => undefined
 })
 vi.stubGlobal('document', { body: {}, activeElement: {}, querySelector: () => null })
+// Whether the last input was a key (focus.ts keeps it from the window's events, which these tests have not).
+const keys = vi.hoisted(() => ({ last: false }))
+vi.mock('../src/renderer/src/editor/focus', async (importOriginal) => ({ ...(await importOriginal<Record<string, unknown>>()), lastInputWasKey: () => keys.last }))
 mockReact()
 
 // Renderer code: imported at run time so the Node typecheck of tests/ does not follow it.
@@ -298,6 +301,56 @@ describe('the progress beside a busy button (§2.5, §14)', () => {
     expect(els.find((e) => e.type === 'progress')!.props['aria-valuetext']).toBe('Writing, about 2 minutes left')
     ;(byLabel(els, 'Stop AI on this PC')!.props.onClick as () => void)()
     expect(stopped).toBe(1)
+  })
+
+  it("Stop pressed with the keyboard, or the run ending while the keyboard is on it, gives the focus to the tool's button, never the page", async () => {
+    setLocalAiState(stateOf([model('qwen3.5-2b', 'ready')], { active: 'qwen3.5-2b' }))
+    const page = (globalThis as unknown as { document: { body: unknown; activeElement: unknown; getElementById?: (id: string) => unknown } }).document
+    const focusedIds: string[] = []
+    page.getElementById = (id: string) => ({ focus: () => void focusedIds.push(id) })
+    const shown = async (requestId: string | null): Promise<El[]> => {
+      const els = await settle(h(LocalProgress, { requestId, onStop: () => undefined, returnFocus: 'cleanup-run' }))
+      if (requestId) send({ requestId, phase: 'writing', done: 16, total: 400, secondsLeft: 30 })
+      return requestId ? settle(h(LocalProgress, { requestId, onStop: () => undefined, returnFocus: 'cleanup-run' })) : els
+    }
+    const stopOf = (els: El[]): El => byLabel(els, 'Stop AI on this PC')!
+    try {
+      // Tab to Stop, Enter: Stop goes with the line, and the focus that fell to the page goes to the tool's button.
+      keys.last = true
+      let els = await shown('req-3')
+      ;(stopOf(els).props.onFocus as () => void)()
+      page.activeElement = page.body
+      await shown(null)
+      expect(focusedIds).toEqual(['cleanup-run'])
+      // A click on Stop: the focus stays where clicks leave it.
+      unmountAll()
+      focusedIds.length = 0
+      keys.last = false
+      els = await shown('req-4')
+      ;(stopOf(els).props.onFocus as () => void)()
+      await shown(null)
+      expect(focusedIds).toEqual([])
+      // The keyboard moved on from Stop before the run ended: nothing moves.
+      unmountAll()
+      keys.last = true
+      els = await shown('req-5')
+      ;(stopOf(els).props.onFocus as () => void)()
+      ;(stopOf(els).props.onBlur as (e: unknown) => void)({ currentTarget: { isConnected: true } })
+      await new Promise((r) => setTimeout(r, 0))
+      await shown(null)
+      expect(focusedIds).toEqual([])
+      // Focus somewhere else when the line goes (not the page): it stays there.
+      unmountAll()
+      els = await shown('req-6')
+      ;(stopOf(els).props.onFocus as () => void)()
+      page.activeElement = {}
+      await shown(null)
+      expect(focusedIds).toEqual([])
+    } finally {
+      delete page.getElementById
+      page.activeElement = {}
+      keys.last = false
+    }
   })
 
   it('waiting and loading: an indeterminate bar; low memory says so', async () => {

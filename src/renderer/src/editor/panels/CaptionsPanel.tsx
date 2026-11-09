@@ -1237,7 +1237,7 @@ function AiToolsSection({
             <button ref={summaryTool} id="captions-ai-summary" aria-describedby="captions-ai-cost-summary" className="btn" disabled={!chosen || !!busy} onClick={() => void run('summary')} title="A short summary of what is said, to copy into a description">
               {label('summary', 'Summarize')}
             </button>
-            <LocalProgress requestId={running} onStop={stopRun} />
+            <LocalProgress requestId={running} onStop={stopRun} returnFocus={busy ? `captions-ai-${busy}` : undefined} />
           </div>
           {/* What the group sends, where, and what each action costs (smart-tools.md §11.5), part P5's. */}
           <CostLine

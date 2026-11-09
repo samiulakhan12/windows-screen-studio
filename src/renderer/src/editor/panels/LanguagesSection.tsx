@@ -110,6 +110,8 @@ export function LanguagesSection({ project }: { project: Project }): JSX.Element
   const addProvider = useRef<HTMLButtonElement>(null)
   const translateButton = useRef<HTMLButtonElement>(null)
   const cancelButton = useRef<HTMLButtonElement>(null)
+  /** The running translation's row: its Cancel, and the Stop of AI on this PC beside it. */
+  const jobRow = useRef<HTMLDivElement>(null)
   const rowsBox = useRef<HTMLDivElement>(null)
   const focusSelect = useRef(false)
   // Closed with Close from the keyboard, the form gives the focus back to Add a language.
@@ -262,12 +264,13 @@ export function LanguagesSection({ project }: { project: Project }): JSX.Element
   }
   // While it runs, a click or a key other than Tab (an editor shortcut, such as Right stepping a
   // frame) means the user has moved on: the focus then stays where it is when the translation ends,
-  // so a later Right steps a frame instead of picking another radio. Enter on Cancel still lands.
+  // so a later Right steps a frame instead of picking another radio. Enter on Cancel (or on the Stop
+  // of AI on this PC beside it) still lands.
   useEffect(() => {
     if (!job) return
     const movedOn = (): void => void (landing.current = null)
     const onKey = (e: KeyboardEvent): void => {
-      if (e.key === 'Tab' || MODIFIER_KEYS.has(e.key) || (e.key === 'Enter' && e.target === cancelButton.current)) return
+      if (e.key === 'Tab' || MODIFIER_KEYS.has(e.key) || (e.key === 'Enter' && (e.target === cancelButton.current || !!jobRow.current?.contains(e.target as Node)))) return
       movedOn()
     }
     window.addEventListener('keydown', onKey, true)
@@ -443,7 +446,7 @@ export function LanguagesSection({ project }: { project: Project }): JSX.Element
         )}
 
         {job && (
-          <div className="row start">
+          <div ref={jobRow} className="row start">
             <span className="hint" role="status">
               Translating {job.count} {job.count === 1 ? 'caption' : 'captions'} into {languageName(job.language)}…
             </span>

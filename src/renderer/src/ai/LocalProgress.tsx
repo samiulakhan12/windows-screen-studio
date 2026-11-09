@@ -11,10 +11,12 @@
  * beside the choice (LocalNote), and "Written on this PC: check it before you use it." with a
  * result (LocalWritten).
  */
+import { useEffect, useRef } from 'react'
 import type { AiTextTask, NamesRequest, TextChoice } from '../../../shared/api/ai'
 import type { LocalAiProgress, LocalAiState } from '../../../shared/api/localAi'
 import { LOCAL_MODELS } from '../../../shared/localAi/catalog'
 import { LOCAL_MESSAGES, progressWords, timeLeft } from '../../../shared/localAi/messages'
+import { lastInputWasKey } from '../editor/focus'
 import { localNote, modelInUse, useLocalAi, useLocalAiProgress } from './localAiState'
 import './localAi.css'
 
@@ -46,10 +48,31 @@ export function progressValueText(p: LocalAiProgress): string {
   }
 }
 
-export function LocalProgress(props: { requestId: string | null; onStop(): void }): JSX.Element | null {
+/**
+ * `returnFocus`: the id of the tool's button. Stop, or the run ending, takes the line and its Stop
+ * away; when the keyboard had the focus on Stop, it goes back to that button (working again by
+ * then) instead of falling to the page, where typed keys would run editor shortcuts.
+ */
+export function LocalProgress(props: { requestId: string | null; onStop(): void; returnFocus?: string }): JSX.Element | null {
   const progress = useLocalAiProgress(props.requestId)
   const local = useLocalAi()
-  if (!props.requestId || !progress) return null
+  const shown = !!props.requestId && !!progress
+  /** Whether Stop has the focus (kept when Stop goes with it, cleared when the focus moved on). */
+  const stopFocused = useRef(false)
+  const backTo = useRef(props.returnFocus)
+  if (shown) backTo.current = props.returnFocus
+  useEffect(() => {
+    if (!shown) return
+    return () => {
+      const had = stopFocused.current
+      stopFocused.current = false
+      const active = document.activeElement
+      if (!had || !lastInputWasKey() || (active && active !== document.body)) return
+      const to = backTo.current ? document.getElementById(backTo.current) : null
+      to?.focus({ preventScroll: true })
+    }
+  }, [shown])
+  if (!shown) return null
   const low = local.status === 'ready' && progress.phase !== 'waiting' && memoryLow(local.state)
   // Waiting and loading have no amount to show: the bar is indeterminate.
   const fraction = progress.total > 0 && (progress.phase === 'reading' || progress.phase === 'writing') ? Math.min(1, progress.done / progress.total) : null
@@ -63,7 +86,20 @@ export function LocalProgress(props: { requestId: string | null; onStop(): void 
         {low ? ` · ${LOCAL_MESSAGES.lowMemory}` : ''}
       </span>
       <progress className="local-progress-bar" max={1} {...(fraction !== null ? { value: fraction } : {})} aria-label="AI on this PC" aria-valuetext={progressValueText(progress)} />
-      <button type="button" className="btn ghost settings-small" onClick={props.onStop} aria-label="Stop AI on this PC">
+      <button
+        type="button"
+        className="btn ghost settings-small"
+        onClick={props.onStop}
+        onFocus={() => void (stopFocused.current = true)}
+        onBlur={(e) => {
+          // Focus that moved elsewhere leaves Stop in place; Stop taken away with the focus on it is not there any more.
+          const stop = e.currentTarget
+          setTimeout(() => {
+            if (stop.isConnected && document.activeElement !== stop) stopFocused.current = false
+          }, 0)
+        }}
+        aria-label="Stop AI on this PC"
+      >
         Stop
       </button>
     </div>

@@ -788,7 +788,7 @@ export function GuidePanel(props: { project: Project; cursor: CursorTrack; start
               >
                 {busy?.what === 'titles' ? 'Writing…' : 'Write titles'}
               </button>
-              <LocalProgress requestId={busy?.what === 'titles' ? busy.requestId : null} onStop={stopAi} />
+              <LocalProgress requestId={busy?.what === 'titles' ? busy.requestId : null} onStop={stopAi} returnFocus={`${ids}-write`} />
             </div>
           )}
           {canSendShots && (
@@ -836,7 +836,7 @@ export function GuidePanel(props: { project: Project; cursor: CursorTrack; start
                     </option>
                   ))}
                 </select>
-                <LocalProgress requestId={busy?.what === 'notes' ? busy.requestId : null} onStop={stopAi} />
+                <LocalProgress requestId={busy?.what === 'notes' ? busy.requestId : null} onStop={stopAi} returnFocus={`${ids}-tidy`} />
               </div>
               <CostLine id={`${ids}-notes-cost`} choice={notesChoice} actions={[{ key: 'notes', label: 'Notes', buttonId: `${ids}-tidy`, request: notesRequest }]} />
             </>
