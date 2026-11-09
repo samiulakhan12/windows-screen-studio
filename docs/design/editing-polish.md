@@ -1059,6 +1059,10 @@ the session, live frames are drawn unblurred today, and A\* is the same.
   ready the preview draws B alone (a hard cut) and redraws when it is, as the continue-freeze
   preview does today. While playing, a window whose A\* was not ready at its first frame stays a
   hard cut until it ends, so the old frame never flashes back after B has shown.
+- **Made again.** Each A\* keeps what it was drawn with: the project, Compare, and each grade's LUT
+  as `lutFor` gave it (null while it loads). When one of them differs from the frame's (an edit,
+  Compare turned on or off, a LUT that became ready), that A\* is not drawn; it is composed again
+  and the frame is "not ready yet" until then.
 - **Seeking at the jump.** At a cut the player seeks the `<video>` (`jumpTo`, `player.ts:572`);
   the first frame of B is drawn with A\* at α ≈ 1, which also hides the jump's seek latency.
 - **Play this cut** plays from `T − 1` to `T + 1` s of video time and stops back where it started.

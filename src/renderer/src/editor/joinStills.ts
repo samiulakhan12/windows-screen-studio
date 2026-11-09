@@ -7,11 +7,13 @@
  * frame callback; the frame that starts the window then only draws it.
  */
 import { stillFrame, trackTimes, type JoinWindow, type TrackTimes } from '../../../shared/render/joins'
+import type { CubeLut } from '../../../shared/render/cubeLut'
 import type { Project } from '../../../shared/types'
 import { webcamLook } from '../../../shared/engine/webcamData'
 import type { FrameImage, RenderScene } from '../render/compositor'
 import { openTrack } from '../render/frameSource'
 import { composeJoinStill, releaseScratch, scratchTarget } from '../render/joinLayer'
+import { lutFor } from '../render/lutCache'
 import { FreezeStills } from './freezeStills'
 import { SCREEN_PROXY_FPS, WEBCAM_PROXY_FPS } from './media'
 
@@ -30,13 +32,26 @@ interface Track {
   stills: FreezeStills | null
 }
 
+/** A composed A* and what it was drawn with: the project, Compare, and each grade's LUT as it was then (null while loading). */
+interface Composed {
+  canvas: HTMLCanvasElement
+  project: Project
+  compare: boolean
+  screenLut: CubeLut | null
+  cameraLut: CubeLut | null
+}
+
+/** Whether `c` looks as `scene` draws now (Compare turned on or off, or a LUT ready since, make it again). */
+const fresh = (c: Composed, scene: RenderScene): boolean =>
+  c.project === scene.project && c.compare === !!scene.compare && c.screenLut === lutFor(scene.project, 'screen') && c.cameraLut === lutFor(scene.project, 'camera')
+
 export class JoinStills {
   private screen: Track | null = null
   private camera: Track | null = null
   private wanted: JoinWindow[] = []
   private target: { scene: RenderScene; w: number; h: number; background: HTMLImageElement | null } | null = null
-  /** A* by `${clip}|${w}x${h}`, with the project it was composed for. */
-  private readonly composed = new Map<string, { canvas: HTMLCanvasElement; project: Project }>()
+  /** A* by `${clip}|${w}x${h}`, with what it was composed for. */
+  private readonly composed = new Map<string, Composed>()
   /** Camera stills whose person mask is ready (or could not be made), and those being segmented. */
   private readonly masked = new WeakSet<ImageBitmap>()
   private readonly segmenting = new WeakSet<ImageBitmap>()
@@ -90,8 +105,9 @@ export class JoinStills {
   still(window: JoinWindow, w: number, h: number): CanvasImageSource | null {
     if (!window.still || this.disposed) return null
     const c = this.composed.get(keyOf(window, w, h))
-    if (c && this.target && c.project === this.target.scene.project) return c.canvas
-    if (!this.wanted.includes(window)) {
+    if (c && this.target && fresh(c, this.target.scene)) return c.canvas
+    // Not asked for yet, or composed before its LUT was ready (nothing else asks for it again).
+    if (c || !this.wanted.includes(window)) {
       this.wanted = [window, ...this.wanted.filter((x) => x !== window)].slice(0, WANT)
       this.schedule()
     }
@@ -119,17 +135,18 @@ export class JoinStills {
     for (const win of this.wanted) {
       const still = win.still!
       const key = keyOf(win, w, h)
-      if (this.composed.get(key)?.project === project) continue
+      const was = this.composed.get(key)
+      if (was && fresh(was, scene)) continue
       const shot = this.frameOf(screen, still.screen, still.held)
       const cam = still.camera !== null && camera ? this.frameOf(camera, still.camera, false) : null
       if (!shot || (still.camera !== null && camera && !cam)) continue
       // A mask only for a blurred background, asked of the project composed for: a still first
       // composed sharp is segmented once the background is blurred.
       if (cam && webcamLook(project.webcam).backgroundBlur > 0 && !this.maskReady(cam.image as ImageBitmap)) continue
-      const out = this.composed.get(key)?.canvas ?? document.createElement('canvas')
+      const out = was?.canvas ?? document.createElement('canvas')
       composeJoinStill(scratchTarget('gpu', w, h), out, w, h, win, scene, { screen: shot, camera: cam }, background)
       this.composed.delete(key)
-      this.composed.set(key, { canvas: out, project })
+      this.composed.set(key, { canvas: out, project, compare: !!scene.compare, screenLut: lutFor(project, 'screen'), cameraLut: lutFor(project, 'camera') })
       made = true
     }
     // The oldest go first.

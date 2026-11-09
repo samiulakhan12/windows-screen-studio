@@ -94,14 +94,17 @@ const SAMPLES = Array.from({ length: 1800 }, (_, k) => ({ offset: k, size: 1, ti
 vi.mock('../src/renderer/src/render/frameSource', () => ({
   openTrack: async () => ({ track: { samples: SAMPLES } })
 }))
-const composed: { window: JoinWindow; screen: unknown; camera: unknown; inCallback: boolean }[] = []
+const composed: { window: JoinWindow; screen: unknown; camera: unknown; inCallback: boolean; compare?: boolean; lut?: unknown }[] = []
 let inCallback = false
+/** The grades' LUTs as the LUT cache gives them (null while one loads). */
+const luts: Record<'screen' | 'camera', unknown> = { screen: null, camera: null }
+vi.mock('../src/renderer/src/render/lutCache', () => ({ lutFor: (_p: unknown, which: 'screen' | 'camera') => luts[which] }))
 vi.mock('../src/renderer/src/render/joinLayer', () => ({
   scratchTarget: () => ({}),
   releaseScratch: () => undefined,
-  composeJoinStill: (_s: unknown, out: { tag?: string }, _w: number, _h: number, window: JoinWindow, _scene: unknown, stills: { screen: { image: unknown }; camera: { image: unknown } | null }) => {
+  composeJoinStill: (_s: unknown, out: { tag?: string }, _w: number, _h: number, window: JoinWindow, scene: { compare?: boolean }, stills: { screen: { image: unknown }; camera: { image: unknown } | null }) => {
     out.tag = `A* ${window.clip}`
-    composed.push({ window, screen: stills.screen.image, camera: stills.camera?.image ?? null, inCallback })
+    composed.push({ window, screen: stills.screen.image, camera: stills.camera?.image ?? null, inCallback, compare: scene.compare, lut: luts.screen })
   }
 }))
 
@@ -256,6 +259,7 @@ beforeEach(() => {
   made.clear()
   deliverers = []
   composed.length = 0
+  luts.screen = luts.camera = null
   raf = []
   clock = 1000
   vi.spyOn(performance, 'now').mockImplementation(() => clock)
@@ -503,6 +507,36 @@ describe('JoinStills', () => {
     await tasks()
     expect(composed).toHaveLength(2)
     expect(composed[1].camera).toBe(segmented[0])
+    stills.dispose()
+  })
+
+  it('makes A* again when Compare is turned on or off, and when a LUT is ready after it was made', async () => {
+    const graded = project({ grade: { screen: { lut: { file: 'lut-1.cube', sha256: 'f'.repeat(64), title: 'Teal', size: 33 } } } })
+    const ready = vi.fn()
+    const stills = new JoinStills('screen.mp4', null, ready)
+    const [w] = joinPlan(graded)
+    // Compare on: A* is drawn without colour.
+    stills.prepare([w], { project: graded, compare: true }, 640, 360)
+    await tasks()
+    deliver()
+    await tasks()
+    expect(composed.map((c) => c.compare)).toEqual([true])
+    expect(stills.still(w, 640, 360)).not.toBeNull()
+    // Compare off, the same project: that A* is not used, and A* is made again with its colour.
+    stills.prepare([w], { project: graded }, 640, 360)
+    expect(stills.still(w, 640, 360)).toBeNull()
+    await tasks()
+    expect(composed.map((c) => !!c.compare)).toEqual([true, false])
+    expect(stills.still(w, 640, 360)).not.toBeNull()
+    expect(composed[1].lut).toBeNull()
+    // The LUT is ready now (nothing else changed): the A* made while it loaded is made again with it.
+    luts.screen = { size: 33 }
+    expect(stills.still(w, 640, 360)).toBeNull()
+    await tasks()
+    expect(composed).toHaveLength(3)
+    expect(composed[2].lut).toBe(luts.screen)
+    expect(stills.still(w, 640, 360)).not.toBeNull()
+    expect(ready).toHaveBeenCalledTimes(3)
     stills.dispose()
   })
 })
