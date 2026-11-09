@@ -9,7 +9,7 @@
 import { useEffect, useState, type KeyboardEvent, type PointerEvent as ReactPointerEvent } from 'react'
 import { moveBody, movePin, setFollowsZoom } from '../../../shared/editor/calloutsEdit'
 import { displayTime } from '../../../shared/editor/clips'
-import type { SceneLayout } from '../../../shared/engine/layout'
+import type { Rect, SceneLayout } from '../../../shared/engine/layout'
 import { clamp } from '../../../shared/engine/math'
 import { calloutOf } from '../../../shared/render/calloutData'
 import { badgeLabels, BUBBLE_BODY, calloutPlace, type CalloutPlace } from '../../../shared/render/callouts'
@@ -32,6 +32,12 @@ let measureCtx: CanvasRenderingContext2D | null = null
 const measureOf = (stack: string): ((text: string, px: number, weight: number) => number) => {
   measureCtx ??= document.createElement('canvas').getContext('2d')
   return measureCtx ? measurer(measureCtx, stack) : (text, px) => text.length * px * 0.55
+}
+
+/** `p` kept on the visible picture `r`, half a pixel in, so the way back through the camera never lands it just off it. */
+const onPicture = (p: Point, r: Rect): Point => {
+  const e = Math.min(0.5, r.w / 2, r.h / 2)
+  return { x: clamp(p.x, r.x + e, r.x + r.w - e), y: clamp(p.y, r.y + e, r.y + r.h - e) }
 }
 
 /** "52 %, 40 %": a place in the frame for screen readers. */
@@ -68,16 +74,18 @@ export function CalloutHandles(props: { project: Project; selection: Selection; 
   const c = calloutOf(a)
   const S = Math.min(m.view.w, m.view.h)
 
-  /** Where a frame point (px at the playhead) puts the badge or the tip, and where it shows at the start. */
-  const moveTo = (p: Point, key?: string): void => {
-    const q = { x: clamp(p.x, 0, m.view.w), y: clamp(p.y, 0, m.view.h) }
+  /** Where a frame point (px at the playhead) puts the badge or the tip, and where it shows at the start; the point it went to. */
+  const moveTo = (p: Point, key?: string): Point => {
+    // A pinned badge or tip stays on the picture (off it, it is not drawn and its handle would go); else anywhere in the frame.
+    const q = c.pin ? onPicture(p, m.seen) : { x: clamp(p.x, 0, m.view.w), y: clamp(p.y, 0, m.view.h) }
     if (!c.pin) {
       // Not following the zoom (a badge) or without a tail (a bubble's body): it stays at this place in the frame.
       store.update((x) => setFollowsZoom(x, a.id, false, { pin: { x: 0, y: 0 }, shownAt: { x: q.x / m.view.w, y: q.y / m.view.h } }), key)
-      return
+      return q
     }
     const pin = m.view.fromOut(q.x, q.y)
     store.update((x) => movePin(x, a.id, pin, shownAtStart(pin)), key)
+    return q
   }
   /** Where the item shows at its start for a pin there (a bubble: its body's centre). */
   const shownAtStart = (pin: Point): Point => {
@@ -86,7 +94,7 @@ export function CalloutHandles(props: { project: Project; selection: Selection; 
     return { x: clamp((tip.x + body.dx * S) / start.view.w, 0, 1), y: clamp((tip.y + body.dy * S) / start.view.h, 0, 1) }
   }
   const moveBodyTo = (centre: Point): void => {
-    if (!c.pin || !place.pin) return moveTo(centre)
+    if (!c.pin || !place.pin) return void moveTo(centre)
     const body = { dx: (centre.x - place.pin.x) / S, dy: (centre.y - place.pin.y) / S }
     const tip = start.view.toOut(c.pin.x, c.pin.y)
     const shown = { x: clamp((tip.x + body.dx * S) / start.view.w, 0, 1), y: clamp((tip.y + body.dy * S) / start.view.h, 0, 1) }
@@ -107,8 +115,8 @@ export function CalloutHandles(props: { project: Project; selection: Selection; 
           m={m}
           at={place.origin}
           onMove={(p, key) => {
-            moveTo(p, key)
-            if (key) announce('Badge on', p)
+            const q = moveTo(p, key)
+            if (key) announce('Badge on', q)
           }}
           onHold={() => holdGesture(store)}
         />
@@ -123,8 +131,8 @@ export function CalloutHandles(props: { project: Project; selection: Selection; 
               m={m}
               at={place.pin}
               onMove={(p, key) => {
-                moveTo(p, key)
-                if (key) announce('Tail points to', p)
+                const q = moveTo(p, key)
+                if (key) announce('Tail points to', q)
               }}
               onHold={() => holdGesture(store)}
             />

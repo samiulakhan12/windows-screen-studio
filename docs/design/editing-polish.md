@@ -315,6 +315,9 @@ stays on its spot in the recording while the camera zooms and pans, as shapes do
 - **Colour**: the brand colours first, then the shape palette. A new badge takes the brand kit's
   first colour, else #0060df.
 - **Follows the zoom** (switch, on). Off: it stays at one place in the frame.
+- In the preview, its handle is dragged or moved with the arrow keys (1 % of the frame, Shift
+  10 %). While it follows the zoom it stays on the picture: dragged or moved past the picture's
+  edge it stops there (off the picture it would not be drawn), and its handle keeps the focus.
 - Automatic badges are numbered in start-time order. Moving one past another renumbers both.
 
 **Speech bubble.** Added from the Text tab (**Add speech bubble**) or the palette. Its tail points
@@ -322,8 +325,8 @@ at the cursor when the cursor shows at the playhead (the body sits above it, tow
 centre), else at the centre of the preview. The text field takes focus at once, with the placeholder
 "Type the bubble's text". The tail's tip stays on its spot in the recording while the camera zooms;
 the body moves with it and stays inside the frame. In the preview a round handle at the tail's tip
-is dragged to point at something (arrow keys move it 1 % of the frame, Shift 10 %); dragging the
-body moves it around the tip. **Colour**: *White* (default, dark text, a thin outline), *Dark*
+is dragged to point at something (arrow keys move it 1 % of the frame, Shift 10 %; it stops at the
+picture's edge, as a badge does); dragging the body moves it around the tip. **Colour**: *White* (default, dark text, a thin outline), *Dark*
 (#1d1d24, white text), the brand colours. **Tail**: *Pointing* (default) or *None*.
 
 ### 2.4 Progress bar
