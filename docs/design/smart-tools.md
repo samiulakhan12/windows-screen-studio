@@ -2176,7 +2176,9 @@ one line. Its parts:
   costs up to about US$1.40 with claude-opus-5-5. Run it?" (alert dialog; **Run**, **Cancel**; Cancel
   focused). An unknown cost on a paid service asks once per (provider, model) in a session, unless
   *Never*. On this PC, over 10 minutes: "This takes about 25 minutes on this PC. You can keep editing
-  meanwhile. Start?".
+  meanwhile. Start?". A palette command that runs one of these tools (*Find chapters*, *Suggest
+  chapters with AI*, the title and the summary) presses the tool's button, so the same question comes
+  first.
 - Where the line appears (each tied to its buttons by `aria-describedby`):
 
 | Place | Group or action |

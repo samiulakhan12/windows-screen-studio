@@ -133,7 +133,12 @@ export function descendants(el: El): El[] {
   return found
 }
 
-/** A stand-in DOM node for a ref: focus is recorded, `disabled` is its element's; querySelector(All) finds `[attr="value"]`, `[attr]` or `.class` among its elements. */
+/**
+ * A stand-in DOM node for a ref: focus is recorded, `disabled`, `id` and getAttribute are its
+ * element's; querySelector(All) finds `[attr="value"]`, `[attr]` or `.class` among its elements.
+ * click() is the DOM's: nothing on a disabled element, else the page's click listeners see it first
+ * (through document.dispatchEvent, when the test gives the page one) and may stop it, then onClick.
+ */
 function standIn(el: El): Record<string, unknown> {
   const match = (sel: string) => (d: El): boolean => {
     const attr = /^\[([\w-]+)(?:=["']([^"']*)["'])?\]$/.exec(sel)
@@ -148,13 +153,30 @@ function standIn(el: El): Record<string, unknown> {
     get disabled(): boolean {
       return !!(stand.el as El).props.disabled
     },
+    get id(): unknown {
+      return (stand.el as El).props.id
+    },
+    getAttribute: (name: string): string | null => {
+      const v = (stand.el as El).props[name]
+      return v === undefined || v === null ? null : String(v)
+    },
+    isConnected: true,
     clientWidth: 280,
     // No child nodes are laid out here (a list's rows are read from its elements instead).
     children: [],
     focus: () => void focused.push(stand.el as El),
+    click: (): void => {
+      const d = stand.el as El
+      if (d.props.disabled) return
+      let stopped = false
+      const event = { type: 'click', target: stand, preventDefault: () => undefined, stopPropagation: () => void (stopped = true), stopImmediatePropagation: () => void (stopped = true) }
+      const page = (globalThis as { document?: { dispatchEvent?: (e: unknown) => unknown } }).document
+      if (typeof page?.dispatchEvent === 'function') page.dispatchEvent(event)
+      if (!stopped) (d.props.onClick as ((e: unknown) => void) | undefined)?.(event)
+    },
     contains: () => false,
-    // Nothing covers a stand-in (no inert part of the page above it).
-    closest: () => null,
+    // Nothing covers a stand-in (no inert part of the page above it); a button is its own closest('button').
+    closest: (sel: string) => (sel === 'button' && (stand.el as El).type === 'button' ? stand : null),
     scrollIntoView: () => undefined,
     getBoundingClientRect: () => ({ left: 0, top: 0, width: 280, height: 96, right: 280, bottom: 96 }),
     querySelector: (sel: string) => {

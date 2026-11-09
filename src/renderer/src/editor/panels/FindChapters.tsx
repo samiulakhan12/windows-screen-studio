@@ -135,14 +135,15 @@ export function FindChapters({ project, cursor, onNotice }: { project: Project; 
   )
   const stop = (): void => controller.current?.abort()
 
-  // The palette's Find chapters (smartRequests): taken once mounted, and while shown.
-  const runRef = useRef(run)
-  runRef.current = run
+  // The palette's Find chapters (smartRequests): taken once mounted, and while shown. It presses the
+  // button, so with names from an AI the cost line asks its question first, as for a click (§11.5).
+  const runButton = useRef<HTMLButtonElement>(null)
   useEffect(() => {
-    if (takeFindChaptersRequest()) void runRef.current()
-    return onFindChaptersRequest(() => {
-      if (takeFindChaptersRequest()) void runRef.current()
-    })
+    const press = (): void => {
+      if (takeFindChaptersRequest()) runButton.current?.click()
+    }
+    press()
+    return onFindChaptersRequest(press)
   }, [])
 
   // What the cost line estimates: the narration in as many parts as Find chapters makes at most.
@@ -162,7 +163,7 @@ export function FindChapters({ project, cursor, onNotice }: { project: Project; 
     <div className="find-chapters" data-testid="find-chapters-section">
       <div className="find-chapters-run">
         {/* With names from an AI, the button also reads what the run sends and costs (§11.5): the cost line's sentence. */}
-        <button className="btn" id={`${ids}-run`} data-testid="find-chapters" onClick={() => void run()} disabled={busy} aria-describedby={namesChoice ? `${hintId} ${ids}-cost-names` : hintId}>
+        <button ref={runButton} className="btn" id={`${ids}-run`} data-testid="find-chapters" onClick={() => void run()} disabled={busy} aria-describedby={namesChoice ? `${hintId} ${ids}-cost-names` : hintId}>
           Find chapters
         </button>
         {busy && (

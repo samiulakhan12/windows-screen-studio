@@ -5,7 +5,7 @@
  * is heard without captions (speechHeard), and the Text tab's panel with its options and the
  * palette's request. window.api is a fake; nothing leaves the test.
  */
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, onTestFinished, vi } from 'vitest'
 import type { AudioLevels } from '../src/shared/audio/loudness'
 import type { SceneScan } from '../src/shared/api/projects'
 import { EditStore } from '../src/shared/editor/editStore'
@@ -60,6 +60,17 @@ vi.stubGlobal('window', {
   dispatchEvent: () => true
 })
 
+/** The question before a paid run (the dialog itself is tested in costConfirm.test.ts): its answer, and how often it was asked. */
+const question = vi.hoisted(() => ({ answer: true, asked: 0 }))
+vi.mock('../src/renderer/src/ai/costConfirm', () => ({
+  confirmCost: async () => {
+    question.asked++
+    return question.answer
+  },
+  wasAsked: () => false,
+  resetAskedCosts: () => undefined
+}))
+
 mockReact()
 // Renderer code: imported at run time so the Node typecheck of tests/ does not follow it.
 const RUN = '../src/renderer/src/editor/chaptersRun'
@@ -69,6 +80,8 @@ type Run = (deps: { store: EditStore<Project>; recorded: CursorTrack; options: R
 const { runFindChapters, FIND_WORDS, FIND_CHAPTERS_BUILT } = (await import(/* @vite-ignore */ RUN)) as { runFindChapters: Run; FIND_WORDS: Record<string, string>; FIND_CHAPTERS_BUILT: boolean }
 const { FindChapters, FIND_HINT } = (await import(/* @vite-ignore */ PANEL)) as { FindChapters: (p: unknown) => unknown; FIND_HINT: string }
 const { requestFindChapters } = (await import(/* @vite-ignore */ REQUESTS)) as { requestFindChapters(): void }
+const USE_COST = '../src/renderer/src/ai/useCost'
+const { refreshCostData } = (await import(/* @vite-ignore */ USE_COST)) as { refreshCostData(): Promise<void> }
 await useEditorContexts()
 
 const NO_INPUT: CursorTrack = { samples: [], clicks: [], keys: [], valid: false }
@@ -356,6 +369,49 @@ describe('the Find chapters panel (§2.3)', () => {
     els = await settle(panel(), SKIP)
     click(button(els, 'Make captions'))
     expect(fake.commands).toEqual(['generateCaptions'])
+  })
+
+  it("the palette's Find chapters presses the button: with names from an AI and Always ask, the cost question comes first (§11.5)", async () => {
+    // The page: its click listeners (the cost line's), and the name fields the focus goes to.
+    const listeners: ((e: unknown) => void)[] = []
+    const page = {
+      addEventListener: (type: string, fn: (e: unknown) => void) => void (type === 'click' && listeners.push(fn)),
+      removeEventListener: (_type: string, fn: (e: unknown) => void) => void listeners.splice(listeners.indexOf(fn) >>> 0, 1),
+      dispatchEvent: (e: unknown) => {
+        for (const l of [...listeners]) l(e)
+        return true
+      },
+      getElementById: () => ({ focus: () => undefined })
+    }
+    Object.defineProperty(globalThis, 'document', { configurable: true, value: page })
+    onTestFinished(() => {
+      unmountAll()
+      delete (globalThis as { document?: unknown }).document
+    })
+    fake.scan = scanOf(180, { 60.5: 62, 120.5: 70 })
+    store = new EditStore<Project>(projectOf(180, [{ t: 61, text: 'Open the quarterly billing report for the team now.' }, { t: 121, text: 'Finally we export the report.' }]))
+    contexts.editor = { store, player: {} }
+    fake.answer = (request) => ({ task: 'names', names: (request.names as { items: { id: string }[] }).items.map((i) => ({ id: i.id, name: 'Billing report' })) })
+    fake.prefs.set('findChapters', { density: 'normal', use: { screen: true, pauses: true, words: true }, names: 'o1' })
+    fake.prefs.set('aiConfirm', 'always')
+    await refreshCostData()
+    // The Text tab shows the panel (its cost line listening), then the palette asks; Cancel: nothing is sent.
+    question.asked = 0
+    question.answer = false
+    await settle(panel(), ['LocalProgress'])
+    requestFindChapters()
+    await settle(panel(), ['LocalProgress'])
+    expect(question.asked).toBe(1)
+    expect(fake.ai).toEqual([])
+    expect(store.state.chapters).toEqual([])
+    // Run: the names are sent.
+    question.answer = true
+    requestFindChapters()
+    await settle(panel(), ['LocalProgress'])
+    await settle(panel(), ['LocalProgress'])
+    expect(question.asked).toBe(2)
+    expect(fake.ai.map((a) => [a.provider, a.request.task])).toEqual([['o1', 'names']])
+    expect(store.state.chapters!.length).toBeGreaterThan(0)
   })
 
   it("the palette's Find chapters runs it once the Text tab shows it", async () => {

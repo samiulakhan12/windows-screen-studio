@@ -40,6 +40,9 @@ function deferred<T>(): { promise: Promise<T>; resolve: (v: T) => void; reject: 
 const focused: El[] = []
 /** Elements scrolled into view, with the options given. */
 const scrolled: { el: El; options: unknown }[] = []
+/** Buttons pressed through their ref (click()); while `held.on`, the click is held, as the cost line holds one to ask first. */
+const pressed: El[] = []
+const held = { on: false }
 
 const runs: ReturnType<typeof deferred<unknown>>[] = []
 /** What the AI tools asked the provider (window.api.aiText): the task, the captions sent, and its answer to give. */
@@ -202,13 +205,20 @@ function walk(node: unknown, path: string, out: El[]): void {
     return walk(child, `${path}/${el.type.name}`, out)
   }
   // A ref object gets a stand-in element, so effects that focus it are seen; its querySelector
-  // finds `[attribute="value"]` among the elements it holds in the latest render.
+  // finds `[attribute="value"]` among the elements it holds in the latest render. Its click() is the
+  // DOM's: nothing when disabled, else the page's click listener (the cost line's, here `held`) may
+  // hold it, and then its onClick.
   const ref = (node as { ref?: { current?: unknown } | null }).ref
   if (ref && typeof ref === 'object') {
     if (!ref.current) {
-      const stand: { el: El; focus: () => void; querySelector: (sel: string) => unknown; scrollIntoView: (options?: unknown) => void } = {
+      const stand: { el: El; focus: () => void; click: () => void; querySelector: (sel: string) => unknown; scrollIntoView: (options?: unknown) => void } = {
         el,
         focus: () => focused.push(stand.el),
+        click: () => {
+          if (stand.el.props.disabled) return
+          pressed.push(stand.el)
+          if (!held.on) (stand.el.props.onClick as (() => void) | undefined)?.()
+        },
         querySelector: (sel) => {
           const match = /^\[([\w-]+)="([^"]*)"\]$/.exec(sel)
           const found = match ? descendants(stand.el).find((d) => String(d.props[match[1]]) === match[2]) : undefined
@@ -1395,6 +1405,24 @@ describe('CaptionsPanel: AI tools from the command palette (NW-13)', () => {
     store.state = { ...store.state, transcript }
     await show()
     expect(aiAsked).toHaveLength(3)
+  })
+
+  it("a command presses the tool's button, so the cost line's question comes first, as for a click (smart-tools.md §11.5)", async () => {
+    await show()
+    pressed.length = 0
+    findRuns.length = 0
+    // The cost line holds the click while it asks: nothing is sent, nothing is found.
+    held.on = true
+    onTestFinished(() => void (held.on = false))
+    for (const task of ['summary', 'title', 'chapters']) command(task)
+    expect(pressed.map((b) => b.props.id)).toEqual(['captions-ai-summary', 'captions-ai-title', 'captions-ai-chapters'])
+    await flush()
+    expect(aiAsked).toEqual([])
+    expect(findRuns).toEqual([])
+    // Run lets the click through: the tool runs.
+    held.on = false
+    command('title')
+    expect(aiAsked.map((a) => a.task)).toEqual(['title'])
   })
 
   /** The link check's confirm (publish-pack §4.8): the pieces it lists, or null when none shows. */

@@ -1197,7 +1197,9 @@ function AiToolsSection({
     if (busy) return onNotice('An AI tool is already working')
     // The tab may be scrolled to its captions: the tools come into view, with their progress and the answer under them.
     toolsRef.current?.scrollIntoView({ block: 'start' })
-    void run(task)
+    // The tool's button is pressed, so the cost line asks its question first, as for a click (smart-tools.md §11.5).
+    const tool = task === 'chapters' ? chaptersTool : task === 'title' ? titleTool : summaryTool
+    tool.current?.click()
   }, [request, providers]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const label = (task: AiTask, text: string): string => (busy === task ? 'Working…' : text)
