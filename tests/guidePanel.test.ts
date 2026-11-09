@@ -342,6 +342,28 @@ describe('the click-through demo’s own shots (docs/design/smart-tools.md §5.5
   })
 })
 
+describe('a shot made again differently is not checked (docs/design/smart-tools.md §2.1.2)', () => {
+  it('Whole screen on a step checked at 100%: the question before a Copy counts its new picture', async () => {
+    let els = await ready()
+    click(byTestId(els, 'guide-check'))
+    els = await settle(panel())
+    click(byTestId(els, 'guide-viewer-next'))
+    els = await settle(panel())
+    click(byTestId(els, 'guide-viewer-next'))
+    els = await settle(panel())
+    expect(textOf(byTestId(els, 'guide-checked'))).toBe('Checked 3 of 3')
+    click(byTestId(els, 'guide-viewer-close'))
+    els = await settle(panel())
+    click(allByTestId(els, 'guide-whole')[0])
+    els = await ready()
+    expect(store.state.guide!.steps).toEqual([{ key: 'c3000', whole: true }])
+    click(byTestId(els, 'guide-copy'))
+    els = render(panel())
+    expect(textOf(byTestId(els, 'guide-question'))).toContain('1 screenshot has not been checked at full size. 1 shows the whole screen. Check them now?')
+    expect(calls.copied).toEqual([])
+  })
+})
+
 describe('the demo’s end screen (docs/design/smart-tools.md §6.1)', () => {
   it('a link typed before the heading is saved with the heading', async () => {
     const type = (els: El[], id: string, value: string): void => (byTestId(els, id)!.props.onChange as (e: unknown) => void)({ target: { value } })
