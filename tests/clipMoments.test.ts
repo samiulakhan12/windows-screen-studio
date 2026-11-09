@@ -62,6 +62,17 @@ describe('candidates (test 50)', () => {
     for (const length of ['any', 'short', 'long'] as const) for (const m of moments(p, { length })) expect(Math.abs(m.start - (runOn[10].t - 0.15))).toBeGreaterThan(0.01)
   })
 
+  it('Under 60 s and 60-90 s bound the only stretch of 70 s', () => {
+    const p = pair('We look at the report page today.', { gap: 65 })
+    expect(only(p).seconds).toBeGreaterThan(60)
+    expect(findMoments(p, { track: null, scan: null, length: 'short' })).toEqual({ reason: 'nothing' })
+    expect(moments(p, { length: 'long' })).toHaveLength(1)
+    const near = pair('We look at the report page today.', { gap: 40 })
+    expect(only(near).seconds).toBeLessThan(60)
+    expect(findMoments(near, { track: null, scan: null, length: 'long' })).toEqual({ reason: 'nothing' })
+    expect(moments(near, { length: 'short' })).toHaveLength(1)
+  })
+
   it('lengths stay within 15-90 s, under 60 s and 60-90 s, in viewing time on 2× clips', () => {
     const sped = clipProject({ said: talk, duration: 310, clips: [{ id: 'a', start: 0, end: 100, speed: 1 }, { id: 'b', start: 100, end: 220, speed: 2 }, { id: 'c', start: 220, end: 310, speed: 1 }] })
     const bounds = { any: [15, 90], short: [15, 60], long: [60, 90] } as const

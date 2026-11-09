@@ -80,6 +80,15 @@ describe('the sentences short clips are picked from (test 49)', () => {
   it('statistics: +0.5 each, at most +1', () => {
     const list = scoredSentences(fixture(), { track: null, scan: null })
     expect(byText(list, 'Revenue').features.numbers).toBe(1)
+    // Three statistics (one sentence over two captions) still give 1.
+    const first = 'Revenue grew 40% to 2 million users'
+    const second = 'and sales reached $900 in May.'
+    const three = scoredSentences(
+      clipProject({ said: [{ t: 1, text: first }, { t: 1 + (first.split(' ').length - 1) * 0.35 + 0.28 + 0.1, text: second }, { t: 9, text: 'Nothing else changed in the report at all.' }], duration: 20 }),
+      { track: null, scan: null }
+    )
+    expect(three[0].text).toBe(`${first} ${second}`)
+    expect(three[0].features.numbers).toBe(1)
     expect(byText(list, 'We open').features.numbers).toBe(0)
     const one = scoredSentences(clipProject({ said: [{ t: 1, text: 'Sales grew 40% in the north this spring.' }, { t: 6, text: 'Nothing else changed in the report at all.' }], duration: 20 }), { track: null, scan: null })
     expect(one[0].features.numbers).toBe(0.5)
