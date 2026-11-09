@@ -289,7 +289,7 @@ const NAMES_SYSTEM: Readonly<Record<NamesRequest['kind'], string>> = {
 }
 
 /** Added to the instructions when the items carry their screenshots (§5.3.1, part P6). */
-const PICTURES_RULE = 'The picture shows the screen just before the action; the red ring marks where the user clicked. Name the control in the ring. '
+const PICTURES_RULE = 'The picture shows the screen just before the action; the ring marks where the user clicked. Name the control in the ring. '
 
 /** The prompt of a 'names' request: its instructions, then the items as a JSON data block; each picture beside its item by id. */
 function namesPrompt(names: NamesRequest): TextPrompt {

@@ -933,7 +933,7 @@ name, no window title.
   §5.5.2), scaled to at most 768 px on the longer side, JPEG quality 0.8. A whole-screen step sends
   its whole-screen shot at that size.
 - The request is the same `names` task; each item gains `image` (the JPEG bytes). The system text adds
-  "The picture shows the screen just before the action; the red ring marks where the user clicked.
+  "The picture shows the screen just before the action; the ring marks where the user clicked.
   Name the control in the ring." Validation (contracts, §20.0): JPEG by its first bytes, at most
   512 KB each, at most 50 a request, at most 200 in all.
 - Each client sends the image in its API's own form: OpenAI's Responses API an `input_image` part

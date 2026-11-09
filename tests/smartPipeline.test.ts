@@ -153,6 +153,8 @@ describe('the names task (test 6)', () => {
     const prompts = textPrompts(withPics, { ...DEFAULT_TEXT_LIMITS, namesItems: 200, namesChars: 1e9 })
     expect(prompts.map((p) => p.images!.length)).toEqual([50, 50, 20])
     expect(prompts[0].images![0]).toEqual({ mime: 'image/jpeg', data: pic, id: 'p0' })
-    expect(prompts[0].system).toMatch(/red ring marks where the user clicked/)
+    // The ring is drawn in the brand's colour or blue (§5.5.4): the rule names no colour.
+    expect(prompts[0].system).toMatch(/the ring marks where the user clicked/)
+    expect(prompts[0].system).not.toMatch(/\b(red|blue)\b/)
   })
 })
