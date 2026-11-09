@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs'
+import path from 'node:path'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { createProject } from '../src/shared/engine/project'
 import { NEW_CHAPTER_BAR } from '../src/shared/render/chapterBar'
@@ -141,6 +143,18 @@ describe('MagnifierSection (test 35)', () => {
     // Inside a zoom of 2x the same lens at 2 times is soft too.
     store.state = { ...store.state, spotlights: [MAG], zooms: [{ id: 'z', start: 0, end: 8, scale: 2, focus: { mode: 'fixed', x: 0.5, y: 0.5 }, auto: false }] }
     expect(byId(magnifierPanel(), 'magnifier-soft')).toBeTruthy()
+  })
+
+  it("the note's live region is on the page before the note shows, so a screen reader reads the note out", () => {
+    const region = (): El | undefined => magnifierPanel().find((e) => e.props['aria-live'] === 'polite')
+    expect(textOf(region())).toBe('')
+    store.state = { ...store.state, spotlights: [{ ...MAG, magnify: 4 }] }
+    expect(textOf(region())).toBe(SOFT_NOTE)
+    // No rule takes the empty region off the page: one that arrives with its words is never read out.
+    const css = readFileSync(path.resolve(__dirname, '../src/renderer/src/editor/panels/magnifier.css'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '')
+    const rules = [...css.matchAll(/([^{}]+)\{([^}]*)\}/g)].filter((m) => m[1].includes('.magnifier-soft'))
+    expect(rules.length).toBeGreaterThan(0)
+    for (const m of rules) expect(m[2], m[1].trim()).not.toMatch(/display:\s*none|visibility:\s*hidden/)
   })
 
   it('Shape and Follows are radio groups; each change is one update; The cursor needs cursor data', () => {
