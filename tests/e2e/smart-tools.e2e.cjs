@@ -26,7 +26,7 @@ const crypto = require('node:crypto')
 const { execFileSync } = require('node:child_process')
 const h = require('./helpers.cjs')
 const f = require('./editor-fixtures.cjs')
-const { seedSecret } = require('./smart-fixtures.cjs')
+const { seedSecret, docShot } = require('./smart-fixtures.cjs')
 
 const { waitFor, openProject } = f
 
@@ -206,12 +206,25 @@ async function main() {
     const notice = await win.textContent('.notice-slot')
     h.assert(/Found 3 chapters/.test(notice), `the notice: ${notice}`)
     h.assert((await win.locator('.chapter-row .chapter-found').count()) === 3, 'three Found chips')
+    await win.locator('.chapter-row').last().scrollIntoViewIfNeeded()
+    await docShot(win, 'find-chapters', win.locator('.inspector'))
 
     await win.locator('[data-testid="review-open"]').click()
     await win.waitForSelector('[data-testid="review-panel"]')
     let rows = await reviewRows(win)
     console.log('review rows', JSON.stringify(rows))
     h.assert(rows.filter((r) => /^Chapter “/.test(r)).length === 3, `Review lists the three chapters: ${rows}`)
+    // Each row's words stay clear of its Keep and Remove (a found chapter's detail is long), with no sideways scrolling.
+    const overlap = await win.evaluate(() =>
+      [...document.querySelectorAll('[data-testid="review-panel"] [data-testid="review-row"]')].map((row) => {
+        const text = row.querySelector('.review-text').getBoundingClientRect()
+        const keep = row.querySelector('[data-testid="review-keep"]')
+        const list = row.closest('.review-list')
+        return { overlaps: !!keep && text.right > keep.getBoundingClientRect().left + 0.5, sideways: !!list && list.scrollWidth > list.clientWidth + 1 }
+      })
+    )
+    h.assert(overlap.length === 3 && overlap.every((o) => !o.overlaps && !o.sideways), `Review rows lay out without overlap: ${JSON.stringify(overlap)}`)
+    await docShot(win, 'review-chapters', win.locator('[data-testid="review-panel"]'))
     // Remove the second: gone, in one undo step.
     const row = (title) => win.locator('[data-testid="review-row"]', { has: win.locator(`.review-item[aria-label^="Chapter “${title}”"]`) })
     await row('Open settings').locator('.review-item').click()
@@ -285,6 +298,7 @@ async function main() {
       await d.getByLabel('Base URL').fill(`http://127.0.0.1:${mock.port}/v1`)
       await d.getByLabel('Name').fill('Mock service')
       await d.getByLabel('API key').fill(KEY)
+      await docShot(win, 'service-form', d)
       const goesTo = await d.locator('[data-testid="ai-goes-to"]').innerText()
       h.assert(goesTo.includes(`127.0.0.1:${mock.port}`), `the form says where the key goes: ${goesTo}`)
       await d.getByRole('button', { name: 'Load models' }).click()
@@ -320,6 +334,8 @@ async function main() {
       console.log('cost line', line)
       h.assert(line.includes('127.0.0.1') && !/OpenAI/.test(line), `the cost line names the service's place: ${line}`)
       h.assert(/cost unknown/i.test(line), `no price yet: ${line}`)
+      await win.locator('#captions-ai-cost').scrollIntoViewIfNeeded()
+      await docShot(win, 'cost-line', win.locator('.inspector'))
       const before = mock.requests.length
       await win.click('#captions-ai-chapters')
       // The question Flown asks once before running a model it has no price for.
@@ -343,6 +359,33 @@ async function main() {
       await tab(win, 'Text')
       await win.click('[data-testid="find-chapters"]')
       await waitFor(() => chaptersOf(home, 'rec-secret').map((c) => c.title).join('|') === 'Click the Export button|Open settings|Save it', 'Find chapters replaced them', 30000)
+
+      // Titles from the screenshots (P6): the send viewer shows the pictures that would go; Cancel sends nothing.
+      await win.locator('[data-testid="guide-open"]').click()
+      await win.waitForSelector('[data-testid="guide-panel"]')
+      await waitFor(async () => {
+        const bar = win.locator('[aria-label="Making screenshots"]')
+        return (await bar.count()) > 0 && (await bar.getAttribute('aria-valuenow')) === (await bar.getAttribute('aria-valuemax'))
+      }, 'the screenshots', 90000)
+      // Step 2's line, once the screen is read: only step 5 (the same page as the typing) may show it.
+      await waitFor(async () => (await win.locator('[data-testid="guide-count"]').innerText()) === '7 steps · 4 need a title · 1 may show typing', "the guide's line", 20000)
+      await docShot(win, 'guide-panel', win.locator('[data-testid="guide-panel"]'))
+      await win.locator('[data-testid="guide-titles-ai"]').check()
+      await win.locator('select[aria-label="Write titles with"]').selectOption(choice)
+      await win.locator('[data-testid="guide-send-shots"]').check()
+      await waitFor(() => win.locator('[data-testid="guide-write-titles"]').isEnabled(), 'Write titles ready with the pictures', 60000)
+      const sentBefore = mock.requests.length
+      await win.locator('[data-testid="guide-write-titles"]').click()
+      await win.waitForSelector('[data-testid="guide-viewer"]', { timeout: 30000 })
+      const where = await win.locator('[data-testid="guide-viewer"]').innerText()
+      h.assert(where.includes(`127.0.0.1:${mock.port}`), `the viewer says where the screenshots go: ${where.slice(0, 200)}`)
+      await docShot(win, 'send-screenshots', win.locator('[data-testid="guide-viewer"]'))
+      await win.locator('[data-testid="guide-viewer"]').getByRole('button', { name: 'Cancel' }).click()
+      await win.waitForSelector('[data-testid="guide-viewer"]', { state: 'detached' })
+      h.assert(mock.requests.length === sentBefore, 'Cancel sent no picture')
+      await win.locator('[data-testid="guide-step-title"]').first().focus()
+      await win.keyboard.press('Escape')
+      await waitFor(async () => !(await win.locator('[data-testid="guide-panel"]').count()), 'the Guide panel closed')
 
       // Step 17: Suggest a title arrives; no question the second time for this model.
       await tab(win, 'Captions')
@@ -371,6 +414,7 @@ async function main() {
       const asked = mock.requests.length
       await win.click('#captions-ai-summary')
       await win.waitForSelector('[data-testid="cost-confirm"]', { timeout: 10000 })
+      await docShot(win, 'cost-question')
       const question = await win.locator('[data-testid="cost-confirm"]').innerText()
       console.log('question', question)
       h.assert(await win.evaluate(() => document.activeElement?.textContent === 'Cancel'), 'Cancel has the focus')
@@ -449,6 +493,7 @@ async function main() {
       await section.getByRole('button', { name: /^Download Recommended/ }).click()
       await waitFor(async () => (await section.getByRole('button', { name: 'Remove Recommended' }).count()) > 0, 'downloaded', 30000)
       h.assert(served.length >= 1, 'the model came from the address the catalogue names')
+      await docShot(win, 'local-ai', section)
       const use = await section.locator('.local-ai-use').innerText()
       h.assert(/Automatic/.test(use), `Use shows Automatic: ${use}`)
       await closeSettings(win)
@@ -470,6 +515,7 @@ async function main() {
       await win.waitForSelector('.captions-ai [data-testid="local-progress"]', { timeout: 15000 })
       await waitFor(async () => /A draft written on this PC\./.test(await win.locator('.captions-suggestion').innerText().catch(() => '')), 'the summary', 30000)
       h.assert(await win.locator('.captions-suggestion [data-testid="local-written"]').isVisible(), 'Written on this PC')
+      await docShot(win, 'local-summary', win.locator('.inspector'))
 
       // Stop during a run ends it within 2 s.
       await win.click('#captions-ai-title')
@@ -547,6 +593,7 @@ async function main() {
         const bar = win.locator('[aria-label="Making screenshots"]')
         return (await bar.getAttribute('aria-valuenow')) === (await bar.getAttribute('aria-valuemax'))
       }, 'the screenshots', 90000)
+      await docShot(win, 'guide-bangla', win.locator('[data-testid="guide-panel"]'))
       const pdf = path.join(out, 'Bangla guide.pdf')
       await h.mockSaveDialog(app, pdf)
       await win.locator('[data-testid="guide-format"] label', { hasText: 'PDF' }).click()

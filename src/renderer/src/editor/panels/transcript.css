@@ -98,9 +98,9 @@
   outline-offset: 0;
 }
 
-/* The review list. */
+/* The review list (fillers and retakes), its rules kept to its own list: Review mode's panel uses the same class names. */
 
-.review-list {
+.review-list.transcript-review {
   list-style: none;
   margin: 0 0 8px;
   padding: 0;
@@ -112,7 +112,7 @@
   scrollbar-width: thin;
 }
 
-.review-row {
+.transcript-review .review-row {
   display: flex;
   align-items: center;
   gap: 6px;
@@ -121,7 +121,7 @@
   background: var(--surface-2);
 }
 
-.review-text {
+.transcript-review .review-text {
   flex: 1;
   min-width: 0;
   display: flex;
@@ -139,34 +139,34 @@
   cursor: pointer;
 }
 
-.review-text:hover {
+.transcript-review .review-text:hover {
   background: var(--surface-3);
 }
 
-.review-text:focus-visible {
+.transcript-review .review-text:focus-visible {
   outline: var(--focus-ring-width) solid var(--focus-ring);
 }
 
-.review-kind {
+.transcript-review .review-kind {
   color: var(--warning-text);
   font-weight: var(--weight-semibold);
 }
 
-.review-time {
+.transcript-review .review-time {
   color: var(--text-3);
   font-variant-numeric: tabular-nums;
 }
 
-.review-quote {
+.transcript-review .review-quote {
   flex-basis: 100%;
   overflow-wrap: anywhere;
 }
 
-.review-context {
+.transcript-review .review-context {
   color: var(--text-3);
 }
 
-.review-actions {
+.transcript-review .review-actions {
   display: flex;
   gap: 4px;
   flex-shrink: 0;

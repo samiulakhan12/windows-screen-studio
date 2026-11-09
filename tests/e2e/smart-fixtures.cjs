@@ -7,6 +7,7 @@
  * smart-tools.e2e.cjs.
  */
 const fs = require('node:fs')
+const os = require('node:os')
 const path = require('node:path')
 const { execFileSync } = require('node:child_process')
 const h = require('./helpers.cjs')
@@ -154,4 +155,27 @@ function seedSecret(home, { id = 'rec-guide', name = 'Secret', language = 'en', 
   return id
 }
 
-module.exports = { W, H, SECONDS, makeSecretVideo, secretVideo, seedSecret, secretCursor, transcriptOf, LINES }
+/** With SSW_E2E_DOC_SHOTS set: pictures for the docs, docs/screenshots/smart-tools-<name>.png, each under 300 KB. */
+const DOC_SHOTS = process.env.SSW_E2E_DOC_SHOTS ? path.join(h.APP_DIR, 'docs', 'screenshots') : null
+
+/** Saves a PNG of `locator` (or the window) as docs/screenshots/smart-tools-<name>.png, scaled down until under 300 KB. */
+async function docShot(win, name, locator = null) {
+  if (!DOC_SHOTS) return
+  fs.mkdirSync(DOC_SHOTS, { recursive: true })
+  const file = path.join(DOC_SHOTS, `smart-tools-${name}.png`)
+  const raw = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'ssw-e2e-shot-')), `${name}.png`)
+  if (locator) await locator.screenshot({ path: raw })
+  else await win.screenshot({ path: raw })
+  try {
+    for (const width of [0, 1400, 1100, 900, 700]) {
+      if (width) execFileSync('ffmpeg', ['-v', 'error', '-y', '-i', raw, '-vf', `scale='min(${width},iw)':-1:flags=lanczos`, '-pix_fmt', 'rgb24', file])
+      else fs.copyFileSync(raw, file)
+      if (fs.statSync(file).size < 300 * 1024) return
+    }
+    throw new Error(`${file} is over 300 KB`)
+  } finally {
+    fs.rmSync(path.dirname(raw), { recursive: true, force: true })
+  }
+}
+
+module.exports = { docShot, W, H, SECONDS, makeSecretVideo, secretVideo, seedSecret, secretCursor, transcriptOf, LINES }

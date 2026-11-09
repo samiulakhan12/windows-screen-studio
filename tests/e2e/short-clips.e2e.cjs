@@ -11,6 +11,7 @@ const path = require('node:path')
 const { execFileSync } = require('node:child_process')
 const h = require('./helpers.cjs')
 const { waitFor, openProject } = require('./editor-fixtures.cjs')
+const { docShot } = require('./smart-fixtures.cjs')
 
 const W = 1280
 const H = 720
@@ -109,6 +110,7 @@ h.run('short clips: moments, Play, a vertical copy, too short, a 60 s shorter ve
   console.log('moments', rows, 'first reasons:', why)
   h.assert(why.length > 0, 'the first moment has reasons')
   const range = await win.locator('[data-testid="clips-row"] .clips-time').first().innerText()
+  await docShot(win, 'short-clips', win.locator('[data-testid="clips-panel"]'))
   console.log('first range', range)
 
   // Play clip 1: the row says how far it is, and Esc stops it.
@@ -150,6 +152,7 @@ h.run('short clips: moments, Play, a vertical copy, too short, a 60 s shorter ve
     return /^Keeps \d+ sentences, [\d.]+ s, smooth cuts$/.test(text) && text
   }, 'the line saying what it keeps', 20000)
   console.log('short line', line)
+  await docShot(win, 'shorter-version', win.locator('[data-testid="short-version"]'))
   await win.locator('[data-testid="short-make"]').click()
   await win.waitForSelector('[data-testid="short-made"]', { timeout: 60000 })
   const shortId = h.listProjects(home).find((id) => h.readProject(home, id).name === 'Narrated3 (60 s)')

@@ -680,7 +680,7 @@ function ReviewSection({
       ) : (
         <p className="hint">{`Nothing is cut until you choose. Removing all saves ${seconds(total)}.`}</p>
       )}
-      <ul className="review-list" data-testid="transcript-review">
+      <ul className="review-list transcript-review" data-testid="transcript-review">
         {items.map((s) => {
           const long = s.last - s.first + 1 > QUOTE_WORDS
           const from = Math.max(0, s.first - CONTEXT_WORDS)
