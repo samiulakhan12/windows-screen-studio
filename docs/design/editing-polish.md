@@ -326,7 +326,9 @@ centre), else at the centre of the preview. The text field takes focus at once, 
 "Type the bubble's text". The tail's tip stays on its spot in the recording while the camera zooms;
 the body moves with it and stays inside the frame. In the preview a round handle at the tail's tip
 is dragged to point at something (arrow keys move it 1 % of the frame, Shift 10 %; it stops at the
-picture's edge, as a badge does); dragging the body moves it around the tip. **Colour**: *White* (default, dark text, a thin outline), *Dark*
+picture's edge, as a badge does); dragging the body moves it around the tip. While a zoom or the
+layout hides the tip, dragging the body still moves only the body (beside the picture's edge, where
+it is drawn then); the tip stays on its spot. **Colour**: *White* (default, dark text, a thin outline), *Dark*
 (#1d1d24, white text), the brand colours. **Tail**: *Pointing* (default) or *None*.
 
 ### 2.4 Progress bar

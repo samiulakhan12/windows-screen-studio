@@ -12,7 +12,7 @@ import { displayTime } from '../../../shared/editor/clips'
 import type { Rect, SceneLayout } from '../../../shared/engine/layout'
 import { clamp } from '../../../shared/engine/math'
 import { calloutOf } from '../../../shared/render/calloutData'
-import { badgeLabels, BUBBLE_BODY, calloutPlace, type CalloutPlace } from '../../../shared/render/callouts'
+import { badgeLabels, BUBBLE_BODY, bubbleAnchor, calloutPlace, type CalloutPlace } from '../../../shared/render/callouts'
 import type { Project } from '../../../shared/types'
 import { calloutStack, measurer } from '../render/calloutLayer'
 import { calloutMapping, pausedScene, type CalloutMapping } from './calloutView'
@@ -94,8 +94,11 @@ export function CalloutHandles(props: { project: Project; selection: Selection; 
     return { x: clamp((tip.x + body.dx * S) / start.view.w, 0, 1), y: clamp((tip.y + body.dy * S) / start.view.h, 0, 1) }
   }
   const moveBodyTo = (centre: Point): void => {
-    if (!c.pin || !place.pin) return void moveTo(centre)
-    const body = { dx: (centre.x - place.pin.x) / S, dy: (centre.y - place.pin.y) / S }
+    if (!c.pin) return void moveTo(centre)
+    // Its offset from where the body is placed around: the tip, or while the tip is off the picture its nearest point. The tip stays put.
+    const anchor = bubbleAnchor(a, m.frame)
+    if (!anchor) return
+    const body = { dx: (centre.x - anchor.x) / S, dy: (centre.y - anchor.y) / S }
     const tip = start.view.toOut(c.pin.x, c.pin.y)
     const shown = { x: clamp((tip.x + body.dx * S) / start.view.w, 0, 1), y: clamp((tip.y + body.dy * S) / start.view.h, 0, 1) }
     store.update((x) => moveBody(x, a.id, body, shown))

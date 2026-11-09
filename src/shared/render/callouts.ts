@@ -405,6 +405,19 @@ export function pinOut(a: Annotation, frame: Pick<CalloutFrame, 'toOut' | 'crop'
   return frame.toOut(p.x, p.y)
 }
 
+/** The point a bubble's body is placed around for a tip at `at`: the tip, or while it is off the picture the picture's nearest point. */
+const anchorOf = (at: { x: number; y: number }, frame: Pick<CalloutFrame, 'visible' | 'seen'>): { x: number; y: number } => (frame.visible(at) || !frame.seen ? at : intoRect(at, frame.seen))
+
+/**
+ * Where a pinned bubble's body is placed around (output px), as calloutPlace places it: its tip,
+ * or while the tip is off the picture the picture's nearest point, so the body stays beside its
+ * edge. Null without a pin. Dragging the body measures its offset from this.
+ */
+export function bubbleAnchor(a: Annotation, frame: CalloutFrame): { x: number; y: number } | null {
+  const at = pinOut(a, frame)
+  return at ? anchorOf(at, frame) : null
+}
+
 /**
  * Where a badge or a bubble is drawn in a frame (§7.3, §7.4), or null for another text and for a
  * badge whose pin is outside the visible picture (not drawn). `label` is an automatic badge's
@@ -456,7 +469,7 @@ export function calloutPlace(a: Annotation, label: string | null, frame: Callout
   }
   const shown = frame.visible(at)
   // A tip outside the picture: the body stays beside the picture's edge, without its tail.
-  const anchor = shown || !frame.seen ? at : intoRect(at, frame.seen)
+  const anchor = anchorOf(at, frame)
   const box = bubbleBody(anchor, c.body ?? BUBBLE_BODY, size, S, area)
   const tail = shown ? bubbleTail(box, at, f, radius) : null
   return {

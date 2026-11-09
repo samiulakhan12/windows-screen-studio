@@ -5,7 +5,8 @@ import type { Annotation, CursorTrack, Project, ZoomSegment } from '../src/share
 /*
  * The preview's handles of step badges and speech bubbles (docs/design/editing-polish.md §2.3,
  * §7.3, §7.4, §12): a pinned badge or tail tip moved with the pointer or the arrow keys stays on
- * the picture (so it is still drawn and its handle keeps the focus). CalloutHandles is called as a
+ * the picture (so it is still drawn and its handle keeps the focus), and dragging a bubble's body
+ * while its tip is off the picture moves the body, never the tip. CalloutHandles is called as a
  * function, with React's hooks and the editor's contexts answered here (as
  * tests/transportNotice.test.ts does), and its handles' moves are run on a project that the
  * store's updates change.
@@ -137,5 +138,36 @@ describe("a pinned badge or tail tip stays on the picture (§2.3, §12)", () => 
     expect(calloutOf(a).pin).toBeUndefined()
     expect(a.x).toBeCloseTo(10 / m.view.w, 9)
     expect(a.y).toBeCloseTo(10 / m.view.h, 9)
+  })
+})
+
+describe("dragging a bubble's body (§2.3, §7.4)", () => {
+  it('moves the body around its tip, the tip staying where it is', () => {
+    start([bubble({ pin: { x: 0.4, y: 0.6 }, body: { dx: 0.12, dy: -0.1 } })])
+    const body = handles('u', 5).get('bubble-body')!
+    body.onMove({ x: body.at.x + 50, y: body.at.y + 20 })
+    const a = project.annotations[0]
+    expect(calloutOf(a).pin).toEqual({ x: 0.4, y: 0.6 })
+    const box = placeOf('u', 5)!.box
+    expect(box.x + box.w / 2).toBeCloseTo(body.at.x + 50, 6)
+    expect(box.y + box.h / 2).toBeCloseTo(body.at.y + 20, 6)
+  })
+
+  it('while its tip is off the picture (a zoom) moves the body, never the tip', () => {
+    // Zoomed in on the top right, the tip at the bottom left is out of the picture.
+    start([bubble({ pin: { x: 0.05, y: 0.9 }, body: { dx: 0.12, dy: -0.1 } })], [zoom])
+    const shown = handles('u', 6)
+    expect(shown.get('tail-handle')).toBeUndefined()
+    const body = shown.get('bubble-body')!
+    body.onMove({ x: body.at.x + 50, y: body.at.y - 30 })
+    const a = project.annotations[0]
+    // The pin the user chose is kept for the whole bubble.
+    expect(calloutOf(a).pin).toEqual({ x: 0.05, y: 0.9 })
+    const place = placeOf('u', 6)!
+    expect(place.tail).toBeNull()
+    expect(place.box.x + place.box.w / 2).toBeCloseTo(body.at.x + 50, 6)
+    expect(place.box.y + place.box.h / 2).toBeCloseTo(body.at.y - 30, 6)
+    // Before the zoom the tip shows where it was, with its tail.
+    expect(placeOf('u', 2.5)!.tail).not.toBeNull()
   })
 })
