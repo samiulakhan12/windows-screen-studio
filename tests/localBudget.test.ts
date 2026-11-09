@@ -87,4 +87,13 @@ describe('localLimits and maxTokensFor (test 69)', () => {
     // A translation counts the denser script, so Bangla output never runs short.
     expect(maxTokensFor(cleanup, 'translate', 'qwen')).toBeGreaterThan(maxTokensFor(cleanup, 'cleanup', 'qwen'))
   })
+
+  it('a prompt near the context leaves only what is left of it: the room never pushes past 8,128 tokens', () => {
+    // A prompt of about 7,000 tokens (more than any local limit makes, as a caller might send).
+    const long: TextPrompt = { name: 'help_article', schema: {}, system: 'Write a help article.', user: `Transcript:\n${'word '.repeat(6600)}` }
+    const used = promptTokens(long, 'qwen')
+    expect(used).toBeGreaterThan(LOCAL_BUDGET - 2200)
+    expect(maxTokensFor(long, 'article', 'qwen')).toBe(LOCAL_BUDGET - used)
+    expect(fitsContext(long, maxTokensFor(long, 'article', 'qwen'), 'qwen')).toBe(true)
+  })
 })
