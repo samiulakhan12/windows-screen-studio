@@ -133,16 +133,17 @@ export function vp9Level(width: number, height: number, fps: number): number {
 export const vp9Codec = (width: number, height: number, fps: number): string => `vp09.00.${vp9Level(width, height, fps)}.08`
 
 /**
- * IVF, the minimal container ffmpeg reads VP9 from a pipe in: a 32-byte file header,
- * then each frame as a 12-byte header (size, timestamp in frames) and its bytes.
+ * IVF, the minimal container ffmpeg reads VP9 (and, from wave 12, AV1) from a pipe in: a 32-byte
+ * file header naming the codec ('VP90' or 'AV01'), then each frame as a 12-byte header (size,
+ * timestamp in frames) and its bytes.
  */
-export function ivfFileHeader(width: number, height: number, fps: number, frames = 0): Uint8Array {
+export function ivfFileHeader(width: number, height: number, fps: number, frames = 0, fourcc: 'VP90' | 'AV01' = 'VP90'): Uint8Array {
   const b = new Uint8Array(32)
   const v = new DataView(b.buffer)
   b.set([0x44, 0x4b, 0x49, 0x46]) // 'DKIF'
   v.setUint16(4, 0, true) // version
   v.setUint16(6, 32, true) // header size
-  b.set([0x56, 0x50, 0x39, 0x30], 8) // 'VP90'
+  b.set([...fourcc].map((c) => c.charCodeAt(0)), 8) // 'VP90' or 'AV01'
   v.setUint16(12, width, true)
   v.setUint16(14, height, true)
   v.setUint32(16, fps, true) // time base denominator

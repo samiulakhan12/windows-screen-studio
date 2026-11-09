@@ -72,6 +72,29 @@ const BADGES: Record<PresetIcon, { bg: string; body: JSX.Element }> = {
         <path d="M6.6 8.8l5.4 4.2 5.4-4.2" fill="none" stroke="#fff" strokeWidth="1.6" strokeLinejoin="round" />
       </>
     )
+  },
+  // Wave 12's destinations (output-and-languages §2.2): a 4:5 frame, a film strip, two stacked layers.
+  portrait: {
+    bg: '#7c3aed',
+    body: <rect x="7.5" y="6.5" width="9" height="11.25" rx="1.6" fill="none" stroke="#fff" strokeWidth="1.6" />
+  },
+  editing: {
+    bg: '#334155',
+    body: (
+      <>
+        <rect x="6" y="7" width="12" height="10" rx="1.4" fill="none" stroke="#fff" strokeWidth="1.6" />
+        <path d="M9 7v10M15 7v10" stroke="#fff" strokeWidth="1.4" />
+      </>
+    )
+  },
+  overlay: {
+    bg: '#0f766e',
+    body: (
+      <>
+        <rect x="5.5" y="9" width="10" height="8" rx="1.4" fill="none" stroke="#fff" strokeWidth="1.6" strokeDasharray="2 1.6" />
+        <rect x="8.5" y="6" width="10" height="8" rx="1.4" fill="none" stroke="#fff" strokeWidth="1.6" />
+      </>
+    )
   }
 }
 

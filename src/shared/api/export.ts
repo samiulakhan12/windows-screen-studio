@@ -2,13 +2,24 @@ import type { AudioLevels } from '../audio/loudness'
 import type { AudioSource, StemKind } from '../audio/settings'
 import type { Range } from '../audio/activity'
 import type { OutputChapter } from '../render/chapters'
-import type { Clip, ExportFormat, ExportSettings, VoiceStrength } from '../types'
+import type { TimelinePlan } from '../interchange/timelinePlan'
+import type { UserExportPreset } from '../render/userPresets'
+import type { Clip, ExportCodec, ExportFormat, ExportSettings, VoiceStrength } from '../types'
 
 /** H.264 encoders ffmpeg may use; GPU ones are only used after a successful probe. */
 export type H264Encoder = 'h264_nvenc' | 'h264_qsv' | 'h264_amf' | 'h264_mf' | 'libx264'
 
-/** Encoders ffmpeg may encode raw frames with (libvpx-vp9 for WebM). */
-export type FfmpegVideoEncoder = H264Encoder | 'libvpx-vp9'
+/** HEVC encoders (output-and-languages §5.4); libx265 only with CODEC_POLICY.hevcSoftware (off). */
+export type HevcEncoder = 'hevc_nvenc' | 'hevc_qsv' | 'hevc_amf' | 'hevc_mf' | 'libx265'
+
+/** AV1 encoders: the three GPU ones after a probe, libaom on the processor. */
+export type Av1Encoder = 'av1_nvenc' | 'av1_qsv' | 'av1_amf' | 'libaom-av1'
+
+/** Encoders of the editing formats (CineForm, QuickTime Animation, ProRes). */
+export type IntermediateEncoder = 'cfhd' | 'qtrle' | 'prores_ks'
+
+/** Encoders ffmpeg may encode raw frames with (libvpx-vp9 for WebM; HEVC, AV1 and the intermediates from wave 12). */
+export type FfmpegVideoEncoder = H264Encoder | 'libvpx-vp9' | HevcEncoder | Av1Encoder | IntermediateEncoder
 
 /**
  * H.264 VUI colour description (ITU-T H.273 code points) of an already-encoded
@@ -39,6 +50,10 @@ export type VideoInput =
   | { kind: 'h264'; color: ColorTags }
   /** A VP9 stream encoded in the renderer (WebCodecs), framed as IVF; ffmpeg only muxes it. */
   | { kind: 'vp9'; color: ColorTags }
+  /** An HEVC Annex B stream from WebCodecs (hardware only); ffmpeg only muxes it. */
+  | { kind: 'hevc'; color: ColorTags }
+  /** An AV1 stream from WebCodecs, framed as IVF with fourcc 'AV01'; ffmpeg only muxes it. */
+  | { kind: 'av1'; color: ColorTags }
   /** No video (audio-only formats): nothing is sent, ffmpeg runs on its own. */
   | { kind: 'none' }
 
@@ -106,6 +121,18 @@ export interface MusicSound {
   bed?: string
 }
 
+/** The sounds a stem export writes, each only when it has sound (output-and-languages §7). */
+export type SoundStem = 'voice' | 'system' | 'recording' | 'music' | 'effects'
+
+export interface StemJob {
+  /** In this order; 'recording' only when the project has no separate microphone and system files. */
+  stems: SoundStem[]
+  /** One gain (dB, -30..30) for the recording's stems instead of loudnorm; absent: not normalised. */
+  gainDb?: number
+  /** The separate files' gains as the project sets them (absent: 1), used even where the video mixed screen.mp4's track. */
+  gains?: Partial<Record<StemKind, number>>
+}
+
 export interface ExportJob {
   width: number
   height: number
@@ -141,7 +168,60 @@ export interface ExportJob {
   effects?: { id: string; times: number[]; gain: number }[]
   /** Subtitle streams (Captions Studio §11.10): WebVTT per language, at most 8. */
   subtitles?: { language: string; name: string; vtt: string; default: boolean }[]
+  /** The codec when it is not the format's default; absent: as before. Main checks it against `video` (output-and-languages §5). */
+  codec?: ExportCodec
+  /** Frames carry straight alpha (raw 'rgba' or 'bgra' only), for an alpha codec (§6). */
+  alpha?: true
+  /** Also write WAV stems next to the output (§7). */
+  stems?: StemJob
   outputPath: string
+}
+
+/** Why an export failed, for the renderer's choice of falling back to the next encoder (output-and-languages §9.6). */
+export type ExportErrorCode =
+  | 'disk-full'
+  | 'permission'
+  | 'in-use'
+  | 'read-only'
+  | 'missing-input'
+  | 'unreadable'
+  | 'not-chosen'
+  | 'invalid-job'
+  | 'no-sound'
+  | 'cancelled'
+  | 'encoder'
+  | 'unknown'
+
+export type TimelineKind = 'fcpxml' | 'xmeml' | 'edl'
+
+/** The editors a timeline is written for (§2.3); 'resolve' and 'finalcut' share the .fcpxml. */
+export type TimelineEditor = 'resolve' | 'premiere' | 'finalcut' | 'edl'
+
+export interface TimelineRequest {
+  projectId: string
+  /** The finished export (an approved path of this session). */
+  videoPath: string
+  editors: TimelineEditor[]
+  media: 'export' | 'recordings'
+  /** §8.2, built in the renderer from the project; checked by main before anything is written (§18.3). */
+  plan: TimelinePlan
+  /** Stem files written with the export (main checks each is next to `videoPath`). */
+  stems: { stem: SoundStem; path: string }[]
+}
+
+export interface TimelineResult {
+  /** Every file or folder written, with what it is for, so the done view can say how to open it. */
+  files: { path: string; for: TimelineEditor | 'resolve-markers' | 'media' }[]
+  /** A step that failed after the video was saved, in the UI language. */
+  problem?: string
+}
+
+export interface PresetFileRead {
+  presets: UserExportPreset[]
+  /** Presets left out over the limit of 50. */
+  skipped: number
+  /** Presets whose codec Flown does not make, and the codec they export with instead (§4.3 rule 2). */
+  changed: { from: ExportCodec; to: ExportCodec; count: number }[]
 }
 
 export interface ExportCapabilities {
@@ -160,6 +240,10 @@ export interface ExportFinish {
   reduced?: string
   /** Set when a GIF could not be made small enough even at the smallest settings. */
   overLimit?: boolean
+  /** The WAV stems written next to the video (output-and-languages §7.6). */
+  stems?: { stem: SoundStem; path: string; bytes: number }[]
+  /** Why the stems could not be written, in the UI language; the video is saved all the same. */
+  stemsProblem?: string
 }
 
 export type ClipboardResult = { ok: true } | { ok: false; message: string }
@@ -192,4 +276,14 @@ export interface ExportApi {
   /** Puts an exported file on the system clipboard (as a file, for pasting into apps). */
   copyFileToClipboard(path: string): Promise<ClipboardResult>
   showItemInFolder(path: string): Promise<void>
+  /** Working GPU encoders for a codec, best first (cached per session; output-and-languages §5.9). */
+  probeCodec(codec: 'hevc' | 'av1'): Promise<FfmpegVideoEncoder[]>
+  /** The code of the last export:start or export:finish failure (§9.6). */
+  exportErrorCode(): Promise<ExportErrorCode | null>
+  /** Writes the timeline files of an export (§8.7). */
+  writeTimeline(request: TimelineRequest): Promise<TimelineResult>
+  /** Save dialog for `{defaultName}.flownpreset`; main writes the presets itself (§18.2). Resolves with the path, or null. */
+  savePresetFile(defaultName: string, presets: UserExportPreset[]): Promise<string | null>
+  /** Open dialog for .flownpreset; main reads at most 64 KB. Null when cancelled. */
+  openPresetFile(): Promise<PresetFileRead | { refused: 'too-large' | 'unreadable' } | null>
 }

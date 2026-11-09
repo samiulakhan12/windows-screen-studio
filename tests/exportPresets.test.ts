@@ -89,7 +89,9 @@ describe('destination presets', () => {
 
   it('reads remembered settings defensively', () => {
     expect(normalizeOptions(null)).toEqual(DEFAULT_EXPORT_OPTIONS)
-    expect(normalizeOptions({ format: 'avi', resolution: 999, fps: 24, targetSizeMB: -5, aspect: '2:1', preset: 'nope' })).toEqual(DEFAULT_EXPORT_OPTIONS)
+    // 24 fps is a rate from wave 12 on (output-and-languages §5.6); 23.976 never is.
+    expect(normalizeOptions({ format: 'avi', resolution: 999, fps: 23.976, targetSizeMB: -5, aspect: '2:1', preset: 'nope' })).toEqual(DEFAULT_EXPORT_OPTIONS)
+    expect(normalizeOptions({ format: 'avi', resolution: 999, fps: 121, targetSizeMB: -5, aspect: '3:2', preset: 'nope' })).toEqual(DEFAULT_EXPORT_OPTIONS)
     const reels = applyPreset(DEFAULT_EXPORT_OPTIONS, preset('reels'))
     expect(normalizeOptions(JSON.parse(JSON.stringify(reels)))).toEqual(reels)
     expect(normalizeOptions({ format: 'webm', targetSizeMB: 10 })).toMatchObject({ format: 'webm', targetSizeMB: 10 })

@@ -17,6 +17,9 @@ export type PrefKey =
   | 'guide'
   | 'findChapters'
   | 'shortClips'
+  /** Output and languages (docs/design/output-and-languages.md §4.4): the user's export presets and the UI language. */
+  | 'exportPresets'
+  | 'ui'
 
 export interface PrefsApi {
   /** The stored value of `key`, or null when nothing was saved. */
@@ -25,4 +28,4 @@ export interface PrefsApi {
   setPref(key: PrefKey, value: unknown): Promise<void>
 }
 
-export const PREF_KEYS: readonly PrefKey[] = ['stylePresets', 'shortcuts', 'polish', 'captionPresets', 'captionsGreat', 'captionCleanup', 'captionWordList', 'aiPrices', 'aiConfirm', 'guide', 'findChapters', 'shortClips']
+export const PREF_KEYS: readonly PrefKey[] = ['stylePresets', 'shortcuts', 'polish', 'captionPresets', 'captionsGreat', 'captionCleanup', 'captionWordList', 'aiPrices', 'aiConfirm', 'guide', 'findChapters', 'shortClips', 'exportPresets', 'ui']

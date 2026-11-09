@@ -16,7 +16,9 @@ const RATIOS: Record<Exclude<AspectRatio, 'auto'>, number> = {
   '16:9': 16 / 9,
   '9:16': 9 / 16,
   '1:1': 1,
-  '4:3': 4 / 3
+  '4:3': 4 / 3,
+  /** Exports only (output-and-languages §4.1): 720×900, 1080×1350, 1440×1800, 2160×2700. */
+  '4:5': 4 / 5
 }
 
 const even = (n: number): number => Math.max(2, Math.round(n / 2) * 2)

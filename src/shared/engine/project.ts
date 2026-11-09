@@ -135,6 +135,12 @@ const optional = <K extends string, V>(key: K, value: V | undefined): { [P in K]
  * Upgrades a project.json of any earlier version to the current schema.
  * Missing fields get defaults, so hand-edited or partial files still open.
  */
+/**
+ * The shapes a project can have: ASPECT_RATIOS of styleDefaults.ts (which imports this module, so the
+ * list is repeated here; a test keeps the two equal). '4:5' is an export shape only (output-and-languages §4.6).
+ */
+const PROJECT_ASPECTS: readonly string[] = ['auto', '16:9', '9:16', '1:1', '4:3']
+
 export function migrateProject(raw: unknown): Project {
   const p = raw as AnyProject
   if (!p || typeof p !== 'object' || typeof p.id !== 'string') throw new Error('Not a project file')
@@ -147,6 +153,9 @@ export function migrateProject(raw: unknown): Project {
   const transcriptRead = readTranscript(transcript, duration)
   return {
     ...rest,
+    // A hand-edited or future project with a shape outside the list (4:5 among them) reads as 'auto';
+    // the key keeps its place, and every project written so far has a listed shape (test 1).
+    ...(rest.style && typeof rest.style === 'object' && !PROJECT_ASPECTS.includes(rest.style.aspectRatio) ? { style: { ...rest.style, aspectRatio: 'auto' as const } } : {}),
     ...migrateStems(audioStems),
     version: 2,
     duration,

@@ -42,6 +42,8 @@ export interface RenderScene {
   crop?: NormRect
   /** The preview's Compare (docs/design/editing-polish.md §2.5): the pictures drawn without their colour. Never saved, never set by the export. */
   compare?: boolean
+  /** A see-through export (output-and-languages §6); absent: the frame is drawn opaque, as before. */
+  alpha?: 'background' | 'overlays'
 }
 
 /** A decoded frame and its display size. */

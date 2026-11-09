@@ -21,6 +21,8 @@ import {
   FORMAT_LABELS,
   normalizeOptions,
   presetById,
+  readBatchChoice,
+  type BatchChoice,
   RESOLUTION_LABELS,
   safeFileName,
   TARGET_MB_RANGE,
@@ -119,11 +121,9 @@ function writeJson(key: string, value: unknown): void {
   }
 }
 
-function loadBatch(): { presets: string[]; aspects: AspectRatio[] } {
-  const raw = readJson<{ presets?: unknown; aspects?: unknown }>(BATCH_KEY, {})
-  const presets = Array.isArray(raw.presets) ? raw.presets.filter((p): p is string => typeof p === 'string' && !!presetById(p)) : []
-  const aspects = Array.isArray(raw.aspects) ? raw.aspects.filter((a): a is AspectRatio => (BATCH_ASPECTS as readonly string[]).includes(a as string)) : []
-  return { presets, aspects }
+/** The stored batch choices, read by the frozen reader (output-and-languages §4.3): an old value reads back as stored. */
+function loadBatch(): BatchChoice {
+  return readBatchChoice(readJson<unknown>(BATCH_KEY, {}))
 }
 
 function Choice<T extends string | number>({

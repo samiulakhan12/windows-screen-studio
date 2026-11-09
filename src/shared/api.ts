@@ -23,6 +23,7 @@ import type { FilmstripApi, VersionsApi } from './api/versions'
 import type { SoundLibraryApi } from './api/soundLibrary'
 import type { GuideApi } from './api/guide'
 import type { LocalAiApi } from './api/localAi'
+import type { UiApi } from './api/ui'
 
 export type { ExportApi, ExportJob } from './api/export'
 export type { LoadedProject, ProjectsApi } from './api/projects'
@@ -31,4 +32,4 @@ export type { RecorderCommand, RecordingApi, SaveRecordingPayload } from './api/
 export type { ImportApi, ImportProgress, ImportResult } from './api/import'
 
 /** API exposed to renderer windows by the preload script as `window.api`. */
-export type StudioApi = { platform: string } & RecordingApi & ProjectsApi & ExportApi & PrefsApi & AiApi & CaptionsApi & BrandApi & BrandKitApi & NotesApi & SpeechApi & JobsApi & ExportBundleApi & DiagnosticsApi & StorageApi & ImportApi & VoiceApi & UpdatesApi & AssetsApi & SoundsApi & ShareApi & SearchApi & VersionsApi & FilmstripApi & SoundLibraryApi & GuideApi & LocalAiApi
+export type StudioApi = { platform: string } & RecordingApi & ProjectsApi & ExportApi & PrefsApi & AiApi & CaptionsApi & BrandApi & BrandKitApi & NotesApi & SpeechApi & JobsApi & ExportBundleApi & DiagnosticsApi & StorageApi & ImportApi & VoiceApi & UpdatesApi & AssetsApi & SoundsApi & ShareApi & SearchApi & VersionsApi & FilmstripApi & SoundLibraryApi & GuideApi & LocalAiApi & UiApi

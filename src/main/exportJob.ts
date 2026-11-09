@@ -1,10 +1,11 @@
 import { createHash } from 'node:crypto'
 import { promises as fs } from 'node:fs'
 import path from 'node:path'
-import type { ColorTags, ExportJob, FfmpegVideoEncoder, MusicSound, RecordingSound, VideoInput } from '../shared/api/export'
+import type { ColorTags, ExportJob, FfmpegVideoEncoder, MusicSound, RecordingSound, SoundStem, StemJob, VideoInput } from '../shared/api/export'
 import { MAX_DUCK_RANGES } from '../shared/audio/automation'
 import { AUDIO_LIMITS, MUSIC_FILE_RE, SOURCE_FILES, STEM_KINDS, type StemKind } from '../shared/audio/settings'
-import type { ExportFormat } from '../shared/types'
+import type { ExportCodec, ExportFormat } from '../shared/types'
+import { canAlpha, codecAllowed, CODEC_POLICY, DEFAULT_CODEC, FORMAT_CODECS } from '../shared/render/proFormats'
 import { MAX_CHAPTERS } from '../shared/render/chapters'
 import { MAX_SUBTITLE_LANGUAGES, SUBTITLE_LANGUAGE_RE } from '../shared/render/exportBundle'
 import { MAX_POP_TIMES, MAX_TONES } from '../shared/render/popSound'
@@ -34,7 +35,7 @@ export function tempStem(tempDir: string): string {
   return path.join(tempDir, `screen-studio-gif-${uniqueSuffix()}`)
 }
 
-const EXPORT_EXTENSIONS = ['.mp4', '.gif', '.webm', '.mov', '.m4a']
+const EXPORT_EXTENSIONS = ['.mp4', '.gif', '.webm', '.mov', '.m4a', '.wav']
 
 /** A plain file name a batch export may create: no folders, no reserved characters, a known extension. */
 export function batchFileOk(name: unknown): name is string {
@@ -94,10 +95,44 @@ export async function moveIntoPlace(from: string, to: string, rename = fs.rename
 }
 
 const isNum = (v: unknown, min: number, max: number): v is number => typeof v === 'number' && Number.isFinite(v) && v >= min && v <= max
-const ENCODERS: FfmpegVideoEncoder[] = [...HARDWARE_ENCODERS, 'libx264', 'libvpx-vp9']
-const FORMATS: ExportFormat[] = ['mp4', 'gif', 'webm', 'mov', 'm4a']
-/** Video input each format accepts. */
-const KINDS: Record<ExportFormat, VideoInput['kind'][]> = { mp4: ['raw', 'h264'], mov: ['raw', 'h264'], webm: ['raw', 'vp9'], gif: ['raw'], m4a: ['none'] }
+const FORMATS: ExportFormat[] = ['mp4', 'gif', 'webm', 'mov', 'm4a', 'wav']
+/** Video input each format accepts: raw frames, or a stream WebCodecs encoded (output-and-languages §5.3). WAV is audio only, like M4A. */
+const KINDS: Record<ExportFormat, VideoInput['kind'][]> = {
+  mp4: ['raw', 'h264', 'hevc', 'av1'],
+  mov: ['raw', 'h264', 'hevc'],
+  webm: ['raw', 'vp9', 'av1'],
+  gif: ['raw'],
+  m4a: ['none'],
+  wav: ['none']
+}
+const CODECS: readonly ExportCodec[] = ['h264', 'hevc', 'av1', 'vp9', 'cineform', 'animation', 'prores-422', 'prores-4444']
+
+/** The ffmpeg encoders that make each codec from raw frames (§5.4); libx265 only with CODEC_POLICY.hevcSoftware. */
+function codecEncoders(codec: ExportCodec): readonly FfmpegVideoEncoder[] {
+  switch (codec) {
+    case 'h264':
+      return [...HARDWARE_ENCODERS, 'libx264']
+    case 'vp9':
+      return ['libvpx-vp9']
+    case 'hevc':
+      return CODEC_POLICY.hevcSoftware ? ['hevc_nvenc', 'hevc_qsv', 'hevc_amf', 'hevc_mf', 'libx265'] : ['hevc_nvenc', 'hevc_qsv', 'hevc_amf', 'hevc_mf']
+    case 'av1':
+      return ['av1_nvenc', 'av1_qsv', 'av1_amf', 'libaom-av1']
+    case 'cineform':
+      return ['cfhd']
+    case 'animation':
+      return ['qtrle']
+    case 'prores-422':
+    case 'prores-4444':
+      return ['prores_ks']
+  }
+}
+
+/** The stream kind WebCodecs hands over for a codec, when it makes that codec at all. */
+const STREAM_KIND: Partial<Record<ExportCodec, VideoInput['kind']>> = { h264: 'h264', vp9: 'vp9', hevc: 'hevc', av1: 'av1' }
+
+/** The codec a job is encoded with: its own (checked against the format and the policy), else the format's default. */
+const jobCodec = (job: ExportJob): ExportCodec | null => job.codec ?? DEFAULT_CODEC[job.format] ?? null
 
 /** Largest frame side any encoder here accepts (the renderer keeps exports at 4096). */
 export const MAX_FRAME_SIDE = 8192
@@ -109,16 +144,52 @@ const validColor = (c: ColorTags | undefined): boolean =>
   [c.primaries, c.transfer, c.matrix ?? 0].every((n) => Number.isInteger(n) && n >= 0 && n <= 255) &&
   (c.fullRange === null || typeof c.fullRange === 'boolean')
 
+/**
+ * The video input against the format and the codec: raw frames go to an encoder of the job's codec
+ * (GIFs to an H.264 encoder's list, as before), a WebCodecs stream must be the codec's own, and
+ * straight alpha comes only as raw 'rgba' or 'bgra' for a codec that carries it (output-and-languages §6).
+ */
 function validVideo(job: ExportJob): boolean {
   const v = job.video
   if (!v || !KINDS[job.format]?.includes(v.kind)) return false
+  if (job.codec !== undefined && (!CODECS.includes(job.codec) || !FORMAT_CODECS[job.format].includes(job.codec) || !codecAllowed(job.codec))) return false
+  const codec = jobCodec(job)
+  if (job.alpha !== undefined) {
+    if (job.alpha !== true || !codec || !canAlpha(job.format, codec) || v.kind !== 'raw' || (v.pixelFormat !== 'rgba' && v.pixelFormat !== 'bgra')) return false
+  }
   if (v.kind === 'raw') {
-    const vp9 = v.encoder === 'libvpx-vp9'
     // GIFs take RGB frames: their palette is built from RGB.
     const formats = job.format === 'gif' ? ['rgba', 'bgra', 'rgb0', 'bgr0'] : ['rgba', 'bgra', 'rgb0', 'bgr0', 'yuv420p']
-    return ENCODERS.includes(v.encoder) && vp9 === (job.format === 'webm') && formats.includes(v.pixelFormat)
+    return codecEncoders(job.format === 'gif' ? 'h264' : (codec ?? 'h264')).includes(v.encoder) && formats.includes(v.pixelFormat)
   }
-  return v.kind === 'none' || validColor(v.color)
+  if (v.kind === 'none') return true
+  return !!codec && STREAM_KIND[codec] === v.kind && validColor(v.color)
+}
+
+const SOUND_STEMS: readonly SoundStem[] = ['voice', 'system', 'recording', 'music', 'effects']
+
+/** Whether a job has any sound to write (the recording, clicks, music, pops, tones or effects). */
+const hasSound = (job: ExportJob): boolean => !!(job.audio || job.clicks || job.music || job.pops?.length || job.tones?.length || job.effects?.length)
+
+/**
+ * Stems (§7): not for a GIF; the stems listed once each, in their order, 'recording' never with the
+ * separate files; a fixed gain within ±30 dB; the separate files' gains within 0..2. The batch rule is
+ * export:start's (it knows which paths a batch handed out).
+ */
+function validStems(s: StemJob, job: ExportJob): boolean {
+  if (job.format === 'gif' || !hasSound(job) || !s || typeof s !== 'object' || !Array.isArray(s.stems) || s.stems.length === 0) return false
+  let last = -1
+  for (const stem of s.stems) {
+    const i = SOUND_STEMS.indexOf(stem)
+    if (i <= last) return false
+    last = i
+  }
+  if (s.stems.includes('recording') && (s.stems.includes('voice') || s.stems.includes('system'))) return false
+  if (s.gainDb !== undefined && !isNum(s.gainDb, -30, 30)) return false
+  return (
+    s.gains === undefined ||
+    (typeof s.gains === 'object' && s.gains !== null && Object.entries(s.gains).every(([k, g]) => (STEM_KINDS as string[]).includes(k) && isNum(g, 0, 2)))
+  )
 }
 
 const isBool = (v: unknown): v is boolean => typeof v === 'boolean'
@@ -240,7 +311,7 @@ function validSubtitles(list: unknown, format: ExportFormat): boolean {
 
 /** The renderer is trusted, but ffmpeg arguments are still built only from validated values. */
 export function validateJob(job: ExportJob): void {
-  const audioOnly = job.format === 'm4a'
+  const audioOnly = job.format === 'm4a' || job.format === 'wav'
   const sizeOk = audioOnly || (isNum(job.width, 2, MAX_FRAME_SIDE) && isNum(job.height, 2, MAX_FRAME_SIDE) && job.width % 2 === 0 && job.height % 2 === 0)
   if (!sizeOk && typeof job.width === 'number' && typeof job.height === 'number') {
     throw new Error(`The export size ${job.width}×${job.height} is not supported: each side must be an even number of pixels, at most ${MAX_FRAME_SIDE}. Choose a lower resolution.`)
@@ -248,7 +319,9 @@ export function validateJob(job: ExportJob): void {
   const ok =
     FORMATS.includes(job.format) &&
     sizeOk &&
+    // Whole frame rates only: 24, 25 and 120 join 30 and 60 (GIFs 15, audio 60); never 23.976 (output-and-languages §5.6).
     isNum(job.fps, 1, 120) &&
+    Number.isInteger(job.fps) &&
     isNum(job.frames, 1, 1e8) &&
     ['high', 'medium', 'small'].includes(job.quality) &&
     validVideo(job) &&
@@ -264,7 +337,8 @@ export function validateJob(job: ExportJob): void {
     (job.pops === undefined || (job.format !== 'gif' && validPops(job.pops))) &&
     (job.tones === undefined || (job.format !== 'gif' && validTones(job.tones))) &&
     (job.effects === undefined || (job.format !== 'gif' && validEffects(job.effects))) &&
-    (job.subtitles === undefined || validSubtitles(job.subtitles, job.format))
+    (job.subtitles === undefined || validSubtitles(job.subtitles, job.format)) &&
+    (job.stems === undefined || validStems(job.stems, job))
   if (!ok) throw new Error('Invalid export settings')
   if (audioOnly && !job.audio && !job.clicks && !job.music && !job.pops?.length && !job.tones?.length && !job.effects?.length) throw new Error('This recording has no sound to export.')
 }

@@ -5,6 +5,7 @@
  * (src/main/exportBundle.ts).
  */
 import { planOf, videoDuration, videoToEdit } from '../engine/freeze'
+import type { TimelineEditor } from '../api/export'
 import type { Clip, ExportFormat, Project } from '../types'
 import { outputChapters, youtubeChapters, type OutputChapter } from './chapters'
 
@@ -23,6 +24,12 @@ export interface BundleOptions {
   perChapter: boolean
   /** The subtitle languages for files and streams (Captions Studio §11.10); absent: the spoken language only, as today. */
   languages?: string[]
+  /** Also save one WAV file per sound (output-and-languages §2.3); absent: no. */
+  stems?: true
+  /** Also save a timeline for these editors (§2.3); absent: no timeline. */
+  timelines?: TimelineEditor[]
+  /** The timeline uses the original recordings instead of this export (§8.1); absent: this export. */
+  timelineMedia?: 'recordings'
 }
 
 export const NO_BUNDLE: BundleOptions = { srt: false, vtt: false, chapters: false, thumbnail: false, description: false, perChapter: false }
@@ -32,15 +39,28 @@ export const SUBTITLE_LANGUAGE_RE = /^[a-z]{2,3}(-[A-Za-z0-9]{1,8})?$/
 /** Most subtitle languages of one export (files and streams, §12). */
 export const MAX_SUBTITLE_LANGUAGES = 8
 
-/** Stored choices with anything unknown or missing turned off; the subtitle languages kept when well-formed (at most 8, each once). */
+const TIMELINE_EDITORS: readonly TimelineEditor[] = ['resolve', 'premiere', 'finalcut', 'edl']
+
+/**
+ * Stored choices with anything unknown or missing turned off; the subtitle languages kept when
+ * well-formed (at most 8, each once). Wave 12's choices (stems, timelines and their media) are read
+ * only when present and valid, after the others, and are not in NO_BUNDLE: an old object gains no
+ * key (output-and-languages §4.3, test 2).
+ */
 export function normalizeBundle(raw: unknown): BundleOptions {
   const r = (raw && typeof raw === 'object' ? raw : {}) as Record<string, unknown>
   const out: BundleOptions = { ...NO_BUNDLE }
-  for (const k of Object.keys(NO_BUNDLE) as Exclude<keyof BundleOptions, 'languages'>[]) out[k] = r[k] === true
+  for (const k of Object.keys(NO_BUNDLE) as Exclude<keyof BundleOptions, 'languages' | 'stems' | 'timelines' | 'timelineMedia'>[]) out[k] = r[k] === true
   if (Array.isArray(r.languages)) {
     const languages = [...new Set(r.languages.filter((l): l is string => typeof l === 'string' && SUBTITLE_LANGUAGE_RE.test(l)))].slice(0, MAX_SUBTITLE_LANGUAGES)
     if (languages.length) out.languages = languages
   }
+  if (r.stems === true) out.stems = true
+  if (Array.isArray(r.timelines)) {
+    const editors = TIMELINE_EDITORS.filter((e) => (r.timelines as unknown[]).includes(e))
+    if (editors.length) out.timelines = editors
+  }
+  if (r.timelineMedia === 'recordings') out.timelineMedia = 'recordings'
   return out
 }
 
@@ -66,7 +86,7 @@ export function sidecarBlocked(kind: SidecarKind, format: ExportFormat, has: Bun
   if (format === 'gif') return 'GIFs are saved alone'
   if ((kind === 'srt' || kind === 'vtt') && !has.captions) return 'This video has no captions yet'
   if (kind === 'chapters' && !has.chapters) return 'This video has no chapters'
-  if (kind === 'thumbnail' && format === 'm4a') return 'Audio files have no thumbnail'
+  if (kind === 'thumbnail' && (format === 'm4a' || format === 'wav')) return 'Audio files have no thumbnail'
   return null
 }
 

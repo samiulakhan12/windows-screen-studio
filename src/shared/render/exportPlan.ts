@@ -3,7 +3,9 @@ import { visibleSize } from '../engine/crop'
 import { outputSize } from '../engine/layout'
 import { tallAs } from '../engine/reframeData'
 import type { AspectRatio, ExportFormat, Project } from '../types'
+import { codecRoutes, type CodecCaps } from './codecRoutes'
 import type { ExportOptions } from './exportPresets'
+import { DEFAULT_CODEC } from './proFormats'
 
 /** GIFs play at 15 fps; their size options stop at 1080p. */
 export const GIF_FPS = 15
@@ -44,10 +46,15 @@ export const exportAspect = (project: Pick<Project, 'style'>, options: Pick<Expo
 /**
  * The project as an export with `options` draws it: the same project with the export's
  * aspect ratio. The saved project is never changed (a copy is returned when they differ).
+ * A 4:5 feed post has no app buttons over it, so its copy turns the app safe zones off
+ * (output-and-languages §5.8); textArea itself does not change.
  */
-export function exportProject<P extends Pick<Project, 'style'>>(project: P, options: Pick<ExportOptions, 'aspect'>): P {
+export function exportProject<P extends Pick<Project, 'style'> & Partial<Pick<Project, 'reframe'>>>(project: P, options: Pick<ExportOptions, 'aspect'>): P {
   const aspectRatio = exportAspect(project, options)
-  return aspectRatio === project.style.aspectRatio ? project : { ...project, style: { ...project.style, aspectRatio } }
+  if (aspectRatio === project.style.aspectRatio) return project
+  const copy: P = { ...project, style: { ...project.style, aspectRatio } }
+  if (aspectRatio === '4:5' && project.reframe?.appSafe) copy.reframe = { ...project.reframe, appSafe: false }
+  return copy
 }
 
 /** Effective export size and rate, with whether the size was capped. 'auto' follows the recording as shown (its crop). */
@@ -81,16 +88,16 @@ export function exportDimensions(project: Project, settings: ExportOptions): { w
   return { width, height, fps }
 }
 
-/** Formats without video frames (nothing is rendered). */
-export const isAudioOnly = (format: ExportFormat): boolean => format === 'm4a'
+/** Formats without video frames (nothing is rendered): M4A, and WAV (output-and-languages §7.7). */
+export const isAudioOnly = (format: ExportFormat): boolean => format === 'm4a' || format === 'wav'
 
-/** Video codec a format carries. */
+/** Video codec a format carries by default. */
 export const videoCodecOf = (format: ExportFormat): 'h264' | 'vp9' | 'gif' | null =>
-  format === 'webm' ? 'vp9' : format === 'gif' ? 'gif' : format === 'm4a' ? null : 'h264'
+  format === 'webm' ? 'vp9' : format === 'gif' ? 'gif' : format === 'm4a' || format === 'wav' ? null : 'h264'
 
 /** How frames become a file, in the order to try them. */
 export type ExportRoute =
-  | { video: 'webcodecs'; codec: 'h264' | 'vp9'; hardware: boolean }
+  | { video: 'webcodecs'; codec: 'h264' | 'vp9' | 'hevc' | 'av1'; hardware: boolean }
   | { video: 'ffmpeg'; encoder: FfmpegVideoEncoder }
   /** Audio only: nothing is rendered. */
   | { video: 'none' }
@@ -101,14 +108,27 @@ const ENCODER_NAMES: Record<FfmpegVideoEncoder, string> = {
   h264_amf: 'GPU (AMD AMF)',
   h264_mf: 'GPU (Media Foundation)',
   libx264: 'Software (x264)',
-  'libvpx-vp9': 'Software (VP9)'
+  'libvpx-vp9': 'Software (VP9)',
+  hevc_nvenc: 'GPU (NVIDIA NVENC)',
+  hevc_qsv: 'GPU (Intel Quick Sync)',
+  hevc_amf: 'GPU (AMD AMF)',
+  hevc_mf: 'GPU (Media Foundation)',
+  libx265: 'Software (x265)',
+  av1_nvenc: 'GPU (NVIDIA NVENC)',
+  av1_qsv: 'GPU (Intel Quick Sync)',
+  av1_amf: 'GPU (AMD AMF)',
+  'libaom-av1': 'Software (AV1)',
+  cfhd: 'Software (CineForm)',
+  qtrle: 'Software (QuickTime Animation)',
+  prores_ks: 'Software (ProRes)'
 }
 
 export function routeLabel(r: ExportRoute, format: ExportFormat): string {
+  if (format === 'wav') return 'Audio only (WAV)'
   if (r.video === 'none' || format === 'm4a') return 'Audio only (AAC)'
   if (format === 'gif') return 'GIF (two-pass palette)'
   if (r.video === 'webcodecs') {
-    const name = r.codec === 'vp9' ? 'WebCodecs VP9' : 'WebCodecs'
+    const name = r.codec === 'vp9' ? 'WebCodecs VP9' : r.codec === 'hevc' ? 'WebCodecs HEVC' : r.codec === 'av1' ? 'WebCodecs AV1' : 'WebCodecs'
     return r.hardware ? `GPU (${name})` : `${name} (software)`
   }
   return ENCODER_NAMES[r.encoder]
@@ -129,9 +149,22 @@ export function routeLabel(r: ExportRoute, format: ExportFormat): string {
  * libvpx, about twice as fast because no raw frames cross IPC), else ffmpeg's libvpx-vp9.
  * A size target skips the software WebCodecs encoder: libvpx in ffmpeg then runs two passes,
  * which lands on the size (see exportArgs).
+ *
+ * A codec other than the format's default, or a transparent background, goes to codecRoutes
+ * (output-and-languages §5.3) with what this PC can make (`codecCaps`) and the export's size.
  */
-export function exportRoutes(settings: Pick<ExportOptions, 'format' | 'encoder' | 'targetSizeMB'>, caps: Pick<ExportCapabilities, 'hardwareEncoders' | 'overrides'>): ExportRoute[] {
+export function exportRoutes(
+  settings: Pick<ExportOptions, 'format' | 'encoder' | 'targetSizeMB'> & Partial<Pick<ExportOptions, 'codec' | 'alpha' | 'resolution' | 'aspect'>>,
+  caps: Pick<ExportCapabilities, 'hardwareEncoders' | 'overrides'>,
+  codecCaps?: CodecCaps,
+  size?: { width: number; height: number }
+): ExportRoute[] {
   if (isAudioOnly(settings.format)) return [{ video: 'none' }]
+  if ((settings.codec && settings.codec !== DEFAULT_CODEC[settings.format]) || settings.alpha) {
+    const none: CodecCaps = { webcodecs: { hevc: false, av1: false }, gpu: { hevc: [], av1: [] }, overrides: caps.overrides }
+    const o = { resolution: 1080 as const, ...settings }
+    return codecRoutes(o, codecCaps ?? none, size ?? { width: 0, height: 0 })
+  }
   const x264: ExportRoute = { video: 'ffmpeg', encoder: 'libx264' }
   if (settings.format === 'gif') return [x264]
   const forced = caps.overrides.videoEncoder

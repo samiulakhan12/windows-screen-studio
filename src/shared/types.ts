@@ -179,7 +179,8 @@ export interface WatermarkSettings {
   margin: number
 }
 
-export type AspectRatio = 'auto' | '16:9' | '9:16' | '1:1' | '4:3'
+/** 'auto' and the four project shapes, plus '4:5', which only exports use (output-and-languages §4.6): ASPECT_RATIOS, the projects' list, does not hold it. */
+export type AspectRatio = 'auto' | '16:9' | '9:16' | '1:1' | '4:3' | '4:5'
 export type Corner = 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right'
 
 export interface StyleSettings {
@@ -1550,14 +1551,20 @@ export interface CaptureSource {
   displayId?: string
 }
 
-/** mp4 (H.264), webm (VP9), mov (H.264 in QuickTime), gif, m4a (audio only). */
-export type ExportFormat = 'mp4' | 'gif' | 'webm' | 'mov' | 'm4a'
+/** mp4 (H.264), webm (VP9), mov (H.264 in QuickTime), gif, m4a (audio only) as before; wav: the soundtrack uncompressed (audio only, output-and-languages §7.7). */
+export type ExportFormat = 'mp4' | 'gif' | 'webm' | 'mov' | 'm4a' | 'wav'
+
+/** The video codec of an export (output-and-languages §5.2). */
+export type ExportCodec = 'h264' | 'hevc' | 'av1' | 'vp9' | 'cineform' | 'animation' | 'prores-422' | 'prores-4444'
+
+/** Whole-number export frame rates (no 23.976 or 29.97: output-and-languages §3.2). */
+export type ExportFps = 24 | 25 | 30 | 60 | 120
 
 export interface ExportSettings {
   format: ExportFormat
   /** Output height in pixels (width follows aspect ratio). */
   resolution: 720 | 1080 | 1440 | 2160
-  fps: 30 | 60
+  fps: ExportFps
   quality: 'high' | 'medium' | 'small'
   /** 'auto' uses a GPU encoder when one works, else software. */
   encoder: 'auto' | 'software'
@@ -1567,6 +1574,12 @@ export interface ExportSettings {
   targetSizeMB?: number
   /** Also mux the subtitle languages (BundleOptions.languages) as subtitle streams (MP4, MOV, WebM); absent: no (Captions Studio §11.10). */
   subtitleStreams?: true
+  /** The codec when it is not the format's default (DEFAULT_CODEC); absent: H.264 for MP4 and MOV, VP9 for WebM, as before. */
+  codec?: ExportCodec
+  /** A see-through background (output-and-languages §6); absent: drawn, as before. */
+  alpha?: 'background' | 'overlays'
+  /** Id of the user preset these settings came from ('user:' + 12 hex), while they still match it. */
+  userPreset?: string
 }
 
 export interface RecordingStatus {
