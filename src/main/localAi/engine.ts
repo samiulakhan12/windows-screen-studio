@@ -4,9 +4,10 @@
  * priority, the app's pid watched), as a list, never through a shell, with a minimal environment
  * and `dir` (userData/text-models) as its working folder. Requests wait in order; Stop sends
  * `cancel` and kills the helper when no `cancelled` comes within the grace; no line for 120 s kills
- * it; a crash fails the request and the next one starts a new process; after 120 s without a
- * request the helper exits and gives its memory back. Every stdout line is read strictly
- * (readHelperLine): a line over 4 MB or one that does not parse ends the job.
+ * it (reset when the PC resumes from sleep); a crash fails the request and the next one starts a
+ * new process; after 120 s without a request the helper exits and gives its memory back. Every
+ * stdout line is read strictly (readHelperLine): a line over 4 MB or one that does not parse ends
+ * the job.
  *
  * Test hook (§22 test 104): SSW_LLM_HELPER is read only when the app is not packaged.
  */
@@ -170,6 +171,11 @@ export class LlmEngine {
       if (this.current) req.onProgress({ phase: 'waiting', done: 0, total: 0 })
       this.pump()
     })
+  }
+
+  /** The PC woke from sleep: the time it slept never makes a running request look frozen. */
+  resetWatchdogs(): void {
+    if (this.current) this.armStall()
   }
 
   /** Stops the helper (Remove, the last editor closed): a running request ends as Stop does; waiting ones start a new helper. */

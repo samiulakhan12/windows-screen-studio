@@ -5,7 +5,7 @@
  * (§9.5): ssw-llm is never started to find out. The helper exits when the app quits, after 120 s
  * without a request, and when the last window closes.
  */
-import { app, BrowserWindow, ipcMain, type IpcMainInvokeEvent } from 'electron'
+import { app, BrowserWindow, ipcMain, powerMonitor, type IpcMainInvokeEvent } from 'electron'
 import os from 'node:os'
 import { LOCAL_AI_CHANNELS, type LocalAiState } from '../../shared/api/localAi'
 import { isLocalModelId, isLocalModelUse } from '../../shared/localAi/catalog'
@@ -107,6 +107,12 @@ export function registerLocalAiIpc(): void {
     if (!isLocalModelUse(raw)) throw new Error('Unknown choice.')
     return localModels().setUse(raw)
   })
+  // Sleep never looks like a frozen helper.
+  try {
+    powerMonitor.on('resume', () => currentEngine()?.resetWatchdogs())
+  } catch {
+    // powerMonitor is not available (tests).
+  }
   void localModels()
     .sweepStaleParts()
     .catch(() => undefined)

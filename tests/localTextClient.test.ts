@@ -14,7 +14,7 @@ import path from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { afterAll, beforeEach, describe, expect, it, vi } from 'vitest'
 
-const h = vi.hoisted(() => ({ userData: '', handlers: new Map<string, (...args: unknown[]) => unknown>() }))
+const h = vi.hoisted(() => ({ userData: '', handlers: new Map<string, (...args: unknown[]) => unknown>(), power: new Map<string, () => void>() }))
 h.userData = mkdtempSync(path.join(os.tmpdir(), 'w11-local-client-'))
 
 vi.mock('electron', () => ({
@@ -22,7 +22,8 @@ vi.mock('electron', () => ({
   ipcMain: { handle: (channel: string, fn: (...args: unknown[]) => unknown) => h.handlers.set(channel, fn), on: () => undefined },
   safeStorage: { isEncryptionAvailable: () => true, encryptString: (s: string) => Buffer.from(s), decryptString: (b: Buffer) => b.toString(), getSelectedStorageBackend: () => 'dpapi' },
   net: { request: () => undefined },
-  BrowserWindow: { getAllWindows: () => [] }
+  BrowserWindow: { getAllWindows: () => [] },
+  powerMonitor: { on: (event: string, fn: () => void) => void h.power.set(event, fn) }
 }))
 vi.mock('../src/main/ai/transcribe', () => ({ stopAllTranscriptions: () => undefined, stopTranscription: () => undefined, sweepTranscribeTemp: async () => undefined, transcribeProject: async () => undefined }))
 
@@ -360,10 +361,17 @@ describe("aiText('local') through the app's channel, with the fake helper (tests
   })
 })
 
-describe('a second action while the helper holds the model (§9.5, §9.9)', () => {
-  it('counts the memory the helper holds as free: the next run uses the same model and the state says so', async () => {
+describe('the helper as the app runs it (§9.2, §9.5, §9.9)', () => {
+  let registered = false
+  const register = (): void => {
+    if (registered) return
+    registered = true
     registerLocalAiIpc()
     configureLocalModels({ pc: () => ({ ...pc }), processor: async () => processor })
+  }
+
+  it('counts the memory the helper holds as free: the next run uses the same model and the state says so', async () => {
+    register()
     withModel()
     const engine = fakeEngine([() => ({})])
     setLocalEngine(engine as never)
@@ -382,5 +390,16 @@ describe('a second action while the helper holds the model (§9.5, §9.9)', () =
     // A file the helper holds that is not the model on disk adds nothing.
     engine.loadedModel = path.join(h.userData, 'elsewhere', 'tiny.gguf')
     await expect(localTextClient(ctx())).rejects.toThrow('AI on this PC needs about 2.2 GB of free memory and 1.3 GB is free. Close some apps.')
+  })
+
+  it('the PC resuming from sleep starts the watchdog of a running request again', () => {
+    register()
+    let resets = 0
+    setLocalEngine({ resetWatchdogs: () => void resets++ } as never)
+    h.power.get('resume')!()
+    expect(resets).toBe(1)
+    setLocalEngine(null)
+    h.power.get('resume')!()
+    expect(resets).toBe(1)
   })
 })

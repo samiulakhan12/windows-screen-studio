@@ -188,6 +188,25 @@ describe('LlmEngine with a fake helper (test 65)', () => {
     await waitFor(() => !alive(starts()[0].pid!))
   })
 
+  it('the watchdog starts again when the PC resumes from sleep: the time it slept never ends a running request', async () => {
+    process.env.FAKE_LLM_MODE = 'stall'
+    const e = engine({ stallMs: 600 })
+    let failed: unknown = null
+    const run = e.run(request()).catch((x: unknown) => (failed = x))
+    await waitFor(() => lines('run').length === 1)
+    // Resumes keep coming before the watchdog would fire: the request goes on past three times its stall.
+    const t0 = Date.now()
+    while (Date.now() - t0 < 1800) {
+      e.resetWatchdogs()
+      await new Promise((r) => setTimeout(r, 100))
+      expect(failed).toBeNull()
+    }
+    expect(starts()).toHaveLength(1)
+    // No resume and no line: the watchdog ends it as before.
+    await run
+    expect((failed as LocalAiError).code).toBe('stalled')
+  })
+
   it('unloads after 120 s without a request: the helper exits and gives its memory back; the next request starts a new one', async () => {
     expect(LLM_TIMING.idleMs).toBe(120_000)
     const e = engine({ idleMs: 150 })
