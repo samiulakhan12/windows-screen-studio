@@ -34,7 +34,8 @@ function useImageUrl(image: GuideImage | null | undefined): string | null {
 }
 
 export function ShotViewer(props: {
-  shots: readonly { key: string; label: string; image: GuideImage; adjust?: ShotAdjust }[]
+  /** Each shot in the order Previous and Next walk; `image` is null while it is made again (after an edit). */
+  shots: readonly { key: string; label: string; image: GuideImage | null; adjust?: ShotAdjust }[]
   index: number
   mode: 'view' | 'check' | 'send'
   place?: string
@@ -59,9 +60,10 @@ export function ShotViewer(props: {
   const url = useImageUrl(shot?.image)
   const frameUrl = useImageUrl(adjusting ? shot?.adjust?.frame : null)
   // A shot counts as checked once shown at 100%.
+  const shown = shot?.image ? shot.key : null
   useEffect(() => {
-    if (shot && !fit && !adjusting) onShown?.(shot.key)
-  }, [shot, fit, adjusting, onShown])
+    if (shown && !fit && !adjusting) onShown?.(shown)
+  }, [shown, fit, adjusting, onShown])
   useEffect(() => {
     areaRef.current?.focus()
   }, [at])
@@ -234,7 +236,11 @@ export function ShotViewer(props: {
             onKeyDown={pan}
             data-testid="guide-viewer-area"
           >
-            {url && <img src={url} alt={`Screenshot for ${shot.label}`} width={shot.image.width} height={shot.image.height} data-testid="guide-viewer-image" />}
+            {url && shot.image ? (
+              <img src={url} alt={`Screenshot for ${shot.label}`} width={shot.image.width} height={shot.image.height} data-testid="guide-viewer-image" />
+            ) : (
+              <span className="guide-shot-wait">Making the screenshot…</span>
+            )}
           </div>
         )}
         <p className="guide-viewer-said" role="status" aria-live="polite">

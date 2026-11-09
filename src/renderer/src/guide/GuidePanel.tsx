@@ -748,19 +748,25 @@ export function GuidePanel(props: { project: Project; cursor: CursorTrack; start
         <ShotViewer
           shots={viewer.keys.flatMap((k) => {
             const r = rows.find((x) => x.step.key === k)
-            const image = shots.images.get(k)
-            if (!r || !image) return []
+            if (!r) return []
+            // A shot being made again after an edit keeps its place in the list (the viewer says so).
+            const image = shots.images.get(k) ?? null
+            const whole = demoShots.images.get(k) ?? image
             const point = r.step.x !== undefined && r.step.y !== undefined ? { x: r.step.x, y: r.step.y } : (r.step.place ?? null)
             return [
               {
                 key: k,
                 label: `step ${r.n}`,
                 image,
-                adjust: {
-                  frame: demoShots.images.get(k) ?? image,
-                  rect: r.edit?.rect ?? { x: r.plan.rect.x / frame.w, y: r.plan.rect.y / frame.h, w: r.plan.rect.w / frame.w, h: r.plan.rect.h / frame.h },
-                  ring: r.edit?.ring ?? (r.plan.ring ? point : null)
-                }
+                ...(whole
+                  ? {
+                      adjust: {
+                        frame: whole,
+                        rect: r.edit?.rect ?? { x: r.plan.rect.x / frame.w, y: r.plan.rect.y / frame.h, w: r.plan.rect.w / frame.w, h: r.plan.rect.h / frame.h },
+                        ring: r.edit?.ring ?? (r.plan.ring ? point : null)
+                      }
+                    }
+                  : {})
               }
             ]
           })}
@@ -1049,7 +1055,9 @@ function EndScreen(props: { project: Project; onField(patch: Parameters<typeof w
 /** The questions before Save or Copy (§2.1.2, §12 rule 3): an alert dialog with the safe choice focused. */
 function GuideQuestion(props: { question: { kind: 'check' | 'link'; text: string; go(): void }; onClose(): void; onCheck(): void }): JSX.Element {
   const safeRef = useRef<HTMLButtonElement>(null)
-  useEffect(() => safeRef.current?.focus(), [])
+  useEffect(() => {
+    safeRef.current?.focus()
+  }, [])
   const { question } = props
   const anyway = (): void => {
     props.onClose()
