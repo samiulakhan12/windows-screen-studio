@@ -24,7 +24,7 @@ function fixture(over: Partial<Project> = {}): Project {
   return clipProject({ said: SAID, duration: 50, ...over })
 }
 
-const byText = (list: readonly { text: string }[], start: string) => list.find((s) => s.text.startsWith(start))!
+const byText = <T extends { text: string }>(list: readonly T[], start: string): T => list.find((s) => s.text.startsWith(start))!
 
 describe('the sentences short clips are picked from (test 49)', () => {
   it('sentences under 3 words are left out; the earlier take of a retake is marked; times and words are the kept ones', () => {
