@@ -109,6 +109,18 @@ vi.doMock('../src/renderer/src/guide/guideStills', () => ({
   canvasBytes: async () => new Uint8Array(),
   drawMarks: () => undefined
 }))
+/** Each modal dialog's ref and what it closes with, as given to useModalFocus (which still runs). */
+const modals = new Map<unknown, () => void>()
+vi.doMock('../src/renderer/src/editor/modalFocus', async (importOriginal) => {
+  const real = (await importOriginal()) as { useModalFocus: (ref: unknown, onClose: () => void) => void }
+  return {
+    ...real,
+    useModalFocus: (ref: unknown, onClose: () => void) => {
+      modals.set(ref, onClose)
+      real.useModalFocus(ref, onClose)
+    }
+  }
+})
 // Renderer code: imported at run time so the Node typecheck of tests/ does not follow it.
 const PANEL = '../src/renderer/src/guide/GuidePanel'
 const { GuidePanel, stepsLine, checkQuestion, checkOrder, nextUntitled, defaultPage } = (await import(/* @vite-ignore */ PANEL)) as {
@@ -657,6 +669,36 @@ describe('test 110: Copy guide (renderer)', () => {
     els = await after()
     expect(byTestId(els, 'guide-question')).toBeUndefined()
     expect(calls.copied).toHaveLength(2)
+  })
+
+  it('the question before a Save is a modal dialog: Tab stays in it, Esc closes it and the focus goes back (useModalFocus)', async () => {
+    let els = await ready()
+    click(byTestId(els, 'guide-save'))
+    els = render(panel())
+    const q = byTestId(els, 'guide-question')!
+    expect(q.props.role).toBe('alertdialog')
+    // The dialog box itself is the one useModalFocus keeps Tab in and closes on Esc.
+    const close = modals.get(q.ref)
+    expect(close).toBeTypeOf('function')
+    close!()
+    els = await after()
+    expect(byTestId(els, 'guide-question')).toBeUndefined()
+    expect(calls.saved).toEqual([])
+  })
+
+  it('Save anyway on the check question opens the link question as a new dialog (it opens on Go back)', async () => {
+    store.update((p) => ({ ...p, guide: { steps: [{ key: 'c3000', title: 'Open example.com' }] } }))
+    let els = await ready()
+    click(byTestId(els, 'guide-save'))
+    const keyOf = (): unknown => (render(panel(), ['GuideQuestion']).find((e) => typeof e.type === 'function' && (e.type as { name: string }).name === 'GuideQuestion') as { key?: unknown } | undefined)?.key
+    const first = keyOf()
+    els = render(panel())
+    click(byTestId(els, 'guide-save-anyway'))
+    els = render(panel())
+    expect(textOf(byTestId(els, 'guide-question'))).toContain('This guide has a link, address or file name nobody said. Save anyway?')
+    // React mounts a dialog with another key afresh: its own button, Go back, takes the focus.
+    expect(keyOf()).not.toBe(first)
+    expect(calls.saved).toEqual([])
   })
 
   it('a title with a link nobody said asks before saving: Go back sends nothing', async () => {

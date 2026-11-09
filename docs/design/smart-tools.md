@@ -282,7 +282,8 @@ Review mode's does.
   whole-screen shots, and the line "Checked 12 of 31" and the question below count it.
 - The first Save or Copy of a session with unchecked shots asks: "18 screenshots have not been
   checked at full size. 3 may show what you typed; 5 show the whole screen. Check them now?"
-  (**Check now**, **Save anyway**; Check now focused).
+  (**Check now**, **Save anyway**; Check now focused). Both questions are modal: Tab stays inside, Esc
+  goes back, and the focus returns to Save or Copy when they close.
 
 **Empty and partial states.**
 
@@ -2225,7 +2226,8 @@ Rules that hold everywhere:
 3. The link check (`notedPieces`, `src/shared/publish/check.ts:524`) and the path rule (`pathLike`,
    §7.5) run on step titles, notes, *What to type* and the guide's title before saving or copying:
    what they find is marked, and saving asks "This guide has a link, address or file name nobody said.
-   Save anyway?" (**Save anyway**, **Go back**; Go back focused).
+   Save anyway?" (**Save anyway**, **Go back**; Go back focused, also when it follows *Save anyway* on
+   the question about unchecked shots).
 4. Found chapters count as said nowhere, switch on nothing and renumber nothing until kept (§7.7).
 5. AI answers are checked by validators and `privateLike`; an AI title, note or name holding anything
    link-like or path-like is dropped, whether or not it was said.

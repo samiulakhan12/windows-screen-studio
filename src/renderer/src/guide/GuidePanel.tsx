@@ -35,6 +35,7 @@ import { costLineText } from '../../../shared/ai/cost'
 import { LocalProgress } from '../ai/LocalProgress'
 import { useTextChoices } from '../ai/textChoices'
 import { useEditor } from '../editor/context'
+import { useModalFocus } from '../editor/modalFocus'
 import { useGroup } from '../editor/groupContext'
 import { keepArrows } from '../editor/panels/JoinOptions'
 import { projectSaid } from '../publish/checkNote'
@@ -979,7 +980,10 @@ export function GuidePanel(props: { project: Project; cursor: CursorTrack; start
         />
       )}
       {question && (
+        // The link question after Save anyway is a new dialog: it opens on its own Go back, never on
+        // the Save anyway the first one left focused.
         <GuideQuestion
+          key={question.kind}
           question={question}
           onClose={() => setQuestion(null)}
           onCheck={() => {
@@ -1263,7 +1267,10 @@ function EndScreen(props: { project: Project; onField(patch: Parameters<typeof w
 
 /** The questions before Save or Copy (§2.1.2, §12 rule 3): an alert dialog with the safe choice focused. */
 function GuideQuestion(props: { question: { kind: 'check' | 'link'; text: string; go(): void }; onClose(): void; onCheck(): void }): JSX.Element {
+  const boxRef = useRef<HTMLDivElement>(null)
   const safeRef = useRef<HTMLButtonElement>(null)
+  // Tab stays inside, Esc goes back, and the focus returns to Save or Copy when it closes.
+  useModalFocus(boxRef, props.onClose)
   useEffect(() => {
     safeRef.current?.focus()
   }, [])
@@ -1280,13 +1287,8 @@ function GuideQuestion(props: { question: { kind: 'check' | 'link'; text: string
         aria-modal="true"
         aria-label={question.kind === 'check' ? 'Check the screenshots' : 'Check the guide'}
         aria-describedby="guide-question-text"
+        ref={boxRef}
         data-testid="guide-question"
-        onKeyDown={(e) => {
-          if (e.key !== 'Escape') return
-          e.preventDefault()
-          e.stopPropagation()
-          props.onClose()
-        }}
       >
         <p id="guide-question-text">{question.text}</p>
         <footer className="modal-foot">
