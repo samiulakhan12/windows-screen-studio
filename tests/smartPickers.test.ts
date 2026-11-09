@@ -168,9 +168,10 @@ describe('every text tool can be followed and stopped (test 102)', () => {
         expect(args[1], path.relative(ROOT, file)).toMatch(/requestId/)
       }
     }
-    // The Captions tab's tools, Clean up, Languages, Make my captions great, Publish and Draft script.
+    // The Captions tab's tools, Clean up, Languages, Make my captions great, Publish, Draft script and Short clips' names.
     expect(new Set(found)).toEqual(
       new Set([
+        'src/renderer/src/clips/ShortClipsPanel.tsx',
         'src/renderer/src/editor/panels/CaptionsPanel.tsx',
         'src/renderer/src/editor/panels/CleanupSection.tsx',
         'src/renderer/src/editor/panels/LanguagesSection.tsx',

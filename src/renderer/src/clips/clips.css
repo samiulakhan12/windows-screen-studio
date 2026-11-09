@@ -1,0 +1,230 @@
+/* Short clips (docs/design/smart-tools.md §2.4): the panel in Review mode's place and the shorter
+   version's dialog. Tokens of styles.css only: secondary lines in text-2 and notes in text-1 on the
+   panel's surfaces keep AA contrast; the selected row is marked by its border, not by colour alone. */
+
+.clips-panel {
+  overflow-y: auto;
+}
+
+.clips-panel .clips-intro {
+  margin: 0;
+  color: var(--text-1);
+  font-size: 13px;
+  line-height: var(--leading-normal);
+}
+
+.clips-field {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.clips-field legend,
+.clips-label {
+  padding: 0;
+  margin-bottom: 2px;
+  color: var(--text-2);
+  font-size: 12px;
+}
+
+.clips-choices {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  font-size: 13px;
+}
+
+.clips-choices label {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.clips-choices .clips-why-not {
+  color: var(--text-2);
+  font-size: 12px;
+}
+
+.clips-field input[type='text'] {
+  width: 100%;
+}
+
+.clips-note {
+  padding: 8px 10px;
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+  border: 1px solid var(--border-default);
+  color: var(--text-1);
+  font-size: 13px;
+}
+
+.clips-note p {
+  margin: 0 0 8px;
+}
+
+.clips-note .row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.clips-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.clips-row {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 2px 8px;
+  padding: 8px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-subtle);
+  background: var(--surface-1);
+}
+
+.clips-row.ticked {
+  border-color: var(--accent-500);
+}
+
+.clips-row .clips-pick {
+  grid-row: 1 / span 4;
+  padding-top: 2px;
+}
+
+.clips-row .clips-title {
+  font-weight: 600;
+  font-size: 13px;
+  color: var(--text-1);
+  overflow-wrap: anywhere;
+}
+
+.clips-row .clips-time,
+.clips-row .clips-why,
+.clips-row .clips-playing {
+  grid-column: 2;
+  color: var(--text-2);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+.clips-row .clips-first {
+  grid-column: 2;
+  margin: 0;
+  color: var(--text-1);
+  font-size: 12px;
+  font-style: italic;
+  overflow-wrap: anywhere;
+}
+
+.clips-row .clips-actions {
+  grid-column: 3;
+  grid-row: 1 / span 4;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+}
+
+.clips-row .clips-made {
+  color: var(--success-text);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.clips-foot {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-top: 8px;
+  border-top: 1px solid var(--border-subtle);
+}
+
+.clips-foot .clips-make {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.clips-space {
+  margin: 0;
+  color: var(--text-2);
+  font-size: 12px;
+}
+
+.clips-space.blocked {
+  color: var(--danger-text);
+}
+
+.clips-error {
+  margin: 0;
+  color: var(--danger-text);
+  font-size: 12px;
+}
+
+.clips-status {
+  margin: 0;
+  color: var(--text-1);
+  font-size: 12px;
+}
+
+.clips-progress {
+  height: 4px;
+  border-radius: var(--radius-pill);
+  background: var(--surface-3);
+  overflow: hidden;
+}
+
+.clips-progress > div {
+  height: 100%;
+  background: var(--accent-500);
+  transition: width var(--dur-fast) var(--ease-out);
+}
+
+.clips-from h3 {
+  margin: 4px 0;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.clips-from ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.clips-from li {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--text-1);
+}
+
+.short-version .short-line {
+  margin: 0;
+  color: var(--text-2);
+  font-size: 12px;
+}
+
+.short-version .clips-field {
+  margin-bottom: 10px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .clips-progress > div {
+    transition: none;
+  }
+}

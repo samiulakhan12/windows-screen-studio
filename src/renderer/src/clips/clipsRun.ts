@@ -14,7 +14,8 @@ import { cropOf } from '../../../shared/engine/crop'
 import { planOf, videoDuration } from '../../../shared/engine/freeze'
 import { privateLike } from '../../../shared/smart/privateText'
 import { speechHeard } from '../../../shared/smart/speechHeard'
-import type { CursorTrack, Project } from '../../../shared/types'
+import type { MeasureText } from '../../../shared/editor/duplicate'
+import type { CursorTrack, Project, ProjectSummary } from '../../../shared/types'
 
 /** The words of §2.4. */
 export const CLIPS_WORDS = {
@@ -202,4 +203,24 @@ export async function makeClipCopies(
   }
   deps.onProgress(copies.length, copies.length, null)
   return { made, stopped: false }
+}
+
+/** Text widths as the compositor's canvas draws them (fonts the editor loaded included); null without a canvas (duplicateFlow.ts). */
+export function textMeasure(): MeasureText | null {
+  const ctx = typeof document === 'undefined' ? null : (document.createElement('canvas').getContext('2d') as CanvasRenderingContext2D | null)
+  if (!ctx) return null
+  return (text, px, font, weight) => {
+    ctx.font = `${weight} ${px}px ${font}`
+    return ctx.measureText(text).width
+  }
+}
+
+/** The copies of project `id` in the library (Made from this video, §2.4), newest first as listed. */
+export function madeFrom(list: readonly ProjectSummary[], id: string): ProjectSummary[] {
+  return list.filter((p) => p.copyOf?.id === id && p.id !== id)
+}
+
+/** The flush before copies: work still holding the project (Review's Remove all) makes its edit first. */
+export function settledFlush(store: { whenFree(fn: () => void): void }): () => Promise<boolean> {
+  return () => new Promise<boolean>((done) => store.whenFree(() => done(true)))
 }
