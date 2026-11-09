@@ -369,16 +369,15 @@ export function punchAt(project: Project, t: number): number {
 /**
  * `cam` shown `punchAt` times closer about its own centre (§5.6), or `cam` itself when there is no
  * punch-in at `t`, when the layout there punches the camera's framing instead (camera-led or side by
- * side), or while the camera pulls back (the card would change size). The view stays inside the
- * recording.
+ * side), or while the camera pulls back (the card would change size). The view only shrinks about
+ * its centre, so a view inside the recording stays inside it, a followed one (bounded by its base,
+ * not the whole recording) included.
  */
 export function punchedCamera(cam: Camera, project: Project, t: number): Camera {
   if (!project.joins) return cam
   const s = punchAt(project, t)
   if (s === 1 || !(cam.scale >= 1) || cameraPunched(project, t)) return cam
-  const scale = cam.scale * s
-  const half = 0.5 / scale
-  return { ...cam, scale, cx: clamp(cam.cx, half, 1 - half), cy: clamp(cam.cy, half, 1 - half) }
+  return { ...cam, scale: cam.scale * s }
 }
 
 /** How the live picture, A* and a dip's colour are drawn at `at` in a w × h frame (§5.5). */
