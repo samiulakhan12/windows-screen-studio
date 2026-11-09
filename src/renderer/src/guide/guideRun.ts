@@ -22,6 +22,7 @@ import { addShapeAt } from '../editor/playheadItems'
 import type { Selection } from '../editor/selection'
 import { BUNDLED_FONT_URLS } from '../render/catalogFonts'
 import { encodeImage } from './guideStills'
+import { namesWithPictures, pictureBatches } from './visionTitles'
 
 /** What each format's pictures are (§5.5.5): JPEG 0.9 for the PDF, WebP 0.85 for HTML and the demo, PNG for Markdown. */
 export const FORMAT_IMAGES: Record<GuideFormat, { mime: GuideImage['mime']; quality: number; maxWidth: number }> = {
@@ -147,15 +148,28 @@ const wroteWhere = (choice: TextChoice): string => (choice.kind === 'local' ? 'o
 
 /**
  * *Write titles* (§5.3): the `names` task with `kind: 'step'` for the included steps not edited by
- * hand that have words near them (with `pictures`, part P6, each beside its item); the answer, as
- * validated in main, written in one update with `ai` set. A step the user titled meanwhile keeps
- * its title; steps without words keep their offline titles.
+ * hand that have words near them; with `pictures` (part P6, §5.3.1: the JPEG of each picture the
+ * user left ticked in the send viewer), each beside its item, and the steps with a picture and no
+ * words too, at most 50 pictures a request. The answers, as validated in main, are written in one
+ * update with `ai` set. A step the user titled meanwhile keeps its title; steps without words or a
+ * picture keep their offline titles.
  */
 export async function writeStepTitles(deps: { store: EditStore<Project>; steps: readonly GuideStep[]; choice: TextChoice; pictures: ReadonlyMap<string, Uint8Array> | null; signal: AbortSignal; requestId: string }): Promise<{ notice: string }> {
-  const names = namesRequestForSteps(deps.store.state, deps.steps, 'step')
-  const items = deps.pictures ? names.items.map((i) => (deps.pictures!.has(i.id) ? { ...i, image: deps.pictures!.get(i.id)! } : i)) : names.items
-  if (!items.length) return { notice: 'Nothing was said near these steps.' }
-  const answer = await askNames(deps.choice, { task: 'names', segments: [], names: { ...names, items } }, deps.signal, deps.requestId)
+  const names = deps.pictures?.size ? namesWithPictures(deps.store.state, deps.steps, deps.pictures) : namesRequestForSteps(deps.store.state, deps.steps, 'step')
+  if (!names.items.length) return { notice: 'Nothing was said near these steps.' }
+  const answer: { id: string; name: string }[] = []
+  let failed: unknown = null
+  for (const batch of pictureBatches(names)) {
+    try {
+      answer.push(...(await askNames(deps.choice, { task: 'names', segments: [], names: batch }, deps.signal, deps.requestId)))
+    } catch (err) {
+      // A later request failing keeps what the earlier ones wrote; the first failing fails the run.
+      if (deps.signal.aborted || !answer.length) throw err
+      failed = err
+      break
+    }
+    if (deps.signal.aborted) break
+  }
   if (deps.signal.aborted) return { notice: 'Stopped. Nothing was changed.' }
   const edits = new Map((deps.store.state.guide?.steps ?? []).map((e) => [e.key, e]))
   const titles = answer.filter((n) => {
@@ -164,7 +178,8 @@ export async function writeStepTitles(deps: { store: EditStore<Project>; steps: 
   })
   if (!titles.length) return { notice: 'Nothing was changed.' }
   deps.store.update((p) => withAiTitles(p, titles.map((n) => ({ key: n.id, title: n.name })), viaOf(deps.choice)))
-  return { notice: `Wrote ${titles.length} ${titles.length === 1 ? 'title' : 'titles'} ${wroteWhere(deps.choice)}.` }
+  const wrote = `Wrote ${titles.length} ${titles.length === 1 ? 'title' : 'titles'} ${wroteWhere(deps.choice)}.`
+  return { notice: failed ? `${wrote} The rest failed: ${failed instanceof Error ? failed.message : String(failed)}` : wrote }
 }
 
 /**
