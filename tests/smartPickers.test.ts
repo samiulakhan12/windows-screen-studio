@@ -168,7 +168,7 @@ describe('every text tool can be followed and stopped (test 102)', () => {
         expect(args[1], path.relative(ROOT, file)).toMatch(/requestId/)
       }
     }
-    // The Captions tab's tools, Clean up, Languages, Make my captions great, Publish, Draft script and Find chapters.
+    // The Captions tab's tools, Clean up, Languages, Make my captions great, Publish, Draft script, Find chapters and the guide's Write titles and Tidy notes.
     expect(new Set(found)).toEqual(
       new Set([
         'src/renderer/src/editor/chaptersRun.ts',
@@ -177,13 +177,14 @@ describe('every text tool can be followed and stopped (test 102)', () => {
         'src/renderer/src/editor/panels/LanguagesSection.tsx',
         'src/renderer/src/editor/greatRun.ts',
         'src/renderer/src/publish/publishRun.ts',
-        'src/renderer/src/notes/DraftScript.tsx'
+        'src/renderer/src/notes/DraftScript.tsx',
+        'src/renderer/src/guide/guideRun.ts'
       ])
     )
   })
 
   it('LocalProgress is mounted beside the busy buttons of every picker that offers On this PC', () => {
-    for (const file of ['editor/panels/CaptionsPanel.tsx', 'editor/panels/CleanupSection.tsx', 'editor/panels/LanguagesSection.tsx', 'publish/PublishDialog.tsx', 'notes/DraftScript.tsx']) {
+    for (const file of ['editor/panels/CaptionsPanel.tsx', 'editor/panels/CleanupSection.tsx', 'editor/panels/LanguagesSection.tsx', 'publish/PublishDialog.tsx', 'notes/DraftScript.tsx', 'guide/GuidePanel.tsx']) {
       expect(readFileSync(path.join(RENDERER, file), 'utf8'), file).toMatch(/<LocalProgress requestId=\{[^}]+\} onStop=\{/)
     }
   })
