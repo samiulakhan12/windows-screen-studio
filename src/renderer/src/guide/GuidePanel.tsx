@@ -1223,7 +1223,8 @@ function EndScreen(props: { project: Project; onField(patch: Parameters<typeof w
   const [open, setOpen] = useState(!!end)
   const [url, setUrl] = useState(end?.url ?? '')
   const set = (patch: Partial<{ heading: string; label: string; url: string }>, gesture?: string): void => {
-    const next = { heading: end?.heading ?? '', ...(end?.label ? { label: end.label } : {}), ...(end?.url ? { url: end.url } : {}), ...patch }
+    // The link as the field shows it: one typed before the heading is not stored yet.
+    const next = { heading: end?.heading ?? '', ...(end?.label ? { label: end.label } : {}), ...(url.trim() ? { url: url.trim() } : {}), ...patch }
     if (!next.label) delete (next as { label?: string }).label
     if (!next.url) delete (next as { url?: string }).url
     props.onField({ end: next.heading.trim() ? next : undefined }, gesture)

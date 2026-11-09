@@ -342,6 +342,24 @@ describe('the click-through demo’s own shots (docs/design/smart-tools.md §5.5
   })
 })
 
+describe('the demo’s end screen (docs/design/smart-tools.md §6.1)', () => {
+  it('a link typed before the heading is saved with the heading', async () => {
+    const type = (els: El[], id: string, value: string): void => (byTestId(els, id)!.props.onChange as (e: unknown) => void)({ target: { value } })
+    let els = await settle(panel('demo'))
+    click(byTestId(els, 'guide-end-toggle'))
+    els = render(panel('demo'))
+    type(els, 'guide-end-url', 'https://example.com/signup')
+    els = render(panel('demo'))
+    expect(byTestId(els, 'guide-end-url')!.props.value).toBe('https://example.com/signup')
+    // No heading yet: no end screen.
+    expect(store.state.guide?.end).toBeUndefined()
+    type(els, 'guide-end-heading', 'You are ready')
+    els = render(panel('demo'))
+    type(els, 'guide-end-label', 'Sign up')
+    expect(store.state.guide!.end).toEqual({ heading: 'You are ready', label: 'Sign up', url: 'https://example.com/signup' })
+  })
+})
+
 describe('the bug report’s Actual screenshot (docs/design/smart-tools.md §2.1, §12 rule 2)', () => {
   it('is shown under Actual, counted by the question before a Save and walked first by Check screenshots, as a whole-screen shot', async () => {
     store = testStore({ ...project(), guide: { kind: 'bug', actualAt: 20 } })
