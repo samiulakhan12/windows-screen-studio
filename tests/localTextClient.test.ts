@@ -21,14 +21,15 @@ vi.mock('electron', () => ({
   app: { getPath: () => h.userData, isPackaged: false, on: () => undefined, getAppPath: () => '/nonexistent', getVersion: () => '0.0.0-test' },
   ipcMain: { handle: (channel: string, fn: (...args: unknown[]) => unknown) => h.handlers.set(channel, fn), on: () => undefined },
   safeStorage: { isEncryptionAvailable: () => true, encryptString: (s: string) => Buffer.from(s), decryptString: (b: Buffer) => b.toString(), getSelectedStorageBackend: () => 'dpapi' },
-  net: { request: () => undefined }
+  net: { request: () => undefined },
+  BrowserWindow: { getAllWindows: () => [] }
 }))
 vi.mock('../src/main/ai/transcribe', () => ({ stopAllTranscriptions: () => undefined, stopTranscription: () => undefined, sweepTranscribeTemp: async () => undefined, transcribeProject: async () => undefined }))
 
 import type { LlmAnswer } from '../src/main/localAi/engine'
 import { localTextClient, makeLocalClient, setLocalEngine } from '../src/main/localAi/localTextClient'
 import { configureLocalModels, localAiState } from '../src/main/localAi/models'
-import { processorOk } from '../src/main/localAi/localAiIpc'
+import { processorOk, registerLocalAiIpc } from '../src/main/localAi/localAiIpc'
 import { registerAiIpc } from '../src/main/aiIpc'
 import { LOCAL_AI_CHANNELS, type LocalAiProgress } from '../src/shared/api/localAi'
 import { AiOutputError, textPrompts, type TextPrompt } from '../src/shared/captions/transcriptText'
@@ -356,5 +357,30 @@ describe("aiText('local') through the app's channel, with the fake helper (tests
     } finally {
       delete process.env.FAKE_LLM_STEP_MS
     }
+  })
+})
+
+describe('a second action while the helper holds the model (§9.5, §9.9)', () => {
+  it('counts the memory the helper holds as free: the next run uses the same model and the state says so', async () => {
+    registerLocalAiIpc()
+    configureLocalModels({ pc: () => ({ ...pc }), processor: async () => processor })
+    withModel()
+    const engine = fakeEngine([() => ({})])
+    setLocalEngine(engine as never)
+    pc.freeMemBytes = 3.5 * GIB
+    const first = await localTextClient(ctx())
+    expect(first.model).toBe('qwen3.5-2b')
+    await first.json(titlePrompt(), opts())
+    // The helper keeps the model: the free memory falls by its peak.
+    engine.loadedModel = path.join(modelsDir, 'tiny.gguf')
+    pc.freeMemBytes = 3.5 * GIB - small.peakMB * 2 ** 20
+    const second = await localTextClient(ctx())
+    expect(second.model).toBe('qwen3.5-2b')
+    const state = await localAiState()
+    expect(state.active).toBe('qwen3.5-2b')
+    expect(state.pc.freeMemBytes).toBe(3.5 * GIB)
+    // A file the helper holds that is not the model on disk adds nothing.
+    engine.loadedModel = path.join(h.userData, 'elsewhere', 'tiny.gguf')
+    await expect(localTextClient(ctx())).rejects.toThrow('AI on this PC needs about 2.2 GB of free memory and 1.3 GB is free. Close some apps.')
   })
 })

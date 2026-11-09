@@ -1828,7 +1828,9 @@ processor: §9.5 reads that from the speech helpers' probe, so a CPU without AVX
 - **Free memory before loading**: at least the model's peak. Below it the request does not start
   (after *Automatic* has tried Small): "AI on this PC needs about 3.8 GB of free memory and 2.6 GB is
   free. Close some apps, or download the Small model." Below the peak plus 1 GB it warns in the
-  progress line ("Memory is low: this may be slow").
+  progress line ("Memory is low: this may be slow"). The memory the helper already holds counts as
+  free (its model's peak is added back): the next run uses that model, or the helper gives it back
+  before another loads, so a second action waits its turn instead of being refused.
 - **The helper**: missing in a build without it ("AI on this PC is not part of this build.").
 
 ### 9.6 Prompts, grammar and sizes

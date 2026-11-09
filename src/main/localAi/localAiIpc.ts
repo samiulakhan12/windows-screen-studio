@@ -73,6 +73,7 @@ export function registerLocalAiIpc(): void {
       const eng = currentEngine()
       if (eng?.loadedModel === file) await eng.unload()
     },
+    held: () => currentEngine()?.loadedModel ?? null,
     onChange: changed
   })
   const downloads = new Map<string, AbortController>()

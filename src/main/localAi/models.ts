@@ -127,6 +127,11 @@ export interface LocalModelDeps {
   freeBytes?: (dir: string) => Promise<number | null>
   /** The helper has `file` loaded: stop it before the file goes (Remove). */
   unload?: (file: string) => Promise<void>
+  /**
+   * The model file the helper holds now (loaded, or loading), or null: its memory counts as free,
+   * as the next run uses it or the helper gives it back before another model loads (§9.5).
+   */
+  held?: () => string | null
   /** Something Settings shows changed (a download's progress included). */
   onChange?: () => void
   download?: { stallMs?: number; retryDelaysMs?: readonly number[] }
@@ -227,6 +232,10 @@ export class LocalModelStore {
       if (disk === 'ready') ready.push(spec.id)
       models.push({ id: spec.id, state: disk, bytes: spec.bytes, block })
     }
+    // The memory the helper holds is not lost to the next run: count the peak of its model as free.
+    const held = this.deps.held?.() ?? null
+    const heldSpec = held ? this.specs().find((spec) => ready.includes(spec.id) && this.fileOf(spec) === held) : undefined
+    if (heldSpec) pc.freeMemBytes = Math.min(pc.totalMemBytes, pc.freeMemBytes + heldSpec.peakMB * 2 ** 20)
     const s = this.settings()
     return { models, use: s.use, active: pickLocalModel(s.use, ready, pc), pc, speeds: { ...s.speeds } }
   }
