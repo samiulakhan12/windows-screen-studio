@@ -32,9 +32,18 @@ describe('the panel (test 125)', () => {
     change(byLabel(out, 'Make clip 1'), true)
     out = await settle(view())
     expect(textOf(byTestId(out, 'clips-make'))).toBe('Make 1 copy')
+    // Work still holding the project makes its edit first, as Duplicate's copies do.
+    let finished = 0
+    const finish = bench.store.finish
+    bench.store.finish = () => {
+      finished++
+      expect(fake.copies).toHaveLength(0)
+      finish()
+    }
     press(byTestId(out, 'clips-make'))
     out = await settle(view())
     expect(fake.copies).toHaveLength(1)
+    expect(finished).toBe(1)
     const copy = fake.copies[0].copy as unknown as Project
     expect(fake.copies[0].sourceId).toBe(before.id)
     expect(copy.captions!.show).toBe(true)

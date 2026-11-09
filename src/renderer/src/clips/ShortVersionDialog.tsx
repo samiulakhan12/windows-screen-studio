@@ -95,6 +95,8 @@ export function ShortVersionDialog(props: { project: Project; cursor: CursorTrac
 
   const make = async (): Promise<void> => {
     if (controller.current || length === null) return
+    // The copy is of the project with the edit of work still holding it (Review's Remove all) made now, as Duplicate's is.
+    store.finish()
     const now = store.state
     // The plan again on the project as it is now (an edit since the line was shown).
     const fresh = planShort(now, clipSentences(now, { track: effectiveTrack(cursor, now), scan, focus: focusUsed }), { seconds: length, focus: focusUsed })

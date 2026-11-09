@@ -313,6 +313,8 @@ export function ShortClipsPanel(props: { project: Project; cursor: CursorTrack; 
         }
       }
       const measure = textMeasure()
+      // The copies are of the project with the edit of work still holding it (Review's Remove all) made now, as Duplicate's are.
+      store.finish()
       const built = named.map((m) => clipCopy(store.state, m, { shape: shapes.shape, captions: pref.captions, measure }))
       if (live.current) {
         setStatus(null)
