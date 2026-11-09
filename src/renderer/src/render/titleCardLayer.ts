@@ -255,7 +255,7 @@ const glyphPad = (l: TitleLayout): number => Math.ceil(Math.max(l.title.px, l.su
  * How a card's text comes in while it wipes or types (docs/design/editing-polish.md §7.2): from its
  * reading start, the right edge for right-to-left text. `rtl`: the card's first letter is from a
  * right-to-left script (where Wipe starts). `lines` (Typewriter): the px shown of each line, the
- * title's and then the subtitle's, whole graphemes in reading order, each text from its own reading
+ * title's and then the subtitle's, whole graphemes in reading order, each line from its own reading
  * start (drawBlock); null: the whole card wipes.
  */
 interface CardReveal {
@@ -333,14 +333,13 @@ function paintCardBackground(fc: FrameContext, card: TitleCard, tint: string): v
 
 /**
  * Draws the lines of `block` from `top`, at `x` (aligned as `align`); with `shown` (a typewriter),
- * each line only as far as its px shown, from the block's own reading start (a title and its
- * subtitle may be in different scripts).
+ * each line only as far as its px shown, from the line's own reading start (a card may put one
+ * language on each line, and the canvas lays out each line on its own).
  */
 function drawBlock(ctx: Ctx, block: TextBlock, x: number, top: number, align: CanvasTextAlign, font: string, shown: readonly number[] | null = null): void {
   ctx.font = `${block.weight} ${block.px}px ${font}`
   ctx.textAlign = align
   ctx.textBaseline = 'middle'
-  const rtl = shown !== null && RTL_FIRST.test(block.lines.join(' '))
   block.lines.forEach((line, i) => {
     if (!line) return
     const y = top + block.lineHeight * (i + 0.5)
@@ -351,7 +350,7 @@ function drawBlock(ctx: Ctx, block: TextBlock, x: number, top: number, align: Ca
     const left = align === 'center' ? x - w / 2 : x
     ctx.save()
     ctx.beginPath()
-    ctx.rect(rtl ? left + w - s : left, y - block.lineHeight, s, block.lineHeight * 2)
+    ctx.rect(RTL_FIRST.test(line) ? left + w - s : left, y - block.lineHeight, s, block.lineHeight * 2)
     ctx.clip()
     ctx.fillText(line, x, y)
     ctx.restore()

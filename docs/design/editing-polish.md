@@ -1289,10 +1289,10 @@ the table's rows, plus *Default*), and each change is one update. *Copy look* ca
   quote's panel) from its reading start, the right edge when the card's first letter is from a
   right-to-left script. Typewriter keeps the band, panel and quote mark whole and types the lines,
   the title's and then the subtitle's, by whole graphemes in reading order (`typewriterWidths`),
-  each line clipped from its text's own reading start: the title and the subtitle each take the
-  direction of their own first letter, so an English name over an Arabic role types the role from
-  its right edge. While it types, the lines are drawn as they come rather than from the card's
-  cached picture.
+  each line clipped from its own reading start: each line takes the direction of its own first
+  letter, so an English name over an Arabic role (or on the line above the name in Arabic) types
+  the Arabic line from its right edge. While it types, the lines are drawn as they come rather
+  than from the card's cached picture.
 - **Arrows and lines** (`drawShapesLayer`): the shaft is drawn from the tail to
   `tail + (tip − tail) · drawn`. The head (`arrowGeometry`, `src/shared/render/shapes.ts:167`)
   appears when `drawn ≥ 0.8`, scaled `0.6 + 0.4 · back((drawn − 0.8) / 0.2, 1.7)` about the tip
