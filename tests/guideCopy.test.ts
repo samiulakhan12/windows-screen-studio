@@ -74,8 +74,11 @@ describe('test 110: Copy guide and Copy screenshot (main)', () => {
   it('Copy screenshot writes one PNG; anything else is refused', async () => {
     await call(GUIDE_CHANNELS.copyImage, PNG)
     expect(h.images).toEqual([{ type: 'image/png', bytes: PNG }])
-    for (const bad of [new Uint8Array([0xff, 0xd8, 0xff, 0]), 'png', new Uint8Array(GUIDE_SAVE_LIMITS.image + 1)]) await expect(call(GUIDE_CHANNELS.copyImage, bad)).rejects.toThrow()
-    await expect(guideApi.copyGuideImage(new Uint8Array(GUIDE_SAVE_LIMITS.image + 1))).rejects.toThrow()
+    // A PNG of 16 MB + 1 is refused as well as what is not a PNG.
+    const big = new Uint8Array(GUIDE_SAVE_LIMITS.image + 1)
+    big.set(PNG)
+    for (const bad of [new Uint8Array([0xff, 0xd8, 0xff, 0]), 'png', big]) await expect(call(GUIDE_CHANNELS.copyImage, bad)).rejects.toThrow()
+    await expect(guideApi.copyGuideImage(big)).rejects.toThrow()
     expect(h.images).toHaveLength(1)
   })
 })

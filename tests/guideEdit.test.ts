@@ -81,6 +81,16 @@ describe('test 29: guide edits', () => {
     expect(p.guide!.added!.map((a) => a.key)).toEqual(['a12000', 'a12001'])
   })
 
+  it('a title typed over an AI title is the user’s: `ai` goes; a note typed over an AI note loses `textAi`', () => {
+    let p = withAiTitles(project(), [{ key: 'c1000', title: 'A' }], 'openai')
+    p = withAiNotes(p, [{ key: 'c1000', text: 'Said.' }], 'openai')
+    expect(p.guide!.steps).toEqual([{ key: 'c1000', title: 'A', ai: 'openai', text: 'Said.', textAi: 'openai' }])
+    p = withStepEdit(p, 'c1000', { title: 'Mine' })
+    expect(p.guide!.steps).toEqual([{ key: 'c1000', title: 'Mine', text: 'Said.', textAi: 'openai' }])
+    p = withStepEdit(p, 'c1000', { text: 'My note.' })
+    expect(p.guide!.steps).toEqual([{ key: 'c1000', title: 'Mine', text: 'My note.' }])
+  })
+
   it('Use offline titles removes every AI title in one update and keeps hand ones', () => {
     let p = withAiTitles(project(), [{ key: 'c1000', title: 'A' }], 'openai')
     p = withStepEdit(p, 'c2000', { title: 'Mine' })

@@ -45,6 +45,14 @@ describe('test 109: calloutPlace', () => {
     expect(calloutPlace({ x: 520, y: 300 }, { w: 600, h: 720 }, callout).side).toBe('left')
   })
 
+  it('a side is used only with the callout’s width and the 16 px gap free: 336 px', () => {
+    const narrow = { w: 600, h: 720 }
+    const half = DEMO_HOTSPOT / 2
+    // 336 px right of the hotspot: right; 335: neither side (the left has less), so below.
+    expect(calloutPlace({ x: narrow.w - half - 336, y: 100 }, narrow, callout).side).toBe('right')
+    expect(calloutPlace({ x: narrow.w - half - 335, y: 100 }, narrow, callout).side).toBe('below')
+  })
+
   it('the top-left corner without a hotspot', () => {
     expect(calloutPlace(null, picture, callout)).toEqual({ side: 'corner', x: 16, y: 16 })
   })
@@ -54,6 +62,7 @@ describe('test 109: calloutPlace', () => {
       for (let y = 0; y <= picture.h; y += 40) {
         const p = calloutPlace({ x, y }, picture, callout)
         expect(covers(p, { x, y }), `${x},${y} ${p.side}`).toBe(false)
+        if (p.side === 'left' || p.side === 'right') expect(p.x >= 0 && p.x + callout.w <= picture.w, `${x},${y} ${p.side} inside`).toBe(true)
       }
   })
 
