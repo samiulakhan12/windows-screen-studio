@@ -30,7 +30,7 @@ function withGuide(project: Project, guide: GuideSettings | undefined): Project 
 function patched(edit: GuideStepEdit, patch: Patch): GuideStepEdit {
   const out: Record<string, unknown> = { ...edit }
   for (const [k, v] of Object.entries(patch)) {
-    if (v === undefined || v === false || v === null) delete out[k]
+    if (v === undefined || v === null || (v as unknown) === false) delete out[k]
     else out[k] = v
   }
   return out as unknown as GuideStepEdit

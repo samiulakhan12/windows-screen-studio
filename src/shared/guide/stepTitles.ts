@@ -234,8 +234,11 @@ function decorate(title: string, step: GuideStep, w: GuideWords, num: (n: number
   return out
 }
 
-const NAMED: Partial<Record<GuideStep['kind'], keyof GuideWords>> = { click: 'click', double: 'double', right: 'right', middle: 'middle', drag: 'drag' }
-const NEAR: Partial<Record<GuideStep['kind'], keyof GuideWords>> = { click: 'clickNear', double: 'doubleNear', right: 'rightNear', middle: 'middleNear' }
+/** The names of GuideWords' templates (its strings). */
+type Template = { [K in keyof GuideWords]: GuideWords[K] extends string ? K : never }[keyof GuideWords]
+
+const NAMED: Partial<Record<GuideStep['kind'], Template>> = { click: 'click', double: 'double', right: 'right', middle: 'middle', drag: 'drag' }
+const NEAR: Partial<Record<GuideStep['kind'], Template>> = { click: 'clickNear', double: 'doubleNear', right: 'rightNear', middle: 'middleNear' }
 
 /**
  * The step's title without AI and where it came from (§5.2), the first rule that gives one: the
