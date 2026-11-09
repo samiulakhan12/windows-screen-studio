@@ -1,5 +1,7 @@
 // First: a packaged app never runs with certificate checks off (docs/design/smart-tools.md §16).
 import './ai/tlsGuard'
+// Then the English guard's fixed clock (SSW_FIXED_NOW, unpackaged runs only), before any module reads the time.
+import './fixedNow'
 import { app, BrowserWindow } from 'electron'
 import path from 'node:path'
 import { APP_NAME, APP_USER_MODEL_ID, LEGACY_APP_NAME } from '../shared/brand'
