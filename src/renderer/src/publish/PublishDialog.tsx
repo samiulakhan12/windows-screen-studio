@@ -150,14 +150,15 @@ export function PublishDialog({ project, request, onClose, onGenerateCaptions, o
   }, [providers === null, !!blocker]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // The item a palette command asked for, once the providers and the cost settings are read (and, with On
-  // this PC saved, its state, so the run does not go to the first provider meanwhile): its card is shown,
+  // this PC saved or no other provider to choose, its state, so the run neither goes to the first provider
+  // meanwhile nor finds no provider at all): its card is shown,
   // with the focus on its text. After the focus above, which would scroll the dialog back to Write all. Its
   // Write is pressed, so the cost line asks its question first, as for a click (smart-tools.md §11.5).
   const handled = useRef(0)
   const costRead = useCostDataRead()
   const localRead = useLocalAi().status !== 'loading'
   useEffect(() => {
-    if (!request || request.n === handled.current || providers === null || !costRead || (prefs.provider === LOCAL_TEXT_ID && !localRead)) return
+    if (!request || request.n === handled.current || providers === null || !costRead || (!localRead && (prefs.provider === LOCAL_TEXT_ID || list.length === 0))) return
     handled.current = request.n
     if (context()) document.getElementById(`publish-${request.kind}-write`)?.click()
     const card = document.querySelector<HTMLElement>(`[data-publish-card="${request.kind}"]`)

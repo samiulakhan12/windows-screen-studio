@@ -40,6 +40,12 @@ function start(): void {
   loadLocalAiState()
 }
 
+/** Back to "not read yet", as in a window just opened (for tests that start each case from a fresh window). */
+export function resetLocalAiState(): void {
+  started = false
+  set({ status: 'loading' })
+}
+
 /** Puts a state in place (Settings after an action resolves with one). */
 export function setLocalAiState(state: LocalAiState): void {
   set({ status: 'ready', state })

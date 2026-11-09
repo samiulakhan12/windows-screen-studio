@@ -63,7 +63,7 @@ import { CaptionLookSection } from './CaptionLookSection'
 import { CleanupSection } from './CleanupSection'
 import { LanguagesSection } from './LanguagesSection'
 import { choiceOf, placeOf, textChoicesOf } from '../../ai/textChoices'
-import { useLocalAiReady } from '../../ai/localAiState'
+import { useLocalAi, useLocalAiReady } from '../../ai/localAiState'
 import { FIND_CHAPTERS_BUILT, runFindChapters } from '../chaptersRun'
 import { sanitizeSmartPref, DEFAULT_FIND_CHAPTERS, type FindChaptersPref } from '../../../../shared/smart/smartPrefs'
 import { CostLine } from '../../ai/CostLine'
@@ -1190,8 +1190,10 @@ function AiToolsSection({
   const toolsRef = useRef<HTMLLabelElement>(null)
   const handled = useRef(0)
   const costRead = useCostDataRead()
+  // With no other provider, On this PC may be the only choice: wait for its state rather than refuse the tool.
+  const localRead = useLocalAi().status !== 'loading'
   useEffect(() => {
-    if (!request || request.n === handled.current || providers === null || !costRead) return
+    if (!request || request.n === handled.current || providers === null || !costRead || (!localRead && !list.length)) return
     handled.current = request.n
     onRequestHandled?.()
     const task = request.task
@@ -1202,7 +1204,7 @@ function AiToolsSection({
     // The tool's button is pressed, so the cost line asks its question first, as for a click (smart-tools.md §11.5).
     const tool = task === 'chapters' ? chaptersTool : task === 'title' ? titleTool : summaryTool
     tool.current?.click()
-  }, [request, providers, costRead]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [request, providers, costRead, localRead]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const label = (task: AiTask, text: string): string => (busy === task ? 'Working…' : text)
   return (

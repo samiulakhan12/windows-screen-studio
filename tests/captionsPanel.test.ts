@@ -1427,6 +1427,43 @@ describe('CaptionsPanel: AI tools from the command palette (NW-13)', () => {
     expect(aiAsked.map((a) => a.task)).toEqual(['title'])
   })
 
+  it('with AI on this PC the only choice, Suggest a title from the palette waits for its state and runs there', async () => {
+    const api = (globalThis as unknown as { window: { api: Record<string, unknown> } }).window.api
+    // The cost settings were read earlier this session (Polish's cost line), without the state module.
+    // Renderer modules by a path held in a constant, so the Node typecheck of tests/ does not follow them.
+    const COST = '../src/renderer/src/ai/useCost'
+    const LOCAL = '../src/renderer/src/ai/localAiState'
+    const { refreshCostData } = (await import(/* @vite-ignore */ COST)) as { refreshCostData(): Promise<void> }
+    // A fresh window: the state of AI on this PC is not read yet, whatever the tests before this one read.
+    const { resetLocalAiState } = (await import(/* @vite-ignore */ LOCAL)) as { resetLocalAiState(): void }
+    resetLocalAiState()
+    await refreshCostData()
+    // No cloud provider: On this PC is the only choice.
+    replies.providers = () => Promise.resolve([])
+    let readState!: () => void
+    const state = new Promise<void>((r) => (readState = r))
+    api.localAiState = () => state.then(() => ({ models: [{ id: 'gemma4-e2b', state: 'ready', bytes: 1, block: null }], use: 'auto', active: null, pc: {}, speeds: {} }))
+    onTestFinished(() => {
+      delete api.localAiState
+      // The tests after this one start from a window that has not read it either.
+      resetLocalAiState()
+    })
+    panelNotices.length = 0
+    pressed.length = 0
+    m.items.requestCaptions({ kind: 'ai', task: 'title' })
+    await show()
+    const before = { notices: [...panelNotices], pressed: pressed.map((b) => b.props.id) }
+    readState()
+    await flush()
+    const out = await show()
+    const select = out.find((e) => e.type === 'select' && String(e.props['aria-label'] ?? '').match(/provider|AI/i))
+    // Nothing is refused while the state is read; once it is, the tool runs on this PC.
+    expect({ before, after: { notices: [...panelNotices], pressed: pressed.map((b) => b.props.id), asked: aiAsked.map((a) => a.task), select: select?.props.value } }).toEqual({
+      before: { notices: [], pressed: [] },
+      after: { notices: [], pressed: ['captions-ai-title'], asked: ['title'], select: 'local' }
+    })
+  })
+
   it('a command given as the tab opens waits for the cost settings, so the cost line asks as they say (smart-tools.md §11.5)', async () => {
     // The cost settings still being read: no cost line has read them yet this session.
     let read!: () => void

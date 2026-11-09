@@ -185,7 +185,7 @@ const { refreshCostData } = (await import(/* @vite-ignore */ USE_COST)) as { ref
 const PREFS = '../src/renderer/src/publish/publishPrefs'
 const { savePublishPrefs } = (await import(/* @vite-ignore */ PREFS)) as { savePublishPrefs(prefs: { tone: string; length: string; provider: string }): void }
 const LOCAL_AI = '../src/renderer/src/ai/localAiState'
-const { setLocalAiState } = (await import(/* @vite-ignore */ LOCAL_AI)) as { setLocalAiState(state: unknown): void }
+const { setLocalAiState, resetLocalAiState } = (await import(/* @vite-ignore */ LOCAL_AI)) as { setLocalAiState(state: unknown): void; resetLocalAiState(): void }
 
 const textOf = (node: unknown): string =>
   Array.isArray(node) ? node.map(textOf).join('') : typeof node === 'string' || typeof node === 'number' ? String(node) : node && typeof node === 'object' && 'props' in node ? textOf((node as El).props.children) : ''
@@ -943,6 +943,41 @@ describe('Publish dialog: a palette command shows the card it writes (§5.2)', (
     expect(pressed).toEqual(['publish-youtube-write'])
     expect(asked.map((a) => [a.provider, a.task])).toEqual([['local', 'youtube']])
     expect(out.find((e) => e.type === 'select' && e.props.value === 'local')).toBeTruthy()
+  })
+
+  it('with AI on this PC the only choice and nothing saved, a palette command waits for its state and writes there', async () => {
+    // The cost settings were read earlier this session (Polish's cost line), the state of AI on this PC not yet:
+    // the window is fresh, whatever the tests before this one read.
+    resetLocalAiState()
+    await refreshCostData()
+    const api = (globalThis as unknown as { window: { api: Record<string, unknown> } }).window.api
+    const listBefore = api.listAiProviders
+    // No cloud provider: AI on this PC is the only choice, so the select was never changed and the saved provider is ''.
+    api.listAiProviders = () => providersGate.promise.then(() => [])
+    let readState!: () => void
+    const state = new Promise<void>((r) => (readState = r))
+    api.localAiState = () => state.then(() => ({ models: [{ id: 'gemma4-e2b', state: 'ready', bytes: 1, block: null }], use: 'auto', active: null, pc: {}, speeds: {} }))
+    onTestFinished(() => {
+      api.listAiProviders = listBefore
+      delete api.localAiState
+      setLocalAiState({ models: [], use: 'auto', active: null, pc: {}, speeds: {} })
+    })
+    request = { kind: 'youtube', n: 1 }
+    await opened()
+    await flush()
+    const mid = render()
+    const before = { pressed: [...pressed], asked: asked.length, empty: mid.some((e) => e.type === 'p' && /Add an AI provider/.test(textOf(e.props.children))) }
+    readState()
+    await flush()
+    const out = render()
+    await flush()
+    render()
+    expect({ before, pressed: [...pressed], asked: asked.map((a) => [a.provider, a.task]), select: out.find((e) => e.type === 'select')?.props.value }).toEqual({
+      before: { pressed: [], asked: 0, empty: true },
+      pressed: ['publish-youtube-write'],
+      asked: [['local', 'youtube']],
+      select: 'local'
+    })
   })
 
   it('"Write release notes": that card stays in view, with the focus on its text, not on Write all', async () => {
