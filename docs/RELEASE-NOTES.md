@@ -107,6 +107,33 @@
   every 3 seconds. Eight more beds will download on request once their download page exists.
 - **Fixed: a click where your own music loops**: Opus and M4A music that repeats under a longer
   video no longer glitches at each loop point in the export.
+- **Step-by-step guides** (LT-03): *Guide* in the editor's title bar turns your clicks, shortcuts
+  and typing into numbered steps, each titled from what you said ("Click “Export”") with a short
+  note and a screenshot zoomed to the click. Blurred areas stay hidden, a screenshot that may show
+  what you typed is marked with a one-click blur, and every screenshot can be checked full size.
+  Save as PDF, HTML or Markdown, as a guide or a bug report, or copy it for Docs, Word or Jira. In
+  English or Bangla.
+- **Click-through demos** (LT-07): the same panel saves one HTML file viewers click through, with a
+  hotspot on each click and the step beside it. It works offline and loads nothing.
+- **Find chapters** (F-10): Text tab › Chapters finds chapters where the screen changes and where
+  you start something new, and names them from what you say, with no AI and also for silent
+  recordings. Review mode lists each one to keep or remove; Polish can run it too. *Suggest
+  chapters* in the Captions tab now works the same way with your AI provider's suggestions.
+- **Short clips** (LT-02): *Copies › Find short clips…* lists the best 15–90 second moments with why
+  they were picked; each one you tick becomes a vertical copy with captions. *Make a shorter
+  version…* keeps the most useful sentences in a 30, 60 or 90 second copy. The original never
+  changes.
+- **AI on this PC** (F-04): Settings › AI on this PC downloads a small model (Gemma 4 E2B, 3.1 GB,
+  or Qwen3.5 2B, 1.3 GB). Titles, chapter names, summaries, clean-ups, translations and posts are
+  then written on your PC with no key, and nothing is sent anywhere. Good for drafts; it needs a
+  processor with AVX2.
+- **Any AI service** (NW-14): add OpenRouter, Groq, Together AI, Azure OpenAI, Ollama or LM Studio on
+  this PC, or any OpenAI-compatible address, and load each provider's models into a list. Every AI
+  tool now says what it sends, where, and what it should cost before you click, and asks first above
+  an amount you choose (US$1 by default).
+- **Titles from the screenshots**: *Write titles* can also send the guide's screenshots to a
+  service when you tick *Also send the screenshots*; you see exactly which pictures go, and what
+  they cost, before anything is sent.
 
 ## 0.7.1
 
