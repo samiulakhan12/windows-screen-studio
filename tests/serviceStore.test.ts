@@ -102,6 +102,15 @@ describe('ServiceStore (test 82)', () => {
     expect(validateServiceInput(groq({ service: { preset: 'groq', baseUrl: 'https://api.groq.com/openai/v1', keepNoData: true } })).service).not.toHaveProperty('keepNoData')
   })
 
+  it("OpenRouter reached through Other address keeps no prompts too, unless unticked; another address never sends it", () => {
+    expect(validateServiceInput(groq({ service: { preset: 'other', baseUrl: 'https://openrouter.ai/api/v1' } })).service.keepNoData).toBe(true)
+    expect(validateServiceInput(groq({ service: { preset: 'other', baseUrl: 'https://OpenRouter.ai/api/v1/' } })).service.keepNoData).toBe(true)
+    expect(validateServiceInput(groq({ service: { preset: 'other', baseUrl: 'https://openrouter.ai/api/v1', keepNoData: false } })).service).not.toHaveProperty('keepNoData')
+    expect(validateServiceInput(groq({ service: { preset: 'other', baseUrl: 'https://llm.example.com/v1', keepNoData: true } })).service).not.toHaveProperty('keepNoData')
+    const store = new ServiceStore(file, box)
+    expect(store.save(groq({ service: { preset: 'other', baseUrl: 'https://openrouter.ai/api/v1' } })).service?.keepNoData).toBe(true)
+  })
+
   it('holds at most 20 together with the providers', () => {
     fs.writeFileSync(path.join(dir, 'ai-providers.json'), JSON.stringify({ version: 1, providers: Array.from({ length: 18 }, (_, i) => ({ id: `ai${i}` })) }))
     const store = new ServiceStore(file, box)

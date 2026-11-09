@@ -102,6 +102,8 @@ export function ProviderForm({
   const keepsKey = sameKind && (!isService || sameOrigin)
   const keyNeeded = !keepsKey && !(isService && loopback)
   const host = isService ? (url?.ok ? url.host : (SERVICE_PRESETS[preset].host ?? '')) : KIND_HOSTS[apiKind]
+  // OpenRouter by its preset or its address (Other address pointed at it): its checkbox shows either way.
+  const openRouter = isService && (preset === 'openrouter' || (!!url?.ok && presetAt(url.host) === 'openrouter'))
 
   // The prices Flown knows for this model (the user's own first), shown until the user types others.
   const priceService = isService ? (url?.ok ? SERVICE_PRESETS[presetAt(url.host)].priceService : null) : apiKind
@@ -153,7 +155,7 @@ export function ProviderForm({
       ...(withKey && apiKey.trim() ? { apiKey: apiKey.trim() } : {}),
       model: model.trim(),
       ...(!isService && info.canTranscribe && transcriptionTyped ? { transcriptionModel: transcriptionModel.trim() } : {}),
-      ...(isService && url?.ok ? { service: { preset, baseUrl: url.baseUrl, ...(preset === 'openrouter' ? { keepNoData } : {}) } } : {})
+      ...(isService && url?.ok ? { service: { preset, baseUrl: url.baseUrl, ...(openRouter ? { keepNoData } : {}) } } : {})
     }
   }
   const draft = input(true)
@@ -447,7 +449,7 @@ export function ProviderForm({
         )}
       </div>
 
-      {isService && preset === 'openrouter' && (
+      {openRouter && (
         <label className="ai-check-row">
           <input type="checkbox" checked={keepNoData} onChange={(e) => setKeepNoData(e.target.checked)} />
           <span>Only use hosts that do not keep my prompts</span>

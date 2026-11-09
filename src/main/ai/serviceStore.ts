@@ -15,7 +15,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { AI_LIMITS, type AiProviderInfo, type AiProviderInput, type ServiceInfo, type ServicePreset } from '../../shared/api/ai'
 import { readBaseUrl } from '../../shared/ai/baseUrl'
-import { SERVICE_PRESETS } from '../../shared/ai/presets'
+import { presetAt, SERVICE_PRESETS } from '../../shared/ai/presets'
 import { writeFileAtomicSync } from '../atomicWrite'
 import type { SecretBox } from './keyStore'
 import { registerSecret } from './secrets'
@@ -89,8 +89,9 @@ export function validateServiceInput(input: unknown): AiProviderInput & { servic
     if (apiKey.length < 8 || apiKey.length > AI_LIMITS.keyLength || !KEY_RE.test(apiKey)) throw new Error('That does not look like an API key (copy the whole key, without spaces).')
   }
   if (service.keepNoData !== undefined && typeof service.keepNoData !== 'boolean') throw new Error('Invalid provider.')
-  // OpenRouter keeps no prompts unless the user unticks it (§0 decision 5); the others never send it.
-  const keepNoData = service.preset === 'openrouter' && service.keepNoData !== false
+  // OpenRouter keeps no prompts unless the user unticks it (§0 decision 5), picked as its preset or
+  // reached by its address under Other address; the others never send it.
+  const keepNoData = (service.preset === 'openrouter' || presetAt(url.host) === 'openrouter') && service.keepNoData !== false
   return {
     ...(input.id !== undefined ? { id: input.id as string } : {}),
     kind: 'openai',

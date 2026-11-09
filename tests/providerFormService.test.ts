@@ -131,6 +131,25 @@ describe('Add a provider › More services (test 95)', () => {
     expect(text(els)).toContain("Not in Flown's price list: add them to see costs.")
   })
 
+  it('OpenRouter typed under Other address shows its checkbox, ticked, and saves it; another address shows none', async () => {
+    let els = await settle(form())
+    ;(radio(els, 'More services').props.onClick as () => void)()
+    els = await settle(form())
+    type(inputBy(els, (p) => p['data-testid'] === 'service-preset')!, 'other')
+    els = await settle(form())
+    type(inputBy(els, (p) => String(p.id).endsWith('-url'))!, 'https://llm.example.com/v1')
+    els = await settle(form())
+    expect(inputBy(els, (p) => p.type === 'checkbox')).toBeUndefined()
+    type(inputBy(els, (p) => String(p.id).endsWith('-url'))!, 'https://openrouter.ai/api/v1')
+    els = await settle(form())
+    expect(inputBy(els, (p) => p.type === 'checkbox')!.props.checked).toBe(true)
+    expect(text(els)).toContain('Only use hosts that do not keep my prompts')
+    type(inputBy(els, (p) => String(p.id).endsWith('-key'))!, 'sk-or-0123456789')
+    type(inputBy(els, (p) => String(p.id).endsWith('-model'))!, 'openai/gpt-oss-20b')
+    await submit(form())
+    expect(api.saved.at(-1)!.service).toEqual({ preset: 'other', baseUrl: 'https://openrouter.ai/api/v1', keepNoData: true })
+  })
+
   it('Save and check saves the service, checks it, and hands the row what the check said', async () => {
     let els = await settle(form())
     ;(radio(els, 'More services').props.onClick as () => void)()
