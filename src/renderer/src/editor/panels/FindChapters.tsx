@@ -142,18 +142,22 @@ export function FindChapters({ project, cursor, onNotice }: { project: Project; 
   )
   const stop = (): void => controller.current?.abort()
 
-  // The palette's Find chapters (smartRequests): taken once the options as last used, the AI choices
-  // (AI on this PC's too, when the names come from it) and the cost settings are read, and while shown.
-  // It presses the button, so with names from an AI the cost line asks its question first, as for a
-  // click (§11.5); the cost line shows with the button in that render, listening before the press.
+  // The palette's Find chapters (smartRequests): taken as the panel mounts or is asked, and kept by this
+  // panel alone, so it goes when the panel closes first. Run once the options as last used, the AI choices
+  // (AI on this PC's too, when the names come from it) and the cost settings are read. It presses the
+  // button, so with names from an AI the cost line asks its question first, as for a click (§11.5); the
+  // cost line shows with the button in that render, listening before the press.
   const runButton = useRef<HTMLButtonElement>(null)
+  const asked = useRef(false)
   const localRead = useLocalAi().status !== 'loading'
   const costRead = useCostDataRead()
   const ready = prefRead && list !== null && costRead && (pref.names !== LOCAL_TEXT_ID || localRead)
   useEffect(() => {
-    if (!ready) return
     const press = (): void => {
-      if (takeFindChaptersRequest()) runButton.current?.click()
+      if (takeFindChaptersRequest()) asked.current = true
+      if (!ready || !asked.current) return
+      asked.current = false
+      runButton.current?.click()
     }
     press()
     return onFindChaptersRequest(press)

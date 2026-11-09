@@ -611,6 +611,29 @@ describe('the Find chapters panel (§2.3)', () => {
     expect(store.state.chapters!.length).toBeGreaterThan(0)
   })
 
+  it("the palette's Find chapters goes with a panel closed before it was ready: it never runs by itself when the Text tab opens again", async () => {
+    store = new EditStore<Project>(projectOf(180, [{ t: 61, text: 'Open the quarterly billing report for the team now.' }, { t: 121, text: 'Finally we export the report.' }]))
+    contexts.editor = { store, player: {} }
+    fake.scan = scanOf(180, { 60.5: 62, 120.5: 70 })
+    // The palette asks and the Text tab shows the panel while its options are still read; the user goes to another tab.
+    let read!: () => void
+    fake.gates.findChapters = new Promise((r) => (read = r))
+    requestFindChapters()
+    await settle(panel(), SKIP)
+    unmountAll()
+    read()
+    delete fake.gates.findChapters
+    await new Promise((r) => setTimeout(r, 0))
+    expect(fake.scans).toEqual([])
+    // Later the Text tab opens again, to look at the chapters: nothing runs.
+    await settle(panel(), SKIP)
+    await settle(panel(), SKIP)
+    await settle(panel(), SKIP)
+    expect(fake.scans).toEqual([])
+    expect(store.state.chapters).toEqual([])
+    expect(notices).toEqual([])
+  })
+
   it("the palette's Find chapters runs it once the Text tab shows it", async () => {
     fake.scan = scanOf(120, { 40: 62, 80: 73 })
     requestFindChapters()

@@ -73,6 +73,9 @@ const { requestCaptions, takeCaptionsRequest } = (await import(/* @vite-ignore *
   takeCaptionsRequest: () => unknown
 }
 
+const REQUESTS = `${EDITOR}/smartRequests`
+const { requestFindChapters, takeFindChaptersRequest } = (await import(/* @vite-ignore */ REQUESTS)) as { requestFindChapters: () => void; takeFindChaptersRequest: () => boolean }
+
 const walk = (node: unknown, out: El[]): El[] => {
   if (Array.isArray(node)) node.forEach((n) => walk(n, out))
   else if (node && typeof node === 'object' && 'props' in node) {
@@ -106,6 +109,7 @@ afterEach(() => {
   cells = []
   effects = []
   takeCaptionsRequest()
+  takeFindChaptersRequest()
 })
 
 describe('Inspector: a command for the Captions tab while the Selection view is shown (§2.8)', () => {
@@ -128,5 +132,15 @@ describe('Inspector: a command for the Captions tab while the Selection view is 
     groupKeys = ['zoom:a', 'text:b']
     expect(shown(render('style', 1))).toEqual(['SelectionPanel'])
     expect(shown(render('captions', 1))).toEqual(['SelectionPanel'])
+  })
+})
+
+describe("Inspector: the palette's Find chapters while the Selection view is shown (smart-tools.md §2.8)", () => {
+  it('opens the Text tab at once, so Find chapters takes the request then, never later by itself', () => {
+    groupKeys = ['zoom:a', 'text:b']
+    expect(shown(render('style', 1))).toEqual(['SelectionPanel'])
+    // The palette's command: the editor opens the Text tab and asks Find chapters to run.
+    requestFindChapters()
+    expect(shown(render('text', 1))).toEqual(['TextPanel'])
   })
 })

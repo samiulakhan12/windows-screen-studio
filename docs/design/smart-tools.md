@@ -2226,7 +2226,9 @@ one line. Its parts:
   was shown yet, and, when the saved choice is On this PC, until AI on this PC's state is read, so
   the run never goes to the first provider meanwhile (*Find chapters*' names, the Publish dialog's
   provider); *Find chapters* also waits for its options as last used, so the run uses them when the
-  Text tab was not open. A run no
+  Text tab was not open. Its request opens the Text tab at once (the Selection view closes, as for a
+  command for the Captions tab) and goes with the panel when the tab is closed before the run starts,
+  so it never runs by itself the next time the tab opens. A run no
   line's button starts asks it itself (`confirmRequest`, from the request it sends): *Make my
   captions great* with AI picks, from its button or the palette (its line is in the options
   popover), and a caption language's *Translate again*. Polish's line holds a click on **Polish**,

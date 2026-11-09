@@ -7,6 +7,7 @@ import { EditorIcon } from './EditorIcon'
 import { useGroup } from './groupContext'
 import { SelectionPanel } from './panels/SelectionPanel'
 import { onCaptionsRequest } from './captionItems'
+import { onFindChaptersRequest } from './smartRequests'
 import type { Selection } from './selection'
 import { StylePanel } from './panels/StylePanel'
 import { CursorPanel } from './panels/CursorPanel'
@@ -151,8 +152,10 @@ export const Inspector = memo(function Inspector({ tab, onTab: setTab, ...props 
     if (groupSize < 2) setShowGroup(false)
   }, [groupSize])
   // A command for the Captions tab (an AI tool from the palette, Generate, Export) opens it now, so
-  // the tab takes the request at once instead of running it whenever the Selection view closes.
+  // the tab takes the request at once instead of running it whenever the Selection view closes. The
+  // palette's Find chapters too, for the Text tab (smart-tools.md §2.8).
   useEffect(() => onCaptionsRequest(() => setShowGroup(false)), [])
+  useEffect(() => onFindChaptersRequest(() => setShowGroup(false)), [])
   const groupShown = showGroup && groupSize >= 2
   const onCommand = props.onCommand ?? group.command
 
