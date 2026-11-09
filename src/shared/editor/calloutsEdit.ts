@@ -8,10 +8,10 @@ import { captionLanguage } from '../captions/captionTracks'
 import { nativeNumbering } from '../captions/words'
 import type { Rect } from '../engine/layout'
 import { clamp } from '../engine/math'
+import { clipIndexAt } from '../engine/timeline'
 import type { Camera } from '../engine/zoom'
 import { annotationItem, BADGE_TEXT_MAX, CALLOUT_ALLOWED, calloutOf, graphemesOf, readCalloutMotion, shapeItem, type CalloutItem } from '../render/calloutData'
 import { BADGE_SIZE, BUBBLE_BODY, CALLOUT_DEFAULTS, withDefaultMotion } from '../render/callouts'
-import { speedAt } from '../render/overlays'
 import type { Annotation, CalloutMotion, Clip, Project, SfxRef, Shape, ShapeKind, TitleCard } from '../types'
 import { newAnnotationId } from './annotations'
 import { playheadTimes, shapeForPlayhead } from './shapes'
@@ -77,9 +77,30 @@ export function badgeLanguage(project: Pick<Project, 'captions' | 'transcript'>)
   return captionLanguage(project) ?? null
 }
 
+/**
+ * The source time `lead` seconds of viewing time before the playhead `t`: each clip at its own
+ * speed (a chapter that plays faster than the part before it still has the entrance end on the
+ * playhead), stopping at a cut so a callout starts with what it was added to. `t` in a cut: `lead` earlier.
+ */
+function entranceStart(clips: Clip[], t: number, lead: number): number {
+  let i = clipIndexAt(clips, t)
+  if (i < 0) return t - lead
+  let s = t
+  let left = lead
+  for (;;) {
+    const c = clips[i]
+    const back = (s - c.start) / c.speed
+    if (back >= left) return s - left * c.speed
+    left -= back
+    s = c.start
+    if (i === 0 || Math.abs(clips[i - 1].end - c.start) > 1e-9) return s
+    i--
+  }
+}
+
 /** Start and end of a new callout at the playhead `t`: fully shown there, one entrance earlier (viewing time). */
 function newTimes(project: Pick<Project, 'duration' | 'clips'>, t: number, enter: CalloutMotion): { start: number; end: number } {
-  return playheadTimes(t, enter.duration * speedAt(project.clips, t), project)
+  return playheadTimes(t, t - entranceStart(project.clips ?? [], t, enter.duration), project)
 }
 
 /**

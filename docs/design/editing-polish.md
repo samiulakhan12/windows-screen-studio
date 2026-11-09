@@ -1261,7 +1261,9 @@ Exits are never longer than entrances in the defaults (Material: exits shorter t
 (`src/renderer/src/editor/playheadItems.ts:77`, through `withDefaultMotion(shape)`) write the
 defaults above into new badges, bubbles, arrows, lines, rectangles, ellipses and highlights. A new
 shape still starts so that it is fully shown at the playhead (`shapeForPlayhead`), now one enter
-motion earlier instead of one fade. Old items are never given a motion.
+motion earlier instead of one fade. A new badge or bubble starts one entrance of viewing time
+before the playhead, each clip at its own speed (a faster chapter's first badge still has its
+entrance end on the chapter's start), and never before a cut. Old items are never given a motion.
 
 **Several items.** `GROUP_FIELDS` (`groupEdit.ts:165`) gains `text.enter`, `text.exit`,
 `text.sound`, `mark.enter`, `mark.exit`, `mark.sound`, `title.enter`, `title.exit` and

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { EASE, itemPose } from '../src/shared/captions/motion'
 import { contrastRatio } from '../src/shared/captions/colors'
+import { viewAt } from '../src/shared/captions/layout'
 import { createProject } from '../src/shared/engine/project'
 import {
   badgeBox,
@@ -265,6 +266,38 @@ describe('badges (test 40)', () => {
     const list = [badge(5, { id: 'x', enter: m('fade', 0.18) }), badge(29.7, { id: 'late', enter: pop(0.5) }), badge(29.8, { id: 'early', enter: pop(0.1) }), badge(35, { id: 'y', enter: pop(0.24) })]
     const labels = badgeLabels(projectWith(list, { chapters }))
     expect(['x', 'early', 'late', 'y'].map((id) => labels.get(id))).toEqual(['1', '2', '1', '2'])
+  })
+
+  it('counts a badge added at the start of a faster chapter in that chapter; its entrance ends on the playhead', () => {
+    const chapters = [
+      { id: 'k1', t: 0, title: 'One' },
+      { id: 'k2', t: 30, title: 'Two' }
+    ]
+    for (const speed of [2, 4]) {
+      const clips: Clip[] = [
+        { id: 'c1', start: 0, end: 30, speed: 1 },
+        { id: 'c2', start: 30, end: 120, speed }
+      ]
+      for (const second of [30, 30.1]) {
+        let p = projectWith([], { chapters, clips })
+        const ids: string[] = []
+        for (const t of [5, 10, second, 35]) {
+          const added = addBadge(p, t, { pin: null, x: 0.5, y: 0.5 }, null)
+          p = added.project
+          ids.push(added.id)
+          // One entrance (0.24 s) of viewing time before the playhead, each clip at its own speed.
+          expect(viewAt(clips, added.project.annotations.at(-1)!.start) + 0.24).toBeCloseTo(viewAt(clips, t), 9)
+        }
+        expect(ids.map((id) => badgeLabels(p).get(id))).toEqual(['1', '2', '1', '2'])
+      }
+    }
+    // The entrance stops at a cut: a badge added just after one starts on it.
+    const cut: Clip[] = [
+      { id: 'c1', start: 0, end: 15, speed: 1 },
+      { id: 'c2', start: 30, end: 120, speed: 2 }
+    ]
+    const after = addBadge(projectWith([], { clips: cut }), 30.1, { pin: null, x: 0.5, y: 0.5 }, null)
+    expect(after.project.annotations[0].start).toBeCloseTo(30, 9)
   })
 
   it('a badge a cut removes whole takes no number; one partly kept counts', () => {
