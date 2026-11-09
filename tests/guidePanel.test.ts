@@ -168,9 +168,11 @@ const cursor: CursorTrack = {
 }
 
 let store: ReturnType<typeof testStore<Project>>
+/** The recording's input the panel is opened with (a test may give its own). */
+let panelCursor: CursorTrack = cursor
 const player = { time: 7.5, seeks: [] as number[], seek: (t: number) => void player.seeks.push(t), subscribe: () => () => undefined }
 const closed: number[] = []
-const panel = (start: 'guide' | 'demo' | 'bug' = 'guide'): unknown => ({ type: GuidePanel, props: { project: store.state, cursor, start, onClose: () => closed.push(1), onNotice: () => undefined } })
+const panel = (start: 'guide' | 'demo' | 'bug' = 'guide'): unknown => ({ type: GuidePanel, props: { project: store.state, cursor: panelCursor, start, onClose: () => closed.push(1), onNotice: () => undefined } })
 const said = (els: El[]): string => textOf(byTestId(els, 'guide-said'))
 const click = (el: El | undefined): unknown => (el!.props.onClick as () => unknown)()
 
@@ -206,6 +208,7 @@ beforeEach(() => {
   player.seeks.length = 0
   answer = (items) => items.map((i) => ({ id: i.id, name: `AI ${i.id}` }))
   store = testStore(project())
+  panelCursor = cursor
   contexts.editor = { store, player }
   contexts.group = { select: () => undefined, command: () => undefined, notice: () => undefined, keys: new Set(), single: null, group: { keys: [] } }
 })
@@ -239,6 +242,38 @@ describe('the panel', () => {
     expect(store.steps).toBe(1)
     expect(store.updates.map((u) => u.key)).toEqual(['guide-title:c12000', 'guide-title:c12000'])
     expect(store.state.guide!.steps).toEqual([{ key: 'c12000', title: 'Open settings' }])
+  })
+})
+
+describe('typing no listed step holds (docs/design/smart-tools.md §5.5.7)', () => {
+  it('the click and its typing cut from the video: the Log in shot is marked, and Blur the typed text blurs from the typing’s start', async () => {
+    panelCursor = {
+      ...cursor,
+      clicks: [
+        { t: 2, x: 0.4, y: 0.6, button: 'left' },
+        { t: 8, x: 0.45, y: 0.6, button: 'left' }
+      ],
+      typing: [{ t: 2.5, end: 6 }]
+    }
+    store = testStore({
+      ...project(),
+      clips: [
+        { id: 'a', start: 0, end: 1.5, speed: 1 },
+        { id: 'b', start: 7, end: 40, speed: 1 }
+      ]
+    })
+    contexts.editor = { store, player }
+    let els = await ready()
+    const row = allByTestId(els, 'guide-step')[0]
+    expect(row.props['data-step']).toBe('c8000')
+    expect(row.props['aria-label']).toMatch(/, may show what you typed$/)
+    expect(textOf(byTestId(els, 'guide-count'))).toContain('1 may show typing')
+    click(byTestId(els, 'guide-blur-typed'))
+    els = render(panel())
+    expect(said(els)).toBe('Blurred the typed text.')
+    const blur = store.state.shapes!.at(-1)!
+    expect([blur.kind, blur.start]).toEqual(['blur', 2.5])
+    expect(blur.end).toBeGreaterThan(8)
   })
 })
 

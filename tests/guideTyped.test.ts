@@ -3,7 +3,10 @@
  */
 import { describe, expect, it } from 'vitest'
 import type { SceneScan } from '../src/shared/api/projects'
-import { typedBefore, type GuideStep } from '../src/shared/guide/steps'
+import { createProject } from '../src/shared/engine/project'
+import { planShot } from '../src/shared/guide/shots'
+import { findSteps, typedBefore, typingRuns, type GuideStep } from '../src/shared/guide/steps'
+import type { CursorTrack, Project } from '../src/shared/types'
 
 const frame = { w: 1920, h: 1080 }
 
@@ -81,5 +84,73 @@ describe('test 105: typedBefore', () => {
   it('a typing step shown after its typing is marked by its own typing', () => {
     const shots = new Map([[typing.key, { t: 23.2, rect: holding, whole: false }]])
     expect(typedBefore(steps, shots, scan, frame).get(typing.key)).toBe(typing.key)
+  })
+})
+
+describe('typing no listed step holds still marks the later shots that show it', () => {
+  // Click into a field at 2 s, type from 2.5 to 6 s, click Log in at 8 s (0.45, 0.6: the field shows).
+  const login: CursorTrack = {
+    samples: [
+      { t: 0, x: 0.4, y: 0.6 },
+      { t: 60, x: 0.45, y: 0.6 }
+    ],
+    clicks: [
+      { t: 2, x: 0.4, y: 0.6, button: 'left' },
+      { t: 8, x: 0.45, y: 0.6, button: 'left' }
+    ],
+    typing: [{ t: 2.5, end: 6 }],
+    valid: true,
+    scale: 1
+  }
+  const project = (clips?: Project['clips']): Project => {
+    const p = createProject({
+      id: 'p',
+      name: 'Login',
+      duration: 60,
+      width: 1920,
+      height: 1080,
+      hasWebcam: false,
+      hasAudio: true,
+      webcamOffset: 0,
+      zooms: [],
+      cursorValid: true,
+      capture: { method: 'native', cursorInVideo: false, region: null, target: 'screen', fps: 60 }
+    })
+    return clips ? { ...p, clips } : p
+  }
+  /** The marks as the panel works them out: the guide's shots and every stretch of typing. */
+  const marks = (track: CursorTrack, p: Project): [string, string][] => {
+    const steps = findSteps({ track, project: p, scan: null })
+    const shots = new Map(steps.map((s) => [s.key, planShot(s, p, undefined, 1, 'guide')] as const))
+    return [...typedBefore(steps, shots, null, frame, typingRuns({ track, project: p }, steps))]
+  }
+
+  it('a listed click-and-type step names the mark, as before', () => {
+    expect(marks(login, project())).toEqual([['c8000', 'c2000']])
+    const steps = findSteps({ track: login, project: project(), scan: null })
+    expect(typingRuns({ track: login, project: project() }, steps)).toEqual([{ key: 'c2000', t: 2.5, end: 6, place: { x: 0.4, y: 0.6 } }])
+  })
+
+  it('the click and its typing cut from the video (Remove silences): the Log in shot is still marked', () => {
+    const p = project([
+      { id: 'a', start: 0, end: 1.5, speed: 1 },
+      { id: 'b', start: 7, end: 60, speed: 1 }
+    ])
+    expect(findSteps({ track: login, project: p, scan: null }).map((s) => s.key)).toEqual(['c8000'])
+    expect(marks(login, p)).toEqual([['c8000', 't2500']])
+  })
+
+  it('only the click into the field cut: still marked', () => {
+    const p = project([
+      { id: 'a', start: 0, end: 1.9, speed: 1 },
+      { id: 'b', start: 2.2, end: 60, speed: 1 }
+    ])
+    expect(marks(login, p)).toEqual([['c8000', 't2500']])
+  })
+
+  it('a lone burst under 0.5 s (no step of its own) marks the click after it', () => {
+    const lone: CursorTrack = { ...login, clicks: [{ t: 12, x: 0.45, y: 0.6, button: 'left' }], typing: [{ t: 10, end: 10.4 }] }
+    expect(findSteps({ track: lone, project: project(), scan: null }).map((s) => s.key)).toEqual(['c12000'])
+    expect(marks(lone, project())).toEqual([['c12000', 't10000']])
   })
 })

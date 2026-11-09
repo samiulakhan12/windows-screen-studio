@@ -20,7 +20,7 @@ import { ACTUAL_KEY, defaultDetails, stepNumbers, type GuideImage } from '../../
 import { withAddedStep, withGuideFields, withoutAiTitles, withStepEdit } from '../../../shared/guide/guideEdit'
 import { guideLanguage } from '../../../shared/guide/guideWords'
 import { planActual, planShot, type ShotPlan } from '../../../shared/guide/shots'
-import { autoBadgeCount, findSteps, STEP_RULES, typedBefore, type GuideStep } from '../../../shared/guide/steps'
+import { autoBadgeCount, findSteps, STEP_RULES, typedBefore, typingRuns, type GuideStep } from '../../../shared/guide/steps'
 import { namesRequestForSteps, needsTitle, shownTitles, stepIncluded, stepText, type ShownTitle } from '../../../shared/guide/stepTitles'
 import { notedPieces } from '../../../shared/publish/check'
 import { pathLike } from '../../../shared/smart/privateText'
@@ -103,6 +103,11 @@ export function checkOrder(keys: readonly string[], typed: ReadonlySet<string>, 
   return [...keys].sort((a, b) => rank(a) - rank(b) || keys.indexOf(a) - keys.indexOf(b))
 }
 
+/** The chip of a shot that may show typing (§5.5.7): "May show what you typed in step 4", without the number when that typing is no listed step (cut, or too short). */
+export function typedNote(n: string): string {
+  return n ? `May show what you typed in step ${n}` : 'May show what you typed'
+}
+
 /** The next step needing a title after `from` (wrapping), or null (§2.1). */
 export function nextUntitled(keys: readonly string[], untitled: ReadonlySet<string>, from: string | null): string | null {
   if (!untitled.size) return null
@@ -169,6 +174,8 @@ export function GuidePanel(props: { project: Project; cursor: CursorTrack; start
     }
   }, [project.id, sceneCrop])
   const steps = useMemo(() => findSteps({ track, project, scan }), [track, project, scan])
+  // Every stretch of typing, the ones whose step was cut or too short too: later shots can show it.
+  const runs = useMemo(() => typingRuns({ track, project }, steps), [track, project, steps])
 
   // Choices remembered between sessions (pref 'guide').
   const [format, setFormat] = useState<GuideFormat>(props.start === 'demo' ? 'demo' : 'pdf')
@@ -205,7 +212,7 @@ export function GuidePanel(props: { project: Project; cursor: CursorTrack; start
   const titles = useMemo(() => shownTitles(project, steps, ns, { scale }), [project, steps, ns, scale])
   const plans = useMemo(() => steps.map((s) => planShot(s, project, edits.get(s.key), scale, 'guide')), [steps, project, edits, scale])
   const actualPlan = useMemo(() => (guide.kind === 'bug' && guide.actualAt !== undefined ? planActual(project, guide.actualAt) : null), [guide.kind, guide.actualAt, project])
-  const typed = useMemo(() => typedBefore(steps, new Map(plans.map((p) => [p.key, { t: p.t, rect: p.rect, whole: p.whole }])), scan, frame), [steps, plans, scan, frame])
+  const typed = useMemo(() => typedBefore(steps, new Map(plans.map((p) => [p.key, { t: p.t, rect: p.rect, whole: p.whole }])), scan, frame, runs), [steps, plans, scan, frame, runs])
   const rows: Row[] = useMemo(
     () =>
       steps.map((step, index) => {
@@ -346,7 +353,7 @@ export function GuidePanel(props: { project: Project; cursor: CursorTrack; start
     setSending({
       shots: pictures.map((p) => {
         const r = byKey.get(p.key)
-        return { key: p.key, label: `step ${r?.n ?? ''}`, image: pictureImage(p.jpeg), ...(r?.typedIn ? { note: `May show what you typed in step ${typedN(r.typedIn)}` } : {}) }
+        return { key: p.key, label: `step ${r?.n ?? ''}`, image: pictureImage(p.jpeg), ...(r?.typedIn ? { note: typedNote(typedN(r.typedIn)) } : {}) }
       }),
       ticked: new Set(pictures.filter((p) => p.ticked).map((p) => p.key)),
       jpegs: new Map(pictures.map((p) => [p.key, p.jpeg]))
@@ -504,9 +511,11 @@ export function GuidePanel(props: { project: Project; cursor: CursorTrack; start
     say(BLUR_HINT)
   }
   const blurTyped = (r: Row): void => {
-    const source = rows.find((x) => x.step.key === r.typedIn)
-    if (!source) return
-    blurTypedText(store, source.step, { t: r.plan.t }, scan, scale)
+    // The typing as a step (its own step may be cut or too short to be listed): the blur starts with it.
+    const run = runs.find((x) => x.key === r.typedIn)
+    if (!run) return
+    const source: GuideStep = { key: run.key, t: run.t, kind: 'type', typing: { t: run.t, end: run.end, place: run.place } }
+    blurTypedText(store, source, { t: r.plan.t }, scan, scale)
     say('Blurred the typed text.')
   }
   const copyShot = async (key: string): Promise<void> => {
@@ -965,7 +974,8 @@ function StepRow(props: {
   const untitled = !r.title.own && needsTitle(r.title.from)
   const typingStep = !!r.step.typing
   const ai = !!(r.title.ai || r.edit?.textAi)
-  const chips = [untitled ? 'needs a title' : '', r.typedIn ? `may show what you typed in step ${props.typedN}` : '', ai ? 'written by AI' : '', r.plan.whole ? 'whole screen' : ''].filter(Boolean)
+  const typedChip = r.typedIn ? typedNote(props.typedN) : ''
+  const chips = [untitled ? 'needs a title' : '', typedChip && `m${typedChip.slice(1)}`, ai ? 'written by AI' : '', r.plan.whole ? 'whole screen' : ''].filter(Boolean)
   const name = [`Step ${n}`, props.time, ...(r.included ? [] : ['left out']), ...chips].join(', ')
   const flagged = (text: string): boolean => !!text && (notedPieces(text, props.said).length > 0 || pathLike(text))
   const linkNote = flagged(r.title.title) || flagged(r.note) || flagged(r.edit?.type ?? '') ? `${ids}-link-${key}` : undefined
@@ -995,7 +1005,7 @@ function StepRow(props: {
       {chips.length > 0 && (
         <p className="guide-chips" aria-hidden="true">
           {untitled && <span className="guide-chip warn">Needs a title</span>}
-          {r.typedIn && <span className="guide-chip warn">{`May show what you typed in step ${props.typedN}`}</span>}
+          {r.typedIn && <span className="guide-chip warn">{typedChip}</span>}
           {ai && <span className="guide-chip">AI</span>}
           {r.plan.whole && <span className="guide-chip">Whole screen</span>}
         </p>

@@ -126,18 +126,21 @@ function scrollWay(events: readonly { dx: number; dy: number }[]): GuideStep['sc
   return dy < 0 ? 'up' : 'down'
 }
 
+/** A stretch of typing (§5.1 rule 5, its bursts joined): its start, end and place, and the key of the listed step that holds it. */
+export interface TypingRun {
+  /** The listed step's key; `stepKey('type', t)` when no listed step holds it (its step was cut, or it was too short to be one). */
+  key: string
+  t: number
+  end: number
+  place: { x: number; y: number }
+}
+
 /**
- * The steps of the recording, in time order (§5.1): rules 1–10, or with `guide.from === 'badges'`
- * and automatic badges, rule 11 (the badges, and the other steps listed hidden). A step whose time
- * is cut is dropped; at most STEP_RULES.maxSteps, the first in time.
+ * Rules 1–5 (§5.1): the usable clicks, the click steps (drags, double-clicks and repeats joined),
+ * the typing runs with the step each became (null when too short) and each run's place.
  */
-export function findSteps(input: { track: CursorTrack; project: StepProject; scan: SceneScan | null }): GuideStep[] {
-  const { track, project, scan } = input
-  const w = project.width > 0 ? project.width : 1920
-  const h = project.height > 0 ? project.height : 1080
+function pressesAndTyping(track: CursorTrack, w: number, h: number) {
   const scale = finite(track.scale) && track.scale > 0 ? track.scale : 1
-  const kept = project.clips.filter((c) => c.end > c.start).map((c) => [c.start, c.end] as const)
-  const isKept = (t: number): boolean => !isCut(kept, t, t)
   const samples = track.valid ? (track.samples ?? []) : []
   const sampleTimes = samples.map((s) => s.t)
 
@@ -218,6 +221,8 @@ export function findSteps(input: { track: CursorTrack; project: StepProject; sca
   const typingSteps: Draft[] = []
   /** The step each run became (joined to a click or alone); null when it was too short. */
   const runStep: (Draft | null)[] = []
+  /** Where each run typed: the click it joined, else the field (§5.5.3's typing place). */
+  const runPlace: { x: number; y: number }[] = []
   for (const r of runs) {
     // The step holding the last click before the burst.
     const i = upperBound(pressedTimes, r.t0) - 1
@@ -226,10 +231,7 @@ export function findSteps(input: { track: CursorTrack; project: StepProject; sca
       into.typing = { t: r.t0, end: r.t1, place: { x: into.x!, y: into.y! } }
       into.last = Math.max(into.last, r.t1)
       runStep.push(into)
-      continue
-    }
-    if (r.t1 - r.t0 < STEP_RULES.typingMinS - EPS) {
-      runStep.push(null)
+      runPlace.push(into.typing.place)
       continue
     }
     // The field typed into: the last click up to 10 s before, else the cursor where it began.
@@ -237,10 +239,30 @@ export function findSteps(input: { track: CursorTrack; project: StepProject; sca
     const field = k >= 0 && r.t0 - clicks[k].t <= TYPING_CLICK_WINDOW ? clicks[k] : null
     const cursor = field ? null : cursorAt(samples, r.t0)
     const place = field ? { x: field.x, y: field.y } : cursor ? { x: clamp01(cursor.x), y: clamp01(cursor.y) } : { x: 0.5, y: 0.5 }
+    runPlace.push(place)
+    if (r.t1 - r.t0 < STEP_RULES.typingMinS - EPS) {
+      runStep.push(null)
+      continue
+    }
     const step: Draft = { key: stepKey('type', r.t0), t: r.t0, kind: 'type', typing: { t: r.t0, end: r.t1, place }, last: r.t1 }
     typingSteps.push(step)
     runStep.push(step)
   }
+  return { clicks, pressed, typingSteps, runs, runStep, runPlace }
+}
+
+/**
+ * The steps of the recording, in time order (§5.1): rules 1–10, or with `guide.from === 'badges'`
+ * and automatic badges, rule 11 (the badges, and the other steps listed hidden). A step whose time
+ * is cut is dropped; at most STEP_RULES.maxSteps, the first in time.
+ */
+export function findSteps(input: { track: CursorTrack; project: StepProject; scan: SceneScan | null }): GuideStep[] {
+  const { track, project, scan } = input
+  const w = project.width > 0 ? project.width : 1920
+  const h = project.height > 0 ? project.height : 1080
+  const kept = project.clips.filter((c) => c.end > c.start).map((c) => [c.start, c.end] as const)
+  const isKept = (t: number): boolean => !isCut(kept, t, t)
+  const { clicks, pressed, typingSteps, runs, runStep } = pressesAndTyping(track, w, h)
   const runEnds = runs.map((r) => r.t1)
   const runStarts = runs.map((r) => r.t0)
 
@@ -311,6 +333,23 @@ export function findSteps(input: { track: CursorTrack; project: StepProject; sca
   return steps.slice(0, STEP_RULES.maxSteps).map(({ last: _last, button: _button, ...s }) => s)
 }
 
+/**
+ * Every stretch of typing in the recording (§5.1 rule 5), each with the key of the listed step that
+ * holds it, or `stepKey('type', t)` when none does: a step whose time is cut, a lone burst too short
+ * to be a step, or one past the first STEP_RULES.maxSteps. Its typed text can still show in a later
+ * shot (§5.5.7), so typedBefore reads these, not only the listed steps' typing.
+ */
+export function typingRuns(input: { track: CursorTrack; project: Pick<Project, 'width' | 'height'> }, steps: readonly GuideStep[]): TypingRun[] {
+  const w = input.project.width > 0 ? input.project.width : 1920
+  const h = input.project.height > 0 ? input.project.height : 1080
+  const { runs, runStep, runPlace } = pressesAndTyping(input.track, w, h)
+  const listed = new Set(steps.map((s) => s.key))
+  return runs.map((r, i) => {
+    const step = runStep[i]
+    return { key: step && listed.has(step.key) ? step.key : stepKey('type', r.t0), t: r.t0, end: r.t1, place: runPlace[i] }
+  })
+}
+
 /** At equal times: a badge first, then the recorded steps, then the added ones. */
 const order = (s: GuideStep): number => (s.kind === 'badge' ? 0 : s.kind === 'added' ? 2 : 1)
 
@@ -362,18 +401,19 @@ function badgeSteps(project: StepProject): GuideStep[] {
  * (§7.2, at least 30% of the pixels) between its end and the shot (without a scan, every later shot
  * counts), and a shot that holds the typing place with a margin of 5% of the frame (a whole-screen
  * shot always does). The latest such burst names the step. `shots` and `frame` are in pixels of the
- * recorded frame.
+ * recorded frame. `runs` (typingRuns): every stretch of typing, the ones no listed step holds too;
+ * without it, the listed steps' typing.
  */
 export function typedBefore(
   steps: readonly GuideStep[],
   shots: ReadonlyMap<string, { t: number; rect: Rect; whole: boolean }>,
   scan: SceneScan | null,
-  frame: { w: number; h: number }
+  frame: { w: number; h: number },
+  runs?: readonly TypingRun[]
 ): ReadonlyMap<string, string> {
   const out = new Map<string, string>()
-  const typed = steps
-    .filter((s) => s.typing)
-    .map((s) => ({ key: s.key, end: s.typing!.end, place: s.typing!.place }))
+  const typed = (runs ?? steps.flatMap((s) => (s.typing ? [{ key: s.key, ...s.typing }] : [])))
+    .map((r) => ({ key: r.key, end: r.end, place: r.place }))
     .sort((a, b) => a.end - b.end)
   if (!typed.length) return out
   const ends = typed.map((b) => b.end)

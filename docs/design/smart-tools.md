@@ -1048,6 +1048,12 @@ ended before the step's shot time:
 - the step's shot holds the typing place (`typingSessionsOf`'s place) with a margin of 5% of the
   frame, which a whole-screen shot always does.
 
+Every stretch of typing counts (`typingRuns`), not only the listed steps' typing: a burst whose step
+was cut (Remove silences can cut a click and its typing while the next shot still shows the filled
+field), or one too short to be a step, still marks the later shots that show it. Its chip then says
+**May show what you typed**, without a step number, and *Blur the typed text* blurs from that burst's
+start.
+
 Marked steps come first in *Check screenshots*, are counted under the list and in the save question
 (§2.1.2), and start unticked in §5.3.1's send list.
 
