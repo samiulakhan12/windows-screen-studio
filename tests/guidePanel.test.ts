@@ -20,8 +20,18 @@ const calls = {
   prefs: [] as unknown[],
   focused: [] as string[],
   encoded: [] as { mime: string; maxWidth: number }[],
-  fonts: [] as string[]
+  fonts: [] as string[],
+  scenes: [] as { id: string; crop: unknown }[],
+  /** The cost questions asked before a run (smart-tools.md §11.5), and the answer given. */
+  asked: [] as string[]
 }
+let costAnswer = true
+/** The provider's model: gpt-x has no price; gpt-6.1-sol is in the bundled price list. */
+let providerModel = 'gpt-x'
+/** The prefs main would answer (aiConfirm for the question before a run). */
+const prefs = new Map<string, unknown>()
+/** The document's click listeners (the cost line holds a click above the amount set). */
+let clickListeners: ((e: unknown) => void)[] = []
 /** What the AI answers: a name for each item sent. */
 let answer = (items: { id: string }[]): { id: string; name: string }[] => items.map((i) => ({ id: i.id, name: `AI ${i.id}` }))
 
@@ -29,7 +39,11 @@ vi.stubGlobal('HTMLElement', class {})
 vi.stubGlobal('document', {
   activeElement: null,
   body: {},
-  getElementById: (id: string) => ({ focus: () => calls.focused.push(id) })
+  getElementById: (id: string) => ({ focus: () => calls.focused.push(id) }),
+  addEventListener: (type: string, fn: (e: unknown) => void) => void (type === 'click' && clickListeners.push(fn)),
+  removeEventListener: (_type: string, fn: (e: unknown) => void) => {
+    clickListeners = clickListeners.filter((l) => l !== fn)
+  }
 })
 vi.stubGlobal('fetch', async (url: string) => {
   calls.fonts.push(url)
@@ -37,10 +51,13 @@ vi.stubGlobal('fetch', async (url: string) => {
 })
 vi.stubGlobal('window', {
   api: {
-    detectScenes: async () => Promise.reject(new Error('Reading the screen is not part of this build.')),
-    getPref: async () => null,
+    detectScenes: async (id: string, crop: unknown) => {
+      calls.scenes.push({ id, crop })
+      return Promise.reject(new Error('Reading the screen is not part of this build.'))
+    },
+    getPref: async (key: string) => prefs.get(key) ?? null,
     setPref: async (key: string, value: unknown) => void calls.prefs.push({ key, value }),
-    listAiProviders: async () => [{ id: 'o1', kind: 'openai', label: '', model: 'gpt-x' }],
+    listAiProviders: async () => [{ id: 'o1', kind: 'openai', label: '', model: providerModel }],
     aiText: async (id: string, request: (typeof calls.aiText)[number]['request'], requestId?: string) => {
       calls.aiText.push({ id, request, requestId })
       return { task: 'names', names: answer(request.names?.items ?? []) }
@@ -62,6 +79,18 @@ vi.stubGlobal('window', {
 const PNG = (w: number): Uint8Array => new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, w & 255, w >> 8])
 
 mockReact()
+// P5's question before a run, with its own logic; only the dialog is answered here (no DOM).
+vi.doMock('../src/renderer/src/ai/costConfirm', async (importOriginal) => {
+  const real = (await importOriginal()) as { confirmCost: (e: unknown, c: unknown, ask?: (q: { text: string }) => Promise<boolean>) => Promise<boolean> }
+  return {
+    ...real,
+    confirmCost: (e: unknown, c: unknown) =>
+      real.confirmCost(e, c, async (q) => {
+        calls.asked.push(q.text)
+        return costAnswer
+      })
+  }
+})
 vi.doMock('../src/renderer/src/guide/guideStills', () => ({
   async *renderGuideStills(_input: unknown, shots: { key: string; rect: { w: number; h: number } }[], opts: { maxWidth: number; mime: string }) {
     for (const s of shots) {
@@ -89,6 +118,7 @@ const { GuidePanel, stepsLine, checkQuestion, checkOrder, nextUntitled, defaultP
 }
 await useEditorContexts()
 const { createProject } = await import('../src/shared/engine/project')
+const { cropOf } = await import('../src/shared/engine/crop')
 
 const words = (start: number, end: number, text: string): { text: string; start: number; end: number }[] => {
   const parts = text.split(' ')
@@ -158,9 +188,17 @@ async function ready(start: 'guide' | 'demo' | 'bug' = 'guide'): Promise<El[]> {
   return settle(panel(start))
 }
 
+const { resetAskedCosts } = (await import(/* @vite-ignore */ '../src/renderer/src/ai/costConfirm')) as { resetAskedCosts: () => void }
+const { refreshCostData } = (await import(/* @vite-ignore */ '../src/renderer/src/ai/useCost')) as { refreshCostData: () => Promise<void> }
+
 beforeEach(() => {
   unmountAll()
   for (const list of Object.values(calls)) list.length = 0
+  costAnswer = true
+  providerModel = 'gpt-x'
+  resetAskedCosts()
+  prefs.clear()
+  clickListeners = []
   closed.length = 0
   player.seeks.length = 0
   answer = (items) => items.map((i) => ({ id: i.id, name: `AI ${i.id}` }))
@@ -198,6 +236,27 @@ describe('the panel', () => {
     expect(store.steps).toBe(1)
     expect(store.updates.map((u) => u.key)).toEqual(['guide-title:c12000', 'guide-title:c12000'])
     expect(store.state.guide!.steps).toEqual([{ key: 'c12000', title: 'Open settings' }])
+  })
+})
+
+describe('the screen read (docs/design/smart-tools.md §7.1)', () => {
+  it('asks for the scan with the crop Find chapters, Short clips and Polish send, so all four share the one kept scan', async () => {
+    // A crop that is not on whole pixels: main keys its kept scans by the crop's filter, so the raw
+    // fractions would read the screen a second time.
+    store = testStore({ ...project(), crop: { x: 0.10001, y: 0.05003, w: 0.80007, h: 0.9 } })
+    contexts.editor = { store, player }
+    await ready()
+    expect(calls.scenes.length).toBeGreaterThan(0)
+    for (const call of calls.scenes) expect(call).toEqual({ id: 'p', crop: cropOf(store.state) })
+    expect(cropOf(store.state)).not.toEqual(store.state.crop)
+    // A crop that snaps to the whole frame reads the whole picture, as the others do.
+    calls.scenes.length = 0
+    unmountAll()
+    store = testStore({ ...project(), crop: { x: 0, y: 0, w: 1, h: 1 } })
+    contexts.editor = { store, player }
+    await ready()
+    expect(calls.scenes.length).toBeGreaterThan(0)
+    for (const call of calls.scenes) expect(call.crop).toBeNull()
   })
 })
 
@@ -289,6 +348,80 @@ describe('test 107: placeholders and Write titles', () => {
     // Use offline titles: one update.
     click(byTestId(els, 'guide-offline-titles'))
     expect(store.state.guide).toBeUndefined()
+  })
+})
+
+describe('the question before a run is asked once (smart-tools.md §11.5)', () => {
+  /** A user's click as the page sees it: the document's listeners first (the cost line may hold it), then the button's own handler. */
+  const userClick = (el: El): void => {
+    const b = {
+      id: el.props.id as string,
+      isConnected: true,
+      getAttribute: (n: string) => (n === 'aria-describedby' ? ((el.props['aria-describedby'] as string | undefined) ?? null) : null),
+      closest: (sel: string) => (sel === 'button' ? b : null),
+      click: () => (el.props.onClick as () => unknown)()
+    }
+    const e = { target: b, held: false, preventDefault: () => (e.held = true), stopImmediatePropagation: () => (e.held = true) }
+    for (const l of [...clickListeners]) l(e)
+    if (!e.held) (el.props.onClick as () => unknown)()
+  }
+  /** Lets the question, the run and its answer arrive. */
+  const landed = async (): Promise<El[]> => {
+    await after()
+    await new Promise((r) => setTimeout(r, 0))
+    return after()
+  }
+  /** The panel with the AI chosen for titles. */
+  const withAiTitles = async (): Promise<El[]> => {
+    await refreshCostData()
+    const els = await ready()
+    ;(byTestId(els, 'guide-titles-ai')!.props.onChange as () => void)()
+    return settle(panel())
+  }
+
+  it('a model without a price: asked once for the provider and model; Cancel sends nothing, Run runs once', async () => {
+    let els = await withAiTitles()
+    expect(clickListeners.length).toBeGreaterThan(0)
+    costAnswer = false
+    userClick(byTestId(els, 'guide-write-titles')!)
+    els = await landed()
+    expect(calls.asked).toEqual(['Flown does not know what this costs with gpt-x. Run it?'])
+    expect(calls.aiText).toHaveLength(0)
+    expect(store.state.guide).toBeUndefined()
+    costAnswer = true
+    userClick(byTestId(els, 'guide-write-titles')!)
+    els = await landed()
+    expect(calls.asked).toHaveLength(2)
+    expect(calls.aiText).toHaveLength(1)
+    // The same provider and model again this session: not asked.
+    userClick(byTestId(els, 'guide-tidy')!)
+    await landed()
+    expect(calls.asked).toHaveLength(2)
+    expect(calls.aiText).toHaveLength(2)
+  })
+
+  it('Always ask with a priced model: Write titles and Tidy notes each ask one question, then run once', async () => {
+    providerModel = 'gpt-6.1-sol'
+    prefs.set('aiConfirm', 'always')
+    let els = await withAiTitles()
+    // Each button reads its own cost sentence, the one its cost line holds clicks by.
+    for (const [testId, key] of [['guide-write-titles', 'titles'], ['guide-tidy', 'notes']] as const) {
+      const button = byTestId(els, testId)!
+      const sentence = els.find((e) => e.props.id === button.props['aria-describedby'])
+      expect(sentence?.props.id, testId).toMatch(new RegExp(`-${key}-cost-${key}$`))
+      expect(textOf(sentence), testId).toMatch(/US\$[\d.]+; sends the steps' narration to \S+\.$/)
+    }
+    userClick(byTestId(els, 'guide-write-titles')!)
+    els = await landed()
+    expect(calls.asked).toHaveLength(1)
+    expect(calls.asked[0]).toMatch(/with gpt-6\.1-sol\. Run it\?$/)
+    expect(calls.aiText).toHaveLength(1)
+    userClick(byTestId(els, 'guide-tidy')!)
+    await landed()
+    expect(calls.asked).toHaveLength(2)
+    expect(calls.aiText).toHaveLength(2)
+    prefs.clear()
+    await refreshCostData()
   })
 })
 

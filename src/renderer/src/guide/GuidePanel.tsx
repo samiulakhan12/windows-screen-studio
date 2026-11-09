@@ -10,6 +10,7 @@ import { useCallback, useEffect, useId, useMemo, useRef, useState, type Keyboard
 import type { TextChoice } from '../../../shared/api/ai'
 import type { GuideFormat } from '../../../shared/api/guide'
 import type { SceneScan } from '../../../shared/api/projects'
+import { cropOf } from '../../../shared/engine/crop'
 import { editToVideo, planOf } from '../../../shared/engine/freeze'
 import { effectiveTrack } from '../../../shared/engine/inputTrack'
 import { formatTime } from '../../../shared/engine/project'
@@ -27,10 +28,8 @@ import { itemKey } from '../../../shared/editor/multiSelect'
 import type { GuidePref } from '../../../shared/smart/smartPrefs'
 import type { CursorTrack, GuideStepEdit, Project } from '../../../shared/types'
 import { CostLine } from '../ai/CostLine'
-import { confirmCost } from '../ai/costConfirm'
 import { LocalProgress } from '../ai/LocalProgress'
 import { useTextChoices } from '../ai/textChoices'
-import { useCost } from '../ai/useCost'
 import { useEditor } from '../editor/context'
 import { useGroup } from '../editor/groupContext'
 import { keepArrows } from '../editor/panels/JoinOptions'
@@ -145,10 +144,13 @@ export function GuidePanel(props: { project: Project; cursor: CursorTrack; start
 
   // The track as the edit uses it (ignored and stray clicks gone) and the screen's changes.
   const track = useMemo(() => effectiveTrack(props.cursor, project), [props.cursor, project])
+  // The crop as Find chapters, Short clips and Polish send it (snapped to pixels, null for the whole
+  // frame): main keeps one scan per crop, so all four read the screen once.
+  const sceneCrop = useMemo(() => cropOf(project), [project.crop, project.width, project.height])
   const [scan, setScan] = useState<SceneScan | null>(null)
   useEffect(() => {
     let live = true
-    window.api.detectScenes(project.id, project.crop ?? null).then(
+    window.api.detectScenes(project.id, sceneCrop).then(
       (s) => {
         if (live) setScan(s)
       },
@@ -157,7 +159,7 @@ export function GuidePanel(props: { project: Project; cursor: CursorTrack; start
     return () => {
       live = false
     }
-  }, [project.id, project.crop])
+  }, [project.id, sceneCrop])
   const steps = useMemo(() => findSteps({ track, project, scan }), [track, project, scan])
 
   // Choices remembered between sessions (pref 'guide').
@@ -265,14 +267,12 @@ export function GuidePanel(props: { project: Project; cursor: CursorTrack; start
     const names = namesRequestForSteps(project, steps, 'note')
     return names.items.length ? { task: 'names' as const, segments: [], names } : null
   }, [project, steps])
-  const titleCost = useCost(titleChoice, titleRequest)
-  const notesCost = useCost(notesChoice, notesRequest)
   const [busy, setBusy] = useState<{ what: 'titles' | 'notes'; requestId: string; ac: AbortController } | null>(null)
+  // The question before a run (§11.5) is the cost line's: it holds a click on the buttons it names
+  // and lets it through after Run, so the run itself never asks again.
   const runAi = async (what: 'titles' | 'notes'): Promise<void> => {
     const choice = what === 'titles' ? titleChoice : notesChoice
-    const cost = what === 'titles' ? titleCost : notesCost
     if (!choice || busy) return
-    if (cost && !(await confirmCost(cost, choice))) return
     const requestId = `guide-${what}-${++requestSeq}`
     const ac = new AbortController()
     setBusy({ what, requestId, ac })
@@ -621,7 +621,7 @@ export function GuidePanel(props: { project: Project; cursor: CursorTrack; start
                 className="btn"
                 id={`${ids}-write`}
                 disabled={!titleRequest || !!busy}
-                aria-describedby={!titleRequest ? `${ids}-write-why` : undefined}
+                aria-describedby={titleRequest ? `${ids}-titles-cost-titles` : `${ids}-write-why`}
                 onClick={() => void runAi('titles')}
                 data-testid="guide-write-titles"
               >
@@ -644,7 +644,15 @@ export function GuidePanel(props: { project: Project; cursor: CursorTrack; start
           {notesChoice && (
             <>
               <div className="guide-ai-row">
-                <button type="button" className="btn" id={`${ids}-tidy`} disabled={!notesRequest || !!busy} onClick={() => void runAi('notes')} data-testid="guide-tidy">
+                <button
+                  type="button"
+                  className="btn"
+                  id={`${ids}-tidy`}
+                  disabled={!notesRequest || !!busy}
+                  aria-describedby={`${ids}-notes-cost-notes`}
+                  onClick={() => void runAi('notes')}
+                  data-testid="guide-tidy"
+                >
                   {busy?.what === 'notes' ? 'Tidying…' : 'Tidy notes with'}
                 </button>
                 <select
