@@ -4,6 +4,7 @@
  * chapter standing in for 0:00, a one-topic narration, and the time it takes.
  */
 import { describe, expect, it } from 'vitest'
+import { chapterNames } from '../src/shared/chapters/names'
 import { chapterLimits, chooseBoundaries, planChapters, type ChapterPlanInput } from '../src/shared/chapters/plan'
 import { CHAPTER_RULES, type Candidate } from '../src/shared/chapters/signals'
 import type { Chapter, Project } from '../src/shared/types'
@@ -173,9 +174,15 @@ describe('plans (test 38)', () => {
 /* ---------- test 47: silent recordings ---------- */
 
 describe('silent recordings (test 47)', () => {
-  it('page changes alone give chapters', () => {
-    const out = plan(chapterProject({ duration: 120 }), { scan: scanOf(120, { 40: 62, 80: 73 }) })
+  it('page changes alone give chapters, named "Intro", "Part 2" and "Part 3"', () => {
+    const project = chapterProject({ duration: 120 })
+    const out = plan(project, { scan: scanOf(120, { 40: 62, 80: 73 }) })
     expect(out.ok && out.starts.map((s) => s.t)).toEqual([0, 40, 80])
+    expect(out.ok && chapterNames(project, out.starts)).toEqual([
+      { title: 'Intro', name: 'number' },
+      { title: 'Part 2', name: 'number' },
+      { title: 'Part 3', name: 'number' }
+    ])
   })
 
   it('screen changes with idle gaps alone give none at Normal and some at More', () => {
