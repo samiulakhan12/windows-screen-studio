@@ -2085,6 +2085,10 @@ the sound through `sfxTitle(ref)` (soundLibrary.ts), a line the contracts put in
 - Effects are decoded once from `studio-media://sounds/<file>` (a new host of the media protocol
   that serves only catalogue file names, from the bundled folder or `userData/sound-library/`) and
   scheduled from `sfxJob` by `effectsStep` (`:863`) `EFFECTS_AHEAD` (0.25 s) ahead, like pops.
+  Every effect the project names (`sfxIds`: its rules and items) starts decoding when the graph is
+  brought in line with the project, so the first play has it. One still decoding when its sound is
+  due keeps its place in the pass: once ready, a sound due meanwhile plays from where it has got to,
+  as the export's does.
 - `effectsOf` (`:849`) is made again when any input of `sfxJob` or `popJob` changes: today's list
   plus `zooms`, `annotations`, `shapes`, `titles`, `soundFx`, `effects` (Calm and badges) and
   `chapterBar` (whose band moves Captions Studio's graphics and so their shown time).

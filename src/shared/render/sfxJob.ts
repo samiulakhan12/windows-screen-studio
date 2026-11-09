@@ -194,6 +194,18 @@ export function hasLibrarySounds(project: Project): boolean {
   return v
 }
 
+/** Every library effect the project names, on its rules and its items, whether or not it sounds (the preview decodes them ahead). */
+export function sfxIds(project: Project): string[] {
+  const ids = new Set<string>()
+  const add = (ref: string | undefined): void => {
+    const id = effectOf(ref as SfxRef | undefined)
+    if (id) ids.add(id)
+  }
+  for (const r of SFX_RULES) add(project.soundFx?.[r])
+  for (const list of [project.titles, project.annotations, project.shapes, project.graphics] as (readonly { sound?: string }[] | undefined)[]) for (const i of list ?? []) add(i.sound)
+  return [...ids]
+}
+
 /** How many times each rule's sound plays ("Plays 24 times"). */
 export function sfxCounts(project: Project, startOf?: (g: Graphic) => number): Readonly<Record<'zoomIn' | 'zoomOut' | 'titles' | 'callouts', number>> {
   const { rules } = hits(project, startOf)

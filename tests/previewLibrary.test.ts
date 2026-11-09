@@ -342,7 +342,7 @@ describe("the library's effects in the preview (test 69)", () => {
     })
     const { sound, video, ctx } = await open(p)
     sound.play(0, 1)
-    // Decoding happens on the first frame; the voices are scheduled from the next ones.
+    // Decoded when the project opened.
     sound.frame()
     await settle()
     await settle()
@@ -386,6 +386,44 @@ describe("the library's effects in the preview (test 69)", () => {
     expect(loud).toBeGreaterThan(0.01)
     // Within −60 dB.
     expect(worst).toBeLessThan(0.001)
+  })
+
+  it('decode when the project opens, so the first play has a sound due at once', async () => {
+    const p = project(10, { annotations: [text('a', 0.2, 'sfx:pop')] })
+    const { sound, ctx } = await open(p)
+    expect(fetched).toEqual(['studio-media://sounds/sfx-pop.ogg'])
+    const [hit] = sfxJob(p)[0].times
+    expect(hit).toBeLessThan(0.25)
+    sound.play(0, 1)
+    sound.frame()
+    expect(ctx.sources.map((v) => ({ when: v.started!.when, offset: v.started!.offset }))).toEqual([{ when: hit, offset: 0 }])
+  })
+
+  it('a sound chosen while playing that is due before it has decoded plays from where it has got to', async () => {
+    const p = project(10, { soundFx: { zoomIn: 'sfx:whoosh-soft' }, zooms: [{ id: 'z', start: 8, end: 9.5, scale: 2, focus: { mode: 'fixed', x: 0.5, y: 0.5 }, auto: false }] })
+    const { sound, video, ctx } = await open(p)
+    const step = (t: number): void => {
+      video.currentTime = t
+      ctx.currentTime = t
+      sound.frame()
+    }
+    sound.play(0, 1)
+    for (let t = 0; t < 1; t += 0.05) step(t)
+    const q = { ...p, annotations: [text('a', 1.3, 'sfx:pop')] }
+    sound.setProject(q)
+    const hit = sfxJob(q).find((e) => e.id === 'pop')!.times[0]
+    expect(hit).toBeGreaterThan(1.3)
+    // Frames go by while it decodes, past the time it is due.
+    for (let t = 1; t < hit + 0.06; t += 0.05) step(t)
+    expect(ctx.sources).toEqual([])
+    await settle()
+    await settle()
+    const now = hit + 0.1
+    step(now)
+    expect(ctx.sources.map((v) => ({ when: v.started!.when, offset: v.started!.offset }))).toEqual([{ when: now, offset: expect.closeTo(0.1, 9) }])
+    // Once only.
+    step(now + 0.05)
+    expect(ctx.sources.length).toBe(1)
   })
 
   it('effectsOf is made again when chapterBar, zooms or soundFx change', async () => {
