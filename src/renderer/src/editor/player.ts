@@ -709,10 +709,15 @@ export class PreviewPlayer {
     this.prepareJoins()
   }
 
-  /** Stops at the end of the edit and shows its last frame. */
+  /** Stops at the end of the edit and shows its last frame; Play this cut goes back where the playhead was (§2.1). */
   private finish(): void {
     const clips = this.project.clips
+    const stop = this.stopAt
     this.stopPlaying()
+    if (stop) {
+      this.seek(stop.back)
+      return
+    }
     this.time = keptBounds(clips).end
     this.seekVideo(this.frameTimeFor(this.time))
     this.emit()
@@ -721,6 +726,8 @@ export class PreviewPlayer {
   private stopPlaying(): void {
     const wasPlaying = this.playing
     this.playing = false
+    // Play this cut ends with any stop that is not its own (J, the end of the edit, an error).
+    this.stopAt = null
     if (!this.rev) this.shuttleNow = STOPPED
     this.cancelFrame()
     this.jumpTarget = null
@@ -759,8 +766,9 @@ export class PreviewPlayer {
    * sought. The position is walked in output time, so cuts are skipped.
    */
   private startReverse(out: number): void {
-    // Reverse playback skips freeze frames (E-11): a hold in progress is left.
+    // Reverse playback skips freeze frames (E-11): a hold in progress is left, and Play this cut with it.
     this.clearHold()
+    this.stopAt = null
     this.pendingSeek = null
     this.rev = { fromOut: out, t0: performance.now(), rate: Math.abs(this.viewRate), raf: 0 }
     this.revStep()

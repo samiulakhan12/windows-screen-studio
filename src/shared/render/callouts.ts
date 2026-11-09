@@ -157,15 +157,18 @@ const labelMemo = new WeakMap<readonly Annotation[], LabelMemo>()
 /**
  * The label each automatic badge draws, by annotation id (§7.3): automatic badges in start-time
  * order (ties by id) count 1, 2, 3…; the count starts again at each of the user's chapters' start
- * (in the video's time; found chapters waiting for review do not count, smart-tools.md §7.7) unless `effects.badgesByChapter` is false or the project has fewer than two
- * chapters; a badge with `startAt` takes that number and the next count on from it. Badges with
- * their own text do not count. Memoised on the annotations, chapters, clips, freezes and effects.
+ * (in the video's time; found chapters waiting for review do not count, smart-tools.md §7.7) unless
+ * `effects.badgesByChapter` is false or the project has fewer than two chapters, a badge counting
+ * in the chapter where its entrance has finished (one added at a chapter's start pops in just
+ * before it); a badge with `startAt` takes that number and the next count on from it. Badges with
+ * their own text do not count, nor do badges a cut removes whole (never seen, they get no label).
+ * Memoised on the annotations, chapters, clips, freezes and effects.
  */
 export function badgeLabels(project: Project): ReadonlyMap<string, string> {
   const annotations = project.annotations ?? []
   const hit = labelMemo.get(annotations)
   if (hit && hit.chapters === project.chapters && hit.clips === project.clips && hit.effects === project.effects && hit.freezes === project.freezes) return hit.out
-  const autos = annotations.filter((a) => a.style === 'badge' && calloutOf(a).number === 'auto').sort((a, b) => a.start - b.start || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0))
+  const autos = annotations.filter((a) => a.style === 'badge' && calloutOf(a).number === 'auto')
   const out = new Map<string, string>()
   if (autos.length) {
     const plan = planOf(project)
@@ -173,17 +176,27 @@ export function badgeLabels(project: Project): ReadonlyMap<string, string> {
     const chapters = project.clips.length ? outputChapters(userChapters(project), project.clips, plan) : []
     const byChapter = chapters.length >= 2 && badgesByChapterOf(project.effects ?? {}, chapters.length)
     const starts = byChapter ? chapters.map((c) => c.start) : []
-    let chapter = -1
-    let k = 0
+    const counted: { a: Annotation; chapter: number }[] = []
     for (const a of autos) {
+      const from = viewAt(project.clips, a.start)
+      const to = viewAt(project.clips, a.end)
+      // No kept moment: the video never shows it, so it uses up no number.
+      if (!(to > from)) continue
+      // Its chapter is where it has fully come in: a badge added at a chapter's start pops in just before it.
+      let chapter = -1
       if (byChapter) {
-        const at = editToVideo(plan, viewAt(project.clips, a.start))
-        let i = -1
-        while (i + 1 < starts.length && starts[i + 1] <= at + 1e-6) i++
-        if (i !== chapter) {
-          chapter = i
-          k = 0
-        }
+        const at = editToVideo(plan, from + Math.min(calloutOf(a).enter?.duration ?? OLD_FADE.text, (to - from) / 2))
+        while (chapter + 1 < starts.length && starts[chapter + 1] <= at + 1e-6) chapter++
+      }
+      counted.push({ a, chapter })
+    }
+    counted.sort((x, y) => x.chapter - y.chapter || x.a.start - y.a.start || (x.a.id < y.a.id ? -1 : x.a.id > y.a.id ? 1 : 0))
+    let chapter = -2
+    let k = 0
+    for (const { a, chapter: i } of counted) {
+      if (i !== chapter) {
+        chapter = i
+        k = 0
       }
       const c = calloutOf(a)
       k = c.startAt ?? k + 1
@@ -394,11 +407,24 @@ export function pinOut(a: Annotation, frame: Pick<CalloutFrame, 'toOut' | 'crop'
   return frame.toOut(p.x, p.y)
 }
 
+/** The point a bubble's body is placed around for a tip at `at`: the tip, or while it is off the picture the picture's nearest point. */
+const anchorOf = (at: { x: number; y: number }, frame: Pick<CalloutFrame, 'visible' | 'seen'>): { x: number; y: number } => (frame.visible(at) || !frame.seen ? at : intoRect(at, frame.seen))
+
+/**
+ * Where a pinned bubble's body is placed around (output px), as calloutPlace places it: its tip,
+ * or while the tip is off the picture the picture's nearest point, so the body stays beside its
+ * edge. Null without a pin. Dragging the body measures its offset from this.
+ */
+export function bubbleAnchor(a: Annotation, frame: CalloutFrame): { x: number; y: number } | null {
+  const at = pinOut(a, frame)
+  return at ? anchorOf(at, frame) : null
+}
+
 /**
  * Where a badge or a bubble is drawn in a frame (§7.3, §7.4), or null for another text and for a
  * badge whose pin is outside the visible picture (not drawn). `label` is an automatic badge's
- * number; `measure(text, px, weight)` measures in the callout font. The preview's handles and the
- * drawing both place them with this.
+ * number; `measure(text, px, weight)` measures in the callout font. The preview's handles, its
+ * Ctrl/Shift+click hit boxes and the drawing all place them with this.
  */
 export function calloutPlace(a: Annotation, label: string | null, frame: CalloutFrame, measure: (text: string, px: number, weight: number) => number): CalloutPlace | null {
   const c = calloutOf(a)
@@ -445,7 +471,7 @@ export function calloutPlace(a: Annotation, label: string | null, frame: Callout
   }
   const shown = frame.visible(at)
   // A tip outside the picture: the body stays beside the picture's edge, without its tail.
-  const anchor = shown || !frame.seen ? at : intoRect(at, frame.seen)
+  const anchor = anchorOf(at, frame)
   const box = bubbleBody(anchor, c.body ?? BUBBLE_BODY, size, S, area)
   const tail = shown ? bubbleTail(box, at, f, radius) : null
   return {

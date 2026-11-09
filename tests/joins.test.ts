@@ -26,7 +26,7 @@ import {
   type JoinWindow,
   type TrackTimes
 } from '../src/shared/render/joins'
-import type { Camera } from '../src/shared/engine/zoom'
+import { clampCamera, type Camera } from '../src/shared/engine/zoom'
 import type { Rect } from '../src/shared/engine/layout'
 import type { Clip, CutJoin, Freeze, LayoutSegment, Project, ProjectJoins } from '../src/shared/types'
 
@@ -552,10 +552,34 @@ describe('punchAt and punchedCamera (test 14)', () => {
       expect(v.sx + v.sw).toBeLessThanOrEqual(1 + 1e-12)
       expect(v.sy + v.sh).toBeLessThanOrEqual(1 + 1e-12)
       expect(v.dw).toBeCloseTo(1000, 6)
-      // A random centre too: the view never leaves the recording.
-      const wild = punchedCamera({ scale, cx: r(), cy: r() }, p, 3.5)
-      expect(wild.cx - 0.5 / wild.scale).toBeGreaterThanOrEqual(-1e-12)
-      expect(wild.cx + 0.5 / wild.scale).toBeLessThanOrEqual(1 + 1e-12)
+      // A random centre too: the centre is kept, and the view only shrinks inside the one given.
+      const given = { scale, cx: r(), cy: r() }
+      const wild = punchedCamera(given, p, 3.5)
+      expect(wild).toEqual({ scale: scale * 1.1, cx: given.cx, cy: given.cy })
+      expect(wild.cx - 0.5 / wild.scale).toBeGreaterThanOrEqual(given.cx - 0.5 / given.scale)
+      expect(wild.cx + 0.5 / wild.scale).toBeLessThanOrEqual(given.cx + 0.5 / given.scale)
+    }
+  })
+
+  it('keeps the view of a followed frame where it is (a 9:16 view of a 16:9 recording near its edge)', () => {
+    const clips = cutClips([2, 2])
+    const p = withJoins(clips, { all: { kind: 'punch' } })
+    // A followed view's camera is bounded by its base (clampCamera with base), not the whole recording.
+    const near = { scale: 1, cx: 0.1477, cy: 0.5 }
+    expect(punchedCamera(near, p, 3.5)).toEqual({ scale: 1.1, cx: 0.1477, cy: 0.5 })
+    const r = rng(41)
+    for (let n = 0; n < 1000; n++) {
+      const followed = { w: 0.05 + r() * 0.95, h: 0.05 + r() * 0.95 }
+      const c = clampCamera({ scale: 1 + r() * 4, cx: r(), cy: r() }, followed)
+      const out = punchedCamera(c, p, 3.5)
+      expect(out).toEqual({ scale: c.scale * 1.1, cx: c.cx, cy: c.cy })
+      // The followed view's source stays inside the recording.
+      const hx = (0.5 * followed.w) / out.scale
+      const hy = (0.5 * followed.h) / out.scale
+      expect(out.cx - hx).toBeGreaterThanOrEqual(-1e-12)
+      expect(out.cx + hx).toBeLessThanOrEqual(1 + 1e-12)
+      expect(out.cy - hy).toBeGreaterThanOrEqual(-1e-12)
+      expect(out.cy + hy).toBeLessThanOrEqual(1 + 1e-12)
     }
   })
 })

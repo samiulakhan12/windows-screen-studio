@@ -6,8 +6,10 @@
   gap: 8px;
 }
 
+/* The note's live region stays on the page while it is empty (never display: none), so a screen
+   reader reads the note out when it appears; the margin takes back its share of the gap. */
 .magnifier-soft:empty {
-  display: none;
+  margin-top: -8px;
 }
 
 .magnifier-soft {

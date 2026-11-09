@@ -114,6 +114,23 @@ describe('the Cut style section (test 23)', () => {
     expect(commands).toEqual(['previousCut', 'nextCut', 'playCut'])
   })
 
+  it('keeps Previous cut and Next cut focusable at the first and last cut, saying they are unavailable', async () => {
+    // A disabled button that has the focus drops it to the page: these are aria-disabled instead.
+    const first = await style({ start: 2, end: 3 })
+    expect(textOf(byTestId(first, 'cut-number'))).toBe('Cut 1 of 37')
+    expect(byTestId(first, 'cut-prev')!.props.disabled).toBeFalsy()
+    expect(byTestId(first, 'cut-prev')!.props['aria-disabled']).toBe(true)
+    expect(byTestId(first, 'cut-next')!.props['aria-disabled']).toBeFalsy()
+    const last = await style({ start: 110, end: 111 })
+    expect(textOf(byTestId(last, 'cut-number'))).toBe('Cut 37 of 37')
+    expect(byTestId(last, 'cut-next')!.props.disabled).toBeFalsy()
+    expect(byTestId(last, 'cut-next')!.props['aria-disabled']).toBe(true)
+    expect(byTestId(last, 'cut-prev')!.props['aria-disabled']).toBeFalsy()
+    // A press still runs the command, which says there is no cut after the playhead.
+    click(byTestId(last, 'cut-next')!)
+    expect(commands).toEqual(['nextCut'])
+  })
+
   it('is a radio group of the styles; a choice is one update, and its Length reads and moves by keys', async () => {
     let els = await style(gap5)
     const group = byTestId(els, 'cut-style')!

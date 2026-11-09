@@ -12,8 +12,9 @@ import type { TitleCard } from '../../../shared/types'
 import type { Project } from '../../../shared/types'
 import { ensureCaptionFonts, fontGeneration, projectFontStack } from './fontLoader'
 import type { FrameContext } from './frameContext'
-import type { CalloutPose } from '../../../shared/render/callouts'
-import { titleCalloutPose } from './calloutLayer'
+import { RTL_FIRST } from '../../../shared/captions/layout'
+import { graphemes, type CalloutPose } from '../../../shared/render/callouts'
+import { titleCalloutPose, typewriterWidths } from './calloutLayer'
 import { paintBackgroundLayer } from './staticLayer'
 
 type Ctx = CanvasRenderingContext2D
@@ -251,11 +252,39 @@ const glyphPad = (l: TitleLayout): number => Math.ceil(Math.max(l.title.px, l.su
 /* ---------- drawing ---------- */
 
 /**
- * A card's motion of its own (docs/design/editing-polish.md §7.2): its text (and a lower third's
- * band) moved, scaled and turned about `box`'s centre, and revealed from the left; nothing without
- * a pose.
+ * How a card's text comes in while it wipes or types (docs/design/editing-polish.md §7.2): from its
+ * reading start, the right edge for right-to-left text. `rtl`: the card's first letter is from a
+ * right-to-left script (where Wipe starts). `lines` (Typewriter): the px shown of each line, the
+ * title's and then the subtitle's, whole graphemes in reading order, each line from its own reading
+ * start (drawBlock); null: the whole card wipes.
  */
-function applyPose(ctx: Ctx, box: Rect, pose: CalloutPose | null): void {
+interface CardReveal {
+  rtl: boolean
+  lines: number[] | null
+}
+
+function cardReveal(ctx: Ctx, card: TitleCard, l: TitleLayout, font: string, reveal: number): CardReveal {
+  const blocks = l.subtitle ? [l.title, l.subtitle] : [l.title]
+  const rtl = RTL_FIRST.test(blocks.flatMap((b) => b.lines).join(' '))
+  if (card.enter?.kind !== 'typewriter') return { rtl, lines: null }
+  const counts = blocks.map((b) => b.lines.reduce((n, line) => n + graphemes(line).length, 0))
+  let k = Math.round(Math.max(0, Math.min(1, reveal)) * counts.reduce((a, b) => a + b, 0))
+  ctx.save()
+  const lines = blocks.flatMap((b, i) => {
+    const here = Math.min(k, counts[i])
+    k -= here
+    return typewriterWidths(ctx, b.lines, b.widths, `${b.weight} ${b.px}px ${font}`, counts[i] ? here / counts[i] : 0)
+  })
+  ctx.restore()
+  return { rtl, lines }
+}
+
+/**
+ * A card's motion of its own (docs/design/editing-polish.md §7.2): its text (and a lower third's
+ * band) moved, scaled and turned about `box`'s centre, and wiped in from its reading start (a
+ * typewriter clips each line as it is drawn instead); nothing without a pose.
+ */
+function applyPose(ctx: Ctx, box: Rect, pose: CalloutPose | null, reveal: CardReveal | null = null): void {
   if (!pose) return
   const cx = box.x + box.w / 2
   const cy = box.y + box.h / 2
@@ -263,9 +292,10 @@ function applyPose(ctx: Ctx, box: Rect, pose: CalloutPose | null): void {
   if (pose.rotate) ctx.rotate((pose.rotate * Math.PI) / 180)
   ctx.scale(pose.scale * pose.scaleX, pose.scale)
   ctx.translate(-cx, -cy)
-  if (pose.reveal < 1) {
+  if (pose.reveal < 1 && !reveal?.lines) {
+    const shown = box.w * Math.max(0, pose.reveal)
     ctx.beginPath()
-    ctx.rect(box.x, box.y - box.h, box.w * Math.max(0, pose.reveal), box.h * 3)
+    ctx.rect(reveal?.rtl ? box.x + box.w - shown : box.x, box.y - box.h, shown, box.h * 3)
     ctx.clip()
   }
 }
@@ -301,28 +331,45 @@ function paintCardBackground(fc: FrameContext, card: TitleCard, tint: string): v
   }
 }
 
-/** Draws the lines of `block` from `top`, at `x` (aligned as `align`). */
-function drawBlock(ctx: Ctx, block: TextBlock, x: number, top: number, align: CanvasTextAlign, font: string): void {
+/**
+ * Draws the lines of `block` from `top`, at `x` (aligned as `align`); with `shown` (a typewriter),
+ * each line only as far as its px shown, from the line's own reading start (a card may put one
+ * language on each line, and the canvas lays out each line on its own).
+ */
+function drawBlock(ctx: Ctx, block: TextBlock, x: number, top: number, align: CanvasTextAlign, font: string, shown: readonly number[] | null = null): void {
   ctx.font = `${block.weight} ${block.px}px ${font}`
   ctx.textAlign = align
   ctx.textBaseline = 'middle'
   block.lines.forEach((line, i) => {
-    if (line) ctx.fillText(line, x, top + block.lineHeight * (i + 0.5))
+    if (!line) return
+    const y = top + block.lineHeight * (i + 0.5)
+    if (!shown) return ctx.fillText(line, x, y)
+    const s = shown[i] ?? 0
+    if (!(s > 0)) return
+    const w = block.widths[i] ?? 0
+    const left = align === 'center' ? x - w / 2 : x
+    ctx.save()
+    ctx.beginPath()
+    ctx.rect(RTL_FIRST.test(line) ? left + w - s : left, y - block.lineHeight, s, block.lineHeight * 2)
+    ctx.clip()
+    ctx.fillText(line, x, y)
+    ctx.restore()
   })
 }
 
-/** Title and subtitle from `top`; the subtitle a little softer. */
-function drawText(ctx: Ctx, l: TitleLayout, x: number, top: number, align: CanvasTextAlign, color: string, alpha: number, font: string): void {
+/** Title and subtitle from `top`; the subtitle a little softer. `reveal`: a typewriter's lines shown. */
+function drawText(ctx: Ctx, l: TitleLayout, x: number, top: number, align: CanvasTextAlign, color: string, alpha: number, font: string, reveal: CardReveal | null = null): void {
+  const shown = reveal?.lines ?? null
   ctx.fillStyle = color
   ctx.globalAlpha = alpha
-  drawBlock(ctx, l.title, x, top, align, font)
+  drawBlock(ctx, l.title, x, top, align, font, shown)
   if (l.subtitle) {
     ctx.globalAlpha = alpha * 0.8
-    drawBlock(ctx, l.subtitle, x, top + l.title.lines.length * l.title.lineHeight + l.gap, align, font)
+    drawBlock(ctx, l.subtitle, x, top + l.title.lines.length * l.title.lineHeight + l.gap, align, font, shown && shown.slice(l.title.lines.length))
   }
 }
 
-function drawFullFrame(fc: FrameContext, card: TitleCard, phase: TitlePhase, l: TitleLayout, font: string, pose: CalloutPose | null = null): void {
+function drawFullFrame(fc: FrameContext, card: TitleCard, phase: TitlePhase, l: TitleLayout, font: string, pose: CalloutPose | null = null, reveal: CardReveal | null = null): void {
   const { ctx, w, h } = fc
   if (phase.background > 0.002) {
     ctx.save()
@@ -337,35 +384,36 @@ function drawFullFrame(fc: FrameContext, card: TitleCard, phase: TitlePhase, l: 
   const blur = l.title.px * 0.28
   const drop = l.title.px * 0.04
   const top = (h - l.height) / 2
-  const paint = (c: Ctx, alpha: number, rise: number): void => {
+  const paint = (c: Ctx, alpha: number, rise: number, typed: CardReveal | null = null): void => {
     c.save()
     if (shadowed) {
       c.shadowColor = 'rgba(0, 0, 0, 0.35)'
       c.shadowBlur = blur
       c.shadowOffsetY = drop
     }
-    drawText(c, l, w / 2, top + rise, 'center', color, alpha, font)
+    drawText(c, l, w / 2, top + rise, 'center', color, alpha, font, typed)
     c.restore()
   }
   const key = JSON.stringify(['full', w, h, card.style, card.title, card.subtitle ?? '', color, shadowed, fontKey(font)])
   const pad = glyphPad(l) + (shadowed ? Math.ceil(blur * 1.5 + drop) : 0)
   const box = { x: (w - l.width) / 2, y: top, w: l.width, h: l.height }
-  const sprite = spriteOf(key, box, pad, (c) => paint(c, 1, 0))
+  // While a typewriter types, its lines are drawn as far as they are shown, not from the picture.
+  const sprite = reveal?.lines ? null : spriteOf(key, box, pad, (c) => paint(c, 1, 0))
   if (!sprite) {
     if (pose) ctx.save()
-    applyPose(ctx, box, pose)
-    paint(ctx, phase.text, phase.rise * l.rise)
+    applyPose(ctx, box, pose, reveal)
+    paint(ctx, phase.text, phase.rise * l.rise, reveal)
     if (pose) ctx.restore()
     return
   }
   ctx.save()
-  applyPose(ctx, box, pose)
+  applyPose(ctx, box, pose, reveal)
   ctx.globalAlpha = phase.text
   drawSprite(ctx, sprite, phase.rise * l.rise)
   ctx.restore()
 }
 
-function drawLowerThird(fc: FrameContext, card: TitleCard, phase: TitlePhase, l: TitleLayout, font: string, pose: CalloutPose | null = null): void {
+function drawLowerThird(fc: FrameContext, card: TitleCard, phase: TitlePhase, l: TitleLayout, font: string, pose: CalloutPose | null = null, reveal: CardReveal | null = null): void {
   const { ctx, w, h } = fc
   const band = l.band
   if (!band || phase.text <= 0.002 || l.height <= 0) return
@@ -374,7 +422,7 @@ function drawLowerThird(fc: FrameContext, card: TitleCard, phase: TitlePhase, l:
   const blur = band.h * 0.35
   const drop = band.h * 0.06
   // A solid band with its shadow, the accent bar and the text: the same in every frame of the card.
-  const paint = (c: Ctx, alpha: number, y: number): void => {
+  const paint = (c: Ctx, alpha: number, y: number, typed: CardReveal | null = null): void => {
     c.save()
     c.globalAlpha = alpha
     if (solid) {
@@ -394,12 +442,12 @@ function drawLowerThird(fc: FrameContext, card: TitleCard, phase: TitlePhase, l:
     c.beginPath()
     c.roundRect(band.x + band.padX, y + band.padY, band.accent, l.height, band.accent / 2)
     c.fill()
-    drawText(c, l, band.x + band.padX + band.accent * 2.4, y + band.padY, 'left', color, alpha, font)
+    drawText(c, l, band.x + band.padX + band.accent * 2.4, y + band.padY, 'left', color, alpha, font, typed)
     c.restore()
   }
   const y = band.y + phase.rise * l.rise
   ctx.save()
-  applyPose(ctx, band, pose)
+  applyPose(ctx, band, pose, reveal)
   ctx.globalAlpha = phase.text
   if (!solid) {
     // The band shows the frame (or the project's background) behind it, so it is drawn every frame.
@@ -420,9 +468,10 @@ function drawLowerThird(fc: FrameContext, card: TitleCard, phase: TitlePhase, l:
   // sizes, which a text area changes; one that moves only away from the band pictures nothing new).
   const key = JSON.stringify(['lower', w, h, card.title, card.subtitle ?? '', color, solid ? titleColorOf(card) : '', fontKey(font), l])
   const pad = glyphPad(l) + (solid ? Math.ceil(blur * 1.5 + drop) : 0)
-  const sprite = spriteOf(key, band, pad, (c) => paint(c, 1, band.y))
+  // While a typewriter types, its lines are drawn as far as they are shown, not from the picture.
+  const sprite = reveal?.lines ? null : spriteOf(key, band, pad, (c) => paint(c, 1, band.y))
   if (sprite) drawSprite(ctx, sprite, phase.rise * l.rise)
-  else paint(ctx, phase.text, y)
+  else paint(ctx, phase.text, y, reveal)
   ctx.restore()
 }
 
@@ -466,9 +515,11 @@ export function drawTitleCardsLayer(fc: FrameContext): void {
     // the pose; a full-frame card's background keeps titlePhase's fade. Null: today's fade and rise.
     const pose = card.enter || card.exit ? titleCalloutPose(fc, card) : null
     const shown = pose ? { ...phase, text: pose.alpha, rise: 0 } : phase
-    if (lower) drawLowerThird(fc, card, shown, l, font, pose)
-    else if (card.style === 'quote') drawQuote(fc, card, shown, l, font, pose)
-    else drawFullFrame(fc, card, shown, l, font, pose)
+    // Wipe and Typewriter come in from the text's reading start; a typewriter by whole graphemes, line by line.
+    const reveal = pose && pose.reveal < 1 ? cardReveal(fc.ctx, card, l, font, pose.reveal) : null
+    if (lower) drawLowerThird(fc, card, shown, l, font, pose, reveal)
+    else if (card.style === 'quote') drawQuote(fc, card, shown, l, font, pose, reveal)
+    else drawFullFrame(fc, card, shown, l, font, pose, reveal)
   }
 }
 
@@ -481,7 +532,7 @@ const lightColour = (hex: string): boolean => luminance(hex) > 0.45
  * colour at 1.6×, and "— Name" under it at 0.6×; no full-frame background. It fades over
  * TITLE_FADE (at least 0.2 s, §9.6) and rises in like the other cards.
  */
-function drawQuote(fc: FrameContext, card: TitleCard, phase: TitlePhase, l: TitleLayout, font: string, pose: CalloutPose | null = null): void {
+function drawQuote(fc: FrameContext, card: TitleCard, phase: TitlePhase, l: TitleLayout, font: string, pose: CalloutPose | null = null, reveal: CardReveal | null = null): void {
   const { ctx, w, h } = fc
   if (phase.text <= 0.002 || l.height <= 0) return
   const look = fc.project.captions?.studio ?? STUDIO_BASE
@@ -489,7 +540,7 @@ function drawQuote(fc: FrameContext, card: TitleCard, phase: TitlePhase, l: Titl
   const textColour = card.textColor ?? (lightColour(panelColour) ? '#111111' : '#ffffff')
   const markColour = look.theme.emphasis
   const q = quotePanel(l, w, h)
-  const paint = (c: Ctx, alpha: number, rise: number): void => {
+  const paint = (c: Ctx, alpha: number, rise: number, typed: CardReveal | null = null): void => {
     c.save()
     c.globalAlpha = alpha * 0.85
     c.fillStyle = panelColour
@@ -502,20 +553,21 @@ function drawQuote(fc: FrameContext, card: TitleCard, phase: TitlePhase, l: Titl
     c.textAlign = 'left'
     c.textBaseline = 'middle'
     c.fillText('\u201c', q.mark.x, q.mark.y + q.mark.px * 0.18 + rise)
-    drawText(c, l, q.textX, q.textTop + rise, 'left', textColour, alpha, font)
+    drawText(c, l, q.textX, q.textTop + rise, 'left', textColour, alpha, font, typed)
     c.restore()
   }
   const key = JSON.stringify(['quote', w, h, card.title, card.subtitle ?? '', panelColour, textColour, markColour, fontKey(font), l])
-  const sprite = spriteOf(key, q.panel, Math.ceil(q.mark.px * 0.5), (c) => paint(c, 1, 0))
+  // While a typewriter types, its lines are drawn as far as they are shown, not from the picture.
+  const sprite = reveal?.lines ? null : spriteOf(key, q.panel, Math.ceil(q.mark.px * 0.5), (c) => paint(c, 1, 0))
   if (!sprite) {
     if (pose) ctx.save()
-    applyPose(ctx, q.panel, pose)
-    paint(ctx, phase.text, phase.rise * l.rise)
+    applyPose(ctx, q.panel, pose, reveal)
+    paint(ctx, phase.text, phase.rise * l.rise, reveal)
     if (pose) ctx.restore()
     return
   }
   ctx.save()
-  applyPose(ctx, q.panel, pose)
+  applyPose(ctx, q.panel, pose, reveal)
   ctx.globalAlpha = phase.text
   drawSprite(ctx, sprite, phase.rise * l.rise)
   ctx.restore()

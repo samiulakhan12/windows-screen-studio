@@ -9,6 +9,7 @@ import { fromOutput, type CalloutView } from '../../../shared/editor/calloutsEdi
 import { fromCrop, toCrop } from '../../../shared/engine/crop'
 import { frameView } from '../../../shared/engine/frameView'
 import { outputSize, type Rect } from '../../../shared/engine/layout'
+import { clamp } from '../../../shared/engine/math'
 import { toOutput } from '../../../shared/engine/outputPoint'
 import type { CalloutFrame } from '../../../shared/render/callouts'
 import { punchedCamera } from '../../../shared/render/joins'
@@ -69,8 +70,18 @@ export function shownAt(scene: RenderScene, t: number, pin: { x: number; y: numb
   return { x: Math.min(1, Math.max(0, p.x / m.view.w)), y: Math.min(1, Math.max(0, p.y / m.view.h)) }
 }
 
-/** The point of the recording (full frame) a place of the frame (fractions) shows at source time `t`. */
+/** `p` (px) kept on the visible picture `r`, half a pixel in, so the way back through the camera never lands it just off it. */
+export function onPicture(p: { x: number; y: number }, r: Rect): { x: number; y: number } {
+  const e = Math.min(0.5, r.w / 2, r.h / 2)
+  return { x: clamp(p.x, r.x + e, r.x + r.w - e), y: clamp(p.y, r.y + e, r.y + r.h - e) }
+}
+
+/**
+ * The point of the recording (full frame) a place of the frame (fractions) shows at source time
+ * `t`, the place kept on the visible picture there: a pin off it is not drawn (a badge, a tail).
+ */
 export function pinUnder(scene: RenderScene, t: number, at: { x: number; y: number }): { x: number; y: number } {
   const m = calloutMapping(scene, t)
-  return m.view.fromOut(at.x * m.view.w, at.y * m.view.h)
+  const p = onPicture({ x: at.x * m.view.w, y: at.y * m.view.h }, m.seen)
+  return m.view.fromOut(p.x, p.y)
 }

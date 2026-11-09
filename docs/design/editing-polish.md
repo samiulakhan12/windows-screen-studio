@@ -314,7 +314,11 @@ stays on its spot in the recording while the camera zooms and pans, as shapes do
   from** (a number): this badge takes that number, and the automatic badges after it count on.
 - **Colour**: the brand colours first, then the shape palette. A new badge takes the brand kit's
   first colour, else #0060df.
-- **Follows the zoom** (switch, on). Off: it stays at one place in the frame.
+- **Follows the zoom** (switch, on). Off: it stays at one place in the frame. Turned on for a
+  badge outside the picture (on the padding), it takes the picture's nearest point at its start.
+- In the preview, its handle is dragged or moved with the arrow keys (1 % of the frame, Shift
+  10 %). While it follows the zoom it stays on the picture: dragged or moved past the picture's
+  edge it stops there (off the picture it would not be drawn), and its handle keeps the focus.
 - Automatic badges are numbered in start-time order. Moving one past another renumbers both.
 
 **Speech bubble.** Added from the Text tab (**Add speech bubble**) or the palette. Its tail points
@@ -322,9 +326,13 @@ at the cursor when the cursor shows at the playhead (the body sits above it, tow
 centre), else at the centre of the preview. The text field takes focus at once, with the placeholder
 "Type the bubble's text". The tail's tip stays on its spot in the recording while the camera zooms;
 the body moves with it and stays inside the frame. In the preview a round handle at the tail's tip
-is dragged to point at something (arrow keys move it 1 % of the frame, Shift 10 %); dragging the
-body moves it around the tip. **Colour**: *White* (default, dark text, a thin outline), *Dark*
-(#1d1d24, white text), the brand colours. **Tail**: *Pointing* (default) or *None*.
+is dragged to point at something (arrow keys move it 1 % of the frame, Shift 10 %; it stops at the
+picture's edge, as a badge does); dragging the body moves it around the tip. While a zoom or the
+layout hides the tip, dragging the body still moves only the body (beside the picture's edge, where
+it is drawn then); the tip stays on its spot. **Colour**: *White* (default, dark text, a thin outline), *Dark*
+(#1d1d24, white text), the brand colours. **Tail**: *Pointing* (default) or *None*. *Pointing*
+on a bubble without a tail points down at what shows 0.12 S below the body, kept on the picture
+at the bubble's start (a bubble near the bottom points at the picture's edge, its body above it).
 
 ### 2.4 Progress bar
 
@@ -1054,6 +1062,12 @@ the session, live frames are drawn unblurred today, and A\* is the same.
   ready the preview draws B alone (a hard cut) and redraws when it is, as the continue-freeze
   preview does today. While playing, a window whose A\* was not ready at its first frame stays a
   hard cut until it ends, so the old frame never flashes back after B has shown.
+- **Made again.** Each A\* keeps what it was drawn with: the project, Compare, and each grade's LUT
+  as `lutFor` gave it (null while it loads). When one of them differs from the frame's (an edit,
+  Compare turned on or off, a LUT that became ready), it is composed again. After an edit that A\*
+  is not drawn, and the frame is "not ready yet" until then. After Compare or a LUT only, it is
+  still drawn, in its old colours, until the new one is ready (a frame or two), so a window that
+  has shown A\* never shows B alone and then A\* again.
 - **Seeking at the jump.** At a cut the player seeks the `<video>` (`jumpTo`, `player.ts:572`);
   the first frame of B is drawn with A\* at α ≈ 1, which also hides the jump's seek latency.
 - **Play this cut** plays from `T − 1` to `T + 1` s of video time and stops back where it started.
@@ -1085,6 +1099,8 @@ the session, live frames are drawn unblurred today, and A\* is the same.
   When a window's screen and camera copies both exist, it prepares the camera mask, composes A\* on
   the scratch target into an `out` canvas, and drops the copies. A\* waits there until the window's
   first output frame `i0 = ⌈T · fps − 1e-9⌉`.
+- Every output frame inside a window draws its join, also when no window has a still: a project
+  whose cuts are all dips has no A\*, and each dip still draws its colour.
 - Thumbnails (`renderThumbnail`, `:583`) and the contrast probe never draw a join.
 - The export dialog's preview (`ExportPreview.tsx:99`) uses its own `JoinStills`.
 
@@ -1250,7 +1266,9 @@ Exits are never longer than entrances in the defaults (Material: exits shorter t
 (`src/renderer/src/editor/playheadItems.ts:77`, through `withDefaultMotion(shape)`) write the
 defaults above into new badges, bubbles, arrows, lines, rectangles, ellipses and highlights. A new
 shape still starts so that it is fully shown at the playhead (`shapeForPlayhead`), now one enter
-motion earlier instead of one fade. Old items are never given a motion.
+motion earlier instead of one fade. A new badge or bubble starts one entrance of viewing time
+before the playhead, each clip at its own speed (a faster chapter's first badge still has its
+entrance end on the chapter's start), and never before a cut. Old items are never given a motion.
 
 **Several items.** `GROUP_FIELDS` (`groupEdit.ts:165`) gains `text.enter`, `text.exit`,
 `text.sound`, `mark.enter`, `mark.exit`, `mark.sound`, `title.enter`, `title.exit` and
@@ -1267,6 +1285,14 @@ the table's rows, plus *Default*), and each change is one update. *Copy look* ca
   `globalAlpha = alpha`, and with `reveal < 1` a clip from the reading start (the right edge for
   right-to-left text) to `reveal · boxW`. Typewriter reveals whole graphemes through
   `typewriterClip` (`motion.ts:983`), with the prefix advances measured once per text and font.
+- **Title cards** (`drawTitleCardsLayer`): Wipe clips the card (with a lower third's band or a
+  quote's panel) from its reading start, the right edge when the card's first letter is from a
+  right-to-left script. Typewriter keeps the band, panel and quote mark whole and types the lines,
+  the title's and then the subtitle's, by whole graphemes in reading order (`typewriterWidths`),
+  each line clipped from its own reading start: each line takes the direction of its own first
+  letter, so an English name over an Arabic role (or on the line above the name in Arabic) types
+  the Arabic line from its right edge. While it types, the lines are drawn as they come rather
+  than from the card's cached picture.
 - **Arrows and lines** (`drawShapesLayer`): the shaft is drawn from the tail to
   `tail + (tip − tail) · drawn`. The head (`arrowGeometry`, `src/shared/render/shapes.ts:167`)
   appears when `drawn ≥ 0.8`, scaled `0.6 + 0.4 · back((drawn − 0.8) / 0.2, 1.7)` about the tip
@@ -1295,12 +1321,20 @@ the code they call lives in P3's new `calloutLayer.ts` (§17.3).
 - **Where**: with a `pin`, centred on `top.toOut(pin)`, the frame's camera (punch included), in
   `drawFrameOverlays`; while that point is outside the visible picture (outside the card's slot, or
   a layout that hides the screen), the badge is not drawn. Without a pin, at `x`, `y` in the frame.
+  The preview's handles, Ctrl/Shift+click on the paused preview and a group's outlines find a badge
+  or a bubble where it is drawn (`calloutPlace`, a bubble by its body); a badge that is not drawn
+  has no box there.
 - **Numbering** (`badgeLabels(project)`, memoised on `annotations`, `chapters`, `clips` and
   `effects`): badges with `number: 'auto'`, sorted by `(start, id)`, get k = 1, 2, 3… The count
   starts again at 1 at each chapter's start (output time, `outputChapters`) unless
-  `effects.badgesByChapter === false` or the project has fewer than two chapters. A badge with
+  `effects.badgesByChapter === false` or the project has fewer than two chapters. A badge counts in
+  the chapter where its entrance has finished (its start plus its entrance in viewing time, at most
+  half the badge; no entrance: today's 0.15 s fade), so a badge added at a chapter's start, which
+  pops in just before the playhead, counts in that chapter; within a chapter the order stays
+  `(start, id)`. A badge with
   `startAt` shows that number and the next counts on from it. Badges with their own text do not
-  count.
+  count, nor do badges a cut removes whole (no kept moment: the video never shows them, so they
+  get no number and the steps seen go 1, 2, 3 without a gap).
 - **Digits**: `'1'` Western; `'A'` A–Z, then AA, AB…; a language code: `withDigits(String(k),
   'native', code)` (`src/shared/captions/words.ts:259`), so `'bn'` gives ১ ২ ৩. *Count with* always
   offers Bangla digits, and the digits of the caption and transcript languages when they have their
@@ -1636,7 +1670,8 @@ returns null until it is done. Nothing that must match the preview may draw befo
 preview redraws when a LUT becomes ready (`onLutReady`). A file that is missing, changed or
 unreadable is drawn without (the grade's other stages stay), the Colour section says "The LUT file is
 missing or has changed. Import it again.", and the export dialog asks before the export starts:
-"The camera's LUT is missing or has changed. Export without it?" (*Export without it* / *Cancel*).
+"The camera's LUT is missing or has changed. Export without it?" (*Export without it* / *Cancel*;
+either answer hands the focus back to the dialog's Export button before the question goes).
 
 ### 9.6 Auto colour (camera only, offline; `src/shared/editor/autoColour.ts`)
 
@@ -1970,9 +2005,11 @@ bed changes, the music is removed or the editor closes.
 `-stream_loop -1`, which is exact on FLAC (measured error 0.0). The cache is made only when the music
 is shorter than the video, and only up to the output's length (`-t`). Before decoding, main checks
 the free space for `duration × 48000 × channels × 2` bytes plus the export's usual margin. The decode
-runs under the export's cancel signal and timeout, and with an argument list (no shell). When a new
-cache is made, older `music-*.flac` caches of the project are deleted. `.cache/` is never copied by
-Duplicate or kept by versions. The preview keeps its `<audio loop>`.
+runs under the export's cancel signal and timeout, and with an argument list (no shell). The finished
+copy is renamed into place with a few tries while another app holds it (an antivirus scan, the indexer
+or OneDrive), as an export's file is. When a new cache is made, older `music-*.flac` caches of the
+project are deleted. `.cache/` is never copied by Duplicate or kept by versions. The preview keeps its
+`<audio loop>`.
 
 ### 10.5 Loudness, ducking, fades and volume
 
@@ -2007,6 +2044,10 @@ progress bar's band, the frame, the crop).
   source `seg.end − tout / 2`, minus `peakAt`. `zoomTimings` already merges connected zooms, so a pan
   never gets a whoosh for a move that does not happen. Auto zooms are regenerated wholesale, which is
   why zoom sounds are a project rule and not a field on each zoom.
+- **Pull-backs.** A zoom whose level (`zoomTargetScale`) is below 100 % shrinks the picture as it
+  starts and grows it back as it ends, so the two swap: its move in (`seg.start + tin / 2`) plays
+  Zooming out and its move out (`seg.end − tout / 2`) plays Zooming in, under the same conditions. A
+  zoom within 0.001 of 100 % shows no move and never sounds.
 - **Title cards**, **texts and shapes**: at the video time of the item's start, plus half its enter
   motion (`enter.duration`, or its old fade: 0.35 s titles, 0.15 s texts and shapes), minus
   `peakAt`. The item's own `sound` wins over the rule; `'none'` silences it. Privacy shapes never
@@ -2055,6 +2096,10 @@ the sound through `sfxTitle(ref)` (soundLibrary.ts), a line the contracts put in
 - Effects are decoded once from `studio-media://sounds/<file>` (a new host of the media protocol
   that serves only catalogue file names, from the bundled folder or `userData/sound-library/`) and
   scheduled from `sfxJob` by `effectsStep` (`:863`) `EFFECTS_AHEAD` (0.25 s) ahead, like pops.
+  Every effect the project names (`sfxIds`: its rules and items) starts decoding when the graph is
+  brought in line with the project, so the first play has it. One still decoding when its sound is
+  due keeps its place in the pass: once ready, a sound due meanwhile plays from where it has got to,
+  as the export's does.
 - `effectsOf` (`:849`) is made again when any input of `sfxJob` or `popJob` changes: today's list
   plus `zooms`, `annotations`, `shapes`, `titles`, `soundFx`, `effects` (Calm and badges) and
   `chapterBar` (whose band moves Captions Studio's graphics and so their shown time).
@@ -2150,9 +2195,9 @@ where it is a slider. New CSS uses the tokens of `src/renderer/src/styles.css` a
 | Progress bar | `switch`; `radiogroup`s | Space, arrows | — |
 | Looks | `radiogroup` of chips with text labels; thumbnails `alt=""` | arrows | — |
 | Colour sliders | slider per control | arrows 1, Page 10, Home/End min/max (the ARIA slider pattern), Delete resets to 0 | "Warmer, +20"; "Cooler, −15"; "No change" at 0; Delete announces "Temperature reset" |
-| Reset (per slider) | button "Reset Temperature" | Enter, Space | live: "Temperature reset" |
+| Reset (per slider) | button "Reset Temperature" | Enter, Space; the button goes, and the keyboard's focus moves to its slider | live: "Temperature reset" |
 | Compare | toggle button `aria-pressed` | Space | — |
-| Import a LUT, Auto colour, Reset colour | buttons | Enter | live: notice text |
+| Import a LUT, Remove LUT, Auto colour, Reset colour | buttons | Enter; after Remove LUT the keyboard's focus moves to Import, after Reset colour (which then turns off) to the look *None* | live: notice text |
 | Music library | `list`; per row: title, artist, mood (text chip), length ("1 minute 43 seconds" for screen readers) | Tab through rows | — |
 | Play preview | toggle `aria-pressed` "Play preview of Sweet Sun"; on a row not downloaded `aria-disabled`, still focusable, described by "Download to listen" | Space; Esc stops while focus is in the list | live: "Playing preview: Sweet Sun, 1 minute 43 seconds" / "Stopped" |
 | Use / Download and use | buttons "Use Sweet Sun", "Download and use Go to the Picnic, 1.0 megabytes" | Enter | then the button reads "In use" (`aria-disabled`, still focusable); a download has a `progressbar` with value text |
@@ -2174,7 +2219,7 @@ still, previews never play by themselves); the video's motion is the project's C
   inside a cluster: a conjunct or a vowel sign stays with its letter. Line height 1.4 with Bengali,
   Devanagari or Thai. Right-to-left text is drawn right-to-left. The font stack ends in the bundled
   script fonts (§7.6), loaded before the export's first frame.
-- **Typewriter and Wipe** on texts reveal whole graphemes, from the reading start.
+- **Typewriter and Wipe** on texts reveal whole graphemes, from the reading start. Typewriter types each line from its own reading start, so a text or bubble with one language on each line types each line from its own edge.
 - **Progress bar names**: `cardFont`'s stack with the bundled script fonts; shortened by graphemes;
   right-to-left names drawn right-to-left. The bar itself fills left to right in every language in
   this wave (§20).
@@ -2779,7 +2824,8 @@ build`, `node scripts/build-sound-library.mjs --check`, and under `xvfb-run`: `e
 61. `sfxJob`, zooms: zoom in at `seg.start + tin/2` less `peakAt`, in video time; none for a pan
     from the previous zoom; zoom out only with `tout > 0` and no pan into the next; none for a zoom
     starting in a cut; holds shift the times; zooms 1 s apart give one whoosh every 3 s;
-    `sfxCounts` equals the kept times.
+    `sfxCounts` equals the kept times; a pull-back plays Zooming out at its start and Zooming in at
+    its end; a zoom at 100 % plays neither.
 62. `sfxJob`, titles and callouts: half the enter duration (or the old fade) less `peakAt`; an item's
     sound beats the rule and is never dropped by the 3 s spacing; `'none'` silences; privacy shapes
     never sound; merging within 0.05 s; 500 times and 16 effects at most; the gain is the volume.

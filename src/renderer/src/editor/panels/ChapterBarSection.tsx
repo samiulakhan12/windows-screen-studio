@@ -3,7 +3,7 @@
  * §2.4, §12): Place, Look, Chapter names (with two chapters or more), Colour and Show only when a
  * chapter starts. Each change is one update.
  */
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, type KeyboardEvent } from 'react'
 import { withChapterBar } from '../../../../shared/render/chapterBar'
 import type { ChapterBar, Project } from '../../../../shared/types'
 import { useEditor } from '../context'
@@ -91,27 +91,47 @@ function BarColours({ project, bar, onChange }: { project: Project; bar: Chapter
   const brand = (project.brand?.colors ?? []).filter((c) => /^#[0-9a-f]{6}$/i.test(c)).map((c) => c.toLowerCase())
   const swatches = [...brand.map((c, i) => ({ color: c, name: `Brand colour ${i + 1}, ${c}` })), ...(brand.includes('#ffffff') ? [] : [{ color: '#ffffff', name: 'White' }])]
   const value = (bar.color ?? brand[0] ?? '#ffffff').toLowerCase()
-  const custom = !swatches.some((s) => s.color === value)
+  const at = swatches.findIndex((s) => s.color === value)
+  const group = useRef<HTMLDivElement>(null)
+  // The ARIA radio pattern (§12): one tab stop (the chosen swatch, else the first); the arrows, Home
+  // and End move the choice and the focus together, and the editor's own keys never see them.
+  const onKey = (e: KeyboardEvent<HTMLDivElement>): void => {
+    if (e.ctrlKey || e.altKey || e.metaKey) return
+    let next = -1
+    if (e.key === 'ArrowRight' || e.key === 'ArrowDown') next = (at + 1) % swatches.length
+    else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') next = (Math.max(at, 0) - 1 + swatches.length) % swatches.length
+    else if (e.key === 'Home') next = 0
+    else if (e.key === 'End') next = swatches.length - 1
+    if (next < 0) return
+    e.preventDefault()
+    e.stopPropagation()
+    if (next !== at) onChange(swatches[next].color)
+    group.current?.querySelectorAll<HTMLButtonElement>('[role="radio"]')[next]?.focus()
+  }
   return (
     <div className="field">
       <span className="field-label" id="progress-bar-colour-label">
         Colour
       </span>
-      <div className="shape-colors progress-bar-colours" role="radiogroup" aria-labelledby="progress-bar-colour-label" data-testid="progress-bar-colour">
-        {swatches.map((s) => (
-          <button
-            key={s.color}
-            type="button"
-            role="radio"
-            aria-checked={value === s.color}
-            aria-label={s.name}
-            title={s.name}
-            className={`shape-color ${value === s.color ? 'active' : ''}`}
-            style={{ background: s.color }}
-            onClick={() => onChange(s.color)}
-          />
-        ))}
-        <label className={`shape-color custom ${custom ? 'active' : ''}`} title="Other colour" style={custom ? { background: value } : undefined}>
+      <div className="shape-colors progress-bar-colours">
+        <div className="shape-colors progress-bar-colours" role="radiogroup" aria-labelledby="progress-bar-colour-label" data-testid="progress-bar-colour" ref={group} onKeyDown={onKey}>
+          {swatches.map((s, i) => (
+            <button
+              key={s.color}
+              type="button"
+              role="radio"
+              aria-checked={i === at}
+              aria-label={s.name}
+              tabIndex={i === Math.max(at, 0) ? 0 : -1}
+              title={s.name}
+              className={`shape-color ${i === at ? 'active' : ''}`}
+              style={{ background: s.color }}
+              onClick={() => onChange(s.color)}
+            />
+          ))}
+        </div>
+        {/* Any other colour: a control of its own after the group, not one of its radios. */}
+        <label className={`shape-color custom ${at < 0 ? 'active' : ''}`} title="Other colour" style={at < 0 ? { background: value } : undefined}>
           <input type="color" aria-label="Other colour" value={value} onChange={(e) => onChange(e.target.value.toLowerCase(), 'progress-bar-colour')} />
         </label>
       </div>

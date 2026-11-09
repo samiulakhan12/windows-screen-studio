@@ -141,7 +141,8 @@ function standIn(el: El): Record<string, unknown> {
     const cls = /^\.([\w-]+)$/.exec(sel)
     return !!cls && String(d.props.className ?? '').split(/\s+/).includes(cls[1])
   }
-  const node = (d: El): Record<string, unknown> => ({ el: d, focus: () => focused.push(d), disabled: !!d.props.disabled, dataset: {}, getBoundingClientRect: () => ({ left: 0, top: 0, width: 0, height: 0 }) })
+  // focus() gives nothing back, as the DOM's (an effect that returns it has no cleanup).
+  const node = (d: El): Record<string, unknown> => ({ el: d, focus: () => void focused.push(d), disabled: !!d.props.disabled, dataset: {}, getBoundingClientRect: () => ({ left: 0, top: 0, width: 0, height: 0 }) })
   const stand: Record<string, unknown> = {
     el,
     get disabled(): boolean {
@@ -150,7 +151,7 @@ function standIn(el: El): Record<string, unknown> {
     clientWidth: 280,
     // No child nodes are laid out here (a list's rows are read from its elements instead).
     children: [],
-    focus: () => focused.push(stand.el as El),
+    focus: () => void focused.push(stand.el as El),
     contains: () => false,
     // Nothing covers a stand-in (no inert part of the page above it).
     closest: () => null,
@@ -253,11 +254,12 @@ export const byLabel = (els: El[], label: string): El | undefined => els.find((e
 /** A button by its text. */
 export const button = (els: El[], text: string): El | undefined => els.find((e) => e.type === 'button' && textOf(e).trim() === text)
 
-/** A keyboard event with the given key and modifiers; `prevented` tells whether a handler took it. */
-export function key(k: string, mods: { ctrlKey?: boolean; shiftKey?: boolean; altKey?: boolean; metaKey?: boolean } = {}): { key: string; prevented: boolean; preventDefault(): void; stopPropagation(): void; ctrlKey: boolean; shiftKey: boolean; altKey: boolean; metaKey: boolean; target: unknown; currentTarget: unknown; nativeEvent: unknown } {
+/** A keyboard event with the given key and modifiers; `prevented` tells whether a handler took it, `stopped` whether it kept it from the editor's window listener. */
+export function key(k: string, mods: { ctrlKey?: boolean; shiftKey?: boolean; altKey?: boolean; metaKey?: boolean } = {}): { key: string; prevented: boolean; stopped: boolean; preventDefault(): void; stopPropagation(): void; ctrlKey: boolean; shiftKey: boolean; altKey: boolean; metaKey: boolean; target: unknown; currentTarget: unknown; nativeEvent: unknown } {
   const e = {
     key: k,
     prevented: false,
+    stopped: false,
     ctrlKey: !!mods.ctrlKey,
     shiftKey: !!mods.shiftKey,
     altKey: !!mods.altKey,
@@ -268,7 +270,9 @@ export function key(k: string, mods: { ctrlKey?: boolean; shiftKey?: boolean; al
     preventDefault() {
       e.prevented = true
     },
-    stopPropagation() {}
+    stopPropagation() {
+      e.stopped = true
+    }
   }
   return e
 }

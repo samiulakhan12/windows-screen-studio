@@ -241,7 +241,10 @@ function drawBubble(c: Ctx, top: FrameContext, place: CalloutPlace, pose: Callou
     if (shown[i] <= 0) return
     c.save()
     c.beginPath()
-    c.rect(rtl ? x - shown[i] : x, y - place.lineHeight, shown[i], place.lineHeight * 2)
+    // Typewriter: each line from its own reading start (a line may be in another script than the bubble).
+    const lw = lineWidths[i]
+    const left = rtl ? x - lw : x
+    c.rect(RTL_FIRST.test(line) ? left + lw - shown[i] : left, y - place.lineHeight, shown[i], place.lineHeight * 2)
     c.clip()
     c.fillText(line, x, y)
     c.restore()
@@ -312,7 +315,8 @@ function drawMovingText(c: Ctx, top: FrameContext, a: Annotation): void {
     if (shown[i] <= 0) return
     c.save()
     c.beginPath()
-    c.rect(rtl ? lw / 2 - shown[i] : -lw / 2, y - m.lineHeight, shown[i], m.lineHeight * 2)
+    // Typewriter: each line from its own reading start (a text may hold one language on each line).
+    c.rect(RTL_FIRST.test(line) ? lw / 2 - shown[i] : -lw / 2, y - m.lineHeight, shown[i], m.lineHeight * 2)
     c.clip()
     c.fillText(line, 0, y)
     c.restore()
@@ -330,12 +334,9 @@ export function shapeCalloutPose(fc: FrameContext, s: Shape): CalloutPose | null
 }
 
 /**
- * A title card's pose at fc.t (it has a motion), or null: today's fade and rise. A typewriter
- * reveals whole graphemes of the card's text (k of n).
+ * A title card's pose at fc.t (it has a motion), or null: today's fade and rise. titleCardLayer
+ * turns a typewriter's reveal into whole graphemes of each line it draws (typewriterWidths).
  */
 export function titleCalloutPose(fc: FrameContext, card: TitleCard): CalloutPose | null {
-  const pose = titleMotionPose(card, fc.t, fc.project.clips, titleEm(card, fc.w, fc.h), calmOf(fc.project.effects))
-  if (!pose || card.enter?.kind !== 'typewriter' || pose.reveal >= 1) return pose
-  const n = Math.max(1, graphemes(`${card.title}${card.subtitle ?? ''}`).length)
-  return { ...pose, reveal: Math.round(pose.reveal * n) / n }
+  return titleMotionPose(card, fc.t, fc.project.clips, titleEm(card, fc.w, fc.h), calmOf(fc.project.effects))
 }

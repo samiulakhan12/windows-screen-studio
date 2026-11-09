@@ -1,5 +1,5 @@
 import { spawnSync } from 'node:child_process'
-import { chmodSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs'
+import { chmodSync, existsSync, mkdirSync, mkdtempSync, promises as fsp, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { afterAll, describe, expect, it, vi } from 'vitest'
@@ -263,6 +263,28 @@ describe("users' own looping music (test 66, §0 decision 2)", () => {
     expect(fake.calls().some((c) => c.includes('-c:a'))).toBe(false)
     expect(fake.calls().length).toBe(1)
   })
+
+  it('a copy another app holds for a moment (an antivirus scan) is renamed once it is let go', async () => {
+    const dir = folder()
+    tone(path.join(dir, 'music-1.opus'), ['-c:a', 'libopus'])
+    const real = fsp.rename
+    let held = 0
+    const spy = vi.spyOn(fsp, 'rename').mockImplementation(async (from, to) => {
+      if (String(from).endsWith('.flac.partial') && held < 2) {
+        held++
+        throw Object.assign(new Error(`EPERM: operation not permitted, rename '${String(from)}'`), { code: 'EPERM' })
+      }
+      return real(from, to)
+    })
+    try {
+      const copy = await loopableMusic(dir, 'music-1.opus', FF, opts(10))
+      expect(held).toBe(2)
+      expect(path.basename(copy)).toMatch(/^music-1\.[0-9a-f]{16}\.flac$/)
+      expect(readdirSync(path.join(dir, '.cache'))).toEqual([path.basename(copy)])
+    } finally {
+      spy.mockRestore()
+    }
+  }, 60_000)
 
   it('a new copy deletes the older music-*.flac copies; Duplicate never copies .cache/', async () => {
     const dir = folder()

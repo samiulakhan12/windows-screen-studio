@@ -25,9 +25,11 @@ import { useSceneView } from './sceneRect'
 import { clamp } from '../../../shared/engine/math'
 import { isTall, tallAs, withoutFollow } from '../../../shared/engine/reframeData'
 import { cameraFor, zoomAt, zoomTargetScale, type Camera } from '../../../shared/engine/zoom'
+import { badgeLabels, calloutPlace } from '../../../shared/render/callouts'
 import { ANNOTATION_FONT } from '../../../shared/render/overlays'
 import { cursorOverVideoAt, spotlightArea, visibleCursorAt } from '../../../shared/render/shapes'
 import type { Annotation, NormRect, Project, Shape, Spotlight, ZoomSegment } from '../../../shared/types'
+import { calloutStack } from '../render/calloutLayer'
 import { cardRect, type RenderScene } from '../render/compositor'
 import { projectFontStack } from '../render/fontLoader'
 import { onStyleAssetsChanged } from '../render/watermarkLayer'
@@ -43,6 +45,7 @@ import { followPointer } from './pointer'
 import { SafeZoneOverlay } from './SafeZoneOverlay'
 import { GraphicHandles, PreviewLookLabel } from './GraphicHandle'
 import { CalloutHandles } from './CalloutHandles'
+import { calloutMapping, type CalloutMapping } from './calloutView'
 import { useSafeZoneChoice } from './safeZonePref'
 import type { Selection } from './selection'
 import { usePlaying } from './Transport'
@@ -821,9 +824,11 @@ function ShapeEditor({
 /**
  * The items on screen at source time `t`, as boxes in overlay pixels, topmost first in the
  * compositor's order: text, then shapes, then blur and pixelate (each in reverse list order), then
- * region spotlights by their lit area. Shapes and spotlights are mapped through the camera.
+ * region spotlights by their lit area. Shapes and spotlights are mapped through the camera; step
+ * badges and speech bubbles are where they are drawn (calloutPlace: on their pin through the camera,
+ * a bubble's body wrapped and kept in the text area), and a badge whose pin is off the picture has none.
  */
-function previewBoxes(drawn: Project, scene: RenderScene, layout: SceneLayout, box: Box, t: number): KeyRect[] {
+export function previewBoxes(drawn: Project, scene: RenderScene, layout: SceneLayout, box: Box, t: number): KeyRect[] {
   if (box.w === 0) return []
   const cam = punchedCamera(frameCamera(scene, layout, t), scene.project, t)
   const m = mappingFor(cam, layout.screen)
@@ -833,7 +838,18 @@ function previewBoxes(drawn: Project, scene: RenderScene, layout: SceneLayout, b
     const c = m.toPx(b.x + b.w, b.y + b.h)
     out.push({ key, x: Math.min(a.x, c.x), y: Math.min(a.y, c.y), w: Math.abs(c.x - a.x), h: Math.abs(c.y - a.y) })
   }
-  for (const a of [...drawn.annotations].reverse()) if (annotationVisibleAt(a, t)) out.push({ key: `annotation:${a.id}`, ...textBox(a, box, drawn) })
+  let callouts: CalloutMapping | null = null
+  for (const a of [...drawn.annotations].reverse()) {
+    if (!annotationVisibleAt(a, t)) continue
+    if (a.style !== 'badge' && a.style !== 'bubble') {
+      out.push({ key: `annotation:${a.id}`, ...textBox(a, box, drawn) })
+      continue
+    }
+    callouts ??= calloutMapping(scene, t, box.w, box.h)
+    const stack = calloutStack(drawn, a)
+    const place = calloutPlace(a, a.style === 'badge' ? (badgeLabels(drawn).get(a.id) ?? null) : null, callouts.frame, (text, px, weight) => textWidth(text, px, weight, stack))
+    if (place) out.push({ key: `annotation:${a.id}`, ...place.box })
+  }
   // Images are drawn over shapes and under text: their rotated box's bounds, in preview pixels.
   for (const o of [...(drawn.overlays ?? [])].reverse()) if (overlayVisibleAt(o, t)) out.push({ key: `overlay:${o.id}`, ...overlayBounds(o, box) })
   const shapes = [...(drawn.shapes ?? [])].reverse().filter((s) => itemVisibleAt(s, t))

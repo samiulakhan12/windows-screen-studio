@@ -161,6 +161,25 @@ async function pruneCaches(dir: string, keep: string): Promise<void> {
   await Promise.all(names.filter((n) => n !== keep && (MUSIC_CACHE_RE.test(n) || PARTIAL_RE.test(n))).map((n) => fs.rm(path.join(dir, n), { force: true }).catch(() => undefined)))
 }
 
+/**
+ * Renames the finished copy, trying again for a moment while another app holds it (on Windows an
+ * antivirus scan, the indexer or OneDrive can open a file ffmpeg just closed; as importVideo's
+ * renameCopy). A cancelled export stops trying.
+ */
+async function renameRetrying(from: string, to: string, signal: AbortSignal): Promise<void> {
+  for (let attempt = 1; ; attempt++) {
+    try {
+      await fs.rename(from, to)
+      return
+    } catch (err) {
+      const code = (err as NodeJS.ErrnoException).code
+      if (attempt >= 5 || (code !== 'EBUSY' && code !== 'EPERM' && code !== 'EACCES')) throw err
+      await new Promise((r) => setTimeout(r, 150 * attempt))
+      if (signal.aborted) throw new Error(MUSIC_CACHE_COPY.cancelled)
+    }
+  }
+}
+
 /** Seconds as ffmpeg reads them. */
 const sec = (v: number): string => String(Math.max(0, +v.toFixed(6)))
 
@@ -201,7 +220,7 @@ export async function loopableMusic(projectDir: string, file: string, ffmpeg: st
       await fs.rm(partial, { force: true })
       return source
     }
-    await fs.rename(partial, target)
+    await renameRetrying(partial, target, opts.signal)
   } catch (err) {
     await fs.rm(partial, { force: true }).catch(() => undefined)
     throw err

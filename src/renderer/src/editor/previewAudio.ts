@@ -15,7 +15,7 @@ import type { Project } from '../../../shared/types'
 import { fadesInAfterHold } from '../../../shared/render/audioPlan'
 import { POP_VOLUME, popJob, popWaveform, toneJob, toneWaveform } from '../../../shared/render/popSound'
 import { CUT_FADE, cutFadeAhead, editHasCuts } from '../../../shared/render/cutFades'
-import { sfxJob } from '../../../shared/render/sfxJob'
+import { sfxIds, sfxJob } from '../../../shared/render/sfxJob'
 import { fontGeneration } from '../render/fontLoader'
 import { graphicShown } from '../render/graphicsLayer'
 import { loadAudioAnalysis } from './audioAnalysis'
@@ -217,6 +217,8 @@ export class PreviewAudio {
   /** The library's effects, decoded once from the sounds host (null: failed), by id. */
   private readonly sfxBuffers = new Map<string, AudioBuffer | null>()
   private readonly sfxLoading = new Set<string>()
+  /** Library effects still decoding when this pass reached them: where each one's pass starts once it is ready. */
+  private readonly sfxWaiting = new Map<string, { from: number; fresh: boolean }>()
   /** A library bed in use (editing polish §10.4), in place of the music element. */
   private bed: Bed | null = null
   /** Bed files whose decoded length is not the catalogue's: they play as users' own files. */
@@ -313,6 +315,8 @@ export class PreviewAudio {
     if (!this.graph && !needsAudioGraph(p) && !clean && !(recordingMix(p).kind !== 'none' && (editHasCuts(p.clips) || !!p.sounds?.spans.length))) return this.applyElementOnly()
     const g = this.ensureGraph()
     if (!g) return this.applyElementOnly()
+    // The library's effects decode now, so the first play has them when they are due.
+    for (const id of sfxIds(p)) this.loadSfx(g, id)
     const look = this.look
     // Clean voice: its element plays in place of the microphone stem, or of the video's own track.
     const voice = this.ensureVoice(g, clean)
@@ -1133,14 +1137,25 @@ export class PreviewAudio {
       this.startVoice(g, g.tones, this.toneBuffer(g, tone.end - tone.start), at(tone.start), 0)
     }
     // The library's effects (editing polish §10.9): each voice stops where the next sound of its effect starts, as the export's click track cuts it.
+    // One still decoding keeps its place in the pass: once ready, a sound due meanwhile plays from
+    // where it has got to, as the export's does.
     for (const e of fx.sfx) {
       const buffer = this.sfxBuffers.get(e.id)
+      if (buffer === undefined) {
+        if (!this.sfxWaiting.has(e.id)) this.sfxWaiting.set(e.id, { from, fresh })
+        continue
+      }
+      const waited = this.sfxWaiting.get(e.id)
+      this.sfxWaiting.delete(e.id)
       if (!buffer) continue
+      const start = waited ?? { from, fresh }
       const into = this.sfxGain(g, e.gain)
       e.times.forEach((time, i) => {
-        if (time < from || (!fresh && time === from) || time > upto) return
+        if (time < start.from || (!start.fresh && time === start.from) || time > upto) return
+        const late = waited ? Math.max(0, (out - time) / this.view) : 0
+        if (late >= buffer.duration) return
         const next = e.times[i + 1]
-        this.startVoice(g, into, buffer, at(time), 0, next !== undefined ? at(next) : undefined)
+        this.startVoice(g, into, buffer, at(time), late, next !== undefined ? at(next) : undefined)
       })
     }
     this.effectsUntil = upto
@@ -1211,6 +1226,7 @@ export class PreviewAudio {
   /** Stops the pops and tones scheduled or playing; the next frame starts a new pass at the playhead. */
   private stopEffects(): void {
     this.effectsUntil = null
+    this.sfxWaiting.clear()
     for (const v of this.effectVoices) {
       try {
         v.stop()

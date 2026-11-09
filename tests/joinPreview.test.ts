@@ -94,14 +94,17 @@ const SAMPLES = Array.from({ length: 1800 }, (_, k) => ({ offset: k, size: 1, ti
 vi.mock('../src/renderer/src/render/frameSource', () => ({
   openTrack: async () => ({ track: { samples: SAMPLES } })
 }))
-const composed: { window: JoinWindow; screen: unknown; camera: unknown; inCallback: boolean }[] = []
+const composed: { window: JoinWindow; screen: unknown; camera: unknown; inCallback: boolean; compare?: boolean; lut?: unknown }[] = []
 let inCallback = false
+/** The grades' LUTs as the LUT cache gives them (null while one loads). */
+const luts: Record<'screen' | 'camera', unknown> = { screen: null, camera: null }
+vi.mock('../src/renderer/src/render/lutCache', () => ({ lutFor: (_p: unknown, which: 'screen' | 'camera') => luts[which] }))
 vi.mock('../src/renderer/src/render/joinLayer', () => ({
   scratchTarget: () => ({}),
   releaseScratch: () => undefined,
-  composeJoinStill: (_s: unknown, out: { tag?: string }, _w: number, _h: number, window: JoinWindow, _scene: unknown, stills: { screen: { image: unknown }; camera: { image: unknown } | null }) => {
+  composeJoinStill: (_s: unknown, out: { tag?: string }, _w: number, _h: number, window: JoinWindow, scene: { compare?: boolean }, stills: { screen: { image: unknown }; camera: { image: unknown } | null }) => {
     out.tag = `A* ${window.clip}`
-    composed.push({ window, screen: stills.screen.image, camera: stills.camera?.image ?? null, inCallback })
+    composed.push({ window, screen: stills.screen.image, camera: stills.camera?.image ?? null, inCallback, compare: scene.compare, lut: luts.screen })
   }
 }))
 
@@ -196,9 +199,13 @@ type Player = {
   seek(t: number): void
   play(): void
   pause(): void
+  toggle(): void
+  shuttle(key: 'reverse' | 'pause' | 'forward'): unknown
+  readonly moving: boolean
   playCut(video: number): void
   attachCanvas(c: unknown): void
   setScene(scene: unknown, bg: unknown): void
+  setCompare(on: boolean): void
   dispose(): void
 }
 const { PreviewPlayer } = (await import(/* @vite-ignore */ PLAYER)) as { PreviewPlayer: new (s: FakeVideo, w: FakeVideo | null, p: Project) => Player }
@@ -253,6 +260,7 @@ beforeEach(() => {
   made.clear()
   deliverers = []
   composed.length = 0
+  luts.screen = luts.camera = null
   raf = []
   clock = 1000
   vi.spyOn(performance, 'now').mockImplementation(() => clock)
@@ -377,6 +385,38 @@ describe('the preview player (test 24)', () => {
     expect((draws.at(-1)!.join?.still as { tag: string }).tag).toBe('A* c2')
   })
 
+  it('playing, keeps A* in a window when Compare is turned on there, until it is made again without colour', async () => {
+    const p = project()
+    const { screen, player } = setUp(p)
+    // The first cut's A* is ready before the playhead gets there.
+    player.seek(2.9)
+    screen.land()
+    frame()
+    await tasks()
+    deliver()
+    await tasks()
+    player.play()
+    screen.advance(0.15)
+    frame()
+    screen.currentTime = 3
+    screen.land()
+    frame()
+    expect(draws.at(-1)!.join?.window.clip).toBe('c1')
+    expect((draws.at(-1)!.join?.still as { tag: string } | null)?.tag).toBe('A* c1')
+    // Compare on mid-window: never B alone for a frame and then A* again.
+    player.setCompare(true)
+    screen.advance(0.1)
+    frame()
+    expect(draws.at(-1)!.join?.window.clip).toBe('c1')
+    expect((draws.at(-1)!.join?.still as { tag: string } | null)?.tag).toBe('A* c1')
+    await tasks()
+    expect(composed.filter((c) => c.window.clip === 'c1').map((c) => !!c.compare)).toEqual([false, true])
+    screen.advance(0.1)
+    frame()
+    expect(draws.at(-1)!.join?.window.clip).toBe('c1')
+    expect((draws.at(-1)!.join?.still as { tag: string } | null)?.tag).toBe('A* c1')
+  })
+
   it('plays a cut from 1 s before to 1 s after it, then goes back', () => {
     const { screen, player } = setUp(project())
     player.seek(10)
@@ -391,10 +431,50 @@ describe('the preview player (test 24)', () => {
     expect(player.playing).toBe(false)
     expect(player.time).toBe(10)
   })
+
+  it('forgets Play this cut once J leaves it: a later playback goes on past the cut', () => {
+    for (const after of [['pause', 'toggle'], ['forward']] as const) {
+      const { screen, player } = setUp(project())
+      player.seek(10)
+      screen.land()
+      player.playCut(4)
+      screen.advance(0.3)
+      frame()
+      // J, then K and Space, or L: playing forward again from where the playhead is.
+      player.shuttle('reverse')
+      for (const key of after) {
+        if (key === 'toggle') player.toggle()
+        else player.shuttle(key)
+      }
+      expect(player.playing).toBe(true)
+      screen.currentTime = 7.05
+      screen.land()
+      frame()
+      expect(player.playing).toBe(true)
+      expect(player.time).toBeCloseTo(7.05, 9)
+    }
+  })
+
+  it('goes back where the playhead was when the edit ends before 1 s after the cut', () => {
+    // The last clip is 0.5 s long: its cut is at 10 s of video and the edit ends at 10.5 s.
+    const clips: Clip[] = [...project().clips.slice(0, 5), { id: 'c5', start: 15, end: 15.5, speed: 1 }]
+    const { screen, player } = setUp(project({ clips }))
+    player.seek(3)
+    screen.land()
+    player.playCut(10)
+    expect(player.playing).toBe(true)
+    screen.currentTime = 15.49
+    screen.land()
+    frame()
+    expect(player.playing).toBe(false)
+    expect(player.time).toBe(3)
+  })
 })
 
 describe('JoinStills', () => {
-  const p = project({ hasWebcam: true, webcam: { show: true, corner: 'bottom-right', size: 0.24, shape: 'circle' } })
+  const camera = { show: true, corner: 'bottom-right', size: 0.24, shape: 'circle' } as const
+  // The camera's background blurred: its still needs a person mask before A* is composed.
+  const p = project({ hasWebcam: true, webcam: { ...camera, backgroundBlur: 0.6 } })
   const scene = { project: p }
 
   it('asks for the frames that hold A\'s end with the export\'s rule, and composes A* in a task once they and the mask are ready', async () => {
@@ -429,6 +509,78 @@ describe('JoinStills', () => {
     expect((stills.still(w, 640, 360) as { tag: string }).tag).toBe('A* c1')
     // Another size, or another project: made again.
     expect(stills.still(w, 320, 180)).toBeNull()
+    stills.dispose()
+  })
+
+  it('segments a camera still kept from before the background was blurred, before A* is made again', async () => {
+    const sharp = project({ hasWebcam: true, webcam: { ...camera } })
+    let current = sharp
+    const segmented: unknown[] = []
+    let release: () => void = () => undefined
+    // As the player's: no mask is made while the camera's background is not blurred.
+    const stills = new JoinStills('screen.mp4', 'camera.mp4', () => undefined, async (still) => {
+      if (!((current.webcam.backgroundBlur ?? 0) > 0)) return
+      segmented.push(still)
+      await new Promise<void>((r) => (release = r))
+    })
+    const [w] = joinPlan(sharp)
+    stills.prepare([w], { project: sharp }, 640, 360)
+    await tasks()
+    deliver()
+    await tasks()
+    expect(segmented).toEqual([])
+    expect(composed).toHaveLength(1)
+    // The background blurred: the same camera still is segmented first.
+    current = { ...sharp, webcam: { ...sharp.webcam, backgroundBlur: 0.6 } }
+    stills.prepare([w], { project: current }, 640, 360)
+    await tasks()
+    expect(segmented).toEqual([composed[0].camera])
+    expect(composed).toHaveLength(1)
+    release()
+    await tasks()
+    expect(composed).toHaveLength(2)
+    expect(composed[1].camera).toBe(segmented[0])
+    stills.dispose()
+  })
+
+  it('makes A* again when Compare is turned on or off, and when a LUT is ready after it was made', async () => {
+    const graded = project({ grade: { screen: { lut: { file: 'lut-1.cube', sha256: 'f'.repeat(64), title: 'Teal', size: 33 } } } })
+    const ready = vi.fn()
+    const stills = new JoinStills('screen.mp4', null, ready)
+    const [w] = joinPlan(graded)
+    // Compare on: A* is drawn without colour.
+    stills.prepare([w], { project: graded, compare: true }, 640, 360)
+    await tasks()
+    deliver()
+    await tasks()
+    expect(composed.map((c) => c.compare)).toEqual([true])
+    const first = stills.still(w, 640, 360)
+    expect(first).not.toBeNull()
+    // Compare off, the same project: A* is made again with its colour, and the one drawn without
+    // it is given until then (a window showing it never shows B alone for a frame).
+    stills.prepare([w], { project: graded }, 640, 360)
+    expect(stills.still(w, 640, 360)).toBe(first)
+    expect(composed).toHaveLength(1)
+    await tasks()
+    expect(composed.map((c) => !!c.compare)).toEqual([true, false])
+    expect(stills.still(w, 640, 360)).toBe(first)
+    expect(composed[1].lut).toBeNull()
+    // The LUT is ready now (nothing else changed): the A* made while it loaded is made again with
+    // it, and still given until then.
+    luts.screen = { size: 33 }
+    expect(stills.still(w, 640, 360)).toBe(first)
+    expect(composed).toHaveLength(2)
+    await tasks()
+    expect(composed).toHaveLength(3)
+    expect(composed[2].lut).toBe(luts.screen)
+    expect(stills.still(w, 640, 360)).toBe(first)
+    expect(ready).toHaveBeenCalledTimes(3)
+    // An edit: that A* is not given until it is made for the new project.
+    stills.prepare([w], { project: { ...graded } }, 640, 360)
+    expect(stills.still(w, 640, 360)).toBeNull()
+    await tasks()
+    expect(composed).toHaveLength(4)
+    expect(stills.still(w, 640, 360)).toBe(first)
     stills.dispose()
   })
 })
