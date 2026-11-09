@@ -1996,9 +1996,11 @@ bed changes, the music is removed or the editor closes.
 `-stream_loop -1`, which is exact on FLAC (measured error 0.0). The cache is made only when the music
 is shorter than the video, and only up to the output's length (`-t`). Before decoding, main checks
 the free space for `duration × 48000 × channels × 2` bytes plus the export's usual margin. The decode
-runs under the export's cancel signal and timeout, and with an argument list (no shell). When a new
-cache is made, older `music-*.flac` caches of the project are deleted. `.cache/` is never copied by
-Duplicate or kept by versions. The preview keeps its `<audio loop>`.
+runs under the export's cancel signal and timeout, and with an argument list (no shell). The finished
+copy is renamed into place with a few tries while another app holds it (an antivirus scan, the indexer
+or OneDrive), as an export's file is. When a new cache is made, older `music-*.flac` caches of the
+project are deleted. `.cache/` is never copied by Duplicate or kept by versions. The preview keeps its
+`<audio loop>`.
 
 ### 10.5 Loudness, ducking, fades and volume
 
