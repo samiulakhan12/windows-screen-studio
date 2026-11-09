@@ -170,12 +170,16 @@ describe('the colour controls (test 82)', () => {
     els = await screen()
     expect(status(els)).toBe('Temperature reset')
     expect(byTestId(els, 'colour-reset-temperature')).toBeUndefined()
-    expect(press(byTestId(els, 'colour-slider-contrast')!, 'Delete').prevented).toBe(true)
+    // The slider keeps Delete from the editor's own Delete (on the window), which would also remove the selected item.
+    expect(press(byTestId(els, 'colour-slider-contrast')!, 'Delete')).toMatchObject({ prevented: true, stopped: true })
     // The last slider back at 0: no grade is left at all.
     expect(store.state.grade).toBeUndefined()
     expect(store.steps).toBe(2)
     els = await screen()
     expect(status(els)).toBe('Contrast reset')
+    // At 0 already, Delete and Backspace do nothing, and still never reach the editor.
+    expect(press(byTestId(els, 'colour-slider-tint')!, 'Backspace')).toMatchObject({ prevented: true, stopped: true })
+    expect(store.steps).toBe(2)
     // Reset colour: everything at once, one update.
     store = testStore(project({ grade: { screen: { look: 'vivid', tint: 0.3 }, camera: { look: 'warm' } } }))
     contexts.editor = { store, player }

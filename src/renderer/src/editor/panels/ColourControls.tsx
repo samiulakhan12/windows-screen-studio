@@ -151,7 +151,9 @@ function ColourSlider(props: { k: ColourSliderKey; value: number; onSet: (v: num
   const set = (next: number): void => props.onSet(scale.fromUi(Math.min(scale.max, Math.max(scale.min, next))), props.mergeKey)
   const onKey = (e: KeyboardEvent<HTMLInputElement>): void => {
     if (e.key === 'Delete' || e.key === 'Backspace') {
+      // The slider's own key: the editor's Delete (on the window) must not also remove the selected item.
       e.preventDefault()
+      e.stopPropagation()
       if (u !== 0) props.onReset()
       return
     }

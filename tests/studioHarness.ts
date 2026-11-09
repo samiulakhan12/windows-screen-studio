@@ -253,11 +253,12 @@ export const byLabel = (els: El[], label: string): El | undefined => els.find((e
 /** A button by its text. */
 export const button = (els: El[], text: string): El | undefined => els.find((e) => e.type === 'button' && textOf(e).trim() === text)
 
-/** A keyboard event with the given key and modifiers; `prevented` tells whether a handler took it. */
-export function key(k: string, mods: { ctrlKey?: boolean; shiftKey?: boolean; altKey?: boolean; metaKey?: boolean } = {}): { key: string; prevented: boolean; preventDefault(): void; stopPropagation(): void; ctrlKey: boolean; shiftKey: boolean; altKey: boolean; metaKey: boolean; target: unknown; currentTarget: unknown; nativeEvent: unknown } {
+/** A keyboard event with the given key and modifiers; `prevented` tells whether a handler took it, `stopped` whether it kept it from the editor's window listener. */
+export function key(k: string, mods: { ctrlKey?: boolean; shiftKey?: boolean; altKey?: boolean; metaKey?: boolean } = {}): { key: string; prevented: boolean; stopped: boolean; preventDefault(): void; stopPropagation(): void; ctrlKey: boolean; shiftKey: boolean; altKey: boolean; metaKey: boolean; target: unknown; currentTarget: unknown; nativeEvent: unknown } {
   const e = {
     key: k,
     prevented: false,
+    stopped: false,
     ctrlKey: !!mods.ctrlKey,
     shiftKey: !!mods.shiftKey,
     altKey: !!mods.altKey,
@@ -268,7 +269,9 @@ export function key(k: string, mods: { ctrlKey?: boolean; shiftKey?: boolean; al
     preventDefault() {
       e.prevented = true
     },
-    stopPropagation() {}
+    stopPropagation() {
+      e.stopped = true
+    }
   }
   return e
 }
