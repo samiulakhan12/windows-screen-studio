@@ -962,7 +962,8 @@ export function GuidePanel(props: { project: Project; cursor: CursorTrack; start
           })}
           index={viewer.index}
           mode={viewer.mode}
-          total={shared.length}
+          total={included.length}
+          shared={shared.length}
           checked={shared.filter(isChecked).length}
           onShown={markChecked}
           onAt={setViewing}

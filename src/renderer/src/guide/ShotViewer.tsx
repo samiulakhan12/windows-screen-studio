@@ -68,6 +68,11 @@ export function ShotViewer(props: {
   sendCost?(keys: readonly string[]): string
   /** How many steps the guide has, for the title ("Screenshot for step 3 of 30"). */
   total?: number
+  /**
+   * In Check screenshots: how many shots a Save shares, for "Checked 12 of 31" (a bug report's Actual
+   * is one more than its steps); `total` when not given.
+   */
+  shared?: number
   /** In Check screenshots: how many have been seen at 100%, and that a shot was. */
   checked?: number
   onShown?(key: string): void
@@ -254,7 +259,7 @@ export function ShotViewer(props: {
         </header>
         {props.mode === 'check' && (
           <p className="guide-viewer-checked" role="status" aria-live="polite" data-testid="guide-checked">
-            Checked {props.checked ?? 0} of {total}
+            Checked {props.checked ?? 0} of {props.shared ?? total}
           </p>
         )}
         {sending && (

@@ -443,6 +443,20 @@ describe('the bug report’s Actual screenshot (docs/design/smart-tools.md §2.1
     expect(blur.start).toBeCloseTo(20 - 1 / 60, 6)
     expect(calls.saved).toEqual([])
   })
+
+  it('a step’s screenshot is titled by the guide’s steps, not counting the Actual; Check screenshots counts it', async () => {
+    store = testStore({ ...project(), guide: { kind: 'bug', actualAt: 20 } })
+    contexts.editor = { store, player }
+    let els = await ready('bug')
+    click(allByTestId(els, 'guide-shot')[2])
+    els = await settle(panel('bug'))
+    expect(textOf(els.find((e) => e.props.id === 'guide-viewer-title'))).toBe('Screenshot for step 3 of 3')
+    click(byTestId(els, 'guide-viewer-close'))
+    els = await settle(panel('bug'))
+    click(byTestId(els, 'guide-check'))
+    els = await settle(panel('bug'))
+    expect(textOf(byTestId(els, 'guide-checked'))).toMatch(/^Checked \d of 4$/)
+  })
 })
 
 describe('saving before the screenshots are made (docs/design/smart-tools.md §5.5.6)', () => {

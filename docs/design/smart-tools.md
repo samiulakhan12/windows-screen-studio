@@ -280,7 +280,8 @@ Review mode's does.
 - A bug report's Actual screenshot shows under the Actual buttons as a button "View the Actual
   screenshot full size, whole screen" that opens it in the viewer (titled "The Actual screenshot",
   with *Blur an area…* at its time and no *Adjust*); *Check screenshots* walks it with the
-  whole-screen shots, and the line "Checked 12 of 31" and the question below count it.
+  whole-screen shots, and the line "Checked 12 of 31" and the question below count it (a step's
+  shot is still titled by the steps: "Screenshot for step 3 of 30").
 - The first Save or Copy of a session with unchecked shots asks: "18 screenshots have not been
   checked at full size. 3 may show what you typed; 5 show the whole screen. Check them now?"
   (**Check now**, **Save anyway**; Check now focused). Both questions are modal: Tab stays inside, Esc

@@ -79,6 +79,13 @@ describe('the viewer', () => {
     props = { ...props, mode: 'check', checked: 3 }
     expect(textOf(byTestId(render(viewer()), 'guide-checked'))).toBe('Checked 3 of 7')
   })
+
+  it('a bug report shares one shot more than its steps: the title counts the steps, the Checked line the shots', () => {
+    props = { ...props, mode: 'check', checked: 3, shared: 8 }
+    const els = render(viewer())
+    expect(textOf(els.find((e) => e.type === 'h2'))).toBe('Screenshot for step 1 of 7')
+    expect(textOf(byTestId(els, 'guide-checked'))).toBe('Checked 3 of 8')
+  })
 })
 
 describe('test 112: Adjust', () => {
