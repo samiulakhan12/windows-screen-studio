@@ -261,8 +261,8 @@ export function DraftScript({ text, onReplace, disabled }: { text: string; onRep
         </p>
       )}
       {chosen && !tooLong && draft.kind !== 'explain' && <p className="hint">{chosen.kind === 'local' ? NOTES_COPY.draftHintLocal : NOTES_COPY.draftHint(name)}</p>}
-      {/* What Draft script sends, where, and what it costs (smart-tools.md §11.5), part P5's: no text task of its own, so no request to estimate yet. */}
-      {chosen && !tooLong && <CostLine id="notes-draft-cost" choice={chosen} full actions={[{ key: 'draft', label: 'Draft script', buttonId: 'notes-draft', request: null }]} />}
+      {/* What Draft script sends, where, and what it costs (smart-tools.md §11.5), part P5's: no text task of its own, so the line estimates its notes. */}
+      {chosen && !tooLong && <CostLine id="notes-draft-cost" choice={chosen} full actions={[{ key: 'draft', label: 'Draft script', buttonId: 'notes-draft', request: null, notes: text }]} />}
     </div>
   )
 }
