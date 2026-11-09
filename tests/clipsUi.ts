@@ -20,7 +20,9 @@ export const fake = {
   providers: [] as unknown[],
   ai: [] as { provider: string; request: Record<string, unknown>; requestId: unknown }[],
   answer: (request: Record<string, unknown>): Promise<unknown> => Promise.resolve({ task: 'names', names: [] as unknown[], request }),
-  cancelled: [] as unknown[]
+  cancelled: [] as unknown[],
+  /** Keydown listeners on the window, as added. */
+  keys: [] as ((e: unknown) => void)[]
 }
 vi.stubGlobal('window', {
   api: {
@@ -50,8 +52,10 @@ vi.stubGlobal('window', {
   },
   requestAnimationFrame: (cb: () => void) => fake.frames.push(cb),
   cancelAnimationFrame: () => undefined,
-  addEventListener: () => undefined,
-  removeEventListener: () => undefined,
+  addEventListener: (type: string, fn: (e: unknown) => void) => void (type === 'keydown' && fake.keys.push(fn)),
+  removeEventListener: (type: string, fn: (e: unknown) => void) => {
+    if (type === 'keydown') fake.keys = fake.keys.filter((f) => f !== fn)
+  },
   dispatchEvent: () => true
 })
 // The copy menu listens for presses on the page while it is open; the copies measure text on a canvas.
@@ -129,6 +133,7 @@ export function reset(): void {
   fake.ai.length = 0
   fake.answer = (request) => Promise.resolve({ task: 'names', names: [], request })
   fake.cancelled.length = 0
+  fake.keys = []
   closes.length = 0
   opened.length = 0
   Object.assign(player, { time: 0, playing: false, pauses: 0 })

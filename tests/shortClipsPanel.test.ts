@@ -242,6 +242,26 @@ describe('Play (test 126)', () => {
     esc()
     expect(closes).toHaveLength(1)
   })
+
+  it('Esc stops it wherever the focus is (a click on Play leaves it on the page)', async () => {
+    const view = mount(narrated())
+    let out = await settle(view())
+    expect(fake.keys).toHaveLength(0)
+    press(byLabel(out, 'Play clip 1'))
+    out = await settle(view())
+    expect(fake.keys).toHaveLength(1)
+    const e = { key: 'Escape', defaultPrevented: false, preventDefault() {
+      e.defaultPrevented = true
+    }, stopPropagation() {} }
+    fake.keys[0](e)
+    out = await settle(view())
+    expect(player.playing).toBe(false)
+    expect(e.defaultPrevented).toBe(true)
+    expect(byLabel(out, 'Play clip 1')!.props['aria-pressed']).toBe(false)
+    expect(closes).toHaveLength(0)
+    // Not playing: the window's Esc is left alone.
+    expect(fake.keys).toHaveLength(0)
+  })
 })
 
 describe('entry points (test 127)', () => {

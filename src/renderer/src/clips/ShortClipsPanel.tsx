@@ -222,6 +222,20 @@ export function ShortClipsPanel(props: { project: Project; cursor: CursorTrack; 
     setPlaying({ key, from, until, at: from })
   }
   const playingKey = playing?.key ?? null
+  // Esc stops the moment playing wherever the focus is (a click on Play leaves it on the page),
+  // before anything else takes the key; a dialog over the editor keeps its own Esc.
+  useEffect(() => {
+    if (!playingKey) return
+    const onKey = (e: globalThis.KeyboardEvent): void => {
+      if (e.key !== 'Escape' || e.defaultPrevented) return
+      if (typeof document !== 'undefined' && document.querySelector?.('[aria-modal="true"]')) return
+      e.preventDefault()
+      e.stopPropagation()
+      stopPlaying()
+    }
+    window.addEventListener('keydown', onKey, true)
+    return () => window.removeEventListener('keydown', onKey, true)
+  }, [playingKey, stopPlaying])
   useEffect(() => {
     if (!playingKey) return
     let frame = 0
