@@ -1,0 +1,77 @@
+/* Text › Chapters › Find chapters (docs/design/smart-tools.md §2.3). Tokens of styles.css only:
+   the progress in text-2 and the captions note in text-1 on the panel keep AA contrast. */
+.find-chapters {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 6px 0 4px;
+}
+
+.find-chapters-run {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.find-chapters-progress {
+  color: var(--text-2);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+.find-chapters-captions {
+  padding: 8px 10px;
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+  border: 1px solid var(--border-default);
+}
+
+.find-chapters-captions p {
+  margin: 0 0 8px;
+  color: var(--text-1);
+}
+
+.find-chapters-options summary {
+  cursor: pointer;
+  color: var(--text-2);
+  font-size: 12px;
+}
+
+.find-chapters-options[open] summary {
+  margin-bottom: 6px;
+}
+
+.find-chapters-field {
+  margin: 0 0 8px;
+  padding: 0;
+  border: 0;
+}
+
+.find-chapters-field legend {
+  padding: 0;
+  margin-bottom: 4px;
+  color: var(--text-2);
+  font-size: 12px;
+}
+
+.find-chapters-choices {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+}
+
+.find-chapters-choices.column {
+  flex-direction: column;
+}
+
+.find-chapters-choices label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.find-chapters-with select {
+  min-width: 0;
+  max-width: 220px;
+}

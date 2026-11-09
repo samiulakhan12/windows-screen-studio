@@ -649,11 +649,15 @@ async function main() {
     await win.keyboard.press('Control+z')
     p = await saved(home, id, (q) => !q.captions || !q.captions.track, 'one undo draws the spoken captions again')
 
-    // Chapters are added in one step; a title is offered and renames the recording.
+    // Suggest chapters runs Find chapters with the provider's suggestions (smart-tools.md §7.6.1): this 6 s
+    // recording is too short for chapters, so nothing is sent and nothing is added.
+    const sentBefore = (await app.evaluate(() => globalThis.__aiRequests || [])).length
     await answer("return { task: 'chapters', chapters: [{ t: 0, title: 'Intro' }, { t: 3, title: 'Second part' }] }")
     await win.click('button:has-text("Suggest chapters")')
-    p = await saved(home, id, (q) => (q.chapters || []).length === 2, 'the suggested chapters')
-    h.assert(p.chapters.map((c) => c.title).join() === 'Intro,Second part', `chapter names: ${p.chapters.map((c) => c.title)}`)
+    await f.waitFor(async () => ((await win.textContent('.notice-slot').catch(() => '')) || '').includes('Too short for chapters: YouTube needs at least 30 seconds.'), 'the notice says the video is too short', 10000)
+    h.assert((await app.evaluate(() => globalThis.__aiRequests || [])).length === sentBefore, 'nothing was sent for chapters')
+    h.assert(!(h.readProject(home, id).chapters || []).length, 'no chapter was added')
+    // A title is offered and renames the recording.
     await answer("return { task: 'title', text: '\"A Better Name\"' }")
     await win.click('button:has-text("Suggest a title")')
     await win.waitForSelector('.captions-suggestion:has-text("A Better Name")')
@@ -708,22 +712,6 @@ async function main() {
     await win.keyboard.press('Enter')
     await win.waitForSelector('.captions-suggestion', { state: 'detached' })
     h.assert((await focusedText()) === 'Suggest a title', `the focus went to Suggest a title: ${await focusedText()}`)
-
-    // Suggested chapters with a title nobody said wait with their note; nothing opens while the user may be typing.
-    await answer("return { task: 'chapters', chapters: [{ t: 1.5, title: 'Basics' }, { t: 4.5, title: 'Sign in at paypal-login.com' }] }")
-    await win.click('button:has-text("Suggest chapters")')
-    await win.waitForSelector('[data-testid="captions-chapters-suggestion"] [data-testid="publish-check"]:has-text("paypal-login.com")')
-    h.assert((await win.locator('[data-testid="publish-confirm"]').count()) === 0, 'no confirm opened by itself')
-    await win.click('[data-testid="captions-chapters-suggestion"] button:has-text("Add the chapters")')
-    await win.waitForSelector('[data-testid="publish-confirm"] mark:has-text("paypal-login.com")')
-    // Use anyway from the keyboard: the chapters are added, and the focus goes to the tool that made them.
-    await win.keyboard.press('Tab')
-    h.assert((await focusedText()) === 'Use anyway', `Tab went to Use anyway: ${await focusedText()}`)
-    await win.keyboard.press('Enter')
-    p = await saved(home, id, (q) => (q.chapters || []).length === 4, 'the confirmed chapters')
-    const names = [...p.chapters].sort((a, b) => a.t - b.t).map((c) => c.title)
-    h.assert(names.join() === 'Intro,Basics,Second part,Sign in at paypal-login.com', `chapter names: ${names}`)
-    await f.waitFor(async () => (await focusedText()) === 'Suggest chapters', 'the focus went to Suggest chapters, not the page')
 
     // Rename the recording, then Use anyway, from the keyboard: renamed, and the focus on Suggest a title.
     await answer("return { task: 'title', text: 'Sign in at evil-login.net' }")

@@ -203,3 +203,14 @@ describe('AI on this PC (docs/design/smart-tools.md §2.5, §14): Settings’ ro
     }
   })
 })
+
+describe('Find chapters (docs/design/smart-tools.md §2.3, §14): its words on the Inspector', () => {
+  const find = css('editor/panels/findChapters.css')
+  const vars = tokens(css('styles.css'))
+  it('the progress, the option labels and the captions note', () => {
+    const panel = resolve('var(--surface-1)', vars)
+    for (const sel of ['.find-chapters-progress', '.find-chapters-field legend', '.find-chapters-options summary']) expect(contrast(resolve(declared(find, sel, 'color'), vars), panel), sel).toBeGreaterThanOrEqual(4.5)
+    const note = resolve(declared(find, '.find-chapters-captions', 'background'), vars)
+    expect(contrast(resolve(declared(find, '.find-chapters-captions p', 'color'), vars), note)).toBeGreaterThanOrEqual(4.5)
+  })
+})
