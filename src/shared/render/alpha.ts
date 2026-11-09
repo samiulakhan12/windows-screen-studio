@@ -22,6 +22,14 @@ export function alphaOf(o: ExportOptions): 'background' | 'overlays' | undefined
   return canAlpha(o.format, codecOf(o)) ? alpha : undefined
 }
 
+/**
+ * How much longer a transparent export takes than the same opaque one through the raw route (§19.2),
+ * for the dialog's time hints. Measured with Electron 44 on Linux (4 vCPU, a canvas on the CPU),
+ * 10 s at 1080p30 to WebM with libvpx: 10.96 s opaque, 14.43 s transparent (4 bytes a pixel instead
+ * of 1.5, VP9's alpha plane). To be measured again with a GPU canvas on the reference PC (§0 decision 14).
+ */
+export const ALPHA_EXPORT_FACTOR = 1.3
+
 /** Points tested across the frame, per side (a 9 × 9 grid of pixel centres, the edges included). */
 const GRID = 8
 
