@@ -951,7 +951,10 @@ name, no window title.
 - Image tokens are estimated per provider (`imageTokens`, `src/shared/ai/tokens.ts`): Claude
   `w × h ÷ 750`; Gemini 258 per image up to 384 px a side, else 258 per 768 px tile; OpenAI and
   services 85 + 170 per 512 px tile after fitting into 2,048 px and the shorter side into 768 px, or
-  the model's own entry in the price list (`imageTokens`), with the range widened to ±60%.
+  the model's own entry in the price list (`imageTokens`), with the range widened to ±60%. The low
+  end counts the pictures by the shown list's rule; the high end by the most of that, the confirm
+  list's and Flown's own (the bundled list's rule, else the provider's), so a downloaded rule can
+  raise a confirm but never lower it (§11.4).
 
 ### 5.4 The note under each step (`stepText`)
 
@@ -2156,7 +2159,8 @@ Gemini, 32 input tokens a second of sound plus the words written (§11.2).
   dated 2099 would otherwise override every later bundled list); of the bundled and downloaded lists
   the newer `updated` is shown, but the high end of an estimate and the confirm use, per model, the
   **higher** of the two prices; a downloaded price of 0 is ignored where the bundled list has one. A
-  bad push can raise an estimate, never lower a confirm.
+  downloaded `imageTokens` rule counts pictures at the low end only: the high end takes the larger
+  of its count and Flown's own (§5.3.1). A bad push can raise an estimate, never lower a confirm.
 - **Kept up to date by hand** from each provider's price page before each release and when a provider
   changes prices, checked against LiteLLM's price file (MIT) for differences (a script,
   `scripts/check-ai-prices.mjs`, that prints them; LiteLLM is credited in the notices).

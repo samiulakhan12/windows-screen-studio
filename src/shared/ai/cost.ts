@@ -16,7 +16,7 @@ import type { ScriptTag } from '../captions/words'
 import type { AiProviderKind } from '../types'
 import { scriptPrompt } from '../notes/scriptDraft'
 import { presetAt, SERVICE_PRESETS } from './presets'
-import { priceOf, type PriceEntry, type PriceList } from './prices'
+import { BUNDLED_PRICE_LIST, priceOf, type PriceEntry, type PriceList } from './prices'
 import { blendedRatio, countWords, estimateTokens, imageTokens, jpegSize, tokenFamily, tokenRatio, type TokenFamily } from './tokens'
 import type { ConfirmPref } from '../smart/smartPrefs'
 
@@ -278,15 +278,29 @@ export function estimateText(
   const { choice } = target
   const family = tokenFamily(choice.kind, choice.model)
   const kind: AiProviderKind = choice.kind === 'local' ? 'openai' : choice.kind
-  const m = measure(request, target.limits ?? DEFAULT_TEXT_LIMITS, family, kind, pictureRule(choice, target.prices))
+  const limits = target.limits ?? DEFAULT_TEXT_LIMITS
+  const shownRule = pictureRule(choice, target.prices)
+  const m = measure(request, limits, family, kind, shownRule)
   const out = outputOf(request, m, family)
   if (thinks(choice.kind, choice.model)) out[1] += m.requests * (MEDIUM_TASKS.has(request.task) ? THINKING.medium : THINKING.low)
-  return finish(m, out, choice, target)
+  // The low end counts pictures by the shown list's rule; the high end by the most of it, the confirm
+  // list's and Flown's own (the bundled list's, else the provider's), so a downloaded rule can raise
+  // a confirm but never lower it (§11.4).
+  let pictureTokensHigh = m.pictureTokens
+  if (m.pictures) {
+    const seen = new Set([ruleKey(shownRule)])
+    for (const rule of [pictureRule(choice, BUNDLED_PRICE_LIST), pictureRule(choice, target.confirmPrices)]) {
+      if (seen.has(ruleKey(rule))) continue
+      seen.add(ruleKey(rule))
+      pictureTokensHigh = Math.max(pictureTokensHigh, measure(request, limits, family, kind, rule).pictureTokens)
+    }
+  }
+  return finish({ ...m, pictureTokensHigh }, out, choice, target)
 }
 
 /** The rest of an estimate once what is sent and what comes back are known. */
 function finish(
-  m: Pick<Measure, 'requests' | 'words' | 'pictures' | 'promptTokens' | 'pictureTokens'>,
+  m: Pick<Measure, 'requests' | 'words' | 'pictures' | 'promptTokens' | 'pictureTokens'> & { pictureTokensHigh?: number },
   out: [number, number],
   choice: TextChoice,
   target: { prices: PriceList; confirmPrices: PriceList; own?: Rates; speed?: { read: number; write: number }; calibration?: { input: number; output: number }; live?: Rates | 'varies' }
@@ -295,7 +309,7 @@ function finish(
   const cal = target.calibration ?? { input: 1, output: 1 }
   const inputTokens: [number, number] = [
     round((m.promptTokens * (1 - spread) + m.pictureTokens * (1 - INPUT_SPREAD.pictures)) * cal.input),
-    round((m.promptTokens * (1 + spread) + m.pictureTokens * (1 + INPUT_SPREAD.pictures)) * cal.input)
+    round((m.promptTokens * (1 + spread) + (m.pictureTokensHigh ?? m.pictureTokens) * (1 + INPUT_SPREAD.pictures)) * cal.input)
   ]
   const outputTokens: [number, number] = [round(out[0] * cal.output), round(out[1] * cal.output)]
   const base = { requests: m.requests, words: m.words, pictures: m.pictures, inputTokens, outputTokens }

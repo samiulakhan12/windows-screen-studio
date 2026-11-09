@@ -26,8 +26,8 @@ const { anthropicClient } = await import('../src/main/ai/anthropic')
 const { compatibleClient } = await import('../src/main/ai/compatible')
 const { calibration, noteUsage, usageKey, useUsageFile } = await import('../src/main/ai/usage')
 const { imageTokens, jpegSize, estimateTokens } = await import('../src/shared/ai/tokens')
-const { costLineText, costSentence, estimateText, INPUT_SPREAD } = await import('../src/shared/ai/cost')
-const { BUNDLED_PRICE_LIST } = await import('../src/shared/ai/prices')
+const { costLineText, costSentence, estimateText, INPUT_SPREAD, needsConfirm } = await import('../src/shared/ai/cost')
+const { BUNDLED_PRICE_LIST, confirmList, newerList, parsePriceList } = await import('../src/shared/ai/prices')
 const { DEFAULT_TEXT_LIMITS, textPrompts } = await import('../src/shared/captions/transcriptText')
 
 /** A small JPEG's first bytes: SOI, then an APP0 marker. */
@@ -355,12 +355,12 @@ describe('test 140: pictures counted by each provider’s rule, and named in the
   })
 
   /** Write titles with 12 steps of 25 words each (300 words), each with its picture when `pictures`. */
-  const request = (pictures: boolean, words = 25) => ({
+  const request = (pictures: boolean, words = 25, steps = 12) => ({
     task: 'names' as const,
     segments: [],
     names: {
       kind: 'step' as const,
-      items: Array.from({ length: 12 }, (_, i) => ({
+      items: Array.from({ length: steps }, (_, i) => ({
         id: `c${i}`,
         text: Array.from({ length: words }, (_, k) => `word${k}`).join(' '),
         action: 'click, top right of the screen',
@@ -404,6 +404,24 @@ describe('test 140: pictures counted by each provider’s rule, and named in the
     // 12 × 610 instead of 12 × 425, at +60%.
     expect(Math.abs(own.inputTokens[1] - plain.inputTokens[1] - 12 * (610 - 425) * 1.6)).toBeLessThanOrEqual(1)
     expect(Math.abs(own.inputTokens[0] - plain.inputTokens[0] - 12 * (610 - 425) * 0.4)).toBeLessThanOrEqual(1)
+  })
+
+  it('a downloaded picture rule that counts fewer tokens lowers the low end only: the high end and the question keep Flown’s own count', () => {
+    // A newer list pushed with a rule that makes every picture free, as main and useCost read it.
+    const pushed = parsePriceList({ ...BUNDLED_PRICE_LIST, updated: '2026-11-08', models: [...BUNDLED_PRICE_LIST.models.filter((m) => m.model !== 'gpt-6.1-sol'), { service: 'openai', model: 'gpt-6.1-sol', input: 2, output: 10, imageTokens: { base: 0, perTile: 0, tile: 1 } }] }, '2026-11-09')!
+    const shown = newerList(BUNDLED_PRICE_LIST, pushed)
+    expect(shown).toBe(pushed)
+    const withPush = { choice: OPENAI, limits: DEFAULT_TEXT_LIMITS, prices: shown, confirmPrices: confirmList(BUNDLED_PRICE_LIST, shown) }
+    for (const steps of [50, 200]) {
+      const bundled = estimateText(request(true, 0, steps), target())
+      const pushedEstimate = estimateText(request(true, 0, steps), withPush)
+      expect(pushedEstimate.inputTokens[1]).toBe(bundled.inputTokens[1])
+      expect(pushedEstimate.usd![1]).toBeCloseTo(bundled.usd![1], 10)
+      // The low end follows the shown list: its pictures count nothing.
+      expect(pushedEstimate.inputTokens[0]).toBeLessThan(bundled.inputTokens[0])
+    }
+    // 200 screenshots cost more than US$0.10 by OpenAI's own rule: the question is still asked.
+    expect(needsConfirm(estimateText(request(true, 0, 200), withPush), '0.1', false)).toBe(true)
   })
 
   it('Claude and Gemini count the same pictures by their own rules', () => {
