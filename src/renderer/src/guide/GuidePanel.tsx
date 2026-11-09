@@ -1240,6 +1240,11 @@ function EndScreen(props: { project: Project; onField(patch: Parameters<typeof w
   const end = props.project.guide?.end
   const [open, setOpen] = useState(!!end)
   const [url, setUrl] = useState(end?.url ?? '')
+  // An Undo or Redo of the link shows in the field; a link typed before the heading stays while there is no end screen.
+  const stored = end?.url ?? ''
+  useEffect(() => {
+    if (end && stored !== url.trim()) setUrl(stored)
+  }, [stored, !!end]) // eslint-disable-line react-hooks/exhaustive-deps
   const set = (patch: Partial<{ heading: string; label: string; url: string }>, gesture?: string): void => {
     // The link as the field shows it: one typed before the heading is not stored yet.
     const next = { heading: end?.heading ?? '', ...(end?.label ? { label: end.label } : {}), ...(url.trim() ? { url: url.trim() } : {}), ...patch }

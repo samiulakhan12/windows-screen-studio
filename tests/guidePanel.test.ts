@@ -416,6 +416,31 @@ describe('the demo’s end screen (docs/design/smart-tools.md §6.1)', () => {
     type(els, 'guide-end-label', 'Sign up')
     expect(store.state.guide!.end).toEqual({ heading: 'You are ready', label: 'Sign up', url: 'https://example.com/signup' })
   })
+
+  it('an Undo or Redo of the link shows in the Link field, and the next heading or label edit keeps what the field shows', async () => {
+    const type = (els: El[], id: string, value: string): void => (byTestId(els, id)!.props.onChange as (e: unknown) => void)({ target: { value } })
+    store = testStore({ ...project(), guide: { end: { heading: 'You are ready', label: 'Sign up', url: 'https://example.com/signup' } } })
+    contexts.editor = { store, player }
+    let els = await settle(panel('demo'))
+    const withLink = store.state
+    type(els, 'guide-end-url', '')
+    els = render(panel('demo'))
+    expect(store.state.guide!.end).toEqual({ heading: 'You are ready', label: 'Sign up' })
+    const withoutLink = store.state
+    // Undo: the link is back in the store, so the field shows it and a heading edit keeps it.
+    store.replace(withLink)
+    els = render(panel('demo'))
+    expect(byTestId(els, 'guide-end-url')!.props.value).toBe('https://example.com/signup')
+    type(els, 'guide-end-heading', 'You are ready!')
+    els = render(panel('demo'))
+    expect(store.state.guide!.end).toEqual({ heading: 'You are ready!', label: 'Sign up', url: 'https://example.com/signup' })
+    // Redo of the cleared link: the field is empty again and a label edit does not bring the link back.
+    store.replace(withoutLink)
+    els = render(panel('demo'))
+    expect(byTestId(els, 'guide-end-url')!.props.value).toBe('')
+    type(els, 'guide-end-label', 'Start')
+    expect(store.state.guide!.end).toEqual({ heading: 'You are ready', label: 'Start' })
+  })
 })
 
 describe('the bug report’s Actual screenshot (docs/design/smart-tools.md §2.1, §12 rule 2)', () => {
