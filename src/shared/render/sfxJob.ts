@@ -7,7 +7,8 @@
  * less the effect's peakAt, so its loudest moment lands on the moment it belongs to:
  * - Zooming in: the fastest point of the move in (source seg.start + tin / 2), for each zoom that
  *   does not pan from the previous one; Zooming out: seg.end − tout / 2, for each zoom that does
- *   not pan into the next (zoomTimings already merges connected zooms).
+ *   not pan into the next (zoomTimings already merges connected zooms). A pull-back (a level below
+ *   100%) swaps the two, as its picture shrinks first and grows back; a zoom at 100% never sounds.
  * - Title cards, texts and shapes: the item's start plus half its enter motion (or its old fade).
  *   An item's own sound wins over the rule ('none' silences it); privacy shapes never sound.
  * - Captions Studio's pop-ups with a library sound: when the graphic starts to show (startOf, the
@@ -19,7 +20,7 @@ import { soundEffect } from '../audio/soundLibrary'
 import { isPrivacyKind, SHAPE_FADE } from '../editor/shapes'
 import { editToVideo, planOf, type FreezePlan } from '../engine/freeze'
 import { outputDuration, playableFrom, sourceToOutput } from '../engine/timeline'
-import { zoomStyleOf, zoomTimings } from '../engine/zoom'
+import { zoomStyleOf, zoomTargetScale, zoomTimings } from '../engine/zoom'
 import type { CalloutMotion, Clip, Graphic, Project, SfxRef } from '../types'
 import { ANNOTATION_FADE } from './overlays'
 import { graphicDrawn, MAX_POP_TIMES } from './popSound'
@@ -85,14 +86,21 @@ function hits(project: Project, startOf?: (g: Graphic) => number): { rules: Reco
     for (const z of project.zooms) {
       const tm = timings.get(z.id)
       if (!tm) continue
+      // A pull-back (a level below 100%) zooms out as it starts and back in as it ends; a zoom at
+      // 100% never moves.
+      const scale = zoomTargetScale(z)
+      if (Math.abs(scale - 1) < 1e-3) continue
+      const [inRule, outRule] = scale > 1 ? (['zoomIn', 'zoomOut'] as const) : (['zoomOut', 'zoomIn'] as const)
+      const inFx = scale > 1 ? zoomIn : zoomOut
+      const outFx = scale > 1 ? zoomOut : zoomIn
       // A zoom that starts in a cut is never seen moving in.
-      if (zoomIn && tm.tin > 0 && !tm.fromPrev && videoOf(clips, plan, total, z.start) !== null) {
+      if (inFx && tm.tin > 0 && !tm.fromPrev && videoOf(clips, plan, total, z.start) !== null) {
         const at = videoOf(clips, plan, total, z.start + tm.tin / 2)
-        if (at !== null) rules.zoomIn.push(placed(zoomIn, at))
+        if (at !== null) rules[inRule].push(placed(inFx, at))
       }
-      if (zoomOut && tm.tout > 0 && !tm.toNext) {
+      if (outFx && tm.tout > 0 && !tm.toNext) {
         const at = videoOf(clips, plan, total, z.end - tm.tout / 2)
-        if (at !== null) rules.zoomOut.push(placed(zoomOut, at))
+        if (at !== null) rules[outRule].push(placed(outFx, at))
       }
     }
   }

@@ -115,6 +115,21 @@ describe('sfxJob on zooms (test 61)', () => {
     expect(sfxJob({ ...p, zooms: zooms.slice(0, 4) })[0].times.length).toBe(2)
   })
 
+  it('a pull-back zooms out as it starts and back in as it ends; a zoom at 100% never sounds', () => {
+    const fx = rule('sfx:whoosh-in', 'sfx:whoosh-out')
+    const p = project({ zooms: [zoom('a', 5, 10, { scale: 0.6 })], soundFx: fx })
+    const job = sfxJob(p)
+    expect(job.find((j) => j.id === 'whoosh-out')!.times).toEqual([5 + 0.35 - peak('whoosh-out')])
+    expect(job.find((j) => j.id === 'whoosh-in')!.times).toEqual([10 - 0.35 - peak('whoosh-in')])
+    expect(sfxCounts(p)).toEqual({ zoomIn: 1, zoomOut: 1, titles: 0, callouts: 0 })
+    // Only Zooming out chosen: a pull-back sounds as it starts, not as it ends.
+    expect(sfxJob({ ...p, soundFx: rule(undefined, 'sfx:whoosh-out') })).toEqual([{ id: 'whoosh-out', times: [5 + 0.35 - peak('whoosh-out')], gain: SFX_VOLUME }])
+    // A zoom at 100% shows no move: no sound, and nothing counted.
+    const still = project({ zooms: [zoom('a', 5, 10, { scale: 1 })], soundFx: fx })
+    expect(sfxJob(still)).toEqual([])
+    expect(sfxCounts(still)).toEqual({ zoomIn: 0, zoomOut: 0, titles: 0, callouts: 0 })
+  })
+
   it('no rule, no sound; an unknown effect is no sound', () => {
     expect(sfxJob(project({ zooms: [zoom('a', 10, 14)] }))).toEqual([])
     expect(sfxJob(project({ zooms: [zoom('a', 10, 14)], soundFx: rule('sfx:nope' as SfxRef) }))).toEqual([])

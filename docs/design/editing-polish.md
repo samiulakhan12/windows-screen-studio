@@ -2033,6 +2033,10 @@ progress bar's band, the frame, the crop).
   source `seg.end − tout / 2`, minus `peakAt`. `zoomTimings` already merges connected zooms, so a pan
   never gets a whoosh for a move that does not happen. Auto zooms are regenerated wholesale, which is
   why zoom sounds are a project rule and not a field on each zoom.
+- **Pull-backs.** A zoom whose level (`zoomTargetScale`) is below 100 % shrinks the picture as it
+  starts and grows it back as it ends, so the two swap: its move in (`seg.start + tin / 2`) plays
+  Zooming out and its move out (`seg.end − tout / 2`) plays Zooming in, under the same conditions. A
+  zoom within 0.001 of 100 % shows no move and never sounds.
 - **Title cards**, **texts and shapes**: at the video time of the item's start, plus half its enter
   motion (`enter.duration`, or its old fade: 0.35 s titles, 0.15 s texts and shapes), minus
   `peakAt`. The item's own `sound` wins over the rule; `'none'` silences it. Privacy shapes never
@@ -2805,7 +2809,8 @@ build`, `node scripts/build-sound-library.mjs --check`, and under `xvfb-run`: `e
 61. `sfxJob`, zooms: zoom in at `seg.start + tin/2` less `peakAt`, in video time; none for a pan
     from the previous zoom; zoom out only with `tout > 0` and no pan into the next; none for a zoom
     starting in a cut; holds shift the times; zooms 1 s apart give one whoosh every 3 s;
-    `sfxCounts` equals the kept times.
+    `sfxCounts` equals the kept times; a pull-back plays Zooming out at its start and Zooming in at
+    its end; a zoom at 100 % plays neither.
 62. `sfxJob`, titles and callouts: half the enter duration (or the old fade) less `peakAt`; an item's
     sound beats the rule and is never dropped by the 3 s spacing; `'none'` silences; privacy shapes
     never sound; merging within 0.05 s; 500 times and 16 effects at most; the gain is the volume.
