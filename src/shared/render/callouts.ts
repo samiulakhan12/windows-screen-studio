@@ -421,8 +421,8 @@ export function bubbleAnchor(a: Annotation, frame: CalloutFrame): { x: number; y
 /**
  * Where a badge or a bubble is drawn in a frame (§7.3, §7.4), or null for another text and for a
  * badge whose pin is outside the visible picture (not drawn). `label` is an automatic badge's
- * number; `measure(text, px, weight)` measures in the callout font. The preview's handles and the
- * drawing both place them with this.
+ * number; `measure(text, px, weight)` measures in the callout font. The preview's handles, its
+ * Ctrl/Shift+click hit boxes and the drawing all place them with this.
  */
 export function calloutPlace(a: Annotation, label: string | null, frame: CalloutFrame, measure: (text: string, px: number, weight: number) => number): CalloutPlace | null {
   const c = calloutOf(a)

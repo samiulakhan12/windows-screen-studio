@@ -1302,6 +1302,9 @@ the code they call lives in P3's new `calloutLayer.ts` (§17.3).
 - **Where**: with a `pin`, centred on `top.toOut(pin)`, the frame's camera (punch included), in
   `drawFrameOverlays`; while that point is outside the visible picture (outside the card's slot, or
   a layout that hides the screen), the badge is not drawn. Without a pin, at `x`, `y` in the frame.
+  The preview's handles, Ctrl/Shift+click on the paused preview and a group's outlines find a badge
+  or a bubble where it is drawn (`calloutPlace`, a bubble by its body); a badge that is not drawn
+  has no box there.
 - **Numbering** (`badgeLabels(project)`, memoised on `annotations`, `chapters`, `clips` and
   `effects`): badges with `number: 'auto'`, sorted by `(start, id)`, get k = 1, 2, 3… The count
   starts again at 1 at each chapter's start (output time, `outputChapters`) unless

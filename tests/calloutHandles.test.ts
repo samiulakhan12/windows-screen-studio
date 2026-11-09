@@ -9,7 +9,8 @@ import type { Annotation, CursorTrack, Project, ZoomSegment } from '../src/share
  * while its tip is off the picture moves the body, never the tip. CalloutHandles is called as a
  * function, with React's hooks and the editor's contexts answered here (as
  * tests/transportNotice.test.ts does), and its handles' moves are run on a project that the
- * store's updates change.
+ * store's updates change. Ctrl/Shift+click and the group outlines find badges and bubbles where
+ * they are drawn (previewBoxes, E-06).
  */
 
 vi.stubGlobal('document', { createElement: () => ({ getContext: () => null }) })
@@ -31,12 +32,20 @@ const { SmoothedTrack } = await import('../src/shared/engine/cursor')
 const { focusPathFor } = await import('../src/shared/engine/zoom')
 const { calloutOf } = await import('../src/shared/render/calloutData')
 const { calloutPlace } = await import('../src/shared/render/callouts')
+const { sceneLayout } = await import('../src/shared/engine/layout')
+const { frameView } = await import('../src/shared/engine/frameView')
+const { toOutput } = await import('../src/shared/engine/outputPoint')
+const { topmostHit } = await import('../src/shared/editor/multiSelect')
+type KeyRect = import('../src/shared/editor/multiSelect').KeyRect
 
 // Renderer code (DOM types, JSX): imported by path at run time, as the Node typecheck of tests/ does not follow it.
 const E = '../src/renderer/src/editor/'
 const { CalloutHandles } = (await import(/* @vite-ignore */ `${E}CalloutHandles`)) as { CalloutHandles: (props: { project: Project; selection: unknown; view: unknown }) => ReactNode }
 type Mapping = { view: { w: number; h: number; toOut: (x: number, y: number) => { x: number; y: number } }; frame: Parameters<typeof calloutPlace>[2]; seen: { x: number; y: number; w: number; h: number } }
 const { calloutMapping } = (await import(/* @vite-ignore */ `${E}calloutView`)) as { calloutMapping: (scene: unknown, t: number) => Mapping }
+const { previewBoxes } = (await import(/* @vite-ignore */ `${E}PreviewStage`)) as {
+  previewBoxes: (drawn: Project, scene: unknown, layout: unknown, box: { w: number; h: number }, t: number) => KeyRect[]
+}
 
 const track = { valid: false, samples: [], clicks: [], keys: [] } as unknown as CursorTrack
 
@@ -169,5 +178,48 @@ describe("dragging a bubble's body (§2.3, §7.4)", () => {
     expect(place.box.y + place.box.h / 2).toBeCloseTo(body.at.y - 30, 6)
     // Before the zoom the tip shows where it was, with its tail.
     expect(placeOf('u', 2.5)!.tail).not.toBeNull()
+  })
+})
+
+describe('Ctrl/Shift+click and group outlines find badges and bubbles where they are drawn (E-06)', () => {
+  const box = { w: 960, h: 540 }
+  const boxesAt = (t: number): KeyRect[] => {
+    const scene = sceneOf(project) as { project: Project }
+    return previewBoxes(scene.project, scene, sceneLayout(scene.project, box.w, box.h, project.width, project.height, t), box, t)
+  }
+  /** Where a point of the recording shows on the preview at `t`, as the compositor works it out. */
+  const shownAt = (t: number, p: { x: number; y: number }): { x: number; y: number } => {
+    const v = frameView(sceneOf(project) as never, box.w, box.h, project.width, project.height, t)
+    return toOutput(v.layout.screen, v.cam)(p.x, p.y)
+  }
+  const inside = (b: KeyRect, p: { x: number; y: number }): boolean => p.x >= b.x && p.x <= b.x + b.w && p.y >= b.y && p.y <= b.y + b.h
+
+  it('a pinned badge during a zoom: its circle on the pin, not a pill at its stored x, y', () => {
+    const z: ZoomSegment = { id: 'z', start: 1, end: 9, scale: 2, focus: { mode: 'fixed', x: 0.7, y: 0.3 }, auto: false }
+    start([badge({ pin: { x: 0.8, y: 0.2 }, x: 0.8, y: 0.2 })], [z])
+    const r = boxesAt(5).find((b) => b.key === 'annotation:b')!
+    const pin = shownAt(5, { x: 0.8, y: 0.2 })
+    // A circle 1.75 font sizes across (0.045 of the shorter side), centred on the pin.
+    expect(r.w).toBeCloseTo(1.75 * 0.045 * 540, 6)
+    expect(r.h).toBeCloseTo(r.w, 9)
+    expect(r.x + r.w / 2).toBeCloseTo(pin.x, 6)
+    expect(r.y + r.h / 2).toBeCloseTo(pin.y, 6)
+    expect(topmostHit(boxesAt(5), pin.x, pin.y)).toBe('annotation:b')
+    // The empty spot at its stored x, y selects nothing.
+    expect(inside(r, { x: 0.8 * box.w, y: 0.2 * box.h })).toBe(false)
+    expect(topmostHit(boxesAt(5), 0.8 * box.w, 0.2 * box.h)).toBeNull()
+  })
+
+  it("a bubble's body beside its tip; a badge whose pin is off the picture has no box", () => {
+    start([bubble({ pin: { x: 0.55, y: 0.45 }, body: { dx: 0.12, dy: -0.1 }, x: 0.9, y: 0.1 }), badge({ pin: { x: 0.05, y: 0.9 } })], [zoom])
+    const boxes = boxesAt(6)
+    const body = boxes.find((b) => b.key === 'annotation:u')!
+    const tip = shownAt(6, { x: 0.55, y: 0.45 })
+    const S = Math.min(box.w, box.h)
+    // Centred tip + body · S when that keeps it inside the frame (here it does).
+    expect(body.x + body.w / 2).toBeCloseTo(tip.x + 0.12 * S, 6)
+    expect(body.y + body.h / 2).toBeCloseTo(tip.y - 0.1 * S, 6)
+    // Zoomed in on the top right, the badge's pin at the bottom left is out of the picture: not drawn, not selectable.
+    expect(boxes.some((b) => b.key === 'annotation:b')).toBe(false)
   })
 })
