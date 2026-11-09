@@ -194,6 +194,12 @@
   border-top: 1px solid var(--border-default);
 }
 
+/* Save and Copy wait while one runs: aria-disabled keeps the focus on them (disabled would move it to Close). */
+.guide-foot .btn[aria-disabled='true'] {
+  opacity: 0.42;
+  cursor: default;
+}
+
 .guide-count,
 .guide-said {
   margin: 0;

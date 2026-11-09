@@ -285,7 +285,9 @@ Review mode's does.
 - The first Save or Copy of a session with unchecked shots asks: "18 screenshots have not been
   checked at full size. 3 may show what you typed; 5 show the whole screen. Check them now?"
   (**Check now**, **Save anyway**; Check now focused). Both questions are modal: Tab stays inside, Esc
-  goes back, and the focus returns to Save or Copy when they close.
+  goes back, and the focus returns to Save or Copy when they close, after *Save anyway* too: while a
+  Save or Copy runs, both wait with `aria-disabled` (still focusable, a press does nothing) rather
+  than disabled, which would send the focus to the panel's Close.
 
 **Empty and partial states.**
 
@@ -2367,7 +2369,7 @@ joins `tests/labelContrast.test.ts`.
 | Full-size viewer | `dialog` "Screenshot for step 3 of 30", modal (`useModalFocus`); the image area a focusable `group` "Screenshot, 100%" | arrows, Page Up, Page Down, Home, End pan; Esc closes and returns focus to the row's screenshot button | live: "Checked 12 of 30" in *Check screenshots* |
 | Adjust | the crop and the ring as two focusable buttons whose names hold their place: "Crop, 45% wide, from 20% across and 10% down", "Ring at 42% across, 30% down"; Done and Reset buttons | Adjust focuses the crop; Tab between them; arrows move by 1% (Shift 10%); Alt + arrows resize the crop; Enter is Done; Done, Reset and Cancel focus the picture again | live: the new place after each move |
 | Screenshots progress | `progressbar` "Making screenshots", value text "12 of 30" | — | live (polite) at the end: "Screenshots ready" |
-| Save, Copy guide, Copy screenshot | buttons | Enter | live: "Saved “Billing guide.pdf”." with Show in folder; "Copied the guide with 12 screenshots." |
+| Save, Copy guide, Copy screenshot | buttons; while a Save or Copy runs, Save and Copy guide wait with `aria-disabled` (the focus stays on them) | Enter | live: "Saved “Billing guide.pdf”." with Show in folder; "Copied the guide with 12 screenshots." |
 | Find chapters | button, waiting with `aria-disabled` while it runs (the focus stays on it); Options a disclosure button `aria-expanded` | Enter, Space | live: the notice text |
 | How many, Names | `radiogroup`s | arrows | — |
 | Split at | checkboxes | Space | — |

@@ -564,6 +564,33 @@ describe('edits made while saving or copying (docs/design/smart-tools.md §5.5.6
     expect(said(els)).toBe('Copied the guide with 2 screenshots. Changes made while copying are not in it: copy again to add them.')
   })
 
+  it('while a Save runs, Save and Copy wait with aria-disabled, so the focus back from the question lands on Save, and a press does nothing', async () => {
+    let { els, release } = await demoHeld()
+    click(byTestId(els, 'guide-save'))
+    els = render(panel())
+    click(byTestId(els, 'guide-save-anyway'))
+    els = await settle(panel())
+    expect(textOf(byTestId(els, 'guide-save'))).toBe('Saving…')
+    // Disabled, they would send the focus to the panel's Close, where one more Enter closes the panel and stops the save.
+    for (const id of ['guide-save', 'guide-copy']) {
+      expect(byTestId(els, id)!.props.disabled).toBe(false)
+      expect(byTestId(els, id)!.props['aria-disabled']).toBe(true)
+    }
+    // One more Enter on Save, or on Copy, starts nothing.
+    click(byTestId(els, 'guide-save'))
+    click(byTestId(els, 'guide-copy'))
+    els = render(panel())
+    expect(byTestId(els, 'guide-question')).toBeUndefined()
+    stillsGate = null
+    release()
+    for (let i = 0; i < 50 && !calls.saved.length; i++) els = await after()
+    els = await after()
+    expect(calls.saved).toHaveLength(1)
+    expect(calls.copied).toHaveLength(0)
+    expect(said(els)).toBe('Saved “Secret demo.pdf”.')
+    expect(byTestId(els, 'guide-save')!.props['aria-disabled']).toBeUndefined()
+  })
+
   it('nothing changed meanwhile: no such line', async () => {
     let { els, release } = await demoHeld()
     click(byTestId(els, 'guide-save'))

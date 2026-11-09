@@ -471,6 +471,8 @@ export function GuidePanel(props: { project: Project; cursor: CursorTrack; start
   }
   /** Asks what must be asked before a Save or Copy (§2.1.2, §12 rule 3), then runs it. */
   const guarded = (run: () => void): void => {
+    // Save and Copy wait while one runs (aria-disabled): a press does nothing.
+    if (saving) return
     const unchecked = shared.filter((k) => !isChecked(k))
     const ask = askedCheck ? null : checkQuestion({ unchecked: unchecked.length, typed: unchecked.filter((k) => typedKeys.has(k)).length, whole: unchecked.filter((k) => wholeKeys.has(k)).length })
     const linkStep = (): void => {
@@ -922,10 +924,12 @@ export function GuidePanel(props: { project: Project; cursor: CursorTrack; start
         )}
       </div>
       <div className="guide-foot">
-        <button type="button" className="btn primary" disabled={!!saving || nothing} onClick={() => guarded(() => void doSave())} data-testid="guide-save">
+        {/* While a Save or Copy runs they wait with aria-disabled: disabled would send the focus, back from
+            the question before it, to the panel's Close, where one more Enter closes the panel and stops it. */}
+        <button type="button" className="btn primary" disabled={nothing} aria-disabled={!!saving || undefined} onClick={() => guarded(() => void doSave())} data-testid="guide-save">
           {saving === 'save' ? 'Saving…' : saveLabel}
         </button>
-        <button type="button" className="btn" disabled={!!saving || nothing} onClick={() => guarded(() => void doCopy())} data-testid="guide-copy">
+        <button type="button" className="btn" disabled={nothing} aria-disabled={!!saving || undefined} onClick={() => guarded(() => void doCopy())} data-testid="guide-copy">
           Copy guide
         </button>
         <button type="button" className="btn ghost" onClick={close}>
