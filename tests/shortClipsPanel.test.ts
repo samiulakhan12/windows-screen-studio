@@ -10,7 +10,7 @@ import path from 'node:path'
 import { beforeEach, describe, expect, it } from 'vitest'
 import { projectCopy } from '../src/shared/editor/duplicate'
 import type { Project } from '../src/shared/types'
-import { clipProject, steadyTalk } from './clipFixtures'
+import { clipProject, steadyTalk, trackOf } from './clipFixtures'
 import { bench, change, closes, CopyMenu, el, editing, fake, frame, mount, narrated, opened, player, press, reset, SHORT_NEEDS_CAPTIONS, ShortClipsPanel } from './clipsUi'
 import { button, byLabel, byTestId, focused, render, settle, textOf, unmountAll } from './studioHarness'
 
@@ -109,6 +109,23 @@ describe('the panel (test 125)', () => {
     press(out.find((e) => e.type === 'button' && textOf(e) === 'Make captions'))
     expect(closes).toHaveLength(1)
     expect(fake.commands).toEqual(['generateCaptions'])
+  })
+
+  it('Use activity only on a recording with speech lists the busiest moments without saying no speech was found', async () => {
+    const window = 0.05
+    const power = new Float32Array(Math.round(120 / window)).fill(1e-9)
+    fake.levels = { mix: { window, power, speech: [{ start: 1, end: 40 }] } }
+    const clicks = Array.from({ length: 10 }, (_, i) => ({ t: 50 + i * 2, x: 0.5, y: 0.5, button: 'left' as const }))
+    editing(clipProject({ duration: 120, id: 'speech-activity-only' }))
+    const view = (): unknown => {
+      const panel = el(ShortClipsPanel, bench.store.state)
+      return { ...panel, props: { ...panel.props, cursor: trackOf({ clicks }) } }
+    }
+    let out = await settle(view())
+    press(button(out, 'Use activity only'))
+    out = await settle(view())
+    expect(out.filter((e) => e.props['data-testid'] === 'clips-row').length).toBeGreaterThan(0)
+    expect(textOf(byTestId(out, 'clips-intro'))).toBe('The best moments to post on their own. Each one you make becomes a copy; this video stays as it is.')
   })
 
   it('the space line under OneDrive, and the block when the copies would not fit', async () => {

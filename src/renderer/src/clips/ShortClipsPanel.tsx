@@ -355,7 +355,8 @@ export function ShortClipsPanel(props: { project: Project; cursor: CursorTrack; 
   }
 
   const makeId = `${ids}-make`
-  const silent = moments.length > 0 && moments[0].silent
+  // "No speech was found" only when the recording has none: Use activity only was chosen on one that has.
+  const silent = !activityOnly && moments.length > 0 && moments[0].silent
   const needsCaptions = !!result && 'needsCaptions' in result
   const reason = result && 'reason' in result ? result.reason : null
   const estimate = useMemo((): (() => AiTextRequest) | null => {
