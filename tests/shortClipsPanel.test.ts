@@ -175,6 +175,19 @@ describe('names with an AI (tests 102 and 125)', () => {
     expect(out.find((e) => (e.type as { name?: string }).name === 'LocalProgress')!.props.requestId).toBeNull()
   })
 
+  it('Make reads its cost sentence when an AI names the copies (§11.5), and only then', async () => {
+    fake.providers = [OPENAI]
+    fake.prefs.set('shortClips', { length: 'any', shape: 'vertical', names: 'o1', captions: true })
+    const out = await settle(mount(narrated())(), ['LocalProgress', 'CostLine'])
+    const make = byTestId(out, 'clips-make')!
+    const cost = out.find((e) => (e.type as { name?: string }).name === 'CostLine')!
+    expect(String(make.props['aria-describedby'] ?? '').split(/\s+/)).toContain(`${cost.props.id}-names`)
+    unmountAll()
+    fake.prefs.set('shortClips', { length: 'any', shape: 'vertical', names: 'offline', captions: true })
+    const offline = await settle(mount(narrated())(), ['LocalProgress', 'CostLine'])
+    expect(String(byTestId(offline, 'clips-make')!.props['aria-describedby'] ?? '')).not.toMatch(/-cost-names/)
+  })
+
   it('a name the AI gives becomes the copy’s; one holding a link keeps the title from what was said', async () => {
     fake.providers = [OPENAI]
     fake.prefs.set('shortClips', { length: 'any', shape: 'same', names: 'o1', captions: true })

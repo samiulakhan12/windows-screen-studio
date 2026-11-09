@@ -543,7 +543,16 @@ export function ShortClipsPanel(props: { project: Project; cursor: CursorTrack; 
           {moments.length > 0 && (
             <div className="clips-foot">
               <div className="clips-make">
-                <button type="button" className="btn primary" id={makeId} data-testid="clips-make" disabled={busy || n === 0 || !!space?.blocked} onClick={() => void make()}>
+                {/* With names from an AI, Make also reads what it sends and costs (§11.5): the cost line's sentence. */}
+                <button
+                  type="button"
+                  className="btn primary"
+                  id={makeId}
+                  data-testid="clips-make"
+                  disabled={busy || n === 0 || !!space?.blocked}
+                  aria-describedby={namesChoice ? `${ids}-cost-names` : undefined}
+                  onClick={() => void make()}
+                >
                   {makeLabel}
                 </button>
                 {busy && (

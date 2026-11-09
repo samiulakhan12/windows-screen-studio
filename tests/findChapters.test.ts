@@ -294,6 +294,21 @@ describe('the Find chapters panel (§2.3)', () => {
     expect(els.filter((e) => e.type === 'option').map(textOf)).toContain('My OpenAI')
   })
 
+  it('with names from an AI the button also reads its cost sentence (§11.5); offline only its hint', async () => {
+    fake.prefs.set('findChapters', { density: 'normal', use: { screen: true, pauses: true, words: true }, names: 'o1' })
+    const els = await settle(panel(), SKIP)
+    const find = byTestId(els, 'find-chapters')!
+    const cost = els.find((e) => (e.type as { name?: string }).name === 'CostLine')!
+    const ids = String(find.props['aria-describedby']).split(/\s+/)
+    expect(ids).toHaveLength(2)
+    expect(textOf(els.find((e) => e.props.id === ids[0])!)).toBe(FIND_HINT)
+    expect(ids[1]).toBe(`${cost.props.id}-names`)
+    unmountAll()
+    fake.prefs.delete('findChapters')
+    const offline = byTestId(await settle(panel(), SKIP), 'find-chapters')!
+    expect(String(offline.props['aria-describedby']).split(/\s+/)).toHaveLength(1)
+  })
+
   it('a run: the notice, and the chapters found; the options are remembered', async () => {
     fake.scan = scanOf(120, { 40: 62, 80: 73 })
     let els = await settle(panel(), SKIP)

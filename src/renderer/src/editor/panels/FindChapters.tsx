@@ -161,7 +161,8 @@ export function FindChapters({ project, cursor, onNotice }: { project: Project; 
   return (
     <div className="find-chapters" data-testid="find-chapters-section">
       <div className="find-chapters-run">
-        <button className="btn" id={`${ids}-run`} data-testid="find-chapters" onClick={() => void run()} disabled={busy} aria-describedby={hintId}>
+        {/* With names from an AI, the button also reads what the run sends and costs (§11.5): the cost line's sentence. */}
+        <button className="btn" id={`${ids}-run`} data-testid="find-chapters" onClick={() => void run()} disabled={busy} aria-describedby={namesChoice ? `${hintId} ${ids}-cost-names` : hintId}>
           Find chapters
         </button>
         {busy && (
