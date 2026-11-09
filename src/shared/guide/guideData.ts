@@ -82,6 +82,7 @@ function readStepEdit(v: unknown): GuideStepEdit | null {
     ...opt('type', oneLine(v.type, GUIDE_LIMITS.stepType)),
     ...opt('full', flag(v.full)),
     ...opt('hidden', flag(v.hidden)),
+    ...opt('shown', flag(v.shown)),
     ...opt('after', flag(v.after)),
     ...opt('whole', flag(v.whole)),
     ...opt('demoZoom', flag(v.demoZoom)),

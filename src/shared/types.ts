@@ -1025,6 +1025,8 @@ export interface GuideStepEdit {
   full?: true
   /** Left out of every output. */
   hidden?: true
+  /** Included though hidden by default: a step between two step badges (§5.1 rule 11). */
+  shown?: true
   /** A typing step's screenshot after the typing (absent: before). */
   after?: true
   /** The guide's shot shows the whole screen (absent: zoomed to the action). */
