@@ -4,8 +4,9 @@ import type { AiProviderKind } from '../../../shared/types'
 import { azureBaseUrl, azureResource, readBaseUrl, type BaseUrlResult } from '../../../shared/ai/baseUrl'
 import { PRESET_ORDER, presetAt, SERVICE_PRESETS } from '../../../shared/ai/presets'
 import { priceOf } from '../../../shared/ai/prices'
+import { sanitizeSmartPref } from '../../../shared/smart/smartPrefs'
 import { ModelCombobox } from '../ai/ModelCombobox'
-import { costData, refreshCostData } from '../ai/useCost'
+import { refreshCostData, useCostData, type CostData } from '../ai/useCost'
 import { canDo, ipcMessage } from './providerText'
 import { suggestedModels, useModelList } from './useModelList'
 
@@ -106,11 +107,13 @@ export function ProviderForm({
   const openRouter = isService && (preset === 'openrouter' || (!!url?.ok && presetAt(url.host) === 'openrouter'))
 
   // The prices Flown knows for this model (the user's own first), shown until the user types others.
+  // Read here when no cost line has read them yet (Settings opened from Home).
+  const cost = useCostData()
   const priceService = isService ? (url?.ok ? SERVICE_PRESETS[presetAt(url.host)].priceService : null) : apiKind
   // The user's own prices are for the model they were typed for, where it ran: another model, kind or address has none of them.
   const ownHolds = !!editing && model.trim() === editing.model && (editing.service ? sameOrigin : sameKind)
-  const ownPrice = ownHolds ? costData().own[editing.id] : undefined
-  const listed = priceService ? priceOf(costData().shown, priceService, model.trim()) : null
+  const ownPrice = ownHolds ? cost.own[editing.id] : undefined
+  const listed = priceService ? priceOf(cost.shown, priceService, model.trim()) : null
   const known = ownPrice ?? (listed && listed.input !== undefined && listed.output !== undefined ? { input: listed.input, output: listed.output } : null)
   const priceFields = prices ?? { input: known ? String(known.input) : '', output: known ? String(known.output) : '' }
 
@@ -168,7 +171,8 @@ export function ProviderForm({
    * none were typed and those it had were for another model or address (they would under-count it).
    */
   const savePrices = async (pid: string): Promise<void> => {
-    const own = { ...costData().own }
+    // As stored now, so the other providers' prices are kept whatever this window has read.
+    const own = { ...((sanitizeSmartPref('aiPrices', await window.api.getPref('aiPrices')) as CostData['own'] | null) ?? {}) }
     if (!prices) {
       if (ownHolds || !own[pid]) return
       delete own[pid]
