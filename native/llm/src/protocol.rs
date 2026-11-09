@@ -215,10 +215,12 @@ pub struct Answer<'a> {
     pub output: u32,
     pub read_ms: u64,
     pub write_ms: u64,
+    /// Time spent choosing tokens under the grammar (a diagnostic; the app reads no more than the rest).
+    pub sample_ms: f64,
 }
 
 pub fn done_line(a: &Answer) -> String {
-    json!({ "ev": "done", "id": a.id, "text": a.text, "prompt": a.prompt, "output": a.output, "readMs": a.read_ms, "writeMs": a.write_ms }).to_string()
+    json!({ "ev": "done", "id": a.id, "text": a.text, "prompt": a.prompt, "output": a.output, "readMs": a.read_ms, "writeMs": a.write_ms, "sampleMs": (a.sample_ms * 1000.0).round() / 1000.0 }).to_string()
 }
 
 pub fn cancelled_line(id: &str) -> String {
@@ -330,9 +332,10 @@ mod tests {
         assert_eq!(parse(&read_line("r7", 512, 1478)), json!({ "ev": "read", "id": "r7", "done": 512, "total": 1478 }));
         assert_eq!(parse(&write_line("r7", 48)), json!({ "ev": "write", "id": "r7", "tokens": 48 }));
         let text = "{\"a\":\"line\nবাংলা।\"}";
-        let done = done_line(&Answer { id: "r7", text, prompt: 1478, output: 212, read_ms: 11700, write_ms: 38200 });
+        let done = done_line(&Answer { id: "r7", text, prompt: 1478, output: 212, read_ms: 11700, write_ms: 38200, sample_ms: 12.5 });
         assert!(!done.contains('\n'));
         assert_eq!(parse(&done)["text"], text);
+        assert_eq!(parse(&done)["sampleMs"], 12.5);
         assert_eq!(parse(&cancelled_line("r7")), json!({ "ev": "cancelled", "id": "r7" }));
         assert_eq!(parse(&error_line(Some("r7"), &Failure::new(Code::Context, "too long"))), json!({ "ev": "error", "id": "r7", "code": "context", "message": "too long" }));
         assert_eq!(parse(&error_line(None, &Failure::new(Code::Model, "no"))), json!({ "ev": "error", "code": "model", "message": "no" }));

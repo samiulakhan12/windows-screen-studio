@@ -56,9 +56,10 @@ scripts/build-native.mjs --llm-host` for the host build the tests use).
   links libstdc++, libgcc and winpthreads statically. The `GGML_*` variables, which
   `llama-cpp-sys-2`'s build script forwards to CMake, force SSE4.2, AVX, AVX2, FMA and F16C on and
   everything newer off (`LLM_GGML_FLAGS` in `scripts/lib/packaging.cjs`). CPU only.
-  Measured: 7,306,240 bytes, 2,042,374 bytes with brotli (quality 11), 2,007,376 with xz; it
-  imports `KERNEL32`, `ADVAPI32`, `msvcrt`, and `ntdll` and `api-ms-win-core-synch-l1-2-0` from
-  Rust's standard library (as the speech helpers do). 2 minutes 13 seconds from clean on 2 cores.
+  BMI2 stays off: §9.5 gates AI on this PC on AVX2, FMA and F16C only. Measured: 7,320,576 bytes,
+  2,049,181 bytes with brotli (quality 11), 2,014,932 with xz; it imports `KERNEL32`, `ADVAPI32`,
+  `msvcrt`, and `ntdll` and `api-ms-win-core-synch-l1-2-0` from Rust's standard library (as the
+  speech helpers do). 3 minutes from clean on 2 shared cores.
 - **Linux (tests):** `GGML_NATIVE=OFF CARGO_TARGET_DIR=target/host cargo build --release
   --locked` (`native/llm/target/host/release/ssw-llm`).
 - `cargo test --release --locked` runs the protocol's unit tests and `tests/cli.rs` (arguments,
@@ -98,10 +99,16 @@ ssw-llm tokens --model <file>
 ## Tests with a model
 
 `tests/llmHelper.test.ts` runs the real helper when `SSW_LLM_TEST_MODEL` names a GGUF file. The
-tests never download the 1.3 to 3.1 GB catalogue models: they use llama.cpp's own tiny test model,
-`stories260K.gguf` (1,185,376 bytes, SHA-256
-`270cba1bd5109f42d03350f60406024560464db173c0e387d91f0426d3bd256d`, from
-`https://huggingface.co/ggml-org/models-moved/resolve/499bc8821c6b12b4e53c5bffcb21ec206f212d81/tinyllamas/stories260K.gguf`).
-`SSW_LLM_TEST_HELPER` names the helper (default: the host build in `native/llm/target/host`).
+tests never download the 1.3 to 3.1 GB catalogue models: they use llama.cpp's own small test
+model `stories15M-q4_0.gguf` (19,077,344 bytes, SHA-256
+`66967fbece6dbe97886593fdbb73589584927e29119ec31f08090732d1861739`, from
+`https://huggingface.co/ggml-org/models-moved/resolve/499bc8821c6b12b4e53c5bffcb21ec206f212d81/tinyllamas/stories15M-q4_0.gguf`),
+which reads slowly enough to be stopped while it reads a 3,000-token prompt. Check the hash of a
+downloaded copy before naming it, and delete it afterwards. `SSW_LLM_TEST_HELPER` names the helper
+(default: the host build in `native/llm/target/host`).
 
-Under wine the Windows build answers the same request with the same text as the host build.
+Under wine (Linux CI) `SSW_LLM_TEST_HELPER` names a script that runs `wine ssw-llm.exe "$@"` and
+`SSW_LLM_TEST_WINE=1` is set: the parent-watch test then runs only natively, since a Windows
+process cannot see Linux process ids. wine keeps its server socket under `TMPDIR`; unset it for
+wine when `TMPDIR` is a long path. The Windows build passes the same tests under wine as the host
+build natively (sampling under the largest task grammar, Stop while reading, the end of stdin).
