@@ -1982,7 +1982,9 @@ interface StoredService {
 - The renderer sees `AiProviderInfo` with `kind: 'openai'` (the API spoken) and
   `service: { preset, baseUrl, host, loopback, json }`; never the key, only its last 4 characters.
 - `listAiProviders` lists the providers, then the services; together at most 20
-  (`AI_LIMITS.maxProviders`).
+  (`AI_LIMITS.maxProviders`). Each store counts the other's entries toward that cap: a new
+  provider at 20 is refused like a new service ("At most 20 providers can be added."), so no
+  service is ever pushed out of the list.
 - `saveAiProvider` with `service` set goes to this store. Changing the base URL to another origin
   needs the key again ("Enter the API key for the new address."), as changing the kind does today
   (`keyStore.ts:184`). The form keeps the id for an edit within one store, so a provider changed to

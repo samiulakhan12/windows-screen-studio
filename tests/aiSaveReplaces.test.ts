@@ -2,7 +2,8 @@
  * ai:saveProvider with `replaces` (docs/design/smart-tools.md §10.1): a provider edited into a
  * service, or a service into a provider, takes the place of the one it was. That one is not counted
  * toward the cap of 20 and goes once the new one is saved; an id of the same store, or one that does
- * not exist, changes nothing and the cap holds.
+ * not exist, changes nothing and the cap holds. A new provider counts the services too, as a new
+ * service counts the providers.
  */
 import fs from 'node:fs'
 import os from 'node:os'
@@ -61,6 +62,21 @@ describe('an edit into the other store at the cap', () => {
     expect(ids).toHaveLength(20)
     expect(ids).toContain(saved.id)
     expect(ids).not.toContain(services[0].id)
+  })
+
+  it('a new provider counts the services: refused at 20, so no service is pushed out of the list', () => {
+    expect(() => call('ai:saveProvider', provider('New'))).toThrow(FULL)
+    expect(() => call('ai:saveProvider', provider('New'), providers[0].id)).toThrow(FULL)
+    expect(() => call('ai:saveProvider', provider('New'), 'svc-not-there')).toThrow(FULL)
+    expect(list().map((p) => p.id)).toEqual([...providers, ...services].map((p) => p.id))
+    // A provider edited in place is not a new one: saved at the cap.
+    call('ai:saveProvider', provider('P1 again', { id: providers[1].id, apiKey: undefined }))
+    expect(list().find((p) => p.id === providers[1].id)?.label).toBe('P1 again')
+    // With one service gone there is room again.
+    call('ai:removeProvider', services[4].id)
+    const added = call<AiProviderInfo>('ai:saveProvider', provider('New'))
+    expect(list().map((p) => p.id)).toContain(added.id)
+    expect(list()).toHaveLength(20)
   })
 
   it('without it, or naming one of the same store or none, the cap holds and nothing is removed', () => {

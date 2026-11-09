@@ -221,13 +221,14 @@ export function registerAiIpc(): void {
   })
   ipcMain.handle('ai:saveProvider', (e, input: unknown, replaces?: unknown) => {
     fromApp(e)
-    // A service goes to its own store (§10.1); a provider is saved exactly as before.
+    // A service goes to its own store (§10.1); a provider is saved as before.
     const service = !!input && typeof input === 'object' && (input as { service?: unknown }).service !== undefined
     // An edit into the other store (a provider made a service, or back) takes the place of the one
     // it was: that one is not counted toward the cap, and goes once this one is saved.
     const other = service ? providers() : services()
     const old = typeof replaces === 'string' && isServiceId(replaces) !== service && other.list().some((p) => p.id === replaces) ? replaces : null
-    const saved = service ? services().save(input, new Date(), old !== null) : providers().save(input)
+    // Providers and services make at most 20 together: a new provider counts the services too.
+    const saved = service ? services().save(input, new Date(), old !== null) : providers().save(input, new Date(), services().list().length - (old !== null ? 1 : 0))
     if (old !== null) {
       try {
         other.remove(old)

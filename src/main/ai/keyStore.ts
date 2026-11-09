@@ -174,15 +174,18 @@ export class AiProviderStore {
     return this.load().map((e) => this.info(e))
   }
 
-  /** Adds or updates a provider from the renderer's input; returns what the renderer may see. */
-  save(raw: unknown, now = new Date()): AiProviderInfo {
+  /**
+   * Adds or updates a provider from the renderer's input; returns what the renderer may see.
+   * `besides`: how many entries the other store holds (services), counted with these toward the cap.
+   */
+  save(raw: unknown, now = new Date(), besides = 0): AiProviderInfo {
     const input = validateProviderInput(raw, this.defaults)
     const entries = this.load()
     const existing = input.id !== undefined ? entries.find((e) => e.id === input.id) : undefined
     if (input.id !== undefined && !existing) throw new Error('This provider no longer exists.')
     if (!existing && !input.apiKey) throw new Error('Enter the API key.')
     if (existing && existing.kind !== input.kind && !input.apiKey) throw new Error('Enter the API key for the new kind of provider.')
-    if (!existing && entries.length >= AI_LIMITS.maxProviders) throw new Error(`At most ${AI_LIMITS.maxProviders} providers can be added.`)
+    if (!existing && entries.length + besides >= AI_LIMITS.maxProviders) throw new Error(`At most ${AI_LIMITS.maxProviders} providers can be added.`)
     // The suggested transcription model is not stored, so the provider moves with the list when a
     // model retires (docs/design/transcription.md §2.1); one the user chose instead is kept. The form
     // leaves the field out until the user types in it: an edit of the same kind keeps what it had.
