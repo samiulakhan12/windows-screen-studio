@@ -8,6 +8,7 @@
  */
 import { stillFrame, trackTimes, type JoinWindow, type TrackTimes } from '../../../shared/render/joins'
 import type { Project } from '../../../shared/types'
+import { webcamLook } from '../../../shared/engine/webcamData'
 import type { FrameImage, RenderScene } from '../render/compositor'
 import { openTrack } from '../render/frameSource'
 import { composeJoinStill, releaseScratch, scratchTarget } from '../render/joinLayer'
@@ -36,7 +37,7 @@ export class JoinStills {
   private target: { scene: RenderScene; w: number; h: number; background: HTMLImageElement | null } | null = null
   /** A* by `${clip}|${w}x${h}`, with the project it was composed for. */
   private readonly composed = new Map<string, { canvas: HTMLCanvasElement; project: Project }>()
-  /** Camera stills whose person mask is ready (or that need none), and those being segmented. */
+  /** Camera stills whose person mask is ready (or could not be made), and those being segmented. */
   private readonly masked = new WeakSet<ImageBitmap>()
   private readonly segmenting = new WeakSet<ImageBitmap>()
   private timer: ReturnType<typeof setTimeout> | null = null
@@ -122,7 +123,9 @@ export class JoinStills {
       const shot = this.frameOf(screen, still.screen, still.held)
       const cam = still.camera !== null && camera ? this.frameOf(camera, still.camera, false) : null
       if (!shot || (still.camera !== null && camera && !cam)) continue
-      if (cam && !this.maskReady(cam.image as ImageBitmap)) continue
+      // A mask only for a blurred background, asked of the project composed for: a still first
+      // composed sharp is segmented once the background is blurred.
+      if (cam && webcamLook(project.webcam).backgroundBlur > 0 && !this.maskReady(cam.image as ImageBitmap)) continue
       const out = this.composed.get(key)?.canvas ?? document.createElement('canvas')
       composeJoinStill(scratchTarget('gpu', w, h), out, w, h, win, scene, { screen: shot, camera: cam }, background)
       this.composed.delete(key)

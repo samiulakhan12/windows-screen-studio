@@ -435,7 +435,9 @@ describe('the preview player (test 24)', () => {
 })
 
 describe('JoinStills', () => {
-  const p = project({ hasWebcam: true, webcam: { show: true, corner: 'bottom-right', size: 0.24, shape: 'circle' } })
+  const camera = { show: true, corner: 'bottom-right', size: 0.24, shape: 'circle' } as const
+  // The camera's background blurred: its still needs a person mask before A* is composed.
+  const p = project({ hasWebcam: true, webcam: { ...camera, backgroundBlur: 0.6 } })
   const scene = { project: p }
 
   it('asks for the frames that hold A\'s end with the export\'s rule, and composes A* in a task once they and the mask are ready', async () => {
@@ -470,6 +472,37 @@ describe('JoinStills', () => {
     expect((stills.still(w, 640, 360) as { tag: string }).tag).toBe('A* c1')
     // Another size, or another project: made again.
     expect(stills.still(w, 320, 180)).toBeNull()
+    stills.dispose()
+  })
+
+  it('segments a camera still kept from before the background was blurred, before A* is made again', async () => {
+    const sharp = project({ hasWebcam: true, webcam: { ...camera } })
+    let current = sharp
+    const segmented: unknown[] = []
+    let release: () => void = () => undefined
+    // As the player's: no mask is made while the camera's background is not blurred.
+    const stills = new JoinStills('screen.mp4', 'camera.mp4', () => undefined, async (still) => {
+      if (!((current.webcam.backgroundBlur ?? 0) > 0)) return
+      segmented.push(still)
+      await new Promise<void>((r) => (release = r))
+    })
+    const [w] = joinPlan(sharp)
+    stills.prepare([w], { project: sharp }, 640, 360)
+    await tasks()
+    deliver()
+    await tasks()
+    expect(segmented).toEqual([])
+    expect(composed).toHaveLength(1)
+    // The background blurred: the same camera still is segmented first.
+    current = { ...sharp, webcam: { ...sharp.webcam, backgroundBlur: 0.6 } }
+    stills.prepare([w], { project: current }, 640, 360)
+    await tasks()
+    expect(segmented).toEqual([composed[0].camera])
+    expect(composed).toHaveLength(1)
+    release()
+    await tasks()
+    expect(composed).toHaveLength(2)
+    expect(composed[1].camera).toBe(segmented[0])
     stills.dispose()
   })
 })
