@@ -143,7 +143,7 @@ export function ModelCombobox(props: { id: string; label: string; value: string;
           {loading ? 'Loading…' : 'Load models'}
         </button>
       </div>
-      <ul id={listId} role="listbox" aria-label={`${label}: models`} className="model-list" hidden={!expanded}>
+      <ul id={listId} role="listbox" aria-label="Models the provider lists" className="model-list" hidden={!expanded}>
         {expanded &&
           shown.map((m, i) => {
             const price = priceLabel(m)

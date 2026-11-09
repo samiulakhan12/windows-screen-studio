@@ -488,6 +488,12 @@ async function main() {
     for (const l of ['Detect automatically', 'English', 'Bengali', 'Hindi', 'Spanish']) h.assert(languages.includes(l), `the language list has ${l}`)
     await win.selectOption('select[aria-label="Spoken language"]', 'bn')
     await win.click('button:has-text("Generate captions")')
+    // Flown has no price for this model: it asks once before the first run with it (smart-tools.md §11.5).
+    const ask = win.locator('[data-testid="cost-confirm"]')
+    await ask.waitFor({ timeout: 5000 })
+    const question = (await ask.textContent()) ?? ''
+    h.assert(question.includes('Flown does not know what this costs with speech-model. Run it?'), `asks about the unknown cost: "${question}"`)
+    await win.click('[data-testid="cost-confirm-run"]')
     await win.waitForSelector('.captions-error', { timeout: 15000 })
     const message = (await win.textContent('.captions-error')).trim()
     h.assert(/^Captions could not be made: \S/.test(message) && !/Error invoking remote method|^Captions could not be made: \w*Error: /.test(message), `a clear error: "${message}"`)
@@ -609,6 +615,9 @@ async function main() {
     // Times changed: refused, nothing replaced.
     await answer("return { task: 'cleanup', segments: request.segments.map((s) => ({ ...s, start: s.start + 0.5, text: 'x' })) }")
     await win.click(`${cleanup} [data-testid="cleanup-run"]`)
+    // Flown has no price for this model: it asks once before the first run with it (smart-tools.md §11.5).
+    await win.waitForSelector('[data-testid="cost-confirm"]:has-text("Flown does not know what this costs with claude-model. Run it?")', { timeout: 5000 })
+    await win.click('[data-testid="cost-confirm-run"]')
     await win.waitForSelector(`${cleanup} .captions-error:has-text("timing")`)
     h.assert(h.readProject(home, id).transcript.segments[0].text === 'helo wrld', 'a result with other times is not applied')
     const warn = await win.$eval(`${cleanup} .captions-error`, (e) => [getComputedStyle(e).color, getComputedStyle(e.nextElementSibling).color])

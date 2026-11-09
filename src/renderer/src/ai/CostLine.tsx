@@ -110,8 +110,10 @@ export function CostLine(props: {
   const where = choice?.place ?? ''
 
   // The latest of everything a click is checked against.
-  const latest = useRef({ choice, rows, sum, ask: d.ask })
-  latest.current = { choice, rows, sum, ask: d.ask }
+  // A transcription is asked about by its own model (the choice carries the text model).
+  const asked = choice && transcribeSeconds !== undefined && sound ? { ...choice, model: sound.model } : choice
+  const latest = useRef({ choice: asked, rows, sum, ask: d.ask })
+  latest.current = { choice: asked, rows, sum, ask: d.ask }
   /** A click let through after Run: not asked about again. */
   const passed = useRef<Element | null>(null)
   useEffect(() => {
