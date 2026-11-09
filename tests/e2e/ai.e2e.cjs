@@ -174,8 +174,11 @@ async function main() {
       await addProvider(win, 'gemini', 'My Gemini', KEYS.gemini)
       await addProvider(win, 'anthropic', 'My Claude', KEYS.anthropic)
       await addProvider(win, 'openai', 'Wrong key', 'bad-e2e-openai-key')
-      const rows = await d.locator('.ai-provider').allTextContents()
+      const rows = await d.locator('.ai-providers .ai-provider').allTextContents()
       h.assert(rows.length === 4 && /…0001/.test(rows[0]) && /…0002/.test(rows[1]) && /…0003/.test(rows[2]), `masked keys listed: ${rows.join(' | ')}`)
+      // AI on this PC is the first row, apart from the saved providers, with no key (smart-tools.md §2.5).
+      const all = await d.locator('.ai-provider').allTextContents()
+      h.assert(all.length === 5 && /^On this PC/.test(all[0]) && /no key/.test(all[0]) && !/…/.test(all[0]) && all.slice(1).join('|') === rows.join('|'), `On this PC listed first: ${all.join(' | ')}`)
       h.assert(/whisper-1/.test(rows[0]) && /gemini-3\.8-flash/.test(rows[1]) && /claude-opus-5-5/.test(rows[2]) && !/Transcription/.test(rows[2]), 'models listed')
 
       for (const name of ['My OpenAI', 'My Gemini', 'My Claude']) {
@@ -221,7 +224,7 @@ async function main() {
       // Other parts of the app open it with the event.
       await win.evaluate(() => window.dispatchEvent(new CustomEvent('ssw:open-settings', { detail: { section: 'ai' } })))
       await d.waitFor()
-      h.assert((await d.locator('.ai-provider').count()) === 3, 'providers listed again')
+      h.assert((await d.locator('.ai-providers .ai-provider').count()) === 3, 'providers listed again')
       await d.getByRole('button', { name: 'Done' }).click()
       await d.waitFor({ state: 'detached' })
 
