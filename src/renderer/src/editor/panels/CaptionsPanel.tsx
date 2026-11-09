@@ -1224,7 +1224,9 @@ function AiToolsSection({
           </label>
           <LocalNote choice={choice} tasks={['title', 'summary']} />
           <div className="captions-ai">
-            <button ref={chaptersTool} id="captions-ai-chapters" aria-describedby="captions-ai-cost-chapters" className="btn" disabled={!chosen || !!busy} onClick={() => void run('chapters')} title="Chapters from what is said, added to the chapter strip">
+            <button ref={chaptersTool} id="captions-ai-chapters" aria-describedby="captions-ai-cost-chapters" className="btn" disabled={!chosen || !!busy} onClick={() => void run('chapters')}
+              title={chosen?.kind === 'local' ? 'Finds chapters and names them on this PC: Review lists each one.' : `Finds chapters with ${chosen?.place ?? 'the AI'}'s suggestions: Review lists each one.`}
+            >
               {label('chapters', 'Suggest chapters')}
             </button>
             <button ref={titleTool} id="captions-ai-title" aria-describedby="captions-ai-cost-title" className="btn" disabled={!chosen || !!busy} onClick={() => void run('title')} title="A name for this recording from what is said">

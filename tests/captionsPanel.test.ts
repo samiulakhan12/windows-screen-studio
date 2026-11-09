@@ -1519,6 +1519,13 @@ describe('CaptionsPanel: AI tools from the command palette (NW-13)', () => {
     expect(has(out, 'The provider is busy.')).toBe(true)
   })
 
+  it("Suggest chapters' hint names whose suggestions it uses and that Review lists them (smart-tools.md §2.3)", async () => {
+    await show()
+    const out = render(m.panel)
+    const button = out.find((e) => e.type === 'button' && e.props.id === 'captions-ai-chapters')!
+    expect(button.props.title).toBe("Finds chapters with OpenAI's suggestions: Review lists each one.")
+  })
+
   it('after Use anyway, an add or a Dismiss, the focus goes to the tool that made the suggestion, not to the page (publish-pack §4.8)', async () => {
     const said = [{ id: 'a', start: 0, end: 5, text: 'Welcome, download it from flown.app first.' }]
     store.state = { ...store.state, name: 'Demo', chapters: [], transcript: { provider: 'openai', model: 'm', createdAt: '', segments: said } }
