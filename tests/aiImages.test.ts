@@ -25,6 +25,10 @@ const { geminiClient } = await import('../src/main/ai/gemini')
 const { anthropicClient } = await import('../src/main/ai/anthropic')
 const { compatibleClient } = await import('../src/main/ai/compatible')
 const { calibration, noteUsage, usageKey, useUsageFile } = await import('../src/main/ai/usage')
+const { imageTokens, jpegSize, estimateTokens } = await import('../src/shared/ai/tokens')
+const { costLineText, costSentence, estimateText, INPUT_SPREAD } = await import('../src/shared/ai/cost')
+const { BUNDLED_PRICE_LIST } = await import('../src/shared/ai/prices')
+const { DEFAULT_TEXT_LIMITS, textPrompts } = await import('../src/shared/captions/transcriptText')
 
 /** A small JPEG's first bytes: SOI, then an APP0 marker. */
 const jpeg = (fill: number, size = 64): Uint8Array => {
@@ -318,5 +322,96 @@ describe('the usage figures (§11.6) leave out prompts with pictures', () => {
       useUsageFile(null)
       fs.rmSync(dir, { recursive: true, force: true })
     }
+  })
+})
+
+/* ---------- test 140: what pictures cost ---------- */
+
+/** A JPEG's header with a baseline frame (SOF0) of `w` × `h`, after an APP0 marker. */
+function sofJpeg(w: number, h: number, fill = 0): Uint8Array {
+  const app0 = [0xff, 0xe0, 0x00, 0x10, 0x4a, 0x46, 0x49, 0x46, 0x00, 0x01, 0x01, 0x00, 0x00, 0x01, 0x00, 0x01, 0x00, 0x00]
+  const sof0 = [0xff, 0xc0, 0x00, 0x11, 0x08, h >> 8, h & 255, w >> 8, w & 255, 0x03, 0x01, 0x22, 0x00, 0x02, 0x11, 0x01, 0x03, 0x11, 0x01]
+  return new Uint8Array([0xff, 0xd8, ...app0, ...sof0, ...new Array(32).fill(fill), 0xff, 0xd9])
+}
+
+describe('test 140: pictures counted by each provider’s rule, and named in the cost line', () => {
+  it('imageTokens per provider: OpenAI and services 85 + 170 a 512 px tile after fitting, Gemini 258 a 768 px tile, Claude w × h ÷ 750, or the price list’s own rule', () => {
+    // 768 × 432 (what the guide sends): 2 × 1 tiles of 512 px.
+    expect(imageTokens('openai', { w: 768, h: 432 })).toBe(85 + 170 * 2)
+    // 1920 × 1080: the shorter side to 768 (1365 × 768), 3 × 2 tiles.
+    expect(imageTokens('openai', { w: 1920, h: 1080 })).toBe(85 + 170 * 6)
+    expect(imageTokens('gemini', { w: 384, h: 216 })).toBe(258)
+    expect(imageTokens('gemini', { w: 768, h: 432 })).toBe(258)
+    expect(imageTokens('gemini', { w: 1536, h: 768 })).toBe(258 * 2)
+    expect(imageTokens('anthropic', { w: 768, h: 432 })).toBe(Math.ceil((768 * 432) / 750))
+    expect(imageTokens('openai', { w: 768, h: 432 }, { base: 10, perTile: 100, tile: 256 })).toBe(10 + 100 * 3 * 2)
+  })
+
+  it('jpegSize reads the frame header past other markers; null for what is not one', () => {
+    expect(jpegSize(sofJpeg(768, 432))).toEqual({ w: 768, h: 432 })
+    expect(jpegSize(sofJpeg(432, 768))).toEqual({ w: 432, h: 768 })
+    expect(jpegSize(new Uint8Array([0x89, 0x50, 0x4e, 0x47]))).toBeNull()
+    expect(jpegSize(PIC_A)).toBeNull()
+  })
+
+  /** Write titles with 12 steps of 25 words each (300 words), each with its picture when `pictures`. */
+  const request = (pictures: boolean, words = 25) => ({
+    task: 'names' as const,
+    segments: [],
+    names: {
+      kind: 'step' as const,
+      items: Array.from({ length: 12 }, (_, i) => ({
+        id: `c${i}`,
+        text: Array.from({ length: words }, (_, k) => `word${k}`).join(' '),
+        action: 'click, top right of the screen',
+        ...(pictures ? { image: sofJpeg(768, 432, i) } : {})
+      }))
+    }
+  })
+  const OPENAI = { id: 'o1', label: 'OpenAI', kind: 'openai' as const, model: 'gpt-6.1-sol', place: 'OpenAI', pictures: true }
+  const target = (choice = OPENAI, prices = BUNDLED_PRICE_LIST) => ({ choice, limits: DEFAULT_TEXT_LIMITS, prices, confirmPrices: prices })
+
+  it('the line says "Sends 12 screenshots and about 300 words to OpenAI", with the cost of the pictures added', () => {
+    const withPictures = estimateText(request(true), target())
+    const without = estimateText(request(false), target())
+    expect(withPictures.pictures).toBe(12)
+    expect(withPictures.words).toBe(300)
+    const line = costLineText([{ label: 'Titles', estimate: withPictures }], 'OpenAI', "the steps' narration", 'gpt-6.1-sol', true)
+    expect(line).toMatch(/^Sends 12 screenshots and about 300 words to OpenAI · (About |Up to )?US\$\d+\.\d{2}( to US\$\d+\.\d{2})? \(gpt-6\.1-sol, prices of 7 November 2026\)$/)
+    // The pictures' tokens: 12 × 425 by OpenAI's rule, ±60% (the text's own range is ±25%).
+    const text = (n: number, spread: number): number => n * (1 + spread)
+    const textTokens = textPrompts(request(true), DEFAULT_TEXT_LIMITS).reduce((a, p) => a + estimateTokens(p.system, 'o200k') + estimateTokens(p.user, 'o200k') + estimateTokens(JSON.stringify(p.schema), 'o200k'), 0)
+    expect(withPictures.inputTokens[1]).toBe(Math.round(text(textTokens, INPUT_SPREAD.known) + 12 * 425 * (1 + INPUT_SPREAD.pictures)))
+    expect(withPictures.inputTokens[0]).toBe(Math.round(text(textTokens, -INPUT_SPREAD.known) + 12 * 425 * (1 - INPUT_SPREAD.pictures)))
+    expect(withPictures.usd![1]).toBeGreaterThan(without.usd![1])
+    // Without pictures the line is as before.
+    expect(costLineText([{ label: 'Titles', estimate: without }], 'OpenAI', "the steps' narration", 'gpt-6.1-sol', true)).toMatch(/^Sends about 300 words of the steps' narration to OpenAI · /)
+  })
+
+  it('pictures alone, nothing said: "Sends 12 screenshots to OpenAI"; the button’s sentence names them', () => {
+    const e = estimateText(request(true, 0), target())
+    expect(e.words).toBe(0)
+    expect(costLineText([{ label: 'Titles', estimate: e }], 'OpenAI', "the steps' narration", 'gpt-6.1-sol', true)).toMatch(/^Sends 12 screenshots to OpenAI · /)
+    expect(costSentence(e, 'OpenAI', "the steps' narration")).toMatch(/; sends 12 screenshots to OpenAI\.$/)
+    expect(costSentence(estimateText(request(true), target()), 'OpenAI', "the steps' narration")).toMatch(/; sends 12 screenshots and the steps' narration to OpenAI\.$/)
+    expect(costSentence(estimateText(request(false), target()), 'OpenAI', "the steps' narration")).toMatch(/; sends the steps' narration to OpenAI\.$/)
+  })
+
+  it('a model’s own picture rule in the price list wins over its provider’s', () => {
+    const prices = { ...BUNDLED_PRICE_LIST, models: [...BUNDLED_PRICE_LIST.models.filter((m) => m.model !== 'gpt-6.1-sol'), { service: 'openai', model: 'gpt-6.1-sol', input: 2, output: 10, imageTokens: { base: 10, perTile: 100, tile: 256 } }] }
+    const own = estimateText(request(true), target(OPENAI, prices))
+    const plain = estimateText(request(true), target())
+    // 12 × 610 instead of 12 × 425, at +60%.
+    expect(Math.abs(own.inputTokens[1] - plain.inputTokens[1] - 12 * (610 - 425) * 1.6)).toBeLessThanOrEqual(1)
+    expect(Math.abs(own.inputTokens[0] - plain.inputTokens[0] - 12 * (610 - 425) * 0.4)).toBeLessThanOrEqual(1)
+  })
+
+  it('Claude and Gemini count the same pictures by their own rules', () => {
+    const claude = estimateText(request(true, 0), target({ ...OPENAI, id: 'a1', kind: 'anthropic' as never, model: 'claude-opus-5-5', place: 'Claude' }))
+    const gemini = estimateText(request(true, 0), target({ ...OPENAI, id: 'g1', kind: 'gemini' as never, model: 'gemini-3.8-flash', place: 'Gemini' }))
+    const textOnly = (family: 'claude' | 'o200k'): number =>
+      textPrompts(request(true, 0), DEFAULT_TEXT_LIMITS).reduce((a, p) => a + estimateTokens(p.system, family) + estimateTokens(p.user, family) + estimateTokens(JSON.stringify(p.schema), family), 0) * (1 + INPUT_SPREAD.known)
+    expect(claude.inputTokens[1]).toBe(Math.round(textOnly('claude') + 12 * Math.ceil((768 * 432) / 750) * 1.6))
+    expect(gemini.inputTokens[1]).toBe(Math.round(textOnly('o200k') + 12 * 258 * 1.6))
   })
 })

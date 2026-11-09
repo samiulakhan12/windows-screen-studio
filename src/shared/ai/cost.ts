@@ -17,7 +17,7 @@ import type { AiProviderKind } from '../types'
 import { scriptPrompt } from '../notes/scriptDraft'
 import { presetAt, SERVICE_PRESETS } from './presets'
 import { priceOf, type PriceEntry, type PriceList } from './prices'
-import { blendedRatio, countWords, estimateTokens, imageTokens, tokenFamily, tokenRatio, type TokenFamily } from './tokens'
+import { blendedRatio, countWords, estimateTokens, imageTokens, jpegSize, tokenFamily, tokenRatio, type TokenFamily } from './tokens'
 import type { ConfirmPref } from '../smart/smartPrefs'
 
 export type { ConfirmPref } from '../smart/smartPrefs'
@@ -131,31 +131,31 @@ function contentOf(request: AiTextRequest): { text: string; captions: number; it
   return { text: segs.map((s) => s.text).join('\n'), captions: segs.length, items: 0 }
 }
 
-/** Pixel size of a JPEG from its SOF marker (pictures sent for titles); a default when it cannot be read. */
-function jpegSize(data: Uint8Array): { w: number; h: number } {
-  for (let i = 2; i + 9 < data.length; ) {
-    if (data[i] !== 0xff) break
-    const marker = data[i + 1]
-    const len = (data[i + 2] << 8) | data[i + 3]
-    if (marker >= 0xc0 && marker <= 0xcf && marker !== 0xc4 && marker !== 0xc8 && marker !== 0xcc) return { h: (data[i + 5] << 8) | data[i + 6], w: (data[i + 7] << 8) | data[i + 8] }
-    i += 2 + len
-  }
-  return { w: 768, h: 432 }
-}
+/** A picture whose size cannot be read is counted at the size the guide sends (§5.3.1: 768 px on the longer side). */
+const PICTURE_DEFAULT = { w: 768, h: 432 }
 
-function measure(request: AiTextRequest, limits: TextLimits, family: TokenFamily, kind: AiProviderKind): Measure {
-  const key = `${limits.batchSegments}/${limits.batchChars}/${limits.transcriptTokens}/${limits.namesItems}/${limits.namesChars}|${family}|${kind}`
+/** The picture rule of a model's price list entry (§11.4), as part of a measure's key. */
+type PictureRule = PriceEntry['imageTokens']
+const ruleKey = (rule: PictureRule): string => (rule ? `${rule.base}/${rule.perTile}/${rule.tile}` : '-')
+
+function measure(request: AiTextRequest, limits: TextLimits, family: TokenFamily, kind: AiProviderKind, rule?: PictureRule): Measure {
+  const key = `${limits.batchSegments}/${limits.batchChars}/${limits.transcriptTokens}/${limits.namesItems}/${limits.namesChars}|${family}|${kind}|${ruleKey(rule)}`
   let byKey = measures.get(request)
   const hit = byKey?.get(key)
   if (hit) return hit
   const prompts = textPrompts(request, limits)
-  const m = measurePrompts(prompts, contentOf(request), family, kind)
+  const m = measurePrompts(prompts, contentOf(request), family, kind, rule)
   if (!byKey) measures.set(request, (byKey = new Map()))
   byKey.set(key, m)
   return m
 }
 
-function measurePrompts(prompts: readonly TextPrompt[], content: { text: string; captions: number; items: number }, family: TokenFamily, kind: AiProviderKind): Measure {
+/**
+ * What `prompts` send: their text's tokens and their pictures' (§5.3.1): each picture by its own
+ * size read from the JPEG, priced by the model's rule in the price list when it has one, else by its
+ * provider's (imageTokens).
+ */
+function measurePrompts(prompts: readonly TextPrompt[], content: { text: string; captions: number; items: number }, family: TokenFamily, kind: AiProviderKind, rule?: PictureRule): Measure {
   let promptTokens = 0
   let pictureTokens = 0
   let pictures = 0
@@ -163,7 +163,7 @@ function measurePrompts(prompts: readonly TextPrompt[], content: { text: string;
     promptTokens += estimateTokens(p.system, family) + estimateTokens(p.user, family) + estimateTokens(JSON.stringify(p.schema), family)
     for (const img of p.images ?? []) {
       pictures++
-      pictureTokens += imageTokens(kind, jpegSize(img.data))
+      pictureTokens += imageTokens(kind, jpegSize(img.data) ?? PICTURE_DEFAULT, rule)
     }
   }
   return {
@@ -225,6 +225,12 @@ function isFree(choice: TextChoice): boolean {
   return !choice.host || SERVICE_PRESETS[presetAt(choice.host)].free
 }
 
+/** The model's own picture rule in the price list (§5.3.1, §11.4), when it has one. */
+function pictureRule(choice: TextChoice, prices: PriceList): PictureRule {
+  const service = priceService(choice)
+  return service ? (priceOf(prices, service, choice.model)?.imageTokens ?? undefined) : undefined
+}
+
 type Rates = { input: number; output: number }
 const rates = (e: PriceEntry | Rates | null | undefined): Rates | null => (e && e.input !== undefined && e.output !== undefined ? { input: e.input, output: e.output } : null)
 
@@ -272,7 +278,7 @@ export function estimateText(
   const { choice } = target
   const family = tokenFamily(choice.kind, choice.model)
   const kind: AiProviderKind = choice.kind === 'local' ? 'openai' : choice.kind
-  const m = measure(request, target.limits ?? DEFAULT_TEXT_LIMITS, family, kind)
+  const m = measure(request, target.limits ?? DEFAULT_TEXT_LIMITS, family, kind, pictureRule(choice, target.prices))
   const out = outputOf(request, m, family)
   if (thinks(choice.kind, choice.model)) out[1] += m.requests * (MEDIUM_TASKS.has(request.task) ? THINKING.medium : THINKING.low)
   return finish(m, out, choice, target)
@@ -395,6 +401,9 @@ export function aboutCount(n: number): string {
 
 const cap = (s: string): string => (s ? s[0].toUpperCase() + s.slice(1) : s)
 
+/** "1 screenshot", "12 screenshots" (§5.3.1). */
+const screenshots = (n: number): string => `${n} ${n === 1 ? 'screenshot' : 'screenshots'}`
+
 /**
  * One action's cost in the line (§11.5's table): "under US$0.01", "about US$0.03", "US$0.02 to
  * US$0.05", "cost unknown", "no cost", or on this PC "about 4 minutes". An unknown price never reads
@@ -431,7 +440,9 @@ export function costLineText(estimates: readonly { label: string; estimate: Cost
   const local = estimates.some((e) => e.estimate.seconds)
   const words = Math.max(0, ...estimates.map((e) => e.estimate.words))
   const pictures = Math.max(0, ...estimates.map((e) => e.estimate.pictures))
-  const sent = [pictures ? `${pictures} ${pictures === 1 ? 'screenshot' : 'screenshots'}` : '', words ? `about ${aboutCount(words)} words${what ? ` of ${what}` : ''}` : what || 'it'].filter(Boolean).join(' and ')
+  // With pictures (§5.3.1): "12 screenshots and about 300 words", or the screenshots alone when nothing was said.
+  const said = words ? `about ${aboutCount(words)} words${what && !pictures ? ` of ${what}` : ''}` : pictures ? '' : what || 'it'
+  const sent = [pictures ? screenshots(pictures) : '', said].filter(Boolean).join(' and ')
   const head = local ? 'Stays on this PC' : `Sends ${sent} to ${where}`
   const all = estimates.map((e) => e.estimate)
   let tail: string
@@ -461,7 +472,9 @@ export function costLineText(estimates: readonly { label: string; estimate: Cost
  */
 export function costSentence(estimate: CostEstimate, where: string, what = 'your text'): string {
   if (estimate.seconds) return `${cap(aboutTime(estimate.seconds[1]))}; stays on this PC.`
-  return `${cap(costPart(estimate))}; sends ${what} to ${where}.`
+  // With pictures (§5.3.1): "About US$0.04; sends 12 screenshots and the steps' narration to OpenAI."
+  const sent = estimate.pictures ? `${screenshots(estimate.pictures)}${estimate.words ? ` and ${what}` : ''}` : what
+  return `${cap(costPart(estimate))}; sends ${sent} to ${where}.`
 }
 
 /** The amount `pref` asks above, US$: null for 'never', 0 for 'always' (every paid run). */

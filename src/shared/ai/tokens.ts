@@ -158,6 +158,32 @@ export function blendedRatio(text: string, family: TokenFamily): number {
   return tokens > 0 ? chars / tokens : tokenRatio('latin', family)
 }
 
+/**
+ * The pixel size of a JPEG (the pictures sent for titles, §5.3.1) from its first frame header (SOF0
+ * to SOF15, not DHT, JPG or DAC), walking the markers from the start; null when it cannot be read.
+ */
+export function jpegSize(data: Uint8Array): { w: number; h: number } | null {
+  if (data.length < 4 || data[0] !== 0xff || data[1] !== 0xd8) return null
+  for (let i = 2; i + 9 < data.length; ) {
+    if (data[i] !== 0xff) return null
+    const marker = data[i + 1]
+    // Fill bytes before a marker.
+    if (marker === 0xff) {
+      i++
+      continue
+    }
+    const len = (data[i + 2] << 8) | data[i + 3]
+    if (marker >= 0xc0 && marker <= 0xcf && marker !== 0xc4 && marker !== 0xc8 && marker !== 0xcc) {
+      const h = (data[i + 5] << 8) | data[i + 6]
+      const w = (data[i + 7] << 8) | data[i + 8]
+      return w > 0 && h > 0 ? { w, h } : null
+    }
+    if (len < 2) return null
+    i += 2 + len
+  }
+  return null
+}
+
 /** Tiles of `tile` px covering `w` × `h`. */
 const tiles = (w: number, h: number, tile: number): number => Math.ceil(w / tile) * Math.ceil(h / tile)
 
