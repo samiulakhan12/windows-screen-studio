@@ -2065,7 +2065,8 @@ The write sites are `withTranslation` and the track label (`trackRows`, which to
 captions great* in `src/renderer/src/editor/greatRun.ts`; the contracts step adds the host there
 (§20.0). Results made on this PC: a translation is `by: 'local'` with `model: 'gemma4-e2b'` and so on
 ("translated on this PC"; Mozilla's offline models have their own model names, so the two never
-mix); found chapters named on this PC have `via: 'local'`; the other tasks write no provenance.
+mix), the model being the one that ran, which `aiText` returns as `model` (main picks it once, before
+the run; the state read again after it could name another); found chapters named on this PC have `via: 'local'`; the other tasks write no provenance.
 
 ---
 

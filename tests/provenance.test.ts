@@ -6,15 +6,17 @@ import type { Project } from '../src/shared/types'
 /*
  * Who made a result (docs/design/smart-tools.md §10.6, §22 test 97): a translation through a service
  * is written as OpenAI's with the service's host, and Languages says "translated with api.groq.com";
- * one made on this PC is by 'local' with the model's id, "translated on this PC"; a provider's says
- * its name. madeBy gives each tool the maker of its choice. (Find chapters' and Make my captions
- * great's own host records are tested with their tools: chapterAuto and the contracts' readers.)
+ * one made on this PC is by 'local' with the id of the model that ran (aiText's `model`), "translated
+ * on this PC"; a provider's says its name. madeBy gives each tool the maker of its choice. (Find
+ * chapters' and Make my captions great's own host records are tested with their tools: chapterAuto
+ * and the contracts' readers.)
  */
 
-vi.stubGlobal('window', { api: { localAiState: async () => ({ active: 'gemma4-e2b' }) } })
+// Read after a run, the state can name another model (the helper still holds memory, or Use changed).
+vi.stubGlobal('window', { api: { localAiState: async () => ({ active: 'qwen3.5-2b' }) } })
 const CHOICES = '../src/renderer/src/ai/textChoices'
 const { madeBy, choiceOf } = (await import(/* @vite-ignore */ CHOICES)) as {
-  madeBy: (c: unknown) => Promise<{ by: string; model: string; host?: string }>
+  madeBy: (c: unknown, ran?: string) => { by: string; model: string; host?: string }
   choiceOf: (info: unknown) => unknown
 }
 
@@ -43,10 +45,11 @@ describe('provenance (test 97)', () => {
     expect(trackRows(gemini)[1].label).toBe('Bengali · translated with Gemini')
   })
 
-  it("madeBy: a service's host, a provider's kind, this PC's model at run time", async () => {
+  it("madeBy: a service's host, a provider's kind, the model that ran on this PC", async () => {
     const groq = choiceOf({ id: 'svc1', kind: 'openai', label: 'Groq', model: 'llama-4-scout', maskedKey: '', createdAt: '', service: { preset: 'groq', baseUrl: 'https://api.groq.com/openai/v1', host: 'api.groq.com', loopback: false, json: 'schema' } })
-    expect(await madeBy(groq)).toEqual({ by: 'openai', model: 'llama-4-scout', host: 'api.groq.com' })
-    expect(await madeBy(choiceOf({ id: 'ai1', kind: 'gemini', label: 'G', model: 'gemini-x', maskedKey: '', createdAt: '' }))).toEqual({ by: 'gemini', model: 'gemini-x' })
-    expect(await madeBy({ id: 'local', kind: 'local', label: 'On this PC', model: '', place: 'this PC' })).toEqual({ by: 'local', model: 'gemma4-e2b' })
+    expect(madeBy(groq)).toEqual({ by: 'openai', model: 'llama-4-scout', host: 'api.groq.com' })
+    expect(madeBy(choiceOf({ id: 'ai1', kind: 'gemini', label: 'G', model: 'gemini-x', maskedKey: '', createdAt: '' }))).toEqual({ by: 'gemini', model: 'gemini-x' })
+    // The model aiText says ran, never the state read again after the run.
+    expect(madeBy({ id: 'local', kind: 'local', label: 'On this PC', model: '', place: 'this PC' }, 'gemma4-e2b')).toEqual({ by: 'local', model: 'gemma4-e2b' })
   })
 })

@@ -206,7 +206,7 @@ export function LanguagesSection({ project }: { project: Project }): JSX.Element
     setJob(mine)
     setError(null)
     setStatus('')
-    let result: AiTextResult
+    let result: AiTextResult & { model?: string }
     try {
       result = await window.api.aiText(provider.id, { task: 'translate', segments: sent, targetLanguage: languageName(code) }, mine.id)
     } catch (err) {
@@ -217,9 +217,8 @@ export function LanguagesSection({ project }: { project: Project }): JSX.Element
       if (live.current) setJob((j) => (j === mine ? null : j))
     }
     if (mine.cancelled || !live.current) return
-    // Who made it (smart-tools.md §10.6): the provider's kind, a service's host, or this PC with its model.
-    const maker = await madeBy(provider)
-    if (mine.cancelled || !live.current) return
+    // Who made it (smart-tools.md §10.6): the provider's kind, a service's host, or this PC with the model that ran.
+    const maker = madeBy(provider, result.model)
     let used = false
     // One undo step; nothing changes when the answer cannot be used.
     store.update((p) => {

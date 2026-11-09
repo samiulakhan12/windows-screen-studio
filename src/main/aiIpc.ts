@@ -127,9 +127,9 @@ export function readRequestId(raw: unknown): string | undefined {
  * Runs a text task on the transcript with provider `providerId` (a provider, a service, or
  * LOCAL_TEXT_ID: AI on this PC, whose progress goes to `sender`). With `requestId`, cancelAiText
  * stops it, and a second request with the same id stops the first. `usage` is added when the
- * provider reported its tokens.
+ * provider reported its tokens; `model` with AI on this PC: the catalogue id of the model that ran.
  */
-export async function aiText(providerId: unknown, raw: unknown, requestId?: unknown, sender?: WebContents): Promise<AiTextResult & { usage?: AiUsage }> {
+export async function aiText(providerId: unknown, raw: unknown, requestId?: unknown, sender?: WebContents): Promise<AiTextResult & { usage?: AiUsage; model?: string }> {
   const id = readRequestId(requestId)
   const request = validateTextRequest(raw)
   const controller = new AbortController()
@@ -144,7 +144,9 @@ export async function aiText(providerId: unknown, raw: unknown, requestId?: unkn
     const meter = usageMeter()
     const result = await runTextTask(request, (prompt) => ask(client, prompt, { signal: controller.signal, effort: EFFORT[request.task], onUsage: meter.onUsage }), limits)
     const usage = meter.usage()
-    return usage ? { ...result, usage } : result
+    const out = usage ? { ...result, usage } : result
+    // The model that ran on this PC (picked once, before the run): what the result records as its maker.
+    return providerId === LOCAL_TEXT_ID && client.model ? { ...out, model: client.model } : out
   } finally {
     textCalls.delete(controller)
     if (id && namedTextCalls.get(id) === controller) namedTextCalls.delete(id)

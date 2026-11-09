@@ -228,9 +228,10 @@ export interface AiApi {
   /**
    * `requestId` (optional, `^[A-Za-z0-9_-]{1,64}$`) lets cancelAiText stop it; a second request with
    * the same id stops the first. `providerId` may be LOCAL_TEXT_ID (AI on this PC). `usage`: the
-   * tokens the provider reported for its requests, summed, when it reported them.
+   * tokens the provider reported for its requests, summed, when it reported them. `model`: with AI
+   * on this PC, the catalogue id of the model that ran.
    */
-  aiText(providerId: string, request: AiTextRequest, requestId?: string): Promise<AiTextResult & { usage?: AiUsage }>
+  aiText(providerId: string, request: AiTextRequest, requestId?: string): Promise<AiTextResult & { usage?: AiUsage; model?: string }>
   /** Stops text request `requestId` (it then rejects); nothing when none runs. */
   cancelAiText(requestId: string): Promise<void>
   /**

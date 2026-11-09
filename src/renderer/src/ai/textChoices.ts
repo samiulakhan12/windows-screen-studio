@@ -69,16 +69,13 @@ export function useTextChoiceList(task: AiTextTask, opts?: { pictures?: boolean 
 
 /**
  * Who a result made with `choice` says made it (smart-tools.md §10.6, test 97): the provider's kind
- * with a service's host, or 'local' with the model AI on this PC used (read after the run, as main
- * picks it at run time).
+ * with a service's host, or 'local' with `ran`, the model AI on this PC used (aiText's `model`: main
+ * picks it once, before the run; read again after it, the free memory the helper still holds or a
+ * changed Use could name another).
  */
-export async function madeBy(choice: TextChoice): Promise<{ by: AiProviderInfo['kind'] | 'local'; model: string; host?: string }> {
+export function madeBy(choice: TextChoice, ran?: string): { by: AiProviderInfo['kind'] | 'local'; model: string; host?: string } {
   if (choice.kind !== 'local') return { by: choice.kind, model: choice.model, ...(choice.host ? { host: choice.host } : {}) }
-  const active = await window.api.localAiState().then(
-    (s) => s?.active ?? null,
-    () => null
-  )
-  return { by: 'local', model: active ?? '' }
+  return { by: 'local', model: ran ?? '' }
 }
 
 /**

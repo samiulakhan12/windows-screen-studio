@@ -333,7 +333,7 @@ describe("aiText('local') through the app's channel, with the fake helper (tests
       expect((await localAiState()).models.find((m) => m.id === 'qwen3.5-2b')?.state).toBe('ready')
       expect(readFileSync(logFile, 'utf8')).toBe('')
       const result = await h.handlers.get('ai:text')!(p.event, 'local', summary, 'sum-1')
-      expect(result).toEqual({ task: 'summary', text: 'A draft written on this PC.' })
+      expect(result).toEqual({ task: 'summary', text: 'A draft written on this PC.', model: 'qwen3.5-2b' })
       const progress = p.sent.filter((s) => s.channel === LOCAL_AI_CHANNELS.progress).map((s) => s.p)
       expect(progress.length).toBeGreaterThan(0)
       expect(progress.every((x) => x.requestId === 'sum-1')).toBe(true)

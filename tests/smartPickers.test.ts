@@ -57,7 +57,8 @@ vi.stubGlobal('window', {
     aiText: async (providerId: string, request: Record<string, unknown>, requestId?: string) => {
       calls.push({ kind: 'aiText', providerId, requestId, request })
       await gate
-      if (request.task === 'translate') return { task: 'translate', segments: (request.segments as { id: string; start: number; end: number; text: string }[]).map((s) => ({ ...s, text: `bn ${s.text}` })) }
+      // On this PC, main says which model ran (read again after the run, the state may name another).
+      if (request.task === 'translate') return { task: 'translate', segments: (request.segments as { id: string; start: number; end: number; text: string }[]).map((s) => ({ ...s, text: `bn ${s.text}` })), ...(providerId === 'local' ? { model: 'gemma4-e2b' } : {}) }
       return { task: request.task, segments: request.segments }
     },
     draftScript: async (providerId: string, request: Record<string, unknown>) => {
@@ -307,7 +308,7 @@ describe('the hints name the place the text goes (test 103)', () => {
     click(byTestId(els, 'track-translate'))
     await settle(languages(), SKIP)
     expect(calls[0].providerId).toBe('local')
-    expect(store.state.captionTracks).toMatchObject([{ by: 'local', model: 'qwen3.5-2b' }])
+    expect(store.state.captionTracks).toMatchObject([{ by: 'local', model: 'gemma4-e2b' }])
     expect(store.state.captionTracks?.[0].host).toBeUndefined()
   })
 
