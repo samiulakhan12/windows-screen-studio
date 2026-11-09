@@ -493,8 +493,9 @@ export function stepIncluded(step: GuideStep, edit: GuideStepEdit | undefined): 
  * The `names` request of Write titles (`kind: 'step'`) or Tidy notes (`'note'`), §5.3 and §5.4.
  * Titles: each included step not edited by hand (an AI's title may be written again) that has words
  * near it: its key, its action and up to 600 characters of what was said. Notes: each included step
- * with words since the step before: its full words (up to 1,000 characters) and its title as the
- * action. Nothing else: no screenshot, no file name, no window title.
+ * whose note the user did not write or empty by hand (an AI's note may be written again) with words
+ * since the step before: its full words (up to 1,000 characters) and its title as the action.
+ * Nothing else: no screenshot, no file name, no window title.
  */
 export function namesRequestForSteps(project: Project, steps: readonly GuideStep[], kind: 'step' | 'note'): NamesRequest {
   const language = transcriptLanguage(project.transcript)
@@ -512,6 +513,7 @@ export function namesRequestForSteps(project: Project, steps: readonly GuideStep
       items.push({ id: s.key, text, action: stepAction(s) })
       return
     }
+    if (edit?.text !== undefined && !edit.textAi) return
     const text = stepText(steps, i, project, true)
     if (!text.trim()) return
     items.push({ id: s.key, text, action: Array.from(titles[i].title).slice(0, ACTION_MAX).join('') })

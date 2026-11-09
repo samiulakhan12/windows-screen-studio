@@ -955,7 +955,8 @@ name, no window title.
 - **Use everything I said** (`full`): the same words with nothing left out but cut and bleeped ones,
   whole sentences, at most 1,000 characters.
 - **Tidy notes with** [text choice]: the `names` task with `kind: 'note'`: each step's full words (at
-  most 1,000 characters) and its title; the answer is one or two short sentences of instruction for
+  most 1,000 characters) and its title, for the steps whose note the user has not written or emptied
+  by hand (those words are never sent); the answer is one or two short sentences of instruction for
   each, 1–300 characters, checked like titles (`privateLike` refuses). Written in one update with
   `textAi` set (the "AI" chip on the note); a hand edit clears it.
 - It is the user's own narration; the panel shows it before anything is saved. The user can rewrite
@@ -3314,7 +3315,8 @@ and 105–114; P2 31–48 and 115–121; P3 49–62 and 122–127; P4 63–80 an
      words, and enabled again with *Also send the screenshots*; steps without words keep their
      offline titles after a run.
 108. Notes: *Use everything I said* sets `full`; *Tidy notes* sends `kind: 'note'` with each step's
-     full words and title, writes `textAi`, and a hand edit clears it.
+     full words and title (not for a note written or emptied by hand), writes `textAi`, and a hand
+     edit clears it.
 109. **Demo layout** (`calloutPlace`): right of a hotspot at x 0.3, left of one at x 0.7, above or
      below when neither side has 336 px, the top-left corner without a hotspot, never over the hotspot;
      `demoZoom` gives the zoomed shot, its absence the whole screen; the end screen renders its heading,

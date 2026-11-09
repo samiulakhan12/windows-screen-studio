@@ -111,6 +111,16 @@ describe('test 108: notes', () => {
     expect(item.image).toBeUndefined()
   })
 
+  it('Tidy notes leaves out a note the user wrote or emptied, and sends one an AI wrote', () => {
+    for (const text of ['', 'Mine.']) {
+      const request = namesRequestForSteps(withStepEdit(project(), 'c10000', { text }), steps, 'note')
+      expect(request.items.map((i) => i.id)).not.toContain('c10000')
+      expect(request.items.map((i) => i.id)).toContain('c500')
+    }
+    const ai = withAiNotes(project(), [{ key: 'c10000', text: 'Open the monthly report.' }], 'local')
+    expect(namesRequestForSteps(ai, steps, 'note').items.find((i) => i.id === 'c10000')!.text).toBe(stepText(steps, 1, project(), true))
+  })
+
   it('writes textAi; a hand edit clears it', () => {
     const p = withAiNotes(project(), [{ key: 'c10000', text: 'Open the monthly report.' }], 'local')
     expect(p.guide!.steps).toEqual([{ key: 'c10000', text: 'Open the monthly report.', textAi: 'local' }])
