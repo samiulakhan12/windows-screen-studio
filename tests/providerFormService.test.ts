@@ -37,6 +37,8 @@ vi.stubGlobal('window', {
 })
 mockReact()
 const FORM = '../src/renderer/src/settings/ProviderForm'
+const SECTION = '../src/renderer/src/settings/AiProvidersSection'
+const USE_COST = '../src/renderer/src/ai/useCost'
 const { ProviderForm, MORE_SERVICES_HINT } = (await import(/* @vite-ignore */ FORM)) as { ProviderForm: (p: unknown) => unknown; MORE_SERVICES_HINT: string }
 
 let done: { saved: AiProviderInfo; check?: { ok: boolean; message: string } }[] = []
@@ -203,7 +205,7 @@ describe('Add a provider › More services (test 95)', () => {
     Object.defineProperty(globalThis, 'document', { configurable: true, value: { querySelector: () => null, activeElement: null } })
     Object.defineProperty(globalThis, 'CSS', { configurable: true, value: { escape: (v: string) => v } })
     try {
-      const { AiProvidersSection } = (await import(/* @vite-ignore */ '../src/renderer/src/settings/AiProvidersSection')) as { AiProvidersSection: (p: unknown) => unknown }
+      const { AiProvidersSection } = (await import(/* @vite-ignore */ SECTION)) as { AiProvidersSection: (p: unknown) => unknown }
       const root = { type: AiProvidersSection, props: { autoFocus: false } }
       const skip = ['ProviderForm', 'LocalAiRow']
       let els = await settle(root, skip)
@@ -223,7 +225,7 @@ describe('Add a provider › More services (test 95)', () => {
   })
 
   it("the user's own prices stay with the model they were typed for: another model shows and keeps none of them", async () => {
-    const { refreshCostData } = (await import(/* @vite-ignore */ '../src/renderer/src/ai/useCost')) as { refreshCostData(): Promise<void> }
+    const { refreshCostData } = (await import(/* @vite-ignore */ USE_COST)) as { refreshCostData(): Promise<void> }
     api.values.aiPrices = { svc1: { input: 0.1, output: 0.5 }, svc2: { input: 1, output: 2 } }
     await refreshCostData()
     const editing = { id: 'svc1', kind: 'openai', label: 'Box', model: 'small-8b', maskedKey: '…6789', createdAt: '', service: { preset: 'other', baseUrl: 'https://llm.example.com/v1', host: 'llm.example.com', loopback: false, json: 'schema' } } as AiProviderInfo
