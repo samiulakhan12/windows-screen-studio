@@ -1,6 +1,6 @@
 import type { ExportCapabilities, ExportJob, MusicSound, RecordingSound } from '../../../shared/api/export'
 import { audioLook, recordingMix } from '../../../shared/audio/settings'
-import { analysisSources, musicDucking, soundActivity } from '../../../shared/audio/soundtrack'
+import { analysisSources, musicDucking, soundActivity, type AudioAnalysis } from '../../../shared/audio/soundtrack'
 import { voiceLook, voiceTarget, withCleanVoice } from '../../../shared/audio/voiceClean'
 import { VOICE_COPY } from '../../../shared/audio/voiceCopy'
 import { editToVideo, planOf, videoFrames } from '../../../shared/engine/freeze'
@@ -23,7 +23,11 @@ import { popJob, toneJob } from '../../../shared/render/popSound'
 import { subtitleStreams } from '../../../shared/render/exportBundle'
 import { languageSubtitleFile } from '../../../shared/captions/subtitles'
 import { prepareOverlays } from '../render/overlayLayer'
-import { avcConfigs, cleanIpcError, RawFrameSink, supportedAvcConfig, vp9Configs, WebCodecsSink, type FrameSink } from '../render/encoders'
+import { avcConfigs, cleanIpcError, supportedAvcConfig, vp9Configs, WebCodecsSink, type FrameSink, type JobBase, type StartJob } from '../render/encoders'
+import { codecCapsFor, proSink, rawSinkFor } from '../render/proEncoders'
+import { alphaOf } from '../../../shared/render/alpha'
+import { blurSamplesFor } from '../../../shared/render/proFormats'
+import { stemJobOf } from '../../../shared/render/stems'
 import { DecoderFrameSource, ElementFrameSource, openTrack, ResilientFrameSource, type FrameSource, type MediaTrack } from '../render/frameSource'
 import { CameraMaskPreparer } from '../render/segmentation/cameraMasks'
 import { mediaUrl, projectMediaUrl } from '../../../shared/mediaUrl'
@@ -77,6 +81,8 @@ export interface ExportInput extends ExportSource {
   pause?: PauseGate
   /** The subtitle languages ticked (Captions Studio §11.10, BundleOptions.languages): with **Also inside the video**, one stream each; absent: the spoken language's. */
   subtitleLanguages?: readonly string[]
+  /** Also save the sound stems (output-and-languages §7, BundleOptions.stems): the job then asks main for them; absent: none, as before. */
+  stems?: true
 }
 
 export interface ExportResult {
@@ -92,7 +98,7 @@ export interface ExportResult {
 /** Failures another encoder cannot fix (the disk, the folder, the target file, the recording). */
 const NOT_ENCODER_RELATED = /disk is full|permission|in use|another app|read-only|missing|could not be read|could not load|could not read|could not save|could not write|not chosen|invalid export|export size|no sound/i
 
-/** Most motion-blur sub-frames per exported frame (the preview uses fewer). */
+/** Most motion-blur sub-frames per exported frame up to 60 fps (the preview uses fewer); blurSamplesFor gives each rate's (output-and-languages §5.6). */
 export const EXPORT_BLUR_SAMPLES = 10
 /** Audio-only exports end on the same frame boundary a 60 fps video would. */
 const AUDIO_ONLY_FPS = 60
@@ -119,7 +125,7 @@ async function prepare<T extends ExportSource & { settings: Pick<ExportOptions, 
   return { ...input, project, scene }
 }
 
-type SoundParts = Pick<ExportJob, 'audio' | 'clicks' | 'music' | 'fadeIn' | 'fadeOut' | 'pops' | 'tones' | 'effects'>
+type SoundParts = Pick<ExportJob, 'audio' | 'clicks' | 'music' | 'fadeIn' | 'fadeOut' | 'pops' | 'tones' | 'effects' | 'stems'>
 
 /** Whether a job's soundtrack has anything in it (a library effect alone counts: editing polish §10.8). */
 export const hasSound = (s: SoundParts): boolean => !!(s.audio || s.clicks || s.music || s.pops?.length || s.tones?.length || s.effects?.length)
@@ -156,6 +162,8 @@ async function soundOf(input: ExportInput, format: ExportOptions['format']): Pro
   // In video time: a click exactly at a pause freeze sounds when the freeze starts.
   const clicks = job && job.times.length > 0 && job.volume > 0 ? { times: job.times.map((t) => editToVideo(plan, t)), volume: job.volume } : undefined
   const music = await musicOf(input)
+  // Sound stems (output-and-languages §7), only when they were asked for: a job of before gains nothing.
+  const stems = input.stems ? await stemsOf(project, input.settings) : {}
   return {
     audio,
     clicks,
@@ -163,8 +171,17 @@ async function soundOf(input: ExportInput, format: ExportOptions['format']): Pro
     ...(look.fadeIn > 0 ? { fadeIn: look.fadeIn } : {}),
     ...(look.fadeOut > 0 ? { fadeOut: look.fadeOut } : {}),
     // Captions Studio (§10.6, §11.7): graphics' pops and bleep tones; a project without them gets the job of before.
-    ...studioSounds(project, exportDimensions(project, input.settings))
+    ...studioSounds(project, exportDimensions(project, input.settings)),
+    ...stems
   }
+}
+
+/** The stems an export writes next to the video, with the recording's analysis for their one fixed gain (§7.4). */
+async function stemsOf(project: Project, settings: ExportOptions): Promise<Pick<ExportJob, 'stems'>> {
+  const sources = analysisSources(project)
+  const analysis: AudioAnalysis | null = sources.length > 0 ? await loadAudioAnalysis(project.id, sources).catch(() => null) : null
+  const stems = stemJobOf(project, settings, analysis)
+  return stems ? { stems } : {}
 }
 
 /**
@@ -296,11 +313,14 @@ async function planJob(input: ExportInput): Promise<JobPlan> {
  * Audio-only formats render nothing.
  */
 export async function exportVideo(raw: ExportInput): Promise<ExportResult> {
-  const input = await prepare(raw)
+  const input = withAlpha(await prepare(raw))
   const { signal } = input
   if (isAudioOnly(input.settings.format)) return exportAudio(input)
   const caps = await window.api.exportCapabilities()
-  const routes = exportRoutes(input.settings, caps)
+  // A codec other than the format's default, or a transparent background, is routed with what this
+  // PC can make at this size (output-and-languages §5.3); the codecs of before route as they did.
+  const size = exportDimensions(input.project, input.settings)
+  const routes = exportRoutes(input.settings, caps, await codecCapsFor(input.settings), { width: size.width, height: size.height })
   const plan = await planJob(input)
   let notice: string | undefined
   for (let r = 0; r < routes.length; r++) {
@@ -324,7 +344,13 @@ export async function exportVideo(raw: ExportInput): Promise<ExportResult> {
   throw new Error('No video encoder is available')
 }
 
-/** M4A: the edited soundtrack (and click sounds) only; ffmpeg does all the work. */
+/** The input with the see-through background its options ask for (output-and-languages §6); an opaque export keeps its scene. */
+function withAlpha(input: ExportInput): ExportInput {
+  const alpha = alphaOf(input.settings)
+  return alpha ? { ...input, scene: { ...input.scene, alpha } } : input
+}
+
+/** M4A and WAV: the edited soundtrack (and click sounds) only; ffmpeg does all the work. */
 async function exportAudio(input: ExportInput): Promise<ExportResult> {
   const { project, settings, signal } = input
   const frames = videoFrames(project.clips, planOf(project), AUDIO_ONLY_FPS).times.length
@@ -365,16 +391,20 @@ async function exportAudio(input: ExportInput): Promise<ExportResult> {
   }
 }
 
-type SinkFactory = (canvas: HTMLCanvasElement, ctx: CanvasRenderingContext2D, startJob: (job: ExportJob) => Promise<void>, base: Omit<ExportJob, 'video'>) => FrameSink
+type SinkFactory = (canvas: HTMLCanvasElement, ctx: CanvasRenderingContext2D, startJob: StartJob, base: JobBase) => FrameSink
 
 /** Checks that a route can run here; returns a factory for its sink, or null to skip it. */
 async function prepareRoute(route: ExportRoute, input: ExportInput, plan: JobPlan): Promise<SinkFactory | null> {
   if (route.video === 'none') return null
-  if (route.video === 'ffmpeg') {
-    return (canvas, ctx, startJob, base) =>
-      new RawFrameSink(canvas, ctx, (pixelFormat) => startJob({ ...base, video: { kind: 'raw', encoder: route.encoder, pixelFormat } }), base.format !== 'gif')
-  }
+  // Raw frames: the sink of the route's codec (I420 as before, RGB for the editing formats, straight alpha for a transparent job).
+  if (route.video === 'ffmpeg') return (canvas, ctx, startJob, base) => rawSinkFor(route, base, canvas, ctx, startJob)
   const { width, height, fps } = plan
+  if (route.codec === 'hevc' || route.codec === 'av1') {
+    // WebCodecs HEVC and AV1 (output-and-languages §5.4): their own configurations and framing.
+    const kind = route.codec
+    const bitrate = plan.rate.bitrate?.video ?? 0
+    return (canvas, _ctx, startJob, base) => proSink(route, canvas, fps, bitrate, (color) => startJob({ ...base, video: { kind, color } }))
+  }
   const configs = route.codec === 'vp9' ? vp9Configs : avcConfigs
   const config = await supportedAvcConfig(configs(width, height, fps, input.settings.quality, route.hardware, plan.rate.bitrate?.video))
   if (!config) return null
@@ -513,7 +543,8 @@ async function renderAll(
     // source frame and blur sub-frame drawn onto it. Without a GPU canvas (blocklisted
     // or missing GPU) the canvas is on the CPU anyway, and the hint saves a copy per readback.
     const cpu = route.video === 'ffmpeg' && !caps.gpuCanvas
-    const ctx = canvas.getContext('2d', { alpha: false, willReadFrequently: cpu })
+    // A transparent export draws on a canvas with alpha (output-and-languages §6.3); every other one as before.
+    const ctx = canvas.getContext('2d', { alpha: !!input.scene.alpha, willReadFrequently: cpu })
     if (!ctx) throw new Error('Could not create a drawing surface')
     drawn = ctx
     // Captions Studio's word sprites (§9.7): a cache sized for this output, in the frame's raster
@@ -521,7 +552,7 @@ async function renderAll(
     STUDIO_SPRITES.setReadFrequently(cpu)
     STUDIO_SPRITES.setCap(spriteCap(width, height))
 
-    const base: Omit<ExportJob, 'video'> = {
+    const base: JobBase = {
       width,
       height,
       fps,
@@ -534,7 +565,7 @@ async function renderAll(
       ...plan.subtitles,
       outputPath: input.outputPath
     }
-    const startJob = (job: ExportJob): Promise<void> => window.api.exportStart(project.id, job)
+    const startJob: StartJob = (job) => window.api.exportStart(project.id, job)
     sink = makeSink(canvas, ctx, startJob, base)
 
     // A* of each window: the still frames copied as the feeds reach them, composed on the scratch
@@ -566,7 +597,7 @@ async function renderAll(
       return to
     }
 
-    const options = { frameInterval: 1 / fps, blurSamples: EXPORT_BLUR_SAMPLES }
+    const options = { frameInterval: 1 / fps, blurSamples: blurSamplesFor(fps) }
     // A frozen frame is drawn sharp: a hold on a moving zoom would otherwise show a smeared still.
     const frozen = { ...options, blurSamples: 1 }
     const sources = { screen: placeholder, webcam: null, background: input.background }
@@ -726,7 +757,7 @@ export async function renderThumbnail(raw: ThumbnailInput): Promise<{ png: Uint8
     const shown = cameraShownAt(input.scene.project, width, height, drawnSize.width, drawnSize.height, t)
     await (await cameraMasks(project, !!camera && shown))?.prepare(webcamFrame)
     const sources = { screen: document.createElement('video'), webcam: null, background: input.background, screenFrame, webcamFrame }
-    drawFrame(ctx, width, height, t, input.scene, sources, { frameInterval: 1 / fps, blurSamples: raw.held ? 1 : EXPORT_BLUR_SAMPLES }, soundTime)
+    drawFrame(ctx, width, height, t, input.scene, sources, { frameInterval: 1 / fps, blurSamples: raw.held ? 1 : blurSamplesFor(fps) }, soundTime)
     const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/png'))
     if (!blob) throw new Error('Could not encode the thumbnail')
     return { png: new Uint8Array(await blob.arrayBuffer()), width, height }

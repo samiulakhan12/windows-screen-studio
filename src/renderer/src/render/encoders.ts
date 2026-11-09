@@ -1,4 +1,9 @@
 import type { ColorTags, ExportFinish, ExportJob, RawPixelFormat, Rgb32Format } from '../../../shared/api/export'
+
+/** An export job before its video input is known (the sinks add it once the first frame or chunk is made). */
+export type JobBase = Omit<ExportJob, 'video'>
+/** Starts the ffmpeg side of an export with the finished job. */
+export type StartJob = (job: ExportJob) => Promise<void>
 import { avcLevel, colorTagsFrom, ivfFileHeader, ivfFrameHeader, rawReadback, rgbToI420, vp9Codec } from '../../../shared/render/codec'
 
 /**
@@ -212,8 +217,8 @@ export class WebCodecsSink implements FrameSink {
     private readonly config: VideoEncoderConfig,
     private readonly fps: number,
     private readonly startJob: (color: ColorTags) => Promise<void>,
-    /** How chunks are framed for ffmpeg: Annex B (H.264 as configured) or IVF (VP9). */
-    private readonly framing: 'annexb' | 'ivf' = 'annexb'
+    /** How chunks are framed for ffmpeg: Annex B (H.264 and HEVC as configured), IVF (VP9) or IVF with fourcc 'AV01' (AV1). */
+    private readonly framing: 'annexb' | 'ivf' | 'ivf-av01' = 'annexb'
   ) {
     this.encoder = new VideoEncoder({
       output: (chunk, meta) => this.onChunk(chunk, meta),
@@ -250,8 +255,8 @@ export class WebCodecsSink implements FrameSink {
         (e: unknown) => this.fail(cleanIpcError(e))
       )
     }
-    if (this.framing === 'ivf') {
-      if (this.chunks === 1) this.add(ivfFileHeader(this.config.width, this.config.height, this.fps))
+    if (this.framing === 'ivf' || this.framing === 'ivf-av01') {
+      if (this.chunks === 1) this.add(ivfFileHeader(this.config.width, this.config.height, this.fps, 0, this.framing === 'ivf-av01' ? 'AV01' : 'VP90'))
       this.add(ivfFrameHeader(chunk.byteLength, Math.round((chunk.timestamp * this.fps) / 1e6)))
     }
     const bytes = new Uint8Array(chunk.byteLength)

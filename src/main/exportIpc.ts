@@ -1,7 +1,7 @@
 import { app, dialog, ipcMain, shell, type WebContents } from 'electron'
 import { constants as fsConstants, existsSync, promises as fs } from 'node:fs'
 import path from 'node:path'
-import type { ExportCapabilities, ExportFinish, ExportJob } from '../shared/api/export'
+import type { ExportCapabilities, ExportErrorCode, ExportFinish, ExportJob } from '../shared/api/export'
 import { stemsOf } from '../shared/audio/settings'
 import type { ExportFormat } from '../shared/types'
 import { analyzeAudio, stopAudioAnalysis } from './audioAnalysis'
@@ -20,8 +20,11 @@ import { getMainWindow } from './windows'
 import { ffmpegPath } from './ffmpeg'
 import { loopableMusic } from './musicLoopCache'
 import { bundledSoundDir } from './soundLibrary/paths'
+import { writeStemsStep } from './stemsRun'
 
 interface ActiveExport {
+  /** The project the export draws (the stems are cut from its recordings). */
+  projectId: string
   job: ExportJob
   encoder: FrameEncoder
   /** ffmpeg writes here; renamed over `finalPath` only after a successful finish. */
@@ -31,6 +34,8 @@ interface ActiveExport {
   /** The pass running after the capture (GIF palette, second pass, ...). */
   pass: FfmpegRun | null
   cancelled: boolean
+  /** Stops the stem step after the video (output-and-languages §7.6): a cancel then deletes the stems, never the video. */
+  stemsAbort: AbortController
   /** Stops watching the renderer that started the export. */
   unwatch: () => void
 }
@@ -58,6 +63,16 @@ let log: LeftoverLog | null = null
  */
 const replacedFiles = new Map<string, Set<string>>()
 
+/**
+ * Why the last export:start or export:finish failed (output-and-languages §9.6), for the renderer's
+ * choice of trying the next encoder; null when unknown. Part X5 sets it where errors are mapped.
+ */
+let lastErrorCode: ExportErrorCode | null = null
+/** Records the code of the failure being reported. */
+export function setExportErrorCode(code: ExportErrorCode | null): void {
+  lastErrorCode = code
+}
+
 /** Whether `file` was exported in this session (F-11 sidecar files, F-12 notifications). */
 export const isExportedFile = (file: string): boolean => exportedFiles.has(file)
 /**
@@ -80,13 +95,17 @@ const GIF_FIT_ATTEMPTS = 5
 /** Largest thumbnail accepted (a 4K PNG is ~10-25 MB). */
 const MAX_THUMBNAIL_BYTES = 200 * 1024 * 1024
 
-const SAVE_FILTERS: Record<ExportFormat | 'png', Electron.FileFilter> = {
-  mp4: { name: 'MP4 video', extensions: ['mp4'] },
-  gif: { name: 'GIF', extensions: ['gif'] },
-  webm: { name: 'WebM video', extensions: ['webm'] },
-  mov: { name: 'QuickTime movie', extensions: ['mov'] },
-  m4a: { name: 'M4A audio', extensions: ['m4a'] },
-  png: { name: 'PNG image', extensions: ['png'] }
+/** The save dialog's filter per format, made when the dialog opens (text is never made at module scope, output-and-languages §9.1). */
+export function saveFilters(): Record<ExportFormat | 'png', Electron.FileFilter> {
+  return {
+    mp4: { name: 'MP4 video', extensions: ['mp4'] },
+    gif: { name: 'GIF', extensions: ['gif'] },
+    webm: { name: 'WebM video', extensions: ['webm'] },
+    mov: { name: 'QuickTime movie', extensions: ['mov'] },
+    m4a: { name: 'M4A audio', extensions: ['m4a'] },
+    wav: { name: 'WAV audio', extensions: ['wav'] },
+    png: { name: 'PNG image', extensions: ['png'] }
+  }
 }
 
 const tempFiles = (job: Pick<ActiveExport, 'tempPath' | 'plan'>): string[] => [job.tempPath, ...job.plan.temps]
@@ -111,6 +130,7 @@ function cancelActive(): Promise<void> {
   active = null
   if (!job) return Promise.resolve()
   job.cancelled = true
+  job.stemsAbort.abort()
   job.unwatch()
   job.encoder.kill()
   job.pass?.kill()
@@ -197,7 +217,7 @@ export function registerExportIpc(): void {
   ipcMain.handle('export:choosePath', async (_e, defaultName: string, format: ExportFormat | 'png') => {
     const main = getMainWindow()
     if (!main) return null
-    const filter = SAVE_FILTERS[format]
+    const filter = saveFilters()[format]
     if (!filter) throw new Error('Invalid export format')
     const result = await dialog.showSaveDialog(main, {
       title: format === 'png' ? 'Save thumbnail' : 'Export recording',
@@ -259,6 +279,8 @@ export function registerExportIpc(): void {
     const approved = !!requested?.outputPath && (requested.outputPath === approvedExportPath || batchPaths.has(requested.outputPath))
     if (!approved) throw new Error('Export path was not chosen through the save dialog')
     validateJob(requested)
+    // Stems work with one file only (output-and-languages §7.6): never in a batch.
+    if (requested.stems && batchPaths.has(requested.outputPath)) throw new Error('Invalid export settings')
     void cancelActive()
     const finalPath = requested.outputPath
     if (finalPath === approvedExportPath && (await fileExists(finalPath))) replacedFiles.set(finalPath, new Set(SIDECAR_KINDS))
@@ -289,7 +311,7 @@ export function registerExportIpc(): void {
     // Logged before ffmpeg creates them, so a crash from here on is cleaned up at the next start.
     log?.add(tempFiles({ tempPath, plan }))
     for (const s of plan.scripts) await fs.writeFile(s.path, s.content, 'utf8')
-    const started: ActiveExport = { job, encoder: new FrameEncoder(plan.capture), tempPath, finalPath, plan, pass: null, cancelled: false, unwatch: () => undefined }
+    const started: ActiveExport = { projectId, job, encoder: new FrameEncoder(plan.capture), tempPath, finalPath, plan, pass: null, cancelled: false, stemsAbort: new AbortController(), unwatch: () => undefined }
     started.unwatch = watchOwner(e.sender, () => active === started)
     active = started
   })
@@ -313,7 +335,13 @@ export function registerExportIpc(): void {
       log?.remove([job.tempPath])
       exportedFiles.add(job.finalPath)
       if (!batchPaths.delete(job.finalPath)) approvedExportPath = null
-      return { bytes: (await fs.stat(job.finalPath)).size, ...fit }
+      const bytes = (await fs.stat(job.finalPath)).size
+      // The sound stems next to the video (output-and-languages §7.6): a failure or a cancel here
+      // never undoes the video.
+      const stems = job.job.stems
+        ? await writeStemsStep(job.job, job.finalPath, job.stemsAbort.signal, job.projectId).catch((err: unknown) => ({ stemsProblem: err instanceof Error ? err.message : String(err) }))
+        : {}
+      return { bytes, ...fit, ...stems }
     } catch (e) {
       // Every ffmpeg of this job has exited by now (each was awaited), so the files can go.
       await removeFiles([job.tempPath])
@@ -352,6 +380,11 @@ export function registerExportIpc(): void {
     return { bytes: png.byteLength }
   })
 
+  ipcMain.handle('export:errorCode', (e) => {
+    if (!isAppUrl(e.senderFrame?.url ?? '')) throw new Error('Not allowed')
+    return lastErrorCode
+  })
+
   ipcMain.handle('export:copyToClipboard', (_e, file: string) => {
     if (!exportedFiles.has(file)) return { ok: false, message: 'Only files exported in this session can be copied.' }
     return copyFileToClipboard(file)
@@ -381,6 +414,7 @@ export function disposeExport(): void {
   active = null
   if (!job) return
   job.cancelled = true
+  job.stemsAbort.abort()
   job.unwatch()
   job.encoder.kill()
   job.pass?.kill()

@@ -5,6 +5,9 @@ import type { OutputChapter } from '../shared/render/chapters'
 import { ISO_639_2 } from '../shared/captions/captionTracks'
 import type { ExportFormat } from '../shared/types'
 import { encoderPixelFormat, gpuEncoderOptions } from './hwEncoders'
+import { DEFAULT_CODEC } from '../shared/render/proFormats'
+import { proPlan } from './proArgs'
+import { wavPlan } from './stemsArgs'
 
 export { AUDIO_RATE, audioFilterGraph, clickPositions, clickTrackGraph, soundtrackGraph } from '../shared/render/audioPlan'
 
@@ -93,10 +96,11 @@ export function vp9EncoderArgs(job: Pick<ExportJob, 'width' | 'fps' | 'quality' 
   return [...common, '-deadline', 'realtime', '-cpu-used', '7', '-crf', String(VP9_CRF[job.quality]), '-b:v', '0']
 }
 
+// Only H.264 and VP9 encoders reach these: other codecs and transparent jobs are planned by proPlan (see ffmpegPlan).
 const encoderArgs = (encoder: FfmpegVideoEncoder, job: ExportJob, pass?: 1 | 2): string[] =>
-  encoder === 'libvpx-vp9' ? vp9EncoderArgs(job, pass) : videoEncoderArgs(encoder, job)
+  encoder === 'libvpx-vp9' ? vp9EncoderArgs(job, pass) : videoEncoderArgs(encoder as H264Encoder, job)
 
-const pixelFormatFor = (encoder: FfmpegVideoEncoder): string => (encoder === 'libvpx-vp9' ? 'yuv420p' : encoderPixelFormat(encoder))
+const pixelFormatFor = (encoder: FfmpegVideoEncoder): string => (encoder === 'libvpx-vp9' ? 'yuv420p' : encoderPixelFormat(encoder as H264Encoder))
 
 /** Canvas RGB -> the encoder's YUV, BT.601 limited range (see EXPORT_COLOR). */
 const yuvFilter = (pix: string): string => `scale=out_color_matrix=bt601:out_range=tv,format=${pix}`
@@ -388,6 +392,10 @@ export function externalizeGraph(args: string[], scriptPath: string): { args: st
  * two passes over them, so the file lands on the size without guessing.
  */
 export function ffmpegPlan(job: ExportJob, given: PlanPaths): FfmpegPlan {
+  // Wave 12 (output-and-languages §5, §7.7): the WAV format, other codecs than the format's default and
+  // transparent videos are planned by their own builders; every job of before plans as it did.
+  if (job.format === 'wav') return wavPlan(job, given)
+  if ((job.codec !== undefined && job.codec !== DEFAULT_CODEC[job.format]) || job.alpha) return proPlan(job, given)
   const { tempStem } = given
   if (job.format === 'gif') {
     const gif = { intermediate: `${tempStem}.mkv`, palette: `${tempStem}.png` }

@@ -44,6 +44,10 @@ import { registerGuideIpc } from './guide/guideIpc'
 import { PRINT_DIR, sweepGuidePrint } from './guide/printPdf'
 import { registerLocalAiIpc } from './localAi/localAiIpc'
 import { registerSceneIpc } from './sceneScan'
+import { initUiLanguage, registerUiIpc } from './i18n'
+import { registerCodecProbeIpc } from './codecProbe'
+import { registerTimelineIpc } from './timelineIpc'
+import { registerPresetFileIpc } from './presetFiles'
 
 // The app was called "Screen Studio for Windows" before: its userData folder moves to Flown's
 // before anything reads it, and before the single-instance lock, which lives in it.
@@ -65,6 +69,9 @@ if (!app.requestSingleInstanceLock()) {
   const openMainWindow = (): void => attachRecorderWindow(createMainWindow(closeRecordingWindows))
 
   app.whenReady().then(() => {
+    // First: the UI language, before any window opens and before any module makes text
+    // (docs/design/output-and-languages.md §9.4).
+    initUiLanguage()
     // After the lock, so two instances never move recordings at once; before any IPC lists them.
     const recordings = migrateRecordings(path.join(app.getPath('videos'), LEGACY_APP_NAME), projectsRoot())
     setLegacyProjectRoots(recordings.legacyRoots)
@@ -118,6 +125,12 @@ if (!app.requestSingleInstanceLock()) {
     registerGuideIpc()
     registerLocalAiIpc()
     registerSceneIpc()
+    // Output and languages (docs/design/output-and-languages.md §21.0): the UI language, the codec
+    // probe, timelines for other editors and preset files.
+    registerUiIpc()
+    registerCodecProbeIpc()
+    registerTimelineIpc()
+    registerPresetFileIpc()
     // A guide's print file that a crash or a kill left behind (§5.7).
     void sweepGuidePrint(path.join(app.getPath('userData'), PRINT_DIR)).catch((err: unknown) => console.warn('Could not sweep the guide print files:', err))
     openMainWindow()
