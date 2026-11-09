@@ -1064,8 +1064,10 @@ the session, live frames are drawn unblurred today, and A\* is the same.
   hard cut until it ends, so the old frame never flashes back after B has shown.
 - **Made again.** Each A\* keeps what it was drawn with: the project, Compare, and each grade's LUT
   as `lutFor` gave it (null while it loads). When one of them differs from the frame's (an edit,
-  Compare turned on or off, a LUT that became ready), that A\* is not drawn; it is composed again
-  and the frame is "not ready yet" until then.
+  Compare turned on or off, a LUT that became ready), it is composed again. After an edit that A\*
+  is not drawn, and the frame is "not ready yet" until then. After Compare or a LUT only, it is
+  still drawn, in its old colours, until the new one is ready (a frame or two), so a window that
+  has shown A\* never shows B alone and then A\* again.
 - **Seeking at the jump.** At a cut the player seeks the `<video>` (`jumpTo`, `player.ts:572`);
   the first frame of B is drawn with A\* at α ≈ 1, which also hides the jump's seek latency.
 - **Play this cut** plays from `T − 1` to `T + 1` s of video time and stops back where it started.

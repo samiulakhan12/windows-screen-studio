@@ -101,17 +101,22 @@ export class JoinStills {
     this.schedule()
   }
 
-  /** A* of `window` at w × h when it is ready for the current project, else null (asked for; the frame draws a hard cut). */
+  /**
+   * A* of `window` at w × h when it is ready for the current project, else null (asked for; the
+   * frame draws a hard cut). One drawn with another Compare or LUT is still given until it is made
+   * again, so a window that has shown A* never shows B alone for a frame.
+   */
   still(window: JoinWindow, w: number, h: number): CanvasImageSource | null {
     if (!window.still || this.disposed) return null
     const c = this.composed.get(keyOf(window, w, h))
-    if (c && this.target && fresh(c, this.target.scene)) return c.canvas
+    const scene = this.target?.scene
+    if (c && scene && fresh(c, scene)) return c.canvas
     // Not asked for yet, or composed before its LUT was ready (nothing else asks for it again).
     if (c || !this.wanted.includes(window)) {
       this.wanted = [window, ...this.wanted.filter((x) => x !== window)].slice(0, WANT)
       this.schedule()
     }
-    return null
+    return c && scene && c.project === scene.project ? c.canvas : null
   }
 
   /** Composes in a task of its own, outside any frame callback. */

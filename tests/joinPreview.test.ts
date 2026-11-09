@@ -205,6 +205,7 @@ type Player = {
   playCut(video: number): void
   attachCanvas(c: unknown): void
   setScene(scene: unknown, bg: unknown): void
+  setCompare(on: boolean): void
   dispose(): void
 }
 const { PreviewPlayer } = (await import(/* @vite-ignore */ PLAYER)) as { PreviewPlayer: new (s: FakeVideo, w: FakeVideo | null, p: Project) => Player }
@@ -384,6 +385,38 @@ describe('the preview player (test 24)', () => {
     expect((draws.at(-1)!.join?.still as { tag: string }).tag).toBe('A* c2')
   })
 
+  it('playing, keeps A* in a window when Compare is turned on there, until it is made again without colour', async () => {
+    const p = project()
+    const { screen, player } = setUp(p)
+    // The first cut's A* is ready before the playhead gets there.
+    player.seek(2.9)
+    screen.land()
+    frame()
+    await tasks()
+    deliver()
+    await tasks()
+    player.play()
+    screen.advance(0.15)
+    frame()
+    screen.currentTime = 3
+    screen.land()
+    frame()
+    expect(draws.at(-1)!.join?.window.clip).toBe('c1')
+    expect((draws.at(-1)!.join?.still as { tag: string } | null)?.tag).toBe('A* c1')
+    // Compare on mid-window: never B alone for a frame and then A* again.
+    player.setCompare(true)
+    screen.advance(0.1)
+    frame()
+    expect(draws.at(-1)!.join?.window.clip).toBe('c1')
+    expect((draws.at(-1)!.join?.still as { tag: string } | null)?.tag).toBe('A* c1')
+    await tasks()
+    expect(composed.filter((c) => c.window.clip === 'c1').map((c) => !!c.compare)).toEqual([false, true])
+    screen.advance(0.1)
+    frame()
+    expect(draws.at(-1)!.join?.window.clip).toBe('c1')
+    expect((draws.at(-1)!.join?.still as { tag: string } | null)?.tag).toBe('A* c1')
+  })
+
   it('plays a cut from 1 s before to 1 s after it, then goes back', () => {
     const { screen, player } = setUp(project())
     player.seek(10)
@@ -521,22 +554,33 @@ describe('JoinStills', () => {
     deliver()
     await tasks()
     expect(composed.map((c) => c.compare)).toEqual([true])
-    expect(stills.still(w, 640, 360)).not.toBeNull()
-    // Compare off, the same project: that A* is not used, and A* is made again with its colour.
+    const first = stills.still(w, 640, 360)
+    expect(first).not.toBeNull()
+    // Compare off, the same project: A* is made again with its colour, and the one drawn without
+    // it is given until then (a window showing it never shows B alone for a frame).
     stills.prepare([w], { project: graded }, 640, 360)
-    expect(stills.still(w, 640, 360)).toBeNull()
+    expect(stills.still(w, 640, 360)).toBe(first)
+    expect(composed).toHaveLength(1)
     await tasks()
     expect(composed.map((c) => !!c.compare)).toEqual([true, false])
-    expect(stills.still(w, 640, 360)).not.toBeNull()
+    expect(stills.still(w, 640, 360)).toBe(first)
     expect(composed[1].lut).toBeNull()
-    // The LUT is ready now (nothing else changed): the A* made while it loaded is made again with it.
+    // The LUT is ready now (nothing else changed): the A* made while it loaded is made again with
+    // it, and still given until then.
     luts.screen = { size: 33 }
-    expect(stills.still(w, 640, 360)).toBeNull()
+    expect(stills.still(w, 640, 360)).toBe(first)
+    expect(composed).toHaveLength(2)
     await tasks()
     expect(composed).toHaveLength(3)
     expect(composed[2].lut).toBe(luts.screen)
-    expect(stills.still(w, 640, 360)).not.toBeNull()
+    expect(stills.still(w, 640, 360)).toBe(first)
     expect(ready).toHaveBeenCalledTimes(3)
+    // An edit: that A* is not given until it is made for the new project.
+    stills.prepare([w], { project: { ...graded } }, 640, 360)
+    expect(stills.still(w, 640, 360)).toBeNull()
+    await tasks()
+    expect(composed).toHaveLength(4)
+    expect(stills.still(w, 640, 360)).toBe(first)
     stills.dispose()
   })
 })
