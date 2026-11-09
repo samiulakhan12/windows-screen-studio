@@ -91,6 +91,8 @@ vi.stubGlobal('window', {
       }
     },
     cancelTranscription: () => Promise.resolve(),
+    // Find chapters' options, as last used (none saved: the defaults).
+    getPref: () => Promise.resolve(null),
     aiText: (_id: string, request: { task: string; segments: { text: string }[] }) => {
       const answer = deferred<unknown>()
       aiAsked.push({ task: request.task, segments: request.segments, answer })
@@ -165,6 +167,18 @@ vi.doMock('react', async (importOriginal) => ({
 
 // Tab and Esc in the link check's confirm are not what is tested, and the hook reads the real document.
 vi.doMock('../src/renderer/src/editor/modalFocus', () => ({ useModalFocus: () => undefined }))
+
+// Suggest chapters runs Find chapters with the provider's suggestions (smart-tools.md §7.6.1): here a fake run
+// records what the tab asks of it; tests/suggestChapters.test.ts runs the real one.
+const findRuns: { options: Record<string, unknown>; requestId: string; signal: AbortSignal; done: ReturnType<typeof deferred<unknown>> }[] = []
+vi.doMock('../src/renderer/src/editor/chaptersRun', () => ({
+  FIND_CHAPTERS_BUILT: true,
+  runFindChapters: (deps: { options: Record<string, unknown>; requestId: string; signal: AbortSignal }) => {
+    const done = deferred<unknown>()
+    findRuns.push({ options: deps.options, requestId: deps.requestId, signal: deps.signal, done })
+    return done.promise
+  }
+}))
 
 // Renderer code: imported at run time so the Node typecheck of tests/ does not follow it.
 const PANEL = '../src/renderer/src/editor/panels/CaptionsPanel'
@@ -1465,61 +1479,44 @@ describe('CaptionsPanel: AI tools from the command palette (NW-13)', () => {
     expect(store.state.name).toBe('Get it at github.com/flown/recorder')
   })
 
-  it('suggested chapters with a link nobody said in a title are shown with the note, and Add the chapters asks first; nothing opens by itself (publish-pack §4.8)', async () => {
+  it("Suggest chapters runs Find chapters with the provider's suggestions: found chapters for Review, no suggestion waiting for a confirm (smart-tools.md §7.6.1)", async () => {
     const said = [
       { id: 'a', start: 0, end: 5, text: 'Welcome, download it from flown.app first.' },
       { id: 'b', start: 30, end: 35, text: 'Then open the settings.' }
     ]
     store.state = { ...store.state, chapters: [], transcript: { provider: 'openai', model: 'm', createdAt: '', segments: said } }
     await show()
-    const suggested = { task: 'chapters', chapters: [{ t: 0, title: 'Download at flown.app' }, { t: 30, title: 'Sign in at paypal-login.com' }] }
+    findRuns.length = 0
     command('chapters')
-    let out = await answer(0, suggested)
-    // No confirm takes the focus when the answer comes (the user may be typing in a caption): the chapters wait with their note.
-    expect(confirmItems(out)).toBeNull()
-    expect((store.state.chapters as unknown[]).length).toBe(0)
-    expect(textOf(byTest(out, 'captions-chapters-suggestion')[0].props.children)).toContain('0:30 Sign in at paypal-login.com')
-    const note = byTest(out, 'publish-check')
-    expect(note.map((n) => textOf(n.props.children))).toEqual([expect.stringContaining('Check this before you post:paypal-login.com')])
-    const add = out.find((e) => e.type === 'button' && textOf(e.props.children).trim() === 'Add the chapters') as El
-    expect(add.props['aria-describedby']).toBe(note[0].props.id)
-    click(out, 'Add the chapters')
-    out = render(m.panel)
-    expect(confirmItems(out)).toEqual(['… Sign in at paypal-login.com'])
-    click(out, 'Cancel')
-    out = render(m.panel)
-    expect((store.state.chapters as unknown[]).length).toBe(0)
-    expect(byTest(out, 'captions-chapters-suggestion')).toHaveLength(1)
-    click(out, 'Add the chapters')
-    out = render(m.panel)
+    await flush()
+    // Not the chapters task alone: Find chapters, with this provider's suggestions, offline names and a request id.
+    expect(aiAsked).toEqual([])
+    expect(findRuns).toHaveLength(1)
+    expect(findRuns[0].options).toMatchObject({ split: 'o', names: 'offline', density: 'normal', use: { screen: true, pauses: true, words: true } })
+    expect(findRuns[0].requestId).toMatch(/^captions-chapters-\d+$/)
     panelNotices.length = 0
-    click(out, 'Use anyway')
-    out = render(m.panel)
-    expect((store.state.chapters as { title: string }[]).map((c) => c.title)).toEqual(['Download at flown.app', 'Sign in at paypal-login.com'])
+    findRuns[0].done.resolve({ notice: 'Found 3 chapters. Review lists them: keep or remove each one.', weak: null })
+    await flush()
+    let out = render(m.panel)
+    expect(panelNotices).toEqual(['Found 3 chapters. Review lists them: keep or remove each one.'])
+    // Nothing waits to be added or confirmed: the found chapters are in the project, listed in Review.
     expect(byTest(out, 'captions-chapters-suggestion')).toEqual([])
-    expect(panelNotices).toEqual(['Added 2 chapters (see the Text tab)'])
-    // Chapters with only what was said are added at once.
-    store.state = { ...store.state, chapters: [] }
-    command('chapters')
-    out = await answer(1, { task: 'chapters', chapters: [{ t: 0, title: 'Download at flown.app' }, { t: 30, title: 'Settings' }] })
     expect(confirmItems(out)).toBeNull()
-    expect(byTest(out, 'captions-chapters-suggestion')).toEqual([])
-    expect((store.state.chapters as { title: string }[]).map((c) => c.title)).toEqual(['Download at flown.app', 'Settings'])
-    // The tab closing with chapters still waiting says they were not added.
-    store.state = { ...store.state, chapters: [] }
+    expect(buttons(out)).not.toContain('Add the chapters')
+    // Without captions to suggest from, it says so.
     command('chapters')
-    out = await answer(2, suggested)
-    expect(byTest(out, 'captions-chapters-suggestion')).toHaveLength(1)
-    panelNotices.length = 0
-    // The section goes (its hooks are kept under the place it is rendered at, its children's under that and its name).
-    const at = [...cells.keys()].find((k) => !k.includes('/AiToolsSection') && [...cells.keys()].some((c) => c.startsWith(`${k}/AiToolsSection`)))
-    for (const [path, list] of cells) {
-      if (path !== at && !path.startsWith(`${at}/AiToolsSection`)) continue
-      for (const c of list) c.cleanup?.()
-      cells.delete(path)
-    }
-    expect(panelNotices).toEqual(['Suggested chapters not added: open the Captions tab and suggest them again to add them.'])
-    expect((store.state.chapters as unknown[]).length).toBe(0)
+    await flush()
+    findRuns[1].done.resolve({ needsCaptions: true })
+    await flush()
+    out = render(m.panel)
+    expect(has(out, 'Make captions first')).toBe(true)
+    // A failed run says why; a stopped one says nothing.
+    command('chapters')
+    await flush()
+    findRuns[2].done.reject(new Error("Error invoking remote method 'ai:text': Error: The provider is busy."))
+    await flush()
+    out = render(m.panel)
+    expect(has(out, 'The provider is busy.')).toBe(true)
   })
 
   it('after Use anyway, an add or a Dismiss, the focus goes to the tool that made the suggestion, not to the page (publish-pack §4.8)', async () => {
@@ -1537,22 +1534,13 @@ describe('CaptionsPanel: AI tools from the command palette (NW-13)', () => {
     expect(store.state.name).toBe('Sign in at paypal-login.com')
     // The suggestion and the confirm are gone, with the button that asked: the focus is on Suggest a title.
     expect(last()).toBe('Suggest a title')
-    command('chapters')
-    // (The name is said now: another link.)
-    out = await answer(1, { task: 'chapters', chapters: [{ t: 0, title: 'Download at flown.app' }, { t: 30, title: 'Sign in at evil-login.net' }] })
-    click(out, 'Add the chapters')
-    out = render(m.panel)
-    click(out, 'Use anyway')
-    out = render(m.panel)
-    expect((store.state.chapters as unknown[]).length).toBe(2)
-    expect(last()).toBe('Suggest chapters')
     command('summary')
-    out = await answer(2, { task: 'summary', text: 'All about the export.' })
+    out = await answer(1, { task: 'summary', text: 'All about the export.' })
     click(out, 'Dismiss')
     out = render(m.panel)
     expect(last()).toBe('Summarize')
     command('title')
-    out = await answer(3, { task: 'title', text: 'Exporting' })
+    out = await answer(2, { task: 'title', text: 'Exporting' })
     // Renamed at once (nothing to check): the same.
     click(out, 'Rename the recording')
     out = render(m.panel)
