@@ -253,9 +253,10 @@ const glyphPad = (l: TitleLayout): number => Math.ceil(Math.max(l.title.px, l.su
 
 /**
  * How a card's text comes in while it wipes or types (docs/design/editing-polish.md §7.2): from its
- * reading start, the right edge for right-to-left text. `lines` (Typewriter): the px shown of each
- * line, the title's and then the subtitle's, from its reading start, whole graphemes in reading
- * order; null: the whole card wipes.
+ * reading start, the right edge for right-to-left text. `rtl`: the card's first letter is from a
+ * right-to-left script (where Wipe starts). `lines` (Typewriter): the px shown of each line, the
+ * title's and then the subtitle's, whole graphemes in reading order, each text from its own reading
+ * start (drawBlock); null: the whole card wipes.
  */
 interface CardReveal {
   rtl: boolean
@@ -332,23 +333,25 @@ function paintCardBackground(fc: FrameContext, card: TitleCard, tint: string): v
 
 /**
  * Draws the lines of `block` from `top`, at `x` (aligned as `align`); with `shown` (a typewriter),
- * each line only as far as its px shown, from its reading start.
+ * each line only as far as its px shown, from the block's own reading start (a title and its
+ * subtitle may be in different scripts).
  */
-function drawBlock(ctx: Ctx, block: TextBlock, x: number, top: number, align: CanvasTextAlign, font: string, shown: { rtl: boolean; lines: readonly number[] } | null = null): void {
+function drawBlock(ctx: Ctx, block: TextBlock, x: number, top: number, align: CanvasTextAlign, font: string, shown: readonly number[] | null = null): void {
   ctx.font = `${block.weight} ${block.px}px ${font}`
   ctx.textAlign = align
   ctx.textBaseline = 'middle'
+  const rtl = shown !== null && RTL_FIRST.test(block.lines.join(' '))
   block.lines.forEach((line, i) => {
     if (!line) return
     const y = top + block.lineHeight * (i + 0.5)
     if (!shown) return ctx.fillText(line, x, y)
-    const s = shown.lines[i] ?? 0
+    const s = shown[i] ?? 0
     if (!(s > 0)) return
     const w = block.widths[i] ?? 0
     const left = align === 'center' ? x - w / 2 : x
     ctx.save()
     ctx.beginPath()
-    ctx.rect(shown.rtl ? left + w - s : left, y - block.lineHeight, s, block.lineHeight * 2)
+    ctx.rect(rtl ? left + w - s : left, y - block.lineHeight, s, block.lineHeight * 2)
     ctx.clip()
     ctx.fillText(line, x, y)
     ctx.restore()
@@ -357,13 +360,13 @@ function drawBlock(ctx: Ctx, block: TextBlock, x: number, top: number, align: Ca
 
 /** Title and subtitle from `top`; the subtitle a little softer. `reveal`: a typewriter's lines shown. */
 function drawText(ctx: Ctx, l: TitleLayout, x: number, top: number, align: CanvasTextAlign, color: string, alpha: number, font: string, reveal: CardReveal | null = null): void {
-  const shown = reveal?.lines ? { rtl: reveal.rtl, lines: reveal.lines } : null
+  const shown = reveal?.lines ?? null
   ctx.fillStyle = color
   ctx.globalAlpha = alpha
   drawBlock(ctx, l.title, x, top, align, font, shown)
   if (l.subtitle) {
     ctx.globalAlpha = alpha * 0.8
-    drawBlock(ctx, l.subtitle, x, top + l.title.lines.length * l.title.lineHeight + l.gap, align, font, shown && { rtl: shown.rtl, lines: shown.lines.slice(l.title.lines.length) })
+    drawBlock(ctx, l.subtitle, x, top + l.title.lines.length * l.title.lineHeight + l.gap, align, font, shown && shown.slice(l.title.lines.length))
   }
 }
 

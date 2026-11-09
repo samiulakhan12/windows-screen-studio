@@ -524,6 +524,36 @@ describe("title cards' Wipe and Typewriter come in from the reading start (§7.2
     expect(x + shown).toBeCloseTo((fill.args[1] as number) + w / 2, 6)
     expect(shown).toBeCloseTo((w * k) / n, 6)
   })
+
+  it('Typewriter in a card mixing scripts: the title and the subtitle each from their own reading start', () => {
+    const arabic = (s: string): boolean => /[؀-ۿ]/.test(s)
+    for (const [style, title, subtitle] of [
+      ['centered', 'Ahmed Hassan', 'مدير المشروع في الشركة'],
+      ['lower-third', 'Ahmed Hassan', 'مدير المشروع في الشركة'],
+      ['centered', 'مرحبا بكم', 'Welcome to the lesson']
+    ] as const) {
+      const c = card({ title, subtitle, style, enter: typewriter })
+      const p = project({ titles: [c] })
+      const typed = new Set<string>()
+      for (let i = 1; i < 50; i++) {
+        const t = 4 + i * 0.02
+        for (const { rect, next } of clips(frameAll(p, t))) {
+          if (next?.name !== 'fillText') continue
+          const line = next.args[0] as string
+          const w = lineWidth(next)
+          const [x, , shown] = rect.args as number[]
+          if (shown >= w - 1e-6) continue
+          // Part of the line typed: it shows from its own reading start.
+          const left = next.align === 'center' ? (next.args[1] as number) - w / 2 : (next.args[1] as number)
+          if (arabic(line)) expect(x + shown, `${style}: ${line} at ${t}`).toBeCloseTo(left + w, 6)
+          else expect(x, `${style}: ${line} at ${t}`).toBeCloseTo(left, 6)
+          typed.add(line)
+        }
+      }
+      // Both texts were seen part-typed.
+      expect([...typed].sort(), style).toEqual([title, subtitle].sort())
+    }
+  })
 })
 
 /* ---------- test 44 ---------- */
