@@ -26,6 +26,8 @@ export interface PackItem {
   writtenFrom: string | null
   /** The last run was stopped: the card kept what it had. */
   stopped?: boolean
+  /** The text was written on this PC (smart-tools.md §2.5): the card says to check it. */
+  local?: boolean
 }
 
 export type PackItems = Readonly<Record<PublishKind, PackItem>>
@@ -62,7 +64,7 @@ export function editItem(projectId: string, kind: PublishKind, change: Partial<P
 /** Shows `text` in an empty, idle card (the YouTube description saved for exports, in a new session). */
 export function seedItem(projectId: string, kind: PublishKind, text: string): void {
   const item = packItems(projectId)[kind]
-  if (item.status === 'idle' && !item.text && text) patch(projectId, kind, { status: 'done', text, stopped: false })
+  if (item.status === 'idle' && !item.text && text) patch(projectId, kind, { status: 'done', text, stopped: false, local: false })
 }
 
 export function usePackItems(projectId: string): PackItems {
@@ -168,7 +170,7 @@ export function writeItem(projectId: string, kind: PublishKind, ctx: WriteContex
           patch(projectId, kind, { status: 'error', error: 'The provider wrote nothing; try again.' })
           return
         }
-        patch(projectId, kind, { status: 'done', text, tags, error: null, writtenFrom: ctx.key })
+        patch(projectId, kind, { status: 'done', text, tags, error: null, writtenFrom: ctx.key, local: ctx.providerId === LOCAL_TEXT_ID })
       },
       (err: unknown) => {
         if (!mine()) return

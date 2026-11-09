@@ -58,6 +58,7 @@ vi.stubGlobal('window', {
       calls.push({ kind: 'aiText', providerId, requestId, request })
       await gate
       // On this PC, main says which model ran (read again after the run, the state may name another).
+      if (request.task === 'title') return { task: 'title', text: 'A title' }
       if (request.task === 'translate') return { task: 'translate', segments: (request.segments as { id: string; start: number; end: number; text: string }[]).map((s) => ({ ...s, text: `bn ${s.text}` })), ...(providerId === 'local' ? { model: 'gemma4-e2b' } : {}) }
       return { task: request.task, segments: request.segments }
     },
@@ -345,5 +346,88 @@ describe('the hints name the place the text goes (test 103)', () => {
       expect(hints.length, file).toBeGreaterThan(0)
       for (const line of hints) expect(line, file).not.toMatch(/KIND_NAMES\[/)
     }
+  })
+})
+
+/* ---------- §2.5: a result written on this PC says to check it ---------- */
+
+describe('results written on this PC say so (§2.5)', () => {
+  const WRITTEN = 'Written on this PC: check it before you use it.'
+  const written = (els: El[]): string | null => {
+    const el = byTestId(els, 'local-written')
+    return el ? textOf(el) : null
+  }
+
+  it('Clean up, Languages and Draft script: with On this PC, under the result; with a service, not', async () => {
+    providers.list = []
+    local.ready = true
+    let els = await settle(cleanup(), SKIP)
+    expect(written(els)).toBeNull()
+    click(byTestId(els, 'cleanup-run'))
+    els = await settle(cleanup(), SKIP)
+    expect(calls.at(-1)?.providerId).toBe('local')
+    expect(written(els)).toBe(WRITTEN)
+
+    els = await settle(languages(), SKIP)
+    click(byTestId(els, 'track-add'))
+    els = await settle(languages(), SKIP)
+    click(byTestId(els, 'track-translate'))
+    els = await settle(languages(), SKIP)
+    expect(store.state.captionTracks).toHaveLength(1)
+    expect(written(els)).toBe(WRITTEN)
+
+    // Draft script with notes that take the draft (a draft edited away says nothing more).
+    let notes = '- point one\n- point two'
+    const notesDraft = (): unknown => ({ type: DraftScript, props: { text: notes, onReplace: (t: string) => void (notes = t) } })
+    els = await settle(notesDraft(), SKIP)
+    click(els.find((e) => e.props.id === 'notes-draft'))
+    await answer()
+    els = await settle(notesDraft(), SKIP)
+    expect(calls.at(-1)?.kind).toBe('draftScript')
+    expect(notes).toBe('A script to read aloud.')
+    expect(written(els)).toBe(WRITTEN)
+
+    // The same tools with a service: no such line.
+    unmountAll()
+    providers.list = [GROQ]
+    local.ready = false
+    store = testStore(base())
+    contexts.editor = { store, player: { time: 0, subscribe: () => () => undefined } }
+    els = await settle(cleanup(), SKIP)
+    click(byTestId(els, 'cleanup-run'))
+    els = await settle(cleanup(), SKIP)
+    expect(calls.at(-1)?.providerId).toBe('svc1')
+    expect(written(els)).toBeNull()
+    els = await settle(languages(), SKIP)
+    click(byTestId(els, 'track-add'))
+    els = await settle(languages(), SKIP)
+    click(byTestId(els, 'track-translate'))
+    els = await settle(languages(), SKIP)
+    expect(store.state.captionTracks).toHaveLength(1)
+    expect(written(els)).toBeNull()
+    notes = '- point one\n- point two'
+    els = await settle(notesDraft(), SKIP)
+    click(els.find((e) => e.props.id === 'notes-draft'))
+    await answer()
+    els = await settle(notesDraft(), SKIP)
+    expect(notes).toBe('A script to read aloud.')
+    expect(byTestId(els, 'local-written')).toBeUndefined()
+    expect(allText(els)).toContain('Script drafted')
+  })
+
+  it('Publish: a card written on this PC is marked so; one written by a service is not', async () => {
+    // Renderer code: imported at run time so the Node typecheck of tests/ does not follow it.
+    const RUN_MODULE = '../src/renderer/src/publish/publishRun'
+    const { writeItem, packItems } = (await import(/* @vite-ignore */ RUN_MODULE)) as {
+      writeItem: (projectId: string, kind: string, ctx: unknown) => Promise<void>
+      packItems: (projectId: string) => Record<string, { local?: boolean; text: string }>
+    }
+    const ctx = (providerId: string): Record<string, unknown> => ({ providerId, segments: base().transcript!.segments, tone: 'neutral', length: 'short', key: 'k' })
+    await writeItem('pw', 'title', ctx('local'))
+    expect(packItems('pw').title).toMatchObject({ text: expect.any(String), local: true })
+    await writeItem('pw', 'title', ctx('svc1'))
+    expect(packItems('pw').title.local).toBe(false)
+    // The card shows the line for such a text.
+    expect(readFileSync(path.join(RENDERER, 'publish/PublishDialog.tsx'), 'utf8')).toMatch(/<LocalWritten show=\{!!item\.local && !busy && !!text\} \/>/)
   })
 })

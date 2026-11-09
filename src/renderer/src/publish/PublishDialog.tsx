@@ -23,7 +23,7 @@ import { editItem, isRunning, itemRequestId, packRequest, seedItem, stopAll, sto
 import { textChoicesOf } from '../ai/textChoices'
 import { useLocalAiReady } from '../ai/localAiState'
 import { CostLine } from '../ai/CostLine'
-import { LocalProgress } from '../ai/LocalProgress'
+import { LocalProgress, LocalWritten } from '../ai/LocalProgress'
 import './publish.css'
 
 /** A choice in the provider list: its name and model ("OpenAI · gpt-…"), or On this PC alone (smart-tools.md §20.0). */
@@ -454,6 +454,7 @@ function Card({ kind, item, stale, canWrite, youtube, saved, spoken, said, onWri
         onChange={(e) => onEdit({ text: e.target.value.slice(0, EDIT_MAX) })}
       />
       {!busy && checkNote(checks, `${id}-check`, spoken)}
+      <LocalWritten show={!!item.local && !busy && !!text} />
       {isYoutube && (
         <div className="publish-youtube">
           <p className="publish-sub">Chapters (from your timeline)</p>

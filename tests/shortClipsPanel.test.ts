@@ -7,7 +7,7 @@
  */
 import { readFileSync } from 'node:fs'
 import path from 'node:path'
-import { beforeEach, describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it, onTestFinished } from 'vitest'
 import { projectCopy } from '../src/shared/editor/duplicate'
 import type { Project } from '../src/shared/types'
 import { clipProject, steadyTalk, trackOf } from './clipFixtures'
@@ -228,8 +228,38 @@ describe('names with an AI (tests 102 and 125)', () => {
     change(byLabel(out, 'Make clip 2'), true)
     out = await settle(view())
     press(byTestId(out, 'clips-make'))
-    await settle(view())
+    out = await settle(view())
     expect(fake.copies.map((c) => c.copy.name)).toEqual(['Set up billing (clip)', `${offline} (clip)`])
+    // Named by a service: nothing says the names were written on this PC.
+    expect(textOf(byTestId(out, 'clips-status'))).toMatch(/^Made 2 copies\./)
+    expect(byTestId(out, 'local-written')).toBeUndefined()
+  })
+
+  it('copies named on this PC: the status says to check the names (§2.5)', async () => {
+    // Renderer code: imported at run time so the Node typecheck of tests/ does not follow it.
+    const LOCAL_STATE_MODULE = '../src/renderer/src/ai/localAiState'
+    const { setLocalAiState } = (await import(/* @vite-ignore */ LOCAL_STATE_MODULE)) as { setLocalAiState(state: unknown): void }
+    const state = (ready: boolean): unknown => ({
+      models: ready ? [{ id: 'qwen3.5-2b', state: 'ready', bytes: 1, block: null }] : [],
+      use: 'auto',
+      active: ready ? 'qwen3.5-2b' : null,
+      pc: { totalMemBytes: 16 * 2 ** 30, freeMemBytes: 8 * 2 ** 30, avx2: true, helper: true },
+      speeds: {}
+    })
+    setLocalAiState(state(true))
+    onTestFinished(() => setLocalAiState(state(false)))
+    fake.prefs.set('shortClips', { length: 'any', shape: 'same', names: 'local', captions: true })
+    fake.answer = (request) => Promise.resolve({ task: 'names', names: (request.names as { items: { id: string }[] }).items.map((i) => ({ id: i.id, name: 'Set up billing' })) })
+    const view = mount(narrated())
+    let out = await settle(view())
+    expect(out.find((e) => e.type === 'select')!.props.value).toBe('local')
+    change(byLabel(out, 'Make clip 1'), true)
+    out = await settle(view())
+    press(byTestId(out, 'clips-make'))
+    out = await settle(view())
+    expect(fake.ai[0].provider).toBe('local')
+    expect(fake.copies.map((c) => c.copy.name)).toEqual(['Set up billing (clip)'])
+    expect(textOf(byTestId(out, 'local-written'))).toBe('Written on this PC: check it before you use it.')
   })
 })
 

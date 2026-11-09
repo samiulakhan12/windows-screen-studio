@@ -21,7 +21,7 @@ import { clockTime } from '../../../shared/search/moment'
 import { DEFAULT_SHORT_CLIPS, sanitizeSmartPref, type ShortClipsPref } from '../../../shared/smart/smartPrefs'
 import type { CursorTrack, Project, ProjectSummary } from '../../../shared/types'
 import { CostLine } from '../ai/CostLine'
-import { LocalProgress } from '../ai/LocalProgress'
+import { LocalProgress, LocalWritten } from '../ai/LocalProgress'
 import { useTextChoices } from '../ai/textChoices'
 import { loadAudioAnalysis } from '../editor/audioAnalysis'
 import { useEditor } from '../editor/context'
@@ -261,6 +261,8 @@ export function ShortClipsPanel(props: { project: Project; cursor: CursorTrack; 
   const [making, setMaking] = useState<{ i: number; n: number; p: DuplicateProgress | null } | null>(null)
   const [naming, setNaming] = useState<string | null>(null)
   const [status, setStatus] = useState<string | null>(null)
+  /** The status of copies named on this PC (§2.5): while it shows, so does the line saying to check the names. */
+  const [writtenHere, setWrittenHere] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const controller = useRef<AbortController | null>(null)
   useEffect(
@@ -291,6 +293,7 @@ export function ShortClipsPanel(props: { project: Project; cursor: CursorTrack; 
     }
     try {
       let named = list
+      let namedHere = false
       if (namesChoice) {
         const request = namesRequestForMoments(store.state, list)
         if (request.items.length) {
@@ -305,7 +308,10 @@ export function ShortClipsPanel(props: { project: Project; cursor: CursorTrack; 
               if (live.current) setStatus(null)
               return
             }
-            if (answer.task === 'names') named = withAiTitles(list, answer.names)
+            if (answer.task === 'names') {
+              named = withAiTitles(list, answer.names)
+              namedHere = namesChoice.kind === 'local'
+            }
           } finally {
             ctrl.signal.removeEventListener('abort', cancel)
             if (live.current) setNaming(null)
@@ -328,7 +334,11 @@ export function ShortClipsPanel(props: { project: Project; cursor: CursorTrack; 
       })
       record(out.made)
       const name = project.name.trim() || 'Untitled recording'
-      if (live.current) setStatus(out.stopped ? `Stopped: made ${plural(out.made.length, 'copy', 'copies')}.` : `Made ${plural(out.made.length, 'copy', 'copies')}. Your original “${name}” is unchanged.`)
+      const said = out.stopped ? `Stopped: made ${plural(out.made.length, 'copy', 'copies')}.` : `Made ${plural(out.made.length, 'copy', 'copies')}. Your original “${name}” is unchanged.`
+      if (live.current) {
+        setStatus(said)
+        setWrittenHere(namedHere && out.made.length > 0 ? said : null)
+      }
     } catch (err) {
       if (err instanceof ClipCopyError) record(err.made)
       if (live.current && !ctrl.signal.aborted) {
@@ -587,6 +597,7 @@ export function ShortClipsPanel(props: { project: Project; cursor: CursorTrack; 
                   {status}
                 </p>
               )}
+              <LocalWritten show={!making && !!status && status === writtenHere} />
               {error && (
                 <p className="clips-error" role="alert" data-testid="clips-error">
                   {error}

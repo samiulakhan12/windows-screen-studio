@@ -288,7 +288,8 @@ services*), `smart-tools-cost-line.png`, `smart-tools-cost-question.png`, `smart
   show typing" right after the steps appear; it becomes 1 when the scan arrives (checked in
   `smart-tools.e2e.cjs`).
 * **From the parts' reports**, still open: the scan-only stop channel; the channel for usage
-  calibration to the renderer; "Written on this PC" and `LocalNote` in the other text tools; Share
+  calibration to the renderer; `LocalNote` in the other text tools ("Written on this PC" is now under
+  every result made on this PC, §2.5); Share
   and Copy to folder for saved guides; the run-cost notice, which only Clean up and Languages show;
   the 200-pictures-in-all cap enforced only in the renderer (main sees one request at a time).
 * **Design text to update**: test 116 against §7.4's wording about which user chapter stands in for

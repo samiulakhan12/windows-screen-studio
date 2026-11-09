@@ -21,7 +21,7 @@ import { useReturnFocus } from '../returnFocus'
 import { madeBy, sentHint, useTextChoiceList } from '../../ai/textChoices'
 import { CostLine } from '../../ai/CostLine'
 import { runCostText } from '../../ai/useCost'
-import { LocalProgress } from '../../ai/LocalProgress'
+import { LocalProgress, LocalWritten } from '../../ai/LocalProgress'
 
 /**
  * Whether On this PC is offered. TODO(phase B): Mozilla's translation models and runtime
@@ -105,6 +105,8 @@ export function LanguagesSection({ project }: { project: Project }): JSX.Element
   const [job, setJob] = useState<Job | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [status, setStatus] = useState('')
+  /** The status of a translation written on this PC (§2.5): while it shows, so does the line saying to check it. */
+  const [writtenHere, setWrittenHere] = useState<string | null>(null)
   const select = useRef<HTMLSelectElement>(null)
   /** The form's Add an AI provider, shown when there is none. */
   const addProvider = useRef<HTMLButtonElement>(null)
@@ -236,7 +238,9 @@ export function LanguagesSection({ project }: { project: Project }): JSX.Element
     setAdding(false)
     // What the run cost (smart-tools.md §11.6), when the provider said.
     const cost = runCostText((result as { usage?: AiUsage }).usage, provider)
-    setStatus(`${again ? 'Translated again' : 'Translated'} ${sent.length} ${sent.length === 1 ? 'caption' : 'captions'} into ${languageName(code)}${cost ? `. ${cost}` : ''}`)
+    const done = `${again ? 'Translated again' : 'Translated'} ${sent.length} ${sent.length === 1 ? 'caption' : 'captions'} into ${languageName(code)}${cost ? `. ${cost}` : ''}`
+    setStatus(done)
+    setWrittenHere(provider.kind === 'local' ? done : null)
   }
 
   const cancel = (): void => {
@@ -464,6 +468,7 @@ export function LanguagesSection({ project }: { project: Project }): JSX.Element
         <p className="hint" role="status">
           {status}
         </p>
+        <LocalWritten show={!!status && status === writtenHere} />
       </Section>
     </div>
   )

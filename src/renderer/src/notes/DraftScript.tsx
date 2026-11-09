@@ -6,7 +6,7 @@ import { AI_PROVIDERS_CHANGED_EVENT, OPEN_SETTINGS_EVENT } from '../settings/Set
 import { ipcMessage } from '../settings/providerText'
 import { textChoicesOf } from '../ai/textChoices'
 import { useLocalAiReady } from '../ai/localAiState'
-import { LocalProgress } from '../ai/LocalProgress'
+import { LocalProgress, LocalWritten } from '../ai/LocalProgress'
 import { CostLine } from '../ai/CostLine'
 
 /** The provider picked last, for this session. */
@@ -16,7 +16,7 @@ type Draft =
   | { kind: 'idle' }
   | { kind: 'explain' }
   | { kind: 'busy' }
-  | { kind: 'done'; before: string; after: string }
+  | { kind: 'done'; before: string; after: string; local: boolean }
   | { kind: 'stale' }
   | { kind: 'error'; message: string }
 
@@ -155,7 +155,7 @@ export function DraftScript({ text, onReplace, disabled }: { text: string; onRep
         return
       }
       onReplace(after)
-      setDraft({ kind: 'done', before, after })
+      setDraft({ kind: 'done', before, after, local: chosen.kind === 'local' })
     } catch (err) {
       if (request.current !== -n) return
       request.current = n
@@ -237,6 +237,7 @@ export function DraftScript({ text, onReplace, disabled }: { text: string; onRep
       {draft.kind === 'done' && (
         <div className="notes-draft-msg" role="status">
           <p className="hint notes-ok">{NOTES_COPY.drafted}</p>
+          <LocalWritten show={draft.local} />
           <button
             ref={restoreButton}
             type="button"

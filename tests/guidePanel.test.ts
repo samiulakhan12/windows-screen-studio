@@ -1,8 +1,8 @@
 import { readFileSync } from 'node:fs'
 import path from 'node:path'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, onTestFinished, vi } from 'vitest'
 import type { CursorTrack, Project } from '../src/shared/types'
-import { byTestId, allByTestId, contexts, mockReact, render, settle, testStore, textOf, unmountAll, useEditorContexts, type El } from './studioHarness'
+import { byLabel, byTestId, allByTestId, contexts, mockReact, render, settle, testStore, textOf, unmountAll, useEditorContexts, type El } from './studioHarness'
 
 /*
  * The Guide panel (docs/design/smart-tools.md §2.1, §5.3, §5.4, §5.8) without a DOM: tests 107 and
@@ -583,9 +583,52 @@ describe('test 107: placeholders and Write titles', () => {
     expect(store.state.guide!.steps).toEqual([{ key: 'c3000', title: 'AI c3000', ai: 'openai' }])
     expect(allByTestId(els, 'guide-step')[0].props['aria-label']).toBe('Step 1, 0:03, written by AI')
     expect(said(els)).toBe('Wrote 1 title with OpenAI.')
+    // Written by a service: nothing says it was written on this PC.
+    expect(byTestId(els, 'local-written')).toBeUndefined()
     // Use offline titles: one update.
     click(byTestId(els, 'guide-offline-titles'))
     expect(store.state.guide).toBeUndefined()
+  })
+})
+
+describe('titles and notes written on this PC (§2.5)', () => {
+  it('the notice is followed by "Written on this PC: check it before you use it."; a run that wrote nothing is not', async () => {
+    // Renderer code: imported at run time so the Node typecheck of tests/ does not follow it.
+    const LOCAL_STATE_MODULE = '../src/renderer/src/ai/localAiState'
+    const { setLocalAiState } = (await import(/* @vite-ignore */ LOCAL_STATE_MODULE)) as { setLocalAiState(state: unknown): void }
+    const state = (ready: boolean): unknown => ({
+      models: ready ? [{ id: 'qwen3.5-2b', state: 'ready', bytes: 1, block: null }] : [],
+      use: 'auto',
+      active: ready ? 'qwen3.5-2b' : null,
+      pc: { totalMemBytes: 16 * 2 ** 30, freeMemBytes: 8 * 2 ** 30, avx2: true, helper: true },
+      speeds: {}
+    })
+    let els = await ready()
+    setLocalAiState(state(true))
+    onTestFinished(() => setLocalAiState(state(false)))
+    ;(byTestId(els, 'guide-titles-ai')!.props.onChange as () => void)()
+    els = await settle(panel())
+    ;(byLabel(els, 'Write titles with')!.props.onChange as (e: unknown) => void)({ target: { value: 'local' } })
+    els = await settle(panel())
+    click(byTestId(els, 'guide-write-titles'))
+    els = await after()
+    expect(calls.aiText.at(-1)!.id).toBe('local')
+    expect(said(els)).toBe('Wrote 1 title on this PC.')
+    expect(textOf(byTestId(els, 'local-written'))).toBe('Written on this PC: check it before you use it.')
+    // Tidy notes on this PC writes the note: the same line.
+    ;(byLabel(els, 'Tidy notes with')!.props.onChange as (e: unknown) => void)({ target: { value: 'local' } })
+    els = await settle(panel())
+    click(byTestId(els, 'guide-tidy'))
+    els = await after()
+    expect(said(els)).toBe('Tidied 1 note on this PC.')
+    expect(textOf(byTestId(els, 'local-written'))).toBe('Written on this PC: check it before you use it.')
+    // Again, with the title now the user's own: nothing is written, nothing to check.
+    ;(allByTestId(els, 'guide-step-title')[0].props.onChange as (e: unknown) => void)({ target: { value: 'Mine' } })
+    els = await settle(panel())
+    click(byTestId(els, 'guide-write-titles'))
+    els = await after()
+    expect(said(els)).toBe('Nothing was said near these steps.')
+    expect(byTestId(els, 'local-written')).toBeUndefined()
   })
 })
 

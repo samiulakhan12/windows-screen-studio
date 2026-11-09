@@ -16,7 +16,7 @@ import { Chips, Section } from '../controls'
 import { useTextChoiceList } from '../../ai/textChoices'
 import { CostLine } from '../../ai/CostLine'
 import { runCostText } from '../../ai/useCost'
-import { LocalProgress } from '../../ai/LocalProgress'
+import { LocalProgress, LocalWritten } from '../../ai/LocalProgress'
 
 const DIGITS: { value: CleanupChoices['digits']; label: string }[] = [
   { value: 'above-ten', label: 'Above ten' },
@@ -70,6 +70,8 @@ export function CleanupSection({ project }: { project: Project }): JSX.Element {
   /** The AI fix's request id while it runs: AI on this PC shows its progress beside Cancel, and Stop reaches it. */
   const [running, setRunning] = useState<string | null>(null)
   const [status, setStatus] = useState('')
+  /** The last tidy's spelling fix was written on this PC (§2.5): its notice says to check it. */
+  const [writtenHere, setWrittenHere] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [addingWord, setAddingWord] = useState(false)
   const [term, setTerm] = useState('')
@@ -151,6 +153,7 @@ export function CleanupSection({ project }: { project: Project }): JSX.Element {
       // No provider: the tick box is not shown, so there is nothing to focus; say what comes first.
       focusAi.current = false
       setStatus(NO_PROVIDER)
+      setWrittenHere(false)
     }
   })
   // Added in Settings over the editor, a provider makes that message wrong: it goes (the focus stays put).
@@ -174,6 +177,7 @@ export function CleanupSection({ project }: { project: Project }): JSX.Element {
     if (busy || !store.state.transcript?.segments.length) return
     setError(null)
     setStatus('')
+    setWrittenHere(false)
     const list = currentWordList()
     let fix: TextResult | undefined
     let cost = ''
@@ -227,6 +231,7 @@ export function CleanupSection({ project }: { project: Project }): JSX.Element {
     store.seal()
     const r = out as ReturnType<typeof tidyCaptions> | null
     if (r) setStatus([cleanupNotice({ changed: r.changed, bleeped: r.bleeped, estimated: r.estimated }), fix ? cost : ''].filter(Boolean).join(' '))
+    setWrittenHere(!!r && !!fix && chosen?.kind === 'local')
     // A fix left out stands out from the notice.
     if (leftOut) setError(leftOut)
   }
@@ -237,6 +242,7 @@ export function CleanupSection({ project }: { project: Project }): JSX.Element {
     setBusy(false)
     setRunning(null)
     setStatus('Tidy captions was cancelled; nothing was changed.')
+    setWrittenHere(false)
   }
 
   const saveWords = (next: readonly WordListEntry[]): Promise<void> =>
@@ -382,6 +388,7 @@ export function CleanupSection({ project }: { project: Project }): JSX.Element {
         <p className="hint" role="status">
           {status}
         </p>
+        <LocalWritten show={writtenHere && !!status} />
         <p className="hint">Tidy changes are listed in Review mode. The word list also helps Generate captions spell these words.</p>
       </Section>
     </div>

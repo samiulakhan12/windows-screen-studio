@@ -32,7 +32,7 @@ import { CostLine } from '../ai/CostLine'
 import { confirmCost } from '../ai/costConfirm'
 import { estimateFor, useCostData } from '../ai/useCost'
 import { costLineText } from '../../../shared/ai/cost'
-import { LocalProgress } from '../ai/LocalProgress'
+import { LocalProgress, LocalWritten } from '../ai/LocalProgress'
 import { useTextChoices } from '../ai/textChoices'
 import { useEditor } from '../editor/context'
 import { useModalFocus } from '../editor/modalFocus'
@@ -265,6 +265,8 @@ export function GuidePanel(props: { project: Project; cursor: CursorTrack; start
 
   // The live region: each message a new node, so the same words twice are read twice.
   const [saying, setSaying] = useState({ text: '', n: 0 })
+  /** The notice of titles or notes written on this PC (§2.5): while it shows, so does the line saying to check them. */
+  const [writtenHere, setWrittenHere] = useState<string | null>(null)
   const say = useCallback((text: string) => setSaying((s) => ({ text, n: s.n + 1 })), [])
   const shotsDone = shots.total > 0 && shots.ready === shots.total
   // The progress the rows wait on: the demo's shots in the demo format.
@@ -373,8 +375,9 @@ export function GuidePanel(props: { project: Project; cursor: CursorTrack; start
     setBusy({ what, requestId, ac })
     try {
       const deps = { store, steps, choice, signal: ac.signal, requestId }
-      const { notice } = what === 'titles' ? await writeStepTitles({ ...deps, pictures }) : await tidyNotes(deps)
+      const { notice, wrote } = what === 'titles' ? await writeStepTitles({ ...deps, pictures }) : await tidyNotes(deps)
       say(notice)
+      setWrittenHere(wrote && choice.kind === 'local' ? notice : null)
     } catch (err) {
       say(ac.signal.aborted ? 'Stopped. Nothing was changed.' : err instanceof Error ? err.message : String(err))
     } finally {
@@ -892,6 +895,7 @@ export function GuidePanel(props: { project: Project; cursor: CursorTrack; start
         <p className="guide-said" role="status" aria-live="polite" aria-atomic="true" data-testid="guide-said">
           <span key={saying.n}>{saying.text}</span>
         </p>
+        <LocalWritten show={!!writtenHere && saying.text === writtenHere} />
         {saved && (
           <div className="guide-saved" data-testid="guide-saved">
             <button type="button" className="btn ghost" onClick={() => void window.api.showGuideFile(saved.path).catch(() => undefined)}>

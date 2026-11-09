@@ -154,7 +154,7 @@ const wroteWhere = (choice: TextChoice): string => (choice.kind === 'local' ? 'o
  * update with `ai` set. A step the user titled meanwhile keeps its title; steps without words or a
  * picture keep their offline titles.
  */
-export async function writeStepTitles(deps: { store: EditStore<Project>; steps: readonly GuideStep[]; choice: TextChoice; pictures: ReadonlyMap<string, Uint8Array> | null; signal: AbortSignal; requestId: string }): Promise<{ notice: string }> {
+export async function writeStepTitles(deps: { store: EditStore<Project>; steps: readonly GuideStep[]; choice: TextChoice; pictures: ReadonlyMap<string, Uint8Array> | null; signal: AbortSignal; requestId: string }): Promise<{ notice: string; wrote?: true }> {
   const names = deps.pictures?.size ? namesWithPictures(deps.store.state, deps.steps, deps.pictures) : namesRequestForSteps(deps.store.state, deps.steps, 'step')
   if (!names.items.length) return { notice: 'Nothing was said near these steps.' }
   const answer: { id: string; name: string }[] = []
@@ -179,7 +179,7 @@ export async function writeStepTitles(deps: { store: EditStore<Project>; steps: 
   if (!titles.length) return { notice: 'Nothing was changed.' }
   deps.store.update((p) => withAiTitles(p, titles.map((n) => ({ key: n.id, title: n.name })), viaOf(deps.choice)))
   const wrote = `Wrote ${titles.length} ${titles.length === 1 ? 'title' : 'titles'} ${wroteWhere(deps.choice)}.`
-  return { notice: failed ? `${wrote} The rest failed: ${failed instanceof Error ? failed.message : String(failed)}` : wrote }
+  return { notice: failed ? `${wrote} The rest failed: ${failed instanceof Error ? failed.message : String(failed)}` : wrote, wrote: true }
 }
 
 /**
@@ -187,7 +187,7 @@ export async function writeStepTitles(deps: { store: EditStore<Project>; steps: 
  * or two short sentences each, written in one update with `textAi` set. A note the user wrote
  * meanwhile is kept.
  */
-export async function tidyNotes(deps: { store: EditStore<Project>; steps: readonly GuideStep[]; choice: TextChoice; signal: AbortSignal; requestId: string }): Promise<{ notice: string }> {
+export async function tidyNotes(deps: { store: EditStore<Project>; steps: readonly GuideStep[]; choice: TextChoice; signal: AbortSignal; requestId: string }): Promise<{ notice: string; wrote?: true }> {
   const names = namesRequestForSteps(deps.store.state, deps.steps, 'note')
   if (!names.items.length) return { notice: 'Nothing was said to make notes from.' }
   const answer = await askNames(deps.choice, { task: 'names', segments: [], names }, deps.signal, deps.requestId)
@@ -199,7 +199,7 @@ export async function tidyNotes(deps: { store: EditStore<Project>; steps: readon
   })
   if (!notes.length) return { notice: 'Nothing was changed.' }
   deps.store.update((p) => withAiNotes(p, notes.map((n) => ({ key: n.id, text: n.name })), viaOf(deps.choice)))
-  return { notice: `Tidied ${notes.length} ${notes.length === 1 ? 'note' : 'notes'} ${wroteWhere(deps.choice)}.` }
+  return { notice: `Tidied ${notes.length} ${notes.length === 1 ? 'note' : 'notes'} ${wroteWhere(deps.choice)}.`, wrote: true }
 }
 
 /**
