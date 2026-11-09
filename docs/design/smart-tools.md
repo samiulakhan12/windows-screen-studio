@@ -2327,14 +2327,14 @@ joins `tests/labelContrast.test.ts`.
 | Adjust | the crop and the ring as two focusable buttons whose names hold their place: "Crop, 45% wide, from 20% across and 10% down", "Ring at 42% across, 30% down"; Done and Reset buttons | Adjust focuses the crop; Tab between them; arrows move by 1% (Shift 10%); Alt + arrows resize the crop; Enter is Done; Done, Reset and Cancel focus the picture again | live: the new place after each move |
 | Screenshots progress | `progressbar` "Making screenshots", value text "12 of 30" | — | live (polite) at the end: "Screenshots ready" |
 | Save, Copy guide, Copy screenshot | buttons | Enter | live: "Saved “Billing guide.pdf”." with Show in folder; "Copied the guide with 12 screenshots." |
-| Find chapters | button; Options a disclosure button `aria-expanded` | Enter, Space | live: the notice text |
+| Find chapters | button, waiting with `aria-disabled` while it runs (the focus stays on it); Options a disclosure button `aria-expanded` | Enter, Space | live: the notice text |
 | How many, Names | `radiogroup`s | arrows | — |
 | Split at | checkboxes | Space | — |
 | Found chip, Rename? | text inside the row's name: "Chapter at 1:05, found, not reviewed, rename?" | — | — |
 | Short clips panel | `aside`, `role="region"` "Short clips"; moments a `list` "Moments"; row `group` "Clip 2, 0:42 to 1:27, 45 seconds" | Tab; Esc stops playing, then closes | — |
 | Make clip | checkbox "Make clip 2" | Space | — |
 | Play | toggle button "Play clip 2" | Space; Esc stops while focus is in the panel | live: "Playing clip 2" / "Stopped" |
-| Make 3 copies | button; disabled with the reason tied by `aria-describedby` | Enter | live: "Making copy 2 of 3" every copy; "Made 3 copies" |
+| Make 3 copies | button; disabled with the reason tied by `aria-describedby`; while the copies are made it waits with `aria-disabled` (the focus stays on it), as the shorter version's *Make the copy* does | Enter | live: "Making copy 2 of 3" every copy; "Made 3 copies" |
 | Model rows | per row: text, Download button "Download Recommended, 3.1 gigabytes", `progressbar` "Downloading Recommended" with value text "1.2 of 3.1 gigabytes" | Enter | live at the end: "Recommended is ready" |
 | Use | `radiogroup` "Model for AI on this PC" | arrows | — |
 | Local progress (beside every busy text tool) | `progressbar` "AI on this PC" with value text "Reading, 45 percent" / "Writing, about 2 minutes left"; Stop a button | Enter | live (polite) at phase changes only |

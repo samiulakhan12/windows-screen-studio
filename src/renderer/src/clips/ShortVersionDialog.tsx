@@ -206,7 +206,8 @@ export function ShortVersionDialog(props: { project: Project; cursor: CursorTrac
               <button type="button" className="btn" onClick={() => (controller.current ? controller.current.abort() : onClose())} data-testid="short-cancel">
                 {making ? 'Stop' : 'Cancel'}
               </button>
-              <button type="button" className="btn primary" autoFocus={hasCaptions} disabled={!plan?.ok || making !== null} onClick={() => void make()} data-testid="short-make">
+              {/* While the copy is made it waits with aria-disabled: a disabled button would drop the keyboard focus to the page. */}
+              <button type="button" className="btn primary" autoFocus={hasCaptions} disabled={!plan?.ok} aria-disabled={making !== null || undefined} onClick={() => void make()} data-testid="short-make">
                 Make the copy
               </button>
             </footer>

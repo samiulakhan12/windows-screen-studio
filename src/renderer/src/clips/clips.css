@@ -154,6 +154,13 @@
   gap: 8px;
 }
 
+/* Make waits while the copies are made: aria-disabled keeps the focus on it (disabled would drop it to the page). */
+.clips-foot .clips-make .btn[aria-disabled='true'],
+.short-version .modal-foot .btn[aria-disabled='true'] {
+  opacity: 0.42;
+  cursor: default;
+}
+
 .clips-space {
   margin: 0;
   color: var(--text-2);

@@ -345,7 +345,13 @@ describe('the Find chapters panel (§2.3)', () => {
     click(byTestId(els, 'find-chapters'))
     els = await settle(panel(), SKIP)
     expect(textOf(byTestId(els, 'find-chapters-progress')!)).toBe(`${FIND_WORDS.looking} 40%`)
-    expect(byTestId(els, 'find-chapters')!.props.disabled).toBe(true)
+    // The button waits, keeping the keyboard focus (aria-disabled: a disabled button drops it to the page); a press starts nothing.
+    const find = byTestId(els, 'find-chapters')!
+    expect(find.props['aria-disabled']).toBe(true)
+    expect(find.props.disabled).toBeUndefined()
+    click(find)
+    els = await settle(panel(), SKIP)
+    expect(fake.scans).toHaveLength(1)
     click(byTestId(els, 'find-chapters-stop'))
     open()
     els = await settle(panel(), SKIP)

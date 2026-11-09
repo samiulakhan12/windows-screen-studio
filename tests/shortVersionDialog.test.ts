@@ -4,7 +4,7 @@
  * the copy made with smooth cuts and its cuts for Review, and the dialog without captions.
  * window.api and the editor are fakes (clipsUi.ts); nothing leaves the test.
  */
-import { beforeEach, describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it, onTestFinished } from 'vitest'
 import type { Project } from '../src/shared/types'
 import { clipProject, steadyTalk } from './clipFixtures'
 import { closes, editing, el, fake, modal, narrated, opened, press, reset, ShortVersionDialog } from './clipsUi'
@@ -42,6 +42,30 @@ describe('the shorter version dialog (test 125)', () => {
     expect(textOf(byTestId(out, 'short-made'))).toContain('Made “Billing tour (60 s)”.')
     press(button(out, 'Open the copy'))
     expect(opened).toEqual(['made-1'])
+  })
+  it('while the copy is made, Make the copy waits and keeps the keyboard focus (aria-disabled, not disabled); a press makes nothing more', async () => {
+    const api = (globalThis as unknown as { window: { api: { duplicateProject: (...a: unknown[]) => Promise<unknown> } } }).window.api
+    const duplicate = api.duplicateProject
+    let finish!: (v: unknown) => void
+    api.duplicateProject = (sourceId, copy) => {
+      fake.copies.push({ sourceId: sourceId as string, copy: copy as Record<string, unknown> })
+      return new Promise((r) => (finish = r))
+    }
+    onTestFinished(() => void (api.duplicateProject = duplicate))
+    const p = narrated()
+    editing(p)
+    let out = await settle(el(ShortVersionDialog, p))
+    press(byTestId(out, 'short-make'))
+    out = await settle(el(ShortVersionDialog, p))
+    const make = byTestId(out, 'short-make')!
+    expect(make.props['aria-disabled']).toBe(true)
+    expect(make.props.disabled).toBe(false)
+    press(make)
+    out = await settle(el(ShortVersionDialog, p))
+    expect(fake.copies).toHaveLength(1)
+    finish({ id: 'made-1', name: 'Billing tour (60 s)', linked: true })
+    out = await settle(el(ShortVersionDialog, p))
+    expect(textOf(byTestId(out, 'short-made'))).toContain('Made “Billing tour (60 s)”.')
   })
   it('the dialog without captions says so and offers Make captions', async () => {
     const p = clipProject({ duration: 100 })

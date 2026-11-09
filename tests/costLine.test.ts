@@ -238,6 +238,13 @@ describe('a click above the amount set asks first (test 92)', () => {
     await refreshCostData()
     await settle(captionsGroup(choice()))
     expect(click(button('other', 'something-else')).prevented).toBe(false)
+    // Nor one that waits while its tool runs (aria-disabled: the click does nothing, so nothing is asked).
+    question.asked = []
+    const waiting = button('captions-ai-title', 'captions-ai-cost-title')
+    waiting.getAttribute = (n: string) => (n === 'aria-describedby' ? 'captions-ai-cost-title' : n === 'aria-disabled' ? 'true' : null)
+    expect(click(waiting).prevented).toBe(false)
+    await new Promise((r) => setTimeout(r, 0))
+    expect(question.asked).toEqual([])
   })
 })
 

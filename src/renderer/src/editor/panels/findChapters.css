@@ -14,6 +14,12 @@
   gap: 8px;
 }
 
+/* Find chapters waits while it runs: aria-disabled keeps the focus on it (disabled would drop it to the page). */
+.find-chapters-run .btn[aria-disabled='true'] {
+  opacity: 0.42;
+  cursor: default;
+}
+
 .find-chapters-progress {
   color: var(--text-2);
   font-size: 12px;

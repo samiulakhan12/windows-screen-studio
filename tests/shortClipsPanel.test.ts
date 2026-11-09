@@ -166,6 +166,13 @@ describe('names with an AI (tests 102 and 125)', () => {
     expect((request.names as { kind: string }).kind).toBe('clip')
     const progress = out.find((e) => (e.type as { name?: string }).name === 'LocalProgress')!
     expect(progress.props.requestId).toBe(requestId)
+    // Make waits, keeping the keyboard focus (aria-disabled: a disabled button drops it to the page); a press asks nothing more.
+    const make = byTestId(out, 'clips-make')!
+    expect(make.props['aria-disabled']).toBe(true)
+    expect(make.props.disabled).toBe(false)
+    press(make)
+    out = await settle(view(), skip)
+    expect(fake.ai).toHaveLength(1)
     press(byTestId(out, 'clips-stop'))
     await settle(view(), skip)
     expect(fake.cancelled).toEqual([requestId])

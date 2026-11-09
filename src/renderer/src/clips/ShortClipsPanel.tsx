@@ -543,13 +543,15 @@ export function ShortClipsPanel(props: { project: Project; cursor: CursorTrack; 
           {moments.length > 0 && (
             <div className="clips-foot">
               <div className="clips-make">
-                {/* With names from an AI, Make also reads what it sends and costs (§11.5): the cost line's sentence. */}
+                {/* With names from an AI, Make also reads what it sends and costs (§11.5): the cost line's sentence.
+                    While the copies are made it waits with aria-disabled: a disabled button would drop the keyboard focus to the page. */}
                 <button
                   type="button"
                   className="btn primary"
                   id={makeId}
                   data-testid="clips-make"
-                  disabled={busy || n === 0 || !!space?.blocked}
+                  disabled={n === 0 || !!space?.blocked}
+                  aria-disabled={busy || undefined}
                   aria-describedby={namesChoice ? `${ids}-cost-names` : undefined}
                   onClick={() => void make()}
                 >

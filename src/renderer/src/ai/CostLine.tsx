@@ -121,7 +121,8 @@ export function CostLine(props: {
     const onClick = (e: Event): void => {
       const target = e.target as Element | null
       const button = target && typeof target.closest === 'function' ? target.closest('button') : null
-      if (!button) return
+      // A button that waits (aria-disabled while its tool runs) does nothing: nothing to ask about.
+      if (!button || button.getAttribute('aria-disabled') === 'true') return
       if (passed.current === button) {
         passed.current = null
         return
