@@ -1049,6 +1049,10 @@ of times. Shots are made in step order in the background while the panel is open
 most 300 shots or 256 MB, the oldest dropped), and remade only for steps whose time, view, `rect` or
 `ring` changed, or whose shot time a changed blur or pixelate shape covers. A demo's whole-screen shots
 are made when the format is the demo, or at saving. Closing the panel stops the pass and frees them.
+A Save or Copy never waits on the pass and never goes without a picture the pass has not made yet (just
+after choosing the demo, while a shot is made again after an edit, or one dropped past the cap): it
+makes those first (`shotsFor`), while the button reads "Saving…". One that cannot be made is left out,
+and the line after saving says so: "Saved “Billing demo.html”. 2 screenshots could not be made: …".
 
 #### 5.5.7 Shots that may show typing (`typedBefore`)
 

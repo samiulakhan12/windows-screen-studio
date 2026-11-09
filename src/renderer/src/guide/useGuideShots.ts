@@ -47,6 +47,35 @@ export function stillsInput(project: Project, track: CursorTrack): ThumbnailInpu
   }
 }
 
+/**
+ * The pictures of `plans` for a Save or Copy (§5.5.6): the ones `made` already (made for the plan as it
+ * is now), and the rest made now (a demo's shots just after the format changed, a shot being made
+ * again after an edit, one dropped past SHOT_CAP), so nothing is saved without its picture. `failed`:
+ * why the rest could not be made.
+ */
+export async function shotsFor(
+  project: Project,
+  track: CursorTrack,
+  plans: readonly ShotPlan[],
+  made: ReadonlyMap<string, GuideImage>,
+  signal: AbortSignal
+): Promise<{ images: Map<string, GuideImage>; failed: string | null }> {
+  const images = new Map<string, GuideImage>()
+  const missing = plans.filter((p) => {
+    const image = made.get(p.key)
+    if (image) images.set(p.key, image)
+    return !image
+  })
+  if (!missing.length) return { images, failed: null }
+  try {
+    const shots = missing.map((s) => ({ key: s.key, t: s.t, rect: s.rect, ring: s.ring, arrow: s.arrow }))
+    for await (const { key, image } of renderGuideStills(stillsInput(project, track), shots, { mime: 'image/png', quality: 1, maxWidth: 1600, signal })) images.set(key, image)
+    return { images, failed: null }
+  } catch (err) {
+    return { images, failed: err instanceof Error ? err.message : String(err) }
+  }
+}
+
 /** Drops the oldest shots past SHOT_CAP. */
 function trim(cache: Map<string, Kept>): void {
   let bytes = 0

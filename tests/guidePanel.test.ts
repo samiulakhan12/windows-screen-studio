@@ -77,6 +77,8 @@ vi.stubGlobal('window', {
 })
 
 const PNG = (w: number): Uint8Array => new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, w & 255, w >> 8])
+/** Why the faked screenshots cannot be made (null: they are). */
+let stillsFail: string | null = null
 
 mockReact()
 // P5's question before a run, with its own logic; only the dialog is answered here (no DOM).
@@ -93,6 +95,7 @@ vi.doMock('../src/renderer/src/ai/costConfirm', async (importOriginal) => {
 })
 vi.doMock('../src/renderer/src/guide/guideStills', () => ({
   async *renderGuideStills(_input: unknown, shots: { key: string; rect: { w: number; h: number } }[], opts: { maxWidth: number; mime: string }) {
+    if (stillsFail) throw new Error(stillsFail)
     for (const s of shots) {
       const w = Math.min(opts.maxWidth, Math.round(s.rect.w))
       yield { key: s.key, image: { bytes: PNG(w), mime: opts.mime, width: w, height: Math.round((w * s.rect.h) / s.rect.w) } }
@@ -200,6 +203,7 @@ beforeEach(() => {
   unmountAll()
   for (const list of Object.values(calls)) list.length = 0
   costAnswer = true
+  stillsFail = null
   providerModel = 'gpt-x'
   resetAskedCosts()
   prefs.clear()
@@ -345,6 +349,46 @@ describe('the bug report’s Actual screenshot (docs/design/smart-tools.md §2.1
     expect(blur.kind).toBe('blur')
     expect(blur.start).toBeCloseTo(20 - 1 / 60, 6)
     expect(calls.saved).toEqual([])
+  })
+})
+
+describe('saving before the screenshots are made (docs/design/smart-tools.md §5.5.6)', () => {
+  /** Lets a Save run to its end. */
+  const saved = async (): Promise<El[]> => {
+    for (let i = 0; i < 50 && !calls.saved.length; i++) await after()
+    return after()
+  }
+  /** The panel with its guide shots made, then the demo chosen (its own shots not made yet: they wait 250 ms). */
+  const demoChosen = async (): Promise<El[]> => {
+    const els = await ready()
+    const demo = els.filter((e) => e.type === 'input' && String(e.props.name).endsWith('-format'))[3]
+    ;(demo.props.onChange as () => void)()
+    return render(panel())
+  }
+
+  it('Save demo… straight after choosing the demo makes its whole-screen shots, so no step is saved without its picture', async () => {
+    let els = await demoChosen()
+    click(byTestId(els, 'guide-save'))
+    els = render(panel())
+    click(byTestId(els, 'guide-save-anyway'))
+    els = await saved()
+    expect(calls.saved).toHaveLength(1)
+    expect(calls.saved[0]).toMatchObject({ format: 'demo' })
+    const widths = [...String(calls.saved[0].html).matchAll(/<img src="data:image\/webp;base64,[^"]*" alt="[^"]*" width="(\d+)"/g)].map((m) => m[1])
+    expect(widths).toEqual(['1600', '1600', '1600'])
+    expect(said(els)).toBe('Saved “Secret demo.pdf”.')
+  })
+
+  it('shots that cannot be made: the guide is saved without them and says how many and why', async () => {
+    let els = await demoChosen()
+    stillsFail = 'The video could not be read.'
+    click(byTestId(els, 'guide-save'))
+    els = render(panel())
+    click(byTestId(els, 'guide-save-anyway'))
+    els = await saved()
+    expect(calls.saved).toHaveLength(1)
+    expect(String(calls.saved[0].html)).not.toContain('<img src=')
+    expect(said(els)).toBe('Saved “Secret demo.pdf”. 3 screenshots could not be made: The video could not be read.')
   })
 })
 

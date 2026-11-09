@@ -40,7 +40,7 @@ import { keepArrows } from '../editor/panels/JoinOptions'
 import { projectSaid } from '../publish/checkNote'
 import { BIG_FILE, blurArea, blurTypedText, copyGuide, saveGuide, tidyNotes, writeStepTitles } from './guideRun'
 import { ShotViewer, type ViewerShot } from './ShotViewer'
-import { useGuideShots } from './useGuideShots'
+import { shotsFor, useGuideShots } from './useGuideShots'
 import { namesWithPictures, pictureImage, pictureSteps, picturesToSend } from './visionTitles'
 import '../review/review.css'
 import './guide.css'
@@ -430,16 +430,24 @@ export function GuidePanel(props: { project: Project; cursor: CursorTrack; start
   const [question, setQuestion] = useState<{ kind: 'check' | 'link'; text: string; go(): void } | null>(null)
   const saveAc = useRef<AbortController | null>(null)
   useEffect(() => () => saveAc.current?.abort(), [])
-  const docImages = (fmt: GuideFormat): Map<string, GuideImage> => {
-    const out = new Map<string, GuideImage>()
-    for (const r of included) {
-      const img = fmt === 'demo' ? demoShots.images.get(r.step.key) : shots.images.get(r.step.key)
-      if (img) out.set(r.step.key, img)
+  /**
+   * The pictures a Save or Copy in `fmt` shares (§5.5.6): each included step's in that format's view
+   * (the demo's, else the guide's) and the bug report's Actual, any not made yet made now; `missing`:
+   * how many still could not be, and why.
+   */
+  const docImages = async (fmt: GuideFormat, signal: AbortSignal): Promise<{ images: Map<string, GuideImage>; missing: number; failed: string | null }> => {
+    const demo = fmt === 'demo'
+    const want = [...included.map((r) => (demo ? r.shot : r.plan)), ...(actualPlan ? [actualPlan] : [])]
+    const made = new Map<string, GuideImage>()
+    for (const p of want) {
+      const image = (demo && p.key !== ACTUAL_KEY ? demoShots : shots).images.get(p.key)
+      if (image) made.set(p.key, image)
     }
-    const actual = shots.images.get(ACTUAL_KEY)
-    if (actual && guide.kind === 'bug') out.set(ACTUAL_KEY, actual)
-    return out
+    const { images, failed } = await shotsFor(project, track, want, made, signal)
+    return { images, missing: want.length - images.size, failed }
   }
+  /** " 2 screenshots could not be made: …" after a Save or Copy that lacks some, else nothing. */
+  const missingNote = (missing: number, failed: string | null): string => (missing ? ` ${missing} ${missing === 1 ? 'screenshot' : 'screenshots'} could not be made${failed ? `: ${failed}` : '.'}` : '')
   /** The project the document is built from: a bug report's default details with the recording's real scale. */
   const docProject = (): Project => {
     const p = store.state
@@ -464,10 +472,12 @@ export function GuidePanel(props: { project: Project; cursor: CursorTrack; start
     const ac = new AbortController()
     saveAc.current = ac
     try {
-      const result = await saveGuide(format, { project: docProject(), steps, images: docImages(format), page, signal: ac.signal, smaller })
+      const { images, missing, failed } = await docImages(format, ac.signal)
+      if (ac.signal.aborted) return
+      const result = await saveGuide(format, { project: docProject(), steps, images, page, signal: ac.signal, smaller })
       if (!result) return
       setSaved({ ...result, format })
-      say(`Saved “${result.path.split(/[\\/]/).pop() ?? result.path}”.`)
+      say(`Saved “${result.path.split(/[\\/]/).pop() ?? result.path}”.${missingNote(missing, failed)}`)
     } catch (err) {
       say(message(err))
     } finally {
@@ -476,9 +486,13 @@ export function GuidePanel(props: { project: Project; cursor: CursorTrack; start
   }
   const doCopy = async (): Promise<void> => {
     setSaving('copy')
+    const ac = new AbortController()
+    saveAc.current = ac
     try {
-      const { images } = await copyGuide({ project: docProject(), steps, images: docImages('html') })
-      say(`Copied the guide with ${images} ${images === 1 ? 'screenshot' : 'screenshots'}.`)
+      const pictures = await docImages('html', ac.signal)
+      if (ac.signal.aborted) return
+      const { images } = await copyGuide({ project: docProject(), steps, images: pictures.images })
+      say(`Copied the guide with ${images} ${images === 1 ? 'screenshot' : 'screenshots'}.${missingNote(pictures.missing, pictures.failed)}`)
     } catch (err) {
       say(message(err))
     } finally {
