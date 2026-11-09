@@ -16,6 +16,16 @@ import { button, byTestId, contexts, focused, key, mockReact, render, renderIfCh
 const keys = vi.hoisted(() => ({ last: false }))
 vi.mock('../src/renderer/src/editor/focus', async (importOriginal) => ({ ...(await importOriginal<Record<string, unknown>>()), lastInputWasKey: () => keys.last }))
 
+/** The question before a paid run (costConfirm.ts, tested in costConfirm.test.ts): who it was asked about, and its answer. */
+const question = vi.hoisted(() => ({ answer: true, asked: [] as { place: string; task: string; count: number }[] }))
+vi.mock('../src/renderer/src/ai/costConfirm', async (importOriginal) => ({
+  ...(await importOriginal<Record<string, unknown>>()),
+  confirmRequest: async (choice: { place: string }, request: { task: string; segments: unknown[] }) => {
+    question.asked.push({ place: choice.place, task: request.task, count: request.segments.length })
+    return question.answer
+  }
+}))
+
 const sent: unknown[] = []
 const GEMINI = { id: 'g1', kind: 'gemini', label: '', model: 'gemini-x' }
 /** The AI providers listAiProviders answers with (one by default), or a promise of them still loading. */
@@ -104,6 +114,8 @@ beforeEach(() => {
   ids.stopped.length = 0
   ai.wait = null
   ai.fail = false
+  question.answer = true
+  question.asked.length = 0
   setActive(null)
   store = testStore(base())
   contexts.editor = { store, player: { time: 0, subscribe: () => () => undefined } }
@@ -165,6 +177,8 @@ describe('Add a language gives the keyboard back to its button (§2.15)', () => 
     ;(byTestId(els, 'track-translate')!.props.onClick as () => void)()
     const after = await settle(languages())
     expect(sent).toHaveLength(1)
+    // Its cost line holds the click to ask (CostLine.tsx): the run does not ask a second time.
+    expect(question.asked).toEqual([])
     expect(store.state.captionTracks?.map((t) => t.language)).toHaveLength(1)
     expect(byTestId(after, 'track-translate')).toBeUndefined()
     expect(focused.at(-1)?.props['data-testid']).toBe('track-add')
@@ -510,6 +524,25 @@ describe('Translate again from the keyboard (§2.15)', () => {
     expect(byTestId(els, 'track-retranslate')!.props.disabled).toBe(true)
     expect(focused.at(-1)?.props['data-testid']).toBe('track-show')
     expect(nameOf(els, focused.at(-1))).toBe('Show on the video, Bengali · translated with Gemini')
+  })
+
+  it('asks the question before a paid run first, as Translate does: Cancel sends nothing, Run translates (smart-tools.md §11.5)', async () => {
+    let els = await settle(languages())
+    const again = byTestId(els, 'track-retranslate')!
+    // Its own sentence says what it sends and where.
+    expect(textOf(byId(els, String(again.props['aria-describedby'])))).toMatch(/; sends your captions to Gemini\.$/)
+    question.answer = false
+    ;(again.props.onClick as () => void)()
+    els = await settle(languages())
+    expect(question.asked).toEqual([{ place: 'Gemini', task: 'translate', count: 1 }])
+    expect(sent).toEqual([])
+    expect(store.state.captionTracks?.[0].segments).toEqual([])
+    question.answer = true
+    ;(byTestId(els, 'track-retranslate')!.props.onClick as () => void)()
+    await settle(languages())
+    expect(question.asked).toHaveLength(2)
+    expect(sent).toHaveLength(1)
+    expect(store.state.captionTracks?.[0].segments).toHaveLength(1)
   })
 
   it('stays on the page when a shortcut was pressed there while it ran (Right steps frames, it does not switch the captions)', async () => {

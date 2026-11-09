@@ -68,7 +68,7 @@ vi.stubGlobal('window', {
 /** Whether the app's window has the focus (not another app's). */
 let windowFocused = true
 /** The page: `activeElement` is the stand-in that has the focus, or the body; querySelector finds a card. */
-const page: { body: object; activeElement: unknown; querySelector?: (sel: string) => unknown; hasFocus: () => boolean } = { body: {}, activeElement: null, hasFocus: () => windowFocused }
+const page: { body: object; activeElement: unknown; querySelector?: (sel: string) => unknown; getElementById?: (id: string) => unknown; hasFocus: () => boolean } = { body: {}, activeElement: null, hasFocus: () => windowFocused }
 vi.stubGlobal('document', page)
 vi.stubGlobal('navigator', {
   clipboard: {
@@ -814,8 +814,39 @@ describe('Publish dialog: a palette command shows the card it writes (§5.2)', (
           : null
     }
   }
+  /** Buttons pressed by id (click()); while `held`, the cost line holds the click to ask first (CostLine.tsx). */
+  const pressed: string[] = []
+  let held = false
+  const byId = (id: string): unknown => {
+    const el = tree.find((e) => e.props.id === id)
+    return el
+      ? {
+          click: () => {
+            if (el.props.disabled) return
+            pressed.push(id)
+            if (!held) (el.props.onClick as () => void)()
+          }
+        }
+      : null
+  }
   beforeEach(() => {
     page.querySelector = findCard
+    page.getElementById = byId
+    pressed.length = 0
+    held = false
+  })
+
+  it("presses the card's Write, which the cost line holds to ask its question first, as for a click (smart-tools.md §11.5)", async () => {
+    request = { kind: 'releaseNotes', n: 1 }
+    held = true
+    const out = await opened()
+    expect(pressed).toEqual(['publish-releaseNotes-write'])
+    // The cost line names that button for this card's cost: its click is the one asked about.
+    const line = out.find((e) => (e.type as { name?: string }).name === 'CostLine')!
+    expect((line.props.actions as { key: string; buttonId: string }[]).find((a) => a.key === 'releaseNotes')?.buttonId).toBe('publish-releaseNotes-write')
+    // Cancel: nothing is sent.
+    expect(asked).toEqual([])
+    expect(focused).toBe('Release notes text')
   })
 
   it('"Write release notes": that card stays in view, with the focus on its text, not on Write all', async () => {

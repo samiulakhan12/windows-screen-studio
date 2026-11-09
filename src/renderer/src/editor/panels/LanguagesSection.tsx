@@ -8,7 +8,8 @@
  * licences (§0.3 item 5): OFFLINE_TRANSLATION is its seam.
  */
 import { useCallback, useEffect, useId, useRef, useState } from 'react'
-import type { AiProviderInfo, AiTextResult, AiUsage, TextChoice } from '../../../../shared/api/ai'
+import type { AiProviderInfo, AiTextRequest, AiTextResult, AiUsage, TextChoice } from '../../../../shared/api/ai'
+import { costSentence } from '../../../../shared/ai/cost'
 import { captionsToTranslate, languageName, languagesToAdd, trackOf, trackRows, withoutTrack, withShownTrack, withTranslation } from '../../../../shared/captions/captionTracks'
 import { MAX_TRACKS } from '../../../../shared/captions/studioData'
 import type { Project } from '../../../../shared/types'
@@ -20,7 +21,8 @@ import { lastInputWasKey } from '../focus'
 import { useReturnFocus } from '../returnFocus'
 import { madeBy, sentHint, useTextChoiceList } from '../../ai/textChoices'
 import { CostLine } from '../../ai/CostLine'
-import { runCostText } from '../../ai/useCost'
+import { confirmRequest } from '../../ai/costConfirm'
+import { estimateFor, runCostText, useCostData } from '../../ai/useCost'
 import { LocalProgress, LocalWritten } from '../../ai/LocalProgress'
 
 /**
@@ -98,6 +100,8 @@ export function LanguagesSection({ project }: { project: Project }): JSX.Element
   const { store } = useEditor()
   // The providers, services and On this PC (smart-tools.md §20.0), each named by the place its text goes.
   const providers = useTextChoiceList('translate')
+  // What a row's Translate again would cost (its button's own sentence, §11.5).
+  const costs = useCostData()
   const list = providers ?? []
   const [adding, setAdding] = useState(false)
   const [language, setLanguage] = useState('')
@@ -204,6 +208,10 @@ export function LanguagesSection({ project }: { project: Project }): JSX.Element
       setStatus(`The ${languageName(code)} captions are up to date`)
       return
     }
+    const request: AiTextRequest = { task: 'translate', segments: sent, targetLanguage: languageName(code) }
+    // Translate again has no cost line to hold its click: the question before a paid run is asked here
+    // (smart-tools.md §11.5), as Translate's line asks it. Cancel sends nothing.
+    if (again && (!(await confirmRequest(provider, request)) || running.current || !live.current)) return
     const mine: Job = { language: code, count: sent.length, cancelled: false, id: `captions-translate-${++translateSeq}` }
     running.current = mine
     landing.current = lastInputWasKey() ? { language: code, again } : null
@@ -212,7 +220,7 @@ export function LanguagesSection({ project }: { project: Project }): JSX.Element
     setStatus('')
     let result: AiTextResult & { model?: string }
     try {
-      result = await window.api.aiText(provider.id, { task: 'translate', segments: sent, targetLanguage: languageName(code) }, mine.id)
+      result = await window.api.aiText(provider.id, request, mine.id)
     } catch (err) {
       if (!mine.cancelled && live.current) setError(`Could not translate: ${ipcMessage(err).replace(/\.?$/, '.')}`)
       return
@@ -309,6 +317,9 @@ export function LanguagesSection({ project }: { project: Project }): JSX.Element
             const stale = row.changed + row.missing > 0
             // Each radio is named by its words and its row's language: "Show on the video, Bengali · translated with Gemini".
             const name = `${group}-track-${i}`
+            // Translate again's own sentence: what it costs and where the captions go (§11.5).
+            const againCost = code && provider && stale ? estimateFor(provider, { task: 'translate', segments: captionsToTranslate(project, code), targetLanguage: languageName(code) }, costs) : null
+            const againSays = !code || !provider || !stale ? null : againCost ? costSentence(againCost, provider.place, 'your captions') : provider.kind === 'local' ? 'Stays on this PC.' : `Sends your captions to ${provider.place}.`
             return (
               <div key={code ?? ''} className="caption-row" data-track={code ?? ''}>
                 <div className="caption-text">
@@ -344,12 +355,18 @@ export function LanguagesSection({ project }: { project: Project }): JSX.Element
                         className="btn small"
                         data-testid="track-retranslate"
                         aria-label={`Translate the ${languageName(code)} captions again`}
+                        aria-describedby={againSays ? `${name}-again-cost` : undefined}
                         disabled={!stale || !provider || !!job}
                         title={!provider ? 'Add an AI provider to translate' : stale ? 'Translates only the captions that changed or are missing' : 'Up to date'}
                         onClick={() => provider && void translate(code, provider, true)}
                       >
                         Translate again
                       </button>
+                      {againSays && (
+                        <span id={`${name}-again-cost`} className="sr-only">
+                          {againSays}
+                        </span>
+                      )}
                       <button
                         className="btn small ghost"
                         data-testid="track-remove"

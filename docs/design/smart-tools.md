@@ -2200,17 +2200,18 @@ one line. Its parts:
   focused). An unknown cost on a paid service asks once per (provider, model) in a session, unless
   *Never*. On this PC, over 10 minutes: "This takes about 25 minutes on this PC. You can keep editing
   meanwhile. Start?". A palette command that runs one of these tools (*Find chapters*, *Suggest
-  chapters with AI*, the title and the summary) presses the tool's button, so the same question comes
-  first. A run no line's button starts asks it itself (`confirmRequest`, from the request it sends):
-  *Make my captions great* with AI picks, from its button or the palette (its line is in the options
-  popover). Polish's line holds a click on **Polish**, which starts the paid Captions step.
+  chapters with AI*, the title and the summary, the Publish dialog's *Write* commands) presses the
+  tool's button, so the same question comes first. A run no line's button starts asks it itself
+  (`confirmRequest`, from the request it sends): *Make my captions great* with AI picks, from its
+  button or the palette (its line is in the options popover), and a caption language's *Translate
+  again*. Polish's line holds a click on **Polish**, which starts the paid Captions step.
 - Where the line appears (each tied to its buttons by `aria-describedby`):
 
 | Place | Group or action |
 |---|---|
 | Captions tab | Generate captions (with a provider) alone; Fix captions, Suggest chapters, Suggest a title, Summarize as one group |
 | Captions › Clean up | Fix spelling with AI |
-| Captions › Languages | Translate |
+| Captions › Languages | Translate; each row's Translate again has its own sentence |
 | Captions › Make my captions great | with AI picks |
 | Publish dialog | each card's Write and Regenerate as one group, with Write all (the sum) |
 | Notes › Draft script | Draft script |
