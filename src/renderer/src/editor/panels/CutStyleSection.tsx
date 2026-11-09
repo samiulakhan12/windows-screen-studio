@@ -35,10 +35,12 @@ export function CutStyleSection(props: { project: Project; gap: { start: number;
         <span className="cut-number" data-testid="cut-number">
           {cutOf(number.n, number.of)}
         </span>
-        <button className="btn small" data-testid="cut-prev" disabled={number.n <= 1} onClick={() => command('previousCut')}>
+        {/* aria-disabled, not disabled: pressing on to the first or last cut keeps the focus on the
+            button (a disabled one drops it to the page); a press there says there is no cut. */}
+        <button className="btn small" data-testid="cut-prev" aria-disabled={number.n <= 1 || undefined} onClick={() => command('previousCut')}>
           Previous cut
         </button>
-        <button className="btn small" data-testid="cut-next" disabled={number.n >= number.of} onClick={() => command('nextCut')}>
+        <button className="btn small" data-testid="cut-next" aria-disabled={number.n >= number.of || undefined} onClick={() => command('nextCut')}>
           Next cut
         </button>
         <button className="btn small" data-testid="cut-play" onClick={() => command('playCut')}>

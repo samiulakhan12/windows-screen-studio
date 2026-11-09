@@ -26,6 +26,12 @@
   margin-right: auto;
 }
 
+/* Previous cut and Next cut at the ends: aria-disabled keeps the focus on them. */
+.cut-nav .btn[aria-disabled='true'] {
+  opacity: 0.42;
+  cursor: default;
+}
+
 /* Radio chips: the native radio is kept (arrows move between them) but drawn as a chip. */
 .cut-radios {
   display: flex;
