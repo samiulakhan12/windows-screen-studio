@@ -17,8 +17,21 @@ vi.mock('electron', () => ({
   app: { getPath: () => '/nonexistent', isPackaged: false, on: () => undefined, getAppPath: () => '/nonexistent' },
   ipcMain: { handle: (channel: string, fn: (...args: unknown[]) => unknown) => h.handlers.set(channel, fn), on: () => undefined },
   ipcRenderer: { invoke: (...args: unknown[]) => (h.invoked.push(args), Promise.resolve()) },
-  clipboard: { write: (data: unknown) => h.written.push(data), writeImage: (img: unknown) => h.images.push(img) },
-  nativeImage: { createFromBuffer: (b: Buffer) => ({ isEmpty: () => b.length < 8, bytes: b.length }) },
+  clipboard: {
+    write: async (items: { entries: Record<string, unknown> }[]) => {
+      for (const item of items) {
+        const blob = item.entries['image/png']
+        if (blob instanceof Blob) h.images.push({ type: blob.type, bytes: new Uint8Array(await blob.arrayBuffer()) })
+        else h.written.push(item.entries)
+      }
+    }
+  },
+  ClipboardItem: class {
+    entries: Record<string, unknown>
+    constructor(entries: Record<string, unknown>) {
+      this.entries = entries
+    }
+  },
   dialog: {},
   shell: {},
   safeStorage: { isEncryptionAvailable: () => true },
@@ -46,7 +59,7 @@ beforeEach(() => {
 describe('test 110: Copy guide and Copy screenshot (main)', () => {
   it('writes the HTML and the plain text together', async () => {
     await call(GUIDE_CHANNELS.copy, { html: '<h1>Billing</h1>', text: 'Billing\n\n1. Click “Export”\n' })
-    expect(h.written).toEqual([{ html: '<h1>Billing</h1>', text: 'Billing\n\n1. Click “Export”\n' }])
+    expect(h.written).toEqual([{ 'text/html': '<h1>Billing</h1>', 'text/plain': 'Billing\n\n1. Click “Export”\n' }])
   })
 
   it('a 64 MB + 1 HTML or 2 MB + 1 text is refused, in the preload and in main', async () => {
@@ -60,7 +73,7 @@ describe('test 110: Copy guide and Copy screenshot (main)', () => {
 
   it('Copy screenshot writes one PNG; anything else is refused', async () => {
     await call(GUIDE_CHANNELS.copyImage, PNG)
-    expect(h.images).toEqual([{ isEmpty: expect.any(Function), bytes: PNG.length }])
+    expect(h.images).toEqual([{ type: 'image/png', bytes: PNG }])
     for (const bad of [new Uint8Array([0xff, 0xd8, 0xff, 0]), 'png', new Uint8Array(GUIDE_SAVE_LIMITS.image + 1)]) await expect(call(GUIDE_CHANNELS.copyImage, bad)).rejects.toThrow()
     await expect(guideApi.copyGuideImage(new Uint8Array(GUIDE_SAVE_LIMITS.image + 1))).rejects.toThrow()
     expect(h.images).toHaveLength(1)

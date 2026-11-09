@@ -30,7 +30,7 @@ vi.mock('electron', () => ({
   },
   shell: { showItemInFolder: (file: string) => h.shown.push(file) },
   clipboard: {},
-  nativeImage: {},
+  ClipboardItem: class {},
   safeStorage: { isEncryptionAvailable: () => true },
   protocol: {},
   BrowserWindow: class {}

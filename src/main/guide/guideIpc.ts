@@ -5,7 +5,7 @@
  * file written here joins the export's files of this session (rememberExported), so Show in folder
  * and Share accept it, and nothing else.
  */
-import { app, clipboard, dialog, ipcMain, nativeImage, shell, type IpcMainInvokeEvent } from 'electron'
+import { app, clipboard, ClipboardItem, dialog, ipcMain, shell, type IpcMainInvokeEvent } from 'electron'
 import path from 'node:path'
 import { GUIDE_CHANNELS, GUIDE_SAVE_LIMITS, guideCopyProblem, imageKind, type GuideSavePayload } from '../../shared/api/guide'
 import { isExportedFile, rememberExported } from '../exportIpc'
@@ -78,20 +78,18 @@ export function showGuideFile(file: unknown): void {
   shell.showItemInFolder(file)
 }
 
-/** guide:copy: the guide's HTML and plain text on the clipboard. */
-export function copyGuide(clip: unknown): void {
+/** guide:copy: the guide's HTML and plain text on the clipboard, in one entry. */
+export async function copyGuide(clip: unknown): Promise<void> {
   const problem = guideCopyProblem(clip)
   if (problem) throw new Error(problem)
   const c = clip as { html: string; text: string }
-  clipboard.write({ html: c.html, text: c.text })
+  await clipboard.write([new ClipboardItem({ 'text/html': c.html, 'text/plain': c.text })])
 }
 
 /** guide:copyImage: one PNG of at most 16 MB on the clipboard. */
-export function copyGuideImage(png: unknown): void {
+export async function copyGuideImage(png: unknown): Promise<void> {
   if (!(png instanceof Uint8Array) || png.byteLength > GUIDE_SAVE_LIMITS.image || imageKind(png) !== 'png') throw new Error('This screenshot cannot be copied.')
-  const image = nativeImage.createFromBuffer(Buffer.from(png))
-  if (image.isEmpty()) throw new Error('This screenshot cannot be copied.')
-  clipboard.writeImage(image)
+  await clipboard.write([new ClipboardItem({ 'image/png': new Blob([new Uint8Array(png)], { type: 'image/png' }) })])
 }
 
 export function registerGuideIpc(): void {
@@ -105,10 +103,10 @@ export function registerGuideIpc(): void {
   })
   ipcMain.handle(GUIDE_CHANNELS.copy, (e, clip: unknown) => {
     fromApp(e)
-    copyGuide(clip)
+    return copyGuide(clip)
   })
   ipcMain.handle(GUIDE_CHANNELS.copyImage, (e, png: unknown) => {
     fromApp(e)
-    copyGuideImage(png)
+    return copyGuideImage(png)
   })
 }
