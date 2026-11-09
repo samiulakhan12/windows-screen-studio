@@ -5,6 +5,7 @@ export type JobBase = Omit<ExportJob, 'video'>
 /** Starts the ffmpeg side of an export with the finished job. */
 export type StartJob = (job: ExportJob) => Promise<void>
 import { avcLevel, colorTagsFrom, ivfFileHeader, ivfFrameHeader, rawReadback, rgbToI420, vp9Codec } from '../../../shared/render/codec'
+import { rateFps } from '../../../shared/render/proFormats'
 
 /**
  * Where rendered frames go. `push` has captured the canvas by the time it resolves
@@ -139,10 +140,11 @@ const VP9_BPP_FACTOR = 0.7
 
 /**
  * Bit rate settings: a size target is an average the encoder must hold (constant bit
- * rate, the mode hardware encoders keep best), otherwise a quality-based variable rate.
+ * rate, the mode hardware encoders keep best), otherwise a quality-based variable rate,
+ * scaled with `rateFps` (the frame rate itself up to 60 fps; output-and-languages §5.6).
  */
 function rateOf(width: number, height: number, fps: number, quality: ExportJob['quality'], bitrate: number | undefined, factor = 1): Pick<VideoEncoderConfig, 'bitrate' | 'bitrateMode'> {
-  return bitrate ? { bitrate, bitrateMode: 'constant' } : { bitrate: Math.round(width * height * fps * BPP[quality] * factor), bitrateMode: 'variable' }
+  return bitrate ? { bitrate, bitrateMode: 'constant' } : { bitrate: Math.round(width * height * rateFps(fps) * BPP[quality] * factor), bitrateMode: 'variable' }
 }
 
 /** WebCodecs encoder configurations to try, best first (High, then Main profile). */

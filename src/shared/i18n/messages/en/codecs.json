@@ -48,5 +48,6 @@
   "target.transparent": "Transparent videos are sized by quality, not by a target.",
   "target.wav": "WAV files are uncompressed.",
   "encoder.hevcSoftware": "HEVC uses your graphics card only",
-  "sizeLine.withCodec": "{size} · {fps} fps · {codec} · {length}"
+  "sizeLine.withCodec": "{size} · {fps} fps · {codec} · {length}",
+  "webcodecs.unsupported": "The graphics card cannot make {codec} at {width}×{height} on this PC."
 }
