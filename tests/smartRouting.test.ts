@@ -134,14 +134,15 @@ describe('the test hooks (test 104)', () => {
     const helper = path.join(h.userData, 'fake-llm.cjs')
     const catalog = path.join(h.userData, 'catalog.json')
     fs.writeFileSync(helper, '')
-    fs.writeFileSync(catalog, JSON.stringify([{ id: 'qwen3.5-2b', file: 'tiny.gguf' }]))
+    // A test catalogue entry is pinned like a real one (part P4's readTestCatalog): bytes and SHA-256.
+    fs.writeFileSync(catalog, JSON.stringify([{ id: 'qwen3.5-2b', file: 'tiny.gguf', bytes: 1000, sha256: 'a'.repeat(64) }]))
     process.env.SSW_LLM_HELPER = helper
     process.env.SSW_TEXT_MODEL_TEST_CATALOG = catalog
     process.env.SSW_PRICE_LIST_URL = 'http://127.0.0.1:9/prices.json'
     try {
       h.packaged = false
       expect(llmHelperPath()).toBe(helper)
-      expect(testCatalog()).toEqual([{ id: 'qwen3.5-2b', file: 'tiny.gguf' }])
+      expect(testCatalog()?.map((m) => ({ id: m.id, file: m.file }))).toEqual([{ id: 'qwen3.5-2b', file: 'tiny.gguf' }])
       expect(priceListUrl()).toBe('http://127.0.0.1:9/prices.json')
       h.packaged = true
       ;(process as { resourcesPath?: string }).resourcesPath = h.userData

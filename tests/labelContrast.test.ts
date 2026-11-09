@@ -172,3 +172,34 @@ describe('the music library (docs/design/editing-polish.md §2.6, §12): its wor
     expect(contrast(resolve(declared(library, '.music-credit', 'color'), vars), panel)).toBeGreaterThanOrEqual(4.5)
   })
 })
+
+describe('AI on this PC (docs/design/smart-tools.md §2.5, §14): Settings’ rows and the progress beside a busy button', () => {
+  const local = css('ai/localAi.css')
+  const vars = tokens(css('styles.css'))
+  /** `rgba(r, g, b, a)` over `under`, as the browser composites it. */
+  const over = (value: string, under: RGB): RGB => {
+    const m = /^rgba\((\d+),\s*(\d+),\s*(\d+),\s*([\d.]+)\)$/.exec(value)
+    if (!m) return resolve(value, vars)
+    const a = Number(m[4])
+    return [1, 2, 3].map((i, k) => Number(m[i]) * a + under[k] * (1 - a)) as RGB
+  }
+  const fill = (value: string, under: RGB): RGB => {
+    const ref = /^var\((--[\w-]+)\)$/.exec(value)
+    return over(ref ? vars[ref[1]] : value, under)
+  }
+
+  it('the words of a model’s row, its badges on their fills, and the lines on the panel', () => {
+    const panel = resolve('var(--surface-1)', vars)
+    const row = resolve(declared(local, '.local-ai-model', 'background'), vars)
+    for (const sel of ['.local-ai-hint', '.local-ai-licence', '.local-ai-why', '.local-ai-status.error', '.local-ai-progress']) {
+      expect(contrast(resolve(declared(local, sel, 'color'), vars), row), sel).toBeGreaterThanOrEqual(4.5)
+    }
+    for (const sel of ['.local-ai-badge', '.local-ai-badge.ok']) {
+      const background = fill(declared(local, sel, 'background'), row)
+      expect(contrast(resolve(declared(local, sel, 'color'), vars), background), sel).toBeGreaterThanOrEqual(4.5)
+    }
+    for (const sel of ['.local-ai-line', '.local-ai-using', '.local-progress', '.local-ai-use legend']) {
+      expect(contrast(resolve(declared(local, sel, 'color'), vars), panel), sel).toBeGreaterThanOrEqual(4.5)
+    }
+  })
+})

@@ -1,0 +1,32 @@
+[package]
+name = "ssw-llm"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.88"
+license = "MIT"
+description = "Flown text helper: AI on this PC, a llama.cpp model answering one JSON-lines request at a time."
+publish = false
+
+# Its own workspace root: native/Cargo.toml (ssw-capture) and native/speech are separate packages.
+[workspace]
+
+[[bin]]
+name = "ssw-llm"
+path = "src/main.rs"
+
+[dependencies]
+# Vendors llama.cpp and its ggml (MIT) and builds them with CMake; the crates are MIT OR Apache-2.0.
+# default-features = false turns off `openmp` (no libgomp-1.dll) and `android-shared-stdcxx`;
+# `mtmd` and `llguidance` stay off.
+llama-cpp-2 = { version = "=0.1.161", default-features = false }
+serde_json = "1"
+
+[dev-dependencies]
+serde_json = "1"
+
+[profile.release]
+opt-level = 3
+lto = true
+codegen-units = 1
+strip = true
+panic = "abort"

@@ -140,14 +140,113 @@ function unexpectedSpeechImports(names) {
 const SPEECH_BUDGET = { compressed: 3.5e6, installed: 10e6 }
 
 /**
+ * The text helper of AI on this PC (scripts/build-native.mjs, docs/design/smart-tools.md §9.1):
+ * one AVX2 build. `to` is where src/main/localAi/engine.ts looks:
+ * process.resourcesPath/native/ssw-llm.exe.
+ */
+function llmHelper() {
+  return { from: 'native/bin/ssw-llm.exe', to: 'native/ssw-llm.exe' }
+}
+
+/**
+ * The GGML_* variables of the text helper's Windows build, which llama-cpp-sys-2's build script
+ * forwards to CMake (§9.1): CPU only, SSE4.2, AVX, AVX2, FMA and F16C forced on (§9.5 gates AI on
+ * this PC on AVX2, FMA and F16C), everything newer off, no OpenMP (no libgomp-1.dll).
+ */
+const LLM_GGML_FLAGS = Object.freeze({
+  GGML_NATIVE: 'OFF',
+  GGML_SSE42: 'ON',
+  GGML_AVX: 'ON',
+  GGML_AVX2: 'ON',
+  GGML_FMA: 'ON',
+  GGML_F16C: 'ON',
+  GGML_BMI2: 'OFF',
+  GGML_AVX_VNNI: 'OFF',
+  GGML_AVX512: 'OFF',
+  GGML_AVX512_VBMI: 'OFF',
+  GGML_AVX512_VNNI: 'OFF',
+  GGML_AVX512_BF16: 'OFF',
+  GGML_AMX_TILE: 'OFF',
+  GGML_AMX_INT8: 'OFF',
+  GGML_AMX_BF16: 'OFF',
+  GGML_OPENMP: 'OFF'
+})
+
+/**
+ * The DLLs the text helper may import: system DLLs only (§9.1). KERNEL32, ADVAPI32 (ggml-cpu reads
+ * the registry) and msvcrt from llama.cpp; ntdll and api-ms-win-core-synch-l1-2-0 from Rust's
+ * standard library, as for the speech helpers. No WS2_32.dll: llama.cpp's `common` (and its HTTP
+ * client) is compiled by the crate but never linked. Compared without case.
+ */
+const LLM_IMPORTS = ['KERNEL32.dll', 'ADVAPI32.dll', 'msvcrt.dll', 'ntdll.dll', 'api-ms-win-core-synch-l1-2-0.dll']
+
+/** The imports of `names` that are not on LLM_IMPORTS. */
+function unexpectedLlmImports(names) {
+  const allowed = LLM_IMPORTS.map((n) => n.toLowerCase())
+  return names.filter((n) => !allowed.includes(n.toLowerCase()))
+}
+
+/** The text helper's budget (§9.1), bytes: brotli-compressed (quality 11) and installed. */
+const LLM_BUDGET = { compressed: 3.0e6, installed: 9.0e6 }
+
+/**
+ * Whether the text helper can be bundled, like speechHelperStatus: a complete x64 Windows
+ * executable. A build without it leaves it out (AI on this PC then says it is not part of this
+ * build), never fatal; verify-dist checks the imports, the budget and the signature of one that
+ * ships.
+ * @returns {{ from: string, to: string, bundle: boolean, present: boolean, reason?: string, size?: number }}
+ */
+function llmHelperStatus(rootDir = ROOT) {
+  const h = llmHelper()
+  const file = path.join(rootDir, h.from)
+  if (!fs.existsSync(file)) return { ...h, bundle: false, present: false }
+  const check = checkWindowsExe(file)
+  return check.ok ? { ...h, bundle: true, present: true, size: check.size } : { ...h, bundle: false, present: true, reason: check.reason }
+}
+
+/**
+ * What is wrong with the text helper `buf` that would ship (§9.1; empty: fine): a complete x64
+ * Windows executable importing only LLM_IMPORTS, within LLM_BUDGET installed and brotli-compressed
+ * (quality 11, 16 MB window, as the speech payload is measured), and, in a signed build, itself
+ * signed (a single-file extraResources `from` is copied without the signing transformer).
+ * @returns {{ problems: string[], imports: string[], size: number, compressed: number }}
+ */
+function llmHelperProblems(buf, { signedBuild = false } = {}) {
+  const { parsePe, readImports } = require('./pe.cjs')
+  const problems = []
+  let info = null
+  try {
+    info = parsePe(buf)
+  } catch (err) {
+    problems.push(`is not a Windows executable (${err instanceof Error ? err.message : String(err)})`)
+  }
+  let imports = []
+  if (info) {
+    if (info.machine !== 'x64') problems.push(`is built for ${info.machine}, not x64`)
+    if (info.truncated) problems.push('is cut short')
+    imports = readImports(buf, info)
+    const bad = unexpectedLlmImports(imports)
+    if (bad.length) problems.push(`imports ${bad.join(', ')}; only ${LLM_IMPORTS.join(', ')} are allowed`)
+    if (signedBuild && !info.signed) problems.push('is not signed in a signed build')
+  }
+  const zlib = require('node:zlib')
+  const compressed = zlib.brotliCompressSync(buf, { params: { [zlib.constants.BROTLI_PARAM_QUALITY]: 11, [zlib.constants.BROTLI_PARAM_LGWIN]: 24, [zlib.constants.BROTLI_PARAM_SIZE_HINT]: buf.length } }).length
+  if (buf.length > LLM_BUDGET.installed) problems.push(`is ${buf.length} B installed, over its budget of ${LLM_BUDGET.installed} B`)
+  if (compressed > LLM_BUDGET.compressed) problems.push(`is ${compressed} B compressed, over its budget of ${LLM_BUDGET.compressed} B`)
+  return { problems, imports, size: buf.length, compressed }
+}
+
+/**
  * The extraResources entries of the speech feature, in directory form (so the signing
  * transformer applies to the helpers): the usable helpers next to the capture helper, and the
- * speech detector model with its MODEL.md.
+ * speech detector model with its MODEL.md. The text helper of AI on this PC (§9.1) rides the same
+ * directory-form entry: a single-file `from` would be copied without the signing transformer.
  */
 function speechResources(rootDir = ROOT) {
   const helpers = speechHelperStatus(rootDir).filter((h) => h.bundle)
+  const llm = llmHelperStatus(rootDir).bundle ? [path.posix.basename(llmHelper().from)] : []
   const out = []
-  if (helpers.length) out.push({ from: 'native/bin', to: 'native', filter: helpers.map((h) => path.posix.basename(h.from)) })
+  if (helpers.length || llm.length) out.push({ from: 'native/bin', to: 'native', filter: [...helpers.map((h) => path.posix.basename(h.from)), ...llm] })
   out.push({ from: 'resources/speech', to: 'speech', filter: ['ggml-silero-v6.2.0.bin', 'MODEL.md'] })
   return out
 }
@@ -166,9 +265,10 @@ const VAD_PIN = {
  * Names THIRD_PARTY_NOTICES.txt must mention (§6.3), matched without case; and Captions Studio's
  * (docs/design/captions-studio.md §6.9): its fonts' licence and families (34-caption-fonts.txt)
  * and the Unicode data of its emoji list (35-caption-data.txt). The data sections part P4 adds
- * there (CLDR, obscenity, LDNOOBW's Shutterstock) add their names with them.
+ * there (CLDR, obscenity, LDNOOBW's Shutterstock) add their names with them; and llama.cpp, the
+ * text helper's engine (docs/design/smart-tools.md §9.1).
  */
-const NOTICE_NAMES = ['whisper.cpp', 'ggml', 'Silero VAD', 'OpenAI Whisper', 'Bengali.AI', 'mingw-w64', 'FFmpeg', 'Electron', 'React', 'MediaPipe', 'SIL Open Font License', 'Noto', 'Unicode', 'CLDR', 'obscenity', 'LDNOOBW']
+const NOTICE_NAMES = ['whisper.cpp', 'ggml', 'Silero VAD', 'OpenAI Whisper', 'Bengali.AI', 'mingw-w64', 'FFmpeg', 'Electron', 'React', 'MediaPipe', 'SIL Open Font License', 'Noto', 'Unicode', 'CLDR', 'obscenity', 'LDNOOBW', 'llama.cpp']
 
 /**
  * Captions Studio's bundled caption fonts (§6.9): the 42 WOFF2 files of resources/fonts that Vite
@@ -347,6 +447,13 @@ module.exports = {
   missingSpeechOptions,
   staleSpeechHelper,
   speechResources,
+  llmHelper,
+  llmHelperStatus,
+  LLM_GGML_FLAGS,
+  LLM_IMPORTS,
+  LLM_BUDGET,
+  unexpectedLlmImports,
+  llmHelperProblems,
   noticesResource,
   soundLibraryResource,
   SOUND_LIBRARY_BUDGET,

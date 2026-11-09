@@ -67,7 +67,7 @@ import { useLocalAiReady } from '../../ai/localAiState'
 import { FIND_CHAPTERS_BUILT, runFindChapters } from '../chaptersRun'
 import { sanitizeSmartPref, DEFAULT_FIND_CHAPTERS, type FindChaptersPref } from '../../../../shared/smart/smartPrefs'
 import { CostLine } from '../../ai/CostLine'
-import { LocalProgress } from '../../ai/LocalProgress'
+import { LocalNote, LocalProgress, LocalWritten } from '../../ai/LocalProgress'
 
 /* ---------- Captions and transcript ---------- */
 
@@ -1004,6 +1004,8 @@ function AiToolsSection({
   const [error, setError] = useState<string | null>(null)
   const [title, setTitle] = useState<string | null>(null)
   const [summary, setSummary] = useState<string | null>(null)
+  // A title or summary written on this PC says so (smart-tools.md §2.5).
+  const [writtenHere, setWrittenHere] = useState(false)
   // The link check (publish-pack §4.8) reads a suggested title and summary as the Publish dialog reads its cards. What
   // was said is read once, when the answer comes (the note speaks for the captions it was written from), never while
   // the captions are edited or dragged; Rename and Copy read it again, and ask first when the check notes anything.
@@ -1135,6 +1137,7 @@ function AiToolsSection({
     // Every run is named (smart-tools.md §20.0), so its progress on this PC and Stop find it.
     const requestId = `captions-${task}-${++runs.current}`
     setRunning(requestId)
+    setWrittenHere(chosen.kind === 'local')
     const request: AiTextRequest = { task, segments: [...spokenSegments(store.state)], requestId }
     let result: AiTextResult
     try {
@@ -1219,6 +1222,7 @@ function AiToolsSection({
               ))}
             </select>
           </label>
+          <LocalNote choice={choice} tasks={['title', 'summary']} />
           <div className="captions-ai">
             <button ref={chaptersTool} id="captions-ai-chapters" aria-describedby="captions-ai-cost-chapters" className="btn" disabled={!chosen || !!busy} onClick={() => void run('chapters')} title="Chapters from what is said, added to the chapter strip">
               {label('chapters', 'Suggest chapters')}
@@ -1247,6 +1251,7 @@ function AiToolsSection({
               <p>
                 Suggested title: <strong>{title}</strong>
               </p>
+              <LocalWritten show={writtenHere} />
               {said && checkNote(titleChecks, 'captions-title-check', said)}
               <div className="row start">
                 <button
@@ -1309,6 +1314,7 @@ function AiToolsSection({
             <div className="captions-suggestion" role="status">
               <p>Summary:</p>
               <p className="captions-summary">{summary}</p>
+              <LocalWritten show={writtenHere} />
               {said && checkNote(summaryChecks, 'captions-summary-check', said)}
               <div className="row start">
                 <button
