@@ -196,6 +196,9 @@ type Player = {
   seek(t: number): void
   play(): void
   pause(): void
+  toggle(): void
+  shuttle(key: 'reverse' | 'pause' | 'forward'): unknown
+  readonly moving: boolean
   playCut(video: number): void
   attachCanvas(c: unknown): void
   setScene(scene: unknown, bg: unknown): void
@@ -390,6 +393,44 @@ describe('the preview player (test 24)', () => {
     frame()
     expect(player.playing).toBe(false)
     expect(player.time).toBe(10)
+  })
+
+  it('forgets Play this cut once J leaves it: a later playback goes on past the cut', () => {
+    for (const after of [['pause', 'toggle'], ['forward']] as const) {
+      const { screen, player } = setUp(project())
+      player.seek(10)
+      screen.land()
+      player.playCut(4)
+      screen.advance(0.3)
+      frame()
+      // J, then K and Space, or L: playing forward again from where the playhead is.
+      player.shuttle('reverse')
+      for (const key of after) {
+        if (key === 'toggle') player.toggle()
+        else player.shuttle(key)
+      }
+      expect(player.playing).toBe(true)
+      screen.currentTime = 7.05
+      screen.land()
+      frame()
+      expect(player.playing).toBe(true)
+      expect(player.time).toBeCloseTo(7.05, 9)
+    }
+  })
+
+  it('goes back where the playhead was when the edit ends before 1 s after the cut', () => {
+    // The last clip is 0.5 s long: its cut is at 10 s of video and the edit ends at 10.5 s.
+    const clips: Clip[] = [...project().clips.slice(0, 5), { id: 'c5', start: 15, end: 15.5, speed: 1 }]
+    const { screen, player } = setUp(project({ clips }))
+    player.seek(3)
+    screen.land()
+    player.playCut(10)
+    expect(player.playing).toBe(true)
+    screen.currentTime = 15.49
+    screen.land()
+    frame()
+    expect(player.playing).toBe(false)
+    expect(player.time).toBe(3)
   })
 })
 
