@@ -142,4 +142,14 @@ describe('the sentences short clips are picked from (test 49)', () => {
     )
     expect(chaptered.map((s) => s.chapter)).toEqual([0, 0, 0, 0, 1, 1, 1, 1])
   })
+
+  it('read again only when what they come from changes (the panel asks on every edit)', () => {
+    const p = fixture()
+    const first = clipSentences(p, { track: null, scan: null })
+    expect(clipSentences({ ...p, style: { ...p.style, padding: 0.2 } }, { track: null, scan: null })).toBe(first)
+    expect(clipSentences({ ...p, name: 'Renamed' }, { track: null, scan: null })).toBe(first)
+    const cut = clipSentences({ ...p, clips: [{ id: 'a', start: 5, end: 50, speed: 1 }] }, { track: null, scan: null })
+    expect(cut).not.toBe(first)
+    expect(clipSentences(p, { track: null, scan: null, focus: 'billing' })).not.toBe(cut)
+  })
 })

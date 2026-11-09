@@ -144,8 +144,11 @@ function wordTimes(seg: CaptionSegment, language: string | undefined): Map<numbe
   return out
 }
 
+/** The fields of a project the sentences are made from: an edit of anything else reads them again for free. */
+const READ = ['transcript', 'bleeps', 'clips', 'freezes', 'zooms', 'captionMarks', 'chapters'] as const
+
 interface Memo {
-  project: Project
+  fields: unknown[]
   track: CursorTrack | null
   scan: SceneScan | null
   focus: string
@@ -155,14 +158,15 @@ let memo: Memo | null = null
 
 /**
  * Every sentence of 3 words or more (§8.1), in order, with its features and what moments and the
- * shorter version read besides. Memoised on its inputs (one entry): the panel asks again on every
- * render.
+ * shorter version read besides. Memoised on what it reads (one entry): the panel asks again on
+ * every edit, and an edit of the style or a title changes none of it.
  */
 export function clipSentences(project: Project, ctx: { track: CursorTrack | null; scan: SceneScan | null; focus?: string }): ClipSentence[] {
   const focus = ctx.focus ?? ''
-  if (memo && memo.project === project && memo.track === ctx.track && memo.scan === ctx.scan && memo.focus === focus) return memo.out
+  const fields = READ.map((k) => project[k])
+  if (memo && memo.track === ctx.track && memo.scan === ctx.scan && memo.focus === focus && memo.fields.every((v, i) => v === fields[i])) return memo.out
   const out = makeSentences(project, ctx.track, ctx.scan, focus)
-  memo = { project, track: ctx.track, scan: ctx.scan, focus, out }
+  memo = { fields, track: ctx.track, scan: ctx.scan, focus, out }
   return out
 }
 

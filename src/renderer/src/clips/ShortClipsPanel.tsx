@@ -468,10 +468,26 @@ export function ShortClipsPanel(props: { project: Project; cursor: CursorTrack; 
                 const isPlaying = playing?.key === key
                 return (
                   <li key={key} className={ticked.has(key) ? 'clips-row ticked' : 'clips-row'} data-testid="clips-row">
-                    <input className="clips-pick" type="checkbox" aria-label={`Make clip ${n1}`} checked={ticked.has(key)} disabled={busy} onChange={() => toggle(m)} />
-                    <span className="clips-title">{done ? done.name.replace(/ \(clip\)$/, '') : m.title}</span>
-                    <span className="clips-time">{momentRange(project, m)}</span>
-                    {rowReasons(m) && <span className="clips-why">{rowReasons(m)}</span>}
+                    <input
+                      className="clips-pick"
+                      type="checkbox"
+                      aria-label={`Make clip ${n1}`}
+                      aria-describedby={`${ids}-m${i}-title ${ids}-m${i}-time${rowReasons(m) ? ` ${ids}-m${i}-why` : ''}`}
+                      checked={ticked.has(key)}
+                      disabled={busy}
+                      onChange={() => toggle(m)}
+                    />
+                    <span className="clips-title" id={`${ids}-m${i}-title`}>
+                      {done ? done.name.replace(/ \(clip\)$/, '') : m.title}
+                    </span>
+                    <span className="clips-time" id={`${ids}-m${i}-time`}>
+                      {momentRange(project, m)}
+                    </span>
+                    {rowReasons(m) && (
+                      <span className="clips-why" id={`${ids}-m${i}-why`}>
+                        {rowReasons(m)}
+                      </span>
+                    )}
                     {m.first && <q className="clips-first">{m.first}</q>}
                     {isPlaying && (
                       <span className="clips-playing" data-testid="clips-playing">
