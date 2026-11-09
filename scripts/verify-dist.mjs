@@ -20,6 +20,9 @@ const {
   CAPTIONS_BUDGET,
   captionFontProblems,
   FFMPEG_EXE,
+  llmHelper,
+  llmHelperProblems,
+  llmHelperStatus,
   missingSpeechOptions,
   nativeHelper,
   nativeHelperStatus,
@@ -268,6 +271,28 @@ else {
   const line = `speech payload: ${files.length} files, ${raw} B installed (budget ${SPEECH_BUDGET.installed} B), ${packed} B brotli-compressed (budget ${SPEECH_BUDGET.compressed} B)`
   if (raw > SPEECH_BUDGET.installed || packed > SPEECH_BUDGET.compressed) fail(line)
   else ok(line)
+}
+
+// 4c. The text helper of AI on this PC (docs/design/smart-tools.md §9.1): optional; when it ships,
+// an x64 executable importing system DLLs only (no WS2_32: llama.cpp's common is not linked),
+// within its budget, and signed in a signed build (the app exe is signed, or signing is required).
+{
+  const h = llmHelperStatus()
+  const out = path.join(resources, llmHelper().to)
+  if (!existsSync(out)) {
+    if (h.bundle) fail(`${h.from} is usable but resources/${h.to} was not packaged`)
+    else note(`text helper resources/${h.to} not bundled${h.present ? ` (${h.from}: ${h.reason})` : ''}: AI on this PC is not part of this build`)
+  } else {
+    let signedBuild = process.env.SSW_REQUIRE_SIGNING === '1'
+    try {
+      signedBuild ||= parsePe(readFileSync(path.join(unpacked, `${pkg.productName}.exe`))).signed
+    } catch {
+      // No app exe: section 5 reports it.
+    }
+    const r = llmHelperProblems(readFileSync(out), { signedBuild })
+    if (r.problems.length) fail(`resources/${h.to} ${r.problems.join('; ')}`)
+    else ok(`text helper: resources/${h.to} (${r.size} B installed, ${r.compressed} B brotli), imports ${r.imports.join(', ')}`)
+  }
 }
 
 // 5. Our icon is embedded in the app exe and the installer (F33).

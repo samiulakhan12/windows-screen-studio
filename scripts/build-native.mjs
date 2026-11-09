@@ -5,7 +5,10 @@
 //   - the speech helper (native/speech, Rust + whisper.cpp) twice for Windows x64:
 //     native/bin/ssw-speech.exe (standard: ggml with SSE4.2, AVX, AVX2, FMA, F16C and BMI2 forced
 //     on) and native/bin/ssw-speech-compat.exe (compatible: every x86 extension off, runs on any
-//     x64 processor). docs/design/offline-captions.md §2.4 and §6.1.
+//     x64 processor). docs/design/offline-captions.md §2.4 and §6.1;
+//   - the text helper (native/llm, Rust + llama.cpp through llama-cpp-2 0.1.161, --locked) once for
+//     Windows x64: native/bin/ssw-llm.exe, static MinGW, CPU only, ggml with SSE4.2, AVX, AVX2, FMA
+//     and F16C forced on (one AVX2 build). docs/design/smart-tools.md §9.1.
 //
 //   node scripts/build-native.mjs                # warn and exit 0 when a helper cannot be built
 //   node scripts/build-native.mjs --require      # fail instead (release builds/CI); also SSW_REQUIRE_NATIVE=1
@@ -29,7 +32,7 @@ import { fileURLToPath } from 'node:url'
 
 const require = createRequire(import.meta.url)
 const { checkWindowsExe, readImports } = require('./lib/pe.cjs')
-const { speechHelpers, speechHelperStatus } = require('./lib/packaging.cjs')
+const { LLM_BUDGET, LLM_GGML_FLAGS, LLM_IMPORTS, llmHelperStatus, speechHelpers, speechHelperStatus, unexpectedLlmImports } = require('./lib/packaging.cjs')
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 const crate = path.join(root, 'native')
@@ -37,6 +40,9 @@ const speechCrate = path.join(crate, 'speech')
 const binDir = path.join(crate, 'bin')
 const required = process.argv.includes('--require') || process.env.SSW_REQUIRE_NATIVE === '1'
 const speechHostOnly = process.argv.includes('--speech-host')
+const llmHostOnly = process.argv.includes('--llm-host')
+const llmOnly = process.argv.includes('--llm')
+const llmCrate = path.join(crate, 'llm')
 const WIN_TARGET = 'x86_64-pc-windows-gnu'
 
 function run(cmd, args, opts = {}) {
@@ -49,7 +55,7 @@ const problems = []
 function skip(what, reason, hint, consequence) {
   const lines = [`build-native: ${what}: ${reason}`]
   if (hint) lines.push(`build-native: ${hint}`)
-  if (required || speechHostOnly) {
+  if (required || speechHostOnly || llmHostOnly) {
     console.error(lines.join('\n'))
     problems.push(`${what}: ${reason}`)
   } else {
@@ -226,11 +232,88 @@ function buildSpeechHost() {
   copyOut(path.join(speechCrate, 'target', 'host', 'release', exe), path.join(binDir, exe))
 }
 
+// -------------------------------------------------------------------------- text helper
+
+const LLM_CONSEQUENCE = 'AI on this PC will be unavailable (AI services only).'
+
+/** One cargo build of native/llm into its own target folder, always with the lock file. */
+function cargoLlm(label, targetDir, args, env) {
+  console.log(`build-native: cargo build --release --locked ${args.join(' ')} (native/llm, ${label})`)
+  const r = run('cargo', ['build', '--release', '--locked', ...args, '--manifest-path', path.join(llmCrate, 'Cargo.toml')], {
+    stdio: 'inherit',
+    env: { ...process.env, CARGO_TARGET_DIR: path.join(llmCrate, 'target', targetDir), GGML_NATIVE: 'OFF', ...env }
+  })
+  return r.error || r.status !== 0 ? `cargo build failed (${r.error?.message ?? `exit code ${r.status}`})` : null
+}
+
+/**
+ * The text helper for Windows x64 (§9.1): cross-compiled with the POSIX-thread MinGW, statically,
+ * CPU only; the GGML_* variables, which llama-cpp-sys-2's build script forwards to CMake, force
+ * SSE4.2, AVX, AVX2, FMA and F16C on (one build: PCs without AVX2 get no AI on this PC). The MinGW
+ * fixes are the speech helper's (native/speech/compat): ggml's library names, and the
+ * THREAD_POWER_THROTTLING_STATE that mingw-w64 11 lacks, so Windows 11 does not park its threads.
+ * Imports and size are checked here and again by verify-dist.
+ */
+function buildLlmWindows() {
+  const what = 'the text helper (ssw-llm.exe)'
+  const from = 'native/bin/ssw-llm.exe'
+  if (process.platform === 'win32') {
+    const status = llmHelperStatus(root)
+    if (status.bundle) {
+      console.warn(`build-native: WARNING: the text helper is cross-compiled from Linux or macOS only; reusing the prebuilt ${from} (not rebuilt now).`)
+      return
+    }
+    return skip(what, `it is cross-compiled from Linux or macOS only, and ${from} is ${status.present ? `unusable (${status.reason})` : 'missing'}.`, 'Build it on Linux (see native/llm/README.md) and copy it to native/bin.', LLM_CONSEQUENCE)
+  }
+  if (!haveCargo(what, LLM_CONSEQUENCE) || !haveTarget(what, WIN_TARGET, LLM_CONSEQUENCE)) return
+  for (const tool of ['x86_64-w64-mingw32-gcc-posix', 'x86_64-w64-mingw32-g++-posix']) {
+    const r = run(tool, ['--version'])
+    if (r.error || r.status !== 0) {
+      return skip(what, `the POSIX-thread MinGW (${tool}) is missing.`, 'Install mingw-w64 (apt install mingw-w64 g++-mingw-w64-x86-64-posix).', LLM_CONSEQUENCE)
+    }
+  }
+  if (!haveCmake(what) || !haveLibclang(what)) return
+  const compat = path.join(speechCrate, 'compat')
+  const env = {
+    CC_x86_64_pc_windows_gnu: 'x86_64-w64-mingw32-gcc-posix',
+    CXX_x86_64_pc_windows_gnu: 'x86_64-w64-mingw32-g++-posix',
+    CARGO_TARGET_X86_64_PC_WINDOWS_GNU_LINKER: 'x86_64-w64-mingw32-gcc-posix',
+    CMAKE_PROJECT_INCLUDE: path.join(compat, 'mingw_lib_prefix.cmake'),
+    CFLAGS_x86_64_pc_windows_gnu: `-include ${path.join(compat, 'mingw_compat.h')}`,
+    ...LLM_GGML_FLAGS
+  }
+  const failed = cargoLlm('windows', 'win', ['--target', WIN_TARGET], env)
+  if (failed) return skip(what, `${failed}.`, undefined, LLM_CONSEQUENCE)
+  const built = path.join(llmCrate, 'target', 'win', WIN_TARGET, 'release', 'ssw-llm.exe')
+  const check = checkWindowsExe(built)
+  if (!check.ok) return skip(what, `the build is not a usable x64 executable (${check.reason}).`, undefined, LLM_CONSEQUENCE)
+  const bad = unexpectedLlmImports(readImports(readFileSync(built)))
+  if (bad.length) return skip(what, `the build imports ${bad.join(', ')}; only ${LLM_IMPORTS.join(', ')} are allowed.`, 'Build against a llama-cpp-2 whose llama-cpp-sys-2 dependency has default-features = false (native/llm/README.md).', LLM_CONSEQUENCE)
+  if (check.size > LLM_BUDGET.installed) return skip(what, `the build is ${check.size} bytes, over its ${LLM_BUDGET.installed} byte budget.`, undefined, LLM_CONSEQUENCE)
+  copyOut(built, path.join(root, from))
+  console.log(`build-native: ssw-llm.exe imports ${readImports(readFileSync(built)).join(', ')}`)
+}
+
+/** The text helper for this machine (the tests): native/bin/ssw-llm[.exe]. */
+function buildLlmHost() {
+  const what = 'the host text helper (native/bin/ssw-llm)'
+  if (!haveCargo(what, LLM_CONSEQUENCE) || !haveCmake(what) || !haveLibclang(what)) return
+  const failed = cargoLlm('host', 'host', [], {})
+  if (failed) return skip(what, `${failed}.`, undefined, LLM_CONSEQUENCE)
+  const exe = process.platform === 'win32' ? 'ssw-llm.exe' : 'ssw-llm'
+  copyOut(path.join(llmCrate, 'target', 'host', 'release', exe), path.join(binDir, exe))
+}
+
 if (speechHostOnly) {
   buildSpeechHost()
+} else if (llmHostOnly) {
+  buildLlmHost()
+} else if (llmOnly) {
+  buildLlmWindows()
 } else {
   buildCapture()
   buildSpeechWindows()
+  buildLlmWindows()
 }
 if (problems.length) {
   console.error(`build-native: ${problems.length} helper(s) could not be built${required ? ' and --require / SSW_REQUIRE_NATIVE=1 is set' : ''}; failing.`)

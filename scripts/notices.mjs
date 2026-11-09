@@ -3,8 +3,8 @@
 // About and shipped next to the app (extraResources):
 //   1. the hand-written entries in resources/notices/*.txt (whisper.cpp and ggml, Silero VAD, the
 //      OpenAI Whisper weights, the MinGW-w64 and GCC runtimes, FFmpeg, Chromium, MediaPipe);
-//   2. the Rust crates compiled into the native helpers (`cargo metadata` of native/ and
-//      native/speech for x86_64-pc-windows-gnu, normal dependencies only) with their licence files;
+//   2. the Rust crates compiled into the native helpers (`cargo metadata` of native/, native/speech
+//      and native/llm for x86_64-pc-windows-gnu, normal dependencies only) with their licence files;
 //   3. the npm packages that ship: the runtime packages in app.asar, the packages Vite bundles into
 //      the app (React, MediaPipe, the AI provider SDKs and what they depend on) and Electron.
 // Packages whose licence texts are identical share one copy of the text. Rust is optional for
@@ -26,14 +26,14 @@ const { dependencyClosure, resolvePackageDir } = require('./lib/packaging.cjs')
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 const OUT = path.join(root, 'resources', 'THIRD_PARTY_NOTICES.txt')
 const HAND = path.join(root, 'resources', 'notices')
-const CRATES = ['native/Cargo.toml', 'native/speech/Cargo.toml']
+const CRATES = ['native/Cargo.toml', 'native/speech/Cargo.toml', 'native/llm/Cargo.toml']
 const TARGET = 'x86_64-pc-windows-gnu'
 /** devDependencies that Vite bundles into the app (electron-vite externalises `dependencies` only). */
 const BUNDLED = ['react', 'react-dom', '@mediapipe/tasks-vision', '@anthropic-ai/sdk', '@google/genai', 'openai', '@mediapipe/tasks-audio']
 /** Type declarations: in the dependency trees, but no code of them ships. */
 const TYPES_ONLY = (name) => name.startsWith('@types/') || name === 'undici-types'
 const RULE = '='.repeat(78)
-const RUST_TITLE = 'Rust crates compiled into the native helpers (ssw-capture.exe, ssw-speech.exe, ssw-speech-compat.exe)'
+const RUST_TITLE = 'Rust crates compiled into the native helpers (ssw-capture.exe, ssw-speech.exe, ssw-speech-compat.exe, ssw-llm.exe)'
 const NPM_TITLE = 'npm packages in the app (app.asar, and the code Vite bundles into it) and Electron'
 const LICENCE_FILE = /^(licen[cs]e|copying|unlicen[cs]e|notice)([-_.].*)?$/i
 

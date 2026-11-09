@@ -675,11 +675,12 @@ describe('speech packaging (docs/design/offline-captions.md §6)', () => {
   it('commits third-party notices that name what ships, and checks them', () => {
     const text = readFileSync(path.join(ROOT, 'resources', 'THIRD_PARTY_NOTICES.txt'), 'utf8')
     expect(packaging.noticesProblems(text)).toEqual([])
-    // Captions Studio's data (resources/notices/35-caption-data.txt): CLDR, obscenity and LDNOOBW.
-    expect(packaging.NOTICE_NAMES).toEqual(['whisper.cpp', 'ggml', 'Silero VAD', 'OpenAI Whisper', 'Bengali.AI', 'mingw-w64', 'FFmpeg', 'Electron', 'React', 'MediaPipe', 'SIL Open Font License', 'Noto', 'Unicode', 'CLDR', 'obscenity', 'LDNOOBW'])
+    // Captions Studio's data (resources/notices/35-caption-data.txt): CLDR, obscenity and LDNOOBW;
+    // and llama.cpp, the engine of AI on this PC's helper (docs/design/smart-tools.md §9.1).
+    expect(packaging.NOTICE_NAMES).toEqual(['whisper.cpp', 'ggml', 'Silero VAD', 'OpenAI Whisper', 'Bengali.AI', 'mingw-w64', 'FFmpeg', 'Electron', 'React', 'MediaPipe', 'SIL Open Font License', 'Noto', 'Unicode', 'CLDR', 'obscenity', 'LDNOOBW', 'llama.cpp'])
     expect(packaging.noticesProblems('React and Electron')).toEqual([
       'only 18 bytes (at least 10 KB expected)',
-      'does not name whisper.cpp, ggml, Silero VAD, OpenAI Whisper, Bengali.AI, mingw-w64, FFmpeg, MediaPipe, SIL Open Font License, Noto, Unicode, CLDR, obscenity, LDNOOBW'
+      'does not name whisper.cpp, ggml, Silero VAD, OpenAI Whisper, Bengali.AI, mingw-w64, FFmpeg, MediaPipe, SIL Open Font License, Noto, Unicode, CLDR, obscenity, LDNOOBW, llama.cpp'
     ])
     // The hand-written entries are part of it.
     for (const f of readdirSync(path.join(ROOT, 'resources', 'notices'))) {
@@ -769,9 +770,12 @@ describe('speech packaging (docs/design/offline-captions.md §6)', () => {
     expect(stale.status).toBe(1)
     expect(stale.stderr).toContain('native/bin/ssw-speech.exe is from older sources (it does not know --max-chunk, --no-timestamps)')
     for (const h of packaging.speechHelpers()) writeFileSync(path.join(root, h.from), current)
+    // The text helper of AI on this PC (smart-tools.md §9.1) is cross-compiled too: a usable prebuilt one is reused.
+    writeFileSync(path.join(root, 'native', 'bin', 'ssw-llm.exe'), fakePe({}))
     const plain = build()
     expect(plain.status, plain.stderr).toBe(0)
     expect(plain.stderr).toContain('reusing the prebuilt native/bin/ssw-speech.exe and native/bin/ssw-speech-compat.exe (not rebuilt now)')
+    expect(plain.stderr).toContain('reusing the prebuilt native/bin/ssw-llm.exe (not rebuilt now)')
     expect(plain.stderr).not.toContain('captions on this PC will be unavailable')
     // Required: only the capture helper fails here.
     const required = build({ SSW_REQUIRE_NATIVE: '1' })
