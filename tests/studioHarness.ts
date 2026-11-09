@@ -204,10 +204,17 @@ function walk(node: unknown, path: string, out: El[], skip: ReadonlySet<string>)
     const key = `${path}/${name}`
     if (!cells.has(key)) cells.set(key, [])
     const outer = hooks
+    const outerEffects = effects
     hooks = { cells: cells.get(key)!, i: 0 }
+    effects = []
     const child = (el.type as (p: unknown) => unknown)(el.props)
+    const own = effects
     hooks = outer
-    return walk(child, key, out, skip)
+    effects = outerEffects
+    walk(child, key, out, skip)
+    // As React runs them: a component's effects after its children's (a child's listener is there before its parent's effect).
+    effects.push(...own)
+    return
   }
   if (typeof el.type === 'object' && el.type && 'Provider' in (el.type as object) === false && '_context' in (el.type as object)) {
     // A context provider: render its children.

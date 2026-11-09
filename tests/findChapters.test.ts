@@ -29,7 +29,11 @@ const fake = vi.hoisted(() => ({
   answer: null as ((request: Record<string, unknown>) => unknown) | null,
   cancelled: [] as unknown[],
   prefs: new Map<string, unknown>(),
-  commands: [] as string[]
+  commands: [] as string[],
+  /** While one is set, reading that pref (or the providers, 'providers') waits for it: still being read. */
+  gates: {} as Record<string, Promise<void>>,
+  /** The state of AI on this PC. */
+  local: null as unknown
 }))
 vi.stubGlobal('window', {
   api: {
@@ -45,15 +49,27 @@ vi.stubGlobal('window', {
       return () => void (fake.progress = null)
     },
     analyzeAudio: async (_id: string, sources: string[]) => Object.fromEntries(sources.filter((s) => fake.levels[s]).map((s) => [s, fake.levels[s]])),
-    listAiProviders: async () => [OPENAI],
+    listAiProviders: async () => {
+      await fake.gates.providers
+      return [OPENAI]
+    },
     aiText: async (provider: string, request: Record<string, unknown>, requestId: unknown) => {
       fake.ai.push({ provider, request, requestId })
       return fake.answer!(request)
     },
     cancelAiText: async (id: unknown) => void fake.cancelled.push(id),
-    getPref: async (key: string) => fake.prefs.get(key) ?? null,
+    getPref: async (key: string) => {
+      await fake.gates[key]
+      return fake.prefs.get(key) ?? null
+    },
     setPref: async (key: string, value: unknown) => void fake.prefs.set(key, value),
-    localAiState: async () => ({ models: [], use: 'auto', active: null, pc: {}, speeds: {} })
+    localAiState: async () => {
+      // Only the read under way waits (a later one, as the cost settings', answers at once).
+      const gate = fake.gates.local
+      delete fake.gates.local
+      await gate
+      return fake.local
+    }
   },
   addEventListener: () => undefined,
   removeEventListener: () => undefined,
@@ -111,6 +127,8 @@ beforeEach(() => {
   fake.cancelled.length = 0
   fake.prefs.clear()
   fake.commands.length = 0
+  fake.gates = {}
+  fake.local = { models: [], use: 'auto', active: null, pc: {}, speeds: {} }
   unmountAll()
 })
 
@@ -432,8 +450,8 @@ describe('the Find chapters panel (§2.3)', () => {
     expect(fake.commands).toEqual(['generateCaptions'])
   })
 
-  it("the palette's Find chapters presses the button: with names from an AI and Always ask, the cost question comes first (§11.5)", async () => {
-    // The page: its click listeners (the cost line's), and the name fields the focus goes to.
+  /** The page for this test: its click listeners (the cost line's), and the name fields the focus goes to. */
+  const usePage = (): void => {
     const listeners: ((e: unknown) => void)[] = []
     const page = {
       addEventListener: (type: string, fn: (e: unknown) => void) => void (type === 'click' && listeners.push(fn)),
@@ -449,6 +467,84 @@ describe('the Find chapters panel (§2.3)', () => {
       unmountAll()
       delete (globalThis as { document?: unknown }).document
     })
+  }
+
+  it("the palette's Find chapters with the Text tab not shown waits for the options as last used, the AI choices and the cost settings (§11.5)", async () => {
+    usePage()
+    // A model whose price is known: only Always ask asks about a run this cheap.
+    const model = OPENAI.model
+    OPENAI.model = 'gpt-6.1-sol'
+    onTestFinished(() => void (OPENAI.model = model))
+    fake.scan = scanOf(180, { 60.5: 62, 120.5: 70 })
+    store = new EditStore<Project>(projectOf(180, [{ t: 61, text: 'Open the quarterly billing report for the team now.' }, { t: 121, text: 'Finally we export the report.' }]))
+    contexts.editor = { store, player: {} }
+    fake.answer = (request) => ({ task: 'names', names: (request.names as { items: { id: string }[] }).items.map((i) => ({ id: i.id, name: 'Billing report' })) })
+    // Saved: fewer chapters, not at screen changes, names with My OpenAI; ask before every paid run, still being read.
+    fake.prefs.set('findChapters', { density: 'fewer', use: { screen: false, pauses: true, words: true }, names: 'o1' })
+    fake.prefs.set('aiConfirm', 'always')
+    let read!: () => void
+    fake.gates.aiConfirm = new Promise((r) => (read = r))
+    void refreshCostData()
+    question.asked = 0
+    question.answer = false
+    // The palette asks, then the Text tab shows the panel: nothing runs before the cost settings are read.
+    requestFindChapters()
+    await settle(panel(), ['LocalProgress'])
+    await settle(panel(), ['LocalProgress'])
+    expect(question.asked).toBe(0)
+    expect(fake.ai).toEqual([])
+    expect(fake.scans).toEqual([])
+    // Then the question comes first; Cancel sends nothing.
+    read()
+    await settle(panel(), ['LocalProgress'])
+    await settle(panel(), ['LocalProgress'])
+    expect(question.asked).toBe(1)
+    expect(fake.ai).toEqual([])
+    expect(fake.scans).toEqual([])
+    expect(store.state.chapters).toEqual([])
+    // Run: the saved options: the screen is not read, and the names come from My OpenAI.
+    question.answer = true
+    requestFindChapters()
+    await settle(panel(), ['LocalProgress'])
+    await settle(panel(), ['LocalProgress'])
+    expect(question.asked).toBe(2)
+    expect(fake.scans).toEqual([])
+    expect(fake.ai.map((a) => [a.provider, a.request.task])).toEqual([['o1', 'names']])
+    expect(store.state.chapters!.map((c) => c.title)).toContain('Billing report')
+  })
+
+  it("the palette's Find chapters with the Text tab not shown waits for the options as last used and the AI choices", async () => {
+    usePage()
+    fake.scan = scanOf(180, { 60.5: 62, 120.5: 70 })
+    store = new EditStore<Project>(projectOf(180, [{ t: 61, text: 'Open the quarterly billing report for the team now.' }, { t: 121, text: 'Finally we export the report.' }]))
+    contexts.editor = { store, player: {} }
+    fake.answer = (request) => ({ task: 'names', names: (request.names as { items: { id: string }[] }).items.map((i) => ({ id: i.id, name: 'Billing report' })) })
+    fake.prefs.set('findChapters', { density: 'fewer', use: { screen: false, pauses: true, words: true }, names: 'o1' })
+    question.answer = false
+    // Each still being read in turn: nothing runs before it is, then the cost line asks first (a cost not known).
+    for (const what of ['findChapters', 'providers']) {
+      unmountAll()
+      question.asked = 0
+      let read!: () => void
+      fake.gates[what] = new Promise((r) => (read = r))
+      requestFindChapters()
+      await settle(panel(), ['LocalProgress'])
+      await settle(panel(), ['LocalProgress'])
+      expect(question.asked, what).toBe(0)
+      expect(fake.scans, what).toEqual([])
+      expect(store.state.chapters, what).toEqual([])
+      read()
+      await settle(panel(), ['LocalProgress'])
+      await settle(panel(), ['LocalProgress'])
+      expect(question.asked, what).toBe(1)
+      expect(fake.ai, what).toEqual([])
+      expect(fake.scans, what).toEqual([])
+      delete fake.gates[what]
+    }
+  })
+
+  it("the palette's Find chapters presses the button: with names from an AI and Always ask, the cost question comes first (§11.5)", async () => {
+    usePage()
     fake.scan = scanOf(180, { 60.5: 62, 120.5: 70 })
     store = new EditStore<Project>(projectOf(180, [{ t: 61, text: 'Open the quarterly billing report for the team now.' }, { t: 121, text: 'Finally we export the report.' }]))
     contexts.editor = { store, player: {} }
@@ -482,5 +578,37 @@ describe('the Find chapters panel (§2.3)', () => {
     await settle(panel(), SKIP)
     expect(store.state.chapters).toHaveLength(3)
     expect(notices).toEqual(['Found 3 chapters. Review lists them: keep or remove each one.'])
+  })
+})
+
+describe("the palette's Find chapters with names on this PC", () => {
+  it('waits for the state of AI on this PC, then names the chapters on this PC', async () => {
+    // Fresh modules: the state of AI on this PC not read yet, as when the window opens.
+    const saved = { editorCtx: contexts.editorCtx, groupCtx: contexts.groupCtx, keymapCtx: contexts.keymapCtx }
+    onTestFinished(() => void Object.assign(contexts, saved))
+    vi.resetModules()
+    await useEditorContexts()
+    const { FindChapters: Panel } = (await import(/* @vite-ignore */ PANEL)) as { FindChapters: (p: unknown) => unknown }
+    const { requestFindChapters: request } = (await import(/* @vite-ignore */ REQUESTS)) as { requestFindChapters(): void }
+    const store = new EditStore<Project>(projectOf(180, [{ t: 61, text: 'Open the quarterly billing report for the team now.' }, { t: 121, text: 'Finally we export the report.' }]))
+    contexts.editor = { store, player: {} }
+    contexts.group = { command: () => undefined }
+    fake.scan = scanOf(180, { 60.5: 62, 120.5: 70 })
+    fake.answer = (req) => ({ task: 'names', names: (req.names as { items: { id: string }[] }).items.map((i) => ({ id: i.id, name: 'Billing report' })) })
+    fake.prefs.set('findChapters', { density: 'normal', use: { screen: true, pauses: true, words: true }, names: 'local' })
+    fake.local = { models: [{ id: 'gemma4-e2b', state: 'ready', bytes: 1, block: null }], use: 'auto', active: 'gemma4-e2b', pc: {}, speeds: {} }
+    let read!: () => void
+    fake.gates.local = new Promise((r) => (read = r))
+    const panel = (): unknown => ({ type: Panel, props: { project: store.state, cursor: NO_INPUT, onNotice: () => undefined } })
+    request()
+    await settle(panel(), ['LocalProgress', 'CostLine'])
+    await settle(panel(), ['LocalProgress', 'CostLine'])
+    expect(fake.scans).toEqual([])
+    expect(store.state.chapters).toEqual([])
+    read()
+    await settle(panel(), ['LocalProgress', 'CostLine'])
+    await settle(panel(), ['LocalProgress', 'CostLine'])
+    expect(fake.ai.map((a) => [a.provider, a.request.task])).toEqual([['local', 'names']])
+    expect(store.state.chapters!.map((c) => c.title)).toContain('Billing report')
   })
 })

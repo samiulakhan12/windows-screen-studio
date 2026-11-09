@@ -6,7 +6,7 @@
  * it here.
  */
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react'
-import type { AiTextRequest } from '../../../../shared/api/ai'
+import { LOCAL_TEXT_ID, type AiTextRequest } from '../../../../shared/api/ai'
 import { chapterLimits } from '../../../../shared/chapters/plan'
 import { namesRequestForChapters } from '../../../../shared/chapters/names'
 import { videoDuration, planOf } from '../../../../shared/engine/freeze'
@@ -14,7 +14,9 @@ import { DEFAULT_FIND_CHAPTERS, sanitizeSmartPref, type FindChaptersPref } from 
 import type { CursorTrack, Project } from '../../../../shared/types'
 import { CostLine } from '../../ai/CostLine'
 import { LocalProgress } from '../../ai/LocalProgress'
-import { useTextChoices } from '../../ai/textChoices'
+import { useLocalAi } from '../../ai/localAiState'
+import { useTextChoiceList } from '../../ai/textChoices'
+import { useCostDataRead } from '../../ai/useCost'
 import { FIND_WORDS, runFindChapters, type FindChapterOptions } from '../chaptersRun'
 import { useEditor } from '../context'
 import { useGroup } from '../groupContext'
@@ -54,8 +56,11 @@ export function FindChapters({ project, cursor, onNotice }: { project: Project; 
   const { store } = useEditor()
   const group = useGroup()
   const ids = useId()
-  const choices = useTextChoices('names')
+  // Null while the providers are first read.
+  const list = useTextChoiceList('names')
+  const choices = list ?? []
   const [pref, setPrefState] = useState<FindChaptersPref>(() => ({ ...DEFAULT_FIND_CHAPTERS, use: { ...DEFAULT_FIND_CHAPTERS.use } }))
+  const [prefRead, setPrefRead] = useState(false)
   const [running, setRunning] = useState<string | null>(null)
   const [progress, setProgress] = useState<string | null>(null)
   const [needsCaptions, setNeedsCaptions] = useState(false)
@@ -76,6 +81,7 @@ export function FindChapters({ project, cursor, onNotice }: { project: Project; 
         if (current && saved) setPrefState(saved)
       })
       .catch(() => undefined)
+      .finally(() => current && setPrefRead(true))
     return () => {
       current = false
     }
@@ -135,16 +141,22 @@ export function FindChapters({ project, cursor, onNotice }: { project: Project; 
   )
   const stop = (): void => controller.current?.abort()
 
-  // The palette's Find chapters (smartRequests): taken once mounted, and while shown. It presses the
-  // button, so with names from an AI the cost line asks its question first, as for a click (§11.5).
+  // The palette's Find chapters (smartRequests): taken once the options as last used, the AI choices
+  // (AI on this PC's too, when the names come from it) and the cost settings are read, and while shown.
+  // It presses the button, so with names from an AI the cost line asks its question first, as for a
+  // click (§11.5); the cost line shows with the button in that render, listening before the press.
   const runButton = useRef<HTMLButtonElement>(null)
+  const localRead = useLocalAi().status !== 'loading'
+  const costRead = useCostDataRead()
+  const ready = prefRead && list !== null && costRead && (pref.names !== LOCAL_TEXT_ID || localRead)
   useEffect(() => {
+    if (!ready) return
     const press = (): void => {
       if (takeFindChaptersRequest()) runButton.current?.click()
     }
     press()
     return onFindChaptersRequest(press)
-  }, [])
+  }, [ready])
 
   // What the cost line estimates: the narration in as many parts as Find chapters makes at most.
   const estimate = useMemo((): (() => AiTextRequest) | null => {

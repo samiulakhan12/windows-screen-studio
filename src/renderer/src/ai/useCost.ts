@@ -134,6 +134,23 @@ export function useCostData(): CostData {
   return data
 }
 
+/**
+ * Whether the cost data has been read (read now when no cost line has read it yet). A palette command
+ * presses a tool's button only then, so a cost line shown with it asks as the settings say (§11.5).
+ */
+export function useCostDataRead(): boolean {
+  const [read, setRead] = useState(false)
+  useEffect(() => {
+    let live = true
+    const done = (): void => void (live && setRead(true))
+    readCostData().then(done, done)
+    return () => {
+      live = false
+    }
+  }, [])
+  return read
+}
+
 /** A service's own price for `choice`'s model this session: OpenRouter's list's, or 'varies'. */
 function liveOf(choice: TextChoice, d: CostData): { input: number; output: number } | 'varies' | undefined {
   const m = d.listed.get(choice.id)?.find((x) => x.id === choice.model)
