@@ -157,7 +157,9 @@ const labelMemo = new WeakMap<readonly Annotation[], LabelMemo>()
  * The label each automatic badge draws, by annotation id (§7.3): automatic badges in start-time
  * order (ties by id) count 1, 2, 3…; the count starts again at each chapter's start (in the
  * video's time) unless `effects.badgesByChapter` is false or the project has fewer than two
- * chapters; a badge with `startAt` takes that number and the next count on from it. Badges with
+ * chapters, a badge counting in the chapter where its entrance has finished (one added at a
+ * chapter's start pops in just before it); a badge with `startAt` takes that number and the next
+ * count on from it. Badges with
  * their own text do not count, nor do badges a cut removes whole (never seen, they get no label).
  * Memoised on the annotations, chapters, clips, freezes and effects.
  */
@@ -165,27 +167,34 @@ export function badgeLabels(project: Project): ReadonlyMap<string, string> {
   const annotations = project.annotations ?? []
   const hit = labelMemo.get(annotations)
   if (hit && hit.chapters === project.chapters && hit.clips === project.clips && hit.effects === project.effects && hit.freezes === project.freezes) return hit.out
-  const autos = annotations.filter((a) => a.style === 'badge' && calloutOf(a).number === 'auto').sort((a, b) => a.start - b.start || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0))
+  const autos = annotations.filter((a) => a.style === 'badge' && calloutOf(a).number === 'auto')
   const out = new Map<string, string>()
   if (autos.length) {
     const plan = planOf(project)
     const chapters = project.clips.length ? outputChapters(project.chapters ?? [], project.clips, plan) : []
     const byChapter = chapters.length >= 2 && badgesByChapterOf(project.effects ?? {}, chapters.length)
     const starts = byChapter ? chapters.map((c) => c.start) : []
-    let chapter = -1
-    let k = 0
+    const counted: { a: Annotation; chapter: number }[] = []
     for (const a of autos) {
       const from = viewAt(project.clips, a.start)
+      const to = viewAt(project.clips, a.end)
       // No kept moment: the video never shows it, so it uses up no number.
-      if (!(viewAt(project.clips, a.end) > from)) continue
+      if (!(to > from)) continue
+      // Its chapter is where it has fully come in: a badge added at a chapter's start pops in just before it.
+      let chapter = -1
       if (byChapter) {
-        const at = editToVideo(plan, from)
-        let i = -1
-        while (i + 1 < starts.length && starts[i + 1] <= at + 1e-6) i++
-        if (i !== chapter) {
-          chapter = i
-          k = 0
-        }
+        const at = editToVideo(plan, from + Math.min(calloutOf(a).enter?.duration ?? OLD_FADE.text, (to - from) / 2))
+        while (chapter + 1 < starts.length && starts[chapter + 1] <= at + 1e-6) chapter++
+      }
+      counted.push({ a, chapter })
+    }
+    counted.sort((x, y) => x.chapter - y.chapter || x.a.start - y.a.start || (x.a.id < y.a.id ? -1 : x.a.id > y.a.id ? 1 : 0))
+    let chapter = -2
+    let k = 0
+    for (const { a, chapter: i } of counted) {
+      if (i !== chapter) {
+        chapter = i
+        k = 0
       }
       const c = calloutOf(a)
       k = c.startAt ?? k + 1

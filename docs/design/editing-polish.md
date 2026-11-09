@@ -1300,7 +1300,11 @@ the code they call lives in P3's new `calloutLayer.ts` (§17.3).
 - **Numbering** (`badgeLabels(project)`, memoised on `annotations`, `chapters`, `clips` and
   `effects`): badges with `number: 'auto'`, sorted by `(start, id)`, get k = 1, 2, 3… The count
   starts again at 1 at each chapter's start (output time, `outputChapters`) unless
-  `effects.badgesByChapter === false` or the project has fewer than two chapters. A badge with
+  `effects.badgesByChapter === false` or the project has fewer than two chapters. A badge counts in
+  the chapter where its entrance has finished (its start plus its entrance in viewing time, at most
+  half the badge; no entrance: today's 0.15 s fade), so a badge added at a chapter's start, which
+  pops in just before the playhead, counts in that chapter; within a chapter the order stays
+  `(start, id)`. A badge with
   `startAt` shows that number and the next counts on from it. Badges with their own text do not
   count, nor do badges a cut removes whole (no kept moment: the video never shows them, so they
   get no number and the steps seen go 1, 2, 3 without a gap).

@@ -20,6 +20,7 @@ import {
   withDefaultMotion,
   wrapCallout
 } from '../src/shared/render/callouts'
+import { addBadge } from '../src/shared/editor/calloutsEdit'
 import { ITEM_MOTIONS } from '../src/shared/editor/groupEdit'
 import { createShape } from '../src/shared/editor/shapes'
 import type { Annotation, CalloutMotion, Clip, ItemMotion, Project } from '../src/shared/types'
@@ -242,6 +243,28 @@ describe('badges (test 40)', () => {
     // One chapter: no restart.
     const one = projectWith(list, { chapters: [{ id: 'k2', t: 30, title: 'Two' }] })
     expect(['a', 'b', 'c', 'd'].map((id) => badgeLabels(one).get(id))).toEqual(['1', '2', '3', '4'])
+  })
+
+  it("counts a badge added at a chapter's start in that chapter (it pops in just before it)", () => {
+    const chapters = [
+      { id: 'k1', t: 0, title: 'One' },
+      { id: 'k2', t: 30, title: 'Two' }
+    ]
+    let p = projectWith([], { chapters })
+    const ids: string[] = []
+    for (const t of [5, 10, 30, 35]) {
+      const added = addBadge(p, t, { pin: null, x: 0.5, y: 0.5 }, null)
+      p = added.project
+      ids.push(added.id)
+    }
+    // Each starts one entrance (0.24 s) before the playhead, so it is fully shown where it was added.
+    expect(p.annotations[2].start).toBeCloseTo(29.76, 9)
+    expect(ids.map((id) => badgeLabels(p).get(id))).toEqual(['1', '2', '1', '2'])
+    // Entrances of different lengths across a chapter's start: each counts where it has fully come in.
+    const pop = (d: number): CalloutMotion => m('pop', d)
+    const list = [badge(5, { id: 'x', enter: m('fade', 0.18) }), badge(29.7, { id: 'late', enter: pop(0.5) }), badge(29.8, { id: 'early', enter: pop(0.1) }), badge(35, { id: 'y', enter: pop(0.24) })]
+    const labels = badgeLabels(projectWith(list, { chapters }))
+    expect(['x', 'early', 'late', 'y'].map((id) => labels.get(id))).toEqual(['1', '2', '1', '2'])
   })
 
   it('a badge a cut removes whole takes no number; one partly kept counts', () => {
