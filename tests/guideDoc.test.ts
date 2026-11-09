@@ -8,6 +8,7 @@ import { ACTUAL_KEY, buildGuideDoc, bugDetails, defaultDetails, demoHotspot, ste
 import { withGuideFields, withStepEdit } from '../src/shared/guide/guideEdit'
 import { guideHtml } from '../src/shared/guide/guideHtml'
 import { guideMarkdown } from '../src/shared/guide/guideMarkdown'
+import { planShot, shotSize } from '../src/shared/guide/shots'
 import type { GuideStep } from '../src/shared/guide/steps'
 import type { Project } from '../src/shared/types'
 
@@ -85,6 +86,22 @@ describe('the document', () => {
     const d = buildGuideDoc(p, steps, new Map(), null)
     expect(d.steps[0].hotspot).toEqual({ x: 0.3, y: 0.4 })
     expect(d.steps[1].hotspot).toBeUndefined()
+  })
+
+  it('a zoomed demo shot recorded at 150%: the hotspot sits on the ring its picture draws', () => {
+    const list: GuideStep[] = [
+      { key: 'c3000', t: 3, kind: 'click', x: 0.94, y: 0.5 },
+      { key: 'c4000', t: 4, kind: 'click', x: 0.3, y: 0.4 }
+    ]
+    let p = project()
+    for (const s of list) p = withStepEdit(p, s.key, { demoZoom: true })
+    const d = buildGuideDoc(p, list, new Map(), null, 1.5)
+    list.forEach((s, i) => {
+      const plan = planShot(s, p, p.guide!.steps!.find((e) => e.key === s.key), 1.5, 'demo')
+      const out = shotSize(plan.rect)
+      expect(d.steps[i].hotspot!.x).toBeCloseTo(plan.ring!.cx / out.w, 2)
+      expect(d.steps[i].hotspot!.y).toBeCloseTo(plan.ring!.cy / out.h, 2)
+    })
   })
 })
 

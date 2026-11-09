@@ -98,9 +98,10 @@ export function demoHotspot(step: GuideStep, project: Project, edit: GuideStepEd
 /**
  * The document of the guide (§5.6) from the project and its steps (findSteps), with each included
  * step's image by step key (ACTUAL_KEY: the bug report's Actual screenshot) and the brand kit's
- * logo and colour when it is used. `brand` null, or the guide's brand unticked: no brand.
+ * logo and colour when it is used. `brand` null, or the guide's brand unticked: no brand. `scale`:
+ * the display scale the recording was made at, which sizes a zoomed demo shot as its picture is.
  */
-export function buildGuideDoc(project: Project, steps: readonly GuideStep[], images: ReadonlyMap<string, GuideImage>, brand: GuideDoc['brand'] | null): GuideDoc {
+export function buildGuideDoc(project: Project, steps: readonly GuideStep[], images: ReadonlyMap<string, GuideImage>, brand: GuideDoc['brand'] | null, scale = 1): GuideDoc {
   const guide = project.guide ?? {}
   const language = guideLanguage(project)
   const words = GUIDE_WORDS[language]
@@ -115,7 +116,7 @@ export function buildGuideDoc(project: Project, steps: readonly GuideStep[], ima
     if (!ns[i]) return
     const title = titles[i].title
     const note = edit?.text ?? added.get(s.key)?.text ?? stepText(steps, i, project, !!edit?.full)
-    const hotspot = demoHotspot(s, project, edit)
+    const hotspot = demoHotspot(s, project, edit, scale)
     out.push({
       n: ns[i],
       label: fill(words.step, { n: ns[i] }),

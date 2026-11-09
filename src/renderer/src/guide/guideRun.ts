@@ -101,12 +101,12 @@ async function convertImages(images: ReadonlyMap<string, GuideImage>, kind: { mi
  */
 export async function saveGuide(
   format: GuideFormat,
-  deps: { project: Project; steps: readonly GuideStep[]; images: ReadonlyMap<string, GuideImage>; page: 'A4' | 'Letter'; signal: AbortSignal; smaller?: boolean }
+  deps: { project: Project; steps: readonly GuideStep[]; images: ReadonlyMap<string, GuideImage>; scale: number; page: 'A4' | 'Letter'; signal: AbortSignal; smaller?: boolean }
 ): Promise<{ path: string; bytes: number } | null> {
   const kind = deps.smaller && (format === 'html' || format === 'demo') ? SMALLER : FORMAT_IMAGES[format]
   const images = await convertImages(deps.images, kind, deps.signal)
   if (deps.signal.aborted) return null
-  const doc = buildGuideDoc(deps.project, deps.steps, images, await guideBrand(deps.project))
+  const doc = buildGuideDoc(deps.project, deps.steps, images, await guideBrand(deps.project), deps.scale)
   const name = guideFileName(deps.project, format)
   if (format === 'markdown') {
     const md = guideMarkdown(doc)

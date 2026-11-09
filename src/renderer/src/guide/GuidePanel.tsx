@@ -477,7 +477,7 @@ export function GuidePanel(props: { project: Project; cursor: CursorTrack; start
     try {
       const { images, missing, failed } = await docImages(format, ac.signal)
       if (ac.signal.aborted) return
-      const result = await saveGuide(format, { project: docProject(), steps, images, page, signal: ac.signal, smaller })
+      const result = await saveGuide(format, { project: docProject(), steps, images, scale, page, signal: ac.signal, smaller })
       if (!result) return
       setSaved({ ...result, format })
       say(`Saved “${result.path.split(/[\\/]/).pop() ?? result.path}”.${missingNote(missing, failed)}`)
