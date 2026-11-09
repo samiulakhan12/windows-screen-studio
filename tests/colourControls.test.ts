@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { Project } from '../src/shared/types'
-import { byTestId, contexts, descendants, key, mockReact, settle, testStore, textOf, unmountAll, useEditorContexts, type El } from './studioHarness'
+import { byTestId, contexts, descendants, focused, key, mockReact, render, settle, testStore, textOf, unmountAll, useEditorContexts, type El } from './studioHarness'
 
 /*
  * The colour controls of the Effects and Camera tabs (docs/design/editing-polish.md §2.5, §12;
@@ -9,6 +9,10 @@ import { byTestId, contexts, descendants, key, mockReact, settle, testStore, tex
  * and End the ends, Page Up 10, Delete back to 0), each Reset, announced; a LUT imported through
  * main's pick; Compare; Auto colour; the note without WebGL2. Each change is one store update.
  */
+
+// Whether the last input was a key (focus.ts keeps it from the window's events, which these tests have not).
+const keys = vi.hoisted(() => ({ last: false }))
+vi.mock('../src/renderer/src/editor/focus', async (importOriginal) => ({ ...(await importOriginal<Record<string, unknown>>()), lastInputWasKey: () => keys.last }))
 
 const picks: unknown[] = []
 let pickAnswer: () => Promise<unknown> = async () => null
@@ -30,7 +34,9 @@ mockReact()
 const SCREEN = '../src/renderer/src/editor/panels/ScreenColourSection'
 const CAMERA = '../src/renderer/src/editor/panels/CameraColourSection'
 const LAYER = '../src/renderer/src/render/gradeLayer'
+const EXPORT = '../src/renderer/src/editor/ExportDialog'
 const { ScreenColourSection } = (await import(/* @vite-ignore */ SCREEN)) as { ScreenColourSection: (p: unknown) => unknown }
+const { LutQuestion } = (await import(/* @vite-ignore */ EXPORT)) as { LutQuestion: (p: unknown) => unknown }
 const { CameraColourSection } = (await import(/* @vite-ignore */ CAMERA)) as { CameraColourSection: (p: unknown) => unknown }
 const { forceGradeBackend } = (await import(/* @vite-ignore */ LAYER)) as { forceGradeBackend(b: 'gl' | 'cpu' | null): void }
 await useEditorContexts()
@@ -54,6 +60,7 @@ beforeEach(() => {
   commands.length = 0
   picks.length = 0
   pickAnswer = async () => null
+  keys.last = false
   player.comparing = false
   forceGradeBackend(null)
   store = testStore(project())
@@ -208,6 +215,43 @@ describe('the colour controls (test 82)', () => {
     els = await screen()
     expect(status(els)).toBe('Colour reset')
     expect(byTestId(els, 'colour-reset')!.props.disabled).toBe(true)
+  })
+
+  it('a button that goes (or turns off) with what it did hands the keyboard on, not to the page', async () => {
+    store = testStore(project({ grade: { screen: { look: 'vivid', temperature: 0.2, lut: { file: 'lut-1.cube', sha256: 'f'.repeat(64), title: 'Teal', size: 33 } } } }))
+    contexts.editor = { store, player }
+    // A click leaves the focus where clicks leave it (focus.ts).
+    let els = await screen()
+    click(byTestId(els, 'colour-reset-temperature')!)
+    expect(focused).toEqual([])
+    // By the keyboard: Reset goes back to its slider, Remove LUT to Import, Reset colour to None.
+    keys.last = true
+    store = testStore(project({ grade: { screen: { look: 'vivid', temperature: 0.2, lut: { file: 'lut-1.cube', sha256: 'f'.repeat(64), title: 'Teal', size: 33 } } } }))
+    contexts.editor = { store, player }
+    unmountAll()
+    els = await screen()
+    click(byTestId(els, 'colour-reset-temperature')!)
+    expect(focused.map((e) => e.props['data-testid'])).toEqual(['colour-slider-temperature'])
+    els = await screen()
+    click(byTestId(els, 'lut-remove')!)
+    expect(focused.map((e) => e.props['data-testid'])).toEqual(['colour-slider-temperature', 'lut-import'])
+    els = await screen()
+    click(byTestId(els, 'colour-reset')!)
+    expect(focused[2].props['data-look']).toBe('none')
+    expect(store.state.grade).toBeUndefined()
+    expect(store.steps).toBe(3)
+  })
+
+  it("the export's LUT question hands the keyboard back to Export before it goes, with either answer", () => {
+    const said: string[] = []
+    const back = { current: { focus: () => said.push('focus Export') } }
+    const els = render({ type: LutQuestion, props: { question: "The screen's LUT is missing or has changed. Export without it?", back, onExport: () => said.push('export'), onCancel: () => said.push('cancel') } })
+    // It opens on its main answer.
+    expect(focused.map((e) => e.props['data-testid'])).toEqual(['export-lut-go'])
+    click(byTestId(els, 'export-lut-cancel')!)
+    expect(said).toEqual(['focus Export', 'cancel'])
+    click(byTestId(els, 'export-lut-go')!)
+    expect(said).toEqual(['focus Export', 'cancel', 'focus Export', 'export'])
   })
 
   it('imports a LUT through main and shows its title and size; a refused file says why', async () => {

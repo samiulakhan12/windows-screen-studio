@@ -1661,7 +1661,8 @@ returns null until it is done. Nothing that must match the preview may draw befo
 preview redraws when a LUT becomes ready (`onLutReady`). A file that is missing, changed or
 unreadable is drawn without (the grade's other stages stay), the Colour section says "The LUT file is
 missing or has changed. Import it again.", and the export dialog asks before the export starts:
-"The camera's LUT is missing or has changed. Export without it?" (*Export without it* / *Cancel*).
+"The camera's LUT is missing or has changed. Export without it?" (*Export without it* / *Cancel*;
+either answer hands the focus back to the dialog's Export button before the question goes).
 
 ### 9.6 Auto colour (camera only, offline; `src/shared/editor/autoColour.ts`)
 
@@ -2175,9 +2176,9 @@ where it is a slider. New CSS uses the tokens of `src/renderer/src/styles.css` a
 | Progress bar | `switch`; `radiogroup`s | Space, arrows | — |
 | Looks | `radiogroup` of chips with text labels; thumbnails `alt=""` | arrows | — |
 | Colour sliders | slider per control | arrows 1, Page 10, Home/End min/max (the ARIA slider pattern), Delete resets to 0 | "Warmer, +20"; "Cooler, −15"; "No change" at 0; Delete announces "Temperature reset" |
-| Reset (per slider) | button "Reset Temperature" | Enter, Space | live: "Temperature reset" |
+| Reset (per slider) | button "Reset Temperature" | Enter, Space; the button goes, and the keyboard's focus moves to its slider | live: "Temperature reset" |
 | Compare | toggle button `aria-pressed` | Space | — |
-| Import a LUT, Auto colour, Reset colour | buttons | Enter | live: notice text |
+| Import a LUT, Remove LUT, Auto colour, Reset colour | buttons | Enter; after Remove LUT the keyboard's focus moves to Import, after Reset colour (which then turns off) to the look *None* | live: notice text |
 | Music library | `list`; per row: title, artist, mood (text chip), length ("1 minute 43 seconds" for screen readers) | Tab through rows | — |
 | Play preview | toggle `aria-pressed` "Play preview of Sweet Sun"; on a row not downloaded `aria-disabled`, still focusable, described by "Download to listen" | Space; Esc stops while focus is in the list | live: "Playing preview: Sweet Sun, 1 minute 43 seconds" / "Stopped" |
 | Use / Download and use | buttons "Use Sweet Sun", "Download and use Go to the Picnic, 1.0 megabytes" | Enter | then the button reads "In use" (`aria-disabled`, still focusable); a download has a `progressbar` with value text |

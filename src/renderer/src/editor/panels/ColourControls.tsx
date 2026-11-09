@@ -24,6 +24,7 @@ import { lutProblem, onLutReady } from '../../render/lutCache'
 import { autoColourBusy, onAutoColour } from '../autoColourRun'
 import { onCompare, toggleCompare } from '../compareColour'
 import { holdGesture, useEditor } from '../context'
+import { lastInputWasKey } from '../focus'
 import { useGroup } from '../groupContext'
 import './colour.css'
 
@@ -147,6 +148,7 @@ function ColourSlider(props: { k: ColourSliderKey; value: number; onSet: (v: num
   const scale = scaleOf(k)
   const u = scale.toUi(value)
   const dragging = useRef(false)
+  const input = useRef<HTMLInputElement>(null)
   const label = SLIDER_LABELS[k]
   const set = (next: number): void => props.onSet(scale.fromUi(Math.min(scale.max, Math.max(scale.min, next))), props.mergeKey)
   const onKey = (e: KeyboardEvent<HTMLInputElement>): void => {
@@ -171,6 +173,7 @@ function ColourSlider(props: { k: ColourSliderKey; value: number; onSet: (v: num
           <span className="muted">{u === 0 ? '0' : signed(u)}</span>
         </span>
         <input
+          ref={input}
           type="range"
           data-testid={`colour-slider-${k}`}
           aria-label={label}
@@ -193,7 +196,18 @@ function ColourSlider(props: { k: ColourSliderKey; value: number; onSet: (v: num
         />
       </label>
       {u !== 0 && (
-        <button type="button" className="colour-reset-one" data-testid={`colour-reset-${k}`} aria-label={`Reset ${label}`} title={`Reset ${label}`} onClick={props.onReset}>
+        <button
+          type="button"
+          className="colour-reset-one"
+          data-testid={`colour-reset-${k}`}
+          aria-label={`Reset ${label}`}
+          title={`Reset ${label}`}
+          onClick={() => {
+            // The button goes with the reset: the keyboard stays on its slider, not on the page.
+            if (lastInputWasKey()) input.current?.focus()
+            props.onReset()
+          }}
+        >
           Reset
         </button>
       )}
@@ -218,6 +232,7 @@ export function ColourControls(props: { project: Project; which: 'screen' | 'cam
   const problem = useSyncExternalStore(onLutReady, () => (grade.lut ? lutProblem(project, which) : null))
   const busy = useSyncExternalStore(onAutoColour, autoColourBusy)
   const groupRef = useRef<HTMLDivElement>(null)
+  const importButton = useRef<HTMLButtonElement>(null)
 
   /** Announced in the live region (the same words again are announced again). */
   const say = (text: string): void => setSaid((was) => (was === text ? `${text} ` : text))
@@ -360,7 +375,7 @@ export function ColourControls(props: { project: Project; which: 'screen' | 'cam
           </>
         )}
         <div className="colour-buttons">
-          <button type="button" className="btn small" data-testid="lut-import" disabled={importing} onClick={() => void importLut()}>
+          <button ref={importButton} type="button" className="btn small" data-testid="lut-import" disabled={importing} onClick={() => void importLut()}>
             {COLOUR_COPY.importLut}
           </button>
           {lut && (
@@ -369,6 +384,8 @@ export function ColourControls(props: { project: Project; which: 'screen' | 'cam
               className="btn small"
               data-testid="lut-remove"
               onClick={() => {
+                // Remove LUT goes with the LUT: the keyboard moves to Import, not to the page.
+                if (lastInputWasKey()) importButton.current?.focus()
                 update((p) => withLut(p, which, null))
                 say('LUT removed')
               }}
@@ -389,6 +406,8 @@ export function ColourControls(props: { project: Project; which: 'screen' | 'cam
           data-testid="colour-reset"
           disabled={!anything}
           onClick={() => {
+            // Reset colour turns itself off: the keyboard moves to the look, None now, not to the page.
+            if (lastInputWasKey()) (groupRef.current?.querySelector?.('[role="radio"]') as HTMLElement | null | undefined)?.focus?.()
             update((p) => withGrade(p, which, null))
             say(COLOUR_COPY.reset)
           }}

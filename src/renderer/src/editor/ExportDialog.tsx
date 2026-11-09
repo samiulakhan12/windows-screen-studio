@@ -992,7 +992,7 @@ export function ExportDialog(props: Props): JSX.Element {
                 )}
               </div>
             </div>
-            {lutAsk && <LutQuestion question={lutAsk.question} onExport={lutAsk.go} onCancel={() => setLutAsk(null)} />}
+            {lutAsk && <LutQuestion question={lutAsk.question} back={primary} onExport={lutAsk.go} onCancel={() => setLutAsk(null)} />}
             <footer className="modal-foot">
               <button className="btn" onClick={props.onClose}>
                 Cancel
@@ -1337,19 +1337,25 @@ function RunningView({
 /**
  * The question asked before an export when a grade's LUT is missing or has changed (editing polish
  * §9.5): "The camera's LUT is missing or has changed. Export without it?" Export without it, or Cancel.
+ * Either answer takes the question away with the focused button: the keyboard goes back to `back`
+ * (the dialog's Export) first, not to the page.
  */
-function LutQuestion(props: { question: string; onExport: () => void; onCancel: () => void }): JSX.Element {
+export function LutQuestion(props: { question: string; back: RefObject<HTMLElement>; onExport: () => void; onCancel: () => void }): JSX.Element {
   const go = useRef<HTMLButtonElement>(null)
   useEffect(() => go.current?.focus(), [])
+  const answer = (then: () => void) => (): void => {
+    props.back.current?.focus()
+    then()
+  }
   const them = props.question.endsWith('without them?')
   return (
     <div className="export-lut-ask" role="alertdialog" aria-label="A LUT is missing" aria-describedby="export-lut-question" data-testid="export-lut-ask">
       <p id="export-lut-question">{props.question}</p>
       <div className="export-lut-ask-buttons">
-        <button ref={go} type="button" className="btn primary" data-testid="export-lut-go" onClick={props.onExport}>
+        <button ref={go} type="button" className="btn primary" data-testid="export-lut-go" onClick={answer(props.onExport)}>
           {them ? 'Export without them' : 'Export without it'}
         </button>
-        <button type="button" className="btn" data-testid="export-lut-cancel" onClick={props.onCancel}>
+        <button type="button" className="btn" data-testid="export-lut-cancel" onClick={answer(props.onCancel)}>
           Cancel
         </button>
       </div>

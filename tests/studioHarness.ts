@@ -141,7 +141,8 @@ function standIn(el: El): Record<string, unknown> {
     const cls = /^\.([\w-]+)$/.exec(sel)
     return !!cls && String(d.props.className ?? '').split(/\s+/).includes(cls[1])
   }
-  const node = (d: El): Record<string, unknown> => ({ el: d, focus: () => focused.push(d), disabled: !!d.props.disabled, dataset: {}, getBoundingClientRect: () => ({ left: 0, top: 0, width: 0, height: 0 }) })
+  // focus() gives nothing back, as the DOM's (an effect that returns it has no cleanup).
+  const node = (d: El): Record<string, unknown> => ({ el: d, focus: () => void focused.push(d), disabled: !!d.props.disabled, dataset: {}, getBoundingClientRect: () => ({ left: 0, top: 0, width: 0, height: 0 }) })
   const stand: Record<string, unknown> = {
     el,
     get disabled(): boolean {
@@ -150,7 +151,7 @@ function standIn(el: El): Record<string, unknown> {
     clientWidth: 280,
     // No child nodes are laid out here (a list's rows are read from its elements instead).
     children: [],
-    focus: () => focused.push(stand.el as El),
+    focus: () => void focused.push(stand.el as El),
     contains: () => false,
     // Nothing covers a stand-in (no inert part of the page above it).
     closest: () => null,
