@@ -9,7 +9,7 @@ import { contrastRatio } from '../captions/colors'
 import { clipIndexAt } from '../engine/timeline'
 import type { Rect } from '../engine/layout'
 import { isPrivacyKind } from '../editor/shapes'
-import type { Clip, GuideStepEdit, NormRect, Project } from '../types'
+import type { Clip, GuideStepEdit, NormRect, Project, Shape } from '../types'
 import type { GuideStep } from './steps'
 
 export const SHOT = { cropBase: 950, maxWidth: 1600, maxSource: 3840, ringAt: 960, ringDiameter: 44, ringWidth: 4, halo: 3, arrowHead: 16, ring: '#0060df', send: 768, copy: 1200 } as const
@@ -234,4 +234,64 @@ export function blurBoxes(step: GuideStep, frame: { w: number; h: number }, scal
 export function shotSize(rect: Rect, max: number = SHOT.maxWidth): { w: number; h: number } {
   const w = Math.max(1, Math.round(Math.min(rect.w, max)))
   return { w, h: Math.max(1, Math.round((w * rect.h) / rect.w)) }
+}
+
+/** A shot to make: its step key, time, part of the frame, ring and arrow, and what it depends on. */
+export interface ShotPlan {
+  key: string
+  t: number
+  rect: Rect
+  whole: boolean
+  outside: boolean
+  ring: ReturnType<typeof ringOf>
+  arrow: ReturnType<typeof arrowOf>
+  /** Everything the picture depends on: a shot is made again when this changes (§5.5.6). */
+  sig: string
+}
+
+/** The privacy shapes (blur, pixelate) that cover a frame at `t`, as the privacy layer reads them (half a frame and 1 ms of slack). */
+export function privacyAt(project: Pick<Project, 'shapes' | 'capture'>, t: number): Shape[] {
+  const slack = 0.5 / (project.capture?.fps ?? 60) + 0.001
+  return (project.shapes ?? []).filter((s) => isPrivacyKind(s.kind) && t + slack >= s.start && t - slack < s.end)
+}
+
+/**
+ * The shot of `step` (§5.5): in the guide's view (zoomed to the action unless *Whole screen*, a
+ * stored `rect` and `ring` winning) or the demo's (the whole screen unless *Zoom to the click in
+ * the demo*), at most SHOT.maxWidth wide, with what the picture depends on: the time, the part of
+ * the frame, the ring and arrow, the privacy shapes covering that time, the crop, the colour grade,
+ * the cursor and the ring's colour.
+ */
+export function planShot(step: GuideStep, project: Project, edit: GuideStepEdit | undefined, scale: number, view: 'guide' | 'demo'): ShotPlan {
+  const frame = { w: project.width, h: project.height }
+  const crop = project.crop ?? null
+  const fps = project.capture?.fps ?? 60
+  const t = shotTime(step, project.clips, fps, !!edit?.after)
+  const whole = view === 'demo' ? !edit?.demoZoom : !!edit?.whole
+  const { rect, outside } = shotRect(step, frame, crop, scale, { whole, rect: whole ? undefined : edit?.rect })
+  const outW = shotSize(rect).w
+  const ring = ringOf(step, rect, outW, frame, crop, edit?.ring)
+  const arrow = arrowOf(step, rect, outW, frame, crop, edit?.ring)
+  const sig = JSON.stringify({
+    t,
+    rect,
+    ring,
+    arrow,
+    privacy: privacyAt(project, t).map((s) => [s.id, s.kind, s.start, s.end, s.x, s.y, s.w, s.h, s.strength]),
+    crop,
+    grade: project.grade?.screen ?? null,
+    cursor: [project.cursor.show, project.cursor.size, project.cursor.style ?? null],
+    inputEdits: project.inputEdits ?? null,
+    colour: ringColour(project)
+  })
+  return { key: step.key, t, rect, whole: whole || outside, outside, ring, arrow, sig }
+}
+
+/** The bug report's Actual shot (§5.5.1): the whole screen at `actualAt`, no ring. */
+export function planActual(project: Project, actualAt: number): ShotPlan {
+  const frame = { w: project.width, h: project.height }
+  const rect = visibleRect(frame, project.crop ?? null)
+  const t = Math.min(Math.max(0, actualAt), project.duration)
+  const sig = JSON.stringify({ t, rect, privacy: privacyAt(project, t).map((s) => [s.id, s.start, s.end, s.x, s.y, s.w, s.h, s.strength]), grade: project.grade?.screen ?? null, cursor: [project.cursor.show, project.cursor.size] })
+  return { key: 'actual', t, rect, whole: true, outside: false, ring: null, arrow: null, sig }
 }

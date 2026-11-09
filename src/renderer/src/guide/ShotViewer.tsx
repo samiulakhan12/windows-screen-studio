@@ -1,21 +1,284 @@
 /**
- * The full-size screenshot viewer (docs/design/smart-tools.md §2.1.2, §5.3.1). Part P1 writes it
- * (P6 adds its send form); the contracts' stub closes at once.
+ * The full-size screenshot viewer (docs/design/smart-tools.md §2.1.2, §5.5.3): a modal dialog
+ * showing a step's shot at 100% (one image pixel per device pixel) in a scrolling area that keeps
+ * the keyboard (arrows pan 40 px, Page Up and Down a screen, Home and End to the edges), Fit,
+ * Previous and Next, *Blur an area…*, and *Adjust*: the crop as a rectangle with 8 handles and the
+ * ring as a movable circle over the whole frame, moved by the keyboard (arrows 1%, Shift 10%, Alt
+ * resizes the crop, Enter is Done) or the pointer. In *Check screenshots* a line counts the shots
+ * seen at 100%. Esc closes it and the focus goes back to the screenshot button that opened it.
+ * Part P6 adds the send form (`mode: 'send'`).
  */
-import { useEffect } from 'react'
-import type { GuideStepEdit } from '../../../shared/types'
+import { useEffect, useMemo, useRef, useState, type KeyboardEvent, type PointerEvent as ReactPointerEvent } from 'react'
+import { cropName, cropOk, fitCrop, nudgeCrop, nudgeRing, ringName, snapCrop } from '../../../shared/guide/adjust'
 import type { GuideImage } from '../../../shared/guide/guideDoc'
+import type { GuideStepEdit, NormRect } from '../../../shared/types'
+import { useModalFocus } from '../editor/modalFocus'
+import './guide.css'
+
+/** What Adjust works on: the whole frame's picture, and the crop and ring as stored or as found. */
+export interface ShotAdjust {
+  frame: GuideImage
+  rect: NormRect
+  ring: { x: number; y: number } | null
+}
+
+const PAN = 40
+const HANDLES = ['nw', 'n', 'ne', 'e', 'se', 's', 'sw', 'w'] as const
+type Handle = (typeof HANDLES)[number]
+
+/** An object URL for an image's bytes, freed when it changes. */
+function useImageUrl(image: GuideImage | null | undefined): string | null {
+  const url = useMemo(() => (image && typeof URL !== 'undefined' && URL.createObjectURL ? URL.createObjectURL(new Blob([new Uint8Array(image.bytes)], { type: image.mime })) : null), [image])
+  useEffect(() => () => void (url && URL.revokeObjectURL(url)), [url])
+  return url
+}
 
 export function ShotViewer(props: {
-  shots: readonly { key: string; label: string; image: GuideImage }[]
+  shots: readonly { key: string; label: string; image: GuideImage; adjust?: ShotAdjust }[]
   index: number
   mode: 'view' | 'check' | 'send'
   place?: string
+  /** How many steps the guide has, for the title ("Screenshot for step 3 of 30"). */
+  total?: number
+  /** In Check screenshots: how many have been seen at 100%, and that a shot was. */
+  checked?: number
+  onShown?(key: string): void
   onClose(result?: { send: readonly string[] }): void
   onBlur(key: string): void
   onAdjust(key: string, edit: Pick<GuideStepEdit, 'rect' | 'ring'> | null): void
 }): JSX.Element {
-  const { onClose } = props
-  useEffect(() => onClose(), [onClose])
-  return <></>
+  const { shots, onClose, onShown } = props
+  const [at, setAt] = useState(() => Math.min(Math.max(0, props.index), Math.max(0, shots.length - 1)))
+  const [fit, setFit] = useState(false)
+  const [adjusting, setAdjusting] = useState<{ rect: NormRect; ring: { x: number; y: number } | null } | null>(null)
+  const [said, setSaid] = useState('')
+  const boxRef = useRef<HTMLDivElement>(null)
+  const areaRef = useRef<HTMLDivElement>(null)
+  useModalFocus(boxRef, () => onClose())
+  const shot = shots[at] ?? null
+  const url = useImageUrl(shot?.image)
+  const frameUrl = useImageUrl(adjusting ? shot?.adjust?.frame : null)
+  // A shot counts as checked once shown at 100%.
+  useEffect(() => {
+    if (shot && !fit && !adjusting) onShown?.(shot.key)
+  }, [shot, fit, adjusting, onShown])
+  useEffect(() => {
+    areaRef.current?.focus()
+  }, [at])
+
+  if (!shot) return <></>
+  const total = props.total ?? shots.length
+  const title = `Screenshot for ${shot.label} of ${total}`
+
+  const pan = (e: KeyboardEvent<HTMLDivElement>): void => {
+    const el = areaRef.current as (HTMLDivElement & { scrollBy?: (x: number, y: number) => void }) | null
+    if (!el) return
+    const page = { x: el.clientWidth || 400, y: el.clientHeight || 300 }
+    const moves: Record<string, () => void> = {
+      ArrowLeft: () => el.scrollBy?.(-PAN, 0),
+      ArrowRight: () => el.scrollBy?.(PAN, 0),
+      ArrowUp: () => el.scrollBy?.(0, -PAN),
+      ArrowDown: () => el.scrollBy?.(0, PAN),
+      PageUp: () => el.scrollBy?.(0, -page.y),
+      PageDown: () => el.scrollBy?.(0, page.y),
+      Home: () => {
+        el.scrollLeft = 0
+        el.scrollTop = 0
+      },
+      End: () => {
+        el.scrollLeft = el.scrollWidth
+        el.scrollTop = el.scrollHeight
+      }
+    }
+    const move = moves[e.key]
+    if (!move || e.altKey || e.ctrlKey || e.metaKey) return
+    e.preventDefault()
+    e.stopPropagation()
+    move()
+  }
+
+  const startAdjust = (): void => {
+    if (!shot.adjust) return
+    setAdjusting({ rect: shot.adjust.rect, ring: shot.adjust.ring })
+  }
+  const done = (): void => {
+    if (!adjusting) return
+    if (!cropOk(adjusting.rect)) return setSaid('The crop is too small: at least 5% of the screen.')
+    props.onAdjust(shot.key, { rect: fitCrop(adjusting.rect), ...(adjusting.ring ? { ring: adjusting.ring } : {}) })
+    setAdjusting(null)
+  }
+  const reset = (): void => {
+    props.onAdjust(shot.key, null)
+    setAdjusting(null)
+  }
+  const cropKeys = (e: KeyboardEvent<HTMLButtonElement>): void => {
+    if (!adjusting) return
+    if (e.key === 'Enter') {
+      e.preventDefault()
+      return done()
+    }
+    const next = nudgeCrop(adjusting.rect, e.key, e.shiftKey, e.altKey)
+    if (!next) return
+    e.preventDefault()
+    e.stopPropagation()
+    setAdjusting({ ...adjusting, rect: next })
+    setSaid(cropName(next))
+  }
+  const ringKeys = (e: KeyboardEvent<HTMLButtonElement>): void => {
+    if (!adjusting?.ring) return
+    if (e.key === 'Enter') {
+      e.preventDefault()
+      return done()
+    }
+    const next = nudgeRing(adjusting.ring, e.key, e.shiftKey)
+    if (!next) return
+    e.preventDefault()
+    e.stopPropagation()
+    setAdjusting({ ...adjusting, ring: next })
+    setSaid(ringName(next))
+  }
+  /** A pointer drag of the crop (a handle resizes it) or of the ring, in fractions of the frame shown. */
+  const drag = (what: 'ring' | 'crop' | Handle) => (e: ReactPointerEvent<HTMLElement>): void => {
+    if (!adjusting || !shot.adjust) return
+    const box = (e.currentTarget.closest('.guide-adjust-frame') as HTMLElement | null)?.getBoundingClientRect()
+    if (!box || !box.width || !box.height) return
+    e.preventDefault()
+    e.stopPropagation()
+    const start = { x: e.clientX, y: e.clientY, rect: adjusting.rect, ring: adjusting.ring }
+    const frame = { w: shot.adjust.frame.width, h: shot.adjust.frame.height }
+    const move = (ev: PointerEvent): void => {
+      const dx = (ev.clientX - start.x) / box.width
+      const dy = (ev.clientY - start.y) / box.height
+      if (what === 'ring') {
+        if (!start.ring) return
+        setAdjusting((a) => (a ? { ...a, ring: { x: Math.min(1, Math.max(0, start.ring!.x + dx)), y: Math.min(1, Math.max(0, start.ring!.y + dy)) } } : a))
+        return
+      }
+      const r = start.rect
+      let { x, y, w, h } = r
+      if (what === 'crop') {
+        x += dx
+        y += dy
+      } else {
+        if (what.includes('w')) {
+          x += dx
+          w -= dx
+        }
+        if (what.includes('e')) w += dx
+        if (what.includes('n')) {
+          y += dy
+          h -= dy
+        }
+        if (what.includes('s')) h += dy
+      }
+      setAdjusting((a) => (a ? { ...a, rect: snapCrop(fitCrop({ x, y, w, h }), frame) } : a))
+    }
+    const up = (): void => {
+      window.removeEventListener('pointermove', move)
+      window.removeEventListener('pointerup', up)
+    }
+    window.addEventListener('pointermove', move)
+    window.addEventListener('pointerup', up)
+  }
+
+  const pct = (v: number): string => `${(v * 100).toFixed(3)}%`
+  return (
+    <div className="overlay modal-backdrop guide-viewer-backdrop">
+      <div className="modal guide-viewer" role="dialog" aria-modal="true" aria-labelledby="guide-viewer-title" ref={boxRef} data-testid="guide-viewer">
+        <header className="modal-head">
+          <h2 id="guide-viewer-title">{title}</h2>
+        </header>
+        {props.mode === 'check' && (
+          <p className="guide-viewer-checked" role="status" aria-live="polite" data-testid="guide-checked">
+            Checked {props.checked ?? 0} of {total}
+          </p>
+        )}
+        {adjusting && shot.adjust ? (
+          <div className="guide-adjust">
+            <p className="hint">Move the crop and the ring with the arrow keys (Shift: further, Alt: resize the crop), or drag them. Enter is Done.</p>
+            <div className="guide-adjust-frame">
+              {frameUrl && <img src={frameUrl} alt={`The whole screen for ${shot.label}`} width={shot.adjust.frame.width} height={shot.adjust.frame.height} draggable={false} />}
+              <button
+                type="button"
+                className="guide-adjust-crop"
+                aria-label={cropName(adjusting.rect)}
+                data-testid="guide-adjust-crop"
+                style={{ left: pct(adjusting.rect.x), top: pct(adjusting.rect.y), width: pct(adjusting.rect.w), height: pct(adjusting.rect.h) }}
+                onKeyDown={cropKeys}
+                onPointerDown={drag('crop')}
+              >
+                {HANDLES.map((h) => (
+                  <span key={h} className="guide-adjust-handle" data-handle={h} aria-hidden="true" onPointerDown={drag(h)} />
+                ))}
+              </button>
+              {adjusting.ring && (
+                <button
+                  type="button"
+                  className="guide-adjust-ring"
+                  aria-label={ringName(adjusting.ring)}
+                  data-testid="guide-adjust-ring"
+                  style={{ left: pct(adjusting.ring.x), top: pct(adjusting.ring.y) }}
+                  onKeyDown={ringKeys}
+                  onPointerDown={drag('ring')}
+                />
+              )}
+            </div>
+          </div>
+        ) : (
+          <div
+            ref={areaRef}
+            className={`guide-viewer-area ${fit ? 'fit' : ''}`}
+            role="group"
+            aria-label={fit ? 'Screenshot, fitted' : 'Screenshot, 100%'}
+            tabIndex={0}
+            onKeyDown={pan}
+            data-testid="guide-viewer-area"
+          >
+            {url && <img src={url} alt={`Screenshot for ${shot.label}`} width={shot.image.width} height={shot.image.height} data-testid="guide-viewer-image" />}
+          </div>
+        )}
+        <p className="guide-viewer-said" role="status" aria-live="polite">
+          {said}
+        </p>
+        <footer className="modal-foot guide-viewer-foot">
+          {adjusting ? (
+            <>
+              <button type="button" className="btn ghost" onClick={reset} data-testid="guide-adjust-reset">
+                Reset
+              </button>
+              <button type="button" className="btn ghost" onClick={() => setAdjusting(null)}>
+                Cancel
+              </button>
+              <button type="button" className="btn primary" onClick={done} data-testid="guide-adjust-done">
+                Done
+              </button>
+            </>
+          ) : (
+            <>
+              <button type="button" className="btn ghost" disabled={at === 0} onClick={() => setAt(at - 1)} data-testid="guide-viewer-prev">
+                Previous
+              </button>
+              <button type="button" className="btn ghost" disabled={at >= shots.length - 1} onClick={() => setAt(at + 1)} data-testid="guide-viewer-next">
+                Next
+              </button>
+              <button type="button" className="btn ghost" aria-pressed={fit} onClick={() => setFit(!fit)} data-testid="guide-viewer-fit">
+                Fit
+              </button>
+              <button type="button" className="btn ghost" onClick={() => props.onBlur(shot.key)} data-testid="guide-viewer-blur">
+                Blur an area…
+              </button>
+              {shot.adjust && (
+                <button type="button" className="btn ghost" onClick={startAdjust} data-testid="guide-viewer-adjust">
+                  Adjust
+                </button>
+              )}
+              <button type="button" className="btn" onClick={() => onClose()} data-testid="guide-viewer-close">
+                Close
+              </button>
+            </>
+          )}
+        </footer>
+      </div>
+    </div>
+  )
 }
