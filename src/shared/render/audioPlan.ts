@@ -102,6 +102,11 @@ export interface RecordingPart {
   /** Noise reduction strength 0..1 (on the stems marked `denoise`, or on the mixed track). */
   noiseReduction?: number
   normalize?: boolean
+  /**
+   * One fixed gain (dB) where loudnorm sits, instead of `normalize` (sound stems, output-and-languages
+   * §7.4): the gain the preview plays, so stems add up. Absent: nothing there, as before.
+   */
+  gainDb?: number
   /** Pause freezes (E-11): silence of `length` seconds before source second `at`. */
   holds?: SoundHold[]
   /** Seconds of fade out before and fade in after every cut (NW-06, cutFades.ts); absent: none. */
@@ -204,6 +209,13 @@ export function pieceSampleBounds(pieces: readonly SoundPiece[], rate = AUDIO_RA
   return [0, ...pieces.map((p) => Math.round((t += p.hold + (p.end - p.start) / p.speed) * rate))]
 }
 
+/** `volume=<db>dB,` for a fixed gain that changes anything (RecordingPart.gainDb), else ''. */
+function fixedGainFilter(db: number | undefined): string {
+  if (db === undefined || !Number.isFinite(db)) return ''
+  const rounded = +db.toFixed(4)
+  return rounded === 0 ? '' : `volume=${rounded}dB,`
+}
+
 /** audioFilterGraph for the recording with its stems, noise reduction, normalisation and pause freezes. */
 export function recordingGraph(rec: RecordingPart, duration: number, out = 'aout'): string {
   // Pause freezes split the clips at their frames (without any, each clip is one piece).
@@ -250,7 +262,7 @@ export function recordingGraph(rec: RecordingPart, duration: number, out = 'aout
     parts.push(`[s${i}]atrim=start=${sec(c.start)}:end=${sec(c.end)},asetpts=PTS-STARTPTS,apad=whole_dur=${sec(len)},atrim=end=${sec(len)}${tempo}${hold}${exact}${fades}[c${i}]`)
   })
   const joined = n > 1 ? `${clips.map((_, i) => `[c${i}]`).join('')}concat=n=${n}:v=0:a=1,` : '[c0]'
-  const normalize = rec.normalize ? `${NORMALIZE_FILTERS},` : ''
+  const normalize = rec.normalize ? `${NORMALIZE_FILTERS},` : fixedGainFilter(rec.gainDb)
   const gain = Math.abs(rec.volume - 1) > 1e-6 ? `volume=${+rec.volume.toFixed(4)},` : ''
   parts.push(`${joined}${normalize}${gain}apad=whole_dur=${sec(duration)},atrim=end=${sec(duration)}[${out}]`)
   return parts.join(';')
@@ -337,10 +349,10 @@ export function bedGraph(m: MusicPart, loop: { start: number; end: number }, loo
 }
 
 /** The music's branch: a library bed's graph, or musicGraph. */
-const musicBranch = (m: MusicPart, duration: number, out: string): string => (m.bed ? bedGraph(m, m.bed, m.bed.loop, duration, out) : musicGraph(m, duration, out))
+export const musicBranch = (m: MusicPart, duration: number, out: string): string => (m.bed ? bedGraph(m, m.bed, m.bed.loop, duration, out) : musicGraph(m, duration, out))
 
 /** Linear fades of the whole soundtrack (afade's default curve), or ''. */
-function fadeFilters(duration: number, fadeIn = 0, fadeOut = 0): string {
+export function fadeFilters(duration: number, fadeIn = 0, fadeOut = 0): string {
   const f = fitFades(duration, fadeIn, fadeOut)
   const parts: string[] = []
   if (f.fadeIn > 0) parts.push(`afade=t=in:st=0:d=${sec(f.fadeIn)}`)
@@ -394,34 +406,64 @@ export function longestTone(spans: readonly { start: number; end: number }[]): n
   return spans.reduce((m, s) => (Number.isFinite(s.end - s.start) ? Math.max(m, s.end - s.start) : m), 0)
 }
 
-/**
- * The export's soundtrack graph, ending in [aout]: the edited recording audio, the music and
- * the click track, and the graphics' pops and the bleep tones (Captions Studio), mixed (added on
- * top of each other, nothing renormalised), then faded. Null when silent. Without pops and tones
- * the graph is exactly the one earlier versions made.
- */
-export function soundtrackGraph(opts: {
-  duration: number
-  audio?: RecordingPart
+/** The effect sources of a soundtrack: the click track, the graphics' pops, the bleep tones and the library's effects. */
+export interface EffectParts {
   clicks?: { sounds: ClickSounds; input: string }
-  music?: MusicPart
   /** The graphics' pop and ding tracks: output times per sound, played at POP_VOLUME. */
   pops?: readonly { sounds: ClickSounds; input: string }[]
   /** The bleep tones: output spans, cut from the tone source `input`. */
   tones?: { spans: readonly { start: number; end: number }[]; input: string }
   /** The library's sound effects (editing polish §10.8): one track per effect file, its times at its gain. */
   effects?: readonly { sounds: ClickSounds; input: string }[]
-  fadeIn?: number
-  fadeOut?: number
-}): string | null {
-  const { duration, audio, clicks, music } = opts
+}
+
+/**
+ * The effect tracks that sound within `duration`, in the order the soundtrack mixes them (clicks,
+ * pops, tones, the library's effects), each with the label the mix gives it and its mono track graph
+ * ending in the label it is given (clickTrackGraph, toneTrackGraph). The sound stems build their
+ * Effects stem from the same tracks (output-and-languages §7.2).
+ */
+export function effectTracks(parts: EffectParts, duration: number): { label: string; track: (out: string) => string }[] {
+  const tracks: { label: string; track: (out: string) => string }[] = []
+  const clicks = parts.clicks
+  if (clicks && clickPositions(clicks.sounds.times, duration).length > 0) tracks.push({ label: 'clk', track: (out) => clickTrackGraph(clicks.sounds, duration, clicks.input, out)! })
+  const pops = (parts.pops ?? []).filter((p) => clickPositions(p.sounds.times, duration).length > 0)
+  pops.forEach((p, i) => tracks.push({ label: `pop${i}`, track: (out) => clickTrackGraph(p.sounds, duration, p.input, out)! }))
+  const tones = parts.tones
+  if (tones && toneTrackGraph(tones.spans, duration, tones.input)) tracks.push({ label: 'tone', track: (out) => toneTrackGraph(tones.spans, duration, tones.input, out)! })
+  // The library's effects: a mono click track each (cut short where its next sound starts), joined like the pops.
+  const effects = (parts.effects ?? []).filter((e) => clickPositions(e.sounds.times, duration).length > 0)
+  effects.forEach((e, i) => tracks.push({ label: `sfx${i}`, track: (out) => clickTrackGraph(e.sounds, duration, e.input, out)! }))
+  return tracks
+}
+
+/**
+ * How an effect track joins sound that has the recording or music in it: made stereo at full level on
+ * each side (see STEREO), then aresample follows the mix (soundtrackGraph). The Effects stem joins
+ * every track this way.
+ */
+export const EFFECT_JOIN = `${STEREO},aresample=rematrix_maxval=1`
+
+/**
+ * The export's soundtrack graph, ending in [aout]: the edited recording audio, the music and
+ * the click track, and the graphics' pops and the bleep tones (Captions Studio), mixed (added on
+ * top of each other, nothing renormalised), then faded. Null when silent. Without pops and tones
+ * the graph is exactly the one earlier versions made.
+ */
+export function soundtrackGraph(
+  opts: EffectParts & {
+    duration: number
+    audio?: RecordingPart
+    music?: MusicPart
+    fadeIn?: number
+    fadeOut?: number
+  }
+): string | null {
+  const { duration, audio, music } = opts
   const fades = fadeFilters(duration, opts.fadeIn, opts.fadeOut)
-  const hasClicks = !!clicks && clickPositions(clicks.sounds.times, duration).length > 0
-  const pops = (opts.pops ?? []).filter((p) => clickPositions(p.sounds.times, duration).length > 0)
-  const tones = opts.tones && toneTrackGraph(opts.tones.spans, duration, opts.tones.input) ? opts.tones : undefined
-  const effects = (opts.effects ?? []).filter((e) => clickPositions(e.sounds.times, duration).length > 0)
+  const effects = effectTracks(opts, duration)
   // A single source without fades ends in [aout] directly (the graph earlier versions made).
-  const solo = (audio ? 1 : 0) + (music ? 1 : 0) + (hasClicks ? 1 : 0) + pops.length + (tones ? 1 : 0) + effects.length === 1 && !fades
+  const solo = (audio ? 1 : 0) + (music ? 1 : 0) + effects.length === 1 && !fades
   const branches: { label: string; graph: string }[] = []
   if (audio) {
     // Under stereo music, a mono recording is made stereo too (see STEREO).
@@ -434,24 +476,11 @@ export function soundtrackGraph(opts: {
   // preview plays it (aresample's own mono upmix is 3 dB lower): it is made stereo (see STEREO),
   // then aresample follows the mix. Into a mono recording it averages the two equal sides back
   // (rematrix_maxval=1 scales its downmix, which adds them, to 1).
-  const join = audio || music ? `${STEREO},aresample=rematrix_maxval=1` : 'aresample'
-  if (clicks && hasClicks) {
-    const graph = clickTrackGraph(clicks.sounds, duration, clicks.input, solo ? 'aout' : 'clk0')!
-    branches.push({ label: 'clk', graph: solo ? graph : `${graph};[clk0]${join}[clk]` })
+  const join = audio || music ? EFFECT_JOIN : 'aresample'
+  for (const e of effects) {
+    const graph = e.track(solo ? 'aout' : `${e.label}0`)
+    branches.push({ label: e.label, graph: solo ? graph : `${graph};[${e.label}0]${join}[${e.label}]` })
   }
-  pops.forEach((p, i) => {
-    const graph = clickTrackGraph(p.sounds, duration, p.input, solo ? 'aout' : `pop${i}0`)!
-    branches.push({ label: `pop${i}`, graph: solo ? graph : `${graph};[pop${i}0]${join}[pop${i}]` })
-  })
-  if (tones) {
-    const graph = toneTrackGraph(tones.spans, duration, tones.input, solo ? 'aout' : 'tone0')!
-    branches.push({ label: 'tone', graph: solo ? graph : `${graph};[tone0]${join}[tone]` })
-  }
-  // The library's effects: a mono click track each (cut short where its next sound starts), joined like the pops.
-  effects.forEach((e, i) => {
-    const graph = clickTrackGraph(e.sounds, duration, e.input, solo ? 'aout' : `sfx${i}0`)!
-    branches.push({ label: `sfx${i}`, graph: solo ? graph : `${graph};[sfx${i}0]${join}[sfx${i}]` })
-  })
   if (branches.length === 0) return null
   if (solo) return branches[0].graph
   const inputs = branches.map((b) => `[${b.label}]`).join('')
@@ -475,13 +504,47 @@ export interface SoundFiles {
   effects?: Readonly<Record<string, string>>
 }
 
+/** What planSoundtrack mixes: its inputs' arguments and each part of the graph, with the inputs they read. */
+export interface SoundtrackParts extends EffectParts {
+  args: string[]
+  /** Seconds of the output (frames / fps). */
+  duration: number
+  audio?: RecordingPart
+  /** The recorded file each of `audio.stems` is, in the same order (empty for the mixed track). */
+  kinds: StemKind[]
+  music?: MusicPart
+}
+
 /**
  * Inputs (after `first` other inputs) and the graph that mixes them into [aout]: the
  * recording, the music (looped by the demuxer when it should repeat), the click source, and the
  * pop and tone sources of Captions Studio (§10.6, §11.7).
  */
 export function planSoundtrack(job: ExportJob, files: SoundFiles, first: number): { args: string[]; graph: string | null } {
+  const { args, duration, audio, clicks, music, pops, tones, effects } = soundtrackParts(job, files, first)
+  return {
+    args,
+    graph: soundtrackGraph({
+      duration,
+      audio,
+      clicks,
+      music,
+      ...(pops?.length ? { pops } : {}),
+      ...(tones ? { tones } : {}),
+      ...(effects?.length ? { effects } : {}),
+      fadeIn: job.fadeIn,
+      fadeOut: job.fadeOut
+    })
+  }
+}
+
+/**
+ * planSoundtrack's inputs and parts before they are mixed: the sound stems (stems.ts) build one
+ * branch per stem from the same parts, with the same functions (output-and-languages §7.2).
+ */
+export function soundtrackParts(job: ExportJob, files: SoundFiles, first: number): SoundtrackParts {
   const args: string[] = []
+  const kinds: StemKind[] = []
   const duration = job.frames / job.fps
   let next = first
   let audio: RecordingPart | undefined
@@ -497,6 +560,7 @@ export function planSoundtrack(job: ExportJob, files: SoundFiles, first: number)
         if (!file) throw new Error(`The ${k === 'mic' ? 'microphone' : 'system sound'} track of this recording is missing.`)
         args.push('-vn', '-i', file)
         stems.push({ input: `${next++}:a`, gain: job.audio.stems?.[k] ?? 1, denoise: k === 'mic' })
+        kinds.push(k)
       }
       audio = { clips, volume, input: stems[0].input, stems, ...extras, ...sounds }
     } else if (files.mix) {
@@ -552,16 +616,13 @@ export function planSoundtrack(job: ExportJob, files: SoundFiles, first: number)
   }
   return {
     args,
-    graph: soundtrackGraph({
-      duration,
-      audio,
-      clicks,
-      music,
-      ...(pops.length ? { pops } : {}),
-      ...(tones ? { tones } : {}),
-      ...(effects.length ? { effects } : {}),
-      fadeIn: job.fadeIn,
-      fadeOut: job.fadeOut
-    })
+    duration,
+    kinds,
+    ...(audio ? { audio } : {}),
+    ...(music ? { music } : {}),
+    ...(clicks ? { clicks } : {}),
+    ...(pops.length ? { pops } : {}),
+    ...(tones ? { tones } : {}),
+    ...(effects.length ? { effects } : {})
   }
 }
