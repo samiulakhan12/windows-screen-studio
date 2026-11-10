@@ -38,6 +38,7 @@ import { seeThrough } from '../../../shared/render/alpha'
 import { stemsBlocked, timelineBlocked, editorBlocked } from '../../../shared/render/alsoSave'
 import { CODEC_NAMES, codecHintValues, codecNotice, pickFormat, pickResolution, settingsRows, sizeLine, usableCodec, usableHere, type CodecUiCaps } from '../../../shared/render/exportRows'
 import { codecOf, DEFAULT_CODEC, isIntermediate } from '../../../shared/render/proFormats'
+import { startGuard } from '../../../shared/jobs/startGuard'
 import { stemJobOf } from '../../../shared/render/stems'
 import { readUserPresets, USER_PRESET_LIMIT, type UserExportPreset, type UserPresetStore } from '../../../shared/render/userPresets'
 import { savePreset, suggestName } from '../../../shared/render/userPresetsEdit'
@@ -418,6 +419,8 @@ export function ExportDialog(props: Props): JSX.Element {
   const frameSource = pictureTime(clips, plan, frameSound)
   const frameHeld = !!shown.hold || plan.stills.some((s) => s.at === frameSource)
   const abort = useRef<AbortController | null>(null)
+  // The HEVC probe and the save dialog before an export starts: a second Export click meanwhile does nothing.
+  const [beforeStart] = useState(() => startGuard(() => abort.current !== null))
   const primary = useRef<HTMLButtonElement>(null)
   const boxRef = useRef<HTMLDivElement>(null)
   const onClose = useRef(props.onClose)
@@ -675,9 +678,13 @@ export function ExportDialog(props: Props): JSX.Element {
 
   const start = async (): Promise<void> => {
     if (perChapter) return startChapters()
-    const settings = await exportedSettings()
-    const outputPath = await window.api.chooseExportPath(baseName, settings.format)
-    if (!outputPath) return
+    const chosen = await beforeStart(async () => {
+      const settings = await exportedSettings()
+      return { settings, outputPath: await window.api.chooseExportPath(baseName, settings.format) }
+    })
+    if (!chosen?.outputPath) return
+    const { settings } = chosen
+    const outputPath = chosen.outputPath
     const controller = new AbortController()
     abort.current = controller
     setCopy({ kind: 'idle' })
@@ -760,11 +767,14 @@ export function ExportDialog(props: Props): JSX.Element {
   }
   const startBatch = async (): Promise<void> => {
     if (items.length === 0) return
-    const folder = await window.api.chooseExportFolder()
-    if (!folder) return
+    const chosen = await beforeStart(async () => {
+      const folder = await window.api.chooseExportFolder()
+      // HEVC is exported only where the probe found an encoder: wait for it when a file asks for HEVC.
+      return folder ? { folder, found: items.some((it) => it.options.codec === 'hevc') ? await probe('hevc') : null } : null
+    })
+    if (!chosen) return
+    const { folder, found } = chosen
     const names = batchFileNames(project.name, items)
-    // HEVC is exported only where the probe found an encoder: wait for it when a file asks for HEVC.
-    const found = items.some((it) => it.options.codec === 'hevc') ? await probe('hevc') : null
     const made: CodecUiCaps = found ? { ...uiCaps, hevc: webCodecs.hevc ? 'webcodecs' : found.length ? found : 'none' } : uiCaps
     const jobs: BatchJob[] = items.map((it, i) => ({ key: it.key, label: it.label, fileName: names[i], options: streamed(itemSettings(it, made).options) }))
     await runBatch(folder, jobs, (_i, path, j) =>
@@ -775,9 +785,13 @@ export function ExportDialog(props: Props): JSX.Element {
   // One file per chapter (F-11): each chapter's range of the edit, into a folder, as a batch.
   const startChapters = async (): Promise<void> => {
     // As a single file: the settings as this PC exports them, after the HEVC probe when they ask for HEVC.
-    const settings = await exportedSettings()
-    const folder = await window.api.chooseExportFolder()
-    if (!folder) return
+    const chosen = await beforeStart(async () => {
+      const settings = await exportedSettings()
+      return { settings, folder: await window.api.chooseExportFolder() }
+    })
+    if (!chosen?.folder) return
+    const { settings } = chosen
+    const folder = chosen.folder
     // Each part's frames and sound come from its own clips; it is drawn with the whole edit's scene.
     const sources = parts.map((part, i) => partSource(source, part, i === parts.length - 1))
     const jobs: BatchJob[] = parts.map((_part, i) => ({ key: `part-${i}`, label: partNames[i].replace(/\.[^.]+$/, ''), fileName: partNames[i], options: streamed(settings), source: sources[i] }))

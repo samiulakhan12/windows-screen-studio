@@ -1166,7 +1166,9 @@ The batch "Also" row adds 4:5 (`BATCH_ASPECTS`), file label "4x5".
 `yuv420p` for nvenc) and `-hw_encoding 1` for `hevc_mf`; `av1_amf` and the `_mf` encoders only on
 Windows. The probe runs once per codec per session, when the dialog first needs it, and is cached; it
 never runs at app start. The renderer probes WebCodecs with `VideoEncoder.isConfigSupported` and
-`hardwareAcceleration: 'prefer-hardware'`, as for H.264 today.
+`hardwareAcceleration: 'prefer-hardware'`, as for H.264 today. An export that asks for HEVC waits for
+the probe before its save or folder dialog opens; while it waits (and while that dialog is open, or an
+export runs) another Export click does nothing (`startGuard`), so no second dialog or export starts.
 
 ### 5.10 Sizes, times and disk space
 
