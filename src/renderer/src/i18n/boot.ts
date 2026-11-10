@@ -11,7 +11,7 @@
  * - After a relaunch from the editor, its project opens again once (reopenAfterRelaunch); the
  *   project the editor has open is what Restart now asks to reopen (editorProjectToReopen).
  */
-import type { UiInfo, UiLanguage } from '../../../shared/api/ui'
+import type { UiInfo, UiLanguage, UiPrefs } from '../../../shared/api/ui'
 import { languageOf, readBuiltCatalogue, type BuiltCatalogue } from '../../../shared/i18n/locale'
 import { setCatalogue } from '../../../shared/i18n/t'
 import type { Project } from '../../../shared/types'
@@ -131,6 +131,21 @@ export function reopenAfterRelaunch(open: (projectId: string) => void): void {
  */
 export function showLanguageSection(info: UiInfo): boolean {
   return info.shipped.some((l) => l !== 'en') || import.meta.env.MODE === 'development'
+}
+
+/**
+ * Changes the `ui` preference by `patch` (a field set to undefined is removed), on the preference as
+ * main has it now, so nothing written since the start (a language seen, the offer answered) is lost.
+ * The language itself changes at the next start; the offer is not shown again once answered.
+ */
+export async function updateUiPrefs(patch: UiPrefs): Promise<UiPrefs> {
+  const fresh = (await window.api.uiInfo()).prefs
+  const next: UiPrefs = { ...fresh, ...patch }
+  for (const key of Object.keys(next) as (keyof UiPrefs)[]) if (next[key] === undefined) delete next[key]
+  await window.api.setUiPrefs(next)
+  const answered = next.language !== undefined || (booted.offer !== null && (next.offered ?? []).includes(booted.offer))
+  booted = { ...booted, prefs: next, offer: answered ? null : booted.offer }
+  return next
 }
 
 /* ---------- the open project ---------- */

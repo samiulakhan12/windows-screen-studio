@@ -65,6 +65,22 @@ export const DIGIT_NAMES: Readonly<Partial<Record<UiLanguage, { own: string; dig
   hi: { own: 'देवनागरी', digits: '०१२३' }
 }
 
+/**
+ * Words a shipped language shows in itself whatever the UI language, because the person reading them
+ * may not have chosen it yet: its name as a preview in the picker (§0 decision 11) and the offer on
+ * Home (§2.7), exactly as the design gives them. A language without its words here shows the English
+ * half only.
+ */
+export const OWN_WORDS: Readonly<Partial<Record<UiLanguage, { preview: string; available: string; use: string; notNow: string; nextStart: string }>>> = {
+  bn: {
+    preview: 'বাংলা (প্রিভিউ)',
+    available: 'Flown এখন বাংলায় পাওয়া যায়।',
+    use: 'বাংলা ব্যবহার করুন',
+    notNow: 'এখন না',
+    nextStart: 'পরের বার চালু হলে Flown বাংলায় খুলবে।'
+  }
+}
+
 /** Language and region of a system locale such as 'bn-BD' or 'es-419', or null when it is not a usable tag. */
 function languageAndRegion(tag: string): { language: string; region?: string } | null {
   try {

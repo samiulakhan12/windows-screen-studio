@@ -1,4 +1,4 @@
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, statSync, utimesSync, writeFileSync } from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import { pathToFileURL } from 'node:url'
@@ -156,6 +156,9 @@ describe('the offer and what Flown knows offline (§2.7, tests 51 and 58)', () =
     writeFileSync(path.join(dir, `${speechModel('whisper-bn-medium')!.file}.part`), 'half')
     writeFileSync(path.join(dir, speechModel('whisper-small')!.file), 'a multilingual model')
     expect(i18n.knownLanguages()).toEqual([])
+    // An empty file is no model.
+    writeFileSync(path.join(dir, speechModel('whisper-bn-medium')!.file), '')
+    expect(i18n.knownLanguages()).toEqual([])
     writeFileSync(path.join(dir, speechModel('whisper-bn-medium')!.file), 'the Bangla model')
     expect(i18n.knownLanguages()).toEqual(['bn'])
     i18n.initUiLanguage()
@@ -169,7 +172,11 @@ describe('the offer and what Flown knows offline (§2.7, tests 51 and 58)', () =
 
   it('records a language seen once, never English or anything else', async () => {
     await invoke('ui:noteSeen', 'bn')
+    // Seen already: the preferences file is not written again.
+    const file = path.join(h.root, 'userData', 'editor-prefs.json')
+    utimesSync(file, new Date(2000, 0, 1), new Date(2000, 0, 1))
     await invoke('ui:noteSeen', 'bn')
+    expect(statSync(file).mtime.getFullYear()).toBe(2000)
     for (const junk of ['en', 'xx', 3, null, ['bn']]) await invoke('ui:noteSeen', junk)
     expect(readPrefSync('ui')).toEqual({ seen: ['bn'] })
     await invoke('ui:setPrefs', { language: 'system', digits: 'western' })

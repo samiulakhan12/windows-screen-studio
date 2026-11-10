@@ -1,0 +1,83 @@
+/*
+ * Settings › Language and the offer on Home (docs/design/output-and-languages.md §2.5, §2.7). Both
+ * exist only once a language other than English ships; colours are the app's tokens, which meet
+ * WCAG AA on their surfaces.
+ */
+
+.language-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  max-width: 360px;
+}
+
+.language-digits {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-4);
+}
+
+.language-digits legend {
+  padding: 0;
+  margin-bottom: var(--space-1);
+}
+
+.language-digits label {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--text-1);
+}
+
+.language-restart {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-3);
+}
+
+.language-status {
+  margin: 0;
+  color: var(--text-1);
+}
+
+.language-section .hint {
+  margin: 0;
+}
+
+/* The offer spans Home's two columns, above them; Home's columns keep the rest of the height. */
+.home:has(> .language-offer) {
+  grid-template-rows: auto minmax(0, 1fr);
+}
+
+.language-offer {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2) var(--space-4);
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-lg);
+  background: var(--surface-1);
+  color: var(--text-1);
+}
+
+.language-offer-text {
+  margin: 0;
+}
+
+.language-offer-text:focus {
+  outline: none;
+}
+
+.language-offer-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
