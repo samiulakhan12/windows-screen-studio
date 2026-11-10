@@ -1297,8 +1297,10 @@ Crossfades, dips and slides stay in a transparent export, as the preview plays t
 `ExportPreview.tsx` draws a transparent export with the same `RenderScene.alpha` into a canvas made
 with `alpha: true`, and shows a checkerboard behind the canvas with CSS (8 px squares of
 `--surface-2` and `--surface-3`). The canvas pixels are the export's pixels; the checkerboard is
-never drawn into them. The editor's own preview does not change: the background is part of the
-project, transparency is part of one export.
+never drawn into them. The thumbnail saved from it (Save thumbnail, Also save › Thumbnail, each
+part's) is drawn the same way, on a canvas with alpha, so the PNG keeps the transparency. The
+editor's own preview does not change: the background is part of the project, transparency is part
+of one export.
 
 ### 6.6 What the codecs keep
 

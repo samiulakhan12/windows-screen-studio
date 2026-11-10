@@ -354,7 +354,7 @@ export async function exportVideo(raw: ExportInput): Promise<ExportResult> {
 }
 
 /** The input with the see-through background its options ask for (output-and-languages §6); an opaque export keeps its scene. */
-function withAlpha(input: ExportInput): ExportInput {
+function withAlpha<T extends ExportSource & { settings: ExportOptions }>(input: T): T {
   const alpha = alphaOf(input.settings)
   return alpha ? { ...input, scene: { ...input.scene, alpha } } : input
 }
@@ -758,11 +758,11 @@ export interface ThumbnailInput extends ExportSource {
 }
 
 /**
- * The frame at `time` exactly as the export draws it (same size, aspect, decoder and
- * motion blur), as PNG bytes.
+ * The frame at `time` exactly as the export draws it (same size, aspect, decoder, motion blur and
+ * see-through background: a transparent export's PNG keeps its alpha), as PNG bytes.
  */
 export async function renderThumbnail(raw: ThumbnailInput): Promise<{ png: Uint8Array; width: number; height: number }> {
-  const input = await prepare(raw)
+  const input = withAlpha(await prepare(raw))
   const { project } = input
   // An audio-only choice still gets a video-sized picture.
   const settings: ExportOptions = isAudioOnly(input.settings.format) ? { ...input.settings, format: 'mp4' } : input.settings
@@ -779,7 +779,7 @@ export async function renderThumbnail(raw: ThumbnailInput): Promise<{ png: Uint8
     const canvas = document.createElement('canvas')
     canvas.width = width
     canvas.height = height
-    const ctx = canvas.getContext('2d', { alpha: false })
+    const ctx = canvas.getContext('2d', { alpha: !!input.scene.alpha })
     if (!ctx) throw new Error('Could not create a drawing surface')
     drawn = ctx
     const [screenFrame, webcamFrame] = await Promise.all([screen.get(0), camera ? camera.get(0) : null])
