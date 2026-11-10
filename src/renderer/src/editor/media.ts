@@ -47,6 +47,12 @@ export function mediaDuration(url: string, timeoutMs = 10000): Promise<number | 
   })
 }
 
+/**
+ * Resolves once `v` has the frame at its position (readyState HAVE_CURRENT_DATA or more).
+ * 'loadeddata' fires once per load: a seek started on a loaded video drops it back to
+ * HAVE_METADATA until 'seeked', so a caller that comes in during that seek waits for the
+ * seek (or 'canplay') instead of an event that never fires again.
+ */
 export function whenReady(v: HTMLVideoElement): Promise<void> {
   return new Promise((resolve, reject) => {
     if (v.readyState >= 2) return resolve()
@@ -54,15 +60,22 @@ export function whenReady(v: HTMLVideoElement): Promise<void> {
       cleanup()
       resolve()
     }
+    const settled = (): void => {
+      if (v.readyState >= 2) ok()
+    }
     const fail = (): void => {
       cleanup()
       reject(new Error(`Could not load video (${v.error?.message ?? 'unknown error'})`))
     }
     const cleanup = (): void => {
       v.removeEventListener('loadeddata', ok)
+      v.removeEventListener('seeked', settled)
+      v.removeEventListener('canplay', settled)
       v.removeEventListener('error', fail)
     }
     v.addEventListener('loadeddata', ok)
+    v.addEventListener('seeked', settled)
+    v.addEventListener('canplay', settled)
     v.addEventListener('error', fail)
   })
 }
