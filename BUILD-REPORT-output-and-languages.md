@@ -1,0 +1,243 @@
+# Build report: output and the app (wave 12), steps S0 and S1
+
+Branch `feat/wave12` in `/home/user/wt-w12`. Design:
+[`docs/design/output-and-languages.md`](docs/design/output-and-languages.md) (§0 the owner's decisions,
+§10.4 the steps, §21 the files and parts, §23 the tests). The branch starts at the integration head
+with everything through wave 11 (smart tools), then the design commits, the step S0 commits (the
+guards, the English guard's tour, the contracts and the language runtime, head `45f17e3`), wave 11's
+last verification fix from `integ/wave8`, the seven parts P1 to P7 merged in the order of §21.9
+(P1, P2, P3, P4, P6, P7, then P5, which mounts the others' rows), and the integration commits listed
+below. Nothing was pushed.
+
+This build covers steps S0 and S1 only. The extraction (S2 to S4) is a later workflow, and the
+translations (S5) need people: no translation was drafted or written, `scripts/i18n/draft.mjs` was
+never run against any service, no AI service was contacted, `translations/reviewers.json` lists
+nobody, and `src/shared/i18n/built/shipped.json` is `[]`, so Bangla stays out of the language picker.
+
+## What was built
+
+### Export (LT-22)
+
+* **Codecs** (§5, part P1). A *Codec* row under Format: MP4 offers H.264, HEVC and AV1; MOV offers
+  H.264, HEVC, CineForm and *Lossless* (QuickTime Animation); WebM offers VP9 and AV1. Each format's
+  old codec stays its default, so stored settings export what they did. HEVC runs only on the
+  graphics card (WebCodecs, then `hevc_nvenc`, `hevc_qsv`, `hevc_amf`, `hevc_mf` with
+  `-hw_encoding 1`, each only when the 10-frame probe found it); AV1 runs on the graphics card or
+  `libaom-av1` (two passes for a size target). Levels and codec strings for HEVC and AV1, the
+  frame-rate rules (`rateFps`, 5 blur samples at 120 fps), size and time estimates, the free-space
+  check before large exports (error code `disk-full`), and every encoder name on the allow-list of
+  §5.1 (test 81 runs over 500+ accepted jobs).
+* **Transparency** (§6, P2). `alphaOf` and `seeThrough`; `drawFramePicture` draws a transparent or
+  overlays-only frame with one option; joins composed on a transparent scratch, dips fading to
+  transparent; straight alpha out of the canvas, the same bytes through both readbacks; the
+  dialog's preview draws the transparent export over a checkerboard.
+* **Stems and the WAV format** (§7, P3). `stemJobOf` lists the stems a project writes; one ffmpeg
+  graph writes them all from the soundtrack's own parts, with one fixed gain in place of
+  `loudnorm`, exactly `stemSamples` long from sample 0, 32-bit float with a BWF chunk; written
+  after the video and never undoing it; the WAV format is the M4A job's graph written as float WAV.
+* **Timelines** (§8, P4). The plans of *This export* and *The original recordings*, FCPXML 1.10,
+  Premiere XML and CMX 3600 EDL writers (golden files, Apple's DTD), main's checked writing (the
+  video must be this session's export, stems next to it, the plan checked, the media probed) and
+  the recordings copied without touching the project folder.
+* **The dialog and presets** (§2, P5). The Codec, Background and Frame rate rows as radio groups,
+  the picks that change other settings in the same step, saved presets above the destinations with
+  their menus, `.flownpreset` files written and read by main (64 KB, strict UTF-8), Portrait post,
+  For editing and Transparent overlay, Sound stems and Timeline in *Also save*, the running steps
+  and the done view of every file saved.
+
+### Languages (X-05), ready but not shipped
+
+* **Runtime** (S0). Messages in English JSON catalogues, one runtime for main and renderer, the
+  English profile of `fmt`, the renderer booting its language before the first render.
+* **Language runtime, settings and fonts** (§9, §11, §12, P6). Main resolves the start language
+  from the `ui` preference, Windows' languages and what ships; a restart is refused while an export,
+  a recording or a download would be lost and reopens the editor's project; the renderer loads a
+  catalogue and the Bangla UI face within 1.5 s or stays English; canvases keep `lang="en"`;
+  `askConfirm`, `NumberField`, `scripts.css`, Settings › Language and the offer on Home.
+* **Checks and translation tools** (§15, §16, P7). The TypeScript-AST string scanner (failing for
+  every file the parts made, a report elsewhere until S4), the catalogue checks, built catalogues
+  that ship only strings approved by two listed people, pseudo-locales, the review sheet, the
+  drafting script (tested only against a fake local service), the extraction codemod and split,
+  the review overlay and pack, the release checks, and the read-only checks workflow with pinned
+  actions.
+
+### Integration (this step)
+
+* `exporter.ts` reads the code main records when it refuses a route's start: a free-space refusal
+  stops the export at the first route with its own message instead of being asked again of every
+  encoder; an encoder failure still moves on (`tests/proExporter.test.ts`).
+* The finalizing line names libaom's two passes for a size target, as it does for x264 and libvpx.
+* The done view shows main's own whole stem sentences once ("The sound stems could not be
+  written.") and wraps only a bare reason in "The sound stems could not be saved: {reason}"
+  (`tests/exportDialogUi.test.ts`). This settles the wording question P3 and P5 left open.
+* `scripts/i18n/config.json`'s `failFor` now lists the parts' three files that were missing from
+  it: `src/main/exportSpace.ts`, `src/main/exportedJobs.ts`, `src/renderer/src/i18n/languageNames.ts`.
+* **Fixed, found by the new screenshots**: the done view put "The recordings the timeline uses"
+  under every sound stem, with or without a timeline. The line now belongs to the `<name> media`
+  folder only (`tests/exportDialogUi.test.ts`; F8 and F11 check both sides).
+* **Fixed, found by the new e2e tests**: the export dialog's preview stayed blank when the
+  *Thumbnail frame* slider moved before its first frame. `whenReady` waited only for `loadeddata`,
+  which fires once per load; a video already seeking was back at HAVE_METADATA and the second wait
+  never ended. It now also ends on a `seeked` or `canplay` that leaves a current frame
+  (`tests/mediaWhenReady.test.ts`, failing without the change). It is a race that the build before
+  wave 12 has too (1 of 4 launches stalled there, 8 of 12 here, where the dialog does more before
+  its first frame); after the fix, 5 of 5 launches drew at once.
+* Screenshots of the new dialog: `docs/screenshots/output-codec.png`, `output-transparent.png`,
+  `output-portrait.png`, `output-also-save.png`, `output-done.png`, `output-presets.png` (57 to 111 KB).
+* Two end-to-end files no part wrote: `tests/e2e/output-formats.e2e.cjs` (§23.3) and
+  `tests/e2e/languages.e2e.cjs` (§23.4), described below.
+
+### Contract changes the parts made (accepted)
+
+* P1: the job base spreads `jobCodecFields(settings, alpha)` in `exporter.ts`, and `proSink` gets
+  the quality as an optional sixth argument; `export:start` clears the error code and runs
+  `spaceProblem`; `exportArgs.ts` exports helpers `proPlan` shares and moves the chapter and
+  subtitle files into `planSidecars` (test 3's digests unchanged); `targetBitrate` and `rateOf` use
+  `rateFps` (no change up to 60 fps); one message `codecs.webcodecs.unsupported`.
+* P2: `alphaRawSink`'s third parameter takes an `AlphaInput` instead of a whole job.
+* P3: `writeStemsStep` and `renderStems` take optional test seams; stems drop input tags
+  (`-map_metadata -1`) as the M4A export does.
+* P4: `src/main/exportedJobs.ts` keeps the last four export jobs in memory (one import and one call
+  in `exportIpc.ts`); `copyRecordings` takes an optional fifth argument.
+* P6: `UiInfo` gains an optional `catalogue` (unpackaged builds with `SSW_I18N_CATALOGUE_DIR` only);
+  read-only download flags in four stores; `recordingBusyReason()` exported; `OWN_WORDS`.
+
+## The owner's decisions as applied (§0)
+
+1. **HEVC through the graphics card only**: `CODEC_POLICY.hevcSoftware` is `false`; no route lists
+   `libx265`; `hevc_mf` always carries `-hw_encoding 1`; the HEVC chip shows only where the probe or
+   WebCodecs found an encoder, and a stored HEVC on a PC without one exports as H.264 and says so
+   (export-presets.e2e.cjs, F2). An `ffmpeg.exe` without libx265 and the HEVC decoder is for the
+   first release after this wave (§24).
+2. **No ProRes; CineForm for editing**: `CODEC_POLICY.prores` is `false` (`prores_ks` exists behind
+   it and is never tagged `apl0`), `CODEC_POLICY.cineform` is `true`; a ProRes preset imports as
+   CineForm with a notice (F12).
+3. **`ffmpeg.exe` corresponding source**: not part of this build; the binary is unchanged.
+4. **No DNxHR**: not offered, not on the allow-list.
+5. **Bangla first**: the runtime, fonts and digits are built for `bn`; Spanish and Hindi have names
+   and plural rules only.
+6. **Two reviewers with signed rights**: `translations/reviewers.json` lists nobody; the checks
+   refuse anyone not listed and the build ships only strings two different listed people approved.
+7. **The shipping rule**: `shipped.json` is `[]`; Settings has no Language section and the palette
+   no *Language…* (languages.e2e.cjs, L1).
+8. **Offer once, never switch**: the offer shows once while the setting is absent and a shipped
+   language is known offline; *Not now* is recorded for good (L8).
+9. **Bangla digits for prose quantities**: `fmt`'s non-English branch and the `latn` meta are
+   built; the call sites move to `fmt` in S3a (X6).
+10. **Exported files stay English**: batch file names, the chapters file, thumbnails and frames are
+    the same in a Bangla session (L12, L13).
+11. **The recording side stays English; a shipped language shows as a preview**: no recording file
+    was touched; the recording bar keeps `lang="en"` in a Bangla session (L11); the fixture's
+    Bangla shows as "বাংলা (প্রিভিউ) · Bangla (preview)" (L2).
+12. **The English UI unchanged**: no English text changed; the English guard runs with no baseline
+    (S2 records it); P6 compared its tour on the contracts build and its own across 51 screens.
+13. **One fixed gain for stems**: the stems use the preview's gain where the video uses `loudnorm`
+    (test 31; F8's sum).
+14. **Checks on Windows and in other editors**: not possible here; listed under *What needs a person*.
+15. **Installer size**: no new font or locale pack; the renderer's own JS grew by 28.7 KB at P6.
+
+Untouched, checked with `git diff be3cbdc HEAD`: `src/main/recording/*`, `src/main/recordingIpc.ts`,
+`src/main/windows.ts`, `src/shared/recording/*`, `src/renderer/src/views/Toolbar.*`,
+`src/renderer/src/recorder/*`, `src/main/appSettings.ts`, `src/main/security.ts`, the CSP in
+`src/renderer/index.html`, and `electron-builder.config.cjs` (`electronLanguages` stays `['en-US']`).
+
+## Tests
+
+All on the final head, under `xvfb-run -a -s "-screen 0 1920x1080x24"` for the end-to-end files,
+one file at a time, with at least 9.7 GB free throughout.
+
+* **Typechecks**: both clean (`tsconfig.node.json`, `tsconfig.web.json`).
+* **vitest** (`--maxWorkers=2`, private `TMPDIR`): 585 files, 7,786 tests passed, 8 skipped (the same
+  skips as before wave 12). The guards hold: `outputEquivalence` (tests 1 to 4), the vertical,
+  Captions Studio, wave 10 and wave 11 equivalence guards.
+* **`npm run -s build`**: succeeds (renderer `views` chunk 2,646.9 KB).
+* **`npm run i18n:check -- --report`** and **`npm run i18n:check`**: every check passed (171 English
+  messages in 25 namespaces; 2,882 texts in 220 files still to extract, a report until S4; 101
+  pending in the other account's files). `node scripts/i18n/build-catalogues.mjs --check`: the built
+  catalogues match the translations (none). `npm run notices -- --check`: up to date (the notices
+  did not change).
+* **New unit tests in this step**, each failing without its change (checked by putting the old code
+  back): `tests/proExporter.test.ts` (a coded free-space refusal stops at the first route; an
+  encoder failure moves on; libaom's two passes are named), `tests/exportDialogUi.test.ts` (main's
+  whole stem sentences once; the media line only on the recordings folder),
+  `tests/mediaWhenReady.test.ts` (the preview's wait ends with a seek).
+* **The pinned actions** of `.github/workflows/checks.yml` were checked with `git ls-remote`:
+  `actions/checkout` v4.2.2 is `11bd7190…` and `actions/setup-node` v4.4.0 is `49933ea5…`, as pinned.
+
+End to end (the list of §21.9 plus the parts' own files):
+
+| File | Result |
+|---|---|
+| `output-formats` (new: F1, F3 to F11, F14) | 4/4 pass; again 4/4 after the done-view fix |
+| `languages` (new: L1 to L4, L7, L8, L11 to L13) | first run 3/4: L2 stopped its recording before any frame arrived and the empty recording was refused, so the editor never opened; re-run alone 4/4; the test now records 3 s, and passes 4/4 |
+| `export-presets` (P5: F2, F12, F13, F15, F16) | 2/2, and 2/2 after the done-view fix |
+| `languages-network` (P6: test 60) | 1/1: 52 screens in Bangla, no request left the app |
+| `export` | 10/10, and 10/10 after the done-view fix |
+| `export-pack` | 5/5, and 5/5 after the done-view fix |
+| `render` | 3/3 |
+| `audit-audio-export` | 2/2 |
+| `clean-voice` | 3/3 |
+| `editing-polish` | 17/17 |
+| `smart-tools` | 6/6 |
+| `captions-studio` | 8/8 |
+| `vertical-video` | 1/1 |
+| `versions` | 3/3 |
+| `commands` | 5/5 |
+| `ui` | 5/5 |
+| `smoke` | 1/1 |
+| `packaging` | 2/2; its `verify-dist` half says SKIP because no `dist/win-unpacked` was built (the installer was not built in this step) |
+| `english-guard` | ran the tour over 51 screens; no baseline exists, so it recorded and compared nothing (S2 records it) |
+| `hands-off` (extra, after the done-view fix) | 5/5 |
+
+F1 was also run once against a build of the release before wave 12 (`be3cbdc`, built in a scratch
+worktree, `SSW_E2E_BASELINE_DIR`): the stored settings of before export the same stream (H.264 High,
+1920×1080, 60 fps, 240 frames, the same colour tags) with identical frames; those values are pinned
+in the test. Fixtures are 4 s long instead of the design's 10 s to fit a shared machine.
+
+Not covered end to end yet: F4's caption placement in 4:5 (its sizes and the Portrait post's
+identical frames are), F7's caption (the camera's opacity is), and the L steps that need S3.
+
+## What is left for S2 to S4
+
+* **S2** (lead): record the English guard's baseline (`english-guard.e2e.cjs --record`, two
+  identical runs). P6 found that Settings' "GB free on this drive" changes with the machine's disk
+  between runs and needs a mask first. Fill and freeze `common`; run `node scripts/i18n/split.mjs`
+  to write `scripts/i18n/parts.json` and settle its conflicts; measure size and first render again.
+* **S3a/S3b** (X1 to X7): the extraction. With it come the e2e steps that check its code: L5 (digits
+  and Target size through `fmt` and `NumberField`), L6 (`aria-keyshortcuts`), L9 (no plain ASCII text
+  under `en-XA`), L10 (right to left under `ar-XB`, which also needs the pseudo-locale selection
+  P7 left unwired), L14 (confirmations through `askConfirm`), L15 (mixed digits) and the
+  notification half of L7. X5 also moves the exporter's remaining English-text fallback test
+  (`NOT_ENCODER_RELATED`) to error codes; this step did it for the free-space refusal only.
+* **S4**: the scanner fails for the whole tree (`"scan": "fail"`).
+* Open choices the parts left for the lead, not changed here: whether stem files count as exported
+  files (copy to clipboard and share refuse them today; Show in folder works); sweeping temporary
+  stem files at start rather than at the next stem step; FCPXML `colorSpace` for the editing
+  formats; Premiere XML for 3,000 cuts is 2.7 MB against §19.3's 2 MB; §5.4's AV1 level line
+  should read 4.1 for 1080p60 and 5.0 for 1080p120 (Annex A); the av1_amf quantisers (120/136/152)
+  are starting values.
+* `tests/e2e/measure-start.cjs` finds no first paint for the recording-bar window, on the contracts
+  build too (P6); the start measurements of §19.4 are to be taken again at S2.
+* The stems equal the video's soundtrack only when the video mixes the separate microphone and
+  system files; at the default gains the video plays the recording's own mixed track (§7.6), so the
+  e2e F8 sets the microphone to 80% to compare the same graph.
+* P2 saw a camera colour shift in an *Overlays only* CineForm file. Measured here on the same green
+  camera, CineForm and VP9 decode to the same colour (20, 169, 63 against 19, 168, 63), so it is not
+  CineForm's; the camera path's own colour against its source remains for whoever owns it to check.
+* Temporary e2e homes kept for debugging stay under `/tmp/ssw-e2e-of-*` (about 125 MB); they are
+  outside this step's scratch folder, so they were not deleted. P5 left `/tmp/ssw-e2e-presets-JNjSSu`.
+
+## What needs a person
+
+* **The second Bangla reviewer, and both reviewers' signed rights** (§0 decision 6): the owner adds
+  them to `translations/reviewers.json` once the agreements are signed, and names the drafting
+  service per language in `translations/README.md` before anyone runs `draft.mjs`.
+* **The other account's agreement for the recording side** (§0 decision 11): until then a shipped
+  language is a preview and the recording files keep their English.
+* **§0 decision 14's checks on Windows and in other editors**: the GPU encoders' quality values,
+  WebCodecs HEVC and AV1, `av1_amf`'s padding, the alpha export's speed on a GPU canvas (both
+  readbacks), the Bangla UI on Windows 10 and 11 with NVDA, timeline imports into DaVinci Resolve,
+  Premiere Pro and Final Cut Pro (the Cross Dissolve uid, transitions starting at the cut,
+  anchored clips under retimed clips, Resolve's marker EDL), which of WebM, AV1, CineForm,
+  QuickTime Animation and 32-bit float PCM in MOV each editor opens (`EDITOR_OPENS`), and GoPro's
+  patent declaration for SMPTE ST 2073 before release.

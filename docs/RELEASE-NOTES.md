@@ -134,6 +134,28 @@
 - **Titles from the screenshots**: *Write titles* can also send the guide's screenshots to a
   service when you tick *Also send the screenshots*; you see exactly which pictures go, and what
   they cost, before anything is sent.
+- **More codecs** (LT-22): a *Codec* row in the export settings. MP4 can be HEVC or AV1, MOV can be
+  HEVC, CineForm (for editing software) or *Lossless*, and WebM can be AV1. HEVC is made by your
+  graphics card and shows only where your PC can make it; AV1 uses the graphics card when it can
+  and the processor otherwise, and says roughly how long that takes. Your saved settings and
+  presets keep exporting exactly the files they made before.
+- **Transparent video**: MOV and WebM exports can leave out the background (*Transparent*) or the
+  recording too (*Overlays only*), for web pages (WebM) or editing software (MOV with CineForm or
+  *Lossless*). The export dialog's preview shows it over a checkerboard, and crossfades and dips
+  stay as they look in the preview.
+- **4:5, 24, 25 and 120 fps**: a 4:5 shape (1080 × 1350) and a *Portrait post* destination, and
+  24, 25 and 120 fps beside 30 and 60. New *For editing* and *Transparent overlay* destinations
+  pick the right files for editing software.
+- **Your own presets**: *Save as preset* keeps the current export settings under a name, above the
+  destinations; update, rename, delete, save to a `.flownpreset` file or import from one.
+- **Sound stems and WAV**: *Also save → Sound stems* writes one WAV file per sound (voice, system
+  sound, music, effects) next to the video, each exactly as long as it and adding up to what the
+  preview plays. The new *WAV* format saves the soundtrack alone, uncompressed.
+- **Timelines for DaVinci Resolve, Premiere Pro and Final Cut Pro**: *Also save → Timeline* writes
+  a timeline of the finished export, or of the original recordings with their cuts and speed
+  changes, with your chapters as markers, and says how to open it in each editor.
+- **Fixed: a blank preview in the export dialog**: moving the *Frame* slider right after the dialog
+  opened could leave the preview empty until the next move.
 
 ## 0.7.1
 
