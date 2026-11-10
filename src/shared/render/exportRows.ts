@@ -127,14 +127,20 @@ export function encoderNames(encoders: readonly string[] | 'webcodecs'): string 
 }
 
 /**
- * The values of the Codec row's hint (§2.1): {names} the GPU encoders found (`av1` the AV1 probe's),
- * {size} the estimate for the whole video (estimateBytes), {time} AV1's time on the processor
- * (encodeSecondsEstimate), {length} the video's length.
+ * The values of the Codec row's hint (§2.1): {names} the GPU encoders found (for AV1 WebCodecs when
+ * Chromium makes it on the graphics card, its first route, as for HEVC; else the AV1 probe's, null
+ * while it runs), {size} the estimate for the whole video (estimateBytes), {time} AV1's time on the
+ * processor (encodeSecondsEstimate), {length} the video's length.
  */
-export function codecHintValues(o: ExportOptions, caps: CodecUiCaps, ctx: { size: { width: number; height: number }; seconds: number }, av1: readonly string[]): MessageValues {
+export function codecHintValues(
+  o: ExportOptions,
+  caps: CodecUiCaps,
+  ctx: { size: { width: number; height: number }; seconds: number },
+  av1: { webCodecs: boolean; probe: readonly string[] | null }
+): MessageValues {
   const hevc = caps.hevc === 'webcodecs' ? 'webcodecs' : Array.isArray(caps.hevc) ? caps.hevc : []
   return {
-    names: encoderNames(codecOf(o) === 'hevc' ? hevc : av1),
+    names: encoderNames(codecOf(o) === 'hevc' ? hevc : av1.webCodecs ? 'webcodecs' : (av1.probe ?? [])),
     size: fmt.bytes(estimateBytes(o, ctx.size, ctx.seconds)),
     time: fmt.duration(encodeSecondsEstimate(o, ctx.size, ctx.seconds)),
     length: fmt.duration(ctx.seconds)

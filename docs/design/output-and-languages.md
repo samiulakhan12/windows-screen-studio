@@ -327,7 +327,9 @@ A hint under the row says what will run (replacing the Encoder row's hint for th
 | Lossless | Up to {size} for this {length} video, more with motion. |
 | ProRes 422 / 4444 | About {size} for this {length} video. |
 
-`{names}` lists the probed encoders as the H.264 hint does today ("NVENC, QSV"); `{size}` comes from
+`{names}` lists the probed encoders as the H.264 hint does today ("NVENC, QSV"), or "WebCodecs" when
+Chromium's own encoder makes the codec on the graphics card (its first route; for AV1 also while the
+ffmpeg probe still runs, so the brackets are never empty); `{size}` comes from
 `estimateBytes` and `{time}` from `encodeSecondsEstimate` over the video's length (§5.10); `{length}`
 is the video's duration.
 

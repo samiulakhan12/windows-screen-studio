@@ -24,7 +24,7 @@ const { ExportBundleOptions } = (await import(/* @vite-ignore */ BUNDLE)) as { E
 const presetsUi = (await import(/* @vite-ignore */ PRESETS)) as Record<'UserPresets' | 'SavePresetField', Component> & {
   importNotices: (read: unknown, added: number, skipped: number) => { text: string; warn: boolean }[]
 }
-const { settingsRows } = await import('../src/shared/render/exportRows')
+const { codecHintValues, settingsRows } = await import('../src/shared/render/exportRows')
 
 const html = (c: Component, props: Record<string, unknown>): string => renderToStaticMarkup(React.createElement(c as never, props))
 const o = (format: ExportFormat, extra: Partial<ExportOptions> = {}): ExportOptions => ({ format, resolution: 1080, fps: 30, quality: 'high', encoder: 'auto', ...extra })
@@ -71,6 +71,16 @@ describe('the Codec, Background and Frame rate rows', () => {
     expect(fps).toMatch(/aria-checked="true" data-value="30" tabindex="0" class="chip active">30 fps</)
     const plain = html(rowsUi.FrameRateRow, { rows: rowsOf(o('mp4')), options: o('mp4'), onChange: noop })
     expect(plain.startsWith('<div class="chips" role="radiogroup"')).toBe(true)
+  })
+
+  it('names the AV1 encoder on the graphics card: WebCodecs when Chromium makes it (also while the probe runs), else the probe’s', () => {
+    const av1 = o('mp4', { codec: 'av1' })
+    const gpu: CodecUiCaps = { hevc: 'none', av1Gpu: true, h264Gpu: false }
+    const hint = (found: { webCodecs: boolean; probe: readonly string[] | null }): string =>
+      html(rowsUi.CodecRow, { rows: rowsOf(av1, gpu), options: av1, onChange: noop, hintValues: codecHintValues(av1, gpu, CTX, found) })
+    expect(hint({ webCodecs: true, probe: null })).toContain('AV1 on your graphics card (WebCodecs).')
+    expect(hint({ webCodecs: true, probe: [] })).toContain('AV1 on your graphics card (WebCodecs).')
+    expect(hint({ webCodecs: false, probe: ['av1_nvenc', 'av1_qsv'] })).toContain('AV1 on your graphics card (NVENC, QSV).')
   })
 })
 

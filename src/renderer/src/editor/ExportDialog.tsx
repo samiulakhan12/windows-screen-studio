@@ -957,7 +957,7 @@ export function ExportDialog(props: Props): JSX.Element {
   const presetsFull = (store?.presets.length ?? 0) >= USER_PRESET_LIMIT
   const stemList = useMemo(() => stemJobOf(project, effective, null)?.stems ?? [], [project, effective])
   const notEvened = audioLook(project.audio).normalize && stemList.some((x) => x === 'voice' || x === 'system' || x === 'recording')
-  const codecValues = codecHintValues(effective, uiCaps, { size: dims, seconds: length }, av1Probe ?? [])
+  const codecValues = codecHintValues(effective, uiCaps, { size: dims, seconds: length }, { webCodecs: webCodecs.av1, probe: av1Probe })
   const intermediateTitles = INTERMEDIATE_TITLES[codecOf(effective)]
 
   return (
