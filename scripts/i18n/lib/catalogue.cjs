@@ -23,9 +23,9 @@ const icu = loadTs(path.join(__dirname, '..', '..', '..', 'src', 'shared', 'i18n
 /** Rich tags a message may hold (RichTag). */
 const RICH_TAGS = ['kbd', 'b', 'em', 'link']
 /** Bidi controls (embeddings, overrides, isolates, marks); ZWJ and ZWNJ are allowed. */
-const BIDI = /[؜‎‏‪-‮⁦-⁩]/u
+const BIDI = /[\u061c\u200e\u200f\u202a-\u202e\u2066-\u2069]/u
 /** Other characters no message holds: C0/C1 controls but the line feed, tag characters, BOM, replacement character. */
-const CONTROL = /[\u0000-\u0009\u000b-\u001f\u007f-\u009f﻿�\u{e0000}-\u{e007f}]/u
+const CONTROL = /[\u0000-\u0009\u000b-\u001f\u007f-\u009f\ufeff\ufffd\u{e0000}-\u{e007f}]/u
 /** Native digits of the scripts Flown may show (Bengali, Devanagari, Arabic-Indic, Extended Arabic-Indic). */
 const NATIVE_DIGITS = /[০-৯०-९٠-٩۰-۹]/u
 /** Number words and digits a Bangla or Hindi `one` branch must not hold instead of `{n}` (§9.3). */

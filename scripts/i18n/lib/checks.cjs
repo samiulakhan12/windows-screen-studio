@@ -45,7 +45,7 @@ function reviewerProblems(root) {
 function glossaryProblems(root) {
   const file = path.join(root, files.TRANSLATIONS_DIR, 'glossary.csv')
   if (!fs.existsSync(file)) return []
-  const head = fs.readFileSync(file, 'utf8').replace(/^﻿/, '').split(/\r?\n/)[0].split(',').map((h) => h.trim())
+  const head = fs.readFileSync(file, 'utf8').replace(/^\ufeff/, '').split(/\r?\n/)[0].split(',').map((h) => h.trim())
   const missing = [...GLOSSARY_HEAD, ...files.LANGUAGES].filter((h) => !head.includes(h))
   return missing.length ? [`translations/glossary.csv lacks the column(s) ${missing.join(', ')}`] : []
 }

@@ -39,8 +39,8 @@ describe('test 62: the catalogue checks refuse broken translations', () => {
   it('accepts a good Bangla translation, ZWJ and ZWNJ included', () => {
     expect(codes('bn', 'Export {name}', '{name} এক্সপোর্ট করুন')).toEqual([])
     expect(codes('bn', FILES, '{count, plural, other {{n}টি ফাইল}}')).toEqual([])
-    expect(codes('bn', '{size} of RAM', '{size} র‍্যাম')).toEqual([])
-    expect(codes('bn', 'Clear', 'ক্লি‌য়ার')).toEqual([])
+    expect(codes('bn', '{size} of RAM', '{size} র\u200d্যাম')).toEqual([])
+    expect(codes('bn', 'Clear', 'ক্লি\u200cয়ার')).toEqual([])
     expect(codes('es', FILES, '{count, plural, one {{n} archivo} many {{n} de archivos} other {{n} archivos}}')).toEqual([])
   })
 
@@ -75,8 +75,8 @@ describe('test 62: the catalogue checks refuse broken translations', () => {
   })
 
   it('refuses a bidi control, a text not in NFC, HTML and a native digit in a Latin-digit line', () => {
-    expect(codes('bn', 'Export', '‮এক্সপোর্ট')).toEqual(['bidi'])
-    expect(codes('bn', 'Export', 'এক্সপোর্ট⁦')).toEqual(['bidi'])
+    expect(codes('bn', 'Export', '\u202eএক্সপোর্ট')).toEqual(['bidi'])
+    expect(codes('bn', 'Export', 'এক্সপোর্ট\u2066')).toEqual(['bidi'])
     expect(codes('bn', 'Saved', 'সংরক্ষিত হয়েছেয়')).toEqual(['nfc'])
     expect(codes('bn', 'Export', 'এক্সপোর্ট<script>alert(1)</script>')).toContain('html')
     expect(codes('bn', 'Export', '<b>এক্সপোর্ট</b>')).toEqual(['tags'])
