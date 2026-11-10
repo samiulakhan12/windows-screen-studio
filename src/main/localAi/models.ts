@@ -158,6 +158,11 @@ export class LocalModelStore {
     return this.deps.catalog()
   }
 
+  /** A model is downloading (a language restart waits for it, output-and-languages §9.4). */
+  get downloading(): boolean {
+    return this.active !== null
+  }
+
   private spec(id: unknown): TestModelSpec | null {
     return isLocalModelId(id) ? (this.specs().find((m) => m.id === id) ?? null) : null
   }
@@ -441,6 +446,9 @@ export function localModels(): LocalModelStore {
   })
   return store
 }
+
+/** Whether a model for AI on this PC is downloading now (without making the store). */
+export const localModelDownloading = (): boolean => store?.downloading ?? false
 
 export async function localAiState(): Promise<LocalAiState> {
   return localModels().state()

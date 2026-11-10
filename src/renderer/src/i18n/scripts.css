@@ -1,5 +1,54 @@
 /*
  * Fonts, line heights and the type scale of the Bangla and Devanagari UI
  * (docs/design/output-and-languages.md §12.1-12.2), under :lang(bn) and :lang(hi) only, so English
- * is unchanged. Part P6 writes the rules; imported once from main.tsx.
+ * is unchanged. Imported once from main.tsx; no other stylesheet is edited for these scripts.
+ *
+ * - The UI faces are registered by uiFonts.ts from the bundled caption fonts. Latin words keep
+ *   Segoe UI, which comes first; the mono stack names the face too, since Cascadia has no Bangla or
+ *   Devanagari digits and a FontFace is used only where its family is named.
+ * - Marks above and below the letters need room: lines are taller (1.4 and 1.6), the type scale
+ *   moves up one step as a set, letter spacing is 0, and the rules with a line height of 1 or a
+ *   fixed line height under 1.4 times their size get at least 1.4.
  */
+
+:root:lang(bn) {
+  --font-sans: 'Segoe UI Variable Text', 'Segoe UI', 'Flown UI Bengali', 'Nirmala UI', sans-serif;
+  --font-display: 'Segoe UI Variable Display', 'Segoe UI', 'Flown UI Bengali', 'Nirmala UI', sans-serif;
+  --font-mono: 'Cascadia Mono', 'Flown UI Bengali', 'Cascadia Code', Consolas, ui-monospace, monospace;
+}
+
+:root:lang(hi) {
+  --font-sans: 'Segoe UI Variable Text', 'Segoe UI', 'Flown UI Devanagari', 'Nirmala UI', sans-serif;
+  --font-display: 'Segoe UI Variable Display', 'Segoe UI', 'Flown UI Devanagari', 'Nirmala UI', sans-serif;
+  --font-mono: 'Cascadia Mono', 'Flown UI Devanagari', 'Cascadia Code', Consolas, ui-monospace, monospace;
+}
+
+:root:lang(bn),
+:root:lang(hi) {
+  --leading-tight: 1.4;
+  --leading-normal: 1.6;
+  --text-2xs: 11.5px; /* 10.5 in English */
+  --text-xs: 12px; /* 11 */
+  --text-sm: 13px; /* 12 */
+  --text-md: 14px; /* 13: the body */
+  --text-lg: 16px; /* 15 */
+  --tracking-caps: 0;
+}
+
+/* line-height: 1 (titles.css, editor.css, commands.css). */
+.chapter-flag:lang(bn),
+.chapter-flag:lang(hi),
+.tick:lang(bn),
+.tick:lang(hi),
+.shortcut-keys kbd:lang(bn),
+.shortcut-keys kbd:lang(hi) {
+  line-height: 1.4;
+}
+
+/* Fixed line heights under 1.4 times their size (freeze.css 10px at 9.5px, NotesWindow.css 16px at 12px). */
+.freeze-label:lang(bn),
+.freeze-label:lang(hi),
+.notes-window .nw-line-marker:lang(bn),
+.notes-window .nw-line-marker:lang(hi) {
+  line-height: 1.4;
+}

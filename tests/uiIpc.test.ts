@@ -13,11 +13,18 @@ const h = vi.hoisted(() => ({
   root: require('node:fs').mkdtempSync(require('node:path').join(require('node:os').tmpdir(), 'ssw-ui-ipc-')) as string,
   handlers: new Map<string, (...args: unknown[]) => unknown>(),
   boxes: [] as { owner: unknown; options: Record<string, unknown> }[],
-  response: 0
+  response: 0,
+  relaunched: [] as unknown[],
+  quits: 0
 }))
 
 vi.mock('electron', () => ({
-  app: { getPath: (name: string) => require('node:path').join(h.root, name), isPackaged: false },
+  app: {
+    getPath: (name: string) => require('node:path').join(h.root, name),
+    isPackaged: false,
+    relaunch: (options: unknown) => void h.relaunched.push(options),
+    quit: () => void h.quits++
+  },
   ipcMain: { handle: (channel: string, fn: (...args: unknown[]) => unknown) => h.handlers.set(channel, fn) },
   BrowserWindow: { fromWebContents: (wc: unknown) => (wc ? { owner: wc } : null) },
   dialog: {
@@ -104,9 +111,14 @@ describe('the ui channels', () => {
     await expect(invoke('ui:confirm', app, { message: 'Delete?', action: '', cancel: 'Cancel' })).rejects.toThrow()
   })
 
-  it('refuses a relaunch while P6 is not built, and records nothing for a language seen', async () => {
-    expect(await invoke('ui:relaunch', app, 'p1')).toMatchObject({ ok: false })
+  it('relaunches when nothing is busy, with the project to open again, and records a language seen once', async () => {
+    expect(await invoke('ui:relaunch', app, 'p1')).toEqual({ ok: true })
+    expect(h.relaunched).toEqual([{ args: [...process.argv.slice(1).filter((a) => !a.startsWith('--flown-open=')), '--flown-open=p1'] }])
+    await new Promise((r) => setImmediate(r))
+    expect(h.quits).toBe(1)
     await invoke('ui:noteSeen', app, 'bn')
+    await invoke('ui:noteSeen', app, 'bn')
+    expect(readPrefSync('ui')).toEqual({ seen: ['bn'] })
   })
 
   it('answers every new channel only to the app’s own page', async () => {

@@ -129,6 +129,19 @@ describe('which addresses a download may use (test 67)', () => {
 })
 
 describe('downloads (test 67)', () => {
+  it('says a download is running while it runs (a language restart waits for it, output-and-languages §9.4)', async () => {
+    let answer: ((r: HttpResponse) => void) | null = null
+    let n = 0
+    use(async () => (n++ === 0 ? new Promise<HttpResponse>((r) => (answer = r)) : { status: 404, headers: {}, body: (async function* () {})() }))
+    expect(store.bedDownloading()).toBe(false)
+    const p = store.downloadBed('test-bed', quiet())
+    await vi.waitFor(() => expect(answer).not.toBeNull())
+    expect(store.bedDownloading()).toBe(true)
+    answer!({ status: 404, headers: {}, body: (async function* () {})() })
+    await expect(p).rejects.toThrow()
+    expect(store.bedDownloading()).toBe(false)
+  })
+
   it('follows a 302 from the prefix to the CDN with its query, checks the pin, records it', async () => {
     const s = server((url) => (url.startsWith(PREFIX) ? { status: 302, headers: { location: CDN } as Record<string, string> } : { status: 200, headers: { 'content-length': String(FILE.length) } as Record<string, string>, body: FILE }))
     use(s.get)

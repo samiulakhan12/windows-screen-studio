@@ -177,6 +177,9 @@ async function sweepStaleParts(now: number): Promise<void> {
   }
 }
 
+/** Whether a caption font is downloading now (a language restart waits for it, output-and-languages §9.4). */
+export const assetDownloading = (): boolean => active.size > 0
+
 /** Every downloadable asset as it stands on this PC (Settings › Downloads for captions). */
 export async function listAssets(): Promise<AssetState[]> {
   await sweepStaleParts((deps.now ?? Date.now)())

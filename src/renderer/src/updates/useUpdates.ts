@@ -56,6 +56,8 @@ let recordingBusy: string | null = null
 export const setRecordingBusy = (reason: string | null): void => {
   recordingBusy = reason
 }
+/** Why Home's recording keeps a restart from running now, or null (a language restart asks too, output-and-languages §9.4). */
+export const recordingBusyReason = (): string | null => recordingBusy
 
 /** Restart now: refused here while Home makes, saves or processes a recording; otherwise main decides. */
 export const installUpdate = (): Promise<UpdateInstallResult> =>
