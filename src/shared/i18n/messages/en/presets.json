@@ -27,5 +27,6 @@
   "import.tooLarge": "This file is too large to be a Flown preset file.",
   "import.overLimit": "{count, plural, one {You can keep {limit} presets, so {n} was not imported.} other {You can keep {limit} presets, so {n} were not imported.}}",
   "import.changed": "{count, plural, one {{n} preset uses ProRes, which Flown does not make: it exports as MOV with CineForm.} other {{n} presets use ProRes, which Flown does not make: they export as MOV with CineForm.}}",
-  "notice.cannotMake": "This preset uses {codec}, which this PC cannot make: it exports {fallback}."
+  "notice.cannotMake": "This preset uses {codec}, which this PC cannot make: it exports {fallback}.",
+  "sizeLine.plain": "{size} · {fps} fps · {length}"
 }
