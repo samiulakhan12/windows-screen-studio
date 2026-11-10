@@ -213,6 +213,20 @@ describe('the running steps and the done view of Also save (§2.4)', () => {
     expect(out).toContain('In DaVinci Resolve: right-click the timeline in the Media Pool, then Timelines › Import › Timeline Markers from EDL…')
   })
 
+  it('says what the recordings folder is for, and puts no timeline line under a stem', () => {
+    const dir = 'C:\\Videos'
+    const stemsOnly = html(dialog.AlsoReport, { video: `${dir}\\Demo.mp4`, also: { stems: [{ stem: 'voice', path: `${dir}\\Demo - Voice.wav` }, { stem: 'music', path: `${dir}\\Demo - Music.wav` }], editors: [], media: 'export' } })
+    expect(stemsOnly).toContain('Demo - Voice.wav')
+    expect(stemsOnly).not.toContain('The recordings the timeline uses')
+    const recordings = html(dialog.AlsoReport, {
+      video: `${dir}\\Demo.mp4`,
+      also: { stems: [{ stem: 'voice', path: `${dir}\\Demo - Voice.wav` }], editors: ['resolve'], media: 'recordings' },
+      extras: { saved: [`${dir}\\Demo.fcpxml`, `${dir}\\Demo media (2)`], failed: [] }
+    })
+    expect(recordings.split('The recordings the timeline uses').length).toBe(2)
+    expect(recordings).toMatch(/Demo media \(2\)<\/button>(<[^>]+>)*The recordings the timeline uses/)
+  })
+
   it('keeps the video as saved and says which later step failed', () => {
     // The timeline step's problem comes as a whole sentence in the UI language (TimelineResult.problem).
     const problem = 'The timeline could not be saved: the folder is read-only'

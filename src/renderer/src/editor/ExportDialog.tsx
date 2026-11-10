@@ -160,7 +160,9 @@ function timelineFileOf(file: string): 'fcpxml' | 'xmeml' | 'markers' | 'edl' | 
   if (/\.xml$/i.test(file)) return 'xmeml'
   if (/ - Resolve markers( \(\d+\))?\.edl$/i.test(file)) return 'markers'
   if (/\.edl$/i.test(file)) return 'edl'
-  return 'media'
+  // The recordings' copies: the "<name> media" folder (" (2)" when the name was taken), never a stem.
+  if (/ media( \(\d+\))?$/i.test(file.split(/[\\/]/).pop() ?? file)) return 'media'
+  return null
 }
 
 /** The stored user presets, read through the reader main uses too (anything malformed: none). */

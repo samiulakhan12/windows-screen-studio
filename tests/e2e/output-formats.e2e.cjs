@@ -483,6 +483,7 @@ async function main() {
     const files = names.map((n) => path.join(home, `Demo - ${n}.wav`))
     for (const f of files) h.assert(fs.existsSync(f), `${path.basename(f)} is written next to the video (${fs.readdirSync(home).join(', ')})`)
     h.assert(names.every((n) => doneText.includes(`Demo - ${n}.wav`)), 'the done view lists every stem')
+    h.assert(!doneText.includes('The recordings the timeline uses'), 'without a timeline, no stem is called a timeline\'s recording')
     const want = SECONDS * RATE
     for (const f of files) {
       const a = audioStreams(f)[0]
@@ -593,6 +594,8 @@ async function main() {
     fs.mkdirSync(recFolder)
     const recVideo = path.join(recFolder, 'Demo.mp4')
     await exportNow(app, win, recVideo)
+    const recDone = await win.textContent('.modal')
+    h.assert(recDone.split('The recordings the timeline uses').length === 2 && recDone.includes('Demo media'), `the done view says what the media folder is for, once (${recDone})`)
     await closeDialog(win)
     const media = path.join(recFolder, 'Demo media')
     h.assert(fs.existsSync(media), `the recordings are copied into "Demo media" (${fs.readdirSync(recFolder).join(', ')})`)
