@@ -21,6 +21,7 @@ import { ffmpegPath } from './ffmpeg'
 import { loopableMusic } from './musicLoopCache'
 import { bundledSoundDir } from './soundLibrary/paths'
 import { writeStemsStep } from './stemsRun'
+import { rememberExportJob } from './exportedJobs'
 import { t } from '../shared/i18n/t'
 
 interface ActiveExport {
@@ -335,6 +336,8 @@ export function registerExportIpc(): void {
       await moveIntoPlace(job.tempPath, job.finalPath)
       log?.remove([job.tempPath])
       exportedFiles.add(job.finalPath)
+      // A timeline over the recordings renders Music and Effects with this job (output-and-languages §8.1).
+      rememberExportJob(job.finalPath, job.job)
       if (!batchPaths.delete(job.finalPath)) approvedExportPath = null
       const bytes = (await fs.stat(job.finalPath)).size
       // The sound stems next to the video (output-and-languages §7.6): a failure or a cancel here
