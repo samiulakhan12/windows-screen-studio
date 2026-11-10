@@ -44,6 +44,16 @@ function bundleDiffers(preset: UserExportPreset, bundle: Omit<BundleOptions, 'la
 }
 
 /**
+ * Where the focus goes once Save as preset's field is gone: back to the Save as preset button, or to
+ * the new preset's card (`added`, its id) when that preset filled the list and the button is now off,
+ * so the focus never falls to the page.
+ */
+export function focusAfterSave(button: HTMLButtonElement | null, added: string | null, page: Pick<Document, 'querySelector'> = document): void {
+  if (button && !button.disabled) button.focus()
+  else if (added) page.querySelector<HTMLElement>(`[data-testid="user-presets"] [data-preset="${added}"]`)?.focus()
+}
+
+/**
  * The inline name field of Save as preset and Rename…: a labelled text field prefilled with a free
  * name, Save and Cancel. Enter saves, Escape cancels. A name that is empty once cleaned cannot be saved.
  */

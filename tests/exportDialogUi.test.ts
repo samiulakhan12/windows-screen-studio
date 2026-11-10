@@ -23,6 +23,7 @@ const rowsUi = (await import(/* @vite-ignore */ ROWS)) as Record<'CodecRow' | 'B
 const { ExportBundleOptions } = (await import(/* @vite-ignore */ BUNDLE)) as { ExportBundleOptions: Component }
 const presetsUi = (await import(/* @vite-ignore */ PRESETS)) as Record<'UserPresets' | 'SavePresetField', Component> & {
   importNotices: (read: unknown, added: number, skipped: number) => { text: string; warn: boolean }[]
+  focusAfterSave: (button: { disabled: boolean; focus(): void } | null, added: string | null, page: { querySelector(selector: string): { focus(): void } | null }) => void
 }
 const { codecHintValues, settingsRows } = await import('../src/shared/render/exportRows')
 
@@ -203,6 +204,20 @@ describe('saved presets', () => {
     expect(out).toContain('data-own-escape="true"')
     expect(out).toContain('>Save<')
     expect(out).toContain('>Cancel<')
+  })
+
+  it('gives the focus back to Save as preset, or to the new preset when it was the 50th and the button is off', () => {
+    const focused: string[] = []
+    const asked: string[] = []
+    const button = { disabled: false, focus: () => void focused.push('save-preset') }
+    const page = { querySelector: (selector: string) => (asked.push(selector), { focus: () => void focused.push('card') }) }
+    presetsUi.focusAfterSave(button, 'user:0123456789ab', page)
+    expect(focused).toEqual(['save-preset'])
+    // The 50th preset turned Save as preset off: a disabled button takes no focus, so its card does.
+    focused.length = 0
+    presetsUi.focusAfterSave({ ...button, disabled: true }, 'user:0123456789ab', page)
+    expect(focused).toEqual(['card'])
+    expect(asked).toEqual(['[data-testid="user-presets"] [data-preset="user:0123456789ab"]'])
   })
 
   it('says what an import did, in the exact words of §2.2', () => {

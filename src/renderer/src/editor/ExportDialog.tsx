@@ -44,7 +44,7 @@ import { readUserPresets, USER_PRESET_LIMIT, type UserExportPreset, type UserPre
 import { savePreset, suggestName } from '../../../shared/render/userPresetsEdit'
 import { webCodecsSupport } from '../render/proEncoders'
 import { BackgroundRow, CodecRow, FPS_LABEL_ID, FrameRateRow } from './exportRows'
-import { ImportPresets, SavePresetField, UserPresets } from './UserPresets'
+import { focusAfterSave, ImportPresets, SavePresetField, UserPresets } from './UserPresets'
 import { Icon } from '../components/Icon'
 import type { RenderScene } from '../render/compositor'
 import { missingCatalogNotes, missingFonts, prepareProjectFonts } from '../render/fontLoader'
@@ -628,10 +628,12 @@ export function ExportDialog(props: Props): JSX.Element {
     if (!store) return
     const next = savePreset(store, name, effective, withoutLanguages(bundle), Date.now(), Math.random)
     setNaming(false)
-    requestAnimationFrame(() => saveButton.current?.focus())
-    if (next === store) return
+    const added = next === store ? null : next.presets[next.presets.length - 1]
+    // Back to Save as preset, or to the new preset when it was the 50th and the button is off.
+    requestAnimationFrame(() => focusAfterSave(saveButton.current, added?.id ?? null))
+    if (!added) return
     saveStore(next)
-    pickUserPreset(next.presets[next.presets.length - 1])
+    pickUserPreset(added)
   }
   const setModeSaved = (m: 'single' | 'batch'): void => {
     setMode(m)
