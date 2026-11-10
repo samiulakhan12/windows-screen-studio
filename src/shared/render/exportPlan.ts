@@ -1,7 +1,7 @@
 import type { ExportCapabilities, FfmpegVideoEncoder } from '../api/export'
 import { visibleSize } from '../engine/crop'
 import { outputSize } from '../engine/layout'
-import { tallAs } from '../engine/reframeData'
+import { isTall, tallAs } from '../engine/reframeData'
 import type { AspectRatio, ExportFormat, Project } from '../types'
 import { codecRoutes, type CodecCaps } from './codecRoutes'
 import type { ExportOptions } from './exportPresets'
@@ -69,10 +69,12 @@ export function exportSize(project: Project, settings: ExportOptions): ExportSiz
   }
   const capped = capSize(size)
   // FFmpeg's CineForm encoder takes only widths that are a multiple of 16 (1080 wide fails): a few
-  // pixels more of background (fewer when that would pass maxWidth); the recording is fitted inside.
+  // pixels more of background, fewer when that would pass maxWidth or make a tall frame wide (4:5 at
+  // 1080p sits on the line, and the tall-frame layout must stay); the recording is fitted inside.
   if (settings.format === 'mov' && codecOf(settings) === 'cineform' && capped.width % 16) {
     const up = Math.ceil(capped.width / 16) * 16
-    capped.width = up <= Math.min(MAX_EXPORT_SIDE, settings.maxWidth ?? MAX_EXPORT_SIDE) ? up : Math.floor(capped.width / 16) * 16
+    const keepsShape = isTall(up, capped.height) === isTall(capped.width, capped.height)
+    capped.width = up <= Math.min(MAX_EXPORT_SIDE, settings.maxWidth ?? MAX_EXPORT_SIDE) && keepsShape ? up : Math.floor(capped.width / 16) * 16
   }
   return { ...capped, fps: gif ? GIF_FPS : settings.fps }
 }

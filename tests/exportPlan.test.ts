@@ -137,7 +137,9 @@ describe('exportDimensions', () => {
     const shapedAs = (aspectRatio: '9:16' | '1:1' | '16:9'): typeof project => ({ ...project, style: { ...project.style, aspectRatio } })
     expect(exportSize(shapedAs('9:16'), cine)).toEqual({ width: 1088, height: 1920, fps: 60, capped: false })
     expect(exportSize(shapedAs('1:1'), cine)).toMatchObject({ width: 1088, height: 1080 })
-    expect(exportSize(project, { ...cine, aspect: '4:5', alpha: 'background' })).toMatchObject({ width: 1088, height: 1350 })
+    // 4:5 at 1080p sits on the tall line (1350 = 1.25 x 1080); 1088 would make it wide, so it is 1072.
+    expect(exportSize(project, { ...cine, aspect: '4:5', alpha: 'background' })).toMatchObject({ width: 1072, height: 1350 })
+    expect(isTall(1072, 1350)).toBe(true)
     // 'auto' on a 3:2 laptop screen: 1620x1080 and 1080x720.
     expect(exportSize(shaped(1500, 1000), cine)).toMatchObject({ width: 1632, height: 1080 })
     expect(exportSize(shaped(1500, 1000), { ...cine, resolution: 720 })).toMatchObject({ width: 1088, height: 720 })
@@ -151,9 +153,12 @@ describe('exportDimensions', () => {
     expect(exportSize(shapedAs('9:16'), { ...cine, codec: undefined })).toMatchObject({ width: 1080, height: 1920 })
     for (const resolution of [720, 1080, 1440, 2160] as const)
       for (const aspect of ['auto', '16:9', '9:16', '1:1', '4:3', '4:5'] as const)
-        for (const [w, h] of [[1918, 1080], [1500, 1000], [2580, 1080], [1000, 1300], [300, 1300]]) {
+        for (const [w, h] of [[1918, 1080], [1500, 1000], [2580, 1080], [1000, 1300], [300, 1300], [1000, 1250], [1200, 1500], [1080, 1920]]) {
           const s = exportSize(shaped(w, h), { ...cine, resolution, aspect })
           expect(s.width % 16, `${w}x${h} ${aspect} ${resolution}p`).toBe(0)
+          // Tall exactly when the H.264 file is, so follow framing, the camera band and captions lay out alike.
+          const h264 = exportSize(shaped(w, h), { ...settings, resolution, aspect })
+          expect(isTall(s.width, s.height), `tall ${w}x${h} ${aspect} ${resolution}p`).toBe(isTall(h264.width, h264.height))
           expect(() => validateJob({ ...job, width: s.width, height: s.height, format: 'mov', codec: 'cineform', video: { kind: 'raw', encoder: 'cfhd', pixelFormat: 'bgr0' }, outputPath: '/tmp/x.mov' })).not.toThrow()
         }
   })
