@@ -10,6 +10,7 @@ import { createHash } from 'node:crypto'
 import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
+import { pathToFileURL } from 'node:url'
 import { afterAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { ExportJob, TimelineRequest } from '../src/shared/api/export'
 import { t } from '../src/shared/i18n/t'
@@ -19,11 +20,17 @@ import { parseProbe } from '../src/shared/import/probe'
 import { parseXml } from './strictXml'
 import { timelineProject } from './timelineFixtures'
 
-vi.mock('electron', () => ({ ipcMain: { handle: vi.fn() }, app: { getPath: () => tmpdir(), on: vi.fn() } }))
-vi.mock('../src/main/exportIpc', () => ({ isExportedFile: () => false }))
+// What the IPC handler's own defaults see: the files exported, the projects folder, and what export:cancel calls.
+const main = vi.hoisted(() => ({ exported: new Set<string>(), projects: '', cancel: [] as (() => void)[], handlers: new Map<string, (...args: unknown[]) => unknown>() }))
+vi.mock('electron', () => ({
+  ipcMain: { handle: (channel: string, fn: (...args: unknown[]) => unknown) => main.handlers.set(channel, fn) },
+  app: { getPath: () => tmpdir(), on: vi.fn() }
+}))
+vi.mock('../src/main/exportIpc', () => ({ isExportedFile: (f: string) => main.exported.has(f), onExportCancel: (stop: () => void) => void main.cancel.push(stop) }))
+vi.mock('../src/main/projects', async (orig) => ({ ...(await orig<object>()), projectDir: (id: string) => path.join(main.projects, id) }))
 vi.mock('../src/main/voice/voiceIpc', () => ({ voiceCleaner: { ensure: vi.fn() } }))
 
-const { copyRecordings, RECORDING_FILES, timelinePaths, writeTimeline } = await import('../src/main/timelineIpc')
+const { copyRecordings, RECORDING_FILES, registerTimelineIpc, timelinePaths, writeTimeline } = await import('../src/main/timelineIpc')
 const { ffmpegPath } = await import('../src/main/ffmpeg')
 
 const ff = ffmpegPath()
@@ -347,6 +354,44 @@ describe('test 44: writeTimeline', () => {
     const xml = readFileSync(path.join(dir, 'Demo.xml'), 'utf8')
     expect(xml).toContain('Demo%20media/Screen.mp4')
     expect(xml).toContain('<enabled>FALSE</enabled>')
+  })
+
+  const RECORDINGS = {
+    screen: { fps: 30, frames: 60, width: 320, height: 240, audio: false, video: true },
+    camera: { fps: 30, frames: 60, width: 160, height: 120, audio: false, video: true },
+    voice: { fps: 30, frames: 60, audio: true, video: false },
+    system: { fps: 30, frames: 60, audio: true, video: false }
+  }
+
+  it('stops copying the recordings when cancelled: the media folder goes and no timeline file is written', async () => {
+    const projectDir = projectFolder('p44c')
+    const calls = newCalls()
+    const stop = new AbortController()
+    const ffmpeg = async (args: string[], signal?: AbortSignal) => {
+      calls.ffmpeg.push(args)
+      // Cancel export while the first recording is copied.
+      stop.abort()
+      if (signal?.aborted) throw new Error('The export was cancelled.')
+      await runFfmpeg(args)
+    }
+    const plan = recordingsTimeline(project, 30, RECORDINGS)
+    const result = await writeTimeline(request({ media: 'recordings', editors: ['premiere'], stems: [] }, plan), { ...depsFor(projectDir, calls, { ffmpeg }), ...deps() }, stop.signal)
+    expect(result).toEqual({ files: [], problem: t('errors.timeline.cancelled') })
+    expect(calls.ffmpeg).toHaveLength(1)
+    expect(listing()).toEqual(start)
+  })
+
+  it('export:cancel stops a timeline the app page asked for, before its copies begin', async () => {
+    projectFolder('p44i')
+    main.projects = path.join(root, 'projects')
+    main.exported.add(videoPath)
+    registerTimelineIpc()
+    const page = { senderFrame: { url: pathToFileURL(path.join(__dirname, '../src/renderer/index.html')).toString() } }
+    const plan = recordingsTimeline(project, 30, RECORDINGS)
+    const run = main.handlers.get('export:writeTimeline')!(page, request({ projectId: 'p44i', media: 'recordings', editors: ['premiere'], stems: [] }, plan))
+    for (const cancel of main.cancel) cancel()
+    expect(await run).toEqual({ files: [], problem: t('errors.timeline.cancelled') })
+    expect(listing()).toEqual(start)
   })
 
   it('leaves out the track of a sound that turned out silent (as stems without sound)', async () => {

@@ -59,6 +59,14 @@ const batchPaths = new Set<string>()
 const exportedFiles = new Set<string>()
 /** Deletions waiting for a cancelled export's encoder to exit. */
 const cleanups = new Set<Promise<void>>()
+/** Work after the video that Cancel export also stops (the timeline's copies of the recordings, output-and-languages §2.4). */
+const cancelListeners = new Set<() => void>()
+
+/** Has `stop` called whenever export:cancel runs; returns a function that removes it. */
+export function onExportCancel(stop: () => void): () => void {
+  cancelListeners.add(stop)
+  return () => cancelListeners.delete(stop)
+}
 let log: LeftoverLog | null = null
 /**
  * Exported files that replaced a file of the same name (the save dialog asked), with the kinds of
@@ -370,6 +378,7 @@ export function registerExportIpc(): void {
 
   // Resolves once the export's files are deleted, so the renderer never sees them linger.
   ipcMain.handle('export:cancel', async () => {
+    for (const stop of cancelListeners) stop()
     await cancelActive()
     await cleanupsDone()
   })

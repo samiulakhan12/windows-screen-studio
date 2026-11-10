@@ -83,6 +83,8 @@ describe('writeTimelineStep', () => {
   it('passes main\'s own refusal through and words any other failure as the done view\'s line', async () => {
     const invalid = t('errors.timeline.invalid')
     expect((await step(undefined, base, { files: [], problem: invalid }).run).problem).toBe(invalid)
+    const cancelled = t('errors.timeline.cancelled')
+    expect((await step(undefined, base, { files: [], problem: cancelled }).run).problem).toBe(cancelled)
     expect((await step(undefined, base, { files: [], problem: 'The disk is full.' }).run).problem).toBe('The timeline could not be saved: The disk is full.')
     const thrown = await writeTimelineStep(timelineProject(), base, exported, {
       write: async () => {
@@ -141,5 +143,33 @@ describe('the bundle lists a shared FCPXML once', () => {
       timeline: { request: { ...base, videoPath: '/v/Demo.mp4', editors: ['resolve', 'finalcut'] }, exported }
     })
     expect(out).toEqual({ saved: ['/v/Demo.fcpxml', '/v/Demo media'], failed: [] })
+  })
+
+  it('Cancel export during the timeline asks main to stop it, and says the timeline was not saved', async () => {
+    const controller = new AbortController()
+    const exportCancel = vi.fn(async () => undefined)
+    const writeTimeline = vi.fn(async () => {
+      // Clicked while main copies the recordings: main stops and answers with its own sentence.
+      controller.abort()
+      return { files: [], problem: t('errors.timeline.cancelled') }
+    })
+    vi.stubGlobal('window', { api: { writeTimeline, exportCancel } })
+    // The modules were loaded again: the English messages go to their new runtime, as main.tsx does.
+    await import('../src/shared/i18n/messages/en/index')
+    const { writeBundle } = (await import(/* @vite-ignore */ BUNDLE)) as Bundle
+    const req = {
+      project: timelineProject(),
+      kinds: [],
+      title: 'Demo',
+      thumbnail: async () => new Uint8Array(),
+      timeline: { request: { ...base, videoPath: '/v/Demo.mp4' }, exported },
+      signal: controller.signal
+    }
+    expect(await writeBundle('/v/Demo.mp4', req)).toEqual({ saved: [], failed: ['You cancelled, so the timeline was not saved.'] })
+    expect(exportCancel).toHaveBeenCalledTimes(1)
+    // Cancelled before the step: main is not asked for a timeline at all.
+    writeTimeline.mockClear()
+    expect(await writeBundle('/v/Demo.mp4', req)).toEqual({ saved: [], failed: ['You cancelled, so the timeline was not saved.'] })
+    expect(writeTimeline).not.toHaveBeenCalled()
   })
 })

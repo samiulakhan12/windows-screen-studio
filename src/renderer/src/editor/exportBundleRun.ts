@@ -13,6 +13,7 @@ import { exportDescription } from '../../../shared/publish/youtube'
 import type { BatchExtras } from './exporter'
 import type { TimelineRequest } from '../../../shared/api/export'
 import { writeTimelineStep } from './timelineRun'
+import { t } from '../../../shared/i18n/t'
 
 /**
  * What one file per chapter exports for `part`: the part's project (its clips and freezes give the
@@ -51,6 +52,8 @@ export interface BundleRequest {
   languages?: readonly string[]
   /** Also save a timeline for other editors (output-and-languages §8.7), written after the other files; absent: none. */
   timeline?: { request: Omit<TimelineRequest, 'plan'>; exported: { fps: number; frames: number; width: number; height: number } }
+  /** Cancel export: stops the timeline (and main's copies of the recordings, §2.4); the video and the files before it stay. */
+  signal?: AbortSignal
 }
 
 const baseName = (file: string): string => file.split(/[\\/]/).pop() ?? file
@@ -93,10 +96,17 @@ export async function writeBundle(anchor: string, req: BundleRequest): Promise<B
   }
   // The timeline after the video, the stems and the sidecars (output-and-languages §8.7); a failure never undoes the video.
   if (req.timeline) {
-    const result = await writeTimelineStep(req.project, req.timeline.request, req.timeline.exported)
-    // Resolve and Final Cut Pro share one FCPXML file: each file is listed once.
-    for (const f of result.files) if (!saved.includes(f.path)) saved.push(f.path)
-    if (result.problem) failed.push(result.problem)
+    const { signal } = req
+    const stop = (): void => void window.api.exportCancel()
+    signal?.addEventListener('abort', stop)
+    try {
+      const result = signal?.aborted ? { files: [], problem: t('errors.timeline.cancelled') } : await writeTimelineStep(req.project, req.timeline.request, req.timeline.exported)
+      // Resolve and Final Cut Pro share one FCPXML file: each file is listed once.
+      for (const f of result.files) if (!saved.includes(f.path)) saved.push(f.path)
+      if (result.problem) failed.push(result.problem)
+    } finally {
+      signal?.removeEventListener('abort', stop)
+    }
   }
   return { saved, failed }
 }

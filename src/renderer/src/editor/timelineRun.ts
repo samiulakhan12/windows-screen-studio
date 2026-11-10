@@ -82,7 +82,7 @@ export function recordingMedia(project: Project, fps: number, screen: TrackFacts
 
 /** A failure of this step as the done view shows it: main's own sentences as they are, anything else after "The timeline could not be saved:". */
 function problemText(reason: string): string {
-  return reason === t('errors.timeline.invalid') || reason === t('errors.timeline.media') ? reason : t('timelines.done.failed', { reason })
+  return reason === t('errors.timeline.invalid') || reason === t('errors.timeline.media') || reason === t('errors.timeline.cancelled') ? reason : t('timelines.done.failed', { reason })
 }
 
 /** Writes the timeline files of an export that just finished (§8.7). Resolves with every file written and what it is for. */

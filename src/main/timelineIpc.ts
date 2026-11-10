@@ -26,7 +26,7 @@ import { STEM_FILE_WORDS } from '../shared/render/stems'
 import type { VoiceStrength } from '../shared/types'
 import { removeWithRetries } from './exportCleanup'
 import { exportJobOf } from './exportedJobs'
-import { isExportedFile } from './exportIpc'
+import { isExportedFile, onExportCancel } from './exportIpc'
 import { freeBatchPath, moveIntoPlace, partialPath } from './exportJob'
 import { ffmpegPath, startFfmpeg } from './ffmpeg'
 import { projectDir } from './projects'
@@ -300,9 +300,10 @@ const failed = (problem: string): TimelineResult => ({ files: [], problem })
  * not export, a stem not next to it, a plan checkTimelinePlan refuses or one that does not fit its
  * mode, and a plan whose rates, sizes or lengths disagree with the files. In recordings mode it first
  * copies the recordings into `<base> media` (stems written with the export stand in for Music and
- * Effects). Every file written and the media folder are listed, each with what it is for.
+ * Effects). Every file written and the media folder are listed, each with what it is for. `signal`
+ * stops the copies (Cancel export, §2.4): the media folder goes and no timeline file is written.
  */
-export async function writeTimeline(request: TimelineRequest, deps?: TimelineDeps): Promise<TimelineResult> {
+export async function writeTimeline(request: TimelineRequest, deps?: TimelineDeps, signal?: AbortSignal): Promise<TimelineResult> {
   const d = { ...defaults(), ...deps }
   if (badRequest(request, d) || checkTimelinePlan(request.plan) !== null) return failed(t('errors.timeline.invalid'))
   const plan: TimelinePlan = structuredClone(request.plan)
@@ -340,7 +341,7 @@ export async function writeTimeline(request: TimelineRequest, deps?: TimelineDep
     } else {
       const folder = freeFolder(path.dirname(videoPath), `${path.basename(videoPath, path.extname(videoPath))} media`, d.exists)
       const job = d.jobOf(videoPath)
-      const made = await copyRecordings(projectId, folder, job?.audio?.voice ?? null, d, { media: media.filter((m) => !fromStem(m)), job })
+      const made = await copyRecordings(projectId, folder, job?.audio?.voice ?? null, d, { media: media.filter((m) => !fromStem(m)), job, signal })
       Object.assign(paths, made)
       for (const m of media) if (fromStem(m)) paths[m] = stems.get(m as SoundStem)
       files.push({ path: folder, for: 'media' })
@@ -368,14 +369,25 @@ export async function writeTimeline(request: TimelineRequest, deps?: TimelineDep
     }
     return { files }
   } catch (err) {
+    if (signal?.aborted) return { files, problem: t('errors.timeline.cancelled') }
     return { files, problem: err instanceof Error && err.message ? err.message.split('\n')[0] : t('errors.timeline.invalid') }
   }
 }
 
-/** `export:writeTimeline`, for the app's own page only. */
+/** `export:writeTimeline`, for the app's own page only; export:cancel stops the timelines being written. */
 export function registerTimelineIpc(): void {
-  ipcMain.handle('export:writeTimeline', (e, request: TimelineRequest) => {
+  const writing = new Set<AbortController>()
+  onExportCancel(() => {
+    for (const stop of writing) stop.abort()
+  })
+  ipcMain.handle('export:writeTimeline', async (e, request: TimelineRequest) => {
     if (!isAppUrl(e.senderFrame?.url ?? '')) throw new Error('Not allowed')
-    return writeTimeline(request)
+    const stop = new AbortController()
+    writing.add(stop)
+    try {
+      return await writeTimeline(request, undefined, stop.signal)
+    } finally {
+      writing.delete(stop)
+    }
   })
 }

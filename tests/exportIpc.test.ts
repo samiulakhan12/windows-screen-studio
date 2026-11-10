@@ -115,7 +115,7 @@ vi.mock('../src/main/musicLoopCache', () => ({
     })
 }))
 
-import { disposeExport, registerExportIpc } from '../src/main/exportIpc'
+import { disposeExport, onExportCancel, registerExportIpc } from '../src/main/exportIpc'
 import { partialPath, tempStem } from '../src/main/exportJob'
 
 const out = path.join(h.root, 'Videos')
@@ -181,6 +181,16 @@ describe('export clean-up in the main process', () => {
     expect(loops.calls[0].signal.aborted).toBe(true)
     expect(h.encoders.length).toBe(encoders)
     expect(partials()).toEqual([])
+  })
+
+  it('Cancel export also stops the work after the video (the timeline\'s copies, output-and-languages §2.4), until it is removed', async () => {
+    const stop = vi.fn()
+    const remove = onExportCancel(stop)
+    await invoke('export:cancel')
+    expect(stop).toHaveBeenCalledTimes(1)
+    remove()
+    await invoke('export:cancel')
+    expect(stop).toHaveBeenCalledTimes(1)
   })
 
   it('deletes what an earlier run left behind at start-up (audit-B-1)', () => {

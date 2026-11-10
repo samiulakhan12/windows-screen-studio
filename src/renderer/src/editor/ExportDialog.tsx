@@ -733,8 +733,9 @@ export function ExportDialog(props: Props): JSX.Element {
         timeline = { request: { projectId: project.id, videoPath: outputPath, editors, media, stems }, exported: { fps: shown.fps, frames, width: shown.width, height: shown.height } }
         setPhase((p) => (p.kind === 'running' ? { ...p, progress: p.progress ? { ...p.progress, phase: 'finalizing', detail: undefined } : p.progress, step: 'timeline' } : p))
       }
-      const extras = await writeBundle(outputPath, { project, kinds, title: project.name, thumbnail: thumbnailOf(settings), ...bundleLanguages, ...(timeline ? { timeline } : {}) })
-      await share.begin(outputPath, { title: project.name, seconds: length })
+      const extras = await writeBundle(outputPath, { project, kinds, title: project.name, thumbnail: thumbnailOf(settings), ...bundleLanguages, ...(timeline ? { timeline, signal: controller.signal } : {}) })
+      // Cancel export after the video (the timeline's step) keeps the video and starts no share.
+      if (!controller.signal.aborted) await share.begin(outputPath, { title: project.name, seconds: length })
       void link?.end({ kind: 'done', files: [outputPath] })
       const also: AlsoDone | undefined = wantStems || editors.length ? { stems, stemsProblem: finished.stemsProblem, editors, media } : undefined
       setPhase({ kind: 'done', path: outputPath, targetMB: settings.targetSizeMB, limit, extras, also, ...result })

@@ -4,6 +4,7 @@
   "stems.noSound": "The recording has no sound to write as stems.",
   "timeline.invalid": "The timeline could not be written: its plan is not valid.",
   "timeline.media": "The timeline could not be written: a file it uses has changed.",
+  "timeline.cancelled": "You cancelled, so the timeline was not saved.",
   "presetFile.notSaved": "The presets could not be saved to this file.",
   "feature.notReady": "This export setting is not available yet."
 }
