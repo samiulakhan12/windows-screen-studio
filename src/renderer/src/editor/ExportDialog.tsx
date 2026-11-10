@@ -1,27 +1,28 @@
-import { useContext, useEffect, useMemo, useRef, useState, type RefObject } from 'react'
-import { pictureTime, planOf, videoDuration, videoTimeAt, videoToSource } from '../../../shared/engine/freeze'
+import { useContext, useEffect, useMemo, useRef, useState, type ReactNode, type RefObject } from 'react'
+import { pictureTime, planOf, videoDuration, videoFrames, videoTimeAt, videoToSource } from '../../../shared/engine/freeze'
 import { followSuggestion } from '../../../shared/editor/followEdit'
 import { cropProject, visibleSize } from '../../../shared/engine/crop'
 import { viewMagnification } from '../../../shared/engine/frameView'
 import { styleContentRect } from '../../../shared/engine/layout'
 import { followApplies } from '../../../shared/engine/reframeData'
 import { outputDuration, outputToSource } from '../../../shared/engine/timeline'
-import type { ExportCapabilities } from '../../../shared/api/export'
-import { hasSoundtrack } from '../../../shared/audio/settings'
+import type { ExportCapabilities, ExportFinish, FfmpegVideoEncoder, TimelineEditor } from '../../../shared/api/export'
+import { audioLook, hasSoundtrack } from '../../../shared/audio/settings'
 import { exportBaseName } from '../../../shared/import/imported'
 import { outputChapters, youtubeChapters, type OutputChapter } from '../../../shared/render/chapters'
 import { clickSoundJob } from '../../../shared/render/clickSound'
-import { exportProject, exportSize, LOW_BPP, MAX_EXPORT_SIDE, MB, sizeError, targetBitrates, type ExportSize } from '../../../shared/render/exportPlan'
+import { exportProject, exportSize, isAudioOnly, LOW_BPP, MAX_EXPORT_SIDE, MB, sizeError, targetBitrates, type ExportSize } from '../../../shared/render/exportPlan'
 import {
   applyPreset,
   BATCH_ASPECTS,
   batchFileNames,
   batchItems,
-  EXPORT_PRESETS,
   FORMAT_LABELS,
+  matchesUserPreset,
   normalizeOptions,
   presetById,
   readBatchChoice,
+  shownPresets,
   type BatchChoice,
   RESOLUTION_LABELS,
   safeFileName,
@@ -30,7 +31,19 @@ import {
   type ExportOptions,
   type ExportPreset
 } from '../../../shared/render/exportPresets'
-import type { AspectRatio, ExportFormat, ExportSettings, Project } from '../../../shared/types'
+import type { AspectRatio, ExportCodec, ExportFormat, ExportSettings, Project } from '../../../shared/types'
+import { fmt } from '../../../shared/i18n/fmt'
+import { t, tNodes, uiLanguage, type MessageKey } from '../../../shared/i18n/t'
+import { seeThrough } from '../../../shared/render/alpha'
+import { stemsBlocked, timelineBlocked, editorBlocked } from '../../../shared/render/alsoSave'
+import { CODEC_NAMES, codecHintValues, codecNotice, pickFormat, pickResolution, settingsRows, sizeLine, usableCodec, usableHere, type CodecUiCaps } from '../../../shared/render/exportRows'
+import { codecOf, DEFAULT_CODEC, isIntermediate } from '../../../shared/render/proFormats'
+import { stemJobOf } from '../../../shared/render/stems'
+import { readUserPresets, USER_PRESET_LIMIT, type UserExportPreset, type UserPresetStore } from '../../../shared/render/userPresets'
+import { savePreset, suggestName } from '../../../shared/render/userPresetsEdit'
+import { webCodecsSupport } from '../render/proEncoders'
+import { BackgroundRow, CodecRow, FPS_LABEL_ID, FrameRateRow } from './exportRows'
+import { ImportPresets, SavePresetField, UserPresets } from './UserPresets'
 import { Icon } from '../components/Icon'
 import type { RenderScene } from '../render/compositor'
 import { missingCatalogNotes, missingFonts, prepareProjectFonts } from '../render/fontLoader'
@@ -47,7 +60,7 @@ import { progressShare, useLongJob, type ExportJobLink } from './exportJobs'
 import { ExportBundleOptions } from './ExportBundleOptions'
 import { STREAM_FORMATS, SubtitlesField } from './panels/SubtitlesField'
 import { tickedExportLanguages } from '../../../shared/captions/captionTracks'
-import { partSource, partThumbnailFrame, writeBundle } from './exportBundleRun'
+import { partSource, partThumbnailFrame, writeBundle, type BundleRequest } from './exportBundleRun'
 import { bundleKinds, chapterParts, chaptersNote, normalizeBundle, partFileNames, perChapterBlocked, stillAcrossChapters, type BundleOptions } from '../../../shared/render/exportBundle'
 import { FORMAT_EXTENSIONS } from '../../../shared/render/exportPresets'
 import { ShareAfterExport } from '../share/ShareAfterExport'
@@ -60,6 +73,7 @@ import './exportDialog.css'
 import './panels/colour.css'
 import './handsOff.css'
 import './titles.css'
+import './exportPro.css'
 
 interface Props {
   project: Project
@@ -74,12 +88,29 @@ interface Props {
 
 type Phase =
   | { kind: 'settings' }
-  | { kind: 'running'; progress: ExportProgress | null }
-  | ({ kind: 'done'; path: string; targetMB?: number; limit?: { label: string; maxMB: number }; extras?: BatchExtras } & ExportResult)
+  | { kind: 'running'; progress: ExportProgress | null; step?: 'timeline' }
+  | ({ kind: 'done'; path: string; targetMB?: number; limit?: { label: string; maxMB: number }; extras?: BatchExtras; also?: AlsoDone } & ExportResult)
   | { kind: 'batch'; jobs: BatchJob[]; statuses: BatchStatus[]; folder: string; finished: boolean }
   | { kind: 'error'; message: string; detail: string }
 
 type CopyState = { kind: 'idle' } | { kind: 'busy' } | { kind: 'copied' } | { kind: 'failed'; message: string }
+
+/** What an export asked of Also save's stems and timeline, and what came of them (output-and-languages §2.4). */
+interface AlsoDone {
+  stems: { stem: string; path: string }[]
+  stemsProblem?: string
+  editors: TimelineEditor[]
+  media: 'export' | 'recordings'
+}
+
+/** The steps a running export takes after its video (§2.4): stems inside the finish, then the timeline. */
+interface RunSteps {
+  stems: boolean
+  timeline: 'export' | 'recordings' | null
+}
+
+/** The HEVC probe as the dialog knows it (it runs once, when the dialog first needs it, §5.9). */
+type HevcProbe = 'idle' | 'probing' | FfmpegVideoEncoder[]
 type ThumbState = { kind: 'idle' } | { kind: 'busy' } | { kind: 'saved'; path: string; width: number; height: number } | { kind: 'failed'; message: string }
 
 const SETTINGS_KEY = 'export-settings'
@@ -103,6 +134,54 @@ const FORMATS: { value: ExportFormat; label: string; title: string }[] = [
   { value: 'gif', label: 'GIF', title: 'An animated image that plays silently and loops (15 fps)' },
   { value: 'm4a', label: 'M4A', title: 'The soundtrack only (AAC), nothing is rendered' }
 ]
+
+/** The audio a format carries with `codec` (§5.2), for the selected format chip's title. */
+const audioOf = (o: ExportOptions): 'aac' | 'opus' | 'pcm' => (o.format === 'webm' ? 'opus' : o.format === 'mov' && isIntermediate(codecOf(o)) ? 'pcm' : 'aac')
+
+/** Wave 12's destinations: their card label and title in the UI language (§2.2); the others keep their labels as before. */
+const NEW_DESTINATIONS: Readonly<Record<string, { label: MessageKey; title: MessageKey }>> = {
+  'portrait-post': { label: 'presets.destination.portrait.label', title: 'presets.destination.portrait.title' },
+  editing: { label: 'presets.destination.editing.label', title: 'presets.destination.editing.title' },
+  overlay: { label: 'presets.destination.overlay.label', title: 'presets.destination.overlay.title' }
+}
+
+const presetLabel = (p: ExportPreset): string => (NEW_DESTINATIONS[p.id] ? t(NEW_DESTINATIONS[p.id].label) : p.label)
+
+/** The quality chips of the editing formats (§2.1): Best, High, Medium, with the encoder's own level as title. */
+const INTERMEDIATE_TITLES: Partial<Record<ExportCodec, Record<ExportSettings['quality'], MessageKey>>> = {
+  cineform: { high: 'codecs.quality.cineform.film1', medium: 'codecs.quality.cineform.high', small: 'codecs.quality.cineform.medium' },
+  'prores-422': { high: 'codecs.quality.prores.hq', medium: 'codecs.quality.prores.standard', small: 'codecs.quality.prores.lt' }
+}
+
+/** Which timeline file a saved path is, by the names main gives them (§2.3), for the done view's lines; null for a sidecar. */
+function timelineFileOf(file: string): 'fcpxml' | 'xmeml' | 'markers' | 'edl' | 'media' | null {
+  if (/\.(srt|vtt|txt|png)$/i.test(file)) return null
+  if (/\.fcpxml$/i.test(file)) return 'fcpxml'
+  if (/\.xml$/i.test(file)) return 'xmeml'
+  if (/ - Resolve markers( \(\d+\))?\.edl$/i.test(file)) return 'markers'
+  if (/\.edl$/i.test(file)) return 'edl'
+  return 'media'
+}
+
+/** The stored user presets, read through the reader main uses too (anything malformed: none). */
+async function loadUserPresets(): Promise<UserPresetStore> {
+  try {
+    return readUserPresets(await window.api.getPref('exportPresets')) ?? { version: 1, presets: [] }
+  } catch {
+    return { version: 1, presets: [] }
+  }
+}
+
+/** The HEVC and AV1 probes of this session (main caches them too): each runs once. */
+const probes = new Map<'hevc' | 'av1', Promise<FfmpegVideoEncoder[]>>()
+function probe(codec: 'hevc' | 'av1'): Promise<FfmpegVideoEncoder[]> {
+  let p = probes.get(codec)
+  if (!p) {
+    p = window.api.probeCodec(codec).catch(() => [] as FfmpegVideoEncoder[])
+    probes.set(codec, p)
+  }
+  return p
+}
 
 function readJson<T>(key: string, fallback: T): T {
   try {
@@ -250,13 +329,18 @@ function splitError(err: unknown): { message: string; detail: string } {
 
 const ratioOf = (s: { width: number; height: number }): number => s.width / s.height
 
-/** "1080×1920 · 30 fps" for a card; GIFs and audio say what they are. */
-function presetMeta(project: Project, preset: ExportPreset): string {
-  const o = applyPreset({ encoder: 'auto' }, preset)
+/** "1080×1920 · 30 fps" for a card; GIFs and audio say what they are; a codec other than the format's own, "MOV · CineForm · 1080p60". */
+function optionsMeta(project: Project, o: ExportOptions): string {
+  if (isAudioOnly(o.format)) return 'Audio only'
+  const codec = codecOf(o)
+  const standard = DEFAULT_CODEC[o.format]
+  if (standard && codec !== standard) return t('presets.meta.line', { format: FORMAT_LABELS[o.format], codec: CODEC_NAMES[codec], resolution: String(o.resolution), fps: String(o.fps) })
   const s = exportSize(project, o)
-  if (o.format === 'm4a') return 'Audio only'
   return `${s.width}×${s.height} · ${s.fps} fps`
 }
+
+/** A destination card's meta line. */
+const presetMeta = (project: Project, preset: ExportPreset): string => optionsMeta(project, applyPreset({ encoder: 'auto' }, preset))
 
 /** The one limit worth showing on a card: its size target, else the platform's longest video. */
 function presetLimit(preset: ExportPreset): { text: string; title: string } | null {
@@ -280,6 +364,7 @@ export function ExportDialog(props: Props): JSX.Element {
   const [copy, setCopy] = useState<CopyState>({ kind: 'idle' })
   const [thumb, setThumb] = useState<ThumbState>({ kind: 'idle' })
   const [showDetail, setShowDetail] = useState(false)
+  const [runSteps, setRunSteps] = useState<RunSteps>({ stems: false, timeline: null })
   const [targetDraft, setTargetDraft] = useState<string>(() => (options.targetSizeMB ? String(options.targetSizeMB) : ''))
   // Hands-off long jobs (F-12): pause, the taskbar and sleep; the export bundle (F-11).
   const job = useLongJob()
@@ -287,6 +372,19 @@ export function ExportDialog(props: Props): JSX.Element {
   const [bundle, setBundle] = useState<BundleOptions>(() => withoutLanguages(normalizeBundle(readJson(BUNDLE_KEY, {}))))
   // Also inside the video (Captions Studio §2.13): off when the dialog opens.
   const [streams, setStreams] = useState(false)
+  // The user's own presets (output-and-languages §2.2), from editor-prefs.json; null until read.
+  const [store, setStore] = useState<UserPresetStore | null>(null)
+  // The Save as preset field is open.
+  const [naming, setNaming] = useState(false)
+  const saveButton = useRef<HTMLButtonElement>(null)
+  // The codec Transparent or Overlays only replaced, given back by With background in this dialog session (§2.1).
+  const [replaced, setReplaced] = useState<ExportCodec | null>(null)
+  // "4K with H.264 is exported at 60 fps." after picking 4K set the rate.
+  const [fpsNote, setFpsNote] = useState<string | null>(null)
+  // What this PC makes beyond H.264 and VP9 (§5.9): the HEVC probe, the AV1 probe, and WebCodecs at this size.
+  const [hevcProbe, setHevcProbe] = useState<HevcProbe>('idle')
+  const [av1Probe, setAv1Probe] = useState<FfmpegVideoEncoder[] | null>(null)
+  const [webCodecs, setWebCodecs] = useState<{ hevc: boolean; av1: boolean }>({ hevc: false, av1: false })
   // Share without a server (F-22): copy to a cloud folder and post to a chat after export, per preset.
   const share = useAfterExport(options.preset)
   const { project } = props
@@ -323,19 +421,93 @@ export function ExportDialog(props: Props): JSX.Element {
   const onClose = useRef(props.onClose)
   onClose.current = props.onClose
 
-  const gif = options.format === 'gif'
-  const audioOnly = options.format === 'm4a'
-  const resolution = gif ? (Math.min(options.resolution, GIF_MAX_HEIGHT) as ExportSettings['resolution']) : options.resolution
-  const drawn = useMemo(() => exportProject(project, options), [project, options])
-  const dims = exportSize(project, options)
+  // What this PC makes (§2.1): HEVC as the probe found it (unknown while it has not run), AV1 on the
+  // graphics card when its probe or WebCodecs found one.
+  const h264Gpu = !!caps?.hardwareEncoders.length
+  const uiCaps: CodecUiCaps = useMemo(
+    () => ({
+      hevc: hevcProbe === 'idle' || hevcProbe === 'probing' ? 'probing' : webCodecs.hevc ? 'webcodecs' : hevcProbe.length ? hevcProbe : 'none',
+      av1Gpu: webCodecs.av1 || !!av1Probe?.length,
+      h264Gpu
+    }),
+    [hevcProbe, webCodecs, av1Probe, h264Gpu]
+  )
+  // The settings as this PC exports them: stored HEVC where none can be made exports with the format's
+  // default (§2.1). The same object while nothing changes, so the preview does not draw again.
+  const effective = useMemo(() => usableCodec(options, uiCaps).options, [options, uiCaps])
+  const usableNow = usableHere(uiCaps)
+
+  const gif = effective.format === 'gif'
+  const audioOnly = isAudioOnly(effective.format)
+  const resolution = gif ? (Math.min(effective.resolution, GIF_MAX_HEIGHT) as ExportSettings['resolution']) : effective.resolution
+  const drawn = useMemo(() => exportProject(project, effective), [project, effective])
+  const dims = exportSize(project, effective)
   const hasClickSounds = useMemo(() => !!clickSoundJob(project, props.scene.cursor, clips), [project, props.scene.cursor, clips])
   const hasSound = hasSoundtrack(project, hasClickSounds)
   const preset = presetById(options.preset)
+  const userPreset = (options.userPreset && store?.presets.find((p) => p.id === options.userPreset)) || null
   const chapters = useMemo(() => outputChapters(project.chapters ?? [], clips, plan), [project.chapters, clips, plan])
   const parts = useMemo(() => chapterParts(project), [project])
   const bundleHas = { captions: !!project.transcript?.segments.some((seg) => seg.text.trim()), chapters: chapters.length > 0, stillAcross: stillAcrossChapters(project, parts) }
   const perChapter = bundle.perChapter && !perChapterBlocked(bundleHas, mode) && parts.length > 0
   const partNames = useMemo(() => partFileNames(parts, FORMAT_EXTENSIONS[options.format]), [parts, options.format])
+  // The rows of the Settings section (§2.1), for the settings as this PC exports them.
+  const transparentShows = !effective.alpha || seeThrough(drawn, effective.alpha, dims.width, dims.height)
+  const rows = settingsRows(options, uiCaps, { seeThrough: transparentShows, size: dims, seconds: length })
+
+  useEffect(() => {
+    let live = true
+    void loadUserPresets().then((s) => live && setStore(s))
+    return () => {
+      live = false
+    }
+  }, [])
+
+  // The HEVC probe runs when the Settings section first shows MP4 or MOV, or when the settings ask for HEVC (§5.9).
+  const needHevc =
+    (settingsOpen && (options.format === 'mp4' || options.format === 'mov')) ||
+    options.codec === 'hevc' ||
+    (mode === 'batch' && !!store?.presets.some((p) => p.options.codec === 'hevc' && batch.userPresets?.includes(p.id)))
+  useEffect(() => {
+    if (!needHevc || hevcProbe !== 'idle') return
+    setHevcProbe('probing')
+    let live = true
+    void probe('hevc').then((found) => live && setHevcProbe(found))
+    return () => {
+      live = false
+    }
+  }, [needHevc, hevcProbe])
+  // The AV1 probe runs when AV1 is chosen.
+  const needAv1 = codecOf(effective) === 'av1'
+  useEffect(() => {
+    if (!needAv1 || av1Probe) return
+    let live = true
+    void probe('av1').then((found) => live && setAv1Probe(found))
+    return () => {
+      live = false
+    }
+  }, [needAv1, av1Probe])
+  // WebCodecs HEVC and AV1 at this size and rate (only once a probe was needed: nothing runs for today's settings).
+  useEffect(() => {
+    if (!needHevc && !needAv1) return
+    let live = true
+    void webCodecsSupport(dims.width, dims.height, dims.fps)
+      .then((w) => live && setWebCodecs(w))
+      .catch(() => undefined)
+    return () => {
+      live = false
+    }
+  }, [needHevc, needAv1, dims.width, dims.height, dims.fps])
+
+  // A user preset that is gone no longer names the settings (as tweakOptions drops a stale destination).
+  useEffect(() => {
+    if (!store || !options.userPreset || store.presets.some((p) => p.id === options.userPreset)) return
+    setOptions((o) => {
+      const next = { ...o }
+      delete next.userPreset
+      return next
+    })
+  }, [store, options.userPreset])
 
   useEffect(() => {
     let live = true
@@ -379,6 +551,8 @@ export function ExportDialog(props: Props): JSX.Element {
     if (running) return
     const onKey = (e: KeyboardEvent): void => {
       if (e.key !== 'Escape' || e.defaultPrevented) return
+      // A name field, a preset's menu or its delete question closes itself first (UserPresets.tsx).
+      if (e.target instanceof Element && e.target.closest('[data-own-escape]')) return
       e.preventDefault()
       e.stopPropagation()
       onClose.current()
@@ -387,15 +561,64 @@ export function ExportDialog(props: Props): JSX.Element {
     return () => window.removeEventListener('keydown', onKey, true)
   }, [running])
 
-  const save = (next: ExportOptions): void => {
+  // The selected user preset stays while the settings still match it, as this PC exports them (§2.2).
+  const keepUserPreset = (next: ExportOptions): ExportOptions => {
+    if (!next.userPreset || !store) return next
+    const p = store.presets.find((q) => q.id === next.userPreset)
+    if (p && matchesUserPreset(next, p, usableNow)) return next
+    const out = { ...next }
+    delete out.userPreset
+    return out
+  }
+  const save = (raw: ExportOptions): void => {
+    const next = keepUserPreset(raw)
     setOptions(next)
     writeJson(SETTINGS_KEY, next)
   }
-  const set = (patch: Partial<ExportOptions>): void => save(tweakOptions(options, patch))
+  const set = (patch: Partial<ExportOptions>): void => {
+    setFpsNote(null)
+    save(tweakOptions(options, patch))
+  }
+  /** A pick of the wave 12 rows (they may switch other settings in the same step): the target size field follows. */
+  const apply = (next: ExportOptions, note: string | null = null): void => {
+    setFpsNote(note)
+    save(next)
+    if (next.targetSizeMB !== options.targetSizeMB) setTargetDraft(next.targetSizeMB ? String(next.targetSizeMB) : '')
+  }
   const pickPreset = (p: ExportPreset): void => {
     const next = applyPreset(options, p)
+    setFpsNote(null)
+    setReplaced(null)
     save(next)
     setTargetDraft(next.targetSizeMB ? String(next.targetSizeMB) : '')
+  }
+  const saveStore = (next: UserPresetStore): void => {
+    setStore(next)
+    void window.api.setPref('exportPresets', next).catch(() => undefined)
+  }
+  /** Picks a user preset: its settings and its Also save choices (never the subtitle languages, §2.2). */
+  const pickUserPreset = (p: UserExportPreset): void => {
+    const next: ExportOptions = { ...p.options, userPreset: p.id }
+    delete next.preset
+    setFpsNote(null)
+    setReplaced(null)
+    setOptions(next)
+    writeJson(SETTINGS_KEY, next)
+    setTargetDraft(next.targetSizeMB ? String(next.targetSizeMB) : '')
+    if (p.bundle) {
+      const b: BundleOptions = { ...normalizeBundle(p.bundle), ...(bundle.languages ? { languages: bundle.languages } : {}) }
+      setBundle(b)
+      writeJson(BUNDLE_KEY, withoutLanguages(b))
+    }
+  }
+  const saveAsPreset = (name: string): void => {
+    if (!store) return
+    const next = savePreset(store, name, effective, withoutLanguages(bundle), Date.now(), Math.random)
+    setNaming(false)
+    requestAnimationFrame(() => saveButton.current?.focus())
+    if (next === store) return
+    saveStore(next)
+    pickUserPreset(next.presets[next.presets.length - 1])
   }
   const setModeSaved = (m: 'single' | 'batch'): void => {
     setMode(m)
@@ -430,23 +653,40 @@ export function ExportDialog(props: Props): JSX.Element {
   const thumbnailOf = (settings: ExportOptions) => (): Promise<Uint8Array> =>
     renderThumbnail({ ...source, settings, time: frameSource, soundTime: frameSound, held: frameHeld }).then((shot) => shot.png)
 
+  /**
+   * The settings this export uses: as this PC exports them, after the HEVC probe when the settings ask
+   * for HEVC and it is still running (§2.1).
+   */
+  const exportedSettings = async (): Promise<ExportOptions> => {
+    if (options.codec !== 'hevc' || (hevcProbe !== 'idle' && hevcProbe !== 'probing')) return effective
+    const found = await probe('hevc')
+    return usableCodec(options, { ...uiCaps, hevc: webCodecs.hevc ? 'webcodecs' : found.length ? found : 'none' }).options
+  }
+
   const start = async (): Promise<void> => {
     if (perChapter) return startChapters()
-    const outputPath = await window.api.chooseExportPath(baseName, options.format)
+    const settings = await exportedSettings()
+    const outputPath = await window.api.chooseExportPath(baseName, settings.format)
     if (!outputPath) return
     const controller = new AbortController()
     abort.current = controller
     setCopy({ kind: 'idle' })
     setShowDetail(false)
+    // Also save (§2.3): the stems inside the export's finish, the timeline after the other files.
+    const wantStems = bundle.stems === true && !stemsBlocked(settings, 'single', false, hasSound)
+    const editors = timelineBlocked(settings, 'single', false) ? [] : (bundle.timelines ?? []).filter((e) => !editorBlocked(e, settings, bundle.timelineMedia ?? 'export'))
+    const media = bundle.timelineMedia ?? 'export'
+    setRunSteps({ stems: wantStems, timeline: editors.length ? media : null })
     setPhase({ kind: 'running', progress: null })
     const link = await job.begin(controller)
     try {
       const result = await exportVideo({
         ...source,
-        settings: streamed(options),
+        settings: streamed(settings),
         outputPath,
         signal: controller.signal,
         pause: job.gate,
+        ...(wantStems ? { stems: true as const } : {}),
         onProgress: (progress) => {
           if (controller.signal.aborted) return
           setPhase({ kind: 'running', progress })
@@ -455,11 +695,23 @@ export function ExportDialog(props: Props): JSX.Element {
         }
       })
       link?.progress(null, false)
-      const kinds = bundleKinds(bundle, options.format, bundleHas)
-      const extras = await writeBundle(outputPath, { project, kinds, title: project.name, thumbnail: thumbnailOf(options), ...bundleLanguages })
+      // The stems main wrote next to the video, or why it could not (output-and-languages §7.6).
+      const finished = result as ExportResult & Pick<ExportFinish, 'stems' | 'stemsProblem'>
+      const stems = (finished.stems ?? []).map(({ stem, path }) => ({ stem, path }))
+      const kinds = bundleKinds(bundle, settings.format, bundleHas)
+      let timeline: BundleRequest['timeline']
+      if (editors.length) {
+        const shown = exportSize(project, settings)
+        const exported = exportProject(project, settings)
+        const frames = videoFrames(exported.clips, planOf(exported), shown.fps).times.length
+        timeline = { request: { projectId: project.id, videoPath: outputPath, editors, media, stems }, exported: { fps: shown.fps, frames, width: shown.width, height: shown.height } }
+        setPhase((p) => (p.kind === 'running' ? { ...p, progress: p.progress ? { ...p.progress, phase: 'finalizing', detail: undefined } : p.progress, step: 'timeline' } : p))
+      }
+      const extras = await writeBundle(outputPath, { project, kinds, title: project.name, thumbnail: thumbnailOf(settings), ...bundleLanguages, ...(timeline ? { timeline } : {}) })
       await share.begin(outputPath, { title: project.name, seconds: length })
       void link?.end({ kind: 'done', files: [outputPath] })
-      setPhase({ kind: 'done', path: outputPath, targetMB: options.targetSizeMB, limit: preset?.limits?.maxMB ? { label: preset.label, maxMB: preset.limits.maxMB } : undefined, extras, ...result })
+      const also: AlsoDone | undefined = wantStems || editors.length ? { stems, stemsProblem: finished.stemsProblem, editors, media } : undefined
+      setPhase({ kind: 'done', path: outputPath, targetMB: settings.targetSizeMB, limit: preset?.limits?.maxMB ? { label: preset.label, maxMB: preset.limits.maxMB } : undefined, extras, also, ...result })
     } catch (err) {
       const cancelled = controller.signal.aborted || (err instanceof DOMException && err.name === 'AbortError')
       void link?.end(cancelled ? { kind: 'cancelled' } : { kind: 'failed', message: splitError(err).message })
@@ -485,13 +737,26 @@ export function ExportDialog(props: Props): JSX.Element {
     })
   }
 
-  const items = useMemo(() => batchItems(batch.presets, batch.aspects, options), [batch, options])
+  // The ticked user presets (§2.2), in their saved order; one that is gone is left out.
+  const checkedUserPresets = useMemo(() => (store?.presets ?? []).filter((p) => batch.userPresets?.includes(p.id)), [store, batch.userPresets])
+  const items = useMemo(() => batchItems(batch.presets, batch.aspects, effective, checkedUserPresets), [batch, effective, checkedUserPresets])
+  /** A batch file's settings as this PC exports them, and the notice of a user preset whose codec it cannot make. */
+  const itemSettings = (it: (typeof items)[number], codecCaps: CodecUiCaps = uiCaps): { options: ExportOptions; notice: MessageKey | null } => {
+    const own = checkedUserPresets.some((p) => p.id === it.key) ? { ...it.options, userPreset: it.key } : it.options
+    const made = usableCodec(own, codecCaps)
+    const options = { ...made.options }
+    delete options.userPreset
+    return { options, notice: made.notice }
+  }
   const startBatch = async (): Promise<void> => {
     if (items.length === 0) return
     const folder = await window.api.chooseExportFolder()
     if (!folder) return
     const names = batchFileNames(project.name, items)
-    const jobs: BatchJob[] = items.map((it, i) => ({ key: it.key, label: it.label, fileName: names[i], options: streamed(it.options) }))
+    // HEVC is exported only where the probe found an encoder: wait for it when a file asks for HEVC.
+    const found = items.some((it) => it.options.codec === 'hevc') ? await probe('hevc') : null
+    const made: CodecUiCaps = found ? { ...uiCaps, hevc: webCodecs.hevc ? 'webcodecs' : found.length ? found : 'none' } : uiCaps
+    const jobs: BatchJob[] = items.map((it, i) => ({ key: it.key, label: it.label, fileName: names[i], options: streamed(itemSettings(it, made).options) }))
     await runBatch(folder, jobs, (_i, path, j) =>
       writeBundle(path, { project, kinds: bundleKinds(bundle, j.options.format, bundleHas), title: project.name, thumbnail: thumbnailOf(j.options), ...bundleLanguages })
     )
@@ -503,15 +768,15 @@ export function ExportDialog(props: Props): JSX.Element {
     if (!folder) return
     // Each part's frames and sound come from its own clips; it is drawn with the whole edit's scene.
     const sources = parts.map((part, i) => partSource(source, part, i === parts.length - 1))
-    const jobs: BatchJob[] = parts.map((_part, i) => ({ key: `part-${i}`, label: partNames[i].replace(/\.[^.]+$/, ''), fileName: partNames[i], options: streamed(options), source: sources[i] }))
+    const jobs: BatchJob[] = parts.map((_part, i) => ({ key: `part-${i}`, label: partNames[i].replace(/\.[^.]+$/, ''), fileName: partNames[i], options: streamed(effective), source: sources[i] }))
     await runBatch(folder, jobs, (i, path) => {
       const part = sources[i]
       // The part's thumbnail: one second in (or its middle when shorter), as the part draws it.
       const frame = partThumbnailFrame(part.project)
-      const thumbnail = (): Promise<Uint8Array> => renderThumbnail({ ...part, settings: options, ...frame }).then((shot) => shot.png)
+      const thumbnail = (): Promise<Uint8Array> => renderThumbnail({ ...part, settings: effective, ...frame }).then((shot) => shot.png)
       return writeBundle(path, {
         project: part.project,
-        kinds: bundleKinds(bundle, options.format, bundleHas, true),
+        kinds: bundleKinds(bundle, effective.format, bundleHas, true),
         title: jobs[i].label,
         part: { index: i, count: parts.length, of: project.name },
         thumbnail,
@@ -553,7 +818,7 @@ export function ExportDialog(props: Props): JSX.Element {
     if (!file) return
     setThumb({ kind: 'busy' })
     try {
-      const shot = await renderThumbnail({ ...source, settings: options, time: frameSource, soundTime: frameSound, held: frameHeld })
+      const shot = await renderThumbnail({ ...source, settings: effective, time: frameSource, soundTime: frameSound, held: frameHeld })
       await window.api.saveThumbnail(file, shot.png)
       setThumb({ kind: 'saved', path: file, width: shot.width, height: shot.height })
     } catch (err) {
@@ -577,7 +842,7 @@ export function ExportDialog(props: Props): JSX.Element {
   // (the file's, or any batch item's) of a project that does not follow.
   const follows = !audioOnly && followApplies(drawn, dims.width, dims.height, visible.width, visible.height)
   const magnify = follows ? viewMagnification(cropProject(drawn), dims.width, dims.height, visible.width, visible.height) : null
-  const chosenAspects = mode === 'single' ? (audioOnly ? [] : [drawn.style.aspectRatio]) : items.filter((it) => it.options.format !== 'm4a').map((it) => exportProject(project, it.options).style.aspectRatio)
+  const chosenAspects = mode === 'single' ? (audioOnly ? [] : [drawn.style.aspectRatio]) : items.filter((it) => !isAudioOnly(it.options.format)).map((it) => exportProject(project, it.options).style.aspectRatio)
   const suggestion = followSuggestion(project, chosenAspects, visible.width, visible.height)
   const upscaled = (height: number): boolean => {
     if (follows) return false
@@ -596,8 +861,13 @@ export function ExportDialog(props: Props): JSX.Element {
     const ratio = a === 'project' ? ratioOf(exportSize(project, { ...options, aspect: undefined })) : ratioOf(exportSize(project, { ...options, aspect: a }))
     return {
       value: a as string,
-      label: a === 'project' ? 'Project' : a,
-      title: a === 'project' ? `The project's own shape (${projectAspect === 'auto' ? 'Auto' : projectAspect}, Style panel)` : `Export in ${a}; the project keeps its own shape`,
+      label: a === 'project' ? 'Project' : a === '4:5' ? t('codecs.aspect.45.label') : a,
+      title:
+        a === 'project'
+          ? `The project's own shape (${projectAspect === 'auto' ? 'Auto' : projectAspect}, Style panel)`
+          : a === '4:5'
+            ? t('codecs.aspect.45.title')
+            : `Export in ${a}; the project keeps its own shape`,
       icon: <AspectGlyph ratio={ratio} />
     }
   })
@@ -664,7 +934,19 @@ export function ExportDialog(props: Props): JSX.Element {
   }
 
   const exportLabel = `Export ${FORMAT_LABELS[options.format]}`
-  const settingsName = preset ? preset.label : 'Custom'
+  const settingsName = preset ? presetLabel(preset) : 'Custom'
+  // A saved preset names the settings (§2.2): "Settings · Client review", its name in the muted part.
+  const userName: ReactNode = userPreset ? <span className="muted">{uiLanguage() === 'en' ? userPreset.name : <bdi>{userPreset.name}</bdi>}</span> : null
+  const formats = [...FORMATS, { value: 'wav' as const, label: t('codecs.format.wav.label'), title: t('codecs.format.wav.title') }]
+  const formatTitle = (f: ExportFormat, title: string): string =>
+    f === effective.format && DEFAULT_CODEC[f] && codecOf(effective) !== DEFAULT_CODEC[f] ? t('codecs.format.made', { codec: CODEC_NAMES[codecOf(effective)], audio: audioOf(effective) }) : title
+  const presetMetaOf = (o: ExportOptions): string => optionsMeta(project, o)
+  const bundleOf = withoutLanguages(bundle)
+  const presetsFull = (store?.presets.length ?? 0) >= USER_PRESET_LIMIT
+  const stemList = useMemo(() => stemJobOf(project, effective, null)?.stems ?? [], [project, effective])
+  const notEvened = audioLook(project.audio).normalize && stemList.some((x) => x === 'voice' || x === 'system' || x === 'recording')
+  const codecValues = codecHintValues(effective, uiCaps, { size: dims, seconds: length }, av1Probe ?? [])
+  const intermediateTitles = INTERMEDIATE_TITLES[codecOf(effective)]
 
   return (
     <div className="overlay modal-backdrop">
@@ -694,7 +976,7 @@ export function ExportDialog(props: Props): JSX.Element {
             <div className="export-body">
               <aside className="export-side">
                 <div className={`export-preview ${audioOnly ? 'audio-only' : ''}`}>
-                  <ExportPreview {...source} options={options} time={frameSource} soundTime={frameSound} held={frameHeld} box={{ width: 236, height: 236 }} />
+                  <ExportPreview {...source} options={effective} time={frameSource} soundTime={frameSound} held={frameHeld} box={{ width: 236, height: 236 }} />
                   {audioOnly && <span className="export-preview-badge">Audio only</span>}
                 </div>
                 <label className="export-frame">
@@ -733,7 +1015,7 @@ export function ExportDialog(props: Props): JSX.Element {
                   {mode === 'single' ? (
                     <>
                       <p className="hint export-size">
-                        {audioOnly ? 'Audio only' : `${dims.width}×${dims.height} · ${dims.fps} fps`} · {formatDuration(length)}
+                        {audioOnly ? <>Audio only · {formatDuration(length)}</> : sizeLine(effective, dims, length)}
                         {gif ? ` · GIFs play at ${GIF_FPS} fps` : ''}
                         {target ? ` · ${gif ? 'up to' : 'about'} ${target} MB` : ''}
                       </p>
@@ -756,12 +1038,18 @@ export function ExportDialog(props: Props): JSX.Element {
                       {items.length > 0 && (
                         <ul className="export-batch-files">
                           {batchFileNames(project.name, items).map((name, i) => {
-                            const s = exportSize(project, items[i].options)
+                            const made = itemSettings(items[i])
+                            const s = exportSize(project, made.options)
                             return (
                               <li key={items[i].key} title={name}>
                                 <AspectGlyph ratio={ratioOf(s)} size={12} />
                                 <span className="name">{name}</span>
-                                <span className="muted">{items[i].options.format === 'm4a' ? 'audio' : `${s.width}×${s.height}`}</span>
+                                <span className="muted">{isAudioOnly(made.options.format) ? 'audio' : `${s.width}×${s.height}`}</span>
+                                {made.notice && (
+                                  <span className="hint warn batch-notice" data-testid="batch-codec-notice">
+                                    {t(made.notice, codecNotice(items[i].options, made.options))}
+                                  </span>
+                                )}
                               </li>
                             )
                           })}
@@ -797,16 +1085,42 @@ export function ExportDialog(props: Props): JSX.Element {
               </aside>
 
               <div className="export-main">
+                {store && (
+                  <UserPresets
+                    store={store}
+                    selected={userPreset?.id ?? null}
+                    options={effective}
+                    bundle={bundleOf}
+                    onPick={pickUserPreset}
+                    onStore={saveStore}
+                    metaOf={presetMetaOf}
+                    usable={usableNow}
+                    batch={
+                      mode === 'batch'
+                        ? {
+                            checked: batch.userPresets ?? [],
+                            onToggle: (id) => {
+                              const ticked = batch.userPresets ?? []
+                              const next = ticked.includes(id) ? ticked.filter((x) => x !== id) : [...ticked, id]
+                              const choice: BatchChoice = { presets: batch.presets, aspects: batch.aspects }
+                              if (next.length) choice.userPresets = next
+                              setBatchSaved(choice)
+                            }
+                          }
+                        : undefined
+                    }
+                  />
+                )}
                 <div className="export-section-head">
                   <span>{mode === 'single' ? 'Destination' : 'Files to export'}</span>
-                  {mode === 'batch' && batch.presets.length + batch.aspects.length > 0 && (
+                  {mode === 'batch' && batch.presets.length + batch.aspects.length + (batch.userPresets?.length ?? 0) > 0 && (
                     <button className="link" onClick={() => setBatchSaved({ presets: [], aspects: [] })}>
                       Clear
                     </button>
                   )}
                 </div>
                 <div className="preset-grid" role={mode === 'single' ? 'radiogroup' : 'group'} aria-label="Destinations">
-                  {EXPORT_PRESETS.map((p) => {
+                  {shownPresets().map((p) => {
                     const on = mode === 'single' ? options.preset === p.id : batch.presets.includes(p.id)
                     const limit = presetLimit(p)
                     return (
@@ -816,6 +1130,7 @@ export function ExportDialog(props: Props): JSX.Element {
                         role={mode === 'single' ? 'radio' : 'checkbox'}
                         aria-checked={on}
                         data-preset={p.id}
+                        title={NEW_DESTINATIONS[p.id] ? t(NEW_DESTINATIONS[p.id].title) : undefined}
                         onClick={() => {
                           if (mode === 'single') pickPreset(p)
                           else setBatchSaved({ ...batch, presets: on ? batch.presets.filter((x) => x !== p.id) : [...batch.presets, p.id] })
@@ -823,7 +1138,7 @@ export function ExportDialog(props: Props): JSX.Element {
                       >
                         <PresetBadge icon={p.icon} />
                         <span className="preset-text">
-                          <span className="preset-label">{p.label}</span>
+                          <span className="preset-label">{presetLabel(p)}</span>
                           <span className="preset-meta">
                             {presetMeta(project, p)}
                             {limit ? (
@@ -839,6 +1154,7 @@ export function ExportDialog(props: Props): JSX.Element {
                     )
                   })}
                 </div>
+                {store && <ImportPresets store={store} onStore={saveStore} />}
 
                 {mode === 'batch' && (
                   <div className="form-row export-batch-aspects">
@@ -867,61 +1183,107 @@ export function ExportDialog(props: Props): JSX.Element {
                 )}
 
                 <button className="export-section-head toggle-head" onClick={toggleSettings} aria-expanded={settingsOpen}>
-                  <span>
-                    Settings <span className="muted">· {mode === 'single' ? settingsName : 'for “Also” and the encoder'}</span>
-                  </span>
+                  {mode === 'single' && userName ? (
+                    <span>{tNodes<ReactNode>('presets.header.named', { name: userName }, {})}</span>
+                  ) : (
+                    <span>
+                      Settings <span className="muted">· {mode === 'single' ? settingsName : 'for “Also” and the encoder'}</span>
+                    </span>
+                  )}
                   <span className={`chevron ${settingsOpen ? 'open' : ''}`} aria-hidden="true">
                     <Icon name="back" size={14} />
                   </span>
                 </button>
+                {settingsOpen && mode === 'single' && store && (
+                  <div className="export-preset-save">
+                    {naming ? (
+                      <SavePresetField
+                        suggestion={suggestName(effective)}
+                        taken={store.presets.map((p) => p.name)}
+                        onSave={saveAsPreset}
+                        onCancel={() => {
+                          setNaming(false)
+                          requestAnimationFrame(() => saveButton.current?.focus())
+                        }}
+                      />
+                    ) : (
+                      <button ref={saveButton} type="button" className="btn small" data-testid="save-preset" disabled={presetsFull} onClick={() => setNaming(true)}>
+                        {t('presets.save.button')}
+                      </button>
+                    )}
+                    {presetsFull && !naming && <p className="hint">{t('presets.save.full', { n: fmt.count(USER_PRESET_LIMIT) })}</p>}
+                  </div>
+                )}
                 {settingsOpen && (
                   <div className="export-settings">
                     <div className="form-row">
                       <span>Format</span>
                       <Choice
-                        value={options.format}
-                        onChange={(format) => set({ format, maxWidth: undefined, ...(format === 'gif' && options.resolution > GIF_MAX_HEIGHT ? { resolution: 1080 } : {}) })}
-                        options={FORMATS.map((f) => ({ ...f, disabled: f.value === 'm4a' && !hasSound, title: f.value === 'm4a' && !hasSound ? 'This recording has no sound' : f.title }))}
+                        value={effective.format}
+                        onChange={(format) => apply(pickFormat(options, format))}
+                        options={formats.map((f) => {
+                          const silent = isAudioOnly(f.value) && !hasSound
+                          return { ...f, disabled: silent, title: silent ? 'This recording has no sound' : formatTitle(f.value, f.title) }
+                        })}
                       />
                     </div>
+                    <CodecRow
+                      rows={rows}
+                      options={effective}
+                      onChange={(next) => {
+                        setReplaced(null)
+                        apply(next)
+                      }}
+                      hintValues={codecValues}
+                      noticeValues={codecNotice(options, effective)}
+                    />
+                    <BackgroundRow rows={rows} options={effective} onChange={(next) => apply(next)} replaced={replaced} onReplaced={setReplaced} />
                     {!audioOnly && (
                       <div className="form-row">
                         <span>Resolution</span>
-                        <Choice value={resolution} onChange={(r) => set({ resolution: r, maxWidth: undefined })} options={resolutionOptions} />
+                        <Choice
+                          value={resolution}
+                          onChange={(r) => {
+                            const next = pickResolution(effective, r)
+                            apply(next, next.fps !== effective.fps ? t('codecs.fps.4kAt60') : null)
+                          }}
+                          options={resolutionOptions}
+                        />
                       </div>
                     )}
                     {!audioOnly && (
                       <div className="form-row">
                         <span>Aspect</span>
-                        <Choice value={options.aspect ?? 'project'} onChange={(a) => set({ aspect: a === 'project' ? undefined : (a as AspectRatio) })} options={aspectOptions} />
+                        <Choice value={effective.aspect ?? 'project'} onChange={(a) => set({ aspect: a === 'project' ? undefined : (a as AspectRatio) })} options={aspectOptions} />
                       </div>
                     )}
                     {!gif && !audioOnly && (
                       <div className="form-row">
-                        <span>Frame rate</span>
-                        <Choice
-                          value={options.fps}
-                          onChange={(fps) => set({ fps })}
-                          options={[
-                            { value: 30, label: '30 fps' },
-                            { value: 60, label: '60 fps' }
-                          ]}
-                        />
+                        <span id={FPS_LABEL_ID}>Frame rate</span>
+                        <FrameRateRow rows={rows} options={effective} onChange={(next) => apply(next)} note={fpsNote} />
                       </div>
                     )}
-                    {!gif && !audioOnly && (
+                    {!rows.quality.hidden && (
                       <div className="form-row">
                         <span>Quality</span>
                         <div className="export-stack">
                           <Choice
-                            value={target ? null : options.quality}
+                            value={target ? null : effective.quality}
                             disabled={!!target}
                             onChange={(quality) => set({ quality })}
-                            options={[
-                              { value: 'high', label: 'Studio' },
-                              { value: 'medium', label: 'Web' },
-                              { value: 'small', label: 'Small file' }
-                            ]}
+                            options={
+                              rows.quality.labels === 'intermediate'
+                                ? [
+                                    { value: 'high', label: t('codecs.quality.best'), title: intermediateTitles ? t(intermediateTitles.high) : undefined },
+                                    { value: 'medium', label: t('codecs.quality.high'), title: intermediateTitles ? t(intermediateTitles.medium) : undefined },
+                                    { value: 'small', label: t('codecs.quality.medium'), title: intermediateTitles ? t(intermediateTitles.small) : undefined }
+                                  ]
+                                : [
+                                    { value: 'high', label: 'Studio' },
+                                    { value: 'medium', label: 'Web' },
+                                    { value: 'small', label: 'Small file' }
+                                  ]
+                            }
                           />
                           {target ? <p className="hint">Set by the target size.</p> : null}
                         </div>
@@ -939,10 +1301,15 @@ export function ExportDialog(props: Props): JSX.Element {
                           max={TARGET_MB_RANGE.max}
                           step={1}
                           value={targetDraft}
+                          disabled={!!rows.targetSize.disabled}
                           onChange={(e) => commitTarget(e.target.value)}
                         />
                         <span className="muted">MB</span>
-                        {target ? (
+                        {rows.targetSize.disabled ? (
+                          <span className="hint" data-testid="export-target-off">
+                            {t(rows.targetSize.disabled)}
+                          </span>
+                        ) : target ? (
                           <button className="btn ghost small" onClick={() => commitTarget('')}>
                             Off
                           </button>
@@ -951,19 +1318,20 @@ export function ExportDialog(props: Props): JSX.Element {
                         )}
                       </div>
                     </div>
-                    {!gif && !audioOnly && (
+                    {!rows.encoder.hidden && (
                       <div className="form-row">
                         <span>Encoder</span>
                         <div className="export-stack">
                           <Choice
-                            value={options.encoder}
+                            value={effective.encoder}
                             onChange={(encoder) => set({ encoder })}
                             options={[
                               { value: 'auto', label: 'Auto (GPU when available)' },
-                              { value: 'software', label: 'Software' }
+                              { value: 'software', label: 'Software', disabled: !!rows.encoder.softwareDisabled }
                             ]}
                           />
-                          <p className="hint">{options.encoder === 'auto' ? gpuHint : softwareHint}</p>
+                          {rows.encoder.softwareDisabled && <p className="hint">{t(rows.encoder.softwareDisabled)}</p>}
+                          {!rows.codec?.hint && <p className="hint">{effective.encoder === 'auto' ? gpuHint : softwareHint}</p>}
                         </div>
                       </div>
                     )}
@@ -990,6 +1358,7 @@ export function ExportDialog(props: Props): JSX.Element {
                       chapterCount={parts.length}
                       pendingChapters={pendingChapters(project).length}
                       savedDescription={!!project.publish?.description}
+                      alsoSave={{ options: effective, hasSound, stems: stemList, seconds: length, notEvened }}
                     />
                     <ShareAfterExport share={share} single={mode === 'single' && !perChapter} />
                   </div>
@@ -1014,7 +1383,9 @@ export function ExportDialog(props: Props): JSX.Element {
           </>
         )}
 
-        {phase.kind === 'running' && <RunningView progress={phase.progress} gif={gif} onCancel={() => abort.current?.abort()} paused={job.paused} slept={job.slept} onPause={job.toggle} />}
+        {phase.kind === 'running' && (
+          <RunningView progress={phase.progress} gif={gif} onCancel={() => abort.current?.abort()} paused={job.paused} slept={job.slept} onPause={job.toggle} steps={runSteps} step={phase.step} />
+        )}
 
         {phase.kind === 'batch' && (
           <BatchView
@@ -1041,7 +1412,7 @@ export function ExportDialog(props: Props): JSX.Element {
               {formatBytes(phase.bytes)} · exported in {formatDuration(phase.seconds)} · {phase.encoder}
             </p>
             <SizeReport result={phase} />
-            <ExtrasReport extras={phase.extras} />
+            {phase.also ? <AlsoReport extras={phase.extras} also={phase.also} video={phase.path} /> : <ExtrasReport extras={phase.extras} />}
             <ShareDone file={phase.path} meta={{ title: project.name, seconds: length }} targets={share.targets} startError={share.error} />
             {!gif && <ChapterCopy chapters={chapters} length={length} gif={false} />}
             {props.onShortClips && (
@@ -1302,7 +1673,9 @@ function RunningView({
   onCancel,
   paused,
   slept,
-  onPause
+  onPause,
+  steps,
+  step
 }: {
   progress: ExportProgress | null
   gif: boolean
@@ -1310,6 +1683,9 @@ function RunningView({
   paused: boolean
   slept: boolean
   onPause: () => void
+  /** The steps after the video (output-and-languages §2.4): stems inside the finish, then the timeline. */
+  steps?: RunSteps
+  step?: 'timeline'
 }): JSX.Element {
   const finalizing = progress?.phase === 'finalizing'
   const fraction = progress && progress.frames > 0 ? progress.frame / progress.frames : 0
@@ -1329,6 +1705,7 @@ function RunningView({
         <div className="progress-bar" style={{ width: finalizing ? undefined : `${fraction * 100}%` }} />
       </div>
       <p className="hint export-status">{status}</p>
+      <RunStep steps={steps} step={step} finalizing={finalizing} />
       {progress && (
         <p className="hint">
           Encoder: {progress.encoder}
@@ -1342,6 +1719,97 @@ function RunningView({
         </button>
       </footer>
     </>
+  )
+}
+
+/**
+ * The step after the video, announced (§2.4): "Writing sound stems…" while the export finishes with
+ * stems, then "Writing the timeline…" (and "Copying the recordings…" for the recordings). Nothing for
+ * an export without them.
+ */
+function RunStep({ steps, step, finalizing }: { steps?: RunSteps; step?: 'timeline'; finalizing: boolean }): JSX.Element | null {
+  const lines: MessageKey[] =
+    step === 'timeline' && steps?.timeline
+      ? ['timelines.running.timeline', ...(steps.timeline === 'recordings' ? (['timelines.running.copying'] as const) : [])]
+      : finalizing && steps?.stems
+        ? ['stems.running']
+        : []
+  if (!steps?.stems && !steps?.timeline) return null
+  return (
+    <div role="status" data-testid="export-step">
+      {lines.map((k) => (
+        <p key={k} className="hint export-step">
+          {t(k)}
+        </p>
+      ))}
+    </div>
+  )
+}
+
+/**
+ * The done view's files when Also save asked for stems or a timeline (§2.4): every file saved, the
+ * stems among them, each timeline file with how to open it, and a line for a step that failed after
+ * the video was saved.
+ */
+function AlsoReport({ extras, also, video }: { extras?: BatchExtras; also: AlsoDone; video: string }): JSX.Element {
+  const base = (f: string): string => f.split(/[\\/]/).pop() ?? f
+  const stem = base(video).replace(/\.[^.]+$/, '')
+  const saved = extras?.saved ?? []
+  const sidecars = saved.filter((f) => !timelineFileOf(f))
+  const timelines = saved.filter((f) => timelineFileOf(f))
+  // A sidecar that failed is named after the video ("Demo.srt: …"); anything else is the timeline step's problem.
+  const failedSidecars = (extras?.failed ?? []).filter((f) => f.startsWith(stem))
+  const timelineProblems = (extras?.failed ?? []).filter((f) => !f.startsWith(stem))
+  const names = [...also.stems.map((s) => s.path), ...sidecars].map(base)
+  const linesOf = (file: string): string[] => {
+    switch (timelineFileOf(file)) {
+      case 'fcpxml':
+        return [...(also.editors.includes('resolve') ? [t('timelines.done.resolve')] : []), ...(also.editors.includes('finalcut') ? [t('timelines.done.finalcut')] : [])]
+      case 'xmeml':
+        return [t('timelines.done.premiere')]
+      case 'markers':
+        return [t('timelines.done.markers')]
+      case 'edl':
+        return [t('timelines.done.edl', { video: base(video) })]
+      case 'media':
+        return [t('timelines.done.media')]
+      default:
+        return []
+    }
+  }
+  return (
+    <div className="export-extras" data-testid="export-extras">
+      {names.length > 0 && <p className="hint">Also saved: {names.join(', ')}</p>}
+      {failedSidecars.map((f) => (
+        <p key={f} className="hint warn">
+          Could not save {f}
+        </p>
+      ))}
+      {also.stemsProblem && (
+        <p className="hint warn" data-testid="export-stems-problem">
+          {t('stems.done.failed', { reason: also.stemsProblem })}
+        </p>
+      )}
+      {timelines.length > 0 && (
+        <ul className="export-timeline-files" data-testid="export-timeline-files">
+          {timelines.map((f) => (
+            <li key={f} title={f}>
+              <span className="name">{base(f)}</span>
+              {linesOf(f).map((line) => (
+                <span key={line} className="hint">
+                  {line}
+                </span>
+              ))}
+            </li>
+          ))}
+        </ul>
+      )}
+      {timelineProblems.map((f) => (
+        <p key={f} className="hint warn" data-testid="export-timeline-problem">
+          {t('timelines.done.failed', { reason: f })}
+        </p>
+      ))}
+    </div>
   )
 }
 
