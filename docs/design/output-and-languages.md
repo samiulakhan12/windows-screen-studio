@@ -1169,9 +1169,11 @@ never runs at app start. The renderer probes WebCodecs with `VideoEncoder.isConf
 ### 5.10 Sizes, times and disk space
 
 `estimateBytes(options, size, seconds)` (`proFormats.ts`) gives an upper estimate from
-`MB_PER_MINUTE_1080P60` scaled by pixels × `rateFps`: CineForm YUV 1,500, CineForm RGBA 3,600,
-Animation 2,500, ProRes 422 HQ 3,300 (Apple's nominal at 59.94), ProRes 4444 5,000, stems 23.04 per
-stem. The dialog's hints give it for the whole video (§2.1).
+`MB_PER_MINUTE_1080P60` scaled by pixels × `fps / 60` for CineForm and ProRes (they code every frame
+on its own, so 120 fps is twice 60 fps: measured 2.0× with `cfhd`) and × `rateFps / 60` for Animation
+(it codes the changes from the frame before): CineForm YUV 1,500, CineForm RGBA 3,600, Animation 2,500,
+ProRes 422 HQ 3,300 (Apple's nominal at 59.94), ProRes 4444 5,000, stems 23.04 per stem. The dialog's
+hints give it for the whole video (§2.1).
 
 `encodeSecondsEstimate(options, size, seconds)` gives the AV1 hint's time on the processor:
 `seconds × 4.5 × (w × h) / (1920 × 1080) × rateFps(fps) / 60`, from the benchmark (45.2 s for 10 s of

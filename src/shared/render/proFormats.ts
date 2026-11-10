@@ -173,8 +173,10 @@ function intermediateRate(o: Pick<ExportOptions, 'format' | 'codec' | 'alpha'>):
 
 /**
  * An upper estimate of the file size in bytes (§5.10): an editing format's rate scaled by its pixels
- * and `rateFps`, the WAV format at one stem's rate, plus `stems` WAV stems. 0 for what is sized by its
- * encoder (H.264, HEVC, AV1, VP9, GIF, M4A) when no stem is written.
+ * and its frames a second (`fps` for CineForm and ProRes, which code every frame on its own, so twice
+ * the frames are twice the bytes; `rateFps` for Animation, which codes the changes), the WAV format at
+ * one stem's rate, plus `stems` WAV stems. 0 for what is sized by its encoder (H.264, HEVC, AV1, VP9,
+ * GIF, M4A) when no stem is written.
  */
 export function estimateBytes(o: Pick<ExportOptions, 'format' | 'codec' | 'alpha' | 'fps'>, size: { width: number; height: number }, seconds: number, stems?: number): number {
   const minutes = Math.max(0, seconds) / 60
@@ -182,7 +184,8 @@ export function estimateBytes(o: Pick<ExportOptions, 'format' | 'codec' | 'alpha
   if (o.format === 'wav') mb += MB_PER_MINUTE_1080P60.stem * minutes
   else if (o.format === 'mp4' || o.format === 'mov' || o.format === 'webm') {
     const rate = intermediateRate(o)
-    if (rate !== null) mb += rate * ((size.width * size.height) / BASE_PIXELS) * (rateFps(o.fps) / BASE_FPS) * minutes
+    const fps = codecOf(o) === 'animation' ? rateFps(o.fps) : o.fps
+    if (rate !== null) mb += rate * ((size.width * size.height) / BASE_PIXELS) * (fps / BASE_FPS) * minutes
   }
   mb += MB_PER_MINUTE_1080P60.stem * Math.max(0, Math.floor(stems ?? 0)) * minutes
   return Math.round(mb * MB)

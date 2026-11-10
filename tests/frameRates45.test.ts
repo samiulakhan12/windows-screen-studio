@@ -117,7 +117,7 @@ describe('sizes and times (test 22)', () => {
   const minute = 60
   const mov = (o: Partial<ExportOptions>): ExportOptions => options({ format: 'mov', fps: 60, ...o })
 
-  it('estimateBytes: an editing format’s MB a minute at 1080p60, scaled by pixels and rateFps', () => {
+  it('estimateBytes: an editing format’s MB a minute at 1080p60, scaled by pixels and frame rate', () => {
     expect(estimateBytes(mov({ codec: 'cineform' }), at1080p60, minute)).toBe(1500e6)
     expect(estimateBytes(mov({ codec: 'cineform', alpha: 'background' }), at1080p60, minute)).toBe(3600e6)
     expect(estimateBytes(mov({ codec: 'animation' }), at1080p60, minute)).toBe(2500e6)
@@ -127,8 +127,14 @@ describe('sizes and times (test 22)', () => {
     expect(estimateBytes(mov({ codec: 'cineform', fps: 30 }), at2160p30, minute)).toBe(3000e6)
     expect(estimateBytes(mov({ codec: 'animation', fps: 30 }), at2160p30, minute)).toBe(5000e6)
     expect(estimateBytes(mov({ codec: 'prores-4444', fps: 30, alpha: 'overlays' }), at2160p30, minute)).toBe(10000e6)
-    // 120 fps counts as 90 (rateFps), half a minute as half.
-    expect(estimateBytes(mov({ codec: 'cineform', fps: 120 }), at1080p60, 30)).toBe(1125e6)
+    // CineForm and ProRes code every frame on its own: 120 fps is exactly twice 60 fps (measured: 2.0x
+    // with cfhd), so the disk-space check asks for enough. Half a minute is half.
+    expect(estimateBytes(mov({ codec: 'cineform', fps: 120 }), at1080p60, 30)).toBe(1500e6)
+    for (const codec of ['cineform', 'prores-422', 'prores-4444'] as const)
+      for (const alpha of [undefined, 'background'] as const)
+        expect(estimateBytes(mov({ codec, alpha, fps: 120 }), at1080p60, minute)).toBe(2 * estimateBytes(mov({ codec, alpha, fps: 60 }), at1080p60, minute))
+    // Animation codes the changes from the frame before: 120 fps counts as 90 (rateFps).
+    expect(estimateBytes(mov({ codec: 'animation', fps: 120 }), at1080p60, 30)).toBe(1875e6)
   })
 
   it('estimateBytes: the WAV format and each stem at 23.04 MB a minute; nothing for what its encoder sizes', () => {
