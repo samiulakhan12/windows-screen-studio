@@ -40,6 +40,14 @@ const T_FUNCTIONS = new Set(['t', 'tParts', 'tNodes'])
 const LOCALE_METHODS = new Set(['toLocaleString', 'toLocaleDateString', 'toLocaleTimeString'])
 
 const HAS_LETTER = /\p{L}/u
+/** Elements whose text is a keycap, which stays as it is in every language (§14.1). */
+const KEYCAP_ELEMENTS = new Set(['kbd'])
+
+/** True for JSX text directly inside a keycap element (<kbd>Esc</kbd>). */
+function isKeycap(node) {
+  const el = node.parent
+  return !!el && ts.isJsxElement(el) && KEYCAP_ELEMENTS.has(el.openingElement.tagName.getText())
+}
 
 /** A glob ('src/main/ai/**', '*.tsx') as a regular expression over repository-relative paths. */
 function globRegExp(glob) {
@@ -275,7 +283,7 @@ function scanSource(file, text, rules = {}) {
   const visit = (node) => {
     // JSX text and text children.
     if (ts.isJsxText(node)) {
-      if (!node.containsOnlyTriviaWhiteSpaces && HAS_LETTER.test(node.text)) add(node, 'jsx', node.text.replace(/\s+/g, ' ').trim())
+      if (!node.containsOnlyTriviaWhiteSpaces && HAS_LETTER.test(node.text) && !isKeycap(node)) add(node, 'jsx', node.text.replace(/\s+/g, ' ').trim())
     } else if (ts.isJsxExpression(node) && node.expression && (ts.isJsxElement(node.parent) || ts.isJsxFragment(node.parent))) {
       addText(textLiterals(node.expression, true), 'jsx')
     }
@@ -478,4 +486,24 @@ function metaImporters(root = files.ROOT) {
   return out
 }
 
-module.exports = { TEXT_ATTRIBUTES, globRegExp, matchesAny, scanSource, applyAllow, scanTree, runtimeImports, importGraph, mainNamespaces, metaImporters }
+module.exports = {
+  TEXT_ATTRIBUTES,
+  SINK_FUNCTIONS,
+  DIALOG_METHODS,
+  SINK_CONSTRUCTORS,
+  TEXT_PROPERTIES,
+  HAS_LETTER,
+  isKeycap,
+  globRegExp,
+  matchesAny,
+  insideFunction,
+  constValue,
+  calleeName,
+  scanSource,
+  applyAllow,
+  scanTree,
+  runtimeImports,
+  importGraph,
+  mainNamespaces,
+  metaImporters
+}

@@ -27,7 +27,7 @@ const found = (file: string, text: string, keys?: Set<string>) => scan.scanSourc
 const kinds = (list: Finding[]) => list.map((f) => `${f.kind}:${f.text}`)
 
 describe('test 61: the scanner finds UI text without a key', () => {
-  it('finds JSX text and literal children, and not whitespace, symbols or keyed text', () => {
+  it('finds JSX text and literal children, and not whitespace, symbols, keycaps or keyed text', () => {
     const src = `${T_IMPORT}export function A({ n }: { n: number }) {
   return (
     <div>
@@ -36,6 +36,7 @@ describe('test 61: the scanner finds UI text without a key', () => {
       {n === 1 ? 'file' : 'files'}
       <T k="codecs.row.codec" />
       {t('codecs.row.codec')}
+      <kbd>Esc</kbd>
     </div>
   )
 }`
