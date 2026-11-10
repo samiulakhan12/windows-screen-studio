@@ -1,8 +1,11 @@
 import { spawn } from 'node:child_process'
-import type { H264Encoder } from '../shared/api/export'
+import type { Av1Encoder, H264Encoder, HevcEncoder } from '../shared/api/export'
 import { ffmpegPath } from './ffmpeg'
 
 export type { H264Encoder }
+
+/** The encoders of H.264, HEVC and AV1 whose input format and GPU options are set here (output-and-languages §5.4). */
+export type VideoCodecEncoder = H264Encoder | HevcEncoder | Av1Encoder
 
 /**
  * GPU encoders in order of preference (NVIDIA, Intel, AMD, then a hardware encoder
@@ -10,9 +13,11 @@ export type { H264Encoder }
  */
 export const HARDWARE_ENCODERS: H264Encoder[] = ['h264_nvenc', 'h264_qsv', 'h264_amf', 'h264_mf']
 
-/** Input pixel format each encoder accepts: Intel, AMD and Media Foundation want NV12. */
-export const encoderPixelFormat = (encoder: H264Encoder): 'nv12' | 'yuv420p' =>
-  encoder === 'h264_qsv' || encoder === 'h264_amf' || encoder === 'h264_mf' ? 'nv12' : 'yuv420p'
+/**
+ * Input pixel format each encoder accepts: Intel, AMD and Media Foundation want NV12 (for H.264, HEVC
+ * and AV1 alike); NVENC and the software encoders take planar 4:2:0.
+ */
+export const encoderPixelFormat = (encoder: VideoCodecEncoder): 'nv12' | 'yuv420p' => (/_(qsv|amf|mf)$/.test(encoder) ? 'nv12' : 'yuv420p')
 
 /**
  * Options that make an encoder run on the GPU. ffmpeg's h264_mf otherwise picks
@@ -23,8 +28,10 @@ export const encoderPixelFormat = (encoder: H264Encoder): 'nv12' | 'yuv420p' =>
  * (exports, proxies) must pass the same options, so a passing probe means the real
  * encode gets the same encoder.
  */
-export function gpuEncoderOptions(encoder: H264Encoder): string[] {
-  return encoder === 'h264_mf' ? ['-hw_encoding', '1'] : []
+export function gpuEncoderOptions(encoder: VideoCodecEncoder): string[] {
+  // hevc_mf likewise: without the flag it can pick Windows' own software HEVC encoder (Mfh265enc.dll,
+  // or the one in HEVC Video Extensions), the very encoder output-and-languages §0 decision 1 keeps out.
+  return encoder === 'h264_mf' || encoder === 'hevc_mf' ? ['-hw_encoding', '1'] : []
 }
 
 /** ffmpeg arguments of the test encode for `encoder`. */

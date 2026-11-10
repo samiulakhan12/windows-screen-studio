@@ -24,7 +24,7 @@ import { subtitleStreams } from '../../../shared/render/exportBundle'
 import { languageSubtitleFile } from '../../../shared/captions/subtitles'
 import { prepareOverlays } from '../render/overlayLayer'
 import { avcConfigs, cleanIpcError, supportedAvcConfig, vp9Configs, WebCodecsSink, type FrameSink, type JobBase, type StartJob } from '../render/encoders'
-import { codecCapsFor, proSink, rawSinkFor } from '../render/proEncoders'
+import { codecCapsFor, jobCodecFields, proSink, rawSinkFor } from '../render/proEncoders'
 import { alphaOf } from '../../../shared/render/alpha'
 import { blurSamplesFor } from '../../../shared/render/proFormats'
 import { stemJobOf } from '../../../shared/render/stems'
@@ -403,7 +403,7 @@ async function prepareRoute(route: ExportRoute, input: ExportInput, plan: JobPla
     // WebCodecs HEVC and AV1 (output-and-languages §5.4): their own configurations and framing.
     const kind = route.codec
     const bitrate = plan.rate.bitrate?.video ?? 0
-    return (canvas, _ctx, startJob, base) => proSink(route, canvas, fps, bitrate, (color) => startJob({ ...base, video: { kind, color } }))
+    return (canvas, _ctx, startJob, base) => proSink(route, canvas, fps, bitrate, (color) => startJob({ ...base, video: { kind, color } }), input.settings.quality)
   }
   const configs = route.codec === 'vp9' ? vp9Configs : avcConfigs
   const config = await supportedAvcConfig(configs(width, height, fps, input.settings.quality, route.hardware, plan.rate.bitrate?.video))
@@ -563,6 +563,8 @@ async function renderAll(
       ...plan.rate,
       ...plan.chapters,
       ...plan.subtitles,
+      // The codec when it is not the format's default, and a transparent background (output-and-languages §4.2).
+      ...jobCodecFields(settings, input.scene.alpha),
       outputPath: input.outputPath
     }
     const startJob: StartJob = (job) => window.api.exportStart(project.id, job)

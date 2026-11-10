@@ -21,6 +21,7 @@ import { ffmpegPath } from './ffmpeg'
 import { loopableMusic } from './musicLoopCache'
 import { bundledSoundDir } from './soundLibrary/paths'
 import { writeStemsStep } from './stemsRun'
+import { spaceProblem } from './exportSpace'
 import { t } from '../shared/i18n/t'
 
 interface ActiveExport {
@@ -277,6 +278,8 @@ export function registerExportIpc(): void {
   })
 
   ipcMain.handle('export:start', async (e, projectId: string, requested: ExportJob) => {
+    // A code is of this export's failure only (output-and-languages §9.6).
+    setExportErrorCode(null)
     const approved = !!requested?.outputPath && (requested.outputPath === approvedExportPath || batchPaths.has(requested.outputPath))
     if (!approved) throw new Error('Export path was not chosen through the save dialog')
     validateJob(requested)
@@ -289,6 +292,12 @@ export function registerExportIpc(): void {
     await fs.access(path.dirname(finalPath), fsConstants.W_OK).catch(() => {
       throw new Error(`Could not write to the folder "${path.dirname(finalPath)}". Choose another folder.`)
     })
+    // An editing format, WAV or stems need room: refused below 1.2 × the estimate (output-and-languages §5.10).
+    const space = await spaceProblem(requested, path.dirname(finalPath))
+    if (space) {
+      setExportErrorCode('disk-full')
+      throw new Error(space)
+    }
     const tempPath = partialPath(finalPath)
     // The stems the recording kept: a missing one may only fall back to the mixed sound when that sounds the same.
     const recorded = await projects.readProject(projectId).then(stemsOf, () => [])

@@ -340,5 +340,10 @@
       "fps"
     ],
     "digits": "latn"
+  },
+  "webcodecs.unsupported": {
+    "description": "Reason an export tries the next encoder, or stops when none is left: WebCodecs on this PC cannot encode this codec at this size. {codec} is HEVC or AV1; {width} and {height} are pixels.",
+    "screen": "export-errors",
+    "digits": "latn"
   }
 }

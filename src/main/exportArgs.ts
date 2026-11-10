@@ -5,7 +5,7 @@ import type { OutputChapter } from '../shared/render/chapters'
 import { ISO_639_2 } from '../shared/captions/captionTracks'
 import type { ExportFormat } from '../shared/types'
 import { encoderPixelFormat, gpuEncoderOptions } from './hwEncoders'
-import { DEFAULT_CODEC } from '../shared/render/proFormats'
+import { CODEC_POLICY, DEFAULT_CODEC, rateFps } from '../shared/render/proFormats'
 import { proPlan } from './proArgs'
 import { wavPlan } from './stemsArgs'
 
@@ -50,13 +50,16 @@ const VP9_CRF: Record<ExportJob['quality'], number> = { high: 27, medium: 33, sm
 /** Bits per pixel per frame for bitrate-driven encoders. */
 const BPP: Record<ExportJob['quality'], number> = { high: 0.12, medium: 0.07, small: 0.04 }
 
-/** Target bitrate (bit/s) for encoders that need one: the size target's, else one from the quality. */
+/**
+ * Target bitrate (bit/s) for encoders that need one: the size target's, else one from the quality,
+ * scaled with `rateFps` (the frame rate itself up to 60 fps; output-and-languages §5.6).
+ */
 export function targetBitrate(job: Pick<ExportJob, 'width' | 'height' | 'fps' | 'quality' | 'bitrate'>): number {
-  return job.bitrate?.video ?? Math.round(job.width * job.height * job.fps * BPP[job.quality])
+  return job.bitrate?.video ?? Math.round(job.width * job.height * rateFps(job.fps) * BPP[job.quality])
 }
 
 /** Bit-rate limits for single-pass size targets: the average B, peaks up to 1.5 B over a 2 s buffer. */
-const vbv = (b: number): string[] => ['-maxrate', String(Math.round(b * 1.5)), '-bufsize', String(Math.round(b * 2))]
+export const vbv = (b: number): string[] => ['-maxrate', String(Math.round(b * 1.5)), '-bufsize', String(Math.round(b * 2))]
 
 /** Encoder settings for raw-frame H.264 exports (a size target switches every encoder to a bit rate). */
 export function videoEncoderArgs(encoder: H264Encoder, job: ExportJob): string[] {
@@ -103,7 +106,7 @@ const encoderArgs = (encoder: FfmpegVideoEncoder, job: ExportJob, pass?: 1 | 2):
 const pixelFormatFor = (encoder: FfmpegVideoEncoder): string => (encoder === 'libvpx-vp9' ? 'yuv420p' : encoderPixelFormat(encoder as H264Encoder))
 
 /** Canvas RGB -> the encoder's YUV, BT.601 limited range (see EXPORT_COLOR). */
-const yuvFilter = (pix: string): string => `scale=out_color_matrix=bt601:out_range=tv,format=${pix}`
+export const yuvFilter = (pix: string): string => `scale=out_color_matrix=bt601:out_range=tv,format=${pix}`
 
 export interface ExportIo {
   /** File with the source audio (the screen proxy), or null for a silent export. */
@@ -124,7 +127,8 @@ export interface ExportIo {
   output: string
 }
 
-const HEAD = ['-y', '-hide_banner', '-loglevel', 'error', '-nostats']
+/** The start of every export's ffmpeg arguments. */
+export const HEAD = ['-y', '-hide_banner', '-loglevel', 'error', '-nostats']
 
 /* ---------- chapters ---------- */
 
@@ -158,22 +162,22 @@ export function chapterMetadata(chapters: readonly OutputChapter[], duration: nu
  * phone video's GPS location, author, chapters at times from before the cuts). `:g` keeps the
  * titles of the project's chapters, which a bare `-map_metadata -1` would drop.
  */
-function chapterArgs(io: ExportIo, inputs: number): { input: string[]; map: string[] } {
+export function chapterArgs(io: ExportIo, inputs: number): { input: string[]; map: string[] } {
   const noTags = ['-map_metadata:g', '-1']
   if (!io.chapters) return { input: [], map: [...noTags, '-map_chapters', '-1'] }
   return { input: ['-f', 'ffmetadata', '-i', io.chapters], map: [...noTags, '-map_chapters', String(inputs)] }
 }
 
 /** Number of inputs in an ffmpeg argument list so far. */
-const inputCount = (args: readonly string[]): number => args.filter((a) => a === '-i').length
+export const inputCount = (args: readonly string[]): number => args.filter((a) => a === '-i').length
 
 /** Audio inputs (recording, music, clicks) after `first` other inputs, and the graph that mixes them into [aout]. */
-function audioInputs(job: ExportJob, io: ExportIo, first: number): { args: string[]; graph: string | null } {
+export function audioInputs(job: ExportJob, io: ExportIo, first: number): { args: string[]; graph: string | null } {
   return planSoundtrack(job, { mix: io.audioInput, stems: io.stems, music: io.music, ...(io.bed ? { bed: io.bed } : {}), ...(io.effects ? { effects: io.effects } : {}) }, first)
 }
 
 /** Audio codec settings of `job`'s container. */
-function audioCodecArgs(job: ExportJob): string[] {
+export function audioCodecArgs(job: ExportJob): string[] {
   const opus = job.format === 'webm'
   const rate = job.bitrate?.audio || (opus ? 128_000 : 192_000)
   return ['-c:a', opus ? 'libopus' : 'aac', '-b:a', `${Math.round(rate / 1000)}k`, '-ar', String(AUDIO_RATE)]
@@ -243,9 +247,17 @@ export function exportArgs(job: ExportJob, io: ExportIo): string[] {
   return args
 }
 
-/** Whether `job` is encoded in two passes over an intermediate (software encoders with a size target). */
+/**
+ * Whether `job` is encoded in two passes over an intermediate (software encoders with a size target):
+ * x264, libvpx and libaom (libx265 too, only while CODEC_POLICY.hevcSoftware is on). Never a
+ * transparent job: size targets are off for alpha (output-and-languages §5.7).
+ */
 export const isTwoPass = (job: ExportJob): boolean =>
-  !!job.bitrate && job.format !== 'gif' && job.video.kind === 'raw' && (job.video.encoder === 'libx264' || job.video.encoder === 'libvpx-vp9')
+  !!job.bitrate &&
+  job.format !== 'gif' &&
+  !job.alpha &&
+  job.video.kind === 'raw' &&
+  (job.video.encoder === 'libx264' || job.video.encoder === 'libvpx-vp9' || job.video.encoder === 'libaom-av1' || (job.video.encoder === 'libx265' && CODEC_POLICY.hevcSoftware))
 
 /* ---------- GIF ---------- */
 
@@ -376,6 +388,23 @@ export interface PlanPaths extends ExportIo {
   tempStem: string
 }
 
+/**
+ * The files an export's ffmpeg reads besides its media, written before it starts, and the paths that
+ * name them: chapters as an ffmetadata file next to the graph script, subtitle streams as WebVTT
+ * files next to it (Captions Studio §11.10; never in a GIF or an M4A).
+ */
+export function planSidecars(job: ExportJob, given: PlanPaths): { paths: PlanPaths; files: { path: string; content: string }[] } {
+  const { tempStem } = given
+  const metadata = job.chapters?.length ? chapterMetadata(job.chapters, job.frames / job.fps) : null
+  const chapterFile = metadata ? { path: `${tempStem}.chapters.txt`, content: metadata } : null
+  const subtitleFiles = (job.format === 'mp4' || job.format === 'mov' || job.format === 'webm' ? (job.subtitles ?? []) : []).map((t, k) => ({
+    file: { path: `${tempStem}.sub${k}.vtt`, content: t.vtt },
+    track: { file: `${tempStem}.sub${k}.vtt`, iso: iso6392(t.language), name: t.name, default: t.default }
+  }))
+  const paths: PlanPaths = { ...given, chapters: chapterFile?.path ?? null, subtitles: subtitleFiles.map((s) => s.track) }
+  return { paths, files: [...(chapterFile ? [chapterFile] : []), ...subtitleFiles.map((s) => s.file)] }
+}
+
 /** Moves a long -filter_complex into a script file (also accepted by ffmpeg 6.1, the Windows build). */
 export function externalizeGraph(args: string[], scriptPath: string): { args: string[]; script: { path: string; content: string } | null } {
   const i = args.indexOf('-filter_complex')
@@ -408,16 +437,7 @@ export function ffmpegPlan(job: ExportJob, given: PlanPaths): FfmpegPlan {
     }
   }
   const script = `${tempStem}.graph.txt`
-  // Chapters go in through an ffmetadata file written next to the graph script.
-  const metadata = job.chapters?.length ? chapterMetadata(job.chapters, job.frames / job.fps) : null
-  const chapterFile = metadata ? { path: `${tempStem}.chapters.txt`, content: metadata } : null
-  // Subtitle streams go in as WebVTT files next to it (Captions Studio §11.10; never in a GIF or an M4A).
-  const subtitleFiles = (job.format === 'mp4' || job.format === 'mov' || job.format === 'webm' ? (job.subtitles ?? []) : []).map((t, k) => ({
-    file: { path: `${tempStem}.sub${k}.vtt`, content: t.vtt },
-    track: { file: `${tempStem}.sub${k}.vtt`, iso: iso6392(t.language), name: t.name, default: t.default }
-  }))
-  const paths: PlanPaths = { ...given, chapters: chapterFile?.path ?? null, subtitles: subtitleFiles.map((s) => s.track) }
-  const extra = [...(chapterFile ? [chapterFile] : []), ...subtitleFiles.map((s) => s.file)]
+  const { paths, files: extra } = planSidecars(job, given)
   if (!isTwoPass(job) || job.video.kind !== 'raw') {
     const { args, script: s } = externalizeGraph(exportArgs(job, paths), script)
     const scripts = [...extra, ...(s ? [s] : [])]
