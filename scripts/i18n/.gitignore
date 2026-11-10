@@ -1,3 +1,4 @@
-# Generated for development: pseudo-locales and review catalogues (npm run i18n:pseudo, npm run i18n:pack).
+# Generated for development: pseudo-locales, review catalogues and codemod proposals (npm run i18n:pseudo, i18n:pack, i18n:extract).
 /pseudo/
 /review/
+/extract/
