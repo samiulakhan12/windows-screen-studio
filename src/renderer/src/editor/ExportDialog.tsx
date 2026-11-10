@@ -96,7 +96,7 @@ type Phase =
 type CopyState = { kind: 'idle' } | { kind: 'busy' } | { kind: 'copied' } | { kind: 'failed'; message: string }
 
 /** What an export asked of Also save's stems and timeline, and what came of them (output-and-languages §2.4). */
-interface AlsoDone {
+export interface AlsoDone {
   stems: { stem: string; path: string }[]
   stemsProblem?: string
   editors: TimelineEditor[]
@@ -104,7 +104,7 @@ interface AlsoDone {
 }
 
 /** The steps a running export takes after its video (§2.4): stems inside the finish, then the timeline. */
-interface RunSteps {
+export interface RunSteps {
   stems: boolean
   timeline: 'export' | 'recordings' | null
 }
@@ -1737,7 +1737,7 @@ function RunningView({
  * stems, then "Writing the timeline…" (and "Copying the recordings…" for the recordings). Nothing for
  * an export without them.
  */
-function RunStep({ steps, step, finalizing }: { steps?: RunSteps; step?: 'timeline'; finalizing: boolean }): JSX.Element | null {
+export function RunStep({ steps, step, finalizing }: { steps?: RunSteps; step?: 'timeline'; finalizing: boolean }): JSX.Element | null {
   const lines: MessageKey[] =
     step === 'timeline' && steps?.timeline
       ? ['timelines.running.timeline', ...(steps.timeline === 'recordings' ? (['timelines.running.copying'] as const) : [])]
@@ -1757,11 +1757,11 @@ function RunStep({ steps, step, finalizing }: { steps?: RunSteps; step?: 'timeli
 }
 
 /**
- * The done view's files when Also save asked for stems or a timeline (§2.4): every file saved, the
- * stems among them, each timeline file with how to open it, and a line for a step that failed after
- * the video was saved.
+ * The done view's files when Also save asked for stems or a timeline (§2.4, §17): a list of every file
+ * saved next to the video, each a link that shows it in its folder, the stems and sidecars first, then
+ * each timeline file with how to open it; and a line for a step that failed after the video was saved.
  */
-function AlsoReport({ extras, also, video }: { extras?: BatchExtras; also: AlsoDone; video: string }): JSX.Element {
+export function AlsoReport({ extras, also, video }: { extras?: BatchExtras; also: AlsoDone; video: string }): JSX.Element {
   const base = (f: string): string => f.split(/[\\/]/).pop() ?? f
   const stem = base(video).replace(/\.[^.]+$/, '')
   const saved = extras?.saved ?? []
@@ -1770,7 +1770,7 @@ function AlsoReport({ extras, also, video }: { extras?: BatchExtras; also: AlsoD
   // A sidecar that failed is named after the video ("Demo.srt: …"); anything else is the timeline step's problem.
   const failedSidecars = (extras?.failed ?? []).filter((f) => f.startsWith(stem))
   const timelineProblems = (extras?.failed ?? []).filter((f) => !f.startsWith(stem))
-  const names = [...also.stems.map((s) => s.path), ...sidecars].map(base)
+  const files = [...also.stems.map((s) => s.path), ...sidecars, ...timelines]
   const linesOf = (file: string): string[] => {
     switch (timelineFileOf(file)) {
       case 'fcpxml':
@@ -1789,7 +1789,27 @@ function AlsoReport({ extras, also, video }: { extras?: BatchExtras; also: AlsoD
   }
   return (
     <div className="export-extras" data-testid="export-extras">
-      {names.length > 0 && <p className="hint">Also saved: {names.join(', ')}</p>}
+      {files.length > 0 && (
+        <>
+          <p className="hint" id="export-also-saved">
+            Also saved:
+          </p>
+          <ul className="export-saved-files" aria-labelledby="export-also-saved" data-testid="export-saved-files">
+            {files.map((f) => (
+              <li key={f}>
+                <button type="button" className="link name" title="Show in folder" onClick={() => void window.api.showItemInFolder(f)}>
+                  {base(f)}
+                </button>
+                {linesOf(f).map((line) => (
+                  <span key={line} className="hint">
+                    {line}
+                  </span>
+                ))}
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
       {failedSidecars.map((f) => (
         <p key={f} className="hint warn">
           Could not save {f}
@@ -1799,20 +1819,6 @@ function AlsoReport({ extras, also, video }: { extras?: BatchExtras; also: AlsoD
         <p className="hint warn" data-testid="export-stems-problem">
           {t('stems.done.failed', { reason: also.stemsProblem })}
         </p>
-      )}
-      {timelines.length > 0 && (
-        <ul className="export-timeline-files" data-testid="export-timeline-files">
-          {timelines.map((f) => (
-            <li key={f} title={f}>
-              <span className="name">{base(f)}</span>
-              {linesOf(f).map((line) => (
-                <span key={line} className="hint">
-                  {line}
-                </span>
-              ))}
-            </li>
-          ))}
-        </ul>
       )}
       {timelineProblems.map((f) => (
         <p key={f} className="hint warn" data-testid="export-timeline-problem">

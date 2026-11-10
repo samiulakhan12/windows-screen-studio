@@ -214,7 +214,7 @@
   color: var(--text-1);
 }
 
-.export-timeline-files {
+.export-saved-files {
   display: flex;
   flex-direction: column;
   gap: 6px;
@@ -223,17 +223,19 @@
   list-style: none;
 }
 
-.export-timeline-files li {
+.export-saved-files li {
   display: flex;
   flex-direction: column;
+  align-items: flex-start;
   gap: 2px;
   min-width: 0;
 }
 
-.export-timeline-files .name {
+.export-saved-files .name {
+  max-width: 100%;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
   font-size: var(--text-sm);
-  color: var(--text-1);
+  text-align: left;
 }

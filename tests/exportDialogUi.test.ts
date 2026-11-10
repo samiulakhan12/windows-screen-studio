@@ -175,3 +175,52 @@ describe('saved presets', () => {
     ])
   })
 })
+
+const DIALOG = '../src/renderer/src/editor/ExportDialog'
+const dialog = (await import(/* @vite-ignore */ DIALOG)) as Record<'RunStep' | 'AlsoReport', Component>
+
+describe('the running steps and the done view of Also save (§2.4)', () => {
+  it('announces the steps after the video, and nothing for an export without them', () => {
+    expect(html(dialog.RunStep, { steps: { stems: false, timeline: null }, finalizing: true })).toBe('')
+    expect(html(dialog.RunStep, { steps: undefined, finalizing: true })).toBe('')
+    const stems = html(dialog.RunStep, { steps: { stems: true, timeline: null }, finalizing: true })
+    expect(stems).toContain('role="status"')
+    expect(stems).toContain('Writing sound stems…')
+    // While the video still renders, the step's line is empty but the live region is there to announce it.
+    const rendering = html(dialog.RunStep, { steps: { stems: true, timeline: null }, finalizing: false })
+    expect(rendering).toContain('role="status"')
+    expect(rendering).not.toContain('Writing')
+    expect(html(dialog.RunStep, { steps: { stems: true, timeline: 'export' }, step: 'timeline', finalizing: true })).toContain('Writing the timeline…')
+    const recordings = html(dialog.RunStep, { steps: { stems: false, timeline: 'recordings' }, step: 'timeline', finalizing: true })
+    expect(recordings).toContain('Writing the timeline…')
+    expect(recordings).toContain('Copying the recordings…')
+  })
+
+  it('lists every file saved, each a link to show it in its folder, and says how to open each timeline file', () => {
+    const dir = 'C:\\Videos'
+    const out = html(dialog.AlsoReport, {
+      video: `${dir}\\Demo.mp4`,
+      also: { stems: [{ stem: 'voice', path: `${dir}\\Demo - Voice.wav` }], editors: ['resolve', 'finalcut', 'premiere', 'edl'], media: 'export' },
+      extras: { saved: [`${dir}\\Demo.srt`, `${dir}\\Demo.fcpxml`, `${dir}\\Demo.xml`, `${dir}\\Demo.edl`, `${dir}\\Demo - Resolve markers.edl`], failed: [] }
+    })
+    expect(out).toContain('<ul class="export-saved-files" aria-labelledby="export-also-saved"')
+    const links = [...out.matchAll(/<button type="button" class="link name" title="Show in folder">([^<]*)<\/button>/g)].map((m) => m[1])
+    expect(links).toEqual(['Demo - Voice.wav', 'Demo.srt', 'Demo.fcpxml', 'Demo.xml', 'Demo.edl', 'Demo - Resolve markers.edl'])
+    expect(out).toContain('In DaVinci Resolve: File › Import › Timeline…')
+    expect(out).toContain('In Final Cut Pro: File › Import › XML…, then File › Relink Files… for the media')
+    expect(out).toContain('In Premiere Pro: File › Import…')
+    expect(out).toContain('In your editor: import the EDL and link it to Demo.mp4')
+    expect(out).toContain('In DaVinci Resolve: right-click the timeline in the Media Pool, then Timelines › Import › Timeline Markers from EDL…')
+  })
+
+  it('keeps the video as saved and says which later step failed', () => {
+    const out = html(dialog.AlsoReport, {
+      video: '/v/Demo.mp4',
+      also: { stems: [], stemsProblem: 'the disk is full', editors: ['premiere'], media: 'export' },
+      extras: { saved: [], failed: ['the folder is read-only'] }
+    })
+    expect(out).toContain('The sound stems could not be saved: the disk is full')
+    expect(out).toContain('The timeline could not be saved: the folder is read-only')
+    expect(out).not.toContain('Also saved')
+  })
+})
