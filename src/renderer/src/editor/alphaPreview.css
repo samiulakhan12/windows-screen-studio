@@ -1,0 +1,10 @@
+/*
+ * The export dialog's preview of a transparent video (docs/design/output-and-languages.md §6.5): a
+ * checkerboard of 8 px squares of --surface-2 and --surface-3 behind the canvas, shown through its
+ * clear pixels. The canvas holds the export's own pixels; the checkerboard is never drawn into them.
+ */
+.export-preview-canvas.alpha-preview {
+  background-color: var(--surface-2);
+  background-image: conic-gradient(var(--surface-3) 25%, transparent 0 50%, var(--surface-3) 0 75%, transparent 0);
+  background-size: 16px 16px;
+}

@@ -126,7 +126,7 @@ export function drawFrame(
   const join = extras?.join ?? null
   if (join) beginJoin(ctx, w, h, join)
   const top = drawFramePicture(ctx, w, h, t, scene, src, options, soundTime)
-  if (join) endJoin(ctx, w, h, join)
+  if (join) endJoin(ctx, w, h, join, scene.alpha)
   // Only the progress bar reads the video time (a pause hold included): worked out for it alone.
   const video = extras?.video ?? (top.project.chapterBar?.show ? videoTimeAt(top.project.clips, planOf(top.project), soundTime) : soundTime)
   drawFrameOverlays(top, soundTime, video)
@@ -139,6 +139,10 @@ export function drawFrame(
  * camera. Returns the frame context the overlays draw with. Leaves `ctx` saved once: drawFrame
  * restores it after the overlays (a caller drawing the picture alone, such as A* of a join,
  * restores it itself).
+ *
+ * A see-through export (scene.alpha, output-and-languages §6.2) starts from a cleared frame instead
+ * of the background; 'background' then draws the card and everything on it as always, 'overlays'
+ * only the camera. Without scene.alpha every line runs as before.
  */
 export function drawFramePicture(
   ctx: CanvasRenderingContext2D,
@@ -160,7 +164,9 @@ export function drawFramePicture(
   // The screen's colour (editing polish §9.1), graded once from that copy: everything below draws
   // the graded picture. Without a grade it is the picture itself.
   const grade = scene.project.grade?.screen
-  const screen = cropped && grade ? gradeScreen(ctx, cropped, grade, lutFor(scene.project, 'screen'), scene.compare) : cropped
+  // Overlays only draws no recording (§6.1): its sizes come from the copy, the grade is not needed.
+  const overlaysOnly = scene.alpha === 'overlays'
+  const screen = cropped && grade && !overlaysOnly ? gradeScreen(ctx, cropped, grade, lutFor(scene.project, 'screen'), scene.compare) : cropped
   const shown = croppedFrameSize(crop, src.screen.videoWidth, src.screen.videoHeight, scene.project)
   const vw = screen?.width || shown.width
   const vh = screen?.height || shown.height
@@ -193,11 +199,19 @@ export function drawFramePicture(
   const bgTime = isAnimated(style.background) ? animationTime(project.clips, soundTime) : 0
   // With the 3D tilt on, the card and everything on it is painted on a canvas of its own (`c`)
   // over the plain background, then warped onto the frame. Off (or flat at t), `c` is the frame.
-  const tilted = beginTiltedCard(ctx, w, h, t, project, cam, focus, spec, geom, vw, vh)
+  const tilted = overlaysOnly ? null : beginTiltedCard(ctx, w, h, t, project, cam, focus, spec, geom, vw, vh)
   const c = tilted ? tilted.ctx : ctx
   const layoutMove = layout.moving
   const moving = cam.scale < 1 || layoutMove
-  if (tilted) {
+  if (scene.alpha) {
+    // See-through (§6.2): no background, so no backdrop either (a glass border shows its tint). The
+    // card goes on a transparent canvas already (the tilt's, or the cached card layer).
+    clearFrame(ctx, w, h)
+    if (!overlaysOnly) {
+      if (moving) paintStillCard(c, w, h, spec, geom, null, layoutMove)
+      else paintCardLayer(c, w, h, spec, geom, null, !!tilted)
+    }
+  } else if (tilted) {
     const backdrop = paintBackgroundLayer(ctx, w, h, style, src.background, bgTime)
     if (moving) paintStillCard(c, w, h, spec, geom, backdrop, layoutMove)
     else paintCardLayer(c, w, h, spec, geom, backdrop, true)
@@ -208,10 +222,13 @@ export function drawFramePicture(
     paintStaticLayer(ctx, w, h, spec, geom, src.background, !!screen, bgTime)
   }
 
-  c.save()
-  roundRectPath(c, card, geom.screenRadii)
-  c.clip()
-  if (screen) {
+  // Overlays only: no card, no recording and nothing inside the card's clip, only the camera below.
+  if (!overlaysOnly) {
+    c.save()
+    roundRectPath(c, card, geom.screenRadii)
+    c.clip()
+  }
+  if (screen && !overlaysOnly) {
     c.imageSmoothingEnabled = true
     c.imageSmoothingQuality = 'high'
     let image = screen.image
@@ -268,13 +285,15 @@ export function drawFramePicture(
     toOut: toOutput(rect, cam)
   }
 
-  drawPrivacyLayer(fc)
-  drawCursorLayer(fc)
-  // Magnifiers (editing polish §6.4): over the cursor, under the shapes; nothing without one.
-  drawMagnifierLayer(fc)
-  drawShapesLayer(fc)
-  drawSpotlightLayer(fc)
-  c.restore()
+  if (!overlaysOnly) {
+    drawPrivacyLayer(fc)
+    drawCursorLayer(fc)
+    // Magnifiers (editing polish §6.4): over the cursor, under the shapes; nothing without one.
+    drawMagnifierLayer(fc)
+    drawShapesLayer(fc)
+    drawSpotlightLayer(fc)
+    c.restore()
+  }
 
   // Everything from here on is drawn flat over the (tilted) card.
   let top = fc
@@ -308,6 +327,17 @@ export function drawFrameOverlays(top: FrameContext, soundTime: number, video: n
   // The progress bar (editing polish §8): under the watermark; nothing without chapterBar.show.
   drawChapterBar(top, video)
   drawWatermarkLayer(top)
+}
+
+/**
+ * The whole frame cleared for a see-through export, whatever transform is set: a slide's join moves
+ * the picture (beginJoin), and the strip it uncovers would otherwise keep the last frame's pixels.
+ */
+function clearFrame(ctx: CanvasRenderingContext2D, w: number, h: number): void {
+  ctx.save()
+  ctx.setTransform(1, 0, 0, 1, 0, 0)
+  ctx.clearRect(0, 0, w, h)
+  ctx.restore()
 }
 
 const cropCopies = new WeakMap<CanvasRenderingContext2D, HTMLCanvasElement>()
