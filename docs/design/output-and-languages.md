@@ -632,8 +632,9 @@ the people the first misses. Nothing is sent anywhere to decide it.
   the Codec, Background and Frame rate chips are `Choice` groups as today (arrow keys move, Space and
   Enter pick).
 - *Save as preset* is its own button after the Settings header, never a button inside a button.
-  Once its field closes, the focus goes back to it, or to the new preset's card when that was the
-  50th preset and the button is off.
+  Once its field closes (saved or cancelled), the focus goes back to it, or, when the list is full and
+  the button is off, to the last preset's card: the new one when it was the 50th, or the 50th when an
+  import filled the list while the field was open and nothing was saved.
 - Disabled chips explain why in visible text under the row, as `ExportBundleOptions` does, because a
   disabled button's tooltip is not announced.
 - The preset card menu opens with Enter, Space or Shift+F10; Escape closes it and returns focus.

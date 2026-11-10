@@ -44,13 +44,15 @@ function bundleDiffers(preset: UserExportPreset, bundle: Omit<BundleOptions, 'la
 }
 
 /**
- * Where the focus goes once Save as preset's field is gone: back to the Save as preset button, or to
- * the new preset's card (`added`, its id) when that preset filled the list and the button is now off,
- * so the focus never falls to the page.
+ * Where the focus goes once Save as preset's field is gone: back to the Save as preset button, or,
+ * when the list is full and the button is off, to the last preset's card of `presets` (the store after
+ * the save): the new preset, or the 50th when an import filled the list while the field was open and
+ * nothing was saved. So the focus never falls to the page.
  */
-export function focusAfterSave(button: HTMLButtonElement | null, added: string | null, page: Pick<Document, 'querySelector'> = document): void {
+export function focusAfterSave(button: HTMLButtonElement | null, presets: readonly { id: string }[], page: Pick<Document, 'querySelector'> = document): void {
+  const last = presets[presets.length - 1]
   if (button && !button.disabled) button.focus()
-  else if (added) page.querySelector<HTMLElement>(`[data-testid="user-presets"] [data-preset="${added}"]`)?.focus()
+  else if (last) page.querySelector<HTMLElement>(`[data-testid="user-presets"] [data-preset="${last.id}"]`)?.focus()
 }
 
 /**

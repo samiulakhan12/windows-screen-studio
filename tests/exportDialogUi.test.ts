@@ -23,9 +23,11 @@ const rowsUi = (await import(/* @vite-ignore */ ROWS)) as Record<'CodecRow' | 'B
 const { ExportBundleOptions } = (await import(/* @vite-ignore */ BUNDLE)) as { ExportBundleOptions: Component }
 const presetsUi = (await import(/* @vite-ignore */ PRESETS)) as Record<'UserPresets' | 'SavePresetField', Component> & {
   importNotices: (read: unknown, added: number, skipped: number) => { text: string; warn: boolean }[]
-  focusAfterSave: (button: { disabled: boolean; focus(): void } | null, added: string | null, page: { querySelector(selector: string): { focus(): void } | null }) => void
+  focusAfterSave: (button: { disabled: boolean; focus(): void } | null, presets: readonly { id: string }[], page: { querySelector(selector: string): { focus(): void } | null }) => void
 }
 const { codecHintValues, settingsRows } = await import('../src/shared/render/exportRows')
+const { savePreset } = await import('../src/shared/render/userPresetsEdit')
+const { USER_PRESET_LIMIT } = await import('../src/shared/render/userPresets')
 
 const html = (c: Component, props: Record<string, unknown>): string => renderToStaticMarkup(React.createElement(c as never, props))
 const o = (format: ExportFormat, extra: Partial<ExportOptions> = {}): ExportOptions => ({ format, resolution: 1080, fps: 30, quality: 'high', encoder: 'auto', ...extra })
@@ -206,18 +208,30 @@ describe('saved presets', () => {
     expect(out).toContain('>Cancel<')
   })
 
-  it('gives the focus back to Save as preset, or to the new preset when it was the 50th and the button is off', () => {
+  it('gives the focus back to Save as preset, or to the last preset when the list is full and the button is off', () => {
     const focused: string[] = []
     const asked: string[] = []
     const button = { disabled: false, focus: () => void focused.push('save-preset') }
     const page = { querySelector: (selector: string) => (asked.push(selector), { focus: () => void focused.push('card') }) }
-    presetsUi.focusAfterSave(button, 'user:0123456789ab', page)
+    const id = (i: number): string => `user:${i.toString(16).padStart(12, '0')}`
+    const some = (n: number): UserExportPreset[] => Array.from({ length: n }, (_, i) => preset(`P${i}`, id(i)))
+    const save = (s: UserPresetStore): UserPresetStore => savePreset(s, 'New one', o('mp4'), undefined, 1, () => 0.5)
+    presetsUi.focusAfterSave(button, save(store(some(3))).presets, page)
     expect(focused).toEqual(['save-preset'])
     // The 50th preset turned Save as preset off: a disabled button takes no focus, so its card does.
     focused.length = 0
-    presetsUi.focusAfterSave({ ...button, disabled: true }, 'user:0123456789ab', page)
+    const fiftieth = save(store(some(USER_PRESET_LIMIT - 1)))
+    presetsUi.focusAfterSave({ ...button, disabled: true }, fiftieth.presets, page)
     expect(focused).toEqual(['card'])
-    expect(asked).toEqual(['[data-testid="user-presets"] [data-preset="user:0123456789ab"]'])
+    expect(asked).toEqual([`[data-testid="user-presets"] [data-preset="${fiftieth.presets[USER_PRESET_LIMIT - 1].id}"]`])
+    // An import filled the list while the field was open: nothing is saved, and the last card takes the focus.
+    focused.length = 0
+    asked.length = 0
+    const full = store(some(USER_PRESET_LIMIT))
+    expect(save(full)).toBe(full)
+    presetsUi.focusAfterSave({ ...button, disabled: true }, save(full).presets, page)
+    expect(focused).toEqual(['card'])
+    expect(asked).toEqual([`[data-testid="user-presets"] [data-preset="${id(USER_PRESET_LIMIT - 1)}"]`])
   })
 
   it('says what an import did, in the exact words of §2.2', () => {

@@ -629,8 +629,8 @@ export function ExportDialog(props: Props): JSX.Element {
     const next = savePreset(store, name, effective, withoutLanguages(bundle), Date.now(), Math.random)
     setNaming(false)
     const added = next === store ? null : next.presets[next.presets.length - 1]
-    // Back to Save as preset, or to the new preset when it was the 50th and the button is off.
-    requestAnimationFrame(() => focusAfterSave(saveButton.current, added?.id ?? null))
+    // Back to Save as preset, or to the last preset (the new one, or the 50th) when the button is off.
+    requestAnimationFrame(() => focusAfterSave(saveButton.current, next.presets))
     if (!added) return
     saveStore(next)
     pickUserPreset(added)
@@ -1241,7 +1241,7 @@ export function ExportDialog(props: Props): JSX.Element {
                         onSave={saveAsPreset}
                         onCancel={() => {
                           setNaming(false)
-                          requestAnimationFrame(() => saveButton.current?.focus())
+                          requestAnimationFrame(() => focusAfterSave(saveButton.current, store.presets))
                         }}
                       />
                     ) : (
