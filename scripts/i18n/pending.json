@@ -1,0 +1,26 @@
+{
+  "$comment": "The other account's files (docs/design/output-and-languages.md section 9.5). The scanner reports their strings as pending, never as failures, until the other account agrees to join the catalogues under the reserved 'recording' namespace. Their files are not edited in this wave.",
+  "files": [
+    { "path": "src/main/recording/**", "reason": "other account: not yet agreed" },
+    { "path": "src/main/recordingIpc.ts", "reason": "other account: not yet agreed" },
+    { "path": "src/main/windows.ts", "reason": "other account: not yet agreed" },
+    { "path": "src/main/appSettings.ts", "reason": "other account: not yet agreed" },
+    { "path": "src/shared/recording/**", "reason": "other account: not yet agreed" },
+    { "path": "src/renderer/src/views/Toolbar.*", "reason": "other account: not yet agreed" },
+    { "path": "src/renderer/src/recorder/**", "reason": "other account: not yet agreed" }
+  ],
+  "requests": [
+    {
+      "to": "other account",
+      "with": "their agreement to join the catalogues",
+      "request": "A code for \"source gone\" next to the texts of recordingIpc.ts (\"... is no longer available\"), so Home's source refresh stops matching English text (/no longer available/) and keeps working in every UI language.",
+      "where": "src/renderer/src/views/Home.tsx (the source refresh on state.message), src/main/recordingIpc.ts"
+    },
+    {
+      "to": "other account",
+      "with": "their agreement to join the catalogues",
+      "request": "Their texts move into the reserved 'recording' namespace through t() and <T>, as any of our files does; until the namespace is approved in a language, that language ships as a preview.",
+      "where": "src/shared/i18n/messages/en/recording.json"
+    }
+  ]
+}

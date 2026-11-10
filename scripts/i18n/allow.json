@@ -1,0 +1,67 @@
+{
+  "$comment": "What the string scanner (scripts/i18n/lib/scan.cjs, docs/design/output-and-languages.md section 16.1) may find without it being UI text, each with its reason. 'files' are left out whole, 'texts' are patterns over a finding's text (optionally only for some kinds), 'sites' are one file's finding by kind and exact text. Font stacks, ids, ffmpeg arguments, CSS values, test ids and log lines are not scanned at all (they reach no sink); AI prompts in src/main/ai/* go to a service, not to a sink. Add an entry only with its reason; a UI text never belongs here.",
+  "files": [
+    {
+      "path": "src/renderer/src/i18n/reviewOverlay.tsx",
+      "reason": "The development-only review overlay (section 15.4): it shows message keys and states, and never runs in a packaged build."
+    }
+  ],
+  "texts": [
+    {
+      "pattern": "^Not allowed$",
+      "kinds": [
+        "sink"
+      ],
+      "reason": "IPC sender checks: thrown only to a page that is not Flown's own, never shown to a user."
+    },
+    {
+      "pattern": "^Invalid [A-Za-z][A-Za-z ]*\\.?$",
+      "kinds": [
+        "sink"
+      ],
+      "reason": "IPC argument checks: thrown only for a malformed call, which Flown's own pages never make; never shown to a user."
+    }
+  ],
+  "sites": [
+    {
+      "file": "src/shared/i18n/t.ts",
+      "kind": "sink",
+      "reason": "The message runtime's own programming errors (a key that does not exist, text made before the messages are registered): for developers and tests, never shown in a working build."
+    },
+    {
+      "file": "src/shared/i18n/icu.ts",
+      "kind": "sink",
+      "reason": "The message parser's programming errors (a message without a value it needs): for developers and the catalogue checks, never shown in a working build."
+    },
+    {
+      "file": "src/renderer/src/i18n/boot.ts",
+      "kind": "sink",
+      "text": "the catalogue handed over is not one",
+      "reason": "Why the UI language fell back to English, written only to the log (section 9.4 step 4: any failure renders English and logs the reason); never shown."
+    },
+    {
+      "file": "src/renderer/src/i18n/boot.ts",
+      "kind": "sink",
+      "text": "no catalogue for ${…}",
+      "reason": "Why the UI language fell back to English, written only to the log (section 9.4 step 4: any failure renders English and logs the reason); never shown."
+    },
+    {
+      "file": "src/renderer/src/i18n/boot.ts",
+      "kind": "sink",
+      "text": "the catalogue for ${…} is not one",
+      "reason": "Why the UI language fell back to English, written only to the log (section 9.4 step 4: any failure renders English and logs the reason); never shown."
+    },
+    {
+      "file": "src/renderer/src/i18n/boot.ts",
+      "kind": "sink",
+      "text": "it took longer than ${…} ms",
+      "reason": "Why the UI language fell back to English, written only to the log (section 9.4 step 4: any failure renders English and logs the reason); never shown."
+    },
+    {
+      "file": "src/renderer/src/i18n/uiFonts.ts",
+      "kind": "sink",
+      "text": "The UI font took too long",
+      "reason": "Why the UI language fell back to English, written only to the log (section 9.4 step 4: any failure renders English and logs the reason); never shown."
+    }
+  ]
+}

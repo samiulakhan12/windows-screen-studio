@@ -1,0 +1,4 @@
+{
+  "$comment": "The people who may review and approve translations (docs/design/output-and-languages.md sections 15.1 and 16.2), filled in by the owner only. Each person: id (lower-case letters, digits and -), name, languages (bn, es, hi), agreement ('licence', 'assignment' or 'contract') and signed (the date of the signed agreement, YYYY-MM-DD). The checks refuse a reviewedBy or approvedBy that is not listed here for the language, and the build ships only strings reviewed and approved by two different listed people. Nobody is listed yet.",
+  "reviewers": []
+}
