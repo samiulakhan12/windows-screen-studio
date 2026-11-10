@@ -550,7 +550,9 @@ path is new, and every other file gets " (2)" the way `export:batchPath` does.
   (sidecars, the timeline, sharing) is written or started.
 - Cancel export while the timeline is written stops it: main stops copying the recordings and removes
   the media folder, and the done view shows the video as saved with the line "You cancelled, so the
-  timeline was not saved." Sharing is not started.
+  timeline was not saved." Sharing is not started. A cancel while the renderer still reads the
+  recordings' sample tables (before main is asked) writes nothing: the step checks the cancel right
+  before it asks main, so any later cancel finds main's write already started and stops it.
 
 ### 2.5 Settings › Language
 
@@ -2971,7 +2973,7 @@ code and its tests:
 | `src/shared/interchange/fcpxml.ts`, `xmeml.ts`, `edl.ts` (new) | `function fcpxml(plan: TimelinePlan, paths: Partial<Record<TimelineMedia, string>>, projectId: string): string`; `function xmeml(plan: TimelinePlan, paths: Partial<Record<TimelineMedia, string>>): string`; `function edl(plan: TimelinePlan, paths: Partial<Record<TimelineMedia, string>>): string`; `function markerEdl(plan: TimelinePlan): string \| null`; `const EDL_EVENT_LIMIT = 999` |
 | `src/shared/interchange/fileUrl.ts` (new) | `function fileUrl(windowsPath: string, form: 'fcpxml' \| 'xmeml'): string`; `function xmlText(s: string): string`; `function xmlAttr(s: string): string` (both drop the characters XML 1.0 forbids; `xmlAttr` writes newlines as `&#10;`); `function asciiName(s: string, fallback: string): string` |
 | `src/main/timelineIpc.ts` (new) | `function registerTimelineIpc(): void`; `function writeTimeline(request: TimelineRequest, deps?: TimelineDeps, signal?: AbortSignal): Promise<TimelineResult>` (export:cancel aborts the `signal` of the one in flight, through `onExportCancel` in exportIpc.ts); `function copyRecordings(projectId: string, folder: string, voice: VoiceStrength \| null, deps?: TimelineDeps, options?: { media?; job?; signal? }): Promise<Partial<Record<TimelineMedia, string>>>` (screen and camera remuxed with `-an`, sound converted to WAV, Music and Effects rendered through P3's `renderStems` when stems are off); `function timelinePaths(video: string, editors: readonly TimelineEditor[], withMarkers: boolean, exists: (p: string) => boolean): { path: string; for: TimelineEditor \| 'resolve-markers' }[]` |
-| `src/renderer/src/editor/timelineRun.ts` (new) | `function writeTimelineStep(project: Project, request: Omit<TimelineRequest, 'plan'>, exported: { fps: number; frames: number; width: number; height: number }): Promise<TimelineResult>` |
+| `src/renderer/src/editor/timelineRun.ts` (new) | `function writeTimelineStep(project: Project, request: Omit<TimelineRequest, 'plan'>, exported: { fps: number; frames: number; width: number; height: number }, deps?: { track?; write?; signal?: AbortSignal }): Promise<TimelineResult>` (Cancel export: an aborted `signal` right before main is asked gives "You cancelled, so the timeline was not saved." and asks main for nothing) |
 | Tests | 36–44 |
 
 ### 21.5 Part P5 · Export dialog and presets

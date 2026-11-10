@@ -33,6 +33,8 @@ export interface TimelineStepDeps {
   /** The facts of a project's video file, or null when it cannot be read. */
   track?: (url: string) => Promise<TrackFacts | null>
   write?: (request: TimelineRequest) => Promise<TimelineResult>
+  /** Cancel export (§2.4): checked right before main is asked, so a cancel while the recordings are read writes nothing. */
+  signal?: AbortSignal
 }
 
 /** A rate read from sample durations, whole when it is within a hundredth of a whole number. */
@@ -105,6 +107,8 @@ export async function writeTimelineStep(
       const videoFrames = Math.max(1, Math.floor((exported.frames * rate) / exported.fps + 1e-6))
       plan = recordingsTimeline(project, exported.fps, recordingMedia(project, exported.fps, screen, camera, request.stems.map((s) => s.stem), videoFrames))
     }
+    // A cancel from here on reaches main after this request, so main stops the write it started.
+    if (deps.signal?.aborted) return { files: [], problem: t('errors.timeline.cancelled') }
     const result = await write({ ...request, plan })
     return result.problem ? { ...result, problem: problemText(result.problem) } : result
   } catch (err) {

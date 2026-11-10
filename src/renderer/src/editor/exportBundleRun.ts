@@ -100,7 +100,7 @@ export async function writeBundle(anchor: string, req: BundleRequest): Promise<B
     const stop = (): void => void window.api.exportCancel()
     signal?.addEventListener('abort', stop)
     try {
-      const result = signal?.aborted ? { files: [], problem: t('errors.timeline.cancelled') } : await writeTimelineStep(req.project, req.timeline.request, req.timeline.exported)
+      const result = signal?.aborted ? { files: [], problem: t('errors.timeline.cancelled') } : await writeTimelineStep(req.project, req.timeline.request, req.timeline.exported, { signal })
       // Resolve and Final Cut Pro share one FCPXML file: each file is listed once.
       for (const f of result.files) if (!saved.includes(f.path)) saved.push(f.path)
       if (result.problem) failed.push(result.problem)

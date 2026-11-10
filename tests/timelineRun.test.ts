@@ -23,7 +23,7 @@ interface Step {
     project: Project,
     request: Omit<TimelineRequest, 'plan'>,
     exported: { fps: number; frames: number; width: number; height: number },
-    deps?: { track?: (url: string) => Promise<TrackFacts | null>; write?: (request: TimelineRequest) => Promise<TimelineResult> }
+    deps?: { track?: (url: string) => Promise<TrackFacts | null>; write?: (request: TimelineRequest) => Promise<TimelineResult>; signal?: AbortSignal }
   ): Promise<TimelineResult>
 }
 interface Bundle {
@@ -100,6 +100,20 @@ describe('writeTimelineStep', () => {
     expect(result).toEqual({ files: [], problem: t('errors.timeline.media') })
     expect(write).not.toHaveBeenCalled()
   })
+
+  it('does not ask main for the timeline when Cancel export comes while the recordings are read', async () => {
+    const controller = new AbortController()
+    const write = vi.fn()
+    const track = async (url: string): Promise<TrackFacts> => {
+      // Clicked while the screen recording's sample table is read: main has no write to stop yet.
+      if (url.includes('screen')) controller.abort()
+      return url.includes('webcam') ? CAMERA : SCREEN
+    }
+    const project = timelineProject({ hasWebcam: true })
+    const result = await writeTimelineStep(project, { ...base, media: 'recordings', editors: ['premiere'] }, exported, { track, write, signal: controller.signal })
+    expect(result).toEqual({ files: [], problem: t('errors.timeline.cancelled') })
+    expect(write).not.toHaveBeenCalled()
+  })
 })
 
 describe('recordingMedia', () => {
@@ -171,5 +185,44 @@ describe('the bundle lists a shared FCPXML once', () => {
     writeTimeline.mockClear()
     expect(await writeBundle('/v/Demo.mp4', req)).toEqual({ saved: [], failed: ['You cancelled, so the timeline was not saved.'] })
     expect(writeTimeline).not.toHaveBeenCalled()
+  })
+
+  it('Cancel export while the recordings are read writes no timeline, though main had nothing to stop yet', async () => {
+    const controller = new AbortController()
+    vi.doMock('../src/shared/render/rangeReader', () => ({
+      RangeReader: {
+        open: async (url: string) => {
+          if (url.includes('screen')) controller.abort()
+          return { size: 100, read: async () => new Uint8Array() }
+        }
+      }
+    }))
+    vi.doMock('../src/shared/render/mp4', async (original) => ({
+      ...(await original<object>()),
+      demuxVideoTrack: async () => ({ samples: Array.from({ length: 60 }, (_, i) => ({ dts: i * 1000, cts: i * 1000, duration: 1000, size: 1, offset: 0, key: i === 0 })), timescale: 30000, codedWidth: 1920, codedHeight: 1080 })
+    }))
+    vi.doMock('../src/shared/render/frameTiming', async (original) => ({ ...(await original<object>()), frameRate: () => 30 }))
+    try {
+      const exportCancel = vi.fn(async () => undefined)
+      const writeTimeline = vi.fn(async () => ({ files: [{ path: '/v/Demo.xml', for: 'premiere' }, { path: '/v/Demo media', for: 'media' }] }))
+      vi.stubGlobal('window', { api: { writeTimeline, exportCancel } })
+      await import('../src/shared/i18n/messages/en/index')
+      const { writeBundle } = (await import(/* @vite-ignore */ BUNDLE)) as Bundle
+      const out = await writeBundle('/v/Demo.mp4', {
+        project: timelineProject(),
+        kinds: [],
+        title: 'Demo',
+        thumbnail: async () => new Uint8Array(),
+        timeline: { request: { ...base, videoPath: '/v/Demo.mp4', media: 'recordings', editors: ['premiere'] }, exported },
+        signal: controller.signal
+      })
+      expect(out).toEqual({ saved: [], failed: ['You cancelled, so the timeline was not saved.'] })
+      expect(exportCancel).toHaveBeenCalledTimes(1)
+      expect(writeTimeline).not.toHaveBeenCalled()
+    } finally {
+      vi.doUnmock('../src/shared/render/rangeReader')
+      vi.doUnmock('../src/shared/render/mp4')
+      vi.doUnmock('../src/shared/render/frameTiming')
+    }
   })
 })

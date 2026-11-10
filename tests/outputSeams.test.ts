@@ -48,7 +48,7 @@ describe('the bundle writes the timeline after its files', () => {
     const project = { id: 'p1' }
     expect(await writeBundle('/v/Demo.mp4', { project, kinds: [], title: 'Demo', thumbnail: async () => new Uint8Array() })).toBeUndefined()
     const out = await writeBundle('/v/Demo.mp4', { project, kinds: [], title: 'Demo', thumbnail: async () => new Uint8Array(), timeline })
-    expect(calls).toEqual([[project, timeline.request, timeline.exported]])
+    expect(calls).toEqual([[project, timeline.request, timeline.exported, { signal: undefined }]])
     expect(out).toEqual({ saved: ['/v/Demo.fcpxml'], failed: ['Media changed'] })
     vi.unstubAllGlobals()
     vi.doUnmock('../src/renderer/src/editor/timelineRun')
