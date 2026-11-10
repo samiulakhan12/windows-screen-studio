@@ -53,7 +53,8 @@ function buildLanguage(lang, { english, meta, translations, reviewers, glossary 
   const share = counted.length ? counted.filter((k) => k in messages).length / counted.length : 0
   const coreMissing = core.filter((k) => !(k in messages))
   const wholeMissing = [...mergeGroups(meta).values()].map((g) => g.whole).filter((w) => files.isCore(files.namespaceOf(w)) && !(w in messages))
-  const ships = share >= SHIP_SHARE && coreMissing.length === 0 && wholeMissing.length === 0
+  // The whole-sentence messages of core namespaces are core keys: listed apart for the report.
+  const ships = share >= SHIP_SHARE && coreMissing.length === 0
   const preview = recording.length === 0 || recording.some((k) => !(k in messages))
   return { language: lang, messages, dropped, share, coreMissing, wholeMissing, ships, preview }
 }
