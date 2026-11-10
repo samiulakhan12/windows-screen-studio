@@ -469,8 +469,10 @@ evened out like the video's sound, so their level can differ a little." (§7.4)
 
 When *Timeline* is on, two rows follow:
 
-- **Open in** (toggle chips, at least one on; remembered with the other *Also save* choices; the
-  first time, DaVinci Resolve):
+- **Open in** (toggle chips, at least one on that can open this export; remembered with the other
+  *Also save* choices; the first time, DaVinci Resolve). When a Format, Codec or Uses change leaves
+  no chosen editor that can open the export, a line under the row says "Choose an editor that can
+  open this export, or no timeline is saved.":
 
   | Chip | Title (exact) |
   |---|---|

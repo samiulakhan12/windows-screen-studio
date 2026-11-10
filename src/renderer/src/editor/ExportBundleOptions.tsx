@@ -243,10 +243,12 @@ function TimelineRows({ value, onChange, also }: { value: BundleOptions; onChang
   if (!also.timelineOn) return null
   const { options } = also.ctx
   const chosen = value.timelines ?? []
+  // The chosen editors that can open this export: only these get a timeline.
+  const usable = chosen.filter((x) => !editorBlocked(x, options, also.media))
   const toggle = (e: TimelineEditor): void => {
     const on = chosen.includes(e)
-    // At least one editor stays on.
-    if (on && chosen.length === 1) return
+    // At least one editor that can open this export stays on.
+    if (on && usable.length === 1 && usable[0] === e) return
     const next = EDITORS.filter((x) => (x === e ? !on : chosen.includes(x)))
     lastEditors = next
     onChange(withKey(value, 'timelines', next))
@@ -285,6 +287,11 @@ function TimelineRows({ value, onChange, also }: { value: BundleOptions; onChang
               {editorReason(k!, options)}
             </p>
           ))}
+          {usable.length === 0 && (
+            <p className="hint warn" data-testid="timeline-no-editor">
+              {t('timelines.openIn.none')}
+            </p>
+          )}
           {warnings.map(([e, k]) => (
             <p key={e} className="hint warn" data-testid={`editor-warning-${e}`}>
               {t(k!, { editor: t(EDITOR_KEYS[e].label), codec: CODEC_NAMES[codecOf(options)] })}

@@ -118,6 +118,10 @@
       "EDL"
     ]
   },
+  "openIn.none": {
+    "description": "Shown under Open in when Timeline is on but none of the chosen editors can open this export (after a Format, Codec or Uses change).",
+    "screen": "export-also-save"
+  },
   "unchecked": {
     "description": "Warning under an editor chip not checked with this codec. {editor} is an editor name, {codec} a codec name.",
     "screen": "export-also-save"

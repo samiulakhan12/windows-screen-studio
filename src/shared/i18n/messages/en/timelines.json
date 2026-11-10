@@ -19,6 +19,7 @@
   "blocked.needsVideo": "Timelines need a video",
   "blocked.finalcutCodec": "Final Cut Pro cannot open {codec} files. Choose H.264 or HEVC.",
   "blocked.edlRecordings": "An EDL can hold the finished video only. Choose This export.",
+  "openIn.none": "Choose an editor that can open this export, or no timeline is saved.",
   "unchecked": "Not checked yet with {editor}: it may not open {codec} files.",
   "running.timeline": "Writing the timeline…",
   "running.copying": "Copying the recordings…",

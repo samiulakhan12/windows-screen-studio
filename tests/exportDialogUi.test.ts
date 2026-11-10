@@ -130,6 +130,40 @@ describe('Also save: Sound stems and Timeline', () => {
     expect(recordings).toMatch(/type="radio"[^>]*data-media="recordings" checked=""/)
     expect(render(NONE, also(o('mp4')))).not.toContain('>Open in<')
   })
+
+  /** The elements `value` renders, its own components called through (none uses hooks). */
+  type El = { type: unknown; props: Record<string, unknown> }
+  const elements = (node: unknown, out: El[] = []): El[] => {
+    if (Array.isArray(node)) node.forEach((n) => elements(n, out))
+    else if (node && typeof node === 'object' && 'props' in node) {
+      const el = node as El
+      if (typeof el.type === 'function') return elements((el.type as (p: unknown) => unknown)(el.props), out)
+      out.push(el)
+      elements(el.props.children, out)
+    }
+    return out
+  }
+  /** What Open in becomes when `editor` is clicked, or null when the click changes nothing. */
+  const click = (value: BundleOptions, options: ExportOptions, editor: string): unknown => {
+    let next: BundleOptions | null = null
+    const tree = (ExportBundleOptions as Component)({ value, onChange: (v: BundleOptions) => (next = v), format: options.format, has, mode: 'single', chapterCount: 2, alsoSave: also(options) })
+    const chip = elements(tree).find((el) => el.props['data-editor'] === editor)!
+    ;(chip.props.onClick as () => void)()
+    return next === null ? null : (next as BundleOptions).timelines
+  }
+
+  it('keeps on at least one editor that can open this export, and says when none of the chosen ones can', () => {
+    // Resolve is the only chosen editor that opens VP9: it stays on; with H.264 it may go.
+    expect(click({ ...NONE, timelines: ['resolve', 'finalcut'] }, o('webm'), 'resolve')).toBeNull()
+    expect(click({ ...NONE, timelines: ['resolve', 'finalcut'] }, o('mp4'), 'resolve')).toEqual(['finalcut'])
+    expect(click({ ...NONE, timelines: ['premiere', 'edl'], timelineMedia: 'recordings' }, o('mp4'), 'premiere')).toBeNull()
+    // A Format or Uses change left no chosen editor that opens the export: the row says no timeline is saved.
+    const line = 'Choose an editor that can open this export, or no timeline is saved.'
+    expect(render({ ...NONE, timelines: ['finalcut'] }, also(o('webm')))).toContain(`<p class="hint warn" data-testid="timeline-no-editor">${line}</p>`)
+    expect(render({ ...NONE, timelines: ['edl'], timelineMedia: 'recordings' }, also(o('mp4')))).toContain(line)
+    expect(render({ ...NONE, timelines: ['resolve', 'finalcut'] }, also(o('webm')))).not.toContain(line)
+    expect(render({ ...NONE, timelines: ['finalcut'] }, also(o('mp4')))).not.toContain(line)
+  })
 })
 
 describe('saved presets', () => {
