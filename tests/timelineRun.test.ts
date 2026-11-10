@@ -4,12 +4,35 @@
  * the files, and turns a failure into the done view's line without undoing the video.
  */
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import type { TimelineRequest, TimelineResult } from '../src/shared/api/export'
+import type { SoundStem, TimelineRequest, TimelineResult } from '../src/shared/api/export'
 import { t } from '../src/shared/i18n/t'
 import { checkTimelinePlan } from '../src/shared/interchange/planCheck'
-import { exportTimeline } from '../src/shared/interchange/timelinePlan'
-import { recordingMedia, writeTimelineStep, type TrackFacts } from '../src/renderer/src/editor/timelineRun'
+import { exportTimeline, type TimelinePlan } from '../src/shared/interchange/timelinePlan'
+import type { Project } from '../src/shared/types'
 import { timelineProject } from './timelineFixtures'
+
+interface TrackFacts {
+  fps: number
+  frames: number
+  width: number
+  height: number
+}
+interface Step {
+  recordingMedia(project: Project, fps: number, screen: TrackFacts, camera: TrackFacts | null, stems: readonly SoundStem[], videoFrames: number): TimelinePlan['media']
+  writeTimelineStep(
+    project: Project,
+    request: Omit<TimelineRequest, 'plan'>,
+    exported: { fps: number; frames: number; width: number; height: number },
+    deps?: { track?: (url: string) => Promise<TrackFacts | null>; write?: (request: TimelineRequest) => Promise<TimelineResult> }
+  ): Promise<TimelineResult>
+}
+interface Bundle {
+  writeBundle(anchor: string, req: Record<string, unknown>): Promise<{ saved: string[]; failed: string[] } | undefined>
+}
+// Renderer code: imported at run time so the Node typecheck of tests/ does not follow it.
+const STEP = '../src/renderer/src/editor/timelineRun'
+const BUNDLE = '../src/renderer/src/editor/exportBundleRun'
+const { recordingMedia, writeTimelineStep } = (await import(/* @vite-ignore */ STEP)) as Step
 
 const SCREEN: TrackFacts = { fps: 60, frames: 1200, width: 1920, height: 1080 }
 const CAMERA: TrackFacts = { fps: 30, frames: 600, width: 1280, height: 720 }
@@ -20,11 +43,11 @@ function step(project = timelineProject(), request = base, result: TimelineResul
   const sent: TimelineRequest[] = []
   const urls: string[] = []
   const run = writeTimelineStep(project, request, exported, {
-    track: async (url) => {
+    track: async (url: string) => {
       urls.push(url)
       return url.includes('webcam') ? CAMERA : url.includes('screen') ? SCREEN : null
     },
-    write: async (r) => {
+    write: async (r: TimelineRequest) => {
       sent.push(r)
       return result
     }
@@ -108,7 +131,7 @@ describe('the bundle lists a shared FCPXML once', () => {
         })
       }
     })
-    const { writeBundle } = await import('../src/renderer/src/editor/exportBundleRun')
+    const { writeBundle } = (await import(/* @vite-ignore */ BUNDLE)) as Bundle
     const project = timelineProject()
     const out = await writeBundle('/v/Demo.mp4', {
       project,
