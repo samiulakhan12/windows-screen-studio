@@ -9,12 +9,16 @@
   "texts": [
     {
       "pattern": "^Not allowed$",
-      "kinds": ["sink"],
+      "kinds": [
+        "sink"
+      ],
       "reason": "IPC sender checks: thrown only to a page that is not Flown's own, never shown to a user."
     },
     {
       "pattern": "^Invalid [A-Za-z][A-Za-z ]*\\.?$",
-      "kinds": ["sink"],
+      "kinds": [
+        "sink"
+      ],
       "reason": "IPC argument checks: thrown only for a malformed call, which Flown's own pages never make; never shown to a user."
     }
   ],
@@ -28,6 +32,36 @@
       "file": "src/shared/i18n/icu.ts",
       "kind": "sink",
       "reason": "The message parser's programming errors (a message without a value it needs): for developers and the catalogue checks, never shown in a working build."
+    },
+    {
+      "file": "src/renderer/src/i18n/boot.ts",
+      "kind": "sink",
+      "text": "the catalogue handed over is not one",
+      "reason": "Why the UI language fell back to English, written only to the log (section 9.4 step 4: any failure renders English and logs the reason); never shown."
+    },
+    {
+      "file": "src/renderer/src/i18n/boot.ts",
+      "kind": "sink",
+      "text": "no catalogue for ${…}",
+      "reason": "Why the UI language fell back to English, written only to the log (section 9.4 step 4: any failure renders English and logs the reason); never shown."
+    },
+    {
+      "file": "src/renderer/src/i18n/boot.ts",
+      "kind": "sink",
+      "text": "the catalogue for ${…} is not one",
+      "reason": "Why the UI language fell back to English, written only to the log (section 9.4 step 4: any failure renders English and logs the reason); never shown."
+    },
+    {
+      "file": "src/renderer/src/i18n/boot.ts",
+      "kind": "sink",
+      "text": "it took longer than ${…} ms",
+      "reason": "Why the UI language fell back to English, written only to the log (section 9.4 step 4: any failure renders English and logs the reason); never shown."
+    },
+    {
+      "file": "src/renderer/src/i18n/uiFonts.ts",
+      "kind": "sink",
+      "text": "The UI font took too long",
+      "reason": "Why the UI language fell back to English, written only to the log (section 9.4 step 4: any failure renders English and logs the reason); never shown."
     }
   ]
 }
