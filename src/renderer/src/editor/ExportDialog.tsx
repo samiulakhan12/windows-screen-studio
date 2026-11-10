@@ -468,15 +468,13 @@ export function ExportDialog(props: Props): JSX.Element {
     (settingsOpen && (options.format === 'mp4' || options.format === 'mov')) ||
     options.codec === 'hevc' ||
     (mode === 'batch' && !!store?.presets.some((p) => p.options.codec === 'hevc' && batch.userPresets?.includes(p.id)))
+  const hevcAsked = useRef(false)
   useEffect(() => {
-    if (!needHevc || hevcProbe !== 'idle') return
+    if (!needHevc || hevcAsked.current) return
+    hevcAsked.current = true
     setHevcProbe('probing')
-    let live = true
-    void probe('hevc').then((found) => live && setHevcProbe(found))
-    return () => {
-      live = false
-    }
-  }, [needHevc, hevcProbe])
+    void probe('hevc').then(setHevcProbe)
+  }, [needHevc])
   // The AV1 probe runs when AV1 is chosen.
   const needAv1 = codecOf(effective) === 'av1'
   useEffect(() => {
