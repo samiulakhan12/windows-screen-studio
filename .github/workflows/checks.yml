@@ -1,0 +1,47 @@
+# Checks on every push and pull request (docs/design/output-and-languages.md §16.4): the typecheck,
+# the string scanner and catalogue checks, and their tests. It needs neither Electron's binary nor
+# ffmpeg-static's download, so the install runs no package's install scripts and fetches nothing
+# beyond the npm packages. It holds no secret, can only read the repository and publishes nothing.
+#
+# The actions are pinned by full commit SHA (the tag each one was is in its comment); update both
+# together.
+name: Checks
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: checks-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  checks:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: '22'
+          cache: npm
+
+      - name: Install the packages without their install scripts
+        run: npm ci --ignore-scripts
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Strings and catalogues
+        run: npm run i18n:check
+
+      - name: Tests of the strings and catalogues
+        run: npx vitest run tests/i18n*.test.ts tests/fmtEnglish.test.ts tests/reviewOverlay.test.ts
