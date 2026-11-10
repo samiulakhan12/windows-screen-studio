@@ -131,13 +131,15 @@ void TITLE; void NODE; void later; void Panel`
   const e = n.toLocaleString('en-US')
   const f = new Intl.Segmenter(undefined, { granularity: 'word' })
   const g = new Intl.NumberFormat('en-US')
-  return [a, b, c, d2, e, f, g]
+  const h = Intl.DateTimeFormat().format(d)
+  return [a, b, c, d2, e, f, g, h]
 }`
     expect(found('src/shared/G.ts', src).map((f) => [f.kind, f.line])).toEqual([
       ['locale', 2],
       ['locale', 3],
       ['locale', 4],
-      ['locale', 5]
+      ['locale', 5],
+      ['locale', 9]
     ])
   })
 
@@ -205,16 +207,19 @@ describe('test 86: bundles carry only their own messages', () => {
 
   it('notices a main that carries the renderer’s namespaces, a renderer key in main, and a meta import', () => {
     const root = makeTree({
-      ...englishTree({ common: {}, errors: { a: 'A' }, main: { b: 'B' }, export: { c: 'C' }, codecs: { d: 'D' } }),
+      ...englishTree({ common: { x: 'X' }, errors: { a: 'A' }, main: { b: 'B' }, export: { c: 'C' }, codecs: { d: 'D' } }),
       'src/shared/i18n/t.ts': 'export const t = (k: string): string => k\n',
       'src/shared/i18n/messages/en/index.ts': "import e from './export.json'\nimport c from './codecs.json'\nexport default [e, c]\n",
       'src/shared/i18n/messages/en/main.ts': "import m from './main.json'\nexport default m\n",
-      'src/main/index.ts': "import '../shared/i18n/messages/en/main'\nimport { t } from '../shared/i18n/t'\nexport const go = () => t('errors.a')\n",
+      'src/main/index.ts': "import { t } from '../shared/i18n/t'\nconst KEYS = ['errors.a']\nexport const go = (x: string) => [t(`common.${x}`), KEYS]\n",
       'src/main/late.ts': "import { t } from '../shared/i18n/t'\nexport const late = () => t('codecs.d')\n",
       'src/renderer/src/x.ts': "import type m from '../../shared/i18n/messages/en/export.meta.json'\nexport type M = typeof m\n"
     })
     trees.push(root)
-    expect([...scan.mainNamespaces('src/main/index.ts', root)].sort()).toEqual(['errors', 'main'])
+    // A key in a table, and a key template's namespace.
+    expect([...scan.mainNamespaces('src/main/index.ts', root)].sort()).toEqual(['common', 'errors'])
+    writeTree(root, { 'src/main/index.ts': "import '../shared/i18n/messages/en/main'\nexport const go = 1\n" })
+    expect([...scan.mainNamespaces('src/main/index.ts', root)].sort()).toEqual(['main'])
     writeTree(root, { 'src/main/index.ts': "import '../shared/i18n/messages/en/index'\nimport { late } from './late'\nexport const go = late\n" })
     expect([...scan.mainNamespaces('src/main/index.ts', root)].sort()).toEqual(['codecs', 'export'])
     expect(scan.metaImporters(root)).toEqual(['src/renderer/src/x.ts'])
