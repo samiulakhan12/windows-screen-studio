@@ -253,6 +253,9 @@ async function main() {
     h.assert((await toolbar.evaluate(() => document.documentElement.lang)) === 'en', 'the recording bar keeps lang="en"')
     const bar = await toolbar.evaluate(() => document.body.innerText)
     h.assert(!/[\u0980-\u09FF]/.test(bar), `the recording bar shows no Bangla (${bar})`)
+    // A few seconds of picture, so the stopped recording has frames to open (under load the first
+    // frames arrive late, and a recording with none is refused as empty).
+    await h.sleep(3000)
     await toolbar.click('.tb-btn.stop')
     await again.win.waitForSelector('.editor canvas', { timeout: 120000 })
     await offline(again.app)
