@@ -27,7 +27,7 @@ const BIDI = /[\u061c\u200e\u200f\u202a-\u202e\u2066-\u2069]/u
 /** Other characters no message holds: C0/C1 controls but the line feed, tag characters, BOM, replacement character. */
 const CONTROL = /[\u0000-\u0009\u000b-\u001f\u007f-\u009f\ufeff\ufffd\u{e0000}-\u{e007f}]/u
 /** Native digits of the scripts Flown may show (Bengali, Devanagari, Arabic-Indic, Extended Arabic-Indic). */
-const NATIVE_DIGITS = /[০-৯०-९٠-٩۰-۹]/u
+const NATIVE_DIGITS = /[\u09e6-\u09ef\u0966-\u096f\u0660-\u0669\u06f0-\u06f9]/u
 /** Number words and digits a Bangla or Hindi `one` branch must not hold instead of `{n}` (§9.3). */
 const ONE_WORDS = { bn: ['একটি', 'একটা', 'এক', '১'], hi: ['एक', '१'] }
 /** Languages whose text has no Latin words of its own (§16.2). */
