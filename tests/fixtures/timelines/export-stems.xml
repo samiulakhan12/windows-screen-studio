@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE xmeml>
+<xmeml version="4">
+  <sequence id="sequence-1">
+    <name>Demo &amp; &quot;Tour&quot; &lt;1&gt;</name>
+    <duration>450</duration>
+    <rate><timebase>30</timebase><ntsc>FALSE</ntsc></rate>
+    <timecode><rate><timebase>30</timebase><ntsc>FALSE</ntsc></rate><string>00:00:00:00</string><frame>0</frame><displayformat>NDF</displayformat></timecode>
+    <media>
+      <video>
+        <format><samplecharacteristics><rate><timebase>30</timebase><ntsc>FALSE</ntsc></rate><width>1920</width><height>1080</height><pixelaspectratio>square</pixelaspectratio><anamorphic>FALSE</anamorphic><fielddominance>none</fielddominance></samplecharacteristics></format>
+        <track>
+          <clipitem id="clipitem-1"><name>Demo #1.mp4</name><duration>450</duration><rate><timebase>30</timebase><ntsc>FALSE</ntsc></rate><start>0</start><end>450</end><in>0</in><out>450</out>
+            <file id="file-1">
+              <name>Demo #1.mp4</name>
+              <pathurl>file://localhost/C:/Users/%E0%A6%B0%E0%A6%B9%E0%A6%BF%E0%A6%AE/Videos/Demo%20%231.mp4</pathurl>
+              <rate><timebase>30</timebase><ntsc>FALSE</ntsc></rate>
+              <duration>450</duration>
+              <media>
+                <video><samplecharacteristics><rate><timebase>30</timebase><ntsc>FALSE</ntsc></rate><width>1920</width><height>1080</height></samplecharacteristics></video>
+                <audio><samplecharacteristics><samplerate>48000</samplerate></samplecharacteristics><channelcount>2</channelcount></audio>
+              </media>
+            </file>
+          </clipitem>
+        </track>
+      </video>
+      <audio>
+        <numOutputChannels>2</numOutputChannels>
+        <format><samplecharacteristics><samplerate>48000</samplerate></samplecharacteristics></format>
+        <track>
+          <clipitem id="clipitem-2"><name>Demo #1 - Voice.wav</name><duration>450</duration><rate><timebase>30</timebase><ntsc>FALSE</ntsc></rate><start>0</start><end>450</end><in>0</in><out>450</out>
+            <file id="file-2">
+              <name>Demo #1 - Voice.wav</name>
+              <pathurl>file://localhost/C:/Users/%E0%A6%B0%E0%A6%B9%E0%A6%BF%E0%A6%AE/Videos/Demo%20%231%20-%20Voice.wav</pathurl>
+              <rate><timebase>30</timebase><ntsc>FALSE</ntsc></rate>
+              <duration>450</duration>
+              <media>
+                <audio><samplecharacteristics><samplerate>48000</samplerate></samplecharacteristics><channelcount>2</channelcount></audio>
+              </media>
+            </file>
+          <sourcetrack><mediatype>audio</mediatype><trackindex>1</trackindex></sourcetrack></clipitem>
+        </track>
+        <track>
+          <clipitem id="clipitem-3"><name>Demo #1 - System sound.wav</name><duration>450</duration><rate><timebase>30</timebase><ntsc>FALSE</ntsc></rate><start>0</start><end>450</end><in>0</in><out>450</out>
+            <file id="file-3">
+              <name>Demo #1 - System sound.wav</name>
+              <pathurl>file://localhost/C:/Users/%E0%A6%B0%E0%A6%B9%E0%A6%BF%E0%A6%AE/Videos/Demo%20%231%20-%20System%20sound.wav</pathurl>
+              <rate><timebase>30</timebase><ntsc>FALSE</ntsc></rate>
+              <duration>450</duration>
+              <media>
+                <audio><samplecharacteristics><samplerate>48000</samplerate></samplecharacteristics><channelcount>2</channelcount></audio>
+              </media>
+            </file>
+          <sourcetrack><mediatype>audio</mediatype><trackindex>1</trackindex></sourcetrack></clipitem>
+        </track>
+        <track>
+          <clipitem id="clipitem-4"><name>Demo #1 - Music.wav</name><duration>450</duration><rate><timebase>30</timebase><ntsc>FALSE</ntsc></rate><start>0</start><end>450</end><in>0</in><out>450</out>
+            <file id="file-4">
+              <name>Demo #1 - Music.wav</name>
+              <pathurl>file://localhost/C:/Users/%E0%A6%B0%E0%A6%B9%E0%A6%BF%E0%A6%AE/Videos/Demo%20%231%20-%20Music.wav</pathurl>
+              <rate><timebase>30</timebase><ntsc>FALSE</ntsc></rate>
+              <duration>450</duration>
+              <media>
+                <audio><samplecharacteristics><samplerate>48000</samplerate></samplecharacteristics><channelcount>2</channelcount></audio>
+              </media>
+            </file>
+          <sourcetrack><mediatype>audio</mediatype><trackindex>1</trackindex></sourcetrack></clipitem>
+        </track>
+      </audio>
+    </media>
+    <marker><name>Intro</name><comment></comment><in>0</in><out>-1</out></marker>
+    <marker><name>ভূমিকা</name><comment></comment><in>128</in><out>-1</out></marker>
+    <marker><name>Settings &lt;page&gt; &amp; &quot;more&quot;</name><comment></comment><in>360</in><out>-1</out></marker>
+  </sequence>
+</xmeml>

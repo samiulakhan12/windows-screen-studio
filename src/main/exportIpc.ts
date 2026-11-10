@@ -8,6 +8,7 @@ import { analyzeAudio, stopAudioAnalysis } from './audioAnalysis'
 import { describeGifFit, ffmpegPlan, gifEncodeArgs, gifPaletteArgs, nextGifFit, type FfmpegPlan, type GifFit } from './exportArgs'
 import { copyFileToClipboard } from './exportClipboard'
 import { LeftoverLog, removeSyncWithRetries, removeWithRetries, settledWithin, sweepTempDir } from './exportCleanup'
+import { rememberExportJob } from './exportedJobs'
 import { batchFileOk, freeBatchPath, isPng, moveIntoPlace, partialPath, resolveSoundInputs, tempStem, toIpcError, validateJob } from './exportJob'
 import { FrameEncoder, startFfmpeg, type FfmpegRun } from './ffmpeg'
 import { detectH264Encoders } from './hwEncoders'
@@ -344,6 +345,8 @@ export function registerExportIpc(): void {
       await moveIntoPlace(job.tempPath, job.finalPath)
       log?.remove([job.tempPath])
       exportedFiles.add(job.finalPath)
+      // A timeline over the recordings renders Music and Effects with this job (output-and-languages §8.1).
+      rememberExportJob(job.finalPath, job.job)
       if (!batchPaths.delete(job.finalPath)) approvedExportPath = null
       const bytes = (await fs.stat(job.finalPath)).size
       // The sound stems next to the video (output-and-languages §7.6): a failure or a cancel here

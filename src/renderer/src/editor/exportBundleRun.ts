@@ -94,7 +94,8 @@ export async function writeBundle(anchor: string, req: BundleRequest): Promise<B
   // The timeline after the video, the stems and the sidecars (output-and-languages §8.7); a failure never undoes the video.
   if (req.timeline) {
     const result = await writeTimelineStep(req.project, req.timeline.request, req.timeline.exported)
-    saved.push(...result.files.map((f) => f.path))
+    // Resolve and Final Cut Pro share one FCPXML file: each file is listed once.
+    for (const f of result.files) if (!saved.includes(f.path)) saved.push(f.path)
     if (result.problem) failed.push(result.problem)
   }
   return { saved, failed }

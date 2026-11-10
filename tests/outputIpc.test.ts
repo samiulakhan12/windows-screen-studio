@@ -131,6 +131,7 @@ vi.mock('../src/main/stemsRun', () => ({
 }))
 
 import { registerExportIpc, saveFilters, setExportErrorCode } from '../src/main/exportIpc'
+import { exportJobOf } from '../src/main/exportedJobs'
 
 const out = path.join(h.root, 'Videos')
 const tick = (ms = 20): Promise<void> => new Promise((r) => setTimeout(r, ms))
@@ -199,6 +200,17 @@ describe('export IPC seams of wave 12', () => {
     const done = (await invoke('export:finish')) as Record<string, unknown>
     expect(stemStep.calls.length).toBe(before)
     expect(Object.keys(done)).toEqual(['bytes'])
+  })
+
+  it('remembers the job of each finished file for the timeline step (output-and-languages §8.1)', async () => {
+    const file = path.join(out, 'Timeline.mp4')
+    h.saveTo = file
+    await invoke('export:choosePath', {}, 'Timeline', 'mp4')
+    const job = jobFor(file, { fadeIn: 0.5, fadeOut: 1 })
+    await invoke('export:start', { sender: new EventEmitter() }, 'p1', job)
+    expect(exportJobOf(file)).toBeUndefined()
+    await invoke('export:finish')
+    expect(exportJobOf(file)).toMatchObject({ outputPath: file, fadeIn: 0.5, fadeOut: 1 })
   })
 
   it('a cancel during the stem step reaches its signal and never removes the video', async () => {

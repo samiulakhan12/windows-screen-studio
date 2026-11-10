@@ -1,0 +1,9 @@
+TITLE: Demo & "Tour" <1> markers
+FCM: NON-DROP FRAME
+
+001  001      V     C        00:00:00:00 00:00:00:01 00:00:00:00 00:00:00:01
+ |C:ResolveColorBlue |M:Intro |D:1
+002  001      V     C        00:00:04:08 00:00:04:09 00:00:04:08 00:00:04:09
+ |C:ResolveColorBlue |M:Chapter 2 |D:1
+003  001      V     C        00:00:12:00 00:00:12:01 00:00:12:00 00:00:12:01
+ |C:ResolveColorBlue |M:Settings <page> & "more" |D:1
