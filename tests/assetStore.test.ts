@@ -91,6 +91,19 @@ describe('the allow list (§12)', () => {
 })
 
 describe('downloading an asset (§12)', () => {
+  it('says a download is running while it runs (a language restart waits for it, output-and-languages §9.4)', async () => {
+    let answer: ((r: HttpResponse) => void) | null = null
+    let n = 0
+    use(async () => (n++ === 0 ? new Promise<HttpResponse>((r) => (answer = r)) : { status: 404, headers: {}, body: (async function* () {})() }))
+    expect(store.assetDownloading()).toBe(false)
+    const p = store.downloadAsset('test-cjk', progress)
+    await vi.waitFor(() => expect(answer).not.toBeNull())
+    expect(store.assetDownloading()).toBe(true)
+    answer!({ status: 404, headers: {}, body: (async function* () {})() })
+    await expect(p).rejects.toThrow()
+    expect(store.assetDownloading()).toBe(false)
+  })
+
   it('downloads, verifies and records a font; it is then listed ready and served by its name', async () => {
     const s = server(() => ({ status: 200, body: FILE }))
     use(s.get)

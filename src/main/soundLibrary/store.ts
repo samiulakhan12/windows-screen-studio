@@ -160,6 +160,9 @@ async function verified(bed: MusicBed, records: Records): Promise<boolean> {
 /** Downloads under way, by id. */
 const active = new Map<string, { controller: AbortController; done: Promise<SoundLibraryState>; progress: number }>()
 
+/** Whether music for the library is downloading now (a language restart waits for it, output-and-languages §9.4). */
+export const bedDownloading = (): boolean => active.size > 0
+
 /**
  * Every bed of the catalogue as it stands on this PC. While no source is offered (§0 decision 1:
  * SOUND_LIBRARY_SOURCE is null), a bed that is not here is left out, so its row is not shown and

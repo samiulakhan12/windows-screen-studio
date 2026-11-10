@@ -49,6 +49,9 @@ export function speechStore(): SpeechModelStore {
   return store
 }
 
+/** Whether a speech model is downloading now (without making the store). */
+export const speechDownloading = (): boolean => store?.downloading ?? false
+
 /** The helper choice (the first call runs the CPU probe). */
 export async function engineChoice(): Promise<HelperChoice> {
   choice = await selectHelper()

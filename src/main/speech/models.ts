@@ -107,6 +107,11 @@ export class SpeechModelStore {
     return path.join(this.dir, spec.file)
   }
 
+  /** A model is downloading or being checked (a language restart waits for it, output-and-languages §9.4). */
+  get downloading(): boolean {
+    return this.active !== null
+  }
+
   private changed(): void {
     this.deps.onChange?.()
   }

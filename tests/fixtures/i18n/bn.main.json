@@ -1,0 +1,13 @@
+{
+  "note": "A test fixture for the language runtime (docs/design/output-and-languages.md §23.4): marked texts approved by the fixture, not a translation.",
+  "messages": {
+    "main.saveFilter.wav": "‹bn› WAV অডিও",
+    "main.presetFile.saveTitle": "‹bn› প্রিসেট · Save presets",
+    "main.presetFile.openTitle": "‹bn› প্রিসেট · Import presets",
+    "main.presetFile.filter": "‹bn› Flown প্রিসেট",
+    "main.relaunch.download": "‹bn› ডাউনলোড · Wait for the download to finish, or stop it.",
+    "main.confirm.cancel": "বাতিল"
+  },
+  "latn": [],
+  "user": {}
+}
