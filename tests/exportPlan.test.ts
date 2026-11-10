@@ -6,7 +6,7 @@ import { createProject } from '../src/shared/engine/project'
 import { avcLevel, colorTagsFrom } from '../src/shared/render/codec'
 import { studioMetrics } from '../src/shared/captions/studioLayout'
 import { studioPreset } from '../src/shared/captions/studioPresets'
-import { isTall } from '../src/shared/engine/reframeData'
+import { DEFAULT_REFRAME, followApplies, isTall } from '../src/shared/engine/reframeData'
 import { capSize, exportDimensions, exportPreviewSize, exportRoutes, exportSize, MAX_EXPORT_SIDE, routeLabel } from '../src/shared/render/exportPlan'
 import type { ExportSettings } from '../src/shared/types'
 
@@ -135,17 +135,22 @@ describe('exportDimensions', () => {
   it('CineForm widths are a multiple of 16, which FFmpeg\'s cfhd needs (1080 wide fails); other codecs keep their sizes', () => {
     const cine = { ...settings, format: 'mov' as const, codec: 'cineform' as const }
     const shapedAs = (aspectRatio: '9:16' | '1:1' | '16:9'): typeof project => ({ ...project, style: { ...project.style, aspectRatio } })
-    expect(exportSize(shapedAs('9:16'), cine)).toEqual({ width: 1088, height: 1920, fps: 60, capped: false })
-    expect(exportSize(shapedAs('1:1'), cine)).toMatchObject({ width: 1088, height: 1080 })
-    // 4:5 at 1080p sits on the tall line (1350 = 1.25 x 1080); 1088 would make it wide, so it is 1072.
-    expect(exportSize(project, { ...cine, aspect: '4:5', alpha: 'background' })).toMatchObject({ width: 1072, height: 1350 })
-    expect(isTall(1072, 1350)).toBe(true)
+    // The height grows with the width, so the frame keeps its shape (follow framing, the camera band
+    // and the tall-frame rules decide as for the H.264 file).
+    expect(exportSize(shapedAs('9:16'), cine)).toEqual({ width: 1088, height: 1934, fps: 60, capped: false })
+    expect(exportSize(shapedAs('1:1'), cine)).toMatchObject({ width: 1088, height: 1088 })
+    // 4:5 at 1080p sits on the tall line (1350 = 1.25 x 1080) and stays on it.
+    expect(exportSize(project, { ...cine, aspect: '4:5', alpha: 'background' })).toMatchObject({ width: 1088, height: 1360 })
+    expect(isTall(1088, 1360)).toBe(true)
     // 'auto' on a 3:2 laptop screen: 1620x1080 and 1080x720.
-    expect(exportSize(shaped(1500, 1000), cine)).toMatchObject({ width: 1632, height: 1080 })
-    expect(exportSize(shaped(1500, 1000), { ...cine, resolution: 720 })).toMatchObject({ width: 1088, height: 720 })
+    expect(exportSize(shaped(1500, 1000), cine)).toMatchObject({ width: 1632, height: 1088 })
+    expect(exportSize(shaped(1500, 1000), { ...cine, resolution: 720 })).toMatchObject({ width: 1088, height: 726 })
     // A width limit is kept (down to the multiple of 16 below it); the 4096 cap is one already.
-    expect(exportSize(project, { ...cine, maxWidth: 1000 })).toMatchObject({ width: 992 })
+    expect(exportSize(project, { ...cine, maxWidth: 1000 })).toMatchObject({ width: 992, height: 558 })
     expect(exportSize(shaped(5120, 2160), { ...cine, resolution: 2160 })).toMatchObject({ width: 4096, height: 1728, capped: true })
+    // A frame half a pixel from the tall line stays on its side: 1082x1352 is not tall, and 1072x1340 would be.
+    expect(exportSize(project, { ...settings, resolution: 1440, aspect: '4:5', maxWidth: 1082 })).toMatchObject({ width: 1082, height: 1352 })
+    expect(exportSize(project, { ...cine, resolution: 1440, aspect: '4:5', maxWidth: 1082 })).toMatchObject({ width: 1072, height: 1338 })
     // Standard 16:9 sizes and every other codec are as before.
     expect(exportSize(shapedAs('16:9'), cine)).toMatchObject({ width: 1920, height: 1080 })
     expect(exportSize(shapedAs('9:16'), settings)).toMatchObject({ width: 1080, height: 1920 })
@@ -153,12 +158,14 @@ describe('exportDimensions', () => {
     expect(exportSize(shapedAs('9:16'), { ...cine, codec: undefined })).toMatchObject({ width: 1080, height: 1920 })
     for (const resolution of [720, 1080, 1440, 2160] as const)
       for (const aspect of ['auto', '16:9', '9:16', '1:1', '4:3', '4:5'] as const)
-        for (const [w, h] of [[1918, 1080], [1500, 1000], [2580, 1080], [1000, 1300], [300, 1300], [1000, 1250], [1200, 1500], [1080, 1920]]) {
+        for (const [w, h] of [[1918, 1080], [1500, 1000], [2580, 1080], [1000, 1300], [300, 1300], [1000, 1250], [1200, 1500], [1080, 1920], [1115, 1000], [1256, 2000], [1600, 1800]]) {
           const s = exportSize(shaped(w, h), { ...cine, resolution, aspect })
           expect(s.width % 16, `${w}x${h} ${aspect} ${resolution}p`).toBe(0)
-          // Tall exactly when the H.264 file is, so follow framing, the camera band and captions lay out alike.
+          // Tall and following exactly when the H.264 file is, so follow framing, the camera band and captions lay out alike.
           const h264 = exportSize(shaped(w, h), { ...settings, resolution, aspect })
           expect(isTall(s.width, s.height), `tall ${w}x${h} ${aspect} ${resolution}p`).toBe(isTall(h264.width, h264.height))
+          const follows = { reframe: { ...DEFAULT_REFRAME } }
+          expect(followApplies(follows, s.width, s.height, w, h), `follow ${w}x${h} ${aspect} ${resolution}p`).toBe(followApplies(follows, h264.width, h264.height, w, h))
           expect(() => validateJob({ ...job, width: s.width, height: s.height, format: 'mov', codec: 'cineform', video: { kind: 'raw', encoder: 'cfhd', pixelFormat: 'bgr0' }, outputPath: '/tmp/x.mov' })).not.toThrow()
         }
   })

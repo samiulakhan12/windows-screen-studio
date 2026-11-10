@@ -1096,11 +1096,13 @@ targets are off for alpha (§5.7). Measured on the alpha clip: 7.4 MB/min at rea
 `-color_primaries bt709 -color_trc bt709` (RGB: no matrix tag). Measured: YUV "high" 1,019 MB/min,
 RGBA "high" 2,395 MB/min, RGBA "film1" 2,596 MB/min at 1080p60, encoding faster than real time on 4
 cores. `cfhd` takes only widths that are a multiple of 16 ("Width must be multiple of 16.", so 1080 wide
-fails): `exportSize` rounds a CineForm frame's width up to the next multiple of 16 (9:16 and 1:1 at
-1080p are 1088 wide), and down instead when up would pass `maxWidth` or make a tall frame wide: 4:5
-at 1080p sits on the `isTall` line (1350 = 1.25 × 1080), so it is 1072 × 1350 and keeps the tall-frame
-rules of §5.8. The preview, the job and the timeline plan agree, and the recording is fitted inside as
-with any size.
+fails): `exportSize` rounds a CineForm frame's width up to the next multiple of 16 (down instead when
+up would pass `maxWidth` or 4096) and scales the height with it, so the frame keeps its shape: 9:16 at
+1080p is 1088 × 1934, 1:1 is 1088 × 1088, and 4:5, on the `isTall` line (1350 = 1.25 × 1080), is
+1088 × 1360. Follow framing (`followApplies`), the camera band and the tall-frame rules of §5.8 then
+decide as for the H.264 file of the same project; a frame that rounding to even would carry across
+the tall line is moved back by 2 px. The preview, the job and the timeline plan agree, and the
+recording is fitted inside as with any size.
 
 **Animation** (MOV). Input `bgra`/`rgba` (alpha) or `bgr0`/`rgb0`; `-pix_fmt argb` or `rgb24`;
 `-c:v qtrle`; `-color_primaries bt709 -color_trc bt709`. Lossless (598 of 600 frames bit-exact, the

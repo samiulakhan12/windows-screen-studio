@@ -140,10 +140,12 @@ describe.runIf(PROBE).each(BINARIES)('wave 12 encodes with %s', (ff) => {
     const two = { frames: 2, audio: { clips: [{ id: 'c', start: 0, end: 2 / 30, speed: 1 }], volume: 1 } }
     const opaque = exportSize(tall, cine)
     const out = run(ff, job({ ...two, width: opaque.width, height: opaque.height }), pattern(ff, opaque.width, opaque.height, 30, 2, 'bgr0'))
-    expect(probe(out)[0]).toMatchObject({ codec_name: 'cfhd', width: opaque.width, height: 1920, nb_read_frames: '2' })
+    expect(opaque).toMatchObject({ width: 1088, height: 1934 })
+    expect(probe(out)[0]).toMatchObject({ codec_name: 'cfhd', width: 1088, height: 1934, nb_read_frames: '2' })
     const feed = exportSize(recorded, { ...cine, aspect: '4:5', alpha: 'background' })
     const clear = run(ff, job({ ...two, width: feed.width, height: feed.height, alpha: true, pixelFormat: 'bgra' }), seeThrough(feed.width, feed.height, 2, 'bgra'))
-    expect(probe(clear)[0]).toMatchObject({ codec_name: 'cfhd', pix_fmt: 'gbrap12le', width: feed.width, height: 1350 })
+    expect(feed).toMatchObject({ width: 1088, height: 1360 })
+    expect(probe(clear)[0]).toMatchObject({ codec_name: 'cfhd', pix_fmt: 'gbrap12le', width: 1088, height: 1360 })
   })
 
   it('Lossless (QuickTime Animation) with alpha: ARGB, bit-exact', () => {

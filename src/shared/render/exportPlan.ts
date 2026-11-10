@@ -68,13 +68,21 @@ export function exportSize(project: Project, settings: ExportOptions): ExportSiz
     size = { width: Math.max(2, settings.maxWidth - (settings.maxWidth % 2)), height: even(size.height * k) }
   }
   const capped = capSize(size)
-  // FFmpeg's CineForm encoder takes only widths that are a multiple of 16 (1080 wide fails): a few
-  // pixels more of background, fewer when that would pass maxWidth or make a tall frame wide (4:5 at
-  // 1080p sits on the line, and the tall-frame layout must stay); the recording is fitted inside.
+  // FFmpeg's CineForm encoder takes only widths that are a multiple of 16 (1080 wide fails): the
+  // width goes up to the next one (down when that would pass maxWidth or 4096) and the height with
+  // it, so the frame keeps its shape and follows the action, places the camera band and lays out
+  // tall frames as the H.264 file does (4:5 at 1080p, on the tall line, is 1088x1360).
   if (settings.format === 'mov' && codecOf(settings) === 'cineform' && capped.width % 16) {
-    const up = Math.ceil(capped.width / 16) * 16
-    const keepsShape = isTall(up, capped.height) === isTall(capped.width, capped.height)
-    capped.width = up <= Math.min(MAX_EXPORT_SIDE, settings.maxWidth ?? MAX_EXPORT_SIDE) && keepsShape ? up : Math.floor(capped.width / 16) * 16
+    const { width: w, height: h } = capped
+    const up = Math.ceil(w / 16) * 16
+    const upFits = up <= Math.min(MAX_EXPORT_SIDE, settings.maxWidth ?? MAX_EXPORT_SIDE) && even((h * up) / w) <= MAX_EXPORT_SIDE
+    const width = upFits ? up : Math.max(16, Math.floor(w / 16) * 16)
+    const height = Math.min(MAX_EXPORT_SIDE, even((h * width) / w))
+    // Rounding to even can carry a frame a pixel from the tall line across it; 1.25 x a multiple
+    // of 16 is even, so 2 px bring it back.
+    const tall = isTall(w, h)
+    capped.width = width
+    capped.height = isTall(width, height) === tall ? height : height + (tall ? 2 : -2)
   }
   return { ...capped, fps: gif ? GIF_FPS : settings.fps }
 }
