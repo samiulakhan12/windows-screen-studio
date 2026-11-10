@@ -55,7 +55,9 @@ table above; each drafted entry records it in `draftedWith`.
 6. **Import.** `npm run i18n:sheet -- import --lang bn --file bn/review.csv --by <your id>` checks
    every row and records you and the date. It refuses a file that is not UTF-8, rows that look
    damaged (runs of `?`, no Bangla letter where English has words, a formula's remains), rows that
-   fail the checks, and one person as both reviewer and approver of a string.
+   fail the checks, and one person as both reviewer and approver of a string. Only the text a reviewer
+   marked reviewed can be approved: if you correct it, set `state` to `reviewed`, and the other
+   person approves it.
 7. **Build.** `npm run i18n:build` writes `src/shared/i18n/built/` from the strings that are
    approved, current and approved by two different listed people. Commit the result;
    `npm run i18n:check` fails when the committed files differ from what the translations give.

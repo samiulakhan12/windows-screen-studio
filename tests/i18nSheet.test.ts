@@ -3,7 +3,7 @@
  * byte-order mark and puts an apostrophe before "-3 dB" and "=SUM(A1)"; import removes it and
  * round-trips without loss; it refuses a file with U+FFFD or invalid UTF-8, a row of "????", a Bangla
  * row with no Bengali letter and a row that fails the checks; it records who and when, and refuses one
- * person as reviewer and approver.
+ * person as reviewer and approver, and an approval of text that changed or was not reviewed.
  */
 import { spawnSync } from 'node:child_process'
 import fs from 'node:fs'
@@ -88,6 +88,23 @@ describe('test 66: the review sheet', () => {
     const approved = run(edited({ 'export.name': { state: 'approved' } }, reviewed.entries), 'tanvir', reviewed.entries)
     expect(approved.entries['export.name']).toMatchObject({ state: 'approved', reviewedBy: 'rina', approvedBy: 'tanvir', approvedAt: '2026-11-10' })
     expect(() => run(sheet.exportSheet({ lang: 'bn', english, meta, translations }), 'stranger')).toThrow(/not listed for bn/)
+  })
+
+  it("approves only the text its reviewer marked reviewed, for today's English", () => {
+    const reviewed = run(edited({ 'export.name': { state: 'reviewed' } })).entries
+    const why = 'was not marked reviewed with this text; mark it reviewed first, then another person approves it'
+    // The approver rewrites the reviewed text and approves it in one step: nobody else read it.
+    const rewritten = run(edited({ 'export.name': { final: '{name} সেভ করুন', state: 'approved' } }, reviewed), 'tanvir', reviewed)
+    expect(rewritten.refused).toEqual([{ key: 'export.name', reason: why }])
+    expect(rewritten.entries).toBe(reviewed)
+    // A draft nobody reviewed, and a text reviewed for an earlier English, cannot be approved either.
+    expect(run(edited({ 'sound.level': { state: 'approved' } }), 'tanvir').refused).toEqual([{ key: 'sound.level', reason: why }])
+    const old = { ...reviewed, 'export.done': { ...reviewed['export.done'], state: 'reviewed', reviewedBy: 'rina', reviewedAt: '2026-11-01' } }
+    expect(run(edited({ 'export.done': { state: 'approved' } }, old), 'tanvir', old).refused).toEqual([{ key: 'export.done', reason: why }])
+    // The corrected text goes back as reviewed, and then another person approves it.
+    const corrected = run(edited({ 'export.name': { final: '{name} সেভ করুন', state: 'reviewed' } }, reviewed), 'tanvir', reviewed).entries
+    expect(corrected['export.name']).toMatchObject({ text: '{name} সেভ করুন', state: 'reviewed', reviewedBy: 'tanvir' })
+    expect(run(edited({ 'export.name': { state: 'approved' } }, corrected), 'rina', corrected).entries['export.name']).toMatchObject({ text: '{name} সেভ করুন', state: 'approved', reviewedBy: 'tanvir', approvedBy: 'rina' })
   })
 
   it('refuses a file with U+FFFD or invalid UTF-8', () => {

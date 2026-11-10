@@ -2423,8 +2423,9 @@ for an AI service they choose. It is not part of the app, never ships, and the a
 - **Import refuses damage**: `… import` refuses a file that is not valid UTF-8 or holds U+FFFD, and any
   row whose `bn` or `hi` text has a run of `?`, has no letter of the language's script where the
   English has letters, or starts with `#` or a formula's remains. Then it checks every row (§16.2),
-  records the reviewer or the approver and the date, and refuses to record one person as both.
-  Git keeps the history. A self-hosted Weblate can read the same JSON files later; nothing needs it
+  records the reviewer or the approver and the date, and refuses to record one person as both. It
+  approves only the text its reviewer marked reviewed for today's English: an approver who corrects
+  the text marks it reviewed instead, and another person then approves it. Git keeps the history. A self-hosted Weblate can read the same JSON files later; nothing needs it
   now.
 - **The review build.** For developers: `FLOWN_I18N_REVIEW=1 npm run dev -- --lang bn` (never in a
   packaged build: `app.isPackaged` turns it off) shows a small overlay: hovering any text shows its
@@ -3348,7 +3349,8 @@ by tests 9, 10, 69 and the e2e list above). Then S4 and S5 (§10.4).
 66. The review sheet: export writes a byte-order mark and puts an apostrophe before `-3 dB` and
     `=SUM(A1)`; import removes it, round-trips without loss, refuses a file with U+FFFD or invalid
     UTF-8, refuses a row of `????`, a Bangla row with no Bengali letter and a row that fails the
-    checks, records who and when, and refuses one person as reviewer and approver.
+    checks, records who and when, and refuses one person as reviewer and approver, and an approval of
+    text that changed or was not reviewed.
 67. `ReviewOverlay` renders nothing in a packaged build or without `FLOWN_I18N_REVIEW`.
 68. `predist.mjs` fails when `config.json` says `"fail"` and a string has no key; `verify-dist` fails
     when the built catalogues grow by more than 1 MB.

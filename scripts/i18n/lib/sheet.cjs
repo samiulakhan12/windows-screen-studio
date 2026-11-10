@@ -11,7 +11,8 @@
  *   text has a run of ?, has no letter of the language's script where English has letters, or starts
  *   with # or a formula's remains. Then every changed row goes through the catalogue checks; the
  *   person importing is recorded as reviewer or approver with the date, and never as both for one
- *   string. Nothing is written unless every row passes.
+ *   string. A row is approved only with the text its reviewer marked reviewed for today's English.
+ *   Nothing is written unless every row passes.
  */
 const files = require('./files.cjs')
 const { parseCsv, formatCsv } = require('./csv.cjs')
@@ -114,6 +115,12 @@ function importSheet({ lang, bytes, english, meta, translations, reviewers, glos
       delete next.approvedBy
       delete next.approvedAt
     } else if (state === 'approved') {
+      // Only the text a reviewer marked reviewed, for today's English, can be approved: a changed text
+      // goes back to "reviewed" first, so two people have read what ships.
+      if (!before || !['reviewed', 'approved'].includes(before.state) || final !== before.text || before.sourceHash !== next.sourceHash) {
+        refused.push({ key, reason: 'was not marked reviewed with this text; mark it reviewed first, then another person approves it' })
+        continue
+      }
       if (next.reviewedBy === by) {
         refused.push({ key, reason: `was reviewed by ${by}, who cannot also approve it` })
         continue
