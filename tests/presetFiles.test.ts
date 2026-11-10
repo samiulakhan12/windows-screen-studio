@@ -129,6 +129,9 @@ describe('export:openPresetFile', () => {
     expect(await openPresetFile(deps({ open: file('big.flownpreset', `${presetFileText(presets)}${' '.repeat(70 * 1024)}`) }).deps)).toEqual({ refused: 'too-large' })
     expect(await openPresetFile(deps({ open: file('exact.flownpreset', `{"flown":"export-presets","version":1,"presets":[]}${' '.repeat(65536 - 51)}`) }).deps)).toEqual({ presets: [], skipped: 0, changed: [] })
     expect(await openPresetFile(deps({ open: file('latin1.flownpreset', Buffer.from([0x7b, 0xff, 0xfe, 0x7d])) }).deps)).toEqual({ refused: 'unreadable' })
+    // A preset file in every other way, with one byte that is not UTF-8 in a name: never read as U+FFFD.
+    const [head, tail] = presetFileText([presets[0]]).split('Client review')
+    expect(await openPresetFile(deps({ open: file('one-bad-byte.flownpreset', Buffer.concat([Buffer.from(`${head}Client`), Buffer.from([0xe9]), Buffer.from(` review${tail}`)])) }).deps)).toEqual({ refused: 'unreadable' })
     expect(await openPresetFile(deps({ open: file('junk.flownpreset', 'not json') }).deps)).toEqual({ refused: 'unreadable' })
     expect(await openPresetFile(deps({ open: path.join(root, 'nope.flownpreset') }).deps)).toEqual({ refused: 'unreadable' })
     const dir = path.join(root, 'folder.flownpreset')
