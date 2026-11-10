@@ -7,6 +7,7 @@
  */
 import type { SoundStem } from '../api/export'
 import { hasSoundtrack } from '../audio/settings'
+import { t } from '../i18n/t'
 import { planOf, videoDuration, type FreezePlan } from '../engine/freeze'
 import { outputChapters } from '../render/chapters'
 import { cursorLook } from '../render/cursorFx'
@@ -250,7 +251,7 @@ export function recordingsTimeline(project: Project, fps: number, media: Timelin
   const total = videoDuration(clips, plan)
   const frames = Math.max(1, Math.round(total * rate))
   const screen = media.screen
-  if (!screen) throw new Error('A timeline over the recordings needs the screen recording')
+  if (!screen) throw new Error(t('errors.timeline.media'))
   const size = capSize({ width: screen.width ?? project.width, height: screen.height ?? project.height })
   const rec = (v: number): number => Math.min(frames, Math.max(0, Math.round(v * rate)))
 

@@ -16,6 +16,7 @@
  *   export twice is recognised, and two exports of one project never share a uid.
  */
 import { fileUrl, xmlAttr } from './fileUrl'
+import { t } from '../i18n/t'
 import type { TimelineEvent, TimelineMedia, TimelinePlan, TimelineSource } from './timelinePlan'
 
 /** Final Cut Pro's own Cross Dissolve. */
@@ -91,12 +92,12 @@ export function fcpxml(plan: TimelinePlan, paths: Partial<Record<TimelineMedia, 
   const at = (frames: number): string => show(T(frames))
   const pathOf = (m: TimelineMedia): string => {
     const p = paths[m]
-    if (!p) throw new Error(`No file for ${m}`)
+    if (!p) throw new Error(t('errors.timeline.invalid'))
     return p
   }
   const sourceOf = (m: TimelineMedia): TimelineSource => {
     const s = plan.media[m]
-    if (!s) throw new Error(`No facts for ${m}`)
+    if (!s) throw new Error(t('errors.timeline.invalid'))
     return s
   }
 

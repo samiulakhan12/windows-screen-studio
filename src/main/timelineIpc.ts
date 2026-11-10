@@ -107,7 +107,7 @@ function probeMedia(file: string): Promise<ProbeInfo> {
 }
 
 function runFfmpeg(args: string[], signal?: AbortSignal): Promise<void> {
-  if (signal?.aborted) return Promise.reject(new Error('Stopped'))
+  if (signal?.aborted) return Promise.reject(signal.reason)
   const run = startFfmpeg(args)
   const stop = (): void => run.kill()
   signal?.addEventListener('abort', stop, { once: true })

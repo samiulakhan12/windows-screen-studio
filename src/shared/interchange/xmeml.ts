@@ -15,6 +15,7 @@
  *   Markers sit on the sequence.
  */
 import { fileUrl, xmlText } from './fileUrl'
+import { t } from '../i18n/t'
 import type { TimelineEvent, TimelineMedia, TimelinePlan, TimelineSource } from './timelinePlan'
 
 const baseName = (path: string): string => path.split(/[\\/]/).pop() ?? path
@@ -40,12 +41,12 @@ interface Item {
 export function xmeml(plan: TimelinePlan, paths: Partial<Record<TimelineMedia, string>>): string {
   const pathOf = (m: TimelineMedia): string => {
     const p = paths[m]
-    if (!p) throw new Error(`No file for ${m}`)
+    if (!p) throw new Error(t('errors.timeline.invalid'))
     return p
   }
   const sourceOf = (m: TimelineMedia): TimelineSource => {
     const s = plan.media[m]
-    if (!s) throw new Error(`No facts for ${m}`)
+    if (!s) throw new Error(t('errors.timeline.invalid'))
     return s
   }
   const seqRate = rate(plan.fps)

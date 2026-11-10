@@ -10,6 +10,7 @@
  *   "Chapter {n}" here only, while FCPXML and xmeml keep it whole.
  */
 import { asciiName } from './fileUrl'
+import { t } from '../i18n/t'
 import type { TimelineMedia, TimelinePlan } from './timelinePlan'
 
 /** Most events an EDL holds. */
@@ -42,12 +43,12 @@ const eventLine = (n: number, reel: string, track: string, tc: readonly string[]
 export function edl(plan: TimelinePlan, paths: Partial<Record<TimelineMedia, string>>): string {
   const fps = plan.fps
   const events = plan.tracks.find((t) => t.kind === 'video')?.events ?? []
-  if (events.length > EDL_EVENT_LIMIT) throw new Error(`An EDL holds at most ${EDL_EVENT_LIMIT} events`)
+  if (events.length > EDL_EVENT_LIMIT) throw new Error(t('errors.timeline.invalid'))
   const lines = [title(plan.name), 'FCM: NON-DROP FRAME', '']
   events.forEach((e, i) => {
     const path = paths[e.media]
     const source = plan.media[e.media]
-    if (!path || !source) throw new Error(`No file for ${e.media}`)
+    if (!path || !source) throw new Error(t('errors.timeline.invalid'))
     // Source frames at the timeline's rate: a 120 fps video's frames are halved, a normal-speed event keeps its length.
     const srcIn = Math.round((e.srcIn * fps) / source.fps)
     const srcOut = e.speed === 1 ? srcIn + (e.recOut - e.recIn) : Math.round((e.srcOut * fps) / source.fps)
