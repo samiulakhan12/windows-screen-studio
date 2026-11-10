@@ -50,10 +50,13 @@ describe('test 45: saving, renaming, updating, deleting and importing user prese
     store = edit.savePreset(store, 'Demo', MOV, undefined, 3, stepping)
     expect(store.presets.map((p) => p.name)).toEqual(['Demo', 'Demo (2)', 'Demo (3)'])
     expect(new Set(store.presets.map((p) => p.id)).size).toBe(3)
-    // য় typed as one code point and as য + ়: one name.
-    const composed = 'ভিডিয়ো'
-    const decomposed = 'ভিডিয়ো'
-    expect(edit.uniqueName([composed.normalize('NFC')], decomposed)).toBe(`${composed.normalize('NFC')} (2)`)
+    // য় typed as one code point (U+09DF) and as য + ় (U+09AF U+09BC): one name, kept in NFC.
+    const oneCodePoint = 'ভিডি\u09DFো'
+    const twoCodePoints = 'ভিডি\u09AF\u09BCো'
+    expect(oneCodePoint).not.toBe(twoCodePoints)
+    expect(edit.uniqueName([oneCodePoint], twoCodePoints)).toBe(`${twoCodePoints} (2)`)
+    expect(edit.uniqueName([twoCodePoints], oneCodePoint)).toBe(`${twoCodePoints} (2)`)
+    expect(edit.uniqueName([], oneCodePoint)).toBe(twoCodePoints)
     expect(edit.uniqueName(['a', 'b'], 'c')).toBe('c')
     // A long name is shortened so the suffix fits in 60 graphemes.
     const long = 'x'.repeat(60)

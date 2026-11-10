@@ -251,7 +251,9 @@ describe('test 50: the new destinations and preset matching', () => {
     expect(presets.matchesUserPreset(o('mp4', { fps: 60 }), hevc, withHevc)).toBe(false)
     // Any other change deselects it; the encoder is the preset's own.
     expect(presets.matchesUserPreset({ ...picked, fps: 30 }, hevc, noHevc)).toBe(false)
-    expect(presets.matchesUserPreset({ ...picked, encoder: 'software' }, user('A', o('mp4')), noHevc)).toBe(false)
+    const plain = user('A', o('mp4'))
+    expect(presets.matchesUserPreset({ ...plain.options, userPreset: plain.id }, plain, noHevc)).toBe(true)
+    expect(presets.matchesUserPreset({ ...plain.options, userPreset: plain.id, encoder: 'software' }, plain, noHevc)).toBe(false)
     expect(presets.matchesUserPreset(o('mov', { codec: 'cineform', alpha: 'overlays' }), user('A', o('mov', { codec: 'cineform' })), noHevc)).toBe(false)
     // The batch row: the same notice before the export starts.
     const [item] = presets.batchItems([], [], o('mp4'), [hevc])
