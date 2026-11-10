@@ -506,6 +506,16 @@ export function ExportDialog(props: Props): JSX.Element {
       return next
     })
   }, [store, options.userPreset])
+  // Nor is it ticked in a batch any more.
+  useEffect(() => {
+    if (!store || !batch.userPresets?.length) return
+    const kept = batch.userPresets.filter((id) => store.presets.some((p) => p.id === id))
+    if (kept.length === batch.userPresets.length) return
+    const choice: BatchChoice = { presets: batch.presets, aspects: batch.aspects }
+    if (kept.length) choice.userPresets = kept
+    setBatch(choice)
+    writeJson(BATCH_KEY, choice)
+  }, [store, batch])
 
   useEffect(() => {
     let live = true
@@ -762,19 +772,21 @@ export function ExportDialog(props: Props): JSX.Element {
 
   // One file per chapter (F-11): each chapter's range of the edit, into a folder, as a batch.
   const startChapters = async (): Promise<void> => {
+    // As a single file: the settings as this PC exports them, after the HEVC probe when they ask for HEVC.
+    const settings = await exportedSettings()
     const folder = await window.api.chooseExportFolder()
     if (!folder) return
     // Each part's frames and sound come from its own clips; it is drawn with the whole edit's scene.
     const sources = parts.map((part, i) => partSource(source, part, i === parts.length - 1))
-    const jobs: BatchJob[] = parts.map((_part, i) => ({ key: `part-${i}`, label: partNames[i].replace(/\.[^.]+$/, ''), fileName: partNames[i], options: streamed(effective), source: sources[i] }))
+    const jobs: BatchJob[] = parts.map((_part, i) => ({ key: `part-${i}`, label: partNames[i].replace(/\.[^.]+$/, ''), fileName: partNames[i], options: streamed(settings), source: sources[i] }))
     await runBatch(folder, jobs, (i, path) => {
       const part = sources[i]
       // The part's thumbnail: one second in (or its middle when shorter), as the part draws it.
       const frame = partThumbnailFrame(part.project)
-      const thumbnail = (): Promise<Uint8Array> => renderThumbnail({ ...part, settings: effective, ...frame }).then((shot) => shot.png)
+      const thumbnail = (): Promise<Uint8Array> => renderThumbnail({ ...part, settings, ...frame }).then((shot) => shot.png)
       return writeBundle(path, {
         project: part.project,
-        kinds: bundleKinds(bundle, effective.format, bundleHas, true),
+        kinds: bundleKinds(bundle, settings.format, bundleHas, true),
         title: jobs[i].label,
         part: { index: i, count: parts.length, of: project.name },
         thumbnail,

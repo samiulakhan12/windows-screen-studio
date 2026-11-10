@@ -194,6 +194,8 @@
 .export-uses label {
   display: flex;
   align-items: center;
+  /* One line of the row's label (28px), so "Uses" sits level with This export. */
+  min-height: 28px;
   gap: 6px;
   font-size: var(--text-md);
   color: var(--text-1);

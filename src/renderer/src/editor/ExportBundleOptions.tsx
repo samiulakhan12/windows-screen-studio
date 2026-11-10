@@ -202,7 +202,11 @@ function AlsoSaveChips({ value, onChange, also }: { value: BundleOptions; onChan
         disabled={!!also.timelineBlocked}
         title={also.timelineBlocked ? t(also.timelineBlocked) : t('timelines.chip.title')}
         data-also="timeline"
-        onClick={() => onChange(withKey(value, 'timelines', value.timelines?.length ? undefined : [...lastEditors]))}
+        onClick={() => {
+          // Off keeps the editors for the next time Timeline is turned on in this session.
+          if (value.timelines?.length) lastEditors = [...value.timelines]
+          onChange(withKey(value, 'timelines', value.timelines?.length ? undefined : [...lastEditors]))
+        }}
       >
         {also.timelineOn && <Icon name="check" size={12} />}
         {t('timelines.chip.label')}

@@ -187,6 +187,8 @@ function PresetCard(props: {
   onStore: (s: UserPresetStore) => void
   onUpdate: () => void
   onProblem: (text: string | null) => void
+  /** The preset was deleted: the list moves the focus on, as the card and its button are gone. */
+  onDeleted: () => void
 }): JSX.Element {
   const { preset } = props
   const [mode, setMode] = useState<'card' | 'menu' | 'rename' | 'delete'>('card')
@@ -226,7 +228,7 @@ function PresetCard(props: {
           name={preset.name}
           onDelete={() => {
             props.onStore(deletePreset(props.store, preset.id))
-            setMode('card')
+            props.onDeleted()
           }}
           onCancel={() => back('more')}
         />
@@ -315,7 +317,19 @@ export function UserPresets(props: {
   usable?: (codec: ExportCodec) => boolean
 }): JSX.Element {
   const [problem, setProblem] = useState<string | null>(null)
+  const grid = useRef<HTMLDivElement>(null)
+  // After a delete, the focus goes to the More button of the preset now in its place (or the one
+  // before it), and to Import presets… when none is left, never to the page.
+  const deletedAt = useRef<number | null>(null)
   const { store, batch } = props
+  useEffect(() => {
+    const at = deletedAt.current
+    if (at === null) return
+    deletedAt.current = null
+    const mores = grid.current?.querySelectorAll<HTMLButtonElement>('.preset-more') ?? []
+    const target = mores.length ? mores[Math.min(at, mores.length - 1)] : document.querySelector<HTMLElement>('[data-testid="preset-import"]')
+    target?.focus()
+  }, [store])
   if (!store.presets.length) return <></>
   const usable = props.usable ?? codecAllowed
   return (
@@ -323,8 +337,8 @@ export function UserPresets(props: {
       <div className="export-section-head">
         <span id="user-presets-heading">{t('presets.yours.heading')}</span>
       </div>
-      <div className="preset-grid user-presets" role={batch ? 'group' : 'radiogroup'} aria-labelledby="user-presets-heading" data-testid="user-presets">
-        {store.presets.map((p) => {
+      <div ref={grid} className="preset-grid user-presets" role={batch ? 'group' : 'radiogroup'} aria-labelledby="user-presets-heading" data-testid="user-presets">
+        {store.presets.map((p, i) => {
           const on = batch ? batch.checked.includes(p.id) : props.selected === p.id
           const differs = !matchesUserPreset(props.options, p, usable) || bundleDiffers(p, props.bundle)
           return (
@@ -345,6 +359,9 @@ export function UserPresets(props: {
                 if (updated && !batch) props.onPick(updated)
               }}
               onProblem={setProblem}
+              onDeleted={() => {
+                deletedAt.current = i
+              }}
             />
           )
         })}
