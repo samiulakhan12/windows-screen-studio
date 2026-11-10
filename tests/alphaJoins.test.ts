@@ -279,6 +279,45 @@ describe('joins in a transparent export (test 28)', () => {
     expect(run('overlays').map((c) => [c.fill, c.composite])).toEqual([['#000', 'destination-out']])
   })
 
+  it("a transparent crossfade mixes the two pictures' alpha: a half-clear shadow stays as it is and B fades in", () => {
+    const p = project({ all: { kind: 'crossfade' } })
+    const window = joinPlan(p)[0]
+    /** endJoin's calls on a frame at crossfade progress `at` (A* still a canvas). */
+    const run = (at: number, alpha?: 'background' | 'overlays', w: JoinWindow = window) => {
+      const c = canvas() as Canvas
+      const ctx = c.getContext('2d') as Ctx
+      const from = calls.length
+      ctx.save()
+      joinLayer.endJoin(ctx, W, H, { at: { window: w, p: at }, still: canvas() }, alpha)
+      return calls.slice(from).filter((x) => x.name === 'drawImage' || x.name === 'fillRect')
+    }
+    /** One pixel's (premultiplied) alpha after the calls: B's `b` on the frame, A*'s `a` in the still. */
+    const pixel = (drawn: Call[], b: number, a: number): number =>
+      drawn.reduce((d, x) => {
+        const g = x.alpha as number
+        if (x.name === 'fillRect' && x.composite === 'destination-out') return d * (1 - g)
+        if (x.name === 'drawImage' && x.composite === 'lighter') return Math.min(1, d + a * g)
+        if (x.name === 'drawImage' && (x.composite ?? 'source-over') === 'source-over') return a * g + d * (1 - a * g)
+        throw new Error(`unexpected ${x.name} ${String(x.composite)}`)
+      }, b)
+    for (const alpha of ['background', 'overlays'] as const) {
+      for (const at of [0, 0.25, 0.5, 0.75, 1]) {
+        const drawn = run(at, alpha)
+        // A shadow at 35% in both pictures stays at 35% (source-over would give 58% at the first frame).
+        expect(pixel(drawn, 0.35, 0.35)).toBeCloseTo(0.35, 9)
+        // Only in B (A* clear there): B fades in from nothing.
+        expect(pixel(drawn, 1, 0)).toBeCloseTo(at, 9)
+        // Only in A*: A* fades out.
+        expect(pixel(drawn, 0, 1)).toBeCloseTo(1 - at, 9)
+        expect(pixel(drawn, 0.5, 0.2)).toBeCloseTo(0.5 * at + 0.2 * (1 - at), 9)
+      }
+    }
+    // An opaque frame draws A* over the picture as before, and a slide's A* (opaque, beside the picture) too.
+    expect(run(0.5).map((x) => [x.name, x.composite, x.alpha])).toEqual([['drawImage', undefined, 0.5]])
+    const slide = { ...window, kind: 'slide' as const, dir: 'right' as const }
+    expect(run(0.5, 'background', slide).map((x) => [x.name, x.composite, x.alpha])).toEqual([['drawImage', undefined, 1]])
+  })
+
   it('a punch-in still scales the content in a transparent frame', () => {
     const p = project({ all: { kind: 'punch' } })
     const plain = project(undefined)

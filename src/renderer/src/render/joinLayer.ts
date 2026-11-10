@@ -34,7 +34,8 @@ export function beginJoin(ctx: CanvasRenderingContext2D, w: number, h: number, j
  *
  * `alpha` (the frame's RenderScene.alpha): the dip's colour belonged to the background, which a
  * see-through frame does not have, so the picture fades to transparent at the dip's alpha instead
- * ('destination-out'); the overlays drawn after it stay as they are.
+ * ('destination-out'); the overlays drawn after it stay as they are. A crossfade mixes the live
+ * picture and A* with their alpha (B × (1 - g) + A* × g) instead of drawing A* over it.
  */
 export function endJoin(ctx: CanvasRenderingContext2D, w: number, h: number, join: FrameExtras['join'], alpha?: RenderScene['alpha']): void {
   if (!join) return
@@ -46,6 +47,16 @@ export function endJoin(ctx: CanvasRenderingContext2D, w: number, h: number, joi
   }
   if (pose.still && join.still) {
     ctx.save()
+    if (alpha && join.at.window.kind === 'crossfade') {
+      // A see-through crossfade mixes alpha too: drawn over the live picture, A*'s half-clear pixels
+      // (shadows, edges) would add to the picture's. The picture keeps 1 - g of itself first, then
+      // A* × g is added ('lighter'): B × (1 - g) + A* × g.
+      ctx.globalCompositeOperation = 'destination-out'
+      ctx.globalAlpha = pose.still.alpha
+      ctx.fillStyle = '#000'
+      ctx.fillRect(0, 0, w, h)
+      ctx.globalCompositeOperation = 'lighter'
+    }
     ctx.globalAlpha = pose.still.alpha
     ctx.drawImage(join.still, pose.still.dx, pose.still.dy, w, h)
     ctx.restore()

@@ -1274,8 +1274,13 @@ Crossfades, dips and slides stay in a transparent export, as the preview plays t
   export, A\* is drawn with the same `scene.alpha` on a second scratch target made with `alpha:
   true` and copied into a canvas with `alpha: true`. The join still cache keys gain the alpha mode,
   so an opaque and a transparent export never share a still.
-- `endJoin` (`joinLayer.ts:32`) needs no change for crossfades and slides: it draws A\* at its alpha
-  and offset over the live picture, which works the same over a transparent frame.
+- `endJoin` (`joinLayer.ts:32`) needs no change for slides: A\* is opaque where it shows and sits
+  beside the live picture. A crossfade drawn over a transparent frame would add A\*'s half-clear
+  pixels (the card's shadow, anti-aliased edges) to the live picture's, so shadows darken at every
+  cut and what only B shows pops in. In a transparent export the crossfade mixes the two pictures
+  with their alpha instead: the live picture keeps `1 - g` of itself (`'destination-out'` at `g`),
+  then A\* is added at `g` (`'lighter'`), which gives `B × (1 - g) + A* × g`. An opaque frame draws
+  A\* over the picture as before.
 - A dip fills its colour over the picture today (`joinLayer.ts:46-50`). In a transparent export the
   background is gone, and the dip's colour belongs with it: the picture fades to transparent instead,
   drawn with `globalCompositeOperation = 'destination-out'` at the dip's alpha. The overlays, drawn
@@ -2922,7 +2927,7 @@ code and its tests:
 |---|---|
 | `src/shared/render/alpha.ts` (new) | `function alphaOf(o: ExportOptions): RenderScene['alpha']`; `function seeThrough(project: Project, alpha: 'background' \| 'overlays', w: number, h: number): boolean` (false when the card fills the frame) |
 | `src/renderer/src/render/compositor.ts` | the `alpha` branch of `drawFramePicture` (§6.2) |
-| `src/renderer/src/render/joinLayer.ts` | `scratchTarget(raster, w, h, alpha?)`, `composeJoinStill(…, alpha?)`, the alpha mode in the still cache keys, and the dip to transparent in `endJoin` (§6.4) |
+| `src/renderer/src/render/joinLayer.ts` | `scratchTarget(raster, w, h, alpha?)`, `composeJoinStill(…, alpha?)`, the alpha mode in the still cache keys, the dip to transparent and the crossfade with alpha in `endJoin` (§6.4) |
 | `src/renderer/src/render/alphaReadback.ts` (new) | `function alphaRawSink(canvas: HTMLCanvasElement, ctx: CanvasRenderingContext2D, startJob: StartJob, readback?: 'videoframe' \| 'imagedata'): FrameSink`; `function unpremultiply(src: Uint8ClampedArray \| Uint8Array, out: Uint8Array): void` (`getImageData`'s rounding) |
 | `src/renderer/src/editor/ExportPreview.tsx`, `alphaPreview.css` (new) | the alpha canvas over the checkerboard (§6.5) |
 | Tests | 25–29 |
@@ -3192,8 +3197,9 @@ by tests 9, 10, 69 and the e2e list above). Then S4 and S5 (§10.4).
     follows it.
 28. Joins in a transparent export: a crossfade's middle frame drawn for the dialog's preview and for
     the export is the same; the A\* still is drawn on an alpha scratch target and cached apart from
-    the opaque one; a dip at alpha 0.5 halves the picture's alpha (`destination-out`) and leaves the
-    overlays; punch-in still scales the content.
+    the opaque one; a crossfade keeps a 35% shadow at 35% and fades in what only B shows; a dip at
+    alpha 0.5 halves the picture's alpha (`destination-out`) and leaves the overlays; punch-in still
+    scales the content.
 29. With the Linux ffmpeg: a 1 s transparent VP9 WebM decoded with `-c:v libvpx-vp9` has alpha 0 in
     the corner and 255 in the card; a CineForm RGBA MOV keeps both.
 
