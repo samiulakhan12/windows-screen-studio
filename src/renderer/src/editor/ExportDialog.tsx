@@ -1767,9 +1767,12 @@ export function AlsoReport({ extras, also, video }: { extras?: BatchExtras; also
   const saved = extras?.saved ?? []
   const sidecars = saved.filter((f) => !timelineFileOf(f))
   const timelines = saved.filter((f) => timelineFileOf(f))
-  // A sidecar that failed is named after the video ("Demo.srt: …"); anything else is the timeline step's problem.
-  const failedSidecars = (extras?.failed ?? []).filter((f) => f.startsWith(stem))
-  const timelineProblems = (extras?.failed ?? []).filter((f) => !f.startsWith(stem))
+  // A sidecar that failed is named by its file ("Demo.srt: …", "Demo.bn.vtt: …", "Demo - chapters.txt: …");
+  // anything else is the timeline step's problem, already a whole sentence in the UI language.
+  const escaped = stem.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+  const sidecarFailure = new RegExp(`^${escaped}(\\.[a-z]{2,3}(-[A-Za-z0-9]{1,8})?)?(\\.srt|\\.vtt| - chapters\\.txt| - thumbnail\\.png| - description\\.txt): `)
+  const failedSidecars = (extras?.failed ?? []).filter((f) => sidecarFailure.test(f))
+  const timelineProblems = (extras?.failed ?? []).filter((f) => !sidecarFailure.test(f))
   const files = [...also.stems.map((s) => s.path), ...sidecars, ...timelines]
   const linesOf = (file: string): string[] => {
     switch (timelineFileOf(file)) {
@@ -1822,7 +1825,7 @@ export function AlsoReport({ extras, also, video }: { extras?: BatchExtras; also
       )}
       {timelineProblems.map((f) => (
         <p key={f} className="hint warn" data-testid="export-timeline-problem">
-          {t('timelines.done.failed', { reason: f })}
+          {f}
         </p>
       ))}
     </div>

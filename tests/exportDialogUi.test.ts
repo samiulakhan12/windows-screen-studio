@@ -214,13 +214,22 @@ describe('the running steps and the done view of Also save (§2.4)', () => {
   })
 
   it('keeps the video as saved and says which later step failed', () => {
+    // The timeline step's problem comes as a whole sentence in the UI language (TimelineResult.problem).
+    const problem = 'The timeline could not be saved: the folder is read-only'
     const out = html(dialog.AlsoReport, {
       video: '/v/Demo.mp4',
       also: { stems: [], stemsProblem: 'the disk is full', editors: ['premiere'], media: 'export' },
-      extras: { saved: [], failed: ['the folder is read-only'] }
+      extras: { saved: [], failed: ['Demo.bn.srt: the disk is full', 'Demo - chapters.txt: the disk is full', problem] }
     })
     expect(out).toContain('The sound stems could not be saved: the disk is full')
-    expect(out).toContain('The timeline could not be saved: the folder is read-only')
+    expect(out).toContain(`<p class="hint warn" data-testid="export-timeline-problem">${problem}</p>`)
+    expect(out.split('could not be saved: the folder').length).toBe(2)
+    expect(out).toContain('Could not save Demo.bn.srt: the disk is full')
+    expect(out).toContain('Could not save Demo - chapters.txt: the disk is full')
     expect(out).not.toContain('Also saved')
+    // A video whose name begins the problem's sentence does not make it a sidecar's.
+    const named = html(dialog.AlsoReport, { video: '/v/The.mp4', also: { stems: [], editors: ['premiere'], media: 'export' }, extras: { saved: [], failed: [problem] } })
+    expect(named).not.toContain('Could not save')
+    expect(named).toContain(problem)
   })
 })
