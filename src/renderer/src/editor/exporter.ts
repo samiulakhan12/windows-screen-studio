@@ -1,4 +1,4 @@
-import type { ExportCapabilities, ExportJob, MusicSound, RecordingSound } from '../../../shared/api/export'
+import type { ExportCapabilities, ExportErrorCode, ExportJob, MusicSound, RecordingSound } from '../../../shared/api/export'
 import { audioLook, recordingMix } from '../../../shared/audio/settings'
 import { analysisSources, musicDucking, soundActivity, type AudioAnalysis } from '../../../shared/audio/soundtrack'
 import { voiceLook, voiceTarget, withCleanVoice } from '../../../shared/audio/voiceClean'
@@ -97,6 +97,13 @@ export interface ExportResult {
 
 /** Failures another encoder cannot fix (the disk, the folder, the target file, the recording). */
 const NOT_ENCODER_RELATED = /disk is full|permission|in use|another app|read-only|missing|could not be read|could not load|could not read|could not save|could not write|not chosen|invalid export|export size|no sound/i
+
+/**
+ * Whether main refused a route's start for a reason no other encoder changes (output-and-languages
+ * §9.6): its code, not its words, so a refusal such as the free-space check of §5.10 stops the export
+ * at once instead of being asked again of every route.
+ */
+const refusedForGood = (code: ExportErrorCode | null): boolean => code !== null && code !== 'encoder' && code !== 'unknown'
 
 /** Most motion-blur sub-frames per exported frame up to 60 fps (the preview uses fewer); blurSamplesFor gives each rate's (output-and-languages §5.6). */
 export const EXPORT_BLUR_SAMPLES = 10
@@ -326,17 +333,19 @@ export async function exportVideo(raw: ExportInput): Promise<ExportResult> {
   for (let r = 0; r < routes.length; r++) {
     const route = routes[r]
     if (signal.aborted) throw abortError()
+    // The code main gave when it refused this route's start, if it did.
+    const refusal: StartRefusal = { code: null }
     try {
       const sink = await prepareRoute(route, input, plan)
       if (!sink) continue
       const t0 = performance.now()
-      const done = await renderAll(input, plan, caps, route, sink, notice)
+      const done = await renderAll(input, plan, caps, route, sink, notice, refusal)
       return { encoder: routeLabel(route, input.settings.format), seconds: (performance.now() - t0) / 1000, ...done }
     } catch (err) {
       if (signal.aborted || (err instanceof DOMException && err.name === 'AbortError')) throw abortError()
       const e = cleanIpcError(err)
       const last = r === routes.length - 1
-      if (last || NOT_ENCODER_RELATED.test(e.message)) throw e
+      if (last || NOT_ENCODER_RELATED.test(e.message) || refusedForGood(refusal.code)) throw e
       console.warn(`Export with ${routeLabel(route, input.settings.format)} failed, trying the next encoder:`, e)
       notice = `${routeLabel(route, input.settings.format)} failed, so the export restarted with ${routeLabel(routes[r + 1], input.settings.format)}.`
     }
@@ -392,6 +401,11 @@ async function exportAudio(input: ExportInput): Promise<ExportResult> {
 }
 
 type SinkFactory = (canvas: HTMLCanvasElement, ctx: CanvasRenderingContext2D, startJob: StartJob, base: JobBase) => FrameSink
+
+/** Filled when main refuses a route's export:start: the code it recorded for the refusal. */
+interface StartRefusal {
+  code: ExportErrorCode | null
+}
 
 /** Checks that a route can run here; returns a factory for its sink, or null to skip it. */
 async function prepareRoute(route: ExportRoute, input: ExportInput, plan: JobPlan): Promise<SinkFactory | null> {
@@ -481,10 +495,14 @@ function disposeVideo(v: HTMLVideoElement): void {
   v.load()
 }
 
+/** Encoders main runs in two passes over an intermediate when the export has a size target (exportArgs isTwoPass). */
+const TWO_PASS_ENCODERS: ReadonlySet<string> = new Set(['libx264', 'libvpx-vp9', 'libaom-av1'])
+
 /** Short description of what finalizing does, for the progress line. */
-function finalizingDetail(route: ExportRoute, job: Pick<ExportJob, 'bitrate' | 'maxBytes' | 'format'>): string | undefined {
+function finalizingDetail(route: ExportRoute, job: Pick<ExportJob, 'bitrate' | 'maxBytes' | 'format' | 'alpha'>): string | undefined {
   if (job.format === 'gif') return job.maxBytes ? 'Building the GIF and fitting it to its size limit…' : 'Building the GIF…'
-  if (job.bitrate && route.video === 'ffmpeg' && (route.encoder === 'libx264' || route.encoder === 'libvpx-vp9')) return 'Encoding to the size target (two passes)…'
+  // The software encoders main runs in two passes for a size target (exportArgs isTwoPass), libaom included.
+  if (job.bitrate && !job.alpha && route.video === 'ffmpeg' && TWO_PASS_ENCODERS.has(route.encoder)) return 'Encoding to the size target (two passes)…'
   return undefined
 }
 
@@ -494,7 +512,8 @@ async function renderAll(
   caps: ExportCapabilities,
   route: ExportRoute,
   makeSink: SinkFactory,
-  notice: string | undefined
+  notice: string | undefined,
+  refusal: StartRefusal = { code: null }
 ): Promise<Omit<ExportResult, 'encoder' | 'seconds'>> {
   const { project, settings, signal } = input
   const { width, height, fps, times, pictures, held } = plan
@@ -567,7 +586,17 @@ async function renderAll(
       ...jobCodecFields(settings, input.scene.alpha),
       outputPath: input.outputPath
     }
-    const startJob: StartJob = (job) => window.api.exportStart(project.id, job)
+    const startJob: StartJob = async (job) => {
+      try {
+        await window.api.exportStart(project.id, job)
+      } catch (err) {
+        // export:start clears the code when it begins, so the code read now is this refusal's.
+        refusal.code = await Promise.resolve()
+          .then(() => window.api.exportErrorCode())
+          .catch(() => null)
+        throw err
+      }
+    }
     sink = makeSink(canvas, ctx, startJob, base)
 
     // A* of each window: the still frames copied as the feeds reach them, composed on the scratch

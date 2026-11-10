@@ -7,6 +7,7 @@
     "src/shared/render/codecRoutes.ts",
     "src/main/proArgs.ts",
     "src/main/codecProbe.ts",
+    "src/main/exportSpace.ts",
     "src/renderer/src/render/proEncoders.ts",
     "src/shared/render/alpha.ts",
     "src/renderer/src/render/alphaReadback.ts",
@@ -19,6 +20,7 @@
     "src/shared/interchange/edl.ts",
     "src/shared/interchange/fileUrl.ts",
     "src/main/timelineIpc.ts",
+    "src/main/exportedJobs.ts",
     "src/renderer/src/editor/timelineRun.ts",
     "src/shared/render/exportRows.ts",
     "src/shared/render/userPresetsEdit.ts",
@@ -33,6 +35,7 @@
     "src/renderer/src/i18n/canvasLang.ts",
     "src/renderer/src/i18n/askConfirm.ts",
     "src/renderer/src/i18n/NumberField.tsx",
+    "src/renderer/src/i18n/languageNames.ts",
     "src/renderer/src/settings/LanguageSection.tsx",
     "src/renderer/src/home/LanguageOffer.tsx",
     "src/renderer/src/i18n/reviewOverlay.tsx"

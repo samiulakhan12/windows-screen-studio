@@ -1761,6 +1761,15 @@ export function RunStep({ steps, step, finalizing }: { steps?: RunSteps; step?: 
  * saved next to the video, each a link that shows it in its folder, the stems and sidecars first, then
  * each timeline file with how to open it; and a line for a step that failed after the video was saved.
  */
+/**
+ * The done view's line for stems that failed: main's own whole sentences about stems (no sound to
+ * write, or a failure with no reason of its own) as they are, in the UI language; any other reason
+ * ("The disk is full.") inside "The sound stems could not be saved: {reason}".
+ */
+export function stemsProblemLine(reason: string): string {
+  return reason === t('errors.stems.failed') || reason === t('errors.stems.noSound') ? reason : t('stems.done.failed', { reason })
+}
+
 export function AlsoReport({ extras, also, video }: { extras?: BatchExtras; also: AlsoDone; video: string }): JSX.Element {
   const base = (f: string): string => f.split(/[\\/]/).pop() ?? f
   const stem = base(video).replace(/\.[^.]+$/, '')
@@ -1820,7 +1829,7 @@ export function AlsoReport({ extras, also, video }: { extras?: BatchExtras; also
       ))}
       {also.stemsProblem && (
         <p className="hint warn" data-testid="export-stems-problem">
-          {t('stems.done.failed', { reason: also.stemsProblem })}
+          {stemsProblemLine(also.stemsProblem)}
         </p>
       )}
       {timelineProblems.map((f) => (

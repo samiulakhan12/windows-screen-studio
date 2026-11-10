@@ -16,7 +16,10 @@ const h = vi.hoisted(() => ({
   bases: [] as { route: unknown; base: Record<string, unknown> }[],
   pro: [] as { route: unknown; fps: number; bitrate: number; quality: unknown }[],
   started: [] as ExportJob[],
-  caps: undefined as CodecCaps | undefined
+  caps: undefined as CodecCaps | undefined,
+  /** export:start refuses every job with this message, and export:errorCode gives `code`. */
+  refuse: null as { message: string; code: string | null } | null,
+  details: [] as (string | undefined)[]
 }))
 
 class FakeSource {
@@ -62,9 +65,10 @@ vi.mock('../src/renderer/src/render/proEncoders', async (orig) => {
   return {
     ...real,
     codecCapsFor: async () => h.caps,
-    rawSinkFor: (route: unknown, base: Record<string, unknown>) => {
+    rawSinkFor: (route: { encoder: string }, base: Record<string, unknown>, _canvas: unknown, _ctx: unknown, startJob: (job: unknown) => Promise<void>) => {
       h.bases.push({ route, base })
-      return sink
+      // A refused start reaches the exporter as the raw sinks report it: on the first frame.
+      return h.refuse ? { ...sink, push: () => startJob({ ...base, video: { kind: 'raw', encoder: route.encoder, pixelFormat: 'yuv420p' } }) } : sink
     },
     proSink: (route: unknown, _canvas: unknown, fps: number, bitrate: number, startJob: (color: ColorTags) => Promise<void>, quality: unknown) => {
       h.pro.push({ route, fps, bitrate, quality })
@@ -82,7 +86,11 @@ vi.stubGlobal('document', { createElement: () => canvas() })
 vi.stubGlobal('window', {
   api: {
     exportCapabilities: async () => ({ hardwareEncoders: ['libx264'], gpuCanvas: false, overrides: { videoEncoder: 'ffmpeg' } }),
-    exportStart: async (_id: string, job: ExportJob) => void h.started.push(job),
+    exportStart: async (_id: string, job: ExportJob) => {
+      h.started.push(job)
+      if (h.refuse) throw new Error(`Error invoking remote method 'export:start': Error: ${h.refuse.message}`)
+    },
+    exportErrorCode: async () => h.refuse?.code ?? null,
     exportCancel: async () => undefined,
     exportFinish: async () => ({ bytes: 1 })
   }
@@ -113,6 +121,7 @@ async function run(settings: Partial<ExportSettings>, caps?: CodecCaps): Promise
   h.bases.length = 0
   h.pro.length = 0
   h.started.length = 0
+  h.details.length = 0
   h.caps = caps
   const p = project()
   const path = { at: () => ({ x: 0.5, y: 0.5 }) }
@@ -124,7 +133,7 @@ async function run(settings: Partial<ExportSettings>, caps?: CodecCaps): Promise
     background: null,
     settings: { format: 'mp4', resolution: 720, fps: 30, quality: 'high', encoder: 'auto', ...settings },
     outputPath: '/tmp/out',
-    onProgress: () => undefined,
+    onProgress: (p: { detail?: string }) => void h.details.push(p.detail),
     signal: new AbortController().signal
   })
 }
@@ -163,5 +172,50 @@ describe('the jobs the exporter sends for the wave 12 codecs', () => {
     expect(h.pro).toEqual([{ route: { video: 'webcodecs', codec: 'hevc', hardware: true }, fps: 30, bitrate: 0, quality: 'small' }])
     await vi.waitFor(() => expect(h.started).toHaveLength(1))
     expect(h.started[0]).toMatchObject({ format: 'mp4', codec: 'hevc', video: { kind: 'hevc', color: { primaries: 1, transfer: 1, matrix: 6, fullRange: false } } })
+  })
+})
+
+describe('a start main refuses for a reason no encoder changes (output-and-languages §5.10, §9.6)', () => {
+  // AV1 on this PC: av1_nvenc first, then libaom-av1.
+  const gpu: CodecCaps = { webcodecs: { hevc: false, av1: false }, gpu: { hevc: [], av1: ['av1_nvenc'] }, overrides: {} }
+  const space = 'This export needs about 3.1 GB and the folder has 1.2 GB free. Choose another folder or a smaller format.'
+
+  it('the free-space refusal (code disk-full) stops the export at the first route, with its own message', async () => {
+    h.refuse = { message: space, code: 'disk-full' }
+    try {
+      await expect(run({ codec: 'av1' }, gpu)).rejects.toThrow(space)
+      expect(h.bases.map((b) => b.route)).toEqual([ffmpeg('av1_nvenc')])
+      expect(h.started).toHaveLength(1)
+    } finally {
+      h.refuse = null
+    }
+  })
+
+  it('an encoder failure (code encoder, or none) still moves on to the next route', async () => {
+    for (const code of ['encoder', null]) {
+      h.refuse = { message: 'av1_nvenc: no capable devices found', code }
+      try {
+        await expect(run({ codec: 'av1' }, gpu)).rejects.toThrow('no capable devices found')
+        expect(h.bases.map((b) => b.route)).toEqual([ffmpeg('av1_nvenc'), ffmpeg('libaom-av1')])
+      } finally {
+        h.refuse = null
+      }
+    }
+  })
+})
+
+describe('the finalizing line of a size target', () => {
+  it('names the two passes for libaom as it does for x264 and libvpx, and not for a graphics card', async () => {
+    const twoPasses = 'Encoding to the size target (two passes)…'
+    await run({ codec: 'av1', encoder: 'software', targetSizeMB: 5 })
+    expect(h.bases[0].route).toEqual(ffmpeg('libaom-av1'))
+    expect(h.details).toContain(twoPasses)
+    await run({ targetSizeMB: 5 })
+    expect(h.bases[0].route).toEqual(ffmpeg('libx264'))
+    expect(h.details).toContain(twoPasses)
+    const gpu: CodecCaps = { webcodecs: { hevc: false, av1: false }, gpu: { hevc: [], av1: ['av1_nvenc'] }, overrides: {} }
+    await run({ codec: 'av1', targetSizeMB: 5 }, gpu)
+    expect(h.bases[0].route).toEqual(ffmpeg('av1_nvenc'))
+    expect(h.details).not.toContain(twoPasses)
   })
 })
