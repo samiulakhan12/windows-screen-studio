@@ -5,7 +5,7 @@ import { tallAs } from '../engine/reframeData'
 import type { AspectRatio, ExportFormat, Project } from '../types'
 import { codecRoutes, type CodecCaps } from './codecRoutes'
 import type { ExportOptions } from './exportPresets'
-import { DEFAULT_CODEC } from './proFormats'
+import { codecOf, DEFAULT_CODEC } from './proFormats'
 
 /** GIFs play at 15 fps; their size options stop at 1080p. */
 export const GIF_FPS = 15
@@ -67,7 +67,14 @@ export function exportSize(project: Project, settings: ExportOptions): ExportSiz
     const k = settings.maxWidth / size.width
     size = { width: Math.max(2, settings.maxWidth - (settings.maxWidth % 2)), height: even(size.height * k) }
   }
-  return { ...capSize(size), fps: gif ? GIF_FPS : settings.fps }
+  const capped = capSize(size)
+  // FFmpeg's CineForm encoder takes only widths that are a multiple of 16 (1080 wide fails): a few
+  // pixels more of background (fewer when that would pass maxWidth); the recording is fitted inside.
+  if (settings.format === 'mov' && codecOf(settings) === 'cineform' && capped.width % 16) {
+    const up = Math.ceil(capped.width / 16) * 16
+    capped.width = up <= Math.min(MAX_EXPORT_SIDE, settings.maxWidth ?? MAX_EXPORT_SIDE) ? up : Math.floor(capped.width / 16) * 16
+  }
+  return { ...capped, fps: gif ? GIF_FPS : settings.fps }
 }
 
 /**

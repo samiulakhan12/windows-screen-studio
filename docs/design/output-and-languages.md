@@ -1079,7 +1079,10 @@ targets are off for alpha (§5.7). Measured on the alpha clip: 7.4 MB/min at rea
 `bgra`/`rgba`, filter `format=gbrap12le`, `-c:v cfhd -quality {film1|high|medium}`,
 `-color_primaries bt709 -color_trc bt709` (RGB: no matrix tag). Measured: YUV "high" 1,019 MB/min,
 RGBA "high" 2,395 MB/min, RGBA "film1" 2,596 MB/min at 1080p60, encoding faster than real time on 4
-cores.
+cores. `cfhd` takes only widths that are a multiple of 16 ("Width must be multiple of 16.", so 1080 wide
+fails): `exportSize` rounds a CineForm frame's width up to the next multiple of 16 (9:16, 1:1 and 4:5
+at 1080p are 1088 wide; down instead when that would pass `maxWidth`), so the preview, the job and the
+timeline plan agree, and the recording is fitted inside as with any size.
 
 **Animation** (MOV). Input `bgra`/`rgba` (alpha) or `bgr0`/`rgb0`; `-pix_fmt argb` or `rgb24`;
 `-c:v qtrle`; `-color_primaries bt709 -color_trc bt709`. Lossless (598 of 600 frames bit-exact, the

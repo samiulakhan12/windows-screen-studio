@@ -7,6 +7,8 @@ import type { ExportJob, FfmpegVideoEncoder, RawPixelFormat } from '../src/share
 import { EXPORT_COLOR, ffmpegPlan } from '../src/main/exportArgs'
 import { validateJob } from '../src/main/exportJob'
 import { ffmpegPath } from '../src/main/ffmpeg'
+import { createProject } from '../src/shared/engine/project'
+import { exportSize } from '../src/shared/render/exportPlan'
 import { CODEC_POLICY } from '../src/shared/render/proFormats'
 
 /*
@@ -55,6 +57,21 @@ function seeThrough(w: number, h: number, frames: number, order: 'rgba' | 'bgra'
     }
   return Buffer.concat(Array.from({ length: frames }, () => one))
 }
+
+/** A 1080p recording, for frames sized as an export sizes them. */
+const recorded = createProject({
+  id: 'p',
+  name: 'p',
+  duration: 1,
+  width: 1920,
+  height: 1080,
+  hasWebcam: false,
+  hasAudio: false,
+  webcamOffset: 0,
+  zooms: [],
+  cursorValid: false,
+  capture: { method: 'chromium', cursorInVideo: true, region: null }
+})
 
 const sound = path.join(dir, 'sound.m4a')
 execFileSync(ffmpegPath(), ['-v', 'error', '-f', 'lavfi', '-i', 'sine=frequency=440:sample_rate=48000', '-t', '2', '-c:a', 'aac', sound])
@@ -114,6 +131,19 @@ describe.runIf(PROBE).each(BINARIES)('wave 12 encodes with %s', (ff) => {
     expect(at(f, 64, 0, 47)[3]).toBeLessThanOrEqual(2)
     expect(near(at(f, 64, 32, 24), [255, 0, 0, 255], 2)).toBe(true)
     expect(near(at(f, 64, 2, 2), [128, 128, 128, 128], 3)).toBe(true)
+  })
+
+  it('CineForm at the sizes exportSize gives 1080-wide shapes (9:16 opaque, 4:5 with alpha): cfhd takes them', () => {
+    // cfhd refuses widths that are not a multiple of 16 ("Width must be multiple of 16.", exit 183).
+    const tall = { ...recorded, style: { ...recorded.style, aspectRatio: '9:16' as const } }
+    const cine = { format: 'mov', resolution: 1080, fps: 30, quality: 'medium', encoder: 'auto', codec: 'cineform' } as const
+    const two = { frames: 2, audio: { clips: [{ id: 'c', start: 0, end: 2 / 30, speed: 1 }], volume: 1 } }
+    const opaque = exportSize(tall, cine)
+    const out = run(ff, job({ ...two, width: opaque.width, height: opaque.height }), pattern(ff, opaque.width, opaque.height, 30, 2, 'bgr0'))
+    expect(probe(out)[0]).toMatchObject({ codec_name: 'cfhd', width: opaque.width, height: 1920, nb_read_frames: '2' })
+    const feed = exportSize(recorded, { ...cine, aspect: '4:5', alpha: 'background' })
+    const clear = run(ff, job({ ...two, width: feed.width, height: feed.height, alpha: true, pixelFormat: 'bgra' }), seeThrough(feed.width, feed.height, 2, 'bgra'))
+    expect(probe(clear)[0]).toMatchObject({ codec_name: 'cfhd', pix_fmt: 'gbrap12le', width: feed.width, height: 1350 })
   })
 
   it('Lossless (QuickTime Animation) with alpha: ARGB, bit-exact', () => {

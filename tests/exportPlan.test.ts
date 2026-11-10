@@ -131,6 +131,32 @@ describe('exportDimensions', () => {
     expect(capSize({ width: 4096, height: 2160 })).toEqual({ width: 4096, height: 2160, capped: false })
     expect(capSize({ width: 9000, height: 2 })).toEqual({ width: 4096, height: 2, capped: true })
   })
+
+  it('CineForm widths are a multiple of 16, which FFmpeg\'s cfhd needs (1080 wide fails); other codecs keep their sizes', () => {
+    const cine = { ...settings, format: 'mov' as const, codec: 'cineform' as const }
+    const shapedAs = (aspectRatio: '9:16' | '1:1' | '16:9'): typeof project => ({ ...project, style: { ...project.style, aspectRatio } })
+    expect(exportSize(shapedAs('9:16'), cine)).toEqual({ width: 1088, height: 1920, fps: 60, capped: false })
+    expect(exportSize(shapedAs('1:1'), cine)).toMatchObject({ width: 1088, height: 1080 })
+    expect(exportSize(project, { ...cine, aspect: '4:5', alpha: 'background' })).toMatchObject({ width: 1088, height: 1350 })
+    // 'auto' on a 3:2 laptop screen: 1620x1080 and 1080x720.
+    expect(exportSize(shaped(1500, 1000), cine)).toMatchObject({ width: 1632, height: 1080 })
+    expect(exportSize(shaped(1500, 1000), { ...cine, resolution: 720 })).toMatchObject({ width: 1088, height: 720 })
+    // A width limit is kept (down to the multiple of 16 below it); the 4096 cap is one already.
+    expect(exportSize(project, { ...cine, maxWidth: 1000 })).toMatchObject({ width: 992 })
+    expect(exportSize(shaped(5120, 2160), { ...cine, resolution: 2160 })).toMatchObject({ width: 4096, height: 1728, capped: true })
+    // Standard 16:9 sizes and every other codec are as before.
+    expect(exportSize(shapedAs('16:9'), cine)).toMatchObject({ width: 1920, height: 1080 })
+    expect(exportSize(shapedAs('9:16'), settings)).toMatchObject({ width: 1080, height: 1920 })
+    expect(exportSize(shapedAs('9:16'), { ...cine, codec: 'animation' })).toMatchObject({ width: 1080, height: 1920 })
+    expect(exportSize(shapedAs('9:16'), { ...cine, codec: undefined })).toMatchObject({ width: 1080, height: 1920 })
+    for (const resolution of [720, 1080, 1440, 2160] as const)
+      for (const aspect of ['auto', '16:9', '9:16', '1:1', '4:3', '4:5'] as const)
+        for (const [w, h] of [[1918, 1080], [1500, 1000], [2580, 1080], [1000, 1300], [300, 1300]]) {
+          const s = exportSize(shaped(w, h), { ...cine, resolution, aspect })
+          expect(s.width % 16, `${w}x${h} ${aspect} ${resolution}p`).toBe(0)
+          expect(() => validateJob({ ...job, width: s.width, height: s.height, format: 'mov', codec: 'cineform', video: { kind: 'raw', encoder: 'cfhd', pixelFormat: 'bgr0' }, outputPath: '/tmp/x.mov' })).not.toThrow()
+        }
+  })
 })
 
 describe('readable export errors (audit-B-3)', () => {
