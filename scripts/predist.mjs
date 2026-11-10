@@ -15,7 +15,8 @@
 //   3. The icon files exist (npm run icons).
 //   4. The code-signing environment is consistent (unsigned builds are fine).
 //   5. Every UI text has a key and the catalogues match their sources (scripts/i18n/check.mjs,
-//      docs/design/output-and-languages.md §16.4): a report until step S4 turns the scanner to "fail".
+//      docs/design/output-and-languages.md §16.4): check.mjs runs with --report until
+//      scripts/i18n/config.json says "scan": "fail" (step S4), and without it from then on.
 import { spawnSync } from 'node:child_process'
 import { createHash } from 'node:crypto'
 import { existsSync, readFileSync, rmSync, statSync } from 'node:fs'
@@ -28,6 +29,7 @@ const { checkWindowsExe } = require('./lib/pe.cjs')
 const { parseIco } = require('./lib/ico.cjs')
 const { loadBuilderEnv, resolveWindowsSigning } = require('./lib/signing.cjs')
 const { FFMPEG_EXE, nativeHelper, speechHelperStatus, staleSpeechHelper, VAD_PIN } = require('./lib/packaging.cjs')
+const { stringsStep } = require('./i18n/lib/release.cjs')
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 const failures = []
@@ -183,9 +185,11 @@ function checkSigning() {
 }
 
 // 5. Strings and catalogues -------------------------------------------------------------------
+// A report for the tree outside the parts' files until config.json says "scan": "fail" (step S4);
+// from then on the --report flag is dropped and any UI text without a key stops the build.
 function checkStrings() {
-  const r = spawnSync(process.execPath, [path.join(root, 'scripts', 'i18n', 'check.mjs'), '--report'], { cwd: root, stdio: 'inherit' })
-  if (r.status !== 0) fail('the string and catalogue checks failed (scripts/i18n/check.mjs, see above).')
+  const problem = stringsStep(root, [path.join(root, 'scripts', 'i18n', 'check.mjs'), '--report'])
+  if (problem) fail(problem)
 }
 
 ensureFfmpeg()

@@ -1,0 +1,5 @@
+{
+  "$comment": "The size of src/shared/i18n/built/ in the previous release (docs/design/output-and-languages.md section 16.4). verify-dist fails when the built catalogues grow by more than 1 MB over it; after each release, set these to that release and the size verify-dist printed.",
+  "release": "0.7.1",
+  "bytes": 0
+}

@@ -16,6 +16,7 @@ const { readAsarHeader, listAsar } = require('./lib/asar.cjs')
 const { checkWindowsExe, parsePe, readIconGroups, readImports, readVersionStrings } = require('./lib/pe.cjs')
 const { parseIco } = require('./lib/ico.cjs')
 const { updateMetaProblems } = require('./lib/updateMeta.cjs')
+const { builtGrowth } = require('./i18n/lib/release.cjs')
 const {
   CAPTIONS_BUDGET,
   captionFontProblems,
@@ -374,6 +375,15 @@ else note(`Authenticode: ${signState}`)
     : ['electron-builder.config.cjs has no publish target (the app could not update itself)']
   for (const p of problems) fail(`update metadata: ${p}`)
   if (!problems.length) ok(`update metadata: app-update.yml -> ${publish.provider} ${publish.owner}/${publish.repo}; latest.yml ${pkg.version} -> ${installerName} (sha512 matches)`)
+}
+
+// 8. The translations the app bundles (docs/design/output-and-languages.md §16.4, §19.5): the built
+// catalogues grow by at most 1 MB over the previous release (scripts/i18n/built-baseline.json).
+{
+  const built = builtGrowth(root)
+  const line = `built catalogues: ${built.bytes} B (${built.baseline.release}: ${built.baseline.bytes} B)`
+  if (built.problem) fail(`${built.problem}; check the languages and their sizes before shipping`)
+  else ok(`${line}; after this release, record ${built.bytes} B in scripts/i18n/built-baseline.json`)
 }
 
 const installSize = dirSize(unpacked)
