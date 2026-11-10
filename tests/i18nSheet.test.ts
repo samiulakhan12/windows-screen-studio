@@ -70,6 +70,14 @@ describe('test 66: the review sheet', () => {
     expect(r.entries['sound.level'].text).toBe('-3 dB কমান')
   })
 
+  it('leaves an untouched stale row alone, and asks for a state when a stale row is corrected', () => {
+    expect(run(edited({ 'export.done': { note: '' } })).changed).toEqual([])
+    const corrected = run(edited({ 'export.done': { final: 'হয়ে গেছে' } }))
+    expect(corrected.refused).toEqual([{ key: 'export.done', reason: 'has the state "stale"; use draft, reviewed or approved' }])
+    const reviewed = run(edited({ 'export.done': { final: 'হয়ে গেছে', state: 'reviewed' } }))
+    expect(reviewed.entries['export.done']).toMatchObject({ text: 'হয়ে গেছে', state: 'reviewed', sourceHash: files.sourceHash('Done'), reviewedBy: 'rina' })
+  })
+
   it('records who reviewed and approved, and when, and refuses one person as both', () => {
     const reviewed = run(edited({ 'export.name': { final: '{name} এক্সপোর্ট করুন', state: 'reviewed' } }))
     expect(reviewed.changed).toEqual(['export.name'])

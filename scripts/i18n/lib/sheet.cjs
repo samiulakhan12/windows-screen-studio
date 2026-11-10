@@ -91,10 +91,11 @@ function importSheet({ lang, bytes, english, meta, translations, reviewers, glos
     }
     const before = translations[key]
     const final = cell.final
-    const state = cell.state === 'stale' ? (before?.state ?? 'draft') : cell.state
+    // A stale row keeps "stale" until a person decides its state; only an untouched one passes.
+    const state = cell.state
     if (!final && !state) continue
     // Unchanged rows stay as they are.
-    if (before && final === before.text && (cell.state === 'stale' || state === before.state) && cell.note === (before.note ?? '')) continue
+    if (before && final === before.text && (state === 'stale' || state === before.state) && cell.note === (before.note ?? '')) continue
     const why = damage(lang, english[key], final)
     if (why) {
       refused.push({ key, reason: why })
