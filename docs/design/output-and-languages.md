@@ -885,7 +885,7 @@ only its six booleans.
 export interface UserExportPreset {
   id: string                 // 'user:' + 12 lower-case hex; never a built-in id (they have no colon)
   name: string               // 1..60 graphemes, NFC, trimmed; no Cc, bidi-control or private-use characters (ZWJ and ZWNJ kept)
-  options: ExportOptions     // through normalizeOptions, without `preset` and `userPreset`
+  options: ExportOptions     // through normalizeOptions, without `preset`, `userPreset` and a target size where Target size is off (§2.1)
   bundle?: Omit<BundleOptions, 'languages'>   // through normalizeBundle
   saved: number              // ms since 1970
 }
@@ -914,7 +914,8 @@ UTF-8 JSON, at most 64 KB:
   `.flownpreset` (§18.2). The renderer never hands main file text.
 - Read in main only, by `readPresetFile(text)` (§18.2): the `flown` and `version` fields must match;
   at most 50 presets; each name cleaned by `cleanPresetName`; options through `normalizeOptions`,
-  whose codec changes are counted in `changed`; `bundle` through `normalizeBundle` without
+  whose codec changes are counted in `changed`, without a target size where Target size is off
+  (WAV, the editing formats, transparent videos; §2.1); `bundle` through `normalizeBundle` without
   `languages`; every other field dropped. Nothing in a preset is a path, a URL or code.
 
 ### 4.6 Projects: nothing new

@@ -10,6 +10,7 @@ import type { PresetFileRead } from '../api/export'
 import type { ExportCodec } from '../types'
 import { normalizeBundle, type BundleOptions } from './exportBundle'
 import { normalizeOptions, USER_PRESET_ID, type ExportOptions } from './exportPresets'
+import { codecOf, isIntermediate } from './proFormats'
 
 /** Most presets a user keeps, and most a file holds. */
 export const USER_PRESET_LIMIT = 50
@@ -23,7 +24,7 @@ export interface UserExportPreset {
   id: string
   /** 1..60 graphemes, NFC, trimmed; no control, bidi-control or private-use characters (ZWJ and ZWNJ kept). */
   name: string
-  /** Through normalizeOptions, without `preset` and `userPreset`. */
+  /** Through normalizeOptions, without `preset`, `userPreset` and a target size where Target size is off. */
   options: ExportOptions
   /** The "Also save" choices, through normalizeBundle, never the subtitle languages. */
   bundle?: Omit<BundleOptions, 'languages'>
@@ -70,11 +71,16 @@ export function cleanPresetName(raw: unknown): string | null {
   return name || null
 }
 
-/** Options as a preset keeps them: read like stored settings, without the ids of the presets they came from. */
+/**
+ * Options as a preset keeps them: read like stored settings, without the ids of the presets they came
+ * from, and without a target size where Target size is off (WAV, the editing formats, transparent
+ * videos; §2.1), as the dialog's picks drop it.
+ */
 function presetOptions(raw: unknown, onCodecChange?: (from: ExportCodec, to: ExportCodec) => void): ExportOptions {
   const o = normalizeOptions(raw, onCodecChange)
   delete o.preset
   delete o.userPreset
+  if (o.format === 'wav' || isIntermediate(codecOf(o)) || o.alpha) delete o.targetSizeMB
   return o
 }
 

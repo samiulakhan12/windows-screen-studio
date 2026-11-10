@@ -241,6 +241,28 @@ describe('the preset readers on hostile input (test 5)', () => {
     expect(read.presets[0].options).toEqual({ format: 'mov', resolution: 1080, fps: 30, quality: 'high', encoder: 'auto', codec: 'cineform' })
   })
 
+  it('drops a target size where Target size is off (WAV, the editing formats, transparent videos), as the dialog does', () => {
+    const list = [
+      { name: 'CineForm', options: { ...options, targetSizeMB: 5 } },
+      { name: 'ProRes', options: { ...options, codec: 'prores-422', targetSizeMB: 5 } },
+      { name: 'Clear', options: { ...options, format: 'webm', codec: 'vp9', alpha: 'background', targetSizeMB: 5 } },
+      { name: 'Sound', options: { ...options, format: 'wav', codec: undefined, targetSizeMB: 5 } },
+      { name: 'Email', options: { ...options, format: 'mp4', codec: undefined, targetSizeMB: 5 } },
+      { name: 'Slack', options: { ...options, format: 'gif', codec: undefined, targetSizeMB: 5 } }
+    ]
+    const read = userPresets.readPresetFile(file(list))!
+    expect(read.presets.map((p) => [p.name, p.options.targetSizeMB])).toEqual([
+      ['CineForm', undefined],
+      ['ProRes', undefined],
+      ['Clear', undefined],
+      ['Sound', undefined],
+      ['Email', 5],
+      ['Slack', 5]
+    ])
+    const store = userPresets.readUserPresets({ version: 1, presets: [{ id: 'user:000000000001', name: 'CineForm', options: { ...options, targetSizeMB: 5 }, saved: 0 }] })!
+    expect(store.presets[0].options).toEqual(presets.normalizeOptions(options))
+  })
+
   it('reads __proto__, constructor and wrong types as data and never pollutes anything', () => {
     const text = `{"flown":"export-presets","version":1,"presets":[{"name":"A","options":{"format":"mp4","resolution":1080,"fps":30,"quality":"high","encoder":"auto","__proto__":{"polluted":1},"constructor":{"x":1}},"bundle":{"__proto__":{"stems":true},"srt":true}},{"name":5,"options":{}},{"name":"B","options":"mp4"},"x",null]}`
     const read = userPresets.readPresetFile(text)!
