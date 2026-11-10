@@ -116,7 +116,7 @@ describe('the extraction codemod', () => {
     const plural = r.log.find((row) => row.key === 'editor.clipCard.inFiles')!
     expect(plural.english).toEqual(['0 files in «name»', '1 file in «name»', '2 files in «name»', '1000 files in «name»'])
     // A message that no longer gives the literal, and a plural without its four samples, are reported.
-    const broken = { ...r.messages, 'editor.clipCard.undo': 'Undo it' }
+    const broken: Record<string, string> = { ...r.messages, 'editor.clipCard.undo': 'Undo it' }
     const formatBroken = (key: string, values: Record<string, unknown>) => formatIcu<string>(parseIcu(broken[key]), values, { language: 'en', formatLocale: 'en-US' }).join('')
     expect(extract.logProblems(r.log, formatBroken)).toEqual([`editor.clipCard.undo (${FILE}:4): gives "Undo it" where the code showed "Undo"`])
     const short = [{ ...plural, english: (plural.english as string[]).slice(0, 2), sample: (plural.sample as object[]).slice(0, 2) }]

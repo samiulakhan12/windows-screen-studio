@@ -9,7 +9,6 @@ import React from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { afterEach, describe, expect, it } from 'vitest'
 import { setCatalogue } from '../src/shared/i18n/t'
-import { ReviewOverlay, readMarks, reviewMode } from '../src/renderer/src/i18n/reviewOverlay'
 import { englishTree, makeTree, removeTree, toolsTree } from './i18nFixtures'
 
 type Entry = { text: string; state: string; sourceHash: string; reviewedBy?: string; approvedBy?: string }
@@ -24,9 +23,13 @@ const files = require('../scripts/i18n/lib/files.cjs') as { sourceHash(s: string
 const catalogue = require('../scripts/i18n/lib/catalogue.cjs') as { checkMessage(lang: string, en: string, meta: object, e: Entry): { code: string }[] }
 const build = require('../scripts/i18n/lib/build.cjs') as { buildCatalogues(root: string): { files: Record<string, string> } }
 
+type Mark = { key: string; state: string; labels: boolean }
+const OVERLAY = '../src/renderer/src/i18n/reviewOverlay'
+const { ReviewOverlay, readMarks, reviewMode } = (await import(/* @vite-ignore */ OVERLAY)) as { ReviewOverlay: () => unknown; readMarks(text: string): Mark[]; reviewMode(): Mark | null }
+
 const ENGLISH = { language: 'en' as const, messages: {}, formatLocale: 'en-US', dir: 'ltr' as const }
 afterEach(() => setCatalogue(ENGLISH))
-const render = () => renderToStaticMarkup(React.createElement(ReviewOverlay))
+const render = () => renderToStaticMarkup(React.createElement(ReviewOverlay as () => React.ReactElement | null))
 const bangla = (messages: Record<string, string>) => setCatalogue({ language: 'bn', messages, formatLocale: 'bn-BD', dir: 'ltr' })
 const draft = (en: string, text: string, more: Partial<Entry> = {}): Entry => ({ text, state: 'draft', sourceHash: files.sourceHash(en), ...more })
 
