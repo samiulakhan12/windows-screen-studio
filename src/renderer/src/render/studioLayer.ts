@@ -1076,10 +1076,14 @@ function cameraCentre(s: Shown, frame: FrameContext | null): { x: number; y: num
   return { x: cam.rect.x + cam.rect.w / 2, y: cam.rect.y + cam.rect.h / 2 }
 }
 
-/** The frame's blurred copy for glass (once per frame, whatever number of pills uses it). */
+/**
+ * The frame's blurred copy for glass (once per frame, whatever number of pills uses it). A
+ * see-through frame (output-and-languages §6.1) has none: blurred, its clear pixels turn opaque
+ * black, so the glass shows its tint only, as the card's glass border does.
+ */
 const glassFrames = new WeakMap<FrameContext, { canvas: HTMLCanvasElement | null; w: number; h: number }>()
 function glassFrame(frame: FrameContext | null): { canvas: HTMLCanvasElement | null; w: number; h: number } | null {
-  if (!frame || typeof document === 'undefined') return null
+  if (!frame || typeof document === 'undefined' || frame.scene?.alpha) return null
   let g = glassFrames.get(frame)
   if (!g) glassFrames.set(frame, (g = { canvas: blurredFrameOf(frame.ctx, 256), w: frame.w, h: frame.h }))
   return g

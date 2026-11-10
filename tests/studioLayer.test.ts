@@ -225,6 +225,35 @@ describe('the Studio layer draws word sprites (test 23)', () => {
     expect(pill(2.08)!.alpha).toBe(1)
   })
 
+  it('Glass Pill in a see-through export shows its tint only, never a blurred copy of the clear frame (output-and-languages §6.1)', () => {
+    const p = studioProject(look('glass'))
+    /** The frame's calls, and whether any canvas read the frame (the blurred copy is made from it). */
+    const drawn = (scene: Record<string, unknown>): { glass: typeof calls; read: boolean; tints: number } => {
+      calls.length = 0
+      const { fc, id } = frameOf(p, 1.2, 1920, 1080, { scene })
+      const frame = (fc as unknown as { ctx: { canvas: unknown } }).ctx.canvas
+      drawStudioCaptions(fc)
+      const mine = onFrame(id)
+      return {
+        // The blurred copy goes over the whole frame, clipped to the pill.
+        glass: mine.filter((c) => c.name === 'drawImage' && c.args.length === 9 && c.args[7] === 1920 && c.args[8] === 1080),
+        read: calls.some((c) => c.name === 'drawImage' && c.args[0] === frame),
+        tints: mine.filter((c) => c.name === 'fillRect' && c.fill === 'rgba(12, 12, 18, 0.65)').length
+      }
+    }
+    const opaque = drawn({ project: p })
+    expect(opaque.glass.length).toBeGreaterThan(0)
+    expect(opaque.read).toBe(true)
+    for (const alpha of ['background', 'overlays']) {
+      const clear = drawn({ project: p, alpha })
+      expect(clear.glass).toEqual([])
+      expect(clear.read).toBe(false)
+      // The tint, the highlight and the border are drawn as in the opaque frame.
+      expect(clear.tints).toBe(opaque.tints)
+      expect(clear.tints).toBeGreaterThan(0)
+    }
+  })
+
   it('draws a sticker per word, the spoken one in the spoken colour and grown (§0.1 Stickers)', () => {
     const { fc } = frameOf(studioProject(look('stickers')), 1.2)
     drawStudioCaptions(fc)

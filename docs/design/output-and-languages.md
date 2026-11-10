@@ -1217,6 +1217,9 @@ alpha?: 'background' | 'overlays'
   `drawFrameOverlays` what goes over it (`compositor.ts:141`, `:293` on `feat/wave10`). Overlays only
   draws no picture but keeps the camera, which `drawFramePicture` draws last (`drawWebcamLayer`).
 - A full-frame title card stays opaque: it covers the frame by design.
+- Glass caption pills (Captions Studio's Glass look) and a lower third over the blurred video show
+  their tint without the blurred backdrop, as a glass border does: blurred, the clear frame turns
+  opaque black, which would hide the footage the overlay is laid over.
 - With the aspect *Project* on `auto` and padding 0 the card fills the frame, so nothing is
   see-through. The Background row then says (exact): "With no padding the recording fills the
   frame: nothing will be see-through. Add padding in Style, or choose Overlays only."

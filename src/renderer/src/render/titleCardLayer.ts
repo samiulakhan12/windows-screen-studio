@@ -304,10 +304,17 @@ function applyPose(ctx: Ctx, box: Rect, pose: CalloutPose | null, reveal: CardRe
 const BLUR_TINT = 'rgba(10, 10, 16, 0.42)'
 const BAND_TINT = 'rgba(12, 12, 18, 0.5)'
 
-/** Fills the frame (clipped by the caller) with the card's background. */
-function paintCardBackground(fc: FrameContext, card: TitleCard, tint: string): void {
+/**
+ * Fills the frame (clipped by the caller) with the card's background. `band`: a lower third's band,
+ * which in a see-through frame (output-and-languages §6.1) shows its tint over the blur instead of
+ * the blurred frame (whose clear pixels turn opaque black); a full-frame card stays opaque.
+ */
+function paintCardBackground(fc: FrameContext, card: TitleCard, tint: string, band = false): void {
   const { ctx, w, h, project } = fc
-  if (card.background === 'solid') {
+  if (band && card.background === 'blur' && fc.scene?.alpha) {
+    ctx.fillStyle = tint
+    ctx.fillRect(0, 0, w, h)
+  } else if (card.background === 'solid') {
     ctx.fillStyle = titleColorOf(card)
     ctx.fillRect(0, 0, w, h)
   } else if (card.background === 'style') {
@@ -455,7 +462,7 @@ function drawLowerThird(fc: FrameContext, card: TitleCard, phase: TitlePhase, l:
     ctx.roundRect(band.x, y, band.w, band.h, band.radius)
     ctx.save()
     ctx.clip()
-    paintCardBackground(fc, card, BAND_TINT)
+    paintCardBackground(fc, card, BAND_TINT, true)
     ctx.restore()
     // The background may have drawn paths of its own: the band's outline again for its edge.
     ctx.beginPath()

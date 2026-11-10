@@ -72,12 +72,12 @@ function project(card: Omit<TitleCard, 'id' | 'start' | 'end'>): Project {
   return p
 }
 
-/** Draws the card on `out` at each time; returns the calls made per frame. */
-function frames(p: Project, out: Record<string, unknown>, times: number[]): Call[][] {
+/** Draws the card on `out` at each time (with the frame's `scene` when given); returns the calls made per frame. */
+function frames(p: Project, out: Record<string, unknown>, times: number[], scene?: Record<string, unknown>): Call[][] {
   const ctx = (out.getContext as () => unknown)()
   return times.map((t) => {
     calls.length = 0
-    drawTitleCardsLayer({ ctx, w: 1920, h: 1080, t, k: 1, project: p, background: null })
+    drawTitleCardsLayer({ ctx, w: 1920, h: 1080, t, k: 1, project: p, background: null, ...(scene ? { scene } : {}) })
     return [...calls]
   })
 }
@@ -132,6 +132,30 @@ describe('title cards: the text is drawn once and copied', () => {
       // The blurred frame in the band, then the copy.
       expect(mine.filter((x) => x.name === 'drawImage').length).toBe(2)
     }
+  })
+
+  it('a lower third over the video in a see-through export: the band shows its tint, never a blurred copy of the clear frame (output-and-languages §6.1)', () => {
+    const p = project({ style: 'lower-third', title: 'Samiul Khan', background: 'blur' })
+    const out = recordingCanvas()
+    for (const alpha of ['background', 'overlays']) {
+      for (const c of frames(p, out, [2.1, 3, 4], { project: p, alpha })) {
+        const mine = on(c, out)
+        // Only the copy of the accent bar and text; nothing reads the frame to blur it.
+        expect(mine.filter((x) => x.name === 'drawImage')).toHaveLength(1)
+        expect(c.some((x) => x.name === 'drawImage' && x.args[0] === out)).toBe(false)
+        // The band: its tint inside the clip, and its edge.
+        const tint = mine.findIndex((x) => x.name === 'set fillStyle' && x.args[0] === 'rgba(12, 12, 18, 0.5)')
+        expect(tint).toBeGreaterThan(mine.findIndex((x) => x.name === 'clip'))
+        expect(mine[tint + 1].name).toBe('fillRect')
+        expect(mine.some((x) => x.name === 'set fillStyle' && x.args[0] === '#14141c')).toBe(false)
+        expect(mine.filter((x) => x.name === 'stroke')).toHaveLength(1)
+      }
+    }
+    // An opaque frame blurs the frame into the band as before.
+    for (const c of frames(p, out, [3], { project: p })) expect(on(c, out).filter((x) => x.name === 'drawImage')).toHaveLength(2)
+    // A full-frame card stays opaque in a see-through export: the blurred frame under its tint.
+    const big = project({ style: 'big', title: 'Ship faster', background: 'blur' })
+    for (const c of frames(big, out, [3], { project: big, alpha: 'background' })) expect(on(c, out).some((x) => x.name === 'drawImage' && x.args.length === 9)).toBe(true)
   })
 
   it('makes a new copy for new text', () => {
