@@ -1185,8 +1185,12 @@ The batch "Also" row adds 4:5 (`BATCH_ASPECTS`), file label "4x5".
 Windows. The probe runs once per codec per session, when the dialog first needs it, and is cached; it
 never runs at app start. The renderer probes WebCodecs with `VideoEncoder.isConfigSupported` and
 `hardwareAcceleration: 'prefer-hardware'`, as for H.264 today. An export that asks for HEVC waits for
-the probe before its save or folder dialog opens; while it waits (and while that dialog is open, or an
-export runs) another Export click does nothing (`startGuard`), so no second dialog or export starts.
+the probe before its save or folder dialog opens. While it waits, the Export button reads "Checking
+this PC…" (exact; `aria-busy`, and `aria-disabled` so a keyboard user keeps the focus on it) and a
+status says the same to screen readers; when the probe ends, the export the dialog shows by then starts
+(`waitThenStart`), so a setting changed during the wait is the one exported, and a dialog closed during
+it starts nothing. While it waits (and while the save or folder dialog is open, or an export runs)
+another Export click does nothing (`startGuard`), so no second dialog or export starts.
 
 ### 5.10 Sizes, times and disk space
 

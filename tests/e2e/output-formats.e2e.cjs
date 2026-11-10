@@ -1,7 +1,8 @@
 // Wave 12's export formats in the real built app (docs/design/output-and-languages.md §23.3): stored
 // settings of before, AV1, frame rates and 4:5, transparent WebM and CineForm against the dialog's own
-// preview, sound stems and the WAV format, and timelines over this export and over the original
-// recordings. Every launch blocks and logs the network (F14): nothing may leave the app.
+// preview, sound stems and the WAV format, timelines over this export and over the original
+// recordings, and an Export click while the HEVC check runs. Every launch blocks and logs the network
+// (F14): nothing may leave the app.
 //
 //   npm run build
 //   xvfb-run -a -s "-screen 0 1920x1080x24" node tests/e2e/output-formats.e2e.cjs
@@ -611,6 +612,44 @@ async function main() {
     h.assert(camera.length > 0 && camera.every((c) => /lane="1"/.test(c) && /enabled="0"/.test(c)), `the camera clips are on V2, turned off (${camera.join(' ')})`)
     h.assert(/<format [^>]*width="1280" height="720"/.test(rec), 'the sequence is the screen recording\'s size')
     h.assert(JSON.stringify(folderState(dir)) === JSON.stringify(project), 'the project folder is unchanged, bytes and times')
+    await offline(app)
+  }))
+
+  await test('output formats: Export while the HEVC check runs says so, and exports the settings shown when it ends (F2)', fx.withHome('of-checking', async (ctx, home) => {
+    seedDemo(home)
+    const { app, win } = await launchWith(ctx, home, 'Demo', { settings: { format: 'mp4', resolution: 1080, fps: 30, quality: 'medium', encoder: 'auto', codec: 'hevc' } })
+    // The HEVC probe answers only when told to (on a real PC it is up to four test encodes); it finds nothing.
+    await app.evaluate(({ ipcMain, dialog }, target) => {
+      globalThis.__saves = 0
+      dialog.showSaveDialog = async () => {
+        globalThis.__saves++
+        return { canceled: false, filePath: target }
+      }
+      ipcMain.removeHandler('export:probeCodec')
+      ipcMain.handle('export:probeCodec', () => new Promise((resolve) => (globalThis.__probeDone = () => resolve([]))))
+    }, path.join(home, 'checked.mp4'))
+    await openSettings(win)
+    const button = win.locator('.modal .modal-foot button.primary')
+    // From the keyboard, so the button keeps the focus (a clicked button hands it back to the editor).
+    await button.focus()
+    await win.keyboard.press('Enter')
+    await win.waitForSelector('.modal .modal-foot button.primary[aria-busy="true"]')
+    h.assert((await button.textContent()).trim() === 'Checking this PC…', `the Export button says the wait (${await button.textContent()})`)
+    h.assert((await win.textContent('.modal .modal-foot [role="status"]')) === 'Checking this PC…', 'and screen readers hear it')
+    h.assert(await win.evaluate(() => !!document.activeElement?.matches('.modal-foot button.primary')), 'the button keeps the focus')
+    // A setting changed meanwhile is the one exported; a second press starts nothing more.
+    await fx.pickChip(win, 'Resolution', '720p')
+    await button.focus()
+    await win.keyboard.press('Enter')
+    await h.sleep(300)
+    h.assert((await app.evaluate(() => globalThis.__saves)) === 0, 'no save dialog before the check ends')
+    await app.evaluate(() => globalThis.__probeDone())
+    const r = await fx.waitForExport(win)
+    h.assert(r.ok, `the export finished: ${r.text}`)
+    h.assert((await app.evaluate(() => globalThis.__saves)) === 1, 'one save dialog')
+    const v = videoOf(path.join(home, 'checked.mp4'))
+    h.assert(v.codec_name === 'h264' && v.height === 720, `H.264 at 720p, as the dialog showed when the check ended (${v.codec_name}, ${v.height})`)
+    await closeDialog(win)
     await offline(app)
   }))
 }

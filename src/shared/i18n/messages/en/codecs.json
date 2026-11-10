@@ -20,6 +20,7 @@
   "codec.prores4444.label": "ProRes 4444",
   "codec.prores4444.title": "ProRes with transparency. FFmpeg's ProRes encoder, not certified by Apple",
   "hevc.probing": "Checking for an HEVC encoder…",
+  "export.checking": "Checking this PC…",
   "notice.cannotMake": "This PC cannot make {codec}, so this export uses {fallback}.",
   "hint.hevcGpu": "HEVC on your graphics card ({names}).",
   "hint.av1Gpu": "AV1 on your graphics card ({names}).",

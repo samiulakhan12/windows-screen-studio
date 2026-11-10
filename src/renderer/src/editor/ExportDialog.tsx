@@ -38,7 +38,7 @@ import { seeThrough } from '../../../shared/render/alpha'
 import { stemsBlocked, timelineBlocked, editorBlocked } from '../../../shared/render/alsoSave'
 import { CODEC_NAMES, codecHintValues, codecNotice, pickFormat, pickResolution, settingsRows, sizeLine, usableCodec, usableHere, type CodecUiCaps } from '../../../shared/render/exportRows'
 import { codecOf, DEFAULT_CODEC, isIntermediate } from '../../../shared/render/proFormats'
-import { startGuard } from '../../../shared/jobs/startGuard'
+import { startGuard, waitThenStart } from '../../../shared/jobs/startGuard'
 import { stemJobOf } from '../../../shared/render/stems'
 import { readUserPresets, USER_PRESET_LIMIT, type UserExportPreset, type UserPresetStore } from '../../../shared/render/userPresets'
 import { savePreset, suggestName } from '../../../shared/render/userPresetsEdit'
@@ -421,6 +421,18 @@ export function ExportDialog(props: Props): JSX.Element {
   const abort = useRef<AbortController | null>(null)
   // The HEVC probe and the save dialog before an export starts: a second Export click meanwhile does nothing.
   const [beforeStart] = useState(() => startGuard(() => abort.current !== null))
+  // An Export click while the HEVC probe runs waits for it with the button saying so, then starts the
+  // export the dialog shows by then (exportNow, set below); closing the dialog meanwhile starts nothing.
+  const [checking, setChecking] = useState(false)
+  const open = useRef(true)
+  useEffect(() => {
+    open.current = true
+    return () => {
+      open.current = false
+    }
+  }, [])
+  const [afterProbe] = useState(() => waitThenStart({ waiting: setChecking, open: () => open.current }))
+  const exportNow = useRef<(() => Promise<void>) | null>(null)
   const primary = useRef<HTMLButtonElement>(null)
   const boxRef = useRef<HTMLDivElement>(null)
   const onClose = useRef(props.onClose)
@@ -793,6 +805,13 @@ export function ExportDialog(props: Props): JSX.Element {
       writeBundle(path, { project, kinds: bundleKinds(bundle, j.options.format, bundleHas), title: project.name, thumbnail: thumbnailOf(j.options), ...bundleLanguages })
     )
   }
+
+  // The Export button: the export the dialog shows now (none where its button is off), started at
+  // once, or after the HEVC probe when these settings ask for HEVC and it still runs (§2.1).
+  const canExport = mode === 'single' ? !(audioOnly && !hasSound) : items.length > 0
+  exportNow.current = canExport ? () => withLuts(mode === 'single' ? start : startBatch) : null
+  const asksHevc = mode === 'single' ? options.codec === 'hevc' : items.some((it) => it.options.codec === 'hevc')
+  const onExport = (): void => void afterProbe(asksHevc && (hevcProbe === 'idle' || hevcProbe === 'probing') ? probe('hevc') : null, () => exportNow.current)
 
   // One file per chapter (F-11): each chapter's range of the edit, into a folder, as a batch.
   const startChapters = async (): Promise<void> => {
@@ -1409,14 +1428,25 @@ export function ExportDialog(props: Props): JSX.Element {
                 Cancel
               </button>
               {mode === 'single' ? (
-                <button ref={primary} className="btn primary" onClick={() => void withLuts(start)} disabled={audioOnly && !hasSound}>
-                  {perChapter ? <Icon name="folder" size={16} /> : <Icon name="download" size={16} />} {perChapter ? `Export ${parts.length} chapter${parts.length === 1 ? '' : 's'}…` : exportLabel}
+                <button ref={primary} className="btn primary" onClick={onExport} disabled={!canExport} aria-disabled={checking || undefined} aria-busy={checking || undefined}>
+                  {perChapter ? <Icon name="folder" size={16} /> : <Icon name="download" size={16} />}{' '}
+                  {checking ? t('codecs.export.checking') : perChapter ? `Export ${parts.length} chapter${parts.length === 1 ? '' : 's'}…` : exportLabel}
                 </button>
               ) : (
-                <button ref={primary} className="btn primary" onClick={() => void withLuts(startBatch)} disabled={items.length === 0}>
-                  <Icon name="folder" size={16} /> Export {items.length} file{items.length === 1 ? '' : 's'}…
+                <button ref={primary} className="btn primary" onClick={onExport} disabled={!canExport} aria-disabled={checking || undefined} aria-busy={checking || undefined}>
+                  <Icon name="folder" size={16} />{' '}
+                  {checking ? (
+                    t('codecs.export.checking')
+                  ) : (
+                    <>
+                      Export {items.length} file{items.length === 1 ? '' : 's'}…
+                    </>
+                  )}
                 </button>
               )}
+              <span className="sr-only" role="status">
+                {checking ? t('codecs.export.checking') : ''}
+              </span>
             </footer>
           </>
         )}

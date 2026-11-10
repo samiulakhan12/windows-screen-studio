@@ -149,6 +149,10 @@
       "HEVC"
     ]
   },
+  "export.checking": {
+    "description": "The Export button, and a status for screen readers, while an export waits for Flown to finish looking for an HEVC encoder on the graphics card (a few seconds) before the save dialog opens.",
+    "screen": "export-settings"
+  },
   "notice.cannotMake": {
     "description": "Under the Codec row when stored settings ask for a codec this PC cannot make. {codec} and {fallback} are codec names.",
     "screen": "export-settings"
