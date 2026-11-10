@@ -344,10 +344,15 @@ export async function writeTimeline(request: TimelineRequest, deps?: TimelineDep
       Object.assign(paths, made)
       for (const m of media) if (fromStem(m)) paths[m] = stems.get(m as SoundStem)
       files.push({ path: folder, for: 'media' })
-      // A sound that turned out silent is not written: the timeline cannot use it.
-      if (media.some((m) => !paths[m])) return { files, problem: t('errors.timeline.media') }
+      // Music or Effects that turned out silent are not written (as stems without sound): their tracks go.
+      for (const m of ['music', 'effects'] as const) {
+        if (paths[m] || !plan.media[m]) continue
+        delete plan.media[m]
+        plan.tracks = plan.tracks.filter((track) => !track.events.some((e) => e.media === m))
+      }
+      if ((Object.keys(plan.media) as TimelineMedia[]).some((m) => !paths[m])) return { files, problem: t('errors.timeline.media') }
       // The copies have no sound of their own and the WAV files no picture (§8.1).
-      for (const m of media) plan.media[m] = { ...plan.media[m]!, audio: m !== 'screen' && m !== 'camera', video: m === 'screen' || m === 'camera' }
+      for (const m of Object.keys(plan.media) as TimelineMedia[]) plan.media[m] = { ...plan.media[m]!, audio: m !== 'screen' && m !== 'camera', video: m === 'screen' || m === 'camera' }
     }
 
     const marks = markerEdl(plan)

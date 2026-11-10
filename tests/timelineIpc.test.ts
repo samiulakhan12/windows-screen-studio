@@ -348,4 +348,26 @@ describe('test 44: writeTimeline', () => {
     expect(xml).toContain('Demo%20media/Screen.mp4')
     expect(xml).toContain('<enabled>FALSE</enabled>')
   })
+
+  it('leaves out the track of a sound that turned out silent (as stems without sound)', async () => {
+    const projectDir = projectFolder('p44s')
+    const calls = newCalls()
+    const plan = recordingsTimeline(project, 30, {
+      screen: { fps: 30, frames: 60, width: 320, height: 240, audio: false, video: true },
+      voice: { fps: 30, frames: 60, audio: true, video: false },
+      music: { fps: 30, frames: 60, audio: true, video: false },
+      effects: { fps: 30, frames: 60, audio: true, video: false }
+    })
+    const silentEffects = (async (job: ExportJob, folder: string, only: readonly string[], names: Record<string, string>, ...rest: unknown[]) => {
+      const made = await (depsFor(projectDir, calls).renderStems as unknown as (...a: unknown[]) => Promise<Record<string, string>>)(job, folder, only, names, ...rest)
+      rmSync(made.effects)
+      delete made.effects
+      return made
+    }) as never
+    const result = await writeTimeline(request({ media: 'recordings', editors: ['resolve'], stems: [] }, plan), { ...depsFor(projectDir, calls, { renderStems: silentEffects }), ...deps({ jobOf: () => JOB }) })
+    expect(result.problem).toBeUndefined()
+    const text = readFileSync(path.join(dir, 'Demo.fcpxml'), 'utf8')
+    expect(text).toContain('Music.wav')
+    expect(text).not.toContain('Effects')
+  })
 })
