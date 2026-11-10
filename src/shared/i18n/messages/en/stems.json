@@ -13,5 +13,6 @@
   "blocked.perChapter": "Stems and timelines are saved with one file",
   "blocked.silent": "This video has no sound",
   "running": "Writing sound stems…",
-  "done.failed": "The sound stems could not be saved: {reason}"
+  "done.failed": "The sound stems could not be saved: {reason}",
+  "done.cancelled": "You cancelled, so the sound stems were not saved."
 }

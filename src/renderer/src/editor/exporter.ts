@@ -93,6 +93,11 @@ export interface ExportResult {
   reduced?: string
   /** A GIF that could not be made small enough. */
   overLimit?: boolean
+  /**
+   * Cancelled once the file was already in place (while main wrote the sound stems, output-and-languages
+   * §7.6): the file is saved and stays; the stems written so far are gone and nothing after them is written.
+   */
+  cancelledAfterVideo?: true
 }
 
 /** Failures another encoder cannot fix (the disk, the folder, the target file, the recording). */
@@ -389,8 +394,8 @@ async function exportAudio(input: ExportInput): Promise<ExportResult> {
     if (signal.aborted) throw abortError()
     report('finalizing')
     const done = await window.api.exportFinish()
-    if (signal.aborted) throw abortError()
-    return { encoder, seconds: (performance.now() - t0) / 1000, ...done }
+    // A cancel that came after the file was in place leaves it saved (§7.6).
+    return { encoder, seconds: (performance.now() - t0) / 1000, ...done, ...(signal.aborted ? { cancelledAfterVideo: true as const } : {}) }
   } catch (err) {
     await window.api.exportCancel().catch(() => undefined)
     if (signal.aborted) throw abortError()
@@ -704,8 +709,8 @@ async function renderAll(
     )
     report({ phase: 'finalizing', frame: times.length, fps: 0, eta: null, detail: finalizingDetail(route, base) })
     const done = await sink.finish()
-    if (signal.aborted) throw abortError()
-    return done
+    // The video is in place once the finish resolves: a cancel since then (during the stems) leaves it saved (§7.6).
+    return signal.aborted ? { ...done, cancelledAfterVideo: true } : done
   } catch (err) {
     // Stops ffmpeg (also while it is finishing) and deletes the partial file.
     await window.api.exportCancel().catch(() => undefined)
@@ -867,7 +872,7 @@ export async function exportBatch(
           if (!signal.aborted) onStatus(i, { state: 'running', progress })
         }
       })
-      const extras = hooks.after ? await hooks.after(i, outputPath, job).catch(() => undefined) : undefined
+      const extras = hooks.after && !result.cancelledAfterVideo ? await hooks.after(i, outputPath, job).catch(() => undefined) : undefined
       onStatus(i, { state: 'done', path: outputPath, ...result, ...(extras ? { extras } : {}) })
     } catch (err) {
       if (signal.aborted || (err instanceof DOMException && err.name === 'AbortError')) {

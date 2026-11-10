@@ -68,5 +68,9 @@
   "done.failed": {
     "description": "Done view line when the stem step failed. {reason} is why.",
     "screen": "export-also-save"
+  },
+  "done.cancelled": {
+    "description": "Done view line when the export was cancelled while the stems were being written. The video is saved; the stems are not.",
+    "screen": "export-also-save"
   }
 }

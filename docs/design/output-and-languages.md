@@ -543,6 +543,9 @@ path is new, and every other file gets " (2)" the way `export:batchPath` does.
 
 - A failed stem or timeline step does not undo the video: the done view shows the video as saved and
   a line "The sound stems could not be saved: {reason}".
+- Cancel export while the stems are written does not undo the video either: the done view shows it as
+  saved with the line "You cancelled, so the sound stems were not saved.", and nothing after the stems
+  (sidecars, the timeline, sharing) is written or started.
 
 ### 2.5 Settings › Language
 
@@ -1407,7 +1410,9 @@ The video's soundtrack is not changed: test 3 compares its graph character for c
    files next to the video and renames each into place.
 3. `ExportFinish` reports `stems: { stem, path, bytes }[]`, or `stemsProblem` (a message in the UI
    language) when the step failed. The video is never removed because of a stem.
-4. Cancelling during the stem step deletes the stem files written so far, never the video.
+4. Cancelling during the stem step deletes the stem files written so far, never the video. The
+   exporter then returns the video's result marked `cancelledAfterVideo` rather than a cancel, and the
+   dialog shows the done view (§2.4).
 
 Stems are offered with every format except GIF, M4A and WAV included. Blocked, with the reason under
 the chip (§2.3): GIF, batch, one file per chapter, a project without sound.

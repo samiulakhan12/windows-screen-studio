@@ -246,8 +246,8 @@ describe('the running steps and the done view of Also save (§2.4)', () => {
       extras: { saved: [], failed: ['Demo.bn.srt: the disk is full', 'Demo - chapters.txt: the disk is full', problem] }
     })
     expect(out).toContain('The sound stems could not be saved: the disk is full')
-    // Main's own whole sentences about stems show once, never inside a second "could not be saved".
-    for (const whole of ['The sound stems could not be written.', 'The recording has no sound to write as stems.']) {
+    // Main's own whole sentences about stems, and the cancel's, show once, never inside a second "could not be saved".
+    for (const whole of ['The sound stems could not be written.', 'The recording has no sound to write as stems.', 'You cancelled, so the sound stems were not saved.']) {
       const own = html(dialog.AlsoReport, { video: '/v/Demo.mp4', also: { stems: [], stemsProblem: whole, editors: [], media: 'export' } })
       expect(own).toContain(`<p class="hint warn" data-testid="export-stems-problem">${whole}</p>`)
       expect(own).not.toContain('could not be saved')

@@ -715,6 +715,15 @@ export function ExportDialog(props: Props): JSX.Element {
       // The stems main wrote next to the video, or why it could not (output-and-languages §7.6).
       const finished = result as ExportResult & Pick<ExportFinish, 'stems' | 'stemsProblem'>
       const stems = (finished.stems ?? []).map(({ stem, path }) => ({ stem, path }))
+      const limit = preset?.limits?.maxMB ? { label: preset.label, maxMB: preset.limits.maxMB } : undefined
+      if (result.cancelledAfterVideo) {
+        // Cancelled while main wrote the stems (§7.6): the video is saved and shown as saved, the stems
+        // are gone, and nothing after them (sidecars, timeline, sharing) is written or started.
+        void link?.end({ kind: 'done', files: [outputPath] })
+        const stemsProblem = finished.stemsProblem ?? (stems.length ? undefined : t('stems.done.cancelled'))
+        setPhase({ kind: 'done', path: outputPath, targetMB: settings.targetSizeMB, limit, also: wantStems ? { stems, stemsProblem, editors: [], media } : undefined, ...result })
+        return
+      }
       const kinds = bundleKinds(bundle, settings.format, bundleHas)
       let timeline: BundleRequest['timeline']
       if (editors.length) {
@@ -728,7 +737,7 @@ export function ExportDialog(props: Props): JSX.Element {
       await share.begin(outputPath, { title: project.name, seconds: length })
       void link?.end({ kind: 'done', files: [outputPath] })
       const also: AlsoDone | undefined = wantStems || editors.length ? { stems, stemsProblem: finished.stemsProblem, editors, media } : undefined
-      setPhase({ kind: 'done', path: outputPath, targetMB: settings.targetSizeMB, limit: preset?.limits?.maxMB ? { label: preset.label, maxMB: preset.limits.maxMB } : undefined, extras, also, ...result })
+      setPhase({ kind: 'done', path: outputPath, targetMB: settings.targetSizeMB, limit, extras, also, ...result })
     } catch (err) {
       const cancelled = controller.signal.aborted || (err instanceof DOMException && err.name === 'AbortError')
       void link?.end(cancelled ? { kind: 'cancelled' } : { kind: 'failed', message: splitError(err).message })
@@ -1779,11 +1788,11 @@ export function RunStep({ steps, step, finalizing }: { steps?: RunSteps; step?: 
  */
 /**
  * The done view's line for stems that failed: main's own whole sentences about stems (no sound to
- * write, or a failure with no reason of its own) as they are, in the UI language; any other reason
+ * write, or a failure with no reason of its own) and the cancel's as they are, in the UI language; any other reason
  * ("The disk is full.") inside "The sound stems could not be saved: {reason}".
  */
 export function stemsProblemLine(reason: string): string {
-  return reason === t('errors.stems.failed') || reason === t('errors.stems.noSound') ? reason : t('stems.done.failed', { reason })
+  return reason === t('errors.stems.failed') || reason === t('errors.stems.noSound') || reason === t('stems.done.cancelled') ? reason : t('stems.done.failed', { reason })
 }
 
 export function AlsoReport({ extras, also, video }: { extras?: BatchExtras; also: AlsoDone; video: string }): JSX.Element {
