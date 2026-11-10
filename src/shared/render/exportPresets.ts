@@ -1,5 +1,6 @@
 import type { AspectRatio, ExportCodec, ExportFormat, ExportSettings } from '../types'
-import { canAlpha, codecOf, DEFAULT_CODEC, EXPORT_FPS, FORMAT_CODECS, nearestCodec } from './proFormats'
+import { canAlpha, codecAllowed, codecOf, CODEC_POLICY, DEFAULT_CODEC, EXPORT_FPS, FORMAT_CODECS, nearestCodec } from './proFormats'
+import type { UserExportPreset } from './userPresets'
 
 /**
  * Export options: the saved ExportSettings plus the parts a destination preset can set
@@ -45,11 +46,25 @@ export const EXPORT_PRESETS: readonly ExportPreset[] = [
   { id: 'tiktok', label: 'TikTok', icon: 'tiktok', format: 'mp4', resolution: 1080, fps: 30, quality: 'high', aspect: '9:16' },
   { id: 'shorts', label: 'YouTube Shorts', icon: 'shorts', format: 'mp4', resolution: 1080, fps: 60, quality: 'high', aspect: '9:16' },
   { id: 'square', label: 'Square post', icon: 'square', format: 'mp4', resolution: 1080, fps: 30, quality: 'medium', aspect: '1:1' },
+  // Wave 12 (output-and-languages §2.2): a 4:5 feed post after Square post; the editing formats after Email.
+  { id: 'portrait-post', label: 'Portrait post', icon: 'portrait', format: 'mp4', resolution: 1080, fps: 30, quality: 'high', aspect: '4:5' },
   { id: 'slack-gif', label: 'Slack GIF', icon: 'slack', format: 'gif', resolution: 720, fps: 30, quality: 'medium', maxWidth: 720, targetSizeMB: 15 },
-  { id: 'email', label: 'Email', icon: 'email', format: 'mp4', resolution: 720, fps: 30, quality: 'small', targetSizeMB: 25 }
+  { id: 'email', label: 'Email', icon: 'email', format: 'mp4', resolution: 720, fps: 30, quality: 'small', targetSizeMB: 25 },
+  { id: 'editing', label: 'For editing', icon: 'editing', format: 'mov', resolution: 1080, fps: 60, quality: 'high', codec: 'cineform' },
+  { id: 'overlay', label: 'Transparent overlay', icon: 'overlay', format: 'mov', resolution: 1080, fps: 60, quality: 'high', codec: 'cineform', alpha: 'overlays' }
 ]
 
-export const presetById = (id: string | undefined): ExportPreset | undefined => EXPORT_PRESETS.find((p) => p.id === id)
+/**
+ * Whether the owner's codec policy lets a destination show (§0 decision 2): For editing and
+ * Transparent overlay are CineForm destinations and are hidden while CODEC_POLICY.cineform is off.
+ * Read at call time, as the policy is.
+ */
+const presetShown = (p: ExportPreset): boolean => !p.codec || codecAllowed(p.codec)
+
+/** The destinations the gallery shows, in order: every one of before, and wave 12's while the policy allows their codec. */
+export const shownPresets = (): readonly ExportPreset[] => EXPORT_PRESETS.filter(presetShown)
+
+export const presetById = (id: string | undefined): ExportPreset | undefined => EXPORT_PRESETS.find((p) => p.id === id && presetShown(p))
 
 export const DEFAULT_EXPORT_OPTIONS: ExportOptions = { format: 'mp4', resolution: 1080, fps: 60, quality: 'high', encoder: 'auto' }
 
@@ -195,20 +210,48 @@ export interface BatchItem {
   options: ExportOptions
 }
 
-/** Aspect ratios the current settings can additionally be exported in, in a batch. */
-export const BATCH_ASPECTS: readonly Exclude<AspectRatio, 'auto'>[] = ['16:9', '9:16', '1:1', '4:3']
+/** Aspect ratios the current settings can additionally be exported in, in a batch (4:5 from wave 12, file label "4x5"). */
+export const BATCH_ASPECTS: readonly Exclude<AspectRatio, 'auto'>[] = ['16:9', '9:16', '1:1', '4:3', '4:5']
 
 export const aspectFileLabel = (a: AspectRatio): string => (a === 'auto' ? 'Original' : a.replace(':', 'x'))
 
 export const RESOLUTION_LABELS: Record<ExportSettings['resolution'], string> = { 720: '720p', 1080: '1080p', 1440: '1440p', 2160: '4K' }
 
 /**
- * The files of a batch: the ticked presets in gallery order, then the current settings in
- * each ticked aspect ratio. Every preset uses the user's encoder choice.
+ * The words each destination's batch file is named with (§9.6): today's labels as data, so file names
+ * stay English in every UI language (§0 decision 10) while the cards' labels are translated.
  */
-export function batchItems(presetIds: readonly string[], aspects: readonly AspectRatio[], current: ExportOptions): BatchItem[] {
+export const EXPORT_PRESET_FILE_LABELS: Readonly<Record<string, string>> = {
+  'youtube-1080': 'YouTube 1080p60',
+  'youtube-4k': 'YouTube 4K60',
+  x: 'X (Twitter)',
+  linkedin: 'LinkedIn',
+  reels: 'Instagram Reels',
+  tiktok: 'TikTok',
+  shorts: 'YouTube Shorts',
+  square: 'Square post',
+  'portrait-post': 'Portrait post',
+  'slack-gif': 'Slack GIF',
+  email: 'Email',
+  editing: 'For editing',
+  overlay: 'Transparent overlay'
+}
+
+/**
+ * The files of a batch: the ticked user presets (`userPresets`, which sit above the destinations, in
+ * their saved order), the ticked presets in gallery order, then the current settings in each ticked
+ * aspect ratio. Every destination uses the user's encoder choice; a user preset keeps its own
+ * settings, and its file is named after it: "{project} - {preset name}.{ext}" (§2.2).
+ */
+export function batchItems(presetIds: readonly string[], aspects: readonly AspectRatio[], current: ExportOptions, userPresets: readonly UserExportPreset[] = []): BatchItem[] {
   const items: BatchItem[] = []
-  for (const p of EXPORT_PRESETS) if (presetIds.includes(p.id)) items.push({ key: p.id, label: p.label, fileLabel: p.label, options: applyPreset(current, p) })
+  for (const u of userPresets) {
+    const options: ExportOptions = { ...u.options }
+    delete options.preset
+    delete options.userPreset
+    items.push({ key: u.id, label: u.name, fileLabel: u.name, options })
+  }
+  for (const p of shownPresets()) if (presetIds.includes(p.id)) items.push({ key: p.id, label: p.label, fileLabel: EXPORT_PRESET_FILE_LABELS[p.id] ?? p.label, options: applyPreset(current, p) })
   for (const a of BATCH_ASPECTS) {
     if (!aspects.includes(a)) continue
     const options: ExportOptions = { ...current, aspect: a }
@@ -234,4 +277,48 @@ export function batchFileNames(projectName: string, items: readonly Pick<BatchIt
     seen.add(name.toLowerCase())
     return name
   })
+}
+
+/**
+ * `o` as this PC exports it when it cannot make its codec (§2.1, §2.2): the format's default codec
+ * instead (a transparent background dropped if that codec cannot carry it), and H.264's rules
+ * applied: 60 fps for 4K, as picking 4K with H.264 at 120 fps gives. HEVC runs on the graphics card
+ * only while the policy keeps it off the processor, so its Software choice reads as Auto. `o` itself
+ * when nothing changes.
+ */
+export function withUsableCodec(o: ExportOptions, usable: (codec: ExportCodec) => boolean): ExportOptions {
+  let next = o
+  const change = (patch: Partial<ExportOptions>): void => {
+    next = { ...next, ...patch }
+    for (const k of Object.keys(next) as (keyof ExportOptions)[]) if (next[k] === undefined) delete next[k]
+  }
+  if (o.codec && !usable(o.codec)) {
+    change({ codec: undefined })
+    if (next.alpha && !canAlpha(next.format, codecOf(next))) change({ alpha: undefined })
+  }
+  if (next.resolution === 2160 && next.fps === 120 && FORMAT_CODECS[next.format].includes('h264') && codecOf(next) === 'h264') change({ fps: 60 })
+  if (codecOf(next) === 'hevc' && next.encoder === 'software' && !CODEC_POLICY.hevcSoftware) change({ encoder: 'auto' })
+  return next
+}
+
+/**
+ * True when `o` still has exactly the settings of the user preset `preset`, both taken as this PC
+ * exports them (`usable`: the codecs it can make), so a colleague's HEVC preset stays selected on a
+ * PC that exports it as H.264 (§2.2). Unlike a destination, a user preset keeps the encoder too.
+ */
+export function matchesUserPreset(o: ExportOptions, preset: UserExportPreset, usable: (codec: ExportCodec) => boolean): boolean {
+  const a = withUsableCodec(o, usable)
+  const p = withUsableCodec(preset.options, usable)
+  return (
+    a.format === p.format &&
+    a.resolution === p.resolution &&
+    (a.format === 'gif' || a.fps === p.fps) &&
+    a.quality === p.quality &&
+    a.encoder === p.encoder &&
+    a.aspect === p.aspect &&
+    a.targetSizeMB === p.targetSizeMB &&
+    a.maxWidth === p.maxWidth &&
+    a.codec === p.codec &&
+    a.alpha === p.alpha
+  )
 }

@@ -146,5 +146,13 @@
   "notice.cannotMake": {
     "description": "Under the Codec row when a preset asks for a codec this PC cannot make.",
     "screen": "export-presets"
+  },
+  "sizeLine.plain": {
+    "description": "The size line under the preview with the format's own codec: \"1080×1920 · 30 fps · 2 min 14 s\". {size} is width×height, {fps} the frame rate, {length} the video's length.",
+    "screen": "export-settings",
+    "dnt": [
+      "fps"
+    ],
+    "digits": "latn"
   }
 }

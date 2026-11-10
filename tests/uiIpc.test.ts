@@ -31,7 +31,10 @@ vi.mock('electron', () => ({
     showMessageBox: async (a: unknown, b?: Record<string, unknown>) => {
       h.boxes.push(b ? { owner: a, options: b } : { owner: null, options: a as Record<string, unknown> })
       return { response: h.response }
-    }
+    },
+    // The preset file dialogs (part P5) are cancelled here: their channels then answer null.
+    showOpenDialog: async () => ({ canceled: true, filePaths: [] }),
+    showSaveDialog: async () => ({ canceled: true })
   }
 }))
 
