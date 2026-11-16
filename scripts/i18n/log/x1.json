@@ -1159,7 +1159,7 @@
   {
     "key": "keys.withShortcut",
     "file": "src/shared/editor/shortcuts.ts",
-    "line": 270,
+    "line": 288,
     "english": "Split the clip at the playhead (S)",
     "sample": {
       "text": "Split the clip at the playhead",
@@ -1169,7 +1169,7 @@
   {
     "key": "keys.orPress",
     "file": "src/shared/editor/shortcuts.ts",
-    "line": 275,
+    "line": 293,
     "english": "Double-click to add text, or press T",
     "sample": {
       "text": "Double-click to add text",
@@ -1179,7 +1179,7 @@
   {
     "key": "keys.reviewHint",
     "file": "src/shared/editor/shortcuts.ts",
-    "line": 283,
+    "line": 301,
     "english": ". Review (Shift + R)",
     "sample": {
       "keys": "Shift + R"
@@ -1188,14 +1188,14 @@
   {
     "key": "keys.reviewHintNoKey",
     "file": "src/shared/editor/shortcuts.ts",
-    "line": 283,
+    "line": 301,
     "english": ". Review mode lists them",
     "sample": {}
   },
   {
     "key": "keys.undoHint",
     "file": "src/shared/editor/shortcuts.ts",
-    "line": 288,
+    "line": 306,
     "english": " · Ctrl + Z to undo",
     "sample": {
       "keys": "Ctrl + Z"
@@ -1204,7 +1204,7 @@
   {
     "key": "keys.zoomLevels.range",
     "file": "src/shared/editor/shortcuts.ts",
-    "line": 300,
+    "line": 318,
     "english": "1–4",
     "sample": {
       "first": "1",
@@ -1214,7 +1214,7 @@
   {
     "key": "keys.zoomLevels.both",
     "file": "src/shared/editor/shortcuts.ts",
-    "line": 302,
+    "line": 320,
     "english": [
       "1–4 set its zoom level, 0 pulls back",
       "1–4 sets its zoom level, 0 pulls back",
@@ -1247,7 +1247,7 @@
   {
     "key": "keys.zoomLevels.levels",
     "file": "src/shared/editor/shortcuts.ts",
-    "line": 303,
+    "line": 321,
     "english": [
       "1–4 set its zoom level",
       "1–4 sets its zoom level",
@@ -1276,7 +1276,7 @@
   {
     "key": "keys.zoomLevels.back",
     "file": "src/shared/editor/shortcuts.ts",
-    "line": 304,
+    "line": 322,
     "english": "0 pulls back",
     "sample": {
       "back": "0"
@@ -1285,7 +1285,7 @@
   {
     "key": "keys.reserved.pressesButton",
     "file": "src/shared/editor/shortcuts.ts",
-    "line": 440,
+    "line": 458,
     "english": "Enter presses the focused button.",
     "sample": {
       "keys": "Enter"
@@ -1294,7 +1294,7 @@
   {
     "key": "keys.reserved.movesBetweenControls",
     "file": "src/shared/editor/shortcuts.ts",
-    "line": 441,
+    "line": 459,
     "english": "Tab moves between controls.",
     "sample": {
       "keys": "Tab"
@@ -1303,7 +1303,7 @@
   {
     "key": "keys.reserved.movesBetweenControls",
     "file": "src/shared/editor/shortcuts.ts",
-    "line": 441,
+    "line": 459,
     "english": "Shift + Tab moves between controls.",
     "sample": {
       "keys": "Shift + Tab"
@@ -1312,7 +1312,7 @@
   {
     "key": "keys.reserved.closesWindow",
     "file": "src/shared/editor/shortcuts.ts",
-    "line": 443,
+    "line": 461,
     "english": "Alt + F4 closes the window.",
     "sample": {
       "keys": "Alt + F4"
@@ -1321,7 +1321,7 @@
   {
     "key": "keys.reserved.closesWindow",
     "file": "src/shared/editor/shortcuts.ts",
-    "line": 443,
+    "line": 461,
     "english": "Ctrl + W closes the window.",
     "sample": {
       "keys": "Ctrl + W"
@@ -1330,7 +1330,7 @@
   {
     "key": "keys.reserved.windowMenu",
     "file": "src/shared/editor/shortcuts.ts",
-    "line": 444,
+    "line": 462,
     "english": "Alt + Space opens the window menu.",
     "sample": {
       "keys": "Alt + Space"
@@ -1339,7 +1339,7 @@
   {
     "key": "keys.reserved.startMenu",
     "file": "src/shared/editor/shortcuts.ts",
-    "line": 445,
+    "line": 463,
     "english": "Ctrl + Esc opens the Start menu.",
     "sample": {
       "keys": "Ctrl + Esc"
@@ -1348,7 +1348,7 @@
   {
     "key": "keys.reserved.taskManager",
     "file": "src/shared/editor/shortcuts.ts",
-    "line": 446,
+    "line": 464,
     "english": "Ctrl + Shift + Esc opens the Task Manager.",
     "sample": {
       "keys": "Ctrl + Shift + Esc"
@@ -1357,7 +1357,7 @@
   {
     "key": "keys.reserved.switchesWindow",
     "file": "src/shared/editor/shortcuts.ts",
-    "line": 447,
+    "line": 465,
     "english": "Alt + Esc switches to another window.",
     "sample": {
       "keys": "Alt + Esc"
@@ -1366,7 +1366,7 @@
   {
     "key": "keys.reserved.reloads",
     "file": "src/shared/editor/shortcuts.ts",
-    "line": 449,
+    "line": 467,
     "english": "Ctrl + R reloads the window.",
     "sample": {
       "keys": "Ctrl + R"
@@ -1375,7 +1375,7 @@
   {
     "key": "keys.reserved.reloads",
     "file": "src/shared/editor/shortcuts.ts",
-    "line": 449,
+    "line": 467,
     "english": "Ctrl + Shift + R reloads the window.",
     "sample": {
       "keys": "Ctrl + Shift + R"
@@ -1384,7 +1384,7 @@
   {
     "key": "keys.reserved.developerTools",
     "file": "src/shared/editor/shortcuts.ts",
-    "line": 451,
+    "line": 469,
     "english": "Ctrl + Shift + I opens the developer tools.",
     "sample": {
       "keys": "Ctrl + Shift + I"
@@ -1393,7 +1393,7 @@
   {
     "key": "keys.reserved.fullScreen",
     "file": "src/shared/editor/shortcuts.ts",
-    "line": 452,
+    "line": 470,
     "english": "F11 switches full screen.",
     "sample": {
       "keys": "F11"
@@ -1402,7 +1402,7 @@
   {
     "key": "keys.reserved.resetsZoom",
     "file": "src/shared/editor/shortcuts.ts",
-    "line": 453,
+    "line": 471,
     "english": "Ctrl + 0 resets the window zoom.",
     "sample": {
       "keys": "Ctrl + 0"
@@ -1411,7 +1411,7 @@
   {
     "key": "keys.reserved.zooms",
     "file": "src/shared/editor/shortcuts.ts",
-    "line": 454,
+    "line": 472,
     "english": "Ctrl + + zooms the window.",
     "sample": {
       "keys": "Ctrl + +"
@@ -1420,7 +1420,7 @@
   {
     "key": "keys.reserved.zooms",
     "file": "src/shared/editor/shortcuts.ts",
-    "line": 454,
+    "line": 472,
     "english": "Ctrl + = zooms the window.",
     "sample": {
       "keys": "Ctrl + ="
@@ -1429,7 +1429,7 @@
   {
     "key": "keys.reserved.zooms",
     "file": "src/shared/editor/shortcuts.ts",
-    "line": 454,
+    "line": 472,
     "english": "Ctrl + - zooms the window.",
     "sample": {
       "keys": "Ctrl + -"
@@ -1438,7 +1438,7 @@
   {
     "key": "keys.reserved.escape",
     "file": "src/shared/editor/shortcuts.ts",
-    "line": 467,
+    "line": 485,
     "english": "Esc always cancels: it closes dialogs and clears the selection.",
     "sample": {
       "keys": "Esc"
@@ -1447,14 +1447,14 @@
   {
     "key": "keys.check.unusable",
     "file": "src/shared/editor/shortcuts.ts",
-    "line": 481,
+    "line": 499,
     "english": "That key cannot be used for a shortcut.",
     "sample": {}
   },
   {
     "key": "keys.check.needsModifier",
     "file": "src/shared/editor/shortcuts.ts",
-    "line": 486,
+    "line": 504,
     "english": "This shortcut also works while typing, so it needs Ctrl or Alt (K would type instead).",
     "sample": {
       "keys": "K"
