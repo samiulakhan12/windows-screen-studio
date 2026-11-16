@@ -199,5 +199,149 @@
   },
   "save.retry": {
     "description": "Title bar: button that saves again after a save failed."
+  },
+  "look.gradient.aurora": {
+    "description": "Style › Background: the name of the built-in gradient \"aurora\", on its swatch."
+  },
+  "look.gradient.ocean": {
+    "description": "Style › Background: the name of the built-in gradient \"ocean\", on its swatch."
+  },
+  "look.gradient.mint": {
+    "description": "Style › Background: the name of the built-in gradient \"mint\", on its swatch."
+  },
+  "look.gradient.sunset": {
+    "description": "Style › Background: the name of the built-in gradient \"sunset\", on its swatch."
+  },
+  "look.gradient.peach": {
+    "description": "Style › Background: the name of the built-in gradient \"peach\", on its swatch."
+  },
+  "look.gradient.midnight": {
+    "description": "Style › Background: the name of the built-in gradient \"midnight\", on its swatch."
+  },
+  "look.gradient.forest": {
+    "description": "Style › Background: the name of the built-in gradient \"forest\", on its swatch."
+  },
+  "look.gradient.candy": {
+    "description": "Style › Background: the name of the built-in gradient \"candy\", on its swatch."
+  },
+  "look.gradient.steel": {
+    "description": "Style › Background: the name of the built-in gradient \"steel\", on its swatch."
+  },
+  "look.gradient.lava": {
+    "description": "Style › Background: the name of the built-in gradient \"lava\", on its swatch."
+  },
+  "look.animated.aurora": {
+    "description": "Style › Background: the name of the animated gradient \"aurora\", on its swatch."
+  },
+  "look.animated.ocean": {
+    "description": "Style › Background: the name of the animated gradient \"ocean\", on its swatch."
+  },
+  "look.animated.sunset": {
+    "description": "Style › Background: the name of the animated gradient \"sunset\", on its swatch."
+  },
+  "look.animated.mint": {
+    "description": "Style › Background: the name of the animated gradient \"mint\", on its swatch."
+  },
+  "look.animated.candy": {
+    "description": "Style › Background: the name of the animated gradient \"candy\", on its swatch."
+  },
+  "look.animated.midnight": {
+    "description": "Style › Background: the name of the animated gradient \"midnight\", on its swatch."
+  },
+  "look.wallpaper.violet-mesh": {
+    "description": "Style › Background: the name of the built-in wallpaper \"violet-mesh\", on its swatch."
+  },
+  "look.wallpaper.peach-mesh": {
+    "description": "Style › Background: the name of the built-in wallpaper \"peach-mesh\", on its swatch."
+  },
+  "look.wallpaper.lagoon": {
+    "description": "Style › Background: the name of the built-in wallpaper \"lagoon\", on its swatch."
+  },
+  "look.wallpaper.sunset-blobs": {
+    "description": "Style › Background: the name of the built-in wallpaper \"sunset-blobs\", on its swatch."
+  },
+  "look.wallpaper.mint": {
+    "description": "Style › Background: the name of the built-in wallpaper \"mint\", on its swatch."
+  },
+  "look.wallpaper.midnight-glow": {
+    "description": "Style › Background: the name of the built-in wallpaper \"midnight-glow\", on its swatch."
+  },
+  "look.wallpaper.blue-waves": {
+    "description": "Style › Background: the name of the built-in wallpaper \"blue-waves\", on its swatch."
+  },
+  "look.wallpaper.dusk-waves": {
+    "description": "Style › Background: the name of the built-in wallpaper \"dusk-waves\", on its swatch."
+  },
+  "look.wallpaper.dunes": {
+    "description": "Style › Background: the name of the built-in wallpaper \"dunes\", on its swatch."
+  },
+  "look.wallpaper.northern-lights": {
+    "description": "Style › Background: the name of the built-in wallpaper \"northern-lights\", on its swatch."
+  },
+  "look.wallpaper.orbit": {
+    "description": "Style › Background: the name of the built-in wallpaper \"orbit\", on its swatch."
+  },
+  "look.wallpaper.ribbons": {
+    "description": "Style › Background: the name of the built-in wallpaper \"ribbons\", on its swatch."
+  },
+  "look.wallpaper.blueprint": {
+    "description": "Style › Background: the name of the built-in wallpaper \"blueprint\", on its swatch."
+  },
+  "look.wallpaper.graphite": {
+    "description": "Style › Background: the name of the built-in wallpaper \"graphite\", on its swatch."
+  },
+  "look.wallpaper.candy-pop": {
+    "description": "Style › Background: the name of the built-in wallpaper \"candy-pop\", on its swatch."
+  },
+  "look.wallpaper.forest": {
+    "description": "Style › Background: the name of the built-in wallpaper \"forest\", on its swatch."
+  },
+  "look.easing.smooth.label": {
+    "description": "Zoom panel: the name of the zoom easing \"smooth\", on its chip."
+  },
+  "look.easing.smooth.title": {
+    "description": "Zoom panel: the tooltip of the zoom easing \"smooth\"."
+  },
+  "look.easing.snappy.label": {
+    "description": "Zoom panel: the name of the zoom easing \"snappy\", on its chip."
+  },
+  "look.easing.snappy.title": {
+    "description": "Zoom panel: the tooltip of the zoom easing \"snappy\"."
+  },
+  "look.easing.bouncy.label": {
+    "description": "Zoom panel: the name of the zoom easing \"bouncy\", on its chip."
+  },
+  "look.easing.bouncy.title": {
+    "description": "Zoom panel: the tooltip of the zoom easing \"bouncy\"."
+  },
+  "look.easing.linear.label": {
+    "description": "Zoom panel: the name of the zoom easing \"linear\", on its chip."
+  },
+  "look.easing.linear.title": {
+    "description": "Zoom panel: the tooltip of the zoom easing \"linear\"."
+  },
+  "look.tilt.left.label": {
+    "description": "Effects › 3D tilt: the name of the tilt preset \"left\", on its button."
+  },
+  "look.tilt.left.title": {
+    "description": "Effects › 3D tilt: the tooltip of the tilt preset \"left\"."
+  },
+  "look.tilt.right.label": {
+    "description": "Effects › 3D tilt: the name of the tilt preset \"right\", on its button."
+  },
+  "look.tilt.right.title": {
+    "description": "Effects › 3D tilt: the tooltip of the tilt preset \"right\"."
+  },
+  "look.tilt.top.label": {
+    "description": "Effects › 3D tilt: the name of the tilt preset \"top\", on its button."
+  },
+  "look.tilt.top.title": {
+    "description": "Effects › 3D tilt: the tooltip of the tilt preset \"top\"."
+  },
+  "look.tilt.hero.label": {
+    "description": "Effects › 3D tilt: the name of the tilt preset \"hero\", on its button."
+  },
+  "look.tilt.hero.title": {
+    "description": "Effects › 3D tilt: the tooltip of the tilt preset \"hero\"."
   }
 }

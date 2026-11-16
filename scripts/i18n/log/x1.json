@@ -2890,5 +2890,341 @@
     "line": 32,
     "english": "Saving…",
     "sample": {}
+  },
+  {
+    "key": "editor.look.gradient.aurora",
+    "file": "src/shared/engine/lookNames.ts",
+    "line": 19,
+    "english": "Aurora",
+    "sample": {}
+  },
+  {
+    "key": "editor.look.gradient.ocean",
+    "file": "src/shared/engine/lookNames.ts",
+    "line": 19,
+    "english": "Ocean",
+    "sample": {}
+  },
+  {
+    "key": "editor.look.gradient.mint",
+    "file": "src/shared/engine/lookNames.ts",
+    "line": 19,
+    "english": "Mint",
+    "sample": {}
+  },
+  {
+    "key": "editor.look.gradient.sunset",
+    "file": "src/shared/engine/lookNames.ts",
+    "line": 19,
+    "english": "Sunset",
+    "sample": {}
+  },
+  {
+    "key": "editor.look.gradient.peach",
+    "file": "src/shared/engine/lookNames.ts",
+    "line": 19,
+    "english": "Peach",
+    "sample": {}
+  },
+  {
+    "key": "editor.look.gradient.midnight",
+    "file": "src/shared/engine/lookNames.ts",
+    "line": 19,
+    "english": "Midnight",
+    "sample": {}
+  },
+  {
+    "key": "editor.look.gradient.forest",
+    "file": "src/shared/engine/lookNames.ts",
+    "line": 19,
+    "english": "Forest",
+    "sample": {}
+  },
+  {
+    "key": "editor.look.gradient.candy",
+    "file": "src/shared/engine/lookNames.ts",
+    "line": 19,
+    "english": "Candy",
+    "sample": {}
+  },
+  {
+    "key": "editor.look.gradient.steel",
+    "file": "src/shared/engine/lookNames.ts",
+    "line": 19,
+    "english": "Steel",
+    "sample": {}
+  },
+  {
+    "key": "editor.look.gradient.lava",
+    "file": "src/shared/engine/lookNames.ts",
+    "line": 19,
+    "english": "Lava",
+    "sample": {}
+  },
+  {
+    "key": "editor.look.animated.aurora",
+    "file": "src/shared/engine/lookNames.ts",
+    "line": 22,
+    "english": "Aurora flow",
+    "sample": {}
+  },
+  {
+    "key": "editor.look.animated.ocean",
+    "file": "src/shared/engine/lookNames.ts",
+    "line": 22,
+    "english": "Ocean drift",
+    "sample": {}
+  },
+  {
+    "key": "editor.look.animated.sunset",
+    "file": "src/shared/engine/lookNames.ts",
+    "line": 22,
+    "english": "Sunset glow",
+    "sample": {}
+  },
+  {
+    "key": "editor.look.animated.mint",
+    "file": "src/shared/engine/lookNames.ts",
+    "line": 22,
+    "english": "Mint breeze",
+    "sample": {}
+  },
+  {
+    "key": "editor.look.animated.candy",
+    "file": "src/shared/engine/lookNames.ts",
+    "line": 22,
+    "english": "Candy swirl",
+    "sample": {}
+  },
+  {
+    "key": "editor.look.animated.midnight",
+    "file": "src/shared/engine/lookNames.ts",
+    "line": 22,
+    "english": "Midnight pulse",
+    "sample": {}
+  },
+  {
+    "key": "editor.look.wallpaper.violet-mesh",
+    "file": "src/shared/engine/lookNames.ts",
+    "line": 25,
+    "english": "Violet mesh",
+    "sample": {}
+  },
+  {
+    "key": "editor.look.wallpaper.peach-mesh",
+    "file": "src/shared/engine/lookNames.ts",
+    "line": 25,
+    "english": "Peach",
+    "sample": {}
+  },
+  {
+    "key": "editor.look.wallpaper.lagoon",
+    "file": "src/shared/engine/lookNames.ts",
+    "line": 25,
+    "english": "Lagoon",
+    "sample": {}
+  },
+  {
+    "key": "editor.look.wallpaper.sunset-blobs",
+    "file": "src/shared/engine/lookNames.ts",
+    "line": 25,
+    "english": "Sunset",
+    "sample": {}
+  },
+  {
+    "key": "editor.look.wallpaper.mint",
+    "file": "src/shared/engine/lookNames.ts",
+    "line": 25,
+    "english": "Mint",
+    "sample": {}
+  },
+  {
+    "key": "editor.look.wallpaper.midnight-glow",
+    "file": "src/shared/engine/lookNames.ts",
+    "line": 25,
+    "english": "Midnight glow",
+    "sample": {}
+  },
+  {
+    "key": "editor.look.wallpaper.blue-waves",
+    "file": "src/shared/engine/lookNames.ts",
+    "line": 25,
+    "english": "Blue waves",
+    "sample": {}
+  },
+  {
+    "key": "editor.look.wallpaper.dusk-waves",
+    "file": "src/shared/engine/lookNames.ts",
+    "line": 25,
+    "english": "Dusk",
+    "sample": {}
+  },
+  {
+    "key": "editor.look.wallpaper.dunes",
+    "file": "src/shared/engine/lookNames.ts",
+    "line": 25,
+    "english": "Dunes",
+    "sample": {}
+  },
+  {
+    "key": "editor.look.wallpaper.northern-lights",
+    "file": "src/shared/engine/lookNames.ts",
+    "line": 25,
+    "english": "Northern lights",
+    "sample": {}
+  },
+  {
+    "key": "editor.look.wallpaper.orbit",
+    "file": "src/shared/engine/lookNames.ts",
+    "line": 25,
+    "english": "Orbit",
+    "sample": {}
+  },
+  {
+    "key": "editor.look.wallpaper.ribbons",
+    "file": "src/shared/engine/lookNames.ts",
+    "line": 25,
+    "english": "Ribbons",
+    "sample": {}
+  },
+  {
+    "key": "editor.look.wallpaper.blueprint",
+    "file": "src/shared/engine/lookNames.ts",
+    "line": 25,
+    "english": "Blueprint",
+    "sample": {}
+  },
+  {
+    "key": "editor.look.wallpaper.graphite",
+    "file": "src/shared/engine/lookNames.ts",
+    "line": 25,
+    "english": "Graphite",
+    "sample": {}
+  },
+  {
+    "key": "editor.look.wallpaper.candy-pop",
+    "file": "src/shared/engine/lookNames.ts",
+    "line": 25,
+    "english": "Candy pop",
+    "sample": {}
+  },
+  {
+    "key": "editor.look.wallpaper.forest",
+    "file": "src/shared/engine/lookNames.ts",
+    "line": 25,
+    "english": "Forest",
+    "sample": {}
+  },
+  {
+    "key": "editor.look.easing.smooth.label",
+    "file": "src/shared/engine/lookNames.ts",
+    "line": 28,
+    "english": "Smooth",
+    "sample": {}
+  },
+  {
+    "key": "editor.look.easing.smooth.title",
+    "file": "src/shared/engine/lookNames.ts",
+    "line": 28,
+    "english": "Eases in and out evenly",
+    "sample": {}
+  },
+  {
+    "key": "editor.look.easing.snappy.label",
+    "file": "src/shared/engine/lookNames.ts",
+    "line": 28,
+    "english": "Snappy",
+    "sample": {}
+  },
+  {
+    "key": "editor.look.easing.snappy.title",
+    "file": "src/shared/engine/lookNames.ts",
+    "line": 28,
+    "english": "Moves quickly, lands softly",
+    "sample": {}
+  },
+  {
+    "key": "editor.look.easing.bouncy.label",
+    "file": "src/shared/engine/lookNames.ts",
+    "line": 28,
+    "english": "Bouncy",
+    "sample": {}
+  },
+  {
+    "key": "editor.look.easing.bouncy.title",
+    "file": "src/shared/engine/lookNames.ts",
+    "line": 28,
+    "english": "Springs slightly past and settles",
+    "sample": {}
+  },
+  {
+    "key": "editor.look.easing.linear.label",
+    "file": "src/shared/engine/lookNames.ts",
+    "line": 28,
+    "english": "Linear",
+    "sample": {}
+  },
+  {
+    "key": "editor.look.easing.linear.title",
+    "file": "src/shared/engine/lookNames.ts",
+    "line": 28,
+    "english": "Constant speed",
+    "sample": {}
+  },
+  {
+    "key": "editor.look.tilt.left.label",
+    "file": "src/shared/engine/lookNames.ts",
+    "line": 36,
+    "english": "Left",
+    "sample": {}
+  },
+  {
+    "key": "editor.look.tilt.left.title",
+    "file": "src/shared/engine/lookNames.ts",
+    "line": 36,
+    "english": "Turned to the left",
+    "sample": {}
+  },
+  {
+    "key": "editor.look.tilt.right.label",
+    "file": "src/shared/engine/lookNames.ts",
+    "line": 36,
+    "english": "Right",
+    "sample": {}
+  },
+  {
+    "key": "editor.look.tilt.right.title",
+    "file": "src/shared/engine/lookNames.ts",
+    "line": 36,
+    "english": "Turned to the right",
+    "sample": {}
+  },
+  {
+    "key": "editor.look.tilt.top.label",
+    "file": "src/shared/engine/lookNames.ts",
+    "line": 36,
+    "english": "Top",
+    "sample": {}
+  },
+  {
+    "key": "editor.look.tilt.top.title",
+    "file": "src/shared/engine/lookNames.ts",
+    "line": 36,
+    "english": "Seen from above, like a laptop on a desk",
+    "sample": {}
+  },
+  {
+    "key": "editor.look.tilt.hero.label",
+    "file": "src/shared/engine/lookNames.ts",
+    "line": 36,
+    "english": "Hero",
+    "sample": {}
+  },
+  {
+    "key": "editor.look.tilt.hero.title",
+    "file": "src/shared/engine/lookNames.ts",
+    "line": 36,
+    "english": "A dramatic product shot from the side and above",
+    "sample": {}
   }
 ]
