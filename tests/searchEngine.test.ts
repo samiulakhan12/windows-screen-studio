@@ -3,7 +3,7 @@ import { SearchIndex } from '../src/shared/search/engine'
 import { indexedProject, projectUnits } from '../src/shared/search/extract'
 import { tokenize } from '../src/shared/search/normalize'
 import { parseIndexFile, serializeIndex } from '../src/shared/search/indexFile'
-import { clockTime, CUT_END_NOTICE, CUT_MOMENT_NOTICE, momentOpening, momentTarget, resultsSummary, spokenTime } from '../src/shared/search/moment'
+import { clockTime, cutEndNotice, cutMomentNotice, momentOpening, momentTarget, resultsSummary, spokenTime } from '../src/shared/search/moment'
 import { snippetOf } from '../src/shared/search/snippet'
 import { captionWordTimes } from '../src/shared/editor/transcript'
 import { SEARCH_INDEX_VERSION, type IndexedProject, type SearchUnit } from '../src/shared/search/types'
@@ -617,10 +617,10 @@ describe('moments', () => {
   it('tells where the editor is when the moment was cut', () => {
     const kept = [{ start: 0, end: 9 }, { start: 12, end: 20 }]
     expect(momentOpening(kept, { t: 10, end: 14 })).toEqual({ t: 12, notice: null })
-    expect(momentOpening(kept, { t: 9.5, end: 11.5 })).toEqual({ t: 12, notice: CUT_MOMENT_NOTICE })
+    expect(momentOpening(kept, { t: 9.5, end: 11.5 })).toEqual({ t: 12, notice: cutMomentNotice() })
     // Cut from the end (the tail trimmed): the editor is at the end, before the moment, not at a next part.
-    expect(momentOpening(kept, { t: 25, end: 26 })).toEqual({ t: 19.95, notice: CUT_END_NOTICE })
-    expect(CUT_END_NOTICE).not.toMatch(/next part/)
+    expect(momentOpening(kept, { t: 25, end: 26 })).toEqual({ t: 19.95, notice: cutEndNotice() })
+    expect(cutEndNotice()).not.toMatch(/next part/)
   })
 
   it('writes times for the eye and the ear', () => {

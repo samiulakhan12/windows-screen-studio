@@ -4,6 +4,7 @@
  * Flown records (docs/design/import-video.md §4.7).
  */
 import type { ImportedSource, Project } from '../types'
+import { t } from '../i18n/t'
 
 const text = (v: unknown, max = 260): string | null => (typeof v === 'string' ? v.slice(0, max) : null)
 const count = (v: unknown): number | null => (typeof v === 'number' && Number.isFinite(v) && v >= 0 ? v : null)
@@ -41,14 +42,28 @@ export const isImported = (project: Pick<Project, 'source'> | null | undefined):
 export const exportBaseName = (project: Pick<Project, 'name' | 'source'>): string => (isImported(project) ? `${project.name} (edited)` : project.name)
 
 /** "This recording has no cursor data", in the words that fit the project. */
-export const noCursorText = (project: Pick<Project, 'source'> | null | undefined): string => (isImported(project) ? IMPORTED_COPY.noCursor : 'This recording has no cursor data')
+export const noCursorText = (project: Pick<Project, 'source'> | null | undefined): string => (isImported(project) ? IMPORTED_COPY.noCursor : t('errors.imported.noCursorRecorded'))
 
-/** What the editor says about features an imported video cannot have. */
+/**
+ * What the editor says about features an imported video cannot have. Main imports this module
+ * (isImported), so the sentences are errors messages (main carries that namespace, test 86), made
+ * when read.
+ */
 export const IMPORTED_COPY = {
-  cursor: 'This video was imported, so Flown has no cursor data for it. The smooth cursor, click effects and click sounds are off; a cursor in the video stays as it was.',
+  get cursor(): string {
+    return t('errors.imported.cursor')
+  },
   /** Followed by orPress's "(or press Z)". */
-  autoZoom: 'This video was imported, so there are no clicks or typing to zoom on. Add zooms yourself: double-click the zoom track',
-  keystrokes: 'This video was imported, so no keyboard shortcuts were recorded.',
-  camera: 'This video was imported, so it has no separate camera.',
-  noCursor: 'This video was imported, so it has no cursor data'
-} as const
+  get autoZoom(): string {
+    return t('errors.imported.autoZoom')
+  },
+  get keystrokes(): string {
+    return t('errors.imported.keystrokes')
+  },
+  get camera(): string {
+    return t('errors.imported.camera')
+  },
+  get noCursor(): string {
+    return t('errors.imported.noCursor')
+  }
+}

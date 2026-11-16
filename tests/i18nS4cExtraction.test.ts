@@ -22,7 +22,15 @@ import { spotlightName } from '../src/shared/render/magnifier'
 import { imageSizeProblem } from '../src/shared/render/imageOverlays'
 import { markerName } from '../src/shared/editor/timelineCuts'
 import { saveErrorMessage } from '../src/shared/editor/autosave'
-import type { CaptionSettings, Spotlight } from '../src/shared/types'
+import type { CaptionSettings, ChapterOrigin, Project, Spotlight } from '../src/shared/types'
+import { SAFE_ZONES, type SafePlatform } from '../src/shared/render/safeZones'
+import { IMPORTED_COPY, noCursorText } from '../src/shared/import/imported'
+import { cutEndNotice, cutMomentNotice, momentOpening } from '../src/shared/search/moment'
+import { momentTitle } from '../src/shared/clips/moments'
+import { cloudCandidates } from '../src/shared/share/cloudFolders'
+import { chapterDetail } from '../src/shared/review/chapterReview'
+import { joinTitle } from '../src/shared/review/joinReview'
+import { colourTitle, colourDetail } from '../src/shared/review/colourReview'
 
 const files = require('../scripts/i18n/lib/files.cjs') as { readEnglish(): { messages: Record<string, string>; meta: Record<string, object> } }
 const pseudo = require('../scripts/i18n/lib/pseudo.cjs') as {
@@ -115,5 +123,68 @@ describe('words made when read, in the UI language', () => {
     expect(before[5]).toMatch(/^Cut 5 of 37: 1:23\.4 to 1:25\.0, .+, and 2 more cuts$/)
     enXA()
     cases.forEach(([name, f], i) => expect(f(), name).not.toBe(before[i]))
+  })
+})
+
+describe('the safe-zone chips', async () => {
+  // Renderer code: imported at run time so the Node typecheck of tests/ does not follow it.
+  const OVERLAY = '../src/renderer/src/editor/SafeZoneOverlay'
+  const { zoneLabels, allLabel } = (await import(/* @vite-ignore */ OVERLAY)) as {
+    zoneLabels: (choice: string, boxes: readonly { x: number; y: number; w: number; h: number; label: string }[]) => { text: string }[]
+    allLabel: () => string
+  }
+  const platforms = Object.keys(SAFE_ZONES) as SafePlatform[]
+
+  it('name every box as the table does in English, by its app and side', () => {
+    for (const p of platforms) expect(zoneLabels(p, SAFE_ZONES[p].boxes).map((l) => l.text)).toEqual(SAFE_ZONES[p].boxes.map((b) => b.label))
+    expect(allLabel()).toBe('Buttons and captions (all three)')
+  })
+
+  it('follow the UI language, while the table keeps its English as data', () => {
+    enXA()
+    for (const p of platforms) {
+      const texts = zoneLabels(p, SAFE_ZONES[p].boxes).map((l) => l.text)
+      SAFE_ZONES[p].boxes.forEach((b, i) => expect(texts[i], `${p} ${b.label}`).not.toBe(b.label))
+    }
+    expect(allLabel()).not.toBe('Buttons and captions (all three)')
+  })
+})
+
+describe('texts of modules main loads too, in the UI language', () => {
+  const imported = { source: { kind: 'import', fileName: 'a.mp4' } } as unknown as Pick<Project, 'source'>
+  const kept = [{ start: 0, end: 5 }, { start: 12, end: 20 }]
+  const cases: [string, () => string, string][] = [
+    ['IMPORTED_COPY.camera', () => IMPORTED_COPY.camera, 'This video was imported, so it has no separate camera.'],
+    ['IMPORTED_COPY.keystrokes', () => IMPORTED_COPY.keystrokes, 'This video was imported, so no keyboard shortcuts were recorded.'],
+    ['noCursorText (recorded)', () => noCursorText(null), 'This recording has no cursor data'],
+    ['noCursorText (imported)', () => noCursorText(imported), 'This video was imported, so it has no cursor data'],
+    ['momentOpening (cut)', () => momentOpening(kept, { t: 9.5, end: 11.5 }).notice ?? '', 'That moment was cut from the video, so the editor is at the next part that is kept.'],
+    ['momentOpening (cut at the end)', () => momentOpening(kept, { t: 25, end: 26 }).notice ?? '', 'That moment was cut from the end of the video, so the editor is at the end.'],
+    ['cloud folder (work)', () => cloudCandidates({ env: { OneDriveCommercial: 'C:\\W' }, registry: {}, dropboxInfo: [], driveLetters: false, join: (...p) => p.join('\\') })[0]?.label ?? '', 'OneDrive (work or school)']
+  ]
+  it('read as today’s English in English and change under en-XA', () => {
+    for (const [name, f, en] of cases) expect(f(), name).toBe(en)
+    expect(cutMomentNotice()).toBe(cases[4][2])
+    expect(cutEndNotice()).toBe(cases[5][2])
+    enXA()
+    for (const [name, f, en] of cases) expect(f(), name).not.toBe(en)
+  })
+})
+
+describe('review rows and clip names made when listed', () => {
+  const origin = (o: Partial<ChapterOrigin>): ChapterOrigin => ({ by: 'find', from: ['page'], name: 'words', ...o }) as ChapterOrigin
+  const cases: [string, () => string, string][] = [
+    ['chapterDetail (find)', () => chapterDetail(origin({ from: ['page', 'pause'] }), true), 'Find chapters · page change and pause · keeping it restarts step numbers here'],
+    ['chapterDetail (AI)', () => chapterDetail(origin({ from: ['ai'], name: 'ai', via: 'local' }), false), 'Suggest chapters with this PC · named on this PC'],
+    ['joinTitle (one)', () => joinTitle(1), 'Smooth cuts at 1 cut'],
+    ['joinTitle (many)', () => joinTitle(37), 'Smooth cuts at 37 cuts'],
+    ['colourTitle', colourTitle, 'Camera colour balanced'],
+    ['colourDetail', colourDetail, 'Auto colour'],
+    ['momentTitle', () => momentTitle('', 3), 'Clip 3']
+  ]
+  it('read as today’s English in English and change under en-XA', () => {
+    for (const [name, f, en] of cases) expect(f(), name).toBe(en)
+    enXA()
+    for (const [name, f, en] of cases) expect(f(), name).not.toBe(en)
   })
 })

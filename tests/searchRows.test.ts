@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { CUT_END_NOTICE, CUT_MOMENT_NOTICE, momentOpening } from '../src/shared/search/moment'
+import { cutEndNotice, cutMomentNotice, momentOpening } from '../src/shared/search/moment'
 import type { SearchHit, SearchMoment } from '../src/shared/search/types'
 
 // Renderer modules, outside this project's TypeScript program (like tests/brandNewText.test.ts).
@@ -164,7 +164,7 @@ describe('pending moment', () => {
     }
     // Its first words cut: where the rest is, with no notice (the row shows no Cut tag).
     expect(open(10, 14)).toEqual({ t: 12, notice: null })
-    expect(open(9.5, 11.5)).toEqual({ t: 12, notice: CUT_MOMENT_NOTICE })
-    expect(open(25, 26)).toEqual({ t: 19.95, notice: CUT_END_NOTICE })
+    expect(open(9.5, 11.5)).toEqual({ t: 12, notice: cutMomentNotice() })
+    expect(open(25, 26)).toEqual({ t: 19.95, notice: cutEndNotice() })
   })
 })

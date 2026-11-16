@@ -296,5 +296,35 @@
   },
   "cutMarker.nameMore": {
     "description": "Timeline: as timeline.cutMarker.name for a marker that stands for several cuts close together; {more} (count) is how many more."
+  },
+  "safeZones.zone.all": {
+    "description": "Safe zones over a tall preview with All three shown (TikTok, Reels and Shorts together): the chip on each covered side."
+  },
+  "safeZones.zone.tiktok.top": {
+    "description": "Safe zones over a tall preview: the chip on the top bar TikTok covers, naming what TikTok puts there (its own buttons and texts, as the app calls them)."
+  },
+  "safeZones.zone.tiktok.right": {
+    "description": "Safe zones over a tall preview: the chip on the button column on the right TikTok covers, naming what TikTok puts there (its own buttons and texts, as the app calls them)."
+  },
+  "safeZones.zone.tiktok.bottom": {
+    "description": "Safe zones over a tall preview: the chip on the bottom area TikTok covers, naming what TikTok puts there (its own buttons and texts, as the app calls them)."
+  },
+  "safeZones.zone.reels.top": {
+    "description": "Safe zones over a tall preview: the chip on the top bar Instagram Reels covers, naming what Instagram Reels puts there (its own buttons and texts, as the app calls them)."
+  },
+  "safeZones.zone.reels.right": {
+    "description": "Safe zones over a tall preview: the chip on the button column on the right Instagram Reels covers, naming what Instagram Reels puts there (its own buttons and texts, as the app calls them)."
+  },
+  "safeZones.zone.reels.bottom": {
+    "description": "Safe zones over a tall preview: the chip on the bottom area Instagram Reels covers, naming what Instagram Reels puts there (its own buttons and texts, as the app calls them)."
+  },
+  "safeZones.zone.shorts.top": {
+    "description": "Safe zones over a tall preview: the chip on the top bar YouTube Shorts covers, naming what YouTube Shorts puts there (its own buttons and texts, as the app calls them)."
+  },
+  "safeZones.zone.shorts.right": {
+    "description": "Safe zones over a tall preview: the chip on the button column on the right YouTube Shorts covers, naming what YouTube Shorts puts there (its own buttons and texts, as the app calls them)."
+  },
+  "safeZones.zone.shorts.bottom": {
+    "description": "Safe zones over a tall preview: the chip on the bottom area YouTube Shorts covers, naming what YouTube Shorts puts there (its own buttons and texts, as the app calls them)."
   }
 }

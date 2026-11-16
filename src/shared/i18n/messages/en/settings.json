@@ -216,5 +216,6 @@
   "brand.style": "Style",
   "provider.preset.ollama": "Ollama on this PC",
   "provider.preset.lmstudio": "LM Studio on this PC",
-  "provider.preset.other": "Other address"
+  "provider.preset.other": "Other address",
+  "brand.notSaved": "Your brand kit could not be saved: {reason}"
 }

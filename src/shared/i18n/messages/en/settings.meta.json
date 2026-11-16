@@ -757,5 +757,8 @@
   },
   "provider.preset.other": {
     "description": "AI providers: a service at a web address the user types."
+  },
+  "brand.notSaved": {
+    "description": "Settings › Brand kit: shown when saving the kit failed; {reason} is why, as main says it (a sentence that may end with a full stop)."
   }
 }

@@ -782,5 +782,11 @@
   },
   "clips.reason.endsCleanly": {
     "description": "Find short clips: a reason a moment was picked (it ends at the end of a sentence)."
+  },
+  "clips.titleNumbered": {
+    "description": "Short clips: the name of a found moment when nothing said in it makes a name (n is its place in the list); a clip made from it is named after it."
+  },
+  "clips.titleMostAction": {
+    "description": "Short clips: the name of a found moment in a video without speech, the moment with the most going on; {time} is where it starts (e.g. \"1:23\"). A clip made from it is named after it."
   }
 }

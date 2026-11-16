@@ -256,5 +256,7 @@
   "clips.reason.opensQuestion": "Opens with a question",
   "clips.reason.opensNumber": "Opens with a number",
   "clips.reason.opensAction": "Opens with an action",
-  "clips.reason.endsCleanly": "Ends cleanly"
+  "clips.reason.endsCleanly": "Ends cleanly",
+  "clips.titleNumbered": "Clip {n}",
+  "clips.titleMostAction": "Most action, {time}"
 }

@@ -1,4 +1,5 @@
-import { zonesFor, type SafeBox, type SafeChoice } from '../../../shared/render/safeZones'
+import { zonesFor, type SafeBox, type SafeChoice, type SafePlatform } from '../../../shared/render/safeZones'
+import { t, type MessageKey } from '../../../shared/i18n/t'
 import './safeZones.css'
 
 /** One edge of the area the apps cover, in overlay px: horizontal (y fixed) or vertical (x fixed). */
@@ -14,7 +15,23 @@ type Side = 'top' | 'right' | 'bottom'
 const sideOf = (b: SafeBox): Side => (b.y <= 0 ? 'top' : b.y + b.h >= 1 && b.w >= 1 ? 'bottom' : 'right')
 
 /** The label of every side when the three apps are shown together. */
-export const ALL_LABEL = 'Buttons and captions (all three)'
+export const allLabel = (): string => t('timeline.safeZones.zone.all')
+
+/**
+ * What each app puts on each side, by the platform and the side its box covers (the table's labels
+ * stay its data; SAFE_ZONES has one box per side for each app).
+ */
+const ZONE_KEYS: Readonly<Record<SafePlatform, Readonly<Record<Side, MessageKey>>>> = {
+  tiktok: { top: 'timeline.safeZones.zone.tiktok.top', right: 'timeline.safeZones.zone.tiktok.right', bottom: 'timeline.safeZones.zone.tiktok.bottom' },
+  reels: { top: 'timeline.safeZones.zone.reels.top', right: 'timeline.safeZones.zone.reels.right', bottom: 'timeline.safeZones.zone.reels.bottom' },
+  shorts: { top: 'timeline.safeZones.zone.shorts.top', right: 'timeline.safeZones.zone.shorts.right', bottom: 'timeline.safeZones.zone.shorts.bottom' }
+}
+
+/** A box's label in the UI language: its app's words for that side, or the table's own label for a box no app's words cover. */
+function zoneLabel(platform: SafePlatform, box: SafeBox, side: Side): string {
+  const key = ZONE_KEYS[platform]?.[side]
+  return key ? t(key) : box.label
+}
 
 /**
  * The area `boxes` cover together (normalised), as cells of the grid their edges make: the
@@ -47,14 +64,14 @@ export function zoneUnion(boxes: readonly SafeBox[]): { cells: { x: number; y: n
 
 /** The labels to show: one per box for an app, one per side ("all three") for All three, each on the side's largest box. */
 export function zoneLabels(choice: SafeChoice, boxes: readonly SafeBox[]): { box: SafeBox; side: Side; text: string }[] {
-  if (choice !== 'all') return boxes.map((box) => ({ box, side: sideOf(box), text: box.label }))
+  if (choice !== 'all') return boxes.map((box) => ({ box, side: sideOf(box), text: zoneLabel(choice, box, sideOf(box)) }))
   const bySide = new Map<Side, SafeBox>()
   for (const b of boxes) {
     const s = sideOf(b)
     const cur = bySide.get(s)
     if (!cur || b.w * b.h > cur.w * cur.h) bySide.set(s, b)
   }
-  return [...bySide].map(([side, box]) => ({ box, side, text: ALL_LABEL }))
+  return [...bySide].map(([side, box]) => ({ box, side, text: allLabel() }))
 }
 
 /**

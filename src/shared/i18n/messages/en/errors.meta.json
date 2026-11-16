@@ -1161,5 +1161,29 @@
   },
   "autosave.readOnly": {
     "description": "Saving failed: the drive cannot be written (the system code follows in brackets, \"(EROFS)\")."
+  },
+  "imported.noCursorRecorded": {
+    "description": "The editor's notice when a cursor feature (e.g. Smooth cursor) is asked for and the recording has no cursor data; no full stop (the notice adds none)."
+  },
+  "imported.cursor": {
+    "description": "Cursor panel: the hint for a project imported from a video file (Import a video), which has no recorded cursor."
+  },
+  "imported.autoZoom": {
+    "description": "Zoom panel: the hint for an imported video under Auto zoom. The panel follows it with \" (or press Z)\" (the Add zoom shortcut) and a full stop, so it ends without one."
+  },
+  "imported.keystrokes": {
+    "description": "Effects panel › Key presses: the hint for a project imported from a video file."
+  },
+  "imported.camera": {
+    "description": "Camera panel: the hint for a project imported from a video file (no camera recording of its own)."
+  },
+  "imported.noCursor": {
+    "description": "The editor's notice when a cursor feature is asked for in a project imported from a video file; no full stop (the notice adds none)."
+  },
+  "search.momentCut": {
+    "description": "The editor's notice after opening a moment found by Home's search that was cut from the edit: the playhead is at the next kept part."
+  },
+  "search.momentCutEnd": {
+    "description": "The editor's notice after opening a moment found by Home's search that was cut after the last kept part: the playhead is at the end."
   }
 }

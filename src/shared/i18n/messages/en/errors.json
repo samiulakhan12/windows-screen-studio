@@ -315,5 +315,13 @@
   "fonts.misnamed.otf": "This file is named .{named} but holds an OpenType (.otf) font: rename it to .otf and add it again.",
   "fonts.misnamed.woff2": "This file is named .{named} but holds a WOFF2 (.woff2) font: rename it to .woff2 and add it again.",
   "autosave.locked": "The project file is locked by another program or is read-only.",
-  "autosave.readOnly": "The drive is read-only."
+  "autosave.readOnly": "The drive is read-only.",
+  "imported.noCursorRecorded": "This recording has no cursor data",
+  "imported.cursor": "This video was imported, so Flown has no cursor data for it. The smooth cursor, click effects and click sounds are off; a cursor in the video stays as it was.",
+  "imported.autoZoom": "This video was imported, so there are no clicks or typing to zoom on. Add zooms yourself: double-click the zoom track",
+  "imported.keystrokes": "This video was imported, so no keyboard shortcuts were recorded.",
+  "imported.camera": "This video was imported, so it has no separate camera.",
+  "imported.noCursor": "This video was imported, so it has no cursor data",
+  "search.momentCut": "That moment was cut from the video, so the editor is at the next part that is kept.",
+  "search.momentCutEnd": "That moment was cut from the end of the video, so the editor is at the end."
 }

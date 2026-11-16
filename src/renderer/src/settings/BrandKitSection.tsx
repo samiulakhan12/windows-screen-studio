@@ -3,7 +3,8 @@ import { captionsOf } from '../../../shared/captions/settings'
 import { legacyTwin } from '../../../shared/captions/studioEdit'
 import { BRAND_CARD_LENGTH, DEFAULT_BRAND_LOGO, MAX_BRAND_COLORS, MAX_BRAND_FONTS, shownBrandKit, type BrandCard, type BrandKit, type BrandLogo } from '../../../shared/editor/brandKit'
 import { BUILT_IN_PRESETS, parseUserPresets, type StylePreset } from '../../../shared/editor/stylePresets'
-import { TITLE_BACKGROUNDS, TITLE_STYLES } from '../../../shared/editor/titles'
+import { TITLE_BACKGROUND_CHOICES, TITLE_STYLE_CHOICES } from '../../../shared/editor/itemNames'
+import { presetLabel } from '../../../shared/editor/stylePresetNames'
 import { WATERMARK_LIMITS } from '../../../shared/engine/watermark'
 import { cleanFontName, fontFamily } from '../../../shared/render/fonts'
 import type { ProjectFont } from '../../../shared/types'
@@ -126,7 +127,7 @@ export function BrandKitSection({ reveal = false }: { reveal?: boolean }): JSX.E
       window.dispatchEvent(new Event(BRAND_KIT_CHANGED_EVENT))
     } catch (err) {
       setSaved('idle')
-      setError(`Your brand kit could not be saved: ${ipcMessage(err)}`)
+      setError(t('settings.brand.notSaved', { reason: ipcMessage(err) }))
     }
   }
 
@@ -310,7 +311,7 @@ export function BrandKitSection({ reveal = false }: { reveal?: boolean }): JSX.E
             {kit.preset && !allPresets.some((p) => p.name === kit.preset!.name) && <option value="__kept__">{kit.preset.name}</option>}
             {allPresets.map((p) => (
               <option key={p.id} value={p.id}>
-                {p.name}
+                {presetLabel(p, BUILT_IN_PRESETS.includes(p))}
               </option>
             ))}
           </select>
@@ -462,7 +463,7 @@ function CardBlock({ which, card, onChange }: { which: 'intro' | 'outro'; card: 
           <label className="brand-field">
             <span className="settings-label">{t('settings.brand.style')}</span>
             <select value={card.style} onChange={(e) => onChange({ style: e.target.value as BrandCard['style'] })}>
-              {TITLE_STYLES.map((s) => (
+              {TITLE_STYLE_CHOICES.map((s) => (
                 <option key={s.value} value={s.value}>
                   {s.label}
                 </option>
@@ -472,7 +473,7 @@ function CardBlock({ which, card, onChange }: { which: 'intro' | 'outro'; card: 
           <label className="brand-field">
             <span className="settings-label">{t('common.label.background')}</span>
             <select value={card.background} onChange={(e) => onChange({ background: e.target.value as BrandCard['background'] })}>
-              {TITLE_BACKGROUNDS.map((s) => (
+              {TITLE_BACKGROUND_CHOICES.map((s) => (
                 <option key={s.value} value={s.value}>
                   {s.label}
                 </option>

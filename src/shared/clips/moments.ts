@@ -222,7 +222,7 @@ export const TITLE_MAX = 80
  */
 export function momentTitle(text: string, rank: number, language?: string): string {
   const name = sentenceName(text, language)
-  return (name ? cutName(name, TITLE_MAX) : null) ?? cutName(text) ?? `Clip ${rank}`
+  return (name ? cutName(name, TITLE_MAX) : null) ?? cutName(text) ?? t('smart.clips.titleNumbered', { n: fmt.count(rank) })
 }
 
 /**
@@ -452,7 +452,7 @@ function silentMoments(project: Project, plan: FreezePlan, L: number, ctx: { tra
       score: c.score,
       reasons,
       first: '',
-      title: `Most action, ${clockTime(c.vs)}`,
+      title: t('smart.clips.titleMostAction', { time: clockTime(c.vs) }),
       silent: true
     }
   })

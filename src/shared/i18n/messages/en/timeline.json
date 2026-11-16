@@ -87,5 +87,15 @@
   "previewSpeedHint": "Preview speed: play the preview faster or slower to review it. The exported video keeps its own speed.",
   "previewSpeedHintKeys": "Preview speed: play the preview faster or slower to review it ({keys}). The exported video keeps its own speed.",
   "cutMarker.name": "Cut {n} of {of}: {start} to {end}, {join}",
-  "cutMarker.nameMore": "{count, plural, one {Cut {n} of {of}: {start} to {end}, {join}, and {more} more cut} other {Cut {n} of {of}: {start} to {end}, {join}, and {more} more cuts}}"
+  "cutMarker.nameMore": "{count, plural, one {Cut {n} of {of}: {start} to {end}, {join}, and {more} more cut} other {Cut {n} of {of}: {start} to {end}, {join}, and {more} more cuts}}",
+  "safeZones.zone.all": "Buttons and captions (all three)",
+  "safeZones.zone.tiktok.top": "Tabs and search",
+  "safeZones.zone.tiktok.right": "Like, comment, share",
+  "safeZones.zone.tiktok.bottom": "Name, caption and sound",
+  "safeZones.zone.reels.top": "Reels and camera",
+  "safeZones.zone.reels.right": "Like, comment, share",
+  "safeZones.zone.reels.bottom": "Name, caption and audio",
+  "safeZones.zone.shorts.top": "Search and menu",
+  "safeZones.zone.shorts.right": "Like, comment, share, remix",
+  "safeZones.zone.shorts.bottom": "Title, channel and subscribe"
 }

@@ -19,7 +19,7 @@ interface Overlay {
   SafeZoneOverlay: (props: { choice: SafeChoice; box: { w: number; h: number } }) => unknown
   zoneUnion: (boxes: readonly SafeBox[]) => { cells: { x: number; y: number; w: number; h: number }[]; edges: { x1: number; y1: number; x2: number; y2: number }[] }
   zoneLabels: (choice: SafeChoice, boxes: readonly SafeBox[]) => { box: SafeBox; side: string; text: string }[]
-  ALL_LABEL: string
+  allLabel: () => string
 }
 
 // The boxes zonesFor gives (the table's, every platform's for All three).
@@ -138,7 +138,8 @@ describe('safe-zone preference (test 57)', () => {
 })
 
 describe('safe-zone overlay geometry', async () => {
-  const { SafeZoneOverlay, zoneUnion, zoneLabels, ALL_LABEL } = (await import(/* @vite-ignore */ OVERLAY)) as Overlay
+  const { SafeZoneOverlay, zoneUnion, zoneLabels, allLabel } = (await import(/* @vite-ignore */ OVERLAY)) as Overlay
+  const ALL_LABEL = allLabel()
   const all = (Object.keys(SAFE_ZONES) as SafePlatform[]).flatMap((p) => [...SAFE_ZONES[p].boxes])
   const covered = (cells: { x: number; y: number; w: number; h: number }[], x: number, y: number): number =>
     cells.filter((c) => x > c.x && x < c.x + c.w && y > c.y && y < c.y + c.h).length

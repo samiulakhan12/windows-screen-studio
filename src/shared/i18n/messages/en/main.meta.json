@@ -363,5 +363,17 @@
   },
   "share.sharedTitle": {
     "description": "Share: the title of the notification when every step of a share finished."
+  },
+  "share.folder.oneDriveWork": {
+    "description": "Settings › Share: the name of a OneDrive folder found on this PC for a work or school account whose organisation has no name. \"OneDrive\" is Microsoft's product name.",
+    "dnt": [
+      "OneDrive"
+    ]
+  },
+  "share.folder.dropboxWork": {
+    "description": "Settings › Share: the name of the Dropbox folder found on this PC for a work (business) account. \"Dropbox\" is the service's name.",
+    "dnt": [
+      "Dropbox"
+    ]
   }
 }

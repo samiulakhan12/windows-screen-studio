@@ -4,6 +4,7 @@
  * variables) and then their usual places, each with where it came from. Pure: main reads the
  * registry and the files, checks every folder exists, and passes the text here.
  */
+import { t } from '../i18n/t'
 
 export type CloudService = 'onedrive' | 'dropbox' | 'gdrive' | 'folder'
 /** Where a folder came from: its app's own settings, its usual place, or the user. */
@@ -161,10 +162,10 @@ export function cloudCandidates(input: CloudInput): CloudCandidate[] {
   for (let i = 1; i <= 9; i++) {
     const v = registry[`${od}\\business${i}`]
     const org = str(v?.displayname)
-    add('onedrive', org ? `OneDrive – ${org}` : 'OneDrive (work or school)', str(v?.userfolder), 'app')
+    add('onedrive', org ? `OneDrive – ${org}` : t('main.share.folder.oneDriveWork'), str(v?.userfolder), 'app')
   }
   add('onedrive', 'OneDrive', str(env.OneDriveConsumer), 'app')
-  add('onedrive', 'OneDrive (work or school)', str(env.OneDriveCommercial), 'app')
+  add('onedrive', t('main.share.folder.oneDriveWork'), str(env.OneDriveCommercial), 'app')
   add('onedrive', 'OneDrive', str(env.OneDrive), 'app')
 
   // Dropbox: info.json (personal and business), then the usual place.
@@ -177,7 +178,7 @@ export function cloudCandidates(input: CloudInput): CloudCandidate[] {
     }
     if (!isObject(data)) continue
     if (isObject(data.personal)) add('dropbox', 'Dropbox', str(data.personal.path), 'app')
-    if (isObject(data.business)) add('dropbox', 'Dropbox (work)', str(data.business.path), 'app')
+    if (isObject(data.business)) add('dropbox', t('main.share.folder.dropboxWork'), str(data.business.path), 'app')
   }
   const home = str(env.USERPROFILE)
   if (home) add('dropbox', 'Dropbox', join(home, 'Dropbox'), 'usual')

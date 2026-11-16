@@ -4526,5 +4526,179 @@
         "n": "1000"
       }
     ]
+  },
+  {
+    "key": "timeline.safeZones.zone.all",
+    "file": "src/renderer/src/editor/SafeZoneOverlay.tsx",
+    "line": 18,
+    "english": "Buttons and captions (all three)",
+    "sample": {}
+  },
+  {
+    "key": "timeline.safeZones.zone.tiktok.top",
+    "file": "src/renderer/src/editor/SafeZoneOverlay.tsx",
+    "line": 25,
+    "english": "Tabs and search",
+    "sample": {}
+  },
+  {
+    "key": "timeline.safeZones.zone.tiktok.right",
+    "file": "src/renderer/src/editor/SafeZoneOverlay.tsx",
+    "line": 25,
+    "english": "Like, comment, share",
+    "sample": {}
+  },
+  {
+    "key": "timeline.safeZones.zone.tiktok.bottom",
+    "file": "src/renderer/src/editor/SafeZoneOverlay.tsx",
+    "line": 25,
+    "english": "Name, caption and sound",
+    "sample": {}
+  },
+  {
+    "key": "timeline.safeZones.zone.reels.top",
+    "file": "src/renderer/src/editor/SafeZoneOverlay.tsx",
+    "line": 26,
+    "english": "Reels and camera",
+    "sample": {}
+  },
+  {
+    "key": "timeline.safeZones.zone.reels.right",
+    "file": "src/renderer/src/editor/SafeZoneOverlay.tsx",
+    "line": 26,
+    "english": "Like, comment, share",
+    "sample": {}
+  },
+  {
+    "key": "timeline.safeZones.zone.reels.bottom",
+    "file": "src/renderer/src/editor/SafeZoneOverlay.tsx",
+    "line": 26,
+    "english": "Name, caption and audio",
+    "sample": {}
+  },
+  {
+    "key": "timeline.safeZones.zone.shorts.top",
+    "file": "src/renderer/src/editor/SafeZoneOverlay.tsx",
+    "line": 27,
+    "english": "Search and menu",
+    "sample": {}
+  },
+  {
+    "key": "timeline.safeZones.zone.shorts.right",
+    "file": "src/renderer/src/editor/SafeZoneOverlay.tsx",
+    "line": 27,
+    "english": "Like, comment, share, remix",
+    "sample": {}
+  },
+  {
+    "key": "timeline.safeZones.zone.shorts.bottom",
+    "file": "src/renderer/src/editor/SafeZoneOverlay.tsx",
+    "line": 27,
+    "english": "Title, channel and subscribe",
+    "sample": {}
+  },
+  {
+    "key": "settings.brand.notSaved",
+    "file": "src/renderer/src/settings/BrandKitSection.tsx",
+    "line": 130,
+    "english": "Your brand kit could not be saved: The disk is full.",
+    "sample": {
+      "reason": "The disk is full."
+    }
+  },
+  {
+    "key": "smart.clips.titleNumbered",
+    "file": "src/shared/clips/moments.ts",
+    "line": 225,
+    "english": "Clip 3",
+    "sample": {
+      "n": "3"
+    }
+  },
+  {
+    "key": "smart.clips.titleMostAction",
+    "file": "src/shared/clips/moments.ts",
+    "line": 455,
+    "english": "Most action, 1:23",
+    "sample": {
+      "time": "1:23"
+    }
+  },
+  {
+    "key": "errors.imported.noCursorRecorded",
+    "file": "src/shared/import/imported.ts",
+    "line": 45,
+    "english": "This recording has no cursor data",
+    "sample": {}
+  },
+  {
+    "key": "errors.imported.cursor",
+    "file": "src/shared/import/imported.ts",
+    "line": 54,
+    "english": "This video was imported, so Flown has no cursor data for it. The smooth cursor, click effects and click sounds are off; a cursor in the video stays as it was.",
+    "sample": {}
+  },
+  {
+    "key": "errors.imported.autoZoom",
+    "file": "src/shared/import/imported.ts",
+    "line": 58,
+    "english": "This video was imported, so there are no clicks or typing to zoom on. Add zooms yourself: double-click the zoom track",
+    "sample": {}
+  },
+  {
+    "key": "errors.imported.keystrokes",
+    "file": "src/shared/import/imported.ts",
+    "line": 61,
+    "english": "This video was imported, so no keyboard shortcuts were recorded.",
+    "sample": {}
+  },
+  {
+    "key": "errors.imported.camera",
+    "file": "src/shared/import/imported.ts",
+    "line": 64,
+    "english": "This video was imported, so it has no separate camera.",
+    "sample": {}
+  },
+  {
+    "key": "errors.imported.noCursor",
+    "file": "src/shared/import/imported.ts",
+    "line": 67,
+    "english": "This video was imported, so it has no cursor data",
+    "sample": {}
+  },
+  {
+    "key": "errors.search.momentCut",
+    "file": "src/shared/search/moment.ts",
+    "line": 37,
+    "english": "That moment was cut from the video, so the editor is at the next part that is kept.",
+    "sample": {}
+  },
+  {
+    "key": "errors.search.momentCutEnd",
+    "file": "src/shared/search/moment.ts",
+    "line": 39,
+    "english": "That moment was cut from the end of the video, so the editor is at the end.",
+    "sample": {}
+  },
+  {
+    "key": "main.share.folder.oneDriveWork",
+    "file": "src/shared/share/cloudFolders.ts",
+    "line": 164,
+    "english": "OneDrive (work or school)",
+    "sample": {}
+  },
+  {
+    "key": "main.share.folder.oneDriveWork",
+    "file": "src/shared/share/cloudFolders.ts",
+    "line": 167,
+    "english": "OneDrive (work or school)",
+    "sample": {}
+  },
+  {
+    "key": "main.share.folder.dropboxWork",
+    "file": "src/shared/share/cloudFolders.ts",
+    "line": 181,
+    "english": "Dropbox (work)",
+    "sample": {}
   }
 ]
