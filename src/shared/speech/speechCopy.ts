@@ -379,12 +379,25 @@ export const cancelledLine = (kept: number, parts: number): string => t('caption
 export const downloadAgainLabel = (id: SpeechModelId): string => t('captions.local.downloadAgainSize', { size: sizeWords(speechModel(id)!.bytes) })
 export const useTierLabel = (id: SpeechModelId): string => t('captions.local.useTier', { tier: tierName(id) })
 
+/** The summary's message: without a language, with the chosen one, or with the one heard. */
+const DONE_KEYS: Readonly<Record<'plain' | 'language' | 'detected', MessageKey>> = {
+  plain: 'captions.local.done',
+  language: 'captions.local.doneLanguage',
+  detected: 'captions.local.doneDetected'
+}
+/** The same with the time it took. */
+const DONE_TOOK_KEYS: Readonly<Record<'plain' | 'language' | 'detected', MessageKey>> = {
+  plain: 'captions.local.doneTook',
+  language: 'captions.local.doneTookLanguage',
+  detected: 'captions.local.doneTookDetected'
+}
+
 /** The summary of captions made on this PC. */
 export function doneLine(opts: { count: number; model: string; language: string | null; detected?: boolean; took?: number }): string {
   const values = { count: opts.count, n: fmt.count(opts.count), model: speechModel(opts.model)?.name ?? opts.model, language: opts.language ?? '' }
-  const which = opts.language ? (opts.detected ? 'Detected' : 'Language') : ''
-  if (opts.took === undefined) return t(`captions.local.done${which}` as MessageKey, values)
-  return t(`captions.local.doneTook${which}` as MessageKey, { ...values, took: tookWords(opts.took) })
+  const which = opts.language ? (opts.detected ? 'detected' : 'language') : 'plain'
+  if (opts.took === undefined) return t(DONE_KEYS[which], values)
+  return t(DONE_TOOK_KEYS[which], { ...values, took: tookWords(opts.took) })
 }
 
 /** "Not English?" */
