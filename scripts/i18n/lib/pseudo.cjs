@@ -18,6 +18,13 @@ const icu = loadTs(path.join(__dirname, '..', '..', '..', 'src', 'shared', 'i18n
 
 const PSEUDO_LOCALES = ['en-XA', 'bn-XA', 'ar-XB']
 
+/**
+ * The UI language each pseudo-locale stands in for in its catalogue folder, where FLOWN_I18N_PSEUDO
+ * (src/main/i18n.ts, PSEUDO_LOCALES, development builds only) starts Flown in it: Bangla's sizes for
+ * bn-XA, and a language with no font of its own for the others.
+ */
+const PSEUDO_SLOT = Object.freeze({ 'en-XA': 'es', 'bn-XA': 'bn', 'ar-XB': 'es' })
+
 /** Prints parsed ICU nodes back to message source, quoting what ICU would read as syntax. */
 function printIcu(nodes, inPlural = false) {
   let out = ''
@@ -118,4 +125,4 @@ function pseudoCatalogue(locale, english, meta) {
   return { locale, dir: pseudoDir(locale), messages, latn, user }
 }
 
-module.exports = { PSEUDO_LOCALES, BENGALI, printIcu, mapText, pseudoMessage, pseudoDir, pseudoCatalogue }
+module.exports = { PSEUDO_LOCALES, PSEUDO_SLOT, BENGALI, printIcu, mapText, pseudoMessage, pseudoDir, pseudoCatalogue }

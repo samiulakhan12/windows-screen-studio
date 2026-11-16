@@ -14,6 +14,10 @@
  * - Unpackaged builds only (tests and the reviewers' pack): SSW_I18N_CATALOGUE_DIR names a folder
  *   with shipped.json and the catalogues to use instead, SSW_PREFERRED_LANGUAGES stands in for
  *   Windows' languages, and SSW_RELAUNCH_LOG records a relaunch's arguments instead of starting again.
+ * - Unpackaged builds only, for development (§12.3, §16.3): FLOWN_I18N_PSEUDO=en-XA, bn-XA or ar-XB
+ *   starts Flown in that pseudo-locale, from the folder `npm run i18n:pseudo` writes
+ *   (scripts/i18n/pseudo/<locale>/, not committed), standing in for the UI language it is made for
+ *   (PSEUDO_LOCALES); ar-XB's page is right to left. A packaged build never reads it.
  */
 import { app, BrowserWindow, dialog, ipcMain, type IpcMainInvokeEvent } from 'electron'
 import fs from 'node:fs'
@@ -44,9 +48,29 @@ const CATALOGUE_FILE_LIMIT = 4 * 1024 * 1024
 
 const isUiLanguage = (v: unknown): v is UiLanguage => typeof v === 'string' && (UI_LANGUAGES as readonly string[]).includes(v)
 
-/** The tests' catalogue folder: an absolute path, in an unpackaged build only. */
+/**
+ * The pseudo-locales (§16.3), each with the UI language it stands in for and its page's direction;
+ * `npm run i18n:pseudo` writes each one's catalogues as that language (scripts/i18n/lib/pseudo.cjs,
+ * PSEUDO_SLOT).
+ */
+export const PSEUDO_LOCALES: Readonly<Record<string, { language: UiLanguage; dir: 'ltr' | 'rtl' }>> = {
+  'en-XA': { language: 'es', dir: 'ltr' },
+  'bn-XA': { language: 'bn', dir: 'ltr' },
+  'ar-XB': { language: 'es', dir: 'rtl' }
+}
+
+/** The pseudo-locale FLOWN_I18N_PSEUDO asks for, in an unpackaged build only; null otherwise. */
+export function pseudoLocale(): string | null {
+  if (app.isPackaged) return null
+  const asked = process.env.FLOWN_I18N_PSEUDO
+  return asked && Object.hasOwn(PSEUDO_LOCALES, asked) ? asked : null
+}
+
+/** The tests' catalogue folder, or the pseudo-locale's: an absolute path, in an unpackaged build only. */
 function catalogueDir(): string | null {
   if (app.isPackaged) return null
+  const pseudo = pseudoLocale()
+  if (pseudo) return path.join(app.getAppPath(), 'scripts', 'i18n', 'pseudo', pseudo)
   const dir = process.env.SSW_I18N_CATALOGUE_DIR
   return dir && path.isAbsolute(dir) ? dir : null
 }
@@ -116,9 +140,27 @@ let reopenPending: string | null = null
 
 const resolve = (prefs: UiPrefs | null): UiInfo => resolveUiLanguage(prefs, preferredLanguages(), systemLocale(), shippedLanguages(), knownLanguages())
 
+/**
+ * The language a start chooses: the preference's, or under FLOWN_I18N_PSEUDO (development only) the
+ * language the pseudo-locale stands in for, with its direction. Without the folder `npm run
+ * i18n:pseudo` writes, the pseudo-locale is not shipped and Flown starts in English.
+ */
+function chooseLanguage(prefs: UiPrefs | null): UiInfo {
+  const pseudo = pseudoLocale()
+  if (!pseudo) return resolve(prefs)
+  const stands = PSEUDO_LOCALES[pseudo]
+  const chosen = resolve({ ...prefs, language: stands.language })
+  if (chosen.language !== stands.language) {
+    console.warn(`FLOWN_I18N_PSEUDO=${pseudo}: run npm run i18n:pseudo first; Flown starts in English.`)
+    return resolve(prefs)
+  }
+  // The preference itself is not changed: the pseudo-locale lasts as long as the variable.
+  return { ...chosen, dir: stands.dir, prefs: prefs ?? {} }
+}
+
 /** Chooses the UI language before any window opens and before any module makes text (§9.4 step 1). */
 export function initUiLanguage(): UiInfo {
-  const chosen = resolve(readUiPrefs(readPrefSync('ui')))
+  const chosen = chooseLanguage(readUiPrefs(readPrefSync('ui')))
   const catalogue = chosen.language === 'en' ? null : mainCatalogue(chosen.language)
   reopenPending = reopenArgument(process.argv)
   // A shipped language always has its catalogue (shippedLanguages); without one, English.
