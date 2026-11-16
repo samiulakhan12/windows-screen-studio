@@ -1155,5 +1155,507 @@
     "line": 7,
     "english": "Publish",
     "sample": {}
+  },
+  {
+    "key": "keys.withShortcut",
+    "file": "src/shared/editor/shortcuts.ts",
+    "line": 270,
+    "english": "Split the clip at the playhead (S)",
+    "sample": {
+      "text": "Split the clip at the playhead",
+      "keys": "S"
+    }
+  },
+  {
+    "key": "keys.orPress",
+    "file": "src/shared/editor/shortcuts.ts",
+    "line": 275,
+    "english": "Double-click to add text, or press T",
+    "sample": {
+      "text": "Double-click to add text",
+      "keys": "T"
+    }
+  },
+  {
+    "key": "keys.reviewHint",
+    "file": "src/shared/editor/shortcuts.ts",
+    "line": 283,
+    "english": ". Review (Shift + R)",
+    "sample": {
+      "keys": "Shift + R"
+    }
+  },
+  {
+    "key": "keys.reviewHintNoKey",
+    "file": "src/shared/editor/shortcuts.ts",
+    "line": 283,
+    "english": ". Review mode lists them",
+    "sample": {}
+  },
+  {
+    "key": "keys.undoHint",
+    "file": "src/shared/editor/shortcuts.ts",
+    "line": 288,
+    "english": " · Ctrl + Z to undo",
+    "sample": {
+      "keys": "Ctrl + Z"
+    }
+  },
+  {
+    "key": "keys.zoomLevels.range",
+    "file": "src/shared/editor/shortcuts.ts",
+    "line": 300,
+    "english": "1–4",
+    "sample": {
+      "first": "1",
+      "last": "4"
+    }
+  },
+  {
+    "key": "keys.zoomLevels.both",
+    "file": "src/shared/editor/shortcuts.ts",
+    "line": 302,
+    "english": [
+      "1–4 set its zoom level, 0 pulls back",
+      "1–4 sets its zoom level, 0 pulls back",
+      "1–4 set its zoom level, 0 pulls back",
+      "1–4 set its zoom level, 0 pulls back"
+    ],
+    "sample": [
+      {
+        "levels": "1–4",
+        "back": "0",
+        "count": 0
+      },
+      {
+        "levels": "1–4",
+        "back": "0",
+        "count": 1
+      },
+      {
+        "levels": "1–4",
+        "back": "0",
+        "count": 2
+      },
+      {
+        "levels": "1–4",
+        "back": "0",
+        "count": 1000
+      }
+    ]
+  },
+  {
+    "key": "keys.zoomLevels.levels",
+    "file": "src/shared/editor/shortcuts.ts",
+    "line": 303,
+    "english": [
+      "1–4 set its zoom level",
+      "1–4 sets its zoom level",
+      "1–4 set its zoom level",
+      "1–4 set its zoom level"
+    ],
+    "sample": [
+      {
+        "levels": "1–4",
+        "count": 0
+      },
+      {
+        "levels": "1–4",
+        "count": 1
+      },
+      {
+        "levels": "1–4",
+        "count": 2
+      },
+      {
+        "levels": "1–4",
+        "count": 1000
+      }
+    ]
+  },
+  {
+    "key": "keys.zoomLevels.back",
+    "file": "src/shared/editor/shortcuts.ts",
+    "line": 304,
+    "english": "0 pulls back",
+    "sample": {
+      "back": "0"
+    }
+  },
+  {
+    "key": "keys.reserved.pressesButton",
+    "file": "src/shared/editor/shortcuts.ts",
+    "line": 440,
+    "english": "Enter presses the focused button.",
+    "sample": {
+      "keys": "Enter"
+    }
+  },
+  {
+    "key": "keys.reserved.movesBetweenControls",
+    "file": "src/shared/editor/shortcuts.ts",
+    "line": 441,
+    "english": "Tab moves between controls.",
+    "sample": {
+      "keys": "Tab"
+    }
+  },
+  {
+    "key": "keys.reserved.movesBetweenControls",
+    "file": "src/shared/editor/shortcuts.ts",
+    "line": 441,
+    "english": "Shift + Tab moves between controls.",
+    "sample": {
+      "keys": "Shift + Tab"
+    }
+  },
+  {
+    "key": "keys.reserved.closesWindow",
+    "file": "src/shared/editor/shortcuts.ts",
+    "line": 443,
+    "english": "Alt + F4 closes the window.",
+    "sample": {
+      "keys": "Alt + F4"
+    }
+  },
+  {
+    "key": "keys.reserved.closesWindow",
+    "file": "src/shared/editor/shortcuts.ts",
+    "line": 443,
+    "english": "Ctrl + W closes the window.",
+    "sample": {
+      "keys": "Ctrl + W"
+    }
+  },
+  {
+    "key": "keys.reserved.windowMenu",
+    "file": "src/shared/editor/shortcuts.ts",
+    "line": 444,
+    "english": "Alt + Space opens the window menu.",
+    "sample": {
+      "keys": "Alt + Space"
+    }
+  },
+  {
+    "key": "keys.reserved.startMenu",
+    "file": "src/shared/editor/shortcuts.ts",
+    "line": 445,
+    "english": "Ctrl + Esc opens the Start menu.",
+    "sample": {
+      "keys": "Ctrl + Esc"
+    }
+  },
+  {
+    "key": "keys.reserved.taskManager",
+    "file": "src/shared/editor/shortcuts.ts",
+    "line": 446,
+    "english": "Ctrl + Shift + Esc opens the Task Manager.",
+    "sample": {
+      "keys": "Ctrl + Shift + Esc"
+    }
+  },
+  {
+    "key": "keys.reserved.switchesWindow",
+    "file": "src/shared/editor/shortcuts.ts",
+    "line": 447,
+    "english": "Alt + Esc switches to another window.",
+    "sample": {
+      "keys": "Alt + Esc"
+    }
+  },
+  {
+    "key": "keys.reserved.reloads",
+    "file": "src/shared/editor/shortcuts.ts",
+    "line": 449,
+    "english": "Ctrl + R reloads the window.",
+    "sample": {
+      "keys": "Ctrl + R"
+    }
+  },
+  {
+    "key": "keys.reserved.reloads",
+    "file": "src/shared/editor/shortcuts.ts",
+    "line": 449,
+    "english": "Ctrl + Shift + R reloads the window.",
+    "sample": {
+      "keys": "Ctrl + Shift + R"
+    }
+  },
+  {
+    "key": "keys.reserved.developerTools",
+    "file": "src/shared/editor/shortcuts.ts",
+    "line": 451,
+    "english": "Ctrl + Shift + I opens the developer tools.",
+    "sample": {
+      "keys": "Ctrl + Shift + I"
+    }
+  },
+  {
+    "key": "keys.reserved.fullScreen",
+    "file": "src/shared/editor/shortcuts.ts",
+    "line": 452,
+    "english": "F11 switches full screen.",
+    "sample": {
+      "keys": "F11"
+    }
+  },
+  {
+    "key": "keys.reserved.resetsZoom",
+    "file": "src/shared/editor/shortcuts.ts",
+    "line": 453,
+    "english": "Ctrl + 0 resets the window zoom.",
+    "sample": {
+      "keys": "Ctrl + 0"
+    }
+  },
+  {
+    "key": "keys.reserved.zooms",
+    "file": "src/shared/editor/shortcuts.ts",
+    "line": 454,
+    "english": "Ctrl + + zooms the window.",
+    "sample": {
+      "keys": "Ctrl + +"
+    }
+  },
+  {
+    "key": "keys.reserved.zooms",
+    "file": "src/shared/editor/shortcuts.ts",
+    "line": 454,
+    "english": "Ctrl + = zooms the window.",
+    "sample": {
+      "keys": "Ctrl + ="
+    }
+  },
+  {
+    "key": "keys.reserved.zooms",
+    "file": "src/shared/editor/shortcuts.ts",
+    "line": 454,
+    "english": "Ctrl + - zooms the window.",
+    "sample": {
+      "keys": "Ctrl + -"
+    }
+  },
+  {
+    "key": "keys.reserved.escape",
+    "file": "src/shared/editor/shortcuts.ts",
+    "line": 467,
+    "english": "Esc always cancels: it closes dialogs and clears the selection.",
+    "sample": {
+      "keys": "Esc"
+    }
+  },
+  {
+    "key": "keys.check.unusable",
+    "file": "src/shared/editor/shortcuts.ts",
+    "line": 481,
+    "english": "That key cannot be used for a shortcut.",
+    "sample": {}
+  },
+  {
+    "key": "keys.check.needsModifier",
+    "file": "src/shared/editor/shortcuts.ts",
+    "line": 486,
+    "english": "This shortcut also works while typing, so it needs Ctrl or Alt (K would type instead).",
+    "sample": {
+      "keys": "K"
+    }
+  },
+  {
+    "key": "keys.dialog.removeLabel",
+    "file": "src/renderer/src/editor/ShortcutsDialog.tsx",
+    "line": 122,
+    "english": "Remove Ctrl + Z from Undo",
+    "sample": {
+      "keys": "Ctrl + Z",
+      "command": "Undo"
+    }
+  },
+  {
+    "key": "keys.dialog.removeTitle",
+    "file": "src/renderer/src/editor/ShortcutsDialog.tsx",
+    "line": 123,
+    "english": "Remove this shortcut",
+    "sample": {}
+  },
+  {
+    "key": "keys.dialog.stepKey",
+    "file": "src/renderer/src/editor/ShortcutsDialog.tsx",
+    "line": 136,
+    "english": "While items are selected · the key of Step back one frame",
+    "sample": {
+      "command": "Step back one frame"
+    }
+  },
+  {
+    "key": "keys.dialog.standardKey",
+    "file": "src/renderer/src/editor/ShortcutsDialog.tsx",
+    "line": 141,
+    "english": "Standard key · a shortcut you give another command takes it over",
+    "sample": {}
+  },
+  {
+    "key": "keys.dialog.captureLabel",
+    "file": "src/renderer/src/editor/ShortcutsDialog.tsx",
+    "line": 150,
+    "english": "Press the new shortcut for Undo",
+    "sample": {
+      "command": "Undo"
+    }
+  },
+  {
+    "key": "keys.dialog.captureTitle",
+    "file": "src/renderer/src/editor/ShortcutsDialog.tsx",
+    "line": 151,
+    "english": "Press the keys · Esc cancels",
+    "sample": {}
+  },
+  {
+    "key": "keys.dialog.pressKeys",
+    "file": "src/renderer/src/editor/ShortcutsDialog.tsx",
+    "line": 159,
+    "english": "Press keys…",
+    "sample": {}
+  },
+  {
+    "key": "keys.dialog.addLabel",
+    "file": "src/renderer/src/editor/ShortcutsDialog.tsx",
+    "line": 167,
+    "english": "Add shortcut for Undo",
+    "sample": {
+      "command": "Undo"
+    }
+  },
+  {
+    "key": "keys.dialog.full",
+    "file": "src/renderer/src/editor/ShortcutsDialog.tsx",
+    "line": 168,
+    "english": "At most 4 shortcuts per command",
+    "sample": {
+      "n": "4"
+    }
+  },
+  {
+    "key": "keys.dialog.addTitle",
+    "file": "src/renderer/src/editor/ShortcutsDialog.tsx",
+    "line": 168,
+    "english": "Add a shortcut",
+    "sample": {}
+  },
+  {
+    "key": "keys.dialog.resetLabel",
+    "file": "src/renderer/src/editor/ShortcutsDialog.tsx",
+    "line": 179,
+    "english": "Reset Undo",
+    "sample": {
+      "command": "Undo"
+    }
+  },
+  {
+    "key": "keys.dialog.resetTo",
+    "file": "src/renderer/src/editor/ShortcutsDialog.tsx",
+    "line": 180,
+    "english": "Reset to Ctrl + Shift + Z or Ctrl + Y",
+    "sample": {
+      "keys": "Ctrl + Shift + Z or Ctrl + Y"
+    }
+  },
+  {
+    "key": "keys.dialog.resetToNone",
+    "file": "src/renderer/src/editor/ShortcutsDialog.tsx",
+    "line": 180,
+    "english": "Reset to no shortcut",
+    "sample": {}
+  },
+  {
+    "key": "keys.dialog.isDefault",
+    "file": "src/renderer/src/editor/ShortcutsDialog.tsx",
+    "line": 180,
+    "english": "Default",
+    "sample": {}
+  },
+  {
+    "key": "keys.dialog.usedBy",
+    "file": "src/renderer/src/editor/ShortcutsDialog.tsx",
+    "line": 214,
+    "english": "is used by Undo.",
+    "sample": {
+      "command": "Undo"
+    }
+  },
+  {
+    "key": "keys.dialog.useHere",
+    "file": "src/renderer/src/editor/ShortcutsDialog.tsx",
+    "line": 227,
+    "english": "Use it here",
+    "sample": {}
+  },
+  {
+    "key": "keys.dialog.search",
+    "file": "src/renderer/src/editor/ShortcutsDialog.tsx",
+    "line": 280,
+    "english": "Search shortcuts",
+    "sample": {}
+  },
+  {
+    "key": "keys.dialog.searchPlaceholder",
+    "file": "src/renderer/src/editor/ShortcutsDialog.tsx",
+    "line": 281,
+    "english": "Search commands or keys",
+    "sample": {}
+  },
+  {
+    "key": "keys.dialog.noMatch",
+    "file": "src/renderer/src/editor/ShortcutsDialog.tsx",
+    "line": 313,
+    "english": "No commands match “«query»”.",
+    "sample": {
+      "query": "«query»"
+    }
+  },
+  {
+    "key": "keys.dialog.pauseHint",
+    "file": "src/renderer/src/editor/ShortcutsDialog.tsx",
+    "line": 318,
+    "english": "Shortcuts pause while you type in a text field. Esc, Enter and Tab keep their usual jobs.",
+    "sample": {}
+  },
+  {
+    "key": "keys.dialog.resetAllTitle",
+    "file": "src/renderer/src/editor/ShortcutsDialog.tsx",
+    "line": 319,
+    "english": "Every command back to its default shortcuts",
+    "sample": {}
+  },
+  {
+    "key": "keys.dialog.resetAll",
+    "file": "src/renderer/src/editor/ShortcutsDialog.tsx",
+    "line": 320,
+    "english": "Reset all",
+    "sample": {}
+  },
+  {
+    "key": "keys.dialog.takeBack",
+    "file": "src/renderer/src/editor/ShortcutsDialog.tsx",
+    "line": 227,
+    "english": [
+      "Take it back",
+      "Take it back",
+      "Take them back",
+      "Take them back"
+    ],
+    "sample": [
+      {
+        "count": 0
+      },
+      {
+        "count": 1
+      },
+      {
+        "count": 2
+      },
+      {
+        "count": 1000
+      }
+    ]
   }
 ]
