@@ -199,16 +199,6 @@ export function checkWordTimes(seg: RawSegment): RawSegment {
   return { ...seg, words: spreadWords(seg.text.split(/\s+/).filter(Boolean), seg.start, seg.end) }
 }
 
-/** What the Captions and Transcript tabs say about estimated word times (§3.5). */
-export const TIMING_COPY = {
-  formHint: (model: string): string =>
-    `OpenAI's ${model} gives text without timings. Flown estimates when each word is spoken from the sound. For exact word times, make captions On this PC.`,
-  useLocal: 'Use On this PC',
-  summary: 'Word times are estimated: karaoke and cuts by word may be a little early or late. Captions On this PC have exact word times.',
-  transcriptAll: 'Words with a dotted line have estimated times.',
-  wordTitle: 'Estimated time'
-} as const
-
 /** Share of a transcript's timed words that are estimated (0 without words). */
 export function estimatedShare(segments: readonly { words?: readonly { estimated?: true }[] }[]): number {
   let all = 0

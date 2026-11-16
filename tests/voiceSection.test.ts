@@ -1,7 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { createProject } from '../src/shared/engine/project'
-import { VOICE_WORDS } from '../src/renderer/src/editor/panels/voiceWords'
 import type { Project } from '../src/shared/types'
+// Renderer code: imported at run time so the Node typecheck of tests/ does not follow it.
+const VOICE_WORDS_FILE = '../src/renderer/src/editor/panels/voiceWords'
+const { VOICE_WORDS } = (await import(/* @vite-ignore */ VOICE_WORDS_FILE)) as { VOICE_WORDS: Record<'original' | 'cancel' | 'ready' | 'cleaning', string> }
 
 /*
  * Audio › Voice (editor/panels/VoiceSection.tsx, docs/design/clean-voice.md §5) without a DOM, in

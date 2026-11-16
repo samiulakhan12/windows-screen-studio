@@ -26,7 +26,7 @@ import { Section } from '../controls'
 import type { InspectorProps } from '../Inspector'
 import './transcript.css'
 import './speakers.css'
-import { TIMING_COPY } from '../../../../shared/captions/transcriptTiming'
+import { TIMING_COPY } from './timingWords'
 import { toggleEmphasis, withCaptionPlace } from '../../../../shared/captions/marks'
 import { captionsOf } from '../../../../shared/captions/settings'
 import { LEGACY_TILES } from '../../../../shared/captions/studioPresets'
@@ -222,7 +222,7 @@ function TranscriptEditor({
     const removed = removesEmphasis(spans, store.state.captionMarks, tone)
     const before = captionsOf(store.state)
     store.update((p) => toggleEmphasis(p, spans, tone))
-    const twinOf = !removed && !before.studio && store.state.captions?.studio ? (LEGACY_TILES.find((t) => t.preset === before.preset)?.name ?? 'Clean') : null
+    const twinOf = !removed && !before.studio && store.state.captions?.studio ? (LEGACY_TILES.find((t) => t.preset === before.preset)?.preset ?? 'clean') : null
     onNotice(emphasisNotice(span[1] - span[0] + 1, removed, twinOf))
   }
 

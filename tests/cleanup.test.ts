@@ -3,7 +3,7 @@
  * rules, the word list, bleeping, masks by time, and the AI fix's records.
  */
 import { describe, expect, it } from 'vitest'
-import { bleepGains, bleepKey, cleanupNotice, DEFAULT_CLEANUP, glossaryLine, glossaryTerms, GLOSSARY_BYTES, isSwearWord, maskBleeped, maskedSegments, maskWord, readCleanupChoices, readWordList, tidyCaptions, type CleanupChoices } from '../src/shared/captions/cleanup'
+import { bleepGains, bleepKey, DEFAULT_CLEANUP, glossaryLine, glossaryTerms, GLOSSARY_BYTES, isSwearWord, maskBleeped, maskedSegments, maskWord, readCleanupChoices, readWordList, tidyCaptions, type CleanupChoices } from '../src/shared/captions/cleanup'
 import { mergeWithNext, splitCaption } from '../src/shared/captions/edit'
 import { readBleeps } from '../src/shared/captions/studioData'
 import { languageSubtitleFile } from '../src/shared/captions/subtitles'
@@ -12,6 +12,9 @@ import { joinGains, soundGainAt, soundGains } from '../src/shared/audio/soundsEd
 import { anchorCutWords, cutFlags, cutWords, settleDeletedWords, transcriptWords } from '../src/shared/editor/transcript'
 import { DEFAULT_CAPTIONS } from '../src/shared/captions/settings'
 import type { Bleep, CaptionSegment, Project } from '../src/shared/types'
+// Renderer code: imported at run time so the Node typecheck of tests/ does not follow it.
+const CAPTION_WORDS = '../src/renderer/src/editor/captionWords'
+const { cleanupNotice } = (await import(/* @vite-ignore */ CAPTION_WORDS)) as { cleanupNotice: (r: { changed: number; bleeped: number; estimated?: number }) => string }
 
 const OFF: CleanupChoices = { caps: false, punct: false, digits: 'off', bleep: 'off', bleepSound: 'tone', ai: false }
 const project = (segments: CaptionSegment[], language = 'en', extra: Partial<Project> = {}): Project =>

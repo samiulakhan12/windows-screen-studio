@@ -1093,5 +1093,159 @@
   },
   "voice.replaced": {
     "description": "Clean voice was restarted for another strength while an export waited for it: shown after \"Your voice could not be cleaned.\" in the failed export."
+  },
+  "aiOutput.unusable": {
+    "description": "An AI text tool (clean-up, translation, chapters, titles, the Publish pack, names) got an answer it cannot use; {detail} is what was wrong, a short clause (errors.aiOutput.*)."
+  },
+  "aiOutput.noNames": {
+    "description": "A technical reason in the brackets of \"The AI's answer could not be used (…). Nothing was changed; try again.\": what was wrong with the AI service's answer, a clause starting lower case."
+  },
+  "aiOutput.noUsableNames": {
+    "description": "A technical reason in the brackets of \"The AI's answer could not be used (…). Nothing was changed; try again.\": what was wrong with the AI service's answer, a clause starting lower case."
+  },
+  "aiOutput.noCaptions": {
+    "description": "A technical reason in the brackets of \"The AI's answer could not be used (…). Nothing was changed; try again.\": what was wrong with the AI service's answer, a clause starting lower case."
+  },
+  "aiOutput.captionCount": {
+    "description": "A technical reason in the brackets of \"The AI's answer could not be used (…). Nothing was changed; try again.\": what was wrong with the AI service's answer, a clause starting lower case.",
+    "digits": "latn"
+  },
+  "aiOutput.captionMissing": {
+    "description": "A technical reason in the brackets of \"The AI's answer could not be used (…). Nothing was changed; try again.\": what was wrong with the AI service's answer, a clause starting lower case."
+  },
+  "aiOutput.captionTimes": {
+    "description": "A technical reason in the brackets of \"The AI's answer could not be used (…). Nothing was changed; try again.\": what was wrong with the AI service's answer, a clause starting lower case."
+  },
+  "aiOutput.captionNoText": {
+    "description": "A technical reason in the brackets of \"The AI's answer could not be used (…). Nothing was changed; try again.\": what was wrong with the AI service's answer, a clause starting lower case."
+  },
+  "aiOutput.captionEmpty": {
+    "description": "A technical reason in the brackets of \"The AI's answer could not be used (…). Nothing was changed; try again.\": what was wrong with the AI service's answer, a clause starting lower case."
+  },
+  "aiOutput.captionLonger": {
+    "description": "A technical reason in the brackets of \"The AI's answer could not be used (…). Nothing was changed; try again.\": what was wrong with the AI service's answer, a clause starting lower case."
+  },
+  "aiOutput.noChapters": {
+    "description": "A technical reason in the brackets of \"The AI's answer could not be used (…). Nothing was changed; try again.\": what was wrong with the AI service's answer, a clause starting lower case."
+  },
+  "aiOutput.noUsableChapters": {
+    "description": "A technical reason in the brackets of \"The AI's answer could not be used (…). Nothing was changed; try again.\": what was wrong with the AI service's answer, a clause starting lower case."
+  },
+  "aiOutput.noTitle": {
+    "description": "A technical reason in the brackets of \"The AI's answer could not be used (…). Nothing was changed; try again.\": what was wrong with the AI service's answer, a clause starting lower case."
+  },
+  "aiOutput.noSummary": {
+    "description": "A technical reason in the brackets of \"The AI's answer could not be used (…). Nothing was changed; try again.\": what was wrong with the AI service's answer, a clause starting lower case."
+  },
+  "aiOutput.emptyTitle": {
+    "description": "A technical reason in the brackets of \"The AI's answer could not be used (…). Nothing was changed; try again.\": what was wrong with the AI service's answer, a clause starting lower case."
+  },
+  "aiOutput.emptySummary": {
+    "description": "A technical reason in the brackets of \"The AI's answer could not be used (…). Nothing was changed; try again.\": what was wrong with the AI service's answer, a clause starting lower case."
+  },
+  "aiOutput.noMarks": {
+    "description": "A technical reason in the brackets of \"The AI's answer could not be used (…). Nothing was changed; try again.\": what was wrong with the AI service's answer, a clause starting lower case. \"marks\" are the emphasis, numbers, lists and quotes Make my captions great asked for."
+  },
+  "aiOutput.noAnswer": {
+    "description": "A technical reason in the brackets of \"The AI's answer could not be used (…). Nothing was changed; try again.\": what was wrong with the AI service's answer, a clause starting lower case."
+  },
+  "aiOutput.noDescription": {
+    "description": "A technical reason in the brackets of \"The AI's answer could not be used (…). Nothing was changed; try again.\": what was wrong with the AI service's answer, a clause starting lower case."
+  },
+  "aiOutput.emptyDescription": {
+    "description": "A technical reason in the brackets of \"The AI's answer could not be used (…). Nothing was changed; try again.\": what was wrong with the AI service's answer, a clause starting lower case."
+  },
+  "aiOutput.noPost": {
+    "description": "A technical reason in the brackets of \"The AI's answer could not be used (…). Nothing was changed; try again.\": what was wrong with the AI service's answer, a clause starting lower case."
+  },
+  "aiOutput.emptyPost": {
+    "description": "A technical reason in the brackets of \"The AI's answer could not be used (…). Nothing was changed; try again.\": what was wrong with the AI service's answer, a clause starting lower case."
+  },
+  "aiOutput.noArticle": {
+    "description": "A technical reason in the brackets of \"The AI's answer could not be used (…). Nothing was changed; try again.\": what was wrong with the AI service's answer, a clause starting lower case."
+  },
+  "aiOutput.noSteps": {
+    "description": "A technical reason in the brackets of \"The AI's answer could not be used (…). Nothing was changed; try again.\": what was wrong with the AI service's answer, a clause starting lower case."
+  },
+  "aiOutput.noReleaseNotes": {
+    "description": "A technical reason in the brackets of \"The AI's answer could not be used (…). Nothing was changed; try again.\": what was wrong with the AI service's answer, a clause starting lower case."
+  },
+  "aiOutput.noChanges": {
+    "description": "A technical reason in the brackets of \"The AI's answer could not be used (…). Nothing was changed; try again.\": what was wrong with the AI service's answer, a clause starting lower case."
+  },
+  "retired.text": {
+    "description": "Shown where a caption or text tool fails because the AI service retired the model. {maker} is the service's maker (OpenAI, Google, Anthropic), {model} the model's name and {day} the date (\"26 February 2027\").",
+    "user": [
+      "model"
+    ]
+  },
+  "retired.transcriptionUse": {
+    "description": "Shown where a caption or text tool fails because the AI service retired the model. {maker} is the service's maker (OpenAI, Google, Anthropic), {model} the model's name and {day} the date (\"26 February 2027\"). {next} is the model the list suggests instead.",
+    "user": [
+      "model",
+      "next"
+    ]
+  },
+  "retired.transcription": {
+    "description": "Shown where a caption or text tool fails because the AI service retired the model. {maker} is the service's maker (OpenAI, Google, Anthropic), {model} the model's name and {day} the date (\"26 February 2027\").",
+    "user": [
+      "model"
+    ]
+  },
+  "retiring.model": {
+    "description": "Settings › AI providers, under a provider: the model it uses is on the makers' retiring list. {maker} is OpenAI, Google or Anthropic, {model} the model's name and {day} the date (\"26 February 2027\").",
+    "user": [
+      "model"
+    ]
+  },
+  "retiring.transcription": {
+    "description": "Settings › AI providers, under a provider: the model it uses is on the makers' retiring list. {maker} is OpenAI, Google or Anthropic, {model} the model's name and {day} the date (\"26 February 2027\").",
+    "user": [
+      "model"
+    ]
+  },
+  "retired.modelNote": {
+    "description": "Settings › AI providers, under a provider: the model it uses is on the makers' retiring list. {maker} is OpenAI, Google or Anthropic, {model} the model's name and {day} the date (\"26 February 2027\").",
+    "user": [
+      "model"
+    ]
+  },
+  "retired.transcriptionNote": {
+    "description": "Settings › AI providers, under a provider: the model it uses is on the makers' retiring list. {maker} is OpenAI, Google or Anthropic, {model} the model's name and {day} the date (\"26 February 2027\").",
+    "user": [
+      "model"
+    ]
+  },
+  "baseUrl.empty": {
+    "description": "Settings › AI providers, the address field of a service added by address: why the address is refused."
+  },
+  "baseUrl.long": {
+    "description": "Settings › AI providers, the address field of a service added by address: why the address is refused.",
+    "digits": "latn"
+  },
+  "baseUrl.invalid": {
+    "description": "Settings › AI providers, the address field of a service added by address: why the address is refused.",
+    "dnt": [
+      "https://"
+    ]
+  },
+  "baseUrl.https": {
+    "description": "Settings › AI providers, the address field of a service added by address: why the address is refused.",
+    "dnt": [
+      "https://",
+      "http://"
+    ]
+  },
+  "baseUrl.credentials": {
+    "description": "Settings › AI providers, the address field of a service added by address: why the address is refused."
+  },
+  "baseUrl.query": {
+    "description": "Settings › AI providers, the address field of a service added by address: why the address is refused. The \"?\" starts the address's query part."
+  },
+  "baseUrl.fragment": {
+    "description": "Settings › AI providers, the address field of a service added by address: why the address is refused. The \"#\" starts the address's fragment."
+  },
+  "baseUrl.azure": {
+    "description": "Settings › AI providers, Azure OpenAI: why the resource name is refused."
   }
 }

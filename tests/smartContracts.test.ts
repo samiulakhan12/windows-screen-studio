@@ -291,9 +291,9 @@ const { COMMANDS } = await import('../src/shared/editor/commands')
 const { DEFAULT_KEYMAP, findConflicts } = await import('../src/shared/editor/shortcuts')
 // Renderer code: imported at run time so the Node typecheck of tests/ does not follow it.
 const TEXT_CHOICES = '../src/renderer/src/ai/textChoices'
-const { textChoicesOf, LOCAL_CHOICE_LABEL } = (await import(/* @vite-ignore */ TEXT_CHOICES)) as {
+const { textChoicesOf, localChoiceLabel } = (await import(/* @vite-ignore */ TEXT_CHOICES)) as {
   textChoicesOf(providers: readonly AiProviderInfo[], task: AiTextTask, localReady: boolean, opts?: { pictures?: boolean }): TextChoice[]
-  LOCAL_CHOICE_LABEL: string
+  localChoiceLabel: () => string
 }
 
 const found = (t: number, title: string): Chapter => ({ id: `f${t}`, t, title, auto: { by: 'find', from: ['page'], name: 'sentence' } })
@@ -394,7 +394,7 @@ describe('text choices name the place (test 103)', () => {
     const choices = textChoicesOf([openai, groq], 'title', true)
     expect(choices.map((c) => c.place)).toEqual(['OpenAI', 'api.groq.com', 'this PC'])
     expect(choices[1]).toMatchObject({ id: 'svc1', kind: 'openai', host: 'api.groq.com' })
-    expect(choices[2]).toMatchObject({ id: 'local', kind: 'local', label: LOCAL_CHOICE_LABEL, pictures: false })
+    expect(choices[2]).toMatchObject({ id: 'local', kind: 'local', label: localChoiceLabel(), pictures: false })
   })
   it("On this PC is never offered for 'chapters' or 'marks', nor when no model is ready; pictures only from services and providers", () => {
     expect(textChoicesOf([openai], 'chapters', true).map((c) => c.id)).toEqual(['ai1'])

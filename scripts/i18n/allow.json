@@ -473,6 +473,84 @@
       "kind": "copy",
       "pattern": "^(?:Cleaning stopped\\.|Cleaning was replaced by a newer request\\.)$",
       "reason": "VOICE_CANCELLED and VOICE_REPLACED are tokens main's clean rejects with and the editor compares as they are (voiceStems.ts); where a failure is shown, voiceCopy.ts's voiceReason says them through errors.voice.cancelled and errors.voice.replaced. The preload imports this file, so it cannot make text (test 86)."
+    },
+    {
+      "file": "src/shared/captions/studioPresets.ts",
+      "kind": "table",
+      "pattern": "^(?:Subtitle|Clean two-line subtitles in a crisp font|Karaoke Fill|Each word fills with colour as it is spoken|Glass Pill|Frosted glass behind each line|Highlighter|Key words marked like a highlighter pen|Editorial|Calm text with key words in a large serif|Typewriter|Letters type on as each word is spoken|Terminal|Code-editor colours on a dark panel|News Bar|Capitals on a red band, like a news ticker|Bold Pop|Big capitals, three words at a time; the spoken word turns green|Clean Short|Calm sentence-case words with a soft shadow|Text Box|Dark words on white boxes, like phone apps' own text|Light to Bold|Lowercase words turn bold as they are spoken|One Word|One big word at a time|Comic|Comic-book capitals with a thick outline|Stacked|Lines of different sizes stacked together|Highlight Box|The spoken word on a red box|Neon|The spoken word glows cyan|Outline|Hollow letters that fill as they are spoken|Handwritten|Handwriting that writes itself on|Speech Bubble|A speech bubble that points at your camera|Chat|Calls and interviews as chat bubbles: you on the right, others on the left|Cinema|Film-style subtitles in warm yellow, low on the frame|Gold|Gold serif letters for titles and launches|Circle|A hand-drawn circle around the key words|Gradient|Bold capitals in a pink to orange gradient|Stickers|Each word a tilted sticker; the spoken one turns yellow|Spotlight Word|Only the spoken word is lit|Retro Pixel|A pixel font with a colour split, for gaming|Capitals with depth, for announcements|Bubble|Rounded, soft and friendly|Clean|White text with a soft shadow|Boxed|Text on a dark box, like TV subtitles|Karaoke|Each word lights up as it is spoken|Minimal|Light, small text with a thin outline|Bold|Big outlined capitals; the spoken word lights up|Classic|Lime|Cyan|Sunset|Candy|Mono|Ink \\(dark on light\\)|Ocean)$",
+      "reason": "The built-in caption looks, Classic looks, colour themes and gradients as English data (main imports this file, test 86): the gallery shows captionTiles.ts presetName and classicName, StudioControls themeName and gradientName, and greatWords and transcriptMarks the same messages (captions.look.*, captions.studio.themeName.*, captions.studio.gradientName.*; tests/i18nCaptionWords.test.ts and tests/i18nS4bWordsB.test.ts hold each message equal to this English). duplicate.ts (group c) still names a look here at line 173."
+    },
+    {
+      "file": "src/shared/captions/captionTracks.ts",
+      "kind": "table",
+      "pattern": "^(?:English|Bengali|Hindi|Spanish|French|German|Portuguese|Italian|Dutch|Russian|Ukrainian|Polish|Turkish|Arabic|Urdu|Tamil|Telugu|Marathi|Chinese|Japanese|Korean|Indonesian|Vietnamese|Thai|Swedish|\\$\\{…\\} · spoken|Spoken captions|\\$\\{…\\} · translated \\$\\{…\\})$",
+      "reason": "English language names and the Languages rows as data (main imports this file, test 86): the names are what a translation request asks the AI for and what exported subtitle streams are called (section 9.7); the panels show captionWords.ts captionLanguageName and trackRowWords in the UI language, which give these words in English."
+    },
+    {
+      "file": "src/shared/captions/captionTracks.ts",
+      "kind": "copy",
+      "pattern": "^(?:\\$\\{…\\} \\$\\{…\\} not translated: \\$\\{…\\} in \\$\\{…\\}|\\$\\{…\\} changed since|Bleeped words are not masked in translations|\\$\\{…\\} \\$\\{…\\} not translated into \\$\\{…\\}: \\$\\{…\\} in \\$\\{…\\}\\.)$",
+      "reason": "The Languages rows' notes and the burned-in track's note as English data (main imports this file, test 86): the panels and the export dialog show captionWords.ts trackRowWords and burnedTrackWords, which give these words in English and the captions.languages.* messages in other languages."
+    },
+    {
+      "file": "src/shared/captions/subtitles.ts",
+      "kind": "table",
+      "pattern": "^(?:SubRip subtitles: YouTube, Vimeo, most video players and editors|WebVTT subtitles: web video players|Text|The transcript as plain text)$",
+      "reason": "The subtitle formats as English data (main imports this file, test 86): Export captions shows captionWords.ts subtitleFormats, whose captions.export.format.* messages give these words in English."
+    },
+    {
+      "file": "src/shared/captions/settings.ts",
+      "kind": "table",
+      "pattern": "^(?:Clean|White text with a soft shadow|Bold|Big outlined capitals; the spoken word lights up|Boxed|Text on a dark box, like TV subtitles|Karaoke|Each word lights up as it is spoken|Minimal|Light, small text with a thin outline)$",
+      "reason": "CAPTION_PRESETS: the five legacy looks as stored data; only their values are read (autoStyle.ts), and the gallery shows the Classic looks through captionTiles.ts classicName and classicDescription (captions.look.classic.*). Never shown from here."
+    },
+    {
+      "file": "src/shared/captions/autoStyle.ts",
+      "kind": "table",
+      "pattern": "^(?:Your brand kit's caption style|Bold Pop: you are on camera in a tall video|Clean Short: a screen recording for phones|Highlight Box: a square video for feeds|Clean Short: a square screen recording|Subtitle with names and a colour per speaker|Subtitle: clean subtitles for a long video)$",
+      "reason": "AUTO_STYLE_REASONS: the reason each Auto style rule returns with its pick, compared (the speakers rule) and tested, never shown: the gallery's Suggested badge says captionTiles.ts suggestedReason (captions.gallery.suggested.*)."
+    },
+    {
+      "file": "src/shared/captions/emojiList.ts",
+      "kind": "table",
+      "pattern": "^(?:Smileys & Emotion|People & Body|Animals & Nature|Food & Drink|Travel & Places|Activities|Objects|Symbols|Flags)$",
+      "reason": "Unicode's emoji group names, copied with the list from emoji-test.txt: data the list entries carry, never shown."
+    },
+    {
+      "file": "src/shared/captions/cleanup.ts",
+      "kind": "copy",
+      "text": "Glossary",
+      "reason": "The lead of the word list sent to the speech engine and to OpenAI in the transcription prompt (\"Glossary: Flown, Qbexel.\"): part of an AI prompt (section 9.7), never shown."
+    },
+    {
+      "file": "src/shared/captions/great.ts",
+      "kind": "copy",
+      "text": "Brand",
+      "reason": "The name written into the project with the automatic style (captionAuto.style.name, read back by studioData.ts and shown by the review rows, group c) when the brand kit's look was used: data like a look's name, made in the plan that main also imports. The result notice says it through greatWords.ts (captions.studio.brand)."
+    },
+    {
+      "file": "src/shared/captions/speakers.ts",
+      "kind": "table",
+      "text": "You",
+      "reason": "STEM_SPEAKERS.mic: the speaker name written into the captions when speakers come from the microphone and system stems (the user can rename it): data in the project and in exported subtitles, the same in every UI language (section 9.7). The sentences around it are captionWords.ts speakerCopy."
+    },
+    {
+      "file": "src/shared/captions/speakers.ts",
+      "kind": "copy",
+      "pattern": "^Speaker \\$\\{…\\}$",
+      "reason": "A new speaker's default label written into the captions (\"Speaker 3\", after the transcription's own \"Speaker 1\" labels; the user can rename it): data in the project and in exported subtitles, the same in every UI language (section 9.7)."
+    },
+    {
+      "file": "src/shared/captions/transcriptParse.ts",
+      "kind": "copy",
+      "pattern": "^Speaker \\$\\{…\\}$",
+      "reason": "The speaker labels a transcription answer is normalised to (\"Speaker 1\", as the AI is asked to write them): data written into the captions and exported subtitles, the same in every UI language (section 9.7)."
+    },
+    {
+      "file": "src/shared/ai/presets.ts",
+      "kind": "table",
+      "pattern": "^(?:Ollama on this PC|LM Studio on this PC|Other address)$",
+      "reason": "SERVICE_PRESETS' labels as English data (main imports this file, test 86): main names a new service by them when the user types no name, and serviceName gives the English place; the renderer shows ProviderForm.tsx presetLabel and textChoices.ts placeOf, which say them through settings.provider.preset.* (English the same)."
     }
   ]
 }

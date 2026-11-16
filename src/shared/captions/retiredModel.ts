@@ -6,6 +6,7 @@
 import { dayText, type ModelList, type RetiringModel } from '../ai/modelList'
 import type { AiProviderKind } from '../types'
 import type { AiFailureKind } from './transcriptErrors'
+import { t } from '../i18n/t'
 
 const MAKERS: Record<AiProviderKind, string> = { openai: 'OpenAI', gemini: 'Google', anthropic: 'Anthropic' }
 
@@ -39,10 +40,9 @@ export function retiredMessage(
   const retired = (name: string): RetiringModel | undefined => list.retiring.find((x) => x.provider === kind && x.model === name && x.on <= today)
   const r = retired(model)
   if (!r) return null
-  const head = `${MAKERS[kind]} retired ${model} on ${dayText(r.on)}.`
-  if (use === 'text') return `${head} Choose another model in Settings › AI providers.`
+  const said = { maker: MAKERS[kind], model, day: dayText(r.on) }
+  if (use === 'text') return t('errors.retired.text', said)
   // Never the list's suggestion when it is retired too (whisper-1 goes with the gpt-4o models).
   const next = list.providers[kind]?.transcriptionModel
-  const suggestion = next && !retired(next) ? `Choose ${next} as the transcription model in Settings › AI providers` : 'Choose another transcription model in Settings › AI providers'
-  return `${head} ${suggestion}, or make captions On this PC.`
+  return next && !retired(next) ? t('errors.retired.transcriptionUse', { ...said, next }) : t('errors.retired.transcription', said)
 }

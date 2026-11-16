@@ -445,7 +445,7 @@ export function LanguagesSection({ project }: { project: Project }): JSX.Element
                 </button>
               ))}
             </div>
-            {chosenVia && <p className="hint">{sentHint(chosenVia, "The captions' text", '; their timing stays')}</p>}
+            {chosenVia && <p className="hint">{sentHint(chosenVia, 'captionText')}</p>}
             <div className="row start">
               <button
                 ref={translateButton}

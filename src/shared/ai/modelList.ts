@@ -9,6 +9,7 @@
 import { AI_LIMITS, AI_PROVIDER_KINDS } from '../api/ai'
 import type { AiProviderKind } from '../types'
 import { isNewer, isVersion } from '../updates/updates'
+import { formatLocale, t, uiLanguage } from '../i18n/t'
 
 /** The list on GitHub, on the default branch (raw.githubusercontent.com resolves HEAD). */
 export const MODEL_LIST_URL = 'https://raw.githubusercontent.com/samiulakhan12/windows-screen-studio/HEAD/resources/ai-models.json'
@@ -120,12 +121,12 @@ export function parseModelList(raw: unknown, appVersion?: string): ModelList | n
 export const newerList = (a: ModelList, b: ModelList | null, bWinsTie = false): ModelList =>
   b && (b.updated > a.updated || (bWinsTie && b.updated === a.updated)) ? b : a
 
-const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
-
-/** "26 February 2027". */
+/** "26 February 2027": the day, the month's full name and the year, in the UI language (English as before). */
 export function dayText(date: string): string {
   const m = DATE_RE.exec(date)
-  return m ? `${Number(m[3])} ${MONTHS[Number(m[2]) - 1]} ${m[1]}` : date
+  if (!m) return date
+  const locale = uiLanguage() === 'en' ? 'en-GB' : formatLocale()
+  return new Intl.DateTimeFormat(locale, { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' }).format(Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3])))
 }
 
 const MAKERS: Record<AiProviderKind, string> = { openai: 'OpenAI', gemini: 'Google', anthropic: 'Anthropic' }
@@ -134,17 +135,18 @@ const MAKERS: Record<AiProviderKind, string> = { openai: 'OpenAI', gemini: 'Goog
 export function retiringNotes(list: ModelList, p: { kind: AiProviderKind; model: string; transcriptionModel?: string }, today: string): string[] {
   const maker = MAKERS[p.kind]
   const notes: string[] = []
-  const uses: { model: string | undefined; what: string }[] = [
-    { model: p.model, what: 'model' },
-    { model: p.transcriptionModel, what: 'transcription model' }
+  const uses: { model: string | undefined; transcription: boolean }[] = [
+    { model: p.model, transcription: false },
+    { model: p.transcriptionModel, transcription: true }
   ]
-  for (const { model, what } of uses) {
+  for (const { model, transcription } of uses) {
     const r = model ? list.retiring.find((x) => x.provider === p.kind && x.model === model) : undefined
     if (!r) continue
+    const said = { maker, model: r.model, day: dayText(r.on) }
     notes.push(
       r.on > today
-        ? `${maker} retires ${r.model} on ${dayText(r.on)}. Choose another ${what} before then.`
-        : `${maker} retired ${r.model} on ${dayText(r.on)}. Choose another ${what}.`
+        ? t(transcription ? 'errors.retiring.transcription' : 'errors.retiring.model', said)
+        : t(transcription ? 'errors.retired.transcriptionNote' : 'errors.retired.modelNote', said)
     )
   }
   return notes

@@ -905,5 +905,1100 @@
     "line": 28,
     "english": "Cleaning was replaced by a newer request.",
     "sample": {}
+  },
+  {
+    "key": "captions.emphasis.removedFrom",
+    "file": "src/renderer/src/editor/panels/transcriptMarks.ts",
+    "line": 83,
+    "english": [
+      "Removed emphasis from 0 words",
+      "Removed emphasis from 1 word",
+      "Removed emphasis from 2 words",
+      "Removed emphasis from 1000 words"
+    ],
+    "sample": [
+      {
+        "count": 0,
+        "n": "0"
+      },
+      {
+        "count": 1,
+        "n": "1"
+      },
+      {
+        "count": 2,
+        "n": "2"
+      },
+      {
+        "count": 1000,
+        "n": "1000"
+      }
+    ]
+  },
+  {
+    "key": "captions.emphasis.added",
+    "file": "src/renderer/src/editor/panels/transcriptMarks.ts",
+    "line": 84,
+    "english": [
+      "Emphasised 0 words",
+      "Emphasised 1 word",
+      "Emphasised 2 words",
+      "Emphasised 1000 words"
+    ],
+    "sample": [
+      {
+        "count": 0,
+        "n": "0"
+      },
+      {
+        "count": 1,
+        "n": "1"
+      },
+      {
+        "count": 2,
+        "n": "2"
+      },
+      {
+        "count": 1000,
+        "n": "1000"
+      }
+    ]
+  },
+  {
+    "key": "captions.emphasis.addedOwnVersion",
+    "file": "src/renderer/src/editor/panels/transcriptMarks.ts",
+    "line": 85,
+    "english": [
+      "Emphasised 0 words. Your captions are now your own version of Clean, which can show emphasis.",
+      "Emphasised 1 word. Your captions are now your own version of Clean, which can show emphasis.",
+      "Emphasised 2 words. Your captions are now your own version of Clean, which can show emphasis.",
+      "Emphasised 1000 words. Your captions are now your own version of Clean, which can show emphasis."
+    ],
+    "sample": [
+      {
+        "count": 0,
+        "n": "0",
+        "look": "Clean"
+      },
+      {
+        "count": 1,
+        "n": "1",
+        "look": "Clean"
+      },
+      {
+        "count": 2,
+        "n": "2",
+        "look": "Clean"
+      },
+      {
+        "count": 1000,
+        "n": "1000",
+        "look": "Clean"
+      }
+    ]
+  },
+  {
+    "key": "captions.timing.formHint",
+    "file": "src/shared/captions/transcriptTiming.ts",
+    "line": 205,
+    "english": "OpenAI's gpt-4o-transcribe gives text without timings. Flown estimates when each word is spoken from the sound. For exact word times, make captions On this PC.",
+    "sample": {
+      "model": "gpt-4o-transcribe"
+    }
+  },
+  {
+    "key": "captions.timing.useLocal",
+    "file": "src/shared/captions/transcriptTiming.ts",
+    "line": 206,
+    "english": "Use On this PC",
+    "sample": {}
+  },
+  {
+    "key": "captions.timing.summary",
+    "file": "src/shared/captions/transcriptTiming.ts",
+    "line": 207,
+    "english": "Word times are estimated: karaoke and cuts by word may be a little early or late. Captions On this PC have exact word times.",
+    "sample": {}
+  },
+  {
+    "key": "captions.timing.transcriptAll",
+    "file": "src/shared/captions/transcriptTiming.ts",
+    "line": 208,
+    "english": "Words with a dotted line have estimated times.",
+    "sample": {}
+  },
+  {
+    "key": "captions.timing.wordTitle",
+    "file": "src/shared/captions/transcriptTiming.ts",
+    "line": 209,
+    "english": "Estimated time",
+    "sample": {}
+  },
+  {
+    "key": "captions.languages.burnedUntranslated",
+    "file": "src/shared/captions/captionTracks.ts",
+    "line": 220,
+    "english": [
+      "0 captions are not translated into Bengali: they show in English.",
+      "1 caption is not translated into Bengali: it shows in English.",
+      "2 captions are not translated into Bengali: they show in English.",
+      "1000 captions are not translated into Bengali: they show in English."
+    ],
+    "sample": [
+      {
+        "count": 0,
+        "n": "0",
+        "language": "Bengali",
+        "spoken": "English"
+      },
+      {
+        "count": 1,
+        "n": "1",
+        "language": "Bengali",
+        "spoken": "English"
+      },
+      {
+        "count": 2,
+        "n": "2",
+        "language": "Bengali",
+        "spoken": "English"
+      },
+      {
+        "count": 1000,
+        "n": "1000",
+        "language": "Bengali",
+        "spoken": "English"
+      }
+    ]
+  },
+  {
+    "key": "captions.great.done.emphasised",
+    "file": "src/shared/captions/great.ts",
+    "line": 313,
+    "english": [
+      "0 words emphasised",
+      "1 word emphasised",
+      "2 words emphasised",
+      "1000 words emphasised"
+    ],
+    "sample": [
+      {
+        "count": 0,
+        "n": "0"
+      },
+      {
+        "count": 1,
+        "n": "1"
+      },
+      {
+        "count": 2,
+        "n": "2"
+      },
+      {
+        "count": 1000,
+        "n": "1000"
+      }
+    ]
+  },
+  {
+    "key": "captions.great.done.emoji",
+    "file": "src/shared/captions/great.ts",
+    "line": 314,
+    "english": [
+      "0 emoji",
+      "1 emoji",
+      "2 emoji",
+      "1000 emoji"
+    ],
+    "sample": [
+      {
+        "count": 0,
+        "n": "0"
+      },
+      {
+        "count": 1,
+        "n": "1"
+      },
+      {
+        "count": 2,
+        "n": "2"
+      },
+      {
+        "count": 1000,
+        "n": "1000"
+      }
+    ]
+  },
+  {
+    "key": "captions.great.done.keywords",
+    "file": "src/shared/captions/great.ts",
+    "line": 315,
+    "english": [
+      "0 pop-ups",
+      "1 pop-up",
+      "2 pop-ups",
+      "1000 pop-ups"
+    ],
+    "sample": [
+      {
+        "count": 0,
+        "n": "0"
+      },
+      {
+        "count": 1,
+        "n": "1"
+      },
+      {
+        "count": 2,
+        "n": "2"
+      },
+      {
+        "count": 1000,
+        "n": "1000"
+      }
+    ]
+  },
+  {
+    "key": "captions.great.done.counters",
+    "file": "src/shared/captions/great.ts",
+    "line": 316,
+    "english": [
+      "0 counters",
+      "1 counter",
+      "2 counters",
+      "1000 counters"
+    ],
+    "sample": [
+      {
+        "count": 0,
+        "n": "0"
+      },
+      {
+        "count": 1,
+        "n": "1"
+      },
+      {
+        "count": 2,
+        "n": "2"
+      },
+      {
+        "count": 1000,
+        "n": "1000"
+      }
+    ]
+  },
+  {
+    "key": "captions.great.done.lists",
+    "file": "src/shared/captions/great.ts",
+    "line": 317,
+    "english": [
+      "0 lists",
+      "1 list",
+      "2 lists",
+      "1000 lists"
+    ],
+    "sample": [
+      {
+        "count": 0,
+        "n": "0"
+      },
+      {
+        "count": 1,
+        "n": "1"
+      },
+      {
+        "count": 2,
+        "n": "2"
+      },
+      {
+        "count": 1000,
+        "n": "1000"
+      }
+    ]
+  },
+  {
+    "key": "captions.great.done.lowerThirds",
+    "file": "src/shared/captions/great.ts",
+    "line": 318,
+    "english": [
+      "0 lower thirds",
+      "1 lower third",
+      "2 lower thirds",
+      "1000 lower thirds"
+    ],
+    "sample": [
+      {
+        "count": 0,
+        "n": "0"
+      },
+      {
+        "count": 1,
+        "n": "1"
+      },
+      {
+        "count": 2,
+        "n": "2"
+      },
+      {
+        "count": 1000,
+        "n": "1000"
+      }
+    ]
+  },
+  {
+    "key": "captions.great.done.chapters",
+    "file": "src/shared/captions/great.ts",
+    "line": 319,
+    "english": [
+      "0 chapter titles",
+      "1 chapter title",
+      "2 chapter titles",
+      "1000 chapter titles"
+    ],
+    "sample": [
+      {
+        "count": 0,
+        "n": "0"
+      },
+      {
+        "count": 1,
+        "n": "1"
+      },
+      {
+        "count": 2,
+        "n": "2"
+      },
+      {
+        "count": 1000,
+        "n": "1000"
+      }
+    ]
+  },
+  {
+    "key": "captions.great.done.quotes",
+    "file": "src/shared/captions/great.ts",
+    "line": 320,
+    "english": [
+      "0 quote cards",
+      "1 quote card",
+      "2 quote cards",
+      "1000 quote cards"
+    ],
+    "sample": [
+      {
+        "count": 0,
+        "n": "0"
+      },
+      {
+        "count": 1,
+        "n": "1"
+      },
+      {
+        "count": 2,
+        "n": "2"
+      },
+      {
+        "count": 1000,
+        "n": "1000"
+      }
+    ]
+  },
+  {
+    "key": "captions.great.done.tidied",
+    "file": "src/shared/captions/great.ts",
+    "line": 321,
+    "english": [
+      "0 captions tidied",
+      "1 caption tidied",
+      "2 captions tidied",
+      "1000 captions tidied"
+    ],
+    "sample": [
+      {
+        "count": 0,
+        "n": "0"
+      },
+      {
+        "count": 1,
+        "n": "1"
+      },
+      {
+        "count": 2,
+        "n": "2"
+      },
+      {
+        "count": 1000,
+        "n": "1000"
+      }
+    ]
+  },
+  {
+    "key": "captions.great.done.bleeped",
+    "file": "src/shared/captions/great.ts",
+    "line": 322,
+    "english": [
+      "0 words bleeped",
+      "1 word bleeped",
+      "2 words bleeped",
+      "1000 words bleeped"
+    ],
+    "sample": [
+      {
+        "count": 0,
+        "n": "0"
+      },
+      {
+        "count": 1,
+        "n": "1"
+      },
+      {
+        "count": 2,
+        "n": "2"
+      },
+      {
+        "count": 1000,
+        "n": "1000"
+      }
+    ]
+  },
+  {
+    "key": "captions.great.done.summary",
+    "file": "src/shared/captions/great.ts",
+    "line": 323,
+    "english": "Captions: Bold Pop, 38 words emphasised · Ctrl + Z to undo",
+    "sample": {
+      "parts": "Bold Pop, 38 words emphasised",
+      "review": "",
+      "undo": " · Ctrl + Z to undo"
+    }
+  },
+  {
+    "key": "captions.great.done.summaryOffline",
+    "file": "src/shared/captions/great.ts",
+    "line": 323,
+    "english": "Captions: Bold Pop, 38 words emphasised. The AI provider could not be reached, so Flown picked on this PC.",
+    "sample": {
+      "parts": "Bold Pop, 38 words emphasised",
+      "review": "",
+      "undo": ""
+    }
+  },
+  {
+    "key": "captions.great.done.nothing",
+    "file": "src/shared/captions/great.ts",
+    "line": 322,
+    "english": "Your captions already have all of this.",
+    "sample": {}
+  },
+  {
+    "key": "captions.great.done.nothingOffline",
+    "file": "src/shared/captions/great.ts",
+    "line": 321,
+    "english": "Your captions already have all of this. The AI provider could not be reached, so Flown picked on this PC.",
+    "sample": {}
+  },
+  {
+    "key": "captions.great.hint.style",
+    "file": "src/shared/captions/great.ts",
+    "line": 330,
+    "english": "a style for this video's shape",
+    "sample": {}
+  },
+  {
+    "key": "captions.great.hint.emphasis",
+    "file": "src/shared/captions/great.ts",
+    "line": 331,
+    "english": "key words",
+    "sample": {}
+  },
+  {
+    "key": "captions.great.hint.emoji",
+    "file": "src/shared/captions/great.ts",
+    "line": 332,
+    "english": "emoji",
+    "sample": {}
+  },
+  {
+    "key": "captions.great.hint.keywords",
+    "file": "src/shared/captions/great.ts",
+    "line": 333,
+    "english": "keyword pop-ups",
+    "sample": {}
+  },
+  {
+    "key": "captions.great.hint.counters",
+    "file": "src/shared/captions/great.ts",
+    "line": 334,
+    "english": "counters",
+    "sample": {}
+  },
+  {
+    "key": "captions.great.hint.lists",
+    "file": "src/shared/captions/great.ts",
+    "line": 335,
+    "english": "list cards",
+    "sample": {}
+  },
+  {
+    "key": "captions.great.hint.speakers",
+    "file": "src/shared/captions/great.ts",
+    "line": 336,
+    "english": "speaker names",
+    "sample": {}
+  },
+  {
+    "key": "captions.great.hint.chapters",
+    "file": "src/shared/captions/great.ts",
+    "line": 337,
+    "english": "chapter titles",
+    "sample": {}
+  },
+  {
+    "key": "captions.great.hint.quotes",
+    "file": "src/shared/captions/great.ts",
+    "line": 338,
+    "english": "quote cards",
+    "sample": {}
+  },
+  {
+    "key": "captions.great.hint.tidiesOnly",
+    "file": "src/shared/captions/great.ts",
+    "line": 339,
+    "english": "Tidies the text.",
+    "sample": {}
+  },
+  {
+    "key": "captions.great.hint.none",
+    "file": "src/shared/captions/great.ts",
+    "line": 339,
+    "english": "Choose what it does in its options.",
+    "sample": {}
+  },
+  {
+    "key": "captions.great.hint.adds",
+    "file": "src/shared/captions/great.ts",
+    "line": 341,
+    "english": "Adds key words, emoji and counters.",
+    "sample": {
+      "list": "key words, emoji and counters"
+    }
+  },
+  {
+    "key": "captions.great.hint.addsAndTidies",
+    "file": "src/shared/captions/great.ts",
+    "line": 341,
+    "english": "Adds key words and emoji, and tidies the text.",
+    "sample": {
+      "list": "key words and emoji"
+    }
+  },
+  {
+    "key": "captions.cleanup.notice.tidied",
+    "file": "src/shared/captions/cleanup.ts",
+    "line": 1127,
+    "english": [
+      "Tidied 0 captions",
+      "Tidied 1 caption",
+      "Tidied 2 captions",
+      "Tidied 1000 captions"
+    ],
+    "sample": [
+      {
+        "count": 0,
+        "n": "0"
+      },
+      {
+        "count": 1,
+        "n": "1"
+      },
+      {
+        "count": 2,
+        "n": "2"
+      },
+      {
+        "count": 1000,
+        "n": "1000"
+      }
+    ]
+  },
+  {
+    "key": "captions.cleanup.notice.bleeped",
+    "file": "src/shared/captions/cleanup.ts",
+    "line": 1128,
+    "english": [
+      "Bleeped 0 words",
+      "Bleeped 1 word",
+      "Bleeped 2 words",
+      "Bleeped 1000 words"
+    ],
+    "sample": [
+      {
+        "count": 0,
+        "n": "0"
+      },
+      {
+        "count": 1,
+        "n": "1"
+      },
+      {
+        "count": 2,
+        "n": "2"
+      },
+      {
+        "count": 1000,
+        "n": "1000"
+      }
+    ]
+  },
+  {
+    "key": "captions.cleanup.notice.tidiedBleeped",
+    "file": "src/shared/captions/cleanup.ts",
+    "line": 1127,
+    "english": "Tidied 12 captions, bleeped 2 words",
+    "sample": {
+      "tidied": 12,
+      "t": "12",
+      "bleeped": 2,
+      "b": "2"
+    }
+  },
+  {
+    "key": "captions.cleanup.notice.tidiedBleeped",
+    "file": "src/shared/captions/cleanup.ts",
+    "line": 1127,
+    "english": "Tidied 1 caption, bleeped 1 word",
+    "sample": {
+      "tidied": 1,
+      "t": "1",
+      "bleeped": 1,
+      "b": "1"
+    }
+  },
+  {
+    "key": "captions.cleanup.notice.nothing",
+    "file": "src/shared/captions/cleanup.ts",
+    "line": 1129,
+    "english": "Nothing to tidy",
+    "sample": {}
+  },
+  {
+    "key": "captions.cleanup.notice.estimated",
+    "file": "src/shared/captions/cleanup.ts",
+    "line": 1130,
+    "english": "Bleeped 1 word. Some bleeped words have estimated times, so a little more is bleeped",
+    "sample": {
+      "notice": "Bleeped 1 word"
+    }
+  },
+  {
+    "key": "errors.aiOutput.unusable",
+    "file": "src/shared/captions/transcriptText.ts",
+    "line": 143,
+    "english": "The AI's answer could not be used (no list of captions). Nothing was changed; try again.",
+    "sample": {
+      "detail": "no list of captions"
+    }
+  },
+  {
+    "key": "errors.aiOutput.noNames",
+    "file": "src/shared/captions/transcriptText.ts",
+    "line": 339,
+    "english": "no list of names",
+    "sample": {}
+  },
+  {
+    "key": "errors.aiOutput.noUsableNames",
+    "file": "src/shared/captions/transcriptText.ts",
+    "line": 353,
+    "english": "no usable names",
+    "sample": {}
+  },
+  {
+    "key": "errors.aiOutput.noCaptions",
+    "file": "src/shared/captions/transcriptText.ts",
+    "line": 449,
+    "english": "no list of captions",
+    "sample": {}
+  },
+  {
+    "key": "errors.aiOutput.captionCount",
+    "file": "src/shared/captions/transcriptText.ts",
+    "line": 451,
+    "english": "3 captions came back for 4",
+    "sample": {
+      "got": "3",
+      "sent": "4"
+    }
+  },
+  {
+    "key": "errors.aiOutput.captionMissing",
+    "file": "src/shared/captions/transcriptText.ts",
+    "line": 454,
+    "english": "caption s12 is missing or out of order",
+    "sample": {
+      "id": "s12"
+    }
+  },
+  {
+    "key": "errors.aiOutput.captionTimes",
+    "file": "src/shared/captions/transcriptText.ts",
+    "line": 457,
+    "english": "the times of caption s12 changed",
+    "sample": {
+      "id": "s12"
+    }
+  },
+  {
+    "key": "errors.aiOutput.captionNoText",
+    "file": "src/shared/captions/transcriptText.ts",
+    "line": 460,
+    "english": "caption s12 has no text",
+    "sample": {
+      "id": "s12"
+    }
+  },
+  {
+    "key": "errors.aiOutput.captionEmpty",
+    "file": "src/shared/captions/transcriptText.ts",
+    "line": 462,
+    "english": "caption s12 came back empty",
+    "sample": {
+      "id": "s12"
+    }
+  },
+  {
+    "key": "errors.aiOutput.captionLonger",
+    "file": "src/shared/captions/transcriptText.ts",
+    "line": 463,
+    "english": "caption s12 came back far longer",
+    "sample": {
+      "id": "s12"
+    }
+  },
+  {
+    "key": "errors.aiOutput.noChapters",
+    "file": "src/shared/captions/transcriptText.ts",
+    "line": 476,
+    "english": "no list of chapters",
+    "sample": {}
+  },
+  {
+    "key": "errors.aiOutput.noUsableChapters",
+    "file": "src/shared/captions/transcriptText.ts",
+    "line": 489,
+    "english": "no usable chapters",
+    "sample": {}
+  },
+  {
+    "key": "errors.aiOutput.noTitle",
+    "file": "src/shared/captions/transcriptText.ts",
+    "line": 500,
+    "english": "no title",
+    "sample": {}
+  },
+  {
+    "key": "errors.aiOutput.noSummary",
+    "file": "src/shared/captions/transcriptText.ts",
+    "line": 500,
+    "english": "no summary",
+    "sample": {}
+  },
+  {
+    "key": "errors.aiOutput.emptyTitle",
+    "file": "src/shared/captions/transcriptText.ts",
+    "line": 505,
+    "english": "an empty title",
+    "sample": {}
+  },
+  {
+    "key": "errors.aiOutput.emptySummary",
+    "file": "src/shared/captions/transcriptText.ts",
+    "line": 505,
+    "english": "an empty summary",
+    "sample": {}
+  },
+  {
+    "key": "errors.aiOutput.noMarks",
+    "file": "src/shared/captions/transcriptText.ts",
+    "line": 598,
+    "english": "no marks",
+    "sample": {}
+  },
+  {
+    "key": "errors.aiOutput.noAnswer",
+    "file": "src/shared/publish/prompts.ts",
+    "line": 272,
+    "english": "no answer",
+    "sample": {}
+  },
+  {
+    "key": "errors.aiOutput.noDescription",
+    "file": "src/shared/publish/prompts.ts",
+    "line": 276,
+    "english": "no description or tags",
+    "sample": {}
+  },
+  {
+    "key": "errors.aiOutput.emptyDescription",
+    "file": "src/shared/publish/prompts.ts",
+    "line": 278,
+    "english": "an empty description",
+    "sample": {}
+  },
+  {
+    "key": "errors.aiOutput.noPost",
+    "file": "src/shared/publish/prompts.ts",
+    "line": 283,
+    "english": "no post",
+    "sample": {}
+  },
+  {
+    "key": "errors.aiOutput.emptyPost",
+    "file": "src/shared/publish/prompts.ts",
+    "line": 285,
+    "english": "an empty post",
+    "sample": {}
+  },
+  {
+    "key": "errors.aiOutput.noArticle",
+    "file": "src/shared/publish/prompts.ts",
+    "line": 289,
+    "english": "no article",
+    "sample": {}
+  },
+  {
+    "key": "errors.aiOutput.noSteps",
+    "file": "src/shared/publish/prompts.ts",
+    "line": 300,
+    "english": "no steps",
+    "sample": {}
+  },
+  {
+    "key": "errors.aiOutput.noReleaseNotes",
+    "file": "src/shared/publish/prompts.ts",
+    "line": 306,
+    "english": "no release notes",
+    "sample": {}
+  },
+  {
+    "key": "errors.aiOutput.noChanges",
+    "file": "src/shared/publish/prompts.ts",
+    "line": 316,
+    "english": "no changes listed",
+    "sample": {}
+  },
+  {
+    "key": "errors.retired.text",
+    "file": "src/shared/captions/retiredModel.ts",
+    "line": 43,
+    "english": "OpenAI retired gpt-4o on 26 February 2027. Choose another model in Settings › AI providers.",
+    "sample": {
+      "maker": "OpenAI",
+      "model": "gpt-4o",
+      "day": "26 February 2027"
+    }
+  },
+  {
+    "key": "errors.retired.transcriptionUse",
+    "file": "src/shared/captions/retiredModel.ts",
+    "line": 47,
+    "english": "OpenAI retired whisper-1 on 26 February 2027. Choose gpt-transcribe as the transcription model in Settings › AI providers, or make captions On this PC.",
+    "sample": {
+      "maker": "OpenAI",
+      "model": "whisper-1",
+      "day": "26 February 2027",
+      "next": "gpt-transcribe"
+    }
+  },
+  {
+    "key": "errors.retired.transcription",
+    "file": "src/shared/captions/retiredModel.ts",
+    "line": 47,
+    "english": "OpenAI retired whisper-1 on 26 February 2027. Choose another transcription model in Settings › AI providers, or make captions On this PC.",
+    "sample": {
+      "maker": "OpenAI",
+      "model": "whisper-1",
+      "day": "26 February 2027"
+    }
+  },
+  {
+    "key": "errors.retiring.model",
+    "file": "src/shared/ai/modelList.ts",
+    "line": 146,
+    "english": "Google retires gemini-2.0-flash on 26 February 2027. Choose another model before then.",
+    "sample": {
+      "maker": "Google",
+      "model": "gemini-2.0-flash",
+      "day": "26 February 2027"
+    }
+  },
+  {
+    "key": "errors.retiring.transcription",
+    "file": "src/shared/ai/modelList.ts",
+    "line": 146,
+    "english": "OpenAI retires whisper-1 on 26 February 2027. Choose another transcription model before then.",
+    "sample": {
+      "maker": "OpenAI",
+      "model": "whisper-1",
+      "day": "26 February 2027"
+    }
+  },
+  {
+    "key": "errors.retired.modelNote",
+    "file": "src/shared/ai/modelList.ts",
+    "line": 147,
+    "english": "Google retired gemini-2.0-flash on 26 February 2027. Choose another model.",
+    "sample": {
+      "maker": "Google",
+      "model": "gemini-2.0-flash",
+      "day": "26 February 2027"
+    }
+  },
+  {
+    "key": "errors.retired.transcriptionNote",
+    "file": "src/shared/ai/modelList.ts",
+    "line": 147,
+    "english": "OpenAI retired whisper-1 on 26 February 2027. Choose another transcription model.",
+    "sample": {
+      "maker": "OpenAI",
+      "model": "whisper-1",
+      "day": "26 February 2027"
+    }
+  },
+  {
+    "key": "errors.baseUrl.empty",
+    "file": "src/shared/ai/baseUrl.ts",
+    "line": 18,
+    "english": "Enter the address of the service.",
+    "sample": {}
+  },
+  {
+    "key": "errors.baseUrl.long",
+    "file": "src/shared/ai/baseUrl.ts",
+    "line": 19,
+    "english": "The address is too long (at most 300 characters).",
+    "sample": {
+      "max": "300"
+    }
+  },
+  {
+    "key": "errors.baseUrl.invalid",
+    "file": "src/shared/ai/baseUrl.ts",
+    "line": 20,
+    "english": "This is not a web address. It starts with https://.",
+    "sample": {}
+  },
+  {
+    "key": "errors.baseUrl.https",
+    "file": "src/shared/ai/baseUrl.ts",
+    "line": 21,
+    "english": "Use an https:// address. Plain http:// is only for a service on this PC.",
+    "sample": {}
+  },
+  {
+    "key": "errors.baseUrl.credentials",
+    "file": "src/shared/ai/baseUrl.ts",
+    "line": 22,
+    "english": "Remove the name and password from the address.",
+    "sample": {}
+  },
+  {
+    "key": "errors.baseUrl.query",
+    "file": "src/shared/ai/baseUrl.ts",
+    "line": 23,
+    "english": "Remove the part after ?",
+    "sample": {}
+  },
+  {
+    "key": "errors.baseUrl.fragment",
+    "file": "src/shared/ai/baseUrl.ts",
+    "line": 24,
+    "english": "Remove the part after #",
+    "sample": {}
+  },
+  {
+    "key": "errors.baseUrl.azure",
+    "file": "src/shared/ai/baseUrl.ts",
+    "line": 25,
+    "english": "A resource name has 2 to 63 lowercase letters, digits and hyphens, and starts with a letter or digit.",
+    "sample": {}
+  },
+  {
+    "key": "captions.ai.localChoice",
+    "file": "src/renderer/src/ai/textChoices.ts",
+    "line": 18,
+    "english": "On this PC (good for drafts)",
+    "sample": {}
+  },
+  {
+    "key": "captions.ai.thisPc",
+    "file": "src/renderer/src/ai/textChoices.ts",
+    "line": 19,
+    "english": "this PC",
+    "sample": {}
+  },
+  {
+    "key": "captions.ai.sent.textLocal",
+    "file": "src/renderer/src/ai/textChoices.ts",
+    "line": 87,
+    "english": "The captions' text stays on this PC: nothing is sent; their timing stays.",
+    "sample": {}
+  },
+  {
+    "key": "captions.ai.sent.textFree",
+    "file": "src/renderer/src/ai/textChoices.ts",
+    "line": 88,
+    "english": "The captions' text is sent to Ollama on this PC; their timing stays.",
+    "sample": {
+      "place": "Ollama on this PC"
+    }
+  },
+  {
+    "key": "captions.ai.sent.textKey",
+    "file": "src/renderer/src/ai/textChoices.ts",
+    "line": 88,
+    "english": "The captions' text is sent to api.groq.com with your key; their timing stays.",
+    "sample": {
+      "place": "api.groq.com"
+    }
+  },
+  {
+    "key": "captions.ai.sent.wordsLocal",
+    "file": "src/renderer/src/ai/textChoices.ts",
+    "line": 87,
+    "english": "The captions' words stay on this PC: nothing is sent; only the picks come back.",
+    "sample": {}
+  },
+  {
+    "key": "captions.ai.sent.wordsFree",
+    "file": "src/renderer/src/ai/textChoices.ts",
+    "line": 88,
+    "english": "The captions' words are sent to Ollama on this PC; only the picks come back.",
+    "sample": {
+      "place": "Ollama on this PC"
+    }
+  },
+  {
+    "key": "captions.ai.sent.wordsKey",
+    "file": "src/renderer/src/ai/textChoices.ts",
+    "line": 88,
+    "english": "The captions' words are sent to api.groq.com with your key; only the picks come back.",
+    "sample": {
+      "place": "api.groq.com"
+    }
+  },
+  {
+    "key": "settings.provider.preset.ollama",
+    "file": "src/shared/ai/presets.ts",
+    "line": 16,
+    "english": "Ollama on this PC",
+    "sample": {}
+  },
+  {
+    "key": "settings.provider.preset.lmstudio",
+    "file": "src/shared/ai/presets.ts",
+    "line": 17,
+    "english": "LM Studio on this PC",
+    "sample": {}
   }
 ]

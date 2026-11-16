@@ -1873,5 +1873,177 @@
   },
   "studio.gradientName.candy": {
     "description": "Captions › Colours › Gradient: a gradient's name."
+  },
+  "emphasis.removedFrom": {
+    "description": "Transcript tab: notice after emphasis was taken off the selected words."
+  },
+  "emphasis.added": {
+    "description": "Transcript tab: notice after the selected words were emphasised."
+  },
+  "emphasis.addedOwnVersion": {
+    "description": "Transcript tab: notice after the first emphasis on a Classic caption look; {look} is that look's name (Clean, Boxed, Karaoke, Minimal or Bold), which became an editable copy."
+  },
+  "timing.formHint": {
+    "description": "Captions tab, the provider form: the chosen OpenAI transcription model gives no word times. {model} is the model's name; \"On this PC\" is the name of the local captions choice.",
+    "user": [
+      "model"
+    ],
+    "dnt": [
+      "OpenAI",
+      "Flown"
+    ]
+  },
+  "timing.useLocal": {
+    "description": "Captions tab: button that switches to captions made on this PC (\"On this PC\" is that choice's name)."
+  },
+  "timing.summary": {
+    "description": "Captions tab, under the summary: the captions' word times were estimated from the sound."
+  },
+  "timing.transcriptAll": {
+    "description": "Transcript tab: hint when some words' times were estimated (they are underlined with dots)."
+  },
+  "timing.wordTitle": {
+    "description": "Transcript tab: tooltip of a word whose time was estimated."
+  },
+  "languages.burnedUntranslated": {
+    "description": "Export dialog › Subtitles: the captions drawn on the video are a translation that lacks some captions; {language} is that translation's language, {spoken} the spoken language's name (or \"the spoken language\")."
+  },
+  "great.done.emphasised": {
+    "description": "Make my captions great, its result notice: one item of the list after \"Captions:\". Words it emphasised."
+  },
+  "great.done.emoji": {
+    "description": "Make my captions great, its result notice: one item of the list after \"Captions:\". Emoji it added (English does not change \"emoji\" with the number)."
+  },
+  "great.done.keywords": {
+    "description": "Make my captions great, its result notice: one item of the list after \"Captions:\". Keyword pop-ups it added."
+  },
+  "great.done.counters": {
+    "description": "Make my captions great, its result notice: one item of the list after \"Captions:\". Counters it added."
+  },
+  "great.done.lists": {
+    "description": "Make my captions great, its result notice: one item of the list after \"Captions:\". List cards it added."
+  },
+  "great.done.lowerThirds": {
+    "description": "Make my captions great, its result notice: one item of the list after \"Captions:\". Lower thirds (name titles) it added."
+  },
+  "great.done.chapters": {
+    "description": "Make my captions great, its result notice: one item of the list after \"Captions:\". Chapter titles it added."
+  },
+  "great.done.quotes": {
+    "description": "Make my captions great, its result notice: one item of the list after \"Captions:\". Quote cards it added."
+  },
+  "great.done.tidied": {
+    "description": "Make my captions great, its result notice: one item of the list after \"Captions:\". Captions its tidy step changed."
+  },
+  "great.done.bleeped": {
+    "description": "Make my captions great, its result notice: one item of the list after \"Captions:\". Words it bleeped."
+  },
+  "great.done.summary": {
+    "description": "Make my captions great, its result notice. {parts} is the list of what it did, joined by commas (a style's name, \"38 words emphasised\", \"3 emoji\"…); {review} and {undo} are the keys' hints that follow it (\". Review (Shift + R)\", \" · Ctrl + Z to undo\"), or empty."
+  },
+  "great.done.summaryOffline": {
+    "description": "Make my captions great, its result notice when the AI provider could not be reached. {parts}, {review} and {undo} as in the summary.",
+    "dnt": [
+      "Flown"
+    ]
+  },
+  "great.done.nothing": {
+    "description": "Make my captions great changed nothing."
+  },
+  "great.done.nothingOffline": {
+    "description": "Make my captions great changed nothing, and the AI provider could not be reached.",
+    "dnt": [
+      "Flown"
+    ]
+  },
+  "great.hint.style": {
+    "description": "Make my captions great, the hint under its button: one thing it adds, in the list after \"Adds\"."
+  },
+  "great.hint.emphasis": {
+    "description": "Make my captions great, the hint under its button: one thing it adds, in the list after \"Adds\"."
+  },
+  "great.hint.emoji": {
+    "description": "Make my captions great, the hint under its button: one thing it adds, in the list after \"Adds\"."
+  },
+  "great.hint.keywords": {
+    "description": "Make my captions great, the hint under its button: one thing it adds, in the list after \"Adds\"."
+  },
+  "great.hint.counters": {
+    "description": "Make my captions great, the hint under its button: one thing it adds, in the list after \"Adds\"."
+  },
+  "great.hint.lists": {
+    "description": "Make my captions great, the hint under its button: one thing it adds, in the list after \"Adds\"."
+  },
+  "great.hint.speakers": {
+    "description": "Make my captions great, the hint under its button: one thing it adds, in the list after \"Adds\"."
+  },
+  "great.hint.chapters": {
+    "description": "Make my captions great, the hint under its button: one thing it adds, in the list after \"Adds\"."
+  },
+  "great.hint.quotes": {
+    "description": "Make my captions great, the hint under its button: one thing it adds, in the list after \"Adds\"."
+  },
+  "great.hint.tidiesOnly": {
+    "description": "Make my captions great, the hint under its button when it only tidies."
+  },
+  "great.hint.none": {
+    "description": "Make my captions great, the hint under its button when every option is off."
+  },
+  "great.hint.adds": {
+    "description": "Make my captions great, the hint under its button: {list} is what it adds, as a list (\"key words, emoji and counters\")."
+  },
+  "great.hint.addsAndTidies": {
+    "description": "Make my captions great, the hint under its button: {list} is what it adds, as a list; it also tidies the text."
+  },
+  "cleanup.notice.tidied": {
+    "description": "Captions › Clean up, the notice after Tidy captions. How many captions it changed."
+  },
+  "cleanup.notice.bleeped": {
+    "description": "Captions › Clean up, the notice after Tidy captions. How many words it bleeped (none tidied)."
+  },
+  "cleanup.notice.tidiedBleeped": {
+    "description": "Captions › Clean up, the notice after Tidy captions. How many captions it changed ({tidied}, shown as {t}) and words it bleeped ({bleeped}, shown as {b})."
+  },
+  "cleanup.notice.nothing": {
+    "description": "Captions › Clean up, the notice after Tidy captions. It changed nothing (no full stop, like the other notices)."
+  },
+  "cleanup.notice.estimated": {
+    "description": "Captions › Clean up, the notice after Tidy captions. {notice} is what it did (\"Bleeped 2 words\"); the second sentence says some bleeps cover a little more because the words' times were estimated (no full stop, like the other notices)."
+  },
+  "ai.localChoice": {
+    "description": "An AI text tool's list of providers: AI on this PC (a model running on this computer), which writes rough drafts."
+  },
+  "ai.thisPc": {
+    "description": "Where AI on this PC runs, as the hints and cost lines name a place to send text to; lower case, used inside sentences."
+  },
+  "ai.sent.textLocal": {
+    "description": "Captions › Languages, under Translate with AI on this PC."
+  },
+  "ai.sent.textFree": {
+    "description": "Captions › Languages, under Translate with a service on this PC that needs no key. {place} is where the text goes: an AI service's name (\"OpenAI\") or address (\"api.groq.com\"), or a service on this PC (\"Ollama on this PC\").",
+    "user": [
+      "place"
+    ]
+  },
+  "ai.sent.textKey": {
+    "description": "Captions › Languages, under Translate with an AI service. {place} is where the text goes: an AI service's name (\"OpenAI\") or address (\"api.groq.com\"), or a service on this PC (\"Ollama on this PC\").",
+    "user": [
+      "place"
+    ]
+  },
+  "ai.sent.wordsLocal": {
+    "description": "Make my captions great, its options, with AI on this PC: the picks are the words it emphasises and the graphics it adds."
+  },
+  "ai.sent.wordsFree": {
+    "description": "Make my captions great, its options, with a service on this PC that needs no key. {place} is where the text goes: an AI service's name (\"OpenAI\") or address (\"api.groq.com\"), or a service on this PC (\"Ollama on this PC\").",
+    "user": [
+      "place"
+    ]
+  },
+  "ai.sent.wordsKey": {
+    "description": "Make my captions great, its options, with an AI service. {place} is where the text goes: an AI service's name (\"OpenAI\") or address (\"api.groq.com\"), or a service on this PC (\"Ollama on this PC\").",
+    "user": [
+      "place"
+    ]
   }
 }

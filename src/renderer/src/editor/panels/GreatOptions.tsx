@@ -164,7 +164,7 @@ function OptionsDialog({ project, onClose }: { project: Project; onClose: () => 
           ))}
         </select>
       </label>
-      {choice && <p className="hint">{sentHint(choice, "The captions' words", '; only the picks come back', true)}</p>}
+      {choice && <p className="hint">{sentHint(choice, 'captionWords')}</p>}
       {/* What the AI picks send, where, and what they cost (smart-tools.md §11.5), part P5's. A run asks its question itself (captionsGreat.ts). */}
       {choice && <CostLine id="great-cost" choice={choice} full actions={[{ key: 'marks', label: t('captions.great.aiPicks'), buttonId: 'great-provider', request: () => marksCostRequest(project) }]} />}
       <div className="row start">

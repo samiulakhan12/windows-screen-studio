@@ -5,7 +5,7 @@
  * exported files, the AI requests and main) and the renderer shows the same words in the UI language
  * through here. In English each function gives exactly the text the panels showed before.
  */
-import { languageName, type TrackRow } from '../../../shared/captions/captionTracks'
+import { burnedTrackNote, languageName, missingTranslations, shownTrack, type TrackRow } from '../../../shared/captions/captionTracks'
 import { STEM_SPEAKERS } from '../../../shared/captions/speakers'
 import { SUBTITLE_FORMATS, type SubtitleFormat } from '../../../shared/captions/subtitles'
 import { fmt } from '../../../shared/i18n/fmt'
@@ -128,7 +128,39 @@ export function trackRowWords(row: TrackRow, project: Project): { label: string;
 }
 
 /**
+ * The export's note when the burned-in track lacks captions (captionTracks.ts burnedTrackNote) in
+ * the UI language; null when there is none. English shows burnedTrackNote's own words, as before.
+ */
+export function burnedTrackWords(project: Project): string | null {
+  const english = burnedTrackNote(project)
+  const track = shownTrack(project)
+  if (english === null || uiLanguage() === 'en' || !track) return english
+  const missing = missingTranslations(project, track.language)
+  const spokenCode = project.transcript?.language
+  const spoken = spokenCode ? captionLanguageName(spokenCode, languageName(spokenCode)) : t('captions.languages.theSpoken')
+  return t('captions.languages.burnedUntranslated', { count: missing, n: fmt.count(missing), language: captionLanguageName(track.language, languageName(track.language)), spoken })
+}
+
+/**
  * A sentence's first word as it reads inside another sentence: in English its first letter lower
  * case, as the panels wrote it ("…, short clips: big capitals…"); other languages leave it as it is.
  */
 export const inSentence = (text: string): string => (uiLanguage() === 'en' ? `${text.charAt(0).toLowerCase()}${text.slice(1)}` : text)
+
+/**
+ * Tidy captions' notice (captions-studio.md §2.9, §11.7): "Tidied 12 captions, bleeped 2 words" or
+ * "Nothing to tidy"; says when bleeped words had estimated times.
+ */
+export function cleanupNotice(r: { changed: number; bleeped: number; estimated?: number }): string {
+  const tidied = { count: r.changed, n: fmt.count(r.changed) }
+  const bleeped = { count: r.bleeped, n: fmt.count(r.bleeped) }
+  const notice =
+    r.changed && r.bleeped
+      ? t('captions.cleanup.notice.tidiedBleeped', { tidied: r.changed, t: fmt.count(r.changed), bleeped: r.bleeped, b: fmt.count(r.bleeped) })
+      : r.changed
+        ? t('captions.cleanup.notice.tidied', tidied)
+        : r.bleeped
+          ? t('captions.cleanup.notice.bleeped', bleeped)
+          : t('captions.cleanup.notice.nothing')
+  return r.estimated ? t('captions.cleanup.notice.estimated', { notice }) : notice
+}

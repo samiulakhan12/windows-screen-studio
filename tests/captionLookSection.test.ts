@@ -22,9 +22,9 @@ vi.mock('../src/shared/captions/emphasis', () => ({ pickEmphasis: () => p4.marks
 vi.mock('../src/shared/captions/great', async (importOriginal) => ({
   ...(await importOriginal<Record<string, unknown>>()),
   readGreatOptions: (raw: unknown) => ({ emoji: (raw as { emoji?: string } | null)?.emoji ?? 'auto' }),
-  resolveGreatOptions: (o: { emoji?: string }, _p: unknown, frame: { w: number; h: number }) => ({ emoji: o.emoji === 'on' ? true : o.emoji === 'off' ? false : frame.h > frame.w }),
-  greatHint: (o: { emoji: boolean }) => (o.emoji ? 'Picks a style, emphasises key words and adds emoji and pop-ups. You can review every change.' : 'Emphasises key words, tidies the text and adds lower thirds. You can review every change.')
+  resolveGreatOptions: (o: { emoji?: string }, _p: unknown, frame: { w: number; h: number }) => ({ emoji: o.emoji === 'on' ? true : o.emoji === 'off' ? false : frame.h > frame.w })
 }))
+vi.mock('../src/renderer/src/editor/greatWords', () => ({ greatHint: (o: { emoji: boolean }) => (o.emoji ? 'Picks a style, emphasises key words and adds emoji and pop-ups. You can review every change.' : 'Emphasises key words, tidies the text and adds lower thirds. You can review every change.') }))
 vi.mock('../src/shared/captions/autoStyle', () => ({ suggestedTile: () => 'subtitle' }))
 vi.mock('../src/renderer/src/editor/panels/GreatOptions', () => ({ GreatOptionsPopover: () => ({ type: 'button', props: { 'data-testid': 'captions-great-options' } }) }))
 vi.mock('../src/renderer/src/render/studioLayer', () => ({ drawStudioSample: () => ({ textPx: 18 }) }))

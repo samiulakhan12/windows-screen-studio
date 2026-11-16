@@ -247,7 +247,7 @@ export function tickedExportLanguages(project: Project, chosen: readonly string[
 }
 
 /** The track `captions.track` names, when it exists. */
-function shownTrack(project: Project): CaptionTrack | undefined {
+export function shownTrack(project: Project): CaptionTrack | undefined {
   const language = project.captions?.track
   return language ? trackOf(project, language) : undefined
 }

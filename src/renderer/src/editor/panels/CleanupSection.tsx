@@ -6,11 +6,12 @@
  * uses too. Mounted by the Captions tab with props { project: Project } (§14.4).
  */
 import { useEffect, useRef, useState, useSyncExternalStore, type RefObject } from 'react'
-import { cleanupNotice, DEFAULT_CLEANUP, readCleanupChoices, tidyCaptions, WORD_LIST_LIMITS, WORD_LIST_MAX, type CleanupChoices, type TextResult, type WordListEntry } from '../../../../shared/captions/cleanup'
+import { DEFAULT_CLEANUP, readCleanupChoices, tidyCaptions, WORD_LIST_LIMITS, WORD_LIST_MAX, type CleanupChoices, type TextResult, type WordListEntry } from '../../../../shared/captions/cleanup'
 import { applyTextResult } from '../../../../shared/captions/edit'
 import { t } from '../../../../shared/i18n/t'
 import type { Project } from '../../../../shared/types'
 import { currentWordList, ipcMessage, loadWordList, onSectionRequest, onWordList, saveWordList, takeSectionRequest } from '../captionItems'
+import { cleanupNotice } from '../captionWords'
 import { useEditor } from '../context'
 import { useReturnFocus, useStopFocus } from '../returnFocus'
 import { Chips, Section } from '../controls'

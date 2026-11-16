@@ -7,9 +7,9 @@
  * Mounted by ExportDialog.tsx, which keeps the choices: the contracts' props { project } gained
  * the bundle choices, the format and the streams flag, which the field shows and changes.
  */
-import { burnedTrackNote, exportLanguages, tickedExportLanguages } from '../../../../shared/captions/captionTracks'
+import { exportLanguages, tickedExportLanguages } from '../../../../shared/captions/captionTracks'
 import { sidecarBlocked, SIDECAR_LABELS, UNKNOWN_SPOKEN, type BundleOptions } from '../../../../shared/render/exportBundle'
-import { captionLanguageName } from '../captionWords'
+import { burnedTrackWords, captionLanguageName } from '../captionWords'
 import type { ExportFormat, Project } from '../../../../shared/types'
 import { t, type MessageKey } from '../../../../shared/i18n/t'
 import { Icon } from '../../components/Icon'
@@ -39,7 +39,7 @@ export function SubtitlesField(props: {
   // GIF and M4A keep today's choices: the spoken language's files only, no streams.
   const several = !blocked && format !== 'm4a' && languages.length > 1
   const streamable = !blocked && STREAM_FORMATS.includes(format)
-  const note = !blocked && format !== 'm4a' ? burnedTrackNote(project) : null
+  const note = !blocked && format !== 'm4a' ? burnedTrackWords(project) : null
   const tick = (code: string, on: boolean): void => {
     const next = on ? [...ticked, code] : ticked.filter((l) => l !== code)
     if (next.length) onChange({ ...value, languages: languages.map((l) => l.code).filter((l) => next.includes(l)) })
