@@ -8,7 +8,7 @@ import { croppedFrameSize } from '../../../shared/engine/crop'
 import { cameraShownAt } from '../../../shared/engine/layout'
 import { outputChapters } from '../../../shared/render/chapters'
 import { clickSoundJob } from '../../../shared/render/clickSound'
-import { exportDimensions, exportProject, exportRoutes, isAudioOnly, MB, routeLabel, targetBitrates, type ExportRoute } from '../../../shared/render/exportPlan'
+import { exportDimensions, exportProject, exportRoutes, isAudioOnly, MB, refusedForGood, routeLabel, targetBitrates, type ExportRoute } from '../../../shared/render/exportPlan'
 import type { ExportOptions } from '../../../shared/render/exportPresets'
 import type { Graphic, Project, VoiceStrength } from '../../../shared/types'
 import { drawFrame, type FrameImage, type RenderScene } from '../render/compositor'
@@ -43,6 +43,8 @@ import { prepareEditingAssets } from './editingAssets'
 import { joinFeed, joinPlan, trackTimes, type JoinWindow } from '../../../shared/render/joins'
 import { releaseScratch, composeJoinStill, scratchTarget } from '../render/joinLayer'
 import { ExportJoins } from './joinExport'
+import { t } from '../../../shared/i18n/t'
+import { routeName } from './exportNames'
 
 export { exportDimensions, GIF_FPS, GIF_MAX_HEIGHT } from '../../../shared/render/exportPlan'
 
@@ -99,16 +101,6 @@ export interface ExportResult {
    */
   cancelledAfterVideo?: true
 }
-
-/** Failures another encoder cannot fix (the disk, the folder, the target file, the recording). */
-const NOT_ENCODER_RELATED = /disk is full|permission|in use|another app|read-only|missing|could not be read|could not load|could not read|could not save|could not write|not chosen|invalid export|export size|no sound/i
-
-/**
- * Whether main refused a route's start for a reason no other encoder changes (output-and-languages
- * §9.6): its code, not its words, so a refusal such as the free-space check of §5.10 stops the export
- * at once instead of being asked again of every route.
- */
-const refusedForGood = (code: ExportErrorCode | null): boolean => code !== null && code !== 'encoder' && code !== 'unknown'
 
 /** Most motion-blur sub-frames per exported frame up to 60 fps (the preview uses fewer); blurSamplesFor gives each rate's (output-and-languages §5.6). */
 export const EXPORT_BLUR_SAMPLES = 10
@@ -345,17 +337,24 @@ export async function exportVideo(raw: ExportInput): Promise<ExportResult> {
       if (!sink) continue
       const t0 = performance.now()
       const done = await renderAll(input, plan, caps, route, sink, notice, refusal)
-      return { encoder: routeLabel(route, input.settings.format), seconds: (performance.now() - t0) / 1000, ...done }
+      return { encoder: routeName(route, input.settings.format), seconds: (performance.now() - t0) / 1000, ...done }
     } catch (err) {
       if (signal.aborted || (err instanceof DOMException && err.name === 'AbortError')) throw abortError()
       const e = cleanIpcError(err)
       const last = r === routes.length - 1
-      if (last || NOT_ENCODER_RELATED.test(e.message) || refusedForGood(refusal.code)) throw e
+      if (last) throw e
+      // Main's code for a refused start, else for its failed finish (export:start clears it, so null is a failure of this page's own).
+      const code =
+        refusal.code ??
+        (await Promise.resolve()
+          .then(() => window.api.exportErrorCode())
+          .catch(() => null))
+      if (refusedForGood(code)) throw e
       console.warn(`Export with ${routeLabel(route, input.settings.format)} failed, trying the next encoder:`, e)
-      notice = `${routeLabel(route, input.settings.format)} failed, so the export restarted with ${routeLabel(routes[r + 1], input.settings.format)}.`
+      notice = t('export.fallback', { failed: routeName(route, input.settings.format), next: routeName(routes[r + 1], input.settings.format) })
     }
   }
-  throw new Error('No video encoder is available')
+  throw new Error(t('export.noEncoder'))
 }
 
 /** The input with the see-through background its options ask for (output-and-languages §6); an opaque export keeps its scene. */
@@ -368,11 +367,11 @@ function withAlpha<T extends ExportSource & { settings: ExportOptions }>(input: 
 async function exportAudio(input: ExportInput): Promise<ExportResult> {
   const { project, settings, signal } = input
   const frames = videoFrames(project.clips, planOf(project), AUDIO_ONLY_FPS).times.length
-  const encoder = routeLabel({ video: 'none' }, settings.format)
-  const report = (phase: ExportProgress['phase']): void => input.onProgress({ phase, frame: 0, frames, fps: 0, eta: null, encoder, detail: phase === 'finalizing' ? 'Encoding the audio…' : undefined })
+  const encoder = routeName({ video: 'none' }, settings.format)
+  const report = (phase: ExportProgress['phase']): void => input.onProgress({ phase, frame: 0, frames, fps: 0, eta: null, encoder, detail: phase === 'finalizing' ? t('export.detail.audio') : undefined })
   report('preparing')
   const sound = await soundOf(input, settings.format)
-  if (!hasSound(sound)) throw new Error('This recording has no sound to export. Turn the audio on in the Audio panel, or choose a video format.')
+  if (!hasSound(sound)) throw new Error(t('export.noSound'))
   const t0 = performance.now()
   const onAbort = (): void => void window.api.exportCancel()
   signal.addEventListener('abort', onAbort)
@@ -505,9 +504,9 @@ const TWO_PASS_ENCODERS: ReadonlySet<string> = new Set(['libx264', 'libvpx-vp9',
 
 /** Short description of what finalizing does, for the progress line. */
 function finalizingDetail(route: ExportRoute, job: Pick<ExportJob, 'bitrate' | 'maxBytes' | 'format' | 'alpha'>): string | undefined {
-  if (job.format === 'gif') return job.maxBytes ? 'Building the GIF and fitting it to its size limit…' : 'Building the GIF…'
+  if (job.format === 'gif') return job.maxBytes ? t('export.detail.gifFit') : t('export.detail.gif')
   // The software encoders main runs in two passes for a size target (exportArgs isTwoPass), libaom included.
-  if (job.bitrate && !job.alpha && route.video === 'ffmpeg' && TWO_PASS_ENCODERS.has(route.encoder)) return 'Encoding to the size target (two passes)…'
+  if (job.bitrate && !job.alpha && route.video === 'ffmpeg' && TWO_PASS_ENCODERS.has(route.encoder)) return t('export.detail.twoPass')
   return undefined
 }
 
@@ -522,7 +521,7 @@ async function renderAll(
 ): Promise<Omit<ExportResult, 'encoder' | 'seconds'>> {
   const { project, settings, signal } = input
   const { width, height, fps, times, pictures, held } = plan
-  const encoder = routeLabel(route, settings.format)
+  const encoder = routeName(route, settings.format)
   const report = (p: Omit<ExportProgress, 'encoder' | 'frames' | 'notice'>): void => input.onProgress({ ...p, frames: times.length, encoder, notice })
   report({ phase: 'preparing', frame: 0, fps: 0, eta: null })
 
@@ -569,7 +568,7 @@ async function renderAll(
     const cpu = route.video === 'ffmpeg' && !caps.gpuCanvas
     // A transparent export draws on a canvas with alpha (output-and-languages §6.3); every other one as before.
     const ctx = canvas.getContext('2d', { alpha: !!input.scene.alpha, willReadFrequently: cpu })
-    if (!ctx) throw new Error('Could not create a drawing surface')
+    if (!ctx) throw new Error(t('common.error.drawingSurface'))
     drawn = ctx
     // Captions Studio's word sprites (§9.7): a cache sized for this output, in the frame's raster
     // mode, so drawing a sprite never forces a GPU readback. Set back for the preview afterwards.
@@ -774,9 +773,9 @@ export async function renderThumbnail(raw: ThumbnailInput): Promise<{ png: Uint8
   const { width, height, fps } = exportDimensions(project, settings)
   const caps = await window.api.exportCapabilities()
   const videos: HTMLVideoElement[] = []
-  const t = raw.time
-  const soundTime = raw.soundTime ?? t
-  const screen = await openSource(input.screenUrl, [t], caps, videos, SCREEN_PROXY_FPS)
+  const at = raw.time
+  const soundTime = raw.soundTime ?? at
+  const screen = await openSource(input.screenUrl, [at], caps, videos, SCREEN_PROXY_FPS)
   let camera: FrameSource | null = null
   let drawn: CanvasRenderingContext2D | null = null
   try {
@@ -785,17 +784,17 @@ export async function renderThumbnail(raw: ThumbnailInput): Promise<{ png: Uint8
     canvas.width = width
     canvas.height = height
     const ctx = canvas.getContext('2d', { alpha: !!input.scene.alpha })
-    if (!ctx) throw new Error('Could not create a drawing surface')
+    if (!ctx) throw new Error(t('common.error.drawingSurface'))
     drawn = ctx
     const [screenFrame, webcamFrame] = await Promise.all([screen.get(0), camera ? camera.get(0) : null])
     // Segmentation is loaded only when the frame shows the camera.
     const drawnSize = croppedFrameSize(input.scene.crop ?? null, screenFrame?.width ?? 0, screenFrame?.height ?? 0, input.scene.project)
-    const shown = cameraShownAt(input.scene.project, width, height, drawnSize.width, drawnSize.height, t)
+    const shown = cameraShownAt(input.scene.project, width, height, drawnSize.width, drawnSize.height, at)
     await (await cameraMasks(project, !!camera && shown))?.prepare(webcamFrame)
     const sources = { screen: document.createElement('video'), webcam: null, background: input.background, screenFrame, webcamFrame }
-    drawFrame(ctx, width, height, t, input.scene, sources, { frameInterval: 1 / fps, blurSamples: raw.held ? 1 : blurSamplesFor(fps) }, soundTime)
+    drawFrame(ctx, width, height, at, input.scene, sources, { frameInterval: 1 / fps, blurSamples: raw.held ? 1 : blurSamplesFor(fps) }, soundTime)
     const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/png'))
-    if (!blob) throw new Error('Could not encode the thumbnail')
+    if (!blob) throw new Error(t('export.thumb.encodeFailed'))
     return { png: new Uint8Array(await blob.arrayBuffer()), width, height }
   } finally {
     // The 3D tilt's WebGL context and card canvas for this canvas are not needed any more, nor the

@@ -4,6 +4,7 @@ import { demuxVideoTrack, type VideoTrackInfo } from '../../../shared/render/mp4
 import { RangeReader } from '../../../shared/render/rangeReader'
 import { seekedFrame, seekToFrame } from '../editor/media'
 import type { FrameImage } from './compositor'
+import { t } from '../../../shared/i18n/t'
 
 /**
  * Supplies the source frame for each export frame, in order. Frame `i` is the
@@ -68,7 +69,7 @@ export class DecoderFrameSource implements FrameSource {
     byTime.forEach((x, p) => (this.order[x.d] = p))
     this.plan = planFeed(track.samples, times)
     this.unique = [...new Set(this.plan.wanted)]
-    this.decoder = new VideoDecoder({ output: (f) => this.onFrame(f), error: (e) => this.fail(new Error(`Video decoding failed: ${e.message}`)) })
+    this.decoder = new VideoDecoder({ output: (f) => this.onFrame(f), error: (e) => this.fail(new Error(t('export.decoder.failed', { reason: e.message }))) })
     this.decoder.configure(config)
     void this.pump()
   }
@@ -116,7 +117,7 @@ export class DecoderFrameSource implements FrameSource {
         this.waiter = null
         w.resolve()
       } else if (p > w.p) {
-        this.fail(new Error('The video decoder skipped a frame'))
+        this.fail(new Error(t('export.decoder.skipped')))
       }
     }
     void this.pump()
@@ -143,7 +144,7 @@ export class DecoderFrameSource implements FrameSource {
           () => {
             // Every frame is out: anyone still waiting would wait forever.
             this.drained = true
-            if (this.waiter && !this.ready.has(this.waiter.p)) this.fail(new Error('The video decoder did not return a frame'))
+            if (this.waiter && !this.ready.has(this.waiter.p)) this.fail(new Error(t('export.decoder.noFrame')))
           },
           (e: unknown) => {
             if (!this.closed) this.fail(e instanceof Error ? e : new Error(String(e)))
@@ -171,7 +172,7 @@ export class DecoderFrameSource implements FrameSource {
       if (!this.ready.has(p)) {
         // Frames come out in presentation order: once a later one arrived (or decoding ended), p never will.
         const passed = this.matchPtr >= this.unique.length || this.unique[this.matchPtr] > p
-        if (passed || this.drained) throw new Error('The video decoder skipped a frame')
+        if (passed || this.drained) throw new Error(t('export.decoder.skipped'))
         await new Promise<void>((resolve, reject) => {
           this.waiter = { p, resolve, reject }
           void this.pump()

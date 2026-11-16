@@ -6,6 +6,7 @@ export type JobBase = Omit<ExportJob, 'video'>
 export type StartJob = (job: ExportJob) => Promise<void>
 import { avcLevel, colorTagsFrom, ivfFileHeader, ivfFrameHeader, rawReadback, rgbToI420, vp9Codec } from '../../../shared/render/codec'
 import { rateFps } from '../../../shared/render/proFormats'
+import { t } from '../../../shared/i18n/t'
 
 /**
  * Where rendered frames go. `push` has captured the canvas by the time it resolves
@@ -224,7 +225,7 @@ export class WebCodecsSink implements FrameSink {
   ) {
     this.encoder = new VideoEncoder({
       output: (chunk, meta) => this.onChunk(chunk, meta),
-      error: (e) => this.fail(new Error(`The video encoder (WebCodecs) failed: ${e.message}`))
+      error: (e) => this.fail(new Error(t('export.webcodecs.failed', { reason: e.message })))
     })
     this.encoder.configure(config)
     this.encoder.addEventListener('dequeue', () => this.notify())
@@ -246,7 +247,7 @@ export class WebCodecsSink implements FrameSink {
     if (this.error) return
     // ffmpeg numbers the frames in arrival order, so they must arrive one per frame, in order.
     if (chunk.timestamp <= this.lastTimestamp) {
-      this.fail(new Error('The video encoder (WebCodecs) reordered frames'))
+      this.fail(new Error(t('export.webcodecs.reordered')))
       return
     }
     this.lastTimestamp = chunk.timestamp
@@ -315,8 +316,8 @@ export class WebCodecsSink implements FrameSink {
     this.send()
     await this.sends
     if (this.error) throw this.error
-    if (!this.started) throw new Error('The video encoder (WebCodecs) produced no output')
-    if (this.chunks !== this.frames) throw new Error(`The video encoder (WebCodecs) dropped frames (${this.chunks} of ${this.frames})`)
+    if (!this.started) throw new Error(t('export.webcodecs.noOutput'))
+    if (this.chunks !== this.frames) throw new Error(t('export.webcodecs.dropped', { made: String(this.chunks), frames: String(this.frames) }))
     await this.started
     if (this.error) throw this.error
     return finishJob()

@@ -3,6 +3,7 @@ import { activeWatermark, watermarkRect } from '../../../shared/engine/watermark
 import { projectMediaUrl } from '../../../shared/mediaUrl'
 import type { Project, WatermarkSettings } from '../../../shared/types'
 import type { FrameContext } from './frameContext'
+import { t } from '../../../shared/i18n/t'
 
 type Ctx = CanvasRenderingContext2D
 
@@ -44,7 +45,7 @@ export function taintsCanvas(img: HTMLImageElement): boolean {
   }
 }
 
-const HTML_SVG = "This SVG has HTML text in it, which can't be drawn into a video: save it as a PNG and choose it again."
+const htmlSvg = (): string => t('export.watermark.svgHtml')
 
 function decode(url: string, svg: boolean): Promise<LoadedImage> {
   return new Promise((resolve, reject) => {
@@ -52,11 +53,11 @@ function decode(url: string, svg: boolean): Promise<LoadedImage> {
     img.crossOrigin = 'anonymous'
     img.decoding = 'async'
     img.onload = () => {
-      if (svg && taintsCanvas(img)) return reject(new Error(HTML_SVG))
+      if (svg && taintsCanvas(img)) return reject(new Error(htmlSvg()))
       const w = img.naturalWidth
       const h = img.naturalHeight
       // An SVG without a size has no natural size: draw it square.
-      if (!(w > 0 && h > 0)) return svg ? resolve({ source: img, aspect: 1, version: ++imageVersion }) : reject(new Error('Empty image'))
+      if (!(w > 0 && h > 0)) return svg ? resolve({ source: img, aspect: 1, version: ++imageVersion }) : reject(new Error(t('export.image.empty')))
       if (svg || Math.max(w, h) <= MAX_IMAGE_SIDE) return resolve({ source: img, aspect: w / h, version: ++imageVersion })
       const s = MAX_IMAGE_SIDE / Math.max(w, h)
       const c = document.createElement('canvas')
@@ -69,7 +70,7 @@ function decode(url: string, svg: boolean): Promise<LoadedImage> {
       ctx.drawImage(img, 0, 0, c.width, c.height)
       resolve({ source: c, aspect: w / h, version: ++imageVersion })
     }
-    img.onerror = () => reject(new Error('Could not load the watermark image'))
+    img.onerror = () => reject(new Error(t('export.watermark.unloaded')))
     img.src = url
   })
 }
@@ -110,7 +111,7 @@ export async function preloadWatermarkImage(projectId: string, file: string, url
     console.warn(`Watermark ${file} could not be loaded:`, err)
     return null
   })
-  if (!image) throw new Error('This image could not be read')
+  if (!image) throw new Error(t('export.image.unreadable'))
   images.set(imageKey(projectId, file), { image, failed: false, done: Promise.resolve() })
   notifyStyleAssetsChanged()
 }
@@ -122,12 +123,12 @@ export async function preloadWatermarkImage(projectId: string, file: string, url
  */
 export async function checkKitLogo(file: string, bytes: Uint8Array | null): Promise<void> {
   if (!/\.svg$/i.test(file)) return
-  if (!bytes) throw new Error('This image could not be read.')
+  if (!bytes) throw new Error(t('export.overlay.unreadable'))
   const url = URL.createObjectURL(new Blob([bytes as BlobPart], { type: 'image/svg+xml' }))
   try {
     await decode(url, true)
   } catch (err) {
-    throw err instanceof Error && err.message === HTML_SVG ? err : new Error('This image could not be read.')
+    throw err instanceof Error && err.message === htmlSvg() ? err : new Error(t('export.overlay.unreadable'))
   } finally {
     URL.revokeObjectURL(url)
   }

@@ -13,6 +13,7 @@ import { mediaUrl } from '../../../shared/mediaUrl'
 import { CUBE_LIMITS, parseCube, type CubeLut } from '../../../shared/render/cubeLut'
 import type { ColorLut, Project } from '../../../shared/types'
 import { notifyStyleAssetsChanged } from './watermarkLayer'
+import { t } from '../../../shared/i18n/t'
 
 type Which = 'screen' | 'camera'
 
@@ -47,11 +48,11 @@ const hex = (buf: ArrayBuffer): string => Array.from(new Uint8Array(buf), (b) =>
 /** The response's bytes, never more than `max` read (an over-long file is refused before it is all read). */
 async function cappedBytes(res: Response, max: number): Promise<Uint8Array> {
   const length = Number(res.headers?.get?.('content-length') ?? NaN)
-  if (length > max) throw new Error('the file is larger than 16 MB')
+  if (length > max) throw new Error(t('export.lut.tooLarge'))
   const reader = res.body?.getReader?.()
   if (!reader) {
     const whole = new Uint8Array(await res.arrayBuffer())
-    if (whole.byteLength > max) throw new Error('the file is larger than 16 MB')
+    if (whole.byteLength > max) throw new Error(t('export.lut.tooLarge'))
     return whole
   }
   const parts: Uint8Array[] = []
@@ -62,7 +63,7 @@ async function cappedBytes(res: Response, max: number): Promise<Uint8Array> {
     total += value.byteLength
     if (total > max) {
       await reader.cancel().catch(() => undefined)
-      throw new Error('the file is larger than 16 MB')
+      throw new Error(t('export.lut.tooLarge'))
     }
     parts.push(value)
   }
@@ -78,12 +79,12 @@ async function cappedBytes(res: Response, max: number): Promise<Uint8Array> {
 /** Reads, checks and parses one LUT file; throws why it cannot be used. */
 async function load(projectId: string, ref: ColorLut): Promise<CubeLut> {
   const res = await fetch(mediaUrl(projectId, ref.file))
-  if (!res.ok) throw new Error(`the file could not be read (${res.status})`)
+  if (!res.ok) throw new Error(t('export.lut.unreadable', { status: String(res.status) }))
   const bytes = await cappedBytes(res, CUBE_LIMITS.maxBytes)
   const sha = hex(await crypto.subtle.digest('SHA-256', bytes as BufferSource))
-  if (sha !== ref.sha256) throw new Error('the file has changed since it was imported')
+  if (sha !== ref.sha256) throw new Error(t('export.lut.changed'))
   const lut = parseCube(bytes)
-  if (lut.size !== ref.size) throw new Error('the file has changed since it was imported')
+  if (lut.size !== ref.size) throw new Error(t('export.lut.changed'))
   return lut
 }
 
@@ -160,8 +161,13 @@ export function onLutReady(cb: () => void): () => void {
 export function missingLutQuestion(project: Project): string | null {
   const screen = lutProblem(project, 'screen') !== null
   const camera = lutProblem(project, 'camera') !== null
-  if (screen && camera) return "The screen's and the camera's LUTs are missing or have changed. Export without them?"
-  if (screen) return "The screen's LUT is missing or has changed. Export without it?"
-  if (camera) return "The camera's LUT is missing or has changed. Export without it?"
+  if (screen && camera) return t('export.lut.questionBoth')
+  if (screen) return t('export.lut.questionScreen')
+  if (camera) return t('export.lut.questionCamera')
   return null
+}
+
+/** How many grades' LUTs cannot be used (0, 1 or 2): the question's answer says "them" for two (§9.6: told by the grades, not by the question's words). */
+export function missingLutCount(project: Project): number {
+  return (lutProblem(project, 'screen') !== null ? 1 : 0) + (lutProblem(project, 'camera') !== null ? 1 : 0)
 }

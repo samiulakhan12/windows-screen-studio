@@ -1,4 +1,4 @@
-import type { ExportCapabilities, FfmpegVideoEncoder } from '../api/export'
+import type { ExportCapabilities, ExportErrorCode, FfmpegVideoEncoder } from '../api/export'
 import { visibleSize } from '../engine/crop'
 import { outputSize } from '../engine/layout'
 import { DEFAULT_REFRAME, followApplies, isTall, tallAs } from '../engine/reframeData'
@@ -180,6 +180,28 @@ export const isAudioOnly = (format: ExportFormat): boolean => format === 'm4a' |
 /** Video codec a format carries by default. */
 export const videoCodecOf = (format: ExportFormat): 'h264' | 'vp9' | 'gif' | null =>
   format === 'webm' ? 'vp9' : format === 'gif' ? 'gif' : format === 'm4a' || format === 'wav' ? null : 'h264'
+
+/**
+ * A failure of an export with its code (output-and-languages §9.6): main reports the code next to
+ * the message (export:errorCode), and the renderer decides by the code whether the next encoder is
+ * tried, never by the words, which are in the UI language.
+ */
+export class ExportFailure extends Error {
+  constructor(
+    message: string,
+    readonly code: ExportErrorCode
+  ) {
+    // The name stays "Error": the renderer strips Electron's "Error: " before showing an IPC failure's message.
+    super(message)
+  }
+}
+
+/**
+ * Whether a failure with `code` stops the export at once: the disk, the folder, the target file, the
+ * recording, the job or a cancel, which no other encoder changes. An encoder's failure, an unknown
+ * one and one without a code (the page's own, such as a WebCodecs encoder) try the next route.
+ */
+export const refusedForGood = (code: ExportErrorCode | null | undefined): boolean => !!code && code !== 'encoder' && code !== 'unknown'
 
 /** How frames become a file, in the order to try them. */
 export type ExportRoute =

@@ -62,19 +62,23 @@ import { ExportBundleOptions } from './ExportBundleOptions'
 import { STREAM_FORMATS, SubtitlesField } from './panels/SubtitlesField'
 import { tickedExportLanguages } from '../../../shared/captions/captionTracks'
 import { partSource, partThumbnailFrame, writeBundle, type BundleRequest } from './exportBundleRun'
-import { bundleKinds, chapterParts, chaptersNote, normalizeBundle, partFileNames, perChapterBlocked, stillAcrossChapters, type BundleOptions } from '../../../shared/render/exportBundle'
+import { bundleKinds, chapterParts, normalizeBundle, partFileNames, perChapterBlocked, stillAcrossChapters, type BundleOptions } from '../../../shared/render/exportBundle'
 import { FORMAT_EXTENSIONS } from '../../../shared/render/exportPresets'
 import { ShareAfterExport } from '../share/ShareAfterExport'
 import { ShareDone } from '../share/ShareDone'
 import { pendingChapters } from '../../../shared/chapters/pending'
 import { useAfterExport } from '../share/useShare'
 import type { BatchExtras } from './exporter'
-import { missingLutQuestion, prepareLuts } from '../render/lutCache'
+import { missingLutCount, missingLutQuestion, prepareLuts } from '../render/lutCache'
 import './exportDialog.css'
 import './panels/colour.css'
 import './handsOff.css'
 import './titles.css'
 import './exportPro.css'
+import { richText } from '../i18n/richText'
+import { NumberField } from '../i18n/NumberField'
+import { itemLabel, presetName } from './exportNames'
+import { chaptersNoteText } from './exportNames'
 
 interface Props {
   project: Project
@@ -128,12 +132,13 @@ function withoutLanguages(b: BundleOptions): BundleOptions {
 }
 
 const RESOLUTIONS: ExportSettings['resolution'][] = [720, 1080, 1440, 2160]
-const FORMATS: { value: ExportFormat; label: string; title: string }[] = [
-  { value: 'mp4', label: 'MP4', title: 'H.264 video with AAC audio: plays everywhere' },
-  { value: 'mov', label: 'MOV', title: 'H.264 in a QuickTime movie, for Final Cut, Premiere and Keynote' },
-  { value: 'webm', label: 'WebM', title: 'VP9 video with Opus audio, for the web' },
-  { value: 'gif', label: 'GIF', title: 'An animated image that plays silently and loops (15 fps)' },
-  { value: 'm4a', label: 'M4A', title: 'The soundtrack only (AAC), nothing is rendered' }
+/** The format chips (their names stay as they are; the titles are made where they are shown). */
+const formatChoices = (): { value: ExportFormat; label: string; title: string }[] => [
+  { value: 'mp4', label: 'MP4', title: t('export.format.mp4') },
+  { value: 'mov', label: 'MOV', title: t('export.format.mov') },
+  { value: 'webm', label: 'WebM', title: t('export.format.webm') },
+  { value: 'gif', label: 'GIF', title: t('export.format.gif') },
+  { value: 'm4a', label: 'M4A', title: t('export.format.m4a') }
 ]
 
 /** The audio a format carries with `codec` (§5.2), for the selected format chip's title. */
@@ -146,7 +151,7 @@ const NEW_DESTINATIONS: Readonly<Record<string, { label: MessageKey; title: Mess
   overlay: { label: 'presets.destination.overlay.label', title: 'presets.destination.overlay.title' }
 }
 
-const presetLabel = (p: ExportPreset): string => (NEW_DESTINATIONS[p.id] ? t(NEW_DESTINATIONS[p.id].label) : p.label)
+const presetLabel = (p: ExportPreset): string => (NEW_DESTINATIONS[p.id] ? t(NEW_DESTINATIONS[p.id].label) : presetName(p))
 
 /** The quality chips of the editing formats (§2.1): Best, High, Medium, with the encoder's own level as title. */
 const INTERMEDIATE_TITLES: Partial<Record<ExportCodec, Record<ExportSettings['quality'], MessageKey>>> = {
@@ -299,11 +304,11 @@ function ChapterCopy({ chapters, length, gif, perChapter = false }: { chapters: 
   const copy = async (): Promise<void> => setState((await copyText(yt.text)) ? 'copied' : 'failed')
   return (
     <div className="export-chapters" data-testid="export-chapters">
-      <p className="hint">{chaptersNote(chapters.length, gif, perChapter)}</p>
-      <button className="btn small chapter-copy" onClick={() => void copy()} title="Copy the chapters as YouTube timestamps (0:00 Intro…) for the video's description">
-        {state === 'copied' ? <Icon name="check" size={14} /> : <CopyIcon />} {state === 'copied' ? 'Copied' : 'Copy chapters'}
+      <p className="hint">{chaptersNoteText(chapters.length, gif, perChapter)}</p>
+      <button className="btn small chapter-copy" onClick={() => void copy()} title={t('export.chapters.copyTitle')}>
+        {state === 'copied' ? <Icon name="check" size={14} /> : <CopyIcon />} {state === 'copied' ? t('common.state.copied') : t('export.chapters.copy')}
       </button>
-      {state === 'failed' && <p className="hint warn">The chapters could not be copied to the clipboard.</p>}
+      {state === 'failed' && <p className="hint warn">{t('export.chapters.copyFailed')}</p>}
       {yt.problems.length ? (
         yt.problems.map((p) => (
           <p key={p} className="hint warn">
@@ -311,7 +316,7 @@ function ChapterCopy({ chapters, length, gif, perChapter = false }: { chapters: 
           </p>
         ))
       ) : (
-        <p className="hint">Ready for YouTube: paste them into the description.</p>
+        <p className="hint">{t('export.chapters.ready')}</p>
       )}
     </div>
   )
@@ -327,19 +332,19 @@ export function formatBytes(bytes: number): string {
 function splitError(err: unknown): { message: string; detail: string } {
   const text = err instanceof Error ? err.message : String(err)
   const [message, ...rest] = text.split(/\n\s*\n/)
-  return { message: message.trim() || 'The export failed.', detail: rest.join('\n\n').trim() }
+  return { message: message.trim() || t('export.error.failed'), detail: rest.join('\n\n').trim() }
 }
 
 const ratioOf = (s: { width: number; height: number }): number => s.width / s.height
 
 /** "1080×1920 · 30 fps" for a card; GIFs and audio say what they are; a codec other than the format's own, "MOV · CineForm · 1080p60". */
 function optionsMeta(project: Project, o: ExportOptions): string {
-  if (isAudioOnly(o.format)) return 'Audio only'
+  if (isAudioOnly(o.format)) return t('export.audioOnly')
   const codec = codecOf(o)
   const standard = DEFAULT_CODEC[o.format]
   if (standard && codec !== standard) return t('presets.meta.line', { format: FORMAT_LABELS[o.format], codec: CODEC_NAMES[codec], resolution: String(o.resolution), fps: String(o.fps) })
   const s = exportSize(project, o)
-  return `${s.width}×${s.height} · ${s.fps} fps`
+  return t('export.meta.size', { width: fmt.count(s.width), height: fmt.count(s.height), fps: fmt.count(s.fps) })
 }
 
 /** A destination card's meta line. */
@@ -347,11 +352,14 @@ const presetMeta = (project: Project, preset: ExportPreset): string => optionsMe
 
 /** The one limit worth showing on a card: its size target, else the platform's longest video. */
 function presetLimit(preset: ExportPreset): { text: string; title: string } | null {
-  if (preset.targetSizeMB) return { text: `≤ ${preset.targetSizeMB} MB`, title: `Made to fit ${preset.targetSizeMB} MB` }
+  if (preset.targetSizeMB) return { text: t('export.limit.size', { mb: fmt.number(preset.targetSizeMB) }), title: t('export.limit.sizeTitle', { mb: fmt.number(preset.targetSizeMB) }) }
   const l = preset.limits
   if (!l?.maxSeconds) return null
-  const size = l.maxMB ? ` and ${l.maxMB} MB` : ''
-  return { text: `≤ ${fmt.clock(l.maxSeconds, 'whole')}`, title: `${preset.label} takes videos up to ${fmt.clock(l.maxSeconds, 'whole')}${size}` }
+  const title = { name: presetLabel(preset), length: fmt.clock(l.maxSeconds, 'whole') }
+  return {
+    text: t('export.limit.length', { length: fmt.clock(l.maxSeconds, 'whole') }),
+    title: l.maxMB ? t('export.limit.lengthSizeTitle', { ...title, mb: fmt.number(l.maxMB) }) : t('export.limit.lengthTitle', title)
+  }
 }
 
 export function ExportDialog(props: Props): JSX.Element {
@@ -729,7 +737,7 @@ export function ExportDialog(props: Props): JSX.Element {
       // The stems main wrote next to the video, or why it could not (output-and-languages §7.6).
       const finished = result as ExportResult & Pick<ExportFinish, 'stems' | 'stemsProblem'>
       const stems = (finished.stems ?? []).map(({ stem, path }) => ({ stem, path }))
-      const limit = preset?.limits?.maxMB ? { label: preset.label, maxMB: preset.limits.maxMB } : undefined
+      const limit = preset?.limits?.maxMB ? { label: presetLabel(preset), maxMB: preset.limits.maxMB } : undefined
       if (result.cancelledAfterVideo) {
         // Cancelled while main wrote the stems (§7.6): the video is saved and shown as saved, the stems
         // are gone, and nothing after them (sidecars, timeline, sharing) is written or started.
@@ -764,13 +772,15 @@ export function ExportDialog(props: Props): JSX.Element {
   }
 
   // A grade's LUT that is missing or has changed (editing polish §9.5): asked about before any export starts.
-  const [lutAsk, setLutAsk] = useState<{ question: string; go: () => void } | null>(null)
+  const [lutAsk, setLutAsk] = useState<{ question: string; many: boolean; go: () => void } | null>(null)
   const withLuts = async (go: () => Promise<void>): Promise<void> => {
     await prepareLuts(project)
     const question = missingLutQuestion(project)
     if (!question) return go()
     setLutAsk({
       question,
+      // Both grades' LUTs (the question asks to export without them): told by the grades, not by the question's words (§9.6).
+      many: missingLutCount(project) > 1,
       go: () => {
         setLutAsk(null)
         void go()
@@ -800,7 +810,7 @@ export function ExportDialog(props: Props): JSX.Element {
     const { folder, found } = chosen
     const names = batchFileNames(project.name, items)
     const made: CodecUiCaps = found ? { ...uiCaps, hevc: webCodecs.hevc ? 'webcodecs' : found.length ? found : 'none' } : uiCaps
-    const jobs: BatchJob[] = items.map((it, i) => ({ key: it.key, label: it.label, fileName: names[i], options: streamed(itemSettings(it, made).options) }))
+    const jobs: BatchJob[] = items.map((it, i) => ({ key: it.key, label: itemLabel(it, checkedUserPresets), fileName: names[i], options: streamed(itemSettings(it, made).options) }))
     await runBatch(folder, jobs, (_i, path, j) =>
       writeBundle(path, { project, kinds: bundleKinds(bundle, j.options.format, bundleHas), title: project.name, thumbnail: thumbnailOf(j.options), ...bundleLanguages })
     )
@@ -909,8 +919,8 @@ export function ExportDialog(props: Props): JSX.Element {
   const resolutionOptions = RESOLUTIONS.filter((r) => !gif || r <= GIF_MAX_HEIGHT).map((r) => {
     const d = sizeFor(r)
     const notes = [`${d.width}×${d.height}`]
-    if (d.capped) notes.push(`limited to ${MAX_EXPORT_SIDE} px on the long side`)
-    if (upscaled(r)) notes.push(`larger than the recording (${visible.width}×${visible.height}): it will be upscaled`)
+    if (d.capped) notes.push(t('export.resolution.capped', { side: fmt.count(MAX_EXPORT_SIDE) }))
+    if (upscaled(r)) notes.push(t('export.resolution.upscaled', { width: fmt.count(visible.width), height: fmt.count(visible.height) }))
     return { value: r, label: RESOLUTION_LABELS[r], className: upscaled(r) ? 'upscale' : '', title: notes.join('; ') }
   })
   const projectAspect = project.style.aspectRatio
@@ -918,13 +928,13 @@ export function ExportDialog(props: Props): JSX.Element {
     const ratio = a === 'project' ? ratioOf(exportSize(project, { ...options, aspect: undefined })) : ratioOf(exportSize(project, { ...options, aspect: a }))
     return {
       value: a as string,
-      label: a === 'project' ? 'Project' : a === '4:5' ? t('codecs.aspect.45.label') : a,
+      label: a === 'project' ? t('export.aspect.project') : a === '4:5' ? t('codecs.aspect.45.label') : a,
       title:
         a === 'project'
-          ? `The project's own shape (${projectAspect === 'auto' ? 'Auto' : projectAspect}, Style panel)`
+          ? t('export.aspect.projectTitle', { shape: projectAspect === 'auto' ? t('export.aspect.auto') : projectAspect })
           : a === '4:5'
             ? t('codecs.aspect.45.title')
-            : `Export in ${a}; the project keeps its own shape`,
+            : t('export.aspect.title', { aspect: a }),
       icon: <AspectGlyph ratio={ratio} />
     }
   })
@@ -932,18 +942,18 @@ export function ExportDialog(props: Props): JSX.Element {
   const gpuHint =
     options.format === 'webm'
       ? webCodecsGpu
-        ? 'GPU VP9 encoding is available.'
+        ? t('export.gpu.vp9')
         : webCodecsGpu === null
-          ? 'Checking for a GPU encoder…'
-          : 'No GPU VP9 encoder here; WebM uses the software encoder (libvpx).'
+          ? t('export.gpu.checking')
+          : t('export.gpu.noVp9')
       : webCodecsGpu
-        ? 'GPU encoding is available.'
+        ? t('export.gpu.available')
         : gpuNames
-          ? `GPU encoder found: ${gpuNames}.`
+          ? t('export.gpu.found', { names: gpuNames })
           : webCodecsGpu === null || !caps
-            ? 'Checking for a GPU encoder…'
-            : 'No GPU encoder found; Auto uses the software encoder (x264).'
-  const softwareHint = options.format === 'webm' ? 'libvpx on the CPU: slower, works everywhere.' : 'x264 on the CPU: slower, smallest files, works everywhere.'
+            ? t('export.gpu.checking')
+            : t('export.gpu.none')
+  const softwareHint = options.format === 'webm' ? t('export.software.vp9') : t('export.software.x264')
 
   // Size target advice, before exporting.
   const target = options.targetSizeMB
@@ -955,46 +965,47 @@ export function ExportDialog(props: Props): JSX.Element {
     warnings.push({
       key: 'capped',
       cls: 'export-capped',
-      text: `This recording is very ${visible.width >= visible.height ? 'wide' : 'tall'}, so the video is limited to ${MAX_EXPORT_SIDE} pixels on its long side.`
+      text: t(visible.width >= visible.height ? 'export.warn.cappedWide' : 'export.warn.cappedTall', { side: fmt.count(MAX_EXPORT_SIDE) })
     })
   }
   if (!audioOnly && upscaled(resolution)) {
-    warnings.push({ key: 'upscale', cls: 'warn', text: `Larger than the recording (${visible.width}×${visible.height}): the video is upscaled and may look soft.` })
+    warnings.push({ key: 'upscale', cls: 'warn', text: t('export.warn.upscale', { width: fmt.count(visible.width), height: fmt.count(visible.height) }) })
   }
   if (follows) {
-    warnings.push({ key: 'follow', testid: 'export-follow-on', text: 'The view follows the action: it crops in on your cursor, clicks and typing.' })
+    warnings.push({ key: 'follow', testid: 'export-follow-on', text: t('export.warn.followOn') })
     if (magnify) {
-      const times = (v: number): string => `${v.toFixed(1)}×`
-      const inZooms = times(magnify.zoomed) !== times(magnify.rest) ? ` (up to ${times(magnify.zoomed)} in zooms)` : ''
+      const times = (v: number): string => `${fmt.number(v, { min: 1, max: 1 })}×`
+      const size = { width: fmt.count(visible.width), height: fmt.count(visible.height), factor: times(magnify.rest) }
       const soft = magnify.rest >= 2
-      const text = `Shows your ${visible.width}×${visible.height} recording at ${times(magnify.rest)} its size${inZooms}.${soft ? ' Small text may look soft. Recording at 1440p or 4K keeps it sharp.' : ''}`
+      const shows = times(magnify.zoomed) !== times(magnify.rest) ? t('export.warn.magnifyZooms', { ...size, zoomed: times(magnify.zoomed) }) : t('export.warn.magnify', size)
+      const text = soft ? `${shows} ${t('export.warn.magnifySoft')}` : shows
       warnings.push({ key: 'magnify', testid: 'export-magnify', cls: soft ? 'warn' : '', text })
     }
   } else if (!audioOnly && project.reframe?.mode === 'follow') {
-    warnings.push({ key: 'follow', testid: 'export-follow-off', text: 'In this shape the whole screen is shown: following the action applies to tall and square videos.' })
+    warnings.push({ key: 'follow', testid: 'export-follow-off', text: t('export.warn.followOff') })
   }
-  if (!audioOnly && project.transcript?.segments.length) warnings.push({ key: 'captions', cls: 'export-captions', text: `Captions are drawn on the video when Show captions is on (now ${project.captions?.show === false ? 'off' : 'on'}, in the Captions tab, where Export captions saves them as SRT or VTT).` })
+  if (!audioOnly && project.transcript?.segments.length) warnings.push({ key: 'captions', cls: 'export-captions', text: t(project.captions?.show === false ? 'export.warn.captionsOff' : 'export.warn.captionsOn') })
   if (!audioOnly && lostImages.length)
-    warnings.push({ key: 'images', cls: 'warn', text: `Image missing: ${[...new Set(lostImages)].join(', ')}. It is left out of the video.` })
+    warnings.push({ key: 'images', cls: 'warn', text: t('export.warn.images', { names: [...new Set(lostImages)].join(', ') }) })
   if (!audioOnly && lostFonts.length)
-    warnings.push({ key: 'fonts', cls: 'warn', text: `Font missing: ${lostFonts.join(', ')}. Text that uses it is drawn with Segoe UI.` })
+    warnings.push({ key: 'fonts', cls: 'warn', text: t('export.warn.fonts', { names: lostFonts.join(', ') }) })
   if (!audioOnly) for (const text of lostCaptionFonts) warnings.push({ key: `caption-font ${text}`, cls: 'warn', testid: 'export-caption-font', text })
-  if (gif && length > 30) warnings.push({ key: 'gif', cls: 'warn', text: 'Long GIFs get very large; MP4 is better for clips over 30 s.' })
-  if (audioOnly && !hasSound) warnings.push({ key: 'silent', cls: 'warn', text: 'This recording has no sound to export.' })
+  if (gif && length > 30) warnings.push({ key: 'gif', cls: 'warn', text: t('export.warn.longGif') })
+  if (audioOnly && !hasSound) warnings.push({ key: 'silent', cls: 'warn', text: t('export.warn.silent') })
   if (limits?.maxSeconds && length > limits.maxSeconds) {
-    warnings.push({ key: 'len', cls: 'warn', text: `${preset!.label} takes videos up to ${fmt.clock(limits.maxSeconds, 'whole')}; this one is ${fmt.clock(length, 'whole')}. Trim it first.` })
+    warnings.push({ key: 'len', cls: 'warn', text: t('export.warn.tooLong', { name: presetLabel(preset!), max: fmt.clock(limits.maxSeconds, 'whole'), length: fmt.clock(length, 'whole') }) })
   }
   if (targetInfo && !targetInfo.feasible) {
-    warnings.push({ key: 'target', cls: 'warn', text: `${target} MB is too small for ${fmt.clock(length, 'whole')} of video. Choose a larger size or shorten the clip.` })
+    warnings.push({ key: 'target', cls: 'warn', text: t('export.warn.targetSmall', { mb: fmt.number(target!), length: fmt.clock(length, 'whole') }) })
   } else if (targetInfo && targetInfo.bpp < LOW_BPP && !audioOnly) {
-    warnings.push({ key: 'target', cls: 'warn', text: `${target} MB is tight for ${dims.width}×${dims.height} at ${dims.fps} fps; a lower resolution or 30 fps will look sharper.` })
+    warnings.push({ key: 'target', cls: 'warn', text: t('export.warn.targetTight', { mb: fmt.number(target!), width: fmt.count(dims.width), height: fmt.count(dims.height), fps: fmt.count(dims.fps) }) })
   }
 
-  const exportLabel = `Export ${FORMAT_LABELS[options.format]}`
-  const settingsName = preset ? presetLabel(preset) : 'Custom'
+  const exportLabel = t('export.exportFormat', { format: FORMAT_LABELS[options.format] })
+  const settingsName = preset ? presetLabel(preset) : t('export.custom')
   // A saved preset names the settings (§2.2): "Settings · Client review", its name in the muted part.
   const userName: ReactNode = userPreset ? <span className="muted">{uiLanguage() === 'en' ? userPreset.name : <bdi>{userPreset.name}</bdi>}</span> : null
-  const formats = [...FORMATS, { value: 'wav' as const, label: t('codecs.format.wav.label'), title: t('codecs.format.wav.title') }]
+  const formats = [...formatChoices(), { value: 'wav' as const, label: t('codecs.format.wav.label'), title: t('codecs.format.wav.title') }]
   const formatTitle = (f: ExportFormat, title: string): string =>
     f === effective.format && DEFAULT_CODEC[f] && codecOf(effective) !== DEFAULT_CODEC[f] ? t('codecs.format.made', { codec: CODEC_NAMES[codecOf(effective)], audio: audioOf(effective) }) : title
   const presetMetaOf = (o: ExportOptions): string => optionsMeta(project, o)
@@ -1007,22 +1018,22 @@ export function ExportDialog(props: Props): JSX.Element {
 
   return (
     <div className="overlay modal-backdrop">
-      <div ref={boxRef} className={`modal export-modal ${phase.kind === 'settings' ? 'wide' : ''}`} role="dialog" aria-modal="true" aria-label="Export">
+      <div ref={boxRef} className={`modal export-modal ${phase.kind === 'settings' ? 'wide' : ''}`} role="dialog" aria-modal="true" aria-label={t('export.title')}>
         <header className="modal-head">
-          <h2>Export</h2>
+          <h2>{t('export.title')}</h2>
           {phase.kind === 'settings' && (
-            <div className="segmented export-mode" role="tablist" aria-label="Export mode">
+            <div className="segmented export-mode" role="tablist" aria-label={t('export.mode')}>
               <button role="tab" aria-selected={mode === 'single'} className={mode === 'single' ? 'active' : ''} onClick={() => setModeSaved('single')}>
-                One file
+                {t('export.mode.single')}
               </button>
               <button role="tab" aria-selected={mode === 'batch'} className={mode === 'batch' ? 'active' : ''} onClick={() => setModeSaved('batch')}>
-                Batch
+                {t('export.mode.batch')}
               </button>
             </div>
           )}
           <span className="tb-spacer" />
           {!running && (
-            <button className="btn ghost" onClick={props.onClose} title="Close">
+            <button className="btn ghost" onClick={props.onClose} title={t('common.action.close')}>
               <Icon name="x" />
             </button>
           )}
@@ -1034,16 +1045,16 @@ export function ExportDialog(props: Props): JSX.Element {
               <aside className="export-side">
                 <div className={`export-preview ${audioOnly ? 'audio-only' : ''}`}>
                   <ExportPreview {...source} options={effective} time={frameSource} soundTime={frameSound} held={frameHeld} box={{ width: 236, height: 236 }} />
-                  {audioOnly && <span className="export-preview-badge">Audio only</span>}
+                  {audioOnly && <span className="export-preview-badge">{t('export.audioOnly')}</span>}
                 </div>
                 <label className="export-frame">
                   <span className="slider-head">
-                    <span>Frame</span>
+                    <span>{t('export.frame')}</span>
                     <span className="muted">{fmt.clock(frameAt, 'rounded-tenths')}</span>
                   </span>
                   <input
                     type="range"
-                    aria-label="Thumbnail frame"
+                    aria-label={t('export.frameLabel')}
                     min={0}
                     max={Math.max(0.001, length)}
                     step={1 / 30}
@@ -1054,14 +1065,14 @@ export function ExportDialog(props: Props): JSX.Element {
                     }}
                   />
                 </label>
-                <button className="btn export-thumb" onClick={() => void saveThumbnail()} disabled={thumb.kind === 'busy'} title="Save this frame as a PNG at the export size">
-                  <Icon name="image" size={16} /> {thumb.kind === 'busy' ? 'Saving…' : 'Save thumbnail'}
+                <button className="btn export-thumb" onClick={() => void saveThumbnail()} disabled={thumb.kind === 'busy'} title={t('export.thumb.title')}>
+                  <Icon name="image" size={16} /> {thumb.kind === 'busy' ? t('common.state.saving') : t('export.thumb.save')}
                 </button>
                 {thumb.kind === 'saved' && (
                   <p className="hint export-thumb-status">
-                    Saved {thumb.width}×{thumb.height} PNG.{' '}
+                    {richText('export.thumb.saved', { width: fmt.count(thumb.width), height: fmt.count(thumb.height) })}{' '}
                     <button className="link" onClick={() => void window.api.showItemInFolder(thumb.path)}>
-                      Show in folder
+                      {t('common.action.showInFolder')}
                     </button>
                   </p>
                 )}
@@ -1072,9 +1083,9 @@ export function ExportDialog(props: Props): JSX.Element {
                   {mode === 'single' ? (
                     <>
                       <p className="hint export-size">
-                        {audioOnly ? <>Audio only · {fmt.duration(length)}</> : sizeLine(effective, dims, length)}
-                        {gif ? ` · GIFs play at ${GIF_FPS} fps` : ''}
-                        {target ? ` · ${gif ? 'up to' : 'about'} ${target} MB` : ''}
+                        {audioOnly ? <>{richText('export.summary.audioOnly', { length: fmt.duration(length) })}</> : sizeLine(effective, dims, length)}
+                        {gif ? ` · ${t('export.summary.gifFps', { fps: fmt.count(GIF_FPS) })}` : ''}
+                        {target ? ` · ${t(gif ? 'export.summary.upTo' : 'export.summary.about', { mb: fmt.number(target) })}` : ''}
                       </p>
                       {perChapter && (
                         <ul className="export-batch-files" data-testid="export-part-files">
@@ -1090,7 +1101,7 @@ export function ExportDialog(props: Props): JSX.Element {
                   ) : (
                     <>
                       <p className="hint export-size">
-                        {items.length === 0 ? 'Tick the files to export.' : `${items.length} file${items.length === 1 ? '' : 's'} · ${fmt.duration(length)} each, into one folder:`}
+                        {items.length === 0 ? t('export.batch.none') : t('export.batch.summary', { count: items.length, n: fmt.count(items.length), length: fmt.duration(length) })}
                       </p>
                       {items.length > 0 && (
                         <ul className="export-batch-files">
@@ -1101,7 +1112,7 @@ export function ExportDialog(props: Props): JSX.Element {
                               <li key={items[i].key} title={name}>
                                 <AspectGlyph ratio={ratioOf(s)} size={12} />
                                 <span className="name">{name}</span>
-                                <span className="muted">{isAudioOnly(made.options.format) ? 'audio' : `${s.width}×${s.height}`}</span>
+                                <span className="muted">{isAudioOnly(made.options.format) ? t('export.batch.audio') : `${s.width}×${s.height}`}</span>
                                 {made.notice && (
                                   <span className="hint warn batch-notice" data-testid="batch-codec-notice">
                                     {t(made.notice, codecNotice(items[i].options, made.options))}
@@ -1124,8 +1135,8 @@ export function ExportDialog(props: Props): JSX.Element {
                     <div className="export-follow-note" data-testid="export-follow-note">
                       <p className="hint">
                         {suggestion === 'vertical'
-                          ? 'Your whole screen is shrunk to fit 9:16. A vertical version crops in and follows your cursor.'
-                          : 'Your whole screen is shrunk to fit a square. A square version crops in and follows your cursor.'}
+                          ? t('export.follow.vertical')
+                          : t('export.follow.square')}
                       </p>
                       <button
                         className="btn small"
@@ -1134,7 +1145,7 @@ export function ExportDialog(props: Props): JSX.Element {
                           group.command(suggestion === 'vertical' ? 'makeVertical' : 'makeSquare')
                         }}
                       >
-                        {suggestion === 'vertical' ? 'Make a vertical version' : 'Make a square version'}
+                        {suggestion === 'vertical' ? t('export.follow.makeVertical') : t('export.follow.makeSquare')}
                       </button>
                     </div>
                   )}
@@ -1169,14 +1180,14 @@ export function ExportDialog(props: Props): JSX.Element {
                   />
                 )}
                 <div className="export-section-head">
-                  <span>{mode === 'single' ? 'Destination' : 'Files to export'}</span>
+                  <span>{mode === 'single' ? t('export.destination') : t('export.batch.files')}</span>
                   {mode === 'batch' && batch.presets.length + batch.aspects.length + (batch.userPresets?.length ?? 0) > 0 && (
                     <button className="link" onClick={() => setBatchSaved({ presets: [], aspects: [] })}>
-                      Clear
+                      {t('export.batch.clear')}
                     </button>
                   )}
                 </div>
-                <div className="preset-grid" role={mode === 'single' ? 'radiogroup' : 'group'} aria-label="Destinations">
+                <div className="preset-grid" role={mode === 'single' ? 'radiogroup' : 'group'} aria-label={t('export.destinations')}>
                   {shownPresets().map((p) => {
                     const on = mode === 'single' ? options.preset === p.id : batch.presets.includes(p.id)
                     const limit = presetLimit(p)
@@ -1215,7 +1226,7 @@ export function ExportDialog(props: Props): JSX.Element {
 
                 {mode === 'batch' && (
                   <div className="form-row export-batch-aspects">
-                    <span>Also</span>
+                    <span>{t('export.batch.also')}</span>
                     <div className="export-batch-also">
                       <Choice<string>
                         value={null}
@@ -1224,7 +1235,7 @@ export function ExportDialog(props: Props): JSX.Element {
                           label: a,
                           pressed: batch.aspects.includes(a),
                           disabled: audioOnly,
-                          title: `The settings below in ${a}`,
+                          title: t('export.batch.aspectTitle', { aspect: a }),
                           icon: <AspectGlyph ratio={ratioOf(exportSize(project, { ...options, aspect: a }))} />
                         }))}
                         onChange={(a) =>
@@ -1234,7 +1245,7 @@ export function ExportDialog(props: Props): JSX.Element {
                           })
                         }
                       />
-                      <p className="hint">The settings below, in more shapes.</p>
+                      <p className="hint">{t('export.batch.alsoHint')}</p>
                     </div>
                   </div>
                 )}
@@ -1244,7 +1255,7 @@ export function ExportDialog(props: Props): JSX.Element {
                     <span>{tNodes<ReactNode>('presets.header.named', { name: userName }, {})}</span>
                   ) : (
                     <span>
-                      Settings <span className="muted">· {mode === 'single' ? settingsName : 'for “Also” and the encoder'}</span>
+                      {t('common.label.settings')} <span className="muted">· {mode === 'single' ? settingsName : t('export.settings.batch')}</span>
                     </span>
                   )}
                   <span className={`chevron ${settingsOpen ? 'open' : ''}`} aria-hidden="true">
@@ -1274,13 +1285,13 @@ export function ExportDialog(props: Props): JSX.Element {
                 {settingsOpen && (
                   <div className="export-settings">
                     <div className="form-row">
-                      <span>Format</span>
+                      <span>{t('export.settings.format')}</span>
                       <Choice
                         value={effective.format}
                         onChange={(format) => apply(pickFormat(options, format))}
                         options={formats.map((f) => {
                           const silent = isAudioOnly(f.value) && !hasSound
-                          return { ...f, disabled: silent, title: silent ? 'This recording has no sound' : formatTitle(f.value, f.title) }
+                          return { ...f, disabled: silent, title: silent ? t('export.settings.noSound') : formatTitle(f.value, f.title) }
                         })}
                       />
                     </div>
@@ -1297,7 +1308,7 @@ export function ExportDialog(props: Props): JSX.Element {
                     <BackgroundRow rows={rows} options={effective} onChange={(next) => apply(next)} replaced={replaced} onReplaced={setReplaced} />
                     {!audioOnly && (
                       <div className="form-row">
-                        <span>Resolution</span>
+                        <span>{t('export.settings.resolution')}</span>
                         <Choice
                           value={resolution}
                           onChange={(r) => {
@@ -1310,19 +1321,19 @@ export function ExportDialog(props: Props): JSX.Element {
                     )}
                     {!audioOnly && (
                       <div className="form-row">
-                        <span>Aspect</span>
+                        <span>{t('export.settings.aspect')}</span>
                         <Choice value={effective.aspect ?? 'project'} onChange={(a) => set({ aspect: a === 'project' ? undefined : (a as AspectRatio) })} options={aspectOptions} />
                       </div>
                     )}
                     {!gif && !audioOnly && (
                       <div className="form-row">
-                        <span id={FPS_LABEL_ID}>Frame rate</span>
+                        <span id={FPS_LABEL_ID}>{t('export.settings.frameRate')}</span>
                         <FrameRateRow rows={rows} options={effective} onChange={(next) => apply(next)} note={fpsNote} />
                       </div>
                     )}
                     {!rows.quality.hidden && (
                       <div className="form-row">
-                        <span>Quality</span>
+                        <span>{t('export.settings.quality')}</span>
                         <div className="export-stack">
                           <Choice
                             value={target ? null : effective.quality}
@@ -1336,55 +1347,69 @@ export function ExportDialog(props: Props): JSX.Element {
                                     { value: 'small', label: t('codecs.quality.medium'), title: intermediateTitles ? t(intermediateTitles.small) : undefined }
                                   ]
                                 : [
-                                    { value: 'high', label: 'Studio' },
-                                    { value: 'medium', label: 'Web' },
-                                    { value: 'small', label: 'Small file' }
+                                    { value: 'high', label: t('export.quality.studio') },
+                                    { value: 'medium', label: t('export.quality.web') },
+                                    { value: 'small', label: t('export.quality.small') }
                                   ]
                             }
                           />
-                          {target ? <p className="hint">Set by the target size.</p> : null}
+                          {target ? <p className="hint">{t('export.quality.byTarget')}</p> : null}
                         </div>
                       </div>
                     )}
                     <div className="form-row">
-                      <span>Target size</span>
+                      <span>{t('export.target.label')}</span>
                       <div className="export-target">
-                        <input
-                          type="number"
-                          inputMode="decimal"
-                          aria-label="Target size in MB"
-                          placeholder="Off"
-                          min={TARGET_MB_RANGE.min}
-                          max={TARGET_MB_RANGE.max}
-                          step={1}
-                          value={targetDraft}
-                          disabled={!!rows.targetSize.disabled}
-                          onChange={(e) => commitTarget(e.target.value)}
-                        />
-                        <span className="muted">MB</span>
+                        {/* Outside English the field shows the UI's digits and reads any (NumberField, output-and-languages §11.1); English keeps today's field and its draft text. */}
+                        {uiLanguage() === 'en' ? (
+                          <input
+                            type="number"
+                            inputMode="decimal"
+                            aria-label={t('export.target.field')}
+                            placeholder={t('common.state.off')}
+                            min={TARGET_MB_RANGE.min}
+                            max={TARGET_MB_RANGE.max}
+                            step={1}
+                            value={targetDraft}
+                            disabled={!!rows.targetSize.disabled}
+                            onChange={(e) => commitTarget(e.target.value)}
+                          />
+                        ) : (
+                          <NumberField
+                            aria-label={t('export.target.field')}
+                            placeholder={t('common.state.off')}
+                            min={TARGET_MB_RANGE.min}
+                            max={TARGET_MB_RANGE.max}
+                            step={1}
+                            value={targetDraft.trim() ? Number(targetDraft.replace(',', '.')) : NaN}
+                            disabled={!!rows.targetSize.disabled}
+                            onValue={(n) => commitTarget(Number.isFinite(n) ? String(n) : '')}
+                          />
+                        )}
+                        <span className="muted">{t('export.target.unit')}</span>
                         {rows.targetSize.disabled ? (
                           <span className="hint" data-testid="export-target-off">
                             {t(rows.targetSize.disabled)}
                           </span>
                         ) : target ? (
                           <button className="btn ghost small" onClick={() => commitTarget('')}>
-                            Off
+                            {t('common.state.off')}
                           </button>
                         ) : (
-                          <span className="hint">{gif ? 'Shrinks the GIF until it fits' : 'Aims for this file size'}</span>
+                          <span className="hint">{gif ? t('export.target.gif') : t('export.target.hint')}</span>
                         )}
                       </div>
                     </div>
                     {!rows.encoder.hidden && (
                       <div className="form-row">
-                        <span>Encoder</span>
+                        <span>{t('export.settings.encoder')}</span>
                         <div className="export-stack">
                           <Choice
                             value={effective.encoder}
                             onChange={(encoder) => set({ encoder })}
                             options={[
-                              { value: 'auto', label: 'Auto (GPU when available)' },
-                              { value: 'software', label: 'Software', disabled: !!rows.encoder.softwareDisabled }
+                              { value: 'auto', label: t('export.encoder.auto') },
+                              { value: 'software', label: t('export.encoder.softwareChoice'), disabled: !!rows.encoder.softwareDisabled }
                             ]}
                           />
                           {rows.encoder.softwareDisabled && <p className="hint">{t(rows.encoder.softwareDisabled)}</p>}
@@ -1422,15 +1447,15 @@ export function ExportDialog(props: Props): JSX.Element {
                 )}
               </div>
             </div>
-            {lutAsk && <LutQuestion question={lutAsk.question} back={primary} onExport={lutAsk.go} onCancel={() => setLutAsk(null)} />}
+            {lutAsk && <LutQuestion question={lutAsk.question} many={lutAsk.many} back={primary} onExport={lutAsk.go} onCancel={() => setLutAsk(null)} />}
             <footer className="modal-foot">
               <button className="btn" onClick={props.onClose}>
-                Cancel
+                {t('common.action.cancel')}
               </button>
               {mode === 'single' ? (
                 <button ref={primary} className="btn primary" onClick={onExport} disabled={!canExport} aria-disabled={checking || undefined} aria-busy={checking || undefined}>
                   {perChapter ? <Icon name="folder" size={16} /> : <Icon name="download" size={16} />}{' '}
-                  {checking ? t('codecs.export.checking') : perChapter ? `Export ${parts.length} chapter${parts.length === 1 ? '' : 's'}…` : exportLabel}
+                  {checking ? t('codecs.export.checking') : perChapter ? t('export.chapters.exportParts', { count: parts.length, n: fmt.count(parts.length) }) : exportLabel}
                 </button>
               ) : (
                 <button ref={primary} className="btn primary" onClick={onExport} disabled={!canExport} aria-disabled={checking || undefined} aria-busy={checking || undefined}>
@@ -1438,9 +1463,18 @@ export function ExportDialog(props: Props): JSX.Element {
                   {checking ? (
                     t('codecs.export.checking')
                   ) : (
-                    <>
-                      Export {items.length} file{items.length === 1 ? '' : 's'}…
-                    </>
+                    uiLanguage() === 'en' ? (
+                      // English keeps today's text nodes, which the browser lays out by node (merge group, output-and-languages §9.3).
+                      <>
+                        {t('export.batch.exportFiles.lead')}
+                        {items.length}
+                        {t('export.batch.exportFiles.noun')}
+                        {items.length === 1 ? '' : t('export.batch.exportFiles.s')}
+                        {t('export.batch.exportFiles.end')}
+                      </>
+                    ) : (
+                      t('export.batch.exportFiles.whole', { count: items.length, n: fmt.count(items.length) })
+                    )
                   )}
                 </button>
               )}
@@ -1473,11 +1507,11 @@ export function ExportDialog(props: Props): JSX.Element {
         {phase.kind === 'done' && (
           <>
             <p className="success">
-              <Icon name="check" /> Export finished
+              <Icon name="check" /> {t('export.done.title')}
             </p>
             <p className="hint path">{phase.path}</p>
             <p className="hint">
-              {fmt.bytes(phase.bytes)} · exported in {fmt.duration(phase.seconds)} · {phase.encoder}
+              {richText('export.done.summary', { size: fmt.bytes(phase.bytes), time: fmt.duration(phase.seconds), encoder: phase.encoder })}
             </p>
             <SizeReport result={phase} />
             {phase.also ? <AlsoReport extras={phase.extras} also={phase.also} video={phase.path} /> : <ExtrasReport extras={phase.extras} />}
@@ -1486,20 +1520,20 @@ export function ExportDialog(props: Props): JSX.Element {
             {props.onShortClips && (
               <p className="hint">
                 <button type="button" className="link" data-testid="export-short-clips" onClick={props.onShortClips}>
-                  Make short clips for Shorts and Reels…
+                  {t('export.done.shortClips')}
                 </button>
               </p>
             )}
             {copy.kind === 'failed' && <p className="hint warn">{copy.message}</p>}
             <footer className="modal-foot">
-              <button className="btn" onClick={() => void copyFile(phase.path)} disabled={copy.kind === 'busy'} title="Copy the file to paste it into a chat, an email or a folder">
-                {copy.kind === 'copied' ? <Icon name="check" size={16} /> : <CopyIcon />} {copy.kind === 'copied' ? 'Copied' : 'Copy'}
+              <button className="btn" onClick={() => void copyFile(phase.path)} disabled={copy.kind === 'busy'} title={t('export.done.copyTitle')}>
+                {copy.kind === 'copied' ? <Icon name="check" size={16} /> : <CopyIcon />} {copy.kind === 'copied' ? t('common.state.copied') : t('common.action.copy')}
               </button>
               <button className="btn" onClick={() => void window.api.showItemInFolder(phase.path)}>
-                <Icon name="folder" size={16} /> Show in folder
+                <Icon name="folder" size={16} /> {t('common.action.showInFolder')}
               </button>
               <button ref={primary} className="btn primary" onClick={props.onClose}>
-                Done
+                {t('common.action.done')}
               </button>
             </footer>
           </>
@@ -1507,18 +1541,18 @@ export function ExportDialog(props: Props): JSX.Element {
 
         {phase.kind === 'error' && (
           <>
-            <p className="error export-error">Export failed: {phase.message}</p>
+            <p className="error export-error">{richText('export.error.title', { message: phase.message })}</p>
             {phase.detail && (
               <>
                 <button className="btn ghost small export-detail-toggle" onClick={() => setShowDetail((v) => !v)}>
-                  {showDetail ? 'Hide details' : 'Show details'}
+                  {showDetail ? t('export.error.hideDetails') : t('export.error.showDetails')}
                 </button>
                 {showDetail && <pre className="error-detail">{phase.detail}</pre>}
               </>
             )}
             <footer className="modal-foot">
               <button ref={primary} className="btn" onClick={() => setPhase({ kind: 'settings' })}>
-                Back
+                {t('common.action.back')}
               </button>
             </footer>
           </>
@@ -1532,16 +1566,18 @@ export function ExportDialog(props: Props): JSX.Element {
 function SizeReport({ result }: { result: { bytes: number; targetMB?: number; reduced?: string; overLimit?: boolean; limit?: { label: string; maxMB: number } } }): JSX.Element | null {
   const { targetMB } = result
   const lines: { text: string; warn?: boolean }[] = []
-  if (result.reduced) lines.push({ text: `To fit ${targetMB} MB the GIF was made at ${result.reduced}.` })
-  if (result.overLimit) lines.push({ text: `Even at its smallest the GIF is over ${targetMB} MB. Shorten the clip or export an MP4.`, warn: true })
+  const mb = fmt.number(targetMB ?? 0)
+  if (result.reduced) lines.push({ text: t('export.size.reduced', { mb, how: result.reduced }) })
+  if (result.overLimit) lines.push({ text: t('export.size.overLimit', { mb }), warn: true })
   else if (targetMB && !result.reduced) {
     const err = sizeError(result.bytes, targetMB)
-    if (err > 0.1) lines.push({ text: `${Math.round(err * 100)}% over the ${targetMB} MB target: this encoder could not hold the rate. Try the Software encoder.`, warn: true })
-    else lines.push({ text: `Target ${targetMB} MB: ${err <= 0 ? 'within the limit' : `${Math.round(err * 100)}% over`}${err < -0.1 ? ' (the video needed fewer bits)' : ''}.` })
+    const over = fmt.count(Math.round(err * 100))
+    if (err > 0.1) lines.push({ text: t('export.size.overTarget', { percent: over, mb }), warn: true })
+    else lines.push({ text: t(err <= 0 ? (err < -0.1 ? 'export.size.withinFewer' : 'export.size.within') : 'export.size.over', { mb, percent: over }) })
   }
   const limit = result.limit
   if (limit && result.bytes > limit.maxMB * MB) {
-    lines.push({ text: `Larger than the ${limit.maxMB} MB ${limit.label} accepts: set a target size of about ${Math.floor(limit.maxMB * 0.95)} MB and export again.`, warn: true })
+    lines.push({ text: t('export.size.overPlatform', { max: fmt.number(limit.maxMB), name: limit.label, mb: fmt.count(Math.floor(limit.maxMB * 0.95)) }), warn: true })
   }
   if (!lines.length) return null
   return (
@@ -1558,19 +1594,19 @@ function SizeReport({ result }: { result: { bytes: number; targetMB?: number; re
 function statusText(s: BatchStatus): string {
   switch (s.state) {
     case 'waiting':
-      return 'Waiting'
+      return t('export.batch.waiting')
     case 'running': {
       const p = s.progress
-      if (!p || p.phase === 'preparing') return 'Preparing…'
-      if (p.phase === 'finalizing') return p.detail ?? 'Finalizing…'
-      return `Rendering… ${Math.floor((p.frame / Math.max(1, p.frames)) * 100)}%`
+      if (!p || p.phase === 'preparing') return t('export.progress.preparing')
+      if (p.phase === 'finalizing') return p.detail ?? t('export.progress.finalizing')
+      return t('export.progress.rendering', { percent: fmt.count(Math.floor((p.frame / Math.max(1, p.frames)) * 100)) })
     }
     case 'done':
       return `${fmt.bytes(s.bytes)} · ${fmt.duration(s.seconds)}`
     case 'failed':
       return s.message
     case 'cancelled':
-      return 'Cancelled'
+      return t('export.batch.cancelled')
   }
 }
 
@@ -1609,7 +1645,9 @@ function BatchView({
       {phase.finished ? (
         <p className={failed ? 'error export-error' : 'success'}>
           {!failed && <Icon name="check" />}
-          {failed ? `Batch finished: ${done} of ${phase.jobs.length} exported` : `Batch finished: ${done} file${done === 1 ? '' : 's'} exported`}
+          {failed
+            ? t('export.batch.finishedSome', { done: fmt.count(done), total: fmt.count(phase.jobs.length) })
+            : t('export.batch.finished', { count: done, n: fmt.count(done) })}
         </p>
       ) : (
         <>
@@ -1617,7 +1655,9 @@ function BatchView({
             <div className="progress-bar" style={{ width: `${overall * 100}%` }} />
           </div>
           <p className="hint export-status">
-            {current >= 0 ? `Exporting ${current + 1} of ${phase.jobs.length}: ${phase.jobs[current].label} · ${paused ? pausedText(slept) : statusText(phase.statuses[current])}` : 'Preparing…'}
+            {current >= 0
+              ? t('export.batch.exporting', { index: fmt.count(current + 1), total: fmt.count(phase.jobs.length), name: phase.jobs[current].label, status: paused ? pausedText(slept) : statusText(phase.statuses[current]) })
+              : t('export.progress.preparing')}
           </p>
         </>
       )}
@@ -1643,11 +1683,11 @@ function BatchView({
                 )}
                 {s.state === 'done' && s.extras && <ExtrasLine extras={s.extras} />}
                 {s.state === 'done' && (s.reduced || s.overLimit) && (
-                  <span className={`batch-status ${s.overLimit ? 'warn' : ''}`}>{s.overLimit ? `Still over ${job.options.targetSizeMB} MB` : `Fitted: ${s.reduced}`}</span>
+                  <span className={`batch-status ${s.overLimit ? 'warn' : ''}`}>{s.overLimit ? t('export.batch.stillOver', { mb: fmt.number(job.options.targetSizeMB ?? 0) }) : t('export.batch.fitted', { how: s.reduced ?? '' })}</span>
                 )}
               </span>
               {s.state === 'done' && (
-                <button className="btn ghost small" title="Copy the file" onClick={() => onCopy(s.path)}>
+                <button className="btn ghost small" title={t('export.batch.copyFile')} onClick={() => onCopy(s.path)}>
                   <CopyIcon />
                 </button>
               )}
@@ -1656,27 +1696,27 @@ function BatchView({
         })}
       </ul>
       {copy.kind === 'failed' && <p className="hint warn">{copy.message}</p>}
-      {copy.kind === 'copied' && <p className="hint">Copied to the clipboard.</p>}
+      {copy.kind === 'copied' && <p className="hint">{t('export.batch.copied')}</p>}
       <footer className="modal-foot">
         {phase.finished ? (
           <>
             <button className="btn" onClick={onBack}>
-              Back
+              {t('common.action.back')}
             </button>
             {firstDone && (
               <button className="btn" onClick={() => void window.api.showItemInFolder(firstDone.path)}>
-                <Icon name="folder" size={16} /> Show in folder
+                <Icon name="folder" size={16} /> {t('common.action.showInFolder')}
               </button>
             )}
             <button ref={primary} className="btn primary" onClick={onDone}>
-              Done
+              {t('common.action.done')}
             </button>
           </>
         ) : (
           <>
             <PauseButton paused={paused} onPause={onPause} disabled={!(run && run.state === 'running' && run.progress?.phase === 'rendering') && !paused} />
             <button className="btn" onClick={onCancel}>
-              Cancel export
+              {t('export.cancel')}
             </button>
           </>
         )}
@@ -1687,7 +1727,7 @@ function BatchView({
 
 /** The running export's state while it waits at the pause gate (F-12). */
 function pausedText(slept: boolean): string {
-  return slept ? 'Paused while the PC slept. Carrying on…' : 'Paused · Resume to carry on'
+  return slept ? t('export.pause.slept') : t('export.pause.paused')
 }
 
 function PauseButton({ paused, onPause, disabled }: { paused: boolean; onPause: () => void; disabled: boolean }): JSX.Element {
@@ -1698,9 +1738,9 @@ function PauseButton({ paused, onPause, disabled }: { paused: boolean; onPause: 
       className="btn export-pause"
       onClick={() => !disabled && onPause()}
       aria-disabled={disabled}
-      title={disabled ? 'Pause is possible while frames are drawn' : paused ? 'Carry on with the export' : 'Pause the export; nothing is lost'}
+      title={disabled ? t('export.pause.disabledTitle') : paused ? t('export.pause.resumeTitle') : t('export.pause.pauseTitle')}
     >
-      {paused ? 'Resume' : 'Pause'}
+      {paused ? t('export.pause.resume') : t('export.pause.pause')}
     </button>
   )
 }
@@ -1710,10 +1750,10 @@ function ExtrasLine({ extras }: { extras: BatchExtras }): JSX.Element | null {
   const names = extras.saved.map((f) => f.split(/[\\/]/).pop())
   return (
     <>
-      {names.length > 0 && <span className="batch-status">Also saved: {names.join(', ')}</span>}
+      {names.length > 0 && <span className="batch-status">{richText('export.also.saved', { names: names.join(', ') })}</span>}
       {extras.failed.map((f) => (
         <span key={f} className="batch-status warn">
-          Could not save {f}
+          {richText('export.also.failed', { reason: f })}
         </span>
       ))}
     </>
@@ -1725,10 +1765,10 @@ function ExtrasReport({ extras }: { extras?: BatchExtras }): JSX.Element | null 
   const names = extras.saved.map((f) => f.split(/[\\/]/).pop())
   return (
     <div className="export-extras" data-testid="export-extras">
-      {names.length > 0 && <p className="hint">Also saved: {names.join(', ')}</p>}
+      {names.length > 0 && <p className="hint">{richText('export.also.saved', { names: names.join(', ') })}</p>}
       {extras.failed.map((f) => (
         <p key={f} className="hint warn">
-          Could not save {f}
+          {richText('export.also.failed', { reason: f })}
         </p>
       ))}
     </div>
@@ -1757,14 +1797,19 @@ function RunningView({
 }): JSX.Element {
   const finalizing = progress?.phase === 'finalizing'
   const fraction = progress && progress.frames > 0 ? progress.frame / progress.frames : 0
-  let status = 'Preparing…'
+  let status = t('export.progress.preparing')
   if (progress?.phase === 'rendering') {
-    const parts = [`Rendering… ${Math.floor(fraction * 100)}%`]
-    if (progress.fps > 0) parts.push(`${progress.fps.toFixed(progress.fps < 10 ? 1 : 0)} fps`)
-    if (progress.eta !== null) parts.push(`about ${fmt.duration(progress.eta)} left`)
+    const parts = [t('export.progress.rendering', { percent: fmt.count(Math.floor(fraction * 100)) })]
+    if (progress.fps > 0) parts.push(t('export.progress.fps', { fps: fmt.number(progress.fps, { max: progress.fps < 10 ? 1 : 0, min: progress.fps < 10 ? 1 : 0 }) }))
+    if (progress.eta !== null) parts.push(t('export.progress.left', { time: fmt.duration(progress.eta) }))
     status = parts.join(' · ')
   } else if (finalizing) {
-    status = progress?.detail ? `Finalizing… ${progress.detail.replace(/…$/, '').toLowerCase()}` : gif ? 'Finalizing… building the GIF' : 'Finalizing…'
+    // A step's own words inside the sentence (§9.6): English lower-cases them as before; other languages leave them.
+    status = progress?.detail
+      ? t('export.progress.finalizingStep', { step: fmt.inSentence(progress.detail.replace(/…$/, '')) })
+      : gif
+        ? t('export.progress.finalizingGif')
+        : t('export.progress.finalizing')
   }
   if (paused) status = pausedText(slept)
   return (
@@ -1776,14 +1821,14 @@ function RunningView({
       <RunStep steps={steps} step={step} finalizing={finalizing} />
       {progress && (
         <p className="hint">
-          Encoder: {progress.encoder}
+          {richText('export.progress.encoder', { encoder: progress.encoder })}
           {progress.notice ? ` · ${progress.notice}` : ''}
         </p>
       )}
       <footer className="modal-foot">
         <PauseButton paused={paused} onPause={onPause} disabled={progress?.phase !== 'rendering' && !paused} />
         <button className="btn" onClick={onCancel}>
-          Cancel export
+          {t('export.cancel')}
         </button>
       </footer>
     </>
@@ -1862,12 +1907,12 @@ export function AlsoReport({ extras, also, video }: { extras?: BatchExtras; also
       {files.length > 0 && (
         <>
           <p className="hint" id="export-also-saved">
-            Also saved:
+            {t('export.also.savedList')}
           </p>
           <ul className="export-saved-files" aria-labelledby="export-also-saved" data-testid="export-saved-files">
             {files.map((f) => (
               <li key={f}>
-                <button type="button" className="link name" title="Show in folder" onClick={() => void window.api.showItemInFolder(f)}>
+                <button type="button" className="link name" title={t('common.action.showInFolder')} onClick={() => void window.api.showItemInFolder(f)}>
                   {base(f)}
                 </button>
                 {linesOf(f).map((line) => (
@@ -1882,7 +1927,7 @@ export function AlsoReport({ extras, also, video }: { extras?: BatchExtras; also
       )}
       {failedSidecars.map((f) => (
         <p key={f} className="hint warn">
-          Could not save {f}
+          {richText('export.also.failed', { reason: f })}
         </p>
       ))}
       {also.stemsProblem && (
@@ -1905,23 +1950,22 @@ export function AlsoReport({ extras, also, video }: { extras?: BatchExtras; also
  * Either answer takes the question away with the focused button: the keyboard goes back to `back`
  * (the dialog's Export) first, not to the page.
  */
-export function LutQuestion(props: { question: string; back: RefObject<HTMLElement>; onExport: () => void; onCancel: () => void }): JSX.Element {
+export function LutQuestion(props: { question: string; many: boolean; back: RefObject<HTMLElement>; onExport: () => void; onCancel: () => void }): JSX.Element {
   const go = useRef<HTMLButtonElement>(null)
   useEffect(() => go.current?.focus(), [])
   const answer = (then: () => void) => (): void => {
     props.back.current?.focus()
     then()
   }
-  const them = props.question.endsWith('without them?')
   return (
-    <div className="export-lut-ask" role="alertdialog" aria-label="A LUT is missing" aria-describedby="export-lut-question" data-testid="export-lut-ask">
+    <div className="export-lut-ask" role="alertdialog" aria-label={t('export.lut.label')} aria-describedby="export-lut-question" data-testid="export-lut-ask">
       <p id="export-lut-question">{props.question}</p>
       <div className="export-lut-ask-buttons">
         <button ref={go} type="button" className="btn primary" data-testid="export-lut-go" onClick={answer(props.onExport)}>
-          {them ? 'Export without them' : 'Export without it'}
+          {props.many ? t('export.lut.withoutThem') : t('export.lut.withoutIt')}
         </button>
         <button type="button" className="btn" data-testid="export-lut-cancel" onClick={answer(props.onCancel)}>
-          Cancel
+          {t('common.action.cancel')}
         </button>
       </div>
     </div>

@@ -1,1 +1,1003 @@
-{}
+{
+  "preset.youtube1080": {
+    "description": "Export dialog: a destination’s label on its card and in the settings’ name. A brand and a technical name: kept as they are.",
+    "dnt": [
+      "YouTube",
+      "1080p60"
+    ]
+  },
+  "preset.youtube4k": {
+    "description": "Export dialog: a destination’s label on its card and in the settings’ name. A brand and a technical name: kept as they are.",
+    "dnt": [
+      "YouTube",
+      "4K60"
+    ]
+  },
+  "preset.x": {
+    "description": "Export dialog: a destination’s label on its card and in the settings’ name. The service’s names.",
+    "dnt": [
+      "X",
+      "Twitter"
+    ]
+  },
+  "preset.linkedin": {
+    "description": "Export dialog: a destination’s label on its card and in the settings’ name. A brand.",
+    "dnt": [
+      "LinkedIn"
+    ]
+  },
+  "preset.reels": {
+    "description": "Export dialog: a destination’s label on its card and in the settings’ name. A brand.",
+    "dnt": [
+      "Instagram Reels"
+    ]
+  },
+  "preset.tiktok": {
+    "description": "Export dialog: a destination’s label on its card and in the settings’ name. A brand.",
+    "dnt": [
+      "TikTok"
+    ]
+  },
+  "preset.shorts": {
+    "description": "Export dialog: a destination’s label on its card and in the settings’ name. A brand.",
+    "dnt": [
+      "YouTube Shorts"
+    ]
+  },
+  "preset.square": {
+    "description": "Export dialog: a destination’s label on its card and in the settings’ name. A square video for social posts."
+  },
+  "preset.slackGif": {
+    "description": "Export dialog: a destination’s label on its card and in the settings’ name. A GIF small enough for Slack.",
+    "dnt": [
+      "Slack",
+      "GIF"
+    ]
+  },
+  "preset.email": {
+    "description": "Export dialog: a destination’s label on its card and in the settings’ name. A small MP4 to attach to an email."
+  },
+  "batch.audioSize": {
+    "description": "Export dialog › Batch: what an audio-only file of another shape is, in place of its resolution (\"M4A Audio · 9:16\")."
+  },
+  "batch.aspectItem": {
+    "description": "Export dialog › Batch: a file of the current settings in another shape; {format} is MP4, GIF, …, {size} a resolution (\"1080p\") or \"Audio\", {aspect} a shape (\"9:16\").",
+    "digits": "latn"
+  },
+  "encoder.audioWav": {
+    "description": "Export dialog: what made an audio-only WAV file (the encoder line).",
+    "dnt": [
+      "WAV"
+    ]
+  },
+  "encoder.audioAac": {
+    "description": "Export dialog: what made an audio-only file.",
+    "dnt": [
+      "AAC"
+    ]
+  },
+  "encoder.gif": {
+    "description": "Export dialog: what made a GIF.",
+    "dnt": [
+      "GIF"
+    ]
+  },
+  "encoder.gpu": {
+    "description": "Export dialog: an encoder on the graphics card; {name} is its name (\"NVIDIA NVENC\", \"WebCodecs\"), never translated.",
+    "dnt": [
+      "GPU"
+    ]
+  },
+  "encoder.webcodecsSoftware": {
+    "description": "Export dialog: the browser engine’s encoder without the graphics card; {name} is \"WebCodecs\", \"WebCodecs VP9\", …"
+  },
+  "encoder.software": {
+    "description": "Export dialog: an encoder on the processor; {name} is its name (\"x264\", \"CineForm\")."
+  },
+  "format.mp4": {
+    "description": "Export dialog: tooltip of the MP4 format.",
+    "dnt": [
+      "H.264",
+      "AAC"
+    ]
+  },
+  "format.mov": {
+    "description": "Export dialog: tooltip of the MOV format.",
+    "dnt": [
+      "H.264",
+      "QuickTime",
+      "Final Cut",
+      "Premiere",
+      "Keynote"
+    ]
+  },
+  "format.webm": {
+    "description": "Export dialog: tooltip of the WebM format.",
+    "dnt": [
+      "VP9",
+      "Opus"
+    ]
+  },
+  "format.gif": {
+    "description": "Export dialog: tooltip of the GIF format.",
+    "dnt": [
+      "15 fps"
+    ]
+  },
+  "format.m4a": {
+    "description": "Export dialog: tooltip of the M4A format.",
+    "dnt": [
+      "AAC"
+    ]
+  },
+  "chapters.copyTitle": {
+    "description": "Export dialog: tooltip of Copy chapters. \"0:00 Intro\" shows the format; keep it as it is.",
+    "dnt": [
+      "YouTube",
+      "0:00"
+    ]
+  },
+  "chapters.copy": {
+    "description": "Export dialog: copies the chapters as YouTube timestamps."
+  },
+  "chapters.copyFailed": {
+    "description": "Export dialog: copying the chapters failed."
+  },
+  "chapters.ready": {
+    "description": "Export dialog: the chapters qualify for YouTube.",
+    "dnt": [
+      "YouTube"
+    ]
+  },
+  "error.failed": {
+    "description": "Export dialog: an export failed with no reason of its own."
+  },
+  "audioOnly": {
+    "description": "Export dialog: a destination or format that exports only the sound; also the preview’s badge."
+  },
+  "meta.size": {
+    "description": "Export dialog: a destination’s size and frame rate. A technical line: digits stay Latin.",
+    "digits": "latn",
+    "dnt": [
+      "fps"
+    ]
+  },
+  "limit.size": {
+    "description": "Export dialog: a destination’s size limit on its card.",
+    "dnt": [
+      "MB"
+    ]
+  },
+  "limit.sizeTitle": {
+    "description": "Export dialog: tooltip of a destination’s size limit.",
+    "dnt": [
+      "MB"
+    ]
+  },
+  "limit.length": {
+    "description": "Export dialog: a destination’s longest video on its card (\"2:20\")."
+  },
+  "limit.lengthTitle": {
+    "description": "Export dialog: tooltip of a destination’s length limit; {name} is the destination (\"X (Twitter)\")."
+  },
+  "limit.lengthSizeTitle": {
+    "description": "Export dialog: tooltip of a destination’s length and size limits.",
+    "dnt": [
+      "MB"
+    ]
+  },
+  "resolution.capped": {
+    "description": "Export dialog: part of a resolution chip’s tooltip, after its size.",
+    "dnt": [
+      "px"
+    ]
+  },
+  "resolution.upscaled": {
+    "description": "Export dialog: part of a resolution chip’s tooltip."
+  },
+  "aspect.project": {
+    "description": "Export dialog: the aspect chip that keeps the project’s own shape."
+  },
+  "aspect.projectTitle": {
+    "description": "Export dialog: tooltip of the Project aspect chip; {shape} is \"16:9\" or \"Auto\"."
+  },
+  "aspect.auto": {
+    "description": "Export dialog: the project’s shape when it follows the recording."
+  },
+  "aspect.title": {
+    "description": "Export dialog: tooltip of an aspect chip (\"9:16\")."
+  },
+  "gpu.vp9": {
+    "description": "Export dialog: Encoder › Auto with WebM.",
+    "dnt": [
+      "GPU",
+      "VP9"
+    ]
+  },
+  "gpu.checking": {
+    "description": "Export dialog: Encoder › Auto while the PC is checked.",
+    "dnt": [
+      "GPU"
+    ]
+  },
+  "gpu.noVp9": {
+    "description": "Export dialog: Encoder › Auto with WebM.",
+    "dnt": [
+      "GPU",
+      "VP9",
+      "WebM",
+      "libvpx"
+    ]
+  },
+  "gpu.available": {
+    "description": "Export dialog: Encoder › Auto.",
+    "dnt": [
+      "GPU"
+    ]
+  },
+  "gpu.found": {
+    "description": "Export dialog: Encoder › Auto; {names} are encoders (\"NVENC, QSV\").",
+    "dnt": [
+      "GPU"
+    ]
+  },
+  "gpu.none": {
+    "description": "Export dialog: Encoder › Auto.",
+    "dnt": [
+      "GPU",
+      "x264"
+    ]
+  },
+  "software.vp9": {
+    "description": "Export dialog: Encoder › Software with WebM.",
+    "dnt": [
+      "libvpx",
+      "CPU"
+    ]
+  },
+  "software.x264": {
+    "description": "Export dialog: Encoder › Software.",
+    "dnt": [
+      "x264",
+      "CPU"
+    ]
+  },
+  "warn.cappedWide": {
+    "description": "Export dialog: note about a very wide recording."
+  },
+  "warn.cappedTall": {
+    "description": "Export dialog: note about a very tall recording."
+  },
+  "warn.upscale": {
+    "description": "Export dialog: warning when the export is larger than the recording."
+  },
+  "warn.followOn": {
+    "description": "Export dialog: note when the video follows the action."
+  },
+  "warn.magnify": {
+    "description": "Export dialog: how much a tall or square video enlarges the recording; {factor} is \"1.5×\"."
+  },
+  "warn.magnifyZooms": {
+    "description": "Export dialog: as the line before, with the most it enlarges in zooms."
+  },
+  "warn.magnifySoft": {
+    "description": "Export dialog: follows the enlargement line when it is 2× or more.",
+    "dnt": [
+      "1440p",
+      "4K"
+    ]
+  },
+  "warn.followOff": {
+    "description": "Export dialog: note when the project follows the action but this shape shows the whole screen."
+  },
+  "warn.captionsOn": {
+    "description": "Export dialog: note about captions; \"Show captions\" and \"Export captions\" name the Captions tab’s controls.",
+    "dnt": [
+      "SRT",
+      "VTT"
+    ]
+  },
+  "warn.captionsOff": {
+    "description": "Export dialog: note about captions when they are hidden.",
+    "dnt": [
+      "SRT",
+      "VTT"
+    ]
+  },
+  "warn.images": {
+    "description": "Export dialog: an image the project uses is missing; {names} are its names.",
+    "user": [
+      "names"
+    ]
+  },
+  "warn.fonts": {
+    "description": "Export dialog: a font the project uses is missing; {names} are font names.",
+    "dnt": [
+      "Segoe UI"
+    ]
+  },
+  "warn.longGif": {
+    "description": "Export dialog: warning for a GIF longer than 30 seconds.",
+    "dnt": [
+      "GIF",
+      "MP4",
+      "30 s"
+    ]
+  },
+  "warn.silent": {
+    "description": "Export dialog: an audio format with a silent recording."
+  },
+  "warn.tooLong": {
+    "description": "Export dialog: the video is longer than the destination allows."
+  },
+  "warn.targetSmall": {
+    "description": "Export dialog: the target size cannot hold the video.",
+    "dnt": [
+      "MB"
+    ]
+  },
+  "warn.targetTight": {
+    "description": "Export dialog: the target size is small for the picture size.",
+    "dnt": [
+      "MB",
+      "fps"
+    ]
+  },
+  "exportFormat": {
+    "description": "Export dialog: the export button; {format} is MP4, GIF, …"
+  },
+  "custom": {
+    "description": "Export dialog: the settings’ name when they match no destination."
+  },
+  "title": {
+    "description": "Export dialog: the dialog’s heading and accessible name."
+  },
+  "mode": {
+    "description": "Export dialog: accessible name of the One file / Batch switch."
+  },
+  "mode.single": {
+    "description": "Export dialog: export one file."
+  },
+  "mode.batch": {
+    "description": "Export dialog: export several files at once into a folder."
+  },
+  "frame": {
+    "description": "Export dialog: the slider that picks the thumbnail frame."
+  },
+  "frameLabel": {
+    "description": "Export dialog: accessible name of the frame slider."
+  },
+  "thumb.title": {
+    "description": "Export dialog: tooltip of Save thumbnail.",
+    "dnt": [
+      "PNG"
+    ]
+  },
+  "thumb.save": {
+    "description": "Export dialog: saves the picked frame as an image."
+  },
+  "thumb.saved": {
+    "description": "Export dialog: the thumbnail was saved; {width}×{height} is its size in pixels.",
+    "dnt": [
+      "PNG"
+    ]
+  },
+  "summary.audioOnly": {
+    "description": "Export dialog: an audio export’s summary; {length} is its length (\"2 min 5 s\")."
+  },
+  "summary.gifFps": {
+    "description": "Export dialog: after the size line of a GIF.",
+    "digits": "latn",
+    "dnt": [
+      "GIF",
+      "fps"
+    ]
+  },
+  "summary.upTo": {
+    "description": "Export dialog: after the size line of a GIF with a target size.",
+    "dnt": [
+      "MB"
+    ]
+  },
+  "summary.about": {
+    "description": "Export dialog: after the size line with a target size.",
+    "dnt": [
+      "MB"
+    ]
+  },
+  "batch.none": {
+    "description": "Export dialog: Batch with no file ticked."
+  },
+  "batch.summary": {
+    "description": "Export dialog: Batch: how many files and how long each is (\"2 min 5 s\")."
+  },
+  "batch.audio": {
+    "description": "Export dialog: Batch: an audio-only file, in place of its size."
+  },
+  "follow.vertical": {
+    "description": "Export dialog: suggestion for a 9:16 export of a wide recording.",
+    "dnt": [
+      "9:16"
+    ]
+  },
+  "follow.square": {
+    "description": "Export dialog: suggestion for a square export of a wide recording."
+  },
+  "follow.makeVertical": {
+    "description": "Export dialog: closes the dialog and makes a vertical copy of the project."
+  },
+  "follow.makeSquare": {
+    "description": "Export dialog: closes the dialog and makes a square copy of the project."
+  },
+  "destination": {
+    "description": "Export dialog: the heading of the destinations (YouTube, TikTok, …)."
+  },
+  "batch.files": {
+    "description": "Export dialog: Batch: the heading of the destinations to tick."
+  },
+  "batch.clear": {
+    "description": "Export dialog: Batch: unticks every file."
+  },
+  "destinations": {
+    "description": "Export dialog: accessible name of the destination cards."
+  },
+  "batch.also": {
+    "description": "Export dialog: Batch: the row of extra shapes."
+  },
+  "batch.aspectTitle": {
+    "description": "Export dialog: Batch: tooltip of a shape chip (\"9:16\")."
+  },
+  "batch.alsoHint": {
+    "description": "Export dialog: Batch: under the shape chips."
+  },
+  "settings.batch": {
+    "description": "Export dialog: Batch: after \"Settings ·\", what the settings apply to."
+  },
+  "settings.format": {
+    "description": "Export dialog: Settings: the format row."
+  },
+  "settings.noSound": {
+    "description": "Export dialog: tooltip of an audio format that cannot be picked."
+  },
+  "settings.resolution": {
+    "description": "Export dialog: Settings: the resolution row."
+  },
+  "settings.aspect": {
+    "description": "Export dialog: Settings: the shape row."
+  },
+  "settings.frameRate": {
+    "description": "Export dialog: Settings: the frame rate row."
+  },
+  "settings.quality": {
+    "description": "Export dialog: Settings: the quality row."
+  },
+  "quality.studio": {
+    "description": "Export dialog: the highest quality."
+  },
+  "quality.web": {
+    "description": "Export dialog: the quality for the web."
+  },
+  "quality.small": {
+    "description": "Export dialog: the smallest files."
+  },
+  "quality.byTarget": {
+    "description": "Export dialog: the quality is chosen by the target size."
+  },
+  "target.label": {
+    "description": "Export dialog: Settings: the target file size row."
+  },
+  "target.field": {
+    "description": "Export dialog: accessible name of the target size field.",
+    "dnt": [
+      "MB"
+    ]
+  },
+  "target.unit": {
+    "description": "Export dialog: the unit after the target size field (megabytes).",
+    "dnt": [
+      "MB"
+    ]
+  },
+  "target.gif": {
+    "description": "Export dialog: what a target size does for a GIF.",
+    "dnt": [
+      "GIF"
+    ]
+  },
+  "target.hint": {
+    "description": "Export dialog: what a target size does."
+  },
+  "settings.encoder": {
+    "description": "Export dialog: Settings: the encoder row."
+  },
+  "encoder.auto": {
+    "description": "Export dialog: the encoder choice that uses the graphics card when it can.",
+    "dnt": [
+      "GPU"
+    ]
+  },
+  "encoder.softwareChoice": {
+    "description": "Export dialog: the encoder choice that uses the processor."
+  },
+  "chapters.exportParts": {
+    "description": "Export dialog: the export button when each chapter becomes its own file."
+  },
+  "done.title": {
+    "description": "Export dialog: the done view’s heading."
+  },
+  "done.summary": {
+    "description": "Export dialog: the done view: the file’s size, how long the export took and the encoder."
+  },
+  "done.shortClips": {
+    "description": "Export dialog: opens the Short clips panel.",
+    "dnt": [
+      "Shorts",
+      "Reels"
+    ]
+  },
+  "done.copyTitle": {
+    "description": "Export dialog: tooltip of Copy."
+  },
+  "error.title": {
+    "description": "Export dialog: the error view; {message} is the reason."
+  },
+  "error.hideDetails": {
+    "description": "Export dialog: hides the encoder’s log."
+  },
+  "error.showDetails": {
+    "description": "Export dialog: shows the encoder’s log."
+  },
+  "size.reduced": {
+    "description": "Export dialog: done view: how a GIF was made smaller; {how} is main’s description (\"640 px wide, 10 fps\").",
+    "dnt": [
+      "MB",
+      "GIF"
+    ]
+  },
+  "size.overLimit": {
+    "description": "Export dialog: done view: a GIF over its size target.",
+    "dnt": [
+      "MB",
+      "GIF",
+      "MP4"
+    ]
+  },
+  "size.overTarget": {
+    "description": "Export dialog: done view: the file missed its target size.",
+    "dnt": [
+      "MB"
+    ]
+  },
+  "size.within": {
+    "description": "Export dialog: done view: the file met its target size.",
+    "dnt": [
+      "MB"
+    ]
+  },
+  "size.withinFewer": {
+    "description": "Export dialog: done view: the file is well under its target size.",
+    "dnt": [
+      "MB"
+    ]
+  },
+  "size.over": {
+    "description": "Export dialog: done view: the file is a little over its target size (10% or less).",
+    "dnt": [
+      "MB"
+    ]
+  },
+  "size.overPlatform": {
+    "description": "Export dialog: done view: the file is larger than the destination accepts; {name} is the destination.",
+    "dnt": [
+      "MB"
+    ]
+  },
+  "batch.waiting": {
+    "description": "Export dialog: Batch: a file not started yet."
+  },
+  "progress.preparing": {
+    "description": "Export dialog: the export is getting ready."
+  },
+  "progress.finalizing": {
+    "description": "Export dialog: the frames are drawn; the file is being finished."
+  },
+  "progress.rendering": {
+    "description": "Export dialog: how far the frames are drawn."
+  },
+  "batch.cancelled": {
+    "description": "Export dialog: Batch: a file that was cancelled."
+  },
+  "batch.finishedSome": {
+    "description": "Export dialog: Batch: some files failed."
+  },
+  "batch.finished": {
+    "description": "Export dialog: Batch: every file was exported."
+  },
+  "batch.exporting": {
+    "description": "Export dialog: Batch: the file being exported, its name and its progress."
+  },
+  "batch.stillOver": {
+    "description": "Export dialog: Batch: a GIF still over its size target.",
+    "dnt": [
+      "MB"
+    ]
+  },
+  "batch.fitted": {
+    "description": "Export dialog: Batch: how a GIF was made smaller; {how} is main’s description."
+  },
+  "batch.copyFile": {
+    "description": "Export dialog: Batch: tooltip of a file’s copy button."
+  },
+  "batch.copied": {
+    "description": "Export dialog: Batch: a file was copied."
+  },
+  "cancel": {
+    "description": "Export dialog: stops the running export."
+  },
+  "pause.slept": {
+    "description": "Export dialog: the export paused while the PC slept."
+  },
+  "pause.paused": {
+    "description": "Export dialog: the export is paused."
+  },
+  "pause.disabledTitle": {
+    "description": "Export dialog: tooltip of Pause when it cannot pause."
+  },
+  "pause.resumeTitle": {
+    "description": "Export dialog: tooltip of Resume."
+  },
+  "pause.pauseTitle": {
+    "description": "Export dialog: tooltip of Pause."
+  },
+  "pause.resume": {
+    "description": "Export dialog: carries on with a paused export."
+  },
+  "pause.pause": {
+    "description": "Export dialog: pauses the export."
+  },
+  "also.saved": {
+    "description": "Export dialog: the files saved next to the video; {names} are file names.",
+    "user": [
+      "names"
+    ]
+  },
+  "also.failed": {
+    "description": "Export dialog: a file next to the video that failed; {reason} is \"Demo.srt: the reason\"."
+  },
+  "progress.fps": {
+    "description": "Export dialog: the export’s speed in frames a second.",
+    "digits": "latn",
+    "dnt": [
+      "fps"
+    ]
+  },
+  "progress.left": {
+    "description": "Export dialog: time the export still needs (\"2 min 5 s\")."
+  },
+  "progress.finalizingStep": {
+    "description": "Export dialog: the step being finished; {step} is a step’s own words (\"encoding the audio\")."
+  },
+  "progress.finalizingGif": {
+    "description": "Export dialog: a GIF is being built.",
+    "dnt": [
+      "GIF"
+    ]
+  },
+  "progress.encoder": {
+    "description": "Export dialog: the encoder in use (\"Software (x264)\")."
+  },
+  "also.savedList": {
+    "description": "Export dialog: the heading of the list of files saved next to the video."
+  },
+  "lut.label": {
+    "description": "Export dialog: accessible name of the question about a missing LUT.",
+    "dnt": [
+      "LUT"
+    ]
+  },
+  "lut.withoutThem": {
+    "description": "Export dialog: exports without the two missing LUTs."
+  },
+  "lut.withoutIt": {
+    "description": "Export dialog: exports without the missing LUT."
+  },
+  "overlay.noRoom": {
+    "description": "An export or preview error shown in the export dialog’s error view: too many large pictures to show another."
+  },
+  "overlay.unreadable": {
+    "description": "A picture in the project (an image, logo or sticker) could not be read; shown in the editor and the export dialog."
+  },
+  "overlay.svgHtml": {
+    "description": "An SVG picture that cannot be drawn into a video.",
+    "dnt": [
+      "SVG",
+      "HTML",
+      "PNG"
+    ]
+  },
+  "overlay.gifUnreadable": {
+    "description": "An animated GIF in the project could not be read.",
+    "dnt": [
+      "GIF"
+    ]
+  },
+  "overlay.fileTooLarge": {
+    "description": "A picture file larger than Flown shows.",
+    "dnt": [
+      "MB"
+    ]
+  },
+  "overlay.gifFrames": {
+    "description": "An animated GIF with more frames than Flown shows.",
+    "dnt": [
+      "GIF"
+    ]
+  },
+  "overlay.gifGone": {
+    "description": "A GIF that waited to be read was taken out of the video meanwhile (seldom seen).",
+    "dnt": [
+      "GIF"
+    ]
+  },
+  "lut.tooLarge": {
+    "description": "Why a colour grade’s LUT file cannot be used; shown after \"LUT can’t be used:\" or the like.",
+    "dnt": [
+      "16 MB"
+    ]
+  },
+  "lut.unreadable": {
+    "description": "Why a LUT file cannot be used; {status} is a number."
+  },
+  "lut.changed": {
+    "description": "Why a LUT file cannot be used."
+  },
+  "lut.questionBoth": {
+    "description": "Export dialog: asked before exporting when both colour grades’ LUT files cannot be used.",
+    "dnt": [
+      "LUT"
+    ]
+  },
+  "lut.questionScreen": {
+    "description": "Export dialog: asked before exporting when the screen’s LUT cannot be used.",
+    "dnt": [
+      "LUT"
+    ]
+  },
+  "lut.questionCamera": {
+    "description": "Export dialog: asked before exporting when the camera’s LUT cannot be used.",
+    "dnt": [
+      "LUT"
+    ]
+  },
+  "image.empty": {
+    "description": "An export or preview error shown in the export dialog’s error view: a picture has no size."
+  },
+  "cursor.unloaded": {
+    "description": "An export or preview error shown in the export dialog’s error view: the cursor’s picture could not be loaded."
+  },
+  "image.unreadable": {
+    "description": "An export or preview error shown in the export dialog’s error view: a picture could not be read (written without a full stop, as the cursor and watermark say it)."
+  },
+  "watermark.unloaded": {
+    "description": "An export or preview error shown in the export dialog’s error view: the watermark’s picture could not be loaded."
+  },
+  "watermark.svgHtml": {
+    "description": "Style › Watermark: an SVG picture that cannot be drawn into a video.",
+    "dnt": [
+      "SVG",
+      "HTML",
+      "PNG"
+    ]
+  },
+  "webcodecs.failed": {
+    "description": "An export error shown in the export dialog’s error view (or in the editor’s preview): the browser’s encoder failed; {reason} is its own English reason. Flown tries the next encoder.",
+    "dnt": [
+      "WebCodecs"
+    ]
+  },
+  "webcodecs.reordered": {
+    "description": "An export error shown in the export dialog’s error view (or in the editor’s preview): the browser’s encoder put frames out of order.",
+    "dnt": [
+      "WebCodecs"
+    ]
+  },
+  "webcodecs.noOutput": {
+    "description": "An export error shown in the export dialog’s error view (or in the editor’s preview): the browser’s encoder gave nothing.",
+    "dnt": [
+      "WebCodecs"
+    ]
+  },
+  "webcodecs.dropped": {
+    "description": "An export error shown in the export dialog’s error view (or in the editor’s preview): the browser’s encoder lost frames.",
+    "dnt": [
+      "WebCodecs"
+    ],
+    "digits": "latn"
+  },
+  "decoder.failed": {
+    "description": "An export error shown in the export dialog’s error view (or in the editor’s preview): the recording could not be decoded; {reason} is the browser’s English reason."
+  },
+  "decoder.skipped": {
+    "description": "An export error shown in the export dialog’s error view (or in the editor’s preview): a frame of the recording was skipped while decoding."
+  },
+  "decoder.noFrame": {
+    "description": "An export error shown in the export dialog’s error view (or in the editor’s preview): the decoder gave no frame."
+  },
+  "font.missing": {
+    "description": "A brand or project font file could not be loaded; {status} is a number."
+  },
+  "font.unreadable": {
+    "description": "A font the project uses could not be read."
+  },
+  "font.bundledMissing": {
+    "description": "A font that ships with Flown is missing (a broken install); {file} is its file name."
+  },
+  "font.notDownloaded": {
+    "description": "Why a caption font cannot be used, after its name."
+  },
+  "fallback": {
+    "description": "Export dialog, the running view’s encoder line: an encoder failed and the next one took over; both are encoder names (\"GPU (NVIDIA NVENC)\")."
+  },
+  "noEncoder": {
+    "description": "An export error shown in the export dialog’s error view (or in the editor’s preview): no encoder could make the video."
+  },
+  "detail.audio": {
+    "description": "Export dialog: the step while an audio-only export encodes (shown lower-cased after \"Finalizing…\")."
+  },
+  "noSound": {
+    "description": "An export error shown in the export dialog’s error view (or in the editor’s preview): an audio export of a silent recording."
+  },
+  "detail.gifFit": {
+    "description": "Export dialog: the step while a GIF with a size limit is made.",
+    "dnt": [
+      "GIF"
+    ]
+  },
+  "detail.gif": {
+    "description": "Export dialog: the step while a GIF is made.",
+    "dnt": [
+      "GIF"
+    ]
+  },
+  "detail.twoPass": {
+    "description": "Export dialog: the step while the encoder makes a second pass for a target size."
+  },
+  "thumb.encodeFailed": {
+    "description": "An export error shown in the export dialog’s error view (or in the editor’s preview): the thumbnail image could not be made."
+  },
+  "sidecar.srt": {
+    "description": "Export dialog › Also save: a file next to the video: the captions as SRT.",
+    "dnt": [
+      "SRT"
+    ]
+  },
+  "sidecar.vtt": {
+    "description": "Export dialog › Also save: the captions as VTT.",
+    "dnt": [
+      "VTT"
+    ]
+  },
+  "sidecar.chapters": {
+    "description": "Export dialog › Also save: the chapters as a text file."
+  },
+  "sidecar.thumbnail": {
+    "description": "Export dialog › Also save: the chosen frame as an image."
+  },
+  "sidecar.description": {
+    "description": "Export dialog › Also save: a description ready to paste."
+  },
+  "sidecar.gifAlone": {
+    "description": "Export dialog › Also save: why no file can be saved next to a GIF (shown with a full stop added).",
+    "dnt": [
+      "GIF"
+    ]
+  },
+  "sidecar.noCaptions": {
+    "description": "Export dialog › Also save: why captions cannot be saved."
+  },
+  "sidecar.noChapters": {
+    "description": "Export dialog › Also save: why the chapter list cannot be saved."
+  },
+  "sidecar.audioNoThumbnail": {
+    "description": "Export dialog › Also save: why a thumbnail cannot be saved with an audio export."
+  },
+  "perChapter.batch": {
+    "description": "Export dialog › Chapters: why one file per chapter is off in Batch (\"One file\" names the mode)."
+  },
+  "perChapter.noChapters": {
+    "description": "Export dialog › Chapters: why one file per chapter is off."
+  },
+  "perChapter.stillAcross": {
+    "description": "Export dialog › Chapters: why one file per chapter is off."
+  },
+  "chapters.noteGif": {
+    "description": "Export dialog: the video’s chapters with a GIF.",
+    "dnt": [
+      "GIF"
+    ]
+  },
+  "chapters.notePerChapter": {
+    "description": "Export dialog: the chapters when each becomes its own file."
+  },
+  "chapters.noteInFile": {
+    "description": "Export dialog: the chapters written into the video file."
+  },
+  "also.chaptersTitle": {
+    "description": "Export dialog › Also save: tooltip of Chapter list.",
+    "dnt": [
+      "YouTube",
+      "0:00"
+    ]
+  },
+  "also.thumbnailTitle": {
+    "description": "Export dialog › Also save: tooltip of Thumbnail.",
+    "dnt": [
+      "PNG"
+    ]
+  },
+  "also.descriptionTitle": {
+    "description": "Export dialog › Also save: tooltip of Description."
+  },
+  "also.partThumbnailTitle": {
+    "description": "Export dialog › Also save: tooltip of Thumbnail with one file per chapter.",
+    "dnt": [
+      "PNG",
+      "1 s"
+    ]
+  },
+  "also.partDescriptionTitle": {
+    "description": "Export dialog › Also save: tooltip of Description with one file per chapter."
+  },
+  "also.savedDescriptionTitle": {
+    "description": "Export dialog › Also save: tooltip of Description when Publish saved one (\"Publish\" names the panel)."
+  },
+  "also.partNoChapterList": {
+    "description": "Export dialog › Also save: why Chapter list is off with one file per chapter."
+  },
+  "also.title": {
+    "description": "Export dialog › Also save: the row of files saved next to the video."
+  },
+  "also.gifAlone": {
+    "description": "Export dialog › Also save: under the chips for a GIF.",
+    "dnt": [
+      "GIF"
+    ]
+  },
+  "also.hint": {
+    "description": "Export dialog › Also save: under the chips."
+  },
+  "perChapter.title": {
+    "description": "Export dialog: the row of one file per chapter."
+  },
+  "perChapter.chipTitle": {
+    "description": "Export dialog › Chapters: tooltip of One file per chapter. \"01 Intro\" shows how the files are named."
+  },
+  "perChapter.chip": {
+    "description": "Export dialog › Chapters: exports each chapter as its own file."
+  },
+  "perChapter.files": {
+    "description": "Export dialog › Chapters: what one file per chapter writes."
+  },
+  "perChapter.pending": {
+    "description": "Export dialog › Chapters: found chapters not reviewed yet (\"Review\" names Review mode)."
+  },
+  "batch.exportFiles.lead": {
+    "description": "Export dialog › Batch: the export button, in pieces English shows as before (merge group); other languages show only the .whole message. The words before the number of files.",
+    "merge": true
+  },
+  "batch.exportFiles.noun": {
+    "description": "Export dialog › Batch: the export button, in pieces English shows as before (merge group); other languages show only the .whole message. After the number.",
+    "merge": true
+  },
+  "batch.exportFiles.s": {
+    "description": "Export dialog › Batch: the export button, in pieces English shows as before (merge group); other languages show only the .whole message. Added after \"file\" for any number but one.",
+    "merge": true
+  },
+  "batch.exportFiles.end": {
+    "description": "Export dialog › Batch: the export button, in pieces English shows as before (merge group); other languages show only the .whole message. The end of the button’s text.",
+    "merge": true
+  },
+  "batch.exportFiles.whole": {
+    "description": "Export dialog › Batch: the export button as one message, for languages other than English: how many files are exported."
+  }
+}

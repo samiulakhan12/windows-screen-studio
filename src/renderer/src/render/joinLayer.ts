@@ -13,6 +13,7 @@ import { joinPose, type JoinWindow } from '../../../shared/render/joins'
 import { drawFramePicture, type FrameExtras, type FrameImage, type RenderScene } from './compositor'
 import { releaseGrade } from './gradeLayer'
 import { releaseTilt } from './tiltLayer'
+import { t } from '../../../shared/i18n/t'
 
 type Join = NonNullable<FrameExtras['join']>
 
@@ -92,7 +93,7 @@ export function scratchTarget(raster: 'gpu' | 'cpu', w: number, h: number, alpha
   if (!ctx) {
     const canvas = document.createElement('canvas')
     const made = canvas.getContext('2d', { alpha, willReadFrequently: raster === 'cpu' })
-    if (!made) throw new Error('Could not create a drawing surface')
+    if (!made) throw new Error(t('common.error.drawingSurface'))
     ctx = made
     scratches.set(key, ctx)
   }

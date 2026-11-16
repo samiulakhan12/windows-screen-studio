@@ -25,6 +25,8 @@ import { stickerOf, stickerUrl } from '../../../shared/render/stickers'
 import type { ImageOverlay, Project } from '../../../shared/types'
 import type { FrameContext } from './frameContext'
 import { notifyStyleAssetsChanged, taintsCanvas } from './watermarkLayer'
+import { t } from '../../../shared/i18n/t'
+import { fmt } from '../../../shared/i18n/fmt'
 
 /* ---------- decoding ---------- */
 
@@ -52,7 +54,8 @@ const STICKER_SIDE = 512
 /** Cache key of what an overlay shows: a sticker is the same in every project. */
 const keyOf = (projectId: string, o: Pick<ImageOverlay, 'file' | 'sticker'>): string => (o.sticker ? `sticker:${o.sticker}` : `${projectId}/${o.file}`)
 
-const NO_ROOM = 'This video has too many large images to show this one too.'
+/** A problem with a picture, said to the user in the UI language (never told apart by its words, output-and-languages §9.6). */
+class OverlayError extends Error {}
 
 /**
  * Counts `bytes` a picture is about to take. When the pictures together would pass
@@ -60,7 +63,7 @@ const NO_ROOM = 'This video has too many large images to show this one too.'
  */
 function hold(bytes: number): number {
   if (held + bytes > OVERLAYS_MAX_BYTES) dropUnused()
-  if (held + bytes > OVERLAYS_MAX_BYTES) throw new Error(NO_ROOM)
+  if (held + bytes > OVERLAYS_MAX_BYTES) throw new OverlayError(t('export.overlay.noRoom'))
   held += bytes
   return bytes
 }
@@ -106,7 +109,7 @@ function use(project: Pick<Project, 'id' | 'overlays'>): void {
   const overlays = project.overlays ?? NONE
   if (inUse?.overlays === overlays) return
   inUse = { overlays, keys: new Set(overlays.map((o) => keyOf(project.id, o))) }
-  const refused = new Map(overlays.filter((o) => cache.get(keyOf(project.id, o))?.error === NO_ROOM).map((o) => [keyOf(project.id, o), o]))
+  const refused = new Map(overlays.filter((o) => cache.get(keyOf(project.id, o))?.error === t('export.overlay.noRoom')).map((o) => [keyOf(project.id, o), o]))
   if (!refused.size || !dropUnused()) return
   for (const [key, o] of refused) {
     cache.delete(key)
@@ -120,7 +123,7 @@ function loadImage(url: string): Promise<HTMLImageElement> {
     img.crossOrigin = 'anonymous'
     img.decoding = 'async'
     img.onload = () => resolve(img)
-    img.onerror = () => reject(new Error('This image could not be read.'))
+    img.onerror = () => reject(new OverlayError(t('export.overlay.unreadable')))
     img.src = url
   })
 }
@@ -131,7 +134,7 @@ function raster(source: CanvasImageSource, w: number, h: number): DecodedOverlay
   c.width = Math.max(1, Math.round(w))
   c.height = Math.max(1, Math.round(h))
   const ctx = c.getContext('2d')
-  if (!ctx) throw new Error('This image could not be read.')
+  if (!ctx) throw new OverlayError(t('export.overlay.unreadable'))
   ctx.imageSmoothingEnabled = true
   ctx.imageSmoothingQuality = 'high'
   ctx.drawImage(source, 0, 0, c.width, c.height)
@@ -141,7 +144,7 @@ function raster(source: CanvasImageSource, w: number, h: number): DecodedOverlay
 /** An SVG (a file or a sticker) rasterised once at IMAGE_MAX_SIDE (or `side`) on its long side; square without a size. */
 async function decodeSvg(url: string, side = IMAGE_MAX_SIDE): Promise<DecodedOverlay> {
   const img = await loadImage(url)
-  if (taintsCanvas(img)) throw new Error("This SVG has HTML text in it, which can't be drawn into a video: save it as a PNG and add it again.")
+  if (taintsCanvas(img)) throw new OverlayError(t('export.overlay.svgHtml'))
   const w = img.naturalWidth
   const h = img.naturalHeight
   const aspect = w > 0 && h > 0 ? w / h : 1
@@ -156,25 +159,25 @@ async function decodeStill(url: string): Promise<DecodedOverlay> {
   const w = img.naturalWidth
   const h = img.naturalHeight
   const problem = imageSizeProblem(w, h)
-  if (problem) throw new Error(problem)
+  if (problem) throw new OverlayError(problem)
   const s = Math.min(1, IMAGE_MAX_SIDE / Math.max(w, h))
   return raster(img, w * s, h * s)
 }
 
 /** Every frame of a GIF, composited, scaled to gifScale, with its delay. A one-frame GIF is a still. */
 async function decodeGif(url: string): Promise<DecodedOverlay> {
-  if (typeof ImageDecoder === 'undefined') throw new Error('This GIF could not be read.')
+  if (typeof ImageDecoder === 'undefined') throw new OverlayError(t('export.overlay.gifUnreadable'))
   const res = await fetch(url)
-  if (!res.ok) throw new Error('This image could not be read.')
+  if (!res.ok) throw new OverlayError(t('export.overlay.unreadable'))
   // Main checks the size of a file it adds, not of one put in the project folder by hand.
-  const fileTooLarge = `This image is too large (${OVERLAY_MAX_BYTES / 2 ** 20} MB at most).`
-  if (Number(res.headers.get('content-length')) > OVERLAY_MAX_BYTES) throw new Error(fileTooLarge)
+  const fileTooLarge = (): OverlayError => new OverlayError(t('export.overlay.fileTooLarge', { mb: fmt.number(OVERLAY_MAX_BYTES / 2 ** 20) }))
+  if (Number(res.headers.get('content-length')) > OVERLAY_MAX_BYTES) throw fileTooLarge()
   const data = await res.arrayBuffer()
-  if (data.byteLength > OVERLAY_MAX_BYTES) throw new Error(fileTooLarge)
+  if (data.byteLength > OVERLAY_MAX_BYTES) throw fileTooLarge()
   const screen = gifScreenSize(new Uint8Array(data, 0, Math.min(16, data.byteLength)))
-  if (!screen) throw new Error('This GIF could not be read.')
+  if (!screen) throw new OverlayError(t('export.overlay.gifUnreadable'))
   const tooLarge = imageSizeProblem(screen.width, screen.height)
-  if (tooLarge) throw new Error(tooLarge)
+  if (tooLarge) throw new OverlayError(tooLarge)
   const decoder = new ImageDecoder({ data, type: 'image/gif' })
   const frames: ImageBitmap[] = []
   let bytes = 0
@@ -182,8 +185,8 @@ async function decodeGif(url: string): Promise<DecodedOverlay> {
     await decoder.tracks.ready
     await decoder.completed
     const count = decoder.tracks.selectedTrack?.frameCount ?? 0
-    if (count < 1) throw new Error('This GIF could not be read.')
-    if (count > GIF_MAX_FRAMES) throw new Error(`This GIF has too many frames (${count}; ${GIF_MAX_FRAMES} at most).`)
+    if (count < 1) throw new OverlayError(t('export.overlay.gifUnreadable'))
+    if (count > GIF_MAX_FRAMES) throw new OverlayError(t('export.overlay.gifFrames', { frames: fmt.count(count), max: fmt.count(GIF_MAX_FRAMES) }))
     const delays: number[] = []
     let width = 0
     let height = 0
@@ -196,7 +199,7 @@ async function decodeGif(url: string): Promise<DecodedOverlay> {
           width = image.displayWidth
           height = image.displayHeight
           const problem = imageSizeProblem(width, height)
-          if (problem) throw new Error(problem)
+          if (problem) throw new OverlayError(problem)
           const scale = gifScale(width, height, count)
           resizeWidth = Math.max(1, Math.round(width * scale))
           resizeHeight = Math.max(1, Math.round(height * scale))
@@ -214,7 +217,8 @@ async function decodeGif(url: string): Promise<DecodedOverlay> {
   } catch (err) {
     for (const f of frames) f.close()
     held -= bytes
-    throw err instanceof Error && /GIF|image/.test(err.message) ? err : new Error('This GIF could not be read.')
+    // A problem of ours is said as it is; anything the decoder threw becomes "could not be read" (§9.6: told by its kind, not its words).
+    throw err instanceof OverlayError ? err : new OverlayError(t('export.overlay.gifUnreadable'))
   } finally {
     decoder.close()
   }
@@ -225,7 +229,7 @@ function decode(o: Pick<ImageOverlay, 'file' | 'sticker'>, url: string, wanted: 
   if (o.sticker) return decodeSvg(url, STICKER_SIDE)
   const ext = (o.file ?? '').split('.').pop()?.toLowerCase()
   if (ext === 'gif') {
-    const gif = gifQueue.then(() => (wanted() ? decodeGif(url) : Promise.reject(new Error('This GIF is no longer shown.'))))
+    const gif = gifQueue.then(() => (wanted() ? decodeGif(url) : Promise.reject(new OverlayError(t('export.overlay.gifGone')))))
     gifQueue = gif.catch(() => undefined)
     return gif
   }
@@ -283,7 +287,7 @@ export async function preloadOverlay(projectId: string, o: Pick<ImageOverlay, 'f
   await entry.done
   if (!entry.image) {
     cache.delete(keyOf(projectId, o))
-    throw new Error(entry.error ?? 'This image could not be read.')
+    throw new Error(entry.error ?? t('export.overlay.unreadable'))
   }
   return entry.image.width / entry.image.height
 }
