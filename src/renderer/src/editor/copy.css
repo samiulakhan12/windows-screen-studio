@@ -10,7 +10,7 @@
 .copy-menu {
   position: absolute;
   top: calc(100% + 6px);
-  left: 0;
+  inset-inline-start: 0;
   z-index: 40;
   width: 320px;
   display: flex;
@@ -39,7 +39,7 @@
   border: none;
   border-radius: var(--radius-md);
   background: transparent;
-  text-align: left;
+  text-align: start;
   cursor: pointer;
 }
 
@@ -88,5 +88,21 @@
   }
   to {
     transform: translateX(245%);
+  }
+}
+
+/* In a right-to-left page the bar starts on the right and sweeps the other way. */
+@media (prefers-reduced-motion: no-preference) {
+  .copy-progress-waiting .progress-bar:dir(rtl) {
+    animation-name: copy-waiting-rtl;
+  }
+}
+
+@keyframes copy-waiting-rtl {
+  from {
+    transform: translateX(10%);
+  }
+  to {
+    transform: translateX(-245%);
   }
 }

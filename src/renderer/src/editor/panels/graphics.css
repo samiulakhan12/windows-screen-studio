@@ -21,7 +21,7 @@
   position: absolute;
   z-index: 20;
   top: calc(100% + 4px);
-  left: 0;
+  inset-inline-start: 0;
   min-width: 170px;
   display: flex;
   flex-direction: column;
@@ -38,7 +38,7 @@
   border-radius: var(--radius-sm);
   background: transparent;
   color: var(--text-1);
-  text-align: left;
+  text-align: start;
   cursor: pointer;
 }
 

@@ -87,7 +87,7 @@
 .update-slot {
   display: flex;
   min-width: 0;
-  margin-right: 8px;
+  margin-inline-end: 8px;
 }
 
 .update-pill {
@@ -95,7 +95,8 @@
   align-items: center;
   gap: 6px;
   min-width: 0;
-  padding: 2px 3px 2px 12px;
+  padding-block: 2px;
+  padding-inline: 12px 3px;
   border-radius: 999px;
   background: var(--accent-soft);
   border: 1px solid var(--accent-ring);

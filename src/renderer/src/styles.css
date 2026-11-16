@@ -274,6 +274,11 @@ kbd {
   -webkit-app-region: no-drag;
 }
 
+/* The Back arrow (the title bar's first button) points in reading direction (§13.2). */
+.titlebar > .btn:first-child > .icon:dir(rtl) {
+  transform: scaleX(-1);
+}
+
 .brand {
   display: flex;
   align-items: center;
@@ -513,10 +518,17 @@ select {
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23a1a1ad' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
   background-repeat: no-repeat;
   background-position: right 10px center;
-  padding: 0 30px 0 10px;
+  padding-block: 0;
+  padding-inline: 10px 30px;
   box-shadow: var(--highlight-top);
   cursor: pointer;
   transition: border-color var(--dur-fast), background-color var(--dur-fast);
+}
+
+/* The chevron sits at the list's end, where its padding leaves room. The transport, the timeline
+   and the preview stay left to right, and so do their lists. */
+select:dir(rtl):not(:is(.timeline, .transport, .canvas-wrap) select) {
+  background-position: left 10px center;
 }
 
 select:hover:not(:disabled) {
@@ -584,7 +596,7 @@ input:not([type]) {
   content: '';
   position: absolute;
   top: 2px;
-  left: 2px;
+  inset-inline-start: 2px;
   width: 16px;
   height: 16px;
   border-radius: 50%;
@@ -600,6 +612,11 @@ input:not([type]) {
 
 .toggle input:checked::after {
   transform: translateX(14px);
+}
+
+/* On, the knob moves to the switch's end: the left in a right-to-left page. */
+.toggle input:checked:dir(rtl)::after {
+  transform: translateX(-14px);
 }
 
 .toggle input:disabled {
@@ -915,7 +932,7 @@ input[type='range']:disabled::-webkit-slider-thumb {
   border: 1px solid var(--border-subtle);
   background: var(--surface-2);
   cursor: pointer;
-  text-align: left;
+  text-align: start;
   transition:
     border-color var(--dur-fast) var(--ease-out),
     background var(--dur-fast) var(--ease-out),
@@ -960,7 +977,7 @@ input[type='range']:disabled::-webkit-slider-thumb {
   content: '';
   position: absolute;
   top: 12px;
-  right: 12px;
+  inset-inline-end: 12px;
   width: 22px;
   height: 22px;
   border-radius: 50%;
@@ -1132,7 +1149,7 @@ input[type='range']:disabled::-webkit-slider-thumb {
   padding: 0;
   border: none;
   background: transparent;
-  text-align: left;
+  text-align: start;
   cursor: pointer;
   border-radius: var(--radius-lg);
 }
@@ -1169,7 +1186,7 @@ input[type='range']:disabled::-webkit-slider-thumb {
 
 .project-duration {
   position: absolute;
-  right: 8px;
+  inset-inline-end: 8px;
   bottom: 8px;
   padding: 1px 7px;
   border-radius: var(--radius-pill);
@@ -1223,7 +1240,7 @@ input[type='range']:disabled::-webkit-slider-thumb {
 .project-actions {
   position: absolute;
   top: 8px;
-  right: 8px;
+  inset-inline-end: 8px;
   display: flex;
   gap: 4px;
   opacity: 0;

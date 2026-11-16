@@ -62,9 +62,9 @@
 .history-buttons {
   display: flex;
   gap: 2px;
-  margin-left: 2px;
-  padding-left: 6px;
-  border-left: 1px solid var(--border-subtle);
+  margin-inline-start: 2px;
+  padding-inline-start: 6px;
+  border-inline-start: 1px solid var(--border-subtle);
   -webkit-app-region: no-drag;
 }
 
@@ -133,7 +133,9 @@
 }
 
 /* ---------- Preview ---------- */
+/* The picture is not mirrored: the preview and its handles stay left to right in every language (§13.1). */
 .canvas-wrap {
+  direction: ltr;
   flex: 1;
   min-height: 0;
   display: flex;
@@ -221,7 +223,9 @@
 }
 
 /* ---------- Transport ---------- */
+/* Play, the timecode and the preview speed keep their order in every language, as media controls do (§13.1). */
 .transport {
+  direction: ltr;
   display: flex;
   align-items: center;
   gap: var(--space-3);
@@ -341,7 +345,7 @@
 .inspector {
   width: 348px;
   flex: none;
-  border-left: 1px solid var(--border-subtle);
+  border-inline-start: 1px solid var(--border-subtle);
   background: var(--surface-1);
   display: flex;
   min-height: 0;
@@ -357,7 +361,7 @@
   flex-direction: column;
   gap: 2px;
   padding: var(--space-2) 6px;
-  border-right: 1px solid var(--border-subtle);
+  border-inline-end: 1px solid var(--border-subtle);
   background: var(--surface-0);
   overflow-y: auto;
 }
@@ -408,11 +412,14 @@
 .insp-tabs button.active::before {
   content: '';
   position: absolute;
-  left: -6px;
+  inset-inline-start: -6px;
   top: 10px;
   bottom: 10px;
   width: 3px;
-  border-radius: 0 3px 3px 0;
+  border-start-start-radius: 0;
+  border-start-end-radius: 3px;
+  border-end-end-radius: 3px;
+  border-end-start-radius: 0;
   background: var(--accent-500);
 }
 
@@ -552,7 +559,7 @@
 
 .item-list button {
   width: 100%;
-  text-align: left;
+  text-align: start;
   padding: 6px var(--space-2);
   border: none;
   border-radius: var(--radius-sm);
@@ -633,7 +640,9 @@
   box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.18);
 }
 
+/* Each button stands where its corner of the video is, in every language. */
 .corner-grid {
+  direction: ltr;
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 6px;
@@ -695,13 +704,24 @@
 }
 
 /* ---------- Timeline ---------- */
+/* Time runs left to right in every language: the ruler, tracks, playhead, clips and markers (§13.1). */
 .timeline {
+  direction: ltr;
   flex: none;
   border-top: 1px solid var(--border-subtle);
   background: var(--surface-1);
   display: flex;
   flex-direction: column;
   padding: 4px 16px 8px 0;
+}
+
+/* In a right-to-left page, sentences inside the left-to-right areas read in their own text's
+   direction, while the areas keep their layout (a hint stays where it stands on the timeline). */
+.timeline .tl-hint:dir(rtl),
+.timeline .tl-empty:dir(rtl),
+.transport .notice-text:dir(rtl),
+.canvas-wrap .pick-hint:dir(rtl) {
+  unicode-bidi: plaintext;
 }
 
 .tl-head {

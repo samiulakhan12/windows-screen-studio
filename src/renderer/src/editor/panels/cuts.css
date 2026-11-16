@@ -23,7 +23,7 @@
 .cut-number {
   color: var(--text-1);
   font-weight: var(--weight-semibold);
-  margin-right: auto;
+  margin-inline-end: auto;
 }
 
 /* Previous cut and Next cut at the ends: aria-disabled keeps the focus on them. */

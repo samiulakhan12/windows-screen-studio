@@ -191,7 +191,7 @@
 }
 
 .publish-check ul {
-  padding-left: var(--space-4);
+  padding-inline-start: var(--space-4);
 }
 
 .publish-check-title {
@@ -226,7 +226,7 @@
 }
 
 .publish-count {
-  margin-left: auto;
+  margin-inline-start: auto;
   color: var(--text-2);
   font-size: var(--text-sm);
   font-variant-numeric: tabular-nums;
@@ -246,7 +246,7 @@
 }
 
 .publish-sends {
-  margin-right: auto;
+  margin-inline-end: auto;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -290,7 +290,7 @@
 
 .publish-confirm-list {
   margin: 0;
-  padding-left: var(--space-4);
+  padding-inline-start: var(--space-4);
   display: flex;
   flex-direction: column;
   gap: var(--space-2);

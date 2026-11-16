@@ -128,8 +128,9 @@
 
 .version-compare th,
 .version-compare td {
-  text-align: left;
-  padding: 2px var(--space-4) 2px 0;
+  text-align: start;
+  padding-block: 2px;
+  padding-inline: 0 var(--space-4);
   font-weight: normal;
 }
 

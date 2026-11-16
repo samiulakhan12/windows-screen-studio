@@ -8,12 +8,12 @@
 }
 
 .cost-line .link {
-  margin-left: var(--space-1);
+  margin-inline-start: var(--space-1);
 }
 
 .cost-details {
   margin: var(--space-1) 0 0;
-  padding-left: var(--space-4, 16px);
+  padding-inline-start: var(--space-4, 16px);
   color: var(--text-2);
   font-size: var(--text-sm);
   line-height: 1.5;

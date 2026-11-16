@@ -36,7 +36,8 @@
   height: 30px;
   min-width: 200px;
   justify-content: flex-start;
-  padding: 0 4px 0 10px;
+  padding-block: 0;
+  padding-inline: 10px 4px;
   gap: var(--space-2);
   color: var(--text-3);
   font-weight: var(--weight-regular);
@@ -47,7 +48,7 @@
 
 .command-button > span:not(.shortcut-keys) {
   flex: 1;
-  text-align: left;
+  text-align: start;
 }
 
 .command-button:hover:not(:disabled) {
@@ -206,13 +207,13 @@
 }
 
 .palette-help kbd {
-  margin-left: 6px;
-  margin-right: 2px;
+  margin-inline-start: 6px;
+  margin-inline-end: 2px;
   font-family: inherit;
 }
 
 .palette-help kbd:first-child {
-  margin-left: 0;
+  margin-inline-start: 0;
 }
 
 .palette-status {
@@ -313,7 +314,8 @@
   display: inline-flex;
   align-items: center;
   gap: 2px;
-  padding: 2px 2px 2px 4px;
+  padding-block: 2px;
+  padding-inline: 4px 2px;
   border-radius: var(--radius-sm);
   border: 1px solid var(--border-default);
   background: var(--surface-0);
