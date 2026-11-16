@@ -10,9 +10,11 @@ import { refreshCostData } from '../ai/useCost'
 import { LocalAiRow } from './LocalAiSection'
 import { OPEN_SETTINGS_EVENT } from './brandKitEvents'
 import { today, useModelList } from './useModelList'
+import { t } from '../../../shared/i18n/t'
+import { richText } from '../i18n/richText'
 
-/** Settings › AI providers › Ask before a run that costs more than (pref aiConfirm, §2.6). */
-export const CONFIRM_LABELS: Readonly<Record<ConfirmPref, string>> = { always: 'Always ask', '0.1': 'US$0.10', '1': 'US$1', '5': 'US$5', never: 'Never' }
+/** Settings › AI providers › Ask before a run that costs more than (pref aiConfirm, §2.6): each choice's label (the US$ amounts stay as they are). */
+export const confirmLabel = (p: ConfirmPref): string => (p === 'always' ? t('settings.ai.confirmAlways') : p === 'never' ? t('settings.ai.confirmNever') : p === '0.1' ? 'US$0.10' : `US$${p}`)
 
 /** The amount a run may cost before Flown asks, kept in pref aiConfirm (US$1 by default). */
 function ConfirmSetting(): JSX.Element {
@@ -30,7 +32,7 @@ function ConfirmSetting(): JSX.Element {
   }, [])
   return (
     <label className="field ai-confirm-setting" htmlFor={`${id}-confirm`}>
-      <span>Ask before a run that costs more than</span>
+      <span>{t('settings.ai.confirm')}</span>
       <select
         id={`${id}-confirm`}
         className="settings-input"
@@ -47,7 +49,7 @@ function ConfirmSetting(): JSX.Element {
       >
         {CONFIRM_PREFS.map((p) => (
           <option key={p} value={p}>
-            {CONFIRM_LABELS[p]}
+            {confirmLabel(p)}
           </option>
         ))}
       </select>
@@ -59,7 +61,7 @@ function ConfirmSetting(): JSX.Element {
 const kindLabel = (p: AiProviderInfo): string => {
   const s = p.service
   if (!s) return AI_PROVIDER_KINDS[p.kind].label
-  return s.preset !== 'other' && (presetApplies(s.preset, s.host) || s.preset === 'azure') ? SERVICE_PRESETS[s.preset].label : 'Service'
+  return s.preset !== 'other' && (presetApplies(s.preset, s.host) || s.preset === 'azure') ? SERVICE_PRESETS[s.preset].label : t('settings.ai.service')
 }
 
 type TestState = { busy: true } | { busy: false; ok: boolean; message: string }
@@ -153,14 +155,13 @@ export function AiProvidersSection({ onChanged, autoFocus = true }: { onChanged?
         }
       }}
     >
-      <h3 id="settings-ai-title">AI providers</h3>
+      <h3 id="settings-ai-title">{t('settings.ai.title')}</h3>
       <p className="hint">
-        Use your own API key for auto captions and transcript tools. <strong>Transcription</strong> works with OpenAI or Google Gemini. All three providers can
-        clean up and translate a transcript and suggest chapters, a title or a summary for it; Anthropic Claude cannot transcribe (the Claude API does not accept sound).
+        {richText('settings.ai.lead', {}, { b: (chunks) => <strong>{chunks}</strong> })}
       </p>
       <p className="hint">{SPEECH_COPY.aiProvidersNoKey}</p>
       <p className="settings-privacy">
-        <span aria-hidden="true">🔒</span> Keys are stored encrypted on this PC and are only sent to the provider you pick.
+        <span aria-hidden="true">🔒</span> {t('settings.ai.privacy')}
       </p>
       {/* AI on this PC first (smart-tools.md §2.5): part P4's row, which opens its section. */}
       <LocalAiRow onOpen={() => window.dispatchEvent(new CustomEvent(OPEN_SETTINGS_EVENT, { detail: { section: 'localAi' } }))} />
@@ -191,14 +192,14 @@ export function AiProvidersSection({ onChanged, autoFocus = true }: { onChanged?
         <>
           {loadError && (
             <p className="error" role="alert">
-              Could not read the providers: {loadError}
+              {t('settings.ai.readFailed', { reason: loadError })}
             </p>
           )}
-          {providers && providers.length === 0 && <p className="settings-empty">No provider yet. Add one to transcribe recordings and work on captions.</p>}
+          {providers && providers.length === 0 && <p className="settings-empty">{t('settings.ai.empty')}</p>}
           {providers && providers.length > 0 && (
-            <ul className="ai-providers" aria-label="AI providers">
+            <ul className="ai-providers" aria-label={t('settings.ai.title')}>
               {providers.map((p) => {
-                const t = tests[p.id]
+                const tested = tests[p.id]
                 return (
                   <li key={p.id} className="ai-provider" data-provider-id={p.id}>
                     <div className="ai-provider-main">
@@ -208,44 +209,44 @@ export function AiProvidersSection({ onChanged, autoFocus = true }: { onChanged?
                       </div>
                       <div className="ai-provider-meta">
                         {p.service && (
-                          <span title="Where its key and the text you send go">
-                            Address <code>{p.service.host}</code>
+                          <span title={t('settings.ai.addressTitle')}>
+                            {t('settings.ai.address')} <code>{p.service.host}</code>
                           </span>
                         )}
                         {p.maskedKey === 'none' ? (
-                          <span>No key</span>
+                          <span>{t('settings.ai.noKey')}</span>
                         ) : (
-                          <span title="API key (only the end is shown)">Key {p.maskedKey === 'unreadable' ? <em className="error">cannot be read: edit and enter it again</em> : <code>{p.maskedKey}</code>}</span>
+                          <span title={t('settings.ai.keyTitle')}>{t('settings.ai.key')} {p.maskedKey === 'unreadable' ? <em className="error">{t('settings.ai.keyUnreadable')}</em> : <code>{p.maskedKey}</code>}</span>
                         )}
                         <span>
-                          Text model <code>{p.model}</code>
+                          {t('settings.ai.textModel')} <code>{p.model}</code>
                         </span>
                         {p.transcriptionModel && (
                           <span>
-                            Transcription <code>{p.transcriptionModel}</code>
+                            {t('settings.ai.transcription')} <code>{p.transcriptionModel}</code>
                           </span>
                         )}
                       </div>
-                      <div className="ai-provider-can">{p.service ? 'Clean-up, translation, chapters, titles and summaries of a transcript' : canDo(p.kind)}.</div>
+                      <div className="ai-provider-can">{p.service ? t('settings.ai.serviceCanDo') : canDo(p.kind)}.</div>
                       {retiringNotes(modelList, p, day).map((note) => (
                         <p key={note} className="ai-retiring" data-testid="ai-retiring">
                           {note}
                         </p>
                       ))}
-                      {t && (
-                        <p className={`ai-test ${t.busy ? '' : t.ok ? 'ok' : 'error'}`} role="status" aria-live="polite">
-                          {t.busy ? 'Testing…' : `${t.ok ? '✓' : '✕'} ${t.message}`}
+                      {tested && (
+                        <p className={`ai-test ${tested.busy ? '' : tested.ok ? 'ok' : 'error'}`} role="status" aria-live="polite">
+                          {tested.busy ? t('settings.ai.testing') : `${tested.ok ? '✓' : '✕'} ${tested.message}`}
                         </p>
                       )}
                     </div>
                     {removing?.id === p.id ? (
                       <div className="ai-remove-question" role="alert">
                         <span>
-                          Remove “{p.label}”? Its key is deleted from this PC.
+                          {t('settings.ai.removeQuestion', { name: p.label })}
                           {removeError && <span className="error"> {removeError}</span>}
                         </span>
                         <button type="button" className="btn danger settings-small" onClick={() => void remove(p)}>
-                          Remove
+                          {t('common.action.remove')}
                         </button>
                         <button
                           type="button"
@@ -257,22 +258,22 @@ export function AiProvidersSection({ onChanged, autoFocus = true }: { onChanged?
                             setRemoveError(null)
                           }}
                         >
-                          Cancel
+                          {t('common.action.cancel')}
                         </button>
                       </div>
                     ) : (
                       <div className="ai-provider-actions">
-                        <button type="button" className="btn settings-small" data-focus-key={`test:${p.id}`} disabled={t?.busy} onClick={() => void test(p)} aria-label={`Test ${p.label}`}>
-                          Test
+                        <button type="button" className="btn settings-small" data-focus-key={`test:${p.id}`} disabled={tested?.busy} onClick={() => void test(p)} aria-label={t('settings.ai.testName', { name: p.label })}>
+                          {t('settings.ai.test')}
                         </button>
                         <button
                           type="button"
                           className="btn ghost settings-small"
                           data-focus-key={`edit:${p.id}`}
                           onClick={() => setMode({ kind: 'edit', provider: p })}
-                          aria-label={`Edit ${p.label}`}
+                          aria-label={t('settings.ai.editName', { name: p.label })}
                         >
-                          Edit
+                          {t('settings.ai.edit')}
                         </button>
                         <button
                           type="button"
@@ -282,9 +283,9 @@ export function AiProvidersSection({ onChanged, autoFocus = true }: { onChanged?
                             setRemoveError(null)
                             setRemoving(p)
                           }}
-                          aria-label={`Remove ${p.label}`}
+                          aria-label={t('common.action.removeName', { name: p.label })}
                         >
-                          Remove
+                          {t('common.action.remove')}
                         </button>
                       </div>
                     )}
@@ -295,7 +296,7 @@ export function AiProvidersSection({ onChanged, autoFocus = true }: { onChanged?
           )}
           <div>
             <button type="button" className="btn" ref={addRef} autoFocus={autoFocus} onClick={() => setMode({ kind: 'add' })}>
-              + Add provider
+              {t('settings.ai.add')}
             </button>
           </div>
           <ConfirmSetting />

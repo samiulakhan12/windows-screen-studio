@@ -30,5 +30,20 @@
   "feature.notReady": {
     "description": "Shown if a setting of this release is used before its part is built (development only).",
     "screen": "export-errors"
+  },
+  "cancelled": {
+    "description": "Why a download, a request or a job stopped: the user cancelled it. The renderer compares a message with this text to tell a cancel from a failure, so it is one message for every process."
+  },
+  "localAi.unknownModel": {
+    "description": "AI on this PC: a request named a model Flown does not know."
+  },
+  "localAi.busy": {
+    "description": "AI on this PC: only one model downloads at a time."
+  },
+  "localAi.unknownChoice": {
+    "description": "AI on this PC: the model choice sent was neither Automatic nor a model."
+  },
+  "localAi.notDownloaded": {
+    "description": "AI on this PC: the model picked for use is not on this PC."
   }
 }

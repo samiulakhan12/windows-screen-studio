@@ -6,5 +6,10 @@
   "timeline.media": "The timeline could not be written: a file it uses has changed.",
   "timeline.cancelled": "You cancelled, so the timeline was not saved.",
   "presetFile.notSaved": "The presets could not be saved to this file.",
-  "feature.notReady": "This export setting is not available yet."
+  "feature.notReady": "This export setting is not available yet.",
+  "cancelled": "Cancelled.",
+  "localAi.unknownModel": "Unknown model.",
+  "localAi.busy": "Another model is downloading.",
+  "localAi.unknownChoice": "Unknown choice.",
+  "localAi.notDownloaded": "Only a downloaded model can be chosen."
 }

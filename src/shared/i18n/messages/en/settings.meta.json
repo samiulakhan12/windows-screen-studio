@@ -1,1 +1,544 @@
-{}
+{
+  "about.title": {
+    "description": "Settings › About: the heading of the section about Flown."
+  },
+  "about.version": {
+    "description": "Settings › About: the app version under its name; {version} is a version number such as 0.7.1."
+  },
+  "about.builtBy": {
+    "description": "Settings › About: who makes Flown, before a link to their website; {company} is the company name (Qbexel), never translated.",
+    "dnt": [
+      "Qbexel"
+    ]
+  },
+  "dialog.close": {
+    "description": "Settings: the accessible name of the close (×) button in the dialog’s header."
+  },
+  "storage.shared": {
+    "description": "Settings › Storage, a recording’s details: how much of its disk use it shares with a copy of the project (Duplicate links the media). {size} is a size such as \"1.9 GB\"."
+  },
+  "storage.title": {
+    "description": "Settings › Storage: the heading of the section on disk use and clean-up."
+  },
+  "storage.measuring": {
+    "description": "Settings › Storage: shown while the disk use is measured."
+  },
+  "storage.total": {
+    "description": "Settings › Storage: the disk use of all recordings, the size in bold. {size} is a size such as \"95 KB\"."
+  },
+  "storage.free": {
+    "description": "Settings › Storage: follows \"Recordings use …\" when the free space is known; {free} is a size. Starts with a space and a middle dot."
+  },
+  "storage.empty": {
+    "description": "Settings › Storage: there are no recordings to list."
+  },
+  "storage.listLabel": {
+    "description": "Settings › Storage: the accessible name of the list of recordings, largest first."
+  },
+  "storage.used": {
+    "description": "Settings › Storage: when a recording was made and when it was last used. {date} is a date (\"12 Mar 2026\"), {when} a relative day (\"today\", \"yesterday\", \"3 days ago\")."
+  },
+  "storage.unfinished": {
+    "description": "Settings › Storage: a recording that was never finished (it has no date to show)."
+  },
+  "storage.cache": {
+    "description": "Settings › Storage, a recording’s details: how much of its size is cache Flown can rebuild. \"incl.\" is short for including."
+  },
+  "storage.versions": {
+    "description": "Settings › Storage, a recording’s details: the disk use of its saved versions."
+  },
+  "storage.atLeast": {
+    "description": "Settings › Storage: a recording’s size when measuring stopped early (very many files)."
+  },
+  "storage.showLabel": {
+    "description": "Settings › Storage: the accessible name of a recording’s Show button; {name} is the project’s name.",
+    "user": [
+      "name"
+    ]
+  },
+  "storage.showFewer": {
+    "description": "Settings › Storage: the link that shortens the list of recordings again."
+  },
+  "storage.showAll": {
+    "description": "Settings › Storage: the link that lists every recording; {n} is how many there are (more than 8)."
+  },
+  "storage.rules": {
+    "description": "Settings › Storage: the heading of the automatic clean-up rules."
+  },
+  "storage.cacheDays": {
+    "description": "Settings › Storage: label of a menu of day counts (\"30 days\") or Off."
+  },
+  "storage.days": {
+    "description": "Settings › Storage: a choice in the clean-up menus; {n} is 14 to 365 days."
+  },
+  "storage.auto": {
+    "description": "Settings › Storage: checkbox that clears the caches by the rule without asking."
+  },
+  "storage.removeDays": {
+    "description": "Settings › Storage: label of a menu of day counts or Off; recordings go to the Recycle Bin only after the user confirms."
+  },
+  "storage.hint": {
+    "description": "Settings › Storage: the note under the clean-up rules.",
+    "dnt": [
+      "Recycle Bin"
+    ]
+  },
+  "storage.review": {
+    "description": "Settings › Storage: button that lists what the rules would clean up before anything moves."
+  },
+  "storage.reviewTitle": {
+    "description": "Settings › Storage: the heading of the list of what would be cleaned up."
+  },
+  "storage.nothing": {
+    "description": "Settings › Storage: the rules find nothing to clean up."
+  },
+  "storage.groupRemove": {
+    "description": "Settings › Storage, the review: the heading of the recordings the rules would move to the Recycle Bin, how many and their size."
+  },
+  "storage.groupCaches": {
+    "description": "Settings › Storage, the review: the heading of the recordings whose caches the rules would clear, how many and the size freed."
+  },
+  "storage.move": {
+    "description": "Settings › Storage, the review: the button that moves the ticked items; {n} is how many are ticked."
+  },
+  "storage.moved": {
+    "description": "Settings › Storage: the result of a clean-up, how many items moved and the space freed."
+  },
+  "storage.nothingMoved": {
+    "description": "Settings › Storage: the result of a clean-up that moved nothing."
+  },
+  "storage.failedCaches": {
+    "description": "Settings › Storage: a clean-up step that failed; {name} is the project’s name, {reason} the error.",
+    "user": [
+      "name"
+    ]
+  },
+  "storage.failed": {
+    "description": "Settings › Storage: a recording the clean-up could not move; {name} is the project’s name, {reason} the error.",
+    "user": [
+      "name"
+    ]
+  },
+  "diagnostics.title": {
+    "description": "Settings › Diagnostics: the heading of the section with the report for support."
+  },
+  "diagnostics.hint": {
+    "description": "Settings › Diagnostics: what the report holds and leaves out. \"Keys\" are the user’s API keys.",
+    "dnt": [
+      "Windows"
+    ]
+  },
+  "diagnostics.collecting": {
+    "description": "Settings › Diagnostics: the button while the report is being made."
+  },
+  "diagnostics.show": {
+    "description": "Settings › Diagnostics: the button that makes and shows the report."
+  },
+  "diagnostics.openLogs": {
+    "description": "Settings › Diagnostics: opens the folder of the app’s log files."
+  },
+  "diagnostics.report": {
+    "description": "Settings › Diagnostics: the accessible name of the box that shows the report (the report itself stays English)."
+  },
+  "diagnostics.copy": {
+    "description": "Settings › Diagnostics: copies the shown report to the clipboard."
+  },
+  "diagnostics.copied": {
+    "description": "Settings › Diagnostics: status after copying."
+  },
+  "diagnostics.stale": {
+    "description": "Settings › Diagnostics: the report shown was replaced in main, so Copy refused it."
+  },
+  "localAi.downloadName": {
+    "description": "Settings › AI on this PC: what a model’s Download button says to a screen reader; {title} is the model’s title (\"Recommended\"), {size} its size in gigabytes."
+  },
+  "localAi.progress": {
+    "description": "Settings › AI on this PC: a download’s progress beside its bar; {done} is gigabytes downloaded (\"1.2\"), {total} the model’s size (\"3.1 GB\")."
+  },
+  "localAi.progressValue": {
+    "description": "Settings › AI on this PC: what a download’s progress bar says to a screen reader."
+  },
+  "localAi.title": {
+    "description": "Settings › AI on this PC: the heading of the section of AI models that run on the user’s PC."
+  },
+  "localAi.lead": {
+    "description": "Settings › AI on this PC: what AI on this PC does. \"No key\": no API key is needed."
+  },
+  "localAi.checking": {
+    "description": "Settings › AI on this PC: shown while the PC’s memory and graphics are checked."
+  },
+  "localAi.failed": {
+    "description": "Settings › AI on this PC: the check of the PC failed."
+  },
+  "localAi.ready": {
+    "description": "Settings › AI on this PC: announced to screen readers when a model’s download ends; {title} is the model’s title."
+  },
+  "localAi.use": {
+    "description": "Settings › AI on this PC: the heading of the choice of model to use (Automatic or one downloaded model)."
+  },
+  "localAi.automatic": {
+    "description": "Settings › AI on this PC: let Flown pick the model."
+  },
+  "localAi.suggested": {
+    "description": "Settings › AI on this PC: badge on the model that suits this PC best."
+  },
+  "localAi.downloaded": {
+    "description": "Settings › AI on this PC: badge on a model that is on this PC."
+  },
+  "localAi.damaged": {
+    "description": "Settings › AI on this PC: a model’s file failed its check."
+  },
+  "localAi.downloading": {
+    "description": "Settings › AI on this PC: the accessible name of a download’s progress bar."
+  },
+  "localAi.removeQuestion": {
+    "description": "Settings › AI on this PC: the question before a downloaded model is removed; {size} is its size (\"3.1 GB\")."
+  },
+  "localAi.downloadAgain": {
+    "description": "Settings › AI on this PC: downloads a damaged model again."
+  },
+  "localAi.download": {
+    "description": "Settings › AI on this PC: downloads a model."
+  },
+  "localAi.cancelDownload": {
+    "description": "Settings › AI on this PC: the accessible name of a download’s Cancel button."
+  },
+  "localAi.rowName": {
+    "description": "Settings › AI providers: the first row, for AI that runs on this PC."
+  },
+  "localAi.rowMeta": {
+    "description": "Settings › AI providers: what the On this PC row offers (no API key needed; drafts to check)."
+  },
+  "localAi.using": {
+    "description": "Settings › AI providers: the On this PC row once a model is downloaded; {title} is the model’s title."
+  },
+  "localAi.setUpLabel": {
+    "description": "Settings › AI providers: the accessible name of the On this PC row’s Set up button."
+  },
+  "localAi.setUp": {
+    "description": "Settings › AI providers: opens Settings at AI on this PC."
+  },
+  "music.readFailed": {
+    "description": "Settings › More music: the list of downloadable tracks could not be read; {reason} is the error."
+  },
+  "music.allDownloaded": {
+    "description": "Settings › More music: announced to screen readers after Download all."
+  },
+  "music.removed": {
+    "description": "Settings › More music: announced to screen readers after Remove."
+  },
+  "music.title": {
+    "description": "Settings › More music: the heading of the section that downloads more music for the library."
+  },
+  "music.summary": {
+    "description": "Settings › More music: how many tracks can be downloaded and their size (\"7.1 MB\"). CC0 is the licence, never translated.",
+    "dnt": [
+      "CC0"
+    ]
+  },
+  "music.summaryDownloaded": {
+    "description": "Settings › More music: as the summary, with how many tracks are already downloaded.",
+    "dnt": [
+      "CC0"
+    ]
+  },
+  "music.downloadAll": {
+    "description": "Settings › More music: downloads every track not yet on this PC."
+  },
+  "captionDownloads.script.japanese": {
+    "description": "Settings › Downloads for captions: the script a downloaded caption font covers, before \"caption font\"."
+  },
+  "captionDownloads.script.korean": {
+    "description": "Settings › Downloads for captions: the script a downloaded caption font covers."
+  },
+  "captionDownloads.script.hanSc": {
+    "description": "Settings › Downloads for captions: the script a downloaded caption font covers."
+  },
+  "captionDownloads.script.hanTc": {
+    "description": "Settings › Downloads for captions: the script a downloaded caption font covers."
+  },
+  "captionDownloads.sizeUnknown": {
+    "description": "Settings › Downloads for captions: in a download’s row when its size is not known."
+  },
+  "captionDownloads.scriptFont": {
+    "description": "Settings › Downloads for captions: what a download is; {script} is a script’s name (\"Japanese\")."
+  },
+  "captionDownloads.font": {
+    "description": "Settings › Downloads for captions: what a download is, when its script is not named."
+  },
+  "captionDownloads.translationModel": {
+    "description": "Settings › Downloads for captions: what a download is (a model for offline translation)."
+  },
+  "captionDownloads.listFailed": {
+    "description": "Settings › Downloads for captions: reading the list failed; {reason} is the error."
+  },
+  "captionDownloads.removeFailed": {
+    "description": "Settings › Downloads for captions: removing a download failed; {reason} is the error."
+  },
+  "captionDownloads.title": {
+    "description": "Settings › Downloads for captions: the heading of the list of downloaded caption fonts and translation models."
+  },
+  "captionDownloads.empty": {
+    "description": "Settings › Downloads for captions: nothing is downloaded. \"Captions › Look › Text\" names the panel, its tab and its section."
+  },
+  "ai.confirmAlways": {
+    "description": "Settings › AI providers › Ask before a run that costs more than: ask before every run that costs money."
+  },
+  "ai.confirmNever": {
+    "description": "Settings › AI providers › Ask before a run that costs more than: never ask."
+  },
+  "ai.confirm": {
+    "description": "Settings › AI providers: label of a menu of amounts (US$0.10, US$1, US$5), Always ask or Never."
+  },
+  "ai.service": {
+    "description": "Settings › AI providers: the kind shown on a row for a service at another address (one of More services)."
+  },
+  "ai.title": {
+    "description": "Settings › AI providers: the heading of the section of the user’s own AI services and API keys; also the list’s accessible name."
+  },
+  "ai.lead": {
+    "description": "Settings › AI providers: what the providers do; <b> marks the word shown in bold.",
+    "dnt": [
+      "OpenAI",
+      "Google Gemini",
+      "Anthropic Claude",
+      "Claude API"
+    ]
+  },
+  "ai.privacy": {
+    "description": "Settings › AI providers: the privacy line after a padlock."
+  },
+  "ai.readFailed": {
+    "description": "Settings › AI providers: the list could not be read; {reason} is the error."
+  },
+  "ai.empty": {
+    "description": "Settings › AI providers: no provider has been added."
+  },
+  "ai.addressTitle": {
+    "description": "Settings › AI providers: tooltip of a service’s address."
+  },
+  "ai.address": {
+    "description": "Settings › AI providers: before a service’s host name, such as openrouter.ai."
+  },
+  "ai.noKey": {
+    "description": "Settings › AI providers: a service that needs no API key (Ollama, LM Studio)."
+  },
+  "ai.keyTitle": {
+    "description": "Settings › AI providers: tooltip of the masked key."
+  },
+  "ai.key": {
+    "description": "Settings › AI providers: before the masked API key (\"…3f9a\")."
+  },
+  "ai.keyUnreadable": {
+    "description": "Settings › AI providers: after \"Key\" when the stored key cannot be decrypted on this PC."
+  },
+  "ai.textModel": {
+    "description": "Settings › AI providers: before the model used for text tasks (a model id, never translated)."
+  },
+  "ai.transcription": {
+    "description": "Settings › AI providers: before the model used to transcribe sound."
+  },
+  "ai.serviceCanDo": {
+    "description": "Settings › AI providers: what a service can do, followed by a full stop."
+  },
+  "ai.testing": {
+    "description": "Settings › AI providers: shown while a provider’s key is tested."
+  },
+  "ai.removeQuestion": {
+    "description": "Settings › AI providers: the question before a provider is removed; {name} is the provider’s name.",
+    "user": [
+      "name"
+    ]
+  },
+  "ai.testName": {
+    "description": "Settings › AI providers: accessible name of a provider’s Test button.",
+    "user": [
+      "name"
+    ]
+  },
+  "ai.test": {
+    "description": "Settings › AI providers: checks that a provider’s key works."
+  },
+  "ai.editName": {
+    "description": "Settings › AI providers: accessible name of a provider’s Edit button.",
+    "user": [
+      "name"
+    ]
+  },
+  "ai.edit": {
+    "description": "Settings › AI providers: opens a provider’s form."
+  },
+  "ai.add": {
+    "description": "Settings › AI providers: opens the form that adds a provider."
+  },
+  "provider.moreServices": {
+    "description": "Settings › Add a provider: the fourth choice of the provider picker, for services at another address (OpenRouter, Groq, …)."
+  },
+  "provider.moreServicesHint": {
+    "description": "Settings › Add a provider › More services: the services it covers. The names are never translated.",
+    "dnt": [
+      "OpenRouter",
+      "Groq",
+      "Together AI",
+      "Azure OpenAI",
+      "Ollama",
+      "LM Studio",
+      "OpenAI"
+    ]
+  },
+  "provider.needName": {
+    "description": "Settings › Add a provider: the Name field is empty."
+  },
+  "provider.needAddress": {
+    "description": "Settings › Add a provider: the service’s address is missing."
+  },
+  "provider.needNewKey": {
+    "description": "Settings › Edit a provider: a service moved to another address needs its key typed again; also the hint under the key."
+  },
+  "provider.needKey": {
+    "description": "Settings › Add a provider: the key is missing."
+  },
+  "provider.badPrices": {
+    "description": "Settings › Add a provider: the prices typed are not numbers in range. US$ stays as it is."
+  },
+  "provider.keepKey": {
+    "description": "Settings › Edit a provider: hint under the key; {key} is the masked key (\"…3f9a\")."
+  },
+  "provider.editTitle": {
+    "description": "Settings › Edit a provider: the form’s heading; {name} is the provider’s name.",
+    "user": [
+      "name"
+    ]
+  },
+  "provider.addTitle": {
+    "description": "Settings › Add a provider: the form’s heading."
+  },
+  "provider.serviceCanDo": {
+    "description": "Settings › Add a provider › More services: the services covered ({services}, settings.provider.moreServicesHint) and what they can do."
+  },
+  "provider.canDo": {
+    "description": "Settings › Add a provider: what the picked provider can do; {list} is its list of tasks, lower-cased."
+  },
+  "provider.noTranscribe": {
+    "description": "Settings › Add a provider: after \"Can do: …\" for Anthropic Claude.",
+    "dnt": [
+      "Claude API",
+      "OpenAI",
+      "Google Gemini"
+    ]
+  },
+  "provider.service": {
+    "description": "Settings › Add a provider › More services: label of the menu of services (OpenRouter, Groq, …, Other address)."
+  },
+  "provider.resource": {
+    "description": "Settings › Add a provider › Azure OpenAI: the field for the name of the user’s Azure resource."
+  },
+  "provider.resourceHint": {
+    "description": "Settings › Add a provider › Azure OpenAI: hint under the resource name.",
+    "dnt": [
+      "Azure OpenAI",
+      "Flown"
+    ]
+  },
+  "provider.baseUrl": {
+    "description": "Settings › Add a provider › More services: the field for the service’s address."
+  },
+  "provider.baseUrlHint": {
+    "description": "Settings › Add a provider › More services: hint under the address.",
+    "dnt": [
+      "OpenAI",
+      "http://"
+    ]
+  },
+  "provider.apiKey": {
+    "description": "Settings › Add a provider: the key field’s label."
+  },
+  "provider.unchanged": {
+    "description": "Settings › Edit a provider: placeholder of the empty key field; {key} is the masked key."
+  },
+  "provider.notNeeded": {
+    "description": "Settings › Add a provider: placeholder of the key field for a service on this PC."
+  },
+  "provider.hideKey": {
+    "description": "Settings › Add a provider: accessible name of the button that hides the typed key."
+  },
+  "provider.showKey": {
+    "description": "Settings › Add a provider: accessible name of the button that shows the typed key."
+  },
+  "provider.noKeyLocal": {
+    "description": "Settings › Add a provider: hint under the key for a service on this PC.",
+    "dnt": [
+      "Ollama",
+      "LM Studio"
+    ]
+  },
+  "provider.serviceKey": {
+    "description": "Settings › Add a provider: hint under a service’s key."
+  },
+  "provider.sentToAddress": {
+    "description": "Settings › Add a provider: after the key hint for a service."
+  },
+  "provider.createKey": {
+    "description": "Settings › Add a provider: where to get a key; {host} is the provider’s web site (a link)."
+  },
+  "provider.sentTo": {
+    "description": "Settings › Add a provider: after the key hint; {name} is the provider (OpenAI, Google Gemini, Anthropic Claude)."
+  },
+  "provider.modelAzure": {
+    "description": "Settings › Add a provider › Azure OpenAI: the model field, which takes the name of the user’s deployment."
+  },
+  "provider.model": {
+    "description": "Settings › Add a provider › More services: the model field."
+  },
+  "provider.modelText": {
+    "description": "Settings › Add a provider: the model used for clean-up, translation, titles and the like."
+  },
+  "provider.modelTranscription": {
+    "description": "Settings › Add a provider: the model used to transcribe sound."
+  },
+  "provider.openaiTranscription": {
+    "description": "Settings › Add a provider › OpenAI: hint under the transcription model. Model names are never translated.",
+    "dnt": [
+      "gpt-transcribe",
+      "whisper-1",
+      "OpenAI",
+      "Flown"
+    ]
+  },
+  "provider.geminiTranscription": {
+    "description": "Settings › Add a provider › Google Gemini: hint under the transcription model.",
+    "dnt": [
+      "Gemini"
+    ]
+  },
+  "provider.prices": {
+    "description": "Settings › Add a provider: opens the price fields. US$ stays as it is."
+  },
+  "provider.input": {
+    "description": "Settings › Add a provider › Prices: the price of input tokens."
+  },
+  "provider.output": {
+    "description": "Settings › Add a provider › Prices: the price of output tokens."
+  },
+  "provider.unknownPrices": {
+    "description": "Settings › Add a provider › Prices: the model has no price in the bundled list."
+  },
+  "provider.noData": {
+    "description": "Settings › Add a provider › OpenRouter: checkbox that asks OpenRouter to route only to hosts that keep no data."
+  },
+  "provider.goesTo": {
+    "description": "Settings › Add a provider: where the key and text go; {host} is a host name in bold, or \"the address above\"."
+  },
+  "provider.addressAbove": {
+    "description": "Settings › Add a provider: in \"Your key and the text you send go to …\" before an address is typed."
+  },
+  "provider.checking": {
+    "description": "Settings › Add a provider: the button while the saved service is checked."
+  },
+  "provider.saveAndCheck": {
+    "description": "Settings › Add a provider › More services: saves and checks the key and how the service answers."
+  },
+  "provider.addButton": {
+    "description": "Settings › Add a provider: saves a new provider."
+  }
+}

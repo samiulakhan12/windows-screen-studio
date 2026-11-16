@@ -1,0 +1,1564 @@
+[
+  {
+    "key": "settings.about.title",
+    "file": "src/renderer/src/settings/AboutSection.tsx",
+    "line": 29,
+    "english": "About",
+    "sample": {}
+  },
+  {
+    "key": "settings.about.version",
+    "file": "src/renderer/src/settings/AboutSection.tsx",
+    "line": 35,
+    "english": "Version 0.7.1",
+    "sample": {
+      "version": "0.7.1"
+    }
+  },
+  {
+    "key": "settings.about.builtBy",
+    "file": "src/renderer/src/settings/AboutSection.tsx",
+    "line": 38,
+    "english": "Built by Qbexel ·",
+    "sample": {
+      "company": "Qbexel"
+    }
+  },
+  {
+    "key": "common.label.settings",
+    "file": "src/renderer/src/settings/SettingsButton.tsx",
+    "line": 34,
+    "english": "Settings",
+    "sample": {}
+  },
+  {
+    "key": "settings.dialog.close",
+    "file": "src/renderer/src/settings/SettingsDialog.tsx",
+    "line": 53,
+    "english": "Close settings",
+    "sample": {}
+  },
+  {
+    "key": "common.label.settings",
+    "file": "src/renderer/src/settings/SettingsDialog.tsx",
+    "line": 52,
+    "english": "Settings",
+    "sample": {}
+  },
+  {
+    "key": "common.action.close",
+    "file": "src/renderer/src/settings/SettingsDialog.tsx",
+    "line": 53,
+    "english": "Close",
+    "sample": {}
+  },
+  {
+    "key": "common.action.done",
+    "file": "src/renderer/src/settings/SettingsDialog.tsx",
+    "line": 72,
+    "english": "Done",
+    "sample": {}
+  },
+  {
+    "key": "settings.storage.shared",
+    "file": "src/renderer/src/settings/StorageSection.tsx",
+    "line": 17,
+    "english": "1.9 GB shared with a copy",
+    "sample": {
+      "size": "1.9 GB"
+    }
+  },
+  {
+    "key": "settings.storage.title",
+    "file": "src/renderer/src/settings/StorageSection.tsx",
+    "line": 102,
+    "english": "Storage",
+    "sample": {}
+  },
+  {
+    "key": "settings.storage.measuring",
+    "file": "src/renderer/src/settings/StorageSection.tsx",
+    "line": 108,
+    "english": "Measuring…",
+    "sample": {}
+  },
+  {
+    "key": "settings.storage.total",
+    "file": "src/renderer/src/settings/StorageSection.tsx",
+    "line": 113,
+    "english": "Recordings use 95 KB",
+    "sample": {
+      "size": "95 KB"
+    }
+  },
+  {
+    "key": "settings.storage.free",
+    "file": "src/renderer/src/settings/StorageSection.tsx",
+    "line": 114,
+    "english": " · 9.5 GB free on this drive",
+    "sample": {
+      "free": "9.5 GB"
+    }
+  },
+  {
+    "key": "settings.storage.empty",
+    "file": "src/renderer/src/settings/StorageSection.tsx",
+    "line": 121,
+    "english": "No recordings yet.",
+    "sample": {}
+  },
+  {
+    "key": "settings.storage.listLabel",
+    "file": "src/renderer/src/settings/StorageSection.tsx",
+    "line": 123,
+    "english": "Recordings by size",
+    "sample": {}
+  },
+  {
+    "key": "settings.storage.used",
+    "file": "src/renderer/src/settings/StorageSection.tsx",
+    "line": 130,
+    "english": "Mar 12, 2026 · used today",
+    "sample": {
+      "date": "Mar 12, 2026",
+      "when": "today"
+    }
+  },
+  {
+    "key": "settings.storage.unfinished",
+    "file": "src/renderer/src/settings/StorageSection.tsx",
+    "line": 130,
+    "english": "Unfinished",
+    "sample": {}
+  },
+  {
+    "key": "settings.storage.cache",
+    "file": "src/renderer/src/settings/StorageSection.tsx",
+    "line": 131,
+    "english": "incl. 12 MB cache",
+    "sample": {
+      "size": "12 MB"
+    }
+  },
+  {
+    "key": "settings.storage.versions",
+    "file": "src/renderer/src/settings/StorageSection.tsx",
+    "line": 132,
+    "english": "3 MB in versions",
+    "sample": {
+      "size": "3 MB"
+    }
+  },
+  {
+    "key": "settings.storage.atLeast",
+    "file": "src/renderer/src/settings/StorageSection.tsx",
+    "line": 136,
+    "english": "at least 2 GB",
+    "sample": {
+      "size": "2 GB"
+    }
+  },
+  {
+    "key": "settings.storage.showLabel",
+    "file": "src/renderer/src/settings/StorageSection.tsx",
+    "line": 138,
+    "english": "Show Demo in its folder",
+    "sample": {
+      "name": "Demo"
+    }
+  },
+  {
+    "key": "settings.storage.showFewer",
+    "file": "src/renderer/src/settings/StorageSection.tsx",
+    "line": 147,
+    "english": "Show fewer",
+    "sample": {}
+  },
+  {
+    "key": "settings.storage.showAll",
+    "file": "src/renderer/src/settings/StorageSection.tsx",
+    "line": 147,
+    "english": "Show all 12",
+    "sample": {
+      "n": "12"
+    }
+  },
+  {
+    "key": "settings.storage.rules",
+    "file": "src/renderer/src/settings/StorageSection.tsx",
+    "line": 151,
+    "english": "Clean-up rules",
+    "sample": {}
+  },
+  {
+    "key": "settings.storage.cacheDays",
+    "file": "src/renderer/src/settings/StorageSection.tsx",
+    "line": 153,
+    "english": "Clear caches of recordings not used for",
+    "sample": {}
+  },
+  {
+    "key": "settings.storage.days",
+    "file": "src/renderer/src/settings/StorageSection.tsx",
+    "line": 157,
+    "english": [
+      "0 days",
+      "1 days",
+      "2 days",
+      "1000 days"
+    ],
+    "sample": [
+      {
+        "count": 0,
+        "n": "0"
+      },
+      {
+        "count": 1,
+        "n": "1"
+      },
+      {
+        "count": 2,
+        "n": "2"
+      },
+      {
+        "count": 1000,
+        "n": "1000"
+      }
+    ]
+  },
+  {
+    "key": "settings.storage.auto",
+    "file": "src/renderer/src/settings/StorageSection.tsx",
+    "line": 164,
+    "english": "Do this automatically",
+    "sample": {}
+  },
+  {
+    "key": "settings.storage.removeDays",
+    "file": "src/renderer/src/settings/StorageSection.tsx",
+    "line": 168,
+    "english": "Remove recordings not used for",
+    "sample": {}
+  },
+  {
+    "key": "settings.storage.hint",
+    "file": "src/renderer/src/settings/StorageSection.tsx",
+    "line": 179,
+    "english": "Caches are rebuilt when needed. Removed files go to the Recycle Bin, and recordings are only removed after you confirm them. Nothing outside the projects folder is touched.",
+    "sample": {}
+  },
+  {
+    "key": "settings.storage.review",
+    "file": "src/renderer/src/settings/StorageSection.tsx",
+    "line": 183,
+    "english": "Review clean-up…",
+    "sample": {}
+  },
+  {
+    "key": "settings.storage.reviewTitle",
+    "file": "src/renderer/src/settings/StorageSection.tsx",
+    "line": 190,
+    "english": "Review clean-up",
+    "sample": {}
+  },
+  {
+    "key": "settings.storage.nothing",
+    "file": "src/renderer/src/settings/StorageSection.tsx",
+    "line": 193,
+    "english": "Nothing to clean up with these rules.",
+    "sample": {}
+  },
+  {
+    "key": "settings.storage.groupRemove",
+    "file": "src/renderer/src/settings/StorageSection.tsx",
+    "line": 198,
+    "english": [
+      "Move to the Recycle Bin (0 recordings, 1.2 GB)",
+      "Move to the Recycle Bin (1 recording, 1.2 GB)",
+      "Move to the Recycle Bin (2 recordings, 1.2 GB)",
+      "Move to the Recycle Bin (1000 recordings, 1.2 GB)"
+    ],
+    "sample": [
+      {
+        "size": "1.2 GB",
+        "count": 0,
+        "n": "0"
+      },
+      {
+        "size": "1.2 GB",
+        "count": 1,
+        "n": "1"
+      },
+      {
+        "size": "1.2 GB",
+        "count": 2,
+        "n": "2"
+      },
+      {
+        "size": "1.2 GB",
+        "count": 1000,
+        "n": "1000"
+      }
+    ]
+  },
+  {
+    "key": "settings.storage.groupCaches",
+    "file": "src/renderer/src/settings/StorageSection.tsx",
+    "line": 198,
+    "english": [
+      "Clear caches (0 recordings, 80 MB)",
+      "Clear caches (1 recording, 80 MB)",
+      "Clear caches (2 recordings, 80 MB)",
+      "Clear caches (1000 recordings, 80 MB)"
+    ],
+    "sample": [
+      {
+        "size": "80 MB",
+        "count": 0,
+        "n": "0"
+      },
+      {
+        "size": "80 MB",
+        "count": 1,
+        "n": "1"
+      },
+      {
+        "size": "80 MB",
+        "count": 2,
+        "n": "2"
+      },
+      {
+        "size": "80 MB",
+        "count": 1000,
+        "n": "1000"
+      }
+    ]
+  },
+  {
+    "key": "settings.storage.move",
+    "file": "src/renderer/src/settings/StorageSection.tsx",
+    "line": 226,
+    "english": "Move 3 to the Recycle Bin (1.2 GB)",
+    "sample": {
+      "n": "3",
+      "size": "1.2 GB"
+    }
+  },
+  {
+    "key": "settings.storage.moved",
+    "file": "src/renderer/src/settings/StorageSection.tsx",
+    "line": 246,
+    "english": [
+      "Moved 0 items to the Recycle Bin · freed 1.2 GB",
+      "Moved 1 item to the Recycle Bin · freed 1.2 GB",
+      "Moved 2 items to the Recycle Bin · freed 1.2 GB",
+      "Moved 1000 items to the Recycle Bin · freed 1.2 GB"
+    ],
+    "sample": [
+      {
+        "size": "1.2 GB",
+        "count": 0,
+        "n": "0"
+      },
+      {
+        "size": "1.2 GB",
+        "count": 1,
+        "n": "1"
+      },
+      {
+        "size": "1.2 GB",
+        "count": 2,
+        "n": "2"
+      },
+      {
+        "size": "1.2 GB",
+        "count": 1000,
+        "n": "1000"
+      }
+    ]
+  },
+  {
+    "key": "settings.storage.nothingMoved",
+    "file": "src/renderer/src/settings/StorageSection.tsx",
+    "line": 247,
+    "english": "Nothing was moved.",
+    "sample": {}
+  },
+  {
+    "key": "settings.storage.failedCaches",
+    "file": "src/renderer/src/settings/StorageSection.tsx",
+    "line": 251,
+    "english": "Could not move the caches of Demo to the Recycle Bin: Access is denied.",
+    "sample": {
+      "name": "Demo",
+      "reason": "Access is denied."
+    }
+  },
+  {
+    "key": "settings.storage.failed",
+    "file": "src/renderer/src/settings/StorageSection.tsx",
+    "line": 251,
+    "english": "Could not move Demo to the Recycle Bin: Access is denied.",
+    "sample": {
+      "name": "Demo",
+      "reason": "Access is denied."
+    }
+  },
+  {
+    "key": "common.action.refresh",
+    "file": "src/renderer/src/settings/StorageSection.tsx",
+    "line": 117,
+    "english": "Refresh",
+    "sample": {}
+  },
+  {
+    "key": "common.action.show",
+    "file": "src/renderer/src/settings/StorageSection.tsx",
+    "line": 139,
+    "english": "Show",
+    "sample": {}
+  },
+  {
+    "key": "common.state.off",
+    "file": "src/renderer/src/settings/StorageSection.tsx",
+    "line": 160,
+    "english": "Off",
+    "sample": {}
+  },
+  {
+    "key": "common.action.cancel",
+    "file": "src/renderer/src/settings/StorageSection.tsx",
+    "line": 237,
+    "english": "Cancel",
+    "sample": {}
+  },
+  {
+    "key": "common.action.close",
+    "file": "src/renderer/src/settings/StorageSection.tsx",
+    "line": 237,
+    "english": "Close",
+    "sample": {}
+  },
+  {
+    "key": "settings.diagnostics.title",
+    "file": "src/renderer/src/settings/DiagnosticsSection.tsx",
+    "line": 36,
+    "english": "Diagnostics",
+    "sample": {}
+  },
+  {
+    "key": "settings.diagnostics.hint",
+    "file": "src/renderer/src/settings/DiagnosticsSection.tsx",
+    "line": 38,
+    "english": "If something goes wrong, copy this report and send it to us. It lists your Windows version, graphics card, encoders and recent app messages. Keys, file contents and your own folders are left out.",
+    "sample": {}
+  },
+  {
+    "key": "settings.diagnostics.collecting",
+    "file": "src/renderer/src/settings/DiagnosticsSection.tsx",
+    "line": 42,
+    "english": "Collecting…",
+    "sample": {}
+  },
+  {
+    "key": "settings.diagnostics.show",
+    "file": "src/renderer/src/settings/DiagnosticsSection.tsx",
+    "line": 42,
+    "english": "Show diagnostics",
+    "sample": {}
+  },
+  {
+    "key": "settings.diagnostics.openLogs",
+    "file": "src/renderer/src/settings/DiagnosticsSection.tsx",
+    "line": 45,
+    "english": "Open log folder",
+    "sample": {}
+  },
+  {
+    "key": "settings.diagnostics.report",
+    "file": "src/renderer/src/settings/DiagnosticsSection.tsx",
+    "line": 55,
+    "english": "Diagnostics report",
+    "sample": {}
+  },
+  {
+    "key": "settings.diagnostics.copy",
+    "file": "src/renderer/src/settings/DiagnosticsSection.tsx",
+    "line": 58,
+    "english": "Copy diagnostics",
+    "sample": {}
+  },
+  {
+    "key": "settings.diagnostics.copied",
+    "file": "src/renderer/src/settings/DiagnosticsSection.tsx",
+    "line": 61,
+    "english": "The report is on the clipboard.",
+    "sample": {}
+  },
+  {
+    "key": "settings.diagnostics.stale",
+    "file": "src/renderer/src/settings/DiagnosticsSection.tsx",
+    "line": 61,
+    "english": "This report is out of date: refresh it first.",
+    "sample": {}
+  },
+  {
+    "key": "common.action.refresh",
+    "file": "src/renderer/src/settings/DiagnosticsSection.tsx",
+    "line": 42,
+    "english": "Refresh",
+    "sample": {}
+  },
+  {
+    "key": "common.state.copied",
+    "file": "src/renderer/src/settings/DiagnosticsSection.tsx",
+    "line": 58,
+    "english": "Copied",
+    "sample": {}
+  },
+  {
+    "key": "settings.localAi.downloadName",
+    "file": "src/renderer/src/settings/LocalAiSection.tsx",
+    "line": 22,
+    "english": "Download Recommended, 3.1 gigabytes",
+    "sample": {
+      "title": "Recommended",
+      "size": "3.1"
+    }
+  },
+  {
+    "key": "settings.localAi.progress",
+    "file": "src/renderer/src/settings/LocalAiSection.tsx",
+    "line": 27,
+    "english": "1.2 of 3.1 GB",
+    "sample": {
+      "done": "1.2",
+      "total": "3.1 GB"
+    }
+  },
+  {
+    "key": "settings.localAi.progressValue",
+    "file": "src/renderer/src/settings/LocalAiSection.tsx",
+    "line": 32,
+    "english": "1.2 of 3.1 gigabytes",
+    "sample": {
+      "done": "1.2",
+      "total": "3.1"
+    }
+  },
+  {
+    "key": "settings.localAi.title",
+    "file": "src/renderer/src/settings/LocalAiSection.tsx",
+    "line": 65,
+    "english": "AI on this PC",
+    "sample": {}
+  },
+  {
+    "key": "settings.localAi.lead",
+    "file": "src/renderer/src/settings/LocalAiSection.tsx",
+    "line": 67,
+    "english": "Writes titles, chapter names, summaries, clean-ups, translations and posts with no key, and sends nothing anywhere. Good for drafts: check what it writes. Slower than an AI service.",
+    "sample": {}
+  },
+  {
+    "key": "settings.localAi.checking",
+    "file": "src/renderer/src/settings/LocalAiSection.tsx",
+    "line": 68,
+    "english": "Checking this PC…",
+    "sample": {}
+  },
+  {
+    "key": "settings.localAi.failed",
+    "file": "src/renderer/src/settings/LocalAiSection.tsx",
+    "line": 69,
+    "english": "AI on this PC could not be checked.",
+    "sample": {}
+  },
+  {
+    "key": "settings.localAi.ready",
+    "file": "src/renderer/src/settings/LocalAiSection.tsx",
+    "line": 87,
+    "english": "Recommended is ready",
+    "sample": {
+      "title": "Recommended"
+    }
+  },
+  {
+    "key": "settings.localAi.use",
+    "file": "src/renderer/src/settings/LocalAiSection.tsx",
+    "line": 116,
+    "english": "Model for AI on this PC",
+    "sample": {}
+  },
+  {
+    "key": "settings.localAi.automatic",
+    "file": "src/renderer/src/settings/LocalAiSection.tsx",
+    "line": 120,
+    "english": "Automatic",
+    "sample": {}
+  },
+  {
+    "key": "settings.localAi.suggested",
+    "file": "src/renderer/src/settings/LocalAiSection.tsx",
+    "line": 164,
+    "english": "Suggested for this PC",
+    "sample": {}
+  },
+  {
+    "key": "settings.localAi.downloaded",
+    "file": "src/renderer/src/settings/LocalAiSection.tsx",
+    "line": 165,
+    "english": "Downloaded",
+    "sample": {}
+  },
+  {
+    "key": "settings.localAi.damaged",
+    "file": "src/renderer/src/settings/LocalAiSection.tsx",
+    "line": 176,
+    "english": "The model file is missing or damaged.",
+    "sample": {}
+  },
+  {
+    "key": "settings.localAi.downloading",
+    "file": "src/renderer/src/settings/LocalAiSection.tsx",
+    "line": 179,
+    "english": "Downloading Recommended",
+    "sample": {
+      "title": "Recommended"
+    }
+  },
+  {
+    "key": "settings.localAi.removeQuestion",
+    "file": "src/renderer/src/settings/LocalAiSection.tsx",
+    "line": 193,
+    "english": "Remove the Recommended model (3.1 GB)? AI on this PC cannot use it until it is downloaded again.",
+    "sample": {
+      "title": "Recommended",
+      "size": "3.1 GB"
+    }
+  },
+  {
+    "key": "settings.localAi.downloadAgain",
+    "file": "src/renderer/src/settings/LocalAiSection.tsx",
+    "line": 212,
+    "english": "Download again",
+    "sample": {}
+  },
+  {
+    "key": "settings.localAi.download",
+    "file": "src/renderer/src/settings/LocalAiSection.tsx",
+    "line": 212,
+    "english": "Download",
+    "sample": {}
+  },
+  {
+    "key": "settings.localAi.cancelDownload",
+    "file": "src/renderer/src/settings/LocalAiSection.tsx",
+    "line": 216,
+    "english": "Cancel the download of Recommended",
+    "sample": {
+      "title": "Recommended"
+    }
+  },
+  {
+    "key": "settings.localAi.rowName",
+    "file": "src/renderer/src/settings/LocalAiSection.tsx",
+    "line": 243,
+    "english": "On this PC",
+    "sample": {}
+  },
+  {
+    "key": "settings.localAi.rowMeta",
+    "file": "src/renderer/src/settings/LocalAiSection.tsx",
+    "line": 244,
+    "english": "no key · good for drafts",
+    "sample": {}
+  },
+  {
+    "key": "settings.localAi.using",
+    "file": "src/renderer/src/settings/LocalAiSection.tsx",
+    "line": 248,
+    "english": "Using Recommended",
+    "sample": {
+      "title": "Recommended"
+    }
+  },
+  {
+    "key": "settings.localAi.setUpLabel",
+    "file": "src/renderer/src/settings/LocalAiSection.tsx",
+    "line": 250,
+    "english": "Set up AI on this PC",
+    "sample": {}
+  },
+  {
+    "key": "settings.localAi.setUp",
+    "file": "src/renderer/src/settings/LocalAiSection.tsx",
+    "line": 251,
+    "english": "Set up",
+    "sample": {}
+  },
+  {
+    "key": "common.action.remove",
+    "file": "src/renderer/src/settings/LocalAiSection.tsx",
+    "line": 202,
+    "english": "Remove",
+    "sample": {}
+  },
+  {
+    "key": "common.action.cancel",
+    "file": "src/renderer/src/settings/LocalAiSection.tsx",
+    "line": 205,
+    "english": "Cancel",
+    "sample": {}
+  },
+  {
+    "key": "common.action.removeName",
+    "file": "src/renderer/src/settings/LocalAiSection.tsx",
+    "line": 221,
+    "english": "Remove Recommended",
+    "sample": {
+      "name": "Recommended"
+    }
+  },
+  {
+    "key": "errors.cancelled",
+    "file": "src/main/localAi/models.ts",
+    "line": 327,
+    "english": "Cancelled.",
+    "sample": {}
+  },
+  {
+    "key": "errors.localAi.unknownModel",
+    "file": "src/main/localAi/models.ts",
+    "line": 284,
+    "english": "Unknown model.",
+    "sample": {}
+  },
+  {
+    "key": "errors.localAi.busy",
+    "file": "src/main/localAi/models.ts",
+    "line": 290,
+    "english": "Another model is downloading.",
+    "sample": {}
+  },
+  {
+    "key": "errors.localAi.unknownChoice",
+    "file": "src/main/localAi/models.ts",
+    "line": 375,
+    "english": "Unknown choice.",
+    "sample": {}
+  },
+  {
+    "key": "errors.localAi.notDownloaded",
+    "file": "src/main/localAi/models.ts",
+    "line": 378,
+    "english": "Only a downloaded model can be chosen.",
+    "sample": {}
+  },
+  {
+    "key": "settings.music.readFailed",
+    "file": "src/renderer/src/settings/MusicDownloadsSection.tsx",
+    "line": 24,
+    "english": "The music library could not be read: Access is denied.",
+    "sample": {
+      "reason": "Access is denied."
+    }
+  },
+  {
+    "key": "settings.music.allDownloaded",
+    "file": "src/renderer/src/settings/MusicDownloadsSection.tsx",
+    "line": 41,
+    "english": "All music tracks are downloaded",
+    "sample": {}
+  },
+  {
+    "key": "settings.music.removed",
+    "file": "src/renderer/src/settings/MusicDownloadsSection.tsx",
+    "line": 54,
+    "english": "The downloaded music tracks are removed",
+    "sample": {}
+  },
+  {
+    "key": "settings.music.title",
+    "file": "src/renderer/src/settings/MusicDownloadsSection.tsx",
+    "line": 64,
+    "english": "More music",
+    "sample": {}
+  },
+  {
+    "key": "settings.music.summary",
+    "file": "src/renderer/src/settings/MusicDownloadsSection.tsx",
+    "line": 68,
+    "english": [
+      "0 tracks, 7.1 MB. Free music (CC0) for the Audio tab's library.",
+      "1 tracks, 7.1 MB. Free music (CC0) for the Audio tab's library.",
+      "2 tracks, 7.1 MB. Free music (CC0) for the Audio tab's library.",
+      "1000 tracks, 7.1 MB. Free music (CC0) for the Audio tab's library."
+    ],
+    "sample": [
+      {
+        "size": "7.1 MB",
+        "count": 0,
+        "n": "0"
+      },
+      {
+        "size": "7.1 MB",
+        "count": 1,
+        "n": "1"
+      },
+      {
+        "size": "7.1 MB",
+        "count": 2,
+        "n": "2"
+      },
+      {
+        "size": "7.1 MB",
+        "count": 1000,
+        "n": "1000"
+      }
+    ]
+  },
+  {
+    "key": "settings.music.summaryDownloaded",
+    "file": "src/renderer/src/settings/MusicDownloadsSection.tsx",
+    "line": 67,
+    "english": [
+      "0 tracks, 7.1 MB (3 downloaded). Free music (CC0) for the Audio tab's library.",
+      "1 tracks, 7.1 MB (3 downloaded). Free music (CC0) for the Audio tab's library.",
+      "2 tracks, 7.1 MB (3 downloaded). Free music (CC0) for the Audio tab's library.",
+      "1000 tracks, 7.1 MB (3 downloaded). Free music (CC0) for the Audio tab's library."
+    ],
+    "sample": [
+      {
+        "size": "7.1 MB",
+        "downloaded": "3",
+        "count": 0,
+        "n": "0"
+      },
+      {
+        "size": "7.1 MB",
+        "downloaded": "3",
+        "count": 1,
+        "n": "1"
+      },
+      {
+        "size": "7.1 MB",
+        "downloaded": "3",
+        "count": 2,
+        "n": "2"
+      },
+      {
+        "size": "7.1 MB",
+        "downloaded": "3",
+        "count": 1000,
+        "n": "1000"
+      }
+    ]
+  },
+  {
+    "key": "settings.music.downloadAll",
+    "file": "src/renderer/src/settings/MusicDownloadsSection.tsx",
+    "line": 77,
+    "english": "Download all",
+    "sample": {}
+  },
+  {
+    "key": "common.action.remove",
+    "file": "src/renderer/src/settings/MusicDownloadsSection.tsx",
+    "line": 80,
+    "english": "Remove",
+    "sample": {}
+  },
+  {
+    "key": "settings.captionDownloads.script.japanese",
+    "file": "src/renderer/src/settings/CaptionDownloadsSection.tsx",
+    "line": 15,
+    "english": "Japanese",
+    "sample": {}
+  },
+  {
+    "key": "settings.captionDownloads.script.korean",
+    "file": "src/renderer/src/settings/CaptionDownloadsSection.tsx",
+    "line": 16,
+    "english": "Korean",
+    "sample": {}
+  },
+  {
+    "key": "settings.captionDownloads.script.hanSc",
+    "file": "src/renderer/src/settings/CaptionDownloadsSection.tsx",
+    "line": 17,
+    "english": "Chinese (Simplified)",
+    "sample": {}
+  },
+  {
+    "key": "settings.captionDownloads.script.hanTc",
+    "file": "src/renderer/src/settings/CaptionDownloadsSection.tsx",
+    "line": 18,
+    "english": "Chinese (Traditional)",
+    "sample": {}
+  },
+  {
+    "key": "settings.captionDownloads.sizeUnknown",
+    "file": "src/renderer/src/settings/CaptionDownloadsSection.tsx",
+    "line": 28,
+    "english": "size unknown",
+    "sample": {}
+  },
+  {
+    "key": "settings.captionDownloads.scriptFont",
+    "file": "src/renderer/src/settings/CaptionDownloadsSection.tsx",
+    "line": 33,
+    "english": "Japanese caption font",
+    "sample": {
+      "script": "Japanese"
+    }
+  },
+  {
+    "key": "settings.captionDownloads.font",
+    "file": "src/renderer/src/settings/CaptionDownloadsSection.tsx",
+    "line": 33,
+    "english": "caption font",
+    "sample": {}
+  },
+  {
+    "key": "settings.captionDownloads.translationModel",
+    "file": "src/renderer/src/settings/CaptionDownloadsSection.tsx",
+    "line": 36,
+    "english": "translation model",
+    "sample": {}
+  },
+  {
+    "key": "settings.captionDownloads.listFailed",
+    "file": "src/renderer/src/settings/CaptionDownloadsSection.tsx",
+    "line": 51,
+    "english": "The downloads could not be listed: Access is denied.",
+    "sample": {
+      "reason": "Access is denied."
+    }
+  },
+  {
+    "key": "settings.captionDownloads.removeFailed",
+    "file": "src/renderer/src/settings/CaptionDownloadsSection.tsx",
+    "line": 61,
+    "english": "It could not be removed: Access is denied.",
+    "sample": {
+      "reason": "Access is denied."
+    }
+  },
+  {
+    "key": "settings.captionDownloads.title",
+    "file": "src/renderer/src/settings/CaptionDownloadsSection.tsx",
+    "line": 68,
+    "english": "Downloads for captions",
+    "sample": {}
+  },
+  {
+    "key": "settings.captionDownloads.empty",
+    "file": "src/renderer/src/settings/CaptionDownloadsSection.tsx",
+    "line": 77,
+    "english": "Nothing downloaded. Chinese, Japanese and Korean caption fonts download when you pick them in Captions › Look › Text.",
+    "sample": {}
+  },
+  {
+    "key": "common.state.loading",
+    "file": "src/renderer/src/settings/CaptionDownloadsSection.tsx",
+    "line": 75,
+    "english": "Loading…",
+    "sample": {}
+  },
+  {
+    "key": "common.action.remove",
+    "file": "src/renderer/src/settings/CaptionDownloadsSection.tsx",
+    "line": 86,
+    "english": "Remove",
+    "sample": {}
+  },
+  {
+    "key": "common.action.removeName",
+    "file": "src/renderer/src/settings/CaptionDownloadsSection.tsx",
+    "line": 85,
+    "english": "Remove Noto Sans JP",
+    "sample": {
+      "name": "Noto Sans JP"
+    }
+  },
+  {
+    "key": "settings.ai.confirmAlways",
+    "file": "src/renderer/src/settings/AiProvidersSection.tsx",
+    "line": 17,
+    "english": "Always ask",
+    "sample": {}
+  },
+  {
+    "key": "settings.ai.confirmNever",
+    "file": "src/renderer/src/settings/AiProvidersSection.tsx",
+    "line": 17,
+    "english": "Never",
+    "sample": {}
+  },
+  {
+    "key": "settings.ai.confirm",
+    "file": "src/renderer/src/settings/AiProvidersSection.tsx",
+    "line": 35,
+    "english": "Ask before a run that costs more than",
+    "sample": {}
+  },
+  {
+    "key": "settings.ai.service",
+    "file": "src/renderer/src/settings/AiProvidersSection.tsx",
+    "line": 64,
+    "english": "Service",
+    "sample": {}
+  },
+  {
+    "key": "settings.ai.title",
+    "file": "src/renderer/src/settings/AiProvidersSection.tsx",
+    "line": 158,
+    "english": "AI providers",
+    "sample": {}
+  },
+  {
+    "key": "settings.ai.lead",
+    "file": "src/renderer/src/settings/AiProvidersSection.tsx",
+    "line": 160,
+    "english": "Use your own API key for auto captions and transcript tools. Transcription works with OpenAI or Google Gemini. All three providers can clean up and translate a transcript and suggest chapters, a title or a summary for it; Anthropic Claude cannot transcribe (the Claude API does not accept sound).",
+    "sample": {}
+  },
+  {
+    "key": "settings.ai.privacy",
+    "file": "src/renderer/src/settings/AiProvidersSection.tsx",
+    "line": 164,
+    "english": "Keys are stored encrypted on this PC and are only sent to the provider you pick.",
+    "sample": {}
+  },
+  {
+    "key": "settings.ai.readFailed",
+    "file": "src/renderer/src/settings/AiProvidersSection.tsx",
+    "line": 195,
+    "english": "Could not read the providers: Access is denied.",
+    "sample": {
+      "reason": "Access is denied."
+    }
+  },
+  {
+    "key": "settings.ai.empty",
+    "file": "src/renderer/src/settings/AiProvidersSection.tsx",
+    "line": 198,
+    "english": "No provider yet. Add one to transcribe recordings and work on captions.",
+    "sample": {}
+  },
+  {
+    "key": "settings.ai.addressTitle",
+    "file": "src/renderer/src/settings/AiProvidersSection.tsx",
+    "line": 212,
+    "english": "Where its key and the text you send go",
+    "sample": {}
+  },
+  {
+    "key": "settings.ai.address",
+    "file": "src/renderer/src/settings/AiProvidersSection.tsx",
+    "line": 213,
+    "english": "Address",
+    "sample": {}
+  },
+  {
+    "key": "settings.ai.noKey",
+    "file": "src/renderer/src/settings/AiProvidersSection.tsx",
+    "line": 217,
+    "english": "No key",
+    "sample": {}
+  },
+  {
+    "key": "settings.ai.keyTitle",
+    "file": "src/renderer/src/settings/AiProvidersSection.tsx",
+    "line": 219,
+    "english": "API key (only the end is shown)",
+    "sample": {}
+  },
+  {
+    "key": "settings.ai.key",
+    "file": "src/renderer/src/settings/AiProvidersSection.tsx",
+    "line": 219,
+    "english": "Key",
+    "sample": {}
+  },
+  {
+    "key": "settings.ai.keyUnreadable",
+    "file": "src/renderer/src/settings/AiProvidersSection.tsx",
+    "line": 219,
+    "english": "cannot be read: edit and enter it again",
+    "sample": {}
+  },
+  {
+    "key": "settings.ai.textModel",
+    "file": "src/renderer/src/settings/AiProvidersSection.tsx",
+    "line": 222,
+    "english": "Text model",
+    "sample": {}
+  },
+  {
+    "key": "settings.ai.transcription",
+    "file": "src/renderer/src/settings/AiProvidersSection.tsx",
+    "line": 226,
+    "english": "Transcription",
+    "sample": {}
+  },
+  {
+    "key": "settings.ai.serviceCanDo",
+    "file": "src/renderer/src/settings/AiProvidersSection.tsx",
+    "line": 230,
+    "english": "Clean-up, translation, chapters, titles and summaries of a transcript",
+    "sample": {}
+  },
+  {
+    "key": "settings.ai.testing",
+    "file": "src/renderer/src/settings/AiProvidersSection.tsx",
+    "line": 238,
+    "english": "Testing…",
+    "sample": {}
+  },
+  {
+    "key": "settings.ai.removeQuestion",
+    "file": "src/renderer/src/settings/AiProvidersSection.tsx",
+    "line": 245,
+    "english": "Remove “OpenAI”? Its key is deleted from this PC.",
+    "sample": {
+      "name": "OpenAI"
+    }
+  },
+  {
+    "key": "settings.ai.testName",
+    "file": "src/renderer/src/settings/AiProvidersSection.tsx",
+    "line": 266,
+    "english": "Test OpenAI",
+    "sample": {
+      "name": "OpenAI"
+    }
+  },
+  {
+    "key": "settings.ai.test",
+    "file": "src/renderer/src/settings/AiProvidersSection.tsx",
+    "line": 267,
+    "english": "Test",
+    "sample": {}
+  },
+  {
+    "key": "settings.ai.editName",
+    "file": "src/renderer/src/settings/AiProvidersSection.tsx",
+    "line": 274,
+    "english": "Edit OpenAI",
+    "sample": {
+      "name": "OpenAI"
+    }
+  },
+  {
+    "key": "settings.ai.edit",
+    "file": "src/renderer/src/settings/AiProvidersSection.tsx",
+    "line": 276,
+    "english": "Edit",
+    "sample": {}
+  },
+  {
+    "key": "settings.ai.add",
+    "file": "src/renderer/src/settings/AiProvidersSection.tsx",
+    "line": 299,
+    "english": "+ Add provider",
+    "sample": {}
+  },
+  {
+    "key": "common.action.remove",
+    "file": "src/renderer/src/settings/AiProvidersSection.tsx",
+    "line": 249,
+    "english": "Remove",
+    "sample": {}
+  },
+  {
+    "key": "common.action.cancel",
+    "file": "src/renderer/src/settings/AiProvidersSection.tsx",
+    "line": 261,
+    "english": "Cancel",
+    "sample": {}
+  },
+  {
+    "key": "common.action.removeName",
+    "file": "src/renderer/src/settings/AiProvidersSection.tsx",
+    "line": 286,
+    "english": "Remove OpenAI",
+    "sample": {
+      "name": "OpenAI"
+    }
+  },
+  {
+    "key": "settings.provider.moreServices",
+    "file": "src/renderer/src/settings/ProviderForm.tsx",
+    "line": 19,
+    "english": "More services",
+    "sample": {}
+  },
+  {
+    "key": "settings.provider.moreServicesHint",
+    "file": "src/renderer/src/settings/ProviderForm.tsx",
+    "line": 22,
+    "english": "OpenRouter, Groq, Together AI, Azure OpenAI, Ollama, LM Studio or any OpenAI-compatible address",
+    "sample": {}
+  },
+  {
+    "key": "settings.provider.needName",
+    "file": "src/renderer/src/settings/ProviderForm.tsx",
+    "line": 202,
+    "english": "Give the provider a name.",
+    "sample": {}
+  },
+  {
+    "key": "settings.provider.needAddress",
+    "file": "src/renderer/src/settings/ProviderForm.tsx",
+    "line": 203,
+    "english": "Enter the address of the service.",
+    "sample": {}
+  },
+  {
+    "key": "settings.provider.needNewKey",
+    "file": "src/renderer/src/settings/ProviderForm.tsx",
+    "line": 205,
+    "english": "Enter the API key for the new address.",
+    "sample": {}
+  },
+  {
+    "key": "settings.provider.needKey",
+    "file": "src/renderer/src/settings/ProviderForm.tsx",
+    "line": 205,
+    "english": "Enter the API key.",
+    "sample": {}
+  },
+  {
+    "key": "settings.provider.badPrices",
+    "file": "src/renderer/src/settings/ProviderForm.tsx",
+    "line": 207,
+    "english": "Prices are US$ per million tokens, from 0 to 1,000, for both input and output.",
+    "sample": {}
+  },
+  {
+    "key": "settings.provider.keepKey",
+    "file": "src/renderer/src/settings/ProviderForm.tsx",
+    "line": 231,
+    "english": "Leave empty to keep the current key (…3f9a).",
+    "sample": {
+      "key": "…3f9a"
+    }
+  },
+  {
+    "key": "settings.provider.editTitle",
+    "file": "src/renderer/src/settings/ProviderForm.tsx",
+    "line": 232,
+    "english": "Edit “OpenAI”",
+    "sample": {
+      "name": "OpenAI"
+    }
+  },
+  {
+    "key": "settings.provider.addTitle",
+    "file": "src/renderer/src/settings/ProviderForm.tsx",
+    "line": 232,
+    "english": "Add a provider",
+    "sample": {}
+  },
+  {
+    "key": "settings.provider.serviceCanDo",
+    "file": "src/renderer/src/settings/ProviderForm.tsx",
+    "line": 267,
+    "english": "OpenRouter, Groq, Together AI, Azure OpenAI, Ollama, LM Studio or any OpenAI-compatible address. Can do: clean-up, translation, chapters, titles and summaries; transcription is not offered through a service yet.",
+    "sample": {
+      "services": "OpenRouter, Groq, Together AI, Azure OpenAI, Ollama, LM Studio or any OpenAI-compatible address"
+    }
+  },
+  {
+    "key": "settings.provider.canDo",
+    "file": "src/renderer/src/settings/ProviderForm.tsx",
+    "line": 270,
+    "english": "Can do: transcription, clean-up and translation.",
+    "sample": {
+      "list": "transcription, clean-up and translation"
+    }
+  },
+  {
+    "key": "settings.provider.noTranscribe",
+    "file": "src/renderer/src/settings/ProviderForm.tsx",
+    "line": 271,
+    "english": "It cannot transcribe: the Claude API does not accept sound, so add OpenAI or Google Gemini for auto captions.",
+    "sample": {}
+  },
+  {
+    "key": "settings.provider.service",
+    "file": "src/renderer/src/settings/ProviderForm.tsx",
+    "line": 279,
+    "english": "Service",
+    "sample": {}
+  },
+  {
+    "key": "settings.provider.resource",
+    "file": "src/renderer/src/settings/ProviderForm.tsx",
+    "line": 291,
+    "english": "Your resource name",
+    "sample": {}
+  },
+  {
+    "key": "settings.provider.resourceHint",
+    "file": "src/renderer/src/settings/ProviderForm.tsx",
+    "line": 305,
+    "english": "The name of your Azure OpenAI resource: Flown builds its address.",
+    "sample": {}
+  },
+  {
+    "key": "settings.provider.baseUrl",
+    "file": "src/renderer/src/settings/ProviderForm.tsx",
+    "line": 311,
+    "english": "Base URL",
+    "sample": {}
+  },
+  {
+    "key": "settings.provider.baseUrlHint",
+    "file": "src/renderer/src/settings/ProviderForm.tsx",
+    "line": 326,
+    "english": "An address that speaks OpenAI’s chat API. Plain http:// only for a service on this PC.",
+    "sample": {}
+  },
+  {
+    "key": "settings.provider.apiKey",
+    "file": "src/renderer/src/settings/ProviderForm.tsx",
+    "line": 349,
+    "english": "API key",
+    "sample": {}
+  },
+  {
+    "key": "settings.provider.unchanged",
+    "file": "src/renderer/src/settings/ProviderForm.tsx",
+    "line": 357,
+    "english": "Unchanged (…3f9a)",
+    "sample": {
+      "key": "…3f9a"
+    }
+  },
+  {
+    "key": "settings.provider.notNeeded",
+    "file": "src/renderer/src/settings/ProviderForm.tsx",
+    "line": 357,
+    "english": "Not needed",
+    "sample": {}
+  },
+  {
+    "key": "settings.provider.hideKey",
+    "file": "src/renderer/src/settings/ProviderForm.tsx",
+    "line": 364,
+    "english": "Hide the key",
+    "sample": {}
+  },
+  {
+    "key": "settings.provider.showKey",
+    "file": "src/renderer/src/settings/ProviderForm.tsx",
+    "line": 364,
+    "english": "Show the key",
+    "sample": {}
+  },
+  {
+    "key": "settings.provider.noKeyLocal",
+    "file": "src/renderer/src/settings/ProviderForm.tsx",
+    "line": 374,
+    "english": "No key needed for Ollama and LM Studio on this PC.",
+    "sample": {}
+  },
+  {
+    "key": "settings.provider.serviceKey",
+    "file": "src/renderer/src/settings/ProviderForm.tsx",
+    "line": 375,
+    "english": "The key the service gave you.",
+    "sample": {}
+  },
+  {
+    "key": "settings.provider.sentToAddress",
+    "file": "src/renderer/src/settings/ProviderForm.tsx",
+    "line": 376,
+    "english": "It is encrypted on this PC and only sent to this address.",
+    "sample": {}
+  },
+  {
+    "key": "settings.provider.createKey",
+    "file": "src/renderer/src/settings/ProviderForm.tsx",
+    "line": 382,
+    "english": "Create a key at platform.openai.com.",
+    "sample": {
+      "host": "platform.openai.com"
+    }
+  },
+  {
+    "key": "settings.provider.sentTo",
+    "file": "src/renderer/src/settings/ProviderForm.tsx",
+    "line": 393,
+    "english": "It is encrypted on this PC and only sent to OpenAI.",
+    "sample": {
+      "name": "OpenAI"
+    }
+  },
+  {
+    "key": "settings.provider.modelAzure",
+    "file": "src/renderer/src/settings/ProviderForm.tsx",
+    "line": 401,
+    "english": "Model (the deployment’s name)",
+    "sample": {}
+  },
+  {
+    "key": "settings.provider.model",
+    "file": "src/renderer/src/settings/ProviderForm.tsx",
+    "line": 401,
+    "english": "Model",
+    "sample": {}
+  },
+  {
+    "key": "settings.provider.modelText",
+    "file": "src/renderer/src/settings/ProviderForm.tsx",
+    "line": 401,
+    "english": "Model for text tasks",
+    "sample": {}
+  },
+  {
+    "key": "settings.provider.modelTranscription",
+    "file": "src/renderer/src/settings/ProviderForm.tsx",
+    "line": 416,
+    "english": "Transcription model",
+    "sample": {}
+  },
+  {
+    "key": "settings.provider.openaiTranscription",
+    "file": "src/renderer/src/settings/ProviderForm.tsx",
+    "line": 428,
+    "english": "gpt-transcribe gives text only: Flown estimates word times from the sound. whisper-1 gives exact word times until OpenAI retires it on 26 February 2027.",
+    "sample": {}
+  },
+  {
+    "key": "settings.provider.geminiTranscription",
+    "file": "src/renderer/src/settings/ProviderForm.tsx",
+    "line": 429,
+    "english": "Gemini listens to the sound and returns sentences with their times.",
+    "sample": {}
+  },
+  {
+    "key": "settings.provider.prices",
+    "file": "src/renderer/src/settings/ProviderForm.tsx",
+    "line": 436,
+    "english": "Prices (US$ per million tokens)",
+    "sample": {}
+  },
+  {
+    "key": "settings.provider.input",
+    "file": "src/renderer/src/settings/ProviderForm.tsx",
+    "line": 441,
+    "english": "Input",
+    "sample": {}
+  },
+  {
+    "key": "settings.provider.output",
+    "file": "src/renderer/src/settings/ProviderForm.tsx",
+    "line": 453,
+    "english": "Output",
+    "sample": {}
+  },
+  {
+    "key": "settings.provider.unknownPrices",
+    "file": "src/renderer/src/settings/ProviderForm.tsx",
+    "line": 464,
+    "english": "Not in Flown's price list: add them to see costs.",
+    "sample": {}
+  },
+  {
+    "key": "settings.provider.noData",
+    "file": "src/renderer/src/settings/ProviderForm.tsx",
+    "line": 472,
+    "english": "Only use hosts that do not keep my prompts",
+    "sample": {}
+  },
+  {
+    "key": "settings.provider.goesTo",
+    "file": "src/renderer/src/settings/ProviderForm.tsx",
+    "line": 477,
+    "english": "Your key and the text you send go to api.openai.com.",
+    "sample": {
+      "host": "api.openai.com"
+    }
+  },
+  {
+    "key": "settings.provider.addressAbove",
+    "file": "src/renderer/src/settings/ProviderForm.tsx",
+    "line": 477,
+    "english": "the address above",
+    "sample": {}
+  },
+  {
+    "key": "settings.provider.checking",
+    "file": "src/renderer/src/settings/ProviderForm.tsx",
+    "line": 490,
+    "english": "Checking…",
+    "sample": {}
+  },
+  {
+    "key": "settings.provider.saveAndCheck",
+    "file": "src/renderer/src/settings/ProviderForm.tsx",
+    "line": 490,
+    "english": "Save and check",
+    "sample": {}
+  },
+  {
+    "key": "settings.provider.addButton",
+    "file": "src/renderer/src/settings/ProviderForm.tsx",
+    "line": 490,
+    "english": "Add provider",
+    "sample": {}
+  },
+  {
+    "key": "common.label.provider",
+    "file": "src/renderer/src/settings/ProviderForm.tsx",
+    "line": 240,
+    "english": "Provider",
+    "sample": {}
+  },
+  {
+    "key": "common.label.name",
+    "file": "src/renderer/src/settings/ProviderForm.tsx",
+    "line": 334,
+    "english": "Name",
+    "sample": {}
+  },
+  {
+    "key": "common.action.hide",
+    "file": "src/renderer/src/settings/ProviderForm.tsx",
+    "line": 365,
+    "english": "Hide",
+    "sample": {}
+  },
+  {
+    "key": "common.action.show",
+    "file": "src/renderer/src/settings/ProviderForm.tsx",
+    "line": 365,
+    "english": "Show",
+    "sample": {}
+  },
+  {
+    "key": "common.action.cancel",
+    "file": "src/renderer/src/settings/ProviderForm.tsx",
+    "line": 487,
+    "english": "Cancel",
+    "sample": {}
+  },
+  {
+    "key": "common.state.saving",
+    "file": "src/renderer/src/settings/ProviderForm.tsx",
+    "line": 490,
+    "english": "Saving…",
+    "sample": {}
+  },
+  {
+    "key": "common.action.save",
+    "file": "src/renderer/src/settings/ProviderForm.tsx",
+    "line": 490,
+    "english": "Save",
+    "sample": {}
+  }
+]

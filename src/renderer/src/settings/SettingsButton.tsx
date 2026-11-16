@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom'
 import { EditorIcon } from '../editor/EditorIcon'
 import { OPEN_SETTINGS_EVENT } from './brandKitEvents'
 import { SettingsDialog, type SettingsSection } from './SettingsDialog'
+import { t } from '../../../shared/i18n/t'
 
 /** Opens Settings at a section from anywhere: dispatch `new CustomEvent(OPEN_SETTINGS_EVENT, { detail: { section: 'ai' } })`. */
 export { OPEN_SETTINGS_EVENT }
@@ -30,7 +31,7 @@ export function SettingsButton(): JSX.Element {
 
   return (
     <>
-      <button className="btn ghost icon-btn" title="Settings" aria-label="Settings" aria-haspopup="dialog" aria-expanded={section !== null} onClick={() => setSection('ai')}>
+      <button className="btn ghost icon-btn" title={t('common.label.settings')} aria-label={t('common.label.settings')} aria-haspopup="dialog" aria-expanded={section !== null} onClick={() => setSection('ai')}>
         <EditorIcon name="gear" />
       </button>
       {/* In the body: title bars are drag regions and may be transformed by their layout. */}

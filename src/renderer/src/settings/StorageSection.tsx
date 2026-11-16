@@ -3,6 +3,8 @@ import type { StorageCleanupResult, StorageOverview } from '../../../shared/api/
 import { CACHE_DAY_CHOICES, freedBytes, REMOVE_DAY_CHOICES, sharedBytes, type CleanupItem, type SharedFile, type StorageRules } from '../../../shared/storage/rules'
 import { fmt } from '../../../shared/i18n/fmt'
 import { ipcMessage } from './providerText'
+import { t } from '../../../shared/i18n/t'
+import { richText } from '../i18n/richText'
 
 /** Recordings listed before "Show all". */
 const SHOWN = 8
@@ -12,7 +14,7 @@ export const PROJECTS_CHANGED_EVENT = 'ssw:projects-changed'
 
 const keyOf = (i: Pick<CleanupItem, 'id' | 'action'>): string => `${i.action}:${i.id}`
 /** " · 1.9 GB shared with a copy" for files a recording shares with another (Duplicate links its media). */
-const sharedNote = (files: readonly SharedFile[] | undefined): string => (files?.length ? ` · ${fmt.bytes(sharedBytes(files), 'storage')} shared with a copy` : '')
+const sharedNote = (files: readonly SharedFile[] | undefined): string => (files?.length ? ` · ${t('settings.storage.shared', { size: fmt.bytes(sharedBytes(files), 'storage') })}` : '')
 const dateOf = (iso: string): string => {
   const d = new Date(iso)
   return Number.isFinite(d.getTime()) ? fmt.date(d.getTime(), 'dayYear') : ''
@@ -97,45 +99,44 @@ export function StorageSection(): JSX.Element {
 
   return (
     <section className="settings-section health-section" aria-labelledby="settings-storage-title" data-testid="storage">
-      <h3 id="settings-storage-title">Storage</h3>
+      <h3 id="settings-storage-title">{t('settings.storage.title')}</h3>
       {error && (
         <p className="error" role="alert">
           {error}
         </p>
       )}
-      {!overview && !error && <p className="settings-empty">Measuring…</p>}
+      {!overview && !error && <p className="settings-empty">{t('settings.storage.measuring')}</p>}
       {overview && (
         <>
           <div className="health-actions">
             <p className="storage-total" data-testid="storage-total">
-              Recordings use <strong>{fmt.bytes(overview.bytes, 'storage')}</strong>
-              {overview.free !== null ? ` · ${fmt.bytes(overview.free, 'storage')} free on this drive` : ''}
+              {richText('settings.storage.total', { size: fmt.bytes(overview.bytes, 'storage') }, { b: (chunks) => <strong>{chunks}</strong> })}
+              {overview.free !== null ? t('settings.storage.free', { free: fmt.bytes(overview.free, 'storage') }) : ''}
             </p>
             <button type="button" className="btn ghost settings-small" onClick={() => void scan()}>
-              Refresh
+              {t('common.action.refresh')}
             </button>
           </div>
           {overview.recordings.length === 0 ? (
-            <p className="settings-empty">No recordings yet.</p>
+            <p className="settings-empty">{t('settings.storage.empty')}</p>
           ) : (
-            <ul className="storage-list" aria-label="Recordings by size">
+            <ul className="storage-list" aria-label={t('settings.storage.listLabel')}>
               {list.map((r) => (
                 <li key={r.id} className="storage-row" data-id={r.id}>
                   <span className="storage-name" title={r.name}>
                     {r.name}
                   </span>
                   <span className="storage-meta">
-                    {r.finished ? `${dateOf(r.createdAt)} · used ${fmt.relative(r.lastUsed, overview.now)}` : 'Unfinished'}
-                    {r.cacheBytes > 0 ? ` · incl. ${fmt.bytes(r.cacheBytes, 'storage')} cache` : ''}
-                    {r.versionBytes ? ` · ${fmt.bytes(r.versionBytes, 'storage')} in versions` : ''}
+                    {r.finished ? t('settings.storage.used', { date: dateOf(r.createdAt), when: fmt.relative(r.lastUsed, overview.now) }) : t('settings.storage.unfinished')}
+                    {r.cacheBytes > 0 ? ` · ${t('settings.storage.cache', { size: fmt.bytes(r.cacheBytes, 'storage') })}` : ''}
+                    {r.versionBytes ? ` · ${t('settings.storage.versions', { size: fmt.bytes(r.versionBytes, 'storage') })}` : ''}
                     {sharedNote(r.shared)}
                   </span>
                   <span className="storage-size">
-                    {r.capped ? 'at least ' : ''}
-                    {fmt.bytes(r.bytes, 'storage')}
+                    {r.capped ? t('settings.storage.atLeast', { size: fmt.bytes(r.bytes, 'storage') }) : fmt.bytes(r.bytes, 'storage')}
                   </span>
-                  <button type="button" className="btn ghost settings-small" aria-label={`Show ${r.name} in its folder`} onClick={() => void window.api.revealProject(r.id).catch(() => undefined)}>
-                    Show
+                  <button type="button" className="btn ghost settings-small" aria-label={t('settings.storage.showLabel', { name: r.name })} onClick={() => void window.api.revealProject(r.id).catch(() => undefined)}>
+                    {t('common.action.show')}
                   </button>
                 </li>
               ))}
@@ -143,60 +144,58 @@ export function StorageSection(): JSX.Element {
           )}
           {overview.recordings.length > SHOWN && (
             <button type="button" className="link storage-more" onClick={() => setAll(!all)}>
-              {all ? 'Show fewer' : `Show all ${overview.recordings.length}`}
+              {all ? t('settings.storage.showFewer') : t('settings.storage.showAll', { n: fmt.count(overview.recordings.length) })}
             </button>
           )}
 
-          <h4>Clean-up rules</h4>
+          <h4>{t('settings.storage.rules')}</h4>
           <div className="storage-rule">
-            <label htmlFor="storage-cache-days">Clear caches of recordings not used for</label>
+            <label htmlFor="storage-cache-days">{t('settings.storage.cacheDays')}</label>
             <select id="storage-cache-days" value={rules?.cacheDays ?? 'off'} onChange={(e) => void setRules({ cacheDays: e.target.value === 'off' ? null : Number(e.target.value) })}>
               {CACHE_DAY_CHOICES.map((d) => (
                 <option key={d} value={d}>
-                  {d} days
+                  {t('settings.storage.days', { count: d, n: fmt.count(d) })}
                 </option>
               ))}
-              <option value="off">Off</option>
+              <option value="off">{t('common.state.off')}</option>
             </select>
             <label className="storage-check">
               <input type="checkbox" checked={!!rules?.autoCaches} disabled={rules?.cacheDays === null} onChange={(e) => void setRules({ autoCaches: e.target.checked })} />
-              Do this automatically
+              {t('settings.storage.auto')}
             </label>
           </div>
           <div className="storage-rule">
-            <label htmlFor="storage-remove-days">Remove recordings not used for</label>
+            <label htmlFor="storage-remove-days">{t('settings.storage.removeDays')}</label>
             <select id="storage-remove-days" value={rules?.removeDays ?? 'off'} onChange={(e) => void setRules({ removeDays: e.target.value === 'off' ? null : Number(e.target.value) })}>
-              <option value="off">Off</option>
+              <option value="off">{t('common.state.off')}</option>
               {REMOVE_DAY_CHOICES.map((d) => (
                 <option key={d} value={d}>
-                  {d} days
+                  {t('settings.storage.days', { count: d, n: fmt.count(d) })}
                 </option>
               ))}
             </select>
           </div>
           <p className="hint">
-            Caches are rebuilt when needed. Removed files go to the Recycle Bin, and recordings are only removed after you confirm them. Nothing outside the projects folder is
-            touched.
+            {t('settings.storage.hint')}
           </p>
           <div className="health-actions">
             <button type="button" ref={reviewButtonRef} className="btn settings-small" onClick={() => void review()} disabled={busy}>
-              Review clean-up…
+              {t('settings.storage.review')}
             </button>
           </div>
 
           {plan && (
             <div className="storage-review" data-testid="storage-review">
               <h4 ref={reviewRef} tabIndex={-1}>
-                Review clean-up
+                {t('settings.storage.reviewTitle')}
               </h4>
               {plan.length === 0 ? (
-                <p className="settings-empty">Nothing to clean up with these rules.</p>
+                <p className="settings-empty">{t('settings.storage.nothing')}</p>
               ) : (
                 groups.map((g) => (
                   <fieldset key={g.action} className="storage-group">
                     <legend>
-                      {g.action === 'remove' ? 'Move to the Recycle Bin' : 'Clear caches'} ({g.items.length} recording{g.items.length === 1 ? '' : 's'},{' '}
-                      {fmt.bytes(freedBytes(g.items), 'storage')})
+                      {t(g.action === 'remove' ? 'settings.storage.groupRemove' : 'settings.storage.groupCaches', { count: g.items.length, n: fmt.count(g.items.length), size: fmt.bytes(freedBytes(g.items), 'storage') })}
                     </legend>
                     {g.items.map((i) => (
                       <label key={keyOf(i)} className="storage-check storage-item">
@@ -212,7 +211,7 @@ export function StorageSection(): JSX.Element {
                         />
                         <span className="storage-name">{i.name}</span>
                         <span className="storage-meta">
-                          {dateOf(i.createdAt)} · used {fmt.relative(i.lastUsed, overview.now)}
+                          {t('settings.storage.used', { date: dateOf(i.createdAt), when: fmt.relative(i.lastUsed, overview.now) })}
                           {sharedNote(i.shared)}
                         </span>
                         <span className="storage-size">{fmt.bytes(i.bytes, 'storage')}</span>
@@ -224,7 +223,7 @@ export function StorageSection(): JSX.Element {
               <div className="health-actions">
                 {plan.length > 0 && (
                   <button type="button" className="btn danger settings-small" onClick={() => void run()} disabled={busy || chosen.length === 0}>
-                    Move {chosen.length} to the Recycle Bin ({fmt.bytes(chosenBytes, 'storage')})
+                    {t('settings.storage.move', { n: fmt.count(chosen.length), size: fmt.bytes(chosenBytes, 'storage') })}
                   </button>
                 )}
                 <button
@@ -235,7 +234,7 @@ export function StorageSection(): JSX.Element {
                     focusLater(reviewButtonRef)
                   }}
                 >
-                  {plan.length ? 'Cancel' : 'Close'}
+                  {plan.length ? t('common.action.cancel') : t('common.action.close')}
                 </button>
               </div>
             </div>
@@ -244,12 +243,12 @@ export function StorageSection(): JSX.Element {
             <div role="status" data-testid="storage-result" ref={resultRef} tabIndex={-1} className="storage-result">
               <p className="hint">
                 {result.moved.length
-                  ? `Moved ${result.moved.length} item${result.moved.length === 1 ? '' : 's'} to the Recycle Bin · freed ${fmt.bytes(result.freed, 'storage')}`
-                  : 'Nothing was moved.'}
+                  ? t('settings.storage.moved', { count: result.moved.length, n: fmt.count(result.moved.length), size: fmt.bytes(result.freed, 'storage') })
+                  : t('settings.storage.nothingMoved')}
               </p>
               {result.failed.map((f) => (
                 <p key={keyOf(f.item)} className="hint storage-failed">
-                  Could not move {f.item.action === 'caches' ? `the caches of ${f.item.name}` : f.item.name} to the Recycle Bin: {f.reason}
+                  {t(f.item.action === 'caches' ? 'settings.storage.failedCaches' : 'settings.storage.failed', { name: f.item.name, reason: f.reason })}
                 </p>
               ))}
             </div>

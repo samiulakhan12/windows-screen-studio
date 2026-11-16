@@ -6,6 +6,8 @@
 import { useEffect, useState } from 'react'
 import type { SoundLibraryState } from '../../../shared/api/soundLibrary'
 import { megabytes } from '../../../shared/audio/soundFxEdit'
+import { t } from '../../../shared/i18n/t'
+import { fmt } from '../../../shared/i18n/fmt'
 
 const ipcMessage = (err: unknown): string => (err instanceof Error ? err.message : String(err)).replace(/^Error invoking remote method '[^']+': (Error: )?/, '')
 
@@ -19,7 +21,7 @@ export function MusicDownloadsSection(): JSX.Element {
       (all) => setList(all.filter((s) => s.state !== 'bundled')),
       (err: unknown) => {
         setList([])
-        setError(`The music library could not be read: ${ipcMessage(err)}`)
+        setError(t('settings.music.readFailed', { reason: ipcMessage(err) }))
       }
     )
   useEffect(() => {
@@ -36,7 +38,7 @@ export function MusicDownloadsSection(): JSX.Element {
     setError(null)
     try {
       for (const s of missing) await window.api.soundLibraryDownload(s.id)
-      setLive('All music tracks are downloaded')
+      setLive(t('settings.music.allDownloaded'))
     } catch (err) {
       setError(ipcMessage(err))
     } finally {
@@ -49,7 +51,7 @@ export function MusicDownloadsSection(): JSX.Element {
     setError(null)
     try {
       await window.api.soundLibraryRemove()
-      setLive('The downloaded music tracks are removed')
+      setLive(t('settings.music.removed'))
     } catch (err) {
       setError(ipcMessage(err))
     } finally {
@@ -59,10 +61,11 @@ export function MusicDownloadsSection(): JSX.Element {
   }
   return (
     <section className="settings-section music-downloads" aria-labelledby="settings-music-downloads-title" data-testid="music-downloads">
-      <h3 id="settings-music-downloads-title">More music</h3>
+      <h3 id="settings-music-downloads-title">{t('settings.music.title')}</h3>
       <p className="settings-empty">
-        {list.length} tracks, {megabytes(total).text}
-        {downloaded.length > 0 && ` (${downloaded.length} downloaded)`}. Free music (CC0) for the Audio tab's library.
+        {downloaded.length > 0
+          ? t('settings.music.summaryDownloaded', { count: list.length, n: fmt.count(list.length), size: megabytes(total).text, downloaded: fmt.count(downloaded.length) })
+          : t('settings.music.summary', { count: list.length, n: fmt.count(list.length), size: megabytes(total).text })}
       </p>
       {error && (
         <p className="callout" role="alert">
@@ -71,10 +74,10 @@ export function MusicDownloadsSection(): JSX.Element {
       )}
       <div className="music-downloads-actions">
         <button type="button" className="btn settings-small" data-testid="music-download-all" disabled={busy || missing.length === 0} onClick={() => void downloadAll()}>
-          Download all
+          {t('settings.music.downloadAll')}
         </button>
         <button type="button" className="btn settings-small" data-testid="music-downloads-remove" disabled={busy || downloaded.length === 0} onClick={() => void remove()}>
-          Remove
+          {t('common.action.remove')}
         </button>
       </div>
       <span className="sr-only" role="status" aria-live="polite">

@@ -13,6 +13,7 @@ import { ShareSection } from '../share/ShareSection'
 import { LanguageSection } from './LanguageSection'
 import { currentUiInfo, showLanguageSection } from '../i18n/boot'
 import './settings.css'
+import { t } from '../../../shared/i18n/t'
 
 /**
  * 'localAi': AI on this PC (docs/design/smart-tools.md §2.5): the palette's Set up AI on this PC… and every "use AI on this PC" link.
@@ -48,8 +49,8 @@ export function SettingsDialog({ section, onClose, onProvidersChanged }: { secti
         }}
       >
         <header className="modal-head">
-          <h2 id="settings-title">Settings</h2>
-          <button type="button" className="btn ghost icon-btn" onClick={onClose} title="Close" aria-label="Close settings">
+          <h2 id="settings-title">{t('common.label.settings')}</h2>
+          <button type="button" className="btn ghost icon-btn" onClick={onClose} title={t('common.action.close')} aria-label={t('settings.dialog.close')}>
             <Icon name="x" size={16} />
           </button>
         </header>
@@ -68,7 +69,7 @@ export function SettingsDialog({ section, onClose, onProvidersChanged }: { secti
         </div>
         <footer className="modal-foot">
           <button type="button" className="btn primary" onClick={onClose}>
-            Done
+            {t('common.action.done')}
           </button>
         </footer>
       </div>

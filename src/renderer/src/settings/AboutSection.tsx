@@ -5,6 +5,7 @@ import { BrandLogo } from '../components/BrandLogo'
 import { UpdatesBlock } from '../updates/UpdatesBlock'
 import { NoticesPanel } from './NoticesPanel'
 import './about.css'
+import { t } from '../../../shared/i18n/t'
 
 /**
  * About Flown: logo, version, who makes it and a link to their website. The link goes through
@@ -25,16 +26,16 @@ export function AboutSection({ reveal = false }: { reveal?: boolean }): JSX.Elem
 
   return (
     <section className="settings-section about-section" aria-labelledby="settings-about-title" ref={ref}>
-      <h3 id="settings-about-title">About</h3>
+      <h3 id="settings-about-title">{t('settings.about.title')}</h3>
       <div className="about-card">
         <BrandLogo size={48} wordmark={false} />
         <div className="about-text">
           <p className="about-name">
             {info?.name ?? APP_NAME}
-            {info && <span className="about-version">Version {info.version}</span>}
+            {info && <span className="about-version">{t('settings.about.version', { version: info.version })}</span>}
           </p>
           <p>
-            Built by {COMPANY_NAME} ·{' '}
+            {t('settings.about.builtBy', { company: COMPANY_NAME })}{' '}
             <a
               className="link"
               href={COMPANY_URL}
