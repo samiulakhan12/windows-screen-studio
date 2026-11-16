@@ -12,8 +12,18 @@
     "mirrored": "A move or position with no logical form (translateX, background-position): the rule named in 'mirror' gives its right-to-left counterpart.",
     "rtl": "Applies only in a right-to-left page: the counterpart that a rule listed under 'rtl' gives (a :dir(rtl) rule, or the keyframes it names)."
   },
-  "ltr": [],
-  "rtl": [],
+  "ltr": [
+    { "file": "src/renderer/src/editor/editor.css", "rule": ".timeline", "reason": "The timeline: its ruler, tracks, playhead, clips and markers run left to right in every language (§13.1)." },
+    { "file": "src/renderer/src/editor/editor.css", "rule": ".transport", "reason": "The transport: play, the timecode and the preview speed keep their order, as media controls do (§13.1)." },
+    { "file": "src/renderer/src/editor/editor.css", "rule": ".canvas-wrap", "reason": "The preview and its handles: the picture is not mirrored (§13.1)." },
+    { "file": "src/renderer/src/editor/editor.css", "rule": ".corner-grid", "reason": "The camera's corner picker: each button stands where its corner of the video is." },
+    { "file": "src/renderer/src/editor/panels/stylePanel.css", "rule": ".wm-positions", "reason": "The watermark's position picker: each button stands where its corner of the video is." },
+    { "file": "src/renderer/src/editor/panels/director.css", "rule": ".director-strip", "reason": "The camera director's strip of the video's parts, a small time axis." },
+    { "file": "src/renderer/src/editor/exportDialog.css", "rule": ".export-frame input[type='range']", "reason": "The thumbnail's frame slider, a slider for time: the start of the video stays on the left." }
+  ],
+  "rtl": [
+    { "file": "src/renderer/src/editor/editor.css", "rule": ".timeline .tl-hint:dir(rtl), .timeline .tl-empty:dir(rtl), .transport .notice-slot:dir(rtl), .canvas-wrap .pick-hint:dir(rtl)", "reason": "Sentences inside the left-to-right containers keep the page's direction." }
+  ],
   "kept": [
     { "file": "src/renderer/src/editor/camera.css", "rule": ".layout-seg .seg-label", "props": ["padding-left"], "reason": "timeline" },
     { "file": "src/renderer/src/editor/camera.css", "rule": ".layout-ramp.in", "props": ["left", "background"], "reason": "timeline" },

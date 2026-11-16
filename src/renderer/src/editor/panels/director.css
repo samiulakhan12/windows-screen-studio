@@ -15,7 +15,9 @@
 }
 
 /* ---------- plan strip: the whole output timeline by what the camera does ---------- */
+/* The video's parts in time order, left to right in every language (§13.1). */
 .director-strip {
+  direction: ltr;
   position: relative;
   height: 22px;
   border-radius: var(--radius-sm);

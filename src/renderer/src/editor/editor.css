@@ -133,7 +133,9 @@
 }
 
 /* ---------- Preview ---------- */
+/* The picture is not mirrored: the preview and its handles stay left to right in every language (§13.1). */
 .canvas-wrap {
+  direction: ltr;
   flex: 1;
   min-height: 0;
   display: flex;
@@ -221,7 +223,9 @@
 }
 
 /* ---------- Transport ---------- */
+/* Play, the timecode and the preview speed keep their order in every language, as media controls do (§13.1). */
 .transport {
+  direction: ltr;
   display: flex;
   align-items: center;
   gap: var(--space-3);
@@ -636,7 +640,9 @@
   box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.18);
 }
 
+/* Each button stands where its corner of the video is, in every language. */
 .corner-grid {
+  direction: ltr;
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 6px;
@@ -698,13 +704,23 @@
 }
 
 /* ---------- Timeline ---------- */
+/* Time runs left to right in every language: the ruler, tracks, playhead, clips and markers (§13.1). */
 .timeline {
+  direction: ltr;
   flex: none;
   border-top: 1px solid var(--border-subtle);
   background: var(--surface-1);
   display: flex;
   flex-direction: column;
   padding: 4px 16px 8px 0;
+}
+
+/* Sentences inside the left-to-right areas keep the page's direction. */
+.timeline .tl-hint:dir(rtl),
+.timeline .tl-empty:dir(rtl),
+.transport .notice-slot:dir(rtl),
+.canvas-wrap .pick-hint:dir(rtl) {
+  direction: rtl;
 }
 
 .tl-head {

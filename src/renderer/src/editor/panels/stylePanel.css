@@ -255,8 +255,9 @@
   filter: drop-shadow(0 0 1px rgba(0, 0, 0, 0.6));
 }
 
-/* Watermark position: four corners and the centre. */
+/* Watermark position: four corners and the centre, each where it is on the video in every language. */
 .wm-positions {
+  direction: ltr;
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   grid-template-rows: repeat(3, 1fr);
