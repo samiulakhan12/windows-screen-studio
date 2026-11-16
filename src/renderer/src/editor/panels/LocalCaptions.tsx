@@ -39,6 +39,7 @@ import {
 } from '../../../../shared/speech/speechCopy'
 import { localModel } from '../../../../shared/speech/transcriber'
 import type { Project, Transcript } from '../../../../shared/types'
+import { whenYes } from '../askNow'
 import { clearTranscriptionError, type TranscriptionJob } from '../captionItems'
 import { EditorIcon } from '../EditorIcon'
 import {
@@ -271,7 +272,7 @@ export function LocalAction({
    */
   onStart: (model: SpeechModelId, language?: string) => void
   /** Asks before captions replace the current ones (true when there are none); a download that makes captions asks at the click. */
-  confirmReplace: () => boolean
+  confirmReplace: () => boolean | Promise<boolean>
 }): JSX.Element | null {
   const intent = useSyncExternalStore(onSpeechRead, () => captionsIntent(project.id))
   const [, setTick] = useState(0)
@@ -305,7 +306,10 @@ export function LocalAction({
 
   if (!view) return null
   const download = (id: SpeechModelId = model): void => {
-    if (otherDownload(state, id) || !confirmReplace()) return
+    if (otherDownload(state, id)) return
+    whenYes(confirmReplace(), () => downloadNow(id))
+  }
+  const downloadNow = (id: SpeechModelId): void => {
     clearTranscriptionError()
     // A model made for one language (the Bangla model, from its error card) makes captions in it,
     // whatever the Spoken language became since: the form says so too.

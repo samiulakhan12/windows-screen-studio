@@ -1,5 +1,6 @@
 import { useEffect, useRef, useSyncExternalStore } from 'react'
 import type { TranscribeOptions } from '../../../shared/api/ai'
+import { t } from '../../../shared/i18n/t'
 import { LOCAL_TRANSCRIBER_ID, type SpeechModelView, type SpeechState } from '../../../shared/api/speech'
 import { BANGLA_MODEL, DEFAULT_SPEECH_MODEL, isBengali, speechModel, type SpeechModelId } from '../../../shared/speech/catalog'
 import { badgeTitle, readyNotice, SPEECH_COPY } from '../../../shared/speech/speechCopy'
@@ -60,14 +61,14 @@ export function loadSpeechState(force = false): void {
   reading = true
   let request: Promise<SpeechState>
   try {
-    if (typeof api?.getSpeechState !== 'function') throw new Error('The speech engine cannot be asked from this window')
+    if (typeof api?.getSpeechState !== 'function') throw new Error(t('captions.speech.noEngine'))
     request = api.getSpeechState()
   } catch (err) {
     request = Promise.reject(err)
   }
   request
     .then((state) => {
-      if (!state || typeof state !== 'object' || !Array.isArray(state.models)) throw new Error('The speech state could not be read')
+      if (!state || typeof state !== 'object' || !Array.isArray(state.models)) throw new Error(t('captions.speech.stateUnread'))
       setRead({ status: 'ready', state })
     })
     .catch((err: unknown) => {

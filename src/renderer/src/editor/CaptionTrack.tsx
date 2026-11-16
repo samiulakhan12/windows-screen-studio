@@ -3,6 +3,7 @@ import { captionDragBounds, dragCaptionTimes, retimeWords } from '../../../share
 import { sameSpan } from '../../../shared/editor/snapping'
 import { overlaps } from '../../../shared/editor/timelineScale'
 import { fmt } from '../../../shared/i18n/fmt'
+import { t } from '../../../shared/i18n/t'
 import type { CaptionSegment } from '../../../shared/types'
 import { requestCaptions, showCaption } from './captionItems'
 import { useEditor } from './context'
@@ -97,7 +98,7 @@ export function CaptionTrack({ px, win, duration, selection, onSelect, scrub, sn
     <div
       className={`tl-track caption-track ${shown ? '' : 'captions-off'}`}
       onPointerDown={onBackgroundDown}
-      title={shown ? 'Captions' : 'Captions are hidden: they show on the video once Show captions is on (Captions tab)'}
+      title={shown ? t('common.label.captions') : t('captions.track.hidden')}
       data-testid="caption-track"
     >
       {captions
@@ -113,7 +114,7 @@ export function CaptionTrack({ px, win, duration, selection, onSelect, scrub, sn
               className={`seg caption-seg ${selId === s.id ? 'selected' : ''}`}
               style={{ left: s.start * px, width: w, ['--edge' as string]: `${edgeWidth(w)}px` }}
               onPointerDown={onCaptionDown(s)}
-              title={`${s.text} · ${fmt.clock(s.start)} – ${fmt.clock(s.end)} · double-click to edit the text`}
+              title={t('captions.track.caption', { text: s.text, start: fmt.clock(s.start), end: fmt.clock(s.end) })}
             >
               <span className="edge left" />
               {w > 24 && <span className="seg-label">{s.text}</span>}
@@ -121,7 +122,7 @@ export function CaptionTrack({ px, win, duration, selection, onSelect, scrub, sn
             </div>
           )
         })}
-      {captions.length === 0 && <span className="tl-empty">No captions left: generate them again in the Captions tab</span>}
+      {captions.length === 0 && <span className="tl-empty">{t('captions.track.empty')}</span>}
     </div>
   )
 }
@@ -132,7 +133,7 @@ export function CaptionTrackLabel(): JSX.Element | null {
   const has = useSyncExternalStore(store.subscribe, () => !!store.state.transcript)
   if (!has) return null
   return (
-    <div className="tl-label caption-label" title="Captions">
+    <div className="tl-label caption-label" title={t('common.label.captions')}>
       <EditorIcon name="captions" size={16} />
     </div>
   )

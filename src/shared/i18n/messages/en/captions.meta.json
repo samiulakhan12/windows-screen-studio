@@ -1,1 +1,531 @@
-{}
+{
+  "ai.confirm.startTitle": {
+    "description": "Title of the question asked before a long run of AI on this PC starts (a Start button follows)."
+  },
+  "ai.confirm.runTitle": {
+    "description": "Title of the question asked before a paid AI run whose cost passes the amount set in Settings (a Run button follows)."
+  },
+  "ai.what.sound": {
+    "description": "What an AI transcription sends, inside \"Sends {what} to {where}\" and the cost sentences of the cost line under an AI tool."
+  },
+  "ai.what.notes": {
+    "description": "What Draft script sends, inside \"Sends {what} to {where}\" on the cost line."
+  },
+  "ai.what.yourNotes": {
+    "description": "What Draft script sends, inside \"Sends {what} to {where}.\" read by screen readers for its button."
+  },
+  "ai.what.chapterNames": {
+    "description": "What naming chapters sends, inside \"Sends {what} to {where}\" on the cost line."
+  },
+  "ai.what.eachChapter": {
+    "description": "What naming chapters sends, inside the cost sentence read by screen readers for its button."
+  },
+  "ai.what.clips": {
+    "description": "What naming short clips sends, inside \"Sends {what} to {where}\" on the cost line."
+  },
+  "ai.what.steps": {
+    "description": "What naming a guide's steps sends, inside \"Sends {what} to {where}\" on the cost line."
+  },
+  "ai.what.captions": {
+    "description": "What a captions AI tool sends (tidy, translate, make great), inside \"Sends {what} to {where}\" on the cost line."
+  },
+  "ai.what.yourCaptions": {
+    "description": "What a captions AI tool sends, inside the cost sentence read by screen readers for its button."
+  },
+  "ai.cost.local": {
+    "description": "Cost line under an AI tool when it runs with AI on this PC and its time is not known yet."
+  },
+  "ai.cost.sends": {
+    "description": "Cost line under an AI tool before its cost is known: {what} is what is sent (\"captions\"), {where} the AI service's name.",
+    "user": [
+      "where"
+    ]
+  },
+  "ai.cost.details": {
+    "description": "Link button on the cost line that shows the model, the date of the prices and each action's tokens."
+  },
+  "ai.cost.model": {
+    "description": "Details of the cost line: the AI model a run uses.",
+    "user": [
+      "model"
+    ]
+  },
+  "ai.cost.modelLocal": {
+    "description": "Details of the cost line, after \"Model:\": the model of AI on this PC is chosen on this PC."
+  },
+  "ai.cost.pricesOf": {
+    "description": "Details of the cost line: the date of the price list the cost comes from."
+  },
+  "ai.cost.tokens": {
+    "description": "Details of the cost line: an action (its label) and the ranges of tokens it sends and gets back."
+  },
+  "ai.cost.localSentence": {
+    "description": "Read by screen readers for an AI tool's button when it runs on this PC and its time is not known yet."
+  },
+  "ai.cost.sendsSentence": {
+    "description": "Read by screen readers for an AI tool's button before its cost is known: {what} is what is sent (\"your captions\"), {where} the AI service.",
+    "user": [
+      "where"
+    ]
+  },
+  "ai.local.phase.loading": {
+    "description": "Announced once by screen readers while AI on this PC loads its model."
+  },
+  "ai.local.phase.reading": {
+    "description": "Announced once by screen readers while AI on this PC reads the text it was given."
+  },
+  "ai.local.phase.writing": {
+    "description": "Announced once by screen readers while AI on this PC writes its answer."
+  },
+  "ai.local.value.waiting": {
+    "description": "Value text of the progress bar of AI on this PC while another request runs first."
+  },
+  "ai.local.value.loading": {
+    "description": "Value text of the progress bar of AI on this PC while it loads its model."
+  },
+  "ai.local.value.reading": {
+    "description": "Value text of the progress bar of AI on this PC while it reads the text: {percent} is how much it has read."
+  },
+  "ai.local.value.writing": {
+    "description": "Value text of the progress bar of AI on this PC while it writes: {left} is the time left (\"about 2 minutes left\")."
+  },
+  "ai.local.bar": {
+    "description": "Name of the progress bar beside a tool while AI on this PC runs."
+  },
+  "ai.local.stopLabel": {
+    "description": "Accessible name of the Stop button beside the progress of AI on this PC."
+  },
+  "ai.model.priceVaries": {
+    "description": "Settings › AI providers, the model list: an OpenRouter router model whose price depends on the model it picks."
+  },
+  "ai.model.free": {
+    "description": "Settings › AI providers, the model list: a model that costs nothing."
+  },
+  "ai.model.price": {
+    "description": "Settings › AI providers, the model list: the price of a model, US$ per million tokens sent and received."
+  },
+  "ai.model.loaded": {
+    "description": "Settings › AI providers: status after Load models; {n} is how many models the provider lists."
+  },
+  "ai.model.load": {
+    "description": "Settings › AI providers: button that loads the list of models from the provider."
+  },
+  "ai.model.list": {
+    "description": "Settings › AI providers: accessible name of the list of models the provider gave."
+  },
+  "track.hidden": {
+    "description": "Tooltip of the caption track on the timeline while captions are turned off."
+  },
+  "track.caption": {
+    "description": "Tooltip of a caption on the timeline's caption track: its text, then where it starts and ends.",
+    "user": [
+      "text"
+    ]
+  },
+  "track.empty": {
+    "description": "Shown on the caption track when every caption was deleted."
+  },
+  "transcribe.running": {
+    "description": "Error in the Captions tab when captions are asked for while a transcription runs."
+  },
+  "transcribe.notTranscript": {
+    "description": "Error in the Captions tab when the AI provider's answer to a transcription cannot be read."
+  },
+  "transcribe.noSpeech": {
+    "description": "Error in the Captions tab when a transcription found no words."
+  },
+  "look.full": {
+    "description": "Error when a caption style is saved while the list of saved styles is full ({n} is the limit, 50)."
+  },
+  "look.defaultName": {
+    "description": "The name a saved caption style gets when the user gives none; {n} counts up from 1."
+  },
+  "ai.wrongTask": {
+    "description": "Error of Make my captions great and the guide when the AI provider answered a different request."
+  },
+  "speech.noEngine": {
+    "description": "Why captions on this PC are not offered: this window cannot reach the speech engine."
+  },
+  "speech.stateUnread": {
+    "description": "Why captions on this PC are not offered: the state of the speech models could not be read."
+  },
+  "generate.byThisPc": {
+    "description": "Captions tab, Generate summary: who made the captions when they were made on this PC, inside \"{n} captions by {by}.\""
+  },
+  "script.used": {
+    "description": "Notice after \"Use as speaker notes again\" in the Captions tab's Your script section."
+  },
+  "script.notChanged": {
+    "description": "Notice when the speaker notes could not be set to the recording's script; {reason} is the error."
+  },
+  "script.copied": {
+    "description": "Notice after the recording's script was copied to the clipboard."
+  },
+  "script.notCopied": {
+    "description": "Notice when the recording's script could not be copied to the clipboard."
+  },
+  "generate.replaceQuestion": {
+    "description": "Question before captions are made again over the current ones."
+  },
+  "generate.replaceAction": {
+    "description": "Button of the question before captions are made again: replaces the current captions (outside English; in English the system dialog says OK)."
+  },
+  "generate.summaryTitle": {
+    "description": "Captions tab: heading of the section that says how the captions were made and offers Regenerate."
+  },
+  "generate.by": {
+    "description": "Captions tab, Generate summary: how many captions and who made them ({by}: OpenAI, Gemini, Claude or \"this PC\"). The count does not change the noun in English today.",
+    "dnt": [
+      "OpenAI",
+      "Gemini",
+      "Claude"
+    ]
+  },
+  "generate.byLanguage": {
+    "description": "Captions tab, Generate summary with the spoken language in brackets.",
+    "dnt": [
+      "OpenAI",
+      "Gemini",
+      "Claude"
+    ]
+  },
+  "action.dismiss": {
+    "description": "Link button that hides a suggestion, a notice or an error in the Captions tab."
+  },
+  "generate.regenerateOpen": {
+    "description": "Captions tab: button that opens the form to make the captions again."
+  },
+  "generate.generating": {
+    "description": "Captions tab: heading while captions are being made."
+  },
+  "generate.phase.stopping": {
+    "description": "Captions tab: phase of a transcription being cancelled."
+  },
+  "generate.phase.starting": {
+    "description": "Captions tab: phase of a transcription before any progress came."
+  },
+  "generate.phase.extracting": {
+    "description": "Captions tab: phase while the sound is read from the recording."
+  },
+  "generate.phase.uploading": {
+    "description": "Captions tab: phase while the sound is sent to the AI provider."
+  },
+  "generate.phase.transcribing": {
+    "description": "Captions tab: phase while the AI provider transcribes."
+  },
+  "generate.phase.finishing": {
+    "description": "Captions tab: last phase of a transcription."
+  },
+  "generate.part": {
+    "description": "Captions tab: which part of a long recording is being transcribed, after the phase."
+  },
+  "generate.titleAgain": {
+    "description": "Captions tab: heading of the form that makes captions again."
+  },
+  "generate.title": {
+    "description": "Captions tab: heading of the form that makes captions, and its button."
+  },
+  "generate.noProvider": {
+    "description": "Captions tab with no AI provider and no captions on this PC.",
+    "dnt": [
+      "OpenAI",
+      "Gemini"
+    ]
+  },
+  "generate.noTranscriber": {
+    "description": "Captions tab when the only AI providers cannot transcribe.",
+    "dnt": [
+      "OpenAI",
+      "Gemini",
+      "Claude"
+    ]
+  },
+  "generate.providersUnread": {
+    "description": "Captions tab: the list of AI providers could not be read; {reason} is the error."
+  },
+  "action.checkAgain": {
+    "description": "Link button that reads the AI providers or the speech models again."
+  },
+  "generate.providerLabel": {
+    "description": "Captions tab: accessible name of the select of who makes the captions."
+  },
+  "generate.spokenLanguage": {
+    "description": "Captions tab: label of the select of the language spoken in the recording."
+  },
+  "generate.detect": {
+    "description": "Captions tab: first choice of Spoken language, the transcriber finds the language."
+  },
+  "generate.source.label": {
+    "description": "Captions tab: accessible name of the chips that choose which sound is transcribed."
+  },
+  "generate.source.auto": {
+    "description": "Captions tab, Sound: the microphone when it was recorded on its own, else all the sound."
+  },
+  "generate.source.autoTitle": {
+    "description": "Tooltip of the Auto chip of the sound to transcribe."
+  },
+  "generate.source.mic": {
+    "description": "Captions tab, Sound: only the microphone."
+  },
+  "generate.source.micTitle": {
+    "description": "Tooltip of the Microphone chip of the sound to transcribe."
+  },
+  "generate.source.micMissing": {
+    "description": "Tooltip of the Microphone chip when the recording has no separate microphone track."
+  },
+  "generate.source.mixed": {
+    "description": "Captions tab, Sound: the microphone and the computer sound together."
+  },
+  "generate.source.mixedTitle": {
+    "description": "Tooltip of the Mixed sound chip of the sound to transcribe."
+  },
+  "generate.noSound": {
+    "description": "Captions tab: a recording without sound."
+  },
+  "generate.sentTo": {
+    "description": "Captions tab, under Generate captions: where the sound goes ({where}: the AI service's name or \"the provider\").",
+    "user": [
+      "where"
+    ]
+  },
+  "generate.theProvider": {
+    "description": "Inside \"…is sent to {where}…\" when no AI provider is chosen yet."
+  },
+  "generate.failed": {
+    "description": "Captions tab: a transcription failed; {reason} is the error."
+  },
+  "list.splitWhere": {
+    "description": "Notice when a caption is split while the playhead is not inside it."
+  },
+  "list.notFound": {
+    "description": "Notice after Replace all found nothing; {text} is what was searched for.",
+    "user": [
+      "text"
+    ]
+  },
+  "list.replaced": {
+    "description": "Notice after Replace all in the captions; {n} is how many times."
+  },
+  "list.title": {
+    "description": "Captions tab: heading of the list of captions with how many there are."
+  },
+  "list.findReplace": {
+    "description": "Captions tab: button that shows the find and replace fields."
+  },
+  "list.findLabel": {
+    "description": "Captions tab: accessible name of the find field."
+  },
+  "list.find": {
+    "description": "Captions tab: placeholder of the find field."
+  },
+  "list.replaceWith": {
+    "description": "Captions tab: placeholder and accessible name of the replace field."
+  },
+  "list.matches": {
+    "description": "Captions tab: how many times the text searched for is found."
+  },
+  "list.anyCase": {
+    "description": "Captions tab: hint beside Replace all while the find field is empty."
+  },
+  "list.replaceAll": {
+    "description": "Captions tab: button that replaces every match in the captions."
+  },
+  "list.empty": {
+    "description": "Captions tab when the list of captions is empty."
+  },
+  "list.earlier": {
+    "description": "Captions tab: button that shows the previous page of captions."
+  },
+  "list.range": {
+    "description": "Captions tab: which captions the page shows."
+  },
+  "list.later": {
+    "description": "Captions tab: button that shows the next page of captions."
+  },
+  "list.goTo": {
+    "description": "Tooltip of a caption's time in the list: moves the playhead there."
+  },
+  "list.captionAt": {
+    "description": "Accessible name of a caption's text field; {time} is where it plays."
+  },
+  "list.split": {
+    "description": "Tooltip and name of the button that splits a caption at the playhead."
+  },
+  "list.merge": {
+    "description": "Tooltip and name of the button that joins a caption with the next one."
+  },
+  "list.delete": {
+    "description": "Tooltip (with its shortcut) and name of the button that deletes a caption."
+  },
+  "list.timesHint": {
+    "description": "Captions tab: hint under the list of captions."
+  },
+  "tools.notUsed": {
+    "description": "Notice when an AI suggestion came after the Captions tab closed and holds something to check; {what} is \"Suggested title\" or \"Summary\"."
+  },
+  "tools.chaptersLeft": {
+    "description": "Notice when the Captions tab closes with suggested chapters not added."
+  },
+  "tools.chaptersAdded": {
+    "description": "Notice after suggested chapters were added."
+  },
+  "tools.needsCaptions": {
+    "description": "Error of Suggest chapters without captions."
+  },
+  "tools.otherAnswer": {
+    "description": "Error of an AI tool of the Captions tab when the answer is not what was asked."
+  },
+  "tools.chaptersThere": {
+    "description": "Suggest chapters found only chapters the recording has."
+  },
+  "tools.noChapters": {
+    "description": "Suggest chapters: the AI suggested none."
+  },
+  "tools.chaptersNotAdded": {
+    "description": "Notice when suggested chapters came after the Captions tab closed and hold something to check."
+  },
+  "tools.noTitle": {
+    "description": "Suggest a title: the AI suggested none."
+  },
+  "tools.noSummary": {
+    "description": "Summarize: the AI wrote nothing."
+  },
+  "tools.addProviderFirst": {
+    "description": "Notice when an AI tool is run from the command palette with no AI provider."
+  },
+  "tools.busy": {
+    "description": "Notice when an AI tool is run while another one works."
+  },
+  "tools.title": {
+    "description": "Captions tab: heading of the section with Suggest chapters, Suggest a title and Summarize."
+  },
+  "tools.noProvider": {
+    "description": "Captions tab, AI tools, with no AI provider.",
+    "dnt": [
+      "OpenAI",
+      "Gemini",
+      "Claude"
+    ]
+  },
+  "tools.providerLabel": {
+    "description": "Captions tab, AI tools: accessible name of the provider select."
+  },
+  "tools.chaptersLocal": {
+    "description": "Tooltip of Suggest chapters with AI on this PC."
+  },
+  "tools.chaptersWith": {
+    "description": "Tooltip of Suggest chapters with an AI service ({where}: its name, or \"the AI\").",
+    "user": [
+      "where"
+    ]
+  },
+  "tools.theAi": {
+    "description": "Inside \"Finds chapters with {where}'s suggestions\" when no AI is chosen."
+  },
+  "tools.suggestChapters": {
+    "description": "Captions tab, AI tools: button."
+  },
+  "tools.titleHint": {
+    "description": "Tooltip of Suggest a title."
+  },
+  "tools.suggestTitle": {
+    "description": "Captions tab, AI tools: button."
+  },
+  "tools.summaryHint": {
+    "description": "Tooltip of Summarize."
+  },
+  "tools.summarize": {
+    "description": "Captions tab, AI tools: button that writes a summary."
+  },
+  "tools.chapters": {
+    "description": "Cost line of the AI tools: the label of Suggest chapters' cost."
+  },
+  "tools.summary": {
+    "description": "Cost line of the AI tools: the label of Summarize's cost; also what the link check names."
+  },
+  "tools.suggestedTitle": {
+    "description": "Captions tab: the title the AI suggested, in bold.",
+    "user": [
+      "title"
+    ]
+  },
+  "tools.suggestedTitleWhat": {
+    "description": "What the link check names when it asks about a suggested title."
+  },
+  "tools.renamed": {
+    "description": "Notice after the recording took the suggested title."
+  },
+  "tools.rename": {
+    "description": "Button that gives the recording the suggested title."
+  },
+  "tools.suggestedChaptersHead": {
+    "description": "Captions tab: heading of the list of suggested chapters."
+  },
+  "tools.suggestedChapters": {
+    "description": "What the link check names when it asks about suggested chapters."
+  },
+  "tools.addChapters": {
+    "description": "Button that adds the suggested chapters."
+  },
+  "tools.summaryHead": {
+    "description": "Captions tab: heading of the summary the AI wrote."
+  },
+  "tools.summaryCopied": {
+    "description": "Notice after the summary was copied."
+  },
+  "tools.summaryNotCopied": {
+    "description": "Notice when the summary could not be copied."
+  },
+  "tools.hintLocal": {
+    "description": "Captions tab, AI tools: hint with AI on this PC."
+  },
+  "tools.hintSends": {
+    "description": "Captions tab, AI tools: hint with an AI service ({where}: its name, or \"the provider\").",
+    "user": [
+      "where"
+    ]
+  },
+  "export.none": {
+    "description": "Notice when Export captions runs without captions."
+  },
+  "export.saved": {
+    "description": "Notice after a subtitle file was saved; {file} is its path.",
+    "user": [
+      "file"
+    ]
+  },
+  "export.failed": {
+    "description": "Notice when a subtitle file could not be saved; {reason} is the error."
+  },
+  "export.title": {
+    "description": "Captions tab: heading of the section that saves a subtitle file."
+  },
+  "export.format.label": {
+    "description": "Captions tab, Export captions: accessible name of the format chips."
+  },
+  "export.button": {
+    "description": "Captions tab: button that saves the captions as a subtitle file."
+  },
+  "export.hint": {
+    "description": "Captions tab, Export captions: hint."
+  },
+  "export.format.srt": {
+    "description": "Tooltip of the SRT chip of Export captions.",
+    "dnt": [
+      "YouTube",
+      "Vimeo"
+    ]
+  },
+  "export.format.vtt": {
+    "description": "Tooltip of the VTT chip of Export captions.",
+    "dnt": [
+      "WebVTT"
+    ]
+  },
+  "export.format.txtLabel": {
+    "description": "Export captions: the chip that saves the transcript as plain text."
+  },
+  "export.format.txt": {
+    "description": "Tooltip of the Text chip of Export captions."
+  }
+}

@@ -8,6 +8,7 @@ import { LOCAL_TRANSCRIBER_ID } from '../../../shared/api/speech'
 import { planOf, videoTimeAt } from '../../../shared/engine/freeze'
 import { playableFrom } from '../../../shared/engine/timeline'
 import { fmt } from '../../../shared/i18n/fmt'
+import { t } from '../../../shared/i18n/t'
 import type { CaptionSegment, Clip, Project, Transcript } from '../../../shared/types'
 import type { EditorServices } from './context'
 import { loadBrandLook } from './greatRun'
@@ -201,7 +202,7 @@ export type FetchedTranscript = { transcript: Transcript; leftOut: boolean } | {
  * error at once and leaves that job alone.
  */
 export async function fetchTranscript(projectId: string, duration: number, options: TranscribeOptions): Promise<FetchedTranscript> {
-  if (job?.running) return { error: 'A transcription is already running' }
+  if (job?.running) return { error: t('captions.transcribe.running') }
   const mine = ++generation
   const local = options.providerId === LOCAL_TRANSCRIBER_ID ? { model: options.model ?? '', language: options.language ?? '' } : undefined
   setJob({ projectId, progress: null, error: null, running: true, startedAt: Date.now(), ...(local ? { local } : {}) })
@@ -214,8 +215,8 @@ export async function fetchTranscript(projectId: string, duration: number, optio
     const raw = await window.api.transcribe(projectId, glossary.length ? { ...options, glossary } : options)
     if (mine !== generation) return { cancelled: true }
     const transcript = readTranscript(raw, duration)
-    if (!transcript) throw new Error('The provider returned something that is not a transcript')
-    if (!transcript.segments.length) throw new Error('No speech was found in this recording')
+    if (!transcript) throw new Error(t('captions.transcribe.notTranscript'))
+    if (!transcript.segments.length) throw new Error(t('captions.transcribe.noSpeech'))
     const given = (raw as { segments?: unknown } | null)?.segments
     setJob(null)
     return { transcript, leftOut: Array.isArray(given) && given.length > MAX_CAPTIONS && transcript.segments.length >= MAX_CAPTIONS }

@@ -1,0 +1,1351 @@
+[
+  {
+    "key": "captions.ai.confirm.startTitle",
+    "file": "src/renderer/src/ai/CostConfirm.tsx",
+    "line": 22,
+    "english": "Start on this PC?",
+    "sample": {}
+  },
+  {
+    "key": "captions.ai.confirm.runTitle",
+    "file": "src/renderer/src/ai/CostConfirm.tsx",
+    "line": 22,
+    "english": "Run it?",
+    "sample": {}
+  },
+  {
+    "key": "common.action.cancel",
+    "file": "src/renderer/src/ai/CostConfirm.tsx",
+    "line": 26,
+    "english": "Cancel",
+    "sample": {}
+  },
+  {
+    "key": "captions.ai.what.sound",
+    "file": "src/renderer/src/ai/CostLine.tsx",
+    "line": 35,
+    "english": "the recording's sound",
+    "sample": {}
+  },
+  {
+    "key": "captions.ai.what.notes",
+    "file": "src/renderer/src/ai/CostLine.tsx",
+    "line": 36,
+    "english": "notes",
+    "sample": {}
+  },
+  {
+    "key": "captions.ai.what.yourNotes",
+    "file": "src/renderer/src/ai/CostLine.tsx",
+    "line": 36,
+    "english": "your notes",
+    "sample": {}
+  },
+  {
+    "key": "captions.ai.what.chapterNames",
+    "file": "src/renderer/src/ai/CostLine.tsx",
+    "line": 40,
+    "english": "chapter names and what is said in them",
+    "sample": {}
+  },
+  {
+    "key": "captions.ai.what.eachChapter",
+    "file": "src/renderer/src/ai/CostLine.tsx",
+    "line": 40,
+    "english": "what is said in each chapter",
+    "sample": {}
+  },
+  {
+    "key": "captions.ai.what.clips",
+    "file": "src/renderer/src/ai/CostLine.tsx",
+    "line": 42,
+    "english": "what is said in the clips",
+    "sample": {}
+  },
+  {
+    "key": "captions.ai.what.steps",
+    "file": "src/renderer/src/ai/CostLine.tsx",
+    "line": 44,
+    "english": "the steps' narration",
+    "sample": {}
+  },
+  {
+    "key": "captions.ai.what.captions",
+    "file": "src/renderer/src/ai/CostLine.tsx",
+    "line": 47,
+    "english": "captions",
+    "sample": {}
+  },
+  {
+    "key": "captions.ai.what.yourCaptions",
+    "file": "src/renderer/src/ai/CostLine.tsx",
+    "line": 47,
+    "english": "your captions",
+    "sample": {}
+  },
+  {
+    "key": "captions.ai.cost.local",
+    "file": "src/renderer/src/ai/CostLine.tsx",
+    "line": 164,
+    "english": "Stays on this PC",
+    "sample": {}
+  },
+  {
+    "key": "captions.ai.cost.sends",
+    "file": "src/renderer/src/ai/CostLine.tsx",
+    "line": 165,
+    "english": "Sends captions to OpenAI",
+    "sample": {
+      "what": "captions",
+      "where": "OpenAI"
+    }
+  },
+  {
+    "key": "captions.ai.cost.details",
+    "file": "src/renderer/src/ai/CostLine.tsx",
+    "line": 174,
+    "english": "Details",
+    "sample": {}
+  },
+  {
+    "key": "captions.ai.cost.model",
+    "file": "src/renderer/src/ai/CostLine.tsx",
+    "line": 180,
+    "english": "Model: gpt-4o-mini",
+    "sample": {
+      "model": "gpt-4o-mini"
+    }
+  },
+  {
+    "key": "captions.ai.cost.modelLocal",
+    "file": "src/renderer/src/ai/CostLine.tsx",
+    "line": 180,
+    "english": "chosen on this PC",
+    "sample": {}
+  },
+  {
+    "key": "captions.ai.cost.pricesOf",
+    "file": "src/renderer/src/ai/CostLine.tsx",
+    "line": 181,
+    "english": "Prices of 12 Mar 2026",
+    "sample": {
+      "date": "12 Mar 2026"
+    }
+  },
+  {
+    "key": "captions.ai.cost.tokens",
+    "file": "src/renderer/src/ai/CostLine.tsx",
+    "line": 184,
+    "english": "Chapters: 1,200–1,500 tokens in, 40–80 out",
+    "sample": {
+      "label": "Chapters",
+      "inLow": "1,200",
+      "inHigh": "1,500",
+      "outLow": "40",
+      "outHigh": "80"
+    }
+  },
+  {
+    "key": "captions.ai.cost.localSentence",
+    "file": "src/renderer/src/ai/CostLine.tsx",
+    "line": 197,
+    "english": "Stays on this PC.",
+    "sample": {}
+  },
+  {
+    "key": "captions.ai.cost.sendsSentence",
+    "file": "src/renderer/src/ai/CostLine.tsx",
+    "line": 197,
+    "english": "Sends your captions to OpenAI.",
+    "sample": {
+      "what": "your captions",
+      "where": "OpenAI"
+    }
+  },
+  {
+    "key": "captions.ai.local.phase.loading",
+    "file": "src/renderer/src/ai/LocalProgress.tsx",
+    "line": 32,
+    "english": "On this PC: loading the model",
+    "sample": {}
+  },
+  {
+    "key": "captions.ai.local.phase.reading",
+    "file": "src/renderer/src/ai/LocalProgress.tsx",
+    "line": 33,
+    "english": "On this PC: reading the text",
+    "sample": {}
+  },
+  {
+    "key": "captions.ai.local.phase.writing",
+    "file": "src/renderer/src/ai/LocalProgress.tsx",
+    "line": 34,
+    "english": "On this PC: writing",
+    "sample": {}
+  },
+  {
+    "key": "captions.ai.local.value.waiting",
+    "file": "src/renderer/src/ai/LocalProgress.tsx",
+    "line": 44,
+    "english": "Waiting for AI on this PC",
+    "sample": {}
+  },
+  {
+    "key": "captions.ai.local.value.loading",
+    "file": "src/renderer/src/ai/LocalProgress.tsx",
+    "line": 46,
+    "english": "Loading the model",
+    "sample": {}
+  },
+  {
+    "key": "captions.ai.local.value.reading",
+    "file": "src/renderer/src/ai/LocalProgress.tsx",
+    "line": 48,
+    "english": "Reading, 45 percent",
+    "sample": {
+      "percent": "45"
+    }
+  },
+  {
+    "key": "captions.ai.local.value.writing",
+    "file": "src/renderer/src/ai/LocalProgress.tsx",
+    "line": 50,
+    "english": "Writing, about 2 minutes left",
+    "sample": {
+      "left": "about 2 minutes left"
+    }
+  },
+  {
+    "key": "captions.ai.local.bar",
+    "file": "src/renderer/src/ai/LocalProgress.tsx",
+    "line": 77,
+    "english": "AI on this PC",
+    "sample": {}
+  },
+  {
+    "key": "captions.ai.local.stopLabel",
+    "file": "src/renderer/src/ai/LocalProgress.tsx",
+    "line": 83,
+    "english": "Stop AI on this PC",
+    "sample": {}
+  },
+  {
+    "key": "common.action.stop",
+    "file": "src/renderer/src/ai/LocalProgress.tsx",
+    "line": 85,
+    "english": "Stop",
+    "sample": {}
+  },
+  {
+    "key": "captions.ai.model.priceVaries",
+    "file": "src/renderer/src/ai/ModelCombobox.tsx",
+    "line": 27,
+    "english": "price varies",
+    "sample": {}
+  },
+  {
+    "key": "captions.ai.model.free",
+    "file": "src/renderer/src/ai/ModelCombobox.tsx",
+    "line": 28,
+    "english": "free",
+    "sample": {}
+  },
+  {
+    "key": "captions.ai.model.price",
+    "file": "src/renderer/src/ai/ModelCombobox.tsx",
+    "line": 29,
+    "english": "US$2.00 / US$10.00 per million tokens",
+    "sample": {
+      "input": "US$2.00",
+      "output": "US$10.00"
+    }
+  },
+  {
+    "key": "captions.ai.model.loaded",
+    "file": "src/renderer/src/ai/ModelCombobox.tsx",
+    "line": 65,
+    "english": [
+      "Loaded 0 models",
+      "Loaded 1 model",
+      "Loaded 2 models",
+      "Loaded 1000 models"
+    ],
+    "sample": [
+      {
+        "count": 0,
+        "n": "0"
+      },
+      {
+        "count": 1,
+        "n": "1"
+      },
+      {
+        "count": 2,
+        "n": "2"
+      },
+      {
+        "count": 1000,
+        "n": "1000"
+      }
+    ]
+  },
+  {
+    "key": "common.state.loading",
+    "file": "src/renderer/src/ai/ModelCombobox.tsx",
+    "line": 145,
+    "english": "Loading…",
+    "sample": {}
+  },
+  {
+    "key": "captions.ai.model.load",
+    "file": "src/renderer/src/ai/ModelCombobox.tsx",
+    "line": 145,
+    "english": "Load models",
+    "sample": {}
+  },
+  {
+    "key": "captions.ai.model.list",
+    "file": "src/renderer/src/ai/ModelCombobox.tsx",
+    "line": 148,
+    "english": "Models the provider lists",
+    "sample": {}
+  },
+  {
+    "key": "common.label.captions",
+    "file": "src/renderer/src/editor/CaptionTrack.tsx",
+    "line": 101,
+    "english": "Captions",
+    "sample": {}
+  },
+  {
+    "key": "captions.track.hidden",
+    "file": "src/renderer/src/editor/CaptionTrack.tsx",
+    "line": 101,
+    "english": "Captions are hidden: they show on the video once Show captions is on (Captions tab)",
+    "sample": {}
+  },
+  {
+    "key": "captions.track.caption",
+    "file": "src/renderer/src/editor/CaptionTrack.tsx",
+    "line": 117,
+    "english": "Here is the product tour · 0:00.5 – 0:02.5 · double-click to edit the text",
+    "sample": {
+      "text": "Here is the product tour",
+      "start": "0:00.5",
+      "end": "0:02.5"
+    }
+  },
+  {
+    "key": "captions.track.empty",
+    "file": "src/renderer/src/editor/CaptionTrack.tsx",
+    "line": 125,
+    "english": "No captions left: generate them again in the Captions tab",
+    "sample": {}
+  },
+  {
+    "key": "captions.transcribe.running",
+    "file": "src/renderer/src/editor/captionItems.ts",
+    "line": 205,
+    "english": "A transcription is already running",
+    "sample": {}
+  },
+  {
+    "key": "captions.transcribe.notTranscript",
+    "file": "src/renderer/src/editor/captionItems.ts",
+    "line": 218,
+    "english": "The provider returned something that is not a transcript",
+    "sample": {}
+  },
+  {
+    "key": "captions.transcribe.noSpeech",
+    "file": "src/renderer/src/editor/captionItems.ts",
+    "line": 219,
+    "english": "No speech was found in this recording",
+    "sample": {}
+  },
+  {
+    "key": "captions.look.full",
+    "file": "src/renderer/src/editor/captionPresets.ts",
+    "line": 15,
+    "english": "You have 50 saved styles. Delete one first.",
+    "sample": {
+      "n": "50"
+    }
+  },
+  {
+    "key": "captions.look.defaultName",
+    "file": "src/renderer/src/editor/captionPresets.ts",
+    "line": 72,
+    "english": "My style 3",
+    "sample": {
+      "n": "3"
+    }
+  },
+  {
+    "key": "captions.export.format.srt",
+    "file": "src/renderer/src/editor/captionWords.ts",
+    "line": 28,
+    "english": "SubRip subtitles: YouTube, Vimeo, most video players and editors",
+    "sample": {}
+  },
+  {
+    "key": "captions.export.format.vtt",
+    "file": "src/renderer/src/editor/captionWords.ts",
+    "line": 29,
+    "english": "WebVTT subtitles: web video players",
+    "sample": {}
+  },
+  {
+    "key": "captions.export.format.txtLabel",
+    "file": "src/renderer/src/editor/captionWords.ts",
+    "line": 30,
+    "english": "Text",
+    "sample": {}
+  },
+  {
+    "key": "captions.export.format.txt",
+    "file": "src/renderer/src/editor/captionWords.ts",
+    "line": 30,
+    "english": "The transcript as plain text",
+    "sample": {}
+  },
+  {
+    "key": "captions.ai.wrongTask",
+    "file": "src/renderer/src/editor/greatRun.ts",
+    "line": 124,
+    "english": "The AI provider answered another task.",
+    "sample": {}
+  },
+  {
+    "key": "captions.generate.byThisPc",
+    "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
+    "line": 110,
+    "english": "this PC",
+    "sample": {}
+  },
+  {
+    "key": "captions.script.used",
+    "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
+    "line": 287,
+    "english": "Your speaker notes are this script again",
+    "sample": {}
+  },
+  {
+    "key": "captions.script.notChanged",
+    "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
+    "line": 289,
+    "english": "Your speaker notes could not be changed: The disk is full.",
+    "sample": {
+      "reason": "The disk is full."
+    }
+  },
+  {
+    "key": "captions.script.copied",
+    "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
+    "line": 314,
+    "english": "Script copied",
+    "sample": {}
+  },
+  {
+    "key": "captions.script.notCopied",
+    "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
+    "line": 315,
+    "english": "The script could not be copied",
+    "sample": {}
+  },
+  {
+    "key": "common.label.captions",
+    "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
+    "line": 346,
+    "english": "Captions",
+    "sample": {}
+  },
+  {
+    "key": "captions.generate.replaceQuestion",
+    "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
+    "line": 408,
+    "english": "Replace the captions with new ones? Your changes to the current captions are replaced too (Undo brings them back).",
+    "sample": {}
+  },
+  {
+    "key": "captions.generate.summaryTitle",
+    "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
+    "line": 504,
+    "english": "Generate",
+    "sample": {}
+  },
+  {
+    "key": "captions.generate.byLanguage",
+    "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
+    "line": 528,
+    "english": "12 captions by Gemini (Bengali).",
+    "sample": {
+      "n": "12",
+      "by": "Gemini",
+      "language": "Bengali"
+    }
+  },
+  {
+    "key": "captions.generate.by",
+    "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
+    "line": 529,
+    "english": "12 captions by OpenAI.",
+    "sample": {
+      "n": "12",
+      "by": "OpenAI"
+    }
+  },
+  {
+    "key": "captions.action.dismiss",
+    "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
+    "line": 541,
+    "english": "Dismiss",
+    "sample": {}
+  },
+  {
+    "key": "captions.generate.regenerateOpen",
+    "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
+    "line": 546,
+    "english": "Regenerate captions…",
+    "sample": {}
+  },
+  {
+    "key": "captions.generate.generating",
+    "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
+    "line": 554,
+    "english": "Generating captions",
+    "sample": {}
+  },
+  {
+    "key": "captions.generate.phase.stopping",
+    "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
+    "line": 564,
+    "english": "Stopping…",
+    "sample": {}
+  },
+  {
+    "key": "captions.generate.phase.starting",
+    "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
+    "line": 566,
+    "english": "Starting…",
+    "sample": {}
+  },
+  {
+    "key": "captions.generate.phase.extracting",
+    "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
+    "line": 568,
+    "english": "Preparing the sound…",
+    "sample": {}
+  },
+  {
+    "key": "captions.generate.phase.uploading",
+    "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
+    "line": 570,
+    "english": "Sending the sound…",
+    "sample": {}
+  },
+  {
+    "key": "captions.generate.phase.transcribing",
+    "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
+    "line": 572,
+    "english": "Transcribing…",
+    "sample": {}
+  },
+  {
+    "key": "captions.generate.phase.finishing",
+    "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
+    "line": 573,
+    "english": "Finishing…",
+    "sample": {}
+  },
+  {
+    "key": "captions.generate.part",
+    "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
+    "line": 583,
+    "english": "Part 2 of 3.",
+    "sample": {
+      "n": "2",
+      "total": "3"
+    }
+  },
+  {
+    "key": "common.action.cancel",
+    "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
+    "line": 593,
+    "english": "Cancel",
+    "sample": {}
+  },
+  {
+    "key": "captions.generate.titleAgain",
+    "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
+    "line": 601,
+    "english": "Regenerate captions",
+    "sample": {}
+  },
+  {
+    "key": "captions.generate.title",
+    "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
+    "line": 601,
+    "english": "Generate captions",
+    "sample": {}
+  },
+  {
+    "key": "captions.generate.noProvider",
+    "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
+    "line": 617,
+    "english": "Add an AI provider with your own API key to make captions. Transcription works with OpenAI and Gemini.",
+    "sample": {}
+  },
+  {
+    "key": "captions.generate.noTranscriber",
+    "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
+    "line": 617,
+    "english": "None of your AI providers can transcribe: Claude cannot listen to audio. Add an OpenAI or Gemini key to make captions (Claude can still fix and translate them).",
+    "sample": {}
+  },
+  {
+    "key": "common.action.addAiProvider",
+    "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
+    "line": 620,
+    "english": "Add an AI provider",
+    "sample": {}
+  },
+  {
+    "key": "captions.generate.providersUnread",
+    "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
+    "line": 622,
+    "english": "Your providers could not be read: Access denied.",
+    "sample": {
+      "reason": "Access denied."
+    }
+  },
+  {
+    "key": "captions.action.checkAgain",
+    "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
+    "line": 624,
+    "english": "Check again",
+    "sample": {}
+  },
+  {
+    "key": "common.label.provider",
+    "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
+    "line": 632,
+    "english": "Provider",
+    "sample": {}
+  },
+  {
+    "key": "captions.generate.providerLabel",
+    "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
+    "line": 635,
+    "english": "Transcription provider",
+    "sample": {}
+  },
+  {
+    "key": "captions.generate.spokenLanguage",
+    "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
+    "line": 655,
+    "english": "Spoken language",
+    "sample": {}
+  },
+  {
+    "key": "captions.generate.detect",
+    "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
+    "line": 657,
+    "english": "Detect automatically",
+    "sample": {}
+  },
+  {
+    "key": "common.label.sound",
+    "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
+    "line": 667,
+    "english": "Sound",
+    "sample": {}
+  },
+  {
+    "key": "captions.generate.source.label",
+    "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
+    "line": 669,
+    "english": "Sound to transcribe",
+    "sample": {}
+  },
+  {
+    "key": "captions.generate.source.auto",
+    "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
+    "line": 673,
+    "english": "Auto",
+    "sample": {}
+  },
+  {
+    "key": "captions.generate.source.autoTitle",
+    "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
+    "line": 673,
+    "english": "The microphone when it was recorded on its own, else all the sound",
+    "sample": {}
+  },
+  {
+    "key": "captions.generate.source.mic",
+    "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
+    "line": 674,
+    "english": "Microphone",
+    "sample": {}
+  },
+  {
+    "key": "captions.generate.source.micTitle",
+    "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
+    "line": 674,
+    "english": "Only your voice",
+    "sample": {}
+  },
+  {
+    "key": "captions.generate.source.micMissing",
+    "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
+    "line": 674,
+    "english": "The microphone was not recorded on its own",
+    "sample": {}
+  },
+  {
+    "key": "captions.generate.source.mixed",
+    "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
+    "line": 675,
+    "english": "Mixed sound",
+    "sample": {}
+  },
+  {
+    "key": "captions.generate.source.mixedTitle",
+    "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
+    "line": 675,
+    "english": "The microphone and the computer sound together",
+    "sample": {}
+  },
+  {
+    "key": "common.action.close",
+    "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
+    "line": 724,
+    "english": "Close",
+    "sample": {}
+  },
+  {
+    "key": "captions.generate.noSound",
+    "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
+    "line": 730,
+    "english": "This recording has no sound to transcribe.",
+    "sample": {}
+  },
+  {
+    "key": "common.action.regenerate",
+    "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
+    "line": 733,
+    "english": "Regenerate",
+    "sample": {}
+  },
+  {
+    "key": "captions.generate.sentTo",
+    "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
+    "line": 741,
+    "english": "The recording's sound is sent to OpenAI with your key; it is billed to your account.",
+    "sample": {
+      "where": "OpenAI"
+    }
+  },
+  {
+    "key": "captions.generate.theProvider",
+    "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
+    "line": 741,
+    "english": "the provider",
+    "sample": {}
+  },
+  {
+    "key": "captions.generate.failed",
+    "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
+    "line": 768,
+    "english": "Captions could not be made: The sound of the recording could not be read.",
+    "sample": {
+      "reason": "The sound of the recording could not be read."
+    }
+  },
+  {
+    "key": "captions.list.splitWhere",
+    "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
+    "line": 892,
+    "english": "Move the playhead inside this caption, between two of its words, to split it there",
+    "sample": {}
+  },
+  {
+    "key": "captions.list.notFound",
+    "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
+    "line": 905,
+    "english": "\"hello\" is not in the captions",
+    "sample": {
+      "text": "hello"
+    }
+  },
+  {
+    "key": "captions.list.replaced",
+    "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
+    "line": 907,
+    "english": [
+      "Replaced 0 times",
+      "Replaced 1 time",
+      "Replaced 2 times",
+      "Replaced 1000 times"
+    ],
+    "sample": [
+      {
+        "count": 0,
+        "n": "0"
+      },
+      {
+        "count": 1,
+        "n": "1"
+      },
+      {
+        "count": 2,
+        "n": "2"
+      },
+      {
+        "count": 1000,
+        "n": "1000"
+      }
+    ]
+  },
+  {
+    "key": "captions.list.title",
+    "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
+    "line": 917,
+    "english": "Transcript (12)",
+    "sample": {
+      "n": "12"
+    }
+  },
+  {
+    "key": "captions.list.findReplace",
+    "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
+    "line": 919,
+    "english": "Find and replace",
+    "sample": {}
+  },
+  {
+    "key": "captions.list.findLabel",
+    "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
+    "line": 926,
+    "english": "Find in captions",
+    "sample": {}
+  },
+  {
+    "key": "captions.list.find",
+    "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
+    "line": 926,
+    "english": "Find",
+    "sample": {}
+  },
+  {
+    "key": "captions.list.replaceWith",
+    "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
+    "line": 927,
+    "english": "Replace with",
+    "sample": {}
+  },
+  {
+    "key": "captions.list.matches",
+    "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
+    "line": 929,
+    "english": [
+      "0 matches",
+      "1 match",
+      "2 matches",
+      "1000 matches"
+    ],
+    "sample": [
+      {
+        "count": 0,
+        "n": "0"
+      },
+      {
+        "count": 1,
+        "n": "1"
+      },
+      {
+        "count": 2,
+        "n": "2"
+      },
+      {
+        "count": 1000,
+        "n": "1000"
+      }
+    ]
+  },
+  {
+    "key": "captions.list.anyCase",
+    "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
+    "line": 929,
+    "english": "Ignores upper and lower case",
+    "sample": {}
+  },
+  {
+    "key": "captions.list.replaceAll",
+    "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
+    "line": 931,
+    "english": "Replace all",
+    "sample": {}
+  },
+  {
+    "key": "captions.list.empty",
+    "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
+    "line": 936,
+    "english": "Every caption was deleted. Regenerate them above, or undo.",
+    "sample": {}
+  },
+  {
+    "key": "captions.list.earlier",
+    "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
+    "line": 940,
+    "english": "Earlier",
+    "sample": {}
+  },
+  {
+    "key": "captions.list.range",
+    "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
+    "line": 943,
+    "english": "151–300 of 420",
+    "sample": {
+      "first": "151",
+      "last": "300",
+      "total": "420"
+    }
+  },
+  {
+    "key": "captions.list.later",
+    "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
+    "line": 946,
+    "english": "Later",
+    "sample": {}
+  },
+  {
+    "key": "captions.list.goTo",
+    "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
+    "line": 960,
+    "english": "Go to this caption",
+    "sample": {}
+  },
+  {
+    "key": "captions.list.captionAt",
+    "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
+    "line": 966,
+    "english": "Caption at 0:03.2",
+    "sample": {
+      "time": "0:03.2"
+    }
+  },
+  {
+    "key": "captions.list.split",
+    "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
+    "line": 974,
+    "english": "Split at the playhead",
+    "sample": {}
+  },
+  {
+    "key": "captions.list.merge",
+    "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
+    "line": 977,
+    "english": "Merge with the next caption",
+    "sample": {}
+  },
+  {
+    "key": "captions.list.delete",
+    "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
+    "line": 980,
+    "english": "Delete this caption",
+    "sample": {}
+  },
+  {
+    "key": "captions.list.timesHint",
+    "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
+    "line": 988,
+    "english": "Times are where each caption plays in the video. Drag captions on the caption track to change their timing.",
+    "sample": {}
+  },
+  {
+    "key": "captions.tools.notUsed",
+    "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
+    "line": 1042,
+    "english": "Suggested title not used: there is a link, address or file name nobody said to check. Run it again with the Captions tab open.",
+    "sample": {
+      "what": "Suggested title"
+    }
+  },
+  {
+    "key": "captions.tools.chaptersLeft",
+    "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
+    "line": 1082,
+    "english": "Suggested chapters not added: open the Captions tab and suggest them again to add them.",
+    "sample": {}
+  },
+  {
+    "key": "captions.tools.chaptersAdded",
+    "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
+    "line": 1093,
+    "english": [
+      "Added 0 chapters (see the Text tab)",
+      "Added 1 chapter (see the Text tab)",
+      "Added 2 chapters (see the Text tab)",
+      "Added 1000 chapters (see the Text tab)"
+    ],
+    "sample": [
+      {
+        "count": 0,
+        "n": "0"
+      },
+      {
+        "count": 1,
+        "n": "1"
+      },
+      {
+        "count": 2,
+        "n": "2"
+      },
+      {
+        "count": 1000,
+        "n": "1000"
+      }
+    ]
+  },
+  {
+    "key": "captions.tools.needsCaptions",
+    "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
+    "line": 1126,
+    "english": "Make captions first: chapters are named from what is said.",
+    "sample": {}
+  },
+  {
+    "key": "captions.tools.otherAnswer",
+    "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
+    "line": 1173,
+    "english": "The provider answered something else; nothing was changed.",
+    "sample": {}
+  },
+  {
+    "key": "captions.tools.chaptersThere",
+    "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
+    "line": 1177,
+    "english": "The suggested chapters are already there.",
+    "sample": {}
+  },
+  {
+    "key": "captions.tools.noChapters",
+    "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
+    "line": 1177,
+    "english": "The provider suggested no chapters.",
+    "sample": {}
+  },
+  {
+    "key": "captions.tools.chaptersNotAdded",
+    "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
+    "line": 1182,
+    "english": "Suggested chapters not added: there is a link, address or file name nobody said to check. Run it again with the Captions tab open.",
+    "sample": {}
+  },
+  {
+    "key": "captions.tools.noTitle",
+    "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
+    "line": 1187,
+    "english": "The provider suggested no title.",
+    "sample": {}
+  },
+  {
+    "key": "captions.tools.noSummary",
+    "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
+    "line": 1194,
+    "english": "The provider wrote no summary.",
+    "sample": {}
+  },
+  {
+    "key": "captions.tools.addProviderFirst",
+    "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
+    "line": 1214,
+    "english": "Add an AI provider first: the button is in the AI tools section",
+    "sample": {}
+  },
+  {
+    "key": "captions.tools.busy",
+    "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
+    "line": 1215,
+    "english": "An AI tool is already working",
+    "sample": {}
+  },
+  {
+    "key": "common.state.working",
+    "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
+    "line": 1223,
+    "english": "Working…",
+    "sample": {}
+  },
+  {
+    "key": "captions.tools.title",
+    "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
+    "line": 1225,
+    "english": "AI tools",
+    "sample": {}
+  },
+  {
+    "key": "captions.tools.noProvider",
+    "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
+    "line": 1228,
+    "english": "Add an AI provider to suggest chapters, a title and a summary from your captions. OpenAI, Gemini and Claude all can.",
+    "sample": {}
+  },
+  {
+    "key": "captions.tools.providerLabel",
+    "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
+    "line": 1237,
+    "english": "AI provider for text",
+    "sample": {}
+  },
+  {
+    "key": "captions.tools.chaptersLocal",
+    "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
+    "line": 1248,
+    "english": "Finds chapters and names them on this PC: Review lists each one.",
+    "sample": {}
+  },
+  {
+    "key": "captions.tools.chaptersWith",
+    "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
+    "line": 1248,
+    "english": "Finds chapters with OpenAI's suggestions: Review lists each one.",
+    "sample": {
+      "where": "OpenAI"
+    }
+  },
+  {
+    "key": "captions.tools.theAi",
+    "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
+    "line": 1248,
+    "english": "the AI",
+    "sample": {}
+  },
+  {
+    "key": "captions.tools.suggestChapters",
+    "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
+    "line": 1250,
+    "english": "Suggest chapters",
+    "sample": {}
+  },
+  {
+    "key": "captions.tools.titleHint",
+    "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
+    "line": 1252,
+    "english": "A name for this recording from what is said",
+    "sample": {}
+  },
+  {
+    "key": "captions.tools.suggestTitle",
+    "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
+    "line": 1253,
+    "english": "Suggest a title",
+    "sample": {}
+  },
+  {
+    "key": "captions.tools.summaryHint",
+    "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
+    "line": 1255,
+    "english": "A short summary of what is said, to copy into a description",
+    "sample": {}
+  },
+  {
+    "key": "captions.tools.summarize",
+    "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
+    "line": 1256,
+    "english": "Summarize",
+    "sample": {}
+  },
+  {
+    "key": "captions.tools.chapters",
+    "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
+    "line": 1266,
+    "english": "Chapters",
+    "sample": {}
+  },
+  {
+    "key": "common.label.title",
+    "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
+    "line": 1266,
+    "english": "Title",
+    "sample": {}
+  },
+  {
+    "key": "captions.tools.summary",
+    "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
+    "line": 1266,
+    "english": "Summary",
+    "sample": {}
+  },
+  {
+    "key": "captions.tools.suggestedTitle",
+    "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
+    "line": 1274,
+    "english": "Suggested title: Saving a file",
+    "sample": {
+      "title": "Saving a file"
+    }
+  },
+  {
+    "key": "captions.tools.suggestedTitleWhat",
+    "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
+    "line": 1284,
+    "english": "Suggested title",
+    "sample": {}
+  },
+  {
+    "key": "captions.tools.renamed",
+    "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
+    "line": 1287,
+    "english": "Recording renamed",
+    "sample": {}
+  },
+  {
+    "key": "captions.tools.rename",
+    "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
+    "line": 1291,
+    "english": "Rename the recording",
+    "sample": {}
+  },
+  {
+    "key": "captions.tools.suggestedChaptersHead",
+    "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
+    "line": 1301,
+    "english": "Suggested chapters:",
+    "sample": {}
+  },
+  {
+    "key": "captions.tools.suggestedChapters",
+    "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
+    "line": 1321,
+    "english": "Suggested chapters",
+    "sample": {}
+  },
+  {
+    "key": "captions.tools.addChapters",
+    "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
+    "line": 1327,
+    "english": "Add the chapters",
+    "sample": {}
+  },
+  {
+    "key": "captions.tools.summaryHead",
+    "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
+    "line": 1337,
+    "english": "Summary:",
+    "sample": {}
+  },
+  {
+    "key": "captions.tools.summaryCopied",
+    "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
+    "line": 1348,
+    "english": "Summary copied",
+    "sample": {}
+  },
+  {
+    "key": "captions.tools.summaryNotCopied",
+    "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
+    "line": 1349,
+    "english": "The summary could not be copied",
+    "sample": {}
+  },
+  {
+    "key": "common.action.copy",
+    "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
+    "line": 1354,
+    "english": "Copy",
+    "sample": {}
+  },
+  {
+    "key": "captions.tools.hintLocal",
+    "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
+    "line": 1367,
+    "english": "Each tool reads the caption text on this PC: nothing is sent. Undo reverts any change.",
+    "sample": {}
+  },
+  {
+    "key": "captions.tools.hintSends",
+    "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
+    "line": 1367,
+    "english": "Each tool sends the caption text (not the sound) to OpenAI. Undo reverts any change.",
+    "sample": {
+      "where": "OpenAI"
+    }
+  },
+  {
+    "key": "captions.export.none",
+    "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
+    "line": 1387,
+    "english": "There are no captions to export",
+    "sample": {}
+  },
+  {
+    "key": "captions.export.saved",
+    "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
+    "line": 1392,
+    "english": "Captions saved: C:\\Videos\\Product tour.srt",
+    "sample": {
+      "file": "C:\\Videos\\Product tour.srt"
+    }
+  },
+  {
+    "key": "captions.export.failed",
+    "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
+    "line": 1394,
+    "english": "The captions could not be saved: The disk is full.",
+    "sample": {
+      "reason": "The disk is full."
+    }
+  },
+  {
+    "key": "captions.export.title",
+    "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
+    "line": 1410,
+    "english": "Export captions",
+    "sample": {}
+  },
+  {
+    "key": "captions.export.format.label",
+    "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
+    "line": 1412,
+    "english": "Subtitle format",
+    "sample": {}
+  },
+  {
+    "key": "common.state.saving",
+    "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
+    "line": 1422,
+    "english": "Saving…",
+    "sample": {}
+  },
+  {
+    "key": "captions.export.button",
+    "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
+    "line": 1422,
+    "english": "Export captions…",
+    "sample": {}
+  },
+  {
+    "key": "captions.export.hint",
+    "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
+    "line": 1424,
+    "english": "Times follow your cuts and speed changes, like the exported video. Captions are drawn on the video when Show captions is on.",
+    "sample": {}
+  },
+  {
+    "key": "captions.speech.noEngine",
+    "file": "src/renderer/src/editor/speechState.ts",
+    "line": 64,
+    "english": "The speech engine cannot be asked from this window",
+    "sample": {}
+  },
+  {
+    "key": "captions.speech.stateUnread",
+    "file": "src/renderer/src/editor/speechState.ts",
+    "line": 71,
+    "english": "The speech state could not be read",
+    "sample": {}
+  }
+]

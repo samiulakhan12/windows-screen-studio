@@ -19,6 +19,7 @@ import type { AiProviderInfo, AiTextRequest, TextChoice } from '../../../shared/
 import { AI_PROVIDER_KINDS } from '../../../shared/api/ai'
 import { costLineText, costSentence, needsConfirm, priceDate, sumEstimates, type CostEstimate } from '../../../shared/ai/cost'
 import { fmt } from '../../../shared/i18n/fmt'
+import { t } from '../../../shared/i18n/t'
 import { confirmCost, wasAsked } from './costConfirm'
 import { estimateFor, estimateNotes, estimateSound, useCostData, type CostData } from './useCost'
 import './cost.css'
@@ -31,19 +32,19 @@ type Action = { key: string; label: string; buttonId: string; request: AiTextReq
 
 /** What a request sends, as the line names it (§11.5): "captions", "chapter names and what is said in them"… */
 function whatOf(request: AiTextRequest | null, sound: boolean, notes: boolean): { what: string; your: string } {
-  if (sound) return { what: "the recording's sound", your: "the recording's sound" }
-  if (notes) return { what: 'notes', your: 'your notes' }
+  if (sound) return { what: t('captions.ai.what.sound'), your: t('captions.ai.what.sound') }
+  if (notes) return { what: t('captions.ai.what.notes'), your: t('captions.ai.what.yourNotes') }
   if (request?.task === 'names') {
     switch (request.names?.kind) {
       case 'chapter':
-        return { what: 'chapter names and what is said in them', your: 'what is said in each chapter' }
+        return { what: t('captions.ai.what.chapterNames'), your: t('captions.ai.what.eachChapter') }
       case 'clip':
-        return { what: 'what is said in the clips', your: 'what is said in the clips' }
+        return { what: t('captions.ai.what.clips'), your: t('captions.ai.what.clips') }
       default:
-        return { what: "the steps' narration", your: "the steps' narration" }
+        return { what: t('captions.ai.what.steps'), your: t('captions.ai.what.steps') }
     }
   }
-  return { what: 'captions', your: 'your captions' }
+  return { what: t('captions.ai.what.captions'), your: t('captions.ai.what.yourCaptions') }
 }
 
 /** The transcription model of provider `id` (the line's choice carries the text model). */
@@ -160,8 +161,8 @@ export function CostLine(props: {
         full || known.length === 1
       )
     : choice.kind === 'local'
-      ? 'Stays on this PC'
-      : `Sends ${what.what} to ${where}`
+      ? t('captions.ai.cost.local')
+      : t('captions.ai.cost.sends', { what: what.what, where })
   const group = !full && known.length > 1
   const date = known.find((r) => r.estimate.price?.updated)?.estimate.price?.updated
   return (
@@ -170,25 +171,30 @@ export function CostLine(props: {
         <span id={id}>{line}</span>
         {group && (
           <button type="button" className="link" aria-expanded={open} aria-controls={`${id}-details`} onClick={() => setOpen((v) => !v)}>
-            Details
+            {t('captions.ai.cost.details')}
           </button>
         )}
       </p>
       {group && open && (
         <ul className="cost-details" id={`${id}-details`}>
-          <li>Model: {model || 'chosen on this PC'}</li>
-          {date && <li>Prices of {priceDate(date)}</li>}
+          <li>{t('captions.ai.cost.model', { model: model || t('captions.ai.cost.modelLocal') })}</li>
+          {date && <li>{t('captions.ai.cost.pricesOf', { date: priceDate(date) })}</li>}
           {known.map((r) => (
             <li key={r.key}>
-              {r.label}: {fmt.count(r.estimate.inputTokens[0], { grouping: true })}–{fmt.count(r.estimate.inputTokens[1], { grouping: true })} tokens in, {fmt.count(r.estimate.outputTokens[0], { grouping: true })}–
-              {fmt.count(r.estimate.outputTokens[1], { grouping: true })} out
+              {t('captions.ai.cost.tokens', {
+                label: r.label,
+                inLow: fmt.count(r.estimate.inputTokens[0], { grouping: true }),
+                inHigh: fmt.count(r.estimate.inputTokens[1], { grouping: true }),
+                outLow: fmt.count(r.estimate.outputTokens[0], { grouping: true }),
+                outHigh: fmt.count(r.estimate.outputTokens[1], { grouping: true })
+              })}
             </li>
           ))}
         </ul>
       )}
       {rows.map((r) => (
         <span key={r.key} id={`${id}-${r.key}`} className="sr-only">
-          {r.estimate ? costSentence(r.estimate, where, what.your) : choice.kind === 'local' ? 'Stays on this PC.' : `Sends ${what.your} to ${where}.`}
+          {r.estimate ? costSentence(r.estimate, where, what.your) : choice.kind === 'local' ? t('captions.ai.cost.localSentence') : t('captions.ai.cost.sendsSentence', { what: what.your, where })}
         </span>
       ))}
     </div>

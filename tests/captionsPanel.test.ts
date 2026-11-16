@@ -373,6 +373,8 @@ interface Mods {
 /** Fresh modules: the module-level stores (speech state, session choice, intents, remembered choices) start empty. */
 async function fresh(): Promise<Mods> {
   vi.resetModules()
+  // The message runtime is fresh too: English is registered again, as the vitest setup did.
+  await import('../src/shared/i18n/messages/en/index')
   const { CaptionsPanel: panel } = (await import(/* @vite-ignore */ PANEL)) as { CaptionsPanel: Mods['panel'] }
   const items = (await import(/* @vite-ignore */ ITEMS)) as Mods['items']
   const speech = (await import(/* @vite-ignore */ SPEECH_STATE)) as Mods['speech']

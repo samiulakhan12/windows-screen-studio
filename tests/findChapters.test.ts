@@ -650,6 +650,8 @@ describe("the palette's Find chapters with names on this PC", () => {
     const saved = { editorCtx: contexts.editorCtx, groupCtx: contexts.groupCtx, keymapCtx: contexts.keymapCtx }
     onTestFinished(() => void Object.assign(contexts, saved))
     vi.resetModules()
+    // The message runtime is fresh too: English is registered again, as the vitest setup did.
+    await import('../src/shared/i18n/messages/en/index')
     await useEditorContexts()
     const { FindChapters: Panel } = (await import(/* @vite-ignore */ PANEL)) as { FindChapters: (p: unknown) => unknown }
     const { requestFindChapters: request } = (await import(/* @vite-ignore */ REQUESTS)) as { requestFindChapters(): void }

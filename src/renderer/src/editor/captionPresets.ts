@@ -7,10 +7,12 @@
 import { useEffect, useSyncExternalStore } from 'react'
 import { cleanPrefText, MAX_SAVED_LOOKS, readSavedLooks, SAVED_LOOK_NAME_MAX } from '../../../shared/captions/captionPrefs'
 import type { SavedLook } from '../../../shared/captions/studioPresets'
+import { fmt } from '../../../shared/i18n/fmt'
+import { t } from '../../../shared/i18n/t'
 import type { CaptionStudio } from '../../../shared/types'
 
 /** Shown when a 51st look is saved (§2.4). */
-export const SAVED_LOOKS_FULL = `You have ${MAX_SAVED_LOOKS} saved styles. Delete one first.`
+export const savedLooksFull = (): string => t('captions.look.full', { n: fmt.count(MAX_SAVED_LOOKS) })
 
 let looks: readonly SavedLook[] = []
 let state: 'unread' | 'reading' | 'read' = 'unread'
@@ -67,14 +69,14 @@ function newLookId(taken: readonly SavedLook[]): string {
 /** The first unused "My style n" name, for the Save field's default (§2.4). */
 export function nextLookName(saved: readonly SavedLook[]): string {
   for (let n = 1; ; n++) {
-    const name = `My style ${n}`
+    const name = t('captions.look.defaultName', { n: fmt.count(n) })
     if (!saved.some((s) => s.name === name)) return name
   }
 }
 
-/** Saves `look` as `name`; rejects with SAVED_LOOKS_FULL at the limit. Resolves with the saved entry. */
+/** Saves `look` as `name`; rejects with savedLooksFull() at the limit. Resolves with the saved entry. */
 export async function saveLook(name: string, look: CaptionStudio): Promise<SavedLook> {
-  if (looks.length >= MAX_SAVED_LOOKS) throw new Error(SAVED_LOOKS_FULL)
+  if (looks.length >= MAX_SAVED_LOOKS) throw new Error(savedLooksFull())
   const id = newLookId(looks)
   const entry: SavedLook = { id, name: cleanPrefText(name, SAVED_LOOK_NAME_MAX) || nextLookName(looks), look: { ...look, from: `mine:${id}` } }
   await write([...looks, entry])
