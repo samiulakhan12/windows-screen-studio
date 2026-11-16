@@ -5004,5 +5004,12 @@
     "line": 722,
     "english": "Same as the words",
     "sample": {}
+  },
+  {
+    "key": "review.polish.skip.noModel",
+    "file": "src/shared/speech/transcriber.ts",
+    "line": 16,
+    "english": "Captions skipped: download a speech model in the Captions tab (free, 60 MB) or add an AI provider.",
+    "sample": {}
   }
 ]
