@@ -15,6 +15,7 @@ import { fmt } from '../../../../shared/i18n/fmt'
 import type { CaptionStudio, Project } from '../../../../shared/types'
 import { probeContrast } from '../../render/contrastProbe'
 import { useEditor } from '../context'
+import { t } from '../../../../shared/i18n/t'
 
 /** A surround no video can change (§7.3): a box or an outline strong enough. */
 export function dependableSurround(studio: CaptionStudio): boolean {
@@ -24,15 +25,15 @@ export function dependableSurround(studio: CaptionStudio): boolean {
 }
 
 /** How the meter words a ratio (§7.3). */
-export function contrastWords(ratio: number): 'Easy to read' | 'Hard to read for some people' | 'Hard to read on this video' {
-  return ratio >= 4.5 ? 'Easy to read' : ratio >= 3 ? 'Hard to read for some people' : 'Hard to read on this video'
+export function contrastWords(ratio: number): string {
+  return ratio >= 4.5 ? t('text.contrastMeter.easy') : ratio >= 3 ? t('text.contrastMeter.some') : t('text.contrastMeter.hard')
 }
 
 /** "12.4" (one decimal, never rounded up past a threshold: 4.46 shows 4.4). */
-const ratioText = (r: number): string => (Math.floor(r * 10) / 10).toFixed(1)
+const ratioText = (r: number): string => fmt.number(Math.floor(r * 10) / 10, { max: 1 })
 
 export function ContrastMeter(props: { project: Project; t: number; paused: boolean }): JSX.Element {
-  const { project, t, paused } = props
+  const { project, t: time, paused } = props
   const { store } = useEditor()
   const settings = captionsOf(project)
   // A Classic look is measured as its twin, which draws it the same way (§5.8).
@@ -44,34 +45,32 @@ export function ContrastMeter(props: { project: Project; t: number; paused: bool
   useEffect(() => {
     if (fixed || !paused) return
     const n = ++seq.current
-    probeContrast(project, t, studio).then(
+    probeContrast(project, time, studio).then(
       (r) => {
         if (n === seq.current && r) setMeasured(r)
       },
       () => undefined
     )
-  }, [fixed, paused, t, studio, project])
+  }, [fixed, paused, time, studio, project])
 
   const ratio = fixed ? staticContrast(studio).worst : (measured?.ratio ?? null)
   const fix = (): void => store.update((p) => ({ ...p, captions: editStudio(captionsOf(p), contrastFix) }))
   if (ratio === null) {
     return (
       <p className="caption-contrast hint" data-testid="caption-contrast" role="status">
-        Pause the video to check the contrast of the captions on it.
+        {t('text.contrastMeter.pauseTheVideoTo')}
       </p>
     )
   }
   const words = contrastWords(ratio)
   const at = !fixed && measured ? fmt.clock(videoTimeAt(project.clips, planOf(project), measured.at), 'whole') : null
-  const shownText = `Contrast ${ratioText(ratio)} : 1${at ? ` at ${at}` : ''} · ${words}`
-  const spoken = `Contrast ${ratioText(ratio)} to 1, ${words.toLowerCase()}${at ? ` at ${at}` : ''}`
+  const shownText = t('text.contrastMeter.shown', { ratio: ratioText(ratio), where: at ? 'yes' : 'no', time: at ?? '', words })
+  const spoken = t('text.contrastMeter.spoken', { ratio: ratioText(ratio), where: at ? 'yes' : 'no', time: at ?? '', words: fmt.inSentence(words) })
   return (
     <div className={`caption-contrast ${ratio >= 4.5 ? 'good' : 'poor'}`} data-testid="caption-contrast" role="status" aria-label={spoken}>
       <span aria-hidden="true">{shownText}</span>
       {ratio < 4.5 && (
-        <button type="button" className="btn small" data-testid="caption-contrast-fix" title="Strengthen the outline or the box so the captions read well" onClick={fix}>
-          Fix
-        </button>
+        <button type="button" className="btn small" data-testid="caption-contrast-fix" title={t('text.contrastMeter.strengthenTheOutlineOr')} onClick={fix}>{t('text.contrastMeter.fix')}</button>
       )}
     </div>
   )

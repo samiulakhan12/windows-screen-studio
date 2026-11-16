@@ -19,12 +19,14 @@ import type { Selection } from '../selection'
 import { RadioRow, SwatchRow, SwitchRow } from './calloutControls'
 import { useTabOf } from './CalloutSection'
 import './callouts.css'
+import { t } from '../../../../shared/i18n/t'
+import { fmt } from '../../../../shared/i18n/fmt'
 
 /** The badge colours: the brand kit's first, then the default blue and the shape palette (§2.3). */
 export function badgeSwatches(project: Pick<Project, 'brand'>): { color: string; name: string }[] {
   const out: { color: string; name: string }[] = []
-  ;(project.brand?.colors ?? []).forEach((c, i) => out.push({ color: c.toLowerCase(), name: `Brand colour ${i + 1}, ${c.toLowerCase()}` }))
-  for (const c of [BADGE_FILL, ...SHAPE_COLORS]) if (!out.some((o) => o.color === c)) out.push({ color: c, name: c === BADGE_FILL ? `Blue, ${c}` : c })
+  ;(project.brand?.colors ?? []).forEach((c, i) => out.push({ color: c.toLowerCase(), name: t('text.bubbleSection.brandColour', { n: fmt.count(i + 1), colour: c.toLowerCase() }) }))
+  for (const c of [BADGE_FILL, ...SHAPE_COLORS]) if (!out.some((o) => o.color === c)) out.push({ color: c, name: c === BADGE_FILL ? t('text.badgeSection.blue', { colour: c }) : c })
   return out
 }
 
@@ -71,21 +73,21 @@ function Badge({
   return (
     <section className="insp-section callout-section" data-testid="badge-section">
       <h3>
-        <span>Step badge</span>
+        <span>{t('text.badgeSection.stepBadge')}</span>
       </h3>
       <RadioRow
         id="badge-number"
-        label="Number"
+        label={t('text.badgeSection.number')}
         value={auto ? 'auto' : 'text'}
         options={[
-          { value: 'auto', label: label ? `Automatic (${label})` : 'Automatic' },
-          { value: 'text', label: 'Your own text' }
+          { value: 'auto', label: label ? t('text.badgeSection.automaticAs', { label }) : t('text.badgeSection.automatic') },
+          { value: 'text', label: t('text.badgeSection.ownText') }
         ]}
         onChange={(v) => update((p) => withBadge(p, id, { number: v }))}
       />
       {!auto && (
         <label className="field callout-field">
-          <span>Badge text</span>
+          <span>{t('text.badgeSection.badgeText')}</span>
           <input
             type="text"
             data-testid="badge-text"
@@ -111,11 +113,11 @@ function Badge({
         <>
           <RadioRow
             id="badge-count-with"
-            label="Count with"
+            label={t('text.badgeSection.countWith')}
             value={c.numbering}
             options={counts.map((o) => ({
               value: o.value,
-              label: o.value === 'bn' ? `Bangla digits, ${o.sample}` : o.lang ? `${o.label}, ${o.sample}` : o.label,
+              label: o.lang ? t('text.badgeSection.digitsSample', { label: o.label, sample: o.sample }) : o.label,
               content: o.lang ? (
                 <>
                   <span lang={o.lang}>{o.sample}</span> ({o.label})
@@ -126,14 +128,14 @@ function Badge({
           />
           <SwitchRow
             id="badge-restart"
-            label="Restart at each chapter"
+            label={t('text.badgeSection.restartAtEachChapter')}
             checked={restart && chapters >= 2}
             disabled={chapters < 2}
-            hint={chapters < 2 ? (pendingChapters(project).length ? 'Keep or add two chapters or more to count again in each.' : 'Add two chapters or more to count again in each.') : undefined}
+            hint={chapters < 2 ? (pendingChapters(project).length ? t('text.badgeSection.keepTwoChapters') : t('text.badgeSection.addTwoChapters')) : undefined}
             onChange={(on) => update((p) => withBadgesByChapter(p, on))}
           />
           <label className="field callout-field">
-            <span>Start from</span>
+            <span>{t('text.badgeSection.startFrom')}</span>
             <input
               type="number"
               data-testid="badge-start-from"
@@ -141,7 +143,7 @@ function Badge({
               max={999}
               step={1}
               value={c.startAt ?? ''}
-              placeholder="Counts on"
+              placeholder={t('text.badgeSection.countsOn')}
               onChange={(e) => {
                 const v = e.target.value.trim()
                 const n = Number(v)
@@ -152,12 +154,12 @@ function Badge({
           </label>
         </>
       )}
-      <SwatchRow id="badge-colour" label="Colour" value={c.color ?? BADGE_FILL} swatches={badgeSwatches(project)} onChange={(color) => update((p) => withBadge(p, id, { color }))} />
+      <SwatchRow id="badge-colour" label={t('common.label.colour')} value={c.color ?? BADGE_FILL} swatches={badgeSwatches(project)} onChange={(color) => update((p) => withBadge(p, id, { color }))} />
       <SwitchRow
         id="badge-follows-zoom"
-        label="Follows the zoom"
+        label={t('text.badgeSection.followsTheZoom')}
         checked={!!c.pin}
-        hint={c.pin ? 'Stays on its spot in the recording while the camera zooms and pans.' : 'Stays at one place in the frame.'}
+        hint={c.pin ? t('text.badgeSection.followsHint') : t('text.badgeSection.staysHint')}
         onChange={(on) => {
           const scene = pausedScene(player)
           if (!scene) return

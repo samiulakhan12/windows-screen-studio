@@ -10,9 +10,13 @@ import { useEditor } from '../context'
 import { Section } from '../controls'
 import { RadioChips, Switch } from './RadioChips'
 import './magnifier.css'
+import { t } from '../../../../shared/i18n/t'
+import { fmt } from '../../../../shared/i18n/fmt'
 
-export const BAR_HINT = 'A thin bar that fills as the video plays, split at your chapters when there are any.'
-export const FEW_CHAPTERS = 'Add chapters to split the bar. With one or none it is a plain progress bar.'
+/** What the progress bar is (its switch's hint). */
+export const barHint = (): string => t('text.chapterBarSection.barHint')
+/** Why there are no chapter names to choose. */
+export const fewChapters = (): string => t('text.chapterBarSection.fewChapters')
 
 let focusWanted = false
 /** The Effects tab's "Progress bar…" asks the section to take the focus once it shows. */
@@ -36,49 +40,49 @@ export function ChapterBarSection(props: { project: Project }): JSX.Element {
   const set = (patch: Partial<ChapterBar>, key?: string): void => store.update((p) => withChapterBar(p, patch), key)
   const chapters = project.chapters?.length ?? 0
   return (
-    <Section title="Progress bar">
+    <Section title={t('text.chapterBarSection.progressBar')}>
       <div className="progress-bar-section" ref={box}>
-        <Switch id="progress-bar-toggle" label="Progress bar on the video" checked={on} onChange={(show) => set({ show })} hint={BAR_HINT} />
+        <Switch id="progress-bar-toggle" label={t('text.chapterBarSection.progressBarOnThe')} checked={on} onChange={(show) => set({ show })} hint={barHint()} />
         {on && bar && (
           <>
             <RadioChips<ChapterBar['place']>
               id="progress-bar-place"
-              label="Place"
+              label={t('text.chapterBarSection.place')}
               value={bar.place}
               onChange={(place) => set({ place })}
               options={[
-                { value: 'auto', label: 'Auto', title: 'At the top, or at the bottom when the captions sit in the top half' },
-                { value: 'top', label: 'Top' },
-                { value: 'bottom', label: 'Bottom' }
+                { value: 'auto', label: t('text.chapterBarSection.place.auto'), title: t('text.chapterBarSection.place.auto.title') },
+                { value: 'top', label: t('text.chapterBarSection.place.top') },
+                { value: 'bottom', label: t('text.chapterBarSection.place.bottom') }
               ]}
             />
             <RadioChips<ChapterBar['style']>
               id="progress-bar-look"
-              label="Look"
+              label={t('common.label.look')}
               value={bar.style}
               onChange={(style) => set({ style })}
               options={[
-                { value: 'float', label: 'Floating', title: 'Rounded, inset from the edges' },
-                { value: 'edge', label: 'Edge', title: 'Full width, flush with the edge' }
+                { value: 'float', label: t('text.chapterBarSection.look.float'), title: t('text.chapterBarSection.look.float.title') },
+                { value: 'edge', label: t('text.chapterBarSection.look.edge'), title: t('text.chapterBarSection.look.edge.title') }
               ]}
             />
             {chapters >= 2 ? (
               <RadioChips<ChapterBar['labels']>
                 id="progress-bar-labels"
-                label="Chapter names"
+                label={t('text.chapterBarSection.chapterNames')}
                 value={bar.labels}
                 onChange={(labels) => set({ labels })}
                 options={[
-                  { value: 'current', label: 'Current chapter' },
-                  { value: 'all', label: 'All chapters' },
-                  { value: 'none', label: 'None' }
+                  { value: 'current', label: t('text.chapterBarSection.names.current') },
+                  { value: 'all', label: t('text.chapterBarSection.names.all') },
+                  { value: 'none', label: t('common.state.none') }
                 ]}
               />
             ) : (
-              <p className="hint">{FEW_CHAPTERS}</p>
+              <p className="hint">{fewChapters()}</p>
             )}
             <BarColours project={project} bar={bar} onChange={(color, key) => set({ color }, key)} />
-            <Switch id="progress-bar-only" label="Show only when a chapter starts" checked={bar.onlyAtChapters === true} onChange={(onlyAtChapters) => set({ onlyAtChapters })} />
+            <Switch id="progress-bar-only" label={t('text.chapterBarSection.showOnlyWhenA')} checked={bar.onlyAtChapters === true} onChange={(onlyAtChapters) => set({ onlyAtChapters })} />
           </>
         )}
       </div>
@@ -89,7 +93,7 @@ export function ChapterBarSection(props: { project: Project }): JSX.Element {
 /** The bar's colour (§2.4): the brand colours first, then white (the default without a brand), and any colour. */
 function BarColours({ project, bar, onChange }: { project: Project; bar: ChapterBar; onChange: (color: string, key?: string) => void }): JSX.Element {
   const brand = (project.brand?.colors ?? []).filter((c) => /^#[0-9a-f]{6}$/i.test(c)).map((c) => c.toLowerCase())
-  const swatches = [...brand.map((c, i) => ({ color: c, name: `Brand colour ${i + 1}, ${c}` })), ...(brand.includes('#ffffff') ? [] : [{ color: '#ffffff', name: 'White' }])]
+  const swatches = [...brand.map((c, i) => ({ color: c, name: t('text.bubbleSection.brandColour', { n: fmt.count(i + 1), colour: c }) })), ...(brand.includes('#ffffff') ? [] : [{ color: '#ffffff', name: t('text.chapterBarSection.white') }])]
   const value = (bar.color ?? brand[0] ?? '#ffffff').toLowerCase()
   const at = swatches.findIndex((s) => s.color === value)
   const group = useRef<HTMLDivElement>(null)
@@ -110,9 +114,7 @@ function BarColours({ project, bar, onChange }: { project: Project; bar: Chapter
   }
   return (
     <div className="field">
-      <span className="field-label" id="progress-bar-colour-label">
-        Colour
-      </span>
+      <span className="field-label" id="progress-bar-colour-label">{t('common.label.colour')}</span>
       <div className="shape-colors progress-bar-colours">
         <div className="shape-colors progress-bar-colours" role="radiogroup" aria-labelledby="progress-bar-colour-label" data-testid="progress-bar-colour" ref={group} onKeyDown={onKey}>
           {swatches.map((s, i) => (
@@ -131,8 +133,8 @@ function BarColours({ project, bar, onChange }: { project: Project; bar: Chapter
           ))}
         </div>
         {/* Any other colour: a control of its own after the group, not one of its radios. */}
-        <label className={`shape-color custom ${at < 0 ? 'active' : ''}`} title="Other colour" style={at < 0 ? { background: value } : undefined}>
-          <input type="color" aria-label="Other colour" value={value} onChange={(e) => onChange(e.target.value.toLowerCase(), 'progress-bar-colour')} />
+        <label className={`shape-color custom ${at < 0 ? 'active' : ''}`} title={t('text.chapterBarSection.otherColour')} style={at < 0 ? { background: value } : undefined}>
+          <input type="color" aria-label={t('text.chapterBarSection.otherColour')} value={value} onChange={(e) => onChange(e.target.value.toLowerCase(), 'progress-bar-colour')} />
         </label>
       </div>
     </div>

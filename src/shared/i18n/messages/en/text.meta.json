@@ -1,4 +1,604 @@
 {
+  "textPanel.addTextAtPlayhead": {
+    "description": "textPanel, text of <button> (src/renderer/src/editor/panels/TextPanel.tsx:92)."
+  },
+  "textPanel.textInThisVideo": {
+    "description": "Text tab: the title of a list section with how many items it holds (\"Text in this video (3)\"); n is the number."
+  },
+  "textPanel.selectedText": {
+    "description": "textPanel, the title of <Section> (src/renderer/src/editor/panels/TextPanel.tsx:137)."
+  },
+  "textPanel.typeTheBubbleS": {
+    "description": "textPanel, the placeholder of <textarea> (src/renderer/src/editor/panels/TextPanel.tsx:140)."
+  },
+  "textPanel.typeYourText": {
+    "description": "textPanel, the placeholder of <textarea> (src/renderer/src/editor/panels/TextPanel.tsx:140)."
+  },
+  "textPanel.textStyle": {
+    "description": "textPanel, the label of <Chips> (src/renderer/src/editor/panels/TextPanel.tsx:143)."
+  },
+  "textPanel.positionX": {
+    "description": "textPanel, the label of <Slider> (src/renderer/src/editor/panels/TextPanel.tsx:155)."
+  },
+  "textPanel.positionY": {
+    "description": "textPanel, the label of <Slider> (src/renderer/src/editor/panels/TextPanel.tsx:156)."
+  },
+  "textPanel.tipDragTheText": {
+    "description": "textPanel, text of <p> (src/renderer/src/editor/panels/TextPanel.tsx:157)."
+  },
+  "textPanel.deleteText": {
+    "description": "textPanel, text of <button> (src/renderer/src/editor/panels/TextPanel.tsx:166)."
+  },
+  "textPanel.titleCards": {
+    "description": "Text tab: the title of a list section with how many items it holds (\"Title cards (3)\"); n is the number."
+  },
+  "textPanel.addTitleCard": {
+    "description": "textPanel, text of <button> (src/renderer/src/editor/panels/TextPanel.tsx:186)."
+  },
+  "textPanel.title": {
+    "description": "textPanel, text of <span> (src/renderer/src/editor/panels/TextPanel.tsx:212)."
+  },
+  "textPanel.selectedTitleCard": {
+    "description": "textPanel, the title of <Section> (src/renderer/src/editor/panels/TextPanel.tsx:230)."
+  },
+  "textPanel.yourTitle": {
+    "description": "textPanel, the placeholder of <textarea> (src/renderer/src/editor/panels/TextPanel.tsx:233)."
+  },
+  "textPanel.subtitle": {
+    "description": "textPanel, text of <span> (src/renderer/src/editor/panels/TextPanel.tsx:236)."
+  },
+  "textPanel.optional": {
+    "description": "textPanel, the placeholder of <input> (src/renderer/src/editor/panels/TextPanel.tsx:237)."
+  },
+  "textPanel.style": {
+    "description": "textPanel, text of <span> (src/renderer/src/editor/panels/TextPanel.tsx:240)."
+  },
+  "textPanel.titleStyle": {
+    "description": "textPanel, the aria-label of <div> (src/renderer/src/editor/panels/TextPanel.tsx:241)."
+  },
+  "textPanel.dragTheCardOn": {
+    "description": "textPanel, text of <p> (src/renderer/src/editor/panels/TextPanel.tsx:266)."
+  },
+  "textPanel.deleteTitleCard": {
+    "description": "textPanel, text of <button> (src/renderer/src/editor/panels/TextPanel.tsx:276)."
+  },
+  "textPanel.notOnScreenAt": {
+    "description": "textPanel, text of <p> (src/renderer/src/editor/panels/TextPanel.tsx:295)."
+  },
+  "textPanel.showItOnThe": {
+    "description": "textPanel, text of <button> (src/renderer/src/editor/panels/TextPanel.tsx:297)."
+  },
+  "textPanel.selectedChapter": {
+    "description": "textPanel, the title of <Section> (src/renderer/src/editor/panels/TextPanel.tsx:357)."
+  },
+  "textPanel.chapterName": {
+    "description": "textPanel, the aria-label of <input> (src/renderer/src/editor/panels/TextPanel.tsx:360)."
+  },
+  "textPanel.moveThePlayheadTo": {
+    "description": "textPanel, the title of <button> (src/renderer/src/editor/panels/TextPanel.tsx:364)."
+  },
+  "textPanel.goTo": {
+    "description": "textPanel, text of <button> (src/renderer/src/editor/panels/TextPanel.tsx:365)."
+  },
+  "textPanel.startThisChapterAt": {
+    "description": "textPanel, the title of <button> (src/renderer/src/editor/panels/TextPanel.tsx:367)."
+  },
+  "textPanel.moveToPlayhead": {
+    "description": "textPanel, text of <button> (src/renderer/src/editor/panels/TextPanel.tsx:368)."
+  },
+  "textPanel.chapters": {
+    "description": "Text tab: the title of a list section with how many items it holds (\"Chapters (3)\"); n is the number."
+  },
+  "textPanel.addChapterAtPlayhead": {
+    "description": "textPanel, text of <button> (src/renderer/src/editor/panels/TextPanel.tsx:412)."
+  },
+  "textPanel.goToThisChapter": {
+    "description": "textPanel, the title of <button> (src/renderer/src/editor/panels/TextPanel.tsx:433)."
+  },
+  "textPanel.found": {
+    "description": "textPanel, text of <span> (src/renderer/src/editor/panels/TextPanel.tsx:443)."
+  },
+  "textPanel.deleteThisChapter": {
+    "description": "textPanel, the title of <button> (src/renderer/src/editor/panels/TextPanel.tsx:458)."
+  },
+  "textPanel.deleteTheChapter": {
+    "description": "Text tab: the spoken name of a chapter's Delete button; title is the chapter's name as the user wrote it.",
+    "user": [
+      "title"
+    ]
+  },
+  "textPanel.rename": {
+    "description": "textPanel, text of <span> (src/renderer/src/editor/panels/TextPanel.tsx:469)."
+  },
+  "textPanel.selectAllToEdit": {
+    "description": "Text tab: the tooltip of a list's Select all link; kind picks the list (texts, title cards, chapters), n is how many items it holds (2 or more)."
+  },
+  "shapesPanel.addAtPlayhead": {
+    "description": "shapesPanel, the title of <Section> (src/renderer/src/editor/panels/ShapesPanel.tsx:85)."
+  },
+  "shapesPanel.addAShape": {
+    "description": "shapesPanel, the aria-label of <div> (src/renderer/src/editor/panels/ShapesPanel.tsx:86)."
+  },
+  "shapesPanel.shapesStayOnThe": {
+    "description": "shapesPanel, text of <p> (src/renderer/src/editor/panels/ShapesPanel.tsx:101)."
+  },
+  "shapesPanel.spotlight": {
+    "description": "shapesPanel, the title of <Section> (src/renderer/src/editor/panels/ShapesPanel.tsx:104)."
+  },
+  "shapesPanel.addASpotlight": {
+    "description": "shapesPanel, the aria-label of <div> (src/renderer/src/editor/panels/ShapesPanel.tsx:105)."
+  },
+  "shapesPanel.noCursorDataIn": {
+    "description": "shapesPanel, the title of <button> (src/renderer/src/editor/panels/ShapesPanel.tsx:110)."
+  },
+  "shapesPanel.addCursorSpotlight": {
+    "description": "shapesPanel, the aria-label of <button> (src/renderer/src/editor/panels/ShapesPanel.tsx:111)."
+  },
+  "shapesPanel.followCursor": {
+    "description": "shapesPanel, text of <span> (src/renderer/src/editor/panels/ShapesPanel.tsx:115)."
+  },
+  "shapesPanel.addRegionSpotlight": {
+    "description": "shapesPanel, the aria-label of <button> (src/renderer/src/editor/panels/ShapesPanel.tsx:121)."
+  },
+  "shapesPanel.region": {
+    "description": "shapesPanel, text of <span> (src/renderer/src/editor/panels/ShapesPanel.tsx:125)."
+  },
+  "shapesPanel.addedItemsAppearOn": {
+    "description": "shapesPanel, text of <p> (src/renderer/src/editor/panels/ShapesPanel.tsx:133)."
+  },
+  "shapesPanel.inThisVideo": {
+    "description": "Shapes tab: the title of the list of shapes and spotlights, with how many it holds; n is the number."
+  },
+  "shapesPanel.selectAllShapesAnd": {
+    "description": "Shapes tab: the tooltip of the list's Select all link; n is how many items it holds (2 or more)."
+  },
+  "shapesPanel.privacyEffect": {
+    "description": "shapesPanel, the label of <Chips> (src/renderer/src/editor/panels/ShapesPanel.tsx:199)."
+  },
+  "shapesPanel.blurAmount": {
+    "description": "shapesPanel, the label of <Slider> (src/renderer/src/editor/panels/ShapesPanel.tsx:208)."
+  },
+  "shapesPanel.pixelSize": {
+    "description": "shapesPanel, the label of <Slider> (src/renderer/src/editor/panels/ShapesPanel.tsx:208)."
+  },
+  "shapesPanel.hidesWhatIsUnder": {
+    "description": "shapesPanel, text of <p> (src/renderer/src/editor/panels/ShapesPanel.tsx:216)."
+  },
+  "shapesPanel.filled": {
+    "description": "shapesPanel, the label of <Toggle> (src/renderer/src/editor/panels/ShapesPanel.tsx:227)."
+  },
+  "shapesPanel.lineWidth": {
+    "description": "shapesPanel, the label of <Slider> (src/renderer/src/editor/panels/ShapesPanel.tsx:230)."
+  },
+  "shapesPanel.dragItsEndsOn": {
+    "description": "shapesPanel, text of <p> (src/renderer/src/editor/panels/ShapesPanel.tsx:240)."
+  },
+  "shapesPanel.dragItOnThe": {
+    "description": "shapesPanel, text of <p> (src/renderer/src/editor/panels/ShapesPanel.tsx:240)."
+  },
+  "shapesPanel.selectedSpotlight": {
+    "description": "shapesPanel, the title of <Section> (src/renderer/src/editor/panels/ShapesPanel.tsx:295)."
+  },
+  "shapesPanel.spotlightFollows": {
+    "description": "shapesPanel, the label of <Chips> (src/renderer/src/editor/panels/ShapesPanel.tsx:298)."
+  },
+  "shapesPanel.spotlightShape": {
+    "description": "shapesPanel, the label of <Chips> (src/renderer/src/editor/panels/ShapesPanel.tsx:307)."
+  },
+  "shapesPanel.darkness": {
+    "description": "shapesPanel, the label of <Slider> (src/renderer/src/editor/panels/ShapesPanel.tsx:315)."
+  },
+  "shapesPanel.softEdge": {
+    "description": "shapesPanel, the label of <Slider> (src/renderer/src/editor/panels/ShapesPanel.tsx:316)."
+  },
+  "shapesPanel.followsTheCursorDrag": {
+    "description": "shapesPanel, text of <p> (src/renderer/src/editor/panels/ShapesPanel.tsx:333)."
+  },
+  "shapesPanel.dragTheLitArea": {
+    "description": "shapesPanel, text of <p> (src/renderer/src/editor/panels/ShapesPanel.tsx:333)."
+  },
+  "shapesPanel.notInTheVideo": {
+    "description": "shapesPanel, text of <p> (src/renderer/src/editor/panels/ShapesPanel.tsx:368)."
+  },
+  "shapesPanel.notOnScreenAt": {
+    "description": "shapesPanel, text of <p> (src/renderer/src/editor/panels/ShapesPanel.tsx:371)."
+  },
+  "shapesPanel.showItOnThe": {
+    "description": "shapesPanel, text of <button> (src/renderer/src/editor/panels/ShapesPanel.tsx:373)."
+  },
+  "shapesPanel.setToThePlayhead": {
+    "description": "Shapes tab: the button beside a time field that sets it to the playhead; label is the field's label (Starts at, Ends at)."
+  },
+  "shapesPanel.duplicateThis": {
+    "description": "Shapes tab: the tooltip of Duplicate; kind picks the selected item (a shape, a spotlight or a magnifier, in lower case)."
+  },
+  "shapesPanel.duplicate": {
+    "description": "shapesPanel, text of <button> (src/renderer/src/editor/panels/ShapesPanel.tsx:459)."
+  },
+  "calloutSection.animation": {
+    "description": "calloutSection, text of <span> (src/renderer/src/editor/panels/CalloutSection.tsx:49)."
+  },
+  "calloutSection.comesIn": {
+    "description": "calloutSection, the label of <SelectRow> (src/renderer/src/editor/panels/CalloutSection.tsx:68)."
+  },
+  "calloutSection.comesInOver": {
+    "description": "Text and Shapes tabs, Animation: the Speed slider's value: how long the item takes to come in; n is in seconds (\"0.25\"), s the symbol for seconds."
+  },
+  "calloutSection.goesOut": {
+    "description": "calloutSection, the label of <SelectRow> (src/renderer/src/editor/panels/CalloutSection.tsx:89)."
+  },
+  "calloutSection.chooseAnEffectTo": {
+    "description": "calloutSection, the title of <button> (src/renderer/src/editor/panels/CalloutSection.tsx:123)."
+  },
+  "bubbleSection.stepBadgesAndSpeech": {
+    "description": "bubbleSection, text of <span> (src/renderer/src/editor/panels/BubbleSection.tsx:47)."
+  },
+  "bubbleSection.addAStepBadge": {
+    "description": "bubbleSection, the aria-label of <div> (src/renderer/src/editor/panels/BubbleSection.tsx:49)."
+  },
+  "bubbleSection.addStepBadge": {
+    "description": "bubbleSection, text of <button> (src/renderer/src/editor/panels/BubbleSection.tsx:51)."
+  },
+  "bubbleSection.addSpeechBubble": {
+    "description": "bubbleSection, text of <button> (src/renderer/src/editor/panels/BubbleSection.tsx:54)."
+  },
+  "bubbleSection.theyStayOnTheir": {
+    "description": "bubbleSection, text of <p> (src/renderer/src/editor/panels/BubbleSection.tsx:57)."
+  },
+  "bubbleSection.speechBubble": {
+    "description": "bubbleSection, text of <span> (src/renderer/src/editor/panels/BubbleSection.tsx:69)."
+  },
+  "bubbleSection.tail": {
+    "description": "bubbleSection, the label of <RadioRow> (src/renderer/src/editor/panels/BubbleSection.tsx:74)."
+  },
+  "badgeSection.stepBadge": {
+    "description": "badgeSection, text of <span> (src/renderer/src/editor/panels/BadgeSection.tsx:74)."
+  },
+  "badgeSection.number": {
+    "description": "badgeSection, the label of <RadioRow> (src/renderer/src/editor/panels/BadgeSection.tsx:78)."
+  },
+  "badgeSection.badgeText": {
+    "description": "badgeSection, text of <span> (src/renderer/src/editor/panels/BadgeSection.tsx:88)."
+  },
+  "badgeSection.countWith": {
+    "description": "badgeSection, the label of <RadioRow> (src/renderer/src/editor/panels/BadgeSection.tsx:114)."
+  },
+  "badgeSection.restartAtEachChapter": {
+    "description": "badgeSection, the label of <SwitchRow> (src/renderer/src/editor/panels/BadgeSection.tsx:129)."
+  },
+  "badgeSection.startFrom": {
+    "description": "badgeSection, text of <span> (src/renderer/src/editor/panels/BadgeSection.tsx:136)."
+  },
+  "badgeSection.countsOn": {
+    "description": "badgeSection, the placeholder of <input> (src/renderer/src/editor/panels/BadgeSection.tsx:144)."
+  },
+  "badgeSection.followsTheZoom": {
+    "description": "badgeSection, the label of <SwitchRow> (src/renderer/src/editor/panels/BadgeSection.tsx:158)."
+  },
+  "calmMotionRow.calmMotion": {
+    "description": "calmMotionRow, the title of <Section> (src/renderer/src/editor/panels/CalmMotionRow.tsx:19)."
+  },
+  "calloutHandles.movableHandle": {
+    "description": "calloutHandles, the aria-roledescription of <div> (src/renderer/src/editor/CalloutHandles.tsx:190)."
+  },
+  "calloutHandles.dragOrMoveIt": {
+    "description": "calloutHandles, the title of <div> (src/renderer/src/editor/CalloutHandles.tsx:191)."
+  },
+  "calloutHandles.dragToMoveThe": {
+    "description": "calloutHandles, the title of <div> (src/renderer/src/editor/CalloutHandles.tsx:191)."
+  },
+  "graphicsPanel.addPopUpsFrom": {
+    "description": "graphicsPanel, the title of <Section> (src/renderer/src/editor/panels/GraphicsPanel.tsx:197)."
+  },
+  "graphicsPanel.generateCaptionsFirstPop": {
+    "description": "graphicsPanel, text of <p> (src/renderer/src/editor/panels/GraphicsPanel.tsx:198)."
+  },
+  "graphicsPanel.make": {
+    "description": "graphicsPanel, text of <span> (src/renderer/src/editor/panels/GraphicsPanel.tsx:200)."
+  },
+  "graphicsPanel.soundOnPopUps": {
+    "description": "graphicsPanel, text of <span> (src/renderer/src/editor/panels/GraphicsPanel.tsx:210)."
+  },
+  "graphicsPanel.addPopUpsFrom2": {
+    "description": "graphicsPanel, text of <button> (src/renderer/src/editor/panels/GraphicsPanel.tsx:217)."
+  },
+  "graphicsPanel.popUpsMadeHere": {
+    "description": "graphicsPanel, text of <p> (src/renderer/src/editor/panels/GraphicsPanel.tsx:232)."
+  },
+  "graphicsPanel.addAPopUp": {
+    "description": "graphicsPanel, the aria-label of <div> (src/renderer/src/editor/panels/GraphicsPanel.tsx:272)."
+  },
+  "graphicsPanel.popUps": {
+    "description": "Graphics tab (pop-ups): the title of the list of pop-ups, with how many it holds; n is the number."
+  },
+  "graphicsPanel.selectAllPopUps": {
+    "description": "graphicsPanel, the title of <button> (src/renderer/src/editor/panels/GraphicsPanel.tsx:308)."
+  },
+  "graphicsPanel.automatic": {
+    "description": "Graphics tab (pop-ups): after a pop-up's time and kind in the list (after a middle dot): Make my captions great or Add pop-ups made it."
+  },
+  "graphicsPanel.sameAsTheCaptions": {
+    "description": "graphicsPanel, the label of <Toggle> (src/renderer/src/editor/panels/GraphicsPanel.tsx:384)."
+  },
+  "graphicsPanel.accent": {
+    "description": "graphicsPanel, the label of <ColorDots> (src/renderer/src/editor/panels/GraphicsPanel.tsx:391)."
+  },
+  "graphicsPanel.comesIn": {
+    "description": "graphicsPanel, text of <span> (src/renderer/src/editor/panels/GraphicsPanel.tsx:407)."
+  },
+  "graphicsPanel.goesOut": {
+    "description": "graphicsPanel, text of <span> (src/renderer/src/editor/panels/GraphicsPanel.tsx:417)."
+  },
+  "graphicsPanel.placedAutomatically": {
+    "description": "graphicsPanel, text of <p> (src/renderer/src/editor/panels/GraphicsPanel.tsx:429)."
+  },
+  "graphicsPanel.placedByYou": {
+    "description": "graphicsPanel, text of <p> (src/renderer/src/editor/panels/GraphicsPanel.tsx:429)."
+  },
+  "graphicsPanel.placeAutomatically": {
+    "description": "graphicsPanel, text of <button> (src/renderer/src/editor/panels/GraphicsPanel.tsx:432)."
+  },
+  "graphicsPanel.keptClearOfThe": {
+    "description": "graphicsPanel, text of <p> (src/renderer/src/editor/panels/GraphicsPanel.tsx:436)."
+  },
+  "graphicsPanel.madeAutomaticallyEditingIt": {
+    "description": "graphicsPanel, text of <p> (src/renderer/src/editor/panels/GraphicsPanel.tsx:445)."
+  },
+  "graphicsPanel.deletePopUp": {
+    "description": "graphicsPanel, text of <button> (src/renderer/src/editor/panels/GraphicsPanel.tsx:457)."
+  },
+  "graphicsPanel.replacesItsCaptionWords": {
+    "description": "graphicsPanel, text of <p> (src/renderer/src/editor/panels/GraphicsPanel.tsx:488)."
+  },
+  "graphicsPanel.replaceTheCaption": {
+    "description": "graphicsPanel, the label of <Toggle> (src/renderer/src/editor/panels/GraphicsPanel.tsx:489)."
+  },
+  "graphicsPanel.emoji": {
+    "description": "graphicsPanel, text of <span> (src/renderer/src/editor/panels/GraphicsPanel.tsx:504)."
+  },
+  "graphicsPanel.notInThisVersion": {
+    "description": "graphicsPanel, text of <p> (src/renderer/src/editor/panels/GraphicsPanel.tsx:514)."
+  },
+  "graphicsPanel.searchEmojiByName": {
+    "description": "graphicsPanel, the aria-label of <input> (src/renderer/src/editor/panels/GraphicsPanel.tsx:517)."
+  },
+  "graphicsPanel.searchFireBulbCheck": {
+    "description": "graphicsPanel, the placeholder of <input> (src/renderer/src/editor/panels/GraphicsPanel.tsx:517)."
+  },
+  "graphicsPanel.noEmojiCalled": {
+    "description": "Graphics tab (pop-ups): the emoji search found nothing; query is what the user typed.",
+    "user": [
+      "query"
+    ]
+  },
+  "graphicsPanel.from": {
+    "description": "graphicsPanel, the label of <NumberField> (src/renderer/src/editor/panels/GraphicsPanel.tsx:557)."
+  },
+  "graphicsPanel.to": {
+    "description": "graphicsPanel, the label of <NumberField> (src/renderer/src/editor/panels/GraphicsPanel.tsx:558)."
+  },
+  "graphicsPanel.decimals": {
+    "description": "graphicsPanel, text of <span> (src/renderer/src/editor/panels/GraphicsPanel.tsx:561)."
+  },
+  "graphicsPanel.before": {
+    "description": "graphicsPanel, text of <span> (src/renderer/src/editor/panels/GraphicsPanel.tsx:575)."
+  },
+  "graphicsPanel.after": {
+    "description": "graphicsPanel, text of <span> (src/renderer/src/editor/panels/GraphicsPanel.tsx:579)."
+  },
+  "graphicsPanel.label": {
+    "description": "graphicsPanel, text of <span> (src/renderer/src/editor/panels/GraphicsPanel.tsx:584)."
+  },
+  "graphicsPanel.growth": {
+    "description": "graphicsPanel, the placeholder of <input> (src/renderer/src/editor/panels/GraphicsPanel.tsx:585)."
+  },
+  "graphicsPanel.countFor": {
+    "description": "graphicsPanel, the label of <Slider> (src/renderer/src/editor/panels/GraphicsPanel.tsx:587)."
+  },
+  "graphicsPanel.items": {
+    "description": "graphicsPanel, the aria-label of <ol> (src/renderer/src/editor/panels/GraphicsPanel.tsx:602)."
+  },
+  "graphicsPanel.item": {
+    "description": "Graphics tab (pop-ups): a list card's item (\"Item {n}\"); n is its number in the list."
+  },
+  "graphicsPanel.showAt": {
+    "description": "Graphics tab (pop-ups): when a list card's item shows; time is where in the video (\"0:12\")."
+  },
+  "graphicsPanel.showItemFromThe": {
+    "description": "Graphics tab (pop-ups): a list card's item (\"Show item {n} from the playhead\"); n is its number in the list."
+  },
+  "graphicsPanel.playhead": {
+    "description": "graphicsPanel, text of <button> (src/renderer/src/editor/panels/GraphicsPanel.tsx:614)."
+  },
+  "graphicsPanel.removeItem": {
+    "description": "Graphics tab (pop-ups): a list card's item (\"Remove item {n}\"); n is its number in the list."
+  },
+  "graphicsPanel.addItem": {
+    "description": "graphicsPanel, text of <button> (src/renderer/src/editor/panels/GraphicsPanel.tsx:626)."
+  },
+  "graphicsPanel.marker": {
+    "description": "graphicsPanel, text of <span> (src/renderer/src/editor/panels/GraphicsPanel.tsx:630)."
+  },
+  "graphicsPanel.original": {
+    "description": "graphicsPanel, the label of <optgroup> (src/renderer/src/editor/panels/GraphicsPanel.tsx:667)."
+  },
+  "graphicsTrack.popUpsMadeFrom": {
+    "description": "graphicsTrack, the title of <div> (src/renderer/src/editor/GraphicsTrack.tsx:107)."
+  },
+  "graphicsTrack.popUps": {
+    "description": "graphicsTrack, the title of <div> (src/renderer/src/editor/GraphicsTrack.tsx:146)."
+  },
+  "graphicHandle.dragTheCaptionsTo": {
+    "description": "graphicHandle, the title of <div> (src/renderer/src/editor/GraphicHandle.tsx:153)."
+  },
+  "graphicHandle.dragOrUseThe": {
+    "description": "graphicHandle, the aria-label of <button> (src/renderer/src/editor/GraphicHandle.tsx:168)."
+  },
+  "imagesPanel.imagesAndStickers": {
+    "description": "imagesPanel, the title of <Section> (src/renderer/src/editor/panels/ImagesPanel.tsx:50)."
+  },
+  "imagesPanel.adding": {
+    "description": "imagesPanel, text of <button> (src/renderer/src/editor/panels/ImagesPanel.tsx:52)."
+  },
+  "imagesPanel.addImage": {
+    "description": "imagesPanel, text of <button> (src/renderer/src/editor/panels/ImagesPanel.tsx:52)."
+  },
+  "imagesPanel.stickers": {
+    "description": "imagesPanel, the title of <Section> (src/renderer/src/editor/panels/ImagesPanel.tsx:62)."
+  },
+  "imagesPanel.addSticker": {
+    "description": "imagesPanel, the aria-label of <button> (src/renderer/src/editor/panels/ImagesPanel.tsx:68)."
+  },
+  "imagesPanel.addStickerAtThe": {
+    "description": "imagesPanel, the title of <button> (src/renderer/src/editor/panels/ImagesPanel.tsx:69)."
+  },
+  "imagesPanel.selectedImage": {
+    "description": "imagesPanel, the title of <Section> (src/renderer/src/editor/panels/ImagesPanel.tsx:104)."
+  },
+  "imagesPanel.itIsLeftOut": {
+    "description": "imagesPanel, text of <span> (src/renderer/src/editor/panels/ImagesPanel.tsx:118)."
+  },
+  "imagesPanel.positionX": {
+    "description": "imagesPanel, the label of <Slider> (src/renderer/src/editor/panels/ImagesPanel.tsx:121)."
+  },
+  "imagesPanel.positionY": {
+    "description": "imagesPanel, the label of <Slider> (src/renderer/src/editor/panels/ImagesPanel.tsx:122)."
+  },
+  "imagesPanel.rotation": {
+    "description": "imagesPanel, the label of <Slider> (src/renderer/src/editor/panels/ImagesPanel.tsx:125)."
+  },
+  "imagesPanel.fadeIn": {
+    "description": "imagesPanel, the label of <Slider> (src/renderer/src/editor/panels/ImagesPanel.tsx:134)."
+  },
+  "imagesPanel.fadeOut": {
+    "description": "imagesPanel, the label of <Slider> (src/renderer/src/editor/panels/ImagesPanel.tsx:135)."
+  },
+  "imagesPanel.tipDragOnThe": {
+    "description": "imagesPanel, text of <p> (src/renderer/src/editor/panels/ImagesPanel.tsx:136)."
+  },
+  "imagesPanel.backToTheImage": {
+    "description": "imagesPanel, the title of <button> (src/renderer/src/editor/panels/ImagesPanel.tsx:139)."
+  },
+  "imagesPanel.resetShape": {
+    "description": "imagesPanel, text of <button> (src/renderer/src/editor/panels/ImagesPanel.tsx:140)."
+  },
+  "imagesPanel.deleteImage": {
+    "description": "imagesPanel, text of <button> (src/renderer/src/editor/panels/ImagesPanel.tsx:150)."
+  },
+  "imagesPanel.imagesInThisVideo": {
+    "description": "imagesPanel, the title of <Section> (src/renderer/src/editor/panels/ImagesPanel.tsx:163)."
+  },
+  "overlayEditor.dragToMoveArrow": {
+    "description": "overlayEditor, the aria-label of <div> (src/renderer/src/editor/OverlayEditor.tsx:150)."
+  },
+  "overlayEditor.dragToMoveHandles": {
+    "description": "overlayEditor, the title of <div> (src/renderer/src/editor/OverlayEditor.tsx:151)."
+  },
+  "overlayEditor.dragToRotateShift": {
+    "description": "overlayEditor, the title of <span> (src/renderer/src/editor/OverlayEditor.tsx:170)."
+  },
+  "overlayEditor.dragToPlaceIt": {
+    "description": "Preview, a newly added image: what to do with it, before a Done link; label is the image's name.",
+    "user": [
+      "label"
+    ]
+  },
+  "overlayTrack.doubleClickToAdd": {
+    "description": "overlayTrack, the title of <div> (src/renderer/src/editor/OverlayTrack.tsx:128)."
+  },
+  "overlayTrack.imagesAndStickers": {
+    "description": "overlayTrack, the title of <div> (src/renderer/src/editor/OverlayTrack.tsx:166)."
+  },
+  "overlayDropZone.dropAnImageTo": {
+    "description": "overlayDropZone, text of <span> (src/renderer/src/editor/OverlayDropZone.tsx:87)."
+  },
+  "overlayItems.thisVideoAlreadyHas": {
+    "description": "overlayItems, a message given to Error (src/renderer/src/editor/overlayItems.ts:34)."
+  },
+  "overlayItems.theFileIsToo": {
+    "description": "overlayItems, a message given to Error (src/renderer/src/editor/overlayItems.ts:92)."
+  },
+  "overlayItems.thePastedImageIs": {
+    "description": "overlayItems, a message given to Error (src/renderer/src/editor/overlayItems.ts:128)."
+  },
+  "titleTrack.chaptersDoubleClickTo": {
+    "description": "titleTrack, the title of <div> (src/renderer/src/editor/TitleTrack.tsx:166)."
+  },
+  "titleTrack.chapter": {
+    "description": "titleTrack, text of <span> (src/renderer/src/editor/TitleTrack.tsx:177)."
+  },
+  "titleTrack.doubleClickToAdd": {
+    "description": "titleTrack, the title of <div> (src/renderer/src/editor/TitleTrack.tsx:182)."
+  },
+  "titleTrack.titleCardsAndChapters": {
+    "description": "titleTrack, the title of <div> (src/renderer/src/editor/TitleTrack.tsx:218)."
+  },
+  "fontPicker.downloadingOf": {
+    "description": "fontPicker, text of <span> (src/renderer/src/editor/panels/FontPicker.tsx:175)."
+  },
+  "fontPicker.download": {
+    "description": "Font menu (texts, title cards, pop-ups, captions): the button that downloads a catalogue font; size is its download size (\"9.6 MB\")."
+  },
+  "fontPicker.thisVideoAlreadyHas": {
+    "description": "fontPicker, a message given to Error (src/renderer/src/editor/panels/FontPicker.tsx:258)."
+  },
+  "fontPicker.default": {
+    "description": "fontPicker, text of <option> (src/renderer/src/editor/panels/FontPicker.tsx:279)."
+  },
+  "fontPicker.captionFonts": {
+    "description": "fontPicker, the label of <optgroup> (src/renderer/src/editor/panels/FontPicker.tsx:282)."
+  },
+  "fontPicker.yourBrandFonts": {
+    "description": "fontPicker, the label of <optgroup> (src/renderer/src/editor/panels/FontPicker.tsx:290)."
+  },
+  "fontPicker.addATtfOtf": {
+    "description": "fontPicker, the title of <button> (src/renderer/src/editor/panels/FontPicker.tsx:316)."
+  },
+  "fontPicker.addFont": {
+    "description": "fontPicker, text of <button> (src/renderer/src/editor/panels/FontPicker.tsx:317)."
+  },
+  "fontPicker.addingTheFont": {
+    "description": "fontPicker, text of <span> (src/renderer/src/editor/panels/FontPicker.tsx:320)."
+  },
+  "fontPicker.oneWeight": {
+    "description": "fontPicker, text of <span> (src/renderer/src/editor/panels/FontPicker.tsx:324)."
+  },
+  "chapterBarSection.progressBar": {
+    "description": "chapterBarSection, the title of <Section> (src/renderer/src/editor/panels/ChapterBarSection.tsx:39)."
+  },
+  "chapterBarSection.progressBarOnThe": {
+    "description": "chapterBarSection, the label of <Switch> (src/renderer/src/editor/panels/ChapterBarSection.tsx:41)."
+  },
+  "chapterBarSection.place": {
+    "description": "chapterBarSection, the label of <RadioChips> (src/renderer/src/editor/panels/ChapterBarSection.tsx:46)."
+  },
+  "chapterBarSection.chapterNames": {
+    "description": "chapterBarSection, the label of <RadioChips> (src/renderer/src/editor/panels/ChapterBarSection.tsx:68)."
+  },
+  "chapterBarSection.showOnlyWhenA": {
+    "description": "chapterBarSection, the label of <Switch> (src/renderer/src/editor/panels/ChapterBarSection.tsx:81)."
+  },
+  "chapterBarSection.otherColour": {
+    "description": "chapterBarSection, the title of <label> (src/renderer/src/editor/panels/ChapterBarSection.tsx:134)."
+  },
+  "progressBarLink.progressBar": {
+    "description": "progressBarLink, the title of <Section> (src/renderer/src/editor/panels/ProgressBarLink.tsx:13)."
+  },
+  "progressBarLink.aThinBarThat": {
+    "description": "progressBarLink, text of <span> (src/renderer/src/editor/panels/ProgressBarLink.tsx:15)."
+  },
+  "progressBarLink.progressBar2": {
+    "description": "progressBarLink, text of <button> (src/renderer/src/editor/panels/ProgressBarLink.tsx:25)."
+  },
+  "contrastMeter.pauseTheVideoTo": {
+    "description": "contrastMeter, text of <p> (src/renderer/src/editor/panels/ContrastMeter.tsx:60)."
+  },
+  "contrastMeter.strengthenTheOutlineOr": {
+    "description": "contrastMeter, the title of <button> (src/renderer/src/editor/panels/ContrastMeter.tsx:72)."
+  },
+  "contrastMeter.fix": {
+    "description": "contrastMeter, text of <button> (src/renderer/src/editor/panels/ContrastMeter.tsx:73)."
+  },
   "shape.arrow": {
     "description": "The name of a shape kind (arrow): the Shapes tab’s add buttons, its list, the timeline and the Selection view."
   },
@@ -139,5 +739,479 @@
   },
   "graphic.list": {
     "description": "The name of a pop-up kind (list): the Graphics tab, its track and the Selection view."
+  },
+  "textPanel.addTextHint": {
+    "description": "Text tab: the hint under Add text at playhead; has is yes when adding text has a shortcut, keys is the shortcut's keycaps (never translated)."
+  },
+  "textPanel.addTitleHint": {
+    "description": "Text tab: the hint under Add title card; has is yes when adding a title card has a shortcut, keys is the shortcut's keycaps (never translated)."
+  },
+  "textPanel.addChapterHint": {
+    "description": "Text tab: the hint under Add chapter at playhead; has is yes when adding a chapter has a shortcut, keys is the shortcut's keycaps (never translated). MP4, MOV, WebM and M4A are file formats (keep them)."
+  },
+  "textPanel.chapterKeys": {
+    "description": "Text tab: a sentence after the chapters hint; next and prev are the keycaps of the next- and previous-chapter shortcuts (never translated)."
+  },
+  "textPanel.titleCardsNone": {
+    "description": "textPanel, the title of <Section> (src/renderer/src/editor/panels/TextPanel.tsx:181)."
+  },
+  "textPanel.chaptersNone": {
+    "description": "textPanel, the title of <Section> (src/renderer/src/editor/panels/TextPanel.tsx:407)."
+  },
+  "annotationStyle.pill": {
+    "description": "Text tab: a text's style, a chip of Text style (\"Caption pill\")."
+  },
+  "annotationStyle.badge": {
+    "description": "Text tab: a text's style, a chip of Text style (\"Step badge\")."
+  },
+  "annotationStyle.bubble": {
+    "description": "Text tab: a text's style, a chip of Text style (\"Speech bubble\")."
+  },
+  "textPanel.sizePercent": {
+    "description": "Text tab: the Size slider's value, in percent of the frame's height (\"4.5%\")."
+  },
+  "textPanel.addTitleTitle": {
+    "description": "Text tab: the tooltip of Add title card (the shortcut follows in brackets)."
+  },
+  "textPanel.deleteTitleTitle": {
+    "description": "Text tab: the tooltip of Delete title card (the shortcut follows in brackets)."
+  },
+  "textPanel.addChapterTitle": {
+    "description": "Text tab: the tooltip of Add chapter at playhead (the shortcut follows in brackets)."
+  },
+  "textPanel.chapterLeftOut": {
+    "description": "Text tab: where the selected chapter is in the exported video: nowhere, it is at the very end."
+  },
+  "textPanel.chapterInCut": {
+    "description": "Text tab: where the selected chapter is in the exported video when it is in a cut part; at is the time (\"1:02\")."
+  },
+  "textPanel.chapterAt": {
+    "description": "Text tab: where the selected chapter is in the exported video; at is the time (\"1:02\")."
+  },
+  "textPanel.chapterNameAt": {
+    "description": "Text tab: the spoken name of a chapter's name field in the list; time is where it starts (\"1:02\"); found is yes for a chapter Find chapters added that nobody reviewed yet."
+  },
+  "shapesPanel.addKind": {
+    "description": "Shapes tab: the spoken name of a shape button under Add at playhead; kind picks the shape (text.shape.*, in lower case)."
+  },
+  "shapesPanel.cursorSpotlightTitle": {
+    "description": "Shapes tab: the tooltip of a spotlight button (the shortcut follows in brackets)."
+  },
+  "shapesPanel.regionSpotlightTitle": {
+    "description": "Shapes tab: the tooltip of a spotlight button (the shortcut follows in brackets)."
+  },
+  "shapesPanel.times": {
+    "description": "Shapes tab: how much a magnifier enlarges (\"2 times\", \"1.5 times\"); n is the factor."
+  },
+  "shapesPanel.magnifierName": {
+    "description": "Shapes tab: a magnifier's name in the list; times is how much it enlarges (text.shapesPanel.times)."
+  },
+  "shapesPanel.cursorSpotlightName": {
+    "description": "Shapes tab: a spotlight that follows the cursor, its name in the list."
+  },
+  "shapesPanel.spotlightName": {
+    "description": "Shapes tab: a spotlight placed on the recording, its name in the list."
+  },
+  "shapesPanel.selectedKind": {
+    "description": "Shapes tab: the title of the selected shape's section; kind picks the shape (text.shape.*, in lower case)."
+  },
+  "shapesPanel.blurTitle": {
+    "description": "Shapes tab: the tooltip of the Blur chip of Privacy effect."
+  },
+  "shapesPanel.pixelateTitle": {
+    "description": "Shapes tab: the tooltip of the Pixelate chip of Privacy effect."
+  },
+  "shapesPanel.px": {
+    "description": "Shapes tab: the Line width slider's value in pixels (\"2.5 px\"); px is the symbol for pixels."
+  },
+  "shapesPanel.followsCursor": {
+    "description": "Shapes tab: a chip of Spotlight follows: the cursor."
+  },
+  "shapesPanel.followsCursorTitle": {
+    "description": "Shapes tab: the tooltip of the Cursor chip of Spotlight follows."
+  },
+  "shapesPanel.followsRegionTitle": {
+    "description": "Shapes tab: the tooltip of the Region chip of Spotlight follows."
+  },
+  "shapesPanel.spotEllipse": {
+    "description": "Shapes tab: a chip of Spotlight shape: round."
+  },
+  "shapesPanel.spotRectangle": {
+    "description": "Shapes tab: a chip of Spotlight shape: with corners."
+  },
+  "shapesPanel.startsAt": {
+    "description": "Shapes tab: the label of an item's start time field, in seconds."
+  },
+  "shapesPanel.endsAt": {
+    "description": "Shapes tab: the label of an item's end time field, in seconds."
+  },
+  "shapesPanel.deleteThis": {
+    "description": "Shapes tab: the tooltip of Delete (the shortcut follows in brackets); kind picks the selected item (a shape, a spotlight or a magnifier, in lower case)."
+  },
+  "graphicsPanel.keywordLabel": {
+    "description": "Graphics tab (pop-ups): a keyword pop-up as named in lists: its text in quotation marks; text is what the user typed.",
+    "user": [
+      "text"
+    ]
+  },
+  "graphicsPanel.listLabel": {
+    "description": "Graphics tab (pop-ups): a list card as named in lists; title is its title as the user wrote it.",
+    "user": [
+      "title"
+    ]
+  },
+  "graphicsPanel.listItems": {
+    "description": "Graphics tab (pop-ups): a list card with no title, as named in lists; n is how many items it holds."
+  },
+  "graphicsPanel.generate.keywords": {
+    "description": "Graphics tab (pop-ups): a chip of Make under Add pop-ups from captions: what kind of pop-ups to make (\"Keywords\")."
+  },
+  "graphicsPanel.generate.emoji": {
+    "description": "Graphics tab (pop-ups): a chip of Make under Add pop-ups from captions: what kind of pop-ups to make (\"Emoji\")."
+  },
+  "graphicsPanel.generate.counters": {
+    "description": "Graphics tab (pop-ups): a chip of Make under Add pop-ups from captions: what kind of pop-ups to make (\"Counters\")."
+  },
+  "graphicsPanel.generate.lists": {
+    "description": "Graphics tab (pop-ups): a chip of Make under Add pop-ups from captions: what kind of pop-ups to make (\"Lists\")."
+  },
+  "graphicsPanel.generate.speakers": {
+    "description": "Graphics tab (pop-ups): a chip of Make under Add pop-ups from captions: what kind of pop-ups to make (\"Speakers\")."
+  },
+  "graphicsPanel.generate.chapters": {
+    "description": "Graphics tab (pop-ups): a chip of Make under Add pop-ups from captions: what kind of pop-ups to make (\"Chapters\")."
+  },
+  "graphicsPanel.generate.quotes": {
+    "description": "Graphics tab (pop-ups): a chip of Make under Add pop-ups from captions: what kind of pop-ups to make (\"Quotes\")."
+  },
+  "graphicsPanel.addKind.keyword": {
+    "description": "Graphics tab (pop-ups): an item of the Add menu: the kind of pop-up it adds (\"Keyword pop-up\")."
+  },
+  "graphicsPanel.addKind.emoji": {
+    "description": "Graphics tab (pop-ups): an item of the Add menu: the kind of pop-up it adds (\"Emoji\")."
+  },
+  "graphicsPanel.addKind.counter": {
+    "description": "Graphics tab (pop-ups): an item of the Add menu: the kind of pop-up it adds (\"Counter\")."
+  },
+  "graphicsPanel.addKind.list": {
+    "description": "Graphics tab (pop-ups): an item of the Add menu: the kind of pop-up it adds (\"List card\")."
+  },
+  "graphicsPanel.added": {
+    "description": "Graphics tab (pop-ups): a notice after Add pop-ups from captions; n is how many were added."
+  },
+  "graphicsPanel.popUpsList": {
+    "description": "graphicsPanel, the aria-label of <ul> (src/renderer/src/editor/panels/GraphicsPanel.tsx:314)."
+  },
+  "graphicsPanel.selectedKind": {
+    "description": "Graphics tab (pop-ups): the title of the selected pop-up's section; kind picks its kind (lower case)."
+  },
+  "graphicsPanel.deleteThisPopUp": {
+    "description": "Graphics tab (pop-ups): the tooltip of Delete pop-up (the shortcut follows in brackets)."
+  },
+  "graphicsPanel.look.card": {
+    "description": "Graphics tab (pop-ups): a chip of a keyword pop-up's Look (\"Card\")."
+  },
+  "graphicsPanel.look.plain": {
+    "description": "Graphics tab (pop-ups): a chip of a keyword pop-up's Look (\"Plain\")."
+  },
+  "graphicsPanel.look.outline": {
+    "description": "Graphics tab (pop-ups): a chip of a keyword pop-up's Look (\"Outline\")."
+  },
+  "graphicsPanel.look.tag": {
+    "description": "Graphics tab (pop-ups): a chip of a keyword pop-up's Look (\"Tag\")."
+  },
+  "graphicsPanel.marker.bullet": {
+    "description": "Graphics tab (pop-ups): a chip of a list card's Marker (\"Bullets\")."
+  },
+  "graphicsPanel.marker.check": {
+    "description": "Graphics tab (pop-ups): a chip of a list card's Marker (\"Ticks\")."
+  },
+  "graphicsPanel.seconds": {
+    "description": "Graphics tab (pop-ups): the Count for slider's value in seconds (\"1.5 s\"); s is the symbol for seconds."
+  },
+  "calloutSection.privacyNote": {
+    "description": "Text and Shapes tabs, Animation: why a blur or pixelate shape has no animation."
+  },
+  "calloutSection.seconds": {
+    "description": "Text and Shapes tabs, Animation: the Speed slider's value as a screen reader says it (\"0.25 seconds\")."
+  },
+  "calloutSection.playTheSound": {
+    "description": "Text and Shapes tabs, Animation: the spoken name of the Sound row's Play button while no library effect is chosen."
+  },
+  "bubbleSection.white": {
+    "description": "Text tab, step badges and speech bubbles: a speech bubble colour (white, with dark text)."
+  },
+  "bubbleSection.dark": {
+    "description": "Text tab, step badges and speech bubbles: a speech bubble colour (dark, with light text)."
+  },
+  "bubbleSection.brandColour": {
+    "description": "Text tab, step badges and speech bubbles: the name of a brand kit colour among the swatches; n is its number in the kit, colour its hex code (\"#ff8800\")."
+  },
+  "bubbleSection.addStepBadgeTitle": {
+    "description": "Text tab, step badges and speech bubbles: the tooltip of Add step badge (the shortcut follows in brackets)."
+  },
+  "bubbleSection.addSpeechBubbleTitle": {
+    "description": "Text tab, step badges and speech bubbles: the tooltip of Add speech bubble (the shortcut follows in brackets)."
+  },
+  "bubbleSection.pointing": {
+    "description": "Text tab, step badges and speech bubbles: a choice of a speech bubble's Tail: it points at something."
+  },
+  "badgeSection.blue": {
+    "description": "Text tab, step badges and speech bubbles: the default badge colour among the swatches; colour is its hex code."
+  },
+  "badgeSection.automaticAs": {
+    "description": "Text tab, step badges and speech bubbles: a choice of a badge's Number: counted for you; label is the number it shows now (\"3\", \"C\")."
+  },
+  "badgeSection.automatic": {
+    "description": "Text tab, step badges and speech bubbles: a choice of a badge's Number: counted for you."
+  },
+  "badgeSection.ownText": {
+    "description": "Text tab, step badges and speech bubbles: a choice of a badge's Number: text the user types."
+  },
+  "badgeSection.digitsSample": {
+    "description": "Text tab, step badges and speech bubbles: the spoken name of a Count with choice in another script; label names the digits (\"Bangla digits\"), sample shows them (\"১ ২ ৩\")."
+  },
+  "badgeSection.keepTwoChapters": {
+    "description": "Text tab, step badges and speech bubbles: why Restart at each chapter is off while found chapters wait for review."
+  },
+  "badgeSection.addTwoChapters": {
+    "description": "Text tab, step badges and speech bubbles: why Restart at each chapter is off."
+  },
+  "badgeSection.followsHint": {
+    "description": "Text tab, step badges and speech bubbles: the hint of Follows the zoom while it is on."
+  },
+  "badgeSection.staysHint": {
+    "description": "Text tab, step badges and speech bubbles: the hint of Follows the zoom while it is off."
+  },
+  "badgeSection.atMost": {
+    "description": "Text tab, step badges and speech bubbles: a badge's own text is too long; n is how many letters it may have."
+  },
+  "badgeSection.banglaDigits": {
+    "description": "Text tab, step badges and speech bubbles: a choice of Count with: count in Bangla digits."
+  },
+  "badgeSection.languageDigits": {
+    "description": "Text tab, step badges and speech bubbles: a choice of Count with: count in the digits of the captions' language; language is its name, in English (\"Hindi\")."
+  },
+  "calmMotionRow.hint": {
+    "description": "Effects tab, Calm motion: what the switch does."
+  },
+  "calloutHandles.at": {
+    "description": "Preview, step badge and speech bubble handles: where a handle is on the frame, as a screen reader says it: x across and y down, in percent of the frame."
+  },
+  "calloutHandles.badgeOn": {
+    "description": "Preview, step badge and speech bubble handles: a step badge's handle, its spoken name and what is said after moving it; at is where (text.calloutHandles.at)."
+  },
+  "calloutHandles.badgeLabelOn": {
+    "description": "Preview, step badge and speech bubble handles: a step badge's handle, its spoken name; label is what the badge shows (\"3\"), at is where (text.calloutHandles.at)."
+  },
+  "calloutHandles.tailTo": {
+    "description": "Preview, step badge and speech bubble handles: a speech bubble's tail handle, its spoken name and what is said after moving it; at is where (text.calloutHandles.at)."
+  },
+  "calloutHandles.bubble": {
+    "description": "Preview, step badge and speech bubble handles: the spoken name of a speech bubble's handle."
+  },
+  "track.inGroup": {
+    "description": "Timeline tracks (text, shapes, pop-ups, images, title cards): the end of a block's tooltip while it is in the selected group (after a middle dot); n is how many items are selected."
+  },
+  "track.selectSeveral": {
+    "description": "Timeline tracks (text, shapes, pop-ups, images, title cards): the end of a block's tooltip (after a middle dot): how to select several."
+  },
+  "graphicsTrack.automatic": {
+    "description": "Timeline tracks (text, shapes, pop-ups, images, title cards): after a pop-up's kind in its tooltip: made automatically."
+  },
+  "titleTrack.dragToMove": {
+    "description": "Timeline tracks (text, shapes, pop-ups, images, title cards): in a chapter flag's tooltip, after its time (after a middle dot)."
+  },
+  "titleTrack.addChapterHint": {
+    "description": "Timeline tracks (text, shapes, pop-ups, images, title cards): the empty chapter strip (or the shortcut follows)."
+  },
+  "titleTrack.addTitleHint": {
+    "description": "Timeline tracks (text, shapes, pop-ups, images, title cards): the empty title card lane (or the shortcut follows)."
+  },
+  "overlayDropZone.onlyImages": {
+    "description": "Images: a dropped file is not an image Flown takes. PNG, JPG, WebP, SVG and GIF are file formats (keep them)."
+  },
+  "overlayDropZone.addedName": {
+    "description": "Images: a notice after a dropped image was added; name is its file name.",
+    "user": [
+      "name"
+    ]
+  },
+  "overlayDropZone.added": {
+    "description": "Images: a notice after a dropped image with no name was added."
+  },
+  "imagesPanel.dropHint": {
+    "description": "Images tab: the hint under Add image; keys is the paste shortcut's keycaps (never translated). PNG, JPG, WebP, SVG and GIF are file formats (keep them)."
+  },
+  "imagesPanel.animatedFrames": {
+    "description": "Images tab: after the selected image's name (after a middle dot): it is a GIF with more than one frame; n is how many."
+  },
+  "imagesPanel.seconds": {
+    "description": "Images tab: a fade slider's value in seconds (\"0.5 s\"); s is the symbol for seconds."
+  },
+  "fontPicker.missingFont": {
+    "description": "Font menu (texts, title cards, pop-ups, captions): a project font whose file is gone, in the menu; name is the font's name, fallback the font drawn instead.",
+    "user": [
+      "name"
+    ]
+  },
+  "fontPicker.script.latin": {
+    "description": "Font menu (texts, title cards, pop-ups, captions): the letters a catalogue font has, under the menu (\"Latin\"), joined by middle dots."
+  },
+  "fontPicker.script.cyrillic": {
+    "description": "Font menu (texts, title cards, pop-ups, captions): the letters a catalogue font has, under the menu (\"Cyrillic\"), joined by middle dots."
+  },
+  "fontPicker.script.greek": {
+    "description": "Font menu (texts, title cards, pop-ups, captions): the letters a catalogue font has, under the menu (\"Greek\"), joined by middle dots."
+  },
+  "fontPicker.script.vietnamese": {
+    "description": "Font menu (texts, title cards, pop-ups, captions): the letters a catalogue font has, under the menu (\"Vietnamese\"), joined by middle dots."
+  },
+  "fontPicker.script.bengali": {
+    "description": "Font menu (texts, title cards, pop-ups, captions): the letters a catalogue font has, under the menu (\"Bengali\"), joined by middle dots."
+  },
+  "fontPicker.script.devanagari": {
+    "description": "Font menu (texts, title cards, pop-ups, captions): the letters a catalogue font has, under the menu (\"Devanagari\"), joined by middle dots."
+  },
+  "fontPicker.script.arabic": {
+    "description": "Font menu (texts, title cards, pop-ups, captions): the letters a catalogue font has, under the menu (\"Arabic\"), joined by middle dots."
+  },
+  "fontPicker.script.hebrew": {
+    "description": "Font menu (texts, title cards, pop-ups, captions): the letters a catalogue font has, under the menu (\"Hebrew\"), joined by middle dots."
+  },
+  "fontPicker.script.thai": {
+    "description": "Font menu (texts, title cards, pop-ups, captions): the letters a catalogue font has, under the menu (\"Thai\"), joined by middle dots."
+  },
+  "fontPicker.script.hanSc": {
+    "description": "Font menu (texts, title cards, pop-ups, captions): the letters a catalogue font has, under the menu (\"Chinese (Simplified)\"), joined by middle dots."
+  },
+  "fontPicker.script.hanTc": {
+    "description": "Font menu (texts, title cards, pop-ups, captions): the letters a catalogue font has, under the menu (\"Chinese (Traditional)\"), joined by middle dots."
+  },
+  "fontPicker.script.japanese": {
+    "description": "Font menu (texts, title cards, pop-ups, captions): the letters a catalogue font has, under the menu (\"Japanese\"), joined by middle dots."
+  },
+  "fontPicker.script.korean": {
+    "description": "Font menu (texts, title cards, pop-ups, captions): the letters a catalogue font has, under the menu (\"Korean\"), joined by middle dots."
+  },
+  "fontPicker.letters.bn": {
+    "description": "Font menu (texts, title cards, pop-ups, captions): whose letters a font lacks, inside \"Doesn't have {letters} letters: …\" (\"Bengali\")."
+  },
+  "fontPicker.letters.hi": {
+    "description": "Font menu (texts, title cards, pop-ups, captions): whose letters a font lacks, inside \"Doesn't have {letters} letters: …\" (\"Hindi\")."
+  },
+  "fontPicker.letters.mr": {
+    "description": "Font menu (texts, title cards, pop-ups, captions): whose letters a font lacks, inside \"Doesn't have {letters} letters: …\" (\"Marathi\")."
+  },
+  "fontPicker.letters.ar": {
+    "description": "Font menu (texts, title cards, pop-ups, captions): whose letters a font lacks, inside \"Doesn't have {letters} letters: …\" (\"Arabic\")."
+  },
+  "fontPicker.letters.ur": {
+    "description": "Font menu (texts, title cards, pop-ups, captions): whose letters a font lacks, inside \"Doesn't have {letters} letters: …\" (\"Urdu\")."
+  },
+  "fontPicker.letters.he": {
+    "description": "Font menu (texts, title cards, pop-ups, captions): whose letters a font lacks, inside \"Doesn't have {letters} letters: …\" (\"Hebrew\")."
+  },
+  "fontPicker.letters.th": {
+    "description": "Font menu (texts, title cards, pop-ups, captions): whose letters a font lacks, inside \"Doesn't have {letters} letters: …\" (\"Thai\")."
+  },
+  "fontPicker.letters.ru": {
+    "description": "Font menu (texts, title cards, pop-ups, captions): whose letters a font lacks, inside \"Doesn't have {letters} letters: …\" (\"Russian\")."
+  },
+  "fontPicker.letters.uk": {
+    "description": "Font menu (texts, title cards, pop-ups, captions): whose letters a font lacks, inside \"Doesn't have {letters} letters: …\" (\"Ukrainian\")."
+  },
+  "fontPicker.letters.vi": {
+    "description": "Font menu (texts, title cards, pop-ups, captions): whose letters a font lacks, inside \"Doesn't have {letters} letters: …\" (\"Vietnamese\")."
+  },
+  "fontPicker.letters.cyrillic": {
+    "description": "Font menu (texts, title cards, pop-ups, captions): whose letters a font lacks, inside \"Doesn't have {letters} letters: …\" (\"Cyrillic\")."
+  },
+  "fontPicker.letters.greek": {
+    "description": "Font menu (texts, title cards, pop-ups, captions): whose letters a font lacks, inside \"Doesn't have {letters} letters: …\" (\"Greek\")."
+  },
+  "fontPicker.anotherFont": {
+    "description": "Font menu (texts, title cards, pop-ups, captions): inside \"… Flown uses {font} for them\" when the font is not known."
+  },
+  "fontPicker.lacksLetters": {
+    "description": "Font menu (texts, title cards, pop-ups, captions): a note under the menu: the chosen font lacks a script's letters; letters names the language or script (text.fontPicker.letters.*), font is the font that draws them."
+  },
+  "fontPicker.megabytes": {
+    "description": "Font menu (texts, title cards, pop-ups, captions): a font download's size (\"9.6 MB\"); MB is the symbol for megabytes."
+  },
+  "fontPicker.serverBusy": {
+    "description": "Font menu (texts, title cards, pop-ups, captions): a font download waits for the server; time is when it tries again (\"2:14:05 PM\")."
+  },
+  "fontPicker.notHere": {
+    "description": "Font menu (texts, title cards, pop-ups, captions): a catalogue font still to download; family is its name."
+  },
+  "fontPicker.notHereUntil": {
+    "description": "Font menu (texts, title cards, pop-ups, captions): a catalogue font still to download; family is its name, until the font the captions use meanwhile."
+  },
+  "fontPicker.downloadGroup": {
+    "description": "fontPicker, the label of <optgroup> (src/renderer/src/editor/panels/FontPicker.tsx:298)."
+  },
+  "fontPicker.notLoaded": {
+    "description": "Font menu (texts, title cards, pop-ups, captions): a project font whose file is gone; name is the font's name, fallback the font drawn instead.",
+    "user": [
+      "name"
+    ]
+  },
+  "fontPicker.font": {
+    "description": "Font menu (texts, title cards, pop-ups, captions): the menu's label."
+  },
+  "chapterBarSection.barHint": {
+    "description": "Effects tab, Progress bar: what the progress bar is."
+  },
+  "chapterBarSection.fewChapters": {
+    "description": "Effects tab, Progress bar: why there are no chapter names to choose."
+  },
+  "chapterBarSection.place.auto": {
+    "description": "Effects tab, Progress bar: a choice of Place: placed for you."
+  },
+  "chapterBarSection.place.auto.title": {
+    "description": "Effects tab, Progress bar: the tooltip of Place's Auto."
+  },
+  "chapterBarSection.place.top": {
+    "description": "Effects tab, Progress bar: a choice of Place."
+  },
+  "chapterBarSection.place.bottom": {
+    "description": "Effects tab, Progress bar: a choice of Place."
+  },
+  "chapterBarSection.look.float": {
+    "description": "Effects tab, Progress bar: a choice of Look."
+  },
+  "chapterBarSection.look.float.title": {
+    "description": "Effects tab, Progress bar: the tooltip of Look's Floating."
+  },
+  "chapterBarSection.look.edge": {
+    "description": "Effects tab, Progress bar: a choice of Look."
+  },
+  "chapterBarSection.look.edge.title": {
+    "description": "Effects tab, Progress bar: the tooltip of Look's Edge."
+  },
+  "chapterBarSection.names.current": {
+    "description": "Effects tab, Progress bar: a choice of Chapter names (\"Current chapter\")."
+  },
+  "chapterBarSection.names.all": {
+    "description": "Effects tab, Progress bar: a choice of Chapter names (\"All chapters\")."
+  },
+  "chapterBarSection.white": {
+    "description": "Effects tab, Progress bar: the white swatch of the bar's colour."
+  },
+  "contrastMeter.easy": {
+    "description": "Captions tab, contrast meter: how readable the captions are: the ratio is 4.5 to 1 or more."
+  },
+  "contrastMeter.some": {
+    "description": "Captions tab, contrast meter: how readable the captions are: the ratio is 3 to 1 or more."
+  },
+  "contrastMeter.hard": {
+    "description": "Captions tab, contrast meter: how readable the captions are: the ratio is below 3 to 1."
+  },
+  "contrastMeter.shown": {
+    "description": "Captions tab, contrast meter: the meter: the captions' contrast ratio (\"4.4\"), where it was measured (time, when where is yes) and how readable it is (words, text.contrastMeter.easy and the others)."
+  },
+  "contrastMeter.spoken": {
+    "description": "Captions tab, contrast meter: the meter as a screen reader says it; words is how readable, as inside a sentence (English lower-cases it)."
   }
 }

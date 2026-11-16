@@ -4,7 +4,7 @@ import { orPress } from '../../../shared/editor/shortcuts'
 import { itemKey } from '../../../shared/editor/multiSelect'
 import { chapterSnapLimit, sameSpan } from '../../../shared/editor/snapping'
 import { overlaps } from '../../../shared/editor/timelineScale'
-import { dragTitleTimes, TITLE_STYLES } from '../../../shared/editor/titles'
+import { dragTitleTimes } from '../../../shared/editor/titles'
 import { clamp } from '../../../shared/engine/math'
 import { fmt } from '../../../shared/i18n/fmt'
 import type { Chapter, TitleCard, TitleCardStyle } from '../../../shared/types'
@@ -16,6 +16,8 @@ import type { TrackSlotProps } from './LayoutTrack'
 import { followPointer } from './pointer'
 import { addChapterAt, addTitleAt, showTitle } from './titleItems'
 import './titles.css'
+import { t } from '../../../shared/i18n/t'
+import { titleStyleName } from '../../../shared/editor/itemNames'
 
 const NO_TITLES: TitleCard[] = []
 const NO_CHAPTERS: Chapter[] = []
@@ -23,7 +25,6 @@ const NO_CHAPTERS: Chapter[] = []
 /** Grabbable edge width of a block: never more than a quarter of it, so its middle always moves it (as Timeline.tsx). */
 const edgeWidth = (w: number): number => Math.max(3, Math.min(8, w * 0.25))
 
-const styleLabel = (style: TitleCardStyle): string => TITLE_STYLES.find((s) => s.value === style)?.label ?? 'Title'
 
 /**
  * Timeline track of title cards, with chapter flags along its top: blocks move and trim like
@@ -155,7 +156,7 @@ export function TitleTrack({ px, win, duration, selection, onSelect, scrub, snap
     return group.keys.has(key) ? ` selected in-group${group.group.anchor === key ? ' anchor' : ''}` : ''
   }
   const groupHint = (kind: 'title' | 'chapter', id: string): string =>
-    group.keys.has(itemKey(kind, id)) ? ` · selected: drag to move all ${groupSize}, Ctrl+click to leave it out` : groupSize || !multi ? '' : ' · Ctrl+click to select several'
+    group.keys.has(itemKey(kind, id)) ? ` · ${t('text.track.inGroup', { n: fmt.count(groupSize) })}` : groupSize || !multi ? '' : ` · ${t('text.track.selectSeveral')}`
 
   const visibleTitles = titles.filter((c) => overlaps(c, win) || c.id === selId)
   const visibleChapters = chapters.filter((c) => (c.t >= win.start - 2 && c.t <= win.end) || c.id === selId)
@@ -163,7 +164,7 @@ export function TitleTrack({ px, win, duration, selection, onSelect, scrub, snap
 
   return (
     <div className="tl-track title-track" ref={trackRef} data-testid="title-track">
-      <div className="chapter-strip" onPointerDown={onBackgroundDown('chapter')} title="Chapters · double-click to add one">
+      <div className="chapter-strip" onPointerDown={onBackgroundDown('chapter')} title={t('text.titleTrack.chaptersDoubleClickTo')}>
         {visibleChapters.map((c) => (
           <div
             key={c.id}
@@ -172,18 +173,18 @@ export function TitleTrack({ px, win, duration, selection, onSelect, scrub, snap
             className={`chapter-flag ${selId === c.id ? 'selected' : ''}${memberClass('chapter', c.id)}`}
             style={{ left: c.t * px }}
             onPointerDown={onChapterDown(c)}
-            title={`${c.title || 'Chapter'} · ${fmt.clock(c.t)} · drag to move${groupHint('chapter', c.id)}`}
+            title={`${c.title || t('text.titleTrack.chapter')} · ${fmt.clock(c.t)} · ${t('text.titleTrack.dragToMove')}${groupHint('chapter', c.id)}`}
           >
-            <span className="chapter-name">{c.title || 'Chapter'}</span>
+            <span className="chapter-name">{c.title || t('text.titleTrack.chapter')}</span>
           </div>
         ))}
-        {chapters.length === 0 && <span className="tl-empty chapter-empty">{orPress('Double-click to add a chapter', keymap.addChapter)}</span>}
+        {chapters.length === 0 && <span className="tl-empty chapter-empty">{orPress(t('text.titleTrack.addChapterHint'), keymap.addChapter)}</span>}
       </div>
-      <div className="title-lane" onPointerDown={onBackgroundDown('title')} title="Double-click to add a title card">
+      <div className="title-lane" onPointerDown={onBackgroundDown('title')} title={t('text.titleTrack.doubleClickToAdd')}>
         {visibleTitles.map((c) => {
           const w = (c.end - c.start) * px
           const lane = lanes.lanes.get(c.id) ?? 0
-          const name = c.title.trim() || c.subtitle?.trim() || 'Title'
+          const name = c.title.trim() || c.subtitle?.trim() || t('common.label.title')
           return (
             <div
               key={c.id}
@@ -193,7 +194,7 @@ export function TitleTrack({ px, win, duration, selection, onSelect, scrub, snap
               className={`seg title-seg ${c.style} ${selId === c.id ? 'selected' : ''}${memberClass('title', c.id)}`}
               style={{ left: c.start * px, width: w, top: `${lane * laneH}%`, height: `${laneH}%`, ['--edge' as string]: `${edgeWidth(w)}px` }}
               onPointerDown={onTitleDown(c)}
-              title={`${name} · ${styleLabel(c.style)} · ${fmt.clock(c.start)} – ${fmt.clock(c.end)}${groupHint('title', c.id)}`}
+              title={`${name} · ${titleStyleName(c.style)} · ${fmt.clock(c.start)} – ${fmt.clock(c.end)}${groupHint('title', c.id)}`}
             >
               <span className="edge left" />
               {w > 22 && lanes.count <= 2 && (
@@ -206,7 +207,7 @@ export function TitleTrack({ px, win, duration, selection, onSelect, scrub, snap
             </div>
           )
         })}
-        {titles.length === 0 && <span className="tl-empty">{orPress('Double-click to add a title card', keymap.addTitle)}</span>}
+        {titles.length === 0 && <span className="tl-empty">{orPress(t('text.titleTrack.addTitleHint'), keymap.addTitle)}</span>}
       </div>
     </div>
   )
@@ -215,7 +216,7 @@ export function TitleTrack({ px, win, duration, selection, onSelect, scrub, snap
 /** Its row label in the timeline's label column (the track is always shown). */
 export function TitleTrackLabel(): JSX.Element {
   return (
-    <div className="tl-label title-label" title="Title cards and chapters">
+    <div className="tl-label title-label" title={t('text.titleTrack.titleCardsAndChapters')}>
       <TitleStyleIcon style="centered" size={16} />
     </div>
   )

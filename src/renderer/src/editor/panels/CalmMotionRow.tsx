@@ -10,14 +10,16 @@ import { useEditor } from '../context'
 import { Section } from '../controls'
 import { SwitchRow } from './calloutControls'
 import './callouts.css'
+import { t } from '../../../../shared/i18n/t'
 
-export const CALM_HINT = 'Calm motion: texts, shapes, the magnifier and slide cuts move less. Captions have their own setting in the Captions tab.'
+/** What Calm motion does (its switch's hint). */
+export const calmHint = (): string => t('text.calmMotionRow.hint')
 
 export function CalmMotionRow(props: { project: Project }): JSX.Element | null {
   const { store } = useEditor()
   return (
-    <Section title="Calm motion">
-      <SwitchRow id="calm-motion" label="Calm motion" checked={calmOf(props.project.effects)} hint={CALM_HINT} onChange={(on) => store.update((p) => withCalm(p, on))} />
+    <Section title={t('text.calmMotionRow.calmMotion')}>
+      <SwitchRow id="calm-motion" label={t('text.calmMotionRow.calmMotion')} checked={calmOf(props.project.effects)} hint={calmHint()} onChange={(on) => store.update((p) => withCalm(p, on))} />
     </Section>
   )
 }

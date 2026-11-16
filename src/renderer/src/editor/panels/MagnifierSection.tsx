@@ -11,7 +11,7 @@ import { itemKey } from '../../../../shared/editor/multiSelect'
 import { withShortcut } from '../../../../shared/editor/shortcuts'
 import { cropOf, cropView, geometryFromCrop, rectToCrop } from '../../../../shared/engine/crop'
 import { clamp } from '../../../../shared/engine/math'
-import { isMagnifier, MAGNIFIER, timesText } from '../../../../shared/render/magnifier'
+import { isMagnifier, MAGNIFIER } from '../../../../shared/render/magnifier'
 import { fmt } from '../../../../shared/i18n/fmt'
 import type { CursorTrack, Project, Spotlight } from '../../../../shared/types'
 import { holdGesture, useEditor } from '../context'
@@ -22,7 +22,7 @@ import { LookButtons } from '../LookButtons'
 import { cursorPosFor } from '../playheadItems'
 import type { Selection } from '../selection'
 import { ShapeIcon } from '../shapeIcons'
-import { ItemActions, OnPreview, TimeFields } from './ShapesPanel'
+import { ItemActions, magnifierTimes, OnPreview, TimeFields } from './ShapesPanel'
 import { RadioChips } from './RadioChips'
 import './magnifier.css'
 import { t } from '../../../../shared/i18n/t'
@@ -115,7 +115,7 @@ function SelectedMagnifier({ project, spot, cursor }: { project: Project; spot: 
             type="range"
             data-testid="magnifier-zoom"
             aria-label={t('common.label.zoom')}
-            aria-valuetext={timesText(zoom)}
+            aria-valuetext={magnifierTimes(zoom)}
             min={MAGNIFIER.min}
             max={MAGNIFIER.max}
             step={MAGNIFIER.step}
@@ -179,7 +179,7 @@ function SelectedMagnifier({ project, spot, cursor }: { project: Project; spot: 
             store.update((p) => ({ ...p, spotlights: (p.spotlights ?? []).filter((s) => s.id !== id) }))
             group.select([], null)
           }}
-          what="magnifier"
+          kind="magnifier"
         />
       </div>
     </Section>

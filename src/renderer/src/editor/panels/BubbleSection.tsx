@@ -17,15 +17,17 @@ import type { Selection } from '../selection'
 import { RadioRow, SwatchRow } from './calloutControls'
 import { useTabOf } from './CalloutSection'
 import './callouts.css'
+import { t } from '../../../../shared/i18n/t'
+import { fmt } from '../../../../shared/i18n/fmt'
 
 /** A bubble's colours: White (dark text, a thin outline), Dark, then the brand's (§2.3). */
 export function bubbleSwatches(project: Pick<Project, 'brand'>): { color: string; name: string }[] {
   const out = [
-    { color: BUBBLE_FILL, name: 'White' },
-    { color: '#1d1d24', name: 'Dark' }
+    { color: BUBBLE_FILL, name: t('text.bubbleSection.white') },
+    { color: '#1d1d24', name: t('text.bubbleSection.dark') }
   ]
   ;(project.brand?.colors ?? []).forEach((c, i) => {
-    if (!out.some((o) => o.color === c.toLowerCase())) out.push({ color: c.toLowerCase(), name: `Brand colour ${i + 1}, ${c.toLowerCase()}` })
+    if (!out.some((o) => o.color === c.toLowerCase())) out.push({ color: c.toLowerCase(), name: t('text.bubbleSection.brandColour', { n: fmt.count(i + 1), colour: c.toLowerCase() }) })
   })
   return out
 }
@@ -44,17 +46,17 @@ export function BubbleSection(props: { project: Project; selection: Selection })
       {bubble && <Bubble project={props.project} bubble={bubble} update={(fn) => store.update(fn)} player={player} />}
       <section className="insp-section">
         <h3>
-          <span>Step badges and speech bubbles</span>
+          <span>{t('text.bubbleSection.stepBadgesAndSpeech')}</span>
         </h3>
-        <div className="callout-add" role="group" aria-label="Add a step badge or a speech bubble">
-          <button type="button" className="btn" data-testid="add-step-badge" title={withShortcut('A numbered circle beside the cursor: 1, 2, 3', keymap.addStepBadge)} onClick={() => group.command('addStepBadge')}>
-            Add step badge
+        <div className="callout-add" role="group" aria-label={t('text.bubbleSection.addAStepBadge')}>
+          <button type="button" className="btn" data-testid="add-step-badge" title={withShortcut(t('text.bubbleSection.addStepBadgeTitle'), keymap.addStepBadge)} onClick={() => group.command('addStepBadge')}>
+            {t('text.bubbleSection.addStepBadge')}
           </button>
-          <button type="button" className="btn" data-testid="add-speech-bubble" title={withShortcut('A rounded box with a tail pointing at the cursor', keymap.addSpeechBubble)} onClick={() => group.command('addSpeechBubble')}>
-            Add speech bubble
+          <button type="button" className="btn" data-testid="add-speech-bubble" title={withShortcut(t('text.bubbleSection.addSpeechBubbleTitle'), keymap.addSpeechBubble)} onClick={() => group.command('addSpeechBubble')}>
+            {t('text.bubbleSection.addSpeechBubble')}
           </button>
         </div>
-        <p className="hint">They stay on their spot in the recording while the camera zooms, as shapes do.</p>
+        <p className="hint">{t('text.bubbleSection.theyStayOnTheir')}</p>
       </section>
     </div>
   )
@@ -66,16 +68,16 @@ function Bubble({ project, bubble, update, player }: { project: Project; bubble:
   return (
     <section className="insp-section callout-section" data-testid="bubble-section">
       <h3>
-        <span>Speech bubble</span>
+        <span>{t('text.bubbleSection.speechBubble')}</span>
       </h3>
-      <SwatchRow id="bubble-colour" label="Colour" value={c.color ?? BUBBLE_FILL} swatches={bubbleSwatches(project)} onChange={(color) => update((p) => withBubbleColor(p, id, color === BUBBLE_FILL ? null : color))} />
+      <SwatchRow id="bubble-colour" label={t('common.label.colour')} value={c.color ?? BUBBLE_FILL} swatches={bubbleSwatches(project)} onChange={(color) => update((p) => withBubbleColor(p, id, color === BUBBLE_FILL ? null : color))} />
       <RadioRow
         id="bubble-tail"
-        label="Tail"
+        label={t('text.bubbleSection.tail')}
         value={c.pin ? 'pointing' : 'none'}
         options={[
-          { value: 'pointing', label: 'Pointing' },
-          { value: 'none', label: 'None' }
+          { value: 'pointing', label: t('text.bubbleSection.pointing') },
+          { value: 'none', label: t('common.state.none') }
         ]}
         onChange={(v) => {
           const scene = pausedScene(player)

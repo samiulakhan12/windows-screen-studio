@@ -41,10 +41,10 @@ const { DEFAULT_KEYMAP: KEYMAP } = await import('../src/shared/editor/shortcuts'
 // Renderer code: imported at run time so the Node typecheck of tests/ does not follow it.
 const P = '../src/renderer/src/editor/'
 type Component = (props: unknown) => unknown
-const { CalloutSection, PRIVACY_NOTE } = (await import(/* @vite-ignore */ `${P}panels/CalloutSection`)) as { CalloutSection: Component; PRIVACY_NOTE: string }
+const { CalloutSection, privacyNote } = (await import(/* @vite-ignore */ `${P}panels/CalloutSection`)) as { CalloutSection: Component; privacyNote: () => string }
 const { BadgeSection } = (await import(/* @vite-ignore */ `${P}panels/BadgeSection`)) as { BadgeSection: Component }
 const { BubbleSection } = (await import(/* @vite-ignore */ `${P}panels/BubbleSection`)) as { BubbleSection: Component }
-const { CalmMotionRow, CALM_HINT } = (await import(/* @vite-ignore */ `${P}panels/CalmMotionRow`)) as { CalmMotionRow: Component; CALM_HINT: string }
+const { CalmMotionRow, calmHint } = (await import(/* @vite-ignore */ `${P}panels/CalmMotionRow`)) as { CalmMotionRow: Component; calmHint: () => string }
 const { calloutMapping } = (await import(/* @vite-ignore */ `${P}calloutView`)) as { calloutMapping: (scene: unknown, t: number) => { frame: Parameters<typeof calloutPlace>[2] } }
 contexts.group = ((await import(/* @vite-ignore */ `${P}groupContext`)) as { GroupContext: unknown }).GroupContext
 contexts.keymap = ((await import(/* @vite-ignore */ `${P}keymapContext`)) as { KeymapContext: unknown }).KeymapContext
@@ -148,7 +148,7 @@ describe('CalloutSection (test 45)', () => {
       const els = section({ kind: 'shape', id })
       expect(byId(els, 'callout-enter')).toBeUndefined()
       expect(byId(els, 'callout-exit')).toBeUndefined()
-      expect(els.some((e) => e.type === 'p' && textOf(e) === PRIVACY_NOTE)).toBe(true)
+      expect(els.some((e) => e.type === 'p' && textOf(e) === privacyNote())).toBe(true)
     }
     // Nothing for a selection that is not a callout.
     expect(section({ kind: 'zoom', id: 'z' })).toEqual([])
@@ -254,7 +254,7 @@ describe('BadgeSection, BubbleSection and Calm motion', () => {
     const els = render({ type: CalmMotionRow, props: { project: store.state } })
     const sw = byId(els, 'calm-motion')!
     expect(sw.props.role).toBe('switch')
-    expect(els.some((e) => e.type === 'p' && textOf(e) === CALM_HINT)).toBe(true)
+    expect(els.some((e) => e.type === 'p' && textOf(e) === calmHint())).toBe(true)
     ;(sw.props.onChange as (e: unknown) => void)({ target: { checked: true } })
     expect(store.state.effects.calm).toBe(true)
     ;(byId(render({ type: CalmMotionRow, props: { project: store.state } }), 'calm-motion')!.props.onChange as (e: unknown) => void)({ target: { checked: false } })

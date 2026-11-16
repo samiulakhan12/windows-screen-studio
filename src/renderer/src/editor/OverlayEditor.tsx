@@ -7,6 +7,7 @@ import { releaseFocus } from './focus'
 import { followPointer } from './pointer'
 import type { Selection } from './selection'
 import './overlays.css'
+import { t } from '../../../shared/i18n/t'
 
 const HANDLES: OverlayHandle[] = ['nw', 'n', 'ne', 'e', 'se', 's', 'sw', 'w']
 
@@ -147,8 +148,8 @@ export function OverlayEditor({ project, selection, box, onDone }: { project: Pr
         className="overlay-box"
         role="group"
         tabIndex={0}
-        aria-label={`${label}: drag to move, arrow keys move it`}
-        title="Drag to move · handles resize (Shift: keep the shape) · round handle rotates"
+        aria-label={t('text.overlayEditor.dragToMoveArrow', { label })}
+        title={t('text.overlayEditor.dragToMoveHandles')}
         style={{ left: b.cx - b.w / 2, top: b.cy - b.h / 2, width: b.w, height: b.h, transform: b.angle ? `rotate(${o.rotation}deg)` : undefined }}
         onPointerDown={drag((dx, dy) => set(moveOverlay(o, dx, dy, frame), 'overlay-geom'))}
         onKeyDown={onKey}
@@ -167,14 +168,14 @@ export function OverlayEditor({ project, selection, box, onDone }: { project: Pr
           className={handle.place === 'above' ? 'overlay-rotate' : `overlay-rotate ${handle.place}`}
           style={{ top: b.h / 2 + handle.along - ROTATE_RADIUS }}
           data-testid="overlay-rotate"
-          title="Drag to rotate (Shift: 15° steps)"
+          title={t('text.overlayEditor.dragToRotateShift')}
           onPointerDown={rotate}
         />
       </div>
       <div className="pick-hint shape-hint" onPointerDown={(e) => e.stopPropagation()}>
-        {label} · drag to place it ·{' '}
+        {t('text.overlayEditor.dragToPlaceIt', { label })}{' '}
         <button className="link" onClick={onDone}>
-          Done
+          {t('common.action.done')}
         </button>
       </div>
     </div>

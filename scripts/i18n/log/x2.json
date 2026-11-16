@@ -4022,6 +4022,1938 @@
     "sample": {}
   },
   {
+    "key": "common.label.text",
+    "file": "src/renderer/src/editor/panels/TextPanel.tsx",
+    "line": 90,
+    "english": "Text",
+    "sample": {}
+  },
+  {
+    "key": "text.textPanel.addTextAtPlayhead",
+    "file": "src/renderer/src/editor/panels/TextPanel.tsx",
+    "line": 92,
+    "english": "Add text at playhead",
+    "sample": {}
+  },
+  {
+    "key": "text.textPanel.textInThisVideo",
+    "file": "src/renderer/src/editor/panels/TextPanel.tsx",
+    "line": 99,
+    "english": "Text in this video («length»)",
+    "sample": {
+      "n": "«length»"
+    }
+  },
+  {
+    "key": "common.label.text",
+    "file": "src/renderer/src/editor/panels/TextPanel.tsx",
+    "line": 118,
+    "english": "Text",
+    "sample": {}
+  },
+  {
+    "key": "text.textPanel.selectedText",
+    "file": "src/renderer/src/editor/panels/TextPanel.tsx",
+    "line": 137,
+    "english": "Selected text",
+    "sample": {}
+  },
+  {
+    "key": "common.label.text",
+    "file": "src/renderer/src/editor/panels/TextPanel.tsx",
+    "line": 139,
+    "english": "Text",
+    "sample": {}
+  },
+  {
+    "key": "text.textPanel.typeTheBubbleS",
+    "file": "src/renderer/src/editor/panels/TextPanel.tsx",
+    "line": 140,
+    "english": "Type the bubble's text",
+    "sample": {}
+  },
+  {
+    "key": "text.textPanel.typeYourText",
+    "file": "src/renderer/src/editor/panels/TextPanel.tsx",
+    "line": 140,
+    "english": "Type your text",
+    "sample": {}
+  },
+  {
+    "key": "text.textPanel.textStyle",
+    "file": "src/renderer/src/editor/panels/TextPanel.tsx",
+    "line": 143,
+    "english": "Text style",
+    "sample": {}
+  },
+  {
+    "key": "common.label.size",
+    "file": "src/renderer/src/editor/panels/TextPanel.tsx",
+    "line": 154,
+    "english": "Size",
+    "sample": {}
+  },
+  {
+    "key": "text.textPanel.positionX",
+    "file": "src/renderer/src/editor/panels/TextPanel.tsx",
+    "line": 155,
+    "english": "Position X",
+    "sample": {}
+  },
+  {
+    "key": "text.textPanel.positionY",
+    "file": "src/renderer/src/editor/panels/TextPanel.tsx",
+    "line": 156,
+    "english": "Position Y",
+    "sample": {}
+  },
+  {
+    "key": "text.textPanel.tipDragTheText",
+    "file": "src/renderer/src/editor/panels/TextPanel.tsx",
+    "line": 157,
+    "english": "Tip: drag the text on the preview to place it.",
+    "sample": {}
+  },
+  {
+    "key": "text.textPanel.deleteText",
+    "file": "src/renderer/src/editor/panels/TextPanel.tsx",
+    "line": 166,
+    "english": "Delete text",
+    "sample": {}
+  },
+  {
+    "key": "text.textPanel.titleCards",
+    "file": "src/renderer/src/editor/panels/TextPanel.tsx",
+    "line": 181,
+    "english": "Title cards («length»)",
+    "sample": {
+      "n": "«length»"
+    }
+  },
+  {
+    "key": "text.textPanel.titleCardsNone",
+    "file": "src/renderer/src/editor/panels/TextPanel.tsx",
+    "line": 181,
+    "english": "Title cards",
+    "sample": {}
+  },
+  {
+    "key": "text.textPanel.addTitleCard",
+    "file": "src/renderer/src/editor/panels/TextPanel.tsx",
+    "line": 186,
+    "english": "Add title card",
+    "sample": {}
+  },
+  {
+    "key": "text.textPanel.title",
+    "file": "src/renderer/src/editor/panels/TextPanel.tsx",
+    "line": 212,
+    "english": "Title",
+    "sample": {}
+  },
+  {
+    "key": "text.textPanel.selectedTitleCard",
+    "file": "src/renderer/src/editor/panels/TextPanel.tsx",
+    "line": 230,
+    "english": "Selected title card",
+    "sample": {}
+  },
+  {
+    "key": "text.textPanel.title",
+    "file": "src/renderer/src/editor/panels/TextPanel.tsx",
+    "line": 232,
+    "english": "Title",
+    "sample": {}
+  },
+  {
+    "key": "text.textPanel.title",
+    "file": "src/renderer/src/editor/panels/TextPanel.tsx",
+    "line": 233,
+    "english": "Title",
+    "sample": {}
+  },
+  {
+    "key": "text.textPanel.yourTitle",
+    "file": "src/renderer/src/editor/panels/TextPanel.tsx",
+    "line": 233,
+    "english": "Your title",
+    "sample": {}
+  },
+  {
+    "key": "text.textPanel.subtitle",
+    "file": "src/renderer/src/editor/panels/TextPanel.tsx",
+    "line": 236,
+    "english": "Subtitle",
+    "sample": {}
+  },
+  {
+    "key": "text.textPanel.subtitle",
+    "file": "src/renderer/src/editor/panels/TextPanel.tsx",
+    "line": 237,
+    "english": "Subtitle",
+    "sample": {}
+  },
+  {
+    "key": "text.textPanel.optional",
+    "file": "src/renderer/src/editor/panels/TextPanel.tsx",
+    "line": 237,
+    "english": "Optional",
+    "sample": {}
+  },
+  {
+    "key": "text.textPanel.style",
+    "file": "src/renderer/src/editor/panels/TextPanel.tsx",
+    "line": 240,
+    "english": "Style",
+    "sample": {}
+  },
+  {
+    "key": "text.textPanel.titleStyle",
+    "file": "src/renderer/src/editor/panels/TextPanel.tsx",
+    "line": 241,
+    "english": "Title style",
+    "sample": {}
+  },
+  {
+    "key": "common.label.background",
+    "file": "src/renderer/src/editor/panels/TextPanel.tsx",
+    "line": 252,
+    "english": "Background",
+    "sample": {}
+  },
+  {
+    "key": "common.label.background",
+    "file": "src/renderer/src/editor/panels/TextPanel.tsx",
+    "line": 253,
+    "english": "Background",
+    "sample": {}
+  },
+  {
+    "key": "common.label.colour",
+    "file": "src/renderer/src/editor/panels/TextPanel.tsx",
+    "line": 257,
+    "english": "Colour",
+    "sample": {}
+  },
+  {
+    "key": "common.label.colour",
+    "file": "src/renderer/src/editor/panels/TextPanel.tsx",
+    "line": 258,
+    "english": "Colour",
+    "sample": {}
+  },
+  {
+    "key": "common.label.textColour",
+    "file": "src/renderer/src/editor/panels/TextPanel.tsx",
+    "line": 262,
+    "english": "Text colour",
+    "sample": {}
+  },
+  {
+    "key": "common.label.textColour",
+    "file": "src/renderer/src/editor/panels/TextPanel.tsx",
+    "line": 263,
+    "english": "Text colour",
+    "sample": {}
+  },
+  {
+    "key": "text.textPanel.dragTheCardOn",
+    "file": "src/renderer/src/editor/panels/TextPanel.tsx",
+    "line": 266,
+    "english": "Drag the card on the title track to change when it shows; it fades in and out. Long titles wrap and shrink to fit.",
+    "sample": {}
+  },
+  {
+    "key": "text.textPanel.deleteTitleCard",
+    "file": "src/renderer/src/editor/panels/TextPanel.tsx",
+    "line": 276,
+    "english": "Delete title card",
+    "sample": {}
+  },
+  {
+    "key": "text.textPanel.notOnScreenAt",
+    "file": "src/renderer/src/editor/panels/TextPanel.tsx",
+    "line": 295,
+    "english": "Not on screen at the playhead.",
+    "sample": {}
+  },
+  {
+    "key": "text.textPanel.showItOnThe",
+    "file": "src/renderer/src/editor/panels/TextPanel.tsx",
+    "line": 297,
+    "english": "Show it on the preview",
+    "sample": {}
+  },
+  {
+    "key": "common.colour.pickAny",
+    "file": "src/renderer/src/editor/panels/TextPanel.tsx",
+    "line": 332,
+    "english": "Pick any colour",
+    "sample": {}
+  },
+  {
+    "key": "common.colour.anyFor",
+    "file": "src/renderer/src/editor/panels/TextPanel.tsx",
+    "line": 333,
+    "english": "«label» (any colour)",
+    "sample": {
+      "label": "«label»"
+    }
+  },
+  {
+    "key": "text.textPanel.selectedChapter",
+    "file": "src/renderer/src/editor/panels/TextPanel.tsx",
+    "line": 357,
+    "english": "Selected chapter",
+    "sample": {}
+  },
+  {
+    "key": "common.label.name",
+    "file": "src/renderer/src/editor/panels/TextPanel.tsx",
+    "line": 359,
+    "english": "Name",
+    "sample": {}
+  },
+  {
+    "key": "text.textPanel.chapterName",
+    "file": "src/renderer/src/editor/panels/TextPanel.tsx",
+    "line": 360,
+    "english": "Chapter name",
+    "sample": {}
+  },
+  {
+    "key": "text.textPanel.chapterName",
+    "file": "src/renderer/src/editor/panels/TextPanel.tsx",
+    "line": 360,
+    "english": "Chapter name",
+    "sample": {}
+  },
+  {
+    "key": "text.textPanel.moveThePlayheadTo",
+    "file": "src/renderer/src/editor/panels/TextPanel.tsx",
+    "line": 364,
+    "english": "Move the playhead to this chapter",
+    "sample": {}
+  },
+  {
+    "key": "text.textPanel.goTo",
+    "file": "src/renderer/src/editor/panels/TextPanel.tsx",
+    "line": 365,
+    "english": "Go to",
+    "sample": {}
+  },
+  {
+    "key": "text.textPanel.startThisChapterAt",
+    "file": "src/renderer/src/editor/panels/TextPanel.tsx",
+    "line": 367,
+    "english": "Start this chapter at the playhead",
+    "sample": {}
+  },
+  {
+    "key": "text.textPanel.moveToPlayhead",
+    "file": "src/renderer/src/editor/panels/TextPanel.tsx",
+    "line": 368,
+    "english": "Move to playhead",
+    "sample": {}
+  },
+  {
+    "key": "common.action.delete",
+    "file": "src/renderer/src/editor/panels/TextPanel.tsx",
+    "line": 378,
+    "english": "Delete",
+    "sample": {}
+  },
+  {
+    "key": "text.textPanel.chapters",
+    "file": "src/renderer/src/editor/panels/TextPanel.tsx",
+    "line": 407,
+    "english": "Chapters («length»)",
+    "sample": {
+      "n": "«length»"
+    }
+  },
+  {
+    "key": "text.textPanel.chaptersNone",
+    "file": "src/renderer/src/editor/panels/TextPanel.tsx",
+    "line": 407,
+    "english": "Chapters",
+    "sample": {}
+  },
+  {
+    "key": "text.textPanel.addChapterAtPlayhead",
+    "file": "src/renderer/src/editor/panels/TextPanel.tsx",
+    "line": 412,
+    "english": "Add chapter at playhead",
+    "sample": {}
+  },
+  {
+    "key": "text.textPanel.goToThisChapter",
+    "file": "src/renderer/src/editor/panels/TextPanel.tsx",
+    "line": 433,
+    "english": "Go to this chapter (Ctrl+click: select several)",
+    "sample": {}
+  },
+  {
+    "key": "text.textPanel.found",
+    "file": "src/renderer/src/editor/panels/TextPanel.tsx",
+    "line": 443,
+    "english": "Found",
+    "sample": {}
+  },
+  {
+    "key": "text.textPanel.chapterName",
+    "file": "src/renderer/src/editor/panels/TextPanel.tsx",
+    "line": 450,
+    "english": "Chapter name",
+    "sample": {}
+  },
+  {
+    "key": "text.textPanel.deleteThisChapter",
+    "file": "src/renderer/src/editor/panels/TextPanel.tsx",
+    "line": 458,
+    "english": "Delete this chapter",
+    "sample": {}
+  },
+  {
+    "key": "text.textPanel.deleteTheChapter",
+    "file": "src/renderer/src/editor/panels/TextPanel.tsx",
+    "line": 459,
+    "english": "Delete the chapter \"«title»\"",
+    "sample": {
+      "title": "«title»"
+    }
+  },
+  {
+    "key": "text.textPanel.rename",
+    "file": "src/renderer/src/editor/panels/TextPanel.tsx",
+    "line": 469,
+    "english": "Rename?",
+    "sample": {}
+  },
+  {
+    "key": "common.action.selectAll",
+    "file": "src/renderer/src/editor/panels/TextPanel.tsx",
+    "line": 492,
+    "english": "Select all",
+    "sample": {}
+  },
+  {
+    "key": "text.shapesPanel.addAtPlayhead",
+    "file": "src/renderer/src/editor/panels/ShapesPanel.tsx",
+    "line": 85,
+    "english": "Add at playhead",
+    "sample": {}
+  },
+  {
+    "key": "text.shapesPanel.addAShape",
+    "file": "src/renderer/src/editor/panels/ShapesPanel.tsx",
+    "line": 86,
+    "english": "Add a shape",
+    "sample": {}
+  },
+  {
+    "key": "text.shapesPanel.shapesStayOnThe",
+    "file": "src/renderer/src/editor/panels/ShapesPanel.tsx",
+    "line": 101,
+    "english": "Shapes stay on the content while the camera zooms. Blur and pixelate are always fully applied and drawn under the cursor.",
+    "sample": {}
+  },
+  {
+    "key": "text.shapesPanel.spotlight",
+    "file": "src/renderer/src/editor/panels/ShapesPanel.tsx",
+    "line": 104,
+    "english": "Spotlight",
+    "sample": {}
+  },
+  {
+    "key": "text.shapesPanel.addASpotlight",
+    "file": "src/renderer/src/editor/panels/ShapesPanel.tsx",
+    "line": 105,
+    "english": "Add a spotlight",
+    "sample": {}
+  },
+  {
+    "key": "text.shapesPanel.noCursorDataIn",
+    "file": "src/renderer/src/editor/panels/ShapesPanel.tsx",
+    "line": 110,
+    "english": "No cursor data in this recording",
+    "sample": {}
+  },
+  {
+    "key": "text.shapesPanel.addCursorSpotlight",
+    "file": "src/renderer/src/editor/panels/ShapesPanel.tsx",
+    "line": 111,
+    "english": "Add cursor spotlight",
+    "sample": {}
+  },
+  {
+    "key": "text.shapesPanel.followCursor",
+    "file": "src/renderer/src/editor/panels/ShapesPanel.tsx",
+    "line": 115,
+    "english": "Follow cursor",
+    "sample": {}
+  },
+  {
+    "key": "text.shapesPanel.addRegionSpotlight",
+    "file": "src/renderer/src/editor/panels/ShapesPanel.tsx",
+    "line": 121,
+    "english": "Add region spotlight",
+    "sample": {}
+  },
+  {
+    "key": "text.shapesPanel.region",
+    "file": "src/renderer/src/editor/panels/ShapesPanel.tsx",
+    "line": 125,
+    "english": "Region",
+    "sample": {}
+  },
+  {
+    "key": "text.shapesPanel.addedItemsAppearOn",
+    "file": "src/renderer/src/editor/panels/ShapesPanel.tsx",
+    "line": 133,
+    "english": "Added items appear on the shapes track of the timeline: drag them to change when they show, and drag them on the preview to place them.",
+    "sample": {}
+  },
+  {
+    "key": "text.shapesPanel.inThisVideo",
+    "file": "src/renderer/src/editor/panels/ShapesPanel.tsx",
+    "line": 145,
+    "english": "In this video («length»)",
+    "sample": {
+      "n": "«length»"
+    }
+  },
+  {
+    "key": "text.shapesPanel.selectAllShapesAnd",
+    "file": "src/renderer/src/editor/panels/ShapesPanel.tsx",
+    "line": 148,
+    "english": "Select all «length» shapes and spotlights to edit them together",
+    "sample": {
+      "n": "«length»"
+    }
+  },
+  {
+    "key": "common.action.selectAll",
+    "file": "src/renderer/src/editor/panels/ShapesPanel.tsx",
+    "line": 149,
+    "english": "Select all",
+    "sample": {}
+  },
+  {
+    "key": "text.shapesPanel.privacyEffect",
+    "file": "src/renderer/src/editor/panels/ShapesPanel.tsx",
+    "line": 199,
+    "english": "Privacy effect",
+    "sample": {}
+  },
+  {
+    "key": "text.shapesPanel.blurAmount",
+    "file": "src/renderer/src/editor/panels/ShapesPanel.tsx",
+    "line": 208,
+    "english": "Blur amount",
+    "sample": {}
+  },
+  {
+    "key": "text.shapesPanel.pixelSize",
+    "file": "src/renderer/src/editor/panels/ShapesPanel.tsx",
+    "line": 208,
+    "english": "Pixel size",
+    "sample": {}
+  },
+  {
+    "key": "text.shapesPanel.hidesWhatIsUnder",
+    "file": "src/renderer/src/editor/panels/ShapesPanel.tsx",
+    "line": 216,
+    "english": "Hides what is under it for its whole time on screen, also while the camera moves. The cursor stays visible on top.",
+    "sample": {}
+  },
+  {
+    "key": "common.label.colour",
+    "file": "src/renderer/src/editor/panels/ShapesPanel.tsx",
+    "line": 221,
+    "english": "Colour",
+    "sample": {}
+  },
+  {
+    "key": "text.shapesPanel.filled",
+    "file": "src/renderer/src/editor/panels/ShapesPanel.tsx",
+    "line": 227,
+    "english": "Filled",
+    "sample": {}
+  },
+  {
+    "key": "text.shapesPanel.lineWidth",
+    "file": "src/renderer/src/editor/panels/ShapesPanel.tsx",
+    "line": 230,
+    "english": "Line width",
+    "sample": {}
+  },
+  {
+    "key": "common.label.opacity",
+    "file": "src/renderer/src/editor/panels/ShapesPanel.tsx",
+    "line": 239,
+    "english": "Opacity",
+    "sample": {}
+  },
+  {
+    "key": "text.shapesPanel.dragItsEndsOn",
+    "file": "src/renderer/src/editor/panels/ShapesPanel.tsx",
+    "line": 240,
+    "english": "Drag its ends on the preview, or drag elsewhere to draw it again.",
+    "sample": {}
+  },
+  {
+    "key": "text.shapesPanel.dragItOnThe",
+    "file": "src/renderer/src/editor/panels/ShapesPanel.tsx",
+    "line": 240,
+    "english": "Drag it on the preview to move it, its handles to resize, or drag elsewhere to draw it again.",
+    "sample": {}
+  },
+  {
+    "key": "text.shapesPanel.selectedSpotlight",
+    "file": "src/renderer/src/editor/panels/ShapesPanel.tsx",
+    "line": 295,
+    "english": "Selected spotlight",
+    "sample": {}
+  },
+  {
+    "key": "text.shapesPanel.spotlightFollows",
+    "file": "src/renderer/src/editor/panels/ShapesPanel.tsx",
+    "line": 298,
+    "english": "Spotlight follows",
+    "sample": {}
+  },
+  {
+    "key": "text.shapesPanel.spotlightShape",
+    "file": "src/renderer/src/editor/panels/ShapesPanel.tsx",
+    "line": 307,
+    "english": "Spotlight shape",
+    "sample": {}
+  },
+  {
+    "key": "text.shapesPanel.darkness",
+    "file": "src/renderer/src/editor/panels/ShapesPanel.tsx",
+    "line": 315,
+    "english": "Darkness",
+    "sample": {}
+  },
+  {
+    "key": "text.shapesPanel.softEdge",
+    "file": "src/renderer/src/editor/panels/ShapesPanel.tsx",
+    "line": 316,
+    "english": "Soft edge",
+    "sample": {}
+  },
+  {
+    "key": "common.label.size",
+    "file": "src/renderer/src/editor/panels/ShapesPanel.tsx",
+    "line": 319,
+    "english": "Size",
+    "sample": {}
+  },
+  {
+    "key": "text.shapesPanel.followsTheCursorDrag",
+    "file": "src/renderer/src/editor/panels/ShapesPanel.tsx",
+    "line": 333,
+    "english": "Follows the cursor. Drag its corners on the preview to resize it.",
+    "sample": {}
+  },
+  {
+    "key": "text.shapesPanel.dragTheLitArea",
+    "file": "src/renderer/src/editor/panels/ShapesPanel.tsx",
+    "line": 333,
+    "english": "Drag the lit area on the preview to move it, its handles to resize it.",
+    "sample": {}
+  },
+  {
+    "key": "text.shapesPanel.notInTheVideo",
+    "file": "src/renderer/src/editor/panels/ShapesPanel.tsx",
+    "line": 368,
+    "english": "Not in the video: all of it is in a part that is cut.",
+    "sample": {}
+  },
+  {
+    "key": "text.shapesPanel.notOnScreenAt",
+    "file": "src/renderer/src/editor/panels/ShapesPanel.tsx",
+    "line": 371,
+    "english": "Not on screen at the playhead.",
+    "sample": {}
+  },
+  {
+    "key": "text.shapesPanel.showItOnThe",
+    "file": "src/renderer/src/editor/panels/ShapesPanel.tsx",
+    "line": 373,
+    "english": "Show it on the preview",
+    "sample": {}
+  },
+  {
+    "key": "text.shapesPanel.setToThePlayhead",
+    "file": "src/renderer/src/editor/panels/ShapesPanel.tsx",
+    "line": 445,
+    "english": "«label»: set to the playhead",
+    "sample": {
+      "label": "«label»"
+    }
+  },
+  {
+    "key": "text.shapesPanel.setToThePlayhead",
+    "file": "src/renderer/src/editor/panels/ShapesPanel.tsx",
+    "line": 445,
+    "english": "«label»: set to the playhead",
+    "sample": {
+      "label": "«label»"
+    }
+  },
+  {
+    "key": "text.shapesPanel.duplicate",
+    "file": "src/renderer/src/editor/panels/ShapesPanel.tsx",
+    "line": 459,
+    "english": "Duplicate",
+    "sample": {}
+  },
+  {
+    "key": "common.action.delete",
+    "file": "src/renderer/src/editor/panels/ShapesPanel.tsx",
+    "line": 462,
+    "english": "Delete",
+    "sample": {}
+  },
+  {
+    "key": "common.colour.pickAny",
+    "file": "src/renderer/src/editor/panels/ShapesPanel.tsx",
+    "line": 497,
+    "english": "Pick any colour",
+    "sample": {}
+  },
+  {
+    "key": "common.colour.anyFor",
+    "file": "src/renderer/src/editor/panels/ShapesPanel.tsx",
+    "line": 498,
+    "english": "«label» (any colour)",
+    "sample": {
+      "label": "«label»"
+    }
+  },
+  {
+    "key": "text.calloutSection.animation",
+    "file": "src/renderer/src/editor/panels/CalloutSection.tsx",
+    "line": 49,
+    "english": "Animation",
+    "sample": {}
+  },
+  {
+    "key": "text.calloutSection.comesIn",
+    "file": "src/renderer/src/editor/panels/CalloutSection.tsx",
+    "line": 68,
+    "english": "Comes in",
+    "sample": {}
+  },
+  {
+    "key": "common.label.speed",
+    "file": "src/renderer/src/editor/panels/CalloutSection.tsx",
+    "line": 72,
+    "english": "Speed",
+    "sample": {}
+  },
+  {
+    "key": "text.calloutSection.comesInOver",
+    "file": "src/renderer/src/editor/panels/CalloutSection.tsx",
+    "line": 73,
+    "english": "Comes in over 0.25 s",
+    "sample": {
+      "n": "0.25"
+    }
+  },
+  {
+    "key": "common.label.speed",
+    "file": "src/renderer/src/editor/panels/CalloutSection.tsx",
+    "line": 78,
+    "english": "Speed",
+    "sample": {}
+  },
+  {
+    "key": "text.calloutSection.goesOut",
+    "file": "src/renderer/src/editor/panels/CalloutSection.tsx",
+    "line": 89,
+    "english": "Goes out",
+    "sample": {}
+  },
+  {
+    "key": "common.label.sound",
+    "file": "src/renderer/src/editor/panels/CalloutSection.tsx",
+    "line": 93,
+    "english": "Sound",
+    "sample": {}
+  },
+  {
+    "key": "text.calloutSection.chooseAnEffectTo",
+    "file": "src/renderer/src/editor/panels/CalloutSection.tsx",
+    "line": 123,
+    "english": "Choose an effect to hear it",
+    "sample": {}
+  },
+  {
+    "key": "common.action.stop",
+    "file": "src/renderer/src/editor/panels/CalloutSection.tsx",
+    "line": 135,
+    "english": "Stop",
+    "sample": {}
+  },
+  {
+    "key": "common.action.play",
+    "file": "src/renderer/src/editor/panels/CalloutSection.tsx",
+    "line": 135,
+    "english": "Play",
+    "sample": {}
+  },
+  {
+    "key": "text.bubbleSection.stepBadgesAndSpeech",
+    "file": "src/renderer/src/editor/panels/BubbleSection.tsx",
+    "line": 47,
+    "english": "Step badges and speech bubbles",
+    "sample": {}
+  },
+  {
+    "key": "text.bubbleSection.addAStepBadge",
+    "file": "src/renderer/src/editor/panels/BubbleSection.tsx",
+    "line": 49,
+    "english": "Add a step badge or a speech bubble",
+    "sample": {}
+  },
+  {
+    "key": "text.bubbleSection.addStepBadge",
+    "file": "src/renderer/src/editor/panels/BubbleSection.tsx",
+    "line": 51,
+    "english": "Add step badge",
+    "sample": {}
+  },
+  {
+    "key": "text.bubbleSection.addSpeechBubble",
+    "file": "src/renderer/src/editor/panels/BubbleSection.tsx",
+    "line": 54,
+    "english": "Add speech bubble",
+    "sample": {}
+  },
+  {
+    "key": "text.bubbleSection.theyStayOnTheir",
+    "file": "src/renderer/src/editor/panels/BubbleSection.tsx",
+    "line": 57,
+    "english": "They stay on their spot in the recording while the camera zooms, as shapes do.",
+    "sample": {}
+  },
+  {
+    "key": "text.bubbleSection.speechBubble",
+    "file": "src/renderer/src/editor/panels/BubbleSection.tsx",
+    "line": 69,
+    "english": "Speech bubble",
+    "sample": {}
+  },
+  {
+    "key": "common.label.colour",
+    "file": "src/renderer/src/editor/panels/BubbleSection.tsx",
+    "line": 71,
+    "english": "Colour",
+    "sample": {}
+  },
+  {
+    "key": "text.bubbleSection.tail",
+    "file": "src/renderer/src/editor/panels/BubbleSection.tsx",
+    "line": 74,
+    "english": "Tail",
+    "sample": {}
+  },
+  {
+    "key": "text.badgeSection.stepBadge",
+    "file": "src/renderer/src/editor/panels/BadgeSection.tsx",
+    "line": 74,
+    "english": "Step badge",
+    "sample": {}
+  },
+  {
+    "key": "text.badgeSection.number",
+    "file": "src/renderer/src/editor/panels/BadgeSection.tsx",
+    "line": 78,
+    "english": "Number",
+    "sample": {}
+  },
+  {
+    "key": "text.badgeSection.badgeText",
+    "file": "src/renderer/src/editor/panels/BadgeSection.tsx",
+    "line": 88,
+    "english": "Badge text",
+    "sample": {}
+  },
+  {
+    "key": "text.badgeSection.countWith",
+    "file": "src/renderer/src/editor/panels/BadgeSection.tsx",
+    "line": 114,
+    "english": "Count with",
+    "sample": {}
+  },
+  {
+    "key": "text.badgeSection.restartAtEachChapter",
+    "file": "src/renderer/src/editor/panels/BadgeSection.tsx",
+    "line": 129,
+    "english": "Restart at each chapter",
+    "sample": {}
+  },
+  {
+    "key": "text.badgeSection.startFrom",
+    "file": "src/renderer/src/editor/panels/BadgeSection.tsx",
+    "line": 136,
+    "english": "Start from",
+    "sample": {}
+  },
+  {
+    "key": "text.badgeSection.countsOn",
+    "file": "src/renderer/src/editor/panels/BadgeSection.tsx",
+    "line": 144,
+    "english": "Counts on",
+    "sample": {}
+  },
+  {
+    "key": "common.label.colour",
+    "file": "src/renderer/src/editor/panels/BadgeSection.tsx",
+    "line": 155,
+    "english": "Colour",
+    "sample": {}
+  },
+  {
+    "key": "text.badgeSection.followsTheZoom",
+    "file": "src/renderer/src/editor/panels/BadgeSection.tsx",
+    "line": 158,
+    "english": "Follows the zoom",
+    "sample": {}
+  },
+  {
+    "key": "text.calmMotionRow.calmMotion",
+    "file": "src/renderer/src/editor/panels/CalmMotionRow.tsx",
+    "line": 19,
+    "english": "Calm motion",
+    "sample": {}
+  },
+  {
+    "key": "text.calmMotionRow.calmMotion",
+    "file": "src/renderer/src/editor/panels/CalmMotionRow.tsx",
+    "line": 20,
+    "english": "Calm motion",
+    "sample": {}
+  },
+  {
+    "key": "text.calloutHandles.movableHandle",
+    "file": "src/renderer/src/editor/CalloutHandles.tsx",
+    "line": 190,
+    "english": "movable handle",
+    "sample": {}
+  },
+  {
+    "key": "text.calloutHandles.dragOrMoveIt",
+    "file": "src/renderer/src/editor/CalloutHandles.tsx",
+    "line": 191,
+    "english": "«name» · drag, or move it with the arrow keys (Shift: further)",
+    "sample": {
+      "name": "«name»"
+    }
+  },
+  {
+    "key": "text.calloutHandles.dragToMoveThe",
+    "file": "src/renderer/src/editor/CalloutHandles.tsx",
+    "line": 191,
+    "english": "Drag to move the bubble around its tail",
+    "sample": {}
+  },
+  {
+    "key": "text.graphicsPanel.addPopUpsFrom",
+    "file": "src/renderer/src/editor/panels/GraphicsPanel.tsx",
+    "line": 197,
+    "english": "Add pop-ups from captions",
+    "sample": {}
+  },
+  {
+    "key": "text.graphicsPanel.generateCaptionsFirstPop",
+    "file": "src/renderer/src/editor/panels/GraphicsPanel.tsx",
+    "line": 198,
+    "english": "Generate captions first: pop-ups are made from what is said.",
+    "sample": {}
+  },
+  {
+    "key": "text.graphicsPanel.make",
+    "file": "src/renderer/src/editor/panels/GraphicsPanel.tsx",
+    "line": 200,
+    "english": "Make",
+    "sample": {}
+  },
+  {
+    "key": "text.graphicsPanel.soundOnPopUps",
+    "file": "src/renderer/src/editor/panels/GraphicsPanel.tsx",
+    "line": 210,
+    "english": "Sound on pop-ups",
+    "sample": {}
+  },
+  {
+    "key": "text.graphicsPanel.addPopUpsFrom2",
+    "file": "src/renderer/src/editor/panels/GraphicsPanel.tsx",
+    "line": 217,
+    "english": "Add pop-ups from captions",
+    "sample": {}
+  },
+  {
+    "key": "text.graphicsPanel.popUpsMadeHere",
+    "file": "src/renderer/src/editor/panels/GraphicsPanel.tsx",
+    "line": 232,
+    "english": "Pop-ups made here are listed in Review mode. Drag one in the preview to place it yourself.",
+    "sample": {}
+  },
+  {
+    "key": "common.action.add",
+    "file": "src/renderer/src/editor/panels/GraphicsPanel.tsx",
+    "line": 269,
+    "english": "Add",
+    "sample": {}
+  },
+  {
+    "key": "text.graphicsPanel.addAPopUp",
+    "file": "src/renderer/src/editor/panels/GraphicsPanel.tsx",
+    "line": 272,
+    "english": "Add a pop-up",
+    "sample": {}
+  },
+  {
+    "key": "text.graphicsPanel.popUps",
+    "file": "src/renderer/src/editor/panels/GraphicsPanel.tsx",
+    "line": 305,
+    "english": "Pop-ups («length»)",
+    "sample": {
+      "n": "«length»"
+    }
+  },
+  {
+    "key": "text.graphicsPanel.selectAllPopUps",
+    "file": "src/renderer/src/editor/panels/GraphicsPanel.tsx",
+    "line": 308,
+    "english": "Select all «length» pop-ups to edit them together",
+    "sample": {
+      "n": "«length»"
+    }
+  },
+  {
+    "key": "common.action.selectAll",
+    "file": "src/renderer/src/editor/panels/GraphicsPanel.tsx",
+    "line": 309,
+    "english": "Select all",
+    "sample": {}
+  },
+  {
+    "key": "text.graphicsPanel.popUpsList",
+    "file": "src/renderer/src/editor/panels/GraphicsPanel.tsx",
+    "line": 314,
+    "english": "Pop-ups",
+    "sample": {}
+  },
+  {
+    "key": "text.graphicsPanel.automatic",
+    "file": "src/renderer/src/editor/panels/GraphicsPanel.tsx",
+    "line": 331,
+    "english": "automatic",
+    "sample": {}
+  },
+  {
+    "key": "common.label.size",
+    "file": "src/renderer/src/editor/panels/GraphicsPanel.tsx",
+    "line": 380,
+    "english": "Size",
+    "sample": {}
+  },
+  {
+    "key": "common.label.colours",
+    "file": "src/renderer/src/editor/panels/GraphicsPanel.tsx",
+    "line": 382,
+    "english": "Colours",
+    "sample": {}
+  },
+  {
+    "key": "text.graphicsPanel.sameAsTheCaptions",
+    "file": "src/renderer/src/editor/panels/GraphicsPanel.tsx",
+    "line": 384,
+    "english": "Same as the captions",
+    "sample": {}
+  },
+  {
+    "key": "common.label.textColour",
+    "file": "src/renderer/src/editor/panels/GraphicsPanel.tsx",
+    "line": 390,
+    "english": "Text colour",
+    "sample": {}
+  },
+  {
+    "key": "text.graphicsPanel.accent",
+    "file": "src/renderer/src/editor/panels/GraphicsPanel.tsx",
+    "line": 391,
+    "english": "Accent",
+    "sample": {}
+  },
+  {
+    "key": "text.graphicsPanel.comesIn",
+    "file": "src/renderer/src/editor/panels/GraphicsPanel.tsx",
+    "line": 407,
+    "english": "Comes in",
+    "sample": {}
+  },
+  {
+    "key": "text.graphicsPanel.goesOut",
+    "file": "src/renderer/src/editor/panels/GraphicsPanel.tsx",
+    "line": 417,
+    "english": "Goes out",
+    "sample": {}
+  },
+  {
+    "key": "common.label.position",
+    "file": "src/renderer/src/editor/panels/GraphicsPanel.tsx",
+    "line": 427,
+    "english": "Position",
+    "sample": {}
+  },
+  {
+    "key": "text.graphicsPanel.placedAutomatically",
+    "file": "src/renderer/src/editor/panels/GraphicsPanel.tsx",
+    "line": 429,
+    "english": "Placed automatically",
+    "sample": {}
+  },
+  {
+    "key": "text.graphicsPanel.placedByYou",
+    "file": "src/renderer/src/editor/panels/GraphicsPanel.tsx",
+    "line": 429,
+    "english": "Placed by you",
+    "sample": {}
+  },
+  {
+    "key": "text.graphicsPanel.placeAutomatically",
+    "file": "src/renderer/src/editor/panels/GraphicsPanel.tsx",
+    "line": 432,
+    "english": "Place automatically",
+    "sample": {}
+  },
+  {
+    "key": "text.graphicsPanel.keptClearOfThe",
+    "file": "src/renderer/src/editor/panels/GraphicsPanel.tsx",
+    "line": 436,
+    "english": "Kept clear of the captions, the cursor and your camera. Drag it in the preview to place it yourself.",
+    "sample": {}
+  },
+  {
+    "key": "common.label.sound",
+    "file": "src/renderer/src/editor/panels/GraphicsPanel.tsx",
+    "line": 439,
+    "english": "Sound",
+    "sample": {}
+  },
+  {
+    "key": "common.label.sound",
+    "file": "src/renderer/src/editor/panels/GraphicsPanel.tsx",
+    "line": 441,
+    "english": "Sound",
+    "sample": {}
+  },
+  {
+    "key": "text.graphicsPanel.madeAutomaticallyEditingIt",
+    "file": "src/renderer/src/editor/panels/GraphicsPanel.tsx",
+    "line": 445,
+    "english": "Made automatically. Editing it makes it yours; Review mode lists it until then.",
+    "sample": {}
+  },
+  {
+    "key": "text.graphicsPanel.deletePopUp",
+    "file": "src/renderer/src/editor/panels/GraphicsPanel.tsx",
+    "line": 457,
+    "english": "Delete pop-up",
+    "sample": {}
+  },
+  {
+    "key": "common.label.text",
+    "file": "src/renderer/src/editor/panels/GraphicsPanel.tsx",
+    "line": 469,
+    "english": "Text",
+    "sample": {}
+  },
+  {
+    "key": "common.label.text",
+    "file": "src/renderer/src/editor/panels/GraphicsPanel.tsx",
+    "line": 470,
+    "english": "Text",
+    "sample": {}
+  },
+  {
+    "key": "common.label.look",
+    "file": "src/renderer/src/editor/panels/GraphicsPanel.tsx",
+    "line": 473,
+    "english": "Look",
+    "sample": {}
+  },
+  {
+    "key": "common.label.look",
+    "file": "src/renderer/src/editor/panels/GraphicsPanel.tsx",
+    "line": 475,
+    "english": "Look",
+    "sample": {}
+  },
+  {
+    "key": "text.graphicsPanel.replacesItsCaptionWords",
+    "file": "src/renderer/src/editor/panels/GraphicsPanel.tsx",
+    "line": 488,
+    "english": "Replaces its caption words while it shows.",
+    "sample": {}
+  },
+  {
+    "key": "text.graphicsPanel.replaceTheCaption",
+    "file": "src/renderer/src/editor/panels/GraphicsPanel.tsx",
+    "line": 489,
+    "english": "Replace the caption",
+    "sample": {}
+  },
+  {
+    "key": "text.graphicsPanel.emoji",
+    "file": "src/renderer/src/editor/panels/GraphicsPanel.tsx",
+    "line": 504,
+    "english": "Emoji",
+    "sample": {}
+  },
+  {
+    "key": "text.graphicsPanel.notInThisVersion",
+    "file": "src/renderer/src/editor/panels/GraphicsPanel.tsx",
+    "line": 514,
+    "english": "Not in this version of Flown",
+    "sample": {}
+  },
+  {
+    "key": "text.graphicsPanel.searchEmojiByName",
+    "file": "src/renderer/src/editor/panels/GraphicsPanel.tsx",
+    "line": 517,
+    "english": "Search emoji by name",
+    "sample": {}
+  },
+  {
+    "key": "text.graphicsPanel.searchFireBulbCheck",
+    "file": "src/renderer/src/editor/panels/GraphicsPanel.tsx",
+    "line": 517,
+    "english": "Search: fire, bulb, check…",
+    "sample": {}
+  },
+  {
+    "key": "text.graphicsPanel.emoji",
+    "file": "src/renderer/src/editor/panels/GraphicsPanel.tsx",
+    "line": 518,
+    "english": "Emoji",
+    "sample": {}
+  },
+  {
+    "key": "text.graphicsPanel.noEmojiCalled",
+    "file": "src/renderer/src/editor/panels/GraphicsPanel.tsx",
+    "line": 524,
+    "english": "No emoji called “rocket”.",
+    "sample": {
+      "query": "rocket"
+    }
+  },
+  {
+    "key": "text.graphicsPanel.from",
+    "file": "src/renderer/src/editor/panels/GraphicsPanel.tsx",
+    "line": 557,
+    "english": "From",
+    "sample": {}
+  },
+  {
+    "key": "text.graphicsPanel.to",
+    "file": "src/renderer/src/editor/panels/GraphicsPanel.tsx",
+    "line": 558,
+    "english": "To",
+    "sample": {}
+  },
+  {
+    "key": "text.graphicsPanel.decimals",
+    "file": "src/renderer/src/editor/panels/GraphicsPanel.tsx",
+    "line": 561,
+    "english": "Decimals",
+    "sample": {}
+  },
+  {
+    "key": "text.graphicsPanel.decimals",
+    "file": "src/renderer/src/editor/panels/GraphicsPanel.tsx",
+    "line": 563,
+    "english": "Decimals",
+    "sample": {}
+  },
+  {
+    "key": "text.graphicsPanel.before",
+    "file": "src/renderer/src/editor/panels/GraphicsPanel.tsx",
+    "line": 575,
+    "english": "Before",
+    "sample": {}
+  },
+  {
+    "key": "text.graphicsPanel.before",
+    "file": "src/renderer/src/editor/panels/GraphicsPanel.tsx",
+    "line": 576,
+    "english": "Before",
+    "sample": {}
+  },
+  {
+    "key": "text.graphicsPanel.after",
+    "file": "src/renderer/src/editor/panels/GraphicsPanel.tsx",
+    "line": 579,
+    "english": "After",
+    "sample": {}
+  },
+  {
+    "key": "text.graphicsPanel.after",
+    "file": "src/renderer/src/editor/panels/GraphicsPanel.tsx",
+    "line": 580,
+    "english": "After",
+    "sample": {}
+  },
+  {
+    "key": "text.graphicsPanel.label",
+    "file": "src/renderer/src/editor/panels/GraphicsPanel.tsx",
+    "line": 584,
+    "english": "Label",
+    "sample": {}
+  },
+  {
+    "key": "text.graphicsPanel.label",
+    "file": "src/renderer/src/editor/panels/GraphicsPanel.tsx",
+    "line": 585,
+    "english": "Label",
+    "sample": {}
+  },
+  {
+    "key": "text.graphicsPanel.growth",
+    "file": "src/renderer/src/editor/panels/GraphicsPanel.tsx",
+    "line": 585,
+    "english": "growth",
+    "sample": {}
+  },
+  {
+    "key": "text.graphicsPanel.countFor",
+    "file": "src/renderer/src/editor/panels/GraphicsPanel.tsx",
+    "line": 587,
+    "english": "Count for",
+    "sample": {}
+  },
+  {
+    "key": "common.label.title",
+    "file": "src/renderer/src/editor/panels/GraphicsPanel.tsx",
+    "line": 599,
+    "english": "Title",
+    "sample": {}
+  },
+  {
+    "key": "common.label.title",
+    "file": "src/renderer/src/editor/panels/GraphicsPanel.tsx",
+    "line": 600,
+    "english": "Title",
+    "sample": {}
+  },
+  {
+    "key": "text.graphicsPanel.items",
+    "file": "src/renderer/src/editor/panels/GraphicsPanel.tsx",
+    "line": 602,
+    "english": "Items",
+    "sample": {}
+  },
+  {
+    "key": "text.graphicsPanel.item",
+    "file": "src/renderer/src/editor/panels/GraphicsPanel.tsx",
+    "line": 607,
+    "english": "Item «value»",
+    "sample": {
+      "n": "«value»"
+    }
+  },
+  {
+    "key": "text.graphicsPanel.showAt",
+    "file": "src/renderer/src/editor/panels/GraphicsPanel.tsx",
+    "line": 612,
+    "english": "Show at 0:12",
+    "sample": {
+      "time": "0:12"
+    }
+  },
+  {
+    "key": "text.graphicsPanel.showItemFromThe",
+    "file": "src/renderer/src/editor/panels/GraphicsPanel.tsx",
+    "line": 613,
+    "english": "Show item «value» from the playhead",
+    "sample": {
+      "n": "«value»"
+    }
+  },
+  {
+    "key": "text.graphicsPanel.playhead",
+    "file": "src/renderer/src/editor/panels/GraphicsPanel.tsx",
+    "line": 614,
+    "english": "Playhead",
+    "sample": {}
+  },
+  {
+    "key": "text.graphicsPanel.removeItem",
+    "file": "src/renderer/src/editor/panels/GraphicsPanel.tsx",
+    "line": 617,
+    "english": "Remove item «value»",
+    "sample": {
+      "n": "«value»"
+    }
+  },
+  {
+    "key": "common.action.remove",
+    "file": "src/renderer/src/editor/panels/GraphicsPanel.tsx",
+    "line": 617,
+    "english": "Remove",
+    "sample": {}
+  },
+  {
+    "key": "text.graphicsPanel.addItem",
+    "file": "src/renderer/src/editor/panels/GraphicsPanel.tsx",
+    "line": 626,
+    "english": "Add item",
+    "sample": {}
+  },
+  {
+    "key": "text.graphicsPanel.marker",
+    "file": "src/renderer/src/editor/panels/GraphicsPanel.tsx",
+    "line": 630,
+    "english": "Marker",
+    "sample": {}
+  },
+  {
+    "key": "text.graphicsPanel.marker",
+    "file": "src/renderer/src/editor/panels/GraphicsPanel.tsx",
+    "line": 632,
+    "english": "Marker",
+    "sample": {}
+  },
+  {
+    "key": "common.colour.pickAny",
+    "file": "src/renderer/src/editor/panels/GraphicsPanel.tsx",
+    "line": 655,
+    "english": "Pick any colour",
+    "sample": {}
+  },
+  {
+    "key": "common.colour.anyFor",
+    "file": "src/renderer/src/editor/panels/GraphicsPanel.tsx",
+    "line": 656,
+    "english": "«label» (any colour)",
+    "sample": {
+      "label": "«label»"
+    }
+  },
+  {
+    "key": "common.state.none",
+    "file": "src/renderer/src/editor/panels/GraphicsPanel.tsx",
+    "line": 666,
+    "english": "None",
+    "sample": {}
+  },
+  {
+    "key": "text.graphicsPanel.original",
+    "file": "src/renderer/src/editor/panels/GraphicsPanel.tsx",
+    "line": 667,
+    "english": "Original",
+    "sample": {}
+  },
+  {
+    "key": "text.graphicsTrack.popUpsMadeFrom",
+    "file": "src/renderer/src/editor/GraphicsTrack.tsx",
+    "line": 107,
+    "english": "Pop-ups made from captions",
+    "sample": {}
+  },
+  {
+    "key": "text.graphicsTrack.popUps",
+    "file": "src/renderer/src/editor/GraphicsTrack.tsx",
+    "line": 146,
+    "english": "Pop-ups",
+    "sample": {}
+  },
+  {
+    "key": "text.graphicHandle.dragTheCaptionsTo",
+    "file": "src/renderer/src/editor/GraphicHandle.tsx",
+    "line": 153,
+    "english": "Drag the captions to place them, or click to play or pause; Layout › Position puts them back",
+    "sample": {}
+  },
+  {
+    "key": "text.graphicHandle.dragOrUseThe",
+    "file": "src/renderer/src/editor/GraphicHandle.tsx",
+    "line": 168,
+    "english": "«value»: drag or use the arrow keys to move it",
+    "sample": {
+      "value": "«value»"
+    }
+  },
+  {
+    "key": "text.imagesPanel.imagesAndStickers",
+    "file": "src/renderer/src/editor/panels/ImagesPanel.tsx",
+    "line": 50,
+    "english": "Images and stickers",
+    "sample": {}
+  },
+  {
+    "key": "text.imagesPanel.adding",
+    "file": "src/renderer/src/editor/panels/ImagesPanel.tsx",
+    "line": 52,
+    "english": "Adding…",
+    "sample": {}
+  },
+  {
+    "key": "text.imagesPanel.addImage",
+    "file": "src/renderer/src/editor/panels/ImagesPanel.tsx",
+    "line": 52,
+    "english": "Add image…",
+    "sample": {}
+  },
+  {
+    "key": "text.imagesPanel.stickers",
+    "file": "src/renderer/src/editor/panels/ImagesPanel.tsx",
+    "line": 62,
+    "english": "Stickers",
+    "sample": {}
+  },
+  {
+    "key": "text.imagesPanel.addSticker",
+    "file": "src/renderer/src/editor/panels/ImagesPanel.tsx",
+    "line": 68,
+    "english": "Add «name» sticker",
+    "sample": {
+      "name": "«name»"
+    }
+  },
+  {
+    "key": "text.imagesPanel.addStickerAtThe",
+    "file": "src/renderer/src/editor/panels/ImagesPanel.tsx",
+    "line": 69,
+    "english": "Add «value» sticker at the playhead",
+    "sample": {
+      "name": "«value»"
+    }
+  },
+  {
+    "key": "text.imagesPanel.selectedImage",
+    "file": "src/renderer/src/editor/panels/ImagesPanel.tsx",
+    "line": 104,
+    "english": "Selected image",
+    "sample": {}
+  },
+  {
+    "key": "text.imagesPanel.itIsLeftOut",
+    "file": "src/renderer/src/editor/panels/ImagesPanel.tsx",
+    "line": 118,
+    "english": "It is left out of the video.",
+    "sample": {}
+  },
+  {
+    "key": "text.imagesPanel.positionX",
+    "file": "src/renderer/src/editor/panels/ImagesPanel.tsx",
+    "line": 121,
+    "english": "Position X",
+    "sample": {}
+  },
+  {
+    "key": "text.imagesPanel.positionY",
+    "file": "src/renderer/src/editor/panels/ImagesPanel.tsx",
+    "line": 122,
+    "english": "Position Y",
+    "sample": {}
+  },
+  {
+    "key": "common.label.size",
+    "file": "src/renderer/src/editor/panels/ImagesPanel.tsx",
+    "line": 123,
+    "english": "Size",
+    "sample": {}
+  },
+  {
+    "key": "text.imagesPanel.rotation",
+    "file": "src/renderer/src/editor/panels/ImagesPanel.tsx",
+    "line": 125,
+    "english": "Rotation",
+    "sample": {}
+  },
+  {
+    "key": "common.label.opacity",
+    "file": "src/renderer/src/editor/panels/ImagesPanel.tsx",
+    "line": 133,
+    "english": "Opacity",
+    "sample": {}
+  },
+  {
+    "key": "text.imagesPanel.fadeIn",
+    "file": "src/renderer/src/editor/panels/ImagesPanel.tsx",
+    "line": 134,
+    "english": "Fade in",
+    "sample": {}
+  },
+  {
+    "key": "text.imagesPanel.fadeOut",
+    "file": "src/renderer/src/editor/panels/ImagesPanel.tsx",
+    "line": 135,
+    "english": "Fade out",
+    "sample": {}
+  },
+  {
+    "key": "text.imagesPanel.tipDragOnThe",
+    "file": "src/renderer/src/editor/panels/ImagesPanel.tsx",
+    "line": 136,
+    "english": "Tip: drag on the preview to move it; handles resize (Shift keeps the shape) and rotate (Shift: 15° steps).",
+    "sample": {}
+  },
+  {
+    "key": "text.imagesPanel.backToTheImage",
+    "file": "src/renderer/src/editor/panels/ImagesPanel.tsx",
+    "line": 139,
+    "english": "Back to the image's own proportions",
+    "sample": {}
+  },
+  {
+    "key": "text.imagesPanel.resetShape",
+    "file": "src/renderer/src/editor/panels/ImagesPanel.tsx",
+    "line": 140,
+    "english": "Reset shape",
+    "sample": {}
+  },
+  {
+    "key": "text.imagesPanel.deleteImage",
+    "file": "src/renderer/src/editor/panels/ImagesPanel.tsx",
+    "line": 150,
+    "english": "Delete image",
+    "sample": {}
+  },
+  {
+    "key": "text.imagesPanel.imagesInThisVideo",
+    "file": "src/renderer/src/editor/panels/ImagesPanel.tsx",
+    "line": 163,
+    "english": "Images in this video («length»)",
+    "sample": {
+      "n": "«length»"
+    }
+  },
+  {
+    "key": "text.overlayEditor.dragToMoveArrow",
+    "file": "src/renderer/src/editor/OverlayEditor.tsx",
+    "line": 150,
+    "english": "«label»: drag to move, arrow keys move it",
+    "sample": {
+      "label": "«label»"
+    }
+  },
+  {
+    "key": "text.overlayEditor.dragToMoveHandles",
+    "file": "src/renderer/src/editor/OverlayEditor.tsx",
+    "line": 151,
+    "english": "Drag to move · handles resize (Shift: keep the shape) · round handle rotates",
+    "sample": {}
+  },
+  {
+    "key": "text.overlayEditor.dragToRotateShift",
+    "file": "src/renderer/src/editor/OverlayEditor.tsx",
+    "line": 170,
+    "english": "Drag to rotate (Shift: 15° steps)",
+    "sample": {}
+  },
+  {
+    "key": "text.overlayEditor.dragToPlaceIt",
+    "file": "src/renderer/src/editor/OverlayEditor.tsx",
+    "line": 175,
+    "english": "logo.png · drag to place it ·",
+    "sample": {
+      "label": "logo.png"
+    }
+  },
+  {
+    "key": "common.action.done",
+    "file": "src/renderer/src/editor/OverlayEditor.tsx",
+    "line": 177,
+    "english": "Done",
+    "sample": {}
+  },
+  {
+    "key": "text.overlayTrack.doubleClickToAdd",
+    "file": "src/renderer/src/editor/OverlayTrack.tsx",
+    "line": 128,
+    "english": "Double-click to add an image",
+    "sample": {}
+  },
+  {
+    "key": "text.overlayTrack.imagesAndStickers",
+    "file": "src/renderer/src/editor/OverlayTrack.tsx",
+    "line": 166,
+    "english": "Images and stickers",
+    "sample": {}
+  },
+  {
+    "key": "text.overlayDropZone.dropAnImageTo",
+    "file": "src/renderer/src/editor/OverlayDropZone.tsx",
+    "line": 87,
+    "english": "Drop an image to add it at the playhead",
+    "sample": {}
+  },
+  {
+    "key": "text.overlayItems.thisVideoAlreadyHas",
+    "file": "src/renderer/src/editor/overlayItems.ts",
+    "line": 34,
+    "english": "This video already has «MAX_OVERLAYS» images.",
+    "sample": {
+      "n": "«MAX_OVERLAYS»"
+    }
+  },
+  {
+    "key": "text.overlayItems.theFileIsToo",
+    "file": "src/renderer/src/editor/overlayItems.ts",
+    "line": 92,
+    "english": "The file is too large («value» MB; «value2» MB at most).",
+    "sample": {
+      "size": "«value»",
+      "max": "«value2»"
+    }
+  },
+  {
+    "key": "text.overlayItems.thePastedImageIs",
+    "file": "src/renderer/src/editor/overlayItems.ts",
+    "line": 128,
+    "english": "The pasted image is too large («value» MB; «value2» MB at most).",
+    "sample": {
+      "size": "«value»",
+      "max": "«value2»"
+    }
+  },
+  {
+    "key": "text.titleTrack.chaptersDoubleClickTo",
+    "file": "src/renderer/src/editor/TitleTrack.tsx",
+    "line": 166,
+    "english": "Chapters · double-click to add one",
+    "sample": {}
+  },
+  {
+    "key": "text.titleTrack.chapter",
+    "file": "src/renderer/src/editor/TitleTrack.tsx",
+    "line": 177,
+    "english": "Chapter",
+    "sample": {}
+  },
+  {
+    "key": "text.titleTrack.doubleClickToAdd",
+    "file": "src/renderer/src/editor/TitleTrack.tsx",
+    "line": 182,
+    "english": "Double-click to add a title card",
+    "sample": {}
+  },
+  {
+    "key": "text.titleTrack.titleCardsAndChapters",
+    "file": "src/renderer/src/editor/TitleTrack.tsx",
+    "line": 218,
+    "english": "Title cards and chapters",
+    "sample": {}
+  },
+  {
+    "key": "text.fontPicker.downloadingOf",
+    "file": "src/renderer/src/editor/panels/FontPicker.tsx",
+    "line": 175,
+    "english": "Downloading «family»: «value» of «size»",
+    "sample": {
+      "family": "«family»",
+      "size": "«size»",
+      "received": "«value»"
+    }
+  },
+  {
+    "key": "common.action.cancel",
+    "file": "src/renderer/src/editor/panels/FontPicker.tsx",
+    "line": 178,
+    "english": "Cancel",
+    "sample": {}
+  },
+  {
+    "key": "text.fontPicker.download",
+    "file": "src/renderer/src/editor/panels/FontPicker.tsx",
+    "line": 185,
+    "english": "Download (9.6 MB)",
+    "sample": {
+      "size": "9.6 MB"
+    }
+  },
+  {
+    "key": "text.fontPicker.thisVideoAlreadyHas",
+    "file": "src/renderer/src/editor/panels/FontPicker.tsx",
+    "line": 258,
+    "english": "This video already has «MAX_PROJECT_FONTS» fonts.",
+    "sample": {
+      "n": "«MAX_PROJECT_FONTS»"
+    }
+  },
+  {
+    "key": "text.fontPicker.default",
+    "file": "src/renderer/src/editor/panels/FontPicker.tsx",
+    "line": 279,
+    "english": "Default («DEFAULT_FONT_LABEL»)",
+    "sample": {
+      "font": "«DEFAULT_FONT_LABEL»"
+    }
+  },
+  {
+    "key": "text.fontPicker.captionFonts",
+    "file": "src/renderer/src/editor/panels/FontPicker.tsx",
+    "line": 282,
+    "english": "Caption fonts",
+    "sample": {}
+  },
+  {
+    "key": "text.fontPicker.yourBrandFonts",
+    "file": "src/renderer/src/editor/panels/FontPicker.tsx",
+    "line": 290,
+    "english": "Your brand fonts",
+    "sample": {}
+  },
+  {
+    "key": "text.fontPicker.downloadGroup",
+    "file": "src/renderer/src/editor/panels/FontPicker.tsx",
+    "line": 298,
+    "english": "Download",
+    "sample": {}
+  },
+  {
+    "key": "text.fontPicker.addATtfOtf",
+    "file": "src/renderer/src/editor/panels/FontPicker.tsx",
+    "line": 316,
+    "english": "Add a TTF, OTF or WOFF2 font file",
+    "sample": {}
+  },
+  {
+    "key": "text.fontPicker.addFont",
+    "file": "src/renderer/src/editor/panels/FontPicker.tsx",
+    "line": 317,
+    "english": "Add font…",
+    "sample": {}
+  },
+  {
+    "key": "text.fontPicker.addingTheFont",
+    "file": "src/renderer/src/editor/panels/FontPicker.tsx",
+    "line": 320,
+    "english": "Adding the font…",
+    "sample": {}
+  },
+  {
+    "key": "text.fontPicker.oneWeight",
+    "file": "src/renderer/src/editor/panels/FontPicker.tsx",
+    "line": 324,
+    "english": "One weight",
+    "sample": {}
+  },
+  {
+    "key": "text.chapterBarSection.progressBar",
+    "file": "src/renderer/src/editor/panels/ChapterBarSection.tsx",
+    "line": 39,
+    "english": "Progress bar",
+    "sample": {}
+  },
+  {
+    "key": "text.chapterBarSection.progressBarOnThe",
+    "file": "src/renderer/src/editor/panels/ChapterBarSection.tsx",
+    "line": 41,
+    "english": "Progress bar on the video",
+    "sample": {}
+  },
+  {
+    "key": "text.chapterBarSection.place",
+    "file": "src/renderer/src/editor/panels/ChapterBarSection.tsx",
+    "line": 46,
+    "english": "Place",
+    "sample": {}
+  },
+  {
+    "key": "common.label.look",
+    "file": "src/renderer/src/editor/panels/ChapterBarSection.tsx",
+    "line": 57,
+    "english": "Look",
+    "sample": {}
+  },
+  {
+    "key": "text.chapterBarSection.chapterNames",
+    "file": "src/renderer/src/editor/panels/ChapterBarSection.tsx",
+    "line": 68,
+    "english": "Chapter names",
+    "sample": {}
+  },
+  {
+    "key": "text.chapterBarSection.showOnlyWhenA",
+    "file": "src/renderer/src/editor/panels/ChapterBarSection.tsx",
+    "line": 81,
+    "english": "Show only when a chapter starts",
+    "sample": {}
+  },
+  {
+    "key": "common.label.colour",
+    "file": "src/renderer/src/editor/panels/ChapterBarSection.tsx",
+    "line": 114,
+    "english": "Colour",
+    "sample": {}
+  },
+  {
+    "key": "text.chapterBarSection.otherColour",
+    "file": "src/renderer/src/editor/panels/ChapterBarSection.tsx",
+    "line": 134,
+    "english": "Other colour",
+    "sample": {}
+  },
+  {
+    "key": "text.chapterBarSection.otherColour",
+    "file": "src/renderer/src/editor/panels/ChapterBarSection.tsx",
+    "line": 135,
+    "english": "Other colour",
+    "sample": {}
+  },
+  {
+    "key": "text.progressBarLink.progressBar",
+    "file": "src/renderer/src/editor/panels/ProgressBarLink.tsx",
+    "line": 13,
+    "english": "Progress bar",
+    "sample": {}
+  },
+  {
+    "key": "text.progressBarLink.aThinBarThat",
+    "file": "src/renderer/src/editor/panels/ProgressBarLink.tsx",
+    "line": 15,
+    "english": "A thin bar that fills as the video plays, split at your chapters.",
+    "sample": {}
+  },
+  {
+    "key": "text.progressBarLink.progressBar2",
+    "file": "src/renderer/src/editor/panels/ProgressBarLink.tsx",
+    "line": 25,
+    "english": "Progress bar…",
+    "sample": {}
+  },
+  {
+    "key": "text.contrastMeter.pauseTheVideoTo",
+    "file": "src/renderer/src/editor/panels/ContrastMeter.tsx",
+    "line": 60,
+    "english": "Pause the video to check the contrast of the captions on it.",
+    "sample": {}
+  },
+  {
+    "key": "text.contrastMeter.strengthenTheOutlineOr",
+    "file": "src/renderer/src/editor/panels/ContrastMeter.tsx",
+    "line": 72,
+    "english": "Strengthen the outline or the box so the captions read well",
+    "sample": {}
+  },
+  {
+    "key": "text.contrastMeter.fix",
+    "file": "src/renderer/src/editor/panels/ContrastMeter.tsx",
+    "line": 73,
+    "english": "Fix",
+    "sample": {}
+  },
+  {
     "key": "common.state.none",
     "file": "src/renderer/src/editor/panels/StylePanel.tsx",
     "line": 31,
@@ -6655,6 +8587,13 @@
     "sample": {}
   },
   {
+    "key": "common.label.title",
+    "file": "src/renderer/src/editor/TitleTrack.tsx",
+    "line": 27,
+    "english": "Title",
+    "sample": {}
+  },
+  {
     "key": "text.titleBackground.blur",
     "file": "src/shared/editor/titles.ts",
     "line": 32,
@@ -6666,6 +8605,13 @@
     "file": "src/shared/editor/titles.ts",
     "line": 32,
     "english": "The video behind it, blurred and darkened",
+    "sample": {}
+  },
+  {
+    "key": "common.label.colour",
+    "file": "src/shared/editor/itemNames.ts",
+    "line": 40,
+    "english": "Colour",
     "sample": {}
   },
   {
@@ -10626,5 +12572,1647 @@
     "line": 50,
     "english": "Suggested",
     "sample": {}
+  },
+  {
+    "key": "text.textPanel.addTextHint",
+    "file": "src/renderer/src/editor/panels/TextPanel.tsx",
+    "line": 91,
+    "english": "Press T or double-click the text track. Drag a text item on the timeline to change when it shows, and on the preview to move it.",
+    "sample": {
+      "has": "yes",
+      "keys": "T"
+    }
+  },
+  {
+    "key": "text.textPanel.addTextHint",
+    "file": "src/renderer/src/editor/panels/TextPanel.tsx",
+    "line": 91,
+    "english": "Double-click the text track. Drag a text item on the timeline to change when it shows, and on the preview to move it.",
+    "sample": {
+      "has": "no",
+      "keys": ""
+    }
+  },
+  {
+    "key": "text.textPanel.addTitleHint",
+    "file": "src/renderer/src/editor/panels/TextPanel.tsx",
+    "line": 186,
+    "english": "An intro, a section title over the blurred video, or a lower third with a name. Press Shift+T or double-click the title track to add one.",
+    "sample": {
+      "has": "yes",
+      "keys": "Shift+T"
+    }
+  },
+  {
+    "key": "text.textPanel.addTitleHint",
+    "file": "src/renderer/src/editor/panels/TextPanel.tsx",
+    "line": 186,
+    "english": "An intro, a section title over the blurred video, or a lower third with a name. Double-click the title track to add one.",
+    "sample": {
+      "has": "no",
+      "keys": ""
+    }
+  },
+  {
+    "key": "text.textPanel.addChapterHint",
+    "file": "src/renderer/src/editor/panels/TextPanel.tsx",
+    "line": 407,
+    "english": "Press M or double-click the strip above the title cards to add one. Chapters go into MP4, MOV, WebM and M4A exports, and the Export dialog copies them as YouTube timestamps.",
+    "sample": {
+      "has": "yes",
+      "keys": "M"
+    }
+  },
+  {
+    "key": "text.textPanel.addChapterHint",
+    "file": "src/renderer/src/editor/panels/TextPanel.tsx",
+    "line": 407,
+    "english": "Double-click the strip above the title cards to add one. Chapters go into MP4, MOV, WebM and M4A exports, and the Export dialog copies them as YouTube timestamps.",
+    "sample": {
+      "has": "no",
+      "keys": ""
+    }
+  },
+  {
+    "key": "text.textPanel.chapterKeys",
+    "file": "src/renderer/src/editor/panels/TextPanel.tsx",
+    "line": 411,
+    "english": "Shift+Right and Shift+Left jump between them.",
+    "sample": {
+      "next": "Shift+Right",
+      "prev": "Shift+Left"
+    }
+  },
+  {
+    "key": "text.annotationStyle.pill",
+    "file": "src/renderer/src/editor/panels/TextPanel.tsx",
+    "line": 144,
+    "english": "Caption pill",
+    "sample": {}
+  },
+  {
+    "key": "common.label.title",
+    "file": "src/renderer/src/editor/panels/TextPanel.tsx",
+    "line": 145,
+    "english": "Title",
+    "sample": {}
+  },
+  {
+    "key": "text.annotationStyle.badge",
+    "file": "src/renderer/src/editor/panels/TextPanel.tsx",
+    "line": 146,
+    "english": "Step badge",
+    "sample": {}
+  },
+  {
+    "key": "text.annotationStyle.bubble",
+    "file": "src/renderer/src/editor/panels/TextPanel.tsx",
+    "line": 147,
+    "english": "Speech bubble",
+    "sample": {}
+  },
+  {
+    "key": "text.textPanel.sizePercent",
+    "file": "src/renderer/src/editor/panels/TextPanel.tsx",
+    "line": 151,
+    "english": "4.5%",
+    "sample": {
+      "n": "4.5"
+    }
+  },
+  {
+    "key": "text.textPanel.selectAllToEdit",
+    "file": "src/renderer/src/editor/panels/TextPanel.tsx",
+    "line": 491,
+    "english": "Select all 3 text items to edit them together",
+    "sample": {
+      "kind": "annotation",
+      "n": "3"
+    }
+  },
+  {
+    "key": "text.textPanel.selectAllToEdit",
+    "file": "src/renderer/src/editor/panels/TextPanel.tsx",
+    "line": 491,
+    "english": "Select all 3 title cards to edit them together",
+    "sample": {
+      "kind": "title",
+      "n": "3"
+    }
+  },
+  {
+    "key": "text.textPanel.selectAllToEdit",
+    "file": "src/renderer/src/editor/panels/TextPanel.tsx",
+    "line": 491,
+    "english": "Select all 3 chapters to edit them together",
+    "sample": {
+      "kind": "chapter",
+      "n": "3"
+    }
+  },
+  {
+    "key": "text.textPanel.addTitleTitle",
+    "file": "src/renderer/src/editor/panels/TextPanel.tsx",
+    "line": 182,
+    "english": "Add a title card at the playhead",
+    "sample": {}
+  },
+  {
+    "key": "text.textPanel.deleteTitleTitle",
+    "file": "src/renderer/src/editor/panels/TextPanel.tsx",
+    "line": 267,
+    "english": "Delete this title card",
+    "sample": {}
+  },
+  {
+    "key": "text.textPanel.addChapterTitle",
+    "file": "src/renderer/src/editor/panels/TextPanel.tsx",
+    "line": 401,
+    "english": "Add a chapter at the playhead",
+    "sample": {}
+  },
+  {
+    "key": "text.textPanel.deleteThisChapter",
+    "file": "src/renderer/src/editor/panels/TextPanel.tsx",
+    "line": 362,
+    "english": "Delete this chapter",
+    "sample": {}
+  },
+  {
+    "key": "text.textPanel.chapterLeftOut",
+    "file": "src/renderer/src/editor/panels/TextPanel.tsx",
+    "line": 340,
+    "english": "At the very end of the video, with nothing after it: exports leave it out.",
+    "sample": {}
+  },
+  {
+    "key": "text.textPanel.chapterInCut",
+    "file": "src/renderer/src/editor/panels/TextPanel.tsx",
+    "line": 343,
+    "english": "In a part that is cut: it starts at 1:02 in the video, where it goes on.",
+    "sample": {
+      "at": "1:02"
+    }
+  },
+  {
+    "key": "text.textPanel.chapterAt",
+    "file": "src/renderer/src/editor/panels/TextPanel.tsx",
+    "line": 343,
+    "english": "At 1:02 in the exported video.",
+    "sample": {
+      "at": "1:02"
+    }
+  },
+  {
+    "key": "text.textPanel.chapterNameAt",
+    "file": "src/renderer/src/editor/panels/TextPanel.tsx",
+    "line": 438,
+    "english": "Name of the chapter at 1:02",
+    "sample": {
+      "time": "1:02",
+      "found": "no"
+    }
+  },
+  {
+    "key": "text.textPanel.chapterNameAt",
+    "file": "src/renderer/src/editor/panels/TextPanel.tsx",
+    "line": 438,
+    "english": "Name of the chapter at 1:02, found, not reviewed",
+    "sample": {
+      "time": "1:02",
+      "found": "yes"
+    }
+  },
+  {
+    "key": "text.shapesPanel.addKind",
+    "file": "src/renderer/src/editor/panels/ShapesPanel.tsx",
+    "line": 93,
+    "english": "Add arrow",
+    "sample": {
+      "kind": "arrow"
+    }
+  },
+  {
+    "key": "text.shapesPanel.addKind",
+    "file": "src/renderer/src/editor/panels/ShapesPanel.tsx",
+    "line": 93,
+    "english": "Add line",
+    "sample": {
+      "kind": "line"
+    }
+  },
+  {
+    "key": "text.shapesPanel.addKind",
+    "file": "src/renderer/src/editor/panels/ShapesPanel.tsx",
+    "line": 93,
+    "english": "Add box",
+    "sample": {
+      "kind": "rect"
+    }
+  },
+  {
+    "key": "text.shapesPanel.addKind",
+    "file": "src/renderer/src/editor/panels/ShapesPanel.tsx",
+    "line": 93,
+    "english": "Add ellipse",
+    "sample": {
+      "kind": "ellipse"
+    }
+  },
+  {
+    "key": "text.shapesPanel.addKind",
+    "file": "src/renderer/src/editor/panels/ShapesPanel.tsx",
+    "line": 93,
+    "english": "Add marker",
+    "sample": {
+      "kind": "highlight"
+    }
+  },
+  {
+    "key": "text.shapesPanel.addKind",
+    "file": "src/renderer/src/editor/panels/ShapesPanel.tsx",
+    "line": 93,
+    "english": "Add blur",
+    "sample": {
+      "kind": "blur"
+    }
+  },
+  {
+    "key": "text.shapesPanel.addKind",
+    "file": "src/renderer/src/editor/panels/ShapesPanel.tsx",
+    "line": 93,
+    "english": "Add pixelate",
+    "sample": {
+      "kind": "pixelate"
+    }
+  },
+  {
+    "key": "text.shapesPanel.cursorSpotlightTitle",
+    "file": "src/renderer/src/editor/panels/ShapesPanel.tsx",
+    "line": 110,
+    "english": "Dim everything but the area around the cursor",
+    "sample": {}
+  },
+  {
+    "key": "text.shapesPanel.regionSpotlightTitle",
+    "file": "src/renderer/src/editor/panels/ShapesPanel.tsx",
+    "line": 120,
+    "english": "Dim everything but an area you place",
+    "sample": {}
+  },
+  {
+    "key": "text.shapesPanel.times",
+    "file": "src/renderer/src/editor/panels/ShapesPanel.tsx",
+    "line": 41,
+    "english": "2 times",
+    "sample": {
+      "n": "2"
+    }
+  },
+  {
+    "key": "text.shapesPanel.times",
+    "file": "src/renderer/src/editor/panels/ShapesPanel.tsx",
+    "line": 41,
+    "english": "1.5 times",
+    "sample": {
+      "n": "1.5"
+    }
+  },
+  {
+    "key": "text.shapesPanel.magnifierName",
+    "file": "src/renderer/src/editor/panels/ShapesPanel.tsx",
+    "line": 46,
+    "english": "Magnifier, 2 times",
+    "sample": {
+      "times": "2 times"
+    }
+  },
+  {
+    "key": "text.shapesPanel.cursorSpotlightName",
+    "file": "src/renderer/src/editor/panels/ShapesPanel.tsx",
+    "line": 48,
+    "english": "Cursor spotlight",
+    "sample": {}
+  },
+  {
+    "key": "text.shapesPanel.spotlightName",
+    "file": "src/renderer/src/editor/panels/ShapesPanel.tsx",
+    "line": 49,
+    "english": "Spotlight",
+    "sample": {}
+  },
+  {
+    "key": "text.shapesPanel.selectedKind",
+    "file": "src/renderer/src/editor/panels/ShapesPanel.tsx",
+    "line": 200,
+    "english": "Selected box",
+    "sample": {
+      "kind": "rect"
+    }
+  },
+  {
+    "key": "text.shapesPanel.selectedKind",
+    "file": "src/renderer/src/editor/panels/ShapesPanel.tsx",
+    "line": 200,
+    "english": "Selected marker",
+    "sample": {
+      "kind": "highlight"
+    }
+  },
+  {
+    "key": "text.shapesPanel.blurTitle",
+    "file": "src/renderer/src/editor/panels/ShapesPanel.tsx",
+    "line": 212,
+    "english": "A soft blur over the area",
+    "sample": {}
+  },
+  {
+    "key": "text.shapesPanel.pixelateTitle",
+    "file": "src/renderer/src/editor/panels/ShapesPanel.tsx",
+    "line": 213,
+    "english": "Large square pixels over the area",
+    "sample": {}
+  },
+  {
+    "key": "text.shapesPanel.px",
+    "file": "src/renderer/src/editor/panels/ShapesPanel.tsx",
+    "line": 244,
+    "english": "2.5 px",
+    "sample": {
+      "n": "2.5"
+    }
+  },
+  {
+    "key": "text.shapesPanel.followsCursor",
+    "file": "src/renderer/src/editor/panels/ShapesPanel.tsx",
+    "line": 311,
+    "english": "Cursor",
+    "sample": {}
+  },
+  {
+    "key": "text.shapesPanel.followsCursorTitle",
+    "file": "src/renderer/src/editor/panels/ShapesPanel.tsx",
+    "line": 311,
+    "english": "The lit area follows the cursor",
+    "sample": {}
+  },
+  {
+    "key": "text.shapesPanel.noCursorDataIn",
+    "file": "src/renderer/src/editor/panels/ShapesPanel.tsx",
+    "line": 311,
+    "english": "No cursor data in this recording",
+    "sample": {}
+  },
+  {
+    "key": "text.shapesPanel.region",
+    "file": "src/renderer/src/editor/panels/ShapesPanel.tsx",
+    "line": 312,
+    "english": "Region",
+    "sample": {}
+  },
+  {
+    "key": "text.shapesPanel.followsRegionTitle",
+    "file": "src/renderer/src/editor/panels/ShapesPanel.tsx",
+    "line": 312,
+    "english": "The lit area stays on the content you place it on",
+    "sample": {}
+  },
+  {
+    "key": "text.shapesPanel.spotEllipse",
+    "file": "src/renderer/src/editor/panels/ShapesPanel.tsx",
+    "line": 320,
+    "english": "Ellipse",
+    "sample": {}
+  },
+  {
+    "key": "text.shapesPanel.spotRectangle",
+    "file": "src/renderer/src/editor/panels/ShapesPanel.tsx",
+    "line": 321,
+    "english": "Rectangle",
+    "sample": {}
+  },
+  {
+    "key": "text.shapesPanel.startsAt",
+    "file": "src/renderer/src/editor/panels/ShapesPanel.tsx",
+    "line": 405,
+    "english": "Starts at",
+    "sample": {}
+  },
+  {
+    "key": "text.shapesPanel.endsAt",
+    "file": "src/renderer/src/editor/panels/ShapesPanel.tsx",
+    "line": 406,
+    "english": "Ends at",
+    "sample": {}
+  },
+  {
+    "key": "text.shapesPanel.duplicateThis",
+    "file": "src/renderer/src/editor/panels/ShapesPanel.tsx",
+    "line": 458,
+    "english": "Duplicate this arrow",
+    "sample": {
+      "kind": "arrow"
+    }
+  },
+  {
+    "key": "text.shapesPanel.duplicateThis",
+    "file": "src/renderer/src/editor/panels/ShapesPanel.tsx",
+    "line": 458,
+    "english": "Duplicate this line",
+    "sample": {
+      "kind": "line"
+    }
+  },
+  {
+    "key": "text.shapesPanel.duplicateThis",
+    "file": "src/renderer/src/editor/panels/ShapesPanel.tsx",
+    "line": 458,
+    "english": "Duplicate this box",
+    "sample": {
+      "kind": "rect"
+    }
+  },
+  {
+    "key": "text.shapesPanel.duplicateThis",
+    "file": "src/renderer/src/editor/panels/ShapesPanel.tsx",
+    "line": 458,
+    "english": "Duplicate this ellipse",
+    "sample": {
+      "kind": "ellipse"
+    }
+  },
+  {
+    "key": "text.shapesPanel.duplicateThis",
+    "file": "src/renderer/src/editor/panels/ShapesPanel.tsx",
+    "line": 458,
+    "english": "Duplicate this marker",
+    "sample": {
+      "kind": "highlight"
+    }
+  },
+  {
+    "key": "text.shapesPanel.duplicateThis",
+    "file": "src/renderer/src/editor/panels/ShapesPanel.tsx",
+    "line": 458,
+    "english": "Duplicate this blur",
+    "sample": {
+      "kind": "blur"
+    }
+  },
+  {
+    "key": "text.shapesPanel.duplicateThis",
+    "file": "src/renderer/src/editor/panels/ShapesPanel.tsx",
+    "line": 458,
+    "english": "Duplicate this pixelate",
+    "sample": {
+      "kind": "pixelate"
+    }
+  },
+  {
+    "key": "text.shapesPanel.duplicateThis",
+    "file": "src/renderer/src/editor/panels/ShapesPanel.tsx",
+    "line": 458,
+    "english": "Duplicate this spotlight",
+    "sample": {
+      "kind": "spotlight"
+    }
+  },
+  {
+    "key": "text.shapesPanel.duplicateThis",
+    "file": "src/renderer/src/editor/panels/ShapesPanel.tsx",
+    "line": 458,
+    "english": "Duplicate this magnifier",
+    "sample": {
+      "kind": "magnifier"
+    }
+  },
+  {
+    "key": "text.shapesPanel.deleteThis",
+    "file": "src/renderer/src/editor/panels/ShapesPanel.tsx",
+    "line": 470,
+    "english": "Delete this box",
+    "sample": {
+      "kind": "rect"
+    }
+  },
+  {
+    "key": "text.shapesPanel.deleteThis",
+    "file": "src/renderer/src/editor/panels/ShapesPanel.tsx",
+    "line": 470,
+    "english": "Delete this spotlight",
+    "sample": {
+      "kind": "spotlight"
+    }
+  },
+  {
+    "key": "text.shapesPanel.deleteThis",
+    "file": "src/renderer/src/editor/panels/ShapesPanel.tsx",
+    "line": 470,
+    "english": "Delete this magnifier",
+    "sample": {
+      "kind": "magnifier"
+    }
+  },
+  {
+    "key": "text.shapesPanel.deleteThis",
+    "file": "src/renderer/src/editor/panels/ShapesPanel.tsx",
+    "line": 470,
+    "english": "Delete this marker",
+    "sample": {
+      "kind": "highlight"
+    }
+  },
+  {
+    "key": "text.shapesPanel.times",
+    "file": "src/renderer/src/editor/panels/MagnifierSection.tsx",
+    "line": 118,
+    "english": "2.5 times",
+    "sample": {
+      "n": "2.5"
+    }
+  },
+  {
+    "key": "text.graphicsPanel.keywordLabel",
+    "file": "src/renderer/src/editor/panels/GraphicsPanel.tsx",
+    "line": 44,
+    "english": "“Auto Save”",
+    "sample": {
+      "text": "Auto Save"
+    }
+  },
+  {
+    "key": "text.graphicsPanel.emoji",
+    "file": "src/renderer/src/editor/panels/GraphicsPanel.tsx",
+    "line": 47,
+    "english": "Emoji",
+    "sample": {}
+  },
+  {
+    "key": "text.graphicsPanel.listLabel",
+    "file": "src/renderer/src/editor/panels/GraphicsPanel.tsx",
+    "line": 52,
+    "english": "List: Steps",
+    "sample": {
+      "title": "Steps"
+    }
+  },
+  {
+    "key": "text.graphicsPanel.listItems",
+    "file": "src/renderer/src/editor/panels/GraphicsPanel.tsx",
+    "line": 52,
+    "english": [
+      "List: 0 items",
+      "List: 1 item",
+      "List: 2 items",
+      "List: 1000 items"
+    ],
+    "sample": [
+      {
+        "count": 0,
+        "n": "0"
+      },
+      {
+        "count": 1,
+        "n": "1"
+      },
+      {
+        "count": 2,
+        "n": "2"
+      },
+      {
+        "count": 1000,
+        "n": "1000"
+      }
+    ]
+  },
+  {
+    "key": "text.graphicsPanel.generate.keywords",
+    "file": "src/renderer/src/editor/panels/GraphicsPanel.tsx",
+    "line": 61,
+    "english": "Keywords",
+    "sample": {}
+  },
+  {
+    "key": "text.graphicsPanel.generate.emoji",
+    "file": "src/renderer/src/editor/panels/GraphicsPanel.tsx",
+    "line": 61,
+    "english": "Emoji",
+    "sample": {}
+  },
+  {
+    "key": "text.graphicsPanel.generate.counters",
+    "file": "src/renderer/src/editor/panels/GraphicsPanel.tsx",
+    "line": 61,
+    "english": "Counters",
+    "sample": {}
+  },
+  {
+    "key": "text.graphicsPanel.generate.lists",
+    "file": "src/renderer/src/editor/panels/GraphicsPanel.tsx",
+    "line": 61,
+    "english": "Lists",
+    "sample": {}
+  },
+  {
+    "key": "text.graphicsPanel.generate.speakers",
+    "file": "src/renderer/src/editor/panels/GraphicsPanel.tsx",
+    "line": 61,
+    "english": "Speakers",
+    "sample": {}
+  },
+  {
+    "key": "text.graphicsPanel.generate.chapters",
+    "file": "src/renderer/src/editor/panels/GraphicsPanel.tsx",
+    "line": 61,
+    "english": "Chapters",
+    "sample": {}
+  },
+  {
+    "key": "text.graphicsPanel.generate.quotes",
+    "file": "src/renderer/src/editor/panels/GraphicsPanel.tsx",
+    "line": 61,
+    "english": "Quotes",
+    "sample": {}
+  },
+  {
+    "key": "text.graphicsPanel.addKind.keyword",
+    "file": "src/renderer/src/editor/panels/GraphicsPanel.tsx",
+    "line": 68,
+    "english": "Keyword pop-up",
+    "sample": {}
+  },
+  {
+    "key": "text.graphicsPanel.addKind.emoji",
+    "file": "src/renderer/src/editor/panels/GraphicsPanel.tsx",
+    "line": 68,
+    "english": "Emoji",
+    "sample": {}
+  },
+  {
+    "key": "text.graphicsPanel.addKind.counter",
+    "file": "src/renderer/src/editor/panels/GraphicsPanel.tsx",
+    "line": 68,
+    "english": "Counter",
+    "sample": {}
+  },
+  {
+    "key": "text.graphicsPanel.addKind.list",
+    "file": "src/renderer/src/editor/panels/GraphicsPanel.tsx",
+    "line": 68,
+    "english": "List card",
+    "sample": {}
+  },
+  {
+    "key": "text.graphicsPanel.added",
+    "file": "src/renderer/src/editor/panels/GraphicsPanel.tsx",
+    "line": 89,
+    "english": [
+      "No pop-ups to add: nothing in the captions called for one",
+      "Added 1 pop-up (Undo removes it)",
+      "Added 2 pop-ups (Undo removes them)",
+      "Added 1000 pop-ups (Undo removes them)"
+    ],
+    "sample": [
+      {
+        "count": 0,
+        "n": "0"
+      },
+      {
+        "count": 1,
+        "n": "1"
+      },
+      {
+        "count": 2,
+        "n": "2"
+      },
+      {
+        "count": 1000,
+        "n": "1000"
+      }
+    ]
+  },
+  {
+    "key": "text.graphicsPanel.selectedKind",
+    "file": "src/renderer/src/editor/panels/GraphicsPanel.tsx",
+    "line": 372,
+    "english": "Selected keyword",
+    "sample": {
+      "kind": "keyword"
+    }
+  },
+  {
+    "key": "text.graphicsPanel.selectedKind",
+    "file": "src/renderer/src/editor/panels/GraphicsPanel.tsx",
+    "line": 372,
+    "english": "Selected emoji",
+    "sample": {
+      "kind": "emoji"
+    }
+  },
+  {
+    "key": "text.graphicsPanel.selectedKind",
+    "file": "src/renderer/src/editor/panels/GraphicsPanel.tsx",
+    "line": 372,
+    "english": "Selected counter",
+    "sample": {
+      "kind": "counter"
+    }
+  },
+  {
+    "key": "text.graphicsPanel.selectedKind",
+    "file": "src/renderer/src/editor/panels/GraphicsPanel.tsx",
+    "line": 372,
+    "english": "Selected list",
+    "sample": {
+      "kind": "list"
+    }
+  },
+  {
+    "key": "text.textPanel.sizePercent",
+    "file": "src/renderer/src/editor/panels/GraphicsPanel.tsx",
+    "line": 378,
+    "english": "6.5%",
+    "sample": {
+      "n": "6.5"
+    }
+  },
+  {
+    "key": "text.graphicsPanel.sameAsTheCaptions",
+    "file": "src/renderer/src/editor/panels/GraphicsPanel.tsx",
+    "line": 401,
+    "english": "Same as the captions",
+    "sample": {}
+  },
+  {
+    "key": "text.graphicsPanel.deleteThisPopUp",
+    "file": "src/renderer/src/editor/panels/GraphicsPanel.tsx",
+    "line": 447,
+    "english": "Delete this pop-up",
+    "sample": {}
+  },
+  {
+    "key": "text.graphicsPanel.look.card",
+    "file": "src/renderer/src/editor/panels/GraphicsPanel.tsx",
+    "line": 477,
+    "english": "Card",
+    "sample": {}
+  },
+  {
+    "key": "text.graphicsPanel.look.plain",
+    "file": "src/renderer/src/editor/panels/GraphicsPanel.tsx",
+    "line": 478,
+    "english": "Plain",
+    "sample": {}
+  },
+  {
+    "key": "text.graphicsPanel.look.outline",
+    "file": "src/renderer/src/editor/panels/GraphicsPanel.tsx",
+    "line": 479,
+    "english": "Outline",
+    "sample": {}
+  },
+  {
+    "key": "text.graphicsPanel.look.tag",
+    "file": "src/renderer/src/editor/panels/GraphicsPanel.tsx",
+    "line": 480,
+    "english": "Tag",
+    "sample": {}
+  },
+  {
+    "key": "text.graphicsPanel.marker.bullet",
+    "file": "src/renderer/src/editor/panels/GraphicsPanel.tsx",
+    "line": 631,
+    "english": "Bullets",
+    "sample": {}
+  },
+  {
+    "key": "text.graphicsPanel.marker.check",
+    "file": "src/renderer/src/editor/panels/GraphicsPanel.tsx",
+    "line": 632,
+    "english": "Ticks",
+    "sample": {}
+  },
+  {
+    "key": "text.graphicsPanel.seconds",
+    "file": "src/renderer/src/editor/panels/GraphicsPanel.tsx",
+    "line": 585,
+    "english": "1.5 s",
+    "sample": {
+      "n": "1.5"
+    }
+  },
+  {
+    "key": "text.calloutSection.privacyNote",
+    "file": "src/renderer/src/editor/panels/CalloutSection.tsx",
+    "line": 21,
+    "english": "Blur and pixelate are fully on for their whole time, so nothing they hide shows.",
+    "sample": {}
+  },
+  {
+    "key": "text.calloutSection.seconds",
+    "file": "src/renderer/src/editor/panels/CalloutSection.tsx",
+    "line": 24,
+    "english": "0.25 seconds",
+    "sample": {
+      "n": "0.25"
+    }
+  },
+  {
+    "key": "text.calloutSection.playTheSound",
+    "file": "src/renderer/src/editor/panels/CalloutSection.tsx",
+    "line": 117,
+    "english": "Play the sound",
+    "sample": {}
+  },
+  {
+    "key": "common.action.playName",
+    "file": "src/renderer/src/editor/panels/CalloutSection.tsx",
+    "line": 117,
+    "english": "Play Soft whoosh",
+    "sample": {
+      "name": "Soft whoosh"
+    }
+  },
+  {
+    "key": "text.bubbleSection.white",
+    "file": "src/renderer/src/editor/panels/BubbleSection.tsx",
+    "line": 25,
+    "english": "White",
+    "sample": {}
+  },
+  {
+    "key": "text.bubbleSection.dark",
+    "file": "src/renderer/src/editor/panels/BubbleSection.tsx",
+    "line": 26,
+    "english": "Dark",
+    "sample": {}
+  },
+  {
+    "key": "text.bubbleSection.brandColour",
+    "file": "src/renderer/src/editor/panels/BubbleSection.tsx",
+    "line": 30,
+    "english": "Brand colour 1, #ff8800",
+    "sample": {
+      "n": "1",
+      "colour": "#ff8800"
+    }
+  },
+  {
+    "key": "text.bubbleSection.brandColour",
+    "file": "src/renderer/src/editor/panels/BadgeSection.tsx",
+    "line": 28,
+    "english": "Brand colour 2, #00aaff",
+    "sample": {
+      "n": "2",
+      "colour": "#00aaff"
+    }
+  },
+  {
+    "key": "text.bubbleSection.addStepBadgeTitle",
+    "file": "src/renderer/src/editor/panels/BubbleSection.tsx",
+    "line": 52,
+    "english": "A numbered circle beside the cursor: 1, 2, 3",
+    "sample": {}
+  },
+  {
+    "key": "text.bubbleSection.addSpeechBubbleTitle",
+    "file": "src/renderer/src/editor/panels/BubbleSection.tsx",
+    "line": 53,
+    "english": "A rounded box with a tail pointing at the cursor",
+    "sample": {}
+  },
+  {
+    "key": "text.bubbleSection.pointing",
+    "file": "src/renderer/src/editor/panels/BubbleSection.tsx",
+    "line": 79,
+    "english": "Pointing",
+    "sample": {}
+  },
+  {
+    "key": "common.state.none",
+    "file": "src/renderer/src/editor/panels/BubbleSection.tsx",
+    "line": 80,
+    "english": "None",
+    "sample": {}
+  },
+  {
+    "key": "text.badgeSection.blue",
+    "file": "src/renderer/src/editor/panels/BadgeSection.tsx",
+    "line": 29,
+    "english": "Blue, #0a84ff",
+    "sample": {
+      "colour": "#0a84ff"
+    }
+  },
+  {
+    "key": "text.badgeSection.automaticAs",
+    "file": "src/renderer/src/editor/panels/BadgeSection.tsx",
+    "line": 83,
+    "english": "Automatic (3)",
+    "sample": {
+      "label": "3"
+    }
+  },
+  {
+    "key": "text.badgeSection.automatic",
+    "file": "src/renderer/src/editor/panels/BadgeSection.tsx",
+    "line": 83,
+    "english": "Automatic",
+    "sample": {}
+  },
+  {
+    "key": "text.badgeSection.ownText",
+    "file": "src/renderer/src/editor/panels/BadgeSection.tsx",
+    "line": 84,
+    "english": "Your own text",
+    "sample": {}
+  },
+  {
+    "key": "text.badgeSection.digitsSample",
+    "file": "src/renderer/src/editor/panels/BadgeSection.tsx",
+    "line": 120,
+    "english": "Bangla digits, ১ ২ ৩",
+    "sample": {
+      "label": "Bangla digits",
+      "sample": "১ ২ ৩"
+    }
+  },
+  {
+    "key": "text.badgeSection.keepTwoChapters",
+    "file": "src/renderer/src/editor/panels/BadgeSection.tsx",
+    "line": 134,
+    "english": "Keep or add two chapters or more to count again in each.",
+    "sample": {}
+  },
+  {
+    "key": "text.badgeSection.addTwoChapters",
+    "file": "src/renderer/src/editor/panels/BadgeSection.tsx",
+    "line": 134,
+    "english": "Add two chapters or more to count again in each.",
+    "sample": {}
+  },
+  {
+    "key": "text.badgeSection.followsHint",
+    "file": "src/renderer/src/editor/panels/BadgeSection.tsx",
+    "line": 162,
+    "english": "Stays on its spot in the recording while the camera zooms and pans.",
+    "sample": {}
+  },
+  {
+    "key": "text.badgeSection.staysHint",
+    "file": "src/renderer/src/editor/panels/BadgeSection.tsx",
+    "line": 162,
+    "english": "Stays at one place in the frame.",
+    "sample": {}
+  },
+  {
+    "key": "text.badgeSection.atMost",
+    "file": "src/shared/editor/calloutsEdit.ts",
+    "line": 336,
+    "english": "At most 3 letters",
+    "sample": {
+      "n": "3"
+    }
+  },
+  {
+    "key": "text.badgeSection.banglaDigits",
+    "file": "src/shared/editor/calloutsEdit.ts",
+    "line": 389,
+    "english": "Bangla digits",
+    "sample": {}
+  },
+  {
+    "key": "text.badgeSection.languageDigits",
+    "file": "src/shared/editor/calloutsEdit.ts",
+    "line": 397,
+    "english": "Hindi digits",
+    "sample": {
+      "language": "Hindi"
+    }
+  },
+  {
+    "key": "text.calmMotionRow.hint",
+    "file": "src/renderer/src/editor/panels/CalmMotionRow.tsx",
+    "line": 16,
+    "english": "Calm motion: texts, shapes, the magnifier and slide cuts move less. Captions have their own setting in the Captions tab.",
+    "sample": {}
+  },
+  {
+    "key": "text.calloutHandles.at",
+    "file": "src/renderer/src/editor/CalloutHandles.tsx",
+    "line": 39,
+    "english": "40 %, 25 %",
+    "sample": {
+      "x": "40",
+      "y": "25"
+    }
+  },
+  {
+    "key": "text.calloutHandles.badgeOn",
+    "file": "src/renderer/src/editor/CalloutHandles.tsx",
+    "line": 101,
+    "english": "Badge on 40 %, 25 %",
+    "sample": {
+      "at": "40 %, 25 %"
+    }
+  },
+  {
+    "key": "text.calloutHandles.badgeLabelOn",
+    "file": "src/renderer/src/editor/CalloutHandles.tsx",
+    "line": 103,
+    "english": "Badge 3 on 40 %, 25 %",
+    "sample": {
+      "label": "3",
+      "at": "40 %, 25 %"
+    }
+  },
+  {
+    "key": "text.calloutHandles.tailTo",
+    "file": "src/renderer/src/editor/CalloutHandles.tsx",
+    "line": 101,
+    "english": "Tail points to 60 %, 70 %",
+    "sample": {
+      "at": "60 %, 70 %"
+    }
+  },
+  {
+    "key": "text.calloutHandles.bubble",
+    "file": "src/renderer/src/editor/CalloutHandles.tsx",
+    "line": 123,
+    "english": "Speech bubble",
+    "sample": {}
+  },
+  {
+    "key": "text.track.inGroup",
+    "file": "src/renderer/src/editor/OverlayTrack.tsx",
+    "line": 119,
+    "english": "selected: drag to move all 3, Ctrl+click to leave it out",
+    "sample": {
+      "n": "3"
+    }
+  },
+  {
+    "key": "text.track.inGroup",
+    "file": "src/renderer/src/editor/GraphicsTrack.tsx",
+    "line": 104,
+    "english": "selected: drag to move all 2, Ctrl+click to leave it out",
+    "sample": {
+      "n": "2"
+    }
+  },
+  {
+    "key": "text.track.inGroup",
+    "file": "src/renderer/src/editor/TitleTrack.tsx",
+    "line": 159,
+    "english": "selected: drag to move all 2, Ctrl+click to leave it out",
+    "sample": {
+      "n": "2"
+    }
+  },
+  {
+    "key": "text.track.selectSeveral",
+    "file": "src/renderer/src/editor/OverlayTrack.tsx",
+    "line": 119,
+    "english": "Ctrl+click to select several",
+    "sample": {}
+  },
+  {
+    "key": "text.track.selectSeveral",
+    "file": "src/renderer/src/editor/GraphicsTrack.tsx",
+    "line": 104,
+    "english": "Ctrl+click to select several",
+    "sample": {}
+  },
+  {
+    "key": "text.track.selectSeveral",
+    "file": "src/renderer/src/editor/TitleTrack.tsx",
+    "line": 159,
+    "english": "Ctrl+click to select several",
+    "sample": {}
+  },
+  {
+    "key": "text.graphicsTrack.automatic",
+    "file": "src/renderer/src/editor/GraphicsTrack.tsx",
+    "line": 124,
+    "english": "(automatic)",
+    "sample": {}
+  },
+  {
+    "key": "text.titleTrack.chapter",
+    "file": "src/renderer/src/editor/TitleTrack.tsx",
+    "line": 176,
+    "english": "Chapter",
+    "sample": {}
+  },
+  {
+    "key": "text.titleTrack.dragToMove",
+    "file": "src/renderer/src/editor/TitleTrack.tsx",
+    "line": 176,
+    "english": "drag to move",
+    "sample": {}
+  },
+  {
+    "key": "text.titleTrack.addChapterHint",
+    "file": "src/renderer/src/editor/TitleTrack.tsx",
+    "line": 181,
+    "english": "Double-click to add a chapter",
+    "sample": {}
+  },
+  {
+    "key": "text.titleTrack.addTitleHint",
+    "file": "src/renderer/src/editor/TitleTrack.tsx",
+    "line": 210,
+    "english": "Double-click to add a title card",
+    "sample": {}
+  },
+  {
+    "key": "common.label.title",
+    "file": "src/renderer/src/editor/TitleTrack.tsx",
+    "line": 187,
+    "english": "Title",
+    "sample": {}
+  },
+  {
+    "key": "text.overlayDropZone.onlyImages",
+    "file": "src/renderer/src/editor/OverlayDropZone.tsx",
+    "line": 33,
+    "english": "Only PNG, JPG, WebP, SVG and GIF images can be added",
+    "sample": {}
+  },
+  {
+    "key": "text.overlayDropZone.addedName",
+    "file": "src/renderer/src/editor/OverlayDropZone.tsx",
+    "line": 35,
+    "english": "Added logo.png at the playhead",
+    "sample": {
+      "name": "logo.png"
+    }
+  },
+  {
+    "key": "text.overlayDropZone.added",
+    "file": "src/renderer/src/editor/OverlayDropZone.tsx",
+    "line": 35,
+    "english": "Added the image at the playhead",
+    "sample": {}
+  },
+  {
+    "key": "text.imagesPanel.dropHint",
+    "file": "src/renderer/src/editor/panels/ImagesPanel.tsx",
+    "line": 55,
+    "english": "Or drop an image on the editor, or paste one with Ctrl+V. PNG, JPG, WebP, SVG or GIF, up to 25 MB.",
+    "sample": {
+      "keys": "Ctrl+V"
+    }
+  },
+  {
+    "key": "text.imagesPanel.animatedFrames",
+    "file": "src/renderer/src/editor/panels/ImagesPanel.tsx",
+    "line": 114,
+    "english": "animated, 12 frames",
+    "sample": {
+      "n": "12"
+    }
+  },
+  {
+    "key": "text.imagesPanel.seconds",
+    "file": "src/renderer/src/editor/panels/ImagesPanel.tsx",
+    "line": 137,
+    "english": "0.5 s",
+    "sample": {
+      "n": "0.5"
+    }
+  },
+  {
+    "key": "text.fontPicker.missingFont",
+    "file": "src/renderer/src/editor/panels/FontPicker.tsx",
+    "line": 25,
+    "english": "Brand Sans (missing: drawn with Inter)",
+    "sample": {
+      "name": "Brand Sans",
+      "fallback": "Inter"
+    }
+  },
+  {
+    "key": "text.fontPicker.script.latin",
+    "file": "src/renderer/src/editor/panels/FontPicker.tsx",
+    "line": 32,
+    "english": "Latin",
+    "sample": {}
+  },
+  {
+    "key": "text.fontPicker.script.cyrillic",
+    "file": "src/renderer/src/editor/panels/FontPicker.tsx",
+    "line": 33,
+    "english": "Cyrillic",
+    "sample": {}
+  },
+  {
+    "key": "text.fontPicker.script.greek",
+    "file": "src/renderer/src/editor/panels/FontPicker.tsx",
+    "line": 34,
+    "english": "Greek",
+    "sample": {}
+  },
+  {
+    "key": "text.fontPicker.script.vietnamese",
+    "file": "src/renderer/src/editor/panels/FontPicker.tsx",
+    "line": 35,
+    "english": "Vietnamese",
+    "sample": {}
+  },
+  {
+    "key": "text.fontPicker.script.bengali",
+    "file": "src/renderer/src/editor/panels/FontPicker.tsx",
+    "line": 36,
+    "english": "Bengali",
+    "sample": {}
+  },
+  {
+    "key": "text.fontPicker.script.devanagari",
+    "file": "src/renderer/src/editor/panels/FontPicker.tsx",
+    "line": 37,
+    "english": "Devanagari",
+    "sample": {}
+  },
+  {
+    "key": "text.fontPicker.script.arabic",
+    "file": "src/renderer/src/editor/panels/FontPicker.tsx",
+    "line": 38,
+    "english": "Arabic",
+    "sample": {}
+  },
+  {
+    "key": "text.fontPicker.script.hebrew",
+    "file": "src/renderer/src/editor/panels/FontPicker.tsx",
+    "line": 39,
+    "english": "Hebrew",
+    "sample": {}
+  },
+  {
+    "key": "text.fontPicker.script.thai",
+    "file": "src/renderer/src/editor/panels/FontPicker.tsx",
+    "line": 40,
+    "english": "Thai",
+    "sample": {}
+  },
+  {
+    "key": "text.fontPicker.script.hanSc",
+    "file": "src/renderer/src/editor/panels/FontPicker.tsx",
+    "line": 41,
+    "english": "Chinese (Simplified)",
+    "sample": {}
+  },
+  {
+    "key": "text.fontPicker.script.hanTc",
+    "file": "src/renderer/src/editor/panels/FontPicker.tsx",
+    "line": 42,
+    "english": "Chinese (Traditional)",
+    "sample": {}
+  },
+  {
+    "key": "text.fontPicker.script.japanese",
+    "file": "src/renderer/src/editor/panels/FontPicker.tsx",
+    "line": 43,
+    "english": "Japanese",
+    "sample": {}
+  },
+  {
+    "key": "text.fontPicker.script.korean",
+    "file": "src/renderer/src/editor/panels/FontPicker.tsx",
+    "line": 44,
+    "english": "Korean",
+    "sample": {}
+  },
+  {
+    "key": "text.fontPicker.letters.bn",
+    "file": "src/renderer/src/editor/panels/FontPicker.tsx",
+    "line": 52,
+    "english": "Bengali",
+    "sample": {}
+  },
+  {
+    "key": "text.fontPicker.letters.hi",
+    "file": "src/renderer/src/editor/panels/FontPicker.tsx",
+    "line": 53,
+    "english": "Hindi",
+    "sample": {}
+  },
+  {
+    "key": "text.fontPicker.letters.mr",
+    "file": "src/renderer/src/editor/panels/FontPicker.tsx",
+    "line": 54,
+    "english": "Marathi",
+    "sample": {}
+  },
+  {
+    "key": "text.fontPicker.letters.ar",
+    "file": "src/renderer/src/editor/panels/FontPicker.tsx",
+    "line": 55,
+    "english": "Arabic",
+    "sample": {}
+  },
+  {
+    "key": "text.fontPicker.letters.ur",
+    "file": "src/renderer/src/editor/panels/FontPicker.tsx",
+    "line": 56,
+    "english": "Urdu",
+    "sample": {}
+  },
+  {
+    "key": "text.fontPicker.letters.he",
+    "file": "src/renderer/src/editor/panels/FontPicker.tsx",
+    "line": 57,
+    "english": "Hebrew",
+    "sample": {}
+  },
+  {
+    "key": "text.fontPicker.letters.th",
+    "file": "src/renderer/src/editor/panels/FontPicker.tsx",
+    "line": 58,
+    "english": "Thai",
+    "sample": {}
+  },
+  {
+    "key": "text.fontPicker.letters.ru",
+    "file": "src/renderer/src/editor/panels/FontPicker.tsx",
+    "line": 59,
+    "english": "Russian",
+    "sample": {}
+  },
+  {
+    "key": "text.fontPicker.letters.uk",
+    "file": "src/renderer/src/editor/panels/FontPicker.tsx",
+    "line": 60,
+    "english": "Ukrainian",
+    "sample": {}
+  },
+  {
+    "key": "text.fontPicker.letters.vi",
+    "file": "src/renderer/src/editor/panels/FontPicker.tsx",
+    "line": 61,
+    "english": "Vietnamese",
+    "sample": {}
+  },
+  {
+    "key": "text.fontPicker.letters.cyrillic",
+    "file": "src/renderer/src/editor/panels/FontPicker.tsx",
+    "line": 72,
+    "english": "Cyrillic",
+    "sample": {}
+  },
+  {
+    "key": "text.fontPicker.letters.greek",
+    "file": "src/renderer/src/editor/panels/FontPicker.tsx",
+    "line": 73,
+    "english": "Greek",
+    "sample": {}
+  },
+  {
+    "key": "text.fontPicker.anotherFont",
+    "file": "src/renderer/src/editor/panels/FontPicker.tsx",
+    "line": 92,
+    "english": "another font",
+    "sample": {}
+  },
+  {
+    "key": "text.fontPicker.lacksLetters",
+    "file": "src/renderer/src/editor/panels/FontPicker.tsx",
+    "line": 93,
+    "english": "Doesn't have Russian letters: Flown uses Oswald for them",
+    "sample": {
+      "letters": "Russian",
+      "font": "Oswald"
+    }
+  },
+  {
+    "key": "text.fontPicker.megabytes",
+    "file": "src/renderer/src/editor/panels/FontPicker.tsx",
+    "line": 97,
+    "english": "9.6 MB",
+    "sample": {
+      "n": "9.6"
+    }
+  },
+  {
+    "key": "text.fontPicker.serverBusy",
+    "file": "src/renderer/src/editor/panels/FontPicker.tsx",
+    "line": 175,
+    "english": "The download server is busy. Trying again at 2:14:05 PM.",
+    "sample": {
+      "time": "2:14:05 PM"
+    }
+  },
+  {
+    "key": "text.fontPicker.notHere",
+    "file": "src/renderer/src/editor/panels/FontPicker.tsx",
+    "line": 184,
+    "english": "Anton is not on this PC yet.",
+    "sample": {
+      "family": "Anton"
+    }
+  },
+  {
+    "key": "text.fontPicker.notHereUntil",
+    "file": "src/renderer/src/editor/panels/FontPicker.tsx",
+    "line": 184,
+    "english": "Anton is not on this PC yet: until it is, captions use Oswald.",
+    "sample": {
+      "family": "Anton",
+      "until": "Oswald"
+    }
+  },
+  {
+    "key": "text.fontPicker.notLoaded",
+    "file": "src/renderer/src/editor/panels/FontPicker.tsx",
+    "line": 339,
+    "english": "Brand Sans could not be loaded, so this text is drawn with Inter. Add the font again to use it.",
+    "sample": {
+      "name": "Brand Sans",
+      "fallback": "Inter"
+    }
+  },
+  {
+    "key": "text.fontPicker.font",
+    "file": "src/renderer/src/editor/panels/FontPicker.tsx",
+    "line": 218,
+    "english": "Font",
+    "sample": {}
+  },
+  {
+    "key": "text.chapterBarSection.barHint",
+    "file": "src/renderer/src/editor/panels/ChapterBarSection.tsx",
+    "line": 16,
+    "english": "A thin bar that fills as the video plays, split at your chapters when there are any.",
+    "sample": {}
+  },
+  {
+    "key": "text.chapterBarSection.fewChapters",
+    "file": "src/renderer/src/editor/panels/ChapterBarSection.tsx",
+    "line": 18,
+    "english": "Add chapters to split the bar. With one or none it is a plain progress bar.",
+    "sample": {}
+  },
+  {
+    "key": "text.chapterBarSection.place.auto",
+    "file": "src/renderer/src/editor/panels/ChapterBarSection.tsx",
+    "line": 53,
+    "english": "Auto",
+    "sample": {}
+  },
+  {
+    "key": "text.chapterBarSection.place.auto.title",
+    "file": "src/renderer/src/editor/panels/ChapterBarSection.tsx",
+    "line": 53,
+    "english": "At the top, or at the bottom when the captions sit in the top half",
+    "sample": {}
+  },
+  {
+    "key": "text.chapterBarSection.place.top",
+    "file": "src/renderer/src/editor/panels/ChapterBarSection.tsx",
+    "line": 54,
+    "english": "Top",
+    "sample": {}
+  },
+  {
+    "key": "text.chapterBarSection.place.bottom",
+    "file": "src/renderer/src/editor/panels/ChapterBarSection.tsx",
+    "line": 55,
+    "english": "Bottom",
+    "sample": {}
+  },
+  {
+    "key": "text.chapterBarSection.look.float",
+    "file": "src/renderer/src/editor/panels/ChapterBarSection.tsx",
+    "line": 64,
+    "english": "Floating",
+    "sample": {}
+  },
+  {
+    "key": "text.chapterBarSection.look.float.title",
+    "file": "src/renderer/src/editor/panels/ChapterBarSection.tsx",
+    "line": 64,
+    "english": "Rounded, inset from the edges",
+    "sample": {}
+  },
+  {
+    "key": "text.chapterBarSection.look.edge",
+    "file": "src/renderer/src/editor/panels/ChapterBarSection.tsx",
+    "line": 65,
+    "english": "Edge",
+    "sample": {}
+  },
+  {
+    "key": "text.chapterBarSection.look.edge.title",
+    "file": "src/renderer/src/editor/panels/ChapterBarSection.tsx",
+    "line": 65,
+    "english": "Full width, flush with the edge",
+    "sample": {}
+  },
+  {
+    "key": "text.chapterBarSection.names.current",
+    "file": "src/renderer/src/editor/panels/ChapterBarSection.tsx",
+    "line": 75,
+    "english": "Current chapter",
+    "sample": {}
+  },
+  {
+    "key": "text.chapterBarSection.names.all",
+    "file": "src/renderer/src/editor/panels/ChapterBarSection.tsx",
+    "line": 76,
+    "english": "All chapters",
+    "sample": {}
+  },
+  {
+    "key": "common.state.none",
+    "file": "src/renderer/src/editor/panels/ChapterBarSection.tsx",
+    "line": 77,
+    "english": "None",
+    "sample": {}
+  },
+  {
+    "key": "text.bubbleSection.brandColour",
+    "file": "src/renderer/src/editor/panels/ChapterBarSection.tsx",
+    "line": 95,
+    "english": "Brand colour 1, #336699",
+    "sample": {
+      "n": "1",
+      "colour": "#336699"
+    }
+  },
+  {
+    "key": "text.chapterBarSection.white",
+    "file": "src/renderer/src/editor/panels/ChapterBarSection.tsx",
+    "line": 95,
+    "english": "White",
+    "sample": {}
+  },
+  {
+    "key": "text.contrastMeter.easy",
+    "file": "src/renderer/src/editor/panels/ContrastMeter.tsx",
+    "line": 29,
+    "english": "Easy to read",
+    "sample": {}
+  },
+  {
+    "key": "text.contrastMeter.some",
+    "file": "src/renderer/src/editor/panels/ContrastMeter.tsx",
+    "line": 29,
+    "english": "Hard to read for some people",
+    "sample": {}
+  },
+  {
+    "key": "text.contrastMeter.hard",
+    "file": "src/renderer/src/editor/panels/ContrastMeter.tsx",
+    "line": 29,
+    "english": "Hard to read on this video",
+    "sample": {}
+  },
+  {
+    "key": "text.contrastMeter.shown",
+    "file": "src/renderer/src/editor/panels/ContrastMeter.tsx",
+    "line": 65,
+    "english": "Contrast 4.4 : 1 at 0:12 · Hard to read for some people",
+    "sample": {
+      "ratio": "4.4",
+      "where": "yes",
+      "time": "0:12",
+      "words": "Hard to read for some people"
+    }
+  },
+  {
+    "key": "text.contrastMeter.shown",
+    "file": "src/renderer/src/editor/panels/ContrastMeter.tsx",
+    "line": 65,
+    "english": "Contrast 7.0 : 1 · Easy to read",
+    "sample": {
+      "ratio": "7.0",
+      "where": "no",
+      "time": "",
+      "words": "Easy to read"
+    }
+  },
+  {
+    "key": "text.contrastMeter.spoken",
+    "file": "src/renderer/src/editor/panels/ContrastMeter.tsx",
+    "line": 66,
+    "english": "Contrast 4.4 to 1, hard to read for some people at 0:12",
+    "sample": {
+      "ratio": "4.4",
+      "where": "yes",
+      "time": "0:12",
+      "words": "hard to read for some people"
+    }
+  },
+  {
+    "key": "text.contrastMeter.spoken",
+    "file": "src/renderer/src/editor/panels/ContrastMeter.tsx",
+    "line": 66,
+    "english": "Contrast 7.0 to 1, easy to read",
+    "sample": {
+      "ratio": "7.0",
+      "where": "no",
+      "time": "",
+      "words": "easy to read"
+    }
   }
 ]

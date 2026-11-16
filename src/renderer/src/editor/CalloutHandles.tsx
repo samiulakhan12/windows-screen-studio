@@ -22,6 +22,8 @@ import { useGroup } from './groupContext'
 import { followPointer } from './pointer'
 import type { Selection } from './selection'
 import './panels/callouts.css'
+import { t } from '../../../shared/i18n/t'
+import { fmt } from '../../../shared/i18n/fmt'
 
 /** What the preview shows at the playhead (useSceneView). */
 type SceneView = SceneLayout
@@ -35,7 +37,7 @@ const measureOf = (stack: string): ((text: string, px: number, weight: number) =
 }
 
 /** "52 %, 40 %": a place in the frame for screen readers. */
-const percents = (p: Point, m: CalloutMapping): string => `${Math.round((p.x / m.view.w) * 100)} %, ${Math.round((p.y / m.view.h) * 100)} %`
+const percents = (p: Point, m: CalloutMapping): string => t('text.calloutHandles.at', { x: fmt.count(Math.round((p.x / m.view.w) * 100)), y: fmt.count(Math.round((p.y / m.view.h) * 100)) })
 
 export function CalloutHandles(props: { project: Project; selection: Selection; view: SceneView }): JSX.Element | null {
   const { store, player } = useEditor()
@@ -50,8 +52,8 @@ export function CalloutHandles(props: { project: Project; selection: Selection; 
   const sel = props.selection
   const found = sel?.kind === 'annotation' ? props.project.annotations.find((x) => x.id === sel.id) : undefined
   const a = found && (found.style === 'badge' || found.style === 'bubble') && !player.moving ? found : null
-  const t = displayTime(props.project.clips, player.time)
-  const shows = !!a && t >= a.start && t < a.end
+  const time = displayTime(props.project.clips, player.time)
+  const shows = !!a && time >= a.start && time < a.end
   const scene = shows ? pausedScene(player) : null
   // The preview holds no frame yet (a seek still running): look again shortly.
   const waiting = shows && !scene
@@ -61,7 +63,7 @@ export function CalloutHandles(props: { project: Project; selection: Selection; 
     return () => window.clearTimeout(id)
   }, [waiting, key])
   if (!a || !scene) return null
-  const m = calloutMapping(scene, t)
+  const m = calloutMapping(scene, time)
   const place = calloutPlace(a, a.style === 'badge' ? (badgeLabels(props.project).get(a.id) ?? null) : null, m.frame, measureOf(calloutStack(props.project, a)))
   if (!place) return null
   const start = calloutMapping(scene, a.start)
@@ -97,9 +99,9 @@ export function CalloutHandles(props: { project: Project; selection: Selection; 
     const shown = { x: clamp((tip.x + body.dx * S) / start.view.w, 0, 1), y: clamp((tip.y + body.dy * S) / start.view.h, 0, 1) }
     store.update((x) => moveBody(x, a.id, body, shown))
   }
-  const announce = (what: string, p: Point): void => group.notice(`${what} ${percents(p, m)}`)
+  const announce = (what: 'badge' | 'tail', p: Point): void => group.notice(what === 'badge' ? t('text.calloutHandles.badgeOn', { at: percents(p, m) }) : t('text.calloutHandles.tailTo', { at: percents(p, m) }))
 
-  const badgeName = place.lines[0] ? `Badge ${place.lines[0]} on ${percents(place.origin, m)}` : `Badge on ${percents(place.origin, m)}`
+  const badgeName = place.lines[0] ? t('text.calloutHandles.badgeLabelOn', { label: place.lines[0], at: percents(place.origin, m) }) : t('text.calloutHandles.badgeOn', { at: percents(place.origin, m) })
   const centre = { x: place.box.x + place.box.w / 2, y: place.box.y + place.box.h / 2 }
   return (
     <>
@@ -113,23 +115,23 @@ export function CalloutHandles(props: { project: Project; selection: Selection; 
           at={place.origin}
           onMove={(p, key) => {
             const q = moveTo(p, key)
-            if (key) announce('Badge on', q)
+            if (key) announce('badge', q)
           }}
           onHold={() => holdGesture(store)}
         />
       ) : (
         <>
-          <Handle testId="bubble-body" className="callout-handle" name="Speech bubble" box={place} m={m} at={centre} onMove={(p) => moveBodyTo(p)} onHold={() => holdGesture(store)} focusable={false} />
+          <Handle testId="bubble-body" className="callout-handle" name={t('text.calloutHandles.bubble')} box={place} m={m} at={centre} onMove={(p) => moveBodyTo(p)} onHold={() => holdGesture(store)} focusable={false} />
           {place.pin && (
             <Handle
               testId="tail-handle"
               className="callout-tip"
-              name={`Tail points to ${percents(place.pin, m)}`}
+              name={t('text.calloutHandles.tailTo', { at: percents(place.pin, m) })}
               m={m}
               at={place.pin}
               onMove={(p, key) => {
                 const q = moveTo(p, key)
-                if (key) announce('Tail points to', q)
+                if (key) announce('tail', q)
               }}
               onHold={() => holdGesture(store)}
             />
@@ -187,8 +189,8 @@ function Handle(props: {
       role={focusable ? 'button' : undefined}
       tabIndex={focusable ? 0 : undefined}
       aria-label={focusable ? props.name : undefined}
-      aria-roledescription={focusable ? 'movable handle' : undefined}
-      title={focusable ? `${props.name} · drag, or move it with the arrow keys (Shift: further)` : 'Drag to move the bubble around its tail'}
+      aria-roledescription={focusable ? t('text.calloutHandles.movableHandle') : undefined}
+      title={focusable ? t('text.calloutHandles.dragOrMoveIt', { name: props.name }) : t('text.calloutHandles.dragToMoveThe')}
       onPointerDown={onDown}
       onKeyDown={focusable ? onKey : undefined}
     />

@@ -15,6 +15,8 @@ import { BADGE_SIZE, BUBBLE_BODY, CALLOUT_DEFAULTS, withDefaultMotion } from '..
 import type { Annotation, CalloutMotion, Clip, Project, SfxRef, Shape, ShapeKind, TitleCard } from '../types'
 import { newAnnotationId } from './annotations'
 import { playheadTimes, shapeForPlayhead } from './shapes'
+import { t } from '../i18n/t'
+import { fmt } from '../i18n/fmt'
 
 type Point = { x: number; y: number }
 
@@ -333,7 +335,7 @@ export function setBubbleTail(project: Project, id: string, tail: { pin: Point; 
 
 /** "At most 3 letters" when a badge's own text has more graphemes than it draws, else null. */
 export function badgeTextError(text: string): string | null {
-  return graphemesOf(text).length > BADGE_TEXT_MAX ? `At most ${BADGE_TEXT_MAX} letters` : null
+  return graphemesOf(text).length > BADGE_TEXT_MAX ? t('text.badgeSection.atMost', { n: fmt.count(BADGE_TEXT_MAX) }) : null
 }
 
 /**
@@ -386,7 +388,7 @@ export function countWithOptions(project: Pick<Project, 'captions' | 'transcript
   const out: { value: string; label: string; sample: string; lang?: string }[] = [
     { value: '1', label: '1 2 3', sample: '1 2 3' },
     { value: 'A', label: 'A B C', sample: 'A B C' },
-    { value: 'bn', label: 'Bangla digits', sample: SAMPLE_DIGITS.beng, lang: 'bn' }
+    { value: 'bn', label: t('text.badgeSection.banglaDigits'), sample: SAMPLE_DIGITS.beng, lang: 'bn' }
   ]
   const langs = [project.captions?.track, project.transcript?.language].filter((l): l is string => typeof l === 'string' && l.length > 0)
   for (const lang of langs) {
@@ -394,7 +396,7 @@ export function countWithOptions(project: Pick<Project, 'captions' | 'transcript
     const digits = nativeNumbering(base)
     if (digits === 'latn' || digits === 'beng' || out.some((o) => o.value === base)) continue
     const name = LANGUAGE_NAMES?.of(base) ?? base
-    out.push({ value: base, label: `${name} digits`, sample: SAMPLE_DIGITS[digits] ?? '', lang: base })
+    out.push({ value: base, label: t('text.badgeSection.languageDigits', { language: name }), sample: SAMPLE_DIGITS[digits] ?? '', lang: base })
   }
   return out
 }

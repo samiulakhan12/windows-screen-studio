@@ -35,41 +35,40 @@ import { LookButtons } from '../LookButtons'
 import type { Selection } from '../selection'
 import { FontPicker } from './FontPicker'
 import './graphics.css'
+import { t } from '../../../../shared/i18n/t'
+import { NumberField } from '../../i18n/NumberField'
 
 /** What a row, a block and the Selection view call a graphic: “Auto Save”, 🔥 fire, $1.2M, List: 3 steps. */
 export function graphicLabel(g: Graphic): string {
   switch (g.kind) {
     case 'keyword':
-      return `“${g.text}”`
+      return t('text.graphicsPanel.keywordLabel', { text: g.text })
     case 'emoji': {
       const e = emojiEntry(g.emoji)
-      return e ? `${e.text} ${e.name}` : 'Emoji'
+      return e ? `${e.text} ${e.name}` : t('text.graphicsPanel.emoji')
     }
     case 'counter':
       return `${g.prefix}${g.to.toFixed(g.decimals)}${g.suffix}${g.label ? ` ${g.label}` : ''}`
     case 'list':
-      return `List: ${g.title?.trim() || `${g.items.length} ${g.items.length === 1 ? 'item' : 'items'}`}`
+      return g.title?.trim() ? t('text.graphicsPanel.listLabel', { title: g.title.trim() }) : t('text.graphicsPanel.listItems', { count: g.items.length, n: fmt.count(g.items.length) })
   }
 }
 
 /** The kinds the generator makes, as chips (§2.11), in the order of Make my captions great's options. */
 export type GenerateKind = 'keywords' | 'emoji' | 'counters' | 'lists' | 'speakers' | 'chapters' | 'quotes'
-const GENERATE_CHIPS: readonly { id: GenerateKind; label: string }[] = [
-  { id: 'keywords', label: 'Keywords' },
-  { id: 'emoji', label: 'Emoji' },
-  { id: 'counters', label: 'Counters' },
-  { id: 'lists', label: 'Lists' },
-  { id: 'speakers', label: 'Speakers' },
-  { id: 'chapters', label: 'Chapters' },
-  { id: 'quotes', label: 'Quotes' }
-]
+const GENERATE_CHIPS: readonly { id: GenerateKind; readonly label: string }[] = (['keywords', 'emoji', 'counters', 'lists', 'speakers', 'chapters', 'quotes'] as const).map((id) => ({
+  id,
+  get label() {
+    return t(`text.graphicsPanel.generate.${id}` as const)
+  }
+}))
 
-const ADD_KINDS: readonly { kind: Graphic['kind']; label: string }[] = [
-  { kind: 'keyword', label: 'Keyword pop-up' },
-  { kind: 'emoji', label: 'Emoji' },
-  { kind: 'counter', label: 'Counter' },
-  { kind: 'list', label: 'List card' }
-]
+const ADD_KINDS: readonly { kind: Graphic['kind']; readonly label: string }[] = (['keyword', 'emoji', 'counter', 'list'] as const).map((kind) => ({
+  kind,
+  get label() {
+    return t(`text.graphicsPanel.addKind.${kind}` as const)
+  }
+}))
 
 /** Items a list card holds at most (§2.11). */
 export const MAX_LIST_ITEMS = 7
@@ -88,7 +87,7 @@ export function madeCount(before: Project, after: Project): number {
 
 /** "Added 6 pop-ups (Undo removes them)" (§10.2). */
 export const addedNotice = (n: number): string =>
-  n === 0 ? 'No pop-ups to add: nothing in the captions called for one' : `Added ${n} ${n === 1 ? 'pop-up' : 'pop-ups'} (Undo removes ${n === 1 ? 'it' : 'them'})`
+  t('text.graphicsPanel.added', { count: n, n: fmt.count(n) })
 
 /**
  * Make my captions great's saved options (prefs `captionsGreat`), read with its reader; `save`
@@ -194,10 +193,10 @@ function GenerateSection({ project }: { project: Project }): JSX.Element {
 
   const select = (id: string): void => group.select([itemKey('graphic', id)], itemKey('graphic', id))
   return (
-    <Section title="Add pop-ups from captions">
-      {!hasCaptions && <p className="hint">Generate captions first: pop-ups are made from what is said.</p>}
+    <Section title={t('text.graphicsPanel.addPopUpsFrom')}>
+      {!hasCaptions && <p className="hint">{t('text.graphicsPanel.generateCaptionsFirstPop')}</p>}
       <div className="field">
-        <span id="graphics-kinds-label">Make</span>
+        <span id="graphics-kinds-label">{t('text.graphicsPanel.make')}</span>
         <div className="chips" role="group" aria-labelledby="graphics-kinds-label">
           {chips.map((c) => (
             <button key={c.id} type="button" className={`chip ${on(c.id) ? 'active' : ''}`} aria-pressed={on(c.id)} disabled={!hasCaptions} onClick={() => setPicked((x) => ({ ...x, [c.id]: !on(c.id) }))}>
@@ -207,14 +206,14 @@ function GenerateSection({ project }: { project: Project }): JSX.Element {
         </div>
       </div>
       <label className="field">
-        <span>Sound on pop-ups</span>
+        <span>{t('text.graphicsPanel.soundOnPopUps')}</span>
         <select data-testid="graphics-sound" value={great.options.sound} onChange={(e) => great.save({ sound: (readGraphicSound(e.target.value) ?? 'none') as GreatOptions['sound'] })}>
           <PopUpSoundOptions />
         </select>
       </label>
       <div className="graphics-actions">
         <button type="button" className="btn primary" data-testid="graphics-generate" disabled={!hasCaptions || !chips.some((c) => on(c.id))} onClick={generate}>
-          <EditorIcon name="sparkle" size={16} /> Add pop-ups from captions
+          <EditorIcon name="sparkle" size={16} /> {t('text.graphicsPanel.addPopUpsFrom2')}
         </button>
         <AddMenu
           onAdd={(kind, byKey) =>
@@ -229,7 +228,7 @@ function GenerateSection({ project }: { project: Project }): JSX.Element {
           }
         />
       </div>
-      <p className="hint">Pop-ups made here are listed in Review mode. Drag one in the preview to place it yourself.</p>
+      <p className="hint">{t('text.graphicsPanel.popUpsMadeHere')}</p>
     </Section>
   )
 }
@@ -266,10 +265,10 @@ function AddMenu({ onAdd }: { onAdd: (kind: Graphic['kind'], byKey: boolean) => 
   return (
     <div className="graphics-add">
       <button ref={buttonRef} type="button" className="btn" aria-haspopup="menu" aria-expanded={open} data-testid="graphics-add" onClick={() => setOpen((o) => !o)}>
-        <Icon name="plus" size={16} /> Add
+        <Icon name="plus" size={16} /> {t('common.action.add')}
       </button>
       {open && (
-        <div ref={menuRef} className="graphics-add-menu" role="menu" aria-label="Add a pop-up" onKeyDown={onKeyDown}>
+        <div ref={menuRef} className="graphics-add-menu" role="menu" aria-label={t('text.graphicsPanel.addAPopUp')} onKeyDown={onKeyDown}>
           {ADD_KINDS.map((k) => (
             <button
               key={k.kind}
@@ -302,16 +301,16 @@ function GraphicsList({ project }: { project: Project }): JSX.Element | null {
   const keys = graphics.map((g) => itemKey('graphic', g.id))
   return (
     <Section
-      title={`Pop-ups (${graphics.length})`}
+      title={t('text.graphicsPanel.popUps', { n: fmt.count(graphics.length) })}
       aside={
         graphics.length > 1 ? (
-          <button className="link small" onClick={() => list.selectAll(keys)} title={`Select all ${graphics.length} pop-ups to edit them together`}>
-            Select all
+          <button className="link small" onClick={() => list.selectAll(keys)} title={t('text.graphicsPanel.selectAllPopUps', { n: fmt.count(graphics.length) })}>
+            {t('common.action.selectAll')}
           </button>
         ) : undefined
       }
     >
-      <ul className="item-list graphics-list" aria-label="Pop-ups">
+      <ul className="item-list graphics-list" aria-label={t('text.graphicsPanel.popUpsList')}>
         {graphics.map((g) => {
           const key = itemKey('graphic', g.id)
           return (
@@ -328,7 +327,7 @@ function GraphicsList({ project }: { project: Project }): JSX.Element | null {
                 <span>{graphicLabel(g)}</span>
                 <span className="muted">
                   {fmt.clock(g.start, 'whole')} · {GRAPHIC_NAMES[g.kind]}
-                  {g.auto ? ' · automatic' : ''}
+                  {g.auto ? ` · ${t('text.graphicsPanel.automatic')}` : ''}
                 </span>
               </button>
             </li>
@@ -371,24 +370,24 @@ function SelectedGraphic({ project, graphic: g }: { project: Project; graphic: G
     if (addedByKey === id) addedByKey = null
   }, [id])
   return (
-    <Section title={`Selected ${GRAPHIC_NAMES[g.kind].toLowerCase()}`} aside={<span className="muted small">{fmt.clock(g.start)} – {fmt.clock(g.end)}</span>}>
+    <Section title={t('text.graphicsPanel.selectedKind', { kind: g.kind })} aside={<span className="muted small">{fmt.clock(g.start)} – {fmt.clock(g.end)}</span>}>
       {g.kind === 'keyword' && <KeywordFields g={g} set={set} first={first} />}
       {g.kind === 'emoji' && <EmojiPicker value={g.emoji} onPick={(emoji) => set({ emoji })} first={first} />}
       {g.kind === 'counter' && <CounterFields g={g} set={set} first={first} />}
       {g.kind === 'list' && <ListFields g={g} set={set} playhead={() => displayTime(project.clips, player.time)} first={first} />}
 
-      <Slider label="Size" value={g.size} min={GRAPHIC_SIZE.min} max={GRAPHIC_SIZE.max} step={0.005} format={(v) => `${Math.round(v * 1000) / 10}%`} onChange={(size) => set({ size }, `graphic-size:${id}`)} />
+      <Slider label={t('common.label.size')} value={g.size} min={GRAPHIC_SIZE.min} max={GRAPHIC_SIZE.max} step={0.005} format={(v) => t('text.textPanel.sizePercent', { n: fmt.number(Math.round(v * 1000) / 10) })} onChange={(size) => set({ size }, `graphic-size:${id}`)} />
       <div className="field">
-        <span>Colours</span>
+        <span>{t('common.label.colours')}</span>
         <Toggle
-          label="Same as the captions"
+          label={t('text.graphicsPanel.sameAsTheCaptions')}
           checked={followsCaptions}
           onChange={(same) => set(same ? { color: undefined, accent: undefined } : { color: captionTextColor(project), accent: captionAccentColor(project) })}
         />
         {!followsCaptions && (
           <div className="graphics-colors">
-            <ColorDots label="Text colour" value={g.color ?? captionTextColor(project)} onChange={(color, key) => set({ color }, key ?? undefined)} mergeKey={`graphic-color:${id}`} />
-            <ColorDots label="Accent" value={g.accent ?? captionAccentColor(project)} onChange={(accent, key) => set({ accent }, key ?? undefined)} mergeKey={`graphic-accent:${id}`} />
+            <ColorDots label={t('common.label.textColour')} value={g.color ?? captionTextColor(project)} onChange={(color, key) => set({ color }, key ?? undefined)} mergeKey={`graphic-color:${id}`} />
+            <ColorDots label={t('text.graphicsPanel.accent')} value={g.accent ?? captionAccentColor(project)} onChange={(accent, key) => set({ accent }, key ?? undefined)} mergeKey={`graphic-accent:${id}`} />
           </div>
         )}
       </div>
@@ -400,11 +399,11 @@ function SelectedGraphic({ project, graphic: g }: { project: Project; graphic: G
         letters={graphicWords(g).join('\n')}
         bangla={(project.captions?.studio ?? STUDIO_BASE).text.scripts?.bengali?.font}
         testId="graphic-font"
-        defaultLabel="Same as the captions"
+        defaultLabel={t('text.graphicsPanel.sameAsTheCaptions')}
         apply={(p, font) => updateGraphic(p, id, { font })}
       />
       <label className="field">
-        <span>Comes in</span>
+        <span>{t('text.graphicsPanel.comesIn')}</span>
         <select value={g.enter.kind} onChange={(e) => set({ enter: { ...g.enter, kind: e.target.value as Graphic['enter']['kind'] } })}>
           {ITEM_MOTIONS.filter((m) => m.value !== 'typewriter' || g.kind === 'keyword').map((m) => (
             <option key={m.value} value={m.value}>
@@ -414,7 +413,7 @@ function SelectedGraphic({ project, graphic: g }: { project: Project; graphic: G
         </select>
       </label>
       <label className="field">
-        <span>Goes out</span>
+        <span>{t('text.graphicsPanel.goesOut')}</span>
         <select value={g.exit.kind} onChange={(e) => set({ exit: { ...g.exit, kind: e.target.value as Graphic['exit']['kind'] } })}>
           {ITEM_MOTIONS.filter((m) => m.value !== 'typewriter' || g.kind === 'keyword').map((m) => (
             <option key={m.value} value={m.value}>
@@ -424,37 +423,37 @@ function SelectedGraphic({ project, graphic: g }: { project: Project; graphic: G
         </select>
       </label>
       <div className="field">
-        <span>Position</span>
+        <span>{t('common.label.position')}</span>
         <p className="hint graphics-place" data-testid="graphic-place">
-          {g.place === 'auto' ? 'Placed automatically' : 'Placed by you'}
+          {g.place === 'auto' ? t('text.graphicsPanel.placedAutomatically') : t('text.graphicsPanel.placedByYou')}
           {g.place !== 'auto' && (
             <button type="button" className="link" onClick={() => store.update((p) => placeGraphicAt(p, id, 'auto'))}>
-              Place automatically
+              {t('text.graphicsPanel.placeAutomatically')}
             </button>
           )}
         </p>
-        {g.place === 'auto' && <p className="hint">Kept clear of the captions, the cursor and your camera. Drag it in the preview to place it yourself.</p>}
+        {g.place === 'auto' && <p className="hint">{t('text.graphicsPanel.keptClearOfThe')}</p>}
       </div>
       <label className="field">
-        <span>Sound</span>
+        <span>{t('common.label.sound')}</span>
         {/* None, the Original group (as they always sounded), then the library's effects (editing polish §10.7). */}
-        <select aria-label="Sound" value={g.sound ?? 'none'} onChange={(e) => set({ sound: readGraphicSound(e.target.value) })}>
+        <select aria-label={t('common.label.sound')} value={g.sound ?? 'none'} onChange={(e) => set({ sound: readGraphicSound(e.target.value) })}>
           <PopUpSoundOptions />
         </select>
       </label>
-      {g.auto && <p className="hint">Made automatically. Editing it makes it yours; Review mode lists it until then.</p>}
+      {g.auto && <p className="hint">{t('text.graphicsPanel.madeAutomaticallyEditingIt')}</p>}
       <LookButtons itemKey={itemKey('graphic', id)} />
       <button
         type="button"
         className="btn ghost danger"
         data-testid="graphic-delete"
-        title={withShortcut('Delete this pop-up', keymap.deleteSelection)}
+        title={withShortcut(t('text.graphicsPanel.deleteThisPopUp'), keymap.deleteSelection)}
         onClick={() => {
           store.update((p) => deleteGraphics(p, [id]))
           group.select([], null)
         }}
       >
-        <Icon name="trash" size={16} /> Delete pop-up
+        <Icon name="trash" size={16} /> {t('text.graphicsPanel.deletePopUp')}
       </button>
     </Section>
   )
@@ -466,27 +465,27 @@ function KeywordFields({ g, set, first }: { g: KeywordGraphic; set: SetGraphic; 
   return (
     <>
       <label className="field">
-        <span>Text</span>
-        <input className="tc-input" aria-label="Text" maxLength={GRAPHIC_TEXT_MAX} value={g.text} autoFocus={first} onChange={(e) => set({ text: e.target.value.replace(/[\r\n]+/g, ' ') }, `graphic-text:${g.id}`)} />
+        <span>{t('common.label.text')}</span>
+        <input className="tc-input" aria-label={t('common.label.text')} maxLength={GRAPHIC_TEXT_MAX} value={g.text} autoFocus={first} onChange={(e) => set({ text: e.target.value.replace(/[\r\n]+/g, ' ') }, `graphic-text:${g.id}`)} />
       </label>
       <div className="field">
-        <span>Look</span>
+        <span>{t('common.label.look')}</span>
         <Chips<KeywordGraphic['look']>
-          label="Look"
+          label={t('common.label.look')}
           value={g.look}
           onChange={(look) => set({ look } as Partial<Graphic>)}
           options={[
-            { value: 'card', label: 'Card' },
-            { value: 'plain', label: 'Plain' },
-            { value: 'outline', label: 'Outline' },
-            { value: 'tag', label: 'Tag' }
+            { value: 'card', label: t('text.graphicsPanel.look.card') },
+            { value: 'plain', label: t('text.graphicsPanel.look.plain') },
+            { value: 'outline', label: t('text.graphicsPanel.look.outline') },
+            { value: 'tag', label: t('text.graphicsPanel.look.tag') }
           ]}
         />
       </div>
       {g.anchor && (
         <>
-          <p className="hint">Replaces its caption words while it shows.</p>
-          <Toggle label="Replace the caption" checked={g.replace !== false} onChange={(on) => set({ replace: on ? undefined : false } as Partial<Graphic>)} />
+          <p className="hint">{t('text.graphicsPanel.replacesItsCaptionWords')}</p>
+          <Toggle label={t('text.graphicsPanel.replaceTheCaption')} checked={g.replace !== false} onChange={(on) => set({ replace: on ? undefined : false } as Partial<Graphic>)} />
         </>
       )}
     </>
@@ -501,7 +500,7 @@ function EmojiPicker({ value, onPick, first }: { value: string; onPick: (key: st
   const matches = useMemo(() => (q ? EMOJI_LIST.filter((e) => e.name.includes(q)) : EMOJI_LIST).slice(0, 96), [q])
   return (
     <div className="field emoji-picker">
-      <span>Emoji</span>
+      <span>{t('text.graphicsPanel.emoji')}</span>
       <p className="emoji-current" aria-live="polite">
         {current ? (
           <>
@@ -511,37 +510,35 @@ function EmojiPicker({ value, onPick, first }: { value: string; onPick: (key: st
             {current.name}
           </>
         ) : (
-          'Not in this version of Flown'
+          t('text.graphicsPanel.notInThisVersion')
         )}
       </p>
-      <input className="tc-input" type="search" aria-label="Search emoji by name" placeholder="Search: fire, bulb, check…" value={query} autoFocus={first} onChange={(e) => setQuery(e.target.value)} />
-      <div className="emoji-grid" role="group" aria-label="Emoji">
+      <input className="tc-input" type="search" aria-label={t('text.graphicsPanel.searchEmojiByName')} placeholder={t('text.graphicsPanel.searchFireBulbCheck')} value={query} autoFocus={first} onChange={(e) => setQuery(e.target.value)} />
+      <div className="emoji-grid" role="group" aria-label={t('text.graphicsPanel.emoji')}>
         {matches.map((e) => (
           <button key={e.key} type="button" className={`emoji-cell ${e.key === value ? 'active' : ''}`} aria-pressed={e.key === value} aria-label={e.name} title={e.name} onClick={() => onPick(e.key)}>
             {e.text}
           </button>
         ))}
-        {matches.length === 0 && <p className="hint">No emoji called “{query}”.</p>}
+        {matches.length === 0 && <p className="hint">{t('text.graphicsPanel.noEmojiCalled', { query })}</p>}
       </div>
     </div>
   )
 }
 
-/** A number field that writes finite values only. */
-function NumberField({ label, value, step, autoFocus, onChange }: { label: string; value: number; step?: number; autoFocus?: boolean; onChange: (v: number) => void }): JSX.Element {
+/** A number field that writes finite values only (NumberField: the UI's digits outside English, §11.1). */
+function NumberRow({ label, value, step, autoFocus, onChange }: { label: string; value: number; step?: number; autoFocus?: boolean; onChange: (v: number) => void }): JSX.Element {
   return (
     <label className="field">
       <span>{label}</span>
-      <input
+      <NumberField
         className="tc-input"
-        type="number"
         aria-label={label}
         step={step ?? 1}
         value={value}
         autoFocus={autoFocus}
-        onChange={(e) => {
-          const v = Number(e.target.value)
-          if (e.target.value.trim() !== '' && Number.isFinite(v)) onChange(v)
+        onValue={(v) => {
+          if (Number.isFinite(v)) onChange(v)
         }}
       />
     </label>
@@ -554,13 +551,13 @@ function CounterFields({ g, set, first }: { g: CounterGraphic; set: SetGraphic; 
   return (
     <>
       <div className="graphics-pair">
-        <NumberField label="From" value={g.from} step={step} autoFocus={first} onChange={(from) => set({ from } as Partial<Graphic>, typed)} />
-        <NumberField label="To" value={g.to} step={step} onChange={(to) => set({ to } as Partial<Graphic>, typed)} />
+        <NumberRow label={t('text.graphicsPanel.from')} value={g.from} step={step} autoFocus={first} onChange={(from) => set({ from } as Partial<Graphic>, typed)} />
+        <NumberRow label={t('text.graphicsPanel.to')} value={g.to} step={step} onChange={(to) => set({ to } as Partial<Graphic>, typed)} />
       </div>
       <div className="field">
-        <span>Decimals</span>
+        <span>{t('text.graphicsPanel.decimals')}</span>
         <Chips<0 | 1 | 2>
-          label="Decimals"
+          label={t('text.graphicsPanel.decimals')}
           value={g.decimals}
           onChange={(decimals) => set({ decimals } as Partial<Graphic>)}
           options={[
@@ -572,19 +569,19 @@ function CounterFields({ g, set, first }: { g: CounterGraphic; set: SetGraphic; 
       </div>
       <div className="graphics-pair">
         <label className="field">
-          <span>Before</span>
-          <input className="tc-input" aria-label="Before" maxLength={8} placeholder="$" value={g.prefix} onChange={(e) => set({ prefix: e.target.value } as Partial<Graphic>, typed)} />
+          <span>{t('text.graphicsPanel.before')}</span>
+          <input className="tc-input" aria-label={t('text.graphicsPanel.before')} maxLength={8} placeholder="$" value={g.prefix} onChange={(e) => set({ prefix: e.target.value } as Partial<Graphic>, typed)} />
         </label>
         <label className="field">
-          <span>After</span>
-          <input className="tc-input" aria-label="After" maxLength={8} placeholder="%" value={g.suffix} onChange={(e) => set({ suffix: e.target.value } as Partial<Graphic>, typed)} />
+          <span>{t('text.graphicsPanel.after')}</span>
+          <input className="tc-input" aria-label={t('text.graphicsPanel.after')} maxLength={8} placeholder="%" value={g.suffix} onChange={(e) => set({ suffix: e.target.value } as Partial<Graphic>, typed)} />
         </label>
       </div>
       <label className="field">
-        <span>Label</span>
-        <input className="tc-input" aria-label="Label" maxLength={GRAPHIC_TEXT_MAX} placeholder="growth" value={g.label ?? ''} onChange={(e) => set({ label: e.target.value || undefined } as Partial<Graphic>, typed)} />
+        <span>{t('text.graphicsPanel.label')}</span>
+        <input className="tc-input" aria-label={t('text.graphicsPanel.label')} maxLength={GRAPHIC_TEXT_MAX} placeholder={t('text.graphicsPanel.growth')} value={g.label ?? ''} onChange={(e) => set({ label: e.target.value || undefined } as Partial<Graphic>, typed)} />
       </label>
-      <Slider label="Count for" value={g.countFor} min={0.4} max={5} step={0.1} format={(v) => `${v.toFixed(1)} s`} onChange={(countFor) => set({ countFor } as Partial<Graphic>, `graphic-count:${g.id}`)} />
+      <Slider label={t('text.graphicsPanel.countFor')} value={g.countFor} min={0.4} max={5} step={0.1} format={(v) => t('text.graphicsPanel.seconds', { n: fmt.number(v, { max: 1 }) })} onChange={(countFor) => set({ countFor } as Partial<Graphic>, `graphic-count:${g.id}`)} />
     </>
   )
 }
@@ -596,25 +593,25 @@ function ListFields({ g, set, playhead, first }: { g: ListGraphic; set: SetGraph
   return (
     <>
       <label className="field">
-        <span>Title</span>
-        <input className="tc-input" aria-label="Title" maxLength={LIST_ITEM_MAX} value={g.title ?? ''} autoFocus={first} onChange={(e) => set({ title: e.target.value || undefined } as Partial<Graphic>, typed)} />
+        <span>{t('common.label.title')}</span>
+        <input className="tc-input" aria-label={t('common.label.title')} maxLength={LIST_ITEM_MAX} value={g.title ?? ''} autoFocus={first} onChange={(e) => set({ title: e.target.value || undefined } as Partial<Graphic>, typed)} />
       </label>
-      <ol className="graphics-items" aria-label="Items">
+      <ol className="graphics-items" aria-label={t('text.graphicsPanel.items')}>
         {g.items.map((it, i) => (
           <li key={i} className="graphics-item">
             <input
               className="tc-input"
-              aria-label={`Item ${i + 1}`}
+              aria-label={t('text.graphicsPanel.item', { n: fmt.count(i + 1) })}
               maxLength={LIST_ITEM_MAX}
               value={it.text}
               onChange={(e) => setItems(g.items.map((x, k) => (k === i ? { ...x, text: e.target.value } : x)), typed)}
             />
-            <span className="muted small">Show at {fmt.clock(it.at, 'whole')}</span>
-            <button type="button" className="btn ghost small" aria-label={`Show item ${i + 1} from the playhead`} onClick={() => setItems(g.items.map((x, k) => (k === i ? { ...x, at: at() } : x)))}>
-              Playhead
+            <span className="muted small">{t('text.graphicsPanel.showAt', { time: fmt.clock(it.at, 'whole') })}</span>
+            <button type="button" className="btn ghost small" aria-label={t('text.graphicsPanel.showItemFromThe', { n: fmt.count(i + 1) })} onClick={() => setItems(g.items.map((x, k) => (k === i ? { ...x, at: at() } : x)))}>
+              {t('text.graphicsPanel.playhead')}
             </button>
             {g.items.length > 1 && (
-              <button type="button" className="btn ghost icon-btn small" aria-label={`Remove item ${i + 1}`} title="Remove" onClick={() => setItems(g.items.filter((_, k) => k !== i))}>
+              <button type="button" className="btn ghost icon-btn small" aria-label={t('text.graphicsPanel.removeItem', { n: fmt.count(i + 1) })} title={t('common.action.remove')} onClick={() => setItems(g.items.filter((_, k) => k !== i))}>
                 ×
               </button>
             )}
@@ -623,19 +620,19 @@ function ListFields({ g, set, playhead, first }: { g: ListGraphic; set: SetGraph
       </ol>
       {g.items.length < MAX_LIST_ITEMS && (
         <button type="button" className="btn" onClick={() => setItems([...g.items, { text: `Point ${g.items.length + 1}`, at: at() }])}>
-          Add item
+          {t('text.graphicsPanel.addItem')}
         </button>
       )}
       <div className="field">
-        <span>Marker</span>
+        <span>{t('text.graphicsPanel.marker')}</span>
         <Chips<ListGraphic['marker']>
-          label="Marker"
+          label={t('text.graphicsPanel.marker')}
           value={g.marker}
           onChange={(marker) => set({ marker } as Partial<Graphic>)}
           options={[
             { value: 'number', label: '1 2 3' },
-            { value: 'bullet', label: 'Bullets' },
-            { value: 'check', label: 'Ticks' }
+            { value: 'bullet', label: t('text.graphicsPanel.marker.bullet') },
+            { value: 'check', label: t('text.graphicsPanel.marker.check') }
           ]}
         />
       </div>
@@ -652,8 +649,8 @@ function ColorDots({ label, value, onChange, mergeKey }: { label: string; value:
       {GRAPHIC_COLORS.map((c) => (
         <button key={c} type="button" className={`shape-color ${v === c ? 'active' : ''}`} style={{ background: c }} title={c} aria-label={`${label} ${c}`} aria-pressed={v === c} onClick={() => onChange(c, null)} />
       ))}
-      <label className={`shape-color custom ${custom ? 'active' : ''}`} title="Pick any colour" style={custom ? { background: value } : undefined}>
-        <input type="color" aria-label={`${label} (any colour)`} value={value} onChange={(e) => onChange(e.target.value.toLowerCase(), mergeKey)} />
+      <label className={`shape-color custom ${custom ? 'active' : ''}`} title={t('common.colour.pickAny')} style={custom ? { background: value } : undefined}>
+        <input type="color" aria-label={t('common.colour.anyFor', { label })} value={value} onChange={(e) => onChange(e.target.value.toLowerCase(), mergeKey)} />
       </label>
     </div>
   )
@@ -663,8 +660,8 @@ function ColorDots({ label, value, onChange, mergeKey }: { label: string; value:
 function PopUpSoundOptions(): JSX.Element {
   return (
     <>
-      <option value="none">None</option>
-      <optgroup label="Original">
+      <option value="none">{t('common.state.none')}</option>
+      <optgroup label={t('text.graphicsPanel.original')}>
         {ORIGINAL_SOUNDS.map((s) => (
           <option key={s.value} value={s.value}>
             {s.label}

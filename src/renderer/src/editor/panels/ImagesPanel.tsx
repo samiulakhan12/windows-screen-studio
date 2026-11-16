@@ -12,9 +12,10 @@ import { useEditor } from '../context'
 import { pctFmt, Section, Slider } from '../controls'
 import { EditorIcon } from '../EditorIcon'
 import type { InspectorProps } from '../Inspector'
-import { addSticker, ipcMessage, OVERLAY_FORMATS_TEXT, pickOverlay, showOverlay } from '../overlayItems'
+import { addSticker, ipcMessage, pickOverlay, showOverlay } from '../overlayItems'
 import { useListSelect } from '../listSelect'
 import '../overlays.css'
+import { t } from '../../../../shared/i18n/t'
 
 /* ---------- Images: overlays and stickers (docs/design/brand-kit.md §5) ---------- */
 
@@ -47,11 +48,11 @@ function AddImages(props: InspectorProps): JSX.Element {
   }
   return (
     <>
-      <Section title="Images and stickers">
+      <Section title={t('text.imagesPanel.imagesAndStickers')}>
         <button className="btn" disabled={busy} onClick={() => void run(() => pickOverlay(services, { onSelect: props.onSelect }))} data-testid="add-image">
-          <EditorIcon name="image" size={16} /> {busy ? 'Adding…' : 'Add image…'}
+          <EditorIcon name="image" size={16} /> {busy ? t('text.imagesPanel.adding') : t('text.imagesPanel.addImage')}
         </button>
-        <p className="hint">Or drop an image on the editor, or paste one with Ctrl+V. {OVERLAY_FORMATS_TEXT}.</p>
+        <p className="hint">{t('text.imagesPanel.dropHint', { keys: 'Ctrl+V' })}</p>
         {error && (
           <p className="callout" role="alert" data-testid="overlay-error">
             <EditorIcon name="alert" size={16} />
@@ -59,14 +60,14 @@ function AddImages(props: InspectorProps): JSX.Element {
           </p>
         )}
       </Section>
-      <Section title="Stickers">
+      <Section title={t('text.imagesPanel.stickers')}>
         <div className="sticker-grid">
           {STICKERS.map((s) => (
             <button
               key={s.id}
               className="sticker-btn"
-              aria-label={`Add ${s.name} sticker`}
-              title={`Add ${s.name.toLowerCase()} sticker at the playhead`}
+              aria-label={t('text.imagesPanel.addSticker', { name: s.name })}
+              title={t('text.imagesPanel.addStickerAtThe', { name: s.name.toLowerCase() })}
               disabled={busy}
               onClick={() => void run(() => addSticker(services, s.id, { onSelect: props.onSelect }))}
             >
@@ -101,7 +102,7 @@ function SelectedImage({ project, overlay: o, onSelect }: { project: Project; ov
   const shaped = imageAspect !== null && Math.abs(aspect - imageAspect) > 0.01
   return (
     <Section
-      title="Selected image"
+      title={t('text.imagesPanel.selectedImage')}
       aside={
         <span className="muted small">
           {fmt.clock(o.start)} – {fmt.clock(o.end)}
@@ -110,19 +111,21 @@ function SelectedImage({ project, overlay: o, onSelect }: { project: Project; ov
     >
       <p className="overlay-name" title={overlayLabel(o)}>
         {overlayLabel(o)}
-        {status.state === 'ready' && status.frames > 1 && <span className="muted small"> · animated, {status.frames} frames</span>}
+        {status.state === 'ready' && status.frames > 1 && <span className="muted small"> · {t('text.imagesPanel.animatedFrames', { n: fmt.count(status.frames) })}</span>}
       </p>
       {status.state === 'failed' && (
         <p className="callout" role="alert" data-testid="overlay-missing">
           <EditorIcon name="alert" size={16} />
-          <span>{status.error} It is left out of the video.</span>
+          <span>
+            {status.error} {t('text.imagesPanel.itIsLeftOut')}
+          </span>
         </p>
       )}
-      <Slider label="Position X" value={o.x} min={0} max={1} step={0.005} format={pctFmt} onChange={(v) => set({ x: v }, `overlay-geom:${o.id}`)} />
-      <Slider label="Position Y" value={o.y} min={0} max={1} step={0.005} format={pctFmt} onChange={(v) => set({ y: v }, `overlay-geom:${o.id}`)} />
-      <Slider label="Size" value={side} min={minSide} max={L.side.max} step={0.005} format={pctFmt} onChange={setSize} />
+      <Slider label={t('text.imagesPanel.positionX')} value={o.x} min={0} max={1} step={0.005} format={pctFmt} onChange={(v) => set({ x: v }, `overlay-geom:${o.id}`)} />
+      <Slider label={t('text.imagesPanel.positionY')} value={o.y} min={0} max={1} step={0.005} format={pctFmt} onChange={(v) => set({ y: v }, `overlay-geom:${o.id}`)} />
+      <Slider label={t('common.label.size')} value={side} min={minSide} max={L.side.max} step={0.005} format={pctFmt} onChange={setSize} />
       <Slider
-        label="Rotation"
+        label={t('text.imagesPanel.rotation')}
         value={o.rotation}
         min={L.rotation.min}
         max={L.rotation.max}
@@ -130,14 +133,14 @@ function SelectedImage({ project, overlay: o, onSelect }: { project: Project; ov
         format={(v) => `${Math.round(v)}°`}
         onChange={(v) => set({ rotation: v }, `overlay-rotation:${o.id}`)}
       />
-      <Slider label="Opacity" value={o.opacity} min={L.opacity.min} max={L.opacity.max} step={0.05} format={pctFmt} onChange={(v) => set({ opacity: v }, `overlay-opacity:${o.id}`)} />
-      <Slider label="Fade in" value={o.fadeIn} min={L.fade.min} max={L.fade.max} step={0.1} format={(v) => `${v.toFixed(1)} s`} onChange={(v) => set({ fadeIn: v }, `overlay-fade-in:${o.id}`)} />
-      <Slider label="Fade out" value={o.fadeOut} min={L.fade.min} max={L.fade.max} step={0.1} format={(v) => `${v.toFixed(1)} s`} onChange={(v) => set({ fadeOut: v }, `overlay-fade-out:${o.id}`)} />
-      <p className="hint">Tip: drag on the preview to move it; handles resize (Shift keeps the shape) and rotate (Shift: 15° steps).</p>
+      <Slider label={t('common.label.opacity')} value={o.opacity} min={L.opacity.min} max={L.opacity.max} step={0.05} format={pctFmt} onChange={(v) => set({ opacity: v }, `overlay-opacity:${o.id}`)} />
+      <Slider label={t('text.imagesPanel.fadeIn')} value={o.fadeIn} min={L.fade.min} max={L.fade.max} step={0.1} format={(v) => t('text.imagesPanel.seconds', { n: fmt.number(v, { max: 1 }) })} onChange={(v) => set({ fadeIn: v }, `overlay-fade-in:${o.id}`)} />
+      <Slider label={t('text.imagesPanel.fadeOut')} value={o.fadeOut} min={L.fade.min} max={L.fade.max} step={0.1} format={(v) => t('text.imagesPanel.seconds', { n: fmt.number(v, { max: 1 }) })} onChange={(v) => set({ fadeOut: v }, `overlay-fade-out:${o.id}`)} />
+      <p className="hint">{t('text.imagesPanel.tipDragOnThe')}</p>
       <div className="row-buttons">
         {shaped && (
-          <button className="btn ghost" onClick={() => set(resetOverlayShape(o, imageAspect!))} title="Back to the image's own proportions">
-            Reset shape
+          <button className="btn ghost" onClick={() => set(resetOverlayShape(o, imageAspect!))} title={t('text.imagesPanel.backToTheImage')}>
+            {t('text.imagesPanel.resetShape')}
           </button>
         )}
         <button
@@ -147,7 +150,7 @@ function SelectedImage({ project, overlay: o, onSelect }: { project: Project; ov
             onSelect(null)
           }}
         >
-          <Icon name="trash" size={16} /> Delete image
+          <Icon name="trash" size={16} /> {t('text.imagesPanel.deleteImage')}
         </button>
       </div>
     </Section>
@@ -160,7 +163,7 @@ function ImageList({ project, selectedId, onSelect }: { project: Project; select
   const overlays = project.overlays ?? []
   if (!overlays.length) return null
   return (
-    <Section title={`Images in this video (${overlays.length})`}>
+    <Section title={t('text.imagesPanel.imagesInThisVideo', { n: fmt.count(overlays.length) })}>
       <ul className="item-list">
         {[...overlays]
           .sort((a, b) => a.start - b.start)

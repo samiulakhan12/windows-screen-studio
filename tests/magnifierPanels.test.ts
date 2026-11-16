@@ -45,7 +45,7 @@ const P = '../src/renderer/src/editor/'
 type Component = (props: unknown) => unknown
 const { MagnifierSection, softNote } = (await import(/* @vite-ignore */ `${P}panels/MagnifierSection`)) as { MagnifierSection: Component; softNote: () => string }
 const { MagnifierZoomRow } = (await import(/* @vite-ignore */ `${P}panels/MagnifierZoomRow`)) as { MagnifierZoomRow: Component }
-const { ChapterBarSection, FEW_CHAPTERS } = (await import(/* @vite-ignore */ `${P}panels/ChapterBarSection`)) as { ChapterBarSection: Component; FEW_CHAPTERS: string }
+const { ChapterBarSection, fewChapters } = (await import(/* @vite-ignore */ `${P}panels/ChapterBarSection`)) as { ChapterBarSection: Component; fewChapters: () => string }
 const { ProgressBarLink } = (await import(/* @vite-ignore */ `${P}panels/ProgressBarLink`)) as { ProgressBarLink: Component }
 const { addMagnifierAt } = (await import(/* @vite-ignore */ `${P}playheadItems`)) as {
   addMagnifierAt: (services: unknown, mode: 'region' | 'cursor', cursor: CursorTrack | null, opts: { onSelect: (s: unknown) => void }) => Spotlight
@@ -227,7 +227,7 @@ describe('ChapterBarSection and ProgressBarLink (test 35)', () => {
     store.state = { ...store.state, chapterBar: { ...NEW_CHAPTER_BAR } }
     let els = bar()
     expect(byId(els, 'progress-bar-labels')).toBeUndefined()
-    expect(allText(els)).toContain(FEW_CHAPTERS)
+    expect(allText(els)).toContain(fewChapters())
     store.state = { ...store.state, chapters: [{ id: 'a', t: 1, title: 'A' }, { id: 'b', t: 5, title: 'B' }] }
     els = bar()
     const names = radios(els, 'progress-bar-labels')

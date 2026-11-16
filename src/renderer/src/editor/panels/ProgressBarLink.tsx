@@ -6,13 +6,14 @@ import { Section } from '../controls'
 import { useGroup } from '../groupContext'
 import { requestProgressBarFocus } from './ChapterBarSection'
 import './magnifier.css'
+import { t } from '../../../../shared/i18n/t'
 
 export function ProgressBarLink(): JSX.Element {
   const group = useGroup()
   return (
-    <Section title="Progress bar">
+    <Section title={t('text.progressBarLink.progressBar')}>
       <div className="progress-bar-link">
-        <span className="hint">A thin bar that fills as the video plays, split at your chapters.</span>
+        <span className="hint">{t('text.progressBarLink.aThinBarThat')}</span>
         <button
           type="button"
           className="btn small"
@@ -21,9 +22,7 @@ export function ProgressBarLink(): JSX.Element {
             requestProgressBarFocus()
             group.command('showText')
           }}
-        >
-          Progress bar…
-        </button>
+        >{t('text.progressBarLink.progressBar2')}</button>
       </div>
     </Section>
   )
