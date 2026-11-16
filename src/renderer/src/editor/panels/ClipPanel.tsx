@@ -24,7 +24,6 @@ import {
 } from '../../../../shared/editor/smartSpeed'
 import { cropOf } from '../../../../shared/engine/crop'
 import { freezeKeepRanges, planOf, videoDuration } from '../../../../shared/engine/freeze'
-import { formatTime } from '../../../../shared/engine/project'
 import { outputDuration, SPEED_PRESETS } from '../../../../shared/engine/timeline'
 import { stripIpcPrefix } from '../../../../shared/recording/errors'
 import type { Project } from '../../../../shared/types'
@@ -37,6 +36,7 @@ import { useKeymap } from '../keymapContext'
 import { FirstShortcut } from '../ShortcutKeys'
 import { FreezeSection } from './FreezeSection'
 import { recordAutoCuts } from '../../../../shared/review/autoCuts'
+import { fmt } from '../../../../shared/i18n/fmt'
 import './clipPanel.css'
 import './silences.css'
 import { CutsSection } from './CutsSection'
@@ -65,14 +65,14 @@ export function ClipPanel(props: InspectorProps): JSX.Element {
   return (
     <>
       <p className="hint">
-        Video length <strong>{formatTime(length)}</strong> of {formatTime(project.duration)} recorded.
+        Video length <strong>{fmt.clock(length)}</strong> of {fmt.clock(project.duration)} recorded.
       </p>
       {/* Smooth cuts (docs/design/editing-polish.md §2.1): every cut's style. */}
       {selection?.kind !== 'gap' && <CutsSection project={project} />}
       {clip ? (
         <Section title={`Clip ${clipIndex + 1} of ${clips.length}`}>
           <p className="hint">
-            {formatTime(clip.start)} – {formatTime(clip.end)} of the recording, plays for {((clip.end - clip.start) / clip.speed).toFixed(1)} s
+            {fmt.clock(clip.start)} – {fmt.clock(clip.end)} of the recording, plays for {((clip.end - clip.start) / clip.speed).toFixed(1)} s
           </p>
           <span className="field-label">
             <EditorIcon name="speed" size={14} /> Speed
@@ -90,7 +90,7 @@ export function ClipPanel(props: InspectorProps): JSX.Element {
       ) : selection?.kind === 'gap' ? (
         <Section title={GAP_TITLE[timelineGaps(clips, project.duration).find((g) => Math.abs(g.start - selection.start) < 1e-6)?.kind ?? 'cut']}>
           <p className="hint">
-            {formatTime(selection.start)} – {formatTime(selection.end)} ({(selection.end - selection.start).toFixed(1)} s) is not in the video.
+            {fmt.clock(selection.start)} – {fmt.clock(selection.end)} ({(selection.end - selection.start).toFixed(1)} s) is not in the video.
           </p>
           <button className="btn" onClick={() => props.onRestore(selection.start, selection.end)}>
             <EditorIcon name="restore" size={16} /> Restore
@@ -100,7 +100,7 @@ export function ClipPanel(props: InspectorProps): JSX.Element {
       ) : selection?.kind === 'range' ? (
         <Section title="Selected range">
           <p className="hint">
-            {formatTime(selection.start)} – {formatTime(selection.end)} ({(selection.end - selection.start).toFixed(1)} s)
+            {fmt.clock(selection.start)} – {fmt.clock(selection.end)} ({(selection.end - selection.start).toFixed(1)} s)
           </p>
           <button className="btn" onClick={() => props.onCutRange(selection.start, selection.end)} title={withShortcut('Cut this range out of the video', keymap.deleteSelection)}>
             <EditorIcon name="scissors" size={16} /> Cut range
@@ -266,7 +266,7 @@ const SILENCE_ACTION_TITLE: Record<string, string> = {
 }
 
 const plural = (n: number, word: string): string => `${n} ${word}${n === 1 ? '' : 's'}`
-const seconds = (s: number): string => (s < 60 ? `${s.toFixed(1)} s` : formatTime(s))
+const seconds = (s: number): string => (s < 60 ? `${s.toFixed(1)} s` : fmt.clock(s))
 const partKey = (r: TimeRange): string => `${r.start.toFixed(3)}:${r.end.toFixed(3)}`
 
 function SmartSpeed(props: InspectorProps): JSX.Element {
@@ -679,7 +679,7 @@ function PartList({
           {parts.map((p) => {
             const key = partKey(p)
             const on = !skipped.has(key)
-            const range = `${formatTime(p.start)} – ${formatTime(p.end)}`
+            const range = `${fmt.clock(p.start)} – ${fmt.clock(p.end)}`
             const length = p.length ?? p.end - p.start
             return (
               <li key={key} className={on ? '' : 'skipped'}>

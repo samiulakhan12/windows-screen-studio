@@ -7,7 +7,6 @@ import { scrollBreaks } from '../../../../shared/engine/scroll'
 import { orPress, shortcutLabel, undoHint, withShortcut, zoomLevelKeysHint } from '../../../../shared/editor/shortcuts'
 import { ZOOM_EASINGS } from '../../../../shared/engine/easing'
 import { cropOf, fromCrop, regenerateInFrame, toCrop, zoomFromView, zoomInView } from '../../../../shared/engine/crop'
-import { formatTime } from '../../../../shared/engine/project'
 import { itemKey } from '../../../../shared/editor/multiSelect'
 import {
   isZoomClick,
@@ -25,7 +24,6 @@ import {
   clearZoomStyles,
   connectToNext,
   disconnectFromNext,
-  formatLevel,
   isConnectedToNext,
   nextZoom,
   regionAround,
@@ -44,6 +42,7 @@ import { useListSelect } from '../listSelect'
 import { LookButtons } from '../LookButtons'
 import { ShortcutKeys } from '../ShortcutKeys'
 import { IMPORTED_COPY, isImported } from '../../../../shared/import/imported'
+import { fmt } from '../../../../shared/i18n/fmt'
 import '../zoom.css'
 import { MagnifierZoomRow } from './MagnifierZoomRow'
 
@@ -112,7 +111,7 @@ function SelectedClick({ row, input, rightClicks }: { row: ClickRow; input: Inpu
   const keymap = useKeymap()
   const state = clickState(row)
   return (
-    <Section title="Selected click" aside={<span className="muted small">{`${clickKind(row.click.button)} · ${formatTime(row.click.t)}`}</span>}>
+    <Section title="Selected click" aside={<span className="muted small">{`${clickKind(row.click.button)} · ${fmt.clock(row.click.t)}`}</span>}>
       <div className="selected-click" data-testid="selected-click" data-state={state}>
         {state === 'used' ? (
           <p className="hint">{usedClickText(row.click, rightClicks)}</p>
@@ -145,7 +144,7 @@ function ZoomCauseLine({ zoom, cursor, auto, input, onSelect }: { zoom: ZoomSegm
   if (cause.kind === 'click') {
     return (
       <div className="zoom-cause" data-testid="zoom-cause" data-kind="click">
-        <span>Made for the click at {formatTime(cause.click.t)}</span>
+        <span>Made for the click at {fmt.clock(cause.click.t)}</span>
         <button
           className="btn ghost small-btn"
           title="Stop using this click: its zoom, click effect and sound go away"
@@ -162,10 +161,10 @@ function ZoomCauseLine({ zoom, cursor, auto, input, onSelect }: { zoom: ZoomSegm
   }
   const text =
     cause.kind === 'typing'
-      ? `Made for typing at ${formatTime(cause.t)}`
+      ? `Made for typing at ${fmt.clock(cause.t)}`
       : cause.kind === 'mark'
-        ? `Made for a zoom-here mark at ${formatTime(cause.t)}`
-        : `Zooms back in where scrolling stopped (${formatTime(cause.t)})`
+        ? `Made for a zoom-here mark at ${fmt.clock(cause.t)}`
+        : `Zooms back in where scrolling stopped (${fmt.clock(cause.t)})`
   return (
     <div className="zoom-cause" data-testid="zoom-cause" data-kind={cause.kind}>
       <span>{text}</span>
@@ -245,7 +244,7 @@ function SelectedZoom(props: InspectorProps & { zoom: ZoomSegment }): JSX.Elemen
   return (
     <Section title="Selected zoom" aside={<span className="muted small">{zoom.auto ? 'automatic' : 'edited'}</span>}>
       <p className="hint">
-        {formatTime(zoom.start)} – {formatTime(zoom.end)} · {(zoom.end - zoom.start).toFixed(1)} s
+        {fmt.clock(zoom.start)} – {fmt.clock(zoom.end)} · {(zoom.end - zoom.start).toFixed(1)} s
       </p>
       {zoom.auto && <ZoomCauseLine zoom={zoom} cursor={props.cursor} auto={zoomSettingsOf(project).auto} input={props.input} onSelect={props.onSelect} />}
       <div className="zoom-chips-fill">
@@ -261,7 +260,7 @@ function SelectedZoom(props: InspectorProps & { zoom: ZoomSegment }): JSX.Elemen
       </div>
       {framed !== null && (
         <p className="hint" data-testid="zoom-framed-level">
-          In the vertical frame this zoom is {formatLevel(framed)} (zooms are gentler there, and limited so the picture stays sharp).
+          In the vertical frame this zoom is {fmt.factor(framed)} (zooms are gentler there, and limited so the picture stays sharp).
         </p>
       )}
       <Slider
@@ -270,7 +269,7 @@ function SelectedZoom(props: InspectorProps & { zoom: ZoomSegment }): JSX.Elemen
         min={ZOOM_MIN_SCALE}
         max={ZOOM_MAX_SCALE}
         step={0.05}
-        format={formatLevel}
+        format={fmt.factor}
         onChange={(v) => setLevel(v, `zoom-scale:${zoom.id}`)}
       />
       <Chips
@@ -299,7 +298,7 @@ function SelectedZoom(props: InspectorProps & { zoom: ZoomSegment }): JSX.Elemen
             <RegionIcon /> {props.pickFocus ? 'Done' : 'Draw on preview'}
           </button>
           <p className="hint" data-testid="zoom-region-readout">
-            Frames {pctFmt(focus.w)} × {pctFmt(focus.h)} of the recording at {formatLevel(level)}. Drag on the preview to draw a new box, or move and resize it.
+            Frames {pctFmt(focus.w)} × {pctFmt(focus.h)} of the recording at {fmt.factor(level)}. Drag on the preview to draw a new box, or move and resize it.
           </p>
         </>
       )}
@@ -351,7 +350,7 @@ function ZoomStyleSection({ project, onNotice }: { project: Project; onNotice: (
         <Chips label="Default zoom easing" value={settings.easing} onChange={(easing: ZoomEasing) => set({ easing })} options={ZOOM_EASINGS} />
       </div>
       <Slider label="Transition" value={settings.transition} min={MIN_TRANSITION} max={MAX_TRANSITION} step={0.05} format={secFmt} onChange={(transition) => set({ transition }, 'zoomSettings.transition')} />
-      <Slider label="New zoom level" value={settings.defaultScale} min={ZOOM_MIN_SCALE} max={ZOOM_MAX_SCALE} step={0.05} format={formatLevel} onChange={(defaultScale) => set({ defaultScale }, 'zoomSettings.defaultScale')} />
+      <Slider label="New zoom level" value={settings.defaultScale} min={ZOOM_MIN_SCALE} max={ZOOM_MAX_SCALE} step={0.05} format={fmt.factor} onChange={(defaultScale) => set({ defaultScale }, 'zoomSettings.defaultScale')} />
       <p className="hint">
         Every zoom without its own motion follows this style; zooms you add start at the new zoom level.
         {overridden > 0 ? ` ${plural(overridden, 'zoom')} ${overridden === 1 ? 'has its' : 'have their'} own.` : ''}
@@ -458,7 +457,7 @@ function AutoZoomSection({
       </p>
       <Toggle label="Auto zoom" checked={auto.enabled} disabled={!hasInput} onChange={(enabled) => setAuto({ enabled })} />
       <div className={`auto-zoom-options ${auto.enabled && hasInput ? '' : 'off'}`}>
-        <Slider label="Level" value={auto.scale} min={1.1} max={4} step={0.05} format={formatLevel} disabled={!auto.enabled || !hasInput} onChange={(scale) => setAuto({ scale }, 'auto.scale')} />
+        <Slider label="Level" value={auto.scale} min={1.1} max={4} step={0.05} format={fmt.factor} disabled={!auto.enabled || !hasInput} onChange={(scale) => setAuto({ scale }, 'auto.scale')} />
         <Slider label="Group clicks within" value={auto.clusterGap} min={0.5} max={8} step={0.1} format={(v) => `${v.toFixed(1)} s`} disabled={!auto.enabled || !hasInput} onChange={(clusterGap) => setAuto({ clusterGap }, 'auto.clusterGap')} />
         <Slider label="Zoom in before" value={auto.leadIn} min={0.2} max={2.5} step={0.05} format={secFmt} disabled={!auto.enabled || !hasInput} onChange={(leadIn) => setAuto({ leadIn }, 'auto.leadIn')} />
         <Slider label="Hold after" value={auto.hold} min={0.5} max={6} step={0.1} format={(v) => `${v.toFixed(1)} s`} disabled={!auto.enabled || !hasInput} onChange={(hold) => setAuto({ hold }, 'auto.hold')} />
@@ -512,7 +511,7 @@ function RecordedClicks({ rows, input, selected }: { rows: ClickRow[]; input: In
       <ul className="click-list" aria-label="Recorded clicks">
         {rows.map((r, i) => {
           const state = clickState(r)
-          const at = formatTime(r.click.t)
+          const at = fmt.clock(r.click.t)
           return (
             <li key={`${r.ms}:${i}`} className={`${state === 'used' ? '' : 'ignored'} ${selected === r.ms ? 'selected' : ''}`} data-click-ms={r.ms} data-state={state}>
               <button className="click-time" title="Select this click on the timeline" aria-current={selected === r.ms ? 'true' : undefined} onClick={() => input.selectClick(r.ms)}>

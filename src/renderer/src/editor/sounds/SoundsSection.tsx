@@ -1,11 +1,11 @@
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import { scanSources, type SoundRow } from '../../../../shared/audio/sounds'
-import { actionText, foundText, lengthText, listeningText, rowName, showIgnoredText, SOUNDS_COPY, SOUND_LABELS } from '../../../../shared/audio/soundsCopy'
+import { actionText, foundText, listeningText, rowName, showIgnoredText, SOUNDS_COPY, SOUND_LABELS } from '../../../../shared/audio/soundsCopy'
 import { addSpans, bringBack, cutRow, ignoreRow, listedRows, removeSpan, restoreCut, rowState, type RowState } from '../../../../shared/audio/soundsEdit'
 import { outputTimeAt } from '../../../../shared/editor/clips'
 import { editToVideo, planOf } from '../../../../shared/engine/freeze'
-import { formatTime } from '../../../../shared/engine/project'
 import { playableFrom } from '../../../../shared/engine/timeline'
+import { fmt } from '../../../../shared/i18n/fmt'
 import type { Project } from '../../../../shared/types'
 import { useEditor } from '../context'
 import { Section } from '../controls'
@@ -286,7 +286,7 @@ function SoundRowItem(props: {
       <span className="sound-text">
         <span className="sound-kind">{label}</span>
         <span className="sound-time">
-          {formatTime(props.time)} · {lengthText(r.end - r.start)}
+          {fmt.clock(props.time)} · {fmt.seconds(r.end - r.start)}
         </span>
       </span>
       <span className="sound-actions">

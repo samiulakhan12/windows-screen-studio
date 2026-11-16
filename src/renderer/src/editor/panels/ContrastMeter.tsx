@@ -11,7 +11,7 @@ import { contrastFix, staticContrast } from '../../../../shared/captions/colors'
 import { captionsOf } from '../../../../shared/captions/settings'
 import { editStudio, legacyTwin } from '../../../../shared/captions/studioEdit'
 import { videoTimeAt, planOf } from '../../../../shared/engine/freeze'
-import { formatTime } from '../../../../shared/engine/project'
+import { fmt } from '../../../../shared/i18n/fmt'
 import type { CaptionStudio, Project } from '../../../../shared/types'
 import { probeContrast } from '../../render/contrastProbe'
 import { useEditor } from '../context'
@@ -62,7 +62,7 @@ export function ContrastMeter(props: { project: Project; t: number; paused: bool
     )
   }
   const words = contrastWords(ratio)
-  const at = !fixed && measured ? formatTime(videoTimeAt(project.clips, planOf(project), measured.at), false) : null
+  const at = !fixed && measured ? fmt.clock(videoTimeAt(project.clips, planOf(project), measured.at), 'whole') : null
   const shownText = `Contrast ${ratioText(ratio)} : 1${at ? ` at ${at}` : ''} · ${words}`
   const spoken = `Contrast ${ratioText(ratio)} to 1, ${words.toLowerCase()}${at ? ` at ${at}` : ''}`
   return (

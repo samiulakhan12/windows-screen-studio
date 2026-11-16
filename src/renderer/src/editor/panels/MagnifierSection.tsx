@@ -11,8 +11,8 @@ import { itemKey } from '../../../../shared/editor/multiSelect'
 import { withShortcut } from '../../../../shared/editor/shortcuts'
 import { cropOf, cropView, geometryFromCrop, rectToCrop } from '../../../../shared/engine/crop'
 import { clamp } from '../../../../shared/engine/math'
-import { formatTime } from '../../../../shared/engine/project'
 import { isMagnifier, MAGNIFIER, timesText } from '../../../../shared/render/magnifier'
+import { fmt } from '../../../../shared/i18n/fmt'
 import type { CursorTrack, Project, Spotlight } from '../../../../shared/types'
 import { holdGesture, useEditor } from '../context'
 import { Section } from '../controls'
@@ -103,7 +103,7 @@ function SelectedMagnifier({ project, spot, cursor }: { project: Project; spot: 
   }
 
   return (
-    <Section title="Selected magnifier" aside={<span className="muted small">{formatTime(spot.start)} – {formatTime(spot.end)}</span>}>
+    <Section title="Selected magnifier" aside={<span className="muted small">{fmt.clock(spot.start)} – {fmt.clock(spot.end)}</span>}>
       <div data-testid="magnifier-section" className="magnifier-section">
         <OnPreview item={spot} kind="spotlight" clips={project.clips} />
         <label className="slider">

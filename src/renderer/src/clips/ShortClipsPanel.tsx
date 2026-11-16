@@ -17,8 +17,8 @@ import { outputTimeAt } from '../../../shared/editor/clips'
 import { canCopyAs } from '../../../shared/editor/duplicate'
 import { planOf, videoDuration, videoTimeAt } from '../../../shared/engine/freeze'
 import { effectiveTrack } from '../../../shared/engine/inputTrack'
-import { clockTime } from '../../../shared/search/moment'
 import { DEFAULT_SHORT_CLIPS, sanitizeSmartPref, type ShortClipsPref } from '../../../shared/smart/smartPrefs'
+import { fmt } from '../../../shared/i18n/fmt'
 import type { CursorTrack, Project, ProjectSummary } from '../../../shared/types'
 import { CostLine } from '../ai/CostLine'
 import { LocalProgress, LocalWritten } from '../ai/LocalProgress'
@@ -54,7 +54,7 @@ const keyOf = (m: Pick<Moment, 'start' | 'end'>): string => `${m.start.toFixed(3
 /** "0:42 to 1:27 · 45 s" in the video's time. */
 export function momentRange(project: Pick<Project, 'clips' | 'freezes'>, m: Pick<Moment, 'start' | 'end' | 'seconds'>): string {
   const plan = planOf(project)
-  return `${clockTime(videoTimeAt(project.clips, plan, m.start))} to ${clockTime(videoTimeAt(project.clips, plan, m.end))} · ${Math.round(m.seconds)} s`
+  return `${fmt.clock(videoTimeAt(project.clips, plan, m.start), 'hours')} to ${fmt.clock(videoTimeAt(project.clips, plan, m.end), 'hours')} · ${Math.round(m.seconds)} s`
 }
 
 /** The reasons a row lists: without the length, which its time line says. */
@@ -507,7 +507,7 @@ export function ShortClipsPanel(props: { project: Project; cursor: CursorTrack; 
                     {m.first && <q className="clips-first">{m.first}</q>}
                     {isPlaying && (
                       <span className="clips-playing" data-testid="clips-playing">
-                        Playing · {clockTime(Math.max(0, playing.at - playing.from))} of {clockTime(playing.until - playing.from)}
+                        Playing · {fmt.clock(Math.max(0, playing.at - playing.from), 'hours')} of {fmt.clock(playing.until - playing.from, 'hours')}
                       </span>
                     )}
                     <span className="clips-actions">

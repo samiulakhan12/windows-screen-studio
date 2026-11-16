@@ -20,7 +20,7 @@ import { captionAccentColor, captionTextColor, GRAPHIC_COLORS, GRAPHIC_NAMES, GR
 import { deleteGraphics, placeGraphicAt, updateGraphic } from '../../../../shared/editor/graphicsEdit'
 import { itemKey } from '../../../../shared/editor/multiSelect'
 import { withShortcut } from '../../../../shared/editor/shortcuts'
-import { formatTime } from '../../../../shared/engine/project'
+import { fmt } from '../../../../shared/i18n/fmt'
 import type { CounterGraphic, Graphic, KeywordGraphic, ListGraphic, Project } from '../../../../shared/types'
 import { Icon } from '../../components/Icon'
 import { useEditor } from '../context'
@@ -327,7 +327,7 @@ function GraphicsList({ project }: { project: Project }): JSX.Element | null {
                 <GraphicKindIcon kind={g.kind} />
                 <span>{graphicLabel(g)}</span>
                 <span className="muted">
-                  {formatTime(g.start, false)} · {GRAPHIC_NAMES[g.kind]}
+                  {fmt.clock(g.start, 'whole')} · {GRAPHIC_NAMES[g.kind]}
                   {g.auto ? ' · automatic' : ''}
                 </span>
               </button>
@@ -371,7 +371,7 @@ function SelectedGraphic({ project, graphic: g }: { project: Project; graphic: G
     if (addedByKey === id) addedByKey = null
   }, [id])
   return (
-    <Section title={`Selected ${GRAPHIC_NAMES[g.kind].toLowerCase()}`} aside={<span className="muted small">{formatTime(g.start)} – {formatTime(g.end)}</span>}>
+    <Section title={`Selected ${GRAPHIC_NAMES[g.kind].toLowerCase()}`} aside={<span className="muted small">{fmt.clock(g.start)} – {fmt.clock(g.end)}</span>}>
       {g.kind === 'keyword' && <KeywordFields g={g} set={set} first={first} />}
       {g.kind === 'emoji' && <EmojiPicker value={g.emoji} onPick={(emoji) => set({ emoji })} first={first} />}
       {g.kind === 'counter' && <CounterFields g={g} set={set} first={first} />}
@@ -609,7 +609,7 @@ function ListFields({ g, set, playhead, first }: { g: ListGraphic; set: SetGraph
               value={it.text}
               onChange={(e) => setItems(g.items.map((x, k) => (k === i ? { ...x, text: e.target.value } : x)), typed)}
             />
-            <span className="muted small">Show at {formatTime(it.at, false)}</span>
+            <span className="muted small">Show at {fmt.clock(it.at, 'whole')}</span>
             <button type="button" className="btn ghost small" aria-label={`Show item ${i + 1} from the playhead`} onClick={() => setItems(g.items.map((x, k) => (k === i ? { ...x, at: at() } : x)))}>
               Playhead
             </button>

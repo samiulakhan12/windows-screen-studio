@@ -8,7 +8,6 @@ import { withShortcut } from '../../../../shared/editor/shortcuts'
 import { CORNERS, LOOK_LIMITS } from '../../../../shared/editor/styleDefaults'
 import { visibleSize } from '../../../../shared/engine/crop'
 import { cameraSourceRect, layoutGeometry, outputSize } from '../../../../shared/engine/layout'
-import { formatTime } from '../../../../shared/engine/project'
 import { DEFAULT_WEBCAM_BORDER, framingAt, WEBCAM_LIMITS, webcamLook } from '../../../../shared/engine/webcamData'
 import type { CameraLayout, Corner, Project, WebcamSettings } from '../../../../shared/types'
 import { ensureSegmenter, onSegmenterState, segmenterState } from '../../render/segmentation/personSegmenter'
@@ -22,6 +21,7 @@ import { showLayout } from '../LayoutTrack'
 import { DirectorSection } from './DirectorSection'
 import { followPointer } from '../pointer'
 import { IMPORTED_COPY, isImported } from '../../../../shared/import/imported'
+import { fmt } from '../../../../shared/i18n/fmt'
 import '../camera.css'
 import './cursorPanel.css'
 import { CameraColourSection } from './CameraColourSection'
@@ -313,7 +313,7 @@ function LayoutSection({
       aside={
         target ? (
           <span className="muted small">
-            {formatTime(target.start)} – {formatTime(target.end)}
+            {fmt.clock(target.start)} – {fmt.clock(target.end)}
           </span>
         ) : undefined
       }

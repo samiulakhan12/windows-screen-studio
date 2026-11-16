@@ -11,8 +11,8 @@ import {
 } from '../../../../shared/editor/freezeEdit'
 import { withShortcut } from '../../../../shared/editor/shortcuts'
 import { FREEZE, planOf, videoDuration } from '../../../../shared/engine/freeze'
-import { formatTime } from '../../../../shared/engine/project'
 import { outputDuration } from '../../../../shared/engine/timeline'
+import { fmt } from '../../../../shared/i18n/fmt'
 import type { Freeze, FreezeSound, Project } from '../../../../shared/types'
 import { Icon } from '../../components/Icon'
 import { useEditor } from '../context'
@@ -60,7 +60,7 @@ function AddFreeze({ project, onSelect, onNotice }: InspectorProps): JSX.Element
 function freezeHint(project: Project, f: Freeze): string {
   const { clips } = project
   const plan = planOf(project)
-  if (plan.holds.some((h) => h.id === f.id)) return `Adds ${seconds(f.length)} to the video (now ${formatTime(videoDuration(clips, plan))}).`
+  if (plan.holds.some((h) => h.id === f.id)) return `Adds ${seconds(f.length)} to the video (now ${fmt.clock(videoDuration(clips, plan))}).`
   const still = plan.stills.find((s) => s.id === f.id)
   if (!still) {
     const why = freezeInactiveReason(project, f)
@@ -84,7 +84,7 @@ function SelectedFreeze({ project, freeze: f, onSelect }: InspectorProps & { fre
   const atEnd = atEditEnd(clips, f.at)
   const setSound = (sound: FreezeSound): void => store.update((p) => setFreezeSound(p, f.id, sound))
   return (
-    <Section title={`Freeze frame at ${formatTime(freezeVideoTime(project, f))}`}>
+    <Section title={`Freeze frame at ${fmt.clock(freezeVideoTime(project, f))}`}>
       <Slider
         label="Hold for"
         value={f.length}

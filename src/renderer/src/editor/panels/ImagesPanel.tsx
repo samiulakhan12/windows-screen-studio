@@ -2,8 +2,8 @@ import { useEffect, useState } from 'react'
 import { itemKey } from '../../../../shared/editor/multiSelect'
 import { overlayLabel, resetOverlayShape, sizeForAspect } from '../../../../shared/editor/overlays'
 import { OVERLAY_LIMITS } from '../../../../shared/engine/overlayData'
-import { formatTime } from '../../../../shared/engine/project'
 import { STICKERS, stickerUrl } from '../../../../shared/render/stickers'
+import { fmt } from '../../../../shared/i18n/fmt'
 import type { ImageOverlay, Project } from '../../../../shared/types'
 import { Icon } from '../../components/Icon'
 import { onStyleAssetsChanged } from '../../render/watermarkLayer'
@@ -104,7 +104,7 @@ function SelectedImage({ project, overlay: o, onSelect }: { project: Project; ov
       title="Selected image"
       aside={
         <span className="muted small">
-          {formatTime(o.start)} – {formatTime(o.end)}
+          {fmt.clock(o.start)} – {fmt.clock(o.end)}
         </span>
       }
     >
@@ -179,7 +179,7 @@ function ImageList({ project, selectedId, onSelect }: { project: Project; select
                   selectedId === o.id
                 )}
               >
-                <span className="muted">{formatTime(o.start, false)}</span> {overlayLabel(o)}
+                <span className="muted">{fmt.clock(o.start, 'whole')}</span> {overlayLabel(o)}
               </button>
             </li>
           ))}

@@ -18,7 +18,6 @@ import {
 import { withShortcut } from '../../../../shared/editor/shortcuts'
 import { cropOf, cropView, geometryFromCrop, rectToCrop } from '../../../../shared/engine/crop'
 import { clamp } from '../../../../shared/engine/math'
-import { formatTime } from '../../../../shared/engine/project'
 import { itemKey } from '../../../../shared/editor/multiSelect'
 import type { Clip, Project, Shape, ShapeKind, Spotlight } from '../../../../shared/types'
 import { Icon } from '../../components/Icon'
@@ -33,6 +32,7 @@ import { ShapeIcon } from '../shapeIcons'
 import '../shapes.css'
 import { MagnifierSection } from './MagnifierSection'
 import { isMagnifier, spotlightName } from '../../../../shared/render/magnifier'
+import { fmt } from '../../../../shared/i18n/fmt'
 import { CalloutSection } from './CalloutSection'
 
 type Item = { type: 'shape'; item: Shape } | { type: 'spotlight'; item: Spotlight }
@@ -168,7 +168,7 @@ function ShapeList({ project, items, selId, onSelect }: { project: Project; item
                 <ShapeIcon name={type === 'shape' ? (item as Shape).kind : isMagnifier(item as Spotlight) ? 'magnifier' : (item as Spotlight).mode === 'cursor' ? 'spotlight-cursor' : 'spotlight-region'} size={15} />
                 <span>{type === 'shape' ? shapeLabel((item as Shape).kind) : spotlightLabel(item as Spotlight)}</span>
                 <span className="muted">
-                  {formatTime(item.start, false)} – {formatTime(item.end, false)}
+                  {fmt.clock(item.start, 'whole')} – {fmt.clock(item.end, 'whole')}
                 </span>
               </button>
             </li>
@@ -191,7 +191,7 @@ function SelectedShape({ project, shape, onSelect }: { project: Project; shape: 
   const title = `Selected ${shapeLabel(shape.kind).toLowerCase()}`
 
   return (
-    <Section title={title} aside={<span className="muted small">{formatTime(shape.start)} – {formatTime(shape.end)}</span>}>
+    <Section title={title} aside={<span className="muted small">{fmt.clock(shape.start)} – {fmt.clock(shape.end)}</span>}>
       <OnPreview item={shape} kind={shape.kind} clips={project.clips} />
       {privacy ? (
         <>
@@ -292,7 +292,7 @@ function SelectedSpotlight({
   }
 
   return (
-    <Section title="Selected spotlight" aside={<span className="muted small">{formatTime(spot.start)} – {formatTime(spot.end)}</span>}>
+    <Section title="Selected spotlight" aside={<span className="muted small">{fmt.clock(spot.start)} – {fmt.clock(spot.end)}</span>}>
       <OnPreview item={spot} kind="spotlight" clips={project.clips} />
       <Chips<Spotlight['mode']>
         label="Spotlight follows"

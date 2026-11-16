@@ -5,7 +5,6 @@ import { soundDetector, type SoundDetector } from '../../../../shared/audio/voic
 import { DUCKING_VOICE_HINT } from '../../../../shared/speech/speechCopy'
 import { loadAudioAnalysis } from '../audioAnalysis'
 import { LOUDNESS_TARGET } from '../../../../shared/audio/loudness'
-import { formatTime } from '../../../../shared/engine/project'
 import { mediaUrl } from '../../../../shared/mediaUrl'
 import type { AudioSettings, AudioTrackSettings, MusicSettings, Project } from '../../../../shared/types'
 import { Icon } from '../../components/Icon'
@@ -18,6 +17,7 @@ import { SoundsSection } from '../sounds/SoundsSection'
 import './audioPanel.css'
 import { BedMissingNotice, MusicCredit, MusicLibrarySection } from './MusicLibrarySection'
 import { withOwnMusic } from '../../../../shared/audio/soundFxEdit'
+import { fmt } from '../../../../shared/i18n/fmt'
 import { SoundEffectsSection } from './SoundEffectsSection'
 
 const STEM_NAMES: Record<StemKind, string> = { mic: 'Microphone', system: 'System sound' }
@@ -252,7 +252,7 @@ function MusicSection(props: {
               <span>Background music</span>
               <span className="muted small">
                 {format}
-                {length !== null && ` · ${formatTime(length, false)}`}
+                {length !== null && ` · ${fmt.clock(length, 'whole')}`}
               </span>
             </span>
             <span className="music-file-actions">

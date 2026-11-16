@@ -17,7 +17,6 @@ import {
 } from '../../../../shared/editor/transcriptSelection'
 import { eventKeyName } from '../../../../shared/editor/shortcuts'
 import { planOf, videoTimeAt } from '../../../../shared/engine/freeze'
-import { formatTime } from '../../../../shared/engine/project'
 import { outputDuration } from '../../../../shared/engine/timeline'
 import type { Clip, Project, Transcript } from '../../../../shared/types'
 import { requestCaptions } from '../captionItems'
@@ -31,6 +30,7 @@ import { TIMING_COPY } from '../../../../shared/captions/transcriptTiming'
 import { toggleEmphasis, withCaptionPlace } from '../../../../shared/captions/marks'
 import { captionsOf } from '../../../../shared/captions/settings'
 import { LEGACY_TILES } from '../../../../shared/captions/studioPresets'
+import { fmt } from '../../../../shared/i18n/fmt'
 import { emphasisNotice, removesEmphasis, selectionSpans, wordEmphasis } from './transcriptMarks'
 import { keepVersionBefore } from '../../versions/autoVersion'
 
@@ -457,7 +457,7 @@ function TranscriptEditor({
 
   /* ---------- view ---------- */
 
-  const timeOf = (i: number): string => formatTime(videoTimeAt(clips, plan, words[i].start))
+  const timeOf = (i: number): string => fmt.clock(videoTimeAt(clips, plan, words[i].start))
 
   return (
     <div className="transcript-panel" onKeyDown={onPanelKeyDown}>

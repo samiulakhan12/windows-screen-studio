@@ -8,7 +8,6 @@ import { displayTime } from '../../../../shared/editor/clips'
 import { reviewHint, undoHint, withShortcut } from '../../../../shared/editor/shortcuts'
 import { chapterNear, createChapter } from '../../../../shared/editor/titles'
 import { planOf, videoTimeAt } from '../../../../shared/engine/freeze'
-import { formatTime } from '../../../../shared/engine/project'
 import { NOTES_COPY } from '../../../../shared/notes/notesCopy'
 import { linksToCheck, notedPieces, type Said } from '../../../../shared/publish/check'
 import type { CaptionSegment, CursorTrack, Project, Transcript } from '../../../../shared/types'
@@ -66,6 +65,7 @@ import { choiceOf, placeOf, textChoicesOf } from '../../ai/textChoices'
 import { useLocalAi, useLocalAiReady } from '../../ai/localAiState'
 import { FIND_CHAPTERS_BUILT, runFindChapters } from '../chaptersRun'
 import { sanitizeSmartPref, DEFAULT_FIND_CHAPTERS, type FindChaptersPref } from '../../../../shared/smart/smartPrefs'
+import { fmt } from '../../../../shared/i18n/fmt'
 import { CostLine } from '../../ai/CostLine'
 import { useCostDataRead } from '../../ai/useCost'
 import { LocalNote, LocalProgress, LocalWritten } from '../../ai/LocalProgress'
@@ -936,7 +936,7 @@ function TranscriptSection({
       <ol className="caption-list" ref={listRef}>
         {shown.map((s, k) => {
           const isLast = shownPage * PAGE + k === segments.length - 1
-          const at = formatTime(videoTimeAt(clips, plan, s.start))
+          const at = fmt.clock(videoTimeAt(clips, plan, s.start))
           return (
             <li
               key={s.id}
@@ -1288,7 +1288,7 @@ function AiToolsSection({
               <ol className="captions-chapter-list">
                 {chapters.map((c) => (
                   <li key={c.t}>
-                    <span className="captions-chapter-time">{formatTime(c.t, false)}</span> {c.title}
+                    <span className="captions-chapter-time">{fmt.clock(c.t, 'whole')}</span> {c.title}
                   </li>
                 ))}
               </ol>

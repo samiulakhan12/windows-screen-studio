@@ -15,9 +15,9 @@ import {
   titleVisibleAt
 } from '../../../../shared/editor/titles'
 import { planOf, videoTimeAt } from '../../../../shared/engine/freeze'
-import { formatTime } from '../../../../shared/engine/project'
 import { itemKey } from '../../../../shared/editor/multiSelect'
 import { chapterInVideo } from '../../../../shared/render/chapters'
+import { fmt } from '../../../../shared/i18n/fmt'
 import type { AnnotationStyle, Chapter, Clip, CursorTrack, Project, TitleCard } from '../../../../shared/types'
 import { FindChapters } from './FindChapters'
 import { Icon } from '../../components/Icon'
@@ -115,7 +115,7 @@ function TextSection({ selectedId, ...props }: InspectorProps & { selectedId: st
                       selectedId === a.id
                     )}
                   >
-                    <span className="muted">{formatTime(a.start, false)}</span> {a.text || 'Text'}
+                    <span className="muted">{fmt.clock(a.start, 'whole')}</span> {a.text || 'Text'}
                   </button>
                 </li>
               ))}
@@ -134,7 +134,7 @@ function SelectedText(props: InspectorProps): JSX.Element {
     store.update((p) => ({ ...p, annotations: p.annotations.map((a) => (a.id === ann.id ? { ...a, ...patch } : a)) }), key)
   }
   return (
-    <Section title="Selected text" aside={<span className="muted small">{formatTime(ann.start)} – {formatTime(ann.end)}</span>}>
+    <Section title="Selected text" aside={<span className="muted small">{fmt.clock(ann.start)} – {fmt.clock(ann.end)}</span>}>
       <label className="field">
         <span>Text</span>
         <textarea className="text-field" rows={2} value={ann.text} onChange={(e) => set({ text: e.target.value }, `annotation-text:${ann.id}`)} placeholder={ann.style === 'bubble' ? "Type the bubble's text" : 'Type your text'} />
@@ -210,7 +210,7 @@ function TitlesSection({ project, selectedId, onSelect }: { project: Project; se
                 >
                   <TitleStyleIcon style={c.style} size={15} />
                   <span>{c.title.trim() || c.subtitle?.trim() || 'Title'}</span>
-                  <span className="muted">{formatTime(c.start, false)}</span>
+                  <span className="muted">{fmt.clock(c.start, 'whole')}</span>
                 </button>
               </li>
             ))}
@@ -227,7 +227,7 @@ function SelectedTitle({ project, card, onSelect }: { project: Project; card: Ti
   const set = (patch: Partial<TitleCard>, key?: string): void =>
     store.update((p) => ({ ...p, titles: (p.titles ?? []).map((c) => (c.id === id ? { ...c, ...patch } : c)) }), key)
   return (
-    <Section title="Selected title card" aside={<span className="muted small">{formatTime(card.start)} – {formatTime(card.end)}</span>}>
+    <Section title="Selected title card" aside={<span className="muted small">{fmt.clock(card.start)} – {fmt.clock(card.end)}</span>}>
       <label className="field">
         <span>Title</span>
         <textarea className="text-field" rows={2} aria-label="Title" value={card.title} onChange={(e) => set({ title: cleanTitle(e.target.value) }, `title-text:${id}`)} placeholder="Your title" />
@@ -343,7 +343,7 @@ function outputNote(project: Project, t: number): string {
   const { clips } = project
   if (!chapterInVideo(clips, t)) return 'At the very end of the video, with nothing after it: exports leave it out.'
   // In seconds of the exported video, as the Transport and the YouTube timestamps count them (freeze frames included).
-  const at = formatTime(videoTimeAt(clips, planOf(project), t), false)
+  const at = fmt.clock(videoTimeAt(clips, planOf(project), t), 'whole')
   return Math.abs(displayTime(clips, t) - t) > 1e-6 ? `In a part that is cut: it starts at ${at} in the video, where it goes on.` : `At ${at} in the exported video.`
 }
 
@@ -354,7 +354,7 @@ function SelectedChapter({ project, chapter, onSelect }: { project: Project; cha
   const set = (patch: Partial<Chapter>, key?: string): void =>
     store.update((p) => ({ ...p, chapters: (p.chapters ?? []).map((c) => (c.id === id ? { ...c, ...patch } : c)) }), key)
   return (
-    <Section title="Selected chapter" aside={<span className="muted small">{formatTime(chapter.t)}</span>}>
+    <Section title="Selected chapter" aside={<span className="muted small">{fmt.clock(chapter.t)}</span>}>
       <label className="field">
         <span>Name</span>
         <input className="tc-input" aria-label="Chapter name" value={chapter.title} placeholder="Chapter name" onChange={(e) => set({ title: cleanChapterName(e.target.value) }, `chapter-title:${id}`)} />
@@ -436,7 +436,7 @@ function ChaptersSection({
                   player.seek(c.t)
                 })}
               >
-                {formatTime(videoTimeAt(project.clips, planOf(project), c.t), false)}
+                {fmt.clock(videoTimeAt(project.clips, planOf(project), c.t), 'whole')}
               </button>
               {/* A found chapter not reviewed yet (smart-tools.md §2.3): said in words, not only colour, also in its name field's
                   name (§14); a weak name asks to be renamed. */}
@@ -444,7 +444,7 @@ function ChaptersSection({
               <input
                 id={chapterNameId(c.id)}
                 className="tc-input"
-                aria-label={`Name of the chapter at ${formatTime(c.t, false)}${c.auto ? ', found, not reviewed' : ''}`}
+                aria-label={`Name of the chapter at ${fmt.clock(c.t, 'whole')}${c.auto ? ', found, not reviewed' : ''}`}
                 aria-describedby={c.auto && weakChapterName(c) ? `${chapterNameId(c.id)}-rename` : undefined}
                 value={c.title}
                 placeholder="Chapter name"

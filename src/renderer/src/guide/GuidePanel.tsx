@@ -13,7 +13,6 @@ import type { SceneScan } from '../../../shared/api/projects'
 import { cropOf } from '../../../shared/engine/crop'
 import { editToVideo, planOf } from '../../../shared/engine/freeze'
 import { effectiveTrack } from '../../../shared/engine/inputTrack'
-import { formatTime } from '../../../shared/engine/project'
 import { viewAt } from '../../../shared/captions/layout'
 import { GUIDE_LIMITS } from '../../../shared/guide/guideData'
 import { ACTUAL_KEY, defaultDetails, stepNumbers, type GuideImage } from '../../../shared/guide/guideDoc'
@@ -32,6 +31,7 @@ import { CostLine } from '../ai/CostLine'
 import { confirmCost } from '../ai/costConfirm'
 import { estimateFor, useCostData } from '../ai/useCost'
 import { costLineText } from '../../../shared/ai/cost'
+import { fmt } from '../../../shared/i18n/fmt'
 import { LocalProgress, LocalWritten } from '../ai/LocalProgress'
 import { useTextChoices } from '../ai/textChoices'
 import { useEditor } from '../editor/context'
@@ -612,7 +612,7 @@ export function GuidePanel(props: { project: Project; cursor: CursorTrack; start
   const hasAiTitles = (guide.steps ?? []).some((e) => e.ai)
   const saveLabel = FORMATS.find((f) => f.id === format)!.save
   const plan = planOf(project)
-  const vt = (t: number): string => formatTime(editToVideo(plan, viewAt(project.clips, t)), false)
+  const vt = (t: number): string => fmt.clock(editToVideo(plan, viewAt(project.clips, t)), 'whole')
   const brandExists = !!project.brand?.colors?.length
   const typedN = (key: string | null): string => (key ? (rows.find((x) => x.step.key === key)?.n ?? '') : '')
 

@@ -7,9 +7,8 @@ import { countOf, GROUP_KINDS, groupLabel, kindCounts, KIND_WORDS, projectItems,
 import { copyLookFirst, movedNotice } from '../../../../shared/editor/multiSelectCopy'
 import { shapeLabel } from '../../../../shared/editor/shapes'
 import { commandKeys, shortcutLabel, withShortcut } from '../../../../shared/editor/shortcuts'
-import { formatLevel, ZOOM_LEVEL_PRESETS } from '../../../../shared/editor/zoomEdit'
+import { ZOOM_LEVEL_PRESETS } from '../../../../shared/editor/zoomEdit'
 import { cropOf, zoomInView } from '../../../../shared/engine/crop'
-import { formatTime } from '../../../../shared/engine/project'
 import { zoomStyleOf, zoomTargetScale } from '../../../../shared/engine/zoom'
 import type { Project, Shape } from '../../../../shared/types'
 import { Icon } from '../../components/Icon'
@@ -26,6 +25,7 @@ import { ShapeIcon } from '../shapeIcons'
 import '../multiSelect.css'
 import '../shapes.css'
 import { overlayLabel } from '../../../../shared/editor/overlays'
+import { fmt } from '../../../../shared/i18n/fmt'
 import { graphicLabel } from './GraphicsPanel'
 
 /** Section titles of the look classes, in their order (§4.9 item 5). */
@@ -63,7 +63,7 @@ function itemName(p: Project, e: ItemEntry): string {
   switch (e.kind) {
     case 'zoom': {
       const z = p.zooms.find((x) => x.id === e.id)
-      return z ? `Zoom ${formatLevel(zoomTargetScale(zoomInView(cropOf(p), z)))}` : 'Zoom'
+      return z ? `Zoom ${fmt.factor(zoomTargetScale(zoomInView(cropOf(p), z)))}` : 'Zoom'
     }
     case 'annotation':
       return p.annotations.find((x) => x.id === e.id)?.text.trim() || 'Text'
@@ -182,7 +182,7 @@ export function SelectionPanel(props: InspectorProps & { onCommand: (id: Command
       <div role="status" aria-live="polite">
         <Section title={`${keys.length} items selected`}>
           <p className="hint selection-summary">
-            {groupLabel(keys)} · {formatTime(span.start)} – {formatTime(span.end)}
+            {groupLabel(keys)} · {fmt.clock(span.start)} – {fmt.clock(span.end)}
           </p>
           {Object.keys(counts).length > 1 && (
             <div className="selection-narrow">
@@ -236,7 +236,7 @@ export function SelectionPanel(props: InspectorProps & { onCommand: (id: Command
           <ul className="selection-items" ref={listRef}>
             {entries.slice(0, 200).map((e, i) => {
               const name = itemName(project, e)
-              const at = formatTime(e.start)
+              const at = fmt.clock(e.start)
               return (
                 <li key={e.key} data-group-item={e.key}>
                   <KindIcon kind={e.kind} project={project} id={e.id} />

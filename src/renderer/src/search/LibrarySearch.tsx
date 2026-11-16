@@ -7,8 +7,9 @@
  */
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react'
 import type { SearchResponse, SearchStatus, SnippetPart } from '../../../shared/api/search'
-import { clockTime, KIND_LABEL, resultsSummary } from '../../../shared/search/moment'
+import { KIND_LABEL, resultsSummary } from '../../../shared/search/moment'
 import { SEARCH_LIMITS } from '../../../shared/search/types'
+import { fmt } from '../../../shared/i18n/fmt'
 import type { ProjectSummary } from '../../../shared/types'
 import { clearPendingMoment, setPendingMoment } from './openAt'
 import { answeredQuery, dateOf, enterTarget, liveStatus, resultRows, rowLabel, type Row } from './rows'
@@ -268,14 +269,14 @@ export function LibrarySearch({ projects, onOpen, disabled = false }: { projects
                             <Snippet parts={hit.title} />
                           </span>
                           <span className="search-hit-meta">
-                            {dateOf(hit.createdAt)} · {clockTime(hit.duration)}
+                            {dateOf(hit.createdAt)} · {fmt.clock(hit.duration, 'hours')}
                             {hit.nameOnly && ' · Found in the name'}
                           </span>
                         </>
                       )}
                       {row.kind === 'moment' && (
                         <>
-                          <span className="search-time">{row.moment.video === null ? '' : clockTime(row.moment.video)}</span>
+                          <span className="search-time">{row.moment.video === null ? '' : fmt.clock(row.moment.video, 'hours')}</span>
                           <span className="search-kind">{KIND_LABEL[row.moment.kind]}</span>
                           <span className="search-snippet">
                             <Snippet parts={row.moment.snippet} />
