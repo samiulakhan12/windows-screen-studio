@@ -1608,5 +1608,143 @@
   },
   "notes.hide": {
     "description": "Speaker notes (a teleprompter: notes the presenter reads while recording, never in the video): the notes window's close button while recording, for screen readers."
+  },
+  "search.kind.name": {
+    "description": "Home's search of every recording: a result's short label of where the words were found: the recording's name."
+  },
+  "search.kind.file": {
+    "description": "Home's search of every recording: a result's short label of where the words were found: the recording's file name."
+  },
+  "search.kind.chapter": {
+    "description": "Home's search of every recording: a result's short label of where the words were found: a chapter title."
+  },
+  "search.kind.title": {
+    "description": "Home's search of every recording: a result's short label of where the words were found: a title card."
+  },
+  "search.kind.text": {
+    "description": "Home's search of every recording: a result's short label of where the words were found: text seen on the screen."
+  },
+  "search.kind.said": {
+    "description": "Home's search of every recording: a result's short label of where the words were found: what was said (captions)."
+  },
+  "search.kind.notes": {
+    "description": "Home's search of every recording: a result's short label of where the words were found: the speaker notes."
+  },
+  "search.time.hours": {
+    "description": "Home's search of every recording: part of a length or time said to screen readers (\"1 hour 2 minutes 3 seconds\")."
+  },
+  "search.time.minutes": {
+    "description": "Home's search of every recording: part of a length or time said to screen readers."
+  },
+  "search.time.seconds": {
+    "description": "Home's search of every recording: part of a length or time said to screen readers."
+  },
+  "search.noMatch": {
+    "description": "Home's search of every recording: no result; {query} is what was typed.",
+    "user": [
+      "query"
+    ]
+  },
+  "search.firstFound": {
+    "description": "Home's search of every recording: the most results it shows ({n}) were found."
+  },
+  "search.found": {
+    "description": "Home's search of every recording: how many recordings match, said to screen readers."
+  },
+  "search.untitled": {
+    "description": "Home's search of every recording: a recording with no name."
+  },
+  "search.stillIndexing": {
+    "description": "Home's search of every recording: said to screen readers while the recordings are read for searching."
+  },
+  "search.row.in": {
+    "description": "Home's search of every recording: where a found moment is, said to screen readers: the recording's name and date.",
+    "user": [
+      "name"
+    ]
+  },
+  "search.row.inNoDate": {
+    "description": "Home's search of every recording: where a found moment is, said to screen readers, with no date.",
+    "user": [
+      "name"
+    ]
+  },
+  "search.row.open": {
+    "description": "Home's search of every recording: a found recording, said to screen readers: its name, date and length (\"2 minutes 5 seconds\").",
+    "user": [
+      "name"
+    ]
+  },
+  "search.row.openName": {
+    "description": "Home's search of every recording: a recording found by its name, said to screen readers.",
+    "user": [
+      "name"
+    ]
+  },
+  "search.row.more": {
+    "description": "Home's search of every recording: the row that shows more found moments of a recording, said to screen readers; {where} is \"In Demo, Mar 12, 2026.\"."
+  },
+  "search.row.moment": {
+    "description": "Home's search of every recording: a found moment with no time, said to screen readers: where it was found (\"Name\"), the words around it, the recording.",
+    "user": [
+      "text"
+    ]
+  },
+  "search.row.momentCut": {
+    "description": "Home's search of every recording: a found moment that was cut from the video, with no time, said to screen readers.",
+    "user": [
+      "text"
+    ]
+  },
+  "search.row.momentAt": {
+    "description": "Home's search of every recording: a found moment, said to screen readers: where it was found (\"Said\"), its time (\"1 minute 2 seconds\"), the words, the recording.",
+    "user": [
+      "text"
+    ]
+  },
+  "search.row.momentAtCut": {
+    "description": "Home's search of every recording: a found moment that was cut from the video, said to screen readers.",
+    "user": [
+      "text"
+    ]
+  },
+  "search.placeholder": {
+    "description": "Home's search of every recording: the search box's placeholder."
+  },
+  "search.boxLabel": {
+    "description": "Home's search of every recording: the search box's name for screen readers."
+  },
+  "search.boxTitle": {
+    "description": "Home's search of every recording: the search box's tooltip; {keys} is its shortcut's keycaps (\"Ctrl+F\")."
+  },
+  "search.clear": {
+    "description": "Home's search of every recording: the button that empties the search box."
+  },
+  "search.indexingCount": {
+    "description": "Home's search of every recording: while the recordings are read for searching, with how many are done."
+  },
+  "search.indexing": {
+    "description": "Home's search of every recording: while the recordings are read for searching."
+  },
+  "search.looksIn": {
+    "description": "Home's search of every recording: under \"No recordings match\", where it looks."
+  },
+  "search.withoutCaptions": {
+    "description": "Home's search of every recording: after \"Search looks in…\" when some recordings have no captions."
+  },
+  "search.results": {
+    "description": "Home's search of every recording: the list of results, for screen readers."
+  },
+  "search.foundInName": {
+    "description": "Home's search of every recording: after a found recording's date and length when only its name matched."
+  },
+  "search.cutTitle": {
+    "description": "Home's search of every recording: the tooltip of the Cut mark on a found moment."
+  },
+  "search.cut": {
+    "description": "Home's search of every recording: a mark on a found moment that was cut from the video (an adjective: removed)."
+  },
+  "search.moreMoments": {
+    "description": "Home's search of every recording: the row that shows more found moments of a recording."
   }
 }

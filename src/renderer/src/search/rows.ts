@@ -3,9 +3,42 @@
  * per recording its heading, its moments shown and "more". Pure, so it is tested without a page.
  */
 import type { SearchHit, SearchMoment, SnippetPart } from '../../../shared/api/search'
-import { KIND_LABEL, spokenTime } from '../../../shared/search/moment'
+import type { SearchKind } from '../../../shared/search/types'
 import { fmt } from '../../../shared/i18n/fmt'
+import { t } from '../../../shared/i18n/t'
 import { SEARCH_LIMITS } from '../../../shared/search/types'
+
+/*
+ * The words below are messages of the review namespace (docs/design/output-and-languages.md §9.1).
+ * shared/search/moment.ts, which main imports too, keeps the English forms of KIND_LABEL,
+ * spokenTime and resultsSummary for main and its tests; these are the same words in the UI language.
+ */
+
+/** Short label of where the words were found: "Said", "On screen". */
+export const kindLabel = (kind: SearchKind): string => t(`review.search.kind.${kind}`)
+
+/** "1 minute 23 seconds", for screen readers (moment.ts's spokenTime). */
+export function spokenTime(seconds: number): string {
+  const s = Math.max(0, Math.floor(Number.isFinite(seconds) ? seconds : 0))
+  const h = Math.floor(s / 3600)
+  const m = Math.floor((s % 3600) / 60)
+  const sec = s % 60
+  const parts: string[] = []
+  if (h) parts.push(t('review.search.time.hours', { count: h, n: fmt.count(h) }))
+  if (m) parts.push(t('review.search.time.minutes', { count: m, n: fmt.count(m) }))
+  if (sec || !parts.length) parts.push(t('review.search.time.seconds', { count: sec, n: fmt.count(sec) }))
+  return parts.join(' ')
+}
+
+/** The live region's sentence: "3 recordings found", "No recordings match "x"." (moment.ts's resultsSummary). */
+export function resultsSummary(count: number, query: string, limit = Infinity): string {
+  if (count === 0) return t('review.search.noMatch', { query })
+  if (count >= limit) return t('review.search.firstFound', { n: fmt.count(count) })
+  return t('review.search.found', { count, n: fmt.count(count) })
+}
+
+/** A recording's name, or Untitled. */
+export const hitName = (hit: Pick<SearchHit, 'name'>): string => hit.name || t('review.search.untitled')
 
 /** Moments shown per recording until "more" is pressed (§4). */
 export const MOMENTS_SHOWN = 4
@@ -60,22 +93,24 @@ export function enterTarget(rows: readonly Row[], activeKey: string | null, answ
 }
 
 /** What the live region says while the index is built: one sentence that does not change as it goes, so it is read once. */
-export const STILL_INDEXING = 'Still indexing your recordings; more results may appear.'
+export const stillIndexing = (): string => t('review.search.stillIndexing')
 
 /** What the polite live region says for the results' `summary` (empty before the first answer). */
 export function liveStatus(summary: string, building: boolean): string {
   if (!summary) return ''
-  return building ? STILL_INDEXING : summary
+  return building ? stillIndexing() : summary
 }
 
 /** What a screen reader says for a row. */
 export function rowLabel(row: Row): string {
-  const where = `In ${row.hit.name || 'Untitled'}${dateOf(row.hit.createdAt) ? `, ${dateOf(row.hit.createdAt)}` : ''}.`
-  if (row.kind === 'open') return `Open ${row.hit.name || 'Untitled'}${row.hit.nameOnly ? ', found in the name' : ''}. ${dateOf(row.hit.createdAt)}, ${spokenTime(row.hit.duration)} long.`
-  if (row.kind === 'more') return `Show ${row.count} more moment${row.count === 1 ? '' : 's'}. ${where}`
+  const name = hitName(row.hit)
+  const date = dateOf(row.hit.createdAt)
+  const where = date ? t('review.search.row.in', { name, date }) : t('review.search.row.inNoDate', { name })
+  if (row.kind === 'open') return t(row.hit.nameOnly ? 'review.search.row.openName' : 'review.search.row.open', { name, date, length: spokenTime(row.hit.duration) })
+  if (row.kind === 'more') return t('review.search.row.more', { count: row.count, n: fmt.count(row.count), where })
   const m = row.moment
-  const label = KIND_LABEL[m.kind]
-  const at = m.video === null ? label : `${label} at ${spokenTime(m.video)}`
-  return `${at}${m.cut ? ', cut from the video' : ''}: ${textOf(m.snippet)}. ${where}`
+  const values = { kind: kindLabel(m.kind), text: textOf(m.snippet), where }
+  if (m.video === null) return t(m.cut ? 'review.search.row.momentCut' : 'review.search.row.moment', values)
+  return t(m.cut ? 'review.search.row.momentAtCut' : 'review.search.row.momentAt', { ...values, time: spokenTime(m.video) })
 }
 

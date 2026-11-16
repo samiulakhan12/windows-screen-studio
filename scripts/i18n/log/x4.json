@@ -5063,5 +5063,440 @@
   "line": 543,
   "english": "Hide notes",
   "sample": {}
+ },
+ {
+  "key": "review.search.kind.name",
+  "file": "src/renderer/src/search/rows.ts",
+  "line": 18,
+  "english": "Name",
+  "sample": {}
+ },
+ {
+  "key": "review.search.kind.file",
+  "file": "src/renderer/src/search/rows.ts",
+  "line": 18,
+  "english": "File",
+  "sample": {}
+ },
+ {
+  "key": "review.search.kind.chapter",
+  "file": "src/renderer/src/search/rows.ts",
+  "line": 18,
+  "english": "Chapter",
+  "sample": {}
+ },
+ {
+  "key": "review.search.kind.title",
+  "file": "src/renderer/src/search/rows.ts",
+  "line": 18,
+  "english": "Title",
+  "sample": {}
+ },
+ {
+  "key": "review.search.kind.text",
+  "file": "src/renderer/src/search/rows.ts",
+  "line": 18,
+  "english": "On screen",
+  "sample": {}
+ },
+ {
+  "key": "review.search.kind.said",
+  "file": "src/renderer/src/search/rows.ts",
+  "line": 18,
+  "english": "Said",
+  "sample": {}
+ },
+ {
+  "key": "review.search.kind.notes",
+  "file": "src/renderer/src/search/rows.ts",
+  "line": 18,
+  "english": "Notes",
+  "sample": {}
+ },
+ {
+  "key": "review.search.time.hours",
+  "file": "src/renderer/src/search/rows.ts",
+  "line": 27,
+  "english": [
+   "0 hours",
+   "1 hour",
+   "2 hours",
+   "1000 hours"
+  ],
+  "sample": [
+   {
+    "count": 0,
+    "n": "0"
+   },
+   {
+    "count": 1,
+    "n": "1"
+   },
+   {
+    "count": 2,
+    "n": "2"
+   },
+   {
+    "count": 1000,
+    "n": "1000"
+   }
+  ]
+ },
+ {
+  "key": "review.search.time.minutes",
+  "file": "src/renderer/src/search/rows.ts",
+  "line": 28,
+  "english": [
+   "0 minutes",
+   "1 minute",
+   "2 minutes",
+   "1000 minutes"
+  ],
+  "sample": [
+   {
+    "count": 0,
+    "n": "0"
+   },
+   {
+    "count": 1,
+    "n": "1"
+   },
+   {
+    "count": 2,
+    "n": "2"
+   },
+   {
+    "count": 1000,
+    "n": "1000"
+   }
+  ]
+ },
+ {
+  "key": "review.search.time.seconds",
+  "file": "src/renderer/src/search/rows.ts",
+  "line": 29,
+  "english": [
+   "0 seconds",
+   "1 second",
+   "2 seconds",
+   "1000 seconds"
+  ],
+  "sample": [
+   {
+    "count": 0,
+    "n": "0"
+   },
+   {
+    "count": 1,
+    "n": "1"
+   },
+   {
+    "count": 2,
+    "n": "2"
+   },
+   {
+    "count": 1000,
+    "n": "1000"
+   }
+  ]
+ },
+ {
+  "key": "review.search.noMatch",
+  "file": "src/renderer/src/search/rows.ts",
+  "line": 35,
+  "english": "No recordings match \"intro\".",
+  "sample": {
+   "query": "intro"
+  }
+ },
+ {
+  "key": "review.search.firstFound",
+  "file": "src/renderer/src/search/rows.ts",
+  "line": 36,
+  "english": "The first 50 recordings found. Add a word to narrow them.",
+  "sample": {
+   "n": "50"
+  }
+ },
+ {
+  "key": "review.search.found",
+  "file": "src/renderer/src/search/rows.ts",
+  "line": 37,
+  "english": [
+   "0 recordings found",
+   "1 recording found",
+   "2 recordings found",
+   "1000 recordings found"
+  ],
+  "sample": [
+   {
+    "count": 0,
+    "n": "0"
+   },
+   {
+    "count": 1,
+    "n": "1"
+   },
+   {
+    "count": 2,
+    "n": "2"
+   },
+   {
+    "count": 1000,
+    "n": "1000"
+   }
+  ]
+ },
+ {
+  "key": "review.search.untitled",
+  "file": "src/renderer/src/search/rows.ts",
+  "line": 41,
+  "english": "Untitled",
+  "sample": {}
+ },
+ {
+  "key": "review.search.stillIndexing",
+  "file": "src/renderer/src/search/rows.ts",
+  "line": 96,
+  "english": "Still indexing your recordings; more results may appear.",
+  "sample": {}
+ },
+ {
+  "key": "review.search.row.in",
+  "file": "src/renderer/src/search/rows.ts",
+  "line": 108,
+  "english": "In Demo, Mar 12, 2026.",
+  "sample": {
+   "name": "Demo",
+   "date": "Mar 12, 2026"
+  }
+ },
+ {
+  "key": "review.search.row.inNoDate",
+  "file": "src/renderer/src/search/rows.ts",
+  "line": 108,
+  "english": "In Demo.",
+  "sample": {
+   "name": "Demo"
+  }
+ },
+ {
+  "key": "review.search.row.open",
+  "file": "src/renderer/src/search/rows.ts",
+  "line": 109,
+  "english": "Open Demo. Mar 12, 2026, 2 minutes 5 seconds long.",
+  "sample": {
+   "name": "Demo",
+   "date": "Mar 12, 2026",
+   "length": "2 minutes 5 seconds"
+  }
+ },
+ {
+  "key": "review.search.row.openName",
+  "file": "src/renderer/src/search/rows.ts",
+  "line": 109,
+  "english": "Open Demo, found in the name. Mar 12, 2026, 2 minutes 5 seconds long.",
+  "sample": {
+   "name": "Demo",
+   "date": "Mar 12, 2026",
+   "length": "2 minutes 5 seconds"
+  }
+ },
+ {
+  "key": "review.search.row.more",
+  "file": "src/renderer/src/search/rows.ts",
+  "line": 110,
+  "english": [
+   "Show 0 more moments. In Demo.",
+   "Show 1 more moment. In Demo.",
+   "Show 2 more moments. In Demo.",
+   "Show 1000 more moments. In Demo."
+  ],
+  "sample": [
+   {
+    "count": 0,
+    "n": "0",
+    "where": "In Demo."
+   },
+   {
+    "count": 1,
+    "n": "1",
+    "where": "In Demo."
+   },
+   {
+    "count": 2,
+    "n": "2",
+    "where": "In Demo."
+   },
+   {
+    "count": 1000,
+    "n": "1000",
+    "where": "In Demo."
+   }
+  ]
+ },
+ {
+  "key": "review.search.row.moment",
+  "file": "src/renderer/src/search/rows.ts",
+  "line": 113,
+  "english": "File: demo.mp4. In Demo.",
+  "sample": {
+   "kind": "File",
+   "text": "demo.mp4",
+   "where": "In Demo."
+  }
+ },
+ {
+  "key": "review.search.row.momentCut",
+  "file": "src/renderer/src/search/rows.ts",
+  "line": 113,
+  "english": "Said, cut from the video: hello there. In Demo.",
+  "sample": {
+   "kind": "Said",
+   "text": "hello there",
+   "where": "In Demo."
+  }
+ },
+ {
+  "key": "review.search.row.momentAt",
+  "file": "src/renderer/src/search/rows.ts",
+  "line": 114,
+  "english": "Said at 1 minute 2 seconds: hello there. In Demo.",
+  "sample": {
+   "kind": "Said",
+   "time": "1 minute 2 seconds",
+   "text": "hello there",
+   "where": "In Demo."
+  }
+ },
+ {
+  "key": "review.search.row.momentAtCut",
+  "file": "src/renderer/src/search/rows.ts",
+  "line": 114,
+  "english": "Said at 1 minute 2 seconds, cut from the video: hello there. In Demo.",
+  "sample": {
+   "kind": "Said",
+   "time": "1 minute 2 seconds",
+   "text": "hello there",
+   "where": "In Demo."
+  }
+ },
+ {
+  "key": "review.search.placeholder",
+  "file": "src/renderer/src/search/LibrarySearch.tsx",
+  "line": 206,
+  "english": "Search recordings",
+  "sample": {}
+ },
+ {
+  "key": "review.search.boxLabel",
+  "file": "src/renderer/src/search/LibrarySearch.tsx",
+  "line": 207,
+  "english": "Search recordings: words said, titles, chapters and notes",
+  "sample": {}
+ },
+ {
+  "key": "review.search.boxTitle",
+  "file": "src/renderer/src/search/LibrarySearch.tsx",
+  "line": 208,
+  "english": "Search every recording (Ctrl+F)",
+  "sample": {
+   "keys": "Ctrl+F"
+  }
+ },
+ {
+  "key": "review.search.clear",
+  "file": "src/renderer/src/search/LibrarySearch.tsx",
+  "line": 221,
+  "english": "Clear search",
+  "sample": {}
+ },
+ {
+  "key": "review.search.indexingCount",
+  "file": "src/renderer/src/search/LibrarySearch.tsx",
+  "line": 236,
+  "english": "Still indexing your recordings (3 of 12)…",
+  "sample": {
+   "indexed": "3",
+   "total": "12"
+  }
+ },
+ {
+  "key": "review.search.indexing",
+  "file": "src/renderer/src/search/LibrarySearch.tsx",
+  "line": 236,
+  "english": "Still indexing your recordings…",
+  "sample": {}
+ },
+ {
+  "key": "review.search.looksIn",
+  "file": "src/renderer/src/search/LibrarySearch.tsx",
+  "line": 243,
+  "english": "Search looks in what was said (captions), titles, chapters, text on screen, speaker notes and names.",
+  "sample": {}
+ },
+ {
+  "key": "review.search.withoutCaptions",
+  "file": "src/renderer/src/search/LibrarySearch.tsx",
+  "line": 244,
+  "english": "Recordings without captions are found by their name, titles, chapters, text on screen and notes.",
+  "sample": {}
+ },
+ {
+  "key": "review.search.results",
+  "file": "src/renderer/src/search/LibrarySearch.tsx",
+  "line": 248,
+  "english": "Search results",
+  "sample": {}
+ },
+ {
+  "key": "review.search.foundInName",
+  "file": "src/renderer/src/search/LibrarySearch.tsx",
+  "line": 273,
+  "english": "Found in the name",
+  "sample": {}
+ },
+ {
+  "key": "review.search.cutTitle",
+  "file": "src/renderer/src/search/LibrarySearch.tsx",
+  "line": 285,
+  "english": "This part was cut from the video",
+  "sample": {}
+ },
+ {
+  "key": "review.search.cut",
+  "file": "src/renderer/src/search/LibrarySearch.tsx",
+  "line": 286,
+  "english": "Cut",
+  "sample": {}
+ },
+ {
+  "key": "review.search.moreMoments",
+  "file": "src/renderer/src/search/LibrarySearch.tsx",
+  "line": 293,
+  "english": [
+   "0 more moments",
+   "1 more moment",
+   "2 more moments",
+   "1000 more moments"
+  ],
+  "sample": [
+   {
+    "count": 0,
+    "n": "0"
+   },
+   {
+    "count": 1,
+    "n": "1"
+   },
+   {
+    "count": 2,
+    "n": "2"
+   },
+   {
+    "count": 1000,
+    "n": "1000"
+   }
+  ]
  }
 ]
