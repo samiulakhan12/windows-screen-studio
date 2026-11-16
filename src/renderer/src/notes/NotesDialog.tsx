@@ -2,6 +2,8 @@ import { useCallback, useEffect, useMemo, useRef, useState, type RefObject } fro
 import { countWords } from '../../../shared/notes/blocks'
 import { NOTES_FONT, NOTES_HEIGHT, NOTES_TEXT_MAX, NOTES_WIDTH, NOTES_WPM, type NotesSettings, type NotesSettingsPatch } from '../../../shared/notes/notes'
 import { countLine, NOTES_COPY, speedWords } from '../../../shared/notes/notesCopy'
+import { fmt } from '../../../shared/i18n/fmt'
+import { t, uiLanguage } from '../../../shared/i18n/t'
 import { NOTES_HOTKEY_ACTIONS, type NotesHotkeyAction } from '../../../shared/recording/hotkeys'
 import { friendlyError } from '../../../shared/recording/errors'
 import { Icon } from '../components/Icon'
@@ -159,7 +161,7 @@ export function NotesDialog({ notes, opener, onClose }: { notes: NotesController
       >
         <header className="modal-head">
           <h2 id="notes-title">{NOTES_COPY.dialogTitle}</h2>
-          <button type="button" className="btn ghost icon-btn" onClick={close} title="Close" aria-label="Close speaker notes">
+          <button type="button" className="btn ghost icon-btn" onClick={close} title={t('common.action.close')} aria-label={t('review.notes.closeDialog')}>
             <Icon name="x" size={16} />
           </button>
         </header>
@@ -187,8 +189,8 @@ export function NotesDialog({ notes, opener, onClose }: { notes: NotesController
             </div>
             <DraftScript
               text={notes.text}
-              onReplace={(t) => {
-                notes.setText(t)
+              onReplace={(text) => {
+                notes.setText(text)
                 void notes.flushText()
               }}
             />
@@ -222,11 +224,11 @@ export function NotesDialog({ notes, opener, onClose }: { notes: NotesController
               min={NOTES_FONT.min}
               max={NOTES_FONT.max}
               step={NOTES_FONT.step}
-              format={(v) => `${v} px`}
+              format={(v) => `${fmt.count(v)} px`}
               onSave={(fontSize) => save({ fontSize })}
             />
-            <NotesSlider label={NOTES_COPY.width} value={settings.width} min={NOTES_WIDTH.min} max={NOTES_WIDTH.max} step={10} format={(v) => `${v} px`} onSave={(width) => save({ width })} />
-            <NotesSlider label={NOTES_COPY.height} value={settings.height} min={NOTES_HEIGHT.min} max={NOTES_HEIGHT.max} step={10} format={(v) => `${v} px`} onSave={(height) => save({ height })} />
+            <NotesSlider label={NOTES_COPY.width} value={settings.width} min={NOTES_WIDTH.min} max={NOTES_WIDTH.max} step={10} format={(v) => `${fmt.count(v)} px`} onSave={(width) => save({ width })} />
+            <NotesSlider label={NOTES_COPY.height} value={settings.height} min={NOTES_HEIGHT.min} max={NOTES_HEIGHT.max} step={10} format={(v) => `${fmt.count(v)} px`} onSave={(height) => save({ height })} />
             <p className="hint">{NOTES_COPY.sizeHint}</p>
             <div className="notes-position">
               <span className="notes-position-label">{NOTES_COPY.position}</span>
@@ -235,11 +237,19 @@ export function NotesDialog({ notes, opener, onClose }: { notes: NotesController
                 {NOTES_COPY.resetPosition}
               </button>
             </div>
-            <div className="hotkeys notes-hotkeys" role="group" aria-label="Notes hotkeys">
+            <div className="hotkeys notes-hotkeys" role="group" aria-label={t('review.notes.hotkeysGroup')}>
               <span className="option-label">{NOTES_COPY.hotkeysLabel}</span>
-              {NOTES_HOTKEY_ACTIONS.map((action) => (
-                <HotkeyField key={action} action={action} value={settings.hotkeys[action]} disabled={false} onSet={(a) => setHotkey(action, a)} />
-              ))}
+              {NOTES_HOTKEY_ACTIONS.map((action) => {
+                const field = <HotkeyField key={action} action={action} value={settings.hotkeys[action]} disabled={false} onSet={(a) => setHotkey(action, a)} />
+                // The recording side's field and its messages stay English: outside English a screen reader reads them with an English voice (§9.5).
+                return uiLanguage() === 'en' ? (
+                  field
+                ) : (
+                  <span key={action} lang="en" style={{ display: 'contents' }}>
+                    {field}
+                  </span>
+                )
+              })}
               <p className="hint">{NOTES_COPY.hotkeysHint}</p>
             </div>
             {error && (

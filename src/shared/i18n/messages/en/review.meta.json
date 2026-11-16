@@ -1341,5 +1341,272 @@
   },
   "import.open": {
     "description": "Import: the button that opens the imported video in the editor."
+  },
+  "notes.groupLabel": {
+    "description": "Speaker notes (a teleprompter: notes the presenter reads while recording, never in the video): Home: the speaker notes card's title."
+  },
+  "notes.emptyHint": {
+    "description": "Speaker notes (a teleprompter: notes the presenter reads while recording, never in the video): Home: the notes card before any notes are written."
+  },
+  "notes.add": {
+    "description": "Speaker notes (a teleprompter: notes the presenter reads while recording, never in the video): Home: the button that opens the Notes dialog to write notes."
+  },
+  "notes.edit": {
+    "description": "Speaker notes (a teleprompter: notes the presenter reads while recording, never in the video): Home: the button that opens the Notes dialog to change the notes."
+  },
+  "notes.rehearse": {
+    "description": "Speaker notes (a teleprompter: notes the presenter reads while recording, never in the video): Home: the button that opens the notes window to practise without recording."
+  },
+  "notes.stopRehearsing": {
+    "description": "Speaker notes (a teleprompter: notes the presenter reads while recording, never in the video): Home: the button that closes the notes window opened with Rehearse."
+  },
+  "notes.showWhileRecording": {
+    "description": "Speaker notes (a teleprompter: notes the presenter reads while recording, never in the video): Home: the switch that shows the notes window while recording."
+  },
+  "notes.olderWindows": {
+    "description": "Speaker notes (a teleprompter: notes the presenter reads while recording, never in the video): Home: a warning on Windows versions that cannot keep the notes window out of the recording."
+  },
+  "notes.dialogTitle": {
+    "description": "Speaker notes (a teleprompter: notes the presenter reads while recording, never in the video): The Notes dialog's title."
+  },
+  "notes.textLabel": {
+    "description": "Speaker notes (a teleprompter: notes the presenter reads while recording, never in the video): The Notes dialog: the text field's label."
+  },
+  "notes.placeholder": {
+    "description": "Speaker notes (a teleprompter: notes the presenter reads while recording, never in the video): The Notes dialog: the text field's placeholder. [Text in brackets] is an example of a cue."
+  },
+  "notes.whileRecording": {
+    "description": "Speaker notes (a teleprompter: notes the presenter reads while recording, never in the video): The Notes dialog: the heading of the options for recording."
+  },
+  "notes.showMyNotes": {
+    "description": "Speaker notes (a teleprompter: notes the presenter reads while recording, never in the video): The Notes dialog: the switch that shows the notes window while recording."
+  },
+  "notes.autoStart": {
+    "description": "Speaker notes (a teleprompter: notes the presenter reads while recording, never in the video): The Notes dialog: the switch that starts scrolling with the recording."
+  },
+  "notes.autoStartHint": {
+    "description": "Speaker notes (a teleprompter: notes the presenter reads while recording, never in the video): The Notes dialog: under the auto-start switch. Forward is the button that steps to the next line."
+  },
+  "notes.keep": {
+    "description": "Speaker notes (a teleprompter: notes the presenter reads while recording, never in the video): The Notes dialog: the switch that keeps a copy of the notes with the recording."
+  },
+  "notes.keepHint": {
+    "description": "Speaker notes (a teleprompter: notes the presenter reads while recording, never in the video): The Notes dialog: where the kept copy is found (the Captions tab of the editor)."
+  },
+  "notes.textSize": {
+    "description": "Speaker notes (a teleprompter: notes the presenter reads while recording, never in the video): The Notes dialog: the slider of the notes' text size."
+  },
+  "notes.width": {
+    "description": "Speaker notes (a teleprompter: notes the presenter reads while recording, never in the video): The Notes dialog: the slider of the notes window's width."
+  },
+  "notes.height": {
+    "description": "Speaker notes (a teleprompter: notes the presenter reads while recording, never in the video): The Notes dialog: the slider of the notes window's height."
+  },
+  "notes.sizeHint": {
+    "description": "Speaker notes (a teleprompter: notes the presenter reads while recording, never in the video): The Notes dialog: under the size sliders."
+  },
+  "notes.positionDefault": {
+    "description": "Speaker notes (a teleprompter: notes the presenter reads while recording, never in the video): The Notes dialog: where the notes window opens when it was never moved."
+  },
+  "notes.positionSaved": {
+    "description": "Speaker notes (a teleprompter: notes the presenter reads while recording, never in the video): The Notes dialog: the notes window opens where the user left it."
+  },
+  "notes.resetPosition": {
+    "description": "Speaker notes (a teleprompter: notes the presenter reads while recording, never in the video): The Notes dialog: the button that puts the notes window back in its first place."
+  },
+  "notes.hotkeysLabel": {
+    "description": "Speaker notes (a teleprompter: notes the presenter reads while recording, never in the video): The Notes dialog: the heading of the notes' hotkeys."
+  },
+  "notes.hotkeysHint": {
+    "description": "Speaker notes (a teleprompter: notes the presenter reads while recording, never in the video): The Notes dialog: when the notes' hotkeys work."
+  },
+  "notes.draft": {
+    "description": "Speaker notes (a teleprompter: notes the presenter reads while recording, never in the video): The Notes dialog: the button that has AI turn bullet points into a script (a noun phrase, the tool's name)."
+  },
+  "notes.drafting": {
+    "description": "Speaker notes (a teleprompter: notes the presenter reads while recording, never in the video): The Notes dialog: while the script is drafted."
+  },
+  "notes.draftHintLocal": {
+    "description": "Speaker notes (a teleprompter: notes the presenter reads while recording, never in the video): The Notes dialog: Draft script with AI on this PC."
+  },
+  "notes.noProvider": {
+    "description": "Speaker notes (a teleprompter: notes the presenter reads while recording, never in the video): The Notes dialog: Draft script needs an AI service. OpenAI, Gemini and Claude are product names."
+  },
+  "notes.draftEmpty": {
+    "description": "Speaker notes (a teleprompter: notes the presenter reads while recording, never in the video): The Notes dialog: why Draft script cannot run with no notes."
+  },
+  "notes.draftTooLong": {
+    "description": "Speaker notes (a teleprompter: notes the presenter reads while recording, never in the video): why Draft script cannot run; {n} is the most characters it takes (\"20,000\")."
+  },
+  "notes.drafted": {
+    "description": "Speaker notes (a teleprompter: notes the presenter reads while recording, never in the video): The Notes dialog: after the script was drafted and put in place of the notes."
+  },
+  "notes.restore": {
+    "description": "Speaker notes (a teleprompter: notes the presenter reads while recording, never in the video): The Notes dialog: the button that puts the notes back as they were before the draft."
+  },
+  "notes.stale": {
+    "description": "Speaker notes (a teleprompter: notes the presenter reads while recording, never in the video): The Notes dialog: the notes were edited while the script was drafted."
+  },
+  "notes.windowLabel": {
+    "description": "Speaker notes (a teleprompter: notes the presenter reads while recording, never in the video): The notes window's name for screen readers."
+  },
+  "notes.emptyRehearsal": {
+    "description": "Speaker notes (a teleprompter: notes the presenter reads while recording, never in the video): The notes window when there are no notes. The home screen is Home."
+  },
+  "notes.hotkeyProblem": {
+    "description": "Speaker notes (a teleprompter: notes the presenter reads while recording, never in the video): The notes window: the mark shown when a hotkey could not be set."
+  },
+  "notes.locked": {
+    "description": "Speaker notes (a teleprompter: notes the presenter reads while recording, never in the video): The notes window: why it cannot be moved on older Windows."
+  },
+  "notes.backToStart": {
+    "description": "Speaker notes (a teleprompter: notes the presenter reads while recording, never in the video): The notes window: the button that scrolls back to the first line."
+  },
+  "notes.resize": {
+    "description": "Speaker notes (a teleprompter: notes the presenter reads while recording, never in the video): The notes window: the tooltip of its resize corner."
+  },
+  "notes.barShow": {
+    "description": "Speaker notes (a teleprompter: notes the presenter reads while recording, never in the video): The recording bar: the button that shows the notes window."
+  },
+  "notes.barHide": {
+    "description": "Speaker notes (a teleprompter: notes the presenter reads while recording, never in the video): The recording bar: the button that hides the notes window."
+  },
+  "notes.barShowTitle": {
+    "description": "Speaker notes (a teleprompter: notes the presenter reads while recording, never in the video): The recording bar: the Show notes button's tooltip."
+  },
+  "notes.barHideTitle": {
+    "description": "Speaker notes (a teleprompter: notes the presenter reads while recording, never in the video): The recording bar: the Hide notes button's tooltip."
+  },
+  "notes.scriptSection": {
+    "description": "Speaker notes (a teleprompter: notes the presenter reads while recording, never in the video): The editor's Captions tab: the heading of the script kept with the recording."
+  },
+  "notes.scriptIntro": {
+    "description": "Speaker notes (a teleprompter: notes the presenter reads while recording, never in the video): The editor's Captions tab: under the script's heading."
+  },
+  "notes.copyScript": {
+    "description": "Speaker notes (a teleprompter: notes the presenter reads while recording, never in the video): The editor's Captions tab: the button that copies the kept script to the clipboard."
+  },
+  "notes.useAgain": {
+    "description": "Speaker notes (a teleprompter: notes the presenter reads while recording, never in the video): The editor's Captions tab: the button that makes the kept script the notes again."
+  },
+  "notes.replaceQuestion": {
+    "description": "Speaker notes (a teleprompter: notes the presenter reads while recording, never in the video): The editor's Captions tab: asked before the notes are replaced by the kept script."
+  },
+  "notes.replace": {
+    "description": "Speaker notes (a teleprompter: notes the presenter reads while recording, never in the video): The editor's Captions tab: the button that replaces the notes (a verb)."
+  },
+  "notes.saveFailed": {
+    "description": "Speaker notes (a teleprompter: notes the presenter reads while recording, never in the video): Home, when the notes could not be saved; {error} is the reason."
+  },
+  "notes.couldNotSave": {
+    "description": "Speaker notes (a teleprompter: notes the presenter reads while recording, never in the video): the Notes dialog, when a change could not be saved; {error} is the reason."
+  },
+  "notes.draftHint": {
+    "description": "Speaker notes (a teleprompter: notes the presenter reads while recording, never in the video): what Draft script does and where the notes go; {provider} is the AI service's name.",
+    "user": [
+      "provider"
+    ]
+  },
+  "notes.words": {
+    "description": "Speaker notes (a teleprompter: notes the presenter reads while recording, never in the video): how many words the notes have (\"312 words\")."
+  },
+  "notes.reading.seconds": {
+    "description": "Speaker notes (a teleprompter: notes the presenter reads while recording, never in the video): how long reading the notes takes, under a minute (\"about 45 s\"). Lower case; s is seconds."
+  },
+  "notes.reading.minSec": {
+    "description": "Speaker notes (a teleprompter: notes the presenter reads while recording, never in the video): how long reading the notes takes (\"about 2 min 24 s\")."
+  },
+  "notes.reading.min": {
+    "description": "Speaker notes (a teleprompter: notes the presenter reads while recording, never in the video): how long reading the notes takes in whole minutes (\"about 3 min\")."
+  },
+  "notes.reading.hourMin": {
+    "description": "Speaker notes (a teleprompter: notes the presenter reads while recording, never in the video): how long reading the notes takes, over an hour (\"about 1 h 5 min\")."
+  },
+  "notes.reading.hour": {
+    "description": "Speaker notes (a teleprompter: notes the presenter reads while recording, never in the video): how long reading the notes takes in whole hours (\"about 2 h\")."
+  },
+  "notes.summary": {
+    "description": "Speaker notes (a teleprompter: notes the presenter reads while recording, never in the video): Home's summary of the notes: {reading} is \"312 words · about 2 min 24 s\", {speed} \"130 words a minute\"."
+  },
+  "notes.speedWords": {
+    "description": "Speaker notes (a teleprompter: notes the presenter reads while recording, never in the video): the reading speed (\"130 words a minute\")."
+  },
+  "notes.speedShort": {
+    "description": "Speaker notes (a teleprompter: notes the presenter reads while recording, never in the video): the reading speed in the notes window's narrow strip (\"130 wpm\", words per minute)."
+  },
+  "notes.status.startsWithRecording": {
+    "description": "Speaker notes (a teleprompter: notes the presenter reads while recording, never in the video): the notes window's status during the countdown: scrolling starts with the recording."
+  },
+  "notes.status.startsOnPlay": {
+    "description": "Speaker notes (a teleprompter: notes the presenter reads while recording, never in the video): the notes window's status during the countdown when auto-start is off."
+  },
+  "notes.status.recordingPaused": {
+    "description": "Speaker notes (a teleprompter: notes the presenter reads while recording, never in the video): the notes window's status while the recording is paused."
+  },
+  "notes.status.end": {
+    "description": "Speaker notes (a teleprompter: notes the presenter reads while recording, never in the video): the notes window's status at the last line."
+  },
+  "notes.status.scrolling": {
+    "description": "Speaker notes (a teleprompter: notes the presenter reads while recording, never in the video): the notes window's status while the notes scroll."
+  },
+  "notes.status.rehearsing": {
+    "description": "Speaker notes (a teleprompter: notes the presenter reads while recording, never in the video): the notes window's status when opened with Rehearse."
+  },
+  "notes.status.paused": {
+    "description": "Speaker notes (a teleprompter: notes the presenter reads while recording, never in the video): the notes window's status when scrolling is paused."
+  },
+  "notes.withHotkey": {
+    "description": "Speaker notes (a teleprompter: notes the presenter reads while recording, never in the video): a notes window button's tooltip with its hotkey (\"Back (Ctrl + Shift + F6)\"); {keys} is the hotkey as keycaps."
+  },
+  "notes.button.pause": {
+    "description": "Speaker notes (a teleprompter: notes the presenter reads while recording, never in the video): the notes window's play button while the notes scroll."
+  },
+  "notes.button.start": {
+    "description": "Speaker notes (a teleprompter: notes the presenter reads while recording, never in the video): the notes window's play button while the notes are still."
+  },
+  "notes.button.forward": {
+    "description": "Speaker notes (a teleprompter: notes the presenter reads while recording, never in the video): the notes window's button that steps to the next line."
+  },
+  "notes.button.slower": {
+    "description": "Speaker notes (a teleprompter: notes the presenter reads while recording, never in the video): the notes window's button that scrolls more slowly."
+  },
+  "notes.button.faster": {
+    "description": "Speaker notes (a teleprompter: notes the presenter reads while recording, never in the video): the notes window's button that scrolls faster."
+  },
+  "notes.button.smaller": {
+    "description": "Speaker notes (a teleprompter: notes the presenter reads while recording, never in the video): the notes window's button that makes the text smaller."
+  },
+  "notes.button.larger": {
+    "description": "Speaker notes (a teleprompter: notes the presenter reads while recording, never in the video): the notes window's button that makes the text larger."
+  },
+  "notes.button.hideNeverRecorded": {
+    "description": "Speaker notes (a teleprompter: notes the presenter reads while recording, never in the video): the notes window's close button's tooltip while recording."
+  },
+  "notes.closeDialog": {
+    "description": "Speaker notes (a teleprompter: notes the presenter reads while recording, never in the video): the Notes dialog's close button for screen readers."
+  },
+  "notes.hotkeysGroup": {
+    "description": "Speaker notes (a teleprompter: notes the presenter reads while recording, never in the video): the Notes dialog's group of hotkey fields, for screen readers."
+  },
+  "notes.theProvider": {
+    "description": "Speaker notes (a teleprompter: notes the presenter reads while recording, never in the video): Draft script's AI service before one is chosen, inside \"Only these notes are sent to {provider}\" (lower case)."
+  },
+  "notes.noScript": {
+    "description": "Speaker notes (a teleprompter: notes the presenter reads while recording, never in the video): Draft script's AI service answered with nothing."
+  },
+  "notes.draftProvider": {
+    "description": "Speaker notes (a teleprompter: notes the presenter reads while recording, never in the video): the menu that chooses the AI service for Draft script."
+  },
+  "notes.controls": {
+    "description": "Speaker notes (a teleprompter: notes the presenter reads while recording, never in the video): the notes window's toolbar, for screen readers."
+  },
+  "notes.speedLabel": {
+    "description": "Speaker notes (a teleprompter: notes the presenter reads while recording, never in the video): the notes window's speed, for screen readers; {speed} is \"130 words a minute\"."
+  },
+  "notes.fontSample": {
+    "description": "Speaker notes (a teleprompter: notes the presenter reads while recording, never in the video): the letter on the notes window's text size buttons, with − and + after it: a sample letter of the UI language's script."
+  },
+  "notes.hide": {
+    "description": "Speaker notes (a teleprompter: notes the presenter reads while recording, never in the video): the notes window's close button while recording, for screen readers."
   }
 }

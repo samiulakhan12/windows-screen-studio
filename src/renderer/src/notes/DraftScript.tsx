@@ -2,6 +2,7 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } fr
 import { SCRIPT_DRAFT_MAX_NOTES, type AiProviderInfo } from '../../../shared/api/ai'
 import { hasNotesText } from '../../../shared/notes/notes'
 import { NOTES_COPY } from '../../../shared/notes/notesCopy'
+import { t } from '../../../shared/i18n/t'
 import { AI_PROVIDERS_CHANGED_EVENT, OPEN_SETTINGS_EVENT } from '../settings/SettingsButton'
 import { ipcMessage } from '../settings/providerText'
 import { textChoicesOf } from '../ai/textChoices'
@@ -102,7 +103,7 @@ export function DraftScript({ text, onReplace, disabled }: { text: string; onRep
   const list = useMemo(() => textChoicesOf(providers ?? [], 'summary', localReady), [providers, localReady])
   const chosen = list.find((p) => p.id === provider) ?? list[0] ?? null
   // Where the notes go, by the name every hint uses (smart-tools.md §20.0: a service's host, never "OpenAI" for it, never "undefined").
-  const name = chosen ? (chosen.host ? chosen.place : chosen.label) : 'the provider'
+  const name = chosen ? (chosen.host ? chosen.place : chosen.label) : t('review.notes.theProvider')
   // The draft running now: its progress on this PC and Stop find it by this id.
   const [running, setRunning] = useState<string | null>(null)
 
@@ -147,7 +148,7 @@ export function DraftScript({ text, onReplace, disabled }: { text: string; onRep
       request.current = n
       const after = typeof result?.text === 'string' ? result.text : ''
       if (!hasNotesText(after)) {
-        setDraft({ kind: 'error', message: 'The provider wrote no script. Nothing was changed; try again.' })
+        setDraft({ kind: 'error', message: t('review.notes.noScript') })
         return
       }
       if (textRef.current !== before) {
@@ -209,7 +210,7 @@ export function DraftScript({ text, onReplace, disabled }: { text: string; onRep
         {list.length >= 2 && (
           <select
             className="notes-draft-provider"
-            aria-label="AI provider for the draft"
+            aria-label={t('review.notes.draftProvider')}
             value={chosen?.id ?? ''}
             disabled={busy || disabled}
             onChange={(e) => {
@@ -263,7 +264,7 @@ export function DraftScript({ text, onReplace, disabled }: { text: string; onRep
       )}
       {chosen && !tooLong && draft.kind !== 'explain' && <p className="hint">{chosen.kind === 'local' ? NOTES_COPY.draftHintLocal : NOTES_COPY.draftHint(name)}</p>}
       {/* What Draft script sends, where, and what it costs (smart-tools.md §11.5), part P5's: no text task of its own, so the line estimates its notes. */}
-      {chosen && !tooLong && <CostLine id="notes-draft-cost" choice={chosen} full actions={[{ key: 'draft', label: 'Draft script', buttonId: 'notes-draft', request: null, notes: text }]} />}
+      {chosen && !tooLong && <CostLine id="notes-draft-cost" choice={chosen} full actions={[{ key: 'draft', label: NOTES_COPY.draft, buttonId: 'notes-draft', request: null, notes: text }]} />}
     </div>
   )
 }

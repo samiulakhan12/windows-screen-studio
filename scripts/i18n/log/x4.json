@@ -1475,24 +1475,24 @@
   ],
   "sample": [
    {
-    "title": "Emphasis",
     "count": 0,
-    "n": "0"
+    "n": "0",
+    "title": "Emphasis"
    },
    {
-    "title": "Emphasis",
     "count": 1,
-    "n": "1"
+    "n": "1",
+    "title": "Emphasis"
    },
    {
-    "title": "Emphasis",
     "count": 2,
-    "n": "2"
+    "n": "2",
+    "title": "Emphasis"
    },
    {
-    "title": "Emphasis",
     "count": 1000,
-    "n": "1000"
+    "n": "1000",
+    "title": "Emphasis"
    }
   ]
  },
@@ -1508,24 +1508,24 @@
   ],
   "sample": [
    {
-    "title": "Emphasis",
     "count": 0,
-    "n": "0"
+    "n": "0",
+    "title": "Emphasis"
    },
    {
-    "title": "Emphasis",
     "count": 1,
-    "n": "1"
+    "n": "1",
+    "title": "Emphasis"
    },
    {
-    "title": "Emphasis",
     "count": 2,
-    "n": "2"
+    "n": "2",
+    "title": "Emphasis"
    },
    {
-    "title": "Emphasis",
     "count": 1000,
-    "n": "1000"
+    "n": "1000",
+    "title": "Emphasis"
    }
   ]
  },
@@ -2166,24 +2166,24 @@
   ],
   "sample": [
    {
-    "what": "background image and cursor image",
     "count": 0,
-    "n": "0"
+    "n": "0",
+    "what": "background image and cursor image"
    },
    {
-    "what": "background image",
     "count": 1,
-    "n": "1"
+    "n": "1",
+    "what": "background image"
    },
    {
-    "what": "background image and cursor image",
     "count": 2,
-    "n": "2"
+    "n": "2",
+    "what": "background image and cursor image"
    },
    {
-    "what": "background image and cursor image",
     "count": 1000,
-    "n": "1000"
+    "n": "1000",
+    "what": "background image and cursor image"
    }
   ]
  },
@@ -3218,24 +3218,24 @@
   ],
   "sample": [
    {
-    "kept": "2",
     "count": 0,
-    "n": "0"
+    "n": "0",
+    "kept": "2"
    },
    {
-    "kept": "2",
     "count": 1,
-    "n": "1"
+    "n": "1",
+    "kept": "2"
    },
    {
-    "kept": "2",
     "count": 2,
-    "n": "2"
+    "n": "2",
+    "kept": "2"
    },
    {
-    "kept": "2",
     "count": 1000,
-    "n": "1000"
+    "n": "1000",
+    "kept": "2"
    }
   ]
  },
@@ -3269,24 +3269,24 @@
   ],
   "sample": [
    {
-    "saved": "3.5 s",
     "count": 0,
-    "n": "0"
+    "n": "0",
+    "saved": "3.5 s"
    },
    {
-    "saved": "3.5 s",
     "count": 1,
-    "n": "1"
+    "n": "1",
+    "saved": "3.5 s"
    },
    {
-    "saved": "3.5 s",
     "count": 2,
-    "n": "2"
+    "n": "2",
+    "saved": "3.5 s"
    },
    {
-    "saved": "3.5 s",
     "count": 1000,
-    "n": "1000"
+    "n": "1000",
+    "saved": "3.5 s"
    }
   ]
  },
@@ -3302,28 +3302,28 @@
   ],
   "sample": [
    {
-    "factor": "4",
-    "saved": "3.5 s",
     "count": 0,
-    "n": "0"
+    "n": "0",
+    "factor": "4",
+    "saved": "3.5 s"
    },
    {
-    "factor": "4",
-    "saved": "3.5 s",
     "count": 1,
-    "n": "1"
+    "n": "1",
+    "factor": "4",
+    "saved": "3.5 s"
    },
    {
-    "factor": "4",
-    "saved": "3.5 s",
     "count": 2,
-    "n": "2"
+    "n": "2",
+    "factor": "4",
+    "saved": "3.5 s"
    },
    {
-    "factor": "4",
-    "saved": "3.5 s",
     "count": 1000,
-    "n": "1000"
+    "n": "1000",
+    "factor": "4",
+    "saved": "3.5 s"
    }
   ]
  },
@@ -3404,28 +3404,28 @@
   ],
   "sample": [
    {
-    "max": "5000",
-    "time": "1:02",
     "count": 0,
-    "n": "0"
+    "n": "0",
+    "max": "5000",
+    "time": "1:02"
    },
    {
-    "max": "5000",
-    "time": "1:02",
     "count": 1,
-    "n": "1"
+    "n": "1",
+    "max": "5000",
+    "time": "1:02"
    },
    {
-    "max": "5000",
-    "time": "1:02",
     "count": 2,
-    "n": "2"
+    "n": "2",
+    "max": "5000",
+    "time": "1:02"
    },
    {
-    "max": "5000",
-    "time": "1:02",
     "count": 1000,
-    "n": "1000"
+    "n": "1000",
+    "max": "5000",
+    "time": "1:02"
    }
   ]
  },
@@ -3587,24 +3587,24 @@
   ],
   "sample": [
    {
-    "factor": "4",
     "count": 0,
-    "n": "0"
+    "n": "0",
+    "factor": "4"
    },
    {
-    "factor": "4",
     "count": 1,
-    "n": "1"
+    "n": "1",
+    "factor": "4"
    },
    {
-    "factor": "4",
     "count": 2,
-    "n": "2"
+    "n": "2",
+    "factor": "4"
    },
    {
-    "factor": "4",
     "count": 1000,
-    "n": "1000"
+    "n": "1000",
+    "factor": "4"
    }
   ]
  },
@@ -4259,6 +4259,809 @@
   "file": "src/renderer/src/import/ImportDialog.tsx",
   "line": 99,
   "english": "Open in editor",
+  "sample": {}
+ },
+ {
+  "key": "review.notes.groupLabel",
+  "file": "src/shared/notes/notesCopy.ts",
+  "line": 19,
+  "english": "Speaker notes",
+  "sample": {}
+ },
+ {
+  "key": "review.notes.emptyHint",
+  "file": "src/shared/notes/notesCopy.ts",
+  "line": 22,
+  "english": "Add a script or bullet points to read while you record. Only you see them: they stay out of the video.",
+  "sample": {}
+ },
+ {
+  "key": "review.notes.add",
+  "file": "src/shared/notes/notesCopy.ts",
+  "line": 25,
+  "english": "Add notes…",
+  "sample": {}
+ },
+ {
+  "key": "review.notes.edit",
+  "file": "src/shared/notes/notesCopy.ts",
+  "line": 28,
+  "english": "Edit notes…",
+  "sample": {}
+ },
+ {
+  "key": "review.notes.rehearse",
+  "file": "src/shared/notes/notesCopy.ts",
+  "line": 31,
+  "english": "Rehearse",
+  "sample": {}
+ },
+ {
+  "key": "review.notes.stopRehearsing",
+  "file": "src/shared/notes/notesCopy.ts",
+  "line": 34,
+  "english": "Stop rehearsing",
+  "sample": {}
+ },
+ {
+  "key": "review.notes.showWhileRecording",
+  "file": "src/shared/notes/notesCopy.ts",
+  "line": 37,
+  "english": "Show while recording",
+  "sample": {}
+ },
+ {
+  "key": "review.notes.olderWindows",
+  "file": "src/shared/notes/notesCopy.ts",
+  "line": 40,
+  "english": "On this version of Windows your notes would show in the video as a black box (the recording bar does too). They appear only when they are outside what you record, and never in a window recording. Windows 10 version 2004 or later keeps them out of the video.",
+  "sample": {}
+ },
+ {
+  "key": "review.notes.dialogTitle",
+  "file": "src/shared/notes/notesCopy.ts",
+  "line": 45,
+  "english": "Speaker notes",
+  "sample": {}
+ },
+ {
+  "key": "review.notes.textLabel",
+  "file": "src/shared/notes/notesCopy.ts",
+  "line": 48,
+  "english": "Your script or bullet points",
+  "sample": {}
+ },
+ {
+  "key": "review.notes.placeholder",
+  "file": "src/shared/notes/notesCopy.ts",
+  "line": 51,
+  "english": "Paste your script or a few bullet points. Each line is a step; a blank line adds space. [Text in brackets] is a cue you do not read aloud.",
+  "sample": {}
+ },
+ {
+  "key": "common.state.saved",
+  "file": "src/shared/notes/notesCopy.ts",
+  "line": 54,
+  "english": "Saved",
+  "sample": {}
+ },
+ {
+  "key": "review.notes.whileRecording",
+  "file": "src/shared/notes/notesCopy.ts",
+  "line": 58,
+  "english": "While recording",
+  "sample": {}
+ },
+ {
+  "key": "review.notes.showMyNotes",
+  "file": "src/shared/notes/notesCopy.ts",
+  "line": 61,
+  "english": "Show my notes while recording",
+  "sample": {}
+ },
+ {
+  "key": "review.notes.autoStart",
+  "file": "src/shared/notes/notesCopy.ts",
+  "line": 64,
+  "english": "Start scrolling when the recording starts",
+  "sample": {}
+ },
+ {
+  "key": "review.notes.autoStartHint",
+  "file": "src/shared/notes/notesCopy.ts",
+  "line": 67,
+  "english": "Turn off for bullet notes you step through with Forward.",
+  "sample": {}
+ },
+ {
+  "key": "review.notes.keep",
+  "file": "src/shared/notes/notesCopy.ts",
+  "line": 70,
+  "english": "Keep a copy with the recording",
+  "sample": {}
+ },
+ {
+  "key": "review.notes.keepHint",
+  "file": "src/shared/notes/notesCopy.ts",
+  "line": 73,
+  "english": "You find it in the editor’s Captions tab.",
+  "sample": {}
+ },
+ {
+  "key": "common.label.speed",
+  "file": "src/shared/notes/notesCopy.ts",
+  "line": 76,
+  "english": "Speed",
+  "sample": {}
+ },
+ {
+  "key": "review.notes.textSize",
+  "file": "src/shared/notes/notesCopy.ts",
+  "line": 79,
+  "english": "Text size",
+  "sample": {}
+ },
+ {
+  "key": "review.notes.width",
+  "file": "src/shared/notes/notesCopy.ts",
+  "line": 82,
+  "english": "Width",
+  "sample": {}
+ },
+ {
+  "key": "review.notes.height",
+  "file": "src/shared/notes/notesCopy.ts",
+  "line": 85,
+  "english": "Height",
+  "sample": {}
+ },
+ {
+  "key": "review.notes.sizeHint",
+  "file": "src/shared/notes/notesCopy.ts",
+  "line": 88,
+  "english": "Narrow keeps your eyes near the camera. You can also drag the window’s corner.",
+  "sample": {}
+ },
+ {
+  "key": "common.label.position",
+  "file": "src/shared/notes/notesCopy.ts",
+  "line": 91,
+  "english": "Position",
+  "sample": {}
+ },
+ {
+  "key": "review.notes.positionDefault",
+  "file": "src/shared/notes/notesCopy.ts",
+  "line": 94,
+  "english": "Top centre of the main screen, under the camera",
+  "sample": {}
+ },
+ {
+  "key": "review.notes.positionSaved",
+  "file": "src/shared/notes/notesCopy.ts",
+  "line": 97,
+  "english": "Where you left it",
+  "sample": {}
+ },
+ {
+  "key": "review.notes.resetPosition",
+  "file": "src/shared/notes/notesCopy.ts",
+  "line": 100,
+  "english": "Reset position",
+  "sample": {}
+ },
+ {
+  "key": "review.notes.hotkeysLabel",
+  "file": "src/shared/notes/notesCopy.ts",
+  "line": 103,
+  "english": "Hotkeys",
+  "sample": {}
+ },
+ {
+  "key": "review.notes.hotkeysHint",
+  "file": "src/shared/notes/notesCopy.ts",
+  "line": 106,
+  "english": "They work while your notes are open.",
+  "sample": {}
+ },
+ {
+  "key": "common.action.done",
+  "file": "src/shared/notes/notesCopy.ts",
+  "line": 109,
+  "english": "Done",
+  "sample": {}
+ },
+ {
+  "key": "review.notes.draft",
+  "file": "src/shared/notes/notesCopy.ts",
+  "line": 113,
+  "english": "Draft script",
+  "sample": {}
+ },
+ {
+  "key": "review.notes.drafting",
+  "file": "src/shared/notes/notesCopy.ts",
+  "line": 116,
+  "english": "Drafting…",
+  "sample": {}
+ },
+ {
+  "key": "common.action.cancel",
+  "file": "src/shared/notes/notesCopy.ts",
+  "line": 119,
+  "english": "Cancel",
+  "sample": {}
+ },
+ {
+  "key": "review.notes.draftHintLocal",
+  "file": "src/shared/notes/notesCopy.ts",
+  "line": 124,
+  "english": "Turns your bullet points into sentences to read aloud, on this PC: nothing is sent.",
+  "sample": {}
+ },
+ {
+  "key": "review.notes.noProvider",
+  "file": "src/shared/notes/notesCopy.ts",
+  "line": 127,
+  "english": "Draft script needs an AI provider with your own key: OpenAI, Gemini or Claude.",
+  "sample": {}
+ },
+ {
+  "key": "common.action.addAiProvider",
+  "file": "src/shared/notes/notesCopy.ts",
+  "line": 130,
+  "english": "Add an AI provider",
+  "sample": {}
+ },
+ {
+  "key": "review.notes.draftEmpty",
+  "file": "src/shared/notes/notesCopy.ts",
+  "line": 133,
+  "english": "Write a few bullet points first.",
+  "sample": {}
+ },
+ {
+  "key": "review.notes.draftTooLong",
+  "file": "src/shared/notes/notesCopy.ts",
+  "line": 136,
+  "english": "Draft script works on up to 20,000 characters of notes.",
+  "sample": {
+   "n": "20,000"
+  }
+ },
+ {
+  "key": "review.notes.drafted",
+  "file": "src/shared/notes/notesCopy.ts",
+  "line": 139,
+  "english": "Script drafted from your notes. Read it through before you record.",
+  "sample": {}
+ },
+ {
+  "key": "review.notes.restore",
+  "file": "src/shared/notes/notesCopy.ts",
+  "line": 142,
+  "english": "Restore my notes",
+  "sample": {}
+ },
+ {
+  "key": "review.notes.stale",
+  "file": "src/shared/notes/notesCopy.ts",
+  "line": 145,
+  "english": "Your notes changed while the script was drafted, so the draft was not used. Try again.",
+  "sample": {}
+ },
+ {
+  "key": "common.action.tryAgain",
+  "file": "src/shared/notes/notesCopy.ts",
+  "line": 148,
+  "english": "Try again",
+  "sample": {}
+ },
+ {
+  "key": "review.notes.windowLabel",
+  "file": "src/shared/notes/notesCopy.ts",
+  "line": 152,
+  "english": "Speaker notes",
+  "sample": {}
+ },
+ {
+  "key": "review.notes.emptyRehearsal",
+  "file": "src/shared/notes/notesCopy.ts",
+  "line": 155,
+  "english": "No notes yet. Add them on the home screen.",
+  "sample": {}
+ },
+ {
+  "key": "review.notes.hotkeyProblem",
+  "file": "src/shared/notes/notesCopy.ts",
+  "line": 158,
+  "english": "Hotkey problem",
+  "sample": {}
+ },
+ {
+  "key": "review.notes.locked",
+  "file": "src/shared/notes/notesCopy.ts",
+  "line": 161,
+  "english": "Locked in place so it stays out of the recording on this version of Windows",
+  "sample": {}
+ },
+ {
+  "key": "review.notes.backToStart",
+  "file": "src/shared/notes/notesCopy.ts",
+  "line": 164,
+  "english": "Back to start",
+  "sample": {}
+ },
+ {
+  "key": "review.notes.resize",
+  "file": "src/shared/notes/notesCopy.ts",
+  "line": 167,
+  "english": "Drag to resize",
+  "sample": {}
+ },
+ {
+  "key": "review.notes.barShow",
+  "file": "src/shared/notes/notesCopy.ts",
+  "line": 171,
+  "english": "Show notes",
+  "sample": {}
+ },
+ {
+  "key": "review.notes.barHide",
+  "file": "src/shared/notes/notesCopy.ts",
+  "line": 174,
+  "english": "Hide notes",
+  "sample": {}
+ },
+ {
+  "key": "review.notes.barShowTitle",
+  "file": "src/shared/notes/notesCopy.ts",
+  "line": 177,
+  "english": "Show your notes",
+  "sample": {}
+ },
+ {
+  "key": "review.notes.barHideTitle",
+  "file": "src/shared/notes/notesCopy.ts",
+  "line": 180,
+  "english": "Hide your notes (they are never in the recording)",
+  "sample": {}
+ },
+ {
+  "key": "review.notes.scriptSection",
+  "file": "src/shared/notes/notesCopy.ts",
+  "line": 184,
+  "english": "Your script",
+  "sample": {}
+ },
+ {
+  "key": "review.notes.scriptIntro",
+  "file": "src/shared/notes/notesCopy.ts",
+  "line": 187,
+  "english": "You read from these notes while recording.",
+  "sample": {}
+ },
+ {
+  "key": "review.notes.copyScript",
+  "file": "src/shared/notes/notesCopy.ts",
+  "line": 190,
+  "english": "Copy script",
+  "sample": {}
+ },
+ {
+  "key": "review.notes.useAgain",
+  "file": "src/shared/notes/notesCopy.ts",
+  "line": 193,
+  "english": "Use as notes again",
+  "sample": {}
+ },
+ {
+  "key": "review.notes.replaceQuestion",
+  "file": "src/shared/notes/notesCopy.ts",
+  "line": 196,
+  "english": "Replace your current notes?",
+  "sample": {}
+ },
+ {
+  "key": "review.notes.replace",
+  "file": "src/shared/notes/notesCopy.ts",
+  "line": 199,
+  "english": "Replace",
+  "sample": {}
+ },
+ {
+  "key": "review.notes.saveFailed",
+  "file": "src/shared/notes/notesCopy.ts",
+  "line": 43,
+  "english": "Could not save your notes: disk full",
+  "sample": {
+   "error": "disk full"
+  }
+ },
+ {
+  "key": "review.notes.couldNotSave",
+  "file": "src/shared/notes/notesCopy.ts",
+  "line": 57,
+  "english": "Could not save: disk full",
+  "sample": {
+   "error": "disk full"
+  }
+ },
+ {
+  "key": "review.notes.draftHint",
+  "file": "src/shared/notes/notesCopy.ts",
+  "line": 122,
+  "english": "Turns your bullet points into sentences to read aloud. Only these notes are sent to My OpenAI, with your key.",
+  "sample": {
+   "provider": "My OpenAI"
+  }
+ },
+ {
+  "key": "review.notes.words",
+  "file": "src/shared/notes/notesCopy.ts",
+  "line": 207,
+  "english": [
+   "0 words",
+   "1 word",
+   "2 words",
+   "1,000 words"
+  ],
+  "sample": [
+   {
+    "count": 0,
+    "n": "0"
+   },
+   {
+    "count": 1,
+    "n": "1"
+   },
+   {
+    "count": 2,
+    "n": "2"
+   },
+   {
+    "count": 1000,
+    "n": "1,000"
+   }
+  ]
+ },
+ {
+  "key": "review.notes.reading.seconds",
+  "file": "src/shared/notes/notesCopy.ts",
+  "line": 213,
+  "english": "about 45 s",
+  "sample": {
+   "s": "45"
+  }
+ },
+ {
+  "key": "review.notes.reading.minSec",
+  "file": "src/shared/notes/notesCopy.ts",
+  "line": 217,
+  "english": "about 2 min 24 s",
+  "sample": {
+   "m": "2",
+   "s": "24"
+  }
+ },
+ {
+  "key": "review.notes.reading.min",
+  "file": "src/shared/notes/notesCopy.ts",
+  "line": 217,
+  "english": "about 3 min",
+  "sample": {
+   "m": "3"
+  }
+ },
+ {
+  "key": "review.notes.reading.hourMin",
+  "file": "src/shared/notes/notesCopy.ts",
+  "line": 222,
+  "english": "about 1 h 5 min",
+  "sample": {
+   "h": "1",
+   "m": "5"
+  }
+ },
+ {
+  "key": "review.notes.reading.hour",
+  "file": "src/shared/notes/notesCopy.ts",
+  "line": 222,
+  "english": "about 2 h",
+  "sample": {
+   "h": "2"
+  }
+ },
+ {
+  "key": "review.notes.summary",
+  "file": "src/shared/notes/notesCopy.ts",
+  "line": 232,
+  "english": "312 words · about 2 min 24 s at 130 words a minute",
+  "sample": {
+   "reading": "312 words · about 2 min 24 s",
+   "speed": "130 words a minute"
+  }
+ },
+ {
+  "key": "review.notes.speedWords",
+  "file": "src/shared/notes/notesCopy.ts",
+  "line": 236,
+  "english": "130 words a minute",
+  "sample": {
+   "n": "130"
+  }
+ },
+ {
+  "key": "review.notes.speedShort",
+  "file": "src/shared/notes/notesCopy.ts",
+  "line": 239,
+  "english": "130 wpm",
+  "sample": {
+   "n": "130"
+  }
+ },
+ {
+  "key": "review.notes.status.startsWithRecording",
+  "file": "src/shared/notes/notesCopy.ts",
+  "line": 253,
+  "english": "Starts with the recording",
+  "sample": {}
+ },
+ {
+  "key": "review.notes.status.startsOnPlay",
+  "file": "src/shared/notes/notesCopy.ts",
+  "line": 253,
+  "english": "Starts when you press play",
+  "sample": {}
+ },
+ {
+  "key": "review.notes.status.recordingPaused",
+  "file": "src/shared/notes/notesCopy.ts",
+  "line": 254,
+  "english": "Recording paused",
+  "sample": {}
+ },
+ {
+  "key": "review.notes.status.end",
+  "file": "src/shared/notes/notesCopy.ts",
+  "line": 256,
+  "english": "End of notes",
+  "sample": {}
+ },
+ {
+  "key": "review.notes.status.scrolling",
+  "file": "src/shared/notes/notesCopy.ts",
+  "line": 257,
+  "english": "Scrolling",
+  "sample": {}
+ },
+ {
+  "key": "review.notes.status.rehearsing",
+  "file": "src/shared/notes/notesCopy.ts",
+  "line": 258,
+  "english": "Rehearsing: not recording",
+  "sample": {}
+ },
+ {
+  "key": "review.notes.status.paused",
+  "file": "src/shared/notes/notesCopy.ts",
+  "line": 258,
+  "english": "Paused",
+  "sample": {}
+ },
+ {
+  "key": "review.notes.withHotkey",
+  "file": "src/shared/notes/notesCopy.ts",
+  "line": 262,
+  "english": "Back (Ctrl + Shift + F6)",
+  "sample": {
+   "label": "Back",
+   "keys": "Ctrl + Shift + F6"
+  }
+ },
+ {
+  "key": "common.action.back",
+  "file": "src/shared/notes/notesCopy.ts",
+  "line": 278,
+  "english": "Back",
+  "sample": {}
+ },
+ {
+  "key": "common.action.back",
+  "file": "src/renderer/src/views/NotesWindow.tsx",
+  "line": 498,
+  "english": "Back",
+  "sample": {}
+ },
+ {
+  "key": "review.notes.button.pause",
+  "file": "src/shared/notes/notesCopy.ts",
+  "line": 279,
+  "english": "Pause scrolling",
+  "sample": {}
+ },
+ {
+  "key": "review.notes.button.pause",
+  "file": "src/renderer/src/views/NotesWindow.tsx",
+  "line": 504,
+  "english": "Pause scrolling",
+  "sample": {}
+ },
+ {
+  "key": "review.notes.button.start",
+  "file": "src/shared/notes/notesCopy.ts",
+  "line": 279,
+  "english": "Start scrolling",
+  "sample": {}
+ },
+ {
+  "key": "review.notes.button.start",
+  "file": "src/renderer/src/views/NotesWindow.tsx",
+  "line": 504,
+  "english": "Start scrolling",
+  "sample": {}
+ },
+ {
+  "key": "review.notes.button.forward",
+  "file": "src/shared/notes/notesCopy.ts",
+  "line": 280,
+  "english": "Forward",
+  "sample": {}
+ },
+ {
+  "key": "review.notes.button.forward",
+  "file": "src/renderer/src/views/NotesWindow.tsx",
+  "line": 512,
+  "english": "Forward",
+  "sample": {}
+ },
+ {
+  "key": "review.notes.button.slower",
+  "file": "src/shared/notes/notesCopy.ts",
+  "line": 281,
+  "english": "Slower",
+  "sample": {}
+ },
+ {
+  "key": "review.notes.button.slower",
+  "file": "src/renderer/src/views/NotesWindow.tsx",
+  "line": 516,
+  "english": "Slower",
+  "sample": {}
+ },
+ {
+  "key": "review.notes.button.faster",
+  "file": "src/shared/notes/notesCopy.ts",
+  "line": 282,
+  "english": "Faster",
+  "sample": {}
+ },
+ {
+  "key": "review.notes.button.faster",
+  "file": "src/renderer/src/views/NotesWindow.tsx",
+  "line": 522,
+  "english": "Faster",
+  "sample": {}
+ },
+ {
+  "key": "review.notes.button.smaller",
+  "file": "src/shared/notes/notesCopy.ts",
+  "line": 283,
+  "english": "Smaller text",
+  "sample": {}
+ },
+ {
+  "key": "review.notes.button.smaller",
+  "file": "src/renderer/src/views/NotesWindow.tsx",
+  "line": 526,
+  "english": "Smaller text",
+  "sample": {}
+ },
+ {
+  "key": "review.notes.button.larger",
+  "file": "src/shared/notes/notesCopy.ts",
+  "line": 284,
+  "english": "Larger text",
+  "sample": {}
+ },
+ {
+  "key": "review.notes.button.larger",
+  "file": "src/renderer/src/views/NotesWindow.tsx",
+  "line": 530,
+  "english": "Larger text",
+  "sample": {}
+ },
+ {
+  "key": "review.notes.button.hideNeverRecorded",
+  "file": "src/shared/notes/notesCopy.ts",
+  "line": 285,
+  "english": "Hide notes (they are never recorded)",
+  "sample": {}
+ },
+ {
+  "key": "common.action.close",
+  "file": "src/shared/notes/notesCopy.ts",
+  "line": 285,
+  "english": "Close",
+  "sample": {}
+ },
+ {
+  "key": "common.action.close",
+  "file": "src/renderer/src/notes/NotesDialog.tsx",
+  "line": 164,
+  "english": "Close",
+  "sample": {}
+ },
+ {
+  "key": "common.action.close",
+  "file": "src/renderer/src/views/NotesWindow.tsx",
+  "line": 543,
+  "english": "Close",
+  "sample": {}
+ },
+ {
+  "key": "review.notes.closeDialog",
+  "file": "src/renderer/src/notes/NotesDialog.tsx",
+  "line": 164,
+  "english": "Close speaker notes",
+  "sample": {}
+ },
+ {
+  "key": "review.notes.hotkeysGroup",
+  "file": "src/renderer/src/notes/NotesDialog.tsx",
+  "line": 240,
+  "english": "Notes hotkeys",
+  "sample": {}
+ },
+ {
+  "key": "review.notes.theProvider",
+  "file": "src/renderer/src/notes/DraftScript.tsx",
+  "line": 106,
+  "english": "the provider",
+  "sample": {}
+ },
+ {
+  "key": "review.notes.noScript",
+  "file": "src/renderer/src/notes/DraftScript.tsx",
+  "line": 151,
+  "english": "The provider wrote no script. Nothing was changed; try again.",
+  "sample": {}
+ },
+ {
+  "key": "review.notes.draftProvider",
+  "file": "src/renderer/src/notes/DraftScript.tsx",
+  "line": 213,
+  "english": "AI provider for the draft",
+  "sample": {}
+ },
+ {
+  "key": "review.notes.controls",
+  "file": "src/renderer/src/views/NotesWindow.tsx",
+  "line": 496,
+  "english": "Notes controls",
+  "sample": {}
+ },
+ {
+  "key": "review.notes.speedLabel",
+  "file": "src/renderer/src/views/NotesWindow.tsx",
+  "line": 519,
+  "english": "Speed 130 words a minute",
+  "sample": {
+   "speed": "130 words a minute"
+  }
+ },
+ {
+  "key": "review.notes.fontSample",
+  "file": "src/renderer/src/views/NotesWindow.tsx",
+  "line": 527,
+  "english": "A",
+  "sample": {}
+ },
+ {
+  "key": "review.notes.hide",
+  "file": "src/renderer/src/views/NotesWindow.tsx",
+  "line": 543,
+  "english": "Hide notes",
   "sample": {}
  }
 ]

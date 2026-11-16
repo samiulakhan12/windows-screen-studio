@@ -5,101 +5,238 @@
  */
 import type { NotesHotkeyAction } from '../recording/hotkeys'
 import type { NotesMode, NotesRecordingState } from '../api/notes'
-import { readingLabel, readingSeconds } from './blocks'
+import { readingSeconds } from './blocks'
+import { SCRIPT_DRAFT_MAX_NOTES } from '../api/ai'
 import { fmt } from '../i18n/fmt'
+import { t } from '../i18n/t'
 
+/**
+ * The notes' words, read where they are shown: each is a getter that makes its message in the UI
+ * language (docs/design/output-and-languages.md §9.1), so the panels that read NOTES_COPY.<word>
+ * keep doing so.
+ */
 export const NOTES_COPY = {
-  groupLabel: 'Speaker notes',
-  emptyHint: 'Add a script or bullet points to read while you record. Only you see them: they stay out of the video.',
-  add: 'Add notes…',
-  edit: 'Edit notes…',
-  rehearse: 'Rehearse',
-  stopRehearsing: 'Stop rehearsing',
-  showWhileRecording: 'Show while recording',
-  olderWindows:
-    'On this version of Windows your notes would show in the video as a black box (the recording bar does too). They appear only when they are outside what you record, and never in a window recording. Windows 10 version 2004 or later keeps them out of the video.',
-  saveFailed: (message: string): string => `Could not save your notes: ${message}`,
+  get groupLabel(): string {
+    return t('review.notes.groupLabel')
+  },
+  get emptyHint(): string {
+    return t('review.notes.emptyHint')
+  },
+  get add(): string {
+    return t('review.notes.add')
+  },
+  get edit(): string {
+    return t('review.notes.edit')
+  },
+  get rehearse(): string {
+    return t('review.notes.rehearse')
+  },
+  get stopRehearsing(): string {
+    return t('review.notes.stopRehearsing')
+  },
+  get showWhileRecording(): string {
+    return t('review.notes.showWhileRecording')
+  },
+  get olderWindows(): string {
+    return t('review.notes.olderWindows')
+  },
+  saveFailed: (message: string): string => t('review.notes.saveFailed', { error: message }),
 
-  dialogTitle: 'Speaker notes',
-  textLabel: 'Your script or bullet points',
-  placeholder: 'Paste your script or a few bullet points. Each line is a step; a blank line adds space. [Text in brackets] is a cue you do not read aloud.',
-  saved: 'Saved',
-  couldNotSave: (message: string): string => `Could not save: ${message}`,
-  whileRecording: 'While recording',
-  showMyNotes: 'Show my notes while recording',
-  autoStart: 'Start scrolling when the recording starts',
-  autoStartHint: 'Turn off for bullet notes you step through with Forward.',
-  keep: 'Keep a copy with the recording',
-  keepHint: 'You find it in the editor’s Captions tab.',
-  speed: 'Speed',
-  textSize: 'Text size',
-  width: 'Width',
-  height: 'Height',
-  sizeHint: 'Narrow keeps your eyes near the camera. You can also drag the window’s corner.',
-  position: 'Position',
-  positionDefault: 'Top centre of the main screen, under the camera',
-  positionSaved: 'Where you left it',
-  resetPosition: 'Reset position',
-  hotkeysLabel: 'Hotkeys',
-  hotkeysHint: 'They work while your notes are open.',
-  done: 'Done',
+  get dialogTitle(): string {
+    return t('review.notes.dialogTitle')
+  },
+  get textLabel(): string {
+    return t('review.notes.textLabel')
+  },
+  get placeholder(): string {
+    return t('review.notes.placeholder')
+  },
+  get saved(): string {
+    return t('common.state.saved')
+  },
+  couldNotSave: (message: string): string => t('review.notes.couldNotSave', { error: message }),
+  get whileRecording(): string {
+    return t('review.notes.whileRecording')
+  },
+  get showMyNotes(): string {
+    return t('review.notes.showMyNotes')
+  },
+  get autoStart(): string {
+    return t('review.notes.autoStart')
+  },
+  get autoStartHint(): string {
+    return t('review.notes.autoStartHint')
+  },
+  get keep(): string {
+    return t('review.notes.keep')
+  },
+  get keepHint(): string {
+    return t('review.notes.keepHint')
+  },
+  get speed(): string {
+    return t('common.label.speed')
+  },
+  get textSize(): string {
+    return t('review.notes.textSize')
+  },
+  get width(): string {
+    return t('review.notes.width')
+  },
+  get height(): string {
+    return t('review.notes.height')
+  },
+  get sizeHint(): string {
+    return t('review.notes.sizeHint')
+  },
+  get position(): string {
+    return t('common.label.position')
+  },
+  get positionDefault(): string {
+    return t('review.notes.positionDefault')
+  },
+  get positionSaved(): string {
+    return t('review.notes.positionSaved')
+  },
+  get resetPosition(): string {
+    return t('review.notes.resetPosition')
+  },
+  get hotkeysLabel(): string {
+    return t('review.notes.hotkeysLabel')
+  },
+  get hotkeysHint(): string {
+    return t('review.notes.hotkeysHint')
+  },
+  get done(): string {
+    return t('common.action.done')
+  },
 
-  draft: 'Draft script',
-  drafting: 'Drafting…',
-  cancel: 'Cancel',
-  draftHint: (provider: string): string => `Turns your bullet points into sentences to read aloud. Only these notes are sent to ${provider}, with your key.`,
+  get draft(): string {
+    return t('review.notes.draft')
+  },
+  get drafting(): string {
+    return t('review.notes.drafting')
+  },
+  get cancel(): string {
+    return t('common.action.cancel')
+  },
+  draftHint: (provider: string): string => t('review.notes.draftHint', { provider }),
   /** With AI on this PC (smart-tools.md §2.5): nothing leaves the PC. */
-  draftHintLocal: 'Turns your bullet points into sentences to read aloud, on this PC: nothing is sent.',
-  noProvider: 'Draft script needs an AI provider with your own key: OpenAI, Gemini or Claude.',
-  addProvider: 'Add an AI provider',
-  draftEmpty: 'Write a few bullet points first.',
-  draftTooLong: 'Draft script works on up to 20,000 characters of notes.',
-  drafted: 'Script drafted from your notes. Read it through before you record.',
-  restore: 'Restore my notes',
-  stale: 'Your notes changed while the script was drafted, so the draft was not used. Try again.',
-  tryAgain: 'Try again',
+  get draftHintLocal(): string {
+    return t('review.notes.draftHintLocal')
+  },
+  get noProvider(): string {
+    return t('review.notes.noProvider')
+  },
+  get addProvider(): string {
+    return t('common.action.addAiProvider')
+  },
+  get draftEmpty(): string {
+    return t('review.notes.draftEmpty')
+  },
+  get draftTooLong(): string {
+    return t('review.notes.draftTooLong', { n: fmt.count(SCRIPT_DRAFT_MAX_NOTES, { grouping: true }) })
+  },
+  get drafted(): string {
+    return t('review.notes.drafted')
+  },
+  get restore(): string {
+    return t('review.notes.restore')
+  },
+  get stale(): string {
+    return t('review.notes.stale')
+  },
+  get tryAgain(): string {
+    return t('common.action.tryAgain')
+  },
 
-  windowLabel: 'Speaker notes',
-  emptyRehearsal: 'No notes yet. Add them on the home screen.',
-  hotkeyProblem: 'Hotkey problem',
-  locked: 'Locked in place so it stays out of the recording on this version of Windows',
-  backToStart: 'Back to start',
-  resize: 'Drag to resize',
+  get windowLabel(): string {
+    return t('review.notes.windowLabel')
+  },
+  get emptyRehearsal(): string {
+    return t('review.notes.emptyRehearsal')
+  },
+  get hotkeyProblem(): string {
+    return t('review.notes.hotkeyProblem')
+  },
+  get locked(): string {
+    return t('review.notes.locked')
+  },
+  get backToStart(): string {
+    return t('review.notes.backToStart')
+  },
+  get resize(): string {
+    return t('review.notes.resize')
+  },
 
-  barShow: 'Show notes',
-  barHide: 'Hide notes',
-  barShowTitle: 'Show your notes',
-  barHideTitle: 'Hide your notes (they are never in the recording)',
+  get barShow(): string {
+    return t('review.notes.barShow')
+  },
+  get barHide(): string {
+    return t('review.notes.barHide')
+  },
+  get barShowTitle(): string {
+    return t('review.notes.barShowTitle')
+  },
+  get barHideTitle(): string {
+    return t('review.notes.barHideTitle')
+  },
 
-  scriptSection: 'Your script',
-  scriptIntro: 'You read from these notes while recording.',
-  copyScript: 'Copy script',
-  useAgain: 'Use as notes again',
-  replaceQuestion: 'Replace your current notes?',
-  replace: 'Replace'
-} as const
+  get scriptSection(): string {
+    return t('review.notes.scriptSection')
+  },
+  get scriptIntro(): string {
+    return t('review.notes.scriptIntro')
+  },
+  get copyScript(): string {
+    return t('review.notes.copyScript')
+  },
+  get useAgain(): string {
+    return t('review.notes.useAgain')
+  },
+  get replaceQuestion(): string {
+    return t('review.notes.replaceQuestion')
+  },
+  get replace(): string {
+    return t('review.notes.replace')
+  }
+}
 
 /** "1 word", "312 words", "1,204 words". */
 export function wordsLabel(words: number): string {
   const n = Math.max(0, Math.round(words))
-  return `${fmt.count(n, { grouping: true })} ${n === 1 ? 'word' : 'words'}`
+  return t('review.notes.words', { count: n, n: fmt.count(n, { grouping: true }) })
+}
+
+/** How long reading takes: "about 45 s", "about 2 min 24 s", "about 1 h 5 min" (seconds rounded to whole ones), as blocks.ts's readingLabel. */
+export function readingText(seconds: number): string {
+  const s = Math.max(0, Math.round(Number.isFinite(seconds) ? seconds : 0))
+  if (s < 60) return t('review.notes.reading.seconds', { s: fmt.count(s) })
+  if (s < 3600) {
+    const m = Math.floor(s / 60)
+    const rest = s % 60
+    return rest ? t('review.notes.reading.minSec', { m: fmt.count(m), s: fmt.count(rest) }) : t('review.notes.reading.min', { m: fmt.count(m) })
+  }
+  const minutes = Math.round(s / 60)
+  const h = Math.floor(minutes / 60)
+  const m = minutes % 60
+  return m ? t('review.notes.reading.hourMin', { h: fmt.count(h), m: fmt.count(m) }) : t('review.notes.reading.hour', { h: fmt.count(h) })
 }
 
 /** The Notes dialog's live count: "312 words · about 2 min 24 s". */
 export function countLine(words: number, wpm: number): string {
-  return `${wordsLabel(words)} · ${readingLabel(readingSeconds(words, wpm))}`
+  return `${wordsLabel(words)} · ${readingText(readingSeconds(words, wpm))}`
 }
 
 /** Home's summary: "312 words · about 2 min 24 s at 130 words a minute". */
 export function notesSummary(words: number, wpm: number): string {
-  return `${countLine(words, wpm)} at ${speedWords(wpm)}`
+  return t('review.notes.summary', { reading: countLine(words, wpm), speed: speedWords(wpm) })
 }
 
 /** "130 words a minute" (the dialog's slider). */
-export const speedWords = (wpm: number): string => `${wpm} words a minute`
+export const speedWords = (wpm: number): string => t('review.notes.speedWords', { n: fmt.count(wpm) })
 
 /** "130 wpm" (the notes window's strip). */
-export const speedShort = (wpm: number): string => `${wpm} wpm`
+export const speedShort = (wpm: number): string => t('review.notes.speedShort', { n: fmt.count(wpm) })
 
 export interface NotesStatusInput {
   mode: NotesMode
@@ -113,16 +250,16 @@ export interface NotesStatusInput {
 /** The notes window's status text (announced politely when it changes). */
 export function notesStatus(s: NotesStatusInput): string {
   if (s.mode === 'record') {
-    if (s.recording === 'countdown') return s.want ? 'Starts with the recording' : 'Starts when you press play'
-    if (s.recording === 'paused' && !s.playing) return 'Recording paused'
+    if (s.recording === 'countdown') return s.want ? t('review.notes.status.startsWithRecording') : t('review.notes.status.startsOnPlay')
+    if (s.recording === 'paused' && !s.playing) return t('review.notes.status.recordingPaused')
   }
-  if (s.ended) return 'End of notes'
-  if (s.playing) return 'Scrolling'
-  return s.mode === 'rehearse' ? 'Rehearsing: not recording' : 'Paused'
+  if (s.ended) return t('review.notes.status.end')
+  if (s.playing) return t('review.notes.status.scrolling')
+  return s.mode === 'rehearse' ? t('review.notes.status.rehearsing') : t('review.notes.status.paused')
 }
 
 /** "Back (Ctrl + Shift + F6)", or just "Back" without a hotkey. */
-export const withHotkey = (label: string, hotkey: string | undefined): string => (hotkey ? `${label} (${hotkey})` : label)
+export const withHotkey = (label: string, hotkey: string | undefined): string => (hotkey ? t('review.notes.withHotkey', { label, keys: hotkey }) : label)
 
 export interface NotesButtonTitles {
   back: string
@@ -138,13 +275,13 @@ export interface NotesButtonTitles {
 /** Titles (tooltips) of the notes window's buttons, with the hotkeys that work now. */
 export function notesButtonTitles(hotkeys: Partial<Record<NotesHotkeyAction, string>>, mode: NotesMode, playing: boolean): NotesButtonTitles {
   return {
-    back: withHotkey('Back', hotkeys.notesBack),
-    toggle: withHotkey(playing ? 'Pause scrolling' : 'Start scrolling', hotkeys.notesToggle),
-    forward: withHotkey('Forward', hotkeys.notesForward),
-    slower: 'Slower',
-    faster: 'Faster',
-    smaller: 'Smaller text',
-    larger: 'Larger text',
-    close: mode === 'record' ? 'Hide notes (they are never recorded)' : 'Close'
+    back: withHotkey(t('common.action.back'), hotkeys.notesBack),
+    toggle: withHotkey(playing ? t('review.notes.button.pause') : t('review.notes.button.start'), hotkeys.notesToggle),
+    forward: withHotkey(t('review.notes.button.forward'), hotkeys.notesForward),
+    slower: t('review.notes.button.slower'),
+    faster: t('review.notes.button.faster'),
+    smaller: t('review.notes.button.smaller'),
+    larger: t('review.notes.button.larger'),
+    close: mode === 'record' ? t('review.notes.button.hideNeverRecorded') : t('common.action.close')
   }
 }
