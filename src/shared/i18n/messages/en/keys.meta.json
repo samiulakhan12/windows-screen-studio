@@ -1,1 +1,158 @@
-{}
+{
+  "withShortcut": {
+    "description": "A control's tooltip or name with its first keyboard shortcut in brackets: {text} is the tooltip, {keys} the keycaps (\"Ctrl + Z\"), which stay as they are."
+  },
+  "orPress": {
+    "description": "A hint followed by the shortcut that does the same: {text} is the hint (\"Double-click to add text\"), {keys} the keycaps."
+  },
+  "reviewHint": {
+    "description": "Added to the end of a notice after automatic changes: Review mode lists them, opened with {keys}. Starts with the full stop that ends the notice's sentence."
+  },
+  "reviewHintNoKey": {
+    "description": "Added to the end of a notice after automatic changes when Review mode has no shortcut. Starts with the full stop that ends the notice's sentence."
+  },
+  "undoHint": {
+    "description": "Added to the end of a notice after a big change: the Undo shortcut. Starts with a space and a middle dot that separate it from the notice."
+  },
+  "zoomLevels.range": {
+    "description": "A run of zoom level keys, written as a range (\"1–4\")."
+  },
+  "zoomLevels.both": {
+    "description": "Hint for a selected zoom: what the zoom level keys do. {levels} is the keys (\"1–4\", or a list), {count} how many there are, {back} the key that pulls back (\"0\")."
+  },
+  "zoomLevels.levels": {
+    "description": "Hint for a selected zoom when no key pulls back: what the zoom level keys do. {levels} is the keys, {count} how many there are."
+  },
+  "zoomLevels.back": {
+    "description": "Hint for a selected zoom when only the pull-back key has a shortcut: {back} is the key (\"0\")."
+  },
+  "reserved.pressesButton": {
+    "description": "Shortcuts editor: why a key cannot be a shortcut, shown under the command when the user presses it. {keys} is the key (\"Enter\"), which stays as it is."
+  },
+  "reserved.movesBetweenControls": {
+    "description": "Shortcuts editor: why a key cannot be a shortcut, shown under the command when the user presses it. {keys} is the key (\"Shift + Tab\"), which stays as it is."
+  },
+  "reserved.closesWindow": {
+    "description": "Shortcuts editor: why a key cannot be a shortcut, shown under the command when the user presses it. {keys} is the key (\"Ctrl + W\"), which stays as it is."
+  },
+  "reserved.windowMenu": {
+    "description": "Shortcuts editor: why a key cannot be a shortcut, shown under the command when the user presses it. {keys} is the key (\"Alt + Space\"), which stays as it is."
+  },
+  "reserved.startMenu": {
+    "description": "Shortcuts editor: why a key cannot be a shortcut, shown under the command when the user presses it. {keys} is the key (\"Ctrl + Esc\"), which stays as it is."
+  },
+  "reserved.taskManager": {
+    "description": "Shortcuts editor: why a key cannot be a shortcut, shown under the command when the user presses it. {keys} is the key (\"Ctrl + Shift + Esc\"), which stays as it is."
+  },
+  "reserved.switchesWindow": {
+    "description": "Shortcuts editor: why a key cannot be a shortcut, shown under the command when the user presses it. {keys} is the key (\"Alt + Esc\"), which stays as it is."
+  },
+  "reserved.reloads": {
+    "description": "Shortcuts editor: why a key cannot be a shortcut, shown under the command when the user presses it. {keys} is the key (\"Ctrl + Shift + R\"), which stays as it is."
+  },
+  "reserved.developerTools": {
+    "description": "Shortcuts editor: why a key cannot be a shortcut, shown under the command when the user presses it. {keys} is the key (\"Ctrl + Shift + I\"), which stays as it is."
+  },
+  "reserved.fullScreen": {
+    "description": "Shortcuts editor: why a key cannot be a shortcut, shown under the command when the user presses it. {keys} is the key (\"F11\"), which stays as it is."
+  },
+  "reserved.resetsZoom": {
+    "description": "Shortcuts editor: why a key cannot be a shortcut, shown under the command when the user presses it. {keys} is the key (\"Ctrl + 0\"), which stays as it is."
+  },
+  "reserved.zooms": {
+    "description": "Shortcuts editor: why a key cannot be a shortcut, shown under the command when the user presses it. {keys} is the key (\"Ctrl + -\"), which stays as it is."
+  },
+  "reserved.escape": {
+    "description": "Shortcuts editor: why a key cannot be a shortcut, shown under the command when the user presses it. {keys} is the key (\"Esc\"), which stays as it is."
+  },
+  "check.unusable": {
+    "description": "Shortcuts editor: the key pressed cannot be a shortcut at all."
+  },
+  "check.needsModifier": {
+    "description": "Shortcuts editor: a shortcut for a command that also works in text fields must use Ctrl or Alt. {keys} is the key pressed. Ctrl and Alt are keycaps.",
+    "dnt": [
+      "Ctrl",
+      "Alt"
+    ]
+  },
+  "dialog.removeLabel": {
+    "description": "Shortcuts editor: accessible name of the x on a shortcut chip. {keys} is the keycaps, {command} the command's title."
+  },
+  "dialog.removeTitle": {
+    "description": "Shortcuts editor: tooltip of the x on a shortcut chip."
+  },
+  "dialog.stepKey": {
+    "description": "Shortcuts editor: tooltip of a key a nudge command borrows from a step command while timeline items are selected; {command} is the step command's title."
+  },
+  "dialog.standardKey": {
+    "description": "Shortcuts editor: tooltip of a standard Windows key (Ctrl + C and the like) that works for a command while no command has it."
+  },
+  "dialog.captureLabel": {
+    "description": "Shortcuts editor: accessible name of the button that records a shortcut; {command} is the command's title."
+  },
+  "dialog.captureTitle": {
+    "description": "Shortcuts editor: tooltip of the button that records a shortcut. Esc is a keycap.",
+    "dnt": [
+      "Esc"
+    ]
+  },
+  "dialog.pressKeys": {
+    "description": "Shortcuts editor: shown in the button while it waits for a shortcut to be pressed."
+  },
+  "dialog.addLabel": {
+    "description": "Shortcuts editor: accessible name of the + button of a command; {command} is its title."
+  },
+  "dialog.full": {
+    "description": "Shortcuts editor: tooltip of the + button when a command has the most shortcuts it can have; {n} is that number (4)."
+  },
+  "dialog.addTitle": {
+    "description": "Shortcuts editor: tooltip of the + button of a command."
+  },
+  "dialog.resetLabel": {
+    "description": "Shortcuts editor: accessible name of the button that puts a command's shortcuts back to its defaults; {command} is its title."
+  },
+  "dialog.resetTo": {
+    "description": "Shortcuts editor: tooltip of the reset button of a changed command; {keys} is its default shortcuts, as keycaps (\"Ctrl + Shift + Z or Ctrl + Y\")."
+  },
+  "dialog.resetToNone": {
+    "description": "Shortcuts editor: tooltip of the reset button of a changed command that has no shortcut by default."
+  },
+  "dialog.isDefault": {
+    "description": "Shortcuts editor: tooltip of the reset button while a command has its default shortcuts."
+  },
+  "dialog.usedBy": {
+    "description": "Shortcuts editor: follows the keycaps of a shortcut another command has (\"Ctrl + Z is used by Undo.\"); {command} is that command's title, in bold."
+  },
+  "dialog.useHere": {
+    "description": "Shortcuts editor: button of the question about a shortcut another command has: take it for this command."
+  },
+  "dialog.search": {
+    "description": "Shortcuts editor: accessible name of the search field."
+  },
+  "dialog.searchPlaceholder": {
+    "description": "Shortcuts editor: placeholder of the search field."
+  },
+  "dialog.noMatch": {
+    "description": "Shortcuts editor: shown when nothing matches the search; {query} is what the user typed.",
+    "user": [
+      "query"
+    ]
+  },
+  "dialog.pauseHint": {
+    "description": "Shortcuts editor: note at the foot of the dialog. Esc, Enter and Tab are keycaps.",
+    "dnt": [
+      "Esc",
+      "Enter",
+      "Tab"
+    ]
+  },
+  "dialog.resetAllTitle": {
+    "description": "Shortcuts editor: tooltip of Reset all."
+  },
+  "dialog.resetAll": {
+    "description": "Shortcuts editor: button that puts every command's shortcuts back to the defaults."
+  },
+  "dialog.takeBack": {
+    "description": "Shortcuts editor: button of the question shown when a command is reset while other commands have its default shortcuts: give them back to this command. {count} is how many shortcuts (never 0)."
+  }
+}

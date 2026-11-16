@@ -23,6 +23,8 @@ import { ShapesPanel } from './panels/ShapesPanel'
 import { ImagesPanel } from './panels/ImagesPanel'
 import { GraphicsPanel } from './panels/GraphicsPanel'
 import { useCaptionsHost } from './speechState'
+import { fmt } from '../../../shared/i18n/fmt'
+import { t, type MessageKey } from '../../../shared/i18n/t'
 
 export interface InspectorProps {
   project: Project
@@ -81,20 +83,21 @@ export interface InputActions {
 export type InspectorTab = 'style' | 'cursor' | 'zoom' | 'clip' | 'text' | 'captions' | 'graphics' | 'transcript' | 'shapes' | 'images' | 'effects' | 'camera' | 'audio'
 type Tab = InspectorTab
 
-const TABS: { id: Tab; label: string; icon: string; editorIcon?: boolean }[] = [
-  { id: 'style', label: 'Style', icon: 'palette' },
-  { id: 'cursor', label: 'Cursor', icon: 'cursor' },
-  { id: 'zoom', label: 'Zoom', icon: 'zoom' },
-  { id: 'clip', label: 'Clip', icon: 'scissors', editorIcon: true },
-  { id: 'text', label: 'Text', icon: 'text', editorIcon: true },
-  { id: 'captions', label: 'Captions', icon: 'captions', editorIcon: true },
-  { id: 'graphics', label: 'Graphics', icon: 'burst', editorIcon: true },
-  { id: 'transcript', label: 'Transcript', icon: 'transcript', editorIcon: true },
-  { id: 'shapes', label: 'Shapes', icon: 'shapes', editorIcon: true },
-  { id: 'images', label: 'Images', icon: 'image', editorIcon: true },
-  { id: 'effects', label: 'Effects', icon: 'sparkle', editorIcon: true },
-  { id: 'camera', label: 'Camera', icon: 'camera' },
-  { id: 'audio', label: 'Audio', icon: 'volume', editorIcon: true }
+/** The tabs, with the message of each one's name (shown where the rail is drawn). */
+const TABS: { id: Tab; label: MessageKey; icon: string; editorIcon?: boolean }[] = [
+  { id: 'style', label: 'editor.tab.style', icon: 'palette' },
+  { id: 'cursor', label: 'editor.tab.cursor', icon: 'cursor' },
+  { id: 'zoom', label: 'common.label.zoom', icon: 'zoom' },
+  { id: 'clip', label: 'editor.tab.clip', icon: 'scissors', editorIcon: true },
+  { id: 'text', label: 'common.label.text', icon: 'text', editorIcon: true },
+  { id: 'captions', label: 'common.label.captions', icon: 'captions', editorIcon: true },
+  { id: 'graphics', label: 'editor.tab.graphics', icon: 'burst', editorIcon: true },
+  { id: 'transcript', label: 'editor.tab.transcript', icon: 'transcript', editorIcon: true },
+  { id: 'shapes', label: 'editor.tab.shapes', icon: 'shapes', editorIcon: true },
+  { id: 'images', label: 'editor.tab.images', icon: 'image', editorIcon: true },
+  { id: 'effects', label: 'editor.tab.effects', icon: 'sparkle', editorIcon: true },
+  { id: 'camera', label: 'common.label.camera', icon: 'camera' },
+  { id: 'audio', label: 'editor.tab.audio', icon: 'volume', editorIcon: true }
 ]
 
 const TAB_FOR: Record<NonNullable<Selection>['kind'], Tab> = {
@@ -161,37 +164,37 @@ export const Inspector = memo(function Inspector({ tab, onTab: setTab, ...props 
 
   return (
     <aside className="inspector">
-      <nav className="insp-tabs" aria-label="Inspector" ref={railRef}>
+      <nav className="insp-tabs" aria-label={t('editor.inspector')} ref={railRef}>
         {groupSize >= 2 && (
           <button
             className={`selection-tab ${groupShown ? 'active' : ''}`}
             onClick={() => setShowGroup(true)}
             aria-pressed={groupShown}
-            title={`Selection (${groupSize} items)`}
+            title={t('editor.tab.selectionTitle', { count: groupSize, n: fmt.count(groupSize) })}
             data-testid="selection-tab"
           >
             <EditorIcon name="check" size={17} />
-            <span>Selection</span>
+            <span>{t('editor.tab.selection')}</span>
             <span className="selection-badge" aria-hidden="true">
               {groupSize}
             </span>
           </button>
         )}
-        {TABS.map((t) => (
+        {TABS.map((tb) => (
           <button
-            key={t.id}
-            className={tab === t.id && !groupShown ? 'active' : ''}
+            key={tb.id}
+            className={tab === tb.id && !groupShown ? 'active' : ''}
             onClick={() => {
               setShowGroup(false)
-              setTab(t.id)
+              setTab(tb.id)
             }}
-            aria-pressed={tab === t.id && !groupShown}
-            title={t.label}
-            data-testid={t.id === 'graphics' ? 'graphics' : undefined}
+            aria-pressed={tab === tb.id && !groupShown}
+            title={t(tb.label)}
+            data-testid={tb.id === 'graphics' ? 'graphics' : undefined}
           >
-            {t.editorIcon ? <EditorIcon name={t.icon} size={17} /> : <Icon name={t.icon} size={17} />}
-            <span>{t.label}</span>
-            {t.id === 'captions' && captionsBadge && <span className="captions-job-badge" data-testid="captions-job-badge" data-phase={captionsBadge.phase} title={captionsBadge.title} aria-hidden="true" />}
+            {tb.editorIcon ? <EditorIcon name={tb.icon} size={17} /> : <Icon name={tb.icon} size={17} />}
+            <span>{t(tb.label)}</span>
+            {tb.id === 'captions' && captionsBadge && <span className="captions-job-badge" data-testid="captions-job-badge" data-phase={captionsBadge.phase} title={captionsBadge.title} aria-hidden="true" />}
           </button>
         ))}
       </nav>

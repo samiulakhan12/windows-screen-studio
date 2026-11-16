@@ -45,6 +45,7 @@ import type { ScrollSession } from '../../../shared/engine/scroll'
 import type { Annotation, Clip, CursorTrack, Shape, ShapeKind, Spotlight, ZoomSegment } from '../../../shared/types'
 import { spotlightIcon, spotlightName } from '../../../shared/render/magnifier'
 import { fmt } from '../../../shared/i18n/fmt'
+import { t } from '../../../shared/i18n/t'
 import { Icon } from '../components/Icon'
 import { useEditor } from './context'
 import { EditorIcon } from './EditorIcon'
@@ -194,7 +195,7 @@ export const Timeline = memo(
     }
     /** The end of a groupable block's tooltip. */
     const groupHint = (kind: GroupKind, id: string): string =>
-      G.keys.has(itemKey(kind, id)) ? ` · selected: drag to move all ${groupSize}, Ctrl+click to leave it out` : groupSize ? '' : ' · Ctrl+click to select several'
+      G.keys.has(itemKey(kind, id)) ? ` · ${t('timeline.group.selected', { n: fmt.count(groupSize) })}` : groupSize ? '' : ` · ${t('timeline.group.selectSeveral')}`
     const width = Math.max(viewport, duration * px + 2 * GUTTER)
 
     /* ---------- viewport, scroll and render window ---------- */
@@ -589,46 +590,54 @@ export const Timeline = memo(
     return (
       <div className="timeline">
         <div className="tl-head">
-          <span className="tl-hint">
-            Ctrl+click to select several · Shift+drag to box-select · Click a track to move the playhead · Shift+drag on the clip to select a range · Double-click a track to add · Hold Alt while
-            dragging to place freely
-          </span>
+          <span className="tl-hint">{t('timeline.hint')}</span>
           {groupSize >= 2 && (
             <span className="tl-selection">
               <span className="tl-selcount" role="status" aria-live="polite" data-testid="selection-count">
-                {groupSize} selected
+                {t('timeline.selected', { count: groupSize, n: fmt.count(groupSize) })}
               </span>
-              <button className="btn ghost icon-btn tl-selclear" onClick={() => onSelect(null)} aria-label="Clear selection (Esc)" title="Clear selection (Esc)">
+              <button
+                className="btn ghost icon-btn tl-selclear"
+                onClick={() => onSelect(null)}
+                aria-label={withShortcut(t('timeline.clearSelection'), ['Escape'])}
+                title={withShortcut(t('timeline.clearSelection'), ['Escape'])}
+              >
                 <Icon name="x" size={12} />
               </button>
             </span>
           )}
           <SnapButton />
-          <div className="tl-zoom" role="group" aria-label="Timeline zoom">
-            <button className="btn ghost icon-btn" onClick={() => setScale(px / ZOOM_STEP)} disabled={zoom.fit} title={withShortcut('Zoom out timeline', keymap.timelineZoomOut)} aria-label="Zoom out timeline">
+          <div className="tl-zoom" role="group" aria-label={t('timeline.zoomGroup')}>
+            <button
+              className="btn ghost icon-btn"
+              onClick={() => setScale(px / ZOOM_STEP)}
+              disabled={zoom.fit}
+              title={withShortcut(t('timeline.zoomOut'), keymap.timelineZoomOut)}
+              aria-label={t('timeline.zoomOut')}
+            >
               <EditorIcon name="minus" size={16} />
             </button>
-            <button className="btn ghost icon-btn" onClick={() => setScale(px * ZOOM_STEP)} title={zoomInTitle(keymap.timelineZoomIn)} aria-label="Zoom in timeline">
+            <button className="btn ghost icon-btn" onClick={() => setScale(px * ZOOM_STEP)} title={zoomInTitle(keymap.timelineZoomIn)} aria-label={t('timeline.zoomIn')}>
               <EditorIcon name="plus" size={16} />
             </button>
-            <button className="btn ghost" onClick={fitAll} disabled={zoom.fit} title="Fit the whole recording">
-              <EditorIcon name="fit" size={14} /> Fit
+            <button className="btn ghost" onClick={fitAll} disabled={zoom.fit} title={t('timeline.fitTitle')}>
+              <EditorIcon name="fit" size={14} /> {t('timeline.fit')}
             </button>
           </div>
         </div>
         <div className="tl-body">
           <div className="tl-labels">
             <div className="tl-label ruler-label" />
-            <div className="tl-label clip-label" title="Clip: cut, split and speed">
+            <div className="tl-label clip-label" title={t('timeline.track.clip')}>
               <Icon name="film" size={16} />
             </div>
-            <div className="tl-label zoom-label" title="Zoom">
+            <div className="tl-label zoom-label" title={t('common.label.zoom')}>
               <Icon name="zoom" size={16} />
             </div>
-            <div className="tl-label text-label" title="Text">
+            <div className="tl-label text-label" title={t('common.label.text')}>
               <EditorIcon name="text" size={16} />
             </div>
-            <div className="tl-label shape-label" title="Shapes, blur and spotlights">
+            <div className="tl-label shape-label" title={t('timeline.track.shapes')}>
               <EditorIcon name="shapes" size={16} />
             </div>
             <OverlayTrackLabel />
@@ -647,7 +656,7 @@ export const Timeline = memo(
                 ))}
               </div>
 
-              <div className="tl-track clip-track" onPointerDown={onClipTrackDown} title={`Click to move the playhead, Shift+drag to select a range to cut${useWaveformHint()}`}>
+              <div className="tl-track clip-track" onPointerDown={onClipTrackDown} title={`${t('timeline.clipTrack.hint')}${useWaveformHint()}`}>
                 {clips
                   .filter((c) => overlaps(c, win))
                   .map((c) => {
@@ -662,7 +671,7 @@ export const Timeline = memo(
                         className={`clip-block ${selId === c.id ? 'selected' : ''} ${c.speed !== 1 ? 'fast' : ''}`}
                         style={{ left: c.start * px, width: w }}
                       >
-                        {c.speed !== 1 && w > 28 && <span className="speed-badge">{+c.speed.toFixed(2)}×</span>}
+                        {c.speed !== 1 && w > 28 && <span className="speed-badge">{fmt.factor(c.speed)}</span>}
                       </div>
                     )
                   })}
@@ -705,8 +714,8 @@ export const Timeline = memo(
                   )
                 })}
                 <FreezeMarks px={px} win={win} duration={duration} clips={clips} selection={selection} onSelect={onSelect} snap={snap} dragging={dragging} multi={multi} />
-                <div className="trim-handle start" style={{ left: kept.start * px }} onPointerDown={onTrimDown('start')} title="Drag to trim the start" />
-                <div className="trim-handle end" style={{ left: kept.end * px }} onPointerDown={onTrimDown('end')} title="Drag to trim the end" />
+                <div className="trim-handle start" style={{ left: kept.start * px }} onPointerDown={onTrimDown('start')} title={t('timeline.trimStart')} />
+                <div className="trim-handle end" style={{ left: kept.end * px }} onPointerDown={onTrimDown('end')} title={t('timeline.trimEnd')} />
                 {range && (
                   <div className="range-sel" style={{ left: range.start * px, width: (range.end - range.start) * px }} data-testid="range-selection">
                     {!draftRange && (range.end - range.start) * px > 64 && (
@@ -714,16 +723,16 @@ export const Timeline = memo(
                         className="range-cut"
                         onPointerDown={(e) => e.stopPropagation()}
                         onClick={() => props.onCutRange(range.start, range.end)}
-                        title={withShortcut('Cut the selected range', keymap.deleteSelection)}
+                        title={withShortcut(t('timeline.cutRange'), keymap.deleteSelection)}
                       >
-                        <EditorIcon name="scissors" size={13} /> Cut
+                        <EditorIcon name="scissors" size={13} /> {t('common.action.cut')}
                       </button>
                     )}
                   </div>
                 )}
               </div>
 
-              <div className="tl-track zoom-track" onPointerDown={onBackgroundDown('zoom')} title="Double-click to add a zoom">
+              <div className="tl-track zoom-track" onPointerDown={onBackgroundDown('zoom')} title={t('timeline.zoomTrack.add')}>
                 {visibleBands.map((b) => (
                   <span
                     key={`scroll:${b.start}`}
@@ -732,7 +741,7 @@ export const Timeline = memo(
                     data-start={b.start}
                     data-end={b.end}
                     style={{ left: b.start * px, width: Math.max(2, (b.end - b.start) * px) }}
-                    title={`Scrolling ${fmt.clock(b.start)} – ${fmt.clock(b.end)}: auto zoom shows the whole page while it moves`}
+                    title={t('timeline.scrollBand', { start: fmt.clock(b.start), end: fmt.clock(b.end) })}
                   />
                 ))}
                 {links
@@ -743,7 +752,7 @@ export const Timeline = memo(
                       className="zoom-link"
                       data-zoom-link={`${from.id}>${to.id}`}
                       style={{ left: Math.min(from.end, to.start) * px, width: Math.max(0, to.start - from.end) * px }}
-                      title="The camera pans from this zoom straight into the next one"
+                      title={t('timeline.zoomLink')}
                     >
                       <PanIcon />
                     </div>
@@ -752,7 +761,7 @@ export const Timeline = memo(
                   const w = (z.end - z.start) * px
                   const scale = zoomTargetScale(zoomInView(crop ? cropOf(store.state) : null, z))
                   const tm = timings.get(z.id)
-                  const kind = z.focus.mode === 'region' ? ' · region' : z.focus.mode === 'fixed' ? ' · fixed' : ''
+                  const kind = z.focus.mode === 'region' ? ` · ${t('timeline.zoom.region')}` : z.focus.mode === 'fixed' ? ` · ${t('timeline.zoom.fixed')}` : ''
                   return (
                     <div
                       key={z.id}
@@ -765,7 +774,7 @@ export const Timeline = memo(
                       className={`seg zoom-seg ${selId === z.id ? 'selected' : ''} ${z.auto ? 'auto' : ''} ${scale < 1 ? 'pullback' : ''} ${tm?.toNext ? 'linked-next' : ''} ${tm?.fromPrev ? 'linked-prev' : ''}${memberClass('zoom', z.id)}`}
                       style={{ left: z.start * px, width: w, ['--edge' as string]: `${edgeWidth(w)}px` }}
                       onPointerDown={onZoomDown(z)}
-                      title={`${fmt.clock(z.start)} – ${fmt.clock(z.end)} · ${fmt.factor(scale)}${scale < 1 ? ' pull back' : ''} · ${z.auto ? 'automatic' : 'edited'} zoom${tm?.toNext ? ' · pans to the next zoom' : ''}${groupHint('zoom', z.id)}`}
+                      title={`${zoomTitle(z, scale, !!tm?.toNext)}${groupHint('zoom', z.id)}`}
                     >
                       {tm && w > 24 && (
                         <>
@@ -778,17 +787,17 @@ export const Timeline = memo(
                         <span className="seg-label">
                           {fmt.factor(scale)}
                           {w > 70 ? kind : ''}
-                          {z.auto && w > 110 ? ' · auto' : ''}
+                          {z.auto && w > 110 ? ` · ${t('timeline.zoom.auto')}` : ''}
                         </span>
                       )}
                       <span className="edge right" />
                     </div>
                   )
                 })}
-                {zooms.length === 0 && <span className="tl-empty">{orPress('Double-click to add a zoom', keymap.addZoom)}</span>}
+                {zooms.length === 0 && <span className="tl-empty">{orPress(t('timeline.zoomTrack.add'), keymap.addZoom)}</span>}
               </div>
 
-              <div className="tl-track text-track" onPointerDown={onBackgroundDown('text')} title="Double-click to add text">
+              <div className="tl-track text-track" onPointerDown={onBackgroundDown('text')} title={t('timeline.textTrack.add')}>
                 {visibleAnnotations.map((a) => {
                   const w = (a.end - a.start) * px
                   const lane = lanes.lanes.get(a.id) ?? 0
@@ -804,15 +813,15 @@ export const Timeline = memo(
                       title={a.text}
                     >
                       <span className="edge left" />
-                      {w > 30 && <span className="seg-label">{a.text || 'Text'}</span>}
+                      {w > 30 && <span className="seg-label">{a.text || t('common.label.text')}</span>}
                       <span className="edge right" />
                     </div>
                   )
                 })}
-                {annotations.length === 0 && <span className="tl-empty">{orPress('Double-click to add text', keymap.addText)}</span>}
+                {annotations.length === 0 && <span className="tl-empty">{orPress(t('timeline.textTrack.add'), keymap.addText)}</span>}
               </div>
 
-              <div className="tl-track shape-track" onPointerDown={onBackgroundDown('shape')} title="Double-click to add an arrow" data-testid="shape-track">
+              <div className="tl-track shape-track" onPointerDown={onBackgroundDown('shape')} title={t('timeline.shapeTrack.add')} data-testid="shape-track">
                 {visibleItems.map((it) => {
                   const w = (it.end - it.start) * px
                   const lane = itemLaneMap.lanes.get(it.id) ?? 0
@@ -826,7 +835,7 @@ export const Timeline = memo(
                       className={`seg shape-seg ${it.look} ${selId === it.id ? 'selected' : ''}${memberClass(it.type, it.id)}`}
                       style={{ left: it.start * px, width: w, top: `${lane * itemLaneH}%`, height: `${itemLaneH}%`, ['--edge' as string]: `${edgeWidth(w)}px` }}
                       onPointerDown={onShapeDown(it)}
-                      title={`${it.label} · ${fmt.clock(it.start)} – ${fmt.clock(it.end)}${groupHint(it.type, it.id)}`}
+                      title={`${it.label} · ${t('timeline.range', { start: fmt.clock(it.start), end: fmt.clock(it.end) })}${groupHint(it.type, it.id)}`}
                     >
                       <span className="edge left" />
                       {w > 22 && itemLaneMap.count <= 2 && (
@@ -839,7 +848,7 @@ export const Timeline = memo(
                     </div>
                   )
                 })}
-                {items.length === 0 && <span className="tl-empty">Double-click to add an arrow, or use the Shapes panel for boxes, blur and spotlights</span>}
+                {items.length === 0 && <span className="tl-empty">{t('timeline.shapeTrack.empty')}</span>}
               </div>
 
               <OverlayTrack px={px} win={win} duration={duration} selection={selection} onSelect={onSelect} scrub={scrub} snap={snap} multi={multi} />
@@ -860,7 +869,18 @@ export const Timeline = memo(
 )
 
 /** "Zoom in timeline (+ or Ctrl+wheel)" with the first key bound now (Ctrl+wheel always zooms). */
-const zoomInTitle = (keys: readonly string[]): string => `Zoom in timeline (${keys.length ? `${shortcutLabel(keys[0])} or ` : ''}Ctrl+wheel)`
+const zoomInTitle = (keys: readonly string[]): string => (keys.length ? t('timeline.zoomInKeys', { keys: shortcutLabel(keys[0]) }) : t('timeline.zoomInWheel'))
+
+/** A zoom block's tooltip, its facts apart: "0:01.0 – 0:03.0 · 1.5× · automatic zoom · pans to the next zoom". */
+function zoomTitle(z: ZoomSegment, scale: number, toNext: boolean): string {
+  const level = fmt.factor(scale)
+  return [
+    t('timeline.range', { start: fmt.clock(z.start), end: fmt.clock(z.end) }),
+    scale < 1 ? t('timeline.zoom.pullBack', { level }) : level,
+    t(z.auto ? 'timeline.zoom.automatic' : 'timeline.zoom.edited'),
+    ...(toNext ? [t('timeline.zoom.pansToNext')] : [])
+  ].join(' · ')
+}
 
 /** Arrow between two linked zooms: the camera pans across. */
 function PanIcon(): JSX.Element {
@@ -883,20 +903,20 @@ const GapBlock = memo(function GapBlock({
   onRestore: (start: number, end: number) => void
 }): JSX.Element {
   const w = (gap.end - gap.start) * px
-  const label = gap.kind === 'cut' ? 'Cut' : 'Trimmed'
+  const span = { start: fmt.clock(gap.start), end: fmt.clock(gap.end), length: fmt.number(gap.end - gap.start, { max: 1 }) }
   return (
     <div
       className={`gap-block ${gap.kind} ${selected ? 'selected' : ''}`}
       data-gap-start={gap.start}
       data-gap-end={gap.end}
       style={{ left: gap.start * px, width: w }}
-      title={`${label}: ${fmt.clock(gap.start)} – ${fmt.clock(gap.end)} (${(gap.end - gap.start).toFixed(1)} s not in the video)`}
+      title={t(gap.kind === 'cut' ? 'timeline.gap.cut' : 'timeline.gap.trimmed', span)}
     >
       {gap.kind === 'cut' && w >= 22 && (
         <button
           className="gap-restore"
-          aria-label="Restore this cut"
-          title="Restore this cut"
+          aria-label={t('timeline.gap.restore')}
+          title={t('timeline.gap.restore')}
           onPointerDown={(e) => e.stopPropagation()}
           onClick={() => onRestore(gap.start, gap.end)}
         >

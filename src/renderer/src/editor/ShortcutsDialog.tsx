@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react'
-import { COMMAND_CATEGORIES, COMMANDS, commandInfo, LANGUAGE_COMMANDS, type CommandId, type CommandInfo } from '../../../shared/editor/commands'
+import { categoryLabel, COMMAND_CATEGORIES, commandTitle, listedCommands, type CommandId, type CommandInfo } from '../../../shared/editor/commands'
+import { fmt } from '../../../shared/i18n/fmt'
+import { t } from '../../../shared/i18n/t'
 import { currentUiInfo, showLanguageSection } from '../i18n/boot'
 import {
   addBinding,
@@ -21,6 +23,7 @@ import {
   type Keymap
 } from '../../../shared/editor/shortcuts'
 import { Icon } from '../components/Icon'
+import { T } from '../i18n/T'
 import { useModalFocus } from './modalFocus'
 import { ShortcutKeys } from './ShortcutKeys'
 import './commands.css'
@@ -56,7 +59,8 @@ function ShortcutRow({
   onState: (s: RowState | null) => void
   onChange: (next: Keymap) => void
 }): JSX.Element {
-  const { id, title } = info
+  const { id } = info
+  const title = commandTitle(info)
   const bindings = keymap[id]
   const rowRef = useRef<HTMLLIElement>(null)
   const addRef = useRef<HTMLButtonElement>(null)
@@ -115,8 +119,8 @@ function ShortcutRow({
               <button
                 type="button"
                 className="shortcut-remove"
-                aria-label={`Remove ${shortcutLabel(a)} from ${title}`}
-                title="Remove this shortcut"
+                aria-label={t('keys.dialog.removeLabel', { keys: shortcutLabel(a), command: title })}
+                title={t('keys.dialog.removeTitle')}
                 onClick={() => {
                   onChange(removeBinding(keymap, id, a))
                   onState(null)
@@ -129,12 +133,12 @@ function ShortcutRow({
             </span>
           ))}
           {stepKeys.map((a) => (
-            <span key={`step:${a}`} className="shortcut-chip standard" data-step={a} title={`While items are selected · the key of ${commandInfo(nudgeStep!).title}`}>
+            <span key={`step:${a}`} className="shortcut-chip standard" data-step={a} title={t('keys.dialog.stepKey', { command: commandTitle(nudgeStep!) })}>
               <ShortcutKeys accelerator={a} />
             </span>
           ))}
           {standardFree && (
-            <span className="shortcut-chip standard" data-standard={standard} title="Standard key · a shortcut you give another command takes it over">
+            <span className="shortcut-chip standard" data-standard={standard} title={t('keys.dialog.standardKey')}>
               <ShortcutKeys accelerator={standard!} />
             </span>
           )}
@@ -143,8 +147,8 @@ function ShortcutRow({
               type="button"
               className="shortcut-capture"
               autoFocus
-              aria-label={`Press the new shortcut for ${title}`}
-              title="Press the keys · Esc cancels"
+              aria-label={t('keys.dialog.captureLabel', { command: title })}
+              title={t('keys.dialog.captureTitle')}
               onKeyDown={onCaptureKey}
               onKeyUp={(e) => {
                 if (capture.partial && !(e.ctrlKey || e.altKey || e.shiftKey || e.metaKey)) onState({ kind: 'capture', partial: '' })
@@ -152,7 +156,7 @@ function ShortcutRow({
               onBlur={() => onState(null)}
               onClick={() => onState(null)}
             >
-              {capture.partial || 'Press keys…'}
+              {capture.partial || t('keys.dialog.pressKeys')}
             </button>
           ) : (
             <button
@@ -160,20 +164,20 @@ function ShortcutRow({
               ref={addRef}
               className="shortcut-add"
               disabled={full}
-              aria-label={`Add shortcut for ${title}`}
-              title={full ? `At most ${MAX_BINDINGS} shortcuts per command` : 'Add a shortcut'}
+              aria-label={t('keys.dialog.addLabel', { command: title })}
+              title={full ? t('keys.dialog.full', { n: fmt.count(MAX_BINDINGS) }) : t('keys.dialog.addTitle')}
               onClick={() => onState({ kind: 'capture', partial: '' })}
             >
               <Icon name="plus" size={13} />
-              {bindings.length === 0 && <span>Add</span>}
+              {bindings.length === 0 && <span>{t('common.action.add')}</span>}
             </button>
           )}
           <button
             type="button"
             className="shortcut-reset"
             disabled={!modified}
-            aria-label={`Reset ${title}`}
-            title={modified ? `Reset to ${defaults.length ? defaults.map(shortcutLabel).join(' or ') : 'no shortcut'}` : 'Default'}
+            aria-label={t('keys.dialog.resetLabel', { command: title })}
+            title={modified ? (defaults.length ? t('keys.dialog.resetTo', { keys: fmt.list(defaults.map(shortcutLabel), 'or') }) : t('keys.dialog.resetToNone')) : t('keys.dialog.isDefault')}
             onClick={() => {
               // Defaults another command has now are only taken back when the user says so.
               const taken = takenDefaults(keymap, id)
@@ -203,11 +207,11 @@ function ShortcutRow({
             onState(null)
           }}
         >
-          {(state.kind === 'conflict' ? [{ accelerator: state.accelerator, owner: state.owner }] : state.taken).map((t) => (
-            <span key={t.accelerator} className="shortcut-question">
-              <ShortcutKeys accelerator={t.accelerator} />
+          {(state.kind === 'conflict' ? [{ accelerator: state.accelerator, owner: state.owner }] : state.taken).map((q) => (
+            <span key={q.accelerator} className="shortcut-question">
+              <ShortcutKeys accelerator={q.accelerator} />
               <span>
-                is used by <strong>{commandInfo(t.owner).title}</strong>.
+                <T k="keys.dialog.usedBy" values={{ command: commandTitle(q.owner) }} tags={{ b: (name) => <strong>{name}</strong> }} />
               </span>
             </span>
           ))}
@@ -220,10 +224,10 @@ function ShortcutRow({
               onState(null)
             }}
           >
-            {state.kind === 'conflict' ? 'Use it here' : state.taken.length > 1 ? 'Take them back' : 'Take it back'}
+            {state.kind === 'conflict' ? t('keys.dialog.useHere') : t('keys.dialog.takeBack', { count: state.taken.length })}
           </button>
           <button type="button" className="btn small ghost" onClick={() => onState(null)}>
-            Cancel
+            {t('common.action.cancel')}
           </button>
         </div>
       )}
@@ -243,14 +247,15 @@ export function ShortcutsDialog({ keymap, onChange, onClose }: { keymap: Keymap;
   useModalFocus(boxRef, onClose)
 
   const groups = useMemo(() => {
-    const words = query.trim().toLowerCase().split(/\s+/).filter(Boolean)
+    const words = query.normalize('NFC').trim().toLowerCase().split(/\s+/).filter(Boolean)
     const matches = (c: CommandInfo): boolean => {
       if (!words.length) return true
-      const text = `${c.title} ${c.category} ${c.keywords ?? ''} ${keymap[c.id].map((a) => `${a} ${shortcutLabel(a)}`).join(' ')}`.toLowerCase()
+      // The title and category in the UI language and in English (the same in English), compared in NFC.
+      const text = `${commandTitle(c)} ${c.title} ${categoryLabel(c.category)} ${c.category} ${c.keywords ?? ''} ${keymap[c.id].map((a) => `${a} ${shortcutLabel(a)}`).join(' ')}`.normalize('NFC').toLowerCase()
       return words.every((w) => text.includes(w))
     }
     // Language… is listed only while Settings has a Language section (output-and-languages §2.5).
-    const listed = showLanguageSection(currentUiInfo()) ? COMMANDS : COMMANDS.filter((c) => !LANGUAGE_COMMANDS.includes(c.id))
+    const listed = listedCommands(showLanguageSection(currentUiInfo()))
     return COMMAND_CATEGORIES.map((category) => ({ category, commands: listed.filter((c) => c.category === category && matches(c)) })).filter((g) => g.commands.length)
   }, [query, keymap])
 
@@ -263,8 +268,8 @@ export function ShortcutsDialog({ keymap, onChange, onClose }: { keymap: Keymap;
     <div className="overlay modal-backdrop" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
       <div className="modal shortcuts-modal" role="dialog" aria-modal="true" aria-labelledby="shortcuts-title" ref={boxRef}>
         <header className="modal-head">
-          <h2 id="shortcuts-title">Keyboard shortcuts</h2>
-          <button type="button" className="btn ghost icon-btn" onClick={onClose} title="Close" aria-label="Close">
+          <h2 id="shortcuts-title">{t('common.label.keyboardShortcuts')}</h2>
+          <button type="button" className="btn ghost icon-btn" onClick={onClose} title={t('common.action.close')} aria-label={t('common.action.close')}>
             <Icon name="x" size={16} />
           </button>
         </header>
@@ -272,8 +277,8 @@ export function ShortcutsDialog({ keymap, onChange, onClose }: { keymap: Keymap;
           className="shortcuts-search"
           type="search"
           autoFocus
-          aria-label="Search shortcuts"
-          placeholder="Search commands or keys"
+          aria-label={t('keys.dialog.search')}
+          placeholder={t('keys.dialog.searchPlaceholder')}
           spellCheck={false}
           value={query}
           onChange={(e) => setQuery(e.target.value)}
@@ -287,8 +292,8 @@ export function ShortcutsDialog({ keymap, onChange, onClose }: { keymap: Keymap;
         />
         <div className="shortcuts-list">
           {groups.map((g) => (
-            <section key={g.category} aria-label={g.category}>
-              <h3>{g.category}</h3>
+            <section key={g.category} aria-label={categoryLabel(g.category)}>
+              <h3>{categoryLabel(g.category)}</h3>
               <ul>
                 {g.commands.map((c) => (
                   <ShortcutRow
@@ -303,15 +308,19 @@ export function ShortcutsDialog({ keymap, onChange, onClose }: { keymap: Keymap;
               </ul>
             </section>
           ))}
-          {groups.length === 0 && <p className="hint shortcuts-empty">No commands match “{query.trim()}”.</p>}
+          {groups.length === 0 && (
+            <p className="hint shortcuts-empty">
+              <T k="keys.dialog.noMatch" values={{ query: query.trim() }} />
+            </p>
+          )}
         </div>
         <footer className="modal-foot shortcuts-foot">
-          <p className="hint">Shortcuts pause while you type in a text field. Esc, Enter and Tab keep their usual jobs.</p>
-          <button type="button" className="btn ghost" disabled={!modified} onClick={() => change(DEFAULT_KEYMAP)} title="Every command back to its default shortcuts">
-            Reset all
+          <p className="hint">{t('keys.dialog.pauseHint')}</p>
+          <button type="button" className="btn ghost" disabled={!modified} onClick={() => change(DEFAULT_KEYMAP)} title={t('keys.dialog.resetAllTitle')}>
+            {t('keys.dialog.resetAll')}
           </button>
           <button type="button" className="btn primary" onClick={onClose}>
-            Done
+            {t('common.action.done')}
           </button>
         </footer>
       </div>

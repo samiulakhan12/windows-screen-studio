@@ -1,1 +1,539 @@
-{}
+{
+  "title.play": {
+    "description": "The name of the editor command \"play\" (Playback), in the command palette, the shortcuts editor and notices that point to it."
+  },
+  "title.goToStart": {
+    "description": "The name of the editor command \"goToStart\" (Playback), in the command palette, the shortcuts editor and notices that point to it."
+  },
+  "title.goToEnd": {
+    "description": "The name of the editor command \"goToEnd\" (Playback), in the command palette, the shortcuts editor and notices that point to it."
+  },
+  "title.stepBack": {
+    "description": "The name of the editor command \"stepBack\" (Playback), in the command palette, the shortcuts editor and notices that point to it."
+  },
+  "title.stepForward": {
+    "description": "The name of the editor command \"stepForward\" (Playback), in the command palette, the shortcuts editor and notices that point to it."
+  },
+  "title.jumpBack": {
+    "description": "The name of the editor command \"jumpBack\" (Playback), in the command palette, the shortcuts editor and notices that point to it."
+  },
+  "title.jumpForward": {
+    "description": "The name of the editor command \"jumpForward\" (Playback), in the command palette, the shortcuts editor and notices that point to it."
+  },
+  "title.nextChapter": {
+    "description": "The name of the editor command \"nextChapter\" (Playback), in the command palette, the shortcuts editor and notices that point to it."
+  },
+  "title.prevChapter": {
+    "description": "The name of the editor command \"prevChapter\" (Playback), in the command palette, the shortcuts editor and notices that point to it."
+  },
+  "title.shuttleReverse": {
+    "description": "The name of the editor command \"shuttleReverse\" (Playback), in the command palette, the shortcuts editor and notices that point to it."
+  },
+  "title.shuttlePause": {
+    "description": "The name of the editor command \"shuttlePause\" (Playback), in the command palette, the shortcuts editor and notices that point to it."
+  },
+  "title.shuttleForward": {
+    "description": "The name of the editor command \"shuttleForward\" (Playback), in the command palette, the shortcuts editor and notices that point to it."
+  },
+  "title.previewSpeedUp": {
+    "description": "The name of the editor command \"previewSpeedUp\" (Playback), in the command palette, the shortcuts editor and notices that point to it."
+  },
+  "title.previewSpeedDown": {
+    "description": "The name of the editor command \"previewSpeedDown\" (Playback), in the command palette, the shortcuts editor and notices that point to it."
+  },
+  "title.undo": {
+    "description": "The name of the editor command \"undo\" (Edit), in the command palette, the shortcuts editor and notices that point to it."
+  },
+  "title.redo": {
+    "description": "The name of the editor command \"redo\" (Edit), in the command palette, the shortcuts editor and notices that point to it."
+  },
+  "title.split": {
+    "description": "The name of the editor command \"split\" (Edit), in the command palette, the shortcuts editor and notices that point to it."
+  },
+  "title.deleteSelection": {
+    "description": "The name of the editor command \"deleteSelection\" (Edit), in the command palette, the shortcuts editor and notices that point to it."
+  },
+  "title.cutRange": {
+    "description": "The name of the editor command \"cutRange\" (Edit), in the command palette, the shortcuts editor and notices that point to it."
+  },
+  "title.restoreAll": {
+    "description": "The name of the editor command \"restoreAll\" (Edit), in the command palette, the shortcuts editor and notices that point to it."
+  },
+  "title.smartSpeed": {
+    "description": "The name of the editor command \"smartSpeed\" (Edit), in the command palette, the shortcuts editor and notices that point to it."
+  },
+  "title.polish": {
+    "description": "The name of the editor command \"polish\" (Edit), in the command palette, the shortcuts editor and notices that point to it. The ellipsis says it opens a dialog or asks something first."
+  },
+  "title.review": {
+    "description": "The name of the editor command \"review\" (Edit), in the command palette, the shortcuts editor and notices that point to it. The ellipsis says it opens a dialog or asks something first."
+  },
+  "title.straightenRange": {
+    "description": "The name of the editor command \"straightenRange\" (Edit), in the command palette, the shortcuts editor and notices that point to it."
+  },
+  "title.recordedPathRange": {
+    "description": "The name of the editor command \"recordedPathRange\" (Edit), in the command palette, the shortcuts editor and notices that point to it."
+  },
+  "title.cropRecording": {
+    "description": "The name of the editor command \"cropRecording\" (Edit), in the command palette, the shortcuts editor and notices that point to it. The ellipsis says it opens a dialog or asks something first."
+  },
+  "title.resetCrop": {
+    "description": "The name of the editor command \"resetCrop\" (Edit), in the command palette, the shortcuts editor and notices that point to it."
+  },
+  "title.cropTaskbar": {
+    "description": "The name of the editor command \"cropTaskbar\" (Edit), in the command palette, the shortcuts editor and notices that point to it."
+  },
+  "title.toggleFreezeSound": {
+    "description": "The name of the editor command \"toggleFreezeSound\" (Edit), in the command palette, the shortcuts editor and notices that point to it."
+  },
+  "title.selectAll": {
+    "description": "The name of the editor command \"selectAll\" (Edit), in the command palette, the shortcuts editor and notices that point to it."
+  },
+  "title.copyItems": {
+    "description": "The name of the editor command \"copyItems\" (Edit), in the command palette, the shortcuts editor and notices that point to it."
+  },
+  "title.cutItems": {
+    "description": "The name of the editor command \"cutItems\" (Edit), in the command palette, the shortcuts editor and notices that point to it."
+  },
+  "title.pasteItems": {
+    "description": "The name of the editor command \"pasteItems\" (Edit), in the command palette, the shortcuts editor and notices that point to it."
+  },
+  "title.duplicateItems": {
+    "description": "The name of the editor command \"duplicateItems\" (Edit), in the command palette, the shortcuts editor and notices that point to it."
+  },
+  "title.copyLook": {
+    "description": "The name of the editor command \"copyLook\" (Edit), in the command palette, the shortcuts editor and notices that point to it."
+  },
+  "title.pasteLook": {
+    "description": "The name of the editor command \"pasteLook\" (Edit), in the command palette, the shortcuts editor and notices that point to it."
+  },
+  "title.addZoom": {
+    "description": "The name of the editor command \"addZoom\" (Add), in the command palette, the shortcuts editor and notices that point to it."
+  },
+  "title.addText": {
+    "description": "The name of the editor command \"addText\" (Add), in the command palette, the shortcuts editor and notices that point to it."
+  },
+  "title.addArrow": {
+    "description": "The name of the editor command \"addArrow\" (Add), in the command palette, the shortcuts editor and notices that point to it."
+  },
+  "title.addLine": {
+    "description": "The name of the editor command \"addLine\" (Add), in the command palette, the shortcuts editor and notices that point to it."
+  },
+  "title.addRect": {
+    "description": "The name of the editor command \"addRect\" (Add), in the command palette, the shortcuts editor and notices that point to it."
+  },
+  "title.addEllipse": {
+    "description": "The name of the editor command \"addEllipse\" (Add), in the command palette, the shortcuts editor and notices that point to it."
+  },
+  "title.addHighlight": {
+    "description": "The name of the editor command \"addHighlight\" (Add), in the command palette, the shortcuts editor and notices that point to it."
+  },
+  "title.addBlur": {
+    "description": "The name of the editor command \"addBlur\" (Add), in the command palette, the shortcuts editor and notices that point to it."
+  },
+  "title.addPixelate": {
+    "description": "The name of the editor command \"addPixelate\" (Add), in the command palette, the shortcuts editor and notices that point to it."
+  },
+  "title.addSpotlight": {
+    "description": "The name of the editor command \"addSpotlight\" (Add), in the command palette, the shortcuts editor and notices that point to it."
+  },
+  "title.addCursorSpotlight": {
+    "description": "The name of the editor command \"addCursorSpotlight\" (Add), in the command palette, the shortcuts editor and notices that point to it."
+  },
+  "title.addTitle": {
+    "description": "The name of the editor command \"addTitle\" (Add), in the command palette, the shortcuts editor and notices that point to it."
+  },
+  "title.addChapter": {
+    "description": "The name of the editor command \"addChapter\" (Add), in the command palette, the shortcuts editor and notices that point to it."
+  },
+  "title.freezeFrame": {
+    "description": "The name of the editor command \"freezeFrame\" (Add), in the command palette, the shortcuts editor and notices that point to it."
+  },
+  "title.zoomLevel0": {
+    "description": "The name of the editor command \"zoomLevel0\" (Zoom), in the command palette, the shortcuts editor and notices that point to it."
+  },
+  "title.zoomLevel1": {
+    "description": "The name of the editor command \"zoomLevel1\" (Zoom), in the command palette, the shortcuts editor and notices that point to it."
+  },
+  "title.zoomLevel2": {
+    "description": "The name of the editor command \"zoomLevel2\" (Zoom), in the command palette, the shortcuts editor and notices that point to it."
+  },
+  "title.zoomLevel3": {
+    "description": "The name of the editor command \"zoomLevel3\" (Zoom), in the command palette, the shortcuts editor and notices that point to it."
+  },
+  "title.zoomLevel4": {
+    "description": "The name of the editor command \"zoomLevel4\" (Zoom), in the command palette, the shortcuts editor and notices that point to it."
+  },
+  "title.toggleClickAtPlayhead": {
+    "description": "The name of the editor command \"toggleClickAtPlayhead\" (Zoom), in the command palette, the shortcuts editor and notices that point to it."
+  },
+  "title.findStrayClicks": {
+    "description": "The name of the editor command \"findStrayClicks\" (Zoom), in the command palette, the shortcuts editor and notices that point to it."
+  },
+  "title.useAllClicks": {
+    "description": "The name of the editor command \"useAllClicks\" (Zoom), in the command palette, the shortcuts editor and notices that point to it."
+  },
+  "title.toggleFollow": {
+    "description": "The name of the editor command \"toggleFollow\" (Zoom), in the command palette, the shortcuts editor and notices that point to it."
+  },
+  "title.holdView": {
+    "description": "The name of the editor command \"holdView\" (Zoom), in the command palette, the shortcuts editor and notices that point to it."
+  },
+  "title.toggleCursor": {
+    "description": "The name of the editor command \"toggleCursor\" (Effects), in the command palette, the shortcuts editor and notices that point to it."
+  },
+  "title.toggleClickEffects": {
+    "description": "The name of the editor command \"toggleClickEffects\" (Effects), in the command palette, the shortcuts editor and notices that point to it."
+  },
+  "title.toggleStraighten": {
+    "description": "The name of the editor command \"toggleStraighten\" (Effects), in the command palette, the shortcuts editor and notices that point to it."
+  },
+  "title.toggleMotionBlur": {
+    "description": "The name of the editor command \"toggleMotionBlur\" (Effects), in the command palette, the shortcuts editor and notices that point to it."
+  },
+  "title.toggleKeystrokes": {
+    "description": "The name of the editor command \"toggleKeystrokes\" (Effects), in the command palette, the shortcuts editor and notices that point to it."
+  },
+  "title.toggleWebcam": {
+    "description": "The name of the editor command \"toggleWebcam\" (Effects), in the command palette, the shortcuts editor and notices that point to it."
+  },
+  "title.layoutDefault": {
+    "description": "The name of the editor command \"layoutDefault\" (Camera), in the command palette, the shortcuts editor and notices that point to it."
+  },
+  "title.layoutCameraOnly": {
+    "description": "The name of the editor command \"layoutCameraOnly\" (Camera), in the command palette, the shortcuts editor and notices that point to it."
+  },
+  "title.layoutScreenOnly": {
+    "description": "The name of the editor command \"layoutScreenOnly\" (Camera), in the command palette, the shortcuts editor and notices that point to it."
+  },
+  "title.layoutSideBySide": {
+    "description": "The name of the editor command \"layoutSideBySide\" (Camera), in the command palette, the shortcuts editor and notices that point to it."
+  },
+  "title.layoutCameraLarge": {
+    "description": "The name of the editor command \"layoutCameraLarge\" (Camera), in the command palette, the shortcuts editor and notices that point to it."
+  },
+  "title.directCamera": {
+    "description": "The name of the editor command \"directCamera\" (Camera), in the command palette, the shortcuts editor and notices that point to it."
+  },
+  "title.generateCaptions": {
+    "description": "The name of the editor command \"generateCaptions\" (Captions), in the command palette, the shortcuts editor and notices that point to it."
+  },
+  "title.toggleCaptions": {
+    "description": "The name of the editor command \"toggleCaptions\" (Captions), in the command palette, the shortcuts editor and notices that point to it."
+  },
+  "title.exportCaptions": {
+    "description": "The name of the editor command \"exportCaptions\" (Captions), in the command palette, the shortcuts editor and notices that point to it. The ellipsis says it opens a dialog or asks something first."
+  },
+  "title.captionsGreat": {
+    "description": "The name of the editor command \"captionsGreat\" (Captions), in the command palette, the shortcuts editor and notices that point to it."
+  },
+  "title.captionStyles": {
+    "description": "The name of the editor command \"captionStyles\" (Captions), in the command palette, the shortcuts editor and notices that point to it. The ellipsis says it opens a dialog or asks something first."
+  },
+  "title.captionEmphasis": {
+    "description": "The name of the editor command \"captionEmphasis\" (Captions), in the command palette, the shortcuts editor and notices that point to it."
+  },
+  "title.captionGraphics": {
+    "description": "The name of the editor command \"captionGraphics\" (Captions), in the command palette, the shortcuts editor and notices that point to it."
+  },
+  "title.captionTidy": {
+    "description": "The name of the editor command \"captionTidy\" (Captions), in the command palette, the shortcuts editor and notices that point to it."
+  },
+  "title.captionLanguage": {
+    "description": "The name of the editor command \"captionLanguage\" (Captions), in the command palette, the shortcuts editor and notices that point to it. The ellipsis says it opens a dialog or asks something first."
+  },
+  "title.saveCaptionStyle": {
+    "description": "The name of the editor command \"saveCaptionStyle\" (Captions), in the command palette, the shortcuts editor and notices that point to it."
+  },
+  "title.showStyle": {
+    "description": "The name of the editor command \"showStyle\" (Panels), in the command palette, the shortcuts editor and notices that point to it."
+  },
+  "title.showCursor": {
+    "description": "The name of the editor command \"showCursor\" (Panels), in the command palette, the shortcuts editor and notices that point to it."
+  },
+  "title.showZoom": {
+    "description": "The name of the editor command \"showZoom\" (Panels), in the command palette, the shortcuts editor and notices that point to it."
+  },
+  "title.showClip": {
+    "description": "The name of the editor command \"showClip\" (Panels), in the command palette, the shortcuts editor and notices that point to it."
+  },
+  "title.showText": {
+    "description": "The name of the editor command \"showText\" (Panels), in the command palette, the shortcuts editor and notices that point to it."
+  },
+  "title.showCaptions": {
+    "description": "The name of the editor command \"showCaptions\" (Panels), in the command palette, the shortcuts editor and notices that point to it."
+  },
+  "title.showShapes": {
+    "description": "The name of the editor command \"showShapes\" (Panels), in the command palette, the shortcuts editor and notices that point to it."
+  },
+  "title.showEffects": {
+    "description": "The name of the editor command \"showEffects\" (Panels), in the command palette, the shortcuts editor and notices that point to it."
+  },
+  "title.showCamera": {
+    "description": "The name of the editor command \"showCamera\" (Panels), in the command palette, the shortcuts editor and notices that point to it."
+  },
+  "title.showAudio": {
+    "description": "The name of the editor command \"showAudio\" (Panels), in the command palette, the shortcuts editor and notices that point to it."
+  },
+  "title.timelineZoomIn": {
+    "description": "The name of the editor command \"timelineZoomIn\" (Timeline), in the command palette, the shortcuts editor and notices that point to it."
+  },
+  "title.timelineZoomOut": {
+    "description": "The name of the editor command \"timelineZoomOut\" (Timeline), in the command palette, the shortcuts editor and notices that point to it."
+  },
+  "title.timelineFit": {
+    "description": "The name of the editor command \"timelineFit\" (Timeline), in the command palette, the shortcuts editor and notices that point to it."
+  },
+  "title.toggleWaveform": {
+    "description": "The name of the editor command \"toggleWaveform\" (Timeline), in the command palette, the shortcuts editor and notices that point to it."
+  },
+  "title.toggleSnapping": {
+    "description": "The name of the editor command \"toggleSnapping\" (Timeline), in the command palette, the shortcuts editor and notices that point to it."
+  },
+  "title.makeVertical": {
+    "description": "The name of the editor command \"makeVertical\" (General), in the command palette, the shortcuts editor and notices that point to it."
+  },
+  "title.makeSquare": {
+    "description": "The name of the editor command \"makeSquare\" (General), in the command palette, the shortcuts editor and notices that point to it."
+  },
+  "title.duplicateVideo": {
+    "description": "The name of the editor command \"duplicateVideo\" (General), in the command palette, the shortcuts editor and notices that point to it."
+  },
+  "title.toggleSafeZones": {
+    "description": "The name of the editor command \"toggleSafeZones\" (General), in the command palette, the shortcuts editor and notices that point to it."
+  },
+  "title.export": {
+    "description": "The name of the editor command \"export\" (General), in the command palette, the shortcuts editor and notices that point to it. The ellipsis says it opens a dialog or asks something first."
+  },
+  "title.shortcuts": {
+    "description": "The name of the editor command \"shortcuts\" (General), in the command palette, the shortcuts editor and notices that point to it. The ellipsis says it opens a dialog or asks something first."
+  },
+  "title.about": {
+    "description": "The name of the editor command \"about\" (General), in the command palette, the shortcuts editor and notices that point to it.",
+    "dnt": [
+      "Flown"
+    ]
+  },
+  "title.commandPalette": {
+    "description": "The name of the editor command \"commandPalette\" (General), in the command palette, the shortcuts editor and notices that point to it."
+  },
+  "title.aiCleanup": {
+    "description": "The name of the editor command \"aiCleanup\" (Captions), in the command palette, the shortcuts editor and notices that point to it.",
+    "dnt": [
+      "AI"
+    ]
+  },
+  "title.aiTranslate": {
+    "description": "The name of the editor command \"aiTranslate\" (Captions), in the command palette, the shortcuts editor and notices that point to it. The ellipsis says it opens a dialog or asks something first.",
+    "dnt": [
+      "AI"
+    ]
+  },
+  "title.aiChapters": {
+    "description": "The name of the editor command \"aiChapters\" (Captions), in the command palette, the shortcuts editor and notices that point to it.",
+    "dnt": [
+      "AI"
+    ]
+  },
+  "title.aiTitle": {
+    "description": "The name of the editor command \"aiTitle\" (Captions), in the command palette, the shortcuts editor and notices that point to it.",
+    "dnt": [
+      "AI"
+    ]
+  },
+  "title.aiSummary": {
+    "description": "The name of the editor command \"aiSummary\" (Captions), in the command palette, the shortcuts editor and notices that point to it.",
+    "dnt": [
+      "AI"
+    ]
+  },
+  "title.publishPack": {
+    "description": "The name of the editor command \"publishPack\" (Publish), in the command palette, the shortcuts editor and notices that point to it. The ellipsis says it opens a dialog or asks something first."
+  },
+  "title.publishYoutube": {
+    "description": "The name of the editor command \"publishYoutube\" (Publish), in the command palette, the shortcuts editor and notices that point to it.",
+    "dnt": [
+      "YouTube"
+    ]
+  },
+  "title.publishLinkedin": {
+    "description": "The name of the editor command \"publishLinkedin\" (Publish), in the command palette, the shortcuts editor and notices that point to it.",
+    "dnt": [
+      "LinkedIn"
+    ]
+  },
+  "title.publishX": {
+    "description": "The name of the editor command \"publishX\" (Publish), in the command palette, the shortcuts editor and notices that point to it.",
+    "dnt": [
+      "X"
+    ]
+  },
+  "title.publishArticle": {
+    "description": "The name of the editor command \"publishArticle\" (Publish), in the command palette, the shortcuts editor and notices that point to it."
+  },
+  "title.publishReleaseNotes": {
+    "description": "The name of the editor command \"publishReleaseNotes\" (Publish), in the command palette, the shortcuts editor and notices that point to it."
+  },
+  "title.language": {
+    "description": "The name of the editor command \"language\" (General), in the command palette, the shortcuts editor and notices that point to it. The ellipsis says it opens a dialog or asks something first."
+  },
+  "title.nudgeBack": {
+    "description": "The name of the editor command \"nudgeBack\" (Edit), in the command palette, the shortcuts editor and notices that point to it."
+  },
+  "title.nudgeForward": {
+    "description": "The name of the editor command \"nudgeForward\" (Edit), in the command palette, the shortcuts editor and notices that point to it."
+  },
+  "title.nudgeBackTen": {
+    "description": "The name of the editor command \"nudgeBackTen\" (Edit), in the command palette, the shortcuts editor and notices that point to it."
+  },
+  "title.nudgeForwardTen": {
+    "description": "The name of the editor command \"nudgeForwardTen\" (Edit), in the command palette, the shortcuts editor and notices that point to it."
+  },
+  "title.toggleFilmstrip": {
+    "description": "The name of the editor command \"toggleFilmstrip\" (Timeline), in the command palette, the shortcuts editor and notices that point to it."
+  },
+  "title.saveVersion": {
+    "description": "The name of the editor command \"saveVersion\" (General), in the command palette, the shortcuts editor and notices that point to it. The ellipsis says it opens a dialog or asks something first."
+  },
+  "title.versions": {
+    "description": "The name of the editor command \"versions\" (General), in the command palette, the shortcuts editor and notices that point to it. The ellipsis says it opens a dialog or asks something first."
+  },
+  "title.smoothAllCuts": {
+    "description": "The name of the editor command \"smoothAllCuts\" (Playback), in the command palette, the shortcuts editor and notices that point to it."
+  },
+  "title.hardCutsEverywhere": {
+    "description": "The name of the editor command \"hardCutsEverywhere\" (Playback), in the command palette, the shortcuts editor and notices that point to it."
+  },
+  "title.nextCut": {
+    "description": "The name of the editor command \"nextCut\" (Playback), in the command palette, the shortcuts editor and notices that point to it."
+  },
+  "title.previousCut": {
+    "description": "The name of the editor command \"previousCut\" (Playback), in the command palette, the shortcuts editor and notices that point to it."
+  },
+  "title.playCut": {
+    "description": "The name of the editor command \"playCut\" (Playback), in the command palette, the shortcuts editor and notices that point to it."
+  },
+  "title.addMagnifier": {
+    "description": "The name of the editor command \"addMagnifier\" (Add), in the command palette, the shortcuts editor and notices that point to it."
+  },
+  "title.addMagnifierCursor": {
+    "description": "The name of the editor command \"addMagnifierCursor\" (Add), in the command palette, the shortcuts editor and notices that point to it."
+  },
+  "title.addStepBadge": {
+    "description": "The name of the editor command \"addStepBadge\" (Add), in the command palette, the shortcuts editor and notices that point to it."
+  },
+  "title.addSpeechBubble": {
+    "description": "The name of the editor command \"addSpeechBubble\" (Add), in the command palette, the shortcuts editor and notices that point to it."
+  },
+  "title.toggleProgressBar": {
+    "description": "The name of the editor command \"toggleProgressBar\" (Effects), in the command palette, the shortcuts editor and notices that point to it."
+  },
+  "title.compareColour": {
+    "description": "The name of the editor command \"compareColour\" (Effects), in the command palette, the shortcuts editor and notices that point to it."
+  },
+  "title.autoColour": {
+    "description": "The name of the editor command \"autoColour\" (Camera), in the command palette, the shortcuts editor and notices that point to it."
+  },
+  "title.musicLibrary": {
+    "description": "The name of the editor command \"musicLibrary\" (Panels), in the command palette, the shortcuts editor and notices that point to it. The ellipsis says it opens a dialog or asks something first."
+  },
+  "title.guide": {
+    "description": "The name of the editor command \"guide\" (Publish), in the command palette, the shortcuts editor and notices that point to it. The ellipsis says it opens a dialog or asks something first."
+  },
+  "title.demo": {
+    "description": "The name of the editor command \"demo\" (Publish), in the command palette, the shortcuts editor and notices that point to it. The ellipsis says it opens a dialog or asks something first."
+  },
+  "title.bugReport": {
+    "description": "The name of the editor command \"bugReport\" (Publish), in the command palette, the shortcuts editor and notices that point to it. The ellipsis says it opens a dialog or asks something first."
+  },
+  "title.findChapters": {
+    "description": "The name of the editor command \"findChapters\" (Add), in the command palette, the shortcuts editor and notices that point to it."
+  },
+  "title.shortClips": {
+    "description": "The name of the editor command \"shortClips\" (General), in the command palette, the shortcuts editor and notices that point to it. The ellipsis says it opens a dialog or asks something first."
+  },
+  "title.shortVersion": {
+    "description": "The name of the editor command \"shortVersion\" (General), in the command palette, the shortcuts editor and notices that point to it. The ellipsis says it opens a dialog or asks something first."
+  },
+  "title.localAi": {
+    "description": "The name of the editor command \"localAi\" (General), in the command palette, the shortcuts editor and notices that point to it. The ellipsis says it opens a dialog or asks something first.",
+    "dnt": [
+      "AI"
+    ]
+  },
+  "title.aiService": {
+    "description": "The name of the editor command \"aiService\" (General), in the command palette, the shortcuts editor and notices that point to it. The ellipsis says it opens a dialog or asks something first.",
+    "dnt": [
+      "AI"
+    ]
+  },
+  "category.playback": {
+    "description": "A group of editor commands: the heading in the command palette and the shortcuts editor, and the tag beside a search result."
+  },
+  "category.edit": {
+    "description": "A group of editor commands: the heading in the command palette and the shortcuts editor, and the tag beside a search result."
+  },
+  "category.add": {
+    "description": "A group of editor commands: the heading in the command palette and the shortcuts editor, and the tag beside a search result."
+  },
+  "category.zoom": {
+    "description": "A group of editor commands: the heading in the command palette and the shortcuts editor, and the tag beside a search result."
+  },
+  "category.effects": {
+    "description": "A group of editor commands: the heading in the command palette and the shortcuts editor, and the tag beside a search result."
+  },
+  "category.camera": {
+    "description": "A group of editor commands: the heading in the command palette and the shortcuts editor, and the tag beside a search result."
+  },
+  "category.captions": {
+    "description": "A group of editor commands: the heading in the command palette and the shortcuts editor, and the tag beside a search result."
+  },
+  "category.panels": {
+    "description": "A group of editor commands: the heading in the command palette and the shortcuts editor, and the tag beside a search result."
+  },
+  "category.timeline": {
+    "description": "A group of editor commands: the heading in the command palette and the shortcuts editor, and the tag beside a search result."
+  },
+  "category.general": {
+    "description": "A group of editor commands: the heading in the command palette and the shortcuts editor, and the tag beside a search result."
+  },
+  "category.publish": {
+    "description": "A group of editor commands: the heading in the command palette and the shortcuts editor, and the tag beside a search result."
+  },
+  "palette.recent": {
+    "description": "Command palette: the heading of the commands used last, above the categories."
+  },
+  "palette.label": {
+    "description": "Command palette: the dialog's accessible name."
+  },
+  "palette.search": {
+    "description": "Command palette: the accessible name of the search field."
+  },
+  "palette.placeholder": {
+    "description": "Command palette: the placeholder of the search field."
+  },
+  "palette.list": {
+    "description": "Command palette: the accessible name of the list of commands."
+  },
+  "palette.results": {
+    "description": "Command palette: the accessible name of the group of commands that match what was typed."
+  },
+  "palette.on": {
+    "description": "Command palette: beside a command that turns a setting on or off, while it is on (its pair is common.state.off)."
+  },
+  "palette.noMatch": {
+    "description": "Command palette: shown when nothing matches; {query} is what the user typed.",
+    "user": [
+      "query"
+    ]
+  },
+  "palette.help": {
+    "description": "Command palette: the keys at the foot of the palette. The keycaps inside <kbd> stay as they are; the words say what each key does.",
+    "dnt": [
+      "↑",
+      "↓",
+      "Enter",
+      "Esc"
+    ]
+  }
+}

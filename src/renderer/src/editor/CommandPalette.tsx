@@ -1,5 +1,8 @@
 import { Fragment, useId, useLayoutEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react'
-import { COMMAND_CATEGORIES, pushRecent, sanitizeRecent, searchCommands, type CommandId, type CommandInfo } from '../../../shared/editor/commands'
+import { categoryLabel, COMMAND_CATEGORIES, commandTitle, pushRecent, sanitizeRecent, searchCommands, type CommandId, type CommandInfo } from '../../../shared/editor/commands'
+import { ariaKeys } from '../../../shared/editor/shortcuts'
+import { t } from '../../../shared/i18n/t'
+import { T } from '../i18n/T'
 import { useModalFocus } from './modalFocus'
 import { ShortcutKeys } from './ShortcutKeys'
 import './commands.css'
@@ -93,8 +96,8 @@ export function CommandPalette({ entries, onRun, onClose }: { entries: PaletteEn
     const recentRows = rows(ranked.filter((r) => r.recent))
     const rest = ranked.filter((r) => !r.recent)
     return [
-      ...(recentRows.length ? [{ label: 'Recently used' as string | null, rows: recentRows }] : []),
-      ...COMMAND_CATEGORIES.map((c) => ({ label: c as string | null, rows: rows(rest.filter((r) => r.command.category === c)) })).filter((g) => g.rows.length)
+      ...(recentRows.length ? [{ label: t('commands.palette.recent') as string | null, rows: recentRows }] : []),
+      ...COMMAND_CATEGORIES.map((c) => ({ label: categoryLabel(c) as string | null, rows: rows(rest.filter((r) => r.command.category === c)) })).filter((g) => g.rows.length)
     ]
   }, [entries, byId, query, recent])
   const flat = useMemo(() => groups.flatMap((g) => g.rows), [groups])
@@ -156,19 +159,19 @@ export function CommandPalette({ entries, onRun, onClose }: { entries: PaletteEn
 
   return (
     <div className="overlay palette-backdrop" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
-      <div className="command-palette" role="dialog" aria-modal="true" aria-label="Command palette" ref={boxRef}>
+      <div className="command-palette" role="dialog" aria-modal="true" aria-label={t('commands.palette.label')} ref={boxRef}>
         <div className="palette-search">
           <SearchIcon />
           <input
             autoFocus
             type="text"
             role="combobox"
-            aria-label="Search commands"
+            aria-label={t('commands.palette.search')}
             aria-expanded="true"
             aria-controls={`${baseId}-list`}
             aria-autocomplete="list"
             aria-activedescendant={index >= 0 ? optionId(index) : undefined}
-            placeholder="Type a command…"
+            placeholder={t('commands.palette.placeholder')}
             spellCheck={false}
             value={query}
             onChange={(e) => {
@@ -179,9 +182,9 @@ export function CommandPalette({ entries, onRun, onClose }: { entries: PaletteEn
             onKeyDown={onKeyDown}
           />
         </div>
-        <div className="palette-list" id={`${baseId}-list`} role="listbox" aria-label="Commands">
+        <div className="palette-list" id={`${baseId}-list`} role="listbox" aria-label={t('commands.palette.list')}>
           {groups.map((g, gi) => (
-            <div key={g.label ?? gi} role="group" aria-labelledby={g.label ? `${baseId}-g${gi}` : undefined} aria-label={g.label ? undefined : 'Results'}>
+            <div key={g.label ?? gi} role="group" aria-labelledby={g.label ? `${baseId}-g${gi}` : undefined} aria-label={g.label ? undefined : t('commands.palette.results')}>
               {g.label && (
                 <div className="palette-group" id={`${baseId}-g${gi}`} role="presentation">
                   {g.label}
@@ -197,6 +200,8 @@ export function CommandPalette({ entries, onRun, onClose }: { entries: PaletteEn
                     role="option"
                     aria-selected={i === index}
                     aria-disabled={unavailable ? true : undefined}
+                    // The row shows its shortcut as keycaps but names it nowhere a screen reader reads (§14.2).
+                    aria-keyshortcuts={ariaKeys(shortcuts)}
                     data-command={info.id}
                     className={`palette-item ${i === index ? 'active' : ''} ${unavailable ? 'unavailable' : ''}`}
                     title={unavailable ?? undefined}
@@ -206,22 +211,25 @@ export function CommandPalette({ entries, onRun, onClose }: { entries: PaletteEn
                     onClick={() => run(row)}
                   >
                     <span className="palette-title">
-                      <Highlighted text={info.title} indices={row.indices} />
+                      <Highlighted text={commandTitle(info).normalize('NFC')} indices={row.indices} />
                     </span>
-                    {query.trim() !== '' && <span className="palette-category">{info.category}</span>}
-                    {on !== undefined && <span className={`palette-state ${on ? 'on' : ''}`}>{on ? 'On' : 'Off'}</span>}
+                    {query.trim() !== '' && <span className="palette-category">{categoryLabel(info.category)}</span>}
+                    {on !== undefined && <span className={`palette-state ${on ? 'on' : ''}`}>{on ? t('commands.palette.on') : t('common.state.off')}</span>}
                     {shortcuts[0] && <ShortcutKeys accelerator={shortcuts[0]} />}
                   </div>
                 )
               })}
             </div>
           ))}
-          {flat.length === 0 && <div className="palette-empty">No commands match “{query.trim()}”</div>}
+          {flat.length === 0 && (
+            <div className="palette-empty">
+              <T k="commands.palette.noMatch" values={{ query: query.trim() }} />
+            </div>
+          )}
         </div>
         <footer className="palette-foot">
           <span className="palette-help">
-            <kbd>↑</kbd>
-            <kbd>↓</kbd> move <kbd>Enter</kbd> run <kbd>Esc</kbd> close
+            <T k="commands.palette.help" tags={{ kbd: (keys) => <kbd>{keys}</kbd> }} />
           </span>
           <span className="palette-status" role="status" aria-live="polite">
             {status}

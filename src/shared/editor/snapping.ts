@@ -16,6 +16,7 @@ import type { Chapter, Clip, Project } from '../types'
 import { timelineGaps } from './clips'
 import { shapeLabel } from './shapes'
 import { fmt } from '../i18n/fmt'
+import { t } from '../i18n/t'
 
 export const SNAP = {
   /** A target this close to a dragged edge (screen px) catches it. */
@@ -119,16 +120,16 @@ export function projectSnapSegments(p: Project, opts: { layouts: boolean }): Sna
   const add = (prefix: string, label: string, list: readonly { id: string; start: number; end: number }[] | undefined): void => {
     for (const s of list ?? []) out.push({ owner: `${prefix}:${s.id}`, label, start: s.start, end: s.end })
   }
-  add('zoom', 'Zoom', p.zooms)
-  add('annotation', 'Text', p.annotations)
+  add('zoom', t('common.label.zoom'), p.zooms)
+  add('annotation', t('common.label.text'), p.annotations)
   for (const s of p.shapes ?? []) out.push({ owner: `shape:${s.id}`, label: shapeLabel(s.kind), start: s.start, end: s.end })
   // A magnifier is named as on its block ("Magnifier, 2 times", editing polish §2.2).
   for (const s of p.spotlights ?? []) out.push({ owner: `spotlight:${s.id}`, label: spotlightName(s), start: s.start, end: s.end })
-  add('overlay', 'Image', p.overlays)
-  add('title', 'Title card', p.titles)
-  add('graphic', 'Pop-up', p.graphics)
-  add('caption', 'Caption', p.transcript?.segments)
-  if (opts.layouts) add('layout', 'Camera layout', p.layouts)
+  add('overlay', t('timeline.snap.image'), p.overlays)
+  add('title', t('timeline.snap.titleCard'), p.titles)
+  add('graphic', t('timeline.snap.popUp'), p.graphics)
+  add('caption', t('timeline.snap.caption'), p.transcript?.segments)
+  if (opts.layouts) add('layout', t('timeline.snap.cameraLayout'), p.layouts)
   return out
 }
 
@@ -171,12 +172,12 @@ function clipTargets(clips: readonly Clip[], duration: number): SnapTarget[] {
     cutEdges.add(g.start)
     cutEdges.add(g.end)
   }
-  const inner = (t: number): string => (cutEdges.has(t) ? 'Cut' : 'Split')
+  const inner = (at: number): string => (cutEdges.has(at) ? t('timeline.snap.cut') : t('timeline.snap.split'))
   const last = clips.length - 1
   const out: SnapTarget[] = []
   clips.forEach((c, i) => {
-    out.push(i === 0 ? { t: c.start, kind: 'clip', label: 'Trim', owner: 'trim:start' } : { t: c.start, kind: 'clip', label: inner(c.start), owner: 'clips' })
-    out.push(i === last ? { t: c.end, kind: 'clip', label: 'Trim', owner: 'trim:end' } : { t: c.end, kind: 'clip', label: inner(c.end), owner: 'clips' })
+    out.push(i === 0 ? { t: c.start, kind: 'clip', label: t('timeline.snap.trim'), owner: 'trim:start' } : { t: c.start, kind: 'clip', label: inner(c.start), owner: 'clips' })
+    out.push(i === last ? { t: c.end, kind: 'clip', label: t('timeline.snap.trim'), owner: 'trim:end' } : { t: c.end, kind: 'clip', label: inner(c.end), owner: 'clips' })
   })
   return out.filter((x) => x.t > 0 && x.t < duration)
 }
@@ -188,18 +189,24 @@ const excluded = (x: SnapTarget, exclude: readonly SnapExclude[]): boolean =>
 export function buildSnapIndex(src: SnapSources, exclude: readonly SnapExclude[] = []): SnapIndex {
   const { duration } = src
   const all: SnapTarget[] = [
-    { t: 0, kind: 'bound', label: 'Start' },
-    { t: duration, kind: 'bound', label: 'End' },
+    { t: 0, kind: 'bound', label: t('timeline.snap.start') },
+    { t: duration, kind: 'bound', label: t('timeline.snap.end') },
     ...clipTargets(src.clips, duration),
-    ...src.freezes.map((t): SnapTarget => ({ t, kind: 'freeze', label: 'Freeze frame' })),
-    ...src.chapters.map((c): SnapTarget => ({ t: c.t, kind: 'chapter', label: c.title ? `Chapter · ${c.title}` : 'Chapter', owner: `chapter:${c.id}`, edge: 'at' })),
-    ...src.clicks.map((t): SnapTarget => ({ t, kind: 'click', label: 'Click' })),
+    ...src.freezes.map((at): SnapTarget => ({ t: at, kind: 'freeze', label: t('timeline.snap.freeze') })),
+    ...src.chapters.map((c): SnapTarget => ({
+      t: c.t,
+      kind: 'chapter',
+      label: c.title ? t('timeline.snap.chapterTitled', { title: c.title }) : t('timeline.snap.chapter'),
+      owner: `chapter:${c.id}`,
+      edge: 'at'
+    })),
+    ...src.clicks.map((at): SnapTarget => ({ t: at, kind: 'click', label: t('timeline.snap.click') })),
     ...src.segments.flatMap((s): SnapTarget[] => [
-      { t: s.start, kind: 'segment', label: `${s.label} start`, owner: s.owner, edge: 'start' },
-      { t: s.end, kind: 'segment', label: `${s.label} end`, owner: s.owner, edge: 'end' }
+      { t: s.start, kind: 'segment', label: t('timeline.snap.edgeStart', { name: s.label }), owner: s.owner, edge: 'start' },
+      { t: s.end, kind: 'segment', label: t('timeline.snap.edgeEnd', { name: s.label }), owner: s.owner, edge: 'end' }
     ])
   ]
-  if (src.playhead !== null) all.push({ t: src.playhead, kind: 'playhead', label: 'Playhead' })
+  if (src.playhead !== null) all.push({ t: src.playhead, kind: 'playhead', label: t('timeline.snap.playhead') })
   const kept = all
     .filter((x) => Number.isFinite(x.t) && x.t >= 0 && x.t <= duration && !excluded(x, exclude))
     .sort((a, b) => a.t - b.t || SNAP_PRIORITY[a.kind] - SNAP_PRIORITY[b.kind])

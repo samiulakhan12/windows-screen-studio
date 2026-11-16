@@ -3,6 +3,7 @@ import { withShortcut } from '../../../shared/editor/shortcuts'
 import { planOf, videoDuration, videoTimeAt } from '../../../shared/engine/freeze'
 import { SAFE_ZONES, type SafeChoice, type SafePlatform } from '../../../shared/render/safeZones'
 import { fmt } from '../../../shared/i18n/fmt'
+import { t } from '../../../shared/i18n/t'
 import type { Clip, Freeze } from '../../../shared/types'
 import { Icon } from '../components/Icon'
 import { useEditor } from './context'
@@ -106,10 +107,16 @@ export const Transport = memo(function Transport({ clips, freezes, notice, notic
     <>
       {tall && <SafeZonesLegend />}
       <div className={tall ? 'transport tall' : 'transport'}>
-        <button className="btn round" onClick={onTogglePlay} title={withShortcut(playing ? 'Pause' : 'Play', keymap.play)} aria-label={playing ? 'Pause' : 'Play'} data-playing={playing}>
+        <button
+          className="btn round"
+          onClick={onTogglePlay}
+          title={withShortcut(playing ? t('timeline.transport.pause') : t('common.action.play'), keymap.play)}
+          aria-label={playing ? t('timeline.transport.pause') : t('common.action.play')}
+          data-playing={playing}
+        >
           <Icon name={playing ? 'pause' : 'play'} />
         </button>
-        <span className="timecode" ref={timeRef} title="Position / length of the exported video" />
+        <span className="timecode" ref={timeRef} title={t('timeline.transport.timecode')} />
         <PreviewSpeedControl />
         {tall && <SafeZonesControl />}
         {/* Plain notices are read from the polite live region; an error (role alert) sits beside it, outside it, so it is read once. */}
@@ -120,14 +127,14 @@ export const Transport = memo(function Transport({ clips, freezes, notice, notic
           {notice && noticeAlert && <TransportNotice text={notice} action={noticeAction} alert onHold={onNoticeHold} />}
         </div>
         <div className="tool-group">
-          <button className="btn ghost" onClick={onSplit} title={withShortcut('Split the clip at the playhead', keymap.split)}>
-            <EditorIcon name="split" size={16} /> Split
+          <button className="btn ghost" onClick={onSplit} title={withShortcut(t('timeline.transport.splitTitle'), keymap.split)}>
+            <EditorIcon name="split" size={16} /> {t('timeline.transport.split')}
           </button>
-          <button className="btn ghost" onClick={onAddZoom} title={withShortcut('Add a zoom at the playhead', keymap.addZoom)}>
-            <Icon name="zoom" size={16} /> Zoom
+          <button className="btn ghost" onClick={onAddZoom} title={withShortcut(t('timeline.transport.addZoomTitle'), keymap.addZoom)}>
+            <Icon name="zoom" size={16} /> {t('common.label.zoom')}
           </button>
-          <button className="btn ghost" onClick={onAddText} title={withShortcut('Add text at the playhead', keymap.addText)}>
-            <EditorIcon name="text" size={16} /> Text
+          <button className="btn ghost" onClick={onAddText} title={withShortcut(t('timeline.transport.addTextTitle'), keymap.addText)}>
+            <EditorIcon name="text" size={16} /> {t('common.label.text')}
           </button>
         </div>
       </div>
@@ -135,9 +142,9 @@ export const Transport = memo(function Transport({ clips, freezes, notice, notic
   )
 })
 
-/** The apps of the safe-zone menu, All three first. */
-const PLATFORM_CHOICES: { value: SafeChoice; label: string }[] = [
-  { value: 'all', label: 'All three' },
+/** The apps of the safe-zone menu, All three first (the apps' names stay as they are). */
+const platformChoices = (): { value: SafeChoice; label: string }[] => [
+  { value: 'all', label: t('timeline.safeZones.allThree') },
   ...(Object.keys(SAFE_ZONES) as SafePlatform[]).map((p) => ({ value: p, label: SAFE_ZONES[p].name }))
 ]
 
@@ -167,14 +174,14 @@ function SafeZonesControl(): JSX.Element {
         data-testid="safe-zones-toggle"
         aria-pressed={on}
         onClick={toggleSafeZones}
-        title={withShortcut('Show where TikTok, Reels and Shorts put their buttons and captions', keymap.toggleSafeZones)}
+        title={withShortcut(t('timeline.safeZones.title'), keymap.toggleSafeZones)}
       >
-        <PhoneIcon /> Safe zones
+        <PhoneIcon /> {t('timeline.safeZones.button')}
       </button>
       {on && (
         <select
           data-testid="safe-zones-platform"
-          aria-label="Safe zones of"
+          aria-label={t('timeline.safeZones.of')}
           value={choice}
           onPointerDown={() => (byPointer.current = true)}
           onKeyDown={() => (byPointer.current = false)}
@@ -185,7 +192,7 @@ function SafeZonesControl(): JSX.Element {
             if (byPointer.current) e.currentTarget.blur()
           }}
         >
-          {PLATFORM_CHOICES.map((c) => (
+          {platformChoices().map((c) => (
             <option key={c.value} value={c.value}>
               {c.label}
             </option>
@@ -202,7 +209,7 @@ function SafeZonesLegend(): JSX.Element | null {
   if (choice === 'off') return null
   return (
     <p className="safe-zones-legend" data-testid="safe-zones-legend">
-      Shaded parts are covered by the apps' buttons and captions. Shown only here, never exported. The apps move them from time to time, so leave a little room.
+      {t('timeline.safeZones.legend')}
     </p>
   )
 }

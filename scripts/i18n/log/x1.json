@@ -1,0 +1,4823 @@
+[
+  {
+    "key": "commands.palette.recent",
+    "file": "src/renderer/src/editor/CommandPalette.tsx",
+    "line": 99,
+    "english": "Recently used",
+    "sample": {}
+  },
+  {
+    "key": "commands.palette.label",
+    "file": "src/renderer/src/editor/CommandPalette.tsx",
+    "line": 162,
+    "english": "Command palette",
+    "sample": {}
+  },
+  {
+    "key": "commands.palette.search",
+    "file": "src/renderer/src/editor/CommandPalette.tsx",
+    "line": 169,
+    "english": "Search commands",
+    "sample": {}
+  },
+  {
+    "key": "commands.palette.placeholder",
+    "file": "src/renderer/src/editor/CommandPalette.tsx",
+    "line": 174,
+    "english": "Type a command…",
+    "sample": {}
+  },
+  {
+    "key": "commands.palette.list",
+    "file": "src/renderer/src/editor/CommandPalette.tsx",
+    "line": 185,
+    "english": "Commands",
+    "sample": {}
+  },
+  {
+    "key": "commands.palette.results",
+    "file": "src/renderer/src/editor/CommandPalette.tsx",
+    "line": 187,
+    "english": "Results",
+    "sample": {}
+  },
+  {
+    "key": "commands.palette.on",
+    "file": "src/renderer/src/editor/CommandPalette.tsx",
+    "line": 217,
+    "english": "On",
+    "sample": {}
+  },
+  {
+    "key": "commands.palette.noMatch",
+    "file": "src/renderer/src/editor/CommandPalette.tsx",
+    "line": 226,
+    "english": "No commands match “«query»”",
+    "sample": {
+      "query": "«query»"
+    }
+  },
+  {
+    "key": "commands.palette.help",
+    "file": "src/renderer/src/editor/CommandPalette.tsx",
+    "line": 232,
+    "english": "↑↓ move Enter run Esc close",
+    "sample": {}
+  },
+  {
+    "key": "commands.title.play",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Play / pause",
+    "sample": {}
+  },
+  {
+    "key": "commands.title.goToStart",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Go to start",
+    "sample": {}
+  },
+  {
+    "key": "commands.title.goToEnd",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Go to end",
+    "sample": {}
+  },
+  {
+    "key": "commands.title.stepBack",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Step back one frame",
+    "sample": {}
+  },
+  {
+    "key": "commands.title.stepForward",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Step forward one frame",
+    "sample": {}
+  },
+  {
+    "key": "commands.title.jumpBack",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Back one second",
+    "sample": {}
+  },
+  {
+    "key": "commands.title.jumpForward",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Forward one second",
+    "sample": {}
+  },
+  {
+    "key": "commands.title.nextChapter",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Go to next chapter",
+    "sample": {}
+  },
+  {
+    "key": "commands.title.prevChapter",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Go to previous chapter",
+    "sample": {}
+  },
+  {
+    "key": "commands.title.shuttleReverse",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Play backwards (again: faster)",
+    "sample": {}
+  },
+  {
+    "key": "commands.title.shuttlePause",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Pause",
+    "sample": {}
+  },
+  {
+    "key": "commands.title.shuttleForward",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Play forward (again: faster)",
+    "sample": {}
+  },
+  {
+    "key": "commands.title.previewSpeedUp",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Faster preview speed",
+    "sample": {}
+  },
+  {
+    "key": "commands.title.previewSpeedDown",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Slower preview speed",
+    "sample": {}
+  },
+  {
+    "key": "commands.title.undo",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Undo",
+    "sample": {}
+  },
+  {
+    "key": "commands.title.redo",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Redo",
+    "sample": {}
+  },
+  {
+    "key": "commands.title.split",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Split clip at playhead",
+    "sample": {}
+  },
+  {
+    "key": "commands.title.deleteSelection",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Delete selection",
+    "sample": {}
+  },
+  {
+    "key": "commands.title.cutRange",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Cut selected range",
+    "sample": {}
+  },
+  {
+    "key": "commands.title.restoreAll",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Restore the whole recording",
+    "sample": {}
+  },
+  {
+    "key": "commands.title.smartSpeed",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Smart speed: find idle parts",
+    "sample": {}
+  },
+  {
+    "key": "commands.title.polish",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Polish in one click…",
+    "sample": {}
+  },
+  {
+    "key": "commands.title.review",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Review automatic changes…",
+    "sample": {}
+  },
+  {
+    "key": "commands.title.straightenRange",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Straighten cursor in selected range",
+    "sample": {}
+  },
+  {
+    "key": "commands.title.recordedPathRange",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Keep recorded cursor path in selected range",
+    "sample": {}
+  },
+  {
+    "key": "commands.title.cropRecording",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Crop the recording…",
+    "sample": {}
+  },
+  {
+    "key": "commands.title.resetCrop",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Show the whole recording (reset crop)",
+    "sample": {}
+  },
+  {
+    "key": "commands.title.cropTaskbar",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Crop out the taskbar",
+    "sample": {}
+  },
+  {
+    "key": "commands.title.toggleFreezeSound",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Freeze frame: pause or keep the sound",
+    "sample": {}
+  },
+  {
+    "key": "commands.title.selectAll",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Select all items on the track (again: every item)",
+    "sample": {}
+  },
+  {
+    "key": "commands.title.copyItems",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Copy selected items",
+    "sample": {}
+  },
+  {
+    "key": "commands.title.cutItems",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Cut selected items",
+    "sample": {}
+  },
+  {
+    "key": "commands.title.pasteItems",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Paste items at playhead",
+    "sample": {}
+  },
+  {
+    "key": "commands.title.duplicateItems",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Duplicate selected items",
+    "sample": {}
+  },
+  {
+    "key": "commands.title.copyLook",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Copy look of the selected item",
+    "sample": {}
+  },
+  {
+    "key": "commands.title.pasteLook",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Paste look onto selected items",
+    "sample": {}
+  },
+  {
+    "key": "commands.title.addZoom",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Add zoom at playhead",
+    "sample": {}
+  },
+  {
+    "key": "commands.title.addText",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Add text at playhead",
+    "sample": {}
+  },
+  {
+    "key": "commands.title.addArrow",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Add arrow",
+    "sample": {}
+  },
+  {
+    "key": "commands.title.addLine",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Add line",
+    "sample": {}
+  },
+  {
+    "key": "commands.title.addRect",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Add rectangle",
+    "sample": {}
+  },
+  {
+    "key": "commands.title.addEllipse",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Add ellipse",
+    "sample": {}
+  },
+  {
+    "key": "commands.title.addHighlight",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Add highlight",
+    "sample": {}
+  },
+  {
+    "key": "commands.title.addBlur",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Add blur",
+    "sample": {}
+  },
+  {
+    "key": "commands.title.addPixelate",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Add pixelate",
+    "sample": {}
+  },
+  {
+    "key": "commands.title.addSpotlight",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Add spotlight",
+    "sample": {}
+  },
+  {
+    "key": "commands.title.addCursorSpotlight",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Add cursor spotlight",
+    "sample": {}
+  },
+  {
+    "key": "commands.title.addTitle",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Add title card at playhead",
+    "sample": {}
+  },
+  {
+    "key": "commands.title.addChapter",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Add chapter at playhead",
+    "sample": {}
+  },
+  {
+    "key": "commands.title.freezeFrame",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Freeze frame at playhead",
+    "sample": {}
+  },
+  {
+    "key": "commands.title.zoomLevel0",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Pull back selected zoom (0.75×)",
+    "sample": {}
+  },
+  {
+    "key": "commands.title.zoomLevel1",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Zoom level 1.25×",
+    "sample": {}
+  },
+  {
+    "key": "commands.title.zoomLevel2",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Zoom level 1.5×",
+    "sample": {}
+  },
+  {
+    "key": "commands.title.zoomLevel3",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Zoom level 2×",
+    "sample": {}
+  },
+  {
+    "key": "commands.title.zoomLevel4",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Zoom level 3×",
+    "sample": {}
+  },
+  {
+    "key": "commands.title.toggleClickAtPlayhead",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Ignore or use the click at the playhead",
+    "sample": {}
+  },
+  {
+    "key": "commands.title.findStrayClicks",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Find stray clicks",
+    "sample": {}
+  },
+  {
+    "key": "commands.title.useAllClicks",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Use all ignored clicks again",
+    "sample": {}
+  },
+  {
+    "key": "commands.title.toggleFollow",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Follow the action",
+    "sample": {}
+  },
+  {
+    "key": "commands.title.holdView",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Hold the view here",
+    "sample": {}
+  },
+  {
+    "key": "commands.title.toggleCursor",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Smooth cursor",
+    "sample": {}
+  },
+  {
+    "key": "commands.title.toggleClickEffects",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Click effects",
+    "sample": {}
+  },
+  {
+    "key": "commands.title.toggleStraighten",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Straighten cursor moves",
+    "sample": {}
+  },
+  {
+    "key": "commands.title.toggleMotionBlur",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Motion blur",
+    "sample": {}
+  },
+  {
+    "key": "commands.title.toggleKeystrokes",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Keystroke overlay",
+    "sample": {}
+  },
+  {
+    "key": "commands.title.toggleWebcam",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Camera bubble",
+    "sample": {}
+  },
+  {
+    "key": "commands.title.layoutDefault",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Camera layout: screen with camera bubble",
+    "sample": {}
+  },
+  {
+    "key": "commands.title.layoutCameraOnly",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Camera layout: camera only",
+    "sample": {}
+  },
+  {
+    "key": "commands.title.layoutScreenOnly",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Camera layout: screen only",
+    "sample": {}
+  },
+  {
+    "key": "commands.title.layoutSideBySide",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Camera layout: side by side",
+    "sample": {}
+  },
+  {
+    "key": "commands.title.layoutCameraLarge",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Camera layout: large camera",
+    "sample": {}
+  },
+  {
+    "key": "commands.title.directCamera",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Direct the camera automatically",
+    "sample": {}
+  },
+  {
+    "key": "commands.title.generateCaptions",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Generate captions",
+    "sample": {}
+  },
+  {
+    "key": "commands.title.toggleCaptions",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Show or hide captions",
+    "sample": {}
+  },
+  {
+    "key": "commands.title.exportCaptions",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Export captions…",
+    "sample": {}
+  },
+  {
+    "key": "commands.title.captionsGreat",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Make my captions great",
+    "sample": {}
+  },
+  {
+    "key": "commands.title.captionStyles",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Caption styles…",
+    "sample": {}
+  },
+  {
+    "key": "commands.title.captionEmphasis",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Find important words",
+    "sample": {}
+  },
+  {
+    "key": "commands.title.captionGraphics",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Add pop-ups from captions",
+    "sample": {}
+  },
+  {
+    "key": "commands.title.captionTidy",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Tidy captions",
+    "sample": {}
+  },
+  {
+    "key": "commands.title.captionLanguage",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Add a caption language…",
+    "sample": {}
+  },
+  {
+    "key": "commands.title.saveCaptionStyle",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Save caption style as mine",
+    "sample": {}
+  },
+  {
+    "key": "commands.title.showStyle",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Open Style settings",
+    "sample": {}
+  },
+  {
+    "key": "commands.title.showCursor",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Open Cursor settings",
+    "sample": {}
+  },
+  {
+    "key": "commands.title.showZoom",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Open Zoom settings",
+    "sample": {}
+  },
+  {
+    "key": "commands.title.showClip",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Open Clip settings",
+    "sample": {}
+  },
+  {
+    "key": "commands.title.showText",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Open Text settings",
+    "sample": {}
+  },
+  {
+    "key": "commands.title.showCaptions",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Open Captions settings",
+    "sample": {}
+  },
+  {
+    "key": "commands.title.showShapes",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Open Shapes settings",
+    "sample": {}
+  },
+  {
+    "key": "commands.title.showEffects",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Open Effects settings",
+    "sample": {}
+  },
+  {
+    "key": "commands.title.showCamera",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Open Camera settings",
+    "sample": {}
+  },
+  {
+    "key": "commands.title.showAudio",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Open Audio settings",
+    "sample": {}
+  },
+  {
+    "key": "commands.title.timelineZoomIn",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Zoom timeline in",
+    "sample": {}
+  },
+  {
+    "key": "commands.title.timelineZoomOut",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Zoom timeline out",
+    "sample": {}
+  },
+  {
+    "key": "commands.title.timelineFit",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Fit timeline to window",
+    "sample": {}
+  },
+  {
+    "key": "commands.title.toggleWaveform",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Audio waveform on the timeline",
+    "sample": {}
+  },
+  {
+    "key": "commands.title.toggleSnapping",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Snapping",
+    "sample": {}
+  },
+  {
+    "key": "commands.title.makeVertical",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Make a vertical version",
+    "sample": {}
+  },
+  {
+    "key": "commands.title.makeSquare",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Make a square version",
+    "sample": {}
+  },
+  {
+    "key": "commands.title.duplicateVideo",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Duplicate this video",
+    "sample": {}
+  },
+  {
+    "key": "commands.title.toggleSafeZones",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Show safe zones",
+    "sample": {}
+  },
+  {
+    "key": "commands.title.export",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Export…",
+    "sample": {}
+  },
+  {
+    "key": "commands.title.shortcuts",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Keyboard shortcuts…",
+    "sample": {}
+  },
+  {
+    "key": "commands.title.about",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "About Flown",
+    "sample": {}
+  },
+  {
+    "key": "commands.title.commandPalette",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Command palette",
+    "sample": {}
+  },
+  {
+    "key": "commands.title.aiCleanup",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Fix captions with AI",
+    "sample": {}
+  },
+  {
+    "key": "commands.title.aiTranslate",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Translate captions with AI…",
+    "sample": {}
+  },
+  {
+    "key": "commands.title.aiChapters",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Suggest chapters with AI",
+    "sample": {}
+  },
+  {
+    "key": "commands.title.aiTitle",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Suggest a title with AI",
+    "sample": {}
+  },
+  {
+    "key": "commands.title.aiSummary",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Summarize with AI",
+    "sample": {}
+  },
+  {
+    "key": "commands.title.publishPack",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Publish: write the copy…",
+    "sample": {}
+  },
+  {
+    "key": "commands.title.publishYoutube",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Write a YouTube description",
+    "sample": {}
+  },
+  {
+    "key": "commands.title.publishLinkedin",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Write a LinkedIn post",
+    "sample": {}
+  },
+  {
+    "key": "commands.title.publishX",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Write an X post",
+    "sample": {}
+  },
+  {
+    "key": "commands.title.publishArticle",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Write a help-centre article",
+    "sample": {}
+  },
+  {
+    "key": "commands.title.publishReleaseNotes",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Write release notes",
+    "sample": {}
+  },
+  {
+    "key": "commands.title.language",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Language…",
+    "sample": {}
+  },
+  {
+    "key": "commands.title.nudgeBack",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Move selected items one frame earlier",
+    "sample": {}
+  },
+  {
+    "key": "commands.title.nudgeForward",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Move selected items one frame later",
+    "sample": {}
+  },
+  {
+    "key": "commands.title.nudgeBackTen",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Move selected items ten frames earlier",
+    "sample": {}
+  },
+  {
+    "key": "commands.title.nudgeForwardTen",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Move selected items ten frames later",
+    "sample": {}
+  },
+  {
+    "key": "commands.title.toggleFilmstrip",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Frames on the clip track",
+    "sample": {}
+  },
+  {
+    "key": "commands.title.saveVersion",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Save a version…",
+    "sample": {}
+  },
+  {
+    "key": "commands.title.versions",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Versions…",
+    "sample": {}
+  },
+  {
+    "key": "commands.title.smoothAllCuts",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Smooth all cuts",
+    "sample": {}
+  },
+  {
+    "key": "commands.title.hardCutsEverywhere",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Use hard cuts everywhere",
+    "sample": {}
+  },
+  {
+    "key": "commands.title.nextCut",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Go to next cut",
+    "sample": {}
+  },
+  {
+    "key": "commands.title.previousCut",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Go to previous cut",
+    "sample": {}
+  },
+  {
+    "key": "commands.title.playCut",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Play this cut",
+    "sample": {}
+  },
+  {
+    "key": "commands.title.addMagnifier",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Add magnifier",
+    "sample": {}
+  },
+  {
+    "key": "commands.title.addMagnifierCursor",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Add magnifier on the cursor",
+    "sample": {}
+  },
+  {
+    "key": "commands.title.addStepBadge",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Add step badge",
+    "sample": {}
+  },
+  {
+    "key": "commands.title.addSpeechBubble",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Add speech bubble",
+    "sample": {}
+  },
+  {
+    "key": "commands.title.toggleProgressBar",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Progress bar on the video",
+    "sample": {}
+  },
+  {
+    "key": "commands.title.compareColour",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Compare with original colour",
+    "sample": {}
+  },
+  {
+    "key": "commands.title.autoColour",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Auto colour for the camera",
+    "sample": {}
+  },
+  {
+    "key": "commands.title.musicLibrary",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Music library…",
+    "sample": {}
+  },
+  {
+    "key": "commands.title.guide",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Make a step-by-step guide…",
+    "sample": {}
+  },
+  {
+    "key": "commands.title.demo",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Make a click-through demo…",
+    "sample": {}
+  },
+  {
+    "key": "commands.title.bugReport",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Write a bug report with steps…",
+    "sample": {}
+  },
+  {
+    "key": "commands.title.findChapters",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Find chapters",
+    "sample": {}
+  },
+  {
+    "key": "commands.title.shortClips",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Find short clips…",
+    "sample": {}
+  },
+  {
+    "key": "commands.title.shortVersion",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Make a shorter version…",
+    "sample": {}
+  },
+  {
+    "key": "commands.title.localAi",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Set up AI on this PC…",
+    "sample": {}
+  },
+  {
+    "key": "commands.title.aiService",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Add an AI service…",
+    "sample": {}
+  },
+  {
+    "key": "commands.category.playback",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Playback",
+    "sample": {}
+  },
+  {
+    "key": "commands.category.edit",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Edit",
+    "sample": {}
+  },
+  {
+    "key": "commands.category.add",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Add",
+    "sample": {}
+  },
+  {
+    "key": "commands.category.zoom",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Zoom",
+    "sample": {}
+  },
+  {
+    "key": "commands.category.effects",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Effects",
+    "sample": {}
+  },
+  {
+    "key": "commands.category.camera",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Camera",
+    "sample": {}
+  },
+  {
+    "key": "commands.category.captions",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Captions",
+    "sample": {}
+  },
+  {
+    "key": "commands.category.panels",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Panels",
+    "sample": {}
+  },
+  {
+    "key": "commands.category.timeline",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Timeline",
+    "sample": {}
+  },
+  {
+    "key": "commands.category.general",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "General",
+    "sample": {}
+  },
+  {
+    "key": "commands.category.publish",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Publish",
+    "sample": {}
+  },
+  {
+    "key": "keys.withShortcut",
+    "file": "src/shared/editor/shortcuts.ts",
+    "line": 288,
+    "english": "Split the clip at the playhead (S)",
+    "sample": {
+      "text": "Split the clip at the playhead",
+      "keys": "S"
+    }
+  },
+  {
+    "key": "keys.orPress",
+    "file": "src/shared/editor/shortcuts.ts",
+    "line": 293,
+    "english": "Double-click to add text, or press T",
+    "sample": {
+      "text": "Double-click to add text",
+      "keys": "T"
+    }
+  },
+  {
+    "key": "keys.reviewHint",
+    "file": "src/shared/editor/shortcuts.ts",
+    "line": 301,
+    "english": ". Review (Shift + R)",
+    "sample": {
+      "keys": "Shift + R"
+    }
+  },
+  {
+    "key": "keys.reviewHintNoKey",
+    "file": "src/shared/editor/shortcuts.ts",
+    "line": 301,
+    "english": ". Review mode lists them",
+    "sample": {}
+  },
+  {
+    "key": "keys.undoHint",
+    "file": "src/shared/editor/shortcuts.ts",
+    "line": 306,
+    "english": " · Ctrl + Z to undo",
+    "sample": {
+      "keys": "Ctrl + Z"
+    }
+  },
+  {
+    "key": "keys.zoomLevels.range",
+    "file": "src/shared/editor/shortcuts.ts",
+    "line": 318,
+    "english": "1–4",
+    "sample": {
+      "first": "1",
+      "last": "4"
+    }
+  },
+  {
+    "key": "keys.zoomLevels.both",
+    "file": "src/shared/editor/shortcuts.ts",
+    "line": 320,
+    "english": [
+      "1–4 set its zoom level, 0 pulls back",
+      "1–4 sets its zoom level, 0 pulls back",
+      "1–4 set its zoom level, 0 pulls back",
+      "1–4 set its zoom level, 0 pulls back"
+    ],
+    "sample": [
+      {
+        "levels": "1–4",
+        "back": "0",
+        "count": 0
+      },
+      {
+        "levels": "1–4",
+        "back": "0",
+        "count": 1
+      },
+      {
+        "levels": "1–4",
+        "back": "0",
+        "count": 2
+      },
+      {
+        "levels": "1–4",
+        "back": "0",
+        "count": 1000
+      }
+    ]
+  },
+  {
+    "key": "keys.zoomLevels.levels",
+    "file": "src/shared/editor/shortcuts.ts",
+    "line": 321,
+    "english": [
+      "1–4 set its zoom level",
+      "1–4 sets its zoom level",
+      "1–4 set its zoom level",
+      "1–4 set its zoom level"
+    ],
+    "sample": [
+      {
+        "levels": "1–4",
+        "count": 0
+      },
+      {
+        "levels": "1–4",
+        "count": 1
+      },
+      {
+        "levels": "1–4",
+        "count": 2
+      },
+      {
+        "levels": "1–4",
+        "count": 1000
+      }
+    ]
+  },
+  {
+    "key": "keys.zoomLevels.back",
+    "file": "src/shared/editor/shortcuts.ts",
+    "line": 322,
+    "english": "0 pulls back",
+    "sample": {
+      "back": "0"
+    }
+  },
+  {
+    "key": "keys.reserved.pressesButton",
+    "file": "src/shared/editor/shortcuts.ts",
+    "line": 458,
+    "english": "Enter presses the focused button.",
+    "sample": {
+      "keys": "Enter"
+    }
+  },
+  {
+    "key": "keys.reserved.movesBetweenControls",
+    "file": "src/shared/editor/shortcuts.ts",
+    "line": 459,
+    "english": "Tab moves between controls.",
+    "sample": {
+      "keys": "Tab"
+    }
+  },
+  {
+    "key": "keys.reserved.movesBetweenControls",
+    "file": "src/shared/editor/shortcuts.ts",
+    "line": 459,
+    "english": "Shift + Tab moves between controls.",
+    "sample": {
+      "keys": "Shift + Tab"
+    }
+  },
+  {
+    "key": "keys.reserved.closesWindow",
+    "file": "src/shared/editor/shortcuts.ts",
+    "line": 461,
+    "english": "Alt + F4 closes the window.",
+    "sample": {
+      "keys": "Alt + F4"
+    }
+  },
+  {
+    "key": "keys.reserved.closesWindow",
+    "file": "src/shared/editor/shortcuts.ts",
+    "line": 461,
+    "english": "Ctrl + W closes the window.",
+    "sample": {
+      "keys": "Ctrl + W"
+    }
+  },
+  {
+    "key": "keys.reserved.windowMenu",
+    "file": "src/shared/editor/shortcuts.ts",
+    "line": 462,
+    "english": "Alt + Space opens the window menu.",
+    "sample": {
+      "keys": "Alt + Space"
+    }
+  },
+  {
+    "key": "keys.reserved.startMenu",
+    "file": "src/shared/editor/shortcuts.ts",
+    "line": 463,
+    "english": "Ctrl + Esc opens the Start menu.",
+    "sample": {
+      "keys": "Ctrl + Esc"
+    }
+  },
+  {
+    "key": "keys.reserved.taskManager",
+    "file": "src/shared/editor/shortcuts.ts",
+    "line": 464,
+    "english": "Ctrl + Shift + Esc opens the Task Manager.",
+    "sample": {
+      "keys": "Ctrl + Shift + Esc"
+    }
+  },
+  {
+    "key": "keys.reserved.switchesWindow",
+    "file": "src/shared/editor/shortcuts.ts",
+    "line": 465,
+    "english": "Alt + Esc switches to another window.",
+    "sample": {
+      "keys": "Alt + Esc"
+    }
+  },
+  {
+    "key": "keys.reserved.reloads",
+    "file": "src/shared/editor/shortcuts.ts",
+    "line": 467,
+    "english": "Ctrl + R reloads the window.",
+    "sample": {
+      "keys": "Ctrl + R"
+    }
+  },
+  {
+    "key": "keys.reserved.reloads",
+    "file": "src/shared/editor/shortcuts.ts",
+    "line": 467,
+    "english": "Ctrl + Shift + R reloads the window.",
+    "sample": {
+      "keys": "Ctrl + Shift + R"
+    }
+  },
+  {
+    "key": "keys.reserved.developerTools",
+    "file": "src/shared/editor/shortcuts.ts",
+    "line": 469,
+    "english": "Ctrl + Shift + I opens the developer tools.",
+    "sample": {
+      "keys": "Ctrl + Shift + I"
+    }
+  },
+  {
+    "key": "keys.reserved.fullScreen",
+    "file": "src/shared/editor/shortcuts.ts",
+    "line": 470,
+    "english": "F11 switches full screen.",
+    "sample": {
+      "keys": "F11"
+    }
+  },
+  {
+    "key": "keys.reserved.resetsZoom",
+    "file": "src/shared/editor/shortcuts.ts",
+    "line": 471,
+    "english": "Ctrl + 0 resets the window zoom.",
+    "sample": {
+      "keys": "Ctrl + 0"
+    }
+  },
+  {
+    "key": "keys.reserved.zooms",
+    "file": "src/shared/editor/shortcuts.ts",
+    "line": 472,
+    "english": "Ctrl + + zooms the window.",
+    "sample": {
+      "keys": "Ctrl + +"
+    }
+  },
+  {
+    "key": "keys.reserved.zooms",
+    "file": "src/shared/editor/shortcuts.ts",
+    "line": 472,
+    "english": "Ctrl + = zooms the window.",
+    "sample": {
+      "keys": "Ctrl + ="
+    }
+  },
+  {
+    "key": "keys.reserved.zooms",
+    "file": "src/shared/editor/shortcuts.ts",
+    "line": 472,
+    "english": "Ctrl + - zooms the window.",
+    "sample": {
+      "keys": "Ctrl + -"
+    }
+  },
+  {
+    "key": "keys.reserved.escape",
+    "file": "src/shared/editor/shortcuts.ts",
+    "line": 485,
+    "english": "Esc always cancels: it closes dialogs and clears the selection.",
+    "sample": {
+      "keys": "Esc"
+    }
+  },
+  {
+    "key": "keys.check.unusable",
+    "file": "src/shared/editor/shortcuts.ts",
+    "line": 499,
+    "english": "That key cannot be used for a shortcut.",
+    "sample": {}
+  },
+  {
+    "key": "keys.check.needsModifier",
+    "file": "src/shared/editor/shortcuts.ts",
+    "line": 504,
+    "english": "This shortcut also works while typing, so it needs Ctrl or Alt (K would type instead).",
+    "sample": {
+      "keys": "K"
+    }
+  },
+  {
+    "key": "keys.dialog.removeLabel",
+    "file": "src/renderer/src/editor/ShortcutsDialog.tsx",
+    "line": 122,
+    "english": "Remove Ctrl + Z from Undo",
+    "sample": {
+      "keys": "Ctrl + Z",
+      "command": "Undo"
+    }
+  },
+  {
+    "key": "keys.dialog.removeTitle",
+    "file": "src/renderer/src/editor/ShortcutsDialog.tsx",
+    "line": 123,
+    "english": "Remove this shortcut",
+    "sample": {}
+  },
+  {
+    "key": "keys.dialog.stepKey",
+    "file": "src/renderer/src/editor/ShortcutsDialog.tsx",
+    "line": 136,
+    "english": "While items are selected · the key of Step back one frame",
+    "sample": {
+      "command": "Step back one frame"
+    }
+  },
+  {
+    "key": "keys.dialog.standardKey",
+    "file": "src/renderer/src/editor/ShortcutsDialog.tsx",
+    "line": 141,
+    "english": "Standard key · a shortcut you give another command takes it over",
+    "sample": {}
+  },
+  {
+    "key": "keys.dialog.captureLabel",
+    "file": "src/renderer/src/editor/ShortcutsDialog.tsx",
+    "line": 150,
+    "english": "Press the new shortcut for Undo",
+    "sample": {
+      "command": "Undo"
+    }
+  },
+  {
+    "key": "keys.dialog.captureTitle",
+    "file": "src/renderer/src/editor/ShortcutsDialog.tsx",
+    "line": 151,
+    "english": "Press the keys · Esc cancels",
+    "sample": {}
+  },
+  {
+    "key": "keys.dialog.pressKeys",
+    "file": "src/renderer/src/editor/ShortcutsDialog.tsx",
+    "line": 159,
+    "english": "Press keys…",
+    "sample": {}
+  },
+  {
+    "key": "keys.dialog.addLabel",
+    "file": "src/renderer/src/editor/ShortcutsDialog.tsx",
+    "line": 167,
+    "english": "Add shortcut for Undo",
+    "sample": {
+      "command": "Undo"
+    }
+  },
+  {
+    "key": "keys.dialog.full",
+    "file": "src/renderer/src/editor/ShortcutsDialog.tsx",
+    "line": 168,
+    "english": "At most 4 shortcuts per command",
+    "sample": {
+      "n": "4"
+    }
+  },
+  {
+    "key": "keys.dialog.addTitle",
+    "file": "src/renderer/src/editor/ShortcutsDialog.tsx",
+    "line": 168,
+    "english": "Add a shortcut",
+    "sample": {}
+  },
+  {
+    "key": "keys.dialog.resetLabel",
+    "file": "src/renderer/src/editor/ShortcutsDialog.tsx",
+    "line": 179,
+    "english": "Reset Undo",
+    "sample": {
+      "command": "Undo"
+    }
+  },
+  {
+    "key": "keys.dialog.resetTo",
+    "file": "src/renderer/src/editor/ShortcutsDialog.tsx",
+    "line": 180,
+    "english": "Reset to Ctrl + Shift + Z or Ctrl + Y",
+    "sample": {
+      "keys": "Ctrl + Shift + Z or Ctrl + Y"
+    }
+  },
+  {
+    "key": "keys.dialog.resetToNone",
+    "file": "src/renderer/src/editor/ShortcutsDialog.tsx",
+    "line": 180,
+    "english": "Reset to no shortcut",
+    "sample": {}
+  },
+  {
+    "key": "keys.dialog.isDefault",
+    "file": "src/renderer/src/editor/ShortcutsDialog.tsx",
+    "line": 180,
+    "english": "Default",
+    "sample": {}
+  },
+  {
+    "key": "keys.dialog.usedBy",
+    "file": "src/renderer/src/editor/ShortcutsDialog.tsx",
+    "line": 214,
+    "english": "is used by Undo.",
+    "sample": {
+      "command": "Undo"
+    }
+  },
+  {
+    "key": "keys.dialog.useHere",
+    "file": "src/renderer/src/editor/ShortcutsDialog.tsx",
+    "line": 227,
+    "english": "Use it here",
+    "sample": {}
+  },
+  {
+    "key": "keys.dialog.search",
+    "file": "src/renderer/src/editor/ShortcutsDialog.tsx",
+    "line": 280,
+    "english": "Search shortcuts",
+    "sample": {}
+  },
+  {
+    "key": "keys.dialog.searchPlaceholder",
+    "file": "src/renderer/src/editor/ShortcutsDialog.tsx",
+    "line": 281,
+    "english": "Search commands or keys",
+    "sample": {}
+  },
+  {
+    "key": "keys.dialog.noMatch",
+    "file": "src/renderer/src/editor/ShortcutsDialog.tsx",
+    "line": 313,
+    "english": "No commands match “«query»”.",
+    "sample": {
+      "query": "«query»"
+    }
+  },
+  {
+    "key": "keys.dialog.pauseHint",
+    "file": "src/renderer/src/editor/ShortcutsDialog.tsx",
+    "line": 318,
+    "english": "Shortcuts pause while you type in a text field. Esc, Enter and Tab keep their usual jobs.",
+    "sample": {}
+  },
+  {
+    "key": "keys.dialog.resetAllTitle",
+    "file": "src/renderer/src/editor/ShortcutsDialog.tsx",
+    "line": 319,
+    "english": "Every command back to its default shortcuts",
+    "sample": {}
+  },
+  {
+    "key": "keys.dialog.resetAll",
+    "file": "src/renderer/src/editor/ShortcutsDialog.tsx",
+    "line": 320,
+    "english": "Reset all",
+    "sample": {}
+  },
+  {
+    "key": "keys.dialog.takeBack",
+    "file": "src/renderer/src/editor/ShortcutsDialog.tsx",
+    "line": 227,
+    "english": [
+      "Take it back",
+      "Take it back",
+      "Take them back",
+      "Take them back"
+    ],
+    "sample": [
+      {
+        "count": 0
+      },
+      {
+        "count": 1
+      },
+      {
+        "count": 2
+      },
+      {
+        "count": 1000
+      }
+    ]
+  },
+  {
+    "key": "editor.multiSelect.refusal.clip",
+    "file": "src/shared/editor/multiSelectCopy.ts",
+    "line": 17,
+    "english": "Clips and cuts are selected one at a time",
+    "sample": {}
+  },
+  {
+    "key": "editor.multiSelect.refusal.click",
+    "file": "src/shared/editor/multiSelectCopy.ts",
+    "line": 20,
+    "english": "Recorded clicks are ignored one at a time, or with Find stray clicks",
+    "sample": {
+      "command": "Find stray clicks"
+    }
+  },
+  {
+    "key": "editor.multiSelect.refusal.caption",
+    "file": "src/shared/editor/multiSelectCopy.ts",
+    "line": 23,
+    "english": "Captions are edited one at a time, or all at once in the Captions tab",
+    "sample": {}
+  },
+  {
+    "key": "editor.multiSelect.refusal.layout",
+    "file": "src/shared/editor/multiSelectCopy.ts",
+    "line": 26,
+    "english": "Camera layouts are changed one at a time; the director's tools redo many at once",
+    "sample": {}
+  },
+  {
+    "key": "editor.multiSelect.why.start",
+    "file": "src/shared/editor/multiSelectCopy.ts",
+    "line": 32,
+    "english": "the start of the recording",
+    "sample": {}
+  },
+  {
+    "key": "editor.multiSelect.why.end",
+    "file": "src/shared/editor/multiSelectCopy.ts",
+    "line": 33,
+    "english": "the end of the recording",
+    "sample": {}
+  },
+  {
+    "key": "editor.multiSelect.why.zoom",
+    "file": "src/shared/editor/multiSelectCopy.ts",
+    "line": 34,
+    "english": "a zoom is in the way",
+    "sample": {}
+  },
+  {
+    "key": "editor.multiSelect.why.freezeClip",
+    "file": "src/shared/editor/multiSelectCopy.ts",
+    "line": 35,
+    "english": "a freeze frame stays in its clip (drag it alone to move it past a cut)",
+    "sample": {}
+  },
+  {
+    "key": "editor.multiSelect.why.freezeTaken",
+    "file": "src/shared/editor/multiSelectCopy.ts",
+    "line": 36,
+    "english": "a freeze frame is already on that frame",
+    "sample": {}
+  },
+  {
+    "key": "editor.multiSelect.freezeInCut",
+    "file": "src/shared/editor/multiSelectCopy.ts",
+    "line": 41,
+    "english": "A selected freeze frame is in a cut, so the selection can't move. Ctrl+click it to leave it out",
+    "sample": {}
+  },
+  {
+    "key": "editor.multiSelect.full",
+    "file": "src/shared/editor/multiSelectCopy.ts",
+    "line": 42,
+    "english": "The selection already fills the recording",
+    "sample": {}
+  },
+  {
+    "key": "editor.multiSelect.stopsHere",
+    "file": "src/shared/editor/multiSelectCopy.ts",
+    "line": 43,
+    "english": "The selection stops here: a zoom is in the way",
+    "sample": {
+      "why": "a zoom is in the way"
+    }
+  },
+  {
+    "key": "editor.multiSelect.lessThan",
+    "file": "src/shared/editor/multiSelectCopy.ts",
+    "line": 50,
+    "english": "less than 0.01 s",
+    "sample": {
+      "s": "0.01"
+    }
+  },
+  {
+    "key": "editor.multiSelect.notMoved",
+    "file": "src/shared/editor/multiSelectCopy.ts",
+    "line": 58,
+    "english": "Not moved: the start of the recording",
+    "sample": {
+      "why": "the start of the recording"
+    }
+  },
+  {
+    "key": "editor.multiSelect.movedLater",
+    "file": "src/shared/editor/multiSelectCopy.ts",
+    "line": 59,
+    "english": "Moved 0.6 s later: a zoom is in the way",
+    "sample": {
+      "s": "0.6 s",
+      "why": "a zoom is in the way"
+    }
+  },
+  {
+    "key": "editor.multiSelect.movedEarlier",
+    "file": "src/shared/editor/multiSelectCopy.ts",
+    "line": 59,
+    "english": "Moved 0.6 s earlier: the start of the recording",
+    "sample": {
+      "s": "0.6 s",
+      "why": "the start of the recording"
+    }
+  },
+  {
+    "key": "editor.multiSelect.selectNone",
+    "file": "src/shared/editor/multiSelectCopy.ts",
+    "line": 64,
+    "english": "No items to select yet",
+    "sample": {}
+  },
+  {
+    "key": "editor.multiSelect.selectEvery",
+    "file": "src/shared/editor/multiSelectCopy.ts",
+    "line": 65,
+    "english": "Selected every item (24)",
+    "sample": {
+      "n": "24"
+    }
+  },
+  {
+    "key": "editor.multiSelect.selectOnly",
+    "file": "src/shared/editor/multiSelectCopy.ts",
+    "line": 72,
+    "english": "Selected the only zoom",
+    "sample": {
+      "what": "zoom"
+    }
+  },
+  {
+    "key": "editor.multiSelect.selectOnlyAgain",
+    "file": "src/shared/editor/multiSelectCopy.ts",
+    "line": 72,
+    "english": "Selected the only zoom · Ctrl + A again selects every item",
+    "sample": {
+      "what": "zoom",
+      "keys": "Ctrl + A"
+    }
+  },
+  {
+    "key": "editor.multiSelect.selectAll",
+    "file": "src/shared/editor/multiSelectCopy.ts",
+    "line": 74,
+    "english": "Selected all 12 text items",
+    "sample": {
+      "what": "12 text items"
+    }
+  },
+  {
+    "key": "editor.multiSelect.selectAllAgain",
+    "file": "src/shared/editor/multiSelectCopy.ts",
+    "line": 74,
+    "english": "Selected all 12 text items · Ctrl + A again selects every item",
+    "sample": {
+      "what": "12 text items",
+      "keys": "Ctrl + A"
+    }
+  },
+  {
+    "key": "editor.multiSelect.shapesTrack",
+    "file": "src/shared/editor/multiSelectCopy.ts",
+    "line": 69,
+    "english": [
+      "0 items on the shapes track",
+      "1 items on the shapes track",
+      "2 items on the shapes track",
+      "1000 items on the shapes track"
+    ],
+    "sample": [
+      {
+        "count": 0,
+        "n": "0"
+      },
+      {
+        "count": 1,
+        "n": "1"
+      },
+      {
+        "count": 2,
+        "n": "2"
+      },
+      {
+        "count": 1000,
+        "n": "1000"
+      }
+    ]
+  },
+  {
+    "key": "editor.multiSelect.deleted",
+    "file": "src/shared/editor/multiSelectCopy.ts",
+    "line": 79,
+    "english": [
+      "Deleted 0 items",
+      "Deleted 1 item",
+      "Deleted 2 items",
+      "Deleted 1000 items"
+    ],
+    "sample": [
+      {
+        "count": 0,
+        "n": "0"
+      },
+      {
+        "count": 1,
+        "n": "1"
+      },
+      {
+        "count": 2,
+        "n": "2"
+      },
+      {
+        "count": 1000,
+        "n": "1000"
+      }
+    ]
+  },
+  {
+    "key": "editor.multiSelect.cut",
+    "file": "src/shared/editor/multiSelectCopy.ts",
+    "line": 79,
+    "english": [
+      "Cut 0 items",
+      "Cut 1 item",
+      "Cut 2 items",
+      "Cut 1000 items"
+    ],
+    "sample": [
+      {
+        "count": 0,
+        "n": "0"
+      },
+      {
+        "count": 1,
+        "n": "1"
+      },
+      {
+        "count": 2,
+        "n": "2"
+      },
+      {
+        "count": 1000,
+        "n": "1000"
+      }
+    ]
+  },
+  {
+    "key": "editor.multiSelect.copyLookFirst",
+    "file": "src/shared/editor/multiSelectCopy.ts",
+    "line": 88,
+    "english": "Copy a look first: select one item and press Ctrl + Shift + C",
+    "sample": {
+      "keys": "Ctrl + Shift + C"
+    }
+  },
+  {
+    "key": "editor.multiSelect.copyLookFirstButton",
+    "file": "src/shared/editor/multiSelectCopy.ts",
+    "line": 88,
+    "english": "Copy a look first: select one item and press its Copy look button",
+    "sample": {}
+  },
+  {
+    "key": "editor.multiSelect.nothingCopied",
+    "file": "src/shared/editor/multiSelectCopy.ts",
+    "line": 93,
+    "english": "Nothing copied yet: select items and press Ctrl + C",
+    "sample": {
+      "keys": "Ctrl + C"
+    }
+  },
+  {
+    "key": "editor.multiSelect.nothingCopiedPalette",
+    "file": "src/shared/editor/multiSelectCopy.ts",
+    "line": 93,
+    "english": "Nothing copied yet: select items and run \"Copy selected items\" from the command palette",
+    "sample": {
+      "command": "Copy selected items"
+    }
+  },
+  {
+    "key": "timeline.group.selected",
+    "file": "src/renderer/src/editor/Timeline.tsx",
+    "line": 198,
+    "english": "selected: drag to move all 3, Ctrl+click to leave it out",
+    "sample": {
+      "n": "3"
+    }
+  },
+  {
+    "key": "timeline.group.selectSeveral",
+    "file": "src/renderer/src/editor/Timeline.tsx",
+    "line": 198,
+    "english": "Ctrl+click to select several",
+    "sample": {}
+  },
+  {
+    "key": "timeline.hint",
+    "file": "src/renderer/src/editor/Timeline.tsx",
+    "line": 593,
+    "english": "Ctrl+click to select several · Shift+drag to box-select · Click a track to move the playhead · Shift+drag on the clip to select a range · Double-click a track to add · Hold Alt while dragging to place freely",
+    "sample": {}
+  },
+  {
+    "key": "timeline.selected",
+    "file": "src/renderer/src/editor/Timeline.tsx",
+    "line": 597,
+    "english": [
+      "0 selected",
+      "1 selected",
+      "2 selected",
+      "1000 selected"
+    ],
+    "sample": [
+      {
+        "count": 0,
+        "n": "0"
+      },
+      {
+        "count": 1,
+        "n": "1"
+      },
+      {
+        "count": 2,
+        "n": "2"
+      },
+      {
+        "count": 1000,
+        "n": "1000"
+      }
+    ]
+  },
+  {
+    "key": "timeline.clearSelection",
+    "file": "src/renderer/src/editor/Timeline.tsx",
+    "line": 602,
+    "english": "Clear selection",
+    "sample": {}
+  },
+  {
+    "key": "timeline.zoomGroup",
+    "file": "src/renderer/src/editor/Timeline.tsx",
+    "line": 610,
+    "english": "Timeline zoom",
+    "sample": {}
+  },
+  {
+    "key": "timeline.zoomOut",
+    "file": "src/renderer/src/editor/Timeline.tsx",
+    "line": 615,
+    "english": "Zoom out timeline",
+    "sample": {}
+  },
+  {
+    "key": "timeline.zoomIn",
+    "file": "src/renderer/src/editor/Timeline.tsx",
+    "line": 620,
+    "english": "Zoom in timeline",
+    "sample": {}
+  },
+  {
+    "key": "timeline.zoomInKeys",
+    "file": "src/renderer/src/editor/Timeline.tsx",
+    "line": 872,
+    "english": "Zoom in timeline (+ or Ctrl+wheel)",
+    "sample": {
+      "keys": "+"
+    }
+  },
+  {
+    "key": "timeline.zoomInWheel",
+    "file": "src/renderer/src/editor/Timeline.tsx",
+    "line": 872,
+    "english": "Zoom in timeline (Ctrl+wheel)",
+    "sample": {}
+  },
+  {
+    "key": "timeline.fitTitle",
+    "file": "src/renderer/src/editor/Timeline.tsx",
+    "line": 623,
+    "english": "Fit the whole recording",
+    "sample": {}
+  },
+  {
+    "key": "timeline.fit",
+    "file": "src/renderer/src/editor/Timeline.tsx",
+    "line": 624,
+    "english": "Fit",
+    "sample": {}
+  },
+  {
+    "key": "timeline.track.clip",
+    "file": "src/renderer/src/editor/Timeline.tsx",
+    "line": 631,
+    "english": "Clip: cut, split and speed",
+    "sample": {}
+  },
+  {
+    "key": "timeline.track.shapes",
+    "file": "src/renderer/src/editor/Timeline.tsx",
+    "line": 640,
+    "english": "Shapes, blur and spotlights",
+    "sample": {}
+  },
+  {
+    "key": "timeline.clipTrack.hint",
+    "file": "src/renderer/src/editor/Timeline.tsx",
+    "line": 659,
+    "english": "Click to move the playhead, Shift+drag to select a range to cut",
+    "sample": {}
+  },
+  {
+    "key": "timeline.trimStart",
+    "file": "src/renderer/src/editor/Timeline.tsx",
+    "line": 717,
+    "english": "Drag to trim the start",
+    "sample": {}
+  },
+  {
+    "key": "timeline.trimEnd",
+    "file": "src/renderer/src/editor/Timeline.tsx",
+    "line": 718,
+    "english": "Drag to trim the end",
+    "sample": {}
+  },
+  {
+    "key": "timeline.cutRange",
+    "file": "src/renderer/src/editor/Timeline.tsx",
+    "line": 726,
+    "english": "Cut the selected range",
+    "sample": {}
+  },
+  {
+    "key": "timeline.zoomTrack.add",
+    "file": "src/renderer/src/editor/Timeline.tsx",
+    "line": 735,
+    "english": "Double-click to add a zoom",
+    "sample": {}
+  },
+  {
+    "key": "timeline.scrollBand",
+    "file": "src/renderer/src/editor/Timeline.tsx",
+    "line": 744,
+    "english": "Scrolling 0:01.0 – 0:03.5: auto zoom shows the whole page while it moves",
+    "sample": {
+      "start": "0:01.0",
+      "end": "0:03.5"
+    }
+  },
+  {
+    "key": "timeline.zoomLink",
+    "file": "src/renderer/src/editor/Timeline.tsx",
+    "line": 755,
+    "english": "The camera pans from this zoom straight into the next one",
+    "sample": {}
+  },
+  {
+    "key": "timeline.zoom.region",
+    "file": "src/renderer/src/editor/Timeline.tsx",
+    "line": 764,
+    "english": "region",
+    "sample": {}
+  },
+  {
+    "key": "timeline.zoom.fixed",
+    "file": "src/renderer/src/editor/Timeline.tsx",
+    "line": 764,
+    "english": "fixed",
+    "sample": {}
+  },
+  {
+    "key": "timeline.zoom.auto",
+    "file": "src/renderer/src/editor/Timeline.tsx",
+    "line": 790,
+    "english": "auto",
+    "sample": {}
+  },
+  {
+    "key": "timeline.range",
+    "file": "src/renderer/src/editor/Timeline.tsx",
+    "line": 838,
+    "english": "0:01.0 – 0:03.5",
+    "sample": {
+      "start": "0:01.0",
+      "end": "0:03.5"
+    }
+  },
+  {
+    "key": "timeline.zoom.pullBack",
+    "file": "src/renderer/src/editor/Timeline.tsx",
+    "line": 879,
+    "english": "0.75× pull back",
+    "sample": {
+      "level": "0.75×"
+    }
+  },
+  {
+    "key": "timeline.zoom.automatic",
+    "file": "src/renderer/src/editor/Timeline.tsx",
+    "line": 880,
+    "english": "automatic zoom",
+    "sample": {}
+  },
+  {
+    "key": "timeline.zoom.edited",
+    "file": "src/renderer/src/editor/Timeline.tsx",
+    "line": 880,
+    "english": "edited zoom",
+    "sample": {}
+  },
+  {
+    "key": "timeline.zoom.pansToNext",
+    "file": "src/renderer/src/editor/Timeline.tsx",
+    "line": 881,
+    "english": "pans to the next zoom",
+    "sample": {}
+  },
+  {
+    "key": "timeline.textTrack.add",
+    "file": "src/renderer/src/editor/Timeline.tsx",
+    "line": 800,
+    "english": "Double-click to add text",
+    "sample": {}
+  },
+  {
+    "key": "timeline.shapeTrack.add",
+    "file": "src/renderer/src/editor/Timeline.tsx",
+    "line": 824,
+    "english": "Double-click to add an arrow",
+    "sample": {}
+  },
+  {
+    "key": "timeline.shapeTrack.empty",
+    "file": "src/renderer/src/editor/Timeline.tsx",
+    "line": 851,
+    "english": "Double-click to add an arrow, or use the Shapes panel for boxes, blur and spotlights",
+    "sample": {}
+  },
+  {
+    "key": "timeline.gap.cut",
+    "file": "src/renderer/src/editor/Timeline.tsx",
+    "line": 913,
+    "english": "Cut: 0:01.0 – 0:03.5 (2.5 s not in the video)",
+    "sample": {
+      "start": "0:01.0",
+      "end": "0:03.5",
+      "length": "2.5"
+    }
+  },
+  {
+    "key": "timeline.gap.trimmed",
+    "file": "src/renderer/src/editor/Timeline.tsx",
+    "line": 913,
+    "english": "Trimmed: 0:00.0 – 0:01.0 (1.0 s not in the video)",
+    "sample": {
+      "start": "0:00.0",
+      "end": "0:01.0",
+      "length": "1.0"
+    }
+  },
+  {
+    "key": "timeline.gap.restore",
+    "file": "src/renderer/src/editor/Timeline.tsx",
+    "line": 918,
+    "english": "Restore this cut",
+    "sample": {}
+  },
+  {
+    "key": "timeline.transport.pause",
+    "file": "src/renderer/src/editor/Transport.tsx",
+    "line": 113,
+    "english": "Pause",
+    "sample": {}
+  },
+  {
+    "key": "timeline.transport.timecode",
+    "file": "src/renderer/src/editor/Transport.tsx",
+    "line": 119,
+    "english": "Position / length of the exported video",
+    "sample": {}
+  },
+  {
+    "key": "timeline.transport.splitTitle",
+    "file": "src/renderer/src/editor/Transport.tsx",
+    "line": 130,
+    "english": "Split the clip at the playhead",
+    "sample": {}
+  },
+  {
+    "key": "timeline.transport.split",
+    "file": "src/renderer/src/editor/Transport.tsx",
+    "line": 131,
+    "english": "Split",
+    "sample": {}
+  },
+  {
+    "key": "timeline.transport.addZoomTitle",
+    "file": "src/renderer/src/editor/Transport.tsx",
+    "line": 133,
+    "english": "Add a zoom at the playhead",
+    "sample": {}
+  },
+  {
+    "key": "timeline.transport.addTextTitle",
+    "file": "src/renderer/src/editor/Transport.tsx",
+    "line": 136,
+    "english": "Add text at the playhead",
+    "sample": {}
+  },
+  {
+    "key": "timeline.safeZones.allThree",
+    "file": "src/renderer/src/editor/Transport.tsx",
+    "line": 147,
+    "english": "All three",
+    "sample": {}
+  },
+  {
+    "key": "timeline.safeZones.title",
+    "file": "src/renderer/src/editor/Transport.tsx",
+    "line": 177,
+    "english": "Show where TikTok, Reels and Shorts put their buttons and captions",
+    "sample": {}
+  },
+  {
+    "key": "timeline.safeZones.button",
+    "file": "src/renderer/src/editor/Transport.tsx",
+    "line": 179,
+    "english": "Safe zones",
+    "sample": {}
+  },
+  {
+    "key": "timeline.safeZones.of",
+    "file": "src/renderer/src/editor/Transport.tsx",
+    "line": 184,
+    "english": "Safe zones of",
+    "sample": {}
+  },
+  {
+    "key": "timeline.safeZones.legend",
+    "file": "src/renderer/src/editor/Transport.tsx",
+    "line": 212,
+    "english": "Shaded parts are covered by the apps' buttons and captions. Shown only here, never exported. The apps move them from time to time, so leave a little room.",
+    "sample": {}
+  },
+  {
+    "key": "timeline.snapping.on",
+    "file": "src/renderer/src/editor/SnapGuide.tsx",
+    "line": 61,
+    "english": "Snapping on: edges and the playhead snap to cuts, clicks, chapters and other items. Hold Alt while dragging to place freely",
+    "sample": {}
+  },
+  {
+    "key": "timeline.snapping.off",
+    "file": "src/renderer/src/editor/SnapGuide.tsx",
+    "line": 61,
+    "english": "Snapping off: items move freely. Click to snap to cuts, clicks, chapters and other items",
+    "sample": {}
+  },
+  {
+    "key": "timeline.snapping.label",
+    "file": "src/renderer/src/editor/SnapGuide.tsx",
+    "line": 66,
+    "english": "Snapping",
+    "sample": {}
+  },
+  {
+    "key": "timeline.previewSpeed",
+    "file": "src/renderer/src/editor/PreviewSpeed.tsx",
+    "line": 28,
+    "english": "Preview speed",
+    "sample": {}
+  },
+  {
+    "key": "timeline.snap.image",
+    "file": "src/shared/editor/snapping.ts",
+    "line": 128,
+    "english": "Image",
+    "sample": {}
+  },
+  {
+    "key": "timeline.snap.titleCard",
+    "file": "src/shared/editor/snapping.ts",
+    "line": 129,
+    "english": "Title card",
+    "sample": {}
+  },
+  {
+    "key": "timeline.snap.popUp",
+    "file": "src/shared/editor/snapping.ts",
+    "line": 130,
+    "english": "Pop-up",
+    "sample": {}
+  },
+  {
+    "key": "timeline.snap.caption",
+    "file": "src/shared/editor/snapping.ts",
+    "line": 131,
+    "english": "Caption",
+    "sample": {}
+  },
+  {
+    "key": "timeline.snap.cameraLayout",
+    "file": "src/shared/editor/snapping.ts",
+    "line": 132,
+    "english": "Camera layout",
+    "sample": {}
+  },
+  {
+    "key": "timeline.snap.cut",
+    "file": "src/shared/editor/snapping.ts",
+    "line": 175,
+    "english": "Cut",
+    "sample": {}
+  },
+  {
+    "key": "timeline.snap.split",
+    "file": "src/shared/editor/snapping.ts",
+    "line": 175,
+    "english": "Split",
+    "sample": {}
+  },
+  {
+    "key": "timeline.snap.trim",
+    "file": "src/shared/editor/snapping.ts",
+    "line": 179,
+    "english": "Trim",
+    "sample": {}
+  },
+  {
+    "key": "timeline.snap.start",
+    "file": "src/shared/editor/snapping.ts",
+    "line": 192,
+    "english": "Start",
+    "sample": {}
+  },
+  {
+    "key": "timeline.snap.end",
+    "file": "src/shared/editor/snapping.ts",
+    "line": 193,
+    "english": "End",
+    "sample": {}
+  },
+  {
+    "key": "timeline.snap.freeze",
+    "file": "src/shared/editor/snapping.ts",
+    "line": 195,
+    "english": "Freeze frame",
+    "sample": {}
+  },
+  {
+    "key": "timeline.snap.chapter",
+    "file": "src/shared/editor/snapping.ts",
+    "line": 199,
+    "english": "Chapter",
+    "sample": {}
+  },
+  {
+    "key": "timeline.snap.chapterTitled",
+    "file": "src/shared/editor/snapping.ts",
+    "line": 199,
+    "english": "Chapter · Intro",
+    "sample": {
+      "title": "Intro"
+    }
+  },
+  {
+    "key": "timeline.snap.click",
+    "file": "src/shared/editor/snapping.ts",
+    "line": 203,
+    "english": "Click",
+    "sample": {}
+  },
+  {
+    "key": "timeline.snap.playhead",
+    "file": "src/shared/editor/snapping.ts",
+    "line": 209,
+    "english": "Playhead",
+    "sample": {}
+  },
+  {
+    "key": "timeline.snap.edgeStart",
+    "file": "src/shared/editor/snapping.ts",
+    "line": 205,
+    "english": "Zoom start",
+    "sample": {
+      "name": "Zoom"
+    }
+  },
+  {
+    "key": "timeline.snap.edgeEnd",
+    "file": "src/shared/editor/snapping.ts",
+    "line": 206,
+    "english": "Camera layout end",
+    "sample": {
+      "name": "Camera layout"
+    }
+  },
+  {
+    "key": "common.state.off",
+    "file": "src/renderer/src/editor/CommandPalette.tsx",
+    "line": 217,
+    "english": "Off",
+    "sample": {}
+  },
+  {
+    "key": "common.action.add",
+    "file": "src/renderer/src/editor/ShortcutsDialog.tsx",
+    "line": 172,
+    "english": "Add",
+    "sample": {}
+  },
+  {
+    "key": "common.action.cancel",
+    "file": "src/renderer/src/editor/ShortcutsDialog.tsx",
+    "line": 230,
+    "english": "Cancel",
+    "sample": {}
+  },
+  {
+    "key": "common.label.keyboardShortcuts",
+    "file": "src/renderer/src/editor/ShortcutsDialog.tsx",
+    "line": 271,
+    "english": "Keyboard shortcuts",
+    "sample": {}
+  },
+  {
+    "key": "common.action.close",
+    "file": "src/renderer/src/editor/ShortcutsDialog.tsx",
+    "line": 272,
+    "english": "Close",
+    "sample": {}
+  },
+  {
+    "key": "common.action.done",
+    "file": "src/renderer/src/editor/ShortcutsDialog.tsx",
+    "line": 323,
+    "english": "Done",
+    "sample": {}
+  },
+  {
+    "key": "common.label.zoom",
+    "file": "src/renderer/src/editor/Timeline.tsx",
+    "line": 634,
+    "english": "Zoom",
+    "sample": {}
+  },
+  {
+    "key": "common.label.text",
+    "file": "src/renderer/src/editor/Timeline.tsx",
+    "line": 637,
+    "english": "Text",
+    "sample": {}
+  },
+  {
+    "key": "common.action.cut",
+    "file": "src/renderer/src/editor/Timeline.tsx",
+    "line": 728,
+    "english": "Cut",
+    "sample": {}
+  },
+  {
+    "key": "common.action.play",
+    "file": "src/renderer/src/editor/Transport.tsx",
+    "line": 113,
+    "english": "Play",
+    "sample": {}
+  },
+  {
+    "key": "common.label.zoom",
+    "file": "src/renderer/src/editor/Transport.tsx",
+    "line": 134,
+    "english": "Zoom",
+    "sample": {}
+  },
+  {
+    "key": "common.label.text",
+    "file": "src/renderer/src/editor/Transport.tsx",
+    "line": 137,
+    "english": "Text",
+    "sample": {}
+  },
+  {
+    "key": "common.label.zoom",
+    "file": "src/shared/editor/snapping.ts",
+    "line": 123,
+    "english": "Zoom",
+    "sample": {}
+  },
+  {
+    "key": "common.label.text",
+    "file": "src/shared/editor/snapping.ts",
+    "line": 124,
+    "english": "Text",
+    "sample": {}
+  },
+  {
+    "key": "editor.notice.noRoomForZoom",
+    "file": "src/renderer/src/editor/PreviewStage.tsx",
+    "line": 383,
+    "english": "There is no room for a new zoom here.",
+    "sample": {}
+  },
+  {
+    "key": "editor.preview.clickToPlay",
+    "file": "src/renderer/src/editor/PreviewStage.tsx",
+    "line": 462,
+    "english": "Click to play or pause",
+    "sample": {}
+  },
+  {
+    "key": "editor.preview.groupOutline",
+    "file": "src/renderer/src/editor/PreviewStage.tsx",
+    "line": 482,
+    "english": "Selected · click to edit it alone, Ctrl+click to leave it out",
+    "sample": {}
+  },
+  {
+    "key": "editor.preview.groupHint",
+    "file": "src/renderer/src/editor/PreviewStage.tsx",
+    "line": 495,
+    "english": [
+      "0 selected items on screen · Ctrl+click to add or remove",
+      "1 selected item on screen · Ctrl+click to add or remove",
+      "2 selected items on screen · Ctrl+click to add or remove",
+      "1000 selected items on screen · Ctrl+click to add or remove"
+    ],
+    "sample": [
+      {
+        "count": 0,
+        "n": "0"
+      },
+      {
+        "count": 1,
+        "n": "1"
+      },
+      {
+        "count": 2,
+        "n": "2"
+      },
+      {
+        "count": 1000,
+        "n": "1000"
+      }
+    ]
+  },
+  {
+    "key": "editor.preview.focusHint",
+    "file": "src/renderer/src/editor/PreviewStage.tsx",
+    "line": 525,
+    "english": "Click or drag to set where this zoom looks ·",
+    "sample": {}
+  },
+  {
+    "key": "editor.preview.regionBox",
+    "file": "src/renderer/src/editor/PreviewStage.tsx",
+    "line": 586,
+    "english": "Drag to move · corners resize (Shift: any shape)",
+    "sample": {}
+  },
+  {
+    "key": "editor.preview.regionHint",
+    "file": "src/renderer/src/editor/PreviewStage.tsx",
+    "line": 599,
+    "english": "Drag to draw the area to zoom into (Shift: any shape) ·",
+    "sample": {}
+  },
+  {
+    "key": "editor.preview.moveText",
+    "file": "src/renderer/src/editor/PreviewStage.tsx",
+    "line": 679,
+    "english": "Drag to move the text",
+    "sample": {}
+  },
+  {
+    "key": "editor.preview.moveEnd",
+    "file": "src/renderer/src/editor/PreviewStage.tsx",
+    "line": 764,
+    "english": "Drag to move this end",
+    "sample": {}
+  },
+  {
+    "key": "editor.preview.moveArrowhead",
+    "file": "src/renderer/src/editor/PreviewStage.tsx",
+    "line": 765,
+    "english": "Drag to move the arrowhead",
+    "sample": {}
+  },
+  {
+    "key": "editor.preview.followsResize",
+    "file": "src/renderer/src/editor/PreviewStage.tsx",
+    "line": 787,
+    "english": "Follows the cursor: drag a corner to resize",
+    "sample": {}
+  },
+  {
+    "key": "editor.preview.shapeBox",
+    "file": "src/renderer/src/editor/PreviewStage.tsx",
+    "line": 787,
+    "english": "Drag to move · handles resize (Shift: keep the shape)",
+    "sample": {}
+  },
+  {
+    "key": "editor.preview.follows",
+    "file": "src/renderer/src/editor/PreviewStage.tsx",
+    "line": 790,
+    "english": "Follows the cursor",
+    "sample": {}
+  },
+  {
+    "key": "editor.preview.cursorSpotlight",
+    "file": "src/renderer/src/editor/PreviewStage.tsx",
+    "line": 804,
+    "english": "Cursor spotlight",
+    "sample": {}
+  },
+  {
+    "key": "editor.preview.spotlight",
+    "file": "src/renderer/src/editor/PreviewStage.tsx",
+    "line": 804,
+    "english": "Spotlight",
+    "sample": {}
+  },
+  {
+    "key": "editor.preview.cursorOff",
+    "file": "src/renderer/src/editor/PreviewStage.tsx",
+    "line": 815,
+    "english": "the cursor is off the recording here",
+    "sample": {}
+  },
+  {
+    "key": "editor.preview.dragToPlace",
+    "file": "src/renderer/src/editor/PreviewStage.tsx",
+    "line": 815,
+    "english": "drag to place it",
+    "sample": {}
+  },
+  {
+    "key": "editor.preview.dragToPlaceOrDraw",
+    "file": "src/renderer/src/editor/PreviewStage.tsx",
+    "line": 815,
+    "english": "drag to place it, or drag elsewhere to draw it again",
+    "sample": {}
+  },
+  {
+    "key": "editor.tab.style",
+    "file": "src/renderer/src/editor/Inspector.tsx",
+    "line": 88,
+    "english": "Style",
+    "sample": {}
+  },
+  {
+    "key": "editor.tab.cursor",
+    "file": "src/renderer/src/editor/Inspector.tsx",
+    "line": 89,
+    "english": "Cursor",
+    "sample": {}
+  },
+  {
+    "key": "editor.tab.clip",
+    "file": "src/renderer/src/editor/Inspector.tsx",
+    "line": 91,
+    "english": "Clip",
+    "sample": {}
+  },
+  {
+    "key": "editor.tab.graphics",
+    "file": "src/renderer/src/editor/Inspector.tsx",
+    "line": 94,
+    "english": "Graphics",
+    "sample": {}
+  },
+  {
+    "key": "editor.tab.transcript",
+    "file": "src/renderer/src/editor/Inspector.tsx",
+    "line": 95,
+    "english": "Transcript",
+    "sample": {}
+  },
+  {
+    "key": "editor.tab.shapes",
+    "file": "src/renderer/src/editor/Inspector.tsx",
+    "line": 96,
+    "english": "Shapes",
+    "sample": {}
+  },
+  {
+    "key": "editor.tab.images",
+    "file": "src/renderer/src/editor/Inspector.tsx",
+    "line": 97,
+    "english": "Images",
+    "sample": {}
+  },
+  {
+    "key": "editor.tab.effects",
+    "file": "src/renderer/src/editor/Inspector.tsx",
+    "line": 98,
+    "english": "Effects",
+    "sample": {}
+  },
+  {
+    "key": "editor.tab.audio",
+    "file": "src/renderer/src/editor/Inspector.tsx",
+    "line": 100,
+    "english": "Audio",
+    "sample": {}
+  },
+  {
+    "key": "editor.inspector",
+    "file": "src/renderer/src/editor/Inspector.tsx",
+    "line": 167,
+    "english": "Inspector",
+    "sample": {}
+  },
+  {
+    "key": "editor.tab.selectionTitle",
+    "file": "src/renderer/src/editor/Inspector.tsx",
+    "line": 173,
+    "english": [
+      "Selection (0 items)",
+      "Selection (1 items)",
+      "Selection (2 items)",
+      "Selection (1000 items)"
+    ],
+    "sample": [
+      {
+        "count": 0,
+        "n": "0"
+      },
+      {
+        "count": 1,
+        "n": "1"
+      },
+      {
+        "count": 2,
+        "n": "2"
+      },
+      {
+        "count": 1000,
+        "n": "1000"
+      }
+    ]
+  },
+  {
+    "key": "editor.tab.selection",
+    "file": "src/renderer/src/editor/Inspector.tsx",
+    "line": 177,
+    "english": "Selection",
+    "sample": {}
+  },
+  {
+    "key": "editor.save.notSaved",
+    "file": "src/renderer/src/editor/SaveIndicator.tsx",
+    "line": 17,
+    "english": "Not saved",
+    "sample": {}
+  },
+  {
+    "key": "editor.save.retry",
+    "file": "src/renderer/src/editor/SaveIndicator.tsx",
+    "line": 20,
+    "english": "Retry",
+    "sample": {}
+  },
+  {
+    "key": "common.action.done",
+    "file": "src/renderer/src/editor/PreviewStage.tsx",
+    "line": 534,
+    "english": "Done",
+    "sample": {}
+  },
+  {
+    "key": "common.label.zoom",
+    "file": "src/renderer/src/editor/Inspector.tsx",
+    "line": 90,
+    "english": "Zoom",
+    "sample": {}
+  },
+  {
+    "key": "common.label.text",
+    "file": "src/renderer/src/editor/Inspector.tsx",
+    "line": 92,
+    "english": "Text",
+    "sample": {}
+  },
+  {
+    "key": "common.label.captions",
+    "file": "src/renderer/src/editor/Inspector.tsx",
+    "line": 93,
+    "english": "Captions",
+    "sample": {}
+  },
+  {
+    "key": "common.label.camera",
+    "file": "src/renderer/src/editor/Inspector.tsx",
+    "line": 99,
+    "english": "Camera",
+    "sample": {}
+  },
+  {
+    "key": "common.state.saved",
+    "file": "src/renderer/src/editor/SaveIndicator.tsx",
+    "line": 29,
+    "english": "Saved",
+    "sample": {}
+  },
+  {
+    "key": "common.state.saving",
+    "file": "src/renderer/src/editor/SaveIndicator.tsx",
+    "line": 32,
+    "english": "Saving…",
+    "sample": {}
+  },
+  {
+    "key": "editor.look.gradient.aurora",
+    "file": "src/shared/engine/lookNames.ts",
+    "line": 19,
+    "english": "Aurora",
+    "sample": {}
+  },
+  {
+    "key": "editor.look.gradient.ocean",
+    "file": "src/shared/engine/lookNames.ts",
+    "line": 19,
+    "english": "Ocean",
+    "sample": {}
+  },
+  {
+    "key": "editor.look.gradient.mint",
+    "file": "src/shared/engine/lookNames.ts",
+    "line": 19,
+    "english": "Mint",
+    "sample": {}
+  },
+  {
+    "key": "editor.look.gradient.sunset",
+    "file": "src/shared/engine/lookNames.ts",
+    "line": 19,
+    "english": "Sunset",
+    "sample": {}
+  },
+  {
+    "key": "editor.look.gradient.peach",
+    "file": "src/shared/engine/lookNames.ts",
+    "line": 19,
+    "english": "Peach",
+    "sample": {}
+  },
+  {
+    "key": "editor.look.gradient.midnight",
+    "file": "src/shared/engine/lookNames.ts",
+    "line": 19,
+    "english": "Midnight",
+    "sample": {}
+  },
+  {
+    "key": "editor.look.gradient.forest",
+    "file": "src/shared/engine/lookNames.ts",
+    "line": 19,
+    "english": "Forest",
+    "sample": {}
+  },
+  {
+    "key": "editor.look.gradient.candy",
+    "file": "src/shared/engine/lookNames.ts",
+    "line": 19,
+    "english": "Candy",
+    "sample": {}
+  },
+  {
+    "key": "editor.look.gradient.steel",
+    "file": "src/shared/engine/lookNames.ts",
+    "line": 19,
+    "english": "Steel",
+    "sample": {}
+  },
+  {
+    "key": "editor.look.gradient.lava",
+    "file": "src/shared/engine/lookNames.ts",
+    "line": 19,
+    "english": "Lava",
+    "sample": {}
+  },
+  {
+    "key": "editor.look.animated.aurora",
+    "file": "src/shared/engine/lookNames.ts",
+    "line": 22,
+    "english": "Aurora flow",
+    "sample": {}
+  },
+  {
+    "key": "editor.look.animated.ocean",
+    "file": "src/shared/engine/lookNames.ts",
+    "line": 22,
+    "english": "Ocean drift",
+    "sample": {}
+  },
+  {
+    "key": "editor.look.animated.sunset",
+    "file": "src/shared/engine/lookNames.ts",
+    "line": 22,
+    "english": "Sunset glow",
+    "sample": {}
+  },
+  {
+    "key": "editor.look.animated.mint",
+    "file": "src/shared/engine/lookNames.ts",
+    "line": 22,
+    "english": "Mint breeze",
+    "sample": {}
+  },
+  {
+    "key": "editor.look.animated.candy",
+    "file": "src/shared/engine/lookNames.ts",
+    "line": 22,
+    "english": "Candy swirl",
+    "sample": {}
+  },
+  {
+    "key": "editor.look.animated.midnight",
+    "file": "src/shared/engine/lookNames.ts",
+    "line": 22,
+    "english": "Midnight pulse",
+    "sample": {}
+  },
+  {
+    "key": "editor.look.wallpaper.violet-mesh",
+    "file": "src/shared/engine/lookNames.ts",
+    "line": 25,
+    "english": "Violet mesh",
+    "sample": {}
+  },
+  {
+    "key": "editor.look.wallpaper.peach-mesh",
+    "file": "src/shared/engine/lookNames.ts",
+    "line": 25,
+    "english": "Peach",
+    "sample": {}
+  },
+  {
+    "key": "editor.look.wallpaper.lagoon",
+    "file": "src/shared/engine/lookNames.ts",
+    "line": 25,
+    "english": "Lagoon",
+    "sample": {}
+  },
+  {
+    "key": "editor.look.wallpaper.sunset-blobs",
+    "file": "src/shared/engine/lookNames.ts",
+    "line": 25,
+    "english": "Sunset",
+    "sample": {}
+  },
+  {
+    "key": "editor.look.wallpaper.mint",
+    "file": "src/shared/engine/lookNames.ts",
+    "line": 25,
+    "english": "Mint",
+    "sample": {}
+  },
+  {
+    "key": "editor.look.wallpaper.midnight-glow",
+    "file": "src/shared/engine/lookNames.ts",
+    "line": 25,
+    "english": "Midnight glow",
+    "sample": {}
+  },
+  {
+    "key": "editor.look.wallpaper.blue-waves",
+    "file": "src/shared/engine/lookNames.ts",
+    "line": 25,
+    "english": "Blue waves",
+    "sample": {}
+  },
+  {
+    "key": "editor.look.wallpaper.dusk-waves",
+    "file": "src/shared/engine/lookNames.ts",
+    "line": 25,
+    "english": "Dusk",
+    "sample": {}
+  },
+  {
+    "key": "editor.look.wallpaper.dunes",
+    "file": "src/shared/engine/lookNames.ts",
+    "line": 25,
+    "english": "Dunes",
+    "sample": {}
+  },
+  {
+    "key": "editor.look.wallpaper.northern-lights",
+    "file": "src/shared/engine/lookNames.ts",
+    "line": 25,
+    "english": "Northern lights",
+    "sample": {}
+  },
+  {
+    "key": "editor.look.wallpaper.orbit",
+    "file": "src/shared/engine/lookNames.ts",
+    "line": 25,
+    "english": "Orbit",
+    "sample": {}
+  },
+  {
+    "key": "editor.look.wallpaper.ribbons",
+    "file": "src/shared/engine/lookNames.ts",
+    "line": 25,
+    "english": "Ribbons",
+    "sample": {}
+  },
+  {
+    "key": "editor.look.wallpaper.blueprint",
+    "file": "src/shared/engine/lookNames.ts",
+    "line": 25,
+    "english": "Blueprint",
+    "sample": {}
+  },
+  {
+    "key": "editor.look.wallpaper.graphite",
+    "file": "src/shared/engine/lookNames.ts",
+    "line": 25,
+    "english": "Graphite",
+    "sample": {}
+  },
+  {
+    "key": "editor.look.wallpaper.candy-pop",
+    "file": "src/shared/engine/lookNames.ts",
+    "line": 25,
+    "english": "Candy pop",
+    "sample": {}
+  },
+  {
+    "key": "editor.look.wallpaper.forest",
+    "file": "src/shared/engine/lookNames.ts",
+    "line": 25,
+    "english": "Forest",
+    "sample": {}
+  },
+  {
+    "key": "editor.look.easing.smooth.label",
+    "file": "src/shared/engine/lookNames.ts",
+    "line": 28,
+    "english": "Smooth",
+    "sample": {}
+  },
+  {
+    "key": "editor.look.easing.smooth.title",
+    "file": "src/shared/engine/lookNames.ts",
+    "line": 28,
+    "english": "Eases in and out evenly",
+    "sample": {}
+  },
+  {
+    "key": "editor.look.easing.snappy.label",
+    "file": "src/shared/engine/lookNames.ts",
+    "line": 28,
+    "english": "Snappy",
+    "sample": {}
+  },
+  {
+    "key": "editor.look.easing.snappy.title",
+    "file": "src/shared/engine/lookNames.ts",
+    "line": 28,
+    "english": "Moves quickly, lands softly",
+    "sample": {}
+  },
+  {
+    "key": "editor.look.easing.bouncy.label",
+    "file": "src/shared/engine/lookNames.ts",
+    "line": 28,
+    "english": "Bouncy",
+    "sample": {}
+  },
+  {
+    "key": "editor.look.easing.bouncy.title",
+    "file": "src/shared/engine/lookNames.ts",
+    "line": 28,
+    "english": "Springs slightly past and settles",
+    "sample": {}
+  },
+  {
+    "key": "editor.look.easing.linear.label",
+    "file": "src/shared/engine/lookNames.ts",
+    "line": 28,
+    "english": "Linear",
+    "sample": {}
+  },
+  {
+    "key": "editor.look.easing.linear.title",
+    "file": "src/shared/engine/lookNames.ts",
+    "line": 28,
+    "english": "Constant speed",
+    "sample": {}
+  },
+  {
+    "key": "editor.look.tilt.left.label",
+    "file": "src/shared/engine/lookNames.ts",
+    "line": 36,
+    "english": "Left",
+    "sample": {}
+  },
+  {
+    "key": "editor.look.tilt.left.title",
+    "file": "src/shared/engine/lookNames.ts",
+    "line": 36,
+    "english": "Turned to the left",
+    "sample": {}
+  },
+  {
+    "key": "editor.look.tilt.right.label",
+    "file": "src/shared/engine/lookNames.ts",
+    "line": 36,
+    "english": "Right",
+    "sample": {}
+  },
+  {
+    "key": "editor.look.tilt.right.title",
+    "file": "src/shared/engine/lookNames.ts",
+    "line": 36,
+    "english": "Turned to the right",
+    "sample": {}
+  },
+  {
+    "key": "editor.look.tilt.top.label",
+    "file": "src/shared/engine/lookNames.ts",
+    "line": 36,
+    "english": "Top",
+    "sample": {}
+  },
+  {
+    "key": "editor.look.tilt.top.title",
+    "file": "src/shared/engine/lookNames.ts",
+    "line": 36,
+    "english": "Seen from above, like a laptop on a desk",
+    "sample": {}
+  },
+  {
+    "key": "editor.look.tilt.hero.label",
+    "file": "src/shared/engine/lookNames.ts",
+    "line": 36,
+    "english": "Hero",
+    "sample": {}
+  },
+  {
+    "key": "editor.look.tilt.hero.title",
+    "file": "src/shared/engine/lookNames.ts",
+    "line": 36,
+    "english": "A dramatic product shot from the side and above",
+    "sample": {}
+  },
+  {
+    "key": "editor.open.videoNotLoaded",
+    "file": "src/renderer/src/views/Editor.tsx",
+    "line": 193,
+    "english": "the video could not be loaded (unsupported or missing file)",
+    "sample": {
+      "detail": "unsupported or missing file"
+    }
+  },
+  {
+    "key": "editor.open.unsupported",
+    "file": "src/renderer/src/views/Editor.tsx",
+    "line": 193,
+    "english": "unsupported or missing file",
+    "sample": {}
+  },
+  {
+    "key": "editor.open.failed",
+    "file": "src/renderer/src/views/Editor.tsx",
+    "line": 304,
+    "english": "Could not open this recording: the video could not be loaded (unsupported or missing file)",
+    "sample": {
+      "reason": "the video could not be loaded (unsupported or missing file)"
+    }
+  },
+  {
+    "key": "editor.open.loading",
+    "file": "src/renderer/src/views/Editor.tsx",
+    "line": 314,
+    "english": "Opening recording…",
+    "sample": {}
+  },
+  {
+    "key": "editor.leave.unsaved",
+    "file": "src/renderer/src/views/Editor.tsx",
+    "line": 582,
+    "english": "Your latest changes could not be saved.\n\nLeave the editor anyway?",
+    "sample": {}
+  },
+  {
+    "key": "editor.leave.unsavedWhy",
+    "file": "src/renderer/src/views/Editor.tsx",
+    "line": 582,
+    "english": "Your latest changes could not be saved:\nThe disk is full.\n\nLeave the editor anyway?",
+    "sample": {
+      "reason": "The disk is full"
+    }
+  },
+  {
+    "key": "editor.leave.action",
+    "file": "src/renderer/src/views/Editor.tsx",
+    "line": 583,
+    "english": "Leave",
+    "sample": {}
+  },
+  {
+    "key": "editor.notice.originalGone",
+    "file": "src/renderer/src/views/Editor.tsx",
+    "line": 598,
+    "english": "The original recording is no longer in your library.",
+    "sample": {}
+  },
+  {
+    "key": "editor.notice.openOriginal",
+    "file": "src/renderer/src/views/Editor.tsx",
+    "line": 610,
+    "english": "Open original",
+    "sample": {}
+  },
+  {
+    "key": "editor.copy.busy",
+    "file": "src/renderer/src/views/Editor.tsx",
+    "line": 623,
+    "english": "Could not make the copy: a copy is already being made.",
+    "sample": {}
+  },
+  {
+    "key": "editor.copy.failed",
+    "file": "src/renderer/src/views/Editor.tsx",
+    "line": 358,
+    "english": "Could not make the copy: The disk is full.",
+    "sample": {
+      "reason": "The disk is full."
+    }
+  },
+  {
+    "key": "editor.copy.unsaved",
+    "file": "src/renderer/src/views/Editor.tsx",
+    "line": 644,
+    "english": "Your latest changes could not be saved. Make the copy anyway? It will include them.",
+    "sample": {}
+  },
+  {
+    "key": "editor.copy.makeAnyway",
+    "file": "src/renderer/src/views/Editor.tsx",
+    "line": 644,
+    "english": "Make the copy",
+    "sample": {}
+  },
+  {
+    "key": "editor.notice.shortcutsNotSaved",
+    "file": "src/renderer/src/views/Editor.tsx",
+    "line": 688,
+    "english": "Your shortcuts could not be saved: The disk is full.",
+    "sample": {
+      "reason": "The disk is full."
+    }
+  },
+  {
+    "key": "editor.clicks.ignored",
+    "file": "src/renderer/src/views/Editor.tsx",
+    "line": 711,
+    "english": [
+      "Ignored 0 clicks",
+      "Ignored 1 click",
+      "Ignored 2 clicks",
+      "Ignored 1000 clicks"
+    ],
+    "sample": [
+      {
+        "count": 0,
+        "n": "0"
+      },
+      {
+        "count": 1,
+        "n": "1"
+      },
+      {
+        "count": 2,
+        "n": "2"
+      },
+      {
+        "count": 1000,
+        "n": "1000"
+      }
+    ]
+  },
+  {
+    "key": "editor.clicks.usedAgain",
+    "file": "src/renderer/src/views/Editor.tsx",
+    "line": 711,
+    "english": [
+      "0 clicks used again",
+      "1 click used again",
+      "2 clicks used again",
+      "1000 clicks used again"
+    ],
+    "sample": [
+      {
+        "count": 0,
+        "n": "0"
+      },
+      {
+        "count": 1,
+        "n": "1"
+      },
+      {
+        "count": 2,
+        "n": "2"
+      },
+      {
+        "count": 1000,
+        "n": "1000"
+      }
+    ]
+  },
+  {
+    "key": "editor.clicks.oneIgnored",
+    "file": "src/renderer/src/views/Editor.tsx",
+    "line": 712,
+    "english": "Click at 0:03.2 ignored: no zoom, effect or sound",
+    "sample": {
+      "time": "0:03.2"
+    }
+  },
+  {
+    "key": "editor.clicks.oneUsedAgain",
+    "file": "src/renderer/src/views/Editor.tsx",
+    "line": 712,
+    "english": "Click at 0:03.2 used again",
+    "sample": {
+      "time": "0:03.2"
+    }
+  },
+  {
+    "key": "editor.clicks.strayIgnored",
+    "file": "src/renderer/src/views/Editor.tsx",
+    "line": 721,
+    "english": [
+      "Ignored 0 stray clicks",
+      "Ignored 1 stray click",
+      "Ignored 2 stray clicks",
+      "Ignored 1000 stray clicks"
+    ],
+    "sample": [
+      {
+        "count": 0,
+        "n": "0"
+      },
+      {
+        "count": 1,
+        "n": "1"
+      },
+      {
+        "count": 2,
+        "n": "2"
+      },
+      {
+        "count": 1000,
+        "n": "1000"
+      }
+    ]
+  },
+  {
+    "key": "editor.clicks.noStray",
+    "file": "src/renderer/src/views/Editor.tsx",
+    "line": 721,
+    "english": "No stray clicks found",
+    "sample": {}
+  },
+  {
+    "key": "editor.clicks.noneIgnored",
+    "file": "src/renderer/src/views/Editor.tsx",
+    "line": 725,
+    "english": "No click is ignored",
+    "sample": {}
+  },
+  {
+    "key": "editor.clicks.allUsedAgain",
+    "file": "src/renderer/src/views/Editor.tsx",
+    "line": 727,
+    "english": [
+      "All 0 ignored clicks are used again",
+      "The ignored click is used again",
+      "All 2 ignored clicks are used again",
+      "All 1000 ignored clicks are used again"
+    ],
+    "sample": [
+      {
+        "count": 0,
+        "n": "0"
+      },
+      {
+        "count": 1,
+        "n": "1"
+      },
+      {
+        "count": 2,
+        "n": "2"
+      },
+      {
+        "count": 1000,
+        "n": "1000"
+      }
+    ]
+  },
+  {
+    "key": "editor.clicks.alreadyIgnored",
+    "file": "src/renderer/src/views/Editor.tsx",
+    "line": 934,
+    "english": "This click is already ignored: use it again in the Zoom panel",
+    "sample": {}
+  },
+  {
+    "key": "editor.clicks.noneNear",
+    "file": "src/renderer/src/views/Editor.tsx",
+    "line": 1327,
+    "english": "No click near the playhead",
+    "sample": {}
+  },
+  {
+    "key": "editor.path.kept.drag",
+    "file": "src/renderer/src/views/Editor.tsx",
+    "line": 155,
+    "english": [
+      "0 drags",
+      "1 drag",
+      "2 drags",
+      "1000 drags"
+    ],
+    "sample": [
+      {
+        "count": 0,
+        "n": "0"
+      },
+      {
+        "count": 1,
+        "n": "1"
+      },
+      {
+        "count": 2,
+        "n": "2"
+      },
+      {
+        "count": 1000,
+        "n": "1000"
+      }
+    ]
+  },
+  {
+    "key": "editor.path.kept.dragGuess",
+    "file": "src/renderer/src/views/Editor.tsx",
+    "line": 156,
+    "english": [
+      "0 possible drags",
+      "1 possible drag",
+      "2 possible drags",
+      "1000 possible drags"
+    ],
+    "sample": [
+      {
+        "count": 0,
+        "n": "0"
+      },
+      {
+        "count": 1,
+        "n": "1"
+      },
+      {
+        "count": 2,
+        "n": "2"
+      },
+      {
+        "count": 1000,
+        "n": "1000"
+      }
+    ]
+  },
+  {
+    "key": "editor.path.kept.click",
+    "file": "src/renderer/src/views/Editor.tsx",
+    "line": 157,
+    "english": [
+      "0 moves across a click",
+      "1 move across a click",
+      "2 moves across a click",
+      "1000 moves across a click"
+    ],
+    "sample": [
+      {
+        "count": 0,
+        "n": "0"
+      },
+      {
+        "count": 1,
+        "n": "1"
+      },
+      {
+        "count": 2,
+        "n": "2"
+      },
+      {
+        "count": 1000,
+        "n": "1000"
+      }
+    ]
+  },
+  {
+    "key": "editor.path.kept.scroll",
+    "file": "src/renderer/src/views/Editor.tsx",
+    "line": 158,
+    "english": [
+      "0 moves while scrolling",
+      "1 move while scrolling",
+      "2 moves while scrolling",
+      "1000 moves while scrolling"
+    ],
+    "sample": [
+      {
+        "count": 0,
+        "n": "0"
+      },
+      {
+        "count": 1,
+        "n": "1"
+      },
+      {
+        "count": 2,
+        "n": "2"
+      },
+      {
+        "count": 1000,
+        "n": "1000"
+      }
+    ]
+  },
+  {
+    "key": "editor.path.kept.offFrame",
+    "file": "src/renderer/src/views/Editor.tsx",
+    "line": 159,
+    "english": [
+      "0 moves outside the video",
+      "1 move outside the video",
+      "2 moves outside the video",
+      "1000 moves outside the video"
+    ],
+    "sample": [
+      {
+        "count": 0,
+        "n": "0"
+      },
+      {
+        "count": 1,
+        "n": "1"
+      },
+      {
+        "count": 2,
+        "n": "2"
+      },
+      {
+        "count": 1000,
+        "n": "1000"
+      }
+    ]
+  },
+  {
+    "key": "editor.path.kept.short",
+    "file": "src/renderer/src/views/Editor.tsx",
+    "line": 160,
+    "english": [
+      "0 very quick moves",
+      "1 very quick move",
+      "2 very quick moves",
+      "1000 very quick moves"
+    ],
+    "sample": [
+      {
+        "count": 0,
+        "n": "0"
+      },
+      {
+        "count": 1,
+        "n": "1"
+      },
+      {
+        "count": 2,
+        "n": "2"
+      },
+      {
+        "count": 1000,
+        "n": "1000"
+      }
+    ]
+  },
+  {
+    "key": "editor.path.kept.long",
+    "file": "src/renderer/src/views/Editor.tsx",
+    "line": 161,
+    "english": [
+      "0 long moves",
+      "1 long move",
+      "2 long moves",
+      "1000 long moves"
+    ],
+    "sample": [
+      {
+        "count": 0,
+        "n": "0"
+      },
+      {
+        "count": 1,
+        "n": "1"
+      },
+      {
+        "count": 2,
+        "n": "2"
+      },
+      {
+        "count": 1000,
+        "n": "1000"
+      }
+    ]
+  },
+  {
+    "key": "editor.path.kept.small",
+    "file": "src/renderer/src/views/Editor.tsx",
+    "line": 162,
+    "english": [
+      "0 tiny moves",
+      "1 tiny move",
+      "2 tiny moves",
+      "1000 tiny moves"
+    ],
+    "sample": [
+      {
+        "count": 0,
+        "n": "0"
+      },
+      {
+        "count": 1,
+        "n": "1"
+      },
+      {
+        "count": 2,
+        "n": "2"
+      },
+      {
+        "count": 1000,
+        "n": "1000"
+      }
+    ]
+  },
+  {
+    "key": "editor.path.kept.wobbly",
+    "file": "src/renderer/src/views/Editor.tsx",
+    "line": 163,
+    "english": [
+      "0 winding moves",
+      "1 winding move",
+      "2 winding moves",
+      "1000 winding moves"
+    ],
+    "sample": [
+      {
+        "count": 0,
+        "n": "0"
+      },
+      {
+        "count": 1,
+        "n": "1"
+      },
+      {
+        "count": 2,
+        "n": "2"
+      },
+      {
+        "count": 1000,
+        "n": "1000"
+      }
+    ]
+  },
+  {
+    "key": "editor.path.kept.gesture",
+    "file": "src/renderer/src/views/Editor.tsx",
+    "line": 164,
+    "english": [
+      "0 loops",
+      "1 loop",
+      "2 loops",
+      "1000 loops"
+    ],
+    "sample": [
+      {
+        "count": 0,
+        "n": "0"
+      },
+      {
+        "count": 1,
+        "n": "1"
+      },
+      {
+        "count": 2,
+        "n": "2"
+      },
+      {
+        "count": 1000,
+        "n": "1000"
+      }
+    ]
+  },
+  {
+    "key": "editor.path.nothingToStraighten",
+    "file": "src/renderer/src/views/Editor.tsx",
+    "line": 175,
+    "english": "No cursor move here can be straightened",
+    "sample": {}
+  },
+  {
+    "key": "editor.path.nothingToStraightenWhy",
+    "file": "src/renderer/src/views/Editor.tsx",
+    "line": 175,
+    "english": "No cursor move here can be straightened (1 drag, 2 loops)",
+    "sample": {
+      "reasons": "1 drag, 2 loops"
+    }
+  },
+  {
+    "key": "editor.path.straightened",
+    "file": "src/renderer/src/views/Editor.tsx",
+    "line": 737,
+    "english": [
+      "Straightened 0 cursor moves in 0:01.0 – 0:03.5",
+      "Straightened 1 cursor move in 0:01.0 – 0:03.5",
+      "Straightened 2 cursor moves in 0:01.0 – 0:03.5",
+      "Straightened 1000 cursor moves in 0:01.0 – 0:03.5"
+    ],
+    "sample": [
+      {
+        "count": 0,
+        "n": "0",
+        "range": "0:01.0 – 0:03.5"
+      },
+      {
+        "count": 1,
+        "n": "1",
+        "range": "0:01.0 – 0:03.5"
+      },
+      {
+        "count": 2,
+        "n": "2",
+        "range": "0:01.0 – 0:03.5"
+      },
+      {
+        "count": 1000,
+        "n": "1000",
+        "range": "0:01.0 – 0:03.5"
+      }
+    ]
+  },
+  {
+    "key": "editor.path.keptRecorded",
+    "file": "src/renderer/src/views/Editor.tsx",
+    "line": 740,
+    "english": "Kept the recorded cursor path in 0:01.0 – 0:03.5",
+    "sample": {
+      "range": "0:01.0 – 0:03.5"
+    }
+  },
+  {
+    "key": "editor.path.followsStraighten",
+    "file": "src/renderer/src/views/Editor.tsx",
+    "line": 740,
+    "english": "The cursor path in 0:01.0 – 0:03.5 follows Straighten moves again",
+    "sample": {
+      "range": "0:01.0 – 0:03.5"
+    }
+  },
+  {
+    "key": "editor.notice.zoomHere",
+    "file": "src/renderer/src/views/Editor.tsx",
+    "line": 769,
+    "english": "There is already a zoom here, so it is selected instead",
+    "sample": {}
+  },
+  {
+    "key": "editor.notice.noRoomToAddZoom",
+    "file": "src/renderer/src/views/Editor.tsx",
+    "line": 771,
+    "english": "No room for a new zoom here: move the playhead to free space or shorten a zoom",
+    "sample": {}
+  },
+  {
+    "key": "editor.notice.lastClip",
+    "file": "src/renderer/src/views/Editor.tsx",
+    "line": 789,
+    "english": "The last clip cannot be removed",
+    "sample": {}
+  },
+  {
+    "key": "editor.notice.keepSome",
+    "file": "src/renderer/src/views/Editor.tsx",
+    "line": 800,
+    "english": "Part of the recording has to stay in the video",
+    "sample": {}
+  },
+  {
+    "key": "editor.notice.alreadyCut",
+    "file": "src/renderer/src/views/Editor.tsx",
+    "line": 804,
+    "english": "That range is already cut",
+    "sample": {}
+  },
+  {
+    "key": "editor.notice.noZoomSelected",
+    "file": "src/renderer/src/views/Editor.tsx",
+    "line": 817,
+    "english": "No zoom is selected",
+    "sample": {}
+  },
+  {
+    "key": "editor.notice.zoomLevelFor",
+    "file": "src/renderer/src/views/Editor.tsx",
+    "line": 820,
+    "english": [
+      "Zoom level 1.5× for 0 zooms",
+      "Zoom level 1.5× for 1 zoom",
+      "Zoom level 1.5× for 2 zooms",
+      "Zoom level 1.5× for 1000 zooms"
+    ],
+    "sample": [
+      {
+        "count": 0,
+        "n": "0",
+        "level": "1.5×"
+      },
+      {
+        "count": 1,
+        "n": "1",
+        "level": "1.5×"
+      },
+      {
+        "count": 2,
+        "n": "2",
+        "level": "1.5×"
+      },
+      {
+        "count": 1000,
+        "n": "1000",
+        "level": "1.5×"
+      }
+    ]
+  },
+  {
+    "key": "editor.notice.selectZoomKeys",
+    "file": "src/renderer/src/views/Editor.tsx",
+    "line": 827,
+    "english": "Select a zoom first: 1–4 set its zoom level, 0 pulls back",
+    "sample": {
+      "keys": "1–4 set its zoom level, 0 pulls back"
+    }
+  },
+  {
+    "key": "editor.reason.selectZoom",
+    "file": "src/renderer/src/views/Editor.tsx",
+    "line": 827,
+    "english": "Select a zoom first",
+    "sample": {}
+  },
+  {
+    "key": "editor.notice.noChapterAfter",
+    "file": "src/renderer/src/views/Editor.tsx",
+    "line": 840,
+    "english": "There is no chapter after the playhead",
+    "sample": {}
+  },
+  {
+    "key": "editor.notice.noChapterBefore",
+    "file": "src/renderer/src/views/Editor.tsx",
+    "line": 840,
+    "english": "There is no chapter before the playhead",
+    "sample": {}
+  },
+  {
+    "key": "editor.notice.noChapters",
+    "file": "src/renderer/src/views/Editor.tsx",
+    "line": 841,
+    "english": "This video has no chapters yet",
+    "sample": {}
+  },
+  {
+    "key": "editor.notice.noChaptersKey",
+    "file": "src/renderer/src/views/Editor.tsx",
+    "line": 841,
+    "english": "This video has no chapters yet: press M to add one at the playhead",
+    "sample": {
+      "keys": "M"
+    }
+  },
+  {
+    "key": "editor.reason.noCamera",
+    "file": "src/renderer/src/views/Editor.tsx",
+    "line": 846,
+    "english": "This recording has no camera",
+    "sample": {}
+  },
+  {
+    "key": "editor.reason.splitEdge",
+    "file": "src/renderer/src/views/Editor.tsx",
+    "line": 879,
+    "english": "Too close to the edge of a clip to split",
+    "sample": {}
+  },
+  {
+    "key": "editor.notice.splitInCut",
+    "file": "src/renderer/src/views/Editor.tsx",
+    "line": 879,
+    "english": "The playhead is in a cut: move it onto a clip to split",
+    "sample": {}
+  },
+  {
+    "key": "editor.reason.inCut",
+    "file": "src/renderer/src/views/Editor.tsx",
+    "line": 1620,
+    "english": "The playhead is in a cut",
+    "sample": {}
+  },
+  {
+    "key": "editor.reason.nothingCut",
+    "file": "src/renderer/src/views/Editor.tsx",
+    "line": 897,
+    "english": "Nothing is cut, trimmed or re-timed",
+    "sample": {}
+  },
+  {
+    "key": "editor.reason.selectRange",
+    "file": "src/renderer/src/views/Editor.tsx",
+    "line": 903,
+    "english": "Select a range first: Shift+drag on the clip track",
+    "sample": {}
+  },
+  {
+    "key": "editor.reason.nothingToUndo",
+    "file": "src/renderer/src/views/Editor.tsx",
+    "line": 941,
+    "english": "Nothing to undo",
+    "sample": {}
+  },
+  {
+    "key": "editor.reason.nothingToRedo",
+    "file": "src/renderer/src/views/Editor.tsx",
+    "line": 945,
+    "english": "Nothing to redo",
+    "sample": {}
+  },
+  {
+    "key": "editor.reason.notCropped",
+    "file": "src/renderer/src/views/Editor.tsx",
+    "line": 1021,
+    "english": "The recording is not cropped",
+    "sample": {}
+  },
+  {
+    "key": "editor.reason.noTaskbar",
+    "file": "src/renderer/src/views/Editor.tsx",
+    "line": 1026,
+    "english": "This recording does not show the taskbar",
+    "sample": {}
+  },
+  {
+    "key": "editor.notice.taskbarCropped",
+    "file": "src/renderer/src/views/Editor.tsx",
+    "line": 1027,
+    "english": "The taskbar is already cropped out",
+    "sample": {}
+  },
+  {
+    "key": "editor.notice.turnedOn",
+    "file": "src/renderer/src/views/Editor.tsx",
+    "line": 1057,
+    "english": "Smooth cursor on",
+    "sample": {
+      "what": "Smooth cursor"
+    }
+  },
+  {
+    "key": "editor.notice.turnedOff",
+    "file": "src/renderer/src/views/Editor.tsx",
+    "line": 1057,
+    "english": "Smooth cursor off",
+    "sample": {
+      "what": "Smooth cursor"
+    }
+  },
+  {
+    "key": "editor.notice.noCaptions",
+    "file": "src/renderer/src/views/Editor.tsx",
+    "line": 1066,
+    "english": "This video has no captions yet: generate them in the Captions tab",
+    "sample": {}
+  },
+  {
+    "key": "editor.reason.noCaptions",
+    "file": "src/renderer/src/views/Editor.tsx",
+    "line": 1616,
+    "english": "No captions yet",
+    "sample": {}
+  },
+  {
+    "key": "editor.reason.cursorInVideo",
+    "file": "src/renderer/src/views/Editor.tsx",
+    "line": 1085,
+    "english": "The recorded cursor is in the video",
+    "sample": {}
+  },
+  {
+    "key": "editor.reason.cursorAlreadyInVideo",
+    "file": "src/renderer/src/views/Editor.tsx",
+    "line": 1304,
+    "english": "The recorded cursor is already in the video",
+    "sample": {}
+  },
+  {
+    "key": "editor.notice.atStart",
+    "file": "src/renderer/src/views/Editor.tsx",
+    "line": 1092,
+    "english": "At the start: nothing to play backwards",
+    "sample": {}
+  },
+  {
+    "key": "editor.reason.closeCrop",
+    "file": "src/renderer/src/views/Editor.tsx",
+    "line": 1117,
+    "english": "Close the crop tool first",
+    "sample": {}
+  },
+  {
+    "key": "editor.items.copyWhat",
+    "file": "src/renderer/src/views/Editor.tsx",
+    "line": 1134,
+    "english": "Ctrl+C copies zooms, text, shapes, spotlights, title cards, chapters and freeze frames",
+    "sample": {}
+  },
+  {
+    "key": "editor.items.cutWhat",
+    "file": "src/renderer/src/views/Editor.tsx",
+    "line": 1152,
+    "english": "Ctrl+X cuts zooms, text, shapes, spotlights, title cards, chapters and freeze frames",
+    "sample": {}
+  },
+  {
+    "key": "editor.items.duplicateWhat",
+    "file": "src/renderer/src/views/Editor.tsx",
+    "line": 1182,
+    "english": "Ctrl+D duplicates zooms, text, shapes, spotlights, title cards, chapters and freeze frames",
+    "sample": {}
+  },
+  {
+    "key": "editor.items.selectToMove",
+    "file": "src/renderer/src/views/Editor.tsx",
+    "line": 1247,
+    "english": "Select zooms, text, shapes, spotlights, title cards, chapters and freeze frames to move them",
+    "sample": {}
+  },
+  {
+    "key": "editor.reason.selectToCopy",
+    "file": "src/renderer/src/views/Editor.tsx",
+    "line": 1134,
+    "english": "Select items to copy",
+    "sample": {}
+  },
+  {
+    "key": "editor.items.copied",
+    "file": "src/renderer/src/views/Editor.tsx",
+    "line": 1145,
+    "english": [
+      "Copied 0 items",
+      "Copied 1 item",
+      "Copied 2 items",
+      "Copied 1000 items"
+    ],
+    "sample": [
+      {
+        "count": 0,
+        "n": "0"
+      },
+      {
+        "count": 1,
+        "n": "1"
+      },
+      {
+        "count": 2,
+        "n": "2"
+      },
+      {
+        "count": 1000,
+        "n": "1000"
+      }
+    ]
+  },
+  {
+    "key": "editor.items.cutRecording",
+    "file": "src/renderer/src/views/Editor.tsx",
+    "line": 1151,
+    "english": "To cut part of the recording, press Delete",
+    "sample": {
+      "keys": "Delete"
+    }
+  },
+  {
+    "key": "editor.reason.selectToCut",
+    "file": "src/renderer/src/views/Editor.tsx",
+    "line": 1152,
+    "english": "Select items to cut",
+    "sample": {}
+  },
+  {
+    "key": "editor.items.addedNamed",
+    "file": "src/renderer/src/views/Editor.tsx",
+    "line": 1174,
+    "english": "Added logo.png at the playhead",
+    "sample": {
+      "name": "logo.png"
+    }
+  },
+  {
+    "key": "editor.items.addedImage",
+    "file": "src/renderer/src/views/Editor.tsx",
+    "line": 1174,
+    "english": "Added the pasted image at the playhead",
+    "sample": {}
+  },
+  {
+    "key": "editor.reason.selectToDuplicate",
+    "file": "src/renderer/src/views/Editor.tsx",
+    "line": 1182,
+    "english": "Select items to duplicate",
+    "sample": {}
+  },
+  {
+    "key": "editor.reason.copyLookOne",
+    "file": "src/renderer/src/views/Editor.tsx",
+    "line": 1189,
+    "english": "Select one item to copy its look",
+    "sample": {}
+  },
+  {
+    "key": "editor.copyLook.none",
+    "file": "src/renderer/src/views/Editor.tsx",
+    "line": 1191,
+    "english": "This item has no look to copy",
+    "sample": {}
+  },
+  {
+    "key": "editor.reason.copyLookSelect",
+    "file": "src/renderer/src/views/Editor.tsx",
+    "line": 1191,
+    "english": "Select an item to copy its look",
+    "sample": {}
+  },
+  {
+    "key": "editor.copyLook.chapters",
+    "file": "src/renderer/src/views/Editor.tsx",
+    "line": 1192,
+    "english": "Chapters have no look to copy",
+    "sample": {}
+  },
+  {
+    "key": "editor.copyLook.copied",
+    "file": "src/renderer/src/views/Editor.tsx",
+    "line": 1196,
+    "english": "Copied the text look",
+    "sample": {
+      "name": "text"
+    }
+  },
+  {
+    "key": "editor.pasteLook.select",
+    "file": "src/renderer/src/views/Editor.tsx",
+    "line": 1204,
+    "english": "Select items to paste the text look onto",
+    "sample": {
+      "name": "text"
+    }
+  },
+  {
+    "key": "editor.pasteLook.nothing",
+    "file": "src/renderer/src/views/Editor.tsx",
+    "line": 1209,
+    "english": "Nothing to paste the text look onto",
+    "sample": {
+      "name": "text"
+    }
+  },
+  {
+    "key": "editor.pasteLook.already",
+    "file": "src/renderer/src/views/Editor.tsx",
+    "line": 1210,
+    "english": "Already has this look",
+    "sample": {}
+  },
+  {
+    "key": "editor.pasteLook.pasted",
+    "file": "src/renderer/src/views/Editor.tsx",
+    "line": 1213,
+    "english": [
+      "Pasted the text look onto 0 text items",
+      "Pasted the text look onto 1 text item",
+      "Pasted the text look onto 2 text items",
+      "Pasted the text look onto 1000 text items"
+    ],
+    "sample": [
+      {
+        "count": 0,
+        "n": "0",
+        "name": "text",
+        "one": "text item",
+        "many": "text items"
+      },
+      {
+        "count": 1,
+        "n": "1",
+        "name": "text",
+        "one": "text item",
+        "many": "text items"
+      },
+      {
+        "count": 2,
+        "n": "2",
+        "name": "text",
+        "one": "text item",
+        "many": "text items"
+      },
+      {
+        "count": 1000,
+        "n": "1000",
+        "name": "text",
+        "one": "text item",
+        "many": "text items"
+      }
+    ]
+  },
+  {
+    "key": "editor.pasteLook.pastedOthers",
+    "file": "src/renderer/src/views/Editor.tsx",
+    "line": 1213,
+    "english": [
+      "Pasted the text look onto 0 text items · 2 items are not text items, left as they were",
+      "Pasted the text look onto 1 text item · 2 items are not text items, left as they were",
+      "Pasted the text look onto 2 text items · 2 items are not text items, left as they were",
+      "Pasted the text look onto 1000 text items · 2 items are not text items, left as they were"
+    ],
+    "sample": [
+      {
+        "count": 0,
+        "n": "0",
+        "name": "text",
+        "one": "text item",
+        "many": "text items",
+        "others": 2,
+        "o": "2"
+      },
+      {
+        "count": 1,
+        "n": "1",
+        "name": "text",
+        "one": "text item",
+        "many": "text items",
+        "others": 2,
+        "o": "2"
+      },
+      {
+        "count": 2,
+        "n": "2",
+        "name": "text",
+        "one": "text item",
+        "many": "text items",
+        "others": 2,
+        "o": "2"
+      },
+      {
+        "count": 1000,
+        "n": "1000",
+        "name": "text",
+        "one": "text item",
+        "many": "text items",
+        "others": 2,
+        "o": "2"
+      }
+    ]
+  },
+  {
+    "key": "editor.reason.nothingCopied",
+    "file": "src/renderer/src/views/Editor.tsx",
+    "line": 1673,
+    "english": "Nothing copied yet",
+    "sample": {}
+  },
+  {
+    "key": "editor.reason.copyLookFirst",
+    "file": "src/renderer/src/views/Editor.tsx",
+    "line": 1676,
+    "english": "Copy a look first",
+    "sample": {}
+  },
+  {
+    "key": "editor.reason.lookIsFor",
+    "file": "src/renderer/src/views/Editor.tsx",
+    "line": 1676,
+    "english": "The copied look is for text items",
+    "sample": {
+      "many": "text items"
+    }
+  },
+  {
+    "key": "editor.freeze.noneSelected",
+    "file": "src/renderer/src/views/Editor.tsx",
+    "line": 1220,
+    "english": "No freeze frame is selected",
+    "sample": {}
+  },
+  {
+    "key": "editor.freeze.paused",
+    "file": "src/renderer/src/views/Editor.tsx",
+    "line": 1232,
+    "english": [
+      "0 freeze frames: the recording waits with its sound paused",
+      "1 freeze frame: the recording waits with its sound paused",
+      "2 freeze frames: the recording waits with its sound paused",
+      "1000 freeze frames: the recording waits with its sound paused"
+    ],
+    "sample": [
+      {
+        "count": 0,
+        "n": "0"
+      },
+      {
+        "count": 1,
+        "n": "1"
+      },
+      {
+        "count": 2,
+        "n": "2"
+      },
+      {
+        "count": 1000,
+        "n": "1000"
+      }
+    ]
+  },
+  {
+    "key": "editor.freeze.playing",
+    "file": "src/renderer/src/views/Editor.tsx",
+    "line": 1233,
+    "english": [
+      "0 freeze frames: the sound keeps playing",
+      "1 freeze frame: the sound keeps playing",
+      "2 freeze frames: the sound keeps playing",
+      "1000 freeze frames: the sound keeps playing"
+    ],
+    "sample": [
+      {
+        "count": 0,
+        "n": "0"
+      },
+      {
+        "count": 1,
+        "n": "1"
+      },
+      {
+        "count": 2,
+        "n": "2"
+      },
+      {
+        "count": 1000,
+        "n": "1000"
+      }
+    ]
+  },
+  {
+    "key": "editor.freeze.playingSomeKept",
+    "file": "src/renderer/src/views/Editor.tsx",
+    "line": 1233,
+    "english": [
+      "0 freeze frames: the sound keeps playing · 1 freeze frame at the end keeps pausing the sound",
+      "1 freeze frame: the sound keeps playing · 1 freeze frame at the end keeps pausing the sound",
+      "2 freeze frames: the sound keeps playing · 1 freeze frame at the end keeps pausing the sound",
+      "1000 freeze frames: the sound keeps playing · 1 freeze frame at the end keeps pausing the sound"
+    ],
+    "sample": [
+      {
+        "count": 0,
+        "n": "0",
+        "refused": 1,
+        "r": "1"
+      },
+      {
+        "count": 1,
+        "n": "1",
+        "refused": 1,
+        "r": "1"
+      },
+      {
+        "count": 2,
+        "n": "2",
+        "refused": 1,
+        "r": "1"
+      },
+      {
+        "count": 1000,
+        "n": "1000",
+        "refused": 1,
+        "r": "1"
+      }
+    ]
+  },
+  {
+    "key": "editor.speed.fastest",
+    "file": "src/renderer/src/views/Editor.tsx",
+    "line": 1239,
+    "english": "The preview already plays at its fastest speed (2×)",
+    "sample": {
+      "speed": "2×"
+    }
+  },
+  {
+    "key": "editor.speed.slowest",
+    "file": "src/renderer/src/views/Editor.tsx",
+    "line": 1239,
+    "english": "The preview already plays at its slowest speed (0.5×)",
+    "sample": {
+      "speed": "0.5×"
+    }
+  },
+  {
+    "key": "editor.speed.set",
+    "file": "src/renderer/src/views/Editor.tsx",
+    "line": 1241,
+    "english": "Preview speed 1.5× (the export is not affected)",
+    "sample": {
+      "speed": "1.5×"
+    }
+  },
+  {
+    "key": "editor.reason.fastestSpeed",
+    "file": "src/renderer/src/views/Editor.tsx",
+    "line": 1678,
+    "english": "Already the fastest preview speed (2×)",
+    "sample": {
+      "speed": "2×"
+    }
+  },
+  {
+    "key": "editor.reason.slowestSpeed",
+    "file": "src/renderer/src/views/Editor.tsx",
+    "line": 1679,
+    "english": "Already the slowest preview speed (0.5×)",
+    "sample": {
+      "speed": "0.5×"
+    }
+  },
+  {
+    "key": "editor.notice.noCursorSpotlight",
+    "file": "src/renderer/src/views/Editor.tsx",
+    "line": 1282,
+    "english": "This recording has no cursor data: add a spotlight on an area instead",
+    "sample": {
+      "reason": "This recording has no cursor data"
+    }
+  },
+  {
+    "key": "editor.notice.noCursorMagnifier",
+    "file": "src/renderer/src/views/Editor.tsx",
+    "line": 1455,
+    "english": "This recording has no cursor data: add a magnifier on a place instead",
+    "sample": {
+      "reason": "This recording has no cursor data"
+    }
+  },
+  {
+    "key": "editor.toggle.straighten",
+    "file": "src/renderer/src/views/Editor.tsx",
+    "line": 1319,
+    "english": "Straighten moves",
+    "sample": {}
+  },
+  {
+    "key": "editor.toggle.progressBar",
+    "file": "src/renderer/src/views/Editor.tsx",
+    "line": 1465,
+    "english": "Progress bar",
+    "sample": {}
+  },
+  {
+    "key": "editor.toggle.waveform",
+    "file": "src/renderer/src/views/Editor.tsx",
+    "line": 1480,
+    "english": "Audio waveform",
+    "sample": {}
+  },
+  {
+    "key": "editor.reason.noSound",
+    "file": "src/renderer/src/views/Editor.tsx",
+    "line": 1477,
+    "english": "This recording has no sound",
+    "sample": {}
+  },
+  {
+    "key": "editor.reason.selectSomething",
+    "file": "src/renderer/src/views/Editor.tsx",
+    "line": 1621,
+    "english": "Select something on the timeline first",
+    "sample": {}
+  },
+  {
+    "key": "editor.reason.selectFreeze",
+    "file": "src/renderer/src/views/Editor.tsx",
+    "line": 1648,
+    "english": "Select a freeze frame first",
+    "sample": {}
+  },
+  {
+    "key": "editor.reason.noChapterAfter",
+    "file": "src/renderer/src/views/Editor.tsx",
+    "line": 1630,
+    "english": "No chapter after the playhead",
+    "sample": {}
+  },
+  {
+    "key": "editor.reason.noChapterBefore",
+    "file": "src/renderer/src/views/Editor.tsx",
+    "line": 1631,
+    "english": "No chapter before the playhead",
+    "sample": {}
+  },
+  {
+    "key": "editor.reason.noChapters",
+    "file": "src/renderer/src/views/Editor.tsx",
+    "line": 1630,
+    "english": "No chapters yet",
+    "sample": {}
+  },
+  {
+    "key": "editor.reason.autoColourRunning",
+    "file": "src/renderer/src/views/Editor.tsx",
+    "line": 1695,
+    "english": "Auto colour is running",
+    "sample": {}
+  },
+  {
+    "key": "editor.reason.selectToMove",
+    "file": "src/renderer/src/views/Editor.tsx",
+    "line": 1696,
+    "english": "Select items to move them",
+    "sample": {}
+  },
+  {
+    "key": "editor.reason.copyBusy",
+    "file": "src/renderer/src/views/Editor.tsx",
+    "line": 1701,
+    "english": "A copy is already being made",
+    "sample": {}
+  },
+  {
+    "key": "editor.follow.unavailable",
+    "file": "src/renderer/src/views/Editor.tsx",
+    "line": 352,
+    "english": "Following works in 9:16, 1:1 and other frames narrower than the recording. Choose one in Style › Frame.",
+    "sample": {}
+  },
+  {
+    "key": "editor.follow.off",
+    "file": "src/renderer/src/views/Editor.tsx",
+    "line": 354,
+    "english": "Turn on Follow the action first, in Style › Vertical framing.",
+    "sample": {}
+  },
+  {
+    "key": "editor.notice.safeZonesTall",
+    "file": "src/renderer/src/views/Editor.tsx",
+    "line": 356,
+    "english": "Safe zones are shown for tall frames, such as 9:16.",
+    "sample": {}
+  },
+  {
+    "key": "editor.notice.versionOpened",
+    "file": "src/renderer/src/views/Editor.tsx",
+    "line": 1597,
+    "english": "Opened “Before the cuts”. Your edit before it is kept as a version",
+    "sample": {
+      "name": "Before the cuts"
+    }
+  },
+  {
+    "key": "editor.titlebar.back",
+    "file": "src/renderer/src/views/Editor.tsx",
+    "line": 1851,
+    "english": "Back to recordings",
+    "sample": {}
+  },
+  {
+    "key": "editor.titlebar.name",
+    "file": "src/renderer/src/views/Editor.tsx",
+    "line": 1856,
+    "english": "Recording name",
+    "sample": {}
+  },
+  {
+    "key": "editor.titlebar.versionsTitle",
+    "file": "src/renderer/src/views/Editor.tsx",
+    "line": 1876,
+    "english": "Versions: save this edit, or go back to an earlier one",
+    "sample": {}
+  },
+  {
+    "key": "editor.titlebar.versions",
+    "file": "src/renderer/src/views/Editor.tsx",
+    "line": 1877,
+    "english": "Versions",
+    "sample": {}
+  },
+  {
+    "key": "editor.titlebar.commandsTitle",
+    "file": "src/renderer/src/views/Editor.tsx",
+    "line": 1882,
+    "english": "Search every editor command",
+    "sample": {}
+  },
+  {
+    "key": "editor.titlebar.commands",
+    "file": "src/renderer/src/views/Editor.tsx",
+    "line": 1884,
+    "english": "Commands",
+    "sample": {}
+  },
+  {
+    "key": "editor.titlebar.polish",
+    "file": "src/renderer/src/views/Editor.tsx",
+    "line": 1901,
+    "english": "Polish",
+    "sample": {}
+  },
+  {
+    "key": "editor.titlebar.publishTitle",
+    "file": "src/renderer/src/views/Editor.tsx",
+    "line": 1903,
+    "english": "Write the text to post with the video",
+    "sample": {}
+  },
+  {
+    "key": "editor.titlebar.publish",
+    "file": "src/renderer/src/views/Editor.tsx",
+    "line": 1904,
+    "english": "Publish",
+    "sample": {}
+  },
+  {
+    "key": "editor.titlebar.guideTitle",
+    "file": "src/renderer/src/views/Editor.tsx",
+    "line": 1912,
+    "english": "Make a step-by-step guide or a click-through demo from your clicks",
+    "sample": {}
+  },
+  {
+    "key": "editor.titlebar.guide",
+    "file": "src/renderer/src/views/Editor.tsx",
+    "line": 1914,
+    "english": "Guide",
+    "sample": {}
+  },
+  {
+    "key": "editor.titlebar.exportTitle",
+    "file": "src/renderer/src/views/Editor.tsx",
+    "line": 1916,
+    "english": "Export the video",
+    "sample": {}
+  },
+  {
+    "key": "editor.titlebar.export",
+    "file": "src/renderer/src/views/Editor.tsx",
+    "line": 1917,
+    "english": "Export",
+    "sample": {}
+  },
+  {
+    "key": "editor.media.loadFailed",
+    "file": "src/renderer/src/editor/media.ts",
+    "line": 69,
+    "english": "Could not load video (unknown error)",
+    "sample": {
+      "reason": "unknown error"
+    }
+  },
+  {
+    "key": "editor.media.readFailed",
+    "file": "src/renderer/src/editor/media.ts",
+    "line": 100,
+    "english": "Could not read video (unknown error)",
+    "sample": {
+      "reason": "unknown error"
+    }
+  },
+  {
+    "key": "editor.media.unknownError",
+    "file": "src/renderer/src/editor/media.ts",
+    "line": 69,
+    "english": "unknown error",
+    "sample": {}
+  },
+  {
+    "key": "editor.media.imageFailed",
+    "file": "src/renderer/src/editor/media.ts",
+    "line": 154,
+    "english": "Could not load image",
+    "sample": {}
+  },
+  {
+    "key": "common.action.back",
+    "file": "src/renderer/src/views/Editor.tsx",
+    "line": 301,
+    "english": "Back",
+    "sample": {}
+  },
+  {
+    "key": "common.label.camera",
+    "file": "src/renderer/src/views/Editor.tsx",
+    "line": 1354,
+    "english": "Camera",
+    "sample": {}
+  },
+  {
+    "key": "common.label.captions",
+    "file": "src/renderer/src/views/Editor.tsx",
+    "line": 1364,
+    "english": "Captions",
+    "sample": {}
+  },
+  {
+    "key": "common.label.keyboardShortcuts",
+    "file": "src/renderer/src/views/Editor.tsx",
+    "line": 1887,
+    "english": "Keyboard shortcuts",
+    "sample": {}
+  }
+]

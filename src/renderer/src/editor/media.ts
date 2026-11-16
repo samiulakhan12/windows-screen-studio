@@ -1,4 +1,5 @@
 import { frameCovers, frameSeekTime } from '../../../shared/render/frameTiming'
+import { t } from '../../../shared/i18n/t'
 
 /**
  * Proxies are constant frame rate: the screen proxy (screen.mp4) at 60 fps, the
@@ -65,7 +66,7 @@ export function whenReady(v: HTMLVideoElement): Promise<void> {
     }
     const fail = (): void => {
       cleanup()
-      reject(new Error(`Could not load video (${v.error?.message ?? 'unknown error'})`))
+      reject(new Error(t('editor.media.loadFailed', { reason: v.error?.message ?? t('editor.media.unknownError') })))
     }
     const cleanup = (): void => {
       v.removeEventListener('loadeddata', ok)
@@ -82,10 +83,10 @@ export function whenReady(v: HTMLVideoElement): Promise<void> {
 
 /** `t` clamped to the playable range (the last frame stays reachable). */
 const clampToMedia = (v: HTMLVideoElement, t: number): number => Math.max(0, Math.min(t, (Number.isFinite(v.duration) ? v.duration : t) - 0.001))
-
+/** Seeks and resolves once the frame at time `at` is decoded and drawable. */
 /** Seeks and resolves once the frame at `t` is decoded and drawable. */
-export function seekTo(v: HTMLVideoElement, t: number): Promise<void> {
-  const target = clampToMedia(v, t)
+export function seekTo(v: HTMLVideoElement, at: number): Promise<void> {
+  const target = clampToMedia(v, at)
   return new Promise((resolve, reject) => {
     if (Math.abs(v.currentTime - target) < 0.0005 && v.readyState >= 2 && !v.seeking) return resolve()
     const done = (): void => {
@@ -96,7 +97,7 @@ export function seekTo(v: HTMLVideoElement, t: number): Promise<void> {
     const fail = (): void => {
       v.removeEventListener('seeked', done)
       v.removeEventListener('error', fail)
-      reject(new Error(`Could not read video (${v.error?.message ?? 'unknown error'})`))
+      reject(new Error(t('editor.media.readFailed', { reason: v.error?.message ?? t('editor.media.unknownError') })))
     }
     v.addEventListener('seeked', done)
     v.addEventListener('error', fail)
@@ -150,7 +151,7 @@ export function loadImage(url: string): Promise<HTMLImageElement> {
     const img = new Image()
     img.crossOrigin = 'anonymous'
     img.onload = () => resolve(img)
-    img.onerror = () => reject(new Error('Could not load image'))
+    img.onerror = () => reject(new Error(t('editor.media.imageFailed')))
     img.src = url
   })
 }

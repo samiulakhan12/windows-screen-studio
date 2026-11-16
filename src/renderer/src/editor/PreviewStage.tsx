@@ -40,6 +40,7 @@ import { CropEditor, type CropTool } from './CropEditor'
 import { overlayBounds, OverlayEditor } from './OverlayEditor'
 import { overlayVisibleAt } from '../../../shared/render/imageOverlays'
 import { fmt } from '../../../shared/i18n/fmt'
+import { t } from '../../../shared/i18n/t'
 import { releaseFocus } from './focus'
 import type { PreviewPlayer } from './player'
 import { followPointer } from './pointer'
@@ -362,8 +363,8 @@ export const PreviewStage = memo(function PreviewStage({ project, pickZoom: pick
     const px = e.clientX - r.left
     const py = e.clientY - r.top
     if (px < slot.x || px > slot.x + slot.w || py < slot.y || py > slot.y + slot.h) return false
-    const t = displayTime(drawn.clips, player.time)
-    const cam = punchedCamera(frameCamera(scene, sceneView, t), scene.project, t)
+    const at = displayTime(drawn.clips, player.time)
+    const cam = punchedCamera(frameCamera(scene, sceneView, at), scene.project, at)
     // Recording units (as drawn) per overlay pixel, through the camera and the virtual rectangle.
     const ux = 1 / (cam.scale * rect.w)
     const uy = 1 / (cam.scale * rect.h)
@@ -378,13 +379,13 @@ export const PreviewStage = memo(function PreviewStage({ project, pickZoom: pick
         if (!moved && Math.hypot(ev.clientX - sx, ev.clientY - sy) <= CLICK_SLOP) return
         if (!moved) {
           moved = true
-          from = dragStart(store.state, t, { x: cam.cx, y: cam.cy }, crop, noData)
-          if (!from) return group.notice('There is no room for a new zoom here.')
+          from = dragStart(store.state, at, { x: cam.cx, y: cam.cy }, crop, noData)
+          if (!from) return group.notice(t('editor.notice.noRoomForZoom'))
           holdGesture(store)
           setDragging(true)
         }
         const start = from
-        if (start) store.update(() => dragView(start, t, { x: (ev.clientX - sx) * ux, y: (ev.clientY - sy) * uy }, crop, noData), 'view-drag')
+        if (start) store.update(() => dragView(start, at, { x: (ev.clientX - sx) * ux, y: (ev.clientY - sy) * uy }, crop, noData), 'view-drag')
       },
       (ev) => {
         setDragging(false)
@@ -458,7 +459,7 @@ export const PreviewStage = memo(function PreviewStage({ project, pickZoom: pick
         <div
           className={['preview-overlay', pickZoom && 'picking', canDragView && 'view-drag', dragging && 'dragging'].filter(Boolean).join(' ')}
           onPointerDown={onOverlayDown}
-          title={pickZoom ? undefined : 'Click to play or pause'}
+          title={pickZoom ? undefined : t('editor.preview.clickToPlay')}
           data-testid="preview-overlay"
         >
           {pickZoom?.focus.mode === 'region' && <RegionEditor zoom={pickZoom} region={pickZoom.focus} rect={rect} onDone={onExitPick} sourceAt={sourceAt} setRegion={setRegion} />}
@@ -478,7 +479,7 @@ export const PreviewStage = memo(function PreviewStage({ project, pickZoom: pick
               data-testid="group-outline"
               data-key={b.key}
               style={{ left: b.x, top: b.y, width: b.w, height: b.h }}
-              title="Selected · click to edit it alone, Ctrl+click to leave it out"
+              title={t('editor.preview.groupOutline')}
               onPointerDown={(e) => {
                 // With Ctrl or Shift the press goes on to the overlay, which adds or removes items.
                 if (e.button !== 0 || e.ctrlKey || e.metaKey || e.shiftKey) return
@@ -491,7 +492,7 @@ export const PreviewStage = memo(function PreviewStage({ project, pickZoom: pick
           ))}
           {outlines.length > 0 && (
             <div className="pick-hint group-hint" data-testid="group-hint">
-              {outlines.length === 1 ? '1 selected item' : `${outlines.length} selected items`} on screen · Ctrl+click to add or remove
+              {t('editor.preview.groupHint', { count: outlines.length, n: fmt.count(outlines.length) })}
             </div>
           )}
         </div>
@@ -521,7 +522,7 @@ function FocusPicker({ zoom, rect, onDone }: { zoom: ZoomSegment; rect: Rect; on
       <div className="focus-viewport" style={{ left: view.x, top: view.y, width: view.w, height: view.h }} />
       <div className="focus-marker" style={{ left: rect.x + fx * rect.w, top: rect.y + fy * rect.h }} />
       <div className="pick-hint">
-        Click or drag to set where this zoom looks ·{' '}
+        {t('editor.preview.focusHint')}{' '}
         <button
           className="link"
           onPointerDown={(e) => e.stopPropagation()}
@@ -530,7 +531,7 @@ function FocusPicker({ zoom, rect, onDone }: { zoom: ZoomSegment; rect: Rect; on
             onDone()
           }}
         >
-          Done
+          {t('common.action.done')}
         </button>
       </div>
     </>
@@ -582,7 +583,7 @@ function RegionEditor({
   return (
     <>
       <div className="region-view" style={{ left: view.x, top: view.y, width: view.w, height: view.h }} />
-      <div className="region-box" style={box} onPointerDown={onDown('move')} data-testid="region-box" title="Drag to move · corners resize (Shift: any shape)">
+      <div className="region-box" style={box} onPointerDown={onDown('move')} data-testid="region-box" title={t('editor.preview.regionBox')}>
         <span className="region-label">{fmt.factor(zoomTargetScale(zoom))}</span>
         {CORNERS.map((c) => (
           <span
@@ -595,7 +596,7 @@ function RegionEditor({
         ))}
       </div>
       <div className="pick-hint">
-        Drag to draw the area to zoom into (Shift: any shape) ·{' '}
+        {t('editor.preview.regionHint')}{' '}
         <button
           className="link"
           onPointerDown={(e) => e.stopPropagation()}
@@ -604,7 +605,7 @@ function RegionEditor({
             onDone()
           }}
         >
-          Done
+          {t('common.action.done')}
         </button>
       </div>
     </>
@@ -675,7 +676,7 @@ function AnnotationHandle({ annotation, project, box }: { annotation: Annotation
   return (
     <div
       className="annotation-handle"
-      title="Drag to move the text"
+      title={t('editor.preview.moveText')}
       style={{ left: b.x, top: b.y, width: b.w, height: b.h }}
       onPointerDown={onDown}
     />
@@ -760,8 +761,8 @@ function ShapeEditor({
           <line className="guide" x1={a.x} y1={a.y} x2={b.x} y2={b.y} />
           <line className="hit" x1={a.x} y1={a.y} x2={b.x} y2={b.y} onPointerDown={drag((dx, dy) => updateShape(store, crop, item.id, moveLine(initial, dx, dy)))} data-testid="shape-line" />
         </svg>
-        <span className="shape-end" data-end="start" style={{ left: a.x, top: a.y }} onPointerDown={moveEnd('start')} title="Drag to move this end" />
-        <span className="shape-end" data-end="end" style={{ left: b.x, top: b.y }} onPointerDown={moveEnd('end')} title={item.kind === 'arrow' ? 'Drag to move the arrowhead' : 'Drag to move this end'} />
+        <span className="shape-end" data-end="start" style={{ left: a.x, top: a.y }} onPointerDown={moveEnd('start')} title={t('editor.preview.moveEnd')} />
+        <span className="shape-end" data-end="end" style={{ left: b.x, top: b.y }} onPointerDown={moveEnd('end')} title={item.kind === 'arrow' ? t('editor.preview.moveArrowhead') : t('editor.preview.moveEnd')} />
       </>
     )
   } else {
@@ -783,10 +784,10 @@ function ShapeEditor({
         style={{ left: a.x, top: a.y, width: b.x - a.x, height: b.y - a.y }}
         onPointerDown={follows ? (e) => e.stopPropagation() : resize('move')}
         data-testid="shape-box"
-        title={follows ? 'Follows the cursor: drag a corner to resize' : 'Drag to move · handles resize (Shift: keep the shape)'}
+        title={follows ? t('editor.preview.followsResize') : t('editor.preview.shapeBox')}
       >
         {round && <span className="shape-box round" style={{ inset: -1.5, pointerEvents: 'none' }} />}
-        {follows && <span className="shape-tag">Follows the cursor</span>}
+        {follows && <span className="shape-tag">{t('editor.preview.follows')}</span>}
         {(follows ? (['nw', 'ne', 'sw', 'se'] as RegionHandle[]) : BOX_HANDLES).map((h) => (
           <span
             key={h}
@@ -800,7 +801,7 @@ function ShapeEditor({
     )
   }
 
-  const label = type === 'shape' ? shapeLabel(item.kind) : item.mode === 'cursor' ? 'Cursor spotlight' : 'Spotlight'
+  const label = type === 'shape' ? shapeLabel(item.kind) : item.mode === 'cursor' ? t('editor.preview.cursorSpotlight') : t('editor.preview.spotlight')
   return (
     <div className="shape-editor" data-testid="shape-editor" data-item={item.id}>
       {clip ? (
@@ -811,9 +812,9 @@ function ShapeEditor({
         body
       )}
       <div className="pick-hint shape-hint" onPointerDown={(e) => e.stopPropagation()}>
-        {label} · {offscreen ? 'the cursor is off the recording here' : `drag to place it${type === 'spotlight' && item.mode === 'cursor' ? '' : ', or drag elsewhere to draw it again'}`} ·{' '}
+        {label} · {offscreen ? t('editor.preview.cursorOff') : type === 'spotlight' && item.mode === 'cursor' ? t('editor.preview.dragToPlace') : t('editor.preview.dragToPlaceOrDraw')} ·{' '}
         <button className="link" onClick={onDone}>
-          Done
+          {t('common.action.done')}
         </button>
       </div>
     </div>

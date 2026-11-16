@@ -11,6 +11,7 @@
  */
 import { COMMAND_IDS, commandInfo, isCommandId, type CommandId } from './commands'
 import { fmt } from '../i18n/fmt'
+import { t, type MessageKey } from '../i18n/t'
 
 export interface Chord {
   ctrl: boolean
@@ -259,14 +260,37 @@ export function shortcutLabel(accelerator: string): string {
   return shortcutKeys(accelerator).join(' + ')
 }
 
+/** Key names in aria-keyshortcuts' syntax (KeyboardEvent key values; "Space" for the space bar), where they differ from ours. */
+const ARIA_KEYS: Record<string, string> = { Left: 'ArrowLeft', Right: 'ArrowRight', Up: 'ArrowUp', Down: 'ArrowDown' }
+
+/**
+ * Shortcuts as aria-keyshortcuts writes them (docs/design/output-and-languages.md §14.2): each in
+ * its fixed syntax, never translated ("Control+Shift+Z Control+Y"), or undefined for none. For
+ * controls whose tooltip does not name the shortcut already. The plus key, which that syntax uses
+ * between keys, stays "Plus".
+ */
+export function ariaKeys(accelerators: readonly string[] | undefined): string | undefined {
+  const out: string[] = []
+  for (const a of accelerators ?? []) {
+    const c = parseShortcut(a)
+    if (c) out.push([c.ctrl && 'Control', c.alt && 'Alt', c.shift && 'Shift', ARIA_KEYS[c.key] ?? c.key].filter(Boolean).join('+'))
+  }
+  return out.length ? out.join(' ') : undefined
+}
+
+/*
+ * The sentences around keycaps are messages (keys.*, docs/design/output-and-languages.md §14.1);
+ * the keycaps stay as shortcutLabel writes them in every language.
+ */
+
 /** `text` with the first shortcut in brackets: "Split the clip at the playhead (S)". */
 export function withShortcut(text: string, accelerators: readonly string[] | undefined): string {
-  return accelerators?.length ? `${text} (${shortcutLabel(accelerators[0])})` : text
+  return accelerators?.length ? t('keys.withShortcut', { text, keys: shortcutLabel(accelerators[0]) }) : text
 }
 
 /** `text` followed by ", or press" and the first shortcut: "Double-click to add text, or press T". */
 export function orPress(text: string, accelerators: readonly string[] | undefined): string {
-  return accelerators?.length ? `${text}, or press ${shortcutLabel(accelerators[0])}` : text
+  return accelerators?.length ? t('keys.orPress', { text, keys: shortcutLabel(accelerators[0]) }) : text
 }
 
 /**
@@ -274,12 +298,12 @@ export function orPress(text: string, accelerators: readonly string[] | undefine
  * §2.8), with the user's key; ". Review mode lists them" when Review has none.
  */
 export function reviewHint(keymap: Keymap): string {
-  return keymap.review.length ? `. Review (${shortcutLabel(keymap.review[0])})` : '. Review mode lists them'
+  return keymap.review.length ? t('keys.reviewHint', { keys: shortcutLabel(keymap.review[0]) }) : t('keys.reviewHintNoKey')
 }
 
 /** " · Ctrl + Z to undo", for a notice after a big change; empty when Undo has no shortcut. */
 export function undoHint(keymap: Keymap): string {
-  return keymap.undo.length ? ` · ${shortcutLabel(keymap.undo[0])} to undo` : ''
+  return keymap.undo.length ? t('keys.undoHint', { keys: shortcutLabel(keymap.undo[0]) }) : ''
 }
 
 /**
@@ -291,11 +315,11 @@ export function zoomLevelKeysHint(keymap: Keymap): string | null {
   // Three or more digits in a row read as a range.
   const run = levels.length > 2 && levels.every((l, i) => /^\d$/.test(l) && (i === 0 || Number(l) === Number(levels[i - 1]) + 1))
   const back = keymap.zoomLevel0[0]
-  const parts = [
-    levels.length > 0 && `${run ? `${levels[0]}–${levels[levels.length - 1]}` : fmt.list(levels)} ${levels.length === 1 ? 'sets' : 'set'} its zoom level`,
-    back && `${shortcutLabel(back)} pulls back`
-  ].filter((p): p is string => !!p)
-  return parts.length ? parts.join(', ') : null
+  const keys = run ? t('keys.zoomLevels.range', { first: levels[0], last: levels[levels.length - 1] }) : fmt.list(levels)
+  // `count` chooses "sets" or "set": how many level keys there are.
+  if (levels.length && back) return t('keys.zoomLevels.both', { levels: keys, count: levels.length, back: shortcutLabel(back) })
+  if (levels.length) return t('keys.zoomLevels.levels', { levels: keys, count: levels.length })
+  return back ? t('keys.zoomLevels.back', { back: shortcutLabel(back) }) : null
 }
 
 /* ---------- keyboard events ---------- */
@@ -426,27 +450,28 @@ export const isSliderKey = (c: Chord): boolean => SLIDER_KEYS.has(c.key) && !c.c
 
 /* ---------- validation, conflicts and editing ---------- */
 
-const ESCAPE_REASON = 'Esc always cancels: it closes dialogs and clears the selection.'
-
-/** Keys that keep their usual meaning and cannot be shortcuts, with the reason. */
-const RESERVED: Record<string, string> = {
-  Enter: 'Enter presses the focused button.',
-  Tab: 'Tab moves between controls.',
-  'Shift+Tab': 'Shift + Tab moves between controls.',
-  'Alt+F4': 'Alt + F4 closes the window.',
-  'Alt+Space': 'Alt + Space opens the window menu.',
-  'Ctrl+Escape': 'Ctrl + Esc opens the Start menu.',
-  'Ctrl+Shift+Escape': 'Ctrl + Shift + Esc opens the Task Manager.',
-  'Alt+Escape': 'Alt + Esc switches to another window.',
-  'Ctrl+W': 'Ctrl + W closes the window.',
-  'Ctrl+R': 'Ctrl + R reloads the window.',
-  'Ctrl+Shift+R': 'Ctrl + Shift + R reloads the window.',
-  'Ctrl+Shift+I': 'Ctrl + Shift + I opens the developer tools.',
-  F11: 'F11 switches full screen.',
-  'Ctrl+0': 'Ctrl + 0 resets the window zoom.',
-  'Ctrl+Plus': 'Ctrl + + zooms the window.',
-  'Ctrl+=': 'Ctrl + = zooms the window.',
-  'Ctrl+-': 'Ctrl + - zooms the window.'
+/**
+ * Keys that keep their usual meaning and cannot be shortcuts, with the reason: a message whose
+ * {keys} is the key's label ("Shift + Tab moves between controls.").
+ */
+const RESERVED: Record<string, MessageKey> = {
+  Enter: 'keys.reserved.pressesButton',
+  Tab: 'keys.reserved.movesBetweenControls',
+  'Shift+Tab': 'keys.reserved.movesBetweenControls',
+  'Alt+F4': 'keys.reserved.closesWindow',
+  'Alt+Space': 'keys.reserved.windowMenu',
+  'Ctrl+Escape': 'keys.reserved.startMenu',
+  'Ctrl+Shift+Escape': 'keys.reserved.taskManager',
+  'Alt+Escape': 'keys.reserved.switchesWindow',
+  'Ctrl+W': 'keys.reserved.closesWindow',
+  'Ctrl+R': 'keys.reserved.reloads',
+  'Ctrl+Shift+R': 'keys.reserved.reloads',
+  'Ctrl+Shift+I': 'keys.reserved.developerTools',
+  F11: 'keys.reserved.fullScreen',
+  'Ctrl+0': 'keys.reserved.resetsZoom',
+  'Ctrl+Plus': 'keys.reserved.zooms',
+  'Ctrl+=': 'keys.reserved.zooms',
+  'Ctrl+-': 'keys.reserved.zooms'
 }
 
 /**
@@ -454,7 +479,10 @@ const RESERVED: Record<string, string> = {
  * to Windows, and otherwise (Shift too) the editor reads it as Esc before any shortcut.
  */
 function reservedChord(c: Chord): string | null {
-  return RESERVED[formatChord(c)] ?? (c.key === 'Escape' ? ESCAPE_REASON : null)
+  const accelerator = formatChord(c)
+  const reason = RESERVED[accelerator]
+  if (reason) return t(reason, { keys: shortcutLabel(accelerator) })
+  return c.key === 'Escape' ? t('keys.reserved.escape', { keys: shortcutLabel('Escape') }) : null
 }
 
 /** Why `accelerator` cannot be a shortcut, or null when it can. */
@@ -468,12 +496,12 @@ export type ShortcutCheck = { ok: true; accelerator: string } | { ok: false; mes
 /** Checks that `accelerator` can run `id`: well formed, not reserved, and usable while typing when it has to be. */
 export function checkShortcut(accelerator: unknown, id: CommandId): ShortcutCheck {
   const c = parseShortcut(accelerator)
-  if (!c) return { ok: false, message: 'That key cannot be used for a shortcut.' }
+  if (!c) return { ok: false, message: t('keys.check.unusable') }
   const normalized = formatChord(c)
   const reserved = reservedChord(c)
   if (reserved) return { ok: false, message: reserved }
   if (commandInfo(id).inText && !c.ctrl && !c.alt && !/^F\d+$/.test(c.key)) {
-    return { ok: false, message: `This shortcut also works while typing, so it needs Ctrl or Alt (${shortcutLabel(normalized)} would type instead).` }
+    return { ok: false, message: t('keys.check.needsModifier', { keys: shortcutLabel(normalized) }) }
   }
   return { ok: true, accelerator: normalized }
 }
