@@ -25,14 +25,37 @@ export type ClockStyle =
   /** lengthText (share): "2:31", "1:02:03", seconds rounded. */
   | 'hours-rounded'
 
+/** How a file size reads: the old helpers' shapes, each kept exactly. */
+export type BytesStyle =
+  /** formatBytes (export dialog) and sizeText (long jobs): "1.50 GB", "12.3 MB", "340 KB". */
+  | 'fine'
+  /** formatBytes (Home's unfinished recordings): "1.5 GB", "340 MB", "12 KB". */
+  | 'coarse'
+  /** formatBytes (storage/rules.ts, Settings › Storage): as 'coarse', and "0 KB" for nothing. */
+  | 'storage'
+  /** sizeText (clips/clipsRun.ts, short clips): "1.2 GB", "85 MB", never under 1 MB. */
+  | 'megabytes'
+
 const pad2 = (n: number): string => String(n).padStart(2, '0')
 
 /* ---------- the English profile: today's helpers, moved ---------- */
 
-function bytesEn(bytes: number): string {
-  if (bytes >= 1e9) return `${(bytes / 1e9).toFixed(2)} GB`
-  if (bytes >= 1e6) return `${(bytes / 1e6).toFixed(1)} MB`
-  return `${Math.max(1, Math.round(bytes / 1e3))} KB`
+function bytesEn(bytes: number, style: BytesStyle): string {
+  switch (style) {
+    case 'fine':
+      if (bytes >= 1e9) return `${(bytes / 1e9).toFixed(2)} GB`
+      if (bytes >= 1e6) return `${(bytes / 1e6).toFixed(1)} MB`
+      return `${Math.max(1, Math.round(bytes / 1e3))} KB`
+    case 'coarse':
+    case 'storage':
+      if (bytes >= 1e9) return `${(bytes / 1e9).toFixed(1)} GB`
+      if (bytes >= 1e6) return `${Math.round(bytes / 1e6)} MB`
+      if (style === 'storage' && bytes <= 0) return '0 KB'
+      return `${Math.max(1, Math.round(bytes / 1e3))} KB`
+    case 'megabytes':
+      if (bytes >= 1e9) return `${(bytes / 1e9).toFixed(1)} GB`
+      return `${Math.max(1, Math.round(bytes / 1e6))} MB`
+  }
 }
 
 function durationEn(seconds: number): string {
@@ -198,9 +221,13 @@ function durationOther(seconds: number): string {
   return unitList(s ? [[m, 'minute'], [s, 'second']] : [[m, 'minute']])
 }
 
-function bytesOther(bytes: number): string {
-  if (bytes >= 1e9) return `${nf({ minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(bytes / 1e9)} GB`
-  if (bytes >= 1e6) return `${nf({ minimumFractionDigits: 1, maximumFractionDigits: 1 }).format(bytes / 1e6)} MB`
+/** The English shapes of each BytesStyle, in the format locale's digits and grouping. */
+function bytesOther(bytes: number, style: BytesStyle): string {
+  const fixed = (n: number, digits: number): string => nf({ minimumFractionDigits: digits, maximumFractionDigits: digits }).format(n)
+  if (bytes >= 1e9) return `${fixed(bytes / 1e9, style === 'fine' ? 2 : 1)} GB`
+  if (style === 'megabytes') return `${nf().format(Math.max(1, Math.round(bytes / 1e6)))} MB`
+  if (bytes >= 1e6) return style === 'fine' ? `${fixed(bytes / 1e6, 1)} MB` : `${nf().format(Math.round(bytes / 1e6))} MB`
+  if (style === 'storage' && bytes <= 0) return `${nf().format(0)} KB`
   return `${nf().format(Math.max(1, Math.round(bytes / 1e3)))} KB`
 }
 
@@ -302,9 +329,12 @@ export const fmt = {
     if (!english()) return `${nf({ maximumFractionDigits: 2, useGrouping: false }).format(Number(x.toFixed(2)))}×`
     return `${Number(x.toFixed(2))}×`
   },
-  /** A file size: "1.50 GB", "12.3 MB", "340 KB" (formatBytes of the export dialog, sizeText of long jobs); units stay Latin ("১.৫ MB"). */
-  bytes(n: number): string {
-    return english() ? bytesEn(n) : bytesOther(n)
+  /**
+   * A file size in one of today's shapes (BytesStyle): 'fine' "1.50 GB", "12.3 MB", "340 KB" (formatBytes of the export dialog, sizeText of
+   * long jobs) by default; 'coarse' and 'storage' "1.5 GB", "340 MB"; 'megabytes' "85 MB". Units stay Latin ("১.৫ MB").
+   */
+  bytes(n: number, style: BytesStyle = 'fine'): string {
+    return english() ? bytesEn(n, style) : bytesOther(n, style)
   },
   /** A length in words: "45 s", "2 min 5 s", "3 min" (formatDuration of the export dialog); other languages in long units ("২ মিনিট, ৫ সেকেন্ড"). */
   duration(seconds: number): string {
