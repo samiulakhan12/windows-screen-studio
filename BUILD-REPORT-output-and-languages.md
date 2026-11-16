@@ -1,4 +1,4 @@
-# Build report: output and the app (wave 12), steps S0 and S1
+# Build report: output and the app (wave 12), steps S0 to S2
 
 Branch `feat/wave12` in `/home/user/wt-w12`. Design:
 [`docs/design/output-and-languages.md`](docs/design/output-and-languages.md) (§0 the owner's decisions,
@@ -9,8 +9,8 @@ last verification fix from `integ/wave8`, the seven parts P1 to P7 merged in the
 (P1, P2, P3, P4, P6, P7, then P5, which mounts the others' rows), and the integration commits listed
 below. Nothing was pushed.
 
-This build covers steps S0 and S1 only. The extraction (S2 to S4) is a later workflow, and the
-translations (S5) need people: no translation was drafted or written, `scripts/i18n/draft.mjs` was
+This build covers steps S0 and S1, and the lead's step S2 (its own section below). The extraction (S3
+and S4) is a later workflow, and the translations (S5) need people: no translation was drafted or written, `scripts/i18n/draft.mjs` was
 never run against any service, no AI service was contacted, `translations/reviewers.json` lists
 nobody, and `src/shared/i18n/built/shipped.json` is `[]`, so Bangla stays out of the language picker.
 
@@ -197,27 +197,101 @@ in the test. Fixtures are 4 s long instead of the design's 10 s to fit a shared 
 Not covered end to end yet: F4's caption placement in 4:5 (its sizes and the Portrait post's
 identical frames are), F7's caption (the camera's opacity is), and the L steps that need S3.
 
-## What is left for S2 to S4
+## Step S2: the baseline, `common` and the split
 
-* **S2** (lead): record the English guard's baseline (`english-guard.e2e.cjs --record`, two
-  identical runs). P6 found that Settings' "GB free on this drive" changes with the machine's disk
-  between runs and needs a mask first. Fill and freeze `common`; run `node scripts/i18n/split.mjs`
-  to write `scripts/i18n/parts.json` and settle its conflicts; measure size and first render again.
-* **S3a/S3b** (X1 to X7): the extraction. With it come the e2e steps that check its code: L5 (digits
-  and Target size through `fmt` and `NumberField`), L6 (`aria-keyshortcuts`), L9 (no plain ASCII text
-  under `en-XA`), L10 (right to left under `ar-XB`, which also needs the pseudo-locale selection
-  P7 left unwired), L14 (confirmations through `askConfirm`), L15 (mixed digits) and the
+* **Masks first** (`tests/e2e/uiTour.cjs`, as the timer and the sizes are). A mask can now be
+  `{ selector, value }`: inside the selector's elements only the text the regular expression `value`
+  matches becomes the placeholder, so the sentence around it stays guarded; the selector is painted
+  over in the screenshots, and the element whose own text holds the value is left out of the layout
+  (its width follows the value). Settings' "Speech models use 0 MB · 10 GB free on this drive" masks
+  its free space this way. Storage's line ("Recordings use 95 KB · 9.5 GB free on this drive") was
+  masked whole in the text but not in the accessibility snapshot, which splits it at its `<strong>`:
+  the snapshot is now masked piece by piece where it does not hold a masked text whole. Looked for
+  other values that change by nature: free memory shows only in a warning a fresh home never reaches;
+  the PC's cores and memory and the speed estimates made from them are fixed per machine; file times
+  read "used today" because they come after the fixed clock; the encoder probe finds nothing on this
+  machine. None changes between runs.
+* **One nondeterminism in the tour's set-up, fixed.** The first `--record` refused: `home-confirm`'s
+  screenshot differed at the picked source card's bottom corners (12 pixels, up to 18 levels; the
+  same failure as one of S0's runs). Measured in a loop: after a project is deleted the corners come
+  out in one of three raster states at random (9 of 18 deletions in another state), never after a
+  cancelled delete (0 of 6) or without one (0 of 6), and always the same after a reload (12 of 12).
+  The tour now waits for the deleted card to go, reloads Home and waits for the sources, as for the
+  other Home screens; the question and its buttons are recorded when they are asked. No source file
+  changed, and nothing real is masked.
+* **The baseline**: `english-guard.e2e.cjs --record` on the merged build, two runs, identical, 51
+  screens: `tests/e2e/english-guard/baseline.json` (3,748,519 bytes) and
+  `tests/e2e/english-guard/shots/` (51 PNGs); 14,135,227 bytes in all. Compared again with four
+  fresh runs (three on the build it was recorded on, one on the final build with `common` filled):
+  all pass.
+* **`common`** (`src/shared/i18n/messages/en/common.json`, 65 messages with their meta): from the
+  inventory of the scanner's texts grouped by exact text, the 75 that three or more files show, less
+  sentence fragments ("s", "of", "timed out", the three key-store names), errors only main shows that
+  §9.6 gives to `errors` ("Cancelled.", "The disk is full.", "Unknown speech model.") and a locale
+  call. Actions (`action.cancel`, `action.close`, `action.deleteName` "Delete {name}", …), states
+  (`state.saving` "Saving…", …), labels (`label.size`, `label.opacity`, …), the colour picker's two
+  texts and `error.drawingSurface`. Each meta entry gives the sense the word has (Cut and Delete are
+  the verbs, not the cut part or the Delete key), and the three `{name}` messages mark the name as the
+  user's. Frozen by `tests/i18nCommon.test.ts`. No code uses these keys yet, so until S4 turns the
+  scanner on for the whole tree an unused `common` key is a warning of `i18n:check`; from S4 it fails
+  like any other (`scripts/i18n/lib/checks.cjs`; test in `tests/i18nCatalogueChecks.test.ts`, failing
+  without the change).
+* **The split** (`scripts/i18n/parts.json`, from `node scripts/i18n/split.mjs`): X1 23 files, X2 73,
+  X3 46, X4 30, X5 104, X7 65 stylesheets; no file claimed twice, none claimed by no part. The scanner
+  reads text at its sinks, not in tables of labels, so §9.1's tables (`EXPORT_PRESETS` labels,
+  `RESOLUTION_LABELS`, `ENCODER_NAMES`, `SPEECH_TIER_NAMES`) and the like were in no part's list:
+  the split now also takes every file with a table of labels (a `label`, `title`, `name`, …
+  property holding words; 107 files), and the rules give the 18 it left unclaimed to the part whose
+  screens show them (`src/shared/audio/**` and the editing tables of `src/shared/editor` to X2,
+  `captionTiles.ts` to X3, `versions.ts` and `src/shared/publish/**` to X4, the AI providers' tables
+  to X5, `snapping.ts` to X1). `tests/i18nSplit.test.ts` holds the owners of these files and an
+  empty conflict and unclaimed list; both new tests fail on the old rules.
+* **Size and first render** (§19.4, `docs/design/output-and-languages-measurements.json`).
+  `measure-start.cjs` gave the recording bar no preload (`getLastWebPreferences()` no longer reports
+  it), so the bar failed before it drew, and an idle bar draws nothing: S0's 68 ms was the paint of
+  the bar page's background, and after the views became lazy there was no paint at all (P6's
+  finding). The script now opens the bar with its own window options and preload, tells it a
+  recording is paused, and reads its first contentful paint. The machine's times drift by some 30 ms
+  from one session to the next, so `--baseline <dir>` alternates the runs between a build of S0's
+  commit and this one and writes both; S0 was taken again that way from `31c4b0d`, built in a scratch
+  worktree.
+
+  | | S0 (`31c4b0d`) | S2 | Difference | Budget |
+  |---|---|---|---|---|
+  | Renderer JavaScript | 2,715,936 B | 2,818,582 B | +102,646 B | +250 KB |
+  | Main window, first contentful paint | 244 ms | 256 ms | +12 ms | +30 ms |
+  | Recording bar, first contentful paint | 192 ms | 196 ms | +4 ms | +20 ms |
+
+  (Main's JavaScript is 5,769,855 B against 5,896,910 B, the preload 25,303 B against 26,247 B.)
+  Measured on `d2963a4` with this step's `common` built in. Ten more alternated pairs gave +4 ms and
+  +4 ms.
+* **Checks**: both typechecks clean; vitest (`--maxWorkers=2`, private `TMPDIR`): 589 files, 7,829
+  tests passed, 8 skipped (the same skips); `npm run i18n:check` passes with one warning (65 `common`
+  keys not used yet); `build-catalogues.mjs --check` matches; `npm run -s build` succeeds.
+
+## What is left for S3 to S5
+
+* **S3a/S3b** (X1 to X7): the extraction, file list by file list from `scripts/i18n/parts.json`, and
+  only `common`'s keys for the words it holds. With it come the e2e steps that check its code: L5
+  (digits and Target size through `fmt` and `NumberField`), L6 (`aria-keyshortcuts`), L9 (no plain
+  ASCII text under `en-XA`), L10 (right to left under `ar-XB`, which also needs the pseudo-locale
+  selection P7 left unwired), L14 (confirmations through `askConfirm`), L15 (mixed digits) and the
   notification half of L7. X5 also moves the exporter's remaining English-text fallback test
   (`NOT_ENCODER_RELATED`) to error codes; this step did it for the free-space refusal only.
-* **S4**: the scanner fails for the whole tree (`"scan": "fail"`).
+* Files in the lists that §21.9 keeps as they are in part: `src/shared/render/safeZones.ts` (X5) keeps
+  `textArea` and `COMMON_SAFE`; `src/shared/engine/project.ts` (X1) keeps `formatTime` ASCII. The
+  label-table files may hold words that are not UI text (AI prompts in `src/shared/publish/prompts.ts`,
+  ids); the part puts those in `allow.json` with their reason.
+* **S4**: the scanner fails for the whole tree (`"scan": "fail"`). It still reads no tables of labels,
+  so it cannot tell whether those were extracted; a table rule for the scanner, or the split's
+  `labelTablesOf` turned into a check, belongs with S4. Any `common` key still unused then fails
+  `i18n:check`.
 * Open choices the parts left for the lead, not changed here: whether stem files count as exported
   files (copy to clipboard and share refuse them today; Show in folder works); sweeping temporary
   stem files at start rather than at the next stem step; FCPXML `colorSpace` for the editing
   formats; Premiere XML for 3,000 cuts is 2.7 MB against §19.3's 2 MB; §5.4's AV1 level line
   should read 4.1 for 1080p60 and 5.0 for 1080p120 (Annex A); the av1_amf quantisers (120/136/152)
   are starting values.
-* `tests/e2e/measure-start.cjs` finds no first paint for the recording-bar window, on the contracts
-  build too (P6); the start measurements of §19.4 are to be taken again at S2.
 * The stems equal the video's soundtrack only when the video mixes the separate microphone and
   system files; at the default gains the video plays the recording's own mixed track (§7.6), so the
   e2e F8 sets the microphone to 80% to compare the same graph.
