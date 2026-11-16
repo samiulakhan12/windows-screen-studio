@@ -22,16 +22,17 @@ import { planOf } from '../../../shared/engine/freeze'
 import {
   actedMessage,
   bulkMessage,
-  BUSY_WORDS,
   busyMessage,
+  busyWord,
   itemAccessibleName,
-  KIND_WORDS,
+  kindAll,
+  kindChip,
   progressText,
-  REVIEW_EMPTY,
-  REVIEW_HINT,
-  REVIEW_TITLE,
+  reviewEmpty,
+  reviewHint,
+  reviewTitle,
   staleMessage,
-  STATUS_WORDS,
+  statusWord,
   stillBusyMessage,
   stoppedMessage,
   waitMessage
@@ -53,6 +54,8 @@ import {
 import { heldInSlices, type Work } from '../../../shared/review/slices'
 import { rowTimes } from '../../../shared/review/times'
 import type { Project } from '../../../shared/types'
+import { fmt } from '../../../shared/i18n/fmt'
+import { t } from '../../../shared/i18n/t'
 import { useEditor } from '../editor/context'
 import { keepVersionBefore } from '../versions/autoVersion'
 import { useKeymap } from '../editor/keymapContext'
@@ -550,14 +553,14 @@ export function ReviewPanel({ onClose, onNotice }: { onClose: () => void; /** Sh
   }
 
   return (
-    <aside ref={panelRef} className="review-panel" role="region" aria-label={REVIEW_TITLE} data-testid="review-panel" onKeyDown={onPanelKey}>
+    <aside ref={panelRef} className="review-panel" role="region" aria-label={reviewTitle()} data-testid="review-panel" onKeyDown={onPanelKey}>
       <div className="review-head">
-        <h2>{REVIEW_TITLE}</h2>
+        <h2>{reviewTitle()}</h2>
         <button
           ref={closeRef}
           className="btn ghost icon-btn"
-          title="Close review"
-          aria-label="Close review"
+          title={t('review.panel.close')}
+          aria-label={t('review.panel.close')}
           onClick={() => {
             stopStretch()
             onClose()
@@ -571,16 +574,16 @@ export function ReviewPanel({ onClose, onNotice }: { onClose: () => void; /** Sh
       {total > 0 && (
         <div className="review-progress">
           <span data-testid="review-progress">{progressText(reviewed, total)}</span>
-          <div className="review-bar" role="progressbar" aria-label="Reviewed" aria-valuemin={0} aria-valuemax={total} aria-valuenow={reviewed}>
+          <div className="review-bar" role="progressbar" aria-label={t('review.panel.reviewed')} aria-valuemin={0} aria-valuemax={total} aria-valuenow={reviewed}>
             <div style={{ width: `${(reviewed / total) * 100}%` }} />
           </div>
         </div>
       )}
       {total === 0 ? (
-        <p className="review-empty">{REVIEW_EMPTY}</p>
+        <p className="review-empty">{reviewEmpty()}</p>
       ) : (
         <>
-          <p className="review-hint">{REVIEW_HINT}</p>
+          <p className="review-hint">{reviewHint()}</p>
           <ReviewList
             list={list}
             indexOf={indexOf}
@@ -607,7 +610,7 @@ export function ReviewPanel({ onClose, onNotice }: { onClose: () => void; /** Sh
               aria-busy={busy?.action === 'keep' ? 'true' : undefined}
               onClick={keepAll}
             >
-              {busy?.action === 'keep' ? BUSY_WORDS.keep : 'Keep all'}
+              {busy?.action === 'keep' ? busyWord('keep') : t('review.panel.keepAll')}
             </button>
             <button
               className="btn"
@@ -617,7 +620,7 @@ export function ReviewPanel({ onClose, onNotice }: { onClose: () => void; /** Sh
               aria-busy={busy?.action === 'remove' ? 'true' : undefined}
               onClick={removeKind}
             >
-              {busy?.action === 'remove' ? BUSY_WORDS.remove : current ? KIND_WORDS[current.kind].all : 'Remove all'}
+              {busy?.action === 'remove' ? busyWord('remove') : current ? kindAll(current.kind) : t('common.action.removeAll')}
             </button>
           </div>
         </>
@@ -840,7 +843,7 @@ function ReviewList({ list, indexOf, statuses, times, active, reveal, onKeyDown,
 
   if (!places) {
     return (
-      <ul ref={ul} className="review-list" aria-label="Automatic changes" onKeyDown={onKeyDown}>
+      <ul ref={ul} className="review-list" aria-label={t('review.panel.list')} onKeyDown={onKeyDown}>
         {list.map((_, k) => row(k))}
       </ul>
     )
@@ -856,7 +859,7 @@ function ReviewList({ list, indexOf, statuses, times, active, reveal, onKeyDown,
     <ul
       ref={ul}
       className="review-list windowed"
-      aria-label="Automatic changes"
+      aria-label={t('review.panel.list')}
       onKeyDown={onKeyDown}
       onScroll={(e) => {
         const top = e.currentTarget.scrollTop
@@ -936,7 +939,7 @@ const ReviewRow = memo(function ReviewRow({
         onFocus={() => onFocusRow(itemKey)}
       >
         <span className={`review-chip kind-${kind}`} aria-hidden="true">
-          {KIND_WORDS[kind].chip}
+          {kindChip(kind)}
         </span>
         <span className="review-text" aria-hidden="true">
           <span className="review-title">{title}</span>
@@ -947,11 +950,11 @@ const ReviewRow = memo(function ReviewRow({
       </button>
       {status === 'pending' ? (
         <span className="review-actions">
-          <button className="btn" tabIndex={isActive ? 0 : -1} aria-label={`Keep: ${title}`} data-testid="review-keep" onClick={() => onAct(itemKey, 'keep')}>
-            Keep
+          <button className="btn" tabIndex={isActive ? 0 : -1} aria-label={t('review.row.keep', { title })} data-testid="review-keep" onClick={() => onAct(itemKey, 'keep')}>
+            {t('common.action.keep')}
           </button>
-          <button className="btn" tabIndex={isActive ? 0 : -1} aria-label={`Remove: ${title}`} data-testid="review-remove" onClick={() => onAct(itemKey, 'remove')}>
-            Remove
+          <button className="btn" tabIndex={isActive ? 0 : -1} aria-label={t('review.row.remove', { title })} data-testid="review-remove" onClick={() => onAct(itemKey, 'remove')}>
+            {t('common.action.remove')}
           </button>
         </span>
       ) : (
@@ -963,7 +966,7 @@ const ReviewRow = memo(function ReviewRow({
           tabIndex={isActive ? 0 : -1}
           aria-expanded={expanded}
           aria-controls={partsId}
-          aria-label={`${expanded ? 'Hide' : 'Show'} the ${parts.length} ${parts.length === 1 ? 'item' : 'items'}: ${title}`}
+          aria-label={t(expanded ? 'review.row.hideParts' : 'review.row.showParts', { count: parts.length, n: fmt.count(parts.length), title })}
           data-testid="review-toggle"
           ref={toggleRef}
           onClick={() => onToggle(itemKey, toggleRef.current)}
@@ -980,16 +983,16 @@ const ReviewRow = memo(function ReviewRow({
               <span className="review-text">
                 <span className="review-title">{p.title}</span>
                 <span className="review-meta">
-                  {p.time} · {STATUS_WORDS[p.status]}
+                  {p.time} · {statusWord(p.status)}
                 </span>
               </span>
               {p.status === 'pending' ? (
                 <span className="review-actions">
-                  <button className="btn" tabIndex={isActive ? 0 : -1} aria-label={`Keep: ${p.title}`} data-testid="review-part-keep" onClick={() => onPartAct(itemKey, p.key, 'keep')}>
-                    Keep
+                  <button className="btn" tabIndex={isActive ? 0 : -1} aria-label={t('review.row.keep', { title: p.title })} data-testid="review-part-keep" onClick={() => onPartAct(itemKey, p.key, 'keep')}>
+                    {t('common.action.keep')}
                   </button>
-                  <button className="btn" tabIndex={isActive ? 0 : -1} aria-label={`Remove: ${p.title}`} data-testid="review-part-remove" onClick={() => onPartAct(itemKey, p.key, 'remove')}>
-                    Remove
+                  <button className="btn" tabIndex={isActive ? 0 : -1} aria-label={t('review.row.remove', { title: p.title })} data-testid="review-part-remove" onClick={() => onPartAct(itemKey, p.key, 'remove')}>
+                    {t('common.action.remove')}
                   </button>
                 </span>
               ) : (
@@ -1012,7 +1015,7 @@ function ReviewMark({ status }: { status: ReviewStatus }): JSX.Element {
           <path d="M5 12l5 5 9-10" />
         </svg>
       )}
-      {status === 'kept' ? 'Kept' : 'Removed'}
+      {status === 'kept' ? t('review.mark.kept') : t('review.mark.removed')}
     </span>
   )
 }

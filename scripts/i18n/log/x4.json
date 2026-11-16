@@ -1,0 +1,1546 @@
+[
+ {
+  "key": "review.kind.zoom.chip",
+  "file": "src/shared/review/copy.ts",
+  "line": 44,
+  "english": "Zoom",
+  "sample": {}
+ },
+ {
+  "key": "review.kind.zoom.name",
+  "file": "src/shared/review/copy.ts",
+  "line": 46,
+  "english": "zoom",
+  "sample": {}
+ },
+ {
+  "key": "review.kind.zoom.all",
+  "file": "src/shared/review/copy.ts",
+  "line": 48,
+  "english": "Remove all zooms",
+  "sample": {}
+ },
+ {
+  "key": "review.kind.zoom.count",
+  "file": "src/shared/review/copy.ts",
+  "line": 50,
+  "english": [
+   "0 zooms",
+   "1 zoom",
+   "2 zooms",
+   "1000 zooms"
+  ],
+  "sample": [
+   {
+    "count": 0,
+    "n": "0"
+   },
+   {
+    "count": 1,
+    "n": "1"
+   },
+   {
+    "count": 2,
+    "n": "2"
+   },
+   {
+    "count": 1000,
+    "n": "1000"
+   }
+  ]
+ },
+ {
+  "key": "review.kind.camera.chip",
+  "file": "src/shared/review/copy.ts",
+  "line": 44,
+  "english": "Camera",
+  "sample": {}
+ },
+ {
+  "key": "review.kind.camera.name",
+  "file": "src/shared/review/copy.ts",
+  "line": 46,
+  "english": "camera",
+  "sample": {}
+ },
+ {
+  "key": "review.kind.camera.all",
+  "file": "src/shared/review/copy.ts",
+  "line": 48,
+  "english": "Remove all camera changes",
+  "sample": {}
+ },
+ {
+  "key": "review.kind.camera.count",
+  "file": "src/shared/review/copy.ts",
+  "line": 50,
+  "english": [
+   "0 camera changes",
+   "1 camera change",
+   "2 camera changes",
+   "1000 camera changes"
+  ],
+  "sample": [
+   {
+    "count": 0,
+    "n": "0"
+   },
+   {
+    "count": 1,
+    "n": "1"
+   },
+   {
+    "count": 2,
+    "n": "2"
+   },
+   {
+    "count": 1000,
+    "n": "1000"
+   }
+  ]
+ },
+ {
+  "key": "review.kind.silence.chip",
+  "file": "src/shared/review/copy.ts",
+  "line": 44,
+  "english": "Silence",
+  "sample": {}
+ },
+ {
+  "key": "review.kind.silence.name",
+  "file": "src/shared/review/copy.ts",
+  "line": 46,
+  "english": "silence",
+  "sample": {}
+ },
+ {
+  "key": "review.kind.silence.all",
+  "file": "src/shared/review/copy.ts",
+  "line": 48,
+  "english": "Remove all silence cuts",
+  "sample": {}
+ },
+ {
+  "key": "review.kind.silence.count",
+  "file": "src/shared/review/copy.ts",
+  "line": 50,
+  "english": [
+   "0 silence cuts",
+   "1 silence cut",
+   "2 silence cuts",
+   "1000 silence cuts"
+  ],
+  "sample": [
+   {
+    "count": 0,
+    "n": "0"
+   },
+   {
+    "count": 1,
+    "n": "1"
+   },
+   {
+    "count": 2,
+    "n": "2"
+   },
+   {
+    "count": 1000,
+    "n": "1000"
+   }
+  ]
+ },
+ {
+  "key": "review.kind.idle.chip",
+  "file": "src/shared/review/copy.ts",
+  "line": 44,
+  "english": "Idle",
+  "sample": {}
+ },
+ {
+  "key": "review.kind.idle.name",
+  "file": "src/shared/review/copy.ts",
+  "line": 46,
+  "english": "idle time",
+  "sample": {}
+ },
+ {
+  "key": "review.kind.idle.all",
+  "file": "src/shared/review/copy.ts",
+  "line": 48,
+  "english": "Remove all idle-time changes",
+  "sample": {}
+ },
+ {
+  "key": "review.kind.idle.count",
+  "file": "src/shared/review/copy.ts",
+  "line": 50,
+  "english": [
+   "0 idle-time changes",
+   "1 idle-time change",
+   "2 idle-time changes",
+   "1000 idle-time changes"
+  ],
+  "sample": [
+   {
+    "count": 0,
+    "n": "0"
+   },
+   {
+    "count": 1,
+    "n": "1"
+   },
+   {
+    "count": 2,
+    "n": "2"
+   },
+   {
+    "count": 1000,
+    "n": "1000"
+   }
+  ]
+ },
+ {
+  "key": "review.kind.words.chip",
+  "file": "src/shared/review/copy.ts",
+  "line": 44,
+  "english": "Words",
+  "sample": {}
+ },
+ {
+  "key": "review.kind.words.name",
+  "file": "src/shared/review/copy.ts",
+  "line": 46,
+  "english": "words",
+  "sample": {}
+ },
+ {
+  "key": "review.kind.words.all",
+  "file": "src/shared/review/copy.ts",
+  "line": 48,
+  "english": "Remove all word cuts",
+  "sample": {}
+ },
+ {
+  "key": "review.kind.words.count",
+  "file": "src/shared/review/copy.ts",
+  "line": 50,
+  "english": [
+   "0 word cuts",
+   "1 word cut",
+   "2 word cuts",
+   "1000 word cuts"
+  ],
+  "sample": [
+   {
+    "count": 0,
+    "n": "0"
+   },
+   {
+    "count": 1,
+    "n": "1"
+   },
+   {
+    "count": 2,
+    "n": "2"
+   },
+   {
+    "count": 1000,
+    "n": "1000"
+   }
+  ]
+ },
+ {
+  "key": "review.kind.style.chip",
+  "file": "src/shared/review/copy.ts",
+  "line": 44,
+  "english": "Style",
+  "sample": {}
+ },
+ {
+  "key": "review.kind.style.name",
+  "file": "src/shared/review/copy.ts",
+  "line": 46,
+  "english": "caption style",
+  "sample": {}
+ },
+ {
+  "key": "review.kind.style.all",
+  "file": "src/shared/review/copy.ts",
+  "line": 48,
+  "english": "Remove all caption style changes",
+  "sample": {}
+ },
+ {
+  "key": "review.kind.style.count",
+  "file": "src/shared/review/copy.ts",
+  "line": 50,
+  "english": [
+   "0 caption style changes",
+   "1 caption style change",
+   "2 caption style changes",
+   "1000 caption style changes"
+  ],
+  "sample": [
+   {
+    "count": 0,
+    "n": "0"
+   },
+   {
+    "count": 1,
+    "n": "1"
+   },
+   {
+    "count": 2,
+    "n": "2"
+   },
+   {
+    "count": 1000,
+    "n": "1000"
+   }
+  ]
+ },
+ {
+  "key": "review.kind.emphasis.chip",
+  "file": "src/shared/review/copy.ts",
+  "line": 44,
+  "english": "Emphasis",
+  "sample": {}
+ },
+ {
+  "key": "review.kind.emphasis.name",
+  "file": "src/shared/review/copy.ts",
+  "line": 46,
+  "english": "emphasis",
+  "sample": {}
+ },
+ {
+  "key": "review.kind.emphasis.all",
+  "file": "src/shared/review/copy.ts",
+  "line": 48,
+  "english": "Remove all emphasis",
+  "sample": {}
+ },
+ {
+  "key": "review.kind.emphasis.count",
+  "file": "src/shared/review/copy.ts",
+  "line": 50,
+  "english": [
+   "0 emphasis",
+   "1 emphasis",
+   "2 emphasis",
+   "1000 emphasis"
+  ],
+  "sample": [
+   {
+    "count": 0,
+    "n": "0"
+   },
+   {
+    "count": 1,
+    "n": "1"
+   },
+   {
+    "count": 2,
+    "n": "2"
+   },
+   {
+    "count": 1000,
+    "n": "1000"
+   }
+  ]
+ },
+ {
+  "key": "review.kind.text.chip",
+  "file": "src/shared/review/copy.ts",
+  "line": 44,
+  "english": "Text",
+  "sample": {}
+ },
+ {
+  "key": "review.kind.text.name",
+  "file": "src/shared/review/copy.ts",
+  "line": 46,
+  "english": "text fixes",
+  "sample": {}
+ },
+ {
+  "key": "review.kind.text.all",
+  "file": "src/shared/review/copy.ts",
+  "line": 48,
+  "english": "Remove all text fixes",
+  "sample": {}
+ },
+ {
+  "key": "review.kind.text.count",
+  "file": "src/shared/review/copy.ts",
+  "line": 50,
+  "english": [
+   "0 text fixes",
+   "1 text fix",
+   "2 text fixes",
+   "1000 text fixes"
+  ],
+  "sample": [
+   {
+    "count": 0,
+    "n": "0"
+   },
+   {
+    "count": 1,
+    "n": "1"
+   },
+   {
+    "count": 2,
+    "n": "2"
+   },
+   {
+    "count": 1000,
+    "n": "1000"
+   }
+  ]
+ },
+ {
+  "key": "review.kind.emoji.chip",
+  "file": "src/shared/review/copy.ts",
+  "line": 44,
+  "english": "Emoji",
+  "sample": {}
+ },
+ {
+  "key": "review.kind.emoji.name",
+  "file": "src/shared/review/copy.ts",
+  "line": 46,
+  "english": "emoji",
+  "sample": {}
+ },
+ {
+  "key": "review.kind.emoji.all",
+  "file": "src/shared/review/copy.ts",
+  "line": 48,
+  "english": "Remove all emoji",
+  "sample": {}
+ },
+ {
+  "key": "review.kind.emoji.count",
+  "file": "src/shared/review/copy.ts",
+  "line": 50,
+  "english": [
+   "0 emoji",
+   "1 emoji",
+   "2 emoji",
+   "1000 emoji"
+  ],
+  "sample": [
+   {
+    "count": 0,
+    "n": "0"
+   },
+   {
+    "count": 1,
+    "n": "1"
+   },
+   {
+    "count": 2,
+    "n": "2"
+   },
+   {
+    "count": 1000,
+    "n": "1000"
+   }
+  ]
+ },
+ {
+  "key": "review.kind.graphic.chip",
+  "file": "src/shared/review/copy.ts",
+  "line": 44,
+  "english": "Graphic",
+  "sample": {}
+ },
+ {
+  "key": "review.kind.graphic.name",
+  "file": "src/shared/review/copy.ts",
+  "line": 46,
+  "english": "graphic",
+  "sample": {}
+ },
+ {
+  "key": "review.kind.graphic.all",
+  "file": "src/shared/review/copy.ts",
+  "line": 48,
+  "english": "Remove all graphics",
+  "sample": {}
+ },
+ {
+  "key": "review.kind.graphic.count",
+  "file": "src/shared/review/copy.ts",
+  "line": 50,
+  "english": [
+   "0 graphics",
+   "1 graphic",
+   "2 graphics",
+   "1000 graphics"
+  ],
+  "sample": [
+   {
+    "count": 0,
+    "n": "0"
+   },
+   {
+    "count": 1,
+    "n": "1"
+   },
+   {
+    "count": 2,
+    "n": "2"
+   },
+   {
+    "count": 1000,
+    "n": "1000"
+   }
+  ]
+ },
+ {
+  "key": "review.kind.bleep.chip",
+  "file": "src/shared/review/copy.ts",
+  "line": 44,
+  "english": "Bleep",
+  "sample": {}
+ },
+ {
+  "key": "review.kind.bleep.name",
+  "file": "src/shared/review/copy.ts",
+  "line": 46,
+  "english": "bleep",
+  "sample": {}
+ },
+ {
+  "key": "review.kind.bleep.all",
+  "file": "src/shared/review/copy.ts",
+  "line": 48,
+  "english": "Remove all bleeps",
+  "sample": {}
+ },
+ {
+  "key": "review.kind.bleep.count",
+  "file": "src/shared/review/copy.ts",
+  "line": 50,
+  "english": [
+   "0 bleeps",
+   "1 bleep",
+   "2 bleeps",
+   "1000 bleeps"
+  ],
+  "sample": [
+   {
+    "count": 0,
+    "n": "0"
+   },
+   {
+    "count": 1,
+    "n": "1"
+   },
+   {
+    "count": 2,
+    "n": "2"
+   },
+   {
+    "count": 1000,
+    "n": "1000"
+   }
+  ]
+ },
+ {
+  "key": "review.kind.join.chip",
+  "file": "src/shared/review/copy.ts",
+  "line": 44,
+  "english": "Cuts",
+  "sample": {}
+ },
+ {
+  "key": "review.kind.join.name",
+  "file": "src/shared/review/copy.ts",
+  "line": 46,
+  "english": "cut style",
+  "sample": {}
+ },
+ {
+  "key": "review.kind.join.all",
+  "file": "src/shared/review/copy.ts",
+  "line": 48,
+  "english": "Remove all cut styles",
+  "sample": {}
+ },
+ {
+  "key": "review.kind.join.count",
+  "file": "src/shared/review/copy.ts",
+  "line": 50,
+  "english": [
+   "0 cut styles",
+   "1 cut style",
+   "2 cut styles",
+   "1000 cut styles"
+  ],
+  "sample": [
+   {
+    "count": 0,
+    "n": "0"
+   },
+   {
+    "count": 1,
+    "n": "1"
+   },
+   {
+    "count": 2,
+    "n": "2"
+   },
+   {
+    "count": 1000,
+    "n": "1000"
+   }
+  ]
+ },
+ {
+  "key": "review.kind.colour.chip",
+  "file": "src/shared/review/copy.ts",
+  "line": 44,
+  "english": "Colour",
+  "sample": {}
+ },
+ {
+  "key": "review.kind.colour.name",
+  "file": "src/shared/review/copy.ts",
+  "line": 46,
+  "english": "colour",
+  "sample": {}
+ },
+ {
+  "key": "review.kind.colour.all",
+  "file": "src/shared/review/copy.ts",
+  "line": 48,
+  "english": "Remove all colour changes",
+  "sample": {}
+ },
+ {
+  "key": "review.kind.colour.count",
+  "file": "src/shared/review/copy.ts",
+  "line": 50,
+  "english": [
+   "0 colour changes",
+   "1 colour change",
+   "2 colour changes",
+   "1000 colour changes"
+  ],
+  "sample": [
+   {
+    "count": 0,
+    "n": "0"
+   },
+   {
+    "count": 1,
+    "n": "1"
+   },
+   {
+    "count": 2,
+    "n": "2"
+   },
+   {
+    "count": 1000,
+    "n": "1000"
+   }
+  ]
+ },
+ {
+  "key": "review.kind.chapter.chip",
+  "file": "src/shared/review/copy.ts",
+  "line": 44,
+  "english": "Chapter",
+  "sample": {}
+ },
+ {
+  "key": "review.kind.chapter.name",
+  "file": "src/shared/review/copy.ts",
+  "line": 46,
+  "english": "found chapter",
+  "sample": {}
+ },
+ {
+  "key": "review.kind.chapter.all",
+  "file": "src/shared/review/copy.ts",
+  "line": 48,
+  "english": "Remove all found chapters",
+  "sample": {}
+ },
+ {
+  "key": "review.kind.chapter.count",
+  "file": "src/shared/review/copy.ts",
+  "line": 50,
+  "english": [
+   "0 found chapters",
+   "1 found chapter",
+   "2 found chapters",
+   "1000 found chapters"
+  ],
+  "sample": [
+   {
+    "count": 0,
+    "n": "0"
+   },
+   {
+    "count": 1,
+    "n": "1"
+   },
+   {
+    "count": 2,
+    "n": "2"
+   },
+   {
+    "count": 1000,
+    "n": "1000"
+   }
+  ]
+ },
+ {
+  "key": "review.kind.short.chip",
+  "file": "src/shared/review/copy.ts",
+  "line": 44,
+  "english": "Short",
+  "sample": {}
+ },
+ {
+  "key": "review.kind.short.name",
+  "file": "src/shared/review/copy.ts",
+  "line": 46,
+  "english": "shorter-version cut",
+  "sample": {}
+ },
+ {
+  "key": "review.kind.short.all",
+  "file": "src/shared/review/copy.ts",
+  "line": 48,
+  "english": "Remove all shorter-version cuts",
+  "sample": {}
+ },
+ {
+  "key": "review.kind.short.count",
+  "file": "src/shared/review/copy.ts",
+  "line": 50,
+  "english": [
+   "0 shorter-version cuts",
+   "1 shorter-version cut",
+   "2 shorter-version cuts",
+   "1000 shorter-version cuts"
+  ],
+  "sample": [
+   {
+    "count": 0,
+    "n": "0"
+   },
+   {
+    "count": 1,
+    "n": "1"
+   },
+   {
+    "count": 2,
+    "n": "2"
+   },
+   {
+    "count": 1000,
+    "n": "1000"
+   }
+  ]
+ },
+ {
+  "key": "review.changes",
+  "file": "src/shared/review/copy.ts",
+  "line": 52,
+  "english": [
+   "0 changes",
+   "1 change",
+   "2 changes",
+   "1000 changes"
+  ],
+  "sample": [
+   {
+    "count": 0,
+    "n": "0"
+   },
+   {
+    "count": 1,
+    "n": "1"
+   },
+   {
+    "count": 2,
+    "n": "2"
+   },
+   {
+    "count": 1000,
+    "n": "1000"
+   }
+  ]
+ },
+ {
+  "key": "review.status.pending",
+  "file": "src/shared/review/copy.ts",
+  "line": 54,
+  "english": "not reviewed",
+  "sample": {}
+ },
+ {
+  "key": "review.status.kept",
+  "file": "src/shared/review/copy.ts",
+  "line": 54,
+  "english": "kept",
+  "sample": {}
+ },
+ {
+  "key": "review.status.removed",
+  "file": "src/shared/review/copy.ts",
+  "line": 54,
+  "english": "removed",
+  "sample": {}
+ },
+ {
+  "key": "review.title",
+  "file": "src/shared/review/copy.ts",
+  "line": 58,
+  "english": "Review automatic changes",
+  "sample": {}
+ },
+ {
+  "key": "review.empty",
+  "file": "src/shared/review/copy.ts",
+  "line": 59,
+  "english": "Nothing to review. Flown has not changed anything by itself yet, or you have reviewed it all.",
+  "sample": {}
+ },
+ {
+  "key": "review.hint",
+  "file": "src/shared/review/copy.ts",
+  "line": 60,
+  "english": "N or ↓ next, P or ↑ previous, K keep, Delete remove",
+  "sample": {}
+ },
+ {
+  "key": "review.place.topLeft",
+  "file": "src/shared/review/copy.ts",
+  "line": 64,
+  "english": "top left",
+  "sample": {}
+ },
+ {
+  "key": "review.place.top",
+  "file": "src/shared/review/copy.ts",
+  "line": 64,
+  "english": "top",
+  "sample": {}
+ },
+ {
+  "key": "review.place.topRight",
+  "file": "src/shared/review/copy.ts",
+  "line": 64,
+  "english": "top right",
+  "sample": {}
+ },
+ {
+  "key": "review.place.left",
+  "file": "src/shared/review/copy.ts",
+  "line": 65,
+  "english": "left",
+  "sample": {}
+ },
+ {
+  "key": "review.place.middle",
+  "file": "src/shared/review/copy.ts",
+  "line": 65,
+  "english": "middle",
+  "sample": {}
+ },
+ {
+  "key": "review.place.right",
+  "file": "src/shared/review/copy.ts",
+  "line": 65,
+  "english": "right",
+  "sample": {}
+ },
+ {
+  "key": "review.place.bottomLeft",
+  "file": "src/shared/review/copy.ts",
+  "line": 66,
+  "english": "bottom left",
+  "sample": {}
+ },
+ {
+  "key": "review.place.bottom",
+  "file": "src/shared/review/copy.ts",
+  "line": 66,
+  "english": "bottom",
+  "sample": {}
+ },
+ {
+  "key": "review.place.bottomRight",
+  "file": "src/shared/review/copy.ts",
+  "line": 66,
+  "english": "bottom right",
+  "sample": {}
+ },
+ {
+  "key": "review.zoom.pullBack",
+  "file": "src/shared/review/copy.ts",
+  "line": 85,
+  "english": "Pull back",
+  "sample": {}
+ },
+ {
+  "key": "review.zoom.typing",
+  "file": "src/shared/review/copy.ts",
+  "line": 88,
+  "english": "Zoom in on typing",
+  "sample": {}
+ },
+ {
+  "key": "review.zoom.typingAt",
+  "file": "src/shared/review/copy.ts",
+  "line": 88,
+  "english": "Zoom in on typing, top right",
+  "sample": {
+   "place": "top right"
+  }
+ },
+ {
+  "key": "review.zoom.click",
+  "file": "src/shared/review/copy.ts",
+  "line": 89,
+  "english": "Zoom in on a click",
+  "sample": {}
+ },
+ {
+  "key": "review.zoom.clickAt",
+  "file": "src/shared/review/copy.ts",
+  "line": 89,
+  "english": "Zoom in on a click, top right",
+  "sample": {
+   "place": "top right"
+  }
+ },
+ {
+  "key": "review.zoom.in",
+  "file": "src/shared/review/copy.ts",
+  "line": 90,
+  "english": "Zoom in",
+  "sample": {}
+ },
+ {
+  "key": "review.zoom.inAt",
+  "file": "src/shared/review/copy.ts",
+  "line": 90,
+  "english": "Zoom in, middle",
+  "sample": {
+   "place": "middle"
+  }
+ },
+ {
+  "key": "review.layout.corner.topLeft",
+  "file": "src/shared/review/copy.ts",
+  "line": 96,
+  "english": "Camera to the top left corner",
+  "sample": {}
+ },
+ {
+  "key": "review.layout.corner.topRight",
+  "file": "src/shared/review/copy.ts",
+  "line": 97,
+  "english": "Camera to the top right corner",
+  "sample": {}
+ },
+ {
+  "key": "review.layout.corner.bottomLeft",
+  "file": "src/shared/review/copy.ts",
+  "line": 98,
+  "english": "Camera to the bottom left corner",
+  "sample": {}
+ },
+ {
+  "key": "review.layout.corner.bottomRight",
+  "file": "src/shared/review/copy.ts",
+  "line": 99,
+  "english": "Camera to the bottom right corner",
+  "sample": {}
+ },
+ {
+  "key": "review.layout.bubble",
+  "file": "src/shared/review/copy.ts",
+  "line": 110,
+  "english": "Camera bubble",
+  "sample": {}
+ },
+ {
+  "key": "review.layout.cameraOnly",
+  "file": "src/shared/review/copy.ts",
+  "line": 102,
+  "english": "Full camera",
+  "sample": {}
+ },
+ {
+  "key": "review.layout.cameraLarge",
+  "file": "src/shared/review/copy.ts",
+  "line": 103,
+  "english": "Large camera",
+  "sample": {}
+ },
+ {
+  "key": "review.layout.sideBySide",
+  "file": "src/shared/review/copy.ts",
+  "line": 104,
+  "english": "Camera side by side",
+  "sample": {}
+ },
+ {
+  "key": "review.layout.screenOnly",
+  "file": "src/shared/review/copy.ts",
+  "line": 105,
+  "english": "Camera hidden",
+  "sample": {}
+ },
+ {
+  "key": "review.framing.title",
+  "file": "src/shared/review/copy.ts",
+  "line": 120,
+  "english": "Camera framed on your face",
+  "sample": {}
+ },
+ {
+  "key": "review.framing.detail",
+  "file": "src/shared/review/copy.ts",
+  "line": 121,
+  "english": "Camera director",
+  "sample": {}
+ },
+ {
+  "key": "review.cut.retake",
+  "file": "src/shared/review/copy.ts",
+  "line": 142,
+  "english": "Removed a retake: “so I think we”",
+  "sample": {
+   "said": "so I think we"
+  }
+ },
+ {
+  "key": "review.cut.repeat",
+  "file": "src/shared/review/copy.ts",
+  "line": 143,
+  "english": "Removed a repeat: “the the”",
+  "sample": {
+   "said": "the the"
+  }
+ },
+ {
+  "key": "review.cut.words",
+  "file": "src/shared/review/copy.ts",
+  "line": 144,
+  "english": "Removed “um”",
+  "sample": {
+   "said": "um"
+  }
+ },
+ {
+  "key": "review.cut.words",
+  "file": "src/shared/review/copy.ts",
+  "line": 144,
+  "english": "Removed “…”",
+  "sample": {
+   "said": "…"
+  }
+ },
+ {
+  "key": "review.cut.short",
+  "file": "src/shared/review/copy.ts",
+  "line": 147,
+  "english": "Cut 2.4 s for the shorter version",
+  "sample": {
+   "seconds": "2.4 s"
+  }
+ },
+ {
+  "key": "review.cut.silence",
+  "file": "src/shared/review/copy.ts",
+  "line": 148,
+  "english": "Cut 2.4 s of silence",
+  "sample": {
+   "seconds": "2.4 s"
+  }
+ },
+ {
+  "key": "review.cut.idle",
+  "file": "src/shared/review/copy.ts",
+  "line": 148,
+  "english": "Cut 12.0 s of idle time",
+  "sample": {
+   "seconds": "12.0 s"
+  }
+ },
+ {
+  "key": "review.sped.silence",
+  "file": "src/shared/review/copy.ts",
+  "line": 149,
+  "english": "Sped up 2.4 s of silence 4×",
+  "sample": {
+   "seconds": "2.4 s",
+   "factor": "4"
+  }
+ },
+ {
+  "key": "review.sped.idle",
+  "file": "src/shared/review/copy.ts",
+  "line": 149,
+  "english": "Sped up 12.0 s of idle time 8×",
+  "sample": {
+   "seconds": "12.0 s",
+   "factor": "8"
+  }
+ },
+ {
+  "key": "review.cutBy.silences",
+  "file": "src/shared/review/copy.ts",
+  "line": 154,
+  "english": "Remove silences",
+  "sample": {}
+ },
+ {
+  "key": "review.cutBy.polish",
+  "file": "src/shared/review/copy.ts",
+  "line": 155,
+  "english": "Polish",
+  "sample": {}
+ },
+ {
+  "key": "review.cutBy.smartSpeed",
+  "file": "src/shared/review/copy.ts",
+  "line": 156,
+  "english": "Smart speed",
+  "sample": {}
+ },
+ {
+  "key": "review.cutBy.filler",
+  "file": "src/shared/review/copy.ts",
+  "line": 157,
+  "english": "Filler",
+  "sample": {}
+ },
+ {
+  "key": "review.cutBy.retake",
+  "file": "src/shared/review/copy.ts",
+  "line": 158,
+  "english": "Retake",
+  "sample": {}
+ },
+ {
+  "key": "review.cutBy.repeat",
+  "file": "src/shared/review/copy.ts",
+  "line": 159,
+  "english": "Repeat",
+  "sample": {}
+ },
+ {
+  "key": "review.cutBy.short",
+  "file": "src/shared/review/copy.ts",
+  "line": 160,
+  "english": "Make a shorter version",
+  "sample": {}
+ },
+ {
+  "key": "review.progress",
+  "file": "src/shared/review/copy.ts",
+  "line": 166,
+  "english": "12 of 40 reviewed",
+  "sample": {
+   "reviewed": "12",
+   "total": "40"
+  }
+ },
+ {
+  "key": "review.row.name",
+  "file": "src/shared/review/copy.ts",
+  "line": 173,
+  "english": "Cut 2.4 s of silence, silence, at 0:12.4, Polish, not reviewed",
+  "sample": {
+   "title": "Cut 2.4 s of silence",
+   "kind": "silence",
+   "time": "0:12.4",
+   "detail": "Polish",
+   "status": "not reviewed"
+  }
+ },
+ {
+  "key": "review.acted.keep",
+  "file": "src/shared/review/copy.ts",
+  "line": 178,
+  "english": "Kept. 13 of 40 reviewed.",
+  "sample": {
+   "reviewed": "13",
+   "total": "40"
+  }
+ },
+ {
+  "key": "review.acted.remove",
+  "file": "src/shared/review/copy.ts",
+  "line": 178,
+  "english": "Removed. 14 of 40 reviewed.",
+  "sample": {
+   "reviewed": "14",
+   "total": "40"
+  }
+ },
+ {
+  "key": "review.bulk.kept",
+  "file": "src/shared/review/copy.ts",
+  "line": 183,
+  "english": "Kept 26 changes.",
+  "sample": {
+   "things": "26 changes"
+  }
+ },
+ {
+  "key": "review.bulk.kept",
+  "file": "src/shared/review/copy.ts",
+  "line": 183,
+  "english": "Kept 1 change.",
+  "sample": {
+   "things": "1 change"
+  }
+ },
+ {
+  "key": "review.bulk.removed",
+  "file": "src/shared/review/copy.ts",
+  "line": 184,
+  "english": "Removed 5 zooms.",
+  "sample": {
+   "things": "5 zooms"
+  }
+ },
+ {
+  "key": "review.bulk.removed",
+  "file": "src/shared/review/copy.ts",
+  "line": 184,
+  "english": "Removed 1 word cut.",
+  "sample": {
+   "things": "1 word cut"
+  }
+ },
+ {
+  "key": "review.busy.rule",
+  "file": "src/shared/review/copy.ts",
+  "line": 193,
+  "english": "Keep, Remove, Undo and Redo wait until it is done. Closing the panel stops it.",
+  "sample": {}
+ },
+ {
+  "key": "review.busy.keeping",
+  "file": "src/shared/review/copy.ts",
+  "line": 200,
+  "english": "Keeping 8098 changes… Keep, Remove, Undo and Redo wait until it is done. Closing the panel stops it.",
+  "sample": {
+   "things": "8098 changes",
+   "rule": "Keep, Remove, Undo and Redo wait until it is done. Closing the panel stops it."
+  }
+ },
+ {
+  "key": "review.busy.removing",
+  "file": "src/shared/review/copy.ts",
+  "line": 200,
+  "english": "Removing 5399 silence cuts… Keep, Remove, Undo and Redo wait until it is done. Closing the panel stops it.",
+  "sample": {
+   "things": "5399 silence cuts",
+   "rule": "Keep, Remove, Undo and Redo wait until it is done. Closing the panel stops it."
+  }
+ },
+ {
+  "key": "review.stillBusy.keeping",
+  "file": "src/shared/review/copy.ts",
+  "line": 205,
+  "english": "Still keeping 8098 changes…",
+  "sample": {
+   "things": "8098 changes"
+  }
+ },
+ {
+  "key": "review.stillBusy.removing",
+  "file": "src/shared/review/copy.ts",
+  "line": 205,
+  "english": "Still removing 5399 silence cuts…",
+  "sample": {
+   "things": "5399 silence cuts"
+  }
+ },
+ {
+  "key": "review.wait.keepDuringKeepAll",
+  "file": "src/shared/review/copy.ts",
+  "line": 209,
+  "english": "Keep waits until Keep all is done.",
+  "sample": {}
+ },
+ {
+  "key": "review.wait.keepDuringRemoveAll",
+  "file": "src/shared/review/copy.ts",
+  "line": 209,
+  "english": "Keep waits until Remove all is done.",
+  "sample": {}
+ },
+ {
+  "key": "review.wait.removeDuringKeepAll",
+  "file": "src/shared/review/copy.ts",
+  "line": 210,
+  "english": "Remove waits until Keep all is done.",
+  "sample": {}
+ },
+ {
+  "key": "review.wait.removeDuringRemoveAll",
+  "file": "src/shared/review/copy.ts",
+  "line": 210,
+  "english": "Remove waits until Remove all is done.",
+  "sample": {}
+ },
+ {
+  "key": "review.stale.alreadyKept",
+  "file": "src/shared/review/copy.ts",
+  "line": 223,
+  "english": "Already kept.",
+  "sample": {}
+ },
+ {
+  "key": "review.stale.alreadyRemoved",
+  "file": "src/shared/review/copy.ts",
+  "line": 224,
+  "english": "Already removed.",
+  "sample": {}
+ },
+ {
+  "key": "review.stale.notKept",
+  "file": "src/shared/review/copy.ts",
+  "line": 224,
+  "english": "Not kept: already removed.",
+  "sample": {}
+ },
+ {
+  "key": "review.stale.notRemoved",
+  "file": "src/shared/review/copy.ts",
+  "line": 223,
+  "english": "Not removed: already kept.",
+  "sample": {}
+ },
+ {
+  "key": "review.stopped.keepAll",
+  "file": "src/shared/review/copy.ts",
+  "line": 232,
+  "english": "Keep all stopped: nothing was kept.",
+  "sample": {}
+ },
+ {
+  "key": "review.stopped.removeAll",
+  "file": "src/shared/review/copy.ts",
+  "line": 233,
+  "english": "Remove all silence cuts stopped: nothing was removed.",
+  "sample": {
+   "action": "Remove all silence cuts"
+  }
+ },
+ {
+  "key": "review.stopped.removeAll",
+  "file": "src/shared/review/copy.ts",
+  "line": 233,
+  "english": "Remove all stopped: nothing was removed.",
+  "sample": {
+   "action": "Remove all"
+  }
+ },
+ {
+  "key": "common.action.removeAll",
+  "file": "src/shared/review/copy.ts",
+  "line": 233,
+  "english": "Remove all",
+  "sample": {}
+ },
+ {
+  "key": "common.action.removeAll",
+  "file": "src/renderer/src/review/ReviewPanel.tsx",
+  "line": 623,
+  "english": "Remove all",
+  "sample": {}
+ },
+ {
+  "key": "review.busyWord.keep",
+  "file": "src/shared/review/copy.ts",
+  "line": 237,
+  "english": "Keeping…",
+  "sample": {}
+ },
+ {
+  "key": "review.busyWord.remove",
+  "file": "src/shared/review/copy.ts",
+  "line": 237,
+  "english": "Removing…",
+  "sample": {}
+ },
+ {
+  "key": "review.button.pending",
+  "file": "src/shared/review/copy.ts",
+  "line": 241,
+  "english": "Review automatic changes, 12 to review",
+  "sample": {
+   "n": "12"
+  }
+ },
+ {
+  "key": "review.button.none",
+  "file": "src/shared/review/copy.ts",
+  "line": 241,
+  "english": "Review automatic changes, nothing to review",
+  "sample": {}
+ },
+ {
+  "key": "review.button.label",
+  "file": "src/renderer/src/review/ReviewButton.tsx",
+  "line": 30,
+  "english": "Review",
+  "sample": {}
+ },
+ {
+  "key": "review.panel.close",
+  "file": "src/renderer/src/review/ReviewPanel.tsx",
+  "line": 562,
+  "english": "Close review",
+  "sample": {}
+ },
+ {
+  "key": "review.panel.reviewed",
+  "file": "src/renderer/src/review/ReviewPanel.tsx",
+  "line": 577,
+  "english": "Reviewed",
+  "sample": {}
+ },
+ {
+  "key": "review.panel.keepAll",
+  "file": "src/renderer/src/review/ReviewPanel.tsx",
+  "line": 613,
+  "english": "Keep all",
+  "sample": {}
+ },
+ {
+  "key": "review.panel.list",
+  "file": "src/renderer/src/review/ReviewPanel.tsx",
+  "line": 846,
+  "english": "Automatic changes",
+  "sample": {}
+ },
+ {
+  "key": "review.row.keep",
+  "file": "src/renderer/src/review/ReviewPanel.tsx",
+  "line": 953,
+  "english": "Keep: Zoom in",
+  "sample": {
+   "title": "Zoom in"
+  }
+ },
+ {
+  "key": "review.row.remove",
+  "file": "src/renderer/src/review/ReviewPanel.tsx",
+  "line": 956,
+  "english": "Remove: Zoom in",
+  "sample": {
+   "title": "Zoom in"
+  }
+ },
+ {
+  "key": "common.action.keep",
+  "file": "src/renderer/src/review/ReviewPanel.tsx",
+  "line": 954,
+  "english": "Keep",
+  "sample": {}
+ },
+ {
+  "key": "common.action.remove",
+  "file": "src/renderer/src/review/ReviewPanel.tsx",
+  "line": 957,
+  "english": "Remove",
+  "sample": {}
+ },
+ {
+  "key": "review.row.hideParts",
+  "file": "src/renderer/src/review/ReviewPanel.tsx",
+  "line": 969,
+  "english": [
+   "Hide the 0 items: Emphasis",
+   "Hide the 1 item: Emphasis",
+   "Hide the 2 items: Emphasis",
+   "Hide the 1000 items: Emphasis"
+  ],
+  "sample": [
+   {
+    "title": "Emphasis",
+    "count": 0,
+    "n": "0"
+   },
+   {
+    "title": "Emphasis",
+    "count": 1,
+    "n": "1"
+   },
+   {
+    "title": "Emphasis",
+    "count": 2,
+    "n": "2"
+   },
+   {
+    "title": "Emphasis",
+    "count": 1000,
+    "n": "1000"
+   }
+  ]
+ },
+ {
+  "key": "review.row.showParts",
+  "file": "src/renderer/src/review/ReviewPanel.tsx",
+  "line": 969,
+  "english": [
+   "Show the 0 items: Emphasis",
+   "Show the 1 item: Emphasis",
+   "Show the 2 items: Emphasis",
+   "Show the 1000 items: Emphasis"
+  ],
+  "sample": [
+   {
+    "title": "Emphasis",
+    "count": 0,
+    "n": "0"
+   },
+   {
+    "title": "Emphasis",
+    "count": 1,
+    "n": "1"
+   },
+   {
+    "title": "Emphasis",
+    "count": 2,
+    "n": "2"
+   },
+   {
+    "title": "Emphasis",
+    "count": 1000,
+    "n": "1000"
+   }
+  ]
+ },
+ {
+  "key": "review.mark.kept",
+  "file": "src/renderer/src/review/ReviewPanel.tsx",
+  "line": 1018,
+  "english": "Kept",
+  "sample": {}
+ },
+ {
+  "key": "review.mark.removed",
+  "file": "src/renderer/src/review/ReviewPanel.tsx",
+  "line": 1018,
+  "english": "Removed",
+  "sample": {}
+ }
+]

@@ -1,1 +1,454 @@
-{}
+{
+  "kind.zoom.chip": {
+    "description": "Review mode: the short chip on a row whose change is of this kind: automatic zooms."
+  },
+  "kind.zoom.name": {
+    "description": "Review mode: the name of this kind of change (automatic zooms) inside a row's spoken description, lower case: \"Cut 2.4 s of silence, {kind}, at 0:12.4, …\"."
+  },
+  "kind.zoom.all": {
+    "description": "Review mode: the footer button that removes every change of this kind still to review (automatic zooms)."
+  },
+  "kind.zoom.count": {
+    "description": "Review mode: a count of changes of this kind (automatic zooms) inside \"Removed {things}.\" and \"Removing {things}…\"; {n} is the count as shown."
+  },
+  "kind.camera.chip": {
+    "description": "Review mode: the short chip on a row whose change is of this kind: automatic camera layout changes (the camera director)."
+  },
+  "kind.camera.name": {
+    "description": "Review mode: the name of this kind of change (automatic camera layout changes (the camera director)) inside a row's spoken description, lower case: \"Cut 2.4 s of silence, {kind}, at 0:12.4, …\"."
+  },
+  "kind.camera.all": {
+    "description": "Review mode: the footer button that removes every change of this kind still to review (automatic camera layout changes (the camera director))."
+  },
+  "kind.camera.count": {
+    "description": "Review mode: a count of changes of this kind (automatic camera layout changes (the camera director)) inside \"Removed {things}.\" and \"Removing {things}…\"; {n} is the count as shown."
+  },
+  "kind.silence.chip": {
+    "description": "Review mode: the short chip on a row whose change is of this kind: silences that were cut or sped up."
+  },
+  "kind.silence.name": {
+    "description": "Review mode: the name of this kind of change (silences that were cut or sped up) inside a row's spoken description, lower case: \"Cut 2.4 s of silence, {kind}, at 0:12.4, …\"."
+  },
+  "kind.silence.all": {
+    "description": "Review mode: the footer button that removes every change of this kind still to review (silences that were cut or sped up)."
+  },
+  "kind.silence.count": {
+    "description": "Review mode: a count of changes of this kind (silences that were cut or sped up) inside \"Removed {things}.\" and \"Removing {things}…\"; {n} is the count as shown."
+  },
+  "kind.idle.chip": {
+    "description": "Review mode: the short chip on a row whose change is of this kind: idle time (no input) that was cut or sped up by Smart speed."
+  },
+  "kind.idle.name": {
+    "description": "Review mode: the name of this kind of change (idle time (no input) that was cut or sped up by Smart speed) inside a row's spoken description, lower case: \"Cut 2.4 s of silence, {kind}, at 0:12.4, …\"."
+  },
+  "kind.idle.all": {
+    "description": "Review mode: the footer button that removes every change of this kind still to review (idle time (no input) that was cut or sped up by Smart speed)."
+  },
+  "kind.idle.count": {
+    "description": "Review mode: a count of changes of this kind (idle time (no input) that was cut or sped up by Smart speed) inside \"Removed {things}.\" and \"Removing {things}…\"; {n} is the count as shown."
+  },
+  "kind.words.chip": {
+    "description": "Review mode: the short chip on a row whose change is of this kind: spoken words cut from the video (fillers, retakes, repeats)."
+  },
+  "kind.words.name": {
+    "description": "Review mode: the name of this kind of change (spoken words cut from the video (fillers, retakes, repeats)) inside a row's spoken description, lower case: \"Cut 2.4 s of silence, {kind}, at 0:12.4, …\"."
+  },
+  "kind.words.all": {
+    "description": "Review mode: the footer button that removes every change of this kind still to review (spoken words cut from the video (fillers, retakes, repeats))."
+  },
+  "kind.words.count": {
+    "description": "Review mode: a count of changes of this kind (spoken words cut from the video (fillers, retakes, repeats)) inside \"Removed {things}.\" and \"Removing {things}…\"; {n} is the count as shown."
+  },
+  "kind.style.chip": {
+    "description": "Review mode: the short chip on a row whose change is of this kind: caption look (style) changes made automatically."
+  },
+  "kind.style.name": {
+    "description": "Review mode: the name of this kind of change (caption look (style) changes made automatically) inside a row's spoken description, lower case: \"Cut 2.4 s of silence, {kind}, at 0:12.4, …\"."
+  },
+  "kind.style.all": {
+    "description": "Review mode: the footer button that removes every change of this kind still to review (caption look (style) changes made automatically)."
+  },
+  "kind.style.count": {
+    "description": "Review mode: a count of changes of this kind (caption look (style) changes made automatically) inside \"Removed {things}.\" and \"Removing {things}…\"; {n} is the count as shown."
+  },
+  "kind.emphasis.chip": {
+    "description": "Review mode: the short chip on a row whose change is of this kind: words emphasised automatically in captions (uncountable in English)."
+  },
+  "kind.emphasis.name": {
+    "description": "Review mode: the name of this kind of change (words emphasised automatically in captions (uncountable in English)) inside a row's spoken description, lower case: \"Cut 2.4 s of silence, {kind}, at 0:12.4, …\"."
+  },
+  "kind.emphasis.all": {
+    "description": "Review mode: the footer button that removes every change of this kind still to review (words emphasised automatically in captions (uncountable in English))."
+  },
+  "kind.emphasis.count": {
+    "description": "Review mode: a count of changes of this kind (words emphasised automatically in captions (uncountable in English)) inside \"Removed {things}.\" and \"Removing {things}…\"; {n} is the count as shown."
+  },
+  "kind.text.chip": {
+    "description": "Review mode: the short chip on a row whose change is of this kind: automatic fixes to caption text."
+  },
+  "kind.text.name": {
+    "description": "Review mode: the name of this kind of change (automatic fixes to caption text) inside a row's spoken description, lower case: \"Cut 2.4 s of silence, {kind}, at 0:12.4, …\"."
+  },
+  "kind.text.all": {
+    "description": "Review mode: the footer button that removes every change of this kind still to review (automatic fixes to caption text)."
+  },
+  "kind.text.count": {
+    "description": "Review mode: a count of changes of this kind (automatic fixes to caption text) inside \"Removed {things}.\" and \"Removing {things}…\"; {n} is the count as shown."
+  },
+  "kind.emoji.chip": {
+    "description": "Review mode: the short chip on a row whose change is of this kind: emoji added automatically over captions."
+  },
+  "kind.emoji.name": {
+    "description": "Review mode: the name of this kind of change (emoji added automatically over captions) inside a row's spoken description, lower case: \"Cut 2.4 s of silence, {kind}, at 0:12.4, …\"."
+  },
+  "kind.emoji.all": {
+    "description": "Review mode: the footer button that removes every change of this kind still to review (emoji added automatically over captions)."
+  },
+  "kind.emoji.count": {
+    "description": "Review mode: a count of changes of this kind (emoji added automatically over captions) inside \"Removed {things}.\" and \"Removing {things}…\"; {n} is the count as shown."
+  },
+  "kind.graphic.chip": {
+    "description": "Review mode: the short chip on a row whose change is of this kind: pop-ups, counters, list cards and title cards made from captions."
+  },
+  "kind.graphic.name": {
+    "description": "Review mode: the name of this kind of change (pop-ups, counters, list cards and title cards made from captions) inside a row's spoken description, lower case: \"Cut 2.4 s of silence, {kind}, at 0:12.4, …\"."
+  },
+  "kind.graphic.all": {
+    "description": "Review mode: the footer button that removes every change of this kind still to review (pop-ups, counters, list cards and title cards made from captions)."
+  },
+  "kind.graphic.count": {
+    "description": "Review mode: a count of changes of this kind (pop-ups, counters, list cards and title cards made from captions) inside \"Removed {things}.\" and \"Removing {things}…\"; {n} is the count as shown."
+  },
+  "kind.bleep.chip": {
+    "description": "Review mode: the short chip on a row whose change is of this kind: swear words bleeped automatically."
+  },
+  "kind.bleep.name": {
+    "description": "Review mode: the name of this kind of change (swear words bleeped automatically) inside a row's spoken description, lower case: \"Cut 2.4 s of silence, {kind}, at 0:12.4, …\"."
+  },
+  "kind.bleep.all": {
+    "description": "Review mode: the footer button that removes every change of this kind still to review (swear words bleeped automatically)."
+  },
+  "kind.bleep.count": {
+    "description": "Review mode: a count of changes of this kind (swear words bleeped automatically) inside \"Removed {things}.\" and \"Removing {things}…\"; {n} is the count as shown."
+  },
+  "kind.join.chip": {
+    "description": "Review mode: the short chip on a row whose change is of this kind: the style of the joins at cuts (crossfades, punch-ins) set by Polish."
+  },
+  "kind.join.name": {
+    "description": "Review mode: the name of this kind of change (the style of the joins at cuts (crossfades, punch-ins) set by Polish) inside a row's spoken description, lower case: \"Cut 2.4 s of silence, {kind}, at 0:12.4, …\"."
+  },
+  "kind.join.all": {
+    "description": "Review mode: the footer button that removes every change of this kind still to review (the style of the joins at cuts (crossfades, punch-ins) set by Polish)."
+  },
+  "kind.join.count": {
+    "description": "Review mode: a count of changes of this kind (the style of the joins at cuts (crossfades, punch-ins) set by Polish) inside \"Removed {things}.\" and \"Removing {things}…\"; {n} is the count as shown."
+  },
+  "kind.colour.chip": {
+    "description": "Review mode: the short chip on a row whose change is of this kind: automatic colour balance of the camera."
+  },
+  "kind.colour.name": {
+    "description": "Review mode: the name of this kind of change (automatic colour balance of the camera) inside a row's spoken description, lower case: \"Cut 2.4 s of silence, {kind}, at 0:12.4, …\"."
+  },
+  "kind.colour.all": {
+    "description": "Review mode: the footer button that removes every change of this kind still to review (automatic colour balance of the camera)."
+  },
+  "kind.colour.count": {
+    "description": "Review mode: a count of changes of this kind (automatic colour balance of the camera) inside \"Removed {things}.\" and \"Removing {things}…\"; {n} is the count as shown."
+  },
+  "kind.chapter.chip": {
+    "description": "Review mode: the short chip on a row whose change is of this kind: chapters found automatically."
+  },
+  "kind.chapter.name": {
+    "description": "Review mode: the name of this kind of change (chapters found automatically) inside a row's spoken description, lower case: \"Cut 2.4 s of silence, {kind}, at 0:12.4, …\"."
+  },
+  "kind.chapter.all": {
+    "description": "Review mode: the footer button that removes every change of this kind still to review (chapters found automatically)."
+  },
+  "kind.chapter.count": {
+    "description": "Review mode: a count of changes of this kind (chapters found automatically) inside \"Removed {things}.\" and \"Removing {things}…\"; {n} is the count as shown."
+  },
+  "kind.short.chip": {
+    "description": "Review mode: the short chip on a row whose change is of this kind: cuts made by Make a shorter version."
+  },
+  "kind.short.name": {
+    "description": "Review mode: the name of this kind of change (cuts made by Make a shorter version) inside a row's spoken description, lower case: \"Cut 2.4 s of silence, {kind}, at 0:12.4, …\"."
+  },
+  "kind.short.all": {
+    "description": "Review mode: the footer button that removes every change of this kind still to review (cuts made by Make a shorter version)."
+  },
+  "kind.short.count": {
+    "description": "Review mode: a count of changes of this kind (cuts made by Make a shorter version) inside \"Removed {things}.\" and \"Removing {things}…\"; {n} is the count as shown."
+  },
+  "changes": {
+    "description": "Review mode: a count of automatic changes of any kind, inside \"Kept {things}.\" and \"Keeping {things}…\"; {n} is the count as shown."
+  },
+  "status.pending": {
+    "description": "Review mode: a row's status at the end of its spoken description and under an item of a group: not kept or removed yet. Lower case."
+  },
+  "status.kept": {
+    "description": "Review mode: a row's status: the change was kept. Lower case."
+  },
+  "status.removed": {
+    "description": "Review mode: a row's status: the change was removed. Lower case."
+  },
+  "title": {
+    "description": "Review mode: the panel's title and the title bar button's tooltip. Lists every change Flown made by itself, to keep or remove."
+  },
+  "empty": {
+    "description": "Review mode: shown in the panel when there is nothing to review."
+  },
+  "hint": {
+    "description": "Review mode: the keys of the list, above it. N, P, K, Delete and the arrows are key names: keep them as they are.",
+    "dnt": [
+      "N",
+      "P",
+      "K",
+      "Delete",
+      "↓",
+      "↑"
+    ]
+  },
+  "place.topLeft": {
+    "description": "Review mode: where in the frame an automatic zoom aims, in thirds, inside a row title (\"Zoom in on a click, {place}\"). Lower case."
+  },
+  "place.top": {
+    "description": "Review mode: where in the frame a zoom aims (the top middle third), inside a row title. Lower case."
+  },
+  "place.topRight": {
+    "description": "Review mode: where in the frame a zoom aims, inside a row title. Lower case."
+  },
+  "place.left": {
+    "description": "Review mode: where in the frame a zoom aims (the middle left third), inside a row title. Lower case."
+  },
+  "place.middle": {
+    "description": "Review mode: where in the frame a zoom aims (the centre third), inside a row title. Lower case."
+  },
+  "place.right": {
+    "description": "Review mode: where in the frame a zoom aims (the middle right third), inside a row title. Lower case."
+  },
+  "place.bottomLeft": {
+    "description": "Review mode: where in the frame a zoom aims, inside a row title. Lower case."
+  },
+  "place.bottom": {
+    "description": "Review mode: where in the frame a zoom aims (the bottom middle third), inside a row title. Lower case."
+  },
+  "place.bottomRight": {
+    "description": "Review mode: where in the frame a zoom aims, inside a row title. Lower case."
+  },
+  "zoom.pullBack": {
+    "description": "Review mode: the title of an automatic zoom that zooms out (shows more than the whole frame)."
+  },
+  "zoom.typing": {
+    "description": "Review mode: the title of an automatic zoom made where the user typed."
+  },
+  "zoom.typingAt": {
+    "description": "Review mode: the title of an automatic zoom made where the user typed; {place} says where in the frame (\"top right\")."
+  },
+  "zoom.click": {
+    "description": "Review mode: the title of an automatic zoom made at a mouse click."
+  },
+  "zoom.clickAt": {
+    "description": "Review mode: the title of an automatic zoom made at a mouse click; {place} says where in the frame (\"top right\")."
+  },
+  "zoom.in": {
+    "description": "Review mode: the title of an automatic zoom that follows the cursor."
+  },
+  "zoom.inAt": {
+    "description": "Review mode: the title of an automatic zoom at a fixed place; {place} says where in the frame (\"middle\")."
+  },
+  "layout.corner.topLeft": {
+    "description": "Review mode: the title of an automatic change that moved the camera bubble to the top left corner of the video."
+  },
+  "layout.corner.topRight": {
+    "description": "Review mode: the title of an automatic change that moved the camera bubble to the top right corner."
+  },
+  "layout.corner.bottomLeft": {
+    "description": "Review mode: the title of an automatic change that moved the camera bubble to the bottom left corner."
+  },
+  "layout.corner.bottomRight": {
+    "description": "Review mode: the title of an automatic change that moved the camera bubble to the bottom right corner."
+  },
+  "layout.bubble": {
+    "description": "Review mode: the title of an automatic change back to the camera bubble (the small camera over the screen)."
+  },
+  "layout.cameraOnly": {
+    "description": "Review mode: the title of an automatic change to the camera filling the frame."
+  },
+  "layout.cameraLarge": {
+    "description": "Review mode: the title of an automatic change to a large camera over the screen."
+  },
+  "layout.sideBySide": {
+    "description": "Review mode: the title of an automatic change to the camera beside the screen."
+  },
+  "layout.screenOnly": {
+    "description": "Review mode: the title of an automatic change that hides the camera."
+  },
+  "framing.title": {
+    "description": "Review mode: the title of the automatic change that centres the camera on the speaker's face."
+  },
+  "framing.detail": {
+    "description": "Review mode: the tool that made a camera change, shown after the time on its row (the Camera director feature)."
+  },
+  "cut.retake": {
+    "description": "Review mode: the title of a cut that removed a retake (a sentence said again); {said} is the words removed, as said.",
+    "user": [
+      "said"
+    ]
+  },
+  "cut.repeat": {
+    "description": "Review mode: the title of a cut that removed repeated words; {said} is the words removed.",
+    "user": [
+      "said"
+    ]
+  },
+  "cut.words": {
+    "description": "Review mode: the title of a cut that removed filler words; {said} is the words removed.",
+    "user": [
+      "said"
+    ]
+  },
+  "cut.short": {
+    "description": "Review mode: the title of a cut Make a shorter version made; {seconds} is how much was cut (\"2.4 s\")."
+  },
+  "cut.silence": {
+    "description": "Review mode: the title of a silence that was cut; {seconds} is its length (\"2.4 s\")."
+  },
+  "cut.idle": {
+    "description": "Review mode: the title of idle time (no typing or clicks) that was cut; {seconds} is its length."
+  },
+  "sped.silence": {
+    "description": "Review mode: the title of a silence played faster; {seconds} is its length, {factor} how many times as fast (\"Sped up 2.4 s of silence 4×\")."
+  },
+  "sped.idle": {
+    "description": "Review mode: the title of idle time played faster; {seconds} is its length, {factor} how many times as fast."
+  },
+  "cutBy.silences": {
+    "description": "Review mode: the tool that made a cut, after the time on its row: the Remove silences tool."
+  },
+  "cutBy.polish": {
+    "description": "Review mode: the tool that made a cut: Polish in one click."
+  },
+  "cutBy.smartSpeed": {
+    "description": "Review mode: the tool that made a cut or speed-up: Smart speed (idle time)."
+  },
+  "cutBy.filler": {
+    "description": "Review mode: what a word cut removed: filler words (\"um\", \"uh\")."
+  },
+  "cutBy.retake": {
+    "description": "Review mode: what a word cut removed: a retake (a sentence said again)."
+  },
+  "cutBy.repeat": {
+    "description": "Review mode: what a word cut removed: repeated words."
+  },
+  "cutBy.short": {
+    "description": "Review mode: the tool that made a cut: Make a shorter version."
+  },
+  "progress": {
+    "description": "Review mode: how many automatic changes have been kept or removed so far, of all of them."
+  },
+  "row.name": {
+    "description": "Review mode: what a screen reader says for a row: its title, its kind, its time in the video, the tool that made it and its status (\"Cut 2.4 s of silence, silence, at 0:12.4, Polish, not reviewed\")."
+  },
+  "acted.keep": {
+    "description": "Review mode: said to screen readers after one change was kept."
+  },
+  "acted.remove": {
+    "description": "Review mode: said to screen readers after one change was removed."
+  },
+  "bulk.kept": {
+    "description": "Review mode: said after Keep all; {things} is a count of changes (\"26 changes\")."
+  },
+  "bulk.removed": {
+    "description": "Review mode: said after Remove all; {things} is a count of changes of one kind (\"5 zooms\")."
+  },
+  "busy.rule": {
+    "description": "Review mode: said as Keep all or Remove all starts on a long list: what waits for it and what stops it. Keep, Remove, Undo and Redo are the buttons and commands."
+  },
+  "busy.keeping": {
+    "description": "Review mode: said as Keep all starts on a long list; {things} is a count (\"8098 changes\"), {rule} the sentence that says what waits."
+  },
+  "busy.removing": {
+    "description": "Review mode: said as Remove all starts on a long list; {things} is a count (\"5399 silence cuts\"), {rule} the sentence that says what waits."
+  },
+  "stillBusy.keeping": {
+    "description": "Review mode: said when Keep all is pressed while it still works; {things} is a count (\"8098 changes\")."
+  },
+  "stillBusy.removing": {
+    "description": "Review mode: said when Remove all is pressed while it still works; {things} is a count (\"5399 silence cuts\")."
+  },
+  "wait.keepDuringKeepAll": {
+    "description": "Review mode: said when a row's Keep is pressed while Keep all works."
+  },
+  "wait.keepDuringRemoveAll": {
+    "description": "Review mode: said when a row's Keep is pressed while Remove all works."
+  },
+  "wait.removeDuringKeepAll": {
+    "description": "Review mode: said when a row's Remove is pressed while Keep all works."
+  },
+  "wait.removeDuringRemoveAll": {
+    "description": "Review mode: said when a row's Remove is pressed while Remove all works."
+  },
+  "stale.alreadyKept": {
+    "description": "Review mode: said when a Keep that waited finds its change already kept meanwhile."
+  },
+  "stale.alreadyRemoved": {
+    "description": "Review mode: said when a Remove that waited finds its change already removed meanwhile."
+  },
+  "stale.notKept": {
+    "description": "Review mode: said when a Keep that waited finds its change removed meanwhile."
+  },
+  "stale.notRemoved": {
+    "description": "Review mode: said when a Remove that waited finds its change kept meanwhile."
+  },
+  "stopped.keepAll": {
+    "description": "The editor's notice when closing Review mode stopped Keep all before it was done."
+  },
+  "stopped.removeAll": {
+    "description": "The editor's notice when closing Review mode stopped Remove all before it was done; {action} is the button's name (\"Remove all silence cuts\", \"Remove all\")."
+  },
+  "busyWord.keep": {
+    "description": "Review mode: the Keep all button while it works."
+  },
+  "busyWord.remove": {
+    "description": "Review mode: the Remove all button while it works."
+  },
+  "button.pending": {
+    "description": "The title bar's Review button, for screen readers: opens Review mode; {n} is how many automatic changes are still to review."
+  },
+  "button.none": {
+    "description": "The title bar's Review button, for screen readers, when every automatic change was reviewed."
+  },
+  "button.label": {
+    "description": "The title bar's Review button: opens Review mode (a verb: check the automatic changes)."
+  },
+  "panel.close": {
+    "description": "Review mode: the panel's close button (tooltip and name)."
+  },
+  "panel.reviewed": {
+    "description": "Review mode: the name of the progress bar of changes reviewed."
+  },
+  "panel.keepAll": {
+    "description": "Review mode: the footer button that keeps every change still to review."
+  },
+  "panel.list": {
+    "description": "Review mode: the list's name for screen readers."
+  },
+  "row.keep": {
+    "description": "Review mode: a row's Keep button for screen readers; {title} is the row's title."
+  },
+  "row.remove": {
+    "description": "Review mode: a row's Remove button for screen readers; {title} is the row's title."
+  },
+  "row.hideParts": {
+    "description": "Review mode: the button that hides a group row's items (Captions Studio's emphasis and text fixes); {title} is the row's title."
+  },
+  "row.showParts": {
+    "description": "Review mode: the button that shows a group row's items; {title} is the row's title."
+  },
+  "mark.kept": {
+    "description": "Review mode: shown with a tick where Keep and Remove were, once the change was kept."
+  },
+  "mark.removed": {
+    "description": "Review mode: shown where Keep and Remove were, once the change was removed."
+  }
+}
