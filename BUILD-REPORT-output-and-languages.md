@@ -1,4 +1,4 @@
-# Build report: output and the app (wave 12), steps S0 to S3a
+# Build report: output and the app (wave 12), steps S0 to S4
 
 Branch `feat/wave12` in `/home/user/wt-w12`. Design:
 [`docs/design/output-and-languages.md`](docs/design/output-and-languages.md) (§0 the owner's decisions,
@@ -9,10 +9,12 @@ last verification fix from `integ/wave8`, the seven parts P1 to P7 merged in the
 (P1, P2, P3, P4, P6, P7, then P5, which mounts the others' rows), and the integration commits listed
 below. Nothing was pushed.
 
-This build covers steps S0 and S1, the lead's step S2 and part X6's step S3a (their own sections below).
-The rest of the extraction (S3b and S4) is a later workflow, and the translations (S5) need people: no translation was drafted or written, `scripts/i18n/draft.mjs` was
-never run against any service, no AI service was contacted, `translations/reviewers.json` lists
-nobody, and `src/shared/i18n/built/shipped.json` is `[]`, so Bangla stays out of the language picker.
+This build covers steps S0 and S1, the lead's step S2, part X6's step S3a, the extraction parts X1 to
+X5 and X7 merged at step S3b, and the lead's step S4 (their own sections below). The translations
+(S5) need people: no translation was drafted or written, `scripts/i18n/draft.mjs` was never run
+against any service, no AI service was contacted, `translations/reviewers.json` lists nobody, and
+`src/shared/i18n/built/shipped.json` is `[]`, so Bangla stays out of the language picker and Flown
+runs in English, which the English guard holds unchanged against the baseline recorded at S2.
 
 ## What was built
 
@@ -317,62 +319,229 @@ identical frames are), F7's caption (the camera's opacity is), and the L steps t
   succeeds. No recording-side file, `security.ts`, the CSP, the baseline, `reviewers.json` or the
   built catalogues changed (`git diff e825ddf`).
 
-## What is left for S3 to S5
+## Step S3b: the extraction parts X1 to X5 and X7
 
-* **S3b** (X1 to X5, X7), from this step's result: the extraction, file list by file list from `scripts/i18n/parts.json`, and
-  only `common`'s keys for the words it holds. With it come the e2e steps that check its code: L5
-  (digits and Target size through `fmt` and `NumberField`), L6 (`aria-keyshortcuts`), L9 (no plain
-  ASCII text under `en-XA`), L10 (right to left under `ar-XB`, which also needs the pseudo-locale
-  selection P7 left unwired), L14 (confirmations through `askConfirm`), L15 (mixed digits) and the
-  notification half of L7. X5 also moves the exporter's remaining English-text fallback test
-  (`NOT_ENCODER_RELATED`) to error codes; this step did it for the free-space refusal only.
-* Files in the lists that §21.9 keeps as they are in part: `src/shared/render/safeZones.ts` (X5) keeps
-  `textArea` and `COMMON_SAFE`; `src/shared/engine/project.ts` (X1) keeps `formatTime` ASCII. The
-  label-table files may hold words that are not UI text (AI prompts in `src/shared/publish/prompts.ts`,
-  ids); the part puts those in `allow.json` with their reason.
-* **After X6, for the S3b parts.** X6 moved the named helpers and the locale calls only. Numbers
-  interpolated into prose (`${n}`, `toFixed` in a template, `Math.round(m.seconds)} s`, the crop
-  editor's `${px.w} × ${px.h}`) become message values through `fmt.count` and `fmt.number` as each part
-  makes its messages (§9.3). Each part keeps the `fmt` calls of `fmt-sites.json` in its files (as
-  values of `t()`) or updates their entries; `node scripts/i18n/fmt-sites.mjs --check` and test 73
-  say which. The helpers tests 8 and 73 compare against (`ExportDialog.tsx`'s `formatClock`,
-  `formatDuration` and `formatBytes`, `formatTick`, `formatLevel`, `formatRate`, `zoomText`,
-  `clockTime`, both `lengthText`s, both exported `sizeText`s, `storage/rules.ts`'s `formatBytes` and
-  `usedAgo`, `versionTime`) stay exported although only `moments.ts` and `webhooks.ts` still call two
-  of them. X5 owns the running view's `fmt.inSentence` (§9.6, `ExportDialog.tsx`'s lower-cased
-  progress detail, not moved here). X4 decides whether the share message follows the UI language
-  (then its length moves to `fmt.clock(s, 'hours-rounded')`). `src/shared/ai/cost.ts` is in no part's
-  list; its `usd()` keeps US$ amounts as they are until a currency format joins `fmt` (§11.3).
-* **S4**: the scanner fails for the whole tree (`"scan": "fail"`). It still reads no tables of labels,
-  so it cannot tell whether those were extracted; a table rule for the scanner, or the split's
-  `labelTablesOf` turned into a check, belongs with S4. Any `common` key still unused then fails
-  `i18n:check`.
-* Open choices the parts left for the lead, not changed here: whether stem files count as exported
-  files (copy to clipboard and share refuse them today; Show in folder works); sweeping temporary
-  stem files at start rather than at the next stem step; FCPXML `colorSpace` for the editing
-  formats; Premiere XML for 3,000 cuts is 2.7 MB against §19.3's 2 MB; §5.4's AV1 level line
-  should read 4.1 for 1080p60 and 5.0 for 1080p120 (Annex A); the av1_amf quantisers (120/136/152)
-  are starting values.
-* The stems equal the video's soundtrack only when the video mixes the separate microphone and
-  system files; at the default gains the video plays the recording's own mixed track (§7.6), so the
-  e2e F8 sets the microphone to 80% to compare the same graph.
-* P2 saw a camera colour shift in an *Overlays only* CineForm file. Measured here on the same green
-  camera, CineForm and VP9 decode to the same colour (20, 169, 63 against 19, 168, 63), so it is not
-  CineForm's; the camera path's own colour against its source remains for whoever owns it to check.
-* Temporary e2e homes kept for debugging stay under `/tmp/ssw-e2e-of-*` (about 125 MB); they are
-  outside this step's scratch folder, so they were not deleted. P5 left `/tmp/ssw-e2e-presets-JNjSSu`.
+Merged one at a time with `git merge --no-ff` onto `9533899` (S3a) in the order X1, X2, X3, X4, X5,
+X7. After each merge: both typechecks, `npm run -s build` and the English guard (tests 9 and 10,
+`english-guard.e2e.cjs` in compare mode against the S2 baseline, which was never re-recorded). All
+six guards passed at the first run.
+
+* **Merge conflicts**: only `scripts/i18n/allow.json` (X2, X4, X5 appended site entries; both sides
+  kept) and the comment above two tests' English re-registration after a module reset
+  (`captionsPanel.test.ts` with X3, `providerFormOwnPrices.test.ts` with X5; same code, one comment
+  kept). No source conflict: the split of §10.5 held.
+* **What each part extracted** (their reports, condensed):
+  * X1 (editor shell, 557 log rows): command titles and categories (palette search over the UI
+    title, the English title and the keywords, in NFC; test 70), the keycap sentences and the
+    shortcuts editor (test 71), the timeline, transport, snap guide and preview speed menu, the
+    preview, inspector tabs and save state, the multi-select notices, `media.ts`'s errors, the
+    engine's look names (`src/shared/engine/lookNames.ts`, so main keeps its English tables),
+    Editor.tsx's screens and notices, `askConfirm` for leaving and copies, and `ariaKeys` with
+    `aria-keyshortcuts` on the palette rows (its own last commit, `7ef521e`, held for the NVDA check).
+  * X2 (panels, 1,787 rows): the style, zoom, camera, sound and text namespaces over 73 files, wave
+    10's moods and effect names through `src/shared/audio/soundNames.ts`, the cut-style names,
+    `camera.corner.*`, `NumberField` at its three sites outside English (English keeps today's input),
+    and `Rich.tsx` for messages whose values are elements. Two hints keep today's text nodes because
+    merged text nodes moved glyphs under the guard.
+  * X3 (captions, first half, 411 rows): the Captions tab, the AI pieces it shares (cost line, cost
+    question, AI on this PC progress, model list), speakers, subtitles, Make my captions great, Clean
+    up, Languages and the caption style gallery, `captionWords.ts` for the main-graph tables, and test
+    77 (the UI digits never change caption content digits).
+  * X4 (review and project tools, 623 rows): Review mode with its kinds as plural messages (test 78),
+    Versions (`versionWords.ts`), Polish, the Copies menu, importing, the speaker notes, Home's search
+    and Share. The Publish dialog was left (see S4).
+  * X5 (export, settings, Home, main, 937 rows): the export dialog, exporter and render layers
+    (`exportNames.ts`), Settings, Home, the camera bubble, area picker and update notices, main's
+    dialogs, file filters, notifications, taskbar tooltips and errors, and the error codes of §9.6
+    that replace the exporter's reading of English words (`refusedForGood`, `ExportFailure`; tests 72
+    and 75).
+  * X7 (right to left): the codemod and check `rtl-sites.mjs` turned 124 declarations in 34
+    stylesheets into logical properties and lists the 135 kept physical with reasons; `direction:
+    ltr` on the time axis and pictures; mirrors under `:dir(rtl)`; test 76 in vitest and in the app
+    (`languages-rtl.e2e.cjs`, L10 with `<html dir="rtl">` set by the test).
+* **Fixed after the merges**: X5's codes left `voiceIpc.ts` throwing plain errors from
+  `export:start`, so a missing microphone file (whose words said "missing") and a file another app
+  held now tried every other encoder instead of stopping. They now carry `missing-input` and
+  `in-use` (`08f52fe`), and a test compares the new decision with the old words for every reason the
+  cleaner gives (fails without the change). The Captions tab and the speech download compared main's
+  English "Cancelled."; they now also accept `errors.cancelled` in the UI language (`cancelled.ts`).
+
+## Step S4: the scanner fails for the whole tree
+
+* **What the parts left, extracted** (617 rows in `scripts/i18n/log/s4.json`, 514 new messages):
+  the Make a guide panel and its screenshot viewer (with `stepsLine`, `checkQuestion`, the formats,
+  the chips and the rows' accessible names), Find chapters (its options and `FIND_WORDS`, now
+  getters), Short clips and Make a shorter version (with `CLIPS_WORDS` as getters, the lengths and
+  shapes, the made and stopped notices as plurals), the Publish dialog and its link check (the cards'
+  names, tones, lengths and blockers through `src/renderer/src/publish/publishWords.ts`, because
+  `pack.ts` is in main's import graph), the Captions tab's look section and Captions Studio controls
+  (every chip table, the themes and gradients), Edit by text (its notices, kinds and the words' and
+  paragraphs' accessible names), and the captions made on this PC card. Errors thrown in main's
+  import graph became `errors` messages: the AI text request checks, the transcription parse errors,
+  "Not a project file", Draft script's refusals, and the webhook refusals and post failures
+  (`webhookHelp()` replaces `WEBHOOK_HELP`). The local AI grammar's four schema checks are
+  programming errors no user sees and are listed in `allow.json` with that reason; no UI text was
+  allow-listed.
+* **English kept**: sentences around a name or number use `Rich` with the value as a node, so the
+  text nodes are today's; `Rich` now isolates a user placeholder in `<bdi>` outside English, as `T`
+  does (English adds no element). Icon labels keep the space in the markup. The English guard passed
+  on the two tour screens these files reach (Captions, Transcript) after each batch.
+* **The switch**: `scripts/i18n/config.json` says `"scan": "fail"`. Test 61 gained its whole-tree
+  case (the config says fail, the repository scan finds no failure and nothing to report, only the
+  other account's files wait), and S0's seam test now expects `fail`. `npm run i18n:check` passes
+  with no warning: every `common` key is used (the last one, *Make captions*, by the guide, Find
+  chapters, Short clips and Edit by text).
+* **Tests changed for S4, none loosened**: the two test harnesses read the text a message component
+  (`Rich`, `T`) renders; tests that read renamed exports or source lines follow them with the same
+  expectations (`findHint()`, `sendShotsLabel()`, `webhookHelp()`, the Publish link's message, the
+  smart pickers' hint lines); the Captions badge test registers English after its module reset. New:
+  `tests/i18nS4Extraction.test.ts` (the Publish words equal `pack.ts`, the getters follow the
+  catalogue, the webhook messages keep today's English, the cancel check, `Rich`'s `<bdi>`).
+
+* **Commits of S3b and S4**: the merges `7344297` (X1), `bc787be` (X2), `b5bd388` (X3), `996914c`
+  (X4), `c9b6720` (X5), `7c588ae` (X7); then `0257c2e` (the extraction), `6e061d0` (the scanner
+  fails, test 61), `7b6fe58` (tests following the extraction, the overflow check), `08f52fe` (Clean
+  voice's error codes), `b09cd98` (the languages test reads the Bangla session's digits) and this
+  report with the feature list and release notes.
+
+### Checks and tests at S4
+
+On the final head, one end-to-end file at a time under `xvfb-run -a -s "-screen 0 1920x1080x24"`,
+with at least 7.9 GB free throughout.
+
+* **Typechecks**: both clean.
+* **vitest** (`--maxWorkers=2`, private `TMPDIR`): 605 files, 7,950 tests passed, 8 skipped (the same skips as before wave 12; 585 files and 7,786 tests at S1).
+* **`npm run -s build`**: succeeds (renderer `views` chunk 2,690.7 KB, 2,646.9 KB at S1).
+* **i18n checks (§16)**: `npm run i18n:check`: every check passed (4,545 English messages in 25
+  namespaces; the scan reads 820 files and finds no failure; 101 texts pending in the other account's
+  files). `node scripts/i18n/build-catalogues.mjs --check`: the built catalogues match the
+  translations (none; one merge group, in `export`). `fmt-sites.mjs --check`: 198 sites moved to
+  `fmt`, 4 kept with a reason. `rtl-sites.mjs --check`: 135 physical declarations kept with their
+  reasons in 65 stylesheets. `split.mjs`: the parts' files as merged.
+* **The English guard** (tests 9 and 10, `english-guard.e2e.cjs` in compare mode against the S2
+  baseline): passed after each of the six merges, after each S4 batch, on the head the end-to-end list
+  ran on, and again on the final build.
+
+End to end (the task's list; every file exists):
+
+| File | Result |
+|---|---|
+| `english-guard` | pass (compare), and again on the final build |
+| `languages` | 3/4, the same on the re-run alone: L12/L13 looked for the batch button *Export 2 files* in the Bangla session, where the count now shows in Bangla digits (*Export ২ files*, §11.3) because X5 put it through `fmt`; the test now names the button by the session's digits (`b09cd98`), and passes 4/4 on the final build |
+| `output-formats` | 5/5 |
+| `export` | 10/10 |
+| `export-pack` | 5/5 |
+| `render` | 3/3 |
+| `audit-audio-export` | 2/2 |
+| `clean-voice` | 3/3, and 3/3 on the final build with the error codes fix |
+| `editing-polish` | 17/17 (E1 and E13 say SKIP: they need an older build and the prepared download beds, as before) |
+| `smart-tools` | 6/6 |
+| `guides` | 1/1 |
+| `short-clips` | 1/1 |
+| `captions-studio` | 8/8 |
+| `captions` | 9/9 |
+| `review-mode` | 10/10 |
+| `vertical-video` | 1/1 |
+| `versions` | 3/3 |
+| `commands` | 5/5 |
+| `search` | 3/3 |
+| `ui` | 5/5 |
+| `smoke` | 1/1 |
+| `packaging` | 2/2; `verify-dist` says SKIP because no installer was built in this step |
+
+The list ran on the build before the voice error codes commit (`08f52fe`, main only); the app was
+built again after it and the English guard, `languages` and `clean-voice` ran on that build.
+
+### Counts by namespace (English messages)
+
+4,545 messages in 25 namespaces (240 at S3a): alpha 12, camera 181, captions 584, codecs 52, commands
+165, common 65, editor 248, errors 228, export 232, home 85, keys 47, language 20, main 85, presets 30,
+recording 0 (reserved for the other account), review 636, settings 218, smart 225, sound 156, stems 16,
+style 592, text 398, timeline 67, timelines 31, zoom 172. Extraction log rows: X1 557, X2 1,787, X3
+411, X4 623, X5 937, X7 0, S4 617 (4,932 in all), every one given back by test 69.
+
+### The pseudo-locale check (§12.3)
+
+`tests/e2e/pseudo-overflow.cjs` (new, for development, not in run-all) runs Flown in English, bn-XA and
+en-XA from `npm run i18n:pseudo`, walks Home, every Settings section, the editor with all 13 inspector
+tabs, the palette, Polish, Versions and the export dialog, and lists each element whose text
+overflows its box (`scrollWidth > clientWidth` or `scrollHeight > clientHeight`), apart from the 47
+that overflow in English too. Results on this build:
+
+* **bn-XA, 21 elements**: the title bar's save state (64 px wide, +32 px, every editor screen); the
+  timeline's hint line (ellipsis; the whole line, every editor screen); the Style tab's preset name
+  (42 px box, +119 px, ellipsis) and *Save as default for new recordings* (239 px button, +113 px);
+  the Zoom tab's active chip (+26 px); two buttons of the Cursor and Clip tabs (239 px, +16 and
+  +56 px); the Audio tab's *Find unwanted sounds* (+26 px) and the music rows' titles and credits
+  (67 px wide, the English names overflow because the translated buttons beside them are wider); three
+  disabled commands in the palette (+6 to +89 px, ellipsis); five labels of the export dialog's form
+  rows (92 px column, +3 to +45 px); and the recording options' summary on Home (English text, +32
+  px, beside longer translated words).
+* **en-XA, 7 elements**: the save state (+4/+5 px), the timeline hint (+224 px, ellipsis), the preset
+  name (+16 px), *Save as default for new recordings* (+30 px), the Zoom chip (+3 px), a music row's
+  title and the recording options' summary.
+* These are layout work before a language ships (fixed-width buttons and the 92 px label column of
+  the export dialog first); the meta entries can carry `maxLength` for the fixed ones (§12.3). The
+  screenshots are under the run's `--out` folder for the reviewers.
+
+## What is left for S5 and after
+
+* **Tables the scanner does not read, still English** (they reach the screens through code the scanner
+  cannot see): `speechCopy.ts` (SPEECH_COPY and the tier names: the Captions tab's on-this-PC card and
+  Settings › Captions on this PC), `localAi/catalog.ts`'s model notes, `transcriptMarks.ts`'s emphasis
+  notices and `TIMING_COPY`, `textChoices.ts`'s sent hints and `ai/cost.ts`'s sentence frames,
+  `captionTracks.ts`'s `burnedTrackNote`, `voiceCopy.ts` (main's import graph; VoiceSection has no
+  owner), `soundLibrary.ts` (moods' labels for main, `sfxTitle`, `musicCredit`), `soundFxEdit.ts`,
+  `magnifier.ts`, `stickers.ts`, `selection.ts`, `multiSelect.ts` (`KIND_WORDS`, `groupLabel`),
+  `groupClipboard.ts`, `ClipWaveform.tsx`, `shuttle.ts`, `import/imported.ts`, the review row titles of
+  `review.ts`, `captionReview.ts`, `chapterReview.ts`, `colourReview.ts` and `joinReview.ts`,
+  `useSearchMoment.ts`, `share/steps.ts`, `notes/blocks.ts`, `NotesCard.tsx`, `titles.ts`
+  (`TITLE_STYLES`, `TITLE_BACKGROUNDS` in the brand kit card), `ai/presets.ts`'s `serviceName`, and
+  the engine tables X2's panels still show in English (gradients, wallpapers, animated gradients,
+  zoom easings, tilt presets; `lookNames.ts` is ready for them). A table rule for the scanner (or the
+  split's `labelTablesOf` turned into a check) would find these; it is not built.
+* **Fragments that are still sentences built in code**: the guide's check question (`"; "`-joined
+  parts), the Clip edit hint (kept in its four pieces for the guard), the Selection view's keycap
+  hint, FreezeMarks' group tooltip endings, the director's `autoTitleSuffix`. They need `merge: true`
+  groups with `.whole` messages before a language ships (§9.3); `scripts/i18n/english-changes.md`
+  (§10.3 rule 8) does not exist yet because no English change was needed.
+* **Code that still reads English text**: Home's source refresh matches `/no longer available/` from
+  the recording side (a request to the other account is in `pending.json`); the editor's copy check
+  compares `editor.copy.failed` while `duplicateFlow` uses `review.copy.failed` (same English;
+  translations must match or the prefix doubles); main's AI and speech cancels still say "Cancelled."
+  in English (the renderer accepts both).
+* **Not wired**: the pseudo-locale selection `FLOWN_I18N_PSEUDO` (the catalogue folders of
+  `npm run i18n:pseudo` stand in for a language through `SSW_I18N_CATALOGUE_DIR` instead, as the new
+  overflow check does); the notes window's resize drag in a right-to-left page; arrow keys following
+  the visual direction (§13.2); postcss is used by X7's tools from vite's dependency, not listed in
+  `package.json` (no install was run).
+* **S5 itself** (§10.4, §15): Bangla drafted with a service whose terms allow commercial use, reviewed
+  in context with the review pack and sheet (`npm run i18n:pack`, `npm run i18n:sheet`) by two
+  listed reviewers, the merge-group report, `npm run i18n:build`, the installer built and its size
+  compared with S0's (tests 62, 65, 85).
+* Open choices from S1 still open: whether stem files count as exported files (copy to clipboard and
+  share refuse them; Show in folder works); sweeping temporary stem files at start; FCPXML
+  `colorSpace` for the editing formats; Premiere XML for 3,000 cuts is 2.7 MB against §19.3's 2 MB;
+  §5.4's AV1 level line (4.1 for 1080p60, 5.0 for 1080p120); the av1_amf quantisers are starting
+  values; the camera path's own colour against its source.
 
 ## What needs a person
 
 * **The second Bangla reviewer, and both reviewers' signed rights** (§0 decision 6): the owner adds
-  them to `translations/reviewers.json` once the agreements are signed, and names the drafting
-  service per language in `translations/README.md` before anyone runs `draft.mjs`.
-* **The other account's agreement for the recording side** (§0 decision 11): until then a shipped
-  language is a preview and the recording files keep their English.
-* **§0 decision 14's checks on Windows and in other editors**: the GPU encoders' quality values,
-  WebCodecs HEVC and AV1, `av1_amf`'s padding, the alpha export's speed on a GPU canvas (both
-  readbacks), the Bangla UI on Windows 10 and 11 with NVDA, timeline imports into DaVinci Resolve,
-  Premiere Pro and Final Cut Pro (the Cross Dissolve uid, transitions starting at the cut,
-  anchored clips under retimed clips, Resolve's marker EDL), which of WebM, AV1, CineForm,
-  QuickTime Animation and 32-bit float PCM in MOV each editor opens (`EDITOR_OPENS`), and GoPro's
-  patent declaration for SMPTE ST 2073 before release.
+  them to `translations/reviewers.json` once the agreements are signed; nobody is listed.
+* **Drafting with a service whose terms allow commercial use** (§15.3): the owner names the service
+  per language in `translations/README.md` before anyone runs `draft.mjs`. No draft was made here.
+* **The review pack and sheet** (§15.4): the reviewers work from `npm run i18n:pack` (screenshots in
+  context, with the pseudo-locale overflow list above) and `npm run i18n:sheet`; their approvals are
+  imported with the sheet's checks.
+* **The other account's agreement for the recording side** (§0 decision 11, §9.5): until then a
+  shipped language is a preview, the recording files keep their English (101 texts pending), and our
+  code shows their text in corner messages and `lang="en"` wrappers.
+* **§0 decision 14's checks on Windows and in other editors**: the NVDA check of the palette's
+  `aria-keyshortcuts` (`7ef521e` can be held back on its own) and of the Bangla UI on Windows 10 and
+  11, the GPU encoders' quality values, WebCodecs HEVC and AV1, `av1_amf`'s padding, the alpha
+  export's speed on a GPU canvas (both readbacks), timeline imports into DaVinci Resolve, Premiere
+  Pro and Final Cut Pro (the Cross Dissolve uid, transitions starting at the cut, anchored clips
+  under retimed clips, Resolve's marker EDL), which of WebM, AV1, CineForm, QuickTime Animation and
+  32-bit float PCM in MOV each editor opens (`EDITOR_OPENS`), and GoPro's patent declaration for
+  SMPTE ST 2073 before release.
