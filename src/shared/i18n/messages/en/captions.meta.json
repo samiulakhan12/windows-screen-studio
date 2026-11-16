@@ -848,5 +848,112 @@
   },
   "cleanup.hint": {
     "description": "Clean up: hint at the end of the section."
+  },
+  "languages.full": {
+    "description": "Languages: why no language can be added (tooltip of Add a language, and inside an error)."
+  },
+  "languages.allAdded": {
+    "description": "Languages: why no language can be added."
+  },
+  "languages.failed": {
+    "description": "Languages: a translation could not start; {reason} is the reason, starting lower case."
+  },
+  "languages.upToDate": {
+    "description": "Languages: status when Translate again found nothing to translate."
+  },
+  "languages.failedError": {
+    "description": "Languages: a translation failed; {reason} is the error, ending with a full stop."
+  },
+  "languages.failedTiming": {
+    "description": "Languages: the translation was not used because it changed the timing."
+  },
+  "languages.translated": {
+    "description": "Languages: status after a translation (the cost of the run may follow)."
+  },
+  "languages.translatedAgain": {
+    "description": "Languages: status after Translate again."
+  },
+  "languages.cancelled": {
+    "description": "Languages: status after a translation was cancelled."
+  },
+  "languages.title": {
+    "description": "Captions tab: heading of the section with the caption languages."
+  },
+  "languages.drawn": {
+    "description": "Languages: accessible name of the radio group that picks the language drawn on the video."
+  },
+  "languages.show": {
+    "description": "Languages: radio of a row that draws its captions on the video."
+  },
+  "languages.againLabel": {
+    "description": "Accessible name of a row's Translate again."
+  },
+  "languages.againNoProvider": {
+    "description": "Tooltip of Translate again with no AI provider."
+  },
+  "languages.againStale": {
+    "description": "Tooltip of Translate again."
+  },
+  "languages.againCurrent": {
+    "description": "Tooltip of Translate again when nothing changed."
+  },
+  "languages.again": {
+    "description": "Languages: button that translates the changed captions again."
+  },
+  "languages.removeLabel": {
+    "description": "Accessible name of a row's Remove."
+  },
+  "languages.add": {
+    "description": "Languages: button that opens the form to translate the captions."
+  },
+  "languages.noProvider": {
+    "description": "Languages with no AI provider.",
+    "dnt": [
+      "OpenAI",
+      "Gemini",
+      "Claude"
+    ]
+  },
+  "languages.language": {
+    "description": "Languages, Add a language: the language select."
+  },
+  "languages.via": {
+    "description": "Languages, Add a language: accessible name of the AI provider chips."
+  },
+  "languages.translate": {
+    "description": "Languages, Add a language: button, and the label of its cost."
+  },
+  "languages.translating": {
+    "description": "Languages: status while a translation runs."
+  },
+  "languages.theSpoken": {
+    "description": "Languages, outside English: the spoken language when the transcript does not name it."
+  },
+  "languages.spokenRow": {
+    "description": "Languages, outside English: the row of the spoken captions."
+  },
+  "languages.spokenCaptions": {
+    "description": "Languages, outside English: the row of the spoken captions when their language is not known."
+  },
+  "languages.changedSince": {
+    "description": "Languages, outside English: a row's note, how many spoken captions changed since the translation."
+  },
+  "languages.untranslated": {
+    "description": "Languages, outside English: a row's note, how many captions have no translation."
+  },
+  "languages.bleepsNote": {
+    "description": "Languages, outside English: a row's note when words are bleeped."
+  },
+  "languages.translatedRow": {
+    "description": "Languages, outside English: a translation's row when its track is not found."
+  },
+  "languages.translatedHere": {
+    "description": "Languages, outside English: a translation made on this PC."
+  },
+  "languages.translatedWith": {
+    "description": "Languages, outside English: a translation and who made it (an AI service's name or host).",
+    "user": [
+      "via"
+    ]
   }
 }

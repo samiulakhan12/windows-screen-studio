@@ -10,6 +10,9 @@
 import { useCallback, useEffect, useId, useRef, useState } from 'react'
 import type { AiProviderInfo, AiTextRequest, AiTextResult, AiUsage, TextChoice } from '../../../../shared/api/ai'
 import { costSentence } from '../../../../shared/ai/cost'
+import { fmt } from '../../../../shared/i18n/fmt'
+import { t } from '../../../../shared/i18n/t'
+import { captionLanguageName, trackRowWords } from '../captionWords'
 import { captionsToTranslate, languageName, languagesToAdd, trackOf, trackRows, withoutTrack, withShownTrack, withTranslation } from '../../../../shared/captions/captionTracks'
 import { MAX_TRACKS } from '../../../../shared/captions/studioData'
 import type { Project } from '../../../../shared/types'
@@ -77,13 +80,15 @@ interface Job {
 }
 
 /** Why a project cannot take a translation into another language. */
-const FULL = `A project keeps at most ${MAX_TRACKS} translations: remove one to add another`
-const ALL_ADDED = 'Every language on the list is added already'
+const fullReason = (): string => t('captions.languages.full', { n: fmt.count(MAX_TRACKS) })
+const allAdded = (): string => t('captions.languages.allAdded')
+/** A caption language's name in the UI language (languageName gives the English one, which the AI requests keep). */
+const shownName = (code: string): string => captionLanguageName(code, languageName(code))
 
 /** Why Add a language is off for `project`, or null when it has room for another language. */
 function noRoom(project: Project): string | null {
-  if ((project.captionTracks?.length ?? 0) >= MAX_TRACKS) return FULL
-  if (languagesToAdd(project).length === 0) return ALL_ADDED
+  if ((project.captionTracks?.length ?? 0) >= MAX_TRACKS) return fullReason()
+  if (languagesToAdd(project).length === 0) return allAdded()
   return null
 }
 
@@ -177,7 +182,7 @@ export function LanguagesSection({ project }: { project: Project }): JSX.Element
   // Why a request opened nothing goes once it no longer holds (a translation removed, by hand or by Undo).
   const roomNow = noRoom(project)
   useEffect(() => {
-    if ((status === FULL || status === ALL_ADDED) && status !== roomNow) setStatus('')
+    if ((status === fullReason() || status === allAdded()) && status !== roomNow) setStatus('')
   }, [status, roomNow])
   useEffect(() => {
     // The request is used up on the render that shows its form, once the providers are known: the
@@ -200,12 +205,12 @@ export function LanguagesSection({ project }: { project: Project }): JSX.Element
     if (running.current) return
     // A new language when the project keeps the most: the answer could not be kept, so nothing is sent.
     if (!trackOf(store.state, code) && (store.state.captionTracks?.length ?? 0) >= MAX_TRACKS) {
-      setError(`Could not translate: ${FULL.charAt(0).toLowerCase()}${FULL.slice(1)}.`)
+      setError(t('captions.languages.failed', { reason: fmt.inSentence(fullReason()) }))
       return
     }
     const sent = captionsToTranslate(store.state, code)
     if (!sent.length) {
-      setStatus(`The ${languageName(code)} captions are up to date`)
+      setStatus(t('captions.languages.upToDate', { language: shownName(code) }))
       return
     }
     const request: AiTextRequest = { task: 'translate', segments: sent, targetLanguage: languageName(code) }
@@ -222,7 +227,7 @@ export function LanguagesSection({ project }: { project: Project }): JSX.Element
     try {
       result = await window.api.aiText(provider.id, request, mine.id)
     } catch (err) {
-      if (!mine.cancelled && live.current) setError(`Could not translate: ${ipcMessage(err).replace(/\.?$/, '.')}`)
+      if (!mine.cancelled && live.current) setError(t('captions.languages.failedError', { reason: ipcMessage(err).replace(/\.?$/, '.') }))
       return
     } finally {
       if (running.current === mine) running.current = null
@@ -240,13 +245,14 @@ export function LanguagesSection({ project }: { project: Project }): JSX.Element
       return next ?? p
     })
     if (!used) {
-      setError("Could not translate: the provider changed the captions' timing or left some out.")
+      setError(t('captions.languages.failedTiming'))
       return
     }
     setAdding(false)
     // What the run cost (smart-tools.md §11.6), when the provider said.
     const cost = runCostText((result as { usage?: AiUsage }).usage, provider)
-    const done = `${again ? 'Translated again' : 'Translated'} ${sent.length} ${sent.length === 1 ? 'caption' : 'captions'} into ${languageName(code)}${cost ? `. ${cost}` : ''}`
+    const counted = { count: sent.length, n: fmt.count(sent.length), language: shownName(code) }
+    const done = `${again ? t('captions.languages.translatedAgain', counted) : t('captions.languages.translated', counted)}${cost ? `. ${cost}` : ''}`
     setStatus(done)
     setWrittenHere(provider.kind === 'local' ? done : null)
   }
@@ -257,7 +263,7 @@ export function LanguagesSection({ project }: { project: Project }): JSX.Element
     stopJob(j)
     running.current = null
     setJob(null)
-    setError('Could not translate: it was cancelled.')
+    setError(t('captions.languages.cancelled'))
   }
 
   const rows = trackRows(project)
@@ -309,8 +315,8 @@ export function LanguagesSection({ project }: { project: Project }): JSX.Element
 
   return (
     <div data-testid="caption-languages">
-      <Section title="Languages">
-        <div ref={rowsBox} role="radiogroup" aria-label="Captions drawn on the video" className="caption-list">
+      <Section title={t('captions.languages.title')}>
+        <div ref={rowsBox} role="radiogroup" aria-label={t('captions.languages.drawn')} className="caption-list">
           {rows.map((row, i) => {
             const code = row.language
             const provider = code ? againWith(code) : null
@@ -319,12 +325,19 @@ export function LanguagesSection({ project }: { project: Project }): JSX.Element
             const name = `${group}-track-${i}`
             // Translate again's own sentence: what it costs and where the captions go (§11.5).
             const againCost = code && provider && stale ? estimateFor(provider, { task: 'translate', segments: captionsToTranslate(project, code), targetLanguage: languageName(code) }, costs) : null
-            const againSays = !code || !provider || !stale ? null : againCost ? costSentence(againCost, provider.place, 'your captions') : provider.kind === 'local' ? 'Stays on this PC.' : `Sends your captions to ${provider.place}.`
+            const againSays = !code || !provider || !stale
+              ? null
+              : againCost
+                ? costSentence(againCost, provider.place, t('captions.ai.what.yourCaptions'))
+                : provider.kind === 'local'
+                  ? t('captions.ai.cost.localSentence')
+                  : t('captions.ai.cost.sendsSentence', { what: t('captions.ai.what.yourCaptions'), where: provider.place })
+            const words = trackRowWords(row, project)
             return (
               <div key={code ?? ''} className="caption-row" data-track={code ?? ''}>
                 <div className="caption-text">
-                  <strong id={name}>{row.label}</strong>
-                  {row.notes.map((n) => (
+                  <strong id={name}>{words.label}</strong>
+                  {words.notes.map((n) => (
                     <span key={n} className="hint">
                       {' · '}
                       {n}
@@ -346,7 +359,7 @@ export function LanguagesSection({ project }: { project: Project }): JSX.Element
                         if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') e.stopPropagation()
                       }}
                     />
-                    <span id={`${name}-show`}>Show on the video</span>
+                    <span id={`${name}-show`}>{t('captions.languages.show')}</span>
                   </label>
                   {code && (
                     <>
@@ -354,13 +367,13 @@ export function LanguagesSection({ project }: { project: Project }): JSX.Element
                         id={`${name}-again`}
                         className="btn small"
                         data-testid="track-retranslate"
-                        aria-label={`Translate the ${languageName(code)} captions again`}
+                        aria-label={t('captions.languages.againLabel', { language: shownName(code) })}
                         aria-describedby={againSays ? `${name}-again-cost` : undefined}
                         disabled={!stale || !provider || !!job}
-                        title={!provider ? 'Add an AI provider to translate' : stale ? 'Translates only the captions that changed or are missing' : 'Up to date'}
+                        title={!provider ? t('captions.languages.againNoProvider') : stale ? t('captions.languages.againStale') : t('captions.languages.againCurrent')}
                         onClick={() => provider && void translate(code, provider, true)}
                       >
-                        Translate again
+                        {t('captions.languages.again')}
                       </button>
                       {againSays && (
                         <span id={`${name}-again-cost`} className="sr-only">
@@ -370,11 +383,11 @@ export function LanguagesSection({ project }: { project: Project }): JSX.Element
                       <button
                         className="btn small ghost"
                         data-testid="track-remove"
-                        aria-label={`Remove the ${languageName(code)} captions`}
+                        aria-label={t('captions.languages.removeLabel', { language: shownName(code) })}
                         disabled={job?.language === code}
                         onClick={() => store.update((p) => withoutTrack(p, code))}
                       >
-                        Remove
+                        {t('common.action.remove')}
                       </button>
                     </>
                   )}
@@ -391,41 +404,41 @@ export function LanguagesSection({ project }: { project: Project }): JSX.Element
               className="btn small"
               data-testid="track-add"
               disabled={full || offered.length === 0}
-              title={full ? FULL : undefined}
+              title={full ? fullReason() : undefined}
               onClick={() => {
                 setAdding(true)
                 setError(null)
                 focusSelect.current = true
               }}
             >
-              Add a language
+              {t('captions.languages.add')}
             </button>
           </div>
         ) : noProviders && !OFFLINE_TRANSLATION ? (
           <div ref={back.form} className="captions-empty">
-            <p>Add an AI provider to translate your captions. OpenAI, Gemini and Claude all can.</p>
+            <p>{t('captions.languages.noProvider')}</p>
             <div className="row start">
               <button ref={addProvider} className="btn small" data-testid="track-add-provider" onClick={openAiSettings}>
-                Add an AI provider
+                {t('common.action.addAiProvider')}
               </button>
               <button className="btn small ghost" onClick={() => close()}>
-                Close
+                {t('common.action.close')}
               </button>
             </div>
           </div>
         ) : (
           <div ref={back.form} className="captions-suggestion">
             <label className="field">
-              <span>Language</span>
+              <span>{t('captions.languages.language')}</span>
               <select ref={select} className="captions-select" value={chosenLanguage} onChange={(e) => setLanguage(e.target.value)} disabled={!!job}>
                 {offered.map((l) => (
                   <option key={l.code} value={l.code}>
-                    {l.name}
+                    {captionLanguageName(l.code, l.name)}
                   </option>
                 ))}
               </select>
             </label>
-            <div className="chips" role="group" aria-label="Translate with">
+            <div className="chips" role="group" aria-label={t('captions.languages.via')}>
               {list.map((p) => (
                 <button key={p.id} className={`chip ${chosenVia?.id === p.id ? 'active' : ''}`} aria-pressed={chosenVia?.id === p.id} disabled={!!job} onClick={() => setVia(p.id)}>
                   {p.label}
@@ -443,10 +456,10 @@ export function LanguagesSection({ project }: { project: Project }): JSX.Element
                 disabled={!chosenLanguage || !chosenVia || !!job}
                 onClick={() => chosenVia && void translate(chosenLanguage, chosenVia, false)}
               >
-                Translate
+                {t('captions.languages.translate')}
               </button>
               <button className="btn small ghost" disabled={!!job} onClick={() => close()}>
-                Close
+                {t('common.action.close')}
               </button>
             </div>
             {/* What Translate sends, where, and what it costs (smart-tools.md §11.5), part P5's. */}
@@ -457,7 +470,7 @@ export function LanguagesSection({ project }: { project: Project }): JSX.Element
               actions={[
                 {
                   key: 'translate',
-                  label: 'Translate',
+                  label: t('captions.languages.translate'),
                   buttonId: `${group}-translate`,
                   request: chosenLanguage ? () => ({ task: 'translate', segments: captionsToTranslate(store.state, chosenLanguage), targetLanguage: languageName(chosenLanguage) }) : null
                 }
@@ -469,10 +482,10 @@ export function LanguagesSection({ project }: { project: Project }): JSX.Element
         {job && (
           <div ref={jobRow} className="row start">
             <span className="hint" role="status">
-              Translating {job.count} {job.count === 1 ? 'caption' : 'captions'} into {languageName(job.language)}…
+              {t('captions.languages.translating', { count: job.count, n: fmt.count(job.count), language: shownName(job.language) })}
             </span>
             <button ref={cancelButton} className="btn small ghost" onClick={cancel}>
-              Cancel
+              {t('common.action.cancel')}
             </button>
             <LocalProgress requestId={job.id} onStop={cancel} />
           </div>

@@ -384,42 +384,42 @@
   {
     "key": "captions.export.format.srt",
     "file": "src/renderer/src/editor/captionWords.ts",
-    "line": 30,
+    "line": 32,
     "english": "SubRip subtitles: YouTube, Vimeo, most video players and editors",
     "sample": {}
   },
   {
     "key": "captions.export.format.vtt",
     "file": "src/renderer/src/editor/captionWords.ts",
-    "line": 31,
+    "line": 33,
     "english": "WebVTT subtitles: web video players",
     "sample": {}
   },
   {
     "key": "captions.export.format.txtLabel",
     "file": "src/renderer/src/editor/captionWords.ts",
-    "line": 32,
+    "line": 34,
     "english": "Text",
     "sample": {}
   },
   {
     "key": "captions.export.format.txt",
     "file": "src/renderer/src/editor/captionWords.ts",
-    "line": 32,
+    "line": 34,
     "english": "The transcript as plain text",
     "sample": {}
   },
   {
     "key": "captions.speakers.title",
     "file": "src/renderer/src/editor/captionWords.ts",
-    "line": 49,
+    "line": 51,
     "english": "Speakers",
     "sample": {}
   },
   {
     "key": "captions.speakers.labelStems",
     "file": "src/renderer/src/editor/captionWords.ts",
-    "line": 52,
+    "line": 54,
     "english": "Label You and Others",
     "sample": {
       "youName": "You",
@@ -429,14 +429,14 @@
   {
     "key": "captions.speakers.labelStemsTitle",
     "file": "src/renderer/src/editor/captionWords.ts",
-    "line": 55,
+    "line": 57,
     "english": "Who speaks in each caption, from the microphone and computer sound tracks",
     "sample": {}
   },
   {
     "key": "captions.speakers.replaceQuestion",
     "file": "src/renderer/src/editor/captionWords.ts",
-    "line": 58,
+    "line": 60,
     "english": "Replace the speaker labels with You and Others from the sound tracks?",
     "sample": {
       "youName": "You",
@@ -446,28 +446,28 @@
   {
     "key": "captions.speakers.remove",
     "file": "src/renderer/src/editor/captionWords.ts",
-    "line": 61,
+    "line": 63,
     "english": "Remove labels",
     "sample": {}
   },
   {
     "key": "captions.speakers.none",
     "file": "src/renderer/src/editor/captionWords.ts",
-    "line": 64,
+    "line": 66,
     "english": "Speaker labels come from Gemini, or from recordings that kept the microphone and the computer sound apart.",
     "sample": {}
   },
   {
     "key": "captions.speakers.mixedHint",
     "file": "src/renderer/src/editor/captionWords.ts",
-    "line": 67,
+    "line": 69,
     "english": "For calls, transcribe the Mixed sound so the other people’s words are captioned too.",
     "sample": {}
   },
   {
     "key": "captions.speakers.nameLabel",
     "file": "src/renderer/src/editor/captionWords.ts",
-    "line": 69,
+    "line": 71,
     "english": "Name of Speaker 1",
     "sample": {
       "name": "Speaker 1"
@@ -476,7 +476,7 @@
   {
     "key": "captions.speakers.count",
     "file": "src/renderer/src/editor/captionWords.ts",
-    "line": 70,
+    "line": 72,
     "english": [
       "0 captions",
       "1 caption",
@@ -505,7 +505,7 @@
   {
     "key": "captions.speakers.labelled",
     "file": "src/renderer/src/editor/captionWords.ts",
-    "line": 72,
+    "line": 74,
     "english": [
       "Labelled 0 captions: 7 You, 0 Others.",
       "Labelled 1 caption: 7 You, 0 Others.",
@@ -550,21 +550,21 @@
   {
     "key": "captions.speakers.nothingHeard",
     "file": "src/renderer/src/editor/captionWords.ts",
-    "line": 74,
+    "line": 76,
     "english": "No caption had enough sound on either track to tell who speaks.",
     "sample": {}
   },
   {
     "key": "captions.speakers.levelsFailed",
     "file": "src/renderer/src/editor/captionWords.ts",
-    "line": 77,
+    "line": 79,
     "english": "The sound tracks could not be measured, so no labels were added.",
     "sample": {}
   },
   {
     "key": "captions.speakers.renamed",
     "file": "src/renderer/src/editor/captionWords.ts",
-    "line": 79,
+    "line": 81,
     "english": "Renamed Speaker 1 to Priya (Undo brings the old name back)",
     "sample": {
       "from": "Speaker 1",
@@ -574,7 +574,7 @@
   {
     "key": "captions.speakers.unlabelled",
     "file": "src/renderer/src/editor/captionWords.ts",
-    "line": 79,
+    "line": 81,
     "english": "Removed the label Speaker 1",
     "sample": {
       "from": "Speaker 1"
@@ -583,21 +583,21 @@
   {
     "key": "captions.speakers.removed",
     "file": "src/renderer/src/editor/captionWords.ts",
-    "line": 81,
+    "line": 83,
     "english": "Speaker labels removed (Undo brings them back)",
     "sample": {}
   },
   {
     "key": "captions.speakers.noSpeaker",
     "file": "src/renderer/src/editor/captionWords.ts",
-    "line": 84,
+    "line": 86,
     "english": "No speaker",
     "sample": {}
   },
   {
     "key": "captions.speakers.newSpeaker",
     "file": "src/renderer/src/editor/captionWords.ts",
-    "line": 86,
+    "line": 88,
     "english": "New speaker (Speaker 3)",
     "sample": {
       "name": "Speaker 3"
@@ -606,7 +606,7 @@
   {
     "key": "captions.speakers.selectLabel",
     "file": "src/renderer/src/editor/captionWords.ts",
-    "line": 87,
+    "line": 89,
     "english": "Speaker of the caption at 0:03.2",
     "sample": {
       "time": "0:03.2"
@@ -615,30 +615,150 @@
   {
     "key": "captions.speakers.showOnVideo",
     "file": "src/renderer/src/editor/captionWords.ts",
-    "line": 89,
+    "line": 91,
     "english": "Show speaker names",
     "sample": {}
   },
   {
     "key": "captions.speakers.showOnVideoTitle",
     "file": "src/renderer/src/editor/captionWords.ts",
-    "line": 92,
+    "line": 94,
     "english": "Put the speaker’s name before each caption on the video",
     "sample": {}
   },
   {
     "key": "captions.speakers.inFiles",
     "file": "src/renderer/src/editor/captionWords.ts",
-    "line": 95,
+    "line": 97,
     "english": "Speaker names in SRT and text",
     "sample": {}
   },
   {
     "key": "captions.speakers.inFilesTitle",
     "file": "src/renderer/src/editor/captionWords.ts",
-    "line": 98,
+    "line": 100,
     "english": "Start each caption with the speaker’s name, like “Priya: Hello”. WebVTT files always name the speaker.",
     "sample": {}
+  },
+  {
+    "key": "captions.languages.theSpoken",
+    "file": "src/renderer/src/editor/captionWords.ts",
+    "line": 114,
+    "english": "the spoken language",
+    "sample": {}
+  },
+  {
+    "key": "captions.languages.spokenRow",
+    "file": "src/renderer/src/editor/captionWords.ts",
+    "line": 115,
+    "english": "English · spoken",
+    "sample": {
+      "language": "English"
+    }
+  },
+  {
+    "key": "captions.languages.spokenCaptions",
+    "file": "src/renderer/src/editor/captionWords.ts",
+    "line": 115,
+    "english": "Spoken captions",
+    "sample": {}
+  },
+  {
+    "key": "captions.languages.changedSince",
+    "file": "src/renderer/src/editor/captionWords.ts",
+    "line": 119,
+    "english": [
+      "0 captions changed since",
+      "1 caption changed since",
+      "2 captions changed since",
+      "1000 captions changed since"
+    ],
+    "sample": [
+      {
+        "count": 0,
+        "n": "0"
+      },
+      {
+        "count": 1,
+        "n": "1"
+      },
+      {
+        "count": 2,
+        "n": "2"
+      },
+      {
+        "count": 1000,
+        "n": "1000"
+      }
+    ]
+  },
+  {
+    "key": "captions.languages.untranslated",
+    "file": "src/renderer/src/editor/captionWords.ts",
+    "line": 120,
+    "english": [
+      "0 captions are not translated: they show in English",
+      "1 caption is not translated: it shows in English",
+      "2 captions are not translated: they show in English",
+      "1000 captions are not translated: they show in English"
+    ],
+    "sample": [
+      {
+        "spoken": "English",
+        "count": 0,
+        "n": "0"
+      },
+      {
+        "spoken": "English",
+        "count": 1,
+        "n": "1"
+      },
+      {
+        "spoken": "English",
+        "count": 2,
+        "n": "2"
+      },
+      {
+        "spoken": "English",
+        "count": 1000,
+        "n": "1000"
+      }
+    ]
+  },
+  {
+    "key": "captions.languages.bleepsNote",
+    "file": "src/renderer/src/editor/captionWords.ts",
+    "line": 121,
+    "english": "Bleeped words are not masked in translations",
+    "sample": {}
+  },
+  {
+    "key": "captions.languages.translatedRow",
+    "file": "src/renderer/src/editor/captionWords.ts",
+    "line": 123,
+    "english": "Bengali · translated",
+    "sample": {
+      "language": "Bengali"
+    }
+  },
+  {
+    "key": "captions.languages.translatedHere",
+    "file": "src/renderer/src/editor/captionWords.ts",
+    "line": 125,
+    "english": "Bengali · translated on this PC",
+    "sample": {
+      "language": "Bengali"
+    }
+  },
+  {
+    "key": "captions.languages.translatedWith",
+    "file": "src/renderer/src/editor/captionWords.ts",
+    "line": 126,
+    "english": "Bengali · translated with Gemini",
+    "sample": {
+      "language": "Bengali",
+      "via": "Gemini"
+    }
   },
   {
     "key": "captions.ai.wrongTask",
@@ -2063,6 +2183,292 @@
     "file": "src/renderer/src/editor/panels/GreatOptions.tsx",
     "line": 172,
     "english": "Done",
+    "sample": {}
+  },
+  {
+    "key": "captions.languages.full",
+    "file": "src/renderer/src/editor/panels/LanguagesSection.tsx",
+    "line": 83,
+    "english": "A project keeps at most 10 translations: remove one to add another",
+    "sample": {
+      "n": "10"
+    }
+  },
+  {
+    "key": "captions.languages.allAdded",
+    "file": "src/renderer/src/editor/panels/LanguagesSection.tsx",
+    "line": 84,
+    "english": "Every language on the list is added already",
+    "sample": {}
+  },
+  {
+    "key": "captions.languages.failed",
+    "file": "src/renderer/src/editor/panels/LanguagesSection.tsx",
+    "line": 208,
+    "english": "Could not translate: a project keeps at most 10 translations: remove one to add another.",
+    "sample": {
+      "reason": "a project keeps at most 10 translations: remove one to add another"
+    }
+  },
+  {
+    "key": "captions.languages.upToDate",
+    "file": "src/renderer/src/editor/panels/LanguagesSection.tsx",
+    "line": 213,
+    "english": "The Bengali captions are up to date",
+    "sample": {
+      "language": "Bengali"
+    }
+  },
+  {
+    "key": "captions.languages.failedError",
+    "file": "src/renderer/src/editor/panels/LanguagesSection.tsx",
+    "line": 230,
+    "english": "Could not translate: The provider is busy.",
+    "sample": {
+      "reason": "The provider is busy."
+    }
+  },
+  {
+    "key": "captions.languages.failedTiming",
+    "file": "src/renderer/src/editor/panels/LanguagesSection.tsx",
+    "line": 248,
+    "english": "Could not translate: the provider changed the captions' timing or left some out.",
+    "sample": {}
+  },
+  {
+    "key": "captions.languages.translated",
+    "file": "src/renderer/src/editor/panels/LanguagesSection.tsx",
+    "line": 255,
+    "english": [
+      "Translated 0 captions into Hindi",
+      "Translated 1 caption into Hindi",
+      "Translated 2 captions into Hindi",
+      "Translated 1000 captions into Hindi"
+    ],
+    "sample": [
+      {
+        "language": "Hindi",
+        "count": 0,
+        "n": "0"
+      },
+      {
+        "language": "Hindi",
+        "count": 1,
+        "n": "1"
+      },
+      {
+        "language": "Hindi",
+        "count": 2,
+        "n": "2"
+      },
+      {
+        "language": "Hindi",
+        "count": 1000,
+        "n": "1000"
+      }
+    ]
+  },
+  {
+    "key": "captions.languages.translatedAgain",
+    "file": "src/renderer/src/editor/panels/LanguagesSection.tsx",
+    "line": 255,
+    "english": [
+      "Translated again 0 captions into Hindi",
+      "Translated again 1 caption into Hindi",
+      "Translated again 2 captions into Hindi",
+      "Translated again 1000 captions into Hindi"
+    ],
+    "sample": [
+      {
+        "language": "Hindi",
+        "count": 0,
+        "n": "0"
+      },
+      {
+        "language": "Hindi",
+        "count": 1,
+        "n": "1"
+      },
+      {
+        "language": "Hindi",
+        "count": 2,
+        "n": "2"
+      },
+      {
+        "language": "Hindi",
+        "count": 1000,
+        "n": "1000"
+      }
+    ]
+  },
+  {
+    "key": "captions.languages.cancelled",
+    "file": "src/renderer/src/editor/panels/LanguagesSection.tsx",
+    "line": 266,
+    "english": "Could not translate: it was cancelled.",
+    "sample": {}
+  },
+  {
+    "key": "captions.languages.title",
+    "file": "src/renderer/src/editor/panels/LanguagesSection.tsx",
+    "line": 318,
+    "english": "Languages",
+    "sample": {}
+  },
+  {
+    "key": "captions.languages.drawn",
+    "file": "src/renderer/src/editor/panels/LanguagesSection.tsx",
+    "line": 319,
+    "english": "Captions drawn on the video",
+    "sample": {}
+  },
+  {
+    "key": "captions.languages.show",
+    "file": "src/renderer/src/editor/panels/LanguagesSection.tsx",
+    "line": 362,
+    "english": "Show on the video",
+    "sample": {}
+  },
+  {
+    "key": "captions.languages.againLabel",
+    "file": "src/renderer/src/editor/panels/LanguagesSection.tsx",
+    "line": 370,
+    "english": "Translate the Bengali captions again",
+    "sample": {
+      "language": "Bengali"
+    }
+  },
+  {
+    "key": "captions.languages.againNoProvider",
+    "file": "src/renderer/src/editor/panels/LanguagesSection.tsx",
+    "line": 373,
+    "english": "Add an AI provider to translate",
+    "sample": {}
+  },
+  {
+    "key": "captions.languages.againStale",
+    "file": "src/renderer/src/editor/panels/LanguagesSection.tsx",
+    "line": 373,
+    "english": "Translates only the captions that changed or are missing",
+    "sample": {}
+  },
+  {
+    "key": "captions.languages.againCurrent",
+    "file": "src/renderer/src/editor/panels/LanguagesSection.tsx",
+    "line": 373,
+    "english": "Up to date",
+    "sample": {}
+  },
+  {
+    "key": "captions.languages.again",
+    "file": "src/renderer/src/editor/panels/LanguagesSection.tsx",
+    "line": 376,
+    "english": "Translate again",
+    "sample": {}
+  },
+  {
+    "key": "captions.languages.removeLabel",
+    "file": "src/renderer/src/editor/panels/LanguagesSection.tsx",
+    "line": 386,
+    "english": "Remove the Bengali captions",
+    "sample": {
+      "language": "Bengali"
+    }
+  },
+  {
+    "key": "common.action.remove",
+    "file": "src/renderer/src/editor/panels/LanguagesSection.tsx",
+    "line": 390,
+    "english": "Remove",
+    "sample": {}
+  },
+  {
+    "key": "captions.languages.add",
+    "file": "src/renderer/src/editor/panels/LanguagesSection.tsx",
+    "line": 414,
+    "english": "Add a language",
+    "sample": {}
+  },
+  {
+    "key": "captions.languages.noProvider",
+    "file": "src/renderer/src/editor/panels/LanguagesSection.tsx",
+    "line": 419,
+    "english": "Add an AI provider to translate your captions. OpenAI, Gemini and Claude all can.",
+    "sample": {}
+  },
+  {
+    "key": "common.action.addAiProvider",
+    "file": "src/renderer/src/editor/panels/LanguagesSection.tsx",
+    "line": 422,
+    "english": "Add an AI provider",
+    "sample": {}
+  },
+  {
+    "key": "common.action.close",
+    "file": "src/renderer/src/editor/panels/LanguagesSection.tsx",
+    "line": 425,
+    "english": "Close",
+    "sample": {}
+  },
+  {
+    "key": "captions.languages.language",
+    "file": "src/renderer/src/editor/panels/LanguagesSection.tsx",
+    "line": 432,
+    "english": "Language",
+    "sample": {}
+  },
+  {
+    "key": "captions.languages.via",
+    "file": "src/renderer/src/editor/panels/LanguagesSection.tsx",
+    "line": 441,
+    "english": "Translate with",
+    "sample": {}
+  },
+  {
+    "key": "captions.languages.translate",
+    "file": "src/renderer/src/editor/panels/LanguagesSection.tsx",
+    "line": 459,
+    "english": "Translate",
+    "sample": {}
+  },
+  {
+    "key": "captions.languages.translating",
+    "file": "src/renderer/src/editor/panels/LanguagesSection.tsx",
+    "line": 485,
+    "english": [
+      "Translating 0 captions into Hindi…",
+      "Translating 1 caption into Hindi…",
+      "Translating 2 captions into Hindi…",
+      "Translating 1000 captions into Hindi…"
+    ],
+    "sample": [
+      {
+        "language": "Hindi",
+        "count": 0,
+        "n": "0"
+      },
+      {
+        "language": "Hindi",
+        "count": 1,
+        "n": "1"
+      },
+      {
+        "language": "Hindi",
+        "count": 2,
+        "n": "2"
+      },
+      {
+        "language": "Hindi",
+        "count": 1000,
+        "n": "1000"
+      }
+    ]
+  },
+  {
+    "key": "common.action.cancel",
+    "file": "src/renderer/src/editor/panels/LanguagesSection.tsx",
+    "line": 488,
+    "english": "Cancel",
     "sample": {}
   },
   {

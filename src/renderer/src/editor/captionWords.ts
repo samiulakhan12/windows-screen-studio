@@ -5,10 +5,12 @@
  * exported files, the AI requests and main) and the renderer shows the same words in the UI language
  * through here. In English each function gives exactly the text the panels showed before.
  */
+import { languageName, type TrackRow } from '../../../shared/captions/captionTracks'
 import { STEM_SPEAKERS } from '../../../shared/captions/speakers'
 import { SUBTITLE_FORMATS, type SubtitleFormat } from '../../../shared/captions/subtitles'
 import { fmt } from '../../../shared/i18n/fmt'
 import { formatLocale, t, uiLanguage, type MessageKey } from '../../../shared/i18n/t'
+import type { CaptionTrack, Project } from '../../../shared/types'
 
 /**
  * A caption language's name in the UI language. `english` is the name the panels showed in English
@@ -97,4 +99,30 @@ export const speakerCopy = {
   get inFilesTitle(): string {
     return t('captions.speakers.inFilesTitle')
   }
+}
+
+const PROVIDER_NAMES: Readonly<Record<Exclude<CaptionTrack['by'], 'local'>, string>> = { openai: 'OpenAI', gemini: 'Gemini', anthropic: 'Claude' }
+
+/**
+ * A Languages row's name and notes (captionTracks.ts trackRows) in the UI language. English shows
+ * trackRows' own words, as before; another language says the same from the row's numbers, its
+ * track and the project.
+ */
+export function trackRowWords(row: TrackRow, project: Project): { label: string; notes: string[] } {
+  if (uiLanguage() === 'en') return { label: row.label, notes: row.notes }
+  const spokenCode = project.transcript?.language
+  const spoken = spokenCode ? captionLanguageName(spokenCode, languageName(spokenCode)) : t('captions.languages.theSpoken')
+  if (row.language === null) return { label: spokenCode ? t('captions.languages.spokenRow', { language: spoken }) : t('captions.languages.spokenCaptions'), notes: [] }
+  const track = project.captionTracks?.find((x) => x.language === row.language)
+  const language = captionLanguageName(row.language, languageName(row.language))
+  const notes: string[] = []
+  if (row.changed) notes.push(t('captions.languages.changedSince', { count: row.changed, n: fmt.count(row.changed) }))
+  if (row.missing) notes.push(t('captions.languages.untranslated', { count: row.missing, n: fmt.count(row.missing), spoken }))
+  if (project.bleeps?.length) notes.push(t('captions.languages.bleepsNote'))
+  const label = !track
+    ? t('captions.languages.translatedRow', { language })
+    : track.by === 'local'
+      ? t('captions.languages.translatedHere', { language })
+      : t('captions.languages.translatedWith', { language, via: track.by === 'openai' && track.host ? track.host : PROVIDER_NAMES[track.by] })
+  return { label, notes }
 }
