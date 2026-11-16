@@ -190,6 +190,16 @@ void TITLE; void NODE; void later; void Panel`
     for (const f of pendingFiles) expect(f).toMatch(/^src\/(main\/recording\/|main\/recordingIpc\.ts|main\/windows\.ts|main\/appSettings\.ts|shared\/recording\/|renderer\/src\/views\/Toolbar\.|renderer\/src\/recorder\/)/)
     expect([...pendingFiles].some((f) => f.startsWith('src/renderer/src/recorder/'))).toBe(true)
   })
+
+  it('from step S4 holds the whole tree to the rule: config.json says fail, and no UI text of ours is without a key', () => {
+    const cfg = JSON.parse(fs.readFileSync(path.join(REPO, 'scripts/i18n/config.json'), 'utf8')) as { scan: string }
+    expect(cfg.scan).toBe('fail')
+    const r = scan.scanTree(REPO)
+    expect(r.failures.map((f) => `${f.file}:${f.line} ${f.kind}: ${f.text}`)).toEqual([])
+    expect(r.report).toEqual([])
+    // Only the other account's files wait (section 9.5).
+    expect(r.pending.length).toBeGreaterThan(0)
+  })
 })
 
 describe('test 86: bundles carry only their own messages', () => {

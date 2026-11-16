@@ -1,6 +1,6 @@
 {
-  "$comment": "The string scanner's settings (docs/design/output-and-languages.md, section 16.1). 'scan' is 'report' until step S4 turns it to 'fail' for the whole tree; every file parts P1-P7 create fails from its first commit.",
-  "scan": "report",
+  "$comment": "The string scanner's settings (docs/design/output-and-languages.md, section 16.1). Step S4 turned 'scan' to 'fail': a UI text without a key anywhere in our tree fails, as every file parts P1-P7 created did from its first commit (failFor).",
+  "scan": "fail",
   "failFor": [
     "src/shared/render/proFormats.ts",
     "src/shared/render/codecLevels.ts",
