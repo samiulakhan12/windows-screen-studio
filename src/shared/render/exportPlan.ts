@@ -87,6 +87,24 @@ export function exportSize(project: Project, settings: ExportOptions): ExportSiz
   return { ...capped, fps: gif ? GIF_FPS : settings.fps }
 }
 
+/** The fewest rows a CineForm file has (FFmpeg's encoder refuses fewer from 7.0 on), and the fewest columns. */
+export const CINEFORM_MIN = { height: 32, width: { opaque: 48, alpha: 32 } } as const
+
+/**
+ * Whether FFmpeg's CineForm encoder (cfhd, with Flown's arguments) makes a `width` x `height` file that
+ * FFmpeg's decoder reads back, opaque (10-bit 4:2:2) or with alpha (12-bit RGBA), with the bundled
+ * build and 6.1 alike (output-and-languages §5.4). Measured (tests/fixtures/cineformSizes.json): the
+ * width a multiple of 16 (the encoder refuses others) and 32 rows at least; 32 columns at least with
+ * alpha (16 never decodes), and opaque 48 (32 never decodes) and, when the width is an odd multiple of
+ * 16 (the 4:2:2 colour planes then an odd multiple of 8 wide), a height of an even number of 8-row
+ * strips: 720x900 encodes, and no decoder reads a frame of it. Even sizes up to 4096 (MAX_EXPORT_SIDE).
+ */
+export function cineformSizeWorks(width: number, height: number, alpha: boolean): boolean {
+  if (width % 16 || height % 2 || width > MAX_EXPORT_SIDE || height > MAX_EXPORT_SIDE || height < CINEFORM_MIN.height) return false
+  if (alpha) return width >= CINEFORM_MIN.width.alpha
+  return width >= CINEFORM_MIN.width.opaque && (width % 32 === 0 || Math.ceil(height / 8) % 2 === 0)
+}
+
 /**
  * The export dialog's picture of a `size` frame, as large as fits `box`: its CSS size, and its
  * canvas's pixels at display scale `dpr`, tall exactly when the frame is (tallAs: 4:5 sits on the

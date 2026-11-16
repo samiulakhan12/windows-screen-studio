@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs'
+import path from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { validateJob } from '../src/main/exportJob'
 import type { ExportCapabilities, ExportJob } from '../src/shared/api/export'
@@ -7,8 +9,21 @@ import { avcLevel, colorTagsFrom } from '../src/shared/render/codec'
 import { studioMetrics } from '../src/shared/captions/studioLayout'
 import { studioPreset } from '../src/shared/captions/studioPresets'
 import { DEFAULT_REFRAME, followApplies, isTall } from '../src/shared/engine/reframeData'
-import { capSize, exportDimensions, exportPreviewSize, exportRoutes, exportSize, MAX_EXPORT_SIDE, routeLabel } from '../src/shared/render/exportPlan'
+import { capSize, cineformSizeWorks, exportDimensions, exportPreviewSize, exportRoutes, exportSize, MAX_EXPORT_SIDE, routeLabel } from '../src/shared/render/exportPlan'
 import type { ExportSettings } from '../src/shared/types'
+
+/**
+ * FFmpeg's CineForm encoder with Flown's arguments over a grid of sizes: per width (a multiple of 16),
+ * one character per height of `heights`: '1' both builds encoded 2 frames and both decoded both, 'e' a
+ * build refused to encode, 'd' a file was made that a build could not decode. `refused`: widths that
+ * are not a multiple of 16, refused by both builds at every height tried.
+ */
+interface CineformTable {
+  heights: number[]
+  opaque: Record<string, string>
+  alpha: Record<string, string>
+  refused: { widths: number[]; heights: number[] }
+}
 
 const settings: ExportSettings = { format: 'mp4', resolution: 1080, fps: 60, quality: 'high', encoder: 'auto' }
 const noGpu: Pick<ExportCapabilities, 'hardwareEncoders' | 'overrides'> = { hardwareEncoders: [], overrides: {} }
@@ -168,6 +183,31 @@ describe('exportDimensions', () => {
           expect(followApplies(follows, s.width, s.height, w, h), `follow ${w}x${h} ${aspect} ${resolution}p`).toBe(followApplies(follows, h264.width, h264.height, w, h))
           expect(() => validateJob({ ...job, width: s.width, height: s.height, format: 'mov', codec: 'cineform', video: { kind: 'raw', encoder: 'cfhd', pixelFormat: 'bgr0' }, outputPath: '/tmp/x.mov' })).not.toThrow()
         }
+  })
+
+  it('every measured CineForm size agrees with cineformSizeWorks (tests/fixtures/cineformSizes.json)', () => {
+    const table = JSON.parse(readFileSync(path.join(__dirname, 'fixtures', 'cineformSizes.json'), 'utf8')) as CineformTable
+    // The grid: every even height residue mod 64 among small heights and among large ones, every
+    // multiple of 16 up to 256, and the widths of 4:5 at 720p and 'auto' at 1440p and 2160p before and after the rule.
+    for (const band of [table.heights.filter((h) => h <= 130), table.heights.filter((h) => h >= 1024)]) expect(new Set(band.map((h) => h % 64)).size).toBe(32)
+    for (const kind of ['opaque', 'alpha'] as const) {
+      const widths = Object.keys(table[kind]).map(Number)
+      for (let w = 16; w <= 256; w += 16) expect(widths).toContain(w)
+      for (const w of [720, 736, 1792, 1808, 2688, 2704, 3232, 3248, 3840, 4096]) expect(widths).toContain(w)
+    }
+    let pairs = 0
+    for (const kind of ['opaque', 'alpha'] as const) {
+      for (const [w, row] of Object.entries(table[kind])) {
+        expect(row).toHaveLength(table.heights.length)
+        row.split('').forEach((c, i) => {
+          expect(cineformSizeWorks(Number(w), table.heights[i], kind === 'alpha'), `${kind} ${w}x${table.heights[i]}: ${c}`).toBe(c === '1')
+          pairs++
+        })
+      }
+      for (const w of table.refused.widths) for (const h of table.refused.heights) expect(cineformSizeWorks(w, h, kind === 'alpha'), `${kind} ${w}x${h}`).toBe(false)
+      pairs += table.refused.widths.length * table.refused.heights.length
+    }
+    expect(pairs).toBeGreaterThan(40000)
   })
 })
 
