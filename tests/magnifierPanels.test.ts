@@ -43,7 +43,7 @@ const { DEFAULT_KEYMAP: KEYMAP } = await import('../src/shared/editor/shortcuts'
 // Renderer code: imported at run time so the Node typecheck of tests/ does not follow it.
 const P = '../src/renderer/src/editor/'
 type Component = (props: unknown) => unknown
-const { MagnifierSection, SOFT_NOTE } = (await import(/* @vite-ignore */ `${P}panels/MagnifierSection`)) as { MagnifierSection: Component; SOFT_NOTE: string }
+const { MagnifierSection, softNote } = (await import(/* @vite-ignore */ `${P}panels/MagnifierSection`)) as { MagnifierSection: Component; softNote: () => string }
 const { MagnifierZoomRow } = (await import(/* @vite-ignore */ `${P}panels/MagnifierZoomRow`)) as { MagnifierZoomRow: Component }
 const { ChapterBarSection, FEW_CHAPTERS } = (await import(/* @vite-ignore */ `${P}panels/ChapterBarSection`)) as { ChapterBarSection: Component; FEW_CHAPTERS: string }
 const { ProgressBarLink } = (await import(/* @vite-ignore */ `${P}panels/ProgressBarLink`)) as { ProgressBarLink: Component }
@@ -139,7 +139,7 @@ describe('MagnifierSection (test 35)', () => {
     expect(byId(magnifierPanel(), 'magnifier-soft')).toBeUndefined()
     store.state = { ...store.state, spotlights: [{ ...MAG, magnify: 4 }] }
     const note = byId(magnifierPanel(), 'magnifier-soft')!
-    expect(textOf(note)).toBe(SOFT_NOTE)
+    expect(textOf(note)).toBe(softNote())
     // Inside a zoom of 2x the same lens at 2 times is soft too.
     store.state = { ...store.state, spotlights: [MAG], zooms: [{ id: 'z', start: 0, end: 8, scale: 2, focus: { mode: 'fixed', x: 0.5, y: 0.5 }, auto: false }] }
     expect(byId(magnifierPanel(), 'magnifier-soft')).toBeTruthy()
@@ -149,7 +149,7 @@ describe('MagnifierSection (test 35)', () => {
     const region = (): El | undefined => magnifierPanel().find((e) => e.props['aria-live'] === 'polite')
     expect(textOf(region())).toBe('')
     store.state = { ...store.state, spotlights: [{ ...MAG, magnify: 4 }] }
-    expect(textOf(region())).toBe(SOFT_NOTE)
+    expect(textOf(region())).toBe(softNote())
     // No rule takes the empty region off the page: one that arrives with its words is never read out.
     const css = readFileSync(path.resolve(__dirname, '../src/renderer/src/editor/panels/magnifier.css'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '')
     const rules = [...css.matchAll(/([^{}]+)\{([^}]*)\}/g)].filter((m) => m[1].includes('.magnifier-soft'))

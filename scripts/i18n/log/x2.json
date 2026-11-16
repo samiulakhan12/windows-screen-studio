@@ -2214,6 +2214,880 @@
     "sample": {}
   },
   {
+    "key": "zoom.zoomPanel.withAZoomSelected",
+    "file": "src/renderer/src/editor/panels/ZoomPanel.tsx",
+    "line": 90,
+    "english": "With a zoom selected, «levelKeys».",
+    "sample": {
+      "levels": "«levelKeys»"
+    }
+  },
+  {
+    "key": "zoom.zoomPanel.selectedClick",
+    "file": "src/renderer/src/editor/panels/ZoomPanel.tsx",
+    "line": 114,
+    "english": "Selected click",
+    "sample": {}
+  },
+  {
+    "key": "zoom.zoomPanel.ignoredNoZoomClick",
+    "file": "src/renderer/src/editor/panels/ZoomPanel.tsx",
+    "line": 120,
+    "english": "Ignored: no zoom, click effect or sound, and smart speed does not count it.",
+    "sample": {}
+  },
+  {
+    "key": "zoom.zoomPanel.itWasIgnoredAutomatically",
+    "file": "src/renderer/src/editor/panels/ZoomPanel.tsx",
+    "line": 121,
+    "english": " It was ignored automatically: «value».",
+    "sample": {
+      "reason": "«value»"
+    }
+  },
+  {
+    "key": "zoom.zoomPanel.ignoreClick",
+    "file": "src/renderer/src/editor/panels/ZoomPanel.tsx",
+    "line": 126,
+    "english": " Ignore click",
+    "sample": {}
+  },
+  {
+    "key": "zoom.zoomPanel.useThisClickAgain",
+    "file": "src/renderer/src/editor/panels/ZoomPanel.tsx",
+    "line": 130,
+    "english": "Use this click again",
+    "sample": {}
+  },
+  {
+    "key": "zoom.zoomPanel.useClick",
+    "file": "src/renderer/src/editor/panels/ZoomPanel.tsx",
+    "line": 131,
+    "english": " Use click",
+    "sample": {}
+  },
+  {
+    "key": "zoom.zoomPanel.onlyAutomaticZoomsChange",
+    "file": "src/renderer/src/editor/panels/ZoomPanel.tsx",
+    "line": 134,
+    "english": "Only automatic zooms change; zooms you added or edited stay as they are.",
+    "sample": {}
+  },
+  {
+    "key": "zoom.zoomPanel.madeForTheClick",
+    "file": "src/renderer/src/editor/panels/ZoomPanel.tsx",
+    "line": 147,
+    "english": "Made for the click at 1:02.5",
+    "sample": {
+      "time": "1:02.5"
+    }
+  },
+  {
+    "key": "zoom.zoomPanel.stopUsingThisClick",
+    "file": "src/renderer/src/editor/panels/ZoomPanel.tsx",
+    "line": 150,
+    "english": "Stop using this click: its zoom, click effect and sound go away",
+    "sample": {}
+  },
+  {
+    "key": "zoom.zoomPanel.ignoreThisClick",
+    "file": "src/renderer/src/editor/panels/ZoomPanel.tsx",
+    "line": 157,
+    "english": "Ignore this click",
+    "sample": {}
+  },
+  {
+    "key": "zoom.zoomPanel.selectedZoom",
+    "file": "src/renderer/src/editor/panels/ZoomPanel.tsx",
+    "line": 245,
+    "english": "Selected zoom",
+    "sample": {}
+  },
+  {
+    "key": "zoom.zoomPanel.automatic",
+    "file": "src/renderer/src/editor/panels/ZoomPanel.tsx",
+    "line": 245,
+    "english": "automatic",
+    "sample": {}
+  },
+  {
+    "key": "zoom.zoomPanel.edited",
+    "file": "src/renderer/src/editor/panels/ZoomPanel.tsx",
+    "line": 245,
+    "english": "edited",
+    "sample": {}
+  },
+  {
+    "key": "zoom.zoomPanel.zoomLevelPresets",
+    "file": "src/renderer/src/editor/panels/ZoomPanel.tsx",
+    "line": 252,
+    "english": "Zoom level presets",
+    "sample": {}
+  },
+  {
+    "key": "zoom.zoomPanel.zoomLevelPullBack",
+    "file": "src/renderer/src/editor/panels/ZoomPanel.tsx",
+    "line": 267,
+    "english": "Zoom level · pull back",
+    "sample": {}
+  },
+  {
+    "key": "zoom.zoomPanel.zoomLevel",
+    "file": "src/renderer/src/editor/panels/ZoomPanel.tsx",
+    "line": 267,
+    "english": "Zoom level",
+    "sample": {}
+  },
+  {
+    "key": "zoom.zoomPanel.zoomFocus",
+    "file": "src/renderer/src/editor/panels/ZoomPanel.tsx",
+    "line": 276,
+    "english": "Zoom focus",
+    "sample": {}
+  },
+  {
+    "key": "zoom.zoomPanel.aPulledBackZoom",
+    "file": "src/renderer/src/editor/panels/ZoomPanel.tsx",
+    "line": 285,
+    "english": "A pulled-back zoom stays centred while the cursor moves.",
+    "sample": {}
+  },
+  {
+    "key": "zoom.zoomPanel.donePicking",
+    "file": "src/renderer/src/editor/panels/ZoomPanel.tsx",
+    "line": 289,
+    "english": "Done picking",
+    "sample": {}
+  },
+  {
+    "key": "zoom.zoomPanel.pickOnPreview",
+    "file": "src/renderer/src/editor/panels/ZoomPanel.tsx",
+    "line": 289,
+    "english": "Pick on preview",
+    "sample": {}
+  },
+  {
+    "key": "zoom.zoomPanel.focusX",
+    "file": "src/renderer/src/editor/panels/ZoomPanel.tsx",
+    "line": 291,
+    "english": "Focus X",
+    "sample": {}
+  },
+  {
+    "key": "zoom.zoomPanel.focusY",
+    "file": "src/renderer/src/editor/panels/ZoomPanel.tsx",
+    "line": 292,
+    "english": "Focus Y",
+    "sample": {}
+  },
+  {
+    "key": "common.action.done",
+    "file": "src/renderer/src/editor/panels/ZoomPanel.tsx",
+    "line": 298,
+    "english": "Done",
+    "sample": {}
+  },
+  {
+    "key": "zoom.zoomPanel.drawOnPreview",
+    "file": "src/renderer/src/editor/panels/ZoomPanel.tsx",
+    "line": 298,
+    "english": "Draw on preview",
+    "sample": {}
+  },
+  {
+    "key": "common.label.motion",
+    "file": "src/renderer/src/editor/panels/ZoomPanel.tsx",
+    "line": 306,
+    "english": "Motion",
+    "sample": {}
+  },
+  {
+    "key": "zoom.zoomPanel.useTheProjectS",
+    "file": "src/renderer/src/editor/panels/ZoomPanel.tsx",
+    "line": 308,
+    "english": "Use the project's zoom style for this zoom",
+    "sample": {}
+  },
+  {
+    "key": "zoom.zoomPanel.useZoomStyle",
+    "file": "src/renderer/src/editor/panels/ZoomPanel.tsx",
+    "line": 309,
+    "english": "Use zoom style",
+    "sample": {}
+  },
+  {
+    "key": "zoom.zoomPanel.zoomStyle",
+    "file": "src/renderer/src/editor/panels/ZoomPanel.tsx",
+    "line": 312,
+    "english": "zoom style",
+    "sample": {}
+  },
+  {
+    "key": "zoom.zoomPanel.zoomEasing",
+    "file": "src/renderer/src/editor/panels/ZoomPanel.tsx",
+    "line": 316,
+    "english": "Zoom easing",
+    "sample": {}
+  },
+  {
+    "key": "zoom.zoomPanel.transition",
+    "file": "src/renderer/src/editor/panels/ZoomPanel.tsx",
+    "line": 318,
+    "english": "Transition",
+    "sample": {}
+  },
+  {
+    "key": "zoom.zoomPanel.panToNextZoom",
+    "file": "src/renderer/src/editor/panels/ZoomPanel.tsx",
+    "line": 320,
+    "english": "Pan to next zoom",
+    "sample": {}
+  },
+  {
+    "key": "zoom.zoomPanel.moveStraightToThe",
+    "file": "src/renderer/src/editor/panels/ZoomPanel.tsx",
+    "line": 323,
+    "english": "Move straight to the next zoom instead of zooming out in between",
+    "sample": {}
+  },
+  {
+    "key": "zoom.zoomPanel.thereIsNoZoom",
+    "file": "src/renderer/src/editor/panels/ZoomPanel.tsx",
+    "line": 323,
+    "english": "There is no zoom after this one",
+    "sample": {}
+  },
+  {
+    "key": "zoom.zoomPanel.deleteZoom",
+    "file": "src/renderer/src/editor/panels/ZoomPanel.tsx",
+    "line": 334,
+    "english": " Delete zoom",
+    "sample": {}
+  },
+  {
+    "key": "zoom.zoomPanel.zoomStyleTitle",
+    "file": "src/renderer/src/editor/panels/ZoomPanel.tsx",
+    "line": 348,
+    "english": "Zoom style",
+    "sample": {}
+  },
+  {
+    "key": "zoom.zoomPanel.allZooms",
+    "file": "src/renderer/src/editor/panels/ZoomPanel.tsx",
+    "line": 348,
+    "english": "all zooms",
+    "sample": {}
+  },
+  {
+    "key": "zoom.zoomPanel.defaultZoomEasing",
+    "file": "src/renderer/src/editor/panels/ZoomPanel.tsx",
+    "line": 350,
+    "english": "Default zoom easing",
+    "sample": {}
+  },
+  {
+    "key": "zoom.zoomPanel.transition",
+    "file": "src/renderer/src/editor/panels/ZoomPanel.tsx",
+    "line": 352,
+    "english": "Transition",
+    "sample": {}
+  },
+  {
+    "key": "zoom.zoomPanel.newZoomLevel",
+    "file": "src/renderer/src/editor/panels/ZoomPanel.tsx",
+    "line": 353,
+    "english": "New zoom level",
+    "sample": {}
+  },
+  {
+    "key": "zoom.zoomPanel.everyZoomWithoutIts",
+    "file": "src/renderer/src/editor/panels/ZoomPanel.tsx",
+    "line": 355,
+    "english": "Every zoom without its own motion follows this style; zooms you add start at the new zoom level.",
+    "sample": {}
+  },
+  {
+    "key": "zoom.zoomPanel.applyToAllZooms",
+    "file": "src/renderer/src/editor/panels/ZoomPanel.tsx",
+    "line": 367,
+    "english": "Apply to all zooms",
+    "sample": {}
+  },
+  {
+    "key": "zoom.zoomPanel.autoZoom",
+    "file": "src/renderer/src/editor/panels/ZoomPanel.tsx",
+    "line": 434,
+    "english": "Auto zoom",
+    "sample": {}
+  },
+  {
+    "key": "zoom.zoomPanel.selectTheAutomaticZooms",
+    "file": "src/renderer/src/editor/panels/ZoomPanel.tsx",
+    "line": 444,
+    "english": "Select the automatic zooms to edit or move them together",
+    "sample": {}
+  },
+  {
+    "key": "zoom.zoomPanel.selectThem",
+    "file": "src/renderer/src/editor/panels/ZoomPanel.tsx",
+    "line": 446,
+    "english": "Select them",
+    "sample": {}
+  },
+  {
+    "key": "zoom.zoomPanel.changingTheseSettingsRegenerates",
+    "file": "src/renderer/src/editor/panels/ZoomPanel.tsx",
+    "line": 455,
+    "english": "«value» Changing these settings regenerates the automatic zooms; zooms you added or edited are kept.",
+    "sample": {
+      "found": "«value»"
+    }
+  },
+  {
+    "key": "zoom.zoomPanel.autoZoom",
+    "file": "src/renderer/src/editor/panels/ZoomPanel.tsx",
+    "line": 458,
+    "english": "Auto zoom",
+    "sample": {}
+  },
+  {
+    "key": "zoom.zoomPanel.level",
+    "file": "src/renderer/src/editor/panels/ZoomPanel.tsx",
+    "line": 460,
+    "english": "Level",
+    "sample": {}
+  },
+  {
+    "key": "zoom.zoomPanel.groupClicksWithin",
+    "file": "src/renderer/src/editor/panels/ZoomPanel.tsx",
+    "line": 461,
+    "english": "Group clicks within",
+    "sample": {}
+  },
+  {
+    "key": "zoom.zoomPanel.zoomInBefore",
+    "file": "src/renderer/src/editor/panels/ZoomPanel.tsx",
+    "line": 462,
+    "english": "Zoom in before",
+    "sample": {}
+  },
+  {
+    "key": "zoom.zoomPanel.holdAfter",
+    "file": "src/renderer/src/editor/panels/ZoomPanel.tsx",
+    "line": 463,
+    "english": "Hold after",
+    "sample": {}
+  },
+  {
+    "key": "zoom.zoomPanel.rightClicks",
+    "file": "src/renderer/src/editor/panels/ZoomPanel.tsx",
+    "line": 464,
+    "english": "Right clicks",
+    "sample": {}
+  },
+  {
+    "key": "zoom.zoomPanel.typing",
+    "file": "src/renderer/src/editor/panels/ZoomPanel.tsx",
+    "line": 466,
+    "english": "Typing",
+    "sample": {}
+  },
+  {
+    "key": "zoom.zoomPanel.zoomInALittle",
+    "file": "src/renderer/src/editor/panels/ZoomPanel.tsx",
+    "line": 467,
+    "english": "Zoom in a little closer on the field you type into, and stay there until you stop typing (short pauses included)",
+    "sample": {}
+  },
+  {
+    "key": "zoom.zoomPanel.zoomHereMarks",
+    "file": "src/renderer/src/editor/panels/ZoomPanel.tsx",
+    "line": 472,
+    "english": "Zoom-here marks",
+    "sample": {}
+  },
+  {
+    "key": "zoom.zoomPanel.zoomWhereYouPressed",
+    "file": "src/renderer/src/editor/panels/ZoomPanel.tsx",
+    "line": 472,
+    "english": "Zoom where you pressed the zoom-here shortcut while recording",
+    "sample": {}
+  },
+  {
+    "key": "zoom.zoomPanel.whileScrolling",
+    "file": "src/renderer/src/editor/panels/ZoomPanel.tsx",
+    "line": 473,
+    "english": "While scrolling",
+    "sample": {}
+  },
+  {
+    "key": "zoom.zoomPanel.whileScrolling",
+    "file": "src/renderer/src/editor/panels/ZoomPanel.tsx",
+    "line": 476,
+    "english": "While scrolling",
+    "sample": {}
+  },
+  {
+    "key": "zoom.zoomPanel.scrollingWasNotRecorded",
+    "file": "src/renderer/src/editor/panels/ZoomPanel.tsx",
+    "line": 485,
+    "english": "Scrolling was not recorded in this video (it was made before Flown recorded scrolling).",
+    "sample": {}
+  },
+  {
+    "key": "zoom.zoomPanel.regenerate",
+    "file": "src/renderer/src/editor/panels/ZoomPanel.tsx",
+    "line": 491,
+    "english": " Regenerate",
+    "sample": {}
+  },
+  {
+    "key": "zoom.zoomPanel.removeAll",
+    "file": "src/renderer/src/editor/panels/ZoomPanel.tsx",
+    "line": 494,
+    "english": " Remove all",
+    "sample": {}
+  },
+  {
+    "key": "zoom.zoomPanel.recordedClicksList",
+    "file": "src/renderer/src/editor/panels/ZoomPanel.tsx",
+    "line": 511,
+    "english": "Recorded clicks",
+    "sample": {}
+  },
+  {
+    "key": "zoom.zoomPanel.selectThisClickOn",
+    "file": "src/renderer/src/editor/panels/ZoomPanel.tsx",
+    "line": 517,
+    "english": "Select this click on the timeline",
+    "sample": {}
+  },
+  {
+    "key": "zoom.zoomPanel.ignoredAutomatically",
+    "file": "src/renderer/src/editor/panels/ZoomPanel.tsx",
+    "line": 521,
+    "english": "Ignored automatically: «value»",
+    "sample": {
+      "reason": "«value»"
+    }
+  },
+  {
+    "key": "zoom.zoomPanel.used",
+    "file": "src/renderer/src/editor/panels/ZoomPanel.tsx",
+    "line": 522,
+    "english": "used",
+    "sample": {}
+  },
+  {
+    "key": "zoom.zoomPanel.stray",
+    "file": "src/renderer/src/editor/panels/ZoomPanel.tsx",
+    "line": 522,
+    "english": "stray",
+    "sample": {}
+  },
+  {
+    "key": "zoom.zoomPanel.stateIgnored",
+    "file": "src/renderer/src/editor/panels/ZoomPanel.tsx",
+    "line": 522,
+    "english": "ignored",
+    "sample": {}
+  },
+  {
+    "key": "zoom.zoomPanel.ignoreTheClickAt",
+    "file": "src/renderer/src/editor/panels/ZoomPanel.tsx",
+    "line": 525,
+    "english": "Ignore the click at «at»",
+    "sample": {
+      "at": "«at»"
+    }
+  },
+  {
+    "key": "zoom.zoomPanel.ignore",
+    "file": "src/renderer/src/editor/panels/ZoomPanel.tsx",
+    "line": 526,
+    "english": "Ignore",
+    "sample": {}
+  },
+  {
+    "key": "zoom.zoomPanel.useTheClickAt",
+    "file": "src/renderer/src/editor/panels/ZoomPanel.tsx",
+    "line": 529,
+    "english": "Use the click at «at»",
+    "sample": {
+      "at": "«at»"
+    }
+  },
+  {
+    "key": "common.action.use",
+    "file": "src/renderer/src/editor/panels/ZoomPanel.tsx",
+    "line": 530,
+    "english": "Use",
+    "sample": {}
+  },
+  {
+    "key": "zoom.zoomPanel.ignoreClicksThatAre",
+    "file": "src/renderer/src/editor/panels/ZoomPanel.tsx",
+    "line": 538,
+    "english": "Ignore clicks that are almost certainly not part of the demo: right at the start, right before stopping, or made while the cursor flew past",
+    "sample": {}
+  },
+  {
+    "key": "zoom.zoomPanel.findStrayClicks",
+    "file": "src/renderer/src/editor/panels/ZoomPanel.tsx",
+    "line": 539,
+    "english": "Find stray clicks",
+    "sample": {}
+  },
+  {
+    "key": "zoom.zoomPanel.useAllClicks",
+    "file": "src/renderer/src/editor/panels/ZoomPanel.tsx",
+    "line": 542,
+    "english": "Use all clicks",
+    "sample": {}
+  },
+  {
+    "key": "zoom.cursorPanel.cursorMovementWasNot",
+    "file": "src/renderer/src/editor/panels/CursorPanel.tsx",
+    "line": 111,
+    "english": "Cursor movement was not recorded for this window (its position on screen could not be followed), so cursor effects are not available.",
+    "sample": {}
+  },
+  {
+    "key": "zoom.cursorPanel.cursorMovementWasNot2",
+    "file": "src/renderer/src/editor/panels/CursorPanel.tsx",
+    "line": 112,
+    "english": "Cursor movement was not recorded for this capture, so cursor effects are not available.",
+    "sample": {}
+  },
+  {
+    "key": "zoom.cursorPanel.cursor",
+    "file": "src/renderer/src/editor/panels/CursorPanel.tsx",
+    "line": 127,
+    "english": "Cursor",
+    "sample": {}
+  },
+  {
+    "key": "zoom.cursorPanel.showSmoothCursor",
+    "file": "src/renderer/src/editor/panels/CursorPanel.tsx",
+    "line": 129,
+    "english": "Show smooth cursor",
+    "sample": {}
+  },
+  {
+    "key": "zoom.cursorPanel.notAvailableTheRecorded",
+    "file": "src/renderer/src/editor/panels/CursorPanel.tsx",
+    "line": 132,
+    "english": "Not available: the recorded cursor is in the video",
+    "sample": {}
+  },
+  {
+    "key": "zoom.cursorPanel.cursorStyle",
+    "file": "src/renderer/src/editor/panels/CursorPanel.tsx",
+    "line": 135,
+    "english": "Cursor style",
+    "sample": {}
+  },
+  {
+    "key": "zoom.cursorPanel.styleName",
+    "file": "src/renderer/src/editor/panels/CursorPanel.tsx",
+    "line": 141,
+    "english": "«label» cursor",
+    "sample": {
+      "label": "«label»"
+    }
+  },
+  {
+    "key": "zoom.cursorPanel.changeImage",
+    "file": "src/renderer/src/editor/panels/CursorPanel.tsx",
+    "line": 159,
+    "english": "Change image…",
+    "sample": {}
+  },
+  {
+    "key": "common.label.size",
+    "file": "src/renderer/src/editor/panels/CursorPanel.tsx",
+    "line": 169,
+    "english": "Size",
+    "sample": {}
+  },
+  {
+    "key": "zoom.cursorPanel.highlight",
+    "file": "src/renderer/src/editor/panels/CursorPanel.tsx",
+    "line": 172,
+    "english": "Highlight",
+    "sample": {}
+  },
+  {
+    "key": "zoom.cursorPanel.highlightCursor",
+    "file": "src/renderer/src/editor/panels/CursorPanel.tsx",
+    "line": 173,
+    "english": "Highlight cursor",
+    "sample": {}
+  },
+  {
+    "key": "zoom.cursorPanel.highlightColour",
+    "file": "src/renderer/src/editor/panels/CursorPanel.tsx",
+    "line": 175,
+    "english": "Highlight colour",
+    "sample": {}
+  },
+  {
+    "key": "zoom.cursorPanel.haloSize",
+    "file": "src/renderer/src/editor/panels/CursorPanel.tsx",
+    "line": 183,
+    "english": "Halo size",
+    "sample": {}
+  },
+  {
+    "key": "common.label.opacity",
+    "file": "src/renderer/src/editor/panels/CursorPanel.tsx",
+    "line": 192,
+    "english": "Opacity",
+    "sample": {}
+  },
+  {
+    "key": "zoom.cursorPanel.clicks",
+    "file": "src/renderer/src/editor/panels/CursorPanel.tsx",
+    "line": 203,
+    "english": "Clicks",
+    "sample": {}
+  },
+  {
+    "key": "zoom.cursorPanel.ignoreOrUseClicks",
+    "file": "src/renderer/src/editor/panels/CursorPanel.tsx",
+    "line": 206,
+    "english": "Ignore or use clicks in Zoom › Auto zoom, or select a click on the timeline",
+    "sample": {}
+  },
+  {
+    "key": "zoom.cursorPanel.clickEffect",
+    "file": "src/renderer/src/editor/panels/CursorPanel.tsx",
+    "line": 213,
+    "english": "Click effect",
+    "sample": {}
+  },
+  {
+    "key": "zoom.cursorPanel.clickEffectStyle",
+    "file": "src/renderer/src/editor/panels/CursorPanel.tsx",
+    "line": 214,
+    "english": "Click effect style",
+    "sample": {}
+  },
+  {
+    "key": "zoom.cursorPanel.clickStyleName",
+    "file": "src/renderer/src/editor/panels/CursorPanel.tsx",
+    "line": 220,
+    "english": "«label» click effect",
+    "sample": {
+      "label": "«label»"
+    }
+  },
+  {
+    "key": "zoom.cursorPanel.clickColour",
+    "file": "src/renderer/src/editor/panels/CursorPanel.tsx",
+    "line": 232,
+    "english": "Click colour",
+    "sample": {}
+  },
+  {
+    "key": "zoom.cursorPanel.clickSound",
+    "file": "src/renderer/src/editor/panels/CursorPanel.tsx",
+    "line": 233,
+    "english": "Click sound",
+    "sample": {}
+  },
+  {
+    "key": "common.label.volume",
+    "file": "src/renderer/src/editor/panels/CursorPanel.tsx",
+    "line": 235,
+    "english": "Volume",
+    "sample": {}
+  },
+  {
+    "key": "common.label.motion",
+    "file": "src/renderer/src/editor/panels/CursorPanel.tsx",
+    "line": 245,
+    "english": "Motion",
+    "sample": {}
+  },
+  {
+    "key": "zoom.cursorPanel.smoothing",
+    "file": "src/renderer/src/editor/panels/CursorPanel.tsx",
+    "line": 246,
+    "english": "Smoothing",
+    "sample": {}
+  },
+  {
+    "key": "zoom.cursorPanel.straightenMoves",
+    "file": "src/renderer/src/editor/panels/CursorPanel.tsx",
+    "line": 248,
+    "english": "Straighten moves",
+    "sample": {}
+  },
+  {
+    "key": "zoom.cursorPanel.replacesWobblyMovesBetween",
+    "file": "src/renderer/src/editor/panels/CursorPanel.tsx",
+    "line": 249,
+    "english": "Replaces wobbly moves between two resting points with a straight, smooth glide. The recording itself is not changed.",
+    "sample": {}
+  },
+  {
+    "key": "zoom.cursorPanel.hideWhenIdle",
+    "file": "src/renderer/src/editor/panels/CursorPanel.tsx",
+    "line": 259,
+    "english": "Hide when idle",
+    "sample": {}
+  },
+  {
+    "key": "zoom.cursorPanel.tiltWhileMoving",
+    "file": "src/renderer/src/editor/panels/CursorPanel.tsx",
+    "line": 260,
+    "english": "Tilt while moving",
+    "sample": {}
+  },
+  {
+    "key": "zoom.cursorPanel.leansTheCursorA",
+    "file": "src/renderer/src/editor/panels/CursorPanel.tsx",
+    "line": 260,
+    "english": "Leans the cursor a few degrees in the direction it moves",
+    "sample": {}
+  },
+  {
+    "key": "zoom.cursorPanel.motionTrail",
+    "file": "src/renderer/src/editor/panels/CursorPanel.tsx",
+    "line": 261,
+    "english": "Motion trail",
+    "sample": {}
+  },
+  {
+    "key": "zoom.cursorPanel.aShortFadingTrail",
+    "file": "src/renderer/src/editor/panels/CursorPanel.tsx",
+    "line": 261,
+    "english": "A short fading trail behind a fast-moving cursor",
+    "sample": {}
+  },
+  {
+    "key": "zoom.cursorPanel.returnToStartAt",
+    "file": "src/renderer/src/editor/panels/CursorPanel.tsx",
+    "line": 262,
+    "english": "Return to start at the end",
+    "sample": {}
+  },
+  {
+    "key": "zoom.cursorPanel.glidesTheCursorBack",
+    "file": "src/renderer/src/editor/panels/CursorPanel.tsx",
+    "line": 263,
+    "english": "Glides the cursor back to where it started during the last second, so GIFs loop without a jump.",
+    "sample": {}
+  },
+  {
+    "key": "common.colour.pickAny",
+    "file": "src/renderer/src/editor/panels/CursorPanel.tsx",
+    "line": 363,
+    "english": "Pick any colour",
+    "sample": {}
+  },
+  {
+    "key": "common.colour.anyFor",
+    "file": "src/renderer/src/editor/panels/CursorPanel.tsx",
+    "line": 364,
+    "english": "«label» (any colour)",
+    "sample": {
+      "label": "«label»"
+    }
+  },
+  {
+    "key": "zoom.magnifierSection.magnifier",
+    "file": "src/renderer/src/editor/panels/MagnifierSection.tsx",
+    "line": 45,
+    "english": "Magnifier",
+    "sample": {}
+  },
+  {
+    "key": "zoom.magnifierSection.addAMagnifier",
+    "file": "src/renderer/src/editor/panels/MagnifierSection.tsx",
+    "line": 46,
+    "english": "Add a magnifier",
+    "sample": {}
+  },
+  {
+    "key": "zoom.magnifierSection.addMagnifier",
+    "file": "src/renderer/src/editor/panels/MagnifierSection.tsx",
+    "line": 55,
+    "english": "Add magnifier",
+    "sample": {}
+  },
+  {
+    "key": "zoom.magnifierSection.addMagnifierOnThe",
+    "file": "src/renderer/src/editor/panels/MagnifierSection.tsx",
+    "line": 66,
+    "english": "Add magnifier on the cursor",
+    "sample": {}
+  },
+  {
+    "key": "zoom.magnifierSection.selectedMagnifier",
+    "file": "src/renderer/src/editor/panels/MagnifierSection.tsx",
+    "line": 106,
+    "english": "Selected magnifier",
+    "sample": {}
+  },
+  {
+    "key": "common.label.zoom",
+    "file": "src/renderer/src/editor/panels/MagnifierSection.tsx",
+    "line": 111,
+    "english": "Zoom",
+    "sample": {}
+  },
+  {
+    "key": "common.label.zoom",
+    "file": "src/renderer/src/editor/panels/MagnifierSection.tsx",
+    "line": 117,
+    "english": "Zoom",
+    "sample": {}
+  },
+  {
+    "key": "zoom.magnifierSection.shape",
+    "file": "src/renderer/src/editor/panels/MagnifierSection.tsx",
+    "line": 133,
+    "english": "Shape",
+    "sample": {}
+  },
+  {
+    "key": "zoom.magnifierSection.follows",
+    "file": "src/renderer/src/editor/panels/MagnifierSection.tsx",
+    "line": 143,
+    "english": "Follows",
+    "sample": {}
+  },
+  {
+    "key": "zoom.magnifierSection.darkness",
+    "file": "src/renderer/src/editor/panels/MagnifierSection.tsx",
+    "line": 153,
+    "english": "Darkness",
+    "sample": {}
+  },
+  {
+    "key": "zoom.magnifierSection.darkness",
+    "file": "src/renderer/src/editor/panels/MagnifierSection.tsx",
+    "line": 159,
+    "english": "Darkness",
+    "sample": {}
+  },
+  {
+    "key": "zoom.magnifierZoomRow.showADetailLarger",
+    "file": "src/renderer/src/editor/panels/MagnifierZoomRow.tsx",
+    "line": 16,
+    "english": "Show a detail larger without zooming:",
+    "sample": {}
+  },
+  {
+    "key": "zoom.magnifierZoomRow.addMagnifier",
+    "file": "src/renderer/src/editor/panels/MagnifierZoomRow.tsx",
+    "line": 18,
+    "english": " Add magnifier",
+    "sample": {}
+  },
+  {
     "key": "style.stylePanel.frames.none",
     "file": "src/renderer/src/editor/panels/StylePanel.tsx",
     "line": 31,
@@ -6011,6 +6885,718 @@
     "file": "src/renderer/src/editor/mixedControls.tsx",
     "line": 23,
     "english": "Mixed",
+    "sample": {}
+  },
+  {
+    "key": "zoom.zoomPanel.seconds",
+    "file": "src/renderer/src/editor/panels/ZoomPanel.tsx",
+    "line": 50,
+    "english": "0.70 s",
+    "sample": {
+      "n": "0.70"
+    }
+  },
+  {
+    "key": "zoom.zoomPanel.selectAZoom",
+    "file": "src/renderer/src/editor/panels/ZoomPanel.tsx",
+    "line": 89,
+    "english": "Select a zoom on the timeline to edit it.",
+    "sample": {}
+  },
+  {
+    "key": "zoom.zoomPanel.selectAZoomKeys",
+    "file": "src/renderer/src/editor/panels/ZoomPanel.tsx",
+    "line": 89,
+    "english": "Select a zoom on the timeline to edit it, or press Z to add one at the playhead.",
+    "sample": {
+      "keys": "Z"
+    }
+  },
+  {
+    "key": "zoom.zoomPanel.ignoreThisClickTitle",
+    "file": "src/renderer/src/editor/panels/ZoomPanel.tsx",
+    "line": 124,
+    "english": "Ignore this click",
+    "sample": {}
+  },
+  {
+    "key": "zoom.zoomPanel.cause.typing",
+    "file": "src/renderer/src/editor/panels/ZoomPanel.tsx",
+    "line": 159,
+    "english": "Made for typing at 1:02.5",
+    "sample": {
+      "time": "1:02.5"
+    }
+  },
+  {
+    "key": "zoom.zoomPanel.cause.mark",
+    "file": "src/renderer/src/editor/panels/ZoomPanel.tsx",
+    "line": 159,
+    "english": "Made for a zoom-here mark at 1:02.5",
+    "sample": {
+      "time": "1:02.5"
+    }
+  },
+  {
+    "key": "zoom.zoomPanel.cause.scroll",
+    "file": "src/renderer/src/editor/panels/ZoomPanel.tsx",
+    "line": 159,
+    "english": "Zooms back in where scrolling stopped (1:02.5)",
+    "sample": {
+      "time": "1:02.5"
+    }
+  },
+  {
+    "key": "zoom.zoomPanel.span",
+    "file": "src/renderer/src/editor/panels/ZoomPanel.tsx",
+    "line": 242,
+    "english": "0:04.0 – 0:09.5 · 5.5 s",
+    "sample": {
+      "start": "0:04.0",
+      "end": "0:09.5",
+      "seconds": "5.5"
+    }
+  },
+  {
+    "key": "zoom.zoomPanel.presetFollow",
+    "file": "src/renderer/src/editor/panels/ZoomPanel.tsx",
+    "line": 188,
+    "english": "Only moves the view, no zoom",
+    "sample": {}
+  },
+  {
+    "key": "zoom.zoomPanel.framedLevel",
+    "file": "src/renderer/src/editor/panels/ZoomPanel.tsx",
+    "line": 257,
+    "english": "In the vertical frame this zoom is 1.5× (zooms are gentler there, and limited so the picture stays sharp).",
+    "sample": {
+      "level": "1.5×"
+    }
+  },
+  {
+    "key": "style.groupEdit.option.zoomFocus.cursor",
+    "file": "src/renderer/src/editor/panels/ZoomPanel.tsx",
+    "line": 275,
+    "english": "Follow cursor",
+    "sample": {}
+  },
+  {
+    "key": "style.groupEdit.option.zoomFocus.cursor.title",
+    "file": "src/renderer/src/editor/panels/ZoomPanel.tsx",
+    "line": 275,
+    "english": "Follow the cursor",
+    "sample": {}
+  },
+  {
+    "key": "style.selectionPanel.noCursor",
+    "file": "src/renderer/src/editor/panels/ZoomPanel.tsx",
+    "line": 275,
+    "english": "No cursor data in this recording",
+    "sample": {}
+  },
+  {
+    "key": "style.groupEdit.option.zoomFocus.fixed",
+    "file": "src/renderer/src/editor/panels/ZoomPanel.tsx",
+    "line": 275,
+    "english": "Fixed point",
+    "sample": {}
+  },
+  {
+    "key": "zoom.zoomPanel.focus.fixed.title",
+    "file": "src/renderer/src/editor/panels/ZoomPanel.tsx",
+    "line": 275,
+    "english": "Look at one point",
+    "sample": {}
+  },
+  {
+    "key": "zoom.zoomPanel.focus.region",
+    "file": "src/renderer/src/editor/panels/ZoomPanel.tsx",
+    "line": 275,
+    "english": "Region",
+    "sample": {}
+  },
+  {
+    "key": "zoom.zoomPanel.focus.region.title",
+    "file": "src/renderer/src/editor/panels/ZoomPanel.tsx",
+    "line": 275,
+    "english": "Frame a rectangle you draw on the preview",
+    "sample": {}
+  },
+  {
+    "key": "zoom.zoomPanel.regionReadout",
+    "file": "src/renderer/src/editor/panels/ZoomPanel.tsx",
+    "line": 295,
+    "english": "Frames 40% × 40% of the recording at 2.5×. Drag on the preview to draw a new box, or move and resize it.",
+    "sample": {
+      "width": "40%",
+      "height": "40%",
+      "level": "2.5×"
+    }
+  },
+  {
+    "key": "zoom.zoomPanel.tooShortToEnd",
+    "file": "src/renderer/src/editor/panels/ZoomPanel.tsx",
+    "line": 232,
+    "english": "This zoom is too short to end before the next one: shorten or move a zoom instead",
+    "sample": {}
+  },
+  {
+    "key": "zoom.zoomPanel.ownStyleCount",
+    "file": "src/renderer/src/editor/panels/ZoomPanel.tsx",
+    "line": 346,
+    "english": [
+      "0 zooms have their own.",
+      "1 zoom has its own.",
+      "2 zooms have their own.",
+      "1000 zooms have their own."
+    ],
+    "sample": [
+      {
+        "count": 0,
+        "n": "0"
+      },
+      {
+        "count": 1,
+        "n": "1"
+      },
+      {
+        "count": 2,
+        "n": "2"
+      },
+      {
+        "count": 1000,
+        "n": "1000"
+      }
+    ]
+  },
+  {
+    "key": "zoom.zoomPanel.styleApplied",
+    "file": "src/renderer/src/editor/panels/ZoomPanel.tsx",
+    "line": 356,
+    "english": "Zoom style applied to all zooms",
+    "sample": {}
+  },
+  {
+    "key": "zoom.zoomPanel.scroll.zoomOut",
+    "file": "src/renderer/src/editor/panels/ZoomPanel.tsx",
+    "line": 365,
+    "english": "Zoom out",
+    "sample": {}
+  },
+  {
+    "key": "zoom.zoomPanel.scroll.zoomOut.title",
+    "file": "src/renderer/src/editor/panels/ZoomPanel.tsx",
+    "line": 365,
+    "english": "Show the whole page while it scrolls, then zoom in where you stop",
+    "sample": {}
+  },
+  {
+    "key": "zoom.zoomPanel.scroll.hold",
+    "file": "src/renderer/src/editor/panels/ZoomPanel.tsx",
+    "line": 366,
+    "english": "Hold",
+    "sample": {}
+  },
+  {
+    "key": "zoom.zoomPanel.scroll.hold.title",
+    "file": "src/renderer/src/editor/panels/ZoomPanel.tsx",
+    "line": 366,
+    "english": "Keep the zoom steady until scrolling stops",
+    "sample": {}
+  },
+  {
+    "key": "zoom.zoomPanel.scroll.ignore",
+    "file": "src/renderer/src/editor/panels/ZoomPanel.tsx",
+    "line": 367,
+    "english": "Ignore",
+    "sample": {}
+  },
+  {
+    "key": "zoom.zoomPanel.scroll.ignore.title",
+    "file": "src/renderer/src/editor/panels/ZoomPanel.tsx",
+    "line": 367,
+    "english": "Scrolling does not change the zooms",
+    "sample": {}
+  },
+  {
+    "key": "zoom.zoomPanel.regenerated",
+    "file": "src/renderer/src/editor/panels/ZoomPanel.tsx",
+    "line": 413,
+    "english": [
+      "Auto zoom: 0 zooms",
+      "Auto zoom: 1 zoom",
+      "Auto zoom: 2 zooms",
+      "Auto zoom: 1000 zooms"
+    ],
+    "sample": [
+      {
+        "count": 0,
+        "n": "0"
+      },
+      {
+        "count": 1,
+        "n": "1"
+      },
+      {
+        "count": 2,
+        "n": "2"
+      },
+      {
+        "count": 1000,
+        "n": "1000"
+      }
+    ]
+  },
+  {
+    "key": "zoom.zoomPanel.regeneratedKept",
+    "file": "src/renderer/src/editor/panels/ZoomPanel.tsx",
+    "line": 413,
+    "english": [
+      "Auto zoom: 0 zooms, 2 edited kept",
+      "Auto zoom: 1 zoom, 2 edited kept",
+      "Auto zoom: 2 zooms, 2 edited kept",
+      "Auto zoom: 1000 zooms, 2 edited kept"
+    ],
+    "sample": [
+      {
+        "count": 0,
+        "n": "0",
+        "kept": "2"
+      },
+      {
+        "count": 1,
+        "n": "1",
+        "kept": "2"
+      },
+      {
+        "count": 2,
+        "n": "2",
+        "kept": "2"
+      },
+      {
+        "count": 1000,
+        "n": "1000",
+        "kept": "2"
+      }
+    ]
+  },
+  {
+    "key": "zoom.zoomPanel.removed",
+    "file": "src/renderer/src/editor/panels/ZoomPanel.tsx",
+    "line": 419,
+    "english": [
+      "Removed 0 zooms",
+      "Removed 1 zoom",
+      "Removed 2 zooms",
+      "Removed 1000 zooms"
+    ],
+    "sample": [
+      {
+        "count": 0,
+        "n": "0"
+      },
+      {
+        "count": 1,
+        "n": "1"
+      },
+      {
+        "count": 2,
+        "n": "2"
+      },
+      {
+        "count": 1000,
+        "n": "1000"
+      }
+    ]
+  },
+  {
+    "key": "zoom.zoomPanel.automaticCount",
+    "file": "src/renderer/src/editor/panels/ZoomPanel.tsx",
+    "line": 427,
+    "english": [
+      "0 automatic zooms",
+      "1 automatic zoom",
+      "2 automatic zooms",
+      "1000 automatic zooms"
+    ],
+    "sample": [
+      {
+        "count": 0,
+        "n": "0"
+      },
+      {
+        "count": 1,
+        "n": "1"
+      },
+      {
+        "count": 2,
+        "n": "2"
+      },
+      {
+        "count": 1000,
+        "n": "1000"
+      }
+    ]
+  },
+  {
+    "key": "zoom.zoomPanel.noClicks",
+    "file": "src/renderer/src/editor/panels/ZoomPanel.tsx",
+    "line": 444,
+    "english": "No clicks were captured, so add zooms yourself: double-click the zoom track",
+    "sample": {}
+  },
+  {
+    "key": "zoom.zoomPanel.recordedClicksCount",
+    "file": "src/renderer/src/editor/panels/ZoomPanel.tsx",
+    "line": 491,
+    "english": "Recorded clicks · 12",
+    "sample": {
+      "n": "12"
+    }
+  },
+  {
+    "key": "zoom.zoomPanel.recordedClicksIgnored",
+    "file": "src/renderer/src/editor/panels/ZoomPanel.tsx",
+    "line": 491,
+    "english": "Recorded clicks · 12 · 3 ignored",
+    "sample": {
+      "n": "12",
+      "ignored": "3"
+    }
+  },
+  {
+    "key": "zoom.cursorPanel.style.auto",
+    "file": "src/renderer/src/editor/panels/CursorPanel.tsx",
+    "line": 21,
+    "english": "Auto",
+    "sample": {}
+  },
+  {
+    "key": "zoom.cursorPanel.style.auto.title",
+    "file": "src/renderer/src/editor/panels/CursorPanel.tsx",
+    "line": 21,
+    "english": "The recorded cursor shapes (arrow, text, hand, …)",
+    "sample": {}
+  },
+  {
+    "key": "zoom.cursorPanel.style.mac",
+    "file": "src/renderer/src/editor/panels/CursorPanel.tsx",
+    "line": 22,
+    "english": "macOS",
+    "sample": {}
+  },
+  {
+    "key": "zoom.cursorPanel.style.mac.title",
+    "file": "src/renderer/src/editor/panels/CursorPanel.tsx",
+    "line": 22,
+    "english": "Black macOS-style cursors with a white border",
+    "sample": {}
+  },
+  {
+    "key": "zoom.cursorPanel.style.windows",
+    "file": "src/renderer/src/editor/panels/CursorPanel.tsx",
+    "line": 23,
+    "english": "Windows",
+    "sample": {}
+  },
+  {
+    "key": "zoom.cursorPanel.style.windows.title",
+    "file": "src/renderer/src/editor/panels/CursorPanel.tsx",
+    "line": 23,
+    "english": "White Windows 11-style cursors",
+    "sample": {}
+  },
+  {
+    "key": "zoom.cursorPanel.style.white",
+    "file": "src/renderer/src/editor/panels/CursorPanel.tsx",
+    "line": 24,
+    "english": "White",
+    "sample": {}
+  },
+  {
+    "key": "zoom.cursorPanel.style.white.title",
+    "file": "src/renderer/src/editor/panels/CursorPanel.tsx",
+    "line": 24,
+    "english": "Large, high-contrast white cursors",
+    "sample": {}
+  },
+  {
+    "key": "zoom.cursorPanel.style.black",
+    "file": "src/renderer/src/editor/panels/CursorPanel.tsx",
+    "line": 25,
+    "english": "Black",
+    "sample": {}
+  },
+  {
+    "key": "zoom.cursorPanel.style.black.title",
+    "file": "src/renderer/src/editor/panels/CursorPanel.tsx",
+    "line": 25,
+    "english": "Large, high-contrast black cursors",
+    "sample": {}
+  },
+  {
+    "key": "zoom.cursorPanel.style.custom",
+    "file": "src/renderer/src/editor/panels/CursorPanel.tsx",
+    "line": 26,
+    "english": "Custom",
+    "sample": {}
+  },
+  {
+    "key": "zoom.cursorPanel.style.custom.title",
+    "file": "src/renderer/src/editor/panels/CursorPanel.tsx",
+    "line": 26,
+    "english": "Your own image (PNG, JPG, WebP, SVG, ICO or CUR); its top-left corner is the tip",
+    "sample": {}
+  },
+  {
+    "key": "zoom.cursorPanel.click.ripple",
+    "file": "src/renderer/src/editor/panels/CursorPanel.tsx",
+    "line": 30,
+    "english": "Ripple",
+    "sample": {}
+  },
+  {
+    "key": "zoom.cursorPanel.click.ripple.title",
+    "file": "src/renderer/src/editor/panels/CursorPanel.tsx",
+    "line": 30,
+    "english": "A soft disc that spreads out",
+    "sample": {}
+  },
+  {
+    "key": "zoom.cursorPanel.click.ring",
+    "file": "src/renderer/src/editor/panels/CursorPanel.tsx",
+    "line": 31,
+    "english": "Ring",
+    "sample": {}
+  },
+  {
+    "key": "zoom.cursorPanel.click.ring.title",
+    "file": "src/renderer/src/editor/panels/CursorPanel.tsx",
+    "line": 31,
+    "english": "Thin rings expanding outward",
+    "sample": {}
+  },
+  {
+    "key": "zoom.cursorPanel.click.pulse",
+    "file": "src/renderer/src/editor/panels/CursorPanel.tsx",
+    "line": 32,
+    "english": "Pulse",
+    "sample": {}
+  },
+  {
+    "key": "zoom.cursorPanel.click.pulse.title",
+    "file": "src/renderer/src/editor/panels/CursorPanel.tsx",
+    "line": 32,
+    "english": "A dot that pops and fades",
+    "sample": {}
+  },
+  {
+    "key": "zoom.cursorPanel.recordedCursorWindow",
+    "file": "src/renderer/src/editor/panels/CursorPanel.tsx",
+    "line": 120,
+    "english": "The Windows cursor is part of this video (the window was recorded with standard capture, which includes it), so a smooth cursor would show up as a second cursor. Smooth cursor and hide-when-idle are therefore off. Click highlights and auto zoom still work.",
+    "sample": {}
+  },
+  {
+    "key": "zoom.cursorPanel.recordedCursorScreen",
+    "file": "src/renderer/src/editor/panels/CursorPanel.tsx",
+    "line": 120,
+    "english": "The Windows cursor is part of this video (it was recorded with screen capture), so a smooth cursor would show up as a second cursor. Smooth cursor and hide-when-idle are therefore off. Click highlights still work on top of the recorded cursor.",
+    "sample": {}
+  },
+  {
+    "key": "zoom.cursorPanel.clickCount",
+    "file": "src/renderer/src/editor/panels/CursorPanel.tsx",
+    "line": 203,
+    "english": [
+      "0 clicks",
+      "1 click",
+      "2 clicks",
+      "1000 clicks"
+    ],
+    "sample": [
+      {
+        "count": 0,
+        "n": "0"
+      },
+      {
+        "count": 1,
+        "n": "1"
+      },
+      {
+        "count": 2,
+        "n": "2"
+      },
+      {
+        "count": 1000,
+        "n": "1000"
+      }
+    ]
+  },
+  {
+    "key": "zoom.cursorPanel.clickCountIgnored",
+    "file": "src/renderer/src/editor/panels/CursorPanel.tsx",
+    "line": 203,
+    "english": [
+      "0 clicks · 2 ignored",
+      "1 click · 2 ignored",
+      "2 clicks · 2 ignored",
+      "1000 clicks · 2 ignored"
+    ],
+    "sample": [
+      {
+        "count": 0,
+        "n": "0",
+        "ignored": "2"
+      },
+      {
+        "count": 1,
+        "n": "1",
+        "ignored": "2"
+      },
+      {
+        "count": 2,
+        "n": "2",
+        "ignored": "2"
+      },
+      {
+        "count": 1000,
+        "n": "1000",
+        "ignored": "2"
+      }
+    ]
+  },
+  {
+    "key": "zoom.cursorPanel.straightenedOf",
+    "file": "src/renderer/src/editor/panels/CursorPanel.tsx",
+    "line": 253,
+    "english": [
+      "0 of 0 moves straightened. Drags, loops and moves across a click keep their recorded path.",
+      "1 of 1 move straightened. Drags, loops and moves across a click keep their recorded path.",
+      "1 of 2 moves straightened. Drags, loops and moves across a click keep their recorded path.",
+      "12 of 1000 moves straightened. Drags, loops and moves across a click keep their recorded path."
+    ],
+    "sample": [
+      {
+        "count": 0,
+        "n": "0",
+        "straightened": "0"
+      },
+      {
+        "count": 1,
+        "n": "1",
+        "straightened": "1"
+      },
+      {
+        "count": 2,
+        "n": "2",
+        "straightened": "1"
+      },
+      {
+        "count": 1000,
+        "n": "1000",
+        "straightened": "12"
+      }
+    ]
+  },
+  {
+    "key": "zoom.magnifierSection.hint",
+    "file": "src/renderer/src/editor/panels/MagnifierSection.tsx",
+    "line": 30,
+    "english": "Shows a detail larger, from the recording's own pixels, while the rest of the screen stays in view. Blurred and pixelated areas stay hidden inside it.",
+    "sample": {}
+  },
+  {
+    "key": "zoom.magnifierSection.soft",
+    "file": "src/renderer/src/editor/panels/MagnifierSection.tsx",
+    "line": 30,
+    "english": "Shown larger than the recording's pixels: it may look soft.",
+    "sample": {}
+  },
+  {
+    "key": "zoom.magnifierSection.percent",
+    "file": "src/renderer/src/editor/panels/MagnifierSection.tsx",
+    "line": 30,
+    "english": "20 percent",
+    "sample": {
+      "n": "20"
+    }
+  },
+  {
+    "key": "zoom.magnifierSection.addCursorTitle",
+    "file": "src/renderer/src/editor/panels/MagnifierSection.tsx",
+    "line": 62,
+    "english": "A magnifier that follows the cursor",
+    "sample": {}
+  },
+  {
+    "key": "style.selectionPanel.noCursor",
+    "file": "src/renderer/src/editor/panels/MagnifierSection.tsx",
+    "line": 62,
+    "english": "No cursor data in this recording",
+    "sample": {}
+  },
+  {
+    "key": "zoom.magnifierSection.addTitle",
+    "file": "src/renderer/src/editor/panels/MagnifierSection.tsx",
+    "line": 51,
+    "english": "Show a detail larger where the preview shows it, without zooming",
+    "sample": {}
+  },
+  {
+    "key": "zoom.magnifierSection.shape.ellipse",
+    "file": "src/renderer/src/editor/panels/MagnifierSection.tsx",
+    "line": 137,
+    "english": "Round",
+    "sample": {}
+  },
+  {
+    "key": "zoom.magnifierSection.shape.rect",
+    "file": "src/renderer/src/editor/panels/MagnifierSection.tsx",
+    "line": 138,
+    "english": "Rounded rectangle",
+    "sample": {}
+  },
+  {
+    "key": "zoom.magnifierSection.follows.region",
+    "file": "src/renderer/src/editor/panels/MagnifierSection.tsx",
+    "line": 147,
+    "english": "A place on the screen",
+    "sample": {}
+  },
+  {
+    "key": "zoom.magnifierSection.follows.region.title",
+    "file": "src/renderer/src/editor/panels/MagnifierSection.tsx",
+    "line": 147,
+    "english": "The lens stays on the content you place it on",
+    "sample": {}
+  },
+  {
+    "key": "zoom.magnifierSection.follows.cursor",
+    "file": "src/renderer/src/editor/panels/MagnifierSection.tsx",
+    "line": 147,
+    "english": "The cursor",
+    "sample": {}
+  },
+  {
+    "key": "zoom.magnifierSection.follows.cursor.title",
+    "file": "src/renderer/src/editor/panels/MagnifierSection.tsx",
+    "line": 147,
+    "english": "The lens follows the cursor",
+    "sample": {}
+  },
+  {
+    "key": "style.selectionPanel.noCursor",
+    "file": "src/renderer/src/editor/panels/MagnifierSection.tsx",
+    "line": 147,
+    "english": "No cursor data in this recording",
+    "sample": {}
+  },
+  {
+    "key": "zoom.magnifierZoomRow.addTitle",
+    "file": "src/renderer/src/editor/panels/MagnifierZoomRow.tsx",
+    "line": 18,
+    "english": "Add a magnifier at the playhead",
     "sample": {}
   }
 ]

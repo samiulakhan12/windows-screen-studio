@@ -1,8 +1,542 @@
 {
+  "zoomPanel.withAZoomSelected": {
+    "description": "Zoom tab: the sentence after the no-selection hint. {levels} says what the level keys do (\"1–4 set its zoom level, 0 pulls back\")."
+  },
+  "zoomPanel.selectedClick": {
+    "description": "zoomPanel, the title of <Section> (src/renderer/src/editor/panels/ZoomPanel.tsx:114)."
+  },
+  "zoomPanel.ignoredNoZoomClick": {
+    "description": "zoomPanel, text of <p> (src/renderer/src/editor/panels/ZoomPanel.tsx:120)."
+  },
+  "zoomPanel.itWasIgnoredAutomatically": {
+    "description": "Zoom tab › Selected click: added after \"Ignored: …\" when the click was ignored automatically. {reason} says why. Starts with a space."
+  },
+  "zoomPanel.ignoreClick": {
+    "description": "zoomPanel, text of <button> (src/renderer/src/editor/panels/ZoomPanel.tsx:126)."
+  },
+  "zoomPanel.useThisClickAgain": {
+    "description": "zoomPanel, the title of <button> (src/renderer/src/editor/panels/ZoomPanel.tsx:130)."
+  },
+  "zoomPanel.useClick": {
+    "description": "zoomPanel, text of <button> (src/renderer/src/editor/panels/ZoomPanel.tsx:131)."
+  },
+  "zoomPanel.onlyAutomaticZoomsChange": {
+    "description": "zoomPanel, text of <p> (src/renderer/src/editor/panels/ZoomPanel.tsx:134)."
+  },
+  "zoomPanel.madeForTheClick": {
+    "description": "Zoom tab › Selected zoom: an automatic zoom made for a click. {time} is when (1:02.5)."
+  },
+  "zoomPanel.stopUsingThisClick": {
+    "description": "zoomPanel, the title of <button> (src/renderer/src/editor/panels/ZoomPanel.tsx:150)."
+  },
+  "zoomPanel.ignoreThisClick": {
+    "description": "zoomPanel, text of <button> (src/renderer/src/editor/panels/ZoomPanel.tsx:157)."
+  },
+  "zoomPanel.selectedZoom": {
+    "description": "zoomPanel, the title of <Section> (src/renderer/src/editor/panels/ZoomPanel.tsx:245)."
+  },
+  "zoomPanel.automatic": {
+    "description": "zoomPanel, text of <span> (src/renderer/src/editor/panels/ZoomPanel.tsx:245)."
+  },
+  "zoomPanel.edited": {
+    "description": "zoomPanel, text of <span> (src/renderer/src/editor/panels/ZoomPanel.tsx:245)."
+  },
+  "zoomPanel.zoomLevelPresets": {
+    "description": "zoomPanel, the label of <Chips> (src/renderer/src/editor/panels/ZoomPanel.tsx:252)."
+  },
+  "zoomPanel.zoomLevelPullBack": {
+    "description": "zoomPanel, the label of <Slider> (src/renderer/src/editor/panels/ZoomPanel.tsx:267)."
+  },
+  "zoomPanel.zoomLevel": {
+    "description": "zoomPanel, the label of <Slider> (src/renderer/src/editor/panels/ZoomPanel.tsx:267)."
+  },
+  "zoomPanel.zoomFocus": {
+    "description": "zoomPanel, the label of <Chips> (src/renderer/src/editor/panels/ZoomPanel.tsx:276)."
+  },
+  "zoomPanel.aPulledBackZoom": {
+    "description": "zoomPanel, text of <p> (src/renderer/src/editor/panels/ZoomPanel.tsx:285)."
+  },
+  "zoomPanel.donePicking": {
+    "description": "zoomPanel, text of <button> (src/renderer/src/editor/panels/ZoomPanel.tsx:289)."
+  },
+  "zoomPanel.pickOnPreview": {
+    "description": "zoomPanel, text of <button> (src/renderer/src/editor/panels/ZoomPanel.tsx:289)."
+  },
+  "zoomPanel.focusX": {
+    "description": "zoomPanel, the label of <Slider> (src/renderer/src/editor/panels/ZoomPanel.tsx:291)."
+  },
+  "zoomPanel.focusY": {
+    "description": "zoomPanel, the label of <Slider> (src/renderer/src/editor/panels/ZoomPanel.tsx:292)."
+  },
+  "zoomPanel.drawOnPreview": {
+    "description": "zoomPanel, text of <button> (src/renderer/src/editor/panels/ZoomPanel.tsx:298)."
+  },
+  "zoomPanel.useTheProjectS": {
+    "description": "zoomPanel, the title of <button> (src/renderer/src/editor/panels/ZoomPanel.tsx:308)."
+  },
+  "zoomPanel.useZoomStyle": {
+    "description": "zoomPanel, text of <button> (src/renderer/src/editor/panels/ZoomPanel.tsx:309)."
+  },
+  "zoomPanel.zoomStyle": {
+    "description": "zoomPanel, text of <span> (src/renderer/src/editor/panels/ZoomPanel.tsx:312)."
+  },
+  "zoomPanel.zoomEasing": {
+    "description": "zoomPanel, the label of <Chips> (src/renderer/src/editor/panels/ZoomPanel.tsx:316)."
+  },
+  "zoomPanel.transition": {
+    "description": "zoomPanel, the label of <Slider> (src/renderer/src/editor/panels/ZoomPanel.tsx:318)."
+  },
+  "zoomPanel.panToNextZoom": {
+    "description": "zoomPanel, the label of <Toggle> (src/renderer/src/editor/panels/ZoomPanel.tsx:320)."
+  },
+  "zoomPanel.moveStraightToThe": {
+    "description": "zoomPanel, the title of <Toggle> (src/renderer/src/editor/panels/ZoomPanel.tsx:323)."
+  },
+  "zoomPanel.thereIsNoZoom": {
+    "description": "zoomPanel, the title of <Toggle> (src/renderer/src/editor/panels/ZoomPanel.tsx:323)."
+  },
+  "zoomPanel.deleteZoom": {
+    "description": "zoomPanel, text of <button> (src/renderer/src/editor/panels/ZoomPanel.tsx:334)."
+  },
+  "zoomPanel.allZooms": {
+    "description": "zoomPanel, text of <span> (src/renderer/src/editor/panels/ZoomPanel.tsx:348)."
+  },
+  "zoomPanel.defaultZoomEasing": {
+    "description": "zoomPanel, the label of <Chips> (src/renderer/src/editor/panels/ZoomPanel.tsx:350)."
+  },
+  "zoomPanel.newZoomLevel": {
+    "description": "zoomPanel, the label of <Slider> (src/renderer/src/editor/panels/ZoomPanel.tsx:353)."
+  },
+  "zoomPanel.everyZoomWithoutIts": {
+    "description": "zoomPanel, text of <p> (src/renderer/src/editor/panels/ZoomPanel.tsx:355)."
+  },
+  "zoomPanel.applyToAllZooms": {
+    "description": "zoomPanel, text of <button> (src/renderer/src/editor/panels/ZoomPanel.tsx:367)."
+  },
+  "zoomPanel.autoZoom": {
+    "description": "zoomPanel, the title of <Section> (src/renderer/src/editor/panels/ZoomPanel.tsx:434)."
+  },
+  "zoomPanel.selectTheAutomaticZooms": {
+    "description": "zoomPanel, the title of <button> (src/renderer/src/editor/panels/ZoomPanel.tsx:444)."
+  },
+  "zoomPanel.selectThem": {
+    "description": "zoomPanel, text of <button> (src/renderer/src/editor/panels/ZoomPanel.tsx:446)."
+  },
+  "zoomPanel.changingTheseSettingsRegenerates": {
+    "description": "Zoom tab › Auto zoom: the summary. {found} says what input was found (\"12 clicks · 2 typing detected.\")."
+  },
+  "zoomPanel.level": {
+    "description": "zoomPanel, the label of <Slider> (src/renderer/src/editor/panels/ZoomPanel.tsx:460)."
+  },
+  "zoomPanel.groupClicksWithin": {
+    "description": "zoomPanel, the label of <Slider> (src/renderer/src/editor/panels/ZoomPanel.tsx:461)."
+  },
+  "zoomPanel.zoomInBefore": {
+    "description": "zoomPanel, the label of <Slider> (src/renderer/src/editor/panels/ZoomPanel.tsx:462)."
+  },
+  "zoomPanel.holdAfter": {
+    "description": "zoomPanel, the label of <Slider> (src/renderer/src/editor/panels/ZoomPanel.tsx:463)."
+  },
+  "zoomPanel.rightClicks": {
+    "description": "zoomPanel, the label of <Toggle> (src/renderer/src/editor/panels/ZoomPanel.tsx:464)."
+  },
+  "zoomPanel.typing": {
+    "description": "zoomPanel, the label of <Toggle> (src/renderer/src/editor/panels/ZoomPanel.tsx:466)."
+  },
+  "zoomPanel.zoomInALittle": {
+    "description": "zoomPanel, the title of <Toggle> (src/renderer/src/editor/panels/ZoomPanel.tsx:467)."
+  },
+  "zoomPanel.zoomHereMarks": {
+    "description": "zoomPanel, the label of <Toggle> (src/renderer/src/editor/panels/ZoomPanel.tsx:472)."
+  },
+  "zoomPanel.zoomWhereYouPressed": {
+    "description": "zoomPanel, the title of <Toggle> (src/renderer/src/editor/panels/ZoomPanel.tsx:472)."
+  },
+  "zoomPanel.whileScrolling": {
+    "description": "zoomPanel, text of <span> (src/renderer/src/editor/panels/ZoomPanel.tsx:473)."
+  },
+  "zoomPanel.scrollingWasNotRecorded": {
+    "description": "zoomPanel, text of <p> (src/renderer/src/editor/panels/ZoomPanel.tsx:485)."
+  },
+  "zoomPanel.regenerate": {
+    "description": "zoomPanel, text of <button> (src/renderer/src/editor/panels/ZoomPanel.tsx:491)."
+  },
+  "zoomPanel.removeAll": {
+    "description": "zoomPanel, text of <button> (src/renderer/src/editor/panels/ZoomPanel.tsx:494)."
+  },
+  "zoomPanel.selectThisClickOn": {
+    "description": "zoomPanel, the title of <button> (src/renderer/src/editor/panels/ZoomPanel.tsx:517)."
+  },
+  "zoomPanel.ignoredAutomatically": {
+    "description": "Zoom tab › Recorded clicks: tooltip of a click ignored automatically. {reason} says why."
+  },
+  "zoomPanel.used": {
+    "description": "zoomPanel, text of <span> (src/renderer/src/editor/panels/ZoomPanel.tsx:522)."
+  },
+  "zoomPanel.stray": {
+    "description": "zoomPanel, text of <span> (src/renderer/src/editor/panels/ZoomPanel.tsx:522)."
+  },
+  "zoomPanel.ignoreTheClickAt": {
+    "description": "zoomPanel, the aria-label of <button> (src/renderer/src/editor/panels/ZoomPanel.tsx:525)."
+  },
+  "zoomPanel.ignore": {
+    "description": "zoomPanel, text of <button> (src/renderer/src/editor/panels/ZoomPanel.tsx:526)."
+  },
+  "zoomPanel.useTheClickAt": {
+    "description": "zoomPanel, the aria-label of <button> (src/renderer/src/editor/panels/ZoomPanel.tsx:529)."
+  },
+  "zoomPanel.ignoreClicksThatAre": {
+    "description": "zoomPanel, the title of <button> (src/renderer/src/editor/panels/ZoomPanel.tsx:538)."
+  },
+  "zoomPanel.findStrayClicks": {
+    "description": "zoomPanel, text of <button> (src/renderer/src/editor/panels/ZoomPanel.tsx:539)."
+  },
+  "zoomPanel.useAllClicks": {
+    "description": "zoomPanel, text of <button> (src/renderer/src/editor/panels/ZoomPanel.tsx:542)."
+  },
+  "cursorPanel.cursorMovementWasNot": {
+    "description": "cursorPanel, text of <span> (src/renderer/src/editor/panels/CursorPanel.tsx:111)."
+  },
+  "cursorPanel.cursorMovementWasNot2": {
+    "description": "cursorPanel, text of <span> (src/renderer/src/editor/panels/CursorPanel.tsx:112)."
+  },
+  "cursorPanel.cursor": {
+    "description": "cursorPanel, the title of <Section> (src/renderer/src/editor/panels/CursorPanel.tsx:127)."
+  },
+  "cursorPanel.showSmoothCursor": {
+    "description": "cursorPanel, the label of <Toggle> (src/renderer/src/editor/panels/CursorPanel.tsx:129)."
+  },
+  "cursorPanel.notAvailableTheRecorded": {
+    "description": "cursorPanel, the title of <Toggle> (src/renderer/src/editor/panels/CursorPanel.tsx:132)."
+  },
+  "cursorPanel.cursorStyle": {
+    "description": "cursorPanel, the aria-label of <div> (src/renderer/src/editor/panels/CursorPanel.tsx:135)."
+  },
+  "cursorPanel.changeImage": {
+    "description": "cursorPanel, text of <button> (src/renderer/src/editor/panels/CursorPanel.tsx:159)."
+  },
+  "cursorPanel.highlight": {
+    "description": "cursorPanel, the title of <Section> (src/renderer/src/editor/panels/CursorPanel.tsx:172)."
+  },
+  "cursorPanel.highlightCursor": {
+    "description": "cursorPanel, the label of <Toggle> (src/renderer/src/editor/panels/CursorPanel.tsx:173)."
+  },
+  "cursorPanel.highlightColour": {
+    "description": "cursorPanel, the label of <ColorRow> (src/renderer/src/editor/panels/CursorPanel.tsx:175)."
+  },
+  "cursorPanel.haloSize": {
+    "description": "cursorPanel, the label of <Slider> (src/renderer/src/editor/panels/CursorPanel.tsx:183)."
+  },
+  "cursorPanel.clicks": {
+    "description": "cursorPanel, the title of <Section> (src/renderer/src/editor/panels/CursorPanel.tsx:203)."
+  },
+  "cursorPanel.ignoreOrUseClicks": {
+    "description": "cursorPanel, the title of <span> (src/renderer/src/editor/panels/CursorPanel.tsx:206)."
+  },
+  "cursorPanel.clickEffect": {
+    "description": "cursorPanel, the label of <Toggle> (src/renderer/src/editor/panels/CursorPanel.tsx:213)."
+  },
+  "cursorPanel.clickEffectStyle": {
+    "description": "cursorPanel, the aria-label of <div> (src/renderer/src/editor/panels/CursorPanel.tsx:214)."
+  },
+  "cursorPanel.clickColour": {
+    "description": "cursorPanel, the label of <ColorRow> (src/renderer/src/editor/panels/CursorPanel.tsx:232)."
+  },
+  "cursorPanel.clickSound": {
+    "description": "cursorPanel, the label of <Toggle> (src/renderer/src/editor/panels/CursorPanel.tsx:233)."
+  },
+  "cursorPanel.smoothing": {
+    "description": "cursorPanel, the label of <Slider> (src/renderer/src/editor/panels/CursorPanel.tsx:246)."
+  },
+  "cursorPanel.straightenMoves": {
+    "description": "cursorPanel, the label of <Toggle> (src/renderer/src/editor/panels/CursorPanel.tsx:248)."
+  },
+  "cursorPanel.replacesWobblyMovesBetween": {
+    "description": "cursorPanel, the title of <Toggle> (src/renderer/src/editor/panels/CursorPanel.tsx:249)."
+  },
+  "cursorPanel.hideWhenIdle": {
+    "description": "cursorPanel, the label of <Toggle> (src/renderer/src/editor/panels/CursorPanel.tsx:259)."
+  },
+  "cursorPanel.tiltWhileMoving": {
+    "description": "cursorPanel, the label of <Toggle> (src/renderer/src/editor/panels/CursorPanel.tsx:260)."
+  },
+  "cursorPanel.leansTheCursorA": {
+    "description": "cursorPanel, the title of <Toggle> (src/renderer/src/editor/panels/CursorPanel.tsx:260)."
+  },
+  "cursorPanel.motionTrail": {
+    "description": "cursorPanel, the label of <Toggle> (src/renderer/src/editor/panels/CursorPanel.tsx:261)."
+  },
+  "cursorPanel.aShortFadingTrail": {
+    "description": "cursorPanel, the title of <Toggle> (src/renderer/src/editor/panels/CursorPanel.tsx:261)."
+  },
+  "cursorPanel.returnToStartAt": {
+    "description": "cursorPanel, the label of <Toggle> (src/renderer/src/editor/panels/CursorPanel.tsx:262)."
+  },
+  "cursorPanel.glidesTheCursorBack": {
+    "description": "cursorPanel, text of <p> (src/renderer/src/editor/panels/CursorPanel.tsx:263)."
+  },
+  "magnifierSection.magnifier": {
+    "description": "magnifierSection, the title of <Section> (src/renderer/src/editor/panels/MagnifierSection.tsx:45)."
+  },
+  "magnifierSection.addAMagnifier": {
+    "description": "magnifierSection, the aria-label of <div> (src/renderer/src/editor/panels/MagnifierSection.tsx:46)."
+  },
+  "magnifierSection.addMagnifier": {
+    "description": "magnifierSection, text of <span> (src/renderer/src/editor/panels/MagnifierSection.tsx:55)."
+  },
+  "magnifierSection.addMagnifierOnThe": {
+    "description": "magnifierSection, text of <span> (src/renderer/src/editor/panels/MagnifierSection.tsx:66)."
+  },
+  "magnifierSection.selectedMagnifier": {
+    "description": "magnifierSection, the title of <Section> (src/renderer/src/editor/panels/MagnifierSection.tsx:106)."
+  },
+  "magnifierSection.shape": {
+    "description": "magnifierSection, the label of <RadioChips> (src/renderer/src/editor/panels/MagnifierSection.tsx:133)."
+  },
+  "magnifierSection.follows": {
+    "description": "magnifierSection, the label of <RadioChips> (src/renderer/src/editor/panels/MagnifierSection.tsx:143)."
+  },
+  "magnifierSection.darkness": {
+    "description": "magnifierSection, text of <span> (src/renderer/src/editor/panels/MagnifierSection.tsx:153)."
+  },
+  "magnifierZoomRow.showADetailLarger": {
+    "description": "magnifierZoomRow, text of <span> (src/renderer/src/editor/panels/MagnifierZoomRow.tsx:16)."
+  },
+  "magnifierZoomRow.addMagnifier": {
+    "description": "magnifierZoomRow, text of <button> (src/renderer/src/editor/panels/MagnifierZoomRow.tsx:18)."
+  },
   "preset.pullBack": {
     "description": "Zoom tab: tooltip of the 0.75× level chip, which zooms out."
   },
   "preset.zoom": {
     "description": "Zoom tab: tooltip of a level chip. {level} is the zoom factor (1.5×)."
+  },
+  "zoomPanel.seconds": {
+    "description": "Zoom tab: a length in seconds, the value of a slider (0.70 s)."
+  },
+  "zoomPanel.selectAZoom": {
+    "description": "Zoom tab: hint when no zoom is selected."
+  },
+  "zoomPanel.selectAZoomKeys": {
+    "description": "Zoom tab: hint when no zoom is selected. {keys} is the add-zoom shortcut’s keycaps, never translated."
+  },
+  "zoomPanel.ignoreThisClickTitle": {
+    "description": "Zoom tab › Selected click: tooltip of Ignore click (its shortcut follows in brackets)."
+  },
+  "zoomPanel.cause.typing": {
+    "description": "Zoom tab › Selected zoom: an automatic zoom made for typing. {time} is when."
+  },
+  "zoomPanel.cause.mark": {
+    "description": "Zoom tab › Selected zoom: an automatic zoom made for a zoom-here mark pressed while recording. {time} is when."
+  },
+  "zoomPanel.cause.scroll": {
+    "description": "Zoom tab › Selected zoom: an automatic zoom after a long scroll. {time} is when the scrolling stopped."
+  },
+  "zoomPanel.span": {
+    "description": "Zoom tab › Selected zoom: its two times and its length in seconds."
+  },
+  "zoomPanel.presetFollow": {
+    "description": "Zoom tab: tooltip of the 1× level chip while the view follows the action."
+  },
+  "zoomPanel.framedLevel": {
+    "description": "Zoom tab › Selected zoom: the level it shows at while the view follows the action. {level} is a factor (1.5×)."
+  },
+  "zoomPanel.focus.fixed.title": {
+    "description": "Zoom tab › Selected zoom: tooltip of the Fixed point focus chip."
+  },
+  "zoomPanel.focus.region": {
+    "description": "Zoom tab › Selected zoom: the focus chip that frames a rectangle."
+  },
+  "zoomPanel.focus.region.title": {
+    "description": "Zoom tab › Selected zoom: tooltip of the Region focus chip."
+  },
+  "zoomPanel.regionReadout": {
+    "description": "Zoom tab › Selected zoom: the region a zoom frames, as shares of the recording (40% × 40%), and its level (2.5×)."
+  },
+  "zoomPanel.tooShortToEnd": {
+    "description": "Zoom tab › Selected zoom: notice when Pan to next zoom cannot be turned off."
+  },
+  "zoomPanel.ownStyleCount": {
+    "description": "Zoom tab › Zoom style: the sentence after the hint, how many zooms have a motion of their own."
+  },
+  "zoomPanel.styleApplied": {
+    "description": "Zoom tab › Zoom style: notice after Apply to all zooms. The undo shortcut may follow."
+  },
+  "zoomPanel.scroll.zoomOut": {
+    "description": "Zoom tab › Auto zoom: the While scrolling chip Zoom out."
+  },
+  "zoomPanel.scroll.zoomOut.title": {
+    "description": "Zoom tab › Auto zoom: the While scrolling chip Zoom out (its tooltip)."
+  },
+  "zoomPanel.scroll.hold": {
+    "description": "Zoom tab › Auto zoom: the While scrolling chip Hold."
+  },
+  "zoomPanel.scroll.hold.title": {
+    "description": "Zoom tab › Auto zoom: the While scrolling chip Hold (its tooltip)."
+  },
+  "zoomPanel.scroll.ignore": {
+    "description": "Zoom tab › Auto zoom: the While scrolling chip Ignore."
+  },
+  "zoomPanel.scroll.ignore.title": {
+    "description": "Zoom tab › Auto zoom: the While scrolling chip Ignore (its tooltip)."
+  },
+  "zoomPanel.regenerated": {
+    "description": "Zoom tab › Auto zoom: notice after Regenerate. {n} is how many zooms it made."
+  },
+  "zoomPanel.regeneratedKept": {
+    "description": "Zoom tab › Auto zoom: notice after Regenerate when edited zooms were kept. {n} is how many it made, {kept} how many edited ones stayed."
+  },
+  "zoomPanel.removed": {
+    "description": "Zoom tab › Auto zoom: notice after Remove all. {n} is how many zooms were removed. The undo shortcut may follow."
+  },
+  "zoomPanel.automaticCount": {
+    "description": "Zoom tab › Auto zoom: beside the title, how many zooms auto zoom made."
+  },
+  "zoomPanel.noClicks": {
+    "description": "Zoom tab › Auto zoom: summary when the recording has no input to zoom for; \", or press Z\" and a full stop may follow."
+  },
+  "zoomPanel.recordedClicksCount": {
+    "description": "Zoom tab › Auto zoom: the folding list of recorded clicks, with how many there are."
+  },
+  "zoomPanel.recordedClicksIgnored": {
+    "description": "Zoom tab › Auto zoom: the folding list of recorded clicks, with how many there are and how many are ignored."
+  },
+  "zoomPanel.recordedClicksList": {
+    "description": "zoomPanel, the aria-label of <ul> (src/renderer/src/editor/panels/ZoomPanel.tsx:511)."
+  },
+  "zoomPanel.stateIgnored": {
+    "description": "zoomPanel, text of <span> (src/renderer/src/editor/panels/ZoomPanel.tsx:522)."
+  },
+  "zoomPanel.zoomStyleTitle": {
+    "description": "zoomPanel, the title of <Section> (src/renderer/src/editor/panels/ZoomPanel.tsx:348)."
+  },
+  "cursorPanel.style.auto": {
+    "description": "Cursor tab: the Auto cursor style."
+  },
+  "cursorPanel.style.auto.title": {
+    "description": "Cursor tab: the Auto cursor style (its tooltip)."
+  },
+  "cursorPanel.style.mac": {
+    "description": "Cursor tab: the macOS cursor style.",
+    "dnt": [
+      "macOS"
+    ]
+  },
+  "cursorPanel.style.mac.title": {
+    "description": "Cursor tab: the macOS cursor style (its tooltip).",
+    "dnt": [
+      "macOS"
+    ]
+  },
+  "cursorPanel.style.windows": {
+    "description": "Cursor tab: the Windows cursor style.",
+    "dnt": [
+      "Windows"
+    ]
+  },
+  "cursorPanel.style.windows.title": {
+    "description": "Cursor tab: the Windows cursor style (its tooltip).",
+    "dnt": [
+      "Windows"
+    ]
+  },
+  "cursorPanel.style.white": {
+    "description": "Cursor tab: the White cursor style."
+  },
+  "cursorPanel.style.white.title": {
+    "description": "Cursor tab: the White cursor style (its tooltip)."
+  },
+  "cursorPanel.style.black": {
+    "description": "Cursor tab: the Black cursor style."
+  },
+  "cursorPanel.style.black.title": {
+    "description": "Cursor tab: the Black cursor style (its tooltip)."
+  },
+  "cursorPanel.style.custom": {
+    "description": "Cursor tab: the Custom cursor style."
+  },
+  "cursorPanel.style.custom.title": {
+    "description": "Cursor tab: the Custom cursor style (its tooltip)."
+  },
+  "cursorPanel.click.ripple": {
+    "description": "Cursor tab: the Ripple click effect style."
+  },
+  "cursorPanel.click.ripple.title": {
+    "description": "Cursor tab: the Ripple click effect style (its tooltip)."
+  },
+  "cursorPanel.click.ring": {
+    "description": "Cursor tab: the Ring click effect style."
+  },
+  "cursorPanel.click.ring.title": {
+    "description": "Cursor tab: the Ring click effect style (its tooltip)."
+  },
+  "cursorPanel.click.pulse": {
+    "description": "Cursor tab: the Pulse click effect style."
+  },
+  "cursorPanel.click.pulse.title": {
+    "description": "Cursor tab: the Pulse click effect style (its tooltip)."
+  },
+  "cursorPanel.recordedCursorWindow": {
+    "description": "Cursor tab: why cursor effects are off for a window recorded with standard capture, which put the Windows cursor in the video.",
+    "dnt": [
+      "Windows"
+    ]
+  },
+  "cursorPanel.recordedCursorScreen": {
+    "description": "Cursor tab: why cursor effects are off for a screen recorded with the Windows cursor in the video.",
+    "dnt": [
+      "Windows"
+    ]
+  },
+  "cursorPanel.styleName": {
+    "description": "Cursor tab: accessible name of a cursor style button. {label} is the style’s name (macOS)."
+  },
+  "cursorPanel.clickStyleName": {
+    "description": "Cursor tab: accessible name of a click effect style button. {label} is the style’s name (Ripple)."
+  },
+  "cursorPanel.clickCount": {
+    "description": "Cursor tab › Clicks: how many clicks the recording holds."
+  },
+  "cursorPanel.clickCountIgnored": {
+    "description": "Cursor tab › Clicks: how many clicks the recording holds and how many of them are ignored."
+  },
+  "cursorPanel.straightenedOf": {
+    "description": "Cursor tab › Motion: how many of the recording’s cursor moves Straighten moves straightened."
+  },
+  "magnifierSection.hint": {
+    "description": "Zoom tab › Magnifier: what a magnifier does."
+  },
+  "magnifierSection.soft": {
+    "description": "Zoom tab › Magnifier: note when the magnifier enlarges beyond the recording’s own pixels."
+  },
+  "magnifierSection.percent": {
+    "description": "Zoom tab › Magnifier: spoken value of the Darkness slider."
+  },
+  "magnifierSection.addCursorTitle": {
+    "description": "Zoom tab › Magnifier: tooltip of Add magnifier on the cursor (its shortcut follows in brackets)."
+  },
+  "magnifierSection.addTitle": {
+    "description": "Zoom tab › Magnifier: tooltip of Add magnifier (its shortcut follows in brackets)."
+  },
+  "magnifierSection.shape.ellipse": {
+    "description": "Zoom tab › Magnifier: the round lens shape."
+  },
+  "magnifierSection.shape.rect": {
+    "description": "Zoom tab › Magnifier: the rounded rectangle lens shape."
+  },
+  "magnifierSection.follows.region": {
+    "description": "Zoom tab › Magnifier: the Follows choice that keeps the lens on one place."
+  },
+  "magnifierSection.follows.region.title": {
+    "description": "Zoom tab › Magnifier: tooltip of A place on the screen."
+  },
+  "magnifierSection.follows.cursor": {
+    "description": "Zoom tab › Magnifier: the Follows choice that moves the lens with the cursor."
+  },
+  "magnifierSection.follows.cursor.title": {
+    "description": "Zoom tab › Magnifier: tooltip of The cursor."
+  },
+  "magnifierZoomRow.addTitle": {
+    "description": "Zoom tab: tooltip of Add magnifier under the zoom style (its shortcut follows in brackets)."
   }
 }

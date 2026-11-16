@@ -13,22 +13,24 @@ import { EditorIcon } from '../EditorIcon'
 import type { InputActions } from '../Inspector'
 import { IMPORTED_COPY, isImported } from '../../../../shared/import/imported'
 import './cursorPanel.css'
+import { t } from '../../../../shared/i18n/t'
+import { fmt } from '../../../../shared/i18n/fmt'
 
 const L = LOOK_LIMITS
 
-const STYLES: { value: CursorStyle; label: string; title: string }[] = [
-  { value: 'auto', label: 'Auto', title: 'The recorded cursor shapes (arrow, text, hand, …)' },
-  { value: 'mac', label: 'macOS', title: 'Black macOS-style cursors with a white border' },
-  { value: 'windows', label: 'Windows', title: 'White Windows 11-style cursors' },
-  { value: 'white', label: 'White', title: 'Large, high-contrast white cursors' },
-  { value: 'black', label: 'Black', title: 'Large, high-contrast black cursors' },
-  { value: 'custom', label: 'Custom', title: 'Your own image (PNG, JPG, WebP, SVG, ICO or CUR); its top-left corner is the tip' }
+const STYLES = (): { value: CursorStyle; label: string; title: string }[] => [
+  { value: 'auto', label: t('zoom.cursorPanel.style.auto'), title: t('zoom.cursorPanel.style.auto.title') },
+  { value: 'mac', label: t('zoom.cursorPanel.style.mac'), title: t('zoom.cursorPanel.style.mac.title') },
+  { value: 'windows', label: t('zoom.cursorPanel.style.windows'), title: t('zoom.cursorPanel.style.windows.title') },
+  { value: 'white', label: t('zoom.cursorPanel.style.white'), title: t('zoom.cursorPanel.style.white.title') },
+  { value: 'black', label: t('zoom.cursorPanel.style.black'), title: t('zoom.cursorPanel.style.black.title') },
+  { value: 'custom', label: t('zoom.cursorPanel.style.custom'), title: t('zoom.cursorPanel.style.custom.title') }
 ]
 
-const CLICK_STYLES: { value: ClickStyle; label: string; title: string }[] = [
-  { value: 'ripple', label: 'Ripple', title: 'A soft disc that spreads out' },
-  { value: 'ring', label: 'Ring', title: 'Thin rings expanding outward' },
-  { value: 'pulse', label: 'Pulse', title: 'A dot that pops and fades' }
+const CLICK_STYLES = (): { value: ClickStyle; label: string; title: string }[] => [
+  { value: 'ripple', label: t('zoom.cursorPanel.click.ripple'), title: t('zoom.cursorPanel.click.ripple.title') },
+  { value: 'ring', label: t('zoom.cursorPanel.click.ring'), title: t('zoom.cursorPanel.click.ring.title') },
+  { value: 'pulse', label: t('zoom.cursorPanel.click.pulse'), title: t('zoom.cursorPanel.click.pulse.title') }
 ]
 
 const HIGHLIGHT_COLORS = ['#facc15', '#ffffff', '#8b5cf6', '#38bdf8', '#f472b6', '#4ade80']
@@ -108,37 +110,34 @@ export function CursorPanel({
             {isImported(project)
               ? IMPORTED_COPY.cursor
               : isWindow
-              ? 'Cursor movement was not recorded for this window (its position on screen could not be followed), so cursor effects are not available.'
-              : 'Cursor movement was not recorded for this capture, so cursor effects are not available.'}
+              ? t('zoom.cursorPanel.cursorMovementWasNot')
+              : t('zoom.cursorPanel.cursorMovementWasNot2')}
           </span>
         </p>
       ) : inVideo ? (
         <p className="callout" data-testid="cursor-in-video">
           <EditorIcon name="alert" size={16} />
           <span>
-            {isWindow
-              ? 'The Windows cursor is part of this video (the window was recorded with standard capture, which includes it), so a smooth cursor would show up as a second cursor. '
-              : 'The Windows cursor is part of this video (it was recorded with screen capture), so a smooth cursor would show up as a second cursor. '}
-            Smooth cursor and hide-when-idle are therefore off. Click highlights {isWindow ? 'and auto zoom still work' : 'still work on top of the recorded cursor'}.
+            {isWindow ? t('zoom.cursorPanel.recordedCursorWindow') : t('zoom.cursorPanel.recordedCursorScreen')}
           </span>
         </p>
       ) : null}
 
-      <Section title="Cursor">
+      <Section title={t('zoom.cursorPanel.cursor')}>
         <Toggle
-          label="Show smooth cursor"
+          label={t('zoom.cursorPanel.showSmoothCursor')}
           checked={smoothOn}
           disabled={!smoothAvailable}
-          title={smoothAvailable ? undefined : 'Not available: the recorded cursor is in the video'}
+          title={smoothAvailable ? undefined : t('zoom.cursorPanel.notAvailableTheRecorded')}
           onChange={(v) => set({ show: v })}
         />
-        <div className="cursor-styles" role="radiogroup" aria-label="Cursor style">
-          {STYLES.map((s) => (
+        <div className="cursor-styles" role="radiogroup" aria-label={t('zoom.cursorPanel.cursorStyle')}>
+          {STYLES().map((s) => (
             <button
               key={s.value}
               role="radio"
               aria-checked={look.style === s.value}
-              aria-label={`${s.label} cursor`}
+              aria-label={t('zoom.cursorPanel.styleName', { label: s.label })}
               title={s.title}
               disabled={!smoothOn || busy}
               className={`cursor-style ${look.style === s.value ? 'active' : ''}`}
@@ -155,9 +154,7 @@ export function CursorPanel({
         {look.style === 'custom' && cursor.customImage && (
           <div className="custom-cursor-row">
             <span className="muted small">{cursor.customImage}</span>
-            <button className="btn ghost small-btn" disabled={!smoothOn || busy} onClick={() => void pickImage()}>
-              Change image…
-            </button>
+            <button className="btn ghost small-btn" disabled={!smoothOn || busy} onClick={() => void pickImage()}>{t('zoom.cursorPanel.changeImage')}</button>
           </div>
         )}
         {pickError && (
@@ -166,13 +163,13 @@ export function CursorPanel({
             <span>{pickError}</span>
           </p>
         )}
-        <Slider label="Size" value={cursor.size} {...L.cursorSize} step={0.05} format={(v) => `${v.toFixed(2)}×`} disabled={!smoothOn} onChange={(v) => set({ size: v }, 'cursor.size')} />
+        <Slider label={t('common.label.size')} value={cursor.size} {...L.cursorSize} step={0.05} format={(v) => `${fmt.number(v, { max: 2 })}×`} disabled={!smoothOn} onChange={(v) => set({ size: v }, 'cursor.size')} />
       </Section>
 
-      <Section title="Highlight">
-        <Toggle label="Highlight cursor" checked={smoothOn && look.highlight.enabled} disabled={!smoothOn} onChange={(v) => setHighlight({ enabled: v })} />
+      <Section title={t('zoom.cursorPanel.highlight')}>
+        <Toggle label={t('zoom.cursorPanel.highlightCursor')} checked={smoothOn && look.highlight.enabled} disabled={!smoothOn} onChange={(v) => setHighlight({ enabled: v })} />
         <ColorRow
-          label="Highlight colour"
+          label={t('zoom.cursorPanel.highlightColour')}
           value={look.highlight.color}
           presets={HIGHLIGHT_COLORS}
           disabled={!smoothOn || !look.highlight.enabled}
@@ -180,16 +177,16 @@ export function CursorPanel({
           mergeKey="cursor.highlight.color"
         />
         <Slider
-          label="Halo size"
+          label={t('zoom.cursorPanel.haloSize')}
           value={look.highlight.size}
           {...L.highlightSize}
           step={0.05}
-          format={(v) => `${v.toFixed(2)}×`}
+          format={(v) => `${fmt.number(v, { max: 2 })}×`}
           disabled={!smoothOn || !look.highlight.enabled}
           onChange={(v) => setHighlight({ size: v }, 'cursor.highlight.size')}
         />
         <Slider
-          label="Opacity"
+          label={t('common.label.opacity')}
           value={look.highlight.opacity}
           {...L.highlightOpacity}
           step={0.05}
@@ -200,24 +197,25 @@ export function CursorPanel({
       </Section>
 
       <Section
-        title="Clicks"
+        title={t('zoom.cursorPanel.clicks')}
         aside={
           track.valid ? (
-            <span className="small" title="Ignore or use clicks in Zoom › Auto zoom, or select a click on the timeline" data-testid="cursor-click-count">
-              {clickCount === 1 ? '1 click' : `${clickCount} clicks`}
-              {ignoredCount > 0 ? ` · ${ignoredCount} ignored` : ''}
+            <span className="small" title={t('zoom.cursorPanel.ignoreOrUseClicks')} data-testid="cursor-click-count">
+              {ignoredCount > 0
+                ? t('zoom.cursorPanel.clickCountIgnored', { count: clickCount, n: fmt.count(clickCount), ignored: fmt.count(ignoredCount) })
+                : t('zoom.cursorPanel.clickCount', { count: clickCount, n: fmt.count(clickCount) })}
             </span>
           ) : undefined
         }
       >
-        <Toggle label="Click effect" checked={clicksOn} disabled={!track.valid} onChange={(v) => set({ clickEffect: v })} />
-        <div className="click-styles" role="radiogroup" aria-label="Click effect style">
-          {CLICK_STYLES.map((s) => (
+        <Toggle label={t('zoom.cursorPanel.clickEffect')} checked={clicksOn} disabled={!track.valid} onChange={(v) => set({ clickEffect: v })} />
+        <div className="click-styles" role="radiogroup" aria-label={t('zoom.cursorPanel.clickEffectStyle')}>
+          {CLICK_STYLES().map((s) => (
             <button
               key={s.value}
               role="radio"
               aria-checked={look.clickStyle === s.value}
-              aria-label={`${s.label} click effect`}
+              aria-label={t('zoom.cursorPanel.clickStyleName', { label: s.label })}
               title={s.title}
               disabled={!clicksOn}
               className={`click-style ${look.clickStyle === s.value ? 'active' : ''}`}
@@ -229,10 +227,10 @@ export function CursorPanel({
             </button>
           ))}
         </div>
-        <ColorRow label="Click colour" value={look.clickColor} presets={CLICK_COLORS} disabled={!clicksOn} onChange={(c, key) => set({ clickColor: c }, key)} mergeKey="cursor.clickColor" />
-        <Toggle label="Click sound" checked={track.valid && look.clickSound} disabled={!track.valid} onChange={(v) => set({ clickSound: v })} />
+        <ColorRow label={t('zoom.cursorPanel.clickColour')} value={look.clickColor} presets={CLICK_COLORS} disabled={!clicksOn} onChange={(c, key) => set({ clickColor: c }, key)} mergeKey="cursor.clickColor" />
+        <Toggle label={t('zoom.cursorPanel.clickSound')} checked={track.valid && look.clickSound} disabled={!track.valid} onChange={(v) => set({ clickSound: v })} />
         <Slider
-          label="Volume"
+          label={t('common.label.volume')}
           value={look.clickSoundVolume}
           {...L.clickSoundVolume}
           step={0.05}
@@ -242,25 +240,25 @@ export function CursorPanel({
         />
       </Section>
 
-      <Section title="Motion">
-        <Slider label="Smoothing" value={cursor.smoothing} {...L.smoothing} step={0.05} format={pctFmt} disabled={!smoothOn} onChange={(v) => set({ smoothing: v }, 'cursor.smoothing')} />
+      <Section title={t('common.label.motion')}>
+        <Slider label={t('zoom.cursorPanel.smoothing')} value={cursor.smoothing} {...L.smoothing} step={0.05} format={pctFmt} disabled={!smoothOn} onChange={(v) => set({ smoothing: v }, 'cursor.smoothing')} />
         <Toggle
-          label="Straighten moves"
-          title="Replaces wobbly moves between two resting points with a straight, smooth glide. The recording itself is not changed."
+          label={t('zoom.cursorPanel.straightenMoves')}
+          title={t('zoom.cursorPanel.replacesWobblyMovesBetween')}
           checked={smoothOn && straighten}
           disabled={!smoothOn}
           onChange={(v) => input.setStraighten(v)}
         />
         {smoothOn && paths && (
           <p className="hint" data-testid="straighten-summary">
-            {paths.straightened} of {paths.moves} {paths.moves === 1 ? 'move' : 'moves'} straightened. Drags, loops and moves across a click keep their recorded path.
+            {t('zoom.cursorPanel.straightenedOf', { count: paths.moves, n: fmt.count(paths.moves), straightened: fmt.count(paths.straightened) })}
           </p>
         )}
-        <Toggle label="Hide when idle" checked={smoothOn && cursor.hideWhenIdle} disabled={!smoothOn} onChange={(v) => set({ hideWhenIdle: v })} />
-        <Toggle label="Tilt while moving" title="Leans the cursor a few degrees in the direction it moves" checked={smoothOn && look.tilt} disabled={!smoothOn} onChange={(v) => set({ tilt: v })} />
-        <Toggle label="Motion trail" title="A short fading trail behind a fast-moving cursor" checked={smoothOn && look.trail} disabled={!smoothOn} onChange={(v) => set({ trail: v })} />
-        <Toggle label="Return to start at the end" checked={smoothOn && look.loopHome} disabled={!smoothOn} onChange={(v) => set({ loopHome: v })} />
-        <p className="hint">Glides the cursor back to where it started during the last second, so GIFs loop without a jump.</p>
+        <Toggle label={t('zoom.cursorPanel.hideWhenIdle')} checked={smoothOn && cursor.hideWhenIdle} disabled={!smoothOn} onChange={(v) => set({ hideWhenIdle: v })} />
+        <Toggle label={t('zoom.cursorPanel.tiltWhileMoving')} title={t('zoom.cursorPanel.leansTheCursorA')} checked={smoothOn && look.tilt} disabled={!smoothOn} onChange={(v) => set({ tilt: v })} />
+        <Toggle label={t('zoom.cursorPanel.motionTrail')} title={t('zoom.cursorPanel.aShortFadingTrail')} checked={smoothOn && look.trail} disabled={!smoothOn} onChange={(v) => set({ trail: v })} />
+        <Toggle label={t('zoom.cursorPanel.returnToStartAt')} checked={smoothOn && look.loopHome} disabled={!smoothOn} onChange={(v) => set({ loopHome: v })} />
+        <p className="hint">{t('zoom.cursorPanel.glidesTheCursorBack')}</p>
       </Section>
     </>
   )
@@ -360,8 +358,8 @@ function ColorRow({
           onClick={() => onChange(c)}
         />
       ))}
-      <label className={`color-dot custom ${custom ? 'active' : ''}`} title="Pick any colour" style={custom ? { background: value } : undefined}>
-        <input type="color" aria-label={`${label} (any colour)`} value={value} disabled={disabled} onChange={(e) => onChange(e.target.value.toLowerCase(), mergeKey)} />
+      <label className={`color-dot custom ${custom ? 'active' : ''}`} title={t('common.colour.pickAny')} style={custom ? { background: value } : undefined}>
+        <input type="color" aria-label={t('common.colour.anyFor', { label: String(label) })} value={value} disabled={disabled} onChange={(e) => onChange(e.target.value.toLowerCase(), mergeKey)} />
       </label>
     </div>
   )

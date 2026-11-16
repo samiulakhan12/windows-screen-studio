@@ -25,13 +25,13 @@ import { ShapeIcon } from '../shapeIcons'
 import { ItemActions, OnPreview, TimeFields } from './ShapesPanel'
 import { RadioChips } from './RadioChips'
 import './magnifier.css'
+import { t } from '../../../../shared/i18n/t'
 
-export const MAGNIFIER_HINT = "Shows a detail larger, from the recording's own pixels, while the rest of the screen stays in view. Blurred and pixelated areas stay hidden inside it."
-export const SOFT_NOTE = "Shown larger than the recording's pixels: it may look soft."
-const NO_CURSOR = 'No cursor data in this recording'
+export const magnifierHint = (): string => t('zoom.magnifierSection.hint')
+export const softNote = (): string => t('zoom.magnifierSection.soft')
 
 /** "20 percent": the Darkness slider's value text. */
-const percentText = (v: number): string => `${Math.round(v * 100)} percent`
+const percentText = (v: number): string => t('zoom.magnifierSection.percent', { n: fmt.count(Math.round(v * 100)) })
 
 export function MagnifierSection(props: { project: Project; selection: Selection; cursor?: CursorTrack }): JSX.Element {
   const { project, selection } = props
@@ -42,28 +42,28 @@ export function MagnifierSection(props: { project: Project; selection: Selection
   return (
     <>
       {spot && isMagnifier(spot) && <SelectedMagnifier project={project} spot={spot} cursor={props.cursor ?? null} />}
-      <Section title="Magnifier">
-        <div className="shape-tools two" role="group" aria-label="Add a magnifier">
+      <Section title={t('zoom.magnifierSection.magnifier')}>
+        <div className="shape-tools two" role="group" aria-label={t('zoom.magnifierSection.addAMagnifier')}>
           <button
             type="button"
             className="shape-tool spotlight"
             data-testid="magnifier-add"
-            title={withShortcut('Show a detail larger where the preview shows it, without zooming', keymap.addMagnifier)}
+            title={withShortcut(t('zoom.magnifierSection.addTitle'), keymap.addMagnifier)}
             onClick={() => group.command('addMagnifier')}
           >
             <ShapeIcon name="magnifier" size={20} />
-            <span>Add magnifier</span>
+            <span>{t('zoom.magnifierSection.addMagnifier')}</span>
           </button>
           <button
             type="button"
             className="shape-tool spotlight"
             data-testid="magnifier-add-cursor"
             disabled={!cursorValid}
-            title={cursorValid ? withShortcut('A magnifier that follows the cursor', keymap.addMagnifierCursor) : NO_CURSOR}
+            title={cursorValid ? withShortcut(t('zoom.magnifierSection.addCursorTitle'), keymap.addMagnifierCursor) : t('style.selectionPanel.noCursor')}
             onClick={() => group.command('addMagnifierCursor')}
           >
             <ShapeIcon name="spotlight-cursor" size={20} />
-            <span>Add magnifier on the cursor</span>
+            <span>{t('zoom.magnifierSection.addMagnifierOnThe')}</span>
           </button>
         </div>
       </Section>
@@ -103,18 +103,18 @@ function SelectedMagnifier({ project, spot, cursor }: { project: Project; spot: 
   }
 
   return (
-    <Section title="Selected magnifier" aside={<span className="muted small">{fmt.clock(spot.start)} – {fmt.clock(spot.end)}</span>}>
+    <Section title={t('zoom.magnifierSection.selectedMagnifier')} aside={<span className="muted small">{fmt.clock(spot.start)} – {fmt.clock(spot.end)}</span>}>
       <div data-testid="magnifier-section" className="magnifier-section">
         <OnPreview item={spot} kind="spotlight" clips={project.clips} />
         <label className="slider">
           <span className="slider-head">
-            <span>Zoom</span>
-            <span className="muted">{`${Number(zoom.toFixed(2))}×`}</span>
+            <span>{t('common.label.zoom')}</span>
+            <span className="muted">{fmt.factor(zoom)}</span>
           </span>
           <input
             type="range"
             data-testid="magnifier-zoom"
-            aria-label="Zoom"
+            aria-label={t('common.label.zoom')}
             aria-valuetext={timesText(zoom)}
             min={MAGNIFIER.min}
             max={MAGNIFIER.max}
@@ -126,37 +126,37 @@ function SelectedMagnifier({ project, spot, cursor }: { project: Project; spot: 
           />
         </label>
         <p className="hint magnifier-soft" aria-live="polite">
-          {soft && <span data-testid="magnifier-soft">{SOFT_NOTE}</span>}
+          {soft && <span data-testid="magnifier-soft">{softNote()}</span>}
         </p>
         <RadioChips<Spotlight['shape']>
           id="magnifier-shape"
-          label="Shape"
+          label={t('zoom.magnifierSection.shape')}
           value={spot.shape}
           onChange={(shape) => set({ shape })}
           options={[
-            { value: 'ellipse', label: 'Round' },
-            { value: 'rect', label: 'Rounded rectangle' }
+            { value: 'ellipse', label: t('zoom.magnifierSection.shape.ellipse') },
+            { value: 'rect', label: t('zoom.magnifierSection.shape.rect') }
           ]}
         />
         <RadioChips<Spotlight['mode']>
           id="magnifier-follows"
-          label="Follows"
+          label={t('zoom.magnifierSection.follows')}
           value={spot.mode}
           onChange={setFollows}
           options={[
-            { value: 'region', label: 'A place on the screen', title: 'The lens stays on the content you place it on' },
-            { value: 'cursor', label: 'The cursor', disabled: !cursorValid, title: cursorValid ? 'The lens follows the cursor' : NO_CURSOR }
+            { value: 'region', label: t('zoom.magnifierSection.follows.region'), title: t('zoom.magnifierSection.follows.region.title') },
+            { value: 'cursor', label: t('zoom.magnifierSection.follows.cursor'), disabled: !cursorValid, title: cursorValid ? t('zoom.magnifierSection.follows.cursor.title') : t('style.selectionPanel.noCursor') }
           ]}
         />
         <label className="slider">
           <span className="slider-head">
-            <span>Darkness</span>
-            <span className="muted">{`${Math.round(spot.dim * 100)}%`}</span>
+            <span>{t('zoom.magnifierSection.darkness')}</span>
+            <span className="muted">{fmt.percent(spot.dim)}</span>
           </span>
           <input
             type="range"
             data-testid="magnifier-darkness"
-            aria-label="Darkness"
+            aria-label={t('zoom.magnifierSection.darkness')}
             aria-valuetext={percentText(spot.dim)}
             min={MAGNIFIER_DARKNESS.min}
             max={MAGNIFIER_DARKNESS.max}
@@ -166,7 +166,7 @@ function SelectedMagnifier({ project, spot, cursor }: { project: Project; spot: 
             onChange={(e) => set({ dim: clamp(Number(e.target.value), MAGNIFIER_DARKNESS.min, MAGNIFIER_DARKNESS.max) }, `mag-dim:${id}`)}
           />
         </label>
-        <p className="hint">{MAGNIFIER_HINT}</p>
+        <p className="hint">{magnifierHint()}</p>
         <TimeFields project={project} item={spot} onChange={(times) => set(times, `mag-time:${id}`)} />
         <LookButtons itemKey={itemKey('spotlight', id)} />
         <ItemActions
