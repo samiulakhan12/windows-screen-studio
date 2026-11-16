@@ -7,12 +7,11 @@ import {
   summaryLine,
   VERSION_LIMITS,
   versionSummary,
-  versionTime,
   type SummaryChange,
   type VersionMeta
 } from '../../../shared/editor/versions'
 import { migrateProject } from '../../../shared/engine/project'
-import { formatBytes } from '../../../shared/storage/rules'
+import { fmt } from '../../../shared/i18n/fmt'
 import type { Project } from '../../../shared/types'
 import { Icon } from '../components/Icon'
 import { ipcMessage } from '../editor/captionItems'
@@ -25,8 +24,6 @@ type RowView =
   | { id: string; kind: 'compare'; result: { changes: SummaryChange[]; areas: string[] } | 'loading' | { error: string } }
   | { id: string; kind: 'rename' }
   | { id: string; kind: 'delete' }
-
-const listPhrase = (items: string[]): string => (items.length < 2 ? (items[0] ?? '') : `${items.slice(0, -1).join(', ')} and ${items[items.length - 1]}`)
 
 /**
  * Versions of the edit (E-12, docs/design/versions.md §2.4, §2.7): save one, and list, compare,
@@ -231,7 +228,7 @@ export function VersionsDialog({
                 return (
                   <li key={v.id} className="version-row" data-testid="version-row" data-version={v.id} data-auto={v.auto}>
                     <div className="version-main">
-                      <div className="version-text" title={formatBytes(v.bytes)}>
+                      <div className="version-text" title={fmt.bytes(v.bytes, 'storage')}>
                         {view?.kind === 'rename' ? (
                           <input
                             className="version-rename"
@@ -256,7 +253,7 @@ export function VersionsDialog({
                         )}
                         <span className="version-meta">
                           {v.auto && <span className="version-badge">Automatic</span>}
-                          <span>{versionTime(v.createdAt)}</span>
+                          <span>{fmt.date(Date.parse(v.createdAt), 'version')}</span>
                           <span aria-hidden="true">·</span>
                           <span>{summaryLine(v.summary)}</span>
                         </span>
@@ -350,7 +347,7 @@ function CompareView({ result }: { result: { changes: SummaryChange[]; areas: st
           </tbody>
         </table>
       )}
-      {areas.length > 0 && <p className="hint">{changes.length ? 'Also different' : 'Different'}: {listPhrase(areas)}.</p>}
+      {areas.length > 0 && <p className="hint">{changes.length ? 'Also different' : 'Different'}: {fmt.list(areas)}.</p>}
     </div>
   )
 }

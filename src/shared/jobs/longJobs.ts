@@ -2,6 +2,7 @@
  * Long jobs (F-12, docs/design/hands-off.md): what the taskbar button, its thumbnail buttons and
  * the notifications show for the jobs running now. Pure; src/main/longJobs.ts applies it.
  */
+import { fmt } from '../i18n/fmt'
 
 /** 'ai': a request to AI on this PC expected to take more than 10 s (docs/design/smart-tools.md §9.2). */
 export type JobKind = 'export' | 'captions' | 'analysis' | 'ai'
@@ -128,7 +129,7 @@ export function notificationFor(kind: JobKind, outcome: JobOutcome, files: reado
   // A batch that stopped early or lost files says so.
   const failed = outcome.failed ?? 0
   const more = `${failed > 0 ? ` · ${failed} failed` : ''}${outcome.stopped ? ' · stopped early' : ''}`
-  if (files.length === 1) return { title: 'Export finished', body: `${fileName(files[0].path)} · ${sizeText(files[0].bytes)}${more}`, actions: ['open', 'show'] }
+  if (files.length === 1) return { title: 'Export finished', body: `${fileName(files[0].path)} · ${fmt.bytes(files[0].bytes)}${more}`, actions: ['open', 'show'] }
   return { title: `${files.length} files exported`, body: `${folderName(files[0].path)}${more}`, actions: ['show'] }
 }
 

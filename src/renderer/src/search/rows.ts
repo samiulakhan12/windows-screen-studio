@@ -4,6 +4,7 @@
  */
 import type { SearchHit, SearchMoment, SnippetPart } from '../../../shared/api/search'
 import { KIND_LABEL, spokenTime } from '../../../shared/search/moment'
+import { fmt } from '../../../shared/i18n/fmt'
 import { SEARCH_LIMITS } from '../../../shared/search/types'
 
 /** Moments shown per recording until "more" is pressed (§4). */
@@ -19,7 +20,7 @@ const textOf = (parts: SnippetPart[]): string => parts.map((p) => p.text).join('
 
 export function dateOf(iso: string): string {
   const d = new Date(iso)
-  return Number.isNaN(d.getTime()) ? '' : d.toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' })
+  return Number.isNaN(d.getTime()) ? '' : fmt.date(d.getTime(), 'dayYear')
 }
 
 /** The rows of the results, in order: per recording its heading, its moments shown, and "more". */

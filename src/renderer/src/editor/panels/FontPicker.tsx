@@ -3,6 +3,7 @@ import type { AssetState } from '../../../../shared/api/assets'
 import { catalogFamily, catalogFont, catalogId, CATALOG_FONTS, CATALOG_PREFIX, type CatalogFont, type FontCoverage } from '../../../../shared/captions/fontCatalog'
 import { partnerFor } from '../../../../shared/captions/fontStack'
 import { DEFAULT_FONT_LABEL, fontNameFromFile, fontOf, MAX_PROJECT_FONTS, newFontId } from '../../../../shared/render/fonts'
+import { fmt } from '../../../../shared/i18n/fmt'
 import type { Project, ProjectFont } from '../../../../shared/types'
 import { fontState, loadCatalogFont, preloadProjectFont } from '../../render/fontLoader'
 import { onStyleAssetsChanged } from '../../render/watermarkLayer'
@@ -170,7 +171,7 @@ function CatalogDownload({ font }: { font: CatalogFont }): JSX.Element | null {
         <>
           <span className="hint" role="status">
             {progress?.retryAt
-              ? `The download server is busy. Trying again at ${new Date(progress.retryAt).toLocaleTimeString()}.`
+              ? `The download server is busy. Trying again at ${fmt.time(progress.retryAt, 'seconds')}.`
               : `Downloading ${font.family}: ${megabytes(progress?.received ?? 0)} of ${size}`}
           </span>
           <button type="button" className="btn" onClick={() => void window.api.cancelAssetDownload(font.id)}>

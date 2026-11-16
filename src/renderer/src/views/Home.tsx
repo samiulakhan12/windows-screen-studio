@@ -5,7 +5,6 @@ import { BUSY_COPY } from '../../../shared/updates/updates'
 import { PROJECTS_CHANGED_EVENT } from '../settings/StorageSection'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { ProcessingProgress, RegionSelection, UnfinishedRecording, WindowCaptureSupport } from '../../../shared/api/recording'
-import { formatTime } from '../../../shared/engine/project'
 import { mediaUrl } from '../../../shared/mediaUrl'
 import type { CaptureSource, ProjectSummary } from '../../../shared/types'
 import { Icon } from '../components/Icon'
@@ -34,6 +33,7 @@ import {
   type RecordingSettings,
   type RecordingSettingsPatch
 } from '../../../shared/recording/settings'
+import { fmt } from '../../../shared/i18n/fmt'
 import '../recorder/recorder.css'
 import { ImportButton } from '../import/ImportButton'
 import { ImportDialog } from '../import/ImportDialog'
@@ -91,12 +91,6 @@ const PHASE_LABEL: Record<RecordingPhase, string> = {
   countdown: 'Starting…',
   recording: 'Recording…',
   saving: 'Saving…'
-}
-
-function formatBytes(n: number): string {
-  if (n >= 1e9) return `${(n / 1e9).toFixed(1)} GB`
-  if (n >= 1e6) return `${Math.round(n / 1e6)} MB`
-  return `${Math.max(1, Math.round(n / 1e3))} KB`
 }
 
 /** The recording options (app settings, kept by the main process), from the last visit to Home. */
@@ -304,10 +298,10 @@ function projectDate(iso: string): string {
   if (Number.isNaN(d.getTime())) return ''
   const startOfToday = new Date()
   startOfToday.setHours(0, 0, 0, 0)
-  const time = d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })
+  const time = fmt.time(d.getTime())
   if (d.getTime() >= startOfToday.getTime()) return `Today, ${time}`
   if (d.getTime() >= startOfToday.getTime() - DAY_MS) return `Yesterday, ${time}`
-  return d.toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' })
+  return fmt.date(d.getTime(), 'dayYear')
 }
 
 /** A recording in the library: thumbnail, name, length and date; open, show in Explorer and delete. */
@@ -328,7 +322,7 @@ function ProjectCard({
       <button className="project-open" onClick={onOpen} disabled={disabled}>
         <span className="project-thumb">
           {thumb ? <img src={thumb} alt="" /> : <Icon name="film" size={22} />}
-          <span className="project-duration">{formatTime(project.duration, false)}</span>
+          <span className="project-duration">{fmt.clock(project.duration, 'whole')}</span>
         </span>
         <span className="project-meta">
           <span className="project-name">{project.name}</span>
@@ -703,7 +697,7 @@ export function Home({ onOpenProject }: { onOpenProject: (id: string) => void })
   }
 
   const removeUnfinished = async (item: UnfinishedRecording): Promise<void> => {
-    if (!confirm(`Delete this unfinished recording (${formatBytes(item.bytes)})? This cannot be undone.`)) return
+    if (!confirm(`Delete this unfinished recording (${fmt.bytes(item.bytes, 'coarse')})? This cannot be undone.`)) return
     await window.api.deleteProject(item.id)
     void refreshLibrary()
   }
@@ -828,9 +822,9 @@ export function Home({ onOpenProject }: { onOpenProject: (id: string) => void })
                       <Icon name="film" size={16} />
                     </span>
                     <div className="unfinished-info" title={u.error ?? undefined}>
-                      <span className="project-name">{new Date(u.createdAt).toLocaleString(undefined, { dateStyle: 'short', timeStyle: 'short' })}</span>
+                      <span className="project-name">{fmt.date(new Date(u.createdAt).getTime(), 'dayTime')}</span>
                       <span className="muted">
-                        {u.status === 'interrupted' ? 'Interrupted' : 'Processing failed'} · {formatBytes(u.bytes)}
+                        {u.status === 'interrupted' ? 'Interrupted' : 'Processing failed'} · {fmt.bytes(u.bytes, 'coarse')}
                         {u.error ? ` · ${u.error}` : ''}
                       </span>
                     </div>

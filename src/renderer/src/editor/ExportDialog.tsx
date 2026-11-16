@@ -351,7 +351,7 @@ function presetLimit(preset: ExportPreset): { text: string; title: string } | nu
   const l = preset.limits
   if (!l?.maxSeconds) return null
   const size = l.maxMB ? ` and ${l.maxMB} MB` : ''
-  return { text: `≤ ${formatClock(l.maxSeconds)}`, title: `${preset.label} takes videos up to ${formatClock(l.maxSeconds)}${size}` }
+  return { text: `≤ ${fmt.clock(l.maxSeconds, 'whole')}`, title: `${preset.label} takes videos up to ${fmt.clock(l.maxSeconds, 'whole')}${size}` }
 }
 
 export function ExportDialog(props: Props): JSX.Element {
@@ -982,10 +982,10 @@ export function ExportDialog(props: Props): JSX.Element {
   if (gif && length > 30) warnings.push({ key: 'gif', cls: 'warn', text: 'Long GIFs get very large; MP4 is better for clips over 30 s.' })
   if (audioOnly && !hasSound) warnings.push({ key: 'silent', cls: 'warn', text: 'This recording has no sound to export.' })
   if (limits?.maxSeconds && length > limits.maxSeconds) {
-    warnings.push({ key: 'len', cls: 'warn', text: `${preset!.label} takes videos up to ${formatClock(limits.maxSeconds)}; this one is ${formatClock(length)}. Trim it first.` })
+    warnings.push({ key: 'len', cls: 'warn', text: `${preset!.label} takes videos up to ${fmt.clock(limits.maxSeconds, 'whole')}; this one is ${fmt.clock(length, 'whole')}. Trim it first.` })
   }
   if (targetInfo && !targetInfo.feasible) {
-    warnings.push({ key: 'target', cls: 'warn', text: `${target} MB is too small for ${formatClock(length)} of video. Choose a larger size or shorten the clip.` })
+    warnings.push({ key: 'target', cls: 'warn', text: `${target} MB is too small for ${fmt.clock(length, 'whole')} of video. Choose a larger size or shorten the clip.` })
   } else if (targetInfo && targetInfo.bpp < LOW_BPP && !audioOnly) {
     warnings.push({ key: 'target', cls: 'warn', text: `${target} MB is tight for ${dims.width}×${dims.height} at ${dims.fps} fps; a lower resolution or 30 fps will look sharper.` })
   }
@@ -1039,7 +1039,7 @@ export function ExportDialog(props: Props): JSX.Element {
                 <label className="export-frame">
                   <span className="slider-head">
                     <span>Frame</span>
-                    <span className="muted">{formatClock(frameAt, true)}</span>
+                    <span className="muted">{fmt.clock(frameAt, 'rounded-tenths')}</span>
                   </span>
                   <input
                     type="range"
@@ -1072,7 +1072,7 @@ export function ExportDialog(props: Props): JSX.Element {
                   {mode === 'single' ? (
                     <>
                       <p className="hint export-size">
-                        {audioOnly ? <>Audio only · {formatDuration(length)}</> : sizeLine(effective, dims, length)}
+                        {audioOnly ? <>Audio only · {fmt.duration(length)}</> : sizeLine(effective, dims, length)}
                         {gif ? ` · GIFs play at ${GIF_FPS} fps` : ''}
                         {target ? ` · ${gif ? 'up to' : 'about'} ${target} MB` : ''}
                       </p>
@@ -1081,7 +1081,7 @@ export function ExportDialog(props: Props): JSX.Element {
                           {partNames.map((name, i) => (
                             <li key={name} title={name}>
                               <span className="name">{name}</span>
-                              <span className="muted">{formatClock(parts[i].end - parts[i].start)}</span>
+                              <span className="muted">{fmt.clock(parts[i].end - parts[i].start, 'whole')}</span>
                             </li>
                           ))}
                         </ul>
@@ -1090,7 +1090,7 @@ export function ExportDialog(props: Props): JSX.Element {
                   ) : (
                     <>
                       <p className="hint export-size">
-                        {items.length === 0 ? 'Tick the files to export.' : `${items.length} file${items.length === 1 ? '' : 's'} · ${formatDuration(length)} each, into one folder:`}
+                        {items.length === 0 ? 'Tick the files to export.' : `${items.length} file${items.length === 1 ? '' : 's'} · ${fmt.duration(length)} each, into one folder:`}
                       </p>
                       {items.length > 0 && (
                         <ul className="export-batch-files">
@@ -1477,7 +1477,7 @@ export function ExportDialog(props: Props): JSX.Element {
             </p>
             <p className="hint path">{phase.path}</p>
             <p className="hint">
-              {formatBytes(phase.bytes)} · exported in {formatDuration(phase.seconds)} · {phase.encoder}
+              {fmt.bytes(phase.bytes)} · exported in {fmt.duration(phase.seconds)} · {phase.encoder}
             </p>
             <SizeReport result={phase} />
             {phase.also ? <AlsoReport extras={phase.extras} also={phase.also} video={phase.path} /> : <ExtrasReport extras={phase.extras} />}
@@ -1566,7 +1566,7 @@ function statusText(s: BatchStatus): string {
       return `Rendering… ${Math.floor((p.frame / Math.max(1, p.frames)) * 100)}%`
     }
     case 'done':
-      return `${formatBytes(s.bytes)} · ${formatDuration(s.seconds)}`
+      return `${fmt.bytes(s.bytes)} · ${fmt.duration(s.seconds)}`
     case 'failed':
       return s.message
     case 'cancelled':
@@ -1761,7 +1761,7 @@ function RunningView({
   if (progress?.phase === 'rendering') {
     const parts = [`Rendering… ${Math.floor(fraction * 100)}%`]
     if (progress.fps > 0) parts.push(`${progress.fps.toFixed(progress.fps < 10 ? 1 : 0)} fps`)
-    if (progress.eta !== null) parts.push(`about ${formatDuration(progress.eta)} left`)
+    if (progress.eta !== null) parts.push(`about ${fmt.duration(progress.eta)} left`)
     status = parts.join(' · ')
   } else if (finalizing) {
     status = progress?.detail ? `Finalizing… ${progress.detail.replace(/…$/, '').toLowerCase()}` : gif ? 'Finalizing… building the GIF' : 'Finalizing…'

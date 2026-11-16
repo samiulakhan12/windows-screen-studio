@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import type { UpdateInstallResult } from '../../../shared/api/updates'
+import { fmt } from '../../../shared/i18n/fmt'
 import type { UpdateState } from '../../../shared/updates/updates'
 
 /** Flown's update state (NW-15, docs/design/auto-update.md): what main last said, null until it answers. */
@@ -72,6 +73,6 @@ export const isPutOff = (version: string): boolean => later.has(version)
 export function checkedAt(iso: string, now = new Date()): string {
   const d = new Date(iso)
   if (!Number.isFinite(d.getTime())) return ''
-  const time = d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })
-  return d.toDateString() === now.toDateString() ? time : `${d.toLocaleDateString(undefined, { day: 'numeric', month: 'short' })}, ${time}`
+  const time = fmt.time(d.getTime())
+  return d.toDateString() === now.toDateString() ? time : `${fmt.date(d.getTime(), 'day')}, ${time}`
 }

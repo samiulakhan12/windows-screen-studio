@@ -14,6 +14,7 @@ import { cropOf } from '../../../shared/engine/crop'
 import { planOf, videoDuration } from '../../../shared/engine/freeze'
 import { privateLike } from '../../../shared/smart/privateText'
 import { speechHeard } from '../../../shared/smart/speechHeard'
+import { fmt } from '../../../shared/i18n/fmt'
 import type { MeasureText } from '../../../shared/editor/duplicate'
 import type { CursorTrack, Project, ProjectSummary } from '../../../shared/types'
 
@@ -54,8 +55,8 @@ export function sizeText(bytes: number): string {
  */
 export function copySpace(cost: CopyCost, n: number): { text: string; blocked: boolean } {
   const need = cost.bytes * Math.max(1, n) + SPARE_BYTES
-  if (need > cost.free) return { text: CLIPS_WORDS.noRoom(Math.max(1, n), sizeText(cost.bytes * Math.max(1, n)), sizeText(cost.free)), blocked: true }
-  return { text: cost.linked ? CLIPS_WORDS.linked : CLIPS_WORDS.oneDrive(sizeText(cost.bytes)), blocked: false }
+  if (need > cost.free) return { text: CLIPS_WORDS.noRoom(Math.max(1, n), fmt.bytes(cost.bytes * Math.max(1, n), 'megabytes'), fmt.bytes(cost.free, 'megabytes')), blocked: true }
+  return { text: cost.linked ? CLIPS_WORDS.linked : CLIPS_WORDS.oneDrive(fmt.bytes(cost.bytes, 'megabytes')), blocked: false }
 }
 
 /**

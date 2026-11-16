@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState, type RefObject } from 'react'
 import type { StorageCleanupResult, StorageOverview } from '../../../shared/api/storage'
-import { CACHE_DAY_CHOICES, formatBytes, freedBytes, REMOVE_DAY_CHOICES, sharedBytes, usedAgo, type CleanupItem, type SharedFile, type StorageRules } from '../../../shared/storage/rules'
+import { CACHE_DAY_CHOICES, freedBytes, REMOVE_DAY_CHOICES, sharedBytes, type CleanupItem, type SharedFile, type StorageRules } from '../../../shared/storage/rules'
+import { fmt } from '../../../shared/i18n/fmt'
 import { ipcMessage } from './providerText'
 
 /** Recordings listed before "Show all". */
@@ -11,10 +12,10 @@ export const PROJECTS_CHANGED_EVENT = 'ssw:projects-changed'
 
 const keyOf = (i: Pick<CleanupItem, 'id' | 'action'>): string => `${i.action}:${i.id}`
 /** " · 1.9 GB shared with a copy" for files a recording shares with another (Duplicate links its media). */
-const sharedNote = (files: readonly SharedFile[] | undefined): string => (files?.length ? ` · ${formatBytes(sharedBytes(files))} shared with a copy` : '')
+const sharedNote = (files: readonly SharedFile[] | undefined): string => (files?.length ? ` · ${fmt.bytes(sharedBytes(files), 'storage')} shared with a copy` : '')
 const dateOf = (iso: string): string => {
   const d = new Date(iso)
-  return Number.isFinite(d.getTime()) ? d.toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' }) : ''
+  return Number.isFinite(d.getTime()) ? fmt.date(d.getTime(), 'dayYear') : ''
 }
 
 /**
@@ -107,8 +108,8 @@ export function StorageSection(): JSX.Element {
         <>
           <div className="health-actions">
             <p className="storage-total" data-testid="storage-total">
-              Recordings use <strong>{formatBytes(overview.bytes)}</strong>
-              {overview.free !== null ? ` · ${formatBytes(overview.free)} free on this drive` : ''}
+              Recordings use <strong>{fmt.bytes(overview.bytes, 'storage')}</strong>
+              {overview.free !== null ? ` · ${fmt.bytes(overview.free, 'storage')} free on this drive` : ''}
             </p>
             <button type="button" className="btn ghost settings-small" onClick={() => void scan()}>
               Refresh
@@ -124,14 +125,14 @@ export function StorageSection(): JSX.Element {
                     {r.name}
                   </span>
                   <span className="storage-meta">
-                    {r.finished ? `${dateOf(r.createdAt)} · used ${usedAgo(r.lastUsed, overview.now)}` : 'Unfinished'}
-                    {r.cacheBytes > 0 ? ` · incl. ${formatBytes(r.cacheBytes)} cache` : ''}
-                    {r.versionBytes ? ` · ${formatBytes(r.versionBytes)} in versions` : ''}
+                    {r.finished ? `${dateOf(r.createdAt)} · used ${fmt.relative(r.lastUsed, overview.now)}` : 'Unfinished'}
+                    {r.cacheBytes > 0 ? ` · incl. ${fmt.bytes(r.cacheBytes, 'storage')} cache` : ''}
+                    {r.versionBytes ? ` · ${fmt.bytes(r.versionBytes, 'storage')} in versions` : ''}
                     {sharedNote(r.shared)}
                   </span>
                   <span className="storage-size">
                     {r.capped ? 'at least ' : ''}
-                    {formatBytes(r.bytes)}
+                    {fmt.bytes(r.bytes, 'storage')}
                   </span>
                   <button type="button" className="btn ghost settings-small" aria-label={`Show ${r.name} in its folder`} onClick={() => void window.api.revealProject(r.id).catch(() => undefined)}>
                     Show
@@ -195,7 +196,7 @@ export function StorageSection(): JSX.Element {
                   <fieldset key={g.action} className="storage-group">
                     <legend>
                       {g.action === 'remove' ? 'Move to the Recycle Bin' : 'Clear caches'} ({g.items.length} recording{g.items.length === 1 ? '' : 's'},{' '}
-                      {formatBytes(freedBytes(g.items))})
+                      {fmt.bytes(freedBytes(g.items), 'storage')})
                     </legend>
                     {g.items.map((i) => (
                       <label key={keyOf(i)} className="storage-check storage-item">
@@ -211,10 +212,10 @@ export function StorageSection(): JSX.Element {
                         />
                         <span className="storage-name">{i.name}</span>
                         <span className="storage-meta">
-                          {dateOf(i.createdAt)} · used {usedAgo(i.lastUsed, overview.now)}
+                          {dateOf(i.createdAt)} · used {fmt.relative(i.lastUsed, overview.now)}
                           {sharedNote(i.shared)}
                         </span>
-                        <span className="storage-size">{formatBytes(i.bytes)}</span>
+                        <span className="storage-size">{fmt.bytes(i.bytes, 'storage')}</span>
                       </label>
                     ))}
                   </fieldset>
@@ -223,7 +224,7 @@ export function StorageSection(): JSX.Element {
               <div className="health-actions">
                 {plan.length > 0 && (
                   <button type="button" className="btn danger settings-small" onClick={() => void run()} disabled={busy || chosen.length === 0}>
-                    Move {chosen.length} to the Recycle Bin ({formatBytes(chosenBytes)})
+                    Move {chosen.length} to the Recycle Bin ({fmt.bytes(chosenBytes, 'storage')})
                   </button>
                 )}
                 <button
@@ -243,7 +244,7 @@ export function StorageSection(): JSX.Element {
             <div role="status" data-testid="storage-result" ref={resultRef} tabIndex={-1} className="storage-result">
               <p className="hint">
                 {result.moved.length
-                  ? `Moved ${result.moved.length} item${result.moved.length === 1 ? '' : 's'} to the Recycle Bin · freed ${formatBytes(result.freed)}`
+                  ? `Moved ${result.moved.length} item${result.moved.length === 1 ? '' : 's'} to the Recycle Bin · freed ${fmt.bytes(result.freed, 'storage')}`
                   : 'Nothing was moved.'}
               </p>
               {result.failed.map((f) => (
