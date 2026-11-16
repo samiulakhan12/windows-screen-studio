@@ -25,13 +25,11 @@ keepOffline(self)
 
 const absolute = (url: string): string => new URL(url, self.location.href).href
 
-/** Why it cannot listen, in words for the Audio panel. */
-function explain(err: unknown): string {
-  const text = err instanceof Error ? err.message : String(err)
-  if (/memory/i.test(text)) return 'this PC ran out of memory for it'
-  if (/fetch|load|404|not found/i.test(text)) return `its files could not be loaded (${text})`
-  return text || 'unknown error'
-}
+/**
+ * Why it cannot listen, as the engine said it: the worker loads no messages, so the Audio panel puts
+ * it in words (soundScan's workerReason).
+ */
+const explain = (err: unknown): string => (err instanceof Error ? err.message : String(err))
 
 let classifier: AudioClassifier | null = null
 let scanner: SoundScanner | null = null

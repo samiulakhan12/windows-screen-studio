@@ -16,9 +16,14 @@ import type { Project } from '../../../../shared/types'
 import { useEditor, type EditorServices } from '../context'
 import { createAudio } from '../media'
 import './soundLibrary.css'
+import { t } from '../../../../shared/i18n/t'
+import { moodName } from '../../../../shared/audio/soundNames'
+import { fmt } from '../../../../shared/i18n/fmt'
 
 type Filter = 'all' | Mood
-const FILTERS: readonly { id: Filter; label: string }[] = [{ id: 'all', label: 'All' }, ...MOODS]
+const FILTERS: readonly Filter[] = ['all', ...MOODS.map((m) => m.id)]
+/** A filter chip's words: All, or the mood's name (wave 10's moods). */
+const filterName = (f: Filter): string => (f === 'all' ? t('sound.musicLibrarySection.all') : moodName(f))
 
 /** A library file through the media protocol's sounds host (catalogue names only). */
 export const librarySoundUrl = (file: string): string => `${MEDIA_SCHEME}://sounds/${encodeURIComponent(file)}`
@@ -63,7 +68,7 @@ export function MusicLibrarySection(props: { project: Project }): JSX.Element {
       (err: unknown) => {
         if (!alive) return
         setStates(new Map())
-        setError(`The music library could not be read: ${ipcMessage(err)}`)
+        setError(t('sound.musicLibrarySection.readFailed', { error: ipcMessage(err) }))
       }
     )
     const off = window.api.onSoundLibraryProgress((s) => alive && setStates((m) => new Map(m ?? []).set(s.id, s)))
@@ -82,7 +87,7 @@ export function MusicLibrarySection(props: { project: Project }): JSX.Element {
     audio.current?.pause()
     audio.current = null
     setPlaying(null)
-    setLive('Stopped')
+    setLive(t('sound.musicLibrarySection.stopped'))
   }
   const togglePlay = (bed: MusicBed, here: boolean): void => {
     if (!here) return
@@ -93,12 +98,12 @@ export function MusicLibrarySection(props: { project: Project }): JSX.Element {
       if (audio.current !== a) return
       audio.current = null
       setPlaying(null)
-      setLive('Stopped')
+      setLive(t('sound.musicLibrarySection.stopped'))
     }
     audio.current = a
     void a.play().catch(() => undefined)
     setPlaying(bed.id)
-    setLive(`Playing preview: ${bed.title}, ${bedLength(bed).spoken}`)
+    setLive(t('sound.musicLibrarySection.playing', { title: bed.title, length: bedLength(bed).spoken }))
   }
   const use = async (bed: MusicBed, download: boolean): Promise<void> => {
     if (busy) return
@@ -107,7 +112,7 @@ export function MusicLibrarySection(props: { project: Project }): JSX.Element {
     try {
       await useBedIn(project, bed.id, services, download)
       if (download) setStates((m) => new Map(m ?? []).set(bed.id, { id: bed.id, state: 'downloaded', bytes: bed.prepared.bytes }))
-      setLive(`Music: ${bed.title} by ${bed.artist}`)
+      setLive(t('sound.musicLibrarySection.inUseSaid', { title: bed.title, artist: bed.artist }))
     } catch (err) {
       setError(ipcMessage(err))
       // A failed download leaves the row as it was (its file deleted).
@@ -131,30 +136,30 @@ export function MusicLibrarySection(props: { project: Project }): JSX.Element {
     const to = e.key === 'Home' ? 0 : e.key === 'End' ? FILTERS.length - 1 : step ? (i + step + FILTERS.length) % FILTERS.length : -1
     if (to < 0) return
     e.preventDefault()
-    setFilter(FILTERS[to].id)
+    setFilter(FILTERS[to])
     chips.current[to]?.focus()
   }
 
   return (
     <section className="insp-section music-library-section">
       <h3>
-        <span>Music library</span>
+        <span>{t('sound.musicLibrarySection.musicLibrary')}</span>
       </h3>
-      <p className="hint">Free music for any video (CC0). Every track loops smoothly under your voice.</p>
-      <div className="chips music-moods" role="radiogroup" aria-label="Mood" data-testid="music-mood">
+      <p className="hint">{t('sound.musicLibrarySection.freeMusicForAny')}</p>
+      <div className="chips music-moods" role="radiogroup" aria-label={t('sound.musicLibrarySection.mood')} data-testid="music-mood">
         {FILTERS.map((f, i) => (
           <button
-            key={f.id}
+            key={f}
             ref={(el) => void (chips.current[i] = el)}
             type="button"
             role="radio"
-            aria-checked={filter === f.id}
-            tabIndex={filter === f.id ? 0 : -1}
-            className={`chip ${filter === f.id ? 'active' : ''}`}
-            onClick={() => setFilter(f.id)}
+            aria-checked={filter === f}
+            tabIndex={filter === f ? 0 : -1}
+            className={`chip ${filter === f ? 'active' : ''}`}
+            onClick={() => setFilter(f)}
             onKeyDown={(e) => onMoodKey(e, i)}
           >
-            {f.label}
+            {filterName(f)}
           </button>
         ))}
       </div>
@@ -164,7 +169,7 @@ export function MusicLibrarySection(props: { project: Project }): JSX.Element {
         </p>
       )}
       {states === null ? (
-        <p className="hint">Loading…</p>
+        <p className="hint">{t('common.state.loading')}</p>
       ) : (
         <ul className="music-library" role="list" data-testid="music-library" onKeyDown={onListKey}>
           {rows.map((bed) => {
@@ -172,7 +177,7 @@ export function MusicLibrarySection(props: { project: Project }): JSX.Element {
             const here = s.state === 'bundled' || s.state === 'downloaded'
             const downloading = s.state === 'downloading' || (busy === bed.id && !here)
             const length = bedLength(bed)
-            const mood = MOODS.find((m) => m.id === bed.mood)!.label
+            const mood = moodName(bed.mood)
             const hintId = `music-hint-${bed.id}`
             const size = megabytes(bed.prepared.bytes)
             const current = inUse === bed.id
@@ -192,41 +197,41 @@ export function MusicLibrarySection(props: { project: Project }): JSX.Element {
                     className="btn ghost small-btn"
                     data-testid="music-play"
                     aria-pressed={playing === bed.id}
-                    aria-label={`Play preview of ${bed.title}`}
+                    aria-label={t('sound.musicLibrarySection.playPreviewOf', { title: bed.title })}
                     aria-disabled={!here || undefined}
                     aria-describedby={here ? undefined : hintId}
                     onClick={() => togglePlay(bed, here)}
                     onKeyDown={(e) => spaceToggles(e, () => togglePlay(bed, here))}
                   >
-                    {playing === bed.id ? 'Stop' : 'Play'}
+                    {playing === bed.id ? t('common.action.stop') : t('common.action.play')}
                   </button>
                   {here ? (
                     <button
                       type="button"
                       className="btn small-btn"
                       data-testid="music-use"
-                      aria-label={current ? `${bed.title} is in use` : `Use ${bed.title}`}
+                      aria-label={current ? t('sound.musicLibrarySection.isInUse', { title: bed.title }) : t('sound.musicLibrarySection.use', { title: bed.title })}
                       aria-disabled={current || busy !== null || undefined}
                       onClick={() => void (current ? undefined : use(bed, false))}
                     >
-                      {current ? 'In use' : 'Use'}
+                      {current ? t('sound.musicLibrarySection.inUse') : t('common.action.use')}
                     </button>
                   ) : (
                     <button
                       type="button"
                       className="btn small-btn"
                       data-testid="music-download"
-                      aria-label={`Download and use ${bed.title}, ${size.spoken}`}
+                      aria-label={t('sound.musicLibrarySection.downloadAndUse', { title: bed.title, spoken: size.spoken })}
                       aria-disabled={busy !== null || downloading || undefined}
                       onClick={() => void (downloading ? undefined : use(bed, true))}
                     >
-                      Download and use ({size.text})
+                      {t('sound.musicLibrarySection.downloadAndUseSize', { size: size.text })}
                     </button>
                   )}
                 </span>
                 {!here && (
                   <span id={hintId} className="hint music-row-hint">
-                    Download to listen
+                    {t('sound.musicLibrarySection.downloadToListen')}
                   </span>
                 )}
                 {downloading && (
@@ -234,11 +239,11 @@ export function MusicLibrarySection(props: { project: Project }): JSX.Element {
                     className="music-progress"
                     role="progressbar"
                     data-testid="music-progress"
-                    aria-label={`Downloading ${bed.title}`}
+                    aria-label={t('sound.musicLibrarySection.downloading', { title: bed.title })}
                     aria-valuemin={0}
                     aria-valuemax={100}
                     aria-valuenow={pct}
-                    aria-valuetext={`${pct} percent`}
+                    aria-valuetext={t('sound.musicLibrarySection.percent', { pct: fmt.count(pct) })}
                   >
                     <span style={{ width: `${pct}%` }} />
                   </span>
@@ -286,9 +291,9 @@ export function BedMissingNotice(props: { project: Project }): JSX.Element | nul
   }
   return (
     <div className="callout music-missing-bed" role="alert">
-      <span>The music file is missing. Copy it from the library again?</span>
+      <span>{t('sound.musicLibrarySection.theMusicFileIs')}</span>
       <button type="button" className="btn small-btn" disabled={busy} onClick={() => void again()}>
-        Copy {bed.title} again
+        {t('sound.musicLibrarySection.copyAgain', { title: bed.title })}
       </button>
       {error && <span>{error}</span>}
     </div>

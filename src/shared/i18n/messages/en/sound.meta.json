@@ -1,1 +1,470 @@
-{}
+{
+  "audioPanel.recording": {
+    "description": "audioPanel, the title of <Section> (src/renderer/src/editor/panels/AudioPanel.tsx:55)."
+  },
+  "audioPanel.thisRecordingHasNo": {
+    "description": "audioPanel, text of <p> (src/renderer/src/editor/panels/AudioPanel.tsx:56)."
+  },
+  "audioPanel.mute": {
+    "description": "audioPanel, the label of <Toggle> (src/renderer/src/editor/panels/AudioPanel.tsx:57)."
+  },
+  "audioPanel.cleanUp": {
+    "description": "audioPanel, the title of <Section> (src/renderer/src/editor/panels/AudioPanel.tsx:132)."
+  },
+  "audioPanel.noiseReduction": {
+    "description": "audioPanel, the label of <Slider> (src/renderer/src/editor/panels/AudioPanel.tsx:134)."
+  },
+  "audioPanel.evenOutLoudness": {
+    "description": "audioPanel, the label of <Toggle> (src/renderer/src/editor/panels/AudioPanel.tsx:146)."
+  },
+  "audioPanel.fades": {
+    "description": "audioPanel, the title of <Section> (src/renderer/src/editor/panels/AudioPanel.tsx:150)."
+  },
+  "audioPanel.fadeInAtStart": {
+    "description": "audioPanel, the label of <Slider> (src/renderer/src/editor/panels/AudioPanel.tsx:151)."
+  },
+  "audioPanel.fadeOutAtEnd": {
+    "description": "audioPanel, the label of <Slider> (src/renderer/src/editor/panels/AudioPanel.tsx:152)."
+  },
+  "audioPanel.fadesTheWholeSoundtrack": {
+    "description": "audioPanel, text of <p> (src/renderer/src/editor/panels/AudioPanel.tsx:153)."
+  },
+  "audioPanel.music": {
+    "description": "audioPanel, the title of <Section> (src/renderer/src/editor/panels/AudioPanel.tsx:237)."
+  },
+  "audioPanel.aTrackUnderThe": {
+    "description": "audioPanel, text of <p> (src/renderer/src/editor/panels/AudioPanel.tsx:240)."
+  },
+  "audioPanel.yourOwnFile": {
+    "description": "audioPanel, text of <button> (src/renderer/src/editor/panels/AudioPanel.tsx:242)."
+  },
+  "audioPanel.backgroundMusic": {
+    "description": "audioPanel, text of <span> (src/renderer/src/editor/panels/AudioPanel.tsx:252)."
+  },
+  "audioPanel.chooseAnotherMusicFile": {
+    "description": "audioPanel, the title of <button> (src/renderer/src/editor/panels/AudioPanel.tsx:259)."
+  },
+  "audioPanel.replace": {
+    "description": "audioPanel, text of <button> (src/renderer/src/editor/panels/AudioPanel.tsx:260)."
+  },
+  "audioPanel.removeTheMusic": {
+    "description": "audioPanel, the title of <button> (src/renderer/src/editor/panels/AudioPanel.tsx:262)."
+  },
+  "audioPanel.removeMusic": {
+    "description": "audioPanel, the aria-label of <button> (src/renderer/src/editor/panels/AudioPanel.tsx:262)."
+  },
+  "audioPanel.thisMusicFileIs": {
+    "description": "audioPanel, text of <span> (src/renderer/src/editor/panels/AudioPanel.tsx:274)."
+  },
+  "audioPanel.musicVolume": {
+    "description": "audioPanel, the label of <Slider> (src/renderer/src/editor/panels/AudioPanel.tsx:277)."
+  },
+  "audioPanel.lowerUnderSpeech": {
+    "description": "audioPanel, the label of <Slider> (src/renderer/src/editor/panels/AudioPanel.tsx:279)."
+  },
+  "audioPanel.howFarTheMusic": {
+    "description": "audioPanel, text of <p> (src/renderer/src/editor/panels/AudioPanel.tsx:292)."
+  },
+  "audioPanel.theRecordingIsSilent": {
+    "description": "audioPanel, text of <p> (src/renderer/src/editor/panels/AudioPanel.tsx:293)."
+  },
+  "audioPanel.loop": {
+    "description": "audioPanel, the label of <Toggle> (src/renderer/src/editor/panels/AudioPanel.tsx:295)."
+  },
+  "audioPanel.repeatTheMusicWhen": {
+    "description": "audioPanel, the title of <Toggle> (src/renderer/src/editor/panels/AudioPanel.tsx:295)."
+  },
+  "audioPanel.fadeIn": {
+    "description": "audioPanel, the label of <Slider> (src/renderer/src/editor/panels/AudioPanel.tsx:296)."
+  },
+  "audioPanel.fadeOut": {
+    "description": "audioPanel, the label of <Slider> (src/renderer/src/editor/panels/AudioPanel.tsx:297)."
+  },
+  "musicLibrarySection.musicLibrary": {
+    "description": "musicLibrarySection, text of <span> (src/renderer/src/editor/panels/MusicLibrarySection.tsx:141)."
+  },
+  "musicLibrarySection.freeMusicForAny": {
+    "description": "musicLibrarySection, text of <p> (src/renderer/src/editor/panels/MusicLibrarySection.tsx:143)."
+  },
+  "musicLibrarySection.mood": {
+    "description": "musicLibrarySection, the aria-label of <div> (src/renderer/src/editor/panels/MusicLibrarySection.tsx:144)."
+  },
+  "musicLibrarySection.playPreviewOf": {
+    "description": "musicLibrarySection, the aria-label of <button> (src/renderer/src/editor/panels/MusicLibrarySection.tsx:195)."
+  },
+  "musicLibrarySection.isInUse": {
+    "description": "musicLibrarySection, the aria-label of <button> (src/renderer/src/editor/panels/MusicLibrarySection.tsx:208)."
+  },
+  "musicLibrarySection.use": {
+    "description": "musicLibrarySection, the aria-label of <button> (src/renderer/src/editor/panels/MusicLibrarySection.tsx:208)."
+  },
+  "musicLibrarySection.inUse": {
+    "description": "musicLibrarySection, text of <button> (src/renderer/src/editor/panels/MusicLibrarySection.tsx:212)."
+  },
+  "musicLibrarySection.downloadAndUse": {
+    "description": "musicLibrarySection, the aria-label of <button> (src/renderer/src/editor/panels/MusicLibrarySection.tsx:219)."
+  },
+  "musicLibrarySection.downloadToListen": {
+    "description": "musicLibrarySection, text of <span> (src/renderer/src/editor/panels/MusicLibrarySection.tsx:229)."
+  },
+  "musicLibrarySection.downloading": {
+    "description": "musicLibrarySection, the aria-label of <span> (src/renderer/src/editor/panels/MusicLibrarySection.tsx:237)."
+  },
+  "musicLibrarySection.percent": {
+    "description": "musicLibrarySection, the aria-valuetext of <span> (src/renderer/src/editor/panels/MusicLibrarySection.tsx:241)."
+  },
+  "musicLibrarySection.theMusicFileIs": {
+    "description": "musicLibrarySection, text of <span> (src/renderer/src/editor/panels/MusicLibrarySection.tsx:289)."
+  },
+  "soundEffectsSection.soundEffects": {
+    "description": "soundEffectsSection, text of <span> (src/renderer/src/editor/panels/SoundEffectsSection.tsx:69)."
+  },
+  "soundEffectsSection.softWhooshWhenZooming": {
+    "description": "soundEffectsSection, text of <button> (src/renderer/src/editor/panels/SoundEffectsSection.tsx:117)."
+  },
+  "soundEffectsSection.aSoundSetHere": {
+    "description": "soundEffectsSection, text of <p> (src/renderer/src/editor/panels/SoundEffectsSection.tsx:119)."
+  },
+  "soundsSection.playIt": {
+    "description": "Sound finder (Audio tab, Unwanted sounds): the tooltip of a row's Play button."
+  },
+  "kind.cough": {
+    "description": "Sound finder (Audio tab, Unwanted sounds): the name of a kind of unwanted sound, on its row (\"Cough\")."
+  },
+  "kind.sneeze": {
+    "description": "Sound finder (Audio tab, Unwanted sounds): the name of a kind of unwanted sound, on its row (\"Sneeze\")."
+  },
+  "kind.typing": {
+    "description": "Sound finder (Audio tab, Unwanted sounds): the name of a kind of unwanted sound, on its row (\"Typing\")."
+  },
+  "kind.ping": {
+    "description": "Sound finder (Audio tab, Unwanted sounds): the name of a kind of unwanted sound, on its row (\"Notification sound\")."
+  },
+  "kind.phone": {
+    "description": "Sound finder (Audio tab, Unwanted sounds): the name of a kind of unwanted sound, on its row (\"Phone\")."
+  },
+  "kind.dog": {
+    "description": "Sound finder (Audio tab, Unwanted sounds): the name of a kind of unwanted sound, on its row (\"Dog\")."
+  },
+  "kind.door": {
+    "description": "Sound finder (Audio tab, Unwanted sounds): the name of a kind of unwanted sound, on its row (\"Knock or door\")."
+  },
+  "kind.music": {
+    "description": "Sound finder (Audio tab, Unwanted sounds): the name of a kind of unwanted sound, on its row (\"Background music\")."
+  },
+  "finder.title": {
+    "description": "Sound finder (Audio tab, Unwanted sounds): the section title and the progress bar's name."
+  },
+  "finder.intro": {
+    "description": "Sound finder (Audio tab, Unwanted sounds): what the finder does, before it runs."
+  },
+  "finder.noSound": {
+    "description": "Sound finder (Audio tab, Unwanted sounds): the recording has no sound to listen to."
+  },
+  "finder.find": {
+    "description": "Sound finder (Audio tab, Unwanted sounds): the button that starts listening."
+  },
+  "finder.checking": {
+    "description": "Sound finder (Audio tab, Unwanted sounds): while it reads scores stored from an earlier run."
+  },
+  "finder.preparing": {
+    "description": "Sound finder (Audio tab, Unwanted sounds): while the recording is prepared for listening."
+  },
+  "finder.none": {
+    "description": "Sound finder (Audio tab, Unwanted sounds): the result when nothing was found."
+  },
+  "finder.muteAll": {
+    "description": "Sound finder (Audio tab, Unwanted sounds): a button that mutes every listed sound."
+  },
+  "finder.muteTitle": {
+    "description": "Sound finder (Audio tab, Unwanted sounds): the tooltip of a row's Mute button."
+  },
+  "finder.duckTitle": {
+    "description": "Sound finder (Audio tab, Unwanted sounds): the tooltip of a row's Duck button."
+  },
+  "finder.cutTitle": {
+    "description": "Sound finder (Audio tab, Unwanted sounds): the tooltip of a row's Cut button."
+  },
+  "finder.ignoreTitle": {
+    "description": "Sound finder (Audio tab, Unwanted sounds): the tooltip of a row's Ignore button."
+  },
+  "finder.restoreTitle": {
+    "description": "Sound finder (Audio tab, Unwanted sounds): the tooltip of a row's Restore button."
+  },
+  "finder.bringBackTitle": {
+    "description": "Sound finder (Audio tab, Unwanted sounds): the tooltip of a row's Bring back button."
+  },
+  "finder.wholeVideo": {
+    "description": "Sound finder (Audio tab, Unwanted sounds): why a Cut was refused."
+  },
+  "finder.restoreCutFailed": {
+    "description": "Sound finder (Audio tab, Unwanted sounds): why a cut sound could not be restored."
+  },
+  "finder.playCut": {
+    "description": "Sound finder (Audio tab, Unwanted sounds): why a row cannot play."
+  },
+  "finder.state.muted": {
+    "description": "Sound finder (Audio tab, Unwanted sounds): what was done to a row's sound, shown in place of its buttons (\"Muted\")."
+  },
+  "finder.state.ducked": {
+    "description": "Sound finder (Audio tab, Unwanted sounds): what was done to a row's sound, shown in place of its buttons (\"Lowered\")."
+  },
+  "finder.state.cut": {
+    "description": "Sound finder (Audio tab, Unwanted sounds): what was done to a row's sound, shown in place of its buttons (\"Cut\")."
+  },
+  "finder.state.ignored": {
+    "description": "Sound finder (Audio tab, Unwanted sounds): what was done to a row's sound, shown in place of its buttons (\"Ignored\")."
+  },
+  "finder.failed": {
+    "description": "Sound finder (Audio tab, Unwanted sounds): listening failed; message is why, in words."
+  },
+  "finder.workerFailed": {
+    "description": "Sound finder (Audio tab, Unwanted sounds): the listening engine failed; reason is why, in words (sound.finder.reason.*)."
+  },
+  "finder.listening": {
+    "description": "Sound finder (Audio tab, Unwanted sounds): progress while it listens; percent is how far (\"42%\")."
+  },
+  "finder.found": {
+    "description": "Sound finder (Audio tab, Unwanted sounds): how many unwanted sounds were found; n is the number."
+  },
+  "finder.showIgnored": {
+    "description": "Sound finder (Audio tab, Unwanted sounds): a checkbox that shows the ignored rows too; n is how many there are."
+  },
+  "finder.rowName": {
+    "description": "Sound finder (Audio tab, Unwanted sounds): a row's sound as named inside a sentence (a button's spoken name, what the screen reader says after an action); kind picks the kind (sound.kind.*), time is where it is in the video (\"0:12.4\"). It may start a sentence: English capitalises its first letter there."
+  },
+  "finder.said.muted": {
+    "description": "Sound finder (Audio tab, Unwanted sounds): what the screen reader says after Mute; name is the row's sound (sound.finder.rowName)."
+  },
+  "finder.said.ducked": {
+    "description": "Sound finder (Audio tab, Unwanted sounds): what the screen reader says after Duck; name is the row's sound (sound.finder.rowName)."
+  },
+  "finder.said.ignored": {
+    "description": "Sound finder (Audio tab, Unwanted sounds): what the screen reader says after Ignore; name is the row's sound (sound.finder.rowName)."
+  },
+  "finder.said.restored": {
+    "description": "Sound finder (Audio tab, Unwanted sounds): what the screen reader says after Restore; name is the row's sound (sound.finder.rowName)."
+  },
+  "finder.said.cut": {
+    "description": "Sound finder (Audio tab, Unwanted sounds): what the screen reader says after Cut; length is how long the cut is (\"0.4 s\")."
+  },
+  "finder.said.backOnList": {
+    "description": "Sound finder (Audio tab, Unwanted sounds): what the screen reader says after Bring back; name is the row's sound (sound.finder.rowName), its first letter capitalised."
+  },
+  "finder.said.mutedAll": {
+    "description": "Sound finder (Audio tab, Unwanted sounds): what the screen reader says after Mute all; n is how many were muted."
+  },
+  "finder.reason.memory": {
+    "description": "Sound finder (Audio tab, Unwanted sounds): why the listening engine could not run, inside \"The sound finder could not run: {reason}\" (lower case, no full stop)."
+  },
+  "finder.reason.files": {
+    "description": "Sound finder (Audio tab, Unwanted sounds): why the listening engine could not run, inside \"The sound finder could not run: {reason}\"; detail is the engine's own error text, in English."
+  },
+  "finder.reason.unknown": {
+    "description": "Sound finder (Audio tab, Unwanted sounds): the listening engine failed without saying why, inside \"The sound finder could not run: {reason}\"."
+  },
+  "finder.reason.start": {
+    "description": "Sound finder (Audio tab, Unwanted sounds): the listening engine did not start, inside \"The sound finder could not run: {reason}\"."
+  },
+  "finder.answered": {
+    "description": "Sound finder (Audio tab, Unwanted sounds): an internal mix-up between the panel and its engine (should never be seen); got and expected are internal step names, in English."
+  },
+  "soundsSection.muteName": {
+    "description": "Sound finder (Audio tab, Unwanted sounds): the spoken name of a row's Mute button; name is the row's sound (sound.finder.rowName)."
+  },
+  "soundsSection.duckName": {
+    "description": "Sound finder (Audio tab, Unwanted sounds): the spoken name of a row's Duck button; name is the row's sound (sound.finder.rowName)."
+  },
+  "soundsSection.cutName": {
+    "description": "Sound finder (Audio tab, Unwanted sounds): the spoken name of a row's Cut button; name is the row's sound (sound.finder.rowName)."
+  },
+  "soundsSection.ignoreName": {
+    "description": "Sound finder (Audio tab, Unwanted sounds): the spoken name of a row's Ignore button; name is the row's sound (sound.finder.rowName)."
+  },
+  "soundsSection.bringBackName": {
+    "description": "Sound finder (Audio tab, Unwanted sounds): the spoken name of a row's Bring back button; name is the row's sound (sound.finder.rowName)."
+  },
+  "soundsSection.restoreName": {
+    "description": "Sound finder (Audio tab, Unwanted sounds): the spoken name of a row's Restore button; name is the row's sound (sound.finder.rowName)."
+  },
+  "soundsSection.mute": {
+    "description": "Sound finder (Audio tab, Unwanted sounds): a row's button (Mute: silence the sound)."
+  },
+  "soundsSection.duck": {
+    "description": "Sound finder (Audio tab, Unwanted sounds): a row's button (Duck: make the sound much quieter)."
+  },
+  "soundsSection.ignore": {
+    "description": "Sound finder (Audio tab, Unwanted sounds): a row's button (Ignore: keep the sound and take it off the list)."
+  },
+  "soundsSection.bringBack": {
+    "description": "Sound finder (Audio tab, Unwanted sounds): a row's button (Bring back: put an ignored sound back on the list)."
+  },
+  "stem.mic": {
+    "description": "Audio tab: the section of the microphone's own sound (kept apart from the PC's sound while recording)."
+  },
+  "stem.system": {
+    "description": "Audio tab: the section of the PC's own sound (what played on the PC while recording)."
+  },
+  "audioPanel.muteStem": {
+    "description": "Audio tab: a toggle that mutes one recorded source; kind picks the source (sound.stem.*)."
+  },
+  "audioPanel.stemVolume": {
+    "description": "Audio tab: the volume slider of one recorded source; kind picks the source (sound.stem.*)."
+  },
+  "audioPanel.seconds": {
+    "description": "Audio tab: a fade slider's value in seconds (\"1.5 s\"); s is the symbol for seconds."
+  },
+  "audioPanel.pitch": {
+    "description": "Audio tab: a hint under the recording's volume."
+  },
+  "audioPanel.pitchAndStems": {
+    "description": "Audio tab: a hint under the recording's volume when the microphone and the PC's sound were recorded apart."
+  },
+  "stem.inSentence": {
+    "description": "Audio tab: a recorded source named inside a sentence (sound.audioPanel.stemsMissing*), in a list of one or two (\"microphone and system sound\")."
+  },
+  "audioPanel.stemsMissingPreview": {
+    "description": "Audio tab: an alert when a recorded source's file went missing while editing; stems is how many (1 or 2), names lists them (sound.stem.inSentence), files lists their file names (\"mic.m4a\")."
+  },
+  "audioPanel.stemsMissingMixed": {
+    "description": "Audio tab: an alert when the project opened without a recorded source's file; stems is how many (1 or 2), names lists them (sound.stem.inSentence), files lists their file names (\"mic.m4a\"); set is yes when a source was muted or turned down."
+  },
+  "audioPanel.noiseHint": {
+    "description": "Audio tab: the hint under Noise reduction."
+  },
+  "audioPanel.noiseHintMic": {
+    "description": "Audio tab: the hint under Noise reduction when the microphone was recorded apart."
+  },
+  "audioPanel.loudnessHint": {
+    "description": "Audio tab: the hint under Even out loudness; lufs is the target loudness (\"-16\"), LUFS its unit (keep it)."
+  },
+  "musicLibrarySection.all": {
+    "description": "Audio tab, Music library: the mood filter chip that shows every track."
+  },
+  "mood.calm": {
+    "description": "Audio tab, Music library: a mood of music, as a filter chip and on each track's row (\"Calm\")."
+  },
+  "mood.upbeat": {
+    "description": "Audio tab, Music library: a mood of music, as a filter chip and on each track's row (\"Upbeat\")."
+  },
+  "mood.corporate": {
+    "description": "Audio tab, Music library: a mood of music, as a filter chip and on each track's row (\"Corporate\")."
+  },
+  "mood.lofi": {
+    "description": "Audio tab, Music library: a mood of music, as a filter chip and on each track's row (\"Lo-fi\")."
+  },
+  "mood.cinematic": {
+    "description": "Audio tab, Music library: a mood of music, as a filter chip and on each track's row (\"Cinematic\")."
+  },
+  "musicLibrarySection.readFailed": {
+    "description": "Audio tab, Music library: an alert when the list of tracks could not be read; error is why, as the app said it."
+  },
+  "musicLibrarySection.stopped": {
+    "description": "Audio tab, Music library: what the screen reader says when a track's preview stops."
+  },
+  "musicLibrarySection.playing": {
+    "description": "Audio tab, Music library: what the screen reader says when a track's preview plays; title is the track's name, length how long it is in words (\"2 minutes 5 seconds\")."
+  },
+  "musicLibrarySection.inUseSaid": {
+    "description": "Audio tab, Music library: what the screen reader says when a track becomes the music; title is the track's name, artist who made it."
+  },
+  "musicLibrarySection.downloadAndUseSize": {
+    "description": "Audio tab, Music library: the button of a track that is not on this PC yet; size is its download size (\"12.3 MB\")."
+  },
+  "musicLibrarySection.copyAgain": {
+    "description": "Audio tab, Music library: a button that copies a missing track into the project again; title is the track's name."
+  },
+  "soundEffectsSection.rule.zoomIn": {
+    "description": "Audio tab, Sound effects: when a sound of the project's rule plays, the label of its select (\"Zooming in\")."
+  },
+  "soundEffectsSection.rule.zoomOut": {
+    "description": "Audio tab, Sound effects: when a sound of the project's rule plays, the label of its select (\"Zooming out\")."
+  },
+  "soundEffectsSection.rule.titles": {
+    "description": "Audio tab, Sound effects: when a sound of the project's rule plays, the label of its select (\"Title cards appear\")."
+  },
+  "soundEffectsSection.rule.callouts": {
+    "description": "Audio tab, Sound effects: when a sound of the project's rule plays, the label of its select (\"Texts and shapes appear\")."
+  },
+  "soundEffectsSection.percent": {
+    "description": "Audio tab, Sound effects: the Volume slider's value in percent (\"80 %\", with a space as it is today)."
+  },
+  "soundEffectsSection.plays": {
+    "description": "Audio tab, Sound effects: how many times a rule's sound plays in the video; n is the number."
+  },
+  "soundEffectsSection.playRule": {
+    "description": "Audio tab, Sound effects: the spoken name of a Play button while its rule has no sound; rule picks the rule (sound.soundEffectsSection.rule.*, in lower case)."
+  },
+  "effect.whooshIn": {
+    "description": "Sound effects (Audio tab, Graphics tab, callouts): the name of a sound effect of the library, in its selects (\"Whoosh\")."
+  },
+  "effect.whooshOut": {
+    "description": "Sound effects (Audio tab, Graphics tab, callouts): the name of a sound effect of the library, in its selects (\"Whoosh out\")."
+  },
+  "effect.whooshSoft": {
+    "description": "Sound effects (Audio tab, Graphics tab, callouts): the name of a sound effect of the library, in its selects (\"Soft whoosh\")."
+  },
+  "effect.swishQuick": {
+    "description": "Sound effects (Audio tab, Graphics tab, callouts): the name of a sound effect of the library, in its selects (\"Quick swish\")."
+  },
+  "effect.pop": {
+    "description": "Sound effects (Audio tab, Graphics tab, callouts): the name of a sound effect of the library, in its selects (\"Pop\")."
+  },
+  "effect.popSoft": {
+    "description": "Sound effects (Audio tab, Graphics tab, callouts): the name of a sound effect of the library, in its selects (\"Soft pop\")."
+  },
+  "effect.popBubble": {
+    "description": "Sound effects (Audio tab, Graphics tab, callouts): the name of a sound effect of the library, in its selects (\"Bubble pop\")."
+  },
+  "effect.click": {
+    "description": "Sound effects (Audio tab, Graphics tab, callouts): the name of a sound effect of the library, in its selects (\"Click\")."
+  },
+  "effect.tick": {
+    "description": "Sound effects (Audio tab, Graphics tab, callouts): the name of a sound effect of the library, in its selects (\"Tick\")."
+  },
+  "effect.bell": {
+    "description": "Sound effects (Audio tab, Graphics tab, callouts): the name of a sound effect of the library, in its selects (\"Bell\")."
+  },
+  "effect.chime": {
+    "description": "Sound effects (Audio tab, Graphics tab, callouts): the name of a sound effect of the library, in its selects (\"Chime\")."
+  },
+  "effect.success": {
+    "description": "Sound effects (Audio tab, Graphics tab, callouts): the name of a sound effect of the library, in its selects (\"Success\")."
+  },
+  "effect.rise": {
+    "description": "Sound effects (Audio tab, Graphics tab, callouts): the name of a sound effect of the library, in its selects (\"Rise\")."
+  },
+  "effect.fall": {
+    "description": "Sound effects (Audio tab, Graphics tab, callouts): the name of a sound effect of the library, in its selects (\"Fall\")."
+  },
+  "effect.bubbleIn": {
+    "description": "Sound effects (Audio tab, Graphics tab, callouts): the name of a sound effect of the library, in its selects (\"Bubble\")."
+  },
+  "effect.drop": {
+    "description": "Sound effects (Audio tab, Graphics tab, callouts): the name of a sound effect of the library, in its selects (\"Drop\")."
+  },
+  "effect.unknown": {
+    "description": "Sound effects (Audio tab, Graphics tab, callouts): a sound effect the library no longer has."
+  },
+  "effect.originalPop": {
+    "description": "Sound effects (Audio tab, Graphics tab, callouts): Captions Studio's own pop sound, as it always sounded."
+  },
+  "effect.originalDing": {
+    "description": "Sound effects (Audio tab, Graphics tab, callouts): Captions Studio's own ding sound, as it always sounded."
+  },
+  "sfxGroup.whoosh": {
+    "description": "Sound effects (Audio tab, Graphics tab, callouts): a group of sound effects in a select (\"Whooshes\")."
+  },
+  "sfxGroup.pop": {
+    "description": "Sound effects (Audio tab, Graphics tab, callouts): a group of sound effects in a select (\"Pops\")."
+  },
+  "sfxGroup.click": {
+    "description": "Sound effects (Audio tab, Graphics tab, callouts): a group of sound effects in a select (\"Clicks\")."
+  },
+  "sfxGroup.chime": {
+    "description": "Sound effects (Audio tab, Graphics tab, callouts): a group of sound effects in a select (\"Chimes\")."
+  },
+  "sfxGroup.suggested": {
+    "description": "Sound effects (Audio tab, Graphics tab, callouts): the first group of a select: the effects made for this use."
+  }
+}

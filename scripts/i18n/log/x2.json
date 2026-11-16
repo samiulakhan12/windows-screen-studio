@@ -3540,6 +3540,488 @@
     "sample": {}
   },
   {
+    "key": "sound.audioPanel.recording",
+    "file": "src/renderer/src/editor/panels/AudioPanel.tsx",
+    "line": 55,
+    "english": "Recording",
+    "sample": {}
+  },
+  {
+    "key": "sound.audioPanel.thisRecordingHasNo",
+    "file": "src/renderer/src/editor/panels/AudioPanel.tsx",
+    "line": 56,
+    "english": "This recording has no sound. You can still add music below.",
+    "sample": {}
+  },
+  {
+    "key": "sound.audioPanel.mute",
+    "file": "src/renderer/src/editor/panels/AudioPanel.tsx",
+    "line": 57,
+    "english": "Mute",
+    "sample": {}
+  },
+  {
+    "key": "common.label.volume",
+    "file": "src/renderer/src/editor/panels/AudioPanel.tsx",
+    "line": 59,
+    "english": "Volume",
+    "sample": {}
+  },
+  {
+    "key": "sound.audioPanel.cleanUp",
+    "file": "src/renderer/src/editor/panels/AudioPanel.tsx",
+    "line": 132,
+    "english": "Clean up",
+    "sample": {}
+  },
+  {
+    "key": "sound.audioPanel.noiseReduction",
+    "file": "src/renderer/src/editor/panels/AudioPanel.tsx",
+    "line": 134,
+    "english": "Noise reduction",
+    "sample": {}
+  },
+  {
+    "key": "sound.audioPanel.evenOutLoudness",
+    "file": "src/renderer/src/editor/panels/AudioPanel.tsx",
+    "line": 146,
+    "english": "Even out loudness",
+    "sample": {}
+  },
+  {
+    "key": "sound.audioPanel.fades",
+    "file": "src/renderer/src/editor/panels/AudioPanel.tsx",
+    "line": 150,
+    "english": "Fades",
+    "sample": {}
+  },
+  {
+    "key": "sound.audioPanel.fadeInAtStart",
+    "file": "src/renderer/src/editor/panels/AudioPanel.tsx",
+    "line": 151,
+    "english": "Fade in at start",
+    "sample": {}
+  },
+  {
+    "key": "sound.audioPanel.fadeOutAtEnd",
+    "file": "src/renderer/src/editor/panels/AudioPanel.tsx",
+    "line": 152,
+    "english": "Fade out at end",
+    "sample": {}
+  },
+  {
+    "key": "sound.audioPanel.fadesTheWholeSoundtrack",
+    "file": "src/renderer/src/editor/panels/AudioPanel.tsx",
+    "line": 153,
+    "english": "Fades the whole soundtrack, music and click sounds included.",
+    "sample": {}
+  },
+  {
+    "key": "sound.audioPanel.music",
+    "file": "src/renderer/src/editor/panels/AudioPanel.tsx",
+    "line": 237,
+    "english": "Music",
+    "sample": {}
+  },
+  {
+    "key": "sound.audioPanel.aTrackUnderThe",
+    "file": "src/renderer/src/editor/panels/AudioPanel.tsx",
+    "line": 240,
+    "english": "A track under the whole video. It runs on through cuts and dips automatically while the recording has sound.",
+    "sample": {}
+  },
+  {
+    "key": "sound.audioPanel.yourOwnFile",
+    "file": "src/renderer/src/editor/panels/AudioPanel.tsx",
+    "line": 242,
+    "english": "Your own file…",
+    "sample": {}
+  },
+  {
+    "key": "sound.audioPanel.backgroundMusic",
+    "file": "src/renderer/src/editor/panels/AudioPanel.tsx",
+    "line": 252,
+    "english": "Background music",
+    "sample": {}
+  },
+  {
+    "key": "sound.audioPanel.chooseAnotherMusicFile",
+    "file": "src/renderer/src/editor/panels/AudioPanel.tsx",
+    "line": 259,
+    "english": "Choose another music file",
+    "sample": {}
+  },
+  {
+    "key": "sound.audioPanel.replace",
+    "file": "src/renderer/src/editor/panels/AudioPanel.tsx",
+    "line": 260,
+    "english": "Replace…",
+    "sample": {}
+  },
+  {
+    "key": "sound.audioPanel.removeTheMusic",
+    "file": "src/renderer/src/editor/panels/AudioPanel.tsx",
+    "line": 262,
+    "english": "Remove the music",
+    "sample": {}
+  },
+  {
+    "key": "sound.audioPanel.removeMusic",
+    "file": "src/renderer/src/editor/panels/AudioPanel.tsx",
+    "line": 262,
+    "english": "Remove music",
+    "sample": {}
+  },
+  {
+    "key": "sound.audioPanel.thisMusicFileIs",
+    "file": "src/renderer/src/editor/panels/AudioPanel.tsx",
+    "line": 274,
+    "english": "This music file is no longer in the recording's folder, so it cannot play or be exported. Choose it again with Replace…",
+    "sample": {}
+  },
+  {
+    "key": "sound.audioPanel.musicVolume",
+    "file": "src/renderer/src/editor/panels/AudioPanel.tsx",
+    "line": 277,
+    "english": "Music volume",
+    "sample": {}
+  },
+  {
+    "key": "sound.audioPanel.lowerUnderSpeech",
+    "file": "src/renderer/src/editor/panels/AudioPanel.tsx",
+    "line": 279,
+    "english": "Lower under speech",
+    "sample": {}
+  },
+  {
+    "key": "sound.audioPanel.howFarTheMusic",
+    "file": "src/renderer/src/editor/panels/AudioPanel.tsx",
+    "line": 292,
+    "english": "How far the music dips while the recording has sound.",
+    "sample": {}
+  },
+  {
+    "key": "sound.audioPanel.theRecordingIsSilent",
+    "file": "src/renderer/src/editor/panels/AudioPanel.tsx",
+    "line": 293,
+    "english": "The recording is silent, so the music keeps its volume throughout.",
+    "sample": {}
+  },
+  {
+    "key": "sound.audioPanel.loop",
+    "file": "src/renderer/src/editor/panels/AudioPanel.tsx",
+    "line": 295,
+    "english": "Loop",
+    "sample": {}
+  },
+  {
+    "key": "sound.audioPanel.repeatTheMusicWhen",
+    "file": "src/renderer/src/editor/panels/AudioPanel.tsx",
+    "line": 295,
+    "english": "Repeat the music when it is shorter than the video",
+    "sample": {}
+  },
+  {
+    "key": "sound.audioPanel.fadeIn",
+    "file": "src/renderer/src/editor/panels/AudioPanel.tsx",
+    "line": 296,
+    "english": "Fade in",
+    "sample": {}
+  },
+  {
+    "key": "sound.audioPanel.fadeOut",
+    "file": "src/renderer/src/editor/panels/AudioPanel.tsx",
+    "line": 297,
+    "english": "Fade out",
+    "sample": {}
+  },
+  {
+    "key": "sound.musicLibrarySection.musicLibrary",
+    "file": "src/renderer/src/editor/panels/MusicLibrarySection.tsx",
+    "line": 141,
+    "english": "Music library",
+    "sample": {}
+  },
+  {
+    "key": "sound.musicLibrarySection.freeMusicForAny",
+    "file": "src/renderer/src/editor/panels/MusicLibrarySection.tsx",
+    "line": 143,
+    "english": "Free music for any video (CC0). Every track loops smoothly under your voice.",
+    "sample": {}
+  },
+  {
+    "key": "sound.musicLibrarySection.mood",
+    "file": "src/renderer/src/editor/panels/MusicLibrarySection.tsx",
+    "line": 144,
+    "english": "Mood",
+    "sample": {}
+  },
+  {
+    "key": "common.state.loading",
+    "file": "src/renderer/src/editor/panels/MusicLibrarySection.tsx",
+    "line": 167,
+    "english": "Loading…",
+    "sample": {}
+  },
+  {
+    "key": "sound.musicLibrarySection.playPreviewOf",
+    "file": "src/renderer/src/editor/panels/MusicLibrarySection.tsx",
+    "line": 195,
+    "english": "Play preview of «title»",
+    "sample": {
+      "title": "«title»"
+    }
+  },
+  {
+    "key": "common.action.stop",
+    "file": "src/renderer/src/editor/panels/MusicLibrarySection.tsx",
+    "line": 201,
+    "english": "Stop",
+    "sample": {}
+  },
+  {
+    "key": "common.action.play",
+    "file": "src/renderer/src/editor/panels/MusicLibrarySection.tsx",
+    "line": 201,
+    "english": "Play",
+    "sample": {}
+  },
+  {
+    "key": "sound.musicLibrarySection.isInUse",
+    "file": "src/renderer/src/editor/panels/MusicLibrarySection.tsx",
+    "line": 208,
+    "english": "«title» is in use",
+    "sample": {
+      "title": "«title»"
+    }
+  },
+  {
+    "key": "sound.musicLibrarySection.use",
+    "file": "src/renderer/src/editor/panels/MusicLibrarySection.tsx",
+    "line": 208,
+    "english": "Use «title»",
+    "sample": {
+      "title": "«title»"
+    }
+  },
+  {
+    "key": "sound.musicLibrarySection.inUse",
+    "file": "src/renderer/src/editor/panels/MusicLibrarySection.tsx",
+    "line": 212,
+    "english": "In use",
+    "sample": {}
+  },
+  {
+    "key": "common.action.use",
+    "file": "src/renderer/src/editor/panels/MusicLibrarySection.tsx",
+    "line": 212,
+    "english": "Use",
+    "sample": {}
+  },
+  {
+    "key": "sound.musicLibrarySection.downloadAndUse",
+    "file": "src/renderer/src/editor/panels/MusicLibrarySection.tsx",
+    "line": 219,
+    "english": "Download and use «title», «spoken»",
+    "sample": {
+      "title": "«title»",
+      "spoken": "«spoken»"
+    }
+  },
+  {
+    "key": "sound.musicLibrarySection.downloadToListen",
+    "file": "src/renderer/src/editor/panels/MusicLibrarySection.tsx",
+    "line": 229,
+    "english": "Download to listen",
+    "sample": {}
+  },
+  {
+    "key": "sound.musicLibrarySection.downloading",
+    "file": "src/renderer/src/editor/panels/MusicLibrarySection.tsx",
+    "line": 237,
+    "english": "Downloading «title»",
+    "sample": {
+      "title": "«title»"
+    }
+  },
+  {
+    "key": "sound.musicLibrarySection.percent",
+    "file": "src/renderer/src/editor/panels/MusicLibrarySection.tsx",
+    "line": 241,
+    "english": "«pct» percent",
+    "sample": {
+      "pct": "«pct»"
+    }
+  },
+  {
+    "key": "sound.musicLibrarySection.theMusicFileIs",
+    "file": "src/renderer/src/editor/panels/MusicLibrarySection.tsx",
+    "line": 289,
+    "english": "The music file is missing. Copy it from the library again?",
+    "sample": {}
+  },
+  {
+    "key": "sound.soundEffectsSection.soundEffects",
+    "file": "src/renderer/src/editor/panels/SoundEffectsSection.tsx",
+    "line": 69,
+    "english": "Sound effects",
+    "sample": {}
+  },
+  {
+    "key": "common.label.volume",
+    "file": "src/renderer/src/editor/panels/SoundEffectsSection.tsx",
+    "line": 72,
+    "english": "Volume",
+    "sample": {}
+  },
+  {
+    "key": "common.state.none",
+    "file": "src/renderer/src/editor/panels/SoundEffectsSection.tsx",
+    "line": 82,
+    "english": "None",
+    "sample": {}
+  },
+  {
+    "key": "common.action.stop",
+    "file": "src/renderer/src/editor/panels/SoundEffectsSection.tsx",
+    "line": 105,
+    "english": "Stop",
+    "sample": {}
+  },
+  {
+    "key": "common.action.play",
+    "file": "src/renderer/src/editor/panels/SoundEffectsSection.tsx",
+    "line": 105,
+    "english": "Play",
+    "sample": {}
+  },
+  {
+    "key": "sound.soundEffectsSection.softWhooshWhenZooming",
+    "file": "src/renderer/src/editor/panels/SoundEffectsSection.tsx",
+    "line": 117,
+    "english": "Soft whoosh when zooming in",
+    "sample": {}
+  },
+  {
+    "key": "sound.soundEffectsSection.aSoundSetHere",
+    "file": "src/renderer/src/editor/panels/SoundEffectsSection.tsx",
+    "line": 119,
+    "english": "A sound set here plays at most once every 3 seconds. A sound set on one item always plays.",
+    "sample": {}
+  },
+  {
+    "key": "common.action.playName",
+    "file": "src/renderer/src/editor/sounds/SoundsSection.tsx",
+    "line": 281,
+    "english": "Play «name»",
+    "sample": {
+      "name": "«name»"
+    }
+  },
+  {
+    "key": "sound.soundsSection.playIt",
+    "file": "src/renderer/src/editor/sounds/SoundsSection.tsx",
+    "line": 281,
+    "english": "Play it",
+    "sample": {}
+  },
+  {
+    "key": "sound.soundsSection.muteName",
+    "file": "src/renderer/src/editor/sounds/SoundsSection.tsx",
+    "line": 295,
+    "english": "Mute «name»",
+    "sample": {
+      "name": "«name»"
+    }
+  },
+  {
+    "key": "sound.soundsSection.mute",
+    "file": "src/renderer/src/editor/sounds/SoundsSection.tsx",
+    "line": 296,
+    "english": "Mute",
+    "sample": {}
+  },
+  {
+    "key": "sound.soundsSection.duckName",
+    "file": "src/renderer/src/editor/sounds/SoundsSection.tsx",
+    "line": 298,
+    "english": "Duck «name»",
+    "sample": {
+      "name": "«name»"
+    }
+  },
+  {
+    "key": "sound.soundsSection.duck",
+    "file": "src/renderer/src/editor/sounds/SoundsSection.tsx",
+    "line": 299,
+    "english": "Duck",
+    "sample": {}
+  },
+  {
+    "key": "sound.soundsSection.cutName",
+    "file": "src/renderer/src/editor/sounds/SoundsSection.tsx",
+    "line": 301,
+    "english": "Cut «name»",
+    "sample": {
+      "name": "«name»"
+    }
+  },
+  {
+    "key": "common.action.cut",
+    "file": "src/renderer/src/editor/sounds/SoundsSection.tsx",
+    "line": 302,
+    "english": "Cut",
+    "sample": {}
+  },
+  {
+    "key": "sound.soundsSection.ignoreName",
+    "file": "src/renderer/src/editor/sounds/SoundsSection.tsx",
+    "line": 304,
+    "english": "Ignore «name»",
+    "sample": {
+      "name": "«name»"
+    }
+  },
+  {
+    "key": "sound.soundsSection.ignore",
+    "file": "src/renderer/src/editor/sounds/SoundsSection.tsx",
+    "line": 305,
+    "english": "Ignore",
+    "sample": {}
+  },
+  {
+    "key": "sound.soundsSection.bringBackName",
+    "file": "src/renderer/src/editor/sounds/SoundsSection.tsx",
+    "line": 312,
+    "english": "Bring back «name»",
+    "sample": {
+      "name": "«name»"
+    }
+  },
+  {
+    "key": "sound.soundsSection.bringBack",
+    "file": "src/renderer/src/editor/sounds/SoundsSection.tsx",
+    "line": 313,
+    "english": "Bring back",
+    "sample": {}
+  },
+  {
+    "key": "sound.soundsSection.restoreName",
+    "file": "src/renderer/src/editor/sounds/SoundsSection.tsx",
+    "line": 316,
+    "english": "Restore «name»",
+    "sample": {
+      "name": "«name»"
+    }
+  },
+  {
+    "key": "common.action.restore",
+    "file": "src/renderer/src/editor/sounds/SoundsSection.tsx",
+    "line": 317,
+    "english": "Restore",
+    "sample": {}
+  },
+  {
     "key": "style.stylePanel.frames.none",
     "file": "src/renderer/src/editor/panels/StylePanel.tsx",
     "line": 31,
@@ -9220,6 +9702,943 @@
     "file": "src/renderer/src/editor/directorAnalysis.ts",
     "line": 163,
     "english": "person detection stopped working",
+    "sample": {}
+  },
+  {
+    "key": "sound.kind.cough",
+    "file": "src/shared/audio/soundsCopy.ts",
+    "line": 12,
+    "english": "Cough",
+    "sample": {}
+  },
+  {
+    "key": "sound.kind.sneeze",
+    "file": "src/shared/audio/soundsCopy.ts",
+    "line": 15,
+    "english": "Sneeze",
+    "sample": {}
+  },
+  {
+    "key": "sound.kind.typing",
+    "file": "src/shared/audio/soundsCopy.ts",
+    "line": 18,
+    "english": "Typing",
+    "sample": {}
+  },
+  {
+    "key": "sound.kind.ping",
+    "file": "src/shared/audio/soundsCopy.ts",
+    "line": 21,
+    "english": "Notification sound",
+    "sample": {}
+  },
+  {
+    "key": "sound.kind.phone",
+    "file": "src/shared/audio/soundsCopy.ts",
+    "line": 24,
+    "english": "Phone",
+    "sample": {}
+  },
+  {
+    "key": "sound.kind.dog",
+    "file": "src/shared/audio/soundsCopy.ts",
+    "line": 27,
+    "english": "Dog",
+    "sample": {}
+  },
+  {
+    "key": "sound.kind.door",
+    "file": "src/shared/audio/soundsCopy.ts",
+    "line": 30,
+    "english": "Knock or door",
+    "sample": {}
+  },
+  {
+    "key": "sound.kind.music",
+    "file": "src/shared/audio/soundsCopy.ts",
+    "line": 33,
+    "english": "Background music",
+    "sample": {}
+  },
+  {
+    "key": "sound.finder.title",
+    "file": "src/shared/audio/soundsCopy.ts",
+    "line": 39,
+    "english": "Unwanted sounds",
+    "sample": {}
+  },
+  {
+    "key": "sound.finder.intro",
+    "file": "src/shared/audio/soundsCopy.ts",
+    "line": 42,
+    "english": "Finds coughs, sneezes, typing, notification sounds, phones, dogs, knocks and background music, on this PC. Speech is never listed.",
+    "sample": {}
+  },
+  {
+    "key": "sound.finder.noSound",
+    "file": "src/shared/audio/soundsCopy.ts",
+    "line": 45,
+    "english": "This recording has no sound.",
+    "sample": {}
+  },
+  {
+    "key": "sound.finder.find",
+    "file": "src/shared/audio/soundsCopy.ts",
+    "line": 48,
+    "english": "Find unwanted sounds",
+    "sample": {}
+  },
+  {
+    "key": "sound.finder.checking",
+    "file": "src/shared/audio/soundsCopy.ts",
+    "line": 51,
+    "english": "Looking for sounds found before…",
+    "sample": {}
+  },
+  {
+    "key": "sound.finder.preparing",
+    "file": "src/shared/audio/soundsCopy.ts",
+    "line": 54,
+    "english": "Getting the recording ready…",
+    "sample": {}
+  },
+  {
+    "key": "sound.finder.none",
+    "file": "src/shared/audio/soundsCopy.ts",
+    "line": 63,
+    "english": "No unwanted sounds found.",
+    "sample": {}
+  },
+  {
+    "key": "sound.finder.muteAll",
+    "file": "src/shared/audio/soundsCopy.ts",
+    "line": 66,
+    "english": "Mute all",
+    "sample": {}
+  },
+  {
+    "key": "sound.finder.muteTitle",
+    "file": "src/shared/audio/soundsCopy.ts",
+    "line": 69,
+    "english": "Silence it, with short fades",
+    "sample": {}
+  },
+  {
+    "key": "sound.finder.duckTitle",
+    "file": "src/shared/audio/soundsCopy.ts",
+    "line": 72,
+    "english": "Make it much quieter",
+    "sample": {}
+  },
+  {
+    "key": "sound.finder.cutTitle",
+    "file": "src/shared/audio/soundsCopy.ts",
+    "line": 75,
+    "english": "Cut it out of the video",
+    "sample": {}
+  },
+  {
+    "key": "sound.finder.ignoreTitle",
+    "file": "src/shared/audio/soundsCopy.ts",
+    "line": 78,
+    "english": "Keep it and take it off the list",
+    "sample": {}
+  },
+  {
+    "key": "sound.finder.restoreTitle",
+    "file": "src/shared/audio/soundsCopy.ts",
+    "line": 81,
+    "english": "Hear it as recorded again",
+    "sample": {}
+  },
+  {
+    "key": "sound.finder.bringBackTitle",
+    "file": "src/shared/audio/soundsCopy.ts",
+    "line": 84,
+    "english": "Put it back on the list",
+    "sample": {}
+  },
+  {
+    "key": "sound.finder.wholeVideo",
+    "file": "src/shared/audio/soundsCopy.ts",
+    "line": 87,
+    "english": "That would cut the whole video",
+    "sample": {}
+  },
+  {
+    "key": "sound.finder.restoreCutFailed",
+    "file": "src/shared/audio/soundsCopy.ts",
+    "line": 90,
+    "english": "Use Undo to bring this back",
+    "sample": {}
+  },
+  {
+    "key": "sound.finder.playCut",
+    "file": "src/shared/audio/soundsCopy.ts",
+    "line": 93,
+    "english": "That part is cut out of the video",
+    "sample": {}
+  },
+  {
+    "key": "sound.finder.state.muted",
+    "file": "src/shared/audio/soundsCopy.ts",
+    "line": 97,
+    "english": "Muted",
+    "sample": {}
+  },
+  {
+    "key": "sound.finder.state.ducked",
+    "file": "src/shared/audio/soundsCopy.ts",
+    "line": 100,
+    "english": "Lowered",
+    "sample": {}
+  },
+  {
+    "key": "sound.finder.state.cut",
+    "file": "src/shared/audio/soundsCopy.ts",
+    "line": 103,
+    "english": "Cut",
+    "sample": {}
+  },
+  {
+    "key": "sound.finder.state.ignored",
+    "file": "src/shared/audio/soundsCopy.ts",
+    "line": 106,
+    "english": "Ignored",
+    "sample": {}
+  },
+  {
+    "key": "sound.finder.failed",
+    "file": "src/shared/audio/soundsCopy.ts",
+    "line": 112,
+    "english": "Could not listen to the recording: The sound finder could not run: this PC ran out of memory for it",
+    "sample": {
+      "message": "The sound finder could not run: this PC ran out of memory for it"
+    }
+  },
+  {
+    "key": "sound.finder.workerFailed",
+    "file": "src/shared/audio/soundsCopy.ts",
+    "line": 115,
+    "english": "The sound finder could not run: this PC ran out of memory for it",
+    "sample": {
+      "reason": "this PC ran out of memory for it"
+    }
+  },
+  {
+    "key": "sound.finder.listening",
+    "file": "src/shared/audio/soundsCopy.ts",
+    "line": 118,
+    "english": "Listening to the recording… 42%",
+    "sample": {
+      "percent": "42%"
+    }
+  },
+  {
+    "key": "sound.finder.found",
+    "file": "src/shared/audio/soundsCopy.ts",
+    "line": 121,
+    "english": [
+      "0 found. Nothing changes until you choose.",
+      "1 found. Nothing changes until you choose.",
+      "2 found. Nothing changes until you choose.",
+      "1000 found. Nothing changes until you choose."
+    ],
+    "sample": [
+      {
+        "count": 0,
+        "n": "0"
+      },
+      {
+        "count": 1,
+        "n": "1"
+      },
+      {
+        "count": 2,
+        "n": "2"
+      },
+      {
+        "count": 1000,
+        "n": "1000"
+      }
+    ]
+  },
+  {
+    "key": "sound.finder.showIgnored",
+    "file": "src/shared/audio/soundsCopy.ts",
+    "line": 124,
+    "english": "Show ignored (2)",
+    "sample": {
+      "n": "2"
+    }
+  },
+  {
+    "key": "sound.finder.rowName",
+    "file": "src/shared/audio/soundsCopy.ts",
+    "line": 130,
+    "english": "the notification sound at 0:12.4",
+    "sample": {
+      "kind": "ping",
+      "time": "0:12.4"
+    }
+  },
+  {
+    "key": "sound.finder.rowName",
+    "file": "src/shared/audio/soundsCopy.ts",
+    "line": 130,
+    "english": "the cough at 0:03.0",
+    "sample": {
+      "kind": "cough",
+      "time": "0:03.0"
+    }
+  },
+  {
+    "key": "sound.finder.said.muted",
+    "file": "src/shared/audio/soundsCopy.ts",
+    "line": 134,
+    "english": "Muted the cough at 0:03.0",
+    "sample": {
+      "name": "the cough at 0:03.0"
+    }
+  },
+  {
+    "key": "sound.finder.said.ducked",
+    "file": "src/shared/audio/soundsCopy.ts",
+    "line": 135,
+    "english": "Lowered the cough at 0:03.0",
+    "sample": {
+      "name": "the cough at 0:03.0"
+    }
+  },
+  {
+    "key": "sound.finder.said.ignored",
+    "file": "src/shared/audio/soundsCopy.ts",
+    "line": 137,
+    "english": "Ignored the cough at 0:03.0",
+    "sample": {
+      "name": "the cough at 0:03.0"
+    }
+  },
+  {
+    "key": "sound.finder.said.restored",
+    "file": "src/shared/audio/soundsCopy.ts",
+    "line": 138,
+    "english": "Restored the cough at 0:03.0",
+    "sample": {
+      "name": "the cough at 0:03.0"
+    }
+  },
+  {
+    "key": "sound.finder.said.cut",
+    "file": "src/shared/audio/soundsCopy.ts",
+    "line": 136,
+    "english": "Cut 0.4 s",
+    "sample": {
+      "length": "0.4 s"
+    }
+  },
+  {
+    "key": "sound.finder.said.backOnList",
+    "file": "src/shared/audio/soundsCopy.ts",
+    "line": 139,
+    "english": "The dog at 1:01.0 is back on the list",
+    "sample": {
+      "name": "The dog at 1:01.0"
+    }
+  },
+  {
+    "key": "sound.finder.said.mutedAll",
+    "file": "src/shared/audio/soundsCopy.ts",
+    "line": 140,
+    "english": [
+      "Muted 0 sounds",
+      "Muted 1 sound",
+      "Muted 2 sounds",
+      "Muted 1000 sounds"
+    ],
+    "sample": [
+      {
+        "count": 0,
+        "n": "0"
+      },
+      {
+        "count": 1,
+        "n": "1"
+      },
+      {
+        "count": 2,
+        "n": "2"
+      },
+      {
+        "count": 1000,
+        "n": "1000"
+      }
+    ]
+  },
+  {
+    "key": "sound.finder.reason.memory",
+    "file": "src/renderer/src/editor/sounds/soundScan.ts",
+    "line": 56,
+    "english": "this PC ran out of memory for it",
+    "sample": {}
+  },
+  {
+    "key": "sound.finder.reason.files",
+    "file": "src/renderer/src/editor/sounds/soundScan.ts",
+    "line": 57,
+    "english": "its files could not be loaded (Failed to fetch)",
+    "sample": {
+      "detail": "Failed to fetch"
+    }
+  },
+  {
+    "key": "sound.finder.reason.unknown",
+    "file": "src/renderer/src/editor/sounds/soundScan.ts",
+    "line": 58,
+    "english": "unknown error",
+    "sample": {}
+  },
+  {
+    "key": "sound.finder.reason.start",
+    "file": "src/renderer/src/editor/sounds/soundScan.ts",
+    "line": 77,
+    "english": "it could not start",
+    "sample": {}
+  },
+  {
+    "key": "sound.finder.answered",
+    "file": "src/renderer/src/editor/sounds/soundScan.ts",
+    "line": 99,
+    "english": "The sound finder answered progress, not ready",
+    "sample": {
+      "got": "progress",
+      "expected": "ready"
+    }
+  },
+  {
+    "key": "sound.stem.mic",
+    "file": "src/renderer/src/editor/panels/AudioPanel.tsx",
+    "line": 89,
+    "english": "Microphone",
+    "sample": {}
+  },
+  {
+    "key": "sound.stem.system",
+    "file": "src/renderer/src/editor/panels/AudioPanel.tsx",
+    "line": 89,
+    "english": "System sound",
+    "sample": {}
+  },
+  {
+    "key": "sound.audioPanel.muteStem",
+    "file": "src/renderer/src/editor/panels/AudioPanel.tsx",
+    "line": 91,
+    "english": "Mute microphone",
+    "sample": {
+      "kind": "mic"
+    }
+  },
+  {
+    "key": "sound.audioPanel.muteStem",
+    "file": "src/renderer/src/editor/panels/AudioPanel.tsx",
+    "line": 91,
+    "english": "Mute system sound",
+    "sample": {
+      "kind": "system"
+    }
+  },
+  {
+    "key": "sound.audioPanel.stemVolume",
+    "file": "src/renderer/src/editor/panels/AudioPanel.tsx",
+    "line": 97,
+    "english": "Microphone volume",
+    "sample": {
+      "kind": "mic"
+    }
+  },
+  {
+    "key": "sound.audioPanel.stemVolume",
+    "file": "src/renderer/src/editor/panels/AudioPanel.tsx",
+    "line": 97,
+    "english": "System sound volume",
+    "sample": {
+      "kind": "system"
+    }
+  },
+  {
+    "key": "sound.audioPanel.seconds",
+    "file": "src/renderer/src/editor/panels/AudioPanel.tsx",
+    "line": 30,
+    "english": "1.5 s",
+    "sample": {
+      "n": "1.5"
+    }
+  },
+  {
+    "key": "sound.audioPanel.pitch",
+    "file": "src/renderer/src/editor/panels/AudioPanel.tsx",
+    "line": 69,
+    "english": "Sped-up clips keep their pitch.",
+    "sample": {}
+  },
+  {
+    "key": "sound.audioPanel.pitchAndStems",
+    "file": "src/renderer/src/editor/panels/AudioPanel.tsx",
+    "line": 69,
+    "english": "Sped-up clips keep their pitch. The microphone and the system sound were also kept apart: balance them below.",
+    "sample": {}
+  },
+  {
+    "key": "sound.stem.inSentence",
+    "file": "src/renderer/src/editor/panels/AudioPanel.tsx",
+    "line": 158,
+    "english": "system sound",
+    "sample": {
+      "kind": "system"
+    }
+  },
+  {
+    "key": "sound.stem.inSentence",
+    "file": "src/renderer/src/editor/panels/AudioPanel.tsx",
+    "line": 158,
+    "english": "microphone",
+    "sample": {
+      "kind": "mic"
+    }
+  },
+  {
+    "key": "sound.audioPanel.stemsMissingPreview",
+    "file": "src/renderer/src/editor/panels/AudioPanel.tsx",
+    "line": 74,
+    "english": "The system sound file of this recording (system.m4a) is missing, so the preview plays the mixed sound, with every source, whatever is set below. Open the recording again to export it that way.",
+    "sample": {
+      "stems": 1,
+      "names": "system sound",
+      "files": "system.m4a"
+    }
+  },
+  {
+    "key": "sound.audioPanel.stemsMissingPreview",
+    "file": "src/renderer/src/editor/panels/AudioPanel.tsx",
+    "line": 74,
+    "english": "The microphone and system sound files of this recording (mic.m4a and system.m4a) are missing, so the preview plays the mixed sound, with every source, whatever is set below. Open the recording again to export it that way.",
+    "sample": {
+      "stems": 2,
+      "names": "microphone and system sound",
+      "files": "mic.m4a and system.m4a"
+    }
+  },
+  {
+    "key": "sound.audioPanel.stemsMissingMixed",
+    "file": "src/renderer/src/editor/panels/AudioPanel.tsx",
+    "line": 82,
+    "english": "The microphone file of this recording (mic.m4a) is missing, so a source can no longer be muted or turned down on its own: the preview and the export play the mixed sound, with every source, including one you muted or turned down. Put the file back in the recording's folder and open the recording again to set the sources apart.",
+    "sample": {
+      "stems": 1,
+      "names": "microphone",
+      "files": "mic.m4a",
+      "set": "yes"
+    }
+  },
+  {
+    "key": "sound.audioPanel.stemsMissingMixed",
+    "file": "src/renderer/src/editor/panels/AudioPanel.tsx",
+    "line": 82,
+    "english": "The microphone and system sound files of this recording (mic.m4a and system.m4a) are missing, so a source can no longer be muted or turned down on its own: the preview and the export play the mixed sound, with every source. Put the files back in the recording's folder and open the recording again to set the sources apart.",
+    "sample": {
+      "stems": 2,
+      "names": "microphone and system sound",
+      "files": "mic.m4a and system.m4a",
+      "set": "no"
+    }
+  },
+  {
+    "key": "sound.audioPanel.noiseHint",
+    "file": "src/renderer/src/editor/panels/AudioPanel.tsx",
+    "line": 139,
+    "english": "Removes steady hiss and hum when exporting; the preview plays the original. Strong settings can thin out quiet speech.",
+    "sample": {}
+  },
+  {
+    "key": "sound.audioPanel.noiseHintMic",
+    "file": "src/renderer/src/editor/panels/AudioPanel.tsx",
+    "line": 139,
+    "english": "Removes steady hiss and hum from the microphone when exporting; the preview plays the original. Strong settings can thin out quiet speech.",
+    "sample": {}
+  },
+  {
+    "key": "sound.audioPanel.loudnessHint",
+    "file": "src/renderer/src/editor/panels/AudioPanel.tsx",
+    "line": 141,
+    "english": "A standard loudness (-16 LUFS) for YouTube and social apps. The preview approximates it; the export measures it exactly.",
+    "sample": {
+      "lufs": "-16"
+    }
+  },
+  {
+    "key": "sound.musicLibrarySection.all",
+    "file": "src/renderer/src/editor/panels/MusicLibrarySection.tsx",
+    "line": 24,
+    "english": "All",
+    "sample": {}
+  },
+  {
+    "key": "sound.mood.calm",
+    "file": "src/shared/audio/soundNames.ts",
+    "line": 12,
+    "english": "Calm",
+    "sample": {}
+  },
+  {
+    "key": "sound.mood.upbeat",
+    "file": "src/shared/audio/soundNames.ts",
+    "line": 12,
+    "english": "Upbeat",
+    "sample": {}
+  },
+  {
+    "key": "sound.mood.corporate",
+    "file": "src/shared/audio/soundNames.ts",
+    "line": 12,
+    "english": "Corporate",
+    "sample": {}
+  },
+  {
+    "key": "sound.mood.lofi",
+    "file": "src/shared/audio/soundNames.ts",
+    "line": 12,
+    "english": "Lo-fi",
+    "sample": {}
+  },
+  {
+    "key": "sound.mood.cinematic",
+    "file": "src/shared/audio/soundNames.ts",
+    "line": 12,
+    "english": "Cinematic",
+    "sample": {}
+  },
+  {
+    "key": "sound.musicLibrarySection.readFailed",
+    "file": "src/renderer/src/editor/panels/MusicLibrarySection.tsx",
+    "line": 70,
+    "english": "The music library could not be read: Access is denied.",
+    "sample": {
+      "error": "Access is denied."
+    }
+  },
+  {
+    "key": "sound.musicLibrarySection.stopped",
+    "file": "src/renderer/src/editor/panels/MusicLibrarySection.tsx",
+    "line": 89,
+    "english": "Stopped",
+    "sample": {}
+  },
+  {
+    "key": "sound.musicLibrarySection.playing",
+    "file": "src/renderer/src/editor/panels/MusicLibrarySection.tsx",
+    "line": 105,
+    "english": "Playing preview: Sweet Sun, 2 minutes 5 seconds",
+    "sample": {
+      "title": "Sweet Sun",
+      "length": "2 minutes 5 seconds"
+    }
+  },
+  {
+    "key": "sound.musicLibrarySection.inUseSaid",
+    "file": "src/renderer/src/editor/panels/MusicLibrarySection.tsx",
+    "line": 114,
+    "english": "Music: Sweet Sun by Loyalty Freak Music",
+    "sample": {
+      "title": "Sweet Sun",
+      "artist": "Loyalty Freak Music"
+    }
+  },
+  {
+    "key": "sound.musicLibrarySection.downloadAndUseSize",
+    "file": "src/renderer/src/editor/panels/MusicLibrarySection.tsx",
+    "line": 227,
+    "english": "Download and use (12.3 MB)",
+    "sample": {
+      "size": "12.3 MB"
+    }
+  },
+  {
+    "key": "sound.musicLibrarySection.copyAgain",
+    "file": "src/renderer/src/editor/panels/MusicLibrarySection.tsx",
+    "line": 293,
+    "english": "Copy Sweet Sun again",
+    "sample": {
+      "title": "Sweet Sun"
+    }
+  },
+  {
+    "key": "sound.soundEffectsSection.rule.zoomIn",
+    "file": "src/renderer/src/editor/panels/SoundEffectsSection.tsx",
+    "line": 26,
+    "english": "Zooming in",
+    "sample": {}
+  },
+  {
+    "key": "sound.soundEffectsSection.rule.zoomOut",
+    "file": "src/renderer/src/editor/panels/SoundEffectsSection.tsx",
+    "line": 33,
+    "english": "Zooming out",
+    "sample": {}
+  },
+  {
+    "key": "sound.soundEffectsSection.rule.titles",
+    "file": "src/renderer/src/editor/panels/SoundEffectsSection.tsx",
+    "line": 40,
+    "english": "Title cards appear",
+    "sample": {}
+  },
+  {
+    "key": "sound.soundEffectsSection.rule.callouts",
+    "file": "src/renderer/src/editor/panels/SoundEffectsSection.tsx",
+    "line": 47,
+    "english": "Texts and shapes appear",
+    "sample": {}
+  },
+  {
+    "key": "sound.soundEffectsSection.percent",
+    "file": "src/renderer/src/editor/panels/SoundEffectsSection.tsx",
+    "line": 53,
+    "english": "80 %",
+    "sample": {
+      "n": "80"
+    }
+  },
+  {
+    "key": "sound.soundEffectsSection.plays",
+    "file": "src/renderer/src/editor/panels/SoundEffectsSection.tsx",
+    "line": 55,
+    "english": [
+      "Does not play yet",
+      "Plays once",
+      "Plays 2 times",
+      "Plays 1000 times"
+    ],
+    "sample": [
+      {
+        "count": 0,
+        "n": "0"
+      },
+      {
+        "count": 1,
+        "n": "1"
+      },
+      {
+        "count": 2,
+        "n": "2"
+      },
+      {
+        "count": 1000,
+        "n": "1000"
+      }
+    ]
+  },
+  {
+    "key": "sound.soundEffectsSection.playRule",
+    "file": "src/renderer/src/editor/panels/SoundEffectsSection.tsx",
+    "line": 127,
+    "english": "Play the sound for zooming in",
+    "sample": {
+      "rule": "zoomIn"
+    }
+  },
+  {
+    "key": "sound.soundEffectsSection.playRule",
+    "file": "src/renderer/src/editor/panels/SoundEffectsSection.tsx",
+    "line": 127,
+    "english": "Play the sound for zooming out",
+    "sample": {
+      "rule": "zoomOut"
+    }
+  },
+  {
+    "key": "sound.soundEffectsSection.playRule",
+    "file": "src/renderer/src/editor/panels/SoundEffectsSection.tsx",
+    "line": 127,
+    "english": "Play the sound for title cards appear",
+    "sample": {
+      "rule": "titles"
+    }
+  },
+  {
+    "key": "sound.soundEffectsSection.playRule",
+    "file": "src/renderer/src/editor/panels/SoundEffectsSection.tsx",
+    "line": 127,
+    "english": "Play the sound for texts and shapes appear",
+    "sample": {
+      "rule": "callouts"
+    }
+  },
+  {
+    "key": "sound.effect.whooshIn",
+    "file": "src/shared/audio/soundNames.ts",
+    "line": 19,
+    "english": "Whoosh",
+    "sample": {}
+  },
+  {
+    "key": "sound.effect.whooshOut",
+    "file": "src/shared/audio/soundNames.ts",
+    "line": 20,
+    "english": "Whoosh out",
+    "sample": {}
+  },
+  {
+    "key": "sound.effect.whooshSoft",
+    "file": "src/shared/audio/soundNames.ts",
+    "line": 21,
+    "english": "Soft whoosh",
+    "sample": {}
+  },
+  {
+    "key": "sound.effect.swishQuick",
+    "file": "src/shared/audio/soundNames.ts",
+    "line": 22,
+    "english": "Quick swish",
+    "sample": {}
+  },
+  {
+    "key": "sound.effect.pop",
+    "file": "src/shared/audio/soundNames.ts",
+    "line": 23,
+    "english": "Pop",
+    "sample": {}
+  },
+  {
+    "key": "sound.effect.popSoft",
+    "file": "src/shared/audio/soundNames.ts",
+    "line": 24,
+    "english": "Soft pop",
+    "sample": {}
+  },
+  {
+    "key": "sound.effect.popBubble",
+    "file": "src/shared/audio/soundNames.ts",
+    "line": 25,
+    "english": "Bubble pop",
+    "sample": {}
+  },
+  {
+    "key": "sound.effect.click",
+    "file": "src/shared/audio/soundNames.ts",
+    "line": 26,
+    "english": "Click",
+    "sample": {}
+  },
+  {
+    "key": "sound.effect.tick",
+    "file": "src/shared/audio/soundNames.ts",
+    "line": 27,
+    "english": "Tick",
+    "sample": {}
+  },
+  {
+    "key": "sound.effect.bell",
+    "file": "src/shared/audio/soundNames.ts",
+    "line": 28,
+    "english": "Bell",
+    "sample": {}
+  },
+  {
+    "key": "sound.effect.chime",
+    "file": "src/shared/audio/soundNames.ts",
+    "line": 29,
+    "english": "Chime",
+    "sample": {}
+  },
+  {
+    "key": "sound.effect.success",
+    "file": "src/shared/audio/soundNames.ts",
+    "line": 30,
+    "english": "Success",
+    "sample": {}
+  },
+  {
+    "key": "sound.effect.rise",
+    "file": "src/shared/audio/soundNames.ts",
+    "line": 31,
+    "english": "Rise",
+    "sample": {}
+  },
+  {
+    "key": "sound.effect.fall",
+    "file": "src/shared/audio/soundNames.ts",
+    "line": 32,
+    "english": "Fall",
+    "sample": {}
+  },
+  {
+    "key": "sound.effect.bubbleIn",
+    "file": "src/shared/audio/soundNames.ts",
+    "line": 33,
+    "english": "Bubble",
+    "sample": {}
+  },
+  {
+    "key": "sound.effect.drop",
+    "file": "src/shared/audio/soundNames.ts",
+    "line": 34,
+    "english": "Drop",
+    "sample": {}
+  },
+  {
+    "key": "sound.effect.unknown",
+    "file": "src/shared/audio/soundNames.ts",
+    "line": 40,
+    "english": "Sound effect",
+    "sample": {}
+  },
+  {
+    "key": "sound.effect.originalPop",
+    "file": "src/shared/audio/sfxChoices.ts",
+    "line": 58,
+    "english": "Original pop",
+    "sample": {}
+  },
+  {
+    "key": "sound.effect.originalDing",
+    "file": "src/shared/audio/sfxChoices.ts",
+    "line": 58,
+    "english": "Original ding",
+    "sample": {}
+  },
+  {
+    "key": "sound.sfxGroup.whoosh",
+    "file": "src/shared/audio/soundNames.ts",
+    "line": 15,
+    "english": "Whooshes",
+    "sample": {}
+  },
+  {
+    "key": "sound.sfxGroup.pop",
+    "file": "src/shared/audio/soundNames.ts",
+    "line": 15,
+    "english": "Pops",
+    "sample": {}
+  },
+  {
+    "key": "sound.sfxGroup.click",
+    "file": "src/shared/audio/soundNames.ts",
+    "line": 15,
+    "english": "Clicks",
+    "sample": {}
+  },
+  {
+    "key": "sound.sfxGroup.chime",
+    "file": "src/shared/audio/soundNames.ts",
+    "line": 15,
+    "english": "Chimes",
+    "sample": {}
+  },
+  {
+    "key": "sound.sfxGroup.suggested",
+    "file": "src/shared/audio/sfxChoices.ts",
+    "line": 50,
+    "english": "Suggested",
     "sample": {}
   }
 ]

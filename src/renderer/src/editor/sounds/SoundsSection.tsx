@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import { scanSources, type SoundRow } from '../../../../shared/audio/sounds'
-import { actionText, foundText, listeningText, rowName, showIgnoredText, SOUNDS_COPY, SOUND_LABELS } from '../../../../shared/audio/soundsCopy'
+import { actionText, failedText, foundText, listeningText, rowName, showIgnoredText, SOUNDS_COPY, SOUND_LABELS } from '../../../../shared/audio/soundsCopy'
 import { addSpans, bringBack, cutRow, ignoreRow, listedRows, removeSpan, restoreCut, rowState, type RowState } from '../../../../shared/audio/soundsEdit'
 import { outputTimeAt } from '../../../../shared/editor/clips'
 import { editToVideo, planOf } from '../../../../shared/engine/freeze'
@@ -12,6 +12,7 @@ import { Section } from '../controls'
 import { EditorIcon } from '../EditorIcon'
 import { cancelScan, checkStored, scanState, scanVersion, startScan, subscribeScan } from './soundScan'
 import './sounds.css'
+import { t } from '../../../../shared/i18n/t'
 
 /** Seconds played before and after a sound by its Play button. */
 const PLAY_AROUND = 0.5
@@ -190,7 +191,7 @@ export function SoundsSection({ project }: { project: Project }): JSX.Element {
         <div className="sounds-status" data-testid="sounds-status" data-state="failed">
           <p className="callout" role="alert">
             <EditorIcon name="alert" size={16} />
-            <span>{`${SOUNDS_COPY.failed} ${state.message}`}</span>
+            <span>{failedText(state.message)}</span>
           </p>
           <button type="button" className="btn" ref={retryRef} onClick={() => void startScan(window.api, project)}>
             {SOUNDS_COPY.tryAgain}
@@ -278,7 +279,7 @@ function SoundRowItem(props: {
   const label = SOUND_LABELS[r.kind]
   return (
     <li className="sound-row" data-key={r.key} data-kind={r.kind} data-state={state} data-start={r.start} data-end={r.end} tabIndex={-1}>
-      <button type="button" className="btn small ghost icon-only sound-play" onClick={props.onPlay} aria-label={`Play ${name}`} title="Play it">
+      <button type="button" className="btn small ghost icon-only sound-play" onClick={props.onPlay} aria-label={t('common.action.playName', { name })} title={t('sound.soundsSection.playIt')}>
         <svg width="12" height="12" viewBox="0 0 24 24" aria-hidden="true">
           <path d="M7 4.5v15l12.5-7.5z" fill="currentColor" />
         </svg>
@@ -292,30 +293,18 @@ function SoundRowItem(props: {
       <span className="sound-actions">
         {state === 'open' ? (
           <>
-            <button type="button" className="btn small" onClick={props.onMute} title={SOUNDS_COPY.muteTitle} aria-label={`Mute ${name}`}>
-              Mute
-            </button>
-            <button type="button" className="btn small" onClick={props.onDuck} title={SOUNDS_COPY.duckTitle} aria-label={`Duck ${name}`}>
-              Duck
-            </button>
-            <button type="button" className="btn small" onClick={props.onCut} title={SOUNDS_COPY.cutTitle} aria-label={`Cut ${name}`}>
-              Cut
-            </button>
-            <button type="button" className="btn small ghost" onClick={props.onIgnore} title={SOUNDS_COPY.ignoreTitle} aria-label={`Ignore ${name}`}>
-              Ignore
-            </button>
+            <button type="button" className="btn small" onClick={props.onMute} title={SOUNDS_COPY.muteTitle} aria-label={t('sound.soundsSection.muteName', { name })}>{t('sound.soundsSection.mute')}</button>
+            <button type="button" className="btn small" onClick={props.onDuck} title={SOUNDS_COPY.duckTitle} aria-label={t('sound.soundsSection.duckName', { name })}>{t('sound.soundsSection.duck')}</button>
+            <button type="button" className="btn small" onClick={props.onCut} title={SOUNDS_COPY.cutTitle} aria-label={t('sound.soundsSection.cutName', { name })}>{t('common.action.cut')}</button>
+            <button type="button" className="btn small ghost" onClick={props.onIgnore} title={SOUNDS_COPY.ignoreTitle} aria-label={t('sound.soundsSection.ignoreName', { name })}>{t('sound.soundsSection.ignore')}</button>
           </>
         ) : (
           <>
             <span className="sound-state">{SOUNDS_COPY.states[state]}</span>
             {state === 'ignored' ? (
-              <button type="button" className="btn small ghost" onClick={props.onBringBack} title={SOUNDS_COPY.bringBackTitle} aria-label={`Bring back ${name}`}>
-                Bring back
-              </button>
+              <button type="button" className="btn small ghost" onClick={props.onBringBack} title={SOUNDS_COPY.bringBackTitle} aria-label={t('sound.soundsSection.bringBackName', { name })}>{t('sound.soundsSection.bringBack')}</button>
             ) : (
-              <button type="button" className="btn small ghost" onClick={props.onRestore} title={SOUNDS_COPY.restoreTitle} aria-label={`Restore ${name}`}>
-                Restore
-              </button>
+              <button type="button" className="btn small ghost" onClick={props.onRestore} title={SOUNDS_COPY.restoreTitle} aria-label={t('sound.soundsSection.restoreName', { name })}>{t('common.action.restore')}</button>
             )}
           </>
         )}

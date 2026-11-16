@@ -26,6 +26,7 @@ import { BADGE_FILL, BUBBLE_FILL } from '../render/callouts'
 import { SOUND_EFFECTS } from '../audio/soundLibrary'
 import { readGraphicSound, readItemSound } from '../audio/soundFxData'
 import { ORIGINAL_SOUNDS, sfxGroupsFor } from '../audio/sfxChoices'
+import { sfxName } from '../audio/soundNames'
 import { pickedMotion } from './calloutsEdit'
 import { fmt } from '../i18n/fmt'
 import { t, type MessageKey } from '../i18n/t'
@@ -190,7 +191,12 @@ export const CALLOUT_MOTIONS: readonly Choice<CalloutMotionKind | 'default'>[] =
 export const CALLOUT_SOUNDS: readonly Choice<string>[] = [
   choice('project', 'text.calloutSound.project'),
   choice('none', 'common.state.none'),
-  ...SOUND_EFFECTS.map((e) => ({ value: `sfx:${e.id}`, label: e.title }))
+  ...SOUND_EFFECTS.map((e) => ({
+    value: `sfx:${e.id}`,
+    get label() {
+      return sfxName(e.id)
+    }
+  }))
 ]
 /** A badge's or a bubble's fill: the default blue, white, dark, then the shape colours. */
 export const CALLOUT_COLORS: readonly string[] = [BADGE_FILL, BUBBLE_FILL, '#1d1d24', ...SHAPE_COLORS.filter((c) => c.toLowerCase() !== BADGE_FILL)]

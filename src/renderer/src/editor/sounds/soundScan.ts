@@ -10,12 +10,13 @@ import type { AudioLevels } from '../../../../shared/audio/loudness'
 import type { AudioSource } from '../../../../shared/audio/settings'
 import { findSounds, scanSources, voiceSource, type SoundRow, type SourceScores } from '../../../../shared/audio/sounds'
 import { cacheEntry, cacheMatches, entryScores } from '../../../../shared/audio/soundsCache'
-import { SOUNDS_COPY } from '../../../../shared/audio/soundsCopy'
+import { SOUNDS_COPY, workerFailedText } from '../../../../shared/audio/soundsCopy'
 import { skipKey } from '../../../../shared/audio/soundsScan'
 import { SOUNDS_STOPPED, type SoundsApi } from '../../../../shared/api/sounds'
 import type { Project } from '../../../../shared/types'
 import { loadAudioAnalysis } from '../audioAnalysis'
 import type { FromWorker, ToWorker } from './protocol'
+import { t } from '../../../../shared/i18n/t'
 
 export type ScanState =
   /** Not listened to yet (or Cancel); `checking`: looking for stored scores. */
@@ -47,6 +48,16 @@ export interface Listener {
 /** Starts listening to one source (replaced in tests). Returns at once, so Cancel can always stop it. */
 export type ListenFn = (api: SoundsApi, project: ScanProject, source: AudioSource, skip: Range[] | null, onSeconds: (s: number) => void) => Listener
 
+/**
+ * Why the worker could not listen, in words for the Audio panel: the worker loads no messages, so it
+ * hands over the engine's own text.
+ */
+export function workerReason(text: string): string {
+  if (/memory/i.test(text)) return t('sound.finder.reason.memory')
+  if (/fetch|load|404|not found/i.test(text)) return t('sound.finder.reason.files', { detail: text })
+  return text || t('sound.finder.reason.unknown')
+}
+
 /** Listens to one source in a new worker, pulling its samples one chunk ahead. */
 export const listenInWorker: ListenFn = (api, project, source, skip, onSeconds) => {
   const worker = new Worker(new URL('./sounds.worker.ts', import.meta.url), { type: 'module' })
@@ -60,10 +71,10 @@ export const listenInWorker: ListenFn = (api, project, source, skip, onSeconds) 
     wake = null
     w?.()
   }
-  worker.onmessage = (e: MessageEvent<FromWorker>) => deliver(e.data)
+  worker.onmessage = (e: MessageEvent<FromWorker>) => deliver(e.data.type === 'failed' ? { type: 'failed', reason: workerReason(e.data.reason) } : e.data)
   worker.onerror = (e) => {
     e.preventDefault()
-    deliver({ type: 'failed', reason: e.message || 'it could not start' })
+    deliver({ type: 'failed', reason: e.message || t('sound.finder.reason.start') })
   }
   const post = (msg: ToWorker, transfer: Transferable[] = []): void => worker.postMessage(msg, transfer)
   post({ type: 'start', skip })
@@ -84,8 +95,8 @@ export const listenInWorker: ListenFn = (api, project, source, skip, onSeconds) 
       if (stopped) throw new Error(CANCELLED)
       const msg = inbox.shift()
       if (msg) {
-        if (msg.type === 'failed') throw new Error(`${SOUNDS_COPY.workerFailed} ${msg.reason}`)
-        if (msg.type !== type) throw new Error(`The sound finder answered ${msg.type}, not ${type}`)
+        if (msg.type === 'failed') throw new Error(workerFailedText(msg.reason))
+        if (msg.type !== type) throw new Error(t('sound.finder.answered', { got: msg.type, expected: type }))
         return msg as Extract<FromWorker, { type: T }>
       }
       await new Promise<void>((resolve) => (wake = resolve))
