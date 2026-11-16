@@ -1,1 +1,92 @@
-{}
+{
+  "multiSelect.refusal.clip": {
+    "description": "Notice after selecting several timeline items (multi-select): why clips cannot join a selection of several items."
+  },
+  "multiSelect.refusal.click": {
+    "description": "Notice after selecting several timeline items (multi-select): why recorded clicks cannot join a selection; {command} is the title of the command that finds stray clicks."
+  },
+  "multiSelect.refusal.caption": {
+    "description": "Notice after selecting several timeline items (multi-select): why captions cannot join a selection."
+  },
+  "multiSelect.refusal.layout": {
+    "description": "Notice after selecting several timeline items (multi-select): why camera layouts cannot join a selection."
+  },
+  "multiSelect.why.start": {
+    "description": "Notice after selecting several timeline items (multi-select): what stops a selection being moved, after \"The selection stops here:\" and the like."
+  },
+  "multiSelect.why.end": {
+    "description": "Notice after selecting several timeline items (multi-select): what stops a selection being moved, after \"The selection stops here:\" and the like."
+  },
+  "multiSelect.why.zoom": {
+    "description": "Notice after selecting several timeline items (multi-select): what stops a selection being moved, after \"The selection stops here:\" and the like."
+  },
+  "multiSelect.why.freezeClip": {
+    "description": "Notice after selecting several timeline items (multi-select): what stops a selection being moved, after \"The selection stops here:\" and the like."
+  },
+  "multiSelect.why.freezeTaken": {
+    "description": "Notice after selecting several timeline items (multi-select): what stops a selection being moved, after \"The selection stops here:\" and the like."
+  },
+  "multiSelect.freezeInCut": {
+    "description": "Notice after selecting several timeline items (multi-select): a freeze frame in a cut keeps the selection from moving. Ctrl is a keycap.",
+    "dnt": [
+      "Ctrl"
+    ]
+  },
+  "multiSelect.full": {
+    "description": "Notice after selecting several timeline items (multi-select): the selection cannot move because it spans the whole recording."
+  },
+  "multiSelect.stopsHere": {
+    "description": "Notice after selecting several timeline items (multi-select): a dragged selection is held back; {why} is the reason (editor.multiSelect.why.*)."
+  },
+  "multiSelect.lessThan": {
+    "description": "Notice after selecting several timeline items (multi-select): a move too short to show in hundredths of a second; {s} is 0.01. s is the unit for seconds and stays Latin."
+  },
+  "multiSelect.notMoved": {
+    "description": "Notice after selecting several timeline items (multi-select): a selection could not move at all; {why} is the reason (editor.multiSelect.why.*)."
+  },
+  "multiSelect.movedLater": {
+    "description": "Notice after selecting several timeline items (multi-select): a selection moved less far than asked; {s} is how far (\"0.6 s\"), {why} the reason."
+  },
+  "multiSelect.movedEarlier": {
+    "description": "Notice after selecting several timeline items (multi-select): a selection moved less far than asked; {s} is how far (\"0.6 s\"), {why} the reason."
+  },
+  "multiSelect.selectNone": {
+    "description": "Notice after selecting several timeline items (multi-select): Select all found nothing to select."
+  },
+  "multiSelect.selectEvery": {
+    "description": "Notice after selecting several timeline items (multi-select): Select all, the second time: every item of every track; {n} is how many."
+  },
+  "multiSelect.selectOnly": {
+    "description": "Notice after selecting several timeline items (multi-select): Select all found one item on its track; {what} is its kind (\"zoom\")."
+  },
+  "multiSelect.selectOnlyAgain": {
+    "description": "Notice after selecting several timeline items (multi-select): Select all found one item on its track; {what} is its kind (\"zoom\"), {keys} the Select all shortcut."
+  },
+  "multiSelect.selectAll": {
+    "description": "Notice after selecting several timeline items (multi-select): Select all selected the items on a track; {what} is how many of what (\"12 text items\")."
+  },
+  "multiSelect.selectAllAgain": {
+    "description": "Notice after selecting several timeline items (multi-select): Select all selected the items on a track; {what} is how many of what (\"12 text items\"), {keys} the Select all shortcut."
+  },
+  "multiSelect.shapesTrack": {
+    "description": "Notice after selecting several timeline items (multi-select): what Select all selected when the shapes track holds shapes and spotlights; {n} is how many (always two or more)."
+  },
+  "multiSelect.deleted": {
+    "description": "Notice after selecting several timeline items (multi-select): the selected items were deleted; {n} is how many. The Undo shortcut may follow."
+  },
+  "multiSelect.cut": {
+    "description": "Notice after selecting several timeline items (multi-select): the selected items were cut to the clipboard; {n} is how many. The Undo shortcut may follow."
+  },
+  "multiSelect.copyLookFirst": {
+    "description": "Notice after selecting several timeline items (multi-select): Paste look has no look to paste; {keys} is the Copy look shortcut."
+  },
+  "multiSelect.copyLookFirstButton": {
+    "description": "Notice after selecting several timeline items (multi-select): Paste look has no look to paste, and Copy look has no shortcut."
+  },
+  "multiSelect.nothingCopied": {
+    "description": "Notice after selecting several timeline items (multi-select): Paste found nothing copied; {keys} is the Copy shortcut."
+  },
+  "multiSelect.nothingCopiedPalette": {
+    "description": "Notice after selecting several timeline items (multi-select): Paste found nothing copied, and Copy has no shortcut; {command} is the Copy command's title."
+  }
+}

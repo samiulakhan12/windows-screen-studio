@@ -1657,5 +1657,306 @@
         "count": 1000
       }
     ]
+  },
+  {
+    "key": "editor.multiSelect.refusal.clip",
+    "file": "src/shared/editor/multiSelectCopy.ts",
+    "line": 17,
+    "english": "Clips and cuts are selected one at a time",
+    "sample": {}
+  },
+  {
+    "key": "editor.multiSelect.refusal.click",
+    "file": "src/shared/editor/multiSelectCopy.ts",
+    "line": 20,
+    "english": "Recorded clicks are ignored one at a time, or with Find stray clicks",
+    "sample": {
+      "command": "Find stray clicks"
+    }
+  },
+  {
+    "key": "editor.multiSelect.refusal.caption",
+    "file": "src/shared/editor/multiSelectCopy.ts",
+    "line": 23,
+    "english": "Captions are edited one at a time, or all at once in the Captions tab",
+    "sample": {}
+  },
+  {
+    "key": "editor.multiSelect.refusal.layout",
+    "file": "src/shared/editor/multiSelectCopy.ts",
+    "line": 26,
+    "english": "Camera layouts are changed one at a time; the director's tools redo many at once",
+    "sample": {}
+  },
+  {
+    "key": "editor.multiSelect.why.start",
+    "file": "src/shared/editor/multiSelectCopy.ts",
+    "line": 32,
+    "english": "the start of the recording",
+    "sample": {}
+  },
+  {
+    "key": "editor.multiSelect.why.end",
+    "file": "src/shared/editor/multiSelectCopy.ts",
+    "line": 33,
+    "english": "the end of the recording",
+    "sample": {}
+  },
+  {
+    "key": "editor.multiSelect.why.zoom",
+    "file": "src/shared/editor/multiSelectCopy.ts",
+    "line": 34,
+    "english": "a zoom is in the way",
+    "sample": {}
+  },
+  {
+    "key": "editor.multiSelect.why.freezeClip",
+    "file": "src/shared/editor/multiSelectCopy.ts",
+    "line": 35,
+    "english": "a freeze frame stays in its clip (drag it alone to move it past a cut)",
+    "sample": {}
+  },
+  {
+    "key": "editor.multiSelect.why.freezeTaken",
+    "file": "src/shared/editor/multiSelectCopy.ts",
+    "line": 36,
+    "english": "a freeze frame is already on that frame",
+    "sample": {}
+  },
+  {
+    "key": "editor.multiSelect.freezeInCut",
+    "file": "src/shared/editor/multiSelectCopy.ts",
+    "line": 41,
+    "english": "A selected freeze frame is in a cut, so the selection can't move. Ctrl+click it to leave it out",
+    "sample": {}
+  },
+  {
+    "key": "editor.multiSelect.full",
+    "file": "src/shared/editor/multiSelectCopy.ts",
+    "line": 42,
+    "english": "The selection already fills the recording",
+    "sample": {}
+  },
+  {
+    "key": "editor.multiSelect.stopsHere",
+    "file": "src/shared/editor/multiSelectCopy.ts",
+    "line": 43,
+    "english": "The selection stops here: a zoom is in the way",
+    "sample": {
+      "why": "a zoom is in the way"
+    }
+  },
+  {
+    "key": "editor.multiSelect.lessThan",
+    "file": "src/shared/editor/multiSelectCopy.ts",
+    "line": 50,
+    "english": "less than 0.01 s",
+    "sample": {
+      "s": "0.01"
+    }
+  },
+  {
+    "key": "editor.multiSelect.notMoved",
+    "file": "src/shared/editor/multiSelectCopy.ts",
+    "line": 58,
+    "english": "Not moved: the start of the recording",
+    "sample": {
+      "why": "the start of the recording"
+    }
+  },
+  {
+    "key": "editor.multiSelect.movedLater",
+    "file": "src/shared/editor/multiSelectCopy.ts",
+    "line": 59,
+    "english": "Moved 0.6 s later: a zoom is in the way",
+    "sample": {
+      "s": "0.6 s",
+      "why": "a zoom is in the way"
+    }
+  },
+  {
+    "key": "editor.multiSelect.movedEarlier",
+    "file": "src/shared/editor/multiSelectCopy.ts",
+    "line": 59,
+    "english": "Moved 0.6 s earlier: the start of the recording",
+    "sample": {
+      "s": "0.6 s",
+      "why": "the start of the recording"
+    }
+  },
+  {
+    "key": "editor.multiSelect.selectNone",
+    "file": "src/shared/editor/multiSelectCopy.ts",
+    "line": 64,
+    "english": "No items to select yet",
+    "sample": {}
+  },
+  {
+    "key": "editor.multiSelect.selectEvery",
+    "file": "src/shared/editor/multiSelectCopy.ts",
+    "line": 65,
+    "english": "Selected every item (24)",
+    "sample": {
+      "n": "24"
+    }
+  },
+  {
+    "key": "editor.multiSelect.selectOnly",
+    "file": "src/shared/editor/multiSelectCopy.ts",
+    "line": 72,
+    "english": "Selected the only zoom",
+    "sample": {
+      "what": "zoom"
+    }
+  },
+  {
+    "key": "editor.multiSelect.selectOnlyAgain",
+    "file": "src/shared/editor/multiSelectCopy.ts",
+    "line": 72,
+    "english": "Selected the only zoom · Ctrl + A again selects every item",
+    "sample": {
+      "what": "zoom",
+      "keys": "Ctrl + A"
+    }
+  },
+  {
+    "key": "editor.multiSelect.selectAll",
+    "file": "src/shared/editor/multiSelectCopy.ts",
+    "line": 74,
+    "english": "Selected all 12 text items",
+    "sample": {
+      "what": "12 text items"
+    }
+  },
+  {
+    "key": "editor.multiSelect.selectAllAgain",
+    "file": "src/shared/editor/multiSelectCopy.ts",
+    "line": 74,
+    "english": "Selected all 12 text items · Ctrl + A again selects every item",
+    "sample": {
+      "what": "12 text items",
+      "keys": "Ctrl + A"
+    }
+  },
+  {
+    "key": "editor.multiSelect.shapesTrack",
+    "file": "src/shared/editor/multiSelectCopy.ts",
+    "line": 69,
+    "english": [
+      "0 items on the shapes track",
+      "1 items on the shapes track",
+      "2 items on the shapes track",
+      "1000 items on the shapes track"
+    ],
+    "sample": [
+      {
+        "count": 0,
+        "n": "0"
+      },
+      {
+        "count": 1,
+        "n": "1"
+      },
+      {
+        "count": 2,
+        "n": "2"
+      },
+      {
+        "count": 1000,
+        "n": "1000"
+      }
+    ]
+  },
+  {
+    "key": "editor.multiSelect.deleted",
+    "file": "src/shared/editor/multiSelectCopy.ts",
+    "line": 79,
+    "english": [
+      "Deleted 0 items",
+      "Deleted 1 item",
+      "Deleted 2 items",
+      "Deleted 1000 items"
+    ],
+    "sample": [
+      {
+        "count": 0,
+        "n": "0"
+      },
+      {
+        "count": 1,
+        "n": "1"
+      },
+      {
+        "count": 2,
+        "n": "2"
+      },
+      {
+        "count": 1000,
+        "n": "1000"
+      }
+    ]
+  },
+  {
+    "key": "editor.multiSelect.cut",
+    "file": "src/shared/editor/multiSelectCopy.ts",
+    "line": 79,
+    "english": [
+      "Cut 0 items",
+      "Cut 1 item",
+      "Cut 2 items",
+      "Cut 1000 items"
+    ],
+    "sample": [
+      {
+        "count": 0,
+        "n": "0"
+      },
+      {
+        "count": 1,
+        "n": "1"
+      },
+      {
+        "count": 2,
+        "n": "2"
+      },
+      {
+        "count": 1000,
+        "n": "1000"
+      }
+    ]
+  },
+  {
+    "key": "editor.multiSelect.copyLookFirst",
+    "file": "src/shared/editor/multiSelectCopy.ts",
+    "line": 88,
+    "english": "Copy a look first: select one item and press Ctrl + Shift + C",
+    "sample": {
+      "keys": "Ctrl + Shift + C"
+    }
+  },
+  {
+    "key": "editor.multiSelect.copyLookFirstButton",
+    "file": "src/shared/editor/multiSelectCopy.ts",
+    "line": 88,
+    "english": "Copy a look first: select one item and press its Copy look button",
+    "sample": {}
+  },
+  {
+    "key": "editor.multiSelect.nothingCopied",
+    "file": "src/shared/editor/multiSelectCopy.ts",
+    "line": 93,
+    "english": "Nothing copied yet: select items and press Ctrl + C",
+    "sample": {
+      "keys": "Ctrl + C"
+    }
+  },
+  {
+    "key": "editor.multiSelect.nothingCopiedPalette",
+    "file": "src/shared/editor/multiSelectCopy.ts",
+    "line": 93,
+    "english": "Nothing copied yet: select items and run \"Copy selected items\" from the command palette",
+    "sample": {
+      "command": "Copy selected items"
+    }
   }
 ]
