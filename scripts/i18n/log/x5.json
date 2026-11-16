@@ -7355,5 +7355,26 @@
     "line": 119,
     "english": "PNG image",
     "sample": {}
+  },
+  {
+    "key": "settings.provider.preset.ollama",
+    "file": "src/renderer/src/settings/ProviderForm.tsx",
+    "line": 29,
+    "english": "Ollama on this PC",
+    "sample": {}
+  },
+  {
+    "key": "settings.provider.preset.lmstudio",
+    "file": "src/renderer/src/settings/ProviderForm.tsx",
+    "line": 30,
+    "english": "LM Studio on this PC",
+    "sample": {}
+  },
+  {
+    "key": "settings.provider.preset.other",
+    "file": "src/renderer/src/settings/ProviderForm.tsx",
+    "line": 31,
+    "english": "Other address",
+    "sample": {}
   }
 ]

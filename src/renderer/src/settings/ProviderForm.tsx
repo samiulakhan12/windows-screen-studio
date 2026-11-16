@@ -21,6 +21,17 @@ const formKinds = (): { kind: FormKind; label: string }[] => [
 /** The services More services covers, named under the picker. */
 export const moreServicesHint = (): string => t('settings.provider.moreServicesHint')
 
+/**
+ * A service preset's name in the UI language: the ones on this PC and Other address are words, the
+ * rest are brand names (SERVICE_PRESETS stays the English table main and the default names use).
+ */
+export function presetLabel(p: ServicePreset): string {
+  if (p === 'ollama') return t('settings.provider.preset.ollama')
+  if (p === 'lmstudio') return t('settings.provider.preset.lmstudio')
+  if (p === 'other') return t('settings.provider.preset.other')
+  return SERVICE_PRESETS[p].label
+}
+
 /** Where each provider's requests go (the key and the text), as the line under the form names it. */
 const KIND_HOSTS: Record<AiProviderKind, string> = { openai: 'api.openai.com', gemini: 'generativelanguage.googleapis.com', anthropic: 'api.anthropic.com' }
 
@@ -280,7 +291,7 @@ export function ProviderForm({
             <select className="settings-input" value={preset} onChange={(e) => pickPreset(e.target.value as ServicePreset)} data-testid="service-preset">
               {PRESET_ORDER.map((p) => (
                 <option key={p} value={p}>
-                  {SERVICE_PRESETS[p].label}
+                  {presetLabel(p)}
                 </option>
               ))}
             </select>

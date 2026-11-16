@@ -1,10 +1,10 @@
 import { useEffect, useId, useRef, useState } from 'react'
 import { AI_PROVIDER_KINDS, type AiProviderInfo } from '../../../shared/api/ai'
-import { ProviderForm, type CheckResult } from './ProviderForm'
+import { presetLabel, ProviderForm, type CheckResult } from './ProviderForm'
 import { canDo, ipcMessage } from './providerText'
 import { SPEECH_COPY } from '../../../shared/speech/speechCopy'
 import { BUNDLED_MODEL_LIST, retiringNotes } from '../../../shared/ai/modelList'
-import { presetApplies, SERVICE_PRESETS } from '../../../shared/ai/presets'
+import { presetApplies } from '../../../shared/ai/presets'
 import { CONFIRM_PREFS, DEFAULT_CONFIRM, type ConfirmPref } from '../../../shared/smart/smartPrefs'
 import { refreshCostData } from '../ai/useCost'
 import { LocalAiRow } from './LocalAiSection'
@@ -61,7 +61,7 @@ function ConfirmSetting(): JSX.Element {
 const kindLabel = (p: AiProviderInfo): string => {
   const s = p.service
   if (!s) return AI_PROVIDER_KINDS[p.kind].label
-  return s.preset !== 'other' && (presetApplies(s.preset, s.host) || s.preset === 'azure') ? SERVICE_PRESETS[s.preset].label : t('settings.ai.service')
+  return s.preset !== 'other' && (presetApplies(s.preset, s.host) || s.preset === 'azure') ? presetLabel(s.preset) : t('settings.ai.service')
 }
 
 type TestState = { busy: true } | { busy: false; ok: boolean; message: string }
