@@ -8,10 +8,10 @@ import type { AiProviderInfo, TranscribeProgress } from '../api/ai'
 import { MAX_CAPTIONS } from '../captions/captionData'
 import { phaseLine, SPEECH_COPY } from '../speech/speechCopy'
 import { CAPTIONS_SKIPPED_NO_MODEL } from '../speech/transcriber'
-import { formatTime } from '../engine/project'
-import { framingLine, zoomText } from './directorCopy'
+import { framingLine } from './directorCopy'
 import { POLISH_STEPS, type PolishSkip, type PolishStep, type PolishStepResult, type PolishSummary } from './polish'
 import { SILENCE_LENGTH, type SmartSpeedAction } from './smartSpeed'
+import { fmt } from '../i18n/fmt'
 
 const STEP_LABEL: Record<PolishStep, string> = {
   style: 'Style',
@@ -67,7 +67,7 @@ export const transcriberLabel = (p: Pick<AiProviderInfo, 'label' | 'kind' | 'tra
 
 const plural = (n: number, word: string): string => `${n} ${word}${n === 1 ? '' : 's'}`
 /** The Clip panel's seconds: "3.5 s" under a minute, else "1:12.0". */
-const shorter = (s: number): string => (s < 60 ? `${s.toFixed(1)} s` : formatTime(s))
+const shorter = (s: number): string => (s < 60 ? `${s.toFixed(1)} s` : fmt.clock(s))
 /** Below this the video is not called shorter (smart speed's MIN_SAVING). */
 const MIN_SHORTER = 0.05
 const lowerFirst = (s: string): string => s.charAt(0).toLowerCase() + s.slice(1)
@@ -211,7 +211,7 @@ function resultText(summary: PolishSummary, r: PolishStepResult): string {
       return changed ? `Smooth cuts at ${plural(summary.smoothCuts ?? 0, 'cut')}` : 'Smooth cuts: unchanged'
     case 'captions': {
       const at = summary.captionsLeftOutAfter
-      const left = at === null ? '' : `. A project keeps at most ${MAX_CAPTIONS} captions, so the captions after ${formatTime(at, false)} were left out.`
+      const left = at === null ? '' : `. A project keeps at most ${MAX_CAPTIONS} captions, so the captions after ${fmt.clock(at, 'whole')} were left out.`
       return `Captions: ${plural(summary.captions, 'caption')}${left}`
     }
     case 'chapters':
@@ -220,7 +220,7 @@ function resultText(summary: PolishSummary, r: PolishStepResult): string {
       return changed ? 'Caption look: done' : 'Caption look: unchanged'
     case 'director': {
       const f = summary.framing
-      const face = f?.status === 'framed' ? `face centred (${zoomText(f.zoom)})` : ''
+      const face = f?.status === 'framed' ? `face centred (${fmt.factor(f.zoom)})` : ''
       const what = cameraWords(summary.camera)
       const body = !changed ? (what.length ? 'already directed' : 'nothing to change') : what.length ? what.join(', ') + (face ? `; ${face}` : '') : face || 'nothing to change'
       // Why the face was not framed (not found, unavailable); nothing when it was not asked for.

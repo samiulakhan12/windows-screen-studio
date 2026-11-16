@@ -10,6 +10,7 @@
  * keyboard and matches however it is typed. Ctrl and the Windows/Command key count as one.
  */
 import { COMMAND_IDS, commandInfo, isCommandId, type CommandId } from './commands'
+import { fmt } from '../i18n/fmt'
 
 export interface Chord {
   ctrl: boolean
@@ -281,9 +282,6 @@ export function undoHint(keymap: Keymap): string {
   return keymap.undo.length ? ` · ${shortcutLabel(keymap.undo[0])} to undo` : ''
 }
 
-/** "A", "A and B", "A, B and C". */
-const listPhrase = (items: string[]): string => (items.length < 2 ? (items[0] ?? '') : `${items.slice(0, -1).join(', ')} and ${items[items.length - 1]}`)
-
 /**
  * What the zoom level keys do, for hints: "1–4 set its zoom level, 0 pulls back" with the
  * default keys, following the user's shortcuts; null when none of them has one.
@@ -294,7 +292,7 @@ export function zoomLevelKeysHint(keymap: Keymap): string | null {
   const run = levels.length > 2 && levels.every((l, i) => /^\d$/.test(l) && (i === 0 || Number(l) === Number(levels[i - 1]) + 1))
   const back = keymap.zoomLevel0[0]
   const parts = [
-    levels.length > 0 && `${run ? `${levels[0]}–${levels[levels.length - 1]}` : listPhrase(levels)} ${levels.length === 1 ? 'sets' : 'set'} its zoom level`,
+    levels.length > 0 && `${run ? `${levels[0]}–${levels[levels.length - 1]}` : fmt.list(levels)} ${levels.length === 1 ? 'sets' : 'set'} its zoom level`,
     back && `${shortcutLabel(back)} pulls back`
   ].filter((p): p is string => !!p)
   return parts.length ? parts.join(', ') : null

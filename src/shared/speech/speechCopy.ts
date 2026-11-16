@@ -8,10 +8,10 @@
  */
 import type { SpeechDownloadError, SpeechModelStatus, SpeechModelView, SpeechState } from '../api/speech'
 import type { SoundDetector } from '../audio/voice'
-import { formatTime } from '../engine/project'
 import { isLanguageModel, memoryNeedMB, SPEECH_MODEL_REPO, SPEECH_TIER_NAMES, speechModel, type SpeechModelId, type SpeechTier } from './catalog'
 import { localErrorMessage, modelBlockReason, quickerModel, tierLabel, UNAVAILABLE_REASONS } from './errors'
 import { durationWords, sizeWords } from './estimate'
+import { fmt } from '../i18n/fmt'
 
 /** "Standard": the tier of `id`. */
 export const tierName = (id: SpeechModelId): string => SPEECH_TIER_NAMES[speechModel(id)!.tier]
@@ -305,7 +305,7 @@ export function phaseLine(phase: LocalPhase, at?: number, duration?: number): st
     case 'preparing':
       return 'Preparing the sound…'
     case 'transcribing':
-      return at !== undefined && duration !== undefined ? `Making captions on this PC… ${formatTime(at, false)} of ${formatTime(duration, false)}` : 'Making captions on this PC…'
+      return at !== undefined && duration !== undefined ? `Making captions on this PC… ${fmt.clock(at, 'whole')} of ${fmt.clock(duration, 'whole')}` : 'Making captions on this PC…'
     case 'finishing':
       return 'Finishing…'
     case 'stopping':

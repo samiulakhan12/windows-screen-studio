@@ -8,7 +8,7 @@
  * zoom, a new zoom, a move in the list) reads them back, and only a start not seen yet is worked out.
  */
 import { videoTimesAt, type FreezePlan } from '../engine/freeze'
-import { formatTime } from '../engine/project'
+import { fmt } from '../i18n/fmt'
 import type { Clip } from '../types'
 
 const memo = new WeakMap<readonly Clip[], { plan: FreezePlan; byStart: Map<number, string> }>()
@@ -22,7 +22,7 @@ export function rowTimes(items: readonly { start: number }[], clips: Clip[], pla
   for (const i of items) if (!byStart.has(i.start)) missing.push(i.start)
   if (missing.length > 0) {
     const times = videoTimesAt(clips, plan, missing)
-    missing.forEach((t, k) => byStart.set(t, formatTime(times[k])))
+    missing.forEach((t, k) => byStart.set(t, fmt.clock(times[k])))
   }
   return items.map((i) => byStart.get(i.start) as string)
 }

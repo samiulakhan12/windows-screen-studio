@@ -2,8 +2,8 @@
  * Every sentence of the unwanted-sound finder (docs/design/sound-finder.md §5), kept together so the
  * panel, the controller and the tests agree.
  */
-import { formatTime } from '../engine/project'
 import type { SoundKind } from './sounds'
+import { fmt } from '../i18n/fmt'
 
 export const SOUND_LABELS: Readonly<Record<SoundKind, string>> = {
   cough: 'Cough',
@@ -54,13 +54,13 @@ export const showIgnoredText = (n: number): string => `Show ignored (${n})`
 export const lengthText = (seconds: number): string => `${Math.max(0.1, Math.round(seconds * 10) / 10).toFixed(1)} s`
 
 /** The row's name in sentences: "the cough at 0:12.4". */
-export const rowName = (kind: SoundKind, outputTime: number): string => `the ${SOUND_LABELS[kind].toLowerCase()} at ${formatTime(outputTime)}`
+export const rowName = (kind: SoundKind, outputTime: number): string => `the ${SOUND_LABELS[kind].toLowerCase()} at ${fmt.clock(outputTime)}`
 
 /** What the live region says after an action. */
 export const actionText = {
   mute: (name: string): string => `Muted ${name}`,
   duck: (name: string): string => `Lowered ${name}`,
-  cut: (seconds: number): string => `Cut ${lengthText(seconds)}`,
+  cut: (seconds: number): string => `Cut ${fmt.seconds(seconds)}`,
   ignore: (name: string): string => `Ignored ${name}`,
   restore: (name: string): string => `Restored ${name}`,
   bringBack: (name: string): string => `${name.charAt(0).toUpperCase()}${name.slice(1)} is back on the list`,

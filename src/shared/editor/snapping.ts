@@ -9,13 +9,13 @@
  */
 import { freezePlan, freezeSnapTargets, planOf } from '../engine/freeze'
 import type { ClickRow } from '../engine/inputData'
-import { formatTime } from '../engine/project'
 import { chapterInVideo, MIN_CHAPTER_GAP } from '../render/chapters'
 import { spotlightName } from '../render/magnifier'
 import { viewingTime } from '../render/overlays'
 import type { Chapter, Clip, Project } from '../types'
 import { timelineGaps } from './clips'
 import { shapeLabel } from './shapes'
+import { fmt } from '../i18n/fmt'
 
 export const SNAP = {
   /** A target this close to a dragged edge (screen px) catches it. */
@@ -379,5 +379,5 @@ export function sameClips(cur: readonly Clip[], next: readonly Clip[]): boolean 
 
 /** The guide's text: "Cut · 0:04.0". */
 export function snapLabel(target: SnapTarget): string {
-  return `${target.label} · ${formatTime(target.t)}`
+  return `${target.label} · ${fmt.clock(target.t)}`
 }

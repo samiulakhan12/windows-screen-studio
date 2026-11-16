@@ -5,8 +5,8 @@
  * changes nothing.
  */
 import { planOf } from '../engine/freeze'
-import { formatTime } from '../engine/project'
 import { cutsOf, smoothAt, type CutRef } from '../render/joins'
+import { fmt } from '../i18n/fmt'
 import type { CutJoin, CutStyle, Project, ProjectJoins } from '../types'
 
 const SMOOTH: CutJoin = { kind: 'smooth' }
@@ -182,5 +182,5 @@ export function cutsWithoutOwnStyle(project: Project): number {
 
 /** "1:23.4 to 1:25.0": a cut's source span, as the timeline names it. */
 export function cutSpan(gap: { start: number; end: number }): string {
-  return `${formatTime(gap.start)} to ${formatTime(gap.end)}`
+  return `${fmt.clock(gap.start)} to ${fmt.clock(gap.end)}`
 }

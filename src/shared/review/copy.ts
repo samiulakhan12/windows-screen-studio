@@ -3,7 +3,7 @@
  * statuses, progress and the live messages. Pure.
  */
 import type { AutoCut, CameraLayout, Corner, LayoutSegment, ZoomSegment } from '../types'
-import { formatLevel } from '../editor/zoomEdit'
+import { fmt } from '../i18n/fmt'
 
 /**
  * Review mode's own kinds, then Captions Studio's (docs/design/captions-studio.md §11.8): the look,
@@ -72,7 +72,7 @@ export function zoomTitle(z: ZoomSegment): string {
   return place ? `Zoom in, ${place}` : 'Zoom in'
 }
 
-export const zoomDetail = (z: ZoomSegment): string => formatLevel(z.scale)
+export const zoomDetail = (z: ZoomSegment): string => fmt.factor(z.scale)
 
 const CORNER_WORDS: Record<Corner, string> = { 'top-left': 'top left', 'top-right': 'top right', 'bottom-left': 'bottom left', 'bottom-right': 'bottom right' }
 const LAYOUT_TITLES: Record<Exclude<CameraLayout, 'default'>, string> = {

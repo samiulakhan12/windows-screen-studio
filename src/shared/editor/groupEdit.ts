@@ -21,13 +21,13 @@ import { parseItemKey, type GroupKind, type ItemKey } from './multiSelect'
 import { sizeForAspect } from './overlays'
 import { hasStroke, HIGHLIGHT_COLORS, isPrivacyKind, SHAPE_COLORS, shapeLabel, STROKE_LIMITS } from './shapes'
 import { TITLE_BACKGROUNDS, TITLE_COLORS, TITLE_STYLES, TITLE_TEXT_COLORS, titleColorOf, titleTextColorOf } from './titles'
-import { formatLevel } from './zoomEdit'
 import { annotationItem, CALLOUT_ALLOWED, calloutOf, shapeItem, type CalloutItem } from '../render/calloutData'
 import { BADGE_FILL, BUBBLE_FILL } from '../render/callouts'
 import { SOUND_EFFECTS } from '../audio/soundLibrary'
 import { readGraphicSound, readItemSound } from '../audio/soundFxData'
 import { ORIGINAL_SOUNDS, sfxGroupsFor } from '../audio/sfxChoices'
 import { pickedMotion } from './calloutsEdit'
+import { fmt } from '../i18n/fmt'
 
 /** Items that share a look: shapes split into marks and privacy shapes; chapters have none. */
 export type LookClass = 'zoom' | 'text' | 'mark' | 'privacy' | 'spotlight' | 'image' | 'title' | 'freeze' | 'graphic'
@@ -285,7 +285,7 @@ export const GROUP_FIELDS: readonly GroupField[] = [
     id: 'zoom.level',
     cls: 'zoom',
     label: 'Zoom level',
-    control: { type: 'slider', min: ZOOM_MIN_SCALE, max: ZOOM_MAX_SCALE, step: 0.05, format: formatLevel },
+    control: { type: 'slider', min: ZOOM_MIN_SCALE, max: ZOOM_MAX_SCALE, step: 0.05, format: fmt.factor },
     look: true,
     read: (z, _p, ctx) => zoomLevelOf(z, ctx),
     eq: sameLevel,
@@ -1036,7 +1036,7 @@ export function lookLabel(look: Look): string {
   const parts: (string | null)[] = []
   switch (look.cls) {
     case 'zoom':
-      parts.push(num('zoom.level') === null ? null : formatLevel(num('zoom.level')!), v['zoom.easing'] ? optionLabel('zoom.easing', v['zoom.easing']).toLowerCase() : null)
+      parts.push(num('zoom.level') === null ? null : fmt.factor(num('zoom.level')!), v['zoom.easing'] ? optionLabel('zoom.easing', v['zoom.easing']).toLowerCase() : null)
       break
     case 'text':
       parts.push(v['text.style'] ? `${optionLabel('text.style', v['text.style'])} style` : null, num('text.size') === null ? null : `${Math.round(num('text.size')! * 1000) / 10} %`)

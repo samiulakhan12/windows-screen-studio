@@ -7,6 +7,7 @@ import { keptBounds, outputToSource } from '../engine/timeline'
 import { clamp } from '../engine/math'
 import type { Clip } from '../types'
 import { outputTimeAt } from './clips'
+import { fmt } from '../i18n/fmt'
 
 /** Speeds the preview can play at; the exported video is never affected. */
 export const PREVIEW_SPEEDS = [0.5, 1, 1.5, 2] as const
@@ -74,7 +75,7 @@ export function formatRate(r: number): string {
 /** The badge: "Reverse 1×", "Forward 4× · no sound"; null when stopped or playing forward at level 0. */
 export function shuttleLabel(s: Shuttle, previewSpeed: number, silent = false): string | null {
   if (s.dir === 0 || (s.dir === 1 && s.level === 0)) return null
-  const rate = formatRate(Math.abs(viewRate(s, previewSpeed)))
+  const rate = fmt.factor(Math.abs(viewRate(s, previewSpeed)))
   return s.dir < 0 ? `Reverse ${rate}` : `Forward ${rate}${silent ? ' · no sound' : ''}`
 }
 
@@ -116,7 +117,7 @@ export function shuttleHint(keys: { reverse: string | null; pause: string | null
   const out: string[] = []
   if (roles.length) out.push(`${roles.join(', ')}${reverse || forward ? '; press again to go faster' : ''}.`)
   if (pause && steps) out.push(`Hold ${pause} and tap ${steps} to step one frame.`)
-  out.push(`No sound in reverse or above ${formatRate(AUDIBLE_RATES.max)}.`)
+  out.push(`No sound in reverse or above ${fmt.factor(AUDIBLE_RATES.max)}.`)
   return out.join(' ')
 }
 

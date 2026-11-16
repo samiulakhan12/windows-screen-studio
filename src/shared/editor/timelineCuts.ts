@@ -5,10 +5,10 @@
  * merge into one with a count that selects the first of them. Pure.
  */
 import { planOf } from '../engine/freeze'
-import { formatTime } from '../engine/project'
 import { cutsOf } from '../render/joins'
 import type { JoinKind, Project } from '../types'
 import { joinName } from './joinsEdit'
+import { fmt } from '../i18n/fmt'
 
 /** The glyph's size, the hit target's, and how close two markers may be before they merge (px). */
 export const CUT_MARKER = { glyph: 12, target: 24, merge: 12 } as const
@@ -56,5 +56,5 @@ export function cutMarkers(project: Project, px: number, win?: { start: number; 
 /** "Cut 5 of 37: 1:23.4 to 1:25.0, crossfade" (and how many more a merged marker stands for). */
 export function markerName(n: number, of: number, gap: { start: number; end: number }, kind: JoinKind, count = 1): string {
   const more = count > 1 ? `, and ${count - 1} more ${count - 1 === 1 ? 'cut' : 'cuts'}` : ''
-  return `Cut ${n} of ${of}: ${formatTime(gap.start)} to ${formatTime(gap.end)}, ${joinName(kind).toLowerCase()}${more}`
+  return `Cut ${n} of ${of}: ${fmt.clock(gap.start)} to ${fmt.clock(gap.end)}, ${joinName(kind).toLowerCase()}${more}`
 }

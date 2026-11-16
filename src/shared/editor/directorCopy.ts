@@ -7,8 +7,8 @@
 import type { DirectorNote, DirectorPart, DirectorPlan, DirectorReason } from './cameraDirector'
 import type { DirectorSpeech } from '../audio/speech'
 import type { FramingOutcome } from '../render/faceFraming'
-import { formatTime } from '../engine/project'
 import type { CameraLayout, Corner, DirectorSettings } from '../types'
+import { fmt } from '../i18n/fmt'
 
 const CORNER_WORDS: Record<Corner, string> = {
   'top-left': 'top left',
@@ -40,7 +40,7 @@ export function partLabel(part: Pick<DirectorPart, 'kind' | 'layout' | 'corner'>
 }
 
 /** "0:16–0:23": a part's output times, in whole seconds as the viewer counts them. */
-export const partTimes = (part: Pick<DirectorPart, 'outStart' | 'outEnd'>): string => `${formatTime(part.outStart, false)}–${formatTime(part.outEnd, false)}`
+export const partTimes = (part: Pick<DirectorPart, 'outStart' | 'outEnd'>): string => `${fmt.clock(part.outStart, 'whole')}–${fmt.clock(part.outEnd, 'whole')}`
 
 /** Why the director made a part, in muted text after it. */
 export function reasonText(reason: DirectorReason): string {
@@ -61,7 +61,7 @@ export const partLine = (part: DirectorPart): string => `${partLabel(part)} · $
 
 /** The face row of the list: before applying "measured when you direct", after it the zoom it used. */
 export function faceLine(applied: { zoom: number } | null): string {
-  return applied ? `Face centred · ${zoomText(applied.zoom)}` : 'Face centred · measured when you direct'
+  return applied ? `Face centred · ${fmt.factor(applied.zoom)}` : 'Face centred · measured when you direct'
 }
 
 /** "4 changes · camera on screen 58% of the video". */
@@ -181,7 +181,7 @@ export function framingLine(outcome: FramingOutcome, userFraming: boolean): { st
     case 'framed':
       return {
         status: 'framed',
-        text: outcome.steady ? `Face centred (${zoomText(outcome.zoom)}).` : 'You move around a lot, so the camera is centred on you with little zoom.'
+        text: outcome.steady ? `Face centred (${fmt.factor(outcome.zoom)}).` : 'You move around a lot, so the camera is centred on you with little zoom.'
       }
     case 'not-found':
       return { status: 'not-found', text: 'No one was found in the camera picture, so the framing was left as it was.' }
@@ -206,7 +206,7 @@ export function directedNotice(parts: readonly Pick<DirectorPart, 'kind'>[], out
   if (count('corner')) what.push(plural(count('corner'), 'bubble move'))
   if (count('hidden')) what.push(`${count('hidden')} hidden`)
   if (count('outro')) what.push('outro')
-  const face = outcome.status === 'framed' ? `face centred (${zoomText(outcome.zoom)})` : ''
+  const face = outcome.status === 'framed' ? `face centred (${fmt.factor(outcome.zoom)})` : ''
   const body = what.length ? what.join(', ') + (face ? `; ${face}` : '') : face || (removed ? 'earlier automatic changes removed' : 'options saved')
   return `Camera directed: ${body}${undo}`
 }

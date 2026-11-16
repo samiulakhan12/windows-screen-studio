@@ -3,10 +3,10 @@
  * line that sums it up, how two edits compare, and what opening one keeps of the edit now. Pure;
  * the files are written by src/main/versions.ts.
  */
-import { formatTime } from '../engine/project'
 import { planOf, videoDuration } from '../engine/freeze'
 import type { CaptionSegment, Project } from '../types'
 import { timelineGaps } from './clips'
+import { fmt } from '../i18n/fmt'
 
 /** Why Flown kept a version by itself (§2.4). */
 export type AutoReason = 'polish' | 'fillers' | 'review' | 'captions' | 'vertical' | 'square' | 'open'
@@ -130,7 +130,7 @@ const COUNTS: readonly { key: Exclude<keyof VersionSummary, 'duration' | 'trimme
 
 /** "2:13 · 3 cuts · 5 zooms · 42 captions": the length (whole seconds), then the counts that are not zero, five parts at most. */
 export function summaryLine(s: VersionSummary): string {
-  const parts = [formatTime(s.duration, false)]
+  const parts = [fmt.clock(s.duration, 'whole')]
   for (const c of COUNTS) {
     const n = s[c.key]
     if (n > 0) parts.push(`${n} ${n === 1 ? c.one : c.many}`)
@@ -149,7 +149,7 @@ export interface SummaryChange {
 export function compareSummaries(version: VersionSummary, now: VersionSummary): SummaryChange[] {
   const out: SummaryChange[] = []
   // Compared as the list shows them: a length that rounds to the same time is the same.
-  if (formatTime(version.duration) !== formatTime(now.duration)) out.push({ label: 'Length', version: formatTime(version.duration), now: formatTime(now.duration) })
+  if (fmt.clock(version.duration) !== fmt.clock(now.duration)) out.push({ label: 'Length', version: fmt.clock(version.duration), now: fmt.clock(now.duration) })
   for (const c of COUNTS) if (version[c.key] !== now[c.key]) out.push({ label: c.label, version: String(version[c.key]), now: String(now[c.key]) })
   if (version.trimmed !== now.trimmed) out.push({ label: 'Start or end trimmed', version: version.trimmed ? 'Yes' : 'No', now: now.trimmed ? 'Yes' : 'No' })
   return out

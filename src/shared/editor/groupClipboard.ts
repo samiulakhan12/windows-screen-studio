@@ -9,7 +9,6 @@
 import { MAX_FREEZES, planOf } from '../engine/freeze'
 import { clamp } from '../engine/math'
 import { MAX_OVERLAYS } from '../engine/overlayData'
-import { formatTime } from '../engine/project'
 import { MIN_NEW_ZOOM, newZoomId, zoomAt } from '../engine/zoom'
 import { chapterInVideo } from '../render/chapters'
 import { MAX_GRAPHICS } from '../captions/studioData'
@@ -22,6 +21,7 @@ import { newOverlayId } from './overlays'
 import { newShapeId, newSpotlightId } from './shapes'
 import { outputToSourceRanges } from './smartSpeed'
 import { chapterNear, createChapter, newTitleId } from './titles'
+import { fmt } from '../i18n/fmt'
 
 export type ClipItem =
   | { kind: 'zoom'; item: ZoomSegment }
@@ -393,7 +393,7 @@ export function pasteNotice(r: PasteResult, total: number, verb = 'Pasted'): str
     else counts.set(id, { ...s, n: 1 })
   }
   const reasons = [...counts.values()].map((c) => skipText(c.kind, c.why, c.n)).join(', ')
-  const where = r.movedBack ? ` at ${formatTime(r.at)} (moved back so they fit)` : ''
+  const where = r.movedBack ? ` at ${fmt.clock(r.at)} (moved back so they fit)` : ''
   let text: string
   if (n === 0) text = `Nothing ${verb.toLowerCase()}${reasons ? `: ${reasons}` : ''}`
   else if (n < total) text = `${verb} ${n} of ${total}${where}${reasons ? `: ${reasons}` : ''}`
