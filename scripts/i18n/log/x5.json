@@ -2,14 +2,14 @@
   {
     "key": "settings.about.title",
     "file": "src/renderer/src/settings/AboutSection.tsx",
-    "line": 29,
+    "line": 30,
     "english": "About",
     "sample": {}
   },
   {
     "key": "settings.about.version",
     "file": "src/renderer/src/settings/AboutSection.tsx",
-    "line": 35,
+    "line": 36,
     "english": "Version 0.7.1",
     "sample": {
       "version": "0.7.1"
@@ -18,7 +18,7 @@
   {
     "key": "settings.about.builtBy",
     "file": "src/renderer/src/settings/AboutSection.tsx",
-    "line": 38,
+    "line": 39,
     "english": "Built by Qbexel ·",
     "sample": {
       "company": "Qbexel"
@@ -1027,14 +1027,14 @@
   {
     "key": "settings.ai.privacy",
     "file": "src/renderer/src/settings/AiProvidersSection.tsx",
-    "line": 164,
+    "line": 165,
     "english": "Keys are stored encrypted on this PC and are only sent to the provider you pick.",
     "sample": {}
   },
   {
     "key": "settings.ai.readFailed",
     "file": "src/renderer/src/settings/AiProvidersSection.tsx",
-    "line": 195,
+    "line": 196,
     "english": "Could not read the providers: Access is denied.",
     "sample": {
       "reason": "Access is denied."
@@ -1043,84 +1043,84 @@
   {
     "key": "settings.ai.empty",
     "file": "src/renderer/src/settings/AiProvidersSection.tsx",
-    "line": 198,
+    "line": 199,
     "english": "No provider yet. Add one to transcribe recordings and work on captions.",
     "sample": {}
   },
   {
     "key": "settings.ai.addressTitle",
     "file": "src/renderer/src/settings/AiProvidersSection.tsx",
-    "line": 212,
+    "line": 213,
     "english": "Where its key and the text you send go",
     "sample": {}
   },
   {
     "key": "settings.ai.address",
     "file": "src/renderer/src/settings/AiProvidersSection.tsx",
-    "line": 213,
+    "line": 214,
     "english": "Address",
     "sample": {}
   },
   {
     "key": "settings.ai.noKey",
     "file": "src/renderer/src/settings/AiProvidersSection.tsx",
-    "line": 217,
+    "line": 218,
     "english": "No key",
     "sample": {}
   },
   {
     "key": "settings.ai.keyTitle",
     "file": "src/renderer/src/settings/AiProvidersSection.tsx",
-    "line": 219,
+    "line": 220,
     "english": "API key (only the end is shown)",
     "sample": {}
   },
   {
     "key": "settings.ai.key",
     "file": "src/renderer/src/settings/AiProvidersSection.tsx",
-    "line": 219,
+    "line": 220,
     "english": "Key",
     "sample": {}
   },
   {
     "key": "settings.ai.keyUnreadable",
     "file": "src/renderer/src/settings/AiProvidersSection.tsx",
-    "line": 219,
+    "line": 220,
     "english": "cannot be read: edit and enter it again",
     "sample": {}
   },
   {
     "key": "settings.ai.textModel",
     "file": "src/renderer/src/settings/AiProvidersSection.tsx",
-    "line": 222,
+    "line": 223,
     "english": "Text model",
     "sample": {}
   },
   {
     "key": "settings.ai.transcription",
     "file": "src/renderer/src/settings/AiProvidersSection.tsx",
-    "line": 226,
+    "line": 227,
     "english": "Transcription",
     "sample": {}
   },
   {
     "key": "settings.ai.serviceCanDo",
     "file": "src/renderer/src/settings/AiProvidersSection.tsx",
-    "line": 230,
+    "line": 231,
     "english": "Clean-up, translation, chapters, titles and summaries of a transcript",
     "sample": {}
   },
   {
     "key": "settings.ai.testing",
     "file": "src/renderer/src/settings/AiProvidersSection.tsx",
-    "line": 238,
+    "line": 239,
     "english": "Testing…",
     "sample": {}
   },
   {
     "key": "settings.ai.removeQuestion",
     "file": "src/renderer/src/settings/AiProvidersSection.tsx",
-    "line": 245,
+    "line": 246,
     "english": "Remove “OpenAI”? Its key is deleted from this PC.",
     "sample": {
       "name": "OpenAI"
@@ -1129,7 +1129,7 @@
   {
     "key": "settings.ai.testName",
     "file": "src/renderer/src/settings/AiProvidersSection.tsx",
-    "line": 266,
+    "line": 267,
     "english": "Test OpenAI",
     "sample": {
       "name": "OpenAI"
@@ -1138,14 +1138,14 @@
   {
     "key": "settings.ai.test",
     "file": "src/renderer/src/settings/AiProvidersSection.tsx",
-    "line": 267,
+    "line": 268,
     "english": "Test",
     "sample": {}
   },
   {
     "key": "settings.ai.editName",
     "file": "src/renderer/src/settings/AiProvidersSection.tsx",
-    "line": 274,
+    "line": 275,
     "english": "Edit OpenAI",
     "sample": {
       "name": "OpenAI"
@@ -1154,35 +1154,35 @@
   {
     "key": "settings.ai.edit",
     "file": "src/renderer/src/settings/AiProvidersSection.tsx",
-    "line": 276,
+    "line": 277,
     "english": "Edit",
     "sample": {}
   },
   {
     "key": "settings.ai.add",
     "file": "src/renderer/src/settings/AiProvidersSection.tsx",
-    "line": 299,
+    "line": 300,
     "english": "+ Add provider",
     "sample": {}
   },
   {
     "key": "common.action.remove",
     "file": "src/renderer/src/settings/AiProvidersSection.tsx",
-    "line": 249,
+    "line": 250,
     "english": "Remove",
     "sample": {}
   },
   {
     "key": "common.action.cancel",
     "file": "src/renderer/src/settings/AiProvidersSection.tsx",
-    "line": 261,
+    "line": 262,
     "english": "Cancel",
     "sample": {}
   },
   {
     "key": "common.action.removeName",
     "file": "src/renderer/src/settings/AiProvidersSection.tsx",
-    "line": 286,
+    "line": 287,
     "english": "Remove OpenAI",
     "sample": {
       "name": "OpenAI"
@@ -1383,7 +1383,7 @@
   {
     "key": "settings.provider.createKey",
     "file": "src/renderer/src/settings/ProviderForm.tsx",
-    "line": 382,
+    "line": 383,
     "english": "Create a key at platform.openai.com.",
     "sample": {
       "host": "platform.openai.com"
@@ -1392,7 +1392,7 @@
   {
     "key": "settings.provider.sentTo",
     "file": "src/renderer/src/settings/ProviderForm.tsx",
-    "line": 393,
+    "line": 395,
     "english": "It is encrypted on this PC and only sent to OpenAI.",
     "sample": {
       "name": "OpenAI"
@@ -1401,84 +1401,84 @@
   {
     "key": "settings.provider.modelAzure",
     "file": "src/renderer/src/settings/ProviderForm.tsx",
-    "line": 401,
+    "line": 403,
     "english": "Model (the deployment’s name)",
     "sample": {}
   },
   {
     "key": "settings.provider.model",
     "file": "src/renderer/src/settings/ProviderForm.tsx",
-    "line": 401,
+    "line": 403,
     "english": "Model",
     "sample": {}
   },
   {
     "key": "settings.provider.modelText",
     "file": "src/renderer/src/settings/ProviderForm.tsx",
-    "line": 401,
+    "line": 403,
     "english": "Model for text tasks",
     "sample": {}
   },
   {
     "key": "settings.provider.modelTranscription",
     "file": "src/renderer/src/settings/ProviderForm.tsx",
-    "line": 416,
+    "line": 418,
     "english": "Transcription model",
     "sample": {}
   },
   {
     "key": "settings.provider.openaiTranscription",
     "file": "src/renderer/src/settings/ProviderForm.tsx",
-    "line": 428,
+    "line": 430,
     "english": "gpt-transcribe gives text only: Flown estimates word times from the sound. whisper-1 gives exact word times until OpenAI retires it on 26 February 2027.",
     "sample": {}
   },
   {
     "key": "settings.provider.geminiTranscription",
     "file": "src/renderer/src/settings/ProviderForm.tsx",
-    "line": 429,
+    "line": 431,
     "english": "Gemini listens to the sound and returns sentences with their times.",
     "sample": {}
   },
   {
     "key": "settings.provider.prices",
     "file": "src/renderer/src/settings/ProviderForm.tsx",
-    "line": 436,
+    "line": 438,
     "english": "Prices (US$ per million tokens)",
     "sample": {}
   },
   {
     "key": "settings.provider.input",
     "file": "src/renderer/src/settings/ProviderForm.tsx",
-    "line": 441,
+    "line": 443,
     "english": "Input",
     "sample": {}
   },
   {
     "key": "settings.provider.output",
     "file": "src/renderer/src/settings/ProviderForm.tsx",
-    "line": 453,
+    "line": 455,
     "english": "Output",
     "sample": {}
   },
   {
     "key": "settings.provider.unknownPrices",
     "file": "src/renderer/src/settings/ProviderForm.tsx",
-    "line": 464,
+    "line": 466,
     "english": "Not in Flown's price list: add them to see costs.",
     "sample": {}
   },
   {
     "key": "settings.provider.noData",
     "file": "src/renderer/src/settings/ProviderForm.tsx",
-    "line": 472,
+    "line": 474,
     "english": "Only use hosts that do not keep my prompts",
     "sample": {}
   },
   {
     "key": "settings.provider.goesTo",
     "file": "src/renderer/src/settings/ProviderForm.tsx",
-    "line": 477,
+    "line": 479,
     "english": "Your key and the text you send go to api.openai.com.",
     "sample": {
       "host": "api.openai.com"
@@ -1487,28 +1487,28 @@
   {
     "key": "settings.provider.addressAbove",
     "file": "src/renderer/src/settings/ProviderForm.tsx",
-    "line": 477,
+    "line": 479,
     "english": "the address above",
     "sample": {}
   },
   {
     "key": "settings.provider.checking",
     "file": "src/renderer/src/settings/ProviderForm.tsx",
-    "line": 490,
+    "line": 492,
     "english": "Checking…",
     "sample": {}
   },
   {
     "key": "settings.provider.saveAndCheck",
     "file": "src/renderer/src/settings/ProviderForm.tsx",
-    "line": 490,
+    "line": 492,
     "english": "Save and check",
     "sample": {}
   },
   {
     "key": "settings.provider.addButton",
     "file": "src/renderer/src/settings/ProviderForm.tsx",
-    "line": 490,
+    "line": 492,
     "english": "Add provider",
     "sample": {}
   },
@@ -1543,84 +1543,84 @@
   {
     "key": "common.action.cancel",
     "file": "src/renderer/src/settings/ProviderForm.tsx",
-    "line": 487,
+    "line": 489,
     "english": "Cancel",
     "sample": {}
   },
   {
     "key": "common.state.saving",
     "file": "src/renderer/src/settings/ProviderForm.tsx",
-    "line": 490,
+    "line": 492,
     "english": "Saving…",
     "sample": {}
   },
   {
     "key": "common.action.save",
     "file": "src/renderer/src/settings/ProviderForm.tsx",
-    "line": 490,
+    "line": 492,
     "english": "Save",
     "sample": {}
   },
   {
     "key": "main.updates.disabled",
     "file": "src/shared/updates/updates.ts",
-    "line": 46,
+    "line": 47,
     "english": "Updates are turned off in this build.",
     "sample": {}
   },
   {
     "key": "main.updates.never",
     "file": "src/shared/updates/updates.ts",
-    "line": 49,
+    "line": 50,
     "english": "Flown has not looked for updates yet.",
     "sample": {}
   },
   {
     "key": "main.updates.upToDate",
     "file": "src/shared/updates/updates.ts",
-    "line": 52,
+    "line": 53,
     "english": "Flown is up to date.",
     "sample": {}
   },
   {
     "key": "main.updates.checking",
     "file": "src/shared/updates/updates.ts",
-    "line": 55,
+    "line": 56,
     "english": "Checking for updates…",
     "sample": {}
   },
   {
     "key": "main.updates.checkFailed",
     "file": "src/shared/updates/updates.ts",
-    "line": 58,
+    "line": 59,
     "english": "Couldn't check for updates. Check your internet connection and try again.",
     "sample": {}
   },
   {
     "key": "main.updates.downloadFailed",
     "file": "src/shared/updates/updates.ts",
-    "line": 61,
+    "line": 62,
     "english": "The update couldn't be downloaded. Flown will try again later.",
     "sample": {}
   },
   {
     "key": "main.updates.downloadFailedManual",
     "file": "src/shared/updates/updates.ts",
-    "line": 65,
+    "line": 66,
     "english": "The update couldn't be downloaded. Try again.",
     "sample": {}
   },
   {
     "key": "main.updates.notReady",
     "file": "src/shared/updates/updates.ts",
-    "line": 68,
+    "line": 69,
     "english": "There is no update ready to install.",
     "sample": {}
   },
   {
     "key": "main.updates.available",
     "file": "src/shared/updates/updates.ts",
-    "line": 191,
+    "line": 192,
     "english": "Flown 0.7.2 is available.",
     "sample": {
       "version": "0.7.2"
@@ -1629,7 +1629,7 @@
   {
     "key": "main.updates.downloadingPercent",
     "file": "src/shared/updates/updates.ts",
-    "line": 193,
+    "line": 194,
     "english": "Downloading Flown 0.7.2… 42%",
     "sample": {
       "version": "0.7.2",
@@ -1639,7 +1639,7 @@
   {
     "key": "main.updates.ready",
     "file": "src/shared/updates/updates.ts",
-    "line": 195,
+    "line": 196,
     "english": "Flown 0.7.2 is ready. It installs when you close Flown.",
     "sample": {
       "version": "0.7.2"
@@ -1648,7 +1648,7 @@
   {
     "key": "main.updates.downloading",
     "file": "src/shared/updates/updates.ts",
-    "line": 209,
+    "line": 210,
     "english": "Downloading Flown 0.7.2…",
     "sample": {
       "version": "0.7.2"
@@ -1657,77 +1657,77 @@
   {
     "key": "main.busy.recording",
     "file": "src/shared/updates/updates.ts",
-    "line": 221,
+    "line": 222,
     "english": "Stop the recording first.",
     "sample": {}
   },
   {
     "key": "main.busy.processing",
     "file": "src/shared/updates/updates.ts",
-    "line": 224,
+    "line": 225,
     "english": "Wait for the recording to finish processing.",
     "sample": {}
   },
   {
     "key": "main.busy.export",
     "file": "src/shared/updates/updates.ts",
-    "line": 227,
+    "line": 228,
     "english": "Finish or stop the export first.",
     "sample": {}
   },
   {
     "key": "main.busy.captions",
     "file": "src/shared/updates/updates.ts",
-    "line": 230,
+    "line": 231,
     "english": "Wait for the captions to finish, or stop them.",
     "sample": {}
   },
   {
     "key": "main.busy.analysis",
     "file": "src/shared/updates/updates.ts",
-    "line": 233,
+    "line": 234,
     "english": "Wait for the sound analysis to finish.",
     "sample": {}
   },
   {
     "key": "main.busy.import",
     "file": "src/shared/updates/updates.ts",
-    "line": 236,
+    "line": 237,
     "english": "Wait for the import to finish, or cancel it.",
     "sample": {}
   },
   {
     "key": "main.busy.voice",
     "file": "src/shared/updates/updates.ts",
-    "line": 239,
+    "line": 240,
     "english": "Wait for Clean voice to finish.",
     "sample": {}
   },
   {
     "key": "main.busy.copy",
     "file": "src/shared/updates/updates.ts",
-    "line": 242,
+    "line": 243,
     "english": "Wait for the copy to finish, or cancel it.",
     "sample": {}
   },
   {
     "key": "main.busy.share",
     "file": "src/shared/updates/updates.ts",
-    "line": 245,
+    "line": 246,
     "english": "Wait for the share to finish.",
     "sample": {}
   },
   {
     "key": "settings.updates.check",
     "file": "src/renderer/src/updates/UpdatesBlock.tsx",
-    "line": 15,
+    "line": 16,
     "english": "Check for updates",
     "sample": {}
   },
   {
     "key": "settings.updates.download",
     "file": "src/renderer/src/updates/UpdatesBlock.tsx",
-    "line": 17,
+    "line": 18,
     "english": "Download Flown 0.7.2",
     "sample": {
       "version": "0.7.2"
@@ -1736,28 +1736,28 @@
   {
     "key": "settings.updates.downloading",
     "file": "src/renderer/src/updates/UpdatesBlock.tsx",
-    "line": 19,
+    "line": 20,
     "english": "Downloading…",
     "sample": {}
   },
   {
     "key": "settings.updates.restart",
     "file": "src/renderer/src/updates/UpdatesBlock.tsx",
-    "line": 21,
+    "line": 22,
     "english": "Restart now",
     "sample": {}
   },
   {
     "key": "settings.updates.title",
     "file": "src/renderer/src/updates/UpdatesBlock.tsx",
-    "line": 50,
+    "line": 51,
     "english": "Updates",
     "sample": {}
   },
   {
     "key": "settings.updates.lastChecked",
     "file": "src/renderer/src/updates/UpdatesBlock.tsx",
-    "line": 54,
+    "line": 55,
     "english": "Last checked 10:42.",
     "sample": {
       "when": "10:42"
@@ -1766,7 +1766,7 @@
   {
     "key": "settings.updates.downloadingLabel",
     "file": "src/renderer/src/updates/UpdatesBlock.tsx",
-    "line": 62,
+    "line": 63,
     "english": "Downloading Flown 0.7.2",
     "sample": {
       "version": "0.7.2"
@@ -1775,21 +1775,21 @@
   {
     "key": "settings.updates.auto",
     "file": "src/renderer/src/updates/UpdatesBlock.tsx",
-    "line": 100,
+    "line": 101,
     "english": "Update Flown automatically",
     "sample": {}
   },
   {
     "key": "settings.updates.hint",
     "file": "src/renderer/src/updates/UpdatesBlock.tsx",
-    "line": 103,
+    "line": 104,
     "english": "Flown looks for a new version on GitHub every few hours, downloads it in the background and installs it when you close Flown. The same check refreshes the list of suggested AI models.",
     "sample": {}
   },
   {
     "key": "settings.updates.notes",
     "file": "src/renderer/src/updates/UpdatesBlock.tsx",
-    "line": 107,
+    "line": 108,
     "english": "What's new in 0.7.2",
     "sample": {
       "version": "0.7.2"
@@ -2494,84 +2494,84 @@
   {
     "key": "export.preset.youtube1080",
     "file": "src/renderer/src/editor/exportNames.ts",
-    "line": 17,
+    "line": 20,
     "english": "YouTube 1080p60",
     "sample": {}
   },
   {
     "key": "export.preset.youtube4k",
     "file": "src/renderer/src/editor/exportNames.ts",
-    "line": 18,
+    "line": 21,
     "english": "YouTube 4K60",
     "sample": {}
   },
   {
     "key": "export.preset.x",
     "file": "src/renderer/src/editor/exportNames.ts",
-    "line": 19,
+    "line": 22,
     "english": "X (Twitter)",
     "sample": {}
   },
   {
     "key": "export.preset.linkedin",
     "file": "src/renderer/src/editor/exportNames.ts",
-    "line": 20,
+    "line": 23,
     "english": "LinkedIn",
     "sample": {}
   },
   {
     "key": "export.preset.reels",
     "file": "src/renderer/src/editor/exportNames.ts",
-    "line": 21,
+    "line": 24,
     "english": "Instagram Reels",
     "sample": {}
   },
   {
     "key": "export.preset.tiktok",
     "file": "src/renderer/src/editor/exportNames.ts",
-    "line": 22,
+    "line": 25,
     "english": "TikTok",
     "sample": {}
   },
   {
     "key": "export.preset.shorts",
     "file": "src/renderer/src/editor/exportNames.ts",
-    "line": 23,
+    "line": 26,
     "english": "YouTube Shorts",
     "sample": {}
   },
   {
     "key": "export.preset.square",
     "file": "src/renderer/src/editor/exportNames.ts",
-    "line": 24,
+    "line": 27,
     "english": "Square post",
     "sample": {}
   },
   {
     "key": "export.preset.slackGif",
     "file": "src/renderer/src/editor/exportNames.ts",
-    "line": 26,
+    "line": 29,
     "english": "Slack GIF",
     "sample": {}
   },
   {
     "key": "export.preset.email",
     "file": "src/renderer/src/editor/exportNames.ts",
-    "line": 27,
+    "line": 30,
     "english": "Email",
     "sample": {}
   },
   {
     "key": "export.batch.audioSize",
     "file": "src/renderer/src/editor/exportNames.ts",
-    "line": 42,
+    "line": 45,
     "english": "Audio",
     "sample": {}
   },
   {
     "key": "export.batch.aspectItem",
     "file": "src/renderer/src/editor/exportNames.ts",
-    "line": 43,
+    "line": 46,
     "english": "MP4 1080p · 9:16",
     "sample": {
       "format": "MP4",
@@ -2582,28 +2582,28 @@
   {
     "key": "export.encoder.audioWav",
     "file": "src/renderer/src/editor/exportNames.ts",
-    "line": 72,
+    "line": 75,
     "english": "Audio only (WAV)",
     "sample": {}
   },
   {
     "key": "export.encoder.audioAac",
     "file": "src/renderer/src/editor/exportNames.ts",
-    "line": 73,
+    "line": 76,
     "english": "Audio only (AAC)",
     "sample": {}
   },
   {
     "key": "export.encoder.gif",
     "file": "src/renderer/src/editor/exportNames.ts",
-    "line": 74,
+    "line": 77,
     "english": "GIF (two-pass palette)",
     "sample": {}
   },
   {
     "key": "export.encoder.gpu",
     "file": "src/renderer/src/editor/exportNames.ts",
-    "line": 77,
+    "line": 80,
     "english": "GPU (NVIDIA NVENC)",
     "sample": {
       "name": "NVIDIA NVENC"
@@ -2612,7 +2612,7 @@
   {
     "key": "export.encoder.webcodecsSoftware",
     "file": "src/renderer/src/editor/exportNames.ts",
-    "line": 77,
+    "line": 80,
     "english": "WebCodecs AV1 (software)",
     "sample": {
       "name": "WebCodecs AV1"
@@ -2621,7 +2621,7 @@
   {
     "key": "export.encoder.software",
     "file": "src/renderer/src/editor/exportNames.ts",
-    "line": 80,
+    "line": 83,
     "english": "Software (x264)",
     "sample": {
       "name": "x264"
@@ -2630,84 +2630,84 @@
   {
     "key": "export.format.mp4",
     "file": "src/renderer/src/editor/ExportDialog.tsx",
-    "line": 136,
+    "line": 137,
     "english": "H.264 video with AAC audio: plays everywhere",
     "sample": {}
   },
   {
     "key": "export.format.mov",
     "file": "src/renderer/src/editor/ExportDialog.tsx",
-    "line": 137,
+    "line": 138,
     "english": "H.264 in a QuickTime movie, for Final Cut, Premiere and Keynote",
     "sample": {}
   },
   {
     "key": "export.format.webm",
     "file": "src/renderer/src/editor/ExportDialog.tsx",
-    "line": 138,
+    "line": 139,
     "english": "VP9 video with Opus audio, for the web",
     "sample": {}
   },
   {
     "key": "export.format.gif",
     "file": "src/renderer/src/editor/ExportDialog.tsx",
-    "line": 139,
+    "line": 140,
     "english": "An animated image that plays silently and loops (15 fps)",
     "sample": {}
   },
   {
     "key": "export.format.m4a",
     "file": "src/renderer/src/editor/ExportDialog.tsx",
-    "line": 140,
+    "line": 141,
     "english": "The soundtrack only (AAC), nothing is rendered",
     "sample": {}
   },
   {
     "key": "export.chapters.copyTitle",
     "file": "src/renderer/src/editor/ExportDialog.tsx",
-    "line": 307,
+    "line": 308,
     "english": "Copy the chapters as YouTube timestamps (0:00 Intro…) for the video's description",
     "sample": {}
   },
   {
     "key": "export.chapters.copy",
     "file": "src/renderer/src/editor/ExportDialog.tsx",
-    "line": 308,
+    "line": 309,
     "english": "Copy chapters",
     "sample": {}
   },
   {
     "key": "export.chapters.copyFailed",
     "file": "src/renderer/src/editor/ExportDialog.tsx",
-    "line": 310,
+    "line": 311,
     "english": "The chapters could not be copied to the clipboard.",
     "sample": {}
   },
   {
     "key": "export.chapters.ready",
     "file": "src/renderer/src/editor/ExportDialog.tsx",
-    "line": 318,
+    "line": 319,
     "english": "Ready for YouTube: paste them into the description.",
     "sample": {}
   },
   {
     "key": "export.error.failed",
     "file": "src/renderer/src/editor/ExportDialog.tsx",
-    "line": 334,
+    "line": 335,
     "english": "The export failed.",
     "sample": {}
   },
   {
     "key": "export.audioOnly",
     "file": "src/renderer/src/editor/ExportDialog.tsx",
-    "line": 341,
+    "line": 342,
     "english": "Audio only",
     "sample": {}
   },
   {
     "key": "export.meta.size",
     "file": "src/renderer/src/editor/ExportDialog.tsx",
-    "line": 346,
+    "line": 347,
     "english": "1920×1080 · 60 fps",
     "sample": {
       "width": "1920",
@@ -2718,7 +2718,7 @@
   {
     "key": "export.limit.size",
     "file": "src/renderer/src/editor/ExportDialog.tsx",
-    "line": 354,
+    "line": 355,
     "english": "≤ 25 MB",
     "sample": {
       "mb": "25"
@@ -2727,7 +2727,7 @@
   {
     "key": "export.limit.sizeTitle",
     "file": "src/renderer/src/editor/ExportDialog.tsx",
-    "line": 354,
+    "line": 355,
     "english": "Made to fit 25 MB",
     "sample": {
       "mb": "25"
@@ -2736,7 +2736,7 @@
   {
     "key": "export.limit.length",
     "file": "src/renderer/src/editor/ExportDialog.tsx",
-    "line": 359,
+    "line": 360,
     "english": "≤ 2:20",
     "sample": {
       "length": "2:20"
@@ -2745,7 +2745,7 @@
   {
     "key": "export.limit.lengthTitle",
     "file": "src/renderer/src/editor/ExportDialog.tsx",
-    "line": 360,
+    "line": 361,
     "english": "X (Twitter) takes videos up to 2:20",
     "sample": {
       "name": "X (Twitter)",
@@ -2755,7 +2755,7 @@
   {
     "key": "export.limit.lengthSizeTitle",
     "file": "src/renderer/src/editor/ExportDialog.tsx",
-    "line": 360,
+    "line": 361,
     "english": "X (Twitter) takes videos up to 2:20 and 512 MB",
     "sample": {
       "name": "X (Twitter)",
@@ -2766,7 +2766,7 @@
   {
     "key": "export.resolution.capped",
     "file": "src/renderer/src/editor/ExportDialog.tsx",
-    "line": 919,
+    "line": 922,
     "english": "limited to 3840 px on the long side",
     "sample": {
       "side": "3840"
@@ -2775,7 +2775,7 @@
   {
     "key": "export.resolution.upscaled",
     "file": "src/renderer/src/editor/ExportDialog.tsx",
-    "line": 920,
+    "line": 923,
     "english": "larger than the recording (1280×720): it will be upscaled",
     "sample": {
       "width": "1280",
@@ -2785,14 +2785,14 @@
   {
     "key": "export.aspect.project",
     "file": "src/renderer/src/editor/ExportDialog.tsx",
-    "line": 928,
+    "line": 931,
     "english": "Project",
     "sample": {}
   },
   {
     "key": "export.aspect.projectTitle",
     "file": "src/renderer/src/editor/ExportDialog.tsx",
-    "line": 931,
+    "line": 934,
     "english": "The project's own shape (16:9, Style panel)",
     "sample": {
       "shape": "16:9"
@@ -2801,14 +2801,14 @@
   {
     "key": "export.aspect.auto",
     "file": "src/renderer/src/editor/ExportDialog.tsx",
-    "line": 931,
+    "line": 934,
     "english": "Auto",
     "sample": {}
   },
   {
     "key": "export.aspect.title",
     "file": "src/renderer/src/editor/ExportDialog.tsx",
-    "line": 934,
+    "line": 937,
     "english": "Export in 9:16; the project keeps its own shape",
     "sample": {
       "aspect": "9:16"
@@ -2817,35 +2817,35 @@
   {
     "key": "export.gpu.vp9",
     "file": "src/renderer/src/editor/ExportDialog.tsx",
-    "line": 942,
+    "line": 945,
     "english": "GPU VP9 encoding is available.",
     "sample": {}
   },
   {
     "key": "export.gpu.checking",
     "file": "src/renderer/src/editor/ExportDialog.tsx",
-    "line": 944,
+    "line": 947,
     "english": "Checking for a GPU encoder…",
     "sample": {}
   },
   {
     "key": "export.gpu.noVp9",
     "file": "src/renderer/src/editor/ExportDialog.tsx",
-    "line": 945,
+    "line": 948,
     "english": "No GPU VP9 encoder here; WebM uses the software encoder (libvpx).",
     "sample": {}
   },
   {
     "key": "export.gpu.available",
     "file": "src/renderer/src/editor/ExportDialog.tsx",
-    "line": 947,
+    "line": 950,
     "english": "GPU encoding is available.",
     "sample": {}
   },
   {
     "key": "export.gpu.found",
     "file": "src/renderer/src/editor/ExportDialog.tsx",
-    "line": 949,
+    "line": 952,
     "english": "GPU encoder found: NVENC.",
     "sample": {
       "names": "NVENC"
@@ -2854,28 +2854,28 @@
   {
     "key": "export.gpu.none",
     "file": "src/renderer/src/editor/ExportDialog.tsx",
-    "line": 952,
+    "line": 955,
     "english": "No GPU encoder found; Auto uses the software encoder (x264).",
     "sample": {}
   },
   {
     "key": "export.software.vp9",
     "file": "src/renderer/src/editor/ExportDialog.tsx",
-    "line": 953,
+    "line": 956,
     "english": "libvpx on the CPU: slower, works everywhere.",
     "sample": {}
   },
   {
     "key": "export.software.x264",
     "file": "src/renderer/src/editor/ExportDialog.tsx",
-    "line": 953,
+    "line": 956,
     "english": "x264 on the CPU: slower, smallest files, works everywhere.",
     "sample": {}
   },
   {
     "key": "export.warn.cappedWide",
     "file": "src/renderer/src/editor/ExportDialog.tsx",
-    "line": 965,
+    "line": 968,
     "english": "This recording is very wide, so the video is limited to 3840 pixels on its long side.",
     "sample": {
       "side": "3840"
@@ -2884,7 +2884,7 @@
   {
     "key": "export.warn.cappedTall",
     "file": "src/renderer/src/editor/ExportDialog.tsx",
-    "line": 965,
+    "line": 968,
     "english": "This recording is very tall, so the video is limited to 3840 pixels on its long side.",
     "sample": {
       "side": "3840"
@@ -2893,7 +2893,7 @@
   {
     "key": "export.warn.upscale",
     "file": "src/renderer/src/editor/ExportDialog.tsx",
-    "line": 969,
+    "line": 972,
     "english": "Larger than the recording (1280×720): the video is upscaled and may look soft.",
     "sample": {
       "width": "1280",
@@ -2903,14 +2903,14 @@
   {
     "key": "export.warn.followOn",
     "file": "src/renderer/src/editor/ExportDialog.tsx",
-    "line": 972,
+    "line": 975,
     "english": "The view follows the action: it crops in on your cursor, clicks and typing.",
     "sample": {}
   },
   {
     "key": "export.warn.magnify",
     "file": "src/renderer/src/editor/ExportDialog.tsx",
-    "line": 977,
+    "line": 980,
     "english": "Shows your 1920×1080 recording at 1.5× its size.",
     "sample": {
       "width": "1920",
@@ -2921,7 +2921,7 @@
   {
     "key": "export.warn.magnifyZooms",
     "file": "src/renderer/src/editor/ExportDialog.tsx",
-    "line": 977,
+    "line": 980,
     "english": "Shows your 1920×1080 recording at 1.5× its size (up to 3.0× in zooms).",
     "sample": {
       "width": "1920",
@@ -2933,35 +2933,35 @@
   {
     "key": "export.warn.magnifySoft",
     "file": "src/renderer/src/editor/ExportDialog.tsx",
-    "line": 978,
+    "line": 981,
     "english": "Small text may look soft. Recording at 1440p or 4K keeps it sharp.",
     "sample": {}
   },
   {
     "key": "export.warn.followOff",
     "file": "src/renderer/src/editor/ExportDialog.tsx",
-    "line": 982,
+    "line": 985,
     "english": "In this shape the whole screen is shown: following the action applies to tall and square videos.",
     "sample": {}
   },
   {
     "key": "export.warn.captionsOn",
     "file": "src/renderer/src/editor/ExportDialog.tsx",
-    "line": 984,
+    "line": 987,
     "english": "Captions are drawn on the video when Show captions is on (now on, in the Captions tab, where Export captions saves them as SRT or VTT).",
     "sample": {}
   },
   {
     "key": "export.warn.captionsOff",
     "file": "src/renderer/src/editor/ExportDialog.tsx",
-    "line": 984,
+    "line": 987,
     "english": "Captions are drawn on the video when Show captions is on (now off, in the Captions tab, where Export captions saves them as SRT or VTT).",
     "sample": {}
   },
   {
     "key": "export.warn.images",
     "file": "src/renderer/src/editor/ExportDialog.tsx",
-    "line": 986,
+    "line": 989,
     "english": "Image missing: logo.png. It is left out of the video.",
     "sample": {
       "names": "logo.png"
@@ -2970,7 +2970,7 @@
   {
     "key": "export.warn.fonts",
     "file": "src/renderer/src/editor/ExportDialog.tsx",
-    "line": 988,
+    "line": 991,
     "english": "Font missing: Inter. Text that uses it is drawn with Segoe UI.",
     "sample": {
       "names": "Inter"
@@ -2979,21 +2979,21 @@
   {
     "key": "export.warn.longGif",
     "file": "src/renderer/src/editor/ExportDialog.tsx",
-    "line": 990,
+    "line": 993,
     "english": "Long GIFs get very large; MP4 is better for clips over 30 s.",
     "sample": {}
   },
   {
     "key": "export.warn.silent",
     "file": "src/renderer/src/editor/ExportDialog.tsx",
-    "line": 991,
+    "line": 994,
     "english": "This recording has no sound to export.",
     "sample": {}
   },
   {
     "key": "export.warn.tooLong",
     "file": "src/renderer/src/editor/ExportDialog.tsx",
-    "line": 993,
+    "line": 996,
     "english": "X (Twitter) takes videos up to 2:20; this one is 3:05. Trim it first.",
     "sample": {
       "name": "X (Twitter)",
@@ -3004,7 +3004,7 @@
   {
     "key": "export.warn.targetSmall",
     "file": "src/renderer/src/editor/ExportDialog.tsx",
-    "line": 996,
+    "line": 999,
     "english": "5 MB is too small for 3:05 of video. Choose a larger size or shorten the clip.",
     "sample": {
       "mb": "5",
@@ -3014,7 +3014,7 @@
   {
     "key": "export.warn.targetTight",
     "file": "src/renderer/src/editor/ExportDialog.tsx",
-    "line": 998,
+    "line": 1001,
     "english": "8 MB is tight for 1920×1080 at 60 fps; a lower resolution or 30 fps will look sharper.",
     "sample": {
       "mb": "8",
@@ -3026,7 +3026,7 @@
   {
     "key": "export.exportFormat",
     "file": "src/renderer/src/editor/ExportDialog.tsx",
-    "line": 1001,
+    "line": 1004,
     "english": "Export MP4",
     "sample": {
       "format": "MP4"
@@ -3035,77 +3035,77 @@
   {
     "key": "export.custom",
     "file": "src/renderer/src/editor/ExportDialog.tsx",
-    "line": 1002,
+    "line": 1005,
     "english": "Custom",
     "sample": {}
   },
   {
     "key": "common.state.copied",
     "file": "src/renderer/src/editor/ExportDialog.tsx",
-    "line": 308,
+    "line": 309,
     "english": "Copied",
     "sample": {}
   },
   {
     "key": "export.title",
     "file": "src/renderer/src/editor/ExportDialog.tsx",
-    "line": 1018,
+    "line": 1021,
     "english": "Export",
     "sample": {}
   },
   {
     "key": "export.mode",
     "file": "src/renderer/src/editor/ExportDialog.tsx",
-    "line": 1022,
+    "line": 1025,
     "english": "Export mode",
     "sample": {}
   },
   {
     "key": "export.mode.single",
     "file": "src/renderer/src/editor/ExportDialog.tsx",
-    "line": 1024,
+    "line": 1027,
     "english": "One file",
     "sample": {}
   },
   {
     "key": "export.mode.batch",
     "file": "src/renderer/src/editor/ExportDialog.tsx",
-    "line": 1027,
+    "line": 1030,
     "english": "Batch",
     "sample": {}
   },
   {
     "key": "export.frame",
     "file": "src/renderer/src/editor/ExportDialog.tsx",
-    "line": 1049,
+    "line": 1052,
     "english": "Frame",
     "sample": {}
   },
   {
     "key": "export.frameLabel",
     "file": "src/renderer/src/editor/ExportDialog.tsx",
-    "line": 1054,
+    "line": 1057,
     "english": "Thumbnail frame",
     "sample": {}
   },
   {
     "key": "export.thumb.title",
     "file": "src/renderer/src/editor/ExportDialog.tsx",
-    "line": 1065,
+    "line": 1068,
     "english": "Save this frame as a PNG at the export size",
     "sample": {}
   },
   {
     "key": "export.thumb.save",
     "file": "src/renderer/src/editor/ExportDialog.tsx",
-    "line": 1066,
+    "line": 1069,
     "english": "Save thumbnail",
     "sample": {}
   },
   {
     "key": "export.thumb.saved",
     "file": "src/renderer/src/editor/ExportDialog.tsx",
-    "line": 1070,
+    "line": 1073,
     "english": "Saved 1920×1080 PNG.",
     "sample": {
       "width": "1920",
@@ -3115,7 +3115,7 @@
   {
     "key": "export.summary.audioOnly",
     "file": "src/renderer/src/editor/ExportDialog.tsx",
-    "line": 1083,
+    "line": 1086,
     "english": "Audio only · 2 min 5 s",
     "sample": {
       "length": "2 min 5 s"
@@ -3124,7 +3124,7 @@
   {
     "key": "export.summary.gifFps",
     "file": "src/renderer/src/editor/ExportDialog.tsx",
-    "line": 1084,
+    "line": 1087,
     "english": "GIFs play at 15 fps",
     "sample": {
       "fps": "15"
@@ -3133,7 +3133,7 @@
   {
     "key": "export.summary.upTo",
     "file": "src/renderer/src/editor/ExportDialog.tsx",
-    "line": 1085,
+    "line": 1088,
     "english": "up to 15 MB",
     "sample": {
       "mb": "15"
@@ -3142,7 +3142,7 @@
   {
     "key": "export.summary.about",
     "file": "src/renderer/src/editor/ExportDialog.tsx",
-    "line": 1085,
+    "line": 1088,
     "english": "about 25 MB",
     "sample": {
       "mb": "25"
@@ -3151,14 +3151,14 @@
   {
     "key": "export.batch.none",
     "file": "src/renderer/src/editor/ExportDialog.tsx",
-    "line": 1101,
+    "line": 1104,
     "english": "Tick the files to export.",
     "sample": {}
   },
   {
     "key": "export.batch.summary",
     "file": "src/renderer/src/editor/ExportDialog.tsx",
-    "line": 1101,
+    "line": 1104,
     "english": [
       "0 files · 2 min 5 s each, into one folder:",
       "1 file · 2 min 5 s each, into one folder:",
@@ -3191,77 +3191,77 @@
   {
     "key": "export.batch.audio",
     "file": "src/renderer/src/editor/ExportDialog.tsx",
-    "line": 1112,
+    "line": 1115,
     "english": "audio",
     "sample": {}
   },
   {
     "key": "export.follow.vertical",
     "file": "src/renderer/src/editor/ExportDialog.tsx",
-    "line": 1135,
+    "line": 1138,
     "english": "Your whole screen is shrunk to fit 9:16. A vertical version crops in and follows your cursor.",
     "sample": {}
   },
   {
     "key": "export.follow.square",
     "file": "src/renderer/src/editor/ExportDialog.tsx",
-    "line": 1136,
+    "line": 1139,
     "english": "Your whole screen is shrunk to fit a square. A square version crops in and follows your cursor.",
     "sample": {}
   },
   {
     "key": "export.follow.makeVertical",
     "file": "src/renderer/src/editor/ExportDialog.tsx",
-    "line": 1145,
+    "line": 1148,
     "english": "Make a vertical version",
     "sample": {}
   },
   {
     "key": "export.follow.makeSquare",
     "file": "src/renderer/src/editor/ExportDialog.tsx",
-    "line": 1145,
+    "line": 1148,
     "english": "Make a square version",
     "sample": {}
   },
   {
     "key": "export.destination",
     "file": "src/renderer/src/editor/ExportDialog.tsx",
-    "line": 1180,
+    "line": 1183,
     "english": "Destination",
     "sample": {}
   },
   {
     "key": "export.batch.files",
     "file": "src/renderer/src/editor/ExportDialog.tsx",
-    "line": 1180,
+    "line": 1183,
     "english": "Files to export",
     "sample": {}
   },
   {
     "key": "export.batch.clear",
     "file": "src/renderer/src/editor/ExportDialog.tsx",
-    "line": 1183,
+    "line": 1186,
     "english": "Clear",
     "sample": {}
   },
   {
     "key": "export.destinations",
     "file": "src/renderer/src/editor/ExportDialog.tsx",
-    "line": 1187,
+    "line": 1190,
     "english": "Destinations",
     "sample": {}
   },
   {
     "key": "export.batch.also",
     "file": "src/renderer/src/editor/ExportDialog.tsx",
-    "line": 1226,
+    "line": 1229,
     "english": "Also",
     "sample": {}
   },
   {
     "key": "export.batch.aspectTitle",
     "file": "src/renderer/src/editor/ExportDialog.tsx",
-    "line": 1235,
+    "line": 1238,
     "english": "The settings below in 9:16",
     "sample": {
       "aspect": "9:16"
@@ -3270,147 +3270,147 @@
   {
     "key": "export.batch.alsoHint",
     "file": "src/renderer/src/editor/ExportDialog.tsx",
-    "line": 1245,
+    "line": 1248,
     "english": "The settings below, in more shapes.",
     "sample": {}
   },
   {
     "key": "export.settings.batch",
     "file": "src/renderer/src/editor/ExportDialog.tsx",
-    "line": 1255,
+    "line": 1258,
     "english": "for “Also” and the encoder",
     "sample": {}
   },
   {
     "key": "export.settings.format",
     "file": "src/renderer/src/editor/ExportDialog.tsx",
-    "line": 1285,
+    "line": 1288,
     "english": "Format",
     "sample": {}
   },
   {
     "key": "export.settings.noSound",
     "file": "src/renderer/src/editor/ExportDialog.tsx",
-    "line": 1291,
+    "line": 1294,
     "english": "This recording has no sound",
     "sample": {}
   },
   {
     "key": "export.settings.resolution",
     "file": "src/renderer/src/editor/ExportDialog.tsx",
-    "line": 1308,
+    "line": 1311,
     "english": "Resolution",
     "sample": {}
   },
   {
     "key": "export.settings.aspect",
     "file": "src/renderer/src/editor/ExportDialog.tsx",
-    "line": 1321,
+    "line": 1324,
     "english": "Aspect",
     "sample": {}
   },
   {
     "key": "export.settings.frameRate",
     "file": "src/renderer/src/editor/ExportDialog.tsx",
-    "line": 1327,
+    "line": 1330,
     "english": "Frame rate",
     "sample": {}
   },
   {
     "key": "export.settings.quality",
     "file": "src/renderer/src/editor/ExportDialog.tsx",
-    "line": 1333,
+    "line": 1336,
     "english": "Quality",
     "sample": {}
   },
   {
     "key": "export.quality.studio",
     "file": "src/renderer/src/editor/ExportDialog.tsx",
-    "line": 1347,
+    "line": 1350,
     "english": "Studio",
     "sample": {}
   },
   {
     "key": "export.quality.web",
     "file": "src/renderer/src/editor/ExportDialog.tsx",
-    "line": 1348,
+    "line": 1351,
     "english": "Web",
     "sample": {}
   },
   {
     "key": "export.quality.small",
     "file": "src/renderer/src/editor/ExportDialog.tsx",
-    "line": 1349,
+    "line": 1352,
     "english": "Small file",
     "sample": {}
   },
   {
     "key": "export.quality.byTarget",
     "file": "src/renderer/src/editor/ExportDialog.tsx",
-    "line": 1353,
+    "line": 1356,
     "english": "Set by the target size.",
     "sample": {}
   },
   {
     "key": "export.target.label",
     "file": "src/renderer/src/editor/ExportDialog.tsx",
-    "line": 1358,
+    "line": 1361,
     "english": "Target size",
     "sample": {}
   },
   {
     "key": "export.target.field",
     "file": "src/renderer/src/editor/ExportDialog.tsx",
-    "line": 1365,
+    "line": 1368,
     "english": "Target size in MB",
     "sample": {}
   },
   {
     "key": "export.target.unit",
     "file": "src/renderer/src/editor/ExportDialog.tsx",
-    "line": 1386,
+    "line": 1389,
     "english": "MB",
     "sample": {}
   },
   {
     "key": "export.target.gif",
     "file": "src/renderer/src/editor/ExportDialog.tsx",
-    "line": 1396,
+    "line": 1399,
     "english": "Shrinks the GIF until it fits",
     "sample": {}
   },
   {
     "key": "export.target.hint",
     "file": "src/renderer/src/editor/ExportDialog.tsx",
-    "line": 1396,
+    "line": 1399,
     "english": "Aims for this file size",
     "sample": {}
   },
   {
     "key": "export.settings.encoder",
     "file": "src/renderer/src/editor/ExportDialog.tsx",
-    "line": 1402,
+    "line": 1405,
     "english": "Encoder",
     "sample": {}
   },
   {
     "key": "export.encoder.auto",
     "file": "src/renderer/src/editor/ExportDialog.tsx",
-    "line": 1408,
+    "line": 1411,
     "english": "Auto (GPU when available)",
     "sample": {}
   },
   {
     "key": "export.encoder.softwareChoice",
     "file": "src/renderer/src/editor/ExportDialog.tsx",
-    "line": 1409,
+    "line": 1412,
     "english": "Software",
     "sample": {}
   },
   {
     "key": "export.chapters.exportParts",
     "file": "src/renderer/src/editor/ExportDialog.tsx",
-    "line": 1455,
+    "line": 1458,
     "english": [
       "Export 0 chapters…",
       "Export 1 chapter…",
@@ -3468,14 +3468,14 @@
   {
     "key": "export.done.title",
     "file": "src/renderer/src/editor/ExportDialog.tsx",
-    "line": 1496,
+    "line": 1510,
     "english": "Export finished",
     "sample": {}
   },
   {
     "key": "export.done.summary",
     "file": "src/renderer/src/editor/ExportDialog.tsx",
-    "line": 1500,
+    "line": 1514,
     "english": "1.5 MB · exported in 12 s · Software (x264)",
     "sample": {
       "size": "1.5 MB",
@@ -3486,21 +3486,21 @@
   {
     "key": "export.done.shortClips",
     "file": "src/renderer/src/editor/ExportDialog.tsx",
-    "line": 1509,
+    "line": 1523,
     "english": "Make short clips for Shorts and Reels…",
     "sample": {}
   },
   {
     "key": "export.done.copyTitle",
     "file": "src/renderer/src/editor/ExportDialog.tsx",
-    "line": 1515,
+    "line": 1529,
     "english": "Copy the file to paste it into a chat, an email or a folder",
     "sample": {}
   },
   {
     "key": "export.error.title",
     "file": "src/renderer/src/editor/ExportDialog.tsx",
-    "line": 1530,
+    "line": 1544,
     "english": "Export failed: The disk is full.",
     "sample": {
       "message": "The disk is full."
@@ -3509,91 +3509,91 @@
   {
     "key": "export.error.hideDetails",
     "file": "src/renderer/src/editor/ExportDialog.tsx",
-    "line": 1534,
+    "line": 1548,
     "english": "Hide details",
     "sample": {}
   },
   {
     "key": "export.error.showDetails",
     "file": "src/renderer/src/editor/ExportDialog.tsx",
-    "line": 1534,
+    "line": 1548,
     "english": "Show details",
     "sample": {}
   },
   {
     "key": "common.action.close",
     "file": "src/renderer/src/editor/ExportDialog.tsx",
-    "line": 1033,
+    "line": 1036,
     "english": "Close",
     "sample": {}
   },
   {
     "key": "common.state.saving",
     "file": "src/renderer/src/editor/ExportDialog.tsx",
-    "line": 1066,
+    "line": 1069,
     "english": "Saving…",
     "sample": {}
   },
   {
     "key": "common.action.showInFolder",
     "file": "src/renderer/src/editor/ExportDialog.tsx",
-    "line": 1072,
+    "line": 1075,
     "english": "Show in folder",
     "sample": {}
   },
   {
     "key": "common.label.settings",
     "file": "src/renderer/src/editor/ExportDialog.tsx",
-    "line": 1255,
+    "line": 1258,
     "english": "Settings",
     "sample": {}
   },
   {
     "key": "common.state.off",
     "file": "src/renderer/src/editor/ExportDialog.tsx",
-    "line": 1366,
+    "line": 1369,
     "english": "Off",
     "sample": {}
   },
   {
     "key": "common.action.cancel",
     "file": "src/renderer/src/editor/ExportDialog.tsx",
-    "line": 1450,
+    "line": 1453,
     "english": "Cancel",
     "sample": {}
   },
   {
     "key": "common.state.copied",
     "file": "src/renderer/src/editor/ExportDialog.tsx",
-    "line": 308,
+    "line": 1530,
     "english": "Copied",
     "sample": {}
   },
   {
     "key": "common.action.copy",
     "file": "src/renderer/src/editor/ExportDialog.tsx",
-    "line": 1516,
+    "line": 1530,
     "english": "Copy",
     "sample": {}
   },
   {
     "key": "common.action.done",
     "file": "src/renderer/src/editor/ExportDialog.tsx",
-    "line": 1522,
+    "line": 1536,
     "english": "Done",
     "sample": {}
   },
   {
     "key": "common.action.back",
     "file": "src/renderer/src/editor/ExportDialog.tsx",
-    "line": 1541,
+    "line": 1555,
     "english": "Back",
     "sample": {}
   },
   {
     "key": "export.size.reduced",
     "file": "src/renderer/src/editor/ExportDialog.tsx",
-    "line": 1558,
+    "line": 1570,
     "english": "To fit 15 MB the GIF was made at 640 px wide.",
     "sample": {
       "mb": "15",
@@ -3603,7 +3603,7 @@
   {
     "key": "export.size.overLimit",
     "file": "src/renderer/src/editor/ExportDialog.tsx",
-    "line": 1559,
+    "line": 1571,
     "english": "Even at its smallest the GIF is over 15 MB. Shorten the clip or export an MP4.",
     "sample": {
       "mb": "15"
@@ -3612,7 +3612,7 @@
   {
     "key": "export.size.overTarget",
     "file": "src/renderer/src/editor/ExportDialog.tsx",
-    "line": 1563,
+    "line": 1575,
     "english": "15% over the 25 MB target: this encoder could not hold the rate. Try the Software encoder.",
     "sample": {
       "percent": "15",
@@ -3622,7 +3622,7 @@
   {
     "key": "export.size.within",
     "file": "src/renderer/src/editor/ExportDialog.tsx",
-    "line": 1564,
+    "line": 1576,
     "english": "Target 25 MB: within the limit.",
     "sample": {
       "mb": "25"
@@ -3631,7 +3631,7 @@
   {
     "key": "export.size.withinFewer",
     "file": "src/renderer/src/editor/ExportDialog.tsx",
-    "line": 1564,
+    "line": 1576,
     "english": "Target 25 MB: within the limit (the video needed fewer bits).",
     "sample": {
       "mb": "25"
@@ -3640,7 +3640,7 @@
   {
     "key": "export.size.over",
     "file": "src/renderer/src/editor/ExportDialog.tsx",
-    "line": 1564,
+    "line": 1576,
     "english": "Target 25 MB: 4% over.",
     "sample": {
       "mb": "25",
@@ -3650,7 +3650,7 @@
   {
     "key": "export.size.overPlatform",
     "file": "src/renderer/src/editor/ExportDialog.tsx",
-    "line": 1568,
+    "line": 1580,
     "english": "Larger than the 512 MB X (Twitter) accepts: set a target size of about 486 MB and export again.",
     "sample": {
       "max": "512",
@@ -3661,28 +3661,28 @@
   {
     "key": "export.batch.waiting",
     "file": "src/renderer/src/editor/ExportDialog.tsx",
-    "line": 1585,
+    "line": 1597,
     "english": "Waiting",
     "sample": {}
   },
   {
     "key": "export.progress.preparing",
     "file": "src/renderer/src/editor/ExportDialog.tsx",
-    "line": 1588,
+    "line": 1600,
     "english": "Preparing…",
     "sample": {}
   },
   {
     "key": "export.progress.finalizing",
     "file": "src/renderer/src/editor/ExportDialog.tsx",
-    "line": 1589,
+    "line": 1601,
     "english": "Finalizing…",
     "sample": {}
   },
   {
     "key": "export.progress.rendering",
     "file": "src/renderer/src/editor/ExportDialog.tsx",
-    "line": 1590,
+    "line": 1602,
     "english": "Rendering… 42%",
     "sample": {
       "percent": "42"
@@ -3691,14 +3691,14 @@
   {
     "key": "export.batch.cancelled",
     "file": "src/renderer/src/editor/ExportDialog.tsx",
-    "line": 1597,
+    "line": 1609,
     "english": "Cancelled",
     "sample": {}
   },
   {
     "key": "export.batch.finishedSome",
     "file": "src/renderer/src/editor/ExportDialog.tsx",
-    "line": 1637,
+    "line": 1649,
     "english": "Batch finished: 2 of 3 exported",
     "sample": {
       "done": "2",
@@ -3708,7 +3708,7 @@
   {
     "key": "export.batch.finished",
     "file": "src/renderer/src/editor/ExportDialog.tsx",
-    "line": 1638,
+    "line": 1650,
     "english": [
       "Batch finished: 0 files exported",
       "Batch finished: 1 file exported",
@@ -3737,7 +3737,7 @@
   {
     "key": "export.batch.exporting",
     "file": "src/renderer/src/editor/ExportDialog.tsx",
-    "line": 1647,
+    "line": 1659,
     "english": "Exporting 1 of 3: YouTube 1080p60 · Rendering… 42%",
     "sample": {
       "index": "1",
@@ -3749,7 +3749,7 @@
   {
     "key": "export.batch.stillOver",
     "file": "src/renderer/src/editor/ExportDialog.tsx",
-    "line": 1674,
+    "line": 1686,
     "english": "Still over 15 MB",
     "sample": {
       "mb": "15"
@@ -3758,7 +3758,7 @@
   {
     "key": "export.batch.fitted",
     "file": "src/renderer/src/editor/ExportDialog.tsx",
-    "line": 1674,
+    "line": 1686,
     "english": "Fitted: 640 px wide",
     "sample": {
       "how": "640 px wide"
@@ -3767,77 +3767,77 @@
   {
     "key": "export.batch.copyFile",
     "file": "src/renderer/src/editor/ExportDialog.tsx",
-    "line": 1678,
+    "line": 1690,
     "english": "Copy the file",
     "sample": {}
   },
   {
     "key": "export.batch.copied",
     "file": "src/renderer/src/editor/ExportDialog.tsx",
-    "line": 1687,
+    "line": 1699,
     "english": "Copied to the clipboard.",
     "sample": {}
   },
   {
     "key": "export.cancel",
     "file": "src/renderer/src/editor/ExportDialog.tsx",
-    "line": 1707,
+    "line": 1719,
     "english": "Cancel export",
     "sample": {}
   },
   {
     "key": "export.pause.slept",
     "file": "src/renderer/src/editor/ExportDialog.tsx",
-    "line": 1718,
+    "line": 1730,
     "english": "Paused while the PC slept. Carrying on…",
     "sample": {}
   },
   {
     "key": "export.pause.paused",
     "file": "src/renderer/src/editor/ExportDialog.tsx",
-    "line": 1718,
+    "line": 1730,
     "english": "Paused · Resume to carry on",
     "sample": {}
   },
   {
     "key": "export.pause.disabledTitle",
     "file": "src/renderer/src/editor/ExportDialog.tsx",
-    "line": 1729,
+    "line": 1741,
     "english": "Pause is possible while frames are drawn",
     "sample": {}
   },
   {
     "key": "export.pause.resumeTitle",
     "file": "src/renderer/src/editor/ExportDialog.tsx",
-    "line": 1729,
+    "line": 1741,
     "english": "Carry on with the export",
     "sample": {}
   },
   {
     "key": "export.pause.pauseTitle",
     "file": "src/renderer/src/editor/ExportDialog.tsx",
-    "line": 1729,
+    "line": 1741,
     "english": "Pause the export; nothing is lost",
     "sample": {}
   },
   {
     "key": "export.pause.resume",
     "file": "src/renderer/src/editor/ExportDialog.tsx",
-    "line": 1731,
+    "line": 1743,
     "english": "Resume",
     "sample": {}
   },
   {
     "key": "export.pause.pause",
     "file": "src/renderer/src/editor/ExportDialog.tsx",
-    "line": 1731,
+    "line": 1743,
     "english": "Pause",
     "sample": {}
   },
   {
     "key": "export.also.saved",
     "file": "src/renderer/src/editor/ExportDialog.tsx",
-    "line": 1741,
+    "line": 1753,
     "english": "Also saved: Demo.srt, Demo - thumbnail.png",
     "sample": {
       "names": "Demo.srt, Demo - thumbnail.png"
@@ -3846,7 +3846,7 @@
   {
     "key": "export.also.failed",
     "file": "src/renderer/src/editor/ExportDialog.tsx",
-    "line": 1744,
+    "line": 1756,
     "english": "Could not save Demo.srt: The disk is full.",
     "sample": {
       "reason": "Demo.srt: The disk is full."
@@ -3855,7 +3855,7 @@
   {
     "key": "export.progress.fps",
     "file": "src/renderer/src/editor/ExportDialog.tsx",
-    "line": 1791,
+    "line": 1803,
     "english": "42 fps",
     "sample": {
       "fps": "42"
@@ -3864,7 +3864,7 @@
   {
     "key": "export.progress.left",
     "file": "src/renderer/src/editor/ExportDialog.tsx",
-    "line": 1792,
+    "line": 1804,
     "english": "about 2 min 5 s left",
     "sample": {
       "time": "2 min 5 s"
@@ -3873,7 +3873,7 @@
   {
     "key": "export.progress.finalizingStep",
     "file": "src/renderer/src/editor/ExportDialog.tsx",
-    "line": 1797,
+    "line": 1809,
     "english": "Finalizing… encoding the audio",
     "sample": {
       "step": "encoding the audio"
@@ -3882,14 +3882,14 @@
   {
     "key": "export.progress.finalizingGif",
     "file": "src/renderer/src/editor/ExportDialog.tsx",
-    "line": 1799,
+    "line": 1811,
     "english": "Finalizing… building the GIF",
     "sample": {}
   },
   {
     "key": "export.progress.encoder",
     "file": "src/renderer/src/editor/ExportDialog.tsx",
-    "line": 1812,
+    "line": 1824,
     "english": "Encoder: Software (x264)",
     "sample": {
       "encoder": "Software (x264)"
@@ -3898,56 +3898,56 @@
   {
     "key": "export.also.savedList",
     "file": "src/renderer/src/editor/ExportDialog.tsx",
-    "line": 1898,
+    "line": 1910,
     "english": "Also saved:",
     "sample": {}
   },
   {
     "key": "export.lut.label",
     "file": "src/renderer/src/editor/ExportDialog.tsx",
-    "line": 1949,
+    "line": 1961,
     "english": "A LUT is missing",
     "sample": {}
   },
   {
     "key": "export.lut.withoutThem",
     "file": "src/renderer/src/editor/ExportDialog.tsx",
-    "line": 1953,
+    "line": 1965,
     "english": "Export without them",
     "sample": {}
   },
   {
     "key": "export.lut.withoutIt",
     "file": "src/renderer/src/editor/ExportDialog.tsx",
-    "line": 1953,
+    "line": 1965,
     "english": "Export without it",
     "sample": {}
   },
   {
     "key": "common.action.back",
     "file": "src/renderer/src/editor/ExportDialog.tsx",
-    "line": 1543,
+    "line": 1704,
     "english": "Back",
     "sample": {}
   },
   {
     "key": "common.action.showInFolder",
     "file": "src/renderer/src/editor/ExportDialog.tsx",
-    "line": 1074,
+    "line": 1075,
     "english": "Show in folder",
     "sample": {}
   },
   {
     "key": "common.action.done",
     "file": "src/renderer/src/editor/ExportDialog.tsx",
-    "line": 1524,
+    "line": 1712,
     "english": "Done",
     "sample": {}
   },
   {
     "key": "common.action.cancel",
     "file": "src/renderer/src/editor/ExportDialog.tsx",
-    "line": 1452,
+    "line": 1968,
     "english": "Cancel",
     "sample": {}
   },
@@ -4205,7 +4205,7 @@
   {
     "key": "export.fallback",
     "file": "src/renderer/src/editor/exporter.ts",
-    "line": 362,
+    "line": 354,
     "english": "GPU (NVIDIA NVENC) failed, so the export restarted with Software (x264).",
     "sample": {
       "failed": "GPU (NVIDIA NVENC)",
@@ -4215,56 +4215,56 @@
   {
     "key": "export.noEncoder",
     "file": "src/renderer/src/editor/exporter.ts",
-    "line": 365,
+    "line": 357,
     "english": "No video encoder is available",
     "sample": {}
   },
   {
     "key": "export.detail.audio",
     "file": "src/renderer/src/editor/exporter.ts",
-    "line": 379,
+    "line": 371,
     "english": "Encoding the audio…",
     "sample": {}
   },
   {
     "key": "export.noSound",
     "file": "src/renderer/src/editor/exporter.ts",
-    "line": 382,
+    "line": 374,
     "english": "This recording has no sound to export. Turn the audio on in the Audio panel, or choose a video format.",
     "sample": {}
   },
   {
     "key": "export.detail.gifFit",
     "file": "src/renderer/src/editor/exporter.ts",
-    "line": 515,
+    "line": 507,
     "english": "Building the GIF and fitting it to its size limit…",
     "sample": {}
   },
   {
     "key": "export.detail.gif",
     "file": "src/renderer/src/editor/exporter.ts",
-    "line": 515,
+    "line": 507,
     "english": "Building the GIF…",
     "sample": {}
   },
   {
     "key": "export.detail.twoPass",
     "file": "src/renderer/src/editor/exporter.ts",
-    "line": 517,
+    "line": 509,
     "english": "Encoding to the size target (two passes)…",
     "sample": {}
   },
   {
     "key": "export.thumb.encodeFailed",
     "file": "src/renderer/src/editor/exporter.ts",
-    "line": 805,
+    "line": 797,
     "english": "Could not encode the thumbnail",
     "sample": {}
   },
   {
     "key": "common.error.drawingSurface",
     "file": "src/renderer/src/editor/exporter.ts",
-    "line": 579,
+    "line": 571,
     "english": "Could not create a drawing surface",
     "sample": {}
   },
@@ -4599,7 +4599,7 @@
   {
     "key": "errors.images.aPictureToSend",
     "file": "src/main/ai/images.ts",
-    "line": 44,
+    "line": 53,
     "english": "A picture to send is not a JPEG image.",
     "sample": {}
   },
@@ -4638,7 +4638,7 @@
   {
     "key": "errors.keyStore.giveTheProviderA",
     "file": "src/main/ai/keyStore.ts",
-    "line": 70,
+    "line": 72,
     "english": "Give the provider a name.",
     "sample": {}
   },
@@ -4815,7 +4815,7 @@
   {
     "key": "errors.keyStore.giveTheProviderA",
     "file": "src/main/ai/serviceStore.ts",
-    "line": 82,
+    "line": 84,
     "english": "Give the provider a name.",
     "sample": {}
   },
@@ -4953,7 +4953,7 @@
   {
     "key": "errors.transcribe.thisRecordingHasNo",
     "file": "src/main/ai/transcribe.ts",
-    "line": 190,
+    "line": 274,
     "english": "This recording has no sound to transcribe.",
     "sample": {}
   },
@@ -4988,7 +4988,7 @@
   {
     "key": "errors.asset.choose",
     "file": "src/main/assetIpc.ts",
-    "line": 270,
+    "line": 278,
     "english": "Choose «formats».",
     "sample": {
       "formats": "«formats»"
@@ -4997,21 +4997,21 @@
   {
     "key": "errors.assetIpc.unknownAssetKind",
     "file": "src/main/assetIpc.ts",
-    "line": 292,
+    "line": 300,
     "english": "Unknown asset kind",
     "sample": {}
   },
   {
     "key": "errors.assetIpc.unknownAssetKind",
     "file": "src/main/assetIpc.ts",
-    "line": 292,
+    "line": 326,
     "english": "Unknown asset kind",
     "sample": {}
   },
   {
     "key": "errors.asset.choose",
     "file": "src/main/assetIpc.ts",
-    "line": 270,
+    "line": 278,
     "english": "Choose «formats».",
     "sample": {
       "formats": "«formats»"
@@ -5020,7 +5020,7 @@
   {
     "key": "errors.asset.choose",
     "file": "src/main/assetIpc.ts",
-    "line": 270,
+    "line": 278,
     "english": "Choose «formats».",
     "sample": {
       "formats": "«formats»"
@@ -5029,7 +5029,7 @@
   {
     "key": "errors.asset.choose",
     "file": "src/main/assetIpc.ts",
-    "line": 270,
+    "line": 278,
     "english": "Choose «formats».",
     "sample": {
       "formats": "«formats»"
@@ -5038,7 +5038,7 @@
   {
     "key": "errors.asset.choose",
     "file": "src/main/assetIpc.ts",
-    "line": 270,
+    "line": 278,
     "english": "Choose «formats».",
     "sample": {
       "formats": "«formats»"
@@ -5047,14 +5047,14 @@
   {
     "key": "errors.assetIpc.unknownAssetKind",
     "file": "src/main/assetIpc.ts",
-    "line": 292,
+    "line": 374,
     "english": "Unknown asset kind",
     "sample": {}
   },
   {
     "key": "errors.asset.choose",
     "file": "src/main/assetIpc.ts",
-    "line": 270,
+    "line": 278,
     "english": "Choose «formats».",
     "sample": {
       "formats": "«formats»"
@@ -5063,7 +5063,7 @@
   {
     "key": "errors.asset.choose",
     "file": "src/main/assetIpc.ts",
-    "line": 270,
+    "line": 278,
     "english": "Choose «formats».",
     "sample": {
       "formats": "«formats»"
@@ -5072,7 +5072,7 @@
   {
     "key": "errors.assetIpc.chooseAnImage",
     "file": "src/main/assetIpc.ts",
-    "line": 449,
+    "line": 457,
     "english": "Choose an image.",
     "sample": {}
   },
@@ -5086,7 +5086,7 @@
   {
     "key": "errors.assetStore.thisDownloadIsNot",
     "file": "src/main/assets/assetStore.ts",
-    "line": 222,
+    "line": 283,
     "english": "This download is not one Flown offers.",
     "sample": {}
   },
@@ -5107,7 +5107,7 @@
   {
     "key": "errors.audioAnalysis.theSoundMeasurementWas",
     "file": "src/main/audioAnalysis.ts",
-    "line": 71,
+    "line": 118,
     "english": "The sound measurement was stopped.",
     "sample": {}
   },
@@ -5149,28 +5149,28 @@
   {
     "key": "errors.captionsIpc.theseCaptionsCannotBe",
     "file": "src/main/captionsIpc.ts",
-    "line": 33,
+    "line": 34,
     "english": "These captions cannot be saved as a subtitle file",
     "sample": {}
   },
   {
     "key": "main.captionsIpc.exportCaptions",
     "file": "src/main/captionsIpc.ts",
-    "line": 38,
+    "line": 39,
     "english": "Export captions",
     "sample": {}
   },
   {
     "key": "errors.captionsIpc.chooseAFolderOn",
     "file": "src/main/captionsIpc.ts",
-    "line": 43,
+    "line": 44,
     "english": "Choose a folder on this computer for the captions",
     "sample": {}
   },
   {
     "key": "errors.exportArgs.thisRecordingHasNo",
     "file": "src/main/exportArgs.ts",
-    "line": 246,
+    "line": 247,
     "english": "This recording has no sound to export.",
     "sample": {}
   },
@@ -5198,35 +5198,35 @@
   {
     "key": "main.exportIpc.exportToFolder",
     "file": "src/main/exportIpc.ts",
-    "line": 248,
+    "line": 249,
     "english": "Export to folder",
     "sample": {}
   },
   {
     "key": "main.exportIpc.exportHere",
     "file": "src/main/exportIpc.ts",
-    "line": 250,
+    "line": 251,
     "english": "Export here",
     "sample": {}
   },
   {
     "key": "errors.exportIpc.exportFolderWasNot",
     "file": "src/main/exportIpc.ts",
-    "line": 259,
+    "line": 260,
     "english": "Export folder was not chosen through the folder dialog",
     "sample": {}
   },
   {
     "key": "errors.exportIpc.exportPathWasNot",
     "file": "src/main/exportIpc.ts",
-    "line": 293,
+    "line": 304,
     "english": "Export path was not chosen through the save dialog",
     "sample": {}
   },
   {
     "key": "errors.exportIpc.couldNotWriteTo",
     "file": "src/main/exportIpc.ts",
-    "line": 302,
+    "line": 313,
     "english": "Could not write to the folder \"«value»\". Choose another folder.",
     "sample": {
       "value": "«value»"
@@ -5235,14 +5235,14 @@
   {
     "key": "errors.exportIpc.thumbnailPathWasNot",
     "file": "src/main/exportIpc.ts",
-    "line": 387,
+    "line": 398,
     "english": "Thumbnail path was not chosen through the save dialog",
     "sample": {}
   },
   {
     "key": "errors.exportIpc.couldNotWriteTo",
     "file": "src/main/exportIpc.ts",
-    "line": 302,
+    "line": 401,
     "english": "Could not write to the folder \"«value»\". Choose another folder.",
     "sample": {
       "value": "«value»"
@@ -5251,14 +5251,14 @@
   {
     "key": "errors.diskFull",
     "file": "src/main/exportIpc.ts",
-    "line": 398,
+    "line": 409,
     "english": "The disk is full.",
     "sample": {}
   },
   {
     "key": "errors.exportJob.couldNotSaveThe",
     "file": "src/main/exportJob.ts",
-    "line": 78,
+    "line": 119,
     "english": "Could not save \"«name»\": the file is open in another app or the folder is read-only. Close it and export again.",
     "sample": {
       "name": "«name»"
@@ -5267,14 +5267,14 @@
   {
     "key": "errors.diskFull",
     "file": "src/main/exportJob.ts",
-    "line": 80,
+    "line": 89,
     "english": "The disk is full.",
     "sample": {}
   },
   {
     "key": "errors.exportJob.couldNotSave",
     "file": "src/main/exportJob.ts",
-    "line": 81,
+    "line": 122,
     "english": "Could not save \"«name»\" («value»).",
     "sample": {
       "name": "«name»",
@@ -5284,7 +5284,7 @@
   {
     "key": "errors.exportJob.theExportSizeIs",
     "file": "src/main/exportJob.ts",
-    "line": 318,
+    "line": 359,
     "english": "The export size «width»×«height» is not supported: each side must be an even number of pixels, at most «MAX_FRAME_SIDE». Choose a lower resolution.",
     "sample": {
       "width": "«width»",
@@ -5295,14 +5295,14 @@
   {
     "key": "errors.exportArgs.thisRecordingHasNo",
     "file": "src/main/exportJob.ts",
-    "line": 344,
+    "line": 385,
     "english": "This recording has no sound to export.",
     "sample": {}
   },
   {
     "key": "errors.exportJob.theBackgroundMusicFile",
     "file": "src/main/exportJob.ts",
-    "line": 429,
+    "line": 475,
     "english": "The background music file is missing. Choose it again in the Audio panel.",
     "sample": {}
   },
@@ -5407,14 +5407,14 @@
   {
     "key": "errors.lutImport.thisFileIsEmpty",
     "file": "src/main/lutImport.ts",
-    "line": 30,
+    "line": 31,
     "english": "This file is empty.",
     "sample": {}
   },
   {
     "key": "errors.lutImport.theFileIsToo",
     "file": "src/main/lutImport.ts",
-    "line": 31,
+    "line": 32,
     "english": "The file is too large («value» MB; «value2» MB at most).",
     "sample": {
       "value": "«value»",
@@ -5424,7 +5424,7 @@
   {
     "key": "main.lutImport.thisLutCouldNot",
     "file": "src/main/lutImport.ts",
-    "line": 75,
+    "line": 76,
     "english": "This LUT could not be used.",
     "sample": {}
   },
@@ -5508,7 +5508,7 @@
   {
     "key": "errors.projectsIpc.chooseAPngJpg",
     "file": "src/main/projectsIpc.ts",
-    "line": 217,
+    "line": 219,
     "english": "Choose a PNG, JPG or WebP image.",
     "sample": {}
   },
@@ -5538,7 +5538,7 @@
   {
     "key": "errors.projectsIpc.chooseAPngJpg2",
     "file": "src/main/projectsIpc.ts",
-    "line": 247,
+    "line": 249,
     "english": "Choose a PNG, JPG, WebP, SVG, ICO or CUR image.",
     "sample": {}
   },
@@ -5580,14 +5580,14 @@
   {
     "key": "errors.analysisIpc.theVideoFileIs",
     "file": "src/main/sceneScan.ts",
-    "line": 280,
+    "line": 285,
     "english": "the video file is missing",
     "sample": {}
   },
   {
     "key": "errors.analysisIpc.theVideoFileIs",
     "file": "src/main/sceneScan.ts",
-    "line": 280,
+    "line": 291,
     "english": "the video file is missing",
     "sample": {}
   },
@@ -5601,7 +5601,7 @@
   {
     "key": "errors.sceneScan.readingTheScreenWas",
     "file": "src/main/sceneScan.ts",
-    "line": 307,
+    "line": 312,
     "english": "reading the screen was stopped",
     "sample": {}
   },
@@ -5615,28 +5615,28 @@
   {
     "key": "errors.copyToFolder.noFreeFileName",
     "file": "src/main/share/copyToFolder.ts",
-    "line": 101,
+    "line": 102,
     "english": "No free file name was found.",
     "sample": {}
   },
   {
     "key": "errors.copyToFolder.thisFileCannotBe",
     "file": "src/main/share/copyToFolder.ts",
-    "line": 154,
+    "line": 155,
     "english": "This file cannot be shared: its name is not one Flown exports.",
     "sample": {}
   },
   {
     "key": "errors.copyToFolder.theExportedFileIs",
     "file": "src/main/share/copyToFolder.ts",
-    "line": 156,
+    "line": 157,
     "english": "The exported file is not there any more.",
     "sample": {}
   },
   {
     "key": "errors.copyToFolder.theFolderIsNot",
     "file": "src/main/share/copyToFolder.ts",
-    "line": 158,
+    "line": 159,
     "english": "The «label» folder is not there any more.",
     "sample": {
       "label": "«label»"
@@ -5645,7 +5645,7 @@
   {
     "key": "errors.copyToFolder.couldNotMakeThe",
     "file": "src/main/share/copyToFolder.ts",
-    "line": 164,
+    "line": 165,
     "english": "Could not make the «SHARE_SUBFOLDER» folder in «label».",
     "sample": {
       "SHARE_SUBFOLDER": "«SHARE_SUBFOLDER»",
@@ -5655,7 +5655,7 @@
   {
     "key": "errors.copyToFolder.theFolderCouldNot",
     "file": "src/main/share/copyToFolder.ts",
-    "line": 168,
+    "line": 169,
     "english": "The «label» folder could not be opened.",
     "sample": {
       "label": "«label»"
@@ -5664,7 +5664,7 @@
   {
     "key": "errors.copyToFolder.theFolderInLeads",
     "file": "src/main/share/copyToFolder.ts",
-    "line": 170,
+    "line": 171,
     "english": "The «SHARE_SUBFOLDER» folder in «label» leads somewhere else, so nothing was copied.",
     "sample": {
       "SHARE_SUBFOLDER": "«SHARE_SUBFOLDER»",
@@ -5674,7 +5674,7 @@
   {
     "key": "errors.copyToFolder.couldNotMakeThe",
     "file": "src/main/share/copyToFolder.ts",
-    "line": 164,
+    "line": 173,
     "english": "Could not make the «SHARE_SUBFOLDER» folder in «label».",
     "sample": {
       "SHARE_SUBFOLDER": "«SHARE_SUBFOLDER»",
@@ -5684,14 +5684,14 @@
   {
     "key": "errors.copyToFolder.theExportedFileIs",
     "file": "src/main/share/copyToFolder.ts",
-    "line": 156,
+    "line": 176,
     "english": "The exported file is not there any more.",
     "sample": {}
   },
   {
     "key": "errors.copyToFolder.thereIsNotEnough",
     "file": "src/main/share/copyToFolder.ts",
-    "line": 182,
+    "line": 183,
     "english": "There is not enough space on the drive of «label» (needs «value»).",
     "sample": {
       "label": "«label»",
@@ -5701,7 +5701,7 @@
   {
     "key": "errors.copyToFolder.theDriveOfIs",
     "file": "src/main/share/copyToFolder.ts",
-    "line": 219,
+    "line": 220,
     "english": "The drive of «label» is full.",
     "sample": {
       "label": "«label»"
@@ -5710,7 +5710,7 @@
   {
     "key": "errors.copyToFolder.theFolderIsRead",
     "file": "src/main/share/copyToFolder.ts",
-    "line": 221,
+    "line": 222,
     "english": "the folder is read-only or a file there is in use.",
     "sample": {}
   },
@@ -5927,14 +5927,14 @@
   {
     "key": "errors.speech.unknownModel",
     "file": "src/main/speech/models.ts",
-    "line": 280,
+    "line": 359,
     "english": "Unknown speech model.",
     "sample": {}
   },
   {
     "key": "errors.speech.unknownModel",
     "file": "src/main/speech/models.ts",
-    "line": 280,
+    "line": 375,
     "english": "Unknown speech model.",
     "sample": {}
   },
@@ -5948,7 +5948,7 @@
   {
     "key": "errors.speech.unknownModel",
     "file": "src/main/speech/models.ts",
-    "line": 280,
+    "line": 402,
     "english": "Unknown speech model.",
     "sample": {}
   },
@@ -5985,7 +5985,7 @@
   {
     "key": "errors.storage.notAFolderOf",
     "file": "src/main/storage.ts",
-    "line": 193,
+    "line": 198,
     "english": "Not a folder of the projects folder",
     "sample": {}
   },
@@ -5999,7 +5999,7 @@
   {
     "key": "errors.storage.itIsOpenIn",
     "file": "src/main/storage.ts",
-    "line": 245,
+    "line": 247,
     "english": "It is open in the editor",
     "sample": {}
   },
@@ -6034,7 +6034,7 @@
   {
     "key": "errors.versions.notAnIndex",
     "file": "src/main/versions.ts",
-    "line": 205,
+    "line": 207,
     "english": "not an index",
     "sample": {}
   },
@@ -6048,14 +6048,14 @@
   {
     "key": "errors.asset.overlayFormats",
     "file": "src/main/assetIpc.ts",
-    "line": 372,
+    "line": 380,
     "english": "Only PNG, JPG, WebP, SVG and GIF images can be added.",
     "sample": {}
   },
   {
     "key": "errors.asset.choose",
     "file": "src/main/assetIpc.ts",
-    "line": 372,
+    "line": 376,
     "english": "Choose a PNG or JPG image.",
     "sample": {
       "formats": "a PNG or JPG image"
@@ -6078,14 +6078,14 @@
   {
     "key": "main.export.thumbnailTitle",
     "file": "src/main/exportIpc.ts",
-    "line": 234,
+    "line": 235,
     "english": "Save thumbnail",
     "sample": {}
   },
   {
     "key": "main.export.saveTitle",
     "file": "src/main/exportIpc.ts",
-    "line": 234,
+    "line": 235,
     "english": "Export recording",
     "sample": {}
   },
@@ -6113,7 +6113,7 @@
   {
     "key": "errors.share.somethingWrong",
     "file": "src/main/share/copyToFolder.ts",
-    "line": 222,
+    "line": 223,
     "english": "something went wrong.",
     "sample": {}
   },
@@ -6675,6 +6675,685 @@
     "file": "src/main/projectsIpc.ts",
     "line": 128,
     "english": "Cursor images",
+    "sample": {}
+  },
+  {
+    "key": "settings.brand.position.topLeft",
+    "file": "src/renderer/src/settings/BrandKitSection.tsx",
+    "line": 20,
+    "english": "Top left",
+    "sample": {}
+  },
+  {
+    "key": "settings.brand.position.topRight",
+    "file": "src/renderer/src/settings/BrandKitSection.tsx",
+    "line": 21,
+    "english": "Top right",
+    "sample": {}
+  },
+  {
+    "key": "settings.brand.position.centre",
+    "file": "src/renderer/src/settings/BrandKitSection.tsx",
+    "line": 22,
+    "english": "Centre",
+    "sample": {}
+  },
+  {
+    "key": "settings.brand.position.bottomLeft",
+    "file": "src/renderer/src/settings/BrandKitSection.tsx",
+    "line": 23,
+    "english": "Bottom left",
+    "sample": {}
+  },
+  {
+    "key": "settings.brand.position.bottomRight",
+    "file": "src/renderer/src/settings/BrandKitSection.tsx",
+    "line": 24,
+    "english": "Bottom right",
+    "sample": {}
+  },
+  {
+    "key": "settings.brand.newIntroTitle",
+    "file": "src/renderer/src/settings/BrandKitSection.tsx",
+    "line": 29,
+    "english": "Your title",
+    "sample": {}
+  },
+  {
+    "key": "settings.brand.newOutroTitle",
+    "file": "src/renderer/src/settings/BrandKitSection.tsx",
+    "line": 29,
+    "english": "Thanks for watching",
+    "sample": {}
+  },
+  {
+    "key": "settings.brand.title",
+    "file": "src/renderer/src/settings/BrandKitSection.tsx",
+    "line": 175,
+    "english": "Brand kit",
+    "sample": {}
+  },
+  {
+    "key": "settings.brand.about",
+    "file": "src/renderer/src/settings/BrandKitSection.tsx",
+    "line": 203,
+    "english": "Your logo, colours, fonts, intro and outro, saved once. Apply them to a video from the editor's Style tab.",
+    "sample": {}
+  },
+  {
+    "key": "settings.brand.logo",
+    "file": "src/renderer/src/settings/BrandKitSection.tsx",
+    "line": 211,
+    "english": "Logo",
+    "sample": {}
+  },
+  {
+    "key": "settings.brand.margin",
+    "file": "src/renderer/src/settings/BrandKitSection.tsx",
+    "line": 227,
+    "english": "Distance from edge",
+    "sample": {}
+  },
+  {
+    "key": "settings.brand.colours",
+    "file": "src/renderer/src/settings/BrandKitSection.tsx",
+    "line": 234,
+    "english": "Brand colours",
+    "sample": {}
+  },
+  {
+    "key": "settings.brand.removeColour",
+    "file": "src/renderer/src/settings/BrandKitSection.tsx",
+    "line": 242,
+    "english": "Remove colour #ff6600",
+    "sample": {
+      "colour": "#ff6600"
+    }
+  },
+  {
+    "key": "settings.brand.newColour",
+    "file": "src/renderer/src/settings/BrandKitSection.tsx",
+    "line": 252,
+    "english": "New colour",
+    "sample": {}
+  },
+  {
+    "key": "settings.brand.addColour",
+    "file": "src/renderer/src/settings/BrandKitSection.tsx",
+    "line": 254,
+    "english": "Add colour",
+    "sample": {}
+  },
+  {
+    "key": "settings.brand.coloursHint",
+    "file": "src/renderer/src/settings/BrandKitSection.tsx",
+    "line": 259,
+    "english": "The first colour fills the intro and outro cards; all of them show first in a title card's colour pickers.",
+    "sample": {}
+  },
+  {
+    "key": "settings.brand.fonts",
+    "file": "src/renderer/src/settings/BrandKitSection.tsx",
+    "line": 263,
+    "english": "Fonts",
+    "sample": {}
+  },
+  {
+    "key": "settings.brand.noFonts",
+    "file": "src/renderer/src/settings/BrandKitSection.tsx",
+    "line": 264,
+    "english": "No fonts yet. Add a TTF, OTF or WOFF2 file (15 MB at most).",
+    "sample": {}
+  },
+  {
+    "key": "settings.brand.addFont",
+    "file": "src/renderer/src/settings/BrandKitSection.tsx",
+    "line": 283,
+    "english": "Add font…",
+    "sample": {}
+  },
+  {
+    "key": "settings.brand.headingFont",
+    "file": "src/renderer/src/settings/BrandKitSection.tsx",
+    "line": 288,
+    "english": "Headings (title cards)",
+    "sample": {}
+  },
+  {
+    "key": "settings.brand.bodyFont",
+    "file": "src/renderer/src/settings/BrandKitSection.tsx",
+    "line": 289,
+    "english": "Text (captions and text)",
+    "sample": {}
+  },
+  {
+    "key": "settings.brand.preset",
+    "file": "src/renderer/src/settings/BrandKitSection.tsx",
+    "line": 299,
+    "english": "Style preset",
+    "sample": {}
+  },
+  {
+    "key": "settings.brand.presetLabel",
+    "file": "src/renderer/src/settings/BrandKitSection.tsx",
+    "line": 301,
+    "english": "Look applied with the kit",
+    "sample": {}
+  },
+  {
+    "key": "settings.brand.presetNone",
+    "file": "src/renderer/src/settings/BrandKitSection.tsx",
+    "line": 309,
+    "english": "None (keep the video's look)",
+    "sample": {}
+  },
+  {
+    "key": "settings.brand.autoApply",
+    "file": "src/renderer/src/settings/BrandKitSection.tsx",
+    "line": 323,
+    "english": "Apply to new recordings",
+    "sample": {}
+  },
+  {
+    "key": "settings.brand.autoOn",
+    "file": "src/renderer/src/settings/BrandKitSection.tsx",
+    "line": 326,
+    "english": "New recordings start with your brand kit.",
+    "sample": {}
+  },
+  {
+    "key": "settings.brand.autoOff",
+    "file": "src/renderer/src/settings/BrandKitSection.tsx",
+    "line": 326,
+    "english": "New recordings start without it; apply it from the editor.",
+    "sample": {}
+  },
+  {
+    "key": "settings.brand.captionStyle",
+    "file": "src/renderer/src/settings/BrandKitSection.tsx",
+    "line": 347,
+    "english": "Caption style",
+    "sample": {}
+  },
+  {
+    "key": "settings.brand.captionLabel",
+    "file": "src/renderer/src/settings/BrandKitSection.tsx",
+    "line": 349,
+    "english": "Captions get this look with the kit",
+    "sample": {}
+  },
+  {
+    "key": "settings.brand.captionNone",
+    "file": "src/renderer/src/settings/BrandKitSection.tsx",
+    "line": 358,
+    "english": "None (keep the video's caption style)",
+    "sample": {}
+  },
+  {
+    "key": "settings.brand.captionUse",
+    "file": "src/renderer/src/settings/BrandKitSection.tsx",
+    "line": 369,
+    "english": "Use the current project's caption style",
+    "sample": {}
+  },
+  {
+    "key": "settings.brand.captionHint",
+    "file": "src/renderer/src/settings/BrandKitSection.tsx",
+    "line": 372,
+    "english": "Save a caption style in the editor's Captions tab to pick it here.",
+    "sample": {}
+  },
+  {
+    "key": "settings.brand.logoAlt",
+    "file": "src/renderer/src/settings/BrandKitSection.tsx",
+    "line": 382,
+    "english": "Your logo",
+    "sample": {}
+  },
+  {
+    "key": "settings.brand.noLogo",
+    "file": "src/renderer/src/settings/BrandKitSection.tsx",
+    "line": 382,
+    "english": "No logo",
+    "sample": {}
+  },
+  {
+    "key": "settings.brand.changeLogo",
+    "file": "src/renderer/src/settings/BrandKitSection.tsx",
+    "line": 385,
+    "english": "Change logo…",
+    "sample": {}
+  },
+  {
+    "key": "settings.brand.chooseLogo",
+    "file": "src/renderer/src/settings/BrandKitSection.tsx",
+    "line": 385,
+    "english": "Choose logo…",
+    "sample": {}
+  },
+  {
+    "key": "settings.brand.fontName",
+    "file": "src/renderer/src/settings/BrandKitSection.tsx",
+    "line": 403,
+    "english": "Name of font Inter",
+    "sample": {
+      "name": "Inter"
+    }
+  },
+  {
+    "key": "settings.brand.fontUnreadable",
+    "file": "src/renderer/src/settings/BrandKitSection.tsx",
+    "line": 412,
+    "english": "This font could not be read.",
+    "sample": {}
+  },
+  {
+    "key": "settings.brand.fontSample",
+    "file": "src/renderer/src/settings/BrandKitSection.tsx",
+    "line": 412,
+    "english": "The quick brown fox",
+    "sample": {}
+  },
+  {
+    "key": "settings.brand.removeFont",
+    "file": "src/renderer/src/settings/BrandKitSection.tsx",
+    "line": 414,
+    "english": "Remove font Inter",
+    "sample": {
+      "name": "Inter"
+    }
+  },
+  {
+    "key": "settings.brand.defaultFont",
+    "file": "src/renderer/src/settings/BrandKitSection.tsx",
+    "line": 426,
+    "english": "Default (Segoe UI)",
+    "sample": {}
+  },
+  {
+    "key": "settings.brand.introName",
+    "file": "src/renderer/src/settings/BrandKitSection.tsx",
+    "line": 438,
+    "english": "Intro",
+    "sample": {}
+  },
+  {
+    "key": "settings.brand.outroName",
+    "file": "src/renderer/src/settings/BrandKitSection.tsx",
+    "line": 438,
+    "english": "Outro",
+    "sample": {}
+  },
+  {
+    "key": "settings.brand.card",
+    "file": "src/renderer/src/settings/BrandKitSection.tsx",
+    "line": 442,
+    "english": "Intro title card",
+    "sample": {
+      "name": "Intro"
+    }
+  },
+  {
+    "key": "settings.brand.cardTitle",
+    "file": "src/renderer/src/settings/BrandKitSection.tsx",
+    "line": 449,
+    "english": "Intro title",
+    "sample": {
+      "name": "Intro"
+    }
+  },
+  {
+    "key": "settings.brand.cardSubtitle",
+    "file": "src/renderer/src/settings/BrandKitSection.tsx",
+    "line": 455,
+    "english": "Outro subtitle",
+    "sample": {
+      "name": "Outro"
+    }
+  },
+  {
+    "key": "settings.brand.subtitle",
+    "file": "src/renderer/src/settings/BrandKitSection.tsx",
+    "line": 452,
+    "english": "Subtitle",
+    "sample": {}
+  },
+  {
+    "key": "settings.brand.optional",
+    "file": "src/renderer/src/settings/BrandKitSection.tsx",
+    "line": 458,
+    "english": "Optional",
+    "sample": {}
+  },
+  {
+    "key": "settings.brand.style",
+    "file": "src/renderer/src/settings/BrandKitSection.tsx",
+    "line": 463,
+    "english": "Style",
+    "sample": {}
+  },
+  {
+    "key": "common.state.loading",
+    "file": "src/renderer/src/settings/BrandKitSection.tsx",
+    "line": 182,
+    "english": "Loading…",
+    "sample": {}
+  },
+  {
+    "key": "common.state.saving",
+    "file": "src/renderer/src/settings/BrandKitSection.tsx",
+    "line": 200,
+    "english": "Saving…",
+    "sample": {}
+  },
+  {
+    "key": "common.state.saved",
+    "file": "src/renderer/src/settings/BrandKitSection.tsx",
+    "line": 200,
+    "english": "Saved",
+    "sample": {}
+  },
+  {
+    "key": "common.label.position",
+    "file": "src/renderer/src/settings/BrandKitSection.tsx",
+    "line": 216,
+    "english": "Position",
+    "sample": {}
+  },
+  {
+    "key": "common.label.size",
+    "file": "src/renderer/src/settings/BrandKitSection.tsx",
+    "line": 225,
+    "english": "Size",
+    "sample": {}
+  },
+  {
+    "key": "common.label.opacity",
+    "file": "src/renderer/src/settings/BrandKitSection.tsx",
+    "line": 226,
+    "english": "Opacity",
+    "sample": {}
+  },
+  {
+    "key": "common.label.colours",
+    "file": "src/renderer/src/settings/BrandKitSection.tsx",
+    "line": 233,
+    "english": "Colours",
+    "sample": {}
+  },
+  {
+    "key": "common.action.remove",
+    "file": "src/renderer/src/settings/BrandKitSection.tsx",
+    "line": 243,
+    "english": "Remove",
+    "sample": {}
+  },
+  {
+    "key": "common.label.title",
+    "file": "src/renderer/src/settings/BrandKitSection.tsx",
+    "line": 448,
+    "english": "Title",
+    "sample": {}
+  },
+  {
+    "key": "common.label.background",
+    "file": "src/renderer/src/settings/BrandKitSection.tsx",
+    "line": 473,
+    "english": "Background",
+    "sample": {}
+  },
+  {
+    "key": "common.label.length",
+    "file": "src/renderer/src/settings/BrandKitSection.tsx",
+    "line": 483,
+    "english": "Length",
+    "sample": {}
+  },
+  {
+    "key": "errors.asset.lutUnusable",
+    "file": "src/main/assetIpc.ts",
+    "line": 51,
+    "english": "This LUT could not be used.",
+    "sample": {}
+  },
+  {
+    "key": "errors.asset.image.png",
+    "file": "src/main/assetIpc.ts",
+    "line": 60,
+    "english": "a PNG",
+    "sample": {}
+  },
+  {
+    "key": "errors.asset.image.jpg",
+    "file": "src/main/assetIpc.ts",
+    "line": 61,
+    "english": "a JPG",
+    "sample": {}
+  },
+  {
+    "key": "errors.asset.image.webp",
+    "file": "src/main/assetIpc.ts",
+    "line": 62,
+    "english": "a WebP",
+    "sample": {}
+  },
+  {
+    "key": "errors.asset.image.svg",
+    "file": "src/main/assetIpc.ts",
+    "line": 63,
+    "english": "an SVG",
+    "sample": {}
+  },
+  {
+    "key": "errors.asset.image.gif",
+    "file": "src/main/assetIpc.ts",
+    "line": 64,
+    "english": "a GIF",
+    "sample": {}
+  },
+  {
+    "key": "errors.asset.unreadableAs",
+    "file": "src/main/assetIpc.ts",
+    "line": 91,
+    "english": "This file could not be read as a .cube LUT.",
+    "sample": {
+      "formats": "a .cube LUT"
+    }
+  },
+  {
+    "key": "errors.asset.misnamed",
+    "file": "src/main/assetIpc.ts",
+    "line": 93,
+    "english": "This file is named .png but holds a JPG image: rename it to .jpg and choose it again.",
+    "sample": {
+      "ext": "png",
+      "holds": "a JPG",
+      "type": "jpg"
+    }
+  },
+  {
+    "key": "errors.asset.formats.logo",
+    "file": "src/main/assetIpc.ts",
+    "line": 106,
+    "english": "a PNG, JPG, WebP or SVG image",
+    "sample": {}
+  },
+  {
+    "key": "errors.asset.formats.overlay",
+    "file": "src/main/assetIpc.ts",
+    "line": 107,
+    "english": "a PNG, JPG, WebP, SVG or GIF image",
+    "sample": {}
+  },
+  {
+    "key": "errors.asset.formats.font",
+    "file": "src/main/assetIpc.ts",
+    "line": 131,
+    "english": "a TTF, OTF or WOFF2 font",
+    "sample": {}
+  },
+  {
+    "key": "errors.asset.formats.music",
+    "file": "src/main/assetIpc.ts",
+    "line": 139,
+    "english": "an MP3, M4A, AAC, WAV, Ogg, Opus or FLAC file",
+    "sample": {}
+  },
+  {
+    "key": "errors.asset.formats.lut",
+    "file": "src/main/assetIpc.ts",
+    "line": 148,
+    "english": "a .cube LUT",
+    "sample": {}
+  },
+  {
+    "key": "errors.lutImport.thisFileIsEmpty",
+    "file": "src/main/assetIpc.ts",
+    "line": 226,
+    "english": "This file is empty.",
+    "sample": {}
+  },
+  {
+    "key": "errors.lutImport.theFileIsToo",
+    "file": "src/main/assetIpc.ts",
+    "line": 229,
+    "english": "The file is too large (30 MB; 25 MB at most).",
+    "sample": {
+      "value": "30",
+      "value2": "25"
+    }
+  },
+  {
+    "key": "main.asset.title.watermark",
+    "file": "src/main/assetIpc.ts",
+    "line": 111,
+    "english": "Choose watermark or logo",
+    "sample": {}
+  },
+  {
+    "key": "main.asset.title.overlay",
+    "file": "src/main/assetIpc.ts",
+    "line": 119,
+    "english": "Add an image",
+    "sample": {}
+  },
+  {
+    "key": "main.asset.title.font",
+    "file": "src/main/assetIpc.ts",
+    "line": 127,
+    "english": "Add a font",
+    "sample": {}
+  },
+  {
+    "key": "main.asset.title.music",
+    "file": "src/main/assetIpc.ts",
+    "line": 135,
+    "english": "Choose background music",
+    "sample": {}
+  },
+  {
+    "key": "main.asset.title.lut",
+    "file": "src/main/assetIpc.ts",
+    "line": 144,
+    "english": "Import a LUT",
+    "sample": {}
+  },
+  {
+    "key": "main.asset.filter.images",
+    "file": "src/main/assetIpc.ts",
+    "line": 112,
+    "english": "Images",
+    "sample": {}
+  },
+  {
+    "key": "main.asset.filter.fonts",
+    "file": "src/main/assetIpc.ts",
+    "line": 128,
+    "english": "Fonts",
+    "sample": {}
+  },
+  {
+    "key": "main.asset.filter.audio",
+    "file": "src/main/assetIpc.ts",
+    "line": 136,
+    "english": "Audio",
+    "sample": {}
+  },
+  {
+    "key": "main.asset.filter.luts",
+    "file": "src/main/assetIpc.ts",
+    "line": 145,
+    "english": "Cube LUTs",
+    "sample": {}
+  },
+  {
+    "key": "main.asset.filter.images",
+    "file": "src/main/brandKitIpc.ts",
+    "line": 37,
+    "english": "Images",
+    "sample": {}
+  },
+  {
+    "key": "main.asset.filter.fonts",
+    "file": "src/main/brandKitIpc.ts",
+    "line": 37,
+    "english": "Fonts",
+    "sample": {}
+  },
+  {
+    "key": "main.captions.filter.srt",
+    "file": "src/main/captionsIpc.ts",
+    "line": 16,
+    "english": "SRT subtitles",
+    "sample": {}
+  },
+  {
+    "key": "main.captions.filter.vtt",
+    "file": "src/main/captionsIpc.ts",
+    "line": 17,
+    "english": "WebVTT subtitles",
+    "sample": {}
+  },
+  {
+    "key": "main.captions.filter.txt",
+    "file": "src/main/captionsIpc.ts",
+    "line": 18,
+    "english": "Plain text",
+    "sample": {}
+  },
+  {
+    "key": "main.saveFilter.mp4",
+    "file": "src/main/exportIpc.ts",
+    "line": 113,
+    "english": "MP4 video",
+    "sample": {}
+  },
+  {
+    "key": "main.saveFilter.webm",
+    "file": "src/main/exportIpc.ts",
+    "line": 115,
+    "english": "WebM video",
+    "sample": {}
+  },
+  {
+    "key": "main.saveFilter.mov",
+    "file": "src/main/exportIpc.ts",
+    "line": 116,
+    "english": "QuickTime movie",
+    "sample": {}
+  },
+  {
+    "key": "main.saveFilter.m4a",
+    "file": "src/main/exportIpc.ts",
+    "line": 117,
+    "english": "M4A audio",
+    "sample": {}
+  },
+  {
+    "key": "main.saveFilter.png",
+    "file": "src/main/exportIpc.ts",
+    "line": 119,
+    "english": "PNG image",
     "sample": {}
   }
 ]
