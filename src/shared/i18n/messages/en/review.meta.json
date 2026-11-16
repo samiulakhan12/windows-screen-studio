@@ -2062,5 +2062,20 @@
   },
   "publish.status.done": {
     "description": "Publish: a card that was written."
+  },
+  "copy.alreadyFollows": {
+    "description": "Copies menu and Short clips: why a vertical or square version is not offered: the video already is one that follows the action."
+  },
+  "copy.alreadyTall": {
+    "description": "Copies menu and Short clips: why a vertical version is not offered: the recording as cropped is already tall."
+  },
+  "copy.alreadySquareOrTall": {
+    "description": "Copies menu and Short clips: why a square version is not offered."
+  },
+  "copy.lookVertical": {
+    "description": "The notice after a vertical version is made, inside \"Made a vertical version. {look}. …\": the caption look chosen again for it; {look} is the look's name as the Captions tab shows it."
+  },
+  "copy.lookSquare": {
+    "description": "The notice after a square version is made, inside \"Made a square version. {look}. …\": the caption look chosen again for it; {look} is the look's name."
   }
 }

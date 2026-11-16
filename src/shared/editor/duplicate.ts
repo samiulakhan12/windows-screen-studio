@@ -18,13 +18,13 @@ import { captionsOf } from '../captions/settings'
 import { studioEdited } from '../captions/studioEdit'
 import { studioPreset } from '../captions/studioPresets'
 import type { Annotation, AspectRatio, CaptionSettings, Graphic, ImageOverlay, Project, ProjectFont, ReframeSettings } from '../types'
+import { t, type MessageKey } from '../i18n/t'
+import { UNTITLED } from './projectName'
 
 export type CopyKind = 'copy' | 'vertical' | 'square'
 
 /** Longest name of a copy (main cuts what it writes to the same length). */
 const NAME_MAX = 120
-/** The name a copy of a project without one starts from. */
-const UNTITLED = 'Untitled recording'
 const SUFFIX: Record<CopyKind, string> = { copy: ' (copy)', vertical: ' (vertical)', square: ' (square)' }
 /** The frame each kind of version is made in. */
 const FRAME: Record<Exclude<CopyKind, 'copy'>, AspectRatio> = { vertical: '9:16', square: '1:1' }
@@ -49,8 +49,8 @@ export function canCopyAs(project: Project, kind: CopyKind, vw: number, vh: numb
   if (kind === 'copy') return { ok: true }
   const aspect = FRAME[kind]
   const frame = outputSize(aspect, vw, vh, 1080)
-  if (project.style.aspectRatio === aspect && followApplies(project, frame.width, frame.height, vw, vh)) return { ok: false, reason: 'This video already follows the action' }
-  if (!canFollow(aspect, vw, vh)) return { ok: false, reason: kind === 'vertical' ? 'Your recording is already tall' : 'Your recording is already square or tall' }
+  if (project.style.aspectRatio === aspect && followApplies(project, frame.width, frame.height, vw, vh)) return { ok: false, reason: t('review.copy.alreadyFollows') }
+  if (!canFollow(aspect, vw, vh)) return { ok: false, reason: kind === 'vertical' ? t('review.copy.alreadyTall') : t('review.copy.alreadySquareOrTall') }
   return { ok: true }
 }
 
@@ -159,7 +159,8 @@ function refitCaptions(copy: Project, w: number, h: number, areaAt: (t: number) 
   return out
 }
 
-const VERSION: Record<Exclude<CopyKind, 'copy'>, string> = { vertical: 'the vertical version', square: 'the square version' }
+/** The notice's message for each kind of version, with the caption look's name as {look}. */
+const LOOK_NOTICE: Record<Exclude<CopyKind, 'copy'>, MessageKey> = { vertical: 'review.copy.lookVertical', square: 'review.copy.lookSquare' }
 
 /**
  * "Captions: Bold Pop for the vertical version" when the copy's look was chosen again (§10.5), else
@@ -169,8 +170,9 @@ export function captionCopyNotice(before: Project, after: Project, kind: CopyKin
   if (kind === 'copy' || !after.transcript?.segments.length) return null
   const a = after.captions?.studio
   if (!a || a === before.captions?.studio || !lookChosenAgain(before.captions)) return null
-  const name = studioPreset(a.from)?.name
-  return name ? `Captions: ${name} for ${VERSION[kind]}` : null
+  const preset = studioPreset(a.from)
+  // The look's name as the Captions tab shows it (captionTiles.presetName), by the preset's id.
+  return preset ? t(LOOK_NOTICE[kind], { look: t(`captions.look.preset.${preset.id}.name` as MessageKey) }) : null
 }
 
 /**

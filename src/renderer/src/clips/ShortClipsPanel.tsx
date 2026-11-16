@@ -335,7 +335,7 @@ export function ShortClipsPanel(props: { project: Project; cursor: CursorTrack; 
         onProgress: (i, n, p) => live.current && setMaking({ i, n, p })
       })
       record(out.made)
-      const name = project.name.trim() || 'Untitled recording'
+      const name = project.name.trim() || t('smart.clips.untitled')
       const said = out.stopped ? t('smart.clips.stopped', { count: out.made.length, n: fmt.count(out.made.length) }) : t('smart.clips.madeCopies', { count: out.made.length, n: fmt.count(out.made.length), name })
       if (live.current) {
         setStatus(said)
@@ -345,7 +345,7 @@ export function ShortClipsPanel(props: { project: Project; cursor: CursorTrack; 
       if (err instanceof ClipCopyError) record(err.made)
       if (live.current && !ctrl.signal.aborted) {
         setStatus(null)
-        setError(err instanceof ClipCopyError ? err.message : `Could not make the clips: ${ipcMessage(err)}`)
+        setError(err instanceof ClipCopyError ? err.message : t('smart.clips.failed', { reason: ipcMessage(err) }))
       }
     } finally {
       if (controller.current === ctrl) controller.current = null
@@ -527,7 +527,7 @@ export function ShortClipsPanel(props: { project: Project; cursor: CursorTrack; 
                   </select>
                 </label>
               </div>
-              {namesChoice && <CostLine id={`${ids}-cost`} choice={namesChoice} actions={[{ key: 'names', label: 'Names', buttonId: makeId, request: estimate }]} />}
+              {namesChoice && <CostLine id={`${ids}-cost`} choice={namesChoice} actions={[{ key: 'names', label: t('smart.cost.namesAction'), buttonId: makeId, request: estimate }]} />}
             </fieldset>
           )}
 

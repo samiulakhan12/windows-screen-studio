@@ -634,5 +634,10 @@
   "publish.sends": "Sends the caption text (not the sound) to {place}.",
   "publish.status.waiting": "Waiting…",
   "publish.status.writing": "Writing…",
-  "publish.status.done": "Written"
+  "publish.status.done": "Written",
+  "copy.alreadyFollows": "This video already follows the action",
+  "copy.alreadyTall": "Your recording is already tall",
+  "copy.alreadySquareOrTall": "Your recording is already square or tall",
+  "copy.lookVertical": "Captions: {look} for the vertical version",
+  "copy.lookSquare": "Captions: {look} for the square version"
 }

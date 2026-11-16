@@ -680,5 +680,29 @@
   },
   "clips.words.making": {
     "description": "Short clips: progress while the copies are made."
+  },
+  "shortVersion.already": {
+    "description": "Make a shorter version: why a length is not offered: the video is already that short; {seconds} is its length in whole seconds (\"s\" is the unit)."
+  },
+  "shortVersion.keeps": {
+    "description": "Make a shorter version: the line under the choices: what the shorter version keeps; {n} sentences, {seconds} its length with one decimal."
+  },
+  "shortVersion.keepsSmooth": {
+    "description": "Make a shorter version: the same line when the cuts are made smooth."
+  },
+  "clips.wasStopped": {
+    "description": "Short clips: the reason a reading of the screen ends when Stop is pressed (a stopped run says nothing more)."
+  },
+  "clips.untitled": {
+    "description": "Short clips: the original's name in the done line when the recording has no name."
+  },
+  "clips.failed": {
+    "description": "Short clips: making the clips failed; {reason} is why (main's or the AI's words)."
+  },
+  "cost.namesAction": {
+    "description": "Short clips and Find chapters: what the AI request in the cost line is for: naming the clips or chapters."
+  },
+  "chapters.failed": {
+    "description": "Find chapters: finding chapters failed; {reason} is why."
   }
 }

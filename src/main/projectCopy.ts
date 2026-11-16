@@ -13,6 +13,7 @@ import path from 'node:path'
 import type { DuplicateProgress, DuplicateResult } from '../shared/api/projects'
 import { SOUNDS_CACHE_FILE } from '../shared/audio/soundsCache'
 import { APP_NAME } from '../shared/brand'
+import { UNTITLED } from '../shared/editor/projectName'
 import { migrateProject } from '../shared/engine/project'
 import { writeFileAtomicSync } from './atomicWrite'
 import { MEDIA_FILE_RE } from './mediaProtocol'
@@ -223,7 +224,7 @@ async function makeCopy(sourceId: string, raw: unknown, opts: { signal?: AbortSi
     report(true)
 
     // Last: until project.json exists the folder is not a project, so a crash leaves nothing in the library.
-    const name = (typeof copy.name === 'string' ? copy.name.trim().slice(0, NAME_MAX) : '') || 'Untitled recording'
+    const name = (typeof copy.name === 'string' ? copy.name.trim().slice(0, NAME_MAX) : '') || UNTITLED
     const project = { ...copy, id, createdAt: now.toISOString(), name, copyOf: { id: sourceId, name: sourceName } }
     writeFileAtomicSync(path.join(dir, 'project.json'), JSON.stringify(project, null, 2))
     await fs.rm(path.join(dir, COPYING_MARK), { force: true, maxRetries: 3 })

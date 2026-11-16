@@ -6,6 +6,8 @@ import { editToVideo, NO_FREEZES, type FreezePlan } from '../engine/freeze'
 import { outputDuration } from '../engine/timeline'
 import type { Chapter, Clip } from '../types'
 import { viewingTime } from './overlays'
+import { fmt } from '../i18n/fmt'
+import { t } from '../i18n/t'
 
 /** Chapters landing closer together than this in the output (seconds) are one place. */
 export const MIN_CHAPTER_GAP = 0.1
@@ -81,10 +83,10 @@ export function youtubeChapters(chapters: readonly OutputChapter[], duration: nu
   }
   const text = rows.map((r) => `${formatTimestamp(r.s, hours)} ${r.title}`).join('\n')
   const problems: string[] = []
-  if (rows.length === 0) return { text, problems: ['Add chapters first.'] }
-  if (rows[0].s !== 0) problems.push('YouTube needs the first chapter at 0:00: add one at the start of the video.')
-  if (rows.length < YOUTUBE_RULES.minChapters) problems.push(`YouTube needs at least ${YOUTUBE_RULES.minChapters} chapters.`)
+  if (rows.length === 0) return { text, problems: [t('errors.chapters.youtube.none')] }
+  if (rows[0].s !== 0) problems.push(t('errors.chapters.youtube.firstAtZero'))
+  if (rows.length < YOUTUBE_RULES.minChapters) problems.push(t('errors.chapters.youtube.tooFew', { count: YOUTUBE_RULES.minChapters, n: fmt.count(YOUTUBE_RULES.minChapters) }))
   const short = rows.find((r, i) => (i + 1 < rows.length ? rows[i + 1].s : duration) - r.s < YOUTUBE_RULES.minLength)
-  if (short) problems.push(`YouTube needs every chapter to last at least ${YOUTUBE_RULES.minLength} seconds ("${short.title}" is shorter).`)
+  if (short) problems.push(t('errors.chapters.youtube.tooShort', { count: YOUTUBE_RULES.minLength, n: fmt.count(YOUTUBE_RULES.minLength), title: short.title }))
   return { text, problems }
 }

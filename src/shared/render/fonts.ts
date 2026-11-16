@@ -4,6 +4,7 @@
  * with. Pure, so main, the renderer and tests share one rule.
  */
 import type { ProjectFont } from '../types'
+import { t, type MessageKey } from '../i18n/t'
 
 /** A font in a project folder or the brand kit folder: font-<n>.<ttf|otf|woff2>. */
 export const FONT_FILE_RE = /^font-([1-9][0-9]{0,8})\.(ttf|otf|woff2)$/i
@@ -20,7 +21,8 @@ export const DEFAULT_FONT_LABEL = 'Segoe UI'
 
 export type FontType = 'ttf' | 'otf' | 'woff2'
 export const FONT_TYPES: readonly FontType[] = ['ttf', 'otf', 'woff2']
-const FONT_NAMES: Record<FontType, string> = { ttf: 'a TrueType (.ttf)', otf: 'an OpenType (.otf)', woff2: 'a WOFF2 (.woff2)' }
+/** Why a font file is refused when its name says another type than its bytes: one message per type it holds. */
+const MISNAMED: Record<FontType, MessageKey> = { ttf: 'errors.fonts.misnamed.ttf', otf: 'errors.fonts.misnamed.otf', woff2: 'errors.fonts.misnamed.woff2' }
 
 const ascii = (head: Uint8Array, from: number, to: number): string => String.fromCharCode(...head.subarray(from, to))
 
@@ -38,11 +40,11 @@ export function fontType(head: Uint8Array): FontType | null {
 /** Why a font file with these first bytes and extension is refused, or null when it looks right. */
 export function checkFont(head: Uint8Array, ext: string): string | null {
   const type = fontType(head)
-  if (!type) return 'This file could not be read as a TTF, OTF or WOFF2 font.'
+  if (!type) return t('errors.fonts.unreadable')
   // A TrueType-flavoured font is often named .otf; both load the same way.
   const named = ext.toLowerCase()
   if (type === named || (type === 'ttf' && named === 'otf') || (type === 'otf' && named === 'ttf')) return null
-  return `This file is named .${named} but holds ${FONT_NAMES[type]} font: rename it to .${type} and add it again.`
+  return t(MISNAMED[type], { named })
 }
 
 /** The internal family a font is registered under, so a font named like a system font never replaces it. */

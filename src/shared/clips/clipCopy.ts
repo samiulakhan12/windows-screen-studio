@@ -6,6 +6,7 @@
  */
 import { captionsOf } from '../captions/settings'
 import { projectCopy, type CopyKind, type MeasureText } from '../editor/duplicate'
+import { UNTITLED } from '../editor/projectName'
 import { outputTimeAt } from '../editor/clips'
 import { newClipId } from '../engine/timeline'
 import { clipsBetween } from '../render/exportBundle'
@@ -44,7 +45,7 @@ function cutUnits(text: string, max: number): string {
 
 /** "<base><suffix>" within 120 characters (copyName's rule: the base is cut, the suffix kept), cut by graphemes. */
 export function suffixedName(base: string, suffix: string): string {
-  const name = (typeof base === 'string' ? base.replace(/\s+/g, ' ').trim() : '') || 'Untitled recording'
+  const name = (typeof base === 'string' ? base.replace(/\s+/g, ' ').trim() : '') || UNTITLED
   return `${cutUnits(name, CLIP_NAME_MAX - suffix.length).trimEnd()}${suffix}`
 }
 

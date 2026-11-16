@@ -88,14 +88,14 @@ function cleanParagraph(raw: string): string {
  */
 export function validateScriptAnswer(answer: unknown, notes: string): string {
   const list = answer && typeof answer === 'object' && !Array.isArray(answer) ? (answer as { paragraphs?: unknown }).paragraphs : undefined
-  if (!Array.isArray(list)) throw new AiOutputError('no list of paragraphs')
-  if (list.length > SCRIPT_LIMITS.paragraphsMax) throw new AiOutputError(`${list.length} paragraphs, more than ${SCRIPT_LIMITS.paragraphsMax}`)
-  if (list.some((p) => typeof p !== 'string')) throw new AiOutputError('a paragraph is not text')
+  if (!Array.isArray(list)) throw new AiOutputError(t('errors.scriptDraft.answer.noList'))
+  if (list.length > SCRIPT_LIMITS.paragraphsMax) throw new AiOutputError(t('errors.scriptDraft.answer.tooMany', { n: fmt.count(list.length), max: fmt.count(SCRIPT_LIMITS.paragraphsMax) }))
+  if (list.some((p) => typeof p !== 'string')) throw new AiOutputError(t('errors.scriptDraft.answer.notText'))
   const paragraphs = (list as string[]).map(cleanParagraph).filter((p) => p.length > 0)
-  if (paragraphs.length === 0) throw new AiOutputError('no paragraphs')
+  if (paragraphs.length === 0) throw new AiOutputError(t('errors.scriptDraft.answer.none'))
   const text = paragraphs.join('\n\n')
-  if (text.length > SCRIPT_LIMITS.growth * notes.length + SCRIPT_LIMITS.growthExtra) throw new AiOutputError('the script came back far longer than the notes')
-  if (text.length > NOTES_TEXT_MAX) throw new AiOutputError(`the script came back longer than the ${fmt.count(NOTES_TEXT_MAX, { grouping: true })} characters your notes can hold`)
+  if (text.length > SCRIPT_LIMITS.growth * notes.length + SCRIPT_LIMITS.growthExtra) throw new AiOutputError(t('errors.scriptDraft.answer.farLonger'))
+  if (text.length > NOTES_TEXT_MAX) throw new AiOutputError(t('errors.scriptDraft.answer.tooLong', { max: fmt.count(NOTES_TEXT_MAX, { grouping: true }) }))
   return text
 }
 

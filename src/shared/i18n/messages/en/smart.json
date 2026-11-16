@@ -223,5 +223,13 @@
   "clips.words.naming": "Naming the clips with {place}…",
   "clips.words.oneDrive": "Each copy takes {each}: files in a OneDrive folder cannot be shared.",
   "clips.words.noRoom": "{count, plural, one {This copy needs} other {These {n} copies need}} {need}; {free} is free.",
-  "clips.words.making": "Making copy {i} of {n}…"
+  "clips.words.making": "Making copy {i} of {n}…",
+  "shortVersion.already": "This video is already {seconds} s",
+  "shortVersion.keeps": "{count, plural, one {Keeps {n} sentence, {seconds} s} other {Keeps {n} sentences, {seconds} s}}",
+  "shortVersion.keepsSmooth": "{count, plural, one {Keeps {n} sentence, {seconds} s, smooth cuts} other {Keeps {n} sentences, {seconds} s, smooth cuts}}",
+  "clips.wasStopped": "Short clips was stopped.",
+  "clips.untitled": "Untitled recording",
+  "clips.failed": "Could not make the clips: {reason}",
+  "cost.namesAction": "Names",
+  "chapters.failed": "Could not find chapters: {reason}"
 }

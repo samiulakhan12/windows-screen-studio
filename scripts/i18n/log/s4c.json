@@ -351,5 +351,842 @@
     "line": 380,
     "english": "This version could not be read.",
     "sample": {}
+  },
+  {
+    "key": "errors.import.extension",
+    "file": "src/shared/import/plan.ts",
+    "line": 30,
+    "english": "Flown can import MP4, MOV, MKV and WebM videos.",
+    "sample": {}
+  },
+  {
+    "key": "errors.import.cannotOpen",
+    "file": "src/shared/import/plan.ts",
+    "line": 31,
+    "english": "That file could not be opened.",
+    "sample": {}
+  },
+  {
+    "key": "errors.import.empty",
+    "file": "src/shared/import/plan.ts",
+    "line": 32,
+    "english": "This file is empty.",
+    "sample": {}
+  },
+  {
+    "key": "errors.import.tooLarge",
+    "file": "src/shared/import/plan.ts",
+    "line": 33,
+    "english": "This file is too large to import (64 GB at most).",
+    "sample": {}
+  },
+  {
+    "key": "errors.import.notVideo",
+    "file": "src/shared/import/plan.ts",
+    "line": 34,
+    "english": "This file is not a video Flown can read, even though its name ends in .mp4.",
+    "sample": {
+      "ext": "mp4"
+    }
+  },
+  {
+    "key": "errors.import.unreadable",
+    "file": "src/shared/import/plan.ts",
+    "line": 35,
+    "english": "This file could not be read as a video (it may be damaged).",
+    "sample": {}
+  },
+  {
+    "key": "errors.import.soundOnly",
+    "file": "src/shared/import/plan.ts",
+    "line": 36,
+    "english": "This file has sound but no picture. To use it as music, open a project and add it in the Audio tab.",
+    "sample": {}
+  },
+  {
+    "key": "errors.import.noVideo",
+    "file": "src/shared/import/plan.ts",
+    "line": 37,
+    "english": "This file has no video in it.",
+    "sample": {}
+  },
+  {
+    "key": "errors.import.drm",
+    "file": "src/shared/import/plan.ts",
+    "line": 38,
+    "english": "This video is copy-protected (DRM), so it cannot be edited.",
+    "sample": {}
+  },
+  {
+    "key": "errors.import.codec",
+    "file": "src/shared/import/plan.ts",
+    "line": 39,
+    "english": "Flown cannot read this video's format (apcn). Convert it to MP4 (H.264) and try again.",
+    "sample": {
+      "codec": "apcn"
+    }
+  },
+  {
+    "key": "errors.import.tooShort",
+    "file": "src/shared/import/plan.ts",
+    "line": 40,
+    "english": "This video is too short to edit (less than half a second).",
+    "sample": {}
+  },
+  {
+    "key": "errors.import.tooLong",
+    "file": "src/shared/import/plan.ts",
+    "line": 41,
+    "english": "This video is longer than 4 hours. Trim it or split it into parts first.",
+    "sample": {}
+  },
+  {
+    "key": "errors.import.size",
+    "file": "src/shared/import/plan.ts",
+    "line": 42,
+    "english": "This video's picture size (20000 × 1080) is not supported.",
+    "sample": {
+      "w": "20000",
+      "h": "1080"
+    }
+  },
+  {
+    "key": "errors.import.narrow",
+    "file": "src/shared/import/plan.ts",
+    "line": 43,
+    "english": "This video's picture is too narrow to edit (16 × 1080).",
+    "sample": {
+      "w": "16",
+      "h": "1080"
+    }
+  },
+  {
+    "key": "errors.import.space",
+    "file": "src/shared/import/plan.ts",
+    "line": 44,
+    "english": "There is not enough free space for this video: it needs about 5.7 GB and 640 MB is free.",
+    "sample": {
+      "needed": "5.7 GB",
+      "free": "640 MB"
+    }
+  },
+  {
+    "key": "errors.import.busy",
+    "file": "src/shared/import/plan.ts",
+    "line": 45,
+    "english": "Another video is being imported. Wait for it to finish.",
+    "sample": {}
+  },
+  {
+    "key": "errors.import.several",
+    "file": "src/shared/import/plan.ts",
+    "line": 46,
+    "english": "Drop one video at a time.",
+    "sample": {}
+  },
+  {
+    "key": "errors.import.diskFull",
+    "file": "src/shared/import/plan.ts",
+    "line": 47,
+    "english": "Your disk is full. Free some space and try again.",
+    "sample": {}
+  },
+  {
+    "key": "errors.import.incomplete",
+    "file": "src/shared/import/plan.ts",
+    "line": 48,
+    "english": "The video could not be read to the end (it changed, or its drive was disconnected). Try again.",
+    "sample": {}
+  },
+  {
+    "key": "errors.import.failed",
+    "file": "src/shared/import/plan.ts",
+    "line": 49,
+    "english": "The video could not be converted.",
+    "sample": {}
+  },
+  {
+    "key": "errors.import.failedDetail",
+    "file": "src/shared/import/plan.ts",
+    "line": 49,
+    "english": "The video could not be converted (ffmpeg exited with code 1).",
+    "sample": {
+      "detail": "ffmpeg exited with code 1"
+    }
+  },
+  {
+    "key": "errors.import.noteTracks",
+    "file": "src/shared/import/plan.ts",
+    "line": 51,
+    "english": [
+      "This video has 0 sound tracks; Flown uses the first one.",
+      "This video has 1 sound tracks; Flown uses the first one.",
+      "This video has 2 sound tracks; Flown uses the first one.",
+      "This video has 1000 sound tracks; Flown uses the first one."
+    ],
+    "sample": [
+      {
+        "count": 0,
+        "n": "0"
+      },
+      {
+        "count": 1,
+        "n": "1"
+      },
+      {
+        "count": 2,
+        "n": "2"
+      },
+      {
+        "count": 1000,
+        "n": "1000"
+      }
+    ]
+  },
+  {
+    "key": "errors.import.noteNoSound",
+    "file": "src/shared/import/plan.ts",
+    "line": 52,
+    "english": "The sound in this video could not be read, so it was imported without sound.",
+    "sample": {}
+  },
+  {
+    "key": "errors.import.noteHdr",
+    "file": "src/shared/import/plan.ts",
+    "line": 53,
+    "english": "This is an HDR video; its colours were converted for normal screens.",
+    "sample": {}
+  },
+  {
+    "key": "errors.import.noteHdrPale",
+    "file": "src/shared/import/plan.ts",
+    "line": 54,
+    "english": "This is an HDR video, so its colours may look paler in Flown.",
+    "sample": {}
+  },
+  {
+    "key": "errors.import.noteScaled",
+    "file": "src/shared/import/plan.ts",
+    "line": 55,
+    "english": "This video was larger than 4K, so the editing copy is 3840 × 2160.",
+    "sample": {
+      "w": "3840",
+      "h": "2160"
+    }
+  },
+  {
+    "key": "errors.import.noteCapped",
+    "file": "src/shared/import/plan.ts",
+    "line": 56,
+    "english": "Only the first 4 hours were imported.",
+    "sample": {}
+  },
+  {
+    "key": "errors.scriptDraft.answer.noList",
+    "file": "src/shared/notes/scriptDraft.ts",
+    "line": 91,
+    "english": "no list of paragraphs",
+    "sample": {}
+  },
+  {
+    "key": "errors.scriptDraft.answer.tooMany",
+    "file": "src/shared/notes/scriptDraft.ts",
+    "line": 92,
+    "english": "31 paragraphs, more than 30",
+    "sample": {
+      "n": "31",
+      "max": "30"
+    }
+  },
+  {
+    "key": "errors.scriptDraft.answer.notText",
+    "file": "src/shared/notes/scriptDraft.ts",
+    "line": 93,
+    "english": "a paragraph is not text",
+    "sample": {}
+  },
+  {
+    "key": "errors.scriptDraft.answer.none",
+    "file": "src/shared/notes/scriptDraft.ts",
+    "line": 95,
+    "english": "no paragraphs",
+    "sample": {}
+  },
+  {
+    "key": "errors.scriptDraft.answer.farLonger",
+    "file": "src/shared/notes/scriptDraft.ts",
+    "line": 97,
+    "english": "the script came back far longer than the notes",
+    "sample": {}
+  },
+  {
+    "key": "errors.scriptDraft.answer.tooLong",
+    "file": "src/shared/notes/scriptDraft.ts",
+    "line": 98,
+    "english": "the script came back longer than the 20,000 characters your notes can hold",
+    "sample": {
+      "max": "20,000"
+    }
+  },
+  {
+    "key": "errors.chapters.youtube.none",
+    "file": "src/shared/render/chapters.ts",
+    "line": 84,
+    "english": "Add chapters first.",
+    "sample": {}
+  },
+  {
+    "key": "errors.chapters.youtube.firstAtZero",
+    "file": "src/shared/render/chapters.ts",
+    "line": 85,
+    "english": "YouTube needs the first chapter at 0:00: add one at the start of the video.",
+    "sample": {}
+  },
+  {
+    "key": "errors.chapters.youtube.tooFew",
+    "file": "src/shared/render/chapters.ts",
+    "line": 86,
+    "english": [
+      "YouTube needs at least 0 chapters.",
+      "YouTube needs at least 1 chapters.",
+      "YouTube needs at least 2 chapters.",
+      "YouTube needs at least 1000 chapters."
+    ],
+    "sample": [
+      {
+        "count": 0,
+        "n": "0"
+      },
+      {
+        "count": 1,
+        "n": "1"
+      },
+      {
+        "count": 2,
+        "n": "2"
+      },
+      {
+        "count": 1000,
+        "n": "1000"
+      }
+    ]
+  },
+  {
+    "key": "errors.chapters.youtube.tooShort",
+    "file": "src/shared/render/chapters.ts",
+    "line": 88,
+    "english": [
+      "YouTube needs every chapter to last at least 0 seconds (\"Intro\" is shorter).",
+      "YouTube needs every chapter to last at least 1 seconds (\"Intro\" is shorter).",
+      "YouTube needs every chapter to last at least 2 seconds (\"Intro\" is shorter).",
+      "YouTube needs every chapter to last at least 1000 seconds (\"Intro\" is shorter)."
+    ],
+    "sample": [
+      {
+        "count": 0,
+        "n": "0",
+        "title": "Intro"
+      },
+      {
+        "count": 1,
+        "n": "1",
+        "title": "Intro"
+      },
+      {
+        "count": 2,
+        "n": "2",
+        "title": "Intro"
+      },
+      {
+        "count": 1000,
+        "n": "1000",
+        "title": "Intro"
+      }
+    ]
+  },
+  {
+    "key": "errors.cubeLut.notANumber",
+    "file": "src/shared/render/cubeLut.ts",
+    "line": 72,
+    "english": "This LUT could not be used: line 12 has \"abc\", which is not a number.",
+    "sample": {
+      "line": "12",
+      "token": "abc"
+    }
+  },
+  {
+    "key": "errors.cubeLut.numberTooLarge",
+    "file": "src/shared/render/cubeLut.ts",
+    "line": 74,
+    "english": "This LUT could not be used: line 12 has a number too large to use.",
+    "sample": {
+      "line": "12"
+    }
+  },
+  {
+    "key": "errors.cubeLut.numberAbove",
+    "file": "src/shared/render/cubeLut.ts",
+    "line": 75,
+    "english": "This LUT could not be used: line 12 has 1e9, larger than 1000000.",
+    "sample": {
+      "line": "12",
+      "token": "1e9",
+      "max": "1000000"
+    }
+  },
+  {
+    "key": "errors.cubeLut.countFor",
+    "file": "src/shared/render/cubeLut.ts",
+    "line": 80,
+    "english": [
+      "This LUT could not be used: line 12 has 0 numbers for DOMAIN_MIN, not 3.",
+      "This LUT could not be used: line 12 has 1 number for DOMAIN_MIN, not 3.",
+      "This LUT could not be used: line 12 has 2 numbers for DOMAIN_MIN, not 3.",
+      "This LUT could not be used: line 12 has 1000 numbers for DOMAIN_MIN, not 3."
+    ],
+    "sample": [
+      {
+        "count": 0,
+        "n": "0",
+        "line": "12",
+        "what": "DOMAIN_MIN",
+        "expected": "3"
+      },
+      {
+        "count": 1,
+        "n": "1",
+        "line": "12",
+        "what": "DOMAIN_MIN",
+        "expected": "3"
+      },
+      {
+        "count": 2,
+        "n": "2",
+        "line": "12",
+        "what": "DOMAIN_MIN",
+        "expected": "3"
+      },
+      {
+        "count": 1000,
+        "n": "1000",
+        "line": "12",
+        "what": "DOMAIN_MIN",
+        "expected": "3"
+      }
+    ]
+  },
+  {
+    "key": "errors.cubeLut.noWholeNumber",
+    "file": "src/shared/render/cubeLut.ts",
+    "line": 85,
+    "english": "This LUT could not be used: line 12 has no whole number for LUT_3D_SIZE.",
+    "sample": {
+      "line": "12",
+      "what": "LUT_3D_SIZE"
+    }
+  },
+  {
+    "key": "errors.cubeLut.outOfRange",
+    "file": "src/shared/render/cubeLut.ts",
+    "line": 87,
+    "english": "This LUT could not be used: line 12 sets LUT_3D_SIZE to 300, outside 2..256.",
+    "sample": {
+      "line": "12",
+      "what": "LUT_3D_SIZE",
+      "value": "300",
+      "min": "2",
+      "max": "256"
+    }
+  },
+  {
+    "key": "errors.cubeLut.rangeTooNarrow",
+    "file": "src/shared/render/cubeLut.ts",
+    "line": 92,
+    "english": "This LUT could not be used: line 12 has a range narrower than 0.000001.",
+    "sample": {
+      "line": "12"
+    }
+  },
+  {
+    "key": "errors.cubeLut.fileTooLarge",
+    "file": "src/shared/render/cubeLut.ts",
+    "line": 104,
+    "english": "This LUT could not be used: the file is larger than 16 MB.",
+    "sample": {}
+  },
+  {
+    "key": "errors.cubeLut.nul",
+    "file": "src/shared/render/cubeLut.ts",
+    "line": 106,
+    "english": "This LUT could not be used: line 12 has a NUL character.",
+    "sample": {
+      "line": "12"
+    }
+  },
+  {
+    "key": "errors.cubeLut.notUtf8",
+    "file": "src/shared/render/cubeLut.ts",
+    "line": 111,
+    "english": "This LUT could not be used: it is not UTF-8 text.",
+    "sample": {}
+  },
+  {
+    "key": "errors.cubeLut.lineTooLong",
+    "file": "src/shared/render/cubeLut.ts",
+    "line": 136,
+    "english": "This LUT could not be used: line 12 is longer than 4,096 characters.",
+    "sample": {
+      "line": "12",
+      "max": "4,096"
+    }
+  },
+  {
+    "key": "errors.cubeLut.keywordAfterData",
+    "file": "src/shared/render/cubeLut.ts",
+    "line": 163,
+    "english": "This LUT could not be used: line 12 has the keyword TITLE after the data.",
+    "sample": {
+      "line": "12",
+      "keyword": "TITLE"
+    }
+  },
+  {
+    "key": "errors.cubeLut.repeats",
+    "file": "src/shared/render/cubeLut.ts",
+    "line": 164,
+    "english": "This LUT could not be used: line 12 repeats TITLE.",
+    "sample": {
+      "line": "12",
+      "keyword": "TITLE"
+    }
+  },
+  {
+    "key": "errors.cubeLut.titleQuotes",
+    "file": "src/shared/render/cubeLut.ts",
+    "line": 169,
+    "english": "This LUT could not be used: line 12 has a TITLE without quotes.",
+    "sample": {
+      "line": "12"
+    }
+  },
+  {
+    "key": "errors.cubeLut.textAfterTitle",
+    "file": "src/shared/render/cubeLut.ts",
+    "line": 171,
+    "english": "This LUT could not be used: line 12 has text after the TITLE.",
+    "sample": {
+      "line": "12"
+    }
+  },
+  {
+    "key": "errors.cubeLut.titleTooLong",
+    "file": "src/shared/render/cubeLut.ts",
+    "line": 173,
+    "english": "This LUT could not be used: line 12 has a TITLE longer than 256 characters.",
+    "sample": {
+      "line": "12",
+      "max": "256"
+    }
+  },
+  {
+    "key": "errors.cubeLut.rangeTwice",
+    "file": "src/shared/render/cubeLut.ts",
+    "line": 187,
+    "english": "This LUT could not be used: line 12 sets the table's range twice.",
+    "sample": {
+      "line": "12"
+    }
+  },
+  {
+    "key": "errors.cubeLut.rangeTwice",
+    "file": "src/shared/render/cubeLut.ts",
+    "line": 195,
+    "english": "This LUT could not be used: line 12 sets the table's range twice.",
+    "sample": {
+      "line": "12"
+    }
+  },
+  {
+    "key": "errors.cubeLut.unknownKeyword",
+    "file": "src/shared/render/cubeLut.ts",
+    "line": 213,
+    "english": "This LUT could not be used: line 12 has the unknown keyword LUT_4D.",
+    "sample": {
+      "line": "12",
+      "keyword": "LUT_4D"
+    }
+  },
+  {
+    "key": "errors.cubeLut.dataBeforeSize",
+    "file": "src/shared/render/cubeLut.ts",
+    "line": 221,
+    "english": "This LUT could not be used: line 12 has data before LUT_3D_SIZE.",
+    "sample": {
+      "line": "12"
+    }
+  },
+  {
+    "key": "errors.cubeLut.oneDomain",
+    "file": "src/shared/render/cubeLut.ts",
+    "line": 222,
+    "english": "This LUT could not be used: line 12 has data after only one of DOMAIN_MIN and DOMAIN_MAX.",
+    "sample": {
+      "line": "12"
+    }
+  },
+  {
+    "key": "errors.cubeLut.extraLine",
+    "file": "src/shared/render/cubeLut.ts",
+    "line": 227,
+    "english": "This LUT could not be used: line 12 is one more line of data than the 35,937 the sizes give.",
+    "sample": {
+      "line": "12",
+      "total": "35,937"
+    }
+  },
+  {
+    "key": "errors.cubeLut.rowCount",
+    "file": "src/shared/render/cubeLut.ts",
+    "line": 230,
+    "english": [
+      "This LUT could not be used: line 12 has 0 numbers, not 3.",
+      "This LUT could not be used: line 12 has 1 number, not 3.",
+      "This LUT could not be used: line 12 has 2 numbers, not 3.",
+      "This LUT could not be used: line 12 has 1000 numbers, not 3."
+    ],
+    "sample": [
+      {
+        "count": 0,
+        "n": "0",
+        "line": "12"
+      },
+      {
+        "count": 1,
+        "n": "1",
+        "line": "12"
+      },
+      {
+        "count": 2,
+        "n": "2",
+        "line": "12"
+      },
+      {
+        "count": 1000,
+        "n": "1000",
+        "line": "12"
+      }
+    ]
+  },
+  {
+    "key": "errors.cubeLut.noSize",
+    "file": "src/shared/render/cubeLut.ts",
+    "line": 247,
+    "english": "This LUT could not be used: it has no LUT_3D_SIZE.",
+    "sample": {}
+  },
+  {
+    "key": "errors.cubeLut.endsEarly",
+    "file": "src/shared/render/cubeLut.ts",
+    "line": 248,
+    "english": "This LUT could not be used: line 12 ends after 100 of 35,937 lines of data.",
+    "sample": {
+      "line": "12",
+      "rows": "100",
+      "total": "35,937"
+    }
+  },
+  {
+    "key": "errors.fonts.unreadable",
+    "file": "src/shared/render/fonts.ts",
+    "line": 41,
+    "english": "This file could not be read as a TTF, OTF or WOFF2 font.",
+    "sample": {}
+  },
+  {
+    "key": "errors.fonts.misnamed.ttf",
+    "file": "src/shared/render/fonts.ts",
+    "line": 45,
+    "english": "This file is named .woff2 but holds a TrueType (.ttf) font: rename it to .ttf and add it again.",
+    "sample": {
+      "named": "woff2"
+    }
+  },
+  {
+    "key": "errors.fonts.misnamed.otf",
+    "file": "src/shared/render/fonts.ts",
+    "line": 45,
+    "english": "This file is named .woff2 but holds an OpenType (.otf) font: rename it to .otf and add it again.",
+    "sample": {
+      "named": "woff2"
+    }
+  },
+  {
+    "key": "errors.fonts.misnamed.woff2",
+    "file": "src/shared/render/fonts.ts",
+    "line": 45,
+    "english": "This file is named .ttf but holds a WOFF2 (.woff2) font: rename it to .woff2 and add it again.",
+    "sample": {
+      "named": "ttf"
+    }
+  },
+  {
+    "key": "review.copy.alreadyFollows",
+    "file": "src/shared/editor/duplicate.ts",
+    "line": 52,
+    "english": "This video already follows the action",
+    "sample": {}
+  },
+  {
+    "key": "review.copy.alreadyTall",
+    "file": "src/shared/editor/duplicate.ts",
+    "line": 53,
+    "english": "Your recording is already tall",
+    "sample": {}
+  },
+  {
+    "key": "review.copy.alreadySquareOrTall",
+    "file": "src/shared/editor/duplicate.ts",
+    "line": 53,
+    "english": "Your recording is already square or tall",
+    "sample": {}
+  },
+  {
+    "key": "review.copy.lookVertical",
+    "file": "src/shared/editor/duplicate.ts",
+    "line": 173,
+    "english": "Captions: Bold Pop for the vertical version",
+    "sample": {
+      "look": "Bold Pop"
+    }
+  },
+  {
+    "key": "review.copy.lookSquare",
+    "file": "src/shared/editor/duplicate.ts",
+    "line": 173,
+    "english": "Captions: Bold Pop for the square version",
+    "sample": {
+      "look": "Bold Pop"
+    }
+  },
+  {
+    "key": "smart.shortVersion.already",
+    "file": "src/renderer/src/clips/ShortVersionDialog.tsx",
+    "line": 30,
+    "english": "This video is already 52 s",
+    "sample": {
+      "seconds": "52"
+    }
+  },
+  {
+    "key": "smart.shortVersion.keeps",
+    "file": "src/renderer/src/clips/ShortVersionDialog.tsx",
+    "line": 36,
+    "english": [
+      "Keeps 0 sentences, 58.4 s",
+      "Keeps 1 sentence, 58.4 s",
+      "Keeps 2 sentences, 58.4 s",
+      "Keeps 1000 sentences, 58.4 s"
+    ],
+    "sample": [
+      {
+        "count": 0,
+        "n": "0",
+        "seconds": "58.4"
+      },
+      {
+        "count": 1,
+        "n": "1",
+        "seconds": "58.4"
+      },
+      {
+        "count": 2,
+        "n": "2",
+        "seconds": "58.4"
+      },
+      {
+        "count": 1000,
+        "n": "1000",
+        "seconds": "58.4"
+      }
+    ]
+  },
+  {
+    "key": "smart.shortVersion.keepsSmooth",
+    "file": "src/renderer/src/clips/ShortVersionDialog.tsx",
+    "line": 36,
+    "english": [
+      "Keeps 0 sentences, 58.4 s, smooth cuts",
+      "Keeps 1 sentence, 58.4 s, smooth cuts",
+      "Keeps 2 sentences, 58.4 s, smooth cuts",
+      "Keeps 1000 sentences, 58.4 s, smooth cuts"
+    ],
+    "sample": [
+      {
+        "count": 0,
+        "n": "0",
+        "seconds": "58.4"
+      },
+      {
+        "count": 1,
+        "n": "1",
+        "seconds": "58.4"
+      },
+      {
+        "count": 2,
+        "n": "2",
+        "seconds": "58.4"
+      },
+      {
+        "count": 1000,
+        "n": "1000",
+        "seconds": "58.4"
+      }
+    ]
+  },
+  {
+    "key": "smart.clips.wasStopped",
+    "file": "src/renderer/src/clips/clipsRun.ts",
+    "line": 136,
+    "english": "Short clips was stopped.",
+    "sample": {}
+  },
+  {
+    "key": "smart.clips.untitled",
+    "file": "src/renderer/src/clips/ShortClipsPanel.tsx",
+    "line": 338,
+    "english": "Untitled recording",
+    "sample": {}
+  },
+  {
+    "key": "smart.clips.failed",
+    "file": "src/renderer/src/clips/ShortClipsPanel.tsx",
+    "line": 348,
+    "english": "Could not make the clips: The disk is full.",
+    "sample": {
+      "reason": "The disk is full."
+    }
+  },
+  {
+    "key": "smart.cost.namesAction",
+    "file": "src/renderer/src/clips/ShortClipsPanel.tsx",
+    "line": 530,
+    "english": "Names",
+    "sample": {}
+  },
+  {
+    "key": "smart.cost.namesAction",
+    "file": "src/renderer/src/editor/panels/FindChapters.tsx",
+    "line": 257,
+    "english": "Names",
+    "sample": {}
+  },
+  {
+    "key": "smart.chapters.failed",
+    "file": "src/renderer/src/editor/panels/FindChapters.tsx",
+    "line": 134,
+    "english": "Could not find chapters: The AI service did not answer.",
+    "sample": {
+      "reason": "The AI service did not answer."
+    }
   }
 ]
