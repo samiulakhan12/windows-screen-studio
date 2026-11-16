@@ -3,6 +3,8 @@ import { cropOf, visibleSize } from '../../../../shared/engine/crop'
 import type { Project } from '../../../../shared/types'
 import { useKeymap } from '../keymapContext'
 import '../crop.css'
+import { t } from '../../../../shared/i18n/t'
+import { T } from '../../i18n/T'
 
 type Props = { project: Project; onCrop: (action: 'edit' | 'reset') => void }
 
@@ -16,12 +18,10 @@ export function CropLink({ project, onCrop }: Props): JSX.Element | null {
   return (
     <button
       className="link small"
-      title={withShortcut('Choose the part of the recording to show: hide the taskbar, browser tabs or an edge', keymap.cropRecording)}
+      title={withShortcut(t('style.cropRow.cropTitle'), keymap.cropRecording)}
       onClick={() => onCrop('edit')}
       data-testid="crop-open"
-    >
-      Crop recording…
-    </button>
+    >{t('style.cropRow.cropRecording')}</button>
   )
 }
 
@@ -33,21 +33,18 @@ export function CropRow({ project, onCrop }: Props): JSX.Element | null {
   return (
     <div className="crop-row" data-testid="crop-row">
       <div className="row">
-        <span className="field-label">Crop</span>
+        <span className="field-label">{t('style.cropRow.crop')}</span>
         <div className="crop-row-actions">
-          <button className="btn small" title={withShortcut('Change the crop', keymap.cropRecording)} onClick={() => onCrop('edit')} data-testid="crop-edit">
-            Edit…
-          </button>
-          <button className="btn small ghost" title="Show the whole recording" onClick={() => onCrop('reset')} data-testid="crop-row-reset">
-            Reset
-          </button>
+          <button className="btn small" title={withShortcut(t('style.cropRow.changeTheCrop'), keymap.cropRecording)} onClick={() => onCrop('edit')} data-testid="crop-edit">{t('style.cropRow.edit')}</button>
+          <button className="btn small ghost" title={t('style.cropRow.showTheWholeRecording')} onClick={() => onCrop('reset')} data-testid="crop-row-reset">{t('common.action.reset')}</button>
         </div>
       </div>
       <p className="hint">
-        <strong>
-          {shown.width} × {shown.height}
-        </strong>{' '}
-        of {project.width} × {project.height}
+        <T
+          k="style.cropRow.sizeOf"
+          values={{ width: String(shown.width), height: String(shown.height), fullWidth: String(project.width), fullHeight: String(project.height) }}
+          tags={{ b: (c) => <strong>{c}</strong> }}
+        />
       </p>
     </div>
   )

@@ -259,20 +259,30 @@ export function uniqueName(list: StylePreset[], name: string, exceptId?: string)
 let idCounter = 0
 export const newPresetId = (): string => `u${Date.now().toString(36)}${(idCounter++).toString(36)}`
 
-/** Adds a preset (newest first); throws with a readable message when the name or look is unusable or the list is full. */
+/** Why a preset could not be added or renamed: `code` says which, the message is the English for logs and tests. */
+export class PresetError extends Error {
+  constructor(
+    readonly code: 'no-name' | 'unusable' | 'full',
+    message: string
+  ) {
+    super(message)
+  }
+}
+
+/** Adds a preset (newest first); throws a PresetError when the name or look is unusable or the list is full. */
 export function addUserPreset(list: StylePreset[], rawName: unknown, lookIn: PresetLook, id = newPresetId()): { list: StylePreset[]; preset: StylePreset } {
   const name = presetName(rawName)
-  if (!name) throw new Error('Give the preset a name')
+  if (!name) throw new PresetError('no-name', 'Give the preset a name')
   const l = sanitizePresetLook(lookIn)
-  if (!l) throw new Error('This look cannot be saved as a preset')
-  if (list.length >= MAX_USER_PRESETS) throw new Error(`You can keep up to ${MAX_USER_PRESETS} presets: delete one first`)
+  if (!l) throw new PresetError('unusable', 'This look cannot be saved as a preset')
+  if (list.length >= MAX_USER_PRESETS) throw new PresetError('full', `You can keep up to ${MAX_USER_PRESETS} presets: delete one first`)
   const preset = { id, name: uniqueName(list, name), look: l }
   return { list: [preset, ...list], preset }
 }
 
 export function renameUserPreset(list: StylePreset[], id: string, rawName: unknown): StylePreset[] {
   const name = presetName(rawName)
-  if (!name) throw new Error('Give the preset a name')
+  if (!name) throw new PresetError('no-name', 'Give the preset a name')
   return list.map((p) => (p.id === id ? { ...p, name: uniqueName(list, name, id) } : p))
 }
 

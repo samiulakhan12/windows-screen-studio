@@ -1,41 +1,33 @@
 /**
  * What the camera director's section in the Camera panel says (docs/design/camera-director.md,
  * section 2): part labels and reasons, the summary and the diff of a plan, the notes, the sound
- * status, the framing outcome and the notice after applying. Pure text from plain data, so the
- * copy is unit-tested (tests/directorCopy.test.ts) and the panel stays layout only.
+ * status, the framing outcome and the notice after applying. Messages (camera.director.*) made from
+ * plain data where they are shown, so the copy is unit-tested (tests/directorCopy.test.ts) and the
+ * panel stays layout only.
  */
 import type { DirectorNote, DirectorPart, DirectorPlan, DirectorReason } from './cameraDirector'
 import type { DirectorSpeech } from '../audio/speech'
 import type { FramingOutcome } from '../render/faceFraming'
-import type { CameraLayout, Corner, DirectorSettings } from '../types'
+import type { CameraLayout, DirectorSettings } from '../types'
 import { fmt } from '../i18n/fmt'
-
-const CORNER_WORDS: Record<Corner, string> = {
-  'top-left': 'top left',
-  'top-right': 'top right',
-  'bottom-left': 'bottom left',
-  'bottom-right': 'bottom right'
-}
-
-const plural = (n: number, word: string, many = `${word}s`): string => `${n} ${n === 1 ? word : many}`
+import { t } from '../i18n/t'
 
 /** "1.25×", "1.3×", "1×": a zoom as the Framing section rounds it (steps of 0.05). */
 export const zoomText = (zoom: number): string => `${Number(zoom.toFixed(2))}×`
 
-/** "Camera only" / "Large camera": how an intro or outro shows the camera. */
-const bigCamera = (layout: CameraLayout): string => (layout === 'camera-large' ? 'Large camera' : 'Camera only')
+const large = (layout: CameraLayout): boolean => layout === 'camera-large'
 
 /** The label of a part: "Intro · Camera only", "Bubble bottom left", "Camera hidden", "Outro · Large camera". */
 export function partLabel(part: Pick<DirectorPart, 'kind' | 'layout' | 'corner'>): string {
   switch (part.kind) {
     case 'intro':
-      return `Intro · ${bigCamera(part.layout)}`
+      return large(part.layout) ? t('camera.director.part.introLarge') : t('camera.director.part.introCamera')
     case 'outro':
-      return `Outro · ${bigCamera(part.layout)}`
+      return large(part.layout) ? t('camera.director.part.outroLarge') : t('camera.director.part.outroCamera')
     case 'hidden':
-      return 'Camera hidden'
+      return t('camera.director.part.hidden')
     case 'corner':
-      return part.corner ? `Bubble ${CORNER_WORDS[part.corner]}` : 'Bubble'
+      return part.corner ? t('camera.director.part.bubbleCorner', { corner: part.corner }) : t('camera.director.part.bubble')
   }
 }
 
@@ -46,38 +38,40 @@ export const partTimes = (part: Pick<DirectorPart, 'outStart' | 'outEnd'>): stri
 export function reasonText(reason: DirectorReason): string {
   switch (reason.kind) {
     case 'talk-before':
-      return 'you talk before the demo'
+      return t('camera.director.reason.talkBefore')
     case 'talk-after':
-      return 'you talk after the demo'
+      return t('camera.director.reason.talkAfter')
     case 'silent':
-      return `silent for ${Math.round(reason.seconds)} s`
+      return t('camera.director.reason.silent', { n: fmt.count(Math.round(reason.seconds)) })
     case 'cursor':
-      return `your cursor works in the ${CORNER_WORDS[reason.avoided]}`
+      return t('camera.director.reason.cursor', { corner: reason.avoided })
   }
 }
 
 /** A whole row of the list: "Intro · Camera only · 0:00–0:06 · you talk before the demo". */
-export const partLine = (part: DirectorPart): string => `${partLabel(part)} · ${partTimes(part)} · ${reasonText(part.reason)}`
+export const partLine = (part: DirectorPart): string => t('camera.director.partLine', { label: partLabel(part), times: partTimes(part), reason: reasonText(part.reason) })
 
 /** The face row of the list: before applying "measured when you direct", after it the zoom it used. */
 export function faceLine(applied: { zoom: number } | null): string {
-  return applied ? `Face centred · ${fmt.factor(applied.zoom)}` : 'Face centred · measured when you direct'
+  return applied ? t('camera.director.faceApplied', { zoom: fmt.factor(applied.zoom) }) : t('camera.director.facePlanned')
 }
 
 /** "4 changes · camera on screen 58% of the video". */
 export function summaryLine(plan: Pick<DirectorPlan, 'parts' | 'cameraShare'>): string {
-  return `${plural(plan.parts.length, 'change')} · camera on screen ${Math.round(plan.cameraShare * 100)}% of the video`
+  return t('camera.director.summary', { count: plan.parts.length, n: fmt.count(plan.parts.length), percent: fmt.count(Math.round(plan.cameraShare * 100)) })
 }
 
 /** "Keeps 1 layout change and 2 camera positions of yours", or null when nothing of the user's is in the way. */
 export function keptLine(kept: DirectorPlan['kept']): string | null {
-  const what = [kept.changes ? plural(kept.changes, 'layout change') : '', kept.positions ? plural(kept.positions, 'camera position') : ''].filter(Boolean)
-  return what.length ? `Keeps ${what.join(' and ')} of yours` : null
+  if (kept.changes && kept.positions) return t('camera.director.keptBoth', { count: kept.changes, n: fmt.count(kept.changes), positions: kept.positions, p: fmt.count(kept.positions) })
+  if (kept.changes) return t('camera.director.keptChanges', { count: kept.changes, n: fmt.count(kept.changes) })
+  if (kept.positions) return t('camera.director.keptPositions', { count: kept.positions, n: fmt.count(kept.positions) })
+  return null
 }
 
 /** "+2 new · 1 removed · 3 unchanged": what Direct again changes against the director's segments now. */
 export function diffLine(diff: DirectorPlan['diff']): string {
-  return `+${diff.added} new · ${diff.removed} removed · ${diff.unchanged} unchanged`
+  return t('camera.director.diff', { added: fmt.count(diff.added), removed: fmt.count(diff.removed), unchanged: fmt.count(diff.unchanged) })
 }
 
 /** Which sound the director listens to, for the status line (`data-source`). */
@@ -98,40 +92,59 @@ export function sourceState(speech: DirectorSpeech | null, measuring: boolean): 
 export function sourceLine(state: SourceState): string | null {
   switch (state) {
     case 'measuring':
-      return 'Listening for speech…'
+      return t('camera.director.source.measuring')
     case 'mic':
-      return 'Listening to your microphone.'
+      return t('camera.director.source.mic')
     case 'mix':
-      return "Listening to the recording's sound (no separate microphone): sounds from your PC count as talking."
+      return t('camera.director.source.mix')
     case 'mix-voice':
-      return "Listening for voices in the recording's sound (no separate microphone): voices from your PC count as talking."
+      return t('camera.director.source.mixVoice')
     case 'mix-refined':
-      return "Listening to the recording's sound, checked against your captions."
+      return t('camera.director.source.mixRefined')
     case 'transcript':
-      return "Using your captions' word timings."
+      return t('camera.director.source.transcript')
     case 'none':
       return null
   }
 }
 
 /** The sound could not be measured (shown with Try again); `fromCaptions`: the captions' word timings still gave the speech. */
-export const soundFailed = (fromCaptions: boolean): string =>
-  fromCaptions ? "The sound could not be measured: the plan uses your captions' word timings." : 'The sound could not be measured: the plan uses the mouse and keyboard only.'
+export const soundFailed = (fromCaptions: boolean): string => (fromCaptions ? t('camera.director.soundFailedCaptions') : t('camera.director.soundFailedInput'))
 
 /** What each note says; null for the notes the sound status line already covers. */
-export const NOTE_TEXT: Record<DirectorNote, string | null> = {
-  'camera-hidden': 'The camera is hidden: show it to direct it.',
-  'no-sound': 'No microphone was recorded, so there is no intro, outro or hiding: the director keeps the bubble clear of your cursor and centres your face.',
-  'no-speech': 'No talking was heard, so the camera stays on throughout and there is no intro or outro.',
+export const NOTE_TEXT: Readonly<Record<DirectorNote, string | null>> = {
+  get 'camera-hidden'() {
+    return t('camera.director.note.cameraHidden')
+  },
+  get 'no-sound'() {
+    return t('camera.director.note.noSound')
+  },
+  get 'no-speech'() {
+    return t('camera.director.note.noSpeech')
+  },
+  get 'no-input'() {
+    return t('camera.director.note.noInput')
+  },
+  get 'no-demo'() {
+    return t('camera.director.note.noDemo')
+  },
+  get 'kept-positions'() {
+    return t('camera.director.note.keptPositions')
+  },
+  get 'all-yours'() {
+    return t('camera.director.note.allYours')
+  },
+  get 'options-off'() {
+    return t('camera.director.note.optionsOff')
+  },
+  get 'nothing'() {
+    return t('camera.director.note.nothing')
+  },
+  get 'band'() {
+    return t('camera.director.note.band')
+  },
   'mixed-sound': null,
-  transcript: null,
-  'no-input': 'This recording has no mouse or keyboard data: the director hides the camera in silences and frames your face, but cannot keep the bubble clear of the cursor.',
-  'no-demo': 'Nothing happens on screen that the director can see (no clicks, scrolling, typing or zooms), so it cannot tell the intro from the demo.',
-  'kept-positions': 'Your camera positions are kept.',
-  'all-yours': 'Your own camera changes cover the whole video: nothing left to direct.',
-  'options-off': 'The intro and outro, hiding and bubble moves are all off, so the director adds nothing to the camera track.',
-  nothing: 'Nothing to change: no talking before or after the demo, no long silences, and the cursor never came near the camera.',
-  band: 'The camera is in a band while the view follows the action, so it is not moved between corners.'
+  transcript: null
 }
 
 /**
@@ -141,33 +154,42 @@ export const NOTE_TEXT: Record<DirectorNote, string | null> = {
  */
 export function noteText(note: DirectorNote, settings: Pick<DirectorSettings, 'intro' | 'hideAfter' | 'corners'>): string | null {
   if (note !== 'nothing') return NOTE_TEXT[note]
-  const why = [
-    settings.intro !== 'off' ? 'no talking before or after the demo' : '',
-    settings.hideAfter > 0 ? 'no long silences' : '',
-    settings.corners === 'auto' ? 'the cursor never came near the camera' : ''
-  ].filter(Boolean)
-  if (!why.length) return 'Nothing to change.'
-  const last = why.pop()!
-  return `Nothing to change: ${why.length ? `${why.join(', ')}${why.length > 1 ? ',' : ''} and ${last}` : last}.`
+  const which = `${settings.intro !== 'off' ? 'i' : ''}${settings.hideAfter > 0 ? 's' : ''}${settings.corners === 'auto' ? 'c' : ''}`
+  switch (which) {
+    case 'isc':
+      return t('camera.director.note.nothing')
+    case 'is':
+      return t('camera.director.nothing.is')
+    case 'ic':
+      return t('camera.director.nothing.ic')
+    case 'sc':
+      return t('camera.director.nothing.sc')
+    case 'i':
+      return t('camera.director.nothing.i')
+    case 's':
+      return t('camera.director.nothing.s')
+    case 'c':
+      return t('camera.director.nothing.c')
+    default:
+      return t('camera.director.nothing.none')
+  }
 }
 
 /** The lead text of the section. */
-export const LEAD =
-  'One click builds your camera track: the full camera while you talk before and after the demo, the bubble kept clear of your cursor, hidden in long silences, and your face centred. Changes you made yourself are kept.'
+export const lead = (): string => t('camera.director.lead')
 
 /** The hint under the buttons. */
-export const OWNERSHIP_HINT =
-  'Changing a block made by the director makes it yours: Direct again keeps it. Direct again brings back automatic changes you deleted; turn off what made them above.'
+export const ownershipHint = (): string => t('camera.director.ownershipHint')
 
 /** Option hints. */
-export const KEPT_POSITIONS_HINT = 'You placed the camera yourself (while recording or with Move camera here): those positions are kept either way.'
-export const USER_FRAMING_HINT = 'You framed the camera yourself; turn this on to let the director frame it.'
+export const keptPositionsHint = (): string => t('camera.director.keptPositionsHint')
+export const userFramingHint = (): string => t('camera.director.userFramingHint')
 
 /** The Layout section's hint for a block the director made. */
-export const AUTO_LAYOUT_HINT = 'Made by the auto director. Changing it makes it yours; Direct again keeps it.'
+export const autoLayoutHint = (): string => t('camera.director.autoLayoutHint')
 
 /** The timeline's title suffix of a block the director made. */
-export const AUTO_TITLE_SUFFIX = ' · automatic: change it to keep it when you direct again'
+export const autoTitleSuffix = (): string => t('camera.director.autoTitleSuffix')
 
 /** What the framing came to, for `data-status`: as the outcome says, with the user's own framing kept named apart. */
 export type FramingStatus = 'framed' | 'not-found' | 'unavailable' | 'skipped' | 'kept'
@@ -181,14 +203,14 @@ export function framingLine(outcome: FramingOutcome, userFraming: boolean): { st
     case 'framed':
       return {
         status: 'framed',
-        text: outcome.steady ? `Face centred (${fmt.factor(outcome.zoom)}).` : 'You move around a lot, so the camera is centred on you with little zoom.'
+        text: outcome.steady ? t('camera.director.framed', { zoom: fmt.factor(outcome.zoom) }) : t('camera.director.framedMoving')
       }
     case 'not-found':
-      return { status: 'not-found', text: 'No one was found in the camera picture, so the framing was left as it was.' }
+      return { status: 'not-found', text: t('camera.director.notFound') }
     case 'unavailable':
-      return { status: 'unavailable', text: `Face framing is unavailable: ${outcome.reason.replace(/[.\s]+$/, '')}. The rest of the camera track was directed.` }
+      return { status: 'unavailable', text: t('camera.director.framingUnavailable', { reason: outcome.reason.replace(/[.\s]+$/, '') }) }
     case 'skipped':
-      return userFraming ? { status: 'kept', text: 'Your framing is kept (turn on Centre my face to let the director frame you).' } : null
+      return userFraming ? { status: 'kept', text: t('camera.director.framingKept') } : null
   }
 }
 
@@ -199,37 +221,37 @@ export function framingLine(outcome: FramingOutcome, userFraming: boolean): { st
  * segments went (`removed`), else "options saved" (only the options were written).
  */
 export function directedNotice(parts: readonly Pick<DirectorPart, 'kind'>[], outcome: FramingOutcome, changed: boolean, undo: string, removed: boolean): string {
-  if (!changed) return 'Nothing to change'
+  if (!changed) return t('camera.director.done.nothing')
   const count = (k: DirectorPart['kind']): number => parts.filter((p) => p.kind === k).length
   const what: string[] = []
-  if (count('intro')) what.push('intro')
-  if (count('corner')) what.push(plural(count('corner'), 'bubble move'))
-  if (count('hidden')) what.push(`${count('hidden')} hidden`)
-  if (count('outro')) what.push('outro')
-  const face = outcome.status === 'framed' ? `face centred (${fmt.factor(outcome.zoom)})` : ''
-  const body = what.length ? what.join(', ') + (face ? `; ${face}` : '') : face || (removed ? 'earlier automatic changes removed' : 'options saved')
-  return `Camera directed: ${body}${undo}`
+  if (count('intro')) what.push(t('camera.director.done.intro'))
+  if (count('corner')) what.push(t('camera.director.done.moves', { count: count('corner'), n: fmt.count(count('corner')) }))
+  if (count('hidden')) what.push(t('camera.director.done.hidden', { n: fmt.count(count('hidden')) }))
+  if (count('outro')) what.push(t('camera.director.done.outro'))
+  const face = outcome.status === 'framed' ? t('camera.director.done.face', { zoom: fmt.factor(outcome.zoom) }) : ''
+  const body = what.length ? what.join(', ') + (face ? `; ${face}` : '') : face || (removed ? t('camera.director.done.removed') : t('camera.director.done.saved'))
+  return `${t('camera.director.done.directed', { body })}${undo}`
 }
 
 /** The notice after "Remove automatic changes". */
 export function removedNotice(changed: boolean, undo: string): string {
-  return changed ? `Automatic camera changes removed${undo}` : 'No automatic changes to remove'
+  return changed ? `${t('camera.director.removed')}${undo}` : t('camera.director.noneToRemove')
 }
 
 /** The primary button: "Direct camera", "Direct again" once the director's changes are in, "Up to date" when nothing would change. */
 export function applyLabel(state: { directed: boolean; upToDate: boolean }): string {
-  if (state.upToDate) return 'Up to date'
-  return state.directed ? 'Direct again' : 'Direct camera'
+  if (state.upToDate) return t('camera.director.apply.upToDate')
+  return state.directed ? t('camera.director.apply.again') : t('camera.director.apply.first')
 }
 
 /** The busy button while applying: still listening, then measuring the face (`done`/`total` pictures). */
 export function applyingLabel(progress: { listening: boolean; done: number; total: number }): string {
-  if (progress.listening) return 'Listening for speech…'
-  return progress.total ? `Finding your face… ${progress.done}/${progress.total}` : 'Finding your face…'
+  if (progress.listening) return t('camera.director.applying.listening')
+  return progress.total ? t('camera.director.applying.faceProgress', { done: fmt.count(progress.done), total: fmt.count(progress.total) }) : t('camera.director.applying.face')
 }
 
 /** Why the palette cannot direct the camera, or null when it can. */
 export function directUnavailable(hasCamera: boolean, shown: boolean): string | null {
-  if (!hasCamera) return 'This recording has no camera'
-  return shown ? null : 'Show the camera first'
+  if (!hasCamera) return t('camera.director.unavailable.noCamera')
+  return shown ? null : t('camera.director.unavailable.hidden')
 }

@@ -1,11 +1,10 @@
 import { useMemo, useRef, useSyncExternalStore, type PointerEvent as ReactPointerEvent } from 'react'
-import { AUTO_TITLE_SUFFIX } from '../../../shared/editor/directorCopy'
-import { addLayoutAt, dragLayout, dragLayoutTimes, layoutDragBounds, LAYOUT_OPTIONS, layoutLabel, layoutShowTime, stayAround } from '../../../shared/editor/layouts'
+import { autoTitleSuffix } from '../../../shared/editor/directorCopy'
+import { addLayoutAt, cornerName, dragLayout, dragLayoutTimes, layoutDragBounds, LAYOUT_OPTIONS, layoutLabel, layoutShowTime, stayAround } from '../../../shared/editor/layouts'
 import { sameSpan, type SnapExclude } from '../../../shared/editor/snapping'
 import { overlaps } from '../../../shared/editor/timelineScale'
 import { layoutRamps, segmentCorner } from '../../../shared/engine/layout'
 import { clamp } from '../../../shared/engine/math'
-import { CORNER_NAMES } from '../../../shared/recording/cameraBubble'
 import { fmt } from '../../../shared/i18n/fmt'
 import type { CameraLayout, Corner, LayoutSegment, Project } from '../../../shared/types'
 import { Icon } from '../components/Icon'
@@ -18,6 +17,7 @@ import type { Selection } from './selection'
 import type { MultiSelect } from './multiSelectControl'
 import type { SnapController } from './snapControl'
 import './camera.css'
+import { t } from '../../../shared/i18n/t'
 
 export interface TrackSlotProps {
   /** Pixels per second of source time. */
@@ -180,7 +180,7 @@ export function LayoutTrack({ px, win, duration, selection, onSelect, scrub, sna
       ref={trackRef}
       className={`tl-track layout-track ${shown ? '' : 'camera-off'}`}
       onPointerDown={onBackgroundDown}
-      title={shown ? 'Double-click to change the camera layout here' : 'The camera is hidden: layouts apply once it is shown (Camera panel)'}
+      title={shown ? t('camera.layoutTrack.doubleClickToChange') : t('camera.layoutTrack.theCameraIsHidden')}
       data-testid="layout-track"
     >
       {layouts
@@ -190,7 +190,7 @@ export function LayoutTrack({ px, win, duration, selection, onSelect, scrub, sna
           const ramp = ramps.get(s.id)
           const corner = segmentCorner(s)
           // A change of corner alone (the default layout) is named by its corner.
-          const label = corner && s.layout === 'default' ? CORNER_NAMES[corner] : shortLabel(s.layout)
+          const label = corner && s.layout === 'default' ? cornerName(corner) : shortLabel(s.layout)
           // Made by the camera director (any edit by hand clears the mark: then it is the user's).
           const auto = s.auto === true
           return (
@@ -205,7 +205,7 @@ export function LayoutTrack({ px, win, duration, selection, onSelect, scrub, sna
               className={`seg layout-seg ${s.layout} ${auto ? 'auto' : ''} ${selId === s.id ? 'selected' : ''}`}
               style={{ left: s.start * px, width: w, ['--edge' as string]: `${edgeWidth(w)}px` }}
               onPointerDown={onSegmentDown(s)}
-              title={`${layoutLabel(s.layout)}${corner ? ` · camera ${CORNER_NAMES[corner].toLowerCase()}` : ''} · ${fmt.clock(s.start)} – ${fmt.clock(s.end)}${auto ? AUTO_TITLE_SUFFIX : ''}`}
+              title={`${corner ? t('camera.layoutTrack.blockCorner', { layout: layoutLabel(s.layout), corner, start: fmt.clock(s.start), end: fmt.clock(s.end) }) : t('camera.layoutTrack.block', { layout: layoutLabel(s.layout), start: fmt.clock(s.start), end: fmt.clock(s.end) })}${auto ? autoTitleSuffix() : ''}`}
             >
               {ramp && w > 24 && (
                 <>
@@ -216,12 +216,12 @@ export function LayoutTrack({ px, win, duration, selection, onSelect, scrub, sna
               <span className="edge left" />
               {w > 30 && (corner && s.layout === 'default' ? <CornerGlyph corner={corner} /> : <LayoutGlyph layout={s.layout} size={18} />)}
               {corner && s.layout !== 'default' && w > 54 && <CornerGlyph corner={corner} />}
-              {w > 84 && <span className="seg-label">{auto && w > 110 ? `${label} · auto` : label}</span>}
+              {w > 84 && <span className="seg-label">{auto && w > 110 ? t('camera.layoutTrack.auto', { label }) : label}</span>}
               <span className="edge right" />
             </div>
           )
         })}
-      {layouts.length === 0 && <span className="tl-empty">Double-click to change the camera layout here, or use the Camera panel</span>}
+      {layouts.length === 0 && <span className="tl-empty">{t('camera.layoutTrack.emptyTrack')}</span>}
     </div>
   )
 }
@@ -231,7 +231,7 @@ export function LayoutTrackLabel(): JSX.Element | null {
   const hasCamera = useHasCamera()
   if (!hasCamera) return null
   return (
-    <div className="tl-label" title="Camera layout">
+    <div className="tl-label" title={t('camera.layoutTrack.cameraLayout')}>
       <Icon name="camera" size={16} />
     </div>
   )

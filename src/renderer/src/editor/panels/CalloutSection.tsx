@@ -15,11 +15,15 @@ import { holdGesture, useEditor } from '../context'
 import type { Selection } from '../selection'
 import { SelectRow } from './calloutControls'
 import './callouts.css'
+import { t } from '../../../../shared/i18n/t'
+import { fmt } from '../../../../shared/i18n/fmt'
+import { sfxName } from '../../../../shared/audio/soundNames'
 
-export const PRIVACY_NOTE = 'Blur and pixelate are fully on for their whole time, so nothing they hide shows.'
+/** Why a blur or pixelate shape has no animation. */
+export const privacyNote = (): string => t('text.calloutSection.privacyNote')
 
 /** "0.25 seconds": the Speed slider's value text. */
-export const secondsText = (v: number): string => `${v.toFixed(2)} seconds`
+export const secondsText = (v: number): string => t('text.calloutSection.seconds', { n: fmt.number(v, { max: 2 }) })
 
 /** The tab an element sits in (the Inspector's body names it), or null outside one (tests). */
 export function useTabOf(): [RefObject<HTMLDivElement>, string | null] {
@@ -46,9 +50,9 @@ export function CalloutSection(props: { project: Project; selection: Selection }
       {shown && (
         <section className="insp-section callout-section" data-testid="callout-section">
           <h3>
-            <span>Animation</span>
+            <span>{t('text.calloutSection.animation')}</span>
           </h3>
-          {target.item ? <Motions target={target} update={(fn, key) => store.update(fn, key)} onHold={() => holdGesture(store)} /> : <p className="hint">{PRIVACY_NOTE}</p>}
+          {target.item ? <Motions target={target} update={(fn, key) => store.update(fn, key)} onHold={() => holdGesture(store)} /> : <p className="hint">{privacyNote()}</p>}
         </section>
       )}
     </div>
@@ -65,17 +69,17 @@ function Motions({ target, update, onHold }: { target: CalloutTarget; update: (f
   const speed = target.enter?.duration ?? null
   return (
     <>
-      <SelectRow id="callout-enter" label="Comes in" value={target.enter?.kind ?? 'default'} options={motionChoices(item, 'enter')} onChange={(v) => pick('enter', v)} />
+      <SelectRow id="callout-enter" label={t('text.calloutSection.comesIn')} value={target.enter?.kind ?? 'default'} options={motionChoices(item, 'enter')} onChange={(v) => pick('enter', v)} />
       {target.enter && speed !== null && (
         <label className="slider callout-field">
           <span className="slider-head">
-            <span>Speed</span>
-            <span className="muted">Comes in over {speed.toFixed(2)} s</span>
+            <span>{t('common.label.speed')}</span>
+            <span className="muted">{t('text.calloutSection.comesInOver', { n: fmt.number(speed, { max: 2 }) })}</span>
           </span>
           <input
             type="range"
             data-testid="callout-speed"
-            aria-label="Speed"
+            aria-label={t('common.label.speed')}
             aria-valuetext={secondsText(speed)}
             min={CALLOUT_DURATION.min}
             max={CALLOUT_DURATION.max}
@@ -86,11 +90,11 @@ function Motions({ target, update, onHold }: { target: CalloutTarget; update: (f
           />
         </label>
       )}
-      <SelectRow id="callout-exit" label="Goes out" value={target.exit?.kind ?? 'default'} options={motionChoices(item, 'exit')} onChange={(v) => pick('exit', v)} />
+      <SelectRow id="callout-exit" label={t('text.calloutSection.goesOut')} value={target.exit?.kind ?? 'default'} options={motionChoices(item, 'exit')} onChange={(v) => pick('exit', v)} />
       <div className="callout-sound-row">
         <SelectRow
           id="callout-sound"
-          label="Sound"
+          label={t('common.label.sound')}
           value={sound}
           options={CALLOUT_SOUNDS}
           onChange={(v) => update((p) => withCallout(p, target.ref, { sound: v === 'project' ? null : (v as 'none' | SfxRef) }))}
@@ -112,7 +116,7 @@ function PlayEffect({ sound }: { sound: string }): JSX.Element {
     setPlaying(false)
   }
   useEffect(() => stop, [sound])
-  const name = effect ? `Play ${effect.title}` : 'Play the sound'
+  const name = effect ? t('common.action.playName', { name: sfxName(effect.id) }) : t('text.calloutSection.playTheSound')
   return (
     <button
       type="button"
@@ -120,7 +124,7 @@ function PlayEffect({ sound }: { sound: string }): JSX.Element {
       data-testid="callout-sound-play"
       aria-pressed={playing}
       aria-label={name}
-      title={effect ? name : 'Choose an effect to hear it'}
+      title={effect ? name : t('text.calloutSection.chooseAnEffectTo')}
       disabled={!effect}
       onClick={() => {
         if (playing || !effect) return stop()
@@ -132,7 +136,7 @@ function PlayEffect({ sound }: { sound: string }): JSX.Element {
         a.play().catch(stop)
       }}
     >
-      {playing ? 'Stop' : 'Play'}
+      {playing ? t('common.action.stop') : t('common.action.play')}
     </button>
   )
 }

@@ -80,6 +80,18 @@
       "kind": "sink",
       "text": "unknown file size",
       "reason": "Why the video track's length could not be read: caught at once and written only to the console, and the container's length is used instead; never shown."
+    },
+    {
+      "file": "src/renderer/src/editor/sounds/soundScan.ts",
+      "kind": "sink",
+      "text": "cancelled",
+      "reason": "The sound finder's own mark for a scan that was stopped: the controller compares the error with it and goes back to idle, so it is never shown."
+    },
+    {
+      "file": "src/renderer/src/editor/sounds/sounds.worker.ts",
+      "kind": "sink",
+      "text": "No sound to listen to",
+      "reason": "The sound finder's worker loads no messages; this error is a programming error (a chunk before the start message, which the controller never sends), and the controller words every reason the worker gives (soundScan's workerReason)."
     }
   ]
 }

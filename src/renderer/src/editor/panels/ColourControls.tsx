@@ -27,29 +27,61 @@ import { holdGesture, useEditor } from '../context'
 import { lastInputWasKey } from '../focus'
 import { useGroup } from '../groupContext'
 import './colour.css'
+import { t } from '../../../../shared/i18n/t'
+import { fmt } from '../../../../shared/i18n/fmt'
 
 type Which = 'screen' | 'camera'
 export type ColourSliderKey = 'temperature' | 'tint' | 'brightness' | 'contrast' | 'saturation' | 'highlights' | 'shadows' | 'vibrance' | 'exposure'
 
 export const COLOUR_COPY = {
-  monoHint: 'Coloured text may become harder to read.',
-  cpuNote: 'This PC grades colour without graphics acceleration, so the preview may play less smoothly. The export looks the same.',
-  autoHint: 'Balances the camera’s colour and brightness from a few frames, on this PC. Review mode lists it.',
-  importLut: 'Import a LUT (.cube)…',
-  reset: 'Colour reset',
-  compareHint: 'Shows the preview without colour while it is on. The export keeps the colour.'
-} as const
+  get monoHint() {
+    return t('style.colourControls.copy.monoHint')
+  },
+  get cpuNote() {
+    return t('style.colourControls.copy.cpuNote')
+  },
+  get autoHint() {
+    return t('style.colourControls.copy.autoHint')
+  },
+  get importLut() {
+    return t('style.colourControls.copy.importLut')
+  },
+  get reset() {
+    return t('style.colourControls.copy.reset')
+  },
+  get compareHint() {
+    return t('style.colourControls.copy.compareHint')
+  }
+}
 
 export const SLIDER_LABELS: Readonly<Record<ColourSliderKey, string>> = {
-  temperature: 'Temperature',
-  tint: 'Tint',
-  brightness: 'Brightness',
-  contrast: 'Contrast',
-  saturation: 'Saturation',
-  highlights: 'Highlights',
-  shadows: 'Shadows',
-  vibrance: 'Vibrance',
-  exposure: 'Exposure'
+  get temperature() {
+    return t('style.colourControls.slider.temperature')
+  },
+  get tint() {
+    return t('style.colourControls.slider.tint')
+  },
+  get brightness() {
+    return t('style.colourControls.slider.brightness')
+  },
+  get contrast() {
+    return t('style.colourControls.slider.contrast')
+  },
+  get saturation() {
+    return t('style.colourControls.slider.saturation')
+  },
+  get highlights() {
+    return t('style.colourControls.slider.highlights')
+  },
+  get shadows() {
+    return t('style.colourControls.slider.shadows')
+  },
+  get vibrance() {
+    return t('style.colourControls.slider.vibrance')
+  },
+  get exposure() {
+    return t('style.colourControls.slider.exposure')
+  }
 }
 const MAIN: readonly ColourSliderKey[] = ['temperature', 'tint', 'brightness', 'contrast', 'saturation']
 const moreOf = (which: Which): readonly ColourSliderKey[] => (which === 'camera' ? ['highlights', 'shadows', 'vibrance', 'exposure'] : ['highlights', 'shadows', 'vibrance'])
@@ -78,18 +110,18 @@ const STOPS: Scale = {
 const scaleOf = (key: ColourSliderKey): Scale => (key === 'exposure' ? STOPS : UNIT)
 
 /** "+20", "−15" (a real minus sign). */
-const signed = (u: number): string => (u > 0 ? `+${u}` : `−${Math.abs(u)}`)
+const signed = (u: number): string => (u > 0 ? `+${fmt.number(u)}` : `−${fmt.number(Math.abs(u))}`)
 
 /** A slider's value text: "Warmer, +20", "Cooler, −15", "More magenta, +5", "+0.5 stops", "No change" at 0. */
 export function colourValueText(key: ColourSliderKey, u: number): string {
-  if (u === 0) return 'No change'
-  if (key === 'temperature') return `${u > 0 ? 'Warmer' : 'Cooler'}, ${signed(u)}`
-  if (key === 'tint') return `${u > 0 ? 'More magenta' : 'Greener'}, ${signed(u)}`
-  if (key === 'exposure') return `${signed(u)} ${Math.abs(u) === 1 ? 'stop' : 'stops'}`
+  if (u === 0) return t('style.colourControls.value.none')
+  if (key === 'temperature') return u > 0 ? t('style.colourControls.value.warmer', { n: signed(u) }) : t('style.colourControls.value.cooler', { n: signed(u) })
+  if (key === 'tint') return u > 0 ? t('style.colourControls.value.magenta', { n: signed(u) }) : t('style.colourControls.value.greener', { n: signed(u) })
+  if (key === 'exposure') return t('style.colourControls.value.stops', { count: Math.abs(u), n: signed(u) })
   return signed(u)
 }
 
-const percentText = (v: number): string => `${Math.round(v * 100)} percent`
+const percentText = (v: number): string => t('style.colourControls.percent', { n: fmt.count(Math.round(v * 100)) })
 const ipcMessage = (err: unknown): string => (err instanceof Error ? err.message : String(err)).replace(/^Error invoking remote method '[^']+': (\w*Error: )?/, '')
 
 /** The looks a source offers, None first. */
@@ -200,16 +232,14 @@ function ColourSlider(props: { k: ColourSliderKey; value: number; onSet: (v: num
           type="button"
           className="colour-reset-one"
           data-testid={`colour-reset-${k}`}
-          aria-label={`Reset ${label}`}
-          title={`Reset ${label}`}
+          aria-label={t('style.colourControls.reset', { label: String(label) })}
+          title={t('style.colourControls.reset', { label: String(label) })}
           onClick={() => {
             // The button goes with the reset: the keyboard stays on its slider, not on the page.
             if (lastInputWasKey()) input.current?.focus()
             props.onReset()
           }}
-        >
-          Reset
-        </button>
+        >{t('common.action.reset')}</button>
       )}
     </div>
   )
@@ -241,7 +271,7 @@ export function ColourControls(props: { project: Project; which: 'screen' | 'cam
   const looks = looksFor(which)
   const look = grade.look ?? null
   const pick = (id: LookId | null): void => update((p) => withLook(p, which, id))
-  const lookLabel = (id: LookId | null): string => (id ? (lookOf(id)?.label ?? id) : 'None')
+  const lookLabel = (id: LookId | null): string => (id ? (lookOf(id)?.label ?? id) : t('common.state.none'))
   const onLookKeys = (e: KeyboardEvent<HTMLDivElement>): void => {
     const i = looks.indexOf(look)
     const next = e.key === 'ArrowRight' || e.key === 'ArrowDown' ? i + 1 : e.key === 'ArrowLeft' || e.key === 'ArrowUp' ? i - 1 : e.key === 'Home' ? 0 : e.key === 'End' ? looks.length - 1 : null
@@ -258,7 +288,7 @@ export function ColourControls(props: { project: Project; which: 'screen' | 'cam
   const setSlider = (k: ColourSliderKey) => (v: number, key: string): void => update((p) => withGrade(p, which, { [k]: v }), key)
   const reset = (k: ColourSliderKey) => (): void => {
     update((p) => resetSlider(p, which, k))
-    say(`${SLIDER_LABELS[k]} reset`)
+    say(t('style.colourControls.sliderReset', { label: SLIDER_LABELS[k] }))
   }
   const sliders = (keys: readonly ColourSliderKey[]): JSX.Element[] =>
     keys.map((k) => <ColourSlider key={k} k={k} value={grade[k] ?? 0} mergeKey={`colour:${which}:${k}`} onSet={setSlider(k)} onReset={reset(k)} />)
@@ -270,7 +300,7 @@ export function ColourControls(props: { project: Project; which: 'screen' | 'cam
       if (!picked?.lut) return
       const lut = { file: picked.path, ...picked.lut }
       update((p) => withLut(p, which, lut))
-      say(`LUT ${lut.title} imported`)
+      say(t('style.colourControls.lutImported', { title: lut.title }))
     } catch (err) {
       group.notice(ipcMessage(err))
     } finally {
@@ -283,9 +313,7 @@ export function ColourControls(props: { project: Project; which: 'screen' | 'cam
 
   return (
     <div className="colour-controls">
-      <div className="colour-row-label" id={`${ids}-look`}>
-        Look
-      </div>
+      <div className="colour-row-label" id={`${ids}-look`}>{t('common.label.look')}</div>
       <div ref={groupRef} className="colour-looks" role="radiogroup" aria-labelledby={`${ids}-look`} data-testid="colour-look" onKeyDown={onLookKeys}>
         {looks.map((id) => {
           const on = id === look
@@ -316,13 +344,13 @@ export function ColourControls(props: { project: Project; which: 'screen' | 'cam
       {look && (
         <label className="slider">
           <span className="slider-head">
-            <span>Strength</span>
+            <span>{t('common.label.strength')}</span>
             <span className="muted">{`${Math.round((grade.lookStrength ?? 1) * 100)}%`}</span>
           </span>
           <input
             type="range"
             data-testid="colour-look-strength"
-            aria-label={`Strength of ${lookLabel(look)}`}
+            aria-label={t('style.colourControls.strengthOf', { value: String(lookLabel(look)) })}
             aria-valuetext={percentText(grade.lookStrength ?? 1)}
             min={0}
             max={100}
@@ -336,7 +364,7 @@ export function ColourControls(props: { project: Project; which: 'screen' | 'cam
 
       {sliders(MAIN)}
       <button type="button" className="colour-more" data-testid="colour-more" aria-expanded={open} onClick={() => setOpen(!open)}>
-        {open ? 'Fewer' : 'More'}
+        {open ? t('style.colourControls.fewer') : t('style.colourControls.more')}
       </button>
       {open && sliders(more)}
 
@@ -351,13 +379,13 @@ export function ColourControls(props: { project: Project; which: 'screen' | 'cam
             </p>
             <label className="slider">
               <span className="slider-head">
-                <span>LUT strength</span>
+                <span>{t('style.colourControls.lutStrength')}</span>
                 <span className="muted">{`${Math.round((lut.strength ?? 1) * 100)}%`}</span>
               </span>
               <input
                 type="range"
                 data-testid="lut-strength"
-                aria-label="LUT strength"
+                aria-label={t('style.colourControls.lutStrength')}
                 aria-valuetext={percentText(lut.strength ?? 1)}
                 min={0}
                 max={100}
@@ -387,19 +415,15 @@ export function ColourControls(props: { project: Project; which: 'screen' | 'cam
                 // Remove LUT goes with the LUT: the keyboard moves to Import, not to the page.
                 if (lastInputWasKey()) importButton.current?.focus()
                 update((p) => withLut(p, which, null))
-                say('LUT removed')
+                say(t('style.colourControls.lutRemoved'))
               }}
-            >
-              Remove LUT
-            </button>
+            >{t('style.colourControls.removeLut')}</button>
           )}
         </div>
       </div>
 
       <div className="colour-buttons">
-        <button type="button" className={`btn small ${comparing ? 'active' : ''}`} data-testid="colour-compare" aria-pressed={comparing} title={COLOUR_COPY.compareHint} onClick={() => void toggleCompare(player)}>
-          Compare
-        </button>
+        <button type="button" className={`btn small ${comparing ? 'active' : ''}`} data-testid="colour-compare" aria-pressed={comparing} title={COLOUR_COPY.compareHint} onClick={() => void toggleCompare(player)}>{t('style.colourControls.compare')}</button>
         <button
           type="button"
           className="btn small"
@@ -411,12 +435,10 @@ export function ColourControls(props: { project: Project; which: 'screen' | 'cam
             update((p) => withGrade(p, which, null))
             say(COLOUR_COPY.reset)
           }}
-        >
-          Reset colour
-        </button>
+        >{t('style.colourControls.resetColour')}</button>
         {which === 'camera' && (
           <button type="button" className="btn small" data-testid="auto-colour" disabled={busy} aria-describedby={`${ids}-auto`} onClick={() => group.command('autoColour')}>
-            {busy ? 'Balancing…' : 'Auto colour'}
+            {busy ? t('style.colourControls.balancing') : t('style.colourControls.autoColour')}
           </button>
         )}
       </div>

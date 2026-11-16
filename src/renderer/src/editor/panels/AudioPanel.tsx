@@ -19,14 +19,16 @@ import { BedMissingNotice, MusicCredit, MusicLibrarySection } from './MusicLibra
 import { withOwnMusic } from '../../../../shared/audio/soundFxEdit'
 import { fmt } from '../../../../shared/i18n/fmt'
 import { SoundEffectsSection } from './SoundEffectsSection'
+import { t } from '../../../../shared/i18n/t'
 
-const STEM_NAMES: Record<StemKind, string> = { mic: 'Microphone', system: 'System sound' }
+/** A recorded source's name: a section title ("Microphone"). */
+const stemName = (kind: StemKind): string => t(`sound.stem.${kind}` as const)
 
 /** "Error invoking remote method 'x': Error: message" -> "message". */
 const ipcMessage = (err: unknown): string => (err instanceof Error ? err.message : String(err)).replace(/^Error invoking remote method '[^']+': (Error: )?/, '')
 
-const secondsFmt = (v: number): string => (v <= 0 ? 'Off' : `${v.toFixed(1)} s`)
-const offOrPct = (v: number): string => (v <= 0 ? 'Off' : pctFmt(v))
+const secondsFmt = (v: number): string => (v <= 0 ? t('common.state.off') : t('sound.audioPanel.seconds', { n: fmt.number(v, { max: 1 }) }))
+const offOrPct = (v: number): string => (v <= 0 ? t('common.state.off') : pctFmt(v))
 
 /* ---------- Audio ---------- */
 
@@ -52,11 +54,11 @@ export function AudioPanel({ project }: { project: Project }): JSX.Element {
 
   return (
     <>
-      <Section title="Recording">
-        {!project.hasAudio && <p className="hint">This recording has no sound. You can still add music below.</p>}
-        <Toggle label="Mute" checked={look.muted} disabled={!project.hasAudio} onChange={(v) => setAudio({ muted: v })} />
+      <Section title={t('sound.audioPanel.recording')}>
+        {!project.hasAudio && <p className="hint">{t('sound.audioPanel.thisRecordingHasNo')}</p>}
+        <Toggle label={t('sound.audioPanel.mute')} checked={look.muted} disabled={!project.hasAudio} onChange={(v) => setAudio({ muted: v })} />
         <Slider
-          label="Volume"
+          label={t('common.label.volume')}
           value={look.volume}
           {...AUDIO_LIMITS.volume}
           step={0.05}
@@ -64,16 +66,12 @@ export function AudioPanel({ project }: { project: Project }): JSX.Element {
           disabled={!project.hasAudio || look.muted}
           onChange={(v) => setAudio({ volume: v }, 'audio.volume')}
         />
-        <p className="hint">
-          Sped-up clips keep their pitch.
-          {stems.length > 0 && !failed && ' The microphone and the system sound were also kept apart: balance them below.'}
-        </p>
+        <p className="hint">{stems.length > 0 && !failed ? t('sound.audioPanel.pitchAndStems') : t('sound.audioPanel.pitch')}</p>
         {failedStems.length > 0 ? (
           <p className="callout" role="alert" data-testid="stems-missing">
             <EditorIcon name="alert" size={16} />
             <span>
-              {missingFiles(failedStems)} missing, so the preview plays the mixed sound, with every source, whatever is set below. Open the recording again to export it that
-              way.
+              {t('sound.audioPanel.stemsMissingPreview', missingFiles(failedStems))}
             </span>
           </p>
         ) : (
@@ -81,9 +79,7 @@ export function AudioPanel({ project }: { project: Project }): JSX.Element {
             <p className="callout" role="alert" data-testid="stems-missing">
               <EditorIcon name="alert" size={16} />
               <span>
-                {missingFiles(player.missingStems)} missing, so a source can no longer be muted or turned down on its own: the preview and the export play the mixed sound,
-                with every source{sourceSet ? ', including one you muted or turned down' : ''}. Put the {player.missingStems.length > 1 ? 'files' : 'file'} back in the
-                recording's folder and open the recording again to set the sources apart.
+                {t('sound.audioPanel.stemsMissingMixed', { ...missingFiles(player.missingStems), set: sourceSet ? 'yes' : 'no' })}
               </span>
             </p>
           )
@@ -91,15 +87,15 @@ export function AudioPanel({ project }: { project: Project }): JSX.Element {
       </Section>
 
       {stems.map((kind) => (
-        <Section key={kind} title={STEM_NAMES[kind]}>
+        <Section key={kind} title={stemName(kind)}>
           <Toggle
-            label={`Mute ${STEM_NAMES[kind].toLowerCase()}`}
+            label={t('sound.audioPanel.muteStem', { kind })}
             checked={look[kind].muted}
             disabled={look.muted}
             onChange={(v) => setTrack(kind, { muted: v })}
           />
           <Slider
-            label={`${STEM_NAMES[kind]} volume`}
+            label={t('sound.audioPanel.stemVolume', { kind })}
             value={look[kind].volume}
             {...AUDIO_LIMITS.volume}
             step={0.05}
@@ -129,9 +125,9 @@ export function AudioPanel({ project }: { project: Project }): JSX.Element {
 
       <SoundsSection project={project} />
 
-      <Section title="Clean up">
+      <Section title={t('sound.audioPanel.cleanUp')}>
         <Slider
-          label="Noise reduction"
+          label={t('sound.audioPanel.noiseReduction')}
           value={look.noiseReduction}
           min={0}
           max={1}
@@ -140,28 +136,28 @@ export function AudioPanel({ project }: { project: Project }): JSX.Element {
           disabled={!recordingOn}
           onChange={(v) => setAudio({ noiseReduction: v }, 'audio.noiseReduction')}
         />
-        <p className="hint">
-          Removes steady hiss and hum{stems.includes('mic') ? ' from the microphone' : ''} when exporting; the preview plays the original. Strong settings can thin out quiet speech.
-        </p>
-        <Toggle label="Even out loudness" checked={look.normalize} disabled={!recordingOn} onChange={(v) => setAudio({ normalize: v })} />
-        <p className="hint">A standard loudness ({LOUDNESS_TARGET.integrated} LUFS) for YouTube and social apps. The preview approximates it; the export measures it exactly.</p>
+        <p className="hint">{stems.includes('mic') ? t('sound.audioPanel.noiseHintMic') : t('sound.audioPanel.noiseHint')}</p>
+        <Toggle label={t('sound.audioPanel.evenOutLoudness')} checked={look.normalize} disabled={!recordingOn} onChange={(v) => setAudio({ normalize: v })} />
+        <p className="hint">{t('sound.audioPanel.loudnessHint', { lufs: fmt.count(LOUDNESS_TARGET.integrated) })}</p>
       </Section>
 
-      <Section title="Fades">
-        <Slider label="Fade in at start" value={look.fadeIn} {...AUDIO_LIMITS.fade} step={0.1} format={secondsFmt} onChange={(v) => setAudio({ fadeIn: v }, 'audio.fadeIn')} />
-        <Slider label="Fade out at end" value={look.fadeOut} {...AUDIO_LIMITS.fade} step={0.1} format={secondsFmt} onChange={(v) => setAudio({ fadeOut: v }, 'audio.fadeOut')} />
-        <p className="hint">Fades the whole soundtrack, music and click sounds included.</p>
+      <Section title={t('sound.audioPanel.fades')}>
+        <Slider label={t('sound.audioPanel.fadeInAtStart')} value={look.fadeIn} {...AUDIO_LIMITS.fade} step={0.1} format={secondsFmt} onChange={(v) => setAudio({ fadeIn: v }, 'audio.fadeIn')} />
+        <Slider label={t('sound.audioPanel.fadeOutAtEnd')} value={look.fadeOut} {...AUDIO_LIMITS.fade} step={0.1} format={secondsFmt} onChange={(v) => setAudio({ fadeOut: v }, 'audio.fadeOut')} />
+        <p className="hint">{t('sound.audioPanel.fadesTheWholeSoundtrack')}</p>
       </Section>
       <SoundEffectsSection project={project} />
     </>
   )
 }
 
-/** "The system sound file of this recording (system.m4a) is", for the stems in `kinds`. */
-function missingFiles(kinds: readonly StemKind[]): string {
-  const names = kinds.map((k) => STEM_NAMES[k].toLowerCase()).join(' and ')
-  const files = kinds.map((k) => SOURCE_FILES[k]).join(' and ')
-  return kinds.length > 1 ? `The ${names} files of this recording (${files}) are` : `The ${names} file of this recording (${files}) is`
+/** The stems in `kinds` for the missing-files sentences: how many, their names ("system sound") and their files ("system.m4a"). */
+function missingFiles(kinds: readonly StemKind[]): { stems: number; names: string; files: string } {
+  return {
+    stems: kinds.length,
+    names: fmt.list(kinds.map((kind) => t('sound.stem.inSentence', { kind }))),
+    files: fmt.list(kinds.map((k) => SOURCE_FILES[k]))
+  }
 }
 
 /* ---------- Music ---------- */
@@ -234,12 +230,12 @@ function MusicSection(props: {
 
   const format = path ? path.slice(path.lastIndexOf('.') + 1).toUpperCase() : ''
   return (
-    <Section title="Music">
+    <Section title={t('sound.audioPanel.music')}>
       {!music ? (
         <div className="music-empty">
-          <p className="hint">A track under the whole video. It runs on through cuts and dips automatically while the recording has sound.</p>
+          <p className="hint">{t('sound.audioPanel.aTrackUnderThe')}</p>
           <button className="btn" data-testid="music-own-file" disabled={busy} onClick={() => void pick()}>
-            <MusicIcon /> Your own file…
+            <MusicIcon /> {t('sound.audioPanel.yourOwnFile')}
           </button>
         </div>
       ) : (
@@ -249,17 +245,17 @@ function MusicSection(props: {
               <MusicIcon />
             </span>
             <span className="music-file-text">
-              <span>Background music</span>
+              <span>{t('sound.audioPanel.backgroundMusic')}</span>
               <span className="muted small">
                 {format}
                 {length !== null && ` · ${fmt.clock(length, 'whole')}`}
               </span>
             </span>
             <span className="music-file-actions">
-              <button className="btn ghost small-btn" disabled={busy} onClick={() => void pick()} title="Choose another music file">
-                Replace…
+              <button className="btn ghost small-btn" disabled={busy} onClick={() => void pick()} title={t('sound.audioPanel.chooseAnotherMusicFile')}>
+                {t('sound.audioPanel.replace')}
               </button>
-              <button className="btn ghost small-btn icon-only" disabled={busy} onClick={props.onRemove} title="Remove the music" aria-label="Remove music">
+              <button className="btn ghost small-btn icon-only" disabled={busy} onClick={props.onRemove} title={t('sound.audioPanel.removeTheMusic')} aria-label={t('sound.audioPanel.removeMusic')}>
                 <Icon name="trash" size={16} />
               </button>
             </span>
@@ -271,12 +267,12 @@ function MusicSection(props: {
             ) : (
               <p className="callout" role="alert" data-testid="music-missing">
                 <EditorIcon name="alert" size={16} />
-                <span>This music file is no longer in the recording's folder, so it cannot play or be exported. Choose it again with Replace…</span>
+                <span>{t('sound.audioPanel.thisMusicFileIs')}</span>
               </p>
             ))}
-          <Slider label="Music volume" value={music.volume} {...AUDIO_LIMITS.volume} step={0.05} format={pctFmt} onChange={(v) => setMusic({ volume: v }, 'audio.music.volume')} />
+          <Slider label={t('sound.audioPanel.musicVolume')} value={music.volume} {...AUDIO_LIMITS.volume} step={0.05} format={pctFmt} onChange={(v) => setMusic({ volume: v }, 'audio.music.volume')} />
           <Slider
-            label="Lower under speech"
+            label={t('sound.audioPanel.lowerUnderSpeech')}
             value={music.ducking}
             min={0}
             max={1}
@@ -289,12 +285,12 @@ function MusicSection(props: {
             {props.canDuck
               ? detector === 'speech'
                 ? DUCKING_VOICE_HINT
-                : 'How far the music dips while the recording has sound.'
-              : 'The recording is silent, so the music keeps its volume throughout.'}
+                : t('sound.audioPanel.howFarTheMusic')
+              : t('sound.audioPanel.theRecordingIsSilent')}
           </p>
-          <Toggle label="Loop" title="Repeat the music when it is shorter than the video" checked={music.loop} onChange={(v) => setMusic({ loop: v })} />
-          <Slider label="Fade in" value={music.fadeIn} {...AUDIO_LIMITS.musicFade} step={0.1} format={secondsFmt} onChange={(v) => setMusic({ fadeIn: v }, 'audio.music.fadeIn')} />
-          <Slider label="Fade out" value={music.fadeOut} {...AUDIO_LIMITS.musicFade} step={0.1} format={secondsFmt} onChange={(v) => setMusic({ fadeOut: v }, 'audio.music.fadeOut')} />
+          <Toggle label={t('sound.audioPanel.loop')} title={t('sound.audioPanel.repeatTheMusicWhen')} checked={music.loop} onChange={(v) => setMusic({ loop: v })} />
+          <Slider label={t('sound.audioPanel.fadeIn')} value={music.fadeIn} {...AUDIO_LIMITS.musicFade} step={0.1} format={secondsFmt} onChange={(v) => setMusic({ fadeIn: v }, 'audio.music.fadeIn')} />
+          <Slider label={t('sound.audioPanel.fadeOut')} value={music.fadeOut} {...AUDIO_LIMITS.musicFade} step={0.1} format={secondsFmt} onChange={(v) => setMusic({ fadeOut: v }, 'audio.music.fadeOut')} />
         </>
       )}
       {error && (

@@ -17,6 +17,7 @@ import type { TrackSlotProps } from './LayoutTrack'
 import { GraphicKindIcon, graphicLabel } from './panels/GraphicsPanel'
 import { followPointer } from './pointer'
 import './panels/graphics.css'
+import { t } from '../../../shared/i18n/t'
 
 const NO_GRAPHICS: Graphic[] = []
 
@@ -100,11 +101,11 @@ export function GraphicsTrack({ px, win, duration, selection, onSelect, scrub, s
     const key = itemKey('graphic', id)
     return group.keys.has(key) ? ` selected in-group${group.group.anchor === key ? ' anchor' : ''}` : ''
   }
-  const groupHint = (id: string): string => (group.keys.has(itemKey('graphic', id)) ? ` · selected: drag to move all ${groupSize}, Ctrl+click to leave it out` : groupSize || !multi ? '' : ' · Ctrl+click to select several')
+  const groupHint = (id: string): string => (group.keys.has(itemKey('graphic', id)) ? ` · ${t('text.track.inGroup', { n: fmt.count(groupSize) })}` : groupSize || !multi ? '' : ` · ${t('text.track.selectSeveral')}`)
   const laneH = 100 / lanes.count
 
   return (
-    <div className="tl-track graphics-track" data-testid="graphics-track" onPointerDown={onBackgroundDown} title="Pop-ups made from captions">
+    <div className="tl-track graphics-track" data-testid="graphics-track" onPointerDown={onBackgroundDown} title={t('text.graphicsTrack.popUpsMadeFrom')}>
       {graphics
         .filter((g) => overlaps(g, win) || g.id === selId)
         .map((g) => {
@@ -120,7 +121,7 @@ export function GraphicsTrack({ px, win, duration, selection, onSelect, scrub, s
               className={`seg graphic-seg ${g.kind}${g.auto ? ' auto' : ''} ${selId === g.id ? 'selected' : ''}${memberClass(g.id)}`}
               style={{ left: g.start * px, width: w, top: `${lane * laneH}%`, height: `${laneH}%`, ['--edge' as string]: `${edgeWidth(w)}px` }}
               onPointerDown={onBlockDown(g)}
-              title={`${label} · ${GRAPHIC_NAMES[g.kind]}${g.auto ? ' (automatic)' : ''} · ${fmt.clock(g.start)} – ${fmt.clock(g.end)}${groupHint(g.id)}`}
+              title={`${label} · ${GRAPHIC_NAMES[g.kind]}${g.auto ? ` ${t('text.graphicsTrack.automatic')}` : ''} · ${fmt.clock(g.start)} – ${fmt.clock(g.end)}${groupHint(g.id)}`}
             >
               <span className="edge left" />
               {w > 22 && lanes.count <= 2 && (
@@ -143,7 +144,7 @@ export function GraphicsTrackLabel(): JSX.Element | null {
   const has = useSyncExternalStore(store.subscribe, () => !!store.state.graphics?.length)
   if (!has) return null
   return (
-    <div className="tl-label graphics-label" title="Pop-ups">
+    <div className="tl-label graphics-label" title={t('text.graphicsTrack.popUps')}>
       <EditorIcon name="burst" size={16} />
     </div>
   )

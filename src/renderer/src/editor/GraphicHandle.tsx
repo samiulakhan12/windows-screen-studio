@@ -20,6 +20,7 @@ import { graphicLabel } from './panels/GraphicsPanel'
 import { followPointer } from './pointer'
 import { previewLabel, usePreviewLook } from './previewLook'
 import type { Selection } from './selection'
+import { t } from '../../../shared/i18n/t'
 
 /** A canvas context to measure text with (hit tests lay text out as the drawing does). */
 let measureCtx: CanvasRenderingContext2D | null = null
@@ -67,10 +68,10 @@ export function GraphicHandles({
   paused: boolean
 }): JSX.Element | null {
   const { store, player } = useEditor()
-  const t = useSyncExternalStore(player.subscribe, () => player.time)
+  const time = useSyncExternalStore(player.subscribe, () => player.time)
   const k = out.w > 0 ? box.w / out.w : 0
-  const rects = useMemo(() => (paused && project.graphics?.length && k > 0 ? graphicRects(measure(), project, t, out.w, out.h) : []), [paused, project, t, out.w, out.h, k])
-  const block = useMemo(() => (paused && project.captions?.studio && captionsOf(project).show && k > 0 ? studioBlockAt(measure(), project, t, out.w, out.h) : null), [paused, project, t, out.w, out.h, k])
+  const rects = useMemo(() => (paused && project.graphics?.length && k > 0 ? graphicRects(measure(), project, time, out.w, out.h) : []), [paused, project, time, out.w, out.h, k])
+  const block = useMemo(() => (paused && project.captions?.studio && captionsOf(project).show && k > 0 ? studioBlockAt(measure(), project, time, out.w, out.h) : null), [paused, project, time, out.w, out.h, k])
   if (!paused || k <= 0) return null
   const byId = new Map((project.graphics ?? []).map((g) => [g.id, g]))
   const selectedId = selection?.kind === 'graphic' ? selection.id : null
@@ -150,7 +151,7 @@ export function GraphicHandles({
           className="caption-block-handle"
           data-testid="caption-block-handle"
           style={{ left: block.box.x * k, top: block.box.y * k, width: block.box.w * k, height: block.box.h * k }}
-          title="Drag the captions to place them, or click to play or pause; Layout › Position puts them back"
+          title={t('text.graphicHandle.dragTheCaptionsTo')}
           onPointerDown={onCaptionDown(block.box)}
         />
       )}
@@ -165,7 +166,7 @@ export function GraphicHandles({
             data-testid="graphic-handle"
             data-graphic-handle={id}
             style={{ left: r.x * k, top: r.y * k, width: r.w * k, height: r.h * k }}
-            aria-label={`${graphicLabel(g)}: drag or use the arrow keys to move it`}
+            aria-label={t('text.graphicHandle.dragOrUseThe', { value: String(graphicLabel(g)) })}
             aria-pressed={selectedId === id}
             onPointerDown={onGraphicDown(g, r)}
             onFocus={() => selectedId !== id && onSelect?.({ kind: 'graphic', id })}

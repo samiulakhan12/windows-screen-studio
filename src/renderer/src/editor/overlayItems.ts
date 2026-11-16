@@ -9,6 +9,8 @@ import type { ImageOverlay, Project } from '../../../shared/types'
 import { preloadOverlay } from '../render/overlayLayer'
 import type { EditorServices } from './context'
 import type { Selection } from './selection'
+import { t } from '../../../shared/i18n/t'
+import { fmt } from '../../../shared/i18n/fmt'
 
 /*
  * Adding image overlays: the one code path for the Images panel (Add image…, stickers), the
@@ -28,10 +30,9 @@ export const ipcMessage = (err: unknown): string => (err instanceof Error ? err.
 
 /** The image extensions that can be added, for dropped files. */
 export const OVERLAY_EXTENSIONS = ['png', 'jpg', 'jpeg', 'webp', 'svg', 'gif']
-export const OVERLAY_FORMATS_TEXT = 'PNG, JPG, WebP, SVG or GIF, up to 25 MB'
 
 function checkRoom({ store }: EditorServices): void {
-  if ((store.state.overlays?.length ?? 0) >= MAX_OVERLAYS) throw new Error(`This video already has ${MAX_OVERLAYS} images.`)
+  if ((store.state.overlays?.length ?? 0) >= MAX_OVERLAYS) throw new Error(t('text.overlayItems.thisVideoAlreadyHas', { n: fmt.count(MAX_OVERLAYS) }))
 }
 
 /**
@@ -89,7 +90,7 @@ const EXT_OF_TYPE: Record<string, string> = { 'image/png': 'png', 'image/jpeg': 
  */
 export async function addOverlayFile(services: EditorServices, file: File, opts: AddOverlayOptions): Promise<ImageOverlay> {
   checkRoom(services)
-  if (file.size > OVERLAY_MAX_BYTES) throw new Error(`The file is too large (${Math.ceil(file.size / 2 ** 20)} MB; ${OVERLAY_MAX_BYTES / 2 ** 20} MB at most).`)
+  if (file.size > OVERLAY_MAX_BYTES) throw new Error(t('text.overlayItems.theFileIsToo', { size: fmt.count(Math.ceil(file.size / 2 ** 20)), max: fmt.count(OVERLAY_MAX_BYTES / 2 ** 20) }))
   const hasExt = OVERLAY_EXTENSIONS.includes(file.name.split('.').pop()?.toLowerCase() ?? '')
   const name = hasExt ? file.name : `${file.name.replace(/\.[^.]*$/, '') || 'Pasted image'}.${EXT_OF_TYPE[file.type] ?? 'png'}`
   const bytes = new Uint8Array(await file.arrayBuffer())
@@ -125,7 +126,7 @@ export async function pasteClipboardImage(services: EditorServices, opts: AddOve
   checkRoom(services)
   // Main sends the size of an image over 25 MB, never its bytes.
   const full = await window.api.clipboardImage(true)
-  if (full && full.size > OVERLAY_MAX_BYTES) throw new Error(`The pasted image is too large (${Math.ceil(full.size / 2 ** 20)} MB; ${OVERLAY_MAX_BYTES / 2 ** 20} MB at most).`)
+  if (full && full.size > OVERLAY_MAX_BYTES) throw new Error(t('text.overlayItems.thePastedImageIs', { size: fmt.count(Math.ceil(full.size / 2 ** 20)), max: fmt.count(OVERLAY_MAX_BYTES / 2 ** 20) }))
   if (!full?.png) return null
   const picked = await window.api.importAssetData(services.store.state.id, 'overlay', 'Pasted image.png', full.png).catch((err: unknown) => {
     throw new Error(ipcMessage(err))

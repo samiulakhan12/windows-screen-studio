@@ -11,6 +11,7 @@ import { useEditor } from '../context'
 import { EditorIcon } from '../EditorIcon'
 import { ipcMessage } from '../overlayItems'
 import './fontPicker.css'
+import { t, type MessageKey } from '../../../../shared/i18n/t'
 
 /** The brand kit's colours first, then `presets` (no repeats): the colour pickers of a title card. */
 export function withBrandColors(project: Pick<Project, 'brand'>, presets: readonly string[]): string[] {
@@ -21,55 +22,55 @@ export function withBrandColors(project: Pick<Project, 'brand'>, presets: readon
 
 /** The name a font shows in the menus, saying when it is missing and what draws instead. */
 export function fontLabel(font: ProjectFont, state: ReturnType<typeof fontState>): string {
-  return state === 'missing' ? `${font.name} (missing: drawn with ${DEFAULT_FONT_LABEL})` : font.name
+  return state === 'missing' ? t('text.fontPicker.missingFont', { name: font.name, fallback: DEFAULT_FONT_LABEL }) : font.name
 }
 
 /* ---------- Captions Studio's font catalogue (docs/design/captions-studio.md §2.6, §6) ---------- */
 
 /** How the menu names the letters a catalogue font has ("Latin · Cyrillic · Vietnamese"). */
-const COVERAGE_WORDS: Partial<Record<FontCoverage, string>> = {
-  latin: 'Latin',
-  cyrillic: 'Cyrillic',
-  greek: 'Greek',
-  vietnamese: 'Vietnamese',
-  bengali: 'Bengali',
-  devanagari: 'Devanagari',
-  arabic: 'Arabic',
-  hebrew: 'Hebrew',
-  thai: 'Thai',
-  'han-sc': 'Chinese (Simplified)',
-  'han-tc': 'Chinese (Traditional)',
-  japanese: 'Japanese',
-  korean: 'Korean'
+const COVERAGE_WORDS: Partial<Record<FontCoverage, MessageKey>> = {
+  latin: 'text.fontPicker.script.latin',
+  cyrillic: 'text.fontPicker.script.cyrillic',
+  greek: 'text.fontPicker.script.greek',
+  vietnamese: 'text.fontPicker.script.vietnamese',
+  bengali: 'text.fontPicker.script.bengali',
+  devanagari: 'text.fontPicker.script.devanagari',
+  arabic: 'text.fontPicker.script.arabic',
+  hebrew: 'text.fontPicker.script.hebrew',
+  thai: 'text.fontPicker.script.thai',
+  'han-sc': 'text.fontPicker.script.hanSc',
+  'han-tc': 'text.fontPicker.script.hanTc',
+  japanese: 'text.fontPicker.script.japanese',
+  korean: 'text.fontPicker.script.korean'
 }
 
 /**
  * The letters a caption language needs, its name, and the script font that draws them when the
  * chosen one cannot (§6.6). Cyrillic and Vietnamese have none: the chosen font's own partner draws them.
  */
-const LANGUAGE_LETTERS: Readonly<Record<string, { coverage: FontCoverage; name: string; partner?: string }>> = {
-  bn: { coverage: 'bengali', name: 'Bengali', partner: 'noto-sans-bengali' },
-  hi: { coverage: 'devanagari', name: 'Hindi', partner: 'noto-sans-devanagari' },
-  mr: { coverage: 'devanagari', name: 'Marathi', partner: 'noto-sans-devanagari' },
-  ar: { coverage: 'arabic', name: 'Arabic', partner: 'noto-sans-arabic' },
-  ur: { coverage: 'arabic', name: 'Urdu', partner: 'noto-sans-arabic' },
-  he: { coverage: 'hebrew', name: 'Hebrew', partner: 'noto-sans-hebrew' },
-  th: { coverage: 'thai', name: 'Thai', partner: 'noto-sans-thai' },
-  ru: { coverage: 'cyrillic', name: 'Russian' },
-  uk: { coverage: 'cyrillic', name: 'Ukrainian' },
-  vi: { coverage: 'vietnamese', name: 'Vietnamese' }
+const LANGUAGE_LETTERS: Readonly<Record<string, { coverage: FontCoverage; name: MessageKey; partner?: string }>> = {
+  bn: { coverage: 'bengali', name: 'text.fontPicker.letters.bn', partner: 'noto-sans-bengali' },
+  hi: { coverage: 'devanagari', name: 'text.fontPicker.letters.hi', partner: 'noto-sans-devanagari' },
+  mr: { coverage: 'devanagari', name: 'text.fontPicker.letters.mr', partner: 'noto-sans-devanagari' },
+  ar: { coverage: 'arabic', name: 'text.fontPicker.letters.ar', partner: 'noto-sans-arabic' },
+  ur: { coverage: 'arabic', name: 'text.fontPicker.letters.ur', partner: 'noto-sans-arabic' },
+  he: { coverage: 'hebrew', name: 'text.fontPicker.letters.he', partner: 'noto-sans-hebrew' },
+  th: { coverage: 'thai', name: 'text.fontPicker.letters.th', partner: 'noto-sans-thai' },
+  ru: { coverage: 'cyrillic', name: 'text.fontPicker.letters.ru' },
+  uk: { coverage: 'cyrillic', name: 'text.fontPicker.letters.uk' },
+  vi: { coverage: 'vietnamese', name: 'text.fontPicker.letters.vi' }
 }
 
 /** "Latin · Cyrillic · Vietnamese", and "One weight" for a single static weight. */
 export function fontBadges(font: CatalogFont): { coverage: string; oneWeight: boolean } {
-  const words = font.coverage.map((c) => COVERAGE_WORDS[c]).filter((w): w is string => !!w)
+  const words = font.coverage.map((c) => COVERAGE_WORDS[c]).filter((k): k is MessageKey => !!k).map((k) => t(k))
   return { coverage: words.join(' · '), oneWeight: Array.isArray(font.weights) && font.weights.length === 1 }
 }
 
 /** Letters a text may hold beyond its language's: its font's partner draws them (graphicNeeds, lookFont). */
-const SCRIPT_LETTERS: readonly { test: RegExp; need: { coverage: FontCoverage; name: string } }[] = [
-  { test: /\p{Script=Cyrillic}/u, need: { coverage: 'cyrillic', name: 'Cyrillic' } },
-  { test: /\p{Script=Greek}/u, need: { coverage: 'greek', name: 'Greek' } }
+const SCRIPT_LETTERS: readonly { test: RegExp; need: { coverage: FontCoverage; name: MessageKey } }[] = [
+  { test: /\p{Script=Cyrillic}/u, need: { coverage: 'cyrillic', name: 'text.fontPicker.letters.cyrillic' } },
+  { test: /\p{Script=Greek}/u, need: { coverage: 'greek', name: 'text.fontPicker.letters.greek' } }
 ]
 
 /**
@@ -79,7 +80,7 @@ const SCRIPT_LETTERS: readonly { test: RegExp; need: { coverage: FontCoverage; n
  */
 export function coverageNote(font: CatalogFont, language: string | undefined, bangla?: string, letters = ''): string | null {
   const byLanguage = language ? LANGUAGE_LETTERS[language.split('-')[0].toLowerCase()] : undefined
-  const needs: { coverage: FontCoverage; name: string; partner?: string }[] = byLanguage ? [byLanguage] : []
+  const needs: { coverage: FontCoverage; name: MessageKey; partner?: string }[] = byLanguage ? [byLanguage] : []
   for (const s of SCRIPT_LETTERS) if (s.test.test(letters) && !needs.some((n) => n.coverage === s.need.coverage)) needs.push(s.need)
   const need = needs.find((n) => !font.coverage.includes(n.coverage))
   if (!need) return null
@@ -88,12 +89,12 @@ export function coverageNote(font: CatalogFont, language: string | undefined, ba
   const own = need.coverage === 'bengali' ? catalogId(bangla) : null
   const walk = needs.filter((n) => !n.partner).map((n) => n.coverage)
   const partnerId = own ?? need.partner ?? catalogId(partnerFor(`${CATALOG_PREFIX}${font.id}`, walk))
-  const partner = (partnerId && catalogFont(partnerId)?.family) ?? 'another font'
-  return `Doesn't have ${need.name} letters: Flown uses ${partner} for them`
+  const partner = (partnerId && catalogFont(partnerId)?.family) ?? t('text.fontPicker.anotherFont')
+  return t('text.fontPicker.lacksLetters', { letters: t(need.name), font: partner })
 }
 
 /** "9.6 MB" (one decimal). */
-export const megabytes = (bytes: number): string => `${(bytes / 1e6).toFixed(1)} MB`
+export const megabytes = (bytes: number): string => t('text.fontPicker.megabytes', { n: fmt.number(bytes / 1e6, { max: 1 }) })
 
 /** The catalogue fonts the menu offers: bundled caption, script and Bangla fonts (not the emoji face), and the downloads. */
 const MENU_FONTS = CATALOG_FONTS.filter((f) => f.group !== 'emoji')
@@ -171,18 +172,18 @@ function CatalogDownload({ font }: { font: CatalogFont }): JSX.Element | null {
         <>
           <span className="hint" role="status">
             {progress?.retryAt
-              ? `The download server is busy. Trying again at ${fmt.time(progress.retryAt, 'seconds')}.`
-              : `Downloading ${font.family}: ${megabytes(progress?.received ?? 0)} of ${size}`}
+              ? t('text.fontPicker.serverBusy', { time: fmt.time(progress.retryAt, 'seconds') })
+              : t('text.fontPicker.downloadingOf', { family: font.family, received: megabytes(progress?.received ?? 0), size })}
           </span>
           <button type="button" className="btn" onClick={() => void window.api.cancelAssetDownload(font.id)}>
-            Cancel
+            {t('common.action.cancel')}
           </button>
         </>
       ) : (
         <>
-          <span className="hint">{font.family} is not on this PC yet{font.download ? `: until it is, captions use ${font.download.until}` : ''}.</span>
+          <span className="hint">{font.download ? t('text.fontPicker.notHereUntil', { family: font.family, until: font.download.until }) : t('text.fontPicker.notHere', { family: font.family })}</span>
           <button type="button" className="btn" onClick={() => void download()}>
-            Download ({size})
+            {t('text.fontPicker.download', { size })}
           </button>
         </>
       )}
@@ -214,7 +215,7 @@ export function FontPicker({
   project,
   value,
   apply,
-  label = 'Font',
+  label = t('text.fontPicker.font'),
   catalogue = false,
   language,
   letters,
@@ -255,7 +256,7 @@ export function FontPicker({
     setBusy(true)
     setError(null)
     try {
-      if (fonts.length >= MAX_PROJECT_FONTS) throw new Error(`This video already has ${MAX_PROJECT_FONTS} fonts.`)
+      if (fonts.length >= MAX_PROJECT_FONTS) throw new Error(t('text.fontPicker.thisVideoAlreadyHas', { n: fmt.count(MAX_PROJECT_FONTS) }))
       const picked = await window.api.pickAsset(project.id, 'font')
       if (!picked) return
       // The same file (stored once) is the same font.
@@ -276,10 +277,10 @@ export function FontPicker({
         <label className="field">
           <span>{label}</span>
           <select value={cat ? `${CATALOG_PREFIX}${cat.id}` : current ? current.id : ''} disabled={busy} data-testid={testId} onChange={(e) => store.update((p) => apply(p, e.target.value || undefined))}>
-            <option value="">{defaultLabel ?? `Default (${DEFAULT_FONT_LABEL})`}</option>
+            <option value="">{defaultLabel ?? t('text.fontPicker.default', { font: DEFAULT_FONT_LABEL })}</option>
             {catalogue ? (
               <>
-                <optgroup label="Caption fonts">
+                <optgroup label={t('text.fontPicker.captionFonts')}>
                   {MENU_FONTS.filter((f) => f.bundled).map((f) => (
                     <option key={f.id} value={`${CATALOG_PREFIX}${f.id}`} style={{ fontFamily: `"${catalogFamily(f.id)}"` }}>
                       {f.family}
@@ -287,7 +288,7 @@ export function FontPicker({
                   ))}
                 </optgroup>
                 {fonts.length > 0 && (
-                  <optgroup label="Your brand fonts">
+                  <optgroup label={t('text.fontPicker.yourBrandFonts')}>
                     {fonts.map((f) => (
                       <option key={f.id} value={f.id}>
                         {fontLabel(f, fontState(project, f.id))}
@@ -295,7 +296,7 @@ export function FontPicker({
                     ))}
                   </optgroup>
                 )}
-                <optgroup label="Download">
+                <optgroup label={t('text.fontPicker.downloadGroup')}>
                   {MENU_FONTS.filter((f) => !f.bundled).map((f) => (
                     <option key={f.id} value={`${CATALOG_PREFIX}${f.id}`}>
                       {`${f.family} (${megabytes(f.files.reduce((n, x) => n + x.bytes, 0))})`}
@@ -313,15 +314,15 @@ export function FontPicker({
           </select>
         </label>
         {/* Not disabled while adding: the button keeps keyboard focus through the file dialog. */}
-        <button type="button" className="btn" data-testid="font-add" title="Add a TTF, OTF or WOFF2 font file" onClick={() => void addFont()}>
-          Add font…
+        <button type="button" className="btn" data-testid="font-add" title={t('text.fontPicker.addATtfOtf')} onClick={() => void addFont()}>
+          {t('text.fontPicker.addFont')}
         </button>
       </div>
-      {busy && <span className="hint">Adding the font…</span>}
+      {busy && <span className="hint">{t('text.fontPicker.addingTheFont')}</span>}
       {cat && badges && (
         <p className="font-badges hint" data-testid={`${testId}-badges`}>
           <span>{badges.coverage}</span>
-          {badges.oneWeight && <span className="font-badge">One weight</span>}
+          {badges.oneWeight && <span className="font-badge">{t('text.fontPicker.oneWeight')}</span>}
         </p>
       )}
       {note && (
@@ -335,7 +336,7 @@ export function FontPicker({
         <p className="callout" role="status" data-testid="font-missing">
           <EditorIcon name="alert" size={16} />
           <span>
-            {current.name} could not be loaded, so this text is drawn with {DEFAULT_FONT_LABEL}. Add the font again to use it.
+            {t('text.fontPicker.notLoaded', { name: current.name, fallback: DEFAULT_FONT_LABEL })}
           </span>
         </p>
       )}

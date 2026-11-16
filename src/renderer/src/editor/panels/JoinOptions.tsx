@@ -9,6 +9,8 @@ import { CUT_HINTS, percentText, secondsText, SLIDE_NAMES } from '../../../../sh
 import { JOIN_DEFAULTS, PUNCH_SCALE } from '../../../../shared/render/joins'
 import type { CutJoin, SlideFrom } from '../../../../shared/types'
 import { holdGesture, useEditor } from '../context'
+import { t } from '../../../../shared/i18n/t'
+import { fmt } from '../../../../shared/i18n/fmt'
 
 /** A slider with its value text, and Page Up / Page Down steps of its own. */
 function JoinSlider(props: {
@@ -98,27 +100,25 @@ export function JoinOptions(props: { join: CutJoin; brand: readonly string[]; na
   )
   const colour = join.color ?? '#000000'
   const swatches = [
-    { color: '#000000', label: 'Black' },
-    { color: '#ffffff', label: 'White' },
-    ...props.brand.map((c, i) => ({ color: c.toLowerCase(), label: `Brand colour ${i + 1}, ${c.toLowerCase()}` }))
+    { color: '#000000', label: t('style.joinOptions.black') },
+    { color: '#ffffff', label: t('style.joinOptions.white') },
+    ...props.brand.map((c, i) => ({ color: c.toLowerCase(), label: t('style.joinOptions.brandColour', { n: fmt.count(i + 1), colour: c.toLowerCase() }) }))
   ].filter((s, i, all) => all.findIndex((x) => x.color === s.color) === i)
   const other = !swatches.some((s) => s.color === colour)
   return (
     <div className="cut-options">
       {join.kind === 'smooth' && (
         <>
-          {length('crossfade', 'Crossfade length')}
-          {size('Punch-in size')}
+          {length('crossfade', t('style.joinOptions.crossfadeLength'))}
+          {size(t('style.joinOptions.punchSize'))}
         </>
       )}
-      {join.kind === 'crossfade' && length('crossfade', 'Length')}
-      {join.kind === 'punch' && size('Size')}
+      {join.kind === 'crossfade' && length('crossfade', t('common.label.length'))}
+      {join.kind === 'punch' && size(t('common.label.size'))}
       {join.kind === 'dip' && (
         <>
-          {length('dip', 'Length')}
-          <span className="field-label" id={`${name}-dip-label`}>
-            Colour
-          </span>
+          {length('dip', t('common.label.length'))}
+          <span className="field-label" id={`${name}-dip-label`}>{t('common.label.colour')}</span>
           <div className="cut-swatches" role="radiogroup" aria-labelledby={`${name}-dip-label`} data-testid="cut-dip-colour" onKeyDown={keepArrows}>
             {swatches.map((s) => (
               <label key={s.color} className={`cut-swatch ${s.color === colour ? 'active' : ''}`} title={s.label}>
@@ -126,19 +126,17 @@ export function JoinOptions(props: { join: CutJoin; brand: readonly string[]; na
                 <span className="cut-swatch-dot" style={{ background: s.color }} aria-hidden="true" />
               </label>
             ))}
-            <label className={`cut-swatch other ${other ? 'active' : ''}`} title="Other colour">
-              <span className="cut-swatch-other">Other…</span>
-              <input type="color" aria-label="Other colour" value={colour} onChange={(e) => onChange({ ...join, color: e.target.value.toLowerCase() }, `${name}-colour`)} />
+            <label className={`cut-swatch other ${other ? 'active' : ''}`} title={t('style.joinOptions.otherColour')}>
+              <span className="cut-swatch-other">{t('style.joinOptions.other')}</span>
+              <input type="color" aria-label={t('style.joinOptions.otherColour')} value={colour} onChange={(e) => onChange({ ...join, color: e.target.value.toLowerCase() }, `${name}-colour`)} />
             </label>
           </div>
         </>
       )}
       {join.kind === 'slide' && (
         <>
-          {length('slide', 'Length')}
-          <span className="field-label" id={`${name}-from-label`}>
-            Comes in from
-          </span>
+          {length('slide', t('common.label.length'))}
+          <span className="field-label" id={`${name}-from-label`}>{t('style.joinOptions.comesInFrom')}</span>
           <div className="cut-radios" role="radiogroup" aria-labelledby={`${name}-from-label`} data-testid="cut-slide-from" onKeyDown={keepArrows}>
             {SLIDES.map((side) => (
               <label key={side} className={`chip ${(join.from ?? 'right') === side ? 'active' : ''}`}>

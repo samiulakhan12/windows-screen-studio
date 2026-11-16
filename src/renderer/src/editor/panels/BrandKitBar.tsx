@@ -12,6 +12,8 @@ import { Section } from '../controls'
 import { EditorIcon } from '../EditorIcon'
 import { useKeymap } from '../keymapContext'
 import { ipcMessage } from '../overlayItems'
+import { t } from '../../../../shared/i18n/t'
+import { fmt } from '../../../../shared/i18n/fmt'
 
 /**
  * "Apply brand kit" at the top of the Style tab (docs/design/brand-kit.md §4.5): copies the kit's
@@ -56,7 +58,7 @@ export function BrandKitBar({ project, onNotice }: { project: Project; onNotice:
           ))
         )
           usable.logo = files.logo
-        else left.push('the logo')
+        else left.push(t('style.brandKitBar.theLogo'))
       }
       for (const f of saved.fonts) {
         const file = files.fonts[f.id]
@@ -73,34 +75,47 @@ export function BrandKitBar({ project, onNotice }: { project: Project; onNotice:
       const full = brandFontsLeftOut(before, saved, usable)
       store.update((p) => applyBrandKit(p, saved, usable))
       player.invalidate()
-      if (store.state === before) return onNotice('Your brand kit is empty: set it up in Settings › Brand kit')
-      const undo = keymap.undo[0] ? ` · ${shortcutLabel(keymap.undo[0])} to undo` : ''
-      const without = [left.length ? `${left.join(', ')} (could not be read)` : '', full.length ? `${full.join(', ')} (the video already has ${MAX_PROJECT_FONTS} fonts)` : ''].filter(Boolean)
-      onNotice(without.length ? `Brand kit applied without ${without.join(', ')}${undo}` : `Brand kit applied${undo}`)
+      if (store.state === before) return onNotice(t('style.brandKitBar.empty'))
+      const keys = keymap.undo[0] ? shortcutLabel(keymap.undo[0]) : null
+      const without = [
+        left.length ? t('style.brandKitBar.unreadable', { names: left.join(', ') }) : '',
+        full.length ? t('style.brandKitBar.tooManyFonts', { names: full.join(', '), max: fmt.count(MAX_PROJECT_FONTS) }) : ''
+      ]
+        .filter(Boolean)
+        .join(', ')
+      onNotice(
+        without
+          ? keys
+            ? t('style.brandKitBar.appliedWithoutUndo', { without, keys })
+            : t('style.brandKitBar.appliedWithout', { without })
+          : keys
+            ? t('style.brandKitBar.appliedUndo', { keys })
+            : t('style.brandKitBar.applied')
+      )
     } catch (err) {
-      onNotice(`The brand kit could not be applied: ${ipcMessage(err)}`)
+      onNotice(t('style.brandKitBar.notApplied', { reason: ipcMessage(err) }))
     } finally {
       setBusy(false)
     }
   }
 
   return (
-    <Section title="Brand kit">
+    <Section title={t('style.brandKitBar.brandKit')}>
       <div className="row-buttons">
         <button
           className="btn"
           data-testid="apply-brand-kit"
           disabled={busy || empty}
           onClick={() => void apply()}
-          title={empty ? 'Set up your brand kit in Settings first' : 'Your logo, colours, fonts, intro, outro and style preset, as one undo step'}
+          title={empty ? t('style.brandKitBar.setUpYourBrand') : t('style.brandKitBar.yourLogoColoursFonts')}
         >
-          <EditorIcon name="sparkle" size={16} /> {busy ? 'Applying…' : 'Apply brand kit'}
+          <EditorIcon name="sparkle" size={16} /> {busy ? t('style.brandKitBar.applying') : t('style.brandKitBar.applyBrandKit')}
         </button>
         <button className="btn ghost" onClick={openBrandKitSettings}>
-          {empty ? 'Set up brand kit…' : 'Edit brand kit…'}
+          {empty ? t('style.brandKitBar.setUpBrandKit') : t('style.brandKitBar.editBrandKit')}
         </button>
       </div>
-      {empty && kit && <p className="hint">Save your logo, colours, fonts, intro and outro once in Settings, then apply them to any video in one click.</p>}
+      {empty && kit && <p className="hint">{t('style.brandKitBar.saveYourLogoColours')}</p>}
     </Section>
   )
 }

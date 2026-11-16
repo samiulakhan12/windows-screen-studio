@@ -5,6 +5,8 @@
  */
 import { useEffect, useRef, useState, type KeyboardEvent as ReactKeyboardEvent } from 'react'
 import { holdGesture, useEditor } from './context'
+import { t, uiLanguage } from '../../../shared/i18n/t'
+import { NumberField } from '../i18n/NumberField'
 
 /** A slider whose readout says "Mixed" when the items differ; the thumb sits at the first item's value. Moving it sets every item. */
 export function MixedSlider(props: {
@@ -19,7 +21,7 @@ export function MixedSlider(props: {
   disabled?: boolean
 }): JSX.Element {
   const { store } = useEditor()
-  const shown = props.mixed ? 'Mixed' : props.format ? props.format(props.value) : String(props.value)
+  const shown = props.mixed ? t('style.mixedControls.mixed') : props.format ? props.format(props.value) : String(props.value)
   return (
     <label className={`slider ${props.mixed ? 'mixed' : ''} ${props.disabled ? 'disabled' : ''}`}>
       <span className="slider-head">
@@ -31,7 +33,7 @@ export function MixedSlider(props: {
       <input
         type="range"
         aria-label={props.label}
-        aria-valuetext={props.mixed ? 'Mixed' : props.format ? props.format(props.value) : undefined}
+        aria-valuetext={props.mixed ? t('style.mixedControls.mixed') : props.format ? props.format(props.value) : undefined}
         min={props.min}
         max={props.max}
         step={props.step}
@@ -64,9 +66,9 @@ export function MixedChips<T extends string | number>({
     <div className="field">
       <span className="field-label">
         {label}
-        {mixed && <span className="mixed-tag">Mixed</span>}
+        {mixed && <span className="mixed-tag">{t('style.mixedControls.mixed')}</span>}
       </span>
-      <div className="chips" role="group" aria-label={mixed ? `${label}, mixed` : label}>
+      <div className="chips" role="group" aria-label={mixed ? t('style.mixedControls.labelMixed', { label: String(label) }) : label}>
         {options.map((o) => {
           const on = !mixed && o.value === value
           return (
@@ -97,7 +99,7 @@ export function MixedToggle({ label, checked, mixed, onChange, disabled }: { lab
     <label className={`toggle ${disabled ? 'disabled' : ''}`}>
       <span>
         {label}
-        {mixed && <span className="mixed-tag">Mixed</span>}
+        {mixed && <span className="mixed-tag">{t('style.mixedControls.mixed')}</span>}
       </span>
       <input ref={ref} type="checkbox" aria-label={label} checked={mixed ? false : checked} disabled={disabled} onChange={(e) => onChange(mixed ? true : e.target.checked)} />
     </label>
@@ -125,9 +127,9 @@ export function MixedColorDots({
     <div className="field">
       <span className="field-label">
         {label}
-        {mixed && <span className="mixed-tag">Mixed</span>}
+        {mixed && <span className="mixed-tag">{t('style.mixedControls.mixed')}</span>}
       </span>
-      <div className="shape-colors" role="group" aria-label={mixed ? `${label}, mixed` : label}>
+      <div className="shape-colors" role="group" aria-label={mixed ? t('style.mixedControls.labelMixed', { label: String(label) }) : label}>
         {presets.map((c) => {
           const on = !mixed && v === c
           return (
@@ -142,8 +144,8 @@ export function MixedColorDots({
             />
           )
         })}
-        <label className={`shape-color custom ${custom ? 'active' : ''}`} title="Pick any colour" style={custom ? { background: value } : undefined}>
-          <input type="color" aria-label={`${label} (any colour)`} value={/^#[0-9a-f]{6}$/i.test(value) ? value : '#ffffff'} onChange={(e) => onChange(e.target.value.toLowerCase(), true)} />
+        <label className={`shape-color custom ${custom ? 'active' : ''}`} title={t('common.colour.pickAny')} style={custom ? { background: value } : undefined}>
+          <input type="color" aria-label={t('common.colour.anyFor', { label: String(label) })} value={/^#[0-9a-f]{6}$/i.test(value) ? value : '#ffffff'} onChange={(e) => onChange(e.target.value.toLowerCase(), true)} />
         </label>
       </div>
     </div>
@@ -189,6 +191,23 @@ export function GroupTimeField({
     e.stopPropagation()
     commit()
   }
+  // English keeps today's number input, which holds what is typed as text; other languages type their own digits (§11.1).
+  if (uiLanguage() !== 'en')
+    return (
+      <NumberField
+        className="shape-time-input"
+        aria-label={label}
+        data-testid={testId}
+        min={min}
+        max={Math.round(max * 100) / 100}
+        step={0.1}
+        placeholder={mixed ? t('style.mixedControls.mixed') : undefined}
+        value={mixed ? NaN : Math.round(value * 10) / 10}
+        onValue={(v) => setDraft(Number.isFinite(v) ? String(v) : '')}
+        onKeyDown={onKeyDown}
+        onBlur={commit}
+      />
+    )
   return (
     <input
       className="shape-time-input"
@@ -198,7 +217,7 @@ export function GroupTimeField({
       min={min}
       max={Math.round(max * 100) / 100}
       step={0.1}
-      placeholder={mixed ? 'Mixed' : undefined}
+      placeholder={mixed ? t('style.mixedControls.mixed') : undefined}
       value={draft ?? (mixed ? '' : (Math.round(value * 10) / 10).toString())}
       onChange={(e) => setDraft(e.target.value)}
       onKeyDown={onKeyDown}

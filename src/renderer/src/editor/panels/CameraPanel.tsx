@@ -1,8 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useSyncExternalStore, type PointerEvent as ReactPointerEvent } from 'react'
 import { cornerRefusal, layoutRefusal, setCornerAt, setLayoutAt } from '../../../../shared/editor/layoutCommands'
-import { LAYOUT_OPTIONS, layoutAt, layoutLabel, layoutSegmentAt, layoutTimeAt, removeLayout, segmentHasCorner, updateLayout } from '../../../../shared/editor/layouts'
-import { CORNER_NAMES } from '../../../../shared/recording/cameraBubble'
-import { AUTO_LAYOUT_HINT } from '../../../../shared/editor/directorCopy'
+import { cornerName, LAYOUT_OPTIONS, layoutAt, layoutLabel, layoutSegmentAt, layoutTimeAt, removeLayout, segmentHasCorner, updateLayout } from '../../../../shared/editor/layouts'
+import { autoLayoutHint } from '../../../../shared/editor/directorCopy'
 import { bandOf } from '../../../../shared/editor/followEdit'
 import { withShortcut } from '../../../../shared/editor/shortcuts'
 import { CORNERS, LOOK_LIMITS } from '../../../../shared/editor/styleDefaults'
@@ -25,12 +24,13 @@ import { fmt } from '../../../../shared/i18n/fmt'
 import '../camera.css'
 import './cursorPanel.css'
 import { CameraColourSection } from './CameraColourSection'
+import { t } from '../../../../shared/i18n/t'
 
 const L = LOOK_LIMITS
 const BORDER_COLORS = [DEFAULT_WEBCAM_BORDER.color, '#000000', '#8b5cf6', '#22d3ee', '#facc15', '#f43f5e']
-const pxFmt = (v: number): string => (v > 0 ? `${Math.round(v)} px` : 'Off')
-const offPct = (v: number): string => (v > 0 ? pctFmt(v) : 'Off')
-const zoomFmt = (v: number): string => `${v.toFixed(1)}×`
+const pxFmt = (v: number): string => (v > 0 ? `${fmt.count(Math.round(v))} px` : t('common.state.off'))
+const offPct = (v: number): string => (v > 0 ? pctFmt(v) : t('common.state.off'))
+const zoomFmt = (v: number): string => `${fmt.number(v, { max: 1 })}×`
 
 type Props = Pick<InspectorProps, 'project' | 'cursor' | 'recorded' | 'hasWebcam' | 'selection' | 'onSelect' | 'onNotice' | 'directorRequest'>
 
@@ -47,23 +47,23 @@ export function CameraPanel({ project, cursor, recorded, hasWebcam, selection, o
   const band = hasWebcam ? bandOf(project) : null
   return (
     <>
-      {!hasWebcam && <p className="hint">{isImported(project) ? IMPORTED_COPY.camera : 'This recording has no camera. Pick a camera on the home screen before recording.'}</p>}
+      {!hasWebcam && <p className="hint">{isImported(project) ? IMPORTED_COPY.camera : t('camera.cameraPanel.thisRecordingHasNo')}</p>}
       {hasWebcam && <DirectorSection project={project} cursor={cursor} recorded={recorded} onSelect={onSelect} onNotice={onNotice} directorRequest={directorRequest} />}
-      <Section title="Camera">
-        <Toggle label="Show camera" checked={hasWebcam && webcam.show} disabled={!hasWebcam} onChange={(v) => set({ show: v })} />
-        <Slider label="Size" value={webcam.size} {...L.webcamSize} step={0.01} format={pctFmt} disabled={off} onChange={(v) => set({ size: v }, 'webcam.size')} />
+      <Section title={t('common.label.camera')}>
+        <Toggle label={t('camera.cameraPanel.showCamera')} checked={hasWebcam && webcam.show} disabled={!hasWebcam} onChange={(v) => set({ show: v })} />
+        <Slider label={t('common.label.size')} value={webcam.size} {...L.webcamSize} step={0.01} format={pctFmt} disabled={off} onChange={(v) => set({ size: v }, 'webcam.size')} />
         <Chips
-          label="Camera shape"
+          label={t('camera.cameraPanel.cameraShape')}
           value={webcam.shape}
           disabled={off}
           onChange={(shape) => set({ shape })}
           options={[
-            { value: 'circle', label: 'Circle' },
-            { value: 'rounded', label: 'Rounded' },
-            { value: 'square', label: 'Square' }
+            { value: 'circle', label: t('camera.cameraPanel.shape.circle') },
+            { value: 'rounded', label: t('camera.cameraPanel.shape.rounded') },
+            { value: 'square', label: t('camera.cameraPanel.shape.square') }
           ]}
         />
-        <div className="corner-grid" role="group" aria-label="Camera corner" title="The camera's corner wherever no layout change chooses another one">
+        <div className="corner-grid" role="group" aria-label={t('camera.cameraPanel.cameraCorner')} title={t('camera.cameraPanel.theCameraSCorner')}>
           {CORNERS.map((c) => (
             <button
               key={c}
@@ -71,8 +71,8 @@ export function CameraPanel({ project, cursor, recorded, hasWebcam, selection, o
               aria-disabled={band ? true : undefined}
               className={`corner ${webcam.corner === c ? 'active' : ''} ${c}`}
               onClick={() => !band && set({ corner: c })}
-              title={c.replace('-', ' ')}
-              aria-label={c.replace('-', ' ')}
+              title={t('camera.cameraPanel.cornerLower', { corner: c })}
+              aria-label={t('camera.cameraPanel.cornerLower', { corner: c })}
             >
               <span />
             </button>
@@ -80,9 +80,9 @@ export function CameraPanel({ project, cursor, recorded, hasWebcam, selection, o
         </div>
       </Section>
 
-      <Section title="Look">
+      <Section title={t('common.label.look')}>
         <Slider
-          label="Border"
+          label={t('camera.cameraPanel.border')}
           value={look.border.width}
           min={WEBCAM_LIMITS.borderWidth.min}
           max={WEBCAM_LIMITS.borderWidth.max}
@@ -92,15 +92,15 @@ export function CameraPanel({ project, cursor, recorded, hasWebcam, selection, o
           onChange={(v) => set({ border: { ...look.border, width: v } }, 'webcam.border.width')}
         />
         <ColorRow
-          label="Border colour"
+          label={t('camera.cameraPanel.borderColour')}
           value={look.border.color}
           presets={BORDER_COLORS}
           disabled={off || look.border.width <= 0}
           onChange={(color, key) => set({ border: { ...look.border, color } }, key)}
           mergeKey="webcam.border.color"
         />
-        <Slider label="Shadow" value={look.shadow} min={0} max={1} step={0.01} format={offPct} disabled={off} onChange={(v) => set({ shadow: v }, 'webcam.shadow')} />
-        <Toggle label="Mirror" title="Show the camera flipped, as in a mirror (how you see yourself)" checked={look.mirror} disabled={off} onChange={(v) => set({ mirror: v })} />
+        <Slider label={t('common.label.shadow')} value={look.shadow} min={0} max={1} step={0.01} format={offPct} disabled={off} onChange={(v) => set({ shadow: v }, 'webcam.shadow')} />
+        <Toggle label={t('camera.cameraPanel.mirror')} title={t('camera.cameraPanel.showTheCameraFlipped')} checked={look.mirror} disabled={off} onChange={(v) => set({ mirror: v })} />
       </Section>
 
       <FramingSection project={project} off={off} set={set} />
@@ -195,12 +195,10 @@ function FramingSection({ project, off, set }: { project: Project; off: boolean;
 
   return (
     <Section
-      title="Framing"
+      title={t('camera.cameraPanel.framing')}
       aside={
         framed && !off ? (
-          <button className="cam-reset" onClick={() => set({ zoom: 1, cropX: 0.5, cropY: 0.5 })} title="Show the whole camera picture, centred">
-            Reset
-          </button>
+          <button className="cam-reset" onClick={() => set({ zoom: 1, cropX: 0.5, cropY: 0.5 })} title={t('camera.cameraPanel.showTheWholeCamera')}>{t('common.action.reset')}</button>
         ) : undefined
       }
     >
@@ -210,9 +208,9 @@ function FramingSection({ project, off, set }: { project: Project; off: boolean;
           style={{ width: PAD_W, height: padH }}
           onPointerDown={onPadDown}
           role="slider"
-          aria-label="Visible part of the camera picture"
-          aria-valuetext={`${Math.round(look.cropX * 100)}% across, ${Math.round(look.cropY * 100)}% down`}
-          title="Drag to choose which part of the camera picture shows"
+          aria-label={t('camera.cameraPanel.visiblePartOfThe')}
+          aria-valuetext={t('camera.cameraPanel.acrossDown', { x: fmt.count(Math.round(look.cropX * 100)), y: fmt.count(Math.round(look.cropY * 100)) })}
+          title={t('camera.cameraPanel.dragToChooseWhich')}
           data-testid="camera-framing"
         >
           <canvas ref={canvasRef} width={PAD_W * 2} height={padH * 2} />
@@ -220,7 +218,7 @@ function FramingSection({ project, off, set }: { project: Project; off: boolean;
         </div>
       )}
       <Slider
-        label="Zoom"
+        label={t('common.label.zoom')}
         value={look.zoom}
         min={WEBCAM_LIMITS.zoom.min}
         max={WEBCAM_LIMITS.zoom.max}
@@ -229,7 +227,7 @@ function FramingSection({ project, off, set }: { project: Project; off: boolean;
         disabled={off}
         onChange={(v) => set({ zoom: v }, 'webcam.zoom')}
       />
-      <p className="hint">Zoom in to fill the camera with your face; drag the box to choose what shows.</p>
+      <p className="hint">{t('camera.cameraPanel.zoomInToFill')}</p>
     </Section>
   )
 }
@@ -244,17 +242,17 @@ function BlurSection({ value, off, set }: { value: number; off: boolean; set: (p
     if (on) void ensureSegmenter()
   }, [on])
   return (
-    <Section title="Background blur">
-      <Slider label="Blur behind you" value={value} min={0} max={1} step={0.01} format={offPct} disabled={off} onChange={(v) => set({ backgroundBlur: v }, 'webcam.backgroundBlur')} />
+    <Section title={t('camera.cameraPanel.backgroundBlur')}>
+      <Slider label={t('camera.cameraPanel.blurBehindYou')} value={value} min={0} max={1} step={0.01} format={offPct} disabled={off} onChange={(v) => set({ backgroundBlur: v }, 'webcam.backgroundBlur')} />
       {state.status === 'failed' ? (
         <p className="callout" role="alert" data-testid="blur-unavailable">
-          Background blur is unavailable: {state.reason}. The camera is shown without it, in the preview and the export.
+          {t('camera.cameraPanel.blurUnavailable', { reason: state.reason })}
         </p>
       ) : (
         <p className="hint" data-testid="blur-status" data-state={on ? state.status : 'off'}>
           {on && state.status === 'loading'
-            ? 'Loading person detection…'
-            : 'Softens the room behind you and keeps you sharp. The person is found on this PC; nothing is uploaded.'}
+            ? t('camera.cameraPanel.loadingPersonDetection')
+            : t('camera.cameraPanel.softensTheRoomBehind')}
         </p>
       )}
     </Section>
@@ -309,7 +307,7 @@ function LayoutSection({
 
   return (
     <Section
-      title="Layout"
+      title={t('common.label.layout')}
       aside={
         target ? (
           <span className="muted small">
@@ -318,20 +316,20 @@ function LayoutSection({
         ) : undefined
       }
     >
-      {hidden && <p className="hint">The camera is hidden: show it to use layouts.</p>}
+      {hidden && <p className="hint">{t('camera.cameraPanel.theCameraIsHidden')}</p>}
       {band && (
         <p className="hint" data-testid="layout-band-hint">
-          While the view follows the action, the camera sits in a band {band === 'top' ? 'at the top' : 'at the bottom'}. Change it in Style › Vertical framing.
+          {band === 'top' ? t('camera.cameraPanel.bandTop') : t('camera.cameraPanel.bandBottom')}
         </p>
       )}
-      <div className="layout-picker" role="group" aria-label="Camera layout">
+      <div className="layout-picker" role="group" aria-label={t('camera.cameraPanel.cameraLayout')}>
         {LAYOUT_OPTIONS.map((o) => (
           <button
             key={o.value}
             className={`layout-option ${current === o.value ? 'active' : ''}`}
             aria-pressed={current === o.value}
             disabled={hidden || (!target && o.value === 'default')}
-            title={target ? `${o.label}: ${o.hint}` : o.value === 'default' ? `${o.hint} (the layout outside any change)` : `Change to ${o.label.toLowerCase()} at the playhead: ${o.hint.toLowerCase()}`}
+            title={target ? t('camera.cameraPanel.layoutTitle', { label: o.label, hint: o.hint }) : o.value === 'default' ? t('camera.cameraPanel.theLayoutOutsideAny', { hint: o.hint }) : t('camera.cameraPanel.changeToAtThe', { label: o.label.toLowerCase(), hint: o.hint.toLowerCase() })}
             onClick={() => pick(o.value)}
           >
             <LayoutGlyph layout={o.value} size={30} />
@@ -341,18 +339,18 @@ function LayoutSection({
       </div>
       {target?.auto && (
         <p className="hint" data-testid="layout-auto-hint">
-          {AUTO_LAYOUT_HINT}
+          {autoLayoutHint()}
         </p>
       )}
       {target ? (
         <div className="layout-actions">
-          <p className="hint">Drag the block on the camera track to move it; drag its ends to change when it starts and stops.</p>
-          <button className="btn ghost danger" onClick={remove} title={withShortcut('Delete this layout change', keymap.deleteSelection)}>
-            <Icon name="trash" size={16} /> Delete
+          <p className="hint">{t('camera.cameraPanel.dragTheBlockOn')}</p>
+          <button className="btn ghost danger" onClick={remove} title={withShortcut(t('camera.cameraPanel.deleteTitle'), keymap.deleteSelection)}>
+            <Icon name="trash" size={16} /> {t('common.action.delete')}
           </button>
         </div>
       ) : (
-        <p className="hint">Pick a layout to switch to it at the playhead, or double-click the camera track on the timeline. Changes animate smoothly in and out.</p>
+        <p className="hint">{t('camera.cameraPanel.pickALayoutTo')}</p>
       )}
     </Section>
   )
@@ -405,15 +403,13 @@ function PositionSection({
     store.update((p) => ({ ...p, layouts: updateLayout(p.layouts, target.id, { corner: undefined }) }))
   }
 
-  const label = target ? 'Camera position' : 'Move camera here from the playhead'
+  const label = target ? t('camera.cameraPanel.cameraPosition') : t('camera.cameraPanel.moveHere')
   return (
     <Section
-      title="Camera position"
+      title={t('camera.cameraPanel.cameraPosition')}
       aside={
         target?.corner && !fixed ? (
-          <button className="cam-reset" onClick={reset} title="Use the camera's default corner (Camera section) in this change">
-            Default
-          </button>
+          <button className="cam-reset" onClick={reset} title={t('camera.cameraPanel.useTheCameraS')}>{t('camera.cameraPanel.default')}</button>
         ) : undefined
       }
     >
@@ -426,8 +422,8 @@ function PositionSection({
             className={`corner ${target && !fixed && current === c ? 'active' : ''} ${c}`}
             aria-pressed={!!target && !fixed && current === c}
             onClick={() => !band && pick(c)}
-            title={target ? `${CORNER_NAMES[c]} during this layout change` : `Move the camera to the ${CORNER_NAMES[c].toLowerCase()} corner from the playhead`}
-            aria-label={`${label}: ${CORNER_NAMES[c].toLowerCase()}`}
+            title={target ? t('camera.cameraPanel.duringThisLayoutChange', { corner: cornerName(c) }) : t('camera.cameraPanel.moveTheCameraTo', { corner: c })}
+            aria-label={t('camera.cameraPanel.positionName', { label, corner: c })}
           >
             <span />
           </button>
@@ -435,12 +431,12 @@ function PositionSection({
       </div>
       <p className="hint">
         {hidden
-          ? 'The camera is hidden: show it to move it.'
+          ? t('camera.cameraPanel.cameraHiddenPosition')
           : fixed
-            ? `${layoutLabel(target!.layout)} has no camera corner.`
+            ? t('camera.cameraPanel.hasNoCameraCorner', { layout: layoutLabel(target!.layout) })
             : target
-              ? 'The corner of the camera during this layout change; it glides there and back.'
-              : 'Pick a corner to move the camera there from the playhead. Elsewhere it stays in the corner chosen above.'}
+              ? t('camera.cameraPanel.theCornerOfThe')
+              : t('camera.cameraPanel.pickACornerTo')}
       </p>
     </Section>
   )
@@ -475,14 +471,14 @@ function ColorRow({
           className={`color-dot ${v === c ? 'active' : ''}`}
           style={{ background: c }}
           disabled={disabled}
-          title={c === DEFAULT_WEBCAM_BORDER.color ? 'White' : c}
-          aria-label={`${label} ${c === DEFAULT_WEBCAM_BORDER.color ? 'white' : c}`}
+          title={c === DEFAULT_WEBCAM_BORDER.color ? t('camera.cameraPanel.white') : c}
+          aria-label={c === DEFAULT_WEBCAM_BORDER.color ? t('camera.cameraPanel.swatchWhite', { label }) : `${label} ${c}`}
           aria-pressed={v === c}
           onClick={() => onChange(c)}
         />
       ))}
-      <label className={`color-dot custom ${custom ? 'active' : ''}`} title="Pick any colour" style={custom ? { background: value } : undefined}>
-        <input type="color" aria-label={`${label} (any colour)`} value={hex} disabled={disabled} onChange={(e) => onChange(e.target.value.toLowerCase(), mergeKey)} />
+      <label className={`color-dot custom ${custom ? 'active' : ''}`} title={t('common.colour.pickAny')} style={custom ? { background: value } : undefined}>
+        <input type="color" aria-label={t('common.colour.anyFor', { label: String(label) })} value={hex} disabled={disabled} onChange={(e) => onChange(e.target.value.toLowerCase(), mergeKey)} />
       </label>
     </div>
   )

@@ -41,8 +41,11 @@ import './clipPanel.css'
 import './silences.css'
 import { CutsSection } from './CutsSection'
 import { CutStyleSection } from './CutStyleSection'
+import { t } from '../../../../shared/i18n/t'
+import { T } from '../../i18n/T'
+import { Rich } from './Rich'
 
-const GAP_TITLE: Record<Gap['kind'], string> = { 'trim-start': 'Trimmed start', cut: 'Cut', 'trim-end': 'Trimmed end' }
+const GAP_TITLE = (): Record<Gap['kind'], string> => ({ 'trim-start': t('style.clipPanel.gap.trimStart'), cut: t('style.clipPanel.gap.cut'), 'trim-end': t('style.clipPanel.gap.trimEnd') })
 
 /* ---------- Clip (cuts, trims, speed) ---------- */
 
@@ -65,58 +68,59 @@ export function ClipPanel(props: InspectorProps): JSX.Element {
   return (
     <>
       <p className="hint">
-        Video length <strong>{fmt.clock(length)}</strong> of {fmt.clock(project.duration)} recorded.
+        {/* Each time is its own text, as in today's markup, so English lays the line out as before. */}
+        <Rich k="style.clipPanel.videoLength" values={{ length: fmt.clock(length), recorded: <>{fmt.clock(project.duration)}</> }} />
       </p>
       {/* Smooth cuts (docs/design/editing-polish.md §2.1): every cut's style. */}
       {selection?.kind !== 'gap' && <CutsSection project={project} />}
       {clip ? (
-        <Section title={`Clip ${clipIndex + 1} of ${clips.length}`}>
+        <Section title={t('style.clipPanel.clipOf', { n: fmt.count(clipIndex + 1), total: fmt.count(clips.length) })}>
           <p className="hint">
-            {fmt.clock(clip.start)} – {fmt.clock(clip.end)} of the recording, plays for {((clip.end - clip.start) / clip.speed).toFixed(1)} s
+            {t('style.clipPanel.clipSpan', { start: fmt.clock(clip.start), end: fmt.clock(clip.end), seconds: fmt.number((clip.end - clip.start) / clip.speed, { max: 1 }) })}
           </p>
           <span className="field-label">
-            <EditorIcon name="speed" size={14} /> Speed
+            <EditorIcon name="speed" size={14} /> {t('common.label.speed')}
           </span>
-          <Chips label="Clip speed" value={clip.speed} onChange={setSpeed} options={SPEED_PRESETS.map((s) => ({ value: s, label: `${s}×` }))} />
+          <Chips label={t('style.clipPanel.clipSpeed')} value={clip.speed} onChange={setSpeed} options={SPEED_PRESETS.map((s) => ({ value: s, label: `${s}×` }))} />
           <button
             className="btn ghost danger"
             disabled={clips.length <= 1}
             onClick={() => props.onDeleteClip(clip.id)}
-            title={clips.length <= 1 ? 'The last clip cannot be removed' : withShortcut('Cut this clip out of the video', keymap.deleteSelection)}
+            title={clips.length <= 1 ? t('style.clipPanel.theLastClipCannot') : withShortcut(t('style.clipPanel.cutClipTitle'), keymap.deleteSelection)}
           >
-            <EditorIcon name="scissors" size={16} /> Delete clip
+            <EditorIcon name="scissors" size={16} /> {t('style.clipPanel.deleteClip')}
           </button>
         </Section>
       ) : selection?.kind === 'gap' ? (
-        <Section title={GAP_TITLE[timelineGaps(clips, project.duration).find((g) => Math.abs(g.start - selection.start) < 1e-6)?.kind ?? 'cut']}>
+        <Section title={GAP_TITLE()[timelineGaps(clips, project.duration).find((g) => Math.abs(g.start - selection.start) < 1e-6)?.kind ?? 'cut']}>
           <p className="hint">
-            {fmt.clock(selection.start)} – {fmt.clock(selection.end)} ({(selection.end - selection.start).toFixed(1)} s) is not in the video.
+            {t('style.clipPanel.gapSpan', { start: fmt.clock(selection.start), end: fmt.clock(selection.end), seconds: fmt.number(selection.end - selection.start, { max: 1 }) })}
           </p>
           <button className="btn" onClick={() => props.onRestore(selection.start, selection.end)}>
-            <EditorIcon name="restore" size={16} /> Restore
+            <EditorIcon name="restore" size={16} /> {t('common.action.restore')}
           </button>
           <CutStyleSection project={project} gap={{ start: selection.start, end: selection.end }} />
         </Section>
       ) : selection?.kind === 'range' ? (
-        <Section title="Selected range">
+        <Section title={t('style.clipPanel.selectedRange')}>
           <p className="hint">
-            {fmt.clock(selection.start)} – {fmt.clock(selection.end)} ({(selection.end - selection.start).toFixed(1)} s)
+            {t('style.clipPanel.rangeSpan', { start: fmt.clock(selection.start), end: fmt.clock(selection.end), seconds: fmt.number(selection.end - selection.start, { max: 1 }) })}
           </p>
-          <button className="btn" onClick={() => props.onCutRange(selection.start, selection.end)} title={withShortcut('Cut this range out of the video', keymap.deleteSelection)}>
-            <EditorIcon name="scissors" size={16} /> Cut range
+          <button className="btn" onClick={() => props.onCutRange(selection.start, selection.end)} title={withShortcut(t('style.clipPanel.cutRangeTitle'), keymap.deleteSelection)}>
+            <EditorIcon name="scissors" size={16} /> {t('style.clipPanel.cutRange')}
           </button>
           <span className="field-label">
-            <EditorIcon name="speed" size={14} /> Speed up or slow down this range
+            <EditorIcon name="speed" size={14} /> {t('style.clipPanel.speedUpOrSlow')}
           </span>
           <Chips
-            label="Range speed"
+            label={t('style.clipPanel.rangeSpeed')}
             value={null}
             onChange={(s) => {
               // A range that changes nothing keeps its selection and adds no undo step.
               const current = store.state.clips
               const next = setRangeSpeed(current, selection.start, selection.end, s)
               if (next === current) {
-                props.onNotice(`Nothing to change: this range is cut or already plays at ${s}×`)
+                props.onNotice(t('style.clipPanel.nothingToChange', { speed: `${s}×` }))
                 return
               }
               store.update((p) => ({ ...p, clips: next }))
@@ -127,27 +131,15 @@ export function ClipPanel(props: InspectorProps): JSX.Element {
           {props.recorded.valid && !project.capture.cursorInVideo && <CursorPathField {...props} range={selection} />}
         </Section>
       ) : (
-        <Section title="Edit">
-          <button className="btn" onClick={props.onSplit} title={withShortcut('Split the clip at the playhead', keymap.split)}>
-            <EditorIcon name="split" size={16} /> Split at playhead
+        <Section title={t('style.clipPanel.edit')}>
+          <button className="btn" onClick={props.onSplit} title={withShortcut(t('style.clipPanel.splitTitle'), keymap.split)}>
+            <EditorIcon name="split" size={16} /> {t('style.clipPanel.splitAtPlayhead')}
           </button>
           <p className="hint">
-            {keymap.split.length ? (
-              <>
-                Press <FirstShortcut accelerators={keymap.split} fallback="" /> to split at the playhead,
-              </>
-            ) : (
-              'Split at the playhead,'
-            )}{' '}
-            select a clip and{' '}
-            {keymap.deleteSelection.length ? (
-              <>
-                press <FirstShortcut accelerators={keymap.deleteSelection} fallback="" />
-              </>
-            ) : (
-              'use Delete clip'
-            )}{' '}
-            to cut it, or <kbd>Shift</kbd>+drag on the clip track to select a range. Drag the yellow handles to trim.
+            {keymap.split.length ? <Rich k="style.clipPanel.editHint.pressSplit" values={{ split: <FirstShortcut accelerators={keymap.split} fallback="" /> }} /> : t('style.clipPanel.editHint.split')}{' '}
+            {t('style.clipPanel.editHint.selectClip')}{' '}
+            {keymap.deleteSelection.length ? <Rich k="style.clipPanel.editHint.pressDelete" values={{ delete: <FirstShortcut accelerators={keymap.deleteSelection} fallback="" /> }} /> : t('style.clipPanel.editHint.useDelete')}{' '}
+            <Rich k="style.clipPanel.editHint.toCut" />
           </p>
         </Section>
       )}
@@ -161,7 +153,7 @@ export function ClipPanel(props: InspectorProps): JSX.Element {
             props.onSelect(null)
           }}
         >
-          <EditorIcon name="restore" size={16} /> Restore the whole recording
+          <EditorIcon name="restore" size={16} /> {t('style.clipPanel.restoreTheWholeRecording')}
         </button>
       )}
     </>
@@ -182,23 +174,17 @@ function CursorPathField(props: InspectorProps & { range: { start: number; end: 
   return (
     <div className="cursor-path" data-testid="cursor-path">
       <span className="field-label">
-        <EditorIcon name="crosshair" size={14} /> Cursor path
+        <EditorIcon name="crosshair" size={14} /> {t('style.clipPanel.cursorPath')}
       </span>
       <div className="row start cursor-path-actions">
-        <button className="btn" onClick={() => input.setPathRange(range, 'straight')} title="Replace the cursor moves in this range with straight, smooth glides">
-          Straighten
-        </button>
-        <button className="btn" onClick={() => input.setPathRange(range, 'recorded')} title="Keep the cursor moves in this range exactly as recorded">
-          As recorded
-        </button>
+        <button className="btn" onClick={() => input.setPathRange(range, 'straight')} title={t('style.clipPanel.replaceTheCursorMoves')}>{t('style.clipPanel.straighten')}</button>
+        <button className="btn" onClick={() => input.setPathRange(range, 'recorded')} title={t('style.clipPanel.keepTheCursorMoves')}>{t('style.clipPanel.asRecorded')}</button>
         {painted && (
-          <button className="btn ghost" onClick={() => input.setPathRange(range, null)} title="Let this range follow the Straighten moves option again">
-            Reset
-          </button>
+          <button className="btn ghost" onClick={() => input.setPathRange(range, null)} title={t('style.clipPanel.letThisRangeFollow')}>{t('common.action.reset')}</button>
         )}
       </div>
       <p className="hint" data-testid="cursor-path-summary">
-        {plural(summary.moves, 'move')} here · {summary.straightened} straightened
+        {t('style.clipPanel.pathSummary', { count: summary.moves, n: fmt.count(summary.moves), straightened: fmt.count(summary.straightened) })}
       </p>
     </div>
   )
@@ -246,27 +232,29 @@ let lastChoice: {
   silenceAction: 'cut'
 }
 
-const MODE_OPTIONS: { value: SmartMode; label: string; title: string }[] = [
-  { value: 'idle', label: 'Idle parts', title: 'Still picture, nothing heard, mouse and keyboard at rest' },
-  { value: 'silence', label: 'Silences', title: 'Pauses where nothing is heard' }
+const MODE_OPTIONS = (): { value: SmartMode; label: string; title: string }[] => [
+  { value: 'idle', label: t('style.clipPanel.mode.idle'), title: t('style.clipPanel.mode.idle.title') },
+  { value: 'silence', label: t('style.clipPanel.mode.silence'), title: t('style.clipPanel.mode.silence.title') }
 ]
 
-const ACTION_LABEL: Record<string, string> = { 2: '2×', 4: '4×', 8: '8×', cut: 'Cut' }
-const ACTION_TITLE: Record<string, string> = {
-  2: 'Play idle parts twice as fast',
-  4: 'Play idle parts four times as fast',
-  8: 'Play idle parts eight times as fast',
-  cut: 'Remove idle parts from the video'
-}
-const SILENCE_ACTION_TITLE: Record<string, string> = {
-  2: 'Play pauses twice as fast',
-  4: 'Play pauses four times as fast',
-  8: 'Play pauses eight times as fast',
-  cut: 'Remove pauses from the video'
-}
+const ACTION_LABEL = (): Record<string, string> => ({ 2: '2×', 4: '4×', 8: '8×', cut: t('common.action.cut') })
+const ACTION_TITLE = (): Record<string, string> => ({
+  2: t('style.clipPanel.action.idle2'),
+  4: t('style.clipPanel.action.idle4'),
+  8: t('style.clipPanel.action.idle8'),
+  cut: t('style.clipPanel.action.idleCut')
+})
+const SILENCE_ACTION_TITLE = (): Record<string, string> => ({
+  2: t('style.clipPanel.action.silence2'),
+  4: t('style.clipPanel.action.silence4'),
+  8: t('style.clipPanel.action.silence8'),
+  cut: t('style.clipPanel.action.silenceCut')
+})
 
-const plural = (n: number, word: string): string => `${n} ${word}${n === 1 ? '' : 's'}`
-const seconds = (s: number): string => (s < 60 ? `${s.toFixed(1)} s` : fmt.clock(s))
+const seconds = (s: number): string => (s < 60 ? t('style.clipPanel.seconds', { n: fmt.number(s, { max: 1 }) }) : fmt.clock(s))
+/** "3 idle parts", "1 silence": the parts found, counted. */
+const idleParts = (n: number): string => t('style.clipPanel.idleParts', { count: n, n: fmt.count(n) })
+const silences = (n: number): string => t('style.clipPanel.silences', { count: n, n: fmt.count(n) })
 const partKey = (r: TimeRange): string => `${r.start.toFixed(3)}:${r.end.toFixed(3)}`
 
 function SmartSpeed(props: InspectorProps): JSX.Element {
@@ -436,9 +424,16 @@ function SmartSpeed(props: InspectorProps): JSX.Element {
     store.update((p) => recordAutoCuts(p, applySmartSpeed(p.clips, ranges, currentAction), ranges, currentAction, mode === 'idle' ? 'smart-speed' : 'silences'))
     const shorter = before - outputDuration(store.state.clips)
     onSelect(null)
-    const noun = mode === 'idle' ? 'idle part' : 'silence'
-    const what = currentAction === 'cut' ? `Cut ${plural(chosen.length, noun)}` : `Sped up ${plural(chosen.length, noun)} ${currentAction}×`
-    onNotice(`${what}: the video is ${seconds(shorter)} shorter${undoHint(keymap)}`)
+    const values = { count: chosen.length, n: fmt.count(chosen.length), speed: `${currentAction}×`, shorter: seconds(shorter) }
+    const done =
+      mode === 'idle'
+        ? currentAction === 'cut'
+          ? t('style.clipPanel.done.cutIdle', values)
+          : t('style.clipPanel.done.speedIdle', values)
+        : currentAction === 'cut'
+          ? t('style.clipPanel.done.cutSilences', values)
+          : t('style.clipPanel.done.speedSilences', values)
+    onNotice(`${done}${undoHint(keymap)}`)
   }
 
   const toggle = (key: string, on: boolean): void => {
@@ -450,44 +445,43 @@ function SmartSpeed(props: InspectorProps): JSX.Element {
 
   return (
     <div className="smart-speed" ref={boxRef} data-testid="smart-speed">
-      <Section title="Smart speed">
+      <Section title={t('style.clipPanel.smartSpeed')}>
         <div className="smart-mode">
-          <Chips label="Smart speed mode" value={mode} onChange={(v) => choose({ mode: v })} options={MODE_OPTIONS} />
+          <Chips label={t('style.clipPanel.smartSpeedMode')} value={mode} onChange={(v) => choose({ mode: v })} options={MODE_OPTIONS()} />
         </div>
         {mode === 'idle' ? (
           <>
             <p className="hint">
-              {detector === 'speech' ? IDLE_VOICE_HINT : 'Speeds up or cuts the parts where nothing happens: the picture stays still, nothing is heard, and you did not move, click, scroll or type.'}
+              {detector === 'speech' ? IDLE_VOICE_HINT : t('style.clipPanel.speedsUpOrCuts')}
             </p>
             {keep.length > 0 && <TitlesKept titles={!!titles?.length} freezes={!!freezes?.length} />}
-            {!cursor.valid && <p className="hint">This recording has no mouse or keyboard data, so only the picture decides.</p>}
-            <span className="field-label">Idle for at least</span>
-            <Chips label="Minimum idle length" value={minIdle} onChange={(v) => choose({ minIdle: v })} options={MIN_IDLE_CHOICES.map((s) => ({ value: s, label: `${s} s` }))} />
+            {!cursor.valid && <p className="hint">{t('style.clipPanel.thisRecordingHasNo')}</p>}
+            <span className="field-label">{t('style.clipPanel.idleForAtLeast')}</span>
+            <Chips label={t('style.clipPanel.minimumIdleLength')} value={minIdle} onChange={(v) => choose({ minIdle: v })} options={MIN_IDLE_CHOICES.map((s) => ({ value: s, label: t('style.clipPanel.seconds', { n: fmt.number(s) }) }))} />
             <span className="field-label">
-              <EditorIcon name="speed" size={14} /> Then
+              <EditorIcon name="speed" size={14} /> {t('style.clipPanel.then')}
             </span>
             <Chips
-              label="Smart speed action"
+              label={t('style.clipPanel.smartSpeedAction')}
               value={action}
               onChange={(v) => choose({ action: v })}
-              options={SMART_SPEED_ACTIONS.map((a) => ({ value: a, label: ACTION_LABEL[a], title: ACTION_TITLE[a] }))}
+              options={SMART_SPEED_ACTIONS.map((a) => ({ value: a, label: ACTION_LABEL()[a], title: ACTION_TITLE()[a] }))}
             />
             {!idlePlan ? (
               <>
                 {failure && (
                   <p className="callout" role="alert" data-testid="smart-speed-error">
                     <EditorIcon name="alert" size={16} />
-                    <span>The recording could not be analysed: {failure}.</span>
+                    <span>{t('style.clipPanel.notAnalysed', { reason: failure })}</span>
                   </p>
                 )}
                 <button className="btn" onClick={() => void find()} disabled={busy}>
                   {busy ? (
                     <>
-                      <span className="smart-spinner" aria-hidden="true" /> Looking for idle parts…
-                    </>
+                      <span className="smart-spinner" aria-hidden="true" /> {t('style.clipPanel.lookingForIdleParts')}</>
                   ) : (
                     <>
-                      <EditorIcon name="sparkle" size={16} /> {failure ? 'Try again' : 'Find idle parts'}
+                      <EditorIcon name="sparkle" size={16} /> {failure ? t('common.action.tryAgain') : t('style.clipPanel.findIdleParts')}
                     </>
                   )}
                 </button>
@@ -499,16 +493,18 @@ function SmartSpeed(props: InspectorProps): JSX.Element {
                 onToggle={toggle}
                 summary={
                   idlePlan.parts.length === 0
-                    ? `No idle parts of ${minIdle} s or more${action === 'cut' ? '' : ' to speed up'}.`
+                    ? action === 'cut'
+                      ? t('style.clipPanel.none.idle', { n: fmt.number(minIdle) })
+                      : t('style.clipPanel.none.idleSpeed', { n: fmt.number(minIdle) })
                     : null
                 }
-                noun="idle part"
-                listLabel="Idle parts"
+                count={idleParts}
+                listLabel={t('style.clipPanel.list.idle')}
                 chosen={chosen.length}
                 saved={saved}
                 apply={
                   <button className="btn primary" disabled={!chosen.length} onClick={apply}>
-                    <EditorIcon name="speed" size={16} /> {action === 'cut' ? `Cut ${plural(chosen.length, 'part')}` : `Speed up ${plural(chosen.length, 'part')} ${action}×`}
+                    <EditorIcon name="speed" size={16} /> {action === 'cut' ? t('style.clipPanel.apply.cutParts', { count: chosen.length, n: fmt.count(chosen.length) }) : t('style.clipPanel.apply.speedParts', { count: chosen.length, n: fmt.count(chosen.length), speed: `${action}×` })}
                   </button>
                 }
                 onSelect={onSelect}
@@ -518,7 +514,7 @@ function SmartSpeed(props: InspectorProps): JSX.Element {
         ) : (
           <>
             <p className="hint">
-              {detector === 'speech' ? SILENCES_VOICE_HINT : 'Cuts or speeds up the pauses where nothing is heard, keeping a little of the silence next to the sound so no word is clipped.'}
+              {detector === 'speech' ? SILENCES_VOICE_HINT : t('style.clipPanel.cutsOrSpeedsUp')}
             </p>
             {detector && sources.length > 0 && (
               <p className="hint silence-detector" data-testid="silence-detector" data-detector={detector}>
@@ -530,22 +526,27 @@ function SmartSpeed(props: InspectorProps): JSX.Element {
               <p className="callout silence-callout" data-testid="silence-unavailable">
                 <EditorIcon name="mute" size={16} />
                 <span>
-                  This recording has no sound, so it has no pauses to remove.{' '}
-                  <button className="link" onClick={() => choose({ mode: 'idle' })}>
-                    Find idle parts
-                  </button>{' '}
-                  instead: the moments where the picture and the mouse rest.
+                  <Rich
+                    k="style.clipPanel.noSound"
+                    tags={{
+                      link: (c) => (
+                        <button className="link" onClick={() => choose({ mode: 'idle' })}>
+                          {c}
+                        </button>
+                      )
+                    }}
+                  />
                 </span>
               </p>
             ) : sources.length === 0 ? (
               <p className="callout silence-callout" data-testid="silence-unavailable">
                 <EditorIcon name="mute" size={16} />
-                <span>The recording&rsquo;s sound is muted, so nothing can be told apart from silence. Turn the sound on in the Audio tab to find its pauses.</span>
+                <span>{t('style.clipPanel.theRecordingsSoundIs')}</span>
               </p>
             ) : (
               <>
                 <Slider
-                  label="Silent for at least"
+                  label={t('style.clipPanel.silentForAtLeast')}
                   value={minSilence}
                   min={SILENCE_LENGTH.min}
                   max={SILENCE_LENGTH.max}
@@ -554,7 +555,7 @@ function SmartSpeed(props: InspectorProps): JSX.Element {
                   onChange={(v) => choose({ minSilence: v })}
                 />
                 <Slider
-                  label="Keep next to the sound"
+                  label={t('style.clipPanel.keepNextToThe')}
                   value={padding}
                   min={SILENCE_PADDING.min}
                   max={SILENCE_PADDING.max}
@@ -563,38 +564,35 @@ function SmartSpeed(props: InspectorProps): JSX.Element {
                   onChange={(v) => choose({ padding: v })}
                 />
                 <span className="field-label">
-                  <EditorIcon name="speed" size={14} /> Then
+                  <EditorIcon name="speed" size={14} /> {t('style.clipPanel.then')}
                 </span>
                 <Chips
-                  label="Silence action"
+                  label={t('style.clipPanel.silenceAction')}
                   value={silenceAction}
                   onChange={(v) => choose({ silenceAction: v })}
-                  options={SMART_SPEED_ACTIONS.map((a) => ({ value: a, label: ACTION_LABEL[a], title: SILENCE_ACTION_TITLE[a] }))}
+                  options={SMART_SPEED_ACTIONS.map((a) => ({ value: a, label: ACTION_LABEL()[a], title: SILENCE_ACTION_TITLE()[a] }))}
                 />
                 {!silencePlan ? (
                   <>
                     {soundFailed && !listening && (
                       <p className="callout" role="alert" data-testid="silence-error">
                         <EditorIcon name="alert" size={16} />
-                        <span>The sound of the recording could not be measured.</span>
+                        <span>{t('style.clipPanel.theSoundOfThe')}</span>
                       </p>
                     )}
                     <button className="btn" onClick={() => void findSilences()} disabled={listening}>
                       {listening ? (
                         <>
-                          <span className="smart-spinner" aria-hidden="true" /> Listening for pauses…
-                        </>
+                          <span className="smart-spinner" aria-hidden="true" /> {t('style.clipPanel.listeningForPauses')}</>
                       ) : (
                         <>
-                          <EditorIcon name="sparkle" size={16} /> {soundFailed ? 'Try again' : 'Find silences'}
+                          <EditorIcon name="sparkle" size={16} /> {soundFailed ? t('common.action.tryAgain') : t('style.clipPanel.findSilences')}
                         </>
                       )}
                     </button>
                   </>
                 ) : heard && heard.length === 0 ? (
-                  <p className="smart-summary" role="status" data-testid="silence-none">
-                    Nothing is heard in this recording, so there is no sound to keep and nothing is removed.
-                  </p>
+                  <p className="smart-summary" role="status" data-testid="silence-none">{t('style.clipPanel.nothingIsHeardIn')}</p>
                 ) : (
                   <PartList
                     parts={silencePlan.parts}
@@ -602,17 +600,19 @@ function SmartSpeed(props: InspectorProps): JSX.Element {
                     onToggle={toggle}
                     summary={
                       silencePlan.parts.length === 0
-                        ? `No pauses of ${minSilence.toFixed(1)} s or more${silenceAction === 'cut' ? '' : ' to speed up'}.`
+                        ? silenceAction === 'cut'
+                          ? t('style.clipPanel.none.silences', { n: fmt.number(minSilence, { max: 1 }) })
+                          : t('style.clipPanel.none.silencesSpeed', { n: fmt.number(minSilence, { max: 1 }) })
                         : null
                     }
-                    noun="silence"
-                    listLabel="Silences"
+                    count={silences}
+                    listLabel={t('style.clipPanel.list.silences')}
                     chosen={chosen.length}
                     saved={saved}
                     apply={
                       <button className="btn primary" disabled={!chosen.length} onClick={apply}>
                         <EditorIcon name={silenceAction === 'cut' ? 'scissors' : 'speed'} size={16} />{' '}
-                        {silenceAction === 'cut' ? `Cut ${plural(chosen.length, 'silence')}` : `Speed up ${plural(chosen.length, 'silence')} ${silenceAction}×`}
+                        {silenceAction === 'cut' ? t('style.clipPanel.apply.cutSilences', { count: chosen.length, n: fmt.count(chosen.length) }) : t('style.clipPanel.apply.speedSilences', { count: chosen.length, n: fmt.count(chosen.length), speed: `${silenceAction}×` })}
                       </button>
                     }
                     onSelect={onSelect}
@@ -629,10 +629,9 @@ function SmartSpeed(props: InspectorProps): JSX.Element {
 
 /** Why the time under a title card or at a freeze frame is never listed. */
 function TitlesKept({ titles, freezes }: { titles: boolean; freezes: boolean }): JSX.Element {
-  const what = titles && freezes ? 'Title cards and freeze frames stay' : freezes ? 'Freeze frames stay' : 'Title cards stay'
   return (
     <p className="hint" data-testid="smart-speed-titles">
-      {what} as they are: the time they are on screen is never sped up or cut.
+      {titles && freezes ? t('style.clipPanel.kept.both') : freezes ? t('style.clipPanel.kept.freezes') : t('style.clipPanel.kept.titles')}
     </p>
   )
 }
@@ -643,7 +642,7 @@ function PartList({
   skipped,
   onToggle,
   summary,
-  noun,
+  count,
   listLabel,
   chosen,
   saved,
@@ -656,7 +655,8 @@ function PartList({
   onToggle: (key: string, on: boolean) => void
   /** Shown instead of the count when nothing was found. */
   summary: string | null
-  noun: string
+  /** The chosen parts, counted ("3 idle parts"). */
+  count: (n: number) => string
   listLabel: string
   chosen: number
   saved: number
@@ -669,8 +669,11 @@ function PartList({
       <p className="smart-summary" role="status">
         {summary ?? (
           <>
-            <strong>{plural(chosen, noun)}</strong>
-            {chosen < parts.length && ` of ${parts.length}`} · saves <strong>{seconds(saved)}</strong>
+            <T
+              k={chosen < parts.length ? 'style.clipPanel.summaryOf' : 'style.clipPanel.summary'}
+              values={{ chosen: count(chosen), total: fmt.count(parts.length), saved: seconds(saved) }}
+              tags={{ b: (c) => <strong>{c}</strong> }}
+            />
           </>
         )}
       </p>
@@ -683,10 +686,10 @@ function PartList({
             const length = p.length ?? p.end - p.start
             return (
               <li key={key} className={on ? '' : 'skipped'}>
-                <input type="checkbox" checked={on} aria-label={`Include ${range}`} onChange={(e) => onToggle(key, e.target.checked)} />
+                <input type="checkbox" checked={on} aria-label={t('style.clipPanel.include', { range: String(range) })} onChange={(e) => onToggle(key, e.target.checked)} />
                 <button
                   className="smart-range"
-                  title="Select this part on the timeline"
+                  title={t('style.clipPanel.selectThisPartOn')}
                   onClick={() => {
                     onSelect({ kind: 'range', start: p.start, end: p.end })
                     player.seek(p.start)
@@ -695,7 +698,8 @@ function PartList({
                   {range}
                 </button>
                 <span className="smart-saving">
-                  {length.toFixed(1)} s<span className="muted"> · −{seconds(p.saved)}</span>
+                  {t('style.clipPanel.seconds', { n: fmt.number(length, { max: 1 }) })}
+                  <span className="muted"> · −{seconds(p.saved)}</span>
                 </span>
               </li>
             )

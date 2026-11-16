@@ -4,7 +4,7 @@
  * already smooth), and Give them the same style for cuts that have their own. Each change is one
  * store.update (a slider's drag merges into one); notices go to the transport's live region.
  */
-import { cutsLine, CUT_KINDS, ownLine } from '../../../../shared/editor/cutsCopy'
+import { cutsLine, CUT_KINDS, ownLine, sameStyle } from '../../../../shared/editor/cutsCopy'
 import { cutCount, cutsWithoutOwnStyle, giveSameStyle, joinName, withJoinAll } from '../../../../shared/editor/joinsEdit'
 import { undoHint } from '../../../../shared/editor/shortcuts'
 import type { CutJoin, JoinKind, Project } from '../../../../shared/types'
@@ -16,6 +16,7 @@ import { useGroup } from '../groupContext'
 import { useKeymap } from '../keymapContext'
 import { JoinOptions } from './JoinOptions'
 import './cuts.css'
+import { t } from '../../../../shared/i18n/t'
 
 export function CutsSection(props: { project: Project }): JSX.Element | null {
   const { store } = useEditor()
@@ -31,11 +32,11 @@ export function CutsSection(props: { project: Project }): JSX.Element | null {
   const setAll = (join: CutJoin, key?: string): void => store.update((p) => withJoinAll(p, join), key)
   return (
     <div className="cuts-section" data-testid="cuts-section">
-      <Section title="Cuts">
+      <Section title={t('style.cutsSection.cuts')}>
         <p className="hint">{cutsLine(n)}</p>
         <label className="field cut-every">
-          <span className="field-label">Every cut</span>
-          <select data-testid="cut-every" aria-label="Every cut" value={every} onChange={(e) => setAll({ kind: e.target.value as JoinKind })}>
+          <span className="field-label">{t('style.cutsSection.everyCut')}</span>
+          <select data-testid="cut-every" aria-label={t('style.cutsSection.everyCut')} value={every} onChange={(e) => setAll({ kind: e.target.value as JoinKind })}>
             {CUT_KINDS.map((k) => (
               <option key={k} value={k}>
                 {joinName(k)}
@@ -48,12 +49,12 @@ export function CutsSection(props: { project: Project }): JSX.Element | null {
           className="btn"
           data-testid="cut-smooth-all"
           disabled={smooth}
-          title={smooth ? 'Every cut is already smooth' : 'Crossfades on the screen, punch-ins on the camera'}
+          title={smooth ? t('style.cutsSection.everyCutIsAlready') : t('style.cutsSection.crossfadesOnTheScreen')}
           onClick={() => runSmoothAllCuts(store, notice, undoHint(keymap))}
         >
-          <EditorIcon name="sparkle" size={16} /> Smooth all cuts
+          <EditorIcon name="sparkle" size={16} /> {t('style.cutsSection.smoothAllCuts')}
         </button>
-        {smooth && <p className="hint">Every cut is already smooth</p>}
+        {smooth && <p className="hint">{t('style.cutsSection.everyCutIsAlready')}</p>}
         {own > 0 && (
           <>
             <p className="hint">{ownLine(own)}</p>
@@ -62,11 +63,9 @@ export function CutsSection(props: { project: Project }): JSX.Element | null {
               data-testid="cut-same-style"
               onClick={() => {
                 store.update(giveSameStyle)
-                notice(`Every cut has the same style${undoHint(keymap)}`)
+                notice(`${sameStyle()}${undoHint(keymap)}`)
               }}
-            >
-              Give them the same style
-            </button>
+            >{t('style.cutsSection.giveThemTheSame')}</button>
           </>
         )}
       </Section>

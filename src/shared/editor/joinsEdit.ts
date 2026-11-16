@@ -8,6 +8,7 @@ import { planOf } from '../engine/freeze'
 import { cutsOf, smoothAt, type CutRef } from '../render/joins'
 import { fmt } from '../i18n/fmt'
 import type { CutJoin, CutStyle, Project, ProjectJoins } from '../types'
+import { t, type MessageKey } from '../i18n/t'
 
 const SMOOTH: CutJoin = { kind: 'smooth' }
 
@@ -131,27 +132,28 @@ export function cutAt(project: Project, start: number): CutRef | null {
   return k < 0 ? null : cutsIn(project)[k]
 }
 
-const NAMES: Record<CutJoin['kind'], string> = {
-  cut: 'Hard cut',
-  smooth: 'Smooth',
-  crossfade: 'Crossfade',
-  dip: 'Dip to colour',
-  slide: 'Slide',
-  punch: 'Punch-in'
+/** The message of each cut style's name. */
+const NAMES: Readonly<Record<CutJoin['kind'], MessageKey>> = {
+  cut: 'style.cuts.name.cut',
+  smooth: 'style.cuts.name.smooth',
+  crossfade: 'style.cuts.name.crossfade',
+  dip: 'style.cuts.name.dip',
+  slide: 'style.cuts.name.slide',
+  punch: 'style.cuts.name.punch'
 }
 
 /** A style's name in the UI ("Hard cut", "Smooth", "Crossfade"). */
 export function joinName(kind: CutJoin['kind'] | null): string {
-  return NAMES[kind ?? 'cut']
+  return t(NAMES[kind ?? 'cut'])
 }
 
 /** A join's name in the UI with its length or size ("Crossfade, 0.15 s", "Punch-in, 110 %"). */
 export function joinLabel(join: CutJoin | null): string {
-  if (!join || join.kind === 'cut') return NAMES.cut
-  if (join.kind === 'punch') return `${NAMES.punch}, ${Math.round((join.scale ?? 1.1) * 100)} %`
-  if (join.kind === 'smooth') return NAMES.smooth
+  if (!join || join.kind === 'cut') return t(NAMES.cut)
+  if (join.kind === 'punch') return t('style.cuts.labelPercent', { name: t(NAMES.punch), n: fmt.count(Math.round((join.scale ?? 1.1) * 100)) })
+  if (join.kind === 'smooth') return t(NAMES.smooth)
   const d = join.duration ?? (join.kind === 'dip' ? 0.5 : join.kind === 'slide' ? 0.4 : 0.15)
-  return `${NAMES[join.kind]}, ${Number(d.toFixed(2))} s`
+  return t('style.cuts.labelSeconds', { name: t(NAMES[join.kind]), n: fmt.number(Number(d.toFixed(2))) })
 }
 
 const gapOf = (project: Project, c: CutRef): { start: number; end: number } => ({ start: project.clips[c.index - 1].end, end: project.clips[c.index].start })

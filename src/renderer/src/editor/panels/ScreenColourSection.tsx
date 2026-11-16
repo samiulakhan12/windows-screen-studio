@@ -6,10 +6,11 @@
 import type { Project } from '../../../../shared/types'
 import { Section } from '../controls'
 import { ColourControls } from './ColourControls'
+import { t } from '../../../../shared/i18n/t'
 
 export function ScreenColourSection(props: { project: Project }): JSX.Element {
   return (
-    <Section title="Screen colour">
+    <Section title={t('style.screenColourSection.screenColour')}>
       <div data-testid="screen-colour-section">
         <ColourControls project={props.project} which="screen" />
       </div>

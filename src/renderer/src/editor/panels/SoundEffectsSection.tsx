@@ -17,17 +17,44 @@ import { Slider } from '../controls'
 import { createAudio } from '../media'
 import { librarySoundUrl, spaceToggles } from './MusicLibrarySection'
 import './soundLibrary.css'
+import { t } from '../../../../shared/i18n/t'
+import { fmt } from '../../../../shared/i18n/fmt'
+import { sfxName } from '../../../../shared/audio/soundNames'
 
-const RULES: readonly { rule: SfxRule; label: string; use: SfxUse }[] = [
-  { rule: 'zoomIn', label: 'Zooming in', use: 'zoom-in' },
-  { rule: 'zoomOut', label: 'Zooming out', use: 'zoom-out' },
-  { rule: 'titles', label: 'Title cards appear', use: 'titles' },
-  { rule: 'callouts', label: 'Texts and shapes appear', use: 'callouts' }
+const RULES: readonly { rule: SfxRule; readonly label: string; use: SfxUse }[] = [
+  {
+    rule: 'zoomIn',
+    get label() {
+      return t('sound.soundEffectsSection.rule.zoomIn')
+    },
+    use: 'zoom-in'
+  },
+  {
+    rule: 'zoomOut',
+    get label() {
+      return t('sound.soundEffectsSection.rule.zoomOut')
+    },
+    use: 'zoom-out'
+  },
+  {
+    rule: 'titles',
+    get label() {
+      return t('sound.soundEffectsSection.rule.titles')
+    },
+    use: 'titles'
+  },
+  {
+    rule: 'callouts',
+    get label() {
+      return t('sound.soundEffectsSection.rule.callouts')
+    },
+    use: 'callouts'
+  }
 ]
 
-const pct = (v: number): string => `${Math.round(v * 100)} %`
+const pct = (v: number): string => t('sound.soundEffectsSection.percent', { n: fmt.count(Math.round(v * 100)) })
 /** "Plays 24 times", "Plays once", "Does not play yet". */
-export const playsText = (n: number): string => (n === 0 ? 'Does not play yet' : n === 1 ? 'Plays once' : `Plays ${n} times`)
+export const playsText = (n: number): string => t('sound.soundEffectsSection.plays', { count: n, n: fmt.count(n) })
 
 export function SoundEffectsSection(props: { project: Project }): JSX.Element {
   const { project } = props
@@ -66,20 +93,20 @@ export function SoundEffectsSection(props: { project: Project }): JSX.Element {
   return (
     <section className="insp-section sfx-section" data-testid="sfx-section">
       <h3>
-        <span>Sound effects</span>
+        <span>{t('sound.soundEffectsSection.soundEffects')}</span>
       </h3>
       <div data-testid="sfx-volume">
-        <Slider label="Volume" value={fx?.volume ?? SFX_VOLUME} min={0} max={1} step={0.05} format={pct} onChange={(v) => store.update((p) => withSfxVolume(p, v), 'soundFx.volume')} />
+        <Slider label={t('common.label.volume')} value={fx?.volume ?? SFX_VOLUME} min={0} max={1} step={0.05} format={pct} onChange={(v) => store.update((p) => withSfxVolume(p, v), 'soundFx.volume')} />
       </div>
       {RULES.map(({ rule, label, use }) => {
         const ref = fx?.[rule]
-        const title = ref ? (soundEffect(ref.slice(4))?.title ?? '') : ''
+        const title = ref && soundEffect(ref.slice(4)) ? sfxName(ref.slice(4)) : ''
         return (
           <div key={rule} className="sfx-rule">
             <label className="field">
               <span>{label}</span>
               <select data-testid={`sfx-rule-${rule}`} aria-label={label} value={ref ?? 'none'} onChange={(e) => setRule(rule, e.target.value)}>
-                <option value="none">None</option>
+                <option value="none">{t('common.state.none')}</option>
                 {sfxGroupsFor(use).map((g) => (
                   <optgroup key={g.label} label={g.label}>
                     {g.options.map((o) => (
@@ -97,12 +124,12 @@ export function SoundEffectsSection(props: { project: Project }): JSX.Element {
                 className="btn ghost small-btn"
                 data-testid={`sfx-play-${rule}`}
                 aria-pressed={playing === rule}
-                aria-label={ref ? `Play ${title}` : `Play the sound for ${label.toLowerCase()}`}
+                aria-label={ref ? t('common.action.playName', { name: title }) : t('sound.soundEffectsSection.playRule', { rule })}
                 disabled={!ref}
                 onClick={() => play(rule, ref)}
                 onKeyDown={(e) => spaceToggles(e, () => play(rule, ref))}
               >
-                {playing === rule ? 'Stop' : 'Play'}
+                {playing === rule ? t('common.action.stop') : t('common.action.play')}
               </button>
               {ref && (
                 <span className="hint sfx-count" data-testid={`sfx-count-${rule}`}>
@@ -114,9 +141,9 @@ export function SoundEffectsSection(props: { project: Project }): JSX.Element {
         )
       })}
       <button type="button" className="link sfx-soft-whoosh" data-testid="sfx-soft-whoosh" onClick={() => setRule('zoomIn', 'sfx:whoosh-soft')}>
-        Soft whoosh when zooming in
+        {t('sound.soundEffectsSection.softWhooshWhenZooming')}
       </button>
-      <p className="hint">A sound set here plays at most once every 3 seconds. A sound set on one item always plays.</p>
+      <p className="hint">{t('sound.soundEffectsSection.aSoundSetHere')}</p>
     </section>
   )
 }

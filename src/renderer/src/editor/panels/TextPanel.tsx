@@ -6,9 +6,7 @@ import {
   cleanChapterName,
   cleanTitle,
   sortedChapters,
-  TITLE_BACKGROUNDS,
   TITLE_COLORS,
-  TITLE_STYLES,
   TITLE_TEXT_COLORS,
   titleColorOf,
   titleTextColorOf,
@@ -39,6 +37,9 @@ import { CalloutSection } from './CalloutSection'
 import { BadgeSection } from './BadgeSection'
 import { BubbleSection } from './BubbleSection'
 import { ChapterBarSection } from './ChapterBarSection'
+import { t } from '../../../../shared/i18n/t'
+import { Rich } from './Rich'
+import { TITLE_BACKGROUND_CHOICES, TITLE_STYLE_CHOICES } from '../../../../shared/editor/itemNames'
 
 /* ---------- Text, title cards and chapters ---------- */
 
@@ -68,14 +69,9 @@ export function TextPanel(props: InspectorProps): JSX.Element {
   )
 }
 
-/** "Press T or double-click", following the user's shortcut ("Double-click" without one). */
-function PressOr({ accelerators }: { accelerators: readonly string[] }): JSX.Element {
-  if (!accelerators.length) return <>Double-click</>
-  return (
-    <>
-      Press <FirstShortcut accelerators={accelerators} fallback="" /> or double-click
-    </>
-  )
+/** "Press T or double-click …", following the user's shortcut ("Double-click …" without one): the values of a hint's message. */
+function pressOr(accelerators: readonly string[]): { has: string; keys: JSX.Element } {
+  return { has: accelerators.length ? 'yes' : 'no', keys: <FirstShortcut accelerators={accelerators} fallback="" /> }
 }
 
 /* ---------- text annotations ---------- */
@@ -87,16 +83,16 @@ function TextSection({ selectedId, ...props }: InspectorProps & { selectedId: st
   const { project } = props
   return (
     <>
-      <Section title="Text">
+      <Section title={t('common.label.text')}>
         <button className="btn" onClick={props.onAddText}>
-          <EditorIcon name="text" size={16} /> Add text at playhead
+          <EditorIcon name="text" size={16} /> {t('text.textPanel.addTextAtPlayhead')}
         </button>
         <p className="hint">
-          <PressOr accelerators={keymap.addText} /> the text track. Drag a text item on the timeline to change when it shows, and on the preview to move it.
+          <Rich k="text.textPanel.addTextHint" values={pressOr(keymap.addText)} />
         </p>
       </Section>
       {project.annotations.length > 0 && (
-        <Section title={`Text in this video (${project.annotations.length})`} aside={<SelectAllButton keys={project.annotations.map((a) => itemKey('annotation', a.id))} what="text items" />}>
+        <Section title={t('text.textPanel.textInThisVideo', { n: fmt.count(project.annotations.length) })} aside={<SelectAllButton keys={project.annotations.map((a) => itemKey('annotation', a.id))} kind="annotation" />}>
           <ul className="item-list">
             {[...project.annotations]
               .sort((a, b) => a.start - b.start)
@@ -115,7 +111,7 @@ function TextSection({ selectedId, ...props }: InspectorProps & { selectedId: st
                       selectedId === a.id
                     )}
                   >
-                    <span className="muted">{fmt.clock(a.start, 'whole')}</span> {a.text || 'Text'}
+                    <span className="muted">{fmt.clock(a.start, 'whole')}</span> {a.text || t('common.label.text')}
                   </button>
                 </li>
               ))}
@@ -134,27 +130,27 @@ function SelectedText(props: InspectorProps): JSX.Element {
     store.update((p) => ({ ...p, annotations: p.annotations.map((a) => (a.id === ann.id ? { ...a, ...patch } : a)) }), key)
   }
   return (
-    <Section title="Selected text" aside={<span className="muted small">{fmt.clock(ann.start)} – {fmt.clock(ann.end)}</span>}>
+    <Section title={t('text.textPanel.selectedText')} aside={<span className="muted small">{fmt.clock(ann.start)} – {fmt.clock(ann.end)}</span>}>
       <label className="field">
-        <span>Text</span>
-        <textarea className="text-field" rows={2} value={ann.text} onChange={(e) => set({ text: e.target.value }, `annotation-text:${ann.id}`)} placeholder={ann.style === 'bubble' ? "Type the bubble's text" : 'Type your text'} />
+        <span>{t('common.label.text')}</span>
+        <textarea className="text-field" rows={2} value={ann.text} onChange={(e) => set({ text: e.target.value }, `annotation-text:${ann.id}`)} placeholder={ann.style === 'bubble' ? t('text.textPanel.typeTheBubbleS') : t('text.textPanel.typeYourText')} />
       </label>
       <Chips<AnnotationStyle>
-        label="Text style"
+        label={t('text.textPanel.textStyle')}
         value={ann.style}
         onChange={(style) => set({ style })}
         options={[
-          { value: 'pill', label: 'Caption pill' },
-          { value: 'title', label: 'Title' },
-          { value: 'badge', label: 'Step badge' },
-          { value: 'bubble', label: 'Speech bubble' }
+          { value: 'pill', label: t('text.annotationStyle.pill') },
+          { value: 'title', label: t('common.label.title') },
+          { value: 'badge', label: t('text.annotationStyle.badge') },
+          { value: 'bubble', label: t('text.annotationStyle.bubble') }
         ]}
       />
       <FontPicker project={project} value={ann.font} apply={(p, font) => ({ ...p, annotations: p.annotations.map((a) => (a.id === ann.id ? { ...a, font } : a)) })} />
-      <Slider label="Size" value={ann.size} min={ANNOTATION_SIZE.min} max={ANNOTATION_SIZE.max} step={0.002} format={(v) => `${Math.round(v * 1000) / 10}%`} onChange={(v) => set({ size: v }, `annotation-size:${ann.id}`)} />
-      <Slider label="Position X" value={ann.x} min={0} max={1} step={0.005} format={pctFmt} onChange={(v) => set({ x: v }, `annotation-pos:${ann.id}`)} />
-      <Slider label="Position Y" value={ann.y} min={0} max={1} step={0.005} format={pctFmt} onChange={(v) => set({ y: v }, `annotation-pos:${ann.id}`)} />
-      <p className="hint">Tip: drag the text on the preview to place it.</p>
+      <Slider label={t('common.label.size')} value={ann.size} min={ANNOTATION_SIZE.min} max={ANNOTATION_SIZE.max} step={0.002} format={(v) => t('text.textPanel.sizePercent', { n: fmt.number(Math.round(v * 1000) / 10) })} onChange={(v) => set({ size: v }, `annotation-size:${ann.id}`)} />
+      <Slider label={t('text.textPanel.positionX')} value={ann.x} min={0} max={1} step={0.005} format={pctFmt} onChange={(v) => set({ x: v }, `annotation-pos:${ann.id}`)} />
+      <Slider label={t('text.textPanel.positionY')} value={ann.y} min={0} max={1} step={0.005} format={pctFmt} onChange={(v) => set({ y: v }, `annotation-pos:${ann.id}`)} />
+      <p className="hint">{t('text.textPanel.tipDragTheText')}</p>
       <LookButtons itemKey={itemKey('annotation', ann.id)} />
       <button
         className="btn ghost danger"
@@ -163,7 +159,7 @@ function SelectedText(props: InspectorProps): JSX.Element {
           props.onSelect(null)
         }}
       >
-        <Icon name="trash" size={16} /> Delete text
+        <Icon name="trash" size={16} /> {t('text.textPanel.deleteText')}
       </button>
     </Section>
   )
@@ -178,16 +174,16 @@ function TitlesSection({ project, selectedId, onSelect }: { project: Project; se
   const titles = project.titles ?? []
   return (
     <Section
-      title={titles.length ? `Title cards (${titles.length})` : 'Title cards'}
-      aside={titles.length > 1 ? <SelectAllButton keys={titles.map((c) => itemKey('title', c.id))} what="title cards" /> : undefined}
+      title={titles.length ? t('text.textPanel.titleCards', { n: fmt.count(titles.length) }) : t('text.textPanel.titleCardsNone')}
+      aside={titles.length > 1 ? <SelectAllButton keys={titles.map((c) => itemKey('title', c.id))} kind="title" /> : undefined}
     >
       <div className="title-tools">
-        <button className="btn" onClick={() => addTitleAt(services, { onSelect })} title={withShortcut('Add a title card at the playhead', keymap.addTitle)}>
-          <TitleStyleIcon style="centered" size={16} /> Add title card
+        <button className="btn" onClick={() => addTitleAt(services, { onSelect })} title={withShortcut(t('text.textPanel.addTitleTitle'), keymap.addTitle)}>
+          <TitleStyleIcon style="centered" size={16} /> {t('text.textPanel.addTitleCard')}
         </button>
       </div>
       <p className="hint">
-        An intro, a section title over the blurred video, or a lower third with a name. <PressOr accelerators={keymap.addTitle} /> the title track to add one.
+        <Rich k="text.textPanel.addTitleHint" values={pressOr(keymap.addTitle)} />
       </p>
       {titles.length > 0 && (
         <ul className="item-list title-list">
@@ -209,7 +205,7 @@ function TitlesSection({ project, selectedId, onSelect }: { project: Project; se
                   )}
                 >
                   <TitleStyleIcon style={c.style} size={15} />
-                  <span>{c.title.trim() || c.subtitle?.trim() || 'Title'}</span>
+                  <span>{c.title.trim() || c.subtitle?.trim() || t('text.textPanel.title')}</span>
                   <span className="muted">{fmt.clock(c.start, 'whole')}</span>
                 </button>
               </li>
@@ -227,19 +223,19 @@ function SelectedTitle({ project, card, onSelect }: { project: Project; card: Ti
   const set = (patch: Partial<TitleCard>, key?: string): void =>
     store.update((p) => ({ ...p, titles: (p.titles ?? []).map((c) => (c.id === id ? { ...c, ...patch } : c)) }), key)
   return (
-    <Section title="Selected title card" aside={<span className="muted small">{fmt.clock(card.start)} – {fmt.clock(card.end)}</span>}>
+    <Section title={t('text.textPanel.selectedTitleCard')} aside={<span className="muted small">{fmt.clock(card.start)} – {fmt.clock(card.end)}</span>}>
       <label className="field">
-        <span>Title</span>
-        <textarea className="text-field" rows={2} aria-label="Title" value={card.title} onChange={(e) => set({ title: cleanTitle(e.target.value) }, `title-text:${id}`)} placeholder="Your title" />
+        <span>{t('text.textPanel.title')}</span>
+        <textarea className="text-field" rows={2} aria-label={t('text.textPanel.title')} value={card.title} onChange={(e) => set({ title: cleanTitle(e.target.value) }, `title-text:${id}`)} placeholder={t('text.textPanel.yourTitle')} />
       </label>
       <label className="field">
-        <span>Subtitle</span>
-        <input className="tc-input" aria-label="Subtitle" value={card.subtitle ?? ''} onChange={(e) => set({ subtitle: cleanTitle(e.target.value) }, `title-subtitle:${id}`)} placeholder="Optional" />
+        <span>{t('text.textPanel.subtitle')}</span>
+        <input className="tc-input" aria-label={t('text.textPanel.subtitle')} value={card.subtitle ?? ''} onChange={(e) => set({ subtitle: cleanTitle(e.target.value) }, `title-subtitle:${id}`)} placeholder={t('text.textPanel.optional')} />
       </label>
       <div className="field">
-        <span>Style</span>
-        <div className="title-styles" role="group" aria-label="Title style">
-          {TITLE_STYLES.map((s) => (
+        <span>{t('text.textPanel.style')}</span>
+        <div className="title-styles" role="group" aria-label={t('text.textPanel.titleStyle')}>
+          {TITLE_STYLE_CHOICES.map((s) => (
             <button key={s.value} className={`title-style ${card.style === s.value ? 'active' : ''}`} aria-pressed={card.style === s.value} title={s.title} onClick={() => set({ style: s.value })}>
               <TitleStyleIcon style={s.value} size={22} />
               <span>{s.label}</span>
@@ -249,31 +245,31 @@ function SelectedTitle({ project, card, onSelect }: { project: Project; card: Ti
       </div>
       <FontPicker project={project} value={card.font} apply={(p, font) => ({ ...p, titles: (p.titles ?? []).map((c) => (c.id === id ? { ...c, font } : c)) })} />
       <div className="field">
-        <span>Background</span>
-        <Chips<TitleCard['background']> label="Background" value={card.background} onChange={(background) => set({ background })} options={TITLE_BACKGROUNDS} />
+        <span>{t('common.label.background')}</span>
+        <Chips<TitleCard['background']> label={t('common.label.background')} value={card.background} onChange={(background) => set({ background })} options={[...TITLE_BACKGROUND_CHOICES]} />
       </div>
       {card.background === 'solid' && (
         <div className="field">
-          <span>Colour</span>
-          <ColorDots label="Colour" value={titleColorOf(card)} presets={withBrandColors(project, TITLE_COLORS)} onChange={(color, key) => set({ color }, key ?? undefined)} mergeKey={`title-color:${id}`} />
+          <span>{t('common.label.colour')}</span>
+          <ColorDots label={t('common.label.colour')} value={titleColorOf(card)} presets={withBrandColors(project, TITLE_COLORS)} onChange={(color, key) => set({ color }, key ?? undefined)} mergeKey={`title-color:${id}`} />
         </div>
       )}
       <div className="field">
-        <span>Text colour</span>
-        <ColorDots label="Text colour" value={titleTextColorOf(card, project.style.background)} presets={withBrandColors(project, TITLE_TEXT_COLORS)} onChange={(textColor, key) => set({ textColor }, key ?? undefined)} mergeKey={`title-text-color:${id}`} />
+        <span>{t('common.label.textColour')}</span>
+        <ColorDots label={t('common.label.textColour')} value={titleTextColorOf(card, project.style.background)} presets={withBrandColors(project, TITLE_TEXT_COLORS)} onChange={(textColor, key) => set({ textColor }, key ?? undefined)} mergeKey={`title-text-color:${id}`} />
       </div>
       <TitleOnPreview card={card} clips={project.clips} />
-      <p className="hint">Drag the card on the title track to change when it shows; it fades in and out. Long titles wrap and shrink to fit.</p>
+      <p className="hint">{t('text.textPanel.dragTheCardOn')}</p>
       <LookButtons itemKey={itemKey('title', id)} />
       <button
         className="btn ghost danger"
-        title={withShortcut('Delete this title card', keymap.deleteSelection)}
+        title={withShortcut(t('text.textPanel.deleteTitleTitle'), keymap.deleteSelection)}
         onClick={() => {
           store.update((p) => ({ ...p, titles: (p.titles ?? []).filter((c) => c.id !== id) }))
           onSelect(null)
         }}
       >
-        <Icon name="trash" size={16} /> Delete title card
+        <Icon name="trash" size={16} /> {t('text.textPanel.deleteTitleCard')}
       </button>
     </Section>
   )
@@ -292,9 +288,9 @@ function TitleOnPreview({ card, clips }: { card: TitleCard; clips: Clip[] }): JS
   if (inside) return null
   return (
     <p className="hint">
-      Not on screen at the playhead.{' '}
+      {t('text.textPanel.notOnScreenAt')}{' '}
       <button className="link" onClick={() => showTitle(player, clips, card)}>
-        Show it on the preview
+        {t('text.textPanel.showItOnThe')}
       </button>
     </p>
   )
@@ -329,8 +325,8 @@ function ColorDots({
           onClick={() => onChange(c, null)}
         />
       ))}
-      <label className={`shape-color custom ${custom ? 'active' : ''}`} title="Pick any colour" style={custom ? { background: value } : undefined}>
-        <input type="color" aria-label={`${label} (any colour)`} value={value} onChange={(e) => onChange(e.target.value.toLowerCase(), mergeKey)} />
+      <label className={`shape-color custom ${custom ? 'active' : ''}`} title={t('common.colour.pickAny')} style={custom ? { background: value } : undefined}>
+        <input type="color" aria-label={t('common.colour.anyFor', { label: String(label) })} value={value} onChange={(e) => onChange(e.target.value.toLowerCase(), mergeKey)} />
       </label>
     </div>
   )
@@ -341,11 +337,15 @@ function ColorDots({
 /** "At 0:12 in the video", or where a chapter in a cut starts the video instead, or that it is left out at the end. */
 function outputNote(project: Project, t: number): string {
   const { clips } = project
-  if (!chapterInVideo(clips, t)) return 'At the very end of the video, with nothing after it: exports leave it out.'
+  if (!chapterInVideo(clips, t)) return chapterNote('left')
   // In seconds of the exported video, as the Transport and the YouTube timestamps count them (freeze frames included).
   const at = fmt.clock(videoTimeAt(clips, planOf(project), t), 'whole')
-  return Math.abs(displayTime(clips, t) - t) > 1e-6 ? `In a part that is cut: it starts at ${at} in the video, where it goes on.` : `At ${at} in the exported video.`
+  return chapterNote(Math.abs(displayTime(clips, t) - t) > 1e-6 ? 'cut' : 'at', at)
 }
+
+/** outputNote's words (its own `t` is a time). */
+const chapterNote = (kind: 'left' | 'cut' | 'at', at = ''): string =>
+  kind === 'left' ? t('text.textPanel.chapterLeftOut') : kind === 'cut' ? t('text.textPanel.chapterInCut', { at }) : t('text.textPanel.chapterAt', { at })
 
 function SelectedChapter({ project, chapter, onSelect }: { project: Project; chapter: Chapter; onSelect: (sel: Selection) => void }): JSX.Element {
   const { store, player } = useEditor()
@@ -354,28 +354,28 @@ function SelectedChapter({ project, chapter, onSelect }: { project: Project; cha
   const set = (patch: Partial<Chapter>, key?: string): void =>
     store.update((p) => ({ ...p, chapters: (p.chapters ?? []).map((c) => (c.id === id ? { ...c, ...patch } : c)) }), key)
   return (
-    <Section title="Selected chapter" aside={<span className="muted small">{fmt.clock(chapter.t)}</span>}>
+    <Section title={t('text.textPanel.selectedChapter')} aside={<span className="muted small">{fmt.clock(chapter.t)}</span>}>
       <label className="field">
-        <span>Name</span>
-        <input className="tc-input" aria-label="Chapter name" value={chapter.title} placeholder="Chapter name" onChange={(e) => set({ title: cleanChapterName(e.target.value) }, `chapter-title:${id}`)} />
+        <span>{t('common.label.name')}</span>
+        <input className="tc-input" aria-label={t('text.textPanel.chapterName')} value={chapter.title} placeholder={t('text.textPanel.chapterName')} onChange={(e) => set({ title: cleanChapterName(e.target.value) }, `chapter-title:${id}`)} />
       </label>
       <p className="hint">{outputNote(project, chapter.t)}</p>
       <div className="row start title-tools">
-        <button className="btn" onClick={() => player.seek(chapter.t)} title="Move the playhead to this chapter">
-          Go to
+        <button className="btn" onClick={() => player.seek(chapter.t)} title={t('text.textPanel.moveThePlayheadTo')}>
+          {t('text.textPanel.goTo')}
         </button>
-        <button className="btn" onClick={() => set({ t: displayTime(project.clips, player.time) })} title="Start this chapter at the playhead">
-          Move to playhead
+        <button className="btn" onClick={() => set({ t: displayTime(project.clips, player.time) })} title={t('text.textPanel.startThisChapterAt')}>
+          {t('text.textPanel.moveToPlayhead')}
         </button>
         <button
           className="btn ghost danger"
-          title={withShortcut('Delete this chapter', keymap.deleteSelection)}
+          title={withShortcut(t('text.textPanel.deleteThisChapter'), keymap.deleteSelection)}
           onClick={() => {
             store.update((p) => ({ ...p, chapters: (p.chapters ?? []).filter((c) => c.id !== id) }))
             onSelect(null)
           }}
         >
-          <Icon name="trash" size={16} /> Delete
+          <Icon name="trash" size={16} /> {t('common.action.delete')}
         </button>
       </div>
     </Section>
@@ -404,23 +404,22 @@ function ChaptersSection({
   const prev = keymap.prevChapter[0]
   return (
     <Section
-      title={chapters.length ? `Chapters (${chapters.length})` : 'Chapters'}
-      aside={chapters.length > 1 ? <SelectAllButton keys={chapters.map((c) => itemKey('chapter', c.id))} what="chapters" /> : undefined}
+      title={chapters.length ? t('text.textPanel.chapters', { n: fmt.count(chapters.length) }) : t('text.textPanel.chaptersNone')}
+      aside={chapters.length > 1 ? <SelectAllButton keys={chapters.map((c) => itemKey('chapter', c.id))} kind="chapter" /> : undefined}
     >
       <div className="title-tools">
-        <button className="btn" onClick={() => addChapterAt(services, { onSelect, onNotice })} title={withShortcut('Add a chapter at the playhead', keymap.addChapter)}>
-          <EditorIcon name="plus" size={16} /> Add chapter at playhead
+        <button className="btn" onClick={() => addChapterAt(services, { onSelect, onNotice })} title={withShortcut(t('text.textPanel.addChapterTitle'), keymap.addChapter)}>
+          <EditorIcon name="plus" size={16} /> {t('text.textPanel.addChapterAtPlayhead')}
         </button>
       </div>
       {/* Find chapters (docs/design/smart-tools.md §2.3), part P2's. */}
       <FindChapters project={project} cursor={cursor} onNotice={onNotice} />
       <p className="hint">
-        <PressOr accelerators={keymap.addChapter} /> the strip above the title cards to add one. Chapters go into MP4, MOV, WebM and M4A exports, and the
-        Export dialog copies them as YouTube timestamps.
+        <Rich k="text.textPanel.addChapterHint" values={pressOr(keymap.addChapter)} />
         {next && prev && (
           <>
             {' '}
-            <ShortcutKeys accelerator={next} /> and <ShortcutKeys accelerator={prev} /> jump between them.
+            <Rich k="text.textPanel.chapterKeys" values={{ next: <ShortcutKeys accelerator={next} />, prev: <ShortcutKeys accelerator={prev} /> }} />
           </>
         )}
       </p>
@@ -430,7 +429,7 @@ function ChaptersSection({
             <li key={c.id} className={`chapter-row ${selectedId === c.id || list.member(itemKey('chapter', c.id)) ? 'active' : ''}${list.member(itemKey('chapter', c.id)) ? ' in-group' : ''}`} data-chapter-item={c.id}>
               <button
                 className="chapter-time"
-                title="Go to this chapter (Ctrl+click: select several)"
+                title={t('text.textPanel.goToThisChapter')}
                 {...list.row(itemKey('chapter', c.id), () => {
                   onSelect({ kind: 'chapter', id: c.id })
                   player.seek(c.t)
@@ -440,14 +439,14 @@ function ChaptersSection({
               </button>
               {/* A found chapter not reviewed yet (smart-tools.md §2.3): said in words, not only colour, also in its name field's
                   name (§14); a weak name asks to be renamed. */}
-              {c.auto && <span className="chip chapter-found">Found</span>}
+              {c.auto && <span className="chip chapter-found">{t('text.textPanel.found')}</span>}
               <input
                 id={chapterNameId(c.id)}
                 className="tc-input"
-                aria-label={`Name of the chapter at ${fmt.clock(c.t, 'whole')}${c.auto ? ', found, not reviewed' : ''}`}
+                aria-label={t('text.textPanel.chapterNameAt', { time: fmt.clock(c.t, 'whole'), found: c.auto ? 'yes' : 'no' })}
                 aria-describedby={c.auto && weakChapterName(c) ? `${chapterNameId(c.id)}-rename` : undefined}
                 value={c.title}
-                placeholder="Chapter name"
+                placeholder={t('text.textPanel.chapterName')}
                 onChange={(e) => {
                   const title = cleanChapterName(e.target.value)
                   store.update((p) => ({ ...p, chapters: (p.chapters ?? []).map((x) => (x.id === c.id ? { ...x, title } : x)) }), `chapter-title:${c.id}`)
@@ -455,8 +454,8 @@ function ChaptersSection({
               />
               <button
                 className="btn ghost icon-btn"
-                title="Delete this chapter"
-                aria-label={`Delete the chapter "${c.title}"`}
+                title={t('text.textPanel.deleteThisChapter')}
+                aria-label={t('text.textPanel.deleteTheChapter', { title: c.title })}
                 onClick={() => {
                   store.update((p) => ({ ...p, chapters: (p.chapters ?? []).filter((x) => x.id !== c.id) }))
                   if (selectedId === c.id) onSelect(null)
@@ -466,7 +465,7 @@ function ChaptersSection({
               </button>
               {c.auto && weakChapterName(c) && (
                 <span id={`${chapterNameId(c.id)}-rename`} className="hint chapter-rename">
-                  Rename?
+                  {t('text.textPanel.rename')}
                 </span>
               )}
             </li>
@@ -484,12 +483,12 @@ export const chapterNameId = (id: string): string => `chapter-name-${id}`
 const weakChapterName = (c: Chapter): boolean => c.auto?.name === 'cut' || c.auto?.name === 'number'
 
 /** A list header's "Select all": every item of the list together (E-06). */
-function SelectAllButton({ keys, what }: { keys: ReturnType<typeof itemKey>[]; what: string }): JSX.Element | null {
+function SelectAllButton({ keys, kind }: { keys: ReturnType<typeof itemKey>[]; kind: 'annotation' | 'title' | 'chapter' }): JSX.Element | null {
   const list = useListSelect()
   if (keys.length < 2) return null
   return (
-    <button className="link small" onClick={() => list.selectAll(keys)} title={`Select all ${keys.length} ${what} to edit them together`}>
-      Select all
+    <button className="link small" onClick={() => list.selectAll(keys)} title={t('text.textPanel.selectAllToEdit', { kind, n: fmt.count(keys.length) })}>
+      {t('common.action.selectAll')}
     </button>
   )
 }

@@ -5,13 +5,14 @@ import { preloadWatermarkImage } from '../../render/watermarkLayer'
 import { useEditor } from '../context'
 import { Chips, pctFmt, Section, Slider, Toggle } from '../controls'
 import { EditorIcon } from '../EditorIcon'
+import { t } from '../../../../shared/i18n/t'
 
-const POSITIONS: { value: WatermarkSettings['position']; label: string }[] = [
-  { value: 'top-left', label: 'Top left' },
-  { value: 'top-right', label: 'Top right' },
-  { value: 'center', label: 'Centre' },
-  { value: 'bottom-left', label: 'Bottom left' },
-  { value: 'bottom-right', label: 'Bottom right' }
+const POSITIONS = (): { value: WatermarkSettings['position']; label: string; name: string }[] => [
+  { value: 'top-left', label: t('style.watermarkSection.position.topLeft'), name: t('style.watermarkSection.positionName.topLeft') },
+  { value: 'top-right', label: t('style.watermarkSection.position.topRight'), name: t('style.watermarkSection.positionName.topRight') },
+  { value: 'center', label: t('style.watermarkSection.position.centre'), name: t('style.watermarkSection.positionName.centre') },
+  { value: 'bottom-left', label: t('style.watermarkSection.position.bottomLeft'), name: t('style.watermarkSection.positionName.bottomLeft') },
+  { value: 'bottom-right', label: t('style.watermarkSection.position.bottomRight'), name: t('style.watermarkSection.positionName.bottomRight') }
 ]
 
 /** "Error invoking remote method 'x': Error: message" -> "message". */
@@ -38,7 +39,7 @@ export function WatermarkSection({ project }: { project: Project }): JSX.Element
       try {
         await preloadWatermarkImage(project.id, picked.path, picked.url)
       } catch {
-        setError(wm?.kind === 'image' && wm.path ? 'This image could not be read. Your current logo is kept.' : 'This image could not be read.')
+        setError(wm?.kind === 'image' && wm.path ? t('style.watermarkSection.unreadableKept') : t('style.watermarkSection.unreadable'))
         return
       }
       const sizeFor = wm?.kind === 'image' ? wm.size : WATERMARK_SIZE.image
@@ -62,35 +63,35 @@ export function WatermarkSection({ project }: { project: Project }): JSX.Element
   }
 
   return (
-    <Section title="Watermark">
-      <Toggle label="Show watermark" checked={on} onChange={(v) => set({ show: v })} />
+    <Section title={t('style.watermarkSection.watermark')}>
+      <Toggle label={t('style.watermarkSection.showWatermark')} checked={on} onChange={(v) => set({ show: v })} />
       {!on ? (
-        <p className="hint">Stamp your logo or name on every frame of the video.</p>
+        <p className="hint">{t('style.watermarkSection.stampYourLogoOr')}</p>
       ) : (
         <>
           <Chips
-            label="Watermark type"
+            label={t('style.watermarkSection.watermarkType')}
             value={wm!.kind}
             onChange={chooseKind}
             options={[
-              { value: 'text', label: 'Text' },
-              { value: 'image', label: 'Logo', title: 'A PNG, JPG, WebP or SVG logo' }
+              { value: 'text', label: t('common.label.text') },
+              { value: 'image', label: t('style.watermarkSection.kind.image'), title: t('style.watermarkSection.kind.image.title') }
             ]}
           />
           {wm!.kind === 'text' ? (
             <input
               className="text-input"
-              aria-label="Watermark text"
-              placeholder="Your name or website"
+              aria-label={t('style.watermarkSection.watermarkText')}
+              placeholder={t('style.watermarkSection.yourNameOrWebsite')}
               maxLength={WATERMARK_TEXT_MAX}
               value={wm!.text ?? ''}
               onChange={(e) => set({ text: e.target.value }, 'watermark.text')}
             />
           ) : (
             <div className="style-file-row">
-              <span className="muted small">{wm!.path ?? 'No logo chosen'}</span>
+              <span className="muted small">{wm!.path ?? t('style.watermarkSection.noLogoChosen')}</span>
               <button className="btn ghost small-btn" disabled={busy} onClick={() => void pickLogo()}>
-                {wm!.path ? 'Change logo…' : 'Choose logo…'}
+                {wm!.path ? t('style.watermarkSection.changeLogo') : t('style.watermarkSection.chooseLogo')}
               </button>
             </div>
           )}
@@ -100,13 +101,13 @@ export function WatermarkSection({ project }: { project: Project }): JSX.Element
               <span>{error}</span>
             </p>
           )}
-          <div className="wm-positions" role="radiogroup" aria-label="Watermark position">
-            {POSITIONS.map((p) => (
+          <div className="wm-positions" role="radiogroup" aria-label={t('style.watermarkSection.watermarkPosition')}>
+            {POSITIONS().map((p) => (
               <button
                 key={p.value}
                 role="radio"
                 aria-checked={wm!.position === p.value}
-                aria-label={`Watermark ${p.label.toLowerCase()}`}
+                aria-label={p.name}
                 title={p.label}
                 className={`wm-position ${p.value} ${wm!.position === p.value ? 'active' : ''}`}
                 onClick={() => set({ position: p.value })}
@@ -115,9 +116,9 @@ export function WatermarkSection({ project }: { project: Project }): JSX.Element
               </button>
             ))}
           </div>
-          <Slider label="Size" value={wm!.size} {...WATERMARK_LIMITS.size} step={0.005} format={pctFmt} onChange={(v) => set({ size: v }, 'watermark.size')} />
-          <Slider label="Opacity" value={wm!.opacity} {...WATERMARK_LIMITS.opacity} step={0.05} format={pctFmt} onChange={(v) => set({ opacity: v }, 'watermark.opacity')} />
-          <Slider label="Distance from edge" value={wm!.margin} {...WATERMARK_LIMITS.margin} step={0.005} format={pctFmt} onChange={(v) => set({ margin: v }, 'watermark.margin')} />
+          <Slider label={t('common.label.size')} value={wm!.size} {...WATERMARK_LIMITS.size} step={0.005} format={pctFmt} onChange={(v) => set({ size: v }, 'watermark.size')} />
+          <Slider label={t('common.label.opacity')} value={wm!.opacity} {...WATERMARK_LIMITS.opacity} step={0.05} format={pctFmt} onChange={(v) => set({ opacity: v }, 'watermark.opacity')} />
+          <Slider label={t('style.watermarkSection.distanceFromEdge')} value={wm!.margin} {...WATERMARK_LIMITS.margin} step={0.005} format={pctFmt} onChange={(v) => set({ margin: v }, 'watermark.margin')} />
         </>
       )}
     </Section>

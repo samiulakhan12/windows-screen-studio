@@ -28,7 +28,6 @@ import {
   nextZoom,
   regionAround,
   setZoomLevel,
-  ZOOM_LEVEL_PRESETS
 } from '../../../../shared/editor/zoomEdit'
 import type { AutoZoomSettings, CursorTrack, Project, ScrollZoomMode, ZoomEasing, ZoomFocus, ZoomSegment, ZoomSettings } from '../../../../shared/types'
 import { Icon } from '../../components/Icon'
@@ -45,9 +44,11 @@ import { IMPORTED_COPY, isImported } from '../../../../shared/import/imported'
 import { fmt } from '../../../../shared/i18n/fmt'
 import '../zoom.css'
 import { MagnifierZoomRow } from './MagnifierZoomRow'
+import { t } from '../../../../shared/i18n/t'
+import { zoomLevelPresets } from '../../../../shared/editor/itemNames'
 
-const secFmt = (v: number): string => `${v.toFixed(2)} s`
-const plural = (n: number, word: string): string => `${n} ${word}${n === 1 ? '' : 's'}`
+const secFmt = (v: number): string => t('zoom.zoomPanel.seconds', { n: fmt.number(v, { max: 2 }) })
+const tenthsFmt = (v: number): string => t('zoom.zoomPanel.seconds', { n: fmt.number(v, { max: 1 }) })
 
 /**
  * Recorded input auto zoom can use, given its settings: the recorded clicks it can zoom for
@@ -86,8 +87,8 @@ export function ZoomPanel(props: InspectorProps): JSX.Element {
         <SelectedClick row={click} input={props.input} rightClicks={zoomSettingsOf(project).auto.rightClicks} />
       ) : (
         <p className="hint">
-          Select a zoom on the timeline to edit it{keymap.addZoom[0] ? `, or press ${shortcutLabel(keymap.addZoom[0])} to add one at the playhead` : ''}.
-          {levelKeys ? ` With a zoom selected, ${levelKeys}.` : ''}
+          {keymap.addZoom[0] ? t('zoom.zoomPanel.selectAZoomKeys', { keys: shortcutLabel(keymap.addZoom[0]) }) : t('zoom.zoomPanel.selectAZoom')}
+          {levelKeys ? ` ${t('zoom.zoomPanel.withAZoomSelected', { levels: levelKeys })}` : ''}
         </p>
       )}
       <ZoomStyleSection project={project} onNotice={props.onNotice} />
@@ -111,27 +112,24 @@ function SelectedClick({ row, input, rightClicks }: { row: ClickRow; input: Inpu
   const keymap = useKeymap()
   const state = clickState(row)
   return (
-    <Section title="Selected click" aside={<span className="muted small">{`${clickKind(row.click.button)} · ${fmt.clock(row.click.t)}`}</span>}>
+    <Section title={t('zoom.zoomPanel.selectedClick')} aside={<span className="muted small">{`${clickKind(row.click.button)} · ${fmt.clock(row.click.t)}`}</span>}>
       <div className="selected-click" data-testid="selected-click" data-state={state}>
         {state === 'used' ? (
           <p className="hint">{usedClickText(row.click, rightClicks)}</p>
         ) : (
-          <p className="hint">
-            Ignored: no zoom, click effect or sound, and smart speed does not count it.
-            {row.ignored?.stray ? ` It was ignored automatically: ${STRAY_REASON_TEXT[row.ignored.stray]}.` : ''}
+          <p className="hint">{t('zoom.zoomPanel.ignoredNoZoomClick')}{row.ignored?.stray ? t('zoom.zoomPanel.itWasIgnoredAutomatically', { reason: STRAY_REASON_TEXT[row.ignored.stray] }) : ''}
           </p>
         )}
         {state === 'used' ? (
-          <button className="btn" onClick={() => input.setIgnored([row.ms], true)} title={withShortcut('Ignore this click', keymap.deleteSelection)}>
-            <EyeOffIcon /> Ignore click
-            {keymap.deleteSelection[0] && <ShortcutKeys accelerator={keymap.deleteSelection[0]} className="btn-shortcut" />}
+          <button className="btn" onClick={() => input.setIgnored([row.ms], true)} title={withShortcut(t('zoom.zoomPanel.ignoreThisClickTitle'), keymap.deleteSelection)}>
+            <EyeOffIcon /> {t('zoom.zoomPanel.ignoreClick')}{keymap.deleteSelection[0] && <ShortcutKeys accelerator={keymap.deleteSelection[0]} className="btn-shortcut" />}
           </button>
         ) : (
-          <button className="btn" onClick={() => input.setIgnored([row.ms], false)} title="Use this click again">
-            <Icon name="refresh" size={16} /> Use click
+          <button className="btn" onClick={() => input.setIgnored([row.ms], false)} title={t('zoom.zoomPanel.useThisClickAgain')}>
+            <Icon name="refresh" size={16} /> {t('zoom.zoomPanel.useClick')}
           </button>
         )}
-        <p className="hint">Only automatic zooms change; zooms you added or edited stay as they are.</p>
+        <p className="hint">{t('zoom.zoomPanel.onlyAutomaticZoomsChange')}</p>
       </div>
     </Section>
   )
@@ -144,27 +142,25 @@ function ZoomCauseLine({ zoom, cursor, auto, input, onSelect }: { zoom: ZoomSegm
   if (cause.kind === 'click') {
     return (
       <div className="zoom-cause" data-testid="zoom-cause" data-kind="click">
-        <span>Made for the click at {fmt.clock(cause.click.t)}</span>
+        <span>{t('zoom.zoomPanel.madeForTheClick', { time: fmt.clock(cause.click.t) })}</span>
         <button
           className="btn ghost small-btn"
-          title="Stop using this click: its zoom, click effect and sound go away"
+          title={t('zoom.zoomPanel.stopUsingThisClick')}
           onClick={() => {
             input.setIgnored([cause.ms], true)
             // The zoom is gone with its click.
             onSelect(null)
           }}
-        >
-          Ignore this click
-        </button>
+        >{t('zoom.zoomPanel.ignoreThisClick')}</button>
       </div>
     )
   }
   const text =
     cause.kind === 'typing'
-      ? `Made for typing at ${fmt.clock(cause.t)}`
+      ? t('zoom.zoomPanel.cause.typing', { time: fmt.clock(cause.t) })
       : cause.kind === 'mark'
-        ? `Made for a zoom-here mark at ${fmt.clock(cause.t)}`
-        : `Zooms back in where scrolling stopped (${fmt.clock(cause.t)})`
+        ? t('zoom.zoomPanel.cause.mark', { time: fmt.clock(cause.t) })
+        : t('zoom.zoomPanel.cause.scroll', { time: fmt.clock(cause.t) })
   return (
     <div className="zoom-cause" data-testid="zoom-cause" data-kind={cause.kind}>
       <span>{text}</span>
@@ -190,7 +186,7 @@ function SelectedZoom(props: InspectorProps & { zoom: ZoomSegment }): JSX.Elemen
   // the view, and the zoom shows gentler than set.
   const following = followsAction(project)
   const framed = following ? framedLevel(project, zoom.id) : null
-  const presets = following ? [{ value: 1, key: '', label: '1×', title: 'Only moves the view, no zoom' }, ...ZOOM_LEVEL_PRESETS] : ZOOM_LEVEL_PRESETS
+  const presets = following ? [{ value: 1, key: '', label: '1×', title: t('zoom.zoomPanel.presetFollow') }, ...zoomLevelPresets()] : zoomLevelPresets()
 
   const patch = (fn: (z: ZoomSegment) => ZoomSegment, key?: string): void => {
     store.update((p) => ({ ...p, zooms: p.zooms.map((z) => (z.id === zoom.id ? fn(z) : z)) }), key)
@@ -234,7 +230,7 @@ function SelectedZoom(props: InspectorProps & { zoom: ZoomSegment }): JSX.Elemen
     }
     const zooms = disconnectFromNext(store.state.zooms, zoom.id, zoomStyleOf(store.state))
     if (zooms) store.update((p) => ({ ...p, zooms }))
-    else props.onNotice('This zoom is too short to end before the next one: shorten or move a zoom instead')
+    else props.onNotice(t('zoom.zoomPanel.tooShortToEnd'))
   }
 
   const easing = zoomEasing(zoom, style)
@@ -242,14 +238,14 @@ function SelectedZoom(props: InspectorProps & { zoom: ZoomSegment }): JSX.Elemen
   const ownStyle = zoom.easing !== undefined || zoom.transition !== undefined
 
   return (
-    <Section title="Selected zoom" aside={<span className="muted small">{zoom.auto ? 'automatic' : 'edited'}</span>}>
+    <Section title={t('zoom.zoomPanel.selectedZoom')} aside={<span className="muted small">{zoom.auto ? t('zoom.zoomPanel.automatic') : t('zoom.zoomPanel.edited')}</span>}>
       <p className="hint">
-        {fmt.clock(zoom.start)} – {fmt.clock(zoom.end)} · {(zoom.end - zoom.start).toFixed(1)} s
+        {t('zoom.zoomPanel.span', { start: fmt.clock(zoom.start), end: fmt.clock(zoom.end), seconds: fmt.number(zoom.end - zoom.start, { max: 1 }) })}
       </p>
       {zoom.auto && <ZoomCauseLine zoom={zoom} cursor={props.cursor} auto={zoomSettingsOf(project).auto} input={props.input} onSelect={props.onSelect} />}
       <div className="zoom-chips-fill">
         <Chips
-          label="Zoom level presets"
+          label={t('zoom.zoomPanel.zoomLevelPresets')}
           value={presets.find((p) => Math.abs(p.value - level) < 1e-3)?.value ?? null}
           onChange={(v) => setLevel(v)}
           options={presets.map((p) => {
@@ -260,11 +256,11 @@ function SelectedZoom(props: InspectorProps & { zoom: ZoomSegment }): JSX.Elemen
       </div>
       {framed !== null && (
         <p className="hint" data-testid="zoom-framed-level">
-          In the vertical frame this zoom is {fmt.factor(framed)} (zooms are gentler there, and limited so the picture stays sharp).
+          {t('zoom.zoomPanel.framedLevel', { level: fmt.factor(framed) })}
         </p>
       )}
       <Slider
-        label={level < 1 ? 'Zoom level · pull back' : 'Zoom level'}
+        label={level < 1 ? t('zoom.zoomPanel.zoomLevelPullBack') : t('zoom.zoomPanel.zoomLevel')}
         value={level}
         min={ZOOM_MIN_SCALE}
         max={ZOOM_MAX_SCALE}
@@ -273,54 +269,52 @@ function SelectedZoom(props: InspectorProps & { zoom: ZoomSegment }): JSX.Elemen
         onChange={(v) => setLevel(v, `zoom-scale:${zoom.id}`)}
       />
       <Chips
-        label="Zoom focus"
+        label={t('zoom.zoomPanel.zoomFocus')}
         value={focus.mode === 'cursor' && !cursorValid ? null : focus.mode}
         onChange={setFocusMode}
         options={[
-          { value: 'cursor', label: 'Follow cursor', disabled: !cursorValid, title: cursorValid ? 'Follow the cursor' : 'No cursor data in this recording' },
-          { value: 'fixed', label: 'Fixed point', title: 'Look at one point' },
-          { value: 'region', label: 'Region', title: 'Frame a rectangle you draw on the preview' }
+          { value: 'cursor', label: t('style.groupEdit.option.zoomFocus.cursor'), disabled: !cursorValid, title: cursorValid ? t('style.groupEdit.option.zoomFocus.cursor.title') : t('style.selectionPanel.noCursor') },
+          { value: 'fixed', label: t('style.groupEdit.option.zoomFocus.fixed'), title: t('zoom.zoomPanel.focus.fixed.title') },
+          { value: 'region', label: t('zoom.zoomPanel.focus.region'), title: t('zoom.zoomPanel.focus.region.title') }
         ]}
       />
-      {focus.mode === 'cursor' && level < 1 && <p className="hint">A pulled-back zoom stays centred while the cursor moves.</p>}
+      {focus.mode === 'cursor' && level < 1 && <p className="hint">{t('zoom.zoomPanel.aPulledBackZoom')}</p>}
       {focus.mode === 'fixed' && (
         <>
           <button className={`btn ${props.pickFocus ? 'primary' : ''}`} onClick={() => (props.pickFocus ? props.onPickFocus(false) : startPicking())} aria-pressed={props.pickFocus}>
-            <EditorIcon name="crosshair" size={16} /> {props.pickFocus ? 'Done picking' : 'Pick on preview'}
+            <EditorIcon name="crosshair" size={16} /> {props.pickFocus ? t('zoom.zoomPanel.donePicking') : t('zoom.zoomPanel.pickOnPreview')}
           </button>
-          <Slider label="Focus X" value={focus.x} min={0} max={1} step={0.01} format={pctFmt} onChange={(v) => setZoom({ focus: fixedAt(v, focus.y) }, `zoom-focus:${zoom.id}`)} />
-          <Slider label="Focus Y" value={focus.y} min={0} max={1} step={0.01} format={pctFmt} onChange={(v) => setZoom({ focus: fixedAt(focus.x, v) }, `zoom-focus:${zoom.id}`)} />
+          <Slider label={t('zoom.zoomPanel.focusX')} value={focus.x} min={0} max={1} step={0.01} format={pctFmt} onChange={(v) => setZoom({ focus: fixedAt(v, focus.y) }, `zoom-focus:${zoom.id}`)} />
+          <Slider label={t('zoom.zoomPanel.focusY')} value={focus.y} min={0} max={1} step={0.01} format={pctFmt} onChange={(v) => setZoom({ focus: fixedAt(focus.x, v) }, `zoom-focus:${zoom.id}`)} />
         </>
       )}
       {focus.mode === 'region' && (
         <>
           <button className={`btn ${props.pickFocus ? 'primary' : ''}`} onClick={() => (props.pickFocus ? props.onPickFocus(false) : startPicking())} aria-pressed={props.pickFocus}>
-            <RegionIcon /> {props.pickFocus ? 'Done' : 'Draw on preview'}
+            <RegionIcon /> {props.pickFocus ? t('common.action.done') : t('zoom.zoomPanel.drawOnPreview')}
           </button>
           <p className="hint" data-testid="zoom-region-readout">
-            Frames {pctFmt(focus.w)} × {pctFmt(focus.h)} of the recording at {fmt.factor(level)}. Drag on the preview to draw a new box, or move and resize it.
+            {t('zoom.zoomPanel.regionReadout', { width: pctFmt(focus.w), height: pctFmt(focus.h), level: fmt.factor(level) })}
           </p>
         </>
       )}
       <div className="field-label zoom-subhead">
-        <span>Motion</span>
+        <span>{t('common.label.motion')}</span>
         {ownStyle ? (
-          <button className="link" onClick={() => setZoom({ easing: undefined, transition: undefined })} title="Use the project's zoom style for this zoom">
-            Use zoom style
-          </button>
+          <button className="link" onClick={() => setZoom({ easing: undefined, transition: undefined })} title={t('zoom.zoomPanel.useTheProjectS')}>{t('zoom.zoomPanel.useZoomStyle')}</button>
         ) : (
-          <span className="muted small">zoom style</span>
+          <span className="muted small">{t('zoom.zoomPanel.zoomStyle')}</span>
         )}
       </div>
       <div className="zoom-chips-fill">
-        <Chips label="Zoom easing" value={easing} onChange={(v: ZoomEasing) => setZoom({ easing: v })} options={ZOOM_EASINGS} />
+        <Chips label={t('zoom.zoomPanel.zoomEasing')} value={easing} onChange={(v: ZoomEasing) => setZoom({ easing: v })} options={ZOOM_EASINGS} />
       </div>
-      <Slider label="Transition" value={transition} min={MIN_TRANSITION} max={MAX_TRANSITION} step={0.05} format={secFmt} onChange={(v) => setZoom({ transition: v }, `zoom-transition:${zoom.id}`)} />
+      <Slider label={t('zoom.zoomPanel.transition')} value={transition} min={MIN_TRANSITION} max={MAX_TRANSITION} step={0.05} format={secFmt} onChange={(v) => setZoom({ transition: v }, `zoom-transition:${zoom.id}`)} />
       <Toggle
-        label="Pan to next zoom"
+        label={t('zoom.zoomPanel.panToNextZoom')}
         checked={connected}
         disabled={!next}
-        title={next ? 'Move straight to the next zoom instead of zooming out in between' : 'There is no zoom after this one'}
+        title={next ? t('zoom.zoomPanel.moveStraightToThe') : t('zoom.zoomPanel.thereIsNoZoom')}
         onChange={toggleConnect}
       />
       <LookButtons itemKey={itemKey('zoom', zoom.id)} />
@@ -331,7 +325,7 @@ function SelectedZoom(props: InspectorProps & { zoom: ZoomSegment }): JSX.Elemen
           props.onSelect(null)
         }}
       >
-        <Icon name="trash" size={16} /> Delete zoom
+        <Icon name="trash" size={16} /> {t('zoom.zoomPanel.deleteZoom')}
       </button>
     </Section>
   )
@@ -345,15 +339,15 @@ function ZoomStyleSection({ project, onNotice }: { project: Project; onNotice: (
     store.update((p) => ({ ...p, zoomSettings: { ...zoomSettingsOf(p), ...patch } }), key)
   const overridden = project.zooms.filter((z) => z.easing !== undefined || z.transition !== undefined).length
   return (
-    <Section title="Zoom style" aside={<span className="muted small">all zooms</span>}>
+    <Section title={t('zoom.zoomPanel.zoomStyleTitle')} aside={<span className="muted small">{t('zoom.zoomPanel.allZooms')}</span>}>
       <div className="zoom-chips-fill">
-        <Chips label="Default zoom easing" value={settings.easing} onChange={(easing: ZoomEasing) => set({ easing })} options={ZOOM_EASINGS} />
+        <Chips label={t('zoom.zoomPanel.defaultZoomEasing')} value={settings.easing} onChange={(easing: ZoomEasing) => set({ easing })} options={ZOOM_EASINGS} />
       </div>
-      <Slider label="Transition" value={settings.transition} min={MIN_TRANSITION} max={MAX_TRANSITION} step={0.05} format={secFmt} onChange={(transition) => set({ transition }, 'zoomSettings.transition')} />
-      <Slider label="New zoom level" value={settings.defaultScale} min={ZOOM_MIN_SCALE} max={ZOOM_MAX_SCALE} step={0.05} format={fmt.factor} onChange={(defaultScale) => set({ defaultScale }, 'zoomSettings.defaultScale')} />
+      <Slider label={t('zoom.zoomPanel.transition')} value={settings.transition} min={MIN_TRANSITION} max={MAX_TRANSITION} step={0.05} format={secFmt} onChange={(transition) => set({ transition }, 'zoomSettings.transition')} />
+      <Slider label={t('zoom.zoomPanel.newZoomLevel')} value={settings.defaultScale} min={ZOOM_MIN_SCALE} max={ZOOM_MAX_SCALE} step={0.05} format={fmt.factor} onChange={(defaultScale) => set({ defaultScale }, 'zoomSettings.defaultScale')} />
       <p className="hint">
-        Every zoom without its own motion follows this style; zooms you add start at the new zoom level.
-        {overridden > 0 ? ` ${plural(overridden, 'zoom')} ${overridden === 1 ? 'has its' : 'have their'} own.` : ''}
+        {t('zoom.zoomPanel.everyZoomWithoutIts')}
+        {overridden > 0 ? ` ${t('zoom.zoomPanel.ownStyleCount', { count: overridden, n: fmt.count(overridden) })}` : ''}
       </p>
       <div className="row start zoom-actions">
         <button
@@ -361,20 +355,18 @@ function ZoomStyleSection({ project, onNotice }: { project: Project; onNotice: (
           disabled={overridden === 0}
           onClick={() => {
             store.update((p) => ({ ...p, zooms: clearZoomStyles(p.zooms) }))
-            onNotice(`Zoom style applied to all zooms${undoHint(keymap)}`)
+            onNotice(`${t('zoom.zoomPanel.styleApplied')}${undoHint(keymap)}`)
           }}
-        >
-          Apply to all zooms
-        </button>
+        >{t('zoom.zoomPanel.applyToAllZooms')}</button>
       </div>
     </Section>
   )
 }
 
-const SCROLL_MODES: { value: ScrollZoomMode; label: string; title: string }[] = [
-  { value: 'zoom-out', label: 'Zoom out', title: 'Show the whole page while it scrolls, then zoom in where you stop' },
-  { value: 'hold', label: 'Hold', title: 'Keep the zoom steady until scrolling stops' },
-  { value: 'ignore', label: 'Ignore', title: 'Scrolling does not change the zooms' }
+const SCROLL_MODES = (): { value: ScrollZoomMode; label: string; title: string }[] => [
+  { value: 'zoom-out', label: t('zoom.zoomPanel.scroll.zoomOut'), title: t('zoom.zoomPanel.scroll.zoomOut.title') },
+  { value: 'hold', label: t('zoom.zoomPanel.scroll.hold'), title: t('zoom.zoomPanel.scroll.hold.title') },
+  { value: 'ignore', label: t('zoom.zoomPanel.scroll.ignore'), title: t('zoom.zoomPanel.scroll.ignore.title') }
 ]
 
 function AutoZoomSection({
@@ -420,31 +412,29 @@ function AutoZoomSection({
   const regenerate = (): void => {
     const r = regenerateInFrame(project.zooms, cursor, project, { ...auto, enabled: true })
     store.update((p) => ({ ...p, autoZoom: true, zoomSettings: { ...zoomSettingsOf(p), auto: { ...zoomSettingsOf(p).auto, enabled: true } }, zooms: r.zooms }))
-    onNotice(`Auto zoom: ${plural(r.added, 'zoom')}${r.kept ? `, ${r.kept} edited kept` : ''}`)
+    onNotice(r.kept ? t('zoom.zoomPanel.regeneratedKept', { count: r.added, n: fmt.count(r.added), kept: fmt.count(r.kept) }) : t('zoom.zoomPanel.regenerated', { count: r.added, n: fmt.count(r.added) }))
   }
 
   const removeAll = (): void => {
     const n = project.zooms.length
     store.update((p) => ({ ...p, zooms: [] }))
-    onNotice(`Removed ${plural(n, 'zoom')}${undoHint(keymap)}`)
+    onNotice(`${t('zoom.zoomPanel.removed', { count: n, n: fmt.count(n) })}${undoHint(keymap)}`)
   }
 
   return (
     <Section
-      title="Auto zoom"
+      title={t('zoom.zoomPanel.autoZoom')}
       aside={
         <span className="muted small">
-          {plural(autoCount, 'automatic zoom')}
+          {t('zoom.zoomPanel.automaticCount', { count: autoCount, n: fmt.count(autoCount) })}
           {autoCount > 1 && (
             <>
               {' · '}
               <button
                 className="link small"
                 onClick={() => list.selectAll(project.zooms.filter((z) => z.auto).map((z) => itemKey('zoom', z.id)))}
-                title="Select the automatic zooms to edit or move them together"
-              >
-                Select them
-              </button>
+                title={t('zoom.zoomPanel.selectTheAutomaticZooms')}
+              >{t('zoom.zoomPanel.selectThem')}</button>
             </>
           )}
         </span>
@@ -452,46 +442,44 @@ function AutoZoomSection({
     >
       <p className="hint" data-testid="auto-zoom-summary" data-imported={isImported(project) || undefined}>
         {hasInput
-          ? `${autoZoomFoundText(found, auto.rightClicks)} Changing these settings regenerates the automatic zooms; zooms you added or edited are kept.`
-          : `${orPress(isImported(project) ? IMPORTED_COPY.autoZoom : 'No clicks were captured, so add zooms yourself: double-click the zoom track', keymap.addZoom)}.`}
+          ? t('zoom.zoomPanel.changingTheseSettingsRegenerates', { found: autoZoomFoundText(found, auto.rightClicks) })
+          : `${orPress(isImported(project) ? IMPORTED_COPY.autoZoom : t('zoom.zoomPanel.noClicks'), keymap.addZoom)}.`}
       </p>
-      <Toggle label="Auto zoom" checked={auto.enabled} disabled={!hasInput} onChange={(enabled) => setAuto({ enabled })} />
+      <Toggle label={t('zoom.zoomPanel.autoZoom')} checked={auto.enabled} disabled={!hasInput} onChange={(enabled) => setAuto({ enabled })} />
       <div className={`auto-zoom-options ${auto.enabled && hasInput ? '' : 'off'}`}>
-        <Slider label="Level" value={auto.scale} min={1.1} max={4} step={0.05} format={fmt.factor} disabled={!auto.enabled || !hasInput} onChange={(scale) => setAuto({ scale }, 'auto.scale')} />
-        <Slider label="Group clicks within" value={auto.clusterGap} min={0.5} max={8} step={0.1} format={(v) => `${v.toFixed(1)} s`} disabled={!auto.enabled || !hasInput} onChange={(clusterGap) => setAuto({ clusterGap }, 'auto.clusterGap')} />
-        <Slider label="Zoom in before" value={auto.leadIn} min={0.2} max={2.5} step={0.05} format={secFmt} disabled={!auto.enabled || !hasInput} onChange={(leadIn) => setAuto({ leadIn }, 'auto.leadIn')} />
-        <Slider label="Hold after" value={auto.hold} min={0.5} max={6} step={0.1} format={(v) => `${v.toFixed(1)} s`} disabled={!auto.enabled || !hasInput} onChange={(hold) => setAuto({ hold }, 'auto.hold')} />
-        <Toggle label="Right clicks" checked={auto.rightClicks} disabled={!auto.enabled || !hasInput} onChange={(rightClicks) => setAuto({ rightClicks })} />
+        <Slider label={t('zoom.zoomPanel.level')} value={auto.scale} min={1.1} max={4} step={0.05} format={fmt.factor} disabled={!auto.enabled || !hasInput} onChange={(scale) => setAuto({ scale }, 'auto.scale')} />
+        <Slider label={t('zoom.zoomPanel.groupClicksWithin')} value={auto.clusterGap} min={0.5} max={8} step={0.1} format={tenthsFmt} disabled={!auto.enabled || !hasInput} onChange={(clusterGap) => setAuto({ clusterGap }, 'auto.clusterGap')} />
+        <Slider label={t('zoom.zoomPanel.zoomInBefore')} value={auto.leadIn} min={0.2} max={2.5} step={0.05} format={secFmt} disabled={!auto.enabled || !hasInput} onChange={(leadIn) => setAuto({ leadIn }, 'auto.leadIn')} />
+        <Slider label={t('zoom.zoomPanel.holdAfter')} value={auto.hold} min={0.5} max={6} step={0.1} format={tenthsFmt} disabled={!auto.enabled || !hasInput} onChange={(hold) => setAuto({ hold }, 'auto.hold')} />
+        <Toggle label={t('zoom.zoomPanel.rightClicks')} checked={auto.rightClicks} disabled={!auto.enabled || !hasInput} onChange={(rightClicks) => setAuto({ rightClicks })} />
         <Toggle
-          label="Typing"
-          title="Zoom in a little closer on the field you type into, and stay there until you stop typing (short pauses included)"
+          label={t('zoom.zoomPanel.typing')}
+          title={t('zoom.zoomPanel.zoomInALittle')}
           checked={auto.onTyping}
           disabled={!auto.enabled || !hasInput}
           onChange={(onTyping) => setAuto({ onTyping })}
         />
-        <Toggle label="Zoom-here marks" title="Zoom where you pressed the zoom-here shortcut while recording" checked={auto.onMarks} disabled={!auto.enabled || !hasInput} onChange={(onMarks) => setAuto({ onMarks })} />
-        <span className="field-label">While scrolling</span>
+        <Toggle label={t('zoom.zoomPanel.zoomHereMarks')} title={t('zoom.zoomPanel.zoomWhereYouPressed')} checked={auto.onMarks} disabled={!auto.enabled || !hasInput} onChange={(onMarks) => setAuto({ onMarks })} />
+        <span className="field-label">{t('zoom.zoomPanel.whileScrolling')}</span>
         <div className="zoom-chips-fill">
           <Chips
-            label="While scrolling"
+            label={t('zoom.zoomPanel.whileScrolling')}
             value={auto.scrolling ?? 'zoom-out'}
             disabled={!auto.enabled || !hasInput || !scrollsRecorded}
             onChange={(scrolling) => setAuto({ scrolling })}
-            options={SCROLL_MODES}
+            options={SCROLL_MODES()}
           />
         </div>
         {!scrollsRecorded && recorded.valid && (
-          <p className="hint" data-testid="scroll-not-recorded">
-            Scrolling was not recorded in this video (it was made before Flown recorded scrolling).
-          </p>
+          <p className="hint" data-testid="scroll-not-recorded">{t('zoom.zoomPanel.scrollingWasNotRecorded')}</p>
         )}
       </div>
       <div className="row start zoom-actions">
         <button className="btn" disabled={!hasInput} onClick={regenerate}>
-          <Icon name="refresh" size={16} /> Regenerate
+          <Icon name="refresh" size={16} /> {t('common.action.regenerate')}
         </button>
         <button className="btn ghost danger" disabled={project.zooms.length === 0} onClick={removeAll}>
-          <Icon name="trash" size={16} /> Remove all
+          <Icon name="trash" size={16} /> {t('common.action.removeAll')}
         </button>
       </div>
       {rows.length > 0 && <RecordedClicks rows={rows} input={input} selected={selectedClick} />}
@@ -505,42 +493,35 @@ function RecordedClicks({ rows, input, selected }: { rows: ClickRow[]; input: In
   return (
     <details className="click-review" data-testid="recorded-clicks">
       <summary>
-        Recorded clicks · {rows.length}
-        {ignored > 0 ? ` · ${ignored} ignored` : ''}
+        {ignored > 0
+          ? t('zoom.zoomPanel.recordedClicksIgnored', { n: fmt.count(rows.length), ignored: fmt.count(ignored) })
+          : t('zoom.zoomPanel.recordedClicksCount', { n: fmt.count(rows.length) })}
       </summary>
-      <ul className="click-list" aria-label="Recorded clicks">
+      <ul className="click-list" aria-label={t('zoom.zoomPanel.recordedClicksList')}>
         {rows.map((r, i) => {
           const state = clickState(r)
           const at = fmt.clock(r.click.t)
           return (
             <li key={`${r.ms}:${i}`} className={`${state === 'used' ? '' : 'ignored'} ${selected === r.ms ? 'selected' : ''}`} data-click-ms={r.ms} data-state={state}>
-              <button className="click-time" title="Select this click on the timeline" aria-current={selected === r.ms ? 'true' : undefined} onClick={() => input.selectClick(r.ms)}>
+              <button className="click-time" title={t('zoom.zoomPanel.selectThisClickOn')} aria-current={selected === r.ms ? 'true' : undefined} onClick={() => input.selectClick(r.ms)}>
                 {at}
               </button>
               <span className="click-kind">{r.click.button}</span>
-              <span className="click-state" title={r.ignored?.stray ? `Ignored automatically: ${STRAY_REASON_TEXT[r.ignored.stray]}` : undefined}>
-                {state === 'used' ? 'used' : state === 'stray' ? 'stray' : 'ignored'}
+              <span className="click-state" title={r.ignored?.stray ? t('zoom.zoomPanel.ignoredAutomatically', { reason: STRAY_REASON_TEXT[r.ignored.stray] }) : undefined}>
+                {state === 'used' ? t('zoom.zoomPanel.used') : state === 'stray' ? t('zoom.zoomPanel.stray') : t('zoom.zoomPanel.stateIgnored')}
               </span>
               {state === 'used' ? (
-                <button className="btn ghost small-btn" aria-label={`Ignore the click at ${at}`} onClick={() => input.setIgnored([r.ms], true)}>
-                  Ignore
-                </button>
+                <button className="btn ghost small-btn" aria-label={t('zoom.zoomPanel.ignoreTheClickAt', { at: String(at) })} onClick={() => input.setIgnored([r.ms], true)}>{t('zoom.zoomPanel.ignore')}</button>
               ) : (
-                <button className="btn ghost small-btn" aria-label={`Use the click at ${at}`} onClick={() => input.setIgnored([r.ms], false)}>
-                  Use
-                </button>
+                <button className="btn ghost small-btn" aria-label={t('zoom.zoomPanel.useTheClickAt', { at: String(at) })} onClick={() => input.setIgnored([r.ms], false)}>{t('common.action.use')}</button>
               )}
             </li>
           )
         })}
       </ul>
       <div className="row start zoom-actions">
-        <button className="btn" onClick={input.findStray} title="Ignore clicks that are almost certainly not part of the demo: right at the start, right before stopping, or made while the cursor flew past">
-          Find stray clicks
-        </button>
-        <button className="btn ghost" disabled={ignored === 0} onClick={input.useAll}>
-          Use all clicks
-        </button>
+        <button className="btn" onClick={input.findStray} title={t('zoom.zoomPanel.ignoreClicksThatAre')}>{t('zoom.zoomPanel.findStrayClicks')}</button>
+        <button className="btn ghost" disabled={ignored === 0} onClick={input.useAll}>{t('zoom.zoomPanel.useAllClicks')}</button>
       </div>
     </details>
   )

@@ -11,8 +11,6 @@ import {
   revealKeptTime,
   setItemTime,
   SHAPE_COLORS,
-  SHAPE_KINDS,
-  shapeLabel,
   STROKE_LIMITS
 } from '../../../../shared/editor/shapes'
 import { withShortcut } from '../../../../shared/editor/shortcuts'
@@ -31,14 +29,25 @@ import { addShapeAt, addSpotlightAt, cursorPosFor, revealItem } from '../playhea
 import { ShapeIcon } from '../shapeIcons'
 import '../shapes.css'
 import { MagnifierSection } from './MagnifierSection'
-import { isMagnifier, spotlightName } from '../../../../shared/render/magnifier'
+import { isMagnifier, MAGNIFIER } from '../../../../shared/render/magnifier'
 import { fmt } from '../../../../shared/i18n/fmt'
 import { CalloutSection } from './CalloutSection'
+import { t, uiLanguage } from '../../../../shared/i18n/t'
+import { shapeKinds, shapeName } from '../../../../shared/editor/itemNames'
+import { NumberField } from '../../i18n/NumberField'
 
 type Item = { type: 'shape'; item: Shape } | { type: 'spotlight'; item: Spotlight }
 
-/** A spotlight's name in the list: today's, or "Magnifier, 2 times" (editing polish §2.2). */
-const spotlightLabel = (s: Spotlight): string => spotlightName(s)
+/** "2 times": a magnifier's zoom in words (magnifier.ts's timesText, in the UI language). */
+export const magnifierTimes = (z: number): string => t('text.shapesPanel.times', { n: fmt.number(Number(z.toFixed(2))) })
+
+/** A spotlight's name in the list: "Cursor spotlight", "Spotlight", or "Magnifier, 2 times" (editing polish §2.2; magnifier.ts's spotlightName). */
+const spotlightLabel = (s: Spotlight): string =>
+  isMagnifier(s)
+    ? t('text.shapesPanel.magnifierName', { times: magnifierTimes(clamp(s.magnify as number, MAGNIFIER.min, MAGNIFIER.max)) })
+    : s.mode === 'cursor'
+      ? t('text.shapesPanel.cursorSpotlightName')
+      : t('text.shapesPanel.spotlightName')
 
 /** Which command adds each kind (its shortcut, if the user gave it one, goes in the tooltip). */
 const ADD_COMMAND: Record<ShapeKind, CommandId> = {
@@ -82,15 +91,15 @@ export function ShapesPanel(props: InspectorProps): JSX.Element {
       <MagnifierSection project={project} selection={selection ?? null} cursor={cursor} />
       <CalloutSection project={project} selection={selection ?? null} />
 
-      <Section title="Add at playhead">
-        <div className="shape-tools" role="group" aria-label="Add a shape">
-          {SHAPE_KINDS.map((k) => (
+      <Section title={t('text.shapesPanel.addAtPlayhead')}>
+        <div className="shape-tools" role="group" aria-label={t('text.shapesPanel.addAShape')}>
+          {shapeKinds().map((k) => (
             <button
               key={k.kind}
               className={`shape-tool ${isPrivacyKind(k.kind) ? 'privacy' : ''}`}
               data-kind={k.kind}
               title={withShortcut(k.title, keymap[ADD_COMMAND[k.kind]])}
-              aria-label={`Add ${k.label.toLowerCase()}`}
+              aria-label={t('text.shapesPanel.addKind', { kind: k.kind })}
               onClick={() => addShape(k.kind)}
             >
               <ShapeIcon name={k.kind} size={20} />
@@ -98,31 +107,31 @@ export function ShapesPanel(props: InspectorProps): JSX.Element {
             </button>
           ))}
         </div>
-        <p className="hint">Shapes stay on the content while the camera zooms. Blur and pixelate are always fully applied and drawn under the cursor.</p>
+        <p className="hint">{t('text.shapesPanel.shapesStayOnThe')}</p>
       </Section>
 
-      <Section title="Spotlight">
-        <div className="shape-tools two" role="group" aria-label="Add a spotlight">
+      <Section title={t('text.shapesPanel.spotlight')}>
+        <div className="shape-tools two" role="group" aria-label={t('text.shapesPanel.addASpotlight')}>
           <button
             className="shape-tool spotlight"
             data-kind="spotlight-cursor"
             disabled={!cursor.valid}
-            title={cursor.valid ? withShortcut('Dim everything but the area around the cursor', keymap.addCursorSpotlight) : 'No cursor data in this recording'}
-            aria-label="Add cursor spotlight"
+            title={cursor.valid ? withShortcut(t('text.shapesPanel.cursorSpotlightTitle'), keymap.addCursorSpotlight) : t('text.shapesPanel.noCursorDataIn')}
+            aria-label={t('text.shapesPanel.addCursorSpotlight')}
             onClick={() => addSpotlight('cursor')}
           >
             <ShapeIcon name="spotlight-cursor" size={20} />
-            <span>Follow cursor</span>
+            <span>{t('text.shapesPanel.followCursor')}</span>
           </button>
           <button
             className="shape-tool spotlight"
             data-kind="spotlight-region"
-            title={withShortcut('Dim everything but an area you place', keymap.addSpotlight)}
-            aria-label="Add region spotlight"
+            title={withShortcut(t('text.shapesPanel.regionSpotlightTitle'), keymap.addSpotlight)}
+            aria-label={t('text.shapesPanel.addRegionSpotlight')}
             onClick={() => addSpotlight('region')}
           >
             <ShapeIcon name="spotlight-region" size={20} />
-            <span>Region</span>
+            <span>{t('text.shapesPanel.region')}</span>
           </button>
         </div>
       </Section>
@@ -130,7 +139,7 @@ export function ShapesPanel(props: InspectorProps): JSX.Element {
       {items.length > 0 ? (
         <ShapeList project={project} items={items} selId={selId} onSelect={props.onSelect} />
       ) : (
-        <p className="hint">Added items appear on the shapes track of the timeline: drag them to change when they show, and drag them on the preview to place them.</p>
+        <p className="hint">{t('text.shapesPanel.addedItemsAppearOn')}</p>
       )}
     </>
   )
@@ -142,11 +151,12 @@ function ShapeList({ project, items, selId, onSelect }: { project: Project; item
   const list = useListSelect()
   return (
     <Section
-      title={`In this video (${items.length})`}
+      title={t('text.shapesPanel.inThisVideo', { n: fmt.count(items.length) })}
       aside={
         items.length > 1 ? (
-          <button className="link small" onClick={() => list.selectAll(items.map(({ type, item }) => itemKey(type, item.id)))} title={`Select all ${items.length} shapes and spotlights to edit them together`}>
-            Select all
+          <button className="link small" onClick={() => list.selectAll(items.map(({ type, item }) => itemKey(type, item.id)))} title={t('text.shapesPanel.selectAllShapesAnd', { n: fmt.count(items.length) })}
+          >
+            {t('common.action.selectAll')}
           </button>
         ) : undefined
       }
@@ -166,7 +176,7 @@ function ShapeList({ project, items, selId, onSelect }: { project: Project; item
                 }, selId === item.id)}
               >
                 <ShapeIcon name={type === 'shape' ? (item as Shape).kind : isMagnifier(item as Spotlight) ? 'magnifier' : (item as Spotlight).mode === 'cursor' ? 'spotlight-cursor' : 'spotlight-region'} size={15} />
-                <span>{type === 'shape' ? shapeLabel((item as Shape).kind) : spotlightLabel(item as Spotlight)}</span>
+                <span>{type === 'shape' ? shapeName((item as Shape).kind) : spotlightLabel(item as Spotlight)}</span>
                 <span className="muted">
                   {fmt.clock(item.start, 'whole')} – {fmt.clock(item.end, 'whole')}
                 </span>
@@ -188,7 +198,7 @@ function SelectedShape({ project, shape, onSelect }: { project: Project; shape: 
     store.update((p) => ({ ...p, shapes: (p.shapes ?? []).map((s) => (s.id === id ? { ...s, ...patch } : s)) }), key)
   const privacy = isPrivacyKind(shape.kind)
   const boxKind = shape.kind === 'rect' || shape.kind === 'ellipse'
-  const title = `Selected ${shapeLabel(shape.kind).toLowerCase()}`
+  const title = t('text.shapesPanel.selectedKind', { kind: shape.kind })
 
   return (
     <Section title={title} aside={<span className="muted small">{fmt.clock(shape.start)} – {fmt.clock(shape.end)}</span>}>
@@ -196,16 +206,16 @@ function SelectedShape({ project, shape, onSelect }: { project: Project; shape: 
       {privacy ? (
         <>
           <Chips<ShapeKind>
-            label="Privacy effect"
+            label={t('text.shapesPanel.privacyEffect')}
             value={shape.kind}
             onChange={(kind) => set({ kind })}
             options={[
-              { value: 'blur', label: 'Blur', title: 'A soft blur over the area' },
-              { value: 'pixelate', label: 'Pixelate', title: 'Large square pixels over the area' }
+              { value: 'blur', label: shapeName('blur'), title: t('text.shapesPanel.blurTitle') },
+              { value: 'pixelate', label: shapeName('pixelate'), title: t('text.shapesPanel.pixelateTitle') }
             ]}
           />
           <Slider
-            label={shape.kind === 'blur' ? 'Blur amount' : 'Pixel size'}
+            label={shape.kind === 'blur' ? t('text.shapesPanel.blurAmount') : t('text.shapesPanel.pixelSize')}
             value={shape.strength}
             min={0}
             max={1}
@@ -213,31 +223,31 @@ function SelectedShape({ project, shape, onSelect }: { project: Project; shape: 
             format={pctFmt}
             onChange={(v) => set({ strength: v }, `shape-strength:${id}`)}
           />
-          <p className="hint">Hides what is under it for its whole time on screen, also while the camera moves. The cursor stays visible on top.</p>
+          <p className="hint">{t('text.shapesPanel.hidesWhatIsUnder')}</p>
         </>
       ) : (
         <>
           <ColorDots
-            label="Colour"
+            label={t('common.label.colour')}
             value={shape.color}
             presets={shape.kind === 'highlight' ? HIGHLIGHT_COLORS : SHAPE_COLORS}
             onChange={(color, key) => set({ color }, key ?? undefined)}
             mergeKey={`shape-color:${id}`}
           />
-          {boxKind && <Toggle label="Filled" checked={shape.fill} onChange={(fill) => set({ fill })} />}
+          {boxKind && <Toggle label={t('text.shapesPanel.filled')} checked={shape.fill} onChange={(fill) => set({ fill })} />}
           {hasStroke(shape) && (
             <Slider
-              label="Line width"
+              label={t('text.shapesPanel.lineWidth')}
               value={shape.strokeWidth}
               min={STROKE_LIMITS.min}
               max={STROKE_LIMITS.max}
               step={0.5}
-              format={(v) => `${+v.toFixed(1)} px`}
+              format={(v) => t('text.shapesPanel.px', { n: fmt.number(+v.toFixed(1)) })}
               onChange={(v) => set({ strokeWidth: v }, `shape-stroke:${id}`)}
             />
           )}
-          <Slider label="Opacity" value={shape.opacity} min={0.1} max={1} step={0.01} format={pctFmt} onChange={(v) => set({ opacity: v }, `shape-opacity:${id}`)} />
-          <p className="hint">{shape.kind === 'arrow' || shape.kind === 'line' ? 'Drag its ends on the preview, or drag elsewhere to draw it again.' : 'Drag it on the preview to move it, its handles to resize, or drag elsewhere to draw it again.'}</p>
+          <Slider label={t('common.label.opacity')} value={shape.opacity} min={0.1} max={1} step={0.01} format={pctFmt} onChange={(v) => set({ opacity: v }, `shape-opacity:${id}`)} />
+          <p className="hint">{shape.kind === 'arrow' || shape.kind === 'line' ? t('text.shapesPanel.dragItsEndsOn') : t('text.shapesPanel.dragItOnThe')}</p>
         </>
       )}
       <TimeFields project={project} item={shape} onChange={(times) => set(times, `shape-time:${id}`)} />
@@ -252,7 +262,7 @@ function SelectedShape({ project, shape, onSelect }: { project: Project; shape: 
           store.update((p) => ({ ...p, shapes: (p.shapes ?? []).filter((s) => s.id !== id) }))
           onSelect(null)
         }}
-        what={shapeLabel(shape.kind).toLowerCase()}
+        kind={shape.kind}
       />
     </Section>
   )
@@ -292,31 +302,31 @@ function SelectedSpotlight({
   }
 
   return (
-    <Section title="Selected spotlight" aside={<span className="muted small">{fmt.clock(spot.start)} – {fmt.clock(spot.end)}</span>}>
+    <Section title={t('text.shapesPanel.selectedSpotlight')} aside={<span className="muted small">{fmt.clock(spot.start)} – {fmt.clock(spot.end)}</span>}>
       <OnPreview item={spot} kind="spotlight" clips={project.clips} />
       <Chips<Spotlight['mode']>
-        label="Spotlight follows"
+        label={t('text.shapesPanel.spotlightFollows')}
         value={spot.mode === 'cursor' && !cursorValid ? null : spot.mode}
         onChange={setMode}
         options={[
-          { value: 'cursor', label: 'Cursor', disabled: !cursorValid, title: cursorValid ? 'The lit area follows the cursor' : 'No cursor data in this recording' },
-          { value: 'region', label: 'Region', title: 'The lit area stays on the content you place it on' }
+          { value: 'cursor', label: t('text.shapesPanel.followsCursor'), disabled: !cursorValid, title: cursorValid ? t('text.shapesPanel.followsCursorTitle') : t('text.shapesPanel.noCursorDataIn') },
+          { value: 'region', label: t('text.shapesPanel.region'), title: t('text.shapesPanel.followsRegionTitle') }
         ]}
       />
       <Chips<Spotlight['shape']>
-        label="Spotlight shape"
+        label={t('text.shapesPanel.spotlightShape')}
         value={spot.shape}
         onChange={(shape) => set({ shape })}
         options={[
-          { value: 'ellipse', label: 'Ellipse' },
-          { value: 'rect', label: 'Rectangle' }
+          { value: 'ellipse', label: t('text.shapesPanel.spotEllipse') },
+          { value: 'rect', label: t('text.shapesPanel.spotRectangle') }
         ]}
       />
-      <Slider label="Darkness" value={spot.dim} min={0.1} max={0.95} step={0.01} format={pctFmt} onChange={(v) => set({ dim: v }, `spot-dim:${id}`)} />
-      <Slider label="Soft edge" value={spot.feather} min={0} max={1} step={0.01} format={pctFmt} onChange={(v) => set({ feather: v }, `spot-feather:${id}`)} />
+      <Slider label={t('text.shapesPanel.darkness')} value={spot.dim} min={0.1} max={0.95} step={0.01} format={pctFmt} onChange={(v) => set({ dim: v }, `spot-dim:${id}`)} />
+      <Slider label={t('text.shapesPanel.softEdge')} value={spot.feather} min={0} max={1} step={0.01} format={pctFmt} onChange={(v) => set({ feather: v }, `spot-feather:${id}`)} />
       {spot.mode === 'cursor' && (
         <Slider
-          label="Size"
+          label={t('common.label.size')}
           value={size.h}
           min={0.06}
           max={1}
@@ -330,7 +340,7 @@ function SelectedSpotlight({
           }}
         />
       )}
-      <p className="hint">{spot.mode === 'cursor' ? 'Follows the cursor. Drag its corners on the preview to resize it.' : 'Drag the lit area on the preview to move it, its handles to resize it.'}</p>
+      <p className="hint">{spot.mode === 'cursor' ? t('text.shapesPanel.followsTheCursorDrag') : t('text.shapesPanel.dragTheLitArea')}</p>
       <TimeFields project={project} item={spot} onChange={(times) => set(times, `spot-time:${id}`)} />
       <LookButtons itemKey={itemKey('spotlight', id)} />
       <ItemActions
@@ -343,7 +353,7 @@ function SelectedSpotlight({
           store.update((p) => ({ ...p, spotlights: (p.spotlights ?? []).filter((s) => s.id !== id) }))
           onSelect(null)
         }}
-        what="spotlight"
+        kind="spotlight"
       />
     </Section>
   )
@@ -365,12 +375,12 @@ export function OnPreview({ item, kind, clips }: { item: { start: number; end: n
     return player.subscribe(check)
   }, [item, clips, player])
   if (inside) return null
-  if (revealKeptTime(item, kind, clips, player.time) === null) return <p className="hint shape-offscreen">Not in the video: all of it is in a part that is cut.</p>
+  if (revealKeptTime(item, kind, clips, player.time) === null) return <p className="hint shape-offscreen">{t('text.shapesPanel.notInTheVideo')}</p>
   return (
     <p className="hint shape-offscreen">
-      Not on screen at the playhead.{' '}
+      {t('text.shapesPanel.notOnScreenAt')}{' '}
       <button className="link" onClick={() => revealItem(player, clips, item, kind)}>
-        Show it on the preview
+        {t('text.shapesPanel.showItOnThe')}
       </button>
     </p>
   )
@@ -393,8 +403,8 @@ export function TimeFields({ project, item, onChange }: { project: Project; item
   )
   return (
     <div className="shape-times">
-      {row('start', 'Starts at')}
-      {row('end', 'Ends at')}
+      {row('start', t('text.shapesPanel.startsAt'))}
+      {row('end', t('text.shapesPanel.endsAt'))}
     </div>
   )
 }
@@ -420,29 +430,45 @@ function TimeField({
     const v = Number(text)
     return text.trim() !== '' && Number.isFinite(v) ? v : null
   }
+  const typed = (text: string): void => {
+    setDraft(text)
+    const v = parse(text)
+    if (v !== null && fits(v)) onCommit(v)
+  }
+  const leave = (): void => {
+    const v = draft === null ? null : parse(draft)
+    if (v !== null && Math.abs(v - value) > 1e-6) onCommit(v)
+    setDraft(null)
+  }
   return (
     <>
       <span className="field-label">{label}</span>
-      <input
-        className="shape-time-input"
-        type="number"
-        aria-label={label}
-        min={0}
-        max={Math.round(max * 100) / 100}
-        step={0.1}
-        value={draft ?? (Math.round(value * 100) / 100).toString()}
-        onChange={(e) => {
-          setDraft(e.target.value)
-          const v = parse(e.target.value)
-          if (v !== null && fits(v)) onCommit(v)
-        }}
-        onBlur={() => {
-          const v = draft === null ? null : parse(draft)
-          if (v !== null && Math.abs(v - value) > 1e-6) onCommit(v)
-          setDraft(null)
-        }}
-      />
-      <button className="btn ghost shape-time-now" onClick={onPlayhead} title={`${label}: set to the playhead`} aria-label={`${label}: set to the playhead`}>
+      {/* English keeps today's number input, which holds what is typed as text; other languages type their own digits (§11.1). */}
+      {uiLanguage() === 'en' ? (
+        <input
+          className="shape-time-input"
+          type="number"
+          aria-label={label}
+          min={0}
+          max={Math.round(max * 100) / 100}
+          step={0.1}
+          value={draft ?? (Math.round(value * 100) / 100).toString()}
+          onChange={(e) => typed(e.target.value)}
+          onBlur={leave}
+        />
+      ) : (
+        <NumberField
+          className="shape-time-input"
+          aria-label={label}
+          min={0}
+          max={Math.round(max * 100) / 100}
+          step={0.1}
+          value={Math.round(value * 100) / 100}
+          onValue={(v) => typed(Number.isFinite(v) ? String(v) : '')}
+          onBlur={leave}
+        />
+      )}
+      <button className="btn ghost shape-time-now" onClick={onPlayhead} title={t('text.shapesPanel.setToThePlayhead', { label })} aria-label={t('text.shapesPanel.setToThePlayhead', { label })}>
         <svg width={15} height={15} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
           <path d="M12 3v18M7 3h10l-5 5z" />
         </svg>
@@ -451,15 +477,15 @@ function TimeField({
   )
 }
 
-export function ItemActions({ onDuplicate, onDelete, what }: { onDuplicate: () => void; onDelete: () => void; what: string }): JSX.Element {
+export function ItemActions({ onDuplicate, onDelete, kind }: { onDuplicate: () => void; onDelete: () => void; kind: ShapeKind | 'spotlight' | 'magnifier' }): JSX.Element {
   const keymap = useKeymap()
   return (
     <div className="row start shape-actions">
-      <button className="btn" onClick={onDuplicate} title={`Duplicate this ${what}`}>
-        <ShapeIcon name="duplicate" size={16} /> Duplicate
+      <button className="btn" onClick={onDuplicate} title={t('text.shapesPanel.duplicateThis', { kind })}>
+        <ShapeIcon name="duplicate" size={16} /> {t('text.shapesPanel.duplicate')}
       </button>
-      <button className="btn ghost danger" onClick={onDelete} title={withShortcut(`Delete this ${what}`, keymap.deleteSelection)}>
-        <Icon name="trash" size={16} /> Delete
+      <button className="btn ghost danger" onClick={onDelete} title={withShortcut(t('text.shapesPanel.deleteThis', { kind }), keymap.deleteSelection)}>
+        <Icon name="trash" size={16} /> {t('common.action.delete')}
       </button>
     </div>
   )
@@ -494,8 +520,8 @@ function ColorDots({
           onClick={() => onChange(c, null)}
         />
       ))}
-      <label className={`shape-color custom ${custom ? 'active' : ''}`} title="Pick any colour" style={custom ? { background: value } : undefined}>
-        <input type="color" aria-label={`${label} (any colour)`} value={value} onChange={(e) => onChange(e.target.value.toLowerCase(), mergeKey)} />
+      <label className={`shape-color custom ${custom ? 'active' : ''}`} title={t('common.colour.pickAny')} style={custom ? { background: value } : undefined}>
+        <input type="color" aria-label={t('common.colour.anyFor', { label: String(label) })} value={value} onChange={(e) => onChange(e.target.value.toLowerCase(), mergeKey)} />
       </label>
     </div>
   )

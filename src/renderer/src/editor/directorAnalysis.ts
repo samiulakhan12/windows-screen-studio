@@ -16,6 +16,7 @@ import type { CursorTrack, Project } from '../../../shared/types'
 import { ensureSegmenter, segmentPicture, segmenterState } from '../render/segmentation/personSegmenter'
 import { loadAudioAnalysis } from './audioAnalysis'
 import { createVideo, seekedFrame, seekToFrame, WEBCAM_PROXY_FPS, whenReady } from './media'
+import { t } from '../../../shared/i18n/t'
 
 /** The director's speech for a project. */
 export interface SpeechResult {
@@ -87,7 +88,7 @@ class Aborted extends Error {}
 /** `promise`, or a rejection after `ms` or when `signal` aborts (Aborted). */
 function bounded<T>(promise: Promise<T>, ms: number, signal: AbortSignal | undefined): Promise<T> {
   return new Promise<T>((resolve, reject) => {
-    const timer = Number.isFinite(ms) ? setTimeout(() => finish(() => reject(new Error('timed out'))), ms) : undefined
+    const timer = Number.isFinite(ms) ? setTimeout(() => finish(() => reject(new Error(t('camera.directorAnalysis.timedOut')))), ms) : undefined
     const onAbort = (): void => finish(() => reject(new Aborted()))
     const finish = (then: () => void): void => {
       clearTimeout(timer)
@@ -141,7 +142,7 @@ export async function measureFraming(
   }
   let video: HTMLVideoElement | null = null
   try {
-    if (!(await bounded(ensureSegmenter(), Infinity, signal))) return unavailable('person detection could not start')
+    if (!(await bounded(ensureSegmenter(), Infinity, signal))) return unavailable(t('camera.directorAnalysis.detectionNotStarted'))
     if (times.length === 0) return { status: 'not-found', found: 0, sampled: 0 }
     onProgress?.({ done: 0, total: times.length })
     video = createVideo(webcamUrl)
@@ -155,11 +156,11 @@ export async function measureFraming(
     )
     const camW = video.videoWidth
     const camH = video.videoHeight
-    if (!loaded || !(camW > 0 && camH > 0)) return { status: 'unavailable', reason: 'the camera video could not be read' }
+    if (!loaded || !(camW > 0 && camH > 0)) return { status: 'unavailable', reason: t('camera.directorAnalysis.cameraUnreadable') }
     const faces: (FaceBox | null)[] = []
-    for (const t of times) {
-      faces.push(await faceAt(video, t, signal))
-      if (segmenterState().status === 'failed') return unavailable('person detection stopped working')
+    for (const at of times) {
+      faces.push(await faceAt(video, at, signal))
+      if (segmenterState().status === 'failed') return unavailable(t('camera.directorAnalysis.detectionStopped'))
       onProgress?.({ done: faces.length, total: times.length })
     }
     const result: Measured = { faces, camW, camH }

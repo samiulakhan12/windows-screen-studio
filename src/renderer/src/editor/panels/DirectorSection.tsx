@@ -8,11 +8,11 @@ import {
   faceLine,
   framingLine,
   keptLine,
-  KEPT_POSITIONS_HINT,
-  LEAD,
+  keptPositionsHint,
+  lead,
   NOTE_TEXT,
   noteText,
-  OWNERSHIP_HINT,
+  ownershipHint,
   partLabel,
   partTimes,
   reasonText,
@@ -21,7 +21,7 @@ import {
   sourceLine,
   sourceState,
   summaryLine,
-  USER_FRAMING_HINT
+  userFramingHint
 } from '../../../../shared/editor/directorCopy'
 import type { EditStore } from '../../../../shared/editor/editStore'
 import { undoHint } from '../../../../shared/editor/shortcuts'
@@ -42,6 +42,8 @@ import { LayoutGlyph } from '../layoutGlyphs'
 import { CornerGlyph, showLayout } from '../LayoutTrack'
 import type { PreviewPlayer } from '../player'
 import './director.css'
+import { t, type MessageKey } from '../../../../shared/i18n/t'
+import { fmt } from '../../../../shared/i18n/fmt'
 
 type Props = Pick<InspectorProps, 'project' | 'cursor' | 'recorded' | 'onSelect' | 'onNotice' | 'directorRequest'>
 
@@ -104,19 +106,17 @@ function speechFor(s: Session, project: Project, cursor: CursorTrack): Promise<S
 const sameSettings = (a: DirectorSettings | undefined, b: DirectorSettings): boolean =>
   !!a && a.intro === b.intro && a.corners === b.corners && a.hideAfter === b.hideAfter && a.frameFace === b.frameFace
 
-const INTRO_OPTIONS: { value: DirectorSettings['intro']; label: string; title: string }[] = [
-  { value: 'camera-only', label: 'Camera only', title: 'The camera fills the frame while you talk before and after the demo' },
-  { value: 'camera-large', label: 'Large camera', title: 'A big camera over the screen while you talk before and after the demo' },
-  { value: 'off', label: 'Off', title: 'No intro or outro: the bubble from the start to the end' }
+const INTRO_OPTIONS = (): { value: DirectorSettings['intro']; label: string; title: string }[] => [
+  { value: 'camera-only', label: t('camera.directorSection.intro.cameraOnly'), title: t('camera.directorSection.intro.cameraOnly.title') },
+  { value: 'camera-large', label: t('camera.directorSection.intro.cameraLarge'), title: t('camera.directorSection.intro.cameraLarge.title') },
+  { value: 'off', label: t('common.state.off'), title: t('camera.directorSection.intro.off.title') }
 ]
-const HIDE_OPTIONS: { value: DirectorHideAfter; label: string }[] = [
-  { value: 5, label: '5 s' },
-  { value: 10, label: '10 s' },
-  { value: 20, label: '20 s' },
-  { value: 0, label: 'Never' }
+const HIDE_OPTIONS = (): { value: DirectorHideAfter; label: string }[] => [
+  ...([5, 10, 20] as const).map((value) => ({ value, label: t('camera.directorSection.hideAfter', { n: fmt.count(value) }) })),
+  { value: 0, label: t('camera.directorSection.hideNever') }
 ]
 
-const errorText = (err: unknown): string => (err instanceof Error ? err.message : String(err)).replace(/[.\s]+$/, '') || 'unknown error'
+const errorText = (err: unknown): string => (err instanceof Error ? err.message : String(err)).replace(/[.\s]+$/, '') || t('camera.directorSection.unknownError')
 
 /** A plan, or null when the planner failed (the section then offers nothing to apply). */
 function safePlan(input: DirectorInput, settings: DirectorSettings): DirectorPlan | null {
@@ -272,7 +272,7 @@ export function DirectorSection({ project, cursor, recorded, onSelect, onNotice,
         onNotice(directedNotice(parts, outcome, after !== before, undoHint(keymap), removed))
       } catch (err) {
         console.error('camera director: directing failed', err)
-        onNotice(`The camera could not be directed: ${errorText(err)}`)
+        onNotice(t('camera.directorSection.notDirected', { reason: errorText(err) }))
       } finally {
         setBusy(null)
       }
@@ -285,7 +285,7 @@ export function DirectorSection({ project, cursor, recorded, onSelect, onNotice,
     try {
       store.update((p) => clearDirected(p))
     } catch (err) {
-      onNotice(`The automatic changes could not be removed: ${errorText(err)}`)
+      onNotice(t('camera.directorSection.notRemoved', { reason: errorText(err) }))
       return
     }
     session.outcomes = new WeakMap()
@@ -301,7 +301,7 @@ export function DirectorSection({ project, cursor, recorded, onSelect, onNotice,
     if (!directorRequest || session.request === directorRequest) return
     session.request = directorRequest
     boxRef.current?.scrollIntoView({ block: 'nearest' })
-    if (!store.state.webcam.show) return onNotice('Show the camera first')
+    if (!store.state.webcam.show) return onNotice(t('camera.director.unavailable.hidden'))
     void direct(directorSettingsOf(store.state))
   }, [directorRequest, session, store, direct, onNotice])
 
@@ -336,8 +336,8 @@ export function DirectorSection({ project, cursor, recorded, onSelect, onNotice,
 
   return (
     <div className="director" ref={boxRef} data-testid="director">
-      <Section title="Auto director">
-        <p className="hint">{LEAD}</p>
+      <Section title={t('camera.directorSection.autoDirector')}>
+        <p className="hint">{lead()}</p>
 
         {!hidden && sourceLine(source) && (
           <p className="director-source" data-testid="director-source" data-source={source}>
@@ -350,9 +350,7 @@ export function DirectorSection({ project, cursor, recorded, onSelect, onNotice,
             <EditorIcon name="alert" size={16} />
             <span>
               {soundFailed(!!speechNow)}{' '}
-              <button className="link" onClick={() => void speechFor(session, store.state, cursor)}>
-                Try again
-              </button>
+              <button className="link" onClick={() => void speechFor(session, store.state, cursor)}>{t('common.action.tryAgain')}</button>
             </span>
           </p>
         )}
@@ -360,7 +358,7 @@ export function DirectorSection({ project, cursor, recorded, onSelect, onNotice,
         {plan && !hidden && plan.strip.length > 0 && <PlanStrip strip={plan.strip} total={total} home={project.webcam.corner} onSeek={(o) => seekOutput(player, store.state, o)} />}
 
         {plan && !hidden && (plan.parts.length > 0 || settings.frameFace) && (
-          <ul className="director-parts" aria-label="Changes the director makes">
+          <ul className="director-parts" aria-label={t('camera.directorSection.changesTheDirectorMakes')}>
             {plan.parts.map((part, i) => (
               <li key={`${part.kind}-${i}`}>
                 <button className="director-part" data-testid="director-part" data-kind={part.kind} data-corner={part.corner} onClick={() => selectPart(part)}>
@@ -400,27 +398,27 @@ export function DirectorSection({ project, cursor, recorded, onSelect, onNotice,
           </p>
         ))}
 
-        <span className="field-label">Intro and outro</span>
+        <span className="field-label">{t('camera.directorSection.introAndOutro')}</span>
         <div data-testid="director-intro">
-          <Chips label="Intro and outro" value={settings.intro} disabled={hidden || !!busy || noSpeechKnown} onChange={(intro) => choose({ intro })} options={INTRO_OPTIONS} />
+          <Chips label={t('camera.directorSection.introAndOutro')} value={settings.intro} disabled={hidden || !!busy || noSpeechKnown} onChange={(intro) => choose({ intro })} options={INTRO_OPTIONS()} />
         </div>
-        <span className="field-label">Hide the camera when silent for</span>
+        <span className="field-label">{t('camera.directorSection.hideTheCameraWhen')}</span>
         <div data-testid="director-hide">
-          <Chips label="Hide the camera when silent for" value={settings.hideAfter} disabled={hidden || !!busy || noSpeechKnown} onChange={(hideAfter) => choose({ hideAfter })} options={HIDE_OPTIONS} />
+          <Chips label={t('camera.directorSection.hideTheCameraWhen')} value={settings.hideAfter} disabled={hidden || !!busy || noSpeechKnown} onChange={(hideAfter) => choose({ hideAfter })} options={HIDE_OPTIONS()} />
         </div>
         <div data-testid="director-corners">
           <Toggle
-            label="Move the bubble away from the cursor"
+            label={t('camera.directorSection.moveTheBubbleAway')}
             checked={settings.corners === 'auto'}
             disabled={hidden || !!busy}
             onChange={(v) => choose({ corners: v ? 'auto' : 'keep' })}
           />
         </div>
-        {hasCameraPositions(project.layouts) && <p className="hint">{KEPT_POSITIONS_HINT}</p>}
+        {hasCameraPositions(project.layouts) && <p className="hint">{keptPositionsHint()}</p>}
         <div data-testid="director-face-option">
-          <Toggle label="Centre my face" checked={settings.frameFace} disabled={hidden || !!busy} onChange={(frameFace) => choose({ frameFace })} />
+          <Toggle label={t('camera.directorSection.centreMyFace')} checked={settings.frameFace} disabled={hidden || !!busy} onChange={(frameFace) => choose({ frameFace })} />
         </div>
-        {!mayFrame && <p className="hint">{USER_FRAMING_HINT}</p>}
+        {!mayFrame && <p className="hint">{userFramingHint()}</p>}
 
         <div className="director-actions">
           <button
@@ -441,9 +439,7 @@ export function DirectorSection({ project, cursor, recorded, onSelect, onNotice,
             )}
           </button>
           {directed && (
-            <button className="btn ghost" data-testid="director-remove" disabled={!!busy} onClick={remove}>
-              Remove automatic changes
-            </button>
+            <button className="btn ghost" data-testid="director-remove" disabled={!!busy} onClick={remove}>{t('camera.directorSection.removeAutomaticChanges')}</button>
           )}
         </div>
         <span className="director-live" role="status" aria-live="polite">
@@ -462,7 +458,7 @@ export function DirectorSection({ project, cursor, recorded, onSelect, onNotice,
               {framing.text}
             </p>
           ))}
-        <p className="hint">{OWNERSHIP_HINT}</p>
+        <p className="hint">{ownershipHint()}</p>
       </Section>
     </div>
   )
@@ -477,12 +473,12 @@ function PartGlyph({ part }: { part: DirectorPart }): JSX.Element {
   )
 }
 
-const STRIP_TITLE: Record<DirectorStripItem['state'], string> = {
-  intro: 'Intro: the full camera',
-  outro: 'Outro: the full camera',
-  hidden: 'Camera hidden',
-  bubble: 'The bubble',
-  yours: 'Yours, kept'
+const STRIP_TITLE: Readonly<Record<DirectorStripItem['state'], MessageKey>> = {
+  intro: 'camera.directorSection.strip.intro',
+  outro: 'camera.directorSection.strip.outro',
+  hidden: 'camera.director.part.hidden',
+  bubble: 'camera.directorSection.strip.bubble',
+  yours: 'camera.directorSection.strip.yours'
 }
 
 /**
@@ -493,10 +489,10 @@ const STRIP_TITLE: Record<DirectorStripItem['state'], string> = {
 function PlanStrip({ strip, total, home, onSeek }: { strip: DirectorStripItem[]; total: number; home: DirectorStripItem['corner']; onSeek: (o: number) => void }): JSX.Element {
   const T = Math.max(1e-6, total)
   return (
-    <div className="director-strip" data-testid="director-strip" role="group" aria-label="The camera over the video">
+    <div className="director-strip" data-testid="director-strip" role="group" aria-label={t('camera.directorSection.theCameraOverThe')}>
       {strip.map((it, i) => {
         const moved = it.state === 'bubble' && !!it.corner && it.corner !== home
-        const title = `${moved && it.corner ? `Bubble ${it.corner.replace('-', ' ')}` : STRIP_TITLE[it.state]} · ${partTimes({ outStart: it.start, outEnd: it.end })}`
+        const title = t('camera.directorSection.stripTitle', { part: moved && it.corner ? t('camera.director.part.bubbleCorner', { corner: it.corner }) : t(STRIP_TITLE[it.state]), times: partTimes({ outStart: it.start, outEnd: it.end }) })
         return (
           <button
             key={i}

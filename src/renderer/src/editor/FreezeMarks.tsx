@@ -17,6 +17,8 @@ import { followPointer } from './pointer'
 import type { Selection } from './selection'
 import type { SnapController } from './snapControl'
 import './freeze.css'
+import { t } from '../../../shared/i18n/t'
+import { fmt } from '../../../shared/i18n/fmt'
 
 interface Props {
   px: number
@@ -37,7 +39,7 @@ const NO_FREEZES: Freeze[] = []
 /** Narrowest block (px), so a short freeze stays easy to grab. */
 const MIN_WIDTH = 8
 
-const seconds = (v: number): string => `${v.toFixed(1)} s`
+const seconds = (v: number): string => t('style.freezeSection.seconds', { n: fmt.number(v, { max: 1 }) })
 
 /**
  * Freeze frames on the clip track (E-11, docs/design/freeze-frame.md §5): a hatched strip along its
@@ -63,7 +65,7 @@ export const FreezeMarks = memo(function FreezeMarks({ px, win, duration, clips,
   }
   const groupSize = group.group.keys.length
   const hint = (id: string): string =>
-    group.keys.has(itemKey('freeze', id)) ? ` · selected: drag to move all ${groupSize}, Ctrl+click to leave it out` : groupSize || !multi ? '' : ' · Ctrl+click to select several'
+    group.keys.has(itemKey('freeze', id)) ? t('style.freezeMarks.groupSelected', { n: fmt.count(groupSize) }) : groupSize || !multi ? '' : t('style.freezeMarks.groupSelectSeveral')
 
   // The held freeze's block fills as it plays (written to the DOM: no re-render per frame).
   useEffect(() => {
@@ -144,7 +146,7 @@ export const FreezeMarks = memo(function FreezeMarks({ px, win, duration, clips,
     })
   }
 
-  const deleteHint = keymap.deleteSelection.length ? `, ${shortcutLabel(keymap.deleteSelection[0])} to remove` : ''
+  const deleteHint = keymap.deleteSelection.length ? t('style.freezeMarks.removeHint', { keys: shortcutLabel(keymap.deleteSelection[0]) }) : ''
   const blocks: JSX.Element[] = []
 
   const holdBlock = (h: Hold): void => {
@@ -159,7 +161,7 @@ export const FreezeMarks = memo(function FreezeMarks({ px, win, duration, clips,
         data-freeze={h.id}
         data-sound="pause"
         style={{ left: Math.min(h.at, duration) * px, width }}
-        title={`Freeze frame: adds ${seconds(h.length)} here, the recording waits. Drag the edge to change${deleteHint}${hint(h.id)}`}
+        title={t('style.freezeMarks.freezeFrameAddsHere', { length: seconds(h.length), remove: deleteHint, group: hint(h.id) })}
         onPointerDown={onBodyDown(f)}
       >
         <span className="freeze-progress" />
@@ -190,7 +192,7 @@ export const FreezeMarks = memo(function FreezeMarks({ px, win, duration, clips,
           data-freeze={s.id}
           data-sound="continue"
           style={{ left: r.start * px, width }}
-          title={`Freeze frame: the picture holds for ${seconds(held)} while the sound plays on${hint(s.id)}`}
+          title={t('style.freezeMarks.freezeFrameThePicture', { length: seconds(held), group: hint(s.id) })}
           onPointerDown={onBodyDown(f)}
         >
           {i === 0 && width > 40 && (
@@ -221,8 +223,10 @@ export const FreezeMarks = memo(function FreezeMarks({ px, win, duration, clips,
         style={{ left: f.at * px }}
         title={
           why === 'cut'
-            ? `Freeze frame in a cut: not in the video. Restore the cut, or select it and press ${deleteKey}`
-            : `Freeze frame with nothing to hold: ${why === 'next' ? 'the next freeze starts' : 'the video ends'} right after it. Pause the sound, or select it and press ${deleteKey}`
+            ? t('style.freezeMarks.freezeFrameInA', { keys: deleteKey })
+            : why === 'next'
+              ? t('style.freezeMarks.nothingToHoldNext', { keys: deleteKey })
+              : t('style.freezeMarks.nothingToHoldEnd', { keys: deleteKey })
         }
         onPointerDown={onBodyDown(f)}
       />

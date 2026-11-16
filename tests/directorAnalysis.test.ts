@@ -139,6 +139,8 @@ beforeEach(async () => {
   seg.state = { status: 'ready' }
   seg.answer = () => personMask()
   seg.calls = 0
+  // The fresh modules' message runtime gets English, as the test setup gives the first one (§9.1).
+  await import('../src/shared/i18n/messages/en/index')
   analysis = (await import(/* @vite-ignore */ ANALYSIS)) as Analysis
 })
 

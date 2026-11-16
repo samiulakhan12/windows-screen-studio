@@ -1,1 +1,1889 @@
-{}
+{
+  "stylePanel.frame": {
+    "description": "stylePanel, the title of <Section> (src/renderer/src/editor/panels/StylePanel.tsx:94)."
+  },
+  "stylePanel.aspectRatio": {
+    "description": "stylePanel, the label of <Chips> (src/renderer/src/editor/panels/StylePanel.tsx:95)."
+  },
+  "stylePanel.backgroundKind": {
+    "description": "stylePanel, the label of <Chips> (src/renderer/src/editor/panels/StylePanel.tsx:104)."
+  },
+  "stylePanel.background2": {
+    "description": "stylePanel, the aria-label of <button> (src/renderer/src/editor/panels/StylePanel.tsx:120)."
+  },
+  "stylePanel.wallpaper": {
+    "description": "stylePanel, the aria-label of <button> (src/renderer/src/editor/panels/StylePanel.tsx:134)."
+  },
+  "stylePanel.movesWhileTheVideo": {
+    "description": "stylePanel, the title of <button> (src/renderer/src/editor/panels/StylePanel.tsx:148)."
+  },
+  "stylePanel.animatedBackground": {
+    "description": "stylePanel, the aria-label of <button> (src/renderer/src/editor/panels/StylePanel.tsx:149)."
+  },
+  "stylePanel.solidColour": {
+    "description": "stylePanel, text of <label> (src/renderer/src/editor/panels/StylePanel.tsx:165)."
+  },
+  "stylePanel.image": {
+    "description": "stylePanel, text of <button> (src/renderer/src/editor/panels/StylePanel.tsx:168)."
+  },
+  "stylePanel.backgroundBlur": {
+    "description": "stylePanel, the label of <Slider> (src/renderer/src/editor/panels/StylePanel.tsx:173)."
+  },
+  "stylePanel.motionSpeed": {
+    "description": "stylePanel, the label of <Slider> (src/renderer/src/editor/panels/StylePanel.tsx:184)."
+  },
+  "stylePanel.driftsSlowlyWhileThe": {
+    "description": "stylePanel, text of <p> (src/renderer/src/editor/panels/StylePanel.tsx:191)."
+  },
+  "stylePanel.padding": {
+    "description": "stylePanel, the label of <Slider> (src/renderer/src/editor/panels/StylePanel.tsx:197)."
+  },
+  "stylePanel.cornerRadius": {
+    "description": "stylePanel, the label of <Slider> (src/renderer/src/editor/panels/StylePanel.tsx:199)."
+  },
+  "stylePanel.theDeviceFrameSets": {
+    "description": "stylePanel, text of <p> (src/renderer/src/editor/panels/StylePanel.tsx:207)."
+  },
+  "stylePanel.deviceFrame": {
+    "description": "stylePanel, the title of <Section> (src/renderer/src/editor/panels/StylePanel.tsx:210)."
+  },
+  "stylePanel.frame2": {
+    "description": "stylePanel, the aria-label of <button> (src/renderer/src/editor/panels/StylePanel.tsx:219)."
+  },
+  "stylePanel.frameTheme": {
+    "description": "stylePanel, the label of <Chips> (src/renderer/src/editor/panels/StylePanel.tsx:232)."
+  },
+  "stylePanel.deviceFramesAreNot": {
+    "description": "stylePanel, text of <p> (src/renderer/src/editor/panels/StylePanel.tsx:241)."
+  },
+  "stylePanel.addressBar": {
+    "description": "stylePanel, text of <label> (src/renderer/src/editor/panels/StylePanel.tsx:244)."
+  },
+  "stylePanel.addressBarText": {
+    "description": "stylePanel, the aria-label of <input> (src/renderer/src/editor/panels/StylePanel.tsx:247)."
+  },
+  "stylePanel.shadowStyle": {
+    "description": "stylePanel, the label of <Chips> (src/renderer/src/editor/panels/StylePanel.tsx:258)."
+  },
+  "stylePanel.shadowColour": {
+    "description": "stylePanel, the label of <ColorDots> (src/renderer/src/editor/panels/StylePanel.tsx:261)."
+  },
+  "stylePanel.addSomePaddingTo": {
+    "description": "stylePanel, text of <p> (src/renderer/src/editor/panels/StylePanel.tsx:263)."
+  },
+  "stylePanel.border": {
+    "description": "stylePanel, the title of <Section> (src/renderer/src/editor/panels/StylePanel.tsx:266)."
+  },
+  "stylePanel.borderWidth": {
+    "description": "stylePanel, the label of <Slider> (src/renderer/src/editor/panels/StylePanel.tsx:268)."
+  },
+  "stylePanel.frostedGlass": {
+    "description": "stylePanel, the label of <Toggle> (src/renderer/src/editor/panels/StylePanel.tsx:277)."
+  },
+  "stylePanel.aSeeThroughFrosted": {
+    "description": "stylePanel, the title of <Toggle> (src/renderer/src/editor/panels/StylePanel.tsx:278)."
+  },
+  "stylePanel.borderColour": {
+    "description": "stylePanel, the label of <ColorDots> (src/renderer/src/editor/panels/StylePanel.tsx:284)."
+  },
+  "stylePanel.deviceFramesHaveTheir": {
+    "description": "stylePanel, text of <p> (src/renderer/src/editor/panels/StylePanel.tsx:291)."
+  },
+  "stylePanel.newRecordings": {
+    "description": "stylePanel, the title of <Section> (src/renderer/src/editor/panels/StylePanel.tsx:390)."
+  },
+  "stylePanel.newRecordingsStartWith": {
+    "description": "stylePanel, text of <p> (src/renderer/src/editor/panels/StylePanel.tsx:393)."
+  },
+  "stylePanel.newRecordingsStartWith2": {
+    "description": "stylePanel, text of <p> (src/renderer/src/editor/panels/StylePanel.tsx:394)."
+  },
+  "stylePanel.saveAsDefaultFor": {
+    "description": "stylePanel, text of <button> (src/renderer/src/editor/panels/StylePanel.tsx:398)."
+  },
+  "stylePanel.goBackToThe": {
+    "description": "stylePanel, the title of <button> (src/renderer/src/editor/panels/StylePanel.tsx:400)."
+  },
+  "stylePanel.noDefaultsAreSaved": {
+    "description": "stylePanel, the title of <button> (src/renderer/src/editor/panels/StylePanel.tsx:400)."
+  },
+  "stylePanel.resetDefaults": {
+    "description": "stylePanel, text of <button> (src/renderer/src/editor/panels/StylePanel.tsx:401)."
+  },
+  "stylePresets.preset": {
+    "description": "stylePresets, the aria-label of <button> (src/renderer/src/editor/panels/StylePresets.tsx:131).",
+    "user": [
+      "name"
+    ]
+  },
+  "stylePresets.applyTheLook": {
+    "description": "stylePresets, the title of <button> (src/renderer/src/editor/panels/StylePresets.tsx:131).",
+    "user": [
+      "name"
+    ]
+  },
+  "stylePresets.rename": {
+    "description": "stylePresets, the title of <button> (src/renderer/src/editor/panels/StylePresets.tsx:137)."
+  },
+  "stylePresets.clickAgainToDelete": {
+    "description": "stylePresets, the title of <button> (src/renderer/src/editor/panels/StylePresets.tsx:144)."
+  },
+  "stylePresets.confirmDeleting": {
+    "description": "stylePresets, the aria-label of <button> (src/renderer/src/editor/panels/StylePresets.tsx:145).",
+    "user": [
+      "name"
+    ]
+  },
+  "stylePresets.newPresetName": {
+    "description": "stylePresets, the aria-label of <input> (src/renderer/src/editor/panels/StylePresets.tsx:161)."
+  },
+  "stylePresets.presetName": {
+    "description": "stylePresets, the aria-label of <input> (src/renderer/src/editor/panels/StylePresets.tsx:161)."
+  },
+  "stylePresets.presets": {
+    "description": "stylePresets, the title of <Section> (src/renderer/src/editor/panels/StylePresets.tsx:182)."
+  },
+  "stylePresets.showTheStylePresets": {
+    "description": "stylePresets, the title of <button> (src/renderer/src/editor/panels/StylePresets.tsx:192)."
+  },
+  "stylePresets.customLook": {
+    "description": "stylePresets, text of <span> (src/renderer/src/editor/panels/StylePresets.tsx:193)."
+  },
+  "stylePresets.browsePresets": {
+    "description": "stylePresets, text of <span> (src/renderer/src/editor/panels/StylePresets.tsx:194)."
+  },
+  "stylePresets.yourPresets": {
+    "description": "stylePresets, text of <h4> (src/renderer/src/editor/panels/StylePresets.tsx:203)."
+  },
+  "stylePresets.saveThisLookAs": {
+    "description": "stylePresets, text of <button> (src/renderer/src/editor/panels/StylePresets.tsx:211)."
+  },
+  "stylePresets.aPresetSetsThe": {
+    "description": "stylePresets, text of <p> (src/renderer/src/editor/panels/StylePresets.tsx:214)."
+  },
+  "brandKitBar.brandKit": {
+    "description": "brandKitBar, the title of <Section> (src/renderer/src/editor/panels/BrandKitBar.tsx:88)."
+  },
+  "brandKitBar.setUpYourBrand": {
+    "description": "brandKitBar, the title of <button> (src/renderer/src/editor/panels/BrandKitBar.tsx:95)."
+  },
+  "brandKitBar.yourLogoColoursFonts": {
+    "description": "brandKitBar, the title of <button> (src/renderer/src/editor/panels/BrandKitBar.tsx:95)."
+  },
+  "brandKitBar.applying": {
+    "description": "brandKitBar, text of <button> (src/renderer/src/editor/panels/BrandKitBar.tsx:97)."
+  },
+  "brandKitBar.applyBrandKit": {
+    "description": "brandKitBar, text of <button> (src/renderer/src/editor/panels/BrandKitBar.tsx:97)."
+  },
+  "brandKitBar.setUpBrandKit": {
+    "description": "brandKitBar, text of <button> (src/renderer/src/editor/panels/BrandKitBar.tsx:100)."
+  },
+  "brandKitBar.editBrandKit": {
+    "description": "brandKitBar, text of <button> (src/renderer/src/editor/panels/BrandKitBar.tsx:100)."
+  },
+  "brandKitBar.saveYourLogoColours": {
+    "description": "brandKitBar, text of <p> (src/renderer/src/editor/panels/BrandKitBar.tsx:103)."
+  },
+  "watermarkSection.watermark": {
+    "description": "watermarkSection, the title of <Section> (src/renderer/src/editor/panels/WatermarkSection.tsx:65)."
+  },
+  "watermarkSection.showWatermark": {
+    "description": "watermarkSection, the label of <Toggle> (src/renderer/src/editor/panels/WatermarkSection.tsx:66)."
+  },
+  "watermarkSection.stampYourLogoOr": {
+    "description": "watermarkSection, text of <p> (src/renderer/src/editor/panels/WatermarkSection.tsx:68)."
+  },
+  "watermarkSection.watermarkType": {
+    "description": "watermarkSection, the label of <Chips> (src/renderer/src/editor/panels/WatermarkSection.tsx:72)."
+  },
+  "watermarkSection.watermarkText": {
+    "description": "watermarkSection, the aria-label of <input> (src/renderer/src/editor/panels/WatermarkSection.tsx:83)."
+  },
+  "watermarkSection.yourNameOrWebsite": {
+    "description": "watermarkSection, the placeholder of <input> (src/renderer/src/editor/panels/WatermarkSection.tsx:84)."
+  },
+  "watermarkSection.noLogoChosen": {
+    "description": "watermarkSection, text of <span> (src/renderer/src/editor/panels/WatermarkSection.tsx:91)."
+  },
+  "watermarkSection.changeLogo": {
+    "description": "watermarkSection, text of <button> (src/renderer/src/editor/panels/WatermarkSection.tsx:93)."
+  },
+  "watermarkSection.chooseLogo": {
+    "description": "watermarkSection, text of <button> (src/renderer/src/editor/panels/WatermarkSection.tsx:93)."
+  },
+  "watermarkSection.watermarkPosition": {
+    "description": "watermarkSection, the aria-label of <div> (src/renderer/src/editor/panels/WatermarkSection.tsx:103)."
+  },
+  "watermarkSection.distanceFromEdge": {
+    "description": "watermarkSection, the label of <Slider> (src/renderer/src/editor/panels/WatermarkSection.tsx:120)."
+  },
+  "colourControls.reset": {
+    "description": "colourControls, the aria-label of <button> (src/renderer/src/editor/panels/ColourControls.tsx:203)."
+  },
+  "colourControls.strengthOf": {
+    "description": "colourControls, the aria-label of <input> (src/renderer/src/editor/panels/ColourControls.tsx:325)."
+  },
+  "colourControls.fewer": {
+    "description": "colourControls, text of <button> (src/renderer/src/editor/panels/ColourControls.tsx:339)."
+  },
+  "colourControls.more": {
+    "description": "colourControls, text of <button> (src/renderer/src/editor/panels/ColourControls.tsx:339)."
+  },
+  "colourControls.lutStrength": {
+    "description": "colourControls, text of <span> (src/renderer/src/editor/panels/ColourControls.tsx:354).",
+    "dnt": [
+      "LUT"
+    ]
+  },
+  "colourControls.removeLut": {
+    "description": "colourControls, text of <button> (src/renderer/src/editor/panels/ColourControls.tsx:393).",
+    "dnt": [
+      "LUT"
+    ]
+  },
+  "colourControls.compare": {
+    "description": "colourControls, text of <button> (src/renderer/src/editor/panels/ColourControls.tsx:401)."
+  },
+  "colourControls.resetColour": {
+    "description": "colourControls, text of <button> (src/renderer/src/editor/panels/ColourControls.tsx:415)."
+  },
+  "colourControls.balancing": {
+    "description": "colourControls, text of <button> (src/renderer/src/editor/panels/ColourControls.tsx:419)."
+  },
+  "colourControls.autoColour": {
+    "description": "colourControls, text of <button> (src/renderer/src/editor/panels/ColourControls.tsx:419)."
+  },
+  "screenColourSection.screenColour": {
+    "description": "screenColourSection, the title of <Section> (src/renderer/src/editor/panels/ScreenColourSection.tsx:12)."
+  },
+  "lookButtons.copyLook": {
+    "description": "lookButtons, text of <button> (src/renderer/src/editor/LookButtons.tsx:27)."
+  },
+  "lookButtons.pasteLook": {
+    "description": "lookButtons, text of <button> (src/renderer/src/editor/LookButtons.tsx:30)."
+  },
+  "autoColourRun.timedOut": {
+    "description": "Auto colour: why a frame could not be read in time (the reason of a failed step; logged)."
+  },
+  "cropEditor.dragToMoveEdges": {
+    "description": "cropEditor, the title of <div> (src/renderer/src/editor/CropEditor.tsx:108).",
+    "dnt": [
+      "Enter",
+      "Esc"
+    ]
+  },
+  "cropEditor.cropShape": {
+    "description": "cropEditor, the aria-label of <div> (src/renderer/src/editor/CropEditor.tsx:186)."
+  },
+  "cropEditor.anyShapeHoldShift": {
+    "description": "cropEditor, the title of <button> (src/renderer/src/editor/CropEditor.tsx:192).",
+    "dnt": [
+      "Shift"
+    ]
+  },
+  "cropEditor.theRecordingSOwn": {
+    "description": "Crop: tooltip of the Original chip. {width} and {height} are the recording’s size in pixels.",
+    "digits": "latn"
+  },
+  "cropEditor.keepTheShapeAt": {
+    "description": "Crop: tooltip of a shape chip. {aspect} is the shape, such as 16:9.",
+    "digits": "latn"
+  },
+  "cropEditor.cutTheBottomPx": {
+    "description": "Crop: tooltip of Hide taskbar. {px} is how many rows of pixels it cuts; {scaling} is Windows’ display scaling in percent.",
+    "digits": "latn",
+    "dnt": [
+      "Windows"
+    ]
+  },
+  "cropEditor.thisRecordingDoesNot": {
+    "description": "cropEditor, the title of <button> (src/renderer/src/editor/CropEditor.tsx:202)."
+  },
+  "cropEditor.hideTaskbar": {
+    "description": "cropEditor, text of <button> (src/renderer/src/editor/CropEditor.tsx:206)."
+  },
+  "cropEditor.cutTheTopPx": {
+    "description": "Crop: tooltip of Hide browser bar. {px} is how many rows of pixels it cuts.",
+    "digits": "latn"
+  },
+  "cropEditor.onlyForScreenOr": {
+    "description": "cropEditor, the title of <button> (src/renderer/src/editor/CropEditor.tsx:215)."
+  },
+  "cropEditor.thisRecordingIsToo": {
+    "description": "cropEditor, the title of <button> (src/renderer/src/editor/CropEditor.tsx:216)."
+  },
+  "cropEditor.hideBrowserBar": {
+    "description": "cropEditor, text of <button> (src/renderer/src/editor/CropEditor.tsx:221)."
+  },
+  "cropEditor.wholeRecording": {
+    "description": "cropEditor, the title of <button> (src/renderer/src/editor/CropEditor.tsx:227)."
+  },
+  "cropEditor.esc": {
+    "description": "Crop: tooltip of Cancel, the key that does the same. A keycap: never translated.",
+    "dnt": [
+      "Esc"
+    ]
+  },
+  "cropEditor.enter": {
+    "description": "Crop: tooltip of Done, the key that does the same. A keycap: never translated.",
+    "dnt": [
+      "Enter"
+    ]
+  },
+  "cropRow.cropRecording": {
+    "description": "cropRow, text of <button> (src/renderer/src/editor/panels/CropRow.tsx:23)."
+  },
+  "cropRow.crop": {
+    "description": "cropRow, text of <span> (src/renderer/src/editor/panels/CropRow.tsx:36)."
+  },
+  "cropRow.edit": {
+    "description": "cropRow, text of <button> (src/renderer/src/editor/panels/CropRow.tsx:39)."
+  },
+  "cropRow.showTheWholeRecording": {
+    "description": "cropRow, the title of <button> (src/renderer/src/editor/panels/CropRow.tsx:41)."
+  },
+  "followSection.verticalFraming": {
+    "description": "followSection, the title of <Section> (src/renderer/src/editor/panels/FollowSection.tsx:86)."
+  },
+  "followSection.makingAShort": {
+    "description": "followSection, text of <span> (src/renderer/src/editor/panels/FollowSection.tsx:88).",
+    "dnt": [
+      "Short"
+    ]
+  },
+  "followSection.makeAVerticalVersion": {
+    "description": "followSection, text of <button> (src/renderer/src/editor/panels/FollowSection.tsx:90)."
+  },
+  "followSection.followTheAction": {
+    "description": "followSection, the label of <Toggle> (src/renderer/src/editor/panels/FollowSection.tsx:139)."
+  },
+  "followSection.yourWholeScreenIs": {
+    "description": "followSection, text of <p> (src/renderer/src/editor/panels/FollowSection.tsx:141)."
+  },
+  "followSection.followingYourCursorClicks": {
+    "description": "followSection, text of <p> (src/renderer/src/editor/panels/FollowSection.tsx:145)."
+  },
+  "followSection.thisRecordingHasNo": {
+    "description": "followSection, text of <p> (src/renderer/src/editor/panels/FollowSection.tsx:145)."
+  },
+  "followSection.howClose": {
+    "description": "followSection, the label of <Slider> (src/renderer/src/editor/panels/FollowSection.tsx:148)."
+  },
+  "followSection.limitedToKeepThe": {
+    "description": "followSection, text of <p> (src/renderer/src/editor/panels/FollowSection.tsx:150)."
+  },
+  "followSection.movement": {
+    "description": "followSection, text of <span> (src/renderer/src/editor/panels/FollowSection.tsx:152)."
+  },
+  "followSection.theAppsPutTheir": {
+    "description": "followSection, text of <p> (src/renderer/src/editor/panels/FollowSection.tsx:159)."
+  },
+  "followSection.cameraSize": {
+    "description": "followSection, the label of <Slider> (src/renderer/src/editor/panels/FollowSection.tsx:164)."
+  },
+  "followSection.squareVideosKeepThe": {
+    "description": "followSection, text of <p> (src/renderer/src/editor/panels/FollowSection.tsx:167)."
+  },
+  "followSection.whereTheViewRests": {
+    "description": "followSection, the aria-label of <div> (src/renderer/src/editor/panels/FollowSection.tsx:169)."
+  },
+  "followSection.leftToRight": {
+    "description": "followSection, the label of <Slider> (src/renderer/src/editor/panels/FollowSection.tsx:172)."
+  },
+  "followSection.topToBottom": {
+    "description": "followSection, the label of <Slider> (src/renderer/src/editor/panels/FollowSection.tsx:176)."
+  },
+  "followSection.holdTheViewHere": {
+    "description": "followSection, text of <button> (src/renderer/src/editor/panels/FollowSection.tsx:183)."
+  },
+  "followSection.dragThePictureTo": {
+    "description": "followSection, text of <p> (src/renderer/src/editor/panels/FollowSection.tsx:185)."
+  },
+  "followSection.viewAtThePlayhead": {
+    "description": "followSection, the aria-label of <div> (src/renderer/src/editor/panels/FollowSection.tsx:188)."
+  },
+  "followSection.keepTextClearOf": {
+    "description": "followSection, the label of <Toggle> (src/renderer/src/editor/panels/FollowSection.tsx:203)."
+  },
+  "followSection.placesCaptionsPopUps": {
+    "description": "followSection, text of <p> (src/renderer/src/editor/panels/FollowSection.tsx:205).",
+    "dnt": [
+      "TikTok",
+      "Reels",
+      "Shorts"
+    ]
+  },
+  "followSection.the3dTiltAnd": {
+    "description": "followSection, text of <p> (src/renderer/src/editor/panels/FollowSection.tsx:208)."
+  },
+  "followSection.aStrayClickPulled": {
+    "description": "followSection, text of <p> (src/renderer/src/editor/panels/FollowSection.tsx:209)."
+  },
+  "effectsPanel.motionBlur": {
+    "description": "effectsPanel, the title of <Section> (src/renderer/src/editor/panels/EffectsPanel.tsx:30)."
+  },
+  "effectsPanel.blursFastZoomAnd": {
+    "description": "effectsPanel, text of <p> (src/renderer/src/editor/panels/EffectsPanel.tsx:39)."
+  },
+  "effectsPanel.keyboardShortcuts": {
+    "description": "Effects: title of the section that shows the shortcuts pressed during the recording on the video."
+  },
+  "effectsPanel.noKeyboardShortcutsWere": {
+    "description": "effectsPanel, text of <p> (src/renderer/src/editor/panels/EffectsPanel.tsx:43)."
+  },
+  "effectsPanel.showShortcutsOnScreen": {
+    "description": "effectsPanel, the label of <Toggle> (src/renderer/src/editor/panels/EffectsPanel.tsx:45)."
+  },
+  "effectsPanel.shortcutPosition": {
+    "description": "effectsPanel, the label of <Chips> (src/renderer/src/editor/panels/EffectsPanel.tsx:47)."
+  },
+  "effectsPanel.tiltTheRecordingIn": {
+    "description": "effectsPanel, the label of <Toggle> (src/renderer/src/editor/panels/EffectsPanel.tsx:92)."
+  },
+  "effectsPanel.the3dTiltIs": {
+    "description": "effectsPanel, text of <p> (src/renderer/src/editor/panels/EffectsPanel.tsx:93)."
+  },
+  "effectsPanel.tiltPresets": {
+    "description": "effectsPanel, the aria-label of <div> (src/renderer/src/editor/panels/EffectsPanel.tsx:94)."
+  },
+  "effectsPanel.tilt": {
+    "description": "Effects › 3D tilt: accessible name of a tilt preset. {label} is the preset’s name."
+  },
+  "effectsPanel.tiltBack": {
+    "description": "effectsPanel, the label of <Slider> (src/renderer/src/editor/panels/EffectsPanel.tsx:116)."
+  },
+  "effectsPanel.turn": {
+    "description": "effectsPanel, the label of <Slider> (src/renderer/src/editor/panels/EffectsPanel.tsx:126)."
+  },
+  "effectsPanel.perspective": {
+    "description": "effectsPanel, the label of <Slider> (src/renderer/src/editor/panels/EffectsPanel.tsx:136)."
+  },
+  "effectsPanel.tiltMovement": {
+    "description": "effectsPanel, the label of <Chips> (src/renderer/src/editor/panels/EffectsPanel.tsx:145)."
+  },
+  "effectsPanel.whileAShapeOr": {
+    "description": "effectsPanel, text of <p> (src/renderer/src/editor/panels/EffectsPanel.tsx:166)."
+  },
+  "clipPanel.videoLength": {
+    "description": "Clip tab: the edited video’s length, in bold, against the recording’s. Both are times (1:02.5)."
+  },
+  "clipPanel.clipOf": {
+    "description": "Clip tab: title of the selected clip’s section. {n} is its number, {total} how many clips there are."
+  },
+  "clipPanel.clipSpeed": {
+    "description": "clipPanel, the label of <Chips> (src/renderer/src/editor/panels/ClipPanel.tsx:80)."
+  },
+  "clipPanel.theLastClipCannot": {
+    "description": "clipPanel, the title of <button> (src/renderer/src/editor/panels/ClipPanel.tsx:85)."
+  },
+  "clipPanel.deleteClip": {
+    "description": "clipPanel, text of <button> (src/renderer/src/editor/panels/ClipPanel.tsx:87)."
+  },
+  "clipPanel.selectedRange": {
+    "description": "clipPanel, the title of <Section> (src/renderer/src/editor/panels/ClipPanel.tsx:101)."
+  },
+  "clipPanel.cutRange": {
+    "description": "clipPanel, text of <button> (src/renderer/src/editor/panels/ClipPanel.tsx:106)."
+  },
+  "clipPanel.speedUpOrSlow": {
+    "description": "clipPanel, text of <span> (src/renderer/src/editor/panels/ClipPanel.tsx:109)."
+  },
+  "clipPanel.rangeSpeed": {
+    "description": "clipPanel, the label of <Chips> (src/renderer/src/editor/panels/ClipPanel.tsx:112)."
+  },
+  "clipPanel.edit": {
+    "description": "clipPanel, the title of <Section> (src/renderer/src/editor/panels/ClipPanel.tsx:130)."
+  },
+  "clipPanel.splitAtPlayhead": {
+    "description": "clipPanel, text of <button> (src/renderer/src/editor/panels/ClipPanel.tsx:132)."
+  },
+  "clipPanel.restoreTheWholeRecording": {
+    "description": "clipPanel, text of <button> (src/renderer/src/editor/panels/ClipPanel.tsx:164)."
+  },
+  "clipPanel.cursorPath": {
+    "description": "clipPanel, text of <span> (src/renderer/src/editor/panels/ClipPanel.tsx:185)."
+  },
+  "clipPanel.replaceTheCursorMoves": {
+    "description": "clipPanel, the title of <button> (src/renderer/src/editor/panels/ClipPanel.tsx:188)."
+  },
+  "clipPanel.straighten": {
+    "description": "clipPanel, text of <button> (src/renderer/src/editor/panels/ClipPanel.tsx:189)."
+  },
+  "clipPanel.keepTheCursorMoves": {
+    "description": "clipPanel, the title of <button> (src/renderer/src/editor/panels/ClipPanel.tsx:191)."
+  },
+  "clipPanel.asRecorded": {
+    "description": "clipPanel, text of <button> (src/renderer/src/editor/panels/ClipPanel.tsx:192)."
+  },
+  "clipPanel.letThisRangeFollow": {
+    "description": "clipPanel, the title of <button> (src/renderer/src/editor/panels/ClipPanel.tsx:195)."
+  },
+  "clipPanel.smartSpeed": {
+    "description": "clipPanel, the title of <Section> (src/renderer/src/editor/panels/ClipPanel.tsx:453)."
+  },
+  "clipPanel.smartSpeedMode": {
+    "description": "clipPanel, the label of <Chips> (src/renderer/src/editor/panels/ClipPanel.tsx:455)."
+  },
+  "clipPanel.speedsUpOrCuts": {
+    "description": "clipPanel, text of <p> (src/renderer/src/editor/panels/ClipPanel.tsx:460)."
+  },
+  "clipPanel.thisRecordingHasNo": {
+    "description": "clipPanel, text of <p> (src/renderer/src/editor/panels/ClipPanel.tsx:463)."
+  },
+  "clipPanel.idleForAtLeast": {
+    "description": "clipPanel, text of <span> (src/renderer/src/editor/panels/ClipPanel.tsx:464)."
+  },
+  "clipPanel.minimumIdleLength": {
+    "description": "clipPanel, the label of <Chips> (src/renderer/src/editor/panels/ClipPanel.tsx:465)."
+  },
+  "clipPanel.then": {
+    "description": "clipPanel, text of <span> (src/renderer/src/editor/panels/ClipPanel.tsx:467)."
+  },
+  "clipPanel.smartSpeedAction": {
+    "description": "clipPanel, the label of <Chips> (src/renderer/src/editor/panels/ClipPanel.tsx:470)."
+  },
+  "clipPanel.lookingForIdleParts": {
+    "description": "clipPanel, text of <button> (src/renderer/src/editor/panels/ClipPanel.tsx:486)."
+  },
+  "clipPanel.findIdleParts": {
+    "description": "clipPanel, text of <button> (src/renderer/src/editor/panels/ClipPanel.tsx:490)."
+  },
+  "clipPanel.cutsOrSpeedsUp": {
+    "description": "clipPanel, text of <p> (src/renderer/src/editor/panels/ClipPanel.tsx:521)."
+  },
+  "clipPanel.theRecordingsSoundIs": {
+    "description": "clipPanel, text of <span> (src/renderer/src/editor/panels/ClipPanel.tsx:543)."
+  },
+  "clipPanel.silentForAtLeast": {
+    "description": "clipPanel, the label of <Slider> (src/renderer/src/editor/panels/ClipPanel.tsx:548)."
+  },
+  "clipPanel.keepNextToThe": {
+    "description": "clipPanel, the label of <Slider> (src/renderer/src/editor/panels/ClipPanel.tsx:557)."
+  },
+  "clipPanel.silenceAction": {
+    "description": "clipPanel, the label of <Chips> (src/renderer/src/editor/panels/ClipPanel.tsx:569)."
+  },
+  "clipPanel.theSoundOfThe": {
+    "description": "clipPanel, text of <span> (src/renderer/src/editor/panels/ClipPanel.tsx:579)."
+  },
+  "clipPanel.listeningForPauses": {
+    "description": "clipPanel, text of <button> (src/renderer/src/editor/panels/ClipPanel.tsx:585)."
+  },
+  "clipPanel.findSilences": {
+    "description": "clipPanel, text of <button> (src/renderer/src/editor/panels/ClipPanel.tsx:589)."
+  },
+  "clipPanel.nothingIsHeardIn": {
+    "description": "clipPanel, text of <p> (src/renderer/src/editor/panels/ClipPanel.tsx:596)."
+  },
+  "clipPanel.include": {
+    "description": "clipPanel, the aria-label of <input> (src/renderer/src/editor/panels/ClipPanel.tsx:686)."
+  },
+  "clipPanel.selectThisPartOn": {
+    "description": "clipPanel, the title of <button> (src/renderer/src/editor/panels/ClipPanel.tsx:689)."
+  },
+  "cutsSection.cuts": {
+    "description": "cutsSection, the title of <Section> (src/renderer/src/editor/panels/CutsSection.tsx:34)."
+  },
+  "cutsSection.everyCut": {
+    "description": "cutsSection, text of <span> (src/renderer/src/editor/panels/CutsSection.tsx:37)."
+  },
+  "cutsSection.everyCutIsAlready": {
+    "description": "cutsSection, the title of <button> (src/renderer/src/editor/panels/CutsSection.tsx:51)."
+  },
+  "cutsSection.crossfadesOnTheScreen": {
+    "description": "cutsSection, the title of <button> (src/renderer/src/editor/panels/CutsSection.tsx:51)."
+  },
+  "cutsSection.smoothAllCuts": {
+    "description": "cutsSection, text of <button> (src/renderer/src/editor/panels/CutsSection.tsx:54)."
+  },
+  "cutsSection.giveThemTheSame": {
+    "description": "cutsSection, text of <button> (src/renderer/src/editor/panels/CutsSection.tsx:68)."
+  },
+  "cutStyleSection.previousCut": {
+    "description": "cutStyleSection, text of <button> (src/renderer/src/editor/panels/CutStyleSection.tsx:41)."
+  },
+  "cutStyleSection.nextCut": {
+    "description": "cutStyleSection, text of <button> (src/renderer/src/editor/panels/CutStyleSection.tsx:44)."
+  },
+  "cutStyleSection.playThisCut": {
+    "description": "cutStyleSection, text of <button> (src/renderer/src/editor/panels/CutStyleSection.tsx:47)."
+  },
+  "cutStyleSection.cutStyle": {
+    "description": "cutStyleSection, text of <span> (src/renderer/src/editor/panels/CutStyleSection.tsx:51)."
+  },
+  "cutStyleSection.sameAsEveryCut": {
+    "description": "Clip tab › Cut style: the choice that keeps the style every cut has. {name} is that style’s name (Hard cut, Smooth…)."
+  },
+  "joinOptions.otherColour": {
+    "description": "joinOptions, the title of <label> (src/renderer/src/editor/panels/JoinOptions.tsx:129)."
+  },
+  "joinOptions.other": {
+    "description": "joinOptions, text of <span> (src/renderer/src/editor/panels/JoinOptions.tsx:130)."
+  },
+  "joinOptions.comesInFrom": {
+    "description": "joinOptions, text of <span> (src/renderer/src/editor/panels/JoinOptions.tsx:140)."
+  },
+  "freezeSection.freezeFrame": {
+    "description": "freezeSection, the title of <Section> (src/renderer/src/editor/panels/FreezeSection.tsx:45)."
+  },
+  "freezeSection.freezeFrameAtPlayhead": {
+    "description": "freezeSection, text of <button> (src/renderer/src/editor/panels/FreezeSection.tsx:52)."
+  },
+  "freezeSection.holdsThePictureSo": {
+    "description": "freezeSection, text of <p> (src/renderer/src/editor/panels/FreezeSection.tsx:54)."
+  },
+  "freezeSection.freezeFrameAt": {
+    "description": "Freeze frame: title of the selected freeze’s section. {time} is where it is in the video (1:02.5)."
+  },
+  "freezeSection.holdFor": {
+    "description": "freezeSection, the label of <Slider> (src/renderer/src/editor/panels/FreezeSection.tsx:89)."
+  },
+  "freezeSection.freezeFrameSound": {
+    "description": "freezeSection, the label of <Chips> (src/renderer/src/editor/panels/FreezeSection.tsx:100)."
+  },
+  "freezeSection.aTextThatShows": {
+    "description": "freezeSection, the title of <button> (src/renderer/src/editor/panels/FreezeSection.tsx:119)."
+  },
+  "freezeSection.addTextOnThe": {
+    "description": "freezeSection, text of <button> (src/renderer/src/editor/panels/FreezeSection.tsx:120)."
+  },
+  "freezeSection.deleteFreeze": {
+    "description": "freezeSection, text of <button> (src/renderer/src/editor/panels/FreezeSection.tsx:130)."
+  },
+  "freezeMarks.freezeFrameAddsHere": {
+    "description": "Timeline: tooltip of a freeze frame that pauses the sound. {length} is its length (2.0 s); {remove} is \", Delete to remove\" or nothing; {group} is the selection hint or nothing."
+  },
+  "freezeMarks.freezeFrameThePicture": {
+    "description": "Timeline: tooltip of a freeze frame that keeps the sound. {length} is how long it holds; {group} is the selection hint or nothing."
+  },
+  "freezeMarks.freezeFrameInA": {
+    "description": "Timeline: tooltip of a freeze frame in a cut part. {keys} is the delete shortcut’s keycaps."
+  },
+  "selectionPanel.itemsSelected": {
+    "description": "Selection view: title, how many items are selected (always two or more)."
+  },
+  "selectionPanel.selectOnlyThe": {
+    "description": "Selection view: tooltip of a button that keeps only the items of one kind; kind picks the kind’s name in the plural."
+  },
+  "selectionPanel.actions": {
+    "description": "selectionPanel, the title of <Section> (src/renderer/src/editor/panels/SelectionPanel.tsx:207)."
+  },
+  "selectionPanel.duplicate": {
+    "description": "selectionPanel, text of <button> (src/renderer/src/editor/panels/SelectionPanel.tsx:210)."
+  },
+  "selectionPanel.pasteLook": {
+    "description": "selectionPanel, text of <button> (src/renderer/src/editor/panels/SelectionPanel.tsx:221)."
+  },
+  "selectionPanel.selectedItems": {
+    "description": "selectionPanel, the title of <Section> (src/renderer/src/editor/panels/SelectionPanel.tsx:233)."
+  },
+  "selectionPanel.leaveOutAt": {
+    "description": "Selection view: accessible name of a row’s Leave out button. {name} is the item’s name (its text, title or kind), {at} its time.",
+    "user": [
+      "name"
+    ]
+  },
+  "selectionPanel.leaveThisItemOut": {
+    "description": "selectionPanel, the title of <button> (src/renderer/src/editor/panels/SelectionPanel.tsx:247)."
+  },
+  "selectionPanel.leaveOut": {
+    "description": "selectionPanel, text of <button> (src/renderer/src/editor/panels/SelectionPanel.tsx:248)."
+  },
+  "selectionPanel.timing": {
+    "description": "selectionPanel, the title of <Section> (src/renderer/src/editor/panels/SelectionPanel.tsx:257)."
+  },
+  "selectionPanel.startsAt": {
+    "description": "selectionPanel, text of <span> (src/renderer/src/editor/panels/SelectionPanel.tsx:259)."
+  },
+  "selectionPanel.startsAtSetTo": {
+    "description": "selectionPanel, the title of <button> (src/renderer/src/editor/panels/SelectionPanel.tsx:264)."
+  },
+  "selectionPanel.moveTheSelection": {
+    "description": "selectionPanel, the aria-label of <div> (src/renderer/src/editor/panels/SelectionPanel.tsx:272)."
+  },
+  "selectionPanel.move": {
+    "description": "selectionPanel, text of <span> (src/renderer/src/editor/panels/SelectionPanel.tsx:273)."
+  },
+  "selectionPanel.movesAsOneBlock": {
+    "description": "selectionPanel, text of <p> (src/renderer/src/editor/panels/SelectionPanel.tsx:288)."
+  },
+  "selectionPanel.chaptersMoveWithThe": {
+    "description": "selectionPanel, text of <p> (src/renderer/src/editor/panels/SelectionPanel.tsx:289)."
+  },
+  "selectionPanel.automaticEdited": {
+    "description": "Selection view › Zooms: how many of the selected zooms auto zoom made, and how many were edited."
+  },
+  "selectionPanel.changingOrMovingThe": {
+    "description": "selectionPanel, text of <p> (src/renderer/src/editor/panels/SelectionPanel.tsx:298)."
+  },
+  "selectionPanel.textTitlesAndChapter": {
+    "description": "Selection view: the closing hint’s first sentence; the shortcuts of Copy look and Paste look may follow. Ends with a space."
+  },
+  "selectionPanel.copiesOneItemS": {
+    "description": "Selection view: part of the closing hint, after \"Text, titles and chapter names are edited one at a time.\" {keys} is Copy look’s shortcut, never translated. Ends with a semicolon and a space."
+  },
+  "selectionPanel.pastesItOntoThe": {
+    "description": "Selection view: the end of the closing hint. {keys} is Paste look’s shortcut, never translated."
+  },
+  "selectionPanel.useTheProjectS": {
+    "description": "selectionPanel, the title of <button> (src/renderer/src/editor/panels/SelectionPanel.tsx:334)."
+  },
+  "selectionPanel.zoomLevelPresets": {
+    "description": "selectionPanel, the label of <MixedChips> (src/renderer/src/editor/panels/SelectionPanel.tsx:361)."
+  },
+  "mixedControls.mixed": {
+    "description": "Selection view: shown in place of a value where the selected items differ (a slider’s readout, a tag, a field’s placeholder)."
+  },
+  "stylePanel.frames.none.title": {
+    "description": "Style › Device frame: tooltip of the None tile.",
+    "screen": "tab-style"
+  },
+  "stylePanel.frames.browser": {
+    "description": "Style › Device frame: name of a device frame tile (browser).",
+    "screen": "tab-style"
+  },
+  "stylePanel.frames.browser.title": {
+    "description": "Style › Device frame: tooltip of the Browser tile.",
+    "screen": "tab-style"
+  },
+  "stylePanel.frames.laptop": {
+    "description": "Style › Device frame: name of a device frame tile (laptop).",
+    "screen": "tab-style"
+  },
+  "stylePanel.frames.laptop.title": {
+    "description": "Style › Device frame: tooltip of the Laptop tile.",
+    "screen": "tab-style"
+  },
+  "stylePanel.frames.monitor": {
+    "description": "Style › Device frame: name of a device frame tile (monitor).",
+    "screen": "tab-style"
+  },
+  "stylePanel.frames.monitor.title": {
+    "description": "Style › Device frame: tooltip of the Monitor tile.",
+    "screen": "tab-style"
+  },
+  "stylePanel.frames.phone": {
+    "description": "Style › Device frame: name of a device frame tile (phone).",
+    "screen": "tab-style"
+  },
+  "stylePanel.frames.phone.title": {
+    "description": "Style › Device frame: tooltip of the Phone tile.",
+    "screen": "tab-style"
+  },
+  "stylePanel.shadowStyles.soft": {
+    "description": "Style › Shadow: a shadow style chip (soft).",
+    "screen": "tab-style"
+  },
+  "stylePanel.shadowStyles.soft.title": {
+    "description": "Style › Shadow: tooltip of the Soft shadow style chip.",
+    "screen": "tab-style"
+  },
+  "stylePanel.shadowStyles.hard": {
+    "description": "Style › Shadow: a shadow style chip (hard).",
+    "screen": "tab-style"
+  },
+  "stylePanel.shadowStyles.hard.title": {
+    "description": "Style › Shadow: tooltip of the Hard shadow style chip.",
+    "screen": "tab-style"
+  },
+  "stylePanel.shadowStyles.glow": {
+    "description": "Style › Shadow: a shadow style chip (glow).",
+    "screen": "tab-style"
+  },
+  "stylePanel.shadowStyles.glow.title": {
+    "description": "Style › Shadow: tooltip of the Glow shadow style chip.",
+    "screen": "tab-style"
+  },
+  "stylePanel.aspectAuto": {
+    "description": "Style › Frame: the Aspect ratio chip that keeps the recording's own shape.",
+    "screen": "tab-style"
+  },
+  "stylePanel.backgroundKinds.gradient": {
+    "description": "Style › Background: chip that shows the gradient backgrounds.",
+    "screen": "tab-style"
+  },
+  "stylePanel.backgroundKinds.wallpaper": {
+    "description": "Style › Background: chip that shows the wallpaper backgrounds.",
+    "screen": "tab-style"
+  },
+  "stylePanel.backgroundKinds.animated": {
+    "description": "Style › Background: chip that shows the animated backgrounds.",
+    "screen": "tab-style"
+  },
+  "stylePanel.frameThemes.light": {
+    "description": "Style › Device frame: Frame theme chip (light colours of the frame)."
+  },
+  "stylePanel.frameThemes.dark": {
+    "description": "Style › Device frame: Frame theme chip (dark colours of the frame)."
+  },
+  "stylePanel.defaultsNotSaved": {
+    "description": "Style › New recordings: notice when the look could not be saved as the default. {reason} is why, from the system."
+  },
+  "stylePanel.defaultsNotReset": {
+    "description": "Style › New recordings: notice when the saved default look could not be reset. {reason} is why, from the system."
+  },
+  "stylePanel.defaultsLeft.image": {
+    "description": "Style › New recordings: one of the things a saved default leaves out, inside \"Saved as default ({left})\"."
+  },
+  "stylePanel.defaultsLeft.logo": {
+    "description": "Style › New recordings: one of the things a saved default leaves out, inside \"Saved as default ({left})\"."
+  },
+  "stylePanel.savedAsDefaultLeft": {
+    "description": "Style › New recordings: notice after saving the default look when parts were left out. {left} lists them, joined by semicolons."
+  },
+  "stylePanel.savedAsDefault": {
+    "description": "Style › New recordings: notice after saving the look as the default."
+  },
+  "stylePanel.defaultsReset": {
+    "description": "Style › New recordings: notice after resetting the default look."
+  },
+  "preset.studio": {
+    "description": "Name of the built-in style preset \"studio\" (Style › Presets, Polish)."
+  },
+  "preset.minimal": {
+    "description": "Name of the built-in style preset \"minimal\" (Style › Presets, Polish)."
+  },
+  "preset.midnightBrowser": {
+    "description": "Name of the built-in style preset \"midnight-browser\" (Style › Presets, Polish)."
+  },
+  "preset.neon": {
+    "description": "Name of the built-in style preset \"neon\" (Style › Presets, Polish)."
+  },
+  "preset.pop": {
+    "description": "Name of the built-in style preset \"pop\" (Style › Presets, Polish)."
+  },
+  "preset.showcase": {
+    "description": "Name of the built-in style preset \"showcase\" (Style › Presets, Polish)."
+  },
+  "preset.frosted": {
+    "description": "Name of the built-in style preset \"frosted\" (Style › Presets, Polish)."
+  },
+  "preset.flow": {
+    "description": "Name of the built-in style preset \"flow\" (Style › Presets, Polish)."
+  },
+  "stylePresets.error.noName": {
+    "description": "Style › Presets: notice when a preset is saved or renamed with an empty name."
+  },
+  "stylePresets.error.unusable": {
+    "description": "Style › Presets: notice when the current look cannot be stored as a preset."
+  },
+  "stylePresets.error.full": {
+    "description": "Style › Presets: notice when the list of own presets is full. {max} is how many can be kept."
+  },
+  "stylePresets.notSaved": {
+    "description": "Style › Presets: notice when the presets could not be stored. {reason} is why, from the system."
+  },
+  "stylePresets.savedWithoutImage": {
+    "description": "Style › Presets: notice after saving the look as a preset when its background is an image of this recording, which presets leave out. {name} is the preset’s name.",
+    "user": [
+      "name"
+    ]
+  },
+  "stylePresets.saved": {
+    "description": "Style › Presets: notice after saving the look as a preset. {name} is the preset’s name.",
+    "user": [
+      "name"
+    ]
+  },
+  "stylePresets.renamed": {
+    "description": "Style › Presets: notice after renaming an own preset."
+  },
+  "stylePresets.deleted": {
+    "description": "Style › Presets: notice after deleting an own preset. {name} is its name.",
+    "user": [
+      "name"
+    ]
+  },
+  "stylePresets.renameName": {
+    "description": "stylePresets, the aria-label of <button> (src/renderer/src/editor/panels/StylePresets.tsx:137).",
+    "user": [
+      "name"
+    ]
+  },
+  "stylePresets.deleteQuestion": {
+    "description": "stylePresets, text of <span> (src/renderer/src/editor/panels/StylePresets.tsx:149)."
+  },
+  "brandKitBar.theLogo": {
+    "description": "Style › Brand kit: what could not be read, inside \"{names} (could not be read)\"."
+  },
+  "brandKitBar.empty": {
+    "description": "Style › Brand kit: notice when Apply brand kit finds nothing saved."
+  },
+  "brandKitBar.unreadable": {
+    "description": "Style › Brand kit: the parts of the kit that could not be read, inside the notice after applying it. {names} lists them (the logo, font names), joined by commas."
+  },
+  "brandKitBar.tooManyFonts": {
+    "description": "Style › Brand kit: the fonts left out because the video has as many as it can hold, inside the notice after applying the kit. {names} lists them; {max} is how many fonts a video holds."
+  },
+  "brandKitBar.applied": {
+    "description": "Style › Brand kit: notice after applying the brand kit."
+  },
+  "brandKitBar.appliedUndo": {
+    "description": "Style › Brand kit: notice after applying the brand kit. {keys} is the undo shortcut’s keycaps (Ctrl + Z), never translated."
+  },
+  "brandKitBar.appliedWithout": {
+    "description": "Style › Brand kit: notice after applying the brand kit when parts of it were left out. {without} lists them with their reasons."
+  },
+  "brandKitBar.appliedWithoutUndo": {
+    "description": "Style › Brand kit: notice after applying the brand kit when parts of it were left out. {without} lists them with their reasons; {keys} is the undo shortcut’s keycaps (Ctrl + Z), never translated."
+  },
+  "brandKitBar.notApplied": {
+    "description": "Style › Brand kit: notice when applying the brand kit failed. {reason} is why, from the system."
+  },
+  "watermarkSection.position.topLeft": {
+    "description": "Style › Watermark: tooltip of the top left position button."
+  },
+  "watermarkSection.positionName.topLeft": {
+    "description": "Style › Watermark: accessible name of the top left position button."
+  },
+  "watermarkSection.position.topRight": {
+    "description": "Style › Watermark: tooltip of the top right position button."
+  },
+  "watermarkSection.positionName.topRight": {
+    "description": "Style › Watermark: accessible name of the top right position button."
+  },
+  "watermarkSection.position.centre": {
+    "description": "Style › Watermark: tooltip of the centre position button."
+  },
+  "watermarkSection.positionName.centre": {
+    "description": "Style › Watermark: accessible name of the centre position button."
+  },
+  "watermarkSection.position.bottomLeft": {
+    "description": "Style › Watermark: tooltip of the bottom left position button."
+  },
+  "watermarkSection.positionName.bottomLeft": {
+    "description": "Style › Watermark: accessible name of the bottom left position button."
+  },
+  "watermarkSection.position.bottomRight": {
+    "description": "Style › Watermark: tooltip of the bottom right position button."
+  },
+  "watermarkSection.positionName.bottomRight": {
+    "description": "Style › Watermark: accessible name of the bottom right position button."
+  },
+  "watermarkSection.unreadableKept": {
+    "description": "Style › Watermark: error when the picked logo cannot be read and the previous logo stays."
+  },
+  "watermarkSection.unreadable": {
+    "description": "Style › Watermark: error when the picked logo cannot be read."
+  },
+  "watermarkSection.kind.image": {
+    "description": "Style › Watermark: Watermark type chip for a logo (an image) watermark."
+  },
+  "watermarkSection.kind.image.title": {
+    "description": "Style › Watermark: tooltip of the Logo chip.",
+    "dnt": [
+      "PNG",
+      "JPG",
+      "WebP",
+      "SVG"
+    ]
+  },
+  "colourControls.copy.monoHint": {
+    "description": "Colour: hint under the Mono look of the screen."
+  },
+  "colourControls.copy.cpuNote": {
+    "description": "Colour: note when colour grading runs without the graphics card."
+  },
+  "colourControls.copy.autoHint": {
+    "description": "Camera › Colour: hint under the Auto colour button."
+  },
+  "colourControls.copy.importLut": {
+    "description": "Colour: button that imports a colour look-up table file.",
+    "dnt": [
+      "LUT",
+      ".cube"
+    ]
+  },
+  "colourControls.copy.reset": {
+    "description": "Colour: announced after Reset colour."
+  },
+  "colourControls.copy.compareHint": {
+    "description": "Colour: tooltip of the Compare button."
+  },
+  "colourControls.slider.temperature": {
+    "description": "Colour: label of the Temperature slider."
+  },
+  "colourControls.slider.tint": {
+    "description": "Colour: label of the Tint slider."
+  },
+  "colourControls.slider.brightness": {
+    "description": "Colour: label of the Brightness slider."
+  },
+  "colourControls.slider.contrast": {
+    "description": "Colour: label of the Contrast slider."
+  },
+  "colourControls.slider.saturation": {
+    "description": "Colour: label of the Saturation slider."
+  },
+  "colourControls.slider.highlights": {
+    "description": "Colour: label of the Highlights slider."
+  },
+  "colourControls.slider.shadows": {
+    "description": "Colour: label of the Shadows slider."
+  },
+  "colourControls.slider.vibrance": {
+    "description": "Colour: label of the Vibrance slider."
+  },
+  "colourControls.slider.exposure": {
+    "description": "Colour: label of the Exposure slider."
+  },
+  "colourControls.value.none": {
+    "description": "Colour: spoken value of a colour slider at 0."
+  },
+  "colourControls.value.warmer": {
+    "description": "Colour: spoken value of the Temperature slider above 0. {n} is the signed value (+20)."
+  },
+  "colourControls.value.cooler": {
+    "description": "Colour: spoken value of the Temperature slider below 0. {n} is the signed value (−15, with a minus sign)."
+  },
+  "colourControls.value.magenta": {
+    "description": "Colour: spoken value of the Tint slider above 0. {n} is the signed value (+5)."
+  },
+  "colourControls.value.greener": {
+    "description": "Colour: spoken value of the Tint slider below 0. {n} is the signed value (−5)."
+  },
+  "colourControls.value.stops": {
+    "description": "Colour: spoken value of the Exposure slider, in photographic stops. {n} is the signed value (+0.5); count is its size without the sign."
+  },
+  "colourControls.percent": {
+    "description": "Colour: spoken value of a strength slider (the look’s, the LUT’s). {n} is a whole number."
+  },
+  "colourControls.sliderReset": {
+    "description": "Colour: announced after one slider’s Reset. {label} is the slider’s name (Temperature)."
+  },
+  "colourControls.lutImported": {
+    "description": "Colour: announced after a LUT file is imported. {title} is the LUT’s own title, from its file.",
+    "user": [
+      "title"
+    ],
+    "dnt": [
+      "LUT"
+    ]
+  },
+  "colourControls.lutRemoved": {
+    "description": "Colour: announced after Remove LUT.",
+    "dnt": [
+      "LUT"
+    ]
+  },
+  "autoColourRun.noCamera": {
+    "description": "Auto colour: notice when the recording has no camera."
+  },
+  "autoColourRun.running": {
+    "description": "Auto colour: notice while it runs."
+  },
+  "autoColourRun.done": {
+    "description": "Auto colour: notice after the camera’s colour was balanced. Ctrl + Z is the undo shortcut’s keycaps, never translated.",
+    "dnt": [
+      "Ctrl + Z"
+    ]
+  },
+  "autoColourRun.nothing": {
+    "description": "Auto colour: notice when nothing needed changing."
+  },
+  "autoColourRun.failed": {
+    "description": "Auto colour: notice when it failed."
+  },
+  "lookButtons.copyFirst": {
+    "description": "Tooltip of Paste look when no look was copied."
+  },
+  "lookButtons.copiedLookFor": {
+    "description": "Tooltip of Paste look when the copied look belongs to another kind of item; cls is that kind, the select gives its items’ name in the plural."
+  },
+  "lookButtons.pasteLookOf": {
+    "description": "Tooltip of Paste look. {look} says which look is held (\"Box: #ff3b30, 6 px\")."
+  },
+  "lookButtons.pasteLookKeys": {
+    "description": "Tooltip of Paste look. {look} says which look is held (\"Box: #ff3b30, 6 px\"); {keys} is the shortcut’s keycaps, never translated."
+  },
+  "lookButtons.copyThisLook": {
+    "description": "Tooltip of Copy look (the shortcut follows in brackets)."
+  },
+  "cropEditor.aspect.free": {
+    "description": "Crop: the crop shape chip that keeps no shape."
+  },
+  "cropEditor.aspect.original": {
+    "description": "Crop: the crop shape chip that keeps the recording’s own shape."
+  },
+  "cropEditor.sizePx": {
+    "description": "Crop: the size of the crop in the recording’s pixels.",
+    "digits": "latn"
+  },
+  "cropEditor.smallCrop": {
+    "description": "Crop: hint when the crop is smaller than the exports it would feed. {width} × {height} is its size in the recording’s pixels.",
+    "digits": "latn"
+  },
+  "cropRow.cropTitle": {
+    "description": "Style › Frame: tooltip of Crop recording… (its shortcut follows in brackets)."
+  },
+  "cropRow.changeTheCrop": {
+    "description": "Style › Frame: tooltip of the crop’s Edit… button (its shortcut follows in brackets)."
+  },
+  "cropRow.sizeOf": {
+    "description": "Style › Frame: the crop’s size in pixels, in bold, against the whole recording’s.",
+    "digits": "latn"
+  },
+  "followSection.pace.calm": {
+    "description": "Style › Vertical framing: the Calm chip of Movement."
+  },
+  "followSection.pace.calm.title": {
+    "description": "Style › Vertical framing: the Calm chip of Movement (its tooltip)."
+  },
+  "followSection.pace.balanced": {
+    "description": "Style › Vertical framing: the Balanced chip of Movement."
+  },
+  "followSection.pace.balanced.title": {
+    "description": "Style › Vertical framing: the Balanced chip of Movement (its tooltip)."
+  },
+  "followSection.pace.lively": {
+    "description": "Style › Vertical framing: the Lively chip of Movement."
+  },
+  "followSection.pace.lively.title": {
+    "description": "Style › Vertical framing: the Lively chip of Movement (its tooltip)."
+  },
+  "followSection.camera.top": {
+    "description": "Style › Vertical framing: the Band on top chip of Camera."
+  },
+  "followSection.camera.top.title": {
+    "description": "Style › Vertical framing: the Band on top chip of Camera (its tooltip)."
+  },
+  "followSection.camera.bottom": {
+    "description": "Style › Vertical framing: the Band at the bottom chip of Camera."
+  },
+  "followSection.camera.bottom.title": {
+    "description": "Style › Vertical framing: the Band at the bottom chip of Camera (its tooltip)."
+  },
+  "followSection.camera.bubble": {
+    "description": "Style › Vertical framing: the Bubble chip of Camera."
+  },
+  "followSection.camera.bubble.title": {
+    "description": "Style › Vertical framing: the Bubble chip of Camera (its tooltip)."
+  },
+  "followSection.holdTitle": {
+    "description": "Style › Vertical framing: tooltip of Hold the view here (its shortcut follows in brackets)."
+  },
+  "effectsPanel.shortcutsRecorded": {
+    "description": "Effects › Keyboard shortcuts: how many shortcuts the recording holds. {n} is the count."
+  },
+  "effectsPanel.position.bottom": {
+    "description": "Effects › Keyboard shortcuts: Shortcut position chip (at the bottom of the video)."
+  },
+  "effectsPanel.position.top": {
+    "description": "Effects › Keyboard shortcuts: Shortcut position chip (at the top of the video)."
+  },
+  "effectsPanel.movement.none": {
+    "description": "Effects › 3D tilt: what the none Tilt movement does (a hint and the chip’s tooltip)."
+  },
+  "effectsPanel.movement.cursor": {
+    "description": "Effects › 3D tilt: what the cursor Tilt movement does (a hint and the chip’s tooltip)."
+  },
+  "effectsPanel.movement.zoom": {
+    "description": "Effects › 3D tilt: what the zoom Tilt movement does (a hint and the chip’s tooltip)."
+  },
+  "effectsPanel.noCursor": {
+    "description": "Effects › 3D tilt: tooltip of the Follow cursor chip when the recording has no cursor positions."
+  },
+  "effectsPanel.noCursorKeeps": {
+    "description": "Effects › 3D tilt: hint when the tilt follows the cursor but the recording has none."
+  },
+  "effectsPanel.movementChip.none": {
+    "description": "Effects › 3D tilt: a Tilt movement chip (none)."
+  },
+  "effectsPanel.movementChip.cursor": {
+    "description": "Effects › 3D tilt: a Tilt movement chip (cursor)."
+  },
+  "effectsPanel.movementChip.zoom": {
+    "description": "Effects › 3D tilt: a Tilt movement chip (zoom)."
+  },
+  "effectsPanel.presetTurnsOn": {
+    "description": "Effects › 3D tilt: tooltip of a tilt preset while the tilt is off. {title} is the preset’s own tooltip."
+  },
+  "effectsPanel.angle.level": {
+    "description": "Effects › 3D tilt: the Tilt back slider at 0°."
+  },
+  "effectsPanel.angle.back": {
+    "description": "Effects › 3D tilt: the Tilt back slider leaning back. {n} is the angle in degrees."
+  },
+  "effectsPanel.angle.forward": {
+    "description": "Effects › 3D tilt: the Tilt back slider leaning forward. {n} is the angle in degrees."
+  },
+  "effectsPanel.angle.straight": {
+    "description": "Effects › 3D tilt: the Turn slider at 0°."
+  },
+  "effectsPanel.angle.right": {
+    "description": "Effects › 3D tilt: the Turn slider turned right. {n} is the angle in degrees."
+  },
+  "effectsPanel.angle.left": {
+    "description": "Effects › 3D tilt: the Turn slider turned left. {n} is the angle in degrees."
+  },
+  "effectsPanel.tiltTitle": {
+    "description": "effectsPanel, the title of <Section> (src/renderer/src/editor/panels/EffectsPanel.tsx:91)."
+  },
+  "effectsPanel.tiltNeedsWebgl": {
+    "description": "effectsPanel, text of <p> (src/renderer/src/editor/panels/EffectsPanel.tsx:163).",
+    "dnt": [
+      "WebGL"
+    ]
+  },
+  "clipPanel.clipSpan": {
+    "description": "Clip tab: which part of the recording the selected clip is (two times), and how long it plays at its speed, in seconds."
+  },
+  "clipPanel.cutClipTitle": {
+    "description": "Clip tab: tooltip of Delete clip (its shortcut follows in brackets)."
+  },
+  "clipPanel.cutRangeTitle": {
+    "description": "Clip tab: tooltip of Cut range (its shortcut follows in brackets)."
+  },
+  "clipPanel.splitTitle": {
+    "description": "Clip tab: tooltip of Split at playhead (its shortcut follows in brackets)."
+  },
+  "clipPanel.gap.trimStart": {
+    "description": "Clip tab: title of a selected gap that is the trimmed start of the recording."
+  },
+  "clipPanel.gap.trimEnd": {
+    "description": "Clip tab: title of a selected gap that is the trimmed end of the recording."
+  },
+  "clipPanel.gapSpan": {
+    "description": "Clip tab: the selected gap’s two times and its length in seconds."
+  },
+  "clipPanel.rangeSpan": {
+    "description": "Clip tab: the selected range’s two times and its length in seconds."
+  },
+  "clipPanel.nothingToChange": {
+    "description": "Clip tab: notice when a range speed changes nothing. {speed} is the speed picked (2×)."
+  },
+  "clipPanel.pathSummary": {
+    "description": "Clip tab › Cursor path: how many cursor moves the selected range holds ({n}) and how many of them are straightened."
+  },
+  "clipPanel.mode.idle": {
+    "description": "Clip tab › Smart speed: the Idle parts mode chip."
+  },
+  "clipPanel.mode.idle.title": {
+    "description": "Clip tab › Smart speed: the Idle parts mode chip (its tooltip)."
+  },
+  "clipPanel.mode.silence": {
+    "description": "Clip tab › Smart speed: the Silences mode chip."
+  },
+  "clipPanel.mode.silence.title": {
+    "description": "Clip tab › Smart speed: the Silences mode chip (its tooltip)."
+  },
+  "clipPanel.action.idle2": {
+    "description": "Clip tab › Smart speed: tooltip of the 2× chip for idle parts."
+  },
+  "clipPanel.action.idle4": {
+    "description": "Clip tab › Smart speed: tooltip of the 4× chip for idle parts."
+  },
+  "clipPanel.action.idle8": {
+    "description": "Clip tab › Smart speed: tooltip of the 8× chip for idle parts."
+  },
+  "clipPanel.action.idleCut": {
+    "description": "Clip tab › Smart speed: tooltip of the Cut chip for idle parts."
+  },
+  "clipPanel.action.silence2": {
+    "description": "Clip tab › Smart speed: tooltip of the 2× chip for silences."
+  },
+  "clipPanel.action.silence4": {
+    "description": "Clip tab › Smart speed: tooltip of the 4× chip for silences."
+  },
+  "clipPanel.action.silence8": {
+    "description": "Clip tab › Smart speed: tooltip of the 8× chip for silences."
+  },
+  "clipPanel.action.silenceCut": {
+    "description": "Clip tab › Smart speed: tooltip of the Cut chip for silences."
+  },
+  "clipPanel.seconds": {
+    "description": "Clip tab: a length in seconds (2.5 s)."
+  },
+  "clipPanel.idleParts": {
+    "description": "Clip tab › Smart speed: how many idle parts (still, silent moments) are chosen, in bold in the summary."
+  },
+  "clipPanel.silences": {
+    "description": "Clip tab › Smart speed: how many silences (pauses in the sound) are chosen, in bold in the summary."
+  },
+  "clipPanel.done.cutIdle": {
+    "description": "Clip tab › Smart speed: notice after cutting idle parts. {n} is how many; {shorter} how much shorter the video is (12.5 s or 1:02.5). The undo shortcut may follow."
+  },
+  "clipPanel.done.speedIdle": {
+    "description": "Clip tab › Smart speed: notice after speeding up idle parts; {speed} is the speed (4×). {n} is how many; {shorter} how much shorter the video is (12.5 s or 1:02.5). The undo shortcut may follow."
+  },
+  "clipPanel.done.cutSilences": {
+    "description": "Clip tab › Smart speed: notice after cutting silences. {n} is how many; {shorter} how much shorter the video is (12.5 s or 1:02.5). The undo shortcut may follow."
+  },
+  "clipPanel.done.speedSilences": {
+    "description": "Clip tab › Smart speed: notice after speeding up silences; {speed} is the speed (4×). {n} is how many; {shorter} how much shorter the video is (12.5 s or 1:02.5). The undo shortcut may follow."
+  },
+  "clipPanel.apply.cutParts": {
+    "description": "Clip tab › Smart speed: button that cuts the idle parts chosen. {n} is how many."
+  },
+  "clipPanel.apply.speedParts": {
+    "description": "Clip tab › Smart speed: button that speeds up the idle parts chosen. {n} is how many, {speed} the speed (4×)."
+  },
+  "clipPanel.apply.cutSilences": {
+    "description": "Clip tab › Smart speed: button that cuts the silences chosen. {n} is how many."
+  },
+  "clipPanel.apply.speedSilences": {
+    "description": "Clip tab › Smart speed: button that speeds up the silences chosen. {n} is how many, {speed} the speed (4×)."
+  },
+  "clipPanel.none.idle": {
+    "description": "Clip tab › Smart speed: summary when no idle part is as long as the minimum ({n} seconds) and the action cuts."
+  },
+  "clipPanel.none.idleSpeed": {
+    "description": "Clip tab › Smart speed: summary when no idle part is as long as the minimum ({n} seconds) and the action speeds up."
+  },
+  "clipPanel.none.silences": {
+    "description": "Clip tab › Smart speed: summary when no pause is as long as the minimum ({n} seconds) and the action cuts."
+  },
+  "clipPanel.none.silencesSpeed": {
+    "description": "Clip tab › Smart speed: summary when no pause is as long as the minimum ({n} seconds) and the action speeds up."
+  },
+  "clipPanel.list.idle": {
+    "description": "Clip tab › Smart speed: accessible name of the list of idle parts found."
+  },
+  "clipPanel.list.silences": {
+    "description": "Clip tab › Smart speed: accessible name of the list of silences found."
+  },
+  "clipPanel.summary": {
+    "description": "Clip tab › Smart speed: summary of the parts found, all chosen. {chosen} counts them (\"3 idle parts\"), {saved} is the time they save."
+  },
+  "clipPanel.summaryOf": {
+    "description": "Clip tab › Smart speed: summary of the parts found when some are unticked. {chosen} counts the chosen ones (\"3 idle parts\"), {total} how many were found, {saved} the time they save."
+  },
+  "clipPanel.kept.both": {
+    "description": "Clip tab › Smart speed: why the time under title cards and freeze frames is never listed."
+  },
+  "clipPanel.kept.freezes": {
+    "description": "Clip tab › Smart speed: why the time at freeze frames is never listed."
+  },
+  "clipPanel.kept.titles": {
+    "description": "Clip tab › Smart speed: why the time under title cards is never listed."
+  },
+  "clipPanel.notAnalysed": {
+    "description": "Clip tab › Smart speed: error when the picture could not be analysed. {reason} is why."
+  },
+  "clipPanel.noSound": {
+    "description": "Clip tab › Smart speed › Silences: when the recording has no sound. <link> is a button that switches to Idle parts."
+  },
+  "cuts.hint.cut": {
+    "description": "Clip tab › Cuts: the hint under a cut style’s options (cut)."
+  },
+  "cuts.hint.smooth": {
+    "description": "Clip tab › Cuts: the hint under a cut style’s options (smooth)."
+  },
+  "cuts.hint.crossfade": {
+    "description": "Clip tab › Cuts: the hint under a cut style’s options (crossfade)."
+  },
+  "cuts.hint.dip": {
+    "description": "Clip tab › Cuts: the hint under a cut style’s options (dip)."
+  },
+  "cuts.hint.slide": {
+    "description": "Clip tab › Cuts: the hint under a cut style’s options (slide)."
+  },
+  "cuts.hint.punch": {
+    "description": "Clip tab › Cuts: the hint under a cut style’s options (punch)."
+  },
+  "cuts.line": {
+    "description": "Clip tab › Cuts: how many cuts the video has, and what a cut is."
+  },
+  "cuts.smoothed": {
+    "description": "Clip tab › Cuts: notice after Smooth all cuts. {n} is how many cuts changed. The undo shortcut may follow."
+  },
+  "cuts.smoothedKept": {
+    "description": "Clip tab › Cuts: notice after Smooth all cuts when some cuts keep a style of their own. {n} is how many changed, {k} how many kept their own style. The undo shortcut may follow."
+  },
+  "cuts.alreadySmooth": {
+    "description": "Clip tab › Cuts: notice (and hint) when Smooth all cuts has nothing to change."
+  },
+  "cuts.noCuts": {
+    "description": "Notice when Smooth all cuts runs on a video without cuts."
+  },
+  "cuts.hardEverywhere": {
+    "description": "Notice after Use hard cuts everywhere. The undo shortcut may follow."
+  },
+  "cuts.noCutAfter": {
+    "description": "Notice when Go to next cut finds none."
+  },
+  "cuts.noCutBefore": {
+    "description": "Notice when Go to previous cut finds none."
+  },
+  "cuts.herePunch": {
+    "description": "Clip tab › Cut style: what Smooth gives the selected cut when it is a punch-in."
+  },
+  "cuts.hereCrossfade": {
+    "description": "Clip tab › Cut style: what Smooth gives the selected cut when it is a crossfade."
+  },
+  "cuts.calmNote": {
+    "description": "Clip tab › Cut style: note on Slide while Calm motion is on."
+  },
+  "cuts.flashNote": {
+    "description": "Clip tab › Cut style: note when a dip is drawn as a crossfade by the flash rule."
+  },
+  "cuts.noCutsInVideo": {
+    "description": "Notice when Use hard cuts everywhere or Play this cut runs on a video without cuts."
+  },
+  "cuts.sameStyle": {
+    "description": "Clip tab › Cuts: notice after Give them the same style. The undo shortcut may follow."
+  },
+  "cuts.own": {
+    "description": "Clip tab › Cuts: how many cuts have a style of their own."
+  },
+  "cuts.cutOf": {
+    "description": "Clip tab › Cut style: which cut is selected, and how many there are (also announced)."
+  },
+  "cuts.seconds": {
+    "description": "Clip tab › Cuts: spoken value of a length slider, in seconds (0.15 seconds)."
+  },
+  "cuts.percent": {
+    "description": "Clip tab › Cuts: spoken value of the punch-in size slider (110 percent)."
+  },
+  "cuts.slide.right": {
+    "description": "Clip tab › Cuts: the side a slide comes in from (right)."
+  },
+  "cuts.slide.left": {
+    "description": "Clip tab › Cuts: the side a slide comes in from (left)."
+  },
+  "cuts.slide.top": {
+    "description": "Clip tab › Cuts: the side a slide comes in from (top)."
+  },
+  "cuts.slide.bottom": {
+    "description": "Clip tab › Cuts: the side a slide comes in from (bottom)."
+  },
+  "cuts.name.cut": {
+    "description": "The name of a cut style (cut): in the Every cut select, the Cut style choices, the timeline’s cut markers and Review mode."
+  },
+  "cuts.name.smooth": {
+    "description": "The name of a cut style (smooth): in the Every cut select, the Cut style choices, the timeline’s cut markers and Review mode."
+  },
+  "cuts.name.crossfade": {
+    "description": "The name of a cut style (crossfade): in the Every cut select, the Cut style choices, the timeline’s cut markers and Review mode."
+  },
+  "cuts.name.dip": {
+    "description": "The name of a cut style (dip): in the Every cut select, the Cut style choices, the timeline’s cut markers and Review mode."
+  },
+  "cuts.name.slide": {
+    "description": "The name of a cut style (slide): in the Every cut select, the Cut style choices, the timeline’s cut markers and Review mode."
+  },
+  "cuts.name.punch": {
+    "description": "The name of a cut style (punch): in the Every cut select, the Cut style choices, the timeline’s cut markers and Review mode."
+  },
+  "cuts.labelPercent": {
+    "description": "A cut style with its size (\"Punch-in, 110 %\"). {name} is the style’s name."
+  },
+  "cuts.labelSeconds": {
+    "description": "A cut style with its length (\"Crossfade, 0.15 s\"). {name} is the style’s name."
+  },
+  "joinOptions.black": {
+    "description": "Clip tab › Cuts: the black swatch of a dip’s colour."
+  },
+  "joinOptions.white": {
+    "description": "Clip tab › Cuts: the white swatch of a dip’s colour."
+  },
+  "joinOptions.brandColour": {
+    "description": "Clip tab › Cuts: a swatch of the brand kit’s colours for a dip. {n} is its number, {colour} its hex code (#ff3b30)."
+  },
+  "joinOptions.crossfadeLength": {
+    "description": "Clip tab › Cuts: slider of a smooth cut’s crossfade length."
+  },
+  "joinOptions.punchSize": {
+    "description": "Clip tab › Cuts: slider of a smooth cut’s punch-in size."
+  },
+  "freeze.refusal.cut": {
+    "description": "Why a freeze frame cannot be added at the playhead: a cut. The notice, and the tooltip of Freeze frame at playhead."
+  },
+  "freeze.refusal.taken": {
+    "description": "Why a freeze frame cannot be added at the playhead: a freeze already there. The notice, and the tooltip of Freeze frame at playhead."
+  },
+  "freeze.refusal.frozen": {
+    "description": "Why a freeze frame cannot be added at the playhead: a picture already frozen. The notice, and the tooltip of Freeze frame at playhead."
+  },
+  "freeze.refusal.full": {
+    "description": "Why a freeze frame cannot be added at the playhead: the limit reached ({max} is how many a project can have). The notice, and the tooltip of Freeze frame at playhead."
+  },
+  "freezeSection.seconds": {
+    "description": "Freeze frame: a length in seconds (2.0 s)."
+  },
+  "freezeSection.holdTitle": {
+    "description": "Clip tab › Freeze frame: tooltip of Freeze frame at playhead (its shortcut follows in brackets)."
+  },
+  "freezeSection.removeTitle": {
+    "description": "Clip tab › Freeze frame: tooltip of Delete freeze (its shortcut follows in brackets)."
+  },
+  "freezeSection.hint.adds": {
+    "description": "Freeze frame: what a freeze that pauses the sound does. {length} is its length (2.0 s), {now} the video’s length with it (1:02.5)."
+  },
+  "freezeSection.hint.cut": {
+    "description": "Freeze frame: the hint for a freeze on a frame that is cut out."
+  },
+  "freezeSection.hint.next": {
+    "description": "Freeze frame: the hint for a freeze the next one leaves no time."
+  },
+  "freezeSection.hint.afterEnd": {
+    "description": "Freeze frame: the hint for a freeze at the very end that keeps the sound."
+  },
+  "freezeSection.hint.end": {
+    "description": "Freeze frame: the hint for a freeze the end of the video leaves no time."
+  },
+  "freezeSection.hint.holds": {
+    "description": "Freeze frame: what a freeze that keeps the sound does. {length} is its length (2.0 s)."
+  },
+  "freezeSection.hint.heldToEnd": {
+    "description": "Freeze frame: a freeze that keeps the sound, cut short by the end of the video. {length} is how long it holds."
+  },
+  "freezeSection.hint.heldToNext": {
+    "description": "Freeze frame: a freeze that keeps the sound, cut short by the next freeze. {length} is how long it holds."
+  },
+  "freezeSection.sound.pause": {
+    "description": "Freeze frame: the Sound chip that pauses the recording during the freeze."
+  },
+  "freezeSection.sound.pause.title": {
+    "description": "Freeze frame: tooltip of Pause the sound."
+  },
+  "freezeSection.sound.continue": {
+    "description": "Freeze frame: the Sound chip that lets the recording play on under the held picture."
+  },
+  "freezeSection.sound.continue.title": {
+    "description": "Freeze frame: tooltip of Keep the sound playing."
+  },
+  "freezeSection.sound.continue.atEnd": {
+    "description": "Freeze frame: tooltip of Keep the sound playing when the freeze is at the very end (the chip is off)."
+  },
+  "freezeMarks.groupSelected": {
+    "description": "Timeline: added at the end of a freeze frame’s tooltip when it is one of several selected items. {n} is how many are selected. Starts with a space and a middle dot.",
+    "dnt": [
+      "Ctrl"
+    ]
+  },
+  "freezeMarks.groupSelectSeveral": {
+    "description": "Timeline: added at the end of a freeze frame’s tooltip when nothing else is selected. Starts with a space and a middle dot.",
+    "dnt": [
+      "Ctrl"
+    ]
+  },
+  "freezeMarks.removeHint": {
+    "description": "Timeline: added after \"Drag the edge to change\" in a freeze frame’s tooltip. {keys} is the delete shortcut’s keycaps, never translated. Starts with a comma."
+  },
+  "freezeMarks.nothingToHoldNext": {
+    "description": "Timeline: tooltip of a freeze frame that keeps the sound but the next freeze leaves it no time. {keys} is the delete shortcut’s keycaps."
+  },
+  "freezeMarks.nothingToHoldEnd": {
+    "description": "Timeline: tooltip of a freeze frame that keeps the sound but the end of the video leaves it no time. {keys} is the delete shortcut’s keycaps."
+  },
+  "groupEdit.field.zoomLevel": {
+    "description": "Selection view (several items selected): the label of the zoom.level property row."
+  },
+  "groupEdit.field.zoomFocus": {
+    "description": "Selection view (several items selected): the label of the zoom.focus property row."
+  },
+  "groupEdit.field.zoomEasing": {
+    "description": "Selection view (several items selected): the label of the zoom.easing property row."
+  },
+  "groupEdit.field.zoomTransition": {
+    "description": "Selection view (several items selected): the label of the zoom.transition property row."
+  },
+  "groupEdit.field.textStyle": {
+    "description": "Selection view (several items selected): the label of the text.style property row."
+  },
+  "groupEdit.field.textX": {
+    "description": "Selection view (several items selected): the label of the text.x property row."
+  },
+  "groupEdit.field.textY": {
+    "description": "Selection view (several items selected): the label of the text.y property row."
+  },
+  "groupEdit.field.textNumbering": {
+    "description": "Selection view (several items selected): the label of the text.numbering property row."
+  },
+  "groupEdit.field.markFill": {
+    "description": "Selection view (several items selected): the label of the mark.fill property row."
+  },
+  "groupEdit.field.markStrokeWidth": {
+    "description": "Selection view (several items selected): the label of the mark.strokeWidth property row."
+  },
+  "groupEdit.field.privacyKind": {
+    "description": "Selection view (several items selected): the label of the privacy.kind property row."
+  },
+  "groupEdit.field.privacyStrength": {
+    "description": "Selection view (several items selected): the label of the privacy.strength property row."
+  },
+  "groupEdit.field.spotlightShape": {
+    "description": "Selection view (several items selected): the label of the spotlight.shape property row."
+  },
+  "groupEdit.field.spotlightDim": {
+    "description": "Selection view (several items selected): the label of the spotlight.dim property row."
+  },
+  "groupEdit.field.spotlightFeather": {
+    "description": "Selection view (several items selected): the label of the spotlight.feather property row."
+  },
+  "groupEdit.field.imageX": {
+    "description": "Selection view (several items selected): the label of the image.x property row."
+  },
+  "groupEdit.field.imageY": {
+    "description": "Selection view (several items selected): the label of the image.y property row."
+  },
+  "groupEdit.field.imageRotation": {
+    "description": "Selection view (several items selected): the label of the image.rotation property row."
+  },
+  "groupEdit.field.imageFadeIn": {
+    "description": "Selection view (several items selected): the label of the image.fadeIn property row."
+  },
+  "groupEdit.field.imageFadeOut": {
+    "description": "Selection view (several items selected): the label of the image.fadeOut property row."
+  },
+  "groupEdit.field.titleStyle": {
+    "description": "Selection view (several items selected): the label of the title.style property row."
+  },
+  "groupEdit.field.freezeLength": {
+    "description": "Selection view (several items selected): the label of the freeze.length property row."
+  },
+  "groupEdit.field.graphicAccent": {
+    "description": "Selection view (several items selected): the label of the graphic.accent property row."
+  },
+  "groupEdit.option.zoomFocus.cursor": {
+    "description": "Selection view: the zoom focus chip that follows the cursor."
+  },
+  "groupEdit.option.zoomFocus.cursor.title": {
+    "description": "Selection view: tooltip of the zoom focus chip that follows the cursor."
+  },
+  "groupEdit.option.zoomFocus.fixed": {
+    "description": "Selection view: the zoom focus chip that holds a fixed point."
+  },
+  "groupEdit.option.zoomFocus.fixed.title": {
+    "description": "Selection view: tooltip of the zoom focus chip that holds a fixed point."
+  },
+  "groupEdit.option.textStyle.pill": {
+    "description": "Selection view: the text style chip for a caption pill."
+  },
+  "groupEdit.option.privacyKind.blur": {
+    "description": "Selection view: the privacy effect chip that blurs."
+  },
+  "groupEdit.option.privacyKind.blur.title": {
+    "description": "Selection view: tooltip of the privacy effect chip that blurs."
+  },
+  "groupEdit.option.privacyKind.pixelate": {
+    "description": "Selection view: the privacy effect chip that pixelates."
+  },
+  "groupEdit.option.privacyKind.pixelate.title": {
+    "description": "Selection view: tooltip of the privacy effect chip that pixelates."
+  },
+  "groupEdit.option.spotlightShape.ellipse": {
+    "description": "Selection view: the spotlight shape chip (ellipse)."
+  },
+  "groupEdit.option.spotlightShape.rect": {
+    "description": "Selection view: the spotlight shape chip (rectangle)."
+  },
+  "groupEdit.useZoomStyle": {
+    "description": "Selection view › Zooms: the link that gives the selected zooms the project’s zoom style again (and its row’s label)."
+  },
+  "groupEdit.seconds": {
+    "description": "Selection view: a length in seconds, the value of a slider (0.70 s)."
+  },
+  "groupEdit.name.spotlight": {
+    "description": "The name of a spotlight, as copied looks and notices call it (\"Copied the … look\")."
+  },
+  "groupEdit.name.image": {
+    "description": "The name of an image, as copied looks and notices call it (\"Copied the … look\")."
+  },
+  "groupEdit.name.titleCard": {
+    "description": "The name of a title card, as copied looks and notices call it (\"Copied the … look\")."
+  },
+  "groupEdit.name.freeze": {
+    "description": "The name of a freeze frame, as copied looks and notices call it (\"Copied the … look\")."
+  },
+  "groupEdit.name.chapter": {
+    "description": "The name of a chapter, as copied looks and notices call it (\"Copied the … look\")."
+  },
+  "groupEdit.name.stickerFallback": {
+    "description": "The name of a sticker whose name is unknown, inside \"{name} sticker\", as copied looks and notices call it (\"Copied the … look\")."
+  },
+  "groupEdit.name.sticker": {
+    "description": "The name of a sticker, as copied looks and notices call it. {name} is the sticker’s own name (Heart)."
+  },
+  "groupEdit.look.percent": {
+    "description": "Inside a copied look’s description (\"Box: #ff3b30, 60 %\"): a percentage."
+  },
+  "groupEdit.look.style": {
+    "description": "Inside a copied text look’s description (\"Text: Title style, 7 %\"). {style} is the text style’s name."
+  },
+  "groupEdit.look.filled": {
+    "description": "Inside a copied shape look’s description (\"Box: #ff3b30, filled\"): the shape is filled."
+  },
+  "groupEdit.look.px": {
+    "description": "Inside a copied shape look’s description (\"Box: #ff3b30, 6 px\"): its line width in pixels."
+  },
+  "groupEdit.look.dark": {
+    "description": "Inside a copied spotlight look’s description (\"Spotlight: ellipse, 60 % dark\"): how dark the rest of the picture is."
+  },
+  "groupEdit.look.soundOn": {
+    "description": "Inside a copied freeze frame look’s description (\"Freeze frame: 2.0 s, sound plays on\")."
+  },
+  "groupEdit.look.soundPaused": {
+    "description": "Inside a copied freeze frame look’s description (\"Freeze frame: 2.0 s, sound paused\")."
+  },
+  "groupEdit.look.comesIn": {
+    "description": "Inside a copied pop-up look’s description (\"Keyword pop-up: 8 %, in pop\"): how it comes in. {motion} is the motion’s name in lower case."
+  },
+  "groupEdit.look.label": {
+    "description": "A copied look’s description, in Paste look’s tooltip. {name} is the item’s name (Box), {parts} its look, comma-separated."
+  },
+  "groupEdit.class.zoom.one": {
+    "description": "What one item of the zoom look class is called, inside notices (\"Pasted the look onto 1 zoom\")."
+  },
+  "groupEdit.class.zoom.other": {
+    "description": "What several items of the zoom look class are called, inside notices and tooltips (\"The copied look is for zooms\")."
+  },
+  "groupEdit.class.text.one": {
+    "description": "What one item of the text look class is called, inside notices (\"Pasted the look onto 1 text item\")."
+  },
+  "groupEdit.class.text.other": {
+    "description": "What several items of the text look class are called, inside notices and tooltips (\"The copied look is for text items\")."
+  },
+  "groupEdit.class.mark.one": {
+    "description": "What one item of the mark look class is called, inside notices (\"Pasted the look onto 1 shape\")."
+  },
+  "groupEdit.class.mark.other": {
+    "description": "What several items of the mark look class are called, inside notices and tooltips (\"The copied look is for shapes\")."
+  },
+  "groupEdit.class.privacy.one": {
+    "description": "What one item of the privacy look class is called, inside notices (\"Pasted the look onto 1 blur or pixelate area\")."
+  },
+  "groupEdit.class.privacy.other": {
+    "description": "What several items of the privacy look class are called, inside notices and tooltips (\"The copied look is for blur or pixelate areas\")."
+  },
+  "groupEdit.class.spotlight.one": {
+    "description": "What one item of the spotlight look class is called, inside notices (\"Pasted the look onto 1 spotlight\")."
+  },
+  "groupEdit.class.spotlight.other": {
+    "description": "What several items of the spotlight look class are called, inside notices and tooltips (\"The copied look is for spotlights\")."
+  },
+  "groupEdit.class.image.one": {
+    "description": "What one item of the image look class is called, inside notices (\"Pasted the look onto 1 image\")."
+  },
+  "groupEdit.class.image.other": {
+    "description": "What several items of the image look class are called, inside notices and tooltips (\"The copied look is for images\")."
+  },
+  "groupEdit.class.title.one": {
+    "description": "What one item of the title look class is called, inside notices (\"Pasted the look onto 1 title card\")."
+  },
+  "groupEdit.class.title.other": {
+    "description": "What several items of the title look class are called, inside notices and tooltips (\"The copied look is for title cards\")."
+  },
+  "groupEdit.class.freeze.one": {
+    "description": "What one item of the freeze look class is called, inside notices (\"Pasted the look onto 1 freeze frame\")."
+  },
+  "groupEdit.class.freeze.other": {
+    "description": "What several items of the freeze look class are called, inside notices and tooltips (\"The copied look is for freeze frames\")."
+  },
+  "groupEdit.class.graphic.one": {
+    "description": "What one item of the graphic look class is called, inside notices (\"Pasted the look onto 1 pop-up\")."
+  },
+  "groupEdit.class.graphic.other": {
+    "description": "What several items of the graphic look class are called, inside notices and tooltips (\"The copied look is for pop-ups\")."
+  },
+  "selectionPanel.class.zoom": {
+    "description": "Selection view: title of the section of the selected zooms, before their count in brackets."
+  },
+  "selectionPanel.class.mark": {
+    "description": "Selection view: title of the section of the selected shapes, before their count in brackets."
+  },
+  "selectionPanel.class.privacy": {
+    "description": "Selection view: title of the section of the selected privacy, before their count in brackets."
+  },
+  "selectionPanel.class.spotlight": {
+    "description": "Selection view: title of the section of the selected spotlights, before their count in brackets."
+  },
+  "selectionPanel.class.image": {
+    "description": "Selection view: title of the section of the selected images, before their count in brackets."
+  },
+  "selectionPanel.class.title": {
+    "description": "Selection view: title of the section of the selected title cards, before their count in brackets."
+  },
+  "selectionPanel.class.freeze": {
+    "description": "Selection view: title of the section of the selected freeze frames, before their count in brackets."
+  },
+  "selectionPanel.class.graphic": {
+    "description": "Selection view: title of the section of the selected pop-ups, before their count in brackets."
+  },
+  "selectionPanel.classCount": {
+    "description": "Selection view: a section’s title, its kind of item (Zooms) and how many are selected."
+  },
+  "selectionPanel.zoomLevel": {
+    "description": "Selection view: a selected zoom’s name, with its level (2×)."
+  },
+  "selectionPanel.cursorSpotlight": {
+    "description": "Selection view: the name of a spotlight that follows the cursor."
+  },
+  "selectionPanel.popUp": {
+    "description": "Selection view: the name of a pop-up that is missing."
+  },
+  "selectionPanel.onlyKind": {
+    "description": "Selection view: a button that keeps only the items of one kind; kind picks the kind’s short name in the plural, {n} is how many are selected."
+  },
+  "selectionPanel.freezesAtEnd": {
+    "description": "Selection view: notice when Keep the sound playing cannot apply to freeze frames at the very end. {n} is how many."
+  },
+  "selectionPanel.shorter": {
+    "description": "Selection view: notice when a new length could not apply to every item. {n} is how many came out shorter."
+  },
+  "selectionPanel.duplicateTitle": {
+    "description": "Selection view: tooltip of Duplicate (its shortcut follows in brackets)."
+  },
+  "selectionPanel.copyTitle": {
+    "description": "Selection view: tooltip of Copy (its shortcut follows in brackets)."
+  },
+  "selectionPanel.pasteLookTitle": {
+    "description": "Selection view: tooltip of Paste look (its shortcut follows in brackets)."
+  },
+  "selectionPanel.deleteTitle": {
+    "description": "Selection view: tooltip of Delete (its shortcut follows in brackets)."
+  },
+  "selectionPanel.selectedItemsCount": {
+    "description": "Selection view: the folding list of the selected items, with how many there are."
+  },
+  "selectionPanel.secondsMinus": {
+    "description": "Selection view: button that moves the selection earlier by {n} second (with a real minus sign)."
+  },
+  "selectionPanel.secondsPlus": {
+    "description": "Selection view: button that moves the selection later by {n} second."
+  },
+  "selectionPanel.moveEarlier": {
+    "description": "selectionPanel, the aria-label of <button> (src/renderer/src/editor/panels/SelectionPanel.tsx:274)."
+  },
+  "selectionPanel.moveLater": {
+    "description": "selectionPanel, the aria-label of <button> (src/renderer/src/editor/panels/SelectionPanel.tsx:277)."
+  },
+  "selectionPanel.secondsUnit": {
+    "description": "Selection view: the unit after the Length field (seconds)."
+  },
+  "selectionPanel.appliesTo": {
+    "description": "Selection view: a property’s label when only some of the section’s items take it (\"Filled · applies to 1 of 3\")."
+  },
+  "selectionPanel.ownMotionCount": {
+    "description": "Selection view › Zooms: after Use zoom style, how many of the selected zooms have a motion of their own."
+  },
+  "selectionPanel.noCursor": {
+    "description": "Selection view › Zooms: tooltip of Follow cursor when the recording has no cursor data."
+  },
+  "mixedControls.labelMixed": {
+    "description": "Selection view: accessible name of a chip row or colour row whose items differ. {label} is the row’s label."
+  },
+  "clipPanel.gap.cut": {
+    "description": "Clip tab: title of a selected gap that is a cut part (a noun: the part that was cut out)."
+  },
+  "clipPanel.editHint.pressSplit": {
+    "description": "Clip tab, Edit hint (piece 1 of 4, with a split shortcut): split is its keycaps (never translated). The hint is one sentence in pieces, joined by spaces, so that English keeps the text as it lays it out today (the English guard compares the pixels): Press {split} to split at the playhead, | select a clip and | press {delete} | to cut it, or Shift+drag …"
+  },
+  "clipPanel.editHint.split": {
+    "description": "Clip tab, Edit hint (piece 1 of 4, without a split shortcut). The hint is one sentence in pieces, joined by spaces, so that English keeps the text as it lays it out today (the English guard compares the pixels): Press {split} to split at the playhead, | select a clip and | press {delete} | to cut it, or Shift+drag …"
+  },
+  "clipPanel.editHint.selectClip": {
+    "description": "Clip tab, Edit hint (piece 2 of 4). The hint is one sentence in pieces, joined by spaces, so that English keeps the text as it lays it out today (the English guard compares the pixels): Press {split} to split at the playhead, | select a clip and | press {delete} | to cut it, or Shift+drag …"
+  },
+  "clipPanel.editHint.pressDelete": {
+    "description": "Clip tab, Edit hint (piece 3 of 4, with a delete shortcut): delete is its keycaps (never translated). The hint is one sentence in pieces, joined by spaces, so that English keeps the text as it lays it out today (the English guard compares the pixels): Press {split} to split at the playhead, | select a clip and | press {delete} | to cut it, or Shift+drag …"
+  },
+  "clipPanel.editHint.useDelete": {
+    "description": "Clip tab, Edit hint (piece 3 of 4, without a delete shortcut; Delete clip is the button below). The hint is one sentence in pieces, joined by spaces, so that English keeps the text as it lays it out today (the English guard compares the pixels): Press {split} to split at the playhead, | select a clip and | press {delete} | to cut it, or Shift+drag …"
+  },
+  "clipPanel.editHint.toCut": {
+    "description": "Clip tab, Edit hint (piece 4 of 4): Shift is a keycap (never translated). The hint is one sentence in pieces, joined by spaces, so that English keeps the text as it lays it out today (the English guard compares the pixels): Press {split} to split at the playhead, | select a clip and | press {delete} | to cut it, or Shift+drag …"
+  }
+}

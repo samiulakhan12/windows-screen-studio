@@ -15,6 +15,7 @@ import type { TrackSlotProps } from './LayoutTrack'
 import { ipcMessage, pickOverlay, showOverlay } from './overlayItems'
 import { followPointer } from './pointer'
 import './overlays.css'
+import { t } from '../../../shared/i18n/t'
 
 const NO_OVERLAYS: ImageOverlay[] = []
 
@@ -115,7 +116,7 @@ export function OverlayTrack({ px, win, duration, selection, onSelect, scrub, sn
     return group.keys.has(key) ? ` selected in-group${group.group.anchor === key ? ' anchor' : ''}` : ''
   }
   const groupHint = (id: string): string =>
-    group.keys.has(itemKey('overlay', id)) ? ` · selected: drag to move all ${groupSize}, Ctrl+click to leave it out` : groupSize || !multi ? '' : ' · Ctrl+click to select several'
+    group.keys.has(itemKey('overlay', id)) ? ` · ${t('text.track.inGroup', { n: fmt.count(groupSize) })}` : groupSize || !multi ? '' : ` · ${t('text.track.selectSeveral')}`
 
   // Like the caption and camera tracks, the row shows once the project has images (the Images tab,
   // a drop or a paste adds the first one), so projects without them keep the timeline's height.
@@ -125,7 +126,7 @@ export function OverlayTrack({ px, win, duration, selection, onSelect, scrub, sn
   const laneH = 100 / lanes.count
 
   return (
-    <div className="tl-track overlay-track" ref={trackRef} onPointerDown={onBackgroundDown} title="Double-click to add an image" data-testid="overlay-track">
+    <div className="tl-track overlay-track" ref={trackRef} onPointerDown={onBackgroundDown} title={t('text.overlayTrack.doubleClickToAdd')} data-testid="overlay-track">
       {visible.map((o) => {
         const w = (o.end - o.start) * px
         const lane = lanes.lanes.get(o.id) ?? 0
@@ -163,7 +164,7 @@ export function OverlayTrackLabel(): JSX.Element | null {
   const has = useSyncExternalStore(store.subscribe, () => (store.state.overlays?.length ?? 0) > 0)
   if (!has) return null
   return (
-    <div className="tl-label overlay-label" title="Images and stickers">
+    <div className="tl-label overlay-label" title={t('text.overlayTrack.imagesAndStickers')}>
       <EditorIcon name="image" size={16} />
     </div>
   )

@@ -4,7 +4,7 @@
  * the same as every cut) with the chosen style's options; what Smooth gives this cut; the notes of
  * Calm motion and the flash rule. Trimmed starts and ends have none.
  */
-import { CALM_NOTE, cutOf, CUT_KINDS, FLASH_NOTE, hereLine } from '../../../../shared/editor/cutsCopy'
+import { calmNote, cutOf, CUT_KINDS, flashNote, hereLine } from '../../../../shared/editor/cutsCopy'
 import { cutAt, cutNumber, joinName, smoothHere, withCutJoin } from '../../../../shared/editor/joinsEdit'
 import { resolvedJoin } from '../../../../shared/render/joins'
 import type { CutJoin, JoinKind, Project } from '../../../../shared/types'
@@ -12,6 +12,7 @@ import { useEditor } from '../context'
 import { useGroup } from '../groupContext'
 import { JoinOptions, keepArrows } from './JoinOptions'
 import './cuts.css'
+import { t } from '../../../../shared/i18n/t'
 
 export function CutStyleSection(props: { project: Project; gap: { start: number; end: number } }): JSX.Element | null {
   const { store } = useEditor()
@@ -27,7 +28,7 @@ export function CutStyleSection(props: { project: Project; gap: { start: number;
   const choice: 'same' | JoinKind = own ? own.kind : 'same'
   const set = (join: CutJoin | null, key?: string): void => store.update((p) => withCutJoin(p, clip, join), key)
   const drawn = resolvedJoin(project, cut.index)
-  const note = shown === 'slide' && project.effects.calm ? CALM_NOTE : shown === 'dip' && drawn?.kind === 'crossfade' ? FLASH_NOTE : null
+  const note = shown === 'slide' && project.effects.calm ? calmNote() : shown === 'dip' && drawn?.kind === 'crossfade' ? flashNote() : null
   const ownJoin = own ? stripClip(own) : null
   return (
     <div className="cut-style-section" data-testid="cut-style-section">
@@ -37,23 +38,15 @@ export function CutStyleSection(props: { project: Project; gap: { start: number;
         </span>
         {/* aria-disabled, not disabled: pressing on to the first or last cut keeps the focus on the
             button (a disabled one drops it to the page); a press there says there is no cut. */}
-        <button className="btn small" data-testid="cut-prev" aria-disabled={number.n <= 1 || undefined} onClick={() => command('previousCut')}>
-          Previous cut
-        </button>
-        <button className="btn small" data-testid="cut-next" aria-disabled={number.n >= number.of || undefined} onClick={() => command('nextCut')}>
-          Next cut
-        </button>
-        <button className="btn small" data-testid="cut-play" onClick={() => command('playCut')}>
-          Play this cut
-        </button>
+        <button className="btn small" data-testid="cut-prev" aria-disabled={number.n <= 1 || undefined} onClick={() => command('previousCut')}>{t('style.cutStyleSection.previousCut')}</button>
+        <button className="btn small" data-testid="cut-next" aria-disabled={number.n >= number.of || undefined} onClick={() => command('nextCut')}>{t('style.cutStyleSection.nextCut')}</button>
+        <button className="btn small" data-testid="cut-play" onClick={() => command('playCut')}>{t('style.cutStyleSection.playThisCut')}</button>
       </div>
-      <span className="field-label" aria-hidden="true">
-        Cut style
-      </span>
-      <div className="cut-radios cut-style" role="radiogroup" aria-label="Cut style" data-testid="cut-style" onKeyDown={keepArrows}>
+      <span className="field-label" aria-hidden="true">{t('style.cutStyleSection.cutStyle')}</span>
+      <div className="cut-radios cut-style" role="radiogroup" aria-label={t('style.cutStyleSection.cutStyle')} data-testid="cut-style" onKeyDown={keepArrows}>
         <label className={`chip ${choice === 'same' ? 'active' : ''}`} data-kind="same">
           <input type="radio" name="cut-style" checked={choice === 'same'} onChange={() => set(null)} />
-          Same as every cut ({joinName(every?.kind ?? 'cut')})
+          {t('style.cutStyleSection.sameAsEveryCut', { name: joinName(every?.kind ?? 'cut') })}
         </label>
         {CUT_KINDS.map((k) => (
           <label key={k} className={`chip ${choice === k ? 'active' : ''}`} data-kind={k}>

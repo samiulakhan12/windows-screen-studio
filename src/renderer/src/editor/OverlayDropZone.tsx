@@ -3,6 +3,7 @@ import { useEditor } from './context'
 import { addOverlayFile, ipcMessage, isOverlayFile } from './overlayItems'
 import type { Selection } from './selection'
 import './overlays.css'
+import { t } from '../../../shared/i18n/t'
 
 /** True while the focus is where pasting means text (a field, a text area, editable content). */
 const typingTarget = (el: Element | null): boolean =>
@@ -29,9 +30,9 @@ export function OverlayDropZone({ onSelect, onNotice }: { onSelect: (sel: Select
     let depth = 0
     const add = (file: File): void => {
       const { services: s, onSelect: select, onNotice: notice } = latest.current
-      if (!isOverlayFile(file)) return notice('Only PNG, JPG, WebP, SVG and GIF images can be added')
+      if (!isOverlayFile(file)) return notice(t('text.overlayDropZone.onlyImages'))
       addOverlayFile(s, file, { onSelect: select }).then(
-        (o) => notice(`Added ${o.name ?? 'the image'} at the playhead`),
+        (o) => notice(o.name ? t('text.overlayDropZone.addedName', { name: o.name }) : t('text.overlayDropZone.added')),
         (err: unknown) => notice(ipcMessage(err))
       )
     }
@@ -84,7 +85,7 @@ export function OverlayDropZone({ onSelect, onNotice }: { onSelect: (sel: Select
   if (!over) return null
   return (
     <div className="overlay-drop" data-testid="overlay-drop">
-      <span>Drop an image to add it at the playhead</span>
+      <span>{t('text.overlayDropZone.dropAnImageTo')}</span>
     </div>
   )
 }
