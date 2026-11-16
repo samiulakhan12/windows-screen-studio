@@ -172,4 +172,25 @@ describe('test 63: the English checks', () => {
     writeTree(root, { 'translations/reviewers.json': { reviewers: [{ id: 'X', languages: ['xx'] }] } })
     expect(checks.runChecks(root).errors.length).toBe(5)
   })
+
+  it('reports a common key no code uses yet as a warning until step S4, and fails it from S4 on', () => {
+    const english = { codecs: { 'row.codec': 'Codec' }, common: { 'action.cancel': 'Cancel' } }
+    const root = makeTree({
+      ...englishTree(english),
+      ...toolsTree(),
+      'src/shared/i18n/built/shipped.json': [],
+      'src/renderer/src/a.ts': "import { t } from '../../shared/i18n/t'\nexport const a = () => t('codecs.row.codec')\n"
+    })
+    trees.push(root)
+    const before = checks.runChecks(root)
+    expect(before.errors).toEqual([])
+    expect(before.warnings).toEqual(['common: 1 key(s) no code uses yet; the extraction uses them, and from step S4 an unused key fails'])
+    // Only common waits: an unused key of any other namespace fails at once.
+    writeTree(root, englishTree({ ...english, codecs: { ...english.codecs, unused: 'Nobody' } }))
+    expect(checks.runChecks(root).errors).toEqual(['English codecs.unused: is not used by any code'])
+    writeTree(root, { ...englishTree(english), ...toolsTree({ scan: 'fail' }) })
+    expect(checks.runChecks(root).errors).toEqual(['English common.action.cancel: is not used by any code'])
+    writeTree(root, { 'src/renderer/src/b.ts': "import { t } from '../../shared/i18n/t'\nexport const b = () => t('common.action.cancel')\n" })
+    expect(checks.runChecks(root)).toMatchObject({ errors: [], warnings: [] })
+  })
 })

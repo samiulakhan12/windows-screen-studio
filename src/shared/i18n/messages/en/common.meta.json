@@ -1,1 +1,206 @@
-{}
+{
+  "action.add": {
+    "description": "Button that adds an item to a list (a word, a sound, a graphic)."
+  },
+  "action.addAiProvider": {
+    "description": "Button that opens Settings › AI providers when a tool needs one."
+  },
+  "action.back": {
+    "description": "Button that goes back to the previous view or step."
+  },
+  "action.cancel": {
+    "description": "Button that closes a question or form without doing anything."
+  },
+  "action.close": {
+    "description": "Button or label that closes a dialog or panel."
+  },
+  "action.copy": {
+    "description": "Button that copies text or a file to the clipboard."
+  },
+  "action.cut": {
+    "description": "Button (a verb) that cuts the selected part out of the video. The cut part itself is not this word."
+  },
+  "action.delete": {
+    "description": "Button (a verb) that deletes something for good. Not the name of the Delete key."
+  },
+  "action.deleteName": {
+    "description": "Accessible name of a delete button. {name} is what it deletes: a project, preset or version name.",
+    "user": [
+      "name"
+    ]
+  },
+  "action.done": {
+    "description": "Button that finishes a step and closes it."
+  },
+  "action.hide": {
+    "description": "Button that hides something shown, such as a key."
+  },
+  "action.keep": {
+    "description": "Button that keeps a suggested change or a version, the opposite of Remove."
+  },
+  "action.later": {
+    "description": "Button that puts a question off until later."
+  },
+  "action.makeCaptions": {
+    "description": "Button that makes captions from the recording’s sound."
+  },
+  "action.play": {
+    "description": "Button that plays a sound, a clip or the video."
+  },
+  "action.playName": {
+    "description": "Accessible name of a play button. {name} is the sound it plays.",
+    "user": [
+      "name"
+    ]
+  },
+  "action.refresh": {
+    "description": "Button that reads a list again."
+  },
+  "action.regenerate": {
+    "description": "Button that makes the text or zooms again, replacing the ones made before."
+  },
+  "action.remove": {
+    "description": "Button that removes an item from a list or the video."
+  },
+  "action.removeAll": {
+    "description": "Button that removes every item of a list."
+  },
+  "action.removeName": {
+    "description": "Accessible name of a remove button. {name} is what it removes: a folder, a chat, a font or a model.",
+    "user": [
+      "name"
+    ]
+  },
+  "action.reset": {
+    "description": "Button that puts the settings of a section back to their defaults."
+  },
+  "action.restore": {
+    "description": "Button that brings back something cut or removed."
+  },
+  "action.save": {
+    "description": "Button that saves a name, a style or a provider."
+  },
+  "action.selectAll": {
+    "description": "Button that selects every item of a list."
+  },
+  "action.show": {
+    "description": "Button that shows something hidden, or shows a file in its folder."
+  },
+  "action.showInFolder": {
+    "description": "Button that opens the folder of a file in File Explorer, with the file selected."
+  },
+  "action.stop": {
+    "description": "Button that stops a sound that plays or a job that runs."
+  },
+  "action.tryAgain": {
+    "description": "Button that runs a job again after it failed."
+  },
+  "action.use": {
+    "description": "Button that uses the item it sits on (a music bed, a zoom, a folder)."
+  },
+  "state.copied": {
+    "description": "Shown on a Copy button for a moment after it copied."
+  },
+  "state.loading": {
+    "description": "Shown while a list or a preview loads."
+  },
+  "state.none": {
+    "description": "Option of a select: nothing is chosen."
+  },
+  "state.off": {
+    "description": "A setting that is turned off (an option, or the state shown beside a command)."
+  },
+  "state.saved": {
+    "description": "Shown when a change has been saved."
+  },
+  "state.saving": {
+    "description": "Shown while a change is saved."
+  },
+  "state.working": {
+    "description": "Shown on a button while its job runs."
+  },
+  "label.background": {
+    "description": "Field label: what is behind the video, a caption or a title."
+  },
+  "label.camera": {
+    "description": "Field or section label: the webcam."
+  },
+  "label.captions": {
+    "description": "Section, track or field label: the captions of the video."
+  },
+  "label.colour": {
+    "description": "Field label: one colour."
+  },
+  "label.colours": {
+    "description": "Section label: several colours."
+  },
+  "label.keyboardShortcuts": {
+    "description": "Name of the keyboard shortcuts dialog and of the buttons that open it."
+  },
+  "label.layout": {
+    "description": "Section label: where things sit in the frame."
+  },
+  "label.length": {
+    "description": "Field label: how long a clip, an item or a post is."
+  },
+  "label.look": {
+    "description": "Section label: how something looks (its style)."
+  },
+  "label.motion": {
+    "description": "Section or field label: how something moves."
+  },
+  "label.name": {
+    "description": "Field label: a name the user gives."
+  },
+  "label.opacity": {
+    "description": "Slider label: how see-through something is."
+  },
+  "label.position": {
+    "description": "Field label: where something sits in the frame."
+  },
+  "label.provider": {
+    "description": "Field label: the AI provider used."
+  },
+  "label.settings": {
+    "description": "Name of the Settings dialog and of the button that opens it."
+  },
+  "label.shadow": {
+    "description": "Slider or section label: the shadow under something."
+  },
+  "label.size": {
+    "description": "Slider label: how large something is drawn."
+  },
+  "label.sound": {
+    "description": "Field label: the sound an item plays."
+  },
+  "label.speed": {
+    "description": "Field label: how fast a clip or an animation plays."
+  },
+  "label.strength": {
+    "description": "Slider label: how strong an effect is."
+  },
+  "label.text": {
+    "description": "Field, track or section label: text on the video."
+  },
+  "label.textColour": {
+    "description": "Field label: the colour of the text."
+  },
+  "label.title": {
+    "description": "Field label: a title (of a card, a guide, an intro)."
+  },
+  "label.volume": {
+    "description": "Slider label: how loud a sound is."
+  },
+  "label.zoom": {
+    "description": "Track, button or slider label: zooming in on the video."
+  },
+  "colour.pickAny": {
+    "description": "Tooltip of the swatch that opens the colour picker."
+  },
+  "colour.anyFor": {
+    "description": "Accessible name of the colour picker after a row of swatches. {label} is the row’s label, such as Background."
+  },
+  "error.drawingSurface": {
+    "description": "Error when the graphics card gives no canvas to draw frames on."
+  }
+}

@@ -69,7 +69,15 @@ function runChecks(root = files.ROOT, { report = false } = {}) {
   // 2. English.
   const en = files.readEnglish(root)
   for (const [ns, f] of Object.entries(en.files)) if (!f.hasMeta) errors.push(`${files.MESSAGES_DIR}/${ns}.meta.json is missing`)
-  for (const p of checkEnglish(en.messages, en.meta, usedKeysOf(root, en.messages))) errors.push(`English ${p.key}: ${p.message}`)
+  // `common` is filled at step S2 for the extraction to use (§10.4, §10.5): until S4 turns the
+  // scanner on for the whole tree ("scan": "fail"), a common key no code uses yet is a warning.
+  const commonWaits = config.scan !== 'fail'
+  let commonUnused = 0
+  for (const p of checkEnglish(en.messages, en.meta, usedKeysOf(root, en.messages))) {
+    if (commonWaits && p.code === 'unused' && files.namespaceOf(p.key) === 'common') commonUnused++
+    else errors.push(`English ${p.key}: ${p.message}`)
+  }
+  if (commonUnused) warnings.push(`common: ${commonUnused} key(s) no code uses yet; the extraction uses them, and from step S4 an unused key fails`)
   notes.push(`English: ${Object.keys(en.messages).length} message(s) in ${Object.keys(en.files).length} namespace(s)`)
 
   // 3. The reviewers and the glossary.
