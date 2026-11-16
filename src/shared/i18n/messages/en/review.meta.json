@@ -2345,5 +2345,77 @@
     "user": [
       "word"
     ]
+  },
+  "chapter.signal.start": {
+    "description": "Review mode: a found chapter's detail, one of the signals that found it, joined as a list with the others (lower case: the detail is a line of facts after the tool's name, e.g. \"Find chapters · page change and pause\")."
+  },
+  "chapter.signal.page": {
+    "description": "Review mode: a found chapter's detail, one of the signals that found it, joined as a list with the others (lower case: the detail is a line of facts after the tool's name, e.g. \"Find chapters · page change and pause\")."
+  },
+  "chapter.signal.screen": {
+    "description": "Review mode: a found chapter's detail, one of the signals that found it, joined as a list with the others (lower case: the detail is a line of facts after the tool's name, e.g. \"Find chapters · page change and pause\")."
+  },
+  "chapter.signal.pause": {
+    "description": "Review mode: a found chapter's detail, one of the signals that found it, joined as a list with the others (lower case: the detail is a line of facts after the tool's name, e.g. \"Find chapters · page change and pause\")."
+  },
+  "chapter.signal.idle": {
+    "description": "Review mode: a found chapter's detail, one of the signals that found it, joined as a list with the others (lower case: the detail is a line of facts after the tool's name, e.g. \"Find chapters · page change and pause\")."
+  },
+  "chapter.signal.cue": {
+    "description": "Review mode: a found chapter's detail, one of the signals that found it, joined as a list with the others (lower case: the detail is a line of facts after the tool's name, e.g. \"Find chapters · page change and pause\")."
+  },
+  "chapter.signal.section": {
+    "description": "Review mode: a found chapter's detail, one of the signals that found it, joined as a list with the others (lower case: the detail is a line of facts after the tool's name, e.g. \"Find chapters · page change and pause\")."
+  },
+  "chapter.signal.topic": {
+    "description": "Review mode: a found chapter's detail, one of the signals that found it, joined as a list with the others (lower case: the detail is a line of facts after the tool's name, e.g. \"Find chapters · page change and pause\")."
+  },
+  "chapter.signal.card": {
+    "description": "Review mode: a found chapter's detail, one of the signals that found it, joined as a list with the others (lower case: the detail is a line of facts after the tool's name, e.g. \"Find chapters · page change and pause\")."
+  },
+  "chapter.signal.ai": {
+    "description": "Review mode: a found chapter's detail, one of the signals that found it, joined as a list with the others (lower case: the detail is a line of facts after the tool's name, e.g. \"Find chapters · page change and pause\")."
+  },
+  "chapter.tool.ai": {
+    "description": "Review mode: a found chapter's detail, the tool that found it: Suggest chapters (smart.chapters) run by AI on this PC (local), by an AI service named {place} (its host or provider name, e.g. \"OpenAI\"), or by an AI with no name (other).",
+    "user": [
+      "place"
+    ]
+  },
+  "chapter.tool.polish": {
+    "description": "Review mode: a found chapter's detail, the tool that found it (Polish in one click)."
+  },
+  "chapter.tool.find": {
+    "description": "Review mode: a found chapter's detail, the tool that found it (Find chapters)."
+  },
+  "chapter.namedBy": {
+    "description": "Review mode: a found chapter's detail, who named it (lower case, a fact after the tool and signals): AI on this PC (local), an AI service named {place} (its host or provider name), or an AI with no name (other).",
+    "user": [
+      "place"
+    ]
+  },
+  "chapter.restartsSteps": {
+    "description": "Review mode: a found chapter's detail, the last fact (lower case) when step badges are numbered by chapter: keeping the chapter starts their numbers again at it."
+  },
+  "chapter.title": {
+    "description": "Review mode: a found chapter's row title; {title} is the chapter's name, {time} where it starts in the video (e.g. \"1:05\").",
+    "user": [
+      "title"
+    ]
+  },
+  "colour.title": {
+    "description": "Review mode: the row title of the colour change Auto colour made to the camera."
+  },
+  "colour.detail": {
+    "description": "Review mode: the tool that made a colour row's change (Auto colour), shown after the time on its row."
+  },
+  "join.byPolish": {
+    "description": "Review mode: the tool that set the smooth cuts (Polish in one click), shown after the time on their row."
+  },
+  "join.byShort": {
+    "description": "Review mode: the tool that set the smooth cuts (Make a shorter version), shown after the time on their row."
+  },
+  "join.title": {
+    "description": "Review mode: the smooth cuts row's title; count is how many cuts get the smooth style now."
   }
 }

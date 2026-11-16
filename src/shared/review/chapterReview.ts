@@ -12,33 +12,30 @@ import { withoutChapters } from '../chapters/chapterAuto'
 import { pendingChapters } from '../chapters/pending'
 import type { AiProviderKind, ChapterOrigin, ChapterSignal, Project } from '../types'
 import type { ReviewItem, ReviewStatus } from './review'
+import { fmt } from '../i18n/fmt'
+import { t, type MessageKey } from '../i18n/t'
 
 export const CHAPTER_KEY = 'chapter:'
 
-/** How each signal reads in a row's detail. */
-const SIGNAL_WORDS: Readonly<Record<ChapterSignal, string>> = {
-  start: 'start of the video',
-  page: 'page change',
-  screen: 'screen change',
-  pause: 'pause',
-  idle: 'no input',
-  cue: 'cue word',
-  section: 'new section',
-  topic: 'new topic',
-  card: 'title card',
-  ai: 'AI suggestion'
+/** The message naming each signal in a row's detail (lower case: the signals are listed in a line of facts). */
+const SIGNAL_WORDS: Readonly<Record<ChapterSignal, MessageKey>> = {
+  start: 'review.chapter.signal.start',
+  page: 'review.chapter.signal.page',
+  screen: 'review.chapter.signal.screen',
+  pause: 'review.chapter.signal.pause',
+  idle: 'review.chapter.signal.idle',
+  cue: 'review.chapter.signal.cue',
+  section: 'review.chapter.signal.section',
+  topic: 'review.chapter.signal.topic',
+  card: 'review.chapter.signal.card',
+  ai: 'review.chapter.signal.ai'
 }
 
-const KIND_NAMES: Readonly<Record<AiProviderKind, string>> = { openai: 'OpenAI', gemini: 'Gemini', anthropic: 'Claude' }
+const KIND_NAMES: Record<AiProviderKind, string> = { openai: 'OpenAI', gemini: 'Gemini', anthropic: 'Claude' }
 
-/** Where an AI ran: "this PC", a service's host, or the provider's name. */
-const placeOf = (origin: ChapterOrigin): string => (origin.via === 'local' ? 'this PC' : origin.host ? origin.host : origin.via ? KIND_NAMES[origin.via] : 'AI')
-
-/** "a", "a and b", "a, b and c". */
-function list(words: readonly string[]): string {
-  if (words.length <= 1) return words[0] ?? ''
-  return `${words.slice(0, -1).join(', ')} and ${words[words.length - 1]}`
-}
+/** Where an AI ran, as a select's choice and the service's own name: this PC, a service's host, the provider's name, or no name ("AI"). */
+const placeOf = (origin: ChapterOrigin): { where: 'local' | 'named' | 'other'; place: string } =>
+  origin.via === 'local' ? { where: 'local', place: '' } : origin.host ? { where: 'named', place: origin.host } : origin.via ? { where: 'named', place: KIND_NAMES[origin.via] } : { where: 'other', place: '' }
 
 /** Whether the project numbers step badges automatically, by chapter: keeping a found chapter restarts their numbers there. */
 function restartsBadges(project: Project): boolean {
@@ -49,12 +46,13 @@ function restartsBadges(project: Project): boolean {
 
 /** A found chapter's detail (§13.1): the tool, what found it, who named it, and what keeping it does. */
 export function chapterDetail(origin: ChapterOrigin, badges: boolean): string {
-  const tool = origin.from.includes('ai') ? `Suggest chapters with ${placeOf(origin)}` : origin.by === 'polish' ? 'Polish' : 'Find chapters'
+  const tool = origin.from.includes('ai') ? t('review.chapter.tool.ai', placeOf(origin)) : t(origin.by === 'polish' ? 'review.chapter.tool.polish' : 'review.chapter.tool.find')
+  // The detail is a line of facts with middle dots between them.
   const parts = [tool]
-  const signals = origin.from.filter((s) => s !== 'ai').map((s) => SIGNAL_WORDS[s])
-  if (signals.length) parts.push(list(signals))
-  if (origin.name === 'ai') parts.push(origin.via === 'local' ? 'named on this PC' : `named by ${placeOf(origin)}`)
-  if (badges) parts.push('keeping it restarts step numbers here')
+  const signals = origin.from.filter((s) => s !== 'ai').map((s) => t(SIGNAL_WORDS[s]))
+  if (signals.length) parts.push(fmt.list(signals))
+  if (origin.name === 'ai') parts.push(t('review.chapter.namedBy', placeOf(origin)))
+  if (badges) parts.push(t('review.chapter.restartsSteps'))
   return parts.join(' · ')
 }
 
@@ -71,7 +69,7 @@ export function chapterReviewItems(project: Project): ReviewItem[] {
       kind: 'chapter' as const,
       start: c.t,
       end: c.t,
-      title: `Chapter “${c.title.replace(/\s+/g, ' ').trim()}” at ${formatTimestamp(times[i], times[i] >= 3600)}`,
+      title: t('review.chapter.title', { title: c.title.replace(/\s+/g, ' ').trim(), time: formatTimestamp(times[i], times[i] >= 3600) }),
       detail: chapterDetail(c.auto!, badges)
     }))
     .sort((a, b) => a.start - b.start || a.key.localeCompare(b.key))

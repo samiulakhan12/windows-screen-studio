@@ -4298,5 +4298,233 @@
     "sample": {
       "word": "d**n"
     }
+  },
+  {
+    "key": "review.chapter.signal.start",
+    "file": "src/shared/review/chapterReview.ts",
+    "line": 22,
+    "english": "start of the video",
+    "sample": {}
+  },
+  {
+    "key": "review.chapter.signal.page",
+    "file": "src/shared/review/chapterReview.ts",
+    "line": 23,
+    "english": "page change",
+    "sample": {}
+  },
+  {
+    "key": "review.chapter.signal.screen",
+    "file": "src/shared/review/chapterReview.ts",
+    "line": 24,
+    "english": "screen change",
+    "sample": {}
+  },
+  {
+    "key": "review.chapter.signal.pause",
+    "file": "src/shared/review/chapterReview.ts",
+    "line": 25,
+    "english": "pause",
+    "sample": {}
+  },
+  {
+    "key": "review.chapter.signal.idle",
+    "file": "src/shared/review/chapterReview.ts",
+    "line": 26,
+    "english": "no input",
+    "sample": {}
+  },
+  {
+    "key": "review.chapter.signal.cue",
+    "file": "src/shared/review/chapterReview.ts",
+    "line": 27,
+    "english": "cue word",
+    "sample": {}
+  },
+  {
+    "key": "review.chapter.signal.section",
+    "file": "src/shared/review/chapterReview.ts",
+    "line": 28,
+    "english": "new section",
+    "sample": {}
+  },
+  {
+    "key": "review.chapter.signal.topic",
+    "file": "src/shared/review/chapterReview.ts",
+    "line": 29,
+    "english": "new topic",
+    "sample": {}
+  },
+  {
+    "key": "review.chapter.signal.card",
+    "file": "src/shared/review/chapterReview.ts",
+    "line": 30,
+    "english": "title card",
+    "sample": {}
+  },
+  {
+    "key": "review.chapter.signal.ai",
+    "file": "src/shared/review/chapterReview.ts",
+    "line": 31,
+    "english": "AI suggestion",
+    "sample": {}
+  },
+  {
+    "key": "review.chapter.tool.ai",
+    "file": "src/shared/review/chapterReview.ts",
+    "line": 49,
+    "english": "Suggest chapters with this PC",
+    "sample": {
+      "where": "local",
+      "place": ""
+    }
+  },
+  {
+    "key": "review.chapter.tool.ai",
+    "file": "src/shared/review/chapterReview.ts",
+    "line": 49,
+    "english": "Suggest chapters with OpenAI",
+    "sample": {
+      "where": "named",
+      "place": "OpenAI"
+    }
+  },
+  {
+    "key": "review.chapter.tool.ai",
+    "file": "src/shared/review/chapterReview.ts",
+    "line": 49,
+    "english": "Suggest chapters with 127.0.0.1",
+    "sample": {
+      "where": "named",
+      "place": "127.0.0.1"
+    }
+  },
+  {
+    "key": "review.chapter.tool.ai",
+    "file": "src/shared/review/chapterReview.ts",
+    "line": 49,
+    "english": "Suggest chapters with AI",
+    "sample": {
+      "where": "other",
+      "place": ""
+    }
+  },
+  {
+    "key": "review.chapter.tool.polish",
+    "file": "src/shared/review/chapterReview.ts",
+    "line": 49,
+    "english": "Polish",
+    "sample": {}
+  },
+  {
+    "key": "review.chapter.tool.find",
+    "file": "src/shared/review/chapterReview.ts",
+    "line": 49,
+    "english": "Find chapters",
+    "sample": {}
+  },
+  {
+    "key": "review.chapter.namedBy",
+    "file": "src/shared/review/chapterReview.ts",
+    "line": 54,
+    "english": "named on this PC",
+    "sample": {
+      "where": "local",
+      "place": ""
+    }
+  },
+  {
+    "key": "review.chapter.namedBy",
+    "file": "src/shared/review/chapterReview.ts",
+    "line": 54,
+    "english": "named by OpenAI",
+    "sample": {
+      "where": "named",
+      "place": "OpenAI"
+    }
+  },
+  {
+    "key": "review.chapter.namedBy",
+    "file": "src/shared/review/chapterReview.ts",
+    "line": 54,
+    "english": "named by AI",
+    "sample": {
+      "where": "other",
+      "place": ""
+    }
+  },
+  {
+    "key": "review.chapter.restartsSteps",
+    "file": "src/shared/review/chapterReview.ts",
+    "line": 55,
+    "english": "keeping it restarts step numbers here",
+    "sample": {}
+  },
+  {
+    "key": "review.chapter.title",
+    "file": "src/shared/review/chapterReview.ts",
+    "line": 72,
+    "english": "Chapter “Getting started” at 1:05",
+    "sample": {
+      "title": "Getting started",
+      "time": "1:05"
+    }
+  },
+  {
+    "key": "review.colour.title",
+    "file": "src/shared/review/colourReview.ts",
+    "line": 16,
+    "english": "Camera colour balanced",
+    "sample": {}
+  },
+  {
+    "key": "review.colour.detail",
+    "file": "src/shared/review/colourReview.ts",
+    "line": 17,
+    "english": "Auto colour",
+    "sample": {}
+  },
+  {
+    "key": "review.join.byPolish",
+    "file": "src/shared/review/joinReview.ts",
+    "line": 16,
+    "english": "Polish",
+    "sample": {}
+  },
+  {
+    "key": "review.join.byShort",
+    "file": "src/shared/review/joinReview.ts",
+    "line": 16,
+    "english": "Make a shorter version",
+    "sample": {}
+  },
+  {
+    "key": "review.join.title",
+    "file": "src/shared/review/joinReview.ts",
+    "line": 19,
+    "english": [
+      "Smooth cuts at 0 cuts",
+      "Smooth cuts at 1 cut",
+      "Smooth cuts at 2 cuts",
+      "Smooth cuts at 1000 cuts"
+    ],
+    "sample": [
+      {
+        "count": 0,
+        "n": "0"
+      },
+      {
+        "count": 1,
+        "n": "1"
+      },
+      {
+        "count": 2,
+        "n": "2"
+      },
+      {
+        "count": 1000,
+        "n": "1000"
+      }
+    ]
   }
 ]
