@@ -8,14 +8,16 @@
  * the bundle choices, the format and the streams flag, which the field shows and changes.
  */
 import { burnedTrackNote, exportLanguages, tickedExportLanguages } from '../../../../shared/captions/captionTracks'
-import { sidecarBlocked, SIDECAR_LABELS, type BundleOptions } from '../../../../shared/render/exportBundle'
+import { sidecarBlocked, SIDECAR_LABELS, UNKNOWN_SPOKEN, type BundleOptions } from '../../../../shared/render/exportBundle'
+import { captionLanguageName } from '../captionWords'
 import type { ExportFormat, Project } from '../../../../shared/types'
+import { t, type MessageKey } from '../../../../shared/i18n/t'
 import { Icon } from '../../components/Icon'
 
-const TITLES = {
-  srt: 'Save the captions as an SRT file next to the video, one per language (YouTube, Vimeo, most players)',
-  vtt: 'Save the captions as a WebVTT file next to the video, one per language (web players)'
-} as const
+const TITLES: Readonly<Record<'srt' | 'vtt', MessageKey>> = {
+  srt: 'captions.subtitles.srtTitle',
+  vtt: 'captions.subtitles.vttTitle'
+}
 
 /** Formats that carry subtitle streams. */
 export const STREAM_FORMATS: readonly ExportFormat[] = ['mp4', 'mov', 'webm']
@@ -44,40 +46,40 @@ export function SubtitlesField(props: {
   }
   return (
     <div className="form-row export-bundle" data-testid="export-subtitles">
-      <span>Subtitles</span>
+      <span>{t('captions.subtitles.label')}</span>
       <div className="export-stack">
         {several && (
-          <div role="group" aria-label="Subtitle languages" className="row start">
+          <div role="group" aria-label={t('captions.subtitles.languages')} className="row start">
             {languages.map((l) => {
               const on = ticked.includes(l.code)
               return (
                 <label key={l.code} className="toggle">
-                  <span>{l.name}</span>
+                  <span>{l.spoken && l.code === UNKNOWN_SPOKEN ? l.name : captionLanguageName(l.code, l.name)}</span>
                   <input type="checkbox" checked={on} disabled={on && ticked.length === 1} data-language={l.code} onChange={(e) => tick(l.code, e.target.checked)} />
                 </label>
               )
             })}
           </div>
         )}
-        <div className="chips" role="group" aria-label="Subtitle files">
+        <div className="chips" role="group" aria-label={t('captions.subtitles.files')}>
           {(['srt', 'vtt'] as const).map((k) => {
             const on = value[k] && !blocked
             return (
-              <button key={k} className={`chip ${on ? 'active' : ''}`} aria-pressed={on} disabled={!!blocked} title={blocked ?? TITLES[k]} data-sidecar={k} onClick={() => onChange({ ...value, [k]: !value[k] })}>
+              <button key={k} className={`chip ${on ? 'active' : ''}`} aria-pressed={on} disabled={!!blocked} title={blocked ?? t(TITLES[k])} data-sidecar={k} onClick={() => onChange({ ...value, [k]: !value[k] })}>
                 {on && <Icon name="check" size={12} />}
                 {SIDECAR_LABELS[k]}
               </button>
             )
           })}
         </div>
-        {blocked ? <p className="hint">{blocked}.</p> : <p className="hint">As files next to the video, one for each language ticked. This is what YouTube takes.</p>}
+        {blocked ? <p className="hint">{blocked}.</p> : <p className="hint">{t('captions.subtitles.filesHint')}</p>}
         {streamable && (
           <>
             <label className="toggle">
-              <span>Also inside the video (players can switch them)</span>
+              <span>{t('captions.subtitles.streams')}</span>
               <input type="checkbox" data-testid="export-subtitle-streams" checked={props.streams} onChange={(e) => props.onStreams(e.target.checked)} />
             </label>
-            {props.streams && <p className="hint">They are separate from the captions drawn on the video.</p>}
+            {props.streams && <p className="hint">{t('captions.subtitles.streamsHint')}</p>}
           </>
         )}
         {note && <p className="hint">{note}</p>}

@@ -7,6 +7,7 @@
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import { captionFrame } from '../../../../shared/captions/autoStyle'
 import { resolveGreatOptions, type Auto, type GreatOptions } from '../../../../shared/captions/great'
+import { t, type MessageKey } from '../../../../shared/i18n/t'
 import type { Project } from '../../../../shared/types'
 import { EditorIcon } from '../EditorIcon'
 import { currentGreatOptions, loadGreatOptions, marksCostRequest, onGreatOptions, saveGreatOptions } from '../greatRun'
@@ -21,25 +22,25 @@ type AutoKey = 'emoji' | 'keywords' | 'counters' | 'lists' | 'chapters'
 const ROWS: (Flag | AutoKey)[] = ['style', 'emphasis', 'emoji', 'keywords', 'counters', 'lists', 'speakers', 'chapters', 'quotes', 'tidy']
 const AUTO_KEYS: readonly AutoKey[] = ['emoji', 'keywords', 'counters', 'lists', 'chapters']
 const isAuto = (k: Flag | AutoKey): k is AutoKey => (AUTO_KEYS as readonly string[]).includes(k)
-const COPY: Record<Flag | AutoKey, { label: string; title?: string }> = {
-  style: { label: "Style for this video's shape", title: 'Skipped when you picked a style yourself' },
-  emphasis: { label: 'Emphasise key words' },
-  emoji: { label: 'Emoji next to key words' },
-  keywords: { label: 'Keyword pop-ups', title: 'A big card replaces the caption for a key word' },
-  counters: { label: 'Counters for statistics', title: 'Percentages, money, “grew by”, “from 20 to 80”' },
-  lists: { label: 'List cards' },
-  speakers: { label: 'Lower thirds with speaker names', title: 'Only names you typed for the speakers' },
-  chapters: { label: 'Chapter titles' },
-  quotes: { label: 'Quote cards (needs AI)' },
-  tidy: { label: 'Tidy the text', title: 'Capitals, punctuation, digits' }
+const COPY: Record<Flag | AutoKey, { label: MessageKey; title?: MessageKey }> = {
+  style: { label: 'captions.great.style', title: 'captions.great.styleTitle' },
+  emphasis: { label: 'captions.great.emphasis' },
+  emoji: { label: 'captions.great.emoji' },
+  keywords: { label: 'captions.great.keywords', title: 'captions.great.keywordsTitle' },
+  counters: { label: 'captions.great.counters', title: 'captions.great.countersTitle' },
+  lists: { label: 'captions.great.lists' },
+  speakers: { label: 'captions.great.speakers', title: 'captions.great.speakersTitle' },
+  chapters: { label: 'captions.great.chapters' },
+  quotes: { label: 'captions.great.quotes' },
+  tidy: { label: 'captions.great.tidy', title: 'captions.great.tidyTitle' }
 }
 /** Why an Auto choice is on or off for this video (§2.8, §11.6). */
-const AUTO_WHY: Record<AutoKey, string> = {
-  emoji: 'Auto: on in tall and square videos where you are on camera',
-  keywords: 'Auto: on in tall and square videos where you are on camera',
-  counters: 'Auto: on in tall and square videos',
-  lists: 'Auto: on in tall and square videos',
-  chapters: 'Auto: on in wide videos that have chapters'
+const AUTO_WHY: Record<AutoKey, MessageKey> = {
+  emoji: 'captions.great.autoOnCamera',
+  keywords: 'captions.great.autoOnCamera',
+  counters: 'captions.great.autoTall',
+  lists: 'captions.great.autoTall',
+  chapters: 'captions.great.autoChapters'
 }
 
 export function GreatOptionsPopover({ project }: { project: Project }): JSX.Element {
@@ -53,8 +54,8 @@ export function GreatOptionsPopover({ project }: { project: Project }): JSX.Elem
         type="button"
         className="btn small ghost"
         data-testid="captions-great-options"
-        aria-label="Choose what Make my captions great does"
-        title="Choose what Make my captions great does"
+        aria-label={t('captions.great.optionsButton')}
+        title={t('captions.great.optionsButton')}
         aria-haspopup="dialog"
         aria-expanded={open}
         onClick={() => {
@@ -95,7 +96,7 @@ function OptionsDialog({ project, onClose }: { project: Project; onClose: () => 
     <div
       ref={box}
       role="dialog"
-      aria-label="Make my captions great options"
+      aria-label={t('captions.great.optionsLabel')}
       data-testid="great-options"
       className="captions-suggestion great-options"
       onKeyDown={(e) => {
@@ -108,23 +109,23 @@ function OptionsDialog({ project, onClose }: { project: Project; onClose: () => 
       }}
     >
       {ROWS.map((key, i) => {
-        const copy = COPY[key]
+        const copy = { label: t(COPY[key].label), title: COPY[key].title ? t(COPY[key].title) : undefined }
         const quotesOff = key === 'quotes' && provider === null
         // An Auto choice shows what it does for this video; ticking it makes the choice yours.
         const auto = isAuto(key) && options[key] === 'auto'
         const checked = isAuto(key) ? resolved[key] : options[key] && !quotesOff
-        const title = quotesOff ? 'Choose an AI provider under Better picks with AI' : auto ? AUTO_WHY[key as AutoKey] : copy.title
+        const title = quotesOff ? t('captions.great.quotesNeedAi') : auto ? t(AUTO_WHY[key as AutoKey]) : copy.title
         return (
           <label key={key} className={`toggle ${quotesOff ? 'disabled' : ''}`} title={title}>
             <span>
               {copy.label}
-              {auto && <span className="hint"> · Auto</span>}
+              {auto && <span className="hint"> · {t('captions.great.autoMark')}</span>}
             </span>
             <input
               ref={i === 0 ? first : undefined}
               type="checkbox"
               data-testid={`great-${key}`}
-              aria-label={auto ? `${copy.label}, automatic` : copy.label}
+              aria-label={auto ? t('captions.great.automatic', { label: copy.label }) : copy.label}
               checked={checked}
               disabled={quotesOff}
               onChange={(e) => set({ [key]: e.target.checked } as Partial<GreatOptions>)}
@@ -134,19 +135,19 @@ function OptionsDialog({ project, onClose }: { project: Project; onClose: () => 
       })}
       {AUTO_KEYS.some((k) => options[k] !== 'auto') && (
         <button type="button" className="btn small ghost" onClick={() => set(Object.fromEntries(AUTO_KEYS.map((k) => [k, 'auto' as Auto])) as Partial<GreatOptions>)}>
-          Let Flown choose emoji, pop-ups, counters, lists and chapter titles
+          {t('captions.great.letFlown')}
         </button>
       )}
       <label className="field">
-        <span>Sound on pop-ups</span>
+        <span>{t('captions.great.sound')}</span>
         <select className="captions-select" data-testid="great-sound" value={options.sound} onChange={(e) => set({ sound: e.target.value as GreatOptions['sound'] })}>
-          <option value="none">None</option>
-          <option value="pop">Pop</option>
-          <option value="ding">Ding</option>
+          <option value="none">{t('common.state.none')}</option>
+          <option value="pop">{t('captions.great.soundPop')}</option>
+          <option value="ding">{t('captions.great.soundDing')}</option>
         </select>
       </label>
       <label className="field">
-        <span>Better picks with AI</span>
+        <span>{t('captions.great.provider')}</span>
         <select
           id="great-provider"
           className="captions-select"
@@ -155,7 +156,7 @@ function OptionsDialog({ project, onClose }: { project: Project; onClose: () => 
           value={provider ?? ''}
           onChange={(e) => set({ provider: e.target.value || null })}
         >
-          <option value="">No, on this PC only</option>
+          <option value="">{t('captions.great.providerNone')}</option>
           {providers.map((p) => (
             <option key={p.id} value={p.id}>
               {p.label}
@@ -165,10 +166,10 @@ function OptionsDialog({ project, onClose }: { project: Project; onClose: () => 
       </label>
       {choice && <p className="hint">{sentHint(choice, "The captions' words", '; only the picks come back', true)}</p>}
       {/* What the AI picks send, where, and what they cost (smart-tools.md §11.5), part P5's. A run asks its question itself (captionsGreat.ts). */}
-      {choice && <CostLine id="great-cost" choice={choice} full actions={[{ key: 'marks', label: 'AI picks', buttonId: 'great-provider', request: () => marksCostRequest(project) }]} />}
+      {choice && <CostLine id="great-cost" choice={choice} full actions={[{ key: 'marks', label: t('captions.great.aiPicks'), buttonId: 'great-provider', request: () => marksCostRequest(project) }]} />}
       <div className="row start">
         <button type="button" className="btn small" onClick={onClose}>
-          Done
+          {t('common.action.done')}
         </button>
       </div>
     </div>

@@ -618,5 +618,133 @@
     "dnt": [
       "WebVTT"
     ]
+  },
+  "subtitles.srtTitle": {
+    "description": "Export dialog, Subtitles: tooltip of the SRT chip.",
+    "dnt": [
+      "SRT",
+      "YouTube",
+      "Vimeo"
+    ]
+  },
+  "subtitles.vttTitle": {
+    "description": "Export dialog, Subtitles: tooltip of the VTT chip.",
+    "dnt": [
+      "WebVTT"
+    ]
+  },
+  "subtitles.label": {
+    "description": "Export dialog: label of the row that writes subtitle files and streams."
+  },
+  "subtitles.languages": {
+    "description": "Export dialog, Subtitles: accessible name of the language checkboxes."
+  },
+  "subtitles.files": {
+    "description": "Export dialog, Subtitles: accessible name of the SRT and VTT chips."
+  },
+  "subtitles.filesHint": {
+    "description": "Export dialog, Subtitles: hint under the SRT and VTT chips.",
+    "dnt": [
+      "YouTube"
+    ]
+  },
+  "subtitles.streams": {
+    "description": "Export dialog, Subtitles: toggle that writes subtitle streams into the video file."
+  },
+  "subtitles.streamsHint": {
+    "description": "Export dialog, Subtitles: hint under the streams toggle."
+  },
+  "great.style": {
+    "description": "Make my captions great options: picks a caption style for the video's shape."
+  },
+  "great.styleTitle": {
+    "description": "Tooltip of \"Style for this video's shape\"."
+  },
+  "great.emphasis": {
+    "description": "Make my captions great options."
+  },
+  "great.emoji": {
+    "description": "Make my captions great options."
+  },
+  "great.keywords": {
+    "description": "Make my captions great options: a big card for a key word."
+  },
+  "great.keywordsTitle": {
+    "description": "Tooltip of Keyword pop-ups."
+  },
+  "great.counters": {
+    "description": "Make my captions great options: animated numbers."
+  },
+  "great.countersTitle": {
+    "description": "Tooltip of Counters for statistics: the kinds of numbers that get a counter."
+  },
+  "great.lists": {
+    "description": "Make my captions great options."
+  },
+  "great.speakers": {
+    "description": "Make my captions great options."
+  },
+  "great.speakersTitle": {
+    "description": "Tooltip of Lower thirds with speaker names."
+  },
+  "great.chapters": {
+    "description": "Make my captions great options."
+  },
+  "great.quotes": {
+    "description": "Make my captions great options."
+  },
+  "great.tidy": {
+    "description": "Make my captions great options."
+  },
+  "great.tidyTitle": {
+    "description": "Tooltip of Tidy the text."
+  },
+  "great.autoOnCamera": {
+    "description": "Tooltip of an option left on Auto: when it is on."
+  },
+  "great.autoTall": {
+    "description": "Tooltip of an option left on Auto: when it is on."
+  },
+  "great.autoChapters": {
+    "description": "Tooltip of Chapter titles left on Auto: when it is on."
+  },
+  "great.optionsButton": {
+    "description": "Tooltip and name of the button beside Make my captions great that opens its options."
+  },
+  "great.optionsLabel": {
+    "description": "Accessible name of the options of Make my captions great."
+  },
+  "great.quotesNeedAi": {
+    "description": "Tooltip of Quote cards while no AI provider is chosen."
+  },
+  "great.autoMark": {
+    "description": "After an option's name while Flown chooses it (\"Emoji next to key words · Auto\")."
+  },
+  "great.automatic": {
+    "description": "Accessible name of an option left on Auto."
+  },
+  "great.letFlown": {
+    "description": "Button that puts the Auto options back to Auto.",
+    "dnt": [
+      "Flown"
+    ]
+  },
+  "great.sound": {
+    "description": "Make my captions great options: the sound of keyword pop-ups."
+  },
+  "great.soundPop": {
+    "description": "A pop-up sound: a short pop."
+  },
+  "great.soundDing": {
+    "description": "A pop-up sound: a bell."
+  },
+  "great.provider": {
+    "description": "Make my captions great options: the AI provider that picks key words, or none."
+  },
+  "great.providerNone": {
+    "description": "Better picks with AI: no AI, the picks are made on this PC."
+  },
+  "great.aiPicks": {
+    "description": "Cost line of Make my captions great: the label of the AI picks' cost."
   }
 }

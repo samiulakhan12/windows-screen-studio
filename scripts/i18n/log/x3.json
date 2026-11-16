@@ -1566,10 +1566,292 @@
     "sample": {}
   },
   {
+    "key": "captions.great.style",
+    "file": "src/renderer/src/editor/panels/GreatOptions.tsx",
+    "line": 26,
+    "english": "Style for this video's shape",
+    "sample": {}
+  },
+  {
+    "key": "captions.great.styleTitle",
+    "file": "src/renderer/src/editor/panels/GreatOptions.tsx",
+    "line": 26,
+    "english": "Skipped when you picked a style yourself",
+    "sample": {}
+  },
+  {
+    "key": "captions.great.emphasis",
+    "file": "src/renderer/src/editor/panels/GreatOptions.tsx",
+    "line": 27,
+    "english": "Emphasise key words",
+    "sample": {}
+  },
+  {
+    "key": "captions.great.emoji",
+    "file": "src/renderer/src/editor/panels/GreatOptions.tsx",
+    "line": 28,
+    "english": "Emoji next to key words",
+    "sample": {}
+  },
+  {
+    "key": "captions.great.keywords",
+    "file": "src/renderer/src/editor/panels/GreatOptions.tsx",
+    "line": 29,
+    "english": "Keyword pop-ups",
+    "sample": {}
+  },
+  {
+    "key": "captions.great.keywordsTitle",
+    "file": "src/renderer/src/editor/panels/GreatOptions.tsx",
+    "line": 29,
+    "english": "A big card replaces the caption for a key word",
+    "sample": {}
+  },
+  {
+    "key": "captions.great.counters",
+    "file": "src/renderer/src/editor/panels/GreatOptions.tsx",
+    "line": 30,
+    "english": "Counters for statistics",
+    "sample": {}
+  },
+  {
+    "key": "captions.great.countersTitle",
+    "file": "src/renderer/src/editor/panels/GreatOptions.tsx",
+    "line": 30,
+    "english": "Percentages, money, “grew by”, “from 20 to 80”",
+    "sample": {}
+  },
+  {
+    "key": "captions.great.lists",
+    "file": "src/renderer/src/editor/panels/GreatOptions.tsx",
+    "line": 31,
+    "english": "List cards",
+    "sample": {}
+  },
+  {
+    "key": "captions.great.speakers",
+    "file": "src/renderer/src/editor/panels/GreatOptions.tsx",
+    "line": 32,
+    "english": "Lower thirds with speaker names",
+    "sample": {}
+  },
+  {
+    "key": "captions.great.speakersTitle",
+    "file": "src/renderer/src/editor/panels/GreatOptions.tsx",
+    "line": 32,
+    "english": "Only names you typed for the speakers",
+    "sample": {}
+  },
+  {
+    "key": "captions.great.chapters",
+    "file": "src/renderer/src/editor/panels/GreatOptions.tsx",
+    "line": 33,
+    "english": "Chapter titles",
+    "sample": {}
+  },
+  {
+    "key": "captions.great.quotes",
+    "file": "src/renderer/src/editor/panels/GreatOptions.tsx",
+    "line": 34,
+    "english": "Quote cards (needs AI)",
+    "sample": {}
+  },
+  {
+    "key": "captions.great.tidy",
+    "file": "src/renderer/src/editor/panels/GreatOptions.tsx",
+    "line": 35,
+    "english": "Tidy the text",
+    "sample": {}
+  },
+  {
+    "key": "captions.great.tidyTitle",
+    "file": "src/renderer/src/editor/panels/GreatOptions.tsx",
+    "line": 35,
+    "english": "Capitals, punctuation, digits",
+    "sample": {}
+  },
+  {
+    "key": "captions.great.autoOnCamera",
+    "file": "src/renderer/src/editor/panels/GreatOptions.tsx",
+    "line": 39,
+    "english": "Auto: on in tall and square videos where you are on camera",
+    "sample": {}
+  },
+  {
+    "key": "captions.great.autoTall",
+    "file": "src/renderer/src/editor/panels/GreatOptions.tsx",
+    "line": 41,
+    "english": "Auto: on in tall and square videos",
+    "sample": {}
+  },
+  {
+    "key": "captions.great.autoChapters",
+    "file": "src/renderer/src/editor/panels/GreatOptions.tsx",
+    "line": 43,
+    "english": "Auto: on in wide videos that have chapters",
+    "sample": {}
+  },
+  {
+    "key": "captions.great.optionsButton",
+    "file": "src/renderer/src/editor/panels/GreatOptions.tsx",
+    "line": 57,
+    "english": "Choose what Make my captions great does",
+    "sample": {}
+  },
+  {
+    "key": "captions.great.optionsLabel",
+    "file": "src/renderer/src/editor/panels/GreatOptions.tsx",
+    "line": 99,
+    "english": "Make my captions great options",
+    "sample": {}
+  },
+  {
+    "key": "captions.great.quotesNeedAi",
+    "file": "src/renderer/src/editor/panels/GreatOptions.tsx",
+    "line": 117,
+    "english": "Choose an AI provider under Better picks with AI",
+    "sample": {}
+  },
+  {
+    "key": "captions.great.autoMark",
+    "file": "src/renderer/src/editor/panels/GreatOptions.tsx",
+    "line": 122,
+    "english": "Auto",
+    "sample": {}
+  },
+  {
+    "key": "captions.great.automatic",
+    "file": "src/renderer/src/editor/panels/GreatOptions.tsx",
+    "line": 128,
+    "english": "Emoji next to key words, automatic",
+    "sample": {
+      "label": "Emoji next to key words"
+    }
+  },
+  {
+    "key": "captions.great.letFlown",
+    "file": "src/renderer/src/editor/panels/GreatOptions.tsx",
+    "line": 138,
+    "english": "Let Flown choose emoji, pop-ups, counters, lists and chapter titles",
+    "sample": {}
+  },
+  {
+    "key": "captions.great.sound",
+    "file": "src/renderer/src/editor/panels/GreatOptions.tsx",
+    "line": 142,
+    "english": "Sound on pop-ups",
+    "sample": {}
+  },
+  {
+    "key": "common.state.none",
+    "file": "src/renderer/src/editor/panels/GreatOptions.tsx",
+    "line": 144,
+    "english": "None",
+    "sample": {}
+  },
+  {
+    "key": "captions.great.soundPop",
+    "file": "src/renderer/src/editor/panels/GreatOptions.tsx",
+    "line": 145,
+    "english": "Pop",
+    "sample": {}
+  },
+  {
+    "key": "captions.great.soundDing",
+    "file": "src/renderer/src/editor/panels/GreatOptions.tsx",
+    "line": 146,
+    "english": "Ding",
+    "sample": {}
+  },
+  {
+    "key": "captions.great.provider",
+    "file": "src/renderer/src/editor/panels/GreatOptions.tsx",
+    "line": 150,
+    "english": "Better picks with AI",
+    "sample": {}
+  },
+  {
+    "key": "captions.great.providerNone",
+    "file": "src/renderer/src/editor/panels/GreatOptions.tsx",
+    "line": 159,
+    "english": "No, on this PC only",
+    "sample": {}
+  },
+  {
+    "key": "captions.great.aiPicks",
+    "file": "src/renderer/src/editor/panels/GreatOptions.tsx",
+    "line": 169,
+    "english": "AI picks",
+    "sample": {}
+  },
+  {
+    "key": "common.action.done",
+    "file": "src/renderer/src/editor/panels/GreatOptions.tsx",
+    "line": 172,
+    "english": "Done",
+    "sample": {}
+  },
+  {
     "key": "common.state.working",
     "file": "src/renderer/src/editor/panels/SpeakersSection.tsx",
     "line": 93,
     "english": "Working…",
+    "sample": {}
+  },
+  {
+    "key": "captions.subtitles.srtTitle",
+    "file": "src/renderer/src/editor/panels/SubtitlesField.tsx",
+    "line": 18,
+    "english": "Save the captions as an SRT file next to the video, one per language (YouTube, Vimeo, most players)",
+    "sample": {}
+  },
+  {
+    "key": "captions.subtitles.vttTitle",
+    "file": "src/renderer/src/editor/panels/SubtitlesField.tsx",
+    "line": 19,
+    "english": "Save the captions as a WebVTT file next to the video, one per language (web players)",
+    "sample": {}
+  },
+  {
+    "key": "captions.subtitles.label",
+    "file": "src/renderer/src/editor/panels/SubtitlesField.tsx",
+    "line": 49,
+    "english": "Subtitles",
+    "sample": {}
+  },
+  {
+    "key": "captions.subtitles.languages",
+    "file": "src/renderer/src/editor/panels/SubtitlesField.tsx",
+    "line": 52,
+    "english": "Subtitle languages",
+    "sample": {}
+  },
+  {
+    "key": "captions.subtitles.files",
+    "file": "src/renderer/src/editor/panels/SubtitlesField.tsx",
+    "line": 64,
+    "english": "Subtitle files",
+    "sample": {}
+  },
+  {
+    "key": "captions.subtitles.filesHint",
+    "file": "src/renderer/src/editor/panels/SubtitlesField.tsx",
+    "line": 75,
+    "english": "As files next to the video, one for each language ticked. This is what YouTube takes.",
+    "sample": {}
+  },
+  {
+    "key": "captions.subtitles.streams",
+    "file": "src/renderer/src/editor/panels/SubtitlesField.tsx",
+    "line": 79,
+    "english": "Also inside the video (players can switch them)",
+    "sample": {}
+  },
+  {
+    "key": "captions.subtitles.streamsHint",
+    "file": "src/renderer/src/editor/panels/SubtitlesField.tsx",
+    "line": 82,
+    "english": "They are separate from the captions drawn on the video.",
     "sample": {}
   },
   {
