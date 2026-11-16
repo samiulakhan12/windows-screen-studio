@@ -715,12 +715,13 @@
   padding: 4px 16px 8px 0;
 }
 
-/* Sentences inside the left-to-right areas keep the page's direction. */
+/* In a right-to-left page, sentences inside the left-to-right areas read in their own text's
+   direction, while the areas keep their layout (a hint stays where it stands on the timeline). */
 .timeline .tl-hint:dir(rtl),
 .timeline .tl-empty:dir(rtl),
-.transport .notice-slot:dir(rtl),
+.transport .notice-text:dir(rtl),
 .canvas-wrap .pick-hint:dir(rtl) {
-  direction: rtl;
+  unicode-bidi: plaintext;
 }
 
 .tl-head {

@@ -22,7 +22,7 @@
     { "file": "src/renderer/src/editor/exportDialog.css", "rule": ".export-frame input[type='range']", "reason": "The thumbnail's frame slider, a slider for time: the start of the video stays on the left." }
   ],
   "rtl": [
-    { "file": "src/renderer/src/editor/editor.css", "rule": ".timeline .tl-hint:dir(rtl), .timeline .tl-empty:dir(rtl), .transport .notice-slot:dir(rtl), .canvas-wrap .pick-hint:dir(rtl)", "reason": "Sentences inside the left-to-right containers keep the page's direction." },
+    { "file": "src/renderer/src/editor/editor.css", "rule": ".timeline .tl-hint:dir(rtl), .timeline .tl-empty:dir(rtl), .transport .notice-text:dir(rtl), .canvas-wrap .pick-hint:dir(rtl)", "reason": "Sentences inside the left-to-right containers read in their own text's direction (unicode-bidi: plaintext); the containers keep their layout." },
     { "file": "src/renderer/src/styles.css", "rule": ".titlebar > .btn:first-child > .icon:dir(rtl)", "reason": "The title bar's Back arrow points in reading direction (§13.2)." },
     { "file": "src/renderer/src/editor/captions.css", "rule": ".captions-script-chevron:not(.open):dir(rtl)", "reason": "A closed disclosure's chevron points in reading direction (§13.2)." },
     { "file": "src/renderer/src/editor/panels/captionStudio.css", "rule": ".caption-part-chevron:not(.open):dir(rtl)", "reason": "A closed disclosure's chevron points in reading direction (§13.2)." },
