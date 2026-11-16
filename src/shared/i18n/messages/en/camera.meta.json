@@ -1,1 +1,554 @@
-{}
+{
+  "cameraPanel.thisRecordingHasNo": {
+    "description": "cameraPanel, text of <p> (src/renderer/src/editor/panels/CameraPanel.tsx:50)."
+  },
+  "cameraPanel.showCamera": {
+    "description": "cameraPanel, the label of <Toggle> (src/renderer/src/editor/panels/CameraPanel.tsx:53)."
+  },
+  "cameraPanel.cameraShape": {
+    "description": "cameraPanel, the label of <Chips> (src/renderer/src/editor/panels/CameraPanel.tsx:56)."
+  },
+  "cameraPanel.cameraCorner": {
+    "description": "cameraPanel, the aria-label of <div> (src/renderer/src/editor/panels/CameraPanel.tsx:66)."
+  },
+  "cameraPanel.theCameraSCorner": {
+    "description": "cameraPanel, the title of <div> (src/renderer/src/editor/panels/CameraPanel.tsx:66)."
+  },
+  "cameraPanel.border": {
+    "description": "cameraPanel, the label of <Slider> (src/renderer/src/editor/panels/CameraPanel.tsx:85)."
+  },
+  "cameraPanel.borderColour": {
+    "description": "cameraPanel, the label of <ColorRow> (src/renderer/src/editor/panels/CameraPanel.tsx:95)."
+  },
+  "cameraPanel.mirror": {
+    "description": "cameraPanel, the label of <Toggle> (src/renderer/src/editor/panels/CameraPanel.tsx:103)."
+  },
+  "cameraPanel.showTheCameraFlipped": {
+    "description": "cameraPanel, the title of <Toggle> (src/renderer/src/editor/panels/CameraPanel.tsx:103)."
+  },
+  "cameraPanel.framing": {
+    "description": "cameraPanel, the title of <Section> (src/renderer/src/editor/panels/CameraPanel.tsx:198)."
+  },
+  "cameraPanel.showTheWholeCamera": {
+    "description": "cameraPanel, the title of <button> (src/renderer/src/editor/panels/CameraPanel.tsx:201)."
+  },
+  "cameraPanel.visiblePartOfThe": {
+    "description": "cameraPanel, the aria-label of <div> (src/renderer/src/editor/panels/CameraPanel.tsx:213)."
+  },
+  "cameraPanel.acrossDown": {
+    "description": "Camera tab: spoken value of the framing pad, where the visible part of the camera sits."
+  },
+  "cameraPanel.dragToChooseWhich": {
+    "description": "cameraPanel, the title of <div> (src/renderer/src/editor/panels/CameraPanel.tsx:215)."
+  },
+  "cameraPanel.zoomInToFill": {
+    "description": "cameraPanel, text of <p> (src/renderer/src/editor/panels/CameraPanel.tsx:232)."
+  },
+  "cameraPanel.backgroundBlur": {
+    "description": "cameraPanel, the title of <Section> (src/renderer/src/editor/panels/CameraPanel.tsx:247)."
+  },
+  "cameraPanel.blurBehindYou": {
+    "description": "cameraPanel, the label of <Slider> (src/renderer/src/editor/panels/CameraPanel.tsx:248)."
+  },
+  "cameraPanel.loadingPersonDetection": {
+    "description": "cameraPanel, text of <p> (src/renderer/src/editor/panels/CameraPanel.tsx:256)."
+  },
+  "cameraPanel.softensTheRoomBehind": {
+    "description": "cameraPanel, text of <p> (src/renderer/src/editor/panels/CameraPanel.tsx:257)."
+  },
+  "cameraPanel.theCameraIsHidden": {
+    "description": "cameraPanel, text of <p> (src/renderer/src/editor/panels/CameraPanel.tsx:321)."
+  },
+  "cameraPanel.cameraLayout": {
+    "description": "cameraPanel, the aria-label of <div> (src/renderer/src/editor/panels/CameraPanel.tsx:327)."
+  },
+  "cameraPanel.theLayoutOutsideAny": {
+    "description": "Camera tab › Layout: tooltip of Default when no change is selected. {hint} is what it shows."
+  },
+  "cameraPanel.changeToAtThe": {
+    "description": "Camera tab › Layout: tooltip of a layout when no change is selected. {label} is its name and {hint} what it shows, both in lower case."
+  },
+  "cameraPanel.dragTheBlockOn": {
+    "description": "cameraPanel, text of <p> (src/renderer/src/editor/panels/CameraPanel.tsx:349)."
+  },
+  "cameraPanel.delete": {
+    "description": "cameraPanel, text of <button> (src/renderer/src/editor/panels/CameraPanel.tsx:351)."
+  },
+  "cameraPanel.pickALayoutTo": {
+    "description": "cameraPanel, text of <p> (src/renderer/src/editor/panels/CameraPanel.tsx:355)."
+  },
+  "cameraPanel.cameraPosition": {
+    "description": "cameraPanel, the title of <Section> (src/renderer/src/editor/panels/CameraPanel.tsx:411)."
+  },
+  "cameraPanel.useTheCameraS": {
+    "description": "cameraPanel, the title of <button> (src/renderer/src/editor/panels/CameraPanel.tsx:414)."
+  },
+  "cameraPanel.default": {
+    "description": "cameraPanel, text of <button> (src/renderer/src/editor/panels/CameraPanel.tsx:415)."
+  },
+  "cameraPanel.duringThisLayoutChange": {
+    "description": "Camera tab › Camera position: tooltip of a corner button while a layout change is selected. {corner} is the corner’s name (Top left)."
+  },
+  "cameraPanel.moveTheCameraTo": {
+    "description": "Camera tab › Camera position: tooltip of a corner button when no layout change is selected (the select names the corner in lower case)."
+  },
+  "cameraPanel.hasNoCameraCorner": {
+    "description": "Camera tab › Camera position: hint when the selected change’s layout shows no camera bubble. {layout} is its name."
+  },
+  "cameraPanel.theCornerOfThe": {
+    "description": "cameraPanel, text of <p> (src/renderer/src/editor/panels/CameraPanel.tsx:442)."
+  },
+  "cameraPanel.pickACornerTo": {
+    "description": "cameraPanel, text of <p> (src/renderer/src/editor/panels/CameraPanel.tsx:443)."
+  },
+  "cameraPanel.white": {
+    "description": "cameraPanel, the title of <button> (src/renderer/src/editor/panels/CameraPanel.tsx:478)."
+  },
+  "layoutTrack.doubleClickToChange": {
+    "description": "layoutTrack, the title of <div> (src/renderer/src/editor/LayoutTrack.tsx:183)."
+  },
+  "layoutTrack.theCameraIsHidden": {
+    "description": "layoutTrack, the title of <div> (src/renderer/src/editor/LayoutTrack.tsx:183)."
+  },
+  "layoutTrack.auto": {
+    "description": "Camera track: the label of a layout change the director made. {label} is its short name or its corner."
+  },
+  "layoutTrack.cameraLayout": {
+    "description": "layoutTrack, the title of <div> (src/renderer/src/editor/LayoutTrack.tsx:234)."
+  },
+  "directorSection.autoDirector": {
+    "description": "directorSection, the title of <Section> (src/renderer/src/editor/panels/DirectorSection.tsx:339)."
+  },
+  "directorSection.changesTheDirectorMakes": {
+    "description": "directorSection, the aria-label of <ul> (src/renderer/src/editor/panels/DirectorSection.tsx:363)."
+  },
+  "directorSection.introAndOutro": {
+    "description": "directorSection, text of <span> (src/renderer/src/editor/panels/DirectorSection.tsx:403)."
+  },
+  "directorSection.hideTheCameraWhen": {
+    "description": "directorSection, text of <span> (src/renderer/src/editor/panels/DirectorSection.tsx:407)."
+  },
+  "directorSection.moveTheBubbleAway": {
+    "description": "directorSection, the label of <Toggle> (src/renderer/src/editor/panels/DirectorSection.tsx:413)."
+  },
+  "directorSection.centreMyFace": {
+    "description": "directorSection, the label of <Toggle> (src/renderer/src/editor/panels/DirectorSection.tsx:421)."
+  },
+  "directorSection.removeAutomaticChanges": {
+    "description": "directorSection, text of <button> (src/renderer/src/editor/panels/DirectorSection.tsx:445)."
+  },
+  "directorSection.theCameraOverThe": {
+    "description": "directorSection, the aria-label of <div> (src/renderer/src/editor/panels/DirectorSection.tsx:496)."
+  },
+  "directorAnalysis.timedOut": {
+    "description": "Camera › Auto director: why face framing could not run, inside \"Face framing is unavailable: {reason}.\" The camera picture did not load in time."
+  },
+  "layout.default": {
+    "description": "The name of a camera layout (default): the Camera tab’s layout picker and the camera track."
+  },
+  "layout.default.short": {
+    "description": "The short name of the Default camera layout, on the camera track’s blocks."
+  },
+  "layout.default.hint": {
+    "description": "What the Default camera layout shows (the layout picker’s tooltip)."
+  },
+  "layout.cameraLarge": {
+    "description": "The name of a camera layout (camera-large): the Camera tab’s layout picker and the camera track."
+  },
+  "layout.cameraLarge.short": {
+    "description": "The short name of the Large camera camera layout, on the camera track’s blocks."
+  },
+  "layout.cameraLarge.hint": {
+    "description": "What the Large camera camera layout shows (the layout picker’s tooltip)."
+  },
+  "layout.sideBySide": {
+    "description": "The name of a camera layout (side-by-side): the Camera tab’s layout picker and the camera track."
+  },
+  "layout.sideBySide.short": {
+    "description": "The short name of the Side by side camera layout, on the camera track’s blocks."
+  },
+  "layout.sideBySide.hint": {
+    "description": "What the Side by side camera layout shows (the layout picker’s tooltip)."
+  },
+  "layout.cameraOnly": {
+    "description": "The name of a camera layout (camera-only): the Camera tab’s layout picker and the camera track."
+  },
+  "layout.cameraOnly.short": {
+    "description": "The short name of the Camera only camera layout, on the camera track’s blocks."
+  },
+  "layout.cameraOnly.hint": {
+    "description": "What the Camera only camera layout shows (the layout picker’s tooltip)."
+  },
+  "layout.screenOnly": {
+    "description": "The name of a camera layout (screen-only): the Camera tab’s layout picker and the camera track."
+  },
+  "layout.screenOnly.short": {
+    "description": "The short name of the Screen only camera layout, on the camera track’s blocks."
+  },
+  "layout.screenOnly.hint": {
+    "description": "What the Screen only camera layout shows (the layout picker’s tooltip)."
+  },
+  "corner.top-left": {
+    "description": "A camera corner (top-left): the corner buttons of the Camera tab, the camera track and the notices."
+  },
+  "corner.top-right": {
+    "description": "A camera corner (top-right): the corner buttons of the Camera tab, the camera track and the notices."
+  },
+  "corner.bottom-left": {
+    "description": "A camera corner (bottom-left): the corner buttons of the Camera tab, the camera track and the notices."
+  },
+  "corner.bottom-right": {
+    "description": "A camera corner (bottom-right): the corner buttons of the Camera tab, the camera track and the notices."
+  },
+  "layoutCommands.sameLayout": {
+    "description": "Notice when a camera layout command changes nothing: the layout at the playhead already is that one (the select names it in lower case)."
+  },
+  "layoutCommands.layoutEnd": {
+    "description": "Notice when a camera layout command runs too close to the end of the video."
+  },
+  "layoutCommands.layoutNoRoom": {
+    "description": "Notice when a camera layout command has no room at the playhead."
+  },
+  "layoutCommands.sameCorner": {
+    "description": "Notice when a camera corner command changes nothing: the camera already is in that corner (the select names it in lower case)."
+  },
+  "layoutCommands.noCorner": {
+    "description": "Notice when a camera corner command changes nothing: the layout at the playhead shows no camera bubble."
+  },
+  "layoutCommands.cornerEnd": {
+    "description": "Notice when a camera corner command changes nothing: it runs too close to the end of the video."
+  },
+  "layoutCommands.cornerNoRoom": {
+    "description": "Notice when a camera corner command changes nothing: there is no room at the playhead."
+  },
+  "cameraPanel.off": {
+    "description": "Camera tab: a slider’s value at 0 (no border, no shadow, no blur)."
+  },
+  "cameraPanel.shape.circle": {
+    "description": "Camera tab: the Circle camera shape chip."
+  },
+  "cameraPanel.shape.rounded": {
+    "description": "Camera tab: the Rounded camera shape chip."
+  },
+  "cameraPanel.shape.square": {
+    "description": "Camera tab: the Square camera shape chip."
+  },
+  "cameraPanel.cornerLower": {
+    "description": "Camera tab: a corner button’s name and tooltip, in lower case (top left)."
+  },
+  "cameraPanel.blurUnavailable": {
+    "description": "Camera tab › Background blur: when person detection cannot run. {reason} says why."
+  },
+  "cameraPanel.bandTop": {
+    "description": "Camera tab › Layout: hint while the view follows the action with the camera in a band on top."
+  },
+  "cameraPanel.bandBottom": {
+    "description": "Camera tab › Layout: hint while the view follows the action with the camera in a band at the bottom."
+  },
+  "cameraPanel.layoutTitle": {
+    "description": "Camera tab › Layout: tooltip of a layout while a layout change is selected. {label} is its name, {hint} what it shows."
+  },
+  "cameraPanel.deleteTitle": {
+    "description": "Camera tab › Layout: tooltip of Delete (its shortcut follows in brackets)."
+  },
+  "cameraPanel.moveHere": {
+    "description": "Camera tab › Camera position: accessible name of the corner buttons when no layout change is selected."
+  },
+  "cameraPanel.positionName": {
+    "description": "Camera tab › Camera position: accessible name of a corner button. {label} is the group’s name; the select names the corner in lower case."
+  },
+  "cameraPanel.swatchWhite": {
+    "description": "Camera tab: accessible name of the white swatch of a colour row. {label} is the row’s label (Border colour)."
+  },
+  "cameraPanel.cameraHiddenPosition": {
+    "description": "cameraPanel, text of <p> (src/renderer/src/editor/panels/CameraPanel.tsx:438)."
+  },
+  "layoutTrack.block": {
+    "description": "Camera track: tooltip of a layout change. {layout} is the layout’s name, then its two times; the director’s note may follow."
+  },
+  "layoutTrack.blockCorner": {
+    "description": "Camera track: tooltip of a layout change that puts the camera in a corner. {layout} is the layout’s name; the select names the corner in lower case; then its two times."
+  },
+  "layoutTrack.emptyTrack": {
+    "description": "layoutTrack, text of <span> (src/renderer/src/editor/LayoutTrack.tsx:224)."
+  },
+  "director.part.introCamera": {
+    "description": "Camera › Auto director: a part of the plan, the intro with the camera filling the frame."
+  },
+  "director.part.introLarge": {
+    "description": "Camera › Auto director: a part of the plan, the intro with a large camera."
+  },
+  "director.part.outroCamera": {
+    "description": "Camera › Auto director: a part of the plan, the outro with the camera filling the frame."
+  },
+  "director.part.outroLarge": {
+    "description": "Camera › Auto director: a part of the plan, the outro with a large camera."
+  },
+  "director.part.hidden": {
+    "description": "Camera › Auto director: a part of the plan where the camera is hidden."
+  },
+  "director.part.bubbleCorner": {
+    "description": "Camera › Auto director: a part of the plan where the bubble moves to a corner (the select names it in lower case)."
+  },
+  "director.part.bubble": {
+    "description": "Camera › Auto director: a part of the plan with the camera bubble."
+  },
+  "director.reason.talkBefore": {
+    "description": "Camera › Auto director: why the director made a part (muted, after it)."
+  },
+  "director.reason.talkAfter": {
+    "description": "Camera › Auto director: why the director made a part (muted, after it)."
+  },
+  "director.reason.silent": {
+    "description": "Camera › Auto director: why the director hid the camera: a silence {n} seconds long."
+  },
+  "director.reason.cursor": {
+    "description": "Camera › Auto director: why the bubble moved: the cursor works in that corner (the select names it in lower case)."
+  },
+  "director.partLine": {
+    "description": "Camera › Auto director: a row of the plan: the part, its times (0:16–0:23) and why."
+  },
+  "director.faceApplied": {
+    "description": "Camera › Auto director: the face row after applying; {zoom} is the zoom it used (1.25×)."
+  },
+  "director.facePlanned": {
+    "description": "Camera › Auto director: the face row before applying."
+  },
+  "director.summary": {
+    "description": "Camera › Auto director: the plan’s summary: how many changes, and how much of the video shows the camera."
+  },
+  "director.keptChanges": {
+    "description": "Camera › Auto director: the user’s own layout changes the plan keeps."
+  },
+  "director.keptPositions": {
+    "description": "Camera › Auto director: the user’s own camera positions the plan keeps."
+  },
+  "director.keptBoth": {
+    "description": "Camera › Auto director: the user’s own layout changes and camera positions the plan keeps."
+  },
+  "director.diff": {
+    "description": "Camera › Auto director: what Direct again changes against the director’s blocks now."
+  },
+  "director.source.measuring": {
+    "description": "Camera › Auto director: the sound status line, which sound the director listens to."
+  },
+  "director.source.mic": {
+    "description": "Camera › Auto director: the sound status line, which sound the director listens to."
+  },
+  "director.source.mix": {
+    "description": "Camera › Auto director: the sound status line, which sound the director listens to."
+  },
+  "director.source.mixVoice": {
+    "description": "Camera › Auto director: the sound status line, which sound the director listens to."
+  },
+  "director.source.mixRefined": {
+    "description": "Camera › Auto director: the sound status line, which sound the director listens to."
+  },
+  "director.source.transcript": {
+    "description": "Camera › Auto director: the sound status line, which sound the director listens to."
+  },
+  "director.soundFailedCaptions": {
+    "description": "Camera › Auto director: the sound could not be measured, but the captions gave the speech."
+  },
+  "director.soundFailedInput": {
+    "description": "Camera › Auto director: the sound could not be measured."
+  },
+  "director.note.cameraHidden": {
+    "description": "Camera › Auto director: a note under the plan (camera-hidden)."
+  },
+  "director.note.noSound": {
+    "description": "Camera › Auto director: a note under the plan (no-sound)."
+  },
+  "director.note.noSpeech": {
+    "description": "Camera › Auto director: a note under the plan (no-speech)."
+  },
+  "director.note.noInput": {
+    "description": "Camera › Auto director: a note under the plan (no-input)."
+  },
+  "director.note.noDemo": {
+    "description": "Camera › Auto director: a note under the plan (no-demo)."
+  },
+  "director.note.keptPositions": {
+    "description": "Camera › Auto director: a note under the plan (kept-positions)."
+  },
+  "director.note.allYours": {
+    "description": "Camera › Auto director: a note under the plan (all-yours)."
+  },
+  "director.note.optionsOff": {
+    "description": "Camera › Auto director: a note under the plan (options-off)."
+  },
+  "director.note.nothing": {
+    "description": "Camera › Auto director: a note under the plan (nothing)."
+  },
+  "director.note.band": {
+    "description": "Camera › Auto director: a note under the plan (band)."
+  },
+  "director.nothing.none": {
+    "description": "Camera › Auto director: the \"nothing to change\" note, giving the reasons of the options that are on."
+  },
+  "director.nothing.i": {
+    "description": "Camera › Auto director: the \"nothing to change\" note, giving the reasons of the options that are on."
+  },
+  "director.nothing.s": {
+    "description": "Camera › Auto director: the \"nothing to change\" note, giving the reasons of the options that are on."
+  },
+  "director.nothing.c": {
+    "description": "Camera › Auto director: the \"nothing to change\" note, giving the reasons of the options that are on."
+  },
+  "director.nothing.is": {
+    "description": "Camera › Auto director: the \"nothing to change\" note, giving the reasons of the options that are on."
+  },
+  "director.nothing.ic": {
+    "description": "Camera › Auto director: the \"nothing to change\" note, giving the reasons of the options that are on."
+  },
+  "director.nothing.sc": {
+    "description": "Camera › Auto director: the \"nothing to change\" note, giving the reasons of the options that are on."
+  },
+  "director.lead": {
+    "description": "Camera › Auto director: the lead text of the section."
+  },
+  "director.ownershipHint": {
+    "description": "Camera › Auto director: the hint under the buttons."
+  },
+  "director.keptPositionsHint": {
+    "description": "Camera › Auto director: hint of an option when the user placed the camera."
+  },
+  "director.userFramingHint": {
+    "description": "Camera › Auto director: hint of Centre my face when the user framed the camera."
+  },
+  "director.autoLayoutHint": {
+    "description": "Camera › Layout: hint for a block the director made."
+  },
+  "director.autoTitleSuffix": {
+    "description": "Camera track: added at the end of the tooltip of a block the director made. Starts with a space and a middle dot."
+  },
+  "director.framed": {
+    "description": "Camera › Auto director: the face was framed; {zoom} is the zoom used (1.25×)."
+  },
+  "director.framedMoving": {
+    "description": "Camera › Auto director: the framing when the face moves a lot."
+  },
+  "director.notFound": {
+    "description": "Camera › Auto director: no face was found."
+  },
+  "director.framingUnavailable": {
+    "description": "Camera › Auto director: face framing could not run. {reason} says why."
+  },
+  "director.framingKept": {
+    "description": "Camera › Auto director: the user’s own framing stays."
+  },
+  "director.done.nothing": {
+    "description": "Camera › Auto director: notice when applying changed nothing."
+  },
+  "director.done.directed": {
+    "description": "Camera › Auto director: notice after applying. {body} lists what was made, comma-separated (\"intro, 1 bubble move, 2 hidden, outro; face centred (1.25×)\"). The undo shortcut may follow."
+  },
+  "director.done.intro": {
+    "description": "Camera › Auto director: an item of \"Camera directed: {body}\": an intro was made."
+  },
+  "director.done.outro": {
+    "description": "Camera › Auto director: an item of \"Camera directed: {body}\": an outro was made."
+  },
+  "director.done.moves": {
+    "description": "Camera › Auto director: an item of \"Camera directed: {body}\": how many bubble moves were made."
+  },
+  "director.done.hidden": {
+    "description": "Camera › Auto director: an item of \"Camera directed: {body}\": how many times the camera is hidden."
+  },
+  "director.done.face": {
+    "description": "Camera › Auto director: the last item of \"Camera directed: {body}\", after a semicolon: the face was framed at {zoom}."
+  },
+  "director.done.removed": {
+    "description": "Camera › Auto director: the body of \"Camera directed: {body}\" when only earlier automatic changes went."
+  },
+  "director.done.saved": {
+    "description": "Camera › Auto director: the body of \"Camera directed: {body}\" when only the options were written."
+  },
+  "director.removed": {
+    "description": "Camera › Auto director: notice after Remove automatic changes. The undo shortcut may follow."
+  },
+  "director.noneToRemove": {
+    "description": "Camera › Auto director: notice when Remove automatic changes finds none."
+  },
+  "director.apply.upToDate": {
+    "description": "Camera › Auto director: the primary button when nothing would change."
+  },
+  "director.apply.again": {
+    "description": "Camera › Auto director: the primary button once the director’s changes are in."
+  },
+  "director.apply.first": {
+    "description": "Camera › Auto director: the primary button."
+  },
+  "director.applying.listening": {
+    "description": "Camera › Auto director: the busy button while it listens to the sound."
+  },
+  "director.applying.face": {
+    "description": "Camera › Auto director: the busy button while it looks for the face."
+  },
+  "director.applying.faceProgress": {
+    "description": "Camera › Auto director: the busy button while it looks for the face, with how many pictures of how many are done."
+  },
+  "director.unavailable.noCamera": {
+    "description": "Why the palette cannot direct the camera: there is none."
+  },
+  "director.unavailable.hidden": {
+    "description": "Why the palette cannot direct the camera: it is hidden."
+  },
+  "directorSection.intro.cameraOnly": {
+    "description": "Camera › Auto director: the Intro and outro chip Camera only."
+  },
+  "directorSection.intro.cameraOnly.title": {
+    "description": "Camera › Auto director: the Intro and outro chip Camera only (its tooltip)."
+  },
+  "directorSection.intro.cameraLarge": {
+    "description": "Camera › Auto director: the Intro and outro chip Large camera."
+  },
+  "directorSection.intro.cameraLarge.title": {
+    "description": "Camera › Auto director: the Intro and outro chip Large camera (its tooltip)."
+  },
+  "directorSection.intro.off": {
+    "description": "Camera › Auto director: the Intro and outro chip Off."
+  },
+  "directorSection.intro.off.title": {
+    "description": "Camera › Auto director: the Intro and outro chip Off (its tooltip)."
+  },
+  "directorSection.hideAfter": {
+    "description": "Camera › Auto director: a Hide the camera when silent for chip, in seconds (5 s)."
+  },
+  "directorSection.hideNever": {
+    "description": "Camera › Auto director: the Hide the camera when silent for chip that never hides it."
+  },
+  "directorSection.unknownError": {
+    "description": "Camera › Auto director: the reason when an error says nothing, inside \"The camera could not be directed: {reason}\"."
+  },
+  "directorSection.notDirected": {
+    "description": "Camera › Auto director: notice when directing failed. {reason} says why."
+  },
+  "directorSection.notRemoved": {
+    "description": "Camera › Auto director: notice when Remove automatic changes failed. {reason} says why."
+  },
+  "directorSection.strip.intro": {
+    "description": "Camera › Auto director: a block of the plan’s strip (its tooltip, before its times)."
+  },
+  "directorSection.strip.outro": {
+    "description": "Camera › Auto director: a block of the plan’s strip (its tooltip, before its times)."
+  },
+  "directorSection.strip.bubble": {
+    "description": "Camera › Auto director: a block of the plan’s strip (its tooltip, before its times)."
+  },
+  "directorSection.strip.yours": {
+    "description": "Camera › Auto director: a block of the plan’s strip (its tooltip, before its times)."
+  },
+  "directorSection.stripTitle": {
+    "description": "Camera › Auto director: tooltip of a block of the plan’s strip: what the camera does, and when (0:16–0:23)."
+  },
+  "directorAnalysis.detectionNotStarted": {
+    "description": "Camera › Auto director: why face framing could not run, inside \"Face framing is unavailable: {reason}.\""
+  },
+  "directorAnalysis.cameraUnreadable": {
+    "description": "Camera › Auto director: why face framing could not run, inside \"Face framing is unavailable: {reason}.\""
+  },
+  "directorAnalysis.detectionStopped": {
+    "description": "Camera › Auto director: why face framing could not run, inside \"Face framing is unavailable: {reason}.\""
+  }
+}

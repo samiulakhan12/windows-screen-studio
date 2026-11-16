@@ -4,6 +4,7 @@ import { keptBounds } from '../engine/timeline'
 import { MIN_LAYOUT_LENGTH } from '../engine/webcamData'
 import type { CameraLayout, Clip, Corner, LayoutSegment, Project } from '../types'
 import { displayTime } from './clips'
+import { t } from '../i18n/t'
 
 /** Default length (seconds) of a new layout segment. */
 export const DEFAULT_LAYOUT_LENGTH = 5
@@ -14,15 +15,25 @@ let idCounter = 0
 const newId = (): string => `y${Date.now().toString(36)}${(idCounter++).toString(36)}`
 
 /** The layouts, as the Camera panel and the timeline name and describe them. */
-export const LAYOUT_OPTIONS: { value: CameraLayout; label: string; short: string; hint: string }[] = [
-  { value: 'default', label: 'Default', short: 'Default', hint: 'The screen with the camera bubble' },
-  { value: 'camera-large', label: 'Large camera', short: 'Large', hint: 'A big camera over the screen' },
-  { value: 'side-by-side', label: 'Side by side', short: 'Side by side', hint: 'The screen and a tall camera card next to each other' },
-  { value: 'camera-only', label: 'Camera only', short: 'Camera', hint: 'The camera fills the frame; the screen is hidden' },
-  { value: 'screen-only', label: 'Screen only', short: 'Screen', hint: 'The camera is hidden' }
-]
+export const LAYOUT_OPTIONS: readonly { value: CameraLayout; readonly label: string; readonly short: string; readonly hint: string }[] = (
+  [['default', 'default'], ['camera-large', 'cameraLarge'], ['side-by-side', 'sideBySide'], ['camera-only', 'cameraOnly'], ['screen-only', 'screenOnly']] as const
+).map(([value, key]) => ({
+  value,
+  get label() {
+    return t(`camera.layout.${key}`)
+  },
+  get short() {
+    return t(`camera.layout.${key}.short`)
+  },
+  get hint() {
+    return t(`camera.layout.${key}.hint`)
+  }
+}))
 
-export const layoutLabel = (layout: CameraLayout): string => LAYOUT_OPTIONS.find((o) => o.value === layout)?.label ?? 'Default'
+export const layoutLabel = (layout: CameraLayout): string => LAYOUT_OPTIONS.find((o) => o.value === layout)?.label ?? t('camera.layout.default')
+
+/** A camera corner's name in the UI ("Top left"); the recording side's CORNER_NAMES keep their English. */
+export const cornerName = (corner: Corner): string => t(`camera.corner.${corner}` as const)
 
 /** The camera layout in effect at source time `t`. */
 export function layoutAt(project: Pick<Project, 'layouts'>, t: number): CameraLayout {

@@ -3088,6 +3088,458 @@
     "sample": {}
   },
   {
+    "key": "camera.cameraPanel.thisRecordingHasNo",
+    "file": "src/renderer/src/editor/panels/CameraPanel.tsx",
+    "line": 50,
+    "english": "This recording has no camera. Pick a camera on the home screen before recording.",
+    "sample": {}
+  },
+  {
+    "key": "common.label.camera",
+    "file": "src/renderer/src/editor/panels/CameraPanel.tsx",
+    "line": 52,
+    "english": "Camera",
+    "sample": {}
+  },
+  {
+    "key": "camera.cameraPanel.showCamera",
+    "file": "src/renderer/src/editor/panels/CameraPanel.tsx",
+    "line": 53,
+    "english": "Show camera",
+    "sample": {}
+  },
+  {
+    "key": "common.label.size",
+    "file": "src/renderer/src/editor/panels/CameraPanel.tsx",
+    "line": 54,
+    "english": "Size",
+    "sample": {}
+  },
+  {
+    "key": "camera.cameraPanel.cameraShape",
+    "file": "src/renderer/src/editor/panels/CameraPanel.tsx",
+    "line": 56,
+    "english": "Camera shape",
+    "sample": {}
+  },
+  {
+    "key": "camera.cameraPanel.cameraCorner",
+    "file": "src/renderer/src/editor/panels/CameraPanel.tsx",
+    "line": 66,
+    "english": "Camera corner",
+    "sample": {}
+  },
+  {
+    "key": "camera.cameraPanel.theCameraSCorner",
+    "file": "src/renderer/src/editor/panels/CameraPanel.tsx",
+    "line": 66,
+    "english": "The camera's corner wherever no layout change chooses another one",
+    "sample": {}
+  },
+  {
+    "key": "common.label.look",
+    "file": "src/renderer/src/editor/panels/CameraPanel.tsx",
+    "line": 83,
+    "english": "Look",
+    "sample": {}
+  },
+  {
+    "key": "camera.cameraPanel.border",
+    "file": "src/renderer/src/editor/panels/CameraPanel.tsx",
+    "line": 85,
+    "english": "Border",
+    "sample": {}
+  },
+  {
+    "key": "camera.cameraPanel.borderColour",
+    "file": "src/renderer/src/editor/panels/CameraPanel.tsx",
+    "line": 95,
+    "english": "Border colour",
+    "sample": {}
+  },
+  {
+    "key": "common.label.shadow",
+    "file": "src/renderer/src/editor/panels/CameraPanel.tsx",
+    "line": 102,
+    "english": "Shadow",
+    "sample": {}
+  },
+  {
+    "key": "camera.cameraPanel.mirror",
+    "file": "src/renderer/src/editor/panels/CameraPanel.tsx",
+    "line": 103,
+    "english": "Mirror",
+    "sample": {}
+  },
+  {
+    "key": "camera.cameraPanel.showTheCameraFlipped",
+    "file": "src/renderer/src/editor/panels/CameraPanel.tsx",
+    "line": 103,
+    "english": "Show the camera flipped, as in a mirror (how you see yourself)",
+    "sample": {}
+  },
+  {
+    "key": "camera.cameraPanel.framing",
+    "file": "src/renderer/src/editor/panels/CameraPanel.tsx",
+    "line": 198,
+    "english": "Framing",
+    "sample": {}
+  },
+  {
+    "key": "camera.cameraPanel.showTheWholeCamera",
+    "file": "src/renderer/src/editor/panels/CameraPanel.tsx",
+    "line": 201,
+    "english": "Show the whole camera picture, centred",
+    "sample": {}
+  },
+  {
+    "key": "common.action.reset",
+    "file": "src/renderer/src/editor/panels/CameraPanel.tsx",
+    "line": 202,
+    "english": "Reset",
+    "sample": {}
+  },
+  {
+    "key": "camera.cameraPanel.visiblePartOfThe",
+    "file": "src/renderer/src/editor/panels/CameraPanel.tsx",
+    "line": 213,
+    "english": "Visible part of the camera picture",
+    "sample": {}
+  },
+  {
+    "key": "camera.cameraPanel.acrossDown",
+    "file": "src/renderer/src/editor/panels/CameraPanel.tsx",
+    "line": 214,
+    "english": "«value»% across, «value2»% down",
+    "sample": {
+      "x": "«value»",
+      "y": "«value2»"
+    }
+  },
+  {
+    "key": "camera.cameraPanel.dragToChooseWhich",
+    "file": "src/renderer/src/editor/panels/CameraPanel.tsx",
+    "line": 215,
+    "english": "Drag to choose which part of the camera picture shows",
+    "sample": {}
+  },
+  {
+    "key": "common.label.zoom",
+    "file": "src/renderer/src/editor/panels/CameraPanel.tsx",
+    "line": 223,
+    "english": "Zoom",
+    "sample": {}
+  },
+  {
+    "key": "camera.cameraPanel.zoomInToFill",
+    "file": "src/renderer/src/editor/panels/CameraPanel.tsx",
+    "line": 232,
+    "english": "Zoom in to fill the camera with your face; drag the box to choose what shows.",
+    "sample": {}
+  },
+  {
+    "key": "camera.cameraPanel.backgroundBlur",
+    "file": "src/renderer/src/editor/panels/CameraPanel.tsx",
+    "line": 247,
+    "english": "Background blur",
+    "sample": {}
+  },
+  {
+    "key": "camera.cameraPanel.blurBehindYou",
+    "file": "src/renderer/src/editor/panels/CameraPanel.tsx",
+    "line": 248,
+    "english": "Blur behind you",
+    "sample": {}
+  },
+  {
+    "key": "camera.cameraPanel.loadingPersonDetection",
+    "file": "src/renderer/src/editor/panels/CameraPanel.tsx",
+    "line": 256,
+    "english": "Loading person detection…",
+    "sample": {}
+  },
+  {
+    "key": "camera.cameraPanel.softensTheRoomBehind",
+    "file": "src/renderer/src/editor/panels/CameraPanel.tsx",
+    "line": 257,
+    "english": "Softens the room behind you and keeps you sharp. The person is found on this PC; nothing is uploaded.",
+    "sample": {}
+  },
+  {
+    "key": "common.label.layout",
+    "file": "src/renderer/src/editor/panels/CameraPanel.tsx",
+    "line": 312,
+    "english": "Layout",
+    "sample": {}
+  },
+  {
+    "key": "camera.cameraPanel.theCameraIsHidden",
+    "file": "src/renderer/src/editor/panels/CameraPanel.tsx",
+    "line": 321,
+    "english": "The camera is hidden: show it to use layouts.",
+    "sample": {}
+  },
+  {
+    "key": "camera.cameraPanel.cameraLayout",
+    "file": "src/renderer/src/editor/panels/CameraPanel.tsx",
+    "line": 327,
+    "english": "Camera layout",
+    "sample": {}
+  },
+  {
+    "key": "camera.cameraPanel.theLayoutOutsideAny",
+    "file": "src/renderer/src/editor/panels/CameraPanel.tsx",
+    "line": 334,
+    "english": "«hint» (the layout outside any change)",
+    "sample": {
+      "hint": "«hint»"
+    }
+  },
+  {
+    "key": "camera.cameraPanel.changeToAtThe",
+    "file": "src/renderer/src/editor/panels/CameraPanel.tsx",
+    "line": 334,
+    "english": "Change to «value» at the playhead: «value2»",
+    "sample": {
+      "label": "«value»",
+      "hint": "«value2»"
+    }
+  },
+  {
+    "key": "camera.cameraPanel.dragTheBlockOn",
+    "file": "src/renderer/src/editor/panels/CameraPanel.tsx",
+    "line": 349,
+    "english": "Drag the block on the camera track to move it; drag its ends to change when it starts and stops.",
+    "sample": {}
+  },
+  {
+    "key": "camera.cameraPanel.delete",
+    "file": "src/renderer/src/editor/panels/CameraPanel.tsx",
+    "line": 351,
+    "english": " Delete",
+    "sample": {}
+  },
+  {
+    "key": "camera.cameraPanel.pickALayoutTo",
+    "file": "src/renderer/src/editor/panels/CameraPanel.tsx",
+    "line": 355,
+    "english": "Pick a layout to switch to it at the playhead, or double-click the camera track on the timeline. Changes animate smoothly in and out.",
+    "sample": {}
+  },
+  {
+    "key": "camera.cameraPanel.cameraPosition",
+    "file": "src/renderer/src/editor/panels/CameraPanel.tsx",
+    "line": 411,
+    "english": "Camera position",
+    "sample": {}
+  },
+  {
+    "key": "camera.cameraPanel.useTheCameraS",
+    "file": "src/renderer/src/editor/panels/CameraPanel.tsx",
+    "line": 414,
+    "english": "Use the camera's default corner (Camera section) in this change",
+    "sample": {}
+  },
+  {
+    "key": "camera.cameraPanel.default",
+    "file": "src/renderer/src/editor/panels/CameraPanel.tsx",
+    "line": 415,
+    "english": "Default",
+    "sample": {}
+  },
+  {
+    "key": "camera.cameraPanel.duringThisLayoutChange",
+    "file": "src/renderer/src/editor/panels/CameraPanel.tsx",
+    "line": 429,
+    "english": "«value» during this layout change",
+    "sample": {
+      "corner": "«value»"
+    }
+  },
+  {
+    "key": "camera.cameraPanel.moveTheCameraTo",
+    "file": "src/renderer/src/editor/panels/CameraPanel.tsx",
+    "line": 429,
+    "english": "Move the camera to the top left corner from the playhead",
+    "sample": {
+      "corner": "top-left"
+    }
+  },
+  {
+    "key": "camera.cameraPanel.cameraHiddenPosition",
+    "file": "src/renderer/src/editor/panels/CameraPanel.tsx",
+    "line": 438,
+    "english": "The camera is hidden: show it to move it.",
+    "sample": {}
+  },
+  {
+    "key": "camera.cameraPanel.hasNoCameraCorner",
+    "file": "src/renderer/src/editor/panels/CameraPanel.tsx",
+    "line": 440,
+    "english": "«value» has no camera corner.",
+    "sample": {
+      "layout": "«value»"
+    }
+  },
+  {
+    "key": "camera.cameraPanel.theCornerOfThe",
+    "file": "src/renderer/src/editor/panels/CameraPanel.tsx",
+    "line": 442,
+    "english": "The corner of the camera during this layout change; it glides there and back.",
+    "sample": {}
+  },
+  {
+    "key": "camera.cameraPanel.pickACornerTo",
+    "file": "src/renderer/src/editor/panels/CameraPanel.tsx",
+    "line": 443,
+    "english": "Pick a corner to move the camera there from the playhead. Elsewhere it stays in the corner chosen above.",
+    "sample": {}
+  },
+  {
+    "key": "camera.cameraPanel.white",
+    "file": "src/renderer/src/editor/panels/CameraPanel.tsx",
+    "line": 478,
+    "english": "White",
+    "sample": {}
+  },
+  {
+    "key": "common.colour.pickAny",
+    "file": "src/renderer/src/editor/panels/CameraPanel.tsx",
+    "line": 484,
+    "english": "Pick any colour",
+    "sample": {}
+  },
+  {
+    "key": "common.colour.anyFor",
+    "file": "src/renderer/src/editor/panels/CameraPanel.tsx",
+    "line": 485,
+    "english": "«label» (any colour)",
+    "sample": {
+      "label": "«label»"
+    }
+  },
+  {
+    "key": "camera.layoutTrack.doubleClickToChange",
+    "file": "src/renderer/src/editor/LayoutTrack.tsx",
+    "line": 183,
+    "english": "Double-click to change the camera layout here",
+    "sample": {}
+  },
+  {
+    "key": "camera.layoutTrack.theCameraIsHidden",
+    "file": "src/renderer/src/editor/LayoutTrack.tsx",
+    "line": 183,
+    "english": "The camera is hidden: layouts apply once it is shown (Camera panel)",
+    "sample": {}
+  },
+  {
+    "key": "camera.layoutTrack.auto",
+    "file": "src/renderer/src/editor/LayoutTrack.tsx",
+    "line": 219,
+    "english": "«label» · auto",
+    "sample": {
+      "label": "«label»"
+    }
+  },
+  {
+    "key": "camera.layoutTrack.emptyTrack",
+    "file": "src/renderer/src/editor/LayoutTrack.tsx",
+    "line": 224,
+    "english": "Double-click to change the camera layout here, or use the Camera panel",
+    "sample": {}
+  },
+  {
+    "key": "camera.layoutTrack.cameraLayout",
+    "file": "src/renderer/src/editor/LayoutTrack.tsx",
+    "line": 234,
+    "english": "Camera layout",
+    "sample": {}
+  },
+  {
+    "key": "camera.directorSection.autoDirector",
+    "file": "src/renderer/src/editor/panels/DirectorSection.tsx",
+    "line": 339,
+    "english": "Auto director",
+    "sample": {}
+  },
+  {
+    "key": "common.action.tryAgain",
+    "file": "src/renderer/src/editor/panels/DirectorSection.tsx",
+    "line": 354,
+    "english": "Try again",
+    "sample": {}
+  },
+  {
+    "key": "camera.directorSection.changesTheDirectorMakes",
+    "file": "src/renderer/src/editor/panels/DirectorSection.tsx",
+    "line": 363,
+    "english": "Changes the director makes",
+    "sample": {}
+  },
+  {
+    "key": "camera.directorSection.introAndOutro",
+    "file": "src/renderer/src/editor/panels/DirectorSection.tsx",
+    "line": 403,
+    "english": "Intro and outro",
+    "sample": {}
+  },
+  {
+    "key": "camera.directorSection.introAndOutro",
+    "file": "src/renderer/src/editor/panels/DirectorSection.tsx",
+    "line": 405,
+    "english": "Intro and outro",
+    "sample": {}
+  },
+  {
+    "key": "camera.directorSection.hideTheCameraWhen",
+    "file": "src/renderer/src/editor/panels/DirectorSection.tsx",
+    "line": 407,
+    "english": "Hide the camera when silent for",
+    "sample": {}
+  },
+  {
+    "key": "camera.directorSection.hideTheCameraWhen",
+    "file": "src/renderer/src/editor/panels/DirectorSection.tsx",
+    "line": 409,
+    "english": "Hide the camera when silent for",
+    "sample": {}
+  },
+  {
+    "key": "camera.directorSection.moveTheBubbleAway",
+    "file": "src/renderer/src/editor/panels/DirectorSection.tsx",
+    "line": 413,
+    "english": "Move the bubble away from the cursor",
+    "sample": {}
+  },
+  {
+    "key": "camera.directorSection.centreMyFace",
+    "file": "src/renderer/src/editor/panels/DirectorSection.tsx",
+    "line": 421,
+    "english": "Centre my face",
+    "sample": {}
+  },
+  {
+    "key": "camera.directorSection.removeAutomaticChanges",
+    "file": "src/renderer/src/editor/panels/DirectorSection.tsx",
+    "line": 445,
+    "english": "Remove automatic changes",
+    "sample": {}
+  },
+  {
+    "key": "camera.directorSection.theCameraOverThe",
+    "file": "src/renderer/src/editor/panels/DirectorSection.tsx",
+    "line": 496,
+    "english": "The camera over the video",
+    "sample": {}
+  },
+  {
+    "key": "camera.directorAnalysis.timedOut",
+    "file": "src/renderer/src/editor/directorAnalysis.ts",
+    "line": 90,
+    "english": "timed out",
+    "sample": {}
+  },
+  {
     "key": "style.stylePanel.frames.none",
     "file": "src/renderer/src/editor/panels/StylePanel.tsx",
     "line": 31,
@@ -7597,6 +8049,1177 @@
     "file": "src/renderer/src/editor/panels/MagnifierZoomRow.tsx",
     "line": 18,
     "english": "Add a magnifier at the playhead",
+    "sample": {}
+  },
+  {
+    "key": "camera.layout.default",
+    "file": "src/shared/editor/layouts.ts",
+    "line": 17,
+    "english": "Default",
+    "sample": {}
+  },
+  {
+    "key": "camera.layout.default.short",
+    "file": "src/shared/editor/layouts.ts",
+    "line": 17,
+    "english": "Default",
+    "sample": {}
+  },
+  {
+    "key": "camera.layout.default.hint",
+    "file": "src/shared/editor/layouts.ts",
+    "line": 17,
+    "english": "The screen with the camera bubble",
+    "sample": {}
+  },
+  {
+    "key": "camera.layout.cameraLarge",
+    "file": "src/shared/editor/layouts.ts",
+    "line": 17,
+    "english": "Large camera",
+    "sample": {}
+  },
+  {
+    "key": "camera.layout.cameraLarge.short",
+    "file": "src/shared/editor/layouts.ts",
+    "line": 17,
+    "english": "Large",
+    "sample": {}
+  },
+  {
+    "key": "camera.layout.cameraLarge.hint",
+    "file": "src/shared/editor/layouts.ts",
+    "line": 17,
+    "english": "A big camera over the screen",
+    "sample": {}
+  },
+  {
+    "key": "camera.layout.sideBySide",
+    "file": "src/shared/editor/layouts.ts",
+    "line": 17,
+    "english": "Side by side",
+    "sample": {}
+  },
+  {
+    "key": "camera.layout.sideBySide.short",
+    "file": "src/shared/editor/layouts.ts",
+    "line": 17,
+    "english": "Side by side",
+    "sample": {}
+  },
+  {
+    "key": "camera.layout.sideBySide.hint",
+    "file": "src/shared/editor/layouts.ts",
+    "line": 17,
+    "english": "The screen and a tall camera card next to each other",
+    "sample": {}
+  },
+  {
+    "key": "camera.layout.cameraOnly",
+    "file": "src/shared/editor/layouts.ts",
+    "line": 17,
+    "english": "Camera only",
+    "sample": {}
+  },
+  {
+    "key": "camera.layout.cameraOnly.short",
+    "file": "src/shared/editor/layouts.ts",
+    "line": 17,
+    "english": "Camera",
+    "sample": {}
+  },
+  {
+    "key": "camera.layout.cameraOnly.hint",
+    "file": "src/shared/editor/layouts.ts",
+    "line": 17,
+    "english": "The camera fills the frame; the screen is hidden",
+    "sample": {}
+  },
+  {
+    "key": "camera.layout.screenOnly",
+    "file": "src/shared/editor/layouts.ts",
+    "line": 17,
+    "english": "Screen only",
+    "sample": {}
+  },
+  {
+    "key": "camera.layout.screenOnly.short",
+    "file": "src/shared/editor/layouts.ts",
+    "line": 17,
+    "english": "Screen",
+    "sample": {}
+  },
+  {
+    "key": "camera.layout.screenOnly.hint",
+    "file": "src/shared/editor/layouts.ts",
+    "line": 17,
+    "english": "The camera is hidden",
+    "sample": {}
+  },
+  {
+    "key": "camera.corner.top-left",
+    "file": "src/shared/editor/layouts.ts",
+    "line": 35,
+    "english": "Top left",
+    "sample": {}
+  },
+  {
+    "key": "camera.corner.top-right",
+    "file": "src/shared/editor/layouts.ts",
+    "line": 35,
+    "english": "Top right",
+    "sample": {}
+  },
+  {
+    "key": "camera.corner.bottom-left",
+    "file": "src/shared/editor/layouts.ts",
+    "line": 35,
+    "english": "Bottom left",
+    "sample": {}
+  },
+  {
+    "key": "camera.corner.bottom-right",
+    "file": "src/shared/editor/layouts.ts",
+    "line": 35,
+    "english": "Bottom right",
+    "sample": {}
+  },
+  {
+    "key": "camera.layoutCommands.sameLayout",
+    "file": "src/shared/editor/layoutCommands.ts",
+    "line": 52,
+    "english": "The camera layout here already is screen with camera bubble",
+    "sample": {
+      "layout": "default"
+    }
+  },
+  {
+    "key": "camera.layoutCommands.sameLayout",
+    "file": "src/shared/editor/layoutCommands.ts",
+    "line": 52,
+    "english": "The camera layout here already is large camera",
+    "sample": {
+      "layout": "camera-large"
+    }
+  },
+  {
+    "key": "camera.layoutCommands.layoutEnd",
+    "file": "src/shared/editor/layoutCommands.ts",
+    "line": 52,
+    "english": "Too close to the end of the video for a new camera layout",
+    "sample": {}
+  },
+  {
+    "key": "camera.layoutCommands.layoutNoRoom",
+    "file": "src/shared/editor/layoutCommands.ts",
+    "line": 52,
+    "english": "No room for a new camera layout here: another one starts right after the playhead",
+    "sample": {}
+  },
+  {
+    "key": "camera.layoutCommands.sameCorner",
+    "file": "src/shared/editor/layoutCommands.ts",
+    "line": 88,
+    "english": "The camera already is in the top left corner here",
+    "sample": {
+      "corner": "top-left"
+    }
+  },
+  {
+    "key": "camera.layoutCommands.sameCorner",
+    "file": "src/shared/editor/layoutCommands.ts",
+    "line": 88,
+    "english": "The camera already is in the bottom right corner here",
+    "sample": {
+      "corner": "bottom-right"
+    }
+  },
+  {
+    "key": "camera.layoutCommands.noCorner",
+    "file": "src/shared/editor/layoutCommands.ts",
+    "line": 88,
+    "english": "The camera layout here has no camera corner: pick the default, large camera or side by side layout first",
+    "sample": {}
+  },
+  {
+    "key": "camera.layoutCommands.cornerEnd",
+    "file": "src/shared/editor/layoutCommands.ts",
+    "line": 88,
+    "english": "Too close to the end of the video to move the camera",
+    "sample": {}
+  },
+  {
+    "key": "camera.layoutCommands.cornerNoRoom",
+    "file": "src/shared/editor/layoutCommands.ts",
+    "line": 88,
+    "english": "No room to move the camera here: another camera layout starts right after the playhead",
+    "sample": {}
+  },
+  {
+    "key": "camera.cameraPanel.off",
+    "file": "src/renderer/src/editor/panels/CameraPanel.tsx",
+    "line": 32,
+    "english": "Off",
+    "sample": {}
+  },
+  {
+    "key": "camera.cameraPanel.shape.circle",
+    "file": "src/renderer/src/editor/panels/CameraPanel.tsx",
+    "line": 62,
+    "english": "Circle",
+    "sample": {}
+  },
+  {
+    "key": "camera.cameraPanel.shape.rounded",
+    "file": "src/renderer/src/editor/panels/CameraPanel.tsx",
+    "line": 63,
+    "english": "Rounded",
+    "sample": {}
+  },
+  {
+    "key": "camera.cameraPanel.shape.square",
+    "file": "src/renderer/src/editor/panels/CameraPanel.tsx",
+    "line": 64,
+    "english": "Square",
+    "sample": {}
+  },
+  {
+    "key": "camera.cameraPanel.cornerLower",
+    "file": "src/renderer/src/editor/panels/CameraPanel.tsx",
+    "line": 75,
+    "english": "top left",
+    "sample": {
+      "corner": "top-left"
+    }
+  },
+  {
+    "key": "camera.cameraPanel.cornerLower",
+    "file": "src/renderer/src/editor/panels/CameraPanel.tsx",
+    "line": 75,
+    "english": "bottom right",
+    "sample": {
+      "corner": "bottom-right"
+    }
+  },
+  {
+    "key": "camera.cameraPanel.blurUnavailable",
+    "file": "src/renderer/src/editor/panels/CameraPanel.tsx",
+    "line": 249,
+    "english": "Background blur is unavailable: «reason». The camera is shown without it, in the preview and the export.",
+    "sample": {
+      "reason": "«reason»"
+    }
+  },
+  {
+    "key": "camera.cameraPanel.bandTop",
+    "file": "src/renderer/src/editor/panels/CameraPanel.tsx",
+    "line": 322,
+    "english": "While the view follows the action, the camera sits in a band at the top. Change it in Style › Vertical framing.",
+    "sample": {}
+  },
+  {
+    "key": "camera.cameraPanel.bandBottom",
+    "file": "src/renderer/src/editor/panels/CameraPanel.tsx",
+    "line": 322,
+    "english": "While the view follows the action, the camera sits in a band at the bottom. Change it in Style › Vertical framing.",
+    "sample": {}
+  },
+  {
+    "key": "camera.cameraPanel.layoutTitle",
+    "file": "src/renderer/src/editor/panels/CameraPanel.tsx",
+    "line": 333,
+    "english": "Large camera: A big camera over the screen",
+    "sample": {
+      "label": "Large camera",
+      "hint": "A big camera over the screen"
+    }
+  },
+  {
+    "key": "camera.cameraPanel.deleteTitle",
+    "file": "src/renderer/src/editor/panels/CameraPanel.tsx",
+    "line": 349,
+    "english": "Delete this layout change",
+    "sample": {}
+  },
+  {
+    "key": "camera.cameraPanel.cameraPosition",
+    "file": "src/renderer/src/editor/panels/CameraPanel.tsx",
+    "line": 406,
+    "english": "Camera position",
+    "sample": {}
+  },
+  {
+    "key": "camera.cameraPanel.moveHere",
+    "file": "src/renderer/src/editor/panels/CameraPanel.tsx",
+    "line": 406,
+    "english": "Move camera here from the playhead",
+    "sample": {}
+  },
+  {
+    "key": "camera.cameraPanel.positionName",
+    "file": "src/renderer/src/editor/panels/CameraPanel.tsx",
+    "line": 426,
+    "english": "Camera position: top left",
+    "sample": {
+      "label": "Camera position",
+      "corner": "top-left"
+    }
+  },
+  {
+    "key": "camera.cameraPanel.swatchWhite",
+    "file": "src/renderer/src/editor/panels/CameraPanel.tsx",
+    "line": 475,
+    "english": "Border colour white",
+    "sample": {
+      "label": "Border colour"
+    }
+  },
+  {
+    "key": "camera.layoutTrack.block",
+    "file": "src/renderer/src/editor/LayoutTrack.tsx",
+    "line": 209,
+    "english": "Large camera · 0:04.0 – 0:09.5",
+    "sample": {
+      "layout": "Large camera",
+      "start": "0:04.0",
+      "end": "0:09.5"
+    }
+  },
+  {
+    "key": "camera.layoutTrack.blockCorner",
+    "file": "src/renderer/src/editor/LayoutTrack.tsx",
+    "line": 209,
+    "english": "Default · camera top left · 0:04.0 – 0:09.5",
+    "sample": {
+      "layout": "Default",
+      "corner": "top-left",
+      "start": "0:04.0",
+      "end": "0:09.5"
+    }
+  },
+  {
+    "key": "camera.director.part.introCamera",
+    "file": "src/shared/editor/directorCopy.ts",
+    "line": 29,
+    "english": "Intro · Camera only",
+    "sample": {}
+  },
+  {
+    "key": "camera.director.part.introLarge",
+    "file": "src/shared/editor/directorCopy.ts",
+    "line": 29,
+    "english": "Intro · Large camera",
+    "sample": {}
+  },
+  {
+    "key": "camera.director.part.outroCamera",
+    "file": "src/shared/editor/directorCopy.ts",
+    "line": 29,
+    "english": "Outro · Camera only",
+    "sample": {}
+  },
+  {
+    "key": "camera.director.part.outroLarge",
+    "file": "src/shared/editor/directorCopy.ts",
+    "line": 29,
+    "english": "Outro · Large camera",
+    "sample": {}
+  },
+  {
+    "key": "camera.director.part.hidden",
+    "file": "src/shared/editor/directorCopy.ts",
+    "line": 29,
+    "english": "Camera hidden",
+    "sample": {}
+  },
+  {
+    "key": "camera.director.part.bubbleCorner",
+    "file": "src/shared/editor/directorCopy.ts",
+    "line": 29,
+    "english": "Bubble bottom left",
+    "sample": {
+      "corner": "bottom-left"
+    }
+  },
+  {
+    "key": "camera.director.part.bubble",
+    "file": "src/shared/editor/directorCopy.ts",
+    "line": 29,
+    "english": "Bubble",
+    "sample": {}
+  },
+  {
+    "key": "camera.director.reason.talkBefore",
+    "file": "src/shared/editor/directorCopy.ts",
+    "line": 46,
+    "english": "you talk before the demo",
+    "sample": {}
+  },
+  {
+    "key": "camera.director.reason.talkAfter",
+    "file": "src/shared/editor/directorCopy.ts",
+    "line": 46,
+    "english": "you talk after the demo",
+    "sample": {}
+  },
+  {
+    "key": "camera.director.reason.silent",
+    "file": "src/shared/editor/directorCopy.ts",
+    "line": 46,
+    "english": "silent for 12 s",
+    "sample": {
+      "n": "12"
+    }
+  },
+  {
+    "key": "camera.director.reason.cursor",
+    "file": "src/shared/editor/directorCopy.ts",
+    "line": 46,
+    "english": "your cursor works in the top right",
+    "sample": {
+      "corner": "top-right"
+    }
+  },
+  {
+    "key": "camera.director.partLine",
+    "file": "src/shared/editor/directorCopy.ts",
+    "line": 60,
+    "english": "Camera hidden · 0:16–0:23 · silent for 7 s",
+    "sample": {
+      "label": "Camera hidden",
+      "times": "0:16–0:23",
+      "reason": "silent for 7 s"
+    }
+  },
+  {
+    "key": "camera.director.faceApplied",
+    "file": "src/shared/editor/directorCopy.ts",
+    "line": 63,
+    "english": "Face centred · 1.25×",
+    "sample": {
+      "zoom": "1.25×"
+    }
+  },
+  {
+    "key": "camera.director.facePlanned",
+    "file": "src/shared/editor/directorCopy.ts",
+    "line": 63,
+    "english": "Face centred · measured when you direct",
+    "sample": {}
+  },
+  {
+    "key": "camera.director.summary",
+    "file": "src/shared/editor/directorCopy.ts",
+    "line": 68,
+    "english": [
+      "0 changes · camera on screen 58% of the video",
+      "1 change · camera on screen 58% of the video",
+      "2 changes · camera on screen 58% of the video",
+      "1000 changes · camera on screen 58% of the video"
+    ],
+    "sample": [
+      {
+        "count": 0,
+        "n": "0",
+        "percent": "58"
+      },
+      {
+        "count": 1,
+        "n": "1",
+        "percent": "58"
+      },
+      {
+        "count": 2,
+        "n": "2",
+        "percent": "58"
+      },
+      {
+        "count": 1000,
+        "n": "1000",
+        "percent": "58"
+      }
+    ]
+  },
+  {
+    "key": "camera.director.keptChanges",
+    "file": "src/shared/editor/directorCopy.ts",
+    "line": 73,
+    "english": [
+      "Keeps 0 layout changes of yours",
+      "Keeps 1 layout change of yours",
+      "Keeps 2 layout changes of yours",
+      "Keeps 1000 layout changes of yours"
+    ],
+    "sample": [
+      {
+        "count": 0,
+        "n": "0"
+      },
+      {
+        "count": 1,
+        "n": "1"
+      },
+      {
+        "count": 2,
+        "n": "2"
+      },
+      {
+        "count": 1000,
+        "n": "1000"
+      }
+    ]
+  },
+  {
+    "key": "camera.director.keptPositions",
+    "file": "src/shared/editor/directorCopy.ts",
+    "line": 73,
+    "english": [
+      "Keeps 0 camera positions of yours",
+      "Keeps 1 camera position of yours",
+      "Keeps 2 camera positions of yours",
+      "Keeps 1000 camera positions of yours"
+    ],
+    "sample": [
+      {
+        "count": 0,
+        "n": "0"
+      },
+      {
+        "count": 1,
+        "n": "1"
+      },
+      {
+        "count": 2,
+        "n": "2"
+      },
+      {
+        "count": 1000,
+        "n": "1000"
+      }
+    ]
+  },
+  {
+    "key": "camera.director.keptBoth",
+    "file": "src/shared/editor/directorCopy.ts",
+    "line": 73,
+    "english": [
+      "Keeps 0 layout changes and 2 camera positions of yours",
+      "Keeps 1 layout change and 1 camera position of yours",
+      "Keeps 2 layout changes and 2 camera positions of yours",
+      "Keeps 1000 layout changes and 2 camera positions of yours"
+    ],
+    "sample": [
+      {
+        "count": 0,
+        "n": "0",
+        "positions": 2,
+        "p": "2"
+      },
+      {
+        "count": 1,
+        "n": "1",
+        "positions": 1,
+        "p": "1"
+      },
+      {
+        "count": 2,
+        "n": "2",
+        "positions": 2,
+        "p": "2"
+      },
+      {
+        "count": 1000,
+        "n": "1000",
+        "positions": 2,
+        "p": "2"
+      }
+    ]
+  },
+  {
+    "key": "camera.director.diff",
+    "file": "src/shared/editor/directorCopy.ts",
+    "line": 79,
+    "english": "+2 new · 1 removed · 3 unchanged",
+    "sample": {
+      "added": "2",
+      "removed": "1",
+      "unchanged": "3"
+    }
+  },
+  {
+    "key": "camera.director.source.measuring",
+    "file": "src/shared/editor/directorCopy.ts",
+    "line": 98,
+    "english": "Listening for speech…",
+    "sample": {}
+  },
+  {
+    "key": "camera.director.source.mic",
+    "file": "src/shared/editor/directorCopy.ts",
+    "line": 98,
+    "english": "Listening to your microphone.",
+    "sample": {}
+  },
+  {
+    "key": "camera.director.source.mix",
+    "file": "src/shared/editor/directorCopy.ts",
+    "line": 98,
+    "english": "Listening to the recording's sound (no separate microphone): sounds from your PC count as talking.",
+    "sample": {}
+  },
+  {
+    "key": "camera.director.source.mixVoice",
+    "file": "src/shared/editor/directorCopy.ts",
+    "line": 98,
+    "english": "Listening for voices in the recording's sound (no separate microphone): voices from your PC count as talking.",
+    "sample": {}
+  },
+  {
+    "key": "camera.director.source.mixRefined",
+    "file": "src/shared/editor/directorCopy.ts",
+    "line": 98,
+    "english": "Listening to the recording's sound, checked against your captions.",
+    "sample": {}
+  },
+  {
+    "key": "camera.director.source.transcript",
+    "file": "src/shared/editor/directorCopy.ts",
+    "line": 98,
+    "english": "Using your captions' word timings.",
+    "sample": {}
+  },
+  {
+    "key": "camera.director.soundFailedCaptions",
+    "file": "src/shared/editor/directorCopy.ts",
+    "line": 118,
+    "english": "The sound could not be measured: the plan uses your captions' word timings.",
+    "sample": {}
+  },
+  {
+    "key": "camera.director.soundFailedInput",
+    "file": "src/shared/editor/directorCopy.ts",
+    "line": 118,
+    "english": "The sound could not be measured: the plan uses the mouse and keyboard only.",
+    "sample": {}
+  },
+  {
+    "key": "camera.director.note.cameraHidden",
+    "file": "src/shared/editor/directorCopy.ts",
+    "line": 122,
+    "english": "The camera is hidden: show it to direct it.",
+    "sample": {}
+  },
+  {
+    "key": "camera.director.note.noSound",
+    "file": "src/shared/editor/directorCopy.ts",
+    "line": 122,
+    "english": "No microphone was recorded, so there is no intro, outro or hiding: the director keeps the bubble clear of your cursor and centres your face.",
+    "sample": {}
+  },
+  {
+    "key": "camera.director.note.noSpeech",
+    "file": "src/shared/editor/directorCopy.ts",
+    "line": 122,
+    "english": "No talking was heard, so the camera stays on throughout and there is no intro or outro.",
+    "sample": {}
+  },
+  {
+    "key": "camera.director.note.noInput",
+    "file": "src/shared/editor/directorCopy.ts",
+    "line": 122,
+    "english": "This recording has no mouse or keyboard data: the director hides the camera in silences and frames your face, but cannot keep the bubble clear of the cursor.",
+    "sample": {}
+  },
+  {
+    "key": "camera.director.note.noDemo",
+    "file": "src/shared/editor/directorCopy.ts",
+    "line": 122,
+    "english": "Nothing happens on screen that the director can see (no clicks, scrolling, typing or zooms), so it cannot tell the intro from the demo.",
+    "sample": {}
+  },
+  {
+    "key": "camera.director.note.keptPositions",
+    "file": "src/shared/editor/directorCopy.ts",
+    "line": 122,
+    "english": "Your camera positions are kept.",
+    "sample": {}
+  },
+  {
+    "key": "camera.director.note.allYours",
+    "file": "src/shared/editor/directorCopy.ts",
+    "line": 122,
+    "english": "Your own camera changes cover the whole video: nothing left to direct.",
+    "sample": {}
+  },
+  {
+    "key": "camera.director.note.optionsOff",
+    "file": "src/shared/editor/directorCopy.ts",
+    "line": 122,
+    "english": "The intro and outro, hiding and bubble moves are all off, so the director adds nothing to the camera track.",
+    "sample": {}
+  },
+  {
+    "key": "camera.director.note.nothing",
+    "file": "src/shared/editor/directorCopy.ts",
+    "line": 122,
+    "english": "Nothing to change: no talking before or after the demo, no long silences, and the cursor never came near the camera.",
+    "sample": {}
+  },
+  {
+    "key": "camera.director.note.band",
+    "file": "src/shared/editor/directorCopy.ts",
+    "line": 122,
+    "english": "The camera is in a band while the view follows the action, so it is not moved between corners.",
+    "sample": {}
+  },
+  {
+    "key": "camera.director.nothing.none",
+    "file": "src/shared/editor/directorCopy.ts",
+    "line": 142,
+    "english": "Nothing to change.",
+    "sample": {}
+  },
+  {
+    "key": "camera.director.nothing.i",
+    "file": "src/shared/editor/directorCopy.ts",
+    "line": 142,
+    "english": "Nothing to change: no talking before or after the demo.",
+    "sample": {}
+  },
+  {
+    "key": "camera.director.nothing.s",
+    "file": "src/shared/editor/directorCopy.ts",
+    "line": 142,
+    "english": "Nothing to change: no long silences.",
+    "sample": {}
+  },
+  {
+    "key": "camera.director.nothing.c",
+    "file": "src/shared/editor/directorCopy.ts",
+    "line": 142,
+    "english": "Nothing to change: the cursor never came near the camera.",
+    "sample": {}
+  },
+  {
+    "key": "camera.director.nothing.is",
+    "file": "src/shared/editor/directorCopy.ts",
+    "line": 142,
+    "english": "Nothing to change: no talking before or after the demo and no long silences.",
+    "sample": {}
+  },
+  {
+    "key": "camera.director.nothing.ic",
+    "file": "src/shared/editor/directorCopy.ts",
+    "line": 142,
+    "english": "Nothing to change: no talking before or after the demo and the cursor never came near the camera.",
+    "sample": {}
+  },
+  {
+    "key": "camera.director.nothing.sc",
+    "file": "src/shared/editor/directorCopy.ts",
+    "line": 142,
+    "english": "Nothing to change: no long silences and the cursor never came near the camera.",
+    "sample": {}
+  },
+  {
+    "key": "camera.director.lead",
+    "file": "src/shared/editor/directorCopy.ts",
+    "line": 155,
+    "english": "One click builds your camera track: the full camera while you talk before and after the demo, the bubble kept clear of your cursor, hidden in long silences, and your face centred. Changes you made yourself are kept.",
+    "sample": {}
+  },
+  {
+    "key": "camera.director.ownershipHint",
+    "file": "src/shared/editor/directorCopy.ts",
+    "line": 159,
+    "english": "Changing a block made by the director makes it yours: Direct again keeps it. Direct again brings back automatic changes you deleted; turn off what made them above.",
+    "sample": {}
+  },
+  {
+    "key": "camera.director.keptPositionsHint",
+    "file": "src/shared/editor/directorCopy.ts",
+    "line": 163,
+    "english": "You placed the camera yourself (while recording or with Move camera here): those positions are kept either way.",
+    "sample": {}
+  },
+  {
+    "key": "camera.director.userFramingHint",
+    "file": "src/shared/editor/directorCopy.ts",
+    "line": 164,
+    "english": "You framed the camera yourself; turn this on to let the director frame it.",
+    "sample": {}
+  },
+  {
+    "key": "camera.director.autoLayoutHint",
+    "file": "src/shared/editor/directorCopy.ts",
+    "line": 167,
+    "english": "Made by the auto director. Changing it makes it yours; Direct again keeps it.",
+    "sample": {}
+  },
+  {
+    "key": "camera.director.autoTitleSuffix",
+    "file": "src/shared/editor/directorCopy.ts",
+    "line": 170,
+    "english": " · automatic: change it to keep it when you direct again",
+    "sample": {}
+  },
+  {
+    "key": "camera.director.framed",
+    "file": "src/shared/editor/directorCopy.ts",
+    "line": 179,
+    "english": "Face centred (1.25×).",
+    "sample": {
+      "zoom": "1.25×"
+    }
+  },
+  {
+    "key": "camera.director.framedMoving",
+    "file": "src/shared/editor/directorCopy.ts",
+    "line": 179,
+    "english": "You move around a lot, so the camera is centred on you with little zoom.",
+    "sample": {}
+  },
+  {
+    "key": "camera.director.notFound",
+    "file": "src/shared/editor/directorCopy.ts",
+    "line": 179,
+    "english": "No one was found in the camera picture, so the framing was left as it was.",
+    "sample": {}
+  },
+  {
+    "key": "camera.director.framingUnavailable",
+    "file": "src/shared/editor/directorCopy.ts",
+    "line": 179,
+    "english": "Face framing is unavailable: timed out. The rest of the camera track was directed.",
+    "sample": {
+      "reason": "timed out"
+    }
+  },
+  {
+    "key": "camera.director.framingKept",
+    "file": "src/shared/editor/directorCopy.ts",
+    "line": 179,
+    "english": "Your framing is kept (turn on Centre my face to let the director frame you).",
+    "sample": {}
+  },
+  {
+    "key": "camera.director.done.nothing",
+    "file": "src/shared/editor/directorCopy.ts",
+    "line": 201,
+    "english": "Nothing to change",
+    "sample": {}
+  },
+  {
+    "key": "camera.director.done.directed",
+    "file": "src/shared/editor/directorCopy.ts",
+    "line": 201,
+    "english": "Camera directed: intro, 1 bubble move, 2 hidden, outro; face centred (1.25×)",
+    "sample": {
+      "body": "intro, 1 bubble move, 2 hidden, outro; face centred (1.25×)"
+    }
+  },
+  {
+    "key": "camera.director.done.intro",
+    "file": "src/shared/editor/directorCopy.ts",
+    "line": 201,
+    "english": "intro",
+    "sample": {}
+  },
+  {
+    "key": "camera.director.done.outro",
+    "file": "src/shared/editor/directorCopy.ts",
+    "line": 201,
+    "english": "outro",
+    "sample": {}
+  },
+  {
+    "key": "camera.director.done.moves",
+    "file": "src/shared/editor/directorCopy.ts",
+    "line": 201,
+    "english": [
+      "0 bubble moves",
+      "1 bubble move",
+      "2 bubble moves",
+      "1000 bubble moves"
+    ],
+    "sample": [
+      {
+        "count": 0,
+        "n": "0"
+      },
+      {
+        "count": 1,
+        "n": "1"
+      },
+      {
+        "count": 2,
+        "n": "2"
+      },
+      {
+        "count": 1000,
+        "n": "1000"
+      }
+    ]
+  },
+  {
+    "key": "camera.director.done.hidden",
+    "file": "src/shared/editor/directorCopy.ts",
+    "line": 201,
+    "english": "2 hidden",
+    "sample": {
+      "n": "2"
+    }
+  },
+  {
+    "key": "camera.director.done.face",
+    "file": "src/shared/editor/directorCopy.ts",
+    "line": 201,
+    "english": "face centred (1.25×)",
+    "sample": {
+      "zoom": "1.25×"
+    }
+  },
+  {
+    "key": "camera.director.done.removed",
+    "file": "src/shared/editor/directorCopy.ts",
+    "line": 201,
+    "english": "earlier automatic changes removed",
+    "sample": {}
+  },
+  {
+    "key": "camera.director.done.saved",
+    "file": "src/shared/editor/directorCopy.ts",
+    "line": 201,
+    "english": "options saved",
+    "sample": {}
+  },
+  {
+    "key": "camera.director.removed",
+    "file": "src/shared/editor/directorCopy.ts",
+    "line": 215,
+    "english": "Automatic camera changes removed",
+    "sample": {}
+  },
+  {
+    "key": "camera.director.noneToRemove",
+    "file": "src/shared/editor/directorCopy.ts",
+    "line": 215,
+    "english": "No automatic changes to remove",
+    "sample": {}
+  },
+  {
+    "key": "camera.director.apply.upToDate",
+    "file": "src/shared/editor/directorCopy.ts",
+    "line": 220,
+    "english": "Up to date",
+    "sample": {}
+  },
+  {
+    "key": "camera.director.apply.again",
+    "file": "src/shared/editor/directorCopy.ts",
+    "line": 220,
+    "english": "Direct again",
+    "sample": {}
+  },
+  {
+    "key": "camera.director.apply.first",
+    "file": "src/shared/editor/directorCopy.ts",
+    "line": 220,
+    "english": "Direct camera",
+    "sample": {}
+  },
+  {
+    "key": "camera.director.applying.listening",
+    "file": "src/shared/editor/directorCopy.ts",
+    "line": 226,
+    "english": "Listening for speech…",
+    "sample": {}
+  },
+  {
+    "key": "camera.director.applying.face",
+    "file": "src/shared/editor/directorCopy.ts",
+    "line": 226,
+    "english": "Finding your face…",
+    "sample": {}
+  },
+  {
+    "key": "camera.director.applying.faceProgress",
+    "file": "src/shared/editor/directorCopy.ts",
+    "line": 226,
+    "english": "Finding your face… 3/12",
+    "sample": {
+      "done": "3",
+      "total": "12"
+    }
+  },
+  {
+    "key": "camera.director.unavailable.noCamera",
+    "file": "src/shared/editor/directorCopy.ts",
+    "line": 232,
+    "english": "This recording has no camera",
+    "sample": {}
+  },
+  {
+    "key": "camera.director.unavailable.hidden",
+    "file": "src/shared/editor/directorCopy.ts",
+    "line": 232,
+    "english": "Show the camera first",
+    "sample": {}
+  },
+  {
+    "key": "camera.directorSection.intro.cameraOnly",
+    "file": "src/renderer/src/editor/panels/DirectorSection.tsx",
+    "line": 109,
+    "english": "Camera only",
+    "sample": {}
+  },
+  {
+    "key": "camera.directorSection.intro.cameraOnly.title",
+    "file": "src/renderer/src/editor/panels/DirectorSection.tsx",
+    "line": 109,
+    "english": "The camera fills the frame while you talk before and after the demo",
+    "sample": {}
+  },
+  {
+    "key": "camera.directorSection.intro.cameraLarge",
+    "file": "src/renderer/src/editor/panels/DirectorSection.tsx",
+    "line": 110,
+    "english": "Large camera",
+    "sample": {}
+  },
+  {
+    "key": "camera.directorSection.intro.cameraLarge.title",
+    "file": "src/renderer/src/editor/panels/DirectorSection.tsx",
+    "line": 110,
+    "english": "A big camera over the screen while you talk before and after the demo",
+    "sample": {}
+  },
+  {
+    "key": "camera.directorSection.intro.off",
+    "file": "src/renderer/src/editor/panels/DirectorSection.tsx",
+    "line": 111,
+    "english": "Off",
+    "sample": {}
+  },
+  {
+    "key": "camera.directorSection.intro.off.title",
+    "file": "src/renderer/src/editor/panels/DirectorSection.tsx",
+    "line": 111,
+    "english": "No intro or outro: the bubble from the start to the end",
+    "sample": {}
+  },
+  {
+    "key": "camera.directorSection.hideAfter",
+    "file": "src/renderer/src/editor/panels/DirectorSection.tsx",
+    "line": 113,
+    "english": "5 s",
+    "sample": {
+      "n": "5"
+    }
+  },
+  {
+    "key": "camera.directorSection.hideNever",
+    "file": "src/renderer/src/editor/panels/DirectorSection.tsx",
+    "line": 113,
+    "english": "Never",
+    "sample": {}
+  },
+  {
+    "key": "camera.directorSection.unknownError",
+    "file": "src/renderer/src/editor/panels/DirectorSection.tsx",
+    "line": 118,
+    "english": "unknown error",
+    "sample": {}
+  },
+  {
+    "key": "camera.directorSection.notDirected",
+    "file": "src/renderer/src/editor/panels/DirectorSection.tsx",
+    "line": 274,
+    "english": "The camera could not be directed: «reason»",
+    "sample": {
+      "reason": "«reason»"
+    }
+  },
+  {
+    "key": "camera.directorSection.notRemoved",
+    "file": "src/renderer/src/editor/panels/DirectorSection.tsx",
+    "line": 287,
+    "english": "The automatic changes could not be removed: «reason»",
+    "sample": {
+      "reason": "«reason»"
+    }
+  },
+  {
+    "key": "camera.director.unavailable.hidden",
+    "file": "src/renderer/src/editor/panels/DirectorSection.tsx",
+    "line": 303,
+    "english": "Show the camera first",
+    "sample": {}
+  },
+  {
+    "key": "camera.directorSection.strip.intro",
+    "file": "src/renderer/src/editor/panels/DirectorSection.tsx",
+    "line": 475,
+    "english": "Intro: the full camera",
+    "sample": {}
+  },
+  {
+    "key": "camera.directorSection.strip.outro",
+    "file": "src/renderer/src/editor/panels/DirectorSection.tsx",
+    "line": 475,
+    "english": "Outro: the full camera",
+    "sample": {}
+  },
+  {
+    "key": "camera.directorSection.strip.bubble",
+    "file": "src/renderer/src/editor/panels/DirectorSection.tsx",
+    "line": 475,
+    "english": "The bubble",
+    "sample": {}
+  },
+  {
+    "key": "camera.directorSection.strip.yours",
+    "file": "src/renderer/src/editor/panels/DirectorSection.tsx",
+    "line": 475,
+    "english": "Yours, kept",
+    "sample": {}
+  },
+  {
+    "key": "camera.director.part.hidden",
+    "file": "src/renderer/src/editor/panels/DirectorSection.tsx",
+    "line": 475,
+    "english": "Camera hidden",
+    "sample": {}
+  },
+  {
+    "key": "camera.directorSection.stripTitle",
+    "file": "src/renderer/src/editor/panels/DirectorSection.tsx",
+    "line": 494,
+    "english": "Bubble top left · 0:16–0:23",
+    "sample": {
+      "part": "Bubble top left",
+      "times": "0:16–0:23"
+    }
+  },
+  {
+    "key": "camera.directorAnalysis.detectionNotStarted",
+    "file": "src/renderer/src/editor/directorAnalysis.ts",
+    "line": 145,
+    "english": "person detection could not start",
+    "sample": {}
+  },
+  {
+    "key": "camera.directorAnalysis.cameraUnreadable",
+    "file": "src/renderer/src/editor/directorAnalysis.ts",
+    "line": 159,
+    "english": "the camera video could not be read",
+    "sample": {}
+  },
+  {
+    "key": "camera.directorAnalysis.detectionStopped",
+    "file": "src/renderer/src/editor/directorAnalysis.ts",
+    "line": 163,
+    "english": "person detection stopped working",
     "sample": {}
   }
 ]

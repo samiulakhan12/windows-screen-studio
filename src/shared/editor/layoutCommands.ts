@@ -1,22 +1,13 @@
 import { cornered } from '../engine/layout'
-import { CORNER_NAMES } from '../recording/cameraBubble'
 import type { CameraLayout, Corner, LayoutSegment, Project } from '../types'
 import { addLayoutAt, cornerOnly, layoutSegmentAt, layoutTimeAt, updateLayout, type LayoutEdit } from './layouts'
+import { t } from '../i18n/t'
 
 /*
  * The editor's "camera layout at the playhead" commands, and the Camera panel's layout picker
  * when no change is selected: what they change in the project's layout segments. Pure; the
  * segments themselves, and where a new one goes (addLayoutAt), belong to layouts.ts.
  */
-
-/** Names of the layouts in the editor's messages. */
-export const LAYOUT_NAMES: Record<CameraLayout, string> = {
-  default: 'Screen with camera bubble',
-  'camera-only': 'Camera only',
-  'screen-only': 'Screen only',
-  'side-by-side': 'Side by side',
-  'camera-large': 'Large camera'
-}
 
 export type LayoutAtResult =
   | { ok: true; layouts: LayoutSegment[]; id: string; added: boolean }
@@ -50,9 +41,9 @@ export function setLayoutAt(project: LayoutEdit, layout: CameraLayout, t: number
 
 /** What the editor says when setLayoutAt changed nothing. */
 export function layoutRefusal(reason: 'same' | 'no-room' | 'end', layout: CameraLayout): string {
-  if (reason === 'same') return `The camera layout here already is ${LAYOUT_NAMES[layout].toLowerCase()}`
-  if (reason === 'end') return 'Too close to the end of the video for a new camera layout'
-  return 'No room for a new camera layout here: another one starts right after the playhead'
+  if (reason === 'same') return t('camera.layoutCommands.sameLayout', { layout })
+  if (reason === 'end') return t('camera.layoutCommands.layoutEnd')
+  return t('camera.layoutCommands.layoutNoRoom')
 }
 
 export type CornerAtResult =
@@ -86,8 +77,8 @@ export function setCornerAt(project: LayoutEdit & Pick<Project, 'webcam'>, corne
 
 /** What the editor says when setCornerAt changed nothing. */
 export function cornerRefusal(reason: 'same' | 'no-corner' | 'no-room' | 'end', corner: Corner): string {
-  if (reason === 'same') return `The camera already is in the ${CORNER_NAMES[corner].toLowerCase()} corner here`
-  if (reason === 'no-corner') return 'The camera layout here has no camera corner: pick the default, large camera or side by side layout first'
-  if (reason === 'end') return 'Too close to the end of the video to move the camera'
-  return 'No room to move the camera here: another camera layout starts right after the playhead'
+  if (reason === 'same') return t('camera.layoutCommands.sameCorner', { corner })
+  if (reason === 'no-corner') return t('camera.layoutCommands.noCorner')
+  if (reason === 'end') return t('camera.layoutCommands.cornerEnd')
+  return t('camera.layoutCommands.cornerNoRoom')
 }
