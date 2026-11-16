@@ -184,6 +184,11 @@
   transform: rotate(90deg);
 }
 
+/* Closed, the chevron points in reading direction (§13.2); open, it points down in both. */
+.caption-part-chevron:not(.open):dir(rtl) {
+  transform: scaleX(-1);
+}
+
 .caption-part-body {
   display: flex;
   flex-direction: column;

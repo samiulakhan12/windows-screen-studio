@@ -513,6 +513,22 @@ button.export-section-head:hover {
   }
 }
 
+/* In a right-to-left page the bar starts on the right and sweeps the other way. */
+@media (prefers-reduced-motion: no-preference) {
+  .progress.indeterminate .progress-bar:dir(rtl) {
+    animation-name: export-indeterminate-rtl;
+  }
+}
+
+@keyframes export-indeterminate-rtl {
+  0% {
+    transform: translateX(100%);
+  }
+  100% {
+    transform: translateX(-290%);
+  }
+}
+
 @media (max-width: 760px) {
   .export-body {
     grid-template-columns: 1fr;

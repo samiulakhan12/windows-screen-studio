@@ -274,6 +274,11 @@ kbd {
   -webkit-app-region: no-drag;
 }
 
+/* The Back arrow (the title bar's first button) points in reading direction (§13.2). */
+.titlebar > .btn:first-child > .icon:dir(rtl) {
+  transform: scaleX(-1);
+}
+
 .brand {
   display: flex;
   align-items: center;
@@ -520,6 +525,12 @@ select {
   transition: border-color var(--dur-fast), background-color var(--dur-fast);
 }
 
+/* The chevron sits at the list's end, where its padding leaves room. The transport, the timeline
+   and the preview stay left to right, and so do their lists. */
+select:dir(rtl):not(:is(.timeline, .transport, .canvas-wrap) select) {
+  background-position: left 10px center;
+}
+
 select:hover:not(:disabled) {
   border-color: var(--border-strong);
   background-color: var(--surface-3);
@@ -601,6 +612,11 @@ input:not([type]) {
 
 .toggle input:checked::after {
   transform: translateX(14px);
+}
+
+/* On, the knob moves to the switch's end: the left in a right-to-left page. */
+.toggle input:checked:dir(rtl)::after {
+  transform: translateX(-14px);
 }
 
 .toggle input:disabled {

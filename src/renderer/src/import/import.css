@@ -68,6 +68,22 @@
   }
 }
 
+/* In a right-to-left page the bar starts on the right and sweeps the other way. */
+@media (prefers-reduced-motion: no-preference) {
+  .import-modal .progress-bar.unknown:dir(rtl) {
+    animation-name: import-indeterminate-rtl;
+  }
+}
+
+@keyframes import-indeterminate-rtl {
+  from {
+    transform: translateX(100%);
+  }
+  to {
+    transform: translateX(-340%);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .import-modal .progress-bar.unknown {
     animation: none;

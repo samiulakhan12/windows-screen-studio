@@ -90,3 +90,19 @@
     transform: translateX(245%);
   }
 }
+
+/* In a right-to-left page the bar starts on the right and sweeps the other way. */
+@media (prefers-reduced-motion: no-preference) {
+  .copy-progress-waiting .progress-bar:dir(rtl) {
+    animation-name: copy-waiting-rtl;
+  }
+}
+
+@keyframes copy-waiting-rtl {
+  from {
+    transform: translateX(10%);
+  }
+  to {
+    transform: translateX(-245%);
+  }
+}

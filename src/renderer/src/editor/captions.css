@@ -423,6 +423,11 @@
   transform: rotate(90deg);
 }
 
+/* Closed, the chevron points in reading direction (§13.2); open, it points down in both. */
+.captions-script-chevron:not(.open):dir(rtl) {
+  transform: scaleX(-1);
+}
+
 .captions-script-text {
   margin: 0;
   max-height: 220px;
