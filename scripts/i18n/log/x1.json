@@ -1958,5 +1958,620 @@
     "sample": {
       "command": "Copy selected items"
     }
+  },
+  {
+    "key": "timeline.group.selected",
+    "file": "src/renderer/src/editor/Timeline.tsx",
+    "line": 198,
+    "english": "selected: drag to move all 3, Ctrl+click to leave it out",
+    "sample": {
+      "n": "3"
+    }
+  },
+  {
+    "key": "timeline.group.selectSeveral",
+    "file": "src/renderer/src/editor/Timeline.tsx",
+    "line": 198,
+    "english": "Ctrl+click to select several",
+    "sample": {}
+  },
+  {
+    "key": "timeline.hint",
+    "file": "src/renderer/src/editor/Timeline.tsx",
+    "line": 593,
+    "english": "Ctrl+click to select several · Shift+drag to box-select · Click a track to move the playhead · Shift+drag on the clip to select a range · Double-click a track to add · Hold Alt while dragging to place freely",
+    "sample": {}
+  },
+  {
+    "key": "timeline.selected",
+    "file": "src/renderer/src/editor/Timeline.tsx",
+    "line": 597,
+    "english": [
+      "0 selected",
+      "1 selected",
+      "2 selected",
+      "1000 selected"
+    ],
+    "sample": [
+      {
+        "count": 0,
+        "n": "0"
+      },
+      {
+        "count": 1,
+        "n": "1"
+      },
+      {
+        "count": 2,
+        "n": "2"
+      },
+      {
+        "count": 1000,
+        "n": "1000"
+      }
+    ]
+  },
+  {
+    "key": "timeline.clearSelection",
+    "file": "src/renderer/src/editor/Timeline.tsx",
+    "line": 602,
+    "english": "Clear selection",
+    "sample": {}
+  },
+  {
+    "key": "timeline.zoomGroup",
+    "file": "src/renderer/src/editor/Timeline.tsx",
+    "line": 610,
+    "english": "Timeline zoom",
+    "sample": {}
+  },
+  {
+    "key": "timeline.zoomOut",
+    "file": "src/renderer/src/editor/Timeline.tsx",
+    "line": 615,
+    "english": "Zoom out timeline",
+    "sample": {}
+  },
+  {
+    "key": "timeline.zoomIn",
+    "file": "src/renderer/src/editor/Timeline.tsx",
+    "line": 620,
+    "english": "Zoom in timeline",
+    "sample": {}
+  },
+  {
+    "key": "timeline.zoomInKeys",
+    "file": "src/renderer/src/editor/Timeline.tsx",
+    "line": 872,
+    "english": "Zoom in timeline (+ or Ctrl+wheel)",
+    "sample": {
+      "keys": "+"
+    }
+  },
+  {
+    "key": "timeline.zoomInWheel",
+    "file": "src/renderer/src/editor/Timeline.tsx",
+    "line": 872,
+    "english": "Zoom in timeline (Ctrl+wheel)",
+    "sample": {}
+  },
+  {
+    "key": "timeline.fitTitle",
+    "file": "src/renderer/src/editor/Timeline.tsx",
+    "line": 623,
+    "english": "Fit the whole recording",
+    "sample": {}
+  },
+  {
+    "key": "timeline.fit",
+    "file": "src/renderer/src/editor/Timeline.tsx",
+    "line": 624,
+    "english": "Fit",
+    "sample": {}
+  },
+  {
+    "key": "timeline.track.clip",
+    "file": "src/renderer/src/editor/Timeline.tsx",
+    "line": 631,
+    "english": "Clip: cut, split and speed",
+    "sample": {}
+  },
+  {
+    "key": "timeline.track.shapes",
+    "file": "src/renderer/src/editor/Timeline.tsx",
+    "line": 640,
+    "english": "Shapes, blur and spotlights",
+    "sample": {}
+  },
+  {
+    "key": "timeline.clipTrack.hint",
+    "file": "src/renderer/src/editor/Timeline.tsx",
+    "line": 659,
+    "english": "Click to move the playhead, Shift+drag to select a range to cut",
+    "sample": {}
+  },
+  {
+    "key": "timeline.trimStart",
+    "file": "src/renderer/src/editor/Timeline.tsx",
+    "line": 717,
+    "english": "Drag to trim the start",
+    "sample": {}
+  },
+  {
+    "key": "timeline.trimEnd",
+    "file": "src/renderer/src/editor/Timeline.tsx",
+    "line": 718,
+    "english": "Drag to trim the end",
+    "sample": {}
+  },
+  {
+    "key": "timeline.cutRange",
+    "file": "src/renderer/src/editor/Timeline.tsx",
+    "line": 726,
+    "english": "Cut the selected range",
+    "sample": {}
+  },
+  {
+    "key": "timeline.zoomTrack.add",
+    "file": "src/renderer/src/editor/Timeline.tsx",
+    "line": 735,
+    "english": "Double-click to add a zoom",
+    "sample": {}
+  },
+  {
+    "key": "timeline.scrollBand",
+    "file": "src/renderer/src/editor/Timeline.tsx",
+    "line": 744,
+    "english": "Scrolling 0:01.0 – 0:03.5: auto zoom shows the whole page while it moves",
+    "sample": {
+      "start": "0:01.0",
+      "end": "0:03.5"
+    }
+  },
+  {
+    "key": "timeline.zoomLink",
+    "file": "src/renderer/src/editor/Timeline.tsx",
+    "line": 755,
+    "english": "The camera pans from this zoom straight into the next one",
+    "sample": {}
+  },
+  {
+    "key": "timeline.zoom.region",
+    "file": "src/renderer/src/editor/Timeline.tsx",
+    "line": 764,
+    "english": "region",
+    "sample": {}
+  },
+  {
+    "key": "timeline.zoom.fixed",
+    "file": "src/renderer/src/editor/Timeline.tsx",
+    "line": 764,
+    "english": "fixed",
+    "sample": {}
+  },
+  {
+    "key": "timeline.zoom.auto",
+    "file": "src/renderer/src/editor/Timeline.tsx",
+    "line": 790,
+    "english": "auto",
+    "sample": {}
+  },
+  {
+    "key": "timeline.range",
+    "file": "src/renderer/src/editor/Timeline.tsx",
+    "line": 838,
+    "english": "0:01.0 – 0:03.5",
+    "sample": {
+      "start": "0:01.0",
+      "end": "0:03.5"
+    }
+  },
+  {
+    "key": "timeline.zoom.pullBack",
+    "file": "src/renderer/src/editor/Timeline.tsx",
+    "line": 879,
+    "english": "0.75× pull back",
+    "sample": {
+      "level": "0.75×"
+    }
+  },
+  {
+    "key": "timeline.zoom.automatic",
+    "file": "src/renderer/src/editor/Timeline.tsx",
+    "line": 880,
+    "english": "automatic zoom",
+    "sample": {}
+  },
+  {
+    "key": "timeline.zoom.edited",
+    "file": "src/renderer/src/editor/Timeline.tsx",
+    "line": 880,
+    "english": "edited zoom",
+    "sample": {}
+  },
+  {
+    "key": "timeline.zoom.pansToNext",
+    "file": "src/renderer/src/editor/Timeline.tsx",
+    "line": 881,
+    "english": "pans to the next zoom",
+    "sample": {}
+  },
+  {
+    "key": "timeline.textTrack.add",
+    "file": "src/renderer/src/editor/Timeline.tsx",
+    "line": 800,
+    "english": "Double-click to add text",
+    "sample": {}
+  },
+  {
+    "key": "timeline.shapeTrack.add",
+    "file": "src/renderer/src/editor/Timeline.tsx",
+    "line": 824,
+    "english": "Double-click to add an arrow",
+    "sample": {}
+  },
+  {
+    "key": "timeline.shapeTrack.empty",
+    "file": "src/renderer/src/editor/Timeline.tsx",
+    "line": 851,
+    "english": "Double-click to add an arrow, or use the Shapes panel for boxes, blur and spotlights",
+    "sample": {}
+  },
+  {
+    "key": "timeline.gap.cut",
+    "file": "src/renderer/src/editor/Timeline.tsx",
+    "line": 913,
+    "english": "Cut: 0:01.0 – 0:03.5 (2.5 s not in the video)",
+    "sample": {
+      "start": "0:01.0",
+      "end": "0:03.5",
+      "length": "2.5"
+    }
+  },
+  {
+    "key": "timeline.gap.trimmed",
+    "file": "src/renderer/src/editor/Timeline.tsx",
+    "line": 913,
+    "english": "Trimmed: 0:00.0 – 0:01.0 (1.0 s not in the video)",
+    "sample": {
+      "start": "0:00.0",
+      "end": "0:01.0",
+      "length": "1.0"
+    }
+  },
+  {
+    "key": "timeline.gap.restore",
+    "file": "src/renderer/src/editor/Timeline.tsx",
+    "line": 918,
+    "english": "Restore this cut",
+    "sample": {}
+  },
+  {
+    "key": "timeline.transport.pause",
+    "file": "src/renderer/src/editor/Transport.tsx",
+    "line": 113,
+    "english": "Pause",
+    "sample": {}
+  },
+  {
+    "key": "timeline.transport.timecode",
+    "file": "src/renderer/src/editor/Transport.tsx",
+    "line": 119,
+    "english": "Position / length of the exported video",
+    "sample": {}
+  },
+  {
+    "key": "timeline.transport.splitTitle",
+    "file": "src/renderer/src/editor/Transport.tsx",
+    "line": 130,
+    "english": "Split the clip at the playhead",
+    "sample": {}
+  },
+  {
+    "key": "timeline.transport.split",
+    "file": "src/renderer/src/editor/Transport.tsx",
+    "line": 131,
+    "english": "Split",
+    "sample": {}
+  },
+  {
+    "key": "timeline.transport.addZoomTitle",
+    "file": "src/renderer/src/editor/Transport.tsx",
+    "line": 133,
+    "english": "Add a zoom at the playhead",
+    "sample": {}
+  },
+  {
+    "key": "timeline.transport.addTextTitle",
+    "file": "src/renderer/src/editor/Transport.tsx",
+    "line": 136,
+    "english": "Add text at the playhead",
+    "sample": {}
+  },
+  {
+    "key": "timeline.safeZones.allThree",
+    "file": "src/renderer/src/editor/Transport.tsx",
+    "line": 147,
+    "english": "All three",
+    "sample": {}
+  },
+  {
+    "key": "timeline.safeZones.title",
+    "file": "src/renderer/src/editor/Transport.tsx",
+    "line": 177,
+    "english": "Show where TikTok, Reels and Shorts put their buttons and captions",
+    "sample": {}
+  },
+  {
+    "key": "timeline.safeZones.button",
+    "file": "src/renderer/src/editor/Transport.tsx",
+    "line": 179,
+    "english": "Safe zones",
+    "sample": {}
+  },
+  {
+    "key": "timeline.safeZones.of",
+    "file": "src/renderer/src/editor/Transport.tsx",
+    "line": 184,
+    "english": "Safe zones of",
+    "sample": {}
+  },
+  {
+    "key": "timeline.safeZones.legend",
+    "file": "src/renderer/src/editor/Transport.tsx",
+    "line": 212,
+    "english": "Shaded parts are covered by the apps' buttons and captions. Shown only here, never exported. The apps move them from time to time, so leave a little room.",
+    "sample": {}
+  },
+  {
+    "key": "timeline.snapping.on",
+    "file": "src/renderer/src/editor/SnapGuide.tsx",
+    "line": 61,
+    "english": "Snapping on: edges and the playhead snap to cuts, clicks, chapters and other items. Hold Alt while dragging to place freely",
+    "sample": {}
+  },
+  {
+    "key": "timeline.snapping.off",
+    "file": "src/renderer/src/editor/SnapGuide.tsx",
+    "line": 61,
+    "english": "Snapping off: items move freely. Click to snap to cuts, clicks, chapters and other items",
+    "sample": {}
+  },
+  {
+    "key": "timeline.snapping.label",
+    "file": "src/renderer/src/editor/SnapGuide.tsx",
+    "line": 66,
+    "english": "Snapping",
+    "sample": {}
+  },
+  {
+    "key": "timeline.previewSpeed",
+    "file": "src/renderer/src/editor/PreviewSpeed.tsx",
+    "line": 28,
+    "english": "Preview speed",
+    "sample": {}
+  },
+  {
+    "key": "timeline.snap.image",
+    "file": "src/shared/editor/snapping.ts",
+    "line": 128,
+    "english": "Image",
+    "sample": {}
+  },
+  {
+    "key": "timeline.snap.titleCard",
+    "file": "src/shared/editor/snapping.ts",
+    "line": 129,
+    "english": "Title card",
+    "sample": {}
+  },
+  {
+    "key": "timeline.snap.popUp",
+    "file": "src/shared/editor/snapping.ts",
+    "line": 130,
+    "english": "Pop-up",
+    "sample": {}
+  },
+  {
+    "key": "timeline.snap.caption",
+    "file": "src/shared/editor/snapping.ts",
+    "line": 131,
+    "english": "Caption",
+    "sample": {}
+  },
+  {
+    "key": "timeline.snap.cameraLayout",
+    "file": "src/shared/editor/snapping.ts",
+    "line": 132,
+    "english": "Camera layout",
+    "sample": {}
+  },
+  {
+    "key": "timeline.snap.cut",
+    "file": "src/shared/editor/snapping.ts",
+    "line": 175,
+    "english": "Cut",
+    "sample": {}
+  },
+  {
+    "key": "timeline.snap.split",
+    "file": "src/shared/editor/snapping.ts",
+    "line": 175,
+    "english": "Split",
+    "sample": {}
+  },
+  {
+    "key": "timeline.snap.trim",
+    "file": "src/shared/editor/snapping.ts",
+    "line": 179,
+    "english": "Trim",
+    "sample": {}
+  },
+  {
+    "key": "timeline.snap.start",
+    "file": "src/shared/editor/snapping.ts",
+    "line": 192,
+    "english": "Start",
+    "sample": {}
+  },
+  {
+    "key": "timeline.snap.end",
+    "file": "src/shared/editor/snapping.ts",
+    "line": 193,
+    "english": "End",
+    "sample": {}
+  },
+  {
+    "key": "timeline.snap.freeze",
+    "file": "src/shared/editor/snapping.ts",
+    "line": 195,
+    "english": "Freeze frame",
+    "sample": {}
+  },
+  {
+    "key": "timeline.snap.chapter",
+    "file": "src/shared/editor/snapping.ts",
+    "line": 199,
+    "english": "Chapter",
+    "sample": {}
+  },
+  {
+    "key": "timeline.snap.chapterTitled",
+    "file": "src/shared/editor/snapping.ts",
+    "line": 199,
+    "english": "Chapter · Intro",
+    "sample": {
+      "title": "Intro"
+    }
+  },
+  {
+    "key": "timeline.snap.click",
+    "file": "src/shared/editor/snapping.ts",
+    "line": 203,
+    "english": "Click",
+    "sample": {}
+  },
+  {
+    "key": "timeline.snap.playhead",
+    "file": "src/shared/editor/snapping.ts",
+    "line": 209,
+    "english": "Playhead",
+    "sample": {}
+  },
+  {
+    "key": "timeline.snap.edgeStart",
+    "file": "src/shared/editor/snapping.ts",
+    "line": 205,
+    "english": "Zoom start",
+    "sample": {
+      "name": "Zoom"
+    }
+  },
+  {
+    "key": "timeline.snap.edgeEnd",
+    "file": "src/shared/editor/snapping.ts",
+    "line": 206,
+    "english": "Camera layout end",
+    "sample": {
+      "name": "Camera layout"
+    }
+  },
+  {
+    "key": "common.state.off",
+    "file": "src/renderer/src/editor/CommandPalette.tsx",
+    "line": 214,
+    "english": "Off",
+    "sample": {}
+  },
+  {
+    "key": "common.action.add",
+    "file": "src/renderer/src/editor/ShortcutsDialog.tsx",
+    "line": 172,
+    "english": "Add",
+    "sample": {}
+  },
+  {
+    "key": "common.action.cancel",
+    "file": "src/renderer/src/editor/ShortcutsDialog.tsx",
+    "line": 230,
+    "english": "Cancel",
+    "sample": {}
+  },
+  {
+    "key": "common.label.keyboardShortcuts",
+    "file": "src/renderer/src/editor/ShortcutsDialog.tsx",
+    "line": 271,
+    "english": "Keyboard shortcuts",
+    "sample": {}
+  },
+  {
+    "key": "common.action.close",
+    "file": "src/renderer/src/editor/ShortcutsDialog.tsx",
+    "line": 272,
+    "english": "Close",
+    "sample": {}
+  },
+  {
+    "key": "common.action.done",
+    "file": "src/renderer/src/editor/ShortcutsDialog.tsx",
+    "line": 323,
+    "english": "Done",
+    "sample": {}
+  },
+  {
+    "key": "common.label.zoom",
+    "file": "src/renderer/src/editor/Timeline.tsx",
+    "line": 634,
+    "english": "Zoom",
+    "sample": {}
+  },
+  {
+    "key": "common.label.text",
+    "file": "src/renderer/src/editor/Timeline.tsx",
+    "line": 637,
+    "english": "Text",
+    "sample": {}
+  },
+  {
+    "key": "common.action.cut",
+    "file": "src/renderer/src/editor/Timeline.tsx",
+    "line": 728,
+    "english": "Cut",
+    "sample": {}
+  },
+  {
+    "key": "common.action.play",
+    "file": "src/renderer/src/editor/Transport.tsx",
+    "line": 113,
+    "english": "Play",
+    "sample": {}
+  },
+  {
+    "key": "common.label.zoom",
+    "file": "src/renderer/src/editor/Transport.tsx",
+    "line": 134,
+    "english": "Zoom",
+    "sample": {}
+  },
+  {
+    "key": "common.label.text",
+    "file": "src/renderer/src/editor/Transport.tsx",
+    "line": 137,
+    "english": "Text",
+    "sample": {}
+  },
+  {
+    "key": "common.label.zoom",
+    "file": "src/shared/editor/snapping.ts",
+    "line": 123,
+    "english": "Zoom",
+    "sample": {}
+  },
+  {
+    "key": "common.label.text",
+    "file": "src/shared/editor/snapping.ts",
+    "line": 124,
+    "english": "Text",
+    "sample": {}
   }
 ]

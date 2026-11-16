@@ -1,1 +1,234 @@
-{}
+{
+  "group.selected": {
+    "description": "Timeline: end of an item's tooltip while it is in a selection of several, after \" · \"; {n} is how many are selected. Ctrl is a keycap.",
+    "dnt": [
+      "Ctrl"
+    ]
+  },
+  "group.selectSeveral": {
+    "description": "Timeline: end of an item's tooltip, after \" · \", while nothing is selected. Ctrl is a keycap.",
+    "dnt": [
+      "Ctrl"
+    ]
+  },
+  "hint": {
+    "description": "Timeline: the hint above the tracks. Ctrl, Shift and Alt are keycaps.",
+    "dnt": [
+      "Ctrl",
+      "Shift",
+      "Alt"
+    ]
+  },
+  "selected": {
+    "description": "Timeline: how many items are selected together (two or more), above the tracks; {n} is the number."
+  },
+  "clearSelection": {
+    "description": "Timeline: button that clears a selection of several items; its shortcut (Esc) follows in brackets."
+  },
+  "zoomGroup": {
+    "description": "Timeline: accessible name of the timeline's zoom buttons."
+  },
+  "zoomOut": {
+    "description": "Timeline: button that shows more of the recording; its shortcut may follow in brackets."
+  },
+  "zoomIn": {
+    "description": "Timeline: accessible name of the button that shows the recording larger."
+  },
+  "zoomInKeys": {
+    "description": "Timeline: tooltip of the zoom-in button; {keys} is its shortcut. Ctrl+wheel is the mouse gesture that also zooms; Ctrl is a keycap.",
+    "dnt": [
+      "Ctrl"
+    ]
+  },
+  "zoomInWheel": {
+    "description": "Timeline: tooltip of the zoom-in button when it has no shortcut. Ctrl is a keycap.",
+    "dnt": [
+      "Ctrl"
+    ]
+  },
+  "fitTitle": {
+    "description": "Timeline: tooltip of Fit."
+  },
+  "fit": {
+    "description": "Timeline: button that zooms the timeline out to show the whole recording."
+  },
+  "track.clip": {
+    "description": "Timeline: tooltip of the clip track's label."
+  },
+  "track.shapes": {
+    "description": "Timeline: tooltip of the shapes track's label."
+  },
+  "clipTrack.hint": {
+    "description": "Timeline: tooltip of the clip track; the waveform's hint may follow after \" · \". Shift is a keycap.",
+    "dnt": [
+      "Shift"
+    ]
+  },
+  "trimStart": {
+    "description": "Timeline: tooltip of the handle at the start of the kept recording."
+  },
+  "trimEnd": {
+    "description": "Timeline: tooltip of the handle at the end of the kept recording."
+  },
+  "cutRange": {
+    "description": "Timeline: tooltip of the Cut button on a selected range; its shortcut follows in brackets."
+  },
+  "zoomTrack.add": {
+    "description": "Timeline: tooltip of the zoom track, and its hint while it is empty (\", or press Z\" may follow)."
+  },
+  "scrollBand": {
+    "description": "Timeline: tooltip of a band on the zoom track where the recording scrolls; {start} and {end} are timecodes."
+  },
+  "zoomLink": {
+    "description": "Timeline: tooltip of the link between two zooms."
+  },
+  "zoom.region": {
+    "description": "Timeline: a zoom that frames a drawn area, shown after its level on the block (\"1.5× · region\")."
+  },
+  "zoom.fixed": {
+    "description": "Timeline: a zoom that stays on one place, shown after its level on the block (\"1.5× · fixed\")."
+  },
+  "zoom.auto": {
+    "description": "Timeline: a zoom made automatically, shown on its block (\"1.5× · auto\")."
+  },
+  "range": {
+    "description": "Timeline: a span of time in a tooltip; {start} and {end} are timecodes."
+  },
+  "zoom.pullBack": {
+    "description": "Timeline: in a zoom's tooltip: a zoom below 1× shows more than the frame; {level} is its factor (\"0.75×\")."
+  },
+  "zoom.automatic": {
+    "description": "Timeline: in a zoom's tooltip: made by auto zoom."
+  },
+  "zoom.edited": {
+    "description": "Timeline: in a zoom's tooltip: added or changed by hand."
+  },
+  "zoom.pansToNext": {
+    "description": "Timeline: in a zoom's tooltip: the camera moves straight into the next zoom."
+  },
+  "textTrack.add": {
+    "description": "Timeline: tooltip of the text track, and its hint while it is empty (\", or press T\" may follow)."
+  },
+  "shapeTrack.add": {
+    "description": "Timeline: tooltip of the shapes track."
+  },
+  "shapeTrack.empty": {
+    "description": "Timeline: hint on the empty shapes track."
+  },
+  "gap.cut": {
+    "description": "Timeline: tooltip of a cut part of the recording; {start} and {end} are timecodes, {length} its length in seconds (s stays Latin)."
+  },
+  "gap.trimmed": {
+    "description": "Timeline: tooltip of a trimmed start or end of the recording; {start} and {end} are timecodes, {length} its length in seconds (s stays Latin)."
+  },
+  "gap.restore": {
+    "description": "Timeline: button on a cut part that puts it back."
+  },
+  "transport.pause": {
+    "description": "Transport under the preview: the play button while the video plays; its shortcut follows in brackets."
+  },
+  "transport.timecode": {
+    "description": "Transport under the preview: tooltip of the timecode."
+  },
+  "transport.splitTitle": {
+    "description": "Transport under the preview: tooltip of Split; its shortcut follows in brackets."
+  },
+  "transport.split": {
+    "description": "Transport under the preview: button that splits the clip at the playhead."
+  },
+  "transport.addZoomTitle": {
+    "description": "Transport under the preview: tooltip of the Zoom button; its shortcut follows in brackets."
+  },
+  "transport.addTextTitle": {
+    "description": "Transport under the preview: tooltip of the Text button; its shortcut follows in brackets."
+  },
+  "safeZones.allThree": {
+    "description": "Transport under the preview: the choice of the safe-zone menu that shades every app's zones (TikTok, Reels and Shorts)."
+  },
+  "safeZones.title": {
+    "description": "Transport under the preview: tooltip of Safe zones (tall frames only); its shortcut follows in brackets.",
+    "dnt": [
+      "TikTok",
+      "Reels",
+      "Shorts"
+    ]
+  },
+  "safeZones.button": {
+    "description": "Transport under the preview: button that shades the parts of a tall frame the apps cover."
+  },
+  "safeZones.of": {
+    "description": "Transport under the preview: accessible name of the menu that picks whose safe zones are shaded (\"Safe zones of TikTok\")."
+  },
+  "safeZones.legend": {
+    "description": "Transport under the preview: note under the preview while safe zones are shown."
+  },
+  "snapping.on": {
+    "description": "Timeline: tooltip of the magnet button while snapping is on; its shortcut follows in brackets. Alt is a keycap.",
+    "dnt": [
+      "Alt"
+    ]
+  },
+  "snapping.off": {
+    "description": "Timeline: tooltip of the magnet button while snapping is off; its shortcut follows in brackets."
+  },
+  "snapping.label": {
+    "description": "Timeline: accessible name of the magnet button that turns snapping on and off."
+  },
+  "previewSpeed": {
+    "description": "Transport: accessible name of the menu of preview speeds."
+  },
+  "snap.image": {
+    "description": "Snap guide on the timeline: the name of what a dragged edge snapped to, shown with its time. An image block."
+  },
+  "snap.titleCard": {
+    "description": "Snap guide on the timeline: the name of what a dragged edge snapped to, shown with its time. A title card block."
+  },
+  "snap.popUp": {
+    "description": "Snap guide on the timeline: the name of what a dragged edge snapped to, shown with its time. A pop-up graphic block."
+  },
+  "snap.caption": {
+    "description": "Snap guide on the timeline: the name of what a dragged edge snapped to, shown with its time. A caption block."
+  },
+  "snap.cameraLayout": {
+    "description": "Snap guide on the timeline: the name of what a dragged edge snapped to, shown with its time. A camera layout block."
+  },
+  "snap.cut": {
+    "description": "Snap guide on the timeline: the name of what a dragged edge snapped to, shown with its time. The edge of a cut part of the recording (a noun)."
+  },
+  "snap.split": {
+    "description": "Snap guide on the timeline: the name of what a dragged edge snapped to, shown with its time. A split between two clips (a noun)."
+  },
+  "snap.trim": {
+    "description": "Snap guide on the timeline: the name of what a dragged edge snapped to, shown with its time. The trimmed start or end of the recording (a noun)."
+  },
+  "snap.start": {
+    "description": "Snap guide on the timeline: the name of what a dragged edge snapped to, shown with its time. The start of the recording."
+  },
+  "snap.end": {
+    "description": "Snap guide on the timeline: the name of what a dragged edge snapped to, shown with its time. The end of the recording."
+  },
+  "snap.freeze": {
+    "description": "Snap guide on the timeline: the name of what a dragged edge snapped to, shown with its time. A freeze frame."
+  },
+  "snap.chapter": {
+    "description": "Snap guide on the timeline: the name of what a dragged edge snapped to, shown with its time. A chapter without a title."
+  },
+  "snap.chapterTitled": {
+    "description": "Snap guide on the timeline: the name of what a dragged edge snapped to, shown with its time. A chapter; {title} is its title.",
+    "user": [
+      "title"
+    ]
+  },
+  "snap.click": {
+    "description": "Snap guide on the timeline: the name of what a dragged edge snapped to, shown with its time. A recorded click."
+  },
+  "snap.playhead": {
+    "description": "Snap guide on the timeline: the name of what a dragged edge snapped to, shown with its time. The playhead."
+  },
+  "snap.edgeStart": {
+    "description": "Snap guide on the timeline: the name of what a dragged edge snapped to, shown with its time. The start of a block; {name} is the block's kind (\"Zoom\", \"Camera layout\")."
+  },
+  "snap.edgeEnd": {
+    "description": "Snap guide on the timeline: the name of what a dragged edge snapped to, shown with its time. The end of a block; {name} is the block's kind (\"Zoom\", \"Camera layout\")."
+  }
+}

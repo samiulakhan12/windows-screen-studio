@@ -2,6 +2,7 @@ import { memo, useSyncExternalStore } from 'react'
 import { shortcutLabel } from '../../../shared/editor/shortcuts'
 import { isPreviewSpeed, PREVIEW_SPEEDS, previewSpeedHint, shuttleHint, shuttleLabel, type ShuttleDir } from '../../../shared/editor/shuttle'
 import { fmt } from '../../../shared/i18n/fmt'
+import { t } from '../../../shared/i18n/t'
 import { useEditor } from './context'
 import { EditorIcon } from './EditorIcon'
 import { useKeymap } from './keymapContext'
@@ -24,7 +25,7 @@ export const PreviewSpeedControl = memo(function PreviewSpeedControl(): JSX.Elem
       <label className="preview-speed" data-changed={speed !== 1} title={previewSpeedHint(key(keymap.previewSpeedDown), key(keymap.previewSpeedUp))}>
         <EditorIcon name="speed" size={14} />
         <select
-          aria-label="Preview speed"
+          aria-label={t('timeline.previewSpeed')}
           value={String(speed)}
           onChange={(e) => {
             const v = Number(e.target.value)

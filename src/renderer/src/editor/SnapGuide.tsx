@@ -1,6 +1,7 @@
 import { forwardRef, useImperativeHandle, useRef, useSyncExternalStore } from 'react'
 import { withShortcut } from '../../../shared/editor/shortcuts'
 import { snapLabel } from '../../../shared/editor/snapping'
+import { t } from '../../../shared/i18n/t'
 import { EditorIcon } from './EditorIcon'
 import { useKeymap } from './keymapContext'
 import { snapPref, type SnapGuideHandle } from './snapControl'
@@ -57,14 +58,12 @@ export const SnapGuide = forwardRef<SnapGuideHandle>(function SnapGuide(_props, 
 export function SnapButton(): JSX.Element {
   const on = useSyncExternalStore(snapPref.subscribe, snapPref.get)
   const keymap = useKeymap()
-  const title = on
-    ? 'Snapping on: edges and the playhead snap to cuts, clicks, chapters and other items. Hold Alt while dragging to place freely'
-    : 'Snapping off: items move freely. Click to snap to cuts, clicks, chapters and other items'
+  const title = on ? t('timeline.snapping.on') : t('timeline.snapping.off')
   return (
     <button
       className="btn ghost icon-btn tl-snap"
       aria-pressed={on}
-      aria-label="Snapping"
+      aria-label={t('timeline.snapping.label')}
       data-testid="snap-toggle"
       title={withShortcut(title, keymap.toggleSnapping)}
       onClick={() => snapPref.toggle()}
