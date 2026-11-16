@@ -19,7 +19,9 @@ import { legacyTwin } from '../captions/studioEdit'
 import { LEGACY_TILES, studioPreset } from '../captions/studioPresets'
 import type { Bleep, CaptionAuto, CaptionMark, CaptionSegment, CaptionSettings, Graphic, Project, TitleCard } from '../types'
 import type { ReviewItem, ReviewKind, ReviewStatus } from './review'
-import { sfxTitle } from '../audio/soundLibrary'
+import { sfxName } from '../audio/soundNames'
+import { fmt } from '../i18n/fmt'
+import { t, type MessageKey } from '../i18n/t'
 
 /** The kinds of this module, in the order items at the same time are listed (after Review mode's own). */
 export const CAPTION_KINDS: readonly ReviewKind[] = ['style', 'emphasis', 'text', 'emoji', 'graphic', 'bleep']
@@ -35,11 +37,12 @@ type StyleRecord = NonNullable<CaptionAuto['style']>
 type TextRecord = NonNullable<CaptionAuto['text']>[number]
 
 /** What the detail line says for these rows. */
-const DETAIL = 'Captions Studio'
+const detail = (): string => t('review.captions.detail')
 const PROVIDER_NAMES: Record<string, string> = { openai: 'OpenAI', gemini: 'Gemini', anthropic: 'Claude' }
-const STYLE_BY: Record<StyleRecord['by'], string> = { great: 'Make my captions great', polish: 'Polish' }
+const STYLE_BY: Record<StyleRecord['by'], MessageKey> = { great: 'review.captions.by.great', polish: 'review.captions.by.polish' }
 
-const plural = (n: number, one: string, many = `${one}s`): string => `${n} ${n === 1 ? one : many}`
+/** A plural message's values: the count and its digits. */
+const counted = (n: number): { count: number; n: string } => ({ count: n, n: fmt.count(n) })
 /** Text cut to `max` characters, on a word when it can. */
 function short(text: string, max = 40): string {
   const t = text.replace(/\s+/g, ' ').trim()
@@ -91,22 +94,23 @@ const idOf = (key: string): string => key.slice(key.indexOf(':') + 1)
  * twin by its Classic name), else the Classic look, else Clean (no captions settings: today's default).
  */
 export function lookName(c: CaptionSettings | null | undefined): string {
-  if (!c) return 'Clean'
+  const classic = (preset: string): string | null => (LEGACY_TILES.some((tile) => tile.preset === preset) ? t(`captions.look.classic.${preset}.name` as MessageKey) : null)
+  if (!c) return t('captions.look.classic.clean.name')
   if (c.studio) {
     const from = c.studio.from
-    if (from === 'brand') return 'Brand'
-    if (from.startsWith('mine:')) return 'your style'
-    return LEGACY_TILES.find((t) => t.preset === from)?.name ?? studioPreset(from)?.name ?? 'your style'
+    if (from === 'brand') return t('review.captions.look.brand')
+    if (from.startsWith('mine:')) return t('review.captions.look.yours')
+    return classic(from) ?? (studioPreset(from) ? t(`captions.look.preset.${from}.name` as MessageKey) : t('review.captions.look.yours'))
   }
-  return LEGACY_TILES.find((t) => t.preset === c.preset)?.name ?? 'Clean'
+  return classic(c.preset) ?? t('captions.look.classic.clean.name')
 }
 
-const styleTitle = (r: StyleRecord): string => `Caption style: ${r.name} (was ${lookName(r.was)})`
+const styleTitle = (r: StyleRecord): string => t('review.captions.styleTitle', { name: r.name, was: lookName(r.was) })
 const markWords = (m: Pick<CaptionMark, 'from' | 'to'>): number => Math.max(1, m.to - m.from + 1)
 
 /** "Fixed “flown” → “Flown”": the words that differ between the text before and the text now, masked where bleeped. */
 export function textFixTitle(before: string, now: string | undefined, bleeps: readonly Bleep[] | undefined): string {
-  if (now === undefined) return `Fixed “${short(maskBleeped(before, bleeps))}”`
+  if (now === undefined) return t('review.captions.fixed', { text: short(maskBleeped(before, bleeps)) })
   const a = before.split(/\s+/).filter(Boolean)
   const b = now.split(/\s+/).filter(Boolean)
   let i = 0
@@ -116,40 +120,41 @@ export function textFixTitle(before: string, now: string | undefined, bleeps: re
   const was = a.slice(i, a.length - j).join(' ')
   const is = b.slice(i, b.length - j).join(' ')
   const show = (t: string): string => short(maskBleeped(t, bleeps))
-  if (!was && !is) return `Fixed “${show(now)}”`
-  return `Fixed “${show(was)}” → “${show(is)}”`
+  if (!was && !is) return t('review.captions.fixed', { text: show(now) })
+  return t('review.captions.fixedTo', { was: show(was), is: show(is) })
 }
 
 function graphicTitle(g: Graphic, bleeps: readonly Bleep[] | undefined): string {
   switch (g.kind) {
     case 'keyword':
-      return `Pop-up “${short(maskBleeped(g.text, bleeps))}”`
+      return t('review.captions.popUp', { text: short(maskBleeped(g.text, bleeps)) })
     case 'emoji': {
       const e = emojiEntry(g.emoji)
-      const on = g.anchor ? ` on “${short(maskBleeped(g.anchor.text, bleeps))}”` : ''
-      return `Emoji ${e?.text ?? ''}${on}`.replace(/ {2,}/g, ' ')
+      const emoji = e?.text ?? ''
+      const title = g.anchor ? t('review.captions.emojiOn', { emoji, anchor: short(maskBleeped(g.anchor.text, bleeps)) }) : t('review.captions.emoji', { emoji })
+      return title.replace(/ {2,}/g, ' ')
     }
     case 'counter':
-      return `Counter ${g.prefix}${g.to.toFixed(g.decimals)}${g.suffix}`
+      return t('review.captions.counter', { value: `${g.prefix}${g.to.toFixed(g.decimals)}${g.suffix}` })
     case 'list':
-      return `List: ${g.title?.trim() ? short(maskBleeped(g.title, bleeps)) : plural(g.items.length, 'item')}`
+      return g.title?.trim() ? t('review.captions.list', { title: short(maskBleeped(g.title, bleeps)) }) : t('review.captions.listItems', counted(g.items.length))
   }
 }
 
 function cardTitle(c: TitleCard, bleeps: readonly Bleep[] | undefined): string {
   const text = short(maskBleeped(c.title, bleeps))
-  if (c.auto?.by === 'speaker') return `Lower third: ${text}`
-  if (c.auto?.by === 'chapter') return `Chapter title: ${text}`
-  if (c.auto?.by === 'quote') return `Quote: “${text}”`
-  return `Title: ${text}`
+  if (c.auto?.by === 'speaker') return t('review.captions.lowerThird', { text })
+  if (c.auto?.by === 'chapter') return t('review.captions.chapterTitle', { text })
+  if (c.auto?.by === 'quote') return t('review.captions.quote', { text })
+  return t('review.captions.title', { text })
 }
 
-const viaDetail = (via: string | undefined): string => (via && via !== 'rules' && PROVIDER_NAMES[via] ? `${DETAIL}, with ${PROVIDER_NAMES[via]}` : DETAIL)
+const viaDetail = (via: string | undefined): string => (via && via !== 'rules' && PROVIDER_NAMES[via] ? t('review.captions.detailWith', { provider: PROVIDER_NAMES[via] }) : detail())
 
 /** A group row's title from its items (all those listed, reviewed or not, so it stays as first read). */
 function groupTitle(kind: 'emphasis' | 'text', parts: readonly ReviewItem[]): string {
-  if (kind === 'emphasis') return `Emphasis: ${plural(parts.reduce((n, p) => n + (p.words ?? 1), 0), 'word')}`
-  return `Text: ${plural(parts.length, 'caption')} tidied`
+  if (kind === 'emphasis') return t('review.captions.emphasisGroup', counted(parts.reduce((n, p) => n + (p.words ?? 1), 0)))
+  return t('review.captions.textGroup', counted(parts.length))
 }
 
 /* ---------- the rows ---------- */
@@ -158,7 +163,7 @@ const byTime = (a: ReviewItem, b: ReviewItem): number => a.start - b.start || a.
 
 function group(kind: 'emphasis' | 'text', key: string, parts: ReviewItem[]): ReviewItem {
   parts.sort(byTime)
-  return { key, kind, start: parts[0].start, end: parts[0].end, title: groupTitle(kind, parts), detail: DETAIL, members: parts.map((p) => p.key), parts }
+  return { key, kind, start: parts[0].start, end: parts[0].end, title: groupTitle(kind, parts), detail: detail(), members: parts.map((p) => p.key), parts }
 }
 
 /** Captions Studio's automatic changes still automatic in `project` (pending by construction), not in order. */
@@ -170,14 +175,14 @@ export function captionReviewItems(project: Project): ReviewItem[] {
   const style = project.captionAuto?.style
   if (style) {
     const at = first?.start ?? project.clips[0]?.start ?? 0
-    items.push({ key: STYLE_KEY, kind: 'style', start: at, end: first?.end ?? at, title: styleTitle(style), detail: STYLE_BY[style.by] ?? DETAIL, style })
+    items.push({ key: STYLE_KEY, kind: 'style', start: at, end: first?.end ?? at, title: styleTitle(style), detail: STYLE_BY[style.by] ? t(STYLE_BY[style.by]) : detail(), style })
   }
   const marks = (project.captionMarks ?? []).filter((m) => m.auto)
   if (marks.length) {
     const parts = marks.map((m): ReviewItem => {
       const seg = segs.get(m.caption)
       const at = seg?.start ?? 0
-      return { key: `emphasis:${m.id}`, kind: 'emphasis', start: at, end: seg?.end ?? at, title: `Emphasis on “${short(maskBleeped(m.text, bleeps))}”`, detail: DETAIL, words: markWords(m) }
+      return { key: `emphasis:${m.id}`, kind: 'emphasis', start: at, end: seg?.end ?? at, title: t('review.captions.emphasisOn', { text: short(maskBleeped(m.text, bleeps)) }), detail: detail(), words: markWords(m) }
     })
     items.push(group('emphasis', EMPHASIS_GROUP, parts))
   }
@@ -190,22 +195,22 @@ export function captionReviewItems(project: Project): ReviewItem[] {
       seen.add(r.caption)
       const seg = segs.get(r.caption)
       const at = seg?.start ?? 0
-      parts.push({ key: `text:${r.caption}`, kind: 'text', start: at, end: seg?.end ?? at, title: textFixTitle(r.text, seg?.text, bleeps), detail: DETAIL, text: r })
+      parts.push({ key: `text:${r.caption}`, kind: 'text', start: at, end: seg?.end ?? at, title: textFixTitle(r.text, seg?.text, bleeps), detail: detail(), text: r })
     }
     items.push(group('text', TEXT_GROUP, parts))
   }
   for (const g of project.graphics ?? []) {
     if (!g.auto) continue
     // A pop-up with a library sound names it (editing polish §10.7): "Pop-up “Save” (with Soft pop)".
-    const sound = g.sound && g.sound !== 'pop' && g.sound !== 'ding' ? ` (with ${sfxTitle(g.sound)})` : ''
-    items.push({ key: `graphic:${g.id}`, kind: g.kind === 'emoji' ? 'emoji' : 'graphic', start: g.start, end: g.end, title: graphicTitle(g, bleeps) + sound, detail: viaDetail(g.auto.via) })
+    const title = g.sound && g.sound !== 'pop' && g.sound !== 'ding' ? t('review.captions.withSound', { title: graphicTitle(g, bleeps), sound: sfxName(g.sound.slice('sfx:'.length)) }) : graphicTitle(g, bleeps)
+    items.push({ key: `graphic:${g.id}`, kind: g.kind === 'emoji' ? 'emoji' : 'graphic', start: g.start, end: g.end, title, detail: viaDetail(g.auto.via) })
   }
   for (const c of project.titles ?? []) {
     if (!c.auto) continue
     items.push({ key: `card:${c.id}`, kind: 'graphic', start: c.start, end: c.end, title: cardTitle(c, bleeps), detail: viaDetail(c.auto.via) })
   }
   for (const b of bleeps ?? []) {
-    if (b.auto) items.push({ key: `bleep:${b.id}`, kind: 'bleep', start: b.start, end: b.end, title: `Bleeped “${maskWord(b.word)}”`, detail: DETAIL })
+    if (b.auto) items.push({ key: `bleep:${b.id}`, kind: 'bleep', start: b.start, end: b.end, title: t('review.captions.bleeped', { word: maskWord(b.word) }), detail: detail() })
   }
   return items
 }

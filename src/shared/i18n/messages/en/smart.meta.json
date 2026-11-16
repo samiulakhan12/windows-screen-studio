@@ -680,5 +680,113 @@
   },
   "clips.words.making": {
     "description": "Short clips: progress while the copies are made."
+  },
+  "shortVersion.already": {
+    "description": "Make a shorter version: why a length is not offered: the video is already that short; {seconds} is its length in whole seconds (\"s\" is the unit)."
+  },
+  "shortVersion.keeps": {
+    "description": "Make a shorter version: the line under the choices: what the shorter version keeps; {n} sentences, {seconds} its length with one decimal."
+  },
+  "shortVersion.keepsSmooth": {
+    "description": "Make a shorter version: the same line when the cuts are made smooth."
+  },
+  "clips.wasStopped": {
+    "description": "Short clips: the reason a reading of the screen ends when Stop is pressed (a stopped run says nothing more)."
+  },
+  "clips.untitled": {
+    "description": "Short clips: the original's name in the done line when the recording has no name."
+  },
+  "clips.failed": {
+    "description": "Short clips: making the clips failed; {reason} is why (main's or the AI's words)."
+  },
+  "cost.namesAction": {
+    "description": "Short clips and Find chapters: what the AI request in the cost line is for: naming the clips or chapters."
+  },
+  "chapters.failed": {
+    "description": "Find chapters: finding chapters failed; {reason} is why."
+  },
+  "chapters.wasStopped": {
+    "description": "Find chapters: the reason a run ends when Stop is pressed (a stopped run says nothing more)."
+  },
+  "guide.run.stopped": {
+    "description": "Make a guide › Write titles or Tidy notes: said when the run was stopped."
+  },
+  "guide.run.nothingChanged": {
+    "description": "Make a guide › Write titles or Tidy notes: every step was edited by hand meanwhile, so nothing was written."
+  },
+  "guide.run.nothingForNotes": {
+    "description": "Make a guide › Tidy notes: no step has words near it."
+  },
+  "guide.run.titlesLocal": {
+    "description": "Make a guide › Write titles: done, with AI on this PC; {n} titles written."
+  },
+  "guide.run.titlesWith": {
+    "description": "Make a guide › Write titles: done with an AI service; {n} titles written, {place} the service's name."
+  },
+  "guide.run.titlesLocalPartly": {
+    "description": "Make a guide › Write titles: a later request failed after some titles were written on this PC; {reason} is why."
+  },
+  "guide.run.titlesWithPartly": {
+    "description": "Make a guide › Write titles: a later request failed after some titles were written with an AI service ({place}); {reason} is why."
+  },
+  "guide.run.notesLocal": {
+    "description": "Make a guide › Tidy notes: done, with AI on this PC; {n} notes tidied."
+  },
+  "guide.run.notesWith": {
+    "description": "Make a guide › Tidy notes: done with an AI service; {n} notes tidied, {place} the service's name."
+  },
+  "guide.cropTooSmall": {
+    "description": "Make a guide › screenshot viewer › Adjust: a crop under 5% of the frame is refused."
+  },
+  "guide.adjust.cropName": {
+    "description": "Make a guide › Adjust: how a screen reader hears the crop box; {w}, {x} and {y} are shares of the screen (\"45%\")."
+  },
+  "guide.adjust.ringName": {
+    "description": "Make a guide › Adjust: how a screen reader hears the ring; {x} and {y} are shares of the screen (\"42%\")."
+  },
+  "clips.reason.clicks": {
+    "description": "Find short clips: a reason a moment was picked, the clicks in it."
+  },
+  "clips.reason.screens": {
+    "description": "Find short clips: a reason a silent moment was picked, how many screens it shows."
+  },
+  "clips.reason.seconds": {
+    "description": "Find short clips: the last reason of a moment, its length in seconds (\"s\" is the unit symbol). The rows leave it out, since their time line gives it; a copy's origin keeps it."
+  },
+  "clips.reason.density": {
+    "description": "Find short clips: a reason a moment was picked (it says much in little time)."
+  },
+  "clips.reason.keywords": {
+    "description": "Find short clips: a reason a moment was picked (it holds the recording's key words)."
+  },
+  "clips.reason.emphasis": {
+    "description": "Find short clips: a reason a moment was picked (words marked for emphasis in the captions)."
+  },
+  "clips.reason.numbers": {
+    "description": "Find short clips: a reason a moment was picked (it says numbers)."
+  },
+  "clips.reason.mentions": {
+    "description": "Find short clips: a reason a moment was picked; {word} is the word the user asked clips about, as said.",
+    "user": [
+      "word"
+    ]
+  },
+  "clips.reason.opensQuestion": {
+    "description": "Find short clips: a reason a moment was picked (its first sentence is a question)."
+  },
+  "clips.reason.opensNumber": {
+    "description": "Find short clips: a reason a moment was picked (its first sentence gives a number)."
+  },
+  "clips.reason.opensAction": {
+    "description": "Find short clips: a reason a moment was picked (it opens with a click or typing)."
+  },
+  "clips.reason.endsCleanly": {
+    "description": "Find short clips: a reason a moment was picked (it ends at the end of a sentence)."
+  },
+  "clips.titleNumbered": {
+    "description": "Short clips: the name of a found moment when nothing said in it makes a name (n is its place in the list); a clip made from it is named after it."
+  },
+  "clips.titleMostAction": {
+    "description": "Short clips: the name of a found moment in a video without speech, the moment with the most going on; {time} is where it starts (e.g. \"1:23\"). A clip made from it is named after it."
   }
 }

@@ -1,6 +1,10 @@
 import type { Project } from '../types'
 
-/** The name a recording gets when its name is emptied. */
+/**
+ * The name a recording gets when its name is emptied, and the name copies, clips and versions
+ * start from when it has none. It is written into the project file, so it is the same in every UI
+ * language (docs/design/output-and-languages.md §9.7): a project's name is the user's content.
+ */
 export const UNTITLED = 'Untitled recording'
 
 /**

@@ -174,7 +174,7 @@ class ProWebCodecsSink implements FrameSink {
   private open(): Promise<WebCodecsSink> {
     this.opening ??= firstSupported(this.configs).then((config) => {
       if (!config) throw new Error(t('codecs.webcodecs.unsupported', { codec: this.codec === 'hevc' ? 'HEVC' : 'AV1', width: this.canvas.width, height: this.canvas.height }))
-      if (this.closed) throw new DOMException('The export was stopped', 'AbortError')
+      if (this.closed) throw new DOMException(t('export.stoppedAbort'), 'AbortError')
       this.sink = new WebCodecsSink(this.canvas, config, this.fps, this.startJob, this.codec === 'av1' ? 'ivf-av01' : 'annexb')
       return this.sink
     })

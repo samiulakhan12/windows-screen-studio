@@ -875,5 +875,7 @@
   "ai.usage.used": "It used {tokens} tokens.",
   "ai.usage.free": "No cost ({tokens} tokens).",
   "ai.usage.underCent": "Cost under {amount} ({tokens} tokens).",
-  "ai.usage.about": "Cost about {amount} ({tokens} tokens)."
+  "ai.usage.about": "Cost about {amount} ({tokens} tokens).",
+  "look.previewFocus": "Previewing {name} · Enter uses it",
+  "look.previewHover": "Previewing {name} · Click to use it"
 }

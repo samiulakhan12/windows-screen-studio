@@ -118,5 +118,20 @@
   "speech.duration.underMinute": "under 1 min",
   "speech.duration.minutes": "about {minutes} min",
   "speech.duration.hoursMinutes": "about {hours} h {minutes} min",
-  "speech.duration.hours": "about {hours} h"
+  "speech.duration.hours": "about {hours} h",
+  "notes.hiddenScreen": "Your notes stay hidden in this recording: on this version of Windows they would show in the video as a black box. Move them off the recorded screen or area while rehearsing, or update to Windows 10 version 2004 or later.",
+  "notes.hiddenWindow": "Your notes stay hidden in window recordings on this version of Windows: they would show in the video as a black box. Update to Windows 10 version 2004 or later to use them.",
+  "notes.hotkeyUsedElsewhere": "{key} ({action}) is used by another app, so it does not work while your notes are open.",
+  "notes.hotkeyInvalid": "{key} ({action}) cannot be used as a hotkey; pick another one in Speaker notes.",
+  "notes.windowTitle": "Speaker notes",
+  "shareIpc.testPosted": "Posted a test message to {label}.",
+  "share.postedTo": "Posted to {label}",
+  "share.savedTo": "Saved to {place}",
+  "share.failedTitle": "Could not share",
+  "share.copyTo": "Copy to {place}",
+  "share.postTo": "Post to {place}",
+  "share.alreadyIn": "Already in {place}",
+  "share.sharedTitle": "Shared",
+  "share.folder.oneDriveWork": "OneDrive (work or school)",
+  "share.folder.dropboxWork": "Dropbox (work)"
 }

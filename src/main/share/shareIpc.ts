@@ -82,7 +82,7 @@ const send = (run: ShareRunView): void => {
 const shown = new Set<Notification>()
 function notify(n: { title: string; body: string; show?: string }): void {
   if (!Notification.isSupported()) return
-  const note = new Notification({ title: n.title, body: n.body, icon: windowIconPath(), actions: n.show ? [{ type: 'button', text: 'Show in folder' }] : [] })
+  const note = new Notification({ title: n.title, body: n.body, icon: windowIconPath(), actions: n.show ? [{ type: 'button', text: t('common.action.showInFolder') }] : [] })
   note.on('action', () => n.show && shell.showItemInFolder(n.show))
   note.on('click', () => {
     const win = getMainWindow()
@@ -192,7 +192,7 @@ export function registerShareIpc(): void {
     try {
       const hook = shareStore().hook(id)
       await post(hook, TEST_MESSAGE, new AbortController().signal)
-      return { ok: true, message: `Posted a test message to ${hook.label}.` }
+      return { ok: true, message: t('main.shareIpc.testPosted', { label: hook.label }) }
     } catch (err) {
       return { ok: false, message: err instanceof Error ? err.message : String(err) }
     }

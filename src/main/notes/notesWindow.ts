@@ -22,6 +22,7 @@ import { writeScriptFile } from '../projects'
 import { captureExclusionSupported } from '../recording/captureExclusion'
 import { getMainWindow, loadRoute, preloadPath } from '../windows'
 import { notesStore } from './notesStore'
+import { t } from '../../shared/i18n/t'
 
 /** What prepare() knows about the recording when it decides on the notes. */
 export interface RecordingNotesPlan {
@@ -34,11 +35,13 @@ export interface RecordingNotesPlan {
 
 /** Why the notes stay hidden on a PC that cannot keep them out of the capture (CapturePlan.notesNotice). */
 export const NOTES_NOTICE = {
-  screen:
-    'Your notes stay hidden in this recording: on this version of Windows they would show in the video as a black box. Move them off the recorded screen or area while rehearsing, or update to Windows 10 version 2004 or later.',
-  window:
-    'Your notes stay hidden in window recordings on this version of Windows: they would show in the video as a black box. Update to Windows 10 version 2004 or later to use them.'
-} as const
+  get screen(): string {
+    return t('main.notes.hiddenScreen')
+  },
+  get window(): string {
+    return t('main.notes.hiddenWindow')
+  }
+}
 
 /** The page's background (--surface-0): opaque, so nothing flashes before it paints. */
 const BACKGROUND = '#0e0e11'
@@ -165,13 +168,13 @@ function registerNotesHotkeys(settings: NotesSettings): void {
   for (const action of NOTES_HOTKEY_ACTIONS) {
     const accelerator = settings.hotkeys[action]
     if (!accelerator) continue
-    const what = `${hotkeyLabel(accelerator)} (${NOTES_HOTKEY_NAMES[action]})`
+    const what = { key: hotkeyLabel(accelerator), action: NOTES_HOTKEY_NAMES[action] }
     try {
       if (globalShortcut.register(accelerator, () => notesHotkey(action))) registered[action] = accelerator
-      else problems.push(`${what} is used by another app, so it does not work while your notes are open.`)
+      else problems.push(t('main.notes.hotkeyUsedElsewhere', what))
     } catch (err) {
       console.warn(`Could not register ${accelerator}:`, err)
-      problems.push(`${what} cannot be used as a hotkey; pick another one in Speaker notes.`)
+      problems.push(t('main.notes.hotkeyInvalid', what))
     }
   }
 }
@@ -279,7 +282,7 @@ function create(mode: NotesMode, rect: Rect, locked: boolean, plan: RecordingNot
     show: false,
     // While recording it must never take focus from the app being recorded.
     focusable: mode === 'rehearse',
-    title: 'Speaker notes',
+    title: t('main.notes.windowTitle'),
     webPreferences: { preload: preloadPath, sandbox: true, contextIsolation: true, nodeIntegration: false, backgroundThrottling: false, spellcheck: false }
   })
   // Before the route loads, so the page is never captured (and hidden from screen sharing).

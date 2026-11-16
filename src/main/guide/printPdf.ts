@@ -11,6 +11,7 @@ import { randomBytes } from 'node:crypto'
 import { promises as fs } from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { t } from '../../shared/i18n/t'
 
 export const PRINT_PARTITION = 'guide-print'
 export const PRINT_DIR = 'tmp/guide-print'
@@ -60,8 +61,8 @@ function within<T>(work: Promise<T>, ms: number, signal: AbortSignal | undefined
       onStop()
       reject(new Error(message))
     }
-    const aborted = (): void => stop('Saving the PDF was cancelled.')
-    const timer = setTimeout(() => stop('Printing the guide took too long.'), ms)
+    const aborted = (): void => stop(t('errors.printPdf.cancelled'))
+    const timer = setTimeout(() => stop(t('errors.printPdf.tooLong')), ms)
     if (signal?.aborted) return aborted()
     signal?.addEventListener('abort', aborted, { once: true })
     work.then(

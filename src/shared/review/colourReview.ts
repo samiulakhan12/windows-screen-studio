@@ -9,10 +9,12 @@
 import { withProjectGrade } from '../editor/colourEdit'
 import type { ColorGrade, Project } from '../types'
 import type { ReviewItem, ReviewStatus } from './review'
+import { t } from '../i18n/t'
 
 export const COLOUR_KEY = 'colour:camera'
-export const COLOUR_TITLE = 'Camera colour balanced'
-export const COLOUR_DETAIL = 'Auto colour'
+/** The row's title and its detail (the tool), made when the rows are listed. */
+export const colourTitle = (): string => t('review.colour.title')
+export const colourDetail = (): string => t('review.colour.detail')
 
 /** The camera grade Auto colour had set when each row was listed (its status reads it after Keep). */
 const setWhenListed = new WeakMap<ReviewItem, string>()
@@ -21,7 +23,7 @@ const keyOf = (g: ColorGrade | undefined): string => JSON.stringify(g ?? null)
 export function colourReviewItems(project: Project): ReviewItem[] {
   if (!project.grade?.auto) return []
   const at = project.clips[0]?.start ?? 0
-  const item: ReviewItem = { key: COLOUR_KEY, kind: 'colour', start: at, end: at, title: COLOUR_TITLE, detail: COLOUR_DETAIL }
+  const item: ReviewItem = { key: COLOUR_KEY, kind: 'colour', start: at, end: at, title: colourTitle(), detail: colourDetail() }
   setWhenListed.set(item, keyOf(project.grade.camera))
   return [item]
 }

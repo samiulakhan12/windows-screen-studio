@@ -433,5 +433,82 @@
   },
   "speech.duration.hours": {
     "description": "Captions on this PC: how long making captions will take, in whole hours."
+  },
+  "notes.hiddenScreen": {
+    "description": "Speaker notes: the warning when a screen or area recording starts on a Windows version that cannot keep the notes out of the video. \"Windows 10 version 2004\" is a product version, kept as is.",
+    "dnt": [
+      "Windows 10",
+      "2004"
+    ]
+  },
+  "notes.hiddenWindow": {
+    "description": "Speaker notes: the warning when a window recording starts on a Windows version that cannot keep the notes out of the video.",
+    "dnt": [
+      "Windows 10",
+      "2004"
+    ]
+  },
+  "notes.hotkeyUsedElsewhere": {
+    "description": "Speaker notes: a notes hotkey another app holds. {key} is the key combination as keycaps (never translated); {action} is the hotkey's name (\"Notes: back\")."
+  },
+  "notes.hotkeyInvalid": {
+    "description": "Speaker notes: a notes hotkey Windows refused. {key} is the key combination as keycaps (never translated); {action} is the hotkey's name. \"Speaker notes\" is the dialog where hotkeys are chosen."
+  },
+  "notes.windowTitle": {
+    "description": "Speaker notes: the title of the notes window (the taskbar and window lists never show it, but screen readers read it)."
+  },
+  "shareIpc.testPosted": {
+    "description": "Settings › Share: said after Test posted a message to a chat. {label} is the chat's name as the user gave it.",
+    "user": [
+      "label"
+    ]
+  },
+  "share.postedTo": {
+    "description": "Share: a finished post in the \"Shared\" notification. {label} is the chat's name.",
+    "user": [
+      "label"
+    ]
+  },
+  "share.savedTo": {
+    "description": "Share: a finished copy in the \"Shared\" notification. {place} is the folder, \"OneDrive › Flown\".",
+    "user": [
+      "place"
+    ]
+  },
+  "share.failedTitle": {
+    "description": "Share: the title of the notification when a share failed."
+  },
+  "share.copyTo": {
+    "description": "Share: a button on the export's notification that copies the video into a cloud folder. {place} is the folder's name, shortened.",
+    "user": [
+      "place"
+    ]
+  },
+  "share.postTo": {
+    "description": "Share: a button on the export's notification that posts the video's title to a chat. {place} is the chat's name, shortened.",
+    "user": [
+      "place"
+    ]
+  },
+  "share.alreadyIn": {
+    "description": "Share: a copy step that found the same video already in the folder. {place} is the folder, \"OneDrive › Flown\".",
+    "user": [
+      "place"
+    ]
+  },
+  "share.sharedTitle": {
+    "description": "Share: the title of the notification when every step of a share finished."
+  },
+  "share.folder.oneDriveWork": {
+    "description": "Settings › Share: the name of a OneDrive folder found on this PC for a work or school account whose organisation has no name. \"OneDrive\" is Microsoft's product name.",
+    "dnt": [
+      "OneDrive"
+    ]
+  },
+  "share.folder.dropboxWork": {
+    "description": "Settings › Share: the name of the Dropbox folder found on this PC for a work (business) account. \"Dropbox\" is the service's name.",
+    "dnt": [
+      "Dropbox"
+    ]
   }
 }

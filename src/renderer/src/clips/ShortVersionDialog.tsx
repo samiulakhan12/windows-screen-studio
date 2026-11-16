@@ -24,16 +24,15 @@ import { Rich } from '../editor/panels/Rich'
 
 /** Focus on is read this long after the last key. */
 const FOCUS_WAIT_MS = 300
-const plural = (n: number, one: string): string => `${n} ${one}${n === 1 ? '' : 's'}`
-
 /** "This video is already 52 s": why a length at or above the video's own is not offered. */
-export const alreadyText = (L: number): string => `This video is already ${Math.floor(L + 1e-6)} s`
+export const alreadyText = (L: number): string => t('smart.shortVersion.already', { seconds: fmt.count(Math.floor(L + 1e-6)) })
 
 /** The line under the choices (§2.4): what the shorter version keeps, or why there is none. */
 export function shortLine(plan: ShortPlan | null, L: number, smooth: boolean): string {
   if (!plan) return CLIPS_WORDS.shortNeedsCaptions
   if (!plan.ok) return plan.reason === 'no-captions' ? CLIPS_WORDS.shortNeedsCaptions : plan.reason === 'too-short' ? alreadyText(L) : CLIPS_WORDS.tooLittle
-  return `Keeps ${plural(plan.sentences, 'sentence')}, ${plan.seconds.toFixed(1)} s${smooth ? ', smooth cuts' : ''}`
+  const values = { count: plan.sentences, n: fmt.count(plan.sentences), seconds: fmt.number(plan.seconds, { max: 1 }) }
+  return smooth ? t('smart.shortVersion.keepsSmooth', values) : t('smart.shortVersion.keeps', values)
 }
 
 export function ShortVersionDialog(props: { project: Project; cursor: CursorTrack; vw: number; vh: number; onClose(): void; onOpen(id: string): void }): JSX.Element {
@@ -113,7 +112,7 @@ export function ShortVersionDialog(props: { project: Project; cursor: CursorTrac
       const out = await makeClipCopies([copy], { sourceId: now.id, flush: settledFlush(store), signal: ctrl.signal, onProgress: (_i, _n, p) => live.current && p && setMaking(p) })
       if (live.current && out.made[0]) setMade(out.made[0])
     } catch (err) {
-      if (live.current && !ctrl.signal.aborted) setError(err instanceof ClipCopyError ? err.message : `Could not make the copy: ${ipcMessage(err)}`)
+      if (live.current && !ctrl.signal.aborted) setError(err instanceof ClipCopyError ? err.message : t('review.copy.failed', { reason: ipcMessage(err) }))
     } finally {
       if (controller.current === ctrl) controller.current = null
       if (live.current) setMaking(null)

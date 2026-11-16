@@ -217,5 +217,6 @@
   "provider.preset.ollama": "Ollama on this PC",
   "provider.preset.lmstudio": "LM Studio on this PC",
   "provider.preset.other": "Other address",
-  "ai.canTranscribeDo": "Transcription (auto captions), clean-up, translation, chapters, titles and summaries"
+  "ai.canTranscribeDo": "Transcription (auto captions), clean-up, translation, chapters, titles and summaries",
+  "brand.notSaved": "Your brand kit could not be saved: {reason}"
 }

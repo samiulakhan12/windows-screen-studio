@@ -12,7 +12,7 @@ import type { AudioLevels } from '../../../shared/audio/loudness'
 import type { AudioSource } from '../../../shared/audio/settings'
 import { speechLevelSource } from '../../../shared/audio/speech'
 import { clipCopy, type ClipShape } from '../../../shared/clips/clipCopy'
-import { CLIP_RULES, type Moment, type MomentLength } from '../../../shared/clips/moments'
+import { CLIP_RULES, listedReasons, type Moment, type MomentLength } from '../../../shared/clips/moments'
 import { outputTimeAt } from '../../../shared/editor/clips'
 import { canCopyAs } from '../../../shared/editor/duplicate'
 import { planOf, videoDuration, videoTimeAt } from '../../../shared/engine/freeze'
@@ -59,7 +59,7 @@ export function momentRange(project: Pick<Project, 'clips' | 'freezes'>, m: Pick
 }
 
 /** The reasons a row lists: without the length, which its time line says. */
-const rowReasons = (m: Moment): string => m.reasons.filter((r) => !/^\d+ s$/.test(r)).join(' · ')
+const rowReasons = (m: Moment): string => listedReasons(m).join(' · ')
 
 /**
  * The shapes Duplicate can make of this recording (canCopyAs: a tall one is not made vertical) and
@@ -335,7 +335,7 @@ export function ShortClipsPanel(props: { project: Project; cursor: CursorTrack; 
         onProgress: (i, n, p) => live.current && setMaking({ i, n, p })
       })
       record(out.made)
-      const name = project.name.trim() || 'Untitled recording'
+      const name = project.name.trim() || t('smart.clips.untitled')
       const said = out.stopped ? t('smart.clips.stopped', { count: out.made.length, n: fmt.count(out.made.length) }) : t('smart.clips.madeCopies', { count: out.made.length, n: fmt.count(out.made.length), name })
       if (live.current) {
         setStatus(said)
@@ -345,7 +345,7 @@ export function ShortClipsPanel(props: { project: Project; cursor: CursorTrack; 
       if (err instanceof ClipCopyError) record(err.made)
       if (live.current && !ctrl.signal.aborted) {
         setStatus(null)
-        setError(err instanceof ClipCopyError ? err.message : `Could not make the clips: ${ipcMessage(err)}`)
+        setError(err instanceof ClipCopyError ? err.message : t('smart.clips.failed', { reason: ipcMessage(err) }))
       }
     } finally {
       if (controller.current === ctrl) controller.current = null
@@ -527,7 +527,7 @@ export function ShortClipsPanel(props: { project: Project; cursor: CursorTrack; 
                   </select>
                 </label>
               </div>
-              {namesChoice && <CostLine id={`${ids}-cost`} choice={namesChoice} actions={[{ key: 'names', label: 'Names', buttonId: makeId, request: estimate }]} />}
+              {namesChoice && <CostLine id={`${ids}-cost`} choice={namesChoice} actions={[{ key: 'names', label: t('smart.cost.namesAction'), buttonId: makeId, request: estimate }]} />}
             </fieldset>
           )}
 

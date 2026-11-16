@@ -785,5 +785,152 @@
   },
   "media.imageFailed": {
     "description": "An image (a background, a pasted or brand image) could not be loaded."
+  },
+  "freeze.atEndPauses": {
+    "description": "Editor notice: a freeze frame at the end of the video cannot keep the sound playing."
+  },
+  "freeze.onePaused": {
+    "description": "Editor notice after switching one freeze frame to pause the sound."
+  },
+  "freeze.onePlaying": {
+    "description": "Editor notice after switching one freeze frame to keep the sound playing."
+  },
+  "click.kind": {
+    "description": "Zoom › Selected click and the timeline: which mouse button a recorded click was."
+  },
+  "click.stray.start": {
+    "description": "Zoom panel: why stray-click detection ignored a click, as the end of \"It was ignored automatically: {reason}.\" (lower case, no full stop)."
+  },
+  "click.stray.end": {
+    "description": "Zoom panel: why stray-click detection ignored a click, as the end of a sentence (see editor.click.stray.start)."
+  },
+  "click.stray.moving": {
+    "description": "Zoom panel: why stray-click detection ignored a click, as the end of a sentence (see editor.click.stray.start)."
+  },
+  "click.tooltip.strayStart": {
+    "description": "Timeline: a click marker's tooltip when detection ignored the click; {at} is its time."
+  },
+  "click.tooltip.strayEnd": {
+    "description": "Timeline: a click marker's tooltip when detection ignored the click; {at} is its time."
+  },
+  "click.tooltip.strayMoving": {
+    "description": "Timeline: a click marker's tooltip when detection ignored the click; {at} is its time."
+  },
+  "click.tooltip.ignored": {
+    "description": "Timeline: a click marker's tooltip when the user ignored the click; {at} is its time."
+  },
+  "click.tooltip.usedKey": {
+    "description": "Timeline: a used click marker's tooltip; {at} is its time, {key} the Delete selection shortcut as keycaps; zoom \"yes\" when the click can start a zoom."
+  },
+  "click.tooltip.used": {
+    "description": "Timeline: a used click marker's tooltip when no key ignores clicks; {at} is its time; zoom \"yes\" when the click can start a zoom."
+  },
+  "click.usedZoom": {
+    "description": "Zoom › Selected click: what a used click that can start a zoom does."
+  },
+  "click.used": {
+    "description": "Zoom › Selected click: what a used click that cannot start a zoom does."
+  },
+  "click.usedRight": {
+    "description": "Zoom › Selected click: what a used right click does while right clicks start no zoom. \"Auto zoom › Right clicks\" names a setting in the Zoom panel."
+  },
+  "crop.croppedTo": {
+    "description": "Crop: the notice after Done; {width} and {height} are the visible picture's size in pixels."
+  },
+  "crop.whole": {
+    "description": "Crop: the notice after Done when no crop is left."
+  },
+  "crop.zoomsRemoved": {
+    "description": "Crop: a sentence of the notice after Done; \"it\" is the crop."
+  },
+  "crop.zoomsAdjusted": {
+    "description": "Crop: a sentence of the notice after Done."
+  },
+  "crop.zoomsBack": {
+    "description": "Crop: a sentence of the notice after Done (a wider crop shows clicks again)."
+  },
+  "crop.item.zooms": {
+    "description": "Crop: one item of {list} in editor.crop.outside."
+  },
+  "crop.item.shapes": {
+    "description": "Crop: one item of {list} in editor.crop.outside."
+  },
+  "crop.item.spotlights": {
+    "description": "Crop: one item of {list} in editor.crop.outside."
+  },
+  "crop.outside": {
+    "description": "Crop: a sentence of the notice after Done; {list} is editor.crop.item.* joined as a list, count the items in all."
+  },
+  "paste.skip.outside": {
+    "description": "Paste or Duplicate: why items were left out, one fact of {reasons}; what is a counted kind (style.groupEdit.count.*, e.g. \"2 zooms\"), count how many."
+  },
+  "paste.skip.taken": {
+    "description": "Paste or Duplicate: why items were left out (the same item is already at that time), one fact of {reasons}; what is a counted kind (style.groupEdit.count.*, e.g. \"2 zooms\"), count how many."
+  },
+  "paste.skip.atEnd": {
+    "description": "Paste or Duplicate: why chapters were left out, one fact of {reasons}; what is a counted kind (style.groupEdit.count.*, e.g. \"2 zooms\"), count how many."
+  },
+  "paste.skip.inCut": {
+    "description": "Paste or Duplicate: why freeze frames were left out, one fact of {reasons}; what is a counted kind (style.groupEdit.count.*, e.g. \"2 zooms\"), count how many."
+  },
+  "paste.skip.frozen": {
+    "description": "Paste or Duplicate: why freeze frames were left out, one fact of {reasons}; what is a counted kind (style.groupEdit.count.*, e.g. \"2 zooms\"), count how many."
+  },
+  "paste.skip.full": {
+    "description": "Paste or Duplicate: why items were left out (the video holds at most {max} of them), one fact of {reasons}; what is a counted kind (style.groupEdit.count.*, e.g. \"2 zooms\"), count how many."
+  },
+  "paste.skip.otherRecording": {
+    "description": "Paste or Duplicate: why freeze frames or images were left out (copied from another project's recording), one fact of {reasons}; what is a counted kind (style.groupEdit.count.*, e.g. \"2 zooms\"), count how many."
+  },
+  "paste.all": {
+    "description": "Paste: the notice when every item was pasted."
+  },
+  "paste.allMoved": {
+    "description": "Paste: the notice when every item was pasted; {at} is the time they were placed, moved back from the playhead so they fit."
+  },
+  "paste.some": {
+    "description": "Paste: the notice when {n} of {total} items were pasted."
+  },
+  "paste.someMoved": {
+    "description": "Paste: the notice when {n} of {total} items were pasted; {at} is the time they were placed, moved back from the playhead so they fit."
+  },
+  "paste.someWhy": {
+    "description": "Paste: the notice when {n} of {total} items were pasted; reasons is editor.paste.skip.* facts with commas between them."
+  },
+  "paste.someMovedWhy": {
+    "description": "Paste: the notice when {n} of {total} items were pasted; {at} is the time they were placed, moved back from the playhead so they fit; reasons is editor.paste.skip.* facts with commas between them."
+  },
+  "paste.none": {
+    "description": "Paste: the notice when no item could be pasted."
+  },
+  "paste.noneWhy": {
+    "description": "Paste: the notice when no item could be pasted; reasons is editor.paste.skip.* facts with commas between them."
+  },
+  "duplicate.all": {
+    "description": "Duplicate: the notice when every item was duplicated."
+  },
+  "duplicate.allMoved": {
+    "description": "Duplicate: the notice when every item was duplicated; {at} is the time they were placed, moved back from the playhead so they fit."
+  },
+  "duplicate.some": {
+    "description": "Duplicate: the notice when {n} of {total} items were duplicated."
+  },
+  "duplicate.someMoved": {
+    "description": "Duplicate: the notice when {n} of {total} items were duplicated; {at} is the time they were placed, moved back from the playhead so they fit."
+  },
+  "duplicate.someWhy": {
+    "description": "Duplicate: the notice when {n} of {total} items were duplicated; reasons is editor.paste.skip.* facts with commas between them."
+  },
+  "duplicate.someMovedWhy": {
+    "description": "Duplicate: the notice when {n} of {total} items were duplicated; {at} is the time they were placed, moved back from the playhead so they fit; reasons is editor.paste.skip.* facts with commas between them."
+  },
+  "duplicate.none": {
+    "description": "Duplicate: the notice when no item could be duplicated."
+  },
+  "duplicate.noneWhy": {
+    "description": "Duplicate: the notice when no item could be duplicated; reasons is editor.paste.skip.* facts with commas between them."
+  },
+  "paste.shortened": {
+    "description": "Paste or Duplicate: one more fact after a middle dot in the notice, the zooms made shorter so they fit."
   }
 }

@@ -1308,5 +1308,424 @@
     "dnt": [
       "GB"
     ]
+  },
+  "printPdf.cancelled": {
+    "description": "Make a guide › Save as PDF: why no PDF was saved: the save was stopped while the guide was printed."
+  },
+  "printPdf.tooLong": {
+    "description": "Make a guide › Save as PDF: why no PDF was saved: printing the guide to PDF ran out of time."
+  },
+  "notesIpc.unknownHotkey": {
+    "description": "Hotkeys: a hotkey was checked for an action Flown does not know (a programming error the settings show as is)."
+  },
+  "notesIpc.hotkeyTaken": {
+    "description": "Hotkeys: the keys chosen are already another action's hotkey. {key} is the key combination as keycaps (\"Ctrl + Shift + F6\", never translated); {action} is the other action's name."
+  },
+  "notesIpc.hotkeyUsedElsewhere": {
+    "description": "Hotkeys: the keys chosen are held by another app on this PC. {key} is the key combination as keycaps (never translated)."
+  },
+  "notesIpc.hotkeyInvalid": {
+    "description": "Hotkeys: Windows refused the keys chosen as a hotkey. {key} is the key combination as keycaps (never translated)."
+  },
+  "projectCopy.busy": {
+    "description": "Duplicate: why a copy was not made, after \"Could not make the copy: \" (review.copy.failed {reason}); lower case because it ends that sentence."
+  },
+  "projectCopy.unreadable": {
+    "description": "Duplicate: why a copy was not made, after \"Could not make the copy: \" (review.copy.failed {reason})."
+  },
+  "projectCopy.noFolder": {
+    "description": "Duplicate: why a copy was not made, after \"Could not make the copy: \". {app} is the app's name (Flown); \"Videos\\{app}\" is the folder's path and stays as is."
+  },
+  "projectCopy.noSpace": {
+    "description": "Duplicate: why a copy was not made, after \"Could not make the copy: \". {needs} and {free} are sizes in gigabytes with one decimal."
+  },
+  "shareStore.store.windows": {
+    "description": "Settings › Share: the Windows feature that keeps webhooks safe, in \"{what} is not available\" (errors.shareStore.webhooksCannotBeStored)."
+  },
+  "shareStore.store.mac": {
+    "description": "Settings › Share: the macOS feature that keeps webhooks safe, in \"{what} is not available\" (errors.shareStore.webhooksCannotBeStored)."
+  },
+  "shareStore.store.other": {
+    "description": "Settings › Share: the Linux feature that keeps webhooks safe, in \"{what} is not available\" (errors.shareStore.webhooksCannotBeStored)."
+  },
+  "versions.notAFolder": {
+    "description": "Versions: the recording's versions folder is a file or a link, so no version is kept."
+  },
+  "versions.recordingGone": {
+    "description": "Versions: the recording's folder was removed, so no version is kept."
+  },
+  "versions.unknown": {
+    "description": "Versions: a version id Flown does not know was asked for."
+  },
+  "versions.unknownReason": {
+    "description": "Versions: an automatic version was asked for with a reason Flown does not know."
+  },
+  "versions.cannotKeep": {
+    "description": "Versions: the edit could not be read as a project, so it is not kept."
+  },
+  "versions.tooLarge": {
+    "description": "Versions: the edit is larger than a version may be."
+  },
+  "versions.tooMany": {
+    "description": "Versions: Keep a version when the most saved versions (VERSION_LIMITS.named) are already kept; {n} is that number."
+  },
+  "versions.gone": {
+    "description": "Versions: the version asked for was deleted (its file is gone)."
+  },
+  "versions.unreadable": {
+    "description": "Versions: the version's file is damaged or too large."
+  },
+  "import.extension": {
+    "description": "Import a video: the file's name does not end in a video extension Flown takes.",
+    "dnt": [
+      "MP4",
+      "MOV",
+      "MKV",
+      "WebM"
+    ]
+  },
+  "import.cannotOpen": {
+    "description": "Import a video: the file could not be opened at all."
+  },
+  "import.empty": {
+    "description": "Import a video: the file has (almost) no bytes."
+  },
+  "import.tooLarge": {
+    "description": "Import a video: the file is larger than Flown imports.",
+    "digits": "latn"
+  },
+  "import.notVideo": {
+    "description": "Import a video: the file's first bytes are no video container; {ext} is its extension as named."
+  },
+  "import.unreadable": {
+    "description": "Import a video: ffmpeg could not read the file as a video."
+  },
+  "import.soundOnly": {
+    "description": "Import a video: the file holds sound only. \"Audio\" is the inspector tab of that name."
+  },
+  "import.noVideo": {
+    "description": "Import a video: the file holds no picture and no sound."
+  },
+  "import.drm": {
+    "description": "Import a video: the video is protected.",
+    "dnt": [
+      "DRM"
+    ]
+  },
+  "import.codec": {
+    "description": "Import a video: the video's codec is one ffmpeg cannot decode; {codec} is its technical name.",
+    "dnt": [
+      "MP4",
+      "H.264"
+    ]
+  },
+  "import.tooShort": {
+    "description": "Import a video: the video is shorter than half a second."
+  },
+  "import.tooLong": {
+    "description": "Import a video: the video is longer than Flown imports."
+  },
+  "import.size": {
+    "description": "Import a video: the picture is smaller or larger than Flown edits; {w} × {h} is its size in pixels.",
+    "digits": "latn"
+  },
+  "import.narrow": {
+    "description": "Import a video: the picture is more than ten times as wide as high, or the other way; {w} × {h} is its size in pixels.",
+    "digits": "latn"
+  },
+  "import.space": {
+    "description": "Import a video: {needed} and {free} are sizes (\"5.7 GB\", \"640 MB\")."
+  },
+  "import.busy": {
+    "description": "Import a video: one import runs at a time."
+  },
+  "import.several": {
+    "description": "Import a video: several files were dropped at once."
+  },
+  "import.diskFull": {
+    "description": "Import a video: the drive filled up while the editing copy was made."
+  },
+  "import.incomplete": {
+    "description": "Import a video: the file changed or went away while it was read."
+  },
+  "import.failed": {
+    "description": "Import a video: making the editing copy failed, with no detail."
+  },
+  "import.failedDetail": {
+    "description": "Import a video: making the editing copy failed; {detail} is ffmpeg's own (English) reason."
+  },
+  "import.noteTracks": {
+    "description": "Import a video: a note on the imported project when the video has two or more sound tracks; {n} is how many."
+  },
+  "import.noteNoSound": {
+    "description": "Import a video: a note on the imported project."
+  },
+  "import.noteHdr": {
+    "description": "Import a video: a note on the imported project.",
+    "dnt": [
+      "HDR"
+    ]
+  },
+  "import.noteHdrPale": {
+    "description": "Import a video: a note on the imported project.",
+    "dnt": [
+      "HDR"
+    ]
+  },
+  "import.noteScaled": {
+    "description": "Import a video: a note on the imported project; {w} × {h} is the editing copy's size in pixels.",
+    "dnt": [
+      "4K"
+    ],
+    "digits": "latn"
+  },
+  "import.noteCapped": {
+    "description": "Import a video: a note on the imported project."
+  },
+  "scriptDraft.answer.noList": {
+    "description": "Draft script: why the AI's answer was not used, inside \"The AI's answer could not be used ({detail}). …\": the answer held no list of paragraphs. Lower case: it sits in brackets inside that sentence."
+  },
+  "scriptDraft.answer.tooMany": {
+    "description": "Draft script: why the AI's answer was not used, in the brackets of \"The AI's answer could not be used ({detail})\": too many paragraphs; {n} is how many came back, {max} the most taken."
+  },
+  "scriptDraft.answer.notText": {
+    "description": "Draft script: why the AI's answer was not used, in the brackets of \"The AI's answer could not be used ({detail})\"."
+  },
+  "scriptDraft.answer.none": {
+    "description": "Draft script: why the AI's answer was not used, in the brackets of \"The AI's answer could not be used ({detail})\": every paragraph was empty."
+  },
+  "scriptDraft.answer.farLonger": {
+    "description": "Draft script: why the AI's answer was not used, in the brackets of \"The AI's answer could not be used ({detail})\"."
+  },
+  "scriptDraft.answer.tooLong": {
+    "description": "Draft script: why the AI's answer was not used, in the brackets of \"The AI's answer could not be used ({detail})\"; {max} is the most characters notes hold, grouped (\"20,000\")."
+  },
+  "chapters.youtube.none": {
+    "description": "Export › chapters and the Publish pack: why YouTube would make no chapters: the video has none."
+  },
+  "chapters.youtube.firstAtZero": {
+    "description": "Export › chapters and the Publish pack: why YouTube would make no chapters: none starts at 0:00 (a timestamp, kept as is).",
+    "dnt": [
+      "YouTube",
+      "0:00"
+    ]
+  },
+  "chapters.youtube.tooFew": {
+    "description": "Export › chapters and the Publish pack: why YouTube would make no chapters: too few; {n} is YouTube's least number (3).",
+    "dnt": [
+      "YouTube"
+    ]
+  },
+  "chapters.youtube.tooShort": {
+    "description": "Export › chapters and the Publish pack: why YouTube would make no chapters: one is too short; {n} is YouTube's shortest chapter in seconds (10), {title} the chapter's name.",
+    "dnt": [
+      "YouTube"
+    ],
+    "user": [
+      "title"
+    ]
+  },
+  "cubeLut.notANumber": {
+    "description": "Colour › Import a LUT: why a .cube file was refused: a value is not a number; {line} is the line, {token} what it holds.",
+    "dnt": [
+      "LUT"
+    ]
+  },
+  "cubeLut.numberTooLarge": {
+    "description": "Colour › Import a LUT: why a .cube file was refused: a value is infinite.",
+    "dnt": [
+      "LUT"
+    ]
+  },
+  "cubeLut.numberAbove": {
+    "description": "Colour › Import a LUT: why a .cube file was refused: a value is larger than Flown takes; {token} the value as written, {max} the limit.",
+    "dnt": [
+      "LUT"
+    ]
+  },
+  "cubeLut.countFor": {
+    "description": "Colour › Import a LUT: a keyword has the wrong number of values; {what} is the keyword (DOMAIN_MIN, kept as is), {expected} how many it takes.",
+    "dnt": [
+      "LUT"
+    ]
+  },
+  "cubeLut.noWholeNumber": {
+    "description": "Colour › Import a LUT: why a .cube file was refused: a size is not a whole number; {what} is the keyword (LUT_3D_SIZE, kept as is).",
+    "dnt": [
+      "LUT"
+    ]
+  },
+  "cubeLut.outOfRange": {
+    "description": "Colour › Import a LUT: why a .cube file was refused: a size is outside what Flown takes; {what} is the keyword, {value} the size, {min}..{max} the range.",
+    "dnt": [
+      "LUT"
+    ]
+  },
+  "cubeLut.rangeTooNarrow": {
+    "description": "Colour › Import a LUT: why a .cube file was refused: a domain is (nearly) empty.",
+    "dnt": [
+      "LUT"
+    ]
+  },
+  "cubeLut.fileTooLarge": {
+    "description": "Colour › Import a LUT: why a .cube file was refused: the file is too large.",
+    "dnt": [
+      "LUT"
+    ]
+  },
+  "cubeLut.nul": {
+    "description": "Colour › Import a LUT: why a .cube file was refused: the file holds a NUL byte (it is not text).",
+    "dnt": [
+      "LUT"
+    ]
+  },
+  "cubeLut.notUtf8": {
+    "description": "Colour › Import a LUT: why a .cube file was refused: the file is not UTF-8 text.",
+    "dnt": [
+      "LUT"
+    ]
+  },
+  "cubeLut.lineTooLong": {
+    "description": "Colour › Import a LUT: why a .cube file was refused: a line is too long; {max} is the limit, grouped.",
+    "dnt": [
+      "LUT"
+    ]
+  },
+  "cubeLut.keywordAfterData": {
+    "description": "Colour › Import a LUT: why a .cube file was refused: a keyword comes after the table's data; {keyword} is the keyword as written.",
+    "dnt": [
+      "LUT"
+    ]
+  },
+  "cubeLut.repeats": {
+    "description": "Colour › Import a LUT: why a .cube file was refused: a keyword is given twice.",
+    "dnt": [
+      "LUT"
+    ]
+  },
+  "cubeLut.titleQuotes": {
+    "description": "Colour › Import a LUT: why a .cube file was refused: TITLE is a keyword of the file format, kept as is.",
+    "dnt": [
+      "LUT"
+    ]
+  },
+  "cubeLut.textAfterTitle": {
+    "description": "Colour › Import a LUT: why a .cube file was refused: TITLE is a keyword of the file format.",
+    "dnt": [
+      "LUT"
+    ]
+  },
+  "cubeLut.titleTooLong": {
+    "description": "Colour › Import a LUT: why a .cube file was refused: TITLE is a keyword of the file format; {max} the limit.",
+    "dnt": [
+      "LUT"
+    ]
+  },
+  "cubeLut.rangeTwice": {
+    "description": "Colour › Import a LUT: why a .cube file was refused: both LUT_3D_INPUT_RANGE and DOMAIN_MIN/MAX are given.",
+    "dnt": [
+      "LUT"
+    ]
+  },
+  "cubeLut.unknownKeyword": {
+    "description": "Colour › Import a LUT: why a .cube file was refused: a keyword Flown does not know.",
+    "dnt": [
+      "LUT"
+    ]
+  },
+  "cubeLut.dataBeforeSize": {
+    "description": "Colour › Import a LUT: why a .cube file was refused: LUT_3D_SIZE is a keyword of the file format.",
+    "dnt": [
+      "LUT"
+    ]
+  },
+  "cubeLut.oneDomain": {
+    "description": "Colour › Import a LUT: why a .cube file was refused: DOMAIN_MIN and DOMAIN_MAX are keywords of the file format.",
+    "dnt": [
+      "LUT"
+    ]
+  },
+  "cubeLut.extraLine": {
+    "description": "Colour › Import a LUT: why a .cube file was refused: more data lines than the sizes say; {total} is how many, grouped.",
+    "dnt": [
+      "LUT"
+    ]
+  },
+  "cubeLut.rowCount": {
+    "description": "Colour › Import a LUT: why a .cube file was refused: a data line has not three values; {n} is how many.",
+    "dnt": [
+      "LUT"
+    ]
+  },
+  "cubeLut.noSize": {
+    "description": "Colour › Import a LUT: why a .cube file was refused: the file gives no size.",
+    "dnt": [
+      "LUT"
+    ]
+  },
+  "cubeLut.endsEarly": {
+    "description": "Colour › Import a LUT: why a .cube file was refused: the data stops early; {rows} lines were read of {total}, grouped.",
+    "dnt": [
+      "LUT"
+    ]
+  },
+  "fonts.unreadable": {
+    "description": "Brand kit and Fonts: a font file whose bytes are no font Flown takes.",
+    "dnt": [
+      "TTF",
+      "OTF",
+      "WOFF2"
+    ]
+  },
+  "fonts.misnamed.ttf": {
+    "description": "Brand kit and Fonts: the file's extension says another type than its bytes; {named} is its extension as named.",
+    "dnt": [
+      "TrueType",
+      ".ttf"
+    ]
+  },
+  "fonts.misnamed.otf": {
+    "description": "Brand kit and Fonts: the file's extension says another type than its bytes; {named} is its extension as named.",
+    "dnt": [
+      "OpenType",
+      ".otf"
+    ]
+  },
+  "fonts.misnamed.woff2": {
+    "description": "Brand kit and Fonts: the file's extension says another type than its bytes; {named} is its extension as named.",
+    "dnt": [
+      "WOFF2",
+      ".woff2"
+    ]
+  },
+  "autosave.locked": {
+    "description": "Saving failed: the project file could not be written (the system code follows in brackets, e.g. \"(EBUSY)\")."
+  },
+  "autosave.readOnly": {
+    "description": "Saving failed: the drive cannot be written (the system code follows in brackets, \"(EROFS)\")."
+  },
+  "imported.noCursorRecorded": {
+    "description": "The editor's notice when a cursor feature (e.g. Smooth cursor) is asked for and the recording has no cursor data; no full stop (the notice adds none)."
+  },
+  "imported.cursor": {
+    "description": "Cursor panel: the hint for a project imported from a video file (Import a video), which has no recorded cursor."
+  },
+  "imported.autoZoom": {
+    "description": "Zoom panel: the hint for an imported video under Auto zoom. The panel follows it with \" (or press Z)\" (the Add zoom shortcut) and a full stop, so it ends without one."
+  },
+  "imported.keystrokes": {
+    "description": "Effects panel › Key presses: the hint for a project imported from a video file."
+  },
+  "imported.camera": {
+    "description": "Camera panel: the hint for a project imported from a video file (no camera recording of its own)."
+  },
+  "imported.noCursor": {
+    "description": "The editor's notice when a cursor feature is asked for in a project imported from a video file; no full stop (the notice adds none)."
+  },
+  "search.momentCut": {
+    "description": "The editor's notice after opening a moment found by Home's search that was cut from the edit: the playhead is at the next kept part."
+  },
+  "search.momentCutEnd": {
+    "description": "The editor's notice after opening a moment found by Home's search that was cut after the last kept part: the playhead is at the end."
   }
 }

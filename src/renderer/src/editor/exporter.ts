@@ -107,7 +107,7 @@ export const EXPORT_BLUR_SAMPLES = 10
 /** Audio-only exports end on the same frame boundary a 60 fps video would. */
 const AUDIO_ONLY_FPS = 60
 
-const abortError = (): DOMException => new DOMException('Export cancelled', 'AbortError')
+const abortError = (): DOMException => new DOMException(t('export.cancelledAbort'), 'AbortError')
 
 /**
  * The input as this export draws it: a copy of the project with the export's aspect

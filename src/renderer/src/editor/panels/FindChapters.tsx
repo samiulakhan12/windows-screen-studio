@@ -131,7 +131,7 @@ export function FindChapters({ project, cursor, onNotice }: { project: Project; 
           if (out.weak) focusName(out.weak)
         }
       } catch (err) {
-        if (!ctrl.signal.aborted && live.current) onNotice(`Could not find chapters: ${(err instanceof Error ? err.message : String(err)).replace(/^Error invoking remote method '[^']+': (\w*Error: )?/, '')}`)
+        if (!ctrl.signal.aborted && live.current) onNotice(t('smart.chapters.failed', { reason: (err instanceof Error ? err.message : String(err)).replace(/^Error invoking remote method '[^']+': (\w*Error: )?/, '') }))
       } finally {
         if (controller.current === ctrl) controller.current = null
         if (live.current) {
@@ -254,7 +254,7 @@ export function FindChapters({ project, cursor, onNotice }: { project: Project; 
               </select>
             </label>
           </div>
-          {namesChoice && <CostLine id={`${ids}-cost`} choice={namesChoice} actions={[{ key: 'names', label: 'Names', buttonId: `${ids}-run`, request: estimate }]} />}
+          {namesChoice && <CostLine id={`${ids}-cost`} choice={namesChoice} actions={[{ key: 'names', label: t('smart.cost.namesAction'), buttonId: `${ids}-run`, request: estimate }]} />}
         </fieldset>
       </details>
     </div>

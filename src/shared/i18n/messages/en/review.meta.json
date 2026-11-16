@@ -2062,5 +2062,360 @@
   },
   "publish.status.done": {
     "description": "Publish: a card that was written."
+  },
+  "copy.alreadyFollows": {
+    "description": "Copies menu and Short clips: why a vertical or square version is not offered: the video already is one that follows the action."
+  },
+  "copy.alreadyTall": {
+    "description": "Copies menu and Short clips: why a vertical version is not offered: the recording as cropped is already tall."
+  },
+  "copy.alreadySquareOrTall": {
+    "description": "Copies menu and Short clips: why a square version is not offered."
+  },
+  "copy.lookVertical": {
+    "description": "The notice after a vertical version is made, inside \"Made a vertical version. {look}. …\": the caption look chosen again for it; {look} is the look's name as the Captions tab shows it."
+  },
+  "copy.lookSquare": {
+    "description": "The notice after a square version is made, inside \"Made a square version. {look}. …\": the caption look chosen again for it; {look} is the look's name."
+  },
+  "share.step.waitingCopy": {
+    "description": "Export done view › Share: a copy step not started yet; {label} is the folder's name.",
+    "user": [
+      "label"
+    ]
+  },
+  "share.step.copying": {
+    "description": "Export done view › Share: a copy step running, before its share is known.",
+    "user": [
+      "label"
+    ]
+  },
+  "share.step.copyingPercent": {
+    "description": "Export done view › Share: a copy step running; {percent} is how much is copied (\"45%\").",
+    "user": [
+      "label"
+    ]
+  },
+  "share.step.saved": {
+    "description": "Export done view › Share: a copy step done; {place} is the folder, \"OneDrive › Flown\".",
+    "user": [
+      "place"
+    ]
+  },
+  "share.step.notCopied": {
+    "description": "Export done view › Share: a copy step cancelled.",
+    "user": [
+      "label"
+    ]
+  },
+  "share.step.copyFailed": {
+    "description": "Export done view › Share: a copy step failed; {reason} is main's reason.",
+    "user": [
+      "label"
+    ]
+  },
+  "share.step.copyFailedUnknown": {
+    "description": "Export done view › Share: a copy step failed with no reason given.",
+    "user": [
+      "label"
+    ]
+  },
+  "share.step.waitingPost": {
+    "description": "Export done view › Share: a post step not started yet; {label} is the chat's name.",
+    "user": [
+      "label"
+    ]
+  },
+  "share.step.posting": {
+    "description": "Export done view › Share: a post step running.",
+    "user": [
+      "label"
+    ]
+  },
+  "share.step.posted": {
+    "description": "Export done view › Share: a post step done.",
+    "user": [
+      "label"
+    ]
+  },
+  "share.step.notPosted": {
+    "description": "Export done view › Share: a post step cancelled.",
+    "user": [
+      "label"
+    ]
+  },
+  "share.step.postFailed": {
+    "description": "Export done view › Share: a post step failed; {reason} is main's reason.",
+    "user": [
+      "label"
+    ]
+  },
+  "share.step.postFailedUnknown": {
+    "description": "Export done view › Share: a post step failed with no reason given.",
+    "user": [
+      "label"
+    ]
+  },
+  "share.button.retryCopy": {
+    "description": "Export done view › Share: the accessible name of a failed copy's Try again button; {action} is the button's own words (common.action.tryAgain), which must come first (WCAG 2.5.3), {label} the folder.",
+    "user": [
+      "label"
+    ]
+  },
+  "share.button.retryPost": {
+    "description": "Export done view › Share: the accessible name of a failed post's Try again button; {action} is the button's own words, which must come first (WCAG 2.5.3), {label} the chat.",
+    "user": [
+      "label"
+    ]
+  },
+  "share.button.theCopy": {
+    "description": "Export done view › Share: the accessible name of a copy's Show in folder or Copy link button; {action} is the button's own words, which must come first (WCAG 2.5.3), {label} the folder.",
+    "user": [
+      "label"
+    ]
+  },
+  "share.cancelNamed": {
+    "description": "Export done view › Share: the accessible name of Cancel while shares run; {targets} names what it still has to do (\"OneDrive and #demos\").",
+    "user": [
+      "targets"
+    ]
+  },
+  "share.source.picked": {
+    "description": "Settings › Share: where a cloud folder came from: the user added it."
+  },
+  "share.source.usual": {
+    "description": "Settings › Share: where a cloud folder came from: its app's usual place."
+  },
+  "share.source.app": {
+    "description": "Settings › Share: where a cloud folder came from: its app's own settings; {service} is the app (OneDrive, Dropbox, Google Drive)."
+  },
+  "share.linkHint.onedrive": {
+    "description": "Export done view › Share: how to get a link for a copy in OneDrive (\"Share\" is OneDrive's own menu item)."
+  },
+  "share.linkHint.dropbox": {
+    "description": "Export done view › Share: how to get a link for a copy in Dropbox (\"Copy Dropbox link\" is Dropbox's own menu item).",
+    "dnt": [
+      "Dropbox"
+    ]
+  },
+  "share.linkHint.gdrive": {
+    "description": "Export done view › Share: how to get a link for a copy in Google Drive (\"Share › Copy link\" are Google Drive's own menu items)."
+  },
+  "share.linkHint.folder": {
+    "description": "Export done view › Share: a copy in a folder the user added."
+  },
+  "share.action.copyTo": {
+    "description": "Export dialog › After export: a choice that copies the video into a cloud folder; {place} is the folder's name, with where it is when two share a name.",
+    "user": [
+      "place"
+    ]
+  },
+  "share.action.postTo": {
+    "description": "Export dialog › After export: a choice that posts to a chat; {place} is the chat's name.",
+    "user": [
+      "place"
+    ]
+  },
+  "share.action.copyTitle": {
+    "description": "Export dialog › After export: the tooltip of a cloud folder choice; {folder} is the folder's path.",
+    "user": [
+      "folder"
+    ]
+  },
+  "share.action.postTitle": {
+    "description": "Export dialog › After export: the tooltip of a chat choice; {label} is the chat's name, {masked} the end of its webhook.",
+    "user": [
+      "label",
+      "masked"
+    ]
+  },
+  "share.failed": {
+    "description": "Export dialog: a share could not start; {reason} is main's reason."
+  },
+  "captions.detail": {
+    "description": "Review mode: what made a row's change, under its title (the Captions Studio tool)."
+  },
+  "captions.detailWith": {
+    "description": "Review mode: as review.captions.detail when an AI service made the change; {provider} is the service's name (OpenAI, Gemini, Claude).",
+    "dnt": [
+      "OpenAI",
+      "Gemini",
+      "Claude"
+    ]
+  },
+  "captions.by.great": {
+    "description": "Review mode: what made the caption style row's change, the Make my captions great button (same words as its button)."
+  },
+  "captions.by.polish": {
+    "description": "Review mode: what made the caption style row's change, the Polish tool (same word as its button)."
+  },
+  "captions.look.brand": {
+    "description": "Review mode: the caption look made from the brand kit, as {was} in review.captions.styleTitle."
+  },
+  "captions.look.yours": {
+    "description": "Review mode: a caption look the user saved, as {was} in review.captions.styleTitle (lower case, in a sentence)."
+  },
+  "captions.styleTitle": {
+    "description": "Review mode: a row's title for a Captions Studio change: the captions' look changed; {name} is the new look's name, {was} the look before.",
+    "user": [
+      "name"
+    ]
+  },
+  "captions.fixed": {
+    "description": "Review mode: a row's title for a Captions Studio change: a caption's text was tidied; {text} is the words, cut to 40 characters, bleeped words masked.",
+    "user": [
+      "text"
+    ]
+  },
+  "captions.fixedTo": {
+    "description": "Review mode: a row's title for a Captions Studio change: a caption's words were changed; {was} the words before, {is} the words now, cut to 40 characters, bleeped words masked.",
+    "user": [
+      "was",
+      "is"
+    ]
+  },
+  "captions.popUp": {
+    "description": "Review mode: a row's title for a Captions Studio change: a keyword pop-up was added; {text} is its words, cut to 40 characters, bleeped words masked.",
+    "user": [
+      "text"
+    ]
+  },
+  "captions.emoji": {
+    "description": "Review mode: a row's title for a Captions Studio change: an emoji pop-up was added; {emoji} is the emoji itself."
+  },
+  "captions.emojiOn": {
+    "description": "Review mode: a row's title for a Captions Studio change: an emoji pop-up was added on a word; {emoji} is the emoji, {anchor} the word it sits on, cut to 40 characters, bleeped words masked.",
+    "user": [
+      "anchor"
+    ]
+  },
+  "captions.counter": {
+    "description": "Review mode: a row's title for a Captions Studio change: a counting number pop-up was added; {value} is the number it counts to, with its prefix and suffix (e.g. \"$1.5M\")."
+  },
+  "captions.list": {
+    "description": "Review mode: a row's title for a Captions Studio change: a list pop-up was added; {title} is its title, cut to 40 characters, bleeped words masked.",
+    "user": [
+      "title"
+    ]
+  },
+  "captions.listItems": {
+    "description": "Review mode: a row's title for a Captions Studio change: a list pop-up without a title was added; {n} is how many items it lists."
+  },
+  "captions.lowerThird": {
+    "description": "Review mode: a row's title for a Captions Studio change: a speaker's name card was added; {text} is its title, cut to 40 characters, bleeped words masked.",
+    "user": [
+      "text"
+    ]
+  },
+  "captions.chapterTitle": {
+    "description": "Review mode: a row's title for a Captions Studio change: a chapter title card was added; {text} is its title, cut to 40 characters, bleeped words masked.",
+    "user": [
+      "text"
+    ]
+  },
+  "captions.quote": {
+    "description": "Review mode: a row's title for a Captions Studio change: a quote card was added; {text} is the quote, cut to 40 characters, bleeped words masked.",
+    "user": [
+      "text"
+    ]
+  },
+  "captions.title": {
+    "description": "Review mode: a row's title for a Captions Studio change: a title card was added; {text} is its title, cut to 40 characters, bleeped words masked.",
+    "user": [
+      "text"
+    ]
+  },
+  "captions.withSound": {
+    "description": "Review mode: a pop-up row's title when the pop-up plays a library sound; {title} is the row's title (review.captions.popUp and the others), {sound} the sound effect's name."
+  },
+  "captions.emphasisGroup": {
+    "description": "Review mode: the title of the group of emphasis rows; {n} is how many words were emphasised."
+  },
+  "captions.textGroup": {
+    "description": "Review mode: the title of the group of text rows; {n} is how many captions were tidied."
+  },
+  "captions.emphasisOn": {
+    "description": "Review mode: a row's title for a Captions Studio change: words were emphasised; {text} is the words, cut to 40 characters, bleeped words masked.",
+    "user": [
+      "text"
+    ]
+  },
+  "captions.bleeped": {
+    "description": "Review mode: a row's title for a Captions Studio change: a word was bleeped; {word} is the word, masked (e.g. \"f***\").",
+    "user": [
+      "word"
+    ]
+  },
+  "chapter.signal.start": {
+    "description": "Review mode: a found chapter's detail, one of the signals that found it, joined as a list with the others (lower case: the detail is a line of facts after the tool's name, e.g. \"Find chapters · page change and pause\")."
+  },
+  "chapter.signal.page": {
+    "description": "Review mode: a found chapter's detail, one of the signals that found it, joined as a list with the others (lower case: the detail is a line of facts after the tool's name, e.g. \"Find chapters · page change and pause\")."
+  },
+  "chapter.signal.screen": {
+    "description": "Review mode: a found chapter's detail, one of the signals that found it, joined as a list with the others (lower case: the detail is a line of facts after the tool's name, e.g. \"Find chapters · page change and pause\")."
+  },
+  "chapter.signal.pause": {
+    "description": "Review mode: a found chapter's detail, one of the signals that found it, joined as a list with the others (lower case: the detail is a line of facts after the tool's name, e.g. \"Find chapters · page change and pause\")."
+  },
+  "chapter.signal.idle": {
+    "description": "Review mode: a found chapter's detail, one of the signals that found it, joined as a list with the others (lower case: the detail is a line of facts after the tool's name, e.g. \"Find chapters · page change and pause\")."
+  },
+  "chapter.signal.cue": {
+    "description": "Review mode: a found chapter's detail, one of the signals that found it, joined as a list with the others (lower case: the detail is a line of facts after the tool's name, e.g. \"Find chapters · page change and pause\")."
+  },
+  "chapter.signal.section": {
+    "description": "Review mode: a found chapter's detail, one of the signals that found it, joined as a list with the others (lower case: the detail is a line of facts after the tool's name, e.g. \"Find chapters · page change and pause\")."
+  },
+  "chapter.signal.topic": {
+    "description": "Review mode: a found chapter's detail, one of the signals that found it, joined as a list with the others (lower case: the detail is a line of facts after the tool's name, e.g. \"Find chapters · page change and pause\")."
+  },
+  "chapter.signal.card": {
+    "description": "Review mode: a found chapter's detail, one of the signals that found it, joined as a list with the others (lower case: the detail is a line of facts after the tool's name, e.g. \"Find chapters · page change and pause\")."
+  },
+  "chapter.signal.ai": {
+    "description": "Review mode: a found chapter's detail, one of the signals that found it, joined as a list with the others (lower case: the detail is a line of facts after the tool's name, e.g. \"Find chapters · page change and pause\")."
+  },
+  "chapter.tool.ai": {
+    "description": "Review mode: a found chapter's detail, the tool that found it: Suggest chapters (smart.chapters) run by AI on this PC (local), by an AI service named {place} (its host or provider name, e.g. \"OpenAI\"), or by an AI with no name (other).",
+    "user": [
+      "place"
+    ]
+  },
+  "chapter.tool.polish": {
+    "description": "Review mode: a found chapter's detail, the tool that found it (Polish in one click)."
+  },
+  "chapter.tool.find": {
+    "description": "Review mode: a found chapter's detail, the tool that found it (Find chapters)."
+  },
+  "chapter.namedBy": {
+    "description": "Review mode: a found chapter's detail, who named it (lower case, a fact after the tool and signals): AI on this PC (local), an AI service named {place} (its host or provider name), or an AI with no name (other).",
+    "user": [
+      "place"
+    ]
+  },
+  "chapter.restartsSteps": {
+    "description": "Review mode: a found chapter's detail, the last fact (lower case) when step badges are numbered by chapter: keeping the chapter starts their numbers again at it."
+  },
+  "chapter.title": {
+    "description": "Review mode: a found chapter's row title; {title} is the chapter's name, {time} where it starts in the video (e.g. \"1:05\").",
+    "user": [
+      "title"
+    ]
+  },
+  "colour.title": {
+    "description": "Review mode: the row title of the colour change Auto colour made to the camera."
+  },
+  "colour.detail": {
+    "description": "Review mode: the tool that made a colour row's change (Auto colour), shown after the time on its row."
+  },
+  "join.byPolish": {
+    "description": "Review mode: the tool that set the smooth cuts (Polish in one click), shown after the time on their row."
+  },
+  "join.byShort": {
+    "description": "Review mode: the tool that set the smooth cuts (Make a shorter version), shown after the time on their row."
+  },
+  "join.title": {
+    "description": "Review mode: the smooth cuts row's title; count is how many cuts get the smooth style now."
   }
 }

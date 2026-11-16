@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
 import { t } from '../../../shared/i18n/t'
 import type { ShareMeta, ShareRunView, ShareStepView, ShareTargets } from '../../../shared/api/share'
-import { linkHint, type CloudService } from '../../../shared/share/cloudFolders'
-import { cancelName, retryTargets, stepButtonName, stepText } from '../../../shared/share/steps'
+import type { CloudService } from '../../../shared/share/cloudFolders'
+import { cancelName, linkHintText, retryTargets, stepButtonName, stepText } from '../../../shared/share/steps'
 import { ipcMessage } from '../settings/providerText'
 import { actionLabel, actionTitle, offeredIds, useShareRuns } from './useShare'
 import './share.css'
@@ -44,7 +44,7 @@ export function ShareDone({ file, meta, targets, startError }: { file: string; m
       .finally(() => setPending((p) => p.filter((x) => !ids.includes(x))))
   }
   const copied = steps.filter((s) => s.step.kind === 'copy' && s.step.state === 'done')
-  const hints = [...new Set(copied.map((s) => linkHint(s.step.service as CloudService)))]
+  const hints = [...new Set(copied.map((s) => linkHintText(s.step.service as CloudService)))]
   // Said to screen readers on each change of state (not each percent).
   const spoken = steps.map((s) => stepText({ ...s.step, fraction: undefined })).join('. ')
   const running = runs.filter((r) => !r.finished)
@@ -72,17 +72,17 @@ export function ShareDone({ file, meta, targets, startError }: { file: string; m
               <span className="share-step-text">{stepText(step)}</span>
               {step.kind === 'copy' && step.state === 'running' && <progress className="share-progress" max={1} value={step.fraction ?? 0} aria-hidden="true" />}
               {(step.state === 'failed' || step.state === 'cancelled') && run.finished && (
-                <button className="btn ghost small" disabled={pending.includes(step.target)} aria-label={stepButtonName('Try again', step)} onClick={() => start(retryTargets(run, step, steps.map((s) => s.step)))}>
+                <button className="btn ghost small" disabled={pending.includes(step.target)} aria-label={stepButtonName('retry', step)} onClick={() => start(retryTargets(run, step, steps.map((s) => s.step)))}>
                   {t('common.action.tryAgain')}
                 </button>
               )}
               {step.kind === 'copy' && step.state === 'done' && step.dest && (
-                <button className="btn ghost small" aria-label={stepButtonName('Show in folder', step)} onClick={() => void window.api.showItemInFolder(step.dest!)}>
+                <button className="btn ghost small" aria-label={stepButtonName('show', step)} onClick={() => void window.api.showItemInFolder(step.dest!)}>
                   {t('common.action.showInFolder')}
                 </button>
               )}
               {step.link && (
-                <button className="btn ghost small" aria-label={stepButtonName('Copy link', step)} onClick={() => void navigator.clipboard.writeText(step.link!)}>
+                <button className="btn ghost small" aria-label={stepButtonName('link', step)} onClick={() => void navigator.clipboard.writeText(step.link!)}>
                   {t('review.share.copyLink')}
                 </button>
               )}

@@ -230,5 +230,101 @@
   },
   "snap.edgeEnd": {
     "description": "Snap guide on the timeline: the name of what a dragged edge snapped to, shown with its time. The end of a block; {name} is the block's kind (\"Zoom\", \"Camera layout\")."
+  },
+  "waveform.loading": {
+    "description": "Timeline: the clip track's tooltip goes on with this (after \" · \") while the waveform is being read."
+  },
+  "waveform.error": {
+    "description": "Timeline: the clip track's tooltip goes on with this (after \" · \") when the sound could not be read."
+  },
+  "waveform.split": {
+    "description": "Timeline: the clip track's tooltip goes on with this (after \" · \") when the waveform shows the microphone and the system sound apart."
+  },
+  "waveform.splitMuted": {
+    "description": "Timeline: as timeline.waveform.split, when a muted sound shows in grey."
+  },
+  "waveform.mixed": {
+    "description": "Timeline: the clip track's tooltip goes on with this (after \" · \") when the waveform shows the recording's sound as one."
+  },
+  "waveform.mixedMuted": {
+    "description": "Timeline: as timeline.waveform.mixed, when a muted sound shows in grey."
+  },
+  "shuttle.reverse": {
+    "description": "Preview: the label while the preview plays backwards with the shuttle keys; {rate} is the speed as a factor, e.g. \"2×\"."
+  },
+  "shuttle.forward": {
+    "description": "Preview: the label while the preview plays forward faster with the shuttle keys; {rate} is the speed as a factor, e.g. \"2×\"."
+  },
+  "shuttle.forwardSilent": {
+    "description": "Preview: as timeline.shuttle.forward when the speed is too fast for sound; {rate} is the speed as a factor, e.g. \"2×\"."
+  },
+  "shuttle.role.reverse": {
+    "description": "Shuttle hint: what a key does, one clause of {roles}; {key} is the shortcut as keycaps, e.g. \"J\"."
+  },
+  "shuttle.role.pause": {
+    "description": "Shuttle hint: what a key does, one clause of {roles}; {key} is the shortcut as keycaps, e.g. \"J\"."
+  },
+  "shuttle.role.forward": {
+    "description": "Shuttle hint: what a key does, one clause of {roles}; {key} is the shortcut as keycaps, e.g. \"J\"."
+  },
+  "shuttle.roles": {
+    "description": "Shuttle hint: the first sentence when only the pause key is bound; {roles} is timeline.shuttle.role.pause."
+  },
+  "shuttle.rolesFaster": {
+    "description": "Shuttle hint: the first sentence; {roles} is the timeline.shuttle.role.* clauses with commas between them."
+  },
+  "shuttle.step": {
+    "description": "Shuttle hint: {pause} is the pause key, {keys} the backwards and forward keys as a list joined by \"or\"."
+  },
+  "shuttle.noSound": {
+    "description": "Shuttle hint: the last sentence; {rate} is the speed as a factor, e.g. \"2×\"."
+  },
+  "previewSpeedKeys.slower": {
+    "description": "Preview speed menu tooltip: the key that picks the next slower speed, one item of {keys}; {key} is the shortcut as keycaps, e.g. \"<\"."
+  },
+  "previewSpeedKeys.faster": {
+    "description": "Preview speed menu tooltip: the key that picks the next faster speed, one item of {keys}; {key} is the shortcut as keycaps, e.g. \">\"."
+  },
+  "previewSpeedHint": {
+    "description": "Preview speed menu: its tooltip when no key changes the speed."
+  },
+  "previewSpeedHintKeys": {
+    "description": "Preview speed menu: its tooltip; {keys} is timeline.previewSpeedKeys.* with commas between them."
+  },
+  "cutMarker.name": {
+    "description": "Timeline: a cut marker's accessible name and tooltip; {start} and {end} are the removed part's times, {join} how the two sides meet, as a word in a sentence (e.g. \"crossfade\")."
+  },
+  "cutMarker.nameMore": {
+    "description": "Timeline: as timeline.cutMarker.name for a marker that stands for several cuts close together; {more} (count) is how many more."
+  },
+  "safeZones.zone.all": {
+    "description": "Safe zones over a tall preview with All three shown (TikTok, Reels and Shorts together): the chip on each covered side."
+  },
+  "safeZones.zone.tiktok.top": {
+    "description": "Safe zones over a tall preview: the chip on the top bar TikTok covers, naming what TikTok puts there (its own buttons and texts, as the app calls them)."
+  },
+  "safeZones.zone.tiktok.right": {
+    "description": "Safe zones over a tall preview: the chip on the button column on the right TikTok covers, naming what TikTok puts there (its own buttons and texts, as the app calls them)."
+  },
+  "safeZones.zone.tiktok.bottom": {
+    "description": "Safe zones over a tall preview: the chip on the bottom area TikTok covers, naming what TikTok puts there (its own buttons and texts, as the app calls them)."
+  },
+  "safeZones.zone.reels.top": {
+    "description": "Safe zones over a tall preview: the chip on the top bar Instagram Reels covers, naming what Instagram Reels puts there (its own buttons and texts, as the app calls them)."
+  },
+  "safeZones.zone.reels.right": {
+    "description": "Safe zones over a tall preview: the chip on the button column on the right Instagram Reels covers, naming what Instagram Reels puts there (its own buttons and texts, as the app calls them)."
+  },
+  "safeZones.zone.reels.bottom": {
+    "description": "Safe zones over a tall preview: the chip on the bottom area Instagram Reels covers, naming what Instagram Reels puts there (its own buttons and texts, as the app calls them)."
+  },
+  "safeZones.zone.shorts.top": {
+    "description": "Safe zones over a tall preview: the chip on the top bar YouTube Shorts covers, naming what YouTube Shorts puts there (its own buttons and texts, as the app calls them)."
+  },
+  "safeZones.zone.shorts.right": {
+    "description": "Safe zones over a tall preview: the chip on the button column on the right YouTube Shorts covers, naming what YouTube Shorts puts there (its own buttons and texts, as the app calls them)."
+  },
+  "safeZones.zone.shorts.bottom": {
+    "description": "Safe zones over a tall preview: the chip on the bottom area YouTube Shorts covers, naming what YouTube Shorts puts there (its own buttons and texts, as the app calls them)."
   }
 }

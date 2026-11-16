@@ -24,6 +24,7 @@ import { BUNDLED_FONT_URLS } from '../render/catalogFonts'
 import { encodeImage } from './guideStills'
 import { namesWithPictures, pictureBatches } from './visionTitles'
 import { t } from '../../../shared/i18n/t'
+import { fmt } from '../../../shared/i18n/fmt'
 
 /** What each format's pictures are (§5.5.5): JPEG 0.9 for the PDF, WebP 0.85 for HTML and the demo, PNG for Markdown. */
 export const FORMAT_IMAGES: Record<GuideFormat, { mime: GuideImage['mime']; quality: number; maxWidth: number }> = {
@@ -145,7 +146,8 @@ async function askNames(choice: TextChoice, request: AiTextRequest, signal: Abor
 }
 
 /** Where a run wrote, for its notice. */
-const wroteWhere = (choice: TextChoice): string => (choice.kind === 'local' ? 'on this PC' : `with ${choice.place}`)
+/** Whether the words were written on this PC, and with which service otherwise (the messages name it). */
+const local = (choice: TextChoice): boolean => choice.kind === 'local'
 
 /**
  * *Write titles* (§5.3): the `names` task with `kind: 'step'` for the included steps not edited by
@@ -157,7 +159,7 @@ const wroteWhere = (choice: TextChoice): string => (choice.kind === 'local' ? 'o
  */
 export async function writeStepTitles(deps: { store: EditStore<Project>; steps: readonly GuideStep[]; choice: TextChoice; pictures: ReadonlyMap<string, Uint8Array> | null; signal: AbortSignal; requestId: string }): Promise<{ notice: string; wrote?: true }> {
   const names = deps.pictures?.size ? namesWithPictures(deps.store.state, deps.steps, deps.pictures) : namesRequestForSteps(deps.store.state, deps.steps, 'step')
-  if (!names.items.length) return { notice: 'Nothing was said near these steps.' }
+  if (!names.items.length) return { notice: t('smart.guide.nothingSaid') }
   const answer: { id: string; name: string }[] = []
   let failed: unknown = null
   for (const batch of pictureBatches(names)) {
@@ -171,16 +173,18 @@ export async function writeStepTitles(deps: { store: EditStore<Project>; steps: 
     }
     if (deps.signal.aborted) break
   }
-  if (deps.signal.aborted) return { notice: 'Stopped. Nothing was changed.' }
+  if (deps.signal.aborted) return { notice: t('smart.guide.run.stopped') }
   const edits = new Map((deps.store.state.guide?.steps ?? []).map((e) => [e.key, e]))
   const titles = answer.filter((n) => {
     const e = edits.get(n.id)
     return e?.title === undefined || !!e.ai
   })
-  if (!titles.length) return { notice: 'Nothing was changed.' }
+  if (!titles.length) return { notice: t('smart.guide.run.nothingChanged') }
   deps.store.update((p) => withAiTitles(p, titles.map((n) => ({ key: n.id, title: n.name })), viaOf(deps.choice)))
-  const wrote = `Wrote ${titles.length} ${titles.length === 1 ? 'title' : 'titles'} ${wroteWhere(deps.choice)}.`
-  return { notice: failed ? `${wrote} The rest failed: ${failed instanceof Error ? failed.message : String(failed)}` : wrote, wrote: true }
+  const values = { count: titles.length, n: fmt.count(titles.length), place: deps.choice.place }
+  if (!failed) return { notice: t(local(deps.choice) ? 'smart.guide.run.titlesLocal' : 'smart.guide.run.titlesWith', values), wrote: true }
+  const reason = failed instanceof Error ? failed.message : String(failed)
+  return { notice: t(local(deps.choice) ? 'smart.guide.run.titlesLocalPartly' : 'smart.guide.run.titlesWithPartly', { ...values, reason }), wrote: true }
 }
 
 /**
@@ -190,17 +194,18 @@ export async function writeStepTitles(deps: { store: EditStore<Project>; steps: 
  */
 export async function tidyNotes(deps: { store: EditStore<Project>; steps: readonly GuideStep[]; choice: TextChoice; signal: AbortSignal; requestId: string }): Promise<{ notice: string; wrote?: true }> {
   const names = namesRequestForSteps(deps.store.state, deps.steps, 'note')
-  if (!names.items.length) return { notice: 'Nothing was said to make notes from.' }
+  if (!names.items.length) return { notice: t('smart.guide.run.nothingForNotes') }
   const answer = await askNames(deps.choice, { task: 'names', segments: [], names }, deps.signal, deps.requestId)
-  if (deps.signal.aborted) return { notice: 'Stopped. Nothing was changed.' }
+  if (deps.signal.aborted) return { notice: t('smart.guide.run.stopped') }
   const before = new Map((deps.store.state.guide?.steps ?? []).map((e) => [e.key, e]))
   const notes = answer.filter((n) => {
     const e = before.get(n.id)
     return e?.text === undefined || !!e.textAi
   })
-  if (!notes.length) return { notice: 'Nothing was changed.' }
+  if (!notes.length) return { notice: t('smart.guide.run.nothingChanged') }
   deps.store.update((p) => withAiNotes(p, notes.map((n) => ({ key: n.id, text: n.name })), viaOf(deps.choice)))
-  return { notice: `Tidied ${notes.length} ${notes.length === 1 ? 'note' : 'notes'} ${wroteWhere(deps.choice)}.`, wrote: true }
+  const values = { count: notes.length, n: fmt.count(notes.length), place: deps.choice.place }
+  return { notice: t(local(deps.choice) ? 'smart.guide.run.notesLocal' : 'smart.guide.run.notesWith', values), wrote: true }
 }
 
 /**

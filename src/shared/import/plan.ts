@@ -4,6 +4,8 @@
  */
 import type { ImportedSource } from '../types'
 import type { ProbeInfo, ProbeStream } from './probe'
+import { fmt } from '../i18n/fmt'
+import { t } from '../i18n/t'
 
 export const IMPORT_LIMITS = {
   minBytes: 1024,
@@ -26,35 +28,74 @@ export const IMPORT_LIMITS = {
 /** File extensions the picker offers and drops accept. */
 export const IMPORT_EXTENSIONS = ['mp4', 'm4v', 'mov', 'mkv', 'webm'] as const
 
-/** What the user reads (§5.3, §5.4). */
+/**
+ * What the user reads (§5.3, §5.4), in the UI language: main sends these as the import's errors and
+ * notes, so they are `errors` messages (main carries that namespace, test 86). Each is made when read.
+ */
 export const IMPORT_COPY = {
-  extension: 'Flown can import MP4, MOV, MKV and WebM videos.',
-  cannotOpen: 'That file could not be opened.',
-  empty: 'This file is empty.',
-  tooLarge: 'This file is too large to import (64 GB at most).',
-  notVideo: (ext: string) => `This file is not a video Flown can read, even though its name ends in .${ext}.`,
-  unreadable: 'This file could not be read as a video (it may be damaged).',
-  soundOnly: 'This file has sound but no picture. To use it as music, open a project and add it in the Audio tab.',
-  noVideo: 'This file has no video in it.',
-  drm: 'This video is copy-protected (DRM), so it cannot be edited.',
-  codec: (codec: string) => `Flown cannot read this video's format (${codec}). Convert it to MP4 (H.264) and try again.`,
-  tooShort: 'This video is too short to edit (less than half a second).',
-  tooLong: 'This video is longer than 4 hours. Trim it or split it into parts first.',
-  size: (w: number, h: number) => `This video's picture size (${w} × ${h}) is not supported.`,
-  narrow: (w: number, h: number) => `This video's picture is too narrow to edit (${w} × ${h}).`,
-  space: (needed: number, free: number) => `There is not enough free space for this video: it needs about ${gb(needed)} and ${gb(free)} is free.`,
-  busy: 'Another video is being imported. Wait for it to finish.',
-  several: 'Drop one video at a time.',
-  diskFull: 'Your disk is full. Free some space and try again.',
-  incomplete: 'The video could not be read to the end (it changed, or its drive was disconnected). Try again.',
-  failed: (detail: string) => `The video could not be converted${detail ? ` (${detail})` : ''}.`,
-  noteTracks: (n: number) => `This video has ${n} sound tracks; Flown uses the first one.`,
-  noteNoSound: 'The sound in this video could not be read, so it was imported without sound.',
-  noteHdr: 'This is an HDR video; its colours were converted for normal screens.',
-  noteHdrPale: 'This is an HDR video, so its colours may look paler in Flown.',
-  noteScaled: (w: number, h: number) => `This video was larger than 4K, so the editing copy is ${w} × ${h}.`,
-  noteCapped: 'Only the first 4 hours were imported.'
-} as const
+  get extension(): string {
+    return t('errors.import.extension')
+  },
+  get cannotOpen(): string {
+    return t('errors.import.cannotOpen')
+  },
+  get empty(): string {
+    return t('errors.import.empty')
+  },
+  get tooLarge(): string {
+    return t('errors.import.tooLarge')
+  },
+  notVideo: (ext: string): string => t('errors.import.notVideo', { ext }),
+  get unreadable(): string {
+    return t('errors.import.unreadable')
+  },
+  get soundOnly(): string {
+    return t('errors.import.soundOnly')
+  },
+  get noVideo(): string {
+    return t('errors.import.noVideo')
+  },
+  get drm(): string {
+    return t('errors.import.drm')
+  },
+  codec: (codec: string): string => t('errors.import.codec', { codec }),
+  get tooShort(): string {
+    return t('errors.import.tooShort')
+  },
+  get tooLong(): string {
+    return t('errors.import.tooLong')
+  },
+  size: (w: number, h: number): string => t('errors.import.size', { w: fmt.count(w), h: fmt.count(h) }),
+  narrow: (w: number, h: number): string => t('errors.import.narrow', { w: fmt.count(w), h: fmt.count(h) }),
+  space: (needed: number, free: number): string => t('errors.import.space', { needed: gb(needed), free: gb(free) }),
+  get busy(): string {
+    return t('errors.import.busy')
+  },
+  get several(): string {
+    return t('errors.import.several')
+  },
+  get diskFull(): string {
+    return t('errors.import.diskFull')
+  },
+  get incomplete(): string {
+    return t('errors.import.incomplete')
+  },
+  failed: (detail: string): string => (detail ? t('errors.import.failedDetail', { detail }) : t('errors.import.failed')),
+  noteTracks: (n: number): string => t('errors.import.noteTracks', { count: n, n: fmt.count(n) }),
+  get noteNoSound(): string {
+    return t('errors.import.noteNoSound')
+  },
+  get noteHdr(): string {
+    return t('errors.import.noteHdr')
+  },
+  get noteHdrPale(): string {
+    return t('errors.import.noteHdrPale')
+  },
+  noteScaled: (w: number, h: number): string => t('errors.import.noteScaled', { w: fmt.count(w), h: fmt.count(h) }),
+  get noteCapped(): string {
+    return t('errors.import.noteCapped')
+  }
+}
 
 /** "5.7 GB", "640 MB". */
 export function gb(bytes: number): string {

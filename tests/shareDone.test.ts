@@ -29,12 +29,12 @@ describe('the done view', () => {
   it('names each button with its visible words first, then where it acts', () => {
     // WCAG 2.5.3: "click Show in folder" must find the copy's button, not only the export's.
     const saved = { ...run.steps[0], state: 'done' as const, dest: 'C:\\OneDrive\\Flown\\x.mp4', link: 'https://example.com/x' }
-    for (const button of ['Try again', 'Show in folder', 'Copy link'] as StepButton[]) {
+    for (const [button, words] of [['retry', 'Try again'], ['show', 'Show in folder'], ['link', 'Copy link']] as [StepButton, string][]) {
       const name = stepButtonName(button, saved)
-      expect(name.startsWith(`${button}:`)).toBe(true)
+      expect(name.startsWith(`${words}:`)).toBe(true)
       expect(name).toContain('OneDrive')
     }
-    expect(stepButtonName('Try again', run.steps[1])).toBe('Try again: post to #demos')
+    expect(stepButtonName('retry', run.steps[1])).toBe('Try again: post to #demos')
     const going: ShareRunView = { ...run, finished: false, steps: [{ ...run.steps[0], state: 'running' }, { ...run.steps[1], state: 'waiting' }] }
     expect(cancelName(going)).toBe('Cancel share: OneDrive and #demos')
     expect(cancelName({ ...going, steps: [{ ...run.steps[0], state: 'done' }] })).toBe('Cancel share')

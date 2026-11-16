@@ -8,6 +8,8 @@ import { graphicShown } from '../render/graphicsLayer'
 import type { EditorServices } from './context'
 import type { PreviewPlayer } from './player'
 import type { Selection } from './selection'
+import { fmt } from '../../../shared/i18n/fmt'
+import { t } from '../../../shared/i18n/t'
 
 /*
  * Motion graphics at the playhead (docs/design/captions-studio.md §2.11, §10.5): the one code path
@@ -15,7 +17,7 @@ import type { Selection } from './selection'
  */
 
 /** Said when a project already has the most graphics a project keeps. */
-export const GRAPHICS_FULL = `This video already has ${MAX_GRAPHICS} pop-ups.`
+export const graphicsFull = (): string => t('text.graphicsPanel.full', { count: MAX_GRAPHICS, n: fmt.count(MAX_GRAPHICS) })
 
 /**
  * Moves the playhead to where `g` is shown after its entrance, unless the preview is already inside
@@ -38,7 +40,7 @@ export function addGraphicAt(
   opts: { at?: number; onSelect: (sel: Selection) => void; onNotice?: (message: string) => void }
 ): string | null {
   if ((store.state.graphics?.length ?? 0) >= MAX_GRAPHICS) {
-    opts.onNotice?.(GRAPHICS_FULL)
+    opts.onNotice?.(graphicsFull())
     return null
   }
   let id = ''

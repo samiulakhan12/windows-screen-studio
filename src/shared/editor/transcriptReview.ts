@@ -8,6 +8,7 @@ import { findRetakes, type RetakeKind } from './retakes'
 import { cutFlags, cutWords, middlesCut, spansSaving, type TranscriptWord, type WordSpan } from './transcript'
 import { outputDuration } from '../engine/timeline'
 import type { Clip } from '../types'
+import type { MessageKey } from '../i18n/t'
 
 export type SuggestionKind = 'filler' | RetakeKind
 
@@ -29,7 +30,8 @@ export interface EditSuggestion {
  */
 export const MIN_SUGGESTION_SAVING = 0.05
 
-export const SUGGESTION_LABELS: Record<SuggestionKind, string> = { filler: 'Filler', retake: 'Retake', repeat: 'Repeat' }
+/** The message naming each kind of suggestion (the Transcript tab's chips). */
+export const SUGGESTION_LABELS: Readonly<Record<SuggestionKind, MessageKey>> = { filler: 'captions.transcript.kind.filler', retake: 'captions.transcript.kind.retake', repeat: 'captions.transcript.kind.repeat' }
 
 const idOf = (kind: SuggestionKind, [first, last]: WordSpan): string => `${kind}:${first}-${last}`
 

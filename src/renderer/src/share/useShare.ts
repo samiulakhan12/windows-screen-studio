@@ -7,6 +7,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { ShareMeta, ShareRunView, ShareTargets } from '../../../shared/api/share'
 import { choicesFor, readShareChoices, withChoices } from '../../../shared/share/choices'
 import { folderPlaces, hookPlaces, withPlace } from '../../../shared/share/names'
+import { SHARE_SUBFOLDER } from '../../../shared/share/cloudFolders'
+import { t } from '../../../shared/i18n/t'
 import { ipcMessage } from '../settings/providerText'
 
 const CHOICES_KEY = 'export-share'
@@ -21,20 +23,20 @@ export function offeredIds(t: ShareTargets | null): string[] {
  * "Copy to OneDrive" / "Post to #demos" for a destination id; a label two destinations share says
  * where each is ("Copy to Google Drive (H:)"), as main's steps and notification buttons do.
  */
-export function actionLabel(t: ShareTargets | null, id: string): string {
-  if (!t) return 'Share'
-  const f = t.folders.find((x) => x.id === id)
-  if (f) return `Copy to ${withPlace(f.label, folderPlaces(t.folders).get(id))}`
-  const h = t.hooks.find((x) => x.id === id)
-  return h ? `Post to ${withPlace(h.label, hookPlaces(t.hooks.filter((x) => x.readable)).get(id))}` : 'Share'
+export function actionLabel(targets: ShareTargets | null, id: string): string {
+  if (!targets) return t('review.share.done')
+  const f = targets.folders.find((x) => x.id === id)
+  if (f) return t('review.share.action.copyTo', { place: withPlace(f.label, folderPlaces(targets.folders).get(id)) })
+  const h = targets.hooks.find((x) => x.id === id)
+  return h ? t('review.share.action.postTo', { place: withPlace(h.label, hookPlaces(targets.hooks.filter((x) => x.readable)).get(id)) }) : t('review.share.done')
 }
 
 /** The tooltip of a destination: the folder's path, or the chat's service and masked webhook. */
-export function actionTitle(t: ShareTargets | null, id: string): string {
-  const f = t?.folders.find((x) => x.id === id)
-  if (f) return `Copy the video into ${f.path}${f.path.includes('\\') ? '\\' : '/'}Flown`
-  const h = t?.hooks.find((x) => x.id === id)
-  return h ? `Post the title, length and where it was saved to ${h.label} (${h.masked}). The video is not uploaded.` : ''
+export function actionTitle(targets: ShareTargets | null, id: string): string {
+  const f = targets?.folders.find((x) => x.id === id)
+  if (f) return t('review.share.action.copyTitle', { folder: `${f.path}${f.path.includes('\\') ? '\\' : '/'}${SHARE_SUBFOLDER}` })
+  const h = targets?.hooks.find((x) => x.id === id)
+  return h ? t('review.share.action.postTitle', { label: h.label, masked: h.masked }) : ''
 }
 
 /**
@@ -101,12 +103,12 @@ export function useAfterExport(preset: string | undefined): AfterExport {
   }
   const begin = async (file: string, meta: ShareMeta): Promise<void> => {
     setError(null)
-    const fail = (err: unknown): void => setError(`Could not share: ${ipcMessage(err)}`)
+    const fail = (err: unknown): void => setError(t('review.share.failed', { reason: ipcMessage(err) }))
     // Export may have been pressed before the destinations loaded: what is chosen is read as the
     // export ends, and destinations still loading then are waited for (no remembered choice skipped).
     const now = latest.current
-    const t = now.targets ?? (await window.api.shareTargets().catch(() => null))
-    const ids = choicesFor(now.choices, now.preset, offeredIds(t))
+    const known = now.targets ?? (await window.api.shareTargets().catch(() => null))
+    const ids = choicesFor(now.choices, now.preset, offeredIds(known))
     await window.api.shareOffer(file, meta, ids.length > 0).catch(fail)
     if (ids.length) void window.api.shareStart(file, ids, meta).catch(fail)
   }

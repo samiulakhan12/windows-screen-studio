@@ -230,5 +230,10 @@
   "batch.exportFiles.noun": " file",
   "batch.exportFiles.s": "s",
   "batch.exportFiles.end": "…",
-  "batch.exportFiles.whole": "{count, plural, one {Export {n} file…} other {Export {n} files…}}"
+  "batch.exportFiles.whole": "{count, plural, one {Export {n} file…} other {Export {n} files…}}",
+  "cancelledAbort": "Export cancelled",
+  "fonts.notDownloaded": "Captions use {family}, which is not downloaded: they will use {until}.",
+  "fonts.missingOne": "Font missing: {family}. Text that uses it is drawn with another font.",
+  "stoppedAbort": "The export was stopped",
+  "overlay.tooLarge": "This image is too large to show ({width} × {height} pixels; {side} a side and {megapixels} megapixels at most)."
 }

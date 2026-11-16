@@ -8,6 +8,7 @@ import { clamp } from '../engine/math'
 import type { Clip } from '../types'
 import { outputTimeAt } from './clips'
 import { fmt } from '../i18n/fmt'
+import { t } from '../i18n/t'
 
 /** Speeds the preview can play at; the exported video is never affected. */
 export const PREVIEW_SPEEDS = [0.5, 1, 1.5, 2] as const
@@ -76,7 +77,7 @@ export function formatRate(r: number): string {
 export function shuttleLabel(s: Shuttle, previewSpeed: number, silent = false): string | null {
   if (s.dir === 0 || (s.dir === 1 && s.level === 0)) return null
   const rate = fmt.factor(Math.abs(viewRate(s, previewSpeed)))
-  return s.dir < 0 ? `Reverse ${rate}` : `Forward ${rate}${silent ? ' · no sound' : ''}`
+  return t(s.dir < 0 ? 'timeline.shuttle.reverse' : silent ? 'timeline.shuttle.forwardSilent' : 'timeline.shuttle.forward', { rate })
 }
 
 /** The next preview speed up (1) or down (-1), or null at the end of the list. */
@@ -112,17 +113,18 @@ export function atOutputStart(clips: Clip[], t: number): boolean {
  */
 export function shuttleHint(keys: { reverse: string | null; pause: string | null; forward: string | null }): string {
   const { reverse, pause, forward } = keys
-  const roles = [reverse && `${reverse} plays backwards`, pause && `${pause} pauses`, forward && `${forward} plays forward`].filter(Boolean)
-  const steps = [reverse, forward].filter(Boolean).join(' or ')
+  // What each bound key does, one clause each, with commas between them.
+  const roles = [reverse && t('timeline.shuttle.role.reverse', { key: reverse }), pause && t('timeline.shuttle.role.pause', { key: pause }), forward && t('timeline.shuttle.role.forward', { key: forward })].filter(Boolean)
+  const steps = [reverse, forward].filter((k): k is string => !!k)
   const out: string[] = []
-  if (roles.length) out.push(`${roles.join(', ')}${reverse || forward ? '; press again to go faster' : ''}.`)
-  if (pause && steps) out.push(`Hold ${pause} and tap ${steps} to step one frame.`)
-  out.push(`No sound in reverse or above ${fmt.factor(AUDIBLE_RATES.max)}.`)
+  if (roles.length) out.push(t(reverse || forward ? 'timeline.shuttle.rolesFaster' : 'timeline.shuttle.roles', { roles: roles.join(', ') }))
+  if (pause && steps.length) out.push(t('timeline.shuttle.step', { pause, keys: fmt.list(steps, 'or') }))
+  out.push(t('timeline.shuttle.noSound', { rate: fmt.factor(AUDIBLE_RATES.max) }))
   return out.join(' ')
 }
 
 /** The speed menu's tooltip, naming the keys that change it (left out when unbound). */
 export function previewSpeedHint(slower: string | null, faster: string | null): string {
-  const keys = [slower && `${slower} slower`, faster && `${faster} faster`].filter(Boolean).join(', ')
-  return `Preview speed: play the preview faster or slower to review it${keys ? ` (${keys})` : ''}. The exported video keeps its own speed.`
+  const keys = [slower && t('timeline.previewSpeedKeys.slower', { key: slower }), faster && t('timeline.previewSpeedKeys.faster', { key: faster })].filter(Boolean).join(', ')
+  return keys ? t('timeline.previewSpeedHintKeys', { keys }) : t('timeline.previewSpeedHint')
 }

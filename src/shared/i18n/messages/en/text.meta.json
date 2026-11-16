@@ -1216,5 +1216,17 @@
   },
   "imagesPanel.formats": {
     "description": "Images tab: the images Flown takes, inside the hint under Add image. PNG, JPG, WebP, SVG and GIF are file formats (keep them)."
+  },
+  "graphicsPanel.full": {
+    "description": "Graphics: said when Add is used and the video already has the most pop-ups a project keeps; {n} is that number."
+  },
+  "titleTrack.chapterThere": {
+    "description": "Editor notice: Add chapter at a place where a chapter already starts; {title} is that chapter's name.",
+    "user": [
+      "title"
+    ]
+  },
+  "titleTrack.chapterAtEnd": {
+    "description": "Editor notice: Add chapter at the very end of the video."
   }
 }

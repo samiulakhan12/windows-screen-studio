@@ -5,6 +5,8 @@
  * frame nor past its edges, and snaps to an edge within 8 px. Pure.
  */
 import type { NormRect } from '../types'
+import { fmt } from '../i18n/fmt'
+import { t } from '../i18n/t'
 
 /** The smallest crop (a share of the frame's width and height). */
 export const MIN_CROP = 0.05
@@ -98,6 +100,6 @@ export function rectFromShown(r: NormRect, frame: { w: number; h: number }, show
 export const cropOk = (rect: NormRect): boolean => rect.w >= MIN_CROP - 1e-9 && rect.h >= MIN_CROP - 1e-9
 
 /** How a screen reader hears the crop: "Crop, 45% wide, from 20% across and 10% down". */
-export const cropName = (r: NormRect): string => `Crop, ${Math.round(r.w * 100)}% wide, from ${Math.round(r.x * 100)}% across and ${Math.round(r.y * 100)}% down`
+export const cropName = (r: NormRect): string => t('smart.guide.adjust.cropName', { w: fmt.percent(r.w), x: fmt.percent(r.x), y: fmt.percent(r.y) })
 /** How a screen reader hears the ring: "Ring at 42% across, 30% down". */
-export const ringName = (p: { x: number; y: number }): string => `Ring at ${Math.round(p.x * 100)}% across, ${Math.round(p.y * 100)}% down`
+export const ringName = (p: { x: number; y: number }): string => t('smart.guide.adjust.ringName', { x: fmt.percent(p.x), y: fmt.percent(p.y) })

@@ -7,6 +7,8 @@ import type { Chapter, Clip, Project, TitleCard } from '../../../shared/types'
 import type { EditorServices } from './context'
 import type { PreviewPlayer } from './player'
 import type { Selection } from './selection'
+// `t` names a time in this module's functions, so the message function is `msg` here.
+import { t as msg } from '../../../shared/i18n/t'
 
 /*
  * Adding title cards and chapters at the playhead: the one code path for the Text panel, the
@@ -63,11 +65,11 @@ export function addChapterAt({ store, player }: EditorServices, opts: AddOptions
   const near = chapterNear(chapters, t)
   if (near) {
     opts.onSelect({ kind: 'chapter', id: near.id })
-    opts.onNotice?.(`"${near.title}" already starts here, so it is selected instead`)
+    opts.onNotice?.(msg('text.titleTrack.chapterThere', { title: near.title }))
     return near
   }
   if (!chapterInVideo(p.clips, t)) {
-    opts.onNotice?.('A chapter needs some video after it: move the playhead back from the end')
+    opts.onNotice?.(msg('text.titleTrack.chapterAtEnd'))
     return null
   }
   const chapter = createChapter(t, nextChapterName(chapters))

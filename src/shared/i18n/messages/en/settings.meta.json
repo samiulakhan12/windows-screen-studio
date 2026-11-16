@@ -760,5 +760,8 @@
   },
   "ai.canTranscribeDo": {
     "description": "Settings › AI providers: what a provider that can transcribe can do, a list without a full stop (a full stop or \"Can do:\" goes around it)."
+  },
+  "brand.notSaved": {
+    "description": "Settings › Brand kit: shown when saving the kit failed; {reason} is why, as main says it (a sentence that may end with a full stop)."
   }
 }

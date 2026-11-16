@@ -14,6 +14,7 @@
  * shaper first, red changing fastest, and nothing after it.
  */
 import { fmt } from '../i18n/fmt'
+import { t, type MessageKey, type MessageValues } from '../i18n/t'
 
 export const CUBE_LIMITS = {
   /** Largest file read, in bytes (a 65³ file is 7–10 MiB of text). */
@@ -45,11 +46,14 @@ export interface CubeLut {
   domainMax: [number, number, number]
 }
 
-/** Why a .cube file cannot be used; `line` is 1-based (0: the file as a whole). */
+/**
+ * Why a .cube file cannot be used; `line` is 1-based (0: the file as a whole). `reason` is the whole
+ * sentence's message (errors.cubeLut.*, main reads these files too); its `{line}` is the line.
+ */
 export class CubeError extends Error {
   readonly line: number
-  constructor(line: number, reason: string) {
-    super(line > 0 ? `This LUT could not be used: line ${fmt.count(line, { grouping: true })} ${reason}.` : `This LUT could not be used: ${reason}.`)
+  constructor(line: number, reason: MessageKey, values: MessageValues = {}) {
+    super(t(reason, { line: fmt.count(line, { grouping: true }), ...values }))
     this.name = 'CubeError'
     this.line = line
   }
@@ -69,27 +73,27 @@ const SPACE = /[ \t]+/
 const shown = (word: string): string => word.replace(/[^A-Za-z0-9_]/g, '?').slice(0, 40)
 
 function number(token: string, line: number): number {
-  if (!NUMBER.test(token)) throw new CubeError(line, `has "${shown(token)}", which is not a number`)
+  if (!NUMBER.test(token)) throw new CubeError(line, 'errors.cubeLut.notANumber', { token: shown(token) })
   const v = Number(token)
-  if (!Number.isFinite(v)) throw new CubeError(line, 'has a number too large to use')
-  if (Math.abs(v) > CUBE_LIMITS.maxAbs) throw new CubeError(line, `has ${token}, larger than ${CUBE_LIMITS.maxAbs}`)
+  if (!Number.isFinite(v)) throw new CubeError(line, 'errors.cubeLut.numberTooLarge')
+  if (Math.abs(v) > CUBE_LIMITS.maxAbs) throw new CubeError(line, 'errors.cubeLut.numberAbove', { token, max: String(CUBE_LIMITS.maxAbs) })
   return v
 }
 
 function numbers(tokens: readonly string[], count: number, line: number, what: string): number[] {
-  if (tokens.length !== count) throw new CubeError(line, `has ${tokens.length} ${tokens.length === 1 ? 'number' : 'numbers'} for ${what}, not ${count}`)
+  if (tokens.length !== count) throw new CubeError(line, 'errors.cubeLut.countFor', { count: tokens.length, n: String(tokens.length), what, expected: String(count) })
   return tokens.map((t) => number(t, line))
 }
 
 function size(tokens: readonly string[], line: number, range: { min: number; max: number }, what: string): number {
-  if (tokens.length !== 1 || !INTEGER.test(tokens[0])) throw new CubeError(line, `has no whole number for ${what}`)
+  if (tokens.length !== 1 || !INTEGER.test(tokens[0])) throw new CubeError(line, 'errors.cubeLut.noWholeNumber', { what })
   const n = Number(tokens[0])
-  if (n < range.min || n > range.max) throw new CubeError(line, `sets ${what} to ${fmt.count(n, { grouping: true })}, outside ${range.min}..${fmt.count(range.max, { grouping: true })}`)
+  if (n < range.min || n > range.max) throw new CubeError(line, 'errors.cubeLut.outOfRange', { what, value: fmt.count(n, { grouping: true }), min: String(range.min), max: fmt.count(range.max, { grouping: true }) })
   return n
 }
 
 function span(min: readonly number[], max: readonly number[], line: number): void {
-  for (let c = 0; c < min.length; c++) if (!(max[c] - min[c] >= CUBE_LIMITS.minSpan)) throw new CubeError(line, 'has a range narrower than 0.000001')
+  for (let c = 0; c < min.length; c++) if (!(max[c] - min[c] >= CUBE_LIMITS.minSpan)) throw new CubeError(line, 'errors.cubeLut.rangeTooNarrow')
 }
 
 /** The line holding byte `at` (1-based). */
@@ -101,14 +105,14 @@ function lineOfByte(bytes: Uint8Array, at: number): number {
 
 /** Parses a .cube file, or throws a CubeError naming the line and the reason. */
 export function parseCube(bytes: Uint8Array): CubeLut {
-  if (bytes.length > CUBE_LIMITS.maxBytes) throw new CubeError(0, 'the file is larger than 16 MB')
+  if (bytes.length > CUBE_LIMITS.maxBytes) throw new CubeError(0, 'errors.cubeLut.fileTooLarge')
   const nul = bytes.indexOf(0)
-  if (nul >= 0) throw new CubeError(lineOfByte(bytes, nul), 'has a NUL character')
+  if (nul >= 0) throw new CubeError(lineOfByte(bytes, nul), 'errors.cubeLut.nul')
   let text: string
   try {
     text = new TextDecoder('utf-8', { fatal: true }).decode(bytes)
   } catch {
-    throw new CubeError(0, 'it is not UTF-8 text')
+    throw new CubeError(0, 'errors.cubeLut.notUtf8')
   }
   if (text.charCodeAt(0) === 0xfeff) text = text.slice(1)
 
@@ -133,7 +137,7 @@ export function parseCube(bytes: Uint8Array): CubeLut {
     let line = text.slice(start, end)
     start = end + 1
     if (line.length > CUBE_LIMITS.maxLine + 1 || (line.length === CUBE_LIMITS.maxLine + 1 && !line.endsWith('\r')))
-      throw new CubeError(lineNo, `is longer than ${fmt.count(CUBE_LIMITS.maxLine, { grouping: true })} characters`)
+      throw new CubeError(lineNo, 'errors.cubeLut.lineTooLong', { max: fmt.count(CUBE_LIMITS.maxLine, { grouping: true }) })
     if (table && rows >= size1 && rows < total) {
       const m = DATA_LINE.exec(line)
       if (m) {
@@ -160,17 +164,17 @@ export function parseCube(bytes: Uint8Array): CubeLut {
     // A keyword line; "NaN" and "Infinity" are numbers the data may not hold, so they are read as data and refused there.
     if (KEYWORD_START.test(trimmed) && !NOT_A_NUMBER.test(trimmed.split(SPACE, 1)[0])) {
       const keyword = trimmed.split(SPACE, 1)[0].toUpperCase()
-      if (table) throw new CubeError(lineNo, `has the keyword ${shown(keyword)} after the data`)
-      if (seen.has(keyword)) throw new CubeError(lineNo, `repeats ${shown(keyword)}`)
+      if (table) throw new CubeError(lineNo, 'errors.cubeLut.keywordAfterData', { keyword: shown(keyword) })
+      if (seen.has(keyword)) throw new CubeError(lineNo, 'errors.cubeLut.repeats', { keyword: shown(keyword) })
       seen.add(keyword)
       if (keyword === 'TITLE') {
         const rest = trimmed.slice(5).trim()
         const close = rest.indexOf('"', 1)
-        if (!rest.startsWith('"') || close < 0) throw new CubeError(lineNo, 'has a TITLE without quotes')
+        if (!rest.startsWith('"') || close < 0) throw new CubeError(lineNo, 'errors.cubeLut.titleQuotes')
         const after = rest.slice(close + 1).trim()
-        if (after !== '' && !after.startsWith('#')) throw new CubeError(lineNo, 'has text after the TITLE')
+        if (after !== '' && !after.startsWith('#')) throw new CubeError(lineNo, 'errors.cubeLut.textAfterTitle')
         const raw = rest.slice(1, close)
-        if (raw.length > CUBE_LIMITS.titleMax) throw new CubeError(lineNo, `has a TITLE longer than ${CUBE_LIMITS.titleMax} characters`)
+        if (raw.length > CUBE_LIMITS.titleMax) throw new CubeError(lineNo, 'errors.cubeLut.titleTooLong', { max: String(CUBE_LIMITS.titleMax) })
         title = [...raw.replace(UNSAFE_TEXT, '')].slice(0, CUBE_LIMITS.titleShown).join('')
       } else {
         const hash = trimmed.indexOf('#')
@@ -184,7 +188,7 @@ export function parseCube(bytes: Uint8Array): CubeLut {
             break
           case 'DOMAIN_MIN':
           case 'DOMAIN_MAX': {
-            if (seen.has('LUT_3D_INPUT_RANGE')) throw new CubeError(lineNo, "sets the table's range twice")
+            if (seen.has('LUT_3D_INPUT_RANGE')) throw new CubeError(lineNo, 'errors.cubeLut.rangeTwice')
             const v = numbers(tokens, 3, lineNo, keyword) as [number, number, number]
             if (keyword === 'DOMAIN_MIN') domainMin = v
             else domainMax = v
@@ -192,7 +196,7 @@ export function parseCube(bytes: Uint8Array): CubeLut {
             break
           }
           case 'LUT_3D_INPUT_RANGE': {
-            if (seen.has('DOMAIN_MIN') || seen.has('DOMAIN_MAX')) throw new CubeError(lineNo, "sets the table's range twice")
+            if (seen.has('DOMAIN_MIN') || seen.has('DOMAIN_MAX')) throw new CubeError(lineNo, 'errors.cubeLut.rangeTwice')
             const [lo, hi] = numbers(tokens, 2, lineNo, keyword)
             span([lo], [hi], lineNo)
             domainMin = [lo, lo, lo]
@@ -210,7 +214,7 @@ export function parseCube(bytes: Uint8Array): CubeLut {
           case 'LUT_OUT_VIDEO_RANGE':
             break
           default:
-            throw new CubeError(lineNo, `has the unknown keyword ${shown(keyword)}`)
+            throw new CubeError(lineNo, 'errors.cubeLut.unknownKeyword', { keyword: shown(keyword) })
         }
       }
       if (end === text.length) break
@@ -218,16 +222,16 @@ export function parseCube(bytes: Uint8Array): CubeLut {
     }
     // A line of data.
     if (!table) {
-      if (!size3) throw new CubeError(lineNo, 'has data before LUT_3D_SIZE')
-      if (seen.has('DOMAIN_MIN') !== seen.has('DOMAIN_MAX')) throw new CubeError(lineNo, 'has data after only one of DOMAIN_MIN and DOMAIN_MAX')
+      if (!size3) throw new CubeError(lineNo, 'errors.cubeLut.dataBeforeSize')
+      if (seen.has('DOMAIN_MIN') !== seen.has('DOMAIN_MAX')) throw new CubeError(lineNo, 'errors.cubeLut.oneDomain')
       table = new Float32Array(size3 * size3 * size3 * 3)
       shaper = size1 ? new Float32Array(size1 * 3) : null
       total = size1 + size3 * size3 * size3
     }
-    if (rows >= total) throw new CubeError(lineNo, `is one more line of data than the ${fmt.count(total, { grouping: true })} the sizes give`)
+    if (rows >= total) throw new CubeError(lineNo, 'errors.cubeLut.extraLine', { total: fmt.count(total, { grouping: true }) })
     const hash = trimmed.indexOf('#')
     const tokens = (hash >= 0 ? trimmed.slice(0, hash).trim() : trimmed).split(SPACE)
-    if (tokens.length !== 3) throw new CubeError(lineNo, `has ${tokens.length} ${tokens.length === 1 ? 'number' : 'numbers'}, not 3`)
+    if (tokens.length !== 3) throw new CubeError(lineNo, 'errors.cubeLut.rowCount', { count: tokens.length, n: String(tokens.length) })
     const r = number(tokens[0], lineNo)
     const g = number(tokens[1], lineNo)
     const b = number(tokens[2], lineNo)
@@ -244,8 +248,8 @@ export function parseCube(bytes: Uint8Array): CubeLut {
     rows++
     if (end === text.length) break
   }
-  if (!size3) throw new CubeError(0, 'it has no LUT_3D_SIZE')
-  if (!table || rows < total) throw new CubeError(lineNo, `ends after ${fmt.count(rows, { grouping: true })} of ${fmt.count(total || size1 + size3 ** 3, { grouping: true })} lines of data`)
+  if (!size3) throw new CubeError(0, 'errors.cubeLut.noSize')
+  if (!table || rows < total) throw new CubeError(lineNo, 'errors.cubeLut.endsEarly', { rows: fmt.count(rows, { grouping: true }), total: fmt.count(total || size1 + size3 ** 3, { grouping: true }) })
   return {
     title,
     size: size3,

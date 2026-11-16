@@ -133,7 +133,7 @@ export function withAiTitles(moments: readonly Moment[], answer: readonly { id: 
 }
 
 /** The run was stopped: nothing more is made. */
-export const stopped = (): DOMException => new DOMException('Short clips was stopped.', 'AbortError')
+export const stopped = (): DOMException => new DOMException(t('smart.clips.wasStopped'), 'AbortError')
 
 /** "Error invoking remote method 'x': Error: message" -> "message". */
 export const ipcMessage = (err: unknown): string => (err instanceof Error ? err.message : String(err)).replace(/^Error invoking remote method '[^']+': (\w*Error: )?/, '')
@@ -167,8 +167,8 @@ export async function readScreen(project: Project, signal: AbortSignal, onProgre
   }
 }
 
-/** Every message a failed copy shows starts with this (duplicateFlow.ts). */
-const FAILED = 'Could not make the copy: '
+/** Every message a failed copy shows: "Could not make the copy: …" (duplicateFlow.ts). */
+const failed = (reason: string): string => t('review.copy.failed', { reason })
 
 /** A copy that failed: what was made before it stays (`made`). */
 export class ClipCopyError extends Error {
@@ -218,7 +218,7 @@ export async function makeClipCopies(
       made.push({ id: result.id, name: result.name })
     } catch (err) {
       const message = ipcMessage(err)
-      throw new ClipCopyError(message.startsWith(FAILED) ? message : `${FAILED}${message}`, made)
+      throw new ClipCopyError(message.startsWith(failed('')) ? message : failed(message), made)
     } finally {
       off()
     }

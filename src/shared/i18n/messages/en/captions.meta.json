@@ -2938,5 +2938,14 @@
   },
   "ai.usage.about": {
     "description": "After an AI run: what it cost and how many tokens it used."
+  },
+  "look.previewFocus": {
+    "description": "Captions › look gallery: the label over the preview while a focused tile is previewed; {name} is the look's name. Enter is a keycap.",
+    "dnt": [
+      "Enter"
+    ]
+  },
+  "look.previewHover": {
+    "description": "Captions › look gallery: the label over the preview while a hovered tile is previewed; {name} is the look's name."
   }
 }

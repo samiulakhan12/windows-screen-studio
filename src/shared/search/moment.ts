@@ -4,6 +4,7 @@
  */
 import type { Clip } from '../types'
 import type { SearchKind } from './types'
+import { t } from '../i18n/t'
 
 /** Whether nothing of `start..end` is kept (no clip overlaps it; a point is cut when no clip holds it). */
 export function isCut(kept: readonly (readonly [number, number])[], start: number, end: number): boolean {
@@ -29,15 +30,18 @@ export function momentTarget(clips: readonly Pick<Clip, 'start' | 'end'>[], t: n
   return { t: Math.max(last.start, last.end - 0.05), cut, after: true }
 }
 
-/** Said in the editor when the moment opened from search was cut (§5). */
-export const CUT_MOMENT_NOTICE = 'That moment was cut from the video, so the editor is at the next part that is kept.'
+/**
+ * Said in the editor when the moment opened from search was cut (§5). Main imports this module, so
+ * the notices are errors messages (main carries that namespace, test 86), made when said.
+ */
+export const cutMomentNotice = (): string => t('errors.search.momentCut')
 /** Said when it was cut after the last part that is kept: the editor is at the end, before it. */
-export const CUT_END_NOTICE = 'That moment was cut from the end of the video, so the editor is at the end.'
+export const cutEndNotice = (): string => t('errors.search.momentCutEnd')
 
 /** Where the editor opens for a pending moment (§2.10), and its notice: none when some of it is kept. */
 export function momentOpening(clips: readonly Pick<Clip, 'start' | 'end'>[], moment: { t: number; end: number }): { t: number; notice: string | null } {
   const target = momentTarget(clips, moment.t, moment.end)
-  return { t: target.t, notice: !target.cut ? null : target.after ? CUT_END_NOTICE : CUT_MOMENT_NOTICE }
+  return { t: target.t, notice: !target.cut ? null : target.after ? cutEndNotice() : cutMomentNotice() }
 }
 
 /** Short label of where the words were found. */
