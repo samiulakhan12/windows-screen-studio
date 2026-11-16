@@ -15,14 +15,14 @@
  *
  * Each picture follows a short line naming its item ("The picture for item "c3000":"), after the
  * request's own text. A provider that refuses pictures (HTTP 400 or 422 naming the image) gives
- * NO_PICTURES_MESSAGE, so the user knows to choose another model or untick the box. Nothing here
+ * noPicturesMessage(), so the user knows to choose another model or untick the box. Nothing here
  * reads, keeps or logs a picture.
  */
 import { AI_LIMITS } from '../../shared/api/ai'
 import type { FailureInfo } from '../../shared/captions/transcriptErrors'
 import type { TextPrompt } from '../../shared/captions/transcriptText'
 import { AiError } from './request'
-import { NO_PICTURES_MESSAGE } from './types'
+import { noPicturesMessage } from './types'
 import { t } from '../../shared/i18n/t'
 
 /** One picture of a prompt. */
@@ -94,11 +94,11 @@ export function refusesPictures(info: FailureInfo): boolean {
 }
 
 /** The failure a picture refusal is shown as. */
-export const noPictures = (): AiError => new AiError({ kind: 'bad-request', retryable: false, message: NO_PICTURES_MESSAGE })
+export const noPictures = (): AiError => new AiError({ kind: 'bad-request', retryable: false, message: noPicturesMessage() })
 
 /**
  * Runs one attempt of a request of `prompt`; when the prompt carries pictures and the provider
- * refused them, fails with NO_PICTURES_MESSAGE (an AiError: callWithRetry passes it on as it is,
+ * refused them, fails with noPicturesMessage() (an AiError: callWithRetry passes it on as it is,
  * without trying again). Any other failure is the provider's own, unchanged.
  */
 export async function sendingPictures<T>(prompt: Pick<TextPrompt, 'images'>, toFailure: (err: unknown) => FailureInfo, run: () => Promise<T>): Promise<T> {

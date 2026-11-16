@@ -3,6 +3,7 @@ import { existsSync } from 'node:fs'
 import path from 'node:path'
 import { pathToFileURL } from 'node:url'
 import type { ClipboardResult } from '../shared/api/export'
+import { t } from '../shared/i18n/t'
 
 /** A process that puts a file on the clipboard. Paths never pass through a shell. */
 export interface ClipboardCommand {
@@ -77,7 +78,7 @@ export function runClipboardCommand(cmd: ClipboardCommand, timeoutMs = 10000): P
         stdio: ['pipe', 'ignore', cmd.detached ? 'ignore' : 'pipe']
       })
     } catch (e) {
-      done({ ok: false, message: `Could not copy to the clipboard (${e instanceof Error ? e.message : String(e)}).` })
+      done({ ok: false, message: t('errors.clipboard.failedBecause', { reason: e instanceof Error ? e.message : String(e) }) })
       return
     }
     const timer = setTimeout(() => {
@@ -85,14 +86,14 @@ export function runClipboardCommand(cmd: ClipboardCommand, timeoutMs = 10000): P
       if (cmd.detached) done({ ok: true })
       else {
         proc.kill()
-        done({ ok: false, message: 'Copying to the clipboard timed out.' })
+        done({ ok: false, message: t('errors.clipboard.timedOut') })
       }
     }, timeoutMs)
     proc.stderr?.on('data', (d: Buffer) => (stderr = (stderr + d.toString()).slice(-1000)))
-    proc.on('error', (e) => done({ ok: false, message: `Could not copy to the clipboard (${e.message}).` }))
+    proc.on('error', (e) => done({ ok: false, message: t('errors.clipboard.failedBecause', { reason: e.message }) }))
     // 'exit', not 'close': a forked helper may keep inherited handles open.
     proc.on('exit', (code) =>
-      done(code === 0 ? { ok: true } : { ok: false, message: `Could not copy to the clipboard${stderr.trim() ? `: ${stderr.trim()}` : '.'}` })
+      done(code === 0 ? { ok: true } : { ok: false, message: stderr.trim() ? t('errors.clipboard.failedSaying', { output: stderr.trim() }) : t('errors.clipboard.failed') })
     )
     proc.stdin?.on('error', () => undefined)
     proc.stdin?.end(cmd.input ?? '')
@@ -100,10 +101,10 @@ export function runClipboardCommand(cmd: ClipboardCommand, timeoutMs = 10000): P
 }
 
 export async function copyFileToClipboard(file: string): Promise<ClipboardResult> {
-  if (!existsSync(file)) return { ok: false, message: 'The exported file no longer exists.' }
+  if (!existsSync(file)) return { ok: false, message: t('errors.clipboard.fileGone') }
   const cmd = clipboardCommand(process.platform, file, process.env, (t) => onPath(t))
   if (!cmd) {
-    return { ok: false, message: 'Copying files is not supported here: install xclip (X11) or wl-clipboard (Wayland).' }
+    return { ok: false, message: t('errors.clipboard.noTool') }
   }
   return runClipboardCommand(cmd)
 }

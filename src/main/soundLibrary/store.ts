@@ -207,9 +207,9 @@ function failureMessage(err: unknown): string {
     if (err.kind === 'mismatch') return LIBRARY_COPY.mismatch
     if (err.kind === 'cancelled') return LIBRARY_COPY.cancelled
     if (err.kind === 'disk') return err.message
-    if (err.kind === 'network') return `The download stopped: ${err.message} Try again.`
-    if (err.kind === 'refused') return 'GitHub or your network refused the download (HTTP 403). A proxy or firewall may be blocking it.'
-    if (err.kind === 'missing') return `The music is no longer at its address (HTTP ${err.status ?? 404}).`
+    if (err.kind === 'network') return t('errors.download.stopped', { reason: err.message })
+    if (err.kind === 'refused') return t('errors.download.refusedGithub')
+    if (err.kind === 'missing') return t('errors.download.musicGone', { status: String(err.status ?? 404) })
     return err.message
   }
   return err instanceof Error ? err.message : String(err)

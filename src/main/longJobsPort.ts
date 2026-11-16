@@ -9,6 +9,7 @@ import type { ThumbAction } from '../shared/jobs/longJobs'
 import { thumbIcon } from '../shared/jobs/thumbIcons'
 import type { PowerEvent, TaskbarPort } from './longJobs'
 import { getMainWindow, windowIconPath } from './windows'
+import { t } from '../shared/i18n/t'
 
 type Trace = { at: number; call: string; value: unknown }[]
 
@@ -79,7 +80,7 @@ export function electronTaskbarPort(): TaskbarPort {
         title: copy.title,
         body: copy.body,
         icon: windowIconPath(),
-        actions: [...copy.actions.map((a) => ({ type: 'button' as const, text: a === 'open' ? 'Open' : 'Show in folder' })), ...(handlers.extras ?? []).map((x) => ({ type: 'button' as const, text: x.text }))]
+        actions: [...copy.actions.map((a) => ({ type: 'button' as const, text: a === 'open' ? t('main.jobs.open') : t('common.action.showInFolder') })), ...(handlers.extras ?? []).map((x) => ({ type: 'button' as const, text: x.text }))]
       })
       n.on('action', (details, index) => {
         const i = typeof details?.actionIndex === 'number' ? details.actionIndex : index

@@ -19,7 +19,7 @@ import { runScriptDraft, SCRIPT_EFFORT, validateScriptRequest } from '../shared/
 import { AiProviderStore, type SecretBox } from './ai/keyStore'
 import { clientFor } from './ai/providers'
 import { stopAllTranscriptions, stopTranscription, sweepTranscribeTemp, transcribeProject } from './ai/transcribe'
-import { NO_PICTURES_MESSAGE, type AiClient, type TextEffort } from './ai/types'
+import { noPicturesMessage, type AiClient, type TextEffort } from './ai/types'
 import { isAppUrl } from './security'
 import { beginJob } from './longJobs'
 import { modelDefaults } from './ai/modelList'
@@ -88,7 +88,7 @@ function usageMeter(): { onUsage: (u: AiUsage) => void; usage: () => AiUsage | n
 
 /** `client`'s answer to `prompt`; a prompt with pictures only to a client that sends them (§5.3.1). */
 function ask(client: AiClient, prompt: TextPrompt, opts: { signal: AbortSignal; effort: TextEffort; onUsage: (u: AiUsage) => void }): Promise<unknown> {
-  if (prompt.images?.length && !client.pictures) return Promise.reject(new Error(NO_PICTURES_MESSAGE))
+  if (prompt.images?.length && !client.pictures) return Promise.reject(new Error(noPicturesMessage()))
   return client.json(prompt, opts)
 }
 

@@ -1,0 +1,513 @@
+[
+  {
+    "key": "errors.aiService.declined",
+    "file": "src/main/ai/compatible.ts",
+    "line": 171,
+    "english": "api.groq.com declined this request.",
+    "sample": {
+      "provider": "api.groq.com"
+    }
+  },
+  {
+    "key": "errors.aiService.declined",
+    "file": "src/main/ai/openai.ts",
+    "line": 157,
+    "english": "OpenAI declined this request.",
+    "sample": {
+      "provider": "OpenAI"
+    }
+  },
+  {
+    "key": "errors.aiService.declinedTryAnother",
+    "file": "src/main/ai/anthropic.ts",
+    "line": 92,
+    "english": "Claude declined this request. Try another provider for this task.",
+    "sample": {
+      "provider": "Claude"
+    }
+  },
+  {
+    "key": "errors.aiService.declinedCategoryTryAnother",
+    "file": "src/main/ai/anthropic.ts",
+    "line": 92,
+    "english": "Claude declined this request (cyber). Try another provider for this task.",
+    "sample": {
+      "provider": "Claude",
+      "category": "cyber"
+    }
+  },
+  {
+    "key": "errors.aiService.declinedBecause",
+    "file": "src/main/ai/gemini.ts",
+    "line": 79,
+    "english": "Gemini declined this request (SAFETY).",
+    "sample": {
+      "provider": "Gemini",
+      "reason": "SAFETY"
+    }
+  },
+  {
+    "key": "errors.aiService.declinedToAnswer",
+    "file": "src/main/ai/gemini.ts",
+    "line": 82,
+    "english": "Gemini declined to answer (RECITATION).",
+    "sample": {
+      "provider": "Gemini",
+      "reason": "RECITATION"
+    }
+  },
+  {
+    "key": "errors.aiService.declinedSaying",
+    "file": "src/main/ai/compatible.ts",
+    "line": 169,
+    "english": "api.groq.com declined this request: I cannot help with that.",
+    "sample": {
+      "provider": "api.groq.com",
+      "refusal": "I cannot help with that."
+    }
+  },
+  {
+    "key": "errors.aiService.declinedSaying",
+    "file": "src/main/ai/openai.ts",
+    "line": 149,
+    "english": "OpenAI declined this request: No.",
+    "sample": {
+      "provider": "OpenAI",
+      "refusal": "No."
+    }
+  },
+  {
+    "key": "errors.aiService.tooLongTranscript",
+    "file": "src/main/ai/anthropic.ts",
+    "line": 95,
+    "english": "Claude stopped before finishing the answer (it was too long). Try a shorter transcript.",
+    "sample": {
+      "provider": "Claude"
+    }
+  },
+  {
+    "key": "errors.aiService.tooLongPart",
+    "file": "src/main/ai/gemini.ts",
+    "line": 81,
+    "english": "Gemini stopped before finishing the answer (it was too long). Try a shorter part.",
+    "sample": {
+      "provider": "Gemini"
+    }
+  },
+  {
+    "key": "errors.aiService.tooLongPart",
+    "file": "src/main/ai/compatible.ts",
+    "line": 170,
+    "english": "api.groq.com stopped before finishing the answer (it was too long). Try a shorter part.",
+    "sample": {
+      "provider": "api.groq.com"
+    }
+  },
+  {
+    "key": "errors.aiService.stoppedBecause",
+    "file": "src/main/ai/openai.ts",
+    "line": 157,
+    "english": "OpenAI stopped before finishing the answer (max_output_tokens). Try a shorter transcript.",
+    "sample": {
+      "provider": "OpenAI",
+      "reason": "max_output_tokens"
+    }
+  },
+  {
+    "key": "errors.aiService.stoppedIncomplete",
+    "file": "src/main/ai/openai.ts",
+    "line": 157,
+    "english": "OpenAI stopped before finishing the answer (incomplete). Try a shorter transcript.",
+    "sample": {
+      "provider": "OpenAI"
+    }
+  },
+  {
+    "key": "errors.aiService.notJson",
+    "file": "src/main/ai/anthropic.ts",
+    "line": 150,
+    "english": "Claude answered with something that is not the expected JSON. Try again.",
+    "sample": {
+      "provider": "Claude"
+    }
+  },
+  {
+    "key": "errors.aiService.notJson",
+    "file": "src/main/ai/gemini.ts",
+    "line": 92,
+    "english": "Gemini answered with something that is not the expected JSON. Try again.",
+    "sample": {
+      "provider": "Gemini"
+    }
+  },
+  {
+    "key": "errors.aiService.notJson",
+    "file": "src/main/ai/openai.ts",
+    "line": 169,
+    "english": "OpenAI answered with something that is not the expected JSON. Try again.",
+    "sample": {
+      "provider": "OpenAI"
+    }
+  },
+  {
+    "key": "errors.aiService.notJson",
+    "file": "src/main/ai/compatible.ts",
+    "line": 184,
+    "english": "api.groq.com answered with something that is not the expected JSON. Try again.",
+    "sample": {
+      "provider": "api.groq.com"
+    }
+  },
+  {
+    "key": "errors.aiService.emptyAnswer",
+    "file": "src/main/ai/gemini.ts",
+    "line": 84,
+    "english": "Gemini gave an empty answer. Try again.",
+    "sample": {
+      "provider": "Gemini"
+    }
+  },
+  {
+    "key": "errors.aiService.uploadSlow",
+    "file": "src/main/ai/gemini.ts",
+    "line": 120,
+    "english": "Gemini took too long to process the uploaded sound.",
+    "sample": {
+      "provider": "Gemini"
+    }
+  },
+  {
+    "key": "errors.aiService.uploadFailed",
+    "file": "src/main/ai/gemini.ts",
+    "line": 124,
+    "english": "Gemini could not process the uploaded sound.",
+    "sample": {
+      "provider": "Gemini"
+    }
+  },
+  {
+    "key": "errors.aiService.rejectedJsonMode",
+    "file": "src/main/ai/compatible.ts",
+    "line": 228,
+    "english": "api.groq.com rejected the request's JSON mode.",
+    "sample": {
+      "provider": "api.groq.com"
+    }
+  },
+  {
+    "key": "errors.aiService.jsonModeRefused",
+    "file": "src/main/ai/compatible.ts",
+    "line": 96,
+    "english": "The service did not take this JSON mode.",
+    "sample": {}
+  },
+  {
+    "key": "main.aiCheck.keyWorks",
+    "file": "src/main/ai/openai.ts",
+    "line": 72,
+    "english": "The key works.",
+    "sample": {}
+  },
+  {
+    "key": "main.aiCheck.keyWorksModel",
+    "file": "src/main/ai/gemini.ts",
+    "line": 134,
+    "english": "The key works, and “gemini-2.5-flash” is available.",
+    "sample": {
+      "model": "gemini-2.5-flash"
+    }
+  },
+  {
+    "key": "main.aiCheck.keyWorksClaude",
+    "file": "src/main/ai/anthropic.ts",
+    "line": 111,
+    "english": "The key works, and “claude-sonnet-4-5” is available. Claude can clean up, translate and summarise transcripts; it cannot transcribe sound.",
+    "sample": {
+      "model": "claude-sonnet-4-5"
+    }
+  },
+  {
+    "key": "main.aiCheck.works",
+    "file": "src/main/ai/compatible.ts",
+    "line": 55,
+    "english": "Works.",
+    "sample": {}
+  },
+  {
+    "key": "main.aiCheck.worksChecked",
+    "file": "src/main/ai/compatible.ts",
+    "line": 56,
+    "english": "Works; Flown checks its answers more closely.",
+    "sample": {}
+  },
+  {
+    "key": "main.aiCheck.schema",
+    "file": "src/main/ai/compatible.ts",
+    "line": 55,
+    "english": "Answers in JSON with a schema.",
+    "sample": {}
+  },
+  {
+    "key": "main.aiCheck.plainJson",
+    "file": "src/main/ai/compatible.ts",
+    "line": 56,
+    "english": "Answers in plain JSON.",
+    "sample": {}
+  },
+  {
+    "key": "main.aiCheck.plainText",
+    "file": "src/main/ai/compatible.ts",
+    "line": 57,
+    "english": "Answers in plain text.",
+    "sample": {}
+  },
+  {
+    "key": "errors.listFetch.redirect",
+    "file": "src/main/ai/listFetch.ts",
+    "line": 19,
+    "english": "The service answered with a redirect to another address, which Flown does not follow (unexpected redirect).",
+    "sample": {}
+  },
+  {
+    "key": "errors.listFetch.couldNotRead",
+    "file": "src/main/ai/listFetch.ts",
+    "line": 77,
+    "english": "Could not read the list of models from OpenAI: terminated",
+    "sample": {
+      "provider": "OpenAI",
+      "reason": "terminated"
+    }
+  },
+  {
+    "key": "errors.listFetch.tooLarge",
+    "file": "src/main/ai/listFetch.ts",
+    "line": 79,
+    "english": "The list of models from OpenAI is too large (over 4 MB).",
+    "sample": {
+      "provider": "OpenAI"
+    }
+  },
+  {
+    "key": "errors.listFetch.notJson",
+    "file": "src/main/ai/listFetch.ts",
+    "line": 94,
+    "english": "OpenAI answered the list of models with something that is not JSON.",
+    "sample": {
+      "provider": "OpenAI"
+    }
+  },
+  {
+    "key": "errors.serviceStore.newAddress",
+    "file": "src/main/ai/serviceStore.ts",
+    "line": 57,
+    "english": "Enter the API key for the new address.",
+    "sample": {}
+  },
+  {
+    "key": "errors.serviceStore.model",
+    "file": "src/main/ai/serviceStore.ts",
+    "line": 58,
+    "english": "Enter the model's name.",
+    "sample": {}
+  },
+  {
+    "key": "errors.keyStore.thisAiProviderNo",
+    "file": "src/main/ai/serviceStore.ts",
+    "line": 55,
+    "english": "This AI provider no longer exists. Choose another one in Settings → AI providers.",
+    "sample": {}
+  },
+  {
+    "key": "errors.keyStore.enterTheApiKey",
+    "file": "src/main/ai/serviceStore.ts",
+    "line": 56,
+    "english": "Enter the API key.",
+    "sample": {}
+  },
+  {
+    "key": "errors.keyStore.atMostProvidersCan",
+    "file": "src/main/ai/serviceStore.ts",
+    "line": 59,
+    "english": "At most 20 providers can be added.",
+    "sample": {
+      "maxProviders": "20"
+    }
+  },
+  {
+    "key": "errors.aiService.noPictures",
+    "file": "src/main/ai/types.ts",
+    "line": 54,
+    "english": "This model does not read pictures. Choose another model, or untick Also send the screenshots.",
+    "sample": {}
+  },
+  {
+    "key": "errors.download.mismatch",
+    "file": "src/main/assets/assetStore.ts",
+    "line": 35,
+    "english": "The download did not match the expected file, so it was deleted.",
+    "sample": {}
+  },
+  {
+    "key": "errors.download.cancelled",
+    "file": "src/main/assets/assetStore.ts",
+    "line": 204,
+    "english": "The download was cancelled.",
+    "sample": {}
+  },
+  {
+    "key": "errors.download.stopped",
+    "file": "src/main/assets/assetStore.ts",
+    "line": 206,
+    "english": "The download stopped: The connection was closed. Try again.",
+    "sample": {
+      "reason": "The connection was closed."
+    }
+  },
+  {
+    "key": "errors.download.stopped",
+    "file": "src/main/soundLibrary/store.ts",
+    "line": 210,
+    "english": "The download stopped: The connection was closed. Try again.",
+    "sample": {
+      "reason": "The connection was closed."
+    }
+  },
+  {
+    "key": "errors.download.refusedGithub",
+    "file": "src/main/assets/assetStore.ts",
+    "line": 208,
+    "english": "GitHub or your network refused the download (HTTP 403). A proxy or firewall may be blocking it.",
+    "sample": {}
+  },
+  {
+    "key": "errors.download.refusedGithub",
+    "file": "src/main/soundLibrary/store.ts",
+    "line": 211,
+    "english": "GitHub or your network refused the download (HTTP 403). A proxy or firewall may be blocking it.",
+    "sample": {}
+  },
+  {
+    "key": "errors.download.fontGone",
+    "file": "src/main/assets/assetStore.ts",
+    "line": 209,
+    "english": "The font is no longer at its address (HTTP 404).",
+    "sample": {
+      "status": "404"
+    }
+  },
+  {
+    "key": "errors.download.musicGone",
+    "file": "src/main/soundLibrary/store.ts",
+    "line": 212,
+    "english": "The music is no longer at its address (HTTP 404).",
+    "sample": {
+      "status": "404"
+    }
+  },
+  {
+    "key": "errors.clipboard.failedBecause",
+    "file": "src/main/exportClipboard.ts",
+    "line": 80,
+    "english": "Could not copy to the clipboard (spawn ENOENT).",
+    "sample": {
+      "reason": "spawn ENOENT"
+    }
+  },
+  {
+    "key": "errors.clipboard.failedBecause",
+    "file": "src/main/exportClipboard.ts",
+    "line": 92,
+    "english": "Could not copy to the clipboard (spawn EACCES).",
+    "sample": {
+      "reason": "spawn EACCES"
+    }
+  },
+  {
+    "key": "errors.clipboard.timedOut",
+    "file": "src/main/exportClipboard.ts",
+    "line": 88,
+    "english": "Copying to the clipboard timed out.",
+    "sample": {}
+  },
+  {
+    "key": "errors.clipboard.failedSaying",
+    "file": "src/main/exportClipboard.ts",
+    "line": 95,
+    "english": "Could not copy to the clipboard: Error: Can't open display",
+    "sample": {
+      "output": "Error: Can't open display"
+    }
+  },
+  {
+    "key": "errors.clipboard.failed",
+    "file": "src/main/exportClipboard.ts",
+    "line": 95,
+    "english": "Could not copy to the clipboard.",
+    "sample": {}
+  },
+  {
+    "key": "errors.clipboard.fileGone",
+    "file": "src/main/exportClipboard.ts",
+    "line": 103,
+    "english": "The exported file no longer exists.",
+    "sample": {}
+  },
+  {
+    "key": "errors.clipboard.noTool",
+    "file": "src/main/exportClipboard.ts",
+    "line": 106,
+    "english": "Copying files is not supported here: install xclip (X11) or wl-clipboard (Wayland).",
+    "sample": {}
+  },
+  {
+    "key": "errors.clipboard.notExported",
+    "file": "src/main/exportIpc.ts",
+    "line": 422,
+    "english": "Only files exported in this session can be copied.",
+    "sample": {}
+  },
+  {
+    "key": "main.jobs.open",
+    "file": "src/main/longJobsPort.ts",
+    "line": 82,
+    "english": "Open",
+    "sample": {}
+  },
+  {
+    "key": "common.action.showInFolder",
+    "file": "src/main/longJobsPort.ts",
+    "line": 82,
+    "english": "Show in folder",
+    "sample": {}
+  },
+  {
+    "key": "errors.export.cancelled",
+    "file": "src/main/musicLoopCache.ts",
+    "line": 39,
+    "english": "The export was cancelled.",
+    "sample": {}
+  },
+  {
+    "key": "errors.musicLoop.failed",
+    "file": "src/main/musicLoopCache.ts",
+    "line": 40,
+    "english": "The background music could not be prepared for looping. Choose it again in the Audio panel, or turn Loop off.",
+    "sample": {}
+  },
+  {
+    "key": "errors.musicLoop.timedOut",
+    "file": "src/main/musicLoopCache.ts",
+    "line": 41,
+    "english": "Preparing the background music for looping took too long. Try the export again.",
+    "sample": {}
+  },
+  {
+    "key": "errors.musicLoop.space",
+    "file": "src/main/musicLoopCache.ts",
+    "line": 42,
+    "english": "There is not enough free space to prepare the background music for the export: about 5 MB more is needed. Free some space and export again.",
+    "sample": {
+      "mb": "5"
+    }
+  }
+]

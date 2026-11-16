@@ -1,6 +1,7 @@
 import type { AiUsage, ListedModel } from '../../shared/api/ai'
 import type { RawTranscript } from '../../shared/captions/transcriptParse'
 import type { TextPrompt } from '../../shared/captions/transcriptText'
+import { t } from '../../shared/i18n/t'
 
 /** A stretch of sound to transcribe, as a compressed file. */
 export interface AudioPart {
@@ -51,7 +52,7 @@ export type TextEffort = 'low' | 'medium' | 'high'
  * What a text request is refused with when its prompt carries pictures (smart-tools.md §5.3.1) and
  * the client cannot send them (every client until part P6 sets `pictures`).
  */
-export const NO_PICTURES_MESSAGE = 'This model does not read pictures. Choose another model, or untick Also send the screenshots.'
+export const noPicturesMessage = (): string => t('errors.aiService.noPictures')
 
 /** One provider, set up with the user's key. Every call retries and reports failures as AiError. */
 export interface AiClient {
@@ -64,7 +65,7 @@ export interface AiClient {
   json(prompt: TextPrompt, opts: { signal: AbortSignal; effort: TextEffort; onUsage?: (u: AiUsage) => void }): Promise<unknown>
   /** The models it can use (smart-tools.md §10.4), from the provider. */
   models?: (signal: AbortSignal) => Promise<ListedModel[]>
-  /** It sends a prompt's pictures (§5.3.1, part P6); without it a prompt with pictures is refused (NO_PICTURES_MESSAGE). */
+  /** It sends a prompt's pictures (§5.3.1, part P6); without it a prompt with pictures is refused (noPicturesMessage). */
   pictures?: boolean
   /** Transcribes one part (times from its start); absent for providers that cannot. */
   transcribe?: (part: AudioPart, call: TranscribeCall) => Promise<RawTranscript>

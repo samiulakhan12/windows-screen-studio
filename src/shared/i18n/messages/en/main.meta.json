@@ -298,5 +298,50 @@
     "dnt": [
       "PNG"
     ]
+  },
+  "aiCheck.works": {
+    "description": "Settings › AI providers, Save and check of a service added by address: the first line when it answers in JSON with a schema."
+  },
+  "aiCheck.worksChecked": {
+    "description": "Settings › AI providers, Save and check of a service added by address: the first line when it answers only in plain JSON or text.",
+    "dnt": [
+      "Flown"
+    ]
+  },
+  "aiCheck.schema": {
+    "description": "Settings › AI providers, Save and check: the second line, how the service answers.",
+    "dnt": [
+      "JSON"
+    ]
+  },
+  "aiCheck.plainJson": {
+    "description": "Settings › AI providers, Save and check: the second line, how the service answers.",
+    "dnt": [
+      "JSON"
+    ]
+  },
+  "aiCheck.plainText": {
+    "description": "Settings › AI providers, Save and check: the second line, how the service answers."
+  },
+  "aiCheck.keyWorks": {
+    "description": "Settings › AI providers, Save and check: the OpenAI key was accepted."
+  },
+  "aiCheck.keyWorksModel": {
+    "description": "Settings › AI providers, Save and check: the Gemini key was accepted and {model} (the model name typed or chosen) can be used.",
+    "user": [
+      "model"
+    ]
+  },
+  "aiCheck.keyWorksClaude": {
+    "description": "Settings › AI providers, Save and check: the Anthropic key was accepted and {model} (the model name) can be used.",
+    "user": [
+      "model"
+    ],
+    "dnt": [
+      "Claude"
+    ]
+  },
+  "jobs.open": {
+    "description": "Button of the \"Export finished\" notification that opens the exported file (the verb)."
   }
 }

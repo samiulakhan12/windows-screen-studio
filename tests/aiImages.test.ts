@@ -19,7 +19,7 @@ import type { TextPrompt } from '../src/shared/captions/transcriptText'
 vi.mock('electron', () => ({ app: { isPackaged: false, getPath: () => '/nonexistent' }, net: { fetch: () => Promise.reject(new Error('no net')) } }))
 
 const { checkImages, chatImagePart, claudeImageBlock, geminiImagePart, openAiImagePart, refusesPictures } = await import('../src/main/ai/images')
-const { NO_PICTURES_MESSAGE } = await import('../src/main/ai/types')
+const { noPicturesMessage } = await import('../src/main/ai/types')
 const { openAiClient } = await import('../src/main/ai/openai')
 const { geminiClient } = await import('../src/main/ai/gemini')
 const { anthropicClient } = await import('../src/main/ai/anthropic')
@@ -237,7 +237,7 @@ describe('test 139: a provider that refuses pictures', () => {
           () => 'resolved',
           (e: unknown) => (e instanceof Error ? e.message : String(e))
         )
-      expect(message, name).toBe(NO_PICTURES_MESSAGE)
+      expect(message, name).toBe(noPicturesMessage())
       expect(message, name).toMatch(/^This model does not read pictures\. Choose another model, or untick Also send the screenshots\.$/)
       expect(mock.bodies, name).toHaveLength(1)
     }
@@ -247,7 +247,7 @@ describe('test 139: a provider that refuses pictures', () => {
     mock.refuse = true
     const modes: string[] = []
     const client = compatibleClient(service('schema'), 'svc-test-images-0123456789', { setJsonMode: (_id, json) => void modes.push(json) })
-    await expect(client.json(withPics(), OPTS())).rejects.toThrow(NO_PICTURES_MESSAGE)
+    await expect(client.json(withPics(), OPTS())).rejects.toThrow(noPicturesMessage())
     expect(modes).toEqual([])
     expect(mock.bodies).toHaveLength(1)
   })

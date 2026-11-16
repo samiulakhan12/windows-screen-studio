@@ -31,8 +31,8 @@ const RECORDS_MAX = 64 * 1024
 /** A .part file untouched this long is deleted (as the speech store's, models.ts STALE_PART_MS). */
 export const STALE_PART_MS = 30 * 24 * 3600_000
 
-/** What a download that did not match its pin says (§12). */
-export const MISMATCH_MESSAGE = 'The download did not match the expected file, so it was deleted.'
+/** What a download that did not match its pin says (§12), in the UI language. */
+export const mismatchMessage = (): string => t('errors.download.mismatch')
 
 /** The downloadable fonts: every catalogue font that is not bundled (§6.4). */
 const DOWNLOADS: readonly CatalogFont[] = CATALOG_FONTS.filter((f) => !f.bundled && f.files.length === 1)
@@ -200,13 +200,13 @@ export async function listAssets(): Promise<AssetState[]> {
 /** The message a failed download shows (§12). */
 function failureMessage(err: unknown): string {
   if (err instanceof DownloadFailure) {
-    if (err.kind === 'mismatch') return MISMATCH_MESSAGE
-    if (err.kind === 'cancelled') return 'The download was cancelled.'
+    if (err.kind === 'mismatch') return mismatchMessage()
+    if (err.kind === 'cancelled') return t('errors.download.cancelled')
     if (err.kind === 'disk') return err.message
-    if (err.kind === 'network') return `The download stopped: ${err.message} Try again.`
+    if (err.kind === 'network') return t('errors.download.stopped', { reason: err.message })
     // The speech store's words name a model and Hugging Face; fonts come from GitHub (the last source).
-    if (err.kind === 'refused') return 'GitHub or your network refused the download (HTTP 403). A proxy or firewall may be blocking it.'
-    if (err.kind === 'missing') return `The font is no longer at its address (HTTP ${err.status ?? 404}).`
+    if (err.kind === 'refused') return t('errors.download.refusedGithub')
+    if (err.kind === 'missing') return t('errors.download.fontGone', { status: String(err.status ?? 404) })
     return err.message
   }
   return err instanceof Error ? err.message : String(err)

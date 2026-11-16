@@ -419,7 +419,7 @@ export function registerExportIpc(): void {
   })
 
   ipcMain.handle('export:copyToClipboard', (_e, file: string) => {
-    if (!exportedFiles.has(file)) return { ok: false, message: 'Only files exported in this session can be copied.' }
+    if (!exportedFiles.has(file)) return { ok: false, message: t('errors.clipboard.notExported') }
     return copyFileToClipboard(file)
   })
 

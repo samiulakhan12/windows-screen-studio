@@ -31,6 +31,7 @@ import { fetchModelJson, MODEL_LIST_TIMEOUT_MS, readListedIds, noRedirectFetch }
 import { registerSecret } from './secrets'
 import { noteUsage } from './usage'
 import { openAiImagePart, sendingPictures, withPictures } from './images'
+import { t } from '../../shared/i18n/t'
 
 const OFFICIAL_URL = 'https://api.openai.com/v1'
 const PROVIDER = AI_PROVIDER_KINDS.openai.label
@@ -69,7 +70,7 @@ export function openAiClient(apiKey: string, model: string, transcriptionModel: 
 
     async test(signal) {
       await callWithRetry((s) => client.models.list({ signal: s }), { ...base, signal, timeoutMs: 30_000, attempts: 2 })
-      return 'The key works.'
+      return t('main.aiCheck.keyWorks')
     },
 
     async transcribe(part, call) {
@@ -146,7 +147,7 @@ export function openAiClient(apiKey: string, model: string, transcriptionModel: 
       for (const item of response.output ?? []) {
         if (item.type !== 'message') continue
         for (const c of item.content) {
-          if (c.type === 'refusal') throw new AiError({ kind: 'refused', retryable: false, message: `${PROVIDER} declined this request${c.refusal ? `: ${c.refusal.slice(0, 200)}` : '.'}` })
+          if (c.type === 'refusal') throw new AiError({ kind: 'refused', retryable: false, message: c.refusal ? t('errors.aiService.declinedSaying', { provider: PROVIDER, refusal: c.refusal.slice(0, 200) }) : t('errors.aiService.declined', { provider: PROVIDER }) })
         }
       }
       if (response.status === 'incomplete') {
@@ -154,7 +155,12 @@ export function openAiClient(apiKey: string, model: string, transcriptionModel: 
         throw new AiError({
           kind: reason === 'content_filter' ? 'refused' : 'other',
           retryable: false,
-          message: reason === 'content_filter' ? `${PROVIDER} declined this request.` : `${PROVIDER} stopped before finishing the answer (${reason ?? 'incomplete'}). Try a shorter transcript.`
+          message:
+            reason === 'content_filter'
+              ? t('errors.aiService.declined', { provider: PROVIDER })
+              : reason
+                ? t('errors.aiService.stoppedBecause', { provider: PROVIDER, reason })
+                : t('errors.aiService.stoppedIncomplete', { provider: PROVIDER })
         })
       }
       // The tokens it reports (smart-tools.md §11.6).
@@ -166,7 +172,7 @@ export function openAiClient(apiKey: string, model: string, transcriptionModel: 
       try {
         return JSON.parse(response.output_text)
       } catch {
-        throw new AiError({ kind: 'other', retryable: false, message: `${PROVIDER} answered with something that is not the expected JSON. Try again.` })
+        throw new AiError({ kind: 'other', retryable: false, message: t('errors.aiService.notJson', { provider: PROVIDER }) })
       }
     }
   }
