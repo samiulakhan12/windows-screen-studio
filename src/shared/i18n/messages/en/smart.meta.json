@@ -680,5 +680,68 @@
   },
   "clips.words.making": {
     "description": "Short clips: progress while the copies are made."
+  },
+  "guide.say.shotsReady": {
+    "description": "Make a guide: what the panel's live region says once every screenshot of the guide is made."
+  },
+  "guide.say.stopped": {
+    "description": "Make a guide: what the panel's live region says when Write titles or Tidy notes was stopped before it finished."
+  },
+  "guide.cost.titles": {
+    "description": "Make a guide: the Write titles action as the AI cost line names it before its cost (\"Titles about US$0.01\")."
+  },
+  "guide.cost.notes": {
+    "description": "Make a guide: the Tidy notes action as the AI cost line names it before its cost (\"Notes about US$0.01\")."
+  },
+  "guide.cost.what": {
+    "description": "Make a guide: what Write titles sends to the AI service, inside the cost line (\"Sends 12 screenshots and the steps' narration to OpenAI\")."
+  },
+  "guide.say.missing": {
+    "description": "Make a guide: what the panel's live region says after Save or Copy, after its first sentence, when some screenshots could not be made."
+  },
+  "guide.say.missingWhy": {
+    "description": "Make a guide: what the panel's live region says after Save or Copy, after its first sentence, when some screenshots could not be made; {reason} is why, a sentence of its own.",
+    "user": [
+      "reason"
+    ]
+  },
+  "guide.say.changedSaving": {
+    "description": "Make a guide: what the panel's live region says after Save when the project was edited while the guide was being saved."
+  },
+  "guide.say.changedCopying": {
+    "description": "Make a guide: what the panel's live region says after Copy when the project was edited while the guide was being copied."
+  },
+  "guide.say.saved": {
+    "description": "Make a guide: what the panel's live region says after Save; {name} is the saved file's name.",
+    "user": [
+      "name"
+    ]
+  },
+  "guide.say.copied": {
+    "description": "Make a guide: what the panel's live region says after Copy; {n} is how many screenshots went with it."
+  },
+  "guide.say.added": {
+    "description": "Make a guide: what the panel's live region says after Add a step."
+  },
+  "guide.say.allTitled": {
+    "description": "Make a guide: what the panel's live region says after Next step without a title when every step has one."
+  },
+  "guide.say.needsTitle": {
+    "description": "Make a guide: what the panel's live region says after Next step without a title, as it moves to that step; {n} is the step's number as the guide writes it."
+  },
+  "guide.say.notReady": {
+    "description": "Make a guide: what the panel's live region says after Check screenshots while they are still being made."
+  },
+  "guide.say.blurred": {
+    "description": "Make a guide: what the panel's live region says after Blur typed text on a step."
+  },
+  "guide.say.copiedShot": {
+    "description": "Make a guide: what the panel's live region says after Copy screenshot."
+  },
+  "guide.say.adjusted": {
+    "description": "Make a guide: what the panel's live region says after the crop or the click ring of a screenshot was moved in the viewer."
+  },
+  "guide.say.zoomedAgain": {
+    "description": "Make a guide: what the panel's live region says after Reset in the viewer's Adjust."
   }
 }

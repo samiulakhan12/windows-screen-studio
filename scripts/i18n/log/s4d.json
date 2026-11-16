@@ -526,5 +526,212 @@
       "file": "screen.mp4",
       "code": "1"
     }
+  },
+  {
+    "key": "smart.guide.say.shotsReady",
+    "file": "src/renderer/src/guide/GuidePanel.tsx",
+    "line": 278,
+    "english": "Screenshots ready",
+    "sample": {}
+  },
+  {
+    "key": "smart.guide.say.stopped",
+    "file": "src/renderer/src/guide/GuidePanel.tsx",
+    "line": 389,
+    "english": "Stopped. Nothing was changed.",
+    "sample": {}
+  },
+  {
+    "key": "smart.guide.cost.titles",
+    "file": "src/renderer/src/guide/GuidePanel.tsx",
+    "line": 420,
+    "english": "Titles",
+    "sample": {}
+  },
+  {
+    "key": "smart.guide.cost.notes",
+    "file": "src/renderer/src/guide/GuidePanel.tsx",
+    "line": 838,
+    "english": "Notes",
+    "sample": {}
+  },
+  {
+    "key": "smart.guide.cost.what",
+    "file": "src/renderer/src/guide/GuidePanel.tsx",
+    "line": 420,
+    "english": "the steps' narration",
+    "sample": {}
+  },
+  {
+    "key": "smart.guide.say.missing",
+    "file": "src/renderer/src/guide/GuidePanel.tsx",
+    "line": 471,
+    "english": [
+      "0 screenshots could not be made.",
+      "1 screenshot could not be made.",
+      "2 screenshots could not be made.",
+      "1000 screenshots could not be made."
+    ],
+    "sample": [
+      {
+        "count": 0,
+        "n": "0"
+      },
+      {
+        "count": 1,
+        "n": "1"
+      },
+      {
+        "count": 2,
+        "n": "2"
+      },
+      {
+        "count": 1000,
+        "n": "1000"
+      }
+    ]
+  },
+  {
+    "key": "smart.guide.say.missingWhy",
+    "file": "src/renderer/src/guide/GuidePanel.tsx",
+    "line": 471,
+    "english": [
+      "0 screenshots could not be made: The recording could not be read.",
+      "1 screenshot could not be made: The recording could not be read.",
+      "2 screenshots could not be made: The recording could not be read.",
+      "1000 screenshots could not be made: The recording could not be read."
+    ],
+    "sample": [
+      {
+        "count": 0,
+        "n": "0",
+        "reason": "The recording could not be read."
+      },
+      {
+        "count": 1,
+        "n": "1",
+        "reason": "The recording could not be read."
+      },
+      {
+        "count": 2,
+        "n": "2",
+        "reason": "The recording could not be read."
+      },
+      {
+        "count": 1000,
+        "n": "1000",
+        "reason": "The recording could not be read."
+      }
+    ]
+  },
+  {
+    "key": "smart.guide.say.changedSaving",
+    "file": "src/renderer/src/guide/GuidePanel.tsx",
+    "line": 476,
+    "english": "Changes made while saving are not in it: save again to add them.",
+    "sample": {}
+  },
+  {
+    "key": "smart.guide.say.changedCopying",
+    "file": "src/renderer/src/guide/GuidePanel.tsx",
+    "line": 476,
+    "english": "Changes made while copying are not in it: copy again to add them.",
+    "sample": {}
+  },
+  {
+    "key": "smart.guide.say.saved",
+    "file": "src/renderer/src/guide/GuidePanel.tsx",
+    "line": 507,
+    "english": "Saved “Guide.html”.",
+    "sample": {
+      "name": "Guide.html"
+    }
+  },
+  {
+    "key": "smart.guide.say.copied",
+    "file": "src/renderer/src/guide/GuidePanel.tsx",
+    "line": 524,
+    "english": [
+      "Copied the guide with 0 screenshots.",
+      "Copied the guide with 1 screenshot.",
+      "Copied the guide with 2 screenshots.",
+      "Copied the guide with 1000 screenshots."
+    ],
+    "sample": [
+      {
+        "count": 0,
+        "n": "0"
+      },
+      {
+        "count": 1,
+        "n": "1"
+      },
+      {
+        "count": 2,
+        "n": "2"
+      },
+      {
+        "count": 1000,
+        "n": "1000"
+      }
+    ]
+  },
+  {
+    "key": "smart.guide.say.added",
+    "file": "src/renderer/src/guide/GuidePanel.tsx",
+    "line": 549,
+    "english": "Added a step at the playhead.",
+    "sample": {}
+  },
+  {
+    "key": "smart.guide.say.allTitled",
+    "file": "src/renderer/src/guide/GuidePanel.tsx",
+    "line": 558,
+    "english": "Every step has a title.",
+    "sample": {}
+  },
+  {
+    "key": "smart.guide.say.needsTitle",
+    "file": "src/renderer/src/guide/GuidePanel.tsx",
+    "line": 563,
+    "english": "Step 4 needs a title",
+    "sample": {
+      "n": "4"
+    }
+  },
+  {
+    "key": "smart.guide.say.notReady",
+    "file": "src/renderer/src/guide/GuidePanel.tsx",
+    "line": 571,
+    "english": "The screenshots are not ready yet.",
+    "sample": {}
+  },
+  {
+    "key": "smart.guide.say.blurred",
+    "file": "src/renderer/src/guide/GuidePanel.tsx",
+    "line": 598,
+    "english": "Blurred the typed text.",
+    "sample": {}
+  },
+  {
+    "key": "smart.guide.say.copiedShot",
+    "file": "src/renderer/src/guide/GuidePanel.tsx",
+    "line": 607,
+    "english": "Copied the screenshot.",
+    "sample": {}
+  },
+  {
+    "key": "smart.guide.say.adjusted",
+    "file": "src/renderer/src/guide/GuidePanel.tsx",
+    "line": 954,
+    "english": "Adjusted the screenshot.",
+    "sample": {}
+  },
+  {
+    "key": "smart.guide.say.zoomedAgain",
+    "file": "src/renderer/src/guide/GuidePanel.tsx",
+    "line": 954,
+    "english": "The screenshot is zoomed to the click again.",
+    "sample": {}
   }
 ]

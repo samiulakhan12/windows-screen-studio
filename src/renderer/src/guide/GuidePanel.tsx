@@ -275,7 +275,7 @@ export function GuidePanel(props: { project: Project; cursor: CursorTrack; start
   const passDone = pass.total > 0 && pass.ready === pass.total
   const wasDone = useRef(false)
   useEffect(() => {
-    if (passDone && !wasDone.current) say('Screenshots ready')
+    if (passDone && !wasDone.current) say(t('smart.guide.say.shotsReady'))
     wasDone.current = passDone
   }, [passDone, say])
 
@@ -380,7 +380,7 @@ export function GuidePanel(props: { project: Project; cursor: CursorTrack; start
       say(notice)
       setWrittenHere(wrote && choice.kind === 'local' ? notice : null)
     } catch (err) {
-      say(ac.signal.aborted ? 'Stopped. Nothing was changed.' : err instanceof Error ? err.message : String(err))
+      say(ac.signal.aborted ? t('smart.guide.say.stopped') : err instanceof Error ? err.message : String(err))
     } finally {
       setBusy(null)
     }
@@ -411,7 +411,7 @@ export function GuidePanel(props: { project: Project; cursor: CursorTrack; start
   /** The send viewer's cost line: what the pictures still ticked would cost (§5.3.1). */
   const sendCost = (keys: readonly string[]): string => {
     const estimate = sending && titleChoice ? estimateFor(titleChoice, requestWith(jpegsOf(sending, keys)), costData) : null
-    return estimate && titleChoice ? costLineText([{ label: 'Titles', estimate }], titleChoice.place, "the steps' narration", titleChoice.model, true) : ''
+    return estimate && titleChoice ? costLineText([{ label: t('smart.guide.cost.titles'), estimate }], titleChoice.place, t('smart.guide.cost.what'), titleChoice.model, true) : ''
   }
   /**
    * The send viewer closed: Send runs with the pictures still ticked (and the box is off again);
@@ -458,13 +458,19 @@ export function GuidePanel(props: { project: Project; cursor: CursorTrack; start
     const { images, failed } = await shotsFor(project, track, want, made, signal)
     return { images, missing: want.length - images.size, failed }
   }
-  /** " 2 screenshots could not be made: …" after a Save or Copy that lacks some, else nothing. */
-  const missingNote = (missing: number, failed: string | null): string => (missing ? ` ${missing} ${missing === 1 ? 'screenshot' : 'screenshots'} could not be made${failed ? `: ${failed}` : '.'}` : '')
+  /** "2 screenshots could not be made: …" after a Save or Copy that lacks some, else nothing. */
+  const missingNote = (missing: number, failed: string | null): string => {
+    if (!missing) return ''
+    const values = { count: missing, n: fmt.count(missing) }
+    return failed ? t('smart.guide.say.missingWhy', { ...values, reason: failed }) : t('smart.guide.say.missing', values)
+  }
   /**
    * A Save or Copy writes the project as it was at the click, its text and its pictures alike; an
    * edit made while the pictures were made (a blur, a title) is not in it, and this says so.
    */
-  const changedNote = (at: Project, doing: 'saving' | 'copying'): string => (store.state !== at ? ` Changes made while ${doing} are not in it: ${doing === 'saving' ? 'save' : 'copy'} again to add them.` : '')
+  const changedNote = (at: Project, doing: 'saving' | 'copying'): string => (store.state !== at ? t(doing === 'saving' ? 'smart.guide.say.changedSaving' : 'smart.guide.say.changedCopying') : '')
+  /** A Save's or Copy's sentence, then what it lacks: each a sentence of its own. */
+  const sentences = (...said: string[]): string => said.filter(Boolean).join(' ')
   /** The project the document is built from: a bug report's default details with the recording's real scale. */
   const docProject = (): Project => {
     const p = store.state
@@ -498,7 +504,7 @@ export function GuidePanel(props: { project: Project; cursor: CursorTrack; start
       const result = await saveGuide(format, { project: doc, steps, images, scale, page, signal: ac.signal, smaller })
       if (!result) return
       setSaved({ ...result, format })
-      say(`Saved “${result.path.split(/[\\/]/).pop() ?? result.path}”.${missingNote(missing, failed)}${changedNote(at, 'saving')}`)
+      say(sentences(t('smart.guide.say.saved', { name: result.path.split(/[\\/]/).pop() ?? result.path }), missingNote(missing, failed), changedNote(at, 'saving')))
     } catch (err) {
       say(message(err))
     } finally {
@@ -515,7 +521,7 @@ export function GuidePanel(props: { project: Project; cursor: CursorTrack; start
       const pictures = await docImages(ac.signal)
       if (ac.signal.aborted) return
       const { images } = await copyGuide({ project: doc, steps, images: pictures.images })
-      say(`Copied the guide with ${images} ${images === 1 ? 'screenshot' : 'screenshots'}.${missingNote(pictures.missing, pictures.failed)}${changedNote(at, 'copying')}`)
+      say(sentences(t('smart.guide.say.copied', { count: images, n: fmt.count(images) }), missingNote(pictures.missing, pictures.failed), changedNote(at, 'copying')))
     } catch (err) {
       say(message(err))
     } finally {
@@ -538,9 +544,9 @@ export function GuidePanel(props: { project: Project; cursor: CursorTrack; start
   const edit = (key: string, patch: Partial<Omit<GuideStepEdit, 'key'>> | null, gesture?: string): void => store.update((p) => withStepEdit(p, key, patch), gesture)
   const field = (patch: Parameters<typeof withGuideFields>[1], gesture?: string): void => store.update((p) => withGuideFields(p, patch), gesture)
   const addStep = (): void => {
-    const t = player.time
-    store.update((p) => withAddedStep(p, t, 'Step'))
-    say('Added a step at the playhead.')
+    const at = player.time
+    store.update((p) => withAddedStep(p, at, 'Step'))
+    say(t('smart.guide.say.added'))
   }
   const lastTitle = useRef<string | null>(null)
   const nextNeedingTitle = (): void => {
@@ -549,12 +555,12 @@ export function GuidePanel(props: { project: Project; cursor: CursorTrack; start
       untitled,
       lastTitle.current
     )
-    if (!key) return say('Every step has a title.')
+    if (!key) return say(t('smart.guide.say.allTitled'))
     lastTitle.current = key
     const i = rows.findIndex((r) => r.step.key === key)
     if (i >= shown) setShown(Math.min(rows.length, i + ROWS_AT_A_TIME))
     setTimeout(() => document.getElementById(`${ids}-title-${key}`)?.focus(), 0)
-    say(`Step ${rows[i].n} needs a title`)
+    say(t('smart.guide.say.needsTitle', { n: rows[i].n }))
   }
   const checkShots = (): void => {
     const order = checkOrder(
@@ -562,7 +568,7 @@ export function GuidePanel(props: { project: Project; cursor: CursorTrack; start
       typedKeys,
       wholeKeys
     )
-    if (!order.length) return say('The screenshots are not ready yet.')
+    if (!order.length) return say(t('smart.guide.say.notReady'))
     const first = Math.max(0, order.findIndex((k) => !isChecked(k)))
     setViewer({ keys: order, index: first, mode: 'check' })
   }
@@ -589,7 +595,7 @@ export function GuidePanel(props: { project: Project; cursor: CursorTrack; start
     if (!run) return
     const source: GuideStep = { key: run.key, t: run.t, kind: 'type', typing: { t: run.t, end: run.end, place: run.place } }
     blurTypedText(store, source, { t: r.plan.t }, scan, scale)
-    say('Blurred the typed text.')
+    say(t('smart.guide.say.blurred'))
   }
   const copyShot = async (key: string): Promise<void> => {
     const img = viewImages.get(key)
@@ -598,7 +604,7 @@ export function GuidePanel(props: { project: Project; cursor: CursorTrack; start
       const png = img.mime === 'image/png' ? img.bytes : null
       if (!png) return
       await window.api.copyGuideImage(png)
-      say('Copied the screenshot.')
+      say(t('smart.guide.say.copiedShot'))
     } catch (err) {
       say(message(err))
     }
@@ -795,7 +801,7 @@ export function GuidePanel(props: { project: Project; cursor: CursorTrack; start
               {writeWhy}
             </p>
           )}
-          {titleChoice && <CostLine id={`${ids}-titles-cost`} choice={titleChoice} actions={[{ key: 'titles', label: 'Titles', buttonId: `${ids}-write`, request: titleRequest }]} />}
+          {titleChoice && <CostLine id={`${ids}-titles-cost`} choice={titleChoice} actions={[{ key: 'titles', label: t('smart.guide.cost.titles'), buttonId: `${ids}-write`, request: titleRequest }]} />}
           {hasAiTitles && (
             <button type="button" className="btn ghost" onClick={() => store.update(withoutAiTitles)} data-testid="guide-offline-titles">{t('smart.guide.useOfflineTitles')}</button>
           )}
@@ -829,7 +835,7 @@ export function GuidePanel(props: { project: Project; cursor: CursorTrack; start
                 </select>
                 <LocalProgress requestId={busy?.what === 'notes' ? busy.requestId : null} onStop={stopAi} returnFocus={`${ids}-tidy`} />
               </div>
-              <CostLine id={`${ids}-notes-cost`} choice={notesChoice} actions={[{ key: 'notes', label: 'Notes', buttonId: `${ids}-tidy`, request: notesRequest }]} />
+              <CostLine id={`${ids}-notes-cost`} choice={notesChoice} actions={[{ key: 'notes', label: t('smart.guide.cost.notes'), buttonId: `${ids}-tidy`, request: notesRequest }]} />
             </>
           )}
         </section>
@@ -915,7 +921,7 @@ export function GuidePanel(props: { project: Project; cursor: CursorTrack; start
             return [
               {
                 key: k,
-                label: `step ${r.n}`,
+                label: t('smart.guide.stepLabel', { n: r.n }),
                 image,
                 ...(whole
                   ? {
@@ -945,7 +951,7 @@ export function GuidePanel(props: { project: Project; cursor: CursorTrack; start
           }}
           onAdjust={(key, e) => {
             edit(key, e ? { rect: e.rect ? rectFromShown(e.rect, frame, shownPart) : undefined, ring: e.ring ? pointFromShown(e.ring, frame, shownPart) : undefined } : { rect: undefined, ring: undefined })
-            say(e ? 'Adjusted the screenshot.' : 'The screenshot is zoomed to the click again.')
+            say(e ? t('smart.guide.say.adjusted') : t('smart.guide.say.zoomedAgain'))
           }}
         />
       )}
