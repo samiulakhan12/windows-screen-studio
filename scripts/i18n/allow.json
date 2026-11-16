@@ -145,6 +145,12 @@
       "kind": "sink",
       "text": "This screenshot cannot be copied.",
       "reason": "The preload's size check on a screenshot the app's own page never sends too large (GUIDE_SAVE_LIMITS); the preload has no catalogue and main gives the same refusal through errors.guideIpc."
+    },
+    {
+      "file": "src/renderer/src/settings/BrandKitSection.tsx",
+      "kind": "sink",
+      "text": "missing",
+      "reason": "A kit font that could not be fetched: the internal reason only moves the row to its \"could not be read\" state, which shows a message of its own."
     }
   ]
 }

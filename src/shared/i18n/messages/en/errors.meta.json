@@ -596,5 +596,97 @@
   },
   "soundsIpc.soundMissing": {
     "description": "Sound finder: the recording’s sound file is gone."
+  },
+  "asset.lutUnusable": {
+    "description": "Colour: a .cube LUT file was refused without a more precise reason.",
+    "dnt": [
+      "LUT"
+    ]
+  },
+  "asset.image.png": {
+    "description": "Used inside \"…holds {holds} image\": what a misnamed file really is.",
+    "dnt": [
+      "PNG"
+    ]
+  },
+  "asset.image.jpg": {
+    "description": "Used inside \"…holds {holds} image\": what a misnamed file really is.",
+    "dnt": [
+      "JPG"
+    ]
+  },
+  "asset.image.webp": {
+    "description": "Used inside \"…holds {holds} image\": what a misnamed file really is.",
+    "dnt": [
+      "WebP"
+    ]
+  },
+  "asset.image.svg": {
+    "description": "Used inside \"…holds {holds} image\": what a misnamed file really is.",
+    "dnt": [
+      "SVG"
+    ]
+  },
+  "asset.image.gif": {
+    "description": "Used inside \"…holds {holds} image\": what a misnamed file really is.",
+    "dnt": [
+      "GIF"
+    ]
+  },
+  "asset.unreadableAs": {
+    "description": "A picked file is not what it should be; {formats} names the accepted files, e.g. \"a PNG, JPG, WebP or SVG image\"."
+  },
+  "asset.misnamed": {
+    "description": "A picked image has the wrong extension; {ext} and {type} are extensions such as png, {holds} is e.g. \"a JPG\".",
+    "dnt": [
+      "{ext}",
+      "{type}"
+    ]
+  },
+  "asset.formats.logo": {
+    "description": "A noun phrase naming the files an asset can be (a logo), used inside \"Choose {formats}.\" and \"This file could not be read as {formats}.\"",
+    "dnt": [
+      "PNG",
+      "JPG",
+      "WebP",
+      "SVG"
+    ]
+  },
+  "asset.formats.overlay": {
+    "description": "A noun phrase naming the files an asset can be (an image overlay), used inside \"Choose {formats}.\" and \"This file could not be read as {formats}.\"",
+    "dnt": [
+      "PNG",
+      "JPG",
+      "WebP",
+      "SVG",
+      "GIF"
+    ]
+  },
+  "asset.formats.font": {
+    "description": "A noun phrase naming the files an asset can be (a font), used inside \"Choose {formats}.\" and \"This file could not be read as {formats}.\"",
+    "dnt": [
+      "TTF",
+      "OTF",
+      "WOFF2"
+    ]
+  },
+  "asset.formats.music": {
+    "description": "A noun phrase naming the files an asset can be (background music), used inside \"Choose {formats}.\" and \"This file could not be read as {formats}.\"",
+    "dnt": [
+      "MP3",
+      "M4A",
+      "AAC",
+      "WAV",
+      "Ogg",
+      "Opus",
+      "FLAC"
+    ]
+  },
+  "asset.formats.lut": {
+    "description": "A noun phrase naming the files an asset can be (a colour LUT), used inside \"Choose {formats}.\" and \"This file could not be read as {formats}.\"",
+    "dnt": [
+      ".cube",
+      "LUT"
+    ]
   }
 }

@@ -110,13 +110,13 @@ const MAX_THUMBNAIL_BYTES = 200 * 1024 * 1024
 /** The save dialog's filter per format, made when the dialog opens (text is never made at module scope, output-and-languages §9.1). */
 export function saveFilters(): Record<ExportFormat | 'png', Electron.FileFilter> {
   return {
-    mp4: { name: 'MP4 video', extensions: ['mp4'] },
+    mp4: { name: t('main.saveFilter.mp4'), extensions: ['mp4'] },
     gif: { name: 'GIF', extensions: ['gif'] },
-    webm: { name: 'WebM video', extensions: ['webm'] },
-    mov: { name: 'QuickTime movie', extensions: ['mov'] },
-    m4a: { name: 'M4A audio', extensions: ['m4a'] },
+    webm: { name: t('main.saveFilter.webm'), extensions: ['webm'] },
+    mov: { name: t('main.saveFilter.mov'), extensions: ['mov'] },
+    m4a: { name: t('main.saveFilter.m4a'), extensions: ['m4a'] },
     wav: { name: t('main.saveFilter.wav'), extensions: ['wav'] },
-    png: { name: 'PNG image', extensions: ['png'] }
+    png: { name: t('main.saveFilter.png'), extensions: ['png'] }
   }
 }
 

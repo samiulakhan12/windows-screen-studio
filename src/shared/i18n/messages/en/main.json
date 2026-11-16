@@ -66,5 +66,22 @@
   "import.videos": "Videos",
   "import.allFiles": "All files",
   "projectsIpc.images": "Images",
-  "projectsIpc.cursorImages": "Cursor images"
+  "projectsIpc.cursorImages": "Cursor images",
+  "asset.title.watermark": "Choose watermark or logo",
+  "asset.title.overlay": "Add an image",
+  "asset.title.font": "Add a font",
+  "asset.title.music": "Choose background music",
+  "asset.title.lut": "Import a LUT",
+  "asset.filter.images": "Images",
+  "asset.filter.fonts": "Fonts",
+  "asset.filter.audio": "Audio",
+  "asset.filter.luts": "Cube LUTs",
+  "captions.filter.srt": "SRT subtitles",
+  "captions.filter.vtt": "WebVTT subtitles",
+  "captions.filter.txt": "Plain text",
+  "saveFilter.mp4": "MP4 video",
+  "saveFilter.webm": "WebM video",
+  "saveFilter.mov": "QuickTime movie",
+  "saveFilter.m4a": "M4A audio",
+  "saveFilter.png": "PNG image"
 }

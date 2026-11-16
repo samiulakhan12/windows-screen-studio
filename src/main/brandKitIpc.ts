@@ -34,7 +34,7 @@ export function registerBrandKitIpc(): void {
     const result = await dialog.showOpenDialog(main, {
       title: kind === 'logo' ? t('main.brandKit.logoTitle') : t('main.brandKit.fontTitle'),
       properties: ['openFile'],
-      filters: kind === 'logo' ? [{ name: 'Images', extensions: ['png', 'jpg', 'jpeg', 'webp', 'svg'] }] : [{ name: 'Fonts', extensions: ['ttf', 'otf', 'woff2'] }]
+      filters: kind === 'logo' ? [{ name: t('main.asset.filter.images'), extensions: ['png', 'jpg', 'jpeg', 'webp', 'svg'] }] : [{ name: t('main.asset.filter.fonts'), extensions: ['ttf', 'otf', 'woff2'] }]
     })
     if (result.canceled || !result.filePaths[0]) return null
     return addBrandFile(kind, result.filePaths[0])

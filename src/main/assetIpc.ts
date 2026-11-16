@@ -25,15 +25,17 @@ import { mediaUrl } from './mediaProtocol'
 import * as projects from './projects'
 import { isAppUrl } from './security'
 import { getMainWindow } from './windows'
-import { t } from '../shared/i18n/t'
+import { t, type MessageKey } from '../shared/i18n/t'
 
 interface AssetSpec {
-  title: string
-  filterName: string
+  /** The open dialog's title. */
+  title: MessageKey
+  /** The open dialog's file type filter. */
+  filterName: MessageKey
   extensions: string[]
   maxBytes: number
   /** Readable name of the accepted formats, for error messages. */
-  formats: string
+  formats: MessageKey
   /** Why a file with these first bytes and extension is refused, or null when it looks right. */
   check: (head: Buffer, ext: string) => string | null
   /** The check reads the whole file, not its first bytes (a LUT is parsed in full before anything is copied). */
@@ -46,7 +48,7 @@ export function checkCube(data: Buffer): string | null {
     parseCube(new Uint8Array(data.buffer, data.byteOffset, data.byteLength))
     return null
   } catch (err) {
-    return err instanceof CubeError ? err.message : 'This LUT could not be used.'
+    return err instanceof CubeError ? err.message : t('errors.asset.lutUnusable')
   }
 }
 
@@ -54,7 +56,13 @@ const starts = (head: Buffer, ...bytes: number[]): boolean => bytes.every((b, i)
 const ascii = (head: Buffer, from: number, to: number): string => head.subarray(from, to).toString('latin1')
 
 type ImageType = 'png' | 'jpg' | 'webp' | 'svg' | 'gif'
-const IMAGE_NAMES: Record<ImageType, string> = { png: 'a PNG', jpg: 'a JPG', webp: 'a WebP', svg: 'an SVG', gif: 'a GIF' }
+const IMAGE_NAMES: Record<ImageType, MessageKey> = {
+  png: 'errors.asset.image.png',
+  jpg: 'errors.asset.image.jpg',
+  webp: 'errors.asset.image.webp',
+  svg: 'errors.asset.image.svg',
+  gif: 'errors.asset.image.gif'
+}
 
 /** The image format the first bytes of a file show: PNG, JPEG, WebP, GIF or SVG, else null. */
 export function imageType(head: Buffer): ImageType | null {
@@ -77,12 +85,12 @@ export const looksLikeImage = (head: Buffer): boolean => {
  * types the asset may be; anything else reads as "not one of `formats`".
  */
 const checkImageOf =
-  (allowed: readonly ImageType[], formats: string) =>
+  (allowed: readonly ImageType[], formats: MessageKey) =>
   (head: Buffer, ext: string): string | null => {
     const type = imageType(head)
-    if (!type || !allowed.includes(type)) return `This file could not be read as ${formats}.`
+    if (!type || !allowed.includes(type)) return t('errors.asset.unreadableAs', { formats: t(formats) })
     const named = ext === 'jpeg' ? 'jpg' : ext
-    return type === named ? null : `This file is named .${ext} but holds ${IMAGE_NAMES[type]} image: rename it to .${type} and choose it again.`
+    return type === named ? null : t('errors.asset.misnamed', { ext, holds: t(IMAGE_NAMES[type]), type })
   }
 
 /** MP3, M4A/AAC, WAV, Ogg/Opus or FLAC. */
@@ -95,49 +103,49 @@ export function looksLikeAudio(head: Buffer): boolean {
   return ascii(head, 0, 4) === 'fLaC'
 }
 
-const LOGO_FORMATS = 'a PNG, JPG, WebP or SVG image'
-const OVERLAY_FORMATS = 'a PNG, JPG, WebP, SVG or GIF image'
+const LOGO_FORMATS: MessageKey = 'errors.asset.formats.logo'
+const OVERLAY_FORMATS: MessageKey = 'errors.asset.formats.overlay'
 
 export const ASSET_SPECS: Record<AssetKind, AssetSpec> = {
   watermark: {
-    title: 'Choose watermark or logo',
-    filterName: 'Images',
+    title: 'main.asset.title.watermark',
+    filterName: 'main.asset.filter.images',
     extensions: ['png', 'jpg', 'jpeg', 'webp', 'svg'],
     maxBytes: WATERMARK_MAX_BYTES,
     formats: LOGO_FORMATS,
     check: checkImageOf(['png', 'jpg', 'webp', 'svg'], LOGO_FORMATS)
   },
   overlay: {
-    title: 'Add an image',
-    filterName: 'Images',
+    title: 'main.asset.title.overlay',
+    filterName: 'main.asset.filter.images',
     extensions: ['png', 'jpg', 'jpeg', 'webp', 'svg', 'gif'],
     maxBytes: OVERLAY_MAX_BYTES,
     formats: OVERLAY_FORMATS,
     check: checkImageOf(['png', 'jpg', 'webp', 'svg', 'gif'], OVERLAY_FORMATS)
   },
   font: {
-    title: 'Add a font',
-    filterName: 'Fonts',
+    title: 'main.asset.title.font',
+    filterName: 'main.asset.filter.fonts',
     extensions: ['ttf', 'otf', 'woff2'],
     maxBytes: FONT_MAX_BYTES,
-    formats: 'a TTF, OTF or WOFF2 font',
+    formats: 'errors.asset.formats.font',
     check: checkFont
   },
   music: {
-    title: 'Choose background music',
-    filterName: 'Audio',
+    title: 'main.asset.title.music',
+    filterName: 'main.asset.filter.audio',
     extensions: ['mp3', 'm4a', 'aac', 'wav', 'ogg', 'opus', 'flac'],
     maxBytes: 500 * 1024 * 1024,
-    formats: 'an MP3, M4A, AAC, WAV, Ogg, Opus or FLAC file',
+    formats: 'errors.asset.formats.music',
     // Audio decoders read the container from the content, whatever the extension says.
-    check: (head) => (looksLikeAudio(head) ? null : `This file could not be read as ${ASSET_SPECS.music.formats}.`)
+    check: (head) => (looksLikeAudio(head) ? null : t('errors.asset.unreadableAs', { formats: t(ASSET_SPECS.music.formats) }))
   },
   lut: {
-    title: 'Import a LUT',
-    filterName: 'Cube LUTs',
+    title: 'main.asset.title.lut',
+    filterName: 'main.asset.filter.luts',
     extensions: ['cube'],
     maxBytes: CUBE_LIMITS.maxBytes,
-    formats: 'a .cube LUT',
+    formats: 'errors.asset.formats.lut',
     whole: true,
     check: checkCube
   }
@@ -215,10 +223,10 @@ async function sameFile(dir: string, names: readonly string[], ext: string, data
 /** Why `size` bytes of `kind` with extension `ext` are refused, or null. */
 function sizeProblem(kind: AssetKind, ext: string, size: number): string | null {
   const spec = ASSET_SPECS[kind]
-  if (size === 0) return 'This file is empty.'
+  if (size === 0) return t('errors.lutImport.thisFileIsEmpty')
   const max = ext === 'svg' ? (SVG_MAX_BYTES[kind] ?? spec.maxBytes) : spec.maxBytes
   // In the MB (2^20 bytes) the limits are set in, and rounded up, so an image just over 25 MB never reads "25 MB; 25 MB at most".
-  if (size > max) return `The file is too large (${Math.ceil(size / 2 ** 20)} MB; ${max / 2 ** 20} MB at most).`
+  if (size > max) return t('errors.lutImport.theFileIsToo', { value: String(Math.ceil(size / 2 ** 20)), value2: String(max / 2 ** 20) })
   return null
 }
 
@@ -267,7 +275,7 @@ async function store(id: string, kind: AssetKind, ext: string, data: Buffer | { 
       if (same) return { url: mediaUrl(id, same), path: same }
     }
     const name = PICKS[kind].next(existing, stored)
-    if (!isAssetFile(name)) throw new Error(t('errors.asset.choose', { formats: String(spec.formats) }))
+    if (!isAssetFile(name)) throw new Error(t('errors.asset.choose', { formats: t(spec.formats) }))
     const tmp = path.join(dir, `.${name}.part`)
     try {
       if (Buffer.isBuffer(data)) await fs.writeFile(tmp, data)
@@ -319,9 +327,9 @@ export async function checkAssetFile(kind: AssetKind, src: string): Promise<stri
   const spec = ASSET_SPECS[kind]
   if (spec.whole) return (await readWholeAsset(kind, src)).ext
   const ext = extOf(src)
-  if (!spec.extensions.includes(ext)) throw new Error(t('errors.asset.choose', { formats: String(spec.formats) }))
+  if (!spec.extensions.includes(ext)) throw new Error(t('errors.asset.choose', { formats: t(spec.formats) }))
   const st = await fs.stat(src)
-  if (!st.isFile()) throw new Error(t('errors.asset.choose', { formats: String(spec.formats) }))
+  if (!st.isFile()) throw new Error(t('errors.asset.choose', { formats: t(spec.formats) }))
   const tooBig = sizeProblem(kind, ext, st.size)
   if (tooBig) throw new Error(tooBig)
   const handle = await fs.open(src, 'r')
@@ -342,9 +350,9 @@ export async function checkAssetFile(kind: AssetKind, src: string): Promise<stri
 async function readWholeAsset(kind: AssetKind, src: string): Promise<{ ext: string; data: Buffer }> {
   const spec = ASSET_SPECS[kind]
   const ext = extOf(src)
-  if (!spec.extensions.includes(ext)) throw new Error(t('errors.asset.choose', { formats: String(spec.formats) }))
+  if (!spec.extensions.includes(ext)) throw new Error(t('errors.asset.choose', { formats: t(spec.formats) }))
   const st = await fs.stat(src)
-  if (!st.isFile()) throw new Error(t('errors.asset.choose', { formats: String(spec.formats) }))
+  if (!st.isFile()) throw new Error(t('errors.asset.choose', { formats: t(spec.formats) }))
   const tooBig = sizeProblem(kind, ext, st.size)
   if (tooBig) throw new Error(tooBig)
   const data = await fs.readFile(src)
@@ -365,11 +373,11 @@ const DATA_KINDS: ReadonlySet<AssetKind> = new Set(['overlay', 'font'])
 export async function importAssetData(id: string, kind: AssetKind, name: string, bytes: Uint8Array): Promise<PickedAsset> {
   if (!isKind(kind) || !DATA_KINDS.has(kind)) throw new Error(t('errors.assetIpc.unknownAssetKind'))
   const spec = ASSET_SPECS[kind]
-  if (!(bytes instanceof Uint8Array)) throw new Error(t('errors.asset.choose', { formats: String(spec.formats) }))
+  if (!(bytes instanceof Uint8Array)) throw new Error(t('errors.asset.choose', { formats: t(spec.formats) }))
   projects.projectDir(id)
   const shown = path.basename(String(name).replace(/\\/g, '/')).slice(0, 200)
   const ext = extOf(shown)
-  if (!spec.extensions.includes(ext)) throw new Error(kind === 'overlay' ? t('errors.asset.overlayFormats') : t('errors.asset.choose', { formats: spec.formats }))
+  if (!spec.extensions.includes(ext)) throw new Error(kind === 'overlay' ? t('errors.asset.overlayFormats') : t('errors.asset.choose', { formats: t(spec.formats) }))
   const tooBig = sizeProblem(kind, ext, bytes.byteLength)
   if (tooBig) throw new Error(tooBig)
   const data = Buffer.from(bytes.buffer, bytes.byteOffset, bytes.byteLength)
@@ -429,9 +437,9 @@ export function registerAssetIpc(): void {
     const main = getMainWindow()
     if (!main) return null
     const result = await dialog.showOpenDialog(main, {
-      title: spec.title,
+      title: t(spec.title),
       properties: ['openFile'],
-      filters: [{ name: spec.filterName, extensions: spec.extensions }]
+      filters: [{ name: t(spec.filterName), extensions: spec.extensions }]
     })
     if (result.canceled || !result.filePaths[0]) return null
     return importAsset(id, kind, result.filePaths[0])

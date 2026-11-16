@@ -187,5 +187,18 @@
   "share.cancelled": "The share was cancelled.",
   "soundsIpc.micMissing": "The recording's microphone file is missing",
   "soundsIpc.systemMissing": "The recording's system sound file is missing",
-  "soundsIpc.soundMissing": "The recording's sound file is missing"
+  "soundsIpc.soundMissing": "The recording's sound file is missing",
+  "asset.lutUnusable": "This LUT could not be used.",
+  "asset.image.png": "a PNG",
+  "asset.image.jpg": "a JPG",
+  "asset.image.webp": "a WebP",
+  "asset.image.svg": "an SVG",
+  "asset.image.gif": "a GIF",
+  "asset.unreadableAs": "This file could not be read as {formats}.",
+  "asset.misnamed": "This file is named .{ext} but holds {holds} image: rename it to .{type} and choose it again.",
+  "asset.formats.logo": "a PNG, JPG, WebP or SVG image",
+  "asset.formats.overlay": "a PNG, JPG, WebP, SVG or GIF image",
+  "asset.formats.font": "a TTF, OTF or WOFF2 font",
+  "asset.formats.music": "an MP3, M4A, AAC, WAV, Ogg, Opus or FLAC file",
+  "asset.formats.lut": "a .cube LUT"
 }

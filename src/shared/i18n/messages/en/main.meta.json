@@ -220,5 +220,83 @@
   },
   "projectsIpc.cursorImages": {
     "description": "File type filter in the Windows open dialog for a cursor image."
+  },
+  "asset.title.watermark": {
+    "description": "Title of the Windows open dialog: picking a watermark or logo image."
+  },
+  "asset.title.overlay": {
+    "description": "Title of the Windows open dialog: adding an image overlay."
+  },
+  "asset.title.font": {
+    "description": "Title of the Windows open dialog: adding a font file."
+  },
+  "asset.title.music": {
+    "description": "Title of the Windows open dialog: picking a background music file."
+  },
+  "asset.title.lut": {
+    "description": "Title of the Windows open dialog: importing a .cube colour LUT.",
+    "dnt": [
+      "LUT"
+    ]
+  },
+  "asset.filter.images": {
+    "description": "File type filter in a Windows open or save dialog: image files."
+  },
+  "asset.filter.fonts": {
+    "description": "File type filter in a Windows open or save dialog: font files."
+  },
+  "asset.filter.audio": {
+    "description": "File type filter in a Windows open or save dialog: audio files."
+  },
+  "asset.filter.luts": {
+    "description": "File type filter in a Windows open or save dialog: .cube LUT files.",
+    "dnt": [
+      "LUT"
+    ]
+  },
+  "captions.filter.srt": {
+    "description": "File type filter in a Windows open or save dialog: SRT subtitle files.",
+    "dnt": [
+      "SRT"
+    ]
+  },
+  "captions.filter.vtt": {
+    "description": "File type filter in a Windows open or save dialog: WebVTT subtitle files.",
+    "dnt": [
+      "WebVTT"
+    ]
+  },
+  "captions.filter.txt": {
+    "description": "File type filter in a Windows open or save dialog: plain text files."
+  },
+  "saveFilter.mp4": {
+    "description": "File type filter in a Windows open or save dialog: MP4 video files.",
+    "dnt": [
+      "MP4"
+    ]
+  },
+  "saveFilter.webm": {
+    "description": "File type filter in a Windows open or save dialog: WebM video files.",
+    "dnt": [
+      "WebM"
+    ]
+  },
+  "saveFilter.mov": {
+    "description": "File type filter in a Windows open or save dialog: QuickTime .mov files.",
+    "dnt": [
+      "QuickTime"
+    ]
+  },
+  "saveFilter.m4a": {
+    "description": "File type filter in a Windows open or save dialog: M4A audio files.",
+    "dnt": [
+      "M4A"
+    ]
+  },
+  "saveFilter.png": {
+    "description": "File type filter in a Windows open or save dialog: PNG image files (a thumbnail).",
+    "dnt": [
+      "PNG"
+    ]
   }
 }

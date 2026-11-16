@@ -11,11 +11,12 @@ import { writeFileAtomicSync } from './atomicWrite'
 import { getMainWindow } from './windows'
 import { t } from '../shared/i18n/t'
 
-const FILTERS: Record<SubtitleFormat, Electron.FileFilter> = {
-  srt: { name: 'SRT subtitles', extensions: ['srt'] },
-  vtt: { name: 'WebVTT subtitles', extensions: ['vtt'] },
-  txt: { name: 'Plain text', extensions: ['txt'] }
-}
+/** The save dialog's filter per format, made when the dialog opens (in the UI language). */
+const filters = (): Record<SubtitleFormat, Electron.FileFilter> => ({
+  srt: { name: t('main.captions.filter.srt'), extensions: ['srt'] },
+  vtt: { name: t('main.captions.filter.vtt'), extensions: ['vtt'] },
+  txt: { name: t('main.captions.filter.txt'), extensions: ['txt'] }
+})
 
 /** A file name the dialog can suggest: no folders, no characters Windows refuses, not too long. */
 export function subtitleFileName(name: unknown): string {
@@ -33,7 +34,7 @@ export function registerCaptionsIpc(): void {
     if (!validSubtitle(format, content)) throw new Error(t('errors.captionsIpc.theseCaptionsCannotBe'))
     const main = getMainWindow()
     if (!main) return null
-    const filter = FILTERS[format]
+    const filter = filters()[format]
     const result = await dialog.showSaveDialog(main, {
       title: t('main.captionsIpc.exportCaptions'),
       defaultPath: path.join(app.getPath('videos'), `${subtitleFileName(defaultName)}.${filter.extensions[0]}`),
