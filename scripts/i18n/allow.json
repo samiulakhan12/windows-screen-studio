@@ -62,6 +62,24 @@
       "kind": "sink",
       "text": "The UI font took too long",
       "reason": "Why the UI language fell back to English, written only to the log (section 9.4 step 4: any failure renders English and logs the reason); never shown."
+    },
+    {
+      "file": "src/renderer/src/editor/context.ts",
+      "kind": "sink",
+      "text": "useEditor must be used inside the editor",
+      "reason": "A programming error (a component of the editor mounted outside it): for developers and tests, never shown in a working build."
+    },
+    {
+      "file": "src/renderer/src/editor/videoTrack.ts",
+      "kind": "sink",
+      "text": "ranged read failed (${…})",
+      "reason": "Why the video track's length could not be read: caught at once and written only to the console, and the container's length is used instead; never shown."
+    },
+    {
+      "file": "src/renderer/src/editor/videoTrack.ts",
+      "kind": "sink",
+      "text": "unknown file size",
+      "reason": "Why the video track's length could not be read: caught at once and written only to the console, and the container's length is used instead; never shown."
     }
   ]
 }
