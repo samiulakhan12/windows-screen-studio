@@ -62,9 +62,9 @@
 .history-buttons {
   display: flex;
   gap: 2px;
-  margin-left: 2px;
-  padding-left: 6px;
-  border-left: 1px solid var(--border-subtle);
+  margin-inline-start: 2px;
+  padding-inline-start: 6px;
+  border-inline-start: 1px solid var(--border-subtle);
   -webkit-app-region: no-drag;
 }
 
@@ -341,7 +341,7 @@
 .inspector {
   width: 348px;
   flex: none;
-  border-left: 1px solid var(--border-subtle);
+  border-inline-start: 1px solid var(--border-subtle);
   background: var(--surface-1);
   display: flex;
   min-height: 0;
@@ -357,7 +357,7 @@
   flex-direction: column;
   gap: 2px;
   padding: var(--space-2) 6px;
-  border-right: 1px solid var(--border-subtle);
+  border-inline-end: 1px solid var(--border-subtle);
   background: var(--surface-0);
   overflow-y: auto;
 }
@@ -408,11 +408,14 @@
 .insp-tabs button.active::before {
   content: '';
   position: absolute;
-  left: -6px;
+  inset-inline-start: -6px;
   top: 10px;
   bottom: 10px;
   width: 3px;
-  border-radius: 0 3px 3px 0;
+  border-start-start-radius: 0;
+  border-start-end-radius: 3px;
+  border-end-end-radius: 3px;
+  border-end-start-radius: 0;
   background: var(--accent-500);
 }
 
@@ -552,7 +555,7 @@
 
 .item-list button {
   width: 100%;
-  text-align: left;
+  text-align: start;
   padding: 6px var(--space-2);
   border: none;
   border-radius: var(--radius-sm);

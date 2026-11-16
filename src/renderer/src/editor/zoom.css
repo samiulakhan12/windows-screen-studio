@@ -34,8 +34,8 @@
   display: flex;
   flex-direction: column;
   gap: 10px;
-  padding-left: 10px;
-  border-left: 2px solid var(--border);
+  padding-inline-start: 10px;
+  border-inline-start: 2px solid var(--border);
   transition: opacity 0.15s ease;
 }
 
@@ -205,7 +205,7 @@
 }
 
 .btn .btn-shortcut {
-  margin-left: 4px;
+  margin-inline-start: 4px;
 }
 
 /* "Made for the click at 0:04.2 [Ignore this click]" under a selected auto zoom. */
@@ -273,7 +273,8 @@
   align-items: center;
   gap: 8px;
   min-height: 30px;
-  padding: 0 0 0 6px;
+  padding-block: 0;
+  padding-inline: 6px 0;
   border-radius: 6px;
   font-size: 12px;
 }
@@ -294,7 +295,7 @@
   font-variant-numeric: tabular-nums;
   cursor: pointer;
   min-width: 48px;
-  text-align: left;
+  text-align: start;
 }
 
 .click-time:hover {

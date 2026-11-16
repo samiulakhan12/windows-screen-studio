@@ -139,8 +139,8 @@
 }
 
 .local-ai-use legend {
-  float: left;
-  margin-right: var(--space-2);
+  float: inline-start;
+  margin-inline-end: var(--space-2);
   padding: 0;
   color: var(--text-1);
   font-weight: var(--weight-medium);

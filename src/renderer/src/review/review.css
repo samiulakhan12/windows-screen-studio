@@ -26,7 +26,7 @@
 .review-panel {
   position: absolute;
   top: 0;
-  right: 0;
+  inset-inline-end: 0;
   bottom: 0;
   width: 360px;
   max-width: 100%;
@@ -36,7 +36,7 @@
   gap: 10px;
   padding: 14px 14px 12px;
   background: var(--surface-1);
-  border-left: 1px solid var(--border-default);
+  border-inline-start: 1px solid var(--border-default);
   box-shadow: var(--shadow-3);
   color: var(--text-1);
 }
@@ -117,8 +117,8 @@
 
 .review-list.windowed > .review-row {
   position: absolute;
-  left: 0;
-  right: 0;
+  inset-inline-start: 0;
+  inset-inline-end: 0;
 }
 
 .review-row {
@@ -147,7 +147,7 @@
   background: transparent;
   color: inherit;
   font: inherit;
-  text-align: left;
+  text-align: start;
   cursor: pointer;
 }
 
@@ -246,7 +246,7 @@
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  padding-right: 6px;
+  padding-inline-end: 6px;
   font-size: 12px;
   font-weight: 600;
 }
@@ -302,20 +302,22 @@
 
 .review-parts {
   flex-basis: 100%;
-  margin: 2px 0 2px 62px;
+  margin-block: 2px;
+  margin-inline: 62px 0;
   padding: 0;
   list-style: none;
   display: flex;
   flex-direction: column;
   gap: 2px;
-  border-left: 2px solid var(--border-default);
+  border-inline-start: 2px solid var(--border-default);
 }
 
 .review-part {
   display: flex;
   align-items: center;
   gap: 6px;
-  padding: 3px 4px 3px 8px;
+  padding-block: 3px;
+  padding-inline: 8px 4px;
 }
 
 .review-part.removed .review-title {

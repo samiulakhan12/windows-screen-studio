@@ -90,7 +90,7 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  text-align: left;
+  text-align: start;
   padding: 0 2px;
 }
 
@@ -98,7 +98,7 @@
 .preset-tools {
   position: absolute;
   top: 8px;
-  right: 8px;
+  inset-inline-end: 8px;
   display: flex;
   gap: 4px;
   opacity: 0;
@@ -245,7 +245,7 @@
 .swatch.animated::after {
   content: '';
   position: absolute;
-  right: 4px;
+  inset-inline-end: 4px;
   bottom: 4px;
   width: 0;
   height: 0;

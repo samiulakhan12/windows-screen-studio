@@ -10,7 +10,7 @@
 .copy-menu {
   position: absolute;
   top: calc(100% + 6px);
-  left: 0;
+  inset-inline-start: 0;
   z-index: 40;
   width: 320px;
   display: flex;
@@ -39,7 +39,7 @@
   border: none;
   border-radius: var(--radius-md);
   background: transparent;
-  text-align: left;
+  text-align: start;
   cursor: pointer;
 }
 

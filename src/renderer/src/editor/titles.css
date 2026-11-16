@@ -200,7 +200,8 @@
 }
 
 .chapter-row {
-  padding: 2px 2px 2px 0;
+  padding-block: 2px;
+  padding-inline: 0 2px;
   border-radius: 8px;
 }
 
@@ -216,7 +217,7 @@
   border-radius: 6px;
   background: transparent;
   color: #fbbf24;
-  text-align: left;
+  text-align: start;
   cursor: pointer;
 }
 
@@ -275,7 +276,8 @@
 
 .chapter-row .chapter-rename {
   flex-basis: 100%;
-  margin: 0 0 2px 54px;
+  margin-block: 0 2px;
+  margin-inline: 54px 0;
   color: var(--text-2);
   font-size: 11px;
 }

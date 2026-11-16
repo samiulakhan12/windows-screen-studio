@@ -78,7 +78,7 @@
 
 .import-notes {
   margin: 0;
-  padding-left: 1.2em;
+  padding-inline-start: 1.2em;
   display: flex;
   flex-direction: column;
   gap: var(--space-2);

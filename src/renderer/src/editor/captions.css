@@ -100,7 +100,8 @@
 
 .captions-bar span {
   position: absolute;
-  inset: 0 auto 0 0;
+  inset-block: 0;
+  inset-inline: 0 auto;
   width: 0;
   border-radius: 3px;
   background: var(--accent);
@@ -114,10 +115,10 @@
 
 @keyframes captions-busy {
   from {
-    left: -35%;
+    inset-inline-start: -35%;
   }
   to {
-    left: 100%;
+    inset-inline-start: 100%;
   }
 }
 
@@ -203,7 +204,7 @@
   background: #22d3ee;
   border-radius: 3px;
   padding: 0 2px;
-  margin-right: 1px;
+  margin-inline-end: 1px;
 }
 
 .caption-sample.minimal {
@@ -250,19 +251,20 @@
   grid-template-columns: 54px 1fr;
   grid-template-rows: auto auto;
   gap: 0 6px;
-  padding: 4px 4px 2px 0;
+  padding-block: 4px 2px;
+  padding-inline: 0 4px;
   border-radius: 8px;
-  border-left: 2px solid transparent;
+  border-inline-start: 2px solid transparent;
 }
 
 .caption-row.current {
   background: rgba(94, 234, 212, 0.07);
-  border-left-color: #5eead4;
+  border-inline-start-color: #5eead4;
 }
 
 .caption-row.selected {
   background: var(--panel-2);
-  border-left-color: var(--accent);
+  border-inline-start-color: var(--accent);
 }
 
 .caption-row.match .caption-text {
@@ -280,7 +282,7 @@
   color: #5eead4;
   font-size: 11px;
   font-variant-numeric: tabular-nums;
-  text-align: left;
+  text-align: start;
   cursor: pointer;
 }
 
@@ -384,7 +386,7 @@
 /* Suggested chapters waiting to be added (a title the link check notes): time and title per line. */
 .captions-suggestion .captions-chapter-list {
   margin: 0 0 6px;
-  padding-left: 18px;
+  padding-inline-start: 18px;
   color: var(--text);
 }
 
@@ -560,19 +562,19 @@
   display: block;
   position: absolute;
   top: 4px;
-  right: 6px;
+  inset-inline-end: 6px;
   width: 9px;
   height: 9px;
   max-width: none;
   border-radius: 50%;
   border: 2px solid var(--accent-text);
-  border-right-color: transparent;
+  border-inline-end-color: transparent;
   animation: captions-badge-spin 1s linear infinite;
 }
 
 .insp-tabs button span.captions-job-badge[data-phase='verify'] {
   border-color: var(--success-text);
-  border-right-color: transparent;
+  border-inline-end-color: transparent;
 }
 
 @keyframes captions-badge-spin {
@@ -584,12 +586,12 @@
 @media (prefers-reduced-motion: reduce) {
   .insp-tabs button span.captions-job-badge {
     animation: none;
-    border-right-color: var(--accent-text);
+    border-inline-end-color: var(--accent-text);
   }
 
   .captions-bar.busy span {
     animation: none;
-    left: 0;
+    inset-inline-start: 0;
     width: 100%;
     opacity: 0.5;
   }
@@ -603,6 +605,6 @@
   padding-top: 5px;
   padding-bottom: 5px;
   white-space: normal;
-  text-align: left;
+  text-align: start;
   line-height: var(--leading-tight);
 }

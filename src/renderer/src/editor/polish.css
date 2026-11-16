@@ -85,7 +85,7 @@
 
 .polish-row.running .btn.small {
   align-self: center;
-  margin-left: auto;
+  margin-inline-start: auto;
 }
 
 .polish-name {

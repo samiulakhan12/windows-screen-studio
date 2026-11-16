@@ -146,7 +146,7 @@ button.export-section-head {
   border-top: 1px solid var(--border-subtle);
   background: none;
   cursor: pointer;
-  text-align: left;
+  text-align: start;
 }
 
 button.export-section-head:hover {
@@ -176,12 +176,13 @@ button.export-section-head:hover {
   align-items: center;
   gap: 10px;
   min-width: 0;
-  padding: var(--space-2) 10px var(--space-2) var(--space-2);
+  padding-block: var(--space-2);
+  padding-inline: var(--space-2) 10px;
   border-radius: var(--radius-lg);
   border: 1px solid var(--border-subtle);
   background: var(--surface-2);
   box-shadow: var(--highlight-top);
-  text-align: left;
+  text-align: start;
   cursor: pointer;
   transition:
     border-color var(--dur-fast) var(--ease-out),

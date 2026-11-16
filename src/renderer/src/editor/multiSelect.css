@@ -93,7 +93,7 @@
 
 /* Mixed values in the Selection view. */
 .mixed-tag {
-  margin-left: 6px;
+  margin-inline-start: 6px;
   padding: 0 5px;
   border-radius: 4px;
   font-size: var(--text-2xs);
@@ -199,7 +199,7 @@
 .insp-tabs .selection-tab .selection-badge {
   position: absolute;
   top: 2px;
-  right: 4px;
+  inset-inline-end: 4px;
   min-width: 16px;
   height: 16px;
   padding: 0 4px;

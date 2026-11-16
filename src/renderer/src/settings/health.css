@@ -99,7 +99,7 @@
 .storage-size {
   color: var(--text-1);
   font-variant-numeric: tabular-nums;
-  text-align: right;
+  text-align: end;
 }
 
 .storage-more {

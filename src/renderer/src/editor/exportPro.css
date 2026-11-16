@@ -8,7 +8,7 @@
 
 .user-preset > .preset-card {
   width: 100%;
-  padding-right: 40px;
+  padding-inline-end: 40px;
 }
 
 .user-preset.editing {
@@ -31,7 +31,7 @@
 .preset-more {
   position: absolute;
   top: 50%;
-  right: 6px;
+  inset-inline-end: 6px;
   transform: translateY(-50%);
   display: grid;
   place-items: center;
@@ -62,7 +62,7 @@
 .preset-menu {
   position: absolute;
   top: calc(100% + 4px);
-  right: 0;
+  inset-inline-end: 0;
   z-index: 40;
   min-width: 200px;
   display: flex;
@@ -84,7 +84,7 @@
   background: transparent;
   color: var(--text-1);
   font-size: var(--text-md);
-  text-align: left;
+  text-align: start;
   cursor: pointer;
 }
 
@@ -206,7 +206,7 @@
 }
 
 .export-uses .hint {
-  padding-left: 22px;
+  padding-inline-start: 22px;
 }
 
 /* The running view's steps after the video, and the done view's timeline files. */
@@ -237,5 +237,5 @@
   text-overflow: ellipsis;
   white-space: nowrap;
   font-size: var(--text-sm);
-  text-align: left;
+  text-align: start;
 }
