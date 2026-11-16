@@ -14,6 +14,7 @@ import { recordAutoCuts } from '../review/autoCuts'
 import type { Clip, Project } from '../types'
 import { copyKindOf, piecesClips, suffixedName, withClipCaptions, withinRange, type ClipShape } from './clipCopy'
 import { focusKey, focusWords, keptClipWords, lastAtOrBefore, MIN_SENTENCE_WORDS, type ScoredSentence } from './sentences'
+import { t } from '../i18n/t'
 
 export type ShortLength = 30 | 60 | 90
 export const SHORT_LENGTHS: readonly ShortLength[] = [30, 60, 90]
@@ -250,7 +251,7 @@ const lengthOf = (plan: Extract<ShortPlan, { ok: true }>): ShortLength => plan.l
  */
 export function shortCopy(project: Project, plan: Extract<ShortPlan, { ok: true }>, opts: { shape: ClipShape; captions: boolean; measure: MeasureText | null }): Project {
   const part = piecesClips(project, plan.pieces)
-  if (part.clips.length === 0) throw new Error('The sentences picked are no longer in the video: try again.')
+  if (part.clips.length === 0) throw new Error(t('smart.short.sentencesGone'))
   const base = projectCopy(project, copyKindOf(opts.shape), opts.measure)
   const { chapters: _chapters, ...rest } = base
   void _chapters

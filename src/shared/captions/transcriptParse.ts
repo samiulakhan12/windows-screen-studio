@@ -13,6 +13,7 @@
  * as the text of the first candidate (https://ai.google.dev/gemini-api/docs/structured-output).
  */
 import { checkWordTimes } from './transcriptTiming'
+import { t } from '../i18n/t'
 
 export interface RawWord {
   text: string
@@ -102,12 +103,15 @@ function wordsIn(words: readonly RawWord[], start: number, end: number, last: bo
   })
 }
 
+/** Why an answer is refused (a function: no text is made when the module loads). */
+const notATranscript = (): string => t('errors.transcribe.notATranscript')
+
 /**
  * An OpenAI verbose_json transcription of a part `partSeconds` long. Words come as one list
  * for the whole part and are handed to the segment they fall in.
  */
 export function parseOpenAiTranscription(json: unknown, partSeconds: number): RawTranscript {
-  if (!isObject(json)) throw new Error('The transcription service returned something that is not a transcript.')
+  if (!isObject(json)) throw new Error(notATranscript())
   const limit = partSeconds + 1
   const words = readWords(json.words, limit, 'word')
   const segments: RawSegment[] = []
@@ -140,7 +144,7 @@ const TEXT_PER_30_SECONDS = 2000
  * nothing was said), and the first language detected.
  */
 export function parseOpenAiText(json: unknown, partSeconds: number): RawTranscript {
-  if (!isObject(json) || typeof json.text !== 'string') throw new Error('The transcription service returned something that is not a transcript.')
+  if (!isObject(json) || typeof json.text !== 'string') throw new Error(notATranscript())
   // The part's length to the millisecond: end - start of a full part can be 30 s and a rounding error.
   const text = cleanText(json.text, TEXT_PER_30_SECONDS * Math.max(1, Math.ceil(Math.round(partSeconds * 1000) / 30_000) || 1))
   const detected = Array.isArray(json.languages) ? json.languages.map((l) => (isObject(l) ? languageCode(l.code) : undefined)).find(Boolean) : languageCode(json.language)
@@ -223,9 +227,9 @@ export function parseGeminiTranscription(text: string, partSeconds: number): Raw
   try {
     json = JSON.parse(text)
   } catch {
-    throw new Error('The transcription service returned something that is not a transcript.')
+    throw new Error(notATranscript())
   }
-  if (!isObject(json) || !Array.isArray(json.segments)) throw new Error('The transcription service returned something that is not a transcript.')
+  if (!isObject(json) || !Array.isArray(json.segments)) throw new Error(notATranscript())
   const limit = partSeconds + 1
   const segments: RawSegment[] = []
   for (const s of json.segments) {

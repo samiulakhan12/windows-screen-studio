@@ -1267,5 +1267,611 @@
     "user": [
       "name"
     ]
+  },
+  "local.providersUnread": {
+    "description": "Captions tab, under \"Prefer an AI provider?\": the AI providers list could not be read. {reason} is the error; a \"Check again\" link follows."
+  },
+  "local.downloadPercent": {
+    "description": "Captions tab, read by screen readers only while a speech model downloads, in steps of 25. {bar} names the download; {percent} is 0, 25, 50, 75 or 100."
+  },
+  "local.failed": {
+    "description": "Captions tab, the error card after captions made on this PC failed. {reason} is why (a whole sentence)."
+  },
+  "local.dismiss": {
+    "description": "Captions tab, error card: closes the error about captions made on this PC."
+  },
+  "transcript.editByText": {
+    "description": "transcriptPanel, the title of <Section> (src/renderer/src/editor/panels/TranscriptPanel.tsx:84)."
+  },
+  "transcript.hint": {
+    "description": "transcriptPanel, text of <p> (src/renderer/src/editor/panels/TranscriptPanel.tsx:85)."
+  },
+  "transcript.noTranscript": {
+    "description": "transcriptPanel, text of <p> (src/renderer/src/editor/panels/TranscriptPanel.tsx:87)."
+  },
+  "transcript.noSound": {
+    "description": "transcriptPanel, text of <p> (src/renderer/src/editor/panels/TranscriptPanel.tsx:89)."
+  },
+  "transcript.title": {
+    "description": "transcriptPanel, the title of <Section> (src/renderer/src/editor/panels/TranscriptPanel.tsx:464)."
+  },
+  "transcript.cutTitle": {
+    "description": "transcriptPanel, the title of <button> (src/renderer/src/editor/panels/TranscriptPanel.tsx:466)."
+  },
+  "transcript.restoreTitle": {
+    "description": "transcriptPanel, the title of <button> (src/renderer/src/editor/panels/TranscriptPanel.tsx:469)."
+  },
+  "transcript.findFillers": {
+    "description": "transcriptPanel, text of <button> (src/renderer/src/editor/panels/TranscriptPanel.tsx:473)."
+  },
+  "transcript.emphasiseTitle": {
+    "description": "transcriptPanel, the title of <button> (src/renderer/src/editor/panels/TranscriptPanel.tsx:477)."
+  },
+  "transcript.boldMark": {
+    "description": "transcriptPanel, text of <strong> (src/renderer/src/editor/panels/TranscriptPanel.tsx:478)."
+  },
+  "transcript.emphasise": {
+    "description": "transcriptPanel, text of <button> (src/renderer/src/editor/panels/TranscriptPanel.tsx:478)."
+  },
+  "transcript.position.label": {
+    "description": "transcriptPanel, text of <span> (src/renderer/src/editor/panels/TranscriptPanel.tsx:482)."
+  },
+  "transcript.positionTitle": {
+    "description": "transcriptPanel, the title of <select> (src/renderer/src/editor/panels/TranscriptPanel.tsx:487)."
+  },
+  "transcript.position.auto": {
+    "description": "transcriptPanel, text of <option> (src/renderer/src/editor/panels/TranscriptPanel.tsx:490)."
+  },
+  "transcript.position.top": {
+    "description": "transcriptPanel, text of <option> (src/renderer/src/editor/panels/TranscriptPanel.tsx:491)."
+  },
+  "transcript.position.bottom": {
+    "description": "transcriptPanel, text of <option> (src/renderer/src/editor/panels/TranscriptPanel.tsx:492)."
+  },
+  "transcript.howTo": {
+    "description": "transcriptPanel, text of <p> (src/renderer/src/editor/panels/TranscriptPanel.tsx:496)."
+  },
+  "transcript.estimated": {
+    "description": "transcriptPanel, text of <p> (src/renderer/src/editor/panels/TranscriptPanel.tsx:497)."
+  },
+  "transcript.earlier": {
+    "description": "transcriptPanel, text of <button> (src/renderer/src/editor/panels/TranscriptPanel.tsx:502)."
+  },
+  "transcript.wordsLabel": {
+    "description": "transcriptPanel, the aria-label of <div> (src/renderer/src/editor/panels/TranscriptPanel.tsx:517)."
+  },
+  "transcript.moreEmphasis": {
+    "description": "transcriptPanel, the aria-label of <button> (src/renderer/src/editor/panels/TranscriptPanel.tsx:597)."
+  },
+  "transcript.secondColour": {
+    "description": "transcriptPanel, text of <button> (src/renderer/src/editor/panels/TranscriptPanel.tsx:638)."
+  },
+  "transcript.fillersTitle": {
+    "description": "transcriptPanel, the title of <Section> (src/renderer/src/editor/panels/TranscriptPanel.tsx:677)."
+  },
+  "transcript.noFillers": {
+    "description": "transcriptPanel, text of <p> (src/renderer/src/editor/panels/TranscriptPanel.tsx:679)."
+  },
+  "transcript.removeAllSaves": {
+    "description": "transcriptPanel, text of <p> (src/renderer/src/editor/panels/TranscriptPanel.tsx:681)."
+  },
+  "transcript.goTo": {
+    "description": "transcriptPanel, the title of <button> (src/renderer/src/editor/panels/TranscriptPanel.tsx:689)."
+  },
+  "transcript.keepAt": {
+    "description": "transcriptPanel, the aria-label of <button> (src/renderer/src/editor/panels/TranscriptPanel.tsx:698)."
+  },
+  "transcript.removeAt": {
+    "description": "transcriptPanel, the aria-label of <button> (src/renderer/src/editor/panels/TranscriptPanel.tsx:701)."
+  },
+  "transcript.page": {
+    "description": "Edit by text: which paragraphs the page shows, between Earlier and Later."
+  },
+  "transcript.count": {
+    "description": "Edit by text: next to the Transcript heading, how many words there are and how many are cut."
+  },
+  "transcript.seconds": {
+    "description": "Edit by text: a length in seconds with one decimal, inside notices."
+  },
+  "transcript.kind.filler": {
+    "description": "Edit by text › Fillers and retakes: the kind of a suggestion (um, uh, like)."
+  },
+  "transcript.kind.retake": {
+    "description": "Edit by text › Fillers and retakes: a sentence said again."
+  },
+  "transcript.kind.repeat": {
+    "description": "Edit by text › Fillers and retakes: a word said twice in a row."
+  },
+  "transcript.notice.alreadyCut": {
+    "description": "Edit by text: notice when the selected words are already cut."
+  },
+  "transcript.notice.wholeVideo": {
+    "description": "Edit by text: notice when a cut would leave nothing."
+  },
+  "transcript.notice.tooShort": {
+    "description": "Edit by text: notice when the selection is too short to cut."
+  },
+  "transcript.notice.cutWords": {
+    "description": "Edit by text: notice after a cut; {saved} is how much shorter the video is (\"1.2 s\")."
+  },
+  "transcript.notice.cut": {
+    "description": "Edit by text: notice after a cut of words already partly cut; {saved} is a length."
+  },
+  "transcript.notice.cannotRestore": {
+    "description": "Edit by text: notice when Restore cannot bring the words back."
+  },
+  "transcript.notice.restored": {
+    "description": "Edit by text: notice after Restore."
+  },
+  "transcript.notice.selectFirst": {
+    "description": "Edit by text: notice when Emphasise is pressed with no words selected."
+  },
+  "transcript.notice.positionAuto": {
+    "description": "Edit by text: notice after Caption position › Auto."
+  },
+  "transcript.notice.positionTop": {
+    "description": "Edit by text: notice after Caption position › Top."
+  },
+  "transcript.notice.positionBottom": {
+    "description": "Edit by text: notice after Caption position › Bottom."
+  },
+  "transcript.notice.found": {
+    "description": "Edit by text: notice after Find fillers and retakes."
+  },
+  "transcript.notice.noneFound": {
+    "description": "Edit by text: notice when none was found."
+  },
+  "transcript.notice.removedOne": {
+    "description": "Edit by text: notice after removing one suggestion; {saved} is how much shorter the video is."
+  },
+  "transcript.notice.removed": {
+    "description": "Edit by text: notice after Remove all; {n} suggestions were removed, {saved} is how much shorter the video is."
+  },
+  "transcript.paraSpeaker": {
+    "description": "Edit by text: a paragraph's accessible name with its speaker and start time.",
+    "user": [
+      "speaker"
+    ]
+  },
+  "transcript.para": {
+    "description": "Edit by text: a paragraph's accessible name with its start time."
+  },
+  "transcript.word.cut": {
+    "description": "Edit by text: added after a word in its accessible name (\", cut\") when the word is cut."
+  },
+  "transcript.word.emphasis": {
+    "description": "Edit by text: added after a word in its accessible name when it is emphasised."
+  },
+  "transcript.word.emphasis2": {
+    "description": "Edit by text: added after a word in its accessible name when it is emphasised in the second colour."
+  },
+  "lookSection.highlightColour": {
+    "description": "captionLookSection, the label of <ClassicColor> (src/renderer/src/editor/panels/CaptionLookSection.tsx:144)."
+  },
+  "lookSection.lines": {
+    "description": "captionLookSection, text of <span> (src/renderer/src/editor/panels/CaptionLookSection.tsx:159)."
+  },
+  "lookSection.saveStyle": {
+    "description": "captionLookSection, text of <button> (src/renderer/src/editor/panels/CaptionLookSection.tsx:219)."
+  },
+  "lookSection.showCaptions": {
+    "description": "captionLookSection, the label of <Toggle> (src/renderer/src/editor/panels/CaptionLookSection.tsx:330)."
+  },
+  "lookSection.showTitle": {
+    "description": "captionLookSection, the title of <Toggle> (src/renderer/src/editor/panels/CaptionLookSection.tsx:333)."
+  },
+  "lookSection.great": {
+    "description": "captionLookSection, text of <button> (src/renderer/src/editor/panels/CaptionLookSection.tsx:339)."
+  },
+  "lookSection.edited": {
+    "description": "captionLookSection, text of <span> (src/renderer/src/editor/panels/CaptionLookSection.tsx:354)."
+  },
+  "lookSection.resetTitle": {
+    "description": "captionLookSection, the title of <button> (src/renderer/src/editor/panels/CaptionLookSection.tsx:356)."
+  },
+  "lookSection.classicHint": {
+    "description": "captionLookSection, text of <p> (src/renderer/src/editor/panels/CaptionLookSection.tsx:363)."
+  },
+  "lookSection.emphasis": {
+    "description": "captionLookSection, the title of <Part> (src/renderer/src/editor/panels/CaptionLookSection.tsx:376)."
+  },
+  "lookSection.speakers": {
+    "description": "captionLookSection, the title of <Part> (src/renderer/src/editor/panels/CaptionLookSection.tsx:380)."
+  },
+  "lookSection.previewHint": {
+    "description": "captionLookSection, text of <p> (src/renderer/src/editor/panels/CaptionLookSection.tsx:384)."
+  },
+  "studio.weight": {
+    "description": "studioControls, the label of <SelectField> (src/renderer/src/editor/panels/StudioControls.tsx:177)."
+  },
+  "studio.case": {
+    "description": "studioControls, the label of <ChipField> (src/renderer/src/editor/panels/StudioControls.tsx:196)."
+  },
+  "studio.letterSpacing": {
+    "description": "studioControls, the label of <StudioSlider> (src/renderer/src/editor/panels/StudioControls.tsx:208)."
+  },
+  "studio.trackingOff": {
+    "description": "studioControls, text of <p> (src/renderer/src/editor/panels/StudioControls.tsx:218)."
+  },
+  "studio.digits": {
+    "description": "studioControls, the label of <ChipField> (src/renderer/src/editor/panels/StudioControls.tsx:222)."
+  },
+  "studio.digitsHint": {
+    "description": "studioControls, text of <span> (src/renderer/src/editor/panels/StudioControls.tsx:238)."
+  },
+  "studio.theme": {
+    "description": "studioControls, text of <span> (src/renderer/src/editor/panels/StudioControls.tsx:283)."
+  },
+  "studio.swatchUpper": {
+    "description": "studioControls, text of <span> (src/renderer/src/editor/panels/StudioControls.tsx:290)."
+  },
+  "studio.swatchLower": {
+    "description": "studioControls, text of <span> (src/renderer/src/editor/panels/StudioControls.tsx:290)."
+  },
+  "studio.words": {
+    "description": "studioControls, the label of <ColorDots> (src/renderer/src/editor/panels/StudioControls.tsx:298)."
+  },
+  "studio.spokenWord": {
+    "description": "studioControls, the label of <ColorDots> (src/renderer/src/editor/panels/StudioControls.tsx:299)."
+  },
+  "studio.emphasis": {
+    "description": "studioControls, the label of <ColorDots> (src/renderer/src/editor/panels/StudioControls.tsx:300)."
+  },
+  "studio.secondEmphasis": {
+    "description": "studioControls, the label of <ColorDots> (src/renderer/src/editor/panels/StudioControls.tsx:301)."
+  },
+  "studio.outlineColour": {
+    "description": "studioControls, the label of <ColorDots> (src/renderer/src/editor/panels/StudioControls.tsx:302)."
+  },
+  "studio.outline": {
+    "description": "studioControls, the label of <StudioSlider> (src/renderer/src/editor/panels/StudioControls.tsx:305)."
+  },
+  "studio.backgroundOpacity": {
+    "description": "studioControls, the label of <StudioSlider> (src/renderer/src/editor/panels/StudioControls.tsx:343)."
+  },
+  "studio.backgroundColour": {
+    "description": "studioControls, the label of <ColorDots> (src/renderer/src/editor/panels/StudioControls.tsx:352)."
+  },
+  "studio.glow": {
+    "description": "studioControls, the label of <StudioSlider> (src/renderer/src/editor/panels/StudioControls.tsx:358)."
+  },
+  "studio.gradient": {
+    "description": "studioControls, text of <span> (src/renderer/src/editor/panels/StudioControls.tsx:370)."
+  },
+  "studio.wordsOnScreen": {
+    "description": "studioControls, the label of <ChipField> (src/renderer/src/editor/panels/StudioControls.tsx:431)."
+  },
+  "studio.wordsAtOnce": {
+    "description": "studioControls, the label of <StudioSlider> (src/renderer/src/editor/panels/StudioControls.tsx:435)."
+  },
+  "studio.lines": {
+    "description": "studioControls, the label of <ChipField> (src/renderer/src/editor/panels/StudioControls.tsx:448)."
+  },
+  "studio.lineLength": {
+    "description": "studioControls, the label of <ChipField> (src/renderer/src/editor/panels/StudioControls.tsx:468)."
+  },
+  "studio.dragHint": {
+    "description": "studioControls, text of <span> (src/renderer/src/editor/panels/StudioControls.tsx:484)."
+  },
+  "studio.resetPosition": {
+    "description": "studioControls, text of <button> (src/renderer/src/editor/panels/StudioControls.tsx:499)."
+  },
+  "studio.avoid": {
+    "description": "studioControls, the label of <Toggle> (src/renderer/src/editor/panels/StudioControls.tsx:503)."
+  },
+  "studio.avoidHint": {
+    "description": "studioControls, text of <p> (src/renderer/src/editor/panels/StudioControls.tsx:505)."
+  },
+  "studio.safeHint": {
+    "description": "studioControls, text of <p> (src/renderer/src/editor/panels/StudioControls.tsx:506)."
+  },
+  "studio.enter": {
+    "description": "studioControls, the label of <SelectField> (src/renderer/src/editor/panels/StudioControls.tsx:581)."
+  },
+  "studio.exit": {
+    "description": "studioControls, the label of <SelectField> (src/renderer/src/editor/panels/StudioControls.tsx:584)."
+  },
+  "studio.eachWord": {
+    "description": "studioControls, the label of <SelectField> (src/renderer/src/editor/panels/StudioControls.tsx:590)."
+  },
+  "studio.unspoken": {
+    "description": "studioControls, the label of <ChipField> (src/renderer/src/editor/panels/StudioControls.tsx:594)."
+  },
+  "studio.calmStrength": {
+    "description": "studioControls, text of <p> (src/renderer/src/editor/panels/StudioControls.tsx:604)."
+  },
+  "studio.calmMotion": {
+    "description": "studioControls, the label of <Toggle> (src/renderer/src/editor/panels/StudioControls.tsx:608)."
+  },
+  "studio.calmHint": {
+    "description": "studioControls, text of <p> (src/renderer/src/editor/panels/StudioControls.tsx:619)."
+  },
+  "studio.calmNote": {
+    "description": "studioControls, text of <p> (src/renderer/src/editor/panels/StudioControls.tsx:622)."
+  },
+  "studio.estimated": {
+    "description": "studioControls, text of <p> (src/renderer/src/editor/panels/StudioControls.tsx:639)."
+  },
+  "studio.noWordTimes": {
+    "description": "studioControls, text of <p> (src/renderer/src/editor/panels/StudioControls.tsx:640)."
+  },
+  "studio.findImportant": {
+    "description": "studioControls, text of <button> (src/renderer/src/editor/panels/StudioControls.tsx:668)."
+  },
+  "studio.clearEmphasis": {
+    "description": "studioControls, text of <button> (src/renderer/src/editor/panels/StudioControls.tsx:671)."
+  },
+  "studio.noneEmphasised": {
+    "description": "studioControls, text of <p> (src/renderer/src/editor/panels/StudioControls.tsx:675)."
+  },
+  "studio.mark": {
+    "description": "studioControls, the label of <ChipField> (src/renderer/src/editor/panels/StudioControls.tsx:709)."
+  },
+  "studio.emphasisHint": {
+    "description": "studioControls, text of <p> (src/renderer/src/editor/panels/StudioControls.tsx:721)."
+  },
+  "studio.speakerColour": {
+    "description": "studioControls, the label of <Toggle> (src/renderer/src/editor/panels/StudioControls.tsx:741)."
+  },
+  "studio.speakerNamesFirst": {
+    "description": "studioControls, text of <p> (src/renderer/src/editor/panels/StudioControls.tsx:753)."
+  },
+  "studio.speakerHard": {
+    "description": "studioControls, text of <p> (src/renderer/src/editor/panels/StudioControls.tsx:754)."
+  },
+  "studio.speakerColours": {
+    "description": "studioControls, the aria-label of <ul> (src/renderer/src/editor/panels/StudioControls.tsx:756)."
+  },
+  "studio.emphasised": {
+    "description": "Captions › Emphasis: how many words are emphasised."
+  },
+  "studio.emphasisRemoved": {
+    "description": "Captions › Emphasis: notice after Clear emphasis."
+  },
+  "studio.percent": {
+    "description": "Captions: a slider's value as screen readers read it."
+  },
+  "studio.percentOfSize": {
+    "description": "Captions › Letter spacing: the slider's value as screen readers read it."
+  },
+  "studio.case.asis": {
+    "description": "Captions › Text › Case chip (\"As written\" shows the case itself)."
+  },
+  "studio.case.upper": {
+    "description": "Captions › Text › Case chip (\"CAPITALS\" shows the case itself)."
+  },
+  "studio.case.lower": {
+    "description": "Captions › Text › Case chip (\"lowercase\" shows the case itself)."
+  },
+  "studio.digits.asis": {
+    "description": "Captions › Text › Digits chip: As written."
+  },
+  "studio.digits.western": {
+    "description": "Captions › Text › Digits chip: Western 0–9."
+  },
+  "studio.shadow.soft": {
+    "description": "Captions › Colours › Shadow chip."
+  },
+  "studio.shadow.strong": {
+    "description": "Captions › Colours › Shadow chip."
+  },
+  "studio.shadow.hard": {
+    "description": "Captions › Colours › Shadow chip."
+  },
+  "studio.box.line": {
+    "description": "Captions › Colours › Background chip: how the captions' background is drawn."
+  },
+  "studio.box.chunk": {
+    "description": "Captions › Colours › Background chip: how the captions' background is drawn."
+  },
+  "studio.box.glass": {
+    "description": "Captions › Colours › Background chip: how the captions' background is drawn."
+  },
+  "studio.box.band": {
+    "description": "Captions › Colours › Background chip: how the captions' background is drawn."
+  },
+  "studio.lines.2": {
+    "description": "Captions › Layout › Lines chip: how many lines."
+  },
+  "studio.lines.3": {
+    "description": "Captions › Layout › Lines chip: how many lines."
+  },
+  "studio.lines.4": {
+    "description": "Captions › Layout › Lines chip: how many lines."
+  },
+  "studio.lines.1": {
+    "description": "Captions › Layout › Lines chip: how many lines."
+  },
+  "studio.lineLength.short": {
+    "description": "Captions › Layout › Line length chip."
+  },
+  "studio.lineLength.medium": {
+    "description": "Captions › Layout › Line length chip."
+  },
+  "studio.lineLength.long": {
+    "description": "Captions › Layout › Line length chip."
+  },
+  "studio.chunk.phrase": {
+    "description": "Captions › Layout › Words on screen chip."
+  },
+  "studio.chunkTitle.phrase": {
+    "description": "Captions › chunk: the tooltip of the \"Phrases\" choice."
+  },
+  "studio.chunk.words": {
+    "description": "Captions › Layout › Words on screen chip."
+  },
+  "studio.chunkTitle.words": {
+    "description": "Captions › chunk: the tooltip of the \"A few words\" choice."
+  },
+  "studio.chunk.word": {
+    "description": "Captions › Layout › Words on screen chip."
+  },
+  "studio.chunkTitle.word": {
+    "description": "Captions › chunk: the tooltip of the \"One word\" choice."
+  },
+  "studio.chunk.stack": {
+    "description": "Captions › Layout › Words on screen chip."
+  },
+  "studio.chunkTitle.stack": {
+    "description": "Captions › chunk: the tooltip of the \"Stacked\" choice."
+  },
+  "studio.position.top": {
+    "description": "Captions › Layout › Position: where the captions sit."
+  },
+  "studio.position.upper": {
+    "description": "Captions › Layout › Position: where the captions sit."
+  },
+  "studio.position.middle": {
+    "description": "Captions › Layout › Position: where the captions sit."
+  },
+  "studio.position.lower": {
+    "description": "Captions › Layout › Position: where the captions sit."
+  },
+  "studio.position.bottom": {
+    "description": "Captions › Layout › Position: where the captions sit."
+  },
+  "studio.enter.fade": {
+    "description": "Captions › Motion › Captions come in: an animation name."
+  },
+  "studio.enter.rise": {
+    "description": "Captions › Motion › Captions come in: an animation name."
+  },
+  "studio.enter.drop": {
+    "description": "Captions › Motion › Captions come in: an animation name."
+  },
+  "studio.enter.slide": {
+    "description": "Captions › Motion › Captions come in: an animation name."
+  },
+  "studio.enter.pop": {
+    "description": "Captions › Motion › Captions come in: an animation name."
+  },
+  "studio.enter.squeeze": {
+    "description": "Captions › Motion › Captions come in: an animation name."
+  },
+  "studio.enter.grow": {
+    "description": "Captions › Motion › Captions come in: an animation name."
+  },
+  "studio.enter.blur": {
+    "description": "Captions › Motion › Captions come in: an animation name."
+  },
+  "studio.enter.wipe": {
+    "description": "Captions › Motion › Captions come in: an animation name."
+  },
+  "studio.enter.slam": {
+    "description": "Captions › Motion › Captions come in: an animation name."
+  },
+  "studio.exit.fade": {
+    "description": "Captions › Motion › Captions go out: an animation name."
+  },
+  "studio.exit.rise": {
+    "description": "Captions › Motion › Captions go out: an animation name."
+  },
+  "studio.exit.shrink": {
+    "description": "Captions › Motion › Captions go out: an animation name."
+  },
+  "studio.exit.blur": {
+    "description": "Captions › Motion › Captions go out: an animation name."
+  },
+  "studio.word.pulse": {
+    "description": "Captions › Motion › Each word, and Emphasis › Motion: an animation name."
+  },
+  "studio.word.pop": {
+    "description": "Captions › Motion › Each word, and Emphasis › Motion: an animation name."
+  },
+  "studio.word.bounce": {
+    "description": "Captions › Motion › Each word, and Emphasis › Motion: an animation name."
+  },
+  "studio.word.rise": {
+    "description": "Captions › Motion › Each word, and Emphasis › Motion: an animation name."
+  },
+  "studio.word.slide": {
+    "description": "Captions › Motion › Each word, and Emphasis › Motion: an animation name."
+  },
+  "studio.word.fade": {
+    "description": "Captions › Motion › Each word, and Emphasis › Motion: an animation name."
+  },
+  "studio.word.typewriter": {
+    "description": "Captions › Motion › Each word, and Emphasis › Motion: an animation name."
+  },
+  "studio.word.blur": {
+    "description": "Captions › Motion › Each word, and Emphasis › Motion: an animation name."
+  },
+  "studio.word.shake": {
+    "description": "Captions › Motion › Each word, and Emphasis › Motion: an animation name."
+  },
+  "studio.word.wipe": {
+    "description": "Captions › Motion › Each word, and Emphasis › Motion: an animation name."
+  },
+  "studio.spoken.fill": {
+    "description": "Captions › Motion › Spoken word: how the word being said is marked."
+  },
+  "studio.spoken.box": {
+    "description": "Captions › Motion › Spoken word: how the word being said is marked."
+  },
+  "studio.spoken.pill": {
+    "description": "Captions › Motion › Spoken word: how the word being said is marked."
+  },
+  "studio.spoken.underline": {
+    "description": "Captions › Motion › Spoken word: how the word being said is marked."
+  },
+  "studio.spoken.weight": {
+    "description": "Captions › Motion › Spoken word: how the word being said is marked."
+  },
+  "studio.spoken.glow": {
+    "description": "Captions › Motion › Spoken word: how the word being said is marked."
+  },
+  "studio.spoken.gradient": {
+    "description": "Captions › Motion › Spoken word: how the word being said is marked."
+  },
+  "studio.unspokenDim": {
+    "description": "Captions › Motion › Words not yet spoken: shown faintly."
+  },
+  "studio.markKind.marker": {
+    "description": "Captions › Emphasis › Mark: how an emphasised word is marked."
+  },
+  "studio.markKind.underline": {
+    "description": "Captions › Emphasis › Mark: how an emphasised word is marked."
+  },
+  "studio.markKind.box": {
+    "description": "Captions › Emphasis › Mark: how an emphasised word is marked."
+  },
+  "studio.markKind.circle": {
+    "description": "Captions › Emphasis › Mark: how an emphasised word is marked."
+  },
+  "studio.brand": {
+    "description": "Captions › Colours: the theme or gradient made from the brand kit's colours."
+  },
+  "studio.brandLightened": {
+    "description": "Captions › Colours: the Brand theme's tooltip when brand colours were lightened."
+  },
+  "studio.themeName.classic": {
+    "description": "Captions › Colours › Theme: a colour theme's name."
+  },
+  "studio.themeName.lime": {
+    "description": "Captions › Colours › Theme: a colour theme's name."
+  },
+  "studio.themeName.cyan": {
+    "description": "Captions › Colours › Theme: a colour theme's name."
+  },
+  "studio.themeName.sunset": {
+    "description": "Captions › Colours › Theme: a colour theme's name."
+  },
+  "studio.themeName.candy": {
+    "description": "Captions › Colours › Theme: a colour theme's name."
+  },
+  "studio.themeName.mono": {
+    "description": "Captions › Colours › Theme: a colour theme's name."
+  },
+  "studio.themeName.ink": {
+    "description": "Captions › Colours › Theme: a colour theme's name."
+  },
+  "studio.gradientName.sunset": {
+    "description": "Captions › Colours › Gradient: a gradient's name."
+  },
+  "studio.gradientName.ocean": {
+    "description": "Captions › Colours › Gradient: a gradient's name."
+  },
+  "studio.gradientName.candy": {
+    "description": "Captions › Colours › Gradient: a gradient's name."
   }
 }

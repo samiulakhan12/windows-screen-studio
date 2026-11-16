@@ -45,31 +45,32 @@ import { shotsFor, useGuideShots } from './useGuideShots'
 import { namesWithPictures, pictureImage, pictureSteps, picturesToSend } from './visionTitles'
 import '../review/review.css'
 import './guide.css'
+import { LANGUAGE_NAMES } from '../../../shared/i18n/locale'
+import { t } from '../../../shared/i18n/t'
 
 /** Rows drawn at a time as the list scrolls (§2.1). */
 export const ROWS_AT_A_TIME = 20
 /** The note under the panel's top (§2.1). */
-export const GUIDE_NOTE =
-  'Each click, shortcut and stretch of typing is a step. Check each screenshot at full size before you share the guide: it shows what was on screen. Areas you blurred or pixelated stay hidden.'
-export const NO_CLICKS_NOTE = 'No clicks were recorded, so a change of screen is a step too. Add or hide steps as you need.'
-export const NOTHING_NOTE = 'This recording has no clicks, key presses or changes of screen to make steps from. Add steps at the playhead.'
-export const MAKE_CAPTIONS_NOTE = 'Make captions first: step titles and notes come from what you say.'
-export const TOO_MANY_NOTE = 'Only the first 200 steps are listed. Hide the ones you do not need or cut the video into parts.'
-export const NOTHING_SAID = 'Nothing was said near these steps.'
-export const LINK_QUESTION = 'This guide has a link, address or file name nobody said. Save anyway?'
-export const OUTSIDE_NOTE = 'The click was outside the recorded area.'
-export const TYPED_HINT = 'Later screenshots can still show what you typed.'
-export const BLUR_HINT = 'Drag the box over what to hide. The guide and the video both hide it.'
+export const guideNote = (): string => t('smart.guide.note')
+export const noClicksNote = (): string => t('smart.guide.noClicks')
+export const nothingNote = (): string => t('smart.guide.nothing')
+export const makeCaptionsNote = (): string => t('smart.guide.makeCaptionsFirst')
+export const tooManyNote = (): string => t('smart.guide.tooMany')
+export const nothingSaid = (): string => t('smart.guide.nothingSaid')
+export const linkQuestion = (): string => t('smart.guide.linkQuestion')
+export const outsideNote = (): string => t('smart.guide.outside')
+export const typedHint = (): string => t('smart.guide.typedHint')
+export const blurHint = (): string => t('smart.guide.blurHint')
 /** Titles from the screenshots (§5.3.1): the checkbox, and why Write titles waits. */
-export const SEND_SHOTS_LABEL = 'Also send the screenshots'
-export const PREPARING_PICTURES = 'Getting the screenshots ready to send…'
-export const NO_PICTURES = 'No screenshot is ready to send.'
+export const sendShotsLabel = (): string => t('smart.guide.sendShots')
+export const preparingPictures = (): string => t('smart.guide.preparingPictures')
+export const noPictures = (): string => t('smart.guide.noPictures')
 
-const FORMATS: readonly { id: GuideFormat; label: string; save: string }[] = [
-  { id: 'pdf', label: 'PDF', save: 'Save PDF…' },
-  { id: 'html', label: 'HTML', save: 'Save HTML…' },
-  { id: 'markdown', label: 'Markdown', save: 'Save Markdown…' },
-  { id: 'demo', label: 'Click-through demo', save: 'Save demo…' }
+const formats = (): readonly { id: GuideFormat; label: string; save: string }[] => [
+  { id: 'pdf', label: t('smart.guide.format.pdf'), save: t('smart.guide.save.pdf') },
+  { id: 'html', label: t('smart.guide.format.html'), save: t('smart.guide.save.html') },
+  { id: 'markdown', label: t('smart.guide.format.markdown'), save: t('smart.guide.save.markdown') },
+  { id: 'demo', label: t('smart.guide.format.demo'), save: t('smart.guide.save.demo') }
 ]
 
 /** A4, or Letter where Windows' region is the US, Canada, Mexico or the Philippines (§2.1). */
@@ -80,22 +81,22 @@ export function defaultPage(locale = typeof navigator !== 'undefined' ? navigato
 
 /** "30 steps · 4 hidden · 12 need a title · 3 may show typing", each part only when not zero (§2.1). */
 export function stepsLine(c: { steps: number; hidden: number; untitled: number; typed: number }): string {
-  const parts = [`${c.steps} ${c.steps === 1 ? 'step' : 'steps'}`]
-  if (c.hidden) parts.push(`${c.hidden} hidden`)
-  if (c.untitled) parts.push(`${c.untitled} ${c.untitled === 1 ? 'needs' : 'need'} a title`)
-  if (c.typed) parts.push(`${c.typed} may show typing`)
+  const parts = [t('smart.guide.count.steps', { count: c.steps, n: fmt.count(c.steps) })]
+  if (c.hidden) parts.push(t('smart.guide.count.hidden', { n: fmt.count(c.hidden) }))
+  if (c.untitled) parts.push(t('smart.guide.count.untitled', { count: c.untitled, n: fmt.count(c.untitled) }))
+  if (c.typed) parts.push(t('smart.guide.count.typed', { n: fmt.count(c.typed) }))
   return parts.join(' · ')
 }
 
 /** The question before the first Save or Copy with shots not checked at full size (§2.1.2), or null when all are. */
 export function checkQuestion(c: { unchecked: number; typed: number; whole: number }): string | null {
   if (!c.unchecked) return null
-  const parts = [`${c.unchecked} ${c.unchecked === 1 ? 'screenshot has' : 'screenshots have'} not been checked at full size.`]
+  const parts = [t('smart.guide.check.unchecked', { count: c.unchecked, n: fmt.count(c.unchecked) })]
   const more: string[] = []
-  if (c.typed) more.push(`${c.typed} may show what you typed`)
-  if (c.whole) more.push(`${c.whole} show${c.whole === 1 ? 's' : ''} the whole screen`)
+  if (c.typed) more.push(t('smart.guide.check.typed', { n: fmt.count(c.typed) }))
+  if (c.whole) more.push(t('smart.guide.check.whole', { count: c.whole, n: fmt.count(c.whole) }))
   if (more.length) parts.push(`${more.join('; ')}.`)
-  parts.push('Check them now?')
+  parts.push(t('smart.guide.check.now'))
   return parts.join(' ')
 }
 
@@ -107,7 +108,7 @@ export function checkOrder(keys: readonly string[], typed: ReadonlySet<string>, 
 
 /** The chip of a shot that may show typing (§5.5.7): "May show what you typed in step 4", without the number when that typing is no listed step (cut, or too short). */
 export function typedNote(n: string): string {
-  return n ? `May show what you typed in step ${n}` : 'May show what you typed'
+  return n ? t('smart.guide.typedIn', { n }) : t('smart.guide.typed')
 }
 
 /** The next step needing a title after `from` (wrapping), or null (§2.1). */
@@ -398,7 +399,7 @@ export function GuidePanel(props: { project: Project; cursor: CursorTrack; start
       shots: pictures.map((p) => {
         const r = byKey.get(p.key)
         const typedIn = typedOf.get(p.key)
-        return { key: p.key, label: `step ${r?.n ?? ''}`, image: pictureImage(p.jpeg), ...(typedIn ? { note: typedNote(typedN(typedIn)) } : {}) }
+        return { key: p.key, label: t('smart.guide.stepLabel', { n: r?.n ?? '' }), image: pictureImage(p.jpeg), ...(typedIn ? { note: typedNote(typedN(typedIn)) } : {}) }
       }),
       ticked: new Set(pictures.filter((p) => p.ticked).map((p) => p.key)),
       jpegs: new Map(pictures.map((p) => [p.key, p.jpeg]))
@@ -476,7 +477,7 @@ export function GuidePanel(props: { project: Project; cursor: CursorTrack; start
     const unchecked = shared.filter((k) => !isChecked(k))
     const ask = askedCheck ? null : checkQuestion({ unchecked: unchecked.length, typed: unchecked.filter((k) => typedKeys.has(k)).length, whole: unchecked.filter((k) => wholeKeys.has(k)).length })
     const linkStep = (): void => {
-      if (hasPrivateText(guideTexts(store.state, included), said)) setQuestion({ kind: 'link', text: LINK_QUESTION, go: run })
+      if (hasPrivateText(guideTexts(store.state, included), said)) setQuestion({ kind: 'link', text: linkQuestion(), go: run })
       else run()
     }
     if (ask) {
@@ -580,7 +581,7 @@ export function GuidePanel(props: { project: Project; cursor: CursorTrack; start
         if (sel?.kind === 'shape') group.select([itemKey('shape', sel.id)], itemKey('shape', sel.id))
       }
     })
-    say(BLUR_HINT)
+    say(blurHint())
   }
   const blurTyped = (r: Row): void => {
     // The typing as a step (its own step may be cut or too short to be listed): the blur starts with it.
@@ -604,13 +605,13 @@ export function GuidePanel(props: { project: Project; cursor: CursorTrack; start
   }
 
   // Why Write titles cannot run now: nothing said (unless the screenshots go), or their pictures not ready.
-  const writeWhy = preparing ? PREPARING_PICTURES : shotsOn ? (pictures!.length || titleRequest ? null : NO_PICTURES) : titleRequest ? null : NOTHING_SAID
-  const heading = props.start === 'demo' ? 'Click-through demo' : props.start === 'bug' ? 'Bug report' : 'Step-by-step guide'
+  const writeWhy = preparing ? preparingPictures() : shotsOn ? (pictures!.length || titleRequest ? null : noPictures()) : titleRequest ? null : nothingSaid()
+  const heading = props.start === 'demo' ? t('smart.guide.format.demo') : props.start === 'bug' ? t('smart.guide.kindBug') : t('smart.guide.heading.guide')
   const usable = track.valid && track.clicks.length > 0
   const nothing = steps.length === 0
   const badgeCount = autoBadgeCount(project)
   const hasAiTitles = (guide.steps ?? []).some((e) => e.ai)
-  const saveLabel = FORMATS.find((f) => f.id === format)!.save
+  const saveLabel = formats().find((f) => f.id === format)!.save
   const plan = planOf(project)
   const vt = (t: number): string => fmt.clock(editToVideo(plan, viewAt(project.clips, t)), 'whole')
   const brandExists = !!project.brand?.colors?.length
@@ -620,14 +621,12 @@ export function GuidePanel(props: { project: Project; cursor: CursorTrack; start
     <aside className="review-panel guide-panel" role="region" aria-labelledby={`${ids}-heading`} data-testid="guide-panel" onKeyDown={onKeyDown}>
       <div className="review-head">
         <h2 id={`${ids}-heading`}>{heading}</h2>
-        <button type="button" className="btn ghost" onClick={close} data-testid="guide-close">
-          Close
-        </button>
+        <button type="button" className="btn ghost" onClick={close} data-testid="guide-close">{t('common.action.close')}</button>
       </div>
       <div className="guide-scroll" ref={scrollRef} onScroll={onScroll}>
         <section className="guide-top">
           <label className="guide-field">
-            <span>Title</span>
+            <span>{t('smart.guide.titleField')}</span>
             <input
               type="text"
               value={guide.title ?? project.name}
@@ -637,66 +636,58 @@ export function GuidePanel(props: { project: Project; cursor: CursorTrack; start
             />
           </label>
           <label className="guide-field">
-            <span>Intro (optional)</span>
+            <span>{t('smart.guide.intro')}</span>
             <textarea value={guide.intro ?? ''} maxLength={GUIDE_LIMITS.intro} rows={2} data-testid="guide-intro" onChange={(e) => field({ intro: e.target.value || undefined }, 'guide-intro')} />
           </label>
-          <div className="guide-radios" role="radiogroup" aria-label="Kind" onKeyDown={keepArrows}>
-            <span className="field-label" aria-hidden="true">
-              Kind
-            </span>
+          <div className="guide-radios" role="radiogroup" aria-label={t('smart.guide.kind')} onKeyDown={keepArrows}>
+            <span className="field-label" aria-hidden="true">{t('smart.guide.kind')}</span>
             {(['guide', 'bug'] as const).map((k) => (
               <label key={k} className={`chip ${(guide.kind ?? 'guide') === k ? 'active' : ''}`}>
                 <input type="radio" name={`${ids}-kind`} checked={(guide.kind ?? 'guide') === k} onChange={() => field({ kind: k === 'bug' ? 'bug' : undefined })} />
-                {k === 'bug' ? 'Bug report' : 'Guide'}
+                {k === 'bug' ? t('smart.guide.kindBug') : t('smart.guide.kindGuide')}
               </label>
             ))}
           </div>
-          <div className="guide-radios" role="radiogroup" aria-label="Language" onKeyDown={keepArrows}>
-            <span className="field-label" aria-hidden="true">
-              Language
-            </span>
+          <div className="guide-radios" role="radiogroup" aria-label={t('smart.guide.language')} onKeyDown={keepArrows}>
+            <span className="field-label" aria-hidden="true">{t('smart.guide.language')}</span>
             {(['en', 'bn'] as const).map((l) => (
               <label key={l} className={`chip ${language === l ? 'active' : ''}`} lang={l}>
                 <input type="radio" name={`${ids}-lang`} checked={language === l} onChange={() => field({ language: l })} />
-                {l === 'bn' ? 'বাংলা' : 'English'}
+                {LANGUAGE_NAMES[l].own}
               </label>
             ))}
           </div>
           {badgeCount > 0 && (
-            <div className="guide-radios" role="radiogroup" aria-label="Steps" onKeyDown={keepArrows} data-testid="guide-from">
-              <span className="field-label" aria-hidden="true">
-                Steps
-              </span>
+            <div className="guide-radios" role="radiogroup" aria-label={t('smart.guide.steps')} onKeyDown={keepArrows} data-testid="guide-from">
+              <span className="field-label" aria-hidden="true">{t('smart.guide.steps')}</span>
               <label className={`chip ${guide.from === 'badges' ? 'active' : ''}`}>
                 <input type="radio" name={`${ids}-from`} checked={guide.from === 'badges'} onChange={() => field({ from: 'badges' })} />
-                {`From your step badges (${badgeCount})`}
+                {t('smart.guide.fromBadges', { n: fmt.count(badgeCount) })}
               </label>
               <label className={`chip ${guide.from !== 'badges' ? 'active' : ''}`}>
-                <input type="radio" name={`${ids}-from`} checked={guide.from !== 'badges'} onChange={() => field({ from: undefined })} />
-                From every click
-              </label>
+                <input type="radio" name={`${ids}-from`} checked={guide.from !== 'badges'} onChange={() => field({ from: undefined })} />{t('smart.guide.fromClicks')}</label>
             </div>
           )}
-          <p className="hint">{GUIDE_NOTE}</p>
+          <p className="hint">{guideNote()}</p>
           {!usable && !nothing && (
             <p className="hint" data-testid="guide-no-clicks">
-              {NO_CLICKS_NOTE}
+              {noClicksNote()}
             </p>
           )}
           {nothing && (
             <p className="hint" data-testid="guide-nothing">
-              {NOTHING_NOTE}
+              {nothingNote()}
             </p>
           )}
           {!project.transcript && project.hasAudio && <CaptionsFirst onMake={() => group.command('generateCaptions')} />}
-          {steps.length >= STEP_RULES.maxSteps && <p className="hint">{TOO_MANY_NOTE}</p>}
+          {steps.length >= STEP_RULES.maxSteps && <p className="hint">{tooManyNote()}</p>}
         </section>
 
         {guide.kind === 'bug' && (
           <BugFields project={project} scale={scale} image={shots.images.get(ACTUAL_KEY) ?? null} onField={field} onActual={() => field({ actualAt: player.time })} onView={() => viewShot(ACTUAL_KEY)} />
         )}
 
-        <ol className="guide-steps" aria-label="Steps" data-testid="guide-steps">
+        <ol className="guide-steps" aria-label={t('smart.guide.steps')} data-testid="guide-steps">
           {rows.slice(0, shown).map((r) => (
             <StepRow
               key={r.step.key}
@@ -719,33 +710,25 @@ export function GuidePanel(props: { project: Project; cursor: CursorTrack; start
         </ol>
 
         <section className="guide-under">
-          <button type="button" className="btn" onClick={addStep} data-testid="guide-add">
-            Add a step at the playhead
-          </button>
+          <button type="button" className="btn" onClick={addStep} data-testid="guide-add">{t('smart.guide.addStep')}</button>
           <p className="guide-count" data-testid="guide-count">
             {stepsLine({ steps: rows.length, hidden: rows.length - included.length, untitled: untitled.size, typed: typedKeys.size })}
           </p>
           {pass.total > 0 && (
-            <div className="guide-progress" role="progressbar" aria-label="Making screenshots" aria-valuemin={0} aria-valuemax={pass.total} aria-valuenow={pass.ready} aria-valuetext={`${pass.ready} of ${pass.total}`}>
+            <div className="guide-progress" role="progressbar" aria-label={t('smart.guide.makingShots')} aria-valuemin={0} aria-valuemax={pass.total} aria-valuenow={pass.ready} aria-valuetext={t('smart.guide.shotsReady', { ready: fmt.count(pass.ready), total: fmt.count(pass.total) })}>
               <div style={{ width: `${(100 * pass.ready) / Math.max(1, pass.total)}%` }} />
             </div>
           )}
-          {pass.failed && <p className="hint guide-error">{`Could not make the screenshots: ${pass.failed}`}</p>}
+          {pass.failed && <p className="hint guide-error">{t('smart.guide.shotsFailed', { reason: pass.failed })}</p>}
           <div className="guide-buttons">
-            <button type="button" className="btn ghost" onClick={nextNeedingTitle} data-testid="guide-next-untitled">
-              Next step without a title
-            </button>
-            <button type="button" className="btn ghost" onClick={checkShots} data-testid="guide-check">
-              Check screenshots
-            </button>
+            <button type="button" className="btn ghost" onClick={nextNeedingTitle} data-testid="guide-next-untitled">{t('smart.guide.nextUntitled')}</button>
+            <button type="button" className="btn ghost" onClick={checkShots} data-testid="guide-check">{t('smart.guide.checkShots')}</button>
           </div>
         </section>
 
-        <section className="guide-ai" aria-label="Titles and notes">
-          <div className="guide-radios" role="radiogroup" aria-label="Titles" onKeyDown={keepArrows}>
-            <span className="field-label" aria-hidden="true">
-              Titles
-            </span>
+        <section className="guide-ai" aria-label={t('smart.guide.titlesAndNotes')}>
+          <div className="guide-radios" role="radiogroup" aria-label={t('smart.guide.titles')} onKeyDown={keepArrows}>
+            <span className="field-label" aria-hidden="true">{t('smart.guide.titles')}</span>
             <label className={`chip ${!titleChoice ? 'active' : ''}`}>
               <input
                 type="radio"
@@ -756,9 +739,7 @@ export function GuidePanel(props: { project: Project; cursor: CursorTrack; start
                   remember({ titles: 'offline' })
                 }}
                 data-testid="guide-titles-offline"
-              />
-              From what you said (offline)
-            </label>
+              />{t('smart.guide.titlesOffline')}</label>
             {choices.length > 0 && (
               <label className={`chip ${titleChoice ? 'active' : ''}`}>
                 <input
@@ -770,15 +751,13 @@ export function GuidePanel(props: { project: Project; cursor: CursorTrack; start
                     remember({ titles: choices[0].id })
                   }}
                   data-testid="guide-titles-ai"
-                />
-                Write them with
-              </label>
+                />{t('smart.guide.writeWith')}</label>
             )}
           </div>
           {titleChoice && (
             <div className="guide-ai-row">
               <select
-                aria-label="Write titles with"
+                aria-label={t('smart.guide.writeWithLabel')}
                 value={titleChoice.id}
                 onChange={(e) => {
                   setTitleSource(e.target.value)
@@ -800,7 +779,7 @@ export function GuidePanel(props: { project: Project; cursor: CursorTrack; start
                 onClick={writeTitles}
                 data-testid="guide-write-titles"
               >
-                {busy?.what === 'titles' ? 'Writing…' : 'Write titles'}
+                {busy?.what === 'titles' ? t('smart.guide.writing') : t('smart.guide.writeTitles')}
               </button>
               <LocalProgress requestId={busy?.what === 'titles' ? busy.requestId : null} onStop={stopAi} returnFocus={`${ids}-write`} />
             </div>
@@ -808,7 +787,7 @@ export function GuidePanel(props: { project: Project; cursor: CursorTrack; start
           {canSendShots && (
             <label className="guide-check">
               <input type="checkbox" checked={shotsOn} disabled={!!busy} onChange={(e) => setSendShots(e.target.checked)} data-testid="guide-send-shots" />
-              {SEND_SHOTS_LABEL}
+              {sendShotsLabel()}
             </label>
           )}
           {titleChoice && writeWhy && (
@@ -818,9 +797,7 @@ export function GuidePanel(props: { project: Project; cursor: CursorTrack; start
           )}
           {titleChoice && <CostLine id={`${ids}-titles-cost`} choice={titleChoice} actions={[{ key: 'titles', label: 'Titles', buttonId: `${ids}-write`, request: titleRequest }]} />}
           {hasAiTitles && (
-            <button type="button" className="btn ghost" onClick={() => store.update(withoutAiTitles)} data-testid="guide-offline-titles">
-              Use offline titles
-            </button>
+            <button type="button" className="btn ghost" onClick={() => store.update(withoutAiTitles)} data-testid="guide-offline-titles">{t('smart.guide.useOfflineTitles')}</button>
           )}
           {notesChoice && (
             <>
@@ -834,10 +811,10 @@ export function GuidePanel(props: { project: Project; cursor: CursorTrack; start
                   onClick={() => void runAi('notes')}
                   data-testid="guide-tidy"
                 >
-                  {busy?.what === 'notes' ? 'Tidying…' : 'Tidy notes with'}
+                  {busy?.what === 'notes' ? t('smart.guide.tidying') : t('smart.guide.tidyWith')}
                 </button>
                 <select
-                  aria-label="Tidy notes with"
+                  aria-label={t('smart.guide.tidyWith')}
                   value={notesChoice.id}
                   onChange={(e) => {
                     setNotesSource(e.target.value)
@@ -858,11 +835,9 @@ export function GuidePanel(props: { project: Project; cursor: CursorTrack; start
         </section>
 
         <section className="guide-format">
-          <div className="guide-radios" role="radiogroup" aria-label="Format" onKeyDown={keepArrows} data-testid="guide-format">
-            <span className="field-label" aria-hidden="true">
-              Format
-            </span>
-            {FORMATS.map((f) => (
+          <div className="guide-radios" role="radiogroup" aria-label={t('smart.guide.format')} onKeyDown={keepArrows} data-testid="guide-format">
+            <span className="field-label" aria-hidden="true">{t('smart.guide.format')}</span>
+            {formats().map((f) => (
               <label key={f.id} className={`chip ${format === f.id ? 'active' : ''}`}>
                 <input
                   type="radio"
@@ -879,7 +854,7 @@ export function GuidePanel(props: { project: Project; cursor: CursorTrack; start
           </div>
           {format === 'pdf' && (
             <label className="guide-field">
-              <span>Page size</span>
+              <span>{t('smart.guide.pageSize')}</span>
               <select
                 value={page}
                 onChange={(e) => {
@@ -889,16 +864,14 @@ export function GuidePanel(props: { project: Project; cursor: CursorTrack; start
                 }}
                 data-testid="guide-page"
               >
-                <option value="A4">A4</option>
-                <option value="Letter">Letter</option>
+                <option value="A4">{t('smart.guide.a4')}</option>
+                <option value="Letter">{t('smart.guide.letter')}</option>
               </select>
             </label>
           )}
           {brandExists && (
             <label className="guide-check">
-              <input type="checkbox" checked={guide.brand !== false} onChange={(e) => field({ brand: e.target.checked ? undefined : false })} />
-              Use the brand kit
-            </label>
+              <input type="checkbox" checked={guide.brand !== false} onChange={(e) => field({ brand: e.target.checked ? undefined : false })} />{t('smart.guide.brandKit')}</label>
           )}
           {format === 'demo' && <EndScreen project={project} onField={field} />}
         </section>
@@ -909,15 +882,11 @@ export function GuidePanel(props: { project: Project; cursor: CursorTrack; start
         <LocalWritten show={!!writtenHere && saying.text === writtenHere} />
         {saved && (
           <div className="guide-saved" data-testid="guide-saved">
-            <button type="button" className="btn ghost" onClick={() => void window.api.showGuideFile(saved.path).catch(() => undefined)}>
-              Show in folder
-            </button>
+            <button type="button" className="btn ghost" onClick={() => void window.api.showGuideFile(saved.path).catch(() => undefined)}>{t('common.action.showInFolder')}</button>
             {(saved.format === 'html' || saved.format === 'demo') && saved.bytes > BIG_FILE && (
               <p className="hint">
-                {`This file is ${Math.round(saved.bytes / 1e6)} MB: too big for some email. `}
-                <button type="button" className="btn ghost small" onClick={() => void doSave(true)}>
-                  Make it smaller
-                </button>
+                {t('smart.guide.tooBig', { size: fmt.count(Math.round(saved.bytes / 1e6)) })}
+                <button type="button" className="btn ghost small" onClick={() => void doSave(true)}>{t('smart.guide.smaller')}</button>
               </p>
             )}
           </div>
@@ -927,19 +896,15 @@ export function GuidePanel(props: { project: Project; cursor: CursorTrack; start
         {/* While a Save or Copy runs they wait with aria-disabled: disabled would send the focus, back from
             the question before it, to the panel's Close, where one more Enter closes the panel and stops it. */}
         <button type="button" className="btn primary" disabled={nothing} aria-disabled={!!saving || undefined} onClick={() => guarded(() => void doSave())} data-testid="guide-save">
-          {saving === 'save' ? 'Saving…' : saveLabel}
+          {saving === 'save' ? t('common.state.saving') : saveLabel}
         </button>
-        <button type="button" className="btn" disabled={nothing} aria-disabled={!!saving || undefined} onClick={() => guarded(() => void doCopy())} data-testid="guide-copy">
-          Copy guide
-        </button>
-        <button type="button" className="btn ghost" onClick={close}>
-          Close
-        </button>
+        <button type="button" className="btn" disabled={nothing} aria-disabled={!!saving || undefined} onClick={() => guarded(() => void doCopy())} data-testid="guide-copy">{t('smart.guide.copyGuide')}</button>
+        <button type="button" className="btn ghost" onClick={close}>{t('common.action.close')}</button>
       </div>
       {viewer && (
         <ShotViewer
           shots={viewer.keys.flatMap((k): ViewerShot[] => {
-            if (k === ACTUAL_KEY) return actualPlan ? [{ key: k, label: 'Actual', title: 'The Actual screenshot', image: shots.images.get(k) ?? null }] : []
+            if (k === ACTUAL_KEY) return actualPlan ? [{ key: k, label: t('smart.guide.actualLabel'), title: t('smart.guide.actualTitle'), image: shots.images.get(k) ?? null }] : []
             const r = rows.find((x) => x.step.key === k)
             if (!r) return []
             // A shot being made again after an edit keeps its place in the list (the viewer says so).
@@ -1020,13 +985,9 @@ function CaptionsFirst({ onMake }: { onMake(): void }): JSX.Element | null {
   if (dismissed) return null
   return (
     <div className="hint guide-captions-first" data-testid="guide-captions-first">
-      <p>{MAKE_CAPTIONS_NOTE}</p>
-      <button type="button" className="btn small" onClick={onMake}>
-        Make captions
-      </button>
-      <button type="button" className="btn small ghost" onClick={() => setDismissed(true)}>
-        Use clicks only
-      </button>
+      <p>{makeCaptionsNote()}</p>
+      <button type="button" className="btn small" onClick={onMake}>{t('common.action.makeCaptions')}</button>
+      <button type="button" className="btn small ghost" onClick={() => setDismissed(true)}>{t('smart.guide.clicksOnly')}</button>
     </div>
   )
 }
@@ -1060,8 +1021,9 @@ function StepRow(props: {
   const typingStep = !!r.step.typing
   const ai = !!(r.title.ai || r.edit?.textAi)
   const typedChip = r.typedIn ? typedNote(props.typedN) : ''
-  const chips = [untitled ? 'needs a title' : '', typedChip && `m${typedChip.slice(1)}`, ai ? 'written by AI' : '', r.shot.whole ? 'whole screen' : ''].filter(Boolean)
-  const name = [`Step ${n}`, props.time, ...(r.included ? [] : ['left out']), ...chips].join(', ')
+  const typedName = r.typedIn ? (props.typedN ? t('smart.guide.name.typedIn', { n: props.typedN }) : t('smart.guide.name.typed')) : ''
+  const chips = [untitled ? t('smart.guide.name.untitled') : '', typedName, ai ? t('smart.guide.name.ai') : '', r.shot.whole ? t('smart.guide.name.whole') : ''].filter(Boolean)
+  const name = [t('smart.guide.name.step', { n }), props.time, ...(r.included ? [] : [t('smart.guide.name.leftOut')]), ...chips].join(', ')
   const flagged = (text: string): boolean => !!text && (notedPieces(text, props.said).length > 0 || pathLike(text))
   const linkNote = flagged(r.title.title) || flagged(r.note) || flagged(r.edit?.type ?? '') ? `${ids}-link-${key}` : undefined
   return (
@@ -1071,7 +1033,7 @@ function StepRow(props: {
           <input
             type="checkbox"
             checked={r.included}
-            aria-label={`Include step ${n}`}
+            aria-label={t('smart.guide.includeStep', { n })}
             onChange={(e) => onEdit(r.step.hiddenByDefault ? { shown: e.target.checked ? true : undefined, hidden: undefined } : { hidden: e.target.checked ? undefined : true })}
             data-testid="guide-include"
           />
@@ -1080,26 +1042,26 @@ function StepRow(props: {
           </span>
         </label>
         <button type="button" className="btn ghost small" onClick={props.onGo} data-testid="guide-goto">
-          {`Go to ${props.time}`}
+          {t('smart.guide.goTo', { time: props.time })}
         </button>
       </div>
-      <button type="button" className="guide-shot" aria-label={`View screenshot for step ${n} full size`} aria-busy={!url} disabled={!url} onClick={props.onView} data-testid="guide-shot">
-        {url ? <img src={url} alt={`Screenshot for step ${n}`} /> : <span className="guide-shot-wait">Making the screenshot…</span>}
+      <button type="button" className="guide-shot" aria-label={t('smart.guide.viewShot', { n })} aria-busy={!url} disabled={!url} onClick={props.onView} data-testid="guide-shot">
+        {url ? <img src={url} alt={t('smart.guide.shotAlt', { n })} /> : <span className="guide-shot-wait">{t('smart.guide.makingShot')}</span>}
       </button>
-      {r.plan.outside && <p className="hint">{OUTSIDE_NOTE}</p>}
+      {r.plan.outside && <p className="hint">{outsideNote()}</p>}
       {chips.length > 0 && (
         <p className="guide-chips" aria-hidden="true">
-          {untitled && <span className="guide-chip warn">Needs a title</span>}
+          {untitled && <span className="guide-chip warn">{t('smart.guide.needsTitle')}</span>}
           {r.typedIn && <span className="guide-chip warn">{typedChip}</span>}
-          {ai && <span className="guide-chip">AI</span>}
-          {r.shot.whole && <span className="guide-chip">Whole screen</span>}
+          {ai && <span className="guide-chip">{t('smart.guide.ai')}</span>}
+          {r.shot.whole && <span className="guide-chip">{t('smart.guide.wholeScreen')}</span>}
         </p>
       )}
       <input
         id={`${ids}-title-${key}`}
         className="guide-input"
         type="text"
-        aria-label={`Title of step ${n}`}
+        aria-label={t('smart.guide.stepTitle', { n })}
         aria-describedby={linkNote}
         maxLength={GUIDE_LIMITS.stepTitle}
         value={r.title.title}
@@ -1110,7 +1072,7 @@ function StepRow(props: {
         <input
           className="guide-input"
           type="text"
-          aria-label={`What to type in step ${n} (optional)`}
+          aria-label={t('smart.guide.stepType', { n })}
           aria-describedby={linkNote}
           maxLength={GUIDE_LIMITS.stepType}
           value={r.edit?.type ?? ''}
@@ -1120,7 +1082,7 @@ function StepRow(props: {
       )}
       <textarea
         className="guide-input"
-        aria-label={`What to know about step ${n} (optional)`}
+        aria-label={t('smart.guide.stepNote', { n })}
         aria-describedby={linkNote}
         maxLength={GUIDE_LIMITS.stepText}
         rows={2}
@@ -1129,21 +1091,13 @@ function StepRow(props: {
         data-testid="guide-step-note"
       />
       {linkNote && (
-        <p className="hint guide-link-note" id={linkNote} role="note">
-          This step has a link, address or file name nobody said. Check it before you share the guide.
-        </p>
+        <p className="hint guide-link-note" id={linkNote} role="note">{t('smart.guide.stepLink')}</p>
       )}
       <div className="guide-step-buttons">
-        <button type="button" className="btn ghost small" onClick={props.onFull} data-testid="guide-full">
-          Use everything I said
-        </button>
-        <button type="button" className="btn ghost small" aria-pressed={!!r.edit?.whole} onClick={() => onEdit({ whole: r.edit?.whole ? undefined : true })} data-testid="guide-whole">
-          Whole screen
-        </button>
+        <button type="button" className="btn ghost small" onClick={props.onFull} data-testid="guide-full">{t('smart.guide.useAllSaid')}</button>
+        <button type="button" className="btn ghost small" aria-pressed={!!r.edit?.whole} onClick={() => onEdit({ whole: r.edit?.whole ? undefined : true })} data-testid="guide-whole">{t('smart.guide.wholeScreen')}</button>
         {props.demo && (
-          <button type="button" className="btn ghost small" aria-pressed={!!r.edit?.demoZoom} onClick={() => onEdit({ demoZoom: r.edit?.demoZoom ? undefined : true })}>
-            Zoom to the click in the demo
-          </button>
+          <button type="button" className="btn ghost small" aria-pressed={!!r.edit?.demoZoom} onClick={() => onEdit({ demoZoom: r.edit?.demoZoom ? undefined : true })}>{t('smart.guide.demoZoom')}</button>
         )}
         {typingStep && (
           <button
@@ -1153,26 +1107,18 @@ function StepRow(props: {
             aria-describedby={`${ids}-typed-hint-${key}`}
             onClick={() => onEdit({ after: r.edit?.after ? undefined : true })}
             data-testid="guide-after"
-          >
-            Show the screen after typing
-          </button>
+          >{t('smart.guide.afterTyping')}</button>
         )}
         {typingStep && (
           <span className="hint" id={`${ids}-typed-hint-${key}`}>
-            {TYPED_HINT}
+            {typedHint()}
           </span>
         )}
-        <button type="button" className="btn ghost small" onClick={props.onBlur} data-testid="guide-blur">
-          Blur an area…
-        </button>
+        <button type="button" className="btn ghost small" onClick={props.onBlur} data-testid="guide-blur">{t('smart.guide.blurArea')}</button>
         {r.typedIn && (
-          <button type="button" className="btn ghost small" onClick={props.onBlurTyped} data-testid="guide-blur-typed">
-            Blur the typed text
-          </button>
+          <button type="button" className="btn ghost small" onClick={props.onBlurTyped} data-testid="guide-blur-typed">{t('smart.guide.blurTyped')}</button>
         )}
-        <button type="button" className="btn ghost small" disabled={!props.image} onClick={props.onCopy} data-testid="guide-copy-shot">
-          Copy screenshot
-        </button>
+        <button type="button" className="btn ghost small" disabled={!props.image} onClick={props.onCopy} data-testid="guide-copy-shot">{t('smart.guide.copyShot')}</button>
       </div>
     </li>
   )
@@ -1196,38 +1142,32 @@ function BugFields(props: {
   const details: { text: string; off?: true }[] = g.details ?? defaultDetails(props.project, props.scale).map((text) => ({ text }))
   const setDetail = (i: number, next: { text: string; off?: true }, gesture?: string): void => props.onField({ details: details.map((d, k) => (k === i ? next : d)) }, gesture)
   return (
-    <section className="guide-bug" aria-label="Bug report" data-testid="guide-bug">
+    <section className="guide-bug" aria-label={t('smart.guide.kindBug')} data-testid="guide-bug">
       <label className="guide-field">
-        <span>Expected</span>
-        <textarea placeholder="What should happen" value={g.expected ?? ''} maxLength={GUIDE_LIMITS.expected} rows={2} onChange={(e) => props.onField({ expected: e.target.value || undefined }, 'guide-expected')} data-testid="guide-expected" />
+        <span>{t('smart.guide.expected')}</span>
+        <textarea placeholder={t('smart.guide.expectedPlaceholder')} value={g.expected ?? ''} maxLength={GUIDE_LIMITS.expected} rows={2} onChange={(e) => props.onField({ expected: e.target.value || undefined }, 'guide-expected')} data-testid="guide-expected" />
       </label>
       <label className="guide-field">
-        <span>Actual</span>
-        <textarea placeholder="What happens instead" value={g.actual ?? ''} maxLength={GUIDE_LIMITS.actual} rows={2} onChange={(e) => props.onField({ actual: e.target.value || undefined }, 'guide-actual-text')} data-testid="guide-actual-text" />
+        <span>{t('smart.guide.actual')}</span>
+        <textarea placeholder={t('smart.guide.actualPlaceholder')} value={g.actual ?? ''} maxLength={GUIDE_LIMITS.actual} rows={2} onChange={(e) => props.onField({ actual: e.target.value || undefined }, 'guide-actual-text')} data-testid="guide-actual-text" />
       </label>
       <div className="guide-step-buttons">
-        <button type="button" className="btn small" onClick={props.onActual} data-testid="guide-actual">
-          Show the screen at the playhead as Actual
-        </button>
+        <button type="button" className="btn small" onClick={props.onActual} data-testid="guide-actual">{t('smart.guide.actualAtPlayhead')}</button>
         {g.actualAt !== undefined && (
-          <button type="button" className="btn ghost small" onClick={() => props.onField({ actualAt: undefined })} data-testid="guide-actual-remove">
-            Remove
-          </button>
+          <button type="button" className="btn ghost small" onClick={() => props.onField({ actualAt: undefined })} data-testid="guide-actual-remove">{t('common.action.remove')}</button>
         )}
       </div>
       {g.actualAt !== undefined && (
-        <button type="button" className="guide-shot" aria-label="View the Actual screenshot full size, whole screen" aria-busy={!url} disabled={!url} onClick={props.onView} data-testid="guide-actual-shot">
-          {url ? <img src={url} alt="Actual screenshot" /> : <span className="guide-shot-wait">Making the screenshot…</span>}
+        <button type="button" className="guide-shot" aria-label={t('smart.guide.viewActual')} aria-busy={!url} disabled={!url} onClick={props.onView} data-testid="guide-actual-shot">
+          {url ? <img src={url} alt={t('smart.guide.actualAlt')} /> : <span className="guide-shot-wait">{t('smart.guide.makingShot')}</span>}
         </button>
       )}
-      <div className="guide-details" role="group" aria-label="Details">
-        <span className="field-label" aria-hidden="true">
-          Details
-        </span>
+      <div className="guide-details" role="group" aria-label={t('smart.guide.details')}>
+        <span className="field-label" aria-hidden="true">{t('smart.guide.details')}</span>
         {details.map((d, i) => (
           <div key={i} className="guide-detail">
-            <input type="checkbox" aria-label={`Include detail ${i + 1}`} checked={!d.off} onChange={(e) => setDetail(i, { text: d.text, ...(e.target.checked ? {} : { off: true as const }) })} data-testid="guide-detail-on" />
-            <input type="text" className="guide-input" aria-label={`Detail ${i + 1}`} value={d.text} maxLength={GUIDE_LIMITS.detail} onChange={(e) => setDetail(i, { text: e.target.value, ...(d.off ? { off: true as const } : {}) }, `guide-detail:${i}`)} data-testid="guide-detail" />
+            <input type="checkbox" aria-label={t('smart.guide.includeDetail', { n: fmt.count(i + 1) })} checked={!d.off} onChange={(e) => setDetail(i, { text: d.text, ...(e.target.checked ? {} : { off: true as const }) })} data-testid="guide-detail-on" />
+            <input type="text" className="guide-input" aria-label={t('smart.guide.detail', { n: fmt.count(i + 1) })} value={d.text} maxLength={GUIDE_LIMITS.detail} onChange={(e) => setDetail(i, { text: e.target.value, ...(d.off ? { off: true as const } : {}) }, `guide-detail:${i}`)} data-testid="guide-detail" />
           </div>
         ))}
       </div>
@@ -1257,25 +1197,23 @@ function EndScreen(props: { project: Project; onField(patch: Parameters<typeof w
   const bad = url.trim() !== '' && readLinkUrl(url.trim()) === null
   return (
     <div className="guide-end">
-      <button type="button" className="btn ghost small" aria-expanded={open} onClick={() => setOpen(!open)} data-testid="guide-end-toggle">
-        End screen
-      </button>
+      <button type="button" className="btn ghost small" aria-expanded={open} onClick={() => setOpen(!open)} data-testid="guide-end-toggle">{t('smart.guide.endScreen')}</button>
       {open && (
         <div className="guide-end-fields">
           <label className="guide-field">
-            <span>Heading</span>
+            <span>{t('smart.guide.heading')}</span>
             <input type="text" value={end?.heading ?? ''} maxLength={GUIDE_LIMITS.endHeading} onChange={(e) => set({ heading: e.target.value }, 'guide-end-heading')} data-testid="guide-end-heading" />
           </label>
           <label className="guide-field">
-            <span>Button label</span>
+            <span>{t('smart.guide.buttonLabel')}</span>
             <input type="text" value={end?.label ?? ''} maxLength={GUIDE_LIMITS.endLabel} onChange={(e) => set({ label: e.target.value }, 'guide-end-label')} data-testid="guide-end-label" />
           </label>
           <label className="guide-field">
-            <span>Link</span>
+            <span>{t('smart.guide.link')}</span>
             <input
               type="url"
               value={url}
-              placeholder="https://"
+              placeholder={t('smart.guide.linkPlaceholder')}
               aria-invalid={bad}
               onChange={(e) => {
                 setUrl(e.target.value)
@@ -1284,7 +1222,7 @@ function EndScreen(props: { project: Project; onField(patch: Parameters<typeof w
               data-testid="guide-end-url"
             />
           </label>
-          {bad && <p className="hint guide-error">Use a plain https:// link of up to 300 characters, with no name or password in it.</p>}
+          {bad && <p className="hint guide-error">{t('smart.guide.linkRule')}</p>}
         </div>
       )}
     </div>
@@ -1311,7 +1249,7 @@ function GuideQuestion(props: { question: { kind: 'check' | 'link'; text: string
         className="modal guide-question"
         role="alertdialog"
         aria-modal="true"
-        aria-label={question.kind === 'check' ? 'Check the screenshots' : 'Check the guide'}
+        aria-label={question.kind === 'check' ? t('smart.guide.checkShotsTitle') : t('smart.guide.checkGuideTitle')}
         aria-describedby="guide-question-text"
         ref={boxRef}
         data-testid="guide-question"
@@ -1320,21 +1258,13 @@ function GuideQuestion(props: { question: { kind: 'check' | 'link'; text: string
         <footer className="modal-foot">
           {question.kind === 'check' ? (
             <>
-              <button type="button" className="btn primary" ref={safeRef} onClick={props.onCheck} data-testid="guide-check-now">
-                Check now
-              </button>
-              <button type="button" className="btn" onClick={anyway} data-testid="guide-save-anyway">
-                Save anyway
-              </button>
+              <button type="button" className="btn primary" ref={safeRef} onClick={props.onCheck} data-testid="guide-check-now">{t('smart.guide.checkNow')}</button>
+              <button type="button" className="btn" onClick={anyway} data-testid="guide-save-anyway">{t('smart.guide.saveAnyway')}</button>
             </>
           ) : (
             <>
-              <button type="button" className="btn primary" ref={safeRef} onClick={props.onClose} data-testid="guide-go-back">
-                Go back
-              </button>
-              <button type="button" className="btn" onClick={anyway} data-testid="guide-link-anyway">
-                Save anyway
-              </button>
+              <button type="button" className="btn primary" ref={safeRef} onClick={props.onClose} data-testid="guide-go-back">{t('smart.guide.goBack')}</button>
+              <button type="button" className="btn" onClick={anyway} data-testid="guide-link-anyway">{t('smart.guide.saveAnyway')}</button>
             </>
           )}
         </footer>

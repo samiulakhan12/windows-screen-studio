@@ -23,6 +23,7 @@ import type { Selection } from '../editor/selection'
 import { BUNDLED_FONT_URLS } from '../render/catalogFonts'
 import { encodeImage } from './guideStills'
 import { namesWithPictures, pictureBatches } from './visionTitles'
+import { t } from '../../../shared/i18n/t'
 
 /** What each format's pictures are (§5.5.5): JPEG 0.9 for the PDF, WebP 0.85 for HTML and the demo, PNG for Markdown. */
 export const FORMAT_IMAGES: Record<GuideFormat, { mime: GuideImage['mime']; quality: number; maxWidth: number }> = {
@@ -136,7 +137,7 @@ async function askNames(choice: TextChoice, request: AiTextRequest, signal: Abor
   signal.addEventListener('abort', stop)
   try {
     const result = await window.api.aiText(choice.id, { ...request, requestId }, requestId)
-    if (result.task !== 'names') throw new Error('The AI provider answered another task.')
+    if (result.task !== 'names') throw new Error(t('smart.guide.otherTask'))
     return result.names
   } finally {
     signal.removeEventListener('abort', stop)

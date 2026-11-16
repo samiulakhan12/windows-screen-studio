@@ -136,7 +136,7 @@ const COST_CONFIRM = '../src/renderer/src/ai/costConfirm'
 type Picture = { key: string; jpeg: Uint8Array; ticked: boolean }
 type Step = { key: string; t: number; kind: string; x?: number; y?: number }
 type Image = { bytes: Uint8Array; mime: string; width: number; height: number }
-const { GuidePanel, SEND_SHOTS_LABEL } = (await import(/* @vite-ignore */ PANEL)) as { GuidePanel: (p: unknown) => unknown; SEND_SHOTS_LABEL: string }
+const { GuidePanel, sendShotsLabel } = (await import(/* @vite-ignore */ PANEL)) as { GuidePanel: (p: unknown) => unknown; sendShotsLabel: () => string }
 const vision = (await import(/* @vite-ignore */ VISION)) as {
   picturesToSend: (steps: readonly Step[], images: ReadonlyMap<string, Image>, typed: ReadonlyMap<string, string>) => Promise<Picture[]>
   pictureSize: (w: number, h: number) => { w: number; h: number }
@@ -338,7 +338,7 @@ describe('the Guide panel: Also send the screenshots', () => {
     let els = await withAiTitles()
     const box = byTestId(els, 'guide-send-shots')!
     expect(box.props.checked).toBe(false)
-    expect(textOf(els.find((e) => e.type === 'label' && textOf(e).includes(SEND_SHOTS_LABEL)))).toBe(SEND_SHOTS_LABEL)
+    expect(textOf(els.find((e) => e.type === 'label' && textOf(e).includes(sendShotsLabel())))).toBe(sendShotsLabel())
     click(byTestId(els, 'guide-write-titles'))
     els = await later()
     expect(byTestId(els, 'guide-viewer')).toBeUndefined()

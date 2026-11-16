@@ -32,6 +32,7 @@ import { GreatOptionsPopover } from './GreatOptions'
 import { ShowSpeakerToggle } from './SpeakersSection'
 import { ColourControls, EmphasisControls, LayoutControls, MotionControls, SpeakerControls, TextControls } from './StudioControls'
 import './captionStudio.css'
+import { t } from '../../../../shared/i18n/t'
 
 /** localStorage key of the open sub-sections (§2.4). */
 export const OPEN_KEY = 'captions-look-open'
@@ -126,9 +127,9 @@ function ClassicControls({ project }: { project: Project }): JSX.Element {
   return (
     <div className="caption-classic">
       <div className="field">
-        <span className="field-label">Position</span>
+        <span className="field-label">{t('common.label.position')}</span>
         <Chips<CaptionSettings['position']>
-          label="Position"
+          label={t('common.label.position')}
           value={s.position}
           onChange={(position) => set({ position })}
           options={[
@@ -139,13 +140,13 @@ function ClassicControls({ project }: { project: Project }): JSX.Element {
         />
       </div>
       <FontPicker project={project} value={s.font} apply={(p, font) => ({ ...p, captions: { ...captionsOf(p), font, picked: true } })} />
-      <Slider label="Size" value={s.size} min={CAPTION_SIZE.min} max={CAPTION_SIZE.max} step={0.001} format={(v) => `${Math.round(v * 1000) / 10}%`} onChange={(size) => set({ size }, 'caption-size')} />
-      <ClassicColor label="Text colour" value={s.color} presets={CAPTION_COLORS} mergeKey="caption-color" onChange={(color, key) => set({ color }, key)} />
-      <ClassicColor label="Highlight colour" value={s.highlightColor} presets={HIGHLIGHT_COLORS} mergeKey="caption-highlight" onChange={(highlightColor, key) => set({ highlightColor }, key)} />
+      <Slider label={t('common.label.size')} value={s.size} min={CAPTION_SIZE.min} max={CAPTION_SIZE.max} step={0.001} format={(v) => `${Math.round(v * 1000) / 10}%`} onChange={(size) => set({ size }, 'caption-size')} />
+      <ClassicColor label={t('common.label.textColour')} value={s.color} presets={CAPTION_COLORS} mergeKey="caption-color" onChange={(color, key) => set({ color }, key)} />
+      <ClassicColor label={t('captions.lookSection.highlightColour')} value={s.highlightColor} presets={HIGHLIGHT_COLORS} mergeKey="caption-highlight" onChange={(highlightColor, key) => set({ highlightColor }, key)} />
       <div className="field">
-        <span className="field-label">Background</span>
+        <span className="field-label">{t('common.label.background')}</span>
         <Chips<CaptionSettings['background']>
-          label="Background"
+          label={t('common.label.background')}
           value={s.background}
           onChange={(background) => set({ background })}
           options={[
@@ -156,9 +157,9 @@ function ClassicControls({ project }: { project: Project }): JSX.Element {
         />
       </div>
       <div className="field">
-        <span className="field-label">Lines</span>
+        <span className="field-label">{t('captions.lookSection.lines')}</span>
         <Chips<CaptionSettings['maxLines']>
-          label="Lines"
+          label={t('captions.lookSection.lines')}
           value={s.maxLines}
           onChange={(maxLines) => set({ maxLines })}
           options={[
@@ -182,8 +183,8 @@ function ClassicColor({ label, value, presets, mergeKey, onChange }: { label: st
         {presets.map((c) => (
           <button key={c} type="button" className={`shape-color ${v === c ? 'active' : ''}`} style={{ background: c }} title={c} aria-label={`${label} ${c}`} aria-pressed={v === c} onClick={() => onChange(c)} />
         ))}
-        <label className={`shape-color custom ${custom ? 'active' : ''}`} title="Pick any colour" style={custom ? { background: value } : undefined}>
-          <input type="color" aria-label={`${label} (any colour)`} value={value} onChange={(e) => onChange(e.target.value.toLowerCase(), mergeKey)} />
+        <label className={`shape-color custom ${custom ? 'active' : ''}`} title={t('common.colour.pickAny')} style={custom ? { background: value } : undefined}>
+          <input type="color" aria-label={t('common.colour.anyFor', { label })} value={value} onChange={(e) => onChange(e.target.value.toLowerCase(), mergeKey)} />
         </label>
       </div>
     </div>
@@ -215,9 +216,7 @@ function SaveStyle({ settings, saved, onSaved }: { settings: CaptionSettings; sa
           setError(null)
           setName(nextLookName(saved))
         }}
-      >
-        Save as my style
-      </button>
+      >{t('captions.lookSection.saveStyle')}</button>
     )
   }
   const save = async (): Promise<void> => {
@@ -245,11 +244,11 @@ function SaveStyle({ settings, saved, onSaved }: { settings: CaptionSettings; sa
       }}
     >
       <label className="field">
-        <span>Name</span>
+        <span>{t('common.label.name')}</span>
         <input
           className="tc-input"
           data-testid="caption-style-name-input"
-          aria-label="Name"
+          aria-label={t('common.label.name')}
           maxLength={40}
           value={name}
           autoFocus
@@ -265,12 +264,8 @@ function SaveStyle({ settings, saved, onSaved }: { settings: CaptionSettings; sa
         />
       </label>
       <div className="row start">
-        <button type="submit" className="btn small primary" disabled={busy || !name.trim()}>
-          Save
-        </button>
-        <button type="button" className="btn small" onClick={() => close()}>
-          Cancel
-        </button>
+        <button type="submit" className="btn small primary" disabled={busy || !name.trim()}>{t('common.action.save')}</button>
+        <button type="button" className="btn small" onClick={() => close()}>{t('common.action.cancel')}</button>
       </div>
       {error && (
         <p className="callout" role="alert">
@@ -323,25 +318,23 @@ export function CaptionLookSection(props: { project: Project; vw: number; vh: nu
   return (
     <section className="insp-section caption-look" data-testid="caption-look">
       <h3>
-        <span>Look</span>
+        <span>{t('common.label.look')}</span>
       </h3>
       <div data-testid="captions-show">
         <Toggle
-          label="Show captions"
+          label={t('captions.lookSection.showCaptions')}
           checked={settings.show}
           onChange={(show) => store.update((p) => ({ ...p, captions: { ...captionsOf(p), show } }))}
-          title="Draw the captions on the video (preview and export)"
+          title={t('captions.lookSection.showTitle')}
         />
       </div>
       <div className="caption-great">
         <div className="caption-great-row">
           <button type="button" className="btn primary" data-testid="captions-great" disabled={greatBusy} onClick={onGreat}>
-            <EditorIcon name="sparkle" size={16} /> {greatBusy ? 'Working…' : 'Make my captions great'}
+            <EditorIcon name="sparkle" size={16} /> {greatBusy ? t('common.state.working') : t('captions.lookSection.great')}
           </button>
           {greatBusy && (
-            <button type="button" className="btn" onClick={onGreatCancel}>
-              Cancel
-            </button>
+            <button type="button" className="btn" onClick={onGreatCancel}>{t('common.action.cancel')}</button>
           )}
           <GreatOptionsPopover project={project} />
         </div>
@@ -351,37 +344,35 @@ export function CaptionLookSection(props: { project: Project; vw: number; vh: nu
       </div>
       <CaptionGallery value={settings} frame={frame} saved={saved} brand={brand?.look ?? null} suggested={suggested} onPick={pick} onPreview={preview} language={language} />
       <div className="caption-style-line">
-        <span data-testid="caption-style-name">{name.edited ? `${name.name} (edited)` : name.name}</span>
+        <span data-testid="caption-style-name">{name.edited ? t('captions.lookSection.edited', { name: name.name }) : name.name}</span>
         {name.edited && reset && (
-          <button type="button" className="btn small" data-testid="caption-style-reset" title={`Go back to ${name.name} as it comes`} onClick={() => pick(reset)}>
-            Reset
-          </button>
+          <button type="button" className="btn small" data-testid="caption-style-reset" title={t('captions.lookSection.resetTitle', { name: name.name })} onClick={() => pick(reset)}>{t('common.action.reset')}</button>
         )}
       </div>
       <SaveStyle settings={settings} saved={saved} onSaved={(n) => group.notice(`Saved “${n}” to your styles`)} />
       {classic && <ClassicControls project={project} />}
-      {classic && <p className="hint">{`Changing these makes your own version of ${name.name}. It looks the same.`}</p>}
-      <Part id="caption-text" title="Text" open={open.text} onToggle={() => toggle('text')}>
+      {classic && <p className="hint">{t('captions.lookSection.classicHint', { name: name.name })}</p>}
+      <Part id="caption-text" title={t('common.label.text')} open={open.text} onToggle={() => toggle('text')}>
         <TextControls project={project} />
       </Part>
-      <Part id="caption-colours" title="Colours" open={open.colours} onToggle={() => toggle('colours')}>
+      <Part id="caption-colours" title={t('common.label.colours')} open={open.colours} onToggle={() => toggle('colours')}>
         <ColourControls project={project} />
       </Part>
-      <Part id="caption-layout" title="Layout" open={open.layout} onToggle={() => toggle('layout')}>
+      <Part id="caption-layout" title={t('common.label.layout')} open={open.layout} onToggle={() => toggle('layout')}>
         <LayoutControls project={project} />
       </Part>
-      <Part id="caption-motion" title="Motion" open={open.motion} onToggle={() => toggle('motion')}>
+      <Part id="caption-motion" title={t('common.label.motion')} open={open.motion} onToggle={() => toggle('motion')}>
         <MotionControls project={project} />
       </Part>
-      <Part id="caption-emphasis" title="Emphasis" open={open.emphasis} onToggle={() => toggle('emphasis')}>
+      <Part id="caption-emphasis" title={t('captions.lookSection.emphasis')} open={open.emphasis} onToggle={() => toggle('emphasis')}>
         <EmphasisControls project={project} />
       </Part>
       {speakers && (
-        <Part id="caption-speakers" title="Speakers" open={open.speakers} onToggle={() => toggle('speakers')}>
+        <Part id="caption-speakers" title={t('captions.lookSection.speakers')} open={open.speakers} onToggle={() => toggle('speakers')}>
           <SpeakerControls project={project} />
         </Part>
       )}
-      <p className="hint">The preview shows the captions exactly as the export draws them.</p>
+      <p className="hint">{t('captions.lookSection.previewHint')}</p>
     </section>
   )
 }

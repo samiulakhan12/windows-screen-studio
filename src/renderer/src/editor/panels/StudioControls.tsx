@@ -26,6 +26,8 @@ import { findImportantWords } from '../captionCommands'
 import { FontPicker } from './FontPicker'
 import { ContrastMeter } from './ContrastMeter'
 import './captionStudio.css'
+import { fmt } from '../../../../shared/i18n/fmt'
+import { t } from '../../../../shared/i18n/t'
 
 /* ---------- the look and its edits ---------- */
 
@@ -124,8 +126,8 @@ function ColorDots(props: { id: string; label: string; value: string; presets: r
         {props.presets.map((c) => (
           <button key={c} type="button" className={`shape-color ${v === c ? 'active' : ''}`} style={{ background: c }} title={c} aria-label={`${props.label} ${c}`} aria-pressed={v === c} onClick={() => props.onChange(c)} />
         ))}
-        <label className={`shape-color custom ${custom ? 'active' : ''}`} title="Pick any colour" style={custom ? { background: props.value } : undefined}>
-          <input type="color" aria-label={`${props.label} (any colour)`} value={props.value} onChange={(e) => props.onChange(e.target.value.toLowerCase(), props.mergeKey)} />
+        <label className={`shape-color custom ${custom ? 'active' : ''}`} title={t('common.colour.pickAny')} style={custom ? { background: props.value } : undefined}>
+          <input type="color" aria-label={t('common.colour.anyFor', { label: props.label })} value={props.value} onChange={(e) => props.onChange(e.target.value.toLowerCase(), props.mergeKey)} />
         </label>
       </div>
     </div>
@@ -174,14 +176,14 @@ export function TextControls(props: { project: Project }): JSX.Element {
       />
       <SelectField<string>
         id="caption-weight"
-        label="Weight"
+        label={t('captions.studio.weight')}
         value={String(weights.includes(studio.text.weight) ? studio.text.weight : weights.reduce((a, b) => (Math.abs(b - studio.text.weight) < Math.abs(a - studio.text.weight) ? b : a)))}
         options={weights.map((w) => ({ value: String(w), label: WEIGHT_NAMES[w] ?? String(w) }))}
         onChange={(w) => edit((s) => ({ ...s, text: { ...s.text, weight: Number(w) } }))}
       />
       <StudioSlider
         id="caption-size"
-        label="Size"
+        label={t('common.label.size')}
         value={shown}
         min={STUDIO_LIMITS.size.min}
         max={STUDIO_LIMITS.size.max}
@@ -193,38 +195,38 @@ export function TextControls(props: { project: Project }): JSX.Element {
       {!CASELESS.has(language) && (
         <ChipField<StudioCase>
           id="caption-case"
-          label="Case"
+          label={t('captions.studio.case')}
           value={studio.text.case}
           options={[
-            { value: 'asis', label: 'As written' },
-            { value: 'upper', label: 'CAPITALS' },
-            { value: 'lower', label: 'lowercase' }
+            { value: 'asis', label: t('captions.studio.case.asis') },
+            { value: 'upper', label: t('captions.studio.case.upper') },
+            { value: 'lower', label: t('captions.studio.case.lower') }
           ]}
           onChange={(c) => edit((s) => ({ ...s, text: { ...s.text, case: c } }))}
         />
       )}
       <StudioSlider
         id="caption-tracking"
-        label="Letter spacing"
+        label={t('captions.studio.letterSpacing')}
         value={studio.text.tracking}
         min={STUDIO_LIMITS.tracking.min}
         max={STUDIO_LIMITS.tracking.max}
         step={0.005}
         format={pct1}
-        spoken={(v) => `${Math.round(v * 1000) / 10} percent of the size`}
+        spoken={(v) => t('captions.studio.percentOfSize', { n: fmt.number(Math.round(v * 1000) / 10) })}
         disabled={!!joined}
         onChange={(v) => edit((s) => ({ ...s, text: { ...s.text, tracking: v } }), 'caption-tracking')}
       />
-      {joined && <p className="hint">{`Letter spacing is off for ${joined}: it would break the joined letters.`}</p>}
+      {joined && <p className="hint">{t('captions.studio.trackingOff', { script: joined })}</p>}
       {NATIVE_DIGITS[language] && (
         <ChipField<'asis' | 'native' | 'western'>
           id="caption-digits"
-          label="Digits"
+          label={t('captions.studio.digits')}
           value={settings.digits ?? 'asis'}
           options={[
-            { value: 'asis', label: 'As written' },
+            { value: 'asis', label: t('captions.studio.digits.asis') },
             { value: 'native', label: NATIVE_DIGITS[language] },
-            { value: 'western', label: 'Western 0–9' }
+            { value: 'western', label: t('captions.studio.digits.western') }
           ]}
           onChange={(d) =>
             store.update((p) => {
@@ -235,7 +237,7 @@ export function TextControls(props: { project: Project }): JSX.Element {
               return { ...p, captions: { ...rest, studio: rest.studio ?? legacyTwin(rest), ...(d === 'asis' ? {} : { digits: d }), picked: true } }
             })
           }
-          hint={<span className="hint">Used by captions, counters, list numbers and chapter titles.</span>}
+          hint={<span className="hint">{t('captions.studio.digitsHint')}</span>}
         />
       )}
     </>
@@ -268,26 +270,25 @@ function usePlayhead(): { t: number; paused: boolean } {
 export function ColourControls(props: { project: Project }): JSX.Element {
   const { project } = props
   const { studio, edit } = useLook(project)
-  const { t, paused } = usePlayhead()
+  const { t: playhead, paused } = usePlayhead()
   const brandColors = project.brand?.colors ?? []
   const brand = useMemo(() => (brandColors.length >= 2 ? brandTheme(brandColors, studio) : null), [brandColors, studio])
-  const themes = [...THEMES.map((x) => ({ id: x.id, name: x.name, theme: x.theme, title: x.name })), ...(brand ? [{ id: 'brand', name: 'Brand', theme: brand.theme, title: brand.lightened.length ? `Brand, ${brand.lightened.length === 1 ? 'one colour' : 'some colours'} lightened to read well` : 'Brand' }] : [])]
+  const themes = [...THEMES.map((x) => ({ id: x.id, name: themeName(x.id, x.name), theme: x.theme, title: themeName(x.id, x.name) })), ...(brand ? [{ id: 'brand', name: t('captions.studio.brand'), theme: brand.theme, title: brand.lightened.length ? t('captions.studio.brandLightened', { count: brand.lightened.length }) : t('captions.studio.brand') }] : [])]
   const theme = studio.theme
   const setColor = (key: keyof StudioTheme) => (c: string, merge?: string) => edit((s) => ({ ...s, theme: { ...s.theme, [key]: c } }), merge)
   const box = studio.box
   const showGlow = studio.edge.glow > 0 || studio.spoken === 'glow'
-  const gradients = [...GRADIENTS.map((g) => ({ id: g.id, name: g.name, stops: [...g.stops] })), ...(brandColors.length >= 2 ? [{ id: 'brand', name: 'Brand', stops: brandColors.slice(0, 6) }] : [])]
+  const gradients = [...GRADIENTS.map((g) => ({ id: g.id, name: gradientName(g.id, g.name), stops: [...g.stops] })), ...(brandColors.length >= 2 ? [{ id: 'brand', name: t('captions.studio.brand'), stops: brandColors.slice(0, 6) }] : [])]
   return (
     <>
       <div className="field">
-        <span className="field-label">Theme</span>
-        <div className="caption-themes" role="group" aria-label="Theme" data-testid="caption-theme">
+        <span className="field-label">{t('captions.studio.theme')}</span>
+        <div className="caption-themes" role="group" aria-label={t('captions.studio.theme')} data-testid="caption-theme">
           {themes.map((x) => {
             const on = sameTheme(theme, x.theme)
             return (
               <button key={x.id} type="button" className={`caption-theme ${on ? 'active' : ''}`} aria-pressed={on} title={x.title} onClick={() => edit((s) => withTheme(s, x.theme))}>
-                <span className="theme-swatch" aria-hidden="true" style={{ background: x.theme.box, color: x.theme.text, borderColor: x.theme.spoken }}>
-                  A<span style={{ color: x.theme.spoken }}>a</span>
+                <span className="theme-swatch" aria-hidden="true" style={{ background: x.theme.box, color: x.theme.text, borderColor: x.theme.spoken }}>{t('captions.studio.swatchUpper')}<span style={{ color: x.theme.spoken }}>{t('captions.studio.swatchLower')}</span>
                 </span>
                 <span>{x.name}</span>
               </button>
@@ -295,44 +296,44 @@ export function ColourControls(props: { project: Project }): JSX.Element {
           })}
         </div>
       </div>
-      <ColorDots id="caption-color-text" label="Words" value={theme.text} presets={TEXT_COLORS} mergeKey="caption-color-text" onChange={setColor('text')} />
-      <ColorDots id="caption-color-spoken" label="Spoken word" value={theme.spoken} presets={MARK_COLORS} mergeKey="caption-color-spoken" onChange={setColor('spoken')} />
-      <ColorDots id="caption-color-emphasis" label="Emphasis" value={theme.emphasis} presets={MARK_COLORS} mergeKey="caption-color-emphasis" onChange={setColor('emphasis')} />
-      <ColorDots id="caption-color-emphasis2" label="Second emphasis" value={theme.emphasis2 ?? theme.emphasis} presets={MARK_COLORS} mergeKey="caption-color-emphasis2" onChange={setColor('emphasis2')} />
-      <ColorDots id="caption-outline-color" label="Outline colour" value={theme.outline} presets={EDGE_COLORS} mergeKey="caption-color-outline" onChange={setColor('outline')} />
+      <ColorDots id="caption-color-text" label={t('captions.studio.words')} value={theme.text} presets={TEXT_COLORS} mergeKey="caption-color-text" onChange={setColor('text')} />
+      <ColorDots id="caption-color-spoken" label={t('captions.studio.spokenWord')} value={theme.spoken} presets={MARK_COLORS} mergeKey="caption-color-spoken" onChange={setColor('spoken')} />
+      <ColorDots id="caption-color-emphasis" label={t('captions.studio.emphasis')} value={theme.emphasis} presets={MARK_COLORS} mergeKey="caption-color-emphasis" onChange={setColor('emphasis')} />
+      <ColorDots id="caption-color-emphasis2" label={t('captions.studio.secondEmphasis')} value={theme.emphasis2 ?? theme.emphasis} presets={MARK_COLORS} mergeKey="caption-color-emphasis2" onChange={setColor('emphasis2')} />
+      <ColorDots id="caption-outline-color" label={t('captions.studio.outlineColour')} value={theme.outline} presets={EDGE_COLORS} mergeKey="caption-color-outline" onChange={setColor('outline')} />
       <StudioSlider
         id="caption-outline"
-        label="Outline"
+        label={t('captions.studio.outline')}
         value={studio.edge.outline}
         min={STUDIO_LIMITS.outline.min}
         max={STUDIO_LIMITS.outline.max}
         step={0.005}
         format={pct1}
-        spoken={(v) => `${Math.round(v * 1000) / 10} percent of the size`}
+        spoken={(v) => t('captions.studio.percentOfSize', { n: fmt.number(Math.round(v * 1000) / 10) })}
         onChange={(v) => edit((s) => ({ ...s, edge: { ...s.edge, outline: v } }), 'caption-outline')}
       />
       <ChipField<keyof typeof SHADOW_CHIPS>
         id="caption-shadow"
-        label="Shadow"
+        label={t('common.label.shadow')}
         value={shadowChip(studio.edge.shadow)}
         options={[
-          { value: 'off', label: 'Off' },
-          { value: 'soft', label: 'Soft' },
-          { value: 'strong', label: 'Strong' },
-          { value: 'hard', label: 'Hard' }
+          { value: 'off', label: t('common.state.off') },
+          { value: 'soft', label: t('captions.studio.shadow.soft') },
+          { value: 'strong', label: t('captions.studio.shadow.strong') },
+          { value: 'hard', label: t('captions.studio.shadow.hard') }
         ]}
         onChange={(k) => edit((s) => ({ ...s, edge: { ...s.edge, shadow: { ...SHADOW_CHIPS[k] } } }))}
       />
       <ChipField<StudioBoxKind>
         id="caption-box"
-        label="Background"
+        label={t('common.label.background')}
         value={box.kind}
         options={[
-          { value: 'none', label: 'None' },
-          { value: 'line', label: 'Box per line' },
-          { value: 'chunk', label: 'One box' },
-          { value: 'glass', label: 'Glass' },
-          { value: 'band', label: 'Band' }
+          { value: 'none', label: t('common.state.none') },
+          { value: 'line', label: t('captions.studio.box.line') },
+          { value: 'chunk', label: t('captions.studio.box.chunk') },
+          { value: 'glass', label: t('captions.studio.box.glass') },
+          { value: 'band', label: t('captions.studio.box.band') }
         ]}
         onChange={(kind) => edit((s) => ({ ...s, box: { ...s.box, kind } }))}
       />
@@ -340,35 +341,35 @@ export function ColourControls(props: { project: Project }): JSX.Element {
         <>
           <StudioSlider
             id="caption-box-alpha"
-            label="Background opacity"
+            label={t('captions.studio.backgroundOpacity')}
             value={Math.max(0.3, box.alpha)}
             min={0.3}
             max={1}
             step={0.01}
             format={pct}
-            spoken={(v) => `${Math.round(v * 100)} percent`}
+            spoken={(v) => t('captions.studio.percent', { n: fmt.count(Math.round(v * 100)) })}
             onChange={(v) => edit((s) => ({ ...s, box: { ...s.box, alpha: v } }), 'caption-box-alpha')}
           />
-          <ColorDots id="caption-box-color" label="Background colour" value={theme.box} presets={['#0a0a10', '#ffffff', '#c8102e', '#1d4ed8', '#ffe14d']} mergeKey="caption-color-box" onChange={setColor('box')} />
+          <ColorDots id="caption-box-color" label={t('captions.studio.backgroundColour')} value={theme.box} presets={['#0a0a10', '#ffffff', '#c8102e', '#1d4ed8', '#ffe14d']} mergeKey="caption-color-box" onChange={setColor('box')} />
         </>
       )}
       {showGlow && (
         <StudioSlider
           id="caption-glow"
-          label="Glow"
+          label={t('captions.studio.glow')}
           value={studio.edge.glow}
           min={0}
           max={1}
           step={0.05}
           format={pct}
-          spoken={(v) => `${Math.round(v * 100)} percent`}
+          spoken={(v) => t('captions.studio.percent', { n: fmt.count(Math.round(v * 100)) })}
           onChange={(v) => edit((s) => ({ ...s, edge: { ...s.edge, glow: v } }), 'caption-glow')}
         />
       )}
       {studio.spoken === 'gradient' && (
         <div className="field">
-          <span className="field-label">Gradient</span>
-          <div className="caption-themes" role="group" aria-label="Gradient" data-testid="caption-gradient">
+          <span className="field-label">{t('captions.studio.gradient')}</span>
+          <div className="caption-themes" role="group" aria-label={t('captions.studio.gradient')} data-testid="caption-gradient">
             {gradients.map((g) => {
               const on = !!theme.gradient && theme.gradient.join() === g.stops.join()
               return (
@@ -381,25 +382,61 @@ export function ColourControls(props: { project: Project }): JSX.Element {
           </div>
         </div>
       )}
-      <ContrastMeter project={project} t={t} paused={paused} />
+      <ContrastMeter project={project} t={playhead} paused={paused} />
     </>
   )
 }
 
+/** A theme's name in the UI language (studioPresets.ts keeps the English: main reads it); an unknown id keeps its own name. */
+function themeName(id: string, english: string): string {
+  switch (id) {
+    case 'classic':
+      return t('captions.studio.themeName.classic')
+    case 'lime':
+      return t('captions.studio.themeName.lime')
+    case 'cyan':
+      return t('captions.studio.themeName.cyan')
+    case 'sunset':
+      return t('captions.studio.themeName.sunset')
+    case 'candy':
+      return t('captions.studio.themeName.candy')
+    case 'mono':
+      return t('captions.studio.themeName.mono')
+    case 'ink':
+      return t('captions.studio.themeName.ink')
+    default:
+      return english
+  }
+}
+
+/** A gradient's name in the UI language, as themeName. */
+function gradientName(id: string, english: string): string {
+  switch (id) {
+    case 'sunset':
+      return t('captions.studio.gradientName.sunset')
+    case 'ocean':
+      return t('captions.studio.gradientName.ocean')
+    case 'candy':
+      return t('captions.studio.gradientName.candy')
+    default:
+      return english
+  }
+}
+
 /* ---------- Layout ---------- */
 
-const CHUNKS: readonly { value: StudioChunk; label: string; title: string }[] = [
-  { value: 'phrase', label: 'Phrases', title: 'Up to two lines, broken at natural pauses' },
-  { value: 'words', label: 'A few words', title: 'A few words at a time' },
-  { value: 'word', label: 'One word', title: 'One word at a time, big' },
-  { value: 'stack', label: 'Stacked', title: 'Lines of different sizes' }
+const chunks = (): readonly { value: StudioChunk; label: string; title: string }[] => [
+  { value: 'phrase', label: t('captions.studio.chunk.phrase'), title: t('captions.studio.chunkTitle.phrase') },
+  { value: 'words', label: t('captions.studio.chunk.words'), title: t('captions.studio.chunkTitle.words') },
+  { value: 'word', label: t('captions.studio.chunk.word'), title: t('captions.studio.chunkTitle.word') },
+  { value: 'stack', label: t('captions.studio.chunk.stack'), title: t('captions.studio.chunkTitle.stack') }
 ]
-const POSITIONS: readonly { value: StudioPosition; label: string }[] = [
-  { value: 'top', label: 'Top' },
-  { value: 'upper', label: 'Upper' },
-  { value: 'middle', label: 'Middle' },
-  { value: 'lower', label: 'Lower' },
-  { value: 'bottom', label: 'Bottom' }
+const positions = (): readonly { value: StudioPosition; label: string }[] => [
+  { value: 'top', label: t('captions.studio.position.top') },
+  { value: 'upper', label: t('captions.studio.position.upper') },
+  { value: 'middle', label: t('captions.studio.position.middle') },
+  { value: 'lower', label: t('captions.studio.position.lower') },
+  { value: 'bottom', label: t('captions.studio.position.bottom') }
 ]
 
 /** The layout with `chunk`, its words and lines brought into that mode's range (§4.1). */
@@ -428,11 +465,11 @@ export function LayoutControls(props: { project: Project }): JSX.Element {
   const appSafe = (project.reframe ?? DEFAULT_REFRAME).appSafe
   return (
     <>
-      <ChipField<StudioChunk> id="caption-chunk" label="Words on screen" value={l.chunk} options={CHUNKS} onChange={(c) => edit((s) => withChunk(s, c))} />
+      <ChipField<StudioChunk> id="caption-chunk" label={t('captions.studio.wordsOnScreen')} value={l.chunk} options={chunks()} onChange={(c) => edit((s) => withChunk(s, c))} />
       {(l.chunk === 'words' || l.chunk === 'stack') && (
         <StudioSlider
           id="caption-words"
-          label="Words at once"
+          label={t('captions.studio.wordsAtOnce')}
           value={l.words}
           min={l.chunk === 'stack' ? 4 : 1}
           max={l.chunk === 'stack' ? 8 : 6}
@@ -445,18 +482,18 @@ export function LayoutControls(props: { project: Project }): JSX.Element {
       {l.chunk !== 'word' && (
         <ChipField<number>
           id="caption-lines"
-          label="Lines"
+          label={t('captions.studio.lines')}
           value={l.lines}
           options={
             l.chunk === 'stack'
               ? [
-                  { value: 2, label: 'Two' },
-                  { value: 3, label: 'Three' },
-                  { value: 4, label: 'Four' }
+                  { value: 2, label: t('captions.studio.lines.2') },
+                  { value: 3, label: t('captions.studio.lines.3') },
+                  { value: 4, label: t('captions.studio.lines.4') }
                 ]
               : [
-                  { value: 1, label: 'One' },
-                  { value: 2, label: 'Two' }
+                  { value: 1, label: t('captions.studio.lines.1') },
+                  { value: 2, label: t('captions.studio.lines.2') }
                 ]
           }
           onChange={(n) => edit((s) => ({ ...s, layout: { ...s.layout, lines: n } }))}
@@ -465,23 +502,23 @@ export function LayoutControls(props: { project: Project }): JSX.Element {
       {l.chunk === 'phrase' && (
         <ChipField<'short' | 'medium' | 'long'>
           id="caption-line-length"
-          label="Line length"
+          label={t('captions.studio.lineLength')}
           value={lineLengthOf(studio)}
           options={[
-            { value: 'short', label: 'Short' },
-            { value: 'medium', label: 'Medium' },
-            { value: 'long', label: 'Long' }
+            { value: 'short', label: t('captions.studio.lineLength.short') },
+            { value: 'medium', label: t('captions.studio.lineLength.medium') },
+            { value: 'long', label: t('captions.studio.lineLength.long') }
           ]}
           onChange={(len) => edit((s) => withLineLength(s, len))}
         />
       )}
       <ChipField<StudioPosition>
         id="caption-position"
-        label="Position"
+        label={t('common.label.position')}
         value={l.place ? null : l.position}
-        options={POSITIONS}
+        options={positions()}
         onChange={(position) => edit((s) => withPosition(s, position))}
-        hint={<span className="hint">Or drag the captions in the preview. One caption can be moved in the Transcript tab.</span>}
+        hint={<span className="hint">{t('captions.studio.dragHint')}</span>}
       />
       {l.place && (
         <button
@@ -495,64 +532,62 @@ export function LayoutControls(props: { project: Project }): JSX.Element {
               return { ...s, layout }
             })
           }
-        >
-          Reset position
-        </button>
+        >{t('captions.studio.resetPosition')}</button>
       )}
       <div data-testid="caption-avoid">
-        <Toggle label="Keep clear of the action and the camera" checked={l.avoid} onChange={(avoid) => edit((s) => ({ ...s, layout: { ...s.layout, avoid } }))} />
+        <Toggle label={t('captions.studio.avoid')} checked={l.avoid} onChange={(avoid) => edit((s) => ({ ...s, layout: { ...s.layout, avoid } }))} />
       </div>
-      <p className="hint">Moves captions away from the cursor, clicks and typing, your camera bubble, your face and lower-third titles.</p>
-      {tall && appSafe && <p className="hint">Captions stay inside the area TikTok, Reels and Shorts leave free.</p>}
+      <p className="hint">{t('captions.studio.avoidHint')}</p>
+      {tall && appSafe && <p className="hint">{t('captions.studio.safeHint')}</p>}
     </>
   )
 }
 
 /* ---------- Motion ---------- */
 
-const ENTERS: readonly { value: ChunkEnter; label: string }[] = [
-  { value: 'none', label: 'None' },
-  { value: 'fade', label: 'Fade' },
-  { value: 'rise', label: 'Rise' },
-  { value: 'drop', label: 'Drop' },
-  { value: 'slide', label: 'Slide' },
-  { value: 'pop', label: 'Pop' },
-  { value: 'squeeze', label: 'Squeeze' },
-  { value: 'grow', label: 'Grow' },
-  { value: 'blur', label: 'Blur' },
-  { value: 'wipe', label: 'Wipe' },
-  { value: 'slam', label: 'Slam' }
+const enters = (): readonly { value: ChunkEnter; label: string }[] => [
+  { value: 'none', label: t('common.state.none') },
+  { value: 'fade', label: t('captions.studio.enter.fade') },
+  { value: 'rise', label: t('captions.studio.enter.rise') },
+  { value: 'drop', label: t('captions.studio.enter.drop') },
+  { value: 'slide', label: t('captions.studio.enter.slide') },
+  { value: 'pop', label: t('captions.studio.enter.pop') },
+  { value: 'squeeze', label: t('captions.studio.enter.squeeze') },
+  { value: 'grow', label: t('captions.studio.enter.grow') },
+  { value: 'blur', label: t('captions.studio.enter.blur') },
+  { value: 'wipe', label: t('captions.studio.enter.wipe') },
+  { value: 'slam', label: t('captions.studio.enter.slam') }
 ]
-const EXITS: readonly { value: ChunkExit; label: string }[] = [
-  { value: 'none', label: 'None' },
-  { value: 'fade', label: 'Fade' },
-  { value: 'rise', label: 'Rise' },
-  { value: 'shrink', label: 'Shrink' },
-  { value: 'blur', label: 'Blur' }
+const exits = (): readonly { value: ChunkExit; label: string }[] => [
+  { value: 'none', label: t('common.state.none') },
+  { value: 'fade', label: t('captions.studio.exit.fade') },
+  { value: 'rise', label: t('captions.studio.exit.rise') },
+  { value: 'shrink', label: t('captions.studio.exit.shrink') },
+  { value: 'blur', label: t('captions.studio.exit.blur') }
 ]
-export const WORD_MOTIONS: readonly { value: WordMotion; label: string }[] = [
-  { value: 'none', label: 'None' },
-  { value: 'pulse', label: 'Pulse' },
-  { value: 'pop', label: 'Pop' },
-  { value: 'bounce', label: 'Bounce' },
-  { value: 'rise', label: 'Rise' },
-  { value: 'slide', label: 'Slide' },
-  { value: 'fade', label: 'Fade' },
-  { value: 'typewriter', label: 'Typewriter' },
-  { value: 'blur', label: 'Blur' },
-  { value: 'shake', label: 'Shake' },
-  { value: 'wipe', label: 'Wipe' }
+export const wordMotions = (): readonly { value: WordMotion; label: string }[] => [
+  { value: 'none', label: t('common.state.none') },
+  { value: 'pulse', label: t('captions.studio.word.pulse') },
+  { value: 'pop', label: t('captions.studio.word.pop') },
+  { value: 'bounce', label: t('captions.studio.word.bounce') },
+  { value: 'rise', label: t('captions.studio.word.rise') },
+  { value: 'slide', label: t('captions.studio.word.slide') },
+  { value: 'fade', label: t('captions.studio.word.fade') },
+  { value: 'typewriter', label: t('captions.studio.word.typewriter') },
+  { value: 'blur', label: t('captions.studio.word.blur') },
+  { value: 'shake', label: t('captions.studio.word.shake') },
+  { value: 'wipe', label: t('captions.studio.word.wipe') }
 ]
-const SPOKEN: readonly { value: SpokenMark; label: string }[] = [
-  { value: 'none', label: 'None' },
-  { value: 'color', label: 'Colour' },
-  { value: 'fill', label: 'Fill' },
-  { value: 'box', label: 'Box' },
-  { value: 'pill', label: 'Pill' },
-  { value: 'underline', label: 'Underline' },
-  { value: 'weight', label: 'Bolder' },
-  { value: 'glow', label: 'Glow' },
-  { value: 'gradient', label: 'Gradient' }
+const spokenMarks = (): readonly { value: SpokenMark; label: string }[] => [
+  { value: 'none', label: t('common.state.none') },
+  { value: 'color', label: t('common.label.colour') },
+  { value: 'fill', label: t('captions.studio.spoken.fill') },
+  { value: 'box', label: t('captions.studio.spoken.box') },
+  { value: 'pill', label: t('captions.studio.spoken.pill') },
+  { value: 'underline', label: t('captions.studio.spoken.underline') },
+  { value: 'weight', label: t('captions.studio.spoken.weight') },
+  { value: 'glow', label: t('captions.studio.spoken.glow') },
+  { value: 'gradient', label: t('captions.studio.spoken.gradient') }
 ]
 /** A look's own value the menu lacks (Editorial's Grow) shows as itself. */
 const withCurrent = <T extends string>(list: readonly { value: T; label: string }[], v: T): readonly { value: T; label: string }[] =>
@@ -578,34 +613,34 @@ export function MotionControls(props: { project: Project }): JSX.Element {
   const estimated = useMemo(() => estimatedShare(project.transcript?.segments ?? []) > 0.1, [project.transcript])
   return (
     <>
-      <SelectField<ChunkEnter> id="caption-enter" label="Captions come in" value={m.enter} options={withCurrent(ENTERS, m.enter)} onChange={(enter) => setMotion({ enter })} />
+      <SelectField<ChunkEnter> id="caption-enter" label={t('captions.studio.enter')} value={m.enter} options={withCurrent(enters(), m.enter)} onChange={(enter) => setMotion({ enter })} />
       <SelectField<ChunkExit>
         id="caption-exit"
-        label="Captions go out"
+        label={t('captions.studio.exit')}
         value={m.exit}
-        options={withCurrent(EXITS, m.exit)}
+        options={withCurrent(exits(), m.exit)}
         onChange={(exit) => setMotion({ exit })}
         hint="Only before a pause: back-to-back captions replace each other."
       />
-      <SelectField<WordMotion> id="caption-word" label="Each word" value={m.word} options={withCurrent(WORD_MOTIONS, m.word)} onChange={(word) => setMotion({ word })} />
-      <SelectField<SpokenMark> id="caption-spoken" label="Spoken word" value={studio.spoken} options={SPOKEN} onChange={(spoken) => edit((s) => ({ ...s, spoken }))} />
+      <SelectField<WordMotion> id="caption-word" label={t('captions.studio.eachWord')} value={m.word} options={withCurrent(wordMotions(), m.word)} onChange={(word) => setMotion({ word })} />
+      <SelectField<SpokenMark> id="caption-spoken" label={t('captions.studio.spokenWord')} value={studio.spoken} options={spokenMarks()} onChange={(spoken) => edit((s) => ({ ...s, spoken }))} />
       <ChipField<number>
         id="caption-upcoming"
-        label="Words not yet spoken"
+        label={t('captions.studio.unspoken')}
         value={m.upcoming === 1 ? 1 : m.upcoming === 0 ? 0 : m.upcoming === 0.55 ? 0.55 : null}
         options={[
-          { value: 1, label: 'Show' },
-          { value: 0.55, label: 'Dim' },
-          { value: 0, label: 'Hide' }
+          { value: 1, label: t('common.action.show') },
+          { value: 0.55, label: t('captions.studio.unspokenDim') },
+          { value: 0, label: t('common.action.hide') }
         ]}
         onChange={(upcoming) => setMotion({ upcoming })}
       />
-      <StudioSlider id="caption-strength" label="Strength" value={m.strength} min={0} max={1} step={0.05} format={pct} spoken={(v) => `${Math.round(v * 100)} percent`} onChange={(strength) => setMotion({ strength }, 'caption-strength')} />
-      {m.strength === 0 && <p className="hint">Colour and fade only.</p>}
-      <StudioSlider id="caption-speed" label="Speed" value={m.speed} min={0.5} max={2} step={0.1} format={pct} spoken={(v) => `${Math.round(v * 100)} percent`} onChange={(speed) => setMotion({ speed }, 'caption-speed')} />
+      <StudioSlider id="caption-strength" label={t('common.label.strength')} value={m.strength} min={0} max={1} step={0.05} format={pct} spoken={(v) => t('captions.studio.percent', { n: fmt.count(Math.round(v * 100)) })} onChange={(strength) => setMotion({ strength }, 'caption-strength')} />
+      {m.strength === 0 && <p className="hint">{t('captions.studio.calmStrength')}</p>}
+      <StudioSlider id="caption-speed" label={t('common.label.speed')} value={m.speed} min={0.5} max={2} step={0.1} format={pct} spoken={(v) => t('captions.studio.percent', { n: fmt.count(Math.round(v * 100)) })} onChange={(speed) => setMotion({ speed }, 'caption-speed')} />
       <div data-testid="caption-calm">
         <Toggle
-          label="Calm motion"
+          label={t('captions.studio.calmMotion')}
           checked={!!m.calm}
           onChange={(on) =>
             edit((s) => {
@@ -616,10 +651,9 @@ export function MotionControls(props: { project: Project }): JSX.Element {
           }
         />
       </div>
-      <p className="hint">No bounce, shake, spin or blur in the video.</p>
+      <p className="hint">{t('captions.studio.calmHint')}</p>
       {reducedMotion() && !m.calm && !hintClosed && (
-        <p className="hint caption-note" data-testid="caption-calm-note">
-          Your PC asks for less animation. Turn on Calm motion for calmer captions in the video.{' '}
+        <p className="hint caption-note" data-testid="caption-calm-note">{t('captions.studio.calmNote')}{' '}
           <button
             type="button"
             className="link"
@@ -631,20 +665,17 @@ export function MotionControls(props: { project: Project }): JSX.Element {
                 // The note comes back in a new window.
               }
             }}
-          >
-            Close
-          </button>
+          >{t('common.action.close')}</button>
         </p>
       )}
-      {estimated && <p className="hint">Some word times are estimated, so words there move more gently.</p>}
-      {settings.track && <p className="hint">Translated captions have no word times, so the spoken word is not marked.</p>}
+      {estimated && <p className="hint">{t('captions.studio.estimated')}</p>}
+      {settings.track && <p className="hint">{t('captions.studio.noWordTimes')}</p>}
     </>
   )
 }
 
 /* ---------- Emphasis ---------- */
 
-const words = (n: number): string => `${n} ${n === 1 ? 'word' : 'words'}`
 /** Words marked by `marks`. */
 export const markedWordCount = (marks: Project['captionMarks']): number => (marks ?? []).reduce((n, m) => n + (m.to - m.from + 1), 0)
 
@@ -659,24 +690,20 @@ export function EmphasisControls(props: { project: Project }): JSX.Element {
   const clear = (): void => {
     const n = markedWordCount(store.state.captionMarks)
     store.update((p) => clearEmphasis(p))
-    group.notice(`Removed emphasis from ${words(n)} (Undo brings it back)`)
+    group.notice(t('captions.studio.emphasisRemoved', { count: n, n: fmt.count(n) }))
   }
   return (
     <>
       <div className="caption-emphasis-tools">
-        <button type="button" className="btn small" data-testid="caption-emphasis-find" onClick={find}>
-          Find important words
-        </button>
-        <button type="button" className="btn small" data-testid="caption-emphasis-clear" disabled={count === 0} onClick={clear}>
-          Clear emphasis
-        </button>
+        <button type="button" className="btn small" data-testid="caption-emphasis-find" onClick={find}>{t('captions.studio.findImportant')}</button>
+        <button type="button" className="btn small" data-testid="caption-emphasis-clear" disabled={count === 0} onClick={clear}>{t('captions.studio.clearEmphasis')}</button>
       </div>
       <p className="hint" data-testid="caption-emphasis-count">
-        {count ? `${words(count)} emphasised` : 'No words emphasised yet'}
+        {count ? t('captions.studio.emphasised', { count, n: fmt.count(count) }) : t('captions.studio.noneEmphasised')}
       </p>
       <StudioSlider
         id="caption-emphasis-size"
-        label="Size"
+        label={t('common.label.size')}
         value={studio.emphasis.scale}
         min={STUDIO_LIMITS.emphasisScale.min}
         max={STUDIO_LIMITS.emphasisScale.max}
@@ -706,19 +733,19 @@ export function EmphasisControls(props: { project: Project }): JSX.Element {
       />
       <ChipField<EmphasisMark>
         id="caption-emphasis-mark"
-        label="Mark"
+        label={t('captions.studio.mark')}
         value={studio.emphasis.mark}
         options={[
-          { value: 'none', label: 'None' },
-          { value: 'marker', label: 'Marker' },
-          { value: 'underline', label: 'Underline' },
-          { value: 'box', label: 'Box' },
-          ...(studio.emphasis.mark === 'circle' ? [{ value: 'circle' as const, label: 'Circle' }] : [])
+          { value: 'none', label: t('common.state.none') },
+          { value: 'marker', label: t('captions.studio.markKind.marker') },
+          { value: 'underline', label: t('captions.studio.markKind.underline') },
+          { value: 'box', label: t('captions.studio.markKind.box') },
+          ...(studio.emphasis.mark === 'circle' ? [{ value: 'circle' as const, label: t('captions.studio.markKind.circle') }] : [])
         ]}
         onChange={(mark) => edit((s) => ({ ...s, emphasis: { ...s.emphasis, mark } }))}
       />
-      <SelectField<WordMotion> id="caption-emphasis-motion" label="Motion" value={studio.motion.emphasis} options={withCurrent(WORD_MOTIONS, studio.motion.emphasis)} onChange={(emphasis) => edit((s) => ({ ...s, motion: { ...s.motion, emphasis } }))} />
-      <p className="hint">Select words in the Transcript tab and press Ctrl+B to emphasise them, or Ctrl+Shift+B for the second colour.</p>
+      <SelectField<WordMotion> id="caption-emphasis-motion" label={t('common.label.motion')} value={studio.motion.emphasis} options={withCurrent(wordMotions(), studio.motion.emphasis)} onChange={(emphasis) => edit((s) => ({ ...s, motion: { ...s.motion, emphasis } }))} />
+      <p className="hint">{t('captions.studio.emphasisHint')}</p>
     </>
   )
 }
@@ -738,7 +765,7 @@ export function SpeakerControls(props: { project: Project }): JSX.Element {
       <Toggle label={speakerCopy.showOnVideo} title={speakerCopy.showOnVideoTitle} checked={names} onChange={(on) => store.update((p) => ({ ...p, captions: withSpeakerNames(captionsOf(p), on) }))} />
       <div data-testid="caption-speaker-colors">
         <Toggle
-          label="A colour for each speaker"
+          label={t('captions.studio.speakerColour')}
           checked={!!studio.speakerColors && names}
           disabled={!names}
           onChange={(on) =>
@@ -750,10 +777,10 @@ export function SpeakerControls(props: { project: Project }): JSX.Element {
           }
         />
       </div>
-      {!names && <p className="hint">Turn on speaker names first, so colour is never the only cue.</p>}
-      {names && studio.speakerColors && speakers.length > 0 && colours.length === 0 && <p className="hint">Speaker colours would be hard to read on this look, so it keeps its own text colour.</p>}
+      {!names && <p className="hint">{t('captions.studio.speakerNamesFirst')}</p>}
+      {names && studio.speakerColors && speakers.length > 0 && colours.length === 0 && <p className="hint">{t('captions.studio.speakerHard')}</p>}
       {colours.length > 0 && (
-        <ul className="caption-speaker-dots" aria-label="Speaker colours">
+        <ul className="caption-speaker-dots" aria-label={t('captions.studio.speakerColours')}>
           {speakers.map((sp, i) => (
             <li key={sp.name}>
               <span className="speaker-dot" style={{ background: colours[i] }} aria-hidden="true" />

@@ -18,6 +18,9 @@ import { useModalFocus } from '../editor/modalFocus'
 import './clips.css'
 import { ClipCopyError, CLIPS_WORDS, ipcMessage, makeClipCopies, readScreen, settledFlush, textMeasure } from './clipsRun'
 import { ShapeField, useClipShapes, useShortClipsPref } from './ShortClipsPanel'
+import { fmt } from '../../../shared/i18n/fmt'
+import { t } from '../../../shared/i18n/t'
+import { Rich } from '../editor/panels/Rich'
 
 /** Focus on is read this long after the last key. */
 const FOCUS_WAIT_MS = 300
@@ -121,38 +124,34 @@ export function ShortVersionDialog(props: { project: Project; cursor: CursorTrac
   const lineId = `${ids}-line`
   const total = making && making !== 'start' && making.total > 0 ? making.total : 0
   const share = total > 0 && making && making !== 'start' ? Math.min(1, Math.max(0, making.done / total)) : 0
-  const name = project.name.trim() || 'Untitled recording'
+  const name = project.name.trim() || t('smart.shortVersion.untitled')
   return (
     <div className="overlay modal-backdrop">
       <div className="modal short-version" role="dialog" aria-modal="true" aria-labelledby={titleId} aria-describedby={lineId} ref={boxRef} tabIndex={-1} data-testid="short-version">
         <header className="modal-head">
-          <h2 id={titleId}>Make a shorter version</h2>
+          <h2 id={titleId}>{t('smart.shortVersion.title')}</h2>
         </header>
         {made ? (
           <>
             <p className="short-line" id={lineId} role="status" data-testid="short-made">
-              Made “{made.name}”. Your original “{name}” is unchanged. Review in the copy lists each cut, so you can bring any sentence back.
+              <Rich k="smart.shortVersion.made" values={{ copy: <>{made.name}</>, name: <>{name}</> }} />
             </p>
             <footer className="modal-foot">
-              <button type="button" className="btn" onClick={onClose}>
-                Close
-              </button>
-              <button type="button" className="btn primary" autoFocus onClick={() => onOpen(made.id)}>
-                Open the copy
-              </button>
+              <button type="button" className="btn" onClick={onClose}>{t('common.action.close')}</button>
+              <button type="button" className="btn primary" autoFocus onClick={() => onOpen(made.id)}>{t('smart.shortVersion.openTheCopy')}</button>
             </footer>
           </>
         ) : (
           <>
             <fieldset className="clips-field">
-              <legend>Length</legend>
+              <legend>{t('common.label.length')}</legend>
               <div className="clips-choices">
                 {SHORT_LENGTHS.map((s) => {
                   const ok = offered.includes(s)
                   return (
                     <label key={s}>
                       <input type="radio" name={`${ids}-length`} value={s} checked={length === s} disabled={!ok || making !== null} onChange={() => setLength(s)} aria-describedby={ok ? undefined : `${ids}-why-${s}`} />
-                      {s} s
+                      <Rich k="smart.shortVersion.seconds" values={{ seconds: <>{fmt.count(s)}</> }} />
                       {!ok && (
                         <span className="clips-why-not" id={`${ids}-why-${s}`}>
                           ({alreadyText(L)})
@@ -164,24 +163,20 @@ export function ShortVersionDialog(props: { project: Project; cursor: CursorTrac
               </div>
             </fieldset>
             <div className="clips-field">
-              <label className="clips-label" htmlFor={`${ids}-focus`}>
-                Focus on (optional)
-              </label>
-              <input id={`${ids}-focus`} type="text" placeholder="billing, export" value={focus} onChange={(e) => setFocus(e.target.value)} disabled={making !== null} data-testid="short-focus" />
+              <label className="clips-label" htmlFor={`${ids}-focus`}>{t('smart.shortVersion.focus')}</label>
+              <input id={`${ids}-focus`} type="text" placeholder={t('smart.shortVersion.focusPlaceholder')} value={focus} onChange={(e) => setFocus(e.target.value)} disabled={making !== null} data-testid="short-focus" />
             </div>
             <ShapeField name={`${ids}-shape`} shapes={shapes} onPick={(shape) => setPref({ ...pref, shape })} />
             {hasCaptions && (
               <label className="clips-choices clips-field">
-                <input type="checkbox" checked={pref.captions} onChange={(e) => setPref({ ...pref, captions: e.target.checked })} disabled={making !== null} data-testid="short-captions" />
-                Captions
-              </label>
+                <input type="checkbox" checked={pref.captions} onChange={(e) => setPref({ ...pref, captions: e.target.checked })} disabled={making !== null} data-testid="short-captions" />{t('common.label.captions')}</label>
             )}
             <p className="short-line" id={lineId} data-testid="short-line">
               {shortLine(plan, L, smooth)}
               {reading ? ` ${CLIPS_WORDS.looking}` : ''}
             </p>
             {making && (
-              <div className="clips-progress" role="progressbar" aria-label="Copied" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(share * 100)}>
+              <div className="clips-progress" role="progressbar" aria-label={t('common.state.copied')} aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(share * 100)}>
                 <div style={{ width: `${share * 100}%` }} />
               </div>
             )}
@@ -199,17 +194,13 @@ export function ShortVersionDialog(props: { project: Project; cursor: CursorTrac
                     onClose()
                     group.command('generateCaptions')
                   }}
-                >
-                  Make captions
-                </button>
+                >{t('common.action.makeCaptions')}</button>
               )}
               <button type="button" className="btn" onClick={() => (controller.current ? controller.current.abort() : onClose())} data-testid="short-cancel">
-                {making ? 'Stop' : 'Cancel'}
+                {making ? t('common.action.stop') : t('common.action.cancel')}
               </button>
               {/* While the copy is made it waits with aria-disabled: a disabled button would drop the keyboard focus to the page. */}
-              <button type="button" className="btn primary" autoFocus={hasCaptions} disabled={!plan?.ok} aria-disabled={making !== null || undefined} onClick={() => void make()} data-testid="short-make">
-                Make the copy
-              </button>
+              <button type="button" className="btn primary" autoFocus={hasCaptions} disabled={!plan?.ok} aria-disabled={making !== null || undefined} onClick={() => void make()} data-testid="short-make">{t('smart.shortVersion.makeTheCopy')}</button>
             </footer>
           </>
         )}

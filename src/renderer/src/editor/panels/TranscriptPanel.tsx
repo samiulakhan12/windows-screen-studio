@@ -4,7 +4,7 @@ import { displayTime } from '../../../../shared/editor/clips'
 import { anchorCutWords, cutFlags, cutWords, restoreWords, sameWords, spansSaving, transcriptWords, wordIndexAt, wordsRange, type TranscriptWord } from '../../../../shared/editor/transcript'
 import { recordAutoCuts } from '../../../../shared/review/autoCuts'
 import { suggestionRanges } from '../../../../shared/review/wordCuts'
-import { applySuggestions, refreshSuggestions, reviewSuggestions, SUGGESTION_LABELS, type EditSuggestion } from '../../../../shared/editor/transcriptReview'
+import { applySuggestions, refreshSuggestions, reviewSuggestions, type EditSuggestion } from '../../../../shared/editor/transcriptReview'
 import {
   clickSelection,
   moveSelection,
@@ -33,6 +33,8 @@ import { LEGACY_TILES } from '../../../../shared/captions/studioPresets'
 import { fmt } from '../../../../shared/i18n/fmt'
 import { emphasisNotice, removesEmphasis, selectionSpans, wordEmphasis } from './transcriptMarks'
 import { keepVersionBefore } from '../../versions/autoVersion'
+import { t } from '../../../../shared/i18n/t'
+import { Rich } from './Rich'
 
 /*
  * Edit by text (NW-04, NW-01; docs/design/edit-by-text.md): the transcript word by word. Deleting
@@ -58,8 +60,9 @@ const reviewMemory = new WeakMap<object, { transcript: Transcript; items: EditSu
 const listFits = (made: Transcript, transcript: Transcript, words: readonly TranscriptWord[]): boolean =>
   made === transcript || sameWords(transcriptWords(made), words)
 
-const plural = (n: number, one: string, many = `${one}s`): string => `${n} ${n === 1 ? one : many}`
-const seconds = (s: number): string => `${s.toFixed(1)} s`
+const seconds = (s: number): string => t('captions.transcript.seconds', { s: fmt.number(s, { max: 1, min: 1 }) })
+/** A suggestion's kind as the list names it ("Filler", "Retake", "Repeat"). */
+const suggestionLabel = (kind: EditSuggestion['kind']): string => (kind === 'filler' ? t('captions.transcript.kind.filler') : kind === 'retake' ? t('captions.transcript.kind.retake') : t('captions.transcript.kind.repeat'))
 
 /** Whether two clip lists are the same edit. */
 const sameClips = (a: readonly Clip[], b: readonly Clip[]): boolean =>
@@ -81,15 +84,15 @@ function TranscriptIntro({ project, onOpenCaptions }: { project: Project; onOpen
   }
   return (
     <div className="transcript-panel">
-      <Section title="Edit by text">
-        <p className="hint">Cut the video by deleting words, like editing a document.</p>
+      <Section title={t('captions.transcript.editByText')}>
+        <p className="hint">{t('captions.transcript.hint')}</p>
         {project.hasAudio ? (
-          <p className="hint">This video has no transcript yet. Make captions first: the transcript comes with them.</p>
+          <p className="hint">{t('captions.transcript.noTranscript')}</p>
         ) : (
-          <p className="hint">This recording has no sound to make a transcript from.</p>
+          <p className="hint">{t('captions.transcript.noSound')}</p>
         )}
         <button className="btn primary" onClick={make} disabled={!project.hasAudio} data-testid="transcript-make-captions">
-          <EditorIcon name="captions" size={15} /> Make captions
+          <EditorIcon name="captions" size={15} /> {t('common.action.makeCaptions')}
         </button>
       </Section>
     </div>
@@ -172,7 +175,7 @@ function TranscriptEditor({
     if (!span) return
     const [a, b] = span
     const before = store.state.clips
-    if (flags.slice(a, b + 1).every((f) => f)) return onNotice('Already cut. Press Restore to bring it back')
+    if (flags.slice(a, b + 1).every((f) => f)) return onNotice(t('captions.transcript.notice.alreadyCut'))
     const range = wordsRange(words, a, b, store.state.duration)
     const next = cutWords(before, words, [[a, b]], store.state.duration)
     const marked = anchorCutWords(transcript, before, next, [[a, b]])
@@ -180,7 +183,7 @@ function TranscriptEditor({
     // when nothing would be left (cutRange keeps no piece shorter than a clip may be). A range
     // already wholly cut (guessed words inside a timeline cut, shown kept) only marks its words.
     if (sameClips(next, before) && (marked === transcript || spansSaving(before, words, [[a, b]], store.state.duration) > 1e-9)) {
-      return onNotice(range.end - range.start > 1e-9 ? 'That would cut the whole video' : 'Too short to cut on its own. Select more words')
+      return onNotice(range.end - range.start > 1e-9 ? t('captions.transcript.notice.wholeVideo') : t('captions.transcript.notice.tooShort'))
     }
     // The words are marked deleted with the cut, their caption's times stored (one undo step): they stay cut after an edit of the caption.
     store.update((p) => {
@@ -191,7 +194,7 @@ function TranscriptEditor({
     const after = cutFlags(transcriptWords(marked), next)
     const newly = after.reduce((n, f, i) => n + (f && !flags[i] ? 1 : 0), 0)
     const saved = seconds(outputDuration(before) - outputDuration(next))
-    onNotice(newly > 0 ? `Cut ${plural(newly, 'word')} (${saved})` : `Cut ${saved}`)
+    onNotice(newly > 0 ? t('captions.transcript.notice.cutWords', { count: newly, n: fmt.count(newly), saved }) : t('captions.transcript.notice.cut', { saved }))
   }
 
   const restore = (): void => {
@@ -200,11 +203,11 @@ function TranscriptEditor({
     if (flags.slice(a, b + 1).every((f) => !f)) return
     const before = store.state.clips
     const next = restoreWords(before, words, a, b, store.state.duration)
-    if (sameClips(next, before)) return onNotice('Could not restore this here. Use Undo, or restore the cut on the timeline')
+    if (sameClips(next, before)) return onNotice(t('captions.transcript.notice.cannotRestore'))
     store.update((p) => ({ ...p, clips: restoreWords(p.clips, words, a, b, p.duration) }))
     const after = cutFlags(words, next)
     const back = flags.reduce((n, f, i) => n + (f && !after[i] ? 1 : 0), 0)
-    onNotice(`Restored ${plural(back, 'word')}`)
+    onNotice(t('captions.transcript.notice.restored', { count: back, n: fmt.count(back) }))
   }
 
   /**
@@ -213,7 +216,7 @@ function TranscriptEditor({
    * emphasis makes its Studio twin in the same step (toggleEmphasis), and the notice says so.
    */
   const emphasise = (tone?: 2): void => {
-    if (!span) return onNotice('Select words first')
+    if (!span) return onNotice(t('captions.transcript.notice.selectFirst'))
     const spans = selectionSpans(words, span[0], span[1], transcript.segments, transcript.language)
     if (!spans.length) return
     const removed = removesEmphasis(spans, store.state.captionMarks, tone)
@@ -227,7 +230,7 @@ function TranscriptEditor({
   const placeCaption = (position: 'auto' | 'top' | 'bottom'): void => {
     if (!focusCaption) return
     store.update((p) => withCaptionPlace(p, focusCaption, position === 'auto' ? null : position))
-    onNotice(position === 'auto' ? 'This caption follows the look’s position again' : `This caption shows at the ${position}`)
+    onNotice(position === 'auto' ? t('captions.transcript.notice.positionAuto') : position === 'top' ? t('captions.transcript.notice.positionTop') : t('captions.transcript.notice.positionBottom'))
   }
 
   /** The buttons act like the keys, and give the focus back to the words (Delete goes on cutting there, not on the editor's selection). So do the review list's Keep, Remove, Remove all and Close, whose row or list goes (the focus would fall to the page). */
@@ -242,7 +245,7 @@ function TranscriptEditor({
     // As selecting words does: Delete after a review button (the focus on the page) must not remove a hidden timeline item.
     onSelect(null)
     // Said either way (the list appears below the words, out of the focus's way).
-    onNotice(items.length > 0 ? `Found ${plural(items.length, 'filler or retake', 'fillers and retakes')}` : 'No fillers or retakes found')
+    onNotice(items.length > 0 ? t('captions.transcript.notice.found', { count: items.length, n: fmt.count(items.length) }) : t('captions.transcript.notice.noneFound'))
   }
 
   /** Cuts these suggestions and marks their words deleted (one store update, as Delete does); the output seconds saved, or null when nothing changes. */
@@ -252,7 +255,7 @@ function TranscriptEditor({
     const r = applySuggestions(before, words, items, store.state.duration)
     // A suggestion already wholly cut (guessed words inside a timeline cut, shown kept) only marks its words.
     if (sameClips(r.clips, before) && (anchorCutWords(transcript, before, before, spans) === transcript || spansSaving(before, words, spans, store.state.duration) > 1e-9)) {
-      onNotice('That would cut the whole video')
+      onNotice(t('captions.transcript.notice.wholeVideo'))
       return null
     }
     store.update((p) => {
@@ -266,7 +269,7 @@ function TranscriptEditor({
 
   const removeOne = (s: EditSuggestion): void => {
     const saved = removeSuggestions([s])
-    if (saved !== null) onNotice(`Removed 1 (${seconds(saved)})`)
+    if (saved !== null) onNotice(t('captions.transcript.notice.removedOne', { saved: seconds(saved) }))
   }
   const keepOne = (s: EditSuggestion): void => setReview((review ?? []).filter((x) => x.id !== s.id))
   const removeAll = (): void => {
@@ -278,7 +281,7 @@ function TranscriptEditor({
     // E-12: the edit before is kept as a version once it changed (docs/design/versions.md §2.4).
     void keepVersionBefore(before, 'fillers')
     setReview(null)
-    onNotice(`Removed ${items.length} (${seconds(saved)})`)
+    onNotice(t('captions.transcript.notice.removed', { n: fmt.count(items.length), saved: seconds(saved) }))
   }
 
   const goTo = (i: number): void => {
@@ -461,52 +464,48 @@ function TranscriptEditor({
 
   return (
     <div className="transcript-panel" onKeyDown={onPanelKeyDown}>
-      <Section title="Transcript" aside={<span className="hint transcript-count">{`${plural(words.length, 'word')} · ${cutCount} cut`}</span>}>
+      <Section title={t('captions.transcript.title')} aside={<span className="hint transcript-count">{t('captions.transcript.count', { count: words.length, n: fmt.count(words.length), cut: fmt.count(cutCount) })}</span>}>
         <div className="row start transcript-tools">
-          <button className="btn small" onClick={refocus(cut)} disabled={!canCut} title="Cut the selected words (Delete)">
-            <EditorIcon name="scissors" size={14} /> Cut
+          <button className="btn small" onClick={refocus(cut)} disabled={!canCut} title={t('captions.transcript.cutTitle')}>
+            <EditorIcon name="scissors" size={14} /> {t('common.action.cut')}
           </button>
-          <button className="btn small" onClick={refocus(restore)} disabled={!canRestore} title="Bring the selected words back">
-            <EditorIcon name="restore" size={14} /> Restore
+          <button className="btn small" onClick={refocus(restore)} disabled={!canRestore} title={t('captions.transcript.restoreTitle')}>
+            <EditorIcon name="restore" size={14} /> {t('common.action.restore')}
           </button>
           <button className="btn small" onClick={refocus(find)} data-testid="transcript-find">
-            <EditorIcon name="sparkle" size={14} /> Find fillers and retakes
+            <EditorIcon name="sparkle" size={14} /> {t('captions.transcript.findFillers')}
           </button>
         </div>
         <div className="row start transcript-tools transcript-emphasis">
-          <button className="btn small" onClick={refocus(() => emphasise())} disabled={!span} title="Emphasise the selected words (Ctrl+B)" data-testid="transcript-emphasise">
-            <strong aria-hidden="true">B</strong> Emphasise
+          <button className="btn small" onClick={refocus(() => emphasise())} disabled={!span} title={t('captions.transcript.emphasiseTitle')} data-testid="transcript-emphasise">
+            <strong aria-hidden="true">{t('captions.transcript.boldMark')}</strong> {t('captions.transcript.emphasise')}
           </button>
           <EmphasisMenu disabled={!span} onSecond={refocus(() => emphasise(2))} />
           <label className="transcript-place">
-            <span>Caption position</span>
+            <span>{t('captions.transcript.position.label')}</span>
             <select
               data-testid="caption-row-position"
               value={focusPlace}
               disabled={!focusCaption}
-              title="Where the caption of the selected words shows: Auto follows the look"
+              title={t('captions.transcript.positionTitle')}
               onChange={(e) => placeCaption(e.target.value as 'auto' | 'top' | 'bottom')}
             >
-              <option value="auto">Auto</option>
-              <option value="top">Top</option>
-              <option value="bottom">Bottom</option>
+              <option value="auto">{t('captions.transcript.position.auto')}</option>
+              <option value="top">{t('captions.transcript.position.top')}</option>
+              <option value="bottom">{t('captions.transcript.position.bottom')}</option>
             </select>
           </label>
         </div>
-        <p className="hint">Select words and press Delete to cut them. Click a word to go there.</p>
-        {estimated && <p className="hint">Some word times are estimated: cuts there may be less exact.</p>}
+        <p className="hint">{t('captions.transcript.howTo')}</p>
+        {estimated && <p className="hint">{t('captions.transcript.estimated')}</p>}
         {allEstimated && <p className="hint">{TIMING_COPY.transcriptAll}</p>}
         {pages > 1 && (
           <div className="row transcript-pager">
-            <button className="btn small" disabled={shownPage === 0} onClick={(e) => turnPage(shownPage - 1, e)}>
-              Earlier
-            </button>
+            <button className="btn small" disabled={shownPage === 0} onClick={(e) => turnPage(shownPage - 1, e)}>{t('captions.transcript.earlier')}</button>
             <span className="hint">
-              {shownPage * PAGE + 1}–{Math.min(paragraphs.length, (shownPage + 1) * PAGE)} of {paragraphs.length}
+              <Rich k="captions.transcript.page" values={{ from: <>{fmt.count(shownPage * PAGE + 1)}</>, to: <>{fmt.count(Math.min(paragraphs.length, (shownPage + 1) * PAGE))}</>, total: <>{fmt.count(paragraphs.length)}</> }} />
             </span>
-            <button className="btn small" disabled={shownPage >= pages - 1} onClick={(e) => turnPage(shownPage + 1, e)}>
-              Later
-            </button>
+            <button className="btn small" disabled={shownPage >= pages - 1} onClick={(e) => turnPage(shownPage + 1, e)}>{t('common.action.later')}</button>
           </div>
         )}
         <div
@@ -514,7 +513,7 @@ function TranscriptEditor({
           className="transcript-words"
           role="listbox"
           aria-multiselectable="true"
-          aria-label="Transcript words"
+          aria-label={t('captions.transcript.wordsLabel')}
           aria-activedescendant={focus >= 0 && pageOfWord(focus) === shownPage ? `tw-${focus}` : undefined}
           tabIndex={0}
           onPointerDown={onPointerDown}
@@ -523,7 +522,7 @@ function TranscriptEditor({
           data-testid="transcript-words"
         >
           {shown.map((p, k) => (
-            <p key={p.caption} className="transcript-para" role="group" aria-label={`${speakerOf.get(p.caption) ? `${speakerOf.get(p.caption)}, at` : 'At'} ${timeOf(p.first)}`}>
+            <p key={p.caption} className="transcript-para" role="group" aria-label={speakerOf.get(p.caption) ? t('captions.transcript.paraSpeaker', { speaker: speakerOf.get(p.caption)!, time: timeOf(p.first) }) : t('captions.transcript.para', { time: timeOf(p.first) })}>
               {speakerOf.get(p.caption) && speakerOf.get(p.caption) !== speakerOf.get(k > 0 ? shown[k - 1].caption : '') && (
                 <span className="transcript-speaker" aria-hidden="true" data-testid="transcript-speaker">
                   {speakerOf.get(p.caption)}
@@ -543,7 +542,7 @@ function TranscriptEditor({
                 if (suggested.has(i)) classes.push('suggested')
                 if (w.estimated) classes.push('estimated')
                 if (emphasis[i]) classes.push(emphasis[i] === 2 ? 'emphasis2' : 'emphasis')
-                const label = `${w.text}${flags[i] ? ', cut' : ''}${emphasis[i] === 2 ? ', emphasised in the second colour' : emphasis[i] ? ', emphasised' : ''}`
+                const label = [w.text, flags[i] ? t('captions.transcript.word.cut') : '', emphasis[i] === 2 ? t('captions.transcript.word.emphasis2') : emphasis[i] ? t('captions.transcript.word.emphasis') : ''].filter(Boolean).join(', ')
                 // A space after each word: the line can wrap there.
                 return (
                   <Fragment key={i}>
@@ -594,11 +593,11 @@ function EmphasisMenu({ disabled, onSecond }: { disabled: boolean; onSecond: () 
         ref={buttonRef}
         type="button"
         className="btn small icon-btn"
-        aria-label="More emphasis"
+        aria-label={t('captions.transcript.moreEmphasis')}
         aria-haspopup="menu"
         aria-expanded={open}
         disabled={disabled}
-        title="More emphasis"
+        title={t('captions.transcript.moreEmphasis')}
         onClick={() => setOpen((o) => !o)}
       >
         ▾
@@ -607,7 +606,7 @@ function EmphasisMenu({ disabled, onSecond }: { disabled: boolean; onSecond: () 
         <span
           className="transcript-menu-list"
           role="menu"
-          aria-label="More emphasis"
+          aria-label={t('captions.transcript.moreEmphasis')}
           onKeyDown={(e) => {
             // The menu's keys are its own, as the Graphics tab's Add menu's: never the editor's
             // shortcuts (Left and Right move the selected items, Home and End the playhead).
@@ -634,9 +633,7 @@ function EmphasisMenu({ disabled, onSecond }: { disabled: boolean; onSecond: () 
               setOpen(false)
               onSecond()
             }}
-          >
-            Emphasise in the second colour (Ctrl+Shift+B)
-          </button>
+          >{t('captions.transcript.secondColour')}</button>
         </span>
       )}
     </span>
@@ -674,11 +671,11 @@ function ReviewSection({
       .map((w) => w.text)
       .join(' ')
   return (
-    <Section title={`Fillers and retakes (${items.length})`}>
+    <Section title={t('captions.transcript.fillersTitle', { n: fmt.count(items.length) })}>
       {items.length === 0 ? (
-        <p className="hint">No fillers or retakes found. Some captions leave fillers out. Captions made on this PC keep most of them.</p>
+        <p className="hint">{t('captions.transcript.noFillers')}</p>
       ) : (
-        <p className="hint">{`Nothing is cut until you choose. Removing all saves ${seconds(total)}.`}</p>
+        <p className="hint">{t('captions.transcript.removeAllSaves', { saves: seconds(total) })}</p>
       )}
       <ul className="review-list transcript-review" data-testid="transcript-review">
         {items.map((s) => {
@@ -686,8 +683,8 @@ function ReviewSection({
           const from = Math.max(0, s.first - CONTEXT_WORDS)
           return (
             <li key={s.id} className="review-row" data-kind={s.kind}>
-              <button className="review-text" onClick={() => onGo(s.first)} title="Go to it">
-                <span className="review-kind">{SUGGESTION_LABELS[s.kind]}</span>
+              <button className="review-text" onClick={() => onGo(s.first)} title={t('captions.transcript.goTo')}>
+                <span className="review-kind">{suggestionLabel(s.kind)}</span>
                 <span className="review-time">{timeOf(s.first)}</span>
                 <span className="review-quote">
                   {from < s.first && <span className="review-context">{`${text(from, s.first - 1)} `}</span>}
@@ -695,12 +692,8 @@ function ReviewSection({
                 </span>
               </button>
               <div className="review-actions">
-                <button className="btn small ghost" onClick={() => onKeep(s)} aria-label={`Keep ${SUGGESTION_LABELS[s.kind].toLowerCase()} at ${timeOf(s.first)}`}>
-                  Keep
-                </button>
-                <button className="btn small" onClick={() => onRemove(s)} aria-label={`Remove ${SUGGESTION_LABELS[s.kind].toLowerCase()} at ${timeOf(s.first)}`}>
-                  Remove
-                </button>
+                <button className="btn small ghost" onClick={() => onKeep(s)} aria-label={t('captions.transcript.keepAt', { what: fmt.inSentence(suggestionLabel(s.kind)), time: timeOf(s.first) })}>{t('common.action.keep')}</button>
+                <button className="btn small" onClick={() => onRemove(s)} aria-label={t('captions.transcript.removeAt', { what: fmt.inSentence(suggestionLabel(s.kind)), time: timeOf(s.first) })}>{t('common.action.remove')}</button>
               </div>
             </li>
           )
@@ -708,13 +701,9 @@ function ReviewSection({
       </ul>
       <div className="row start">
         {items.length > 0 && (
-          <button className="btn primary small" onClick={onRemoveAll}>
-            Remove all
-          </button>
+          <button className="btn primary small" onClick={onRemoveAll}>{t('common.action.removeAll')}</button>
         )}
-        <button className="btn small" onClick={onClose}>
-          Close
-        </button>
+        <button className="btn small" onClick={onClose}>{t('common.action.close')}</button>
       </div>
     </Section>
   )

@@ -11,6 +11,7 @@ import { userChapters } from '../../../shared/chapters/pending'
 import type { Project } from '../../../shared/types'
 import { useModalFocus } from '../editor/modalFocus'
 import './publish.css'
+import { t } from '../../../shared/i18n/t'
 
 /**
  * What was said in `project`, for the check: the captions of the edited video as they are sent, bleeped
@@ -24,10 +25,7 @@ export const projectSaid = (project: Pick<Project, 'transcript' | 'clips' | 'ble
  * Why a piece is listed, for one piece or several: a link nobody said, or one written right against
  * other letters (most notes in languages written without spaces), which can open another address.
  */
-const why = (count: number): string =>
-  count === 1
-    ? "It has a link, address or file name that is not in what was said, the recording's name or its chapters, or one written right against other letters, where it can open a different address. Nothing was changed: post it only if you know where it goes."
-    : "Each has a link, address or file name that is not in what was said, the recording's name or its chapters, or one written right against other letters, where it can open a different address. Nothing was changed: post them only if you know where they go."
+const why = (count: number): string => t('review.check.why', { count })
 
 /** A noted piece exactly as written (invisible characters by their code), the runs that are why it is noted against `said` marked (pieceParts). */
 const shownPiece = (piece: string, said: Said): JSX.Element[] => pieceParts(piece, said).map((p, i) => (p.marked ? <mark key={i}>{p.text}</mark> : <span key={i}>{p.text}</span>))
@@ -41,7 +39,7 @@ export function checkNote(pieces: readonly string[], id: string, said: Said): JS
   if (!pieces.length) return null
   return (
     <div className="publish-check" role="note" id={id} data-testid="publish-check">
-      <p className="publish-check-title">{pieces.length === 1 ? 'Check this before you post:' : 'Check these before you post:'}</p>
+      <p className="publish-check-title">{t('review.check.title', { count: pieces.length })}</p>
       <ul>
         {pieces.map((piece) => (
           <li key={piece}>
@@ -93,7 +91,7 @@ export function NotedConfirm({ ask, onClose }: { ask: NotedAsk; onClose: () => v
         data-testid="publish-confirm"
       >
         <h2 id="publish-confirm-title">
-          {ask.what}: check {ask.pieces.length === 1 ? 'this' : 'these'} before you {ask.action === 'Copy anyway' ? 'copy it' : 'use it'}
+          {ask.action === 'Copy anyway' ? t('review.check.askCopy', { what: ask.what, count: ask.pieces.length }) : t('review.check.askUse', { what: ask.what, count: ask.pieces.length })}
         </h2>
         <p id="publish-confirm-why">{why(ask.pieces.length)}</p>
         <ul className="publish-confirm-list" id="publish-confirm-list">
@@ -112,7 +110,7 @@ export function NotedConfirm({ ask, onClose }: { ask: NotedAsk; onClose: () => v
         </ul>
         <div className="publish-confirm-actions">
           <button ref={cancelRef} className="btn primary" onClick={onClose}>
-            Cancel
+            {t('common.action.cancel')}
           </button>
           <button
             className="btn"
@@ -121,7 +119,7 @@ export function NotedConfirm({ ask, onClose }: { ask: NotedAsk; onClose: () => v
               ask.run()
             }}
           >
-            {ask.action}
+            {ask.action === 'Copy anyway' ? t('review.check.copyAnyway') : t('review.check.useAnyway')}
           </button>
         </div>
       </div>

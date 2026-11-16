@@ -56,6 +56,9 @@ import {
   otherDownload,
   setSpokenLanguage
 } from '../speechState'
+import { fmt } from '../../../../shared/i18n/fmt'
+import { t } from '../../../../shared/i18n/t'
+import { Rich } from './Rich'
 
 /*
  * The Captions tab's "On this PC" transcriber (docs/design/offline-captions.md §7.1-7.2, §7.7):
@@ -340,7 +343,7 @@ export function LocalAction({
       </button>
       {listError && (
         <p className="hint warn">
-          Your providers could not be read: {listError}{' '}
+          <Rich k="captions.local.providersUnread" values={{ reason: <>{listError}</> }} />{' '}
           <button type="button" className="link" onClick={reload}>
             {SPEECH_COPY.checkAgain}
           </button>
@@ -438,7 +441,7 @@ export function LocalAction({
           {s.retrying && <p className="hint warn">{retryingLine(s.retrying)}</p>}
           {intent?.model === view.id && <p className="hint">{SPEECH_COPY.downloadNote}</p>}
           <span className="sr-only" aria-live="polite">
-            {`${SPEECH_COPY.downloadBar}: ${Math.floor(share * 4) * 25} percent`}
+            {t('captions.local.downloadPercent', { bar: SPEECH_COPY.downloadBar, percent: fmt.count(Math.floor(share * 4) * 25) })}
           </span>
           <div className="local-actions">
             <button ref={primaryRef} type="button" className="btn" onClick={() => cancelDownload()}>
@@ -527,7 +530,9 @@ export function LocalAction({
       return box(
         <>
           <div className="captions-error" role="alert">
-            <p>Captions could not be made: {job!.error}</p>
+            <p>
+              <Rich k="captions.local.failed" values={{ reason: <>{job!.error}</> }} />
+            </p>
             <div className="local-actions">
               {code === 'damaged' && (
                 <button ref={primaryRef} type="button" className="btn" {...busyProps(failedModel)} onClick={() => download(failedModel)}>
@@ -553,7 +558,7 @@ export function LocalAction({
                 </button>
               )}
               <button ref={action ? undefined : primaryRef} type="button" className="link" onClick={clearTranscriptionError}>
-                Dismiss
+                {t('captions.local.dismiss')}
               </button>
             </div>
           </div>
@@ -576,7 +581,7 @@ export function LocalAction({
           )}
           <div className="row start captions-actions">
             <button ref={primaryRef} type="button" className="btn primary" data-testid="local-generate" onClick={() => onStart(view.id)}>
-              <EditorIcon name="captions" size={15} /> {project.transcript ? 'Regenerate' : SPEECH_COPY.generate}
+              <EditorIcon name="captions" size={15} /> {project.transcript ? t('common.action.regenerate') : SPEECH_COPY.generate}
             </button>
           </div>
           <p className="hint">{SPEECH_COPY.readyHint}</p>

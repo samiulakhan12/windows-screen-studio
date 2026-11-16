@@ -16,6 +16,7 @@ import { JOIN_ALL_KEY } from '../review/joinReview'
 import { FRAMING_KEY, keepItems, reviewItems, type ReviewItem } from '../review/review'
 import type { Clip, Freeze, Project } from '../types'
 import type { Moment } from './moments'
+import { t } from '../i18n/t'
 
 /** Longest name of a copy (duplicate.ts NAME_MAX; main cuts what it writes to the same length). */
 export const CLIP_NAME_MAX = 120
@@ -134,7 +135,7 @@ function withoutChaptersAndGuide(p: Project): Project {
  */
 export function clipCopy(project: Project, moment: Moment, opts: { shape: ClipShape; captions: boolean; measure: MeasureText | null }): Project {
   const part = clipsInRange(project, moment.start, moment.end)
-  if (part.clips.length === 0) throw new Error('This moment is no longer in the video: find short clips again.')
+  if (part.clips.length === 0) throw new Error(t('smart.clips.momentGone'))
   const base = projectCopy(project, copyKindOf(opts.shape), opts.measure)
   const why = oneLine(moment.reasons.join(' · '))
   let copy: Project = { ...withoutChaptersAndGuide(base), clips: part.clips }

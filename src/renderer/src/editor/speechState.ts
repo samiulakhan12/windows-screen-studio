@@ -1,6 +1,7 @@
 import { useEffect, useRef, useSyncExternalStore } from 'react'
 import type { TranscribeOptions } from '../../../shared/api/ai'
 import { t } from '../../../shared/i18n/t'
+import { isCancel } from './cancelled'
 import { LOCAL_TRANSCRIBER_ID, type SpeechModelView, type SpeechState } from '../../../shared/api/speech'
 import { BANGLA_MODEL, DEFAULT_SPEECH_MODEL, isBengali, speechModel, type SpeechModelId } from '../../../shared/speech/catalog'
 import { badgeTitle, readyNotice, SPEECH_COPY } from '../../../shared/speech/speechCopy'
@@ -211,9 +212,9 @@ export async function downloadThenCaptions(projectId: string, model: SpeechModel
       intents.delete(projectId)
       emit()
       const host = hosts.get(projectId)
-      if (host && !host.captionsOpen() && message !== 'Cancelled.') host.notice(SPEECH_COPY.downloadFailedNotice)
+      if (host && !host.captionsOpen() && !isCancel(message)) host.notice(SPEECH_COPY.downloadFailedNotice)
     }
-    if (message !== 'Cancelled.') console.warn(`The speech model ${model} could not be downloaded:`, message)
+    if (!isCancel(message)) console.warn(`The speech model ${model} could not be downloaded:`, message)
     return
   }
   // A model made for one language (the Bangla model) never becomes the default: other languages would use it.

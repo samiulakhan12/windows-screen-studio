@@ -15,26 +15,47 @@ import { planOf, videoDuration } from '../../../shared/engine/freeze'
 import { privateLike } from '../../../shared/smart/privateText'
 import { speechHeard } from '../../../shared/smart/speechHeard'
 import { fmt } from '../../../shared/i18n/fmt'
+import { t } from '../../../shared/i18n/t'
 import type { MeasureText } from '../../../shared/editor/duplicate'
 import type { CursorTrack, Project, ProjectSummary } from '../../../shared/types'
 
 /** The words of §2.4. */
 export const CLIPS_WORDS = {
-  intro: 'The best moments to post on their own. Each one you make becomes a copy; this video stays as it is.',
-  silent: 'No speech was found, so these are the moments with the most going on.',
-  tooShort: 'Too short for clips: post the whole video.',
-  nothing: 'Found no moment of 15 to 90 seconds to post on its own.',
-  needsCaptions: 'Make captions first: clips are picked from what you say.',
-  noScreen: 'Could not read the screen: moments come from what you say and do.',
-  looking: 'Looking at the screen…',
-  naming: (place: string): string => `Naming the clips with ${place}…`,
-  linked: "The copies share this video's files: they take almost no space.",
-  oneDrive: (each: string): string => `Each copy takes ${each}: files in a OneDrive folder cannot be shared.`,
-  noRoom: (n: number, need: string, free: string): string => `${n === 1 ? 'This copy needs' : `These ${n} copies need`} ${need}; ${free} is free.`,
-  making: (i: number, n: number): string => `Making copy ${i} of ${n}…`,
-  shortNeedsCaptions: 'Make captions first: a shorter version keeps the sentences you say.',
-  tooLittle: 'Not enough clear speech for a shorter version.'
-} as const
+  get intro(): string {
+    return t('smart.clips.words.intro')
+  },
+  get silent(): string {
+    return t('smart.clips.words.silent')
+  },
+  get tooShort(): string {
+    return t('smart.clips.words.tooShort')
+  },
+  get nothing(): string {
+    return t('smart.clips.words.nothing')
+  },
+  get needsCaptions(): string {
+    return t('smart.clips.words.needsCaptions')
+  },
+  get noScreen(): string {
+    return t('smart.clips.words.noScreen')
+  },
+  get looking(): string {
+    return t('smart.clips.words.looking')
+  },
+  naming: (place: string): string => t('smart.clips.words.naming', { place }),
+  get linked(): string {
+    return t('smart.clips.words.linked')
+  },
+  oneDrive: (each: string): string => t('smart.clips.words.oneDrive', { each }),
+  noRoom: (n: number, need: string, free: string): string => t('smart.clips.words.noRoom', { count: n, n: fmt.count(n), need, free }),
+  making: (i: number, n: number): string => t('smart.clips.words.making', { i: fmt.count(i), n: fmt.count(n) }),
+  get shortNeedsCaptions(): string {
+    return t('smart.clips.words.shortNeedsCaptions')
+  },
+  get tooLittle(): string {
+    return t('smart.clips.words.tooLittle')
+  }
+}
 
 /** Room left on the drive besides the copies (Duplicate's SPARE_BYTES, projectCopy.ts). */
 export const SPARE_BYTES = 64 * 1024 * 1024

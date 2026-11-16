@@ -20,6 +20,9 @@ import type { GuideImage } from '../../../shared/guide/guideDoc'
 import type { GuideStepEdit, NormRect } from '../../../shared/types'
 import { useModalFocus } from '../editor/modalFocus'
 import './guide.css'
+import { fmt } from '../../../shared/i18n/fmt'
+import { t } from '../../../shared/i18n/t'
+import { Rich } from '../editor/panels/Rich'
 
 /** What Adjust works on: the whole frame's picture, and the crop and ring as stored or as found. */
 export interface ShotAdjust {
@@ -127,7 +130,7 @@ export function ShotViewer(props: {
 
   if (!shot) return <></>
   const total = props.total ?? shots.length
-  const title = sending ? `These screenshots go to ${props.place ?? 'the AI service'}` : (shot.title ?? `Screenshot for ${shot.label} of ${total}`)
+  const title = sending ? t('smart.shot.sendTitle', { place: props.place ?? t('smart.shot.theService') }) : (shot.title ?? t('smart.shot.title', { label: shot.label, total: fmt.count(total) }))
   const sendKeys = shots.map((s) => s.key).filter((k) => ticks.has(k))
   const tick = (on: boolean): void => {
     setTicks((t) => {
@@ -259,13 +262,13 @@ export function ShotViewer(props: {
         </header>
         {props.mode === 'check' && (
           <p className="guide-viewer-checked" role="status" aria-live="polite" data-testid="guide-checked">
-            Checked {props.checked ?? 0} of {props.shared ?? total}
+            <Rich k="smart.shot.checked" values={{ checked: <>{fmt.count(props.checked ?? 0)}</>, total: <>{fmt.count(props.shared ?? total)}</> }} />
           </p>
         )}
         {sending && (
           <div className="guide-send-head">
             <p className="guide-viewer-checked" role="status" aria-live="polite" data-testid="guide-send-where">
-              {`Picture ${at + 1} of ${shots.length}: ${shot.label}`}
+              {t('smart.shot.picture', { at: fmt.count(at + 1), total: fmt.count(shots.length), label: shot.label })}
             </p>
             {shot.note && (
               <p className="guide-chip warn" data-testid="guide-send-note">
@@ -274,7 +277,7 @@ export function ShotViewer(props: {
             )}
             <label className="guide-check">
               <input type="checkbox" checked={ticks.has(shot.key)} onChange={(e) => tick(e.target.checked)} data-testid="guide-send-tick" />
-              {`Send ${shot.label}'s screenshot`}
+              {t('smart.shot.sendOne', { label: shot.label })}
             </label>
             {props.sendCost && (
               <p className="guide-viewer-checked guide-send-cost" id="guide-send-cost" data-testid="guide-send-cost">
@@ -285,9 +288,9 @@ export function ShotViewer(props: {
         )}
         {adjusting && shot.adjust ? (
           <div className="guide-adjust">
-            <p className="hint">Move the crop and the ring with the arrow keys (Shift: further, Alt: resize the crop), or drag them. Enter is Done.</p>
+            <p className="hint">{t('smart.shot.adjustHint')}</p>
             <div className="guide-adjust-frame">
-              {frameUrl && <img src={frameUrl} alt={`The whole screen for ${shot.label}`} width={shot.adjust.frame.width} height={shot.adjust.frame.height} draggable={false} />}
+              {frameUrl && <img src={frameUrl} alt={t('smart.shot.wholeScreenAlt', { label: shot.label })} width={shot.adjust.frame.width} height={shot.adjust.frame.height} draggable={false} />}
               <button
                 type="button"
                 ref={cropRef}
@@ -320,15 +323,15 @@ export function ShotViewer(props: {
             ref={areaRef}
             className={`guide-viewer-area ${fit ? 'fit' : ''}`}
             role="group"
-            aria-label={fit ? 'Screenshot, fitted' : 'Screenshot, 100%'}
+            aria-label={fit ? t('smart.shot.screenshotFitted') : t('smart.shot.screenshot100')}
             tabIndex={0}
             onKeyDown={pan}
             data-testid="guide-viewer-area"
           >
             {url && shot.image ? (
-              <img src={url} alt={sending ? `The screenshot for ${shot.label} as it would be sent` : `Screenshot for ${shot.label}`} width={shot.image.width} height={shot.image.height} data-testid="guide-viewer-image" />
+              <img src={url} alt={sending ? t('smart.shot.asSentAlt', { label: shot.label }) : t('smart.shot.alt', { label: shot.label })} width={shot.image.width} height={shot.image.height} data-testid="guide-viewer-image" />
             ) : (
-              <span className="guide-shot-wait">Making the screenshot…</span>
+              <span className="guide-shot-wait">{t('smart.shot.making')}</span>
             )}
           </div>
         )}
@@ -338,54 +341,30 @@ export function ShotViewer(props: {
         <footer className="modal-foot guide-viewer-foot">
           {sending ? (
             <>
-              <button type="button" className="btn ghost" disabled={at === 0} onClick={() => setAt(at - 1)} data-testid="guide-viewer-prev">
-                Previous
-              </button>
-              <button type="button" className="btn ghost" disabled={at >= shots.length - 1} onClick={() => setAt(at + 1)} data-testid="guide-viewer-next">
-                Next
-              </button>
+              <button type="button" className="btn ghost" disabled={at === 0} onClick={() => setAt(at - 1)} data-testid="guide-viewer-prev">{t('smart.shot.previous')}</button>
+              <button type="button" className="btn ghost" disabled={at >= shots.length - 1} onClick={() => setAt(at + 1)} data-testid="guide-viewer-next">{t('smart.shot.next')}</button>
               <button type="button" className="btn primary" disabled={!sendKeys.length} aria-describedby={props.sendCost ? 'guide-send-cost' : undefined} onClick={() => onClose({ send: sendKeys })} data-testid="guide-send">
-                {`Send ${sendKeys.length} ${sendKeys.length === 1 ? 'screenshot' : 'screenshots'}`}
+                {t('smart.shot.sendMany', { count: sendKeys.length, n: fmt.count(sendKeys.length) })}
               </button>
               {/* The send form opens on Cancel (§5.3.1): nothing goes by a stray Enter. */}
-              <button type="button" className="btn" autoFocus onClick={() => onClose()} data-testid="guide-send-cancel">
-                Cancel
-              </button>
+              <button type="button" className="btn" autoFocus onClick={() => onClose()} data-testid="guide-send-cancel">{t('common.action.cancel')}</button>
             </>
           ) : adjusting ? (
             <>
-              <button type="button" className="btn ghost" onClick={reset} data-testid="guide-adjust-reset">
-                Reset
-              </button>
-              <button type="button" className="btn ghost" onClick={() => setAdjusting(null)}>
-                Cancel
-              </button>
-              <button type="button" className="btn primary" onClick={done} data-testid="guide-adjust-done">
-                Done
-              </button>
+              <button type="button" className="btn ghost" onClick={reset} data-testid="guide-adjust-reset">{t('common.action.reset')}</button>
+              <button type="button" className="btn ghost" onClick={() => setAdjusting(null)}>{t('common.action.cancel')}</button>
+              <button type="button" className="btn primary" onClick={done} data-testid="guide-adjust-done">{t('common.action.done')}</button>
             </>
           ) : (
             <>
-              <button type="button" className="btn ghost" disabled={at === 0} onClick={() => setAt(at - 1)} data-testid="guide-viewer-prev">
-                Previous
-              </button>
-              <button type="button" className="btn ghost" disabled={at >= shots.length - 1} onClick={() => setAt(at + 1)} data-testid="guide-viewer-next">
-                Next
-              </button>
-              <button type="button" className="btn ghost" aria-pressed={fit} onClick={() => setFit(!fit)} data-testid="guide-viewer-fit">
-                Fit
-              </button>
-              <button type="button" className="btn ghost" onClick={() => props.onBlur(shot.key)} data-testid="guide-viewer-blur">
-                Blur an area…
-              </button>
+              <button type="button" className="btn ghost" disabled={at === 0} onClick={() => setAt(at - 1)} data-testid="guide-viewer-prev">{t('smart.shot.previous')}</button>
+              <button type="button" className="btn ghost" disabled={at >= shots.length - 1} onClick={() => setAt(at + 1)} data-testid="guide-viewer-next">{t('smart.shot.next')}</button>
+              <button type="button" className="btn ghost" aria-pressed={fit} onClick={() => setFit(!fit)} data-testid="guide-viewer-fit">{t('smart.shot.fit')}</button>
+              <button type="button" className="btn ghost" onClick={() => props.onBlur(shot.key)} data-testid="guide-viewer-blur">{t('smart.shot.blurArea')}</button>
               {shot.adjust && (
-                <button type="button" className="btn ghost" onClick={startAdjust} data-testid="guide-viewer-adjust">
-                  Adjust
-                </button>
+                <button type="button" className="btn ghost" onClick={startAdjust} data-testid="guide-viewer-adjust">{t('smart.shot.adjust')}</button>
               )}
-              <button type="button" className="btn" onClick={() => onClose()} data-testid="guide-viewer-close">
-                Close
-              </button>
+              <button type="button" className="btn" onClick={() => onClose()} data-testid="guide-viewer-close">{t('common.action.close')}</button>
             </>
           )}
         </footer>

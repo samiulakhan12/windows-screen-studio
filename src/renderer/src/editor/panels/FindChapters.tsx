@@ -23,18 +23,20 @@ import { useGroup } from '../groupContext'
 import { onFindChaptersRequest, takeFindChaptersRequest } from '../smartRequests'
 import { useStopFocus } from '../returnFocus'
 import './findChapters.css'
+import { t } from '../../../../shared/i18n/t'
 
-export const FIND_HINT = 'Splits the video where the screen changes and where you start something new, and names each part from what you say. Works offline, also for recordings without sound.'
+/** What Find chapters does, under its button (a function: no text is made when the module loads). */
+export const findHint = (): string => t('smart.chapters.hint')
 
-const DENSITIES: readonly { value: FindChaptersPref['density']; label: string }[] = [
-  { value: 'fewer', label: 'Fewer' },
-  { value: 'normal', label: 'Normal' },
-  { value: 'more', label: 'More' }
+const densities = (): readonly { value: FindChaptersPref['density']; label: string }[] => [
+  { value: 'fewer', label: t('smart.chapters.density.fewer') },
+  { value: 'normal', label: t('smart.chapters.density.normal') },
+  { value: 'more', label: t('smart.chapters.density.more') }
 ]
-const SPLITS: readonly { key: keyof FindChaptersPref['use']; label: string }[] = [
-  { key: 'screen', label: 'Screen changes' },
-  { key: 'pauses', label: 'Pauses' },
-  { key: 'words', label: 'What you say' }
+const splits = (): readonly { key: keyof FindChaptersPref['use']; label: string }[] => [
+  { key: 'screen', label: t('smart.chapters.split.screen') },
+  { key: 'pauses', label: t('smart.chapters.split.pauses') },
+  { key: 'words', label: t('smart.chapters.split.words') }
 ]
 
 let runs = 0
@@ -183,23 +185,19 @@ export function FindChapters({ project, cursor, onNotice }: { project: Project; 
       <div className="find-chapters-run">
         {/* With names from an AI, the button also reads what the run sends and costs (§11.5): the cost line's sentence.
             While it runs it waits with aria-disabled: a disabled button would drop the keyboard focus to the page. */}
-        <button ref={runButton} className="btn" id={`${ids}-run`} data-testid="find-chapters" onClick={() => void run()} aria-disabled={busy || undefined} aria-describedby={namesChoice ? `${hintId} ${ids}-cost-names` : hintId}>
-          Find chapters
-        </button>
+        <button ref={runButton} className="btn" id={`${ids}-run`} data-testid="find-chapters" onClick={() => void run()} aria-disabled={busy || undefined} aria-describedby={namesChoice ? `${hintId} ${ids}-cost-names` : hintId}>{t('smart.chapters.find')}</button>
         {busy && (
           <>
             <span className="find-chapters-progress" role="status" aria-live="polite" data-testid="find-chapters-progress">
               {progress ?? FIND_WORDS.finding}
             </span>
-            <button className="btn ghost" onClick={stop} {...stopFocus} data-testid="find-chapters-stop">
-              Stop
-            </button>
+            <button className="btn ghost" onClick={stop} {...stopFocus} data-testid="find-chapters-stop">{t('common.action.stop')}</button>
           </>
         )}
         {namesChoice?.kind === 'local' && <LocalProgress requestId={running} onStop={stop} returnFocus={`${ids}-run`} />}
       </div>
       <p className="hint" id={hintId}>
-        {FIND_HINT}
+        {findHint()}
       </p>
       {needsCaptions && (
         <div className="find-chapters-captions" role="group" aria-labelledby={`${ids}-captions`} data-testid="find-chapters-needs-captions">
@@ -211,21 +209,17 @@ export function FindChapters({ project, cursor, onNotice }: { project: Project; 
                 setNeedsCaptions(false)
                 group.command('generateCaptions')
               }}
-            >
-              Make captions
-            </button>
-            <button className="btn" onClick={() => void run({ withoutWords: true })}>
-              Split without words
-            </button>
+            >{t('common.action.makeCaptions')}</button>
+            <button className="btn" onClick={() => void run({ withoutWords: true })}>{t('smart.chapters.withoutWords')}</button>
           </div>
         </div>
       )}
       <details className="find-chapters-options">
-        <summary>Options</summary>
+        <summary>{t('smart.chapters.options')}</summary>
         <fieldset className="find-chapters-field">
-          <legend>How many</legend>
+          <legend>{t('smart.chapters.howMany')}</legend>
           <div className="find-chapters-choices">
-            {DENSITIES.map((d) => (
+            {densities().map((d) => (
               <label key={d.value}>
                 <input type="radio" name={`${ids}-density`} value={d.value} checked={pref.density === d.value} onChange={() => setPref({ ...pref, density: d.value })} />
                 {d.label}
@@ -234,9 +228,9 @@ export function FindChapters({ project, cursor, onNotice }: { project: Project; 
           </div>
         </fieldset>
         <fieldset className="find-chapters-field">
-          <legend>Split at</legend>
+          <legend>{t('smart.chapters.splitAt')}</legend>
           <div className="find-chapters-choices">
-            {SPLITS.map((s) => (
+            {splits().map((s) => (
               <label key={s.key}>
                 <input type="checkbox" checked={pref.use[s.key]} onChange={(e) => setPref({ ...pref, use: { ...pref.use, [s.key]: e.target.checked } })} />
                 {s.label}
@@ -245,17 +239,13 @@ export function FindChapters({ project, cursor, onNotice }: { project: Project; 
           </div>
         </fieldset>
         <fieldset className="find-chapters-field">
-          <legend>Names</legend>
+          <legend>{t('smart.chapters.names')}</legend>
           <div className="find-chapters-choices column">
             <label>
-              <input type="radio" name={`${ids}-names`} checked={!namesChoice} onChange={() => setPref({ ...pref, names: 'offline' })} />
-              From what you say (offline)
-            </label>
+              <input type="radio" name={`${ids}-names`} checked={!namesChoice} onChange={() => setPref({ ...pref, names: 'offline' })} />{t('smart.chapters.namesOffline')}</label>
             <label className="find-chapters-with">
-              <input type="radio" name={`${ids}-names`} checked={!!namesChoice} disabled={!choices.length} onChange={() => choices[0] && setPref({ ...pref, names: choices[0].id })} />
-              With
-              <select aria-label="Name the chapters with" value={namesChoice?.id ?? ''} disabled={!choices.length} onChange={(e) => setPref({ ...pref, names: e.target.value })}>
-                {!namesChoice && <option value="">{choices.length ? 'Choose…' : 'No AI provider'}</option>}
+              <input type="radio" name={`${ids}-names`} checked={!!namesChoice} disabled={!choices.length} onChange={() => choices[0] && setPref({ ...pref, names: choices[0].id })} />{t('smart.chapters.namesWith')}<select aria-label={t('smart.chapters.namesWithLabel')} value={namesChoice?.id ?? ''} disabled={!choices.length} onChange={(e) => setPref({ ...pref, names: e.target.value })}>
+                {!namesChoice && <option value="">{choices.length ? t('smart.chapters.choose') : t('smart.chapters.noAiProvider')}</option>}
                 {choices.map((c) => (
                   <option key={c.id} value={c.id}>
                     {c.label}

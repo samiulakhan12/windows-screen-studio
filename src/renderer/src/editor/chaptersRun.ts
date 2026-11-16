@@ -22,6 +22,8 @@ import { speechHeard } from '../../../shared/smart/speechHeard'
 import type { ChapterOrigin, CursorTrack, Project } from '../../../shared/types'
 import { choiceOf, LOCAL_CHOICE } from '../ai/textChoices'
 import { loadAudioAnalysis } from './audioAnalysis'
+import { fmt } from '../../../shared/i18n/fmt'
+import { t } from '../../../shared/i18n/t'
 
 export interface FindChapterOptions {
   density: 'fewer' | 'normal' | 'more'
@@ -37,20 +39,36 @@ export const FIND_CHAPTERS_BUILT: boolean = true
 
 /** The words of §2.3. */
 export const FIND_WORDS = {
-  tooShort: 'Too short for chapters: YouTube needs at least 30 seconds.',
-  nothing: 'Found no clear place to split: no change of screen or new section.',
-  already: 'Your chapters already split the video: found no more.',
-  noScreen: 'Could not read the screen: chapters come from pauses and what you say.',
-  needsCaptions: 'Make captions first: chapter names come from what you say.',
-  firstAtZero: 'YouTube needs the first chapter at 0:00.',
-  removed: 'Removed the chapters found before.',
-  looking: 'Looking at the screen…',
-  asking: (place: string): string => `Asking ${place}…`,
-  naming: (place: string): string => `Naming the chapters with ${place}…`,
-  finding: 'Finding chapters…'
-} as const
-
-const plural = (n: number, one: string): string => `${n} ${one}${n === 1 ? '' : 's'}`
+  get tooShort(): string {
+    return t('smart.chapters.tooShort')
+  },
+  get nothing(): string {
+    return t('smart.chapters.nothing')
+  },
+  get already(): string {
+    return t('smart.chapters.already')
+  },
+  get noScreen(): string {
+    return t('smart.chapters.noScreen')
+  },
+  get needsCaptions(): string {
+    return t('smart.chapters.needsCaptions')
+  },
+  get firstAtZero(): string {
+    return t('smart.chapters.firstAtZero')
+  },
+  get removed(): string {
+    return t('smart.chapters.removed')
+  },
+  get looking(): string {
+    return t('smart.chapters.looking')
+  },
+  asking: (place: string): string => t('smart.chapters.asking', { place }),
+  naming: (place: string): string => t('smart.chapters.naming', { place }),
+  get finding(): string {
+    return t('smart.chapters.finding')
+  }
+}
 
 /** A start planned again this close (s) is the same start: the name written for it stays. */
 const SAME_START = 0.05
@@ -61,7 +79,8 @@ const SAME_START = 0.05
  * not be read.
  */
 export function foundNotice(count: number, all: number, youtube: boolean, firstAtZero: boolean, screenFailed: boolean): string {
-  const parts = [all < 3 ? `Found ${plural(count, 'chapter')}. YouTube needs at least 3: add one by hand to use them there.` : `Found ${plural(count, 'chapter')}. Review lists them: keep or remove each one.`]
+  const values = { count, n: fmt.count(count) }
+  const parts = [all < 3 ? t('smart.chapters.foundFew', values) : t('smart.chapters.found', values)]
   if (all >= 3 && !youtube && !firstAtZero) parts.push(FIND_WORDS.firstAtZero)
   if (screenFailed) parts.push(FIND_WORDS.noScreen)
   return parts.join(' ')
@@ -75,7 +94,7 @@ async function choiceFor(id: string): Promise<TextChoice> {
   if (id === LOCAL_TEXT_ID) return LOCAL_CHOICE
   const providers: AiProviderInfo[] = await window.api.listAiProviders().catch(() => [])
   const info = providers.find((p) => p.id === id)
-  if (!info) throw new Error('That AI provider is gone: choose another in the Find chapters options.')
+  if (!info) throw new Error(t('smart.chapters.providerGone'))
   return choiceOf(info)
 }
 
@@ -86,7 +105,7 @@ const viaOf = (choice: TextChoice): Pick<ChapterOrigin, 'via' | 'host'> => (choi
 async function readScreen(project: Project, signal: AbortSignal, onProgress: (text: string, fraction: number | null) => void): Promise<SceneScan | null> {
   onProgress(FIND_WORDS.looking, null)
   const off = window.api.onSceneProgress((p) => {
-    if (p.id === project.id && !signal.aborted) onProgress(`${FIND_WORDS.looking} ${Math.round(p.fraction * 100)}%`, p.fraction)
+    if (p.id === project.id && !signal.aborted) onProgress(t('smart.chapters.lookingShare', { share: fmt.percent(p.fraction) }), p.fraction)
   })
   let abort: (() => void) | null = null
   try {

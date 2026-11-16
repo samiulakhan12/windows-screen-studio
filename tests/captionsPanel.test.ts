@@ -266,8 +266,11 @@ function render(panel: (props: unknown) => unknown = CaptionsPanel, extra: unkno
   throw new Error('The tab keeps rendering')
 }
 
+/** A message component (Rich, T) holds no state: its text is what it renders. */
+const messageText = (el: El): string | null =>
+  typeof el.type === 'function' && ['Rich', 'T'].includes((el.type as { name: string }).name) ? textOf((el.type as (p: unknown) => unknown)(el.props)) : null
 const textOf = (node: unknown): string =>
-  Array.isArray(node) ? node.map(textOf).join('') : typeof node === 'string' || typeof node === 'number' ? String(node) : node && typeof node === 'object' && 'props' in node ? textOf((node as El).props.children) : ''
+  Array.isArray(node) ? node.map(textOf).join('') : typeof node === 'string' || typeof node === 'number' ? String(node) : node && typeof node === 'object' && 'props' in node ? (messageText(node as El) ?? textOf((node as El).props.children)) : ''
 const sections = (out: El[]): string[] => out.filter((e) => typeof e.props.title === 'string' && 'children' in e.props).map((e) => e.props.title as string)
 const click = (out: El[], label: string): void => {
   const button = out.find((e) => e.type === 'button' && textOf(e.props.children).trim() === label)

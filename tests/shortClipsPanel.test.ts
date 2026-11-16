@@ -425,7 +425,8 @@ describe('entry points (test 127)', () => {
   it('the Publish dialog and the Export dialog’s done view open the Short clips panel', () => {
     const src = (file: string): string => readFileSync(path.join(__dirname, '../src/renderer/src', file), 'utf8')
     const publish = src('publish/PublishDialog.tsx')
-    expect(publish).toMatch(/data-testid="publish-short-clips" onClick=\{onShortClips\}>\s*Make short clips for Shorts and Reels…/)
+    expect(publish).toMatch(/data-testid="publish-short-clips" onClick=\{onShortClips\}>\s*\{t\('review\.publish\.shortClips'\)\}/)
+    expect(t('review.publish.shortClips')).toBe('Make short clips for Shorts and Reels…')
     const exporter = src('editor/ExportDialog.tsx')
     // The Export dialog shows its text through the export namespace (output-and-languages §10): the link's message, in English the same words.
     expect(exporter).toMatch(/data-testid="export-short-clips" onClick=\{props\.onShortClips\}>\s*\{t\('export\.done\.shortClips'\)\}/)

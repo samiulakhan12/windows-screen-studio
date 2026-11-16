@@ -1,0 +1,4991 @@
+[
+  {
+    "key": "errors.aiText.nothingToName",
+    "file": "src/shared/captions/transcriptText.ts",
+    "line": 680,
+    "english": "Nothing to name.",
+    "sample": {}
+  },
+  {
+    "key": "errors.aiText.tooManyItems",
+    "file": "src/shared/captions/transcriptText.ts",
+    "line": 682,
+    "english": "There are too many items to name at once.",
+    "sample": {}
+  },
+  {
+    "key": "errors.aiText.itemTooLong",
+    "file": "src/shared/captions/transcriptText.ts",
+    "line": 689,
+    "english": "An item to name is too long.",
+    "sample": {}
+  },
+  {
+    "key": "errors.aiText.pictureNotJpeg",
+    "file": "src/shared/captions/transcriptText.ts",
+    "line": 694,
+    "english": "A picture to send is not a JPEG image.",
+    "sample": {}
+  },
+  {
+    "key": "errors.aiText.pictureTooLarge",
+    "file": "src/shared/captions/transcriptText.ts",
+    "line": 695,
+    "english": "A picture to send is too large.",
+    "sample": {}
+  },
+  {
+    "key": "errors.images.thereAreTooMany",
+    "file": "src/shared/captions/transcriptText.ts",
+    "line": 696,
+    "english": "There are too many pictures to send at once.",
+    "sample": {}
+  },
+  {
+    "key": "errors.aiText.tooMuchText",
+    "file": "src/shared/captions/transcriptText.ts",
+    "line": 701,
+    "english": "There is too much text to name at once.",
+    "sample": {}
+  },
+  {
+    "key": "errors.aiText.unknownTask",
+    "file": "src/shared/captions/transcriptText.ts",
+    "line": 711,
+    "english": "Unknown AI task.",
+    "sample": {}
+  },
+  {
+    "key": "errors.aiText.noCaptions",
+    "file": "src/shared/captions/transcriptText.ts",
+    "line": 715,
+    "english": "There are no captions to work on.",
+    "sample": {}
+  },
+  {
+    "key": "errors.aiText.tooManyCaptions",
+    "file": "src/shared/captions/transcriptText.ts",
+    "line": 716,
+    "english": "There are too many captions to send at once.",
+    "sample": {}
+  },
+  {
+    "key": "errors.aiText.chooseLanguage",
+    "file": "src/shared/captions/transcriptText.ts",
+    "line": 737,
+    "english": "Choose the language to translate into.",
+    "sample": {}
+  },
+  {
+    "key": "errors.transcribe.notATranscript",
+    "file": "src/shared/captions/transcriptParse.ts",
+    "line": 110,
+    "english": "The transcription service returned something that is not a transcript.",
+    "sample": {}
+  },
+  {
+    "key": "errors.project.notAProjectFile",
+    "file": "src/shared/engine/project.ts",
+    "line": 146,
+    "english": "Not a project file",
+    "sample": {}
+  },
+  {
+    "key": "errors.scriptDraft.notText",
+    "file": "src/shared/notes/scriptDraft.ts",
+    "line": 56,
+    "english": "Draft script needs your notes as text.",
+    "sample": {}
+  },
+  {
+    "key": "errors.scriptDraft.empty",
+    "file": "src/shared/notes/scriptDraft.ts",
+    "line": 57,
+    "english": "Write a few bullet points first.",
+    "sample": {}
+  },
+  {
+    "key": "errors.scriptDraft.tooLong",
+    "file": "src/shared/notes/scriptDraft.ts",
+    "line": 58,
+    "english": "Draft script works on up to 20,000 characters of notes.",
+    "sample": {
+      "max": "20,000"
+    }
+  },
+  {
+    "key": "errors.webhook.help",
+    "file": "src/shared/share/webhooks.ts",
+    "line": 38,
+    "english": "Paste an incoming webhook from Slack, Discord or Microsoft Teams (it starts with https://hooks.slack.com/, https://discord.com/api/webhooks/ or https://….webhook.office.com/).",
+    "sample": {}
+  },
+  {
+    "key": "errors.webhook.httpsOnly",
+    "file": "src/shared/share/webhooks.ts",
+    "line": 66,
+    "english": "Only https:// webhooks are accepted.",
+    "sample": {}
+  },
+  {
+    "key": "errors.webhook.tooLong",
+    "file": "src/shared/share/webhooks.ts",
+    "line": 156,
+    "english": "The message is too long.",
+    "sample": {}
+  },
+  {
+    "key": "errors.webhook.timeout",
+    "file": "src/shared/share/webhooks.ts",
+    "line": 163,
+    "english": "Slack did not answer in 15 s.",
+    "sample": {
+      "name": "Slack",
+      "seconds": "15"
+    }
+  },
+  {
+    "key": "errors.webhook.network",
+    "file": "src/shared/share/webhooks.ts",
+    "line": 164,
+    "english": "Could not reach Slack. Check the connection.",
+    "sample": {
+      "name": "Slack"
+    }
+  },
+  {
+    "key": "errors.webhook.redirect",
+    "file": "src/shared/share/webhooks.ts",
+    "line": 165,
+    "english": "Slack sent the message somewhere else, so it was not posted.",
+    "sample": {
+      "name": "Slack"
+    }
+  },
+  {
+    "key": "errors.webhook.gone",
+    "file": "src/shared/share/webhooks.ts",
+    "line": 166,
+    "english": "This webhook no longer exists. Paste a new one in Settings › Share.",
+    "sample": {}
+  },
+  {
+    "key": "errors.webhook.refused",
+    "file": "src/shared/share/webhooks.ts",
+    "line": 167,
+    "english": "Slack refused the message: the webhook may have been turned off.",
+    "sample": {
+      "name": "Slack"
+    }
+  },
+  {
+    "key": "errors.webhook.busy",
+    "file": "src/shared/share/webhooks.ts",
+    "line": 168,
+    "english": "Slack is busy. Try again in a minute.",
+    "sample": {
+      "name": "Slack"
+    }
+  },
+  {
+    "key": "errors.webhook.serverError",
+    "file": "src/shared/share/webhooks.ts",
+    "line": 169,
+    "english": "Slack had a problem (503). Try again later.",
+    "sample": {
+      "name": "Slack",
+      "status": "503"
+    }
+  },
+  {
+    "key": "errors.webhook.notAccepted",
+    "file": "src/shared/share/webhooks.ts",
+    "line": 170,
+    "english": "Slack did not accept the message (400).",
+    "sample": {
+      "name": "Slack",
+      "status": "400"
+    }
+  },
+  {
+    "key": "smart.guide.shotFailed",
+    "file": "src/renderer/src/guide/guideStills.ts",
+    "line": 24,
+    "english": "Could not make the screenshot.",
+    "sample": {}
+  },
+  {
+    "key": "common.error.drawingSurface",
+    "file": "src/renderer/src/guide/guideStills.ts",
+    "line": 105,
+    "english": "Could not create a drawing surface",
+    "sample": {}
+  },
+  {
+    "key": "common.error.drawingSurface",
+    "file": "src/renderer/src/guide/visionTitles.ts",
+    "line": 51,
+    "english": "Could not create a drawing surface",
+    "sample": {}
+  },
+  {
+    "key": "smart.guide.otherTask",
+    "file": "src/renderer/src/guide/guideRun.ts",
+    "line": 139,
+    "english": "The AI provider answered another task.",
+    "sample": {}
+  },
+  {
+    "key": "smart.chapters.providerGone",
+    "file": "src/renderer/src/editor/chaptersRun.ts",
+    "line": 78,
+    "english": "That AI provider is gone: choose another in the Find chapters options.",
+    "sample": {}
+  },
+  {
+    "key": "smart.clips.momentGone",
+    "file": "src/shared/clips/clipCopy.ts",
+    "line": 137,
+    "english": "This moment is no longer in the video: find short clips again.",
+    "sample": {}
+  },
+  {
+    "key": "smart.short.sentencesGone",
+    "file": "src/shared/clips/short60.ts",
+    "line": 253,
+    "english": "The sentences picked are no longer in the video: try again.",
+    "sample": {}
+  },
+  {
+    "key": "common.action.close",
+    "file": "src/renderer/src/smart/StubPanel.tsx",
+    "line": 27,
+    "english": "Close",
+    "sample": {}
+  },
+  {
+    "key": "smart.stub.notInBuild",
+    "file": "src/renderer/src/smart/StubPanel.tsx",
+    "line": 31,
+    "english": "This tool is not part of this build.",
+    "sample": {}
+  },
+  {
+    "key": "captions.local.providersUnread",
+    "file": "src/renderer/src/editor/panels/LocalCaptions.tsx",
+    "line": 343,
+    "english": "Your providers could not be read: the key store is locked.",
+    "sample": {
+      "reason": "the key store is locked."
+    }
+  },
+  {
+    "key": "captions.local.downloadPercent",
+    "file": "src/renderer/src/editor/panels/LocalCaptions.tsx",
+    "line": 441,
+    "english": "Downloading the speech model: 75 percent",
+    "sample": {
+      "bar": "Downloading the speech model",
+      "percent": "75"
+    }
+  },
+  {
+    "key": "captions.local.failed",
+    "file": "src/renderer/src/editor/panels/LocalCaptions.tsx",
+    "line": 530,
+    "english": "Captions could not be made: The model ran out of memory.",
+    "sample": {
+      "reason": "The model ran out of memory."
+    }
+  },
+  {
+    "key": "captions.local.dismiss",
+    "file": "src/renderer/src/editor/panels/LocalCaptions.tsx",
+    "line": 557,
+    "english": "Dismiss",
+    "sample": {}
+  },
+  {
+    "key": "common.action.regenerate",
+    "file": "src/renderer/src/editor/panels/LocalCaptions.tsx",
+    "line": 581,
+    "english": "Regenerate",
+    "sample": {}
+  },
+  {
+    "key": "review.check.why",
+    "file": "src/renderer/src/publish/checkNote.tsx",
+    "line": 27,
+    "english": [
+      "Each has a link, address or file name that is not in what was said, the recording's name or its chapters, or one written right against other letters, where it can open a different address. Nothing was changed: post them only if you know where they go.",
+      "It has a link, address or file name that is not in what was said, the recording's name or its chapters, or one written right against other letters, where it can open a different address. Nothing was changed: post it only if you know where it goes.",
+      "Each has a link, address or file name that is not in what was said, the recording's name or its chapters, or one written right against other letters, where it can open a different address. Nothing was changed: post them only if you know where they go.",
+      "Each has a link, address or file name that is not in what was said, the recording's name or its chapters, or one written right against other letters, where it can open a different address. Nothing was changed: post them only if you know where they go."
+    ],
+    "sample": [
+      {
+        "count": 0
+      },
+      {
+        "count": 1
+      },
+      {
+        "count": 2
+      },
+      {
+        "count": 1000
+      }
+    ]
+  },
+  {
+    "key": "review.check.title",
+    "file": "src/renderer/src/publish/checkNote.tsx",
+    "line": 41,
+    "english": [
+      "Check these before you post:",
+      "Check this before you post:",
+      "Check these before you post:",
+      "Check these before you post:"
+    ],
+    "sample": [
+      {
+        "count": 0
+      },
+      {
+        "count": 1
+      },
+      {
+        "count": 2
+      },
+      {
+        "count": 1000
+      }
+    ]
+  },
+  {
+    "key": "review.check.askCopy",
+    "file": "src/renderer/src/publish/checkNote.tsx",
+    "line": 93,
+    "english": [
+      "LinkedIn post: check these before you copy it",
+      "LinkedIn post: check this before you copy it",
+      "LinkedIn post: check these before you copy it",
+      "LinkedIn post: check these before you copy it"
+    ],
+    "sample": [
+      {
+        "what": "LinkedIn post",
+        "count": 0
+      },
+      {
+        "what": "LinkedIn post",
+        "count": 1
+      },
+      {
+        "what": "LinkedIn post",
+        "count": 2
+      },
+      {
+        "what": "LinkedIn post",
+        "count": 1000
+      }
+    ]
+  },
+  {
+    "key": "common.action.cancel",
+    "file": "src/renderer/src/publish/checkNote.tsx",
+    "line": 111,
+    "english": "Cancel",
+    "sample": {}
+  },
+  {
+    "key": "review.check.copyAnyway",
+    "file": "src/renderer/src/publish/checkNote.tsx",
+    "line": 120,
+    "english": "Copy anyway",
+    "sample": {}
+  },
+  {
+    "key": "review.check.askUse",
+    "file": "src/renderer/src/publish/checkNote.tsx",
+    "line": 96,
+    "english": [
+      "Suggested title: check these before you use it",
+      "Suggested title: check this before you use it",
+      "Suggested title: check these before you use it",
+      "Suggested title: check these before you use it"
+    ],
+    "sample": [
+      {
+        "what": "Suggested title",
+        "count": 0
+      },
+      {
+        "what": "Suggested title",
+        "count": 1
+      },
+      {
+        "what": "Suggested title",
+        "count": 2
+      },
+      {
+        "what": "Suggested title",
+        "count": 1000
+      }
+    ]
+  },
+  {
+    "key": "review.check.useAnyway",
+    "file": "src/renderer/src/publish/checkNote.tsx",
+    "line": 117,
+    "english": "Use anyway",
+    "sample": {}
+  },
+  {
+    "key": "smart.shortVersion.title",
+    "file": "src/renderer/src/clips/ShortVersionDialog.tsx",
+    "line": 129,
+    "english": "Make a shorter version",
+    "sample": {}
+  },
+  {
+    "key": "common.action.close",
+    "file": "src/renderer/src/clips/ShortVersionDialog.tsx",
+    "line": 138,
+    "english": "Close",
+    "sample": {}
+  },
+  {
+    "key": "smart.shortVersion.openTheCopy",
+    "file": "src/renderer/src/clips/ShortVersionDialog.tsx",
+    "line": 141,
+    "english": "Open the copy",
+    "sample": {}
+  },
+  {
+    "key": "common.label.length",
+    "file": "src/renderer/src/clips/ShortVersionDialog.tsx",
+    "line": 148,
+    "english": "Length",
+    "sample": {}
+  },
+  {
+    "key": "smart.shortVersion.focus",
+    "file": "src/renderer/src/clips/ShortVersionDialog.tsx",
+    "line": 168,
+    "english": "Focus on (optional)",
+    "sample": {}
+  },
+  {
+    "key": "smart.shortVersion.focusPlaceholder",
+    "file": "src/renderer/src/clips/ShortVersionDialog.tsx",
+    "line": 170,
+    "english": "billing, export",
+    "sample": {}
+  },
+  {
+    "key": "common.label.captions",
+    "file": "src/renderer/src/clips/ShortVersionDialog.tsx",
+    "line": 176,
+    "english": "Captions",
+    "sample": {}
+  },
+  {
+    "key": "common.state.copied",
+    "file": "src/renderer/src/clips/ShortVersionDialog.tsx",
+    "line": 184,
+    "english": "Copied",
+    "sample": {}
+  },
+  {
+    "key": "common.action.makeCaptions",
+    "file": "src/renderer/src/clips/ShortVersionDialog.tsx",
+    "line": 203,
+    "english": "Make captions",
+    "sample": {}
+  },
+  {
+    "key": "common.action.stop",
+    "file": "src/renderer/src/clips/ShortVersionDialog.tsx",
+    "line": 207,
+    "english": "Stop",
+    "sample": {}
+  },
+  {
+    "key": "common.action.cancel",
+    "file": "src/renderer/src/clips/ShortVersionDialog.tsx",
+    "line": 207,
+    "english": "Cancel",
+    "sample": {}
+  },
+  {
+    "key": "smart.shortVersion.makeTheCopy",
+    "file": "src/renderer/src/clips/ShortVersionDialog.tsx",
+    "line": 211,
+    "english": "Make the copy",
+    "sample": {}
+  },
+  {
+    "key": "smart.shortVersion.made",
+    "file": "src/renderer/src/clips/ShortVersionDialog.tsx",
+    "line": 134,
+    "english": "Made “Demo (short)”. Your original “Demo” is unchanged. Review in the copy lists each cut, so you can bring any sentence back.",
+    "sample": {
+      "copy": "Demo (short)",
+      "name": "Demo"
+    }
+  },
+  {
+    "key": "smart.shortVersion.seconds",
+    "file": "src/renderer/src/clips/ShortVersionDialog.tsx",
+    "line": 155,
+    "english": "30 s",
+    "sample": {
+      "seconds": "30"
+    }
+  },
+  {
+    "key": "smart.shortVersion.untitled",
+    "file": "src/renderer/src/clips/ShortVersionDialog.tsx",
+    "line": 127,
+    "english": "Untitled recording",
+    "sample": {}
+  },
+  {
+    "key": "smart.chapters.find",
+    "file": "src/renderer/src/editor/panels/FindChapters.tsx",
+    "line": 187,
+    "english": "Find chapters",
+    "sample": {}
+  },
+  {
+    "key": "common.action.stop",
+    "file": "src/renderer/src/editor/panels/FindChapters.tsx",
+    "line": 195,
+    "english": "Stop",
+    "sample": {}
+  },
+  {
+    "key": "common.action.makeCaptions",
+    "file": "src/renderer/src/editor/panels/FindChapters.tsx",
+    "line": 215,
+    "english": "Make captions",
+    "sample": {}
+  },
+  {
+    "key": "smart.chapters.withoutWords",
+    "file": "src/renderer/src/editor/panels/FindChapters.tsx",
+    "line": 218,
+    "english": "Split without words",
+    "sample": {}
+  },
+  {
+    "key": "smart.chapters.options",
+    "file": "src/renderer/src/editor/panels/FindChapters.tsx",
+    "line": 224,
+    "english": "Options",
+    "sample": {}
+  },
+  {
+    "key": "smart.chapters.howMany",
+    "file": "src/renderer/src/editor/panels/FindChapters.tsx",
+    "line": 226,
+    "english": "How many",
+    "sample": {}
+  },
+  {
+    "key": "smart.chapters.splitAt",
+    "file": "src/renderer/src/editor/panels/FindChapters.tsx",
+    "line": 237,
+    "english": "Split at",
+    "sample": {}
+  },
+  {
+    "key": "smart.chapters.names",
+    "file": "src/renderer/src/editor/panels/FindChapters.tsx",
+    "line": 248,
+    "english": "Names",
+    "sample": {}
+  },
+  {
+    "key": "smart.chapters.namesOffline",
+    "file": "src/renderer/src/editor/panels/FindChapters.tsx",
+    "line": 252,
+    "english": "From what you say (offline)",
+    "sample": {}
+  },
+  {
+    "key": "smart.chapters.namesWith",
+    "file": "src/renderer/src/editor/panels/FindChapters.tsx",
+    "line": 256,
+    "english": "With",
+    "sample": {}
+  },
+  {
+    "key": "smart.chapters.namesWithLabel",
+    "file": "src/renderer/src/editor/panels/FindChapters.tsx",
+    "line": 257,
+    "english": "Name the chapters with",
+    "sample": {}
+  },
+  {
+    "key": "smart.chapters.choose",
+    "file": "src/renderer/src/editor/panels/FindChapters.tsx",
+    "line": 258,
+    "english": "Choose…",
+    "sample": {}
+  },
+  {
+    "key": "smart.chapters.noAiProvider",
+    "file": "src/renderer/src/editor/panels/FindChapters.tsx",
+    "line": 258,
+    "english": "No AI provider",
+    "sample": {}
+  },
+  {
+    "key": "smart.chapters.hint",
+    "file": "src/renderer/src/editor/panels/FindChapters.tsx",
+    "line": 28,
+    "english": "Splits the video where the screen changes and where you start something new, and names each part from what you say. Works offline, also for recordings without sound.",
+    "sample": {}
+  },
+  {
+    "key": "smart.chapters.density.fewer",
+    "file": "src/renderer/src/editor/panels/FindChapters.tsx",
+    "line": 31,
+    "english": "Fewer",
+    "sample": {}
+  },
+  {
+    "key": "smart.chapters.density.normal",
+    "file": "src/renderer/src/editor/panels/FindChapters.tsx",
+    "line": 33,
+    "english": "Normal",
+    "sample": {}
+  },
+  {
+    "key": "smart.chapters.density.more",
+    "file": "src/renderer/src/editor/panels/FindChapters.tsx",
+    "line": 34,
+    "english": "More",
+    "sample": {}
+  },
+  {
+    "key": "smart.chapters.split.screen",
+    "file": "src/renderer/src/editor/panels/FindChapters.tsx",
+    "line": 36,
+    "english": "Screen changes",
+    "sample": {}
+  },
+  {
+    "key": "smart.chapters.split.pauses",
+    "file": "src/renderer/src/editor/panels/FindChapters.tsx",
+    "line": 38,
+    "english": "Pauses",
+    "sample": {}
+  },
+  {
+    "key": "smart.chapters.split.words",
+    "file": "src/renderer/src/editor/panels/FindChapters.tsx",
+    "line": 39,
+    "english": "What you say",
+    "sample": {}
+  },
+  {
+    "key": "smart.chapters.tooShort",
+    "file": "src/renderer/src/editor/chaptersRun.ts",
+    "line": 41,
+    "english": "Too short for chapters: YouTube needs at least 30 seconds.",
+    "sample": {}
+  },
+  {
+    "key": "smart.chapters.nothing",
+    "file": "src/renderer/src/editor/chaptersRun.ts",
+    "line": 41,
+    "english": "Found no clear place to split: no change of screen or new section.",
+    "sample": {}
+  },
+  {
+    "key": "smart.chapters.already",
+    "file": "src/renderer/src/editor/chaptersRun.ts",
+    "line": 41,
+    "english": "Your chapters already split the video: found no more.",
+    "sample": {}
+  },
+  {
+    "key": "smart.chapters.noScreen",
+    "file": "src/renderer/src/editor/chaptersRun.ts",
+    "line": 41,
+    "english": "Could not read the screen: chapters come from pauses and what you say.",
+    "sample": {}
+  },
+  {
+    "key": "smart.chapters.needsCaptions",
+    "file": "src/renderer/src/editor/chaptersRun.ts",
+    "line": 41,
+    "english": "Make captions first: chapter names come from what you say.",
+    "sample": {}
+  },
+  {
+    "key": "smart.chapters.firstAtZero",
+    "file": "src/renderer/src/editor/chaptersRun.ts",
+    "line": 41,
+    "english": "YouTube needs the first chapter at 0:00.",
+    "sample": {}
+  },
+  {
+    "key": "smart.chapters.removed",
+    "file": "src/renderer/src/editor/chaptersRun.ts",
+    "line": 41,
+    "english": "Removed the chapters found before.",
+    "sample": {}
+  },
+  {
+    "key": "smart.chapters.looking",
+    "file": "src/renderer/src/editor/chaptersRun.ts",
+    "line": 41,
+    "english": "Looking at the screen…",
+    "sample": {}
+  },
+  {
+    "key": "smart.chapters.finding",
+    "file": "src/renderer/src/editor/chaptersRun.ts",
+    "line": 41,
+    "english": "Finding chapters…",
+    "sample": {}
+  },
+  {
+    "key": "smart.chapters.asking",
+    "file": "src/renderer/src/editor/chaptersRun.ts",
+    "line": 49,
+    "english": "Asking Claude…",
+    "sample": {
+      "place": "Claude"
+    }
+  },
+  {
+    "key": "smart.chapters.naming",
+    "file": "src/renderer/src/editor/chaptersRun.ts",
+    "line": 50,
+    "english": "Naming the chapters with Claude…",
+    "sample": {
+      "place": "Claude"
+    }
+  },
+  {
+    "key": "smart.chapters.foundFew",
+    "file": "src/renderer/src/editor/chaptersRun.ts",
+    "line": 81,
+    "english": [
+      "Found 0 chapters. YouTube needs at least 3: add one by hand to use them there.",
+      "Found 1 chapter. YouTube needs at least 3: add one by hand to use them there.",
+      "Found 2 chapters. YouTube needs at least 3: add one by hand to use them there.",
+      "Found 1000 chapters. YouTube needs at least 3: add one by hand to use them there."
+    ],
+    "sample": [
+      {
+        "count": 0,
+        "n": "0"
+      },
+      {
+        "count": 1,
+        "n": "1"
+      },
+      {
+        "count": 2,
+        "n": "2"
+      },
+      {
+        "count": 1000,
+        "n": "1000"
+      }
+    ]
+  },
+  {
+    "key": "smart.chapters.lookingShare",
+    "file": "src/renderer/src/editor/chaptersRun.ts",
+    "line": 107,
+    "english": "Looking at the screen… 40%",
+    "sample": {
+      "share": "40%"
+    }
+  },
+  {
+    "key": "smart.chapters.found",
+    "file": "src/renderer/src/editor/chaptersRun.ts",
+    "line": 65,
+    "english": [
+      "Found 0 chapters. Review lists them: keep or remove each one.",
+      "Found 1 chapter. Review lists them: keep or remove each one.",
+      "Found 2 chapters. Review lists them: keep or remove each one.",
+      "Found 1000 chapters. Review lists them: keep or remove each one."
+    ],
+    "sample": [
+      {
+        "count": 0,
+        "n": "0"
+      },
+      {
+        "count": 1,
+        "n": "1"
+      },
+      {
+        "count": 2,
+        "n": "2"
+      },
+      {
+        "count": 1000,
+        "n": "1000"
+      }
+    ]
+  },
+  {
+    "key": "smart.shot.sendOne",
+    "file": "src/renderer/src/guide/ShotViewer.tsx",
+    "line": 277,
+    "english": "Send «label»'s screenshot",
+    "sample": {
+      "label": "«label»"
+    }
+  },
+  {
+    "key": "smart.shot.adjustHint",
+    "file": "src/renderer/src/guide/ShotViewer.tsx",
+    "line": 288,
+    "english": "Move the crop and the ring with the arrow keys (Shift: further, Alt: resize the crop), or drag them. Enter is Done.",
+    "sample": {}
+  },
+  {
+    "key": "smart.shot.wholeScreenAlt",
+    "file": "src/renderer/src/guide/ShotViewer.tsx",
+    "line": 290,
+    "english": "The whole screen for «label»",
+    "sample": {
+      "label": "«label»"
+    }
+  },
+  {
+    "key": "smart.shot.screenshotFitted",
+    "file": "src/renderer/src/guide/ShotViewer.tsx",
+    "line": 323,
+    "english": "Screenshot, fitted",
+    "sample": {}
+  },
+  {
+    "key": "smart.shot.screenshot100",
+    "file": "src/renderer/src/guide/ShotViewer.tsx",
+    "line": 323,
+    "english": "Screenshot, 100%",
+    "sample": {}
+  },
+  {
+    "key": "smart.shot.asSentAlt",
+    "file": "src/renderer/src/guide/ShotViewer.tsx",
+    "line": 329,
+    "english": "The screenshot for «label» as it would be sent",
+    "sample": {
+      "label": "«label»"
+    }
+  },
+  {
+    "key": "smart.shot.alt",
+    "file": "src/renderer/src/guide/ShotViewer.tsx",
+    "line": 329,
+    "english": "Screenshot for «label»",
+    "sample": {
+      "label": "«label»"
+    }
+  },
+  {
+    "key": "smart.shot.making",
+    "file": "src/renderer/src/guide/ShotViewer.tsx",
+    "line": 331,
+    "english": "Making the screenshot…",
+    "sample": {}
+  },
+  {
+    "key": "smart.shot.previous",
+    "file": "src/renderer/src/guide/ShotViewer.tsx",
+    "line": 342,
+    "english": "Previous",
+    "sample": {}
+  },
+  {
+    "key": "smart.shot.next",
+    "file": "src/renderer/src/guide/ShotViewer.tsx",
+    "line": 345,
+    "english": "Next",
+    "sample": {}
+  },
+  {
+    "key": "common.action.cancel",
+    "file": "src/renderer/src/guide/ShotViewer.tsx",
+    "line": 352,
+    "english": "Cancel",
+    "sample": {}
+  },
+  {
+    "key": "common.action.reset",
+    "file": "src/renderer/src/guide/ShotViewer.tsx",
+    "line": 358,
+    "english": "Reset",
+    "sample": {}
+  },
+  {
+    "key": "common.action.cancel",
+    "file": "src/renderer/src/guide/ShotViewer.tsx",
+    "line": 361,
+    "english": "Cancel",
+    "sample": {}
+  },
+  {
+    "key": "common.action.done",
+    "file": "src/renderer/src/guide/ShotViewer.tsx",
+    "line": 364,
+    "english": "Done",
+    "sample": {}
+  },
+  {
+    "key": "smart.shot.previous",
+    "file": "src/renderer/src/guide/ShotViewer.tsx",
+    "line": 370,
+    "english": "Previous",
+    "sample": {}
+  },
+  {
+    "key": "smart.shot.next",
+    "file": "src/renderer/src/guide/ShotViewer.tsx",
+    "line": 373,
+    "english": "Next",
+    "sample": {}
+  },
+  {
+    "key": "smart.shot.fit",
+    "file": "src/renderer/src/guide/ShotViewer.tsx",
+    "line": 376,
+    "english": "Fit",
+    "sample": {}
+  },
+  {
+    "key": "smart.shot.blurArea",
+    "file": "src/renderer/src/guide/ShotViewer.tsx",
+    "line": 379,
+    "english": "Blur an area…",
+    "sample": {}
+  },
+  {
+    "key": "smart.shot.adjust",
+    "file": "src/renderer/src/guide/ShotViewer.tsx",
+    "line": 383,
+    "english": "Adjust",
+    "sample": {}
+  },
+  {
+    "key": "common.action.close",
+    "file": "src/renderer/src/guide/ShotViewer.tsx",
+    "line": 387,
+    "english": "Close",
+    "sample": {}
+  },
+  {
+    "key": "smart.shot.checked",
+    "file": "src/renderer/src/guide/ShotViewer.tsx",
+    "line": 262,
+    "english": "Checked 3 of 8",
+    "sample": {
+      "checked": "3",
+      "total": "8"
+    }
+  },
+  {
+    "key": "smart.shot.picture",
+    "file": "src/renderer/src/guide/ShotViewer.tsx",
+    "line": 268,
+    "english": "Picture 2 of 5: Step 3",
+    "sample": {
+      "at": "2",
+      "total": "5",
+      "label": "Step 3"
+    }
+  },
+  {
+    "key": "smart.shot.sendMany",
+    "file": "src/renderer/src/guide/ShotViewer.tsx",
+    "line": 348,
+    "english": [
+      "Send 0 screenshots",
+      "Send 1 screenshot",
+      "Send 2 screenshots",
+      "Send 1000 screenshots"
+    ],
+    "sample": [
+      {
+        "count": 0,
+        "n": "0"
+      },
+      {
+        "count": 1,
+        "n": "1"
+      },
+      {
+        "count": 2,
+        "n": "2"
+      },
+      {
+        "count": 1000,
+        "n": "1000"
+      }
+    ]
+  },
+  {
+    "key": "common.action.close",
+    "file": "src/renderer/src/guide/GuidePanel.tsx",
+    "line": 624,
+    "english": "Close",
+    "sample": {}
+  },
+  {
+    "key": "smart.guide.titleField",
+    "file": "src/renderer/src/guide/GuidePanel.tsx",
+    "line": 630,
+    "english": "Title",
+    "sample": {}
+  },
+  {
+    "key": "smart.guide.intro",
+    "file": "src/renderer/src/guide/GuidePanel.tsx",
+    "line": 640,
+    "english": "Intro (optional)",
+    "sample": {}
+  },
+  {
+    "key": "smart.guide.kind",
+    "file": "src/renderer/src/guide/GuidePanel.tsx",
+    "line": 643,
+    "english": "Kind",
+    "sample": {}
+  },
+  {
+    "key": "smart.guide.kind",
+    "file": "src/renderer/src/guide/GuidePanel.tsx",
+    "line": 645,
+    "english": "Kind",
+    "sample": {}
+  },
+  {
+    "key": "smart.guide.kindBug",
+    "file": "src/renderer/src/guide/GuidePanel.tsx",
+    "line": 650,
+    "english": "Bug report",
+    "sample": {}
+  },
+  {
+    "key": "smart.guide.kindGuide",
+    "file": "src/renderer/src/guide/GuidePanel.tsx",
+    "line": 650,
+    "english": "Guide",
+    "sample": {}
+  },
+  {
+    "key": "smart.guide.language",
+    "file": "src/renderer/src/guide/GuidePanel.tsx",
+    "line": 654,
+    "english": "Language",
+    "sample": {}
+  },
+  {
+    "key": "smart.guide.language",
+    "file": "src/renderer/src/guide/GuidePanel.tsx",
+    "line": 656,
+    "english": "Language",
+    "sample": {}
+  },
+  {
+    "key": "smart.guide.steps",
+    "file": "src/renderer/src/guide/GuidePanel.tsx",
+    "line": 666,
+    "english": "Steps",
+    "sample": {}
+  },
+  {
+    "key": "smart.guide.steps",
+    "file": "src/renderer/src/guide/GuidePanel.tsx",
+    "line": 668,
+    "english": "Steps",
+    "sample": {}
+  },
+  {
+    "key": "smart.guide.fromBadges",
+    "file": "src/renderer/src/guide/GuidePanel.tsx",
+    "line": 672,
+    "english": "From your step badges («badgeCount»)",
+    "sample": {
+      "n": "«badgeCount»"
+    }
+  },
+  {
+    "key": "smart.guide.fromClicks",
+    "file": "src/renderer/src/guide/GuidePanel.tsx",
+    "line": 676,
+    "english": "From every click",
+    "sample": {}
+  },
+  {
+    "key": "smart.guide.steps",
+    "file": "src/renderer/src/guide/GuidePanel.tsx",
+    "line": 699,
+    "english": "Steps",
+    "sample": {}
+  },
+  {
+    "key": "smart.guide.addStep",
+    "file": "src/renderer/src/guide/GuidePanel.tsx",
+    "line": 723,
+    "english": "Add a step at the playhead",
+    "sample": {}
+  },
+  {
+    "key": "smart.guide.makingShots",
+    "file": "src/renderer/src/guide/GuidePanel.tsx",
+    "line": 729,
+    "english": "Making screenshots",
+    "sample": {}
+  },
+  {
+    "key": "smart.guide.shotsReady",
+    "file": "src/renderer/src/guide/GuidePanel.tsx",
+    "line": 729,
+    "english": "«ready» of «total»",
+    "sample": {
+      "ready": "«ready»",
+      "total": "«total»"
+    }
+  },
+  {
+    "key": "smart.guide.shotsFailed",
+    "file": "src/renderer/src/guide/GuidePanel.tsx",
+    "line": 733,
+    "english": "Could not make the screenshots: «failed»",
+    "sample": {
+      "reason": "«failed»"
+    }
+  },
+  {
+    "key": "smart.guide.nextUntitled",
+    "file": "src/renderer/src/guide/GuidePanel.tsx",
+    "line": 736,
+    "english": "Next step without a title",
+    "sample": {}
+  },
+  {
+    "key": "smart.guide.checkShots",
+    "file": "src/renderer/src/guide/GuidePanel.tsx",
+    "line": 739,
+    "english": "Check screenshots",
+    "sample": {}
+  },
+  {
+    "key": "smart.guide.titlesAndNotes",
+    "file": "src/renderer/src/guide/GuidePanel.tsx",
+    "line": 744,
+    "english": "Titles and notes",
+    "sample": {}
+  },
+  {
+    "key": "smart.guide.titles",
+    "file": "src/renderer/src/guide/GuidePanel.tsx",
+    "line": 745,
+    "english": "Titles",
+    "sample": {}
+  },
+  {
+    "key": "smart.guide.titles",
+    "file": "src/renderer/src/guide/GuidePanel.tsx",
+    "line": 747,
+    "english": "Titles",
+    "sample": {}
+  },
+  {
+    "key": "smart.guide.titlesOffline",
+    "file": "src/renderer/src/guide/GuidePanel.tsx",
+    "line": 760,
+    "english": "From what you said (offline)",
+    "sample": {}
+  },
+  {
+    "key": "smart.guide.writeWith",
+    "file": "src/renderer/src/guide/GuidePanel.tsx",
+    "line": 774,
+    "english": "Write them with",
+    "sample": {}
+  },
+  {
+    "key": "smart.guide.writeWithLabel",
+    "file": "src/renderer/src/guide/GuidePanel.tsx",
+    "line": 781,
+    "english": "Write titles with",
+    "sample": {}
+  },
+  {
+    "key": "smart.guide.writing",
+    "file": "src/renderer/src/guide/GuidePanel.tsx",
+    "line": 803,
+    "english": "Writing…",
+    "sample": {}
+  },
+  {
+    "key": "smart.guide.writeTitles",
+    "file": "src/renderer/src/guide/GuidePanel.tsx",
+    "line": 803,
+    "english": "Write titles",
+    "sample": {}
+  },
+  {
+    "key": "smart.guide.useOfflineTitles",
+    "file": "src/renderer/src/guide/GuidePanel.tsx",
+    "line": 822,
+    "english": "Use offline titles",
+    "sample": {}
+  },
+  {
+    "key": "smart.guide.tidying",
+    "file": "src/renderer/src/guide/GuidePanel.tsx",
+    "line": 837,
+    "english": "Tidying…",
+    "sample": {}
+  },
+  {
+    "key": "smart.guide.tidyWith",
+    "file": "src/renderer/src/guide/GuidePanel.tsx",
+    "line": 837,
+    "english": "Tidy notes with",
+    "sample": {}
+  },
+  {
+    "key": "smart.guide.tidyWith",
+    "file": "src/renderer/src/guide/GuidePanel.tsx",
+    "line": 840,
+    "english": "Tidy notes with",
+    "sample": {}
+  },
+  {
+    "key": "smart.guide.format",
+    "file": "src/renderer/src/guide/GuidePanel.tsx",
+    "line": 861,
+    "english": "Format",
+    "sample": {}
+  },
+  {
+    "key": "smart.guide.format",
+    "file": "src/renderer/src/guide/GuidePanel.tsx",
+    "line": 863,
+    "english": "Format",
+    "sample": {}
+  },
+  {
+    "key": "smart.guide.pageSize",
+    "file": "src/renderer/src/guide/GuidePanel.tsx",
+    "line": 882,
+    "english": "Page size",
+    "sample": {}
+  },
+  {
+    "key": "smart.guide.a4",
+    "file": "src/renderer/src/guide/GuidePanel.tsx",
+    "line": 892,
+    "english": "A4",
+    "sample": {}
+  },
+  {
+    "key": "smart.guide.letter",
+    "file": "src/renderer/src/guide/GuidePanel.tsx",
+    "line": 893,
+    "english": "Letter",
+    "sample": {}
+  },
+  {
+    "key": "smart.guide.brandKit",
+    "file": "src/renderer/src/guide/GuidePanel.tsx",
+    "line": 900,
+    "english": "Use the brand kit",
+    "sample": {}
+  },
+  {
+    "key": "common.action.showInFolder",
+    "file": "src/renderer/src/guide/GuidePanel.tsx",
+    "line": 913,
+    "english": "Show in folder",
+    "sample": {}
+  },
+  {
+    "key": "smart.guide.tooBig",
+    "file": "src/renderer/src/guide/GuidePanel.tsx",
+    "line": 917,
+    "english": "This file is «value» MB: too big for some email. ",
+    "sample": {
+      "size": "«value»"
+    }
+  },
+  {
+    "key": "smart.guide.smaller",
+    "file": "src/renderer/src/guide/GuidePanel.tsx",
+    "line": 919,
+    "english": "Make it smaller",
+    "sample": {}
+  },
+  {
+    "key": "common.state.saving",
+    "file": "src/renderer/src/guide/GuidePanel.tsx",
+    "line": 930,
+    "english": "Saving…",
+    "sample": {}
+  },
+  {
+    "key": "smart.guide.copyGuide",
+    "file": "src/renderer/src/guide/GuidePanel.tsx",
+    "line": 933,
+    "english": "Copy guide",
+    "sample": {}
+  },
+  {
+    "key": "common.action.close",
+    "file": "src/renderer/src/guide/GuidePanel.tsx",
+    "line": 936,
+    "english": "Close",
+    "sample": {}
+  },
+  {
+    "key": "common.action.makeCaptions",
+    "file": "src/renderer/src/guide/GuidePanel.tsx",
+    "line": 1025,
+    "english": "Make captions",
+    "sample": {}
+  },
+  {
+    "key": "smart.guide.clicksOnly",
+    "file": "src/renderer/src/guide/GuidePanel.tsx",
+    "line": 1028,
+    "english": "Use clicks only",
+    "sample": {}
+  },
+  {
+    "key": "smart.guide.includeStep",
+    "file": "src/renderer/src/guide/GuidePanel.tsx",
+    "line": 1074,
+    "english": "Include step «n»",
+    "sample": {
+      "n": "«n»"
+    }
+  },
+  {
+    "key": "smart.guide.goTo",
+    "file": "src/renderer/src/guide/GuidePanel.tsx",
+    "line": 1083,
+    "english": "Go to «time»",
+    "sample": {
+      "time": "«time»"
+    }
+  },
+  {
+    "key": "smart.guide.viewShot",
+    "file": "src/renderer/src/guide/GuidePanel.tsx",
+    "line": 1086,
+    "english": "View screenshot for step «n» full size",
+    "sample": {
+      "n": "«n»"
+    }
+  },
+  {
+    "key": "smart.guide.shotAlt",
+    "file": "src/renderer/src/guide/GuidePanel.tsx",
+    "line": 1087,
+    "english": "Screenshot for step «n»",
+    "sample": {
+      "n": "«n»"
+    }
+  },
+  {
+    "key": "smart.guide.makingShot",
+    "file": "src/renderer/src/guide/GuidePanel.tsx",
+    "line": 1087,
+    "english": "Making the screenshot…",
+    "sample": {}
+  },
+  {
+    "key": "smart.guide.needsTitle",
+    "file": "src/renderer/src/guide/GuidePanel.tsx",
+    "line": 1092,
+    "english": "Needs a title",
+    "sample": {}
+  },
+  {
+    "key": "smart.guide.ai",
+    "file": "src/renderer/src/guide/GuidePanel.tsx",
+    "line": 1094,
+    "english": "AI",
+    "sample": {}
+  },
+  {
+    "key": "smart.guide.wholeScreen",
+    "file": "src/renderer/src/guide/GuidePanel.tsx",
+    "line": 1095,
+    "english": "Whole screen",
+    "sample": {}
+  },
+  {
+    "key": "smart.guide.stepTitle",
+    "file": "src/renderer/src/guide/GuidePanel.tsx",
+    "line": 1102,
+    "english": "Title of step «n»",
+    "sample": {
+      "n": "«n»"
+    }
+  },
+  {
+    "key": "smart.guide.stepType",
+    "file": "src/renderer/src/guide/GuidePanel.tsx",
+    "line": 1113,
+    "english": "What to type in step «n» (optional)",
+    "sample": {
+      "n": "«n»"
+    }
+  },
+  {
+    "key": "smart.guide.stepNote",
+    "file": "src/renderer/src/guide/GuidePanel.tsx",
+    "line": 1123,
+    "english": "What to know about step «n» (optional)",
+    "sample": {
+      "n": "«n»"
+    }
+  },
+  {
+    "key": "smart.guide.stepLink",
+    "file": "src/renderer/src/guide/GuidePanel.tsx",
+    "line": 1133,
+    "english": "This step has a link, address or file name nobody said. Check it before you share the guide.",
+    "sample": {}
+  },
+  {
+    "key": "smart.guide.useAllSaid",
+    "file": "src/renderer/src/guide/GuidePanel.tsx",
+    "line": 1138,
+    "english": "Use everything I said",
+    "sample": {}
+  },
+  {
+    "key": "smart.guide.wholeScreen",
+    "file": "src/renderer/src/guide/GuidePanel.tsx",
+    "line": 1141,
+    "english": "Whole screen",
+    "sample": {}
+  },
+  {
+    "key": "smart.guide.demoZoom",
+    "file": "src/renderer/src/guide/GuidePanel.tsx",
+    "line": 1145,
+    "english": "Zoom to the click in the demo",
+    "sample": {}
+  },
+  {
+    "key": "smart.guide.afterTyping",
+    "file": "src/renderer/src/guide/GuidePanel.tsx",
+    "line": 1157,
+    "english": "Show the screen after typing",
+    "sample": {}
+  },
+  {
+    "key": "smart.guide.blurArea",
+    "file": "src/renderer/src/guide/GuidePanel.tsx",
+    "line": 1166,
+    "english": "Blur an area…",
+    "sample": {}
+  },
+  {
+    "key": "smart.guide.blurTyped",
+    "file": "src/renderer/src/guide/GuidePanel.tsx",
+    "line": 1170,
+    "english": "Blur the typed text",
+    "sample": {}
+  },
+  {
+    "key": "smart.guide.copyShot",
+    "file": "src/renderer/src/guide/GuidePanel.tsx",
+    "line": 1174,
+    "english": "Copy screenshot",
+    "sample": {}
+  },
+  {
+    "key": "smart.guide.kindBug",
+    "file": "src/renderer/src/guide/GuidePanel.tsx",
+    "line": 1199,
+    "english": "Bug report",
+    "sample": {}
+  },
+  {
+    "key": "smart.guide.expected",
+    "file": "src/renderer/src/guide/GuidePanel.tsx",
+    "line": 1201,
+    "english": "Expected",
+    "sample": {}
+  },
+  {
+    "key": "smart.guide.expectedPlaceholder",
+    "file": "src/renderer/src/guide/GuidePanel.tsx",
+    "line": 1202,
+    "english": "What should happen",
+    "sample": {}
+  },
+  {
+    "key": "smart.guide.actual",
+    "file": "src/renderer/src/guide/GuidePanel.tsx",
+    "line": 1205,
+    "english": "Actual",
+    "sample": {}
+  },
+  {
+    "key": "smart.guide.actualPlaceholder",
+    "file": "src/renderer/src/guide/GuidePanel.tsx",
+    "line": 1206,
+    "english": "What happens instead",
+    "sample": {}
+  },
+  {
+    "key": "smart.guide.actualAtPlayhead",
+    "file": "src/renderer/src/guide/GuidePanel.tsx",
+    "line": 1210,
+    "english": "Show the screen at the playhead as Actual",
+    "sample": {}
+  },
+  {
+    "key": "common.action.remove",
+    "file": "src/renderer/src/guide/GuidePanel.tsx",
+    "line": 1214,
+    "english": "Remove",
+    "sample": {}
+  },
+  {
+    "key": "smart.guide.viewActual",
+    "file": "src/renderer/src/guide/GuidePanel.tsx",
+    "line": 1219,
+    "english": "View the Actual screenshot full size, whole screen",
+    "sample": {}
+  },
+  {
+    "key": "smart.guide.actualAlt",
+    "file": "src/renderer/src/guide/GuidePanel.tsx",
+    "line": 1220,
+    "english": "Actual screenshot",
+    "sample": {}
+  },
+  {
+    "key": "smart.guide.makingShot",
+    "file": "src/renderer/src/guide/GuidePanel.tsx",
+    "line": 1220,
+    "english": "Making the screenshot…",
+    "sample": {}
+  },
+  {
+    "key": "smart.guide.details",
+    "file": "src/renderer/src/guide/GuidePanel.tsx",
+    "line": 1223,
+    "english": "Details",
+    "sample": {}
+  },
+  {
+    "key": "smart.guide.details",
+    "file": "src/renderer/src/guide/GuidePanel.tsx",
+    "line": 1225,
+    "english": "Details",
+    "sample": {}
+  },
+  {
+    "key": "smart.guide.includeDetail",
+    "file": "src/renderer/src/guide/GuidePanel.tsx",
+    "line": 1229,
+    "english": "Include detail «value»",
+    "sample": {
+      "n": "«value»"
+    }
+  },
+  {
+    "key": "smart.guide.detail",
+    "file": "src/renderer/src/guide/GuidePanel.tsx",
+    "line": 1230,
+    "english": "Detail «value»",
+    "sample": {
+      "n": "«value»"
+    }
+  },
+  {
+    "key": "smart.guide.endScreen",
+    "file": "src/renderer/src/guide/GuidePanel.tsx",
+    "line": 1261,
+    "english": "End screen",
+    "sample": {}
+  },
+  {
+    "key": "smart.guide.heading",
+    "file": "src/renderer/src/guide/GuidePanel.tsx",
+    "line": 1266,
+    "english": "Heading",
+    "sample": {}
+  },
+  {
+    "key": "smart.guide.buttonLabel",
+    "file": "src/renderer/src/guide/GuidePanel.tsx",
+    "line": 1270,
+    "english": "Button label",
+    "sample": {}
+  },
+  {
+    "key": "smart.guide.link",
+    "file": "src/renderer/src/guide/GuidePanel.tsx",
+    "line": 1274,
+    "english": "Link",
+    "sample": {}
+  },
+  {
+    "key": "smart.guide.linkPlaceholder",
+    "file": "src/renderer/src/guide/GuidePanel.tsx",
+    "line": 1278,
+    "english": "https://",
+    "sample": {}
+  },
+  {
+    "key": "smart.guide.linkRule",
+    "file": "src/renderer/src/guide/GuidePanel.tsx",
+    "line": 1287,
+    "english": "Use a plain https:// link of up to 300 characters, with no name or password in it.",
+    "sample": {}
+  },
+  {
+    "key": "smart.guide.checkShotsTitle",
+    "file": "src/renderer/src/guide/GuidePanel.tsx",
+    "line": 1314,
+    "english": "Check the screenshots",
+    "sample": {}
+  },
+  {
+    "key": "smart.guide.checkGuideTitle",
+    "file": "src/renderer/src/guide/GuidePanel.tsx",
+    "line": 1314,
+    "english": "Check the guide",
+    "sample": {}
+  },
+  {
+    "key": "smart.guide.checkNow",
+    "file": "src/renderer/src/guide/GuidePanel.tsx",
+    "line": 1324,
+    "english": "Check now",
+    "sample": {}
+  },
+  {
+    "key": "smart.guide.saveAnyway",
+    "file": "src/renderer/src/guide/GuidePanel.tsx",
+    "line": 1327,
+    "english": "Save anyway",
+    "sample": {}
+  },
+  {
+    "key": "smart.guide.goBack",
+    "file": "src/renderer/src/guide/GuidePanel.tsx",
+    "line": 1333,
+    "english": "Go back",
+    "sample": {}
+  },
+  {
+    "key": "smart.guide.saveAnyway",
+    "file": "src/renderer/src/guide/GuidePanel.tsx",
+    "line": 1336,
+    "english": "Save anyway",
+    "sample": {}
+  },
+  {
+    "key": "smart.guide.note",
+    "file": "src/renderer/src/guide/GuidePanel.tsx",
+    "line": 53,
+    "english": "Each click, shortcut and stretch of typing is a step. Check each screenshot at full size before you share the guide: it shows what was on screen. Areas you blurred or pixelated stay hidden.",
+    "sample": {}
+  },
+  {
+    "key": "smart.guide.noClicks",
+    "file": "src/renderer/src/guide/GuidePanel.tsx",
+    "line": 54,
+    "english": "No clicks were recorded, so a change of screen is a step too. Add or hide steps as you need.",
+    "sample": {}
+  },
+  {
+    "key": "smart.guide.nothing",
+    "file": "src/renderer/src/guide/GuidePanel.tsx",
+    "line": 55,
+    "english": "This recording has no clicks, key presses or changes of screen to make steps from. Add steps at the playhead.",
+    "sample": {}
+  },
+  {
+    "key": "smart.guide.makeCaptionsFirst",
+    "file": "src/renderer/src/guide/GuidePanel.tsx",
+    "line": 56,
+    "english": "Make captions first: step titles and notes come from what you say.",
+    "sample": {}
+  },
+  {
+    "key": "smart.guide.tooMany",
+    "file": "src/renderer/src/guide/GuidePanel.tsx",
+    "line": 57,
+    "english": "Only the first 200 steps are listed. Hide the ones you do not need or cut the video into parts.",
+    "sample": {}
+  },
+  {
+    "key": "smart.guide.nothingSaid",
+    "file": "src/renderer/src/guide/GuidePanel.tsx",
+    "line": 58,
+    "english": "Nothing was said near these steps.",
+    "sample": {}
+  },
+  {
+    "key": "smart.guide.linkQuestion",
+    "file": "src/renderer/src/guide/GuidePanel.tsx",
+    "line": 59,
+    "english": "This guide has a link, address or file name nobody said. Save anyway?",
+    "sample": {}
+  },
+  {
+    "key": "smart.guide.outside",
+    "file": "src/renderer/src/guide/GuidePanel.tsx",
+    "line": 60,
+    "english": "The click was outside the recorded area.",
+    "sample": {}
+  },
+  {
+    "key": "smart.guide.typedHint",
+    "file": "src/renderer/src/guide/GuidePanel.tsx",
+    "line": 61,
+    "english": "Later screenshots can still show what you typed.",
+    "sample": {}
+  },
+  {
+    "key": "smart.guide.blurHint",
+    "file": "src/renderer/src/guide/GuidePanel.tsx",
+    "line": 62,
+    "english": "Drag the box over what to hide. The guide and the video both hide it.",
+    "sample": {}
+  },
+  {
+    "key": "smart.guide.sendShots",
+    "file": "src/renderer/src/guide/GuidePanel.tsx",
+    "line": 64,
+    "english": "Also send the screenshots",
+    "sample": {}
+  },
+  {
+    "key": "smart.guide.preparingPictures",
+    "file": "src/renderer/src/guide/GuidePanel.tsx",
+    "line": 65,
+    "english": "Getting the screenshots ready to send…",
+    "sample": {}
+  },
+  {
+    "key": "smart.guide.noPictures",
+    "file": "src/renderer/src/guide/GuidePanel.tsx",
+    "line": 66,
+    "english": "No screenshot is ready to send.",
+    "sample": {}
+  },
+  {
+    "key": "smart.guide.format.pdf",
+    "file": "src/renderer/src/guide/GuidePanel.tsx",
+    "line": 68,
+    "english": "PDF",
+    "sample": {}
+  },
+  {
+    "key": "smart.guide.format.html",
+    "file": "src/renderer/src/guide/GuidePanel.tsx",
+    "line": 70,
+    "english": "HTML",
+    "sample": {}
+  },
+  {
+    "key": "smart.guide.format.markdown",
+    "file": "src/renderer/src/guide/GuidePanel.tsx",
+    "line": 71,
+    "english": "Markdown",
+    "sample": {}
+  },
+  {
+    "key": "smart.guide.format.demo",
+    "file": "src/renderer/src/guide/GuidePanel.tsx",
+    "line": 72,
+    "english": "Click-through demo",
+    "sample": {}
+  },
+  {
+    "key": "smart.guide.count.steps",
+    "file": "src/renderer/src/guide/GuidePanel.tsx",
+    "line": 83,
+    "english": [
+      "0 steps",
+      "1 step",
+      "2 steps",
+      "1000 steps"
+    ],
+    "sample": [
+      {
+        "count": 0,
+        "n": "0"
+      },
+      {
+        "count": 1,
+        "n": "1"
+      },
+      {
+        "count": 2,
+        "n": "2"
+      },
+      {
+        "count": 1000,
+        "n": "1000"
+      }
+    ]
+  },
+  {
+    "key": "smart.guide.check.unchecked",
+    "file": "src/renderer/src/guide/GuidePanel.tsx",
+    "line": 93,
+    "english": [
+      "0 screenshots have not been checked at full size.",
+      "1 screenshot has not been checked at full size.",
+      "2 screenshots have not been checked at full size.",
+      "1000 screenshots have not been checked at full size."
+    ],
+    "sample": [
+      {
+        "count": 0,
+        "n": "0"
+      },
+      {
+        "count": 1,
+        "n": "1"
+      },
+      {
+        "count": 2,
+        "n": "2"
+      },
+      {
+        "count": 1000,
+        "n": "1000"
+      }
+    ]
+  },
+  {
+    "key": "smart.guide.typedIn",
+    "file": "src/renderer/src/guide/GuidePanel.tsx",
+    "line": 110,
+    "english": "May show what you typed in step 4",
+    "sample": {
+      "n": "4"
+    }
+  },
+  {
+    "key": "smart.guide.stepLabel",
+    "file": "src/renderer/src/guide/GuidePanel.tsx",
+    "line": 401,
+    "english": "step 4",
+    "sample": {
+      "n": "4"
+    }
+  },
+  {
+    "key": "smart.guide.actualLabel",
+    "file": "src/renderer/src/guide/GuidePanel.tsx",
+    "line": 906,
+    "english": "Actual",
+    "sample": {}
+  },
+  {
+    "key": "smart.guide.name.step",
+    "file": "src/renderer/src/guide/GuidePanel.tsx",
+    "line": 1023,
+    "english": "Step 4",
+    "sample": {
+      "n": "4"
+    }
+  },
+  {
+    "key": "smart.guide.save.pdf",
+    "file": "src/renderer/src/guide/GuidePanel.tsx",
+    "line": 69,
+    "english": "Save PDF…",
+    "sample": {}
+  },
+  {
+    "key": "smart.guide.save.html",
+    "file": "src/renderer/src/guide/GuidePanel.tsx",
+    "line": 70,
+    "english": "Save HTML…",
+    "sample": {}
+  },
+  {
+    "key": "smart.guide.save.markdown",
+    "file": "src/renderer/src/guide/GuidePanel.tsx",
+    "line": 71,
+    "english": "Save Markdown…",
+    "sample": {}
+  },
+  {
+    "key": "smart.guide.save.demo",
+    "file": "src/renderer/src/guide/GuidePanel.tsx",
+    "line": 72,
+    "english": "Save demo…",
+    "sample": {}
+  },
+  {
+    "key": "smart.guide.count.hidden",
+    "file": "src/renderer/src/guide/GuidePanel.tsx",
+    "line": 84,
+    "english": "4 hidden",
+    "sample": {
+      "n": "4"
+    }
+  },
+  {
+    "key": "smart.guide.count.untitled",
+    "file": "src/renderer/src/guide/GuidePanel.tsx",
+    "line": 85,
+    "english": [
+      "0 need a title",
+      "1 needs a title",
+      "2 need a title",
+      "1000 need a title"
+    ],
+    "sample": [
+      {
+        "count": 0,
+        "n": "0"
+      },
+      {
+        "count": 1,
+        "n": "1"
+      },
+      {
+        "count": 2,
+        "n": "2"
+      },
+      {
+        "count": 1000,
+        "n": "1000"
+      }
+    ]
+  },
+  {
+    "key": "smart.guide.count.typed",
+    "file": "src/renderer/src/guide/GuidePanel.tsx",
+    "line": 86,
+    "english": "3 may show typing",
+    "sample": {
+      "n": "3"
+    }
+  },
+  {
+    "key": "smart.guide.check.typed",
+    "file": "src/renderer/src/guide/GuidePanel.tsx",
+    "line": 95,
+    "english": "2 may show what you typed",
+    "sample": {
+      "n": "2"
+    }
+  },
+  {
+    "key": "smart.guide.check.whole",
+    "file": "src/renderer/src/guide/GuidePanel.tsx",
+    "line": 96,
+    "english": [
+      "0 show the whole screen",
+      "1 shows the whole screen",
+      "2 show the whole screen",
+      "1000 show the whole screen"
+    ],
+    "sample": [
+      {
+        "count": 0,
+        "n": "0"
+      },
+      {
+        "count": 1,
+        "n": "1"
+      },
+      {
+        "count": 2,
+        "n": "2"
+      },
+      {
+        "count": 1000,
+        "n": "1000"
+      }
+    ]
+  },
+  {
+    "key": "smart.guide.check.now",
+    "file": "src/renderer/src/guide/GuidePanel.tsx",
+    "line": 98,
+    "english": "Check them now?",
+    "sample": {}
+  },
+  {
+    "key": "smart.guide.typed",
+    "file": "src/renderer/src/guide/GuidePanel.tsx",
+    "line": 110,
+    "english": "May show what you typed",
+    "sample": {}
+  },
+  {
+    "key": "smart.guide.actualTitle",
+    "file": "src/renderer/src/guide/GuidePanel.tsx",
+    "line": 907,
+    "english": "The Actual screenshot",
+    "sample": {}
+  },
+  {
+    "key": "smart.guide.name.typedIn",
+    "file": "src/renderer/src/guide/GuidePanel.tsx",
+    "line": 1024,
+    "english": "may show what you typed in step 4",
+    "sample": {
+      "n": "4"
+    }
+  },
+  {
+    "key": "smart.guide.name.typed",
+    "file": "src/renderer/src/guide/GuidePanel.tsx",
+    "line": 1024,
+    "english": "may show what you typed",
+    "sample": {}
+  },
+  {
+    "key": "smart.guide.name.untitled",
+    "file": "src/renderer/src/guide/GuidePanel.tsx",
+    "line": 1025,
+    "english": "needs a title",
+    "sample": {}
+  },
+  {
+    "key": "smart.guide.name.ai",
+    "file": "src/renderer/src/guide/GuidePanel.tsx",
+    "line": 1025,
+    "english": "written by AI",
+    "sample": {}
+  },
+  {
+    "key": "smart.guide.name.whole",
+    "file": "src/renderer/src/guide/GuidePanel.tsx",
+    "line": 1025,
+    "english": "whole screen",
+    "sample": {}
+  },
+  {
+    "key": "smart.guide.name.leftOut",
+    "file": "src/renderer/src/guide/GuidePanel.tsx",
+    "line": 1026,
+    "english": "left out",
+    "sample": {}
+  },
+  {
+    "key": "smart.guide.heading.guide",
+    "file": "src/renderer/src/guide/GuidePanel.tsx",
+    "line": 609,
+    "english": "Step-by-step guide",
+    "sample": {}
+  },
+  {
+    "key": "smart.shot.sendTitle",
+    "file": "src/renderer/src/guide/ShotViewer.tsx",
+    "line": 133,
+    "english": "These screenshots go to Claude",
+    "sample": {
+      "place": "Claude"
+    }
+  },
+  {
+    "key": "smart.shot.theService",
+    "file": "src/renderer/src/guide/ShotViewer.tsx",
+    "line": 133,
+    "english": "the AI service",
+    "sample": {}
+  },
+  {
+    "key": "smart.shot.title",
+    "file": "src/renderer/src/guide/ShotViewer.tsx",
+    "line": 133,
+    "english": "Screenshot for step 4 of 12",
+    "sample": {
+      "label": "step 4",
+      "total": "12"
+    }
+  },
+  {
+    "key": "smart.clips.title",
+    "file": "src/renderer/src/clips/ShortClipsPanel.tsx",
+    "line": 387,
+    "english": "Short clips",
+    "sample": {}
+  },
+  {
+    "key": "smart.clips.title",
+    "file": "src/renderer/src/clips/ShortClipsPanel.tsx",
+    "line": 389,
+    "english": "Short clips",
+    "sample": {}
+  },
+  {
+    "key": "common.action.close",
+    "file": "src/renderer/src/clips/ShortClipsPanel.tsx",
+    "line": 391,
+    "english": "Close",
+    "sample": {}
+  },
+  {
+    "key": "smart.clips.focus",
+    "file": "src/renderer/src/clips/ShortClipsPanel.tsx",
+    "line": 406,
+    "english": "Focus on (optional)",
+    "sample": {}
+  },
+  {
+    "key": "smart.clips.focusPlaceholder",
+    "file": "src/renderer/src/clips/ShortClipsPanel.tsx",
+    "line": 412,
+    "english": "billing, export",
+    "sample": {}
+  },
+  {
+    "key": "smart.clips.focusHint",
+    "file": "src/renderer/src/clips/ShortClipsPanel.tsx",
+    "line": 419,
+    "english": "Moments that mention these words rank higher.",
+    "sample": {}
+  },
+  {
+    "key": "common.label.length",
+    "file": "src/renderer/src/clips/ShortClipsPanel.tsx",
+    "line": 423,
+    "english": "Length",
+    "sample": {}
+  },
+  {
+    "key": "common.label.captions",
+    "file": "src/renderer/src/clips/ShortClipsPanel.tsx",
+    "line": 438,
+    "english": "Captions",
+    "sample": {}
+  },
+  {
+    "key": "smart.clips.noCaptions",
+    "file": "src/renderer/src/clips/ShortClipsPanel.tsx",
+    "line": 442,
+    "english": "No captions yet:",
+    "sample": {}
+  },
+  {
+    "key": "common.action.makeCaptions",
+    "file": "src/renderer/src/clips/ShortClipsPanel.tsx",
+    "line": 444,
+    "english": "Make captions",
+    "sample": {}
+  },
+  {
+    "key": "common.action.stop",
+    "file": "src/renderer/src/clips/ShortClipsPanel.tsx",
+    "line": 457,
+    "english": "Stop",
+    "sample": {}
+  },
+  {
+    "key": "common.action.makeCaptions",
+    "file": "src/renderer/src/clips/ShortClipsPanel.tsx",
+    "line": 468,
+    "english": "Make captions",
+    "sample": {}
+  },
+  {
+    "key": "smart.clips.activityOnly",
+    "file": "src/renderer/src/clips/ShortClipsPanel.tsx",
+    "line": 471,
+    "english": "Use activity only",
+    "sample": {}
+  },
+  {
+    "key": "smart.clips.moments",
+    "file": "src/renderer/src/clips/ShortClipsPanel.tsx",
+    "line": 479,
+    "english": "Moments",
+    "sample": {}
+  },
+  {
+    "key": "smart.clips.makeClip",
+    "file": "src/renderer/src/clips/ShortClipsPanel.tsx",
+    "line": 490,
+    "english": "Make clip «n1»",
+    "sample": {
+      "n": "«n1»"
+    }
+  },
+  {
+    "key": "smart.clips.playClip",
+    "file": "src/renderer/src/clips/ShortClipsPanel.tsx",
+    "line": 514,
+    "english": "Play clip «n1»",
+    "sample": {
+      "n": "«n1»"
+    }
+  },
+  {
+    "key": "common.action.stop",
+    "file": "src/renderer/src/clips/ShortClipsPanel.tsx",
+    "line": 515,
+    "english": "Stop",
+    "sample": {}
+  },
+  {
+    "key": "common.action.play",
+    "file": "src/renderer/src/clips/ShortClipsPanel.tsx",
+    "line": 515,
+    "english": "Play",
+    "sample": {}
+  },
+  {
+    "key": "smart.clips.made",
+    "file": "src/renderer/src/clips/ShortClipsPanel.tsx",
+    "line": 519,
+    "english": "Made",
+    "sample": {}
+  },
+  {
+    "key": "smart.clips.openClip",
+    "file": "src/renderer/src/clips/ShortClipsPanel.tsx",
+    "line": 520,
+    "english": "Open clip «n1»",
+    "sample": {
+      "n": "«n1»"
+    }
+  },
+  {
+    "key": "smart.clips.open",
+    "file": "src/renderer/src/clips/ShortClipsPanel.tsx",
+    "line": 521,
+    "english": "Open",
+    "sample": {}
+  },
+  {
+    "key": "smart.chapters.names",
+    "file": "src/renderer/src/clips/ShortClipsPanel.tsx",
+    "line": 534,
+    "english": "Names",
+    "sample": {}
+  },
+  {
+    "key": "smart.clips.namesOffline",
+    "file": "src/renderer/src/clips/ShortClipsPanel.tsx",
+    "line": 538,
+    "english": "From what you say",
+    "sample": {}
+  },
+  {
+    "key": "smart.clips.namesWith",
+    "file": "src/renderer/src/clips/ShortClipsPanel.tsx",
+    "line": 542,
+    "english": "With",
+    "sample": {}
+  },
+  {
+    "key": "smart.clips.namesWithLabel",
+    "file": "src/renderer/src/clips/ShortClipsPanel.tsx",
+    "line": 543,
+    "english": "Name the clips with",
+    "sample": {}
+  },
+  {
+    "key": "smart.chapters.choose",
+    "file": "src/renderer/src/clips/ShortClipsPanel.tsx",
+    "line": 544,
+    "english": "Choose…",
+    "sample": {}
+  },
+  {
+    "key": "smart.chapters.noAiProvider",
+    "file": "src/renderer/src/clips/ShortClipsPanel.tsx",
+    "line": 544,
+    "english": "No AI provider",
+    "sample": {}
+  },
+  {
+    "key": "common.action.stop",
+    "file": "src/renderer/src/clips/ShortClipsPanel.tsx",
+    "line": 577,
+    "english": "Stop",
+    "sample": {}
+  },
+  {
+    "key": "smart.clips.copiesMade",
+    "file": "src/renderer/src/clips/ShortClipsPanel.tsx",
+    "line": 593,
+    "english": "Copies made",
+    "sample": {}
+  },
+  {
+    "key": "smart.clips.madeFrom",
+    "file": "src/renderer/src/clips/ShortClipsPanel.tsx",
+    "line": 615,
+    "english": "Made from this video",
+    "sample": {}
+  },
+  {
+    "key": "smart.clips.openName",
+    "file": "src/renderer/src/clips/ShortClipsPanel.tsx",
+    "line": 620,
+    "english": "Open «name»",
+    "sample": {
+      "name": "«name»"
+    }
+  },
+  {
+    "key": "smart.clips.open",
+    "file": "src/renderer/src/clips/ShortClipsPanel.tsx",
+    "line": 621,
+    "english": "Open",
+    "sample": {}
+  },
+  {
+    "key": "smart.clips.shape",
+    "file": "src/renderer/src/clips/ShortClipsPanel.tsx",
+    "line": 637,
+    "english": "Shape",
+    "sample": {}
+  },
+  {
+    "key": "smart.clips.playing",
+    "file": "src/renderer/src/clips/ShortClipsPanel.tsx",
+    "line": 510,
+    "english": "Playing · 0:12 of 0:45",
+    "sample": {
+      "at": "0:12",
+      "length": "0:45"
+    }
+  },
+  {
+    "key": "smart.clips.length.any",
+    "file": "src/renderer/src/clips/ShortClipsPanel.tsx",
+    "line": 37,
+    "english": "Any (15–90 s)",
+    "sample": {}
+  },
+  {
+    "key": "smart.clips.length.short",
+    "file": "src/renderer/src/clips/ShortClipsPanel.tsx",
+    "line": 39,
+    "english": "Under 60 s",
+    "sample": {}
+  },
+  {
+    "key": "smart.clips.length.long",
+    "file": "src/renderer/src/clips/ShortClipsPanel.tsx",
+    "line": 40,
+    "english": "60–90 s",
+    "sample": {}
+  },
+  {
+    "key": "smart.clips.shape.vertical",
+    "file": "src/renderer/src/clips/ShortClipsPanel.tsx",
+    "line": 42,
+    "english": "Vertical 9:16",
+    "sample": {}
+  },
+  {
+    "key": "smart.clips.shape.square",
+    "file": "src/renderer/src/clips/ShortClipsPanel.tsx",
+    "line": 44,
+    "english": "Square 1:1",
+    "sample": {}
+  },
+  {
+    "key": "smart.clips.shape.same",
+    "file": "src/renderer/src/clips/ShortClipsPanel.tsx",
+    "line": 45,
+    "english": "Same as this video",
+    "sample": {}
+  },
+  {
+    "key": "smart.clips.range",
+    "file": "src/renderer/src/clips/ShortClipsPanel.tsx",
+    "line": 58,
+    "english": "0:42 to 1:27 · 45 s",
+    "sample": {
+      "from": "0:42",
+      "to": "1:27",
+      "seconds": "45"
+    }
+  },
+  {
+    "key": "smart.clips.stopped",
+    "file": "src/renderer/src/clips/ShortClipsPanel.tsx",
+    "line": 339,
+    "english": [
+      "Stopped: made 0 copies.",
+      "Stopped: made 1 copy.",
+      "Stopped: made 2 copies.",
+      "Stopped: made 1000 copies."
+    ],
+    "sample": [
+      {
+        "count": 0,
+        "n": "0"
+      },
+      {
+        "count": 1,
+        "n": "1"
+      },
+      {
+        "count": 2,
+        "n": "2"
+      },
+      {
+        "count": 1000,
+        "n": "1000"
+      }
+    ]
+  },
+  {
+    "key": "smart.clips.makeNone",
+    "file": "src/renderer/src/clips/ShortClipsPanel.tsx",
+    "line": 381,
+    "english": "Make copies",
+    "sample": {}
+  },
+  {
+    "key": "smart.clips.madeCopies",
+    "file": "src/renderer/src/clips/ShortClipsPanel.tsx",
+    "line": 338,
+    "english": [
+      "Made 0 copies. Your original “Demo” is unchanged.",
+      "Made 1 copy. Your original “Demo” is unchanged.",
+      "Made 2 copies. Your original “Demo” is unchanged.",
+      "Made 1000 copies. Your original “Demo” is unchanged."
+    ],
+    "sample": [
+      {
+        "count": 0,
+        "n": "0",
+        "name": "Demo"
+      },
+      {
+        "count": 1,
+        "n": "1",
+        "name": "Demo"
+      },
+      {
+        "count": 2,
+        "n": "2",
+        "name": "Demo"
+      },
+      {
+        "count": 1000,
+        "n": "1000",
+        "name": "Demo"
+      }
+    ]
+  },
+  {
+    "key": "smart.clips.makeCopies",
+    "file": "src/renderer/src/clips/ShortClipsPanel.tsx",
+    "line": 380,
+    "english": [
+      "Make 0 copies",
+      "Make 1 copy",
+      "Make 2 copies",
+      "Make 1000 copies"
+    ],
+    "sample": [
+      {
+        "count": 0,
+        "n": "0"
+      },
+      {
+        "count": 1,
+        "n": "1"
+      },
+      {
+        "count": 2,
+        "n": "2"
+      },
+      {
+        "count": 1000,
+        "n": "1000"
+      }
+    ]
+  },
+  {
+    "key": "smart.clips.words.intro",
+    "file": "src/renderer/src/clips/clipsRun.ts",
+    "line": 23,
+    "english": "The best moments to post on their own. Each one you make becomes a copy; this video stays as it is.",
+    "sample": {}
+  },
+  {
+    "key": "smart.clips.words.silent",
+    "file": "src/renderer/src/clips/clipsRun.ts",
+    "line": 23,
+    "english": "No speech was found, so these are the moments with the most going on.",
+    "sample": {}
+  },
+  {
+    "key": "smart.clips.words.tooShort",
+    "file": "src/renderer/src/clips/clipsRun.ts",
+    "line": 23,
+    "english": "Too short for clips: post the whole video.",
+    "sample": {}
+  },
+  {
+    "key": "smart.clips.words.nothing",
+    "file": "src/renderer/src/clips/clipsRun.ts",
+    "line": 23,
+    "english": "Found no moment of 15 to 90 seconds to post on its own.",
+    "sample": {}
+  },
+  {
+    "key": "smart.clips.words.needsCaptions",
+    "file": "src/renderer/src/clips/clipsRun.ts",
+    "line": 23,
+    "english": "Make captions first: clips are picked from what you say.",
+    "sample": {}
+  },
+  {
+    "key": "smart.clips.words.noScreen",
+    "file": "src/renderer/src/clips/clipsRun.ts",
+    "line": 23,
+    "english": "Could not read the screen: moments come from what you say and do.",
+    "sample": {}
+  },
+  {
+    "key": "smart.clips.words.looking",
+    "file": "src/renderer/src/clips/clipsRun.ts",
+    "line": 23,
+    "english": "Looking at the screen…",
+    "sample": {}
+  },
+  {
+    "key": "smart.clips.words.linked",
+    "file": "src/renderer/src/clips/clipsRun.ts",
+    "line": 23,
+    "english": "The copies share this video's files: they take almost no space.",
+    "sample": {}
+  },
+  {
+    "key": "smart.clips.words.shortNeedsCaptions",
+    "file": "src/renderer/src/clips/clipsRun.ts",
+    "line": 23,
+    "english": "Make captions first: a shorter version keeps the sentences you say.",
+    "sample": {}
+  },
+  {
+    "key": "smart.clips.words.tooLittle",
+    "file": "src/renderer/src/clips/clipsRun.ts",
+    "line": 23,
+    "english": "Not enough clear speech for a shorter version.",
+    "sample": {}
+  },
+  {
+    "key": "smart.clips.words.naming",
+    "file": "src/renderer/src/clips/clipsRun.ts",
+    "line": 30,
+    "english": "Naming the clips with Claude…",
+    "sample": {
+      "place": "Claude"
+    }
+  },
+  {
+    "key": "smart.clips.words.oneDrive",
+    "file": "src/renderer/src/clips/clipsRun.ts",
+    "line": 32,
+    "english": "Each copy takes 85 MB: files in a OneDrive folder cannot be shared.",
+    "sample": {
+      "each": "85 MB"
+    }
+  },
+  {
+    "key": "smart.clips.words.noRoom",
+    "file": "src/renderer/src/clips/clipsRun.ts",
+    "line": 33,
+    "english": [
+      "These 0 copies need 85 MB; 40 MB is free.",
+      "This copy needs 85 MB; 40 MB is free.",
+      "These 2 copies need 85 MB; 40 MB is free.",
+      "These 1000 copies need 85 MB; 40 MB is free."
+    ],
+    "sample": [
+      {
+        "count": 0,
+        "n": "0",
+        "need": "85 MB",
+        "free": "40 MB"
+      },
+      {
+        "count": 1,
+        "n": "1",
+        "need": "85 MB",
+        "free": "40 MB"
+      },
+      {
+        "count": 2,
+        "n": "2",
+        "need": "85 MB",
+        "free": "40 MB"
+      },
+      {
+        "count": 1000,
+        "n": "1000",
+        "need": "85 MB",
+        "free": "40 MB"
+      }
+    ]
+  },
+  {
+    "key": "smart.clips.words.making",
+    "file": "src/renderer/src/clips/clipsRun.ts",
+    "line": 34,
+    "english": "Making copy 2 of 3…",
+    "sample": {
+      "i": "2",
+      "n": "3"
+    }
+  },
+  {
+    "key": "review.publish.noProvider",
+    "file": "src/renderer/src/publish/PublishDialog.tsx",
+    "line": 204,
+    "english": "Add an AI provider to write the copy. OpenAI, Gemini and Claude all can.",
+    "sample": {}
+  },
+  {
+    "key": "review.publish.generateCaptions",
+    "file": "src/renderer/src/publish/PublishDialog.tsx",
+    "line": 223,
+    "english": "Generate captions",
+    "sample": {}
+  },
+  {
+    "key": "review.publish.provider",
+    "file": "src/renderer/src/publish/PublishDialog.tsx",
+    "line": 233,
+    "english": "AI provider",
+    "sample": {}
+  },
+  {
+    "key": "review.publish.provider",
+    "file": "src/renderer/src/publish/PublishDialog.tsx",
+    "line": 234,
+    "english": "AI provider",
+    "sample": {}
+  },
+  {
+    "key": "review.publish.tone",
+    "file": "src/renderer/src/publish/PublishDialog.tsx",
+    "line": 243,
+    "english": "Tone",
+    "sample": {}
+  },
+  {
+    "key": "review.publish.tone",
+    "file": "src/renderer/src/publish/PublishDialog.tsx",
+    "line": 244,
+    "english": "Tone",
+    "sample": {}
+  },
+  {
+    "key": "common.label.length",
+    "file": "src/renderer/src/publish/PublishDialog.tsx",
+    "line": 247,
+    "english": "Length",
+    "sample": {}
+  },
+  {
+    "key": "common.label.length",
+    "file": "src/renderer/src/publish/PublishDialog.tsx",
+    "line": 248,
+    "english": "Length",
+    "sample": {}
+  },
+  {
+    "key": "review.publish.writeAllAgain",
+    "file": "src/renderer/src/publish/PublishDialog.tsx",
+    "line": 253,
+    "english": "Write all again",
+    "sample": {}
+  },
+  {
+    "key": "review.publish.writeAll",
+    "file": "src/renderer/src/publish/PublishDialog.tsx",
+    "line": 253,
+    "english": "Write all",
+    "sample": {}
+  },
+  {
+    "key": "review.publish.writing",
+    "file": "src/renderer/src/publish/PublishDialog.tsx",
+    "line": 256,
+    "english": "Writing… «done» of «length» done",
+    "sample": {
+      "done": "«done»",
+      "total": "«length»"
+    }
+  },
+  {
+    "key": "review.publish.stopAll",
+    "file": "src/renderer/src/publish/PublishDialog.tsx",
+    "line": 267,
+    "english": "Stop all",
+    "sample": {}
+  },
+  {
+    "key": "review.publish.shortClips",
+    "file": "src/renderer/src/publish/PublishDialog.tsx",
+    "line": 330,
+    "english": "Make short clips for Shorts and Reels…",
+    "sample": {}
+  },
+  {
+    "key": "review.publish.title",
+    "file": "src/renderer/src/publish/PublishDialog.tsx",
+    "line": 354,
+    "english": "Publish",
+    "sample": {}
+  },
+  {
+    "key": "review.publish.intro",
+    "file": "src/renderer/src/publish/PublishDialog.tsx",
+    "line": 357,
+    "english": "Text to post with your video, written from its captions and chapters. Check it before you post.",
+    "sample": {}
+  },
+  {
+    "key": "common.action.close",
+    "file": "src/renderer/src/publish/PublishDialog.tsx",
+    "line": 362,
+    "english": "Close",
+    "sample": {}
+  },
+  {
+    "key": "review.publish.stale",
+    "file": "src/renderer/src/publish/PublishDialog.tsx",
+    "line": 454,
+    "english": "Written from older captions: Regenerate to update.",
+    "sample": {}
+  },
+  {
+    "key": "review.publish.text",
+    "file": "src/renderer/src/publish/PublishDialog.tsx",
+    "line": 457,
+    "english": "«label» text",
+    "sample": {
+      "label": "«label»"
+    }
+  },
+  {
+    "key": "review.publish.notWrittenYet",
+    "file": "src/renderer/src/publish/PublishDialog.tsx",
+    "line": 460,
+    "english": "Not written yet.",
+    "sample": {}
+  },
+  {
+    "key": "review.publish.chapters",
+    "file": "src/renderer/src/publish/PublishDialog.tsx",
+    "line": 469,
+    "english": "Chapters (from your timeline)",
+    "sample": {}
+  },
+  {
+    "key": "review.publish.addChapters",
+    "file": "src/renderer/src/publish/PublishDialog.tsx",
+    "line": 484,
+    "english": "Add chapters so viewers can jump:",
+    "sample": {}
+  },
+  {
+    "key": "review.publish.noChapters",
+    "file": "src/renderer/src/publish/PublishDialog.tsx",
+    "line": 490,
+    "english": "No chapters: add some in the Text tab and they appear here with their times.",
+    "sample": {}
+  },
+  {
+    "key": "review.publish.tags",
+    "file": "src/renderer/src/publish/PublishDialog.tsx",
+    "line": 498,
+    "english": "Tags",
+    "sample": {}
+  },
+  {
+    "key": "review.publish.tagsLabel",
+    "file": "src/renderer/src/publish/PublishDialog.tsx",
+    "line": 499,
+    "english": "YouTube tags",
+    "sample": {}
+  },
+  {
+    "key": "common.action.copy",
+    "file": "src/renderer/src/publish/PublishDialog.tsx",
+    "line": 505,
+    "english": "Copy",
+    "sample": {}
+  },
+  {
+    "key": "review.publish.copyTags",
+    "file": "src/renderer/src/publish/PublishDialog.tsx",
+    "line": 509,
+    "english": "Copy tags",
+    "sample": {}
+  },
+  {
+    "key": "common.action.stop",
+    "file": "src/renderer/src/publish/PublishDialog.tsx",
+    "line": 515,
+    "english": "Stop",
+    "sample": {}
+  },
+  {
+    "key": "common.action.regenerate",
+    "file": "src/renderer/src/publish/PublishDialog.tsx",
+    "line": 521,
+    "english": "Regenerate",
+    "sample": {}
+  },
+  {
+    "key": "review.publish.write",
+    "file": "src/renderer/src/publish/PublishDialog.tsx",
+    "line": 521,
+    "english": "Write",
+    "sample": {}
+  },
+  {
+    "key": "review.publish.stopUsing",
+    "file": "src/renderer/src/publish/PublishDialog.tsx",
+    "line": 528,
+    "english": "Stop using for exports",
+    "sample": {}
+  },
+  {
+    "key": "review.publish.useHint",
+    "file": "src/renderer/src/publish/PublishDialog.tsx",
+    "line": 531,
+    "english": "Save this description next to each export (Export › Also save › Description)",
+    "sample": {}
+  },
+  {
+    "key": "review.publish.update",
+    "file": "src/renderer/src/publish/PublishDialog.tsx",
+    "line": 532,
+    "english": "Update for exports",
+    "sample": {}
+  },
+  {
+    "key": "review.publish.use",
+    "file": "src/renderer/src/publish/PublishDialog.tsx",
+    "line": 532,
+    "english": "Use for exports",
+    "sample": {}
+  },
+  {
+    "key": "review.publish.rename",
+    "file": "src/renderer/src/publish/PublishDialog.tsx",
+    "line": 538,
+    "english": "Rename the recording",
+    "sample": {}
+  },
+  {
+    "key": "review.publish.characters",
+    "file": "src/renderer/src/publish/PublishDialog.tsx",
+    "line": 550,
+    "english": "«n» of «limit» characters",
+    "sample": {
+      "n": "«n»",
+      "limit": "«limit»"
+    }
+  },
+  {
+    "key": "review.publish.saved",
+    "file": "src/renderer/src/publish/PublishDialog.tsx",
+    "line": 555,
+    "english": "Saved: exports with Also save › Description use this text and the chapters.",
+    "sample": {}
+  },
+  {
+    "key": "review.publish.creditLine",
+    "file": "src/renderer/src/publish/PublishDialog.tsx",
+    "line": 482,
+    "english": "Last line, for the music: Music: “Morning” by Ava",
+    "sample": {
+      "credit": "Music: “Morning” by Ava"
+    }
+  },
+  {
+    "key": "review.publish.kind.youtube",
+    "file": "src/renderer/src/publish/publishWords.ts",
+    "line": 14,
+    "english": "YouTube description",
+    "sample": {}
+  },
+  {
+    "key": "review.publish.kind.linkedin",
+    "file": "src/renderer/src/publish/publishWords.ts",
+    "line": 16,
+    "english": "LinkedIn post",
+    "sample": {}
+  },
+  {
+    "key": "review.publish.kind.xpost",
+    "file": "src/renderer/src/publish/publishWords.ts",
+    "line": 18,
+    "english": "X post",
+    "sample": {}
+  },
+  {
+    "key": "review.publish.kind.article",
+    "file": "src/renderer/src/publish/publishWords.ts",
+    "line": 20,
+    "english": "Help-centre article",
+    "sample": {}
+  },
+  {
+    "key": "review.publish.kind.releaseNotes",
+    "file": "src/renderer/src/publish/publishWords.ts",
+    "line": 22,
+    "english": "Release notes",
+    "sample": {}
+  },
+  {
+    "key": "review.publish.kind.title",
+    "file": "src/renderer/src/publish/publishWords.ts",
+    "line": 24,
+    "english": "Title",
+    "sample": {}
+  },
+  {
+    "key": "review.publish.kind.summary",
+    "file": "src/renderer/src/publish/publishWords.ts",
+    "line": 26,
+    "english": "Summary",
+    "sample": {}
+  },
+  {
+    "key": "review.publish.tone.friendly",
+    "file": "src/renderer/src/publish/publishWords.ts",
+    "line": 33,
+    "english": "Friendly",
+    "sample": {}
+  },
+  {
+    "key": "review.publish.tone.professional",
+    "file": "src/renderer/src/publish/publishWords.ts",
+    "line": 34,
+    "english": "Professional",
+    "sample": {}
+  },
+  {
+    "key": "review.publish.tone.casual",
+    "file": "src/renderer/src/publish/publishWords.ts",
+    "line": 35,
+    "english": "Casual",
+    "sample": {}
+  },
+  {
+    "key": "review.publish.length.short",
+    "file": "src/renderer/src/publish/publishWords.ts",
+    "line": 40,
+    "english": "Short",
+    "sample": {}
+  },
+  {
+    "key": "review.publish.length.normal",
+    "file": "src/renderer/src/publish/publishWords.ts",
+    "line": 41,
+    "english": "Normal",
+    "sample": {}
+  },
+  {
+    "key": "review.publish.blocker.noSound",
+    "file": "src/renderer/src/publish/publishWords.ts",
+    "line": 47,
+    "english": "This recording has no sound, so there is nothing to write from.",
+    "sample": {}
+  },
+  {
+    "key": "review.publish.blocker.noCaptions",
+    "file": "src/renderer/src/publish/publishWords.ts",
+    "line": 49,
+    "english": "No captions yet. The copy is written from what is said, so make the captions first.",
+    "sample": {}
+  },
+  {
+    "key": "review.publish.blocker.tooLittle",
+    "file": "src/renderer/src/publish/publishWords.ts",
+    "line": 51,
+    "english": "There is too little speech in the captions to write from.",
+    "sample": {}
+  },
+  {
+    "key": "review.publish.sendsLocal",
+    "file": "src/renderer/src/publish/PublishDialog.tsx",
+    "line": 38,
+    "english": "Writes from the caption text on this PC: nothing is sent.",
+    "sample": {}
+  },
+  {
+    "key": "review.publish.copied",
+    "file": "src/renderer/src/publish/PublishDialog.tsx",
+    "line": 199,
+    "english": "X post copied",
+    "sample": {
+      "what": "X post"
+    }
+  },
+  {
+    "key": "review.publish.notCopied",
+    "file": "src/renderer/src/publish/PublishDialog.tsx",
+    "line": 200,
+    "english": "X post could not be copied",
+    "sample": {
+      "what": "X post"
+    }
+  },
+  {
+    "key": "review.publish.usedForExports",
+    "file": "src/renderer/src/publish/PublishDialog.tsx",
+    "line": 295,
+    "english": "The export's description file will use this text",
+    "sample": {}
+  },
+  {
+    "key": "review.publish.stoppedForExports",
+    "file": "src/renderer/src/publish/PublishDialog.tsx",
+    "line": 303,
+    "english": "The export's description is back to the standard one",
+    "sample": {}
+  },
+  {
+    "key": "review.publish.renamed",
+    "file": "src/renderer/src/publish/PublishDialog.tsx",
+    "line": 309,
+    "english": "Recording renamed",
+    "sample": {}
+  },
+  {
+    "key": "review.publish.status.idle",
+    "file": "src/renderer/src/publish/PublishDialog.tsx",
+    "line": 412,
+    "english": "Not written yet",
+    "sample": {}
+  },
+  {
+    "key": "review.publish.status.stopped",
+    "file": "src/renderer/src/publish/PublishDialog.tsx",
+    "line": 415,
+    "english": "Stopped",
+    "sample": {}
+  },
+  {
+    "key": "review.publish.sends",
+    "file": "src/renderer/src/publish/PublishDialog.tsx",
+    "line": 37,
+    "english": "Sends the caption text (not the sound) to Claude.",
+    "sample": {
+      "place": "Claude"
+    }
+  },
+  {
+    "key": "review.publish.status.waiting",
+    "file": "src/renderer/src/publish/PublishDialog.tsx",
+    "line": 411,
+    "english": "Waiting…",
+    "sample": {}
+  },
+  {
+    "key": "review.publish.status.writing",
+    "file": "src/renderer/src/publish/PublishDialog.tsx",
+    "line": 411,
+    "english": "Writing…",
+    "sample": {}
+  },
+  {
+    "key": "review.publish.status.done",
+    "file": "src/renderer/src/publish/PublishDialog.tsx",
+    "line": 411,
+    "english": "Written",
+    "sample": {}
+  },
+  {
+    "key": "captions.transcript.editByText",
+    "file": "src/renderer/src/editor/panels/TranscriptPanel.tsx",
+    "line": 84,
+    "english": "Edit by text",
+    "sample": {}
+  },
+  {
+    "key": "captions.transcript.hint",
+    "file": "src/renderer/src/editor/panels/TranscriptPanel.tsx",
+    "line": 85,
+    "english": "Cut the video by deleting words, like editing a document.",
+    "sample": {}
+  },
+  {
+    "key": "captions.transcript.noTranscript",
+    "file": "src/renderer/src/editor/panels/TranscriptPanel.tsx",
+    "line": 87,
+    "english": "This video has no transcript yet. Make captions first: the transcript comes with them.",
+    "sample": {}
+  },
+  {
+    "key": "captions.transcript.noSound",
+    "file": "src/renderer/src/editor/panels/TranscriptPanel.tsx",
+    "line": 89,
+    "english": "This recording has no sound to make a transcript from.",
+    "sample": {}
+  },
+  {
+    "key": "captions.transcript.title",
+    "file": "src/renderer/src/editor/panels/TranscriptPanel.tsx",
+    "line": 464,
+    "english": "Transcript",
+    "sample": {}
+  },
+  {
+    "key": "captions.transcript.cutTitle",
+    "file": "src/renderer/src/editor/panels/TranscriptPanel.tsx",
+    "line": 466,
+    "english": "Cut the selected words (Delete)",
+    "sample": {}
+  },
+  {
+    "key": "captions.transcript.restoreTitle",
+    "file": "src/renderer/src/editor/panels/TranscriptPanel.tsx",
+    "line": 469,
+    "english": "Bring the selected words back",
+    "sample": {}
+  },
+  {
+    "key": "captions.transcript.findFillers",
+    "file": "src/renderer/src/editor/panels/TranscriptPanel.tsx",
+    "line": 473,
+    "english": "Find fillers and retakes",
+    "sample": {}
+  },
+  {
+    "key": "captions.transcript.emphasiseTitle",
+    "file": "src/renderer/src/editor/panels/TranscriptPanel.tsx",
+    "line": 477,
+    "english": "Emphasise the selected words (Ctrl+B)",
+    "sample": {}
+  },
+  {
+    "key": "captions.transcript.boldMark",
+    "file": "src/renderer/src/editor/panels/TranscriptPanel.tsx",
+    "line": 478,
+    "english": "B",
+    "sample": {}
+  },
+  {
+    "key": "captions.transcript.emphasise",
+    "file": "src/renderer/src/editor/panels/TranscriptPanel.tsx",
+    "line": 478,
+    "english": "Emphasise",
+    "sample": {}
+  },
+  {
+    "key": "captions.transcript.position.label",
+    "file": "src/renderer/src/editor/panels/TranscriptPanel.tsx",
+    "line": 482,
+    "english": "Caption position",
+    "sample": {}
+  },
+  {
+    "key": "captions.transcript.positionTitle",
+    "file": "src/renderer/src/editor/panels/TranscriptPanel.tsx",
+    "line": 487,
+    "english": "Where the caption of the selected words shows: Auto follows the look",
+    "sample": {}
+  },
+  {
+    "key": "captions.transcript.position.auto",
+    "file": "src/renderer/src/editor/panels/TranscriptPanel.tsx",
+    "line": 490,
+    "english": "Auto",
+    "sample": {}
+  },
+  {
+    "key": "captions.transcript.position.top",
+    "file": "src/renderer/src/editor/panels/TranscriptPanel.tsx",
+    "line": 491,
+    "english": "Top",
+    "sample": {}
+  },
+  {
+    "key": "captions.transcript.position.bottom",
+    "file": "src/renderer/src/editor/panels/TranscriptPanel.tsx",
+    "line": 492,
+    "english": "Bottom",
+    "sample": {}
+  },
+  {
+    "key": "captions.transcript.howTo",
+    "file": "src/renderer/src/editor/panels/TranscriptPanel.tsx",
+    "line": 496,
+    "english": "Select words and press Delete to cut them. Click a word to go there.",
+    "sample": {}
+  },
+  {
+    "key": "captions.transcript.estimated",
+    "file": "src/renderer/src/editor/panels/TranscriptPanel.tsx",
+    "line": 497,
+    "english": "Some word times are estimated: cuts there may be less exact.",
+    "sample": {}
+  },
+  {
+    "key": "captions.transcript.earlier",
+    "file": "src/renderer/src/editor/panels/TranscriptPanel.tsx",
+    "line": 502,
+    "english": "Earlier",
+    "sample": {}
+  },
+  {
+    "key": "common.action.later",
+    "file": "src/renderer/src/editor/panels/TranscriptPanel.tsx",
+    "line": 508,
+    "english": "Later",
+    "sample": {}
+  },
+  {
+    "key": "captions.transcript.wordsLabel",
+    "file": "src/renderer/src/editor/panels/TranscriptPanel.tsx",
+    "line": 517,
+    "english": "Transcript words",
+    "sample": {}
+  },
+  {
+    "key": "captions.transcript.moreEmphasis",
+    "file": "src/renderer/src/editor/panels/TranscriptPanel.tsx",
+    "line": 597,
+    "english": "More emphasis",
+    "sample": {}
+  },
+  {
+    "key": "captions.transcript.moreEmphasis",
+    "file": "src/renderer/src/editor/panels/TranscriptPanel.tsx",
+    "line": 601,
+    "english": "More emphasis",
+    "sample": {}
+  },
+  {
+    "key": "captions.transcript.moreEmphasis",
+    "file": "src/renderer/src/editor/panels/TranscriptPanel.tsx",
+    "line": 610,
+    "english": "More emphasis",
+    "sample": {}
+  },
+  {
+    "key": "captions.transcript.secondColour",
+    "file": "src/renderer/src/editor/panels/TranscriptPanel.tsx",
+    "line": 638,
+    "english": "Emphasise in the second colour (Ctrl+Shift+B)",
+    "sample": {}
+  },
+  {
+    "key": "captions.transcript.fillersTitle",
+    "file": "src/renderer/src/editor/panels/TranscriptPanel.tsx",
+    "line": 677,
+    "english": "Fillers and retakes (4)",
+    "sample": {
+      "n": "4"
+    }
+  },
+  {
+    "key": "captions.transcript.noFillers",
+    "file": "src/renderer/src/editor/panels/TranscriptPanel.tsx",
+    "line": 679,
+    "english": "No fillers or retakes found. Some captions leave fillers out. Captions made on this PC keep most of them.",
+    "sample": {}
+  },
+  {
+    "key": "captions.transcript.removeAllSaves",
+    "file": "src/renderer/src/editor/panels/TranscriptPanel.tsx",
+    "line": 681,
+    "english": "Nothing is cut until you choose. Removing all saves 3.2 s.",
+    "sample": {
+      "saves": "3.2 s"
+    }
+  },
+  {
+    "key": "captions.transcript.goTo",
+    "file": "src/renderer/src/editor/panels/TranscriptPanel.tsx",
+    "line": 689,
+    "english": "Go to it",
+    "sample": {}
+  },
+  {
+    "key": "captions.transcript.keepAt",
+    "file": "src/renderer/src/editor/panels/TranscriptPanel.tsx",
+    "line": 698,
+    "english": "Keep filler at 0:12",
+    "sample": {
+      "what": "filler",
+      "time": "0:12"
+    }
+  },
+  {
+    "key": "common.action.keep",
+    "file": "src/renderer/src/editor/panels/TranscriptPanel.tsx",
+    "line": 699,
+    "english": "Keep",
+    "sample": {}
+  },
+  {
+    "key": "captions.transcript.removeAt",
+    "file": "src/renderer/src/editor/panels/TranscriptPanel.tsx",
+    "line": 701,
+    "english": "Remove filler at 0:12",
+    "sample": {
+      "what": "filler",
+      "time": "0:12"
+    }
+  },
+  {
+    "key": "common.action.remove",
+    "file": "src/renderer/src/editor/panels/TranscriptPanel.tsx",
+    "line": 702,
+    "english": "Remove",
+    "sample": {}
+  },
+  {
+    "key": "common.action.removeAll",
+    "file": "src/renderer/src/editor/panels/TranscriptPanel.tsx",
+    "line": 712,
+    "english": "Remove all",
+    "sample": {}
+  },
+  {
+    "key": "common.action.close",
+    "file": "src/renderer/src/editor/panels/TranscriptPanel.tsx",
+    "line": 716,
+    "english": "Close",
+    "sample": {}
+  },
+  {
+    "key": "captions.transcript.page",
+    "file": "src/renderer/src/editor/panels/TranscriptPanel.tsx",
+    "line": 505,
+    "english": "1–20 of 45",
+    "sample": {
+      "from": "1",
+      "to": "20",
+      "total": "45"
+    }
+  },
+  {
+    "key": "captions.transcript.count",
+    "file": "src/renderer/src/editor/panels/TranscriptPanel.tsx",
+    "line": 464,
+    "english": [
+      "0 words · 3 cut",
+      "1 word · 3 cut",
+      "2 words · 3 cut",
+      "1000 words · 3 cut"
+    ],
+    "sample": [
+      {
+        "count": 0,
+        "n": "0",
+        "cut": "3"
+      },
+      {
+        "count": 1,
+        "n": "1",
+        "cut": "3"
+      },
+      {
+        "count": 2,
+        "n": "2",
+        "cut": "3"
+      },
+      {
+        "count": 1000,
+        "n": "1000",
+        "cut": "3"
+      }
+    ]
+  },
+  {
+    "key": "captions.transcript.seconds",
+    "file": "src/renderer/src/editor/panels/TranscriptPanel.tsx",
+    "line": 62,
+    "english": "3.2 s",
+    "sample": {
+      "s": "3.2"
+    }
+  },
+  {
+    "key": "captions.transcript.kind.filler",
+    "file": "src/renderer/src/editor/panels/TranscriptPanel.tsx",
+    "line": 63,
+    "english": "Filler",
+    "sample": {}
+  },
+  {
+    "key": "captions.transcript.kind.retake",
+    "file": "src/renderer/src/editor/panels/TranscriptPanel.tsx",
+    "line": 63,
+    "english": "Retake",
+    "sample": {}
+  },
+  {
+    "key": "captions.transcript.kind.repeat",
+    "file": "src/renderer/src/editor/panels/TranscriptPanel.tsx",
+    "line": 63,
+    "english": "Repeat",
+    "sample": {}
+  },
+  {
+    "key": "captions.transcript.notice.alreadyCut",
+    "file": "src/renderer/src/editor/panels/TranscriptPanel.tsx",
+    "line": 175,
+    "english": "Already cut. Press Restore to bring it back",
+    "sample": {}
+  },
+  {
+    "key": "captions.transcript.notice.wholeVideo",
+    "file": "src/renderer/src/editor/panels/TranscriptPanel.tsx",
+    "line": 183,
+    "english": "That would cut the whole video",
+    "sample": {}
+  },
+  {
+    "key": "captions.transcript.notice.tooShort",
+    "file": "src/renderer/src/editor/panels/TranscriptPanel.tsx",
+    "line": 183,
+    "english": "Too short to cut on its own. Select more words",
+    "sample": {}
+  },
+  {
+    "key": "captions.transcript.notice.cutWords",
+    "file": "src/renderer/src/editor/panels/TranscriptPanel.tsx",
+    "line": 194,
+    "english": [
+      "Cut 0 words (1.2 s)",
+      "Cut 1 word (1.2 s)",
+      "Cut 2 words (1.2 s)",
+      "Cut 1000 words (1.2 s)"
+    ],
+    "sample": [
+      {
+        "count": 0,
+        "n": "0",
+        "saved": "1.2 s"
+      },
+      {
+        "count": 1,
+        "n": "1",
+        "saved": "1.2 s"
+      },
+      {
+        "count": 2,
+        "n": "2",
+        "saved": "1.2 s"
+      },
+      {
+        "count": 1000,
+        "n": "1000",
+        "saved": "1.2 s"
+      }
+    ]
+  },
+  {
+    "key": "captions.transcript.notice.cut",
+    "file": "src/renderer/src/editor/panels/TranscriptPanel.tsx",
+    "line": 194,
+    "english": "Cut 1.2 s",
+    "sample": {
+      "saved": "1.2 s"
+    }
+  },
+  {
+    "key": "captions.transcript.notice.cannotRestore",
+    "file": "src/renderer/src/editor/panels/TranscriptPanel.tsx",
+    "line": 203,
+    "english": "Could not restore this here. Use Undo, or restore the cut on the timeline",
+    "sample": {}
+  },
+  {
+    "key": "captions.transcript.notice.restored",
+    "file": "src/renderer/src/editor/panels/TranscriptPanel.tsx",
+    "line": 207,
+    "english": [
+      "Restored 0 words",
+      "Restored 1 word",
+      "Restored 2 words",
+      "Restored 1000 words"
+    ],
+    "sample": [
+      {
+        "count": 0,
+        "n": "0"
+      },
+      {
+        "count": 1,
+        "n": "1"
+      },
+      {
+        "count": 2,
+        "n": "2"
+      },
+      {
+        "count": 1000,
+        "n": "1000"
+      }
+    ]
+  },
+  {
+    "key": "captions.transcript.notice.selectFirst",
+    "file": "src/renderer/src/editor/panels/TranscriptPanel.tsx",
+    "line": 216,
+    "english": "Select words first",
+    "sample": {}
+  },
+  {
+    "key": "captions.transcript.notice.positionAuto",
+    "file": "src/renderer/src/editor/panels/TranscriptPanel.tsx",
+    "line": 230,
+    "english": "This caption follows the look’s position again",
+    "sample": {}
+  },
+  {
+    "key": "captions.transcript.notice.positionTop",
+    "file": "src/renderer/src/editor/panels/TranscriptPanel.tsx",
+    "line": 230,
+    "english": "This caption shows at the top",
+    "sample": {}
+  },
+  {
+    "key": "captions.transcript.notice.positionBottom",
+    "file": "src/renderer/src/editor/panels/TranscriptPanel.tsx",
+    "line": 230,
+    "english": "This caption shows at the bottom",
+    "sample": {}
+  },
+  {
+    "key": "captions.transcript.notice.found",
+    "file": "src/renderer/src/editor/panels/TranscriptPanel.tsx",
+    "line": 245,
+    "english": [
+      "Found 0 fillers and retakes",
+      "Found 1 filler or retake",
+      "Found 2 fillers and retakes",
+      "Found 1000 fillers and retakes"
+    ],
+    "sample": [
+      {
+        "count": 0,
+        "n": "0"
+      },
+      {
+        "count": 1,
+        "n": "1"
+      },
+      {
+        "count": 2,
+        "n": "2"
+      },
+      {
+        "count": 1000,
+        "n": "1000"
+      }
+    ]
+  },
+  {
+    "key": "captions.transcript.notice.noneFound",
+    "file": "src/renderer/src/editor/panels/TranscriptPanel.tsx",
+    "line": 245,
+    "english": "No fillers or retakes found",
+    "sample": {}
+  },
+  {
+    "key": "captions.transcript.notice.removedOne",
+    "file": "src/renderer/src/editor/panels/TranscriptPanel.tsx",
+    "line": 269,
+    "english": "Removed 1 (0.4 s)",
+    "sample": {
+      "saved": "0.4 s"
+    }
+  },
+  {
+    "key": "captions.transcript.notice.removed",
+    "file": "src/renderer/src/editor/panels/TranscriptPanel.tsx",
+    "line": 281,
+    "english": "Removed 5 (3.2 s)",
+    "sample": {
+      "n": "5",
+      "saved": "3.2 s"
+    }
+  },
+  {
+    "key": "captions.transcript.paraSpeaker",
+    "file": "src/renderer/src/editor/panels/TranscriptPanel.tsx",
+    "line": 526,
+    "english": "Ava, at 0:12",
+    "sample": {
+      "speaker": "Ava",
+      "time": "0:12"
+    }
+  },
+  {
+    "key": "captions.transcript.para",
+    "file": "src/renderer/src/editor/panels/TranscriptPanel.tsx",
+    "line": 526,
+    "english": "At 0:12",
+    "sample": {
+      "time": "0:12"
+    }
+  },
+  {
+    "key": "captions.transcript.word.cut",
+    "file": "src/renderer/src/editor/panels/TranscriptPanel.tsx",
+    "line": 546,
+    "english": "cut",
+    "sample": {}
+  },
+  {
+    "key": "captions.transcript.word.emphasis",
+    "file": "src/renderer/src/editor/panels/TranscriptPanel.tsx",
+    "line": 546,
+    "english": "emphasised",
+    "sample": {}
+  },
+  {
+    "key": "captions.transcript.word.emphasis2",
+    "file": "src/renderer/src/editor/panels/TranscriptPanel.tsx",
+    "line": 546,
+    "english": "emphasised in the second colour",
+    "sample": {}
+  },
+  {
+    "key": "common.label.position",
+    "file": "src/renderer/src/editor/panels/CaptionLookSection.tsx",
+    "line": 129,
+    "english": "Position",
+    "sample": {}
+  },
+  {
+    "key": "common.label.position",
+    "file": "src/renderer/src/editor/panels/CaptionLookSection.tsx",
+    "line": 131,
+    "english": "Position",
+    "sample": {}
+  },
+  {
+    "key": "common.label.size",
+    "file": "src/renderer/src/editor/panels/CaptionLookSection.tsx",
+    "line": 142,
+    "english": "Size",
+    "sample": {}
+  },
+  {
+    "key": "common.label.textColour",
+    "file": "src/renderer/src/editor/panels/CaptionLookSection.tsx",
+    "line": 143,
+    "english": "Text colour",
+    "sample": {}
+  },
+  {
+    "key": "captions.lookSection.highlightColour",
+    "file": "src/renderer/src/editor/panels/CaptionLookSection.tsx",
+    "line": 144,
+    "english": "Highlight colour",
+    "sample": {}
+  },
+  {
+    "key": "common.label.background",
+    "file": "src/renderer/src/editor/panels/CaptionLookSection.tsx",
+    "line": 146,
+    "english": "Background",
+    "sample": {}
+  },
+  {
+    "key": "common.label.background",
+    "file": "src/renderer/src/editor/panels/CaptionLookSection.tsx",
+    "line": 148,
+    "english": "Background",
+    "sample": {}
+  },
+  {
+    "key": "captions.lookSection.lines",
+    "file": "src/renderer/src/editor/panels/CaptionLookSection.tsx",
+    "line": 159,
+    "english": "Lines",
+    "sample": {}
+  },
+  {
+    "key": "captions.lookSection.lines",
+    "file": "src/renderer/src/editor/panels/CaptionLookSection.tsx",
+    "line": 161,
+    "english": "Lines",
+    "sample": {}
+  },
+  {
+    "key": "common.colour.pickAny",
+    "file": "src/renderer/src/editor/panels/CaptionLookSection.tsx",
+    "line": 185,
+    "english": "Pick any colour",
+    "sample": {}
+  },
+  {
+    "key": "common.colour.anyFor",
+    "file": "src/renderer/src/editor/panels/CaptionLookSection.tsx",
+    "line": 186,
+    "english": "«label» (any colour)",
+    "sample": {
+      "label": "«label»"
+    }
+  },
+  {
+    "key": "captions.lookSection.saveStyle",
+    "file": "src/renderer/src/editor/panels/CaptionLookSection.tsx",
+    "line": 219,
+    "english": "Save as my style",
+    "sample": {}
+  },
+  {
+    "key": "common.label.name",
+    "file": "src/renderer/src/editor/panels/CaptionLookSection.tsx",
+    "line": 248,
+    "english": "Name",
+    "sample": {}
+  },
+  {
+    "key": "common.label.name",
+    "file": "src/renderer/src/editor/panels/CaptionLookSection.tsx",
+    "line": 252,
+    "english": "Name",
+    "sample": {}
+  },
+  {
+    "key": "common.action.save",
+    "file": "src/renderer/src/editor/panels/CaptionLookSection.tsx",
+    "line": 269,
+    "english": "Save",
+    "sample": {}
+  },
+  {
+    "key": "common.action.cancel",
+    "file": "src/renderer/src/editor/panels/CaptionLookSection.tsx",
+    "line": 272,
+    "english": "Cancel",
+    "sample": {}
+  },
+  {
+    "key": "common.label.look",
+    "file": "src/renderer/src/editor/panels/CaptionLookSection.tsx",
+    "line": 326,
+    "english": "Look",
+    "sample": {}
+  },
+  {
+    "key": "captions.lookSection.showCaptions",
+    "file": "src/renderer/src/editor/panels/CaptionLookSection.tsx",
+    "line": 330,
+    "english": "Show captions",
+    "sample": {}
+  },
+  {
+    "key": "captions.lookSection.showTitle",
+    "file": "src/renderer/src/editor/panels/CaptionLookSection.tsx",
+    "line": 333,
+    "english": "Draw the captions on the video (preview and export)",
+    "sample": {}
+  },
+  {
+    "key": "common.state.working",
+    "file": "src/renderer/src/editor/panels/CaptionLookSection.tsx",
+    "line": 339,
+    "english": "Working…",
+    "sample": {}
+  },
+  {
+    "key": "captions.lookSection.great",
+    "file": "src/renderer/src/editor/panels/CaptionLookSection.tsx",
+    "line": 339,
+    "english": "Make my captions great",
+    "sample": {}
+  },
+  {
+    "key": "common.action.cancel",
+    "file": "src/renderer/src/editor/panels/CaptionLookSection.tsx",
+    "line": 343,
+    "english": "Cancel",
+    "sample": {}
+  },
+  {
+    "key": "captions.lookSection.edited",
+    "file": "src/renderer/src/editor/panels/CaptionLookSection.tsx",
+    "line": 354,
+    "english": "«name» (edited)",
+    "sample": {
+      "name": "«name»"
+    }
+  },
+  {
+    "key": "captions.lookSection.resetTitle",
+    "file": "src/renderer/src/editor/panels/CaptionLookSection.tsx",
+    "line": 356,
+    "english": "Go back to «name» as it comes",
+    "sample": {
+      "name": "«name»"
+    }
+  },
+  {
+    "key": "common.action.reset",
+    "file": "src/renderer/src/editor/panels/CaptionLookSection.tsx",
+    "line": 357,
+    "english": "Reset",
+    "sample": {}
+  },
+  {
+    "key": "captions.lookSection.classicHint",
+    "file": "src/renderer/src/editor/panels/CaptionLookSection.tsx",
+    "line": 363,
+    "english": "Changing these makes your own version of «name». It looks the same.",
+    "sample": {
+      "name": "«name»"
+    }
+  },
+  {
+    "key": "common.label.text",
+    "file": "src/renderer/src/editor/panels/CaptionLookSection.tsx",
+    "line": 364,
+    "english": "Text",
+    "sample": {}
+  },
+  {
+    "key": "common.label.colours",
+    "file": "src/renderer/src/editor/panels/CaptionLookSection.tsx",
+    "line": 367,
+    "english": "Colours",
+    "sample": {}
+  },
+  {
+    "key": "common.label.layout",
+    "file": "src/renderer/src/editor/panels/CaptionLookSection.tsx",
+    "line": 370,
+    "english": "Layout",
+    "sample": {}
+  },
+  {
+    "key": "common.label.motion",
+    "file": "src/renderer/src/editor/panels/CaptionLookSection.tsx",
+    "line": 373,
+    "english": "Motion",
+    "sample": {}
+  },
+  {
+    "key": "captions.lookSection.emphasis",
+    "file": "src/renderer/src/editor/panels/CaptionLookSection.tsx",
+    "line": 376,
+    "english": "Emphasis",
+    "sample": {}
+  },
+  {
+    "key": "captions.lookSection.speakers",
+    "file": "src/renderer/src/editor/panels/CaptionLookSection.tsx",
+    "line": 380,
+    "english": "Speakers",
+    "sample": {}
+  },
+  {
+    "key": "captions.lookSection.previewHint",
+    "file": "src/renderer/src/editor/panels/CaptionLookSection.tsx",
+    "line": 384,
+    "english": "The preview shows the captions exactly as the export draws them.",
+    "sample": {}
+  },
+  {
+    "key": "common.colour.pickAny",
+    "file": "src/renderer/src/editor/panels/StudioControls.tsx",
+    "line": 127,
+    "english": "Pick any colour",
+    "sample": {}
+  },
+  {
+    "key": "captions.studio.weight",
+    "file": "src/renderer/src/editor/panels/StudioControls.tsx",
+    "line": 177,
+    "english": "Weight",
+    "sample": {}
+  },
+  {
+    "key": "common.label.size",
+    "file": "src/renderer/src/editor/panels/StudioControls.tsx",
+    "line": 184,
+    "english": "Size",
+    "sample": {}
+  },
+  {
+    "key": "captions.studio.case",
+    "file": "src/renderer/src/editor/panels/StudioControls.tsx",
+    "line": 196,
+    "english": "Case",
+    "sample": {}
+  },
+  {
+    "key": "captions.studio.letterSpacing",
+    "file": "src/renderer/src/editor/panels/StudioControls.tsx",
+    "line": 208,
+    "english": "Letter spacing",
+    "sample": {}
+  },
+  {
+    "key": "captions.studio.trackingOff",
+    "file": "src/renderer/src/editor/panels/StudioControls.tsx",
+    "line": 218,
+    "english": "Letter spacing is off for Arabic: it would break the joined letters.",
+    "sample": {
+      "script": "Arabic"
+    }
+  },
+  {
+    "key": "captions.studio.digits",
+    "file": "src/renderer/src/editor/panels/StudioControls.tsx",
+    "line": 222,
+    "english": "Digits",
+    "sample": {}
+  },
+  {
+    "key": "captions.studio.digitsHint",
+    "file": "src/renderer/src/editor/panels/StudioControls.tsx",
+    "line": 238,
+    "english": "Used by captions, counters, list numbers and chapter titles.",
+    "sample": {}
+  },
+  {
+    "key": "captions.studio.theme",
+    "file": "src/renderer/src/editor/panels/StudioControls.tsx",
+    "line": 283,
+    "english": "Theme",
+    "sample": {}
+  },
+  {
+    "key": "captions.studio.theme",
+    "file": "src/renderer/src/editor/panels/StudioControls.tsx",
+    "line": 284,
+    "english": "Theme",
+    "sample": {}
+  },
+  {
+    "key": "captions.studio.swatchUpper",
+    "file": "src/renderer/src/editor/panels/StudioControls.tsx",
+    "line": 290,
+    "english": "A",
+    "sample": {}
+  },
+  {
+    "key": "captions.studio.swatchLower",
+    "file": "src/renderer/src/editor/panels/StudioControls.tsx",
+    "line": 290,
+    "english": "a",
+    "sample": {}
+  },
+  {
+    "key": "captions.studio.words",
+    "file": "src/renderer/src/editor/panels/StudioControls.tsx",
+    "line": 298,
+    "english": "Words",
+    "sample": {}
+  },
+  {
+    "key": "captions.studio.spokenWord",
+    "file": "src/renderer/src/editor/panels/StudioControls.tsx",
+    "line": 299,
+    "english": "Spoken word",
+    "sample": {}
+  },
+  {
+    "key": "captions.studio.emphasis",
+    "file": "src/renderer/src/editor/panels/StudioControls.tsx",
+    "line": 300,
+    "english": "Emphasis",
+    "sample": {}
+  },
+  {
+    "key": "captions.studio.secondEmphasis",
+    "file": "src/renderer/src/editor/panels/StudioControls.tsx",
+    "line": 301,
+    "english": "Second emphasis",
+    "sample": {}
+  },
+  {
+    "key": "captions.studio.outlineColour",
+    "file": "src/renderer/src/editor/panels/StudioControls.tsx",
+    "line": 302,
+    "english": "Outline colour",
+    "sample": {}
+  },
+  {
+    "key": "captions.studio.outline",
+    "file": "src/renderer/src/editor/panels/StudioControls.tsx",
+    "line": 305,
+    "english": "Outline",
+    "sample": {}
+  },
+  {
+    "key": "common.label.shadow",
+    "file": "src/renderer/src/editor/panels/StudioControls.tsx",
+    "line": 316,
+    "english": "Shadow",
+    "sample": {}
+  },
+  {
+    "key": "common.label.background",
+    "file": "src/renderer/src/editor/panels/StudioControls.tsx",
+    "line": 328,
+    "english": "Background",
+    "sample": {}
+  },
+  {
+    "key": "captions.studio.backgroundOpacity",
+    "file": "src/renderer/src/editor/panels/StudioControls.tsx",
+    "line": 343,
+    "english": "Background opacity",
+    "sample": {}
+  },
+  {
+    "key": "captions.studio.backgroundColour",
+    "file": "src/renderer/src/editor/panels/StudioControls.tsx",
+    "line": 352,
+    "english": "Background colour",
+    "sample": {}
+  },
+  {
+    "key": "captions.studio.glow",
+    "file": "src/renderer/src/editor/panels/StudioControls.tsx",
+    "line": 358,
+    "english": "Glow",
+    "sample": {}
+  },
+  {
+    "key": "captions.studio.gradient",
+    "file": "src/renderer/src/editor/panels/StudioControls.tsx",
+    "line": 370,
+    "english": "Gradient",
+    "sample": {}
+  },
+  {
+    "key": "captions.studio.gradient",
+    "file": "src/renderer/src/editor/panels/StudioControls.tsx",
+    "line": 371,
+    "english": "Gradient",
+    "sample": {}
+  },
+  {
+    "key": "captions.studio.wordsOnScreen",
+    "file": "src/renderer/src/editor/panels/StudioControls.tsx",
+    "line": 431,
+    "english": "Words on screen",
+    "sample": {}
+  },
+  {
+    "key": "captions.studio.wordsAtOnce",
+    "file": "src/renderer/src/editor/panels/StudioControls.tsx",
+    "line": 435,
+    "english": "Words at once",
+    "sample": {}
+  },
+  {
+    "key": "captions.studio.lines",
+    "file": "src/renderer/src/editor/panels/StudioControls.tsx",
+    "line": 448,
+    "english": "Lines",
+    "sample": {}
+  },
+  {
+    "key": "captions.studio.lineLength",
+    "file": "src/renderer/src/editor/panels/StudioControls.tsx",
+    "line": 468,
+    "english": "Line length",
+    "sample": {}
+  },
+  {
+    "key": "common.label.position",
+    "file": "src/renderer/src/editor/panels/StudioControls.tsx",
+    "line": 480,
+    "english": "Position",
+    "sample": {}
+  },
+  {
+    "key": "captions.studio.dragHint",
+    "file": "src/renderer/src/editor/panels/StudioControls.tsx",
+    "line": 484,
+    "english": "Or drag the captions in the preview. One caption can be moved in the Transcript tab.",
+    "sample": {}
+  },
+  {
+    "key": "captions.studio.resetPosition",
+    "file": "src/renderer/src/editor/panels/StudioControls.tsx",
+    "line": 499,
+    "english": "Reset position",
+    "sample": {}
+  },
+  {
+    "key": "captions.studio.avoid",
+    "file": "src/renderer/src/editor/panels/StudioControls.tsx",
+    "line": 503,
+    "english": "Keep clear of the action and the camera",
+    "sample": {}
+  },
+  {
+    "key": "captions.studio.avoidHint",
+    "file": "src/renderer/src/editor/panels/StudioControls.tsx",
+    "line": 505,
+    "english": "Moves captions away from the cursor, clicks and typing, your camera bubble, your face and lower-third titles.",
+    "sample": {}
+  },
+  {
+    "key": "captions.studio.safeHint",
+    "file": "src/renderer/src/editor/panels/StudioControls.tsx",
+    "line": 506,
+    "english": "Captions stay inside the area TikTok, Reels and Shorts leave free.",
+    "sample": {}
+  },
+  {
+    "key": "captions.studio.enter",
+    "file": "src/renderer/src/editor/panels/StudioControls.tsx",
+    "line": 581,
+    "english": "Captions come in",
+    "sample": {}
+  },
+  {
+    "key": "captions.studio.exit",
+    "file": "src/renderer/src/editor/panels/StudioControls.tsx",
+    "line": 584,
+    "english": "Captions go out",
+    "sample": {}
+  },
+  {
+    "key": "captions.studio.eachWord",
+    "file": "src/renderer/src/editor/panels/StudioControls.tsx",
+    "line": 590,
+    "english": "Each word",
+    "sample": {}
+  },
+  {
+    "key": "captions.studio.spokenWord",
+    "file": "src/renderer/src/editor/panels/StudioControls.tsx",
+    "line": 591,
+    "english": "Spoken word",
+    "sample": {}
+  },
+  {
+    "key": "captions.studio.unspoken",
+    "file": "src/renderer/src/editor/panels/StudioControls.tsx",
+    "line": 594,
+    "english": "Words not yet spoken",
+    "sample": {}
+  },
+  {
+    "key": "common.label.strength",
+    "file": "src/renderer/src/editor/panels/StudioControls.tsx",
+    "line": 603,
+    "english": "Strength",
+    "sample": {}
+  },
+  {
+    "key": "captions.studio.calmStrength",
+    "file": "src/renderer/src/editor/panels/StudioControls.tsx",
+    "line": 604,
+    "english": "Colour and fade only.",
+    "sample": {}
+  },
+  {
+    "key": "common.label.speed",
+    "file": "src/renderer/src/editor/panels/StudioControls.tsx",
+    "line": 605,
+    "english": "Speed",
+    "sample": {}
+  },
+  {
+    "key": "captions.studio.calmMotion",
+    "file": "src/renderer/src/editor/panels/StudioControls.tsx",
+    "line": 608,
+    "english": "Calm motion",
+    "sample": {}
+  },
+  {
+    "key": "captions.studio.calmHint",
+    "file": "src/renderer/src/editor/panels/StudioControls.tsx",
+    "line": 619,
+    "english": "No bounce, shake, spin or blur in the video.",
+    "sample": {}
+  },
+  {
+    "key": "captions.studio.calmNote",
+    "file": "src/renderer/src/editor/panels/StudioControls.tsx",
+    "line": 622,
+    "english": "Your PC asks for less animation. Turn on Calm motion for calmer captions in the video.",
+    "sample": {}
+  },
+  {
+    "key": "common.action.close",
+    "file": "src/renderer/src/editor/panels/StudioControls.tsx",
+    "line": 635,
+    "english": "Close",
+    "sample": {}
+  },
+  {
+    "key": "captions.studio.estimated",
+    "file": "src/renderer/src/editor/panels/StudioControls.tsx",
+    "line": 639,
+    "english": "Some word times are estimated, so words there move more gently.",
+    "sample": {}
+  },
+  {
+    "key": "captions.studio.noWordTimes",
+    "file": "src/renderer/src/editor/panels/StudioControls.tsx",
+    "line": 640,
+    "english": "Translated captions have no word times, so the spoken word is not marked.",
+    "sample": {}
+  },
+  {
+    "key": "captions.studio.findImportant",
+    "file": "src/renderer/src/editor/panels/StudioControls.tsx",
+    "line": 668,
+    "english": "Find important words",
+    "sample": {}
+  },
+  {
+    "key": "captions.studio.clearEmphasis",
+    "file": "src/renderer/src/editor/panels/StudioControls.tsx",
+    "line": 671,
+    "english": "Clear emphasis",
+    "sample": {}
+  },
+  {
+    "key": "captions.studio.noneEmphasised",
+    "file": "src/renderer/src/editor/panels/StudioControls.tsx",
+    "line": 675,
+    "english": "No words emphasised yet",
+    "sample": {}
+  },
+  {
+    "key": "common.label.size",
+    "file": "src/renderer/src/editor/panels/StudioControls.tsx",
+    "line": 679,
+    "english": "Size",
+    "sample": {}
+  },
+  {
+    "key": "captions.studio.mark",
+    "file": "src/renderer/src/editor/panels/StudioControls.tsx",
+    "line": 709,
+    "english": "Mark",
+    "sample": {}
+  },
+  {
+    "key": "common.label.motion",
+    "file": "src/renderer/src/editor/panels/StudioControls.tsx",
+    "line": 720,
+    "english": "Motion",
+    "sample": {}
+  },
+  {
+    "key": "captions.studio.emphasisHint",
+    "file": "src/renderer/src/editor/panels/StudioControls.tsx",
+    "line": 721,
+    "english": "Select words in the Transcript tab and press Ctrl+B to emphasise them, or Ctrl+Shift+B for the second colour.",
+    "sample": {}
+  },
+  {
+    "key": "captions.studio.speakerColour",
+    "file": "src/renderer/src/editor/panels/StudioControls.tsx",
+    "line": 741,
+    "english": "A colour for each speaker",
+    "sample": {}
+  },
+  {
+    "key": "captions.studio.speakerNamesFirst",
+    "file": "src/renderer/src/editor/panels/StudioControls.tsx",
+    "line": 753,
+    "english": "Turn on speaker names first, so colour is never the only cue.",
+    "sample": {}
+  },
+  {
+    "key": "captions.studio.speakerHard",
+    "file": "src/renderer/src/editor/panels/StudioControls.tsx",
+    "line": 754,
+    "english": "Speaker colours would be hard to read on this look, so it keeps its own text colour.",
+    "sample": {}
+  },
+  {
+    "key": "captions.studio.speakerColours",
+    "file": "src/renderer/src/editor/panels/StudioControls.tsx",
+    "line": 756,
+    "english": "Speaker colours",
+    "sample": {}
+  },
+  {
+    "key": "captions.studio.emphasised",
+    "file": "src/renderer/src/editor/panels/StudioControls.tsx",
+    "line": 675,
+    "english": [
+      "0 words emphasised",
+      "1 word emphasised",
+      "2 words emphasised",
+      "1000 words emphasised"
+    ],
+    "sample": [
+      {
+        "count": 0,
+        "n": "0"
+      },
+      {
+        "count": 1,
+        "n": "1"
+      },
+      {
+        "count": 2,
+        "n": "2"
+      },
+      {
+        "count": 1000,
+        "n": "1000"
+      }
+    ]
+  },
+  {
+    "key": "captions.studio.emphasisRemoved",
+    "file": "src/renderer/src/editor/panels/StudioControls.tsx",
+    "line": 662,
+    "english": [
+      "Removed emphasis from 0 words (Undo brings it back)",
+      "Removed emphasis from 1 word (Undo brings it back)",
+      "Removed emphasis from 2 words (Undo brings it back)",
+      "Removed emphasis from 1000 words (Undo brings it back)"
+    ],
+    "sample": [
+      {
+        "count": 0,
+        "n": "0"
+      },
+      {
+        "count": 1,
+        "n": "1"
+      },
+      {
+        "count": 2,
+        "n": "2"
+      },
+      {
+        "count": 1000,
+        "n": "1000"
+      }
+    ]
+  },
+  {
+    "key": "captions.studio.percent",
+    "file": "src/renderer/src/editor/panels/StudioControls.tsx",
+    "line": 588,
+    "english": "50 percent",
+    "sample": {
+      "n": "50"
+    }
+  },
+  {
+    "key": "captions.studio.percentOfSize",
+    "file": "src/renderer/src/editor/panels/StudioControls.tsx",
+    "line": 213,
+    "english": "2.5 percent of the size",
+    "sample": {
+      "n": "2.5"
+    }
+  },
+  {
+    "key": "captions.studio.case.asis",
+    "file": "src/renderer/src/editor/panels/StudioControls.tsx",
+    "line": 199,
+    "english": "As written",
+    "sample": {}
+  },
+  {
+    "key": "captions.studio.case.upper",
+    "file": "src/renderer/src/editor/panels/StudioControls.tsx",
+    "line": 199,
+    "english": "CAPITALS",
+    "sample": {}
+  },
+  {
+    "key": "captions.studio.case.lower",
+    "file": "src/renderer/src/editor/panels/StudioControls.tsx",
+    "line": 199,
+    "english": "lowercase",
+    "sample": {}
+  },
+  {
+    "key": "captions.studio.digits.asis",
+    "file": "src/renderer/src/editor/panels/StudioControls.tsx",
+    "line": 225,
+    "english": "As written",
+    "sample": {}
+  },
+  {
+    "key": "captions.studio.digits.western",
+    "file": "src/renderer/src/editor/panels/StudioControls.tsx",
+    "line": 225,
+    "english": "Western 0–9",
+    "sample": {}
+  },
+  {
+    "key": "captions.studio.shadow.soft",
+    "file": "src/renderer/src/editor/panels/StudioControls.tsx",
+    "line": 318,
+    "english": "Soft",
+    "sample": {}
+  },
+  {
+    "key": "captions.studio.shadow.strong",
+    "file": "src/renderer/src/editor/panels/StudioControls.tsx",
+    "line": 318,
+    "english": "Strong",
+    "sample": {}
+  },
+  {
+    "key": "captions.studio.shadow.hard",
+    "file": "src/renderer/src/editor/panels/StudioControls.tsx",
+    "line": 318,
+    "english": "Hard",
+    "sample": {}
+  },
+  {
+    "key": "captions.studio.box.line",
+    "file": "src/renderer/src/editor/panels/StudioControls.tsx",
+    "line": 330,
+    "english": "Box per line",
+    "sample": {}
+  },
+  {
+    "key": "captions.studio.box.chunk",
+    "file": "src/renderer/src/editor/panels/StudioControls.tsx",
+    "line": 330,
+    "english": "One box",
+    "sample": {}
+  },
+  {
+    "key": "captions.studio.box.glass",
+    "file": "src/renderer/src/editor/panels/StudioControls.tsx",
+    "line": 330,
+    "english": "Glass",
+    "sample": {}
+  },
+  {
+    "key": "captions.studio.box.band",
+    "file": "src/renderer/src/editor/panels/StudioControls.tsx",
+    "line": 330,
+    "english": "Band",
+    "sample": {}
+  },
+  {
+    "key": "captions.studio.lines.2",
+    "file": "src/renderer/src/editor/panels/StudioControls.tsx",
+    "line": 450,
+    "english": "Two",
+    "sample": {}
+  },
+  {
+    "key": "captions.studio.lines.3",
+    "file": "src/renderer/src/editor/panels/StudioControls.tsx",
+    "line": 450,
+    "english": "Three",
+    "sample": {}
+  },
+  {
+    "key": "captions.studio.lines.4",
+    "file": "src/renderer/src/editor/panels/StudioControls.tsx",
+    "line": 450,
+    "english": "Four",
+    "sample": {}
+  },
+  {
+    "key": "captions.studio.lines.1",
+    "file": "src/renderer/src/editor/panels/StudioControls.tsx",
+    "line": 450,
+    "english": "One",
+    "sample": {}
+  },
+  {
+    "key": "captions.studio.lineLength.short",
+    "file": "src/renderer/src/editor/panels/StudioControls.tsx",
+    "line": 470,
+    "english": "Short",
+    "sample": {}
+  },
+  {
+    "key": "captions.studio.lineLength.medium",
+    "file": "src/renderer/src/editor/panels/StudioControls.tsx",
+    "line": 470,
+    "english": "Medium",
+    "sample": {}
+  },
+  {
+    "key": "captions.studio.lineLength.long",
+    "file": "src/renderer/src/editor/panels/StudioControls.tsx",
+    "line": 470,
+    "english": "Long",
+    "sample": {}
+  },
+  {
+    "key": "captions.studio.chunk.phrase",
+    "file": "src/renderer/src/editor/panels/StudioControls.tsx",
+    "line": 392,
+    "english": "Phrases",
+    "sample": {}
+  },
+  {
+    "key": "captions.studio.chunkTitle.phrase",
+    "file": "src/renderer/src/editor/panels/StudioControls.tsx",
+    "line": 392,
+    "english": "Up to two lines, broken at natural pauses",
+    "sample": {}
+  },
+  {
+    "key": "captions.studio.chunk.words",
+    "file": "src/renderer/src/editor/panels/StudioControls.tsx",
+    "line": 392,
+    "english": "A few words",
+    "sample": {}
+  },
+  {
+    "key": "captions.studio.chunkTitle.words",
+    "file": "src/renderer/src/editor/panels/StudioControls.tsx",
+    "line": 392,
+    "english": "A few words at a time",
+    "sample": {}
+  },
+  {
+    "key": "captions.studio.chunk.word",
+    "file": "src/renderer/src/editor/panels/StudioControls.tsx",
+    "line": 392,
+    "english": "One word",
+    "sample": {}
+  },
+  {
+    "key": "captions.studio.chunkTitle.word",
+    "file": "src/renderer/src/editor/panels/StudioControls.tsx",
+    "line": 392,
+    "english": "One word at a time, big",
+    "sample": {}
+  },
+  {
+    "key": "captions.studio.chunk.stack",
+    "file": "src/renderer/src/editor/panels/StudioControls.tsx",
+    "line": 392,
+    "english": "Stacked",
+    "sample": {}
+  },
+  {
+    "key": "captions.studio.chunkTitle.stack",
+    "file": "src/renderer/src/editor/panels/StudioControls.tsx",
+    "line": 392,
+    "english": "Lines of different sizes",
+    "sample": {}
+  },
+  {
+    "key": "captions.studio.position.top",
+    "file": "src/renderer/src/editor/panels/StudioControls.tsx",
+    "line": 398,
+    "english": "Top",
+    "sample": {}
+  },
+  {
+    "key": "captions.studio.position.upper",
+    "file": "src/renderer/src/editor/panels/StudioControls.tsx",
+    "line": 398,
+    "english": "Upper",
+    "sample": {}
+  },
+  {
+    "key": "captions.studio.position.middle",
+    "file": "src/renderer/src/editor/panels/StudioControls.tsx",
+    "line": 398,
+    "english": "Middle",
+    "sample": {}
+  },
+  {
+    "key": "captions.studio.position.lower",
+    "file": "src/renderer/src/editor/panels/StudioControls.tsx",
+    "line": 398,
+    "english": "Lower",
+    "sample": {}
+  },
+  {
+    "key": "captions.studio.position.bottom",
+    "file": "src/renderer/src/editor/panels/StudioControls.tsx",
+    "line": 398,
+    "english": "Bottom",
+    "sample": {}
+  },
+  {
+    "key": "captions.studio.enter.fade",
+    "file": "src/renderer/src/editor/panels/StudioControls.tsx",
+    "line": 512,
+    "english": "Fade",
+    "sample": {}
+  },
+  {
+    "key": "captions.studio.enter.rise",
+    "file": "src/renderer/src/editor/panels/StudioControls.tsx",
+    "line": 512,
+    "english": "Rise",
+    "sample": {}
+  },
+  {
+    "key": "captions.studio.enter.drop",
+    "file": "src/renderer/src/editor/panels/StudioControls.tsx",
+    "line": 512,
+    "english": "Drop",
+    "sample": {}
+  },
+  {
+    "key": "captions.studio.enter.slide",
+    "file": "src/renderer/src/editor/panels/StudioControls.tsx",
+    "line": 512,
+    "english": "Slide",
+    "sample": {}
+  },
+  {
+    "key": "captions.studio.enter.pop",
+    "file": "src/renderer/src/editor/panels/StudioControls.tsx",
+    "line": 512,
+    "english": "Pop",
+    "sample": {}
+  },
+  {
+    "key": "captions.studio.enter.squeeze",
+    "file": "src/renderer/src/editor/panels/StudioControls.tsx",
+    "line": 512,
+    "english": "Squeeze",
+    "sample": {}
+  },
+  {
+    "key": "captions.studio.enter.grow",
+    "file": "src/renderer/src/editor/panels/StudioControls.tsx",
+    "line": 512,
+    "english": "Grow",
+    "sample": {}
+  },
+  {
+    "key": "captions.studio.enter.blur",
+    "file": "src/renderer/src/editor/panels/StudioControls.tsx",
+    "line": 512,
+    "english": "Blur",
+    "sample": {}
+  },
+  {
+    "key": "captions.studio.enter.wipe",
+    "file": "src/renderer/src/editor/panels/StudioControls.tsx",
+    "line": 512,
+    "english": "Wipe",
+    "sample": {}
+  },
+  {
+    "key": "captions.studio.enter.slam",
+    "file": "src/renderer/src/editor/panels/StudioControls.tsx",
+    "line": 512,
+    "english": "Slam",
+    "sample": {}
+  },
+  {
+    "key": "captions.studio.exit.fade",
+    "file": "src/renderer/src/editor/panels/StudioControls.tsx",
+    "line": 525,
+    "english": "Fade",
+    "sample": {}
+  },
+  {
+    "key": "captions.studio.exit.rise",
+    "file": "src/renderer/src/editor/panels/StudioControls.tsx",
+    "line": 525,
+    "english": "Rise",
+    "sample": {}
+  },
+  {
+    "key": "captions.studio.exit.shrink",
+    "file": "src/renderer/src/editor/panels/StudioControls.tsx",
+    "line": 525,
+    "english": "Shrink",
+    "sample": {}
+  },
+  {
+    "key": "captions.studio.exit.blur",
+    "file": "src/renderer/src/editor/panels/StudioControls.tsx",
+    "line": 525,
+    "english": "Blur",
+    "sample": {}
+  },
+  {
+    "key": "captions.studio.word.pulse",
+    "file": "src/renderer/src/editor/panels/StudioControls.tsx",
+    "line": 532,
+    "english": "Pulse",
+    "sample": {}
+  },
+  {
+    "key": "captions.studio.word.pop",
+    "file": "src/renderer/src/editor/panels/StudioControls.tsx",
+    "line": 532,
+    "english": "Pop",
+    "sample": {}
+  },
+  {
+    "key": "captions.studio.word.bounce",
+    "file": "src/renderer/src/editor/panels/StudioControls.tsx",
+    "line": 532,
+    "english": "Bounce",
+    "sample": {}
+  },
+  {
+    "key": "captions.studio.word.rise",
+    "file": "src/renderer/src/editor/panels/StudioControls.tsx",
+    "line": 532,
+    "english": "Rise",
+    "sample": {}
+  },
+  {
+    "key": "captions.studio.word.slide",
+    "file": "src/renderer/src/editor/panels/StudioControls.tsx",
+    "line": 532,
+    "english": "Slide",
+    "sample": {}
+  },
+  {
+    "key": "captions.studio.word.fade",
+    "file": "src/renderer/src/editor/panels/StudioControls.tsx",
+    "line": 532,
+    "english": "Fade",
+    "sample": {}
+  },
+  {
+    "key": "captions.studio.word.typewriter",
+    "file": "src/renderer/src/editor/panels/StudioControls.tsx",
+    "line": 532,
+    "english": "Typewriter",
+    "sample": {}
+  },
+  {
+    "key": "captions.studio.word.blur",
+    "file": "src/renderer/src/editor/panels/StudioControls.tsx",
+    "line": 532,
+    "english": "Blur",
+    "sample": {}
+  },
+  {
+    "key": "captions.studio.word.shake",
+    "file": "src/renderer/src/editor/panels/StudioControls.tsx",
+    "line": 532,
+    "english": "Shake",
+    "sample": {}
+  },
+  {
+    "key": "captions.studio.word.wipe",
+    "file": "src/renderer/src/editor/panels/StudioControls.tsx",
+    "line": 532,
+    "english": "Wipe",
+    "sample": {}
+  },
+  {
+    "key": "captions.studio.spoken.fill",
+    "file": "src/renderer/src/editor/panels/StudioControls.tsx",
+    "line": 545,
+    "english": "Fill",
+    "sample": {}
+  },
+  {
+    "key": "captions.studio.spoken.box",
+    "file": "src/renderer/src/editor/panels/StudioControls.tsx",
+    "line": 545,
+    "english": "Box",
+    "sample": {}
+  },
+  {
+    "key": "captions.studio.spoken.pill",
+    "file": "src/renderer/src/editor/panels/StudioControls.tsx",
+    "line": 545,
+    "english": "Pill",
+    "sample": {}
+  },
+  {
+    "key": "captions.studio.spoken.underline",
+    "file": "src/renderer/src/editor/panels/StudioControls.tsx",
+    "line": 545,
+    "english": "Underline",
+    "sample": {}
+  },
+  {
+    "key": "captions.studio.spoken.weight",
+    "file": "src/renderer/src/editor/panels/StudioControls.tsx",
+    "line": 545,
+    "english": "Bolder",
+    "sample": {}
+  },
+  {
+    "key": "captions.studio.spoken.glow",
+    "file": "src/renderer/src/editor/panels/StudioControls.tsx",
+    "line": 545,
+    "english": "Glow",
+    "sample": {}
+  },
+  {
+    "key": "captions.studio.spoken.gradient",
+    "file": "src/renderer/src/editor/panels/StudioControls.tsx",
+    "line": 545,
+    "english": "Gradient",
+    "sample": {}
+  },
+  {
+    "key": "captions.studio.unspokenDim",
+    "file": "src/renderer/src/editor/panels/StudioControls.tsx",
+    "line": 597,
+    "english": "Dim",
+    "sample": {}
+  },
+  {
+    "key": "captions.studio.markKind.marker",
+    "file": "src/renderer/src/editor/panels/StudioControls.tsx",
+    "line": 704,
+    "english": "Marker",
+    "sample": {}
+  },
+  {
+    "key": "captions.studio.markKind.underline",
+    "file": "src/renderer/src/editor/panels/StudioControls.tsx",
+    "line": 704,
+    "english": "Underline",
+    "sample": {}
+  },
+  {
+    "key": "captions.studio.markKind.box",
+    "file": "src/renderer/src/editor/panels/StudioControls.tsx",
+    "line": 704,
+    "english": "Box",
+    "sample": {}
+  },
+  {
+    "key": "captions.studio.markKind.circle",
+    "file": "src/renderer/src/editor/panels/StudioControls.tsx",
+    "line": 704,
+    "english": "Circle",
+    "sample": {}
+  },
+  {
+    "key": "captions.studio.brand",
+    "file": "src/renderer/src/editor/panels/StudioControls.tsx",
+    "line": 276,
+    "english": "Brand",
+    "sample": {}
+  },
+  {
+    "key": "captions.studio.brandLightened",
+    "file": "src/renderer/src/editor/panels/StudioControls.tsx",
+    "line": 276,
+    "english": [
+      "Brand, some colours lightened to read well",
+      "Brand, one colour lightened to read well",
+      "Brand, some colours lightened to read well",
+      "Brand, some colours lightened to read well"
+    ],
+    "sample": [
+      {
+        "count": 0
+      },
+      {
+        "count": 1
+      },
+      {
+        "count": 2
+      },
+      {
+        "count": 1000
+      }
+    ]
+  },
+  {
+    "key": "captions.studio.themeName.classic",
+    "file": "src/renderer/src/editor/panels/StudioControls.tsx",
+    "line": 400,
+    "english": "Classic",
+    "sample": {}
+  },
+  {
+    "key": "captions.studio.themeName.lime",
+    "file": "src/renderer/src/editor/panels/StudioControls.tsx",
+    "line": 400,
+    "english": "Lime",
+    "sample": {}
+  },
+  {
+    "key": "captions.studio.themeName.cyan",
+    "file": "src/renderer/src/editor/panels/StudioControls.tsx",
+    "line": 400,
+    "english": "Cyan",
+    "sample": {}
+  },
+  {
+    "key": "captions.studio.themeName.sunset",
+    "file": "src/renderer/src/editor/panels/StudioControls.tsx",
+    "line": 400,
+    "english": "Sunset",
+    "sample": {}
+  },
+  {
+    "key": "captions.studio.themeName.candy",
+    "file": "src/renderer/src/editor/panels/StudioControls.tsx",
+    "line": 400,
+    "english": "Candy",
+    "sample": {}
+  },
+  {
+    "key": "captions.studio.themeName.mono",
+    "file": "src/renderer/src/editor/panels/StudioControls.tsx",
+    "line": 400,
+    "english": "Mono",
+    "sample": {}
+  },
+  {
+    "key": "captions.studio.themeName.ink",
+    "file": "src/renderer/src/editor/panels/StudioControls.tsx",
+    "line": 400,
+    "english": "Ink (dark on light)",
+    "sample": {}
+  },
+  {
+    "key": "captions.studio.gradientName.sunset",
+    "file": "src/renderer/src/editor/panels/StudioControls.tsx",
+    "line": 420,
+    "english": "Sunset",
+    "sample": {}
+  },
+  {
+    "key": "captions.studio.gradientName.ocean",
+    "file": "src/renderer/src/editor/panels/StudioControls.tsx",
+    "line": 420,
+    "english": "Ocean",
+    "sample": {}
+  },
+  {
+    "key": "captions.studio.gradientName.candy",
+    "file": "src/renderer/src/editor/panels/StudioControls.tsx",
+    "line": 420,
+    "english": "Candy",
+    "sample": {}
+  }
+]

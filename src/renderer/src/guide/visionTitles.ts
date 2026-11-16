@@ -20,6 +20,7 @@ import type { GuideImage } from '../../../shared/guide/guideDoc'
 import type { GuideStep } from '../../../shared/guide/steps'
 import { namesRequestForSteps, shownTitles, stepAction, stepIncluded } from '../../../shared/guide/stepTitles'
 import type { Project } from '../../../shared/types'
+import { t } from '../../../shared/i18n/t'
 
 /** How a picture goes (§5.3.1): JPEG at quality 0.8, at most 768 px on the longer side. */
 export const PICTURE = { mime: 'image/jpeg' as const, quality: 0.8, longest: 768 }
@@ -48,7 +49,7 @@ export async function pictureJpeg(image: GuideImage): Promise<Uint8Array | null>
     canvas.width = size.w
     canvas.height = size.h
     const ctx = canvas.getContext('2d', { alpha: false })
-    if (!ctx) throw new Error('Could not create a drawing surface')
+    if (!ctx) throw new Error(t('common.error.drawingSurface'))
     ctx.imageSmoothingEnabled = true
     ctx.imageSmoothingQuality = 'high'
     ctx.drawImage(bitmap, 0, 0, size.w, size.h)

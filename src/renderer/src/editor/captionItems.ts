@@ -9,6 +9,7 @@ import { planOf, videoTimeAt } from '../../../shared/engine/freeze'
 import { playableFrom } from '../../../shared/engine/timeline'
 import { fmt } from '../../../shared/i18n/fmt'
 import { t } from '../../../shared/i18n/t'
+import { isCancel } from './cancelled'
 import type { CaptionSegment, Clip, Project, Transcript } from '../../../shared/types'
 import type { EditorServices } from './context'
 import { loadBrandLook } from './greatRun'
@@ -185,7 +186,6 @@ export function onTranscriptionJob(listener: () => void): () => void {
 export const ipcMessage = (err: unknown): string => (err instanceof Error ? err.message : String(err)).replace(/^Error invoking remote method '[^']+': (\w*Error: )?/, '')
 
 /** The main process stopped the job (Cancel, or the editor was closed): not a failure. */
-const isCancel = (message: string): boolean => message === 'Cancelled.'
 
 /**
  * What fetchTranscript got: the transcript (`leftOut`: the provider gave more than MAX_CAPTIONS

@@ -205,6 +205,30 @@
       "kind": "sink",
       "text": "missing",
       "reason": "A kit font that could not be fetched: the internal reason only moves the row to its \"could not be read\" state, which shows a message of its own."
+    },
+    {
+      "file": "src/shared/localAi/grammar.ts",
+      "kind": "sink",
+      "text": "The schema of ${…} is not an object.",
+      "reason": "A programming check of the JSON schema a local AI prompt is built with: schemaGrammar only ever reads Flown's own fixed answer schemas (transcriptText.ts, scriptDraft.ts), so this is thrown only when one of those schemas is written wrong, for developers and tests; never shown to a user."
+    },
+    {
+      "file": "src/shared/localAi/grammar.ts",
+      "kind": "sink",
+      "text": "Every property of ${…} must be required.",
+      "reason": "A programming check of the JSON schema a local AI prompt is built with: schemaGrammar only ever reads Flown's own fixed answer schemas (transcriptText.ts, scriptDraft.ts), so this is thrown only when one of those schemas is written wrong, for developers and tests; never shown to a user."
+    },
+    {
+      "file": "src/shared/localAi/grammar.ts",
+      "kind": "sink",
+      "text": "The schema of ${…} has a type the grammar cannot express.",
+      "reason": "A programming check of the JSON schema a local AI prompt is built with: schemaGrammar only ever reads Flown's own fixed answer schemas (transcriptText.ts, scriptDraft.ts), so this is thrown only when one of those schemas is written wrong, for developers and tests; never shown to a user."
+    },
+    {
+      "file": "src/shared/localAi/grammar.ts",
+      "kind": "sink",
+      "text": "The answer must be an object.",
+      "reason": "A programming check of the JSON schema a local AI prompt is built with: schemaGrammar only ever reads Flown's own fixed answer schemas (transcriptText.ts, scriptDraft.ts), so this is thrown only when one of those schemas is written wrong, for developers and tests; never shown to a user."
     }
   ]
 }

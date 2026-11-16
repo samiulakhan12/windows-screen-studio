@@ -15,13 +15,14 @@ import { releaseGrade } from '../render/gradeLayer'
 import { releaseTilt } from '../render/tiltLayer'
 import { openSource, prepareFrames, type ThumbnailInput } from '../editor/exporter'
 import { SCREEN_PROXY_FPS } from '../editor/media'
+import { t } from '../../../shared/i18n/t'
 
 const even = (v: number): number => Math.max(2, Math.round(v / 2) * 2)
 
 /** The bytes of a canvas encoded as `mime`. */
 export async function canvasBytes(canvas: HTMLCanvasElement, mime: GuideImage['mime'], quality: number): Promise<Uint8Array> {
   const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, mime, quality))
-  if (!blob) throw new Error('Could not make the screenshot.')
+  if (!blob) throw new Error(t('smart.guide.shotFailed'))
   return new Uint8Array(await blob.arrayBuffer())
 }
 
@@ -102,10 +103,10 @@ export async function* renderGuideStills(
   canvas.width = drawW
   canvas.height = drawH
   const ctx = canvas.getContext('2d', { alpha: false })
-  if (!ctx) throw new Error('Could not create a drawing surface')
+  if (!ctx) throw new Error(t('common.error.drawingSurface'))
   const out = document.createElement('canvas')
   const octx = out.getContext('2d', { alpha: false })
-  if (!octx) throw new Error('Could not create a drawing surface')
+  if (!octx) throw new Error(t('common.error.drawingSurface'))
   const placeholder = document.createElement('video')
   try {
     for (let i = 0; i < order.length; i++) {
@@ -152,7 +153,7 @@ export async function encodeImage(image: GuideImage, mime: GuideImage['mime'], q
     canvas.width = w
     canvas.height = h
     const ctx = canvas.getContext('2d', { alpha: false })
-    if (!ctx) throw new Error('Could not create a drawing surface')
+    if (!ctx) throw new Error(t('common.error.drawingSurface'))
     ctx.imageSmoothingEnabled = true
     ctx.imageSmoothingQuality = 'high'
     ctx.drawImage(bitmap, 0, 0, w, h)

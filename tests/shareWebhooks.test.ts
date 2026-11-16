@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { redactLine } from '../src/shared/diagnostics/redact'
-import { cleanTitle, lengthText, maskWebhook, parseWebhookUrl, postFailure, shareMessage, WEBHOOK_HELP, webhookBody } from '../src/shared/share/webhooks'
+import { cleanTitle, lengthText, maskWebhook, parseWebhookUrl, postFailure, shareMessage, webhookHelp, webhookBody } from '../src/shared/share/webhooks'
 
 const SLACK = 'https://hooks.slack.com/services/T0001/B0002/abcdEFGHijklMNOPqrstUVWX'
 const DISCORD = 'https://discord.com/api/webhooks/123456789012345678/AbC-dEf_123'
@@ -17,27 +17,27 @@ describe('parseWebhookUrl', () => {
 
   it.each([
     ['http://hooks.slack.com/services/T/B/x', 'Only https://'],
-    ['https://hooks.slack.com.evil.io/services/T/B/x', WEBHOOK_HELP],
-    ['https://evil.io/hooks.slack.com/services/T/B/x', WEBHOOK_HELP],
-    ['https://hooks.slack.com:8443/services/T/B/x', WEBHOOK_HELP],
-    ['https://user:pw@hooks.slack.com/services/T/B/x', WEBHOOK_HELP],
-    ['https://hooks.slack.com/services/T/B/x#frag', WEBHOOK_HELP],
-    ['https://hooks.slack.com/workflows/T/B/x', WEBHOOK_HELP],
-    ['https://discord.com/api/webhooks/notanumber/x', WEBHOOK_HELP],
-    ['https://evil.discord.com.example/api/webhooks/1/x', WEBHOOK_HELP],
-    ['https://a.b.webhook.office.com/webhookb2/x', WEBHOOK_HELP],
-    ['https://webhook.office.com/webhookb2/x', WEBHOOK_HELP],
-    ['https://prod-01.westus.logic.azure.com/workflows/x', WEBHOOK_HELP],
-    ['https://hooks.slack.com/services/T/B/x y', WEBHOOK_HELP],
-    [`https://hooks.slack.com/services/${'a'.repeat(1100)}`, WEBHOOK_HELP],
-    ['', WEBHOOK_HELP],
-    ['not a url', WEBHOOK_HELP]
+    ['https://hooks.slack.com.evil.io/services/T/B/x', webhookHelp()],
+    ['https://evil.io/hooks.slack.com/services/T/B/x', webhookHelp()],
+    ['https://hooks.slack.com:8443/services/T/B/x', webhookHelp()],
+    ['https://user:pw@hooks.slack.com/services/T/B/x', webhookHelp()],
+    ['https://hooks.slack.com/services/T/B/x#frag', webhookHelp()],
+    ['https://hooks.slack.com/workflows/T/B/x', webhookHelp()],
+    ['https://discord.com/api/webhooks/notanumber/x', webhookHelp()],
+    ['https://evil.discord.com.example/api/webhooks/1/x', webhookHelp()],
+    ['https://a.b.webhook.office.com/webhookb2/x', webhookHelp()],
+    ['https://webhook.office.com/webhookb2/x', webhookHelp()],
+    ['https://prod-01.westus.logic.azure.com/workflows/x', webhookHelp()],
+    ['https://hooks.slack.com/services/T/B/x y', webhookHelp()],
+    [`https://hooks.slack.com/services/${'a'.repeat(1100)}`, webhookHelp()],
+    ['', webhookHelp()],
+    ['not a url', webhookHelp()]
   ])('refuses %s', (url, message) => {
     expect(() => parseWebhookUrl(url)).toThrow(message)
   })
 
   it('refuses what is not text', () => {
-    expect(() => parseWebhookUrl(42)).toThrow(WEBHOOK_HELP)
+    expect(() => parseWebhookUrl(42)).toThrow(webhookHelp())
   })
 })
 

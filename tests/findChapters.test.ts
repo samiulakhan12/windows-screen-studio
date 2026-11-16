@@ -98,7 +98,7 @@ const PANEL = '../src/renderer/src/editor/panels/FindChapters'
 const REQUESTS = '../src/renderer/src/editor/smartRequests'
 type Run = (deps: { store: EditStore<Project>; recorded: CursorTrack; options: Record<string, unknown>; signal: AbortSignal; requestId: string; onProgress(text: string, fraction: number | null): void }) => Promise<{ notice: string; weak: string | null } | { needsCaptions: true }>
 const { runFindChapters, FIND_WORDS, FIND_CHAPTERS_BUILT } = (await import(/* @vite-ignore */ RUN)) as { runFindChapters: Run; FIND_WORDS: Record<string, string>; FIND_CHAPTERS_BUILT: boolean }
-const { FindChapters, FIND_HINT } = (await import(/* @vite-ignore */ PANEL)) as { FindChapters: (p: unknown) => unknown; FIND_HINT: string }
+const { FindChapters, findHint } = (await import(/* @vite-ignore */ PANEL)) as { FindChapters: (p: unknown) => unknown; findHint: () => string }
 const { requestFindChapters } = (await import(/* @vite-ignore */ REQUESTS)) as { requestFindChapters(): void }
 const USE_COST = '../src/renderer/src/ai/useCost'
 const { refreshCostData } = (await import(/* @vite-ignore */ USE_COST)) as { refreshCostData(): Promise<void> }
@@ -373,7 +373,7 @@ describe('the Find chapters panel (§2.3)', () => {
     const find = byTestId(els, 'find-chapters')!
     expect(textOf(find).trim()).toBe('Find chapters')
     const hint = els.find((e) => e.props.id === find.props['aria-describedby'])!
-    expect(textOf(hint)).toBe(FIND_HINT)
+    expect(textOf(hint)).toBe(findHint())
     const options = els.find((e) => e.type === 'details')!
     expect(options.props.open).toBeUndefined()
     expect(els.filter((e) => e.type === 'legend').map(textOf)).toEqual(['How many', 'Split at', 'Names'])
@@ -391,7 +391,7 @@ describe('the Find chapters panel (§2.3)', () => {
     const cost = els.find((e) => (e.type as { name?: string }).name === 'CostLine')!
     const ids = String(find.props['aria-describedby']).split(/\s+/)
     expect(ids).toHaveLength(2)
-    expect(textOf(els.find((e) => e.props.id === ids[0])!)).toBe(FIND_HINT)
+    expect(textOf(els.find((e) => e.props.id === ids[0])!)).toBe(findHint())
     expect(ids[1]).toBe(`${cost.props.id}-names`)
     unmountAll()
     fake.prefs.delete('findChapters')

@@ -270,11 +270,18 @@ export async function settle(root: unknown, skip: readonly string[] = []): Promi
   return render(root, skip)
 }
 
-/** The text of an element (its strings, nested). */
+/** The message components (Rich, T): they hold no state, so their text is what they render. */
+const MESSAGE_COMPONENTS = new Set(['Rich', 'T'])
+
+/** The text of an element (its strings, nested; a message component's own text included). */
 export const textOf = (node: unknown): string => {
   if (typeof node === 'string' || typeof node === 'number') return String(node)
   if (Array.isArray(node)) return node.map(textOf).join('')
-  if (node && typeof node === 'object' && 'props' in node) return textOf((node as El).props.children)
+  if (node && typeof node === 'object' && 'props' in node) {
+    const el = node as El
+    if (typeof el.type === 'function' && MESSAGE_COMPONENTS.has((el.type as { name: string }).name)) return textOf((el.type as (p: unknown) => unknown)(el.props))
+    return textOf(el.props.children)
+  }
   return ''
 }
 export const byTestId = (els: El[], id: string): El | undefined => els.find((e) => e.props['data-testid'] === id)

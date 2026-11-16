@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react'
 import '../review/review.css'
+import { t } from '../../../shared/i18n/t'
 
 /**
  * The docked panel the contracts' stubs of smart tools' panels show until their part replaces them
@@ -25,10 +26,10 @@ export function StubPanel({ title, testId, onClose }: { title: string; testId: s
       <div className="review-head">
         <h2>{title}</h2>
         <button ref={closeRef} type="button" className="btn ghost" onClick={onClose}>
-          Close
+          {t('common.action.close')}
         </button>
       </div>
-      <p className="hint">This tool is not part of this build.</p>
+      <p className="hint">{t('smart.stub.notInBuild')}</p>
     </aside>
   )
 }

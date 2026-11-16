@@ -21,6 +21,7 @@ import { estimateFor } from '../editor/panels/LocalCaptions'
 import { loadSpeechState, useSpeechState } from '../editor/speechState'
 import { ipcMessage } from './providerText'
 import './speech.css'
+import { isCancel } from '../editor/cancelled'
 
 /**
  * Settings › Captions on this PC (docs/design/offline-captions.md §7.3): the speech models
@@ -44,7 +45,7 @@ export function SpeechModelsSection({ reveal = false }: { reveal?: boolean }): J
     setError(null)
     void what.catch((err: unknown) => {
       const message = ipcMessage(err)
-      if (message !== 'Cancelled.') setError(message)
+      if (!isCancel(message)) setError(message)
     })
   }
 

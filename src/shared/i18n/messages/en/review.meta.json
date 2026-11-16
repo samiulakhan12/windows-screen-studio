@@ -1876,5 +1876,191 @@
   },
   "share.cancel": {
     "description": "The export's done view: stops copying and posting."
+  },
+  "check.why": {
+    "description": "Publish dialog and the Captions tab's suggested title, summary and chapters: why the pieces listed above are noted (one piece, or several). Nothing in the text was changed."
+  },
+  "check.title": {
+    "description": "Publish dialog and the Captions tab: the heading of the note above the list of links, addresses or file names to check (one or several)."
+  },
+  "check.askCopy": {
+    "description": "Publish dialog: the title of the question asked before noted text is copied. {what} names the text (\"LinkedIn post\", \"Summary\"); the count is how many pieces are listed."
+  },
+  "check.copyAnyway": {
+    "description": "Publish dialog: the button that copies noted text after the question (the other button is Cancel)."
+  },
+  "check.askUse": {
+    "description": "Publish dialog and the Captions tab: the title of the question asked before noted text is used (as the description, the name or the chapters). {what} names the text (\"Suggested title\"); the count is how many pieces are listed."
+  },
+  "check.useAnyway": {
+    "description": "Publish dialog and the Captions tab: the button that uses noted text (as the description, name or chapters) after the question (the other button is Cancel)."
+  },
+  "publish.noProvider": {
+    "description": "publishDialog, text of <p> (src/renderer/src/publish/PublishDialog.tsx:204)."
+  },
+  "publish.generateCaptions": {
+    "description": "publishDialog, text of <button> (src/renderer/src/publish/PublishDialog.tsx:223)."
+  },
+  "publish.provider": {
+    "description": "publishDialog, text of <span> (src/renderer/src/publish/PublishDialog.tsx:233)."
+  },
+  "publish.tone": {
+    "description": "publishDialog, text of <span> (src/renderer/src/publish/PublishDialog.tsx:243)."
+  },
+  "publish.writeAllAgain": {
+    "description": "publishDialog, text of <button> (src/renderer/src/publish/PublishDialog.tsx:253)."
+  },
+  "publish.writeAll": {
+    "description": "publishDialog, text of <button> (src/renderer/src/publish/PublishDialog.tsx:253)."
+  },
+  "publish.writing": {
+    "description": "publishDialog, text of <span> (src/renderer/src/publish/PublishDialog.tsx:256)."
+  },
+  "publish.stopAll": {
+    "description": "publishDialog, text of <button> (src/renderer/src/publish/PublishDialog.tsx:267)."
+  },
+  "publish.shortClips": {
+    "description": "publishDialog, text of <button> (src/renderer/src/publish/PublishDialog.tsx:330)."
+  },
+  "publish.title": {
+    "description": "publishDialog, text of <h2> (src/renderer/src/publish/PublishDialog.tsx:354)."
+  },
+  "publish.intro": {
+    "description": "publishDialog, text of <p> (src/renderer/src/publish/PublishDialog.tsx:357)."
+  },
+  "publish.stale": {
+    "description": "publishDialog, text of <p> (src/renderer/src/publish/PublishDialog.tsx:454)."
+  },
+  "publish.text": {
+    "description": "publishDialog, the aria-label of <textarea> (src/renderer/src/publish/PublishDialog.tsx:457)."
+  },
+  "publish.notWrittenYet": {
+    "description": "publishDialog, the placeholder of <textarea> (src/renderer/src/publish/PublishDialog.tsx:460)."
+  },
+  "publish.chapters": {
+    "description": "publishDialog, text of <p> (src/renderer/src/publish/PublishDialog.tsx:469)."
+  },
+  "publish.addChapters": {
+    "description": "publishDialog, text of <p> (src/renderer/src/publish/PublishDialog.tsx:484)."
+  },
+  "publish.noChapters": {
+    "description": "publishDialog, text of <p> (src/renderer/src/publish/PublishDialog.tsx:490)."
+  },
+  "publish.tags": {
+    "description": "publishDialog, text of <span> (src/renderer/src/publish/PublishDialog.tsx:498)."
+  },
+  "publish.tagsLabel": {
+    "description": "publishDialog, the aria-label of <textarea> (src/renderer/src/publish/PublishDialog.tsx:499)."
+  },
+  "publish.copyTags": {
+    "description": "publishDialog, text of <button> (src/renderer/src/publish/PublishDialog.tsx:509)."
+  },
+  "publish.write": {
+    "description": "publishDialog, text of <button> (src/renderer/src/publish/PublishDialog.tsx:521)."
+  },
+  "publish.stopUsing": {
+    "description": "publishDialog, text of <button> (src/renderer/src/publish/PublishDialog.tsx:528)."
+  },
+  "publish.useHint": {
+    "description": "publishDialog, the title of <button> (src/renderer/src/publish/PublishDialog.tsx:531)."
+  },
+  "publish.update": {
+    "description": "publishDialog, text of <button> (src/renderer/src/publish/PublishDialog.tsx:532)."
+  },
+  "publish.use": {
+    "description": "publishDialog, text of <button> (src/renderer/src/publish/PublishDialog.tsx:532)."
+  },
+  "publish.rename": {
+    "description": "publishDialog, text of <button> (src/renderer/src/publish/PublishDialog.tsx:538)."
+  },
+  "publish.characters": {
+    "description": "publishDialog, the aria-label of <span> (src/renderer/src/publish/PublishDialog.tsx:550)."
+  },
+  "publish.saved": {
+    "description": "publishDialog, text of <p> (src/renderer/src/publish/PublishDialog.tsx:555)."
+  },
+  "publish.creditLine": {
+    "description": "Publish › YouTube: the line added at the end of the description to credit the music. {credit} is the credit text, kept in English."
+  },
+  "publish.kind.youtube": {
+    "description": "Publish: a card's name, the text posted with a YouTube video."
+  },
+  "publish.kind.linkedin": {
+    "description": "Publish: a card's name, a LinkedIn post. LinkedIn is a name."
+  },
+  "publish.kind.xpost": {
+    "description": "Publish: a card's name, a post on X (the service once called Twitter)."
+  },
+  "publish.kind.article": {
+    "description": "Publish: a card's name, an article for a help centre."
+  },
+  "publish.kind.releaseNotes": {
+    "description": "Publish: a card's name, notes about what changed in a release."
+  },
+  "publish.kind.title": {
+    "description": "Publish: a card's name, a title for the video."
+  },
+  "publish.kind.summary": {
+    "description": "Publish: a card's name, a short summary of the video."
+  },
+  "publish.tone.friendly": {
+    "description": "Publish › Tone chip."
+  },
+  "publish.tone.professional": {
+    "description": "Publish › Tone chip."
+  },
+  "publish.tone.casual": {
+    "description": "Publish › Tone chip."
+  },
+  "publish.length.short": {
+    "description": "Publish › Length chip: shorter texts."
+  },
+  "publish.length.normal": {
+    "description": "Publish › Length chip: texts of the usual length."
+  },
+  "publish.blocker.noSound": {
+    "description": "Publish: why nothing can be written."
+  },
+  "publish.blocker.noCaptions": {
+    "description": "Publish: why nothing can be written; a Generate captions button follows."
+  },
+  "publish.blocker.tooLittle": {
+    "description": "Publish: why nothing can be written."
+  },
+  "publish.sendsLocal": {
+    "description": "Publish: what is sent when the text is written by AI on this PC."
+  },
+  "publish.copied": {
+    "description": "Publish: said on a card after its text was copied. {what} names the card (\"X post\", \"Tags\")."
+  },
+  "publish.notCopied": {
+    "description": "Publish: said on a card when copying failed. {what} names the card."
+  },
+  "publish.usedForExports": {
+    "description": "Publish › YouTube: said after Use for exports."
+  },
+  "publish.stoppedForExports": {
+    "description": "Publish › YouTube: said after Stop using for exports."
+  },
+  "publish.renamed": {
+    "description": "Publish › Title: said after Rename the recording."
+  },
+  "publish.status.idle": {
+    "description": "Publish: a card's state before anything was written."
+  },
+  "publish.status.stopped": {
+    "description": "Publish: a card's state after its writing was stopped."
+  },
+  "publish.sends": {
+    "description": "Publish: what is sent to the AI provider. {place} names the provider."
+  },
+  "publish.status.waiting": {
+    "description": "Publish: a card waiting for its turn to be written."
+  },
+  "publish.status.writing": {
+    "description": "Publish: a card being written."
+  },
+  "publish.status.done": {
+    "description": "Publish: a card that was written."
   }
 }

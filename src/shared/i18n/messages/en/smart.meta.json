@@ -1,1 +1,684 @@
-{}
+{
+  "guide.shotFailed": {
+    "description": "Guide (Make a guide): a step's screenshot could not be encoded; shown after \"Could not make the screenshots:\" and in the step's place."
+  },
+  "guide.otherTask": {
+    "description": "Guide: writing step titles with AI failed because the provider answered a different request."
+  },
+  "chapters.providerGone": {
+    "description": "Find chapters: the AI provider chosen to name chapters was removed. \"Find chapters\" is the tool's name; \"options\" its Options disclosure."
+  },
+  "clips.momentGone": {
+    "description": "Short clips: making a copy from a found moment that edits have since cut out. \"find short clips\" is the tool's action."
+  },
+  "short.sentencesGone": {
+    "description": "Make a shorter version: the sentences chosen for the shorter copy were cut out of the video meanwhile."
+  },
+  "stub.notInBuild": {
+    "description": "A smart tool's panel in a build that leaves the tool out (development builds only)."
+  },
+  "shortVersion.title": {
+    "description": "shortVersionDialog, text of <h2> (src/renderer/src/clips/ShortVersionDialog.tsx:129)."
+  },
+  "shortVersion.openTheCopy": {
+    "description": "shortVersionDialog, text of <button> (src/renderer/src/clips/ShortVersionDialog.tsx:141)."
+  },
+  "shortVersion.focus": {
+    "description": "shortVersionDialog, text of <label> (src/renderer/src/clips/ShortVersionDialog.tsx:168)."
+  },
+  "shortVersion.focusPlaceholder": {
+    "description": "shortVersionDialog, the placeholder of <input> (src/renderer/src/clips/ShortVersionDialog.tsx:170)."
+  },
+  "shortVersion.makeTheCopy": {
+    "description": "shortVersionDialog, text of <button> (src/renderer/src/clips/ShortVersionDialog.tsx:211)."
+  },
+  "shortVersion.made": {
+    "description": "Make a shorter version: said when the shorter copy is made. {copy} is the new copy's name, {name} the original project's name; Review is the Review mode of the copy.",
+    "user": [
+      "copy",
+      "name"
+    ]
+  },
+  "shortVersion.seconds": {
+    "description": "Make a shorter version: a length chip in seconds (30 s, 60 s)."
+  },
+  "shortVersion.untitled": {
+    "description": "Make a shorter version: the original's name in the done line when the recording has no name."
+  },
+  "chapters.find": {
+    "description": "findChapters, text of <button> (src/renderer/src/editor/panels/FindChapters.tsx:187)."
+  },
+  "chapters.withoutWords": {
+    "description": "findChapters, text of <button> (src/renderer/src/editor/panels/FindChapters.tsx:218)."
+  },
+  "chapters.options": {
+    "description": "findChapters, text of <summary> (src/renderer/src/editor/panels/FindChapters.tsx:224)."
+  },
+  "chapters.howMany": {
+    "description": "findChapters, text of <legend> (src/renderer/src/editor/panels/FindChapters.tsx:226)."
+  },
+  "chapters.splitAt": {
+    "description": "findChapters, text of <legend> (src/renderer/src/editor/panels/FindChapters.tsx:237)."
+  },
+  "chapters.names": {
+    "description": "shortClipsPanel, text of <legend> (src/renderer/src/clips/ShortClipsPanel.tsx:534)."
+  },
+  "chapters.namesOffline": {
+    "description": "findChapters, text of <label> (src/renderer/src/editor/panels/FindChapters.tsx:252)."
+  },
+  "chapters.namesWith": {
+    "description": "findChapters, text of <label> (src/renderer/src/editor/panels/FindChapters.tsx:256)."
+  },
+  "chapters.namesWithLabel": {
+    "description": "findChapters, the aria-label of <select> (src/renderer/src/editor/panels/FindChapters.tsx:257)."
+  },
+  "chapters.choose": {
+    "description": "shortClipsPanel, text of <option> (src/renderer/src/clips/ShortClipsPanel.tsx:544)."
+  },
+  "chapters.noAiProvider": {
+    "description": "shortClipsPanel, text of <option> (src/renderer/src/clips/ShortClipsPanel.tsx:544)."
+  },
+  "chapters.hint": {
+    "description": "Text tab, under the Find chapters button: what the tool does."
+  },
+  "chapters.density.fewer": {
+    "description": "Find chapters › Options › How many: fewer chapters."
+  },
+  "chapters.density.normal": {
+    "description": "Find chapters › Options › How many: the usual number of chapters."
+  },
+  "chapters.density.more": {
+    "description": "Find chapters › Options › How many: more chapters."
+  },
+  "chapters.split.screen": {
+    "description": "Find chapters › Options › Split at: where the screen changes."
+  },
+  "chapters.split.pauses": {
+    "description": "Find chapters › Options › Split at: pauses in speech."
+  },
+  "chapters.split.words": {
+    "description": "Find chapters › Options › Split at: where a new topic starts in what is said."
+  },
+  "chapters.tooShort": {
+    "description": "Find chapters: the video is shorter than YouTube allows for chapters."
+  },
+  "chapters.nothing": {
+    "description": "Find chapters: the notice when no chapter was found."
+  },
+  "chapters.already": {
+    "description": "Find chapters: the notice when the user's own chapters already cover every place found."
+  },
+  "chapters.noScreen": {
+    "description": "Find chapters: added to the notice when the screen could not be read."
+  },
+  "chapters.needsCaptions": {
+    "description": "Find chapters: shown with a Make captions button when the recording has no captions."
+  },
+  "chapters.firstAtZero": {
+    "description": "Find chapters: added to the notice when no chapter starts at the beginning. 0:00 is a time."
+  },
+  "chapters.removed": {
+    "description": "Find chapters: added to the notice when an earlier run's found chapters were taken away."
+  },
+  "chapters.looking": {
+    "description": "Find chapters: progress while the screen is read."
+  },
+  "chapters.finding": {
+    "description": "Find chapters: progress while the chapters are planned."
+  },
+  "chapters.asking": {
+    "description": "Find chapters: progress while an AI provider is asked to split. {place} names the provider or \"AI on this PC\"."
+  },
+  "chapters.naming": {
+    "description": "Find chapters: progress while chapters are named. {place} names the provider or \"AI on this PC\"."
+  },
+  "chapters.foundFew": {
+    "description": "Find chapters: the notice after a run when the video then has fewer than 3 chapters. {n} is how many were found."
+  },
+  "chapters.lookingShare": {
+    "description": "Find chapters: progress while the screen is read, with how much is done ({share}, a percentage)."
+  },
+  "chapters.found": {
+    "description": "Find chapters: the notice after a run that found chapters. {n} is how many; Review is Review mode, which lists each found chapter."
+  },
+  "shot.sendOne": {
+    "description": "shotViewer, text of <label> (src/renderer/src/guide/ShotViewer.tsx:277)."
+  },
+  "shot.adjustHint": {
+    "description": "shotViewer, text of <p> (src/renderer/src/guide/ShotViewer.tsx:288)."
+  },
+  "shot.wholeScreenAlt": {
+    "description": "shotViewer, the alt of <img> (src/renderer/src/guide/ShotViewer.tsx:290)."
+  },
+  "shot.screenshotFitted": {
+    "description": "shotViewer, the aria-label of <div> (src/renderer/src/guide/ShotViewer.tsx:323)."
+  },
+  "shot.screenshot100": {
+    "description": "shotViewer, the aria-label of <div> (src/renderer/src/guide/ShotViewer.tsx:323)."
+  },
+  "shot.asSentAlt": {
+    "description": "shotViewer, the alt of <img> (src/renderer/src/guide/ShotViewer.tsx:329)."
+  },
+  "shot.alt": {
+    "description": "shotViewer, the alt of <img> (src/renderer/src/guide/ShotViewer.tsx:329)."
+  },
+  "shot.making": {
+    "description": "shotViewer, text of <span> (src/renderer/src/guide/ShotViewer.tsx:331)."
+  },
+  "shot.previous": {
+    "description": "shotViewer, text of <button> (src/renderer/src/guide/ShotViewer.tsx:342)."
+  },
+  "shot.next": {
+    "description": "shotViewer, text of <button> (src/renderer/src/guide/ShotViewer.tsx:345)."
+  },
+  "shot.fit": {
+    "description": "shotViewer, text of <button> (src/renderer/src/guide/ShotViewer.tsx:376)."
+  },
+  "shot.blurArea": {
+    "description": "shotViewer, text of <button> (src/renderer/src/guide/ShotViewer.tsx:379)."
+  },
+  "shot.adjust": {
+    "description": "shotViewer, text of <button> (src/renderer/src/guide/ShotViewer.tsx:383)."
+  },
+  "shot.checked": {
+    "description": "Guide › screenshot viewer: how many of the screenshots to share were looked at full size."
+  },
+  "shot.picture": {
+    "description": "Guide › screenshot viewer, choosing pictures to send to the AI provider: which picture is shown. {label} names its step (\"Step 3\", \"Actual\")."
+  },
+  "shot.sendMany": {
+    "description": "Guide › screenshot viewer: the button that sends the chosen screenshots with the step titles request."
+  },
+  "guide.titleField": {
+    "description": "guidePanel, text of <span> (src/renderer/src/guide/GuidePanel.tsx:630)."
+  },
+  "guide.intro": {
+    "description": "guidePanel, text of <span> (src/renderer/src/guide/GuidePanel.tsx:640)."
+  },
+  "guide.kind": {
+    "description": "guidePanel, the aria-label of <div> (src/renderer/src/guide/GuidePanel.tsx:643)."
+  },
+  "guide.kindBug": {
+    "description": "guidePanel, text of <label> (src/renderer/src/guide/GuidePanel.tsx:650)."
+  },
+  "guide.kindGuide": {
+    "description": "guidePanel, text of <label> (src/renderer/src/guide/GuidePanel.tsx:650)."
+  },
+  "guide.language": {
+    "description": "guidePanel, the aria-label of <div> (src/renderer/src/guide/GuidePanel.tsx:654)."
+  },
+  "guide.steps": {
+    "description": "guidePanel, the aria-label of <div> (src/renderer/src/guide/GuidePanel.tsx:666)."
+  },
+  "guide.fromBadges": {
+    "description": "guidePanel, text of <label> (src/renderer/src/guide/GuidePanel.tsx:672)."
+  },
+  "guide.fromClicks": {
+    "description": "guidePanel, text of <label> (src/renderer/src/guide/GuidePanel.tsx:676)."
+  },
+  "guide.addStep": {
+    "description": "guidePanel, text of <button> (src/renderer/src/guide/GuidePanel.tsx:723)."
+  },
+  "guide.makingShots": {
+    "description": "guidePanel, the aria-label of <div> (src/renderer/src/guide/GuidePanel.tsx:729)."
+  },
+  "guide.shotsReady": {
+    "description": "guidePanel, the aria-valuetext of <div> (src/renderer/src/guide/GuidePanel.tsx:729)."
+  },
+  "guide.shotsFailed": {
+    "description": "guidePanel, text of <p> (src/renderer/src/guide/GuidePanel.tsx:733)."
+  },
+  "guide.nextUntitled": {
+    "description": "guidePanel, text of <button> (src/renderer/src/guide/GuidePanel.tsx:736)."
+  },
+  "guide.checkShots": {
+    "description": "guidePanel, text of <button> (src/renderer/src/guide/GuidePanel.tsx:739)."
+  },
+  "guide.titlesAndNotes": {
+    "description": "guidePanel, the aria-label of <section> (src/renderer/src/guide/GuidePanel.tsx:744)."
+  },
+  "guide.titles": {
+    "description": "guidePanel, the aria-label of <div> (src/renderer/src/guide/GuidePanel.tsx:745)."
+  },
+  "guide.titlesOffline": {
+    "description": "guidePanel, text of <label> (src/renderer/src/guide/GuidePanel.tsx:760)."
+  },
+  "guide.writeWith": {
+    "description": "guidePanel, text of <label> (src/renderer/src/guide/GuidePanel.tsx:774)."
+  },
+  "guide.writeWithLabel": {
+    "description": "guidePanel, the aria-label of <select> (src/renderer/src/guide/GuidePanel.tsx:781)."
+  },
+  "guide.writing": {
+    "description": "guidePanel, text of <button> (src/renderer/src/guide/GuidePanel.tsx:803)."
+  },
+  "guide.writeTitles": {
+    "description": "guidePanel, text of <button> (src/renderer/src/guide/GuidePanel.tsx:803)."
+  },
+  "guide.useOfflineTitles": {
+    "description": "guidePanel, text of <button> (src/renderer/src/guide/GuidePanel.tsx:822)."
+  },
+  "guide.tidying": {
+    "description": "guidePanel, text of <button> (src/renderer/src/guide/GuidePanel.tsx:837)."
+  },
+  "guide.tidyWith": {
+    "description": "guidePanel, text of <button> (src/renderer/src/guide/GuidePanel.tsx:837)."
+  },
+  "guide.format": {
+    "description": "guidePanel, the aria-label of <div> (src/renderer/src/guide/GuidePanel.tsx:861)."
+  },
+  "guide.pageSize": {
+    "description": "guidePanel, text of <span> (src/renderer/src/guide/GuidePanel.tsx:882)."
+  },
+  "guide.a4": {
+    "description": "guidePanel, text of <option> (src/renderer/src/guide/GuidePanel.tsx:892)."
+  },
+  "guide.letter": {
+    "description": "guidePanel, text of <option> (src/renderer/src/guide/GuidePanel.tsx:893)."
+  },
+  "guide.brandKit": {
+    "description": "guidePanel, text of <label> (src/renderer/src/guide/GuidePanel.tsx:900)."
+  },
+  "guide.tooBig": {
+    "description": "guidePanel, text of <p> (src/renderer/src/guide/GuidePanel.tsx:917)."
+  },
+  "guide.smaller": {
+    "description": "guidePanel, text of <button> (src/renderer/src/guide/GuidePanel.tsx:919)."
+  },
+  "guide.copyGuide": {
+    "description": "guidePanel, text of <button> (src/renderer/src/guide/GuidePanel.tsx:933)."
+  },
+  "guide.clicksOnly": {
+    "description": "guidePanel, text of <button> (src/renderer/src/guide/GuidePanel.tsx:1028)."
+  },
+  "guide.includeStep": {
+    "description": "guidePanel, the aria-label of <input> (src/renderer/src/guide/GuidePanel.tsx:1074)."
+  },
+  "guide.goTo": {
+    "description": "guidePanel, text of <button> (src/renderer/src/guide/GuidePanel.tsx:1083)."
+  },
+  "guide.viewShot": {
+    "description": "guidePanel, the aria-label of <button> (src/renderer/src/guide/GuidePanel.tsx:1086)."
+  },
+  "guide.shotAlt": {
+    "description": "guidePanel, the alt of <img> (src/renderer/src/guide/GuidePanel.tsx:1087)."
+  },
+  "guide.makingShot": {
+    "description": "guidePanel, text of <span> (src/renderer/src/guide/GuidePanel.tsx:1087)."
+  },
+  "guide.needsTitle": {
+    "description": "guidePanel, text of <span> (src/renderer/src/guide/GuidePanel.tsx:1092)."
+  },
+  "guide.ai": {
+    "description": "guidePanel, text of <span> (src/renderer/src/guide/GuidePanel.tsx:1094)."
+  },
+  "guide.wholeScreen": {
+    "description": "guidePanel, text of <span> (src/renderer/src/guide/GuidePanel.tsx:1095)."
+  },
+  "guide.stepTitle": {
+    "description": "guidePanel, the aria-label of <input> (src/renderer/src/guide/GuidePanel.tsx:1102)."
+  },
+  "guide.stepType": {
+    "description": "guidePanel, the aria-label of <input> (src/renderer/src/guide/GuidePanel.tsx:1113)."
+  },
+  "guide.stepNote": {
+    "description": "guidePanel, the aria-label of <textarea> (src/renderer/src/guide/GuidePanel.tsx:1123)."
+  },
+  "guide.stepLink": {
+    "description": "guidePanel, text of <p> (src/renderer/src/guide/GuidePanel.tsx:1133)."
+  },
+  "guide.useAllSaid": {
+    "description": "guidePanel, text of <button> (src/renderer/src/guide/GuidePanel.tsx:1138)."
+  },
+  "guide.demoZoom": {
+    "description": "guidePanel, text of <button> (src/renderer/src/guide/GuidePanel.tsx:1145)."
+  },
+  "guide.afterTyping": {
+    "description": "guidePanel, text of <button> (src/renderer/src/guide/GuidePanel.tsx:1157)."
+  },
+  "guide.blurArea": {
+    "description": "guidePanel, text of <button> (src/renderer/src/guide/GuidePanel.tsx:1166)."
+  },
+  "guide.blurTyped": {
+    "description": "guidePanel, text of <button> (src/renderer/src/guide/GuidePanel.tsx:1170)."
+  },
+  "guide.copyShot": {
+    "description": "guidePanel, text of <button> (src/renderer/src/guide/GuidePanel.tsx:1174)."
+  },
+  "guide.expected": {
+    "description": "guidePanel, text of <span> (src/renderer/src/guide/GuidePanel.tsx:1201)."
+  },
+  "guide.expectedPlaceholder": {
+    "description": "guidePanel, the placeholder of <textarea> (src/renderer/src/guide/GuidePanel.tsx:1202)."
+  },
+  "guide.actual": {
+    "description": "guidePanel, text of <span> (src/renderer/src/guide/GuidePanel.tsx:1205)."
+  },
+  "guide.actualPlaceholder": {
+    "description": "guidePanel, the placeholder of <textarea> (src/renderer/src/guide/GuidePanel.tsx:1206)."
+  },
+  "guide.actualAtPlayhead": {
+    "description": "guidePanel, text of <button> (src/renderer/src/guide/GuidePanel.tsx:1210)."
+  },
+  "guide.viewActual": {
+    "description": "guidePanel, the aria-label of <button> (src/renderer/src/guide/GuidePanel.tsx:1219)."
+  },
+  "guide.actualAlt": {
+    "description": "guidePanel, the alt of <img> (src/renderer/src/guide/GuidePanel.tsx:1220)."
+  },
+  "guide.details": {
+    "description": "guidePanel, the aria-label of <div> (src/renderer/src/guide/GuidePanel.tsx:1223)."
+  },
+  "guide.includeDetail": {
+    "description": "guidePanel, the aria-label of <input> (src/renderer/src/guide/GuidePanel.tsx:1229)."
+  },
+  "guide.detail": {
+    "description": "guidePanel, the aria-label of <input> (src/renderer/src/guide/GuidePanel.tsx:1230)."
+  },
+  "guide.endScreen": {
+    "description": "guidePanel, text of <button> (src/renderer/src/guide/GuidePanel.tsx:1261)."
+  },
+  "guide.heading": {
+    "description": "guidePanel, text of <span> (src/renderer/src/guide/GuidePanel.tsx:1266)."
+  },
+  "guide.buttonLabel": {
+    "description": "guidePanel, text of <span> (src/renderer/src/guide/GuidePanel.tsx:1270)."
+  },
+  "guide.link": {
+    "description": "guidePanel, text of <span> (src/renderer/src/guide/GuidePanel.tsx:1274)."
+  },
+  "guide.linkPlaceholder": {
+    "description": "guidePanel, the placeholder of <input> (src/renderer/src/guide/GuidePanel.tsx:1278)."
+  },
+  "guide.linkRule": {
+    "description": "guidePanel, text of <p> (src/renderer/src/guide/GuidePanel.tsx:1287)."
+  },
+  "guide.checkShotsTitle": {
+    "description": "guidePanel, the aria-label of <div> (src/renderer/src/guide/GuidePanel.tsx:1314)."
+  },
+  "guide.checkGuideTitle": {
+    "description": "guidePanel, the aria-label of <div> (src/renderer/src/guide/GuidePanel.tsx:1314)."
+  },
+  "guide.checkNow": {
+    "description": "guidePanel, text of <button> (src/renderer/src/guide/GuidePanel.tsx:1324)."
+  },
+  "guide.saveAnyway": {
+    "description": "guidePanel, text of <button> (src/renderer/src/guide/GuidePanel.tsx:1327)."
+  },
+  "guide.goBack": {
+    "description": "guidePanel, text of <button> (src/renderer/src/guide/GuidePanel.tsx:1333)."
+  },
+  "guide.note": {
+    "description": "Make a guide: the note under the panel's top."
+  },
+  "guide.noClicks": {
+    "description": "Make a guide: the note when the recording has no clicks."
+  },
+  "guide.nothing": {
+    "description": "Make a guide: the note when no step could be found."
+  },
+  "guide.makeCaptionsFirst": {
+    "description": "Make a guide: shown with a Make captions button when the recording has no captions."
+  },
+  "guide.tooMany": {
+    "description": "Make a guide: the note when the recording has more steps than the list shows."
+  },
+  "guide.nothingSaid": {
+    "description": "Make a guide: why Write titles waits (no speech near the steps)."
+  },
+  "guide.linkQuestion": {
+    "description": "Make a guide: the question before saving or copying a guide with a link nobody said."
+  },
+  "guide.outside": {
+    "description": "Make a guide: under a step whose click is outside the recording."
+  },
+  "guide.typedHint": {
+    "description": "Make a guide: under Blur the typed text."
+  },
+  "guide.blurHint": {
+    "description": "Make a guide: said when Blur an area starts."
+  },
+  "guide.sendShots": {
+    "description": "Make a guide › Titles: the checkbox that sends the screenshots with the titles request."
+  },
+  "guide.preparingPictures": {
+    "description": "Make a guide: why Write titles waits while screenshots are prepared."
+  },
+  "guide.noPictures": {
+    "description": "Make a guide: why Write titles waits when no screenshot can be sent."
+  },
+  "guide.format.pdf": {
+    "description": "Make a guide › Format: the PDF file format."
+  },
+  "guide.format.html": {
+    "description": "Make a guide › Format: a web page file."
+  },
+  "guide.format.markdown": {
+    "description": "Make a guide › Format: a Markdown text file. Markdown is a name."
+  },
+  "guide.format.demo": {
+    "description": "Make a guide › Format: a web page that steps through the screenshots on each click."
+  },
+  "guide.count.steps": {
+    "description": "Make a guide: the count line under the steps, its first part; parts are joined with \" · \"."
+  },
+  "guide.check.unchecked": {
+    "description": "Make a guide: the question before the first Save or Copy, its first sentence. More sentences and \"Check them now?\" follow."
+  },
+  "guide.typedIn": {
+    "description": "Make a guide: the chip on a screenshot that may show typing, with the step where it was typed."
+  },
+  "guide.stepLabel": {
+    "description": "Make a guide: a step as the screenshot viewer names it inside \"Send {label}'s screenshot\" and \"Screenshot for {label}\"."
+  },
+  "guide.actualLabel": {
+    "description": "Make a guide (bug report): the Actual screenshot as the viewer names it. Actual is the bug report's field name."
+  },
+  "guide.name.step": {
+    "description": "Make a guide: a step row's accessible name starts with it; the time and the row's states follow, joined with commas."
+  },
+  "guide.save.pdf": {
+    "description": "Make a guide: the save button with the PDF format chosen."
+  },
+  "guide.save.html": {
+    "description": "Make a guide: the save button with the HTML format chosen."
+  },
+  "guide.save.markdown": {
+    "description": "Make a guide: the save button with the Markdown format chosen."
+  },
+  "guide.save.demo": {
+    "description": "Make a guide: the save button with the click-through demo format chosen."
+  },
+  "guide.count.hidden": {
+    "description": "Make a guide: the count line, how many steps are left out."
+  },
+  "guide.count.untitled": {
+    "description": "Make a guide: the count line, how many steps still need a title."
+  },
+  "guide.count.typed": {
+    "description": "Make a guide: the count line, how many screenshots may show what was typed."
+  },
+  "guide.check.typed": {
+    "description": "Make a guide: inside the question before saving, how many unchecked screenshots may show typing; parts are joined with \"; \"."
+  },
+  "guide.check.whole": {
+    "description": "Make a guide: inside the question before saving, how many unchecked screenshots show the whole screen."
+  },
+  "guide.check.now": {
+    "description": "Make a guide: the end of the question before saving (Check now / Save anyway follow)."
+  },
+  "guide.typed": {
+    "description": "Make a guide: the chip on a screenshot that may show typing that is no listed step."
+  },
+  "guide.actualTitle": {
+    "description": "Make a guide (bug report): the viewer's title for the Actual screenshot."
+  },
+  "guide.name.typedIn": {
+    "description": "Make a guide: part of a step row's accessible name (lower case, after a comma)."
+  },
+  "guide.name.typed": {
+    "description": "Make a guide: part of a step row's accessible name (lower case, after a comma)."
+  },
+  "guide.name.untitled": {
+    "description": "Make a guide: part of a step row's accessible name."
+  },
+  "guide.name.ai": {
+    "description": "Make a guide: part of a step row's accessible name."
+  },
+  "guide.name.whole": {
+    "description": "Make a guide: part of a step row's accessible name: the screenshot shows the whole screen."
+  },
+  "guide.name.leftOut": {
+    "description": "Make a guide: part of a step row's accessible name: the step is not in the guide."
+  },
+  "guide.heading.guide": {
+    "description": "Make a guide: the panel's heading when it was opened to make a guide (Bug report and Click-through demo are the other headings)."
+  },
+  "shot.sendTitle": {
+    "description": "Guide › screenshot viewer, choosing pictures to send: the title. {place} names the AI provider, or \"the AI service\"."
+  },
+  "shot.theService": {
+    "description": "Guide › screenshot viewer: inside \"These screenshots go to {place}\" when the provider has no name."
+  },
+  "shot.title": {
+    "description": "Guide › screenshot viewer: the title. {label} names the step (\"step 4\"), {total} how many screenshots there are."
+  },
+  "clips.title": {
+    "description": "shortClipsPanel, the aria-label of <aside> (src/renderer/src/clips/ShortClipsPanel.tsx:387)."
+  },
+  "clips.focus": {
+    "description": "shortClipsPanel, text of <label> (src/renderer/src/clips/ShortClipsPanel.tsx:406)."
+  },
+  "clips.focusPlaceholder": {
+    "description": "shortClipsPanel, the placeholder of <input> (src/renderer/src/clips/ShortClipsPanel.tsx:412)."
+  },
+  "clips.focusHint": {
+    "description": "shortClipsPanel, text of <span> (src/renderer/src/clips/ShortClipsPanel.tsx:419)."
+  },
+  "clips.noCaptions": {
+    "description": "shortClipsPanel, text of <p> (src/renderer/src/clips/ShortClipsPanel.tsx:442)."
+  },
+  "clips.activityOnly": {
+    "description": "shortClipsPanel, text of <button> (src/renderer/src/clips/ShortClipsPanel.tsx:471)."
+  },
+  "clips.moments": {
+    "description": "shortClipsPanel, the aria-label of <ul> (src/renderer/src/clips/ShortClipsPanel.tsx:479)."
+  },
+  "clips.makeClip": {
+    "description": "shortClipsPanel, the aria-label of <input> (src/renderer/src/clips/ShortClipsPanel.tsx:490)."
+  },
+  "clips.playClip": {
+    "description": "shortClipsPanel, the aria-label of <button> (src/renderer/src/clips/ShortClipsPanel.tsx:514)."
+  },
+  "clips.made": {
+    "description": "shortClipsPanel, text of <span> (src/renderer/src/clips/ShortClipsPanel.tsx:519)."
+  },
+  "clips.openClip": {
+    "description": "shortClipsPanel, the aria-label of <button> (src/renderer/src/clips/ShortClipsPanel.tsx:520)."
+  },
+  "clips.open": {
+    "description": "shortClipsPanel, text of <button> (src/renderer/src/clips/ShortClipsPanel.tsx:521)."
+  },
+  "clips.namesOffline": {
+    "description": "shortClipsPanel, text of <label> (src/renderer/src/clips/ShortClipsPanel.tsx:538)."
+  },
+  "clips.namesWith": {
+    "description": "shortClipsPanel, text of <label> (src/renderer/src/clips/ShortClipsPanel.tsx:542)."
+  },
+  "clips.namesWithLabel": {
+    "description": "shortClipsPanel, the aria-label of <select> (src/renderer/src/clips/ShortClipsPanel.tsx:543)."
+  },
+  "clips.copiesMade": {
+    "description": "shortClipsPanel, the aria-label of <div> (src/renderer/src/clips/ShortClipsPanel.tsx:593)."
+  },
+  "clips.madeFrom": {
+    "description": "shortClipsPanel, text of <h3> (src/renderer/src/clips/ShortClipsPanel.tsx:615)."
+  },
+  "clips.openName": {
+    "description": "shortClipsPanel, the aria-label of <button> (src/renderer/src/clips/ShortClipsPanel.tsx:620)."
+  },
+  "clips.shape": {
+    "description": "shortClipsPanel, text of <legend> (src/renderer/src/clips/ShortClipsPanel.tsx:637)."
+  },
+  "clips.playing": {
+    "description": "Short clips: shown while a moment plays; {at} is the time played, {length} the moment's length."
+  },
+  "clips.length.any": {
+    "description": "Short clips › Length: any moment from 15 to 90 seconds."
+  },
+  "clips.length.short": {
+    "description": "Short clips › Length: moments shorter than a minute."
+  },
+  "clips.length.long": {
+    "description": "Short clips › Length: moments from 60 to 90 seconds."
+  },
+  "clips.shape.vertical": {
+    "description": "Short clips › Shape: a tall copy. 9:16 is the shape."
+  },
+  "clips.shape.square": {
+    "description": "Short clips › Shape: a square copy."
+  },
+  "clips.shape.same": {
+    "description": "Short clips › Shape: the copy keeps this video's shape."
+  },
+  "clips.range": {
+    "description": "Short clips: a moment's place in the video and its length in seconds."
+  },
+  "clips.stopped": {
+    "description": "Short clips: said when making copies was stopped; {n} copies were made."
+  },
+  "clips.makeNone": {
+    "description": "Short clips: the make button while no moment is ticked."
+  },
+  "clips.madeCopies": {
+    "description": "Short clips: said when the copies are made. {name} is the original project's name.",
+    "user": [
+      "name"
+    ]
+  },
+  "clips.makeCopies": {
+    "description": "Short clips: the make button, with how many ticked moments become copies."
+  },
+  "clips.words.intro": {
+    "description": "Short clips: what the tool does, at the top of the panel."
+  },
+  "clips.words.silent": {
+    "description": "Short clips: added to the intro when no speech was found."
+  },
+  "clips.words.tooShort": {
+    "description": "Short clips: the video is too short for clips."
+  },
+  "clips.words.nothing": {
+    "description": "Short clips: no moment was found."
+  },
+  "clips.words.needsCaptions": {
+    "description": "Short clips: shown with a Make captions button when the recording has no captions."
+  },
+  "clips.words.noScreen": {
+    "description": "Short clips: the screen could not be read."
+  },
+  "clips.words.looking": {
+    "description": "Short clips: progress while the screen is read."
+  },
+  "clips.words.linked": {
+    "description": "Short clips: how much space the copies take when they share the video's files."
+  },
+  "clips.words.shortNeedsCaptions": {
+    "description": "Make a shorter version: shown when the recording has no captions."
+  },
+  "clips.words.tooLittle": {
+    "description": "Make a shorter version: not enough speech to make one."
+  },
+  "clips.words.naming": {
+    "description": "Short clips: progress while clips are named. {place} names the AI provider or \"AI on this PC\"."
+  },
+  "clips.words.oneDrive": {
+    "description": "Short clips: how much space each copy takes when the project is in a OneDrive folder. {each} is a size."
+  },
+  "clips.words.noRoom": {
+    "description": "Short clips: the drive has too little room for the copies. {need} and {free} are sizes."
+  },
+  "clips.words.making": {
+    "description": "Short clips: progress while the copies are made."
+  }
+}

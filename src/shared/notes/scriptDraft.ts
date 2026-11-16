@@ -14,6 +14,7 @@ import { SCRIPT_DRAFT_MAX_NOTES, type ScriptDraftRequest, type ScriptDraftResult
 import { AiOutputError, type TextPrompt } from '../captions/transcriptText'
 import { NOTES_TEXT_MAX } from './notes'
 import { fmt } from '../i18n/fmt'
+import { t } from '../i18n/t'
 
 export const SCRIPT_LIMITS = {
   notesMax: SCRIPT_DRAFT_MAX_NOTES,
@@ -53,9 +54,9 @@ const SCRIPT_SYSTEM =
 /** A valid request, or throws an Error with a message to show (no notes, too long, not text). */
 export function validateScriptRequest(raw: unknown): ScriptDraftRequest {
   const notes = raw && typeof raw === 'object' && !Array.isArray(raw) ? (raw as { notes?: unknown }).notes : undefined
-  if (typeof notes !== 'string') throw new Error('Draft script needs your notes as text.')
-  if (!notes.trim()) throw new Error('Write a few bullet points first.')
-  if (notes.length > SCRIPT_LIMITS.notesMax) throw new Error(`Draft script works on up to ${fmt.count(SCRIPT_LIMITS.notesMax, { grouping: true })} characters of notes.`)
+  if (typeof notes !== 'string') throw new Error(t('errors.scriptDraft.notText'))
+  if (!notes.trim()) throw new Error(t('errors.scriptDraft.empty'))
+  if (notes.length > SCRIPT_LIMITS.notesMax) throw new Error(t('errors.scriptDraft.tooLong', { max: fmt.count(SCRIPT_LIMITS.notesMax, { grouping: true }) }))
   return { notes }
 }
 

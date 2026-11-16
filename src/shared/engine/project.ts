@@ -23,6 +23,7 @@ import { readProjectGrade } from '../render/gradeData'
 import { readChapterBar } from '../render/chapterBarData'
 import { readSoundFx } from '../audio/soundFxData'
 import { readClipOrigin, readGuideSettings } from '../guide/guideData'
+import { t } from '../i18n/t'
 
 export const PROJECT_VERSION = 2
 
@@ -143,7 +144,7 @@ const PROJECT_ASPECTS: readonly string[] = ['auto', '16:9', '9:16', '1:1', '4:3'
 
 export function migrateProject(raw: unknown): Project {
   const p = raw as AnyProject
-  if (!p || typeof p !== 'object' || typeof p.id !== 'string') throw new Error('Not a project file')
+  if (!p || typeof p !== 'object' || typeof p.id !== 'string') throw new Error(t('errors.project.notAProjectFile'))
   const duration = Number.isFinite(p.duration) && p.duration > 0 ? p.duration : 0.1
   const listed = objects<Clip>(p.clips).filter((c) => Number.isFinite(c.start) && Number.isFinite(c.end))
   const clips = listed.length ? listed : [{ ...fullClip(duration), start: p.trim?.start ?? 0, end: p.trim?.end ?? duration }]

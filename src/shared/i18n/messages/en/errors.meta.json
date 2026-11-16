@@ -688,5 +688,83 @@
       ".cube",
       "LUT"
     ]
+  },
+  "aiText.nothingToName": {
+    "description": "Refusal of an AI naming request (chapters, clips or guide steps) that holds nothing to name; shown where the tool reports its error."
+  },
+  "aiText.tooManyItems": {
+    "description": "Refusal of an AI naming request with more items than one request may carry."
+  },
+  "aiText.itemTooLong": {
+    "description": "Refusal of an AI naming request whose item (a chapter, clip or step) has too much text."
+  },
+  "aiText.pictureNotJpeg": {
+    "description": "Refusal of a screenshot sent with a guide step to the AI provider when it is not a JPEG picture."
+  },
+  "aiText.pictureTooLarge": {
+    "description": "Refusal of a screenshot sent with a guide step to the AI provider when it is over the size limit."
+  },
+  "aiText.tooMuchText": {
+    "description": "Refusal of an AI naming request whose items hold too much text in all."
+  },
+  "aiText.unknownTask": {
+    "description": "Refusal of an AI text request for a task Flown does not know (tidy, translate, name and the like)."
+  },
+  "aiText.noCaptions": {
+    "description": "Refusal of an AI caption tool (tidy, translate, make great) when the captions hold no text."
+  },
+  "aiText.tooManyCaptions": {
+    "description": "Refusal of an AI caption tool when the captions are more than one request may carry."
+  },
+  "aiText.chooseLanguage": {
+    "description": "Refusal of a caption translation without a usable target language."
+  },
+  "transcribe.notATranscript": {
+    "description": "Error of a transcription when the AI service answered with something that is not a transcript."
+  },
+  "project.notAProjectFile": {
+    "description": "Error when a file opened as a project is not one of Flown's project files; shown where opening the project failed."
+  },
+  "scriptDraft.notText": {
+    "description": "Refusal of Draft script (speaker notes) when the notes are not text."
+  },
+  "scriptDraft.empty": {
+    "description": "Refusal of Draft script (speaker notes) when the notes are empty."
+  },
+  "scriptDraft.tooLong": {
+    "description": "Refusal of Draft script when the notes are too long. {max} is a grouped number of characters (20,000)."
+  },
+  "webhook.help": {
+    "description": "Settings › Share: why a pasted webhook address was refused. Slack, Discord, Microsoft Teams and the three addresses stay as they are."
+  },
+  "webhook.httpsOnly": {
+    "description": "Settings › Share: a pasted webhook address that does not start with https://."
+  },
+  "webhook.tooLong": {
+    "description": "Share: the message to post to a chat is longer than the service accepts."
+  },
+  "webhook.timeout": {
+    "description": "Share: posting to a chat took too long. {name} is the service (Slack, Discord, Microsoft Teams); {seconds} a number of seconds."
+  },
+  "webhook.network": {
+    "description": "Share: posting to a chat failed because the service could not be reached. {name} is the service."
+  },
+  "webhook.redirect": {
+    "description": "Share: the chat service answered with a redirect, so nothing was posted. {name} is the service."
+  },
+  "webhook.gone": {
+    "description": "Share: the chat service says the webhook was deleted. Settings › Share names the place in Settings."
+  },
+  "webhook.refused": {
+    "description": "Share: the chat service refused the post. {name} is the service."
+  },
+  "webhook.busy": {
+    "description": "Share: the chat service asked to slow down. {name} is the service."
+  },
+  "webhook.serverError": {
+    "description": "Share: the chat service had an error of its own. {name} is the service; {status} an HTTP status number, kept in Latin digits."
+  },
+  "webhook.notAccepted": {
+    "description": "Share: the chat service did not accept the post. {name} is the service; {status} an HTTP status number, kept in Latin digits."
   }
 }

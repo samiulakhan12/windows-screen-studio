@@ -31,30 +31,31 @@ import { playStretch } from '../review/playStretch'
 import '../review/review.css'
 import './clips.css'
 import { ClipCopyError, CLIPS_WORDS, clipsFor, copySpace, ipcMessage, madeFrom, makeClipCopies, namesRequestForMoments, readScreen, settledFlush, textMeasure, withAiTitles } from './clipsRun'
+import { t } from '../../../shared/i18n/t'
+import { Rich } from '../editor/panels/Rich'
 
-const LENGTHS: readonly { value: MomentLength; label: string }[] = [
-  { value: 'any', label: 'Any (15–90 s)' },
-  { value: 'short', label: 'Under 60 s' },
-  { value: 'long', label: '60–90 s' }
+const lengths = (): readonly { value: MomentLength; label: string }[] => [
+  { value: 'any', label: t('smart.clips.length.any') },
+  { value: 'short', label: t('smart.clips.length.short') },
+  { value: 'long', label: t('smart.clips.length.long') }
 ]
-export const SHAPES: readonly { value: ClipShape; label: string }[] = [
-  { value: 'vertical', label: 'Vertical 9:16' },
-  { value: 'square', label: 'Square 1:1' },
-  { value: 'same', label: 'Same as this video' }
+export const shapeOptions = (): readonly { value: ClipShape; label: string }[] => [
+  { value: 'vertical', label: t('smart.clips.shape.vertical') },
+  { value: 'square', label: t('smart.clips.shape.square') },
+  { value: 'same', label: t('smart.clips.shape.same') }
 ]
 /** Focus on is read this long after the last key. */
 const FOCUS_WAIT_MS = 300
 
 let runs = 0
 
-const plural = (n: number, one: string, many = `${one}s`): string => `${n} ${n === 1 ? one : many}`
 /** A moment's key: its range, kept across new lists. */
 const keyOf = (m: Pick<Moment, 'start' | 'end'>): string => `${m.start.toFixed(3)}-${m.end.toFixed(3)}`
 
 /** "0:42 to 1:27 · 45 s" in the video's time. */
 export function momentRange(project: Pick<Project, 'clips' | 'freezes'>, m: Pick<Moment, 'start' | 'end' | 'seconds'>): string {
   const plan = planOf(project)
-  return `${fmt.clock(videoTimeAt(project.clips, plan, m.start), 'hours')} to ${fmt.clock(videoTimeAt(project.clips, plan, m.end), 'hours')} · ${Math.round(m.seconds)} s`
+  return t('smart.clips.range', { from: fmt.clock(videoTimeAt(project.clips, plan, m.start), 'hours'), to: fmt.clock(videoTimeAt(project.clips, plan, m.end), 'hours'), seconds: fmt.count(Math.round(m.seconds)) })
 }
 
 /** The reasons a row lists: without the length, which its time line says. */
@@ -335,7 +336,7 @@ export function ShortClipsPanel(props: { project: Project; cursor: CursorTrack; 
       })
       record(out.made)
       const name = project.name.trim() || 'Untitled recording'
-      const said = out.stopped ? `Stopped: made ${plural(out.made.length, 'copy', 'copies')}.` : `Made ${plural(out.made.length, 'copy', 'copies')}. Your original “${name}” is unchanged.`
+      const said = out.stopped ? t('smart.clips.stopped', { count: out.made.length, n: fmt.count(out.made.length) }) : t('smart.clips.madeCopies', { count: out.made.length, n: fmt.count(out.made.length), name })
       if (live.current) {
         setStatus(said)
         setWrittenHere(namedHere && out.made.length > 0 ? said : null)
@@ -377,19 +378,17 @@ export function ShortClipsPanel(props: { project: Project; cursor: CursorTrack; 
     return () => ({ task: 'names', names: namesRequestForMoments(project, tickedMoments.length ? tickedMoments : moments), segments: [] })
   }, [namesChoice, project, tickedMoments, moments])
   const n = tickedMoments.length
-  const makeLabel = n === 0 ? 'Make copies' : `Make ${plural(n, 'copy', 'copies')}`
+  const makeLabel = n === 0 ? t('smart.clips.makeNone') : t('smart.clips.makeCopies', { count: n, n: fmt.count(n) })
   const makeCaptions = (): void => {
     onClose()
     group.command('generateCaptions')
   }
 
   return (
-    <aside className="review-panel clips-panel" role="region" aria-label="Short clips" data-testid="clips-panel" onKeyDown={onKeyDown}>
+    <aside className="review-panel clips-panel" role="region" aria-label={t('smart.clips.title')} data-testid="clips-panel" onKeyDown={onKeyDown}>
       <div className="review-head">
-        <h2>Short clips</h2>
-        <button ref={closeRef} type="button" className="btn ghost" onClick={onClose} data-testid="clips-close">
-          Close
-        </button>
+        <h2>{t('smart.clips.title')}</h2>
+        <button ref={closeRef} type="button" className="btn ghost" onClick={onClose} data-testid="clips-close">{t('common.action.close')}</button>
       </div>
       {tooShort ? (
         <p className="clips-intro" data-testid="clips-too-short">
@@ -402,27 +401,23 @@ export function ShortClipsPanel(props: { project: Project; cursor: CursorTrack; 
             {silent ? ` ${CLIPS_WORDS.silent}` : ''}
           </p>
           <div className="clips-field">
-            <label className="clips-label" htmlFor={`${ids}-focus`}>
-              Focus on (optional)
-            </label>
+            <label className="clips-label" htmlFor={`${ids}-focus`}>{t('smart.clips.focus')}</label>
             <input
               ref={firstRef}
               id={`${ids}-focus`}
               type="text"
-              placeholder="billing, export"
+              placeholder={t('smart.clips.focusPlaceholder')}
               value={focus}
               onChange={(e) => setFocus(e.target.value)}
               aria-describedby={`${ids}-focus-hint`}
               data-testid="clips-focus"
             />
-            <span className="hint" id={`${ids}-focus-hint`}>
-              Moments that mention these words rank higher.
-            </span>
+            <span className="hint" id={`${ids}-focus-hint`}>{t('smart.clips.focusHint')}</span>
           </div>
           <fieldset className="clips-field">
-            <legend>Length</legend>
+            <legend>{t('common.label.length')}</legend>
             <div className="clips-choices">
-              {LENGTHS.map((l) => (
+              {lengths().map((l) => (
                 <label key={l.value}>
                   <input type="radio" name={`${ids}-length`} value={l.value} checked={pref.length === l.value} onChange={() => setPref({ ...pref, length: l.value })} />
                   {l.label}
@@ -434,15 +429,10 @@ export function ShortClipsPanel(props: { project: Project; cursor: CursorTrack; 
           <div className="clips-field">
             {hasCaptions ? (
               <label className="clips-choices">
-                <input type="checkbox" checked={pref.captions} onChange={(e) => setPref({ ...pref, captions: e.target.checked })} data-testid="clips-captions" />
-                Captions
-              </label>
+                <input type="checkbox" checked={pref.captions} onChange={(e) => setPref({ ...pref, captions: e.target.checked })} data-testid="clips-captions" />{t('common.label.captions')}</label>
             ) : (
-              <p className="hint">
-                No captions yet:{' '}
-                <button type="button" className="link" onClick={makeCaptions}>
-                  Make captions
-                </button>
+              <p className="hint">{t('smart.clips.noCaptions')}{' '}
+                <button type="button" className="link" onClick={makeCaptions}>{t('common.action.makeCaptions')}</button>
               </p>
             )}
           </div>
@@ -453,9 +443,7 @@ export function ShortClipsPanel(props: { project: Project; cursor: CursorTrack; 
                 {CLIPS_WORDS.looking}
                 {reading.fraction !== null ? ` ${Math.round(reading.fraction * 100)}%` : ''}
               </span>
-              <button type="button" className="btn ghost small" onClick={() => readCtrl.current?.abort()}>
-                Stop
-              </button>
+              <button type="button" className="btn ghost small" onClick={() => readCtrl.current?.abort()}>{t('common.action.stop')}</button>
             </div>
           )}
           {screenFailed && ready && <p className="hint">{CLIPS_WORDS.noScreen}</p>}
@@ -464,19 +452,15 @@ export function ShortClipsPanel(props: { project: Project; cursor: CursorTrack; 
             <div className="clips-note" role="group" aria-labelledby={`${ids}-captions-first`} data-testid="clips-needs-captions">
               <p id={`${ids}-captions-first`}>{CLIPS_WORDS.needsCaptions}</p>
               <div className="row">
-                <button type="button" className="btn primary" onClick={makeCaptions}>
-                  Make captions
-                </button>
-                <button type="button" className="btn" onClick={() => setActivityOnly(true)}>
-                  Use activity only
-                </button>
+                <button type="button" className="btn primary" onClick={makeCaptions}>{t('common.action.makeCaptions')}</button>
+                <button type="button" className="btn" onClick={() => setActivityOnly(true)}>{t('smart.clips.activityOnly')}</button>
               </div>
             </div>
           )}
           {reason === 'nothing' && <p className="hint">{CLIPS_WORDS.nothing}</p>}
 
           {moments.length > 0 && (
-            <ul className="clips-list" aria-label="Moments" data-testid="clips-moments">
+            <ul className="clips-list" aria-label={t('smart.clips.moments')} data-testid="clips-moments">
               {moments.map((m, i) => {
                 const key = keyOf(m)
                 const n1 = i + 1
@@ -487,7 +471,7 @@ export function ShortClipsPanel(props: { project: Project; cursor: CursorTrack; 
                     <input
                       className="clips-pick"
                       type="checkbox"
-                      aria-label={`Make clip ${n1}`}
+                      aria-label={t('smart.clips.makeClip', { n: fmt.count(n1) })}
                       aria-describedby={`${ids}-m${i}-title ${ids}-m${i}-time${rowReasons(m) ? ` ${ids}-m${i}-why` : ''}`}
                       checked={ticked.has(key)}
                       disabled={busy}
@@ -506,20 +490,17 @@ export function ShortClipsPanel(props: { project: Project; cursor: CursorTrack; 
                     )}
                     {m.first && <q className="clips-first">{m.first}</q>}
                     {isPlaying && (
-                      <span className="clips-playing" data-testid="clips-playing">
-                        Playing · {fmt.clock(Math.max(0, playing.at - playing.from), 'hours')} of {fmt.clock(playing.until - playing.from, 'hours')}
+                      <span className="clips-playing" data-testid="clips-playing"><Rich k="smart.clips.playing" values={{ at: <>{fmt.clock(Math.max(0, playing.at - playing.from), 'hours')}</>, length: <>{fmt.clock(playing.until - playing.from, 'hours')}</> }} />
                       </span>
                     )}
                     <span className="clips-actions">
-                      <button type="button" className="btn small" aria-pressed={isPlaying} aria-label={`Play clip ${n1}`} onClick={() => play(m)}>
-                        {isPlaying ? 'Stop' : 'Play'}
+                      <button type="button" className="btn small" aria-pressed={isPlaying} aria-label={t('smart.clips.playClip', { n: fmt.count(n1) })} onClick={() => play(m)}>
+                        {isPlaying ? t('common.action.stop') : t('common.action.play')}
                       </button>
                       {done && (
                         <>
-                          <span className="clips-made">Made</span>
-                          <button type="button" className="btn small" aria-label={`Open clip ${n1}`} onClick={() => onOpen(done.id)}>
-                            Open
-                          </button>
+                          <span className="clips-made">{t('smart.clips.made')}</span>
+                          <button type="button" className="btn small" aria-label={t('smart.clips.openClip', { n: fmt.count(n1) })} onClick={() => onOpen(done.id)}>{t('smart.clips.open')}</button>
                         </>
                       )}
                     </span>
@@ -531,17 +512,13 @@ export function ShortClipsPanel(props: { project: Project; cursor: CursorTrack; 
 
           {moments.length > 0 && (
             <fieldset className="clips-field">
-              <legend>Names</legend>
+              <legend>{t('smart.chapters.names')}</legend>
               <div className="clips-choices">
                 <label>
-                  <input type="radio" name={`${ids}-names`} checked={!namesChoice} disabled={busy} onChange={() => setPref({ ...pref, names: 'offline' })} />
-                  From what you say
-                </label>
+                  <input type="radio" name={`${ids}-names`} checked={!namesChoice} disabled={busy} onChange={() => setPref({ ...pref, names: 'offline' })} />{t('smart.clips.namesOffline')}</label>
                 <label>
-                  <input type="radio" name={`${ids}-names`} checked={!!namesChoice} disabled={busy || !choices.length} onChange={() => choices[0] && setPref({ ...pref, names: choices[0].id })} />
-                  With
-                  <select aria-label="Name the clips with" value={namesChoice?.id ?? ''} disabled={busy || !choices.length} onChange={(e) => setPref({ ...pref, names: e.target.value })}>
-                    {!namesChoice && <option value="">{choices.length ? 'Choose…' : 'No AI provider'}</option>}
+                  <input type="radio" name={`${ids}-names`} checked={!!namesChoice} disabled={busy || !choices.length} onChange={() => choices[0] && setPref({ ...pref, names: choices[0].id })} />{t('smart.clips.namesWith')}<select aria-label={t('smart.clips.namesWithLabel')} value={namesChoice?.id ?? ''} disabled={busy || !choices.length} onChange={(e) => setPref({ ...pref, names: e.target.value })}>
+                    {!namesChoice && <option value="">{choices.length ? t('smart.chapters.choose') : t('smart.chapters.noAiProvider')}</option>}
                     {choices.map((c) => (
                       <option key={c.id} value={c.id}>
                         {c.label}
@@ -573,9 +550,7 @@ export function ShortClipsPanel(props: { project: Project; cursor: CursorTrack; 
                   {makeLabel}
                 </button>
                 {busy && (
-                  <button type="button" className="btn ghost" onClick={stop} {...stopFocus} data-testid="clips-stop">
-                    Stop
-                  </button>
+                  <button type="button" className="btn ghost" onClick={stop} {...stopFocus} data-testid="clips-stop">{t('common.action.stop')}</button>
                 )}
                 {/* The progress of AI on this PC naming the clips (it shows nothing for a service). */}
                 <LocalProgress requestId={naming} onStop={stop} returnFocus={makeId} />
@@ -590,7 +565,7 @@ export function ShortClipsPanel(props: { project: Project; cursor: CursorTrack; 
                   <p className="clips-status" role="status" aria-live="polite" data-testid="clips-making">
                     {CLIPS_WORDS.making(Math.min(making.n, making.i + 1), making.n)}
                   </p>
-                  <div className="clips-progress" role="progressbar" aria-label="Copies made" aria-valuemin={0} aria-valuemax={making.n} aria-valuenow={making.i}>
+                  <div className="clips-progress" role="progressbar" aria-label={t('smart.clips.copiesMade')} aria-valuemin={0} aria-valuemax={making.n} aria-valuenow={making.i}>
                     <div style={{ width: `${(100 * (making.i + (making.p && making.p.total > 0 ? Math.min(1, making.p.done / making.p.total) : 0))) / Math.max(1, making.n)}%` }} />
                   </div>
                 </>
@@ -612,14 +587,12 @@ export function ShortClipsPanel(props: { project: Project; cursor: CursorTrack; 
       )}
       {copies.length > 0 && (
         <section className="clips-from" aria-labelledby={`${ids}-from`} data-testid="clips-made-from">
-          <h3 id={`${ids}-from`}>Made from this video</h3>
+          <h3 id={`${ids}-from`}>{t('smart.clips.madeFrom')}</h3>
           <ul>
             {copies.map((c) => (
               <li key={c.id}>
                 <span>{c.name}</span>
-                <button type="button" className="btn small" aria-label={`Open ${c.name}`} onClick={() => onOpen(c.id)}>
-                  Open
-                </button>
+                <button type="button" className="btn small" aria-label={t('smart.clips.openName', { name: c.name })} onClick={() => onOpen(c.id)}>{t('smart.clips.open')}</button>
               </li>
             ))}
           </ul>
@@ -634,9 +607,9 @@ export function ShapeField(props: { name: string; shapes: ReturnType<typeof useC
   const { name, shapes, onPick } = props
   return (
     <fieldset className="clips-field">
-      <legend>Shape</legend>
+      <legend>{t('smart.clips.shape')}</legend>
       <div className="clips-choices">
-        {SHAPES.map((s) => {
+        {shapeOptions().map((s) => {
           const can = shapes.ok[s.value]
           return (
             <label key={s.value}>

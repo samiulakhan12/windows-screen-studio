@@ -4,6 +4,8 @@
  * how one is shown masked, the short message posted, each service's request body, and the
  * messages for a failed post. Pure: main checks and posts, the page only shows the results.
  */
+import { fmt } from '../i18n/fmt'
+import { t } from '../i18n/t'
 
 export type WebhookService = 'slack' | 'discord' | 'teams'
 
@@ -33,8 +35,8 @@ export const SHARE_LIMITS = {
 
 const DISCORD_HOSTS = ['discord.com', 'discordapp.com', 'ptb.discord.com', 'canary.discord.com']
 
-export const WEBHOOK_HELP =
-  'Paste an incoming webhook from Slack, Discord or Microsoft Teams (it starts with https://hooks.slack.com/, https://discord.com/api/webhooks/ or https://….webhook.office.com/).'
+/** What a webhook looks like, said when a pasted one is refused (a function: no text is made when the module loads). */
+export const webhookHelp = (): string => t('errors.webhook.help')
 
 /** The service of a URL's host, or null when the host is not one of theirs. */
 function serviceOf(u: URL): WebhookService | null {
@@ -52,19 +54,19 @@ function serviceOf(u: URL): WebhookService | null {
  * no user name, password or fragment, printable ASCII. Throws a message to show.
  */
 export function parseWebhookUrl(raw: unknown): { service: WebhookService; url: string } {
-  if (typeof raw !== 'string') throw new Error(WEBHOOK_HELP)
+  if (typeof raw !== 'string') throw new Error(webhookHelp())
   const text = raw.trim()
-  if (!text || text.length > SHARE_LIMITS.urlLength || !/^[\x21-\x7e]+$/.test(text)) throw new Error(WEBHOOK_HELP)
+  if (!text || text.length > SHARE_LIMITS.urlLength || !/^[\x21-\x7e]+$/.test(text)) throw new Error(webhookHelp())
   let u: URL
   try {
     u = new URL(text)
   } catch {
-    throw new Error(WEBHOOK_HELP)
+    throw new Error(webhookHelp())
   }
-  if (u.protocol !== 'https:') throw new Error('Only https:// webhooks are accepted.')
-  if (u.username || u.password || u.port || u.hash) throw new Error(WEBHOOK_HELP)
+  if (u.protocol !== 'https:') throw new Error(t('errors.webhook.httpsOnly'))
+  if (u.username || u.password || u.port || u.hash) throw new Error(webhookHelp())
   const service = serviceOf(u)
-  if (!service) throw new Error(WEBHOOK_HELP)
+  if (!service) throw new Error(webhookHelp())
   return { service, url: u.toString() }
 }
 
@@ -151,19 +153,19 @@ export function webhookBody(service: WebhookService, lines: readonly string[]): 
     .join(service === 'teams' ? '\n\n' : '\n')
   const body = service === 'discord' ? { content: text, allowed_mentions: { parse: [] } } : { text }
   const json = JSON.stringify(body)
-  if (new TextEncoder().encode(json).byteLength > SHARE_LIMITS.bodyBytes) throw new Error('The message is too long.')
+  if (new TextEncoder().encode(json).byteLength > SHARE_LIMITS.bodyBytes) throw new Error(t('errors.webhook.tooLong'))
   return json
 }
 
 /** The message for a failed post; names the service, never the URL. */
 export function postFailure(service: WebhookService, what: number | 'timeout' | 'network' | 'redirect'): string {
   const name = WEBHOOK_SERVICES[service].label
-  if (what === 'timeout') return `${name} did not answer in ${SHARE_LIMITS.postTimeoutMs / 1000} s.`
-  if (what === 'network') return `Could not reach ${name}. Check the connection.`
-  if (what === 'redirect') return `${name} sent the message somewhere else, so it was not posted.`
-  if (what === 404 || what === 410) return 'This webhook no longer exists. Paste a new one in Settings › Share.'
-  if (what === 401 || what === 403) return `${name} refused the message: the webhook may have been turned off.`
-  if (what === 429) return `${name} is busy. Try again in a minute.`
-  if (what >= 500) return `${name} had a problem (${what}). Try again later.`
-  return `${name} did not accept the message (${what}).`
+  if (what === 'timeout') return t('errors.webhook.timeout', { name, seconds: fmt.count(SHARE_LIMITS.postTimeoutMs / 1000) })
+  if (what === 'network') return t('errors.webhook.network', { name })
+  if (what === 'redirect') return t('errors.webhook.redirect', { name })
+  if (what === 404 || what === 410) return t('errors.webhook.gone')
+  if (what === 401 || what === 403) return t('errors.webhook.refused', { name })
+  if (what === 429) return t('errors.webhook.busy', { name })
+  if (what >= 500) return t('errors.webhook.serverError', { name, status: String(what) })
+  return t('errors.webhook.notAccepted', { name, status: String(what) })
 }

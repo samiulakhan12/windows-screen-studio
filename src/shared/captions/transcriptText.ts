@@ -21,6 +21,7 @@ import { CAPTION_LINK_RULE, charsWithinTokens, LINK_RULE, packPromptWithin, read
 import { privateLike } from '../smart/privateText'
 import { plainText } from '../publish/text'
 import { studioWordTexts } from './words'
+import { t } from '../i18n/t'
 
 /** One request to a provider: instructions, the transcript, and the shape of the answer. */
 export interface TextPrompt {
@@ -677,28 +678,28 @@ const isJpeg = (b: Uint8Array): boolean => b.length >= 3 && b[0] === 0xff && b[1
  */
 function validateNamesRequest(raw: unknown): NamesRequest {
   const L = AI_LIMITS.names
-  if (!isObject(raw) || !(['chapter', 'clip', 'step', 'note'] as const).includes(raw.kind as NamesRequest['kind'])) throw new Error('Nothing to name.')
-  if (!Array.isArray(raw.items) || raw.items.length === 0) throw new Error('Nothing to name.')
-  if (raw.items.length > L.items) throw new Error('There are too many items to name at once.')
+  if (!isObject(raw) || !(['chapter', 'clip', 'step', 'note'] as const).includes(raw.kind as NamesRequest['kind'])) throw new Error(t('errors.aiText.nothingToName'))
+  if (!Array.isArray(raw.items) || raw.items.length === 0) throw new Error(t('errors.aiText.nothingToName'))
+  if (raw.items.length > L.items) throw new Error(t('errors.aiText.tooManyItems'))
   const ids = new Set<string>()
   let total = 0
   let pictures = 0
   const items: NamesRequest['items'] = raw.items.map((v: unknown) => {
     if (!isObject(v) || typeof v.id !== 'string' || !v.id || v.id.length > 64 || ids.has(v.id)) throw new Error('Invalid items to name.')
     ids.add(v.id)
-    if (typeof v.text !== 'string' || v.text.length > L.text) throw new Error('An item to name is too long.')
-    if (v.action !== undefined && (typeof v.action !== 'string' || v.action.length > L.action)) throw new Error('An item to name is too long.')
+    if (typeof v.text !== 'string' || v.text.length > L.text) throw new Error(t('errors.aiText.itemTooLong'))
+    if (v.action !== undefined && (typeof v.action !== 'string' || v.action.length > L.action)) throw new Error(t('errors.aiText.itemTooLong'))
     total += v.text.length + (typeof v.action === 'string' ? v.action.length : 0)
     let image: Uint8Array | undefined
     if (v.image !== undefined) {
-      if (!(v.image instanceof Uint8Array) || !isJpeg(v.image)) throw new Error('A picture to send is not a JPEG image.')
-      if (v.image.byteLength > L.image) throw new Error('A picture to send is too large.')
-      if (++pictures > L.imagesPerRequest) throw new Error('There are too many pictures to send at once.')
+      if (!(v.image instanceof Uint8Array) || !isJpeg(v.image)) throw new Error(t('errors.aiText.pictureNotJpeg'))
+      if (v.image.byteLength > L.image) throw new Error(t('errors.aiText.pictureTooLarge'))
+      if (++pictures > L.imagesPerRequest) throw new Error(t('errors.images.thereAreTooMany'))
       image = v.image
     }
     return { id: v.id, text: v.text, ...(typeof v.action === 'string' && v.action ? { action: v.action } : {}), ...(image ? { image } : {}) }
   })
-  if (total > L.total) throw new Error('There is too much text to name at once.')
+  if (total > L.total) throw new Error(t('errors.aiText.tooMuchText'))
   const language = typeof raw.language === 'string' && raw.language.length <= 35 && LANGUAGE_RE.test(raw.language) ? raw.language : undefined
   return { kind: raw.kind as NamesRequest['kind'], ...(language ? { language } : {}), items }
 }
@@ -708,12 +709,12 @@ function validateNamesRequest(raw: unknown): NamesRequest {
  * times and text within limits, and a target language for translations. Throws a message to show.
  */
 export function validateTextRequest(raw: unknown): AiTextRequest {
-  if (!isObject(raw) || !(AI_TEXT_TASKS as readonly unknown[]).includes(raw.task)) throw new Error('Unknown AI task.')
+  if (!isObject(raw) || !(AI_TEXT_TASKS as readonly unknown[]).includes(raw.task)) throw new Error(t('errors.aiText.unknownTask'))
   const task = raw.task as AiTextTask
   // 'names' (smart-tools.md §20.0): its items are the data; it may carry `segments: []`.
   if (task === 'names') return { task, segments: [], names: validateNamesRequest(raw.names) }
-  if (!Array.isArray(raw.segments)) throw new Error('There are no captions to work on.')
-  if (raw.segments.length > AI_LIMITS.maxSegments) throw new Error('There are too many captions to send at once.')
+  if (!Array.isArray(raw.segments)) throw new Error(t('errors.aiText.noCaptions'))
+  if (raw.segments.length > AI_LIMITS.maxSegments) throw new Error(t('errors.aiText.tooManyCaptions'))
   const ids = new Set<string>()
   const segments: CaptionSegment[] = raw.segments.map((s: unknown) => {
     if (!isObject(s) || typeof s.id !== 'string' || !s.id || s.id.length > 64 || ids.has(s.id)) throw new Error('Invalid captions.')
@@ -731,13 +732,13 @@ export function validateTextRequest(raw: unknown): AiTextRequest {
     const aiLinks = readAiLinks(s.aiLinks)
     return { id: s.id, start, end, text, ...(words?.length ? { words } : {}), ...(aiLinks ? { aiLinks } : {}) }
   })
-  if (!segments.some((s) => s.text.trim())) throw new Error('There are no captions to work on.')
+  if (!segments.some((s) => s.text.trim())) throw new Error(t('errors.aiText.noCaptions'))
   let targetLanguage: string | undefined
   if (task === 'translate') {
-    if (typeof raw.targetLanguage !== 'string' || !raw.targetLanguage.trim() || raw.targetLanguage.length > AI_LIMITS.languageLength) throw new Error('Choose the language to translate into.')
+    if (typeof raw.targetLanguage !== 'string' || !raw.targetLanguage.trim() || raw.targetLanguage.length > AI_LIMITS.languageLength) throw new Error(t('errors.aiText.chooseLanguage'))
     // A language name or code, not instructions: letters, spaces and a few separators only.
     targetLanguage = raw.targetLanguage.trim()
-    if (!/^[\p{L}\p{M} ()'.,-]+$/u.test(targetLanguage)) throw new Error('Choose the language to translate into.')
+    if (!/^[\p{L}\p{M} ()'.,-]+$/u.test(targetLanguage)) throw new Error(t('errors.aiText.chooseLanguage'))
   }
   if (isPackTask(task)) {
     // The pack's choices: a tone and a length from their lists (else the defaults), the name and chapter titles as one-line data.

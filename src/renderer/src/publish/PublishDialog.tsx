@@ -6,7 +6,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { LOCAL_TEXT_ID, type AiTextRequest, type TextChoice } from '../../../shared/api/ai'
 import { notedPieces, saidLinks, type Noted, type Said as Spoken } from '../../../shared/publish/check'
-import { BLOCKER_TEXT, PUBLISH_KINDS, PUBLISH_LABELS, PUBLISH_LENGTHS, PUBLISH_TONES, publishBlocker, publishSegments, transcriptKey, type PublishKind, type PublishPrefs } from '../../../shared/publish/pack'
+import { PUBLISH_KINDS, publishBlocker, publishSegments, transcriptKey, type PublishKind, type PublishPrefs } from '../../../shared/publish/pack'
 import { plainText, xLength, X_LIMIT } from '../../../shared/publish/text'
 import { composeYoutubeDescription, descriptionBody, descriptionToCheck, parseTags, projectYoutubeChapters, YOUTUBE_DESCRIPTION_MAX } from '../../../shared/publish/youtube'
 import { userChapters } from '../../../shared/chapters/pending'
@@ -27,11 +27,15 @@ import { CostLine } from '../ai/CostLine'
 import { useCostDataRead } from '../ai/useCost'
 import { LocalProgress, LocalWritten } from '../ai/LocalProgress'
 import './publish.css'
+import { fmt } from '../../../shared/i18n/fmt'
+import { t } from '../../../shared/i18n/t'
+import { Rich } from '../editor/panels/Rich'
+import { blockerText, lengthOptions, publishLabel, toneOptions } from './publishWords'
 
 /** A choice in the provider list: its name and model ("OpenAI · gpt-…"), or On this PC alone (smart-tools.md §20.0). */
 const providerLabel = (c: TextChoice): string => (c.kind === 'local' ? c.label : `${c.label} · ${c.model || c.place}`)
 /** Where the copy pack's text goes, by the chosen place (never "OpenAI" for a service, test 103). */
-const sendsText = (c: TextChoice): string => (c.kind === 'local' ? 'Writes from the caption text on this PC: nothing is sent.' : `Sends the caption text (not the sound) to ${c.place}.`)
+const sendsText = (c: TextChoice): string => (c.kind === 'local' ? t('review.publish.sendsLocal') : t('review.publish.sends', { place: c.place }))
 const openAiSettings = (): void => void window.dispatchEvent(new CustomEvent('ssw:open-settings', { detail: { section: 'ai' } }))
 
 /** Most characters each card's counter measures against (X counts its own way). */
@@ -192,8 +196,8 @@ export function PublishDialog({ project, request, onClose, onGenerateCaptions, o
   const copy = (kind: PublishKind, text: string, what: string): void =>
     confirmed(what, 'Copy anyway', text, () => {
       void navigator.clipboard.writeText(text).then(
-        () => say(kind, `${what} copied`),
-        () => say(kind, `${what} could not be copied`, true)
+        () => say(kind, t('review.publish.copied', { what })),
+        () => say(kind, t('review.publish.notCopied', { what }), true)
       )
     })
 
@@ -201,7 +205,7 @@ export function PublishDialog({ project, request, onClose, onGenerateCaptions, o
   if (providers !== null && list.length === 0) {
     body = (
       <div className="publish-empty">
-        <p>Add an AI provider to write the copy. OpenAI, Gemini and Claude all can.</p>
+        <p>{t('review.publish.noProvider')}</p>
         <button
           ref={firstRef}
           className="btn primary"
@@ -210,17 +214,17 @@ export function PublishDialog({ project, request, onClose, onGenerateCaptions, o
             openAiSettings()
           }}
         >
-          <EditorIcon name="gear" size={15} /> Add an AI provider
+          <EditorIcon name="gear" size={15} /> {t('common.action.addAiProvider')}
         </button>
       </div>
     )
   } else if (blocker) {
     body = (
       <div className="publish-empty" data-testid="publish-blocked" data-blocker={blocker}>
-        <p>{BLOCKER_TEXT[blocker]}</p>
+        <p>{blockerText(blocker)}</p>
         {blocker === 'no-captions' && (
           <button ref={firstRef} className="btn primary" onClick={onGenerateCaptions}>
-            <EditorIcon name="captions" size={15} /> Generate captions
+            <EditorIcon name="captions" size={15} /> {t('review.publish.generateCaptions')}
           </button>
         )}
       </div>
@@ -230,8 +234,8 @@ export function PublishDialog({ project, request, onClose, onGenerateCaptions, o
       <>
         <div className="publish-options">
           <label className="field">
-            <span>AI provider</span>
-            <select aria-label="AI provider" value={chosen?.id ?? ''} onChange={(e) => choose({ provider: e.target.value })} disabled={!list.length}>
+            <span>{t('review.publish.provider')}</span>
+            <select aria-label={t('review.publish.provider')} value={chosen?.id ?? ''} onChange={(e) => choose({ provider: e.target.value })} disabled={!list.length}>
               {list.map((p) => (
                 <option key={p.id} value={p.id}>
                   {providerLabel(p)}
@@ -240,20 +244,20 @@ export function PublishDialog({ project, request, onClose, onGenerateCaptions, o
             </select>
           </label>
           <div className="field">
-            <span>Tone</span>
-            <Chips label="Tone" value={prefs.tone} options={[...PUBLISH_TONES]} onChange={(tone) => choose({ tone })} />
+            <span>{t('review.publish.tone')}</span>
+            <Chips label={t('review.publish.tone')} value={prefs.tone} options={[...toneOptions()]} onChange={(tone) => choose({ tone })} />
           </div>
           <div className="field">
-            <span>Length</span>
-            <Chips label="Length" value={prefs.length} options={[...PUBLISH_LENGTHS]} onChange={(length) => choose({ length })} />
+            <span>{t('common.label.length')}</span>
+            <Chips label={t('common.label.length')} value={prefs.length} options={[...lengthOptions()]} onChange={(length) => choose({ length })} />
           </div>
         </div>
         <div className="publish-run">
           <button ref={firstRef} className="btn primary" data-testid="publish-write-all" aria-describedby={chosen ? 'publish-cost' : undefined} disabled={!chosen} onClick={() => write(PUBLISH_KINDS)}>
-            <EditorIcon name="sparkle" size={15} /> {done ? 'Write all again' : 'Write all'}
+            <EditorIcon name="sparkle" size={15} /> {done ? t('review.publish.writeAllAgain') : t('review.publish.writeAll')}
           </button>
           <span className="publish-progress" role="status" data-testid="publish-progress">
-            {running.length ? `Writing… ${done} of ${PUBLISH_KINDS.length} done` : ''}
+            {running.length ? t('review.publish.writing', { done: fmt.count(done), total: fmt.count(PUBLISH_KINDS.length) }) : ''}
           </span>
           {running.length > 0 && (
             <button
@@ -263,9 +267,7 @@ export function PublishDialog({ project, request, onClose, onGenerateCaptions, o
               onBlur={() => {
                 if (document.hasFocus()) stopAllFocused.current = false
               }}
-            >
-              Stop all
-            </button>
+            >{t('review.publish.stopAll')}</button>
           )}
         </div>
         <div className="publish-cards">
@@ -288,9 +290,9 @@ export function PublishDialog({ project, request, onClose, onGenerateCaptions, o
                 const description = descriptionBody(text)
                 if (!description) return
                 // What any export's description file can have (with these chapters, or fewer): asked about first when the check notes anything in it.
-                confirmed(PUBLISH_LABELS[kind], 'Use anyway', descriptionToCheck(description, youtube.chapters, youtube.duration, youtube.credit), () => {
+                confirmed(publishLabel(kind), 'Use anyway', descriptionToCheck(description, youtube.chapters, youtube.duration, youtube.credit), () => {
                   store.update((p) => ({ ...p, publish: { description } }))
-                  say(kind, "The export's description file will use this text")
+                  say(kind, t('review.publish.usedForExports'))
                 })
               }}
               onStopForExports={() => {
@@ -298,13 +300,13 @@ export function PublishDialog({ project, request, onClose, onGenerateCaptions, o
                   const { publish: _gone, ...rest } = p
                   return rest
                 })
-                say(kind, "The export's description is back to the standard one")
+                say(kind, t('review.publish.stoppedForExports'))
               }}
               onRename={(name) =>
                 // The name counts as said once it is the recording's: asked about first when the check notes anything in it.
-                confirmed(PUBLISH_LABELS[kind], 'Use anyway', name, () => {
+                confirmed(publishLabel(kind), 'Use anyway', name, () => {
                   store.update((p) => ({ ...p, name }))
-                  say(kind, 'Recording renamed')
+                  say(kind, t('review.publish.renamed'))
                 })
               }
               onFindChapters={onFindChapters}
@@ -319,16 +321,14 @@ export function PublishDialog({ project, request, onClose, onGenerateCaptions, o
           choice={chosen}
           actions={PUBLISH_KINDS.map((kind) => ({
             key: kind,
-            label: PUBLISH_LABELS[kind],
+            label: publishLabel(kind),
             buttonId: `publish-${kind}-write`,
             request: chosen && !blocker ? (): AiTextRequest => packRequest(kind, contextFor(chosen)) : null
           }))}
         />
         {onShortClips && (
           <p className="hint">
-            <button type="button" className="link" data-testid="publish-short-clips" onClick={onShortClips}>
-              Make short clips for Shorts and Reels…
-            </button>
+            <button type="button" className="link" data-testid="publish-short-clips" onClick={onShortClips}>{t('review.publish.shortClips')}</button>
           </p>
         )}
       </>
@@ -351,16 +351,14 @@ export function PublishDialog({ project, request, onClose, onGenerateCaptions, o
       >
         <header className="modal-head">
           <h2 id="publish-title">
-            <EditorIcon name="transcript" size={18} /> Publish
+            <EditorIcon name="transcript" size={18} /> {t('review.publish.title')}
           </h2>
         </header>
-        <p className="hint">Text to post with your video, written from its captions and chapters. Check it before you post.</p>
+        <p className="hint">{t('review.publish.intro')}</p>
         {body}
         <footer className="modal-foot">
           <p className="hint publish-sends">{chosen && !blocker ? sendsText(chosen) : ''}</p>
-          <button className="btn" onClick={close}>
-            Close
-          </button>
+          <button className="btn" onClick={close}>{t('common.action.close')}</button>
         </footer>
         {ask && <NotedConfirm ask={ask} onClose={() => setAsk(null)} />}
       </div>
@@ -411,12 +409,13 @@ function piecesOf(text: string, said: Spoken): Noted[] {
 }
 
 /** A card's status line (role status): "Written" is how a screen reader hears the text is ready. */
-const STATUS_TEXT: Record<PackItem['status'], string> = { idle: 'Not written yet', waiting: 'Waiting…', writing: 'Writing…', done: 'Written', error: '' }
+const statusOf = (status: PackItem['status']): string =>
+  status === 'idle' ? t('review.publish.status.idle') : status === 'waiting' ? t('review.publish.status.waiting') : status === 'writing' ? t('review.publish.status.writing') : status === 'done' ? t('review.publish.status.done') : ''
 /** "Written" only for new text: a stopped run says so, and a card the user emptied is not written. */
-const statusText = (item: PackItem): string => (item.stopped ? 'Stopped' : item.status === 'done' && !item.text.trim() ? STATUS_TEXT.idle : STATUS_TEXT[item.status])
+const statusText = (item: PackItem): string => (item.stopped ? t('review.publish.status.stopped') : item.status === 'done' && !item.text.trim() ? statusOf('idle') : statusOf(item.status))
 
 function Card({ kind, item, stale, canWrite, youtube, saved, spoken, said, onWrite, onStop, onEdit, onCopy, onUseForExports, onStopForExports, onRename, onFindChapters, requestId = null, costId }: CardProps): JSX.Element {
-  const label = PUBLISH_LABELS[kind]
+  const label = publishLabel(kind)
   const id = `publish-${kind}`
   const busy = isRunning(item.status)
   // Stop pressed with the keyboard, or the writing done while it is on Stop: the focus goes to Write (Regenerate).
@@ -451,13 +450,13 @@ function Card({ kind, item, stale, canWrite, youtube, saved, spoken, said, onWri
           {item.error}
         </p>
       )}
-      {stale && !busy && <p className="hint">Written from older captions: Regenerate to update.</p>}
+      {stale && !busy && <p className="hint">{t('review.publish.stale')}</p>}
       <textarea
         className="publish-text"
-        aria-label={`${label} text`}
+        aria-label={t('review.publish.text', { label })}
         value={item.text}
         rows={kind === 'title' ? 1 : kind === 'xpost' ? 3 : 6}
-        placeholder={busy ? '' : 'Not written yet.'}
+        placeholder={busy ? '' : t('review.publish.notWrittenYet')}
         readOnly={busy}
         aria-describedby={checks.length && !busy ? `${id}-check` : undefined}
         onChange={(e) => onEdit({ text: e.target.value.slice(0, EDIT_MAX) })}
@@ -466,7 +465,7 @@ function Card({ kind, item, stale, canWrite, youtube, saved, spoken, said, onWri
       <LocalWritten show={!!item.local && !busy && !!text} />
       {isYoutube && (
         <div className="publish-youtube">
-          <p className="publish-sub">Chapters (from your timeline)</p>
+          <p className="publish-sub">{t('review.publish.chapters')}</p>
           {chapters ? (
             <>
               <pre className="publish-chapters" data-testid="publish-chapters">
@@ -480,63 +479,50 @@ function Card({ kind, item, stale, canWrite, youtube, saved, spoken, said, onWri
             </>
           ) : youtube.duration >= FIND_CHAPTERS_FROM && onFindChapters ? (
             // A video of 2 minutes or more with no chapters (smart-tools.md §2.3).
-            <p className="hint">
-              Add chapters so viewers can jump:{' '}
-              <button type="button" className="link" data-testid="publish-find-chapters" onClick={onFindChapters}>
-                Find chapters
-              </button>
+            <p className="hint">{t('review.publish.addChapters')}{' '}
+              <button type="button" className="link" data-testid="publish-find-chapters" onClick={onFindChapters}>{t('smart.chapters.find')}</button>
             </p>
           ) : (
-            <p className="hint">No chapters: add some in the Text tab and they appear here with their times.</p>
+            <p className="hint">{t('review.publish.noChapters')}</p>
           )}
           {youtube.credit && (
             <p className="hint">
-              Last line, for the music: {youtube.credit}
+              <Rich k="review.publish.creditLine" values={{ credit: <>{youtube.credit}</> }} />
             </p>
           )}
           <label className="field">
-            <span>Tags</span>
-            <textarea className="publish-tags" aria-label="YouTube tags" rows={2} value={item.tags} readOnly={busy} onChange={(e) => onEdit({ tags: e.target.value.slice(0, 2000) })} />
+            <span>{t('review.publish.tags')}</span>
+            <textarea className="publish-tags" aria-label={t('review.publish.tagsLabel')} rows={2} value={item.tags} readOnly={busy} onChange={(e) => onEdit({ tags: e.target.value.slice(0, 2000) })} />
           </label>
         </div>
       )}
       <div className="publish-actions">
-        <button className="btn small primary" disabled={!text || busy} onClick={() => onCopy(copied, label)}>
-          Copy
-        </button>
+        <button className="btn small primary" disabled={!text || busy} onClick={() => onCopy(copied, label)}>{t('common.action.copy')}</button>
         {isYoutube && (
-          <button className="btn small" disabled={!tags.length || busy} onClick={() => onCopy(tags.join(', '), 'Tags')}>
-            Copy tags
-          </button>
+          <button className="btn small" disabled={!tags.length || busy} onClick={() => onCopy(tags.join(', '), 'Tags')}>{t('review.publish.copyTags')}</button>
         )}
         {busy ? (
           <>
-            <button className="btn small" onClick={onStop} {...stopFocus}>
-              Stop
-            </button>
+            <button className="btn small" onClick={onStop} {...stopFocus}>{t('common.action.stop')}</button>
             <LocalProgress requestId={requestId} onStop={onStop} returnFocus={`publish-${kind}-write`} />
           </>
         ) : (
           <button id={`publish-${kind}-write`} className="btn small" aria-describedby={costId} disabled={!canWrite} onClick={onWrite}>
-            {item.text ? 'Regenerate' : 'Write'}
+            {item.text ? t('common.action.regenerate') : t('review.publish.write')}
           </button>
         )}
         {isYoutube &&
           !busy &&
           (isSaved ? (
-            <button className="btn small ghost" onClick={onStopForExports}>
-              Stop using for exports
-            </button>
+            <button className="btn small ghost" onClick={onStopForExports}>{t('review.publish.stopUsing')}</button>
           ) : (
-            <button className="btn small ghost" disabled={!text} onClick={() => onUseForExports(item.text)} title="Save this description next to each export (Export › Also save › Description)">
-              {saved ? 'Update for exports' : 'Use for exports'}
+            <button className="btn small ghost" disabled={!text} onClick={() => onUseForExports(item.text)} title={t('review.publish.useHint')}>
+              {saved ? t('review.publish.update') : t('review.publish.use')}
             </button>
           ))}
         {/* The name counts as said: a title with a note is asked about first (§4.8). */}
         {kind === 'title' && !busy && (
-          <button className="btn small ghost" disabled={!cleanTitle} aria-describedby={checks.length ? `${id}-check` : undefined} onClick={() => onRename(cleanTitle)}>
-            Rename the recording
-          </button>
+          <button className="btn small ghost" disabled={!cleanTitle} aria-describedby={checks.length ? `${id}-check` : undefined} onClick={() => onRename(cleanTitle)}>{t('review.publish.rename')}</button>
         )}
         <span className="publish-said" role="status">
           {said && !said.alert ? said.text : ''}
@@ -547,12 +533,12 @@ function Card({ kind, item, stale, canWrite, youtube, saved, spoken, said, onWri
           </span>
         )}
         {limit !== undefined && (
-          <span className={`publish-count ${over ? 'over' : ''}`} aria-label={`${count} of ${limit} characters`}>
-            {count} / {limit}
+          <span className={`publish-count ${over ? 'over' : ''}`} aria-label={t('review.publish.characters', { n: fmt.count(count), limit: fmt.count(limit) })}>
+            {fmt.count(count)} / {fmt.count(limit)}
           </span>
         )}
       </div>
-      {isYoutube && isSaved && <p className="hint">Saved: exports with Also save › Description use this text and the chapters.</p>}
+      {isYoutube && isSaved && <p className="hint">{t('review.publish.saved')}</p>}
     </section>
   )
 }
