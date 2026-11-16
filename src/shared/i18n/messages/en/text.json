@@ -400,5 +400,20 @@
   "titleTrack.chapterThere": "\"{title}\" already starts here, so it is selected instead",
   "titleTrack.chapterAtEnd": "A chapter needs some video after it: move the playhead back from the end",
   "overlayEditor.dragToPlaceIt.lead": "{label} · drag to place it ·",
-  "overlayEditor.dragToPlaceIt.whole": "{label} · drag to place it · <link>Done</link>"
+  "overlayEditor.dragToPlaceIt.whole": "{label} · drag to place it · <link>Done</link>",
+  "sticker.star": "Star",
+  "sticker.heart": "Heart",
+  "sticker.check": "Check",
+  "sticker.cross": "Cross",
+  "sticker.thumbs-up": "Thumbs up",
+  "sticker.smile": "Smile",
+  "sticker.wow": "Wow",
+  "sticker.fire": "Fire",
+  "sticker.bulb": "Light bulb",
+  "sticker.warning": "Warning",
+  "sticker.sparkles": "Sparkles",
+  "sticker.new": "New badge",
+  "overlay.sticker": "{name} sticker",
+  "overlay.unknownSticker": "Sticker",
+  "overlay.image": "Image"
 }

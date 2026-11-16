@@ -23,6 +23,7 @@ import {
 } from '../../../shared/editor/polishCopy'
 import { t } from '../../../shared/i18n/t'
 import { BUILT_IN_PRESETS, parseUserPresets, type StylePreset } from '../../../shared/editor/stylePresets'
+import { presetLabel } from '../../../shared/editor/stylePresetNames'
 import { zoomSettingsOf } from '../../../shared/engine/zoom'
 import type { CursorTrack, Project } from '../../../shared/types'
 import { OPEN_SETTINGS_EVENT } from '../settings/SettingsButton'
@@ -228,7 +229,7 @@ export function PolishDialog(props: {
               <option value="">{keepLook()}</option>
               {BUILT_IN_PRESETS.map((p) => (
                 <option key={p.id} value={p.id}>
-                  {p.name}
+                  {presetLabel(p, true)}
                 </option>
               ))}
               {!!userPresets?.length && (

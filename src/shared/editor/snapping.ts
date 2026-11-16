@@ -14,7 +14,7 @@ import { spotlightName } from '../render/magnifier'
 import { viewingTime } from '../render/overlays'
 import type { Chapter, Clip, Project } from '../types'
 import { timelineGaps } from './clips'
-import { shapeLabel } from './shapes'
+import { shapeName } from './itemNames'
 import { fmt } from '../i18n/fmt'
 import { t } from '../i18n/t'
 
@@ -122,7 +122,7 @@ export function projectSnapSegments(p: Project, opts: { layouts: boolean }): Sna
   }
   add('zoom', t('common.label.zoom'), p.zooms)
   add('annotation', t('common.label.text'), p.annotations)
-  for (const s of p.shapes ?? []) out.push({ owner: `shape:${s.id}`, label: shapeLabel(s.kind), start: s.start, end: s.end })
+  for (const s of p.shapes ?? []) out.push({ owner: `shape:${s.id}`, label: shapeName(s.kind), start: s.start, end: s.end })
   // A magnifier is named as on its block ("Magnifier, 2 times", editing polish §2.2).
   for (const s of p.spotlights ?? []) out.push({ owner: `spotlight:${s.id}`, label: spotlightName(s), start: s.start, end: s.end })
   add('overlay', t('timeline.snap.image'), p.overlays)

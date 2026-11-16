@@ -7,7 +7,7 @@
  */
 import { app, clipboard, ClipboardItem, dialog, ipcMain, shell, type IpcMainInvokeEvent } from 'electron'
 import path from 'node:path'
-import { GUIDE_CHANNELS, GUIDE_SAVE_LIMITS, guideCopyProblem, imageKind, type GuideSavePayload } from '../../shared/api/guide'
+import { GUIDE_CHANNELS, GUIDE_PROBLEM_KEYS, GUIDE_SAVE_LIMITS, guideCopyProblem, imageKind, type GuideSavePayload } from '../../shared/api/guide'
 import { isExportedFile, rememberExported } from '../exportIpc'
 import { isAppUrl } from '../security'
 import { getMainWindow } from '../windows'
@@ -82,7 +82,7 @@ export function showGuideFile(file: unknown): void {
 /** guide:copy: the guide's HTML and plain text on the clipboard, in one entry. */
 export async function copyGuide(clip: unknown): Promise<void> {
   const problem = guideCopyProblem(clip)
-  if (problem) throw new Error(problem)
+  if (problem) throw new Error(t(GUIDE_PROBLEM_KEYS[problem]))
   const c = clip as { html: string; text: string }
   await clipboard.write([new ClipboardItem({ 'text/html': c.html, 'text/plain': c.text })])
 }

@@ -4,6 +4,7 @@
  * path and writes: it never takes a path from the renderer. The channels are fixed here; part P1's
  * guideIpc.ts registers their handlers, each checking its sender.
  */
+import type { MessageKey } from '../i18n/keys'
 
 export type GuideFormat = 'pdf' | 'html' | 'demo' | 'markdown'
 
@@ -55,43 +56,64 @@ export function imageKind(bytes: Uint8Array): 'png' | 'jpeg' | 'webp' | null {
   return null
 }
 
+/** Why a save or a copy cannot be sent (§5.8), as an id: its words are GUIDE_PROBLEM_KEYS' messages. */
+export type GuideProblem = 'nothing-to-save' | 'unknown-format' | 'name-too-long' | 'too-large' | 'too-many-shots' | 'bad-shot' | 'unknown-page' | 'nothing-to-copy' | 'too-large-to-copy'
+
+/**
+ * The errors message that says each problem (docs/design/output-and-languages.md §9.6). Plain keys:
+ * the preload imports this file and carries no messages (test 86), so main and the renderer say
+ * them, each in its own process.
+ */
+export const GUIDE_PROBLEM_KEYS: Readonly<Record<GuideProblem, MessageKey>> = {
+  'nothing-to-save': 'errors.writeGuide.nothingToSave',
+  'unknown-format': 'errors.guide.unknownFormat',
+  'name-too-long': 'errors.guide.nameTooLong',
+  'too-large': 'errors.guide.tooLargeToSave',
+  'too-many-shots': 'errors.guide.tooManyShots',
+  'bad-shot': 'errors.writeGuide.aScreenshotOfThis',
+  'unknown-page': 'errors.guide.unknownPage',
+  'nothing-to-copy': 'errors.guide.nothingToCopy',
+  'too-large-to-copy': 'errors.guide.tooLargeToCopy'
+}
+
 /**
  * Why `payload` cannot be sent, or null when it fits GUIDE_SAVE_LIMITS (§5.8): a known format, a
  * string name of at most 120 characters, HTML of at most 64 MB, Markdown of at most 2 MB, at most 300
- * images of at most 16 MB, each a PNG, JPEG or WebP, and at most 256 MB in all. The preload checks
- * it before sending; main checks again (part P1's checkGuidePayload).
+ * images of at most 16 MB, each a PNG, JPEG or WebP, and at most 256 MB in all. The renderer checks
+ * it and says why before sending, the preload checks it again and refuses with the id, and main
+ * checks a third time (part P1's checkGuidePayload).
  */
-export function guidePayloadProblem(payload: unknown): string | null {
-  if (!payload || typeof payload !== 'object') return 'Nothing to save.'
+export function guidePayloadProblem(payload: unknown): GuideProblem | null {
+  if (!payload || typeof payload !== 'object') return 'nothing-to-save'
   const p = payload as Partial<GuideSavePayload>
-  if (p.format !== 'pdf' && p.format !== 'html' && p.format !== 'demo' && p.format !== 'markdown') return 'Unknown guide format.'
-  if (typeof p.name !== 'string' || p.name.length > GUIDE_SAVE_LIMITS.name) return 'The guide’s name is too long.'
+  if (p.format !== 'pdf' && p.format !== 'html' && p.format !== 'demo' && p.format !== 'markdown') return 'unknown-format'
+  if (typeof p.name !== 'string' || p.name.length > GUIDE_SAVE_LIMITS.name) return 'name-too-long'
   let total = 0
   if (p.html !== undefined) {
-    if (typeof p.html !== 'string' || p.html.length > GUIDE_SAVE_LIMITS.html) return 'This guide is too large to save.'
+    if (typeof p.html !== 'string' || p.html.length > GUIDE_SAVE_LIMITS.html) return 'too-large'
     total += p.html.length
   }
   if (p.markdown !== undefined) {
-    if (typeof p.markdown !== 'string' || p.markdown.length > GUIDE_SAVE_LIMITS.markdown) return 'This guide is too large to save.'
+    if (typeof p.markdown !== 'string' || p.markdown.length > GUIDE_SAVE_LIMITS.markdown) return 'too-large'
     total += p.markdown.length
   }
   if (p.images !== undefined) {
-    if (!Array.isArray(p.images) || p.images.length > GUIDE_SAVE_LIMITS.images) return 'This guide has too many screenshots to save.'
+    if (!Array.isArray(p.images) || p.images.length > GUIDE_SAVE_LIMITS.images) return 'too-many-shots'
     for (const img of p.images) {
-      if (!(img instanceof Uint8Array) || img.byteLength > GUIDE_SAVE_LIMITS.image || !imageKind(img)) return 'A screenshot of this guide cannot be saved.'
+      if (!(img instanceof Uint8Array) || img.byteLength > GUIDE_SAVE_LIMITS.image || !imageKind(img)) return 'bad-shot'
       total += img.byteLength
     }
   }
-  if (p.page !== undefined && p.page !== 'A4' && p.page !== 'Letter') return 'Unknown page size.'
-  if (total > GUIDE_SAVE_LIMITS.total) return 'This guide is too large to save.'
+  if (p.page !== undefined && p.page !== 'A4' && p.page !== 'Letter') return 'unknown-page'
+  if (total > GUIDE_SAVE_LIMITS.total) return 'too-large'
   return null
 }
 
 /** Why a copy cannot be sent, or null (§5.8): HTML of at most 64 MB, text of at most 2 MB. */
-export function guideCopyProblem(clip: unknown): string | null {
-  if (!clip || typeof clip !== 'object') return 'Nothing to copy.'
+export function guideCopyProblem(clip: unknown): GuideProblem | null {
+  if (!clip || typeof clip !== 'object') return 'nothing-to-copy'
   const c = clip as { html?: unknown; text?: unknown }
-  if (typeof c.html !== 'string' || c.html.length > GUIDE_SAVE_LIMITS.html) return 'This guide is too large to copy.'
-  if (typeof c.text !== 'string' || c.text.length > GUIDE_SAVE_LIMITS.clipText) return 'This guide is too large to copy.'
+  if (typeof c.html !== 'string' || c.html.length > GUIDE_SAVE_LIMITS.html) return 'too-large-to-copy'
+  if (typeof c.text !== 'string' || c.text.length > GUIDE_SAVE_LIMITS.clipText) return 'too-large-to-copy'
   return null
 }

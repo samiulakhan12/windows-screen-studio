@@ -268,3 +268,41 @@ describe('runPolish', () => {
     await general.done
   })
 })
+
+describe('runPolish in the UI language', () => {
+  it('names a built-in look in the UI language in its summary, and the user’s own look as they named it', async () => {
+    analyzeAudio.mockResolvedValue({ mic: talking(), system: talking() })
+    // English: the summary says "Studio", as it always has.
+    const english = start()
+    await flush()
+    calls.transcribe[0].resolve(answer(2))
+    expect((await english.run.done)?.result.summary.style).toBe('Studio')
+
+    // A translated UI (the en-XA pseudo-locale on the runner's own message runtime): the built-in
+    // look is named by style.preset.studio, never by stylePresets.ts's English name.
+    const tm = await import('../src/shared/i18n/t')
+    const { messages, meta } = (require('../scripts/i18n/lib/files.cjs') as { readEnglish(): { messages: Record<string, string>; meta: Record<string, object> } }).readEnglish()
+    const pseudo = (require('../scripts/i18n/lib/pseudo.cjs') as { pseudoCatalogue(l: string, e: Record<string, string>, m: Record<string, object>): { dir: 'ltr' | 'rtl'; messages: Record<string, string>; latn: string[]; user: Record<string, string[]> } }).pseudoCatalogue('en-XA', messages, meta)
+    tm.setCatalogue({ language: 'es', messages: pseudo.messages, latn: pseudo.latn, user: pseudo.user, formatLocale: 'en-US', dir: pseudo.dir })
+    try {
+      calls.transcribe.length = 0
+      const store = new EditStore(project())
+      const run = runner.runPolish({ store, player: { webcam: null } }, NO_INPUT, OPTIONS, CTX, () => undefined)
+      await flush()
+      calls.transcribe[0].resolve(answer(2))
+      const style = (await run.done)?.result.summary.style
+      expect(style).toBe(tm.t('style.preset.studio'))
+      expect(style).not.toBe('Studio')
+
+      // The user's own look keeps the name they gave it.
+      calls.transcribe.length = 0
+      const mine = { id: 'mine-1', name: 'My look', look: (await import('../src/shared/editor/stylePresets')).BUILT_IN_PRESETS[0].look }
+      const own = runner.runPolish({ store: new EditStore(project()), player: { webcam: null } }, NO_INPUT, { ...OPTIONS, styleId: 'mine-1' }, { ...CTX, userPresets: [mine] as never }, () => undefined)
+      await flush()
+      calls.transcribe[0].resolve(answer(2))
+      expect((await own.done)?.result.summary.style).toBe('My look')
+    } finally {
+      tm.setCatalogue({ language: 'en', messages: {}, formatLocale: 'en-US', dir: 'ltr' })
+    }
+  })
+})

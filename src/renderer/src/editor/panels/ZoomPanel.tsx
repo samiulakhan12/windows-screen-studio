@@ -5,7 +5,7 @@ import { zoomCause } from '../../../../shared/editor/inputEdits'
 import type { ClickRow } from '../../../../shared/engine/inputData'
 import { scrollBreaks } from '../../../../shared/engine/scroll'
 import { orPress, shortcutLabel, undoHint, withShortcut, zoomLevelKeysHint } from '../../../../shared/editor/shortcuts'
-import { ZOOM_EASINGS } from '../../../../shared/engine/easing'
+import { zoomEasingOptions } from '../../../../shared/engine/lookNames'
 import { cropOf, fromCrop, regenerateInFrame, toCrop, zoomFromView, zoomInView } from '../../../../shared/engine/crop'
 import { itemKey } from '../../../../shared/editor/multiSelect'
 import {
@@ -314,7 +314,7 @@ function SelectedZoom(props: InspectorProps & { zoom: ZoomSegment }): JSX.Elemen
         )}
       </div>
       <div className="zoom-chips-fill">
-        <Chips label={t('zoom.zoomPanel.zoomEasing')} value={easing} onChange={(v: ZoomEasing) => setZoom({ easing: v })} options={ZOOM_EASINGS} />
+        <Chips label={t('zoom.zoomPanel.zoomEasing')} value={easing} onChange={(v: ZoomEasing) => setZoom({ easing: v })} options={zoomEasingOptions()} />
       </div>
       <Slider label={t('zoom.zoomPanel.transition')} value={transition} min={MIN_TRANSITION} max={MAX_TRANSITION} step={0.05} format={secFmt} onChange={(v) => setZoom({ transition: v }, `zoom-transition:${zoom.id}`)} />
       <Toggle
@@ -348,7 +348,7 @@ function ZoomStyleSection({ project, onNotice }: { project: Project; onNotice: (
   return (
     <Section title={t('zoom.zoomPanel.zoomStyleTitle')} aside={<span className="muted small">{t('zoom.zoomPanel.allZooms')}</span>}>
       <div className="zoom-chips-fill">
-        <Chips label={t('zoom.zoomPanel.defaultZoomEasing')} value={settings.easing} onChange={(easing: ZoomEasing) => set({ easing })} options={ZOOM_EASINGS} />
+        <Chips label={t('zoom.zoomPanel.defaultZoomEasing')} value={settings.easing} onChange={(easing: ZoomEasing) => set({ easing })} options={zoomEasingOptions()} />
       </div>
       <Slider label={t('zoom.zoomPanel.transition')} value={settings.transition} min={MIN_TRANSITION} max={MAX_TRANSITION} step={0.05} format={secFmt} onChange={(transition) => set({ transition }, 'zoomSettings.transition')} />
       <Slider label={t('zoom.zoomPanel.newZoomLevel')} value={settings.defaultScale} min={ZOOM_MIN_SCALE} max={ZOOM_MAX_SCALE} step={0.05} format={fmt.factor} onChange={(defaultScale) => set({ defaultScale }, 'zoomSettings.defaultScale')} />

@@ -110,13 +110,7 @@ export function layoutTitle(s: Pick<LayoutSegment, 'layout' | 'corner'>): string
   return s.corner ? t(CORNER_TITLES[s.corner]) : t('review.layout.bubble')
 }
 
-/**
- * The framing row's title and the camera rows' detail, in English: review.ts, which lists the rows,
- * reads these constants (no extraction part owns it). framingTitle() and directorDetail() give the
- * same words in the UI language.
- */
-export const FRAMING_TITLE = 'Camera framed on your face'
-export const DIRECTOR_DETAIL = 'Camera director'
+/** The framing row's title and the camera rows' detail, made when the rows are listed. */
 export const framingTitle = (): string => t('review.framing.title')
 export const directorDetail = (): string => t('review.framing.detail')
 

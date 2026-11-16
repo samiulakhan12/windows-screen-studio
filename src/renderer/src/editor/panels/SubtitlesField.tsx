@@ -8,7 +8,8 @@
  * the bundle choices, the format and the streams flag, which the field shows and changes.
  */
 import { exportLanguages, tickedExportLanguages } from '../../../../shared/captions/captionTracks'
-import { sidecarBlocked, SIDECAR_LABELS, UNKNOWN_SPOKEN, type BundleOptions } from '../../../../shared/render/exportBundle'
+import { UNKNOWN_SPOKEN, type BundleOptions } from '../../../../shared/render/exportBundle'
+import { sidecarBlockedText, sidecarLabel } from '../exportNames'
 import { burnedTrackWords, captionLanguageName } from '../captionWords'
 import type { ExportFormat, Project } from '../../../../shared/types'
 import { t, type MessageKey } from '../../../../shared/i18n/t'
@@ -33,7 +34,7 @@ export function SubtitlesField(props: {
 }): JSX.Element {
   const { project, value, onChange, format } = props
   const has = { captions: !!project.transcript?.segments.some((s) => s.text.trim()), chapters: false }
-  const blocked = sidecarBlocked('srt', format, has)
+  const blocked = sidecarBlockedText('srt', format, has)
   const languages = exportLanguages(project)
   const ticked = tickedExportLanguages(project, value.languages)
   // GIF and M4A keep today's choices: the spoken language's files only, no streams.
@@ -67,7 +68,7 @@ export function SubtitlesField(props: {
             return (
               <button key={k} className={`chip ${on ? 'active' : ''}`} aria-pressed={on} disabled={!!blocked} title={blocked ?? t(TITLES[k])} data-sidecar={k} onClick={() => onChange({ ...value, [k]: !value[k] })}>
                 {on && <Icon name="check" size={12} />}
-                {SIDECAR_LABELS[k]}
+                {sidecarLabel(k)}
               </button>
             )
           })}

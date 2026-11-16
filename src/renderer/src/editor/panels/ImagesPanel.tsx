@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { itemKey } from '../../../../shared/editor/multiSelect'
 import { overlayLabel, resetOverlayShape, sizeForAspect } from '../../../../shared/editor/overlays'
+import { stickerName } from '../../../../shared/editor/itemNames'
 import { OVERLAY_LIMITS } from '../../../../shared/engine/overlayData'
 import { STICKERS, stickerUrl } from '../../../../shared/render/stickers'
 import { fmt } from '../../../../shared/i18n/fmt'
@@ -70,8 +71,8 @@ function AddImages(props: InspectorProps): JSX.Element {
             <button
               key={s.id}
               className="sticker-btn"
-              aria-label={t('text.imagesPanel.addSticker', { name: s.name })}
-              title={t('text.imagesPanel.addStickerAtThe', { name: s.name.toLowerCase() })}
+              aria-label={t('text.imagesPanel.addSticker', { name: stickerName(s.id) ?? s.id })}
+              title={t('text.imagesPanel.addStickerAtThe', { name: fmt.inSentence(stickerName(s.id) ?? s.id) })}
               disabled={busy}
               onClick={() => void run(() => addSticker(services, s.id, { onSelect: props.onSelect }))}
             >

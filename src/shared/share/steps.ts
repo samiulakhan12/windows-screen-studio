@@ -51,7 +51,7 @@ export function cancelName(run: ShareRunView): string {
   return t('review.share.cancelNamed', { targets: uiLanguage() === 'en' ? left.join(' and ') : fmt.list(left) })
 }
 
-/** Where a cloud folder came from, shown next to it (cloudFolders.ts's sourceText, which main loads too, in the UI language). */
+/** Where a cloud folder came from, shown next to it, so nothing is used without the user seeing where it came from. */
 export function folderSourceText(service: CloudService, source: FolderSource): string {
   if (source === 'picked') return t('review.share.source.picked')
   if (source === 'usual') return t('review.share.source.usual')

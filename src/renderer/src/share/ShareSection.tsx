@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react'
 import type { ShareHookInfo, ShareTargets } from '../../../shared/api/share'
-import { sourceText } from '../../../shared/share/cloudFolders'
 import { folderPlaces, hookPlaces, withPlace } from '../../../shared/share/names'
 import { switchOn, whenOnScreen } from '../../../shared/share/onScreen'
+import { folderSourceText } from '../../../shared/share/steps'
 import { SHARE_LIMITS, WEBHOOK_SERVICES } from '../../../shared/share/webhooks'
 import { ipcMessage } from '../settings/providerText'
 import { t } from '../../../shared/i18n/t'
@@ -107,7 +107,7 @@ export function ShareSection(): JSX.Element {
                 <code className="share-item-path" title={f.path}>
                   {f.path}
                 </code>
-                <span className="share-item-source">{sourceText(f.service, f.source)}</span>
+                <span className="share-item-source">{folderSourceText(f.service, f.source)}</span>
               </div>
               <div className="share-item-actions">
                 <label className="share-use">

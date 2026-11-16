@@ -297,5 +297,13 @@
   "preview.focusHint.lead": "Click or drag to set where this zoom looks ·",
   "preview.regionHint.lead": "Drag to draw the area to zoom into (Shift: any shape) ·",
   "preview.focusHint.whole": "Click or drag to set where this zoom looks · <link>Done</link>",
-  "preview.regionHint.whole": "Drag to draw the area to zoom into (Shift: any shape) · <link>Done</link>"
+  "preview.regionHint.whole": "Drag to draw the area to zoom into (Shift: any shape) · <link>Done</link>",
+  "look.colour.natural": "Natural",
+  "look.colour.warm": "Warm",
+  "look.colour.cool": "Cool",
+  "look.colour.vivid": "Vivid",
+  "look.colour.soft": "Soft",
+  "look.colour.cinematic": "Cinematic",
+  "look.colour.mono": "Mono",
+  "look.colour.vintage": "Vintage"
 }

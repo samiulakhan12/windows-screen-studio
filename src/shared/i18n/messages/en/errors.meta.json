@@ -1975,5 +1975,26 @@
       "file"
     ],
     "digits": "latn"
+  },
+  "guide.unknownFormat": {
+    "description": "Make a guide: why a save cannot start, the format not being one Flown writes (src/shared/api/guide.ts GUIDE_PROBLEM_KEYS; said by the guide panel and by main)."
+  },
+  "guide.nameTooLong": {
+    "description": "Make a guide: why a save cannot start, the guide's file name being longer than 120 characters (GUIDE_PROBLEM_KEYS)."
+  },
+  "guide.tooLargeToSave": {
+    "description": "Make a guide: why a save cannot start, the guide being larger than Flown saves at once (GUIDE_PROBLEM_KEYS)."
+  },
+  "guide.tooManyShots": {
+    "description": "Make a guide: why a save cannot start, more than 300 screenshots (GUIDE_PROBLEM_KEYS)."
+  },
+  "guide.unknownPage": {
+    "description": "Make a guide: why a PDF save cannot start, the page size being neither A4 nor Letter (GUIDE_PROBLEM_KEYS)."
+  },
+  "guide.nothingToCopy": {
+    "description": "Make a guide: why Copy guide cannot put anything on the clipboard (GUIDE_PROBLEM_KEYS)."
+  },
+  "guide.tooLargeToCopy": {
+    "description": "Make a guide: why Copy guide cannot put the guide on the clipboard, the guide being too large (GUIDE_PROBLEM_KEYS)."
   }
 }

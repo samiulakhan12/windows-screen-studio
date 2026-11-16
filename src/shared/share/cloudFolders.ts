@@ -12,13 +12,6 @@ export type FolderSource = 'app' | 'usual' | 'picked'
 
 export const SERVICE_LABELS: Record<CloudService, string> = { onedrive: 'OneDrive', dropbox: 'Dropbox', gdrive: 'Google Drive', folder: 'Folder' }
 
-/** Shown next to each folder, so nothing is used without the user seeing where it came from. */
-export function sourceText(service: CloudService, source: FolderSource): string {
-  if (source === 'picked') return 'Added by you'
-  if (source === 'usual') return 'Found at the usual place'
-  return `Found in ${SERVICE_LABELS[service]}'s settings`
-}
-
 /** The subfolder exports are copied into. */
 export const SHARE_SUBFOLDER = 'Flown'
 

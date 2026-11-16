@@ -1232,5 +1232,50 @@
   },
   "overlayEditor.dragToPlaceIt.whole": {
     "description": "Preview: the hint while a picture or logo is being placed. {label} names it; <link> is the Done button that ends placing. Used only when the UI language is not English (merge group, output-and-languages §9.3): English builds the same sentence from its pieces."
+  },
+  "sticker.star": {
+    "description": "Images › Stickers: the name of the built-in sticker \"star\" (a drawing). Also inside \"Add {name} sticker\" and \"{name} sticker\"; English writes it in lower case inside a sentence."
+  },
+  "sticker.heart": {
+    "description": "Images › Stickers: the name of the built-in sticker \"heart\" (a drawing). Also inside \"Add {name} sticker\" and \"{name} sticker\"; English writes it in lower case inside a sentence."
+  },
+  "sticker.check": {
+    "description": "Images › Stickers: the name of the built-in sticker \"check\" (a tick mark in a green circle). Also inside \"Add {name} sticker\" and \"{name} sticker\"; English writes it in lower case inside a sentence."
+  },
+  "sticker.cross": {
+    "description": "Images › Stickers: the name of the built-in sticker \"cross\" (an X in a red circle). Also inside \"Add {name} sticker\" and \"{name} sticker\"; English writes it in lower case inside a sentence."
+  },
+  "sticker.thumbs-up": {
+    "description": "Images › Stickers: the name of the built-in sticker \"thumbs-up\" (a hand). Also inside \"Add {name} sticker\" and \"{name} sticker\"; English writes it in lower case inside a sentence."
+  },
+  "sticker.smile": {
+    "description": "Images › Stickers: the name of the built-in sticker \"smile\" (a smiling face). Also inside \"Add {name} sticker\" and \"{name} sticker\"; English writes it in lower case inside a sentence."
+  },
+  "sticker.wow": {
+    "description": "Images › Stickers: the name of the built-in sticker \"wow\" (a surprised face). Also inside \"Add {name} sticker\" and \"{name} sticker\"; English writes it in lower case inside a sentence."
+  },
+  "sticker.fire": {
+    "description": "Images › Stickers: the name of the built-in sticker \"fire\" (a flame). Also inside \"Add {name} sticker\" and \"{name} sticker\"; English writes it in lower case inside a sentence."
+  },
+  "sticker.bulb": {
+    "description": "Images › Stickers: the name of the built-in sticker \"bulb\" (a light bulb). Also inside \"Add {name} sticker\" and \"{name} sticker\"; English writes it in lower case inside a sentence."
+  },
+  "sticker.warning": {
+    "description": "Images › Stickers: the name of the built-in sticker \"warning\" (a warning triangle). Also inside \"Add {name} sticker\" and \"{name} sticker\"; English writes it in lower case inside a sentence."
+  },
+  "sticker.sparkles": {
+    "description": "Images › Stickers: the name of the built-in sticker \"sparkles\". Also inside \"Add {name} sticker\" and \"{name} sticker\"; English writes it in lower case inside a sentence."
+  },
+  "sticker.new": {
+    "description": "Images › Stickers: the name of the built-in sticker \"new\" (a badge reading NEW). Also inside \"Add {name} sticker\" and \"{name} sticker\"; English writes it in lower case inside a sentence."
+  },
+  "overlay.sticker": {
+    "description": "The name of an image item that is a sticker (its timeline block, its handles in the preview, the Images tab's list and the export dialog's missing images); name is the sticker's name (Heart)."
+  },
+  "overlay.unknownSticker": {
+    "description": "The name used inside \"{name} sticker\" for a sticker this version of Flown does not have."
+  },
+  "overlay.image": {
+    "description": "The name of an image item that has no name and no file name (timeline block, Images tab, export dialog)."
   }
 }

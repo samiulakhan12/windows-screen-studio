@@ -7,11 +7,10 @@
  * toCrop / fromCrop), as the single-item panels do, so a crop is respected.
  */
 import { fromCrop, toCrop, zoomInView } from '../engine/crop'
-import { ZOOM_EASINGS } from '../engine/easing'
+import { ZOOM_EASING_CHOICES } from '../engine/lookNames'
 import { FREEZE } from '../engine/freeze'
 import { MAX_TRANSITION, MIN_TRANSITION, ZOOM_MAX_SCALE, ZOOM_MIN_SCALE, zoomEasing, zoomTargetScale, zoomTransition, type ZoomStyle } from '../engine/zoom'
 import { OVERLAY_LIMITS } from '../engine/overlayData'
-import { stickerOf } from '../render/stickers'
 import { captionsOf } from '../captions/settings'
 import type { Annotation, Background, CalloutMotion, CalloutMotionKind, Chapter, Freeze, Graphic, ImageOverlay, ItemMotion, NormRect, Project, SfxRef, Shape, Spotlight, TitleCard, ZoomSegment } from '../types'
 import { ANNOTATION_SIZE } from './annotations'
@@ -31,7 +30,7 @@ import { pickedMotion } from './calloutsEdit'
 import { fmt } from '../i18n/fmt'
 import { t, type MessageKey } from '../i18n/t'
 import { choice, type Choice } from './choice'
-import { shapeName, TITLE_BACKGROUND_CHOICES, TITLE_STYLE_CHOICES } from './itemNames'
+import { shapeName, stickerName, TITLE_BACKGROUND_CHOICES, TITLE_STYLE_CHOICES } from './itemNames'
 
 /** Items that share a look: shapes split into marks and privacy shapes; chapters have none. */
 export type LookClass = 'zoom' | 'text' | 'mark' | 'privacy' | 'spotlight' | 'image' | 'title' | 'freeze' | 'graphic'
@@ -335,7 +334,7 @@ export const GROUP_FIELDS: readonly GroupField[] = [
     id: 'zoom.easing',
     cls: 'zoom',
     label: 'style.groupEdit.field.zoomEasing',
-    control: { type: 'chips', options: ZOOM_EASINGS },
+    control: { type: 'chips', options: ZOOM_EASING_CHOICES },
     look: true,
     read: (z, _p, ctx) => zoomEasing(z, ctx.style),
     patch: (z, v) => ({ ...z, easing: v as ZoomSegment['easing'], auto: false })
@@ -1013,7 +1012,7 @@ function lookName(kind: GroupKind, item: unknown): string {
       return t('style.groupEdit.name.spotlight')
     case 'overlay': {
       const o = item as ImageOverlay
-      return o.sticker ? t('style.groupEdit.name.sticker', { name: stickerOf(o.sticker)?.name ?? t('style.groupEdit.name.stickerFallback') }) : t('style.groupEdit.name.image')
+      return o.sticker ? t('style.groupEdit.name.sticker', { name: stickerName(o.sticker) ?? t('style.groupEdit.name.stickerFallback') }) : t('style.groupEdit.name.image')
     }
     case 'title':
       return t('style.groupEdit.name.titleCard')

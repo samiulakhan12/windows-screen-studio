@@ -5,7 +5,7 @@
  * and the fonts a page embeds.
  */
 import type { AiTextRequest, TextChoice } from '../../../shared/api/ai'
-import type { GuideFormat } from '../../../shared/api/guide'
+import { GUIDE_PROBLEM_KEYS, guideCopyProblem, guidePayloadProblem, type GuideFormat, type GuideProblem } from '../../../shared/api/guide'
 import type { EditStore } from '../../../shared/editor/editStore'
 import { ACTUAL_KEY, buildGuideDoc, type GuideDoc, type GuideImage } from '../../../shared/guide/guideDoc'
 import { withAiNotes, withAiTitles, withTypedBlur } from '../../../shared/guide/guideEdit'
@@ -97,6 +97,15 @@ async function convertImages(images: ReadonlyMap<string, GuideImage>, kind: { mi
 }
 
 /**
+ * Refuses a save or copy that does not fit GUIDE_SAVE_LIMITS before it is sent, saying why in the UI
+ * language (§5.8, output-and-languages §9.6): the preload checks the same limits but has no catalogue
+ * and refuses with the problem's id only.
+ */
+function refuse(problem: GuideProblem | null): void {
+  if (problem) throw new Error(t(GUIDE_PROBLEM_KEYS[problem]))
+}
+
+/**
  * Saves the guide as `format` (§5.8): the document built from the project and its steps with each
  * step's picture in the format's form, written by main after its own save or folder dialog. Null
  * when the dialog was cancelled. `smaller`: the HTML guide or demo again at WebP 0.75, 1280 px.
@@ -113,19 +122,25 @@ export async function saveGuide(
   if (format === 'markdown') {
     const md = guideMarkdown(doc)
     const bytes = [...doc.steps.flatMap((s) => (s.image ? [s.image.bytes] : [])), ...(doc.bug?.actualImage ? [doc.bug.actualImage.bytes] : [])]
-    return window.api.saveGuide({ format, name, markdown: md.markdown, images: bytes })
+    const payload = { format, name, markdown: md.markdown, images: bytes }
+    refuse(guidePayloadProblem(payload))
+    return window.api.saveGuide(payload)
   }
   const print = format === 'pdf'
   const html = guideHtml(doc, { demo: format === 'demo', print, fonts: await guideFonts(doc, print), ...(print ? { page: deps.page } : {}) })
   if (deps.signal.aborted) return null
-  return window.api.saveGuide({ format, name, html, ...(print ? { page: deps.page } : {}) })
+  const payload = { format, name, html, ...(print ? { page: deps.page } : {}) }
+  refuse(guidePayloadProblem(payload))
+  return window.api.saveGuide(payload)
 }
 
 /** *Copy guide* (§5.8): the guide's HTML (PNG pictures at most 1200 px wide, no script, no fonts) and plain text on the clipboard; how many pictures went. */
 export async function copyGuide(deps: { project: Project; steps: readonly GuideStep[]; images: ReadonlyMap<string, GuideImage> }): Promise<{ images: number }> {
   const images = await convertImages(deps.images, COPY_IMAGES)
   const doc = buildGuideDoc(deps.project, deps.steps, images, null)
-  await window.api.copyGuide({ html: guideHtml(doc, { demo: false, print: false, clipboard: true, fonts: [] }), text: guideText(doc) })
+  const clip = { html: guideHtml(doc, { demo: false, print: false, clipboard: true, fonts: [] }), text: guideText(doc) }
+  refuse(guideCopyProblem(clip))
+  await window.api.copyGuide(clip)
   return { images: doc.steps.filter((s) => s.image).length + (doc.bug?.actualImage ? 1 : 0) }
 }
 

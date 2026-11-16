@@ -943,5 +943,29 @@
     "dnt": [
       "Shift"
     ]
+  },
+  "look.colour.natural": {
+    "description": "Colour › Look: the name of the built-in colour look \"natural\", on its chip and in the strength slider's name."
+  },
+  "look.colour.warm": {
+    "description": "Colour › Look: the name of the built-in colour look \"warm\", on its chip and in the strength slider's name."
+  },
+  "look.colour.cool": {
+    "description": "Colour › Look: the name of the built-in colour look \"cool\", on its chip and in the strength slider's name."
+  },
+  "look.colour.vivid": {
+    "description": "Colour › Look: the name of the built-in colour look \"vivid\", on its chip and in the strength slider's name."
+  },
+  "look.colour.soft": {
+    "description": "Colour › Look: the name of the built-in colour look \"soft\", on its chip and in the strength slider's name."
+  },
+  "look.colour.cinematic": {
+    "description": "Colour › Look: the name of the built-in colour look \"cinematic\", on its chip and in the strength slider's name."
+  },
+  "look.colour.mono": {
+    "description": "Colour › Look: the name of the built-in colour look \"mono\" (black and white), on its chip and in the strength slider's name."
+  },
+  "look.colour.vintage": {
+    "description": "Colour › Look: the name of the built-in colour look \"vintage\", on its chip and in the strength slider's name."
   }
 }

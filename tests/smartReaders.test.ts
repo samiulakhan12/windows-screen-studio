@@ -2,7 +2,8 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { BUNDLED_PRICE_LIST, confirmPrice, parsePriceList, priceOf, PRICE_LIST_MAX_BYTES, readOpenRouterPrice, type PriceList } from '../src/shared/ai/prices'
-import { guideCopyProblem, guidePayloadProblem, GUIDE_SAVE_LIMITS } from '../src/shared/api/guide'
+import { GUIDE_PROBLEM_KEYS, guideCopyProblem, guidePayloadProblem, GUIDE_SAVE_LIMITS } from '../src/shared/api/guide'
+import { t } from '../src/shared/i18n/t'
 import { sanitizeSmartPref } from '../src/shared/smart/smartPrefs'
 
 /*
@@ -93,17 +94,35 @@ describe("the guide save's limits, checked before sending (§5.8)", () => {
   }
   it('refuses a 301st image, an image that is not PNG, JPEG or WebP, 64 MB + 1 of HTML and 256 MB + 1 in all', () => {
     expect(guidePayloadProblem({ format: 'markdown', name: 'Guide', markdown: '# x', images: [png(100)] })).toBeNull()
-    expect(guidePayloadProblem({ format: 'markdown', name: 'Guide', markdown: '# x', images: Array.from({ length: 301 }, () => png(16)) })).toMatch(/too many/)
-    expect(guidePayloadProblem({ format: 'markdown', name: 'Guide', markdown: '# x', images: [new Uint8Array([1, 2, 3, 4])] })).toMatch(/cannot be saved/)
-    expect(guidePayloadProblem({ format: 'html', name: 'Guide', html: 'x'.repeat(GUIDE_SAVE_LIMITS.html + 1) })).toMatch(/too large/)
+    expect(guidePayloadProblem({ format: 'markdown', name: 'Guide', markdown: '# x', images: Array.from({ length: 301 }, () => png(16)) })).toBe('too-many-shots')
+    expect(guidePayloadProblem({ format: 'markdown', name: 'Guide', markdown: '# x', images: [new Uint8Array([1, 2, 3, 4])] })).toBe('bad-shot')
+    expect(guidePayloadProblem({ format: 'html', name: 'Guide', html: 'x'.repeat(GUIDE_SAVE_LIMITS.html + 1) })).toBe('too-large')
     const big = png(GUIDE_SAVE_LIMITS.image)
     const images = Array.from({ length: 16 }, () => big)
     // 16 images of 16 MB are 256 MB exactly; one byte more in all is refused.
     expect(guidePayloadProblem({ format: 'markdown', name: 'Guide', markdown: '', images })).toBeNull()
-    expect(guidePayloadProblem({ format: 'markdown', name: 'Guide', markdown: '#', images })).toMatch(/too large/)
-    expect(guidePayloadProblem({ format: 'exe', name: 'Guide' })).toMatch(/Unknown/)
-    expect(guidePayloadProblem({ format: 'pdf', name: 'x'.repeat(121), html: '' })).toMatch(/name/)
+    expect(guidePayloadProblem({ format: 'markdown', name: 'Guide', markdown: '#', images })).toBe('too-large')
+    expect(guidePayloadProblem({ format: 'exe', name: 'Guide' })).toBe('unknown-format')
+    expect(guidePayloadProblem({ format: 'pdf', name: 'x'.repeat(121), html: '' })).toBe('name-too-long')
     expect(guideCopyProblem({ html: '<p>x</p>', text: 'x' })).toBeNull()
-    expect(guideCopyProblem({ html: '<p>x</p>', text: 'x'.repeat(GUIDE_SAVE_LIMITS.clipText + 1) })).toMatch(/too large/)
+    expect(guideCopyProblem({ html: '<p>x</p>', text: 'x'.repeat(GUIDE_SAVE_LIMITS.clipText + 1) })).toBe('too-large-to-copy')
+    expect(guidePayloadProblem(null)).toBe('nothing-to-save')
+    expect(guidePayloadProblem({ format: 'pdf', name: 'Guide', html: '', page: 'A3' })).toBe('unknown-page')
+    expect(guideCopyProblem(null)).toBe('nothing-to-copy')
+  })
+
+  it('says each problem with the English the check gave before it gave ids (output-and-languages §9.6)', () => {
+    const said = Object.fromEntries(Object.entries(GUIDE_PROBLEM_KEYS).map(([id, key]) => [id, t(key)]))
+    expect(said).toEqual({
+      'nothing-to-save': 'Nothing to save.',
+      'unknown-format': 'Unknown guide format.',
+      'name-too-long': 'The guide’s name is too long.',
+      'too-large': 'This guide is too large to save.',
+      'too-many-shots': 'This guide has too many screenshots to save.',
+      'bad-shot': 'A screenshot of this guide cannot be saved.',
+      'unknown-page': 'Unknown page size.',
+      'nothing-to-copy': 'Nothing to copy.',
+      'too-large-to-copy': 'This guide is too large to copy.'
+    })
   })
 })

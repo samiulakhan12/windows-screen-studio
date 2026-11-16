@@ -1,14 +1,16 @@
 /**
- * The names the editor shows for shapes, title card styles and backgrounds, and the zoom level
- * presets (docs/design/output-and-languages.md §9.1). Their tables (shapes.ts, titles.ts,
- * zoomEdit.ts) are also loaded by main, which carries no renderer message (test 86), so their words
- * are messages here, by the tables' ids, and the tables keep their English for what is not shown.
+ * The names the editor shows for shapes, stickers, title card styles and backgrounds, and the zoom
+ * level presets (docs/design/output-and-languages.md §9.1). Their tables (shapes.ts, stickers.ts,
+ * titles.ts, zoomEdit.ts) are also loaded by main, which carries no renderer message (test 86), so
+ * their words are messages here, by the tables' ids, and the tables keep their English for what is
+ * not shown.
  */
 import { fmt } from '../i18n/fmt'
 import { t, type MessageKey } from '../i18n/t'
 import type { ShapeKind, TitleCard, TitleCardStyle } from '../types'
 import { choice, type Choice } from './choice'
 import { SHAPE_KINDS } from './shapes'
+import { stickerOf } from '../render/stickers'
 import { TITLE_BACKGROUNDS, TITLE_STYLES } from './titles'
 import { ZOOM_LEVEL_PRESETS } from './zoomEdit'
 
@@ -40,6 +42,9 @@ const TITLE_BACKGROUND_KEYS: Readonly<Record<TitleCard['background'], { label: M
   solid: { label: 'common.label.colour', title: 'text.titleBackground.solid.title' },
   style: { label: 'text.titleBackground.style', title: 'text.titleBackground.style.title' }
 }
+
+/** A built-in sticker's name ("Heart", "Thumbs up"), or null for a sticker this version does not have. */
+export const stickerName = (id: string): string | null => (stickerOf(id) ? t(`text.sticker.${id}` as MessageKey) : null)
 
 /** A title card style's name ("Lower third"). */
 export const titleStyleName = (style: TitleCardStyle): string => (TITLE_STYLE_KEYS[style] ? t(TITLE_STYLE_KEYS[style].label) : t('common.label.title'))

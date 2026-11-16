@@ -101,7 +101,7 @@ export type PolishSkip =
   | 'has-captions'
   /** no AI provider can transcribe */
   | 'no-provider'
-  /** On this PC is the choice and its speech model is not downloaded (CAPTIONS_SKIPPED_NO_MODEL): nothing is uploaded instead */
+  /** On this PC is the choice and its speech model is not downloaded (captionsSkippedNoModel()): nothing is uploaded instead */
   | 'no-model'
   /** a transcription job is already running (Captions tab) */
   | 'busy'

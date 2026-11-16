@@ -4,7 +4,9 @@ import { GUIDE_CHANNELS, guideCopyProblem, guidePayloadProblem, GUIDE_SAVE_LIMIT
 /**
  * Saving and copying guides (docs/design/smart-tools.md §5.8). The preload checks GUIDE_SAVE_LIMITS,
  * the total too, before anything is sent, so a page cannot make main deserialise more; main checks
- * again (part P1's checkGuidePayload). Main shows the dialogs and builds every path.
+ * again (part P1's checkGuidePayload). Main shows the dialogs and builds every path. Flown's own page
+ * checks first and says why in the UI language (guideRun.ts), so the preload's refusal carries only
+ * the problem's id (it has no catalogue, test 86).
  */
 export const guideApi: GuideApi = {
   saveGuide: (payload) => {

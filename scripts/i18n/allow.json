@@ -811,6 +811,66 @@
       "kind": "table",
       "text": "the run ended without a result",
       "reason": "Why a captions run on this PC ended as 'protocol': written only to the log (console.warn with the helper's last lines), like helper.ts's own details. The user sees errors.localCaptions.protocol."
+    },
+    {
+      "file": "src/shared/editor/shapes.ts",
+      "kind": "table",
+      "pattern": "^(?:Arrow|Line|Box|Ellipse|Marker|Blur|Pixelate)$",
+      "reason": "SHAPE_KINDS' names stay English data (main imports shapes.ts): every place that names a shape (the Shapes tab, the timeline, the preview's handles, the snap guides and the Selection view) reads src/shared/editor/itemNames.ts's shapeName or shapeKinds (text.shape.*)."
+    },
+    {
+      "file": "src/shared/editor/stylePresets.ts",
+      "kind": "table",
+      "pattern": "^(?:Studio|Minimal|Midnight browser|Neon glow|Pop|Laptop showcase|Frosted glass|Flow)$",
+      "reason": "BUILT_IN_PRESETS' names stay English data (main loads stylePresets.ts through the brand kit): the Style panel, Polish (its select and its summary) and Settings › Brand kit name a built-in look through src/shared/editor/stylePresetNames.ts's presetLabel (style.preset.*); the user's own presets keep the names they gave."
+    },
+    {
+      "file": "src/shared/engine/backgrounds.ts",
+      "kind": "table",
+      "pattern": "^(?:Aurora|Ocean|Mint|Sunset|Peach|Midnight|Forest|Candy|Steel|Lava|Aurora flow|Ocean drift|Sunset glow|Mint breeze|Candy swirl|Midnight pulse)$",
+      "reason": "The gradients' and animated gradients' names stay English data (main imports backgrounds.ts to draw them): the Style panel names each swatch through src/shared/engine/lookNames.ts's gradientName and animatedName (editor.look.gradient.*, editor.look.animated.*)."
+    },
+    {
+      "file": "src/shared/engine/wallpapers.ts",
+      "kind": "table",
+      "pattern": "^(?:Violet mesh|Peach|Lagoon|Sunset|Mint|Midnight glow|Blue waves|Dusk|Dunes|Northern lights|Orbit|Ribbons|Blueprint|Graphite|Candy pop|Forest)$",
+      "reason": "The wallpapers' names stay English data (main imports wallpapers.ts to draw them): the Style panel names each swatch through src/shared/engine/lookNames.ts's wallpaperName (editor.look.wallpaper.*)."
+    },
+    {
+      "file": "src/shared/engine/easing.ts",
+      "kind": "table",
+      "pattern": "^(?:Smooth|Eases in and out evenly|Snappy|Moves quickly, lands softly|Bouncy|Springs slightly past and settles|Linear|Constant speed)$",
+      "reason": "ZOOM_EASINGS' names and tooltips stay English data (main imports easing.ts for the curves): the Zoom tab and the Selection view show src/shared/engine/lookNames.ts's ZOOM_EASING_CHOICES (editor.look.easing.*)."
+    },
+    {
+      "file": "src/shared/engine/tilt.ts",
+      "kind": "table",
+      "pattern": "^(?:Turned to the left|Turned to the right|Top|Seen from above, like a laptop on a desk|Hero|A dramatic product shot from the side and above)$",
+      "reason": "TILT_PRESETS' names and tooltips stay English data (main imports tilt.ts for the angles): the Effects tab shows src/shared/engine/lookNames.ts's tiltPresetsShown (editor.look.tilt.*)."
+    },
+    {
+      "file": "src/shared/render/looks.ts",
+      "kind": "table",
+      "pattern": "^(?:Natural|Warm|Cool|Vivid|Soft|Cinematic|Mono|Vintage)$",
+      "reason": "The colour looks' names stay English data (main imports looks.ts to grade the export): the Colour controls name each look through src/shared/engine/lookNames.ts's colourLookName (editor.look.colour.*)."
+    },
+    {
+      "file": "src/shared/render/stickers.ts",
+      "kind": "table",
+      "pattern": "^(?:Star|Heart|Check|Cross|Thumbs up|Smile|Wow|Fire|Light bulb|Warning|Sparkles|New badge)$",
+      "reason": "The stickers' names stay English data (main imports stickers.ts to draw them): the Images tab, an image item's name and the Selection view name a sticker through src/shared/editor/itemNames.ts's stickerName (text.sticker.*)."
+    },
+    {
+      "file": "src/shared/render/exportBundle.ts",
+      "kind": "table",
+      "pattern": "^(?:Captions \\(SRT\\)|Captions \\(VTT\\)|Chapter list|Thumbnail|Description)$",
+      "reason": "SIDECAR_LABELS stay English for main and tests (main imports exportBundle.ts): Also save's chips and the Captions field's chips show src/renderer/src/editor/exportNames.ts's sidecarLabel (export.sidecar.*), whose test holds it to this table."
+    },
+    {
+      "file": "src/shared/render/exportBundle.ts",
+      "kind": "copy",
+      "pattern": "^(?:GIFs are saved alone|This video has no captions yet|This video has no chapters|Audio files have no thumbnail)$",
+      "reason": "sidecarBlocked keeps its English for main and tests (main imports exportBundle.ts): the export dialog reads it only as a yes or no and shows src/renderer/src/editor/exportNames.ts's sidecarBlockedText (export.sidecar.*)."
     }
   ]
 }

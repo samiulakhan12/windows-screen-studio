@@ -498,5 +498,12 @@
   "pinnedDownload.closedEarly": "The connection closed before the whole file arrived.",
   "pinnedDownload.mismatch": "The downloaded file was not the expected one, so it was deleted.",
   "localAiDownload.needsMemory": "Needs {need} GB of memory; this PC has {have} GB.",
-  "audioAnalysis.unreadableExit": "Could not read the sound of {file} (exit code {code})"
+  "audioAnalysis.unreadableExit": "Could not read the sound of {file} (exit code {code})",
+  "guide.unknownFormat": "Unknown guide format.",
+  "guide.nameTooLong": "The guide’s name is too long.",
+  "guide.tooLargeToSave": "This guide is too large to save.",
+  "guide.tooManyShots": "This guide has too many screenshots to save.",
+  "guide.unknownPage": "Unknown page size.",
+  "guide.nothingToCopy": "Nothing to copy.",
+  "guide.tooLargeToCopy": "This guide is too large to copy."
 }

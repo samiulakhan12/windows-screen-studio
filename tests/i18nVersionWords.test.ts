@@ -44,13 +44,27 @@ describe('Versions in the UI language', () => {
     expect(words.areaName('something new')).toBe('something new')
   })
 
-  it('says the files’ notices as versions.ts does', () => {
+  it('says the files’ notices with the English versions.ts said', () => {
     const kinds = ['background image', 'cursor image', 'logo', 'music', 'image', 'font', 'colour LUT']
     for (const k of kinds) expect(words.fileKindName(k)).toBe(k)
-    const cases: string[][] = [[], ['background image'], ['cursor image'], ['background image', 'cursor image'], ['cursor image', 'background image', 'cursor image']]
-    for (const c of cases) expect(words.changedFilesNotice(c)).toBe(en.changedFilesNotice(c))
-    const missing: string[][] = [[], ['music'], ['font'], ['image', 'image'], ['music', 'image'], ['music', 'image', 'font', 'colour LUT', 'logo']]
-    for (const m of missing) expect(words.missingFilesNotice(m)).toBe(en.missingFilesNotice(m))
+    // The English the editor said before these notices moved here from versions.ts.
+    const cases: [string[], string][] = [
+      [[], ''],
+      [['background image'], 'Its background image has changed since it was kept.'],
+      [['cursor image'], 'Its cursor image has changed since it was kept.'],
+      [['background image', 'cursor image'], 'Its background image and cursor image have changed since it was kept.'],
+      [['cursor image', 'background image', 'cursor image'], 'Its cursor image and background image have changed since it was kept.']
+    ]
+    for (const [c, english] of cases) expect(words.changedFilesNotice(c)).toBe(english)
+    const missing: [string[], string][] = [
+      [[], ''],
+      [['music'], 'Its music file is no longer in the project folder.'],
+      [['font'], 'Its font file is no longer in the project folder.'],
+      [['image', 'image'], '2 of its files (image) are no longer in the project folder.'],
+      [['music', 'image'], '2 of its files (music, image) are no longer in the project folder.'],
+      [['music', 'image', 'font', 'colour LUT', 'logo'], '5 of its files (music, image, font, colour LUT, logo) are no longer in the project folder.']
+    ]
+    for (const [m, english] of missing) expect(words.missingFilesNotice(m)).toBe(english)
   })
 
   it('counts in the format locale’s digits outside English', () => {

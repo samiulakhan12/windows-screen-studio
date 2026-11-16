@@ -26,8 +26,8 @@ import {
   cutDetail,
   cutKind,
   cutTitle,
-  DIRECTOR_DETAIL,
-  FRAMING_TITLE,
+  directorDetail,
+  framingTitle,
   layoutTitle,
   REVIEW_KINDS,
   zoomDetail,
@@ -90,11 +90,11 @@ export function reviewItems(project: Project): ReviewItem[] {
   for (const s of project.layouts ?? []) {
     if (!s.auto) continue
     const segment = { id: s.id, layout: s.layout, ...(s.corner ? { corner: s.corner } : {}), ...(s.cutOut ? { cutOut: true } : {}) }
-    items.push({ key: `camera:${s.id}`, kind: 'camera', start: s.start, end: s.end, title: layoutTitle(s), detail: DIRECTOR_DETAIL, segment })
+    items.push({ key: `camera:${s.id}`, kind: 'camera', start: s.start, end: s.end, title: layoutTitle(s), detail: directorDetail(), segment })
   }
   if (directorsFraming(project)) {
     const at = project.clips[0]?.start ?? 0
-    items.push({ key: FRAMING_KEY, kind: 'camera', start: at, end: at, title: FRAMING_TITLE, detail: DIRECTOR_DETAIL })
+    items.push({ key: FRAMING_KEY, kind: 'camera', start: at, end: at, title: framingTitle(), detail: directorDetail() })
   }
   const chosen = outcomesOf(project)
   for (const c of liveAutoCuts(project)) {

@@ -1,7 +1,8 @@
 import { useMemo } from 'react'
 import { followsAction } from '../../../../shared/editor/followEdit'
 import { LOOK_LIMITS } from '../../../../shared/editor/styleDefaults'
-import { sameAngles, TILT_LIMITS, TILT_PRESETS, tiltCss, tiltSettingsOf, type TiltAnimation } from '../../../../shared/engine/tilt'
+import { sameAngles, TILT_LIMITS, tiltCss, tiltSettingsOf, type TiltAnimation } from '../../../../shared/engine/tilt'
+import { tiltPresetsShown } from '../../../../shared/engine/lookNames'
 import type { CursorTrack, Project, TiltSettings } from '../../../../shared/types'
 import { tiltSupported } from '../../render/tiltLayer'
 import { useEditor } from '../context'
@@ -93,7 +94,7 @@ function TiltSection({ project, cursor }: { project: Project; cursor: CursorTrac
       <Toggle label={t('style.effectsPanel.tiltTheRecordingIn')} checked={on} onChange={(v) => set({ enabled: v })} />
       {followsAction(project) && <p className="hint">{t('style.effectsPanel.the3dTiltIs')}</p>}
       <div className="tilt-presets" role="group" aria-label={t('style.effectsPanel.tiltPresets')}>
-        {TILT_PRESETS.map((preset) => {
+        {tiltPresetsShown().map((preset) => {
           const active = on && sameAngles(tilt, preset.angles)
           return (
             <button

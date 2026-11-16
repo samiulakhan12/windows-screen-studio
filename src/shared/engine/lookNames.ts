@@ -8,7 +8,8 @@
  * table's own (tests/i18nLookNames.test.ts).
  */
 import { t, type MessageKey } from '../i18n/t'
-import type { ZoomEasing } from '../types'
+import { choice, type Choice } from '../editor/choice'
+import type { LookId, ZoomEasing } from '../types'
 import { ZOOM_EASINGS } from './easing'
 import { TILT_PRESETS } from './tilt'
 
@@ -24,6 +25,9 @@ export const animatedName = (id: string): string => t(key(`editor.look.animated.
 /** A wallpaper's name ("Violet mesh"). */
 export const wallpaperName = (id: string): string => t(key(`editor.look.wallpaper.${id}`))
 
+/** A colour look's name ("Cinematic"); render/looks.ts keeps the English as data (main loads it to grade). */
+export const colourLookName = (id: LookId): string => t(key(`editor.look.colour.${id}`))
+
 /** A zoom easing's name and tooltip ("Smooth", "Eases in and out evenly"). */
 export const easingLabel = (value: ZoomEasing): string => t(`editor.look.easing.${value}.label`)
 export const easingTitle = (value: ZoomEasing): string => t(`editor.look.easing.${value}.title`)
@@ -31,6 +35,9 @@ export const easingTitle = (value: ZoomEasing): string => t(`editor.look.easing.
 /** ZOOM_EASINGS as a panel's chips show them: the same values, with their names in the UI language. */
 export const zoomEasingOptions = (): { value: ZoomEasing; label: string; title: string }[] =>
   ZOOM_EASINGS.map((e) => ({ value: e.value, label: easingLabel(e.value), title: easingTitle(e.value) }))
+
+/** ZOOM_EASINGS for a table built when its module loads (group edit's fields): the words are made when read. */
+export const ZOOM_EASING_CHOICES: readonly Choice<ZoomEasing>[] = ZOOM_EASINGS.map((e) => choice(e.value, key(`editor.look.easing.${e.value}.label`), key(`editor.look.easing.${e.value}.title`)))
 
 /** A tilt preset's name and tooltip ("Hero", "A dramatic product shot from the side and above"). */
 export const tiltLabel = (id: string): string => t(key(`editor.look.tilt.${id}.label`))

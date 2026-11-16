@@ -8,7 +8,7 @@ import path from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { CORNER_NAMES } from '../src/shared/recording/cameraBubble'
 import { cornerName } from '../src/shared/editor/layouts'
-import { SHAPE_KINDS, shapeLabel } from '../src/shared/editor/shapes'
+import { SHAPE_KINDS } from '../src/shared/editor/shapes'
 import { TITLE_BACKGROUNDS, TITLE_STYLES } from '../src/shared/editor/titles'
 import { ZOOM_LEVEL_PRESETS } from '../src/shared/editor/zoomEdit'
 import { BUILT_IN_PRESETS } from '../src/shared/editor/stylePresets'
@@ -29,8 +29,9 @@ describe('X2: names from tables that stay English for main', () => {
 
   it('shape names and tooltips equal SHAPE_KINDS', () => {
     expect(shapeKinds()).toEqual(SHAPE_KINDS.map((k) => ({ kind: k.kind, label: k.label, title: k.title })))
-    for (const k of SHAPE_KINDS) expect(shapeName(k.kind)).toBe(shapeLabel(k.kind))
-    expect(shapeName('nothing' as ShapeKind)).toBe(shapeLabel('nothing' as ShapeKind))
+    for (const k of SHAPE_KINDS) expect(shapeName(k.kind)).toBe(k.label)
+    // An unknown kind was 'Shape' (shapes.ts's shapeLabel, gone now that every display reads shapeName).
+    expect(shapeName('nothing' as ShapeKind)).toBe('Shape')
   })
 
   it('title card styles and backgrounds equal TITLE_STYLES and TITLE_BACKGROUNDS', () => {

@@ -346,21 +346,6 @@ export function namedFiles(p: Project): { file: string; what: string }[] {
  */
 export const replacedInPlace = (p: Project): { file: string; what: string }[] => namedFiles(p).filter((f) => f.what === 'background image' || f.what === 'cursor image')
 
-/** "Its background image has changed since it was kept." for the files of `changed` (namedFiles' `what`). */
-export function changedFilesNotice(changed: readonly string[]): string {
-  const kinds = [...new Set(changed)]
-  if (kinds.length === 0) return ''
-  return `Its ${kinds.join(' and ')} ${kinds.length === 1 ? 'has' : 'have'} changed since it was kept.`
-}
-
-/** "Its music file is no longer in the project folder." for the files of `missing` (namedFiles' `what`). */
-export function missingFilesNotice(missing: readonly string[]): string {
-  if (missing.length === 0) return ''
-  const kinds = [...new Set(missing)]
-  if (kinds.length === 1 && missing.length === 1) return `Its ${kinds[0]} file is no longer in the project folder.`
-  return `${missing.length} of its files (${kinds.join(', ')}) are no longer in the project folder.`
-}
-
 const finite = (v: unknown): v is number => typeof v === 'number' && Number.isFinite(v)
 const count = (v: unknown): number => (finite(v) && v >= 0 ? Math.floor(v) : 0)
 

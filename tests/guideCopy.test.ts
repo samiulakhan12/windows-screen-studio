@@ -43,6 +43,8 @@ vi.mock('../src/main/windows', () => ({ getMainWindow: () => null }))
 const { registerGuideIpc } = await import('../src/main/guide/guideIpc')
 const { GUIDE_CHANNELS, GUIDE_SAVE_LIMITS } = await import('../src/shared/api/guide')
 const { guideApi } = await import('../src/preload/guide')
+const { t } = await import('../src/shared/i18n/t')
+const { uiEnglish, uiPseudo } = await import('./pseudoUi')
 registerGuideIpc()
 
 const APP = pathToFileURL(path.join(__dirname, '../src/renderer/index.html')).href
@@ -69,6 +71,22 @@ describe('test 110: Copy guide and Copy screenshot (main)', () => {
     }
     expect(h.written).toEqual([])
     expect(h.invoked).toEqual([])
+  })
+
+  it('main says why it refuses in the UI language, and the preload refuses with the problem’s id only (output-and-languages §9.6)', async () => {
+    const big = { html: 'x'.repeat(GUIDE_SAVE_LIMITS.html + 1), text: '' }
+    await expect(call(GUIDE_CHANNELS.copy, big)).rejects.toThrow(/^This guide is too large to copy\.$/)
+    await expect(guideApi.copyGuide(big)).rejects.toThrow(/^too-large-to-copy$/)
+    uiPseudo('en-XA')
+    try {
+      const said = t('errors.guide.tooLargeToCopy')
+      expect(said).not.toBe('This guide is too large to copy.')
+      await expect(call(GUIDE_CHANNELS.copy, big)).rejects.toThrow(said)
+      await expect(call(GUIDE_CHANNELS.save, { format: 'exe', name: 'Guide' })).rejects.toThrow(t('errors.guide.unknownFormat'))
+    } finally {
+      uiEnglish()
+    }
+    expect(h.written).toEqual([])
   })
 
   it('Copy screenshot writes one PNG; anything else is refused', async () => {

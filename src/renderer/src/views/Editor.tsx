@@ -23,7 +23,7 @@ import { copyLookFirst, nothingCopiedNotice, removedNotice, selectAllNotice } fr
 import { layoutRefusal, setLayoutAt } from '../../../shared/editor/layoutCommands'
 import { removeLayout } from '../../../shared/editor/layouts'
 import { mediaLength } from '../../../shared/editor/mediaLength'
-import { POLISH_BUTTON_TITLE, polishNotice } from '../../../shared/editor/polishCopy'
+import { polishButtonTitle, polishNotice } from '../../../shared/editor/polishCopy'
 import { UNTITLED, withSavedName } from '../../../shared/editor/projectName'
 import {
   chordFromEvent,
@@ -116,7 +116,8 @@ import { setWaveformShown, waveformShown } from '../editor/waveformPref'
 // E-12 versions, E-07 filmstrip, E-09 nudge (docs/design/versions.md).
 import { filmstripShown, setFilmstripShown } from '../editor/filmstripPref'
 import { nudgeSelected } from '../editor/nudgeCommand'
-import { changedFilesNotice, missingFilesNotice, restoreVersion } from '../../../shared/editor/versions'
+import { restoreVersion } from '../../../shared/editor/versions'
+import { changedFilesNotice, missingFilesNotice } from '../../../shared/editor/versionWords'
 import { NUDGE_STEPS, nudgeInstead } from '../../../shared/editor/shortcuts'
 import type { ReadVersion } from '../../../shared/api/versions'
 import { keepVersionBefore } from '../versions/autoVersion'
@@ -1897,7 +1898,7 @@ function EditorSession({
               setReviewOpen((o) => !o)
             }}
           />
-          <button className="btn" data-testid="polish-open" onClick={() => setDialog('polish')} title={withShortcut(POLISH_BUTTON_TITLE, keymap.polish)}>
+          <button className="btn" data-testid="polish-open" onClick={() => setDialog('polish')} title={withShortcut(polishButtonTitle(), keymap.polish)}>
             <EditorIcon name="sparkle" size={16} /> <span className="tb-label">{t('editor.titlebar.polish')}</span>
           </button>
           <button className="btn" data-testid="publish-open" onClick={() => commandsRef.current.publishPack()} title={withShortcut(t('editor.titlebar.publishTitle'), keymap.publishPack)}>

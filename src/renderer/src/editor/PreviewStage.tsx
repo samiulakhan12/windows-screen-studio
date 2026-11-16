@@ -11,9 +11,9 @@ import {
   moveLine,
   resizeAround,
   setLineEnd,
-  shapeBounds,
-  shapeLabel
+  shapeBounds
 } from '../../../shared/editor/shapes'
+import { shapeName } from '../../../shared/editor/itemNames'
 import { setZoomRegionInView } from '../../../shared/editor/cropEdit'
 import { dragView, holdViewAt } from '../../../shared/editor/followEdit'
 import { dragRegion, regionFromPoints, type Box as RegionBox, type RegionHandle, type ZoomRegion } from '../../../shared/editor/zoomEdit'
@@ -808,7 +808,7 @@ function ShapeEditor({
     )
   }
 
-  const label = type === 'shape' ? shapeLabel(item.kind) : item.mode === 'cursor' ? t('editor.preview.cursorSpotlight') : t('editor.preview.spotlight')
+  const label = type === 'shape' ? shapeName(item.kind) : item.mode === 'cursor' ? t('editor.preview.cursorSpotlight') : t('editor.preview.spotlight')
   return (
     <div className="shape-editor" data-testid="shape-editor" data-item={item.id}>
       {clip ? (

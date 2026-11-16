@@ -21,7 +21,8 @@ import {
 } from 'react'
 import { annotationLanes, dragAnnotationTimes } from '../../../shared/editor/annotations'
 import { timelineGaps, type Gap } from '../../../shared/editor/clips'
-import { dragShapeTimes, isPrivacyKind, itemLanes, shapeLabel } from '../../../shared/editor/shapes'
+import { dragShapeTimes, isPrivacyKind, itemLanes } from '../../../shared/editor/shapes'
+import { shapeName } from '../../../shared/editor/itemNames'
 import { sameClips, sameSpan, SNAP } from '../../../shared/editor/snapping'
 import {
   clampScale,
@@ -131,7 +132,7 @@ function trackItems(shapes: Shape[], spotlights: Spotlight[]): TrackItem[] {
       id: s.id,
       start: s.start,
       end: s.end,
-      label: shapeLabel(s.kind),
+      label: shapeName(s.kind),
       icon: s.kind,
       look: isPrivacyKind(s.kind) ? 'privacy' : 'mark',
       kind: s.kind

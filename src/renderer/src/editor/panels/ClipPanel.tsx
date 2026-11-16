@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { activitySources, type AudioSource } from '../../../../shared/audio/settings'
 import { sourceActivity, type AudioAnalysis } from '../../../../shared/audio/soundtrack'
 import { soundDetector } from '../../../../shared/audio/voice'
-import { detectorStatus, IDLE_VOICE_HINT, SILENCES_VOICE_HINT } from '../../../../shared/speech/speechCopy'
+import { detectorStatus, idleVoiceHint, silencesVoiceHint } from '../../../../shared/speech/speechCopy'
 import { setRangeSpeed, timelineGaps, type Gap } from '../../../../shared/editor/clips'
 import type { EditStore } from '../../../../shared/editor/editStore'
 import { pathSummary } from '../../../../shared/editor/inputEdits'
@@ -467,7 +467,7 @@ function SmartSpeed(props: InspectorProps): JSX.Element {
         {mode === 'idle' ? (
           <>
             <p className="hint">
-              {detector === 'speech' ? IDLE_VOICE_HINT : t('style.clipPanel.speedsUpOrCuts')}
+              {detector === 'speech' ? idleVoiceHint() : t('style.clipPanel.speedsUpOrCuts')}
             </p>
             {keep.length > 0 && <TitlesKept titles={!!titles?.length} freezes={!!freezes?.length} />}
             {!cursor.valid && <p className="hint">{t('style.clipPanel.thisRecordingHasNo')}</p>}
@@ -529,7 +529,7 @@ function SmartSpeed(props: InspectorProps): JSX.Element {
         ) : (
           <>
             <p className="hint">
-              {detector === 'speech' ? SILENCES_VOICE_HINT : t('style.clipPanel.cutsOrSpeedsUp')}
+              {detector === 'speech' ? silencesVoiceHint() : t('style.clipPanel.cutsOrSpeedsUp')}
             </p>
             {detector && sources.length > 0 && (
               <p className="hint silence-detector" data-testid="silence-detector" data-detector={detector}>

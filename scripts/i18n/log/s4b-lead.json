@@ -1,0 +1,755 @@
+[
+  {
+    "key": "errors.writeGuide.nothingToSave",
+    "file": "src/shared/api/guide.ts",
+    "line": 68,
+    "english": "Nothing to save.",
+    "sample": {}
+  },
+  {
+    "key": "errors.guide.unknownFormat",
+    "file": "src/shared/api/guide.ts",
+    "line": 69,
+    "english": "Unknown guide format.",
+    "sample": {}
+  },
+  {
+    "key": "errors.guide.nameTooLong",
+    "file": "src/shared/api/guide.ts",
+    "line": 70,
+    "english": "The guide’s name is too long.",
+    "sample": {}
+  },
+  {
+    "key": "errors.guide.tooLargeToSave",
+    "file": "src/shared/api/guide.ts",
+    "line": 71,
+    "english": "This guide is too large to save.",
+    "sample": {}
+  },
+  {
+    "key": "errors.guide.tooManyShots",
+    "file": "src/shared/api/guide.ts",
+    "line": 72,
+    "english": "This guide has too many screenshots to save.",
+    "sample": {}
+  },
+  {
+    "key": "errors.writeGuide.aScreenshotOfThis",
+    "file": "src/shared/api/guide.ts",
+    "line": 73,
+    "english": "A screenshot of this guide cannot be saved.",
+    "sample": {}
+  },
+  {
+    "key": "errors.guide.unknownPage",
+    "file": "src/shared/api/guide.ts",
+    "line": 74,
+    "english": "Unknown page size.",
+    "sample": {}
+  },
+  {
+    "key": "errors.guide.nothingToCopy",
+    "file": "src/shared/api/guide.ts",
+    "line": 75,
+    "english": "Nothing to copy.",
+    "sample": {}
+  },
+  {
+    "key": "errors.guide.tooLargeToCopy",
+    "file": "src/shared/api/guide.ts",
+    "line": 76,
+    "english": "This guide is too large to copy.",
+    "sample": {}
+  },
+  {
+    "key": "captions.local.hint.idle",
+    "file": "src/renderer/src/editor/panels/ClipPanel.tsx",
+    "line": 470,
+    "english": "Speeds up or cuts the parts where nothing happens: the picture stays still, you are not talking and your PC plays no sound, and you did not move, click, scroll or type.",
+    "sample": {}
+  },
+  {
+    "key": "captions.local.hint.silences",
+    "file": "src/renderer/src/editor/panels/ClipPanel.tsx",
+    "line": 532,
+    "english": "Cuts or speeds up the pauses in your talking, keeping a little of the silence next to the sound so no word is clipped.",
+    "sample": {}
+  },
+  {
+    "key": "review.framing.title",
+    "file": "src/shared/review/review.ts",
+    "line": 97,
+    "english": "Camera framed on your face",
+    "sample": {}
+  },
+  {
+    "key": "review.framing.detail",
+    "file": "src/shared/review/review.ts",
+    "line": 93,
+    "english": "Camera director",
+    "sample": {}
+  },
+  {
+    "key": "review.polish.buttonTitle",
+    "file": "src/renderer/src/views/Editor.tsx",
+    "line": 1901,
+    "english": "Polish in one click: silences, zooms, captions, camera and style",
+    "sample": {}
+  },
+  {
+    "key": "review.share.source.picked",
+    "file": "src/shared/share/steps.ts",
+    "line": 56,
+    "english": "Added by you",
+    "sample": {}
+  },
+  {
+    "key": "review.share.source.usual",
+    "file": "src/shared/share/steps.ts",
+    "line": 57,
+    "english": "Found at the usual place",
+    "sample": {}
+  },
+  {
+    "key": "review.share.source.app",
+    "file": "src/shared/share/steps.ts",
+    "line": 58,
+    "english": "Found in OneDrive's settings",
+    "sample": {
+      "service": "OneDrive"
+    }
+  },
+  {
+    "key": "export.sidecar.srt",
+    "file": "src/renderer/src/editor/exportNames.ts",
+    "line": 88,
+    "english": "Captions (SRT)",
+    "sample": {}
+  },
+  {
+    "key": "export.sidecar.vtt",
+    "file": "src/renderer/src/editor/exportNames.ts",
+    "line": 89,
+    "english": "Captions (VTT)",
+    "sample": {}
+  },
+  {
+    "key": "export.sidecar.gifAlone",
+    "file": "src/renderer/src/editor/exportNames.ts",
+    "line": 99,
+    "english": "GIFs are saved alone",
+    "sample": {}
+  },
+  {
+    "key": "export.sidecar.noCaptions",
+    "file": "src/renderer/src/editor/exportNames.ts",
+    "line": 100,
+    "english": "This video has no captions yet",
+    "sample": {}
+  },
+  {
+    "key": "text.shape.arrow",
+    "file": "src/shared/editor/itemNames.ts",
+    "line": 18,
+    "english": "Arrow",
+    "sample": {}
+  },
+  {
+    "key": "text.shape.line",
+    "file": "src/shared/editor/itemNames.ts",
+    "line": 19,
+    "english": "Line",
+    "sample": {}
+  },
+  {
+    "key": "text.shape.rect",
+    "file": "src/shared/editor/itemNames.ts",
+    "line": 20,
+    "english": "Box",
+    "sample": {}
+  },
+  {
+    "key": "text.shape.ellipse",
+    "file": "src/shared/editor/itemNames.ts",
+    "line": 21,
+    "english": "Ellipse",
+    "sample": {}
+  },
+  {
+    "key": "text.shape.highlight",
+    "file": "src/shared/editor/itemNames.ts",
+    "line": 22,
+    "english": "Marker",
+    "sample": {}
+  },
+  {
+    "key": "text.shape.blur",
+    "file": "src/shared/editor/itemNames.ts",
+    "line": 23,
+    "english": "Blur",
+    "sample": {}
+  },
+  {
+    "key": "text.shape.pixelate",
+    "file": "src/shared/editor/itemNames.ts",
+    "line": 24,
+    "english": "Pixelate",
+    "sample": {}
+  },
+  {
+    "key": "style.preset.studio",
+    "file": "src/shared/editor/stylePresetNames.ts",
+    "line": 12,
+    "english": "Studio",
+    "sample": {}
+  },
+  {
+    "key": "style.preset.minimal",
+    "file": "src/shared/editor/stylePresetNames.ts",
+    "line": 13,
+    "english": "Minimal",
+    "sample": {}
+  },
+  {
+    "key": "style.preset.midnightBrowser",
+    "file": "src/shared/editor/stylePresetNames.ts",
+    "line": 14,
+    "english": "Midnight browser",
+    "sample": {}
+  },
+  {
+    "key": "style.preset.neon",
+    "file": "src/shared/editor/stylePresetNames.ts",
+    "line": 15,
+    "english": "Neon glow",
+    "sample": {}
+  },
+  {
+    "key": "style.preset.pop",
+    "file": "src/shared/editor/stylePresetNames.ts",
+    "line": 16,
+    "english": "Pop",
+    "sample": {}
+  },
+  {
+    "key": "style.preset.showcase",
+    "file": "src/shared/editor/stylePresetNames.ts",
+    "line": 17,
+    "english": "Laptop showcase",
+    "sample": {}
+  },
+  {
+    "key": "style.preset.frosted",
+    "file": "src/shared/editor/stylePresetNames.ts",
+    "line": 18,
+    "english": "Frosted glass",
+    "sample": {}
+  },
+  {
+    "key": "style.preset.flow",
+    "file": "src/shared/editor/stylePresetNames.ts",
+    "line": 19,
+    "english": "Flow",
+    "sample": {}
+  },
+  {
+    "key": "editor.look.gradient.aurora",
+    "file": "src/shared/engine/lookNames.ts",
+    "line": 20,
+    "english": "Aurora",
+    "sample": {}
+  },
+  {
+    "key": "editor.look.gradient.ocean",
+    "file": "src/shared/engine/lookNames.ts",
+    "line": 20,
+    "english": "Ocean",
+    "sample": {}
+  },
+  {
+    "key": "editor.look.gradient.mint",
+    "file": "src/shared/engine/lookNames.ts",
+    "line": 20,
+    "english": "Mint",
+    "sample": {}
+  },
+  {
+    "key": "editor.look.gradient.sunset",
+    "file": "src/shared/engine/lookNames.ts",
+    "line": 20,
+    "english": "Sunset",
+    "sample": {}
+  },
+  {
+    "key": "editor.look.gradient.peach",
+    "file": "src/shared/engine/lookNames.ts",
+    "line": 20,
+    "english": "Peach",
+    "sample": {}
+  },
+  {
+    "key": "editor.look.gradient.midnight",
+    "file": "src/shared/engine/lookNames.ts",
+    "line": 20,
+    "english": "Midnight",
+    "sample": {}
+  },
+  {
+    "key": "editor.look.gradient.forest",
+    "file": "src/shared/engine/lookNames.ts",
+    "line": 20,
+    "english": "Forest",
+    "sample": {}
+  },
+  {
+    "key": "editor.look.gradient.candy",
+    "file": "src/shared/engine/lookNames.ts",
+    "line": 20,
+    "english": "Candy",
+    "sample": {}
+  },
+  {
+    "key": "editor.look.gradient.steel",
+    "file": "src/shared/engine/lookNames.ts",
+    "line": 20,
+    "english": "Steel",
+    "sample": {}
+  },
+  {
+    "key": "editor.look.gradient.lava",
+    "file": "src/shared/engine/lookNames.ts",
+    "line": 20,
+    "english": "Lava",
+    "sample": {}
+  },
+  {
+    "key": "editor.look.animated.aurora",
+    "file": "src/shared/engine/lookNames.ts",
+    "line": 23,
+    "english": "Aurora flow",
+    "sample": {}
+  },
+  {
+    "key": "editor.look.animated.ocean",
+    "file": "src/shared/engine/lookNames.ts",
+    "line": 23,
+    "english": "Ocean drift",
+    "sample": {}
+  },
+  {
+    "key": "editor.look.animated.sunset",
+    "file": "src/shared/engine/lookNames.ts",
+    "line": 23,
+    "english": "Sunset glow",
+    "sample": {}
+  },
+  {
+    "key": "editor.look.animated.mint",
+    "file": "src/shared/engine/lookNames.ts",
+    "line": 23,
+    "english": "Mint breeze",
+    "sample": {}
+  },
+  {
+    "key": "editor.look.animated.candy",
+    "file": "src/shared/engine/lookNames.ts",
+    "line": 23,
+    "english": "Candy swirl",
+    "sample": {}
+  },
+  {
+    "key": "editor.look.animated.midnight",
+    "file": "src/shared/engine/lookNames.ts",
+    "line": 23,
+    "english": "Midnight pulse",
+    "sample": {}
+  },
+  {
+    "key": "editor.look.wallpaper.violet-mesh",
+    "file": "src/shared/engine/lookNames.ts",
+    "line": 26,
+    "english": "Violet mesh",
+    "sample": {}
+  },
+  {
+    "key": "editor.look.wallpaper.peach-mesh",
+    "file": "src/shared/engine/lookNames.ts",
+    "line": 26,
+    "english": "Peach",
+    "sample": {}
+  },
+  {
+    "key": "editor.look.wallpaper.lagoon",
+    "file": "src/shared/engine/lookNames.ts",
+    "line": 26,
+    "english": "Lagoon",
+    "sample": {}
+  },
+  {
+    "key": "editor.look.wallpaper.sunset-blobs",
+    "file": "src/shared/engine/lookNames.ts",
+    "line": 26,
+    "english": "Sunset",
+    "sample": {}
+  },
+  {
+    "key": "editor.look.wallpaper.mint",
+    "file": "src/shared/engine/lookNames.ts",
+    "line": 26,
+    "english": "Mint",
+    "sample": {}
+  },
+  {
+    "key": "editor.look.wallpaper.midnight-glow",
+    "file": "src/shared/engine/lookNames.ts",
+    "line": 26,
+    "english": "Midnight glow",
+    "sample": {}
+  },
+  {
+    "key": "editor.look.wallpaper.blue-waves",
+    "file": "src/shared/engine/lookNames.ts",
+    "line": 26,
+    "english": "Blue waves",
+    "sample": {}
+  },
+  {
+    "key": "editor.look.wallpaper.dusk-waves",
+    "file": "src/shared/engine/lookNames.ts",
+    "line": 26,
+    "english": "Dusk",
+    "sample": {}
+  },
+  {
+    "key": "editor.look.wallpaper.dunes",
+    "file": "src/shared/engine/lookNames.ts",
+    "line": 26,
+    "english": "Dunes",
+    "sample": {}
+  },
+  {
+    "key": "editor.look.wallpaper.northern-lights",
+    "file": "src/shared/engine/lookNames.ts",
+    "line": 26,
+    "english": "Northern lights",
+    "sample": {}
+  },
+  {
+    "key": "editor.look.wallpaper.orbit",
+    "file": "src/shared/engine/lookNames.ts",
+    "line": 26,
+    "english": "Orbit",
+    "sample": {}
+  },
+  {
+    "key": "editor.look.wallpaper.ribbons",
+    "file": "src/shared/engine/lookNames.ts",
+    "line": 26,
+    "english": "Ribbons",
+    "sample": {}
+  },
+  {
+    "key": "editor.look.wallpaper.blueprint",
+    "file": "src/shared/engine/lookNames.ts",
+    "line": 26,
+    "english": "Blueprint",
+    "sample": {}
+  },
+  {
+    "key": "editor.look.wallpaper.graphite",
+    "file": "src/shared/engine/lookNames.ts",
+    "line": 26,
+    "english": "Graphite",
+    "sample": {}
+  },
+  {
+    "key": "editor.look.wallpaper.candy-pop",
+    "file": "src/shared/engine/lookNames.ts",
+    "line": 26,
+    "english": "Candy pop",
+    "sample": {}
+  },
+  {
+    "key": "editor.look.wallpaper.forest",
+    "file": "src/shared/engine/lookNames.ts",
+    "line": 26,
+    "english": "Forest",
+    "sample": {}
+  },
+  {
+    "key": "editor.look.easing.smooth.label",
+    "file": "src/shared/engine/lookNames.ts",
+    "line": 40,
+    "english": "Smooth",
+    "sample": {}
+  },
+  {
+    "key": "editor.look.easing.smooth.title",
+    "file": "src/shared/engine/lookNames.ts",
+    "line": 40,
+    "english": "Eases in and out evenly",
+    "sample": {}
+  },
+  {
+    "key": "editor.look.easing.snappy.label",
+    "file": "src/shared/engine/lookNames.ts",
+    "line": 40,
+    "english": "Snappy",
+    "sample": {}
+  },
+  {
+    "key": "editor.look.easing.snappy.title",
+    "file": "src/shared/engine/lookNames.ts",
+    "line": 40,
+    "english": "Moves quickly, lands softly",
+    "sample": {}
+  },
+  {
+    "key": "editor.look.easing.bouncy.label",
+    "file": "src/shared/engine/lookNames.ts",
+    "line": 40,
+    "english": "Bouncy",
+    "sample": {}
+  },
+  {
+    "key": "editor.look.easing.bouncy.title",
+    "file": "src/shared/engine/lookNames.ts",
+    "line": 40,
+    "english": "Springs slightly past and settles",
+    "sample": {}
+  },
+  {
+    "key": "editor.look.easing.linear.label",
+    "file": "src/shared/engine/lookNames.ts",
+    "line": 40,
+    "english": "Linear",
+    "sample": {}
+  },
+  {
+    "key": "editor.look.easing.linear.title",
+    "file": "src/shared/engine/lookNames.ts",
+    "line": 40,
+    "english": "Constant speed",
+    "sample": {}
+  },
+  {
+    "key": "editor.look.tilt.left.label",
+    "file": "src/shared/engine/lookNames.ts",
+    "line": 43,
+    "english": "Left",
+    "sample": {}
+  },
+  {
+    "key": "editor.look.tilt.left.title",
+    "file": "src/shared/engine/lookNames.ts",
+    "line": 44,
+    "english": "Turned to the left",
+    "sample": {}
+  },
+  {
+    "key": "editor.look.tilt.right.label",
+    "file": "src/shared/engine/lookNames.ts",
+    "line": 43,
+    "english": "Right",
+    "sample": {}
+  },
+  {
+    "key": "editor.look.tilt.right.title",
+    "file": "src/shared/engine/lookNames.ts",
+    "line": 44,
+    "english": "Turned to the right",
+    "sample": {}
+  },
+  {
+    "key": "editor.look.tilt.top.label",
+    "file": "src/shared/engine/lookNames.ts",
+    "line": 43,
+    "english": "Top",
+    "sample": {}
+  },
+  {
+    "key": "editor.look.tilt.top.title",
+    "file": "src/shared/engine/lookNames.ts",
+    "line": 44,
+    "english": "Seen from above, like a laptop on a desk",
+    "sample": {}
+  },
+  {
+    "key": "editor.look.tilt.hero.label",
+    "file": "src/shared/engine/lookNames.ts",
+    "line": 43,
+    "english": "Hero",
+    "sample": {}
+  },
+  {
+    "key": "editor.look.tilt.hero.title",
+    "file": "src/shared/engine/lookNames.ts",
+    "line": 44,
+    "english": "A dramatic product shot from the side and above",
+    "sample": {}
+  },
+  {
+    "key": "editor.look.colour.natural",
+    "file": "src/shared/engine/lookNames.ts",
+    "line": 29,
+    "english": "Natural",
+    "sample": {}
+  },
+  {
+    "key": "editor.look.colour.warm",
+    "file": "src/shared/engine/lookNames.ts",
+    "line": 29,
+    "english": "Warm",
+    "sample": {}
+  },
+  {
+    "key": "editor.look.colour.cool",
+    "file": "src/shared/engine/lookNames.ts",
+    "line": 29,
+    "english": "Cool",
+    "sample": {}
+  },
+  {
+    "key": "editor.look.colour.vivid",
+    "file": "src/shared/engine/lookNames.ts",
+    "line": 29,
+    "english": "Vivid",
+    "sample": {}
+  },
+  {
+    "key": "editor.look.colour.soft",
+    "file": "src/shared/engine/lookNames.ts",
+    "line": 29,
+    "english": "Soft",
+    "sample": {}
+  },
+  {
+    "key": "editor.look.colour.cinematic",
+    "file": "src/shared/engine/lookNames.ts",
+    "line": 29,
+    "english": "Cinematic",
+    "sample": {}
+  },
+  {
+    "key": "editor.look.colour.mono",
+    "file": "src/shared/engine/lookNames.ts",
+    "line": 29,
+    "english": "Mono",
+    "sample": {}
+  },
+  {
+    "key": "editor.look.colour.vintage",
+    "file": "src/shared/engine/lookNames.ts",
+    "line": 29,
+    "english": "Vintage",
+    "sample": {}
+  },
+  {
+    "key": "text.sticker.star",
+    "file": "src/shared/editor/itemNames.ts",
+    "line": 47,
+    "english": "Star",
+    "sample": {}
+  },
+  {
+    "key": "text.sticker.heart",
+    "file": "src/shared/editor/itemNames.ts",
+    "line": 47,
+    "english": "Heart",
+    "sample": {}
+  },
+  {
+    "key": "text.sticker.check",
+    "file": "src/shared/editor/itemNames.ts",
+    "line": 47,
+    "english": "Check",
+    "sample": {}
+  },
+  {
+    "key": "text.sticker.cross",
+    "file": "src/shared/editor/itemNames.ts",
+    "line": 47,
+    "english": "Cross",
+    "sample": {}
+  },
+  {
+    "key": "text.sticker.thumbs-up",
+    "file": "src/shared/editor/itemNames.ts",
+    "line": 47,
+    "english": "Thumbs up",
+    "sample": {}
+  },
+  {
+    "key": "text.sticker.smile",
+    "file": "src/shared/editor/itemNames.ts",
+    "line": 47,
+    "english": "Smile",
+    "sample": {}
+  },
+  {
+    "key": "text.sticker.wow",
+    "file": "src/shared/editor/itemNames.ts",
+    "line": 47,
+    "english": "Wow",
+    "sample": {}
+  },
+  {
+    "key": "text.sticker.fire",
+    "file": "src/shared/editor/itemNames.ts",
+    "line": 47,
+    "english": "Fire",
+    "sample": {}
+  },
+  {
+    "key": "text.sticker.bulb",
+    "file": "src/shared/editor/itemNames.ts",
+    "line": 47,
+    "english": "Light bulb",
+    "sample": {}
+  },
+  {
+    "key": "text.sticker.warning",
+    "file": "src/shared/editor/itemNames.ts",
+    "line": 47,
+    "english": "Warning",
+    "sample": {}
+  },
+  {
+    "key": "text.sticker.sparkles",
+    "file": "src/shared/editor/itemNames.ts",
+    "line": 47,
+    "english": "Sparkles",
+    "sample": {}
+  },
+  {
+    "key": "text.sticker.new",
+    "file": "src/shared/editor/itemNames.ts",
+    "line": 47,
+    "english": "New badge",
+    "sample": {}
+  },
+  {
+    "key": "text.overlay.sticker",
+    "file": "src/shared/editor/overlays.ts",
+    "line": 71,
+    "english": "Heart sticker",
+    "sample": {
+      "name": "Heart"
+    }
+  },
+  {
+    "key": "text.overlay.unknownSticker",
+    "file": "src/shared/editor/overlays.ts",
+    "line": 71,
+    "english": "Sticker",
+    "sample": {}
+  },
+  {
+    "key": "text.overlay.image",
+    "file": "src/shared/editor/overlays.ts",
+    "line": 72,
+    "english": "Image",
+    "sample": {}
+  }
+]

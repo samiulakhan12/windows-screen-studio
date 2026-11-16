@@ -2,11 +2,9 @@ import { describe, expect, it } from 'vitest'
 import {
   autoVersionName,
   changedAreas,
-  changedFilesNotice,
   cleanVersionName,
   compareSummaries,
   defaultVersionName,
-  missingFilesNotice,
   namedFiles,
   prunedAutos,
   replacedInPlace,
@@ -18,6 +16,7 @@ import {
   VERSION_ID_RE,
   type VersionMeta
 } from '../src/shared/editor/versions'
+import { changedFilesNotice, missingFilesNotice } from '../src/shared/editor/versionWords'
 import { applyBrandKit, EMPTY_BRAND_KIT, type BrandKit } from '../src/shared/editor/brandKit'
 import { createTitleCard } from '../src/shared/editor/titles'
 import { migrateProject } from '../src/shared/engine/project'

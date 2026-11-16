@@ -509,11 +509,3 @@ export function detectorStatus(detector: SoundDetector, systemStem: boolean): st
 export const silencesVoiceHint = (): string => t('captions.local.hint.silences')
 export const idleVoiceHint = (): string => t('captions.local.hint.idle')
 export const duckingVoiceHint = (): string => t('captions.local.hint.ducking')
-
-/**
- * The Clip tab's two hints as English constants, for ClipPanel.tsx until it calls silencesVoiceHint()
- * and idleVoiceHint() (ClipPanel is step S4b group d's file); the same English as those messages.
- */
-export const SILENCES_VOICE_HINT = 'Cuts or speeds up the pauses in your talking, keeping a little of the silence next to the sound so no word is clipped.'
-export const IDLE_VOICE_HINT =
-  'Speeds up or cuts the parts where nothing happens: the picture stays still, you are not talking and your PC plays no sound, and you did not move, click, scroll or type.'

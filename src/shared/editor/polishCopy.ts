@@ -54,12 +54,7 @@ export const keepLook = (): string => t('review.polish.keepLook')
 export const changedSince = (): string => t('review.polish.changedSince')
 export const cancelledNotice = (): string => t('review.polish.cancelled')
 export const undoneNotice = (): string => t('review.polish.undone')
-/**
- * The title-bar button's title (withShortcut adds the key). POLISH_BUTTON_TITLE is its English
- * form, which the editor's title bar (part X1's file) reads; polishButtonTitle() gives it in the UI
- * language.
- */
-export const POLISH_BUTTON_TITLE = 'Polish in one click: silences, zooms, captions, camera and style'
+/** The title-bar button's title (withShortcut adds the key), made when the title bar is drawn. */
 export const polishButtonTitle = (): string => t('review.polish.buttonTitle')
 
 /** Planning threw (a bug): nothing was written. */

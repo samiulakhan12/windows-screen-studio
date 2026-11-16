@@ -4,9 +4,10 @@
  */
 import { clamp } from '../engine/math'
 import { cleanOverlayName, normalizeAngle, OVERLAY_LIMITS } from '../engine/overlayData'
-import { stickerOf } from '../render/stickers'
+import { t } from '../i18n/t'
 import type { ImageOverlay } from '../types'
 import { dragAnnotationTimes, MIN_ANNOTATION_LENGTH } from './annotations'
+import { stickerName } from './itemNames'
 
 export const DEFAULT_OVERLAY_LENGTH = 3
 export const MIN_OVERLAY_LENGTH = MIN_ANNOTATION_LENGTH
@@ -65,10 +66,10 @@ export function createOverlay(t: number, duration: number, source: OverlaySource
 /** Timeline drags: the same rules as text (at least MIN_OVERLAY_LENGTH, inside the recording). */
 export const dragOverlayTimes = dragAnnotationTimes
 
-/** The name the editor shows for an overlay. */
+/** The name the editor shows for an overlay ("Heart sticker", its own name, its file's, or "Image"). */
 export function overlayLabel(o: Pick<ImageOverlay, 'name' | 'sticker' | 'file'>): string {
-  if (o.sticker) return `${stickerOf(o.sticker)?.name ?? 'Sticker'} sticker`
-  return o.name || o.file || 'Image'
+  if (o.sticker) return t('text.overlay.sticker', { name: stickerName(o.sticker) ?? t('text.overlay.unknownSticker') })
+  return o.name || o.file || t('text.overlay.image')
 }
 
 type Geometry = Pick<ImageOverlay, 'x' | 'y' | 'w' | 'h' | 'rotation'>

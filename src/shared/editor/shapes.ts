@@ -29,8 +29,6 @@ export const SHAPE_KINDS: { kind: ShapeKind; label: string; title: string }[] = 
   { kind: 'pixelate', label: 'Pixelate', title: 'Pixelate private content (always fully applied)' }
 ]
 
-export const shapeLabel = (kind: ShapeKind): string => SHAPE_KINDS.find((k) => k.kind === kind)?.label ?? 'Shape'
-
 /** Blur and pixelate hide content: they never fade and are drawn under the cursor. */
 export const isPrivacyKind = (kind: ShapeKind): boolean => kind === 'blur' || kind === 'pixelate'
 /** Arrows and lines go from (x, y) to (x + w, y + h); every other kind fills its box. */

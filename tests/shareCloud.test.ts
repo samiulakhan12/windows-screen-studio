@@ -2,7 +2,8 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
-import { cloudCandidates, folderId, linkHint, normalizeFolderPath, parseRegExport, parseRegistryText, parseRegQuery, sourceText, type CloudInput } from '../src/shared/share/cloudFolders'
+import { cloudCandidates, folderId, linkHint, normalizeFolderPath, parseRegExport, parseRegistryText, parseRegQuery, type CloudInput } from '../src/shared/share/cloudFolders'
+import { folderSourceText } from '../src/shared/share/steps'
 import { detectCloudFolders, fakeProbe } from '../src/main/share/cloudDetect'
 
 const win = path.win32.join
@@ -105,9 +106,9 @@ describe('cloudCandidates', () => {
     expect(folderId('C:\\Users\\Ana\\OneDrive')).toMatch(/^cf[0-9a-f]{10}$/)
     expect(folderId('C:\\A')).not.toBe(folderId('C:\\B'))
     expect(normalizeFolderPath('C:\\')).toBe('c:\\')
-    expect(sourceText('onedrive', 'app')).toBe("Found in OneDrive's settings")
-    expect(sourceText('dropbox', 'usual')).toBe('Found at the usual place')
-    expect(sourceText('folder', 'picked')).toBe('Added by you')
+    expect(folderSourceText('onedrive', 'app')).toBe("Found in OneDrive's settings")
+    expect(folderSourceText('dropbox', 'usual')).toBe('Found at the usual place')
+    expect(folderSourceText('folder', 'picked')).toBe('Added by you')
     expect(linkHint('dropbox')).toContain('Copy Dropbox link')
   })
 })

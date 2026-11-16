@@ -8,7 +8,7 @@
  */
 import { promises as fs } from 'node:fs'
 import path from 'node:path'
-import { guidePayloadProblem, imageKind, type GuideSavePayload } from '../../shared/api/guide'
+import { GUIDE_PROBLEM_KEYS, guidePayloadProblem, imageKind, type GuideSavePayload } from '../../shared/api/guide'
 import { batchFileOk, moveIntoPlace, partialPath } from '../exportJob'
 import { t } from '../../shared/i18n/t'
 
@@ -33,7 +33,7 @@ export function guideNameOk(name: string): boolean {
  */
 export function checkGuidePayload(raw: unknown): GuideSavePayload {
   const problem = guidePayloadProblem(raw)
-  if (problem) throw new Error(problem)
+  if (problem) throw new Error(t(GUIDE_PROBLEM_KEYS[problem]))
   const p = raw as GuideSavePayload
   if (p.format === 'markdown' ? typeof p.markdown !== 'string' : typeof p.html !== 'string') throw new Error(t('errors.writeGuide.nothingToSave'))
   const images = p.format === 'markdown' && p.images ? p.images.map((b) => new Uint8Array(b)) : undefined

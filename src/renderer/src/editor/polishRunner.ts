@@ -15,6 +15,7 @@ import { applyingLabel } from '../../../shared/editor/directorCopy'
 import { planPolish, planPolishSteps, polishAvailability, POLISH_STEPS, type PolishInput, type PolishOptions, type PolishResult, type PolishSkip, type PolishStep } from '../../../shared/editor/polish'
 import { polishSkipText, transcribePhaseText } from '../../../shared/editor/polishCopy'
 import { BUILT_IN_PRESETS, type StylePreset } from '../../../shared/editor/stylePresets'
+import { presetLabel } from '../../../shared/editor/stylePresetNames'
 import { fmt } from '../../../shared/i18n/fmt'
 import { t } from '../../../shared/i18n/t'
 import { effectiveTrack } from '../../../shared/engine/inputTrack'
@@ -211,7 +212,8 @@ export function runPolish(
       transcriptLeftOut: !!fetched && 'transcript' in fetched && fetched.leftOut,
       speech,
       framing: { status: 'skipped' },
-      preset: found ? { name: found.name, look: found.look } : null,
+      // The summary names a built-in look in the UI language, the user's own as they named it.
+      preset: found ? { name: presetLabel(found, BUILT_IN_PRESETS.includes(found)), look: found.look } : null,
       blocked,
       errors,
       // The saved caption choices and brand look (Captions Studio §11.6, §11.8).

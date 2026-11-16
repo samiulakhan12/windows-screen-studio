@@ -6,6 +6,7 @@ import { ANIMATED_GRADIENTS, ANIMATED_SPEED, animatedSpeed, backgroundBlur, GRAD
 import { BORDER_WIDTH, cardLook, DEFAULT_BORDER } from '../../../../shared/engine/cardStyle'
 import { frameOf, frameTakesBorder, frameUsesRadius } from '../../../../shared/engine/deviceFrames'
 import { WALLPAPERS } from '../../../../shared/engine/wallpapers'
+import { animatedName, gradientName, wallpaperName } from '../../../../shared/engine/lookNames'
 import { activeWatermark } from '../../../../shared/engine/watermark'
 import type { Background, DeviceFrame, DeviceFrameKind, Project, ShadowStyle } from '../../../../shared/types'
 import { Icon } from '../../components/Icon'
@@ -118,8 +119,8 @@ export function StylePanel({
             {GRADIENTS.map((g) => (
               <button
                 key={g.id}
-                title={g.name}
-                aria-label={t('style.stylePanel.background2', { name: String(g.name) })}
+                title={gradientName(g.id)}
+                aria-label={t('style.stylePanel.background2', { name: gradientName(g.id) })}
                 className={`swatch ${bg.type === 'gradient' && bg.preset === g.id ? 'active' : ''}`}
                 style={{ background: gradientCss(g) }}
                 onClick={() => setStyle({ background: { type: 'gradient', preset: g.id } })}
@@ -132,8 +133,8 @@ export function StylePanel({
             {WALLPAPERS.map((w) => (
               <button
                 key={w.id}
-                title={w.name}
-                aria-label={t('style.stylePanel.wallpaper', { name: String(w.name) })}
+                title={wallpaperName(w.id)}
+                aria-label={t('style.stylePanel.wallpaper', { name: wallpaperName(w.id) })}
                 aria-pressed={bg.type === 'wallpaper' && bg.id === w.id}
                 className={`swatch ${bg.type === 'wallpaper' && bg.id === w.id ? 'active' : ''}`}
                 style={{ backgroundImage: `url(${wallpaperThumb(w.id)})` }}
@@ -147,8 +148,8 @@ export function StylePanel({
             {ANIMATED_GRADIENTS.map((a) => (
               <button
                 key={a.id}
-                title={t('style.stylePanel.movesWhileTheVideo', { name: String(a.name) })}
-                aria-label={t('style.stylePanel.animatedBackground', { name: String(a.name) })}
+                title={t('style.stylePanel.movesWhileTheVideo', { name: animatedName(a.id) })}
+                aria-label={t('style.stylePanel.animatedBackground', { name: animatedName(a.id) })}
                 aria-pressed={bg.type === 'animated' && bg.preset === a.id}
                 className={`swatch animated ${bg.type === 'animated' && bg.preset === a.id ? 'active' : ''}`}
                 style={{ backgroundImage: `url(${animatedThumb(a.id)})` }}
