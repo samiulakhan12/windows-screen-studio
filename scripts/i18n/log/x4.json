@@ -3871,5 +3871,394 @@
   "line": 237,
   "english": "nothing was planned",
   "sample": {}
+ },
+ {
+  "key": "review.copyMenu.label",
+  "file": "src/renderer/src/editor/CopyMenu.tsx",
+  "line": 18,
+  "english": "Copies: vertical, square, short clips",
+  "sample": {}
+ },
+ {
+  "key": "review.copyMenu.button",
+  "file": "src/renderer/src/editor/CopyMenu.tsx",
+  "line": 157,
+  "english": "Copies",
+  "sample": {}
+ },
+ {
+  "key": "review.copyMenu.clips",
+  "file": "src/renderer/src/editor/CopyMenu.tsx",
+  "line": 21,
+  "english": "Find short clips…",
+  "sample": {}
+ },
+ {
+  "key": "review.copyMenu.clipsHint",
+  "file": "src/renderer/src/editor/CopyMenu.tsx",
+  "line": 21,
+  "english": "The best 15 to 90 second moments, each as a copy",
+  "sample": {}
+ },
+ {
+  "key": "review.copyMenu.short",
+  "file": "src/renderer/src/editor/CopyMenu.tsx",
+  "line": 22,
+  "english": "Make a shorter version…",
+  "sample": {}
+ },
+ {
+  "key": "review.copyMenu.shortHint",
+  "file": "src/renderer/src/editor/CopyMenu.tsx",
+  "line": 22,
+  "english": "30, 60 or 90 seconds, the most useful sentences in order",
+  "sample": {}
+ },
+ {
+  "key": "review.copyMenu.shortNeedsCaptions",
+  "file": "src/renderer/src/editor/CopyMenu.tsx",
+  "line": 24,
+  "english": "Needs captions: make them first",
+  "sample": {}
+ },
+ {
+  "key": "review.copyMenu.vertical",
+  "file": "src/renderer/src/editor/CopyMenu.tsx",
+  "line": 28,
+  "english": "Make a vertical version",
+  "sample": {}
+ },
+ {
+  "key": "review.copyMenu.verticalHint",
+  "file": "src/renderer/src/editor/CopyMenu.tsx",
+  "line": 28,
+  "english": "A 9:16 copy that follows your cursor, for TikTok, Reels and Shorts",
+  "sample": {}
+ },
+ {
+  "key": "review.copyMenu.square",
+  "file": "src/renderer/src/editor/CopyMenu.tsx",
+  "line": 29,
+  "english": "Make a square version",
+  "sample": {}
+ },
+ {
+  "key": "review.copyMenu.squareHint",
+  "file": "src/renderer/src/editor/CopyMenu.tsx",
+  "line": 29,
+  "english": "A 1:1 copy that follows your cursor",
+  "sample": {}
+ },
+ {
+  "key": "review.copyMenu.duplicate",
+  "file": "src/renderer/src/editor/CopyMenu.tsx",
+  "line": 30,
+  "english": "Duplicate",
+  "sample": {}
+ },
+ {
+  "key": "review.copyMenu.duplicateHint",
+  "file": "src/renderer/src/editor/CopyMenu.tsx",
+  "line": 30,
+  "english": "A copy you can edit separately",
+  "sample": {}
+ },
+ {
+  "key": "review.copyProgress.vertical",
+  "file": "src/renderer/src/editor/CopyMenu.tsx",
+  "line": 34,
+  "english": "Making a vertical version",
+  "sample": {}
+ },
+ {
+  "key": "review.copyProgress.square",
+  "file": "src/renderer/src/editor/CopyMenu.tsx",
+  "line": 34,
+  "english": "Making a square version",
+  "sample": {}
+ },
+ {
+  "key": "review.copyProgress.copy",
+  "file": "src/renderer/src/editor/CopyMenu.tsx",
+  "line": 34,
+  "english": "Making a copy",
+  "sample": {}
+ },
+ {
+  "key": "review.copyProgress.copyingSize",
+  "file": "src/renderer/src/editor/CopyMenu.tsx",
+  "line": 215,
+  "english": "Copying “Demo” (1.4 GB). Your original stays as it is.",
+  "sample": {
+   "name": "Demo",
+   "size": "1.4 GB"
+  }
+ },
+ {
+  "key": "review.copyProgress.copying",
+  "file": "src/renderer/src/editor/CopyMenu.tsx",
+  "line": 215,
+  "english": "Copying “Demo”. Your original stays as it is.",
+  "sample": {
+   "name": "Demo"
+  }
+ },
+ {
+  "key": "review.copyProgress.copied",
+  "file": "src/renderer/src/editor/CopyMenu.tsx",
+  "line": 220,
+  "english": "Copied",
+  "sample": {}
+ },
+ {
+  "key": "common.action.cancel",
+  "file": "src/renderer/src/editor/CopyMenu.tsx",
+  "line": 230,
+  "english": "Cancel",
+  "sample": {}
+ },
+ {
+  "key": "review.copy.failed",
+  "file": "src/renderer/src/editor/duplicateFlow.ts",
+  "line": 15,
+  "english": "Could not make the copy: the disk is full.",
+  "sample": {
+   "reason": "the disk is full."
+  }
+ },
+ {
+  "key": "review.copy.failed",
+  "file": "src/renderer/src/editor/duplicateFlow.ts",
+  "line": 15,
+  "english": "Could not make the copy: ",
+  "sample": {
+   "reason": ""
+  }
+ },
+ {
+  "key": "review.copy.unsaved",
+  "file": "src/renderer/src/editor/duplicateFlow.ts",
+  "line": 55,
+  "english": "Your latest changes could not be saved. Make the copy anyway? It will include them.",
+  "sample": {}
+ },
+ {
+  "key": "review.copy.untitled",
+  "file": "src/renderer/src/editor/duplicateFlow.ts",
+  "line": 75,
+  "english": "Untitled recording",
+  "sample": {}
+ },
+ {
+  "key": "review.copy.madeVertical",
+  "file": "src/renderer/src/editor/duplicateFlow.ts",
+  "line": 18,
+  "english": "Made a vertical version. Your original “Demo” is unchanged.",
+  "sample": {
+   "name": "Demo"
+  }
+ },
+ {
+  "key": "review.copy.madeVerticalLook",
+  "file": "src/renderer/src/editor/duplicateFlow.ts",
+  "line": 18,
+  "english": "Made a vertical version. Captions use the Bold look. Your original “Demo” is unchanged.",
+  "sample": {
+   "look": "Captions use the Bold look",
+   "name": "Demo"
+  }
+ },
+ {
+  "key": "review.copy.madeSquare",
+  "file": "src/renderer/src/editor/duplicateFlow.ts",
+  "line": 19,
+  "english": "Made a square version. Your original “Demo” is unchanged.",
+  "sample": {
+   "name": "Demo"
+  }
+ },
+ {
+  "key": "review.copy.madeSquareLook",
+  "file": "src/renderer/src/editor/duplicateFlow.ts",
+  "line": 19,
+  "english": "Made a square version. Captions use the Bold look. Your original “Demo” is unchanged.",
+  "sample": {
+   "look": "Captions use the Bold look",
+   "name": "Demo"
+  }
+ },
+ {
+  "key": "review.copy.madeCopy",
+  "file": "src/renderer/src/editor/duplicateFlow.ts",
+  "line": 20,
+  "english": "Made a copy. Your original “Demo” is unchanged.",
+  "sample": {
+   "name": "Demo"
+  }
+ },
+ {
+  "key": "review.copy.madeCopyLook",
+  "file": "src/renderer/src/editor/duplicateFlow.ts",
+  "line": 20,
+  "english": "Made a copy. Captions use the Bold look. Your original “Demo” is unchanged.",
+  "sample": {
+   "look": "Captions use the Bold look",
+   "name": "Demo"
+  }
+ },
+ {
+  "key": "review.import.buttonHint",
+  "file": "src/renderer/src/import/ImportButton.tsx",
+  "line": 7,
+  "english": "Open a video made with another app as a new project",
+  "sample": {}
+ },
+ {
+  "key": "review.import.button",
+  "file": "src/renderer/src/import/ImportButton.tsx",
+  "line": 11,
+  "english": "Import video",
+  "sample": {}
+ },
+ {
+  "key": "review.import.emptyHint",
+  "file": "src/renderer/src/import/ImportDropZone.tsx",
+  "line": 46,
+  "english": "Or import a video made with another app: use Import video or drop it here.",
+  "sample": {}
+ },
+ {
+  "key": "review.import.drop",
+  "file": "src/renderer/src/import/ImportDropZone.tsx",
+  "line": 49,
+  "english": "Drop a video to import it",
+  "sample": {}
+ },
+ {
+  "key": "review.import.dropFormats",
+  "file": "src/renderer/src/import/ImportDropZone.tsx",
+  "line": 50,
+  "english": "MP4, MOV, MKV or WebM",
+  "sample": {}
+ },
+ {
+  "key": "review.import.checking",
+  "file": "src/renderer/src/import/ImportDialog.tsx",
+  "line": 10,
+  "english": "Checking the video…",
+  "sample": {}
+ },
+ {
+  "key": "review.import.converting",
+  "file": "src/renderer/src/import/ImportDialog.tsx",
+  "line": 11,
+  "english": "Making an editing copy…",
+  "sample": {}
+ },
+ {
+  "key": "review.import.finishing",
+  "file": "src/renderer/src/import/ImportDialog.tsx",
+  "line": 12,
+  "english": "Finishing…",
+  "sample": {}
+ },
+ {
+  "key": "review.import.importingFile",
+  "file": "src/renderer/src/import/ImportDialog.tsx",
+  "line": 18,
+  "english": "Importing \"screen-capture\"",
+  "sample": {
+   "name": "screen-capture"
+  }
+ },
+ {
+  "key": "review.import.importing",
+  "file": "src/renderer/src/import/ImportDialog.tsx",
+  "line": 18,
+  "english": "Importing the video",
+  "sample": {}
+ },
+ {
+  "key": "review.import.importedFile",
+  "file": "src/renderer/src/import/ImportDialog.tsx",
+  "line": 19,
+  "english": "Imported \"screen-capture\"",
+  "sample": {
+   "name": "screen-capture"
+  }
+ },
+ {
+  "key": "review.import.imported",
+  "file": "src/renderer/src/import/ImportDialog.tsx",
+  "line": 19,
+  "english": "Imported the video",
+  "sample": {}
+ },
+ {
+  "key": "review.import.failedFile",
+  "file": "src/renderer/src/import/ImportDialog.tsx",
+  "line": 20,
+  "english": "Could not import \"screen-capture\"",
+  "sample": {
+   "name": "screen-capture"
+  }
+ },
+ {
+  "key": "review.import.failed",
+  "file": "src/renderer/src/import/ImportDialog.tsx",
+  "line": 20,
+  "english": "Could not import the video",
+  "sample": {}
+ },
+ {
+  "key": "review.import.etaUnderMinute",
+  "file": "src/renderer/src/import/ImportDialog.tsx",
+  "line": 27,
+  "english": "Less than a minute left",
+  "sample": {}
+ },
+ {
+  "key": "review.import.eta",
+  "file": "src/renderer/src/import/ImportDialog.tsx",
+  "line": 27,
+  "english": "About 3 min left",
+  "sample": {
+   "n": "3"
+  }
+ },
+ {
+  "key": "review.import.progress",
+  "file": "src/renderer/src/import/ImportDialog.tsx",
+  "line": 68,
+  "english": "Import progress",
+  "sample": {}
+ },
+ {
+  "key": "review.import.yourFile",
+  "file": "src/renderer/src/import/ImportDialog.tsx",
+  "line": 78,
+  "english": "Your file is not changed: Flown makes its own copy to edit.",
+  "sample": {}
+ },
+ {
+  "key": "common.action.cancel",
+  "file": "src/renderer/src/import/ImportDialog.tsx",
+  "line": 82,
+  "english": "Cancel",
+  "sample": {}
+ },
+ {
+  "key": "common.action.close",
+  "file": "src/renderer/src/import/ImportDialog.tsx",
+  "line": 96,
+  "english": "Close",
+  "sample": {}
+ },
+ {
+  "key": "review.import.open",
+  "file": "src/renderer/src/import/ImportDialog.tsx",
+  "line": 99,
+  "english": "Open in editor",
+  "sample": {}
  }
 ]

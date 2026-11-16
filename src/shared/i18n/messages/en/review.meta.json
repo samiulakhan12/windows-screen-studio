@@ -1152,5 +1152,194 @@
   },
   "polish.nothingPlanned": {
     "description": "Polish in one click: the error inside \"Polish failed: {reason}.\" when planning gave nothing (lower case)."
+  },
+  "copyMenu.label": {
+    "description": "The title bar's Copies button (tooltip and name) and its menu's name: copies of the project in other shapes and lengths."
+  },
+  "copyMenu.button": {
+    "description": "The title bar's Copies button: opens a menu to make copies of the project (a noun)."
+  },
+  "copyMenu.clips": {
+    "description": "The Copies menu: opens the Short clips panel."
+  },
+  "copyMenu.clipsHint": {
+    "description": "The Copies menu: what Find short clips does."
+  },
+  "copyMenu.short": {
+    "description": "The Copies menu: opens Make a shorter version."
+  },
+  "copyMenu.shortHint": {
+    "description": "The Copies menu: what Make a shorter version does."
+  },
+  "copyMenu.shortNeedsCaptions": {
+    "description": "The Copies menu: why Make a shorter version cannot run (it keeps whole sentences, so it needs captions)."
+  },
+  "copyMenu.vertical": {
+    "description": "The Copies menu: makes a 9:16 copy of the project."
+  },
+  "copyMenu.verticalHint": {
+    "description": "The Copies menu: what Make a vertical version makes. TikTok, Reels and Shorts are product names.",
+    "dnt": [
+      "9:16",
+      "TikTok",
+      "Reels",
+      "Shorts"
+    ]
+  },
+  "copyMenu.square": {
+    "description": "The Copies menu: makes a 1:1 copy of the project."
+  },
+  "copyMenu.squareHint": {
+    "description": "The Copies menu: what Make a square version makes.",
+    "dnt": [
+      "1:1"
+    ]
+  },
+  "copyMenu.duplicate": {
+    "description": "The Copies menu: makes a copy of the project as it is (a verb)."
+  },
+  "copyMenu.duplicateHint": {
+    "description": "The Copies menu: what Duplicate makes."
+  },
+  "copyProgress.vertical": {
+    "description": "The title of the window shown while a vertical copy is made."
+  },
+  "copyProgress.square": {
+    "description": "The title of the window shown while a square copy is made."
+  },
+  "copyProgress.copy": {
+    "description": "The title of the window shown while a copy is made."
+  },
+  "copyProgress.copyingSize": {
+    "description": "The window shown while a copy is made: {name} is the project's name, {size} how much is copied (\"1.4 GB\").",
+    "user": [
+      "name"
+    ]
+  },
+  "copyProgress.copying": {
+    "description": "The window shown while a copy is made, before its size is known; {name} is the project's name.",
+    "user": [
+      "name"
+    ]
+  },
+  "copyProgress.copied": {
+    "description": "The name of the progress bar of a copy being made: how much is copied so far."
+  },
+  "copy.failed": {
+    "description": "The editor's notice when a copy could not be made; {reason} says why."
+  },
+  "copy.unsaved": {
+    "description": "The question before a copy is made when the last save failed."
+  },
+  "copy.untitled": {
+    "description": "The project's name in the copy's notice when it has none."
+  },
+  "copy.madeVertical": {
+    "description": "The notice in a vertical copy just made; {name} is the original project's name.",
+    "user": [
+      "name"
+    ]
+  },
+  "copy.madeVerticalLook": {
+    "description": "The notice in a vertical copy just made, with the caption look chosen for its shape ({look}, a sentence without its full stop); {name} is the original project's name.",
+    "user": [
+      "name"
+    ]
+  },
+  "copy.madeSquare": {
+    "description": "The notice in a square copy just made; {name} is the original project's name.",
+    "user": [
+      "name"
+    ]
+  },
+  "copy.madeSquareLook": {
+    "description": "The notice in a square copy just made, with the caption look chosen for its shape ({look}); {name} is the original project's name.",
+    "user": [
+      "name"
+    ]
+  },
+  "copy.madeCopy": {
+    "description": "The notice in a copy just made; {name} is the original project's name.",
+    "user": [
+      "name"
+    ]
+  },
+  "copy.madeCopyLook": {
+    "description": "The notice in a copy just made, with the caption look chosen ({look}); {name} is the original project's name.",
+    "user": [
+      "name"
+    ]
+  },
+  "import.buttonHint": {
+    "description": "Home: the Import video button's tooltip."
+  },
+  "import.button": {
+    "description": "Home: the button in the head of Recent recordings that imports a video file as a new project."
+  },
+  "import.emptyHint": {
+    "description": "Home, with no recordings yet: how to import a video. Import video is the button."
+  },
+  "import.drop": {
+    "description": "Home: shown while a file is dragged over the recordings."
+  },
+  "import.dropFormats": {
+    "description": "Home: the video formats that can be imported, under \"Drop a video to import it\".",
+    "dnt": [
+      "MP4",
+      "MOV",
+      "MKV",
+      "WebM"
+    ]
+  },
+  "import.checking": {
+    "description": "Import: the first stage, while the file is read."
+  },
+  "import.converting": {
+    "description": "Import: the stage that converts the video into a copy Flown edits."
+  },
+  "import.finishing": {
+    "description": "Import: the last stage, while the project is written."
+  },
+  "import.importingFile": {
+    "description": "Import: the dialog's title while a file is imported; {name} is the file's name without its extension.",
+    "user": [
+      "name"
+    ]
+  },
+  "import.importing": {
+    "description": "Import: the dialog's title while a file is imported, before its name is known."
+  },
+  "import.importedFile": {
+    "description": "Import: the dialog's title once a file is imported; {name} is the file's name without its extension.",
+    "user": [
+      "name"
+    ]
+  },
+  "import.imported": {
+    "description": "Import: the dialog's title once a file is imported, when its name is not known."
+  },
+  "import.failedFile": {
+    "description": "Import: the dialog's title when a file could not be imported; {name} is the file's name without its extension.",
+    "user": [
+      "name"
+    ]
+  },
+  "import.failed": {
+    "description": "Import: the dialog's title when a file could not be imported, when its name is not known."
+  },
+  "import.etaUnderMinute": {
+    "description": "Import: how long the copy still takes, after its percentage."
+  },
+  "import.eta": {
+    "description": "Import: how long the copy still takes in minutes ({n}), after its percentage. \"min\" is the unit, minutes."
+  },
+  "import.progress": {
+    "description": "Import: the progress bar's name for screen readers."
+  },
+  "import.yourFile": {
+    "description": "Import: a note while the video is imported."
+  },
+  "import.open": {
+    "description": "Import: the button that opens the imported video in the editor."
   }
 }

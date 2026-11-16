@@ -9,11 +9,16 @@ import { withRecordedStems } from '../../../shared/audio/settings'
 import { captionCopyNotice, projectCopy, type CopyKind, type MeasureText } from '../../../shared/editor/duplicate'
 import { withRecordedCamera } from '../../../shared/engine/webcamData'
 import type { Project } from '../../../shared/types'
+import { t, type MessageKey } from '../../../shared/i18n/t'
 
-/** Every message a failed copy shows starts with this (§2.3). */
-const FAILED = 'Could not make the copy: '
-const UNSAVED = 'Your latest changes could not be saved. Make the copy anyway? It will include them.'
-const MADE: Record<CopyKind, string> = { vertical: 'Made a vertical version.', square: 'Made a square version.', copy: 'Made a copy.' }
+/** Every message a failed copy shows: "Could not make the copy: …" (§2.3). */
+const failed = (reason: string): string => t('review.copy.failed', { reason })
+/** What was made, said in the copy (`look`: also the caption look chosen again for its shape). */
+const MADE: Record<CopyKind, { plain: MessageKey; look: MessageKey }> = {
+  vertical: { plain: 'review.copy.madeVertical', look: 'review.copy.madeVerticalLook' },
+  square: { plain: 'review.copy.madeSquare', look: 'review.copy.madeSquareLook' },
+  copy: { plain: 'review.copy.madeCopy', look: 'review.copy.madeCopyLook' }
+}
 
 /** "Error invoking remote method 'x': Error: message" -> "message". */
 const ipcMessage = (err: unknown): string => (err instanceof Error ? err.message : String(err)).replace(/^Error invoking remote method '[^']+': (\w*Error: )?/, '')
@@ -47,7 +52,7 @@ export async function runDuplicate(
   const { project, stored, signal } = deps
   // The copy is built from the editor's state, so it has the latest edit even when the save failed.
   const saved = await deps.flush()
-  if (signal.aborted || (!saved && !deps.confirm(UNSAVED))) return null
+  if (signal.aborted || (!saved && !deps.confirm(t('review.copy.unsaved')))) return null
   const copy = projectCopy(withRecordedCamera(withRecordedStems(project, stored), stored), kind, canvasMeasure())
   const off = window.api.onDuplicateProgress((p) => {
     if (!signal.aborted) deps.onProgress(p)
@@ -67,13 +72,14 @@ export async function runDuplicate(
       making.then(resolve, reject).finally(() => signal.removeEventListener('abort', onAbort))
     })
     if (!made) return null
-    const name = project.name.trim() || 'Untitled recording'
+    const name = project.name.trim() || t('review.copy.untitled')
     // Captions Studio §10.5: the caption look chosen again for the new shape is said too.
     const look = captionCopyNotice(project, copy, kind)
-    return { id: made.id, notice: `${MADE[kind]}${look ? ` ${look}.` : ''} Your original “${name}” is unchanged.` }
+    return { id: made.id, notice: look ? t(MADE[kind].look, { look, name }) : t(MADE[kind].plain, { name }) }
   } catch (err) {
     const message = ipcMessage(err)
-    throw new Error(message.startsWith(FAILED) ? message : `${FAILED}${message}`)
+    // Main's own refusals already start so (projectCopy.ts); in English this is "Could not make the copy: ".
+    throw new Error(message.startsWith(failed('')) ? message : failed(message))
   } finally {
     off()
     deps.onProgress(null)
