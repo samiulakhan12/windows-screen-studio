@@ -298,5 +298,8 @@
     "dnt": [
       "PNG"
     ]
+  },
+  "localSpeech.testName": {
+    "description": "What the key check of AI providers answers for captions made on this PC (no key to check)."
   }
 }

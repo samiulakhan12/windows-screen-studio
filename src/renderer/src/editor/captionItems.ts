@@ -250,7 +250,7 @@ export async function transcribe({ store }: EditorServices, options: TranscribeO
   if (fetched.leftOut) {
     const last = transcript.segments[transcript.segments.length - 1]
     const at = fmt.clock(videoTimeAt(store.state.clips, planOf(store.state), last.end), 'whole')
-    setJob({ projectId, progress: null, error: null, running: false, notice: `A project keeps at most ${MAX_CAPTIONS} captions, so the captions after ${at} were left out.` })
+    setJob({ projectId, progress: null, error: null, running: false, notice: t('captions.transcribe.leftOut', { max: fmt.count(MAX_CAPTIONS), at }) })
   }
   return true
 }

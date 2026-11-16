@@ -443,6 +443,12 @@
       "file": "src/renderer/src/render/segmentation/personSegmenter.ts",
       "kind": "copy",
       "reason": "Why background blur could not start: written only to the console (console.warn in fail), and the camera is drawn without the blur; never shown."
+    },
+    {
+      "file": "src/main/speech/localClient.ts",
+      "kind": "table",
+      "text": "the run ended without a result",
+      "reason": "Why a captions run on this PC ended as 'protocol': written only to the log (console.warn with the helper's last lines), like helper.ts's own details. The user sees errors.localCaptions.protocol."
     }
   ]
 }

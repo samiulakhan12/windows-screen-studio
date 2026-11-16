@@ -83,5 +83,6 @@
   "saveFilter.webm": "WebM video",
   "saveFilter.mov": "QuickTime movie",
   "saveFilter.m4a": "M4A audio",
-  "saveFilter.png": "PNG image"
+  "saveFilter.png": "PNG image",
+  "localSpeech.testName": "On this PC"
 }

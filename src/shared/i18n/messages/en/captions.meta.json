@@ -1873,5 +1873,8 @@
   },
   "studio.gradientName.candy": {
     "description": "Captions › Colours › Gradient: a gradient's name."
+  },
+  "transcribe.leftOut": {
+    "description": "Captions tab notice after Generate captions: the provider gave more captions than a project keeps. {max} is that limit (5000); {at} the video time where the kept captions stop (\"1:02:03\")."
   }
 }

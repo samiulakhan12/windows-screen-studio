@@ -582,5 +582,6 @@
   "studio.themeName.ink": "Ink (dark on light)",
   "studio.gradientName.sunset": "Sunset",
   "studio.gradientName.ocean": "Ocean",
-  "studio.gradientName.candy": "Candy"
+  "studio.gradientName.candy": "Candy",
+  "transcribe.leftOut": "A project keeps at most {max} captions, so the captions after {at} were left out."
 }

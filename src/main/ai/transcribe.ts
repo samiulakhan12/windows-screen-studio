@@ -135,7 +135,7 @@ function runFfmpeg(args: string[], id: string, signal: AbortSignal, timeoutMs: n
       if (signal.aborted) done(cancelled())
       else if (code === 0) done(null)
       else if (timedOut) done(new Error(t('errors.transcribe.readingTheSoundTook')))
-      else done(new Error(describeFfmpegError(log, 'The sound of the recording could not be read.')))
+      else done(new Error(describeFfmpegError(log, t('errors.transcribe.theSoundOfThe'))))
     })
   })
 }

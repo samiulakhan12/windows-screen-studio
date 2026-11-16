@@ -264,7 +264,7 @@ export async function localSpeechClient(modelId: string | undefined, deps: Local
   }
 
   return {
-    test: async () => 'On this PC',
+    test: async () => t('main.localSpeech.testName'),
     json: async () => {
       throw new Error(t('errors.localClient.textTasksNeedAn'))
     },

@@ -285,7 +285,9 @@ export class LocalModelStore {
     if (!spec) throw new Error(t('errors.localAi.unknownModel'))
     const pc = { ...this.deps.pc(), avx2: await this.deps.processor().catch(() => null) }
     const block = localModelBlock(spec, pc)
-    if (block) throw new Error(`${blockReason(spec, block, pc)}${block === 'memory' ? '.' : ''}`)
+    // The memory reason is a sentence of its own here (Settings shows blockReason's without the full stop).
+    if (block === 'memory') throw new Error(t('errors.localAiDownload.needsMemory', { need: String(spec.minTotalMemGB), have: String(Math.round(Math.max(0, pc.totalMemBytes) / 2 ** 30)) }))
+    if (block) throw new Error(blockReason(spec, block, pc))
     if (this.active) {
       if (this.active.id === spec.id) return this.active.promise
       throw new Error(t('errors.localAi.busy'))
