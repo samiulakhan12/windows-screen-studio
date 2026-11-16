@@ -1,5 +1,6 @@
 import { Fragment, useId, useLayoutEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react'
 import { categoryLabel, COMMAND_CATEGORIES, commandTitle, pushRecent, sanitizeRecent, searchCommands, type CommandId, type CommandInfo } from '../../../shared/editor/commands'
+import { ariaKeys } from '../../../shared/editor/shortcuts'
 import { t } from '../../../shared/i18n/t'
 import { T } from '../i18n/T'
 import { useModalFocus } from './modalFocus'
@@ -199,6 +200,8 @@ export function CommandPalette({ entries, onRun, onClose }: { entries: PaletteEn
                     role="option"
                     aria-selected={i === index}
                     aria-disabled={unavailable ? true : undefined}
+                    // The row shows its shortcut as keycaps but names it nowhere a screen reader reads (§14.2).
+                    aria-keyshortcuts={ariaKeys(shortcuts)}
                     data-command={info.id}
                     className={`palette-item ${i === index ? 'active' : ''} ${unavailable ? 'unavailable' : ''}`}
                     title={unavailable ?? undefined}

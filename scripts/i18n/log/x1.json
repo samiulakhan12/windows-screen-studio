@@ -2,56 +2,56 @@
   {
     "key": "commands.palette.recent",
     "file": "src/renderer/src/editor/CommandPalette.tsx",
-    "line": 98,
+    "line": 99,
     "english": "Recently used",
     "sample": {}
   },
   {
     "key": "commands.palette.label",
     "file": "src/renderer/src/editor/CommandPalette.tsx",
-    "line": 161,
+    "line": 162,
     "english": "Command palette",
     "sample": {}
   },
   {
     "key": "commands.palette.search",
     "file": "src/renderer/src/editor/CommandPalette.tsx",
-    "line": 168,
+    "line": 169,
     "english": "Search commands",
     "sample": {}
   },
   {
     "key": "commands.palette.placeholder",
     "file": "src/renderer/src/editor/CommandPalette.tsx",
-    "line": 173,
+    "line": 174,
     "english": "Type a command…",
     "sample": {}
   },
   {
     "key": "commands.palette.list",
     "file": "src/renderer/src/editor/CommandPalette.tsx",
-    "line": 184,
+    "line": 185,
     "english": "Commands",
     "sample": {}
   },
   {
     "key": "commands.palette.results",
     "file": "src/renderer/src/editor/CommandPalette.tsx",
-    "line": 186,
+    "line": 187,
     "english": "Results",
     "sample": {}
   },
   {
     "key": "commands.palette.on",
     "file": "src/renderer/src/editor/CommandPalette.tsx",
-    "line": 214,
+    "line": 217,
     "english": "On",
     "sample": {}
   },
   {
     "key": "commands.palette.noMatch",
     "file": "src/renderer/src/editor/CommandPalette.tsx",
-    "line": 223,
+    "line": 226,
     "english": "No commands match “«query»”",
     "sample": {
       "query": "«query»"
@@ -60,7 +60,7 @@
   {
     "key": "commands.palette.help",
     "file": "src/renderer/src/editor/CommandPalette.tsx",
-    "line": 229,
+    "line": 232,
     "english": "↑↓ move Enter run Esc close",
     "sample": {}
   },
@@ -2479,7 +2479,7 @@
   {
     "key": "common.state.off",
     "file": "src/renderer/src/editor/CommandPalette.tsx",
-    "line": 214,
+    "line": 217,
     "english": "Off",
     "sample": {}
   },
