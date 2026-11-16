@@ -443,6 +443,36 @@
       "file": "src/renderer/src/render/segmentation/personSegmenter.ts",
       "kind": "copy",
       "reason": "Why background blur could not start: written only to the console (console.warn in fail), and the camera is drawn without the blur; never shown."
+    },
+    {
+      "file": "src/main/speech/vad.ts",
+      "kind": "table",
+      "pattern": "^(?:ffmpeg could not be started \\(\\$\\{…\\}\\))$",
+      "reason": "detect()'s failure when ffmpeg cannot start: speechOfFile only writes it to console.warn (sound levels are used instead); never shown."
+    },
+    {
+      "file": "src/main/speech/vad.ts",
+      "kind": "copy",
+      "text": "no result",
+      "reason": "detect()'s failure when the helper ended without a result: speechOfFile only writes it to console.warn; never shown."
+    },
+    {
+      "file": "src/main/updates/updateService.ts",
+      "kind": "table",
+      "text": "no answer",
+      "reason": "The update check's watchdog reason in the updater event: reduceUpdate shows UPDATE_COPY.checkFailed (main.updates.checkFailed) instead, so it is never shown."
+    },
+    {
+      "file": "src/shared/api/sounds.ts",
+      "kind": "copy",
+      "text": "Listening was stopped.",
+      "reason": "SOUNDS_STOPPED is a token, not a sentence: main rejects a sound read with it once the project's work stopped, and soundScan.ts compares it and goes back to idle without showing it. The preload imports this file, so it cannot make text (test 86)."
+    },
+    {
+      "file": "src/shared/api/voice.ts",
+      "kind": "copy",
+      "pattern": "^(?:Cleaning stopped\\.|Cleaning was replaced by a newer request\\.)$",
+      "reason": "VOICE_CANCELLED and VOICE_REPLACED are tokens main's clean rejects with and the editor compares as they are (voiceStems.ts); where a failure is shown, voiceCopy.ts's voiceReason says them through errors.voice.cancelled and errors.voice.replaced. The preload imports this file, so it cannot make text (test 86)."
     }
   ]
 }

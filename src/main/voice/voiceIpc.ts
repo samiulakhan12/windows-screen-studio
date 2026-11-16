@@ -9,7 +9,7 @@ import path from 'node:path'
 import { VOICE_CHANNELS, type VoiceProgress } from '../../shared/api/voice'
 import { SOURCE_FILES } from '../../shared/audio/settings'
 import { isVoiceStrength } from '../../shared/audio/voiceClean'
-import { VOICE_COPY } from '../../shared/audio/voiceCopy'
+import { VOICE_COPY, voiceReason } from '../../shared/audio/voiceCopy'
 import type { ExportErrorCode, ExportJob } from '../../shared/api/export'
 import { ExportFailure } from '../../shared/render/exportPlan'
 import type { SoundInputs } from '../exportJob'
@@ -72,7 +72,7 @@ export async function cleanVoiceInputs(sound: SoundInputs, projectId: string, re
   const source = asked ? (asked.mic !== undefined && sound.stems?.mic ? 'mic' : null) : sound.audioInput ? 'mix' : null
   if (!source) return sound
   const file = await cleaner.ensure(projectId, source, strength).catch((err: unknown) => {
-    const reason = err instanceof Error ? err.message : String(err)
+    const reason = voiceReason(err instanceof Error ? err.message : String(err))
     throw new ExportFailure(`${VOICE_COPY.failed} ${reason}`, voiceFailureCode(reason))
   })
   const cleaned = path.join(projectDir(projectId), file)

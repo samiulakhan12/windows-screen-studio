@@ -995,5 +995,103 @@
     "dnt": [
       "MB"
     ]
+  },
+  "speechHelper.missing": {
+    "description": "Why the speech engine (captions on this PC, the speech detector) cannot run: this build has no helper program. Settings shows it in brackets after the detector's name, with its first letter lower case and no full stop in English."
+  },
+  "speechHelper.cpu": {
+    "description": "Why the speech engine cannot run on this PC's processor. Settings shows it in brackets after the detector's name, with its first letter lower case and no full stop in English."
+  },
+  "speechHelper.checkFailed": {
+    "description": "Why the speech engine cannot run: its start-up check failed; {why} is a technical reason (an exit code, a signal, or the helper's own words).",
+    "user": [
+      "why"
+    ]
+  },
+  "speechHelper.checkFailedSaying": {
+    "description": "Why the speech engine cannot run: its start-up check failed; {why} is a technical reason and {said} the helper's last line of output, in its own (English) words.",
+    "user": [
+      "why",
+      "said"
+    ]
+  },
+  "speechHelper.tooMuchOutput": {
+    "description": "Technical reason inside \"The speech helper's check failed (…)\": the helper printed more than {bytes} bytes (a number in Latin digits).",
+    "digits": "latn"
+  },
+  "speechHelper.lineTooLong": {
+    "description": "Technical reason inside \"The speech helper's check failed (…)\": one line of the helper's output was longer than {bytes} bytes (a number in Latin digits).",
+    "digits": "latn"
+  },
+  "speechHelper.exitCode": {
+    "description": "Technical reason in brackets: the speech helper ended with exit code {code} (a number or a hexadecimal code such as 0xC000001D, in Latin digits).",
+    "digits": "latn"
+  },
+  "speechHelper.signal": {
+    "description": "Technical reason in brackets: the speech helper was ended by the system signal {signal} (such as SIGSEGV)."
+  },
+  "vad.helperMissing": {
+    "description": "Settings › Captions on this PC, the speech detector's line: why the detector cannot run, a clause shown in brackets (\"Speech detector: not available on this PC (…)\"), so it starts lower case and has no full stop."
+  },
+  "vad.modelDamaged": {
+    "description": "Settings › Captions on this PC, the speech detector's line: why the detector cannot run, a clause shown in brackets (\"Speech detector: not available on this PC (…)\"), so it starts lower case and has no full stop. \"its\" is the speech detector's."
+  },
+  "vad.didNotStart": {
+    "description": "Settings › Captions on this PC, the speech detector's line: why the detector cannot run, a clause shown in brackets (\"Speech detector: not available on this PC (…)\"), so it starts lower case and has no full stop."
+  },
+  "vad.processor": {
+    "description": "Settings › Captions on this PC, the speech detector's line: why the detector cannot run, a clause shown in brackets (\"Speech detector: not available on this PC (…)\"), so it starts lower case and has no full stop."
+  },
+  "soundsIpc.readFailed": {
+    "description": "Audio › Find unwanted sounds: reading the recording's sound failed; {reason} is ffmpeg's last line of output, in its own (English) words.",
+    "user": [
+      "reason"
+    ]
+  },
+  "soundsIpc.readFailedCode": {
+    "description": "Audio › Find unwanted sounds: reading the recording's sound failed without a message; {code} is ffmpeg's exit code, in Latin digits.",
+    "digits": "latn"
+  },
+  "soundsIpc.idle": {
+    "description": "Audio › Find unwanted sounds: the recording's sound was not read for a while, so Flown stopped reading it (shown as why finding sounds failed). No full stop, like the other sound stream reasons."
+  },
+  "voice.failed": {
+    "description": "Clean voice failed: shown in the Audio panel and in a failed export, followed by the reason."
+  },
+  "voice.missingMic": {
+    "description": "Clean voice: a reason main gives why the voice could not be cleaned, shown after \"Your voice could not be cleaned.\" in the Audio panel and in a failed export."
+  },
+  "voice.missingMix": {
+    "description": "Clean voice: a reason main gives why the voice could not be cleaned, shown after \"Your voice could not be cleaned.\" in the Audio panel and in a failed export."
+  },
+  "voice.tooLong": {
+    "description": "Clean voice: a reason main gives why the voice could not be cleaned, shown after \"Your voice could not be cleaned.\" in the Audio panel and in a failed export."
+  },
+  "voice.locked": {
+    "description": "Clean voice: a reason main gives why the voice could not be cleaned, shown after \"Your voice could not be cleaned.\" in the Audio panel and in a failed export.",
+    "dnt": [
+      "OneDrive"
+    ]
+  },
+  "voice.unplayable": {
+    "description": "Clean voice: the editor's own reason, after \"Your voice could not be cleaned.\": the cleaned file is there but does not play."
+  },
+  "voice.engine": {
+    "description": "Clean voice: a reason main gives why the voice could not be cleaned, shown after \"Your voice could not be cleaned.\" in the Audio panel and in a failed export. Sometimes followed by a technical detail in brackets.",
+    "dnt": [
+      "ffmpeg"
+    ]
+  },
+  "voice.damagedModel": {
+    "description": "Clean voice: a reason main gives why the voice could not be cleaned, shown after \"Your voice could not be cleaned.\" in the Audio panel and in a failed export.",
+    "dnt": [
+      "Flown"
+    ]
+  },
+  "voice.cancelled": {
+    "description": "Clean voice was stopped (Cancel, or the editor closed) while an export waited for it: shown after \"Your voice could not be cleaned.\" in the failed export."
+  },
+  "voice.replaced": {
+    "description": "Clean voice was restarted for another strength while an export waited for it: shown after \"Your voice could not be cleaned.\" in the failed export."
   }
 }

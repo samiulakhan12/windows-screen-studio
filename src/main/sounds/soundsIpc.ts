@@ -113,14 +113,17 @@ export class SoundStreams {
       s.log = (s.log + d.toString()).slice(-2000)
     })
     proc.on('error', (err) => {
-      s.error ??= `ffmpeg could not be started (${err.message})`
+      s.error ??= t('errors.transcribe.ffmpegCouldNotBe', { message: err.message })
       this.serve(s)
     })
     proc.on('close', (code, signal) => {
       this.processes.delete(proc)
       if (code === 0) s.ended = true
       else if (this.processes.generation(s.projectId) !== generation || signal) s.error ??= SOUNDS_STOPPED
-      else s.error ??= `Could not read the recording's sound (${s.log.trim().split('\n').pop() || `exit code ${code}`})`
+      else {
+        const said = s.log.trim().split('\n').pop()
+        s.error ??= said ? t('errors.soundsIpc.readFailed', { reason: said }) : t('errors.soundsIpc.readFailedCode', { code: String(code) })
+      }
       this.serve(s)
     })
     this.touch(s)
@@ -172,7 +175,7 @@ export class SoundStreams {
 
   private touch(s: Stream): void {
     if (s.idle) clearTimeout(s.idle)
-    s.idle = setTimeout(() => this.drop(s, 'The sound stream was idle'), this.deps.idleMs ?? IDLE_MS)
+    s.idle = setTimeout(() => this.drop(s, t('errors.soundsIpc.idle')), this.deps.idleMs ?? IDLE_MS)
     s.idle.unref?.()
   }
 

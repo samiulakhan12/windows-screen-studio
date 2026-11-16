@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { createProject } from '../src/shared/engine/project'
-import { VOICE_COPY } from '../src/shared/audio/voiceCopy'
+import { VOICE_WORDS } from '../src/renderer/src/editor/panels/voiceWords'
 import type { Project } from '../src/shared/types'
 
 /*
@@ -126,7 +126,7 @@ describe('the Voice section', () => {
   it('keeps the status button (and its focus) while the stem is checked again', () => {
     stems.state = { state: 'ready', file: 'voice-0123456789abcdef.m4a' }
     const ready = button(render(project(true)))!
-    expect(textOf(ready.props.children)).toBe(VOICE_COPY.original)
+    expect(textOf(ready.props.children)).toBe(VOICE_WORDS.original)
     // Undo back to a strength whose render was replaced: the store checks it again.
     stems.state = { state: 'checking' }
     const checking = button(render(project(true)))
@@ -138,7 +138,7 @@ describe('the Voice section', () => {
     stems.state = { state: 'working', progress: 0 }
     const working = button(render(project(true)))!
     expect(working.at).toBe(ready.at)
-    expect(textOf(working.props.children)).toBe(VOICE_COPY.cancel)
+    expect(textOf(working.props.children)).toBe(VOICE_WORDS.cancel)
     expect(working.props['aria-disabled']).toBeUndefined()
     press(working)
     expect(stems.calls.cancel).toBe(1)
@@ -159,10 +159,10 @@ describe('the Voice section', () => {
     expect(on).toHaveLength(1)
     expect(on[0].at).toBe(off[0].at)
     expect(on[0].props['aria-live']).toBe('polite')
-    expect(textOf(on[0].props.children)).toBe(VOICE_COPY.ready)
+    expect(textOf(on[0].props.children)).toBe(VOICE_WORDS.ready)
     // A render under way is announced once, not at every percent.
     stems.state = { state: 'working', progress: 0.42 }
-    expect(textOf(region(render(project(true)))[0].props.children)).toBe(VOICE_COPY.cleaning)
+    expect(textOf(region(render(project(true)))[0].props.children)).toBe(VOICE_WORDS.cleaning)
     // Off again: the region stays, empty.
     const again = region(render(project(false)))
     expect(again[0].at).toBe(off[0].at)

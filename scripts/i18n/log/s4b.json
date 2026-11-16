@@ -509,5 +509,401 @@
     "sample": {
       "mb": "5"
     }
+  },
+  {
+    "key": "errors.speechHelper.missing",
+    "file": "src/main/speech/helper.ts",
+    "line": 198,
+    "english": "The speech helper is not part of this build.",
+    "sample": {}
+  },
+  {
+    "key": "errors.speechHelper.cpu",
+    "file": "src/main/speech/helper.ts",
+    "line": 220,
+    "english": "The speech helper stopped on an instruction this processor does not have.",
+    "sample": {}
+  },
+  {
+    "key": "errors.speechHelper.checkFailed",
+    "file": "src/main/speech/helper.ts",
+    "line": 193,
+    "english": "The speech helper's check failed (exit code 3).",
+    "sample": {
+      "why": "exit code 3"
+    }
+  },
+  {
+    "key": "errors.speechHelper.checkFailedSaying",
+    "file": "src/main/speech/helper.ts",
+    "line": 193,
+    "english": "The speech helper's check failed (exit code 3). missing DLL",
+    "sample": {
+      "why": "exit code 3",
+      "said": "missing DLL"
+    }
+  },
+  {
+    "key": "errors.speechHelper.tooMuchOutput",
+    "file": "src/main/speech/helper.ts",
+    "line": 284,
+    "english": "more than 1048576 bytes of output",
+    "sample": {
+      "bytes": "1048576"
+    }
+  },
+  {
+    "key": "errors.speechHelper.lineTooLong",
+    "file": "src/main/speech/helper.ts",
+    "line": 288,
+    "english": "a line longer than 65536 bytes",
+    "sample": {
+      "bytes": "65536"
+    }
+  },
+  {
+    "key": "errors.speechHelper.lineTooLong",
+    "file": "src/main/speech/helper.ts",
+    "line": 297,
+    "english": "a line longer than 65536 bytes",
+    "sample": {
+      "bytes": "65536"
+    }
+  },
+  {
+    "key": "errors.speechHelper.exitCode",
+    "file": "src/main/speech/helper.ts",
+    "line": 464,
+    "english": "exit code 0xC000001D",
+    "sample": {
+      "code": "0xC000001D"
+    }
+  },
+  {
+    "key": "errors.speechHelper.exitCode",
+    "file": "src/main/speech/helper.ts",
+    "line": 469,
+    "english": "exit code 3",
+    "sample": {
+      "code": "3"
+    }
+  },
+  {
+    "key": "errors.speechHelper.signal",
+    "file": "src/main/speech/helper.ts",
+    "line": 465,
+    "english": "signal SIGSEGV",
+    "sample": {
+      "signal": "SIGSEGV"
+    }
+  },
+  {
+    "key": "errors.vad.helperMissing",
+    "file": "src/main/speech/vad.ts",
+    "line": 90,
+    "english": "the speech helper is not part of this build",
+    "sample": {}
+  },
+  {
+    "key": "errors.vad.modelDamaged",
+    "file": "src/main/speech/vad.ts",
+    "line": 94,
+    "english": "its model is missing or damaged",
+    "sample": {}
+  },
+  {
+    "key": "errors.vad.didNotStart",
+    "file": "src/main/speech/vad.ts",
+    "line": 99,
+    "english": "the speech engine did not start",
+    "sample": {}
+  },
+  {
+    "key": "errors.vad.didNotStart",
+    "file": "src/main/speech/vad.ts",
+    "line": 109,
+    "english": "the speech engine did not start",
+    "sample": {}
+  },
+  {
+    "key": "errors.vad.didNotStart",
+    "file": "src/main/speech/vad.ts",
+    "line": 263,
+    "english": "the speech engine did not start",
+    "sample": {}
+  },
+  {
+    "key": "errors.vad.processor",
+    "file": "src/main/speech/vad.ts",
+    "line": 276,
+    "english": "this PC's processor cannot run the speech engine",
+    "sample": {}
+  },
+  {
+    "key": "errors.transcribe.ffmpegCouldNotBe",
+    "file": "src/main/sounds/soundsIpc.ts",
+    "line": 116,
+    "english": "ffmpeg could not be started (spawn ENOENT)",
+    "sample": {
+      "message": "spawn ENOENT"
+    }
+  },
+  {
+    "key": "errors.soundsIpc.readFailed",
+    "file": "src/main/sounds/soundsIpc.ts",
+    "line": 123,
+    "english": "Could not read the recording's sound (Invalid data found when processing input)",
+    "sample": {
+      "reason": "Invalid data found when processing input"
+    }
+  },
+  {
+    "key": "errors.soundsIpc.readFailedCode",
+    "file": "src/main/sounds/soundsIpc.ts",
+    "line": 123,
+    "english": "Could not read the recording's sound (exit code 1)",
+    "sample": {
+      "code": "1"
+    }
+  },
+  {
+    "key": "errors.soundsIpc.idle",
+    "file": "src/main/sounds/soundsIpc.ts",
+    "line": 175,
+    "english": "The sound stream was idle",
+    "sample": {}
+  },
+  {
+    "key": "sound.voice.section",
+    "file": "src/shared/audio/voiceCopy.ts",
+    "line": 5,
+    "english": "Voice",
+    "sample": {}
+  },
+  {
+    "key": "sound.voice.toggle",
+    "file": "src/shared/audio/voiceCopy.ts",
+    "line": 6,
+    "english": "Clean voice",
+    "sample": {}
+  },
+  {
+    "key": "sound.voice.intro",
+    "file": "src/shared/audio/voiceCopy.ts",
+    "line": 7,
+    "english": "Removes fan hum, keyboard and mouse clicks and room noise from your voice, on this PC. The preview plays the result.",
+    "sample": {}
+  },
+  {
+    "key": "sound.voice.mixed",
+    "file": "src/shared/audio/voiceCopy.ts",
+    "line": 8,
+    "english": "This recording keeps your microphone and the PC's sound together, so both are cleaned.",
+    "sample": {}
+  },
+  {
+    "key": "sound.voice.silent",
+    "file": "src/shared/audio/voiceCopy.ts",
+    "line": 9,
+    "english": "The recording is silent, so there is no voice to clean.",
+    "sample": {}
+  },
+  {
+    "key": "sound.voice.noMic",
+    "file": "src/shared/audio/voiceCopy.ts",
+    "line": 10,
+    "english": "The microphone is muted or was not recorded, so there is no voice to clean.",
+    "sample": {}
+  },
+  {
+    "key": "sound.voice.strength",
+    "file": "src/shared/audio/voiceCopy.ts",
+    "line": 11,
+    "english": "Strength",
+    "sample": {}
+  },
+  {
+    "key": "sound.voice.checking",
+    "file": "src/shared/audio/voiceCopy.ts",
+    "line": 12,
+    "english": "Checking your voice…",
+    "sample": {}
+  },
+  {
+    "key": "sound.voice.cleaning",
+    "file": "src/shared/audio/voiceCopy.ts",
+    "line": 13,
+    "english": "Cleaning your voice…",
+    "sample": {}
+  },
+  {
+    "key": "sound.voice.working",
+    "file": "src/shared/audio/voiceCopy.ts",
+    "line": 14,
+    "english": "Cleaning your voice… 42%",
+    "sample": {
+      "percent": "42"
+    }
+  },
+  {
+    "key": "common.action.cancel",
+    "file": "src/shared/audio/voiceCopy.ts",
+    "line": 15,
+    "english": "Cancel",
+    "sample": {}
+  },
+  {
+    "key": "sound.voice.ready",
+    "file": "src/shared/audio/voiceCopy.ts",
+    "line": 16,
+    "english": "Your voice is clean. The preview and the export use it.",
+    "sample": {}
+  },
+  {
+    "key": "sound.voice.original",
+    "file": "src/shared/audio/voiceCopy.ts",
+    "line": 17,
+    "english": "Hear the original",
+    "sample": {}
+  },
+  {
+    "key": "sound.voice.playingOriginal",
+    "file": "src/shared/audio/voiceCopy.ts",
+    "line": 18,
+    "english": "Playing the original voice. The export stays clean.",
+    "sample": {}
+  },
+  {
+    "key": "sound.voice.stopped",
+    "file": "src/shared/audio/voiceCopy.ts",
+    "line": 19,
+    "english": "Cleaning stopped. The preview plays the original voice, and the export cleans it first.",
+    "sample": {}
+  },
+  {
+    "key": "sound.voice.cleanNow",
+    "file": "src/shared/audio/voiceCopy.ts",
+    "line": 20,
+    "english": "Clean now",
+    "sample": {}
+  },
+  {
+    "key": "errors.voice.failed",
+    "file": "src/shared/audio/voiceCopy.ts",
+    "line": 21,
+    "english": "Your voice could not be cleaned.",
+    "sample": {}
+  },
+  {
+    "key": "common.action.tryAgain",
+    "file": "src/shared/audio/voiceCopy.ts",
+    "line": 22,
+    "english": "Try again",
+    "sample": {}
+  },
+  {
+    "key": "errors.voice.missingMic",
+    "file": "src/shared/audio/voiceCopy.ts",
+    "line": 24,
+    "english": "The microphone file of this recording is missing.",
+    "sample": {}
+  },
+  {
+    "key": "errors.voice.missingMix",
+    "file": "src/shared/audio/voiceCopy.ts",
+    "line": 25,
+    "english": "The recording's sound file is missing.",
+    "sample": {}
+  },
+  {
+    "key": "errors.voice.tooLong",
+    "file": "src/shared/audio/voiceCopy.ts",
+    "line": 26,
+    "english": "Cleaning took too long and was stopped.",
+    "sample": {}
+  },
+  {
+    "key": "errors.voice.locked",
+    "file": "src/shared/audio/voiceCopy.ts",
+    "line": 27,
+    "english": "Another app, such as an antivirus or OneDrive, kept the file busy. Try again in a moment.",
+    "sample": {}
+  },
+  {
+    "key": "errors.voice.unplayable",
+    "file": "src/shared/audio/voiceCopy.ts",
+    "line": 29,
+    "english": "The cleaned file would not play, so the preview plays the original voice.",
+    "sample": {}
+  },
+  {
+    "key": "errors.voice.engine",
+    "file": "src/shared/audio/voiceCopy.ts",
+    "line": 30,
+    "english": "ffmpeg could not clean the sound.",
+    "sample": {}
+  },
+  {
+    "key": "errors.voice.damagedModel",
+    "file": "src/shared/audio/voiceCopy.ts",
+    "line": 31,
+    "english": "The noise model of this app is damaged. Install Flown again.",
+    "sample": {}
+  },
+  {
+    "key": "sound.voice.strength.light",
+    "file": "src/shared/audio/voiceCopy.ts",
+    "line": 34,
+    "english": "Light",
+    "sample": {}
+  },
+  {
+    "key": "sound.voice.strength.normal",
+    "file": "src/shared/audio/voiceCopy.ts",
+    "line": 34,
+    "english": "Normal",
+    "sample": {}
+  },
+  {
+    "key": "sound.voice.strength.strong",
+    "file": "src/shared/audio/voiceCopy.ts",
+    "line": 34,
+    "english": "Strong",
+    "sample": {}
+  },
+  {
+    "key": "sound.voice.strength.lightHint",
+    "file": "src/shared/audio/voiceCopy.ts",
+    "line": 37,
+    "english": "Softens the noise and keeps some of the room.",
+    "sample": {}
+  },
+  {
+    "key": "sound.voice.strength.normalHint",
+    "file": "src/shared/audio/voiceCopy.ts",
+    "line": 38,
+    "english": "Removes most noise. Right for most recordings.",
+    "sample": {}
+  },
+  {
+    "key": "sound.voice.strength.strongHint",
+    "file": "src/shared/audio/voiceCopy.ts",
+    "line": 39,
+    "english": "Removes as much as it can. Quiet words can sound thin.",
+    "sample": {}
+  },
+  {
+    "key": "errors.voice.cancelled",
+    "file": "src/shared/api/voice.ts",
+    "line": 25,
+    "english": "Cleaning stopped.",
+    "sample": {}
+  },
+  {
+    "key": "errors.voice.replaced",
+    "file": "src/shared/api/voice.ts",
+    "line": 28,
+    "english": "Cleaning was replaced by a newer request.",
+    "sample": {}
   }
 ]

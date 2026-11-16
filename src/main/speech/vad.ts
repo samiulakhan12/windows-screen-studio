@@ -87,16 +87,16 @@ export function detectorModelOk(file: string): Promise<boolean> {
 async function ready(): Promise<{ exe: string; vadModel: string } | null> {
   const paths = speechHelperPaths()
   if (!paths) {
-    detector = { available: false, reason: 'the speech helper is not part of this build' }
+    detector = { available: false, reason: t('errors.vad.helperMissing') }
     return null
   }
   if (!(await detectorModelOk(paths.vadModel))) {
-    detector = { available: false, reason: 'its model is missing or damaged' }
+    detector = { available: false, reason: t('errors.vad.modelDamaged') }
     return null
   }
   const choice = await chooseHelper()
   if ('error' in choice) {
-    detector = { available: false, reason: choice.detail || 'the speech engine did not start' }
+    detector = { available: false, reason: choice.detail || t('errors.vad.didNotStart') }
     return null
   }
   if (!detector) detector = { available: true }
@@ -106,7 +106,7 @@ async function ready(): Promise<{ exe: string; vadModel: string } | null> {
 /** For SpeechState: whether the detector can run, and why not. */
 export async function detectorInfo(): Promise<SpeechDetectorInfo> {
   if (!detector) await ready().catch(() => null)
-  return detector ?? { available: false, reason: 'the speech engine did not start' }
+  return detector ?? { available: false, reason: t('errors.vad.didNotStart') }
 }
 
 /** ffmpeg arguments decoding `file`'s first audio stream to 16 kHz mono float samples on stdout. */
@@ -260,7 +260,7 @@ export async function speechOfFile(projectId: string, source: 'mic' | 'mix', fil
     return null
   }
   const helper = await ready().catch((err) => {
-    detector = { available: false, reason: 'the speech engine did not start' }
+    detector = { available: false, reason: t('errors.vad.didNotStart') }
     console.warn(`Speech detector unavailable: ${err instanceof Error ? err.message : String(err)}`)
     return null
   })
@@ -273,7 +273,7 @@ export async function speechOfFile(projectId: string, source: 'mic' | 'mix', fil
     const again = await ready().catch(() => null)
     if (!again || again.exe === helper.exe) {
       console.warn('Speech detector: the speech helper cannot run on this processor; sound levels are used.')
-      detector = { available: false, reason: "this PC's processor cannot run the speech engine" }
+      detector = { available: false, reason: t('errors.vad.processor') }
       return null
     }
     r = await detect(again.exe, again.vadModel, file, projectId, processes, levels)

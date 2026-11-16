@@ -7,7 +7,7 @@
  */
 import { VOICE_CANCELLED, VOICE_REPLACED, type VoiceApi } from '../../../shared/api/voice'
 import type { VoiceSource } from '../../../shared/audio/voiceClean'
-import { VOICE_COPY } from '../../../shared/audio/voiceCopy'
+import { VOICE_COPY, voiceReason } from '../../../shared/audio/voiceCopy'
 import type { VoiceStrength } from '../../../shared/types'
 
 export type VoiceStemState =
@@ -123,7 +123,7 @@ export class VoiceStems {
             this.emit()
           } else this.set(key, message === VOICE_CANCELLED ? { state: 'stopped' } : { state: 'failed', message, ...(remake ? { remake } : {}) })
         }
-        throw new Error(message)
+        throw new Error(voiceReason(message))
       }
     )
     const tracked = done.finally(() => {
