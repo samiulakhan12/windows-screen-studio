@@ -577,5 +577,170 @@
   },
   "updates.dayTime": {
     "description": "Settings › About › Updates: when the last check ran on another day; {day} is a date (\"30 Oct\"), {time} a time (\"10:42\")."
+  },
+  "brand.position.topLeft": {
+    "description": "Settings › Brand kit: where the logo sits in the video."
+  },
+  "brand.position.topRight": {
+    "description": "Settings › Brand kit: where the logo sits in the video."
+  },
+  "brand.position.centre": {
+    "description": "Settings › Brand kit: where the logo sits in the video."
+  },
+  "brand.position.bottomLeft": {
+    "description": "Settings › Brand kit: where the logo sits in the video."
+  },
+  "brand.position.bottomRight": {
+    "description": "Settings › Brand kit: where the logo sits in the video."
+  },
+  "brand.newIntroTitle": {
+    "description": "Settings › Brand kit: the title a new intro card starts with; the user edits it, and it is drawn into videos."
+  },
+  "brand.newOutroTitle": {
+    "description": "Settings › Brand kit: the title a new outro card starts with; the user edits it, and it is drawn into videos."
+  },
+  "brand.title": {
+    "description": "Settings › Brand kit: the section heading."
+  },
+  "brand.about": {
+    "description": "Settings › Brand kit: what the section is for."
+  },
+  "brand.logo": {
+    "description": "Settings › Brand kit: heading of the logo block."
+  },
+  "brand.margin": {
+    "description": "Settings › Brand kit: slider: how far the logo sits from the video’s edge."
+  },
+  "brand.colours": {
+    "description": "Settings › Brand kit: accessible name of the list of colours."
+  },
+  "brand.removeColour": {
+    "description": "Settings › Brand kit: accessible name of the button that removes a colour; {colour} is a hex code such as #ff6600.",
+    "dnt": [
+      "{colour}"
+    ]
+  },
+  "brand.newColour": {
+    "description": "Settings › Brand kit: accessible name of the colour picker for a colour to add."
+  },
+  "brand.addColour": {
+    "description": "Settings › Brand kit: button."
+  },
+  "brand.coloursHint": {
+    "description": "Settings › Brand kit: hint under the colours."
+  },
+  "brand.fonts": {
+    "description": "Settings › Brand kit: heading of the fonts block."
+  },
+  "brand.noFonts": {
+    "description": "Settings › Brand kit: shown when the kit has no fonts.",
+    "dnt": [
+      "TTF",
+      "OTF",
+      "WOFF2",
+      "MB"
+    ]
+  },
+  "brand.addFont": {
+    "description": "Settings › Brand kit: button; opens a file picker."
+  },
+  "brand.headingFont": {
+    "description": "Settings › Brand kit: which kit font title cards use."
+  },
+  "brand.bodyFont": {
+    "description": "Settings › Brand kit: which kit font captions and text use."
+  },
+  "brand.preset": {
+    "description": "Settings › Brand kit: heading of the style preset block."
+  },
+  "brand.presetLabel": {
+    "description": "Settings › Brand kit: label of the style preset list."
+  },
+  "brand.presetNone": {
+    "description": "Settings › Brand kit: the style preset list’s first choice."
+  },
+  "brand.autoApply": {
+    "description": "Settings › Brand kit: switch: new recordings start with the brand kit."
+  },
+  "brand.autoOn": {
+    "description": "Settings › Brand kit: shown when the switch is on."
+  },
+  "brand.autoOff": {
+    "description": "Settings › Brand kit: shown when the switch is off."
+  },
+  "brand.captionStyle": {
+    "description": "Settings › Brand kit: heading of the caption style block."
+  },
+  "brand.captionLabel": {
+    "description": "Settings › Brand kit: label of the caption style list."
+  },
+  "brand.captionNone": {
+    "description": "Settings › Brand kit: the caption style list’s first choice."
+  },
+  "brand.captionUse": {
+    "description": "Settings › Brand kit: button: copies the open project’s caption look into the kit."
+  },
+  "brand.captionHint": {
+    "description": "Settings › Brand kit: hint under the caption style list."
+  },
+  "brand.logoAlt": {
+    "description": "Settings › Brand kit: the logo preview’s alternative text."
+  },
+  "brand.noLogo": {
+    "description": "Settings › Brand kit: shown in the logo preview when the kit has none."
+  },
+  "brand.changeLogo": {
+    "description": "Settings › Brand kit: button; opens a file picker."
+  },
+  "brand.chooseLogo": {
+    "description": "Settings › Brand kit: button; opens a file picker."
+  },
+  "brand.fontName": {
+    "description": "Settings › Brand kit: accessible name of a font’s name field; {name} is the font’s name.",
+    "user": [
+      "name"
+    ]
+  },
+  "brand.fontUnreadable": {
+    "description": "Settings › Brand kit: shown in place of a font’s sample when its file cannot be read."
+  },
+  "brand.fontSample": {
+    "description": "Settings › Brand kit: a sample line drawn in each kit font; keep it short (a few words)."
+  },
+  "brand.removeFont": {
+    "description": "Settings › Brand kit: accessible name of the button that removes a font; {name} is the font’s name.",
+    "user": [
+      "name"
+    ]
+  },
+  "brand.defaultFont": {
+    "description": "Settings › Brand kit: a font list’s first choice: the app’s default font.",
+    "dnt": [
+      "Segoe UI"
+    ]
+  },
+  "brand.introName": {
+    "description": "Settings › Brand kit: the card shown before the video; used inside \"{name} title card\"."
+  },
+  "brand.outroName": {
+    "description": "Settings › Brand kit: the card shown after the video; used inside \"{name} title card\"."
+  },
+  "brand.card": {
+    "description": "Settings › Brand kit: switch for the intro or outro card; {name} is \"Intro\" or \"Outro\"."
+  },
+  "brand.cardTitle": {
+    "description": "Settings › Brand kit: accessible name of the intro or outro card’s title field; {name} is \"Intro\" or \"Outro\"."
+  },
+  "brand.cardSubtitle": {
+    "description": "Settings › Brand kit: accessible name of the intro or outro card’s subtitle field; {name} is \"Intro\" or \"Outro\"."
+  },
+  "brand.subtitle": {
+    "description": "Settings › Brand kit: label of the card’s subtitle field."
+  },
+  "brand.optional": {
+    "description": "Settings › Brand kit: placeholder of the subtitle field."
+  },
+  "brand.style": {
+    "description": "Settings › Brand kit: label of the card’s style list."
   }
 }
