@@ -1566,6 +1566,280 @@
     "sample": {}
   },
   {
+    "key": "captions.cleanup.digits.aboveTen",
+    "file": "src/renderer/src/editor/panels/CleanupSection.tsx",
+    "line": 23,
+    "english": "Above ten",
+    "sample": {}
+  },
+  {
+    "key": "captions.cleanup.digits.all",
+    "file": "src/renderer/src/editor/panels/CleanupSection.tsx",
+    "line": 24,
+    "english": "All",
+    "sample": {}
+  },
+  {
+    "key": "common.state.off",
+    "file": "src/renderer/src/editor/panels/CleanupSection.tsx",
+    "line": 25,
+    "english": "Off",
+    "sample": {}
+  },
+  {
+    "key": "captions.cleanup.bleep.standard",
+    "file": "src/renderer/src/editor/panels/CleanupSection.tsx",
+    "line": 29,
+    "english": "Standard",
+    "sample": {}
+  },
+  {
+    "key": "captions.cleanup.bleep.strict",
+    "file": "src/renderer/src/editor/panels/CleanupSection.tsx",
+    "line": 30,
+    "english": "Strict",
+    "sample": {}
+  },
+  {
+    "key": "captions.cleanup.bleep.strictTitle",
+    "file": "src/renderer/src/editor/panels/CleanupSection.tsx",
+    "line": 30,
+    "english": "Also words that are only rude in some places",
+    "sample": {}
+  },
+  {
+    "key": "captions.cleanup.sound.tone",
+    "file": "src/renderer/src/editor/panels/CleanupSection.tsx",
+    "line": 33,
+    "english": "Tone",
+    "sample": {}
+  },
+  {
+    "key": "captions.cleanup.sound.silence",
+    "file": "src/renderer/src/editor/panels/CleanupSection.tsx",
+    "line": 34,
+    "english": "Silence",
+    "sample": {}
+  },
+  {
+    "key": "captions.cleanup.noProvider",
+    "file": "src/renderer/src/editor/panels/CleanupSection.tsx",
+    "line": 48,
+    "english": "To fix spelling with AI, add an AI provider first: the button is in the AI tools section.",
+    "sample": {}
+  },
+  {
+    "key": "captions.cleanup.leftOut.otherAnswer",
+    "file": "src/renderer/src/editor/panels/CleanupSection.tsx",
+    "line": 201,
+    "english": "The AI fix was left out: the provider answered something else.",
+    "sample": {}
+  },
+  {
+    "key": "captions.cleanup.leftOut.error",
+    "file": "src/renderer/src/editor/panels/CleanupSection.tsx",
+    "line": 204,
+    "english": "The AI fix was left out: The provider is busy.",
+    "sample": {
+      "reason": "The provider is busy."
+    }
+  },
+  {
+    "key": "captions.cleanup.leftOut.changed",
+    "file": "src/renderer/src/editor/panels/CleanupSection.tsx",
+    "line": 220,
+    "english": "The AI fix was left out: the captions changed while the provider worked.",
+    "sample": {}
+  },
+  {
+    "key": "captions.cleanup.leftOut.timing",
+    "file": "src/renderer/src/editor/panels/CleanupSection.tsx",
+    "line": 223,
+    "english": "The AI fix was left out: the provider changed the captions' timing or left some out.",
+    "sample": {}
+  },
+  {
+    "key": "captions.cleanup.cancelled",
+    "file": "src/renderer/src/editor/panels/CleanupSection.tsx",
+    "line": 245,
+    "english": "Tidy captions was cancelled; nothing was changed.",
+    "sample": {}
+  },
+  {
+    "key": "captions.cleanup.wordsNotSaved",
+    "file": "src/renderer/src/editor/panels/CleanupSection.tsx",
+    "line": 252,
+    "english": "The word list could not be saved: The disk is full.",
+    "sample": {
+      "reason": "The disk is full."
+    }
+  },
+  {
+    "key": "captions.cleanup.title",
+    "file": "src/renderer/src/editor/panels/CleanupSection.tsx",
+    "line": 267,
+    "english": "Clean up",
+    "sample": {}
+  },
+  {
+    "key": "captions.cleanup.caps",
+    "file": "src/renderer/src/editor/panels/CleanupSection.tsx",
+    "line": 268,
+    "english": "Capital letters",
+    "sample": {}
+  },
+  {
+    "key": "captions.cleanup.capsTitle",
+    "file": "src/renderer/src/editor/panels/CleanupSection.tsx",
+    "line": 268,
+    "english": "At the start of sentences, and “I”",
+    "sample": {}
+  },
+  {
+    "key": "captions.cleanup.punct",
+    "file": "src/renderer/src/editor/panels/CleanupSection.tsx",
+    "line": 269,
+    "english": "Full stops and spaces",
+    "sample": {}
+  },
+  {
+    "key": "captions.cleanup.punctTitle",
+    "file": "src/renderer/src/editor/panels/CleanupSection.tsx",
+    "line": 269,
+    "english": "A full stop before a pause, no space before punctuation",
+    "sample": {}
+  },
+  {
+    "key": "captions.cleanup.digits.label",
+    "file": "src/renderer/src/editor/panels/CleanupSection.tsx",
+    "line": 271,
+    "english": "Numbers as digits",
+    "sample": {}
+  },
+  {
+    "key": "captions.cleanup.words.label",
+    "file": "src/renderer/src/editor/panels/CleanupSection.tsx",
+    "line": 276,
+    "english": "Word list",
+    "sample": {}
+  },
+  {
+    "key": "captions.cleanup.words.alsoHeard",
+    "file": "src/renderer/src/editor/panels/CleanupSection.tsx",
+    "line": 282,
+    "english": "also heard as: flone, flow n",
+    "sample": {
+      "heard": "flone, flow n"
+    }
+  },
+  {
+    "key": "captions.cleanup.words.removeLabel",
+    "file": "src/renderer/src/editor/panels/CleanupSection.tsx",
+    "line": 287,
+    "english": "Remove Flown from the word list",
+    "sample": {
+      "term": "Flown"
+    }
+  },
+  {
+    "key": "common.action.remove",
+    "file": "src/renderer/src/editor/panels/CleanupSection.tsx",
+    "line": 290,
+    "english": "Remove",
+    "sample": {}
+  },
+  {
+    "key": "captions.cleanup.words.word",
+    "file": "src/renderer/src/editor/panels/CleanupSection.tsx",
+    "line": 305,
+    "english": "Word",
+    "sample": {}
+  },
+  {
+    "key": "captions.cleanup.words.heard",
+    "file": "src/renderer/src/editor/panels/CleanupSection.tsx",
+    "line": 309,
+    "english": "Also heard as (comma between)",
+    "sample": {}
+  },
+  {
+    "key": "common.action.add",
+    "file": "src/renderer/src/editor/panels/CleanupSection.tsx",
+    "line": 314,
+    "english": "Add",
+    "sample": {}
+  },
+  {
+    "key": "common.action.cancel",
+    "file": "src/renderer/src/editor/panels/CleanupSection.tsx",
+    "line": 317,
+    "english": "Cancel",
+    "sample": {}
+  },
+  {
+    "key": "captions.cleanup.words.add",
+    "file": "src/renderer/src/editor/panels/CleanupSection.tsx",
+    "line": 324,
+    "english": "Add a word",
+    "sample": {}
+  },
+  {
+    "key": "captions.cleanup.bleep.label",
+    "file": "src/renderer/src/editor/panels/CleanupSection.tsx",
+    "line": 331,
+    "english": "Bleep swear words",
+    "sample": {}
+  },
+  {
+    "key": "captions.cleanup.sound.label",
+    "file": "src/renderer/src/editor/panels/CleanupSection.tsx",
+    "line": 336,
+    "english": "Bleep sound",
+    "sample": {}
+  },
+  {
+    "key": "captions.cleanup.ai",
+    "file": "src/renderer/src/editor/panels/CleanupSection.tsx",
+    "line": 343,
+    "english": "Also fix spelling and misheard words with AI",
+    "sample": {}
+  },
+  {
+    "key": "common.label.provider",
+    "file": "src/renderer/src/editor/panels/CleanupSection.tsx",
+    "line": 346,
+    "english": "Provider",
+    "sample": {}
+  },
+  {
+    "key": "common.state.working",
+    "file": "src/renderer/src/editor/panels/CleanupSection.tsx",
+    "line": 368,
+    "english": "Working…",
+    "sample": {}
+  },
+  {
+    "key": "captions.cleanup.run",
+    "file": "src/renderer/src/editor/panels/CleanupSection.tsx",
+    "line": 368,
+    "english": "Tidy captions",
+    "sample": {}
+  },
+  {
+    "key": "captions.cleanup.fixLabel",
+    "file": "src/renderer/src/editor/panels/CleanupSection.tsx",
+    "line": 383,
+    "english": "Fix spelling",
+    "sample": {}
+  },
+  {
+    "key": "captions.cleanup.hint",
+    "file": "src/renderer/src/editor/panels/CleanupSection.tsx",
+    "line": 395,
+    "english": "Tidy changes are listed in Review mode. The word list also helps Generate captions spell these words.",
+    "sample": {}
+  },
+  {
     "key": "captions.great.style",
     "file": "src/renderer/src/editor/panels/GreatOptions.tsx",
     "line": 26,

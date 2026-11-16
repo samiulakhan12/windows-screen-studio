@@ -746,5 +746,107 @@
   },
   "great.aiPicks": {
     "description": "Cost line of Make my captions great: the label of the AI picks' cost."
+  },
+  "cleanup.digits.aboveTen": {
+    "description": "Clean up, Numbers as digits: spelled numbers above ten become digits."
+  },
+  "cleanup.digits.all": {
+    "description": "Clean up, Numbers as digits: every spelled number becomes digits."
+  },
+  "cleanup.bleep.standard": {
+    "description": "Clean up, Bleep swear words: the usual list of swear words."
+  },
+  "cleanup.bleep.strict": {
+    "description": "Clean up, Bleep swear words: also milder words."
+  },
+  "cleanup.bleep.strictTitle": {
+    "description": "Tooltip of the Strict bleep choice."
+  },
+  "cleanup.sound.tone": {
+    "description": "Clean up, Bleep sound: a beep tone."
+  },
+  "cleanup.sound.silence": {
+    "description": "Clean up, Bleep sound: the word is silenced."
+  },
+  "cleanup.noProvider": {
+    "description": "Clean up: Fix with AI was asked for with no AI provider."
+  },
+  "cleanup.leftOut.otherAnswer": {
+    "description": "Clean up: the AI fix was not used because the answer was not what was asked."
+  },
+  "cleanup.leftOut.error": {
+    "description": "Clean up: the AI fix was not used; {reason} is the error, ending with a full stop."
+  },
+  "cleanup.leftOut.changed": {
+    "description": "Clean up: the AI fix was not used because the captions were edited meanwhile."
+  },
+  "cleanup.leftOut.timing": {
+    "description": "Clean up: the AI fix was not used because the answer changed the timing."
+  },
+  "cleanup.cancelled": {
+    "description": "Clean up: status after Cancel."
+  },
+  "cleanup.wordsNotSaved": {
+    "description": "Clean up: the word list could not be saved; {reason} is the error."
+  },
+  "cleanup.title": {
+    "description": "Captions tab: heading of the section that tidies the caption text."
+  },
+  "cleanup.caps": {
+    "description": "Clean up: capital letters at the start of sentences."
+  },
+  "cleanup.capsTitle": {
+    "description": "Tooltip of Capital letters."
+  },
+  "cleanup.punct": {
+    "description": "Clean up: punctuation."
+  },
+  "cleanup.punctTitle": {
+    "description": "Tooltip of Full stops and spaces."
+  },
+  "cleanup.digits.label": {
+    "description": "Clean up: label of the choice of when spelled numbers become digits."
+  },
+  "cleanup.words.label": {
+    "description": "Clean up: the user's words that captions must spell as given."
+  },
+  "cleanup.words.alsoHeard": {
+    "description": "Clean up, Word list: after a word, the ways the speech engine mishears it, after a dash.",
+    "user": [
+      "heard"
+    ]
+  },
+  "cleanup.words.removeLabel": {
+    "description": "Accessible name of a word's Remove button.",
+    "user": [
+      "term"
+    ]
+  },
+  "cleanup.words.word": {
+    "description": "Clean up, Add a word: the word field."
+  },
+  "cleanup.words.heard": {
+    "description": "Clean up, Add a word: the field of the ways the word is misheard."
+  },
+  "cleanup.words.add": {
+    "description": "Clean up: button that opens the form to add a word to the word list."
+  },
+  "cleanup.bleep.label": {
+    "description": "Clean up: label of the choice of which swear words are bleeped."
+  },
+  "cleanup.sound.label": {
+    "description": "Clean up: label of the choice of the bleep's sound."
+  },
+  "cleanup.ai": {
+    "description": "Clean up: checkbox that adds an AI fix to Tidy captions."
+  },
+  "cleanup.run": {
+    "description": "Clean up: button that tidies the captions."
+  },
+  "cleanup.fixLabel": {
+    "description": "Cost line of Clean up: the label of the AI fix's cost."
+  },
+  "cleanup.hint": {
+    "description": "Clean up: hint at the end of the section."
   }
 }
