@@ -343,5 +343,447 @@
   },
   "look.tilt.hero.title": {
     "description": "Effects › 3D tilt: the tooltip of the tilt preset \"hero\"."
+  },
+  "open.videoNotLoaded": {
+    "description": "Editor, opening a recording: why it failed, after \"Could not open this recording:\"; {detail} is the video element's own error, in English, or editor.open.unsupported."
+  },
+  "open.unsupported": {
+    "description": "Editor, opening a recording: the detail when the video element gives no reason, inside \"the video could not be loaded (…)\"."
+  },
+  "open.failed": {
+    "description": "Editor: shown instead of the editor when a recording cannot be opened; {reason} says why."
+  },
+  "open.loading": {
+    "description": "Editor: shown while a recording opens."
+  },
+  "leave.unsaved": {
+    "description": "Question before leaving the editor when the last save failed. Keep the blank line."
+  },
+  "leave.unsavedWhy": {
+    "description": "Question before leaving the editor when the last save failed; {reason} is the save's error. Keep the line breaks."
+  },
+  "leave.action": {
+    "description": "The button that answers \"Leave the editor anyway?\" with yes (outside English; English asks with Chromium's OK and Cancel)."
+  },
+  "notice.originalGone": {
+    "description": "Notice under the preview: Open original found no original."
+  },
+  "notice.openOriginal": {
+    "description": "Notice under the preview: button in the notice after a copy is made: opens the recording it was copied from."
+  },
+  "copy.busy": {
+    "description": "Notice under the preview: a second copy was asked for while one is being made."
+  },
+  "copy.failed": {
+    "description": "Notice under the preview: making a copy failed; {reason} says why. A reason that already starts with this sentence is shown as it is."
+  },
+  "copy.unsaved": {
+    "description": "Question before making a copy (vertical, square or a duplicate) when the last save failed."
+  },
+  "copy.makeAnyway": {
+    "description": "The button that answers \"Make the copy anyway?\" with yes (outside English; English asks with Chromium's OK and Cancel)."
+  },
+  "notice.shortcutsNotSaved": {
+    "description": "Notice under the preview: the shortcuts editor's change could not be stored; {reason} says why."
+  },
+  "clicks.ignored": {
+    "description": "Notice under the preview: recorded clicks were ignored (no zoom, effect or sound); {n} is how many. The Undo shortcut may follow."
+  },
+  "clicks.usedAgain": {
+    "description": "Notice under the preview: ignored clicks were used again; {n} is how many."
+  },
+  "clicks.oneIgnored": {
+    "description": "Notice under the preview: one recorded click was ignored; {time} is its timecode. The Undo shortcut may follow."
+  },
+  "clicks.oneUsedAgain": {
+    "description": "Notice under the preview: one ignored click was used again; {time} is its timecode."
+  },
+  "clicks.strayIgnored": {
+    "description": "Notice under the preview: Find stray clicks ignored clicks that looked accidental; {n} is how many. The Undo shortcut may follow."
+  },
+  "clicks.noStray": {
+    "description": "Notice under the preview: Find stray clicks found none."
+  },
+  "clicks.noneIgnored": {
+    "description": "Why a command cannot run now: a notice, and the reason beside it, dimmed, in the command palette. Use all ignored clicks again has nothing to do."
+  },
+  "clicks.allUsedAgain": {
+    "description": "Notice under the preview: every ignored click was used again; {n} is how many."
+  },
+  "clicks.alreadyIgnored": {
+    "description": "Notice under the preview: Delete on a click that is ignored already."
+  },
+  "clicks.noneNear": {
+    "description": "Notice under the preview: Ignore or use the click at the playhead found no click."
+  },
+  "path.kept.drag": {
+    "description": "Notice under the preview: one of the reasons cursor moves keep their recorded path, listed in brackets after \"No cursor move here can be straightened\"; {n} is how many moves."
+  },
+  "path.kept.dragGuess": {
+    "description": "Notice under the preview: one of the reasons cursor moves keep their recorded path, listed in brackets after \"No cursor move here can be straightened\"; {n} is how many moves."
+  },
+  "path.kept.click": {
+    "description": "Notice under the preview: one of the reasons cursor moves keep their recorded path, listed in brackets after \"No cursor move here can be straightened\"; {n} is how many moves."
+  },
+  "path.kept.scroll": {
+    "description": "Notice under the preview: one of the reasons cursor moves keep their recorded path, listed in brackets after \"No cursor move here can be straightened\"; {n} is how many moves."
+  },
+  "path.kept.offFrame": {
+    "description": "Notice under the preview: one of the reasons cursor moves keep their recorded path, listed in brackets after \"No cursor move here can be straightened\"; {n} is how many moves."
+  },
+  "path.kept.short": {
+    "description": "Notice under the preview: one of the reasons cursor moves keep their recorded path, listed in brackets after \"No cursor move here can be straightened\"; {n} is how many moves."
+  },
+  "path.kept.long": {
+    "description": "Notice under the preview: one of the reasons cursor moves keep their recorded path, listed in brackets after \"No cursor move here can be straightened\"; {n} is how many moves."
+  },
+  "path.kept.small": {
+    "description": "Notice under the preview: one of the reasons cursor moves keep their recorded path, listed in brackets after \"No cursor move here can be straightened\"; {n} is how many moves."
+  },
+  "path.kept.wobbly": {
+    "description": "Notice under the preview: one of the reasons cursor moves keep their recorded path, listed in brackets after \"No cursor move here can be straightened\"; {n} is how many moves."
+  },
+  "path.kept.gesture": {
+    "description": "Notice under the preview: one of the reasons cursor moves keep their recorded path, listed in brackets after \"No cursor move here can be straightened\"; {n} is how many moves."
+  },
+  "path.nothingToStraighten": {
+    "description": "Notice under the preview: Straighten cursor in selected range found nothing to straighten."
+  },
+  "path.nothingToStraightenWhy": {
+    "description": "Notice under the preview: Straighten cursor in selected range found nothing to straighten; {reasons} lists why, separated by commas (\"1 drag, 2 loops\")."
+  },
+  "path.straightened": {
+    "description": "Notice under the preview: cursor moves were straightened in the selected range; {n} is how many, {range} the span (\"0:01.0 – 0:03.5\")."
+  },
+  "path.keptRecorded": {
+    "description": "Notice under the preview: the selected range keeps the cursor as recorded; {range} is the span."
+  },
+  "path.followsStraighten": {
+    "description": "Notice under the preview: the selected range follows the Straighten setting again; {range} is the span."
+  },
+  "notice.zoomHere": {
+    "description": "Notice under the preview: Add zoom found a zoom at the playhead."
+  },
+  "notice.noRoomToAddZoom": {
+    "description": "Notice under the preview: Add zoom found no free time at the playhead."
+  },
+  "notice.lastClip": {
+    "description": "Notice under the preview: Delete on the only clip."
+  },
+  "notice.keepSome": {
+    "description": "Notice under the preview: a cut would remove the whole recording."
+  },
+  "notice.alreadyCut": {
+    "description": "Notice under the preview: the selected range is cut already."
+  },
+  "notice.noZoomSelected": {
+    "description": "Notice under the preview: a zoom level key while the selected items hold no zoom."
+  },
+  "notice.zoomLevelFor": {
+    "description": "Notice under the preview: a zoom level key set the level of the selected zooms; {level} is the level (\"1.5×\"), {n} how many zooms."
+  },
+  "notice.selectZoomKeys": {
+    "description": "Notice under the preview: a zoom level key with no zoom selected; {keys} says what the level keys do (\"1–4 set its zoom level, 0 pulls back\")."
+  },
+  "reason.selectZoom": {
+    "description": "Why a command cannot run now: a notice, and the reason beside it, dimmed, in the command palette. the zoom level commands need a zoom."
+  },
+  "notice.noChapterAfter": {
+    "description": "Notice under the preview: Go to next chapter at the last chapter."
+  },
+  "notice.noChapterBefore": {
+    "description": "Notice under the preview: Go to previous chapter at the first chapter."
+  },
+  "notice.noChapters": {
+    "description": "Notice under the preview: the chapter commands in a video without chapters, when Add chapter has no shortcut."
+  },
+  "notice.noChaptersKey": {
+    "description": "Notice under the preview: the chapter commands in a video without chapters; {keys} is the Add chapter shortcut."
+  },
+  "reason.noCamera": {
+    "description": "Why a command cannot run now: a notice, and the reason beside it, dimmed, in the command palette. the camera commands in a recording made without a camera."
+  },
+  "reason.splitEdge": {
+    "description": "Why a command cannot run now: a notice, and the reason beside it, dimmed, in the command palette. Split at a clip's edge."
+  },
+  "notice.splitInCut": {
+    "description": "Notice under the preview: Split with the playhead in a cut part."
+  },
+  "reason.inCut": {
+    "description": "Why a command cannot run now: a notice, and the reason beside it, dimmed, in the command palette. Split with the playhead in a cut part."
+  },
+  "reason.nothingCut": {
+    "description": "Why a command cannot run now: a notice, and the reason beside it, dimmed, in the command palette. Restore the whole recording has nothing to restore."
+  },
+  "reason.selectRange": {
+    "description": "Why a command cannot run now: a notice, and the reason beside it, dimmed, in the command palette. the range commands need a selected range. Shift is a keycap.",
+    "dnt": [
+      "Shift"
+    ]
+  },
+  "reason.nothingToUndo": {
+    "description": "Why a command cannot run now: a notice, and the reason beside it, dimmed, in the command palette. Undo with nothing to undo."
+  },
+  "reason.nothingToRedo": {
+    "description": "Why a command cannot run now: a notice, and the reason beside it, dimmed, in the command palette. Redo with nothing to redo."
+  },
+  "reason.notCropped": {
+    "description": "Why a command cannot run now: a notice, and the reason beside it, dimmed, in the command palette. Show the whole recording (reset crop) with no crop."
+  },
+  "reason.noTaskbar": {
+    "description": "Why a command cannot run now: a notice, and the reason beside it, dimmed, in the command palette. Crop out the taskbar on a recording without one."
+  },
+  "notice.taskbarCropped": {
+    "description": "Notice under the preview: Crop out the taskbar when the crop leaves it out already."
+  },
+  "notice.turnedOn": {
+    "description": "Notice under the preview: a setting was turned on; {what} is its name (\"Smooth cursor\")."
+  },
+  "notice.turnedOff": {
+    "description": "Notice under the preview: a setting was turned off; {what} is its name (\"Smooth cursor\")."
+  },
+  "notice.noCaptions": {
+    "description": "Notice under the preview: a captions command in a video without captions."
+  },
+  "reason.noCaptions": {
+    "description": "Why a command cannot run now: a notice, and the reason beside it, dimmed, in the command palette. the captions commands in a video without captions."
+  },
+  "reason.cursorInVideo": {
+    "description": "Why a command cannot run now: a notice, and the reason beside it, dimmed, in the command palette. the cursor path commands when the recording shows its own cursor."
+  },
+  "reason.cursorAlreadyInVideo": {
+    "description": "Why a command cannot run now: a notice, and the reason beside it, dimmed, in the command palette. Smooth cursor when the recording shows its own cursor."
+  },
+  "notice.atStart": {
+    "description": "Notice under the preview: Play backwards at the start of the video."
+  },
+  "reason.closeCrop": {
+    "description": "Why a command cannot run now: a notice, and the reason beside it, dimmed, in the command palette. the selection commands while the crop tool is open."
+  },
+  "items.copyWhat": {
+    "description": "Notice under the preview: Copy while the selected item cannot be copied. Ctrl is a keycap.",
+    "dnt": [
+      "Ctrl"
+    ]
+  },
+  "items.cutWhat": {
+    "description": "Notice under the preview: Cut while the selected item cannot be cut that way. Ctrl is a keycap.",
+    "dnt": [
+      "Ctrl"
+    ]
+  },
+  "items.duplicateWhat": {
+    "description": "Notice under the preview: Duplicate while the selected item cannot be duplicated. Ctrl is a keycap.",
+    "dnt": [
+      "Ctrl"
+    ]
+  },
+  "items.selectToMove": {
+    "description": "Notice under the preview: the nudge keys with nothing selected that they move."
+  },
+  "reason.selectToCopy": {
+    "description": "Why a command cannot run now: a notice, and the reason beside it, dimmed, in the command palette. Copy with nothing selected."
+  },
+  "items.copied": {
+    "description": "Notice under the preview: items were copied; {n} is how many."
+  },
+  "items.cutRecording": {
+    "description": "Notice under the preview: Cut items (Ctrl+X) while a clip or range is selected; {keys} is the key that cuts the recording (\"Delete\")."
+  },
+  "reason.selectToCut": {
+    "description": "Why a command cannot run now: a notice, and the reason beside it, dimmed, in the command palette. Cut items with nothing selected."
+  },
+  "items.addedNamed": {
+    "description": "Notice under the preview: an image from the clipboard was added; {name} is its name.",
+    "user": [
+      "name"
+    ]
+  },
+  "items.addedImage": {
+    "description": "Notice under the preview: an image from the clipboard, which has no name, was added."
+  },
+  "reason.selectToDuplicate": {
+    "description": "Why a command cannot run now: a notice, and the reason beside it, dimmed, in the command palette. Duplicate with nothing selected."
+  },
+  "reason.copyLookOne": {
+    "description": "Why a command cannot run now: a notice, and the reason beside it, dimmed, in the command palette. Copy look with several items selected."
+  },
+  "copyLook.none": {
+    "description": "Notice under the preview: Copy look on an item that has no look."
+  },
+  "reason.copyLookSelect": {
+    "description": "Why a command cannot run now: a notice, and the reason beside it, dimmed, in the command palette. Copy look with nothing selected."
+  },
+  "copyLook.chapters": {
+    "description": "Notice under the preview: Copy look on a chapter."
+  },
+  "copyLook.copied": {
+    "description": "Notice under the preview: an item's look was copied; {name} is the kind of look, inside the sentence (\"text\")."
+  },
+  "pasteLook.select": {
+    "description": "Notice under the preview: Paste look with nothing selected; {name} is the kind of the copied look."
+  },
+  "pasteLook.nothing": {
+    "description": "Notice under the preview: Paste look found no selected item of the copied look's kind; {name} is that kind."
+  },
+  "pasteLook.already": {
+    "description": "Notice under the preview: Paste look changed nothing."
+  },
+  "pasteLook.pasted": {
+    "description": "Notice under the preview: a look was pasted; {name} is its kind, {n} how many items took it, {one} and {many} that kind of item in the singular and the plural."
+  },
+  "pasteLook.pastedOthers": {
+    "description": "Notice under the preview: a look was pasted onto some of the selected items; {n} is how many took it, {o} how many are of another kind and stayed as they were; {one} and {many} are the look's kind of item."
+  },
+  "reason.nothingCopied": {
+    "description": "Why a command cannot run now: a notice, and the reason beside it, dimmed, in the command palette. Paste items with nothing copied."
+  },
+  "reason.copyLookFirst": {
+    "description": "Why a command cannot run now: a notice, and the reason beside it, dimmed, in the command palette. Paste look with no look copied."
+  },
+  "reason.lookIsFor": {
+    "description": "Why a command cannot run now: a notice, and the reason beside it, dimmed, in the command palette. Paste look when no selected item is of the copied look's kind; {many} is that kind (\"text items\")."
+  },
+  "freeze.noneSelected": {
+    "description": "Notice under the preview: Freeze frame sound with the selected items holding no freeze frame."
+  },
+  "freeze.paused": {
+    "description": "Notice under the preview: the selected freeze frames now pause the sound; {n} is how many."
+  },
+  "freeze.playing": {
+    "description": "Notice under the preview: the selected freeze frames now keep the sound playing; {n} is how many."
+  },
+  "freeze.playingSomeKept": {
+    "description": "Notice under the preview: the selected freeze frames now keep the sound playing, except those at the end of the video; {n} is how many were selected, {r} how many at the end still pause it."
+  },
+  "speed.fastest": {
+    "description": "Notice under the preview: Faster preview speed at the fastest; {speed} is the speed (\"2×\")."
+  },
+  "speed.slowest": {
+    "description": "Notice under the preview: Slower preview speed at the slowest; {speed} is the speed (\"0.5×\")."
+  },
+  "speed.set": {
+    "description": "Notice under the preview: the preview speed changed; {speed} is the new speed (\"1.5×\")."
+  },
+  "reason.fastestSpeed": {
+    "description": "Why a command cannot run now: a notice, and the reason beside it, dimmed, in the command palette. Faster preview speed at the fastest; {speed} is the speed."
+  },
+  "reason.slowestSpeed": {
+    "description": "Why a command cannot run now: a notice, and the reason beside it, dimmed, in the command palette. Slower preview speed at the slowest; {speed} is the speed."
+  },
+  "notice.noCursorSpotlight": {
+    "description": "Notice under the preview: Add cursor spotlight without cursor data; {reason} says why there is none."
+  },
+  "notice.noCursorMagnifier": {
+    "description": "Notice under the preview: Add magnifier on the cursor without cursor data; {reason} says why there is none."
+  },
+  "toggle.straighten": {
+    "description": "Notice under the preview: the name of the Straighten setting in \"{what} on\" and \"{what} off\"."
+  },
+  "toggle.progressBar": {
+    "description": "Notice under the preview: the name of the progress bar in \"{what} on\" and \"{what} off\"."
+  },
+  "toggle.waveform": {
+    "description": "Notice under the preview: the name of the timeline's waveform in \"{what} on\" and \"{what} off\"."
+  },
+  "reason.noSound": {
+    "description": "Why a command cannot run now: a notice, and the reason beside it, dimmed, in the command palette. the waveform in a recording without sound."
+  },
+  "reason.selectSomething": {
+    "description": "Why a command cannot run now: a notice, and the reason beside it, dimmed, in the command palette. Delete selection with nothing selected."
+  },
+  "reason.selectFreeze": {
+    "description": "Why a command cannot run now: a notice, and the reason beside it, dimmed, in the command palette. Freeze frame sound with no freeze frame selected."
+  },
+  "reason.noChapterAfter": {
+    "description": "Why a command cannot run now: a notice, and the reason beside it, dimmed, in the command palette. Go to next chapter at the last chapter."
+  },
+  "reason.noChapterBefore": {
+    "description": "Why a command cannot run now: a notice, and the reason beside it, dimmed, in the command palette. Go to previous chapter at the first chapter."
+  },
+  "reason.noChapters": {
+    "description": "Why a command cannot run now: a notice, and the reason beside it, dimmed, in the command palette. the chapter commands in a video without chapters."
+  },
+  "reason.autoColourRunning": {
+    "description": "Why a command cannot run now: a notice, and the reason beside it, dimmed, in the command palette. Auto colour for the camera while it runs."
+  },
+  "reason.selectToMove": {
+    "description": "Why a command cannot run now: a notice, and the reason beside it, dimmed, in the command palette. the nudge commands with nothing selected."
+  },
+  "reason.copyBusy": {
+    "description": "Why a command cannot run now: a notice, and the reason beside it, dimmed, in the command palette. the copy commands while a copy is being made."
+  },
+  "follow.unavailable": {
+    "description": "Why a command cannot run now: a notice, and the reason beside it, dimmed, in the command palette. Follow the action in a frame as wide as the recording.",
+    "dnt": [
+      "9:16",
+      "1:1"
+    ]
+  },
+  "follow.off": {
+    "description": "Why a command cannot run now: a notice, and the reason beside it, dimmed, in the command palette. Hold the view here while the frame does not follow."
+  },
+  "notice.safeZonesTall": {
+    "description": "Why a command cannot run now: a notice, and the reason beside it, dimmed, in the command palette. Show safe zones in a frame that is not tall.",
+    "dnt": [
+      "9:16"
+    ]
+  },
+  "notice.versionOpened": {
+    "description": "Notice under the preview: a version was opened in place of the edit; {name} is the version's name. The Undo shortcut and notes about files may follow.",
+    "user": [
+      "name"
+    ]
+  },
+  "titlebar.back": {
+    "description": "Editor title bar: the back button's name and tooltip."
+  },
+  "titlebar.name": {
+    "description": "Editor title bar: the accessible name of the field with the recording's name."
+  },
+  "titlebar.versionsTitle": {
+    "description": "Editor title bar: tooltip of Versions; its shortcut follows in brackets."
+  },
+  "titlebar.versions": {
+    "description": "Editor title bar: button that opens the versions of this edit."
+  },
+  "titlebar.commandsTitle": {
+    "description": "Editor title bar: tooltip of Commands; its shortcut follows in brackets."
+  },
+  "titlebar.commands": {
+    "description": "Editor title bar: button that opens the command palette."
+  },
+  "titlebar.polish": {
+    "description": "Editor title bar: button that opens Polish in one click."
+  },
+  "titlebar.publishTitle": {
+    "description": "Editor title bar: tooltip of Publish; its shortcut follows in brackets."
+  },
+  "titlebar.publish": {
+    "description": "Editor title bar: button that opens the publishing copy pack."
+  },
+  "titlebar.guideTitle": {
+    "description": "Editor title bar: tooltip of Guide; its shortcut follows in brackets."
+  },
+  "titlebar.guide": {
+    "description": "Editor title bar: button that opens the step-by-step guide panel."
+  },
+  "titlebar.exportTitle": {
+    "description": "Editor title bar: tooltip of Export; its shortcut follows in brackets."
+  },
+  "titlebar.export": {
+    "description": "Editor title bar: button that opens the export dialog."
+  },
+  "media.loadFailed": {
+    "description": "A video could not be loaded for the preview, an export or a still; {reason} is the video element's own error, in English, or editor.media.unknownError."
+  },
+  "media.readFailed": {
+    "description": "A video could not be read at a time asked for; {reason} is the video element's own error, in English, or editor.media.unknownError."
+  },
+  "media.unknownError": {
+    "description": "The reason inside \"Could not load video (…)\" when the video element gives none."
+  },
+  "media.imageFailed": {
+    "description": "An image (a background, a pasted or brand image) could not be loaded."
   }
 }

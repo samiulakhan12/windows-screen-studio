@@ -7,7 +7,7 @@ import { captionsOf } from '../../../shared/captions/settings'
 import { createAnnotation } from '../../../shared/editor/annotations'
 import { Autosaver } from '../../../shared/editor/autosave'
 import { canSplitAt, clipAt, correctProjectMedia, displayTime, restoreRange, stepOutput } from '../../../shared/editor/clips'
-import { commandInfo, paletteCommands, type CommandId } from '../../../shared/editor/commands'
+import { commandInfo, commandTitle, paletteCommands, type CommandId } from '../../../shared/editor/commands'
 import { currentUiInfo, noteProjectLanguages, showLanguageSection } from '../i18n/boot'
 import { cropNotice, setCrop, setZoomLevelInView, snapCrop, taskbarCrop, type CropDraft } from '../../../shared/editor/cropEdit'
 import { directUnavailable } from '../../../shared/editor/directorCopy'
@@ -18,7 +18,7 @@ import { clickAtPlayhead, ignoreStrayClicks, pathSummary, setClicksIgnored, setP
 import { EditStore } from '../../../shared/editor/editStore'
 import { copyItems as copyGroupItems, duplicateItems as duplicateGroupItems, pasteItems as pasteGroupItems, pasteNotice, type PasteResult } from '../../../shared/editor/groupClipboard'
 import { applyField, copyLook, deleteItems, GROUP_FIELDS, LOOK_CLASS_WORDS, lookClassOf, pasteLook, type FieldCtx } from '../../../shared/editor/groupEdit'
-import { countOf, NO_GROUP, parseItemKey, projectItems, selectAllStep, trackOfKind, validGroup, type ItemGroup, type ItemKey, type ItemTrack } from '../../../shared/editor/multiSelect'
+import { NO_GROUP, parseItemKey, projectItems, selectAllStep, trackOfKind, validGroup, type ItemGroup, type ItemKey, type ItemTrack } from '../../../shared/editor/multiSelect'
 import { copyLookFirst, nothingCopiedNotice, removedNotice, selectAllNotice } from '../../../shared/editor/multiSelectCopy'
 import { layoutRefusal, setLayoutAt } from '../../../shared/editor/layoutCommands'
 import { removeLayout } from '../../../shared/editor/layouts'
@@ -131,6 +131,8 @@ import { ShortClipsPanel } from '../clips/ShortClipsPanel'
 import { ShortVersionDialog } from '../clips/ShortVersionDialog'
 import { settleChapters } from '../../../shared/chapters/chapterAuto'
 import { fmt } from '../../../shared/i18n/fmt'
+import { t, type MessageKey } from '../../../shared/i18n/t'
+import { askConfirm } from '../i18n/askConfirm'
 import { requestFindChapters } from '../editor/smartRequests'
 import type { PublishKind } from '../../../shared/publish/pack'
 import { useSearchMoment } from '../search/useSearchMoment'
@@ -148,31 +150,29 @@ type LoadState = { kind: 'loading' } | { kind: 'error'; message: string } | { ki
 
 const METADATA_TIMEOUT_MS = 20000
 
-const plural = (n: number, word: string): string => `${n} ${word}${n === 1 ? '' : 's'}`
-
-/** How a reason a cursor move keeps its recorded path is counted: [one, many]. */
-const KEPT_NOUN: Record<keyof PathSummary['kept'], [string, string]> = {
-  drag: ['drag', 'drags'],
-  'drag-guess': ['possible drag', 'possible drags'],
-  click: ['move across a click', 'moves across a click'],
-  scroll: ['move while scrolling', 'moves while scrolling'],
-  'off-frame': ['move outside the video', 'moves outside the video'],
-  short: ['very quick move', 'very quick moves'],
-  long: ['long move', 'long moves'],
-  small: ['tiny move', 'tiny moves'],
-  wobbly: ['winding move', 'winding moves'],
-  gesture: ['loop', 'loops']
+/** How a reason a cursor move keeps its recorded path is counted: a plural message on `count`. */
+const KEPT_NOUN: Record<keyof PathSummary['kept'], MessageKey> = {
+  drag: 'editor.path.kept.drag',
+  'drag-guess': 'editor.path.kept.dragGuess',
+  click: 'editor.path.kept.click',
+  scroll: 'editor.path.kept.scroll',
+  'off-frame': 'editor.path.kept.offFrame',
+  short: 'editor.path.kept.short',
+  long: 'editor.path.kept.long',
+  small: 'editor.path.kept.small',
+  wobbly: 'editor.path.kept.wobbly',
+  gesture: 'editor.path.kept.gesture'
 }
 
-/** " (1 drag, 1 move across a click)", or "" when no move was kept for a reason. */
-function keptReasons(summary: PathSummary): string {
+/** "No cursor move here can be straightened (1 drag, 1 move across a click)", without the brackets when no move was kept for a reason. */
+function nothingToStraighten(summary: PathSummary): string {
   const parts = (Object.keys(KEPT_NOUN) as (keyof PathSummary['kept'])[])
     .filter((k) => (summary.kept[k] ?? 0) > 0)
     .map((k) => {
       const n = summary.kept[k]!
-      return `${n} ${KEPT_NOUN[k][n === 1 ? 0 : 1]}`
+      return t(KEPT_NOUN[k], { count: n, n: fmt.count(n) })
     })
-  return parts.length ? ` (${parts.join(', ')})` : ''
+  return parts.length ? t('editor.path.nothingToStraightenWhy', { reasons: parts.join(', ') }) : t('editor.path.nothingToStraighten')
 }
 
 /** Resolves once the video's duration and size are known (or after a timeout); rejects if it cannot load. */
@@ -190,7 +190,7 @@ function whenMetadata(v: HTMLVideoElement): Promise<void> {
       window.clearTimeout(timer)
       v.removeEventListener('loadedmetadata', done)
       v.removeEventListener('error', fail)
-      reject(new Error(`the video could not be loaded (${v.error?.message || 'unsupported or missing file'})`))
+      reject(new Error(t('editor.open.videoNotLoaded', { detail: v.error?.message || t('editor.open.unsupported') })))
     }
     v.addEventListener('loadedmetadata', done)
     v.addEventListener('error', fail)
@@ -298,10 +298,10 @@ export function Editor({
       <div className="app">
         <header className="titlebar">
           <button className="btn ghost" onClick={onClose}>
-            <Icon name="back" /> Back
+            <Icon name="back" /> {t('common.action.back')}
           </button>
         </header>
-        <div className="center-message error">Could not open this recording: {state.message}</div>
+        <div className="center-message error">{t('editor.open.failed', { reason: state.message })}</div>
       </div>
     )
   }
@@ -311,7 +311,7 @@ export function Editor({
       <div className="app">
         <div className="overlay">
           <div className="spinner" />
-          <p>Opening recording…</p>
+          <p>{t('editor.open.loading')}</p>
         </div>
       </div>
     )
@@ -349,13 +349,13 @@ function EditorProviders({
 }
 
 /** Following works only in a frame narrower than the recording (docs/design/vertical-video.md §2.11). */
-const FOLLOW_UNAVAILABLE = 'Following works in 9:16, 1:1 and other frames narrower than the recording. Choose one in Style › Frame.'
+const FOLLOW_UNAVAILABLE: MessageKey = 'editor.follow.unavailable'
 /** Hold the view here while the frame could follow but does not. */
-const FOLLOW_OFF = 'Turn on Follow the action first, in Style › Vertical framing.'
+const FOLLOW_OFF: MessageKey = 'editor.follow.off'
 /** The safe zones are shown over tall frames only (§2.8). */
-const SAFE_ZONES_TALL = 'Safe zones are shown for tall frames, such as 9:16.'
-/** Every copy error starts so (§2.3). */
-const COPY_FAILED = 'Could not make the copy: '
+const SAFE_ZONES_TALL: MessageKey = 'editor.notice.safeZonesTall'
+/** Every copy error starts so (§2.3): "Could not make the copy: …". */
+const copyFailed = (reason: string): string => t('editor.copy.failed', { reason })
 
 /** A notice in the transport: its text, a button in it (Open original), and whether it is an error (role alert). */
 interface Notice {
@@ -578,7 +578,9 @@ function EditorSession({
       await new Promise<void>((done) => store.whenFree(done))
       const saved = await saver.flush()
       const status = saver.status
-      if (!saved && !window.confirm(`Your latest changes could not be saved${status.state === 'error' ? `:\n${status.message}` : ''}.\n\nLeave the editor anyway?`)) {
+      // Asked through askConfirm (output-and-languages §9.6): window.confirm in English, main's message box in another language.
+      const question = status.state === 'error' ? t('editor.leave.unsavedWhy', { reason: status.message }) : t('editor.leave.unsaved')
+      if (!saved && !(await askConfirm(question, 'editor.leave.action'))) {
         leavingRef.current = false
         setLeaving(false)
         return
@@ -593,7 +595,7 @@ function EditorSession({
     const original = store.state.copyOf
     if (!original || !onOpenProject) return
     const list = await window.api.listProjects().catch(() => null)
-    if (list && !list.some((p) => p.id === original.id)) return showNotice('The original recording is no longer in your library.')
+    if (list && !list.some((p) => p.id === original.id)) return showNotice(t('editor.notice.originalGone'))
     await leave(() => onOpenProject(original.id))
   }, [store, onOpenProject, showNotice, leave])
 
@@ -605,7 +607,7 @@ function EditorSession({
     if (opened.current || !openingNotice) return
     opened.current = true
     const original = store.state.copyOf
-    showNotice(openingNotice, { ms: 12000, ...(original && onOpenProject ? { action: { label: 'Open original', run: () => void openOriginal() } } : {}) })
+    showNotice(openingNotice, { ms: 12000, ...(original && onOpenProject ? { action: { label: t('editor.notice.openOriginal'), run: () => void openOriginal() } } : {}) })
     if (original && store.state.reframe?.mode === 'follow') {
       setTab('style')
       setFollowReveal((n) => n + 1)
@@ -618,7 +620,7 @@ function EditorSession({
   /** Duplicate, Make a vertical version, Make a square version: the copy is made, then opened in place of this project. */
   const makeCopy = useCallback(
     async (kind: CopyKind): Promise<void> => {
-      if (copyAbort.current) return showNotice(`${COPY_FAILED}a copy is already being made.`, { alert: true })
+      if (copyAbort.current) return showNotice(t('editor.copy.busy'), { alert: true })
       // The copy is of the project with the edit of work still holding it (Review mode's Remove all), made now.
       store.finish()
       const p = store.state
@@ -629,12 +631,20 @@ function EditorSession({
       const abort = new AbortController()
       copyAbort.current = abort
       setCopy({ kind, progress: null })
+      // When the save failed, the question is asked here, through askConfirm (output-and-languages §9.6),
+      // so a translated UI can wait for main's message box; runDuplicate's own question, which must
+      // answer at once, then passes that answer on.
+      let makeAnyway = true
       try {
         const made = await runDuplicate(kind, {
           project: store.state,
           stored: data.project,
-          flush: () => saver.flush(),
-          confirm: (message) => window.confirm(message),
+          flush: async () => {
+            if (await saver.flush()) return true
+            if (!abort.signal.aborted) makeAnyway = await askConfirm(t('editor.copy.unsaved'), 'editor.copy.makeAnyway')
+            return false
+          },
+          confirm: () => makeAnyway,
           onProgress: (progress) => setCopy((c) => (c ? { ...c, progress } : c)),
           signal: abort.signal
         })
@@ -647,7 +657,7 @@ function EditorSession({
         else showNotice(made.notice)
       } catch (err) {
         const message = ipcMessage(err)
-        showNotice(message.startsWith(COPY_FAILED) ? message : `${COPY_FAILED}${message}`, { alert: true, ms: 8000 })
+        showNotice(message.startsWith(copyFailed('')) ? message : copyFailed(message), { alert: true, ms: 8000 })
       } finally {
         copyAbort.current = null
         setCopy(null)
@@ -675,7 +685,7 @@ function EditorSession({
       setKeymap(next)
       const stored = Object.keys(keymapOverrides(next)).length ? serializeShortcuts(next) : null
       window.api.setPref('shortcuts', stored).catch((err: unknown) => {
-        showNotice(`Your shortcuts could not be saved: ${(err instanceof Error ? err.message : String(err)).replace(/^Error invoking remote method '[^']+': (Error: )?/, '')}`)
+        showNotice(t('editor.notice.shortcutsNotSaved', { reason: (err instanceof Error ? err.message : String(err)).replace(/^Error invoking remote method '[^']+': (Error: )?/, '') }))
       })
     },
     [showNotice]
@@ -690,15 +700,16 @@ function EditorSession({
   /** Edits to the recorded input: each one store.update (one undo step), with its notice. */
   const input = useMemo((): InputActions => {
     const at = (ms: number): string => fmt.clock(ms / 1000)
-    const range = (r: { start: number; end: number }): string => `${fmt.clock(r.start)} – ${fmt.clock(r.end)}`
+    const range = (r: { start: number; end: number }): string => t('timeline.range', { start: fmt.clock(r.start), end: fmt.clock(r.end) })
     const undo = (): string => undoHint(latest.current.keymap)
     return {
       setIgnored: (keys, ignore) => {
         const before = store.state
         store.update((p) => setClicksIgnored(p, recorded, ignore ? { ignore: keys.map((ms) => ({ ms })) } : { use: keys }))
         if (store.state === before || keys.length === 0) return
-        if (keys.length > 1) showNotice(ignore ? `Ignored ${plural(keys.length, 'click')}${undo()}` : `${plural(keys.length, 'click')} used again`)
-        else showNotice(ignore ? `Click at ${at(keys[0])} ignored: no zoom, effect or sound${undo()}` : `Click at ${at(keys[0])} used again`)
+        const count = { count: keys.length, n: fmt.count(keys.length) }
+        if (keys.length > 1) showNotice(ignore ? `${t('editor.clicks.ignored', count)}${undo()}` : t('editor.clicks.usedAgain', count))
+        else showNotice(ignore ? `${t('editor.clicks.oneIgnored', { time: at(keys[0]) })}${undo()}` : t('editor.clicks.oneUsedAgain', { time: at(keys[0]) }))
       },
       findStray: () => {
         let added = 0
@@ -707,13 +718,13 @@ function EditorSession({
           added = r.added.length
           return r.project
         })
-        showNotice(added ? `Ignored ${plural(added, 'stray click')}${undo()}` : 'No stray clicks found')
+        showNotice(added ? `${t('editor.clicks.strayIgnored', { count: added, n: fmt.count(added) })}${undo()}` : t('editor.clicks.noStray'))
       },
       useAll: () => {
         const n = clickRows(recorded, store.state.inputEdits).filter((r) => r.ignored).length
-        if (!n) return showNotice('No click is ignored')
+        if (!n) return showNotice(t('editor.clicks.noneIgnored'))
         store.update((p) => useAllClicks(p, recorded))
-        showNotice(n === 1 ? 'The ignored click is used again' : `All ${n} ignored clicks are used again`)
+        showNotice(t('editor.clicks.allUsedAgain', { count: n, n: fmt.count(n) }))
       },
       setStraighten: (on) => store.update((p) => setStraighten(p, on)),
       setPathRange: (r, mode) => {
@@ -721,12 +732,12 @@ function EditorSession({
           // Painting a range that straightens nothing would only add an undo step: say why instead.
           const next = setPathRange(store.state, r, 'straight')
           const summary = pathSummary(recorded, next, r)
-          if (!summary.straightened) return showNotice(`No cursor move here can be straightened${keptReasons(summary)}`)
+          if (!summary.straightened) return showNotice(nothingToStraighten(summary))
           store.update((p) => setPathRange(p, r, 'straight'))
-          return showNotice(`Straightened ${plural(summary.straightened, 'cursor move')} in ${range(r)}`)
+          return showNotice(t('editor.path.straightened', { count: summary.straightened, n: fmt.count(summary.straightened), range: range(r) }))
         }
         store.update((p) => setPathRange(p, r, mode))
-        showNotice(mode === 'recorded' ? `Kept the recorded cursor path in ${range(r)}` : `The cursor path in ${range(r)} follows Straighten moves again`)
+        showNotice(mode === 'recorded' ? t('editor.path.keptRecorded', { range: range(r) }) : t('editor.path.followsStraighten', { range: range(r) }))
       },
       selectClick: (ms) => {
         setSelection({ kind: 'click', ms })
@@ -747,17 +758,17 @@ function EditorSession({
 
     // Zooms and text go on the frame the preview shows at `t` (in a cut, the next kept one), like
     // shapes (playheadItems.ts): placed at a cut's source time they would never be seen.
-    const addZoomAt = (t: number, lead: number): void => {
+    const addZoomAt = (at: number, lead: number): void => {
       const p = store.state
-      const r = insertZoom(p.zooms, displayTime(p.clips, t), p.duration, { lead, focus: newZoomFocus(), scale: zoomSettingsOf(p).defaultScale })
+      const r = insertZoom(p.zooms, displayTime(p.clips, at), p.duration, { lead, focus: newZoomFocus(), scale: zoomSettingsOf(p).defaultScale })
       if (r.ok) {
         store.update((q) => ({ ...q, zooms: r.zooms }))
         setSelection({ kind: 'zoom', id: r.id })
       } else if (r.reason === 'inside') {
         setSelection({ kind: 'zoom', id: r.id })
-        showNotice('There is already a zoom here, so it is selected instead')
+        showNotice(t('editor.notice.zoomHere'))
       } else {
-        showNotice('No room for a new zoom here: move the playhead to free space or shorten a zoom')
+        showNotice(t('editor.notice.noRoomToAddZoom'))
       }
     }
 
@@ -775,7 +786,7 @@ function EditorSession({
 
     const deleteClip = (id: string): void => {
       if (store.state.clips.length <= 1) {
-        showNotice('The last clip cannot be removed')
+        showNotice(t('editor.notice.lastClip'))
         return
       }
       store.update((p) => ({ ...p, clips: removeClip(p.clips, id) }))
@@ -786,11 +797,11 @@ function EditorSession({
       const p = store.state
       const next = cutRange(p.clips, start, end)
       if (next === p.clips) {
-        showNotice('Part of the recording has to stay in the video')
+        showNotice(t('editor.notice.keepSome'))
         return
       }
       if (Math.abs(outputDuration(next) - outputDuration(p.clips)) < 1e-6) {
-        showNotice('That range is already cut')
+        showNotice(t('editor.notice.alreadyCut'))
         return
       }
       store.update((q) => ({ ...q, clips: next }))
@@ -803,17 +814,17 @@ function EditorSession({
       if (group.keys.length >= 2) {
         // E-06: every selected zoom (made yours, as one edit).
         const zooms = group.keys.filter((k) => k.startsWith('zoom:'))
-        if (!zooms.length) return showNotice('No zoom is selected')
+        if (!zooms.length) return showNotice(t('editor.notice.noZoomSelected'))
         const ctx: FieldCtx = { crop: cropOf(store.state), cursorValid: cursor.valid, style: zoomStyleOf(store.state), background: store.state.style.background }
         store.update((q) => applyField(q, GROUP_FIELDS.find((f) => f.id === 'zoom.level')!, zooms, level, ctx).project)
-        return showNotice(`Zoom level ${fmt.factor(level)} for ${countOf(zooms.length, 'zoom')}`)
+        return showNotice(t('editor.notice.zoomLevelFor', { level: fmt.factor(level), count: zooms.length, n: fmt.count(zooms.length) }))
       }
       const sel = latest.current.selection
       const p = store.state
       const z = sel?.kind === 'zoom' ? p.zooms.find((x) => x.id === sel.id) : zoomAt(p.zooms, player.time)
       if (!z) {
         const keys = zoomLevelKeysHint(latest.current.keymap)
-        showNotice(keys ? `Select a zoom first: ${keys}` : 'Select a zoom first')
+        showNotice(keys ? t('editor.notice.selectZoomKeys', { keys }) : t('editor.reason.selectZoom'))
         return
       }
       store.update((q) => ({ ...q, zooms: q.zooms.map((x) => (x.id === z.id ? setZoomLevelInView(cropOf(q), x, level) : x)) }))
@@ -826,13 +837,13 @@ function EditorSession({
       const c = next ? nextChapter(chapters, player.time, clips) : previousChapter(chapters, player.time, clips)
       if (c) return player.seek(c.t)
       const key = latest.current.keymap.addChapter[0]
-      if (chapters.length) showNotice(next ? 'There is no chapter after the playhead' : 'There is no chapter before the playhead')
-      else showNotice(`This video has no chapters yet${key ? `: press ${shortcutLabel(key)} to add one at the playhead` : ''}`)
+      if (chapters.length) showNotice(next ? t('editor.notice.noChapterAfter') : t('editor.notice.noChapterBefore'))
+      else showNotice(key ? t('editor.notice.noChaptersKey', { keys: shortcutLabel(key) }) : t('editor.notice.noChapters'))
     }
 
     /** Camera layout commands: the layout at the playhead (a new layout segment, or the one there changes). */
     const setLayout = (layout: CameraLayout): void => {
-      if (!data.webcamUrl) return showNotice('This recording has no camera')
+      if (!data.webcamUrl) return showNotice(t('editor.reason.noCamera'))
       const r = setLayoutAt(store.state, layout, player.time)
       if (!r.ok) {
         if (r.id) setSelection({ kind: 'layout', id: r.id })
@@ -862,13 +873,13 @@ function EditorSession({
       goToChapter,
       setLayout,
       split: (): void => {
-        const t = player.time
+        const at = player.time
         const clips = store.state.clips
-        if (!canSplitAt(clips, t)) {
-          showNotice(clipAt(clips, t) ? 'Too close to the edge of a clip to split' : 'The playhead is in a cut: move it onto a clip to split')
+        if (!canSplitAt(clips, at)) {
+          showNotice(clipAt(clips, at) ? t('editor.reason.splitEdge') : t('editor.notice.splitInCut'))
           return
         }
-        store.update((p) => ({ ...p, clips: splitAt(p.clips, t) }))
+        store.update((p) => ({ ...p, clips: splitAt(p.clips, at) }))
       },
       deleteClip,
       cut,
@@ -883,13 +894,13 @@ function EditorSession({
           if (c.length === 1 && c[0].start === 0 && c[0].end === p.duration && c[0].speed === 1) return p
           return { ...p, clips: [{ id: c[0].id, start: 0, end: p.duration, speed: 1 }] }
         })
-        if (store.state === before) showNotice('Nothing is cut, trimmed or re-timed')
+        if (store.state === before) showNotice(t('editor.reason.nothingCut'))
         else setSelection(null)
       },
       cutSelectedRange: (): void => {
         const sel = latest.current.selection
         if (sel?.kind === 'range') cut(sel.start, sel.end)
-        else showNotice('Select a range first: Shift+drag on the clip track')
+        else showNotice(t('editor.reason.selectRange'))
       },
       deleteSelection: (): void => {
         // The panel that had the keyboard may go with what it showed (§5.2).
@@ -920,18 +931,18 @@ function EditorSession({
         else if (sel.kind === 'click') {
           // Delete on a click ignores it; the click stays selected, so the Zoom panel shows its new state.
           const row = clickRows(recorded, store.state.inputEdits).find((r) => r.ms === sel.ms)
-          if (row?.ignored) return showNotice('This click is already ignored: use it again in the Zoom panel')
+          if (row?.ignored) return showNotice(t('editor.clicks.alreadyIgnored'))
           return input.setIgnored([sel.ms], true)
         } else return
         setSelection(null)
       },
       undo: (): void => {
         setCropDraft(null)
-        if (!store.undo()) showNotice('Nothing to undo')
+        if (!store.undo()) showNotice(t('editor.reason.nothingToUndo'))
       },
       redo: (): void => {
         setCropDraft(null)
-        if (!store.redo()) showNotice('Nothing to redo')
+        if (!store.redo()) showNotice(t('editor.reason.nothingToRedo'))
       },
       step: (delta: number): void => player.seek(stepOutput(store.state.clips, player.time, delta)),
       goToStart: (): void => player.seek(keptBounds(store.state.clips).start),
@@ -1007,13 +1018,13 @@ function EditorSession({
         if (draft) apply(draft.rect)
       },
       reset: (): void => {
-        if (!cropOf(store.state)) return showNotice('The recording is not cropped')
+        if (!cropOf(store.state)) return showNotice(t('editor.reason.notCropped'))
         apply(null)
       },
       taskbar: (): void => {
         const r = withoutTaskbar(cropOf(store.state) ?? FULL_FRAME)
-        if (!r) return showNotice('This recording does not show the taskbar')
-        if (!apply(r)) showNotice('The taskbar is already cropped out')
+        if (!r) return showNotice(t('editor.reason.noTaskbar'))
+        if (!apply(r)) showNotice(t('editor.notice.taskbarCropped'))
       },
       withoutTaskbar
     }
@@ -1043,7 +1054,7 @@ function EditorSession({
   /** What the Paste items key (Ctrl+V) runs: a newer clipboard image first (set with the commands). */
   const pasteKeyRef = useRef<() => void>(() => {})
   const commands = useMemo((): Record<CommandId, () => void> => {
-    const turned = (what: string, on: boolean): void => showNotice(`${what} ${on ? 'on' : 'off'}`)
+    const turned = (what: string, on: boolean): void => showNotice(t(on ? 'editor.notice.turnedOn' : 'editor.notice.turnedOff', { what }))
     const level = (key: string) => (): void => actions.setZoomLevelKey(ZOOM_LEVEL_PRESETS.find((p) => p.key === key)!.value)
     /** Shows an Inspector tab. Review covers the Inspector, so it closes first (the focus, when it goes with it, then goes to its button). */
     const reveal = (t: InspectorTab): void => {
@@ -1052,7 +1063,7 @@ function EditorSession({
     }
     const showTab = (t: InspectorTab) => (): void => reveal(t)
     const aiTool = (task: CaptionsAiTask) => (): void => {
-      if (!store.state.transcript?.segments.length) return showNotice('This video has no captions yet: generate them in the Captions tab')
+      if (!store.state.transcript?.segments.length) return showNotice(t('editor.notice.noCaptions'))
       reveal('captions')
       requestCaptions({ kind: 'ai', task })
     }
@@ -1071,14 +1082,14 @@ function EditorSession({
     const pathRangeCommand = (mode: PathMode): void => {
       const sel = latest.current.selection
       if (!cursor.valid) return showNotice(noCursorText(store.state))
-      if (store.state.capture.cursorInVideo) return showNotice('The recorded cursor is in the video')
-      if (sel?.kind !== 'range') return showNotice('Select a range first: Shift+drag on the clip track')
+      if (store.state.capture.cursorInVideo) return showNotice(t('editor.reason.cursorInVideo'))
+      if (sel?.kind !== 'range') return showNotice(t('editor.reason.selectRange'))
       input.setPathRange(sel, mode)
     }
     /** J, K and L: a frame step instead while K is held. */
     const shuttle = (key: ShuttleKey): void => {
       const held = pauseHeld.current !== null
-      if (key === 'reverse' && !held && !player.reversing && atOutputStart(store.state.clips, player.time)) return showNotice('At the start: nothing to play backwards')
+      if (key === 'reverse' && !held && !player.reversing && atOutputStart(store.state.clips, player.time)) return showNotice(t('editor.notice.atStart'))
       const { frameStep } = player.shuttle(key, held)
       if (frameStep) actions.step(frameStep / 30)
     }
@@ -1091,7 +1102,6 @@ function EditorSession({
       const k = groupKeyOf(L.selection)
       return k ? [k] : []
     }
-    const what = 'zooms, text, shapes, spotlights, title cards, chapters and freeze frames'
     const undo = (): string => undoHint(latest.current.keymap)
     const keyLabel = (id: CommandId): string => {
       const k = commandKeys(latest.current.keymap, id)[0]
@@ -1104,7 +1114,7 @@ function EditorSession({
       showNotice(pasteNotice(r, total, verb))
     }
     const selectAll = (): void => {
-      if (cropRef.current) return showNotice('Close the crop tool first')
+      if (cropRef.current) return showNotice(t('editor.reason.closeCrop'))
       const L = latest.current
       const items = projectItems(store.state)
       const anchor = L.group.anchor ?? groupKeyOf(L.selection)
@@ -1121,7 +1131,7 @@ function EditorSession({
     const copySelected = (): ItemKey[] | null => {
       const keys = selectedKeys()
       if (!keys.length) {
-        showNotice(latest.current.selection ? `Ctrl+C copies ${what}` : 'Select items to copy')
+        showNotice(latest.current.selection ? t('editor.items.copyWhat') : t('editor.reason.selectToCopy'))
         return null
       }
       const clip = copyGroupItems(store.state, keys)
@@ -1132,13 +1142,14 @@ function EditorSession({
     }
     const copySelectedItems = (): void => {
       const keys = copySelected()
-      if (keys) showNotice(`Copied ${keys.length} item${keys.length === 1 ? '' : 's'}`)
+      if (keys) showNotice(t('editor.items.copied', { count: keys.length, n: fmt.count(keys.length) }))
     }
     const cutSelectedItems = (): void => {
       const sel = latest.current.selection
       if (!selectedKeys().length) {
-        if (sel?.kind === 'clip' || sel?.kind === 'gap' || sel?.kind === 'range') return showNotice(`To cut part of the recording, press ${keyLabel('deleteSelection') || 'Delete'}`)
-        return showNotice(sel ? `Ctrl+X cuts ${what}` : 'Select items to cut')
+        // The Delete key's name when the command has no shortcut: a keycap, as shortcutLabel writes it.
+        if (sel?.kind === 'clip' || sel?.kind === 'gap' || sel?.kind === 'range') return showNotice(t('editor.items.cutRecording', { keys: keyLabel('deleteSelection') || shortcutLabel('Delete') }))
+        return showNotice(sel ? t('editor.items.cutWhat') : t('editor.reason.selectToCut'))
       }
       const keys = copySelected()
       if (!keys) return
@@ -1148,7 +1159,7 @@ function EditorSession({
       showNotice(removedNotice('Cut', keys.length, undo()))
     }
     const pasteItemsNow = (): void => {
-      if (cropRef.current) return showNotice('Close the crop tool first')
+      if (cropRef.current) return showNotice(t('editor.reason.closeCrop'))
       const clip = itemClipboard.get()
       if (!clip) return showNotice(nothingCopiedNotice(keyLabel('copyItems') || null))
       let r: PasteResult | null = null
@@ -1158,55 +1169,55 @@ function EditorSession({
     // The key only: an image on the system clipboard that is newer than the copied items is added as
     // an image (brand kit, NW-12). The palette's "Paste items at playhead" always pastes the items.
     const pasteClipboard = (): void => {
-      if (cropRef.current) return showNotice('Close the crop tool first')
+      if (cropRef.current) return showNotice(t('editor.reason.closeCrop'))
       void pasteClipboardImage({ store, player }, { onSelect: setSelection }, !!itemClipboard.get()).then(
-        (o) => (o ? showNotice(`Added ${o.name ?? 'the pasted image'} at the playhead`) : pasteItemsNow()),
+        (o) => (o ? showNotice(o.name !== undefined ? t('editor.items.addedNamed', { name: o.name }) : t('editor.items.addedImage')) : pasteItemsNow()),
         (err: unknown) => showNotice(ipcMessage(err))
       )
     }
     pasteKeyRef.current = pasteClipboard
     const duplicateSelected = (): void => {
-      if (cropRef.current) return showNotice('Close the crop tool first')
+      if (cropRef.current) return showNotice(t('editor.reason.closeCrop'))
       const keys = selectedKeys()
-      if (!keys.length) return showNotice(latest.current.selection ? `Ctrl+D duplicates ${what}` : 'Select items to duplicate')
+      if (!keys.length) return showNotice(latest.current.selection ? t('editor.items.duplicateWhat') : t('editor.reason.selectToDuplicate'))
       let r: PasteResult | null = null
       store.update((p) => (r = duplicateGroupItems(p, keys)).project)
       if (r) pasted(r, keys.length, 'Duplicated')
     }
     const copyItemLook = (): void => {
       const L = latest.current
-      if (L.group.keys.length >= 2) return showNotice('Select one item to copy its look')
+      if (L.group.keys.length >= 2) return showNotice(t('editor.reason.copyLookOne'))
       const k = groupKeyOf(L.selection)
-      if (!k) return showNotice(L.selection ? 'This item has no look to copy' : 'Select an item to copy its look')
-      if (k.startsWith('chapter:')) return showNotice('Chapters have no look to copy')
+      if (!k) return showNotice(L.selection ? t('editor.copyLook.none') : t('editor.reason.copyLookSelect'))
+      if (k.startsWith('chapter:')) return showNotice(t('editor.copyLook.chapters'))
       const look = copyLook(store.state, k, fieldCtx())
       if (!look) return
       lookClipboard.set(look)
-      showNotice(`Copied the ${look.label.toLowerCase()} look`)
+      showNotice(t('editor.copyLook.copied', { name: fmt.inSentence(look.label) }))
     }
     const pasteItemLook = (): void => {
-      if (cropRef.current) return showNotice('Close the crop tool first')
+      if (cropRef.current) return showNotice(t('editor.reason.closeCrop'))
       const look = lookClipboard.get()
       if (!look) return showNotice(copyLookFirst(keyLabel('copyLook') || null))
       const keys = selectedKeys()
-      const name = look.label.toLowerCase()
-      if (!keys.length) return showNotice(`Select items to paste the ${name} look onto`)
+      const name = fmt.inSentence(look.label)
+      if (!keys.length) return showNotice(t('editor.pasteLook.select', { name }))
       const before = store.state
       let r: ReturnType<typeof pasteLook> | null = null
       store.update((p) => (r = pasteLook(p, keys, look, fieldCtx())).project)
       const done = r as ReturnType<typeof pasteLook> | null
-      if (!done || done.applied === 0) return showNotice(`Nothing to paste the ${name} look onto`)
-      if (store.state === before) return showNotice('Already has this look')
+      if (!done || done.applied === 0) return showNotice(t('editor.pasteLook.nothing', { name }))
+      if (store.state === before) return showNotice(t('editor.pasteLook.already'))
       const [one, many] = LOOK_CLASS_WORDS[look.cls]
-      const others = done.other ? ` · ${done.other === 1 ? `1 item is not a ${one}` : `${done.other} items are not ${many}`}, left as they were` : ''
-      showNotice(`Pasted the ${name} look onto ${done.applied} ${done.applied === 1 ? one : many}${others}`)
+      const pasted = { name, one, many, count: done.applied, n: fmt.count(done.applied) }
+      showNotice(done.other ? t('editor.pasteLook.pastedOthers', { ...pasted, others: done.other, o: fmt.count(done.other) }) : t('editor.pasteLook.pasted', pasted))
     }
     /** Freeze sound on a group: every selected freeze goes to the opposite of the anchor's (or the first one's). */
     const toggleGroupFreezeSound = (): void => {
       const group = latest.current.group
       if (group.keys.length < 2) return actions.toggleFreezeSound()
       const freezes = group.keys.filter((k) => k.startsWith('freeze:'))
-      if (!freezes.length) return showNotice('No freeze frame is selected')
+      if (!freezes.length) return showNotice(t('editor.freeze.noneSelected'))
       const lead = group.anchor?.startsWith('freeze:') ? group.anchor : freezes[0]
       const f = store.state.freezes?.find((x) => `freeze:${x.id}` === lead)
       if (!f) return
@@ -1217,23 +1228,23 @@ function EditorSession({
         refused = r.refused
         return r.project
       })
-      const n = countOf(freezes.length, 'freeze')
-      const kept = refused ? ` · ${countOf(refused, 'freeze')} at the end ${refused === 1 ? 'keeps' : 'keep'} pausing the sound` : ''
-      showNotice(sound === 'pause' ? `${n}: the recording waits with its sound paused` : `${n}: the sound keeps playing${kept}`)
+      const n = { count: freezes.length, n: fmt.count(freezes.length) }
+      if (sound === 'pause') showNotice(t('editor.freeze.paused', n))
+      else showNotice(refused ? t('editor.freeze.playingSomeKept', { ...n, refused, r: fmt.count(refused) }) : t('editor.freeze.playing', n))
     }
 
     /** > and <: the next preview speed (nothing is written to the project). */
     const previewSpeed = (step: 1 | -1): void => {
       const next = nextPreviewSpeed(player.previewSpeed, step)
-      if (next === null) return showNotice(`The preview already plays at its ${step > 0 ? 'fastest' : 'slowest'} speed (${fmt.factor(player.previewSpeed)})`)
+      if (next === null) return showNotice(t(step > 0 ? 'editor.speed.fastest' : 'editor.speed.slowest', { speed: fmt.factor(player.previewSpeed) }))
       player.setPreviewSpeed(next)
-      showNotice(`Preview speed ${fmt.factor(next)} (the export is not affected)`)
+      showNotice(t('editor.speed.set', { speed: fmt.factor(next) }))
     }
     /** E-09: the selected items by `frames` frames (one undo step per run of presses). */
     const nudge = (frames: number): void => {
-      if (cropRef.current) return showNotice('Close the crop tool first')
+      if (cropRef.current) return showNotice(t('editor.reason.closeCrop'))
       const keys = selectedKeys()
-      if (!keys.length) return showNotice(`Select ${what} to move them`)
+      if (!keys.length) return showNotice(t('editor.items.selectToMove'))
       nudgeSelected(store, keys, frames, showNotice)
     }
     return {
@@ -1268,7 +1279,7 @@ function EditorSession({
       addSpotlight: () => actions.addSpotlight('region'),
       addCursorSpotlight: () => {
         if (cursor.valid) actions.addSpotlight('cursor')
-        else showNotice(`${noCursorText(store.state)}: add a spotlight on an area instead`)
+        else showNotice(t('editor.notice.noCursorSpotlight', { reason: noCursorText(store.state) }))
       },
       addTitle: actions.addTitle,
       addChapter: actions.addChapter,
@@ -1290,22 +1301,22 @@ function EditorSession({
       zoomLevel4: level('4'),
       toggleCursor: () => {
         const p = store.state
-        if (!cursor.valid || p.capture.cursorInVideo) return showNotice(cursor.valid ? 'The recorded cursor is already in the video' : noCursorText(store.state))
+        if (!cursor.valid || p.capture.cursorInVideo) return showNotice(cursor.valid ? t('editor.reason.cursorAlreadyInVideo') : noCursorText(store.state))
         store.update((q) => ({ ...q, cursor: { ...q.cursor, show: !p.cursor.show } }))
-        turned('Smooth cursor', !p.cursor.show)
+        turned(commandTitle('toggleCursor'), !p.cursor.show)
       },
       toggleClickEffects: () => {
         const p = store.state
         if (!cursor.valid) return showNotice(noCursorText(store.state))
         store.update((q) => ({ ...q, cursor: { ...q.cursor, clickEffect: !p.cursor.clickEffect } }))
-        turned('Click effects', !p.cursor.clickEffect)
+        turned(commandTitle('toggleClickEffects'), !p.cursor.clickEffect)
       },
       toggleStraighten: () => {
         const p = store.state
-        if (!cursor.valid || p.capture.cursorInVideo) return showNotice(cursor.valid ? 'The recorded cursor is in the video' : noCursorText(store.state))
+        if (!cursor.valid || p.capture.cursorInVideo) return showNotice(cursor.valid ? t('editor.reason.cursorInVideo') : noCursorText(store.state))
         const on = !p.inputEdits?.straighten
         input.setStraighten(on)
-        turned('Straighten moves', on)
+        turned(t('editor.toggle.straighten'), on)
       },
       straightenRange: () => pathRangeCommand('straight'),
       recordedPathRange: () => pathRangeCommand('recorded'),
@@ -1313,7 +1324,7 @@ function EditorSession({
         if (!recorded.valid) return showNotice(noCursorText(store.state))
         const p = store.state
         const row = clickAtPlayhead(clickRows(recorded, p.inputEdits), p.zooms, player.time)
-        if (!row) return showNotice('No click near the playhead')
+        if (!row) return showNotice(t('editor.clicks.noneNear'))
         input.setIgnored([row.ms], !row.ignored)
       },
       findStrayClicks: () => {
@@ -1329,31 +1340,31 @@ function EditorSession({
         if (was > 0) lastMotionBlur.current = was
         const next = was > 0 ? 0 : lastMotionBlur.current
         store.update((q) => ({ ...q, effects: { ...q.effects, motionBlur: next } }))
-        turned('Motion blur', next > 0)
+        turned(commandTitle('toggleMotionBlur'), next > 0)
       },
       toggleKeystrokes: () => {
         const on = !store.state.effects.keystrokes.show
         store.update((q) => ({ ...q, effects: { ...q.effects, keystrokes: { ...q.effects.keystrokes, show: on } } }))
-        turned('Keystroke overlay', on)
+        turned(commandTitle('toggleKeystrokes'), on)
       },
       toggleWebcam: () => {
-        if (!data.webcamUrl) return showNotice('This recording has no camera')
+        if (!data.webcamUrl) return showNotice(t('editor.reason.noCamera'))
         const on = !store.state.webcam.show
         store.update((q) => ({ ...q, webcam: { ...q.webcam, show: on } }))
-        turned('Camera', on)
+        turned(t('common.label.camera'), on)
       },
       generateCaptions: () => {
         reveal('captions')
         requestCaptions({ kind: 'generate' })
       },
       toggleCaptions: () => {
-        if (!store.state.transcript?.segments.length) return showNotice('This video has no captions yet: generate them in the Captions tab')
+        if (!store.state.transcript?.segments.length) return showNotice(t('editor.notice.noCaptions'))
         const on = !captionsOf(store.state).show
         store.update((q) => ({ ...q, captions: { ...captionsOf(q), show: on } }))
-        turned('Captions', on)
+        turned(t('common.label.captions'), on)
       },
       exportCaptions: () => {
-        if (!store.state.transcript?.segments.length) return showNotice('This video has no captions yet: generate them in the Captions tab')
+        if (!store.state.transcript?.segments.length) return showNotice(t('editor.notice.noCaptions'))
         reveal('captions')
         requestCaptions({ kind: 'export' })
       },
@@ -1419,7 +1430,7 @@ function EditorSession({
       toggleFilmstrip: () => {
         const on = !filmstripShown()
         setFilmstripShown(on)
-        turned('Frames on the clip track', on)
+        turned(commandTitle('toggleFilmstrip'), on)
       },
       saveVersion: () => setDialog('saveVersion'),
       versions: () => setDialog('versions'),
@@ -1441,7 +1452,7 @@ function EditorSession({
         reveal('shapes')
       },
       addMagnifierCursor: () => {
-        if (!cursor.valid) return showNotice(`${noCursorText(store.state)}: add a magnifier on a place instead`)
+        if (!cursor.valid) return showNotice(t('editor.notice.noCursorMagnifier', { reason: noCursorText(store.state) }))
         addMagnifierAt({ store, player }, 'cursor', cursor, { onSelect: setSelection })
         reveal('shapes')
       },
@@ -1451,10 +1462,10 @@ function EditorSession({
       toggleProgressBar: () => {
         const on = store.state.chapterBar?.show !== true
         store.update((p) => withChapterBar(p, { show: on }))
-        turned('Progress bar', on)
+        turned(t('editor.toggle.progressBar'), on)
       },
       // Part P4, colour (§2.5): Compare is the preview's alone (never saved, never exported); Auto colour is one update.
-      compareColour: () => turned('Compare with original colour', toggleCompare(player)),
+      compareColour: () => turned(commandTitle('compareColour'), toggleCompare(player)),
       autoColour: () => {
         reveal('camera')
         void startAutoColour({ store, webcamUrl: data.webcamUrl, notice: showNotice })
@@ -1463,14 +1474,14 @@ function EditorSession({
 
       // E-04 waveform: a view preference, so not an undo step (like the timeline zoom)
       toggleWaveform: () => {
-        if (!store.state.hasAudio) return showNotice('This recording has no sound')
+        if (!store.state.hasAudio) return showNotice(t('editor.reason.noSound'))
         const on = !waveformShown()
         setWaveformShown(on)
-        turned('Audio waveform', on)
+        turned(t('editor.toggle.waveform'), on)
       },
 
       // E-05 snapping: an editor preference, not an edit (no undo step)
-      toggleSnapping: () => turned('Snapping', snapPref.toggle()),
+      toggleSnapping: () => turned(commandTitle('toggleSnapping'), snapPref.toggle()),
 
       // E-08 shuttle and preview speed
       shuttleReverse: () => shuttle('reverse'),
@@ -1487,7 +1498,7 @@ function EditorSession({
         if (!draft) return cropActions.taskbar()
         const rect = cropActions.withoutTaskbar(draft.rect)
         if (rect) setCropDraft({ rect, aspect: 'free' })
-        else showNotice('This recording does not show the taskbar')
+        else showNotice(t('editor.reason.noTaskbar'))
       },
 
       // E-11 freeze frame
@@ -1511,23 +1522,23 @@ function EditorSession({
       toggleFollow: () => {
         const p = store.state
         const { vw, vh } = editorFrame(p)
-        if (!canFollow(p.style.aspectRatio, vw, vh)) return showNotice(FOLLOW_UNAVAILABLE)
+        if (!canFollow(p.style.aspectRatio, vw, vh)) return showNotice(t(FOLLOW_UNAVAILABLE))
         const on = p.reframe?.mode !== 'follow'
         store.update((q) => withFollowing(q, on, vw, vh))
-        turned('Follow the action', on)
+        turned(commandTitle('toggleFollow'), on)
       },
       // A 1× zoom with a fixed point where the view is now (or the zoom there fixed), selected (§2.6).
       holdView: () => {
         const p = store.state
         const { vw, vh } = editorFrame(p)
-        if (!followsAction(p)) return showNotice(canFollow(p.style.aspectRatio, vw, vh) ? FOLLOW_OFF : FOLLOW_UNAVAILABLE)
-        if (cropRef.current) return showNotice('Close the crop tool first')
+        if (!followsAction(p)) return showNotice(t(canFollow(p.style.aspectRatio, vw, vh) ? FOLLOW_OFF : FOLLOW_UNAVAILABLE))
+        if (cropRef.current) return showNotice(t('editor.reason.closeCrop'))
         const sc = sceneRef.current
-        const t = displayTime(p.clips, player.time)
+        const at = displayTime(p.clips, player.time)
         const frame = outputSize(sc.project.style.aspectRatio, sc.project.width, sc.project.height, 1080)
-        const { cam } = frameView(sc, frame.width, frame.height, sc.project.width, sc.project.height, t)
-        const r = holdViewAt(p, t, { x: cam.cx, y: cam.cy }, cropOf(p))
-        if (!r.project) return showNotice('There is no room for a new zoom here.')
+        const { cam } = frameView(sc, frame.width, frame.height, sc.project.width, sc.project.height, at)
+        const r = holdViewAt(p, at, { x: cam.cx, y: cam.cy }, cropOf(p))
+        if (!r.project) return showNotice(t('editor.notice.noRoomForZoom'))
         const next = r.project
         store.update(() => next)
         // Selecting the zoom shows the Zoom tab: focus on the Style tab's button or toggle goes to the tab rail, not the page.
@@ -1536,9 +1547,9 @@ function EditorSession({
       },
       toggleSafeZones: () => {
         const { outW, outH } = editorFrame(store.state)
-        if (!isTall(outW, outH)) return showNotice(SAFE_ZONES_TALL)
+        if (!isTall(outW, outH)) return showNotice(t(SAFE_ZONES_TALL))
         toggleSafeZoneChoice()
-        turned('Safe zones', safeZoneChoice() !== 'off')
+        turned(t('timeline.safeZones.button'), safeZoneChoice() !== 'off')
       },
 
       // NW-13 publishing copy pack: the Captions tab's AI tools run there; the pack's items open Publish.
@@ -1583,7 +1594,7 @@ function EditorSession({
       setReviewOpen(false)
       // Files gone, and images a later pick wrote over (the version shows today's).
       const gone = [missingFilesNotice(missing), changedFilesNotice(changed)].filter(Boolean).join(' ')
-      showNotice(`Opened “${meta.name}”. Your edit before it is kept as a version${undoHint(keymap)}${gone ? ` · ${gone}` : ''}`, { ms: 8000 })
+      showNotice(`${t('editor.notice.versionOpened', { name: meta.name })}${undoHint(keymap)}${gone ? ` · ${gone}` : ''}`, { ms: 8000 })
     },
     [store, setSelection, showNotice, keymap]
   )
@@ -1596,75 +1607,76 @@ function EditorSession({
   const paletteEntries = useMemo((): PaletteEntry[] => {
     if (dialog !== 'palette') return []
     const p = project
-    const t = player.time
+    const at = player.time
     const noCursor = noCursorText(p)
     const smoothCursor = cursor.valid && !p.capture.cursorInVideo
-    const zoomTarget = selection?.kind === 'zoom' || !!zoomAt(p.zooms, t)
+    const zoomTarget = selection?.kind === 'zoom' || !!zoomAt(p.zooms, at)
     const edited = p.clips.length > 1 || p.clips[0].start > 0 || p.clips[0].end < p.duration || p.clips[0].speed !== 1
-    const freezeRefused = freezeRefusal(p, t)?.refused
+    const freezeRefused = freezeRefusal(p, at)?.refused
+    const noCaptions = p.transcript?.segments.length ? null : t('editor.reason.noCaptions')
     const unavailable: Partial<Record<CommandId, string | null>> = {
-      undo: store.canUndo ? null : 'Nothing to undo',
-      redo: store.canRedo ? null : 'Nothing to redo',
-      split: canSplitAt(p.clips, t) ? null : clipAt(p.clips, t) ? 'Too close to the edge of a clip to split' : 'The playhead is in a cut',
-      deleteSelection: (selection && selection.kind !== 'gap') || group.keys.length >= 2 ? null : 'Select something on the timeline first',
-      cutRange: selection?.kind === 'range' ? null : 'Select a range first: Shift+drag on the clip track',
-      restoreAll: edited ? null : 'Nothing is cut, trimmed or re-timed',
+      undo: store.canUndo ? null : t('editor.reason.nothingToUndo'),
+      redo: store.canRedo ? null : t('editor.reason.nothingToRedo'),
+      split: canSplitAt(p.clips, at) ? null : clipAt(p.clips, at) ? t('editor.reason.splitEdge') : t('editor.reason.inCut'),
+      deleteSelection: (selection && selection.kind !== 'gap') || group.keys.length >= 2 ? null : t('editor.reason.selectSomething'),
+      cutRange: selection?.kind === 'range' ? null : t('editor.reason.selectRange'),
+      restoreAll: edited ? null : t('editor.reason.nothingCut'),
       addCursorSpotlight: cursor.valid ? null : noCursor,
       addMagnifierCursor: cursor.valid ? null : noCursor,
-      toggleCursor: smoothCursor ? null : cursor.valid ? 'The recorded cursor is already in the video' : noCursor,
+      toggleCursor: smoothCursor ? null : cursor.valid ? t('editor.reason.cursorAlreadyInVideo') : noCursor,
       toggleClickEffects: cursor.valid ? null : noCursor,
-      toggleWebcam: data.webcamUrl ? null : 'This recording has no camera',
+      toggleWebcam: data.webcamUrl ? null : t('editor.reason.noCamera'),
       directCamera: directUnavailable(!!data.webcamUrl, p.webcam.show),
-      nextChapter: nextChapter(p.chapters ?? [], t, p.clips) ? null : p.chapters?.length ? 'No chapter after the playhead' : 'No chapters yet',
-      prevChapter: previousChapter(p.chapters ?? [], t, p.clips) ? null : p.chapters?.length ? 'No chapter before the playhead' : 'No chapters yet',
-      toggleCaptions: p.transcript?.segments.length ? null : 'No captions yet',
-      exportCaptions: p.transcript?.segments.length ? null : 'No captions yet',
+      nextChapter: nextChapter(p.chapters ?? [], at, p.clips) ? null : p.chapters?.length ? t('editor.reason.noChapterAfter') : t('editor.reason.noChapters'),
+      prevChapter: previousChapter(p.chapters ?? [], at, p.clips) ? null : p.chapters?.length ? t('editor.reason.noChapterBefore') : t('editor.reason.noChapters'),
+      toggleCaptions: noCaptions,
+      exportCaptions: noCaptions,
       // NW-13: the Captions tab's AI tools need captions (the Publish dialog says what to do without them).
-      ...Object.fromEntries((['aiCleanup', 'aiTranslate', 'aiChapters', 'aiTitle', 'aiSummary'] as const).map((k) => [k, p.transcript?.segments.length ? null : 'No captions yet'])),
-      captionsGreat: p.transcript?.segments.length ? null : 'No captions yet',
-      captionStyles: p.transcript?.segments.length ? null : 'No captions yet',
-      captionEmphasis: p.transcript?.segments.length ? null : 'No captions yet',
-      captionGraphics: p.transcript?.segments.length ? null : 'No captions yet',
-      captionTidy: p.transcript?.segments.length ? null : 'No captions yet',
-      captionLanguage: p.transcript?.segments.length ? null : 'No captions yet',
-      saveCaptionStyle: p.transcript?.segments.length ? null : 'No captions yet',
+      ...Object.fromEntries((['aiCleanup', 'aiTranslate', 'aiChapters', 'aiTitle', 'aiSummary'] as const).map((k) => [k, noCaptions])),
+      captionsGreat: noCaptions,
+      captionStyles: noCaptions,
+      captionEmphasis: noCaptions,
+      captionGraphics: noCaptions,
+      captionTidy: noCaptions,
+      captionLanguage: noCaptions,
+      saveCaptionStyle: noCaptions,
       toggleClickAtPlayhead: cursor.valid ? null : noCursor,
       findStrayClicks: cursor.valid ? null : noCursor,
-      useAllClicks: !cursor.valid ? noCursor : rows.some((r) => r.ignored) ? null : 'No click is ignored',
-      toggleStraighten: smoothCursor ? null : cursor.valid ? 'The recorded cursor is in the video' : noCursor,
+      useAllClicks: !cursor.valid ? noCursor : rows.some((r) => r.ignored) ? null : t('editor.clicks.noneIgnored'),
+      toggleStraighten: smoothCursor ? null : cursor.valid ? t('editor.reason.cursorInVideo') : noCursor,
       freezeFrame: freezeRefused ? FREEZE_REFUSAL_TEXT[freezeRefused] : null,
-      toggleFreezeSound: (group.keys.length >= 2 ? group.keys.some((k) => k.startsWith('freeze:')) : !!freezeTarget(p, selection, t)) ? null : 'Select a freeze frame first',
-      resetCrop: cropOf(p) || cropDraft ? null : 'The recording is not cropped',
-      cropTaskbar: taskbarCrop(cropDraft?.rect ?? cropOf(p) ?? FULL_FRAME, p, recorded.scale) ? null : 'This recording does not show the taskbar'
+      toggleFreezeSound: (group.keys.length >= 2 ? group.keys.some((k) => k.startsWith('freeze:')) : !!freezeTarget(p, selection, at)) ? null : t('editor.reason.selectFreeze'),
+      resetCrop: cropOf(p) || cropDraft ? null : t('editor.reason.notCropped'),
+      cropTaskbar: taskbarCrop(cropDraft?.rect ?? cropOf(p) ?? FULL_FRAME, p, recorded.scale) ? null : t('editor.reason.noTaskbar')
     }
     for (const k of ['straightenRange', 'recordedPathRange'] as const) {
       unavailable[k] = !cursor.valid
         ? noCursor
         : p.capture.cursorInVideo
-          ? 'The recorded cursor is in the video'
+          ? t('editor.reason.cursorInVideo')
           : selection?.kind === 'range'
             ? null
-            : 'Select a range first: Shift+drag on the clip track'
+            : t('editor.reason.selectRange')
     }
     for (const k of ['layoutDefault', 'layoutCameraOnly', 'layoutScreenOnly', 'layoutSideBySide', 'layoutCameraLarge'] as const) {
-      unavailable[k] = data.webcamUrl ? null : 'This recording has no camera'
+      unavailable[k] = data.webcamUrl ? null : t('editor.reason.noCamera')
     }
     for (const k of ['zoomLevel0', 'zoomLevel1', 'zoomLevel2', 'zoomLevel3', 'zoomLevel4'] as const)
-      unavailable[k] = (group.keys.length >= 2 ? group.keys.some((x) => x.startsWith('zoom:')) : zoomTarget) ? null : 'Select a zoom first'
+      unavailable[k] = (group.keys.length >= 2 ? group.keys.some((x) => x.startsWith('zoom:')) : zoomTarget) ? null : t('editor.reason.selectZoom')
     // E-06: the selection commands.
     const picked = group.keys.length >= 2 ? group.keys : groupKeyOf(selection) ? [groupKeyOf(selection)!] : []
     const look = lookClipboard.get()
-    unavailable.selectAll = cropDraft ? 'Close the crop tool first' : projectItems(p).length ? null : 'No items to select yet'
-    unavailable.copyItems = picked.length ? null : 'Select items to copy'
-    unavailable.cutItems = picked.length ? null : 'Select items to cut'
-    unavailable.duplicateItems = picked.length ? null : 'Select items to duplicate'
-    unavailable.pasteItems = itemClipboard.get() ? null : 'Nothing copied yet'
+    unavailable.selectAll = cropDraft ? t('editor.reason.closeCrop') : projectItems(p).length ? null : t('editor.multiSelect.selectNone')
+    unavailable.copyItems = picked.length ? null : t('editor.reason.selectToCopy')
+    unavailable.cutItems = picked.length ? null : t('editor.reason.selectToCut')
+    unavailable.duplicateItems = picked.length ? null : t('editor.reason.selectToDuplicate')
+    unavailable.pasteItems = itemClipboard.get() ? null : t('editor.reason.nothingCopied')
     unavailable.copyLook =
-      group.keys.length >= 2 ? 'Select one item to copy its look' : picked.length && lookClassOf(p, picked[0]) ? null : 'Select an item to copy its look'
-    unavailable.pasteLook = !look ? 'Copy a look first' : picked.some((k) => lookClassOf(p, k) === look.cls) ? null : `The copied look is for ${LOOK_CLASS_WORDS[look.cls][1]}`
-    unavailable.toggleWaveform = p.hasAudio ? null : 'This recording has no sound'
-    if (nextPreviewSpeed(player.previewSpeed, 1) === null) unavailable.previewSpeedUp = `Already the fastest preview speed (${fmt.factor(player.previewSpeed)})`
-    if (nextPreviewSpeed(player.previewSpeed, -1) === null) unavailable.previewSpeedDown = `Already the slowest preview speed (${fmt.factor(player.previewSpeed)})`
+      group.keys.length >= 2 ? t('editor.reason.copyLookOne') : picked.length && lookClassOf(p, picked[0]) ? null : t('editor.reason.copyLookSelect')
+    unavailable.pasteLook = !look ? t('editor.reason.copyLookFirst') : picked.some((k) => lookClassOf(p, k) === look.cls) ? null : t('editor.reason.lookIsFor', { many: LOOK_CLASS_WORDS[look.cls][1] })
+    unavailable.toggleWaveform = p.hasAudio ? null : t('editor.reason.noSound')
+    if (nextPreviewSpeed(player.previewSpeed, 1) === null) unavailable.previewSpeedUp = t('editor.reason.fastestSpeed', { speed: fmt.factor(player.previewSpeed) })
+    if (nextPreviewSpeed(player.previewSpeed, -1) === null) unavailable.previewSpeedDown = t('editor.reason.slowestSpeed', { speed: fmt.factor(player.previewSpeed) })
     const on: Partial<Record<CommandId, boolean>> = {
       toggleSnapping: snapPref.get(),
       toggleCursor: smoothCursor && p.cursor.show,
@@ -1680,22 +1692,22 @@ function EditorSession({
     // Editing polish's toggles (§2.8): the progress bar; Compare is the preview's (part P4 wires it).
     on.toggleProgressBar = !!p.chapterBar?.show
     on.compareColour = player.comparing
-    unavailable.autoColour = data.webcamUrl && p.hasWebcam ? (autoColourBusy() ? 'Auto colour is running' : null) : 'This recording has no camera'
-    for (const k of ['nudgeBack', 'nudgeForward', 'nudgeBackTen', 'nudgeForwardTen'] as const) unavailable[k] = picked.length ? null : 'Select items to move them'
+    unavailable.autoColour = data.webcamUrl && p.hasWebcam ? (autoColourBusy() ? t('editor.reason.autoColourRunning') : null) : t('editor.reason.noCamera')
+    for (const k of ['nudgeBack', 'nudgeForward', 'nudgeBackTen', 'nudgeForwardTen'] as const) unavailable[k] = picked.length ? null : t('editor.reason.selectToMove')
     // NW-05 and X-04: the copies (with the menu's reasons), following and the safe zones.
     const frame = editorFrame(p)
     const followable = canFollow(p.style.aspectRatio, frame.vw, frame.vh)
     const copyReason = (kind: CopyKind): string | null => {
-      if (copy) return 'A copy is already being made'
+      if (copy) return t('editor.reason.copyBusy')
       const c = canCopyAs(p, kind, frame.vw, frame.vh)
       return c.ok ? null : c.reason
     }
     unavailable.makeVertical = copyReason('vertical')
     unavailable.makeSquare = copyReason('square')
     unavailable.duplicateVideo = copyReason('copy')
-    unavailable.toggleFollow = followable ? null : FOLLOW_UNAVAILABLE
-    unavailable.holdView = !followsAction(p) ? (followable ? FOLLOW_OFF : FOLLOW_UNAVAILABLE) : cropDraft ? 'Close the crop tool first' : null
-    unavailable.toggleSafeZones = isTall(frame.outW, frame.outH) ? null : SAFE_ZONES_TALL
+    unavailable.toggleFollow = followable ? null : t(FOLLOW_UNAVAILABLE)
+    unavailable.holdView = !followsAction(p) ? t(followable ? FOLLOW_OFF : FOLLOW_UNAVAILABLE) : cropDraft ? t('editor.reason.closeCrop') : null
+    unavailable.toggleSafeZones = isTall(frame.outW, frame.outH) ? null : t(SAFE_ZONES_TALL)
     on.toggleFollow = followable && p.reframe?.mode === 'follow'
     on.toggleSafeZones = isTall(frame.outW, frame.outH) && safeZoneChoice() !== 'off'
     // Language… exists only while Settings has a Language section (output-and-languages §2.5).
@@ -1836,12 +1848,12 @@ function EditorSession({
     <EditorProviders services={services} keymap={keymap} group={groupApi} follow={followEnv}>
       <div className="app editor">
         <header className="titlebar">
-          <button className="btn ghost" onClick={() => void goBack()} disabled={leaving} title="Back to recordings" aria-label="Back to recordings">
+          <button className="btn ghost" onClick={() => void goBack()} disabled={leaving} title={t('editor.titlebar.back')} aria-label={t('editor.titlebar.back')}>
             <Icon name="back" />
           </button>
           <input
             className="title-input"
-            aria-label="Recording name"
+            aria-label={t('editor.titlebar.name')}
             value={project.name}
             onChange={(e) => {
               const name = e.target.value
@@ -1854,25 +1866,25 @@ function EditorSession({
           />
           <CopyMenu project={project} vw={shown.vw} vh={shown.vh} run={(kind) => void makeCopy(kind)} onClips={openClips} onShort={() => setDialog('shortVersion')} />
           <div className="history-buttons">
-            <button className="btn ghost icon-btn" onClick={actions.undo} disabled={!canUndo} title={withShortcut('Undo', keymap.undo)} aria-label="Undo">
+            <button className="btn ghost icon-btn" onClick={actions.undo} disabled={!canUndo} title={withShortcut(commandTitle('undo'), keymap.undo)} aria-label={commandTitle('undo')}>
               <EditorIcon name="undo" />
             </button>
-            <button className="btn ghost icon-btn" onClick={actions.redo} disabled={!canRedo} title={withShortcut('Redo', keymap.redo)} aria-label="Redo">
+            <button className="btn ghost icon-btn" onClick={actions.redo} disabled={!canRedo} title={withShortcut(commandTitle('redo'), keymap.redo)} aria-label={commandTitle('redo')}>
               <EditorIcon name="redo" />
             </button>
           </div>
-          <button className="btn ghost versions-button" onClick={() => setDialog('versions')} title={withShortcut('Versions: save this edit, or go back to an earlier one', keymap.saveVersion)} data-testid="versions-open">
-            <VersionsIcon size={16} /> <span className="tb-label">Versions</span>
+          <button className="btn ghost versions-button" onClick={() => setDialog('versions')} title={withShortcut(t('editor.titlebar.versionsTitle'), keymap.saveVersion)} data-testid="versions-open">
+            <VersionsIcon size={16} /> <span className="tb-label">{t('editor.titlebar.versions')}</span>
           </button>
           <SaveIndicator saver={saver} />
           <div className="tb-spacer" />
           <SettingsButton />
-          <button className="btn command-button" onClick={() => setDialog('palette')} title={withShortcut('Search every editor command', keymap.commandPalette)} aria-label="Command palette">
+          <button className="btn command-button" onClick={() => setDialog('palette')} title={withShortcut(t('editor.titlebar.commandsTitle'), keymap.commandPalette)} aria-label={t('commands.palette.label')}>
             <SearchIcon size={14} />
-            <span>Commands</span>
+            <span>{t('editor.titlebar.commands')}</span>
             {keymap.commandPalette[0] && <ShortcutKeys accelerator={keymap.commandPalette[0]} />}
           </button>
-          <button className="btn ghost icon-btn" onClick={() => setDialog('shortcuts')} title={withShortcut('Keyboard shortcuts', keymap.shortcuts)} aria-label="Keyboard shortcuts">
+          <button className="btn ghost icon-btn" onClick={() => setDialog('shortcuts')} title={withShortcut(t('common.label.keyboardShortcuts'), keymap.shortcuts)} aria-label={t('common.label.keyboardShortcuts')}>
             <EditorIcon name="keyboard" />
           </button>
           <ReviewButton
@@ -1886,10 +1898,10 @@ function EditorSession({
             }}
           />
           <button className="btn" data-testid="polish-open" onClick={() => setDialog('polish')} title={withShortcut(POLISH_BUTTON_TITLE, keymap.polish)}>
-            <EditorIcon name="sparkle" size={16} /> <span className="tb-label">Polish</span>
+            <EditorIcon name="sparkle" size={16} /> <span className="tb-label">{t('editor.titlebar.polish')}</span>
           </button>
-          <button className="btn" data-testid="publish-open" onClick={() => commandsRef.current.publishPack()} title={withShortcut('Write the text to post with the video', keymap.publishPack)}>
-            <EditorIcon name="transcript" size={16} /> <span className="tb-label">Publish</span>
+          <button className="btn" data-testid="publish-open" onClick={() => commandsRef.current.publishPack()} title={withShortcut(t('editor.titlebar.publishTitle'), keymap.publishPack)}>
+            <EditorIcon name="transcript" size={16} /> <span className="tb-label">{t('editor.titlebar.publish')}</span>
           </button>
           <button
             ref={guideButton}
@@ -1897,12 +1909,12 @@ function EditorSession({
             data-testid="guide-open"
             aria-pressed={smartPanel?.kind === 'guide'}
             onClick={() => (smartPanel?.kind === 'guide' ? setSmartPanel(null) : openGuide('guide'))}
-            title={withShortcut('Make a step-by-step guide or a click-through demo from your clicks', keymap.guide)}
+            title={withShortcut(t('editor.titlebar.guideTitle'), keymap.guide)}
           >
-            <EditorIcon name="steps" size={16} /> <span className="tb-label">Guide</span>
+            <EditorIcon name="steps" size={16} /> <span className="tb-label">{t('editor.titlebar.guide')}</span>
           </button>
-          <button className="btn primary" onClick={openExport} title={withShortcut('Export the video', keymap.export)}>
-            <Icon name="download" size={16} /> Export
+          <button className="btn primary" onClick={openExport} title={withShortcut(t('editor.titlebar.exportTitle'), keymap.export)}>
+            <Icon name="download" size={16} /> {t('editor.titlebar.export')}
           </button>
         </header>
 

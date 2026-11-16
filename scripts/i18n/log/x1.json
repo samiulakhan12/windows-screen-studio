@@ -3226,5 +3226,1598 @@
     "line": 36,
     "english": "A dramatic product shot from the side and above",
     "sample": {}
+  },
+  {
+    "key": "editor.open.videoNotLoaded",
+    "file": "src/renderer/src/views/Editor.tsx",
+    "line": 193,
+    "english": "the video could not be loaded (unsupported or missing file)",
+    "sample": {
+      "detail": "unsupported or missing file"
+    }
+  },
+  {
+    "key": "editor.open.unsupported",
+    "file": "src/renderer/src/views/Editor.tsx",
+    "line": 193,
+    "english": "unsupported or missing file",
+    "sample": {}
+  },
+  {
+    "key": "editor.open.failed",
+    "file": "src/renderer/src/views/Editor.tsx",
+    "line": 304,
+    "english": "Could not open this recording: the video could not be loaded (unsupported or missing file)",
+    "sample": {
+      "reason": "the video could not be loaded (unsupported or missing file)"
+    }
+  },
+  {
+    "key": "editor.open.loading",
+    "file": "src/renderer/src/views/Editor.tsx",
+    "line": 314,
+    "english": "Opening recording…",
+    "sample": {}
+  },
+  {
+    "key": "editor.leave.unsaved",
+    "file": "src/renderer/src/views/Editor.tsx",
+    "line": 582,
+    "english": "Your latest changes could not be saved.\n\nLeave the editor anyway?",
+    "sample": {}
+  },
+  {
+    "key": "editor.leave.unsavedWhy",
+    "file": "src/renderer/src/views/Editor.tsx",
+    "line": 582,
+    "english": "Your latest changes could not be saved:\nThe disk is full.\n\nLeave the editor anyway?",
+    "sample": {
+      "reason": "The disk is full"
+    }
+  },
+  {
+    "key": "editor.leave.action",
+    "file": "src/renderer/src/views/Editor.tsx",
+    "line": 583,
+    "english": "Leave",
+    "sample": {}
+  },
+  {
+    "key": "editor.notice.originalGone",
+    "file": "src/renderer/src/views/Editor.tsx",
+    "line": 598,
+    "english": "The original recording is no longer in your library.",
+    "sample": {}
+  },
+  {
+    "key": "editor.notice.openOriginal",
+    "file": "src/renderer/src/views/Editor.tsx",
+    "line": 610,
+    "english": "Open original",
+    "sample": {}
+  },
+  {
+    "key": "editor.copy.busy",
+    "file": "src/renderer/src/views/Editor.tsx",
+    "line": 623,
+    "english": "Could not make the copy: a copy is already being made.",
+    "sample": {}
+  },
+  {
+    "key": "editor.copy.failed",
+    "file": "src/renderer/src/views/Editor.tsx",
+    "line": 358,
+    "english": "Could not make the copy: The disk is full.",
+    "sample": {
+      "reason": "The disk is full."
+    }
+  },
+  {
+    "key": "editor.copy.unsaved",
+    "file": "src/renderer/src/views/Editor.tsx",
+    "line": 644,
+    "english": "Your latest changes could not be saved. Make the copy anyway? It will include them.",
+    "sample": {}
+  },
+  {
+    "key": "editor.copy.makeAnyway",
+    "file": "src/renderer/src/views/Editor.tsx",
+    "line": 644,
+    "english": "Make the copy",
+    "sample": {}
+  },
+  {
+    "key": "editor.notice.shortcutsNotSaved",
+    "file": "src/renderer/src/views/Editor.tsx",
+    "line": 688,
+    "english": "Your shortcuts could not be saved: The disk is full.",
+    "sample": {
+      "reason": "The disk is full."
+    }
+  },
+  {
+    "key": "editor.clicks.ignored",
+    "file": "src/renderer/src/views/Editor.tsx",
+    "line": 711,
+    "english": [
+      "Ignored 0 clicks",
+      "Ignored 1 click",
+      "Ignored 2 clicks",
+      "Ignored 1000 clicks"
+    ],
+    "sample": [
+      {
+        "count": 0,
+        "n": "0"
+      },
+      {
+        "count": 1,
+        "n": "1"
+      },
+      {
+        "count": 2,
+        "n": "2"
+      },
+      {
+        "count": 1000,
+        "n": "1000"
+      }
+    ]
+  },
+  {
+    "key": "editor.clicks.usedAgain",
+    "file": "src/renderer/src/views/Editor.tsx",
+    "line": 711,
+    "english": [
+      "0 clicks used again",
+      "1 click used again",
+      "2 clicks used again",
+      "1000 clicks used again"
+    ],
+    "sample": [
+      {
+        "count": 0,
+        "n": "0"
+      },
+      {
+        "count": 1,
+        "n": "1"
+      },
+      {
+        "count": 2,
+        "n": "2"
+      },
+      {
+        "count": 1000,
+        "n": "1000"
+      }
+    ]
+  },
+  {
+    "key": "editor.clicks.oneIgnored",
+    "file": "src/renderer/src/views/Editor.tsx",
+    "line": 712,
+    "english": "Click at 0:03.2 ignored: no zoom, effect or sound",
+    "sample": {
+      "time": "0:03.2"
+    }
+  },
+  {
+    "key": "editor.clicks.oneUsedAgain",
+    "file": "src/renderer/src/views/Editor.tsx",
+    "line": 712,
+    "english": "Click at 0:03.2 used again",
+    "sample": {
+      "time": "0:03.2"
+    }
+  },
+  {
+    "key": "editor.clicks.strayIgnored",
+    "file": "src/renderer/src/views/Editor.tsx",
+    "line": 721,
+    "english": [
+      "Ignored 0 stray clicks",
+      "Ignored 1 stray click",
+      "Ignored 2 stray clicks",
+      "Ignored 1000 stray clicks"
+    ],
+    "sample": [
+      {
+        "count": 0,
+        "n": "0"
+      },
+      {
+        "count": 1,
+        "n": "1"
+      },
+      {
+        "count": 2,
+        "n": "2"
+      },
+      {
+        "count": 1000,
+        "n": "1000"
+      }
+    ]
+  },
+  {
+    "key": "editor.clicks.noStray",
+    "file": "src/renderer/src/views/Editor.tsx",
+    "line": 721,
+    "english": "No stray clicks found",
+    "sample": {}
+  },
+  {
+    "key": "editor.clicks.noneIgnored",
+    "file": "src/renderer/src/views/Editor.tsx",
+    "line": 725,
+    "english": "No click is ignored",
+    "sample": {}
+  },
+  {
+    "key": "editor.clicks.allUsedAgain",
+    "file": "src/renderer/src/views/Editor.tsx",
+    "line": 727,
+    "english": [
+      "All 0 ignored clicks are used again",
+      "The ignored click is used again",
+      "All 2 ignored clicks are used again",
+      "All 1000 ignored clicks are used again"
+    ],
+    "sample": [
+      {
+        "count": 0,
+        "n": "0"
+      },
+      {
+        "count": 1,
+        "n": "1"
+      },
+      {
+        "count": 2,
+        "n": "2"
+      },
+      {
+        "count": 1000,
+        "n": "1000"
+      }
+    ]
+  },
+  {
+    "key": "editor.clicks.alreadyIgnored",
+    "file": "src/renderer/src/views/Editor.tsx",
+    "line": 934,
+    "english": "This click is already ignored: use it again in the Zoom panel",
+    "sample": {}
+  },
+  {
+    "key": "editor.clicks.noneNear",
+    "file": "src/renderer/src/views/Editor.tsx",
+    "line": 1327,
+    "english": "No click near the playhead",
+    "sample": {}
+  },
+  {
+    "key": "editor.path.kept.drag",
+    "file": "src/renderer/src/views/Editor.tsx",
+    "line": 155,
+    "english": [
+      "0 drags",
+      "1 drag",
+      "2 drags",
+      "1000 drags"
+    ],
+    "sample": [
+      {
+        "count": 0,
+        "n": "0"
+      },
+      {
+        "count": 1,
+        "n": "1"
+      },
+      {
+        "count": 2,
+        "n": "2"
+      },
+      {
+        "count": 1000,
+        "n": "1000"
+      }
+    ]
+  },
+  {
+    "key": "editor.path.kept.dragGuess",
+    "file": "src/renderer/src/views/Editor.tsx",
+    "line": 156,
+    "english": [
+      "0 possible drags",
+      "1 possible drag",
+      "2 possible drags",
+      "1000 possible drags"
+    ],
+    "sample": [
+      {
+        "count": 0,
+        "n": "0"
+      },
+      {
+        "count": 1,
+        "n": "1"
+      },
+      {
+        "count": 2,
+        "n": "2"
+      },
+      {
+        "count": 1000,
+        "n": "1000"
+      }
+    ]
+  },
+  {
+    "key": "editor.path.kept.click",
+    "file": "src/renderer/src/views/Editor.tsx",
+    "line": 157,
+    "english": [
+      "0 moves across a click",
+      "1 move across a click",
+      "2 moves across a click",
+      "1000 moves across a click"
+    ],
+    "sample": [
+      {
+        "count": 0,
+        "n": "0"
+      },
+      {
+        "count": 1,
+        "n": "1"
+      },
+      {
+        "count": 2,
+        "n": "2"
+      },
+      {
+        "count": 1000,
+        "n": "1000"
+      }
+    ]
+  },
+  {
+    "key": "editor.path.kept.scroll",
+    "file": "src/renderer/src/views/Editor.tsx",
+    "line": 158,
+    "english": [
+      "0 moves while scrolling",
+      "1 move while scrolling",
+      "2 moves while scrolling",
+      "1000 moves while scrolling"
+    ],
+    "sample": [
+      {
+        "count": 0,
+        "n": "0"
+      },
+      {
+        "count": 1,
+        "n": "1"
+      },
+      {
+        "count": 2,
+        "n": "2"
+      },
+      {
+        "count": 1000,
+        "n": "1000"
+      }
+    ]
+  },
+  {
+    "key": "editor.path.kept.offFrame",
+    "file": "src/renderer/src/views/Editor.tsx",
+    "line": 159,
+    "english": [
+      "0 moves outside the video",
+      "1 move outside the video",
+      "2 moves outside the video",
+      "1000 moves outside the video"
+    ],
+    "sample": [
+      {
+        "count": 0,
+        "n": "0"
+      },
+      {
+        "count": 1,
+        "n": "1"
+      },
+      {
+        "count": 2,
+        "n": "2"
+      },
+      {
+        "count": 1000,
+        "n": "1000"
+      }
+    ]
+  },
+  {
+    "key": "editor.path.kept.short",
+    "file": "src/renderer/src/views/Editor.tsx",
+    "line": 160,
+    "english": [
+      "0 very quick moves",
+      "1 very quick move",
+      "2 very quick moves",
+      "1000 very quick moves"
+    ],
+    "sample": [
+      {
+        "count": 0,
+        "n": "0"
+      },
+      {
+        "count": 1,
+        "n": "1"
+      },
+      {
+        "count": 2,
+        "n": "2"
+      },
+      {
+        "count": 1000,
+        "n": "1000"
+      }
+    ]
+  },
+  {
+    "key": "editor.path.kept.long",
+    "file": "src/renderer/src/views/Editor.tsx",
+    "line": 161,
+    "english": [
+      "0 long moves",
+      "1 long move",
+      "2 long moves",
+      "1000 long moves"
+    ],
+    "sample": [
+      {
+        "count": 0,
+        "n": "0"
+      },
+      {
+        "count": 1,
+        "n": "1"
+      },
+      {
+        "count": 2,
+        "n": "2"
+      },
+      {
+        "count": 1000,
+        "n": "1000"
+      }
+    ]
+  },
+  {
+    "key": "editor.path.kept.small",
+    "file": "src/renderer/src/views/Editor.tsx",
+    "line": 162,
+    "english": [
+      "0 tiny moves",
+      "1 tiny move",
+      "2 tiny moves",
+      "1000 tiny moves"
+    ],
+    "sample": [
+      {
+        "count": 0,
+        "n": "0"
+      },
+      {
+        "count": 1,
+        "n": "1"
+      },
+      {
+        "count": 2,
+        "n": "2"
+      },
+      {
+        "count": 1000,
+        "n": "1000"
+      }
+    ]
+  },
+  {
+    "key": "editor.path.kept.wobbly",
+    "file": "src/renderer/src/views/Editor.tsx",
+    "line": 163,
+    "english": [
+      "0 winding moves",
+      "1 winding move",
+      "2 winding moves",
+      "1000 winding moves"
+    ],
+    "sample": [
+      {
+        "count": 0,
+        "n": "0"
+      },
+      {
+        "count": 1,
+        "n": "1"
+      },
+      {
+        "count": 2,
+        "n": "2"
+      },
+      {
+        "count": 1000,
+        "n": "1000"
+      }
+    ]
+  },
+  {
+    "key": "editor.path.kept.gesture",
+    "file": "src/renderer/src/views/Editor.tsx",
+    "line": 164,
+    "english": [
+      "0 loops",
+      "1 loop",
+      "2 loops",
+      "1000 loops"
+    ],
+    "sample": [
+      {
+        "count": 0,
+        "n": "0"
+      },
+      {
+        "count": 1,
+        "n": "1"
+      },
+      {
+        "count": 2,
+        "n": "2"
+      },
+      {
+        "count": 1000,
+        "n": "1000"
+      }
+    ]
+  },
+  {
+    "key": "editor.path.nothingToStraighten",
+    "file": "src/renderer/src/views/Editor.tsx",
+    "line": 175,
+    "english": "No cursor move here can be straightened",
+    "sample": {}
+  },
+  {
+    "key": "editor.path.nothingToStraightenWhy",
+    "file": "src/renderer/src/views/Editor.tsx",
+    "line": 175,
+    "english": "No cursor move here can be straightened (1 drag, 2 loops)",
+    "sample": {
+      "reasons": "1 drag, 2 loops"
+    }
+  },
+  {
+    "key": "editor.path.straightened",
+    "file": "src/renderer/src/views/Editor.tsx",
+    "line": 737,
+    "english": [
+      "Straightened 0 cursor moves in 0:01.0 – 0:03.5",
+      "Straightened 1 cursor move in 0:01.0 – 0:03.5",
+      "Straightened 2 cursor moves in 0:01.0 – 0:03.5",
+      "Straightened 1000 cursor moves in 0:01.0 – 0:03.5"
+    ],
+    "sample": [
+      {
+        "count": 0,
+        "n": "0",
+        "range": "0:01.0 – 0:03.5"
+      },
+      {
+        "count": 1,
+        "n": "1",
+        "range": "0:01.0 – 0:03.5"
+      },
+      {
+        "count": 2,
+        "n": "2",
+        "range": "0:01.0 – 0:03.5"
+      },
+      {
+        "count": 1000,
+        "n": "1000",
+        "range": "0:01.0 – 0:03.5"
+      }
+    ]
+  },
+  {
+    "key": "editor.path.keptRecorded",
+    "file": "src/renderer/src/views/Editor.tsx",
+    "line": 740,
+    "english": "Kept the recorded cursor path in 0:01.0 – 0:03.5",
+    "sample": {
+      "range": "0:01.0 – 0:03.5"
+    }
+  },
+  {
+    "key": "editor.path.followsStraighten",
+    "file": "src/renderer/src/views/Editor.tsx",
+    "line": 740,
+    "english": "The cursor path in 0:01.0 – 0:03.5 follows Straighten moves again",
+    "sample": {
+      "range": "0:01.0 – 0:03.5"
+    }
+  },
+  {
+    "key": "editor.notice.zoomHere",
+    "file": "src/renderer/src/views/Editor.tsx",
+    "line": 769,
+    "english": "There is already a zoom here, so it is selected instead",
+    "sample": {}
+  },
+  {
+    "key": "editor.notice.noRoomToAddZoom",
+    "file": "src/renderer/src/views/Editor.tsx",
+    "line": 771,
+    "english": "No room for a new zoom here: move the playhead to free space or shorten a zoom",
+    "sample": {}
+  },
+  {
+    "key": "editor.notice.lastClip",
+    "file": "src/renderer/src/views/Editor.tsx",
+    "line": 789,
+    "english": "The last clip cannot be removed",
+    "sample": {}
+  },
+  {
+    "key": "editor.notice.keepSome",
+    "file": "src/renderer/src/views/Editor.tsx",
+    "line": 800,
+    "english": "Part of the recording has to stay in the video",
+    "sample": {}
+  },
+  {
+    "key": "editor.notice.alreadyCut",
+    "file": "src/renderer/src/views/Editor.tsx",
+    "line": 804,
+    "english": "That range is already cut",
+    "sample": {}
+  },
+  {
+    "key": "editor.notice.noZoomSelected",
+    "file": "src/renderer/src/views/Editor.tsx",
+    "line": 817,
+    "english": "No zoom is selected",
+    "sample": {}
+  },
+  {
+    "key": "editor.notice.zoomLevelFor",
+    "file": "src/renderer/src/views/Editor.tsx",
+    "line": 820,
+    "english": [
+      "Zoom level 1.5× for 0 zooms",
+      "Zoom level 1.5× for 1 zoom",
+      "Zoom level 1.5× for 2 zooms",
+      "Zoom level 1.5× for 1000 zooms"
+    ],
+    "sample": [
+      {
+        "count": 0,
+        "n": "0",
+        "level": "1.5×"
+      },
+      {
+        "count": 1,
+        "n": "1",
+        "level": "1.5×"
+      },
+      {
+        "count": 2,
+        "n": "2",
+        "level": "1.5×"
+      },
+      {
+        "count": 1000,
+        "n": "1000",
+        "level": "1.5×"
+      }
+    ]
+  },
+  {
+    "key": "editor.notice.selectZoomKeys",
+    "file": "src/renderer/src/views/Editor.tsx",
+    "line": 827,
+    "english": "Select a zoom first: 1–4 set its zoom level, 0 pulls back",
+    "sample": {
+      "keys": "1–4 set its zoom level, 0 pulls back"
+    }
+  },
+  {
+    "key": "editor.reason.selectZoom",
+    "file": "src/renderer/src/views/Editor.tsx",
+    "line": 827,
+    "english": "Select a zoom first",
+    "sample": {}
+  },
+  {
+    "key": "editor.notice.noChapterAfter",
+    "file": "src/renderer/src/views/Editor.tsx",
+    "line": 840,
+    "english": "There is no chapter after the playhead",
+    "sample": {}
+  },
+  {
+    "key": "editor.notice.noChapterBefore",
+    "file": "src/renderer/src/views/Editor.tsx",
+    "line": 840,
+    "english": "There is no chapter before the playhead",
+    "sample": {}
+  },
+  {
+    "key": "editor.notice.noChapters",
+    "file": "src/renderer/src/views/Editor.tsx",
+    "line": 841,
+    "english": "This video has no chapters yet",
+    "sample": {}
+  },
+  {
+    "key": "editor.notice.noChaptersKey",
+    "file": "src/renderer/src/views/Editor.tsx",
+    "line": 841,
+    "english": "This video has no chapters yet: press M to add one at the playhead",
+    "sample": {
+      "keys": "M"
+    }
+  },
+  {
+    "key": "editor.reason.noCamera",
+    "file": "src/renderer/src/views/Editor.tsx",
+    "line": 846,
+    "english": "This recording has no camera",
+    "sample": {}
+  },
+  {
+    "key": "editor.reason.splitEdge",
+    "file": "src/renderer/src/views/Editor.tsx",
+    "line": 879,
+    "english": "Too close to the edge of a clip to split",
+    "sample": {}
+  },
+  {
+    "key": "editor.notice.splitInCut",
+    "file": "src/renderer/src/views/Editor.tsx",
+    "line": 879,
+    "english": "The playhead is in a cut: move it onto a clip to split",
+    "sample": {}
+  },
+  {
+    "key": "editor.reason.inCut",
+    "file": "src/renderer/src/views/Editor.tsx",
+    "line": 1620,
+    "english": "The playhead is in a cut",
+    "sample": {}
+  },
+  {
+    "key": "editor.reason.nothingCut",
+    "file": "src/renderer/src/views/Editor.tsx",
+    "line": 897,
+    "english": "Nothing is cut, trimmed or re-timed",
+    "sample": {}
+  },
+  {
+    "key": "editor.reason.selectRange",
+    "file": "src/renderer/src/views/Editor.tsx",
+    "line": 903,
+    "english": "Select a range first: Shift+drag on the clip track",
+    "sample": {}
+  },
+  {
+    "key": "editor.reason.nothingToUndo",
+    "file": "src/renderer/src/views/Editor.tsx",
+    "line": 941,
+    "english": "Nothing to undo",
+    "sample": {}
+  },
+  {
+    "key": "editor.reason.nothingToRedo",
+    "file": "src/renderer/src/views/Editor.tsx",
+    "line": 945,
+    "english": "Nothing to redo",
+    "sample": {}
+  },
+  {
+    "key": "editor.reason.notCropped",
+    "file": "src/renderer/src/views/Editor.tsx",
+    "line": 1021,
+    "english": "The recording is not cropped",
+    "sample": {}
+  },
+  {
+    "key": "editor.reason.noTaskbar",
+    "file": "src/renderer/src/views/Editor.tsx",
+    "line": 1026,
+    "english": "This recording does not show the taskbar",
+    "sample": {}
+  },
+  {
+    "key": "editor.notice.taskbarCropped",
+    "file": "src/renderer/src/views/Editor.tsx",
+    "line": 1027,
+    "english": "The taskbar is already cropped out",
+    "sample": {}
+  },
+  {
+    "key": "editor.notice.turnedOn",
+    "file": "src/renderer/src/views/Editor.tsx",
+    "line": 1057,
+    "english": "Smooth cursor on",
+    "sample": {
+      "what": "Smooth cursor"
+    }
+  },
+  {
+    "key": "editor.notice.turnedOff",
+    "file": "src/renderer/src/views/Editor.tsx",
+    "line": 1057,
+    "english": "Smooth cursor off",
+    "sample": {
+      "what": "Smooth cursor"
+    }
+  },
+  {
+    "key": "editor.notice.noCaptions",
+    "file": "src/renderer/src/views/Editor.tsx",
+    "line": 1066,
+    "english": "This video has no captions yet: generate them in the Captions tab",
+    "sample": {}
+  },
+  {
+    "key": "editor.reason.noCaptions",
+    "file": "src/renderer/src/views/Editor.tsx",
+    "line": 1616,
+    "english": "No captions yet",
+    "sample": {}
+  },
+  {
+    "key": "editor.reason.cursorInVideo",
+    "file": "src/renderer/src/views/Editor.tsx",
+    "line": 1085,
+    "english": "The recorded cursor is in the video",
+    "sample": {}
+  },
+  {
+    "key": "editor.reason.cursorAlreadyInVideo",
+    "file": "src/renderer/src/views/Editor.tsx",
+    "line": 1304,
+    "english": "The recorded cursor is already in the video",
+    "sample": {}
+  },
+  {
+    "key": "editor.notice.atStart",
+    "file": "src/renderer/src/views/Editor.tsx",
+    "line": 1092,
+    "english": "At the start: nothing to play backwards",
+    "sample": {}
+  },
+  {
+    "key": "editor.reason.closeCrop",
+    "file": "src/renderer/src/views/Editor.tsx",
+    "line": 1117,
+    "english": "Close the crop tool first",
+    "sample": {}
+  },
+  {
+    "key": "editor.items.copyWhat",
+    "file": "src/renderer/src/views/Editor.tsx",
+    "line": 1134,
+    "english": "Ctrl+C copies zooms, text, shapes, spotlights, title cards, chapters and freeze frames",
+    "sample": {}
+  },
+  {
+    "key": "editor.items.cutWhat",
+    "file": "src/renderer/src/views/Editor.tsx",
+    "line": 1152,
+    "english": "Ctrl+X cuts zooms, text, shapes, spotlights, title cards, chapters and freeze frames",
+    "sample": {}
+  },
+  {
+    "key": "editor.items.duplicateWhat",
+    "file": "src/renderer/src/views/Editor.tsx",
+    "line": 1182,
+    "english": "Ctrl+D duplicates zooms, text, shapes, spotlights, title cards, chapters and freeze frames",
+    "sample": {}
+  },
+  {
+    "key": "editor.items.selectToMove",
+    "file": "src/renderer/src/views/Editor.tsx",
+    "line": 1247,
+    "english": "Select zooms, text, shapes, spotlights, title cards, chapters and freeze frames to move them",
+    "sample": {}
+  },
+  {
+    "key": "editor.reason.selectToCopy",
+    "file": "src/renderer/src/views/Editor.tsx",
+    "line": 1134,
+    "english": "Select items to copy",
+    "sample": {}
+  },
+  {
+    "key": "editor.items.copied",
+    "file": "src/renderer/src/views/Editor.tsx",
+    "line": 1145,
+    "english": [
+      "Copied 0 items",
+      "Copied 1 item",
+      "Copied 2 items",
+      "Copied 1000 items"
+    ],
+    "sample": [
+      {
+        "count": 0,
+        "n": "0"
+      },
+      {
+        "count": 1,
+        "n": "1"
+      },
+      {
+        "count": 2,
+        "n": "2"
+      },
+      {
+        "count": 1000,
+        "n": "1000"
+      }
+    ]
+  },
+  {
+    "key": "editor.items.cutRecording",
+    "file": "src/renderer/src/views/Editor.tsx",
+    "line": 1151,
+    "english": "To cut part of the recording, press Delete",
+    "sample": {
+      "keys": "Delete"
+    }
+  },
+  {
+    "key": "editor.reason.selectToCut",
+    "file": "src/renderer/src/views/Editor.tsx",
+    "line": 1152,
+    "english": "Select items to cut",
+    "sample": {}
+  },
+  {
+    "key": "editor.items.addedNamed",
+    "file": "src/renderer/src/views/Editor.tsx",
+    "line": 1174,
+    "english": "Added logo.png at the playhead",
+    "sample": {
+      "name": "logo.png"
+    }
+  },
+  {
+    "key": "editor.items.addedImage",
+    "file": "src/renderer/src/views/Editor.tsx",
+    "line": 1174,
+    "english": "Added the pasted image at the playhead",
+    "sample": {}
+  },
+  {
+    "key": "editor.reason.selectToDuplicate",
+    "file": "src/renderer/src/views/Editor.tsx",
+    "line": 1182,
+    "english": "Select items to duplicate",
+    "sample": {}
+  },
+  {
+    "key": "editor.reason.copyLookOne",
+    "file": "src/renderer/src/views/Editor.tsx",
+    "line": 1189,
+    "english": "Select one item to copy its look",
+    "sample": {}
+  },
+  {
+    "key": "editor.copyLook.none",
+    "file": "src/renderer/src/views/Editor.tsx",
+    "line": 1191,
+    "english": "This item has no look to copy",
+    "sample": {}
+  },
+  {
+    "key": "editor.reason.copyLookSelect",
+    "file": "src/renderer/src/views/Editor.tsx",
+    "line": 1191,
+    "english": "Select an item to copy its look",
+    "sample": {}
+  },
+  {
+    "key": "editor.copyLook.chapters",
+    "file": "src/renderer/src/views/Editor.tsx",
+    "line": 1192,
+    "english": "Chapters have no look to copy",
+    "sample": {}
+  },
+  {
+    "key": "editor.copyLook.copied",
+    "file": "src/renderer/src/views/Editor.tsx",
+    "line": 1196,
+    "english": "Copied the text look",
+    "sample": {
+      "name": "text"
+    }
+  },
+  {
+    "key": "editor.pasteLook.select",
+    "file": "src/renderer/src/views/Editor.tsx",
+    "line": 1204,
+    "english": "Select items to paste the text look onto",
+    "sample": {
+      "name": "text"
+    }
+  },
+  {
+    "key": "editor.pasteLook.nothing",
+    "file": "src/renderer/src/views/Editor.tsx",
+    "line": 1209,
+    "english": "Nothing to paste the text look onto",
+    "sample": {
+      "name": "text"
+    }
+  },
+  {
+    "key": "editor.pasteLook.already",
+    "file": "src/renderer/src/views/Editor.tsx",
+    "line": 1210,
+    "english": "Already has this look",
+    "sample": {}
+  },
+  {
+    "key": "editor.pasteLook.pasted",
+    "file": "src/renderer/src/views/Editor.tsx",
+    "line": 1213,
+    "english": [
+      "Pasted the text look onto 0 text items",
+      "Pasted the text look onto 1 text item",
+      "Pasted the text look onto 2 text items",
+      "Pasted the text look onto 1000 text items"
+    ],
+    "sample": [
+      {
+        "count": 0,
+        "n": "0",
+        "name": "text",
+        "one": "text item",
+        "many": "text items"
+      },
+      {
+        "count": 1,
+        "n": "1",
+        "name": "text",
+        "one": "text item",
+        "many": "text items"
+      },
+      {
+        "count": 2,
+        "n": "2",
+        "name": "text",
+        "one": "text item",
+        "many": "text items"
+      },
+      {
+        "count": 1000,
+        "n": "1000",
+        "name": "text",
+        "one": "text item",
+        "many": "text items"
+      }
+    ]
+  },
+  {
+    "key": "editor.pasteLook.pastedOthers",
+    "file": "src/renderer/src/views/Editor.tsx",
+    "line": 1213,
+    "english": [
+      "Pasted the text look onto 0 text items · 2 items are not text items, left as they were",
+      "Pasted the text look onto 1 text item · 2 items are not text items, left as they were",
+      "Pasted the text look onto 2 text items · 2 items are not text items, left as they were",
+      "Pasted the text look onto 1000 text items · 2 items are not text items, left as they were"
+    ],
+    "sample": [
+      {
+        "count": 0,
+        "n": "0",
+        "name": "text",
+        "one": "text item",
+        "many": "text items",
+        "others": 2,
+        "o": "2"
+      },
+      {
+        "count": 1,
+        "n": "1",
+        "name": "text",
+        "one": "text item",
+        "many": "text items",
+        "others": 2,
+        "o": "2"
+      },
+      {
+        "count": 2,
+        "n": "2",
+        "name": "text",
+        "one": "text item",
+        "many": "text items",
+        "others": 2,
+        "o": "2"
+      },
+      {
+        "count": 1000,
+        "n": "1000",
+        "name": "text",
+        "one": "text item",
+        "many": "text items",
+        "others": 2,
+        "o": "2"
+      }
+    ]
+  },
+  {
+    "key": "editor.reason.nothingCopied",
+    "file": "src/renderer/src/views/Editor.tsx",
+    "line": 1673,
+    "english": "Nothing copied yet",
+    "sample": {}
+  },
+  {
+    "key": "editor.reason.copyLookFirst",
+    "file": "src/renderer/src/views/Editor.tsx",
+    "line": 1676,
+    "english": "Copy a look first",
+    "sample": {}
+  },
+  {
+    "key": "editor.reason.lookIsFor",
+    "file": "src/renderer/src/views/Editor.tsx",
+    "line": 1676,
+    "english": "The copied look is for text items",
+    "sample": {
+      "many": "text items"
+    }
+  },
+  {
+    "key": "editor.freeze.noneSelected",
+    "file": "src/renderer/src/views/Editor.tsx",
+    "line": 1220,
+    "english": "No freeze frame is selected",
+    "sample": {}
+  },
+  {
+    "key": "editor.freeze.paused",
+    "file": "src/renderer/src/views/Editor.tsx",
+    "line": 1232,
+    "english": [
+      "0 freeze frames: the recording waits with its sound paused",
+      "1 freeze frame: the recording waits with its sound paused",
+      "2 freeze frames: the recording waits with its sound paused",
+      "1000 freeze frames: the recording waits with its sound paused"
+    ],
+    "sample": [
+      {
+        "count": 0,
+        "n": "0"
+      },
+      {
+        "count": 1,
+        "n": "1"
+      },
+      {
+        "count": 2,
+        "n": "2"
+      },
+      {
+        "count": 1000,
+        "n": "1000"
+      }
+    ]
+  },
+  {
+    "key": "editor.freeze.playing",
+    "file": "src/renderer/src/views/Editor.tsx",
+    "line": 1233,
+    "english": [
+      "0 freeze frames: the sound keeps playing",
+      "1 freeze frame: the sound keeps playing",
+      "2 freeze frames: the sound keeps playing",
+      "1000 freeze frames: the sound keeps playing"
+    ],
+    "sample": [
+      {
+        "count": 0,
+        "n": "0"
+      },
+      {
+        "count": 1,
+        "n": "1"
+      },
+      {
+        "count": 2,
+        "n": "2"
+      },
+      {
+        "count": 1000,
+        "n": "1000"
+      }
+    ]
+  },
+  {
+    "key": "editor.freeze.playingSomeKept",
+    "file": "src/renderer/src/views/Editor.tsx",
+    "line": 1233,
+    "english": [
+      "0 freeze frames: the sound keeps playing · 1 freeze frame at the end keeps pausing the sound",
+      "1 freeze frame: the sound keeps playing · 1 freeze frame at the end keeps pausing the sound",
+      "2 freeze frames: the sound keeps playing · 1 freeze frame at the end keeps pausing the sound",
+      "1000 freeze frames: the sound keeps playing · 1 freeze frame at the end keeps pausing the sound"
+    ],
+    "sample": [
+      {
+        "count": 0,
+        "n": "0",
+        "refused": 1,
+        "r": "1"
+      },
+      {
+        "count": 1,
+        "n": "1",
+        "refused": 1,
+        "r": "1"
+      },
+      {
+        "count": 2,
+        "n": "2",
+        "refused": 1,
+        "r": "1"
+      },
+      {
+        "count": 1000,
+        "n": "1000",
+        "refused": 1,
+        "r": "1"
+      }
+    ]
+  },
+  {
+    "key": "editor.speed.fastest",
+    "file": "src/renderer/src/views/Editor.tsx",
+    "line": 1239,
+    "english": "The preview already plays at its fastest speed (2×)",
+    "sample": {
+      "speed": "2×"
+    }
+  },
+  {
+    "key": "editor.speed.slowest",
+    "file": "src/renderer/src/views/Editor.tsx",
+    "line": 1239,
+    "english": "The preview already plays at its slowest speed (0.5×)",
+    "sample": {
+      "speed": "0.5×"
+    }
+  },
+  {
+    "key": "editor.speed.set",
+    "file": "src/renderer/src/views/Editor.tsx",
+    "line": 1241,
+    "english": "Preview speed 1.5× (the export is not affected)",
+    "sample": {
+      "speed": "1.5×"
+    }
+  },
+  {
+    "key": "editor.reason.fastestSpeed",
+    "file": "src/renderer/src/views/Editor.tsx",
+    "line": 1678,
+    "english": "Already the fastest preview speed (2×)",
+    "sample": {
+      "speed": "2×"
+    }
+  },
+  {
+    "key": "editor.reason.slowestSpeed",
+    "file": "src/renderer/src/views/Editor.tsx",
+    "line": 1679,
+    "english": "Already the slowest preview speed (0.5×)",
+    "sample": {
+      "speed": "0.5×"
+    }
+  },
+  {
+    "key": "editor.notice.noCursorSpotlight",
+    "file": "src/renderer/src/views/Editor.tsx",
+    "line": 1282,
+    "english": "This recording has no cursor data: add a spotlight on an area instead",
+    "sample": {
+      "reason": "This recording has no cursor data"
+    }
+  },
+  {
+    "key": "editor.notice.noCursorMagnifier",
+    "file": "src/renderer/src/views/Editor.tsx",
+    "line": 1455,
+    "english": "This recording has no cursor data: add a magnifier on a place instead",
+    "sample": {
+      "reason": "This recording has no cursor data"
+    }
+  },
+  {
+    "key": "editor.toggle.straighten",
+    "file": "src/renderer/src/views/Editor.tsx",
+    "line": 1319,
+    "english": "Straighten moves",
+    "sample": {}
+  },
+  {
+    "key": "editor.toggle.progressBar",
+    "file": "src/renderer/src/views/Editor.tsx",
+    "line": 1465,
+    "english": "Progress bar",
+    "sample": {}
+  },
+  {
+    "key": "editor.toggle.waveform",
+    "file": "src/renderer/src/views/Editor.tsx",
+    "line": 1480,
+    "english": "Audio waveform",
+    "sample": {}
+  },
+  {
+    "key": "editor.reason.noSound",
+    "file": "src/renderer/src/views/Editor.tsx",
+    "line": 1477,
+    "english": "This recording has no sound",
+    "sample": {}
+  },
+  {
+    "key": "editor.reason.selectSomething",
+    "file": "src/renderer/src/views/Editor.tsx",
+    "line": 1621,
+    "english": "Select something on the timeline first",
+    "sample": {}
+  },
+  {
+    "key": "editor.reason.selectFreeze",
+    "file": "src/renderer/src/views/Editor.tsx",
+    "line": 1648,
+    "english": "Select a freeze frame first",
+    "sample": {}
+  },
+  {
+    "key": "editor.reason.noChapterAfter",
+    "file": "src/renderer/src/views/Editor.tsx",
+    "line": 1630,
+    "english": "No chapter after the playhead",
+    "sample": {}
+  },
+  {
+    "key": "editor.reason.noChapterBefore",
+    "file": "src/renderer/src/views/Editor.tsx",
+    "line": 1631,
+    "english": "No chapter before the playhead",
+    "sample": {}
+  },
+  {
+    "key": "editor.reason.noChapters",
+    "file": "src/renderer/src/views/Editor.tsx",
+    "line": 1630,
+    "english": "No chapters yet",
+    "sample": {}
+  },
+  {
+    "key": "editor.reason.autoColourRunning",
+    "file": "src/renderer/src/views/Editor.tsx",
+    "line": 1695,
+    "english": "Auto colour is running",
+    "sample": {}
+  },
+  {
+    "key": "editor.reason.selectToMove",
+    "file": "src/renderer/src/views/Editor.tsx",
+    "line": 1696,
+    "english": "Select items to move them",
+    "sample": {}
+  },
+  {
+    "key": "editor.reason.copyBusy",
+    "file": "src/renderer/src/views/Editor.tsx",
+    "line": 1701,
+    "english": "A copy is already being made",
+    "sample": {}
+  },
+  {
+    "key": "editor.follow.unavailable",
+    "file": "src/renderer/src/views/Editor.tsx",
+    "line": 352,
+    "english": "Following works in 9:16, 1:1 and other frames narrower than the recording. Choose one in Style › Frame.",
+    "sample": {}
+  },
+  {
+    "key": "editor.follow.off",
+    "file": "src/renderer/src/views/Editor.tsx",
+    "line": 354,
+    "english": "Turn on Follow the action first, in Style › Vertical framing.",
+    "sample": {}
+  },
+  {
+    "key": "editor.notice.safeZonesTall",
+    "file": "src/renderer/src/views/Editor.tsx",
+    "line": 356,
+    "english": "Safe zones are shown for tall frames, such as 9:16.",
+    "sample": {}
+  },
+  {
+    "key": "editor.notice.versionOpened",
+    "file": "src/renderer/src/views/Editor.tsx",
+    "line": 1597,
+    "english": "Opened “Before the cuts”. Your edit before it is kept as a version",
+    "sample": {
+      "name": "Before the cuts"
+    }
+  },
+  {
+    "key": "editor.titlebar.back",
+    "file": "src/renderer/src/views/Editor.tsx",
+    "line": 1851,
+    "english": "Back to recordings",
+    "sample": {}
+  },
+  {
+    "key": "editor.titlebar.name",
+    "file": "src/renderer/src/views/Editor.tsx",
+    "line": 1856,
+    "english": "Recording name",
+    "sample": {}
+  },
+  {
+    "key": "editor.titlebar.versionsTitle",
+    "file": "src/renderer/src/views/Editor.tsx",
+    "line": 1876,
+    "english": "Versions: save this edit, or go back to an earlier one",
+    "sample": {}
+  },
+  {
+    "key": "editor.titlebar.versions",
+    "file": "src/renderer/src/views/Editor.tsx",
+    "line": 1877,
+    "english": "Versions",
+    "sample": {}
+  },
+  {
+    "key": "editor.titlebar.commandsTitle",
+    "file": "src/renderer/src/views/Editor.tsx",
+    "line": 1882,
+    "english": "Search every editor command",
+    "sample": {}
+  },
+  {
+    "key": "editor.titlebar.commands",
+    "file": "src/renderer/src/views/Editor.tsx",
+    "line": 1884,
+    "english": "Commands",
+    "sample": {}
+  },
+  {
+    "key": "editor.titlebar.polish",
+    "file": "src/renderer/src/views/Editor.tsx",
+    "line": 1901,
+    "english": "Polish",
+    "sample": {}
+  },
+  {
+    "key": "editor.titlebar.publishTitle",
+    "file": "src/renderer/src/views/Editor.tsx",
+    "line": 1903,
+    "english": "Write the text to post with the video",
+    "sample": {}
+  },
+  {
+    "key": "editor.titlebar.publish",
+    "file": "src/renderer/src/views/Editor.tsx",
+    "line": 1904,
+    "english": "Publish",
+    "sample": {}
+  },
+  {
+    "key": "editor.titlebar.guideTitle",
+    "file": "src/renderer/src/views/Editor.tsx",
+    "line": 1912,
+    "english": "Make a step-by-step guide or a click-through demo from your clicks",
+    "sample": {}
+  },
+  {
+    "key": "editor.titlebar.guide",
+    "file": "src/renderer/src/views/Editor.tsx",
+    "line": 1914,
+    "english": "Guide",
+    "sample": {}
+  },
+  {
+    "key": "editor.titlebar.exportTitle",
+    "file": "src/renderer/src/views/Editor.tsx",
+    "line": 1916,
+    "english": "Export the video",
+    "sample": {}
+  },
+  {
+    "key": "editor.titlebar.export",
+    "file": "src/renderer/src/views/Editor.tsx",
+    "line": 1917,
+    "english": "Export",
+    "sample": {}
+  },
+  {
+    "key": "editor.media.loadFailed",
+    "file": "src/renderer/src/editor/media.ts",
+    "line": 69,
+    "english": "Could not load video (unknown error)",
+    "sample": {
+      "reason": "unknown error"
+    }
+  },
+  {
+    "key": "editor.media.readFailed",
+    "file": "src/renderer/src/editor/media.ts",
+    "line": 100,
+    "english": "Could not read video (unknown error)",
+    "sample": {
+      "reason": "unknown error"
+    }
+  },
+  {
+    "key": "editor.media.unknownError",
+    "file": "src/renderer/src/editor/media.ts",
+    "line": 69,
+    "english": "unknown error",
+    "sample": {}
+  },
+  {
+    "key": "editor.media.imageFailed",
+    "file": "src/renderer/src/editor/media.ts",
+    "line": 154,
+    "english": "Could not load image",
+    "sample": {}
+  },
+  {
+    "key": "common.action.back",
+    "file": "src/renderer/src/views/Editor.tsx",
+    "line": 301,
+    "english": "Back",
+    "sample": {}
+  },
+  {
+    "key": "common.label.camera",
+    "file": "src/renderer/src/views/Editor.tsx",
+    "line": 1354,
+    "english": "Camera",
+    "sample": {}
+  },
+  {
+    "key": "common.label.captions",
+    "file": "src/renderer/src/views/Editor.tsx",
+    "line": 1364,
+    "english": "Captions",
+    "sample": {}
+  },
+  {
+    "key": "common.label.keyboardShortcuts",
+    "file": "src/renderer/src/views/Editor.tsx",
+    "line": 1887,
+    "english": "Keyboard shortcuts",
+    "sample": {}
   }
 ]
