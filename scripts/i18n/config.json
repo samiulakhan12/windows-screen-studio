@@ -1,6 +1,7 @@
 {
-  "$comment": "The string scanner's settings (docs/design/output-and-languages.md, section 16.1). Step S4 turned 'scan' to 'fail': a UI text without a key anywhere in our tree fails, as every file parts P1-P7 created did from its first commit (failFor).",
+  "$comment": "The string scanner's settings (docs/design/output-and-languages.md, section 16.1). Step S4 turned 'scan' to 'fail': a UI text without a key anywhere in our tree fails, as every file parts P1-P7 created did from its first commit (failFor). 'words' is the words rule of step S4b (tables, copy and sentences made of pieces, scripts/i18n/lib/scan.cjs WORD_KINDS): a report while S4b's builders work through scripts/i18n/s4b-sites.json; S4b's integrator turns it to 'fail'.",
   "scan": "fail",
+  "words": "report",
   "failFor": [
     "src/shared/render/proFormats.ts",
     "src/shared/render/codecLevels.ts",

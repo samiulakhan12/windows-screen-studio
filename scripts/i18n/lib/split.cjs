@@ -10,7 +10,7 @@ const fs = require('node:fs')
 const path = require('node:path')
 const ts = require('typescript')
 const files = require('./files.cjs')
-const { globRegExp, matchesAny, scanTree } = require('./scan.cjs')
+const { globRegExp, matchesAny, scanTree, LABEL_PROPS, looksLikeWords } = require('./scan.cjs')
 
 const R = 'src/renderer/src'
 const panels = (...names) => names.map((n) => `${R}/editor/panels/${n}`)
@@ -216,11 +216,7 @@ function splitParts(candidates, parts = PARTS, never = NEVER) {
   return out
 }
 
-/** Properties whose string values are labels a table holds for the UI (`{ id: 'aurora', label: 'Aurora' }`). */
-const LABEL_PROPS = new Set(['label', 'title', 'name', 'description', 'hint', 'tooltip', 'placeholder', 'summary', 'text', 'heading', 'help', 'note'])
-
-/** Whether a property's string looks like words a person reads, not an id or a path: a capitalised word first, or two words. */
-const looksLikeWords = (s) => /^[A-Z][a-z]+\b/.test(s) || /[A-Za-z]{2,} [A-Za-z]{2,}/.test(s)
+// LABEL_PROPS and looksLikeWords live in scan.cjs, whose words rule (step S4b) reads label tables site by site.
 
 /**
  * The source files that hold tables of labels: a string that looks like words in a property such as
@@ -255,7 +251,7 @@ function labelTablesOf(root = files.ROOT) {
  * failFor) and the files allow.json leaves out whole left out.
  */
 function candidatesOf(root = files.ROOT) {
-  const scan = scanTree(root, { mode: 'report' })
+  const scan = scanTree(root, { mode: 'report', words: false })
   const config = files.readConfig(root)
   const pending = files.readPending(root)
   const allow = files.readAllow(root)

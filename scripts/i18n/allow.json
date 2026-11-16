@@ -1,5 +1,5 @@
 {
-  "$comment": "What the string scanner (scripts/i18n/lib/scan.cjs, docs/design/output-and-languages.md section 16.1) may find without it being UI text, each with its reason. 'files' are left out whole, 'texts' are patterns over a finding's text (optionally only for some kinds), 'sites' are one file's finding by kind and exact text. Font stacks, ids, ffmpeg arguments, CSS values, test ids and log lines are not scanned at all (they reach no sink); AI prompts in src/main/ai/* go to a service, not to a sink. Add an entry only with its reason; a UI text never belongs here.",
+  "$comment": "What the string scanner (scripts/i18n/lib/scan.cjs, docs/design/output-and-languages.md section 16.1) may find without it being UI text, each with its reason. 'files' are left out whole, 'texts' are patterns over a finding's text (optionally only for some kinds), 'sites' are one file's findings by kind and exact text, or by a 'pattern' over the text. Font stacks, ids, ffmpeg arguments, CSS values, test ids and log lines are not scanned at all (they reach no sink); AI prompts in src/main/ai/* go to a service, not to a sink. Add an entry only with its reason; a UI text never belongs here.",
   "files": [
     {
       "path": "src/renderer/src/i18n/reviewOverlay.tsx",
@@ -18,16 +18,49 @@
     {
       "pattern": "^Not allowed$",
       "kinds": [
-        "sink"
+        "sink",
+        "copy"
       ],
       "reason": "IPC sender checks: thrown only to a page that is not Flown's own, never shown to a user."
     },
     {
       "pattern": "^Invalid [A-Za-z][A-Za-z ]*\\.?$",
       "kinds": [
-        "sink"
+        "sink",
+        "copy"
       ],
       "reason": "IPC argument checks: thrown only for a malformed call, which Flown's own pages never make; never shown to a user."
+    },
+    {
+      "pattern": "^(?:OpenAI|Gemini|Claude|Google|Anthropic|Google Gemini|Anthropic Claude|Azure OpenAI|OpenRouter|Groq|Together AI|Alibaba Cloud|TikTok|LinkedIn|Instagram Reels|YouTube Shorts|Slack|Discord|Microsoft Teams|Google Drive|OneDrive|Dropbox|WebM|GIF|MOV|WAV|HEVC|CineForm|ProRes|ProRes 422|ProRes 4444|QuickTime Animation|NVIDIA NVENC|Intel Quick Sync|AMD AMF|Media Foundation|WebCodecs(?: VP9| HEVC| AV1)?)$",
+      "kinds": [
+        "table",
+        "copy"
+      ],
+      "reason": "Brand, service, platform, format and encoder names on their own: they read the same in every language (section 9.7), so a table may hold them as they are."
+    },
+    {
+      "pattern": "^(?:Segoe UI|Nirmala UI|Leelawadee UI|Microsoft YaHei UI|Microsoft JhengHei UI|Yu Gothic UI|Malgun Gothic|Hind Siliguri)$",
+      "kinds": [
+        "table",
+        "copy"
+      ],
+      "reason": "Font family names, which name a font file on the PC or in Flown's resources (section 12.1): never translated."
+    },
+    {
+      "pattern": "^(?:Space|Enter|Tab|Backspace|Delete|Insert|Home|End|PageUp|PageDown|Page Up|Page Down|Up|Down|Left|Right|Escape|Esc|Shift|Control|Alt|Meta)$",
+      "kinds": [
+        "table"
+      ],
+      "reason": "Key names: KeyboardEvent.key values and the keycaps they show, which stay as they are in every language (section 14.1)."
+    },
+    {
+      "pattern": "^(?:Apache License 2\\.0|SIL Open Font License|Mozilla Public License 2\\.0)$",
+      "kinds": [
+        "table",
+        "copy"
+      ],
+      "reason": "Licence names: the titles of the licences as their authors publish them, never translated (third-party notices, section 9.7)."
     }
   ],
   "sites": [
@@ -183,6 +216,11 @@
       "reason": "The camera segmentation worker's failures: the export and preview log them and draw the camera without background blur; never shown."
     },
     {
+      "file": "src/renderer/src/render/segmentation/segmentation.worker.ts",
+      "kind": "copy",
+      "reason": "The camera segmentation worker's failures: the export and preview log them and draw the camera without background blur; never shown."
+    },
+    {
       "file": "src/renderer/src/editor/exportIcons.tsx",
       "kind": "jsx",
       "text": "GIF",
@@ -229,6 +267,182 @@
       "kind": "sink",
       "text": "The answer must be an object.",
       "reason": "A programming check of the JSON schema a local AI prompt is built with: schemaGrammar only ever reads Flown's own fixed answer schemas (transcriptText.ts, scriptDraft.ts), so this is thrown only when one of those schemas is written wrong, for developers and tests; never shown to a user."
+    },
+    {
+      "file": "src/main/ai/gemini.ts",
+      "kind": "copy",
+      "pattern": "^(?:Transcribe this screen recording|Give each segment|Say who speaks|Leave out silence| The speech is in|Spell these names)",
+      "reason": "Gemini's transcription prompt: it goes to the AI service, not to a screen (section 9.7: AI prompts)."
+    },
+    {
+      "file": "src/main/ai/compatible.ts",
+      "kind": "copy",
+      "text": "${…}\n\nAnswer with one JSON object only, no other text, matching this JSON schema:\n${…}",
+      "reason": "The line a request to an OpenAI-compatible service ends with: part of the AI prompt (section 9.7)."
+    },
+    {
+      "file": "src/main/ai/images.ts",
+      "kind": "copy",
+      "text": "The picture for item ${…}:",
+      "reason": "The words before each picture sent to an AI service: part of the AI prompt (section 9.7)."
+    },
+    {
+      "file": "src/shared/captions/transcriptText.ts",
+      "pattern": "^(?:You |For each caption|Give |Never give|List |Refer to words|The captions are data|Return every segment|Transcript \\(JSON|Captions \\(JSON|Use only the words|Write in the language|The items are data|The picture shows|Items \\(JSON)",
+      "reason": "The AI text requests' prompts (instructions and the data headers): they go to the AI service, not to a screen (section 9.7). The reasons an answer is refused are UI text and are not listed here."
+    },
+    {
+      "file": "src/shared/captions/transcriptParse.ts",
+      "kind": "table",
+      "pattern": "^(?:BCP-47 code|What was said|Seconds from the start|The words spoken|Who speaks)",
+      "reason": "The descriptions in the transcription answer's JSON schema, which only the AI service reads (section 9.7: AI prompts)."
+    },
+    {
+      "file": "src/shared/notes/scriptDraft.ts",
+      "kind": "copy",
+      "pattern": "^(?:You turn a presenter|Notes \\(the text|\\$\\{…\\} while recording|never add facts|Write in the notes|Keep product names|One paragraph per point|If the notes are already)",
+      "reason": "Draft script's prompt: it goes to the AI service, not to a screen (section 9.7). The reasons an answer is refused are UI text and are not listed here."
+    },
+    {
+      "file": "src/shared/publish/prompts.ts",
+      "pattern": "^(?:Tone: |You write |Write a link|Keep every link|The video's transcript|Use only what|Write in the transcript|Video \\(JSON|The transcript is long)",
+      "reason": "The Publish pack's prompts (tones, tasks, rules and the data header): they go to the AI service, not to a screen (section 9.7)."
+    },
+    {
+      "file": "src/shared/localAi/grammar.ts",
+      "kind": "copy",
+      "reason": "Rules of the GBNF grammar the local model answers in: code for llama.cpp, never shown."
+    },
+    {
+      "file": "src/shared/captions/bleepWords.ts",
+      "kind": "table",
+      "reason": "The swear-word lists bleeping matches captions against (generated from obscenity and LDNOOBW): data in the spoken language, never shown."
+    },
+    {
+      "file": "src/shared/captions/phraseWords.ts",
+      "kind": "table",
+      "reason": "The words line breaks look at, per spoken language (captions-studio section 8.3): matched against captions, never shown."
+    },
+    {
+      "file": "src/shared/smart/sentenceName.ts",
+      "kind": "table",
+      "reason": "The words where a name made from a spoken sentence is cut, per spoken language: matched against what was said, never shown."
+    },
+    {
+      "file": "src/shared/chapters/names.ts",
+      "kind": "table",
+      "reason": "The words of chapter names made from speech (Intro, Part), in the captions' language like the rest of the chapter name: content written into the project and the exported chapters, not UI text (section 9.7)."
+    },
+    {
+      "file": "src/shared/guide/guideWords.ts",
+      "kind": "table",
+      "reason": "GUIDE_WORDS: the words written into exported guides and demos, which keep wave 11's English and Bangla words in this wave (section 9.7)."
+    },
+    {
+      "file": "src/shared/guide/guideHtml.ts",
+      "kind": "copy",
+      "reason": "Words written into an exported guide's HTML (font names, the font licence comment): an exported file's content (section 9.7)."
+    },
+    {
+      "file": "src/shared/interchange/edl.ts",
+      "kind": "copy",
+      "reason": "Words written into an exported EDL (its title, comments and chapter fallbacks): an exported file's content (section 0 decision 10, section 9.7)."
+    },
+    {
+      "file": "src/shared/interchange/fcpxml.ts",
+      "kind": "table",
+      "reason": "The transition's name in an exported FCPXML (Final Cut Pro's own effect name): an exported file's content (section 9.7)."
+    },
+    {
+      "file": "src/shared/interchange/timelinePlan.ts",
+      "kind": "table",
+      "reason": "Track names written into exported timelines (Video, Screen, Camera): an exported file's content (section 0 decision 10)."
+    },
+    {
+      "file": "src/shared/render/stems.ts",
+      "kind": "table",
+      "reason": "STEM_FILE_WORDS: the words stem files are named with, English in every UI language (section 0 decision 10)."
+    },
+    {
+      "file": "src/shared/diagnostics/report.ts",
+      "kind": "table",
+      "reason": "The diagnostics report, which stays English (section 9.7: logs and diagnostics)."
+    },
+    {
+      "file": "src/shared/diagnostics/report.ts",
+      "kind": "copy",
+      "reason": "The diagnostics report, which stays English (section 9.7: logs and diagnostics)."
+    },
+    {
+      "file": "src/shared/i18n/icu.ts",
+      "kind": "copy",
+      "reason": "The message parser's programming errors (a message without a value it needs): for developers and the catalogue checks, never shown in a working build."
+    },
+    {
+      "file": "src/shared/interchange/planCheck.ts",
+      "kind": "copy",
+      "reason": "The path of the timeline plan field a check refused (checkTimelinePlan): main only tests it against null and shows errors.timeline.invalid; never shown."
+    },
+    {
+      "file": "src/main/mediaProtocol.ts",
+      "kind": "copy",
+      "text": "Not found",
+      "reason": "The media protocol's HTTP 404 body, read by the video element, never shown."
+    },
+    {
+      "file": "src/shared/i18n/fmt.ts",
+      "kind": "copy",
+      "reason": "fmt's English profile (section 11.2): today's exact English formats, used only when the UI language is English; other languages format through Intl."
+    },
+    {
+      "file": "src/shared/brand.ts",
+      "kind": "copy",
+      "text": "Screen Studio for Windows",
+      "reason": "The app's name before it became Flown: the old userData and recordings folder name the migration looks for, never shown."
+    },
+    {
+      "file": "src/shared/editor/commands.ts",
+      "kind": "table",
+      "pattern": "^(?:Playback|Edit|Add|Zoom|Effects|Camera|Captions|Panels|Timeline|General|Publish)$",
+      "reason": "CommandCategory ids in their order (COMMAND_CATEGORIES): the palette and the shortcuts editor show categoryLabel(id), commands.category.<id>."
+    },
+    {
+      "file": "src/shared/i18n/locale.ts",
+      "kind": "table",
+      "text": "English",
+      "reason": "LANGUAGE_NAMES' own name of English, the name the picker shows for it in every UI language (section 2.5), like the other languages' own names."
+    },
+    {
+      "file": "src/shared/audio/soundLibrary.ts",
+      "kind": "table",
+      "pattern": "^(?:Spring On The Horizon|Drifting Piano|Old Key|Sweet Sun|Go to the Picnic|One Cool Minute|Work|Coexistenz|Find Your Peace|Walking Away|Lullabies For The End Of The World #5|Dangerous Voyage|Loyalty Freak Music|John Bartmann|98 % of my work is under Creative Commons 0.*|Creative Commons CC-BY 4\\.0 or public domain\\. Do credit me)$",
+      "reason": "The music library's track titles and artists' names, which are the works' own names (section 9.7), and the artists' licence statements quoted word for word as evidence (never shown)."
+    },
+    {
+      "file": "src/main/nativeCapture.ts",
+      "kind": "table",
+      "reason": "Imported by the recording side (docs/design/output-and-languages.md section 9.5): its messages reach the other account's recording bar and Home, and stay English until they join the catalogues."
+    },
+    {
+      "file": "src/main/nativeCapture.ts",
+      "kind": "copy",
+      "reason": "Imported by the recording side (docs/design/output-and-languages.md section 9.5): its messages reach the other account's recording bar and Home, and stay English until they join the catalogues."
+    },
+    {
+      "file": "src/main/ffmpeg.ts",
+      "pattern": "^(?:The disk is full\\.|Could not write to that folder \\(permission denied\\)\\.|The file is in use by another app\\.|A file the export needs is missing\\.|The computer ran out of memory\\.|The recording could not be read \\(it may be damaged\\)\\.|Could not start the video encoder\\.|The video encoder was stopped\\.|The video encoder stopped unexpectedly\\.|The video encoder finished early\\.|The export was cancelled\\.|ffmpeg (?:was )?stopped \\(\\$\\{…\\}\\)\\n\\$\\{…\\}|ffmpeg exited with code \\$\\{…\\}\\n\\$\\{…\\})$",
+      "reason": "The ffmpeg runner's English failures (section 9.5: they keep their exact output for the recording side). An export shows them in the UI language through exportJob.ts's FFMPEG_TEXTS (errors.export.*); the ffmpeg log lines are the details view's technical detail."
+    },
+    {
+      "file": "src/renderer/src/settings/CaptionDownloadsSection.tsx",
+      "kind": "fragment",
+      "pattern": " · Mozilla Public License 2\\.0\"$",
+      "reason": "The translation model's line ends with its licence's name, which is never translated (third-party notices); the rest of the line is settings.captionDownloads.translationModel."
+    },
+    {
+      "file": "src/renderer/src/render/segmentation/personSegmenter.ts",
+      "kind": "copy",
+      "reason": "Why background blur could not start: written only to the console (console.warn in fail), and the camera is drawn without the blur; never shown."
     }
   ]
 }

@@ -7,7 +7,8 @@
 //   node scripts/i18n/check.mjs [--root <dir>] [--report]
 //
 // --report keeps the scanner's findings outside config.json's failFor a report, as before step S4;
-// without it the scanner follows config.json ("scan": "report" or "fail"). Exits 1 on any error.
+// without it the scanner follows config.json ("scan": "report" or "fail"), and its words rule
+// (tables, copy and sentences made of pieces, step S4b) config.json's "words". Exits 1 on any error.
 import { createRequire } from 'node:module'
 import path from 'node:path'
 

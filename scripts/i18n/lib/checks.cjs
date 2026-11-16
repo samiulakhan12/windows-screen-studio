@@ -60,10 +60,14 @@ function runChecks(root = files.ROOT, { report = false } = {}) {
   const notes = []
   const config = files.readConfig(root)
 
-  // 1. The scanner.
-  const scan = scanTree(root, { mode: report ? 'report' : config.scan })
+  // 1. The scanner, and its words rule (tables, copy and sentences made of pieces), a report until config.json's `words` says "fail".
+  const scan = scanTree(root, { mode: report ? 'report' : config.scan, wordsMode: report ? 'report' : config.words })
   for (const f of scan.failures) errors.push(`${f.file}:${f.line}: UI text without a key (${f.kind}): ${JSON.stringify(f.text)}`)
   if (scan.report.length) notes.push(`scan: ${scan.report.length} text(s) in ${new Set(scan.report.map((f) => f.file)).size} file(s) still to extract`)
+  if (scan.words.length) {
+    const count = (kind) => scan.words.filter((f) => f.kind === kind).length
+    notes.push(`scan: words report: ${count('table')} table text(s), ${count('copy')} copy text(s) and ${count('fragment')} sentence(s) in pieces in ${new Set(scan.words.map((f) => f.file)).size} file(s) still to extract (scripts/i18n/s4b-sites.json; they fail once config.json says "words": "fail")`)
+  }
   if (scan.pending.length) notes.push(`scan: ${scan.pending.length} text(s) pending in the other account's files`)
 
   // 2. English.
