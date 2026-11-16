@@ -79,7 +79,7 @@ describe('every state has its copy', () => {
     expect(copy.retryingLine({ attempt: 2, of: 3 })).toBe('The connection dropped: trying again (2 of 3)…')
     expect(copy.stoppedLine({ received: 21e6, total: 60e6 })).toBe('Download stopped at 21 of 60 MB.')
     expect(copy.deletePartLabel(21e6)).toBe('Delete the 21 MB downloaded')
-    expect(copy.continueDownload).toBe('Continue download and make captions')
+    expect(copy.continueDownload()).toBe('Continue download and make captions')
     expect(copy.downloadBusyLine('whisper-base', 'whisper-tiny')).toBe('Standard (Whisper base) is downloading, and one speech model downloads at a time: download Fast once it is done.')
   })
 

@@ -2045,5 +2045,589 @@
     "user": [
       "place"
     ]
+  },
+  "local.tierSlow": {
+    "description": "Captions tab, captions made on this PC (the speech model runs on this computer): the Most accurate chip's label: {tier} is the tier's name (\"Most accurate\"); it is slower than playing the recording."
+  },
+  "local.size.megabytes": {
+    "description": "A download's size as screen readers read it (\"60 megabytes\"); {n} is a number in Latin digits.",
+    "digits": "latn"
+  },
+  "local.size.gigabytes": {
+    "description": "A download's size as screen readers read it (\"1.2 gigabytes\"); {n} is a number in Latin digits.",
+    "digits": "latn"
+  },
+  "local.length.seconds": {
+    "description": "A recording's length or how long making captions took, in seconds (\"45 s\")."
+  },
+  "local.length.minutes": {
+    "description": "A recording's length or how long making captions took, in minutes (\"20 min\")."
+  },
+  "local.length.minutesSeconds": {
+    "description": "How long making captions took, in minutes and seconds (\"3 min 10 s\")."
+  },
+  "local.length.hoursMinutes": {
+    "description": "A recording's length or how long making captions took, in hours and minutes (\"1 h 5 min\")."
+  },
+  "local.length.hours": {
+    "description": "A recording's length or how long making captions took, in whole hours (\"2 h\")."
+  },
+  "local.leftSeconds": {
+    "description": "Captions tab, captions made on this PC (the speech model runs on this computer): the time left of a download or a job, in seconds (\"about 10 s left\")."
+  },
+  "local.left": {
+    "description": "Captions tab, captions made on this PC (the speech model runs on this computer): the time left of a download or a job; {time} is an estimate (\"about 3 min\")."
+  },
+  "local.ofMB": {
+    "description": "Captions tab, captions made on this PC (the speech model runs on this computer): how much of a download is here, in whole megabytes (\"21 of 60 MB\").",
+    "dnt": [
+      "MB"
+    ]
+  },
+  "local.checking": {
+    "description": "Captions tab, captions made on this PC (the speech model runs on this computer): while Flown checks whether captions can be made here."
+  },
+  "local.localOption": {
+    "description": "Captions tab, captions made on this PC (the speech model runs on this computer): the provider choice that makes captions on this PC."
+  },
+  "local.localOnly": {
+    "description": "Captions tab, captions made on this PC (the speech model runs on this computer): hint when there is no AI provider."
+  },
+  "local.qualityLabel": {
+    "description": "Captions tab, captions made on this PC (the speech model runs on this computer): label of the quality chips (Fast, Standard, Accurate…)."
+  },
+  "local.manageModels": {
+    "description": "Captions tab, captions made on this PC (the speech model runs on this computer): link to Settings › Captions on this PC."
+  },
+  "local.compatibleBuild": {
+    "description": "Captions tab, captions made on this PC (the speech model runs on this computer): note on PCs whose processor needs the compatible build. \"Fast\" is the quickest tier's name."
+  },
+  "local.languageHint": {
+    "description": "Captions tab, captions made on this PC (the speech model runs on this computer): hint when the spoken language is not English. \"Accurate\" is a tier's name."
+  },
+  "local.languageHintDone": {
+    "description": "Captions tab, captions made on this PC (the speech model runs on this computer): the same hint after captions were made."
+  },
+  "local.consentTitle": {
+    "description": "Captions tab, captions made on this PC (the speech model runs on this computer): the title of the card that asks before the first download."
+  },
+  "local.smallPrint": {
+    "description": "Captions tab, captions made on this PC (the speech model runs on this computer): small print of the download card: where the Whisper models come from and their licence.",
+    "dnt": [
+      "Whisper",
+      "OpenAI",
+      "MIT",
+      "huggingface.co/ggerganov/whisper.cpp"
+    ]
+  },
+  "local.preferCloud": {
+    "description": "Captions tab, captions made on this PC (the speech model runs on this computer): link to Settings › AI providers.",
+    "dnt": [
+      "OpenAI",
+      "Gemini"
+    ]
+  },
+  "local.checkAgain": {
+    "description": "Captions tab, captions made on this PC (the speech model runs on this computer): button that checks the connection or the disk again."
+  },
+  "local.offline": {
+    "description": "Captions tab, captions made on this PC (the speech model runs on this computer): the PC is offline before the first download; {size} is the download's size (\"60 MB\")."
+  },
+  "local.downloadNote": {
+    "description": "Captions tab, captions made on this PC (the speech model runs on this computer): under the download's progress (\"it\" is the speech model)."
+  },
+  "local.verifying": {
+    "description": "Captions tab, captions made on this PC (the speech model runs on this computer): while the downloaded model is checked."
+  },
+  "local.readyHint": {
+    "description": "Captions tab, captions made on this PC (the speech model runs on this computer): under Generate captions."
+  },
+  "local.generate": {
+    "description": "Captions tab, captions made on this PC (the speech model runs on this computer): the button that makes captions."
+  },
+  "local.generateAgain": {
+    "description": "Captions tab, captions made on this PC (the speech model runs on this computer): the button that makes captions again."
+  },
+  "local.chooseAnother": {
+    "description": "Captions tab, captions made on this PC (the speech model runs on this computer): button when the chosen model cannot be downloaded."
+  },
+  "local.useProvider": {
+    "description": "Captions tab, captions made on this PC (the speech model runs on this computer): button that switches to an AI provider."
+  },
+  "local.runningNote": {
+    "description": "Captions tab, captions made on this PC (the speech model runs on this computer): while captions are being made. \"Generate captions\" is the button's name."
+  },
+  "local.workingOutLeft": {
+    "description": "Captions tab, captions made on this PC (the speech model runs on this computer): before the time left is known."
+  },
+  "local.cloudErrorOffer": {
+    "description": "Captions tab, captions made on this PC (the speech model runs on this computer): after an AI provider failed to make captions (\"them\" are the captions)."
+  },
+  "local.intro": {
+    "description": "Captions tab, captions made on this PC (the speech model runs on this computer): the introduction before any captions exist.",
+    "dnt": [
+      "Flown"
+    ]
+  },
+  "local.noSound": {
+    "description": "Captions tab, captions made on this PC (the speech model runs on this computer): a silent recording."
+  },
+  "local.downloadBar": {
+    "description": "Captions tab, captions made on this PC (the speech model runs on this computer): the download progress bar's accessible name."
+  },
+  "local.jobBar": {
+    "description": "Captions tab, captions made on this PC (the speech model runs on this computer): the progress bar's accessible name while captions are made."
+  },
+  "local.settingsTitle": {
+    "description": "Settings › Captions on this PC: the section's title."
+  },
+  "local.settingsLead": {
+    "description": "Settings › Captions on this PC: the introduction.",
+    "dnt": [
+      "API",
+      "Hugging Face"
+    ]
+  },
+  "local.settingsRadios": {
+    "description": "Settings › Captions on this PC: the label of the list of models to choose from."
+  },
+  "local.recommended": {
+    "description": "Settings › Captions on this PC: badge of the recommended model."
+  },
+  "local.downloaded": {
+    "description": "Settings › Captions on this PC: and the Captions tab: a model is downloaded and checked."
+  },
+  "local.checkingRow": {
+    "description": "Settings › Captions on this PC: a model's row while its file is checked."
+  },
+  "local.damaged": {
+    "description": "Settings › Captions on this PC: a model whose file failed its check."
+  },
+  "local.downloadAgain": {
+    "description": "Settings › Captions on this PC: button of a damaged model."
+  },
+  "local.continue": {
+    "description": "Settings › Captions on this PC: button that continues a stopped download (the verb)."
+  },
+  "local.inUse": {
+    "description": "Settings › Captions on this PC: a model in use cannot be removed."
+  },
+  "local.showFolder": {
+    "description": "Settings › Captions on this PC: button that opens the models' folder."
+  },
+  "local.licenceLine": {
+    "description": "Settings › Captions on this PC: the Whisper models' licence line; {repo} is the Hugging Face repository and {commit} its pinned commit.",
+    "dnt": [
+      "Whisper",
+      "OpenAI",
+      "MIT",
+      "whisper.cpp",
+      "huggingface.co/"
+    ]
+  },
+  "local.aiProvidersNoKey": {
+    "description": "Settings › AI providers: a pointer to Captions on this PC."
+  },
+  "local.notices": {
+    "description": "About › Third-party notices: the title."
+  },
+  "local.noticesFailed": {
+    "description": "About › Third-party notices could not be read; {message} is the reason, without its full stop."
+  },
+  "local.jobFailedNotice": {
+    "description": "Editor notice while another tab is open."
+  },
+  "local.downloadFailedNotice": {
+    "description": "Editor notice while another tab is open."
+  },
+  "local.banglaConsentTitle": {
+    "description": "Captions tab, captions made on this PC (the speech model runs on this computer): the download card's title for the Bangla model."
+  },
+  "local.banglaHint": {
+    "description": "Captions tab, captions made on this PC (the speech model runs on this computer): hint when the spoken language is Bengali. The second \"Bangla\" is the tier's name."
+  },
+  "local.banglaDetect": {
+    "description": "Captions tab, captions made on this PC (the speech model runs on this computer): offer when the spoken language looks like Bangla. \"Bengali\" is the language's name in the language list."
+  },
+  "local.chooseBengali": {
+    "description": "Captions tab, captions made on this PC (the speech model runs on this computer): button that sets the spoken language to Bengali."
+  },
+  "local.banglaOffer": {
+    "description": "Captions tab, captions made on this PC (the speech model runs on this computer): offer of the Bangla model."
+  },
+  "local.banglaAgain": {
+    "description": "Captions tab, captions made on this PC (the speech model runs on this computer): button that makes the captions again with the Bangla model (\"them\" are the captions)."
+  },
+  "local.banglaShowDownload": {
+    "description": "Captions tab, captions made on this PC (the speech model runs on this computer): button while the Bangla model downloads elsewhere."
+  },
+  "local.banglaForKeyUsers": {
+    "description": "Captions tab, captions made on this PC (the speech model runs on this computer): offer of the Bangla model when an AI provider is chosen."
+  },
+  "local.useBanglaModel": {
+    "description": "Captions tab, captions made on this PC (the speech model runs on this computer): button that switches to the Bangla model."
+  },
+  "local.readyHintBangla": {
+    "description": "Captions tab, captions made on this PC (the speech model runs on this computer): under Generate captions with the Bangla model."
+  },
+  "local.banglaBlocked": {
+    "description": "Captions tab, captions made on this PC (the speech model runs on this computer): why the Bangla model cannot be used here; {reason} is a sentence (\"Needs about 1.3 GB of memory…\")."
+  },
+  "local.smallPrintModel": {
+    "description": "Captions tab, captions made on this PC (the speech model runs on this computer): small print of the download card: {model} is the model's name, {licence} its licence (MIT, Apache-2.0), {repo} its repository.",
+    "dnt": [
+      "huggingface.co/"
+    ]
+  },
+  "local.licenceLineModel": {
+    "description": "Settings › Captions on this PC: a model's licence line: {holder} is who holds its copyright.",
+    "dnt": [
+      "huggingface.co/"
+    ]
+  },
+  "local.purpose.fast": {
+    "description": "Captions tab, captions made on this PC (the speech model runs on this computer): what the Fast tier is for."
+  },
+  "local.purpose.standard": {
+    "description": "Captions tab, captions made on this PC (the speech model runs on this computer): what the Standard tier is for."
+  },
+  "local.purpose.accurate": {
+    "description": "Captions tab, captions made on this PC (the speech model runs on this computer): what the Accurate tier is for."
+  },
+  "local.purpose.bestSettings": {
+    "description": "Settings › Captions on this PC: what the Most accurate tier is for."
+  },
+  "local.purpose.best": {
+    "description": "Captions tab, captions made on this PC (the speech model runs on this computer): what the Most accurate tier is for."
+  },
+  "local.purpose.banglaSettings": {
+    "description": "Settings › Captions on this PC: what the Bangla model is for."
+  },
+  "local.purpose.bangla": {
+    "description": "Captions tab, captions made on this PC (the speech model runs on this computer): what the Bangla model is for."
+  },
+  "local.chip.downloaded": {
+    "description": "Captions tab, captions made on this PC (the speech model runs on this computer): a quality chip whose model is downloaded; {tier} is the tier's name."
+  },
+  "local.chip.downloadedName": {
+    "description": "Captions tab, captions made on this PC (the speech model runs on this computer): a quality chip's accessible name, its model downloaded."
+  },
+  "local.chip.size": {
+    "description": "Captions tab, captions made on this PC (the speech model runs on this computer): a quality chip with its download's size (\"Fast · 44 MB\")."
+  },
+  "local.chip.megabyteName": {
+    "description": "Captions tab, captions made on this PC (the speech model runs on this computer): a quality chip's accessible name: its download's size in megabytes.",
+    "digits": "latn"
+  },
+  "local.chip.gigabyteName": {
+    "description": "Captions tab, captions made on this PC (the speech model runs on this computer): a quality chip's accessible name: its download's size in gigabytes.",
+    "digits": "latn"
+  },
+  "local.estimateDownloaded": {
+    "description": "Captions tab, captions made on this PC (the speech model runs on this computer): the estimate under the chips, the model downloaded; {time} is \"about 3 min\"."
+  },
+  "local.estimate": {
+    "description": "Captions tab, captions made on this PC (the speech model runs on this computer): the estimate under the chips; {size} is the download (\"190 MB\") and {time} \"about 10 min\"."
+  },
+  "local.slower": {
+    "description": "Captions tab, captions made on this PC (the speech model runs on this computer): the chosen model is slower than real time on this PC; {time} is \"about 38 min\"."
+  },
+  "local.consentBangla": {
+    "description": "Captions tab, captions made on this PC (the speech model runs on this computer): the Bangla model's download card; {size} is its size, {length} the recording's length (\"20 min\") and {time} the estimate (\"about 3 min\").",
+    "dnt": [
+      "Flown",
+      "Hugging Face"
+    ]
+  },
+  "local.consent": {
+    "description": "Captions tab, captions made on this PC (the speech model runs on this computer): the download card; {model} is the tier and model (\"Standard (Whisper base)\"), {size} its size, {length} the recording's length and {time} the estimate.",
+    "dnt": [
+      "Flown",
+      "Hugging Face"
+    ]
+  },
+  "local.downloadLanguageModel": {
+    "description": "Captions tab, captions made on this PC (the speech model runs on this computer): the Bangla model's download button; {tier} is \"Bangla\"."
+  },
+  "local.downloadSize": {
+    "description": "Captions tab, captions made on this PC (the speech model runs on this computer): the download button."
+  },
+  "local.downloadLanguageModelName": {
+    "description": "Captions tab, captions made on this PC (the speech model runs on this computer): the Bangla model's download button's accessible name: it starts with the visible words; {spoken} is the size as read (\"539 megabytes\")."
+  },
+  "local.downloadTierName": {
+    "description": "Captions tab, captions made on this PC (the speech model runs on this computer): the download button's accessible name; {spoken} is the size as read (\"60 megabytes\")."
+  },
+  "local.useInstalled": {
+    "description": "Captions tab, captions made on this PC (the speech model runs on this computer): button that uses a downloaded model (\"them\" are the captions)."
+  },
+  "local.disk": {
+    "description": "Captions tab, captions made on this PC (the speech model runs on this computer): the disk is too full for the download."
+  },
+  "local.downloadBusy": {
+    "description": "Captions tab, captions made on this PC (the speech model runs on this computer): another model is downloading; {busy} is it (\"Accurate (Whisper small)\") and {tier} the one asked for."
+  },
+  "local.speed": {
+    "description": "A download's speed in megabytes a second, with one decimal.",
+    "dnt": [
+      "MB/s"
+    ]
+  },
+  "local.downloading": {
+    "description": "Captions tab, captions made on this PC (the speech model runs on this computer): download progress; {model} is \"Standard (Whisper base)\" and {done} \"21 of 60 MB\". The speed and the time left may follow after \" · \"."
+  },
+  "local.retrying": {
+    "description": "Captions tab, captions made on this PC (the speech model runs on this computer): a download is retried."
+  },
+  "local.stoppedAt": {
+    "description": "Captions tab, captions made on this PC (the speech model runs on this computer): a stopped download; {done} is \"21 of 60 MB\"."
+  },
+  "local.continueDownload": {
+    "description": "Captions tab, captions made on this PC (the speech model runs on this computer): button that continues a stopped download."
+  },
+  "local.deletePart": {
+    "description": "Captions tab, captions made on this PC (the speech model runs on this computer): button that deletes the part of a stopped download."
+  },
+  "local.downloadFailed": {
+    "description": "Captions tab, captions made on this PC (the speech model runs on this computer): a failed download; {reason} is a sentence saying why."
+  },
+  "local.fail.networkKept": {
+    "description": "Why a speech model download failed.",
+    "dnt": [
+      "Flown",
+      "huggingface.co"
+    ]
+  },
+  "local.fail.network": {
+    "description": "Why a speech model download failed.",
+    "dnt": [
+      "Flown",
+      "huggingface.co"
+    ]
+  },
+  "local.fail.http": {
+    "description": "Why a speech model download failed; {status} is the HTTP status number (or \"?\").",
+    "digits": "latn",
+    "dnt": [
+      "Hugging Face",
+      "HTTP"
+    ]
+  },
+  "local.fail.refused": {
+    "description": "Why a speech model download failed.",
+    "dnt": [
+      "Hugging Face",
+      "HTTP 403"
+    ]
+  },
+  "local.fail.missing": {
+    "description": "Why a speech model download failed; {model} is \"Standard (Whisper base)\".",
+    "dnt": [
+      "Flown"
+    ]
+  },
+  "local.fail.mismatch": {
+    "description": "Why a speech model download failed."
+  },
+  "local.fail.disk": {
+    "description": "Why a speech model download failed."
+  },
+  "local.fail.diskWas": {
+    "description": "Why a speech model download failed, when space was freed since."
+  },
+  "local.fail.other": {
+    "description": "Why a speech model download failed, when nothing better is known."
+  },
+  "local.memory.closeApps": {
+    "description": "Captions tab, captions made on this PC (the speech model runs on this computer): memory warning for the Bangla model."
+  },
+  "local.memory.chooseTier": {
+    "description": "Captions tab, captions made on this PC (the speech model runs on this computer): memory warning; {quicker} is a quicker tier's name."
+  },
+  "local.memory.chooseQuicker": {
+    "description": "Captions tab, captions made on this PC (the speech model runs on this computer): memory warning when there is no quicker tier to name."
+  },
+  "local.phase.loading": {
+    "description": "Captions tab, captions made on this PC (the speech model runs on this computer): progress."
+  },
+  "local.phase.preparing": {
+    "description": "Captions tab, captions made on this PC (the speech model runs on this computer): progress."
+  },
+  "local.phase.transcribingAt": {
+    "description": "Captions tab, captions made on this PC (the speech model runs on this computer): progress; {at} and {duration} are times (\"8:30 of 20:00\")."
+  },
+  "local.phase.transcribing": {
+    "description": "Captions tab, captions made on this PC (the speech model runs on this computer): progress."
+  },
+  "local.phase.finishing": {
+    "description": "Captions tab, captions made on this PC (the speech model runs on this computer): progress."
+  },
+  "local.phase.stopping": {
+    "description": "Captions tab, captions made on this PC (the speech model runs on this computer): progress after Stop."
+  },
+  "local.phaseName.loading": {
+    "description": "Captions tab, captions made on this PC (the speech model runs on this computer): what screen readers hear for the phase (no dots)."
+  },
+  "local.phaseName.preparing": {
+    "description": "Captions tab, captions made on this PC (the speech model runs on this computer): what screen readers hear for the phase (no dots)."
+  },
+  "local.phaseName.transcribing": {
+    "description": "Captions tab, captions made on this PC (the speech model runs on this computer): what screen readers hear for the phase (no dots)."
+  },
+  "local.phaseName.finishing": {
+    "description": "Captions tab, captions made on this PC (the speech model runs on this computer): what screen readers hear for the phase (no dots)."
+  },
+  "local.phaseName.stopping": {
+    "description": "Captions tab, captions made on this PC (the speech model runs on this computer): what screen readers hear for the phase (no dots)."
+  },
+  "local.announcePercent": {
+    "description": "Captions tab, captions made on this PC (the speech model runs on this computer): what screen readers hear every 25 percent."
+  },
+  "local.barPercent": {
+    "description": "Captions tab, captions made on this PC (the speech model runs on this computer): the progress bar's value as read."
+  },
+  "local.barPercentLeft": {
+    "description": "Captions tab, captions made on this PC (the speech model runs on this computer): the progress bar's value as read, with the time left (\"about 3 min left\")."
+  },
+  "local.heard": {
+    "description": "Captions tab, captions made on this PC (the speech model runs on this computer): the newest words heard while captions are made.",
+    "user": [
+      "words"
+    ]
+  },
+  "local.resumed": {
+    "description": "Captions tab, captions made on this PC (the speech model runs on this computer): a job continued from where it stopped."
+  },
+  "local.cancelled": {
+    "description": "Captions tab, captions made on this PC (the speech model runs on this computer): after Stop. \"Generate captions\" is the button's name."
+  },
+  "local.downloadAgainSize": {
+    "description": "Captions tab, captions made on this PC (the speech model runs on this computer): button an error offers."
+  },
+  "local.useTier": {
+    "description": "Captions tab, captions made on this PC (the speech model runs on this computer): button an error offers; {tier} is a tier's name."
+  },
+  "local.done": {
+    "description": "Captions tab, captions made on this PC (the speech model runs on this computer): summary; {model} is the model's name."
+  },
+  "local.doneLanguage": {
+    "description": "Captions tab, captions made on this PC (the speech model runs on this computer): summary; {language} is the spoken language's name."
+  },
+  "local.doneDetected": {
+    "description": "Captions tab, captions made on this PC (the speech model runs on this computer): summary; the spoken language was detected."
+  },
+  "local.doneTook": {
+    "description": "Captions tab, captions made on this PC (the speech model runs on this computer): summary with how long it took (\"42 s\")."
+  },
+  "local.doneTookLanguage": {
+    "description": "Captions tab, captions made on this PC (the speech model runs on this computer): summary with the language and how long it took."
+  },
+  "local.doneTookDetected": {
+    "description": "Captions tab, captions made on this PC (the speech model runs on this computer): summary with the detected language and how long it took."
+  },
+  "local.notLanguage": {
+    "description": "Captions tab, captions made on this PC (the speech model runs on this computer): link after a detected language (\"Not English?\")."
+  },
+  "local.ready": {
+    "description": "Editor notice when captions made on this PC are ready."
+  },
+  "local.badge.downloading": {
+    "description": "The Captions tab's tooltip while the speech model downloads."
+  },
+  "local.badge.downloadingPercent": {
+    "description": "The Captions tab's tooltip while the speech model downloads."
+  },
+  "local.badge.verifying": {
+    "description": "The Captions tab's tooltip while the download is checked."
+  },
+  "local.badge.making": {
+    "description": "The Captions tab's tooltip while captions are made."
+  },
+  "local.badge.makingPercent": {
+    "description": "The Captions tab's tooltip while captions are made."
+  },
+  "local.rowTitle": {
+    "description": "Settings › Captions on this PC: a model's row title (\"Whisper base · Standard\")."
+  },
+  "local.rowTitleOnly": {
+    "description": "Settings › Captions on this PC: the Bangla model's row title (\"Bengali.AI Whisper medium · Bangla only\")."
+  },
+  "local.rowFacts": {
+    "description": "Settings › Captions on this PC: a model's facts; {time} is \"about 1 min\"."
+  },
+  "local.rowFactsMeasured": {
+    "description": "Settings › Captions on this PC: a model's facts, its speed measured on this PC."
+  },
+  "local.rowDownloading": {
+    "description": "Settings › Captions on this PC: a model's row while it downloads."
+  },
+  "local.rowDownloadingSpeed": {
+    "description": "Settings › Captions on this PC: a model's row while it downloads, with the speed (\"4.2 MB/s\")."
+  },
+  "local.rowStopped": {
+    "description": "Settings › Captions on this PC: a stopped download."
+  },
+  "local.rowFailed": {
+    "description": "Settings › Captions on this PC: a failed download; {reason} is a sentence saying why."
+  },
+  "local.rowDownload": {
+    "description": "Settings › Captions on this PC: a model's download button."
+  },
+  "local.rowDownloadName": {
+    "description": "Settings › Captions on this PC: the download button's accessible name; {spoken} is the size as read (\"60 megabytes\")."
+  },
+  "local.removeQuestion": {
+    "description": "Settings › Captions on this PC: the question before a model is removed."
+  },
+  "local.removeName": {
+    "description": "Settings › Captions on this PC: the Remove button's accessible name."
+  },
+  "local.engineUnavailable": {
+    "description": "Settings › Captions on this PC: the speech engine cannot run; {reason} is a clause (\"the speech engine did not start\")."
+  },
+  "local.engineCompatible": {
+    "description": "Settings › Captions on this PC: the speech engine's line."
+  },
+  "local.engineReady": {
+    "description": "Settings › Captions on this PC: the speech engine's line."
+  },
+  "local.detectorReady": {
+    "description": "Settings › Captions on this PC: the speech detector's line. \"Remove silences\" and \"Smart speed\" are tools' names.",
+    "dnt": [
+      "Silero VAD"
+    ]
+  },
+  "local.detectorUnavailable": {
+    "description": "Settings › Captions on this PC: the speech detector cannot run; {reason} is a clause (\"the speech engine did not start\")."
+  },
+  "local.diskFooter": {
+    "description": "Settings › Captions on this PC: the disk use line."
+  },
+  "local.diskFooterFree": {
+    "description": "Settings › Captions on this PC: the disk use line with the drive's free space."
+  },
+  "local.listen.voice": {
+    "description": "Clip tab: what counts as sound for Remove silences."
+  },
+  "local.listen.voiceSystem": {
+    "description": "Clip tab: what counts as sound, when the recording kept the PC's sound apart."
+  },
+  "local.listen.mixed": {
+    "description": "Clip tab: what counts as sound."
+  },
+  "local.listen.guard": {
+    "description": "Clip tab: what counts as sound."
+  },
+  "local.listen.level": {
+    "description": "Clip tab: what counts as sound."
+  },
+  "local.hint.silences": {
+    "description": "Clip tab, Remove silences: hint when the voice counts."
+  },
+  "local.hint.idle": {
+    "description": "Clip tab, Smart speed: hint when the voice counts."
+  },
+  "local.hint.ducking": {
+    "description": "Audio tab, ducking: hint when the voice counts."
   }
 }

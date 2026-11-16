@@ -478,7 +478,7 @@ export function LocalAction({
           <p>{stoppedLine(s)}</p>
           <div className="local-actions">
             <button ref={primaryRef} type="button" className="btn primary" {...busyProps(view.id)} onClick={() => download()}>
-              {continueDownload}
+              {continueDownload()}
             </button>
             <button type="button" className="btn ghost" onClick={() => cancelDownload(true)}>
               {deletePartLabel(s.received)}

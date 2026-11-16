@@ -2,7 +2,7 @@ import { useEffect, useState, useSyncExternalStore } from 'react'
 import { activitySources, AUDIO_LIMITS, audioLook, recordingMix, SOURCE_FILES, STEM_KINDS, stemsOf, type StemKind } from '../../../../shared/audio/settings'
 import type { AudioAnalysis } from '../../../../shared/audio/soundtrack'
 import { soundDetector, type SoundDetector } from '../../../../shared/audio/voice'
-import { DUCKING_VOICE_HINT } from '../../../../shared/speech/speechCopy'
+import { duckingVoiceHint } from '../../../../shared/speech/speechCopy'
 import { loadAudioAnalysis } from '../audioAnalysis'
 import { LOUDNESS_TARGET } from '../../../../shared/audio/loudness'
 import { mediaUrl } from '../../../../shared/mediaUrl'
@@ -284,7 +284,7 @@ function MusicSection(props: {
           <p className="hint">
             {props.canDuck
               ? detector === 'speech'
-                ? DUCKING_VOICE_HINT
+                ? duckingVoiceHint()
                 : t('sound.audioPanel.howFarTheMusic')
               : t('sound.audioPanel.theRecordingIsSilent')}
           </p>
