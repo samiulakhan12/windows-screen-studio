@@ -104,6 +104,8 @@ const PARTS = {
     namespaces: ['captions', 'smart'],
     files: [
       ...panels('Caption*.tsx', 'Speakers*.tsx', 'Studio*.tsx', 'Transcript*.tsx', 'LocalCaptions.tsx', 'Cleanup*.tsx', 'Languages*.tsx', 'Great*.tsx', 'FindChapters.tsx', 'SubtitlesField.tsx'),
+      // Named: since step S4b it has no table of labels left for candidatesOf to find (its spoken languages are captionTracks' list).
+      `${R}/editor/panels/CaptionsPanel.tsx`,
       `${R}/editor/CaptionTrack.tsx`,
       `${R}/editor/panels/captionTiles.ts`,
       `${R}/editor/{captionItems,captionPresets,chaptersRun,greatRun,speechState}.ts`,

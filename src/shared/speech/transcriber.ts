@@ -5,6 +5,7 @@
 import type { AiProviderInfo } from '../api/ai'
 import { LOCAL_TRANSCRIBER_ID, type SpeechState } from '../api/speech'
 import { BANGLA_MODEL, DEFAULT_SPEECH_MODEL, isBengali, isLanguageModel, speechModel, type SpeechModelId } from './catalog'
+import { t } from '../i18n/t'
 
 export type TranscriberChoice =
   /** On this PC with `model`; `ready` when the engine runs here and the model is installed (else a download needs the user's consent first). */
@@ -12,8 +13,8 @@ export type TranscriberChoice =
   /** A provider with the user's key that can transcribe. */
   | { kind: 'key'; providerId: string }
 
-/** What E-01 shows when it has to leave captions out. */
-export const CAPTIONS_SKIPPED_NO_MODEL = 'Captions skipped: download a speech model in the Captions tab (free, 60 MB) or add an AI provider.'
+/** What E-01 shows when it has to leave captions out (Polish's skip line, in the UI language). */
+export const captionsSkippedNoModel = (): string => t('review.polish.skip.noModel')
 
 /**
  * The model "On this PC" uses without asking (E-01, and the Captions tab's "Make them now with

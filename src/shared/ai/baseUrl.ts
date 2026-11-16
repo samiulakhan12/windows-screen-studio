@@ -6,6 +6,8 @@
  * which is where the key and the text go. Pure.
  */
 
+import { t } from '../i18n/t'
+
 export type BaseUrlResult = { ok: true; baseUrl: string; origin: string; host: string; loopback: boolean } | { ok: false; message: string }
 
 /** Longest base URL taken. */
@@ -14,16 +16,33 @@ export const BASE_URL_MAX = 300
 /** An Azure OpenAI resource name: 2 to 63 lowercase letters, digits and hyphens, not starting with a hyphen. */
 export const AZURE_RESOURCE_RE = /^[a-z0-9][a-z0-9-]{1,62}$/
 
+/** Why an address is refused, in the UI language (made when it is refused, §9.1); main checks with the same words. */
 export const BASE_URL_MESSAGES = {
-  empty: 'Enter the address of the service.',
-  long: `The address is too long (at most ${BASE_URL_MAX} characters).`,
-  invalid: 'This is not a web address. It starts with https://.',
-  https: 'Use an https:// address. Plain http:// is only for a service on this PC.',
-  credentials: 'Remove the name and password from the address.',
-  query: 'Remove the part after ?',
-  fragment: 'Remove the part after #',
-  azure: 'A resource name has 2 to 63 lowercase letters, digits and hyphens, and starts with a letter or digit.'
-} as const
+  get empty(): string {
+    return t('errors.baseUrl.empty')
+  },
+  get long(): string {
+    return t('errors.baseUrl.long', { max: String(BASE_URL_MAX) })
+  },
+  get invalid(): string {
+    return t('errors.baseUrl.invalid')
+  },
+  get https(): string {
+    return t('errors.baseUrl.https')
+  },
+  get credentials(): string {
+    return t('errors.baseUrl.credentials')
+  },
+  get query(): string {
+    return t('errors.baseUrl.query')
+  },
+  get fragment(): string {
+    return t('errors.baseUrl.fragment')
+  },
+  get azure(): string {
+    return t('errors.baseUrl.azure')
+  }
+}
 
 const fail = (message: string): BaseUrlResult => ({ ok: false, message })
 

@@ -85,7 +85,7 @@ const { LanguagesSection } = (await import(/* @vite-ignore */ LANGUAGES)) as { L
 const { CleanupSection } = (await import(/* @vite-ignore */ CLEANUP)) as { CleanupSection: (p: unknown) => unknown }
 const { DraftScript } = (await import(/* @vite-ignore */ DRAFT)) as { DraftScript: (p: unknown) => unknown }
 const { sentHint, choiceOf, LOCAL_CHOICE } = (await import(/* @vite-ignore */ CHOICES)) as {
-  sentHint: (c: unknown, what: string, rest?: string, plural?: boolean) => string
+  sentHint: (c: unknown, what: 'captionText' | 'captionWords') => string
   choiceOf: (info: unknown) => { place: string; label: string }
   LOCAL_CHOICE: unknown
 }
@@ -336,8 +336,8 @@ describe('the hints name the place the text goes (test 103)', () => {
   it('the Captions tab and Publish name the chosen place, never KIND_NAMES, in what they send', () => {
     const groq = choiceOf(GROQ)
     expect(groq.place).toBe('api.groq.com')
-    expect(sentHint(groq, "The captions' text")).toBe("The captions' text is sent to api.groq.com with your key.")
-    expect(sentHint(LOCAL_CHOICE, "The captions' words", '', true)).toBe("The captions' words stay on this PC: nothing is sent.")
+    expect(sentHint(groq, 'captionText')).toBe("The captions' text is sent to api.groq.com with your key; their timing stays.")
+    expect(sentHint(LOCAL_CHOICE, 'captionWords')).toBe("The captions' words stay on this PC: nothing is sent; only the picks come back.")
     // What the Captions tab and Publish say goes where (Languages and Draft script are rendered above): the choice's
     // place (or this PC), never a kind's name.
     for (const file of ['editor/panels/CaptionsPanel.tsx', 'publish/PublishDialog.tsx']) {

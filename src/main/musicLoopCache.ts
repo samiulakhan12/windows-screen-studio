@@ -20,6 +20,8 @@ import { createHash } from 'node:crypto'
 import { createReadStream, promises as fs } from 'node:fs'
 import path from 'node:path'
 import { MUSIC_FILE_RE } from '../shared/audio/settings'
+import { fmt } from '../shared/i18n/fmt'
+import { t } from '../shared/i18n/t'
 
 /** The project's cache folder (also the speech and sound finders'). */
 export const MUSIC_CACHE_DIR = '.cache'
@@ -35,11 +37,18 @@ const BYTES_PER_CHANNEL_SECOND = 48000 * 2
 const PROBE_TIMEOUT_MS = 30_000
 const LOG_CAP = 16_000
 
+/** Why the looping copy could not be made, in the UI language (made when it fails, §9.1). */
 export const MUSIC_CACHE_COPY = {
-  cancelled: 'The export was cancelled.',
-  failed: 'The background music could not be prepared for looping. Choose it again in the Audio panel, or turn Loop off.',
-  timedOut: 'Preparing the background music for looping took too long. Try the export again.',
-  space: (mb: number): string => `There is not enough free space to prepare the background music for the export: about ${mb} MB more is needed. Free some space and export again.`
+  get cancelled(): string {
+    return t('errors.export.cancelled')
+  },
+  get failed(): string {
+    return t('errors.musicLoop.failed')
+  },
+  get timedOut(): string {
+    return t('errors.musicLoop.timedOut')
+  },
+  space: (mb: number): string => t('errors.musicLoop.space', { mb: fmt.count(mb) })
 }
 
 export interface LoopableOptions {

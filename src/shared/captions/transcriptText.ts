@@ -140,7 +140,7 @@ const isObject = (v: unknown): v is Record<string, unknown> => typeof v === 'obj
 /** The answer did not have the expected shape: nothing is applied. */
 export class AiOutputError extends Error {
   constructor(detail: string) {
-    super(`The AI's answer could not be used (${detail}). Nothing was changed; try again.`)
+    super(t('errors.aiOutput.unusable', { detail }))
     this.name = 'AiOutputError'
   }
 }
@@ -336,7 +336,7 @@ function namesBatches(names: NamesRequest, limits: TextLimits): NamesRequest[] {
  * dropped, whether or not the words held it. Throws AiOutputError when none is left.
  */
 export function validateNamesAnswer(answer: unknown, request: NamesRequest): { id: string; name: string }[] {
-  if (!isObject(answer) || !Array.isArray(answer.names)) throw new AiOutputError('no list of names')
+  if (!isObject(answer) || !Array.isArray(answer.names)) throw new AiOutputError(t('errors.aiOutput.noNames'))
   const ids = new Set(request.items.map((i) => i.id))
   const cap = NAME_CAPS[request.kind]
   const out: { id: string; name: string }[] = []
@@ -350,7 +350,7 @@ export function validateNamesAnswer(answer: unknown, request: NamesRequest): { i
     seen.add(v.id)
     out.push({ id: v.id, name })
   }
-  if (!out.length) throw new AiOutputError('no usable names')
+  if (!out.length) throw new AiOutputError(t('errors.aiOutput.noUsableNames'))
   return out
 }
 
@@ -446,21 +446,21 @@ function retimeWords(words: readonly CaptionWord[] | undefined, text: string): C
  * stores (edit.ts applyTextResult, CaptionSegment.aiLinks; docs/design/publish-pack.md §4.6).
  */
 export function validateSegmentsAnswer(task: 'cleanup' | 'translate', input: readonly CaptionSegment[], answer: unknown): CaptionSegment[] {
-  if (!isObject(answer) || !Array.isArray(answer.segments)) throw new AiOutputError('no list of captions')
+  if (!isObject(answer) || !Array.isArray(answer.segments)) throw new AiOutputError(t('errors.aiOutput.noCaptions'))
   const list = answer.segments
-  if (list.length !== input.length) throw new AiOutputError(`${list.length} captions came back for ${input.length}`)
+  if (list.length !== input.length) throw new AiOutputError(t('errors.aiOutput.captionCount', { got: String(list.length), sent: String(input.length) }))
   return input.map((orig, i) => {
     const item: unknown = list[i]
-    if (!isObject(item) || item.id !== orig.id) throw new AiOutputError(`caption ${orig.id} is missing or out of order`)
+    if (!isObject(item) || item.id !== orig.id) throw new AiOutputError(t('errors.aiOutput.captionMissing', { id: orig.id }))
     for (const key of ['start', 'end'] as const) {
       if (item[key] !== undefined && !(typeof item[key] === 'number' && Math.abs((item[key] as number) - orig[key]) < 0.011)) {
-        throw new AiOutputError(`the times of caption ${orig.id} changed`)
+        throw new AiOutputError(t('errors.aiOutput.captionTimes', { id: orig.id }))
       }
     }
-    if (typeof item.text !== 'string') throw new AiOutputError(`caption ${orig.id} has no text`)
+    if (typeof item.text !== 'string') throw new AiOutputError(t('errors.aiOutput.captionNoText', { id: orig.id }))
     const text = cleanText(item.text)
-    if (!text && orig.text.trim()) throw new AiOutputError(`caption ${orig.id} came back empty`)
-    if (text.length > orig.text.length * 4 + 200) throw new AiOutputError(`caption ${orig.id} came back far longer`)
+    if (!text && orig.text.trim()) throw new AiOutputError(t('errors.aiOutput.captionEmpty', { id: orig.id }))
+    if (text.length > orig.text.length * 4 + 200) throw new AiOutputError(t('errors.aiOutput.captionLonger', { id: orig.id }))
     const words = task === 'cleanup' ? retimeWords(orig.words, text) : undefined
     const { words: _old, ...rest } = orig
     return { ...rest, text, ...(words ? { words } : {}) }
@@ -473,7 +473,7 @@ export function validateSegmentsAnswer(task: 'cleanup' | 'translate', input: rea
  * link check notes in them and asks before it adds them (docs/design/publish-pack.md §4.8).
  */
 export function validateChaptersAnswer(segments: readonly CaptionSegment[], answer: unknown): { t: number; title: string }[] {
-  if (!isObject(answer) || !Array.isArray(answer.chapters)) throw new AiOutputError('no list of chapters')
+  if (!isObject(answer) || !Array.isArray(answer.chapters)) throw new AiOutputError(t('errors.aiOutput.noChapters'))
   const first = segments.length ? segments[0].start : 0
   const last = segments.length ? segments[segments.length - 1].end : 0
   const raw: { t: number; title: string }[] = []
@@ -486,7 +486,7 @@ export function validateChaptersAnswer(segments: readonly CaptionSegment[], answ
   raw.sort((a, b) => a.t - b.t)
   const out: { t: number; title: string }[] = []
   for (const c of raw) if (!out.length || c.t - out[out.length - 1].t >= 5) out.push(c)
-  if (out.length === 0) throw new AiOutputError('no usable chapters')
+  if (out.length === 0) throw new AiOutputError(t('errors.aiOutput.noUsableChapters'))
   out[0].t = Math.min(out[0].t, first)
   return out.slice(0, maxChapters(last)).map((c) => ({ t: Math.round(c.t * 1000) / 1000, title: c.title }))
 }
@@ -497,12 +497,12 @@ export function validateChaptersAnswer(segments: readonly CaptionSegment[], answ
  * (docs/design/publish-pack.md §4.8).
  */
 export function validateTextAnswer(task: 'title' | 'summary', answer: unknown): string {
-  if (!isObject(answer) || typeof answer.text !== 'string') throw new AiOutputError(`no ${task}`)
+  if (!isObject(answer) || typeof answer.text !== 'string') throw new AiOutputError(task === 'title' ? t('errors.aiOutput.noTitle') : t('errors.aiOutput.noSummary'))
   const text =
     task === 'title'
       ? plainText(cleanText(answer.text, 120).replace(/^["'“”‘’]+|["'“”‘’]+$/g, '').replace(/\.$/, '').trim(), { max: 120, oneLine: true })
       : plainText(answer.text.trim().slice(0, 3000), { max: 3000 })
-  if (!text) throw new AiOutputError(`an empty ${task}`)
+  if (!text) throw new AiOutputError(task === 'title' ? t('errors.aiOutput.emptyTitle') : t('errors.aiOutput.emptySummary'))
   return text
 }
 
@@ -560,7 +560,7 @@ export async function runTextTask(request: AiTextRequest, ask: (prompt: TextProm
           failed = e
         }
       }
-      if (!names.length) throw failed ?? new AiOutputError('no usable names')
+      if (!names.length) throw failed ?? new AiOutputError(t('errors.aiOutput.noUsableNames'))
       return { task: 'names', names }
     }
   }
@@ -595,7 +595,7 @@ const PUNCTUATION_ONLY = /^[^\p{L}\p{N}]+$/u
  * planner, which has the times.
  */
 export function validateMarksAnswer(answer: unknown, batch: MarksBatch): MarksAnswer {
-  if (!isObject(answer) || !Array.isArray(answer.captions) || !Array.isArray(answer.numbers) || !Array.isArray(answer.lists) || !Array.isArray(answer.quotes)) throw new AiOutputError('no marks')
+  if (!isObject(answer) || !Array.isArray(answer.captions) || !Array.isArray(answer.numbers) || !Array.isArray(answer.lists) || !Array.isArray(answer.quotes)) throw new AiOutputError(t('errors.aiOutput.noMarks'))
   const words = new Map(batch.captions.map((c) => [c.id, c.w]))
   const order = new Map(batch.captions.map((c, i) => [c.id, i]))
   const index = (v: unknown, n: number): number | null => (typeof v === 'number' && Number.isInteger(v) && v >= 0 && v < n ? v : null)

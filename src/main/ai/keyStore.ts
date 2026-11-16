@@ -146,8 +146,8 @@ export class AiProviderStore {
 
   private encrypt(apiKey: string): string {
     if (!this.box.isEncryptionAvailable()) {
-      const what = process.platform === 'win32' ? 'Windows data protection' : process.platform === 'darwin' ? 'the Keychain' : 'the system keyring'
-      throw new Error(t('errors.keyStore.apiKeysCannotBe', { what: String(what) }))
+      const store = process.platform === 'win32' ? 'windows' : process.platform === 'darwin' ? 'mac' : 'other'
+      throw new Error(t('errors.keyStore.apiKeysCannotBe', { store }))
     }
     const weak = this.box.weakness?.()
     if (weak) throw new Error(t('errors.keyStore.apiKeysCannotBe2', { weak: String(weak) }))

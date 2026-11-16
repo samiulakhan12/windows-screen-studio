@@ -22,9 +22,9 @@ vi.mock('../src/shared/captions/studioEdit', async () => await import('./studioS
 vi.mock('../src/shared/captions/great', async (importOriginal) => ({
   ...(await importOriginal<Record<string, unknown>>()),
   readGreatOptions: () => ({}),
-  resolveGreatOptions: (_o: unknown, _p: unknown, frame: { w: number; h: number }) => ({ tall: frame.h > frame.w }),
-  greatHint: (o: { tall: boolean }) => (o.tall ? 'Picks a style, emphasises key words and adds emoji and pop-ups. You can review every change.' : 'Emphasises key words, tidies the text and adds lower thirds. You can review every change.')
+  resolveGreatOptions: (_o: unknown, _p: unknown, frame: { w: number; h: number }) => ({ tall: frame.h > frame.w })
 }))
+vi.mock('../src/renderer/src/editor/greatWords', () => ({ greatHint: (o: { tall: boolean }) => (o.tall ? 'Picks a style, emphasises key words and adds emoji and pop-ups. You can review every change.' : 'Emphasises key words, tidies the text and adds lower thirds. You can review every change.') }))
 vi.mock('../src/shared/captions/autoStyle', () => ({ suggestedTile: (_p: unknown, frame: { w: number; h: number }) => (frame.h > frame.w ? 'clean-short' : 'karaoke-fill') }))
 vi.mock('../src/renderer/src/editor/panels/GreatOptions', () => ({ GreatOptionsPopover: () => ({ type: 'span', props: { 'data-testid': 'great-options-stand-in' } }) }))
 const presets = vi.hoisted(() => ({ removed: [] as string[], restored: [] as unknown[] }))

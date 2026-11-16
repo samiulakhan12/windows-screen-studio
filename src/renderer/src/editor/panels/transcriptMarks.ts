@@ -7,6 +7,9 @@
 import { studioWords } from '../../../../shared/captions/words'
 import type { TranscriptWord } from '../../../../shared/editor/transcript'
 import type { CaptionMark, CaptionSegment } from '../../../../shared/types'
+import { fmt } from '../../../../shared/i18n/fmt'
+import { t } from '../../../../shared/i18n/t'
+import { classicName } from './captionTiles'
 
 /** For each space-separated piece of `text`, the first and last of its words as studioWordTexts counts them. */
 export function pieceWords(text: string, language?: string): [number, number][] {
@@ -76,11 +79,13 @@ export function removesEmphasis(spans: readonly { caption: string; from: number;
   })
 }
 
-const words = (n: number): string => `${n} ${n === 1 ? 'word' : 'words'}`
-
-/** "Emphasised 2 words", "Removed emphasis from 2 words"; on a Classic look the first emphasis says the look became its own version (§2.7). */
+/**
+ * "Emphasised 2 words", "Removed emphasis from 2 words"; on a Classic look the first emphasis says
+ * the look became its own version (§2.7). `twinOf` is that Classic look's preset ("clean"), named
+ * in the UI language.
+ */
 export function emphasisNotice(n: number, removed: boolean, twinOf: string | null): string {
-  if (removed) return `Removed emphasis from ${words(n)}`
-  const base = `Emphasised ${words(n)}`
-  return twinOf ? `${base}. Your captions are now your own version of ${twinOf}, which can show emphasis.` : base
+  const count = { count: n, n: fmt.count(n) }
+  if (removed) return t('captions.emphasis.removedFrom', count)
+  return twinOf ? t('captions.emphasis.addedOwnVersion', { ...count, look: classicName(twinOf) }) : t('captions.emphasis.added', count)
 }

@@ -10,6 +10,7 @@ import { AiOutputError, type TextLimits, type TextPrompt } from '../captions/tra
 import type { CaptionSegment } from '../types'
 import type { PublishLength, PublishTone } from './pack'
 import { cutAt, fitX, plainText, typedText, X_LIMIT } from './text'
+import { t } from '../i18n/t'
 
 /** Longest transcript sent in one request (characters, about an hour of speech); longer ones are sent as excerpts. */
 export const PACK_TRANSCRIPT_MAX = 60_000
@@ -269,24 +270,24 @@ export function renderReleaseNotes(n: { title: string; summary: string; items: {
  * shown and confirmed before it is used (check.ts). Throws AiOutputError when nothing usable came back.
  */
 export function validatePackAnswer(task: PackTextTask, answer: unknown): AiTextResult {
-  if (!isObject(answer)) throw new AiOutputError('no answer')
+  if (!isObject(answer)) throw new AiOutputError(t('errors.aiOutput.noAnswer'))
   const text = (v: unknown, max: number, oneLine = false): string => plainText(v, { max, oneLine })
   switch (task) {
     case 'youtube': {
-      if (typeof answer.description !== 'string' || !Array.isArray(answer.tags)) throw new AiOutputError('no description or tags')
+      if (typeof answer.description !== 'string' || !Array.isArray(answer.tags)) throw new AiOutputError(t('errors.aiOutput.noDescription'))
       const description = text(answer.description, PACK_CAPS.youtubeText)
-      if (!description) throw new AiOutputError('an empty description')
+      if (!description) throw new AiOutputError(t('errors.aiOutput.emptyDescription'))
       return { task, text: description, tags: cleanTags(answer.tags) }
     }
     case 'linkedin':
     case 'xpost': {
-      if (typeof answer.text !== 'string') throw new AiOutputError('no post')
+      if (typeof answer.text !== 'string') throw new AiOutputError(t('errors.aiOutput.noPost'))
       const post = task === 'xpost' ? fitX(text(answer.text, 2000).replace(/\n{2,}/g, '\n'), X_LIMIT) : text(answer.text, PACK_CAPS.linkedin)
-      if (!post || post === '…') throw new AiOutputError('an empty post')
+      if (!post || post === '…') throw new AiOutputError(t('errors.aiOutput.emptyPost'))
       return { task, text: post }
     }
     case 'article': {
-      if (typeof answer.title !== 'string' || typeof answer.intro !== 'string' || !Array.isArray(answer.sections)) throw new AiOutputError('no article')
+      if (typeof answer.title !== 'string' || typeof answer.intro !== 'string' || !Array.isArray(answer.sections)) throw new AiOutputError(t('errors.aiOutput.noArticle'))
       const sections: { heading: string; steps: string[] }[] = []
       for (const s of answer.sections) {
         if (!isObject(s) || typeof s.heading !== 'string' || !Array.isArray(s.steps)) continue
@@ -298,13 +299,13 @@ export function validatePackAnswer(task: PackTextTask, answer: unknown): AiTextR
         if (steps.length) sections.push({ heading: heading || `Part ${sections.length + 1}`, steps })
         if (sections.length >= PACK_CAPS.sections) break
       }
-      if (!sections.length) throw new AiOutputError('no steps')
+      if (!sections.length) throw new AiOutputError(t('errors.aiOutput.noSteps'))
       const title = text(bareHeading(answer.title), PACK_CAPS.title, true) || 'How to'
       // Cut once more as a whole.
       return { task, text: text(renderArticle({ title, intro: text(answer.intro, PACK_CAPS.intro), sections }), PACK_CAPS.article) }
     }
     case 'releaseNotes': {
-      if (typeof answer.title !== 'string' || typeof answer.summary !== 'string' || !Array.isArray(answer.items)) throw new AiOutputError('no release notes')
+      if (typeof answer.title !== 'string' || typeof answer.summary !== 'string' || !Array.isArray(answer.items)) throw new AiOutputError(t('errors.aiOutput.noReleaseNotes'))
       const items: { kind: ReleaseKind; text: string }[] = []
       for (const i of answer.items) {
         if (!isObject(i) || typeof i.text !== 'string') continue
@@ -313,7 +314,7 @@ export function validatePackAnswer(task: PackTextTask, answer: unknown): AiTextR
         if (line) items.push({ kind: kind === 'new' || kind === 'fixed' ? kind : 'improved', text: line })
         if (items.length >= PACK_CAPS.items) break
       }
-      if (!items.length) throw new AiOutputError('no changes listed')
+      if (!items.length) throw new AiOutputError(t('errors.aiOutput.noChanges'))
       const title = text(answer.title, PACK_CAPS.title, true) || 'Release notes'
       return { task, text: text(renderReleaseNotes({ title, summary: text(answer.summary, PACK_CAPS.summary), items }), Infinity) }
     }

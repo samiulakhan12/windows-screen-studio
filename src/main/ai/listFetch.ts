@@ -15,12 +15,13 @@ export const MODEL_LIST_MAX_BYTES = 4 * 1024 * 1024
 export const MODEL_LIST_MAX_IDS = 2000
 const MODEL_RE = /^[A-Za-z0-9][A-Za-z0-9._:/@-]*$/
 
-/** A redirect a request was refused (redirect: 'error'): the service sent the request elsewhere. */
-export const REDIRECT_MESSAGE = 'The service answered with a redirect to another address, which Flown does not follow (unexpected redirect).'
+/** A redirect a request was refused (redirect: 'error'): the service sent the request elsewhere (made when refused, in the UI language). */
+export const redirectMessage = (): string => t('errors.listFetch.redirect')
 
-/** Whether `err` (or its cause) is fetch's refusal of a redirect. */
+/** Whether `err` (or its cause) is fetch's refusal of a redirect, or noRedirectFetch's (whose words follow the UI language). */
 export function isRedirectError(err: unknown): boolean {
   for (let e = err as { message?: unknown; cause?: unknown } | undefined, i = 0; e && i < 4; e = e.cause as typeof e, i++) {
+    if (e instanceof RefusedRequest && e.redirect) return true
     if (typeof e.message === 'string' && /unexpected redirect|redirect mode is set to error/i.test(e.message)) return true
   }
   return false
@@ -62,21 +63,21 @@ export async function fetchModelJson(url: string, headers: Record<string, string
       const reason = signal.reason as { name?: unknown } | undefined
       throw new AiError(describeFailure(reason?.name === 'TimeoutError' ? { timeout: true } : { cancelled: true }, provider))
     }
-    if (isRedirectError(err)) throw fail(`${provider}: ${REDIRECT_MESSAGE}`)
+    if (isRedirectError(err)) throw fail(`${provider}: ${redirectMessage()}`)
     const certificate = certificateFailure(err)
     if (certificate) throw new AiError(describeFailure(certificate, provider))
     if (err instanceof Error && !/fetch failed/i.test(err.message)) throw fail(err.message)
     throw new AiError(describeFailure({ network: true }, provider))
   }
-  if (res.status >= 300 && res.status < 400) throw fail(`${provider}: ${REDIRECT_MESSAGE}`)
+  if (res.status >= 300 && res.status < 400) throw fail(`${provider}: ${redirectMessage()}`)
   let text: string | null
   try {
     text = await readCapped(res, MODEL_LIST_MAX_BYTES)
   } catch (err) {
     if (signal.aborted) throw new AiError(describeFailure({ timeout: true }, provider))
-    throw fail(`Could not read the list of models from ${provider}: ${err instanceof Error ? err.message : String(err)}`)
+    throw fail(t('errors.listFetch.couldNotRead', { provider, reason: err instanceof Error ? err.message : String(err) }))
   }
-  if (text === null) throw fail(`The list of models from ${provider} is too large (over 4 MB).`)
+  if (text === null) throw fail(t('errors.listFetch.tooLarge', { provider }))
   if (!res.ok) {
     let message = text.slice(0, 300)
     try {
@@ -91,7 +92,7 @@ export async function fetchModelJson(url: string, headers: Record<string, string
   try {
     return JSON.parse(text)
   } catch {
-    throw fail(`${provider} answered the list of models with something that is not JSON.`)
+    throw fail(t('errors.listFetch.notJson', { provider }))
   }
 }
 
@@ -126,15 +127,18 @@ export function noRedirectFetch(origin: string, base: typeof fetch = globalThis.
     }
     if (url.origin !== origin) return Promise.reject(new RefusedRequest(OTHER_ORIGIN_MESSAGE()))
     return base(input, { ...init, redirect: 'error' }).catch((err: unknown) => {
-      throw isRedirectError(err) ? new RefusedRequest(REDIRECT_MESSAGE) : err
+      throw isRedirectError(err) ? new RefusedRequest(redirectMessage(), true) : err
     })
   }
   return wrapped as typeof fetch
 }
 
-/** A request Flown refused to make or follow (another origin, a redirect): never tried again. */
+/** A request Flown refused to make or follow (another origin, a redirect): never tried again. `redirect` marks a refused redirect. */
 export class RefusedRequest extends Error {
-  constructor(message: string) {
+  constructor(
+    message: string,
+    readonly redirect = false
+  ) {
     super(message)
     this.name = 'RefusedRequest'
   }

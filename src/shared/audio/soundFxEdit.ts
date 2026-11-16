@@ -7,6 +7,8 @@ import { audioLook, DEFAULT_MUSIC } from './settings'
 import { readSfxRef } from './soundFxData'
 import { bedSeconds, soundBed, type MusicBed } from './soundLibrary'
 import type { SfxRule } from '../render/sfxJob'
+import { fmt } from '../i18n/fmt'
+import { t } from '../i18n/t'
 
 /** The project with `next` as its effects (none left: the field removed, as a project from before). */
 function withFx(project: Project, next: SoundFx): Project {
@@ -63,12 +65,16 @@ export function bedLength(bed: MusicBed): { text: string; spoken: string } {
   const total = Math.round(bedSeconds(bed))
   const m = Math.floor(total / 60)
   const s = total % 60
-  const words = [m ? `${m} minute${m === 1 ? '' : 's'}` : '', s || !m ? `${s} second${s === 1 ? '' : 's'}` : ''].filter(Boolean)
-  return { text: `${m}:${String(s).padStart(2, '0')}`, spoken: words.join(' ') }
+  const spoken = !m
+    ? t('sound.library.lengthSeconds', { s, sn: fmt.count(s) })
+    : s
+      ? t('sound.library.lengthMinutesSeconds', { m, mn: fmt.count(m), s, sn: fmt.count(s) })
+      : t('sound.library.lengthMinutes', { m, mn: fmt.count(m) })
+  return { text: `${m}:${String(s).padStart(2, '0')}`, spoken }
 }
 
 /** Megabytes as the download button says them ("1.0 MB", spoken "1.0 megabytes"). */
 export function megabytes(bytes: number): { text: string; spoken: string } {
-  const mb = (bytes / 1e6).toFixed(1)
-  return { text: `${mb} MB`, spoken: `${mb} megabytes` }
+  const n = fmt.number(bytes / 1e6, { min: 1, max: 1 })
+  return { text: t('sound.library.sizeMb', { n }), spoken: t('sound.library.sizeMegabytes', { n }) }
 }

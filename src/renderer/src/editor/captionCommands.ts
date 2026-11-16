@@ -17,6 +17,8 @@ import { loadSavedLooks, nextLookName, saveLook } from './captionPresets'
 import { startCaptionsGreat } from './captionsGreat'
 import { addedNotice, madeCount } from './panels/GraphicsPanel'
 import { focusGallery } from './panels/CaptionGallery'
+import { fmt } from '../../../shared/i18n/fmt'
+import { t } from '../../../shared/i18n/t'
 
 export type CaptionCommandId = 'captionsGreat' | 'captionStyles' | 'captionEmphasis' | 'captionGraphics' | 'captionTidy' | 'captionLanguage' | 'saveCaptionStyle'
 
@@ -32,7 +34,6 @@ export interface CaptionCommandDeps {
   review?(): string
 }
 
-const words = (n: number): string => `${n} ${n === 1 ? 'word' : 'words'}`
 /** Words marked by `marks`. */
 const marked = (marks: Project['captionMarks']): number => (marks ?? []).reduce((n, m) => n + (m.to - m.from + 1), 0)
 
@@ -49,7 +50,7 @@ export function findImportantWords(store: EditStore<Project>, notice: (message: 
     if (!marks.length) return p
     return withAutoTwin({ ...p, captionMarks: [...(p.captionMarks ?? []), ...marks] })
   })
-  notice(added ? `Emphasised ${words(added)}` : 'No words stood out')
+  notice(added ? t('captions.emphasis.added', { count: added, n: fmt.count(added) }) : t('captions.emphasis.noneStoodOut'))
 }
 
 /** Add pop-ups from captions with Make my captions great's options as they resolve for the project (§2.11): one undo step. */
@@ -77,7 +78,13 @@ export async function tidyFromCommand(deps: CaptionCommandDeps): Promise<void> {
     bleeped = r.bleeped
     return r.project
   })
-  deps.notice(changed || bleeped ? `Tidied ${changed} ${changed === 1 ? 'caption' : 'captions'}${bleeped ? `, bleeped ${words(bleeped)}` : ''}` : 'Nothing to tidy')
+  deps.notice(
+    bleeped
+      ? t('captions.cleanup.notice.tidiedBleeped', { tidied: changed, t: fmt.count(changed), bleeped, b: fmt.count(bleeped) })
+      : changed
+        ? t('captions.cleanup.notice.tidied', { count: changed, n: fmt.count(changed) })
+        : t('captions.cleanup.notice.nothing')
+  )
 }
 
 /** Save caption style as mine (§2.14): the current look (a Classic look's twin) as the next "My style n". */
@@ -86,7 +93,7 @@ export async function saveCurrentLook(deps: CaptionCommandDeps): Promise<void> {
   const c = captionsOf(deps.store.state)
   try {
     const entry = await saveLook(nextLookName(saved), c.studio ?? legacyTwin(c))
-    deps.notice(`Saved “${entry.name}” to your styles`)
+    deps.notice(t('captions.look.savedLook', { name: entry.name }))
   } catch (err) {
     deps.notice(err instanceof Error ? err.message : String(err))
   }
@@ -108,7 +115,7 @@ export const localTranslationOffered = (): boolean => false
  */
 export function aiCaptionCommands(deps: Pick<CaptionCommandDeps, 'store' | 'setTab' | 'notice'>): Record<'aiTranslate' | 'aiCleanup', () => void> {
   const open = (request: CaptionsRequest) => (): void => {
-    if (!deps.store.state.transcript?.segments.length) return deps.notice('This video has no captions yet: generate them in the Captions tab')
+    if (!deps.store.state.transcript?.segments.length) return deps.notice(t('editor.notice.noCaptions'))
     deps.setTab('captions')
     requestCaptions(request)
   }

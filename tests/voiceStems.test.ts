@@ -5,6 +5,7 @@ import { VOICE_CANCELLED, VOICE_REPLACED, type VoiceApi, type VoiceProgress, typ
 import type { VoiceSource } from '../src/shared/audio/voiceClean'
 import { VOICE_COPY } from '../src/shared/audio/voiceCopy'
 import type { VoiceStrength } from '../src/shared/types'
+import { setCatalogue } from '../src/shared/i18n/t'
 
 type State = { state: string; progress?: number; file?: string; message?: string; remake?: boolean }
 interface Stems {
@@ -123,6 +124,22 @@ describe('VoiceStems', () => {
     expect(f.calls.prepare).toBe(2)
     f.finish(FILE)
     await expect(again).resolves.toBe(FILE)
+  })
+
+  it('a stop the export waited on is said in the UI language, while the stop tokens still decide the state', async () => {
+    // Main rejects with api/voice.ts's tokens; the export shows the rejection after "Your voice could not be cleaned.".
+    setCatalogue({ language: 'bn', messages: { 'errors.voice.cancelled': 'পরিষ্কার করা থামানো হয়েছে।' }, formatLocale: 'bn-BD', dir: 'ltr' })
+    try {
+      const f = fakeApi()
+      const s = new VoiceStems(f.api)
+      const made = s.prepare('p', 'mic', 'normal')
+      await tick()
+      await s.cancel('p')
+      await expect(made).rejects.toThrow(/^পরিষ্কার করা থামানো হয়েছে।$/)
+      expect(s.get('p', 'mic', 'normal')).toEqual({ state: 'stopped' })
+    } finally {
+      setCatalogue({ language: 'en', messages: {}, formatLocale: 'en-US', dir: 'ltr' })
+    }
   })
 
   it('a render replaced by another strength is made again when wanted again (undo back to it)', async () => {

@@ -10,14 +10,14 @@
 import { useEffect, useMemo, useRef, useState, type KeyboardEvent as ReactKeyboardEvent } from 'react'
 import type { SoundLibraryState } from '../../../../shared/api/soundLibrary'
 import { bedLength, libraryBedOf, megabytes, withLibraryBed } from '../../../../shared/audio/soundFxEdit'
-import { MOODS, MUSIC_BEDS, musicCredit, type Mood, type MusicBed } from '../../../../shared/audio/soundLibrary'
+import { MOODS, MUSIC_BEDS, type Mood, type MusicBed } from '../../../../shared/audio/soundLibrary'
 import { MEDIA_SCHEME } from '../../../../shared/mediaUrl'
 import type { Project } from '../../../../shared/types'
 import { useEditor, type EditorServices } from '../context'
 import { createAudio } from '../media'
 import './soundLibrary.css'
 import { t } from '../../../../shared/i18n/t'
-import { moodName } from '../../../../shared/audio/soundNames'
+import { moodName, musicCreditWords } from '../../../../shared/audio/soundNames'
 import { fmt } from '../../../../shared/i18n/fmt'
 
 type Filter = 'all' | Mood
@@ -262,7 +262,7 @@ export function MusicLibrarySection(props: { project: Project }): JSX.Element {
 
 /** "Music: Sweet Sun by Loyalty Freak Music (CC0)" under the music row while a library bed is the music (§2.6, §10.10). */
 export function MusicCredit(props: { project: Project }): JSX.Element | null {
-  const credit = musicCredit(props.project)
+  const credit = musicCreditWords(props.project)
   return credit ? (
     <p className="hint music-credit" data-testid="music-credit">
       {credit}

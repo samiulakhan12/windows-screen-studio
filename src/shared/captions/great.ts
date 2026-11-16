@@ -299,44 +299,4 @@ function withoutMarks(p: Project): Project {
   return rest
 }
 
-const plural = (n: number, one: string, many = `${one}s`): string => `${n} ${n === 1 ? one : many}`
-
-/**
- * "Captions: Bold Pop, 38 words emphasised, 3 emoji, 1 counter, 1 list" followed by `review`
- * (reviewHint: ". Review (Shift + R)") and `undo` (undoHint: " · Ctrl + Z to undo"), §2.8.
- */
-export function greatNotice(s: GreatSummary, undo = '', review = ''): string {
-  const parts: string[] = []
-  if (s.style) parts.push(s.style)
-  if (s.emphasised) parts.push(`${plural(s.emphasised, 'word')} emphasised`)
-  if (s.emoji) parts.push(`${s.emoji} emoji`)
-  if (s.keywords) parts.push(plural(s.keywords, 'pop-up'))
-  if (s.counters) parts.push(plural(s.counters, 'counter'))
-  if (s.lists) parts.push(plural(s.lists, 'list'))
-  if (s.lowerThirds) parts.push(plural(s.lowerThirds, 'lower third'))
-  if (s.chapters) parts.push(plural(s.chapters, 'chapter title'))
-  if (s.quotes) parts.push(plural(s.quotes, 'quote card'))
-  if (s.tidied) parts.push(`${plural(s.tidied, 'caption')} tidied`)
-  if (s.bleeped) parts.push(`${plural(s.bleeped, 'word')} bleeped`)
-  const failed = s.providerFailed ? ' The AI provider could not be reached, so Flown picked on this PC.' : ''
-  if (!parts.length) return `Your captions already have all of this.${failed}`
-  return `Captions: ${parts.join(', ')}${review}${undo}${failed ? `.${failed}` : ''}`
-}
-
-/** The hint under the button, from the resolved options (§2.4). */
-export function greatHint(o: ResolvedGreatOptions): string {
-  const parts: string[] = []
-  if (o.style) parts.push("a style for this video's shape")
-  if (o.emphasis) parts.push('key words')
-  if (o.emoji) parts.push('emoji')
-  if (o.keywords) parts.push('keyword pop-ups')
-  if (o.counters) parts.push('counters')
-  if (o.lists) parts.push('list cards')
-  if (o.speakers) parts.push('speaker names')
-  if (o.chapters) parts.push('chapter titles')
-  if (o.quotes) parts.push('quote cards')
-  const tidy = o.tidy ? 'tidies the text' : ''
-  if (!parts.length) return tidy ? `Tidies the text.` : 'Choose what it does in its options.'
-  const list = parts.length === 1 ? parts[0] : `${parts.slice(0, -1).join(', ')} and ${parts[parts.length - 1]}`
-  return tidy ? `Adds ${list}, and ${tidy}.` : `Adds ${list}.`
-}
+/* greatNotice and greatHint, the words of the result and of the button's hint, are the renderer's (editor/greatWords.ts): main imports this file (§9.1, test 86). */

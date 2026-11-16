@@ -8,22 +8,31 @@
 import { useMemo } from 'react'
 import { LOCAL_TEXT_ID, type AiProviderInfo, type AiTextTask, type TextChoice } from '../../../shared/api/ai'
 import { presetApplies, SERVICE_PRESETS, serviceName } from '../../../shared/ai/presets'
+import { t } from '../../../shared/i18n/t'
 import { useTextProviders } from '../editor/panels/LanguagesSection'
 import { useLocalAiReady } from './localAiState'
 
 /** What the hints called each kind of provider before services (KIND_NAMES of the text tools). */
 const KIND_PLACES: Record<AiProviderInfo['kind'], string> = { openai: 'OpenAI', gemini: 'Gemini', anthropic: 'Claude' }
 
-/** On this PC in a provider list. */
-export const LOCAL_CHOICE_LABEL = 'On this PC (good for drafts)'
-export const LOCAL_PLACE = 'this PC'
+/** On this PC in a provider list, and the place its hints name, in the UI language. */
+export const localChoiceLabel = (): string => t('captions.ai.localChoice')
+export const localPlace = (): string => t('captions.ai.thisPc')
 
 /** The tasks On this PC never runs: Find chapters chooses where to split, the model only names (§9.7). */
 const NOT_LOCAL: readonly AiTextTask[] = ['chapters', 'marks']
 
-/** Where a provider's or service's requests go, by the name every hint uses. */
+/**
+ * Where a provider's or service's requests go, by the name every hint uses. A service on this PC
+ * goes by its preset's name in the UI language (serviceName gives the English one); every other by
+ * its host or brand.
+ */
 export function placeOf(info: AiProviderInfo): string {
-  return info.service ? serviceName(info) : KIND_PLACES[info.kind]
+  if (!info.service) return KIND_PLACES[info.kind]
+  const name = serviceName(info)
+  const preset = info.service.preset
+  if (name === SERVICE_PRESETS[preset].label && (preset === 'ollama' || preset === 'lmstudio')) return t(preset === 'ollama' ? 'settings.provider.preset.ollama' : 'settings.provider.preset.lmstudio')
+  return name
 }
 
 /** A provider or service as a text choice. */
@@ -43,7 +52,18 @@ export function choiceOf(info: AiProviderInfo): TextChoice {
 }
 
 /** On this PC as a text choice. */
-export const LOCAL_CHOICE: TextChoice = { id: LOCAL_TEXT_ID, label: LOCAL_CHOICE_LABEL, kind: 'local', model: '', place: LOCAL_PLACE, pictures: false }
+export const LOCAL_CHOICE: TextChoice = {
+  id: LOCAL_TEXT_ID,
+  get label(): string {
+    return localChoiceLabel()
+  },
+  kind: 'local',
+  model: '',
+  get place(): string {
+    return localPlace()
+  },
+  pictures: false
+}
 
 /** The choices for `task` (pure): the providers and services in order, then On this PC when `localReady` and the task allows; with `pictures`, only those that can send them. */
 export function textChoicesOf(providers: readonly AiProviderInfo[], task: AiTextTask, localReady: boolean, opts?: { pictures?: boolean }): TextChoice[] {
@@ -78,12 +98,21 @@ export function madeBy(choice: TextChoice, ran?: string): { by: AiProviderInfo['
   return { by: 'local', model: ran ?? '' }
 }
 
+/** What a tool's hint says is sent: the captions' text (Languages: their timing stays) or their words (Make my captions great: only the picks come back). */
+export type SentWhat = 'captionText' | 'captionWords'
+
+const SENT_KEYS = {
+  captionText: { local: 'captions.ai.sent.textLocal', free: 'captions.ai.sent.textFree', key: 'captions.ai.sent.textKey' },
+  captionWords: { local: 'captions.ai.sent.wordsLocal', free: 'captions.ai.sent.wordsFree', key: 'captions.ai.sent.wordsKey' }
+} as const
+
 /**
  * The hint under a tool that sends `what` with `choice` ("The captions' text is sent to
- * api.groq.com with your key"), or that it stays on this PC: never "OpenAI" for a service, never
- * "undefined" (test 103). `plural`: "The captions' words are sent…".
+ * api.groq.com with your key; their timing stays."), or that it stays on this PC: never "OpenAI"
+ * for a service, never "undefined" (test 103).
  */
-export function sentHint(choice: TextChoice, what: string, rest = '', plural = false): string {
-  if (choice.kind === 'local') return `${what} ${plural ? 'stay' : 'stays'} on this PC: nothing is sent${rest}.`
-  return `${what} ${plural ? 'are' : 'is'} sent to ${choice.place}${choice.free ? '' : ' with your key'}${rest}.`
+export function sentHint(choice: TextChoice, what: SentWhat): string {
+  const keys = SENT_KEYS[what]
+  if (choice.kind === 'local') return t(keys.local)
+  return t(choice.free ? keys.free : keys.key, { place: choice.place })
 }

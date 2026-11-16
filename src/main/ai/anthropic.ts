@@ -24,6 +24,7 @@ import { noteUsage } from './usage'
 import type { ListedModel } from '../../shared/api/ai'
 import type { TextPrompt } from '../../shared/captions/transcriptText'
 import { claudeImageBlock, sendingPictures, withPictures } from './images'
+import { t } from '../../shared/i18n/t'
 
 const OFFICIAL_URL = 'https://api.anthropic.com'
 const PROVIDER = AI_PROVIDER_KINDS.anthropic.label
@@ -89,10 +90,10 @@ export function claudeRequest(model: string, prompt: Pick<TextPrompt, 'system' |
 export function claudeAnswerText(message: Pick<Anthropic.Beta.Messages.BetaMessage, 'content' | 'stop_reason' | 'stop_details'>): string {
   if (message.stop_reason === 'refusal') {
     const category = message.stop_details?.category
-    throw new AiError({ kind: 'refused', retryable: false, message: `${PROVIDER} declined this request${category ? ` (${category})` : ''}. Try another provider for this task.` })
+    throw new AiError({ kind: 'refused', retryable: false, message: category ? t('errors.aiService.declinedCategoryTryAnother', { provider: PROVIDER, category }) : t('errors.aiService.declinedTryAnother', { provider: PROVIDER }) })
   }
   if (message.stop_reason === 'max_tokens' || message.stop_reason === 'model_context_window_exceeded') {
-    throw new AiError({ kind: 'other', retryable: false, message: `${PROVIDER} stopped before finishing the answer (it was too long). Try a shorter transcript.` })
+    throw new AiError({ kind: 'other', retryable: false, message: t('errors.aiService.tooLongTranscript', { provider: PROVIDER }) })
   }
   return message.content.map((block) => (block.type === 'text' ? block.text : '')).join('')
 }
@@ -108,7 +109,7 @@ export function anthropicClient(apiKey: string, model: string): AiClient {
   return {
     async test(signal) {
       await callWithRetry((s) => client.models.retrieve(model, {}, { signal: s }), { ...base, signal, timeoutMs: 30_000, attempts: 2 })
-      return `The key works, and “${model}” is available. Claude can clean up, translate and summarise transcripts; it cannot transcribe sound.`
+      return t('main.aiCheck.keyWorksClaude', { model })
     },
 
     // The models the key can use (smart-tools.md §10.4), page by page.
@@ -147,7 +148,7 @@ export function anthropicClient(apiKey: string, model: string): AiClient {
       try {
         return JSON.parse(text)
       } catch {
-        throw new AiError({ kind: 'other', retryable: false, message: `${PROVIDER} answered with something that is not the expected JSON. Try again.` })
+        throw new AiError({ kind: 'other', retryable: false, message: t('errors.aiService.notJson', { provider: PROVIDER }) })
       }
     }
   }

@@ -5,7 +5,7 @@ import { polishAvailability, polishTranscriber } from '../src/shared/editor/poli
 import { polishHint, polishSkipText } from '../src/shared/editor/polishCopy'
 import { createProject } from '../src/shared/engine/project'
 import { SPEECH_MODELS, type SpeechModelId } from '../src/shared/speech/catalog'
-import { CAPTIONS_SKIPPED_NO_MODEL } from '../src/shared/speech/transcriber'
+import { captionsSkippedNoModel } from '../src/shared/speech/transcriber'
 
 /* Polish in one click makes captions on this PC (docs/design/offline-captions.md §3.8). */
 
@@ -97,10 +97,10 @@ describe('the Captions row with On this PC', () => {
     capture: { method: 'chromium', cursorInVideo: true, region: null }
   })
   const recorded = { samples: [], clicks: [], valid: false }
-  it('is disabled with CAPTIONS_SKIPPED_NO_MODEL when On this PC is not ready', () => {
+  it('is disabled with captionsSkippedNoModel() when On this PC is not ready', () => {
     const a = polishAvailability(project, recorded, { hasCameraFile: false, transcribers: [{ id: 'local' }], transcribing: false, localNotReady: true })
     expect(a.captions).toBe('no-model')
-    expect(polishSkipText('captions', 'no-model')).toBe(CAPTIONS_SKIPPED_NO_MODEL)
+    expect(polishSkipText('captions', 'no-model')).toBe(captionsSkippedNoModel())
     expect(polishAvailability(project, recorded, { hasCameraFile: false, transcribers: [{ id: 'local' }], transcribing: false }).captions).toBeNull()
   })
 

@@ -30,7 +30,7 @@ import {
 import { localErrorCode, localErrorMessage, modelBlockReason, quickerModel, tierLabel, UNAVAILABLE_REASONS, type LocalCaptionsError } from '../src/shared/speech/errors'
 import { COMPAT_FACTOR, estimateSeconds, THREAD_SPEED, threadFactor, WINDOWS_FACTOR } from '../src/shared/speech/estimate'
 import { SIDECAR } from '../src/shared/speech/protocol'
-import { canTranscribeNow, CAPTIONS_SKIPPED_NO_MODEL, localModel, localModelFor, pickTranscriber } from '../src/shared/speech/transcriber'
+import { canTranscribeNow, captionsSkippedNoModel, localModel, localModelFor, pickTranscriber } from '../src/shared/speech/transcriber'
 
 const ROOT = path.resolve(__dirname, '..')
 const sha256 = (file: string): string => createHash('sha256').update(fs.readFileSync(file)).digest('hex')
@@ -373,6 +373,6 @@ describe('pickTranscriber', () => {
     expect(canTranscribeNow(pickTranscriber([], state(['whisper-base'])))).toBe(true)
     expect(canTranscribeNow(pickTranscriber([openai], state()))).toBe(true)
     expect(canTranscribeNow(null)).toBe(false)
-    expect(CAPTIONS_SKIPPED_NO_MODEL).toContain('60 MB')
+    expect(captionsSkippedNoModel()).toContain('60 MB')
   })
 })

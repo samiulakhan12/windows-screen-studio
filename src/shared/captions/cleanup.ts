@@ -1119,14 +1119,4 @@ export function tidyCaptions(
   return { project: next, changed, bleeped, estimated }
 }
 
-const count = (n: number, one: string, many = `${one}s`): string => `${n} ${n === 1 ? one : many}`
-
-/** Tidy captions' notice (§2.9, §11.7): "Tidied 12 captions, bleeped 2 words" or "Nothing to tidy"; says when bleeped words had estimated times. */
-export function cleanupNotice(r: { changed: number; bleeped: number; estimated?: number }): string {
-  const parts: string[] = []
-  if (r.changed) parts.push(`Tidied ${count(r.changed, 'caption')}`)
-  if (r.bleeped) parts.push(`${parts.length ? 'bleeped' : 'Bleeped'} ${count(r.bleeped, 'word')}`)
-  let text = parts.length ? parts.join(', ') : 'Nothing to tidy'
-  if (r.estimated) text += '. Some bleeped words have estimated times, so a little more is bleeped'
-  return text
-}
+/* cleanupNotice, Tidy captions' notice, is the renderer's (editor/captionWords.ts): main imports this file (§9.1, test 86). */

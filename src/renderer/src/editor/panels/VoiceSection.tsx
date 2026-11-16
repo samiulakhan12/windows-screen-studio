@@ -1,10 +1,11 @@
 import { useRef, useSyncExternalStore } from 'react'
 import { VOICE_STRENGTHS, voiceLook, voiceSourceOf, voiceTarget } from '../../../../shared/audio/voiceClean'
-import { STRENGTH_HINTS, STRENGTH_NAMES, VOICE_COPY } from '../../../../shared/audio/voiceCopy'
+import { VOICE_COPY } from '../../../../shared/audio/voiceCopy'
 import type { Project, VoiceSettings } from '../../../../shared/types'
 import { useEditor } from '../context'
 import { Chips, Section, Toggle } from '../controls'
 import { voiceStems, type VoiceStemState } from '../voiceStems'
+import { strengthHint, strengthName, VOICE_WORDS } from './voiceWords'
 import './voice.css'
 
 /**
@@ -31,12 +32,12 @@ export function VoiceSection({ project }: { project: Project }): JSX.Element {
     if (t) void stems.prepare(project.id, t, voiceLook(next.audio).strength).catch(() => undefined)
   }
 
-  const unavailable = source === 'silent' ? VOICE_COPY.silent : source === 'noMic' ? VOICE_COPY.noMic : null
+  const unavailable = source === 'silent' ? VOICE_WORDS.silent : source === 'noMic' ? VOICE_WORDS.noMic : null
   return (
-    <Section title={VOICE_COPY.section}>
-      <Toggle label={VOICE_COPY.toggle} checked={look.on} disabled={!!unavailable && !look.on} onChange={(on) => setVoice({ on })} />
-      <p className="hint">{unavailable ?? VOICE_COPY.intro}</p>
-      {source === 'mix' && <p className="hint">{VOICE_COPY.mixed}</p>}
+    <Section title={VOICE_WORDS.section}>
+      <Toggle label={VOICE_WORDS.toggle} checked={look.on} disabled={!!unavailable && !look.on} onChange={(on) => setVoice({ on })} />
+      <p className="hint">{unavailable ?? VOICE_WORDS.intro}</p>
+      {source === 'mix' && <p className="hint">{VOICE_WORDS.mixed}</p>}
       {/* Always there, also while off: a live region inserted with its text is not read out, so
           the first status after turning the switch on would be missed. */}
       <span className="sr-only" role="status" aria-live="polite">
@@ -45,15 +46,15 @@ export function VoiceSection({ project }: { project: Project }): JSX.Element {
       {look.on && target && state && (
         <>
           <div className="voice-strength">
-            <span className="voice-label">{VOICE_COPY.strength}</span>
+            <span className="voice-label">{VOICE_WORDS.strength}</span>
             <Chips
-              label={VOICE_COPY.strength}
+              label={VOICE_WORDS.strength}
               value={look.strength}
-              options={VOICE_STRENGTHS.map((s) => ({ value: s, label: STRENGTH_NAMES[s] }))}
+              options={VOICE_STRENGTHS.map((s) => ({ value: s, label: strengthName(s) }))}
               onChange={(strength) => strength !== look.strength && setVoice({ strength })}
             />
           </div>
-          <p className="hint">{STRENGTH_HINTS[look.strength]}</p>
+          <p className="hint">{strengthHint(look.strength)}</p>
           <VoiceStatus
             state={state}
             original={original}
@@ -71,19 +72,19 @@ export function VoiceSection({ project }: { project: Project }): JSX.Element {
 function statusText(state: VoiceStemState, original: boolean): string {
   return state.state === 'ready'
     ? original
-      ? VOICE_COPY.playingOriginal
-      : VOICE_COPY.ready
+      ? VOICE_WORDS.playingOriginal
+      : VOICE_WORDS.ready
     : state.state === 'working'
-      ? VOICE_COPY.working(Math.round(state.progress * 100))
+      ? VOICE_WORDS.working(Math.round(state.progress * 100))
       : state.state === 'stopped'
-        ? VOICE_COPY.stopped
+        ? VOICE_WORDS.stopped
         : state.state === 'failed'
           ? `${VOICE_COPY.failed} ${state.message}`
-          : VOICE_COPY.checking
+          : VOICE_WORDS.checking
 }
 
 /** What screen readers hear: each change of state, not every step of the percentage (that is on the bar). */
-const spokenStatus = (state: VoiceStemState, original: boolean): string => (state.state === 'working' ? VOICE_COPY.cleaning : statusText(state, original))
+const spokenStatus = (state: VoiceStemState, original: boolean): string => (state.state === 'working' ? VOICE_WORDS.cleaning : statusText(state, original))
 
 /**
  * Where the cleaned voice stands. The one action button stays the same element whatever it does
@@ -103,13 +104,13 @@ function VoiceStatus(props: {
   const text = statusText(state, original)
   const action =
     state.state === 'working'
-      ? { label: VOICE_COPY.cancel, run: props.onCancel }
+      ? { label: VOICE_WORDS.cancel, run: props.onCancel }
       : state.state === 'stopped' || state.state === 'missing'
-        ? { label: VOICE_COPY.cleanNow, run: props.onClean }
+        ? { label: VOICE_WORDS.cleanNow, run: props.onClean }
         : state.state === 'failed'
-          ? { label: VOICE_COPY.tryAgain, run: props.onClean }
+          ? { label: VOICE_WORDS.tryAgain, run: props.onClean }
           : state.state === 'ready'
-            ? { label: VOICE_COPY.original, run: () => props.onOriginal(!original) }
+            ? { label: VOICE_WORDS.original, run: () => props.onOriginal(!original) }
             : null
   const lastLabel = useRef<string | null>(null)
   if (action) lastLabel.current = action.label
@@ -120,7 +121,7 @@ function VoiceStatus(props: {
         {text}
       </p>
       {state.state === 'working' && (
-        <div className="voice-bar" role="progressbar" aria-label={VOICE_COPY.toggle} aria-valuemin={0} aria-valuemax={100} aria-valuenow={percent}>
+        <div className="voice-bar" role="progressbar" aria-label={VOICE_WORDS.toggle} aria-valuemin={0} aria-valuemax={100} aria-valuenow={percent}>
           <span style={{ width: `${percent}%` }} />
         </div>
       )}

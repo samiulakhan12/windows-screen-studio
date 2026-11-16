@@ -4669,9 +4669,9 @@
     "key": "errors.keyStore.apiKeysCannotBe",
     "file": "src/main/ai/keyStore.ts",
     "line": 150,
-    "english": "API keys cannot be stored safely on this PC: «what» is not available, so the key was not saved.",
+    "english": "API keys cannot be stored safely on this PC: Windows data protection is not available, so the key was not saved.",
     "sample": {
-      "what": "«what»"
+      "store": "windows"
     }
   },
   {
@@ -4846,9 +4846,9 @@
     "key": "errors.keyStore.apiKeysCannotBe",
     "file": "src/main/ai/serviceStore.ts",
     "line": 184,
-    "english": "API keys cannot be stored safely on this PC: «what» is not available, so the key was not saved.",
+    "english": "API keys cannot be stored safely on this PC: Windows data protection is not available, so the key was not saved.",
     "sample": {
-      "what": "«what»"
+      "store": "windows"
     }
   },
   {

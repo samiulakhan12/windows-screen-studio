@@ -33,7 +33,7 @@ import { noteUsage } from './usage'
 import type { ServiceStore } from './serviceStore'
 import type { AiClient } from './types'
 import { chatImagePart, noPictures, refusesPictures, withPictures } from './images'
-import { t } from '../../shared/i18n/t'
+import { t, type MessageKey } from '../../shared/i18n/t'
 
 /** A failure of a service's request as a FailureInfo: a refused redirect or origin in its own words, the rest as OpenAI's. */
 function serviceFailure(err: unknown): FailureInfo {
@@ -50,11 +50,11 @@ const PROBE: TextPrompt = {
   schema: { type: 'object', properties: { ok: { type: 'boolean' } }, required: ['ok'], additionalProperties: false }
 }
 
-/** The words Save and check shows for each JSON mode. */
-export const JSON_MODE_WORDS: Readonly<Record<ServiceInfo['json'], { head: string; detail: string }>> = {
-  schema: { head: 'Works.', detail: 'Answers in JSON with a schema.' },
-  object: { head: 'Works; Flown checks its answers more closely.', detail: 'Answers in plain JSON.' },
-  text: { head: 'Works; Flown checks its answers more closely.', detail: 'Answers in plain text.' }
+/** The words Save and check shows for each JSON mode, as message keys (made where they are shown, §9.1). */
+export const JSON_MODE_WORDS: Readonly<Record<ServiceInfo['json'], { head: MessageKey; detail: MessageKey }>> = {
+  schema: { head: 'main.aiCheck.works', detail: 'main.aiCheck.schema' },
+  object: { head: 'main.aiCheck.worksChecked', detail: 'main.aiCheck.plainJson' },
+  text: { head: 'main.aiCheck.worksChecked', detail: 'main.aiCheck.plainText' }
 }
 
 const LOWER: Readonly<Record<ServiceInfo['json'], ServiceInfo['json'] | null>> = { schema: 'object', object: 'text', text: null }
@@ -93,7 +93,7 @@ function formatRefused(err: unknown, anyBadRequest: boolean): boolean {
 /** Carries a response-format refusal out of callWithRetry untouched, so the caller can drop a level. */
 class FormatRefused extends AiError {
   constructor(readonly raw: unknown) {
-    super({ kind: 'bad-request', retryable: false, message: 'The service did not take this JSON mode.' })
+    super({ kind: 'bad-request', retryable: false, message: t('errors.aiService.jsonModeRefused') })
   }
 }
 
@@ -166,9 +166,9 @@ export function compatibleClient(info: AiProviderInfo, apiKey: string | null, st
   function readAnswer(res: OpenAI.Chat.Completions.ChatCompletion): unknown {
     const choice = res.choices?.[0]
     const message = choice?.message as { content?: string | null; refusal?: string | null } | undefined
-    if (message?.refusal) throw new AiError({ kind: 'refused', retryable: false, message: `${provider} declined this request: ${String(message.refusal).slice(0, 200)}` })
-    if (choice?.finish_reason === 'length') throw new AiError({ kind: 'other', retryable: false, message: `${provider} stopped before finishing the answer (it was too long). Try a shorter part.` })
-    if (choice?.finish_reason === 'content_filter') throw new AiError({ kind: 'refused', retryable: false, message: `${provider} declined this request.` })
+    if (message?.refusal) throw new AiError({ kind: 'refused', retryable: false, message: t('errors.aiService.declinedSaying', { provider, refusal: String(message.refusal).slice(0, 200) }) })
+    if (choice?.finish_reason === 'length') throw new AiError({ kind: 'other', retryable: false, message: t('errors.aiService.tooLongPart', { provider }) })
+    if (choice?.finish_reason === 'content_filter') throw new AiError({ kind: 'refused', retryable: false, message: t('errors.aiService.declined', { provider }) })
     const text = typeof message?.content === 'string' ? message.content : ''
     for (const candidate of [text.trim(), firstObject(text)]) {
       if (!candidate) continue
@@ -181,7 +181,7 @@ export function compatibleClient(info: AiProviderInfo, apiKey: string | null, st
     return null
   }
 
-  const notJson = (): AiError => new AiError({ kind: 'other', retryable: false, message: `${provider} answered with something that is not the expected JSON. Try again.` })
+  const notJson = (): AiError => new AiError({ kind: 'other', retryable: false, message: t('errors.aiService.notJson', { provider }) })
 
   const keep = (next: ServiceInfo['json']): void => {
     level = next
@@ -216,7 +216,7 @@ export function compatibleClient(info: AiProviderInfo, apiKey: string | null, st
     async test(signal) {
       const found = await probe(signal)
       const words = JSON_MODE_WORDS[found]
-      return `${words.head}\n${words.detail}`
+      return `${t(words.head)}\n${t(words.detail)}`
     },
 
     async json(prompt, { signal, onUsage }) {
@@ -225,7 +225,7 @@ export function compatibleClient(info: AiProviderInfo, apiKey: string | null, st
         res = await ask(prompt, level, signal, 10 * 60_000)
       } catch (err) {
         const next = err instanceof FormatRefused ? LOWER[level] : null
-        if (!next) throw err instanceof FormatRefused ? new AiError({ kind: 'bad-request', retryable: false, message: `${provider} rejected the request's JSON mode.` }) : err
+        if (!next) throw err instanceof FormatRefused ? new AiError({ kind: 'bad-request', retryable: false, message: t('errors.aiService.rejectedJsonMode', { provider }) }) : err
         keep(next)
         res = await ask(prompt, next, signal, 10 * 60_000)
       }

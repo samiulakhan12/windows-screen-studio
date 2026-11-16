@@ -5,22 +5,51 @@
  */
 import type { LocalAiProgress, LocalModelId, LocalModelUse } from '../api/localAi'
 import { fitsFreeMemory, localModel, localModelBlock, pickLocalModel, RECOMMENDED, SMALL, type LocalModelSpec } from './catalog'
+import { fmt } from '../i18n/fmt'
+import { t } from '../i18n/t'
 
+/** What AI on this PC says, in the UI language (made where it is shown or thrown, §9.1; main imports this file, so errors and main messages). */
 export const LOCAL_MESSAGES = {
-  notInBuild: 'AI on this PC is not part of this build.',
-  processorOld: "This PC's processor is too old for AI on this PC (it needs AVX2).",
-  processorUnknown: "Flown could not check this PC's processor.",
-  damaged: 'The model file is missing or damaged. Download it again in Settings › AI on this PC.',
-  noModel: 'Download a model for AI on this PC first, in Settings › AI on this PC.',
-  crashed: 'AI on this PC stopped unexpectedly. Try again, or use the Small model.',
-  stalled: 'AI on this PC stopped responding. Try again.',
-  stopped: 'Stopped.',
-  waiting: 'Waiting for AI on this PC…',
-  lowMemory: 'Memory is low: this may be slow',
-  tooLong: 'This text is too long for AI on this PC: shorten it or use an AI service.',
-  notesTooLong: 'These notes are too long for AI on this PC: shorten them or use an AI service.',
-  written: 'Written on this PC: check it before you use it.'
-} as const
+  get notInBuild(): string {
+    return t('errors.localAi.notInBuild')
+  },
+  get processorOld(): string {
+    return t('errors.localAi.processorOld')
+  },
+  get processorUnknown(): string {
+    return t('errors.localAi.processorUnknown')
+  },
+  get damaged(): string {
+    return t('errors.localAi.damaged')
+  },
+  get noModel(): string {
+    return t('errors.localAi.noModel')
+  },
+  get crashed(): string {
+    return t('errors.localAi.crashed')
+  },
+  get stalled(): string {
+    return t('errors.localAi.stalled')
+  },
+  get stopped(): string {
+    return t('main.localAi.stopped')
+  },
+  get waiting(): string {
+    return t('main.localAi.waiting')
+  },
+  get lowMemory(): string {
+    return t('main.localAi.lowMemory')
+  },
+  get tooLong(): string {
+    return t('errors.localAi.tooLong')
+  },
+  get notesTooLong(): string {
+    return t('errors.localAi.notesTooLong')
+  },
+  get written(): string {
+    return t('main.localAi.written')
+  }
+}
 
 /** Gigabytes with one decimal ("3.8"). */
 export const gb = (bytes: number): string => (Math.max(0, bytes) / 2 ** 30).toFixed(1)
@@ -32,21 +61,21 @@ export function pcLine(pc: { totalMemBytes: number; avx2: boolean | null; helper
   if (!pc.helper) return LOCAL_MESSAGES.notInBuild
   if (pc.avx2 === null) return LOCAL_MESSAGES.processorUnknown
   if (!pc.avx2) return LOCAL_MESSAGES.processorOld
-  return `This PC: ${memGb(pc.totalMemBytes)} GB of memory · processor OK`
+  return t('main.localAi.pcLine', { gb: String(memGb(pc.totalMemBytes)) })
 }
 
 /** Why a model's row offers no Download (§2.5): its block in words. */
 export function blockReason(spec: LocalModelSpec, block: 'memory' | 'processor' | 'helper', pc: { totalMemBytes: number; avx2: boolean | null }): string {
   if (block === 'helper') return LOCAL_MESSAGES.notInBuild
   if (block === 'processor') return pc.avx2 === null ? LOCAL_MESSAGES.processorUnknown : LOCAL_MESSAGES.processorOld
-  return `Needs ${spec.minTotalMemGB} GB of memory; this PC has ${memGb(pc.totalMemBytes)} GB`
+  return t('errors.localAi.needsMemory', { need: String(spec.minTotalMemGB), have: String(memGb(pc.totalMemBytes)) })
 }
 
 /** §9.5: the free memory a model needs and what is free; "or download the Small model" when Small is not downloaded. */
 export function freeMemoryMessage(spec: Pick<LocalModelSpec, 'peakMB' | 'id'>, freeMemBytes: number, smallReady: boolean): string {
   const need = (spec.peakMB / 1024).toFixed(1)
-  const tail = spec.id !== SMALL && !smallReady ? 'Close some apps, or download the Small model.' : 'Close some apps.'
-  return `AI on this PC needs about ${need} GB of free memory and ${gb(freeMemBytes)} GB is free. ${tail}`
+  const values = { need, free: gb(freeMemBytes) }
+  return spec.id !== SMALL && !smallReady ? t('errors.localAi.freeMemorySmall', values) : t('errors.localAi.freeMemory', values)
 }
 
 /** A model's size as Settings names it, decimal ("3.1 GB", "1.3 GB"). */
@@ -54,14 +83,14 @@ export const sizeGb = (bytes: number): string => `${(Math.max(0, bytes) / 1e9).t
 
 /** "Not enough disk space: the model needs 3.2 GB." (§9.9; the file and the 64 MB spare, rounded up). */
 export function diskMessage(spec: Pick<LocalModelSpec, 'bytes'>): string {
-  return `Not enough disk space: the model needs ${(Math.ceil(((spec.bytes + (64 << 20)) / 1e9) * 10) / 10).toFixed(1)} GB.`
+  return t('errors.localAi.disk', { size: (Math.ceil(((spec.bytes + (64 << 20)) / 1e9) * 10) / 10).toFixed(1) })
 }
 
 /** "about 2 minutes left", "less than a minute left". */
 export function timeLeft(seconds: number): string {
-  if (!(seconds >= 60)) return 'less than a minute left'
+  if (!(seconds >= 60)) return t('main.localAi.lessThanAMinute')
   const minutes = Math.round(seconds / 60)
-  return `about ${minutes} ${minutes === 1 ? 'minute' : 'minutes'} left`
+  return t('main.localAi.minutesLeft', { count: minutes, n: fmt.count(minutes) })
 }
 
 /** The progress line beside a busy button (§2.5): "On this PC: loading the model…", "reading the text… 45%", "writing… about 2 minutes left". */
@@ -70,11 +99,11 @@ export function progressWords(p: LocalAiProgress): string {
     case 'waiting':
       return LOCAL_MESSAGES.waiting
     case 'loading':
-      return 'On this PC: loading the model…'
+      return t('main.localAi.loading')
     case 'reading':
-      return `On this PC: reading the text… ${p.total > 0 ? Math.min(100, Math.round((p.done / p.total) * 100)) : 0}%`
+      return t('main.localAi.reading', { percent: fmt.count(p.total > 0 ? Math.min(100, Math.round((p.done / p.total) * 100)) : 0) })
     case 'writing':
-      return `On this PC: writing… ${timeLeft(p.secondsLeft ?? 0)}`
+      return t('main.localAi.writing', { left: timeLeft(p.secondsLeft ?? 0) })
   }
 }
 
@@ -87,7 +116,7 @@ export function speedLine(speed: { read: number; write: number }): string {
     const w = tps * WORDS_A_TOKEN
     return w >= 100 ? Math.round(w / 10) * 10 : Math.max(1, Math.round(w))
   }
-  return `Measured on this PC: reads about ${words(speed.read)} words a second and writes about ${words(speed.write)}.`
+  return t('main.localAi.speed', { read: fmt.count(words(speed.read)), write: fmt.count(words(speed.write)) })
 }
 
 /**

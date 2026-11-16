@@ -29,6 +29,7 @@ import { fetchModelJson, MODEL_LIST_MAX_IDS, MODEL_LIST_TIMEOUT_MS, readListedId
 import { registerSecret } from './secrets'
 import { noteUsage } from './usage'
 import { geminiImagePart, sendingPictures, withPictures } from './images'
+import { t } from '../../shared/i18n/t'
 
 const OFFICIAL_URL = 'https://generativelanguage.googleapis.com/'
 const PROVIDER = AI_PROVIDER_KINDS.gemini.label
@@ -76,12 +77,12 @@ export function geminiFailure(err: unknown): FailureInfo {
 /** The text of an answer, or why there is none. */
 function answerText(response: GenerateContentResponse): string {
   const blocked = response.promptFeedback?.blockReason
-  if (blocked) throw new AiError({ kind: 'refused', retryable: false, message: `${PROVIDER} declined this request (${blocked}).` })
+  if (blocked) throw new AiError({ kind: 'refused', retryable: false, message: t('errors.aiService.declinedBecause', { provider: PROVIDER, reason: String(blocked) }) })
   const reason = response.candidates?.[0]?.finishReason
-  if (reason === 'MAX_TOKENS') throw new AiError({ kind: 'other', retryable: false, message: `${PROVIDER} stopped before finishing the answer (it was too long). Try a shorter part.` })
-  if (reason && reason !== 'STOP') throw new AiError({ kind: 'refused', retryable: false, message: `${PROVIDER} declined to answer (${reason}).` })
+  if (reason === 'MAX_TOKENS') throw new AiError({ kind: 'other', retryable: false, message: t('errors.aiService.tooLongPart', { provider: PROVIDER }) })
+  if (reason && reason !== 'STOP') throw new AiError({ kind: 'refused', retryable: false, message: t('errors.aiService.declinedToAnswer', { provider: PROVIDER, reason: String(reason) }) })
   const text = response.text
-  if (!text) throw new AiError({ kind: 'other', retryable: false, message: `${PROVIDER} gave an empty answer. Try again.` })
+  if (!text) throw new AiError({ kind: 'other', retryable: false, message: t('errors.aiService.emptyAnswer', { provider: PROVIDER }) })
   return text
 }
 
@@ -89,7 +90,7 @@ function parseJson(text: string): unknown {
   try {
     return JSON.parse(text)
   } catch {
-    throw new AiError({ kind: 'other', retryable: false, message: `${PROVIDER} answered with something that is not the expected JSON. Try again.` })
+    throw new AiError({ kind: 'other', retryable: false, message: t('errors.aiService.notJson', { provider: PROVIDER }) })
   }
 }
 
@@ -117,11 +118,11 @@ export function geminiClient(apiKey: string, model: string, transcriptionModel: 
     let current = file
     const until = Date.now() + FILE_READY_TIMEOUT
     while (current.state === FileState.PROCESSING) {
-      if (Date.now() > until) throw new AiError({ kind: 'timeout', retryable: false, message: `${PROVIDER} took too long to process the uploaded sound.` })
+      if (Date.now() > until) throw new AiError({ kind: 'timeout', retryable: false, message: t('errors.aiService.uploadSlow', { provider: PROVIDER }) })
       await sleep(1000, signal)
       current = await callWithRetry((s) => ai.files.get({ name: file.name!, config: { abortSignal: s } }), { ...base, signal, timeoutMs: 30_000 })
     }
-    if (current.state === FileState.FAILED || !current.uri || !current.name) throw new AiError({ kind: 'other', retryable: false, message: `${PROVIDER} could not process the uploaded sound.` })
+    if (current.state === FileState.FAILED || !current.uri || !current.name) throw new AiError({ kind: 'other', retryable: false, message: t('errors.aiService.uploadFailed', { provider: PROVIDER }) })
     return { name: current.name, uri: current.uri }
   }
 
@@ -131,7 +132,7 @@ export function geminiClient(apiKey: string, model: string, transcriptionModel: 
 
     async test(signal) {
       await callWithRetry((s) => ai.models.get({ model, config: { abortSignal: s } }), { ...base, model, signal, timeoutMs: 30_000, attempts: 2 })
-      return `The key works, and “${model}” is available.`
+      return t('main.aiCheck.keyWorksModel', { model })
     },
 
     async transcribe(part, call) {

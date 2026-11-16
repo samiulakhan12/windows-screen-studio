@@ -51,13 +51,24 @@ const JSON_MODES: readonly ServiceInfo['json'][] = ['schema', 'object', 'text']
 const isObject = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null && !Array.isArray(v)
 const isPreset = (v: unknown): v is ServicePreset => typeof v === 'string' && (PRESETS as string[]).includes(v)
 
+/** Why a service cannot be saved or used, in the UI language (made when refused, §9.1). */
 export const SERVICE_MESSAGES = {
-  gone: 'This AI provider no longer exists. Choose another one in Settings → AI providers.',
-  key: 'Enter the API key.',
-  newAddress: 'Enter the API key for the new address.',
-  model: "Enter the model's name.",
-  full: `At most ${AI_LIMITS.maxProviders} providers can be added.`
-} as const
+  get gone(): string {
+    return t('errors.keyStore.thisAiProviderNo')
+  },
+  get key(): string {
+    return t('errors.keyStore.enterTheApiKey')
+  },
+  get newAddress(): string {
+    return t('errors.serviceStore.newAddress')
+  },
+  get model(): string {
+    return t('errors.serviceStore.model')
+  },
+  get full(): string {
+    return t('errors.keyStore.atMostProvidersCan', { maxProviders: String(AI_LIMITS.maxProviders) })
+  }
+}
 
 let idCounter = 0
 const newId = (): string => `svc${Date.now().toString(36)}${(idCounter++).toString(36)}`
@@ -180,8 +191,8 @@ export class ServiceStore {
 
   private encrypt(apiKey: string): string {
     if (!this.box.isEncryptionAvailable()) {
-      const what = process.platform === 'win32' ? 'Windows data protection' : process.platform === 'darwin' ? 'the Keychain' : 'the system keyring'
-      throw new Error(t('errors.keyStore.apiKeysCannotBe', { what: String(what) }))
+      const store = process.platform === 'win32' ? 'windows' : process.platform === 'darwin' ? 'mac' : 'other'
+      throw new Error(t('errors.keyStore.apiKeysCannotBe', { store }))
     }
     const weak = this.box.weakness?.()
     if (weak) throw new Error(t('errors.keyStore.apiKeysCannotBe2', { weak: String(weak) }))

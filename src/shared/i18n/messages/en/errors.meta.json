@@ -80,7 +80,11 @@
     "description": "Main process: a reason shown to the user when this fails (main/ai/keyStore.ts)."
   },
   "keyStore.apiKeysCannotBe": {
-    "description": "Main process: a reason shown to the user when this fails (main/ai/keyStore.ts)."
+    "description": "Settings › AI providers: the key was not saved because the PC's safe store for secrets cannot be used. {store} picks the store's name: windows (Windows data protection), mac (the Keychain) or other (the system keyring); each branch is a whole sentence.",
+    "dnt": [
+      "Windows",
+      "Keychain"
+    ]
   },
   "keyStore.apiKeysCannotBe2": {
     "description": "Main process: a reason shown to the user when this fails (main/ai/keyStore.ts)."
@@ -766,5 +770,543 @@
   },
   "webhook.notAccepted": {
     "description": "Share: the chat service did not accept the post. {name} is the service; {status} an HTTP status number, kept in Latin digits."
+  },
+  "aiService.declined": {
+    "description": "The AI service refused to answer (a content filter). Shown where an AI tool or Save and check reports its failure. {provider} is the AI service's name (Claude, Gemini, OpenAI) or, for a service added by address, its host name.",
+    "user": [
+      "provider"
+    ]
+  },
+  "aiService.declinedTryAnother": {
+    "description": "The AI service refused to answer. Shown where an AI tool or Save and check reports its failure. {provider} is the AI service's name (Claude, Gemini, OpenAI) or, for a service added by address, its host name.",
+    "user": [
+      "provider"
+    ]
+  },
+  "aiService.declinedCategoryTryAnother": {
+    "description": "The AI service refused to answer; {category} is the service's own category word for the refusal (such as cyber), as it sends it. Shown where an AI tool or Save and check reports its failure. {provider} is the AI service's name (Claude, Gemini, OpenAI) or, for a service added by address, its host name.",
+    "user": [
+      "provider",
+      "category"
+    ]
+  },
+  "aiService.declinedBecause": {
+    "description": "The AI service blocked the request; {reason} is the service's own code for why (such as SAFETY), as it sends it. Shown where an AI tool or Save and check reports its failure. {provider} is the AI service's name (Claude, Gemini, OpenAI) or, for a service added by address, its host name.",
+    "user": [
+      "provider",
+      "reason"
+    ]
+  },
+  "aiService.declinedToAnswer": {
+    "description": "The AI service stopped its answer; {reason} is the service's own code for why (such as RECITATION), as it sends it. Shown where an AI tool or Save and check reports its failure. {provider} is the AI service's name (Claude, Gemini, OpenAI) or, for a service added by address, its host name.",
+    "user": [
+      "provider",
+      "reason"
+    ]
+  },
+  "aiService.declinedSaying": {
+    "description": "The AI service refused to answer and said why; {refusal} is its own words, in whatever language it wrote them. Shown where an AI tool or Save and check reports its failure. {provider} is the AI service's name (Claude, Gemini, OpenAI) or, for a service added by address, its host name.",
+    "user": [
+      "provider",
+      "refusal"
+    ]
+  },
+  "aiService.tooLongTranscript": {
+    "description": "The AI service's answer was cut off at its length limit. Shown where an AI tool or Save and check reports its failure. {provider} is the AI service's name (Claude, Gemini, OpenAI) or, for a service added by address, its host name.",
+    "user": [
+      "provider"
+    ]
+  },
+  "aiService.tooLongPart": {
+    "description": "The AI service's answer was cut off at its length limit. Shown where an AI tool or Save and check reports its failure. {provider} is the AI service's name (Claude, Gemini, OpenAI) or, for a service added by address, its host name.",
+    "user": [
+      "provider"
+    ]
+  },
+  "aiService.stoppedBecause": {
+    "description": "The AI service's answer was cut off; {reason} is the service's own code for why (such as max_output_tokens), as it sends it. Shown where an AI tool or Save and check reports its failure. {provider} is the AI service's name (Claude, Gemini, OpenAI) or, for a service added by address, its host name.",
+    "user": [
+      "provider",
+      "reason"
+    ]
+  },
+  "aiService.stoppedIncomplete": {
+    "description": "The AI service's answer was cut off and the service gave no reason. Shown where an AI tool or Save and check reports its failure. {provider} is the AI service's name (Claude, Gemini, OpenAI) or, for a service added by address, its host name.",
+    "user": [
+      "provider"
+    ]
+  },
+  "aiService.notJson": {
+    "description": "The AI service's answer could not be read. Shown where an AI tool or Save and check reports its failure. {provider} is the AI service's name (Claude, Gemini, OpenAI) or, for a service added by address, its host name.",
+    "user": [
+      "provider"
+    ],
+    "dnt": [
+      "JSON"
+    ]
+  },
+  "aiService.emptyAnswer": {
+    "description": "The AI service answered with nothing. Shown where an AI tool or Save and check reports its failure. {provider} is the AI service's name (Claude, Gemini, OpenAI) or, for a service added by address, its host name.",
+    "user": [
+      "provider"
+    ]
+  },
+  "aiService.uploadSlow": {
+    "description": "Making captions with Gemini: the uploaded sound was not ready in time. Shown where an AI tool or Save and check reports its failure. {provider} is the AI service's name (Claude, Gemini, OpenAI) or, for a service added by address, its host name.",
+    "user": [
+      "provider"
+    ]
+  },
+  "aiService.uploadFailed": {
+    "description": "Making captions with Gemini: the service could not use the uploaded sound. Shown where an AI tool or Save and check reports its failure. {provider} is the AI service's name (Claude, Gemini, OpenAI) or, for a service added by address, its host name.",
+    "user": [
+      "provider"
+    ]
+  },
+  "aiService.rejectedJsonMode": {
+    "description": "A service added by address refused every way of asking for a JSON answer. Shown where an AI tool or Save and check reports its failure. {provider} is the AI service's name (Claude, Gemini, OpenAI) or, for a service added by address, its host name.",
+    "user": [
+      "provider"
+    ],
+    "dnt": [
+      "JSON"
+    ]
+  },
+  "aiService.jsonModeRefused": {
+    "description": "A service added by address refused one way of asking for a JSON answer; Flown then tries the next way, so this shows only when a later request fails the same way.",
+    "dnt": [
+      "JSON"
+    ]
+  },
+  "listFetch.redirect": {
+    "description": "An AI service sent a request on to another address, which Flown refuses (so the key is never sent elsewhere). Shown where the AI tool or the model list reports its failure, after the service's name and a colon in the model list.",
+    "dnt": [
+      "Flown"
+    ]
+  },
+  "listFetch.couldNotRead": {
+    "description": "Settings › AI providers, the model list: reading the service's answer failed; {reason} is the system's own words for why. {provider} is the AI service's name or, for a service added by address, its host name.",
+    "user": [
+      "provider",
+      "reason"
+    ]
+  },
+  "listFetch.tooLarge": {
+    "description": "Settings › AI providers, the model list: the service sent more than Flown reads. {provider} is the AI service's name or, for a service added by address, its host name.",
+    "user": [
+      "provider"
+    ],
+    "dnt": [
+      "4 MB"
+    ]
+  },
+  "listFetch.notJson": {
+    "description": "Settings › AI providers, the model list: the service's answer could not be read. {provider} is the AI service's name or, for a service added by address, its host name.",
+    "user": [
+      "provider"
+    ],
+    "dnt": [
+      "JSON"
+    ]
+  },
+  "serviceStore.newAddress": {
+    "description": "Settings › AI providers: a service's address was changed, and its key must be entered again.",
+    "dnt": [
+      "API"
+    ]
+  },
+  "serviceStore.model": {
+    "description": "Settings › AI providers: a service was saved without a model name."
+  },
+  "aiService.noPictures": {
+    "description": "An AI tool asked to send screenshots to a model that does not take pictures. \"Also send the screenshots\" is the checkbox's label (smart.guide)."
+  },
+  "download.mismatch": {
+    "description": "Settings › Caption fonts: a downloaded font was not the file Flown expected, so it was not kept."
+  },
+  "download.cancelled": {
+    "description": "Settings › Caption fonts: the user stopped a font download."
+  },
+  "download.stopped": {
+    "description": "Caption fonts and the music library: a download broke off; {reason} is a sentence saying why (such as \"The connection was closed.\")."
+  },
+  "download.refusedGithub": {
+    "description": "Caption fonts and the music library: the download address answered 403.",
+    "dnt": [
+      "GitHub",
+      "HTTP 403"
+    ]
+  },
+  "download.fontGone": {
+    "description": "Settings › Caption fonts: the font's download address is gone; {status} is the HTTP status number, in Latin digits.",
+    "digits": "latn",
+    "dnt": [
+      "HTTP"
+    ]
+  },
+  "download.musicGone": {
+    "description": "Audio › Music library: the track's download address is gone; {status} is the HTTP status number, in Latin digits.",
+    "digits": "latn",
+    "dnt": [
+      "HTTP"
+    ]
+  },
+  "clipboard.failedBecause": {
+    "description": "Copy to clipboard: the copy tool could not start; {reason} is the system's own words for why. Shown in the export dialog's done view after Copy to clipboard.",
+    "user": [
+      "reason"
+    ]
+  },
+  "clipboard.timedOut": {
+    "description": "Copy to clipboard: the copy tool did not finish in time. Shown in the export dialog's done view after Copy to clipboard."
+  },
+  "clipboard.failedSaying": {
+    "description": "Copy to clipboard: the copy tool failed and printed {output}, its own words (often English). Shown in the export dialog's done view after Copy to clipboard.",
+    "user": [
+      "output"
+    ]
+  },
+  "clipboard.failed": {
+    "description": "Copy to clipboard: the copy tool failed without saying why. Shown in the export dialog's done view after Copy to clipboard."
+  },
+  "clipboard.fileGone": {
+    "description": "Copy to clipboard: the file was moved or deleted after the export. Shown in the export dialog's done view after Copy to clipboard."
+  },
+  "clipboard.noTool": {
+    "description": "Copy to clipboard on Linux without a copy tool. Shown in the export dialog's done view after Copy to clipboard.",
+    "dnt": [
+      "xclip",
+      "X11",
+      "wl-clipboard",
+      "Wayland"
+    ]
+  },
+  "clipboard.notExported": {
+    "description": "Copy to clipboard: the file asked for was not exported by this run of Flown. Shown in the export dialog's done view after Copy to clipboard."
+  },
+  "musicLoop.failed": {
+    "description": "Export: the looping background music could not be decoded. \"Loop\" is the Audio panel's toggle."
+  },
+  "musicLoop.timedOut": {
+    "description": "Export: decoding the looping background music did not finish in time."
+  },
+  "musicLoop.space": {
+    "description": "Export: the disk is too full for the looping music's decoded copy; {mb} is a whole number of megabytes.",
+    "dnt": [
+      "MB"
+    ]
+  },
+  "speechHelper.missing": {
+    "description": "Why the speech engine (captions on this PC, the speech detector) cannot run: this build has no helper program. Settings shows it in brackets after the detector's name, with its first letter lower case and no full stop in English."
+  },
+  "speechHelper.cpu": {
+    "description": "Why the speech engine cannot run on this PC's processor. Settings shows it in brackets after the detector's name, with its first letter lower case and no full stop in English."
+  },
+  "speechHelper.checkFailed": {
+    "description": "Why the speech engine cannot run: its start-up check failed; {why} is a technical reason (an exit code, a signal, or the helper's own words).",
+    "user": [
+      "why"
+    ]
+  },
+  "speechHelper.checkFailedSaying": {
+    "description": "Why the speech engine cannot run: its start-up check failed; {why} is a technical reason and {said} the helper's last line of output, in its own (English) words.",
+    "user": [
+      "why",
+      "said"
+    ]
+  },
+  "speechHelper.tooMuchOutput": {
+    "description": "Technical reason inside \"The speech helper's check failed (…)\": the helper printed more than {bytes} bytes (a number in Latin digits).",
+    "digits": "latn"
+  },
+  "speechHelper.lineTooLong": {
+    "description": "Technical reason inside \"The speech helper's check failed (…)\": one line of the helper's output was longer than {bytes} bytes (a number in Latin digits).",
+    "digits": "latn"
+  },
+  "speechHelper.exitCode": {
+    "description": "Technical reason in brackets: the speech helper ended with exit code {code} (a number or a hexadecimal code such as 0xC000001D, in Latin digits).",
+    "digits": "latn"
+  },
+  "speechHelper.signal": {
+    "description": "Technical reason in brackets: the speech helper was ended by the system signal {signal} (such as SIGSEGV)."
+  },
+  "vad.helperMissing": {
+    "description": "Settings › Captions on this PC, the speech detector's line: why the detector cannot run, a clause shown in brackets (\"Speech detector: not available on this PC (…)\"), so it starts lower case and has no full stop."
+  },
+  "vad.modelDamaged": {
+    "description": "Settings › Captions on this PC, the speech detector's line: why the detector cannot run, a clause shown in brackets (\"Speech detector: not available on this PC (…)\"), so it starts lower case and has no full stop. \"its\" is the speech detector's."
+  },
+  "vad.didNotStart": {
+    "description": "Settings › Captions on this PC, the speech detector's line: why the detector cannot run, a clause shown in brackets (\"Speech detector: not available on this PC (…)\"), so it starts lower case and has no full stop."
+  },
+  "vad.processor": {
+    "description": "Settings › Captions on this PC, the speech detector's line: why the detector cannot run, a clause shown in brackets (\"Speech detector: not available on this PC (…)\"), so it starts lower case and has no full stop."
+  },
+  "soundsIpc.readFailed": {
+    "description": "Audio › Find unwanted sounds: reading the recording's sound failed; {reason} is ffmpeg's last line of output, in its own (English) words.",
+    "user": [
+      "reason"
+    ]
+  },
+  "soundsIpc.readFailedCode": {
+    "description": "Audio › Find unwanted sounds: reading the recording's sound failed without a message; {code} is ffmpeg's exit code, in Latin digits.",
+    "digits": "latn"
+  },
+  "soundsIpc.idle": {
+    "description": "Audio › Find unwanted sounds: the recording's sound was not read for a while, so Flown stopped reading it (shown as why finding sounds failed). No full stop, like the other sound stream reasons."
+  },
+  "voice.failed": {
+    "description": "Clean voice failed: shown in the Audio panel and in a failed export, followed by the reason."
+  },
+  "voice.missingMic": {
+    "description": "Clean voice: a reason main gives why the voice could not be cleaned, shown after \"Your voice could not be cleaned.\" in the Audio panel and in a failed export."
+  },
+  "voice.missingMix": {
+    "description": "Clean voice: a reason main gives why the voice could not be cleaned, shown after \"Your voice could not be cleaned.\" in the Audio panel and in a failed export."
+  },
+  "voice.tooLong": {
+    "description": "Clean voice: a reason main gives why the voice could not be cleaned, shown after \"Your voice could not be cleaned.\" in the Audio panel and in a failed export."
+  },
+  "voice.locked": {
+    "description": "Clean voice: a reason main gives why the voice could not be cleaned, shown after \"Your voice could not be cleaned.\" in the Audio panel and in a failed export.",
+    "dnt": [
+      "OneDrive"
+    ]
+  },
+  "voice.unplayable": {
+    "description": "Clean voice: the editor's own reason, after \"Your voice could not be cleaned.\": the cleaned file is there but does not play."
+  },
+  "voice.engine": {
+    "description": "Clean voice: a reason main gives why the voice could not be cleaned, shown after \"Your voice could not be cleaned.\" in the Audio panel and in a failed export. Sometimes followed by a technical detail in brackets.",
+    "dnt": [
+      "ffmpeg"
+    ]
+  },
+  "voice.damagedModel": {
+    "description": "Clean voice: a reason main gives why the voice could not be cleaned, shown after \"Your voice could not be cleaned.\" in the Audio panel and in a failed export.",
+    "dnt": [
+      "Flown"
+    ]
+  },
+  "voice.cancelled": {
+    "description": "Clean voice was stopped (Cancel, or the editor closed) while an export waited for it: shown after \"Your voice could not be cleaned.\" in the failed export."
+  },
+  "voice.replaced": {
+    "description": "Clean voice was restarted for another strength while an export waited for it: shown after \"Your voice could not be cleaned.\" in the failed export."
+  },
+  "aiOutput.unusable": {
+    "description": "An AI text tool (clean-up, translation, chapters, titles, the Publish pack, names) got an answer it cannot use; {detail} is what was wrong, a short clause (errors.aiOutput.*)."
+  },
+  "aiOutput.noNames": {
+    "description": "A technical reason in the brackets of \"The AI's answer could not be used (…). Nothing was changed; try again.\": what was wrong with the AI service's answer, a clause starting lower case."
+  },
+  "aiOutput.noUsableNames": {
+    "description": "A technical reason in the brackets of \"The AI's answer could not be used (…). Nothing was changed; try again.\": what was wrong with the AI service's answer, a clause starting lower case."
+  },
+  "aiOutput.noCaptions": {
+    "description": "A technical reason in the brackets of \"The AI's answer could not be used (…). Nothing was changed; try again.\": what was wrong with the AI service's answer, a clause starting lower case."
+  },
+  "aiOutput.captionCount": {
+    "description": "A technical reason in the brackets of \"The AI's answer could not be used (…). Nothing was changed; try again.\": what was wrong with the AI service's answer, a clause starting lower case.",
+    "digits": "latn"
+  },
+  "aiOutput.captionMissing": {
+    "description": "A technical reason in the brackets of \"The AI's answer could not be used (…). Nothing was changed; try again.\": what was wrong with the AI service's answer, a clause starting lower case."
+  },
+  "aiOutput.captionTimes": {
+    "description": "A technical reason in the brackets of \"The AI's answer could not be used (…). Nothing was changed; try again.\": what was wrong with the AI service's answer, a clause starting lower case."
+  },
+  "aiOutput.captionNoText": {
+    "description": "A technical reason in the brackets of \"The AI's answer could not be used (…). Nothing was changed; try again.\": what was wrong with the AI service's answer, a clause starting lower case."
+  },
+  "aiOutput.captionEmpty": {
+    "description": "A technical reason in the brackets of \"The AI's answer could not be used (…). Nothing was changed; try again.\": what was wrong with the AI service's answer, a clause starting lower case."
+  },
+  "aiOutput.captionLonger": {
+    "description": "A technical reason in the brackets of \"The AI's answer could not be used (…). Nothing was changed; try again.\": what was wrong with the AI service's answer, a clause starting lower case."
+  },
+  "aiOutput.noChapters": {
+    "description": "A technical reason in the brackets of \"The AI's answer could not be used (…). Nothing was changed; try again.\": what was wrong with the AI service's answer, a clause starting lower case."
+  },
+  "aiOutput.noUsableChapters": {
+    "description": "A technical reason in the brackets of \"The AI's answer could not be used (…). Nothing was changed; try again.\": what was wrong with the AI service's answer, a clause starting lower case."
+  },
+  "aiOutput.noTitle": {
+    "description": "A technical reason in the brackets of \"The AI's answer could not be used (…). Nothing was changed; try again.\": what was wrong with the AI service's answer, a clause starting lower case."
+  },
+  "aiOutput.noSummary": {
+    "description": "A technical reason in the brackets of \"The AI's answer could not be used (…). Nothing was changed; try again.\": what was wrong with the AI service's answer, a clause starting lower case."
+  },
+  "aiOutput.emptyTitle": {
+    "description": "A technical reason in the brackets of \"The AI's answer could not be used (…). Nothing was changed; try again.\": what was wrong with the AI service's answer, a clause starting lower case."
+  },
+  "aiOutput.emptySummary": {
+    "description": "A technical reason in the brackets of \"The AI's answer could not be used (…). Nothing was changed; try again.\": what was wrong with the AI service's answer, a clause starting lower case."
+  },
+  "aiOutput.noMarks": {
+    "description": "A technical reason in the brackets of \"The AI's answer could not be used (…). Nothing was changed; try again.\": what was wrong with the AI service's answer, a clause starting lower case. \"marks\" are the emphasis, numbers, lists and quotes Make my captions great asked for."
+  },
+  "aiOutput.noAnswer": {
+    "description": "A technical reason in the brackets of \"The AI's answer could not be used (…). Nothing was changed; try again.\": what was wrong with the AI service's answer, a clause starting lower case."
+  },
+  "aiOutput.noDescription": {
+    "description": "A technical reason in the brackets of \"The AI's answer could not be used (…). Nothing was changed; try again.\": what was wrong with the AI service's answer, a clause starting lower case."
+  },
+  "aiOutput.emptyDescription": {
+    "description": "A technical reason in the brackets of \"The AI's answer could not be used (…). Nothing was changed; try again.\": what was wrong with the AI service's answer, a clause starting lower case."
+  },
+  "aiOutput.noPost": {
+    "description": "A technical reason in the brackets of \"The AI's answer could not be used (…). Nothing was changed; try again.\": what was wrong with the AI service's answer, a clause starting lower case."
+  },
+  "aiOutput.emptyPost": {
+    "description": "A technical reason in the brackets of \"The AI's answer could not be used (…). Nothing was changed; try again.\": what was wrong with the AI service's answer, a clause starting lower case."
+  },
+  "aiOutput.noArticle": {
+    "description": "A technical reason in the brackets of \"The AI's answer could not be used (…). Nothing was changed; try again.\": what was wrong with the AI service's answer, a clause starting lower case."
+  },
+  "aiOutput.noSteps": {
+    "description": "A technical reason in the brackets of \"The AI's answer could not be used (…). Nothing was changed; try again.\": what was wrong with the AI service's answer, a clause starting lower case."
+  },
+  "aiOutput.noReleaseNotes": {
+    "description": "A technical reason in the brackets of \"The AI's answer could not be used (…). Nothing was changed; try again.\": what was wrong with the AI service's answer, a clause starting lower case."
+  },
+  "aiOutput.noChanges": {
+    "description": "A technical reason in the brackets of \"The AI's answer could not be used (…). Nothing was changed; try again.\": what was wrong with the AI service's answer, a clause starting lower case."
+  },
+  "retired.text": {
+    "description": "Shown where a caption or text tool fails because the AI service retired the model. {maker} is the service's maker (OpenAI, Google, Anthropic), {model} the model's name and {day} the date (\"26 February 2027\").",
+    "user": [
+      "model"
+    ]
+  },
+  "retired.transcriptionUse": {
+    "description": "Shown where a caption or text tool fails because the AI service retired the model. {maker} is the service's maker (OpenAI, Google, Anthropic), {model} the model's name and {day} the date (\"26 February 2027\"). {next} is the model the list suggests instead.",
+    "user": [
+      "model",
+      "next"
+    ]
+  },
+  "retired.transcription": {
+    "description": "Shown where a caption or text tool fails because the AI service retired the model. {maker} is the service's maker (OpenAI, Google, Anthropic), {model} the model's name and {day} the date (\"26 February 2027\").",
+    "user": [
+      "model"
+    ]
+  },
+  "retiring.model": {
+    "description": "Settings › AI providers, under a provider: the model it uses is on the makers' retiring list. {maker} is OpenAI, Google or Anthropic, {model} the model's name and {day} the date (\"26 February 2027\").",
+    "user": [
+      "model"
+    ]
+  },
+  "retiring.transcription": {
+    "description": "Settings › AI providers, under a provider: the model it uses is on the makers' retiring list. {maker} is OpenAI, Google or Anthropic, {model} the model's name and {day} the date (\"26 February 2027\").",
+    "user": [
+      "model"
+    ]
+  },
+  "retired.modelNote": {
+    "description": "Settings › AI providers, under a provider: the model it uses is on the makers' retiring list. {maker} is OpenAI, Google or Anthropic, {model} the model's name and {day} the date (\"26 February 2027\").",
+    "user": [
+      "model"
+    ]
+  },
+  "retired.transcriptionNote": {
+    "description": "Settings › AI providers, under a provider: the model it uses is on the makers' retiring list. {maker} is OpenAI, Google or Anthropic, {model} the model's name and {day} the date (\"26 February 2027\").",
+    "user": [
+      "model"
+    ]
+  },
+  "baseUrl.empty": {
+    "description": "Settings › AI providers, the address field of a service added by address: why the address is refused."
+  },
+  "baseUrl.long": {
+    "description": "Settings › AI providers, the address field of a service added by address: why the address is refused.",
+    "digits": "latn"
+  },
+  "baseUrl.invalid": {
+    "description": "Settings › AI providers, the address field of a service added by address: why the address is refused.",
+    "dnt": [
+      "https://"
+    ]
+  },
+  "baseUrl.https": {
+    "description": "Settings › AI providers, the address field of a service added by address: why the address is refused.",
+    "dnt": [
+      "https://",
+      "http://"
+    ]
+  },
+  "baseUrl.credentials": {
+    "description": "Settings › AI providers, the address field of a service added by address: why the address is refused."
+  },
+  "baseUrl.query": {
+    "description": "Settings › AI providers, the address field of a service added by address: why the address is refused. The \"?\" starts the address's query part."
+  },
+  "baseUrl.fragment": {
+    "description": "Settings › AI providers, the address field of a service added by address: why the address is refused. The \"#\" starts the address's fragment."
+  },
+  "baseUrl.azure": {
+    "description": "Settings › AI providers, Azure OpenAI: why the resource name is refused."
+  },
+  "localAi.notInBuild": {
+    "description": "Settings › AI on this PC and the AI tools, about AI on this PC (a model that runs on this computer): why it cannot run."
+  },
+  "localAi.processorOld": {
+    "description": "Settings › AI on this PC and the AI tools, about AI on this PC (a model that runs on this computer): why it cannot run.",
+    "dnt": [
+      "AVX2"
+    ]
+  },
+  "localAi.processorUnknown": {
+    "description": "Settings › AI on this PC and the AI tools, about AI on this PC (a model that runs on this computer): why it cannot run.",
+    "dnt": [
+      "Flown"
+    ]
+  },
+  "localAi.damaged": {
+    "description": "Settings › AI on this PC and the AI tools, about AI on this PC (a model that runs on this computer): the model failed its check."
+  },
+  "localAi.noModel": {
+    "description": "Settings › AI on this PC and the AI tools, about AI on this PC (a model that runs on this computer): no model is downloaded."
+  },
+  "localAi.crashed": {
+    "description": "Settings › AI on this PC and the AI tools, about AI on this PC (a model that runs on this computer): the model crashed. \"Small\" is the smaller model's name."
+  },
+  "localAi.stalled": {
+    "description": "Settings › AI on this PC and the AI tools, about AI on this PC (a model that runs on this computer): the model stopped answering."
+  },
+  "localAi.tooLong": {
+    "description": "Settings › AI on this PC and the AI tools, about AI on this PC (a model that runs on this computer): the text does not fit the model."
+  },
+  "localAi.notesTooLong": {
+    "description": "Settings › AI on this PC and the AI tools, about AI on this PC (a model that runs on this computer): speaker notes that do not fit the model."
+  },
+  "localAi.needsMemory": {
+    "description": "Settings › AI on this PC and the AI tools, about AI on this PC (a model that runs on this computer): why a model cannot be downloaded: it needs {need} GB of memory and the PC has {have} GB (no full stop in Settings; main adds one when it refuses).",
+    "digits": "latn",
+    "dnt": [
+      "GB"
+    ]
+  },
+  "localAi.freeMemorySmall": {
+    "description": "Settings › AI on this PC and the AI tools, about AI on this PC (a model that runs on this computer): not enough free memory to run now; the Small model is not downloaded. {need} and {free} are gigabytes with one decimal.",
+    "digits": "latn",
+    "dnt": [
+      "GB"
+    ]
+  },
+  "localAi.freeMemory": {
+    "description": "Settings › AI on this PC and the AI tools, about AI on this PC (a model that runs on this computer): not enough free memory to run now. {need} and {free} are gigabytes with one decimal.",
+    "digits": "latn",
+    "dnt": [
+      "GB"
+    ]
+  },
+  "localAi.disk": {
+    "description": "Settings › AI on this PC and the AI tools, about AI on this PC (a model that runs on this computer): the model's download does not fit on the disk; {size} is gigabytes with one decimal.",
+    "digits": "latn",
+    "dnt": [
+      "GB"
+    ]
   }
 }

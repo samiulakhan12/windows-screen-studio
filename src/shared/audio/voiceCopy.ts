@@ -1,40 +1,49 @@
-/** The words of Clean voice (docs/design/clean-voice.md §5), shared by the Audio panel, the export and the tests. */
-import type { VoiceStrength } from '../types'
+/**
+ * Clean voice's failure sentence and the reasons the main process gives (docs/design/clean-voice.md
+ * §5), shared by main (voiceClean, voiceIpc), the editor's stems, the export and the tests. Main
+ * imports this file, so its words are errors messages, made where they are shown
+ * (docs/design/output-and-languages.md §9.1, test 86); the Audio panel's own words are the
+ * renderer's (editor/panels/voiceWords.ts).
+ */
+import { VOICE_CANCELLED, VOICE_REPLACED } from '../api/voice'
+import { t } from '../i18n/t'
 
 export const VOICE_COPY = {
-  section: 'Voice',
-  toggle: 'Clean voice',
-  intro: 'Removes fan hum, keyboard and mouse clicks and room noise from your voice, on this PC. The preview plays the result.',
-  mixed: "This recording keeps your microphone and the PC's sound together, so both are cleaned.",
-  silent: 'The recording is silent, so there is no voice to clean.',
-  noMic: 'The microphone is muted or was not recorded, so there is no voice to clean.',
-  strength: 'Strength',
-  checking: 'Checking your voice…',
-  cleaning: 'Cleaning your voice…',
-  working: (percent: number): string => `Cleaning your voice… ${percent}%`,
-  cancel: 'Cancel',
-  ready: 'Your voice is clean. The preview and the export use it.',
-  original: 'Hear the original',
-  playingOriginal: 'Playing the original voice. The export stays clean.',
-  stopped: 'Cleaning stopped. The preview plays the original voice, and the export cleans it first.',
-  cleanNow: 'Clean now',
-  failed: 'Your voice could not be cleaned.',
-  tryAgain: 'Try again',
+  get failed(): string {
+    return t('errors.voice.failed')
+  },
   /** Reasons the main process gives. */
-  missingMic: 'The microphone file of this recording is missing.',
-  missingMix: "The recording's sound file is missing.",
-  tooLong: 'Cleaning took too long and was stopped.',
-  locked: 'Another app, such as an antivirus or OneDrive, kept the file busy. Try again in a moment.',
+  get missingMic(): string {
+    return t('errors.voice.missingMic')
+  },
+  get missingMix(): string {
+    return t('errors.voice.missingMix')
+  },
+  get tooLong(): string {
+    return t('errors.voice.tooLong')
+  },
+  get locked(): string {
+    return t('errors.voice.locked')
+  },
   /** The editor's own reason: the cleaned file is there but will not play. */
-  unplayable: 'The cleaned file would not play, so the preview plays the original voice.',
-  engine: 'ffmpeg could not clean the sound.',
-  damagedModel: 'The noise model of this app is damaged. Install Flown again.'
-} as const
+  get unplayable(): string {
+    return t('errors.voice.unplayable')
+  },
+  get engine(): string {
+    return t('errors.voice.engine')
+  },
+  get damagedModel(): string {
+    return t('errors.voice.damagedModel')
+  }
+}
 
-export const STRENGTH_NAMES: Record<VoiceStrength, string> = { light: 'Light', normal: 'Normal', strong: 'Strong' }
-
-export const STRENGTH_HINTS: Record<VoiceStrength, string> = {
-  light: 'Softens the noise and keeps some of the room.',
-  normal: 'Removes most noise. Right for most recordings.',
-  strong: 'Removes as much as it can. Quiet words can sound thin.'
+/**
+ * A reason a clean rejected with, as the UI says it: the two stop tokens of api/voice.ts
+ * (VOICE_CANCELLED, VOICE_REPLACED, compared as they are between main and the editor) in the UI
+ * language, anything else unchanged. English gives the tokens' own words.
+ */
+export function voiceReason(message: string): string {
+  if (message === VOICE_CANCELLED) return t('errors.voice.cancelled')
+  if (message === VOICE_REPLACED) return t('errors.voice.replaced')
+  return message
 }

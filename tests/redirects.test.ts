@@ -5,6 +5,7 @@ import path from 'node:path'
 import type { AddressInfo } from 'node:net'
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
 import type { AiProviderInfo } from '../src/shared/api/ai'
+import { setCatalogue } from '../src/shared/i18n/t'
 
 /*
  * No redirects (docs/design/smart-tools.md §16.3, §22 test 85): a service that answers with a 302 to
@@ -87,6 +88,19 @@ describe('no redirects (test 85)', () => {
     await expect(client.models!(AbortSignal.timeout(10_000))).rejects.toThrow(/unexpected redirect/)
     // Refused at once, not tried again: one request each.
     expect(redirecting.seen.map((s) => s.method)).toEqual(['POST', 'GET'])
+    expect(other.seen).toHaveLength(0)
+  })
+
+  it('a refused redirect is told as one in any UI language, not by its English words', async () => {
+    // The refusal's words follow the UI language; the model list still says which service redirected.
+    const words = 'পরিষেবাটি অন্য ঠিকানায় পাঠিয়েছে।'
+    setCatalogue({ language: 'bn', messages: { 'errors.listFetch.redirect': words }, formatLocale: 'bn-BD', dir: 'ltr' })
+    try {
+      const client = compatibleClient(info(redirecting.origin()), 'sk-redirect-0123456789', { setJsonMode: () => undefined })
+      await expect(client.models!(AbortSignal.timeout(10_000))).rejects.toThrow(`${new URL(redirecting.origin()).host}: ${words}`)
+    } finally {
+      setCatalogue({ language: 'en', messages: {}, formatLocale: 'en-US', dir: 'ltr' })
+    }
     expect(other.seen).toHaveLength(0)
   })
 

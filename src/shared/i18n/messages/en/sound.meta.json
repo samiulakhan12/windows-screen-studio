@@ -466,5 +466,92 @@
   },
   "finder.state.cut": {
     "description": "Sound finder (Audio tab, Unwanted sounds): what was done to a row's sound, shown in place of its buttons (\"Cut\")."
+  },
+  "voice.section": {
+    "description": "Audio panel › Voice (Clean voice): the section's title."
+  },
+  "voice.toggle": {
+    "description": "Audio panel › Voice (Clean voice): the switch, the feature's name; also the progress bar's accessible name."
+  },
+  "voice.intro": {
+    "description": "Audio panel › Voice (Clean voice): what the switch does."
+  },
+  "voice.mixed": {
+    "description": "Audio panel › Voice (Clean voice): a recording with one mixed sound track."
+  },
+  "voice.silent": {
+    "description": "Audio panel › Voice (Clean voice): instead of the hint, for a silent recording."
+  },
+  "voice.noMic": {
+    "description": "Audio panel › Voice (Clean voice): instead of the hint, without a microphone."
+  },
+  "voice.strength": {
+    "description": "Audio panel › Voice (Clean voice): the label of the Light, Normal and Strong chips."
+  },
+  "voice.checking": {
+    "description": "Audio panel › Voice (Clean voice): status while Flown checks whether the cleaned voice is there."
+  },
+  "voice.cleaning": {
+    "description": "Audio panel › Voice (Clean voice): what screen readers hear while cleaning."
+  },
+  "voice.working": {
+    "description": "Audio panel › Voice (Clean voice): status while cleaning; {percent} is a whole number from 0 to 100."
+  },
+  "voice.ready": {
+    "description": "Audio panel › Voice (Clean voice): status once the cleaned voice is ready."
+  },
+  "voice.original": {
+    "description": "Audio panel › Voice (Clean voice): toggle button that plays the voice as recorded."
+  },
+  "voice.playingOriginal": {
+    "description": "Audio panel › Voice (Clean voice): status while Hear the original is on."
+  },
+  "voice.stopped": {
+    "description": "Audio panel › Voice (Clean voice): status after Cancel."
+  },
+  "voice.cleanNow": {
+    "description": "Audio panel › Voice (Clean voice): button that starts cleaning after a Cancel."
+  },
+  "voice.strength.light": {
+    "description": "Audio panel › Voice (Clean voice): the gentlest strength chip."
+  },
+  "voice.strength.normal": {
+    "description": "Audio panel › Voice (Clean voice): the middle strength chip."
+  },
+  "voice.strength.strong": {
+    "description": "Audio panel › Voice (Clean voice): the strongest strength chip."
+  },
+  "voice.strength.lightHint": {
+    "description": "Audio panel › Voice (Clean voice): under the chips when Light is chosen."
+  },
+  "voice.strength.normalHint": {
+    "description": "Audio panel › Voice (Clean voice): under the chips when Normal is chosen."
+  },
+  "voice.strength.strongHint": {
+    "description": "Audio panel › Voice (Clean voice): under the chips when Strong is chosen."
+  },
+  "library.credit": {
+    "description": "Audio › Music library: the credit under the music row while a library track is the music. {title} is the track's title and {artist} its artist, as they publish them.",
+    "dnt": [
+      "CC0"
+    ]
+  },
+  "library.lengthSeconds": {
+    "description": "Audio › Music library: a track's length as screen readers read it."
+  },
+  "library.lengthMinutes": {
+    "description": "Audio › Music library: a track's length as screen readers read it."
+  },
+  "library.lengthMinutesSeconds": {
+    "description": "Audio › Music library: a track's length as screen readers read it. Minutes, then seconds."
+  },
+  "library.sizeMb": {
+    "description": "Audio › Music library and Settings › Music: a download's size in megabytes with one decimal (\"1.0 MB\"); {n} is the number in the UI's digits.",
+    "dnt": [
+      "MB"
+    ]
+  },
+  "library.sizeMegabytes": {
+    "description": "Audio › Music library: the same size as screen readers read it (\"1.0 megabytes\"); {n} is the number in the UI's digits."
   }
 }

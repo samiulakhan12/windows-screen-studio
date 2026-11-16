@@ -4,12 +4,18 @@
 import { describe, expect, it, vi } from 'vitest'
 import { settleCaptionAuto } from '../src/shared/captions/captionAutoSettle'
 import { DEFAULT_CLEANUP } from '../src/shared/captions/cleanup'
-import { DEFAULT_GREAT_OPTIONS, greatHint, greatNotice, planCaptionsGreat, readGreatOptions, resolveGreatOptions, type GreatSummary } from '../src/shared/captions/great'
+import { DEFAULT_GREAT_OPTIONS, planCaptionsGreat, readGreatOptions, resolveGreatOptions, type GreatSummary } from '../src/shared/captions/great'
 import { DEFAULT_CAPTIONS } from '../src/shared/captions/settings'
 import { studioWordTexts } from '../src/shared/captions/words'
 import { chordFromEvent, DEFAULT_KEYMAP, matchShortcut, reviewHint, shortcutIndex, undoHint } from '../src/shared/editor/shortcuts'
 import type { Graphic, Project } from '../src/shared/types'
 import { captions, studioProject, TALL, WIDE } from './p4Fixtures'
+// Renderer code: imported at run time so the Node typecheck of tests/ does not follow it.
+const GREAT_WORDS = '../src/renderer/src/editor/greatWords'
+const { greatHint, greatNotice } = (await import(/* @vite-ignore */ GREAT_WORDS)) as {
+  greatHint: (o: ReturnType<typeof resolveGreatOptions>) => string
+  greatNotice: (s: GreatSummary, undo?: string, review?: string) => string
+}
 
 vi.mock('../src/shared/captions/words', async (o) => (await import('./p1Fillins')).fillWords(await o()))
 vi.mock('../src/shared/captions/studioLayout', async (o) => (await import('./p1Fillins')).fillLayout(await o(), await import('../src/shared/captions/words')))

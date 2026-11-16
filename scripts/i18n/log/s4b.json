@@ -1,0 +1,5110 @@
+[
+  {
+    "key": "errors.aiService.declined",
+    "file": "src/main/ai/compatible.ts",
+    "line": 171,
+    "english": "api.groq.com declined this request.",
+    "sample": {
+      "provider": "api.groq.com"
+    }
+  },
+  {
+    "key": "errors.aiService.declined",
+    "file": "src/main/ai/openai.ts",
+    "line": 157,
+    "english": "OpenAI declined this request.",
+    "sample": {
+      "provider": "OpenAI"
+    }
+  },
+  {
+    "key": "errors.aiService.declinedTryAnother",
+    "file": "src/main/ai/anthropic.ts",
+    "line": 92,
+    "english": "Claude declined this request. Try another provider for this task.",
+    "sample": {
+      "provider": "Claude"
+    }
+  },
+  {
+    "key": "errors.aiService.declinedCategoryTryAnother",
+    "file": "src/main/ai/anthropic.ts",
+    "line": 92,
+    "english": "Claude declined this request (cyber). Try another provider for this task.",
+    "sample": {
+      "provider": "Claude",
+      "category": "cyber"
+    }
+  },
+  {
+    "key": "errors.aiService.declinedBecause",
+    "file": "src/main/ai/gemini.ts",
+    "line": 79,
+    "english": "Gemini declined this request (SAFETY).",
+    "sample": {
+      "provider": "Gemini",
+      "reason": "SAFETY"
+    }
+  },
+  {
+    "key": "errors.aiService.declinedToAnswer",
+    "file": "src/main/ai/gemini.ts",
+    "line": 82,
+    "english": "Gemini declined to answer (RECITATION).",
+    "sample": {
+      "provider": "Gemini",
+      "reason": "RECITATION"
+    }
+  },
+  {
+    "key": "errors.aiService.declinedSaying",
+    "file": "src/main/ai/compatible.ts",
+    "line": 169,
+    "english": "api.groq.com declined this request: I cannot help with that.",
+    "sample": {
+      "provider": "api.groq.com",
+      "refusal": "I cannot help with that."
+    }
+  },
+  {
+    "key": "errors.aiService.declinedSaying",
+    "file": "src/main/ai/openai.ts",
+    "line": 149,
+    "english": "OpenAI declined this request: No.",
+    "sample": {
+      "provider": "OpenAI",
+      "refusal": "No."
+    }
+  },
+  {
+    "key": "errors.aiService.tooLongTranscript",
+    "file": "src/main/ai/anthropic.ts",
+    "line": 95,
+    "english": "Claude stopped before finishing the answer (it was too long). Try a shorter transcript.",
+    "sample": {
+      "provider": "Claude"
+    }
+  },
+  {
+    "key": "errors.aiService.tooLongPart",
+    "file": "src/main/ai/gemini.ts",
+    "line": 81,
+    "english": "Gemini stopped before finishing the answer (it was too long). Try a shorter part.",
+    "sample": {
+      "provider": "Gemini"
+    }
+  },
+  {
+    "key": "errors.aiService.tooLongPart",
+    "file": "src/main/ai/compatible.ts",
+    "line": 170,
+    "english": "api.groq.com stopped before finishing the answer (it was too long). Try a shorter part.",
+    "sample": {
+      "provider": "api.groq.com"
+    }
+  },
+  {
+    "key": "errors.aiService.stoppedBecause",
+    "file": "src/main/ai/openai.ts",
+    "line": 157,
+    "english": "OpenAI stopped before finishing the answer (max_output_tokens). Try a shorter transcript.",
+    "sample": {
+      "provider": "OpenAI",
+      "reason": "max_output_tokens"
+    }
+  },
+  {
+    "key": "errors.aiService.stoppedIncomplete",
+    "file": "src/main/ai/openai.ts",
+    "line": 157,
+    "english": "OpenAI stopped before finishing the answer (incomplete). Try a shorter transcript.",
+    "sample": {
+      "provider": "OpenAI"
+    }
+  },
+  {
+    "key": "errors.aiService.notJson",
+    "file": "src/main/ai/anthropic.ts",
+    "line": 150,
+    "english": "Claude answered with something that is not the expected JSON. Try again.",
+    "sample": {
+      "provider": "Claude"
+    }
+  },
+  {
+    "key": "errors.aiService.notJson",
+    "file": "src/main/ai/gemini.ts",
+    "line": 92,
+    "english": "Gemini answered with something that is not the expected JSON. Try again.",
+    "sample": {
+      "provider": "Gemini"
+    }
+  },
+  {
+    "key": "errors.aiService.notJson",
+    "file": "src/main/ai/openai.ts",
+    "line": 169,
+    "english": "OpenAI answered with something that is not the expected JSON. Try again.",
+    "sample": {
+      "provider": "OpenAI"
+    }
+  },
+  {
+    "key": "errors.aiService.notJson",
+    "file": "src/main/ai/compatible.ts",
+    "line": 184,
+    "english": "api.groq.com answered with something that is not the expected JSON. Try again.",
+    "sample": {
+      "provider": "api.groq.com"
+    }
+  },
+  {
+    "key": "errors.aiService.emptyAnswer",
+    "file": "src/main/ai/gemini.ts",
+    "line": 84,
+    "english": "Gemini gave an empty answer. Try again.",
+    "sample": {
+      "provider": "Gemini"
+    }
+  },
+  {
+    "key": "errors.aiService.uploadSlow",
+    "file": "src/main/ai/gemini.ts",
+    "line": 120,
+    "english": "Gemini took too long to process the uploaded sound.",
+    "sample": {
+      "provider": "Gemini"
+    }
+  },
+  {
+    "key": "errors.aiService.uploadFailed",
+    "file": "src/main/ai/gemini.ts",
+    "line": 124,
+    "english": "Gemini could not process the uploaded sound.",
+    "sample": {
+      "provider": "Gemini"
+    }
+  },
+  {
+    "key": "errors.aiService.rejectedJsonMode",
+    "file": "src/main/ai/compatible.ts",
+    "line": 228,
+    "english": "api.groq.com rejected the request's JSON mode.",
+    "sample": {
+      "provider": "api.groq.com"
+    }
+  },
+  {
+    "key": "errors.aiService.jsonModeRefused",
+    "file": "src/main/ai/compatible.ts",
+    "line": 96,
+    "english": "The service did not take this JSON mode.",
+    "sample": {}
+  },
+  {
+    "key": "main.aiCheck.keyWorks",
+    "file": "src/main/ai/openai.ts",
+    "line": 72,
+    "english": "The key works.",
+    "sample": {}
+  },
+  {
+    "key": "main.aiCheck.keyWorksModel",
+    "file": "src/main/ai/gemini.ts",
+    "line": 134,
+    "english": "The key works, and “gemini-2.5-flash” is available.",
+    "sample": {
+      "model": "gemini-2.5-flash"
+    }
+  },
+  {
+    "key": "main.aiCheck.keyWorksClaude",
+    "file": "src/main/ai/anthropic.ts",
+    "line": 111,
+    "english": "The key works, and “claude-sonnet-4-5” is available. Claude can clean up, translate and summarise transcripts; it cannot transcribe sound.",
+    "sample": {
+      "model": "claude-sonnet-4-5"
+    }
+  },
+  {
+    "key": "main.aiCheck.works",
+    "file": "src/main/ai/compatible.ts",
+    "line": 55,
+    "english": "Works.",
+    "sample": {}
+  },
+  {
+    "key": "main.aiCheck.worksChecked",
+    "file": "src/main/ai/compatible.ts",
+    "line": 56,
+    "english": "Works; Flown checks its answers more closely.",
+    "sample": {}
+  },
+  {
+    "key": "main.aiCheck.schema",
+    "file": "src/main/ai/compatible.ts",
+    "line": 55,
+    "english": "Answers in JSON with a schema.",
+    "sample": {}
+  },
+  {
+    "key": "main.aiCheck.plainJson",
+    "file": "src/main/ai/compatible.ts",
+    "line": 56,
+    "english": "Answers in plain JSON.",
+    "sample": {}
+  },
+  {
+    "key": "main.aiCheck.plainText",
+    "file": "src/main/ai/compatible.ts",
+    "line": 57,
+    "english": "Answers in plain text.",
+    "sample": {}
+  },
+  {
+    "key": "errors.listFetch.redirect",
+    "file": "src/main/ai/listFetch.ts",
+    "line": 19,
+    "english": "The service answered with a redirect to another address, which Flown does not follow (unexpected redirect).",
+    "sample": {}
+  },
+  {
+    "key": "errors.listFetch.couldNotRead",
+    "file": "src/main/ai/listFetch.ts",
+    "line": 77,
+    "english": "Could not read the list of models from OpenAI: terminated",
+    "sample": {
+      "provider": "OpenAI",
+      "reason": "terminated"
+    }
+  },
+  {
+    "key": "errors.listFetch.tooLarge",
+    "file": "src/main/ai/listFetch.ts",
+    "line": 79,
+    "english": "The list of models from OpenAI is too large (over 4 MB).",
+    "sample": {
+      "provider": "OpenAI"
+    }
+  },
+  {
+    "key": "errors.listFetch.notJson",
+    "file": "src/main/ai/listFetch.ts",
+    "line": 94,
+    "english": "OpenAI answered the list of models with something that is not JSON.",
+    "sample": {
+      "provider": "OpenAI"
+    }
+  },
+  {
+    "key": "errors.serviceStore.newAddress",
+    "file": "src/main/ai/serviceStore.ts",
+    "line": 57,
+    "english": "Enter the API key for the new address.",
+    "sample": {}
+  },
+  {
+    "key": "errors.serviceStore.model",
+    "file": "src/main/ai/serviceStore.ts",
+    "line": 58,
+    "english": "Enter the model's name.",
+    "sample": {}
+  },
+  {
+    "key": "errors.keyStore.thisAiProviderNo",
+    "file": "src/main/ai/serviceStore.ts",
+    "line": 55,
+    "english": "This AI provider no longer exists. Choose another one in Settings → AI providers.",
+    "sample": {}
+  },
+  {
+    "key": "errors.keyStore.enterTheApiKey",
+    "file": "src/main/ai/serviceStore.ts",
+    "line": 56,
+    "english": "Enter the API key.",
+    "sample": {}
+  },
+  {
+    "key": "errors.keyStore.atMostProvidersCan",
+    "file": "src/main/ai/serviceStore.ts",
+    "line": 59,
+    "english": "At most 20 providers can be added.",
+    "sample": {
+      "maxProviders": "20"
+    }
+  },
+  {
+    "key": "errors.aiService.noPictures",
+    "file": "src/main/ai/types.ts",
+    "line": 54,
+    "english": "This model does not read pictures. Choose another model, or untick Also send the screenshots.",
+    "sample": {}
+  },
+  {
+    "key": "errors.download.mismatch",
+    "file": "src/main/assets/assetStore.ts",
+    "line": 35,
+    "english": "The download did not match the expected file, so it was deleted.",
+    "sample": {}
+  },
+  {
+    "key": "errors.download.cancelled",
+    "file": "src/main/assets/assetStore.ts",
+    "line": 204,
+    "english": "The download was cancelled.",
+    "sample": {}
+  },
+  {
+    "key": "errors.download.stopped",
+    "file": "src/main/assets/assetStore.ts",
+    "line": 206,
+    "english": "The download stopped: The connection was closed. Try again.",
+    "sample": {
+      "reason": "The connection was closed."
+    }
+  },
+  {
+    "key": "errors.download.stopped",
+    "file": "src/main/soundLibrary/store.ts",
+    "line": 210,
+    "english": "The download stopped: The connection was closed. Try again.",
+    "sample": {
+      "reason": "The connection was closed."
+    }
+  },
+  {
+    "key": "errors.download.refusedGithub",
+    "file": "src/main/assets/assetStore.ts",
+    "line": 208,
+    "english": "GitHub or your network refused the download (HTTP 403). A proxy or firewall may be blocking it.",
+    "sample": {}
+  },
+  {
+    "key": "errors.download.refusedGithub",
+    "file": "src/main/soundLibrary/store.ts",
+    "line": 211,
+    "english": "GitHub or your network refused the download (HTTP 403). A proxy or firewall may be blocking it.",
+    "sample": {}
+  },
+  {
+    "key": "errors.download.fontGone",
+    "file": "src/main/assets/assetStore.ts",
+    "line": 209,
+    "english": "The font is no longer at its address (HTTP 404).",
+    "sample": {
+      "status": "404"
+    }
+  },
+  {
+    "key": "errors.download.musicGone",
+    "file": "src/main/soundLibrary/store.ts",
+    "line": 212,
+    "english": "The music is no longer at its address (HTTP 404).",
+    "sample": {
+      "status": "404"
+    }
+  },
+  {
+    "key": "errors.clipboard.failedBecause",
+    "file": "src/main/exportClipboard.ts",
+    "line": 80,
+    "english": "Could not copy to the clipboard (spawn ENOENT).",
+    "sample": {
+      "reason": "spawn ENOENT"
+    }
+  },
+  {
+    "key": "errors.clipboard.failedBecause",
+    "file": "src/main/exportClipboard.ts",
+    "line": 92,
+    "english": "Could not copy to the clipboard (spawn EACCES).",
+    "sample": {
+      "reason": "spawn EACCES"
+    }
+  },
+  {
+    "key": "errors.clipboard.timedOut",
+    "file": "src/main/exportClipboard.ts",
+    "line": 88,
+    "english": "Copying to the clipboard timed out.",
+    "sample": {}
+  },
+  {
+    "key": "errors.clipboard.failedSaying",
+    "file": "src/main/exportClipboard.ts",
+    "line": 95,
+    "english": "Could not copy to the clipboard: Error: Can't open display",
+    "sample": {
+      "output": "Error: Can't open display"
+    }
+  },
+  {
+    "key": "errors.clipboard.failed",
+    "file": "src/main/exportClipboard.ts",
+    "line": 95,
+    "english": "Could not copy to the clipboard.",
+    "sample": {}
+  },
+  {
+    "key": "errors.clipboard.fileGone",
+    "file": "src/main/exportClipboard.ts",
+    "line": 103,
+    "english": "The exported file no longer exists.",
+    "sample": {}
+  },
+  {
+    "key": "errors.clipboard.noTool",
+    "file": "src/main/exportClipboard.ts",
+    "line": 106,
+    "english": "Copying files is not supported here: install xclip (X11) or wl-clipboard (Wayland).",
+    "sample": {}
+  },
+  {
+    "key": "errors.clipboard.notExported",
+    "file": "src/main/exportIpc.ts",
+    "line": 422,
+    "english": "Only files exported in this session can be copied.",
+    "sample": {}
+  },
+  {
+    "key": "main.jobs.open",
+    "file": "src/main/longJobsPort.ts",
+    "line": 82,
+    "english": "Open",
+    "sample": {}
+  },
+  {
+    "key": "common.action.showInFolder",
+    "file": "src/main/longJobsPort.ts",
+    "line": 82,
+    "english": "Show in folder",
+    "sample": {}
+  },
+  {
+    "key": "errors.export.cancelled",
+    "file": "src/main/musicLoopCache.ts",
+    "line": 39,
+    "english": "The export was cancelled.",
+    "sample": {}
+  },
+  {
+    "key": "errors.musicLoop.failed",
+    "file": "src/main/musicLoopCache.ts",
+    "line": 40,
+    "english": "The background music could not be prepared for looping. Choose it again in the Audio panel, or turn Loop off.",
+    "sample": {}
+  },
+  {
+    "key": "errors.musicLoop.timedOut",
+    "file": "src/main/musicLoopCache.ts",
+    "line": 41,
+    "english": "Preparing the background music for looping took too long. Try the export again.",
+    "sample": {}
+  },
+  {
+    "key": "errors.musicLoop.space",
+    "file": "src/main/musicLoopCache.ts",
+    "line": 42,
+    "english": "There is not enough free space to prepare the background music for the export: about 5 MB more is needed. Free some space and export again.",
+    "sample": {
+      "mb": "5"
+    }
+  },
+  {
+    "key": "errors.speechHelper.missing",
+    "file": "src/main/speech/helper.ts",
+    "line": 198,
+    "english": "The speech helper is not part of this build.",
+    "sample": {}
+  },
+  {
+    "key": "errors.speechHelper.cpu",
+    "file": "src/main/speech/helper.ts",
+    "line": 220,
+    "english": "The speech helper stopped on an instruction this processor does not have.",
+    "sample": {}
+  },
+  {
+    "key": "errors.speechHelper.checkFailed",
+    "file": "src/main/speech/helper.ts",
+    "line": 193,
+    "english": "The speech helper's check failed (exit code 3).",
+    "sample": {
+      "why": "exit code 3"
+    }
+  },
+  {
+    "key": "errors.speechHelper.checkFailedSaying",
+    "file": "src/main/speech/helper.ts",
+    "line": 193,
+    "english": "The speech helper's check failed (exit code 3). missing DLL",
+    "sample": {
+      "why": "exit code 3",
+      "said": "missing DLL"
+    }
+  },
+  {
+    "key": "errors.speechHelper.tooMuchOutput",
+    "file": "src/main/speech/helper.ts",
+    "line": 284,
+    "english": "more than 1048576 bytes of output",
+    "sample": {
+      "bytes": "1048576"
+    }
+  },
+  {
+    "key": "errors.speechHelper.lineTooLong",
+    "file": "src/main/speech/helper.ts",
+    "line": 288,
+    "english": "a line longer than 65536 bytes",
+    "sample": {
+      "bytes": "65536"
+    }
+  },
+  {
+    "key": "errors.speechHelper.lineTooLong",
+    "file": "src/main/speech/helper.ts",
+    "line": 297,
+    "english": "a line longer than 65536 bytes",
+    "sample": {
+      "bytes": "65536"
+    }
+  },
+  {
+    "key": "errors.speechHelper.exitCode",
+    "file": "src/main/speech/helper.ts",
+    "line": 464,
+    "english": "exit code 0xC000001D",
+    "sample": {
+      "code": "0xC000001D"
+    }
+  },
+  {
+    "key": "errors.speechHelper.exitCode",
+    "file": "src/main/speech/helper.ts",
+    "line": 469,
+    "english": "exit code 3",
+    "sample": {
+      "code": "3"
+    }
+  },
+  {
+    "key": "errors.speechHelper.signal",
+    "file": "src/main/speech/helper.ts",
+    "line": 465,
+    "english": "signal SIGSEGV",
+    "sample": {
+      "signal": "SIGSEGV"
+    }
+  },
+  {
+    "key": "errors.vad.helperMissing",
+    "file": "src/main/speech/vad.ts",
+    "line": 90,
+    "english": "the speech helper is not part of this build",
+    "sample": {}
+  },
+  {
+    "key": "errors.vad.modelDamaged",
+    "file": "src/main/speech/vad.ts",
+    "line": 94,
+    "english": "its model is missing or damaged",
+    "sample": {}
+  },
+  {
+    "key": "errors.vad.didNotStart",
+    "file": "src/main/speech/vad.ts",
+    "line": 99,
+    "english": "the speech engine did not start",
+    "sample": {}
+  },
+  {
+    "key": "errors.vad.didNotStart",
+    "file": "src/main/speech/vad.ts",
+    "line": 109,
+    "english": "the speech engine did not start",
+    "sample": {}
+  },
+  {
+    "key": "errors.vad.didNotStart",
+    "file": "src/main/speech/vad.ts",
+    "line": 263,
+    "english": "the speech engine did not start",
+    "sample": {}
+  },
+  {
+    "key": "errors.vad.processor",
+    "file": "src/main/speech/vad.ts",
+    "line": 276,
+    "english": "this PC's processor cannot run the speech engine",
+    "sample": {}
+  },
+  {
+    "key": "errors.transcribe.ffmpegCouldNotBe",
+    "file": "src/main/sounds/soundsIpc.ts",
+    "line": 116,
+    "english": "ffmpeg could not be started (spawn ENOENT)",
+    "sample": {
+      "message": "spawn ENOENT"
+    }
+  },
+  {
+    "key": "errors.soundsIpc.readFailed",
+    "file": "src/main/sounds/soundsIpc.ts",
+    "line": 123,
+    "english": "Could not read the recording's sound (Invalid data found when processing input)",
+    "sample": {
+      "reason": "Invalid data found when processing input"
+    }
+  },
+  {
+    "key": "errors.soundsIpc.readFailedCode",
+    "file": "src/main/sounds/soundsIpc.ts",
+    "line": 123,
+    "english": "Could not read the recording's sound (exit code 1)",
+    "sample": {
+      "code": "1"
+    }
+  },
+  {
+    "key": "errors.soundsIpc.idle",
+    "file": "src/main/sounds/soundsIpc.ts",
+    "line": 175,
+    "english": "The sound stream was idle",
+    "sample": {}
+  },
+  {
+    "key": "sound.voice.section",
+    "file": "src/shared/audio/voiceCopy.ts",
+    "line": 5,
+    "english": "Voice",
+    "sample": {}
+  },
+  {
+    "key": "sound.voice.toggle",
+    "file": "src/shared/audio/voiceCopy.ts",
+    "line": 6,
+    "english": "Clean voice",
+    "sample": {}
+  },
+  {
+    "key": "sound.voice.intro",
+    "file": "src/shared/audio/voiceCopy.ts",
+    "line": 7,
+    "english": "Removes fan hum, keyboard and mouse clicks and room noise from your voice, on this PC. The preview plays the result.",
+    "sample": {}
+  },
+  {
+    "key": "sound.voice.mixed",
+    "file": "src/shared/audio/voiceCopy.ts",
+    "line": 8,
+    "english": "This recording keeps your microphone and the PC's sound together, so both are cleaned.",
+    "sample": {}
+  },
+  {
+    "key": "sound.voice.silent",
+    "file": "src/shared/audio/voiceCopy.ts",
+    "line": 9,
+    "english": "The recording is silent, so there is no voice to clean.",
+    "sample": {}
+  },
+  {
+    "key": "sound.voice.noMic",
+    "file": "src/shared/audio/voiceCopy.ts",
+    "line": 10,
+    "english": "The microphone is muted or was not recorded, so there is no voice to clean.",
+    "sample": {}
+  },
+  {
+    "key": "sound.voice.strength",
+    "file": "src/shared/audio/voiceCopy.ts",
+    "line": 11,
+    "english": "Strength",
+    "sample": {}
+  },
+  {
+    "key": "sound.voice.checking",
+    "file": "src/shared/audio/voiceCopy.ts",
+    "line": 12,
+    "english": "Checking your voice…",
+    "sample": {}
+  },
+  {
+    "key": "sound.voice.cleaning",
+    "file": "src/shared/audio/voiceCopy.ts",
+    "line": 13,
+    "english": "Cleaning your voice…",
+    "sample": {}
+  },
+  {
+    "key": "sound.voice.working",
+    "file": "src/shared/audio/voiceCopy.ts",
+    "line": 14,
+    "english": "Cleaning your voice… 42%",
+    "sample": {
+      "percent": "42"
+    }
+  },
+  {
+    "key": "common.action.cancel",
+    "file": "src/shared/audio/voiceCopy.ts",
+    "line": 15,
+    "english": "Cancel",
+    "sample": {}
+  },
+  {
+    "key": "sound.voice.ready",
+    "file": "src/shared/audio/voiceCopy.ts",
+    "line": 16,
+    "english": "Your voice is clean. The preview and the export use it.",
+    "sample": {}
+  },
+  {
+    "key": "sound.voice.original",
+    "file": "src/shared/audio/voiceCopy.ts",
+    "line": 17,
+    "english": "Hear the original",
+    "sample": {}
+  },
+  {
+    "key": "sound.voice.playingOriginal",
+    "file": "src/shared/audio/voiceCopy.ts",
+    "line": 18,
+    "english": "Playing the original voice. The export stays clean.",
+    "sample": {}
+  },
+  {
+    "key": "sound.voice.stopped",
+    "file": "src/shared/audio/voiceCopy.ts",
+    "line": 19,
+    "english": "Cleaning stopped. The preview plays the original voice, and the export cleans it first.",
+    "sample": {}
+  },
+  {
+    "key": "sound.voice.cleanNow",
+    "file": "src/shared/audio/voiceCopy.ts",
+    "line": 20,
+    "english": "Clean now",
+    "sample": {}
+  },
+  {
+    "key": "errors.voice.failed",
+    "file": "src/shared/audio/voiceCopy.ts",
+    "line": 21,
+    "english": "Your voice could not be cleaned.",
+    "sample": {}
+  },
+  {
+    "key": "common.action.tryAgain",
+    "file": "src/shared/audio/voiceCopy.ts",
+    "line": 22,
+    "english": "Try again",
+    "sample": {}
+  },
+  {
+    "key": "errors.voice.missingMic",
+    "file": "src/shared/audio/voiceCopy.ts",
+    "line": 24,
+    "english": "The microphone file of this recording is missing.",
+    "sample": {}
+  },
+  {
+    "key": "errors.voice.missingMix",
+    "file": "src/shared/audio/voiceCopy.ts",
+    "line": 25,
+    "english": "The recording's sound file is missing.",
+    "sample": {}
+  },
+  {
+    "key": "errors.voice.tooLong",
+    "file": "src/shared/audio/voiceCopy.ts",
+    "line": 26,
+    "english": "Cleaning took too long and was stopped.",
+    "sample": {}
+  },
+  {
+    "key": "errors.voice.locked",
+    "file": "src/shared/audio/voiceCopy.ts",
+    "line": 27,
+    "english": "Another app, such as an antivirus or OneDrive, kept the file busy. Try again in a moment.",
+    "sample": {}
+  },
+  {
+    "key": "errors.voice.unplayable",
+    "file": "src/shared/audio/voiceCopy.ts",
+    "line": 29,
+    "english": "The cleaned file would not play, so the preview plays the original voice.",
+    "sample": {}
+  },
+  {
+    "key": "errors.voice.engine",
+    "file": "src/shared/audio/voiceCopy.ts",
+    "line": 30,
+    "english": "ffmpeg could not clean the sound.",
+    "sample": {}
+  },
+  {
+    "key": "errors.voice.damagedModel",
+    "file": "src/shared/audio/voiceCopy.ts",
+    "line": 31,
+    "english": "The noise model of this app is damaged. Install Flown again.",
+    "sample": {}
+  },
+  {
+    "key": "sound.voice.strength.light",
+    "file": "src/shared/audio/voiceCopy.ts",
+    "line": 34,
+    "english": "Light",
+    "sample": {}
+  },
+  {
+    "key": "sound.voice.strength.normal",
+    "file": "src/shared/audio/voiceCopy.ts",
+    "line": 34,
+    "english": "Normal",
+    "sample": {}
+  },
+  {
+    "key": "sound.voice.strength.strong",
+    "file": "src/shared/audio/voiceCopy.ts",
+    "line": 34,
+    "english": "Strong",
+    "sample": {}
+  },
+  {
+    "key": "sound.voice.strength.lightHint",
+    "file": "src/shared/audio/voiceCopy.ts",
+    "line": 37,
+    "english": "Softens the noise and keeps some of the room.",
+    "sample": {}
+  },
+  {
+    "key": "sound.voice.strength.normalHint",
+    "file": "src/shared/audio/voiceCopy.ts",
+    "line": 38,
+    "english": "Removes most noise. Right for most recordings.",
+    "sample": {}
+  },
+  {
+    "key": "sound.voice.strength.strongHint",
+    "file": "src/shared/audio/voiceCopy.ts",
+    "line": 39,
+    "english": "Removes as much as it can. Quiet words can sound thin.",
+    "sample": {}
+  },
+  {
+    "key": "errors.voice.cancelled",
+    "file": "src/shared/api/voice.ts",
+    "line": 25,
+    "english": "Cleaning stopped.",
+    "sample": {}
+  },
+  {
+    "key": "errors.voice.replaced",
+    "file": "src/shared/api/voice.ts",
+    "line": 28,
+    "english": "Cleaning was replaced by a newer request.",
+    "sample": {}
+  },
+  {
+    "key": "captions.emphasis.removedFrom",
+    "file": "src/renderer/src/editor/panels/transcriptMarks.ts",
+    "line": 83,
+    "english": [
+      "Removed emphasis from 0 words",
+      "Removed emphasis from 1 word",
+      "Removed emphasis from 2 words",
+      "Removed emphasis from 1000 words"
+    ],
+    "sample": [
+      {
+        "count": 0,
+        "n": "0"
+      },
+      {
+        "count": 1,
+        "n": "1"
+      },
+      {
+        "count": 2,
+        "n": "2"
+      },
+      {
+        "count": 1000,
+        "n": "1000"
+      }
+    ]
+  },
+  {
+    "key": "captions.emphasis.added",
+    "file": "src/renderer/src/editor/panels/transcriptMarks.ts",
+    "line": 84,
+    "english": [
+      "Emphasised 0 words",
+      "Emphasised 1 word",
+      "Emphasised 2 words",
+      "Emphasised 1000 words"
+    ],
+    "sample": [
+      {
+        "count": 0,
+        "n": "0"
+      },
+      {
+        "count": 1,
+        "n": "1"
+      },
+      {
+        "count": 2,
+        "n": "2"
+      },
+      {
+        "count": 1000,
+        "n": "1000"
+      }
+    ]
+  },
+  {
+    "key": "captions.emphasis.addedOwnVersion",
+    "file": "src/renderer/src/editor/panels/transcriptMarks.ts",
+    "line": 85,
+    "english": [
+      "Emphasised 0 words. Your captions are now your own version of Clean, which can show emphasis.",
+      "Emphasised 1 word. Your captions are now your own version of Clean, which can show emphasis.",
+      "Emphasised 2 words. Your captions are now your own version of Clean, which can show emphasis.",
+      "Emphasised 1000 words. Your captions are now your own version of Clean, which can show emphasis."
+    ],
+    "sample": [
+      {
+        "count": 0,
+        "n": "0",
+        "look": "Clean"
+      },
+      {
+        "count": 1,
+        "n": "1",
+        "look": "Clean"
+      },
+      {
+        "count": 2,
+        "n": "2",
+        "look": "Clean"
+      },
+      {
+        "count": 1000,
+        "n": "1000",
+        "look": "Clean"
+      }
+    ]
+  },
+  {
+    "key": "captions.timing.formHint",
+    "file": "src/shared/captions/transcriptTiming.ts",
+    "line": 205,
+    "english": "OpenAI's gpt-4o-transcribe gives text without timings. Flown estimates when each word is spoken from the sound. For exact word times, make captions On this PC.",
+    "sample": {
+      "model": "gpt-4o-transcribe"
+    }
+  },
+  {
+    "key": "captions.timing.useLocal",
+    "file": "src/shared/captions/transcriptTiming.ts",
+    "line": 206,
+    "english": "Use On this PC",
+    "sample": {}
+  },
+  {
+    "key": "captions.timing.summary",
+    "file": "src/shared/captions/transcriptTiming.ts",
+    "line": 207,
+    "english": "Word times are estimated: karaoke and cuts by word may be a little early or late. Captions On this PC have exact word times.",
+    "sample": {}
+  },
+  {
+    "key": "captions.timing.transcriptAll",
+    "file": "src/shared/captions/transcriptTiming.ts",
+    "line": 208,
+    "english": "Words with a dotted line have estimated times.",
+    "sample": {}
+  },
+  {
+    "key": "captions.timing.wordTitle",
+    "file": "src/shared/captions/transcriptTiming.ts",
+    "line": 209,
+    "english": "Estimated time",
+    "sample": {}
+  },
+  {
+    "key": "captions.languages.burnedUntranslated",
+    "file": "src/shared/captions/captionTracks.ts",
+    "line": 220,
+    "english": [
+      "0 captions are not translated into Bengali: they show in English.",
+      "1 caption is not translated into Bengali: it shows in English.",
+      "2 captions are not translated into Bengali: they show in English.",
+      "1000 captions are not translated into Bengali: they show in English."
+    ],
+    "sample": [
+      {
+        "count": 0,
+        "n": "0",
+        "language": "Bengali",
+        "spoken": "English"
+      },
+      {
+        "count": 1,
+        "n": "1",
+        "language": "Bengali",
+        "spoken": "English"
+      },
+      {
+        "count": 2,
+        "n": "2",
+        "language": "Bengali",
+        "spoken": "English"
+      },
+      {
+        "count": 1000,
+        "n": "1000",
+        "language": "Bengali",
+        "spoken": "English"
+      }
+    ]
+  },
+  {
+    "key": "captions.great.done.emphasised",
+    "file": "src/shared/captions/great.ts",
+    "line": 313,
+    "english": [
+      "0 words emphasised",
+      "1 word emphasised",
+      "2 words emphasised",
+      "1000 words emphasised"
+    ],
+    "sample": [
+      {
+        "count": 0,
+        "n": "0"
+      },
+      {
+        "count": 1,
+        "n": "1"
+      },
+      {
+        "count": 2,
+        "n": "2"
+      },
+      {
+        "count": 1000,
+        "n": "1000"
+      }
+    ]
+  },
+  {
+    "key": "captions.great.done.emoji",
+    "file": "src/shared/captions/great.ts",
+    "line": 314,
+    "english": [
+      "0 emoji",
+      "1 emoji",
+      "2 emoji",
+      "1000 emoji"
+    ],
+    "sample": [
+      {
+        "count": 0,
+        "n": "0"
+      },
+      {
+        "count": 1,
+        "n": "1"
+      },
+      {
+        "count": 2,
+        "n": "2"
+      },
+      {
+        "count": 1000,
+        "n": "1000"
+      }
+    ]
+  },
+  {
+    "key": "captions.great.done.keywords",
+    "file": "src/shared/captions/great.ts",
+    "line": 315,
+    "english": [
+      "0 pop-ups",
+      "1 pop-up",
+      "2 pop-ups",
+      "1000 pop-ups"
+    ],
+    "sample": [
+      {
+        "count": 0,
+        "n": "0"
+      },
+      {
+        "count": 1,
+        "n": "1"
+      },
+      {
+        "count": 2,
+        "n": "2"
+      },
+      {
+        "count": 1000,
+        "n": "1000"
+      }
+    ]
+  },
+  {
+    "key": "captions.great.done.counters",
+    "file": "src/shared/captions/great.ts",
+    "line": 316,
+    "english": [
+      "0 counters",
+      "1 counter",
+      "2 counters",
+      "1000 counters"
+    ],
+    "sample": [
+      {
+        "count": 0,
+        "n": "0"
+      },
+      {
+        "count": 1,
+        "n": "1"
+      },
+      {
+        "count": 2,
+        "n": "2"
+      },
+      {
+        "count": 1000,
+        "n": "1000"
+      }
+    ]
+  },
+  {
+    "key": "captions.great.done.lists",
+    "file": "src/shared/captions/great.ts",
+    "line": 317,
+    "english": [
+      "0 lists",
+      "1 list",
+      "2 lists",
+      "1000 lists"
+    ],
+    "sample": [
+      {
+        "count": 0,
+        "n": "0"
+      },
+      {
+        "count": 1,
+        "n": "1"
+      },
+      {
+        "count": 2,
+        "n": "2"
+      },
+      {
+        "count": 1000,
+        "n": "1000"
+      }
+    ]
+  },
+  {
+    "key": "captions.great.done.lowerThirds",
+    "file": "src/shared/captions/great.ts",
+    "line": 318,
+    "english": [
+      "0 lower thirds",
+      "1 lower third",
+      "2 lower thirds",
+      "1000 lower thirds"
+    ],
+    "sample": [
+      {
+        "count": 0,
+        "n": "0"
+      },
+      {
+        "count": 1,
+        "n": "1"
+      },
+      {
+        "count": 2,
+        "n": "2"
+      },
+      {
+        "count": 1000,
+        "n": "1000"
+      }
+    ]
+  },
+  {
+    "key": "captions.great.done.chapters",
+    "file": "src/shared/captions/great.ts",
+    "line": 319,
+    "english": [
+      "0 chapter titles",
+      "1 chapter title",
+      "2 chapter titles",
+      "1000 chapter titles"
+    ],
+    "sample": [
+      {
+        "count": 0,
+        "n": "0"
+      },
+      {
+        "count": 1,
+        "n": "1"
+      },
+      {
+        "count": 2,
+        "n": "2"
+      },
+      {
+        "count": 1000,
+        "n": "1000"
+      }
+    ]
+  },
+  {
+    "key": "captions.great.done.quotes",
+    "file": "src/shared/captions/great.ts",
+    "line": 320,
+    "english": [
+      "0 quote cards",
+      "1 quote card",
+      "2 quote cards",
+      "1000 quote cards"
+    ],
+    "sample": [
+      {
+        "count": 0,
+        "n": "0"
+      },
+      {
+        "count": 1,
+        "n": "1"
+      },
+      {
+        "count": 2,
+        "n": "2"
+      },
+      {
+        "count": 1000,
+        "n": "1000"
+      }
+    ]
+  },
+  {
+    "key": "captions.great.done.tidied",
+    "file": "src/shared/captions/great.ts",
+    "line": 321,
+    "english": [
+      "0 captions tidied",
+      "1 caption tidied",
+      "2 captions tidied",
+      "1000 captions tidied"
+    ],
+    "sample": [
+      {
+        "count": 0,
+        "n": "0"
+      },
+      {
+        "count": 1,
+        "n": "1"
+      },
+      {
+        "count": 2,
+        "n": "2"
+      },
+      {
+        "count": 1000,
+        "n": "1000"
+      }
+    ]
+  },
+  {
+    "key": "captions.great.done.bleeped",
+    "file": "src/shared/captions/great.ts",
+    "line": 322,
+    "english": [
+      "0 words bleeped",
+      "1 word bleeped",
+      "2 words bleeped",
+      "1000 words bleeped"
+    ],
+    "sample": [
+      {
+        "count": 0,
+        "n": "0"
+      },
+      {
+        "count": 1,
+        "n": "1"
+      },
+      {
+        "count": 2,
+        "n": "2"
+      },
+      {
+        "count": 1000,
+        "n": "1000"
+      }
+    ]
+  },
+  {
+    "key": "captions.great.done.summary",
+    "file": "src/shared/captions/great.ts",
+    "line": 323,
+    "english": "Captions: Bold Pop, 38 words emphasised · Ctrl + Z to undo",
+    "sample": {
+      "parts": "Bold Pop, 38 words emphasised",
+      "review": "",
+      "undo": " · Ctrl + Z to undo"
+    }
+  },
+  {
+    "key": "captions.great.done.summaryOffline",
+    "file": "src/shared/captions/great.ts",
+    "line": 323,
+    "english": "Captions: Bold Pop, 38 words emphasised. The AI provider could not be reached, so Flown picked on this PC.",
+    "sample": {
+      "parts": "Bold Pop, 38 words emphasised",
+      "review": "",
+      "undo": ""
+    }
+  },
+  {
+    "key": "captions.great.done.nothing",
+    "file": "src/shared/captions/great.ts",
+    "line": 322,
+    "english": "Your captions already have all of this.",
+    "sample": {}
+  },
+  {
+    "key": "captions.great.done.nothingOffline",
+    "file": "src/shared/captions/great.ts",
+    "line": 321,
+    "english": "Your captions already have all of this. The AI provider could not be reached, so Flown picked on this PC.",
+    "sample": {}
+  },
+  {
+    "key": "captions.great.hint.style",
+    "file": "src/shared/captions/great.ts",
+    "line": 330,
+    "english": "a style for this video's shape",
+    "sample": {}
+  },
+  {
+    "key": "captions.great.hint.emphasis",
+    "file": "src/shared/captions/great.ts",
+    "line": 331,
+    "english": "key words",
+    "sample": {}
+  },
+  {
+    "key": "captions.great.hint.emoji",
+    "file": "src/shared/captions/great.ts",
+    "line": 332,
+    "english": "emoji",
+    "sample": {}
+  },
+  {
+    "key": "captions.great.hint.keywords",
+    "file": "src/shared/captions/great.ts",
+    "line": 333,
+    "english": "keyword pop-ups",
+    "sample": {}
+  },
+  {
+    "key": "captions.great.hint.counters",
+    "file": "src/shared/captions/great.ts",
+    "line": 334,
+    "english": "counters",
+    "sample": {}
+  },
+  {
+    "key": "captions.great.hint.lists",
+    "file": "src/shared/captions/great.ts",
+    "line": 335,
+    "english": "list cards",
+    "sample": {}
+  },
+  {
+    "key": "captions.great.hint.speakers",
+    "file": "src/shared/captions/great.ts",
+    "line": 336,
+    "english": "speaker names",
+    "sample": {}
+  },
+  {
+    "key": "captions.great.hint.chapters",
+    "file": "src/shared/captions/great.ts",
+    "line": 337,
+    "english": "chapter titles",
+    "sample": {}
+  },
+  {
+    "key": "captions.great.hint.quotes",
+    "file": "src/shared/captions/great.ts",
+    "line": 338,
+    "english": "quote cards",
+    "sample": {}
+  },
+  {
+    "key": "captions.great.hint.tidiesOnly",
+    "file": "src/shared/captions/great.ts",
+    "line": 339,
+    "english": "Tidies the text.",
+    "sample": {}
+  },
+  {
+    "key": "captions.great.hint.none",
+    "file": "src/shared/captions/great.ts",
+    "line": 339,
+    "english": "Choose what it does in its options.",
+    "sample": {}
+  },
+  {
+    "key": "captions.great.hint.adds",
+    "file": "src/shared/captions/great.ts",
+    "line": 341,
+    "english": "Adds key words, emoji and counters.",
+    "sample": {
+      "list": "key words, emoji and counters"
+    }
+  },
+  {
+    "key": "captions.great.hint.addsAndTidies",
+    "file": "src/shared/captions/great.ts",
+    "line": 341,
+    "english": "Adds key words and emoji, and tidies the text.",
+    "sample": {
+      "list": "key words and emoji"
+    }
+  },
+  {
+    "key": "captions.cleanup.notice.tidied",
+    "file": "src/shared/captions/cleanup.ts",
+    "line": 1127,
+    "english": [
+      "Tidied 0 captions",
+      "Tidied 1 caption",
+      "Tidied 2 captions",
+      "Tidied 1000 captions"
+    ],
+    "sample": [
+      {
+        "count": 0,
+        "n": "0"
+      },
+      {
+        "count": 1,
+        "n": "1"
+      },
+      {
+        "count": 2,
+        "n": "2"
+      },
+      {
+        "count": 1000,
+        "n": "1000"
+      }
+    ]
+  },
+  {
+    "key": "captions.cleanup.notice.bleeped",
+    "file": "src/shared/captions/cleanup.ts",
+    "line": 1128,
+    "english": [
+      "Bleeped 0 words",
+      "Bleeped 1 word",
+      "Bleeped 2 words",
+      "Bleeped 1000 words"
+    ],
+    "sample": [
+      {
+        "count": 0,
+        "n": "0"
+      },
+      {
+        "count": 1,
+        "n": "1"
+      },
+      {
+        "count": 2,
+        "n": "2"
+      },
+      {
+        "count": 1000,
+        "n": "1000"
+      }
+    ]
+  },
+  {
+    "key": "captions.cleanup.notice.tidiedBleeped",
+    "file": "src/shared/captions/cleanup.ts",
+    "line": 1127,
+    "english": "Tidied 12 captions, bleeped 2 words",
+    "sample": {
+      "tidied": 12,
+      "t": "12",
+      "bleeped": 2,
+      "b": "2"
+    }
+  },
+  {
+    "key": "captions.cleanup.notice.tidiedBleeped",
+    "file": "src/shared/captions/cleanup.ts",
+    "line": 1127,
+    "english": "Tidied 1 caption, bleeped 1 word",
+    "sample": {
+      "tidied": 1,
+      "t": "1",
+      "bleeped": 1,
+      "b": "1"
+    }
+  },
+  {
+    "key": "captions.cleanup.notice.nothing",
+    "file": "src/shared/captions/cleanup.ts",
+    "line": 1129,
+    "english": "Nothing to tidy",
+    "sample": {}
+  },
+  {
+    "key": "captions.cleanup.notice.estimated",
+    "file": "src/shared/captions/cleanup.ts",
+    "line": 1130,
+    "english": "Bleeped 1 word. Some bleeped words have estimated times, so a little more is bleeped",
+    "sample": {
+      "notice": "Bleeped 1 word"
+    }
+  },
+  {
+    "key": "errors.aiOutput.unusable",
+    "file": "src/shared/captions/transcriptText.ts",
+    "line": 143,
+    "english": "The AI's answer could not be used (no list of captions). Nothing was changed; try again.",
+    "sample": {
+      "detail": "no list of captions"
+    }
+  },
+  {
+    "key": "errors.aiOutput.noNames",
+    "file": "src/shared/captions/transcriptText.ts",
+    "line": 339,
+    "english": "no list of names",
+    "sample": {}
+  },
+  {
+    "key": "errors.aiOutput.noUsableNames",
+    "file": "src/shared/captions/transcriptText.ts",
+    "line": 353,
+    "english": "no usable names",
+    "sample": {}
+  },
+  {
+    "key": "errors.aiOutput.noCaptions",
+    "file": "src/shared/captions/transcriptText.ts",
+    "line": 449,
+    "english": "no list of captions",
+    "sample": {}
+  },
+  {
+    "key": "errors.aiOutput.captionCount",
+    "file": "src/shared/captions/transcriptText.ts",
+    "line": 451,
+    "english": "3 captions came back for 4",
+    "sample": {
+      "got": "3",
+      "sent": "4"
+    }
+  },
+  {
+    "key": "errors.aiOutput.captionMissing",
+    "file": "src/shared/captions/transcriptText.ts",
+    "line": 454,
+    "english": "caption s12 is missing or out of order",
+    "sample": {
+      "id": "s12"
+    }
+  },
+  {
+    "key": "errors.aiOutput.captionTimes",
+    "file": "src/shared/captions/transcriptText.ts",
+    "line": 457,
+    "english": "the times of caption s12 changed",
+    "sample": {
+      "id": "s12"
+    }
+  },
+  {
+    "key": "errors.aiOutput.captionNoText",
+    "file": "src/shared/captions/transcriptText.ts",
+    "line": 460,
+    "english": "caption s12 has no text",
+    "sample": {
+      "id": "s12"
+    }
+  },
+  {
+    "key": "errors.aiOutput.captionEmpty",
+    "file": "src/shared/captions/transcriptText.ts",
+    "line": 462,
+    "english": "caption s12 came back empty",
+    "sample": {
+      "id": "s12"
+    }
+  },
+  {
+    "key": "errors.aiOutput.captionLonger",
+    "file": "src/shared/captions/transcriptText.ts",
+    "line": 463,
+    "english": "caption s12 came back far longer",
+    "sample": {
+      "id": "s12"
+    }
+  },
+  {
+    "key": "errors.aiOutput.noChapters",
+    "file": "src/shared/captions/transcriptText.ts",
+    "line": 476,
+    "english": "no list of chapters",
+    "sample": {}
+  },
+  {
+    "key": "errors.aiOutput.noUsableChapters",
+    "file": "src/shared/captions/transcriptText.ts",
+    "line": 489,
+    "english": "no usable chapters",
+    "sample": {}
+  },
+  {
+    "key": "errors.aiOutput.noTitle",
+    "file": "src/shared/captions/transcriptText.ts",
+    "line": 500,
+    "english": "no title",
+    "sample": {}
+  },
+  {
+    "key": "errors.aiOutput.noSummary",
+    "file": "src/shared/captions/transcriptText.ts",
+    "line": 500,
+    "english": "no summary",
+    "sample": {}
+  },
+  {
+    "key": "errors.aiOutput.emptyTitle",
+    "file": "src/shared/captions/transcriptText.ts",
+    "line": 505,
+    "english": "an empty title",
+    "sample": {}
+  },
+  {
+    "key": "errors.aiOutput.emptySummary",
+    "file": "src/shared/captions/transcriptText.ts",
+    "line": 505,
+    "english": "an empty summary",
+    "sample": {}
+  },
+  {
+    "key": "errors.aiOutput.noMarks",
+    "file": "src/shared/captions/transcriptText.ts",
+    "line": 598,
+    "english": "no marks",
+    "sample": {}
+  },
+  {
+    "key": "errors.aiOutput.noAnswer",
+    "file": "src/shared/publish/prompts.ts",
+    "line": 272,
+    "english": "no answer",
+    "sample": {}
+  },
+  {
+    "key": "errors.aiOutput.noDescription",
+    "file": "src/shared/publish/prompts.ts",
+    "line": 276,
+    "english": "no description or tags",
+    "sample": {}
+  },
+  {
+    "key": "errors.aiOutput.emptyDescription",
+    "file": "src/shared/publish/prompts.ts",
+    "line": 278,
+    "english": "an empty description",
+    "sample": {}
+  },
+  {
+    "key": "errors.aiOutput.noPost",
+    "file": "src/shared/publish/prompts.ts",
+    "line": 283,
+    "english": "no post",
+    "sample": {}
+  },
+  {
+    "key": "errors.aiOutput.emptyPost",
+    "file": "src/shared/publish/prompts.ts",
+    "line": 285,
+    "english": "an empty post",
+    "sample": {}
+  },
+  {
+    "key": "errors.aiOutput.noArticle",
+    "file": "src/shared/publish/prompts.ts",
+    "line": 289,
+    "english": "no article",
+    "sample": {}
+  },
+  {
+    "key": "errors.aiOutput.noSteps",
+    "file": "src/shared/publish/prompts.ts",
+    "line": 300,
+    "english": "no steps",
+    "sample": {}
+  },
+  {
+    "key": "errors.aiOutput.noReleaseNotes",
+    "file": "src/shared/publish/prompts.ts",
+    "line": 306,
+    "english": "no release notes",
+    "sample": {}
+  },
+  {
+    "key": "errors.aiOutput.noChanges",
+    "file": "src/shared/publish/prompts.ts",
+    "line": 316,
+    "english": "no changes listed",
+    "sample": {}
+  },
+  {
+    "key": "errors.retired.text",
+    "file": "src/shared/captions/retiredModel.ts",
+    "line": 43,
+    "english": "OpenAI retired gpt-4o on 26 February 2027. Choose another model in Settings › AI providers.",
+    "sample": {
+      "maker": "OpenAI",
+      "model": "gpt-4o",
+      "day": "26 February 2027"
+    }
+  },
+  {
+    "key": "errors.retired.transcriptionUse",
+    "file": "src/shared/captions/retiredModel.ts",
+    "line": 47,
+    "english": "OpenAI retired whisper-1 on 26 February 2027. Choose gpt-transcribe as the transcription model in Settings › AI providers, or make captions On this PC.",
+    "sample": {
+      "maker": "OpenAI",
+      "model": "whisper-1",
+      "day": "26 February 2027",
+      "next": "gpt-transcribe"
+    }
+  },
+  {
+    "key": "errors.retired.transcription",
+    "file": "src/shared/captions/retiredModel.ts",
+    "line": 47,
+    "english": "OpenAI retired whisper-1 on 26 February 2027. Choose another transcription model in Settings › AI providers, or make captions On this PC.",
+    "sample": {
+      "maker": "OpenAI",
+      "model": "whisper-1",
+      "day": "26 February 2027"
+    }
+  },
+  {
+    "key": "errors.retiring.model",
+    "file": "src/shared/ai/modelList.ts",
+    "line": 146,
+    "english": "Google retires gemini-2.0-flash on 26 February 2027. Choose another model before then.",
+    "sample": {
+      "maker": "Google",
+      "model": "gemini-2.0-flash",
+      "day": "26 February 2027"
+    }
+  },
+  {
+    "key": "errors.retiring.transcription",
+    "file": "src/shared/ai/modelList.ts",
+    "line": 146,
+    "english": "OpenAI retires whisper-1 on 26 February 2027. Choose another transcription model before then.",
+    "sample": {
+      "maker": "OpenAI",
+      "model": "whisper-1",
+      "day": "26 February 2027"
+    }
+  },
+  {
+    "key": "errors.retired.modelNote",
+    "file": "src/shared/ai/modelList.ts",
+    "line": 147,
+    "english": "Google retired gemini-2.0-flash on 26 February 2027. Choose another model.",
+    "sample": {
+      "maker": "Google",
+      "model": "gemini-2.0-flash",
+      "day": "26 February 2027"
+    }
+  },
+  {
+    "key": "errors.retired.transcriptionNote",
+    "file": "src/shared/ai/modelList.ts",
+    "line": 147,
+    "english": "OpenAI retired whisper-1 on 26 February 2027. Choose another transcription model.",
+    "sample": {
+      "maker": "OpenAI",
+      "model": "whisper-1",
+      "day": "26 February 2027"
+    }
+  },
+  {
+    "key": "errors.baseUrl.empty",
+    "file": "src/shared/ai/baseUrl.ts",
+    "line": 18,
+    "english": "Enter the address of the service.",
+    "sample": {}
+  },
+  {
+    "key": "errors.baseUrl.long",
+    "file": "src/shared/ai/baseUrl.ts",
+    "line": 19,
+    "english": "The address is too long (at most 300 characters).",
+    "sample": {
+      "max": "300"
+    }
+  },
+  {
+    "key": "errors.baseUrl.invalid",
+    "file": "src/shared/ai/baseUrl.ts",
+    "line": 20,
+    "english": "This is not a web address. It starts with https://.",
+    "sample": {}
+  },
+  {
+    "key": "errors.baseUrl.https",
+    "file": "src/shared/ai/baseUrl.ts",
+    "line": 21,
+    "english": "Use an https:// address. Plain http:// is only for a service on this PC.",
+    "sample": {}
+  },
+  {
+    "key": "errors.baseUrl.credentials",
+    "file": "src/shared/ai/baseUrl.ts",
+    "line": 22,
+    "english": "Remove the name and password from the address.",
+    "sample": {}
+  },
+  {
+    "key": "errors.baseUrl.query",
+    "file": "src/shared/ai/baseUrl.ts",
+    "line": 23,
+    "english": "Remove the part after ?",
+    "sample": {}
+  },
+  {
+    "key": "errors.baseUrl.fragment",
+    "file": "src/shared/ai/baseUrl.ts",
+    "line": 24,
+    "english": "Remove the part after #",
+    "sample": {}
+  },
+  {
+    "key": "errors.baseUrl.azure",
+    "file": "src/shared/ai/baseUrl.ts",
+    "line": 25,
+    "english": "A resource name has 2 to 63 lowercase letters, digits and hyphens, and starts with a letter or digit.",
+    "sample": {}
+  },
+  {
+    "key": "captions.ai.localChoice",
+    "file": "src/renderer/src/ai/textChoices.ts",
+    "line": 18,
+    "english": "On this PC (good for drafts)",
+    "sample": {}
+  },
+  {
+    "key": "captions.ai.thisPc",
+    "file": "src/renderer/src/ai/textChoices.ts",
+    "line": 19,
+    "english": "this PC",
+    "sample": {}
+  },
+  {
+    "key": "captions.ai.sent.textLocal",
+    "file": "src/renderer/src/ai/textChoices.ts",
+    "line": 87,
+    "english": "The captions' text stays on this PC: nothing is sent; their timing stays.",
+    "sample": {}
+  },
+  {
+    "key": "captions.ai.sent.textFree",
+    "file": "src/renderer/src/ai/textChoices.ts",
+    "line": 88,
+    "english": "The captions' text is sent to Ollama on this PC; their timing stays.",
+    "sample": {
+      "place": "Ollama on this PC"
+    }
+  },
+  {
+    "key": "captions.ai.sent.textKey",
+    "file": "src/renderer/src/ai/textChoices.ts",
+    "line": 88,
+    "english": "The captions' text is sent to api.groq.com with your key; their timing stays.",
+    "sample": {
+      "place": "api.groq.com"
+    }
+  },
+  {
+    "key": "captions.ai.sent.wordsLocal",
+    "file": "src/renderer/src/ai/textChoices.ts",
+    "line": 87,
+    "english": "The captions' words stay on this PC: nothing is sent; only the picks come back.",
+    "sample": {}
+  },
+  {
+    "key": "captions.ai.sent.wordsFree",
+    "file": "src/renderer/src/ai/textChoices.ts",
+    "line": 88,
+    "english": "The captions' words are sent to Ollama on this PC; only the picks come back.",
+    "sample": {
+      "place": "Ollama on this PC"
+    }
+  },
+  {
+    "key": "captions.ai.sent.wordsKey",
+    "file": "src/renderer/src/ai/textChoices.ts",
+    "line": 88,
+    "english": "The captions' words are sent to api.groq.com with your key; only the picks come back.",
+    "sample": {
+      "place": "api.groq.com"
+    }
+  },
+  {
+    "key": "settings.provider.preset.ollama",
+    "file": "src/shared/ai/presets.ts",
+    "line": 16,
+    "english": "Ollama on this PC",
+    "sample": {}
+  },
+  {
+    "key": "settings.provider.preset.lmstudio",
+    "file": "src/shared/ai/presets.ts",
+    "line": 17,
+    "english": "LM Studio on this PC",
+    "sample": {}
+  },
+  {
+    "key": "errors.localAi.notInBuild",
+    "file": "src/shared/localAi/messages.ts",
+    "line": 10,
+    "english": "AI on this PC is not part of this build.",
+    "sample": {}
+  },
+  {
+    "key": "errors.localAi.processorOld",
+    "file": "src/shared/localAi/messages.ts",
+    "line": 11,
+    "english": "This PC's processor is too old for AI on this PC (it needs AVX2).",
+    "sample": {}
+  },
+  {
+    "key": "errors.localAi.processorUnknown",
+    "file": "src/shared/localAi/messages.ts",
+    "line": 12,
+    "english": "Flown could not check this PC's processor.",
+    "sample": {}
+  },
+  {
+    "key": "errors.localAi.damaged",
+    "file": "src/shared/localAi/messages.ts",
+    "line": 13,
+    "english": "The model file is missing or damaged. Download it again in Settings › AI on this PC.",
+    "sample": {}
+  },
+  {
+    "key": "errors.localAi.noModel",
+    "file": "src/shared/localAi/messages.ts",
+    "line": 14,
+    "english": "Download a model for AI on this PC first, in Settings › AI on this PC.",
+    "sample": {}
+  },
+  {
+    "key": "errors.localAi.crashed",
+    "file": "src/shared/localAi/messages.ts",
+    "line": 15,
+    "english": "AI on this PC stopped unexpectedly. Try again, or use the Small model.",
+    "sample": {}
+  },
+  {
+    "key": "errors.localAi.stalled",
+    "file": "src/shared/localAi/messages.ts",
+    "line": 16,
+    "english": "AI on this PC stopped responding. Try again.",
+    "sample": {}
+  },
+  {
+    "key": "main.localAi.stopped",
+    "file": "src/shared/localAi/messages.ts",
+    "line": 17,
+    "english": "Stopped.",
+    "sample": {}
+  },
+  {
+    "key": "main.localAi.waiting",
+    "file": "src/shared/localAi/messages.ts",
+    "line": 18,
+    "english": "Waiting for AI on this PC…",
+    "sample": {}
+  },
+  {
+    "key": "main.localAi.lowMemory",
+    "file": "src/shared/localAi/messages.ts",
+    "line": 19,
+    "english": "Memory is low: this may be slow",
+    "sample": {}
+  },
+  {
+    "key": "errors.localAi.tooLong",
+    "file": "src/shared/localAi/messages.ts",
+    "line": 20,
+    "english": "This text is too long for AI on this PC: shorten it or use an AI service.",
+    "sample": {}
+  },
+  {
+    "key": "errors.localAi.notesTooLong",
+    "file": "src/shared/localAi/messages.ts",
+    "line": 21,
+    "english": "These notes are too long for AI on this PC: shorten them or use an AI service.",
+    "sample": {}
+  },
+  {
+    "key": "main.localAi.written",
+    "file": "src/shared/localAi/messages.ts",
+    "line": 22,
+    "english": "Written on this PC: check it before you use it.",
+    "sample": {}
+  },
+  {
+    "key": "main.localAi.pcLine",
+    "file": "src/shared/localAi/messages.ts",
+    "line": 35,
+    "english": "This PC: 16 GB of memory · processor OK",
+    "sample": {
+      "gb": "16"
+    }
+  },
+  {
+    "key": "errors.localAi.needsMemory",
+    "file": "src/shared/localAi/messages.ts",
+    "line": 42,
+    "english": "Needs 12 GB of memory; this PC has 8 GB",
+    "sample": {
+      "need": "12",
+      "have": "8"
+    }
+  },
+  {
+    "key": "errors.localAi.freeMemorySmall",
+    "file": "src/shared/localAi/messages.ts",
+    "line": 49,
+    "english": "AI on this PC needs about 3.8 GB of free memory and 2.1 GB is free. Close some apps, or download the Small model.",
+    "sample": {
+      "need": "3.8",
+      "free": "2.1"
+    }
+  },
+  {
+    "key": "errors.localAi.freeMemory",
+    "file": "src/shared/localAi/messages.ts",
+    "line": 49,
+    "english": "AI on this PC needs about 2.2 GB of free memory and 1.5 GB is free. Close some apps.",
+    "sample": {
+      "need": "2.2",
+      "free": "1.5"
+    }
+  },
+  {
+    "key": "errors.localAi.disk",
+    "file": "src/shared/localAi/messages.ts",
+    "line": 57,
+    "english": "Not enough disk space: the model needs 3.2 GB.",
+    "sample": {
+      "size": "3.2"
+    }
+  },
+  {
+    "key": "main.localAi.lessThanAMinute",
+    "file": "src/shared/localAi/messages.ts",
+    "line": 66,
+    "english": "less than a minute left",
+    "sample": {}
+  },
+  {
+    "key": "main.localAi.minutesLeft",
+    "file": "src/shared/localAi/messages.ts",
+    "line": 68,
+    "english": [
+      "about 0 minutes left",
+      "about 1 minute left",
+      "about 2 minutes left",
+      "about 1000 minutes left"
+    ],
+    "sample": [
+      {
+        "count": 0,
+        "n": "0"
+      },
+      {
+        "count": 1,
+        "n": "1"
+      },
+      {
+        "count": 2,
+        "n": "2"
+      },
+      {
+        "count": 1000,
+        "n": "1000"
+      }
+    ]
+  },
+  {
+    "key": "main.localAi.loading",
+    "file": "src/shared/localAi/messages.ts",
+    "line": 73,
+    "english": "On this PC: loading the model…",
+    "sample": {}
+  },
+  {
+    "key": "main.localAi.reading",
+    "file": "src/shared/localAi/messages.ts",
+    "line": 75,
+    "english": "On this PC: reading the text… 45%",
+    "sample": {
+      "percent": "45"
+    }
+  },
+  {
+    "key": "main.localAi.writing",
+    "file": "src/shared/localAi/messages.ts",
+    "line": 77,
+    "english": "On this PC: writing… about 2 minutes left",
+    "sample": {
+      "left": "about 2 minutes left"
+    }
+  },
+  {
+    "key": "main.localAi.speed",
+    "file": "src/shared/localAi/messages.ts",
+    "line": 90,
+    "english": "Measured on this PC: reads about 300 words a second and writes about 4.",
+    "sample": {
+      "read": "300",
+      "write": "4"
+    }
+  },
+  {
+    "key": "main.localAi.model.recommended",
+    "file": "src/shared/localAi/catalog.ts",
+    "line": 37,
+    "english": "Recommended",
+    "sample": {}
+  },
+  {
+    "key": "main.localAi.model.recommendedHint",
+    "file": "src/shared/localAi/catalog.ts",
+    "line": 38,
+    "english": "Every language, including Bangla. Needs 12 GB of memory.",
+    "sample": {}
+  },
+  {
+    "key": "main.localAi.model.small",
+    "file": "src/shared/localAi/catalog.ts",
+    "line": 57,
+    "english": "Small",
+    "sample": {}
+  },
+  {
+    "key": "main.localAi.model.smallHint",
+    "file": "src/shared/localAi/catalog.ts",
+    "line": 58,
+    "english": "Rough drafts, for PCs with 8 GB of memory.",
+    "sample": {}
+  },
+  {
+    "key": "main.localAi.model.smallTitleNote",
+    "file": "src/shared/localAi/catalog.ts",
+    "line": 73,
+    "english": "Small: titles often repeat the first sentence",
+    "sample": {}
+  },
+  {
+    "key": "main.localAi.model.smallSummaryNote",
+    "file": "src/shared/localAi/catalog.ts",
+    "line": 73,
+    "english": "Small: Bangla summaries are short",
+    "sample": {}
+  },
+  {
+    "key": "main.speech.tier.fast",
+    "file": "src/shared/speech/catalog.ts",
+    "line": 21,
+    "english": "Fast",
+    "sample": {}
+  },
+  {
+    "key": "main.speech.tier.standard",
+    "file": "src/shared/speech/catalog.ts",
+    "line": 21,
+    "english": "Standard",
+    "sample": {}
+  },
+  {
+    "key": "main.speech.tier.accurate",
+    "file": "src/shared/speech/catalog.ts",
+    "line": 21,
+    "english": "Accurate",
+    "sample": {}
+  },
+  {
+    "key": "main.speech.tier.best",
+    "file": "src/shared/speech/catalog.ts",
+    "line": 21,
+    "english": "Most accurate",
+    "sample": {}
+  },
+  {
+    "key": "main.speech.tier.bangla",
+    "file": "src/shared/speech/catalog.ts",
+    "line": 21,
+    "english": "Bangla",
+    "sample": {}
+  },
+  {
+    "key": "main.speech.duration.underMinute",
+    "file": "src/shared/speech/estimate.ts",
+    "line": 79,
+    "english": "under 1 min",
+    "sample": {}
+  },
+  {
+    "key": "main.speech.duration.minutes",
+    "file": "src/shared/speech/estimate.ts",
+    "line": 82,
+    "english": "about 1½ min",
+    "sample": {
+      "minutes": "1½"
+    }
+  },
+  {
+    "key": "main.speech.duration.minutes",
+    "file": "src/shared/speech/estimate.ts",
+    "line": 85,
+    "english": "about 11 min",
+    "sample": {
+      "minutes": "11"
+    }
+  },
+  {
+    "key": "main.speech.duration.hoursMinutes",
+    "file": "src/shared/speech/estimate.ts",
+    "line": 88,
+    "english": "about 1 h 5 min",
+    "sample": {
+      "hours": "1",
+      "minutes": "5"
+    }
+  },
+  {
+    "key": "main.speech.duration.hours",
+    "file": "src/shared/speech/estimate.ts",
+    "line": 88,
+    "english": "about 2 h",
+    "sample": {
+      "hours": "2"
+    }
+  },
+  {
+    "key": "sound.library.credit",
+    "file": "src/shared/audio/soundLibrary.ts",
+    "line": 770,
+    "english": "Music: Sweet Sun by Loyalty Freak Music (CC0)",
+    "sample": {
+      "title": "Sweet Sun",
+      "artist": "Loyalty Freak Music"
+    }
+  },
+  {
+    "key": "captions.local.tierSlow",
+    "file": "src/shared/speech/speechCopy.ts",
+    "line": 20,
+    "english": "Most accurate (slow)",
+    "sample": {
+      "tier": "Most accurate"
+    }
+  },
+  {
+    "key": "captions.local.size.megabytes",
+    "file": "src/shared/speech/speechCopy.ts",
+    "line": 24,
+    "english": "60 megabytes",
+    "sample": {
+      "n": "60"
+    }
+  },
+  {
+    "key": "captions.local.size.gigabytes",
+    "file": "src/shared/speech/speechCopy.ts",
+    "line": 24,
+    "english": "1.2 gigabytes",
+    "sample": {
+      "n": "1.2"
+    }
+  },
+  {
+    "key": "captions.local.length.seconds",
+    "file": "src/shared/speech/speechCopy.ts",
+    "line": 34,
+    "english": "45 s",
+    "sample": {
+      "s": "45"
+    }
+  },
+  {
+    "key": "captions.local.length.minutes",
+    "file": "src/shared/speech/speechCopy.ts",
+    "line": 37,
+    "english": "20 min",
+    "sample": {
+      "m": "20"
+    }
+  },
+  {
+    "key": "captions.local.length.minutesSeconds",
+    "file": "src/shared/speech/speechCopy.ts",
+    "line": 47,
+    "english": "3 min 10 s",
+    "sample": {
+      "m": "3",
+      "s": "10"
+    }
+  },
+  {
+    "key": "captions.local.length.hoursMinutes",
+    "file": "src/shared/speech/speechCopy.ts",
+    "line": 39,
+    "english": "1 h 5 min",
+    "sample": {
+      "h": "1",
+      "m": "5"
+    }
+  },
+  {
+    "key": "captions.local.length.hours",
+    "file": "src/shared/speech/speechCopy.ts",
+    "line": 39,
+    "english": "2 h",
+    "sample": {
+      "h": "2"
+    }
+  },
+  {
+    "key": "captions.local.leftSeconds",
+    "file": "src/shared/speech/speechCopy.ts",
+    "line": 53,
+    "english": "about 10 s left",
+    "sample": {
+      "s": "10"
+    }
+  },
+  {
+    "key": "captions.local.left",
+    "file": "src/shared/speech/speechCopy.ts",
+    "line": 54,
+    "english": "about 3 min left",
+    "sample": {
+      "time": "about 3 min"
+    }
+  },
+  {
+    "key": "captions.local.ofMB",
+    "file": "src/shared/speech/speechCopy.ts",
+    "line": 58,
+    "english": "21 of 60 MB",
+    "sample": {
+      "received": "21",
+      "total": "60"
+    }
+  },
+  {
+    "key": "captions.local.checking",
+    "file": "src/shared/speech/speechCopy.ts",
+    "line": 62,
+    "english": "Checking this PC…",
+    "sample": {}
+  },
+  {
+    "key": "captions.local.localOption",
+    "file": "src/shared/speech/speechCopy.ts",
+    "line": 63,
+    "english": "On this PC (free, private)",
+    "sample": {}
+  },
+  {
+    "key": "captions.local.localOnly",
+    "file": "src/shared/speech/speechCopy.ts",
+    "line": 64,
+    "english": "Captions are made on this PC: free, and nothing is uploaded.",
+    "sample": {}
+  },
+  {
+    "key": "captions.local.qualityLabel",
+    "file": "src/shared/speech/speechCopy.ts",
+    "line": 65,
+    "english": "Quality",
+    "sample": {}
+  },
+  {
+    "key": "captions.local.manageModels",
+    "file": "src/shared/speech/speechCopy.ts",
+    "line": 66,
+    "english": "Manage speech models…",
+    "sample": {}
+  },
+  {
+    "key": "captions.local.compatibleBuild",
+    "file": "src/shared/speech/speechCopy.ts",
+    "line": 67,
+    "english": "This PC's processor runs the speech engine in a slower mode, so captions take longer. Fast is suggested.",
+    "sample": {}
+  },
+  {
+    "key": "captions.local.languageHint",
+    "file": "src/shared/speech/speechCopy.ts",
+    "line": 68,
+    "english": "Smaller models make more mistakes in languages other than English. If accuracy matters, choose Accurate.",
+    "sample": {}
+  },
+  {
+    "key": "captions.local.languageHintDone",
+    "file": "src/shared/speech/speechCopy.ts",
+    "line": 69,
+    "english": "Smaller models make more mistakes in languages other than English. If these captions need many fixes, try Accurate.",
+    "sample": {}
+  },
+  {
+    "key": "captions.local.consentTitle",
+    "file": "src/shared/speech/speechCopy.ts",
+    "line": 70,
+    "english": "Make captions on this PC",
+    "sample": {}
+  },
+  {
+    "key": "captions.local.smallPrint",
+    "file": "src/shared/speech/speechCopy.ts",
+    "line": 71,
+    "english": "Whisper by OpenAI, MIT licence · huggingface.co/ggerganov/whisper.cpp",
+    "sample": {}
+  },
+  {
+    "key": "captions.local.preferCloud",
+    "file": "src/shared/speech/speechCopy.ts",
+    "line": 72,
+    "english": "Prefer the cloud? Use your own OpenAI or Gemini key…",
+    "sample": {}
+  },
+  {
+    "key": "captions.local.checkAgain",
+    "file": "src/shared/speech/speechCopy.ts",
+    "line": 73,
+    "english": "Check again",
+    "sample": {}
+  },
+  {
+    "key": "captions.local.offline",
+    "file": "src/shared/speech/speechCopy.ts",
+    "line": 74,
+    "english": "This PC is offline. Connect to download the speech model (60 MB); once downloaded, captions work offline.",
+    "sample": {
+      "size": "60 MB"
+    }
+  },
+  {
+    "key": "captions.local.downloadNote",
+    "file": "src/shared/speech/speechCopy.ts",
+    "line": 75,
+    "english": "Captions start as soon as it is here. You can keep editing.",
+    "sample": {}
+  },
+  {
+    "key": "captions.local.verifying",
+    "file": "src/shared/speech/speechCopy.ts",
+    "line": 76,
+    "english": "Checking the download…",
+    "sample": {}
+  },
+  {
+    "key": "common.action.cancel",
+    "file": "src/shared/speech/speechCopy.ts",
+    "line": 77,
+    "english": "Cancel",
+    "sample": {}
+  },
+  {
+    "key": "captions.local.readyHint",
+    "file": "src/shared/speech/speechCopy.ts",
+    "line": 78,
+    "english": "Runs on this PC: nothing is uploaded and it costs nothing.",
+    "sample": {}
+  },
+  {
+    "key": "captions.local.generate",
+    "file": "src/shared/speech/speechCopy.ts",
+    "line": 79,
+    "english": "Generate captions",
+    "sample": {}
+  },
+  {
+    "key": "captions.local.generateAgain",
+    "file": "src/shared/speech/speechCopy.ts",
+    "line": 80,
+    "english": "Generate captions again",
+    "sample": {}
+  },
+  {
+    "key": "captions.local.chooseAnother",
+    "file": "src/shared/speech/speechCopy.ts",
+    "line": 81,
+    "english": "Choose another tier",
+    "sample": {}
+  },
+  {
+    "key": "captions.local.useProvider",
+    "file": "src/shared/speech/speechCopy.ts",
+    "line": 82,
+    "english": "Use an AI provider instead",
+    "sample": {}
+  },
+  {
+    "key": "common.action.tryAgain",
+    "file": "src/shared/speech/speechCopy.ts",
+    "line": 83,
+    "english": "Try again",
+    "sample": {}
+  },
+  {
+    "key": "captions.local.runningNote",
+    "file": "src/shared/speech/speechCopy.ts",
+    "line": 84,
+    "english": "You can keep editing. Closing this recording stops the captions; Generate captions continues from there next time.",
+    "sample": {}
+  },
+  {
+    "key": "captions.local.workingOutLeft",
+    "file": "src/shared/speech/speechCopy.ts",
+    "line": 85,
+    "english": "Working out the time left…",
+    "sample": {}
+  },
+  {
+    "key": "captions.local.cloudErrorOffer",
+    "file": "src/shared/speech/speechCopy.ts",
+    "line": 86,
+    "english": "Or make them on this PC: free, and nothing is uploaded.",
+    "sample": {}
+  },
+  {
+    "key": "captions.timing.useLocal",
+    "file": "src/shared/speech/speechCopy.ts",
+    "line": 87,
+    "english": "Use On this PC",
+    "sample": {}
+  },
+  {
+    "key": "captions.local.intro",
+    "file": "src/shared/speech/speechCopy.ts",
+    "line": 89,
+    "english": "Captions put what you say on the video, so it is understood with the sound off. Flown makes them from the recording's sound: free on this PC, or with an AI provider of your choice. You can then fix the text, restyle them, translate them and export them as subtitles.",
+    "sample": {}
+  },
+  {
+    "key": "captions.local.noSound",
+    "file": "src/shared/speech/speechCopy.ts",
+    "line": 90,
+    "english": "This recording has no sound to transcribe.",
+    "sample": {}
+  },
+  {
+    "key": "captions.local.downloadBar",
+    "file": "src/shared/speech/speechCopy.ts",
+    "line": 91,
+    "english": "Speech model download",
+    "sample": {}
+  },
+  {
+    "key": "captions.local.jobBar",
+    "file": "src/shared/speech/speechCopy.ts",
+    "line": 92,
+    "english": "Captions made",
+    "sample": {}
+  },
+  {
+    "key": "captions.local.settingsTitle",
+    "file": "src/shared/speech/speechCopy.ts",
+    "line": 94,
+    "english": "Captions on this PC",
+    "sample": {}
+  },
+  {
+    "key": "captions.local.settingsLead",
+    "file": "src/shared/speech/speechCopy.ts",
+    "line": 96,
+    "english": "Make captions without an API key. The speech model runs on this PC, so the sound never leaves it and nothing is billed. Each model is downloaded once from Hugging Face and checked before it is used.",
+    "sample": {}
+  },
+  {
+    "key": "captions.local.settingsRadios",
+    "file": "src/shared/speech/speechCopy.ts",
+    "line": 97,
+    "english": "Model used for new captions",
+    "sample": {}
+  },
+  {
+    "key": "captions.local.recommended",
+    "file": "src/shared/speech/speechCopy.ts",
+    "line": 98,
+    "english": "Recommended",
+    "sample": {}
+  },
+  {
+    "key": "captions.local.downloaded",
+    "file": "src/shared/speech/speechCopy.ts",
+    "line": 99,
+    "english": "Downloaded",
+    "sample": {}
+  },
+  {
+    "key": "captions.local.checkingRow",
+    "file": "src/shared/speech/speechCopy.ts",
+    "line": 100,
+    "english": "Checking…",
+    "sample": {}
+  },
+  {
+    "key": "captions.local.damaged",
+    "file": "src/shared/speech/speechCopy.ts",
+    "line": 101,
+    "english": "Damaged",
+    "sample": {}
+  },
+  {
+    "key": "captions.local.downloadAgain",
+    "file": "src/shared/speech/speechCopy.ts",
+    "line": 102,
+    "english": "Download again",
+    "sample": {}
+  },
+  {
+    "key": "captions.local.continue",
+    "file": "src/shared/speech/speechCopy.ts",
+    "line": 103,
+    "english": "Continue",
+    "sample": {}
+  },
+  {
+    "key": "common.action.delete",
+    "file": "src/shared/speech/speechCopy.ts",
+    "line": 104,
+    "english": "Delete",
+    "sample": {}
+  },
+  {
+    "key": "common.action.remove",
+    "file": "src/shared/speech/speechCopy.ts",
+    "line": 105,
+    "english": "Remove",
+    "sample": {}
+  },
+  {
+    "key": "captions.local.inUse",
+    "file": "src/shared/speech/speechCopy.ts",
+    "line": 106,
+    "english": "In use: captions are being made with it.",
+    "sample": {}
+  },
+  {
+    "key": "captions.local.showFolder",
+    "file": "src/shared/speech/speechCopy.ts",
+    "line": 107,
+    "english": "Show folder",
+    "sample": {}
+  },
+  {
+    "key": "captions.local.licenceLine",
+    "file": "src/shared/speech/speechCopy.ts",
+    "line": 108,
+    "english": "Whisper by OpenAI (MIT licence), converted by the whisper.cpp project · huggingface.co/ggerganov/whisper.cpp (5359861)",
+    "sample": {
+      "repo": "ggerganov/whisper.cpp",
+      "commit": "5359861"
+    }
+  },
+  {
+    "key": "captions.local.aiProvidersNoKey",
+    "file": "src/shared/speech/speechCopy.ts",
+    "line": 109,
+    "english": "No key? Captions can also be made on this PC, free and offline (see Captions on this PC below).",
+    "sample": {}
+  },
+  {
+    "key": "captions.local.notices",
+    "file": "src/shared/speech/speechCopy.ts",
+    "line": 111,
+    "english": "Third-party notices",
+    "sample": {}
+  },
+  {
+    "key": "common.state.loading",
+    "file": "src/shared/speech/speechCopy.ts",
+    "line": 112,
+    "english": "Loading…",
+    "sample": {}
+  },
+  {
+    "key": "captions.local.noticesFailed",
+    "file": "src/shared/speech/speechCopy.ts",
+    "line": 113,
+    "english": "The third-party notices could not be shown: The file is missing",
+    "sample": {
+      "message": "The file is missing"
+    }
+  },
+  {
+    "key": "captions.local.jobFailedNotice",
+    "file": "src/shared/speech/speechCopy.ts",
+    "line": 115,
+    "english": "Captions could not be made: open the Captions tab for details.",
+    "sample": {}
+  },
+  {
+    "key": "captions.local.downloadFailedNotice",
+    "file": "src/shared/speech/speechCopy.ts",
+    "line": 116,
+    "english": "The speech model could not be downloaded: open the Captions tab for details.",
+    "sample": {}
+  },
+  {
+    "key": "captions.local.banglaConsentTitle",
+    "file": "src/shared/speech/speechCopy.ts",
+    "line": 118,
+    "english": "Make Bangla captions on this PC",
+    "sample": {}
+  },
+  {
+    "key": "captions.local.banglaHint",
+    "file": "src/shared/speech/speechCopy.ts",
+    "line": 119,
+    "english": "For Bangla, choose Bangla: it makes far fewer mistakes.",
+    "sample": {}
+  },
+  {
+    "key": "captions.local.banglaDetect",
+    "file": "src/shared/speech/speechCopy.ts",
+    "line": 120,
+    "english": "Speaking Bangla? Choose Bengali to use the Bangla model.",
+    "sample": {}
+  },
+  {
+    "key": "captions.local.chooseBengali",
+    "file": "src/shared/speech/speechCopy.ts",
+    "line": 121,
+    "english": "Choose Bengali",
+    "sample": {}
+  },
+  {
+    "key": "captions.local.banglaOffer",
+    "file": "src/shared/speech/speechCopy.ts",
+    "line": 123,
+    "english": "Bangla captions: the Bangla model gets about 4 in 5 words right, where the other tiers get most Bangla words wrong. It runs on this PC and works offline once downloaded.",
+    "sample": {}
+  },
+  {
+    "key": "captions.local.banglaAgain",
+    "file": "src/shared/speech/speechCopy.ts",
+    "line": 124,
+    "english": "Make them again with Bangla (downloaded)",
+    "sample": {}
+  },
+  {
+    "key": "captions.local.banglaShowDownload",
+    "file": "src/shared/speech/speechCopy.ts",
+    "line": 126,
+    "english": "Show the Bangla model's download",
+    "sample": {}
+  },
+  {
+    "key": "captions.local.banglaForKeyUsers",
+    "file": "src/shared/speech/speechCopy.ts",
+    "line": 132,
+    "english": "For Bangla, the Bangla model on this PC is free and works offline: it gets about 4 in 5 words right (no punctuation).",
+    "sample": {}
+  },
+  {
+    "key": "captions.local.useBanglaModel",
+    "file": "src/shared/speech/speechCopy.ts",
+    "line": 133,
+    "english": "Use the Bangla model",
+    "sample": {}
+  },
+  {
+    "key": "captions.local.readyHintBangla",
+    "file": "src/shared/speech/speechCopy.ts",
+    "line": 134,
+    "english": "Runs on this PC with the Bangla model: nothing is uploaded and it costs nothing.",
+    "sample": {}
+  },
+  {
+    "key": "captions.local.banglaBlocked",
+    "file": "src/shared/speech/speechCopy.ts",
+    "line": 138,
+    "english": "The Bangla model is not offered on this PC: This PC has too little memory.",
+    "sample": {
+      "reason": "This PC has too little memory."
+    }
+  },
+  {
+    "key": "captions.local.smallPrintModel",
+    "file": "src/shared/speech/speechCopy.ts",
+    "line": 147,
+    "english": "Bengali.AI Whisper medium, Apache-2.0 licence · huggingface.co/bengaliAI/tugstugi_bengaliai-asr_whisper-medium",
+    "sample": {
+      "model": "Bengali.AI Whisper medium",
+      "licence": "Apache-2.0",
+      "repo": "bengaliAI/tugstugi_bengaliai-asr_whisper-medium"
+    }
+  },
+  {
+    "key": "captions.local.licenceLineModel",
+    "file": "src/shared/speech/speechCopy.ts",
+    "line": 154,
+    "english": "Bengali.AI Whisper medium (Apache-2.0 licence) by Bengali.AI · huggingface.co/x/y (abcdef0)",
+    "sample": {
+      "model": "Bengali.AI Whisper medium",
+      "licence": "Apache-2.0",
+      "holder": "Bengali.AI",
+      "repo": "x/y",
+      "commit": "abcdef0"
+    }
+  },
+  {
+    "key": "captions.local.purpose.fast",
+    "file": "src/shared/speech/speechCopy.ts",
+    "line": 161,
+    "english": "Quickest; for slower PCs. Less accurate with accents and noise.",
+    "sample": {}
+  },
+  {
+    "key": "captions.local.purpose.standard",
+    "file": "src/shared/speech/speechCopy.ts",
+    "line": 163,
+    "english": "Recommended for most recordings.",
+    "sample": {}
+  },
+  {
+    "key": "captions.local.purpose.accurate",
+    "file": "src/shared/speech/speechCopy.ts",
+    "line": 165,
+    "english": "More accurate, also for other languages; about 3.7 times slower than Standard.",
+    "sample": {}
+  },
+  {
+    "key": "captions.local.purpose.bestSettings",
+    "file": "src/shared/speech/speechCopy.ts",
+    "line": 167,
+    "english": "Most accurate, but slower than real time on most PCs.",
+    "sample": {}
+  },
+  {
+    "key": "captions.local.purpose.best",
+    "file": "src/shared/speech/speechCopy.ts",
+    "line": 167,
+    "english": "Most accurate, but slower than playing the recording on most PCs.",
+    "sample": {}
+  },
+  {
+    "key": "captions.local.purpose.banglaSettings",
+    "file": "src/shared/speech/speechCopy.ts",
+    "line": 170,
+    "english": "Bangla only: used whenever the spoken language is Bengali, never for other languages. Far fewer mistakes in Bangla than the other models.",
+    "sample": {}
+  },
+  {
+    "key": "captions.local.purpose.bangla",
+    "file": "src/shared/speech/speechCopy.ts",
+    "line": 171,
+    "english": "Made for Bangla: far fewer mistakes than the other tiers, which get most Bangla words wrong.",
+    "sample": {}
+  },
+  {
+    "key": "captions.local.chip.downloaded",
+    "file": "src/shared/speech/speechCopy.ts",
+    "line": 180,
+    "english": "Standard · Downloaded",
+    "sample": {
+      "tier": "Standard"
+    }
+  },
+  {
+    "key": "captions.local.chip.downloadedName",
+    "file": "src/shared/speech/speechCopy.ts",
+    "line": 180,
+    "english": "Standard, downloaded",
+    "sample": {
+      "tier": "Standard"
+    }
+  },
+  {
+    "key": "captions.local.chip.size",
+    "file": "src/shared/speech/speechCopy.ts",
+    "line": 181,
+    "english": "Fast · 44 MB",
+    "sample": {
+      "tier": "Fast",
+      "size": "44 MB"
+    }
+  },
+  {
+    "key": "captions.local.chip.megabyteName",
+    "file": "src/shared/speech/speechCopy.ts",
+    "line": 181,
+    "english": "Fast, 44 megabyte download",
+    "sample": {
+      "tier": "Fast",
+      "n": "44"
+    }
+  },
+  {
+    "key": "captions.local.chip.gigabyteName",
+    "file": "src/shared/speech/speechCopy.ts",
+    "line": 181,
+    "english": "Most accurate (slow), 1.6 gigabyte download",
+    "sample": {
+      "tier": "Most accurate (slow)",
+      "n": "1.6"
+    }
+  },
+  {
+    "key": "captions.local.estimateDownloaded",
+    "file": "src/shared/speech/speechCopy.ts",
+    "line": 187,
+    "english": "Downloaded · about 3 min for this recording",
+    "sample": {
+      "time": "about 3 min"
+    }
+  },
+  {
+    "key": "captions.local.estimate",
+    "file": "src/shared/speech/speechCopy.ts",
+    "line": 187,
+    "english": "190 MB download · about 10 min for this recording",
+    "sample": {
+      "size": "190 MB",
+      "time": "about 10 min"
+    }
+  },
+  {
+    "key": "captions.local.slower",
+    "file": "src/shared/speech/speechCopy.ts",
+    "line": 191,
+    "english": "Slower than playing the recording: about 38 min for this one.",
+    "sample": {
+      "time": "about 38 min"
+    }
+  },
+  {
+    "key": "captions.local.consentBangla",
+    "file": "src/shared/speech/speechCopy.ts",
+    "line": 198,
+    "english": "Recommended for Bangla: the Bangla model gets about 4 in 5 words right, where the other tiers get most Bangla words wrong. Free and private: it runs on this PC and works offline once downloaded; the sound never leaves this PC. Flown first downloads it once (539 MB, from Hugging Face) and checks it before use. Then this 20 min recording takes about 3 min.",
+    "sample": {
+      "size": "539 MB",
+      "length": "20 min",
+      "time": "about 3 min"
+    }
+  },
+  {
+    "key": "captions.local.consent",
+    "file": "src/shared/speech/speechCopy.ts",
+    "line": 199,
+    "english": "Free and private: the sound never leaves this PC, and no key or account is needed. Flown first downloads the speech model for Standard (Whisper base) once (60 MB, from Hugging Face) and checks it before use. Then this 20 min recording takes about 3 min.",
+    "sample": {
+      "model": "Standard (Whisper base)",
+      "size": "60 MB",
+      "length": "20 min",
+      "time": "about 3 min"
+    }
+  },
+  {
+    "key": "captions.local.downloadLanguageModel",
+    "file": "src/shared/speech/speechCopy.ts",
+    "line": 206,
+    "english": "Download Bangla model (539 MB) and make captions",
+    "sample": {
+      "tier": "Bangla",
+      "size": "539 MB"
+    }
+  },
+  {
+    "key": "captions.local.downloadSize",
+    "file": "src/shared/speech/speechCopy.ts",
+    "line": 206,
+    "english": "Download 60 MB and make captions",
+    "sample": {
+      "size": "60 MB"
+    }
+  },
+  {
+    "key": "captions.local.downloadLanguageModelName",
+    "file": "src/shared/speech/speechCopy.ts",
+    "line": 209,
+    "english": "Download Bangla model (Bengali.AI Whisper medium), 539 megabytes, and make captions",
+    "sample": {
+      "tier": "Bangla",
+      "model": "Bengali.AI Whisper medium",
+      "spoken": "539 megabytes"
+    }
+  },
+  {
+    "key": "captions.local.downloadTierName",
+    "file": "src/shared/speech/speechCopy.ts",
+    "line": 210,
+    "english": "Download Standard (Whisper base), 60 megabytes, and make captions",
+    "sample": {
+      "tier": "Standard",
+      "model": "Whisper base",
+      "spoken": "60 megabytes"
+    }
+  },
+  {
+    "key": "captions.local.useInstalled",
+    "file": "src/shared/speech/speechCopy.ts",
+    "line": 215,
+    "english": "Make them now with Standard (downloaded)",
+    "sample": {
+      "tier": "Standard"
+    }
+  },
+  {
+    "key": "captions.local.disk",
+    "file": "src/shared/speech/speechCopy.ts",
+    "line": 218,
+    "english": "Not enough free space: the model needs 190 MB and the disk has 100 MB free.",
+    "sample": {
+      "size": "190 MB",
+      "free": "100 MB"
+    }
+  },
+  {
+    "key": "captions.local.downloadBusy",
+    "file": "src/shared/speech/speechCopy.ts",
+    "line": 222,
+    "english": "Accurate (Whisper small) is downloading, and one speech model downloads at a time: download Standard once it is done.",
+    "sample": {
+      "busy": "Accurate (Whisper small)",
+      "tier": "Standard"
+    }
+  },
+  {
+    "key": "captions.local.speed",
+    "file": "src/shared/speech/speechCopy.ts",
+    "line": 230,
+    "english": "4.2 MB/s",
+    "sample": {
+      "mbps": "4.2"
+    }
+  },
+  {
+    "key": "captions.local.downloading",
+    "file": "src/shared/speech/speechCopy.ts",
+    "line": 229,
+    "english": "Downloading Standard (Whisper base)… 21 of 60 MB",
+    "sample": {
+      "model": "Standard (Whisper base)",
+      "done": "21 of 60 MB"
+    }
+  },
+  {
+    "key": "captions.local.retrying",
+    "file": "src/shared/speech/speechCopy.ts",
+    "line": 238,
+    "english": "The connection dropped: trying again (2 of 3)…",
+    "sample": {
+      "attempt": "2",
+      "of": "3"
+    }
+  },
+  {
+    "key": "captions.local.stoppedAt",
+    "file": "src/shared/speech/speechCopy.ts",
+    "line": 241,
+    "english": "Download stopped at 21 of 60 MB.",
+    "sample": {
+      "done": "21 of 60 MB"
+    }
+  },
+  {
+    "key": "captions.local.continueDownload",
+    "file": "src/shared/speech/speechCopy.ts",
+    "line": 242,
+    "english": "Continue download and make captions",
+    "sample": {}
+  },
+  {
+    "key": "captions.local.deletePart",
+    "file": "src/shared/speech/speechCopy.ts",
+    "line": 244,
+    "english": "Delete the 21 MB downloaded",
+    "sample": {
+      "size": "21 MB"
+    }
+  },
+  {
+    "key": "captions.local.downloadFailed",
+    "file": "src/shared/speech/speechCopy.ts",
+    "line": 281,
+    "english": "The speech model could not be downloaded: Something went wrong.",
+    "sample": {
+      "reason": "Something went wrong."
+    }
+  },
+  {
+    "key": "captions.local.fail.networkKept",
+    "file": "src/shared/speech/speechCopy.ts",
+    "line": 257,
+    "english": "Flown could not reach huggingface.co. Check the internet connection; the 21 MB already here are kept.",
+    "sample": {
+      "size": "21 MB"
+    }
+  },
+  {
+    "key": "captions.local.fail.network",
+    "file": "src/shared/speech/speechCopy.ts",
+    "line": 258,
+    "english": "Flown could not reach huggingface.co. Check the internet connection.",
+    "sample": {}
+  },
+  {
+    "key": "captions.local.fail.http",
+    "file": "src/shared/speech/speechCopy.ts",
+    "line": 262,
+    "english": "Hugging Face answered with an error (HTTP 500). Try again later.",
+    "sample": {
+      "status": "500"
+    }
+  },
+  {
+    "key": "captions.local.fail.refused",
+    "file": "src/shared/speech/speechCopy.ts",
+    "line": 264,
+    "english": "Hugging Face or your network refused the download (HTTP 403). A proxy or firewall may be blocking it.",
+    "sample": {}
+  },
+  {
+    "key": "captions.local.fail.missing",
+    "file": "src/shared/speech/speechCopy.ts",
+    "line": 266,
+    "english": "Standard (Whisper base) is no longer where this version of Flown downloads it from. Updating Flown fixes this.",
+    "sample": {
+      "model": "Standard (Whisper base)"
+    }
+  },
+  {
+    "key": "captions.local.fail.mismatch",
+    "file": "src/shared/speech/speechCopy.ts",
+    "line": 268,
+    "english": "The downloaded file was not the expected one, so it was deleted and not used.",
+    "sample": {}
+  },
+  {
+    "key": "captions.local.fail.disk",
+    "file": "src/shared/speech/speechCopy.ts",
+    "line": 273,
+    "english": "Not enough free space: the model needs 190 MB.",
+    "sample": {
+      "size": "190 MB"
+    }
+  },
+  {
+    "key": "captions.local.fail.diskWas",
+    "file": "src/shared/speech/speechCopy.ts",
+    "line": 275,
+    "english": "There was not enough free space: the model needs 190 MB. The disk now has 1.2 GB free.",
+    "sample": {
+      "size": "190 MB",
+      "free": "1.2 GB"
+    }
+  },
+  {
+    "key": "captions.local.fail.other",
+    "file": "src/shared/speech/speechCopy.ts",
+    "line": 278,
+    "english": "Something went wrong.",
+    "sample": {}
+  },
+  {
+    "key": "captions.local.memory.closeApps",
+    "file": "src/shared/speech/speechCopy.ts",
+    "line": 293,
+    "english": "Bangla needs about 1.3 GB of free memory; this PC has 800 MB free right now. Close other apps first.",
+    "sample": {
+      "tier": "Bangla",
+      "need": "1.3 GB",
+      "free": "800 MB"
+    }
+  },
+  {
+    "key": "captions.local.memory.chooseTier",
+    "file": "src/shared/speech/speechCopy.ts",
+    "line": 294,
+    "english": "Accurate needs about 852 MB of free memory; this PC has 500 MB free right now. Close other apps or choose Standard.",
+    "sample": {
+      "tier": "Accurate",
+      "need": "852 MB",
+      "free": "500 MB",
+      "quicker": "Standard"
+    }
+  },
+  {
+    "key": "captions.local.memory.chooseQuicker",
+    "file": "src/shared/speech/speechCopy.ts",
+    "line": 294,
+    "english": "Accurate needs about 852 MB of free memory; this PC has 500 MB free right now. Close other apps or choose a quicker tier.",
+    "sample": {
+      "tier": "Accurate",
+      "need": "852 MB",
+      "free": "500 MB"
+    }
+  },
+  {
+    "key": "captions.local.phase.loading",
+    "file": "src/shared/speech/speechCopy.ts",
+    "line": 304,
+    "english": "Loading the speech model…",
+    "sample": {}
+  },
+  {
+    "key": "captions.local.phase.preparing",
+    "file": "src/shared/speech/speechCopy.ts",
+    "line": 306,
+    "english": "Preparing the sound…",
+    "sample": {}
+  },
+  {
+    "key": "captions.local.phase.transcribingAt",
+    "file": "src/shared/speech/speechCopy.ts",
+    "line": 308,
+    "english": "Making captions on this PC… 8:30 of 20:00",
+    "sample": {
+      "at": "8:30",
+      "duration": "20:00"
+    }
+  },
+  {
+    "key": "captions.local.phase.transcribing",
+    "file": "src/shared/speech/speechCopy.ts",
+    "line": 308,
+    "english": "Making captions on this PC…",
+    "sample": {}
+  },
+  {
+    "key": "captions.local.phase.finishing",
+    "file": "src/shared/speech/speechCopy.ts",
+    "line": 310,
+    "english": "Finishing…",
+    "sample": {}
+  },
+  {
+    "key": "captions.local.phase.stopping",
+    "file": "src/shared/speech/speechCopy.ts",
+    "line": 312,
+    "english": "Stopping…",
+    "sample": {}
+  },
+  {
+    "key": "captions.local.phaseName.loading",
+    "file": "src/shared/speech/speechCopy.ts",
+    "line": 319,
+    "english": "Loading the speech model",
+    "sample": {}
+  },
+  {
+    "key": "captions.local.phaseName.preparing",
+    "file": "src/shared/speech/speechCopy.ts",
+    "line": 319,
+    "english": "Preparing the sound",
+    "sample": {}
+  },
+  {
+    "key": "captions.local.phaseName.transcribing",
+    "file": "src/shared/speech/speechCopy.ts",
+    "line": 319,
+    "english": "Making captions on this PC",
+    "sample": {}
+  },
+  {
+    "key": "captions.local.phaseName.finishing",
+    "file": "src/shared/speech/speechCopy.ts",
+    "line": 319,
+    "english": "Finishing",
+    "sample": {}
+  },
+  {
+    "key": "captions.local.phaseName.stopping",
+    "file": "src/shared/speech/speechCopy.ts",
+    "line": 319,
+    "english": "Stopping",
+    "sample": {}
+  },
+  {
+    "key": "captions.local.announcePercent",
+    "file": "src/shared/speech/speechCopy.ts",
+    "line": 320,
+    "english": "Making captions on this PC: 50 percent",
+    "sample": {
+      "percent": "50"
+    }
+  },
+  {
+    "key": "captions.local.barPercent",
+    "file": "src/shared/speech/speechCopy.ts",
+    "line": 324,
+    "english": "42 percent",
+    "sample": {
+      "percent": "42"
+    }
+  },
+  {
+    "key": "captions.local.barPercentLeft",
+    "file": "src/shared/speech/speechCopy.ts",
+    "line": 324,
+    "english": "42 percent, about 3 min left",
+    "sample": {
+      "percent": "42",
+      "left": "about 3 min left"
+    }
+  },
+  {
+    "key": "captions.local.heard",
+    "file": "src/shared/speech/speechCopy.ts",
+    "line": 327,
+    "english": "Heard: “hello there”",
+    "sample": {
+      "words": "hello there"
+    }
+  },
+  {
+    "key": "captions.local.resumed",
+    "file": "src/shared/speech/speechCopy.ts",
+    "line": 330,
+    "english": "Continuing: 3 of 6 parts were already done.",
+    "sample": {
+      "done": "3",
+      "parts": "6"
+    }
+  },
+  {
+    "key": "captions.local.cancelled",
+    "file": "src/shared/speech/speechCopy.ts",
+    "line": 333,
+    "english": "Stopped. 3 of 6 parts are kept: Generate captions continues from there.",
+    "sample": {
+      "kept": "3",
+      "parts": "6"
+    }
+  },
+  {
+    "key": "captions.local.downloadAgainSize",
+    "file": "src/shared/speech/speechCopy.ts",
+    "line": 335,
+    "english": "Download again (60 MB)",
+    "sample": {
+      "size": "60 MB"
+    }
+  },
+  {
+    "key": "captions.local.useTier",
+    "file": "src/shared/speech/speechCopy.ts",
+    "line": 336,
+    "english": "Use Fast",
+    "sample": {
+      "tier": "Fast"
+    }
+  },
+  {
+    "key": "captions.local.done",
+    "file": "src/shared/speech/speechCopy.ts",
+    "line": 343,
+    "english": [
+      "0 captions made on this PC with Whisper base.",
+      "1 caption made on this PC with Whisper base.",
+      "2 captions made on this PC with Whisper base.",
+      "1000 captions made on this PC with Whisper base."
+    ],
+    "sample": [
+      {
+        "count": 0,
+        "n": "0",
+        "model": "Whisper base",
+        "language": ""
+      },
+      {
+        "count": 1,
+        "n": "1",
+        "model": "Whisper base",
+        "language": ""
+      },
+      {
+        "count": 2,
+        "n": "2",
+        "model": "Whisper base",
+        "language": ""
+      },
+      {
+        "count": 1000,
+        "n": "1000",
+        "model": "Whisper base",
+        "language": ""
+      }
+    ]
+  },
+  {
+    "key": "captions.local.doneLanguage",
+    "file": "src/shared/speech/speechCopy.ts",
+    "line": 343,
+    "english": [
+      "0 captions made on this PC with Whisper base (English).",
+      "1 caption made on this PC with Whisper base (English).",
+      "2 captions made on this PC with Whisper base (English).",
+      "1000 captions made on this PC with Whisper base (English)."
+    ],
+    "sample": [
+      {
+        "count": 0,
+        "n": "0",
+        "model": "Whisper base",
+        "language": "English"
+      },
+      {
+        "count": 1,
+        "n": "1",
+        "model": "Whisper base",
+        "language": "English"
+      },
+      {
+        "count": 2,
+        "n": "2",
+        "model": "Whisper base",
+        "language": "English"
+      },
+      {
+        "count": 1000,
+        "n": "1000",
+        "model": "Whisper base",
+        "language": "English"
+      }
+    ]
+  },
+  {
+    "key": "captions.local.doneDetected",
+    "file": "src/shared/speech/speechCopy.ts",
+    "line": 343,
+    "english": [
+      "0 captions made on this PC with Whisper base (English, detected).",
+      "1 caption made on this PC with Whisper base (English, detected).",
+      "2 captions made on this PC with Whisper base (English, detected).",
+      "1000 captions made on this PC with Whisper base (English, detected)."
+    ],
+    "sample": [
+      {
+        "count": 0,
+        "n": "0",
+        "model": "Whisper base",
+        "language": "English"
+      },
+      {
+        "count": 1,
+        "n": "1",
+        "model": "Whisper base",
+        "language": "English"
+      },
+      {
+        "count": 2,
+        "n": "2",
+        "model": "Whisper base",
+        "language": "English"
+      },
+      {
+        "count": 1000,
+        "n": "1000",
+        "model": "Whisper base",
+        "language": "English"
+      }
+    ]
+  },
+  {
+    "key": "captions.local.doneTook",
+    "file": "src/shared/speech/speechCopy.ts",
+    "line": 344,
+    "english": [
+      "0 captions made on this PC with Whisper base in 42 s. Nothing was uploaded.",
+      "1 caption made on this PC with Whisper base in 42 s. Nothing was uploaded.",
+      "2 captions made on this PC with Whisper base in 42 s. Nothing was uploaded.",
+      "1000 captions made on this PC with Whisper base in 42 s. Nothing was uploaded."
+    ],
+    "sample": [
+      {
+        "count": 0,
+        "n": "0",
+        "model": "Whisper base",
+        "language": "",
+        "took": "42 s"
+      },
+      {
+        "count": 1,
+        "n": "1",
+        "model": "Whisper base",
+        "language": "",
+        "took": "42 s"
+      },
+      {
+        "count": 2,
+        "n": "2",
+        "model": "Whisper base",
+        "language": "",
+        "took": "42 s"
+      },
+      {
+        "count": 1000,
+        "n": "1000",
+        "model": "Whisper base",
+        "language": "",
+        "took": "42 s"
+      }
+    ]
+  },
+  {
+    "key": "captions.local.doneTookLanguage",
+    "file": "src/shared/speech/speechCopy.ts",
+    "line": 344,
+    "english": [
+      "0 captions made on this PC with Whisper base (English) in 42 s. Nothing was uploaded.",
+      "1 caption made on this PC with Whisper base (English) in 42 s. Nothing was uploaded.",
+      "2 captions made on this PC with Whisper base (English) in 42 s. Nothing was uploaded.",
+      "1000 captions made on this PC with Whisper base (English) in 42 s. Nothing was uploaded."
+    ],
+    "sample": [
+      {
+        "count": 0,
+        "n": "0",
+        "model": "Whisper base",
+        "language": "English",
+        "took": "42 s"
+      },
+      {
+        "count": 1,
+        "n": "1",
+        "model": "Whisper base",
+        "language": "English",
+        "took": "42 s"
+      },
+      {
+        "count": 2,
+        "n": "2",
+        "model": "Whisper base",
+        "language": "English",
+        "took": "42 s"
+      },
+      {
+        "count": 1000,
+        "n": "1000",
+        "model": "Whisper base",
+        "language": "English",
+        "took": "42 s"
+      }
+    ]
+  },
+  {
+    "key": "captions.local.doneTookDetected",
+    "file": "src/shared/speech/speechCopy.ts",
+    "line": 344,
+    "english": [
+      "0 captions made on this PC with Whisper base (English, detected) in 42 s. Nothing was uploaded.",
+      "1 caption made on this PC with Whisper base (English, detected) in 42 s. Nothing was uploaded.",
+      "2 captions made on this PC with Whisper base (English, detected) in 42 s. Nothing was uploaded.",
+      "1000 captions made on this PC with Whisper base (English, detected) in 42 s. Nothing was uploaded."
+    ],
+    "sample": [
+      {
+        "count": 0,
+        "n": "0",
+        "model": "Whisper base",
+        "language": "English",
+        "took": "42 s"
+      },
+      {
+        "count": 1,
+        "n": "1",
+        "model": "Whisper base",
+        "language": "English",
+        "took": "42 s"
+      },
+      {
+        "count": 2,
+        "n": "2",
+        "model": "Whisper base",
+        "language": "English",
+        "took": "42 s"
+      },
+      {
+        "count": 1000,
+        "n": "1000",
+        "model": "Whisper base",
+        "language": "English",
+        "took": "42 s"
+      }
+    ]
+  },
+  {
+    "key": "captions.local.notLanguage",
+    "file": "src/shared/speech/speechCopy.ts",
+    "line": 348,
+    "english": "Not English?",
+    "sample": {
+      "language": "English"
+    }
+  },
+  {
+    "key": "captions.local.ready",
+    "file": "src/shared/speech/speechCopy.ts",
+    "line": 351,
+    "english": [
+      "Captions ready: 0 captions made on this PC in 42 s. Undo removes them.",
+      "Captions ready: 1 caption made on this PC in 42 s. Undo removes them.",
+      "Captions ready: 2 captions made on this PC in 42 s. Undo removes them.",
+      "Captions ready: 1000 captions made on this PC in 42 s. Undo removes them."
+    ],
+    "sample": [
+      {
+        "count": 0,
+        "n": "0",
+        "took": "42 s"
+      },
+      {
+        "count": 1,
+        "n": "1",
+        "took": "42 s"
+      },
+      {
+        "count": 2,
+        "n": "2",
+        "took": "42 s"
+      },
+      {
+        "count": 1000,
+        "n": "1000",
+        "took": "42 s"
+      }
+    ]
+  },
+  {
+    "key": "captions.local.badge.downloading",
+    "file": "src/shared/speech/speechCopy.ts",
+    "line": 356,
+    "english": "Captions: downloading the speech model",
+    "sample": {}
+  },
+  {
+    "key": "captions.local.badge.downloadingPercent",
+    "file": "src/shared/speech/speechCopy.ts",
+    "line": 356,
+    "english": "Captions: downloading the speech model, 42 %",
+    "sample": {
+      "percent": "42"
+    }
+  },
+  {
+    "key": "captions.local.badge.verifying",
+    "file": "src/shared/speech/speechCopy.ts",
+    "line": 357,
+    "english": "Captions: checking the download",
+    "sample": {}
+  },
+  {
+    "key": "captions.local.badge.making",
+    "file": "src/shared/speech/speechCopy.ts",
+    "line": 358,
+    "english": "Captions: making captions",
+    "sample": {}
+  },
+  {
+    "key": "captions.local.badge.makingPercent",
+    "file": "src/shared/speech/speechCopy.ts",
+    "line": 358,
+    "english": "Captions: making captions, 42 %",
+    "sample": {
+      "percent": "42"
+    }
+  },
+  {
+    "key": "captions.local.rowTitle",
+    "file": "src/shared/speech/speechCopy.ts",
+    "line": 367,
+    "english": "Whisper base · Standard",
+    "sample": {
+      "model": "Whisper base",
+      "tier": "Standard"
+    }
+  },
+  {
+    "key": "captions.local.rowTitleOnly",
+    "file": "src/shared/speech/speechCopy.ts",
+    "line": 367,
+    "english": "Bengali.AI Whisper medium · Bangla only",
+    "sample": {
+      "model": "Bengali.AI Whisper medium",
+      "tier": "Bangla"
+    }
+  },
+  {
+    "key": "captions.local.rowFacts",
+    "file": "src/shared/speech/speechCopy.ts",
+    "line": 372,
+    "english": "60 MB download · about 1 min per 10 minutes of recording on this PC · about 399 MB of memory",
+    "sample": {
+      "size": "60 MB",
+      "time": "about 1 min",
+      "memory": "399 MB"
+    }
+  },
+  {
+    "key": "captions.local.rowFactsMeasured",
+    "file": "src/shared/speech/speechCopy.ts",
+    "line": 372,
+    "english": "60 MB download · about 1 min per 10 minutes of recording on this PC (measured on this PC) · about 399 MB of memory",
+    "sample": {
+      "size": "60 MB",
+      "time": "about 1 min",
+      "memory": "399 MB"
+    }
+  },
+  {
+    "key": "captions.local.rowDownloading",
+    "file": "src/shared/speech/speechCopy.ts",
+    "line": 384,
+    "english": "Downloading… 35 % · 21 of 60 MB",
+    "sample": {
+      "percent": "35",
+      "done": "21 of 60 MB"
+    }
+  },
+  {
+    "key": "captions.local.rowDownloadingSpeed",
+    "file": "src/shared/speech/speechCopy.ts",
+    "line": 384,
+    "english": "Downloading… 35 % · 21 of 60 MB · 4.2 MB/s",
+    "sample": {
+      "percent": "35",
+      "done": "21 of 60 MB",
+      "speed": "4.2 MB/s"
+    }
+  },
+  {
+    "key": "captions.local.rowStopped",
+    "file": "src/shared/speech/speechCopy.ts",
+    "line": 386,
+    "english": "Stopped at 21 of 60 MB",
+    "sample": {
+      "done": "21 of 60 MB"
+    }
+  },
+  {
+    "key": "captions.local.rowFailed",
+    "file": "src/shared/speech/speechCopy.ts",
+    "line": 392,
+    "english": "Download failed: Something went wrong.",
+    "sample": {
+      "reason": "Something went wrong."
+    }
+  },
+  {
+    "key": "captions.local.rowDownload",
+    "file": "src/shared/speech/speechCopy.ts",
+    "line": 398,
+    "english": "Download 60 MB",
+    "sample": {
+      "size": "60 MB"
+    }
+  },
+  {
+    "key": "captions.local.rowDownloadName",
+    "file": "src/shared/speech/speechCopy.ts",
+    "line": 399,
+    "english": "Download Whisper base, 60 megabytes",
+    "sample": {
+      "model": "Whisper base",
+      "spoken": "60 megabytes"
+    }
+  },
+  {
+    "key": "captions.local.removeQuestion",
+    "file": "src/shared/speech/speechCopy.ts",
+    "line": 403,
+    "english": "Remove Whisper small? It frees 190 MB. Captions you already made stay.",
+    "sample": {
+      "model": "Whisper small",
+      "size": "190 MB"
+    }
+  },
+  {
+    "key": "captions.local.removeName",
+    "file": "src/shared/speech/speechCopy.ts",
+    "line": 405,
+    "english": "Remove Whisper small, frees 190 megabytes",
+    "sample": {
+      "model": "Whisper small",
+      "spoken": "190 megabytes"
+    }
+  },
+  {
+    "key": "captions.local.engineUnavailable",
+    "file": "src/shared/speech/speechCopy.ts",
+    "line": 417,
+    "english": "Speech engine: not available (the speech engine did not start)",
+    "sample": {
+      "reason": "the speech engine did not start"
+    }
+  },
+  {
+    "key": "captions.local.engineCompatible",
+    "file": "src/shared/speech/speechCopy.ts",
+    "line": 418,
+    "english": "Speech engine: ready (compatible mode for this processor: slower)",
+    "sample": {}
+  },
+  {
+    "key": "captions.local.engineReady",
+    "file": "src/shared/speech/speechCopy.ts",
+    "line": 418,
+    "english": "Speech engine: ready",
+    "sample": {}
+  },
+  {
+    "key": "captions.local.detectorReady",
+    "file": "src/shared/speech/speechCopy.ts",
+    "line": 424,
+    "english": "Speech detector: built in (Silero VAD). Remove silences, Smart speed, music ducking and the camera director listen for speech, so typing and fans do not count as sound.",
+    "sample": {}
+  },
+  {
+    "key": "captions.local.detectorUnavailable",
+    "file": "src/shared/speech/speechCopy.ts",
+    "line": 426,
+    "english": "Speech detector: not available on this PC (the speech engine did not start), so these use sound levels instead.",
+    "sample": {
+      "reason": "the speech engine did not start"
+    }
+  },
+  {
+    "key": "captions.local.diskFooter",
+    "file": "src/shared/speech/speechCopy.ts",
+    "line": 430,
+    "english": "Speech models use 60 MB",
+    "sample": {
+      "used": "60 MB"
+    }
+  },
+  {
+    "key": "captions.local.diskFooterFree",
+    "file": "src/shared/speech/speechCopy.ts",
+    "line": 430,
+    "english": "Speech models use 60 MB · 120 GB free on this drive",
+    "sample": {
+      "used": "60 MB",
+      "free": "120 GB"
+    }
+  },
+  {
+    "key": "captions.local.listen.voice",
+    "file": "src/shared/speech/speechCopy.ts",
+    "line": 438,
+    "english": "Listening for your voice: typing, clicks and room noise on the microphone do not count.",
+    "sample": {}
+  },
+  {
+    "key": "captions.local.listen.voiceSystem",
+    "file": "src/shared/speech/speechCopy.ts",
+    "line": 438,
+    "english": "Listening for your voice: typing, clicks and room noise on the microphone do not count. Sound your PC plays still counts.",
+    "sample": {}
+  },
+  {
+    "key": "captions.local.listen.mixed",
+    "file": "src/shared/speech/speechCopy.ts",
+    "line": 440,
+    "english": "Listening for speech and any other sound: this recording has no separate microphone track.",
+    "sample": {}
+  },
+  {
+    "key": "captions.local.listen.guard",
+    "file": "src/shared/speech/speechCopy.ts",
+    "line": 442,
+    "english": "No speech was found on the microphone, so sound levels are used.",
+    "sample": {}
+  },
+  {
+    "key": "captions.local.listen.level",
+    "file": "src/shared/speech/speechCopy.ts",
+    "line": 444,
+    "english": "Listening for any sound: the speech detector is not available, so typing counts as sound too.",
+    "sample": {}
+  },
+  {
+    "key": "captions.local.hint.silences",
+    "file": "src/shared/speech/speechCopy.ts",
+    "line": 449,
+    "english": "Cuts or speeds up the pauses in your talking, keeping a little of the silence next to the sound so no word is clipped.",
+    "sample": {}
+  },
+  {
+    "key": "captions.local.hint.idle",
+    "file": "src/shared/speech/speechCopy.ts",
+    "line": 451,
+    "english": "Speeds up or cuts the parts where nothing happens: the picture stays still, you are not talking and your PC plays no sound, and you did not move, click, scroll or type.",
+    "sample": {}
+  },
+  {
+    "key": "captions.local.hint.ducking",
+    "file": "src/shared/speech/speechCopy.ts",
+    "line": 452,
+    "english": "How far the music dips while you talk or your PC plays sound.",
+    "sample": {}
+  },
+  {
+    "key": "settings.ai.canTranscribeDo",
+    "file": "src/renderer/src/settings/providerText.ts",
+    "line": 9,
+    "english": "Transcription (auto captions), clean-up, translation, chapters, titles and summaries",
+    "sample": {}
+  },
+  {
+    "key": "settings.ai.serviceCanDo",
+    "file": "src/renderer/src/settings/providerText.ts",
+    "line": 10,
+    "english": "Clean-up, translation, chapters, titles and summaries of a transcript",
+    "sample": {}
+  },
+  {
+    "key": "errors.serviceStore.model",
+    "file": "src/renderer/src/settings/ProviderForm.tsx",
+    "line": 215,
+    "english": "Enter the model's name.",
+    "sample": {}
+  },
+  {
+    "key": "captions.ai.cost.time.seconds",
+    "file": "src/shared/ai/cost.ts",
+    "line": 421,
+    "english": [
+      "about 0 seconds",
+      "about 1 seconds",
+      "about 2 seconds",
+      "about 1000 seconds"
+    ],
+    "sample": [
+      {
+        "count": 0,
+        "n": "0"
+      },
+      {
+        "count": 1,
+        "n": "1"
+      },
+      {
+        "count": 2,
+        "n": "2"
+      },
+      {
+        "count": 1000,
+        "n": "1000"
+      }
+    ]
+  },
+  {
+    "key": "captions.ai.cost.time.secondsStart",
+    "file": "src/shared/ai/cost.ts",
+    "line": 421,
+    "english": [
+      "About 0 seconds",
+      "About 1 seconds",
+      "About 2 seconds",
+      "About 1000 seconds"
+    ],
+    "sample": [
+      {
+        "count": 0,
+        "n": "0"
+      },
+      {
+        "count": 1,
+        "n": "1"
+      },
+      {
+        "count": 2,
+        "n": "2"
+      },
+      {
+        "count": 1000,
+        "n": "1000"
+      }
+    ]
+  },
+  {
+    "key": "captions.ai.cost.time.minutes",
+    "file": "src/shared/ai/cost.ts",
+    "line": 424,
+    "english": [
+      "about 0 minutes",
+      "about 1 minute",
+      "about 2 minutes",
+      "about 1000 minutes"
+    ],
+    "sample": [
+      {
+        "count": 0,
+        "n": "0"
+      },
+      {
+        "count": 1,
+        "n": "1"
+      },
+      {
+        "count": 2,
+        "n": "2"
+      },
+      {
+        "count": 1000,
+        "n": "1000"
+      }
+    ]
+  },
+  {
+    "key": "captions.ai.cost.time.minutesStart",
+    "file": "src/shared/ai/cost.ts",
+    "line": 424,
+    "english": [
+      "About 0 minutes",
+      "About 1 minute",
+      "About 2 minutes",
+      "About 1000 minutes"
+    ],
+    "sample": [
+      {
+        "count": 0,
+        "n": "0"
+      },
+      {
+        "count": 1,
+        "n": "1"
+      },
+      {
+        "count": 2,
+        "n": "2"
+      },
+      {
+        "count": 1000,
+        "n": "1000"
+      }
+    ]
+  },
+  {
+    "key": "captions.ai.cost.time.hours",
+    "file": "src/shared/ai/cost.ts",
+    "line": 427,
+    "english": [
+      "about 0 hours",
+      "about 1 hour",
+      "about 2 hours",
+      "about 1000 hours"
+    ],
+    "sample": [
+      {
+        "count": 0,
+        "n": "0"
+      },
+      {
+        "count": 1,
+        "n": "1"
+      },
+      {
+        "count": 2,
+        "n": "2"
+      },
+      {
+        "count": 1000,
+        "n": "1000"
+      }
+    ]
+  },
+  {
+    "key": "captions.ai.cost.time.hoursStart",
+    "file": "src/shared/ai/cost.ts",
+    "line": 427,
+    "english": [
+      "About 0 hours",
+      "About 1 hour",
+      "About 2 hours",
+      "About 1000 hours"
+    ],
+    "sample": [
+      {
+        "count": 0,
+        "n": "0"
+      },
+      {
+        "count": 1,
+        "n": "1"
+      },
+      {
+        "count": 2,
+        "n": "2"
+      },
+      {
+        "count": 1000,
+        "n": "1000"
+      }
+    ]
+  },
+  {
+    "key": "captions.ai.cost.part.unknown",
+    "file": "src/shared/ai/cost.ts",
+    "line": 452,
+    "english": "cost unknown",
+    "sample": {}
+  },
+  {
+    "key": "captions.ai.cost.part.unknownStart",
+    "file": "src/shared/ai/cost.ts",
+    "line": 452,
+    "english": "Cost unknown",
+    "sample": {}
+  },
+  {
+    "key": "captions.ai.cost.part.none",
+    "file": "src/shared/ai/cost.ts",
+    "line": 453,
+    "english": "no cost",
+    "sample": {}
+  },
+  {
+    "key": "captions.ai.cost.part.noneStart",
+    "file": "src/shared/ai/cost.ts",
+    "line": 488,
+    "english": "No cost",
+    "sample": {}
+  },
+  {
+    "key": "captions.ai.cost.part.underCent",
+    "file": "src/shared/ai/cost.ts",
+    "line": 454,
+    "english": "under US$0.01",
+    "sample": {
+      "amount": "US$0.01"
+    }
+  },
+  {
+    "key": "captions.ai.cost.part.underCentStart",
+    "file": "src/shared/ai/cost.ts",
+    "line": 454,
+    "english": "Under US$0.01",
+    "sample": {
+      "amount": "US$0.01"
+    }
+  },
+  {
+    "key": "captions.ai.cost.part.about",
+    "file": "src/shared/ai/cost.ts",
+    "line": 455,
+    "english": "about US$0.03",
+    "sample": {
+      "amount": "US$0.03"
+    }
+  },
+  {
+    "key": "captions.ai.cost.part.aboutStart",
+    "file": "src/shared/ai/cost.ts",
+    "line": 455,
+    "english": "About US$0.03",
+    "sample": {
+      "amount": "US$0.03"
+    }
+  },
+  {
+    "key": "captions.ai.cost.part.upTo",
+    "file": "src/shared/ai/cost.ts",
+    "line": 456,
+    "english": "up to US$0.05",
+    "sample": {
+      "amount": "US$0.05"
+    }
+  },
+  {
+    "key": "captions.ai.cost.part.upToStart",
+    "file": "src/shared/ai/cost.ts",
+    "line": 456,
+    "english": "Up to US$0.05",
+    "sample": {
+      "amount": "US$0.05"
+    }
+  },
+  {
+    "key": "captions.ai.cost.part.range",
+    "file": "src/shared/ai/cost.ts",
+    "line": 456,
+    "english": "US$0.02 to US$0.05",
+    "sample": {
+      "low": "US$0.02",
+      "high": "US$0.05"
+    }
+  },
+  {
+    "key": "captions.ai.cost.unknownVariesFor",
+    "file": "src/shared/ai/cost.ts",
+    "line": 487,
+    "english": "Cost unknown for openrouter/auto: it picks a model for each request",
+    "sample": {
+      "model": "openrouter/auto"
+    }
+  },
+  {
+    "key": "captions.ai.cost.unknownPricesFor",
+    "file": "src/shared/ai/cost.ts",
+    "line": 487,
+    "english": "Cost unknown for llama-3.3-70b: add its prices in Settings",
+    "sample": {
+      "model": "llama-3.3-70b"
+    }
+  },
+  {
+    "key": "captions.ai.cost.unknownVaries",
+    "file": "src/shared/ai/cost.ts",
+    "line": 487,
+    "english": "Cost unknown: it picks a model for each request",
+    "sample": {}
+  },
+  {
+    "key": "captions.ai.cost.unknownPrices",
+    "file": "src/shared/ai/cost.ts",
+    "line": 487,
+    "english": "Cost unknown: add its prices in Settings",
+    "sample": {}
+  },
+  {
+    "key": "captions.ai.cost.sendsShotsWords",
+    "file": "src/shared/ai/cost.ts",
+    "line": 478,
+    "english": [
+      "Sends 0 screenshots and about 300 words to OpenAI",
+      "Sends 1 screenshot and about 300 words to OpenAI",
+      "Sends 2 screenshots and about 300 words to OpenAI",
+      "Sends 1000 screenshots and about 300 words to OpenAI"
+    ],
+    "sample": [
+      {
+        "count": 0,
+        "n": "0",
+        "words": "300",
+        "where": "OpenAI"
+      },
+      {
+        "count": 1,
+        "n": "1",
+        "words": "300",
+        "where": "OpenAI"
+      },
+      {
+        "count": 2,
+        "n": "2",
+        "words": "300",
+        "where": "OpenAI"
+      },
+      {
+        "count": 1000,
+        "n": "1000",
+        "words": "300",
+        "where": "OpenAI"
+      }
+    ]
+  },
+  {
+    "key": "captions.ai.cost.sendsShots",
+    "file": "src/shared/ai/cost.ts",
+    "line": 478,
+    "english": [
+      "Sends 0 screenshots to OpenAI",
+      "Sends 1 screenshot to OpenAI",
+      "Sends 2 screenshots to OpenAI",
+      "Sends 1000 screenshots to OpenAI"
+    ],
+    "sample": [
+      {
+        "count": 0,
+        "n": "0",
+        "where": "OpenAI"
+      },
+      {
+        "count": 1,
+        "n": "1",
+        "where": "OpenAI"
+      },
+      {
+        "count": 2,
+        "n": "2",
+        "where": "OpenAI"
+      },
+      {
+        "count": 1000,
+        "n": "1000",
+        "where": "OpenAI"
+      }
+    ]
+  },
+  {
+    "key": "captions.ai.cost.sendsWordsOf",
+    "file": "src/shared/ai/cost.ts",
+    "line": 478,
+    "english": "Sends about 8,200 words of captions to OpenAI",
+    "sample": {
+      "words": "8,200",
+      "what": "captions",
+      "where": "OpenAI"
+    }
+  },
+  {
+    "key": "captions.ai.cost.sendsWords",
+    "file": "src/shared/ai/cost.ts",
+    "line": 478,
+    "english": "Sends about 8,200 words to OpenAI",
+    "sample": {
+      "words": "8,200",
+      "where": "OpenAI"
+    }
+  },
+  {
+    "key": "captions.ai.cost.sends",
+    "file": "src/shared/ai/cost.ts",
+    "line": 480,
+    "english": "Sends captions to OpenAI",
+    "sample": {
+      "what": "captions",
+      "where": "OpenAI"
+    }
+  },
+  {
+    "key": "captions.ai.cost.sendsIt",
+    "file": "src/shared/ai/cost.ts",
+    "line": 480,
+    "english": "Sends it to OpenAI",
+    "sample": {
+      "where": "OpenAI"
+    }
+  },
+  {
+    "key": "captions.ai.cost.local",
+    "file": "src/shared/ai/cost.ts",
+    "line": 480,
+    "english": "Stays on this PC",
+    "sample": {}
+  },
+  {
+    "key": "captions.ai.cost.item",
+    "file": "src/shared/ai/cost.ts",
+    "line": 491,
+    "english": "Chapters about US$0.02",
+    "sample": {
+      "label": "Chapters",
+      "cost": "about US$0.02"
+    }
+  },
+  {
+    "key": "captions.ai.cost.withModelPrices",
+    "file": "src/shared/ai/cost.ts",
+    "line": 491,
+    "english": "About US$0.03 (gpt-6.1-sol, prices of 7 November 2026)",
+    "sample": {
+      "cost": "About US$0.03",
+      "model": "gpt-6.1-sol",
+      "date": "7 November 2026"
+    }
+  },
+  {
+    "key": "captions.ai.cost.withModelOwnPrices",
+    "file": "src/shared/ai/cost.ts",
+    "line": 491,
+    "english": "About US$0.03 (my-model, your prices)",
+    "sample": {
+      "cost": "About US$0.03",
+      "model": "my-model"
+    }
+  },
+  {
+    "key": "captions.ai.cost.withModel",
+    "file": "src/shared/ai/cost.ts",
+    "line": 491,
+    "english": "About US$0.03 (gpt-6.1-sol)",
+    "sample": {
+      "cost": "About US$0.03",
+      "model": "gpt-6.1-sol"
+    }
+  },
+  {
+    "key": "captions.ai.cost.withPrices",
+    "file": "src/shared/ai/cost.ts",
+    "line": 491,
+    "english": "About US$0.03 (prices of 7 November 2026)",
+    "sample": {
+      "cost": "About US$0.03",
+      "date": "7 November 2026"
+    }
+  },
+  {
+    "key": "captions.ai.cost.withOwnPrices",
+    "file": "src/shared/ai/cost.ts",
+    "line": 491,
+    "english": "About US$0.03 (your prices)",
+    "sample": {
+      "cost": "About US$0.03"
+    }
+  },
+  {
+    "key": "captions.ai.what.yourText",
+    "file": "src/shared/ai/cost.ts",
+    "line": 507,
+    "english": "your text",
+    "sample": {}
+  },
+  {
+    "key": "captions.ai.cost.sentenceLocal",
+    "file": "src/shared/ai/cost.ts",
+    "line": 508,
+    "english": "About 4 minutes; stays on this PC.",
+    "sample": {
+      "time": "About 4 minutes"
+    }
+  },
+  {
+    "key": "captions.ai.cost.sentence",
+    "file": "src/shared/ai/cost.ts",
+    "line": 511,
+    "english": "About US$0.02; sends your captions to OpenAI.",
+    "sample": {
+      "cost": "About US$0.02",
+      "what": "your captions",
+      "where": "OpenAI"
+    }
+  },
+  {
+    "key": "captions.ai.cost.sentenceShotsAnd",
+    "file": "src/shared/ai/cost.ts",
+    "line": 510,
+    "english": [
+      "About US$0.04; sends 0 screenshots and the steps' narration to OpenAI.",
+      "About US$0.04; sends 1 screenshot and the steps' narration to OpenAI.",
+      "About US$0.04; sends 2 screenshots and the steps' narration to OpenAI.",
+      "About US$0.04; sends 1000 screenshots and the steps' narration to OpenAI."
+    ],
+    "sample": [
+      {
+        "count": 0,
+        "n": "0",
+        "cost": "About US$0.04",
+        "what": "the steps' narration",
+        "where": "OpenAI"
+      },
+      {
+        "count": 1,
+        "n": "1",
+        "cost": "About US$0.04",
+        "what": "the steps' narration",
+        "where": "OpenAI"
+      },
+      {
+        "count": 2,
+        "n": "2",
+        "cost": "About US$0.04",
+        "what": "the steps' narration",
+        "where": "OpenAI"
+      },
+      {
+        "count": 1000,
+        "n": "1000",
+        "cost": "About US$0.04",
+        "what": "the steps' narration",
+        "where": "OpenAI"
+      }
+    ]
+  },
+  {
+    "key": "captions.ai.cost.sentenceShots",
+    "file": "src/shared/ai/cost.ts",
+    "line": 510,
+    "english": [
+      "About US$0.04; sends 0 screenshots to OpenAI.",
+      "About US$0.04; sends 1 screenshot to OpenAI.",
+      "About US$0.04; sends 2 screenshots to OpenAI.",
+      "About US$0.04; sends 1000 screenshots to OpenAI."
+    ],
+    "sample": [
+      {
+        "count": 0,
+        "n": "0",
+        "cost": "About US$0.04",
+        "where": "OpenAI"
+      },
+      {
+        "count": 1,
+        "n": "1",
+        "cost": "About US$0.04",
+        "where": "OpenAI"
+      },
+      {
+        "count": 2,
+        "n": "2",
+        "cost": "About US$0.04",
+        "where": "OpenAI"
+      },
+      {
+        "count": 1000,
+        "n": "1000",
+        "cost": "About US$0.04",
+        "where": "OpenAI"
+      }
+    ]
+  },
+  {
+    "key": "captions.ai.confirm.local",
+    "file": "src/shared/ai/cost.ts",
+    "line": 533,
+    "english": "This takes about 12 minutes on this PC. You can keep editing meanwhile. Start?",
+    "sample": {
+      "time": "about 12 minutes"
+    }
+  },
+  {
+    "key": "captions.ai.confirm.start",
+    "file": "src/shared/ai/cost.ts",
+    "line": 533,
+    "english": "Start",
+    "sample": {}
+  },
+  {
+    "key": "captions.ai.confirm.unknown",
+    "file": "src/shared/ai/cost.ts",
+    "line": 534,
+    "english": "Flown does not know what this costs with llama-3.3-70b. Run it?",
+    "sample": {
+      "model": "llama-3.3-70b"
+    }
+  },
+  {
+    "key": "captions.ai.confirm.run",
+    "file": "src/shared/ai/cost.ts",
+    "line": 534,
+    "english": "Run",
+    "sample": {}
+  },
+  {
+    "key": "captions.ai.confirm.upTo",
+    "file": "src/shared/ai/cost.ts",
+    "line": 535,
+    "english": "This costs up to about US$1.20 with gpt-6.1-sol. Run it?",
+    "sample": {
+      "amount": "US$1.20",
+      "model": "gpt-6.1-sol"
+    }
+  },
+  {
+    "key": "captions.ai.usage.used",
+    "file": "src/shared/ai/cost.ts",
+    "line": 546,
+    "english": "It used 12,400 tokens.",
+    "sample": {
+      "tokens": "12,400"
+    }
+  },
+  {
+    "key": "captions.ai.usage.free",
+    "file": "src/shared/ai/cost.ts",
+    "line": 548,
+    "english": "No cost (12,400 tokens).",
+    "sample": {
+      "tokens": "12,400"
+    }
+  },
+  {
+    "key": "captions.ai.usage.underCent",
+    "file": "src/shared/ai/cost.ts",
+    "line": 549,
+    "english": "Cost under US$0.01 (12,400 tokens).",
+    "sample": {
+      "amount": "US$0.01",
+      "tokens": "12,400"
+    }
+  },
+  {
+    "key": "captions.ai.usage.about",
+    "file": "src/shared/ai/cost.ts",
+    "line": 549,
+    "english": "Cost about US$0.03 (12,400 tokens).",
+    "sample": {
+      "amount": "US$0.03",
+      "tokens": "12,400"
+    }
+  },
+  {
+    "key": "captions.studio.position.bottom",
+    "file": "src/renderer/src/editor/panels/CaptionLookSection.tsx",
+    "line": 136,
+    "english": "Bottom",
+    "sample": {}
+  },
+  {
+    "key": "captions.studio.position.middle",
+    "file": "src/renderer/src/editor/panels/CaptionLookSection.tsx",
+    "line": 137,
+    "english": "Middle",
+    "sample": {}
+  },
+  {
+    "key": "captions.studio.position.top",
+    "file": "src/renderer/src/editor/panels/CaptionLookSection.tsx",
+    "line": 138,
+    "english": "Top",
+    "sample": {}
+  },
+  {
+    "key": "common.state.none",
+    "file": "src/renderer/src/editor/panels/CaptionLookSection.tsx",
+    "line": 153,
+    "english": "None",
+    "sample": {}
+  },
+  {
+    "key": "captions.lookSection.background.noneTitle",
+    "file": "src/renderer/src/editor/panels/CaptionLookSection.tsx",
+    "line": 153,
+    "english": "Text with a thin outline",
+    "sample": {}
+  },
+  {
+    "key": "captions.lookSection.background.box",
+    "file": "src/renderer/src/editor/panels/CaptionLookSection.tsx",
+    "line": 154,
+    "english": "Box",
+    "sample": {}
+  },
+  {
+    "key": "captions.lookSection.background.boxTitle",
+    "file": "src/renderer/src/editor/panels/CaptionLookSection.tsx",
+    "line": 154,
+    "english": "A dark box behind each line",
+    "sample": {}
+  },
+  {
+    "key": "captions.lookSection.background.shadow",
+    "file": "src/renderer/src/editor/panels/CaptionLookSection.tsx",
+    "line": 155,
+    "english": "Shadow",
+    "sample": {}
+  },
+  {
+    "key": "captions.lookSection.background.shadowTitle",
+    "file": "src/renderer/src/editor/panels/CaptionLookSection.tsx",
+    "line": 155,
+    "english": "A soft shadow behind the text",
+    "sample": {}
+  },
+  {
+    "key": "captions.lookSection.lines.one",
+    "file": "src/renderer/src/editor/panels/CaptionLookSection.tsx",
+    "line": 166,
+    "english": "One line",
+    "sample": {}
+  },
+  {
+    "key": "captions.lookSection.lines.two",
+    "file": "src/renderer/src/editor/panels/CaptionLookSection.tsx",
+    "line": 167,
+    "english": "Up to two lines",
+    "sample": {}
+  },
+  {
+    "key": "captions.look.picked",
+    "file": "src/renderer/src/editor/panels/CaptionLookSection.tsx",
+    "line": 311,
+    "english": "Caption style: Bold Pop",
+    "sample": {
+      "name": "Bold Pop"
+    }
+  },
+  {
+    "key": "captions.look.savedLook",
+    "file": "src/renderer/src/editor/panels/CaptionLookSection.tsx",
+    "line": 352,
+    "english": "Saved “My style 2” to your styles",
+    "sample": {
+      "name": "My style 2"
+    }
+  },
+  {
+    "key": "captions.look.savedLook",
+    "file": "src/renderer/src/editor/captionCommands.ts",
+    "line": 89,
+    "english": "Saved “My style 2” to your styles",
+    "sample": {
+      "name": "My style 2"
+    }
+  },
+  {
+    "key": "captions.emphasis.added",
+    "file": "src/renderer/src/editor/captionCommands.ts",
+    "line": 52,
+    "english": [
+      "Emphasised 0 words",
+      "Emphasised 1 word",
+      "Emphasised 2 words",
+      "Emphasised 1000 words"
+    ],
+    "sample": [
+      {
+        "count": 0,
+        "n": "0"
+      },
+      {
+        "count": 1,
+        "n": "1"
+      },
+      {
+        "count": 2,
+        "n": "2"
+      },
+      {
+        "count": 1000,
+        "n": "1000"
+      }
+    ]
+  },
+  {
+    "key": "captions.emphasis.noneStoodOut",
+    "file": "src/renderer/src/editor/captionCommands.ts",
+    "line": 52,
+    "english": "No words stood out",
+    "sample": {}
+  },
+  {
+    "key": "captions.cleanup.notice.tidiedBleeped",
+    "file": "src/renderer/src/editor/captionCommands.ts",
+    "line": 80,
+    "english": "Tidied 0 captions, bleeped 2 words",
+    "sample": {
+      "tidied": 0,
+      "t": "0",
+      "bleeped": 2,
+      "b": "2"
+    }
+  },
+  {
+    "key": "captions.cleanup.notice.tidied",
+    "file": "src/renderer/src/editor/captionCommands.ts",
+    "line": 80,
+    "english": [
+      "Tidied 0 captions",
+      "Tidied 1 caption",
+      "Tidied 2 captions",
+      "Tidied 1000 captions"
+    ],
+    "sample": [
+      {
+        "count": 0,
+        "n": "0"
+      },
+      {
+        "count": 1,
+        "n": "1"
+      },
+      {
+        "count": 2,
+        "n": "2"
+      },
+      {
+        "count": 1000,
+        "n": "1000"
+      }
+    ]
+  },
+  {
+    "key": "captions.cleanup.notice.nothing",
+    "file": "src/renderer/src/editor/captionCommands.ts",
+    "line": 80,
+    "english": "Nothing to tidy",
+    "sample": {}
+  },
+  {
+    "key": "editor.notice.noCaptions",
+    "file": "src/renderer/src/editor/captionCommands.ts",
+    "line": 111,
+    "english": "This video has no captions yet: generate them in the Captions tab",
+    "sample": {}
+  },
+  {
+    "key": "captions.great.couldNotFinish",
+    "file": "src/renderer/src/editor/captionsGreat.ts",
+    "line": 52,
+    "english": "Make my captions great could not finish: The AI provider is not reachable.",
+    "sample": {
+      "reason": "The AI provider is not reachable."
+    }
+  },
+  {
+    "key": "captions.studio.script.arabic",
+    "file": "src/renderer/src/editor/panels/StudioControls.tsx",
+    "line": 52,
+    "english": "Arabic",
+    "sample": {}
+  },
+  {
+    "key": "captions.studio.script.urdu",
+    "file": "src/renderer/src/editor/panels/StudioControls.tsx",
+    "line": 52,
+    "english": "Urdu",
+    "sample": {}
+  },
+  {
+    "key": "captions.studio.digits.native.bangla",
+    "file": "src/renderer/src/editor/panels/StudioControls.tsx",
+    "line": 54,
+    "english": "Bangla ০–৯",
+    "sample": {}
+  },
+  {
+    "key": "captions.studio.digits.native.devanagari",
+    "file": "src/renderer/src/editor/panels/StudioControls.tsx",
+    "line": 54,
+    "english": "Devanagari ०–९",
+    "sample": {}
+  },
+  {
+    "key": "captions.studio.digits.native.arabic",
+    "file": "src/renderer/src/editor/panels/StudioControls.tsx",
+    "line": 54,
+    "english": "Arabic ٠–٩",
+    "sample": {}
+  },
+  {
+    "key": "captions.studio.digits.native.urdu",
+    "file": "src/renderer/src/editor/panels/StudioControls.tsx",
+    "line": 54,
+    "english": "Urdu ۰–۹",
+    "sample": {}
+  },
+  {
+    "key": "captions.studio.weight.300",
+    "file": "src/renderer/src/editor/panels/StudioControls.tsx",
+    "line": 142,
+    "english": "Light 300",
+    "sample": {}
+  },
+  {
+    "key": "captions.studio.weight.400",
+    "file": "src/renderer/src/editor/panels/StudioControls.tsx",
+    "line": 142,
+    "english": "Regular 400",
+    "sample": {}
+  },
+  {
+    "key": "captions.studio.weight.500",
+    "file": "src/renderer/src/editor/panels/StudioControls.tsx",
+    "line": 142,
+    "english": "Medium 500",
+    "sample": {}
+  },
+  {
+    "key": "captions.studio.weight.600",
+    "file": "src/renderer/src/editor/panels/StudioControls.tsx",
+    "line": 142,
+    "english": "Semibold 600",
+    "sample": {}
+  },
+  {
+    "key": "captions.studio.weight.700",
+    "file": "src/renderer/src/editor/panels/StudioControls.tsx",
+    "line": 142,
+    "english": "Bold 700",
+    "sample": {}
+  },
+  {
+    "key": "captions.studio.weight.800",
+    "file": "src/renderer/src/editor/panels/StudioControls.tsx",
+    "line": 142,
+    "english": "Extra bold 800",
+    "sample": {}
+  },
+  {
+    "key": "captions.studio.weight.900",
+    "file": "src/renderer/src/editor/panels/StudioControls.tsx",
+    "line": 142,
+    "english": "Black 900",
+    "sample": {}
+  },
+  {
+    "key": "captions.studio.percentOfShorter",
+    "file": "src/renderer/src/editor/panels/StudioControls.tsx",
+    "line": 192,
+    "english": "6.5 percent of the shorter side",
+    "sample": {
+      "n": "6.5"
+    }
+  },
+  {
+    "key": "captions.studio.exitHint",
+    "file": "src/renderer/src/editor/panels/StudioControls.tsx",
+    "line": 623,
+    "english": "Only before a pause: back-to-back captions replace each other.",
+    "sample": {}
+  },
+  {
+    "key": "captions.studio.percentOfWords",
+    "file": "src/renderer/src/editor/panels/StudioControls.tsx",
+    "line": 712,
+    "english": "130 percent of the words",
+    "sample": {
+      "n": "130"
+    }
+  },
+  {
+    "key": "captions.studio.sameAsWords",
+    "file": "src/renderer/src/editor/panels/StudioControls.tsx",
+    "line": 722,
+    "english": "Same as the words",
+    "sample": {}
+  },
+  {
+    "key": "review.polish.skip.noModel",
+    "file": "src/shared/speech/transcriber.ts",
+    "line": 16,
+    "english": "Captions skipped: download a speech model in the Captions tab (free, 60 MB) or add an AI provider.",
+    "sample": {}
+  },
+  {
+    "key": "sound.library.sizeMb",
+    "file": "src/shared/audio/soundFxEdit.ts",
+    "line": 79,
+    "english": "1.0 MB",
+    "sample": {
+      "n": "1.0"
+    }
+  },
+  {
+    "key": "sound.library.sizeMegabytes",
+    "file": "src/shared/audio/soundFxEdit.ts",
+    "line": 79,
+    "english": "1.0 megabytes",
+    "sample": {
+      "n": "1.0"
+    }
+  },
+  {
+    "key": "sound.library.lengthSeconds",
+    "file": "src/shared/audio/soundFxEdit.ts",
+    "line": 66,
+    "english": [
+      "0 seconds",
+      "1 second",
+      "2 seconds",
+      "1000 seconds"
+    ],
+    "sample": [
+      {
+        "count": 0,
+        "s": 0,
+        "sn": "0"
+      },
+      {
+        "count": 1,
+        "s": 1,
+        "sn": "1"
+      },
+      {
+        "count": 2,
+        "s": 2,
+        "sn": "2"
+      },
+      {
+        "count": 1000,
+        "s": 1000,
+        "sn": "1000"
+      }
+    ]
+  },
+  {
+    "key": "sound.library.lengthMinutes",
+    "file": "src/shared/audio/soundFxEdit.ts",
+    "line": 66,
+    "english": "2 minutes",
+    "sample": {
+      "m": 2,
+      "mn": "2"
+    }
+  },
+  {
+    "key": "sound.library.lengthMinutes",
+    "file": "src/shared/audio/soundFxEdit.ts",
+    "line": 66,
+    "english": "1 minute",
+    "sample": {
+      "m": 1,
+      "mn": "1"
+    }
+  },
+  {
+    "key": "sound.library.lengthMinutesSeconds",
+    "file": "src/shared/audio/soundFxEdit.ts",
+    "line": 66,
+    "english": "1 minute 43 seconds",
+    "sample": {
+      "m": 1,
+      "mn": "1",
+      "s": 43,
+      "sn": "43"
+    }
+  },
+  {
+    "key": "sound.library.lengthMinutesSeconds",
+    "file": "src/shared/audio/soundFxEdit.ts",
+    "line": 66,
+    "english": "2 minutes 1 second",
+    "sample": {
+      "m": 2,
+      "mn": "2",
+      "s": 1,
+      "sn": "1"
+    }
+  }
+]

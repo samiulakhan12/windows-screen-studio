@@ -14,6 +14,7 @@ import type { SpeechUnavailable } from '../../shared/api/speech'
 import { VAD_MODEL } from '../../shared/speech/catalog'
 import { readSidecarLine, SIDECAR, type SidecarCpu, type SidecarErrorCode, type SidecarEvent } from '../../shared/speech/protocol'
 import type { ProjectProcesses } from '../projectProcesses'
+import { t } from '../../shared/i18n/t'
 
 /** Timings of a run, ms. */
 export const SPEECH_TIMING = {
@@ -190,12 +191,13 @@ async function probe(exe: string): Promise<{ cpu: SidecarCpu } | { error: Speech
   if (exit.kind === 'crash' && exit.illegalInstruction) return { error: 'cpu', detail: exit.detail }
   if (exit.kind === 'ok' && cpu) return { cpu }
   const why = exit.kind === 'crash' || exit.kind === 'protocol' ? exit.detail : exit.kind === 'error' ? exit.message : exit.kind
-  return { error: 'failed', detail: `The speech helper's check failed (${why}). ${run.stderr().trim().split('\n').pop() ?? ''}`.trim() }
+  const said = run.stderr().trim().split('\n').pop()?.trim() ?? ''
+  return { error: 'failed', detail: said ? t('errors.speechHelper.checkFailedSaying', { why, said }) : t('errors.speechHelper.checkFailed', { why }) }
 }
 
 async function choose(): Promise<HelperChoice> {
   const paths = speechHelperPaths()
-  if (!paths) return { error: 'missing', detail: 'The speech helper is not part of this build.' }
+  if (!paths) return { error: 'missing', detail: t('errors.speechHelper.missing') }
   if (!paths.compatible) {
     // Development: the one host build (or a test override), checked by running its probe.
     const r = await probe(paths.standard)
@@ -217,7 +219,7 @@ export async function selectHelper(): Promise<HelperChoice> {
     if (choice.build === 'compatible') return choice
     const paths = speechHelperPaths()
     if (choice.build === 'standard' && paths?.compatible) return { exe: paths.compatible, build: 'compatible' }
-    return { error: 'cpu', detail: 'The speech helper stopped on an instruction this processor does not have.' }
+    return { error: 'cpu', detail: t('errors.speechHelper.cpu') }
   }
   return choice
 }
@@ -281,11 +283,11 @@ export class LineSplitter {
   /** Feeds a chunk; returns a reason when a cap was passed (nothing more should be fed). */
   push(chunk: Buffer): string | null {
     this.total += chunk.length
-    if (this.total > this.totalMax) return `more than ${this.totalMax} bytes of output`
+    if (this.total > this.totalMax) return t('errors.speechHelper.tooMuchOutput', { bytes: String(this.totalMax) })
     let start = 0
     for (let i = chunk.indexOf(10); i >= 0; i = chunk.indexOf(10, start)) {
       const piece = chunk.subarray(start, i)
-      if (this.pending + piece.length > this.lineMax) return `a line longer than ${this.lineMax} bytes`
+      if (this.pending + piece.length > this.lineMax) return t('errors.speechHelper.lineTooLong', { bytes: String(this.lineMax) })
       this.parts.push(piece)
       const line = Buffer.concat(this.parts).toString('utf8').replace(/\r$/, '')
       this.parts = []
@@ -294,7 +296,7 @@ export class LineSplitter {
       if (line.trim()) this.onLine(line)
     }
     const rest = chunk.subarray(start)
-    if (this.pending + rest.length > this.lineMax) return `a line longer than ${this.lineMax} bytes`
+    if (this.pending + rest.length > this.lineMax) return t('errors.speechHelper.lineTooLong', { bytes: String(this.lineMax) })
     if (rest.length) {
       this.parts.push(Buffer.from(rest))
       this.pending += rest.length
@@ -461,12 +463,12 @@ export function runHelper(exe: string, args: readonly string[], opts: RunOptions
 export function classifyExit(code: number | null, signal: NodeJS.Signals | null, lastError: { code: SidecarErrorCode; message: string } | null, cancelled: { doneUntil: number } | null): SpeechExit {
   // Windows reports NTSTATUS codes as unsigned exit codes; Node may give them signed.
   const unsigned = code === null ? null : code >>> 0
-  if (signal === 'SIGILL' || unsigned === STATUS_ILLEGAL_INSTRUCTION) return { kind: 'crash', illegalInstruction: true, detail: signal ?? `exit code 0x${unsigned!.toString(16).toUpperCase()}` }
-  if (signal) return { kind: 'crash', illegalInstruction: false, detail: `signal ${signal}` }
+  if (signal === 'SIGILL' || unsigned === STATUS_ILLEGAL_INSTRUCTION) return { kind: 'crash', illegalInstruction: true, detail: signal ?? t('errors.speechHelper.exitCode', { code: `0x${unsigned!.toString(16).toUpperCase()}` }) }
+  if (signal) return { kind: 'crash', illegalInstruction: false, detail: t('errors.speechHelper.signal', { signal }) }
   if (code === SIDECAR.exit.ok) return { kind: 'ok' }
   if (code === SIDECAR.exit.cancelled && cancelled) return { kind: 'cancelled', doneUntil: cancelled.doneUntil }
   if (code === SIDECAR.exit.error && lastError) return { kind: 'error', code: lastError.code, message: lastError.message }
-  return { kind: 'crash', illegalInstruction: false, detail: unsigned !== null && unsigned > 0xffff ? `exit code 0x${unsigned.toString(16).toUpperCase()}` : `exit code ${code}` }
+  return { kind: 'crash', illegalInstruction: false, detail: t('errors.speechHelper.exitCode', { code: unsigned !== null && unsigned > 0xffff ? `0x${unsigned.toString(16).toUpperCase()}` : String(code) }) }
 }
 
 /** Kills every helper at once (the app is quitting). */
