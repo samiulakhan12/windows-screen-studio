@@ -20,6 +20,8 @@ import { BUNDLED_PRICE_LIST, priceOf, type PriceEntry, type PriceList } from './
 import { blendedRatio, countWords, estimateTokens, imageTokens, jpegSize, tokenFamily, tokenRatio, type TokenFamily } from './tokens'
 import { usageKey, type UsageRatios } from './usageKey'
 import { fmt } from '../i18n/fmt'
+import { formatLocale, t, uiLanguage } from '../i18n/t'
+import { dayText } from './modelList'
 import type { ConfirmPref } from '../smart/smartPrefs'
 
 export type { ConfirmPref } from '../smart/smartPrefs'
@@ -402,29 +404,31 @@ export function estimateTranscription(seconds: number, target: { kind: AiProvide
 
 /* ---------- words ---------- */
 
-const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
+/** "7 November 2026" for '2026-11-07' (the day, the month's name and the year in the UI language). */
+export const priceDate = (updated: string): string => dayText(updated)
 
-/** "7 November 2026" for '2026-11-07'. */
-export function priceDate(updated: string): string {
-  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(updated)
-  return m ? `${Number(m[3])} ${MONTHS[Number(m[2]) - 1]} ${m[1]}` : updated
-}
-
-/** US$ amounts as the line writes them: cents below US$100, whole dollars above. */
+/** US$ amounts as the line writes them: cents below US$100, whole dollars above (English); the format locale's currency otherwise (§11.3). */
 export function usd(amount: number): string {
-  if (amount >= 100) return `US$${Math.round(amount).toLocaleString('en-US')}`
+  const whole = amount >= 100
+  if (uiLanguage() !== 'en') return new Intl.NumberFormat(formatLocale(), { style: 'currency', currency: 'USD', minimumFractionDigits: whole ? 0 : 2, maximumFractionDigits: whole ? 0 : 2 }).format(whole ? Math.round(amount) : amount)
+  if (whole) return `US$${Math.round(amount).toLocaleString('en-US')}`
   return `US$${amount.toFixed(2)}`
 }
 
-/** "about 40 seconds", "about 4 minutes", "about 2 hours". */
-export function aboutTime(seconds: number): string {
-  if (seconds < 60) return `about ${Math.max(10, Math.round(seconds / 10) * 10)} seconds`
-  if (seconds < 90 * 60) {
-    const m = Math.max(1, Math.round(seconds / 60))
-    return `about ${m} ${m === 1 ? 'minute' : 'minutes'}`
-  }
-  const h = Math.round(seconds / 3600)
-  return `about ${h} ${h === 1 ? 'hour' : 'hours'}`
+/** A time as aboutTime gives it: the message's number and which unit. */
+function timeOf(seconds: number): { key: 'seconds' | 'minutes' | 'hours'; n: number } {
+  if (seconds < 60) return { key: 'seconds', n: Math.max(10, Math.round(seconds / 10) * 10) }
+  if (seconds < 90 * 60) return { key: 'minutes', n: Math.max(1, Math.round(seconds / 60)) }
+  return { key: 'hours', n: Math.round(seconds / 3600) }
+}
+
+/** "about 40 seconds", "about 4 minutes", "about 2 hours"; `start`: as a sentence starts it ("About 4 minutes"). */
+export function aboutTime(seconds: number, start = false): string {
+  const { key, n } = timeOf(seconds)
+  const values = { count: n, n: fmt.count(n) }
+  if (key === 'seconds') return t(start ? 'captions.ai.cost.time.secondsStart' : 'captions.ai.cost.time.seconds', values)
+  if (key === 'minutes') return t(start ? 'captions.ai.cost.time.minutesStart' : 'captions.ai.cost.time.minutes', values)
+  return t(start ? 'captions.ai.cost.time.hoursStart' : 'captions.ai.cost.time.hours', values)
 }
 
 /** "about 8,200": two significant figures from a thousand, tens from a hundred. */
@@ -433,33 +437,36 @@ export function aboutCount(n: number): string {
   return fmt.count(r, { grouping: true })
 }
 
-const cap = (s: string): string => (s ? s[0].toUpperCase() + s.slice(1) : s)
-
-/** "1 screenshot", "12 screenshots" (§5.3.1). */
-const screenshots = (n: number): string => `${n} ${n === 1 ? 'screenshot' : 'screenshots'}`
-
 /**
  * One action's cost in the line (§11.5's table): "under US$0.01", "about US$0.03", "US$0.02 to
  * US$0.05", "cost unknown", "no cost", or on this PC "about 4 minutes". An unknown price never reads
- * "under US$0.01".
+ * "under US$0.01". `start`: as a sentence starts it ("About US$0.03").
  */
-export function costPart(estimate: CostEstimate): string {
-  if (estimate.seconds) return aboutTime(estimate.seconds[1])
+export function costPart(estimate: CostEstimate, start = false): string {
+  if (estimate.seconds) return aboutTime(estimate.seconds[1], start)
   const u = estimate.usd
-  if (!u) return 'cost unknown'
-  if (u[1] <= 0) return 'no cost'
-  if (u[1] < 0.01) return 'under US$0.01'
-  if (u[1] < 2 * u[0]) return `about ${usd((u[0] + u[1]) / 2)}`
-  return u[0] < 0.005 ? `up to ${usd(u[1])}` : `${usd(u[0])} to ${usd(u[1])}`
+  if (!u) return t(start ? 'captions.ai.cost.part.unknownStart' : 'captions.ai.cost.part.unknown')
+  if (u[1] <= 0) return t(start ? 'captions.ai.cost.part.noneStart' : 'captions.ai.cost.part.none')
+  if (u[1] < 0.01) return t(start ? 'captions.ai.cost.part.underCentStart' : 'captions.ai.cost.part.underCent', { amount: usd(0.01) })
+  if (u[1] < 2 * u[0]) return t(start ? 'captions.ai.cost.part.aboutStart' : 'captions.ai.cost.part.about', { amount: usd((u[0] + u[1]) / 2) })
+  if (u[0] < 0.005) return t(start ? 'captions.ai.cost.part.upToStart' : 'captions.ai.cost.part.upTo', { amount: usd(u[1]) })
+  return t('captions.ai.cost.part.range', { low: usd(u[0]), high: usd(u[1]) })
 }
 
-/** Why a cost is unknown, after "Cost unknown for <model>". */
-const unknownWhy = (e: CostEstimate): string => (e.unknown === 'varies' ? 'it picks a model for each request' : 'add its prices in Settings')
+/** "Cost unknown for <model>: <why>" (the model is left out when there is none). */
+function unknownTail(e: CostEstimate, model: string): string {
+  const varies = e.unknown === 'varies'
+  if (model) return t(varies ? 'captions.ai.cost.unknownVariesFor' : 'captions.ai.cost.unknownPricesFor', { model })
+  return t(varies ? 'captions.ai.cost.unknownVaries' : 'captions.ai.cost.unknownPrices')
+}
 
-/** Where a known price comes from, in the full line's brackets. */
-function priceSource(e: CostEstimate): string {
-  if (!e.price) return ''
-  return e.price.updated ? `prices of ${priceDate(e.price.updated)}` : 'your prices'
+/** What is sent, in the head of the line: "Sends about 8,200 words of captions to OpenAI". */
+function sendsHead(words: number, pictures: number, what: string, where: string): string {
+  const shots = { count: pictures, n: fmt.count(pictures) }
+  const about = aboutCount(words)
+  if (pictures) return words ? t('captions.ai.cost.sendsShotsWords', { ...shots, words: about, where }) : t('captions.ai.cost.sendsShots', { ...shots, where })
+  if (words) return what ? t('captions.ai.cost.sendsWordsOf', { words: about, what, where }) : t('captions.ai.cost.sendsWords', { words: about, where })
+  return what ? t('captions.ai.cost.sends', { what, where }) : t('captions.ai.cost.sendsIt', { where })
 }
 
 /**
@@ -474,28 +481,32 @@ export function costLineText(estimates: readonly { label: string; estimate: Cost
   const local = estimates.some((e) => e.estimate.seconds)
   const words = Math.max(0, ...estimates.map((e) => e.estimate.words))
   const pictures = Math.max(0, ...estimates.map((e) => e.estimate.pictures))
-  // With pictures (§5.3.1): "12 screenshots and about 300 words", or the screenshots alone when nothing was said.
-  const said = words ? `about ${aboutCount(words)} words${what && !pictures ? ` of ${what}` : ''}` : pictures ? '' : what || 'it'
-  const sent = [pictures ? screenshots(pictures) : '', said].filter(Boolean).join(' and ')
-  const head = local ? 'Stays on this PC' : `Sends ${sent} to ${where}`
+  const head = local ? t('captions.ai.cost.local') : sendsHead(words, pictures, what, where)
   const all = estimates.map((e) => e.estimate)
+  const item = (label: string, cost: string): string => t('captions.ai.cost.item', { label, cost })
   let tail: string
   if (full || estimates.length === 1) {
     const e = all[0]
     const label = estimates[0].label
-    if (e.seconds) tail = full ? cap(aboutTime(e.seconds[1])) : `${label} ${aboutTime(e.seconds[1])}`
-    else if (!e.usd) tail = `Cost unknown${model ? ` for ${model}` : ''}: ${unknownWhy(e)}`
-    else if (e.usd[1] <= 0) tail = 'No cost'
+    if (e.seconds) tail = full ? aboutTime(e.seconds[1], true) : item(label, aboutTime(e.seconds[1]))
+    else if (!e.usd) tail = unknownTail(e, model)
+    else if (e.usd[1] <= 0) tail = t('captions.ai.cost.part.noneStart')
     else if (full) {
-      const bracket = [model, priceSource(e)].filter(Boolean).join(', ')
-      tail = `${cap(costPart(e))}${bracket ? ` (${bracket})` : ''}`
-    } else tail = `${label} ${costPart(e)}`
+      const date = e.price ? (e.price.updated ? priceDate(e.price.updated) : null) : undefined
+      const cost = costPart(e, true)
+      if (model && date) tail = t('captions.ai.cost.withModelPrices', { cost, model, date })
+      else if (model && date === null) tail = t('captions.ai.cost.withModelOwnPrices', { cost, model })
+      else if (model) tail = t('captions.ai.cost.withModel', { cost, model })
+      else if (date) tail = t('captions.ai.cost.withPrices', { cost, date })
+      else if (date === null) tail = t('captions.ai.cost.withOwnPrices', { cost })
+      else tail = cost
+    } else tail = item(label, costPart(e))
   } else if (all.every((e) => !e.seconds && !e.usd)) {
-    tail = `Cost unknown${model ? ` for ${model}` : ''}: ${unknownWhy(all[0])}`
+    tail = unknownTail(all[0], model)
   } else if (all.every((e) => !e.seconds && e.usd && e.usd[1] <= 0)) {
-    tail = 'No cost'
+    tail = t('captions.ai.cost.part.noneStart')
   } else {
-    tail = estimates.map((e) => `${e.label} ${costPart(e.estimate)}`).join(' · ')
+    tail = estimates.map((e) => item(e.label, costPart(e.estimate))).join(' · ')
   }
   return `${head} · ${tail}`
 }
@@ -504,11 +515,15 @@ export function costLineText(estimates: readonly { label: string; estimate: Cost
  * The short sentence a button's aria-describedby reads (§11.5): "About US$0.02; sends your captions
  * to OpenAI." / "About 4 minutes; stays on this PC."
  */
-export function costSentence(estimate: CostEstimate, where: string, what = 'your text'): string {
-  if (estimate.seconds) return `${cap(aboutTime(estimate.seconds[1]))}; stays on this PC.`
+export function costSentence(estimate: CostEstimate, where: string, what = t('captions.ai.what.yourText')): string {
+  if (estimate.seconds) return t('captions.ai.cost.sentenceLocal', { time: aboutTime(estimate.seconds[1], true) })
+  const cost = costPart(estimate, true)
   // With pictures (§5.3.1): "About US$0.04; sends 12 screenshots and the steps' narration to OpenAI."
-  const sent = estimate.pictures ? `${screenshots(estimate.pictures)}${estimate.words ? ` and ${what}` : ''}` : what
-  return `${cap(costPart(estimate))}; sends ${sent} to ${where}.`
+  if (estimate.pictures) {
+    const shots = { count: estimate.pictures, n: fmt.count(estimate.pictures) }
+    return estimate.words ? t('captions.ai.cost.sentenceShotsAnd', { ...shots, cost, what, where }) : t('captions.ai.cost.sentenceShots', { ...shots, cost, where })
+  }
+  return t('captions.ai.cost.sentence', { cost, what, where })
 }
 
 /** The amount `pref` asks above, US$: null for 'never', 0 for 'always' (every paid run). */
@@ -530,9 +545,9 @@ export function needsConfirm(estimate: CostEstimate, pref: ConfirmPref, askedUnk
 
 /** The question a confirm asks (§2.7). */
 export function confirmText(estimate: CostEstimate, model: string): { text: string; action: string } {
-  if (estimate.seconds) return { text: `This takes ${aboutTime(estimate.seconds[1])} on this PC. You can keep editing meanwhile. Start?`, action: 'Start' }
-  if (!estimate.usd) return { text: `Flown does not know what this costs with ${model}. Run it?`, action: 'Run' }
-  return { text: `This costs up to about ${usd(estimate.usd[1])} with ${model}. Run it?`, action: 'Run' }
+  if (estimate.seconds) return { text: t('captions.ai.confirm.local', { time: aboutTime(estimate.seconds[1]) }), action: t('captions.ai.confirm.start') }
+  if (!estimate.usd) return { text: t('captions.ai.confirm.unknown', { model }), action: t('captions.ai.confirm.run') }
+  return { text: t('captions.ai.confirm.upTo', { amount: usd(estimate.usd[1]), model }), action: t('captions.ai.confirm.run') }
 }
 
 /**
@@ -541,12 +556,12 @@ export function confirmText(estimate: CostEstimate, model: string): { text: stri
  */
 export function usageText(usage: AiUsage | null | undefined, price: CostEstimate['price'] | null | undefined): string {
   if (!usage || !(usage.input >= 0) || !(usage.output >= 0)) return ''
-  const tokens = `${fmt.count(Math.round(usage.input + usage.output), { grouping: true })} tokens`
+  const tokens = fmt.count(Math.round(usage.input + usage.output), { grouping: true })
   const r = price ? rates(price.entry as PriceEntry) : null
-  if (!r) return `It used ${tokens}.`
+  if (!r) return t('captions.ai.usage.used', { tokens })
   const cost = (usage.input * r.input + usage.output * r.output) / 1e6
-  if (cost <= 0) return `No cost (${tokens}).`
-  return `Cost ${cost < 0.01 ? 'under US$0.01' : `about ${usd(cost)}`} (${tokens}).`
+  if (cost <= 0) return t('captions.ai.usage.free', { tokens })
+  return cost < 0.01 ? t('captions.ai.usage.underCent', { amount: usd(0.01), tokens }) : t('captions.ai.usage.about', { amount: usd(cost), tokens })
 }
 
 /** Several actions run at once (Write all): their requests, tokens, cost and time added up; unknown when any is. */

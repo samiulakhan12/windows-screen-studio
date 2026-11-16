@@ -3996,5 +3996,686 @@
     "line": 452,
     "english": "How far the music dips while you talk or your PC plays sound.",
     "sample": {}
+  },
+  {
+    "key": "settings.ai.canTranscribeDo",
+    "file": "src/renderer/src/settings/providerText.ts",
+    "line": 9,
+    "english": "Transcription (auto captions), clean-up, translation, chapters, titles and summaries",
+    "sample": {}
+  },
+  {
+    "key": "settings.ai.serviceCanDo",
+    "file": "src/renderer/src/settings/providerText.ts",
+    "line": 10,
+    "english": "Clean-up, translation, chapters, titles and summaries of a transcript",
+    "sample": {}
+  },
+  {
+    "key": "errors.serviceStore.model",
+    "file": "src/renderer/src/settings/ProviderForm.tsx",
+    "line": 215,
+    "english": "Enter the model's name.",
+    "sample": {}
+  },
+  {
+    "key": "captions.ai.cost.time.seconds",
+    "file": "src/shared/ai/cost.ts",
+    "line": 421,
+    "english": [
+      "about 0 seconds",
+      "about 1 seconds",
+      "about 2 seconds",
+      "about 1000 seconds"
+    ],
+    "sample": [
+      {
+        "count": 0,
+        "n": "0"
+      },
+      {
+        "count": 1,
+        "n": "1"
+      },
+      {
+        "count": 2,
+        "n": "2"
+      },
+      {
+        "count": 1000,
+        "n": "1000"
+      }
+    ]
+  },
+  {
+    "key": "captions.ai.cost.time.secondsStart",
+    "file": "src/shared/ai/cost.ts",
+    "line": 421,
+    "english": [
+      "About 0 seconds",
+      "About 1 seconds",
+      "About 2 seconds",
+      "About 1000 seconds"
+    ],
+    "sample": [
+      {
+        "count": 0,
+        "n": "0"
+      },
+      {
+        "count": 1,
+        "n": "1"
+      },
+      {
+        "count": 2,
+        "n": "2"
+      },
+      {
+        "count": 1000,
+        "n": "1000"
+      }
+    ]
+  },
+  {
+    "key": "captions.ai.cost.time.minutes",
+    "file": "src/shared/ai/cost.ts",
+    "line": 424,
+    "english": [
+      "about 0 minutes",
+      "about 1 minute",
+      "about 2 minutes",
+      "about 1000 minutes"
+    ],
+    "sample": [
+      {
+        "count": 0,
+        "n": "0"
+      },
+      {
+        "count": 1,
+        "n": "1"
+      },
+      {
+        "count": 2,
+        "n": "2"
+      },
+      {
+        "count": 1000,
+        "n": "1000"
+      }
+    ]
+  },
+  {
+    "key": "captions.ai.cost.time.minutesStart",
+    "file": "src/shared/ai/cost.ts",
+    "line": 424,
+    "english": [
+      "About 0 minutes",
+      "About 1 minute",
+      "About 2 minutes",
+      "About 1000 minutes"
+    ],
+    "sample": [
+      {
+        "count": 0,
+        "n": "0"
+      },
+      {
+        "count": 1,
+        "n": "1"
+      },
+      {
+        "count": 2,
+        "n": "2"
+      },
+      {
+        "count": 1000,
+        "n": "1000"
+      }
+    ]
+  },
+  {
+    "key": "captions.ai.cost.time.hours",
+    "file": "src/shared/ai/cost.ts",
+    "line": 427,
+    "english": [
+      "about 0 hours",
+      "about 1 hour",
+      "about 2 hours",
+      "about 1000 hours"
+    ],
+    "sample": [
+      {
+        "count": 0,
+        "n": "0"
+      },
+      {
+        "count": 1,
+        "n": "1"
+      },
+      {
+        "count": 2,
+        "n": "2"
+      },
+      {
+        "count": 1000,
+        "n": "1000"
+      }
+    ]
+  },
+  {
+    "key": "captions.ai.cost.time.hoursStart",
+    "file": "src/shared/ai/cost.ts",
+    "line": 427,
+    "english": [
+      "About 0 hours",
+      "About 1 hour",
+      "About 2 hours",
+      "About 1000 hours"
+    ],
+    "sample": [
+      {
+        "count": 0,
+        "n": "0"
+      },
+      {
+        "count": 1,
+        "n": "1"
+      },
+      {
+        "count": 2,
+        "n": "2"
+      },
+      {
+        "count": 1000,
+        "n": "1000"
+      }
+    ]
+  },
+  {
+    "key": "captions.ai.cost.part.unknown",
+    "file": "src/shared/ai/cost.ts",
+    "line": 452,
+    "english": "cost unknown",
+    "sample": {}
+  },
+  {
+    "key": "captions.ai.cost.part.unknownStart",
+    "file": "src/shared/ai/cost.ts",
+    "line": 452,
+    "english": "Cost unknown",
+    "sample": {}
+  },
+  {
+    "key": "captions.ai.cost.part.none",
+    "file": "src/shared/ai/cost.ts",
+    "line": 453,
+    "english": "no cost",
+    "sample": {}
+  },
+  {
+    "key": "captions.ai.cost.part.noneStart",
+    "file": "src/shared/ai/cost.ts",
+    "line": 488,
+    "english": "No cost",
+    "sample": {}
+  },
+  {
+    "key": "captions.ai.cost.part.underCent",
+    "file": "src/shared/ai/cost.ts",
+    "line": 454,
+    "english": "under US$0.01",
+    "sample": {
+      "amount": "US$0.01"
+    }
+  },
+  {
+    "key": "captions.ai.cost.part.underCentStart",
+    "file": "src/shared/ai/cost.ts",
+    "line": 454,
+    "english": "Under US$0.01",
+    "sample": {
+      "amount": "US$0.01"
+    }
+  },
+  {
+    "key": "captions.ai.cost.part.about",
+    "file": "src/shared/ai/cost.ts",
+    "line": 455,
+    "english": "about US$0.03",
+    "sample": {
+      "amount": "US$0.03"
+    }
+  },
+  {
+    "key": "captions.ai.cost.part.aboutStart",
+    "file": "src/shared/ai/cost.ts",
+    "line": 455,
+    "english": "About US$0.03",
+    "sample": {
+      "amount": "US$0.03"
+    }
+  },
+  {
+    "key": "captions.ai.cost.part.upTo",
+    "file": "src/shared/ai/cost.ts",
+    "line": 456,
+    "english": "up to US$0.05",
+    "sample": {
+      "amount": "US$0.05"
+    }
+  },
+  {
+    "key": "captions.ai.cost.part.upToStart",
+    "file": "src/shared/ai/cost.ts",
+    "line": 456,
+    "english": "Up to US$0.05",
+    "sample": {
+      "amount": "US$0.05"
+    }
+  },
+  {
+    "key": "captions.ai.cost.part.range",
+    "file": "src/shared/ai/cost.ts",
+    "line": 456,
+    "english": "US$0.02 to US$0.05",
+    "sample": {
+      "low": "US$0.02",
+      "high": "US$0.05"
+    }
+  },
+  {
+    "key": "captions.ai.cost.unknownVariesFor",
+    "file": "src/shared/ai/cost.ts",
+    "line": 487,
+    "english": "Cost unknown for openrouter/auto: it picks a model for each request",
+    "sample": {
+      "model": "openrouter/auto"
+    }
+  },
+  {
+    "key": "captions.ai.cost.unknownPricesFor",
+    "file": "src/shared/ai/cost.ts",
+    "line": 487,
+    "english": "Cost unknown for llama-3.3-70b: add its prices in Settings",
+    "sample": {
+      "model": "llama-3.3-70b"
+    }
+  },
+  {
+    "key": "captions.ai.cost.unknownVaries",
+    "file": "src/shared/ai/cost.ts",
+    "line": 487,
+    "english": "Cost unknown: it picks a model for each request",
+    "sample": {}
+  },
+  {
+    "key": "captions.ai.cost.unknownPrices",
+    "file": "src/shared/ai/cost.ts",
+    "line": 487,
+    "english": "Cost unknown: add its prices in Settings",
+    "sample": {}
+  },
+  {
+    "key": "captions.ai.cost.sendsShotsWords",
+    "file": "src/shared/ai/cost.ts",
+    "line": 478,
+    "english": [
+      "Sends 0 screenshots and about 300 words to OpenAI",
+      "Sends 1 screenshot and about 300 words to OpenAI",
+      "Sends 2 screenshots and about 300 words to OpenAI",
+      "Sends 1000 screenshots and about 300 words to OpenAI"
+    ],
+    "sample": [
+      {
+        "count": 0,
+        "n": "0",
+        "words": "300",
+        "where": "OpenAI"
+      },
+      {
+        "count": 1,
+        "n": "1",
+        "words": "300",
+        "where": "OpenAI"
+      },
+      {
+        "count": 2,
+        "n": "2",
+        "words": "300",
+        "where": "OpenAI"
+      },
+      {
+        "count": 1000,
+        "n": "1000",
+        "words": "300",
+        "where": "OpenAI"
+      }
+    ]
+  },
+  {
+    "key": "captions.ai.cost.sendsShots",
+    "file": "src/shared/ai/cost.ts",
+    "line": 478,
+    "english": [
+      "Sends 0 screenshots to OpenAI",
+      "Sends 1 screenshot to OpenAI",
+      "Sends 2 screenshots to OpenAI",
+      "Sends 1000 screenshots to OpenAI"
+    ],
+    "sample": [
+      {
+        "count": 0,
+        "n": "0",
+        "where": "OpenAI"
+      },
+      {
+        "count": 1,
+        "n": "1",
+        "where": "OpenAI"
+      },
+      {
+        "count": 2,
+        "n": "2",
+        "where": "OpenAI"
+      },
+      {
+        "count": 1000,
+        "n": "1000",
+        "where": "OpenAI"
+      }
+    ]
+  },
+  {
+    "key": "captions.ai.cost.sendsWordsOf",
+    "file": "src/shared/ai/cost.ts",
+    "line": 478,
+    "english": "Sends about 8,200 words of captions to OpenAI",
+    "sample": {
+      "words": "8,200",
+      "what": "captions",
+      "where": "OpenAI"
+    }
+  },
+  {
+    "key": "captions.ai.cost.sendsWords",
+    "file": "src/shared/ai/cost.ts",
+    "line": 478,
+    "english": "Sends about 8,200 words to OpenAI",
+    "sample": {
+      "words": "8,200",
+      "where": "OpenAI"
+    }
+  },
+  {
+    "key": "captions.ai.cost.sends",
+    "file": "src/shared/ai/cost.ts",
+    "line": 480,
+    "english": "Sends captions to OpenAI",
+    "sample": {
+      "what": "captions",
+      "where": "OpenAI"
+    }
+  },
+  {
+    "key": "captions.ai.cost.sendsIt",
+    "file": "src/shared/ai/cost.ts",
+    "line": 480,
+    "english": "Sends it to OpenAI",
+    "sample": {
+      "where": "OpenAI"
+    }
+  },
+  {
+    "key": "captions.ai.cost.local",
+    "file": "src/shared/ai/cost.ts",
+    "line": 480,
+    "english": "Stays on this PC",
+    "sample": {}
+  },
+  {
+    "key": "captions.ai.cost.item",
+    "file": "src/shared/ai/cost.ts",
+    "line": 491,
+    "english": "Chapters about US$0.02",
+    "sample": {
+      "label": "Chapters",
+      "cost": "about US$0.02"
+    }
+  },
+  {
+    "key": "captions.ai.cost.withModelPrices",
+    "file": "src/shared/ai/cost.ts",
+    "line": 491,
+    "english": "About US$0.03 (gpt-6.1-sol, prices of 7 November 2026)",
+    "sample": {
+      "cost": "About US$0.03",
+      "model": "gpt-6.1-sol",
+      "date": "7 November 2026"
+    }
+  },
+  {
+    "key": "captions.ai.cost.withModelOwnPrices",
+    "file": "src/shared/ai/cost.ts",
+    "line": 491,
+    "english": "About US$0.03 (my-model, your prices)",
+    "sample": {
+      "cost": "About US$0.03",
+      "model": "my-model"
+    }
+  },
+  {
+    "key": "captions.ai.cost.withModel",
+    "file": "src/shared/ai/cost.ts",
+    "line": 491,
+    "english": "About US$0.03 (gpt-6.1-sol)",
+    "sample": {
+      "cost": "About US$0.03",
+      "model": "gpt-6.1-sol"
+    }
+  },
+  {
+    "key": "captions.ai.cost.withPrices",
+    "file": "src/shared/ai/cost.ts",
+    "line": 491,
+    "english": "About US$0.03 (prices of 7 November 2026)",
+    "sample": {
+      "cost": "About US$0.03",
+      "date": "7 November 2026"
+    }
+  },
+  {
+    "key": "captions.ai.cost.withOwnPrices",
+    "file": "src/shared/ai/cost.ts",
+    "line": 491,
+    "english": "About US$0.03 (your prices)",
+    "sample": {
+      "cost": "About US$0.03"
+    }
+  },
+  {
+    "key": "captions.ai.what.yourText",
+    "file": "src/shared/ai/cost.ts",
+    "line": 507,
+    "english": "your text",
+    "sample": {}
+  },
+  {
+    "key": "captions.ai.cost.sentenceLocal",
+    "file": "src/shared/ai/cost.ts",
+    "line": 508,
+    "english": "About 4 minutes; stays on this PC.",
+    "sample": {
+      "time": "About 4 minutes"
+    }
+  },
+  {
+    "key": "captions.ai.cost.sentence",
+    "file": "src/shared/ai/cost.ts",
+    "line": 511,
+    "english": "About US$0.02; sends your captions to OpenAI.",
+    "sample": {
+      "cost": "About US$0.02",
+      "what": "your captions",
+      "where": "OpenAI"
+    }
+  },
+  {
+    "key": "captions.ai.cost.sentenceShotsAnd",
+    "file": "src/shared/ai/cost.ts",
+    "line": 510,
+    "english": [
+      "About US$0.04; sends 0 screenshots and the steps' narration to OpenAI.",
+      "About US$0.04; sends 1 screenshot and the steps' narration to OpenAI.",
+      "About US$0.04; sends 2 screenshots and the steps' narration to OpenAI.",
+      "About US$0.04; sends 1000 screenshots and the steps' narration to OpenAI."
+    ],
+    "sample": [
+      {
+        "count": 0,
+        "n": "0",
+        "cost": "About US$0.04",
+        "what": "the steps' narration",
+        "where": "OpenAI"
+      },
+      {
+        "count": 1,
+        "n": "1",
+        "cost": "About US$0.04",
+        "what": "the steps' narration",
+        "where": "OpenAI"
+      },
+      {
+        "count": 2,
+        "n": "2",
+        "cost": "About US$0.04",
+        "what": "the steps' narration",
+        "where": "OpenAI"
+      },
+      {
+        "count": 1000,
+        "n": "1000",
+        "cost": "About US$0.04",
+        "what": "the steps' narration",
+        "where": "OpenAI"
+      }
+    ]
+  },
+  {
+    "key": "captions.ai.cost.sentenceShots",
+    "file": "src/shared/ai/cost.ts",
+    "line": 510,
+    "english": [
+      "About US$0.04; sends 0 screenshots to OpenAI.",
+      "About US$0.04; sends 1 screenshot to OpenAI.",
+      "About US$0.04; sends 2 screenshots to OpenAI.",
+      "About US$0.04; sends 1000 screenshots to OpenAI."
+    ],
+    "sample": [
+      {
+        "count": 0,
+        "n": "0",
+        "cost": "About US$0.04",
+        "where": "OpenAI"
+      },
+      {
+        "count": 1,
+        "n": "1",
+        "cost": "About US$0.04",
+        "where": "OpenAI"
+      },
+      {
+        "count": 2,
+        "n": "2",
+        "cost": "About US$0.04",
+        "where": "OpenAI"
+      },
+      {
+        "count": 1000,
+        "n": "1000",
+        "cost": "About US$0.04",
+        "where": "OpenAI"
+      }
+    ]
+  },
+  {
+    "key": "captions.ai.confirm.local",
+    "file": "src/shared/ai/cost.ts",
+    "line": 533,
+    "english": "This takes about 12 minutes on this PC. You can keep editing meanwhile. Start?",
+    "sample": {
+      "time": "about 12 minutes"
+    }
+  },
+  {
+    "key": "captions.ai.confirm.start",
+    "file": "src/shared/ai/cost.ts",
+    "line": 533,
+    "english": "Start",
+    "sample": {}
+  },
+  {
+    "key": "captions.ai.confirm.unknown",
+    "file": "src/shared/ai/cost.ts",
+    "line": 534,
+    "english": "Flown does not know what this costs with llama-3.3-70b. Run it?",
+    "sample": {
+      "model": "llama-3.3-70b"
+    }
+  },
+  {
+    "key": "captions.ai.confirm.run",
+    "file": "src/shared/ai/cost.ts",
+    "line": 534,
+    "english": "Run",
+    "sample": {}
+  },
+  {
+    "key": "captions.ai.confirm.upTo",
+    "file": "src/shared/ai/cost.ts",
+    "line": 535,
+    "english": "This costs up to about US$1.20 with gpt-6.1-sol. Run it?",
+    "sample": {
+      "amount": "US$1.20",
+      "model": "gpt-6.1-sol"
+    }
+  },
+  {
+    "key": "captions.ai.usage.used",
+    "file": "src/shared/ai/cost.ts",
+    "line": 546,
+    "english": "It used 12,400 tokens.",
+    "sample": {
+      "tokens": "12,400"
+    }
+  },
+  {
+    "key": "captions.ai.usage.free",
+    "file": "src/shared/ai/cost.ts",
+    "line": 548,
+    "english": "No cost (12,400 tokens).",
+    "sample": {
+      "tokens": "12,400"
+    }
+  },
+  {
+    "key": "captions.ai.usage.underCent",
+    "file": "src/shared/ai/cost.ts",
+    "line": 549,
+    "english": "Cost under US$0.01 (12,400 tokens).",
+    "sample": {
+      "amount": "US$0.01",
+      "tokens": "12,400"
+    }
+  },
+  {
+    "key": "captions.ai.usage.about",
+    "file": "src/shared/ai/cost.ts",
+    "line": 549,
+    "english": "Cost about US$0.03 (12,400 tokens).",
+    "sample": {
+      "amount": "US$0.03",
+      "tokens": "12,400"
+    }
   }
 ]

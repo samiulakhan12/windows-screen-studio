@@ -9,6 +9,7 @@ import { ModelCombobox } from '../ai/ModelCombobox'
 import { refreshCostData, useCostData, type CostData } from '../ai/useCost'
 import { canDo, ipcMessage } from './providerText'
 import { suggestedModels, useModelList } from './useModelList'
+import { fmt } from '../../../shared/i18n/fmt'
 import { t } from '../../../shared/i18n/t'
 import { richText } from '../i18n/richText'
 
@@ -212,7 +213,7 @@ export function ProviderForm({
     setError(null)
     if (!label.trim()) return setError(t('settings.provider.needName'))
     if (isService && !url?.ok) return setError(url && !url.ok ? url.message : t('settings.provider.needAddress'))
-    if (isService && !model.trim()) return setError("Enter the model's name.")
+    if (isService && !model.trim()) return setError(t('errors.serviceStore.model'))
     if (keyNeeded && !apiKey.trim()) return setError(editing?.service && !sameOrigin ? t('settings.provider.needNewKey') : t('settings.provider.needKey'))
     if (prices && (prices.input.trim() || prices.output.trim()) && (priceOk(prices.input) === null || priceOk(prices.output) === null)) {
       return setError(t('settings.provider.badPrices'))
@@ -278,7 +279,7 @@ export function ProviderForm({
           <p className="hint ai-can">{t('settings.provider.serviceCanDo', { services: moreServicesHint() })}</p>
         ) : (
           <p className="hint ai-can">
-            {t('settings.provider.canDo', { list: canDo(apiKind).toLowerCase() })}
+            {t('settings.provider.canDo', { list: fmt.inSentence(canDo(apiKind)) })}
             {!info.canTranscribe && ` ${t('settings.provider.noTranscribe')}`}
           </p>
         )}

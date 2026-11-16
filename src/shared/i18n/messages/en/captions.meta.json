@@ -2629,5 +2629,191 @@
   },
   "local.hint.ducking": {
     "description": "Audio tab, ducking: hint when the voice counts."
+  },
+  "ai.cost.time.seconds": {
+    "description": "The cost line under an AI tool (§11.5): how long AI on this PC takes, in tens of seconds (lower case, inside the line)."
+  },
+  "ai.cost.time.secondsStart": {
+    "description": "The cost line under an AI tool (§11.5): how long AI on this PC takes, as a sentence or the line's last part starts it."
+  },
+  "ai.cost.time.minutes": {
+    "description": "The cost line under an AI tool (§11.5): how long AI on this PC takes, in minutes (lower case)."
+  },
+  "ai.cost.time.minutesStart": {
+    "description": "The cost line under an AI tool (§11.5): how long AI on this PC takes, in minutes, as a sentence starts it."
+  },
+  "ai.cost.time.hours": {
+    "description": "The cost line under an AI tool (§11.5): how long AI on this PC takes, in hours (lower case)."
+  },
+  "ai.cost.time.hoursStart": {
+    "description": "The cost line under an AI tool (§11.5): how long AI on this PC takes, in hours, as a sentence starts it."
+  },
+  "ai.cost.part.unknown": {
+    "description": "The cost line under an AI tool (§11.5): an action's cost when the price is unknown (lower case)."
+  },
+  "ai.cost.part.unknownStart": {
+    "description": "The cost line under an AI tool (§11.5): the cost unknown, as a sentence starts it."
+  },
+  "ai.cost.part.none": {
+    "description": "The cost line under an AI tool (§11.5): an action that costs nothing (lower case)."
+  },
+  "ai.cost.part.noneStart": {
+    "description": "The cost line under an AI tool (§11.5): an action that costs nothing, as the line's last part or a sentence starts it."
+  },
+  "ai.cost.part.underCent": {
+    "description": "The cost line under an AI tool (§11.5): an action that costs less than a cent; {amount} is \"US$0.01\" (lower case)."
+  },
+  "ai.cost.part.underCentStart": {
+    "description": "The cost line under an AI tool (§11.5): less than a cent, as a sentence starts it."
+  },
+  "ai.cost.part.about": {
+    "description": "The cost line under an AI tool (§11.5): an action's cost; {amount} is in US dollars (\"US$0.03\")."
+  },
+  "ai.cost.part.aboutStart": {
+    "description": "The cost line under an AI tool (§11.5): an action's cost, as a sentence starts it."
+  },
+  "ai.cost.part.upTo": {
+    "description": "The cost line under an AI tool (§11.5): an action's highest cost."
+  },
+  "ai.cost.part.upToStart": {
+    "description": "The cost line under an AI tool (§11.5): an action's highest cost, as a sentence starts it."
+  },
+  "ai.cost.part.range": {
+    "description": "The cost line under an AI tool (§11.5): an action's cost between two amounts."
+  },
+  "ai.cost.unknownVariesFor": {
+    "description": "The cost line under an AI tool (§11.5): the service (such as OpenRouter's auto router) picks the model itself; {model} is the model's name.",
+    "user": [
+      "model"
+    ]
+  },
+  "ai.cost.unknownPricesFor": {
+    "description": "The cost line under an AI tool (§11.5): Flown has no prices for {model}.",
+    "user": [
+      "model"
+    ]
+  },
+  "ai.cost.unknownVaries": {
+    "description": "The cost line under an AI tool (§11.5): the service picks the model itself."
+  },
+  "ai.cost.unknownPrices": {
+    "description": "The cost line under an AI tool (§11.5): Flown has no prices for the model."
+  },
+  "ai.cost.sendsShotsWords": {
+    "description": "The cost line under an AI tool (§11.5): what is sent: screenshots and the words with them; {where} is the AI service.",
+    "user": [
+      "where"
+    ]
+  },
+  "ai.cost.sendsShots": {
+    "description": "The cost line under an AI tool (§11.5): what is sent: screenshots alone; {where} is the AI service.",
+    "user": [
+      "where"
+    ]
+  },
+  "ai.cost.sendsWordsOf": {
+    "description": "The cost line under an AI tool (§11.5): what is sent: {words} is a rounded count, {what} what they are (\"captions\"), {where} the AI service.",
+    "user": [
+      "where"
+    ]
+  },
+  "ai.cost.sendsWords": {
+    "description": "The cost line under an AI tool (§11.5): what is sent: {words} is a rounded count, {where} the AI service.",
+    "user": [
+      "where"
+    ]
+  },
+  "ai.cost.sendsIt": {
+    "description": "The cost line under an AI tool (§11.5): what is sent, when it is not named; {where} is the AI service.",
+    "user": [
+      "where"
+    ]
+  },
+  "ai.cost.item": {
+    "description": "The cost line under an AI tool (§11.5): one action and its cost (\"Chapters about US$0.02\"); {label} is the action's name."
+  },
+  "ai.cost.withModelPrices": {
+    "description": "The cost line under an AI tool (§11.5): an action alone: its cost, the model and the date of the prices (\"7 November 2026\").",
+    "user": [
+      "model"
+    ]
+  },
+  "ai.cost.withModelOwnPrices": {
+    "description": "The cost line under an AI tool (§11.5): an action alone: its cost and the model, priced with the prices the user entered.",
+    "user": [
+      "model"
+    ]
+  },
+  "ai.cost.withModel": {
+    "description": "The cost line under an AI tool (§11.5): an action alone: its cost and the model.",
+    "user": [
+      "model"
+    ]
+  },
+  "ai.cost.withPrices": {
+    "description": "The cost line under an AI tool (§11.5): an action alone: its cost and the date of the prices."
+  },
+  "ai.cost.withOwnPrices": {
+    "description": "The cost line under an AI tool (§11.5): an action alone: its cost, priced with the prices the user entered."
+  },
+  "ai.what.yourText": {
+    "description": "The cost line under an AI tool (§11.5): what is sent, when the tool does not say (\"About US$0.02; sends your text to OpenAI.\")."
+  },
+  "ai.cost.sentenceLocal": {
+    "description": "What screen readers hear for an AI tool's button with AI on this PC: how long it takes (\"About 4 minutes\")."
+  },
+  "ai.cost.sentence": {
+    "description": "What screen readers hear for an AI tool's button: the cost (\"About US$0.02\"), what is sent and where.",
+    "user": [
+      "where"
+    ]
+  },
+  "ai.cost.sentenceShotsAnd": {
+    "description": "What screen readers hear for an AI tool's button that sends screenshots with text.",
+    "user": [
+      "where"
+    ]
+  },
+  "ai.cost.sentenceShots": {
+    "description": "What screen readers hear for an AI tool's button that sends screenshots alone.",
+    "user": [
+      "where"
+    ]
+  },
+  "ai.confirm.local": {
+    "description": "The question before a long run of AI on this PC; {time} is \"about 12 minutes\"."
+  },
+  "ai.confirm.start": {
+    "description": "The question's button that starts the run (the verb)."
+  },
+  "ai.confirm.unknown": {
+    "description": "The question before a run whose cost is unknown; {model} is the model's name.",
+    "user": [
+      "model"
+    ],
+    "dnt": [
+      "Flown"
+    ]
+  },
+  "ai.confirm.run": {
+    "description": "The question's button that runs the AI tool (the verb)."
+  },
+  "ai.confirm.upTo": {
+    "description": "The question before a paid run; {amount} is in US dollars, {model} the model's name.",
+    "user": [
+      "model"
+    ]
+  },
+  "ai.usage.used": {
+    "description": "After an AI run without a price: how many tokens it used."
+  },
+  "ai.usage.free": {
+    "description": "After a free AI run: how many tokens it used."
+  },
+  "ai.usage.underCent": {
+    "description": "After an AI run that cost less than a cent ({amount} is \"US$0.01\")."
+  },
+  "ai.usage.about": {
+    "description": "After an AI run: what it cost and how many tokens it used."
   }
 }
