@@ -36,9 +36,10 @@ vi.mock('electron', () => ({
   BrowserWindow: { getAllWindows: () => [] }
 }))
 
-import { validateJob, type SoundInputs } from '../src/main/exportJob'
+import { errorCodeOf, validateJob, type SoundInputs } from '../src/main/exportJob'
+import { ExportFailure, refusedForGood } from '../src/shared/render/exportPlan'
 import { ensureVoiceModels, parseDuration, parseProgress, voiceCleanArgs, VoiceCleaner, voiceKey } from '../src/main/voice/voiceClean'
-import { cleanVoiceInputs, registerVoiceIpc } from '../src/main/voice/voiceIpc'
+import { cleanVoiceInputs, registerVoiceIpc, voiceFailureCode } from '../src/main/voice/voiceIpc'
 import generalModel from '../src/main/voice/model/cb.rnnn?raw'
 import speechModel from '../src/main/voice/model/sh.rnnn?raw'
 import { VOICE_CANCELLED, VOICE_CHANNELS, VOICE_REPLACED, type VoiceProgress } from '../src/shared/api/voice'
@@ -451,6 +452,29 @@ describe('IPC and export', () => {
     const mixed: SoundInputs = { job: job('normal'), audioInput: path.join(dir, 'screen.mp4') }
     expect(await cleanVoiceInputs(mixed, 'exp', undefined, { ensure })).toEqual({ ...mixed, audioInput: path.join(dir, 'voice-bd00000000000000.m4a') })
     expect(ensure).toHaveBeenLastCalledWith('exp', 'mix', 'normal')
+  })
+
+  it('a failed clean stops the export or lets the next encoder try by code, as its words did before codes (§9.6)', async () => {
+    // The words the exporter read before error codes (test 72 keeps the same regex to compare).
+    const OLD = /disk is full|permission|in use|another app|read-only|missing|could not be read|could not load|could not read|could not save|could not write|not chosen|invalid export|export size|no sound/i
+    const mixed: SoundInputs = { job: job('normal'), audioInput: '/p/screen.mp4' }
+    for (const reason of [VOICE_COPY.missingMic, VOICE_COPY.missingMix, VOICE_COPY.locked, VOICE_COPY.damagedModel, VOICE_COPY.tooLong, VOICE_COPY.engine, 'Cleaning stopped.']) {
+      const ensure = vi.fn(async () => {
+        throw new Error(reason)
+      })
+      const err = await cleanVoiceInputs(mixed, 'exp', undefined, { ensure }).catch((e: unknown) => e)
+      expect(err, reason).toBeInstanceOf(ExportFailure)
+      const message = (err as ExportFailure).message
+      expect(message).toBe(`${VOICE_COPY.failed} ${reason}`)
+      expect({ reason, stops: refusedForGood(errorCodeOf(err)) }).toEqual({ reason, stops: OLD.test(message) })
+    }
+    expect(voiceFailureCode(VOICE_COPY.missingMic)).toBe('missing-input')
+    expect(voiceFailureCode(VOICE_COPY.locked)).toBe('in-use')
+    // The microphone's own file gone: the export stops, as it did.
+    const asked: SoundInputs = { job: job('normal', { mic: 1 }), audioInput: '/p/screen.mp4' }
+    const missing = await cleanVoiceInputs(asked, 'no-such-project', undefined, { ensure: vi.fn() }).catch((e: unknown) => e)
+    expect((missing as ExportFailure).code).toBe('missing-input')
+    expect(refusedForGood(errorCodeOf(missing))).toBe(true)
   })
 
   it('leaves a job without Clean voice, or without a microphone stem, untouched', async () => {

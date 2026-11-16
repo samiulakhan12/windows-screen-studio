@@ -10,7 +10,8 @@ import { VOICE_CHANNELS, type VoiceProgress } from '../../shared/api/voice'
 import { SOURCE_FILES } from '../../shared/audio/settings'
 import { isVoiceStrength } from '../../shared/audio/voiceClean'
 import { VOICE_COPY } from '../../shared/audio/voiceCopy'
-import type { ExportJob } from '../../shared/api/export'
+import type { ExportErrorCode, ExportJob } from '../../shared/api/export'
+import { ExportFailure } from '../../shared/render/exportPlan'
 import type { SoundInputs } from '../exportJob'
 import { ffmpegPath } from '../ffmpeg'
 import { projectDir } from '../projects'
@@ -38,6 +39,17 @@ export const voiceCleaner = new VoiceCleaner({
 export const stopVoiceClean = (id: string): Promise<void> => voiceCleaner.cancel(id).catch(() => undefined)
 
 /**
+ * Why cleaning the voice for an export failed, as a code (output-and-languages §9.6): a missing
+ * sound file stops the export and a file another app holds stops it too, as their words did before
+ * codes; anything else lets the next encoder try, as before.
+ */
+export function voiceFailureCode(reason: string): ExportErrorCode {
+  if (reason === VOICE_COPY.missingMic || reason === VOICE_COPY.missingMix) return 'missing-input'
+  if (reason === VOICE_COPY.locked) return 'in-use'
+  return 'unknown'
+}
+
+/**
  * The export's sound files with the cleaned voice in place of what it was made from (§4.6), as
  * the editor chose it in `requested`: the microphone stem when the job mixes stems with one, the
  * mixed track when it mixes none. A job without `voice` is returned unchanged. When the stems
@@ -55,12 +67,13 @@ export async function cleanVoiceInputs(sound: SoundInputs, projectId: string, re
   const asked = requested.audio?.stems
   if (asked?.mic !== undefined && !sound.stems) {
     const mic = await fs.stat(path.join(projectDir(projectId), SOURCE_FILES.mic)).catch(() => null)
-    if (!mic?.isFile()) throw new Error(`${VOICE_COPY.failed} ${VOICE_COPY.missingMic}`)
+    if (!mic?.isFile()) throw new ExportFailure(`${VOICE_COPY.failed} ${VOICE_COPY.missingMic}`, 'missing-input')
   }
   const source = asked ? (asked.mic !== undefined && sound.stems?.mic ? 'mic' : null) : sound.audioInput ? 'mix' : null
   if (!source) return sound
   const file = await cleaner.ensure(projectId, source, strength).catch((err: unknown) => {
-    throw new Error(`${VOICE_COPY.failed} ${err instanceof Error ? err.message : String(err)}`)
+    const reason = err instanceof Error ? err.message : String(err)
+    throw new ExportFailure(`${VOICE_COPY.failed} ${reason}`, voiceFailureCode(reason))
   })
   const cleaned = path.join(projectDir(projectId), file)
   return source === 'mic' ? { ...sound, stems: { ...sound.stems, mic: cleaned } } : { ...sound, audioInput: cleaned }
