@@ -766,5 +766,71 @@
   },
   "webhook.notAccepted": {
     "description": "Share: the chat service did not accept the post. {name} is the service; {status} an HTTP status number, kept in Latin digits."
+  },
+  "printPdf.cancelled": {
+    "description": "Make a guide › Save as PDF: why no PDF was saved: the save was stopped while the guide was printed."
+  },
+  "printPdf.tooLong": {
+    "description": "Make a guide › Save as PDF: why no PDF was saved: printing the guide to PDF ran out of time."
+  },
+  "notesIpc.unknownHotkey": {
+    "description": "Hotkeys: a hotkey was checked for an action Flown does not know (a programming error the settings show as is)."
+  },
+  "notesIpc.hotkeyTaken": {
+    "description": "Hotkeys: the keys chosen are already another action's hotkey. {key} is the key combination as keycaps (\"Ctrl + Shift + F6\", never translated); {action} is the other action's name."
+  },
+  "notesIpc.hotkeyUsedElsewhere": {
+    "description": "Hotkeys: the keys chosen are held by another app on this PC. {key} is the key combination as keycaps (never translated)."
+  },
+  "notesIpc.hotkeyInvalid": {
+    "description": "Hotkeys: Windows refused the keys chosen as a hotkey. {key} is the key combination as keycaps (never translated)."
+  },
+  "projectCopy.busy": {
+    "description": "Duplicate: why a copy was not made, after \"Could not make the copy: \" (review.copy.failed {reason}); lower case because it ends that sentence."
+  },
+  "projectCopy.unreadable": {
+    "description": "Duplicate: why a copy was not made, after \"Could not make the copy: \" (review.copy.failed {reason})."
+  },
+  "projectCopy.noFolder": {
+    "description": "Duplicate: why a copy was not made, after \"Could not make the copy: \". {app} is the app's name (Flown); \"Videos\\{app}\" is the folder's path and stays as is."
+  },
+  "projectCopy.noSpace": {
+    "description": "Duplicate: why a copy was not made, after \"Could not make the copy: \". {needs} and {free} are sizes in gigabytes with one decimal."
+  },
+  "shareStore.store.windows": {
+    "description": "Settings › Share: the Windows feature that keeps webhooks safe, in \"{what} is not available\" (errors.shareStore.webhooksCannotBeStored)."
+  },
+  "shareStore.store.mac": {
+    "description": "Settings › Share: the macOS feature that keeps webhooks safe, in \"{what} is not available\" (errors.shareStore.webhooksCannotBeStored)."
+  },
+  "shareStore.store.other": {
+    "description": "Settings › Share: the Linux feature that keeps webhooks safe, in \"{what} is not available\" (errors.shareStore.webhooksCannotBeStored)."
+  },
+  "versions.notAFolder": {
+    "description": "Versions: the recording's versions folder is a file or a link, so no version is kept."
+  },
+  "versions.recordingGone": {
+    "description": "Versions: the recording's folder was removed, so no version is kept."
+  },
+  "versions.unknown": {
+    "description": "Versions: a version id Flown does not know was asked for."
+  },
+  "versions.unknownReason": {
+    "description": "Versions: an automatic version was asked for with a reason Flown does not know."
+  },
+  "versions.cannotKeep": {
+    "description": "Versions: the edit could not be read as a project, so it is not kept."
+  },
+  "versions.tooLarge": {
+    "description": "Versions: the edit is larger than a version may be."
+  },
+  "versions.tooMany": {
+    "description": "Versions: Keep a version when the most saved versions (VERSION_LIMITS.named) are already kept; {n} is that number."
+  },
+  "versions.gone": {
+    "description": "Versions: the version asked for was deleted (its file is gone)."
+  },
+  "versions.unreadable": {
+    "description": "Versions: the version's file is damaged or too large."
   }
 }

@@ -1,0 +1,355 @@
+[
+  {
+    "key": "errors.printPdf.cancelled",
+    "file": "src/main/guide/printPdf.ts",
+    "line": 63,
+    "english": "Saving the PDF was cancelled.",
+    "sample": {}
+  },
+  {
+    "key": "errors.printPdf.tooLong",
+    "file": "src/main/guide/printPdf.ts",
+    "line": 64,
+    "english": "Printing the guide took too long.",
+    "sample": {}
+  },
+  {
+    "key": "errors.notesIpc.unknownHotkey",
+    "file": "src/main/notes/notesIpc.ts",
+    "line": 102,
+    "english": "Unknown hotkey.",
+    "sample": {}
+  },
+  {
+    "key": "errors.notesIpc.hotkeyTaken",
+    "file": "src/main/notes/notesIpc.ts",
+    "line": 108,
+    "english": "Ctrl + Shift + F6 is already the hotkey for Notes: back.",
+    "sample": {
+      "key": "Ctrl + Shift + F6",
+      "action": "Notes: back"
+    }
+  },
+  {
+    "key": "errors.notesIpc.hotkeyUsedElsewhere",
+    "file": "src/main/notes/notesIpc.ts",
+    "line": 114,
+    "english": "Ctrl + Alt + K is already used by another app.",
+    "sample": {
+      "key": "Ctrl + Alt + K"
+    }
+  },
+  {
+    "key": "errors.notesIpc.hotkeyInvalid",
+    "file": "src/main/notes/notesIpc.ts",
+    "line": 117,
+    "english": "Ctrl + Alt + K cannot be used as a hotkey.",
+    "sample": {
+      "key": "Ctrl + Alt + K"
+    }
+  },
+  {
+    "key": "main.notes.hiddenScreen",
+    "file": "src/main/notes/notesWindow.ts",
+    "line": 38,
+    "english": "Your notes stay hidden in this recording: on this version of Windows they would show in the video as a black box. Move them off the recorded screen or area while rehearsing, or update to Windows 10 version 2004 or later.",
+    "sample": {}
+  },
+  {
+    "key": "main.notes.hiddenWindow",
+    "file": "src/main/notes/notesWindow.ts",
+    "line": 40,
+    "english": "Your notes stay hidden in window recordings on this version of Windows: they would show in the video as a black box. Update to Windows 10 version 2004 or later to use them.",
+    "sample": {}
+  },
+  {
+    "key": "main.notes.hotkeyUsedElsewhere",
+    "file": "src/main/notes/notesWindow.ts",
+    "line": 171,
+    "english": "Ctrl + Shift + F6 (Notes: back) is used by another app, so it does not work while your notes are open.",
+    "sample": {
+      "key": "Ctrl + Shift + F6",
+      "action": "Notes: back"
+    }
+  },
+  {
+    "key": "main.notes.hotkeyInvalid",
+    "file": "src/main/notes/notesWindow.ts",
+    "line": 174,
+    "english": "Ctrl + Shift + F6 (Notes: back) cannot be used as a hotkey; pick another one in Speaker notes.",
+    "sample": {
+      "key": "Ctrl + Shift + F6",
+      "action": "Notes: back"
+    }
+  },
+  {
+    "key": "main.notes.windowTitle",
+    "file": "src/main/notes/notesWindow.ts",
+    "line": 282,
+    "english": "Speaker notes",
+    "sample": {}
+  },
+  {
+    "key": "errors.projectCopy.busy",
+    "file": "src/main/projectCopy.ts",
+    "line": 83,
+    "english": "a copy is already being made.",
+    "sample": {}
+  },
+  {
+    "key": "errors.projectCopy.unreadable",
+    "file": "src/main/projectCopy.ts",
+    "line": 84,
+    "english": "some of the recording's files could not be read.",
+    "sample": {}
+  },
+  {
+    "key": "errors.projectCopy.noFolder",
+    "file": "src/main/projectCopy.ts",
+    "line": 85,
+    "english": "Flown could not create a folder in Videos\\Flown.",
+    "sample": {
+      "app": "Flown"
+    }
+  },
+  {
+    "key": "errors.projectCopy.noSpace",
+    "file": "src/main/projectCopy.ts",
+    "line": 88,
+    "english": "there is not enough free space on this drive (it needs 2.5 GB, 1.0 GB is free).",
+    "sample": {
+      "needs": "2.5",
+      "free": "1.0"
+    }
+  },
+  {
+    "key": "main.shareIpc.testPosted",
+    "file": "src/main/share/shareIpc.ts",
+    "line": 195,
+    "english": "Posted a test message to #demos.",
+    "sample": {
+      "label": "#demos"
+    }
+  },
+  {
+    "key": "main.share.postedTo",
+    "file": "src/main/share/shareService.ts",
+    "line": 55,
+    "english": "Posted to #demos",
+    "sample": {
+      "label": "#demos"
+    }
+  },
+  {
+    "key": "main.share.savedTo",
+    "file": "src/main/share/shareService.ts",
+    "line": 56,
+    "english": "Saved to OneDrive › Flown",
+    "sample": {
+      "place": "OneDrive › Flown"
+    }
+  },
+  {
+    "key": "main.share.failedTitle",
+    "file": "src/main/share/shareService.ts",
+    "line": 180,
+    "english": "Could not share",
+    "sample": {}
+  },
+  {
+    "key": "main.share.failedTitle",
+    "file": "src/main/share/shareService.ts",
+    "line": 282,
+    "english": "Could not share",
+    "sample": {}
+  },
+  {
+    "key": "main.share.copyTo",
+    "file": "src/main/share/shareService.ts",
+    "line": 186,
+    "english": "Copy to Google Drive (H:)",
+    "sample": {
+      "place": "Google Drive (H:)"
+    }
+  },
+  {
+    "key": "main.share.postTo",
+    "file": "src/main/share/shareService.ts",
+    "line": 190,
+    "english": "Post to #demos",
+    "sample": {
+      "place": "#demos"
+    }
+  },
+  {
+    "key": "main.share.alreadyIn",
+    "file": "src/main/share/shareService.ts",
+    "line": 248,
+    "english": "Already in OneDrive › Flown",
+    "sample": {
+      "place": "OneDrive › Flown"
+    }
+  },
+  {
+    "key": "main.share.sharedTitle",
+    "file": "src/main/share/shareService.ts",
+    "line": 283,
+    "english": "Shared",
+    "sample": {}
+  },
+  {
+    "key": "errors.shareStore.store.windows",
+    "file": "src/main/share/shareStore.ts",
+    "line": 171,
+    "english": "Windows data protection",
+    "sample": {}
+  },
+  {
+    "key": "errors.shareStore.store.mac",
+    "file": "src/main/share/shareStore.ts",
+    "line": 171,
+    "english": "the Keychain",
+    "sample": {}
+  },
+  {
+    "key": "errors.shareStore.store.other",
+    "file": "src/main/share/shareStore.ts",
+    "line": 171,
+    "english": "the system keyring",
+    "sample": {}
+  },
+  {
+    "key": "errors.versions.notAFolder",
+    "file": "src/main/versions.ts",
+    "line": 59,
+    "english": "The versions folder of this recording is not a folder.",
+    "sample": {}
+  },
+  {
+    "key": "errors.versions.recordingGone",
+    "file": "src/main/versions.ts",
+    "line": 62,
+    "english": "The recording folder no longer exists.",
+    "sample": {}
+  },
+  {
+    "key": "errors.versions.unknown",
+    "file": "src/main/versions.ts",
+    "line": 69,
+    "english": "Unknown version",
+    "sample": {}
+  },
+  {
+    "key": "errors.versions.unknown",
+    "file": "src/main/versions.ts",
+    "line": 326,
+    "english": "Unknown version",
+    "sample": {}
+  },
+  {
+    "key": "errors.versions.unknown",
+    "file": "src/main/versions.ts",
+    "line": 348,
+    "english": "Unknown version",
+    "sample": {}
+  },
+  {
+    "key": "errors.versions.unknown",
+    "file": "src/main/versions.ts",
+    "line": 362,
+    "english": "Unknown version",
+    "sample": {}
+  },
+  {
+    "key": "errors.versions.unknownReason",
+    "file": "src/main/versions.ts",
+    "line": 269,
+    "english": "Unknown reason",
+    "sample": {}
+  },
+  {
+    "key": "errors.versions.cannotKeep",
+    "file": "src/main/versions.ts",
+    "line": 276,
+    "english": "This is not an edit Flown can keep.",
+    "sample": {}
+  },
+  {
+    "key": "errors.versions.tooLarge",
+    "file": "src/main/versions.ts",
+    "line": 281,
+    "english": "This edit is too large to keep as a version.",
+    "sample": {}
+  },
+  {
+    "key": "errors.versions.tooMany",
+    "file": "src/main/versions.ts",
+    "line": 288,
+    "english": [
+      "You have 0 saved versions. Delete one to save another.",
+      "You have 1 saved versions. Delete one to save another.",
+      "You have 2 saved versions. Delete one to save another.",
+      "You have 1000 saved versions. Delete one to save another."
+    ],
+    "sample": [
+      {
+        "count": 0,
+        "n": "0"
+      },
+      {
+        "count": 1,
+        "n": "1"
+      },
+      {
+        "count": 2,
+        "n": "2"
+      },
+      {
+        "count": 1000,
+        "n": "1000"
+      }
+    ]
+  },
+  {
+    "key": "errors.versions.gone",
+    "file": "src/main/versions.ts",
+    "line": 329,
+    "english": "This version is no longer there.",
+    "sample": {}
+  },
+  {
+    "key": "errors.versions.gone",
+    "file": "src/main/versions.ts",
+    "line": 364,
+    "english": "This version is no longer there.",
+    "sample": {}
+  },
+  {
+    "key": "errors.versions.gone",
+    "file": "src/main/versions.ts",
+    "line": 370,
+    "english": "This version is no longer there.",
+    "sample": {}
+  },
+  {
+    "key": "errors.versions.unreadable",
+    "file": "src/main/versions.ts",
+    "line": 336,
+    "english": "This version could not be read.",
+    "sample": {}
+  },
+  {
+    "key": "errors.versions.unreadable",
+    "file": "src/main/versions.ts",
+    "line": 372,
+    "english": "This version could not be read.",
+    "sample": {}
+  },
+  {
+    "key": "errors.versions.unreadable",
+    "file": "src/main/versions.ts",
+    "line": 380,
+    "english": "This version could not be read.",
+    "sample": {}
+  }
+]

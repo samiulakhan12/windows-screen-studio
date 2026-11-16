@@ -168,7 +168,7 @@ export class ShareStore {
 
   private encrypt(url: string): string {
     if (!this.box.isEncryptionAvailable()) {
-      const what = process.platform === 'win32' ? 'Windows data protection' : process.platform === 'darwin' ? 'the Keychain' : 'the system keyring'
+      const what = process.platform === 'win32' ? t('errors.shareStore.store.windows') : process.platform === 'darwin' ? t('errors.shareStore.store.mac') : t('errors.shareStore.store.other')
       throw new Error(t('errors.shareStore.webhooksCannotBeStored', { what: String(what) }))
     }
     const weak = this.box.weakness?.()

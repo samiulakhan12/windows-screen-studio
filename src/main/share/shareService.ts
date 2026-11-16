@@ -52,8 +52,8 @@ export function validMeta(raw: unknown): ShareMeta {
 
 /** What a finished step says: "Saved to OneDrive › Flown", "Posted to #demos". */
 export function stepDoneText(s: ShareStepView): string {
-  if (s.kind === 'post') return `Posted to ${s.label}`
-  return s.message ?? `Saved to ${placeText(s.label)}`
+  if (s.kind === 'post') return t('main.share.postedTo', { label: s.label })
+  return s.message ?? t('main.share.savedTo', { place: placeText(s.label) })
 }
 
 export class ShareService {
@@ -177,17 +177,17 @@ export class ShareService {
     const folders = (listed ?? []).filter((f) => f.on)
     const out: { text: string; run: () => void }[] = []
     const startOne = (id: string): void => {
-      this.start(file, [id], offer.meta).catch((err: unknown) => this.deps.notify({ title: 'Could not share', body: err instanceof Error ? err.message : String(err) }))
+      this.start(file, [id], offer.meta).catch((err: unknown) => this.deps.notify({ title: t('main.share.failedTitle'), body: err instanceof Error ? err.message : String(err) }))
     }
     // Named as on the page: a label two share says where each is ("Copy to Google Drive (H:)").
     const folderPlace = folderPlaces(listed ?? [])
     const hookPlace = this.hookPlaces()
     const short = (label: string, place: string | undefined): string => withPlace(cleanTitle(label, 30), place && cleanTitle(place, 20))
-    for (const f of folders) out.push({ text: `Copy to ${short(f.label, folderPlace.get(f.id))}`, run: () => startOne(f.id) })
+    for (const f of folders) out.push({ text: t('main.share.copyTo', { place: short(f.label, folderPlace.get(f.id)) }), run: () => startOne(f.id) })
     for (const id of this.deps.hookIds()) {
       try {
         const h = this.deps.hook(id)
-        out.push({ text: `Post to ${short(h.label, hookPlace.get(id))}`, run: () => startOne(id) })
+        out.push({ text: t('main.share.postTo', { place: short(h.label, hookPlace.get(id)) }), run: () => startOne(id) })
       } catch {
         // A chat whose webhook cannot be read is not offered.
       }
@@ -245,7 +245,7 @@ export class ShareService {
           step.fraction = 1
           const link = (await this.deps.link?.(folder, result.dest).catch(() => null)) ?? null
           if (link) step.link = link
-          if (result.already) step.message = `Already in ${placeText(step.label)}`
+          if (result.already) step.message = t('main.share.alreadyIn', { place: placeText(step.label) })
           // The message names the folder by its label alone: no drive or local folder goes in it.
           this.places.set(file, { text: placeText(folder.label), ...(link ? { link } : {}) })
           console.info(`Share: copied 1 file to ${folder.service}${result.already ? ' (already there)' : ''}`)
@@ -279,7 +279,7 @@ export class ShareService {
     if (quiet()) return
     const failed = run.view.steps.find((s) => s.state === 'failed')
     const copied = run.view.steps.find((s) => s.kind === 'copy' && s.state === 'done' && s.dest)
-    if (failed) this.deps.notify({ title: 'Could not share', body: `${failed.label}: ${failed.message ?? ''}`.slice(0, 200), ...(copied?.dest ? { show: copied.dest } : {}) })
-    else this.deps.notify({ title: 'Shared', body: run.view.steps.map(stepDoneText).join(' · ').slice(0, 200), ...(copied?.dest ? { show: copied.dest } : {}) })
+    if (failed) this.deps.notify({ title: t('main.share.failedTitle'), body: `${failed.label}: ${failed.message ?? ''}`.slice(0, 200), ...(copied?.dest ? { show: copied.dest } : {}) })
+    else this.deps.notify({ title: t('main.share.sharedTitle'), body: run.view.steps.map(stepDoneText).join(' · ').slice(0, 200), ...(copied?.dest ? { show: copied.dest } : {}) })
   }
 }

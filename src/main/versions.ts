@@ -31,6 +31,7 @@ import type { Project } from '../shared/types'
 import { writeFileAtomicSync } from './atomicWrite'
 import { removeSyncWithRetries } from './exportCleanup'
 import { t } from '../shared/i18n/t'
+import { fmt } from '../shared/i18n/fmt'
 
 export const VERSIONS_DIR = 'versions'
 const INDEX = 'index.json'
@@ -56,17 +57,17 @@ export function versionsDir(dir: string, create = false): string | null {
   } catch (err) {
     if ((err as NodeJS.ErrnoException).code !== 'ENOENT') throw err
   }
-  if (st && (st.isSymbolicLink() || !st.isDirectory())) throw new VersionError('The versions folder of this recording is not a folder.')
+  if (st && (st.isSymbolicLink() || !st.isDirectory())) throw new VersionError(t('errors.versions.notAFolder'))
   if (!st) {
     if (!create) return null
-    if (!fs.existsSync(dir)) throw new VersionError('The recording folder no longer exists.')
+    if (!fs.existsSync(dir)) throw new VersionError(t('errors.versions.recordingGone'))
     fs.mkdirSync(folder)
   }
   return folder
 }
 
 const fileOf = (folder: string, id: string): string => {
-  if (!VERSION_ID_RE.test(id)) throw new VersionError('Unknown version')
+  if (!VERSION_ID_RE.test(id)) throw new VersionError(t('errors.versions.unknown'))
   return path.join(folder, `${id}.json`)
 }
 
@@ -266,26 +267,26 @@ export interface SaveVersionResult {
 export function saveVersion(dir: string, projectId: string, raw: unknown, opts: SaveVersionOptions = {}): SaveVersionResult {
   let reason: AutoReason | null = null
   if (opts.reason !== undefined && opts.reason !== null) {
-    if (typeof opts.reason !== 'string' || !(AUTO_REASONS as readonly string[]).includes(opts.reason)) throw new VersionError('Unknown reason')
+    if (typeof opts.reason !== 'string' || !(AUTO_REASONS as readonly string[]).includes(opts.reason)) throw new VersionError(t('errors.versions.unknownReason'))
     reason = opts.reason as AutoReason
   }
   let project: Project
   try {
     project = migrateProject(raw)
   } catch {
-    throw new VersionError('This is not an edit Flown can keep.')
+    throw new VersionError(t('errors.versions.cannotKeep'))
   }
   // The editor may only keep versions of the project it has open.
   if (project.id !== projectId) throw new VersionError('Not allowed')
   const json = JSON.stringify(project)
-  if (json.length > VERSION_LIMITS.bytes) throw new VersionError('This edit is too large to keep as a version.')
+  if (json.length > VERSION_LIMITS.bytes) throw new VersionError(t('errors.versions.tooLarge'))
   const hash = hashProject(project)
   const now = opts.now ?? new Date()
 
   const list = listVersions(dir)
   if (reason && list.some((v) => v.hash === hash)) return { saved: null, removed: [] }
   const named = list.filter((v) => !v.auto).length
-  if (!reason && named >= VERSION_LIMITS.named) throw new VersionError(`You have ${VERSION_LIMITS.named} saved versions. Delete one to save another.`)
+  if (!reason && named >= VERSION_LIMITS.named) throw new VersionError(t('errors.versions.tooMany', { count: VERSION_LIMITS.named, n: fmt.count(VERSION_LIMITS.named) }))
 
   const folder = versionsDir(dir, true)!
   let id = newVersionId(now.getTime())
@@ -323,17 +324,17 @@ export function saveVersion(dir: string, projectId: string, raw: unknown, opts: 
 
 /** Gives version `id` a new name (empty: kept as it was). */
 export function renameVersion(dir: string, id: string, name: unknown): VersionMeta {
-  if (typeof id !== 'string' || !VERSION_ID_RE.test(id)) throw new VersionError('Unknown version')
+  if (typeof id !== 'string' || !VERSION_ID_RE.test(id)) throw new VersionError(t('errors.versions.unknown'))
   const list = listVersions(dir)
   const found = list.find((v) => v.id === id)
-  if (!found) throw new VersionError('This version is no longer there.')
+  if (!found) throw new VersionError(t('errors.versions.gone'))
   const renamed = { ...found, name: cleanVersionName(name, found.name) }
   if (renamed.name === found.name) return found
   const folder = versionsDir(dir)!
   // The file's own meta too: an index rebuilt from the files keeps the new name.
   const file = fileOf(folder, id)
   const st = fs.lstatSync(file)
-  if (!st.isFile() || st.size > VERSION_LIMITS.bytes + 64 * 1024) throw new VersionError('This version could not be read.')
+  if (!st.isFile() || st.size > VERSION_LIMITS.bytes + 64 * 1024) throw new VersionError(t('errors.versions.unreadable'))
   const raw = JSON.parse(fs.readFileSync(file, 'utf8')) as { meta?: Record<string, unknown> }
   writeAtomic(file, JSON.stringify({ ...raw, meta: { ...raw.meta, name: renamed.name } }))
   writeIndex(folder, list.map((v) => (v.id === id ? renamed : v)))
@@ -345,7 +346,7 @@ export function renameVersion(dir: string, id: string, name: unknown): VersionMe
  * listed, while a file without an entry would come back), then its index entry.
  */
 export function deleteVersion(dir: string, id: string): void {
-  if (typeof id !== 'string' || !VERSION_ID_RE.test(id)) throw new VersionError('Unknown version')
+  if (typeof id !== 'string' || !VERSION_ID_RE.test(id)) throw new VersionError(t('errors.versions.unknown'))
   const folder = versionsDir(dir)
   if (!folder) return
   const file = fileOf(folder, id)
@@ -359,17 +360,17 @@ export function deleteVersion(dir: string, id: string): void {
  * the hashes it kept of the files a later pick writes over (none in a version kept before them).
  */
 export async function readVersion(dir: string, projectId: string, id: string): Promise<{ meta: VersionMeta; project: Project; files: Record<string, string> }> {
-  if (typeof id !== 'string' || !VERSION_ID_RE.test(id)) throw new VersionError('Unknown version')
+  if (typeof id !== 'string' || !VERSION_ID_RE.test(id)) throw new VersionError(t('errors.versions.unknown'))
   const folder = versionsDir(dir)
-  if (!folder) throw new VersionError('This version is no longer there.')
+  if (!folder) throw new VersionError(t('errors.versions.gone'))
   const file = fileOf(folder, id)
   let st: fs.Stats
   try {
     st = await fs.promises.lstat(file)
   } catch {
-    throw new VersionError('This version is no longer there.')
+    throw new VersionError(t('errors.versions.gone'))
   }
-  if (!st.isFile() || st.size > VERSION_LIMITS.bytes + 64 * 1024) throw new VersionError('This version could not be read.')
+  if (!st.isFile() || st.size > VERSION_LIMITS.bytes + 64 * 1024) throw new VersionError(t('errors.versions.unreadable'))
   try {
     const raw = JSON.parse(await fs.promises.readFile(file, 'utf8')) as { format?: unknown; meta?: unknown; project?: unknown; files?: unknown }
     const meta = raw?.format === FORMAT ? sanitizeMeta(raw.meta) : null
@@ -377,6 +378,6 @@ export async function readVersion(dir: string, projectId: string, id: string): P
     const project = { ...migrateProject(raw.project), id: projectId }
     return { meta: { ...meta, bytes: st.size }, project, files: keptHashes(project, raw.files) }
   } catch {
-    throw new VersionError('This version could not be read.')
+    throw new VersionError(t('errors.versions.unreadable'))
   }
 }

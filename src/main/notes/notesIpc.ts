@@ -99,22 +99,22 @@ export interface HotkeyContext {
  * the app may hold itself).
  */
 export function checkAnyHotkey(action: unknown, accelerator: unknown, ctx: HotkeyContext): HotkeyCheck {
-  if (!isAnyHotkeyAction(action)) return { ok: false, message: 'Unknown hotkey.' }
+  if (!isAnyHotkeyAction(action)) return { ok: false, message: t('errors.notesIpc.unknownHotkey') }
   const check = validateHotkey(accelerator)
   if (!check.ok) return check
   const all: Record<AnyHotkeyAction, string> = { ...ctx.recording, ...ctx.notes }
   for (const other of [...HOTKEY_ACTIONS, ...NOTES_HOTKEY_ACTIONS]) {
     if (other !== action && normalizeHotkey(all[other]) === check.accelerator) {
-      return { ok: false, message: `${hotkeyLabel(check.accelerator)} is already the hotkey for ${anyHotkeyName(other)}.` }
+      return { ok: false, message: t('errors.notesIpc.hotkeyTaken', { key: hotkeyLabel(check.accelerator), action: anyHotkeyName(other) }) }
     }
   }
   if (ctx.busy || normalizeHotkey(all[action]) === check.accelerator) return check
   const label = hotkeyLabel(check.accelerator)
   try {
-    return ctx.tryRegister(check.accelerator) ? check : { ok: false, message: `${label} is already used by another app.` }
+    return ctx.tryRegister(check.accelerator) ? check : { ok: false, message: t('errors.notesIpc.hotkeyUsedElsewhere', { key: label }) }
   } catch (err) {
     console.warn(`Could not test ${check.accelerator}:`, err)
-    return { ok: false, message: `${label} cannot be used as a hotkey.` }
+    return { ok: false, message: t('errors.notesIpc.hotkeyInvalid', { key: label }) }
   }
 }
 

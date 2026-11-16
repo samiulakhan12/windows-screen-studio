@@ -18,6 +18,7 @@ import { writeFileAtomicSync } from './atomicWrite'
 import { MEDIA_FILE_RE } from './mediaProtocol'
 import * as projects from './projects'
 import { t } from '../shared/i18n/t'
+import { fmt } from '../shared/i18n/fmt'
 
 /** The recording's media, never rewritten once the project exists: linked when allowed. */
 export const LINKED_MEDIA = ['screen.mp4', 'webcam.mp4', 'mic.m4a', 'system.m4a'] as const
@@ -80,12 +81,18 @@ export function linkAllowed(root: string, env: NodeJS.ProcessEnv = process.env):
 
 /** Why a copy failed, as the editor shows it after "Could not make the copy: " (§2.3). */
 const REASONS = {
-  busy: 'a copy is already being made.',
-  read: "some of the recording's files could not be read.",
-  folder: `${APP_NAME} could not create a folder in Videos\\${APP_NAME}.`
+  get busy(): string {
+    return t('errors.projectCopy.busy')
+  },
+  get read(): string {
+    return t('errors.projectCopy.unreadable')
+  },
+  get folder(): string {
+    return t('errors.projectCopy.noFolder', { app: APP_NAME })
+  }
 }
-const gb = (bytes: number): string => `${(bytes / 1e9).toFixed(1)} GB`
-const spaceReason = (needs: number, free: number): string => `there is not enough free space on this drive (it needs ${gb(needs)}, ${gb(free)} is free).`
+const gb = (bytes: number): string => fmt.number(bytes / 1e9, { max: 1 })
+const spaceReason = (needs: number, free: number): string => t('errors.projectCopy.noSpace', { needs: gb(needs), free: gb(free) })
 
 /** A failure whose message is already the reason to show. */
 class CopyError extends Error {}
