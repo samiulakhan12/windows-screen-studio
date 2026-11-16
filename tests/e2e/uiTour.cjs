@@ -32,9 +32,13 @@ const FIXED_NOW = '2026-03-12T14:02:00Z'
 const TOUR_HOME = path.join(os.tmpdir(), 'flown-english-guard-home')
 
 /**
- * What changes by nature, as selectors: replaced by MASK_TEXT in the text and names, painted over in
- * screenshots, left out of the layout. The running view's speed and time left, the done view's
+ * What changes by nature. A selector is replaced by MASK_TEXT in the text and names, painted over in
+ * screenshots and left out of the layout: the running view's speed and time left, the done view's
  * seconds and size, Storage's sizes and free space, the version number, capture thumbnails.
+ * `{ selector, value }` masks a value inside a sentence: the elements of `selector` are painted over
+ * in screenshots; inside them only the text `value` (a regular expression) matches is replaced by
+ * MASK_TEXT, so the sentence around it stays guarded; and an element whose own text holds the value
+ * is left out of the layout, because its width follows the value.
  */
 const MASKS = [
   // Capture sources: thumbnails of the live screen.
@@ -50,9 +54,13 @@ const MASKS = [
   '.storage-total',
   '.storage-size',
   '.about-version',
-  'video'
+  'video',
+  // Captions on this PC: the drive's free space in "Speech models use 0 MB · 10 GB free on this drive".
+  { selector: '.speech-footer', value: '\\d+(?:\\.\\d+)? (?:bytes|KB|MB|GB|TB)(?= free on this drive)' }
 ]
 const MASK_TEXT = '‹masked›'
+/** The selector of a mask, which screenshots paint over. */
+const maskSelector = (m) => (typeof m === 'string' ? m : m.selector)
 
 /** Turns off motion and the caret in every window. */
 const MOTION_CSS = `*, *::before, *::after { animation: none !important; transition: none !important; caret-color: transparent !important; scroll-behavior: auto !important; }`
@@ -98,7 +106,22 @@ const PAGE_SCRIPT = `(() => {
 /** In the page: title, text, attributes and layout, leaving out what MASKS cover. */
 function collectPage(masks) {
   const masked = new Set()
-  for (const sel of masks) for (const el of document.querySelectorAll(sel)) masked.add(el)
+  // Elements whose own text holds a masked value: left out of the layout, and their text recorded
+  // with the value replaced.
+  const holders = new Map()
+  const ownText = (el) => [...el.childNodes].filter((n) => n.nodeType === 3).map((n) => n.textContent).join('')
+  for (const m of masks) {
+    if (typeof m === 'string') {
+      for (const el of document.querySelectorAll(m)) masked.add(el)
+      continue
+    }
+    const value = new RegExp(m.value, 'g')
+    for (const root of document.querySelectorAll(m.selector))
+      for (const el of [root, ...root.querySelectorAll('*')]) {
+        value.lastIndex = 0
+        if (value.test(ownText(el))) holders.set(el, value)
+      }
+  }
   const isMasked = (el) => {
     for (let e = el; e; e = e.parentElement) if (masked.has(e)) return true
     return false
@@ -112,8 +135,32 @@ function collectPage(masks) {
     }
     return parts.join('>')
   }
-  const maskTexts = [...masked].map((el) => el.innerText || '').filter((t) => t.trim()).sort((a, b) => b.length - a.length)
-  const unmask = (s) => maskTexts.reduce((acc, t) => acc.split(t).join('‹masked›'), s)
+  // [text as shown, text as recorded], longest first.
+  const maskTexts = [
+    ...[...masked].map((el) => [el.innerText || '', '‹masked›']),
+    ...[...holders].map(([el, value]) => [el.innerText || '', (el.innerText || '').replace(value, '‹masked›')])
+  ]
+    .filter(([shown]) => shown.trim())
+    .sort((a, b) => b[0].length - a[0].length)
+  const unmask = (s) => maskTexts.reduce((acc, [shown, recorded]) => acc.split(shown).join(recorded), s)
+  // For the accessibility snapshot (maskAria): each mask's text, and the pieces of a masked
+  // element's text, which the snapshot splits at its child elements ("Recordings use", "95 KB",
+  // "· 9.5 GB free on this drive").
+  const piecesOf = (el) => {
+    const out = []
+    const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT)
+    for (let n = walker.nextNode(); n; n = walker.nextNode()) {
+      const piece = n.textContent.replace(/\s+/g, ' ').trim()
+      if (piece) out.push(piece)
+    }
+    return out
+  }
+  const ariaMasks = [
+    ...[...masked].map((el) => ({ shown: el.innerText || '', recorded: '‹masked›', pieces: piecesOf(el) })),
+    ...[...holders].map(([el, value]) => ({ shown: el.innerText || '', recorded: (el.innerText || '').replace(value, '‹masked›'), pieces: [] }))
+  ]
+    .filter((m) => m.shown.trim())
+    .sort((a, b) => b.shown.length - a.shown.length)
   const text = unmask(document.body.innerText)
   const attrs = []
   const NAMES = ['aria-label', 'title', 'placeholder', 'alt', 'aria-valuetext', 'aria-roledescription', 'role', 'label']
@@ -131,7 +178,7 @@ function collectPage(masks) {
   const boxes = []
   const half = (v) => Math.round(v * 2) / 2
   for (const el of document.body.querySelectorAll('*')) {
-    if (isMasked(el)) continue
+    if (isMasked(el) || holders.has(el)) continue
     if (![...el.childNodes].some((n) => n.nodeType === 3 && n.textContent.trim())) continue
     const r = el.getBoundingClientRect()
     if (!r.width && !r.height) continue
@@ -149,7 +196,20 @@ function collectPage(masks) {
       align
     })
   }
-  return { title: document.title, text, attrs, boxes, maskTexts }
+  return { title: document.title, text, attrs, boxes, ariaMasks }
+}
+
+/**
+ * The accessibility snapshot with what MASKS cover replaced: a mask's text where the snapshot holds
+ * it whole, else each piece of it (the snapshot splits an element's text at its child elements).
+ */
+function maskAria(aria, masks) {
+  let out = aria
+  for (const m of masks) {
+    if (out.includes(m.shown)) out = out.split(m.shown).join(m.recorded)
+    else for (const piece of m.pieces) out = out.split(piece).join(MASK_TEXT)
+  }
+  return out
 }
 
 /** Main-process hooks: dialogs and notifications are recorded instead of shown, the network is blocked and logged. */
@@ -234,7 +294,7 @@ async function settle(win) {
   await win.evaluate(() => window.__guardSettled())
   let last = null
   for (let k = 0; k < 20; k++) {
-    const shot = await win.screenshot({ animations: 'disabled', caret: 'hide', mask: MASKS.map((s) => win.locator(s)), maskColor: '#FF00FF' })
+    const shot = await win.screenshot({ animations: 'disabled', caret: 'hide', mask: MASKS.map((m) => win.locator(maskSelector(m))), maskColor: '#FF00FF' })
     if (last && shot.equals(last)) return shot
     last = shot
     await h.sleep(250)
@@ -342,9 +402,8 @@ async function runTour({ out, appDir = h.APP_DIR, log = () => undefined }) {
       await page.mouse.move(0, 0)
       const shot = await settle(page)
       const data = await page.evaluate(collectPage, MASKS)
-      let aria = await page.locator('body').ariaSnapshot()
-      for (const t of data.maskTexts) aria = aria.split(t).join(MASK_TEXT)
-      delete data.maskTexts
+      const aria = maskAria(await page.locator('body').ariaSnapshot(), data.ariaMasks)
+      delete data.ariaMasks
       const main = [...(await takeMainStrings(app)), ...pageDialogs.splice(0)].map(maskMain)
       fs.writeFileSync(path.join(out, `${name}.png`), shot)
       screens.push({ name, ...data, aria, main })
@@ -515,7 +574,13 @@ async function runTour({ out, appDir = h.APP_DIR, log = () => undefined }) {
     await win.click('button[aria-label="Back to recordings"]')
     await win.waitForSelector('.home', { timeout: 30000 })
     await win.click('button[aria-label="Delete Phone demo"]')
-    await h.sleep(300)
+    await win.waitForSelector('button[aria-label="Delete Phone demo"]', { state: 'detached', timeout: 15000 })
+    // Removing a card repaints Home in pieces whose timing varies: the picked source's shadow
+    // corners came out three ways from run to run. A reload paints Home afresh, as for the other
+    // Home screens; the question and its buttons were recorded when it was asked.
+    await win.reload()
+    await win.waitForSelector('.project-open', { timeout: 30000 })
+    await h.waitForSources(win)
     await capture('home-confirm')
     void wide
     void tall
