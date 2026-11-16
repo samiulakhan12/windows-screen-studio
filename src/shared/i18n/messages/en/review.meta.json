@@ -450,5 +450,323 @@
   },
   "mark.removed": {
     "description": "Review mode: shown where Keep and Remove were, once the change was removed."
+  },
+  "versions.count.cuts": {
+    "description": "Versions: a count in a version's summary line (\"2:13 · 3 cuts · 5 zooms\"): cuts between clips."
+  },
+  "versions.row.cuts": {
+    "description": "Versions: a row of the comparison between a version and the edit now: the number of cuts between clips."
+  },
+  "versions.count.zooms": {
+    "description": "Versions: a count in a version's summary line (\"2:13 · 3 cuts · 5 zooms\"): zooms."
+  },
+  "versions.row.zooms": {
+    "description": "Versions: a row of the comparison between a version and the edit now: the number of zooms."
+  },
+  "versions.count.captions": {
+    "description": "Versions: a count in a version's summary line (\"2:13 · 3 cuts · 5 zooms\"): caption lines."
+  },
+  "versions.row.captions": {
+    "description": "Versions: a row of the comparison between a version and the edit now: the number of caption lines."
+  },
+  "versions.count.graphics": {
+    "description": "Versions: a count in a version's summary line (\"2:13 · 3 cuts · 5 zooms\"): Captions Studio's pop-ups, counters and list cards."
+  },
+  "versions.row.graphics": {
+    "description": "Versions: a row of the comparison between a version and the edit now: the number of Captions Studio's pop-ups, counters and list cards."
+  },
+  "versions.count.texts": {
+    "description": "Versions: a count in a version's summary line (\"2:13 · 3 cuts · 5 zooms\"): text annotations and title cards."
+  },
+  "versions.row.texts": {
+    "description": "Versions: a row of the comparison between a version and the edit now: the number of text annotations and title cards."
+  },
+  "versions.count.shapes": {
+    "description": "Versions: a count in a version's summary line (\"2:13 · 3 cuts · 5 zooms\"): shapes and spotlights."
+  },
+  "versions.row.shapes": {
+    "description": "Versions: a row of the comparison between a version and the edit now: the number of shapes and spotlights."
+  },
+  "versions.count.images": {
+    "description": "Versions: a count in a version's summary line (\"2:13 · 3 cuts · 5 zooms\"): image overlays."
+  },
+  "versions.row.images": {
+    "description": "Versions: a row of the comparison between a version and the edit now: the number of image overlays."
+  },
+  "versions.count.chapters": {
+    "description": "Versions: a count in a version's summary line (\"2:13 · 3 cuts · 5 zooms\"): chapters."
+  },
+  "versions.row.chapters": {
+    "description": "Versions: a row of the comparison between a version and the edit now: the number of chapters."
+  },
+  "versions.count.freezes": {
+    "description": "Versions: a count in a version's summary line (\"2:13 · 3 cuts · 5 zooms\"): freeze frames."
+  },
+  "versions.row.freezes": {
+    "description": "Versions: a row of the comparison between a version and the edit now: the number of freeze frames."
+  },
+  "versions.row.duration": {
+    "description": "Versions: a row of the comparison: how long the video is."
+  },
+  "versions.row.trimmed": {
+    "description": "Versions: a row of the comparison: whether the start or the end of the recording is cut off; its values are Yes and No."
+  },
+  "versions.yes": {
+    "description": "Versions: a value in the comparison row \"Start or end trimmed\"."
+  },
+  "versions.no": {
+    "description": "Versions: a value in the comparison row \"Start or end trimmed\"."
+  },
+  "versions.area.style": {
+    "description": "Versions: a part of the edit that differs, listed after \"Different:\" in lower case: the look: background, frame, tilt."
+  },
+  "versions.area.cursor": {
+    "description": "Versions: a part of the edit that differs, listed after \"Different:\" in lower case: the cursor and its clicks."
+  },
+  "versions.area.camera": {
+    "description": "Versions: a part of the edit that differs, listed after \"Different:\" in lower case: the camera and its layouts."
+  },
+  "versions.area.sound": {
+    "description": "Versions: a part of the edit that differs, listed after \"Different:\" in lower case: the sound settings, muted sounds and sound effects."
+  },
+  "versions.area.ignoredSounds": {
+    "description": "Versions: a part of the edit that differs, listed after \"Different:\" in lower case: sounds the sound finder was told to leave as they are."
+  },
+  "versions.area.effects": {
+    "description": "Versions: a part of the edit that differs, listed after \"Different:\" in lower case: the video effects."
+  },
+  "versions.area.zoomSettings": {
+    "description": "Versions: a part of the edit that differs, listed after \"Different:\" in lower case: the zoom settings and auto zoom."
+  },
+  "versions.area.captionsLook": {
+    "description": "Versions: a part of the edit that differs, listed after \"Different:\" in lower case: the captions' look, emphasis, places and bleeps."
+  },
+  "versions.area.captionLanguages": {
+    "description": "Versions: a part of the edit that differs, listed after \"Different:\" in lower case: translated caption tracks."
+  },
+  "versions.area.crop": {
+    "description": "Versions: a part of the edit that differs, listed after \"Different:\" in lower case: the crop."
+  },
+  "versions.area.verticalFraming": {
+    "description": "Versions: a part of the edit that differs, listed after \"Different:\" in lower case: how a vertical version follows the action."
+  },
+  "versions.area.brand": {
+    "description": "Versions: a part of the edit that differs, listed after \"Different:\" in lower case: the brand kit and fonts."
+  },
+  "versions.area.watermark": {
+    "description": "Versions: a part of the edit that differs, listed after \"Different:\" in lower case: the watermark."
+  },
+  "versions.area.exportDescription": {
+    "description": "Versions: a part of the edit that differs, listed after \"Different:\" in lower case: the description saved next to exports."
+  },
+  "versions.area.autoChanges": {
+    "description": "Versions: a part of the edit that differs, listed after \"Different:\" in lower case: Review mode's list and its choices."
+  },
+  "versions.area.smoothCuts": {
+    "description": "Versions: a part of the edit that differs, listed after \"Different:\" in lower case: the cut styles (crossfades, punch-ins)."
+  },
+  "versions.area.colour": {
+    "description": "Versions: a part of the edit that differs, listed after \"Different:\" in lower case: the colour grading."
+  },
+  "versions.area.progressBar": {
+    "description": "Versions: a part of the edit that differs, listed after \"Different:\" in lower case: the chapter progress bar."
+  },
+  "versions.area.guide": {
+    "description": "Versions: a part of the edit that differs, listed after \"Different:\" in lower case: the step-by-step guide's choices."
+  },
+  "versions.area.clips": {
+    "description": "Versions: a part of the edit that differs, listed after \"Different:\" in lower case: the clips (moved or trimmed)."
+  },
+  "versions.area.zooms": {
+    "description": "Versions: a part of the edit that differs, listed after \"Different:\" in lower case: zooms (moved or changed)."
+  },
+  "versions.area.textsAndTitles": {
+    "description": "Versions: a part of the edit that differs, listed after \"Different:\" in lower case: texts and title cards (moved or changed)."
+  },
+  "versions.area.shapesAndSpotlights": {
+    "description": "Versions: a part of the edit that differs, listed after \"Different:\" in lower case: shapes and spotlights (moved or changed)."
+  },
+  "versions.area.images": {
+    "description": "Versions: a part of the edit that differs, listed after \"Different:\" in lower case: images (moved or changed)."
+  },
+  "versions.area.popUps": {
+    "description": "Versions: a part of the edit that differs, listed after \"Different:\" in lower case: pop-ups (moved or changed)."
+  },
+  "versions.area.chapters": {
+    "description": "Versions: a part of the edit that differs, listed after \"Different:\" in lower case: chapters (moved or renamed)."
+  },
+  "versions.area.freezeFrames": {
+    "description": "Versions: a part of the edit that differs, listed after \"Different:\" in lower case: freeze frames (moved or changed)."
+  },
+  "versions.area.captionText": {
+    "description": "Versions: a part of the edit that differs, listed after \"Different:\" in lower case: what the captions say."
+  },
+  "versions.area.speakerNames": {
+    "description": "Versions: a part of the edit that differs, listed after \"Different:\" in lower case: the speakers the captions are labelled with."
+  },
+  "versions.area.otherSettings": {
+    "description": "Versions: a part of the edit that differs, listed after \"Different:\" in lower case: any other part of the edit."
+  },
+  "versions.file.backgroundImage": {
+    "description": "Versions: a kind of project file, in lower case inside \"Its {what} file is no longer in the project folder.\" and in the list of what differs: the background image file."
+  },
+  "versions.file.cursorImage": {
+    "description": "Versions: a kind of project file, in lower case inside \"Its {what} file is no longer in the project folder.\" and in the list of what differs: the custom cursor image file."
+  },
+  "versions.file.logo": {
+    "description": "Versions: a kind of project file, in lower case inside \"Its {what} file is no longer in the project folder.\" and in the list of what differs: the logo (watermark) image file."
+  },
+  "versions.file.music": {
+    "description": "Versions: a kind of project file, in lower case inside \"Its {what} file is no longer in the project folder.\" and in the list of what differs: the music file."
+  },
+  "versions.file.image": {
+    "description": "Versions: a kind of project file, in lower case inside \"Its {what} file is no longer in the project folder.\" and in the list of what differs: an image overlay file."
+  },
+  "versions.file.font": {
+    "description": "Versions: a kind of project file, in lower case inside \"Its {what} file is no longer in the project folder.\" and in the list of what differs: a font file."
+  },
+  "versions.file.colourLut": {
+    "description": "Versions: a kind of project file, in lower case inside \"Its {what} file is no longer in the project folder.\" and in the list of what differs: a colour LUT file (a colour look-up table)."
+  },
+  "versions.filesChanged": {
+    "description": "Versions: said when a version is opened or compared and a file it uses was replaced since; {what} names the files (\"background image and cursor image\"), {count} how many kinds."
+  },
+  "versions.fileMissing": {
+    "description": "Versions: said when an opened version uses a file the project folder no longer has; {what} is its kind (\"music\")."
+  },
+  "versions.filesMissing": {
+    "description": "Versions: said when an opened version uses files the project folder no longer has; {n} is how many (two or more), {kinds} their kinds (\"music, image\")."
+  },
+  "versions.error.list": {
+    "description": "Versions: shown when the list of versions could not be read; {error} is the reason."
+  },
+  "versions.defaultName": {
+    "description": "Versions: the name a version gets when the name field is left empty, shown in that field (\"Version 3\")."
+  },
+  "versions.saved": {
+    "description": "The editor's notice after a version was saved; {name} is the version's name.",
+    "user": [
+      "name"
+    ]
+  },
+  "versions.error.save": {
+    "description": "Versions: shown when a version could not be saved; {error} is the reason."
+  },
+  "versions.error.keepFirst": {
+    "description": "Versions: why a version could not be opened, inside \"Could not open this version: {error}\" (lower case first): the edit now is always kept first; {reason} says why that failed."
+  },
+  "versions.error.open": {
+    "description": "Versions: shown when a version could not be opened; {error} is the reason."
+  },
+  "versions.error.rename": {
+    "description": "Versions: shown when a version could not be renamed; {error} is the reason."
+  },
+  "versions.deleted": {
+    "description": "The editor's notice after a version was deleted; {name} is the version's name.",
+    "user": [
+      "name"
+    ]
+  },
+  "versions.error.delete": {
+    "description": "Versions: shown when a version could not be deleted; {error} is the reason."
+  },
+  "versions.title": {
+    "description": "The Versions dialog's title: saved copies of the edit to go back to."
+  },
+  "versions.intro": {
+    "description": "Versions: the line under the title that says what a version is."
+  },
+  "versions.nameField": {
+    "description": "Versions: the name field's label for screen readers."
+  },
+  "versions.save": {
+    "description": "Versions: the button that keeps the edit as a new version."
+  },
+  "versions.full": {
+    "description": "Versions: shown when the most versions one project keeps are saved; {n} is that number (50)."
+  },
+  "versions.empty": {
+    "description": "Versions: shown when the project has no versions."
+  },
+  "versions.list": {
+    "description": "Versions: the list's name for screen readers."
+  },
+  "versions.renameField": {
+    "description": "Versions: the rename field's label; {name} is the version's name now.",
+    "user": [
+      "name"
+    ]
+  },
+  "versions.automatic": {
+    "description": "Versions: a badge on a version Flown kept by itself before a big change."
+  },
+  "versions.openName": {
+    "description": "Versions: the Open button's name for screen readers; {name} is the version's name.",
+    "user": [
+      "name"
+    ]
+  },
+  "versions.openHint": {
+    "description": "Versions: the Open button's tooltip."
+  },
+  "versions.open": {
+    "description": "Versions: the button that opens a version in place of the edit now (a verb)."
+  },
+  "versions.compareName": {
+    "description": "Versions: the Compare button's name for screen readers; {name} is the version's name.",
+    "user": [
+      "name"
+    ]
+  },
+  "versions.compare": {
+    "description": "Versions: the button that shows how a version differs from the edit now (a verb)."
+  },
+  "versions.renameName": {
+    "description": "Versions: the Rename button's name for screen readers; {name} is the version's name.",
+    "user": [
+      "name"
+    ]
+  },
+  "versions.rename": {
+    "description": "Versions: the button that renames a version (a verb)."
+  },
+  "versions.deleteAsk": {
+    "description": "Versions: the delete question's name for screen readers; {name} is the version's name.",
+    "user": [
+      "name"
+    ]
+  },
+  "versions.deleteQuestion": {
+    "description": "Versions: the question before a version is deleted; {name} is its name. Its buttons are Delete and Keep.",
+    "user": [
+      "name"
+    ]
+  },
+  "versions.autoHint": {
+    "description": "Versions: the footer: the tools before which Flown keeps a version by itself, and how many such versions it keeps ({n}, 5). Polish, Make my captions great, Remove all, the Transcript tab, Review and Make a vertical or square version are the names of tools and buttons."
+  },
+  "versions.comparing": {
+    "description": "Versions: shown while a version is compared with the edit now."
+  },
+  "versions.error.compare": {
+    "description": "Versions: shown when a version could not be compared; {error} is the reason."
+  },
+  "versions.same": {
+    "description": "Versions: the comparison when nothing differs."
+  },
+  "versions.what": {
+    "description": "Versions: the comparison table's first column, for screen readers: what each row counts."
+  },
+  "versions.thisVersion": {
+    "description": "Versions: the comparison table's column of the version's values."
+  },
+  "versions.now": {
+    "description": "Versions: the comparison table's column of the edit now's values."
+  },
+  "versions.alsoDifferent": {
+    "description": "Versions: under the comparison table, the other parts of the edit that differ; {areas} lists them (\"style, camera and zooms\")."
+  },
+  "versions.different": {
+    "description": "Versions: the parts of the edit that differ when no count does; {areas} lists them (\"style, camera and zooms\")."
   }
 }

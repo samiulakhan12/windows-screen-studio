@@ -1542,5 +1542,990 @@
   "line": 1018,
   "english": "Removed",
   "sample": {}
+ },
+ {
+  "key": "review.versions.count.cuts",
+  "file": "src/shared/editor/versionWords.ts",
+  "line": 13,
+  "english": [
+   "0 cuts",
+   "1 cut",
+   "2 cuts",
+   "1000 cuts"
+  ],
+  "sample": [
+   {
+    "count": 0,
+    "n": "0"
+   },
+   {
+    "count": 1,
+    "n": "1"
+   },
+   {
+    "count": 2,
+    "n": "2"
+   },
+   {
+    "count": 1000,
+    "n": "1000"
+   }
+  ]
+ },
+ {
+  "key": "review.versions.row.cuts",
+  "file": "src/shared/editor/versionWords.ts",
+  "line": 24,
+  "english": "Cuts",
+  "sample": {}
+ },
+ {
+  "key": "review.versions.count.zooms",
+  "file": "src/shared/editor/versionWords.ts",
+  "line": 13,
+  "english": [
+   "0 zooms",
+   "1 zoom",
+   "2 zooms",
+   "1000 zooms"
+  ],
+  "sample": [
+   {
+    "count": 0,
+    "n": "0"
+   },
+   {
+    "count": 1,
+    "n": "1"
+   },
+   {
+    "count": 2,
+    "n": "2"
+   },
+   {
+    "count": 1000,
+    "n": "1000"
+   }
+  ]
+ },
+ {
+  "key": "review.versions.row.zooms",
+  "file": "src/shared/editor/versionWords.ts",
+  "line": 24,
+  "english": "Zooms",
+  "sample": {}
+ },
+ {
+  "key": "review.versions.count.captions",
+  "file": "src/shared/editor/versionWords.ts",
+  "line": 13,
+  "english": [
+   "0 captions",
+   "1 caption",
+   "2 captions",
+   "1000 captions"
+  ],
+  "sample": [
+   {
+    "count": 0,
+    "n": "0"
+   },
+   {
+    "count": 1,
+    "n": "1"
+   },
+   {
+    "count": 2,
+    "n": "2"
+   },
+   {
+    "count": 1000,
+    "n": "1000"
+   }
+  ]
+ },
+ {
+  "key": "review.versions.row.captions",
+  "file": "src/shared/editor/versionWords.ts",
+  "line": 24,
+  "english": "Captions",
+  "sample": {}
+ },
+ {
+  "key": "review.versions.count.graphics",
+  "file": "src/shared/editor/versionWords.ts",
+  "line": 13,
+  "english": [
+   "0 pop-ups",
+   "1 pop-up",
+   "2 pop-ups",
+   "1000 pop-ups"
+  ],
+  "sample": [
+   {
+    "count": 0,
+    "n": "0"
+   },
+   {
+    "count": 1,
+    "n": "1"
+   },
+   {
+    "count": 2,
+    "n": "2"
+   },
+   {
+    "count": 1000,
+    "n": "1000"
+   }
+  ]
+ },
+ {
+  "key": "review.versions.row.graphics",
+  "file": "src/shared/editor/versionWords.ts",
+  "line": 24,
+  "english": "Pop-ups",
+  "sample": {}
+ },
+ {
+  "key": "review.versions.count.texts",
+  "file": "src/shared/editor/versionWords.ts",
+  "line": 13,
+  "english": [
+   "0 texts",
+   "1 text",
+   "2 texts",
+   "1000 texts"
+  ],
+  "sample": [
+   {
+    "count": 0,
+    "n": "0"
+   },
+   {
+    "count": 1,
+    "n": "1"
+   },
+   {
+    "count": 2,
+    "n": "2"
+   },
+   {
+    "count": 1000,
+    "n": "1000"
+   }
+  ]
+ },
+ {
+  "key": "review.versions.row.texts",
+  "file": "src/shared/editor/versionWords.ts",
+  "line": 24,
+  "english": "Text and titles",
+  "sample": {}
+ },
+ {
+  "key": "review.versions.count.shapes",
+  "file": "src/shared/editor/versionWords.ts",
+  "line": 13,
+  "english": [
+   "0 shapes",
+   "1 shape",
+   "2 shapes",
+   "1000 shapes"
+  ],
+  "sample": [
+   {
+    "count": 0,
+    "n": "0"
+   },
+   {
+    "count": 1,
+    "n": "1"
+   },
+   {
+    "count": 2,
+    "n": "2"
+   },
+   {
+    "count": 1000,
+    "n": "1000"
+   }
+  ]
+ },
+ {
+  "key": "review.versions.row.shapes",
+  "file": "src/shared/editor/versionWords.ts",
+  "line": 24,
+  "english": "Shapes and spotlights",
+  "sample": {}
+ },
+ {
+  "key": "review.versions.count.images",
+  "file": "src/shared/editor/versionWords.ts",
+  "line": 13,
+  "english": [
+   "0 images",
+   "1 image",
+   "2 images",
+   "1000 images"
+  ],
+  "sample": [
+   {
+    "count": 0,
+    "n": "0"
+   },
+   {
+    "count": 1,
+    "n": "1"
+   },
+   {
+    "count": 2,
+    "n": "2"
+   },
+   {
+    "count": 1000,
+    "n": "1000"
+   }
+  ]
+ },
+ {
+  "key": "review.versions.row.images",
+  "file": "src/shared/editor/versionWords.ts",
+  "line": 24,
+  "english": "Images",
+  "sample": {}
+ },
+ {
+  "key": "review.versions.count.chapters",
+  "file": "src/shared/editor/versionWords.ts",
+  "line": 13,
+  "english": [
+   "0 chapters",
+   "1 chapter",
+   "2 chapters",
+   "1000 chapters"
+  ],
+  "sample": [
+   {
+    "count": 0,
+    "n": "0"
+   },
+   {
+    "count": 1,
+    "n": "1"
+   },
+   {
+    "count": 2,
+    "n": "2"
+   },
+   {
+    "count": 1000,
+    "n": "1000"
+   }
+  ]
+ },
+ {
+  "key": "review.versions.row.chapters",
+  "file": "src/shared/editor/versionWords.ts",
+  "line": 24,
+  "english": "Chapters",
+  "sample": {}
+ },
+ {
+  "key": "review.versions.count.freezes",
+  "file": "src/shared/editor/versionWords.ts",
+  "line": 13,
+  "english": [
+   "0 freeze frames",
+   "1 freeze frame",
+   "2 freeze frames",
+   "1000 freeze frames"
+  ],
+  "sample": [
+   {
+    "count": 0,
+    "n": "0"
+   },
+   {
+    "count": 1,
+    "n": "1"
+   },
+   {
+    "count": 2,
+    "n": "2"
+   },
+   {
+    "count": 1000,
+    "n": "1000"
+   }
+  ]
+ },
+ {
+  "key": "review.versions.row.freezes",
+  "file": "src/shared/editor/versionWords.ts",
+  "line": 24,
+  "english": "Freeze frames",
+  "sample": {}
+ },
+ {
+  "key": "review.versions.row.duration",
+  "file": "src/shared/editor/versionWords.ts",
+  "line": 24,
+  "english": "Length",
+  "sample": {}
+ },
+ {
+  "key": "review.versions.row.trimmed",
+  "file": "src/shared/editor/versionWords.ts",
+  "line": 25,
+  "english": "Start or end trimmed",
+  "sample": {}
+ },
+ {
+  "key": "review.versions.yes",
+  "file": "src/shared/editor/versionWords.ts",
+  "line": 22,
+  "english": "Yes",
+  "sample": {}
+ },
+ {
+  "key": "review.versions.no",
+  "file": "src/shared/editor/versionWords.ts",
+  "line": 22,
+  "english": "No",
+  "sample": {}
+ },
+ {
+  "key": "review.versions.area.style",
+  "file": "src/shared/editor/versionWords.ts",
+  "line": 32,
+  "english": "style",
+  "sample": {}
+ },
+ {
+  "key": "review.versions.area.cursor",
+  "file": "src/shared/editor/versionWords.ts",
+  "line": 33,
+  "english": "cursor",
+  "sample": {}
+ },
+ {
+  "key": "review.versions.area.camera",
+  "file": "src/shared/editor/versionWords.ts",
+  "line": 34,
+  "english": "camera",
+  "sample": {}
+ },
+ {
+  "key": "review.versions.area.sound",
+  "file": "src/shared/editor/versionWords.ts",
+  "line": 35,
+  "english": "sound",
+  "sample": {}
+ },
+ {
+  "key": "review.versions.area.ignoredSounds",
+  "file": "src/shared/editor/versionWords.ts",
+  "line": 36,
+  "english": "ignored sounds",
+  "sample": {}
+ },
+ {
+  "key": "review.versions.area.effects",
+  "file": "src/shared/editor/versionWords.ts",
+  "line": 37,
+  "english": "effects",
+  "sample": {}
+ },
+ {
+  "key": "review.versions.area.zoomSettings",
+  "file": "src/shared/editor/versionWords.ts",
+  "line": 38,
+  "english": "zoom settings",
+  "sample": {}
+ },
+ {
+  "key": "review.versions.area.captionsLook",
+  "file": "src/shared/editor/versionWords.ts",
+  "line": 39,
+  "english": "captions look",
+  "sample": {}
+ },
+ {
+  "key": "review.versions.area.captionLanguages",
+  "file": "src/shared/editor/versionWords.ts",
+  "line": 40,
+  "english": "caption languages",
+  "sample": {}
+ },
+ {
+  "key": "review.versions.area.crop",
+  "file": "src/shared/editor/versionWords.ts",
+  "line": 41,
+  "english": "crop",
+  "sample": {}
+ },
+ {
+  "key": "review.versions.area.verticalFraming",
+  "file": "src/shared/editor/versionWords.ts",
+  "line": 42,
+  "english": "vertical framing",
+  "sample": {}
+ },
+ {
+  "key": "review.versions.area.brand",
+  "file": "src/shared/editor/versionWords.ts",
+  "line": 43,
+  "english": "brand",
+  "sample": {}
+ },
+ {
+  "key": "review.versions.area.watermark",
+  "file": "src/shared/editor/versionWords.ts",
+  "line": 44,
+  "english": "watermark",
+  "sample": {}
+ },
+ {
+  "key": "review.versions.area.exportDescription",
+  "file": "src/shared/editor/versionWords.ts",
+  "line": 45,
+  "english": "export description",
+  "sample": {}
+ },
+ {
+  "key": "review.versions.area.autoChanges",
+  "file": "src/shared/editor/versionWords.ts",
+  "line": 46,
+  "english": "automatic changes to review",
+  "sample": {}
+ },
+ {
+  "key": "review.versions.area.smoothCuts",
+  "file": "src/shared/editor/versionWords.ts",
+  "line": 47,
+  "english": "smooth cuts",
+  "sample": {}
+ },
+ {
+  "key": "review.versions.area.colour",
+  "file": "src/shared/editor/versionWords.ts",
+  "line": 48,
+  "english": "colour",
+  "sample": {}
+ },
+ {
+  "key": "review.versions.area.progressBar",
+  "file": "src/shared/editor/versionWords.ts",
+  "line": 49,
+  "english": "progress bar",
+  "sample": {}
+ },
+ {
+  "key": "review.versions.area.guide",
+  "file": "src/shared/editor/versionWords.ts",
+  "line": 50,
+  "english": "guide",
+  "sample": {}
+ },
+ {
+  "key": "review.versions.area.clips",
+  "file": "src/shared/editor/versionWords.ts",
+  "line": 51,
+  "english": "clips",
+  "sample": {}
+ },
+ {
+  "key": "review.versions.area.zooms",
+  "file": "src/shared/editor/versionWords.ts",
+  "line": 52,
+  "english": "zooms",
+  "sample": {}
+ },
+ {
+  "key": "review.versions.area.textsAndTitles",
+  "file": "src/shared/editor/versionWords.ts",
+  "line": 53,
+  "english": "texts and titles",
+  "sample": {}
+ },
+ {
+  "key": "review.versions.area.shapesAndSpotlights",
+  "file": "src/shared/editor/versionWords.ts",
+  "line": 54,
+  "english": "shapes and spotlights",
+  "sample": {}
+ },
+ {
+  "key": "review.versions.area.images",
+  "file": "src/shared/editor/versionWords.ts",
+  "line": 55,
+  "english": "images",
+  "sample": {}
+ },
+ {
+  "key": "review.versions.area.popUps",
+  "file": "src/shared/editor/versionWords.ts",
+  "line": 56,
+  "english": "pop-ups",
+  "sample": {}
+ },
+ {
+  "key": "review.versions.area.chapters",
+  "file": "src/shared/editor/versionWords.ts",
+  "line": 57,
+  "english": "chapters",
+  "sample": {}
+ },
+ {
+  "key": "review.versions.area.freezeFrames",
+  "file": "src/shared/editor/versionWords.ts",
+  "line": 58,
+  "english": "freeze frames",
+  "sample": {}
+ },
+ {
+  "key": "review.versions.area.captionText",
+  "file": "src/shared/editor/versionWords.ts",
+  "line": 59,
+  "english": "caption text",
+  "sample": {}
+ },
+ {
+  "key": "review.versions.area.speakerNames",
+  "file": "src/shared/editor/versionWords.ts",
+  "line": 60,
+  "english": "speaker names",
+  "sample": {}
+ },
+ {
+  "key": "review.versions.area.otherSettings",
+  "file": "src/shared/editor/versionWords.ts",
+  "line": 61,
+  "english": "other settings",
+  "sample": {}
+ },
+ {
+  "key": "review.versions.file.backgroundImage",
+  "file": "src/shared/editor/versionWords.ts",
+  "line": 62,
+  "english": "background image",
+  "sample": {}
+ },
+ {
+  "key": "review.versions.file.cursorImage",
+  "file": "src/shared/editor/versionWords.ts",
+  "line": 63,
+  "english": "cursor image",
+  "sample": {}
+ },
+ {
+  "key": "review.versions.file.logo",
+  "file": "src/shared/editor/versionWords.ts",
+  "line": 73,
+  "english": "logo",
+  "sample": {}
+ },
+ {
+  "key": "review.versions.file.music",
+  "file": "src/shared/editor/versionWords.ts",
+  "line": 74,
+  "english": "music",
+  "sample": {}
+ },
+ {
+  "key": "review.versions.file.image",
+  "file": "src/shared/editor/versionWords.ts",
+  "line": 75,
+  "english": "image",
+  "sample": {}
+ },
+ {
+  "key": "review.versions.file.font",
+  "file": "src/shared/editor/versionWords.ts",
+  "line": 76,
+  "english": "font",
+  "sample": {}
+ },
+ {
+  "key": "review.versions.file.colourLut",
+  "file": "src/shared/editor/versionWords.ts",
+  "line": 77,
+  "english": "colour LUT",
+  "sample": {}
+ },
+ {
+  "key": "review.versions.filesChanged",
+  "file": "src/shared/editor/versionWords.ts",
+  "line": 90,
+  "english": [
+   "Its background image and cursor image have changed since it was kept.",
+   "Its background image has changed since it was kept.",
+   "Its background image and cursor image have changed since it was kept.",
+   "Its background image and cursor image have changed since it was kept."
+  ],
+  "sample": [
+   {
+    "what": "background image and cursor image",
+    "count": 0,
+    "n": "0"
+   },
+   {
+    "what": "background image",
+    "count": 1,
+    "n": "1"
+   },
+   {
+    "what": "background image and cursor image",
+    "count": 2,
+    "n": "2"
+   },
+   {
+    "what": "background image and cursor image",
+    "count": 1000,
+    "n": "1000"
+   }
+  ]
+ },
+ {
+  "key": "review.versions.fileMissing",
+  "file": "src/shared/editor/versionWords.ts",
+  "line": 97,
+  "english": "Its music file is no longer in the project folder.",
+  "sample": {
+   "what": "music"
+  }
+ },
+ {
+  "key": "review.versions.filesMissing",
+  "file": "src/shared/editor/versionWords.ts",
+  "line": 98,
+  "english": "3 of its files (music, image) are no longer in the project folder.",
+  "sample": {
+   "n": "3",
+   "kinds": "music, image"
+  }
+ },
+ {
+  "key": "review.versions.error.list",
+  "file": "src/renderer/src/versions/VersionsDialog.tsx",
+  "line": 73,
+  "english": "Could not list the versions: disk not ready",
+  "sample": {
+   "error": "disk not ready"
+  }
+ },
+ {
+  "key": "review.versions.defaultName",
+  "file": "src/renderer/src/versions/VersionsDialog.tsx",
+  "line": 101,
+  "english": "Version 3",
+  "sample": {
+   "n": "3"
+  }
+ },
+ {
+  "key": "review.versions.saved",
+  "file": "src/renderer/src/versions/VersionsDialog.tsx",
+  "line": 112,
+  "english": "Saved “Before the intro”",
+  "sample": {
+   "name": "Before the intro"
+  }
+ },
+ {
+  "key": "review.versions.error.save",
+  "file": "src/renderer/src/versions/VersionsDialog.tsx",
+  "line": 115,
+  "english": "Could not save the version: disk full",
+  "sample": {
+   "error": "disk full"
+  }
+ },
+ {
+  "key": "review.versions.error.keepFirst",
+  "file": "src/renderer/src/versions/VersionsDialog.tsx",
+  "line": 130,
+  "english": "your edit now could not be kept as a version first (disk full)",
+  "sample": {
+   "reason": "disk full"
+  }
+ },
+ {
+  "key": "review.versions.error.open",
+  "file": "src/renderer/src/versions/VersionsDialog.tsx",
+  "line": 135,
+  "english": "Could not open this version: disk full",
+  "sample": {
+   "error": "disk full"
+  }
+ },
+ {
+  "key": "review.versions.error.rename",
+  "file": "src/renderer/src/versions/VersionsDialog.tsx",
+  "line": 166,
+  "english": "Could not rename the version: disk full",
+  "sample": {
+   "error": "disk full"
+  }
+ },
+ {
+  "key": "review.versions.deleted",
+  "file": "src/renderer/src/versions/VersionsDialog.tsx",
+  "line": 174,
+  "english": "Deleted “Before the intro”",
+  "sample": {
+   "name": "Before the intro"
+  }
+ },
+ {
+  "key": "review.versions.error.delete",
+  "file": "src/renderer/src/versions/VersionsDialog.tsx",
+  "line": 178,
+  "english": "Could not delete the version: disk full",
+  "sample": {
+   "error": "disk full"
+  }
+ },
+ {
+  "key": "review.versions.title",
+  "file": "src/renderer/src/versions/VersionsDialog.tsx",
+  "line": 194,
+  "english": "Versions",
+  "sample": {}
+ },
+ {
+  "key": "common.action.close",
+  "file": "src/renderer/src/versions/VersionsDialog.tsx",
+  "line": 195,
+  "english": "Close",
+  "sample": {}
+ },
+ {
+  "key": "review.versions.intro",
+  "file": "src/renderer/src/versions/VersionsDialog.tsx",
+  "line": 199,
+  "english": "A version keeps this edit as it is now. Your recording is never changed.",
+  "sample": {}
+ },
+ {
+  "key": "review.versions.nameField",
+  "file": "src/renderer/src/versions/VersionsDialog.tsx",
+  "line": 204,
+  "english": "Version name",
+  "sample": {}
+ },
+ {
+  "key": "review.versions.save",
+  "file": "src/renderer/src/versions/VersionsDialog.tsx",
+  "line": 213,
+  "english": "Save version",
+  "sample": {}
+ },
+ {
+  "key": "review.versions.full",
+  "file": "src/renderer/src/versions/VersionsDialog.tsx",
+  "line": 216,
+  "english": "You have 50 saved versions. Delete one to save another.",
+  "sample": {
+   "n": "50"
+  }
+ },
+ {
+  "key": "review.versions.empty",
+  "file": "src/renderer/src/versions/VersionsDialog.tsx",
+  "line": 223,
+  "english": "No versions yet. Save one before a big change, so you can always go back.",
+  "sample": {}
+ },
+ {
+  "key": "review.versions.list",
+  "file": "src/renderer/src/versions/VersionsDialog.tsx",
+  "line": 225,
+  "english": "Kept versions",
+  "sample": {}
+ },
+ {
+  "key": "review.versions.renameField",
+  "file": "src/renderer/src/versions/VersionsDialog.tsx",
+  "line": 236,
+  "english": "New name for Before the intro",
+  "sample": {
+   "name": "Before the intro"
+  }
+ },
+ {
+  "key": "review.versions.automatic",
+  "file": "src/renderer/src/versions/VersionsDialog.tsx",
+  "line": 255,
+  "english": "Automatic",
+  "sample": {}
+ },
+ {
+  "key": "review.versions.openName",
+  "file": "src/renderer/src/versions/VersionsDialog.tsx",
+  "line": 262,
+  "english": "Open Before the intro",
+  "sample": {
+   "name": "Before the intro"
+  }
+ },
+ {
+  "key": "review.versions.openHint",
+  "file": "src/renderer/src/versions/VersionsDialog.tsx",
+  "line": 262,
+  "english": "Open this version: your edit now is kept as a version first",
+  "sample": {}
+ },
+ {
+  "key": "review.versions.open",
+  "file": "src/renderer/src/versions/VersionsDialog.tsx",
+  "line": 263,
+  "english": "Open",
+  "sample": {}
+ },
+ {
+  "key": "review.versions.compareName",
+  "file": "src/renderer/src/versions/VersionsDialog.tsx",
+  "line": 93,
+  "english": "Compare Before the intro with your edit now",
+  "sample": {
+   "name": "Before the intro"
+  }
+ },
+ {
+  "key": "review.versions.compare",
+  "file": "src/renderer/src/versions/VersionsDialog.tsx",
+  "line": 266,
+  "english": "Compare",
+  "sample": {}
+ },
+ {
+  "key": "review.versions.renameName",
+  "file": "src/renderer/src/versions/VersionsDialog.tsx",
+  "line": 93,
+  "english": "Rename Before the intro",
+  "sample": {
+   "name": "Before the intro"
+  }
+ },
+ {
+  "key": "review.versions.rename",
+  "file": "src/renderer/src/versions/VersionsDialog.tsx",
+  "line": 278,
+  "english": "Rename",
+  "sample": {}
+ },
+ {
+  "key": "common.action.deleteName",
+  "file": "src/renderer/src/versions/VersionsDialog.tsx",
+  "line": 93,
+  "english": "Delete Before the intro",
+  "sample": {
+   "name": "Before the intro"
+  }
+ },
+ {
+  "key": "common.action.delete",
+  "file": "src/renderer/src/versions/VersionsDialog.tsx",
+  "line": 281,
+  "english": "Delete",
+  "sample": {}
+ },
+ {
+  "key": "review.versions.deleteAsk",
+  "file": "src/renderer/src/versions/VersionsDialog.tsx",
+  "line": 287,
+  "english": "Delete Before the intro?",
+  "sample": {
+   "name": "Before the intro"
+  }
+ },
+ {
+  "key": "review.versions.deleteQuestion",
+  "file": "src/renderer/src/versions/VersionsDialog.tsx",
+  "line": 288,
+  "english": "Delete “Before the intro”? This cannot be undone.",
+  "sample": {
+   "name": "Before the intro"
+  }
+ },
+ {
+  "key": "common.action.keep",
+  "file": "src/renderer/src/versions/VersionsDialog.tsx",
+  "line": 293,
+  "english": "Keep",
+  "sample": {}
+ },
+ {
+  "key": "review.versions.autoHint",
+  "file": "src/renderer/src/versions/VersionsDialog.tsx",
+  "line": 305,
+  "english": "Flown also keeps a version before Polish, Make my captions great, Remove all in the Transcript tab or Review, and Make a vertical or square version (the last 5).",
+  "sample": {
+   "n": "5"
+  }
+ },
+ {
+  "key": "review.versions.comparing",
+  "file": "src/renderer/src/versions/VersionsDialog.tsx",
+  "line": 317,
+  "english": "Comparing…",
+  "sample": {}
+ },
+ {
+  "key": "review.versions.error.compare",
+  "file": "src/renderer/src/versions/VersionsDialog.tsx",
+  "line": 318,
+  "english": "Could not compare: disk full",
+  "sample": {
+   "error": "disk full"
+  }
+ },
+ {
+  "key": "review.versions.same",
+  "file": "src/renderer/src/versions/VersionsDialog.tsx",
+  "line": 323,
+  "english": "Same as your edit now.",
+  "sample": {}
+ },
+ {
+  "key": "review.versions.what",
+  "file": "src/renderer/src/versions/VersionsDialog.tsx",
+  "line": 333,
+  "english": "What",
+  "sample": {}
+ },
+ {
+  "key": "review.versions.thisVersion",
+  "file": "src/renderer/src/versions/VersionsDialog.tsx",
+  "line": 335,
+  "english": "This version",
+  "sample": {}
+ },
+ {
+  "key": "review.versions.now",
+  "file": "src/renderer/src/versions/VersionsDialog.tsx",
+  "line": 336,
+  "english": "Now",
+  "sample": {}
+ },
+ {
+  "key": "review.versions.alsoDifferent",
+  "file": "src/renderer/src/versions/VersionsDialog.tsx",
+  "line": 350,
+  "english": "Also different: style and camera.",
+  "sample": {
+   "areas": "style and camera"
+  }
+ },
+ {
+  "key": "review.versions.different",
+  "file": "src/renderer/src/versions/VersionsDialog.tsx",
+  "line": 350,
+  "english": "Different: style and camera.",
+  "sample": {
+   "areas": "style and camera"
+  }
  }
 ]
