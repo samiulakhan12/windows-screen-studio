@@ -13,7 +13,7 @@ import { englishTree, makeTree, removeTree, REPO, toolsTree, writeTree } from '.
 type Finding = { file: string; line: number; kind: string; text: string }
 const scan = require('../scripts/i18n/lib/scan.cjs') as {
   scanSource(file: string, text: string, rules?: { keys?: Set<string>; allow?: object }): Finding[]
-  scanTree(root: string, opts?: { mode?: string }): { failures: Finding[]; report: Finding[]; pending: Finding[]; allowed: Finding[]; files: number }
+  scanTree(root: string, opts?: { mode?: string }): { failures: Finding[]; report: Finding[]; pending: Finding[]; allowed: Finding[]; words: Finding[]; files: number }
   mainNamespaces(entry: string, root?: string): Set<string>
   importGraph(entry: string): Set<string>
   metaImporters(root?: string): string[]
@@ -191,12 +191,15 @@ void TITLE; void NODE; void later; void Panel`
     expect([...pendingFiles].some((f) => f.startsWith('src/renderer/src/recorder/'))).toBe(true)
   })
 
-  it('from step S4 holds the whole tree to the rule: config.json says fail, and no UI text of ours is without a key', () => {
-    const cfg = JSON.parse(fs.readFileSync(path.join(REPO, 'scripts/i18n/config.json'), 'utf8')) as { scan: string }
+  it('from step S4 holds the whole tree to the rule, and from S4b to its words rule: config.json says fail, and no UI text of ours is without a key', () => {
+    const cfg = JSON.parse(fs.readFileSync(path.join(REPO, 'scripts/i18n/config.json'), 'utf8')) as { scan: string; words: string }
     expect(cfg.scan).toBe('fail')
+    // Step S4b: word tables, copy and sentences made of pieces fail too (scan.cjs WORD_KINDS).
+    expect(cfg.words).toBe('fail')
     const r = scan.scanTree(REPO)
     expect(r.failures.map((f) => `${f.file}:${f.line} ${f.kind}: ${f.text}`)).toEqual([])
     expect(r.report).toEqual([])
+    expect(r.words).toEqual([])
     // Only the other account's files wait (section 9.5).
     expect(r.pending.length).toBeGreaterThan(0)
   })

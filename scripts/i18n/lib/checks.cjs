@@ -66,7 +66,7 @@ function runChecks(root = files.ROOT, { report = false } = {}) {
   if (scan.report.length) notes.push(`scan: ${scan.report.length} text(s) in ${new Set(scan.report.map((f) => f.file)).size} file(s) still to extract`)
   if (scan.words.length) {
     const count = (kind) => scan.words.filter((f) => f.kind === kind).length
-    notes.push(`scan: words report: ${count('table')} table text(s), ${count('copy')} copy text(s) and ${count('fragment')} sentence(s) in pieces in ${new Set(scan.words.map((f) => f.file)).size} file(s) still to extract (scripts/i18n/s4b-sites.json; they fail once config.json says "words": "fail")`)
+    notes.push(`scan: words report: ${count('table')} table text(s), ${count('copy')} copy text(s) and ${count('fragment')} sentence(s) in pieces in ${new Set(scan.words.map((f) => f.file)).size} file(s) still to extract (they fail while config.json says "words": "fail")`)
   }
   if (scan.pending.length) notes.push(`scan: ${scan.pending.length} text(s) pending in the other account's files`)
 

@@ -2,8 +2,8 @@
 // The string scanner (docs/design/output-and-languages.md §16.1): every UI text in src/ comes from a
 // message key. Findings in config.json's failFor files fail; the rest of the tree is a report until
 // step S4 sets "scan": "fail"; the other account's files (pending.json) are listed as pending. The
-// words rule (tables, copy and sentences made of pieces, step S4b) is a report until config.json's
-// "words" says "fail" (--words overrides it).
+// words rule (tables, copy and sentences made of pieces, step S4b) follows config.json's "words",
+// "fail" since S4b's integration (--words overrides it).
 //
 //   node scripts/i18n/scan.mjs [--root <dir>] [--mode report|fail] [--words report|fail] [--verbose] [--json]
 //

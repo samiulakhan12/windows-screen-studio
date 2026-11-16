@@ -868,8 +868,8 @@ function englishRules(root = files.ROOT) {
  * `report` (the rest, until S4). `mode` overrides config.json's scan ('report' or 'fail').
  *
  * The words rule's findings (WORD_KINDS: tables, copy and fragments, step S4b) are sorted apart:
- * `words` while config.json's `words` says "report" (S4b's inventory, scripts/i18n/s4b-sites.json),
- * `failures` once it says "fail"; `wordsMode` overrides it, and `words: false` leaves the rule out
+ * `words` while config.json's `words` says "report" (as it did while step S4b's builders worked),
+ * `failures` once it says "fail" (as it has since S4b's integration); `wordsMode` overrides it, and `words: false` leaves the rule out
  * (the split, which reads only the report). The other account's stay pending.
  */
 function scanTree(root = files.ROOT, { mode, keys, wordsMode, words = true } = {}) {

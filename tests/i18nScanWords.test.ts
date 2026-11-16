@@ -4,9 +4,9 @@
  * hints and sentences in object and array literals, maps keyed by ids, tables named for their words,
  * getters, functions a table holds, Map entries, a component's own text prop), copy a function returns
  * or builds, and each kind of sentence made of pieces; it passes ids, CSS values, file-format words,
- * paths, logs, comparisons, message keys and tables already extracted. Its findings are a report
- * (config.json "words") until S4b's integrator turns them to fail, and scripts/i18n/s4b-sites.json
- * lists every one of them in the tree, each file in one of three groups.
+ * paths, logs, comparisons, message keys and tables already extracted. Its findings were a report
+ * (config.json "words") while S4b's builders worked; since S4b's integration they fail, and the whole
+ * tree has none (tests/i18nScan.test.ts holds the tree to it).
  */
 import fs from 'node:fs'
 import path from 'node:path'
@@ -21,10 +21,6 @@ const scan = require('../scripts/i18n/lib/scan.cjs') as {
   scanTree(root: string, opts?: { mode?: string; wordsMode?: string }): { failures: Finding[]; report: Finding[]; pending: Finding[]; allowed: Finding[]; words: Finding[]; files: number }
 }
 const checks = require('../scripts/i18n/lib/checks.cjs') as { runChecks(root: string, o?: { report?: boolean }): { errors: string[]; notes: string[] } }
-const sites = require('../scripts/i18n/lib/s4bSites.cjs') as {
-  INVENTORY: string
-  inventoryOf(root?: string): { sites: { file: string; line: number; kind: string; text: string; group: string }[]; groups: Record<string, { files: string[] }> }
-}
 
 const trees: string[] = []
 afterAll(() => trees.forEach(removeTree))
@@ -214,7 +210,7 @@ export const shown = { title: 'Make captions on this PC' }`
   })
 })
 
-describe('test 61, words rule: a report until S4b turns it to fail', () => {
+describe('test 61, words rule: a report while S4b’s builders worked, failures since its integration', () => {
   it('sorts the words apart from the other findings: a report, failures once config.json says fail, the other account’s pending', () => {
     const root = makeTree({
       ...englishTree({ codecs: { 'row.codec': 'Codec' } }),
@@ -246,48 +242,11 @@ describe('test 61, words rule: a report until S4b turns it to fail', () => {
     expect(scan.scanTree(root).failures.map((f) => `${f.kind}:${f.text}`)).toEqual(['table:Checking this PC…'])
   })
 
-  it('makes the inventory: each file in one group, sentences in pieces and cancel paths in d, and this tree’s every site listed', () => {
-    const root = makeTree({
-      ...englishTree({ x: { piece: ' · selected: drag to move it', name: 'Codec' } }),
-      ...toolsTree({ scan: 'fail', pending: { files: [{ path: 'src/main/recording/**', reason: 'other account' }] } }),
-      'src/shared/speech/copy.ts': "export const COPY = { checking: 'Checking this PC…' }\n",
-      'src/shared/editor/shapes.ts': "export const SHAPES = [{ id: 'arrow', label: 'Arrow', hint: 'Point at something' }]\n",
-      'src/renderer/src/editor/panels/CaptionsPanel.tsx': "export const LANGS = [{ code: 'bn', label: 'Bengali' }]\n",
-      'src/renderer/src/editor/Marks.tsx': `import { t } from '../../../shared/i18n/t'\nexport const NAMES = { freeze: 'Freeze frame' }\nexport const tip = (): string => t('x.name') + t('x.piece')\n`,
-      'src/main/ai/request.ts': "export const cancelled = (): Error => new Error('Cancelled.')\n",
-      'src/main/recording/names.ts': "export const NAMES = { top: 'Top left corner' }\n"
-    })
-    trees.push(root)
-    const inv = sites.inventoryOf(root)
-    expect(inv.sites.map((s) => `${s.group} ${s.file} ${s.kind}:${s.text}`)).toEqual([
-      'd src/renderer/src/editor/Marks.tsx table:Freeze frame',
-      'd src/renderer/src/editor/Marks.tsx fragment:x.piece reads as a piece: " · selected: drag to move it"',
-      'b src/renderer/src/editor/panels/CaptionsPanel.tsx table:Bengali',
-      'c src/shared/editor/shapes.ts table:Arrow',
-      'c src/shared/editor/shapes.ts table:Point at something',
-      'b src/shared/speech/copy.ts table:Checking this PC…'
-    ])
-    expect(inv.groups.d.files).toEqual(['src/main/ai/request.ts', 'src/renderer/src/editor/Marks.tsx'])
-    expect(inv.groups.b.files).toEqual(['src/renderer/src/editor/panels/CaptionsPanel.tsx', 'src/shared/speech/copy.ts'])
-    expect(inv.groups.c.files).toEqual(['src/shared/editor/shapes.ts'])
-
-    // This tree: config.json wires the rule (a report until S4b's integrator turns it to fail), and the
-    // committed inventory lists every site the rule finds, each file in one group. Extraction removes
-    // sites; nothing new may appear unlisted.
+  it('fails for the whole tree since S4b: config.json says fail, and no word table, copy or sentence in pieces of ours is left', () => {
     const cfg = JSON.parse(fs.readFileSync(path.join(REPO, 'scripts/i18n/config.json'), 'utf8')) as { words?: string }
-    expect(['report', 'fail']).toContain(cfg.words)
-    const listed = JSON.parse(fs.readFileSync(path.join(REPO, sites.INVENTORY), 'utf8')) as ReturnType<typeof sites.inventoryOf>
-    const key = (s: { file: string; kind: string; text: string }) => `${s.file} ${s.kind} ${s.text}`
-    const known = new Set(listed.sites.map(key))
-    expect(sites.inventoryOf(REPO).sites.map(key).filter((k) => !known.has(k))).toEqual([])
-    const owner = new Map<string, string>()
-    for (const [g, v] of Object.entries(listed.groups)) {
-      for (const f of v.files) {
-        expect(owner.get(f) ?? g).toBe(g)
-        owner.set(f, g)
-      }
-    }
-    for (const s of listed.sites) expect(owner.get(s.file)).toBe(s.group)
-    for (const f of listed.sites.filter((s) => s.kind === 'fragment')) expect(f.group).toBe('d')
+    expect(cfg.words).toBe('fail')
+    const r = scan.scanTree(REPO)
+    expect(r.words).toEqual([])
+    expect(r.failures.filter((f) => scan.WORD_KINDS.includes(f.kind)).map((f) => `${f.file}:${f.line} ${f.kind}: ${f.text}`)).toEqual([])
   })
 })
