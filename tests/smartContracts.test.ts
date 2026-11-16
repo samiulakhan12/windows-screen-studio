@@ -281,7 +281,9 @@ const { changedAreas } = await import('../src/shared/editor/versions')
 const { badgeLabels } = await import('../src/shared/render/callouts')
 const { resolveGreatOptions, DEFAULT_GREAT_OPTIONS } = await import('../src/shared/captions/great')
 const { reviewItems, pendingCount } = await import('../src/shared/review/review')
-const { REVIEW_KINDS, KIND_WORDS, cutKind, cutTitle, CUT_DETAILS } = await import('../src/shared/review/copy')
+const { REVIEW_KINDS, kindChip, kindName, kindAll, kindCount, cutKind, cutTitle, cutDetail } = await import('../src/shared/review/copy')
+/** A kind's words as Review mode shows them, with the count's noun for one and for more. */
+const kindWords = (k: (typeof REVIEW_KINDS)[number]) => ({ chip: kindChip(k), name: kindName(k), all: kindAll(k), one: kindCount(k, 1).replace(/^1 /, ''), plural: kindCount(k, 2).replace(/^2 /, '') })
 const { joinReviewItems } = await import('../src/shared/review/joinReview')
 const { POLISH_STEPS, DEFAULT_POLISH_OPTIONS, readPolishOptions, planPolish, polishAvailability } = await import('../src/shared/editor/polish')
 const { polishStepLabel, polishSkipText } = await import('../src/shared/editor/polishCopy')
@@ -324,12 +326,12 @@ describe('pending chapters change nothing until kept (test 101)', () => {
 describe("Review's new kinds and words (§13.1)", () => {
   it("lists 'chapter' and 'short' last, with their words; a 'short' cut is its own kind", () => {
     expect(REVIEW_KINDS.slice(-2)).toEqual(['chapter', 'short'])
-    expect(KIND_WORDS.chapter).toEqual({ chip: 'Chapter', name: 'found chapter', all: 'Remove all found chapters', one: 'found chapter', plural: 'found chapters' })
-    expect(KIND_WORDS.short).toEqual({ chip: 'Short', name: 'shorter-version cut', all: 'Remove all shorter-version cuts', one: 'shorter-version cut', plural: 'shorter-version cuts' })
+    expect(kindWords('chapter')).toEqual({ chip: 'Chapter', name: 'found chapter', all: 'Remove all found chapters', one: 'found chapter', plural: 'found chapters' })
+    expect(kindWords('short')).toEqual({ chip: 'Short', name: 'shorter-version cut', all: 'Remove all shorter-version cuts', one: 'shorter-version cut', plural: 'shorter-version cuts' })
     const cut = { id: 'x', by: 'short' as const, action: 'cut' as const, start: 1, end: 5.2, was: [{ start: 1, end: 5.2, speed: 1 }] }
     expect(cutKind(cut)).toBe('short')
     expect(cutTitle(cut)).toBe('Cut 4.2 s for the shorter version')
-    expect(CUT_DETAILS.short).toBe('Make a shorter version')
+    expect(cutDetail({ by: 'short' })).toBe('Make a shorter version')
   })
 
   it("the shorter version's cuts and smooth cuts are listed with their detail; a project without found chapters lists no chapter row", () => {

@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { t } from '../../../shared/i18n/t'
 import type { ShareMeta, ShareRunView, ShareStepView, ShareTargets } from '../../../shared/api/share'
 import { linkHint, type CloudService } from '../../../shared/share/cloudFolders'
 import { cancelName, retryTargets, stepButtonName, stepText } from '../../../shared/share/steps'
@@ -52,7 +53,7 @@ export function ShareDone({ file, meta, targets, startError }: { file: string; m
     <div
       className="share-done"
       role="group"
-      aria-label="Share"
+      aria-label={t('review.share.done')}
       tabIndex={-1}
       ref={box}
       onFocus={() => (hadFocus.current = true)}
@@ -60,7 +61,7 @@ export function ShareDone({ file, meta, targets, startError }: { file: string; m
         if (!e.currentTarget.contains(e.relatedTarget as Node | null)) hadFocus.current = e.relatedTarget === null
       }}
     >
-      <p className="share-done-title">Share</p>
+      <p className="share-done-title">{t('review.share.done')}</p>
       {steps.length > 0 && (
         <ul className="share-steps">
           {steps.map(({ run, step }) => (
@@ -72,17 +73,17 @@ export function ShareDone({ file, meta, targets, startError }: { file: string; m
               {step.kind === 'copy' && step.state === 'running' && <progress className="share-progress" max={1} value={step.fraction ?? 0} aria-hidden="true" />}
               {(step.state === 'failed' || step.state === 'cancelled') && run.finished && (
                 <button className="btn ghost small" disabled={pending.includes(step.target)} aria-label={stepButtonName('Try again', step)} onClick={() => start(retryTargets(run, step, steps.map((s) => s.step)))}>
-                  Try again
+                  {t('common.action.tryAgain')}
                 </button>
               )}
               {step.kind === 'copy' && step.state === 'done' && step.dest && (
                 <button className="btn ghost small" aria-label={stepButtonName('Show in folder', step)} onClick={() => void window.api.showItemInFolder(step.dest!)}>
-                  Show in folder
+                  {t('common.action.showInFolder')}
                 </button>
               )}
               {step.link && (
                 <button className="btn ghost small" aria-label={stepButtonName('Copy link', step)} onClick={() => void navigator.clipboard.writeText(step.link!)}>
-                  Copy link
+                  {t('review.share.copyLink')}
                 </button>
               )}
             </li>
@@ -93,7 +94,7 @@ export function ShareDone({ file, meta, targets, startError }: { file: string; m
         <div key={run.id}>
           {/* With two runs, each Cancel says on screen what it stops. */}
           <button className="btn ghost small" data-share-cancel={run.id} onClick={() => void window.api.shareCancel(run.id)} aria-label={cancelName(run)}>
-            {running.length > 1 ? cancelName(run) : 'Cancel share'}
+            {running.length > 1 ? cancelName(run) : t('review.share.cancel')}
           </button>
         </div>
       ))}

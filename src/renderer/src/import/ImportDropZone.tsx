@@ -1,4 +1,5 @@
 import { useRef, useState, type DragEvent, type ReactNode } from 'react'
+import { t } from '../../../shared/i18n/t'
 import type { VideoImporter } from './useVideoImport'
 import './import.css'
 
@@ -42,11 +43,11 @@ export function ImportDropZone({ importer, disabled, empty, children }: { import
       }}
     >
       {children}
-      {empty && <p className="hint import-empty-hint">Or import a video made with another app: use Import video or drop it here.</p>}
+      {empty && <p className="hint import-empty-hint">{t('review.import.emptyHint')}</p>}
       {over && !disabled && (
         <div className="import-drop-overlay" aria-hidden="true">
-          <strong>Drop a video to import it</strong>
-          <span>MP4, MOV, MKV or WebM</span>
+          <strong>{t('review.import.drop')}</strong>
+          <span>{t('review.import.dropFormats')}</span>
         </div>
       )}
     </div>

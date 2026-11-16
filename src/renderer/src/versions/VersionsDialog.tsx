@@ -1,22 +1,15 @@
 import { useCallback, useEffect, useRef, useState, type FormEvent, type KeyboardEvent as ReactKeyboardEvent } from 'react'
 import type { ReadVersion } from '../../../shared/api/versions'
-import {
-  changedAreas,
-  compareSummaries,
-  defaultVersionName,
-  summaryLine,
-  VERSION_LIMITS,
-  versionSummary,
-  type SummaryChange,
-  type VersionMeta
-} from '../../../shared/editor/versions'
+import { changedAreas, VERSION_LIMITS, versionSummary, type SummaryChange, type VersionMeta } from '../../../shared/editor/versions'
 import { migrateProject } from '../../../shared/engine/project'
 import { fmt } from '../../../shared/i18n/fmt'
+import { t, uiLanguage } from '../../../shared/i18n/t'
 import type { Project } from '../../../shared/types'
 import { Icon } from '../components/Icon'
 import { ipcMessage } from '../editor/captionItems'
 import { useModalFocus } from '../editor/modalFocus'
 import { keepVersionBefore, onVersionsChanged, protecting, versionsChanged } from './autoVersion'
+import { areaName, compareSummaries, summaryLine } from '../../../shared/editor/versionWords'
 import './versions.css'
 
 /** What a row shows below itself: nothing, the comparison, the rename field or the delete question. */
@@ -77,7 +70,7 @@ export function VersionsDialog({
       setList(await window.api.listVersions(projectId))
     } catch (err) {
       setList([])
-      setError(`Could not list the versions: ${ipcMessage(err)}`)
+      setError(t('review.versions.error.list', { error: ipcMessage(err) }))
     }
   }, [projectId])
   useEffect(() => void refresh(), [refresh])
@@ -85,6 +78,8 @@ export function VersionsDialog({
   useEffect(() => {
     ;(focusName ? nameRef.current : boxRef.current)?.focus({ preventScroll: true })
   }, [focusName])
+  const latestList = useRef(list)
+  latestList.current = list
   // Keep, Esc or a finished rename takes the focused control away with the row's view: the focus
   // goes back to that row's own button, not to the page (a row that went, or a focus that moved
   // on, is left alone).
@@ -93,12 +88,17 @@ export function VersionsDialog({
     const was = lastRow.current
     lastRow.current = row
     if (!was || row || document.activeElement !== document.body) return
-    const label = was.kind === 'rename' ? 'Rename' : was.kind === 'delete' ? 'Delete' : 'Compare'
-    boxRef.current?.querySelector<HTMLElement>(`[data-version="${was.id}"] button[aria-label^="${label}"]`)?.focus({ preventScroll: true })
+    const v = latestList.current?.find((x) => x.id === was.id)
+    if (!v) return
+    const label = was.kind === 'rename' ? t('review.versions.renameName', { name: v.name }) : was.kind === 'delete' ? t('common.action.deleteName', { name: v.name }) : t('review.versions.compareName', { name: v.name })
+    // The button by its whole name in the UI language (the row has one of each), quoted as a CSS string.
+    boxRef.current?.querySelector<HTMLElement>(`[data-version="${was.id}"] button[aria-label^="${label.replace(/["\\]/g, '\\$&')}"]`)?.focus({ preventScroll: true })
   }, [row])
 
   const named = (list ?? []).filter((v) => !v.auto).length
   const full = named >= VERSION_LIMITS.named
+  /** The name a version saved with the field left empty gets: main names it "Version 3" in English; another UI language sends this name. */
+  const defaultName = t('review.versions.defaultName', { n: fmt.count(named + 1) })
 
   const save = async (e: FormEvent): Promise<void> => {
     e.preventDefault()
@@ -107,12 +107,12 @@ export function VersionsDialog({
     setError(null)
     try {
       settle?.()
-      const r = await window.api.saveVersion(projectId, getProject(), { name })
+      const r = await window.api.saveVersion(projectId, getProject(), { name: (name.trim() || uiLanguage() === 'en') ? name : defaultName })
       setName('')
-      if (r.saved) onNotice(`Saved “${r.saved.name}”`)
+      if (r.saved) onNotice(t('review.versions.saved', { name: r.saved.name }))
       versionsChanged()
     } catch (err) {
-      setError(`Could not save the version: ${ipcMessage(err)}`)
+      setError(t('review.versions.error.save', { error: ipcMessage(err) }))
     } finally {
       setBusy(false)
     }
@@ -127,12 +127,12 @@ export function VersionsDialog({
       // holding the edit makes it first, and the version it keeps (Remove all) never prunes this one.
       if (settle) protecting(v.id, settle)
       const kept = await keepVersionBefore(getProject(), 'open', v.name, v.id)
-      if (kept && 'failed' in kept) throw new Error(`your edit now could not be kept as a version first (${kept.failed})`)
+      if (kept && 'failed' in kept) throw new Error(t('review.versions.error.keepFirst', { reason: kept.failed }))
       const read = await window.api.readVersion(projectId, v.id)
       // Closed meanwhile (Esc): the user no longer asked for it.
       if (mounted.current) onOpen(read)
     } catch (err) {
-      setError(`Could not open this version: ${ipcMessage(err)}`)
+      setError(t('review.versions.error.open', { error: ipcMessage(err) }))
       setBusy(false)
     }
   }
@@ -145,7 +145,7 @@ export function VersionsDialog({
       // The edit now as it would be kept (saveVersion stores it migrated): a freeze at the edit's end is kept to 1 ms.
       const now = migrateProject(getProject())
       // Also a background or cursor image a later pick wrote over: the same name, another picture.
-      const areas = [...changedAreas(r.project, now), ...r.changed]
+      const areas = [...changedAreas(r.project, now), ...r.changed].map(areaName)
       const result = { changes: compareSummaries(versionSummary(r.project), versionSummary(now)), areas }
       setRow((cur) => (cur?.id === v.id && cur.kind === 'compare' ? { ...cur, result } : cur))
     } catch (err) {
@@ -163,7 +163,7 @@ export function VersionsDialog({
       versionsChanged()
     } catch (err) {
       renameCancelled.current = null
-      setError(`Could not rename the version: ${ipcMessage(err)}`)
+      setError(t('review.versions.error.rename', { error: ipcMessage(err) }))
     }
   }
 
@@ -171,11 +171,11 @@ export function VersionsDialog({
     try {
       await window.api.deleteVersion(projectId, v.id)
       setRow(null)
-      onNotice(`Deleted “${v.name}”`)
+      onNotice(t('review.versions.deleted', { name: v.name }))
       versionsChanged()
       boxRef.current?.focus({ preventScroll: true })
     } catch (err) {
-      setError(`Could not delete the version: ${ipcMessage(err)}`)
+      setError(t('review.versions.error.delete', { error: ipcMessage(err) }))
     }
   }
 
@@ -191,18 +191,18 @@ export function VersionsDialog({
     <div className="overlay modal-backdrop" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
       <div className="modal versions-modal" role="dialog" aria-modal="true" aria-labelledby="versions-title" ref={boxRef} tabIndex={-1} data-testid="versions-dialog">
         <header className="modal-head">
-          <h2 id="versions-title">Versions</h2>
-          <button type="button" className="btn ghost icon-btn" onClick={onClose} title="Close" aria-label="Close">
+          <h2 id="versions-title">{t('review.versions.title')}</h2>
+          <button type="button" className="btn ghost icon-btn" onClick={onClose} title={t('common.action.close')} aria-label={t('common.action.close')}>
             <Icon name="x" size={16} />
           </button>
         </header>
-        <p className="hint versions-intro">A version keeps this edit as it is now. Your recording is never changed.</p>
+        <p className="hint versions-intro">{t('review.versions.intro')}</p>
         <form className="versions-save" onSubmit={(e) => void save(e)}>
           <input
             ref={nameRef}
             type="text"
-            aria-label="Version name"
-            placeholder={defaultVersionName(named)}
+            aria-label={t('review.versions.nameField')}
+            placeholder={defaultName}
             maxLength={VERSION_LIMITS.name}
             value={name}
             disabled={full}
@@ -210,19 +210,19 @@ export function VersionsDialog({
             data-testid="version-name"
           />
           <button type="submit" className="btn primary" disabled={busy || full} data-testid="version-save">
-            Save version
+            {t('review.versions.save')}
           </button>
         </form>
-        {full && <p className="hint">You have {VERSION_LIMITS.named} saved versions. Delete one to save another.</p>}
+        {full && <p className="hint">{t('review.versions.full', { n: fmt.count(VERSION_LIMITS.named) })}</p>}
         {error && (
           <p className="versions-error" role="alert">
             {error}
           </p>
         )}
         <div className="versions-list" aria-busy={list === null}>
-          {list !== null && list.length === 0 && <p className="hint versions-empty">No versions yet. Save one before a big change, so you can always go back.</p>}
+          {list !== null && list.length === 0 && <p className="hint versions-empty">{t('review.versions.empty')}</p>}
           {list !== null && list.length > 0 && (
-            <ul aria-label="Kept versions">
+            <ul aria-label={t('review.versions.list')}>
               {list.map((v) => {
                 const view = row?.id === v.id ? row : null
                 return (
@@ -233,7 +233,7 @@ export function VersionsDialog({
                           <input
                             className="version-rename"
                             type="text"
-                            aria-label={`New name for ${v.name}`}
+                            aria-label={t('review.versions.renameField', { name: v.name })}
                             autoFocus
                             maxLength={VERSION_LIMITS.name}
                             value={renameText}
@@ -252,18 +252,18 @@ export function VersionsDialog({
                           <span className="version-name">{v.name}</span>
                         )}
                         <span className="version-meta">
-                          {v.auto && <span className="version-badge">Automatic</span>}
+                          {v.auto && <span className="version-badge">{t('review.versions.automatic')}</span>}
                           <span>{fmt.date(Date.parse(v.createdAt), 'version')}</span>
                           <span aria-hidden="true">·</span>
                           <span>{summaryLine(v.summary)}</span>
                         </span>
                       </div>
                       <div className="version-actions">
-                        <button type="button" className="btn small primary" disabled={busy} onClick={() => void open(v)} aria-label={`Open ${v.name}`} title="Open this version: your edit now is kept as a version first">
-                          Open
+                        <button type="button" className="btn small primary" disabled={busy} onClick={() => void open(v)} aria-label={t('review.versions.openName', { name: v.name })} title={t('review.versions.openHint')}>
+                          {t('review.versions.open')}
                         </button>
-                        <button type="button" className="btn small" aria-expanded={view?.kind === 'compare'} onClick={() => void compare(v)} aria-label={`Compare ${v.name} with your edit now`}>
-                          Compare
+                        <button type="button" className="btn small" aria-expanded={view?.kind === 'compare'} onClick={() => void compare(v)} aria-label={t('review.versions.compareName', { name: v.name })}>
+                          {t('review.versions.compare')}
                         </button>
                         <button
                           type="button"
@@ -273,24 +273,24 @@ export function VersionsDialog({
                             setRenameText(v.name)
                             setRow({ id: v.id, kind: 'rename' })
                           }}
-                          aria-label={`Rename ${v.name}`}
+                          aria-label={t('review.versions.renameName', { name: v.name })}
                         >
-                          Rename
+                          {t('review.versions.rename')}
                         </button>
-                        <button type="button" className="btn small ghost danger" onClick={() => setRow({ id: v.id, kind: 'delete' })} aria-label={`Delete ${v.name}`}>
-                          Delete
+                        <button type="button" className="btn small ghost danger" onClick={() => setRow({ id: v.id, kind: 'delete' })} aria-label={t('common.action.deleteName', { name: v.name })}>
+                          {t('common.action.delete')}
                         </button>
                       </div>
                     </div>
                     {view?.kind === 'compare' && <CompareView result={view.result} />}
                     {view?.kind === 'delete' && (
-                      <div className="version-confirm" role="group" aria-label={`Delete ${v.name}?`} onKeyDown={escapeRow}>
-                        <span>Delete “{v.name}”? This cannot be undone.</span>
+                      <div className="version-confirm" role="group" aria-label={t('review.versions.deleteAsk', { name: v.name })} onKeyDown={escapeRow}>
+                        <span>{t('review.versions.deleteQuestion', { name: v.name })}</span>
                         <button type="button" className="btn small danger" autoFocus onClick={() => void remove(v)} data-testid="version-delete-confirm">
-                          Delete
+                          {t('common.action.delete')}
                         </button>
                         <button type="button" className="btn small" onClick={() => setRow(null)}>
-                          Keep
+                          {t('common.action.keep')}
                         </button>
                       </div>
                     )}
@@ -302,10 +302,10 @@ export function VersionsDialog({
         </div>
         <footer className="modal-foot versions-foot">
           <p className="hint" data-testid="versions-auto-hint">
-            Flown also keeps a version before Polish, Make my captions great, Remove all in the Transcript tab or Review, and Make a vertical or square version (the last {VERSION_LIMITS.auto}).
+            {t('review.versions.autoHint', { n: fmt.count(VERSION_LIMITS.auto) })}
           </p>
           <button type="button" className="btn" onClick={onClose}>
-            Close
+            {t('common.action.close')}
           </button>
         </footer>
       </div>
@@ -314,13 +314,13 @@ export function VersionsDialog({
 }
 
 function CompareView({ result }: { result: { changes: SummaryChange[]; areas: string[] } | 'loading' | { error: string } }): JSX.Element {
-  if (result === 'loading') return <p className="hint version-compare">Comparing…</p>
-  if ('error' in result) return <p className="versions-error version-compare">Could not compare: {result.error}</p>
+  if (result === 'loading') return <p className="hint version-compare">{t('review.versions.comparing')}</p>
+  if ('error' in result) return <p className="versions-error version-compare">{t('review.versions.error.compare', { error: result.error })}</p>
   const { changes, areas } = result
   if (changes.length === 0 && areas.length === 0)
     return (
       <p className="hint version-compare" data-testid="version-compare">
-        Same as your edit now.
+        {t('review.versions.same')}
       </p>
     )
   return (
@@ -330,10 +330,10 @@ function CompareView({ result }: { result: { changes: SummaryChange[]; areas: st
           <thead>
             <tr>
               <th scope="col">
-                <span className="sr-only">What</span>
+                <span className="sr-only">{t('review.versions.what')}</span>
               </th>
-              <th scope="col">This version</th>
-              <th scope="col">Now</th>
+              <th scope="col">{t('review.versions.thisVersion')}</th>
+              <th scope="col">{t('review.versions.now')}</th>
             </tr>
           </thead>
           <tbody>
@@ -347,7 +347,7 @@ function CompareView({ result }: { result: { changes: SummaryChange[]; areas: st
           </tbody>
         </table>
       )}
-      {areas.length > 0 && <p className="hint">{changes.length ? 'Also different' : 'Different'}: {fmt.list(areas)}.</p>}
+      {areas.length > 0 && <p className="hint">{t(changes.length ? 'review.versions.alsoDifferent' : 'review.versions.different', { areas: fmt.list(areas) })}</p>}
     </div>
   )
 }

@@ -16,7 +16,7 @@ import { EditStore } from '../src/shared/editor/editStore'
 import { settleDeletedWords } from '../src/shared/editor/transcript'
 import { settleAutoCuts } from '../src/shared/review/autoCuts'
 import { EMPHASIS_GROUP, lookName, STYLE_KEY, TEXT_GROUP, textFixTitle } from '../src/shared/review/captionReview'
-import { itemAccessibleName, KIND_WORDS, REVIEW_KINDS } from '../src/shared/review/copy'
+import { itemAccessibleName, kindAll, kindChip, REVIEW_KINDS } from '../src/shared/review/copy'
 import { keepItems, mergeSnapshot, pendingCount, removeItems, reviewItems, reviewProgress, reviewStatus, type ReviewItem } from '../src/shared/review/review'
 import type { Graphic, Project, TitleCard } from '../src/shared/types'
 import { captions, studioProject, TALL, WIDE } from './p4Fixtures'
@@ -680,14 +680,14 @@ describe('the words of the new kinds', () => {
     // The footer's Remove all on that row (ReviewPanel's removeKind: every pending row of its kind).
     const all = items.filter((i) => i.kind === lower.kind)
     expect(all.map((i) => i.title)).toEqual(['Lower third: Priya', 'Chapter title: Export settings', 'Pop-up “Auto Save”'])
-    expect(KIND_WORDS[lower.kind]).toMatchObject({ chip: 'Graphic', all: 'Remove all graphics' })
+    expect({ chip: kindChip(lower.kind), all: kindAll(lower.kind) }).toMatchObject({ chip: 'Graphic', all: 'Remove all graphics' })
     expect(removeItems(p, all)).toMatchObject({ titles: [] })
   })
 
   it('have chips, names and Remove all', () => {
-    expect(KIND_WORDS.style.all).toBe('Remove all caption style changes')
-    expect(KIND_WORDS.emoji.all).toBe('Remove all emoji')
-    expect(KIND_WORDS.graphic.all).toBe('Remove all graphics')
-    expect(KIND_WORDS.bleep.all).toBe('Remove all bleeps')
+    expect(kindAll('style')).toBe('Remove all caption style changes')
+    expect(kindAll('emoji')).toBe('Remove all emoji')
+    expect(kindAll('graphic')).toBe('Remove all graphics')
+    expect(kindAll('bleep')).toBe('Remove all bleeps')
   })
 })

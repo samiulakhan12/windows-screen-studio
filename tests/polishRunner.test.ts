@@ -99,6 +99,8 @@ beforeEach(async () => {
   calls.cancel.length = 0
   listeners.clear()
   hooks.sourceActivity = sourceActivity
+  // The message runtime is fresh too: English is registered again, as the vitest setup did.
+  await import('../src/shared/i18n/messages/en/index')
   runner = (await import(/* @vite-ignore */ RUNNER)) as Runner
   items = (await import(/* @vite-ignore */ ITEMS)) as Items
 })

@@ -92,6 +92,30 @@
       "kind": "sink",
       "text": "No sound to listen to",
       "reason": "The sound finder's worker loads no messages; this error is a programming error (a chunk before the start message, which the controller never sends), and the controller words every reason the worker gives (soundScan's workerReason)."
+    },
+    {
+      "file": "src/shared/import/plan.ts",
+      "kind": "sink",
+      "text": "proxyArgs no longer maps 0:v:0",
+      "reason": "A programming check of the import's ffmpeg arguments (proxyArgs changed shape): thrown in main while it builds the command, for developers and tests; never a user's mistake."
+    },
+    {
+      "file": "src/shared/import/plan.ts",
+      "kind": "sink",
+      "text": "proxyArgs no longer maps 0:a:0?",
+      "reason": "A programming check of the import's ffmpeg arguments (proxyArgs changed shape): thrown in main while it builds the command, for developers and tests; never a user's mistake."
+    },
+    {
+      "file": "src/shared/import/plan.ts",
+      "kind": "sink",
+      "text": "proxyArgs no longer ends -af with aresample",
+      "reason": "A programming check of the import's ffmpeg arguments (proxyArgs changed shape): thrown in main while it builds the command, for developers and tests; never a user's mistake."
+    },
+    {
+      "file": "src/shared/import/plan.ts",
+      "kind": "sink",
+      "text": "proxyArgs no longer sets -vf",
+      "reason": "A programming check of the import's ffmpeg arguments (proxyArgs changed shape): thrown in main while it builds the command, for developers and tests; never a user's mistake."
     }
   ]
 }

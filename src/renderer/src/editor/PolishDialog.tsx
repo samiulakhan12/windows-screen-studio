@@ -3,24 +3,25 @@ import type { AiProviderInfo } from '../../../shared/api/ai'
 import { captionFrame, frameShape } from '../../../shared/captions/autoStyle'
 import { DEFAULT_POLISH_OPTIONS, polishAvailability, polishTranscriber, POLISH_STEPS, readPolishOptions, type PolishOptions, type PolishResult, type PolishStep, type PolishSummary } from '../../../shared/editor/polish'
 import {
-  CANCELLED_NOTICE,
-  CHANGED_SINCE,
-  KEEP_LOOK,
-  LOOKING_FOR_PROVIDERS,
-  NOTHING_CHOSEN,
-  POLISH_FOOTNOTE,
-  POLISH_LEAD,
-  POLISH_TITLE,
+  cancelledNotice,
+  changedSince,
+  keepLook,
+  lookingForProviders,
+  nothingChosen,
   polishFailed,
+  polishFootnote,
   polishHeadline,
   polishHint,
+  polishLead,
   polishResultLines,
   polishSkipText,
   polishStepLabel,
-  SILENCE_ACTION_CHIPS,
+  polishTitle,
+  silenceActionChips,
   transcriberLabel,
-  UNDONE_NOTICE
+  undoneNotice
 } from '../../../shared/editor/polishCopy'
+import { t } from '../../../shared/i18n/t'
 import { BUILT_IN_PRESETS, parseUserPresets, type StylePreset } from '../../../shared/editor/stylePresets'
 import { zoomSettingsOf } from '../../../shared/engine/zoom'
 import type { CursorTrack, Project } from '../../../shared/types'
@@ -175,7 +176,7 @@ export function PolishDialog(props: {
     const run = runRef.current
     runRef.current = null
     run?.cancel()
-    onClose(run ? CANCELLED_NOTICE : undefined)
+    onClose(run ? cancelledNotice() : undefined)
   }
 
   const finish = (): void => {
@@ -187,7 +188,7 @@ export function PolishDialog(props: {
   const undoPolish = (): void => {
     if (view.kind !== 'summary' || store.state !== view.after || view.after === view.before) return
     store.undo()
-    onClose(UNDONE_NOTICE)
+    onClose(undoneNotice())
   }
 
   const addProvider = (): void => {
@@ -205,7 +206,7 @@ export function PolishDialog(props: {
     const loading = step === 'captions' && (providers === null || speech.status === 'loading')
     const why = loading ? null : available[step]
     const hint = loading
-      ? LOOKING_FOR_PROVIDERS
+      ? lookingForProviders()
       : why
         ? polishSkipText(step, why)
         : polishHint(step, {
@@ -223,15 +224,15 @@ export function PolishDialog(props: {
         {step === 'style' ? (
           <label className="polish-style">
             <span>{label}</span>
-            <select aria-label="Style preset" value={styleFound ? (options?.styleId ?? '') : ''} disabled={!ready} onChange={(e) => set({ styleId: e.target.value || null })}>
-              <option value="">{KEEP_LOOK}</option>
+            <select aria-label={t('review.polish.stylePreset')} value={styleFound ? (options?.styleId ?? '') : ''} disabled={!ready} onChange={(e) => set({ styleId: e.target.value || null })}>
+              <option value="">{keepLook()}</option>
               {BUILT_IN_PRESETS.map((p) => (
                 <option key={p.id} value={p.id}>
                   {p.name}
                 </option>
               ))}
               {!!userPresets?.length && (
-                <optgroup label="Your presets">
+                <optgroup label={t('review.polish.yourPresets')}>
                   {userPresets.map((p) => (
                     <option key={p.id} value={p.id}>
                       {p.name}
@@ -257,10 +258,10 @@ export function PolishDialog(props: {
         )}
         <p className="hint">{hint}</p>
         {step === 'silences' && !why && options?.silences && (
-          <Chips label="Silence action" value={options.silenceAction} onChange={(silenceAction) => set({ silenceAction })} options={[...SILENCE_ACTION_CHIPS]} />
+          <Chips label={t('review.polish.silenceAction')} value={options.silenceAction} onChange={(silenceAction) => set({ silenceAction })} options={silenceActionChips()} />
         )}
         {step === 'captions' && (!why || why === 'no-model') && options?.captions && choices.length > 1 && (
-          <select className="polish-provider" aria-label="Transcription provider" value={chosenId ?? ''} onChange={(e) => set({ captionsProvider: e.target.value })}>
+          <select className="polish-provider" aria-label={t('review.polish.transcriptionProvider')} value={chosenId ?? ''} onChange={(e) => set({ captionsProvider: e.target.value })}>
             {choices.map((c) => (
               <option key={c.id} value={c.id}>
                 {c.label}
@@ -270,11 +271,11 @@ export function PolishDialog(props: {
         )}
         {/* What the Captions step sends to its provider, and what it costs (smart-tools.md §11.5), part P5's: Polish asks first. */}
         {step === 'captions' && !why && provider && isOn(step) && (
-          <CostLine id="polish-cost" choice={choiceOf(provider)} full actions={[{ key: 'captions', label: 'Captions', buttonId: POLISH_START, request: null }]} transcribeSeconds={project.duration} />
+          <CostLine id="polish-cost" choice={choiceOf(provider)} full actions={[{ key: 'captions', label: t('common.label.captions'), buttonId: POLISH_START, request: null }]} transcribeSeconds={project.duration} />
         )}
         {step === 'captions' && why === 'no-provider' && (
           <button className="btn small" onClick={addProvider}>
-            <EditorIcon name="gear" size={14} /> Add an AI provider
+            <EditorIcon name="gear" size={14} /> {t('common.action.addAiProvider')}
           </button>
         )}
       </li>
@@ -292,7 +293,7 @@ export function PolishDialog(props: {
       </span>
       {row.canSkip && (
         <button className="btn ghost small" onClick={() => (step === 'captions' ? runRef.current?.skipCaptions() : runRef.current?.skipFace())}>
-          Skip
+          {t('review.polish.skip')}
         </button>
       )}
     </li>
@@ -303,25 +304,25 @@ export function PolishDialog(props: {
   if (view.kind === 'options') {
     body = (
       <>
-        <p className="hint">{POLISH_LEAD}</p>
+        <p className="hint">{polishLead()}</p>
         <ul className="polish-rows">{POLISH_STEPS.map(optionRow)}</ul>
       </>
     )
     foot = (
       <>
         <button className="btn" onClick={cancel}>
-          Cancel
+          {t('common.action.cancel')}
         </button>
         <button
           ref={mainRef}
           id={POLISH_START}
           className="btn primary"
           disabled={!ready || !anything}
-          title={ready && !anything ? NOTHING_CHOSEN : undefined}
+          title={ready && !anything ? nothingChosen() : undefined}
           aria-describedby={provider && isOn('captions') ? 'polish-cost-captions' : undefined}
           onClick={start}
         >
-          <EditorIcon name="sparkle" size={16} /> Polish
+          <EditorIcon name="sparkle" size={16} /> {t('review.polish.run')}
         </button>
       </>
     )
@@ -329,7 +330,7 @@ export function PolishDialog(props: {
     body = <ul className="polish-rows">{POLISH_STEPS.map((step) => runningRow(step, view.rows[step]))}</ul>
     foot = (
       <button ref={mainRef} className="btn" onClick={cancel}>
-        Cancel
+        {t('common.action.cancel')}
       </button>
     )
   } else if (view.kind === 'summary') {
@@ -348,18 +349,18 @@ export function PolishDialog(props: {
             </li>
           ))}
         </ul>
-        {changed && <p className="hint">{POLISH_FOOTNOTE}</p>}
+        {changed && <p className="hint">{polishFootnote()}</p>}
       </div>
     )
     foot = (
       <>
         {changed && (
-          <button className="btn" disabled={!canUndo} title={canUndo ? undefined : CHANGED_SINCE} onClick={undoPolish}>
-            <EditorIcon name="undo" size={16} /> Undo polish
+          <button className="btn" disabled={!canUndo} title={canUndo ? undefined : changedSince()} onClick={undoPolish}>
+            <EditorIcon name="undo" size={16} /> {t('review.polish.undo')}
           </button>
         )}
         <button ref={mainRef} className="btn primary" onClick={finish}>
-          Done
+          {t('common.action.done')}
         </button>
       </>
     )
@@ -372,7 +373,7 @@ export function PolishDialog(props: {
     )
     foot = (
       <button ref={mainRef} className="btn primary" onClick={() => onClose()}>
-        Done
+        {t('common.action.done')}
       </button>
     )
   }
@@ -382,7 +383,7 @@ export function PolishDialog(props: {
       <div className="polish-dialog" role="dialog" aria-modal="true" aria-labelledby="polish-title" ref={boxRef} tabIndex={-1} data-view={view.kind}>
         <header className="modal-head">
           <h2 id="polish-title">
-            <EditorIcon name="sparkle" size={18} /> {POLISH_TITLE}
+            <EditorIcon name="sparkle" size={18} /> {polishTitle()}
           </h2>
         </header>
         {body}

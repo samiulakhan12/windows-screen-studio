@@ -3,6 +3,8 @@ import { createPortal } from 'react-dom'
 import type { DuplicateProgress } from '../../../shared/api/projects'
 import { canCopyAs, type CopyKind } from '../../../shared/editor/duplicate'
 import type { Project } from '../../../shared/types'
+import { fmt } from '../../../shared/i18n/fmt'
+import { t, type MessageKey } from '../../../shared/i18n/t'
 import { useModalFocus } from './modalFocus'
 import './copy.css'
 
@@ -13,23 +15,23 @@ import './copy.css'
  */
 
 /** The button's label, tooltip and menu name (smart-tools.md §2.4: the copies now include short clips). */
-const LABEL = 'Copies: vertical, square, short clips'
+const label = (): string => t('review.copyMenu.label')
 
 /** Smart tools' two items after Make a square version (smart-tools.md §2.4), shown when the editor gives their actions. */
-const CLIPS_ITEM = { testId: 'copy-clips', title: 'Find short clips…', hint: 'The best 15 to 90 second moments, each as a copy' }
-const SHORT_ITEM = { testId: 'copy-short', title: 'Make a shorter version…', hint: '30, 60 or 90 seconds, the most useful sentences in order' }
+const CLIPS_ITEM = { testId: 'copy-clips', title: 'review.copyMenu.clips', hint: 'review.copyMenu.clipsHint' } as const
+const SHORT_ITEM = { testId: 'copy-short', title: 'review.copyMenu.short', hint: 'review.copyMenu.shortHint' } as const
 /** Why Make a shorter version cannot run: it keeps sentences, so it needs captions. */
-export const SHORT_NEEDS_CAPTIONS = 'Needs captions: make them first'
+export const shortNeedsCaptions = (): string => t('review.copyMenu.shortNeedsCaptions')
 
-/** The menu's items in order, with their two lines (§2.2). */
-const ITEMS: readonly { kind: CopyKind; testId: string; title: string; hint: string }[] = [
-  { kind: 'vertical', testId: 'copy-vertical', title: 'Make a vertical version', hint: 'A 9:16 copy that follows your cursor, for TikTok, Reels and Shorts' },
-  { kind: 'square', testId: 'copy-square', title: 'Make a square version', hint: 'A 1:1 copy that follows your cursor' },
-  { kind: 'copy', testId: 'copy-duplicate', title: 'Duplicate', hint: 'A copy you can edit separately' }
+/** The menu's items in order, with their two lines as message keys (§2.2). */
+const ITEMS: readonly { kind: CopyKind; testId: string; title: MessageKey; hint: MessageKey }[] = [
+  { kind: 'vertical', testId: 'copy-vertical', title: 'review.copyMenu.vertical', hint: 'review.copyMenu.verticalHint' },
+  { kind: 'square', testId: 'copy-square', title: 'review.copyMenu.square', hint: 'review.copyMenu.squareHint' },
+  { kind: 'copy', testId: 'copy-duplicate', title: 'review.copyMenu.duplicate', hint: 'review.copyMenu.duplicateHint' }
 ]
 
 /** Title of the progress modal for each kind of copy. */
-const COPY_TITLES: Record<CopyKind, string> = { vertical: 'Making a vertical version', square: 'Making a square version', copy: 'Making a copy' }
+const COPY_TITLES: Record<CopyKind, MessageKey> = { vertical: 'review.copyProgress.vertical', square: 'review.copyProgress.square', copy: 'review.copyProgress.copy' }
 
 /** Two overlapping pages, stroked like EditorIcon. */
 function CopyIcon(): JSX.Element {
@@ -64,11 +66,20 @@ export function CopyMenu(props: {
   const menuRef = useRef<HTMLDivElement>(null)
   const itemRefs = useRef<(HTMLButtonElement | null)[]>([])
   type Item = { key: string; testId: string; title: string; hint: string; can: { ok: true } | { ok: false; reason: string }; act(): void }
-  const copies: Item[] = ITEMS.map((item) => ({ key: item.kind, testId: item.testId, title: item.title, hint: item.hint, can: canCopyAs(project, item.kind, vw, vh), act: () => run(item.kind) }))
+  const copies: Item[] = ITEMS.map((item) => ({ key: item.kind, testId: item.testId, title: t(item.title), hint: t(item.hint), can: canCopyAs(project, item.kind, vw, vh), act: () => run(item.kind) }))
   const smart: Item[] = [
-    ...(onClips ? [{ key: 'clips', ...CLIPS_ITEM, can: { ok: true as const }, act: onClips }] : []),
+    ...(onClips ? [{ key: 'clips', testId: CLIPS_ITEM.testId, title: t(CLIPS_ITEM.title), hint: t(CLIPS_ITEM.hint), can: { ok: true as const }, act: onClips }] : []),
     ...(onShort
-      ? [{ key: 'short', ...SHORT_ITEM, can: project.transcript?.segments.length ? { ok: true as const } : { ok: false as const, reason: SHORT_NEEDS_CAPTIONS }, act: onShort }]
+      ? [
+          {
+            key: 'short',
+            testId: SHORT_ITEM.testId,
+            title: t(SHORT_ITEM.title),
+            hint: t(SHORT_ITEM.hint),
+            can: project.transcript?.segments.length ? { ok: true as const } : { ok: false as const, reason: shortNeedsCaptions() },
+            act: onShort
+          }
+        ]
       : [])
   ]
   // After Make a square version, before Duplicate.
@@ -95,8 +106,8 @@ export function CopyMenu(props: {
   useEffect(() => {
     if (!open) return
     const onDown = (e: PointerEvent): void => {
-      const t = e.target as Node | null
-      if (t && (menuRef.current?.contains(t) || buttonRef.current?.contains(t))) return
+      const target = e.target as Node | null
+      if (target && (menuRef.current?.contains(target) || buttonRef.current?.contains(target))) return
       close(false)
     }
     document.addEventListener('pointerdown', onDown, true)
@@ -135,18 +146,18 @@ export function CopyMenu(props: {
         ref={buttonRef}
         className="btn ghost icon-btn"
         data-testid="copy-menu"
-        title={LABEL}
-        aria-label={LABEL}
+        title={label()}
+        aria-label={label()}
         aria-haspopup="menu"
         aria-expanded={open}
         aria-controls={open ? 'copy-menu-list' : undefined}
         onClick={() => (open ? close(false) : setOpen(true))}
         onKeyDown={onButtonKey}
       >
-        <CopyIcon /> <span className="tb-label">Copies</span>
+        <CopyIcon /> <span className="tb-label">{t('review.copyMenu.button')}</span>
       </button>
       {open && (
-        <div ref={menuRef} id="copy-menu-list" className="copy-menu" role="menu" aria-label={LABEL} tabIndex={-1} onKeyDown={onMenuKey}>
+        <div ref={menuRef} id="copy-menu-list" className="copy-menu" role="menu" aria-label={label()} tabIndex={-1} onKeyDown={onMenuKey}>
           {items.map((item, i) => (
             <button
               key={item.key}
@@ -170,13 +181,6 @@ export function CopyMenu(props: {
       )}
     </div>
   )
-}
-
-/** "1.4 GB", "350 MB": the size of what is copied, as the library shows sizes. */
-function size(bytes: number): string {
-  if (bytes >= 1e9) return `${(bytes / 1e9).toFixed(1)} GB`
-  if (bytes >= 1e6) return `${Math.round(bytes / 1e6)} MB`
-  return `${Math.max(1, Math.round(bytes / 1e3))} KB`
 }
 
 /** How long a copy runs before its progress is shown: links and small files are done by then. */
@@ -205,25 +209,25 @@ function ProgressDialog(props: { kind: CopyKind; name: string; progress: Duplica
     <div className="overlay modal-backdrop">
       <div className="modal copy-progress" data-testid="copy-progress" role="dialog" aria-modal="true" aria-labelledby="copy-progress-title" aria-describedby="copy-progress-body" ref={boxRef} tabIndex={-1}>
         <header className="modal-head">
-          <h2 id="copy-progress-title">{COPY_TITLES[kind]}</h2>
+          <h2 id="copy-progress-title">{t(COPY_TITLES[kind])}</h2>
         </header>
         <p id="copy-progress-body" className="copy-progress-body">
-          Copying “{name}”{total > 0 ? ` (${size(total)})` : ''}. Your original stays as it is.
+          {total > 0 ? t('review.copyProgress.copyingSize', { name, size: fmt.bytes(total, 'coarse') }) : t('review.copyProgress.copying', { name })}
         </p>
         <div
           className={total > 0 ? 'progress' : 'progress copy-progress-waiting'}
           role="progressbar"
-          aria-label="Copied"
+          aria-label={t('review.copyProgress.copied')}
           aria-valuemin={0}
           aria-valuemax={total > 0 ? total : undefined}
           aria-valuenow={total > 0 ? done : undefined}
-          aria-valuetext={total > 0 ? `${Math.round(share * 100)}%` : undefined}
+          aria-valuetext={total > 0 ? fmt.percent(share) : undefined}
         >
           <div className="progress-bar" style={{ width: `${share * 100}%` }} />
         </div>
         <footer className="modal-foot">
           <button className="btn" autoFocus onClick={onCancel}>
-            Cancel
+            {t('common.action.cancel')}
           </button>
         </footer>
       </div>

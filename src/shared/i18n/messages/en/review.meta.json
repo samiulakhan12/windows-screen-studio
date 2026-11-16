@@ -1,1 +1,1880 @@
-{}
+{
+  "kind.zoom.chip": {
+    "description": "Review mode: the short chip on a row whose change is of this kind: automatic zooms."
+  },
+  "kind.zoom.name": {
+    "description": "Review mode: the name of this kind of change (automatic zooms) inside a row's spoken description, lower case: \"Cut 2.4 s of silence, {kind}, at 0:12.4, …\"."
+  },
+  "kind.zoom.all": {
+    "description": "Review mode: the footer button that removes every change of this kind still to review (automatic zooms)."
+  },
+  "kind.zoom.count": {
+    "description": "Review mode: a count of changes of this kind (automatic zooms) inside \"Removed {things}.\" and \"Removing {things}…\"; {n} is the count as shown."
+  },
+  "kind.camera.chip": {
+    "description": "Review mode: the short chip on a row whose change is of this kind: automatic camera layout changes (the camera director)."
+  },
+  "kind.camera.name": {
+    "description": "Review mode: the name of this kind of change (automatic camera layout changes (the camera director)) inside a row's spoken description, lower case: \"Cut 2.4 s of silence, {kind}, at 0:12.4, …\"."
+  },
+  "kind.camera.all": {
+    "description": "Review mode: the footer button that removes every change of this kind still to review (automatic camera layout changes (the camera director))."
+  },
+  "kind.camera.count": {
+    "description": "Review mode: a count of changes of this kind (automatic camera layout changes (the camera director)) inside \"Removed {things}.\" and \"Removing {things}…\"; {n} is the count as shown."
+  },
+  "kind.silence.chip": {
+    "description": "Review mode: the short chip on a row whose change is of this kind: silences that were cut or sped up."
+  },
+  "kind.silence.name": {
+    "description": "Review mode: the name of this kind of change (silences that were cut or sped up) inside a row's spoken description, lower case: \"Cut 2.4 s of silence, {kind}, at 0:12.4, …\"."
+  },
+  "kind.silence.all": {
+    "description": "Review mode: the footer button that removes every change of this kind still to review (silences that were cut or sped up)."
+  },
+  "kind.silence.count": {
+    "description": "Review mode: a count of changes of this kind (silences that were cut or sped up) inside \"Removed {things}.\" and \"Removing {things}…\"; {n} is the count as shown."
+  },
+  "kind.idle.chip": {
+    "description": "Review mode: the short chip on a row whose change is of this kind: idle time (no input) that was cut or sped up by Smart speed."
+  },
+  "kind.idle.name": {
+    "description": "Review mode: the name of this kind of change (idle time (no input) that was cut or sped up by Smart speed) inside a row's spoken description, lower case: \"Cut 2.4 s of silence, {kind}, at 0:12.4, …\"."
+  },
+  "kind.idle.all": {
+    "description": "Review mode: the footer button that removes every change of this kind still to review (idle time (no input) that was cut or sped up by Smart speed)."
+  },
+  "kind.idle.count": {
+    "description": "Review mode: a count of changes of this kind (idle time (no input) that was cut or sped up by Smart speed) inside \"Removed {things}.\" and \"Removing {things}…\"; {n} is the count as shown."
+  },
+  "kind.words.chip": {
+    "description": "Review mode: the short chip on a row whose change is of this kind: spoken words cut from the video (fillers, retakes, repeats)."
+  },
+  "kind.words.name": {
+    "description": "Review mode: the name of this kind of change (spoken words cut from the video (fillers, retakes, repeats)) inside a row's spoken description, lower case: \"Cut 2.4 s of silence, {kind}, at 0:12.4, …\"."
+  },
+  "kind.words.all": {
+    "description": "Review mode: the footer button that removes every change of this kind still to review (spoken words cut from the video (fillers, retakes, repeats))."
+  },
+  "kind.words.count": {
+    "description": "Review mode: a count of changes of this kind (spoken words cut from the video (fillers, retakes, repeats)) inside \"Removed {things}.\" and \"Removing {things}…\"; {n} is the count as shown."
+  },
+  "kind.style.chip": {
+    "description": "Review mode: the short chip on a row whose change is of this kind: caption look (style) changes made automatically."
+  },
+  "kind.style.name": {
+    "description": "Review mode: the name of this kind of change (caption look (style) changes made automatically) inside a row's spoken description, lower case: \"Cut 2.4 s of silence, {kind}, at 0:12.4, …\"."
+  },
+  "kind.style.all": {
+    "description": "Review mode: the footer button that removes every change of this kind still to review (caption look (style) changes made automatically)."
+  },
+  "kind.style.count": {
+    "description": "Review mode: a count of changes of this kind (caption look (style) changes made automatically) inside \"Removed {things}.\" and \"Removing {things}…\"; {n} is the count as shown."
+  },
+  "kind.emphasis.chip": {
+    "description": "Review mode: the short chip on a row whose change is of this kind: words emphasised automatically in captions (uncountable in English)."
+  },
+  "kind.emphasis.name": {
+    "description": "Review mode: the name of this kind of change (words emphasised automatically in captions (uncountable in English)) inside a row's spoken description, lower case: \"Cut 2.4 s of silence, {kind}, at 0:12.4, …\"."
+  },
+  "kind.emphasis.all": {
+    "description": "Review mode: the footer button that removes every change of this kind still to review (words emphasised automatically in captions (uncountable in English))."
+  },
+  "kind.emphasis.count": {
+    "description": "Review mode: a count of changes of this kind (words emphasised automatically in captions (uncountable in English)) inside \"Removed {things}.\" and \"Removing {things}…\"; {n} is the count as shown."
+  },
+  "kind.text.chip": {
+    "description": "Review mode: the short chip on a row whose change is of this kind: automatic fixes to caption text."
+  },
+  "kind.text.name": {
+    "description": "Review mode: the name of this kind of change (automatic fixes to caption text) inside a row's spoken description, lower case: \"Cut 2.4 s of silence, {kind}, at 0:12.4, …\"."
+  },
+  "kind.text.all": {
+    "description": "Review mode: the footer button that removes every change of this kind still to review (automatic fixes to caption text)."
+  },
+  "kind.text.count": {
+    "description": "Review mode: a count of changes of this kind (automatic fixes to caption text) inside \"Removed {things}.\" and \"Removing {things}…\"; {n} is the count as shown."
+  },
+  "kind.emoji.chip": {
+    "description": "Review mode: the short chip on a row whose change is of this kind: emoji added automatically over captions."
+  },
+  "kind.emoji.name": {
+    "description": "Review mode: the name of this kind of change (emoji added automatically over captions) inside a row's spoken description, lower case: \"Cut 2.4 s of silence, {kind}, at 0:12.4, …\"."
+  },
+  "kind.emoji.all": {
+    "description": "Review mode: the footer button that removes every change of this kind still to review (emoji added automatically over captions)."
+  },
+  "kind.emoji.count": {
+    "description": "Review mode: a count of changes of this kind (emoji added automatically over captions) inside \"Removed {things}.\" and \"Removing {things}…\"; {n} is the count as shown."
+  },
+  "kind.graphic.chip": {
+    "description": "Review mode: the short chip on a row whose change is of this kind: pop-ups, counters, list cards and title cards made from captions."
+  },
+  "kind.graphic.name": {
+    "description": "Review mode: the name of this kind of change (pop-ups, counters, list cards and title cards made from captions) inside a row's spoken description, lower case: \"Cut 2.4 s of silence, {kind}, at 0:12.4, …\"."
+  },
+  "kind.graphic.all": {
+    "description": "Review mode: the footer button that removes every change of this kind still to review (pop-ups, counters, list cards and title cards made from captions)."
+  },
+  "kind.graphic.count": {
+    "description": "Review mode: a count of changes of this kind (pop-ups, counters, list cards and title cards made from captions) inside \"Removed {things}.\" and \"Removing {things}…\"; {n} is the count as shown."
+  },
+  "kind.bleep.chip": {
+    "description": "Review mode: the short chip on a row whose change is of this kind: swear words bleeped automatically."
+  },
+  "kind.bleep.name": {
+    "description": "Review mode: the name of this kind of change (swear words bleeped automatically) inside a row's spoken description, lower case: \"Cut 2.4 s of silence, {kind}, at 0:12.4, …\"."
+  },
+  "kind.bleep.all": {
+    "description": "Review mode: the footer button that removes every change of this kind still to review (swear words bleeped automatically)."
+  },
+  "kind.bleep.count": {
+    "description": "Review mode: a count of changes of this kind (swear words bleeped automatically) inside \"Removed {things}.\" and \"Removing {things}…\"; {n} is the count as shown."
+  },
+  "kind.join.chip": {
+    "description": "Review mode: the short chip on a row whose change is of this kind: the style of the joins at cuts (crossfades, punch-ins) set by Polish."
+  },
+  "kind.join.name": {
+    "description": "Review mode: the name of this kind of change (the style of the joins at cuts (crossfades, punch-ins) set by Polish) inside a row's spoken description, lower case: \"Cut 2.4 s of silence, {kind}, at 0:12.4, …\"."
+  },
+  "kind.join.all": {
+    "description": "Review mode: the footer button that removes every change of this kind still to review (the style of the joins at cuts (crossfades, punch-ins) set by Polish)."
+  },
+  "kind.join.count": {
+    "description": "Review mode: a count of changes of this kind (the style of the joins at cuts (crossfades, punch-ins) set by Polish) inside \"Removed {things}.\" and \"Removing {things}…\"; {n} is the count as shown."
+  },
+  "kind.colour.chip": {
+    "description": "Review mode: the short chip on a row whose change is of this kind: automatic colour balance of the camera."
+  },
+  "kind.colour.name": {
+    "description": "Review mode: the name of this kind of change (automatic colour balance of the camera) inside a row's spoken description, lower case: \"Cut 2.4 s of silence, {kind}, at 0:12.4, …\"."
+  },
+  "kind.colour.all": {
+    "description": "Review mode: the footer button that removes every change of this kind still to review (automatic colour balance of the camera)."
+  },
+  "kind.colour.count": {
+    "description": "Review mode: a count of changes of this kind (automatic colour balance of the camera) inside \"Removed {things}.\" and \"Removing {things}…\"; {n} is the count as shown."
+  },
+  "kind.chapter.chip": {
+    "description": "Review mode: the short chip on a row whose change is of this kind: chapters found automatically."
+  },
+  "kind.chapter.name": {
+    "description": "Review mode: the name of this kind of change (chapters found automatically) inside a row's spoken description, lower case: \"Cut 2.4 s of silence, {kind}, at 0:12.4, …\"."
+  },
+  "kind.chapter.all": {
+    "description": "Review mode: the footer button that removes every change of this kind still to review (chapters found automatically)."
+  },
+  "kind.chapter.count": {
+    "description": "Review mode: a count of changes of this kind (chapters found automatically) inside \"Removed {things}.\" and \"Removing {things}…\"; {n} is the count as shown."
+  },
+  "kind.short.chip": {
+    "description": "Review mode: the short chip on a row whose change is of this kind: cuts made by Make a shorter version."
+  },
+  "kind.short.name": {
+    "description": "Review mode: the name of this kind of change (cuts made by Make a shorter version) inside a row's spoken description, lower case: \"Cut 2.4 s of silence, {kind}, at 0:12.4, …\"."
+  },
+  "kind.short.all": {
+    "description": "Review mode: the footer button that removes every change of this kind still to review (cuts made by Make a shorter version)."
+  },
+  "kind.short.count": {
+    "description": "Review mode: a count of changes of this kind (cuts made by Make a shorter version) inside \"Removed {things}.\" and \"Removing {things}…\"; {n} is the count as shown."
+  },
+  "changes": {
+    "description": "Review mode: a count of automatic changes of any kind, inside \"Kept {things}.\" and \"Keeping {things}…\"; {n} is the count as shown."
+  },
+  "status.pending": {
+    "description": "Review mode: a row's status at the end of its spoken description and under an item of a group: not kept or removed yet. Lower case."
+  },
+  "status.kept": {
+    "description": "Review mode: a row's status: the change was kept. Lower case."
+  },
+  "status.removed": {
+    "description": "Review mode: a row's status: the change was removed. Lower case."
+  },
+  "title": {
+    "description": "Review mode: the panel's title and the title bar button's tooltip. Lists every change Flown made by itself, to keep or remove."
+  },
+  "empty": {
+    "description": "Review mode: shown in the panel when there is nothing to review."
+  },
+  "hint": {
+    "description": "Review mode: the keys of the list, above it. N, P, K, Delete and the arrows are key names: keep them as they are.",
+    "dnt": [
+      "N",
+      "P",
+      "K",
+      "Delete",
+      "↓",
+      "↑"
+    ]
+  },
+  "place.topLeft": {
+    "description": "Review mode: where in the frame an automatic zoom aims, in thirds, inside a row title (\"Zoom in on a click, {place}\"). Lower case."
+  },
+  "place.top": {
+    "description": "Review mode: where in the frame a zoom aims (the top middle third), inside a row title. Lower case."
+  },
+  "place.topRight": {
+    "description": "Review mode: where in the frame a zoom aims, inside a row title. Lower case."
+  },
+  "place.left": {
+    "description": "Review mode: where in the frame a zoom aims (the middle left third), inside a row title. Lower case."
+  },
+  "place.middle": {
+    "description": "Review mode: where in the frame a zoom aims (the centre third), inside a row title. Lower case."
+  },
+  "place.right": {
+    "description": "Review mode: where in the frame a zoom aims (the middle right third), inside a row title. Lower case."
+  },
+  "place.bottomLeft": {
+    "description": "Review mode: where in the frame a zoom aims, inside a row title. Lower case."
+  },
+  "place.bottom": {
+    "description": "Review mode: where in the frame a zoom aims (the bottom middle third), inside a row title. Lower case."
+  },
+  "place.bottomRight": {
+    "description": "Review mode: where in the frame a zoom aims, inside a row title. Lower case."
+  },
+  "zoom.pullBack": {
+    "description": "Review mode: the title of an automatic zoom that zooms out (shows more than the whole frame)."
+  },
+  "zoom.typing": {
+    "description": "Review mode: the title of an automatic zoom made where the user typed."
+  },
+  "zoom.typingAt": {
+    "description": "Review mode: the title of an automatic zoom made where the user typed; {place} says where in the frame (\"top right\")."
+  },
+  "zoom.click": {
+    "description": "Review mode: the title of an automatic zoom made at a mouse click."
+  },
+  "zoom.clickAt": {
+    "description": "Review mode: the title of an automatic zoom made at a mouse click; {place} says where in the frame (\"top right\")."
+  },
+  "zoom.in": {
+    "description": "Review mode: the title of an automatic zoom that follows the cursor."
+  },
+  "zoom.inAt": {
+    "description": "Review mode: the title of an automatic zoom at a fixed place; {place} says where in the frame (\"middle\")."
+  },
+  "layout.corner.topLeft": {
+    "description": "Review mode: the title of an automatic change that moved the camera bubble to the top left corner of the video."
+  },
+  "layout.corner.topRight": {
+    "description": "Review mode: the title of an automatic change that moved the camera bubble to the top right corner."
+  },
+  "layout.corner.bottomLeft": {
+    "description": "Review mode: the title of an automatic change that moved the camera bubble to the bottom left corner."
+  },
+  "layout.corner.bottomRight": {
+    "description": "Review mode: the title of an automatic change that moved the camera bubble to the bottom right corner."
+  },
+  "layout.bubble": {
+    "description": "Review mode: the title of an automatic change back to the camera bubble (the small camera over the screen)."
+  },
+  "layout.cameraOnly": {
+    "description": "Review mode: the title of an automatic change to the camera filling the frame."
+  },
+  "layout.cameraLarge": {
+    "description": "Review mode: the title of an automatic change to a large camera over the screen."
+  },
+  "layout.sideBySide": {
+    "description": "Review mode: the title of an automatic change to the camera beside the screen."
+  },
+  "layout.screenOnly": {
+    "description": "Review mode: the title of an automatic change that hides the camera."
+  },
+  "framing.title": {
+    "description": "Review mode: the title of the automatic change that centres the camera on the speaker's face."
+  },
+  "framing.detail": {
+    "description": "Review mode: the tool that made a camera change, shown after the time on its row (the Camera director feature)."
+  },
+  "cut.retake": {
+    "description": "Review mode: the title of a cut that removed a retake (a sentence said again); {said} is the words removed, as said.",
+    "user": [
+      "said"
+    ]
+  },
+  "cut.repeat": {
+    "description": "Review mode: the title of a cut that removed repeated words; {said} is the words removed.",
+    "user": [
+      "said"
+    ]
+  },
+  "cut.words": {
+    "description": "Review mode: the title of a cut that removed filler words; {said} is the words removed.",
+    "user": [
+      "said"
+    ]
+  },
+  "cut.short": {
+    "description": "Review mode: the title of a cut Make a shorter version made; {seconds} is how much was cut (\"2.4 s\")."
+  },
+  "cut.silence": {
+    "description": "Review mode: the title of a silence that was cut; {seconds} is its length (\"2.4 s\")."
+  },
+  "cut.idle": {
+    "description": "Review mode: the title of idle time (no typing or clicks) that was cut; {seconds} is its length."
+  },
+  "sped.silence": {
+    "description": "Review mode: the title of a silence played faster; {seconds} is its length, {factor} how many times as fast (\"Sped up 2.4 s of silence 4×\")."
+  },
+  "sped.idle": {
+    "description": "Review mode: the title of idle time played faster; {seconds} is its length, {factor} how many times as fast."
+  },
+  "cutBy.silences": {
+    "description": "Review mode: the tool that made a cut, after the time on its row: the Remove silences tool."
+  },
+  "cutBy.polish": {
+    "description": "Review mode: the tool that made a cut: Polish in one click."
+  },
+  "cutBy.smartSpeed": {
+    "description": "Review mode: the tool that made a cut or speed-up: Smart speed (idle time)."
+  },
+  "cutBy.filler": {
+    "description": "Review mode: what a word cut removed: filler words (\"um\", \"uh\")."
+  },
+  "cutBy.retake": {
+    "description": "Review mode: what a word cut removed: a retake (a sentence said again)."
+  },
+  "cutBy.repeat": {
+    "description": "Review mode: what a word cut removed: repeated words."
+  },
+  "cutBy.short": {
+    "description": "Review mode: the tool that made a cut: Make a shorter version."
+  },
+  "progress": {
+    "description": "Review mode: how many automatic changes have been kept or removed so far, of all of them."
+  },
+  "row.name": {
+    "description": "Review mode: what a screen reader says for a row: its title, its kind, its time in the video, the tool that made it and its status (\"Cut 2.4 s of silence, silence, at 0:12.4, Polish, not reviewed\")."
+  },
+  "acted.keep": {
+    "description": "Review mode: said to screen readers after one change was kept."
+  },
+  "acted.remove": {
+    "description": "Review mode: said to screen readers after one change was removed."
+  },
+  "bulk.kept": {
+    "description": "Review mode: said after Keep all; {things} is a count of changes (\"26 changes\")."
+  },
+  "bulk.removed": {
+    "description": "Review mode: said after Remove all; {things} is a count of changes of one kind (\"5 zooms\")."
+  },
+  "busy.rule": {
+    "description": "Review mode: said as Keep all or Remove all starts on a long list: what waits for it and what stops it. Keep, Remove, Undo and Redo are the buttons and commands."
+  },
+  "busy.keeping": {
+    "description": "Review mode: said as Keep all starts on a long list; {things} is a count (\"8098 changes\"), {rule} the sentence that says what waits."
+  },
+  "busy.removing": {
+    "description": "Review mode: said as Remove all starts on a long list; {things} is a count (\"5399 silence cuts\"), {rule} the sentence that says what waits."
+  },
+  "stillBusy.keeping": {
+    "description": "Review mode: said when Keep all is pressed while it still works; {things} is a count (\"8098 changes\")."
+  },
+  "stillBusy.removing": {
+    "description": "Review mode: said when Remove all is pressed while it still works; {things} is a count (\"5399 silence cuts\")."
+  },
+  "wait.keepDuringKeepAll": {
+    "description": "Review mode: said when a row's Keep is pressed while Keep all works."
+  },
+  "wait.keepDuringRemoveAll": {
+    "description": "Review mode: said when a row's Keep is pressed while Remove all works."
+  },
+  "wait.removeDuringKeepAll": {
+    "description": "Review mode: said when a row's Remove is pressed while Keep all works."
+  },
+  "wait.removeDuringRemoveAll": {
+    "description": "Review mode: said when a row's Remove is pressed while Remove all works."
+  },
+  "stale.alreadyKept": {
+    "description": "Review mode: said when a Keep that waited finds its change already kept meanwhile."
+  },
+  "stale.alreadyRemoved": {
+    "description": "Review mode: said when a Remove that waited finds its change already removed meanwhile."
+  },
+  "stale.notKept": {
+    "description": "Review mode: said when a Keep that waited finds its change removed meanwhile."
+  },
+  "stale.notRemoved": {
+    "description": "Review mode: said when a Remove that waited finds its change kept meanwhile."
+  },
+  "stopped.keepAll": {
+    "description": "The editor's notice when closing Review mode stopped Keep all before it was done."
+  },
+  "stopped.removeAll": {
+    "description": "The editor's notice when closing Review mode stopped Remove all before it was done; {action} is the button's name (\"Remove all silence cuts\", \"Remove all\")."
+  },
+  "busyWord.keep": {
+    "description": "Review mode: the Keep all button while it works."
+  },
+  "busyWord.remove": {
+    "description": "Review mode: the Remove all button while it works."
+  },
+  "button.pending": {
+    "description": "The title bar's Review button, for screen readers: opens Review mode; {n} is how many automatic changes are still to review."
+  },
+  "button.none": {
+    "description": "The title bar's Review button, for screen readers, when every automatic change was reviewed."
+  },
+  "button.label": {
+    "description": "The title bar's Review button: opens Review mode (a verb: check the automatic changes)."
+  },
+  "panel.close": {
+    "description": "Review mode: the panel's close button (tooltip and name)."
+  },
+  "panel.reviewed": {
+    "description": "Review mode: the name of the progress bar of changes reviewed."
+  },
+  "panel.keepAll": {
+    "description": "Review mode: the footer button that keeps every change still to review."
+  },
+  "panel.list": {
+    "description": "Review mode: the list's name for screen readers."
+  },
+  "row.keep": {
+    "description": "Review mode: a row's Keep button for screen readers; {title} is the row's title."
+  },
+  "row.remove": {
+    "description": "Review mode: a row's Remove button for screen readers; {title} is the row's title."
+  },
+  "row.hideParts": {
+    "description": "Review mode: the button that hides a group row's items (Captions Studio's emphasis and text fixes); {title} is the row's title."
+  },
+  "row.showParts": {
+    "description": "Review mode: the button that shows a group row's items; {title} is the row's title."
+  },
+  "mark.kept": {
+    "description": "Review mode: shown with a tick where Keep and Remove were, once the change was kept."
+  },
+  "mark.removed": {
+    "description": "Review mode: shown where Keep and Remove were, once the change was removed."
+  },
+  "versions.count.cuts": {
+    "description": "Versions: a count in a version's summary line (\"2:13 · 3 cuts · 5 zooms\"): cuts between clips."
+  },
+  "versions.row.cuts": {
+    "description": "Versions: a row of the comparison between a version and the edit now: the number of cuts between clips."
+  },
+  "versions.count.zooms": {
+    "description": "Versions: a count in a version's summary line (\"2:13 · 3 cuts · 5 zooms\"): zooms."
+  },
+  "versions.row.zooms": {
+    "description": "Versions: a row of the comparison between a version and the edit now: the number of zooms."
+  },
+  "versions.count.captions": {
+    "description": "Versions: a count in a version's summary line (\"2:13 · 3 cuts · 5 zooms\"): caption lines."
+  },
+  "versions.row.captions": {
+    "description": "Versions: a row of the comparison between a version and the edit now: the number of caption lines."
+  },
+  "versions.count.graphics": {
+    "description": "Versions: a count in a version's summary line (\"2:13 · 3 cuts · 5 zooms\"): Captions Studio's pop-ups, counters and list cards."
+  },
+  "versions.row.graphics": {
+    "description": "Versions: a row of the comparison between a version and the edit now: the number of Captions Studio's pop-ups, counters and list cards."
+  },
+  "versions.count.texts": {
+    "description": "Versions: a count in a version's summary line (\"2:13 · 3 cuts · 5 zooms\"): text annotations and title cards."
+  },
+  "versions.row.texts": {
+    "description": "Versions: a row of the comparison between a version and the edit now: the number of text annotations and title cards."
+  },
+  "versions.count.shapes": {
+    "description": "Versions: a count in a version's summary line (\"2:13 · 3 cuts · 5 zooms\"): shapes and spotlights."
+  },
+  "versions.row.shapes": {
+    "description": "Versions: a row of the comparison between a version and the edit now: the number of shapes and spotlights."
+  },
+  "versions.count.images": {
+    "description": "Versions: a count in a version's summary line (\"2:13 · 3 cuts · 5 zooms\"): image overlays."
+  },
+  "versions.row.images": {
+    "description": "Versions: a row of the comparison between a version and the edit now: the number of image overlays."
+  },
+  "versions.count.chapters": {
+    "description": "Versions: a count in a version's summary line (\"2:13 · 3 cuts · 5 zooms\"): chapters."
+  },
+  "versions.row.chapters": {
+    "description": "Versions: a row of the comparison between a version and the edit now: the number of chapters."
+  },
+  "versions.count.freezes": {
+    "description": "Versions: a count in a version's summary line (\"2:13 · 3 cuts · 5 zooms\"): freeze frames."
+  },
+  "versions.row.freezes": {
+    "description": "Versions: a row of the comparison between a version and the edit now: the number of freeze frames."
+  },
+  "versions.row.duration": {
+    "description": "Versions: a row of the comparison: how long the video is."
+  },
+  "versions.row.trimmed": {
+    "description": "Versions: a row of the comparison: whether the start or the end of the recording is cut off; its values are Yes and No."
+  },
+  "versions.yes": {
+    "description": "Versions: a value in the comparison row \"Start or end trimmed\"."
+  },
+  "versions.no": {
+    "description": "Versions: a value in the comparison row \"Start or end trimmed\"."
+  },
+  "versions.area.style": {
+    "description": "Versions: a part of the edit that differs, listed after \"Different:\" in lower case: the look: background, frame, tilt."
+  },
+  "versions.area.cursor": {
+    "description": "Versions: a part of the edit that differs, listed after \"Different:\" in lower case: the cursor and its clicks."
+  },
+  "versions.area.camera": {
+    "description": "Versions: a part of the edit that differs, listed after \"Different:\" in lower case: the camera and its layouts."
+  },
+  "versions.area.sound": {
+    "description": "Versions: a part of the edit that differs, listed after \"Different:\" in lower case: the sound settings, muted sounds and sound effects."
+  },
+  "versions.area.ignoredSounds": {
+    "description": "Versions: a part of the edit that differs, listed after \"Different:\" in lower case: sounds the sound finder was told to leave as they are."
+  },
+  "versions.area.effects": {
+    "description": "Versions: a part of the edit that differs, listed after \"Different:\" in lower case: the video effects."
+  },
+  "versions.area.zoomSettings": {
+    "description": "Versions: a part of the edit that differs, listed after \"Different:\" in lower case: the zoom settings and auto zoom."
+  },
+  "versions.area.captionsLook": {
+    "description": "Versions: a part of the edit that differs, listed after \"Different:\" in lower case: the captions' look, emphasis, places and bleeps."
+  },
+  "versions.area.captionLanguages": {
+    "description": "Versions: a part of the edit that differs, listed after \"Different:\" in lower case: translated caption tracks."
+  },
+  "versions.area.crop": {
+    "description": "Versions: a part of the edit that differs, listed after \"Different:\" in lower case: the crop."
+  },
+  "versions.area.verticalFraming": {
+    "description": "Versions: a part of the edit that differs, listed after \"Different:\" in lower case: how a vertical version follows the action."
+  },
+  "versions.area.brand": {
+    "description": "Versions: a part of the edit that differs, listed after \"Different:\" in lower case: the brand kit and fonts."
+  },
+  "versions.area.watermark": {
+    "description": "Versions: a part of the edit that differs, listed after \"Different:\" in lower case: the watermark."
+  },
+  "versions.area.exportDescription": {
+    "description": "Versions: a part of the edit that differs, listed after \"Different:\" in lower case: the description saved next to exports."
+  },
+  "versions.area.autoChanges": {
+    "description": "Versions: a part of the edit that differs, listed after \"Different:\" in lower case: Review mode's list and its choices."
+  },
+  "versions.area.smoothCuts": {
+    "description": "Versions: a part of the edit that differs, listed after \"Different:\" in lower case: the cut styles (crossfades, punch-ins)."
+  },
+  "versions.area.colour": {
+    "description": "Versions: a part of the edit that differs, listed after \"Different:\" in lower case: the colour grading."
+  },
+  "versions.area.progressBar": {
+    "description": "Versions: a part of the edit that differs, listed after \"Different:\" in lower case: the chapter progress bar."
+  },
+  "versions.area.guide": {
+    "description": "Versions: a part of the edit that differs, listed after \"Different:\" in lower case: the step-by-step guide's choices."
+  },
+  "versions.area.clips": {
+    "description": "Versions: a part of the edit that differs, listed after \"Different:\" in lower case: the clips (moved or trimmed)."
+  },
+  "versions.area.zooms": {
+    "description": "Versions: a part of the edit that differs, listed after \"Different:\" in lower case: zooms (moved or changed)."
+  },
+  "versions.area.textsAndTitles": {
+    "description": "Versions: a part of the edit that differs, listed after \"Different:\" in lower case: texts and title cards (moved or changed)."
+  },
+  "versions.area.shapesAndSpotlights": {
+    "description": "Versions: a part of the edit that differs, listed after \"Different:\" in lower case: shapes and spotlights (moved or changed)."
+  },
+  "versions.area.images": {
+    "description": "Versions: a part of the edit that differs, listed after \"Different:\" in lower case: images (moved or changed)."
+  },
+  "versions.area.popUps": {
+    "description": "Versions: a part of the edit that differs, listed after \"Different:\" in lower case: pop-ups (moved or changed)."
+  },
+  "versions.area.chapters": {
+    "description": "Versions: a part of the edit that differs, listed after \"Different:\" in lower case: chapters (moved or renamed)."
+  },
+  "versions.area.freezeFrames": {
+    "description": "Versions: a part of the edit that differs, listed after \"Different:\" in lower case: freeze frames (moved or changed)."
+  },
+  "versions.area.captionText": {
+    "description": "Versions: a part of the edit that differs, listed after \"Different:\" in lower case: what the captions say."
+  },
+  "versions.area.speakerNames": {
+    "description": "Versions: a part of the edit that differs, listed after \"Different:\" in lower case: the speakers the captions are labelled with."
+  },
+  "versions.area.otherSettings": {
+    "description": "Versions: a part of the edit that differs, listed after \"Different:\" in lower case: any other part of the edit."
+  },
+  "versions.file.backgroundImage": {
+    "description": "Versions: a kind of project file, in lower case inside \"Its {what} file is no longer in the project folder.\" and in the list of what differs: the background image file."
+  },
+  "versions.file.cursorImage": {
+    "description": "Versions: a kind of project file, in lower case inside \"Its {what} file is no longer in the project folder.\" and in the list of what differs: the custom cursor image file."
+  },
+  "versions.file.logo": {
+    "description": "Versions: a kind of project file, in lower case inside \"Its {what} file is no longer in the project folder.\" and in the list of what differs: the logo (watermark) image file."
+  },
+  "versions.file.music": {
+    "description": "Versions: a kind of project file, in lower case inside \"Its {what} file is no longer in the project folder.\" and in the list of what differs: the music file."
+  },
+  "versions.file.image": {
+    "description": "Versions: a kind of project file, in lower case inside \"Its {what} file is no longer in the project folder.\" and in the list of what differs: an image overlay file."
+  },
+  "versions.file.font": {
+    "description": "Versions: a kind of project file, in lower case inside \"Its {what} file is no longer in the project folder.\" and in the list of what differs: a font file."
+  },
+  "versions.file.colourLut": {
+    "description": "Versions: a kind of project file, in lower case inside \"Its {what} file is no longer in the project folder.\" and in the list of what differs: a colour LUT file (a colour look-up table)."
+  },
+  "versions.filesChanged": {
+    "description": "Versions: said when a version is opened or compared and a file it uses was replaced since; {what} names the files (\"background image and cursor image\"), {count} how many kinds."
+  },
+  "versions.fileMissing": {
+    "description": "Versions: said when an opened version uses a file the project folder no longer has; {what} is its kind (\"music\")."
+  },
+  "versions.filesMissing": {
+    "description": "Versions: said when an opened version uses files the project folder no longer has; {n} is how many (two or more), {kinds} their kinds (\"music, image\")."
+  },
+  "versions.error.list": {
+    "description": "Versions: shown when the list of versions could not be read; {error} is the reason."
+  },
+  "versions.defaultName": {
+    "description": "Versions: the name a version gets when the name field is left empty, shown in that field (\"Version 3\")."
+  },
+  "versions.saved": {
+    "description": "The editor's notice after a version was saved; {name} is the version's name.",
+    "user": [
+      "name"
+    ]
+  },
+  "versions.error.save": {
+    "description": "Versions: shown when a version could not be saved; {error} is the reason."
+  },
+  "versions.error.keepFirst": {
+    "description": "Versions: why a version could not be opened, inside \"Could not open this version: {error}\" (lower case first): the edit now is always kept first; {reason} says why that failed."
+  },
+  "versions.error.open": {
+    "description": "Versions: shown when a version could not be opened; {error} is the reason."
+  },
+  "versions.error.rename": {
+    "description": "Versions: shown when a version could not be renamed; {error} is the reason."
+  },
+  "versions.deleted": {
+    "description": "The editor's notice after a version was deleted; {name} is the version's name.",
+    "user": [
+      "name"
+    ]
+  },
+  "versions.error.delete": {
+    "description": "Versions: shown when a version could not be deleted; {error} is the reason."
+  },
+  "versions.title": {
+    "description": "The Versions dialog's title: saved copies of the edit to go back to."
+  },
+  "versions.intro": {
+    "description": "Versions: the line under the title that says what a version is."
+  },
+  "versions.nameField": {
+    "description": "Versions: the name field's label for screen readers."
+  },
+  "versions.save": {
+    "description": "Versions: the button that keeps the edit as a new version."
+  },
+  "versions.full": {
+    "description": "Versions: shown when the most versions one project keeps are saved; {n} is that number (50)."
+  },
+  "versions.empty": {
+    "description": "Versions: shown when the project has no versions."
+  },
+  "versions.list": {
+    "description": "Versions: the list's name for screen readers."
+  },
+  "versions.renameField": {
+    "description": "Versions: the rename field's label; {name} is the version's name now.",
+    "user": [
+      "name"
+    ]
+  },
+  "versions.automatic": {
+    "description": "Versions: a badge on a version Flown kept by itself before a big change."
+  },
+  "versions.openName": {
+    "description": "Versions: the Open button's name for screen readers; {name} is the version's name.",
+    "user": [
+      "name"
+    ]
+  },
+  "versions.openHint": {
+    "description": "Versions: the Open button's tooltip."
+  },
+  "versions.open": {
+    "description": "Versions: the button that opens a version in place of the edit now (a verb)."
+  },
+  "versions.compareName": {
+    "description": "Versions: the Compare button's name for screen readers; {name} is the version's name.",
+    "user": [
+      "name"
+    ]
+  },
+  "versions.compare": {
+    "description": "Versions: the button that shows how a version differs from the edit now (a verb)."
+  },
+  "versions.renameName": {
+    "description": "Versions: the Rename button's name for screen readers; {name} is the version's name.",
+    "user": [
+      "name"
+    ]
+  },
+  "versions.rename": {
+    "description": "Versions: the button that renames a version (a verb)."
+  },
+  "versions.deleteAsk": {
+    "description": "Versions: the delete question's name for screen readers; {name} is the version's name.",
+    "user": [
+      "name"
+    ]
+  },
+  "versions.deleteQuestion": {
+    "description": "Versions: the question before a version is deleted; {name} is its name. Its buttons are Delete and Keep.",
+    "user": [
+      "name"
+    ]
+  },
+  "versions.autoHint": {
+    "description": "Versions: the footer: the tools before which Flown keeps a version by itself, and how many such versions it keeps ({n}, 5). Polish, Make my captions great, Remove all, the Transcript tab, Review and Make a vertical or square version are the names of tools and buttons."
+  },
+  "versions.comparing": {
+    "description": "Versions: shown while a version is compared with the edit now."
+  },
+  "versions.error.compare": {
+    "description": "Versions: shown when a version could not be compared; {error} is the reason."
+  },
+  "versions.same": {
+    "description": "Versions: the comparison when nothing differs."
+  },
+  "versions.what": {
+    "description": "Versions: the comparison table's first column, for screen readers: what each row counts."
+  },
+  "versions.thisVersion": {
+    "description": "Versions: the comparison table's column of the version's values."
+  },
+  "versions.now": {
+    "description": "Versions: the comparison table's column of the edit now's values."
+  },
+  "versions.alsoDifferent": {
+    "description": "Versions: under the comparison table, the other parts of the edit that differ; {areas} lists them (\"style, camera and zooms\")."
+  },
+  "versions.different": {
+    "description": "Versions: the parts of the edit that differ when no count does; {areas} lists them (\"style, camera and zooms\")."
+  },
+  "polish.step.style": {
+    "description": "Polish in one click: the name of a step (a row of the dialog and of its summary): the look: background, frame, cursor and zoom style."
+  },
+  "polish.step.zoom": {
+    "description": "Polish in one click: the name of a step (a row of the dialog and of its summary): turning auto zoom on."
+  },
+  "polish.step.silences": {
+    "description": "Polish in one click: the name of a step (a row of the dialog and of its summary): cutting or speeding up pauses."
+  },
+  "polish.step.smoothCuts": {
+    "description": "Polish in one click: the name of a step (a row of the dialog and of its summary): crossfades and punch-ins at the cuts."
+  },
+  "polish.step.captions": {
+    "description": "Polish in one click: the name of a step (a row of the dialog and of its summary): making captions."
+  },
+  "polish.step.chapters": {
+    "description": "Polish in one click: the name of a step (a row of the dialog and of its summary): finding chapters."
+  },
+  "polish.step.captionLook": {
+    "description": "Polish in one click: the name of a step (a row of the dialog and of its summary): the captions' style, emphasis and pop-ups."
+  },
+  "polish.step.director": {
+    "description": "Polish in one click: the name of a step (a row of the dialog and of its summary): the automatic camera director."
+  },
+  "polish.silence.cut": {
+    "description": "Polish in one click: a Silence action chip: pauses are cut out (not played faster)."
+  },
+  "polish.silence.cutHint": {
+    "description": "Polish in one click: the tooltip of the Cut chip."
+  },
+  "polish.silence.x2": {
+    "description": "Polish in one click: the tooltip of the 2× chip."
+  },
+  "polish.silence.x4": {
+    "description": "Polish in one click: the tooltip of the 4× chip."
+  },
+  "polish.silence.x8": {
+    "description": "Polish in one click: the tooltip of the 8× chip."
+  },
+  "polish.title": {
+    "description": "The Polish in one click dialog's title: it runs the automatic edits in one go."
+  },
+  "polish.lead": {
+    "description": "Polish in one click: the line under the title."
+  },
+  "polish.footnote": {
+    "description": "Polish in one click: under the summary of what changed."
+  },
+  "polish.nothingChosen": {
+    "description": "Polish in one click: the Polish button's tooltip when no step is on."
+  },
+  "polish.lookingForProviders": {
+    "description": "Polish in one click: the Captions row while the AI services are read."
+  },
+  "polish.keepLook": {
+    "description": "Polish in one click: the Style menu's first choice: no style preset is applied."
+  },
+  "polish.changedSince": {
+    "description": "Polish in one click: why Undo polish is off: the video was edited after the polish."
+  },
+  "polish.cancelled": {
+    "description": "The editor's notice after Polish in one click was cancelled while it ran."
+  },
+  "polish.undone": {
+    "description": "The editor's notice after Undo polish."
+  },
+  "polish.buttonTitle": {
+    "description": "The title bar's Polish button's tooltip: what Polish in one click does."
+  },
+  "polish.failed": {
+    "description": "Polish in one click: shown when planning the polish failed; {reason} is the error."
+  },
+  "polish.unknownError": {
+    "description": "Polish in one click: the reason shown when an error has no message, inside \"Polish failed: {reason}.\" (lower case)."
+  },
+  "polish.hint.style": {
+    "description": "Polish in one click: what the Style step does."
+  },
+  "polish.hint.zoomOn": {
+    "description": "Polish in one click: the Auto zoom step when auto zoom is on already."
+  },
+  "polish.hint.zoomOff": {
+    "description": "Polish in one click: what the Auto zoom step does."
+  },
+  "polish.hint.silencesCut": {
+    "description": "Polish in one click: what Remove silences does with Cut chosen; {length} is the shortest pause (\"1.0 s\")."
+  },
+  "polish.hint.silencesFaster": {
+    "description": "Polish in one click: what Remove silences does with a speed chosen; {length} is the shortest pause, {factor} the speed (\"4\")."
+  },
+  "polish.hint.smoothCuts": {
+    "description": "Polish in one click: what Smooth cuts does."
+  },
+  "polish.hint.captionsTo": {
+    "description": "Polish in one click: the Captions step with an AI service; {provider} is its name (\"My OpenAI\").",
+    "user": [
+      "provider"
+    ]
+  },
+  "polish.hint.captionsToAny": {
+    "description": "Polish in one click: the Captions step with an AI service not chosen yet."
+  },
+  "polish.hint.chapters": {
+    "description": "Polish in one click: what Find chapters does. Review is Review mode."
+  },
+  "polish.hint.captionLookWide": {
+    "description": "Polish in one click: what Caption look does in a wide video (no pop-ups)."
+  },
+  "polish.hint.captionLook": {
+    "description": "Polish in one click: what Caption look does."
+  },
+  "polish.hint.director": {
+    "description": "Polish in one click: what Camera director does."
+  },
+  "polish.skip.keptLook": {
+    "description": "Polish in one click: why a step cannot run or was skipped: the Style row when no preset is chosen."
+  },
+  "polish.skip.off": {
+    "description": "Polish in one click: why a step cannot run or was skipped: a step the user turned off."
+  },
+  "polish.skip.noInput": {
+    "description": "Polish in one click: why a step cannot run or was skipped: auto zoom needs recorded clicks."
+  },
+  "polish.skip.noCuts": {
+    "description": "Polish in one click: why a step cannot run or was skipped: Smooth cuts needs cuts."
+  },
+  "polish.skip.keptStyle": {
+    "description": "Polish in one click: why a step cannot run or was skipped: the user chose a cut style already."
+  },
+  "polish.skip.hasChapters": {
+    "description": "Polish in one click: why a step cannot run or was skipped: the video has chapters already."
+  },
+  "polish.skip.shortVideo": {
+    "description": "Polish in one click: why a step cannot run or was skipped: the video is too short for chapters."
+  },
+  "polish.skip.noSpeech": {
+    "description": "Polish in one click: why a step cannot run or was skipped: chapters are named from what is said."
+  },
+  "polish.skip.noSound": {
+    "description": "Polish in one click: why a step cannot run or was skipped: nothing to measure for silences or captions."
+  },
+  "polish.skip.muted": {
+    "description": "Polish in one click: why a step cannot run or was skipped: the recording sound is muted."
+  },
+  "polish.skip.notMeasured": {
+    "description": "Polish in one click: why a step cannot run or was skipped: measuring the sound failed."
+  },
+  "polish.skip.nothingHeard": {
+    "description": "Polish in one click: why a step cannot run or was skipped: the recording is silent."
+  },
+  "polish.skip.hasCaptions": {
+    "description": "Polish in one click: why a step cannot run or was skipped: captions exist already."
+  },
+  "polish.skip.noProvider": {
+    "description": "Polish in one click: why a step cannot run or was skipped: no AI service that makes captions."
+  },
+  "polish.skip.noModel": {
+    "description": "Polish in one click: why a step cannot run or was skipped: the free speech model on this PC is not downloaded."
+  },
+  "polish.skip.busy": {
+    "description": "Polish in one click: why a step cannot run or was skipped: captions are being made already."
+  },
+  "polish.skip.noCaptions": {
+    "description": "Polish in one click: why a step cannot run or was skipped: Caption look needs captions."
+  },
+  "polish.skip.cancelled": {
+    "description": "Polish in one click: why a step cannot run or was skipped: the user pressed Skip while the step ran."
+  },
+  "polish.skip.noCamera": {
+    "description": "Polish in one click: why a step cannot run or was skipped: the camera director needs a camera."
+  },
+  "polish.skip.cameraHidden": {
+    "description": "Polish in one click: why a step cannot run or was skipped: the camera is hidden."
+  },
+  "polish.skip.noPreset": {
+    "description": "Polish in one click: why a step cannot run or was skipped: the remembered preset was deleted."
+  },
+  "polish.skip.failedWhy": {
+    "description": "Polish in one click: a step that failed; {why} is the error."
+  },
+  "polish.skip.failed": {
+    "description": "Polish in one click: a step that failed with no reason."
+  },
+  "polish.skip.captionsFailedWhy": {
+    "description": "Polish in one click: making captions failed; {why} is the error."
+  },
+  "polish.skip.captionsFailed": {
+    "description": "Polish in one click: making captions failed with no reason."
+  },
+  "polish.phase.stopping": {
+    "description": "Polish in one click: the Captions row while making captions stops."
+  },
+  "polish.phase.starting": {
+    "description": "Polish in one click: the Captions row as making captions starts."
+  },
+  "polish.phase.extracting": {
+    "description": "Polish in one click: the Captions row while the sound is prepared for transcription."
+  },
+  "polish.phase.uploading": {
+    "description": "Polish in one click: the Captions row while the sound is sent to the AI service."
+  },
+  "polish.phase.transcribing": {
+    "description": "Polish in one click: the Captions row while speech is turned into text."
+  },
+  "polish.phase.finishing": {
+    "description": "Polish in one click: the Captions row as making captions ends."
+  },
+  "polish.phase.part": {
+    "description": "Polish in one click: the Captions row for a long recording sent in parts; {phase} is what it does (\"Transcribing…\")."
+  },
+  "polish.camera.intro": {
+    "description": "Polish in one click: a camera change of the director, in a list after \"Camera:\": the camera fills the frame at the start. Lower case."
+  },
+  "polish.camera.moves": {
+    "description": "Polish in one click: camera bubble moves to another corner, in a list after \"Camera:\"."
+  },
+  "polish.camera.hidden": {
+    "description": "Polish in one click: how many times the camera is hidden in long silences, in a list after \"Camera:\" (\"2 hidden\")."
+  },
+  "polish.camera.outro": {
+    "description": "Polish in one click: a camera change of the director, in a list after \"Camera:\": the camera fills the frame at the end. Lower case."
+  },
+  "polish.camera.face": {
+    "description": "Polish in one click: the camera was centred on the face, zoomed {zoom} (\"1.4×\"), after \"Camera:\". Lower case."
+  },
+  "polish.camera.nothing": {
+    "description": "Polish in one click: after \"Camera:\" when the director changed nothing. Lower case."
+  },
+  "polish.camera.already": {
+    "description": "Polish in one click: after \"Camera:\" when the camera was directed already. Lower case."
+  },
+  "polish.camera.withFace": {
+    "description": "Polish in one click: the camera changes (\"intro, 1 bubble move\") and then the face framing (\"face centred (1.4×)\"), after \"Camera:\"."
+  },
+  "polish.result.skipped": {
+    "description": "Polish in one click: a summary line of a skipped step: its name, then why, starting lower case (\"Auto zoom: no clicks were captured\")."
+  },
+  "polish.result.styleUnchanged": {
+    "description": "Polish in one click: the summary line of the Style step that changed nothing."
+  },
+  "polish.result.style": {
+    "description": "Polish in one click: the summary line of the Style step; {name} is the preset applied.",
+    "user": [
+      "name"
+    ]
+  },
+  "polish.result.styleAlready": {
+    "description": "Polish in one click: the Style step when the video had that preset's look already; {name} is the preset.",
+    "user": [
+      "name"
+    ]
+  },
+  "polish.result.zoomAlready": {
+    "description": "Polish in one click: the Auto zoom line when it was on already, with how many zooms there are."
+  },
+  "polish.result.zoomOn": {
+    "description": "Polish in one click: the Auto zoom line with how many zooms it made."
+  },
+  "polish.result.zoomOnKept": {
+    "description": "Polish in one click: the Auto zoom line with how many zooms it made and how many of the user's it kept ({kept})."
+  },
+  "polish.result.noSilences": {
+    "description": "Polish in one click: the Remove silences line when no pause was long enough; {length} is the shortest pause (\"1.0 s\")."
+  },
+  "polish.result.noSilencesToSpeed": {
+    "description": "Polish in one click: the Remove silences line, with a speed chosen, when no pause was long enough."
+  },
+  "polish.result.silencesCut": {
+    "description": "Polish in one click: the Remove silences line: how many pauses were cut and how much shorter the video is ({saved}, \"3.5 s\" or \"1:12.0\")."
+  },
+  "polish.result.silencesSped": {
+    "description": "Polish in one click: the Remove silences line with a speed: how many pauses play {factor} times as fast and how much shorter the video is."
+  },
+  "polish.result.smoothCuts": {
+    "description": "Polish in one click: the Smooth cuts line: at how many cuts it set a style."
+  },
+  "polish.result.smoothCutsUnchanged": {
+    "description": "Polish in one click: the Smooth cuts line when it changed nothing."
+  },
+  "polish.result.captions": {
+    "description": "Polish in one click: the Captions line: how many captions were made."
+  },
+  "polish.result.captionsLeftOut": {
+    "description": "Polish in one click: the Captions line when the most captions a project keeps ({max}) was reached at {time} in the video."
+  },
+  "polish.result.chapters": {
+    "description": "Polish in one click: the Find chapters line: how many chapters it found."
+  },
+  "polish.result.chaptersNone": {
+    "description": "Polish in one click: the Find chapters line when it found none."
+  },
+  "polish.result.captionLook": {
+    "description": "Polish in one click: the Caption look line when it changed the captions."
+  },
+  "polish.result.captionLookUnchanged": {
+    "description": "Polish in one click: the Caption look line when it changed nothing."
+  },
+  "polish.result.camera": {
+    "description": "Polish in one click: the Camera director line; {body} lists what changed (\"intro, 2 bubble moves; face centred (1.4×)\")."
+  },
+  "polish.result.cameraWhy": {
+    "description": "Polish in one click: the Camera director line with why the face was not centred ({why}, a sentence)."
+  },
+  "polish.headline.already": {
+    "description": "Polish in one click: the summary's headline and the notice when nothing changed."
+  },
+  "polish.headline.shorter": {
+    "description": "Polish in one click: the summary's headline; {saved} is how much shorter (\"1:12.0\")."
+  },
+  "polish.headline.done": {
+    "description": "Polish in one click: the summary's headline (and the notice's start) when the video is not shorter."
+  },
+  "polish.notice.shorter": {
+    "description": "The notice after Polish in one click: its start, how much shorter the video is (\"1:12.0\"); what else changed follows after \" · \"."
+  },
+  "polish.notice.style": {
+    "description": "The notice after Polish in one click: the preset applied (\"Studio style\").",
+    "user": [
+      "name"
+    ]
+  },
+  "polish.notice.autoZoom": {
+    "description": "The notice after Polish in one click: auto zoom was turned on. Lower case."
+  },
+  "polish.notice.silencesCut": {
+    "description": "The notice after Polish in one click: how many pauses were cut."
+  },
+  "polish.notice.silencesSped": {
+    "description": "The notice after Polish in one click: how many pauses play {factor} times as fast."
+  },
+  "polish.notice.captions": {
+    "description": "The notice after Polish in one click: how many captions were made."
+  },
+  "polish.notice.chapters": {
+    "description": "The notice after Polish in one click: how many chapters were found."
+  },
+  "polish.notice.camera": {
+    "description": "The notice after Polish in one click: how many camera changes the director made."
+  },
+  "polish.notice.cameraFace": {
+    "description": "The notice after Polish in one click: camera changes, and the camera centred on the face."
+  },
+  "polish.notice.face": {
+    "description": "The notice after Polish in one click: the camera was centred on the face. Lower case."
+  },
+  "polish.stylePreset": {
+    "description": "Polish in one click: the Style menu's name for screen readers."
+  },
+  "polish.yourPresets": {
+    "description": "Polish in one click: the group of the user's own style presets in the Style menu."
+  },
+  "polish.silenceAction": {
+    "description": "Polish in one click: the name of the chips that choose to cut pauses or play them faster."
+  },
+  "polish.transcriptionProvider": {
+    "description": "Polish in one click: the menu that chooses what makes the captions (this PC or an AI service)."
+  },
+  "polish.skip": {
+    "description": "Polish in one click: the button on a running step that skips it (making captions, centring the face)."
+  },
+  "polish.run": {
+    "description": "Polish in one click: the button that runs the chosen steps (a verb)."
+  },
+  "polish.undo": {
+    "description": "Polish in one click: the summary's button that undoes the whole polish."
+  },
+  "polish.row.waiting": {
+    "description": "Polish in one click: a step's row while it waits for its turn."
+  },
+  "polish.row.measuring": {
+    "description": "Polish in one click: the Remove silences row while the sound is measured."
+  },
+  "polish.row.lookingAtScreen": {
+    "description": "Polish in one click: the Find chapters row while the screen changes are found."
+  },
+  "polish.row.captions": {
+    "description": "Polish in one click: the Captions row when its captions are made: how many."
+  },
+  "polish.row.applying": {
+    "description": "Polish in one click: every running row while the edit is put together."
+  },
+  "polish.nothingPlanned": {
+    "description": "Polish in one click: the error inside \"Polish failed: {reason}.\" when planning gave nothing (lower case)."
+  },
+  "copyMenu.label": {
+    "description": "The title bar's Copies button (tooltip and name) and its menu's name: copies of the project in other shapes and lengths."
+  },
+  "copyMenu.button": {
+    "description": "The title bar's Copies button: opens a menu to make copies of the project (a noun)."
+  },
+  "copyMenu.clips": {
+    "description": "The Copies menu: opens the Short clips panel."
+  },
+  "copyMenu.clipsHint": {
+    "description": "The Copies menu: what Find short clips does."
+  },
+  "copyMenu.short": {
+    "description": "The Copies menu: opens Make a shorter version."
+  },
+  "copyMenu.shortHint": {
+    "description": "The Copies menu: what Make a shorter version does."
+  },
+  "copyMenu.shortNeedsCaptions": {
+    "description": "The Copies menu: why Make a shorter version cannot run (it keeps whole sentences, so it needs captions)."
+  },
+  "copyMenu.vertical": {
+    "description": "The Copies menu: makes a 9:16 copy of the project."
+  },
+  "copyMenu.verticalHint": {
+    "description": "The Copies menu: what Make a vertical version makes. TikTok, Reels and Shorts are product names.",
+    "dnt": [
+      "9:16",
+      "TikTok",
+      "Reels",
+      "Shorts"
+    ]
+  },
+  "copyMenu.square": {
+    "description": "The Copies menu: makes a 1:1 copy of the project."
+  },
+  "copyMenu.squareHint": {
+    "description": "The Copies menu: what Make a square version makes.",
+    "dnt": [
+      "1:1"
+    ]
+  },
+  "copyMenu.duplicate": {
+    "description": "The Copies menu: makes a copy of the project as it is (a verb)."
+  },
+  "copyMenu.duplicateHint": {
+    "description": "The Copies menu: what Duplicate makes."
+  },
+  "copyProgress.vertical": {
+    "description": "The title of the window shown while a vertical copy is made."
+  },
+  "copyProgress.square": {
+    "description": "The title of the window shown while a square copy is made."
+  },
+  "copyProgress.copy": {
+    "description": "The title of the window shown while a copy is made."
+  },
+  "copyProgress.copyingSize": {
+    "description": "The window shown while a copy is made: {name} is the project's name, {size} how much is copied (\"1.4 GB\").",
+    "user": [
+      "name"
+    ]
+  },
+  "copyProgress.copying": {
+    "description": "The window shown while a copy is made, before its size is known; {name} is the project's name.",
+    "user": [
+      "name"
+    ]
+  },
+  "copyProgress.copied": {
+    "description": "The name of the progress bar of a copy being made: how much is copied so far."
+  },
+  "copy.failed": {
+    "description": "The editor's notice when a copy could not be made; {reason} says why."
+  },
+  "copy.unsaved": {
+    "description": "The question before a copy is made when the last save failed."
+  },
+  "copy.untitled": {
+    "description": "The project's name in the copy's notice when it has none."
+  },
+  "copy.madeVertical": {
+    "description": "The notice in a vertical copy just made; {name} is the original project's name.",
+    "user": [
+      "name"
+    ]
+  },
+  "copy.madeVerticalLook": {
+    "description": "The notice in a vertical copy just made, with the caption look chosen for its shape ({look}, a sentence without its full stop); {name} is the original project's name.",
+    "user": [
+      "name"
+    ]
+  },
+  "copy.madeSquare": {
+    "description": "The notice in a square copy just made; {name} is the original project's name.",
+    "user": [
+      "name"
+    ]
+  },
+  "copy.madeSquareLook": {
+    "description": "The notice in a square copy just made, with the caption look chosen for its shape ({look}); {name} is the original project's name.",
+    "user": [
+      "name"
+    ]
+  },
+  "copy.madeCopy": {
+    "description": "The notice in a copy just made; {name} is the original project's name.",
+    "user": [
+      "name"
+    ]
+  },
+  "copy.madeCopyLook": {
+    "description": "The notice in a copy just made, with the caption look chosen ({look}); {name} is the original project's name.",
+    "user": [
+      "name"
+    ]
+  },
+  "import.buttonHint": {
+    "description": "Home: the Import video button's tooltip."
+  },
+  "import.button": {
+    "description": "Home: the button in the head of Recent recordings that imports a video file as a new project."
+  },
+  "import.emptyHint": {
+    "description": "Home, with no recordings yet: how to import a video. Import video is the button."
+  },
+  "import.drop": {
+    "description": "Home: shown while a file is dragged over the recordings."
+  },
+  "import.dropFormats": {
+    "description": "Home: the video formats that can be imported, under \"Drop a video to import it\".",
+    "dnt": [
+      "MP4",
+      "MOV",
+      "MKV",
+      "WebM"
+    ]
+  },
+  "import.checking": {
+    "description": "Import: the first stage, while the file is read."
+  },
+  "import.converting": {
+    "description": "Import: the stage that converts the video into a copy Flown edits."
+  },
+  "import.finishing": {
+    "description": "Import: the last stage, while the project is written."
+  },
+  "import.importingFile": {
+    "description": "Import: the dialog's title while a file is imported; {name} is the file's name without its extension.",
+    "user": [
+      "name"
+    ]
+  },
+  "import.importing": {
+    "description": "Import: the dialog's title while a file is imported, before its name is known."
+  },
+  "import.importedFile": {
+    "description": "Import: the dialog's title once a file is imported; {name} is the file's name without its extension.",
+    "user": [
+      "name"
+    ]
+  },
+  "import.imported": {
+    "description": "Import: the dialog's title once a file is imported, when its name is not known."
+  },
+  "import.failedFile": {
+    "description": "Import: the dialog's title when a file could not be imported; {name} is the file's name without its extension.",
+    "user": [
+      "name"
+    ]
+  },
+  "import.failed": {
+    "description": "Import: the dialog's title when a file could not be imported, when its name is not known."
+  },
+  "import.etaUnderMinute": {
+    "description": "Import: how long the copy still takes, after its percentage."
+  },
+  "import.eta": {
+    "description": "Import: how long the copy still takes in minutes ({n}), after its percentage. \"min\" is the unit, minutes."
+  },
+  "import.progress": {
+    "description": "Import: the progress bar's name for screen readers."
+  },
+  "import.yourFile": {
+    "description": "Import: a note while the video is imported."
+  },
+  "import.open": {
+    "description": "Import: the button that opens the imported video in the editor."
+  },
+  "notes.groupLabel": {
+    "description": "Speaker notes (a teleprompter: notes the presenter reads while recording, never in the video): Home: the speaker notes card's title."
+  },
+  "notes.emptyHint": {
+    "description": "Speaker notes (a teleprompter: notes the presenter reads while recording, never in the video): Home: the notes card before any notes are written."
+  },
+  "notes.add": {
+    "description": "Speaker notes (a teleprompter: notes the presenter reads while recording, never in the video): Home: the button that opens the Notes dialog to write notes."
+  },
+  "notes.edit": {
+    "description": "Speaker notes (a teleprompter: notes the presenter reads while recording, never in the video): Home: the button that opens the Notes dialog to change the notes."
+  },
+  "notes.rehearse": {
+    "description": "Speaker notes (a teleprompter: notes the presenter reads while recording, never in the video): Home: the button that opens the notes window to practise without recording."
+  },
+  "notes.stopRehearsing": {
+    "description": "Speaker notes (a teleprompter: notes the presenter reads while recording, never in the video): Home: the button that closes the notes window opened with Rehearse."
+  },
+  "notes.showWhileRecording": {
+    "description": "Speaker notes (a teleprompter: notes the presenter reads while recording, never in the video): Home: the switch that shows the notes window while recording."
+  },
+  "notes.olderWindows": {
+    "description": "Speaker notes (a teleprompter: notes the presenter reads while recording, never in the video): Home: a warning on Windows versions that cannot keep the notes window out of the recording."
+  },
+  "notes.dialogTitle": {
+    "description": "Speaker notes (a teleprompter: notes the presenter reads while recording, never in the video): The Notes dialog's title."
+  },
+  "notes.textLabel": {
+    "description": "Speaker notes (a teleprompter: notes the presenter reads while recording, never in the video): The Notes dialog: the text field's label."
+  },
+  "notes.placeholder": {
+    "description": "Speaker notes (a teleprompter: notes the presenter reads while recording, never in the video): The Notes dialog: the text field's placeholder. [Text in brackets] is an example of a cue."
+  },
+  "notes.whileRecording": {
+    "description": "Speaker notes (a teleprompter: notes the presenter reads while recording, never in the video): The Notes dialog: the heading of the options for recording."
+  },
+  "notes.showMyNotes": {
+    "description": "Speaker notes (a teleprompter: notes the presenter reads while recording, never in the video): The Notes dialog: the switch that shows the notes window while recording."
+  },
+  "notes.autoStart": {
+    "description": "Speaker notes (a teleprompter: notes the presenter reads while recording, never in the video): The Notes dialog: the switch that starts scrolling with the recording."
+  },
+  "notes.autoStartHint": {
+    "description": "Speaker notes (a teleprompter: notes the presenter reads while recording, never in the video): The Notes dialog: under the auto-start switch. Forward is the button that steps to the next line."
+  },
+  "notes.keep": {
+    "description": "Speaker notes (a teleprompter: notes the presenter reads while recording, never in the video): The Notes dialog: the switch that keeps a copy of the notes with the recording."
+  },
+  "notes.keepHint": {
+    "description": "Speaker notes (a teleprompter: notes the presenter reads while recording, never in the video): The Notes dialog: where the kept copy is found (the Captions tab of the editor)."
+  },
+  "notes.textSize": {
+    "description": "Speaker notes (a teleprompter: notes the presenter reads while recording, never in the video): The Notes dialog: the slider of the notes' text size."
+  },
+  "notes.width": {
+    "description": "Speaker notes (a teleprompter: notes the presenter reads while recording, never in the video): The Notes dialog: the slider of the notes window's width."
+  },
+  "notes.height": {
+    "description": "Speaker notes (a teleprompter: notes the presenter reads while recording, never in the video): The Notes dialog: the slider of the notes window's height."
+  },
+  "notes.sizeHint": {
+    "description": "Speaker notes (a teleprompter: notes the presenter reads while recording, never in the video): The Notes dialog: under the size sliders."
+  },
+  "notes.positionDefault": {
+    "description": "Speaker notes (a teleprompter: notes the presenter reads while recording, never in the video): The Notes dialog: where the notes window opens when it was never moved."
+  },
+  "notes.positionSaved": {
+    "description": "Speaker notes (a teleprompter: notes the presenter reads while recording, never in the video): The Notes dialog: the notes window opens where the user left it."
+  },
+  "notes.resetPosition": {
+    "description": "Speaker notes (a teleprompter: notes the presenter reads while recording, never in the video): The Notes dialog: the button that puts the notes window back in its first place."
+  },
+  "notes.hotkeysLabel": {
+    "description": "Speaker notes (a teleprompter: notes the presenter reads while recording, never in the video): The Notes dialog: the heading of the notes' hotkeys."
+  },
+  "notes.hotkeysHint": {
+    "description": "Speaker notes (a teleprompter: notes the presenter reads while recording, never in the video): The Notes dialog: when the notes' hotkeys work."
+  },
+  "notes.draft": {
+    "description": "Speaker notes (a teleprompter: notes the presenter reads while recording, never in the video): The Notes dialog: the button that has AI turn bullet points into a script (a noun phrase, the tool's name)."
+  },
+  "notes.drafting": {
+    "description": "Speaker notes (a teleprompter: notes the presenter reads while recording, never in the video): The Notes dialog: while the script is drafted."
+  },
+  "notes.draftHintLocal": {
+    "description": "Speaker notes (a teleprompter: notes the presenter reads while recording, never in the video): The Notes dialog: Draft script with AI on this PC."
+  },
+  "notes.noProvider": {
+    "description": "Speaker notes (a teleprompter: notes the presenter reads while recording, never in the video): The Notes dialog: Draft script needs an AI service. OpenAI, Gemini and Claude are product names."
+  },
+  "notes.draftEmpty": {
+    "description": "Speaker notes (a teleprompter: notes the presenter reads while recording, never in the video): The Notes dialog: why Draft script cannot run with no notes."
+  },
+  "notes.draftTooLong": {
+    "description": "Speaker notes (a teleprompter: notes the presenter reads while recording, never in the video): why Draft script cannot run; {n} is the most characters it takes (\"20,000\")."
+  },
+  "notes.drafted": {
+    "description": "Speaker notes (a teleprompter: notes the presenter reads while recording, never in the video): The Notes dialog: after the script was drafted and put in place of the notes."
+  },
+  "notes.restore": {
+    "description": "Speaker notes (a teleprompter: notes the presenter reads while recording, never in the video): The Notes dialog: the button that puts the notes back as they were before the draft."
+  },
+  "notes.stale": {
+    "description": "Speaker notes (a teleprompter: notes the presenter reads while recording, never in the video): The Notes dialog: the notes were edited while the script was drafted."
+  },
+  "notes.windowLabel": {
+    "description": "Speaker notes (a teleprompter: notes the presenter reads while recording, never in the video): The notes window's name for screen readers."
+  },
+  "notes.emptyRehearsal": {
+    "description": "Speaker notes (a teleprompter: notes the presenter reads while recording, never in the video): The notes window when there are no notes. The home screen is Home."
+  },
+  "notes.hotkeyProblem": {
+    "description": "Speaker notes (a teleprompter: notes the presenter reads while recording, never in the video): The notes window: the mark shown when a hotkey could not be set."
+  },
+  "notes.locked": {
+    "description": "Speaker notes (a teleprompter: notes the presenter reads while recording, never in the video): The notes window: why it cannot be moved on older Windows."
+  },
+  "notes.backToStart": {
+    "description": "Speaker notes (a teleprompter: notes the presenter reads while recording, never in the video): The notes window: the button that scrolls back to the first line."
+  },
+  "notes.resize": {
+    "description": "Speaker notes (a teleprompter: notes the presenter reads while recording, never in the video): The notes window: the tooltip of its resize corner."
+  },
+  "notes.barShow": {
+    "description": "Speaker notes (a teleprompter: notes the presenter reads while recording, never in the video): The recording bar: the button that shows the notes window."
+  },
+  "notes.barHide": {
+    "description": "Speaker notes (a teleprompter: notes the presenter reads while recording, never in the video): The recording bar: the button that hides the notes window."
+  },
+  "notes.barShowTitle": {
+    "description": "Speaker notes (a teleprompter: notes the presenter reads while recording, never in the video): The recording bar: the Show notes button's tooltip."
+  },
+  "notes.barHideTitle": {
+    "description": "Speaker notes (a teleprompter: notes the presenter reads while recording, never in the video): The recording bar: the Hide notes button's tooltip."
+  },
+  "notes.scriptSection": {
+    "description": "Speaker notes (a teleprompter: notes the presenter reads while recording, never in the video): The editor's Captions tab: the heading of the script kept with the recording."
+  },
+  "notes.scriptIntro": {
+    "description": "Speaker notes (a teleprompter: notes the presenter reads while recording, never in the video): The editor's Captions tab: under the script's heading."
+  },
+  "notes.copyScript": {
+    "description": "Speaker notes (a teleprompter: notes the presenter reads while recording, never in the video): The editor's Captions tab: the button that copies the kept script to the clipboard."
+  },
+  "notes.useAgain": {
+    "description": "Speaker notes (a teleprompter: notes the presenter reads while recording, never in the video): The editor's Captions tab: the button that makes the kept script the notes again."
+  },
+  "notes.replaceQuestion": {
+    "description": "Speaker notes (a teleprompter: notes the presenter reads while recording, never in the video): The editor's Captions tab: asked before the notes are replaced by the kept script."
+  },
+  "notes.replace": {
+    "description": "Speaker notes (a teleprompter: notes the presenter reads while recording, never in the video): The editor's Captions tab: the button that replaces the notes (a verb)."
+  },
+  "notes.saveFailed": {
+    "description": "Speaker notes (a teleprompter: notes the presenter reads while recording, never in the video): Home, when the notes could not be saved; {error} is the reason."
+  },
+  "notes.couldNotSave": {
+    "description": "Speaker notes (a teleprompter: notes the presenter reads while recording, never in the video): the Notes dialog, when a change could not be saved; {error} is the reason."
+  },
+  "notes.draftHint": {
+    "description": "Speaker notes (a teleprompter: notes the presenter reads while recording, never in the video): what Draft script does and where the notes go; {provider} is the AI service's name.",
+    "user": [
+      "provider"
+    ]
+  },
+  "notes.words": {
+    "description": "Speaker notes (a teleprompter: notes the presenter reads while recording, never in the video): how many words the notes have (\"312 words\")."
+  },
+  "notes.reading.seconds": {
+    "description": "Speaker notes (a teleprompter: notes the presenter reads while recording, never in the video): how long reading the notes takes, under a minute (\"about 45 s\"). Lower case; s is seconds."
+  },
+  "notes.reading.minSec": {
+    "description": "Speaker notes (a teleprompter: notes the presenter reads while recording, never in the video): how long reading the notes takes (\"about 2 min 24 s\")."
+  },
+  "notes.reading.min": {
+    "description": "Speaker notes (a teleprompter: notes the presenter reads while recording, never in the video): how long reading the notes takes in whole minutes (\"about 3 min\")."
+  },
+  "notes.reading.hourMin": {
+    "description": "Speaker notes (a teleprompter: notes the presenter reads while recording, never in the video): how long reading the notes takes, over an hour (\"about 1 h 5 min\")."
+  },
+  "notes.reading.hour": {
+    "description": "Speaker notes (a teleprompter: notes the presenter reads while recording, never in the video): how long reading the notes takes in whole hours (\"about 2 h\")."
+  },
+  "notes.summary": {
+    "description": "Speaker notes (a teleprompter: notes the presenter reads while recording, never in the video): Home's summary of the notes: {reading} is \"312 words · about 2 min 24 s\", {speed} \"130 words a minute\"."
+  },
+  "notes.speedWords": {
+    "description": "Speaker notes (a teleprompter: notes the presenter reads while recording, never in the video): the reading speed (\"130 words a minute\")."
+  },
+  "notes.speedShort": {
+    "description": "Speaker notes (a teleprompter: notes the presenter reads while recording, never in the video): the reading speed in the notes window's narrow strip (\"130 wpm\", words per minute)."
+  },
+  "notes.status.startsWithRecording": {
+    "description": "Speaker notes (a teleprompter: notes the presenter reads while recording, never in the video): the notes window's status during the countdown: scrolling starts with the recording."
+  },
+  "notes.status.startsOnPlay": {
+    "description": "Speaker notes (a teleprompter: notes the presenter reads while recording, never in the video): the notes window's status during the countdown when auto-start is off."
+  },
+  "notes.status.recordingPaused": {
+    "description": "Speaker notes (a teleprompter: notes the presenter reads while recording, never in the video): the notes window's status while the recording is paused."
+  },
+  "notes.status.end": {
+    "description": "Speaker notes (a teleprompter: notes the presenter reads while recording, never in the video): the notes window's status at the last line."
+  },
+  "notes.status.scrolling": {
+    "description": "Speaker notes (a teleprompter: notes the presenter reads while recording, never in the video): the notes window's status while the notes scroll."
+  },
+  "notes.status.rehearsing": {
+    "description": "Speaker notes (a teleprompter: notes the presenter reads while recording, never in the video): the notes window's status when opened with Rehearse."
+  },
+  "notes.status.paused": {
+    "description": "Speaker notes (a teleprompter: notes the presenter reads while recording, never in the video): the notes window's status when scrolling is paused."
+  },
+  "notes.withHotkey": {
+    "description": "Speaker notes (a teleprompter: notes the presenter reads while recording, never in the video): a notes window button's tooltip with its hotkey (\"Back (Ctrl + Shift + F6)\"); {keys} is the hotkey as keycaps."
+  },
+  "notes.button.pause": {
+    "description": "Speaker notes (a teleprompter: notes the presenter reads while recording, never in the video): the notes window's play button while the notes scroll."
+  },
+  "notes.button.start": {
+    "description": "Speaker notes (a teleprompter: notes the presenter reads while recording, never in the video): the notes window's play button while the notes are still."
+  },
+  "notes.button.forward": {
+    "description": "Speaker notes (a teleprompter: notes the presenter reads while recording, never in the video): the notes window's button that steps to the next line."
+  },
+  "notes.button.slower": {
+    "description": "Speaker notes (a teleprompter: notes the presenter reads while recording, never in the video): the notes window's button that scrolls more slowly."
+  },
+  "notes.button.faster": {
+    "description": "Speaker notes (a teleprompter: notes the presenter reads while recording, never in the video): the notes window's button that scrolls faster."
+  },
+  "notes.button.smaller": {
+    "description": "Speaker notes (a teleprompter: notes the presenter reads while recording, never in the video): the notes window's button that makes the text smaller."
+  },
+  "notes.button.larger": {
+    "description": "Speaker notes (a teleprompter: notes the presenter reads while recording, never in the video): the notes window's button that makes the text larger."
+  },
+  "notes.button.hideNeverRecorded": {
+    "description": "Speaker notes (a teleprompter: notes the presenter reads while recording, never in the video): the notes window's close button's tooltip while recording."
+  },
+  "notes.closeDialog": {
+    "description": "Speaker notes (a teleprompter: notes the presenter reads while recording, never in the video): the Notes dialog's close button for screen readers."
+  },
+  "notes.hotkeysGroup": {
+    "description": "Speaker notes (a teleprompter: notes the presenter reads while recording, never in the video): the Notes dialog's group of hotkey fields, for screen readers."
+  },
+  "notes.theProvider": {
+    "description": "Speaker notes (a teleprompter: notes the presenter reads while recording, never in the video): Draft script's AI service before one is chosen, inside \"Only these notes are sent to {provider}\" (lower case)."
+  },
+  "notes.noScript": {
+    "description": "Speaker notes (a teleprompter: notes the presenter reads while recording, never in the video): Draft script's AI service answered with nothing."
+  },
+  "notes.draftProvider": {
+    "description": "Speaker notes (a teleprompter: notes the presenter reads while recording, never in the video): the menu that chooses the AI service for Draft script."
+  },
+  "notes.controls": {
+    "description": "Speaker notes (a teleprompter: notes the presenter reads while recording, never in the video): the notes window's toolbar, for screen readers."
+  },
+  "notes.speedLabel": {
+    "description": "Speaker notes (a teleprompter: notes the presenter reads while recording, never in the video): the notes window's speed, for screen readers; {speed} is \"130 words a minute\"."
+  },
+  "notes.fontSample": {
+    "description": "Speaker notes (a teleprompter: notes the presenter reads while recording, never in the video): the letter on the notes window's text size buttons, with − and + after it: a sample letter of the UI language's script."
+  },
+  "notes.hide": {
+    "description": "Speaker notes (a teleprompter: notes the presenter reads while recording, never in the video): the notes window's close button while recording, for screen readers."
+  },
+  "search.kind.name": {
+    "description": "Home's search of every recording: a result's short label of where the words were found: the recording's name."
+  },
+  "search.kind.file": {
+    "description": "Home's search of every recording: a result's short label of where the words were found: the recording's file name."
+  },
+  "search.kind.chapter": {
+    "description": "Home's search of every recording: a result's short label of where the words were found: a chapter title."
+  },
+  "search.kind.title": {
+    "description": "Home's search of every recording: a result's short label of where the words were found: a title card."
+  },
+  "search.kind.text": {
+    "description": "Home's search of every recording: a result's short label of where the words were found: text seen on the screen."
+  },
+  "search.kind.said": {
+    "description": "Home's search of every recording: a result's short label of where the words were found: what was said (captions)."
+  },
+  "search.kind.notes": {
+    "description": "Home's search of every recording: a result's short label of where the words were found: the speaker notes."
+  },
+  "search.time.hours": {
+    "description": "Home's search of every recording: part of a length or time said to screen readers (\"1 hour 2 minutes 3 seconds\")."
+  },
+  "search.time.minutes": {
+    "description": "Home's search of every recording: part of a length or time said to screen readers."
+  },
+  "search.time.seconds": {
+    "description": "Home's search of every recording: part of a length or time said to screen readers."
+  },
+  "search.noMatch": {
+    "description": "Home's search of every recording: no result; {query} is what was typed.",
+    "user": [
+      "query"
+    ]
+  },
+  "search.firstFound": {
+    "description": "Home's search of every recording: the most results it shows ({n}) were found."
+  },
+  "search.found": {
+    "description": "Home's search of every recording: how many recordings match, said to screen readers."
+  },
+  "search.untitled": {
+    "description": "Home's search of every recording: a recording with no name."
+  },
+  "search.stillIndexing": {
+    "description": "Home's search of every recording: said to screen readers while the recordings are read for searching."
+  },
+  "search.row.in": {
+    "description": "Home's search of every recording: where a found moment is, said to screen readers: the recording's name and date.",
+    "user": [
+      "name"
+    ]
+  },
+  "search.row.inNoDate": {
+    "description": "Home's search of every recording: where a found moment is, said to screen readers, with no date.",
+    "user": [
+      "name"
+    ]
+  },
+  "search.row.open": {
+    "description": "Home's search of every recording: a found recording, said to screen readers: its name, date and length (\"2 minutes 5 seconds\").",
+    "user": [
+      "name"
+    ]
+  },
+  "search.row.openName": {
+    "description": "Home's search of every recording: a recording found by its name, said to screen readers.",
+    "user": [
+      "name"
+    ]
+  },
+  "search.row.more": {
+    "description": "Home's search of every recording: the row that shows more found moments of a recording, said to screen readers; {where} is \"In Demo, Mar 12, 2026.\"."
+  },
+  "search.row.moment": {
+    "description": "Home's search of every recording: a found moment with no time, said to screen readers: where it was found (\"Name\"), the words around it, the recording.",
+    "user": [
+      "text"
+    ]
+  },
+  "search.row.momentCut": {
+    "description": "Home's search of every recording: a found moment that was cut from the video, with no time, said to screen readers.",
+    "user": [
+      "text"
+    ]
+  },
+  "search.row.momentAt": {
+    "description": "Home's search of every recording: a found moment, said to screen readers: where it was found (\"Said\"), its time (\"1 minute 2 seconds\"), the words, the recording.",
+    "user": [
+      "text"
+    ]
+  },
+  "search.row.momentAtCut": {
+    "description": "Home's search of every recording: a found moment that was cut from the video, said to screen readers.",
+    "user": [
+      "text"
+    ]
+  },
+  "search.placeholder": {
+    "description": "Home's search of every recording: the search box's placeholder."
+  },
+  "search.boxLabel": {
+    "description": "Home's search of every recording: the search box's name for screen readers."
+  },
+  "search.boxTitle": {
+    "description": "Home's search of every recording: the search box's tooltip; {keys} is its shortcut's keycaps (\"Ctrl+F\")."
+  },
+  "search.clear": {
+    "description": "Home's search of every recording: the button that empties the search box."
+  },
+  "search.indexingCount": {
+    "description": "Home's search of every recording: while the recordings are read for searching, with how many are done."
+  },
+  "search.indexing": {
+    "description": "Home's search of every recording: while the recordings are read for searching."
+  },
+  "search.looksIn": {
+    "description": "Home's search of every recording: under \"No recordings match\", where it looks."
+  },
+  "search.withoutCaptions": {
+    "description": "Home's search of every recording: after \"Search looks in…\" when some recordings have no captions."
+  },
+  "search.results": {
+    "description": "Home's search of every recording: the list of results, for screen readers."
+  },
+  "search.foundInName": {
+    "description": "Home's search of every recording: after a found recording's date and length when only its name matched."
+  },
+  "search.cutTitle": {
+    "description": "Home's search of every recording: the tooltip of the Cut mark on a found moment."
+  },
+  "search.cut": {
+    "description": "Home's search of every recording: a mark on a found moment that was cut from the video (an adjective: removed)."
+  },
+  "search.moreMoments": {
+    "description": "Home's search of every recording: the row that shows more found moments of a recording."
+  },
+  "share.title": {
+    "description": "Settings › Share (copy exports to cloud folders and post to team chats): the section's title (a noun: sharing)."
+  },
+  "share.intro": {
+    "description": "Settings › Share (copy exports to cloud folders and post to team chats): what the section does."
+  },
+  "share.readError": {
+    "description": "Settings › Share (copy exports to cloud folders and post to team chats): the settings could not be read; {error} is the reason."
+  },
+  "share.folders": {
+    "description": "Settings › Share (copy exports to cloud folders and post to team chats): the heading and list of OneDrive, Dropbox or Google Drive folders on this PC."
+  },
+  "share.noFolders": {
+    "description": "Settings › Share (copy exports to cloud folders and post to team chats): no cloud folder was found. OneDrive, Dropbox and Google Drive are product names.",
+    "dnt": [
+      "OneDrive",
+      "Dropbox",
+      "Google Drive"
+    ]
+  },
+  "share.useName": {
+    "description": "Settings › Share (copy exports to cloud folders and post to team chats): a folder's switch for screen readers: copy exports there; {name} is the folder's name.",
+    "user": [
+      "name"
+    ]
+  },
+  "share.foldersHint": {
+    "description": "Settings › Share (copy exports to cloud folders and post to team chats): under the cloud folders."
+  },
+  "share.addFolder": {
+    "description": "Settings › Share (copy exports to cloud folders and post to team chats): the button that picks any folder to copy exports to."
+  },
+  "share.looking": {
+    "description": "Settings › Share (copy exports to cloud folders and post to team chats): while cloud folders are looked for again."
+  },
+  "share.lookAgain": {
+    "description": "Settings › Share (copy exports to cloud folders and post to team chats): the button that looks for cloud folders again."
+  },
+  "share.chats": {
+    "description": "Settings › Share (copy exports to cloud folders and post to team chats): the heading and list of team chats (Slack, Discord, Microsoft Teams webhooks)."
+  },
+  "share.noChats": {
+    "description": "Settings › Share (copy exports to cloud folders and post to team chats): no chat was added."
+  },
+  "share.webhookMasked": {
+    "description": "Settings › Share (copy exports to cloud folders and post to team chats): the tooltip of a chat's webhook address, shown masked."
+  },
+  "share.unreadable": {
+    "description": "Settings › Share (copy exports to cloud folders and post to team chats): a chat whose saved webhook cannot be decrypted."
+  },
+  "share.posting": {
+    "description": "Settings › Share (copy exports to cloud folders and post to team chats): while Test posts a message to a chat."
+  },
+  "share.removeQuestion": {
+    "description": "Settings › Share (copy exports to cloud folders and post to team chats): the question before a chat is removed; {name} is the chat's name.",
+    "user": [
+      "name"
+    ]
+  },
+  "share.testName": {
+    "description": "Settings › Share (copy exports to cloud folders and post to team chats): a chat's Test button for screen readers; {name} is the chat's name.",
+    "user": [
+      "name"
+    ]
+  },
+  "share.test": {
+    "description": "Settings › Share (copy exports to cloud folders and post to team chats): the button that posts a test message to a chat (a verb)."
+  },
+  "share.addChatButton": {
+    "description": "Settings › Share (copy exports to cloud folders and post to team chats): the button that opens the form to add a chat."
+  },
+  "share.addChat": {
+    "description": "Settings › Share (copy exports to cloud folders and post to team chats): the title of the form that adds a chat."
+  },
+  "share.namePlaceholder": {
+    "description": "Settings › Share (copy exports to cloud folders and post to team chats): an example chat name in the Name field (a Slack channel name)."
+  },
+  "share.webhookUrl": {
+    "description": "Settings › Share (copy exports to cloud folders and post to team chats): the field for a chat's incoming webhook address.",
+    "dnt": [
+      "URL"
+    ]
+  },
+  "share.webhookPlaceholder": {
+    "description": "Settings › Share (copy exports to cloud folders and post to team chats): an example webhook address. Keep it as it is.",
+    "dnt": [
+      "https://hooks.slack.com/services/"
+    ]
+  },
+  "share.hideWebhook": {
+    "description": "Settings › Share (copy exports to cloud folders and post to team chats): the button that hides the webhook address being typed."
+  },
+  "share.showWebhook": {
+    "description": "Settings › Share (copy exports to cloud folders and post to team chats): the button that shows the webhook address being typed."
+  },
+  "share.webhookHint": {
+    "description": "Settings › Share (copy exports to cloud folders and post to team chats): under the webhook field. Slack, Discord and Microsoft Teams are product names.",
+    "dnt": [
+      "Slack",
+      "Discord",
+      "Microsoft Teams"
+    ]
+  },
+  "share.addChatSubmit": {
+    "description": "Settings › Share (copy exports to cloud folders and post to team chats): the button that saves the new chat."
+  },
+  "share.afterExport": {
+    "description": "The export dialog's settings: what Flown does with the file when the export finishes (copy to a cloud folder, post to a chat)."
+  },
+  "share.afterExportOne": {
+    "description": "The export dialog: After export is off for several files."
+  },
+  "share.foundFolders": {
+    "description": "The export dialog: cloud folders were found but not checked yet; {folders} lists their names (\"OneDrive, Dropbox\"). Settings › Share is a place in the app."
+  },
+  "share.addTarget": {
+    "description": "The export dialog: no place to share to yet."
+  },
+  "share.remembered": {
+    "description": "The export dialog: under the After export choices (a destination is an export preset)."
+  },
+  "share.done": {
+    "description": "The export's done view: the heading of what was shared (a noun)."
+  },
+  "share.copyLink": {
+    "description": "The export's done view: copies the link of a file copied to a cloud folder."
+  },
+  "share.cancel": {
+    "description": "The export's done view: stops copying and posting."
+  }
+}

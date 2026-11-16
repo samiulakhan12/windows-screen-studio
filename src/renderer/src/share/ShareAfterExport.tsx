@@ -1,3 +1,4 @@
+import { t } from '../../../shared/i18n/t'
 import { Icon } from '../components/Icon'
 import { actionLabel, actionTitle, type AfterExport } from './useShare'
 import './share.css'
@@ -11,19 +12,19 @@ export function ShareAfterExport({ share, single }: { share: AfterExport; single
   const { targets, offered, chosen } = share
   return (
     <div className="form-row export-share">
-      <span>After export</span>
+      <span>{t('review.share.afterExport')}</span>
       <div className="export-stack">
         {!single ? (
-          <p className="hint">After export works when one file is exported.</p>
+          <p className="hint">{t('review.share.afterExportOne')}</p>
         ) : targets && offered.length === 0 ? (
           <p className="hint">
             {!targets.reviewed && targets.folders.length > 0
-              ? `Flown found ${[...new Set(targets.folders.map((f) => f.label))].join(', ')} on this PC. Check them in Settings › Share to copy exports there.`
-              : 'Add a cloud folder or a chat in Settings › Share.'}
+              ? t('review.share.foundFolders', { folders: [...new Set(targets.folders.map((f) => f.label))].join(', ') })
+              : t('review.share.addTarget')}
           </p>
         ) : (
           <>
-            <div className="chips" role="group" aria-label="After export">
+            <div className="chips" role="group" aria-label={t('review.share.afterExport')}>
               {offered.map((id) => {
                 const on = chosen.includes(id)
                 return (
@@ -34,7 +35,7 @@ export function ShareAfterExport({ share, single }: { share: AfterExport; single
                 )
               })}
             </div>
-            <p className="hint">Remembered for this destination. The video itself is never posted to a chat.</p>
+            <p className="hint">{t('review.share.remembered')}</p>
           </>
         )}
       </div>

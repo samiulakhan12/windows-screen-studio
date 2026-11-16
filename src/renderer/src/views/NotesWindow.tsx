@@ -15,7 +15,8 @@ import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useStat
 import type { NotesCommand, NotesLookPatch, NotesMode, NotesReport, NotesView } from '../../../shared/api/notes'
 import { splitBlocks, type NotesBlock } from '../../../shared/notes/blocks'
 import { NOTES_FONT, NOTES_HEIGHT, NOTES_WIDTH, NOTES_WPM, hasNotesText } from '../../../shared/notes/notes'
-import { NOTES_COPY, notesButtonTitles, notesStatus, speedShort } from '../../../shared/notes/notesCopy'
+import { NOTES_COPY, notesButtonTitles, notesStatus, speedShort, speedWords } from '../../../shared/notes/notesCopy'
+import { t } from '../../../shared/i18n/t'
 import { applyView, choosePlaying, reachedEnd, type Playback } from '../../../shared/notes/playback'
 import { ScrollClock, SCROLL, blockAt, endPosition, rateAt, snap, stepDelayMs, stepTarget, type BlockBox } from '../../../shared/notes/scroll'
 import { installFocusRelease } from '../editor/focus'
@@ -492,15 +493,15 @@ export function NotesWindow(): JSX.Element {
           </button>
         )}
       </div>
-      <div className="nw-strip" role="toolbar" aria-label="Notes controls">
+      <div className="nw-strip" role="toolbar" aria-label={t('review.notes.controls')}>
         <div className="nw-controls">
-          <button type="button" className="nw-btn" aria-label="Back" title={titles.back} disabled={empty} onClick={() => scroller.current?.step('back')}>
+          <button type="button" className="nw-btn" aria-label={t('common.action.back')} title={titles.back} disabled={empty} onClick={() => scroller.current?.step('back')}>
             <RecIcon name="step-back" size={14} />
           </button>
           <button
             type="button"
             className="nw-btn nw-play"
-            aria-label={on ? 'Pause scrolling' : 'Start scrolling'}
+            aria-label={on ? t('review.notes.button.pause') : t('review.notes.button.start')}
             aria-pressed={on}
             title={titles.toggle}
             disabled={empty}
@@ -508,25 +509,27 @@ export function NotesWindow(): JSX.Element {
           >
             <RecIcon name={on ? 'pause' : 'play'} size={14} />
           </button>
-          <button type="button" className="nw-btn" aria-label="Forward" title={titles.forward} disabled={empty} onClick={() => scroller.current?.step('forward')}>
+          <button type="button" className="nw-btn" aria-label={t('review.notes.button.forward')} title={titles.forward} disabled={empty} onClick={() => scroller.current?.step('forward')}>
             <RecIcon name="step-forward" size={14} />
           </button>
           <span className="nw-sep" aria-hidden="true" />
-          <button type="button" className="nw-btn" aria-label="Slower" title={titles.slower} disabled={wpm <= NOTES_WPM.min} onClick={() => changeWpm(-NOTES_WPM.step)}>
+          <button type="button" className="nw-btn" aria-label={t('review.notes.button.slower')} title={titles.slower} disabled={wpm <= NOTES_WPM.min} onClick={() => changeWpm(-NOTES_WPM.step)}>
             <RecIcon name="minus" size={12} />
           </button>
-          <span className="nw-speed" aria-label={`Speed ${wpm} words a minute`}>
+          <span className="nw-speed" aria-label={t('review.notes.speedLabel', { speed: speedWords(wpm) })}>
             {speedShort(wpm)}
           </span>
-          <button type="button" className="nw-btn" aria-label="Faster" title={titles.faster} disabled={wpm >= NOTES_WPM.max} onClick={() => changeWpm(NOTES_WPM.step)}>
+          <button type="button" className="nw-btn" aria-label={t('review.notes.button.faster')} title={titles.faster} disabled={wpm >= NOTES_WPM.max} onClick={() => changeWpm(NOTES_WPM.step)}>
             <RecIcon name="plus" size={12} />
           </button>
           <span className="nw-sep" aria-hidden="true" />
-          <button type="button" className="nw-btn nw-font" aria-label="Smaller text" title={titles.smaller} disabled={fontSize <= NOTES_FONT.min} onClick={() => changeFont(-NOTES_FONT.step)}>
-            A<span className="nw-font-sign">−</span>
+          <button type="button" className="nw-btn nw-font" aria-label={t('review.notes.button.smaller')} title={titles.smaller} disabled={fontSize <= NOTES_FONT.min} onClick={() => changeFont(-NOTES_FONT.step)}>
+            {t('review.notes.fontSample')}
+            <span className="nw-font-sign">−</span>
           </button>
-          <button type="button" className="nw-btn nw-font" aria-label="Larger text" title={titles.larger} disabled={fontSize >= NOTES_FONT.max} onClick={() => changeFont(NOTES_FONT.step)}>
-            A<span className="nw-font-sign">+</span>
+          <button type="button" className="nw-btn nw-font" aria-label={t('review.notes.button.larger')} title={titles.larger} disabled={fontSize >= NOTES_FONT.max} onClick={() => changeFont(NOTES_FONT.step)}>
+            {t('review.notes.fontSample')}
+            <span className="nw-font-sign">+</span>
           </button>
         </div>
         <span className="nw-status" aria-live="polite">
@@ -537,7 +540,7 @@ export function NotesWindow(): JSX.Element {
             !
           </span>
         )}
-        <button type="button" className="nw-btn nw-close" aria-label={mode === 'record' ? 'Hide notes' : 'Close'} title={titles.close} onClick={() => window.api.dismissNotes()}>
+        <button type="button" className="nw-btn nw-close" aria-label={mode === 'record' ? t('review.notes.hide') : t('common.action.close')} title={titles.close} onClick={() => window.api.dismissNotes()}>
           <RecIcon name="x" size={14} />
         </button>
         {locked ? (

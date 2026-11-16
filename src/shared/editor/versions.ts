@@ -2,6 +2,13 @@
  * Versions of an edit (E-12, docs/design/versions.md §2): what a version is, its name and the
  * line that sums it up, how two edits compare, and what opening one keeps of the edit now. Pure;
  * the files are written by src/main/versions.ts.
+ *
+ * Main imports this module, so it holds no UI messages (docs/design/output-and-languages.md §9.1,
+ * test 86). The names Flown gives versions (autoVersionName, defaultVersionName) are written into the
+ * version files and stay English, as every project file does (§9.7). The words of the list, the
+ * comparison and the notices are in English here for main and the tests; the renderer shows them in
+ * the UI language through src/shared/editor/versionWords.ts, from summaryCounts and
+ * summaryDiffs.
  */
 import { planOf, videoDuration } from '../engine/freeze'
 import type { CaptionSegment, Project } from '../types'
@@ -116,7 +123,10 @@ export function versionSummary(p: Project): VersionSummary {
   }
 }
 
-const COUNTS: readonly { key: Exclude<keyof VersionSummary, 'duration' | 'trimmed'>; one: string; many: string; label: string }[] = [
+/** A count a version's summary holds. */
+export type CountKey = Exclude<keyof VersionSummary, 'duration' | 'trimmed'>
+
+const COUNTS: readonly { key: CountKey; one: string; many: string; label: string }[] = [
   { key: 'cuts', one: 'cut', many: 'cuts', label: 'Cuts' },
   { key: 'zooms', one: 'zoom', many: 'zooms', label: 'Zooms' },
   { key: 'captions', one: 'caption', many: 'captions', label: 'Captions' },
@@ -128,14 +138,20 @@ const COUNTS: readonly { key: Exclude<keyof VersionSummary, 'duration' | 'trimme
   { key: 'freezes', one: 'freeze frame', many: 'freeze frames', label: 'Freeze frames' }
 ]
 
+/** The counts a summary line shows: those that are not zero, in the list's order, four at most. */
+export function summaryCounts(s: VersionSummary): { key: CountKey; n: number }[] {
+  return COUNTS.filter((c) => s[c.key] > 0)
+    .slice(0, 4)
+    .map((c) => ({ key: c.key, n: s[c.key] }))
+}
+
 /** "2:13 · 3 cuts · 5 zooms · 42 captions": the length (whole seconds), then the counts that are not zero, five parts at most. */
 export function summaryLine(s: VersionSummary): string {
-  const parts = [fmt.clock(s.duration, 'whole')]
-  for (const c of COUNTS) {
-    const n = s[c.key]
-    if (n > 0) parts.push(`${n} ${n === 1 ? c.one : c.many}`)
+  const word = (key: CountKey, n: number): string => {
+    const c = COUNTS.find((x) => x.key === key)!
+    return `${n} ${n === 1 ? c.one : c.many}`
   }
-  return parts.slice(0, 5).join(' · ')
+  return [fmt.clock(s.duration, 'whole'), ...summaryCounts(s).map((c) => word(c.key, c.n))].join(' · ')
 }
 
 /** One line of a comparison: what it counts, in the version and now. */
@@ -145,14 +161,28 @@ export interface SummaryChange {
   now: string
 }
 
+/** One difference between two summaries, by what it counts, with both values. */
+export type SummaryDiff = { key: 'duration'; version: number; now: number } | { key: CountKey; version: number; now: number } | { key: 'trimmed'; version: boolean; now: boolean }
+
+/** What differs between a version's summary and the edit now's (the length first). */
+export function summaryDiffs(version: VersionSummary, now: VersionSummary): SummaryDiff[] {
+  const out: SummaryDiff[] = []
+  // Compared as the list shows them: a length that rounds to the same time is the same.
+  if (fmt.clock(version.duration) !== fmt.clock(now.duration)) out.push({ key: 'duration', version: version.duration, now: now.duration })
+  for (const c of COUNTS) if (version[c.key] !== now[c.key]) out.push({ key: c.key, version: version[c.key], now: now[c.key] })
+  if (version.trimmed !== now.trimmed) out.push({ key: 'trimmed', version: version.trimmed, now: now.trimmed })
+  return out
+}
+
 /** The counts that differ between a version and the edit now (the length first). */
 export function compareSummaries(version: VersionSummary, now: VersionSummary): SummaryChange[] {
-  const out: SummaryChange[] = []
-  // Compared as the list shows them: a length that rounds to the same time is the same.
-  if (fmt.clock(version.duration) !== fmt.clock(now.duration)) out.push({ label: 'Length', version: fmt.clock(version.duration), now: fmt.clock(now.duration) })
-  for (const c of COUNTS) if (version[c.key] !== now[c.key]) out.push({ label: c.label, version: String(version[c.key]), now: String(now[c.key]) })
-  if (version.trimmed !== now.trimmed) out.push({ label: 'Start or end trimmed', version: version.trimmed ? 'Yes' : 'No', now: now.trimmed ? 'Yes' : 'No' })
-  return out
+  const yes = (b: boolean): string => (b ? 'Yes' : 'No')
+  return summaryDiffs(version, now).map((d) => {
+    if (d.key === 'duration') return { label: 'Length', version: fmt.clock(d.version), now: fmt.clock(d.now) }
+    if (d.key === 'trimmed') return { label: 'Start or end trimmed', version: yes(d.version), now: yes(d.now) }
+    const label = COUNTS.find((c) => c.key === d.key)!.label
+    return { label, version: String(d.version), now: String(d.now) }
+  })
 }
 
 /**
@@ -210,6 +240,9 @@ const ITEMS: readonly { name: string; keys: readonly (keyof Project)[]; counts: 
   { name: 'chapters', keys: ['chapters'], counts: ['chapters'] },
   { name: 'freeze frames', keys: ['freezes'], counts: ['freezes'] }
 ]
+
+/** Every name changedAreas can give, in its order (the renderer's words name each one). */
+export const CHANGED_AREA_NAMES: readonly string[] = [...AREAS.map((a) => a.name), ...ITEMS.map((i) => i.name), 'caption text', 'speaker names', 'other settings']
 
 /** JSON with every object's keys sorted: the same edit gives the same text whatever order its fields were set in. */
 export function canonicalJson(value: unknown): string {

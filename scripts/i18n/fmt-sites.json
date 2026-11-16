@@ -1376,37 +1376,37 @@
     },
     {
       "file": "src/shared/editor/versions.ts",
-      "line": 133,
+      "line": 154,
       "was": "formatTime(s.duration, false)",
       "now": "fmt.clock(s.duration, 'whole')",
       "as": "formatTime(whole)"
     },
     {
       "file": "src/shared/editor/versions.ts",
-      "line": 152,
+      "line": 171,
       "was": "formatTime(version.duration)",
       "now": "fmt.clock(version.duration)",
       "as": "formatTime"
     },
     {
       "file": "src/shared/editor/versions.ts",
-      "line": 152,
+      "line": 171,
       "was": "formatTime(now.duration)",
       "now": "fmt.clock(now.duration)",
       "as": "formatTime"
     },
     {
       "file": "src/shared/editor/versions.ts",
-      "line": 152,
+      "line": 181,
       "was": "formatTime(version.duration)",
-      "now": "fmt.clock(version.duration)",
+      "now": "fmt.clock(d.version)",
       "as": "formatTime"
     },
     {
       "file": "src/shared/editor/versions.ts",
-      "line": 152,
+      "line": 181,
       "was": "formatTime(now.duration)",
-      "now": "fmt.clock(now.duration)",
+      "now": "fmt.clock(d.now)",
       "as": "formatTime"
     },
     {

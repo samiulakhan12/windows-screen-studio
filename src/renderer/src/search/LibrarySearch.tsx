@@ -7,12 +7,12 @@
  */
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react'
 import type { SearchResponse, SearchStatus, SnippetPart } from '../../../shared/api/search'
-import { KIND_LABEL, resultsSummary } from '../../../shared/search/moment'
 import { SEARCH_LIMITS } from '../../../shared/search/types'
 import { fmt } from '../../../shared/i18n/fmt'
+import { t } from '../../../shared/i18n/t'
 import type { ProjectSummary } from '../../../shared/types'
 import { clearPendingMoment, setPendingMoment } from './openAt'
-import { answeredQuery, dateOf, enterTarget, liveStatus, resultRows, rowLabel, type Row } from './rows'
+import { answeredQuery, dateOf, enterTarget, hitName, kindLabel, liveStatus, resultRows, resultsSummary, rowLabel, type Row } from './rows'
 import './search.css'
 
 /** Typing pause before a query is sent (§4). */
@@ -203,9 +203,9 @@ export function LibrarySearch({ projects, onOpen, disabled = false }: { projects
           ref={input}
           type="search"
           role="combobox"
-          placeholder="Search recordings"
-          aria-label="Search recordings: words said, titles, chapters and notes"
-          title="Search every recording (Ctrl+F)"
+          placeholder={t('review.search.placeholder')}
+          aria-label={t('review.search.boxLabel')}
+          title={t('review.search.boxTitle', { keys: 'Ctrl+F' })}
           aria-expanded={rows.length > 0}
           aria-controls={listId}
           aria-autocomplete="list"
@@ -218,7 +218,7 @@ export function LibrarySearch({ projects, onOpen, disabled = false }: { projects
           data-testid="library-search"
         />
         {query && (
-          <button type="button" className="btn ghost icon-btn library-search-clear" aria-label="Clear search" title="Clear search" onClick={() => (setQuery(''), input.current?.focus())}>
+          <button type="button" className="btn ghost icon-btn library-search-clear" aria-label={t('review.search.clear')} title={t('review.search.clear')} onClick={() => (setQuery(''), input.current?.focus())}>
             <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true" className="icon">
               <path d="M6 6l12 12M18 6L6 18" />
             </svg>
@@ -233,21 +233,21 @@ export function LibrarySearch({ projects, onOpen, disabled = false }: { projects
         <div className="search-results">
           {building && live && (
             <p className="hint search-building">
-              Still indexing your recordings{live.total ? ` (${live.indexed} of ${live.total})` : ''}…
+              {live.total ? t('review.search.indexingCount', { indexed: fmt.count(live.indexed), total: fmt.count(live.total) }) : t('review.search.indexing')}
             </p>
           )}
           {response && hits.length === 0 && (
             <div className="search-empty">
               <strong>{summary}</strong>
               <p>
-                Search looks in what was said (captions), titles, chapters, text on screen, speaker notes and names.
-                {response.withoutTranscript > 0 && ' Recordings without captions are found by their name, titles, chapters, text on screen and notes.'}
+                {t('review.search.looksIn')}
+                {response.withoutTranscript > 0 && ` ${t('review.search.withoutCaptions')}`}
               </p>
             </div>
           )}
-          <div id={listId} role="listbox" aria-label="Search results" className="search-list" hidden={rows.length === 0}>
+          <div id={listId} role="listbox" aria-label={t('review.search.results')} className="search-list" hidden={rows.length === 0}>
             {hits.map((hit) => (
-              <div key={hit.id} role="group" aria-label={hit.name || 'Untitled'} className="search-hit">
+              <div key={hit.id} role="group" aria-label={hitName(hit)} className="search-hit">
                 {rows
                   .map((row, index) => ({ row, index }))
                   .filter(({ row }) => row.hit === hit)
@@ -270,27 +270,27 @@ export function LibrarySearch({ projects, onOpen, disabled = false }: { projects
                           </span>
                           <span className="search-hit-meta">
                             {dateOf(hit.createdAt)} · {fmt.clock(hit.duration, 'hours')}
-                            {hit.nameOnly && ' · Found in the name'}
+                            {hit.nameOnly && ` · ${t('review.search.foundInName')}`}
                           </span>
                         </>
                       )}
                       {row.kind === 'moment' && (
                         <>
                           <span className="search-time">{row.moment.video === null ? '' : fmt.clock(row.moment.video, 'hours')}</span>
-                          <span className="search-kind">{KIND_LABEL[row.moment.kind]}</span>
+                          <span className="search-kind">{kindLabel(row.moment.kind)}</span>
                           <span className="search-snippet">
                             <Snippet parts={row.moment.snippet} />
                           </span>
                           {row.moment.cut && (
-                            <span className="search-cut" title="This part was cut from the video">
-                              Cut
+                            <span className="search-cut" title={t('review.search.cutTitle')}>
+                              {t('review.search.cut')}
                             </span>
                           )}
                         </>
                       )}
                       {row.kind === 'more' && (
                         <span className="search-more-label">
-                          {row.count} more moment{row.count === 1 ? '' : 's'}
+                          {t('review.search.moreMoments', { count: row.count, n: fmt.count(row.count) })}
                         </span>
                       )}
                     </div>

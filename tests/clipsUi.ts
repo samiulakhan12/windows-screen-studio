@@ -73,7 +73,10 @@ const MENU = '../src/renderer/src/editor/CopyMenu'
 export type Props = { project: Project; cursor: typeof NO_TRACK; vw: number; vh: number; onClose(): void; onOpen(id: string): void }
 export const { ShortClipsPanel } = (await import(/* @vite-ignore */ PANEL)) as { ShortClipsPanel: (p: Props) => unknown }
 export const { ShortVersionDialog } = (await import(/* @vite-ignore */ DIALOG)) as { ShortVersionDialog: (p: Props) => unknown }
-export const { CopyMenu, SHORT_NEEDS_CAPTIONS } = (await import(/* @vite-ignore */ MENU)) as { CopyMenu: (p: Record<string, unknown>) => unknown; SHORT_NEEDS_CAPTIONS: string }
+const menu = (await import(/* @vite-ignore */ MENU)) as { CopyMenu: (p: Record<string, unknown>) => unknown; shortNeedsCaptions: () => string }
+export const CopyMenu = menu.CopyMenu
+/** Why Make a shorter version cannot run, in English (the test setup registers it). */
+export const SHORT_NEEDS_CAPTIONS = menu.shortNeedsCaptions()
 await useEditorContexts()
 
 /** The preview player: seek, play and pause, its time moved by the test. */
