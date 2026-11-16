@@ -1095,14 +1095,41 @@ targets are off for alpha (§5.7). Measured on the alpha clip: 7.4 MB/min at rea
 `bgra`/`rgba`, filter `format=gbrap12le`, `-c:v cfhd -quality {film1|high|medium}`,
 `-color_primaries bt709 -color_trc bt709` (RGB: no matrix tag). Measured: YUV "high" 1,019 MB/min,
 RGBA "high" 2,395 MB/min, RGBA "film1" 2,596 MB/min at 1080p60, encoding faster than real time on 4
-cores. `cfhd` takes only widths that are a multiple of 16 ("Width must be multiple of 16.", so 1080 wide
-fails): `exportSize` rounds a CineForm frame's width up to the next multiple of 16 (down instead when
-up would pass `maxWidth` or 4096) and scales the height with it, so the frame keeps its shape: 9:16 at
-1080p is 1088 × 1934, 1:1 is 1088 × 1088, and 4:5, on the `isTall` line (1350 = 1.25 × 1080), is
-1088 × 1360. Follow framing (`followApplies`), the camera band and the tall-frame rules of §5.8 then
-decide as for the H.264 file of the same project; a frame that rounding to even would carry across
-the tall line is moved back by 2 px. The preview, the job and the timeline plan agree, and the
-recording is fitted inside as with any size.
+cores.
+
+CineForm sizes are measured, not assumed (`tests/fixtures/cineformSizes.json`): with the arguments above
+(film1), 2 frames encoded by the bundled build (7.0) and by 6.1, each file decoded by both, over every
+even width from 16 to 256, the even widths from 704 to 1104, 1792 to 1824, 2688 to 2720 and 3232 to
+3264, 3840 and 4096, at every even height from 2 to 130 and from 1024 to 1090, 2112 to 2178 and 4030 to
+4096 (every residue mod 64, small and large; the widths that are not a multiple of 16 at the heights up
+to 64 and from 1024 to 1054). `cfhd` refuses widths that are not a multiple of 16 ("Width must be
+multiple of 16.", so 1080 wide fails); 7.0 refuses fewer than 32 rows ("Height must be >= 32."), and 6.1
+writes them, none under 18 rows readable. It also makes files that no decoder reads: opaque (4:2:2,
+colour planes half as wide), a width that is an odd multiple of 16 reads back only with a height made of
+an even number of 8-row strips (a multiple of 16, or 10 to 14 more): 720 × 900, 3248 × 2166, 1808 × 1446
+and 2704 × 2164 are written with exit 0 and every frame is "Invalid data found when processing input",
+in FFmpeg and so in VLC, Shotcut, Kdenlive, HandBrake and Flown's own Import a video. A width that is a
+multiple of 32 reads back at every height from 32, except 32 wide, which never does. With alpha (12-bit
+RGB) every multiple of 16 from 32 reads back at every height from 32. 16 wide reads back in neither.
+`cineformSizeWorks` is that rule. `-quality high` and `medium` and a flat grey picture give the same on
+873 of the sizes, and so do 300 sizes drawn at random from 256 to 4096 wide and 32 to 4096 high.
+
+`exportSize` rounds a CineForm frame's width up to the next multiple of 16 (down instead when up would
+pass `maxWidth` or 4096) and scales the height with it, so the frame keeps its shape: 9:16 at 1080p is
+1088 × 1934, 1:1 is 1088 × 1088, and 4:5, on the `isTall` line (1350 = 1.25 × 1080), is 1088 × 1360.
+The frame must be one `cineformSizeWorks` takes for its pixel format and lie on the H.264 frame's side of
+the tall line and of the follow line (`followApplies`, against the recording as shown and whole), so
+follow framing, the camera band and the tall-frame rules of §5.8 decide as for the H.264 file of the
+same project; a frame that rounding to even would carry across a line is moved back by 2 px. When that
+width gives no such frame, the nearest other multiple of 16 that does is taken (the wider on a tie) and
+the height scaled with it: opaque 4:5 at 720p is 736 × 920 (720 × 900 with alpha), 'auto' at 2160p on a
+3:2 screen 3232 × 2154 (3248 × 2166 with alpha), and on a 5:4 screen 1792 × 1434 at 1440p and
+2688 × 2150 at 2160p. A size the rule takes is kept as it is. Two kinds of frame cannot keep both sides:
+a 4:5 frame a pixel under the tall line (1082 × 1352 or 1250 × 1562, from a `maxWidth` of 1082 or 1250)
+that follows a recording about 0.89 times as wide as tall by a hair has no even height between the two
+lines under 1282 columns, so it keeps following and becomes tall as 4:5 frames are; and a frame under 32
+rows (a recording over 128 times as wide as tall, or a `maxWidth` of 64) gets the rows CineForm needs.
+The preview, the job and the timeline plan agree, and the recording is fitted inside as with any size.
 
 **Animation** (MOV). Input `bgra`/`rgba` (alpha) or `bgr0`/`rgb0`; `-pix_fmt argb` or `rgb24`;
 `-c:v qtrle`; `-color_primaries bt709 -color_trc bt709`. Lossless (598 of 600 frames bit-exact, the

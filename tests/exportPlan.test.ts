@@ -9,7 +9,7 @@ import { avcLevel, colorTagsFrom } from '../src/shared/render/codec'
 import { studioMetrics } from '../src/shared/captions/studioLayout'
 import { studioPreset } from '../src/shared/captions/studioPresets'
 import { DEFAULT_REFRAME, followApplies, isTall } from '../src/shared/engine/reframeData'
-import { capSize, cineformSizeWorks, exportDimensions, exportPreviewSize, exportRoutes, exportSize, MAX_EXPORT_SIDE, routeLabel } from '../src/shared/render/exportPlan'
+import { capSize, CINEFORM_MIN, cineformSizeWorks, exportDimensions, exportPreviewSize, exportRoutes, exportSize, MAX_EXPORT_SIDE, routeLabel } from '../src/shared/render/exportPlan'
 import type { ExportSettings } from '../src/shared/types'
 
 /**
@@ -184,6 +184,79 @@ describe('exportDimensions', () => {
           expect(() => validateJob({ ...job, width: s.width, height: s.height, format: 'mov', codec: 'cineform', video: { kind: 'raw', encoder: 'cfhd', pixelFormat: 'bgr0' }, outputPath: '/tmp/x.mov' })).not.toThrow()
         }
   })
+
+  const cine = { ...settings, format: 'mov' as const, codec: 'cineform' as const }
+  const clear = { ...cine, alpha: 'background' as const }
+
+  it('CineForm sizes FFmpeg encodes but cannot decode are not given: an odd multiple of 16 wide takes an even count of 8-row strips (opaque)', () => {
+    // FFmpeg's cfhd made each of these (exit 0), and no decoder read a frame of it ("Invalid data").
+    const undecodable: [number, number][] = [[720, 900], [3248, 2166], [1808, 1446], [2704, 2164]]
+    for (const [w, h] of undecodable) {
+      expect(cineformSizeWorks(w, h, false), `${w}x${h}`).toBe(false)
+      expect(cineformSizeWorks(w, h, true), `${w}x${h} with alpha`).toBe(true)
+    }
+    const as45 = { ...cine, aspect: '4:5' as const }
+    // 4:5 at 720p: 720x900 in H.264. 736 is a multiple of 32, and 920 = 1.25 x 736 keeps the frame tall.
+    expect(exportSize(project, { ...as45, resolution: 720 })).toMatchObject({ width: 736, height: 920 })
+    expect(exportSize(project, { ...as45, ...clear, resolution: 720 })).toMatchObject({ width: 720, height: 900 })
+    // 'auto' at 2160p on a 3:2 screen (3240x2160 in H.264) and at 1440p and 2160p on a 5:4 one (1800x1440, 2700x2160).
+    for (const [w, h] of [[3000, 2000], [2256, 1504]]) {
+      expect(exportSize(shaped(w, h), { ...cine, resolution: 2160 }), `${w}x${h}`).toMatchObject({ width: 3232, height: 2154 })
+      expect(exportSize(shaped(w, h), { ...clear, resolution: 2160 }), `${w}x${h}`).toMatchObject({ width: 3248, height: 2166 })
+    }
+    expect(exportSize(shaped(1280, 1024), { ...cine, resolution: 1440 })).toMatchObject({ width: 1792, height: 1434 })
+    expect(exportSize(shaped(1280, 1024), { ...cine, resolution: 2160 })).toMatchObject({ width: 2688, height: 2150 })
+    expect(exportSize(shaped(1280, 1024), { ...clear, resolution: 1440 })).toMatchObject({ width: 1808, height: 1446 })
+  })
+
+  it('every CineForm size of the sweep is one cfhd round-trips, within maxWidth and 4096, in the H.264 frame\'s shape and on its sides of the tall and follow lines', () => {
+    const follows = { reframe: { ...DEFAULT_REFRAME } }
+    const sides = (w: number, h: number, rw: number, rh: number): string => `${isTall(w, h)},${followApplies(follows, w, h, rw, rh)}`
+    // Whether any frame CineForm takes within `max` columns lies on these sides (brute force, for the rare frames that do not).
+    const anyKeeps = (want: string, max: number, alpha: boolean, rw: number, rh: number): boolean => {
+      for (let w = 16; w <= max; w += 16) for (let h = CINEFORM_MIN.height; h <= MAX_EXPORT_SIDE; h += 2) if (cineformSizeWorks(w, h, alpha) && sides(w, h, rw, rh) === want) return true
+      return false
+    }
+    const problems: string[] = []
+    const thin: string[] = []
+    const conflicts: string[] = []
+    let checked = 0
+    for (const rh of [1000, 777])
+      for (let rw = 100; rw <= 4000; rw++) {
+        const p = shaped(rw, rh)
+        for (const aspect of ['auto', '16:9', '9:16', '1:1', '4:3', '4:5'] as const)
+          for (const resolution of [720, 1080, 1440, 2160] as const)
+            for (const maxWidth of [undefined, 64, 333, 720, 1082, 1250, 1920])
+              for (const alpha of [false, true]) {
+                const o = { ...settings, resolution, aspect, maxWidth }
+                const h264 = exportSize(p, o)
+                const s = exportSize(p, { ...o, format: 'mov', codec: 'cineform', ...(alpha ? { alpha: 'background' as const } : {}) })
+                const at = `${rw}x${rh} ${aspect} ${resolution}p maxWidth ${maxWidth} ${alpha ? 'alpha' : 'opaque'}: ${h264.width}x${h264.height} -> ${s.width}x${s.height}`
+                checked++
+                if (!cineformSizeWorks(s.width, s.height, alpha) || s.width > (maxWidth ?? MAX_EXPORT_SIDE) || s.height > MAX_EXPORT_SIDE) problems.push(`size ${at}`)
+                else if (cineformSizeWorks(h264.width, h264.height, alpha) && (s.width !== h264.width || s.height !== h264.height)) problems.push(`moved ${at}`)
+                // Under 32 rows CineForm cannot keep the shape: the frame gets the rows it needs.
+                else if (h264.height < CINEFORM_MIN.height) thin.push(at)
+                else if (Math.abs(s.height - (h264.height * s.width) / h264.width) > 3) problems.push(`shape ${at}`)
+                else if (sides(s.width, s.height, rw, rh) !== sides(h264.width, h264.height, rw, rh)) {
+                  // Only where no frame within the limits is on both sides; the follow line is then kept.
+                  const follow = followApplies(follows, s.width, s.height, rw, rh) === followApplies(follows, h264.width, h264.height, rw, rh)
+                  if (!follow || anyKeeps(sides(h264.width, h264.height, rw, rh), Math.min(MAX_EXPORT_SIDE, maxWidth ?? MAX_EXPORT_SIDE), alpha, rw, rh)) problems.push(`sides ${at}`)
+                  else conflicts.push(at)
+                }
+              }
+      }
+    expect(checked).toBe(2 * 3901 * 6 * 4 * 7 * 2)
+    expect(problems.slice(0, 20)).toEqual([])
+    // The frames no CineForm size can match: 4:5 a pixel under the tall line (1082x1352, 1250x1562) and
+    // following a recording about 0.89 times as wide as tall by a hair, with no even height between the
+    // lines under 1282 columns. They stay following, and become tall as 4:5 frames are.
+    expect(conflicts.length).toBeLessThanOrEqual(16)
+    for (const c of conflicts) expect(c).toMatch(/ 4:5 \d+p maxWidth (1082|1250) .*: (1082x1352 -> 1072x1340|1250x1562 -> 1248x1560)$/)
+    // Under 32 rows only with the smallest width a preset can set.
+    expect(thin.length).toBeGreaterThan(0)
+    for (const t of thin) expect(t).toMatch(/ maxWidth 64 .*x32$/)
+  }, 120_000)
 
   it('every measured CineForm size agrees with cineformSizeWorks (tests/fixtures/cineformSizes.json)', () => {
     const table = JSON.parse(readFileSync(path.join(__dirname, 'fixtures', 'cineformSizes.json'), 'utf8')) as CineformTable

@@ -9,6 +9,7 @@ import { validateJob } from '../src/main/exportJob'
 import { ffmpegPath } from '../src/main/ffmpeg'
 import { createProject } from '../src/shared/engine/project'
 import { exportSize } from '../src/shared/render/exportPlan'
+import type { ExportOptions } from '../src/shared/render/exportPresets'
 import { CODEC_POLICY } from '../src/shared/render/proFormats'
 
 /*
@@ -147,6 +148,38 @@ describe.runIf(PROBE).each(BINARIES)('wave 12 encodes with %s', (ff) => {
     expect(feed).toMatchObject({ width: 1088, height: 1360 })
     expect(probe(clear)[0]).toMatchObject({ codec_name: 'cfhd', pix_fmt: 'gbrap12le', width: 1088, height: 1360 })
   })
+
+  it('CineForm at the sizes exportSize gives: every file is made and every build decodes both frames, opaque and with alpha', () => {
+    // cfhd makes 720x900 (4:5 at 720p), 3248x2166 and 1808x1446 opaque without an error, and no decoder
+    // reads a frame of them ("Invalid data found when processing input"); exportSize gives sizes that read back.
+    const screen = (width: number, height: number): typeof recorded => ({ ...recorded, width, height })
+    const cases: [string, typeof recorded, Pick<ExportOptions, 'aspect' | 'resolution'>][] = [
+      ['4:5 at 720p', recorded, { aspect: '4:5', resolution: 720 }],
+      ['4:5 at 1080p', recorded, { aspect: '4:5', resolution: 1080 }],
+      ['4:5 at 1440p', recorded, { aspect: '4:5', resolution: 1440 }],
+      ['9:16 at 1080p', recorded, { aspect: '9:16', resolution: 1080 }],
+      ['1:1 at 1080p', recorded, { aspect: '1:1', resolution: 1080 }],
+      ["'auto' at 2160p from 3000x2000", screen(3000, 2000), { aspect: 'auto', resolution: 2160 }],
+      ["'auto' at 2160p from 2256x1504", screen(2256, 1504), { aspect: 'auto', resolution: 2160 }],
+      ["'auto' at 1440p from 1280x1024", screen(1280, 1024), { aspect: 'auto', resolution: 1440 }]
+    ]
+    const two = { frames: 2, quality: 'high' as const, audio: { clips: [{ id: 'c', start: 0, end: 2 / 30, speed: 1 }], volume: 1 } }
+    for (const [name, project, o] of cases)
+      for (const alpha of [false, true]) {
+        const options: ExportOptions = { format: 'mov', codec: 'cineform', fps: 30, quality: 'high', encoder: 'auto', ...o, ...(alpha ? { alpha: 'background' as const } : {}) }
+        const { width, height } = exportSize(project, options)
+        const at = `${name}${alpha ? ' with alpha' : ''} (${width}x${height}), made by ${ff}`
+        const frames = alpha ? seeThrough(width, height, 2, 'bgra') : pattern(ff, width, height, 30, 2, 'bgr0')
+        const out = run(ff, job({ ...two, width, height, ...(alpha ? { alpha: true, pixelFormat: 'bgra' as const } : {}) }), frames)
+        expect(probe(out)[0], at).toMatchObject({ codec_name: 'cfhd', pix_fmt: alpha ? 'gbrap12le' : 'yuv422p10le', width, height })
+        for (const decoder of BINARIES) {
+          const r = spawnSync(decoder, ['-v', 'error', '-i', out, '-map', '0:v:0', '-f', 'framecrc', '-'], { maxBuffer: 1 << 26 })
+          expect(r.status, `${at}, decoded by ${decoder}: ${r.stderr?.toString()}`).toBe(0)
+          expect(r.stdout.toString().split('\n').filter((l) => l && !l.startsWith('#')), `${at}, decoded by ${decoder}`).toHaveLength(2)
+        }
+        rmSync(out, { force: true })
+      }
+  }, 300_000)
 
   it('Lossless (QuickTime Animation) with alpha: ARGB, bit-exact', () => {
     const frames = seeThrough(64, 48, 10, 'rgba')

@@ -1,8 +1,9 @@
 import type { ExportCapabilities, FfmpegVideoEncoder } from '../api/export'
 import { visibleSize } from '../engine/crop'
 import { outputSize } from '../engine/layout'
-import { isTall, tallAs } from '../engine/reframeData'
+import { DEFAULT_REFRAME, followApplies, isTall, tallAs } from '../engine/reframeData'
 import type { AspectRatio, ExportFormat, Project } from '../types'
+import { alphaOf } from './alpha'
 import { codecRoutes, type CodecCaps } from './codecRoutes'
 import type { ExportOptions } from './exportPresets'
 import { codecOf, DEFAULT_CODEC } from './proFormats'
@@ -68,21 +69,9 @@ export function exportSize(project: Project, settings: ExportOptions): ExportSiz
     size = { width: Math.max(2, settings.maxWidth - (settings.maxWidth % 2)), height: even(size.height * k) }
   }
   const capped = capSize(size)
-  // FFmpeg's CineForm encoder takes only widths that are a multiple of 16 (1080 wide fails): the
-  // width goes up to the next one (down when that would pass maxWidth or 4096) and the height with
-  // it, so the frame keeps its shape and follows the action, places the camera band and lays out
-  // tall frames as the H.264 file does (4:5 at 1080p, on the tall line, is 1088x1360).
-  if (settings.format === 'mov' && codecOf(settings) === 'cineform' && capped.width % 16) {
-    const { width: w, height: h } = capped
-    const up = Math.ceil(w / 16) * 16
-    const upFits = up <= Math.min(MAX_EXPORT_SIDE, settings.maxWidth ?? MAX_EXPORT_SIDE) && even((h * up) / w) <= MAX_EXPORT_SIDE
-    const width = upFits ? up : Math.max(16, Math.floor(w / 16) * 16)
-    const height = Math.min(MAX_EXPORT_SIDE, even((h * width) / w))
-    // Rounding to even can carry a frame a pixel from the tall line across it; 1.25 x a multiple
-    // of 16 is even, so 2 px bring it back.
-    const tall = isTall(w, h)
-    capped.width = width
-    capped.height = isTall(width, height) === tall ? height : height + (tall ? 2 : -2)
+  if (settings.format === 'mov' && codecOf(settings) === 'cineform') {
+    const maxWidth = Math.min(MAX_EXPORT_SIDE, settings.maxWidth ?? MAX_EXPORT_SIDE)
+    Object.assign(capped, cineformSize(capped, alphaOf(settings) !== undefined, maxWidth, [shown, { width: project.width, height: project.height }]))
   }
   return { ...capped, fps: gif ? GIF_FPS : settings.fps }
 }
@@ -103,6 +92,66 @@ export function cineformSizeWorks(width: number, height: number, alpha: boolean)
   if (width % 16 || height % 2 || width > MAX_EXPORT_SIDE || height > MAX_EXPORT_SIDE || height < CINEFORM_MIN.height) return false
   if (alpha) return width >= CINEFORM_MIN.width.alpha
   return width >= CINEFORM_MIN.width.opaque && (width % 32 === 0 || Math.ceil(height / 8) % 2 === 0)
+}
+
+/** A following project, to ask followApplies only about a frame's shape. */
+const FOLLOWING = { reframe: DEFAULT_REFRAME }
+
+/** Multiples of 16 up to `max` for a `w` px wide frame: the next one up first, then the others nearest first (the wider on a tie). */
+function* widthsFor(w: number, max: number): Generator<number> {
+  const up = Math.ceil(w / 16) * 16
+  if (up <= max) yield up
+  let below = up - 16
+  let above = up + 16
+  while (below >= 16 || above <= max) {
+    if (above <= max && (below < 16 || above - w <= w - below)) {
+      yield above
+      above += 16
+    } else {
+      yield below
+      below -= 16
+    }
+  }
+}
+
+/**
+ * The CineForm frame of an export that is `size` in H.264 (output-and-languages §5.4). Its width is a
+ * multiple of 16, the next one up (down when that passes `maxWidth`, 4096 included), and its height
+ * scaled with it to an even number, so the frame keeps its shape. The frame must be one
+ * cineformSizeWorks takes, and lie on the H.264 frame's side of the tall line and of the follow line
+ * against each of `recordings` (the recording as shown and whole), so it lays out tall frames, follows
+ * the action and places the camera band as the H.264 file does; rounding to even can carry it a pixel
+ * across a line, and 2 px bring it back. When that width gives no such frame, the nearest other
+ * multiple of 16 that does is taken (the wider on a tie): 4:5 at 720p is 736x920, not 720x900.
+ * Where no frame keeps the shape on both sides, the height CineForm takes nearest the scaled one: on
+ * both sides of the lines if one is, else on the follow line's side (a 4:5 frame a pixel under the
+ * tall line, within a maxWidth that leaves no room between the two lines, becomes tall and still
+ * follows). A frame too thin to keep its shape (under 32 rows within the limits: a recording over 128
+ * times as wide as tall, or a small maxWidth) gets the rows CineForm needs.
+ */
+function cineformSize(size: { width: number; height: number }, alpha: boolean, maxWidth: number, recordings: readonly { width: number; height: number }[]): { width: number; height: number } {
+  const { width: w, height: h } = size
+  const follows = (width: number, height: number): string => recordings.map((r) => followApplies(FOLLOWING, width, height, r.width, r.height)).join()
+  const sides = (width: number, height: number): string => `${isTall(width, height)},${follows(width, height)}`
+  const want = sides(w, h)
+  for (const width of widthsFor(w, maxWidth)) {
+    const height = even((h * width) / w)
+    for (const tried of sides(width, height) === want ? [height] : [height - 2, height + 2])
+      if (sides(width, tried) === want && cineformSizeWorks(width, tried, alpha)) return { width, height: tried }
+  }
+  const keeps: ((width: number, height: number) => boolean)[] = [
+    (width, height) => sides(width, height) === want,
+    (width, height) => follows(width, height) === follows(w, h),
+    () => true
+  ]
+  for (const keep of keeps)
+    for (const width of widthsFor(w, maxWidth)) {
+      const scaled = Math.min(MAX_EXPORT_SIDE, Math.max(CINEFORM_MIN.height, even((h * width) / w)))
+      for (let d = 0; d <= 16; d += 2)
+        for (const height of [scaled + d, scaled - d]) if (cineformSizeWorks(width, height, alpha) && keep(width, height)) return { width, height }
+    }
+  // A maxWidth under CineForm's fewest columns (presets keep it at 64 or more).
+  return { width: alpha ? CINEFORM_MIN.width.alpha : CINEFORM_MIN.width.opaque, height: CINEFORM_MIN.height }
 }
 
 /**
