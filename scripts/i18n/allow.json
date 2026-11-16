@@ -443,6 +443,188 @@
       "file": "src/renderer/src/render/segmentation/personSegmenter.ts",
       "kind": "copy",
       "reason": "Why background blur could not start: written only to the console (console.warn in fail), and the camera is drawn without the blur; never shown."
+    },
+    {
+      "file": "src/shared/editor/projectName.ts",
+      "kind": "copy",
+      "text": "Untitled recording",
+      "reason": "UNTITLED, the name written into project.json when a recording's name is emptied (and the name copies, clips and versions start from): a project's name is the user's content and project files are the same in every UI language (section 9.7, section 0 decision 10)."
+    },
+    {
+      "file": "src/shared/import/plan.ts",
+      "kind": "copy",
+      "text": "Imported video",
+      "reason": "importName's fallback, the project name written into project.json for a video file whose name has no letters left: a project's name is the user's content, the same in every UI language (section 9.7)."
+    },
+    {
+      "file": "src/shared/editor/annotations.ts",
+      "kind": "table",
+      "text": "Add your text",
+      "reason": "The text a new text overlay is created with: written into the project and drawn into the video, so it is project content, the same in every UI language like the other default texts Flown writes into a project (section 9.7, section 0 decision 10); the user types over it."
+    },
+    {
+      "file": "src/shared/editor/graphicsEdit.ts",
+      "kind": "table",
+      "pattern": "^(?:Key point|First point)$",
+      "reason": "The text a new keyword pop-up and a new list pop-up are created with: written into the project and drawn into the video, project content that is the same in every UI language (section 9.7, section 0 decision 10); the user types over it."
+    },
+    {
+      "file": "src/renderer/src/editor/panels/GraphicsPanel.tsx",
+      "kind": "table",
+      "text": "Point ${…}",
+      "reason": "The text of a list item Add item writes into the project (\"Point 3\"), drawn into the video: project content, the same in every UI language like the list's first item (graphicsEdit.ts, section 9.7); the user types over it."
+    },
+    {
+      "file": "src/shared/editor/titles.ts",
+      "pattern": "^(?:Title|Chapter|Chapter \\$\\{…\\})$",
+      "reason": "The title a new title card is created with and the names new chapters get (\"Chapter 3\"): written into the project, drawn into the video and exported in chapter lists and markers, so they are project content, the same in every UI language (section 9.7: chapter fallbacks; section 0 decision 10)."
+    },
+    {
+      "file": "src/shared/engine/titleData.ts",
+      "kind": "table",
+      "text": "Chapter",
+      "reason": "The project reader's fallback for a stored chapter without a title: it becomes the chapter's stored name, project content that is the same in every UI language (section 9.7)."
+    },
+    {
+      "file": "src/shared/engine/overlayData.ts",
+      "kind": "table",
+      "text": "Font",
+      "reason": "The project reader's fallback for a stored font without a name: it becomes the font's stored name in project.json, the same in every UI language (section 9.7)."
+    },
+    {
+      "file": "src/shared/editor/brandKit.ts",
+      "kind": "table",
+      "text": "Font",
+      "reason": "The brand kit reader's fallback for a stored font without a name: it becomes the font's stored name in the kit file, the same in every UI language (section 9.7)."
+    },
+    {
+      "file": "src/renderer/src/editor/overlayItems.ts",
+      "kind": "copy",
+      "text": "Pasted image",
+      "reason": "The file name a pasted image without a usable name is stored under in the project folder (\"Pasted image.png\"): a file name, which stays English (section 0 decision 10, section 9.7)."
+    },
+    {
+      "file": "src/shared/render/chapters.ts",
+      "kind": "table",
+      "text": "Chapter ${…}",
+      "reason": "outputChapters' fallback title for an untitled chapter, written into exported files (chapter markers, chapter lists, descriptions): a chapter fallback, English in every UI language (section 9.7, section 0 decision 10)."
+    },
+    {
+      "file": "src/shared/render/exportBundle.ts",
+      "pattern": "^(?:Chapter \\$\\{…\\}|Part \\$\\{…\\} of \\$\\{…\\} of \\$\\{…\\}|Spoken language)$",
+      "reason": "Words written into exported files: a part file's name (\"01 Chapter 2.mp4\"), the part's description file and the subtitle stream name of untitled spoken captions (section 9.7: file names, descriptions and subtitle stream names stay English; section 0 decision 10)."
+    },
+    {
+      "file": "src/shared/share/webhooks.ts",
+      "pattern": "^(?:New video: \\$\\{…\\} \\(\\$\\{…\\}\\)|Saved to \\$\\{…\\}|Flown is connected\\. Videos you share will be posted here\\.)$",
+      "reason": "The lines posted to a team's Slack, Discord or Teams channel: output read by other people in their own app, like an exported file's words, the same from every PC (section 0 decision 10). The Share settings and notifications say what was posted in the UI language (main.share.*)."
+    },
+    {
+      "file": "src/shared/guide/stepTitles.ts",
+      "kind": "copy",
+      "pattern": "^(?:type after \\$\\{…\\} near the \\$\\{…\\}|\\$\\{…\\}, \\$\\{…\\} of the screen|drag from the \\$\\{…\\} to the \\$\\{…\\} of the screen|, then press \\$\\{…\\})$",
+      "reason": "stepAction: the step's action in English words, sent as the action of each item of Write titles' names request to the AI service (an AI prompt, section 9.7); never shown."
+    },
+    {
+      "file": "src/renderer/src/render/gradeLayer.ts",
+      "kind": "copy",
+      "text": "the self-test differed in ${…} values",
+      "reason": "Why colour grading uses the CPU: written only to the console (useCpu's console.warn); the Colour panel reads gradeBackendReason() as a flag and shows style.colourControls.copy.cpuNote. Never shown."
+    },
+    {
+      "file": "src/shared/editor/stylePresets.ts",
+      "kind": "copy",
+      "pattern": "^(?:Give the preset a name|This look cannot be saved as a preset|You can keep up to \\$\\{…\\} presets: delete one first)$",
+      "reason": "PresetError's messages, for logs and tests: the Style panel shows style.stylePresets.error.<code> by the error's code (StylePresets.tsx presetErrorText); never shown."
+    },
+    {
+      "file": "src/shared/render/exportPlan.ts",
+      "kind": "copy",
+      "pattern": "^(?:Audio only \\(WAV\\)|Audio only \\(AAC\\))$",
+      "reason": "routeLabel's English, written only to the console when an encoder fails (exporter.ts); the export shows exportNames.ts's routeName in the UI language."
+    },
+    {
+      "file": "src/shared/render/exportPlan.ts",
+      "kind": "table",
+      "pattern": "^(?:GPU \\(NVIDIA NVENC\\)|GPU \\(Intel Quick Sync\\)|GPU \\(AMD AMF\\)|GPU \\(Media Foundation\\)|Software \\(x264\\)|Software \\(VP9\\)|Software \\(x265\\)|Software \\(AV1\\)|Software \\(CineForm\\)|Software \\(QuickTime Animation\\)|Software \\(ProRes\\))$",
+      "reason": "ENCODER_NAMES stays English data (main imports exportPlan.ts): the export shows the encoders through src/renderer/src/editor/exportNames.ts (routeName, export.encoder.*), tests/i18nExportNames.test.ts holds the two equal in English."
+    },
+    {
+      "file": "src/shared/render/exportPresets.ts",
+      "kind": "table",
+      "pattern": "^(?:YouTube 1080p60|YouTube 4K60|X \\(Twitter\\)|Square post|Portrait post|Slack GIF|Email|For editing|Transparent overlay)$",
+      "reason": "EXPORT_PRESETS' labels and EXPORT_PRESET_FILE_LABELS stay English data (main imports exportPresets.ts; batch file names stay English, section 9.6, section 0 decision 10): the dialog shows the destinations and batch files through src/renderer/src/editor/exportNames.ts (presetName, itemLabel)."
+    },
+    {
+      "file": "src/shared/render/exportBundle.ts",
+      "kind": "copy",
+      "pattern": "^(?:One file per chapter works with One file|Add chapters first|\\$\\{…\\} · GIFs have no chapters, other formats keep them\\.|\\$\\{…\\}, one file each \\(the files have no chapter markers\\)\\.|\\$\\{…\\}, written into the file\\.)$",
+      "reason": "perChapterBlocked and chaptersNote keep their English for main and tests (main imports exportBundle.ts): the export dialog reads perChapterBlocked only as a yes or no and shows src/renderer/src/editor/exportNames.ts's perChapterBlockedText and chaptersNoteText."
+    },
+    {
+      "file": "src/shared/editor/zoomEdit.ts",
+      "kind": "table",
+      "pattern": "^(?:Pull back: show more background|Zoom 1\\.25×|Zoom 1\\.5×|Zoom 2×|Zoom 3×)$",
+      "reason": "ZOOM_LEVEL_PRESETS' tooltips stay English data (main imports zoomEdit.ts): the Zoom panel shows them through src/shared/editor/itemNames.ts's zoomLevelPresets (zoom.preset.*); SelectionPanel and the editor's keys read only the values."
+    },
+    {
+      "file": "src/shared/editor/titles.ts",
+      "kind": "table",
+      "pattern": "^(?:Centered|A full-frame card with the title in the middle|Big|A full-frame card with a very large title|Lower third|A band at the bottom, over the video|Quote|A short quote on a panel|Blurred video|The video behind it, blurred and darkened|Colour|A solid colour|Project background|The project's background, as set in the Style panel)$",
+      "reason": "TITLE_STYLES and TITLE_BACKGROUNDS stay English data (main imports titles.ts): the Text panel and Settings › Brand kit show them through src/shared/editor/itemNames.ts's TITLE_STYLE_CHOICES and TITLE_BACKGROUND_CHOICES (text.titleStyle.*, text.titleBackground.*)."
+    },
+    {
+      "file": "src/shared/editor/shapes.ts",
+      "kind": "table",
+      "pattern": "^(?:Point at something|A straight line, e\\.g\\. to underline|An outlined or filled box|Circle something|A translucent highlighter box|Blur private content \\(always fully applied\\)|Pixelate private content \\(always fully applied\\))$",
+      "reason": "SHAPE_KINDS' tooltips stay English data (main imports shapes.ts): only src/shared/editor/itemNames.ts's shapeKinds reads them, as text.shape.*.title."
+    },
+    {
+      "file": "src/shared/editor/versions.ts",
+      "kind": "copy",
+      "pattern": "^(?:Version \\$\\{…\\}|Before Polish in one click|Before removing fillers and retakes|Before removing automatic changes|Before Make my captions great|Before making a vertical version|Before making a square version|Before opening “\\$\\{…\\}”|Before opening a version)$",
+      "reason": "The names Flown gives versions (defaultVersionName, autoVersionName), which main writes into the version files: a version's name is stored content that stays as it was written in every UI language (section 9.7; src/shared/editor/versionWords.ts)."
+    },
+    {
+      "file": "src/shared/editor/versions.ts",
+      "kind": "table",
+      "pattern": "^(?:Cuts|Zooms|Captions|Pop-ups|Text and titles|Shapes and spotlights|Images|Chapters|Freeze frames|Length|Start or end trimmed|ignored sounds|zoom settings|captions look|caption languages|vertical framing|export description|automatic changes to review|smooth cuts|progress bar|texts and titles|shapes and spotlights|freeze frames|caption text|speaker names|other settings)$",
+      "reason": "The summary counts' words, the comparison's rows and the edit's area names stay English data (main imports versions.ts; the area names are the ids changedAreas returns): the Versions dialog shows them through src/shared/editor/versionWords.ts (summaryLine, compareSummaries, areaName), tests/i18nVersionWords.test.ts holds them equal in English."
+    },
+    {
+      "file": "src/shared/editor/versions.ts",
+      "kind": "copy",
+      "pattern": "^(?:Today \\$\\{…\\}|Yesterday \\$\\{…\\})$",
+      "reason": "versionTime, the English profile test 73 holds fmt.date(…, 'version') to (tests/i18nFmtSites.test.ts); the Versions dialog shows fmt.date in the UI language."
+    },
+    {
+      "file": "src/shared/import/plan.ts",
+      "kind": "copy",
+      "pattern": "^(?:Less than a minute left|About \\$\\{…\\} min left)$",
+      "reason": "etaText, the English form main and the tests keep (main imports plan.ts); the import dialog says the time left with its own messages from etaMinutes (ImportDialog.tsx)."
+    },
+    {
+      "file": "src/shared/notes/blocks.ts",
+      "kind": "copy",
+      "pattern": "^about \\$\\{…\\} (?:s|min|h)(?: \\$\\{…\\} (?:s|min))?$",
+      "reason": "readingLabel, the English form tests/i18nNotesCopy.test.ts holds notesCopy.ts's readingText to (main imports blocks.ts); the speaker notes show readingText (review.notes.reading.*) in the UI language."
+    },
+    {
+      "file": "src/shared/search/moment.ts",
+      "pattern": "^(?:Name|File|Chapter|Title|On screen|Said|Notes|No recordings match \"\\$\\{…\\}\"\\.|The first \\$\\{…\\} recordings found\\. Add a word to narrow them\\.)$",
+      "reason": "KIND_LABEL and resultsSummary keep the English forms main and its tests use (main imports moment.ts): Home's search shows src/renderer/src/search/rows.ts's kindLabel and resultsSummary (review.search.*) in the UI language."
+    },
+    {
+      "file": "src/shared/share/cloudFolders.ts",
+      "kind": "copy",
+      "pattern": "^(?:To share a link, right-click the file and choose Share\\.|To share a link, right-click the file and choose Copy Dropbox link\\.|To share a link, right-click the file and choose Share › Copy link\\.|People with access to this folder can open it there\\.)$",
+      "reason": "linkHint keeps its English for main and the tests (main imports cloudFolders.ts); the share steps show src/shared/share/steps.ts's linkHintText (review.share.linkHint.*) in the UI language."
+    },
+    {
+      "file": "src/shared/render/safeZones.ts",
+      "kind": "table",
+      "pattern": "^(?:Tabs and search|Like, comment, share|Name, caption and sound|Reels and camera|Name, caption and audio|Search and menu|Like, comment, share, remix|Title, channel and subscribe)$",
+      "reason": "The safe-zone boxes' labels are data (main imports safeZones.ts for the placement rules): the preview's overlay names each box by its app and side (SafeZoneOverlay.tsx, timeline.safeZones.zone.*), and the label stays only in a hidden data-label attribute (the overlay is aria-hidden)."
     }
   ]
 }
