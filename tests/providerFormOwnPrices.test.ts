@@ -59,6 +59,8 @@ beforeEach(async () => {
   api.values = { aiPrices: { svc1: { input: 0.1, output: 0.5 }, svc2: { input: 1, output: 2 } } }
   // A fresh session: no cost line has read the cost data yet.
   vi.resetModules()
+  // The message runtime is fresh too: English is registered again, as the vitest setup did.
+  await import('../src/shared/i18n/messages/en/index')
   ;({ ProviderForm } = (await import(/* @vite-ignore */ FORM)) as { ProviderForm: (p: unknown) => unknown })
 })
 
