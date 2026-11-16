@@ -263,7 +263,8 @@ describe('exportDimensions', () => {
     // lines under 1282 columns. They stay following, and become tall as 4:5 frames are.
     expect(conflicts.length).toBeLessThanOrEqual(16)
     for (const c of conflicts) expect(c).toMatch(/ 4:5 \d+p maxWidth (1082|1250) .*: (1082x1352 -> 1072x1340|1250x1562 -> 1248x1560)$/)
-    // Under 32 rows only with the smallest width a preset can set.
+    // In this grid, H.264 frames under 32 rows come only from the smallest width a preset can set; wider
+    // strips (more than maxWidth/32 times as wide as tall) do the same at any maxWidth (§5.4).
     expect(thin.length).toBeGreaterThan(0)
     for (const t of thin) expect(t).toMatch(/ maxWidth 64 .*x32$/)
   }, 120_000)

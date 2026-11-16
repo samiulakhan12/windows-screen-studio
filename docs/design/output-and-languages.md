@@ -1124,11 +1124,13 @@ same project; a frame that rounding to even would carry across a line is moved b
 width gives no such frame, the nearest other multiple of 16 that does is taken (the wider on a tie) and
 the height scaled with it: opaque 4:5 at 720p is 736 × 920 (720 × 900 with alpha), 'auto' at 2160p on a
 3:2 screen 3232 × 2154 (3248 × 2166 with alpha), and on a 5:4 screen 1792 × 1434 at 1440p and
-2688 × 2150 at 2160p. A size the rule takes is kept as it is. Two kinds of frame cannot keep both sides:
-a 4:5 frame a pixel under the tall line (1082 × 1352 or 1250 × 1562, from a `maxWidth` of 1082 or 1250)
-that follows a recording about 0.89 times as wide as tall by a hair has no even height between the two
-lines under 1282 columns, so it keeps following and becomes tall as 4:5 frames are; and a frame under 32
-rows (a recording over 128 times as wide as tall, or a `maxWidth` of 64) gets the rows CineForm needs.
+2688 × 2150 at 2160p. A size the rule takes is kept as it is. Two kinds of frame cannot always keep both
+sides, and then no valid size exists on both sides at any width within the limits: a 4:5 frame a pixel
+under the tall line, which a small `maxWidth` can produce (for example 1082 × 1352 or 1250 × 1562 from a
+`maxWidth` of 1082 or 1250 on a recording about 0.89 times as wide as tall, or 66 × 82 from a `maxWidth`
+of 66), keeps following and becomes tall as 4:5 frames are; and an H.264 frame under 32 rows, which any
+recording more than `maxWidth`/32 times as wide as tall produces (a 1920 × 30 strip at a `maxWidth` of
+1280 is 1280 × 20), gets the rows CineForm needs (1280 × 32) and may then follow.
 The preview, the job and the timeline plan agree, and the recording is fitted inside as with any size.
 
 **Animation** (MOV). Input `bgra`/`rgba` (alpha) or `bgr0`/`rgb0`; `-pix_fmt argb` or `rgb24`;
