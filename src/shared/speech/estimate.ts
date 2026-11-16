@@ -5,6 +5,8 @@
  * with them); the other bodies are workstream C's.
  */
 import type { SpeechModelSpec } from './catalog'
+import { fmt } from '../i18n/fmt'
+import { t } from '../i18n/t'
 
 /**
  * Processing time with n threads relative to 4 threads, measured with Whisper base on the
@@ -74,18 +76,18 @@ const ceilTo = (value: number, step: number): number => Math.ceil(value / step -
 /** "under 1 min", "about 1½ min" (half minutes up to 3 min), "about 38 min", "about 1 h 10 min" (whole minutes, rounded up). */
 export function durationWords(seconds: number): string {
   const s = Number.isFinite(seconds) ? Math.max(0, seconds) : 0
-  if (s < 60) return 'under 1 min'
+  if (s < 60) return t('main.speech.duration.underMinute')
   const minutes = s / 60
   if (minutes <= 3) {
     const half = ceilTo(minutes, 0.5)
     const whole = Math.floor(half)
-    return `about ${whole}${half > whole ? '½' : ''} min`
+    return t('main.speech.duration.minutes', { minutes: `${fmt.count(whole)}${half > whole ? '½' : ''}` })
   }
   const m = ceilTo(minutes, 1)
-  if (m < 60) return `about ${m} min`
+  if (m < 60) return t('main.speech.duration.minutes', { minutes: fmt.count(m) })
   const h = Math.floor(m / 60)
   const rest = m - h * 60
-  return rest ? `about ${h} h ${rest} min` : `about ${h} h`
+  return rest ? t('main.speech.duration.hoursMinutes', { hours: fmt.count(h), minutes: fmt.count(rest) }) : t('main.speech.duration.hours', { hours: fmt.count(h) })
 }
 
 /** Decimal megabytes as Flown shows sizes: "44 MB", "574 MB", "1.2 GB". */

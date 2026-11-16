@@ -2000,5 +2000,346 @@
     "line": 17,
     "english": "LM Studio on this PC",
     "sample": {}
+  },
+  {
+    "key": "errors.localAi.notInBuild",
+    "file": "src/shared/localAi/messages.ts",
+    "line": 10,
+    "english": "AI on this PC is not part of this build.",
+    "sample": {}
+  },
+  {
+    "key": "errors.localAi.processorOld",
+    "file": "src/shared/localAi/messages.ts",
+    "line": 11,
+    "english": "This PC's processor is too old for AI on this PC (it needs AVX2).",
+    "sample": {}
+  },
+  {
+    "key": "errors.localAi.processorUnknown",
+    "file": "src/shared/localAi/messages.ts",
+    "line": 12,
+    "english": "Flown could not check this PC's processor.",
+    "sample": {}
+  },
+  {
+    "key": "errors.localAi.damaged",
+    "file": "src/shared/localAi/messages.ts",
+    "line": 13,
+    "english": "The model file is missing or damaged. Download it again in Settings › AI on this PC.",
+    "sample": {}
+  },
+  {
+    "key": "errors.localAi.noModel",
+    "file": "src/shared/localAi/messages.ts",
+    "line": 14,
+    "english": "Download a model for AI on this PC first, in Settings › AI on this PC.",
+    "sample": {}
+  },
+  {
+    "key": "errors.localAi.crashed",
+    "file": "src/shared/localAi/messages.ts",
+    "line": 15,
+    "english": "AI on this PC stopped unexpectedly. Try again, or use the Small model.",
+    "sample": {}
+  },
+  {
+    "key": "errors.localAi.stalled",
+    "file": "src/shared/localAi/messages.ts",
+    "line": 16,
+    "english": "AI on this PC stopped responding. Try again.",
+    "sample": {}
+  },
+  {
+    "key": "main.localAi.stopped",
+    "file": "src/shared/localAi/messages.ts",
+    "line": 17,
+    "english": "Stopped.",
+    "sample": {}
+  },
+  {
+    "key": "main.localAi.waiting",
+    "file": "src/shared/localAi/messages.ts",
+    "line": 18,
+    "english": "Waiting for AI on this PC…",
+    "sample": {}
+  },
+  {
+    "key": "main.localAi.lowMemory",
+    "file": "src/shared/localAi/messages.ts",
+    "line": 19,
+    "english": "Memory is low: this may be slow",
+    "sample": {}
+  },
+  {
+    "key": "errors.localAi.tooLong",
+    "file": "src/shared/localAi/messages.ts",
+    "line": 20,
+    "english": "This text is too long for AI on this PC: shorten it or use an AI service.",
+    "sample": {}
+  },
+  {
+    "key": "errors.localAi.notesTooLong",
+    "file": "src/shared/localAi/messages.ts",
+    "line": 21,
+    "english": "These notes are too long for AI on this PC: shorten them or use an AI service.",
+    "sample": {}
+  },
+  {
+    "key": "main.localAi.written",
+    "file": "src/shared/localAi/messages.ts",
+    "line": 22,
+    "english": "Written on this PC: check it before you use it.",
+    "sample": {}
+  },
+  {
+    "key": "main.localAi.pcLine",
+    "file": "src/shared/localAi/messages.ts",
+    "line": 35,
+    "english": "This PC: 16 GB of memory · processor OK",
+    "sample": {
+      "gb": "16"
+    }
+  },
+  {
+    "key": "errors.localAi.needsMemory",
+    "file": "src/shared/localAi/messages.ts",
+    "line": 42,
+    "english": "Needs 12 GB of memory; this PC has 8 GB",
+    "sample": {
+      "need": "12",
+      "have": "8"
+    }
+  },
+  {
+    "key": "errors.localAi.freeMemorySmall",
+    "file": "src/shared/localAi/messages.ts",
+    "line": 49,
+    "english": "AI on this PC needs about 3.8 GB of free memory and 2.1 GB is free. Close some apps, or download the Small model.",
+    "sample": {
+      "need": "3.8",
+      "free": "2.1"
+    }
+  },
+  {
+    "key": "errors.localAi.freeMemory",
+    "file": "src/shared/localAi/messages.ts",
+    "line": 49,
+    "english": "AI on this PC needs about 2.2 GB of free memory and 1.5 GB is free. Close some apps.",
+    "sample": {
+      "need": "2.2",
+      "free": "1.5"
+    }
+  },
+  {
+    "key": "errors.localAi.disk",
+    "file": "src/shared/localAi/messages.ts",
+    "line": 57,
+    "english": "Not enough disk space: the model needs 3.2 GB.",
+    "sample": {
+      "size": "3.2"
+    }
+  },
+  {
+    "key": "main.localAi.lessThanAMinute",
+    "file": "src/shared/localAi/messages.ts",
+    "line": 66,
+    "english": "less than a minute left",
+    "sample": {}
+  },
+  {
+    "key": "main.localAi.minutesLeft",
+    "file": "src/shared/localAi/messages.ts",
+    "line": 68,
+    "english": [
+      "about 0 minutes left",
+      "about 1 minute left",
+      "about 2 minutes left",
+      "about 1000 minutes left"
+    ],
+    "sample": [
+      {
+        "count": 0,
+        "n": "0"
+      },
+      {
+        "count": 1,
+        "n": "1"
+      },
+      {
+        "count": 2,
+        "n": "2"
+      },
+      {
+        "count": 1000,
+        "n": "1000"
+      }
+    ]
+  },
+  {
+    "key": "main.localAi.loading",
+    "file": "src/shared/localAi/messages.ts",
+    "line": 73,
+    "english": "On this PC: loading the model…",
+    "sample": {}
+  },
+  {
+    "key": "main.localAi.reading",
+    "file": "src/shared/localAi/messages.ts",
+    "line": 75,
+    "english": "On this PC: reading the text… 45%",
+    "sample": {
+      "percent": "45"
+    }
+  },
+  {
+    "key": "main.localAi.writing",
+    "file": "src/shared/localAi/messages.ts",
+    "line": 77,
+    "english": "On this PC: writing… about 2 minutes left",
+    "sample": {
+      "left": "about 2 minutes left"
+    }
+  },
+  {
+    "key": "main.localAi.speed",
+    "file": "src/shared/localAi/messages.ts",
+    "line": 90,
+    "english": "Measured on this PC: reads about 300 words a second and writes about 4.",
+    "sample": {
+      "read": "300",
+      "write": "4"
+    }
+  },
+  {
+    "key": "main.localAi.model.recommended",
+    "file": "src/shared/localAi/catalog.ts",
+    "line": 37,
+    "english": "Recommended",
+    "sample": {}
+  },
+  {
+    "key": "main.localAi.model.recommendedHint",
+    "file": "src/shared/localAi/catalog.ts",
+    "line": 38,
+    "english": "Every language, including Bangla. Needs 12 GB of memory.",
+    "sample": {}
+  },
+  {
+    "key": "main.localAi.model.small",
+    "file": "src/shared/localAi/catalog.ts",
+    "line": 57,
+    "english": "Small",
+    "sample": {}
+  },
+  {
+    "key": "main.localAi.model.smallHint",
+    "file": "src/shared/localAi/catalog.ts",
+    "line": 58,
+    "english": "Rough drafts, for PCs with 8 GB of memory.",
+    "sample": {}
+  },
+  {
+    "key": "main.localAi.model.smallTitleNote",
+    "file": "src/shared/localAi/catalog.ts",
+    "line": 73,
+    "english": "Small: titles often repeat the first sentence",
+    "sample": {}
+  },
+  {
+    "key": "main.localAi.model.smallSummaryNote",
+    "file": "src/shared/localAi/catalog.ts",
+    "line": 73,
+    "english": "Small: Bangla summaries are short",
+    "sample": {}
+  },
+  {
+    "key": "main.speech.tier.fast",
+    "file": "src/shared/speech/catalog.ts",
+    "line": 21,
+    "english": "Fast",
+    "sample": {}
+  },
+  {
+    "key": "main.speech.tier.standard",
+    "file": "src/shared/speech/catalog.ts",
+    "line": 21,
+    "english": "Standard",
+    "sample": {}
+  },
+  {
+    "key": "main.speech.tier.accurate",
+    "file": "src/shared/speech/catalog.ts",
+    "line": 21,
+    "english": "Accurate",
+    "sample": {}
+  },
+  {
+    "key": "main.speech.tier.best",
+    "file": "src/shared/speech/catalog.ts",
+    "line": 21,
+    "english": "Most accurate",
+    "sample": {}
+  },
+  {
+    "key": "main.speech.tier.bangla",
+    "file": "src/shared/speech/catalog.ts",
+    "line": 21,
+    "english": "Bangla",
+    "sample": {}
+  },
+  {
+    "key": "main.speech.duration.underMinute",
+    "file": "src/shared/speech/estimate.ts",
+    "line": 79,
+    "english": "under 1 min",
+    "sample": {}
+  },
+  {
+    "key": "main.speech.duration.minutes",
+    "file": "src/shared/speech/estimate.ts",
+    "line": 82,
+    "english": "about 1½ min",
+    "sample": {
+      "minutes": "1½"
+    }
+  },
+  {
+    "key": "main.speech.duration.minutes",
+    "file": "src/shared/speech/estimate.ts",
+    "line": 85,
+    "english": "about 11 min",
+    "sample": {
+      "minutes": "11"
+    }
+  },
+  {
+    "key": "main.speech.duration.hoursMinutes",
+    "file": "src/shared/speech/estimate.ts",
+    "line": 88,
+    "english": "about 1 h 5 min",
+    "sample": {
+      "hours": "1",
+      "minutes": "5"
+    }
+  },
+  {
+    "key": "main.speech.duration.hours",
+    "file": "src/shared/speech/estimate.ts",
+    "line": 88,
+    "english": "about 2 h",
+    "sample": {
+      "hours": "2"
+    }
+  },
+  {
+    "key": "sound.library.credit",
+    "file": "src/shared/audio/soundLibrary.ts",
+    "line": 770,
+    "english": "Music: Sweet Sun by Loyalty Freak Music (CC0)",
+    "sample": {
+      "title": "Sweet Sun",
+      "artist": "Loyalty Freak Music"
+    }
   }
 ]

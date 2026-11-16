@@ -331,5 +331,18 @@
   "baseUrl.credentials": "Remove the name and password from the address.",
   "baseUrl.query": "Remove the part after ?",
   "baseUrl.fragment": "Remove the part after #",
-  "baseUrl.azure": "A resource name has 2 to 63 lowercase letters, digits and hyphens, and starts with a letter or digit."
+  "baseUrl.azure": "A resource name has 2 to 63 lowercase letters, digits and hyphens, and starts with a letter or digit.",
+  "localAi.notInBuild": "AI on this PC is not part of this build.",
+  "localAi.processorOld": "This PC's processor is too old for AI on this PC (it needs AVX2).",
+  "localAi.processorUnknown": "Flown could not check this PC's processor.",
+  "localAi.damaged": "The model file is missing or damaged. Download it again in Settings › AI on this PC.",
+  "localAi.noModel": "Download a model for AI on this PC first, in Settings › AI on this PC.",
+  "localAi.crashed": "AI on this PC stopped unexpectedly. Try again, or use the Small model.",
+  "localAi.stalled": "AI on this PC stopped responding. Try again.",
+  "localAi.tooLong": "This text is too long for AI on this PC: shorten it or use an AI service.",
+  "localAi.notesTooLong": "These notes are too long for AI on this PC: shorten them or use an AI service.",
+  "localAi.needsMemory": "Needs {need} GB of memory; this PC has {have} GB",
+  "localAi.freeMemorySmall": "AI on this PC needs about {need} GB of free memory and {free} GB is free. Close some apps, or download the Small model.",
+  "localAi.freeMemory": "AI on this PC needs about {need} GB of free memory and {free} GB is free. Close some apps.",
+  "localAi.disk": "Not enough disk space: the model needs {size} GB."
 }

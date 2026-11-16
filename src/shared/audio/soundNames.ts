@@ -6,7 +6,8 @@
  * names them from here.
  */
 import { t, type MessageKey } from '../i18n/t'
-import { soundEffect, type Mood, type SfxGroup } from './soundLibrary'
+import type { Project, SfxRef } from '../types'
+import { musicCredit, soundBed, soundEffect, type Mood, type SfxGroup } from './soundLibrary'
 
 /** "Calm", "Lo-fi": a mood chip. */
 export const moodName = (mood: Mood): string => t(`sound.mood.${mood}` as const)
@@ -38,4 +39,21 @@ const EFFECT_NAMES: Readonly<Record<string, MessageKey>> = {
 export function sfxName(id: string): string {
   const key = Object.prototype.hasOwnProperty.call(EFFECT_NAMES, id) ? EFFECT_NAMES[id] : undefined
   return key ? t(key) : (soundEffect(id)?.title ?? t('sound.effect.unknown'))
+}
+
+/** A sound's name as soundLibrary.ts sfxTitle gives it in English ("Original pop", "Soft pop"), in the UI language. */
+export function sfxRefName(ref: SfxRef | 'pop' | 'ding'): string {
+  if (ref === 'pop') return t('sound.effect.originalPop')
+  if (ref === 'ding') return t('sound.effect.originalDing')
+  return sfxName(ref.slice(4))
+}
+
+/**
+ * "Music: Sweet Sun by Loyalty Freak Music (CC0)" under the music row while a library bed is the
+ * music, in the UI language; the YouTube description writes soundLibrary.ts musicCredit's English.
+ */
+export function musicCreditWords(project: Project): string | null {
+  if (!musicCredit(project)) return null
+  const bed = soundBed(String(project.audio.music?.library?.id))!
+  return t('sound.library.credit', { title: bed.title, artist: bed.artist })
 }

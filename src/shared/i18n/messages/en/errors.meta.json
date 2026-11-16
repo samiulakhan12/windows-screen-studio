@@ -1247,5 +1247,66 @@
   },
   "baseUrl.azure": {
     "description": "Settings › AI providers, Azure OpenAI: why the resource name is refused."
+  },
+  "localAi.notInBuild": {
+    "description": "Settings › AI on this PC and the AI tools, about AI on this PC (a model that runs on this computer): why it cannot run."
+  },
+  "localAi.processorOld": {
+    "description": "Settings › AI on this PC and the AI tools, about AI on this PC (a model that runs on this computer): why it cannot run.",
+    "dnt": [
+      "AVX2"
+    ]
+  },
+  "localAi.processorUnknown": {
+    "description": "Settings › AI on this PC and the AI tools, about AI on this PC (a model that runs on this computer): why it cannot run.",
+    "dnt": [
+      "Flown"
+    ]
+  },
+  "localAi.damaged": {
+    "description": "Settings › AI on this PC and the AI tools, about AI on this PC (a model that runs on this computer): the model failed its check."
+  },
+  "localAi.noModel": {
+    "description": "Settings › AI on this PC and the AI tools, about AI on this PC (a model that runs on this computer): no model is downloaded."
+  },
+  "localAi.crashed": {
+    "description": "Settings › AI on this PC and the AI tools, about AI on this PC (a model that runs on this computer): the model crashed. \"Small\" is the smaller model's name."
+  },
+  "localAi.stalled": {
+    "description": "Settings › AI on this PC and the AI tools, about AI on this PC (a model that runs on this computer): the model stopped answering."
+  },
+  "localAi.tooLong": {
+    "description": "Settings › AI on this PC and the AI tools, about AI on this PC (a model that runs on this computer): the text does not fit the model."
+  },
+  "localAi.notesTooLong": {
+    "description": "Settings › AI on this PC and the AI tools, about AI on this PC (a model that runs on this computer): speaker notes that do not fit the model."
+  },
+  "localAi.needsMemory": {
+    "description": "Settings › AI on this PC and the AI tools, about AI on this PC (a model that runs on this computer): why a model cannot be downloaded: it needs {need} GB of memory and the PC has {have} GB (no full stop in Settings; main adds one when it refuses).",
+    "digits": "latn",
+    "dnt": [
+      "GB"
+    ]
+  },
+  "localAi.freeMemorySmall": {
+    "description": "Settings › AI on this PC and the AI tools, about AI on this PC (a model that runs on this computer): not enough free memory to run now; the Small model is not downloaded. {need} and {free} are gigabytes with one decimal.",
+    "digits": "latn",
+    "dnt": [
+      "GB"
+    ]
+  },
+  "localAi.freeMemory": {
+    "description": "Settings › AI on this PC and the AI tools, about AI on this PC (a model that runs on this computer): not enough free memory to run now. {need} and {free} are gigabytes with one decimal.",
+    "digits": "latn",
+    "dnt": [
+      "GB"
+    ]
+  },
+  "localAi.disk": {
+    "description": "Settings › AI on this PC and the AI tools, about AI on this PC (a model that runs on this computer): the model's download does not fit on the disk; {size} is gigabytes with one decimal.",
+    "digits": "latn",
+    "dnt": [
+      "GB"
+    ]
   }
 }

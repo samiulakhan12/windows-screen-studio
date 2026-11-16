@@ -551,6 +551,54 @@
       "kind": "table",
       "pattern": "^(?:Ollama on this PC|LM Studio on this PC|Other address)$",
       "reason": "SERVICE_PRESETS' labels as English data (main imports this file, test 86): main names a new service by them when the user types no name, and serviceName gives the English place; the renderer shows ProviderForm.tsx presetLabel and textChoices.ts placeOf, which say them through settings.provider.preset.* (English the same)."
+    },
+    {
+      "file": "src/shared/audio/soundLibrary.ts",
+      "kind": "table",
+      "pattern": "^(?:Calm|Upbeat|Corporate|Lo-fi|Cinematic|Whoosh|Whoosh out|Soft whoosh|Quick swish|Pop|Soft pop|Bubble pop|Click|Tick|Bell|Chime|Success|Rise|Fall|Bubble|Drop)$",
+      "reason": "The music moods and the sound effects' titles as English data (main imports this file to serve and check the library, test 86): the editor names them through soundNames.ts moodName and sfxName (sound.mood.*, sound.effect.*), which give these words in English."
+    },
+    {
+      "file": "src/shared/audio/soundLibrary.ts",
+      "kind": "copy",
+      "pattern": "^(?:Original pop|Original ding|Sound effect)$",
+      "reason": "sfxTitle's English names (main imports this file, test 86); soundNames.ts sfxRefName says the same names in the UI language (sound.effect.originalPop, originalDing, unknown) for the review rows (captionReview.ts, group c, still calls sfxTitle)."
+    },
+    {
+      "file": "src/shared/audio/soundLibrary.ts",
+      "kind": "copy",
+      "pattern": "^Music: \\$\\{…\\} by \\$\\{…\\} \\(CC0\\)$",
+      "reason": "musicCredit: the credit line written into the YouTube description the export and the Publish pack make (output the user posts, section 9.7). The Audio panel shows soundNames.ts musicCreditWords (sound.library.credit) in the UI language."
+    },
+    {
+      "file": "src/shared/publish/pack.ts",
+      "kind": "table",
+      "pattern": "^(?:YouTube description|LinkedIn post|X post|Help-centre article|Release notes|Title|Summary|Friendly|Professional|Casual|Short|Normal|This recording has no sound, so there is nothing to write from\\.|No captions yet\\. The copy is written from what is said, so make the captions first\\.|There is too little speech in the captions to write from\\.)$",
+      "reason": "The Publish pack's kinds, tones, lengths and blockers as English data (main imports this file, test 86): the dialog shows publishWords.ts (review.publish.*), whose English tests/i18nPublishWords.test.ts holds equal to these tables."
+    },
+    {
+      "file": "src/shared/publish/prompts.ts",
+      "kind": "table",
+      "pattern": "^(?:New|Improved|Fixed|Part \\$\\{…\\})$",
+      "reason": "Words written into the release notes and help-centre article the Publish pack makes (group headings and the fallback for a section with no heading): text the user copies out and posts, written like the AI's own words, not UI (section 9.7: words in exported output stay English this wave)."
+    },
+    {
+      "file": "src/shared/publish/prompts.ts",
+      "kind": "copy",
+      "pattern": "^(?:How to|Release notes)$",
+      "reason": "The fallback titles written into a help-centre article or release notes the Publish pack makes when the AI's title is empty: text the user copies out and posts, not UI (section 9.7)."
+    },
+    {
+      "file": "src/shared/speech/catalog.ts",
+      "kind": "table",
+      "pattern": "^(?:Whisper tiny|Whisper base|Whisper small|Whisper large-v3 turbo|Bengali\\.AI Whisper medium|Silero VAD v6\\.2\\.0)$",
+      "reason": "Speech models' and the speech detector's names as their makers publish them (model names from a catalogue): the same in every language."
+    },
+    {
+      "file": "src/shared/storage/rules.ts",
+      "kind": "copy",
+      "pattern": "^\\$\\{…\\} days ago$",
+      "reason": "usedAgo, kept as the English reference that test 73 (tests/i18nFmtSites.test.ts) compares fmt.relative with; Settings › Storage shows fmt.relative, which says it in the UI language."
     }
   ]
 }

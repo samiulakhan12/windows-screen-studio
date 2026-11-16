@@ -6,6 +6,7 @@
  */
 import type { AiTextTask } from '../api/ai'
 import type { LocalModelId, LocalModelUse } from '../api/localAi'
+import { t } from '../i18n/t'
 
 export interface LocalModelSpec {
   id: LocalModelId
@@ -34,8 +35,12 @@ export const LOCAL_MODELS: readonly LocalModelSpec[] = Object.freeze([
   Object.freeze({
     id: 'gemma4-e2b',
     name: 'Gemma 4 E2B',
-    title: 'Recommended',
-    hint: 'Every language, including Bangla. Needs 12 GB of memory.',
+    get title(): string {
+      return t('main.localAi.model.recommended')
+    },
+    get hint(): string {
+      return t('main.localAi.model.recommendedHint')
+    },
     file: 'gemma-4-E2B-it-Q4_K_M.gguf',
     bytes: 3_106_738_272,
     sha256: '740185b21d22ceb83a11c3aa62ad5842ef32c70f6096d756bbee85a1e4ec34b8',
@@ -54,8 +59,12 @@ export const LOCAL_MODELS: readonly LocalModelSpec[] = Object.freeze([
   Object.freeze({
     id: 'qwen3.5-2b',
     name: 'Qwen3.5 2B',
-    title: 'Small',
-    hint: 'Rough drafts, for PCs with 8 GB of memory.',
+    get title(): string {
+      return t('main.localAi.model.small')
+    },
+    get hint(): string {
+      return t('main.localAi.model.smallHint')
+    },
     file: 'Qwen3.5-2B-Q4_K_M.gguf',
     bytes: 1_280_835_840,
     sha256: 'aaf42c8b7c3cab2bf3d69c355048d4a0ee9973d48f16c731c0520ee914699223',
@@ -70,7 +79,14 @@ export const LOCAL_MODELS: readonly LocalModelSpec[] = Object.freeze([
     write: 8,
     loadS: 2.0,
     // From the research's samples; decision 9's evaluation replaces them before release.
-    notes: Object.freeze({ title: 'Small: titles often repeat the first sentence', summary: 'Small: Bangla summaries are short' })
+    notes: Object.freeze({
+      get title(): string {
+        return t('main.localAi.model.smallTitleNote')
+      },
+      get summary(): string {
+        return t('main.localAi.model.smallSummaryNote')
+      }
+    })
   } satisfies LocalModelSpec)
 ])
 

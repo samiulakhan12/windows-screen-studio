@@ -343,5 +343,95 @@
   },
   "jobs.open": {
     "description": "Button of the \"Export finished\" notification that opens the exported file (the verb)."
+  },
+  "localAi.stopped": {
+    "description": "Settings › AI on this PC and the AI tools, about AI on this PC (a model that runs on this computer): the run was stopped (by Stop, or because the tool closed)."
+  },
+  "localAi.waiting": {
+    "description": "Settings › AI on this PC and the AI tools, about AI on this PC (a model that runs on this computer): progress while another tool uses it."
+  },
+  "localAi.lowMemory": {
+    "description": "Settings › AI on this PC and the AI tools, about AI on this PC (a model that runs on this computer): shown after the progress, after \" · \", while free memory is low (no full stop)."
+  },
+  "localAi.written": {
+    "description": "Settings › AI on this PC and the AI tools, about AI on this PC (a model that runs on this computer): under text the model wrote."
+  },
+  "localAi.pcLine": {
+    "description": "Settings › AI on this PC and the AI tools, about AI on this PC (a model that runs on this computer): this PC's line in Settings; {gb} is whole gigabytes of memory.",
+    "digits": "latn",
+    "dnt": [
+      "GB"
+    ]
+  },
+  "localAi.lessThanAMinute": {
+    "description": "Settings › AI on this PC and the AI tools, about AI on this PC (a model that runs on this computer): time left while it writes, after \"On this PC: writing…\" (lower case, no full stop)."
+  },
+  "localAi.minutesLeft": {
+    "description": "Settings › AI on this PC and the AI tools, about AI on this PC (a model that runs on this computer): time left while it writes, after \"On this PC: writing…\" (lower case, no full stop)."
+  },
+  "localAi.loading": {
+    "description": "Settings › AI on this PC and the AI tools, about AI on this PC (a model that runs on this computer): progress beside a busy button."
+  },
+  "localAi.reading": {
+    "description": "Settings › AI on this PC and the AI tools, about AI on this PC (a model that runs on this computer): progress beside a busy button; {percent} is 0 to 100."
+  },
+  "localAi.writing": {
+    "description": "Settings › AI on this PC and the AI tools, about AI on this PC (a model that runs on this computer): progress beside a busy button; {left} is the time left (\"about 2 minutes left\")."
+  },
+  "localAi.speed": {
+    "description": "Settings › AI on this PC and the AI tools, about AI on this PC (a model that runs on this computer): the measured speed in Settings; {read} and {write} are words a second."
+  },
+  "localAi.model.recommended": {
+    "description": "Settings › AI on this PC and the AI tools, about AI on this PC (a model that runs on this computer): the larger model's title in the model list."
+  },
+  "localAi.model.recommendedHint": {
+    "description": "Settings › AI on this PC and the AI tools, about AI on this PC (a model that runs on this computer): what the Recommended model is for.",
+    "digits": "latn",
+    "dnt": [
+      "GB"
+    ]
+  },
+  "localAi.model.small": {
+    "description": "Settings › AI on this PC and the AI tools, about AI on this PC (a model that runs on this computer): the smaller model's title in the model list."
+  },
+  "localAi.model.smallHint": {
+    "description": "Settings › AI on this PC and the AI tools, about AI on this PC (a model that runs on this computer): what the Small model is for.",
+    "digits": "latn",
+    "dnt": [
+      "GB"
+    ]
+  },
+  "localAi.model.smallTitleNote": {
+    "description": "Settings › AI on this PC and the AI tools, about AI on this PC (a model that runs on this computer): a note under a title tool when the Small model writes (\"Small\" is the model)."
+  },
+  "localAi.model.smallSummaryNote": {
+    "description": "Settings › AI on this PC and the AI tools, about AI on this PC (a model that runs on this computer): a note under a summary tool when the Small model writes (\"Small\" is the model)."
+  },
+  "speech.tier.fast": {
+    "description": "Captions on this PC: a speech model's tier, as the Captions tab's quality chips and Settings name it. The quickest model."
+  },
+  "speech.tier.standard": {
+    "description": "Captions on this PC: a speech model's tier, as the Captions tab's quality chips and Settings name it. The recommended model."
+  },
+  "speech.tier.accurate": {
+    "description": "Captions on this PC: a speech model's tier, as the Captions tab's quality chips and Settings name it. A slower, more accurate model."
+  },
+  "speech.tier.best": {
+    "description": "Captions on this PC: a speech model's tier, as the Captions tab's quality chips and Settings name it. The slowest, most accurate model."
+  },
+  "speech.tier.bangla": {
+    "description": "Captions on this PC: a speech model's tier, as the Captions tab's quality chips and Settings name it. The model made for Bangla speech."
+  },
+  "speech.duration.underMinute": {
+    "description": "Captions on this PC: how long making captions will take, under a minute (lower case: it follows other words, as in \"about 3 min for this recording\")."
+  },
+  "speech.duration.minutes": {
+    "description": "Captions on this PC: how long making captions will take; {minutes} is a number of minutes, possibly with ½ (\"1½\")."
+  },
+  "speech.duration.hoursMinutes": {
+    "description": "Captions on this PC: how long making captions will take, in hours and minutes."
+  },
+  "speech.duration.hours": {
+    "description": "Captions on this PC: how long making captions will take, in whole hours."
   }
 }

@@ -529,5 +529,11 @@
   },
   "voice.strength.strongHint": {
     "description": "Audio panel › Voice (Clean voice): under the chips when Strong is chosen."
+  },
+  "library.credit": {
+    "description": "Audio › Music library: the credit under the music row while a library track is the music. {title} is the track's title and {artist} its artist, as they publish them.",
+    "dnt": [
+      "CC0"
+    ]
   }
 }

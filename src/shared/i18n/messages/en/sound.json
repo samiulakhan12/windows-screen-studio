@@ -175,5 +175,6 @@
   "voice.strength.strong": "Strong",
   "voice.strength.lightHint": "Softens the noise and keeps some of the room.",
   "voice.strength.normalHint": "Removes most noise. Right for most recordings.",
-  "voice.strength.strongHint": "Removes as much as it can. Quiet words can sound thin."
+  "voice.strength.strongHint": "Removes as much as it can. Quiet words can sound thin.",
+  "library.credit": "Music: {title} by {artist} (CC0)"
 }

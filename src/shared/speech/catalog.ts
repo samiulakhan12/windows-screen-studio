@@ -8,6 +8,7 @@
  * on, the 105.7 s LibriSpeech clip with forced-aligned word times). Windows under wine ran about
  * 1.3 times slower (WINDOWS_FACTOR in estimate.ts).
  */
+import { t } from '../i18n/t'
 
 export type SpeechModelId = 'whisper-tiny' | 'whisper-base' | 'whisper-small' | 'whisper-turbo' | 'whisper-bn-medium'
 
@@ -17,8 +18,24 @@ export type SpeechModelId = 'whisper-tiny' | 'whisper-base' | 'whisper-small' | 
  */
 export type SpeechTier = 'fast' | 'standard' | 'accurate' | 'best' | 'bangla'
 
-/** The tiers as the Captions tab names them (the model's own name follows in brackets once). */
-export const SPEECH_TIER_NAMES: Readonly<Record<SpeechTier, string>> = { fast: 'Fast', standard: 'Standard', accurate: 'Accurate', best: 'Most accurate', bangla: 'Bangla' }
+/** The tiers as the Captions tab names them (the model's own name follows in brackets once), in the UI language (main imports this file: main messages). */
+export const SPEECH_TIER_NAMES: Readonly<Record<SpeechTier, string>> = {
+  get fast(): string {
+    return t('main.speech.tier.fast')
+  },
+  get standard(): string {
+    return t('main.speech.tier.standard')
+  },
+  get accurate(): string {
+    return t('main.speech.tier.accurate')
+  },
+  get best(): string {
+    return t('main.speech.tier.best')
+  },
+  get bangla(): string {
+    return t('main.speech.tier.bangla')
+  }
+}
 
 export interface SpeechLicense {
   name: 'MIT' | 'Apache-2.0'
