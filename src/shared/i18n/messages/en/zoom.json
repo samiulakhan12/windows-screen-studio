@@ -170,5 +170,18 @@
   "magnifierSection.follows.region.title": "The lens stays on the content you place it on",
   "magnifierSection.follows.cursor": "The cursor",
   "magnifierSection.follows.cursor.title": "The lens follows the cursor",
-  "magnifierZoomRow.addTitle": "Add a magnifier at the playhead"
+  "magnifierZoomRow.addTitle": "Add a magnifier at the playhead",
+  "found.onlyClickIgnored": "The only click is ignored.",
+  "found.onlyLeftClickIgnored": "The only left click is ignored.",
+  "found.allClicksIgnored": "{count, plural, other {All {n} clicks are ignored.}}",
+  "found.allLeftClicksIgnored": "{count, plural, other {All {n} left clicks are ignored.}}",
+  "found.clicks": "{count, plural, one {{n} click} other {{n} clicks}}",
+  "found.leftClicks": "{count, plural, one {{n} left click} other {{n} left clicks}}",
+  "found.clicksIgnored": "{count, plural, one {{n} click ({ignored} ignored)} other {{n} clicks ({ignored} ignored)}}",
+  "found.leftClicksIgnored": "{count, plural, one {{n} left click ({ignored} ignored)} other {{n} left clicks ({ignored} ignored)}}",
+  "found.typing": "{count, plural, one {{n} typing burst} other {{n} typing bursts}}",
+  "found.marks": "{count, plural, one {{n} zoom mark} other {{n} zoom marks}}",
+  "found.scrolls": "{count, plural, one {{n} long scroll} other {{n} long scrolls}}",
+  "found.detected": "{list} detected.",
+  "found.none": "No usable input detected."
 }

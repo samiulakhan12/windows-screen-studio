@@ -130,7 +130,7 @@ export async function runAutoColour(deps: { project: Project; webcamUrl: string;
     }
     return autoCameraGrade(samples)
   } catch (err) {
-    if (err instanceof Aborted) throw new DOMException('Auto colour stopped', 'AbortError')
+    if (err instanceof Aborted) throw new DOMException(t('style.colourControls.autoColourStopped'), 'AbortError')
     throw err
   } finally {
     video.removeAttribute('src')

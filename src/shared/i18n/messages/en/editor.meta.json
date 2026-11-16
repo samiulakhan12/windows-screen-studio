@@ -785,5 +785,53 @@
   },
   "media.imageFailed": {
     "description": "An image (a background, a pasted or brand image) could not be loaded."
+  },
+  "freeze.atEndPauses": {
+    "description": "Editor notice: a freeze frame at the end of the video cannot keep the sound playing."
+  },
+  "freeze.onePaused": {
+    "description": "Editor notice after switching one freeze frame to pause the sound."
+  },
+  "freeze.onePlaying": {
+    "description": "Editor notice after switching one freeze frame to keep the sound playing."
+  },
+  "click.kind": {
+    "description": "Zoom › Selected click and the timeline: which mouse button a recorded click was."
+  },
+  "click.stray.start": {
+    "description": "Zoom panel: why stray-click detection ignored a click, as the end of \"It was ignored automatically: {reason}.\" (lower case, no full stop)."
+  },
+  "click.stray.end": {
+    "description": "Zoom panel: why stray-click detection ignored a click, as the end of a sentence (see editor.click.stray.start)."
+  },
+  "click.stray.moving": {
+    "description": "Zoom panel: why stray-click detection ignored a click, as the end of a sentence (see editor.click.stray.start)."
+  },
+  "click.tooltip.strayStart": {
+    "description": "Timeline: a click marker's tooltip when detection ignored the click; {at} is its time."
+  },
+  "click.tooltip.strayEnd": {
+    "description": "Timeline: a click marker's tooltip when detection ignored the click; {at} is its time."
+  },
+  "click.tooltip.strayMoving": {
+    "description": "Timeline: a click marker's tooltip when detection ignored the click; {at} is its time."
+  },
+  "click.tooltip.ignored": {
+    "description": "Timeline: a click marker's tooltip when the user ignored the click; {at} is its time."
+  },
+  "click.tooltip.usedKey": {
+    "description": "Timeline: a used click marker's tooltip; {at} is its time, {key} the Delete selection shortcut as keycaps; zoom \"yes\" when the click can start a zoom."
+  },
+  "click.tooltip.used": {
+    "description": "Timeline: a used click marker's tooltip when no key ignores clicks; {at} is its time; zoom \"yes\" when the click can start a zoom."
+  },
+  "click.usedZoom": {
+    "description": "Zoom › Selected click: what a used click that can start a zoom does."
+  },
+  "click.used": {
+    "description": "Zoom › Selected click: what a used click that cannot start a zoom does."
+  },
+  "click.usedRight": {
+    "description": "Zoom › Selected click: what a used right click does while right clicks start no zoom. \"Auto zoom › Right clicks\" names a setting in the Zoom panel."
   }
 }

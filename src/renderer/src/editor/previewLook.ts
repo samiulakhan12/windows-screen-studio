@@ -7,6 +7,7 @@
  */
 import { useSyncExternalStore } from 'react'
 import type { CaptionSettings } from '../../../shared/types'
+import { t } from '../../../shared/i18n/t'
 
 export interface PreviewLook {
   /** The gallery tile. */
@@ -40,4 +41,4 @@ export function usePreviewLook(): PreviewLook | null {
 }
 
 /** "Previewing Bold Pop · Enter uses it" for a focused tile, "Previewing Bold Pop · Click to use it" for a hovered one. */
-export const previewLabel = (look: PreviewLook): string => `Previewing ${look.name} · ${look.via === 'focus' ? 'Enter uses it' : 'Click to use it'}`
+export const previewLabel = (look: PreviewLook): string => t(look.via === 'focus' ? 'captions.look.previewFocus' : 'captions.look.previewHover', { name: look.name })

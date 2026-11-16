@@ -175,7 +175,7 @@ export function ShotViewer(props: {
   }
   const done = (): void => {
     if (!adjusting) return
-    if (!cropOk(adjusting.rect)) return setSaid('The crop is too small: at least 5% of the screen.')
+    if (!cropOk(adjusting.rect)) return setSaid(t('smart.guide.cropTooSmall'))
     props.onAdjust(shot.key, { rect: fitCrop(adjusting.rect), ...(adjusting.ring ? { ring: adjusting.ring } : {}) })
     setAdjusting(null)
   }

@@ -230,5 +230,23 @@
   },
   "snap.edgeEnd": {
     "description": "Snap guide on the timeline: the name of what a dragged edge snapped to, shown with its time. The end of a block; {name} is the block's kind (\"Zoom\", \"Camera layout\")."
+  },
+  "waveform.loading": {
+    "description": "Timeline: the clip track's tooltip goes on with this (after \" · \") while the waveform is being read."
+  },
+  "waveform.error": {
+    "description": "Timeline: the clip track's tooltip goes on with this (after \" · \") when the sound could not be read."
+  },
+  "waveform.split": {
+    "description": "Timeline: the clip track's tooltip goes on with this (after \" · \") when the waveform shows the microphone and the system sound apart."
+  },
+  "waveform.splitMuted": {
+    "description": "Timeline: as timeline.waveform.split, when a muted sound shows in grey."
+  },
+  "waveform.mixed": {
+    "description": "Timeline: the clip track's tooltip goes on with this (after \" · \") when the waveform shows the recording's sound as one."
+  },
+  "waveform.mixedMuted": {
+    "description": "Timeline: as timeline.waveform.mixed, when a muted sound shows in grey."
   }
 }

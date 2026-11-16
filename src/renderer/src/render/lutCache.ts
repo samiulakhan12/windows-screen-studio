@@ -18,12 +18,12 @@ import { t } from '../../../shared/i18n/t'
 type Which = 'screen' | 'camera'
 
 /** What the Colour section says when a grade's LUT cannot be used. */
-export const LUT_PROBLEM = 'The LUT file is missing or has changed. Import it again.'
+export const lutProblemText = (): string => t('style.colourControls.lutProblem')
 
 interface Entry {
   state: 'loading' | 'ready' | 'problem'
   lut: CubeLut | null
-  /** Why it could not be used (the log's words; the panel says LUT_PROBLEM). */
+  /** Why it could not be used (the log's words; the panel says lutProblemText()). */
   why: string | null
   /** Settles when loading is over, either way (never rejects). */
   done: Promise<void>
@@ -126,9 +126,9 @@ export function lutFor(project: Project, which: Which): CubeLut | null {
   return entryOf(project, which)?.lut ?? null
 }
 
-/** What is wrong with a grade's LUT (LUT_PROBLEM), or null (none, loading or ready). */
+/** What is wrong with a grade's LUT (lutProblemText()), or null (none, loading or ready). */
 export function lutProblem(project: Project, which: Which): string | null {
-  return entryOf(project, which)?.state === 'problem' ? LUT_PROBLEM : null
+  return entryOf(project, which)?.state === 'problem' ? lutProblemText() : null
 }
 
 /**

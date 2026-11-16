@@ -1885,5 +1885,14 @@
   },
   "clipPanel.editHint.toCut": {
     "description": "Clip tab, Edit hint (piece 4 of 4): Shift is a keycap (never translated). The hint is one sentence in pieces, joined by spaces, so that English keeps the text as it lays it out today (the English guard compares the pixels): Press {split} to split at the playhead, | select a clip and | press {delete} | to cut it, or Shift+drag …"
+  },
+  "colourControls.autoColourStopped": {
+    "description": "Colour › Auto colour: the reason a run ends when it is stopped (a stopped run shows nothing more)."
+  },
+  "colourControls.lutProblem": {
+    "description": "Colour: said under a grade whose LUT file is missing or changed.",
+    "dnt": [
+      "LUT"
+    ]
   }
 }

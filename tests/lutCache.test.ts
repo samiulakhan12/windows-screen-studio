@@ -70,7 +70,7 @@ interface LutCache {
   prepareLuts(p: Project): Promise<void>
   onLutReady(cb: () => void): () => void
   missingLutQuestion(p: Project): string | null
-  LUT_PROBLEM: string
+  lutProblemText(): string
 }
 const L = (await import(/* @vite-ignore */ CACHE)) as LutCache
 const { prepareEditingAssets } = (await import(/* @vite-ignore */ ASSETS)) as { prepareEditingAssets(p: Project): Promise<void> }
@@ -152,8 +152,8 @@ describe('loading a LUT (test 57)', () => {
     const p = project({ camera: ref })
     await L.prepareLuts(p)
     expect(L.lutFor(p, 'camera')).toBeNull()
-    expect(L.lutProblem(p, 'camera')).toBe(L.LUT_PROBLEM)
-    expect(L.LUT_PROBLEM).toBe('The LUT file is missing or has changed. Import it again.')
+    expect(L.lutProblem(p, 'camera')).toBe(L.lutProblemText())
+    expect(L.lutProblemText()).toBe('The LUT file is missing or has changed. Import it again.')
     expect(L.missingLutQuestion(p)).toBe("The camera's LUT is missing or has changed. Export without it?")
     expect(warn).toHaveBeenCalledWith('The LUT lut-2.cube is not used: the file has changed since it was imported')
   })
@@ -163,7 +163,7 @@ describe('loading a LUT (test 57)', () => {
     const p = project({ screen })
     await L.prepareLuts(p)
     expect(L.lutFor(p, 'screen')).toBeNull()
-    expect(L.lutProblem(p, 'screen')).toBe(L.LUT_PROBLEM)
+    expect(L.lutProblem(p, 'screen')).toBe(L.lutProblemText())
     expect(L.missingLutQuestion(p)).toBe("The screen's LUT is missing or has changed. Export without it?")
     const both = project({ screen, camera: { ...screen, file: 'lut-4.cube' } })
     await L.prepareLuts(both)
@@ -179,7 +179,7 @@ describe('loading a LUT (test 57)', () => {
     for (const p of [a, b, c]) {
       await L.prepareLuts(p)
       expect(L.lutFor(p, 'camera')).toBeNull()
-      expect(L.lutProblem(p, 'camera')).toBe(L.LUT_PROBLEM)
+      expect(L.lutProblem(p, 'camera')).toBe(L.lutProblemText())
     }
     // The oversized file is refused while it is read, before it is hashed or parsed.
     expect(warn).toHaveBeenCalledWith('The LUT lut-7.cube is not used: the file is larger than 16 MB')
@@ -190,7 +190,7 @@ describe('loading a LUT (test 57)', () => {
     const ref = { file: 'lut-8.cube', sha256: sha(bytes), title: 'Swap', size: 3 }
     const p = project({ screen: ref })
     await L.prepareLuts(p)
-    expect(L.lutProblem(p, 'screen')).toBe(L.LUT_PROBLEM)
+    expect(L.lutProblem(p, 'screen')).toBe(L.lutProblemText())
     served.set('lut-8.cube', bytes)
     await L.prepareLuts(p)
     expect(L.lutProblem(p, 'screen')).toBeNull()

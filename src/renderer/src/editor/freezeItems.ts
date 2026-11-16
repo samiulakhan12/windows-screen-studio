@@ -4,6 +4,7 @@ import type { Freeze, Project } from '../../../shared/types'
 import type { EditorServices } from './context'
 import type { Selection } from './selection'
 import { brandFontFor } from './titleItems'
+import { t } from '../../../shared/i18n/t'
 
 /*
  * Freeze frames at the playhead (E-11): the one code path for the Clip panel and the editor's
@@ -41,13 +42,13 @@ export function freezeTarget(p: Project, sel: Selection, t: number): Freeze | nu
 export function toggleFreezeSound({ store, player }: EditorServices, sel: Selection, opts: Options): void {
   const p = store.state
   const f = freezeTarget(p, sel, player.time)
-  if (!f) return opts.onNotice('Select a freeze frame first')
+  if (!f) return opts.onNotice(t('editor.reason.selectFreeze'))
   const sound = f.sound === 'pause' ? 'continue' : 'pause'
   const next = setFreezeSound(p, f.id, sound)
-  if (next === p) return opts.onNotice('Nothing plays after the end of the video, so this freeze pauses the sound')
+  if (next === p) return opts.onNotice(t('editor.freeze.atEndPauses'))
   store.update(() => next)
   if (sel?.kind !== 'freeze') opts.onSelect({ kind: 'freeze', id: f.id })
-  opts.onNotice(sound === 'pause' ? 'Freeze frame: the recording waits with its sound paused' : 'Freeze frame: the sound keeps playing')
+  opts.onNotice(sound === 'pause' ? t('editor.freeze.onePaused') : t('editor.freeze.onePlaying'))
 }
 
 /** Adds a text that shows through the whole freeze, selects it (to type in) and shows the frozen frame. */

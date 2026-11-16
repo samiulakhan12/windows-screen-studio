@@ -1873,5 +1873,14 @@
   },
   "studio.gradientName.candy": {
     "description": "Captions › Colours › Gradient: a gradient's name."
+  },
+  "look.previewFocus": {
+    "description": "Captions › look gallery: the label over the preview while a focused tile is previewed; {name} is the look's name. Enter is a keycap.",
+    "dnt": [
+      "Enter"
+    ]
+  },
+  "look.previewHover": {
+    "description": "Captions › look gallery: the label over the preview while a hovered tile is previewed; {name} is the look's name."
   }
 }

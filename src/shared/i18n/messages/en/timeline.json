@@ -65,5 +65,11 @@
   "snap.click": "Click",
   "snap.playhead": "Playhead",
   "snap.edgeStart": "{name} start",
-  "snap.edgeEnd": "{name} end"
+  "snap.edgeEnd": "{name} end",
+  "waveform.loading": "Reading the sound for the waveform…",
+  "waveform.error": "The waveform could not read the sound",
+  "waveform.split": "Waveform: microphone above the line, system sound below; darker stretches are pauses",
+  "waveform.splitMuted": "Waveform: microphone above the line, system sound below; darker stretches are pauses (grey: muted)",
+  "waveform.mixed": "Waveform: the recording's sound; darker stretches are pauses",
+  "waveform.mixedMuted": "Waveform: the recording's sound; darker stretches are pauses (grey: muted)"
 }

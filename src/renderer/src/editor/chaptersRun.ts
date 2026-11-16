@@ -87,7 +87,7 @@ export function foundNotice(count: number, all: number, youtube: boolean, firstA
 }
 
 /** The run was stopped: nothing changes. */
-const stopped = (): DOMException => new DOMException('Find chapters was stopped.', 'AbortError')
+const stopped = (): DOMException => new DOMException(t('smart.chapters.wasStopped'), 'AbortError')
 
 /** The text choice of a provider's or service's id, or On this PC. */
 async function choiceFor(id: string): Promise<TextChoice> {

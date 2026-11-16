@@ -255,7 +255,7 @@ function entryOf(projectId: string, o: Pick<ImageOverlay, 'file' | 'sticker'>, u
   const entry: Entry = { image: null, error: null, done: Promise.resolve() }
   cache.set(key, entry)
   if (!src) {
-    entry.error = 'This image could not be read.'
+    entry.error = t('export.overlay.unreadable')
     return entry
   }
   entry.done = decode(o, src, () => cache.get(key) === entry).then(
@@ -266,7 +266,7 @@ function entryOf(projectId: string, o: Pick<ImageOverlay, 'file' | 'sticker'>, u
     },
     (err: unknown) => {
       if (cache.get(key) !== entry) return
-      entry.error = err instanceof Error ? err.message : 'This image could not be read.'
+      entry.error = err instanceof Error ? err.message : t('export.overlay.unreadable')
       console.warn(`Overlay ${o.file ?? o.sticker} could not be loaded:`, err)
       notifyStyleAssetsChanged()
     }

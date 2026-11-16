@@ -2077,5 +2077,159 @@
   },
   "copy.lookSquare": {
     "description": "The notice after a square version is made, inside \"Made a square version. {look}. …\": the caption look chosen again for it; {look} is the look's name."
+  },
+  "share.step.waitingCopy": {
+    "description": "Export done view › Share: a copy step not started yet; {label} is the folder's name.",
+    "user": [
+      "label"
+    ]
+  },
+  "share.step.copying": {
+    "description": "Export done view › Share: a copy step running, before its share is known.",
+    "user": [
+      "label"
+    ]
+  },
+  "share.step.copyingPercent": {
+    "description": "Export done view › Share: a copy step running; {percent} is how much is copied (\"45%\").",
+    "user": [
+      "label"
+    ]
+  },
+  "share.step.saved": {
+    "description": "Export done view › Share: a copy step done; {place} is the folder, \"OneDrive › Flown\".",
+    "user": [
+      "place"
+    ]
+  },
+  "share.step.notCopied": {
+    "description": "Export done view › Share: a copy step cancelled.",
+    "user": [
+      "label"
+    ]
+  },
+  "share.step.copyFailed": {
+    "description": "Export done view › Share: a copy step failed; {reason} is main's reason.",
+    "user": [
+      "label"
+    ]
+  },
+  "share.step.copyFailedUnknown": {
+    "description": "Export done view › Share: a copy step failed with no reason given.",
+    "user": [
+      "label"
+    ]
+  },
+  "share.step.waitingPost": {
+    "description": "Export done view › Share: a post step not started yet; {label} is the chat's name.",
+    "user": [
+      "label"
+    ]
+  },
+  "share.step.posting": {
+    "description": "Export done view › Share: a post step running.",
+    "user": [
+      "label"
+    ]
+  },
+  "share.step.posted": {
+    "description": "Export done view › Share: a post step done.",
+    "user": [
+      "label"
+    ]
+  },
+  "share.step.notPosted": {
+    "description": "Export done view › Share: a post step cancelled.",
+    "user": [
+      "label"
+    ]
+  },
+  "share.step.postFailed": {
+    "description": "Export done view › Share: a post step failed; {reason} is main's reason.",
+    "user": [
+      "label"
+    ]
+  },
+  "share.step.postFailedUnknown": {
+    "description": "Export done view › Share: a post step failed with no reason given.",
+    "user": [
+      "label"
+    ]
+  },
+  "share.button.retryCopy": {
+    "description": "Export done view › Share: the accessible name of a failed copy's Try again button; {action} is the button's own words (common.action.tryAgain), which must come first (WCAG 2.5.3), {label} the folder.",
+    "user": [
+      "label"
+    ]
+  },
+  "share.button.retryPost": {
+    "description": "Export done view › Share: the accessible name of a failed post's Try again button; {action} is the button's own words, which must come first (WCAG 2.5.3), {label} the chat.",
+    "user": [
+      "label"
+    ]
+  },
+  "share.button.theCopy": {
+    "description": "Export done view › Share: the accessible name of a copy's Show in folder or Copy link button; {action} is the button's own words, which must come first (WCAG 2.5.3), {label} the folder.",
+    "user": [
+      "label"
+    ]
+  },
+  "share.cancelNamed": {
+    "description": "Export done view › Share: the accessible name of Cancel while shares run; {targets} names what it still has to do (\"OneDrive and #demos\").",
+    "user": [
+      "targets"
+    ]
+  },
+  "share.source.picked": {
+    "description": "Settings › Share: where a cloud folder came from: the user added it."
+  },
+  "share.source.usual": {
+    "description": "Settings › Share: where a cloud folder came from: its app's usual place."
+  },
+  "share.source.app": {
+    "description": "Settings › Share: where a cloud folder came from: its app's own settings; {service} is the app (OneDrive, Dropbox, Google Drive)."
+  },
+  "share.linkHint.onedrive": {
+    "description": "Export done view › Share: how to get a link for a copy in OneDrive (\"Share\" is OneDrive's own menu item)."
+  },
+  "share.linkHint.dropbox": {
+    "description": "Export done view › Share: how to get a link for a copy in Dropbox (\"Copy Dropbox link\" is Dropbox's own menu item).",
+    "dnt": [
+      "Dropbox"
+    ]
+  },
+  "share.linkHint.gdrive": {
+    "description": "Export done view › Share: how to get a link for a copy in Google Drive (\"Share › Copy link\" are Google Drive's own menu items)."
+  },
+  "share.linkHint.folder": {
+    "description": "Export done view › Share: a copy in a folder the user added."
+  },
+  "share.action.copyTo": {
+    "description": "Export dialog › After export: a choice that copies the video into a cloud folder; {place} is the folder's name, with where it is when two share a name.",
+    "user": [
+      "place"
+    ]
+  },
+  "share.action.postTo": {
+    "description": "Export dialog › After export: a choice that posts to a chat; {place} is the chat's name.",
+    "user": [
+      "place"
+    ]
+  },
+  "share.action.copyTitle": {
+    "description": "Export dialog › After export: the tooltip of a cloud folder choice; {folder} is the folder's path.",
+    "user": [
+      "folder"
+    ]
+  },
+  "share.action.postTitle": {
+    "description": "Export dialog › After export: the tooltip of a chat choice; {label} is the chat's name, {masked} the end of its webhook.",
+    "user": [
+      "label",
+      "masked"
+    ]
+  },
+  "share.failed": {
+    "description": "Export dialog: a share could not start; {reason} is main's reason."
   }
 }

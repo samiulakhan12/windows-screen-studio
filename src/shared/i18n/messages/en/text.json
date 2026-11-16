@@ -396,5 +396,8 @@
   "contrastMeter.hard": "Hard to read on this video",
   "contrastMeter.shown": "{where, select, yes {Contrast {ratio} : 1 at {time} · {words}} other {Contrast {ratio} : 1 · {words}}}",
   "contrastMeter.spoken": "{where, select, yes {Contrast {ratio} to 1, {words} at {time}} other {Contrast {ratio} to 1, {words}}}",
-  "imagesPanel.formats": "PNG, JPG, WebP, SVG or GIF, up to 25 MB"
+  "imagesPanel.formats": "PNG, JPG, WebP, SVG or GIF, up to 25 MB",
+  "graphicsPanel.full": "{count, plural, other {This video already has {n} pop-ups.}}",
+  "titleTrack.chapterThere": "\"{title}\" already starts here, so it is selected instead",
+  "titleTrack.chapterAtEnd": "A chapter needs some video after it: move the playhead back from the end"
 }

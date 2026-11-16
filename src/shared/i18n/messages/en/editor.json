@@ -246,5 +246,21 @@
   "media.loadFailed": "Could not load video ({reason})",
   "media.readFailed": "Could not read video ({reason})",
   "media.unknownError": "unknown error",
-  "media.imageFailed": "Could not load image"
+  "media.imageFailed": "Could not load image",
+  "freeze.atEndPauses": "Nothing plays after the end of the video, so this freeze pauses the sound",
+  "freeze.onePaused": "Freeze frame: the recording waits with its sound paused",
+  "freeze.onePlaying": "Freeze frame: the sound keeps playing",
+  "click.kind": "{button, select, left {Left click} right {Right click} middle {Middle click} other {Click}}",
+  "click.stray.start": "the first moment of the recording, usually the click that focuses the app",
+  "click.stray.end": "right before the recording stopped",
+  "click.stray.moving": "made while the cursor was flying past",
+  "click.tooltip.strayStart": "Ignored automatically at {at}: the first moment of the recording, usually the click that focuses the app · select it to use it again",
+  "click.tooltip.strayEnd": "Ignored automatically at {at}: right before the recording stopped · select it to use it again",
+  "click.tooltip.strayMoving": "Ignored automatically at {at}: made while the cursor was flying past · select it to use it again",
+  "click.tooltip.ignored": "Ignored click at {at} · select it to use it again",
+  "click.tooltip.usedKey": "{button, select, left {Left click} right {Right click} middle {Middle click} other {Click}} at {at} · select it and press {key} to ignore it ({zoom, select, yes {no zoom, click effect or sound} other {no click effect or sound}})",
+  "click.tooltip.used": "{button, select, left {Left click} right {Right click} middle {Middle click} other {Click}} at {at} · select it to ignore it in the Zoom panel ({zoom, select, yes {no zoom, click effect or sound} other {no click effect or sound}})",
+  "click.usedZoom": "Used: it can start an automatic zoom, shows the click effect, plays the click sound and counts as activity for smart speed.",
+  "click.used": "Used: it shows the click effect, plays the click sound and counts as activity for smart speed.",
+  "click.usedRight": "Used: it shows the click effect, plays the click sound and counts as activity for smart speed. Turn on Auto zoom › Right clicks to zoom for it too."
 }

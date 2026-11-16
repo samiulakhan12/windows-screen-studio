@@ -12,6 +12,7 @@ import { useEditor } from './context'
 import { useDevicePixelRatio } from './devicePixelRatio'
 import { useWaveformShown } from './waveformPref'
 import './waveform.css'
+import { t } from '../../../shared/i18n/t'
 
 /**
  * The recording's sound on the clip track (E-04, docs/design/timeline-waveform.md): one canvas
@@ -53,11 +54,13 @@ function subscribeHint(l: () => void): () => void {
 export const useWaveformHint = (): string => useSyncExternalStore(subscribeHint, () => hint)
 
 function hintFor(state: WaveState, lanes: readonly WaveformLane[]): string {
-  if (state === 'loading') return ' · Reading the sound for the waveform…'
-  if (state === 'error') return ' · The waveform could not read the sound'
+  // The clip track's tooltip goes on with this after a middle dot: each hint is a sentence of its own.
+  if (state === 'loading') return ` · ${t('timeline.waveform.loading')}`
+  if (state === 'error') return ` · ${t('timeline.waveform.error')}`
   if (state === 'none') return ''
-  const what = lanes.some((l) => l.side !== 'both') ? 'microphone above the line, system sound below' : "the recording's sound"
-  return ` · Waveform: ${what}; darker stretches are pauses${lanes.some((l) => l.muted) ? ' (grey: muted)' : ''}`
+  const split = lanes.some((l) => l.side !== 'both')
+  const muted = lanes.some((l) => l.muted)
+  return ` · ${t(split ? (muted ? 'timeline.waveform.splitMuted' : 'timeline.waveform.split') : muted ? 'timeline.waveform.mixedMuted' : 'timeline.waveform.mixed')}`
 }
 
 /* ---------- drawing ---------- */

@@ -582,5 +582,7 @@
   "studio.themeName.ink": "Ink (dark on light)",
   "studio.gradientName.sunset": "Sunset",
   "studio.gradientName.ocean": "Ocean",
-  "studio.gradientName.candy": "Candy"
+  "studio.gradientName.candy": "Candy",
+  "look.previewFocus": "Previewing {name} · Enter uses it",
+  "look.previewHover": "Previewing {name} · Click to use it"
 }

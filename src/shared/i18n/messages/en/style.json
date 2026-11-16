@@ -590,5 +590,7 @@
   "clipPanel.editHint.selectClip": "select a clip and",
   "clipPanel.editHint.pressDelete": "press {delete}",
   "clipPanel.editHint.useDelete": "use Delete clip",
-  "clipPanel.editHint.toCut": "to cut it, or <kbd>Shift</kbd>+drag on the clip track to select a range. Drag the yellow handles to trim."
+  "clipPanel.editHint.toCut": "to cut it, or <kbd>Shift</kbd>+drag on the clip track to select a range. Drag the yellow handles to trim.",
+  "colourControls.autoColourStopped": "Auto colour stopped",
+  "colourControls.lutProblem": "The LUT file is missing or has changed. Import it again."
 }

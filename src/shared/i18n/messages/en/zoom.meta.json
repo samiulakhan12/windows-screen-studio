@@ -532,5 +532,44 @@
   },
   "magnifierZoomRow.addTitle": {
     "description": "Zoom tab: tooltip of Add magnifier under the zoom style (its shortcut follows in brackets)."
+  },
+  "found.onlyClickIgnored": {
+    "description": "Zoom › Auto zoom summary: the recording's one click is ignored (right clicks count as clicks)."
+  },
+  "found.onlyLeftClickIgnored": {
+    "description": "Zoom › Auto zoom summary: the recording's one left click is ignored."
+  },
+  "found.allClicksIgnored": {
+    "description": "Zoom › Auto zoom summary: every click is ignored (two or more); {n} is how many."
+  },
+  "found.allLeftClicksIgnored": {
+    "description": "Zoom › Auto zoom summary: every left click is ignored (two or more); {n} is how many."
+  },
+  "found.clicks": {
+    "description": "Zoom › Auto zoom summary: one fact of the line \"… · … detected.\": the clicks auto zoom can zoom for."
+  },
+  "found.leftClicks": {
+    "description": "Zoom › Auto zoom summary: one fact of the line \"… · … detected.\": the left clicks."
+  },
+  "found.clicksIgnored": {
+    "description": "Zoom › Auto zoom summary: one fact of the line: the clicks, {ignored} of them ignored."
+  },
+  "found.leftClicksIgnored": {
+    "description": "Zoom › Auto zoom summary: one fact of the line: the left clicks, {ignored} of them ignored."
+  },
+  "found.typing": {
+    "description": "Zoom › Auto zoom summary: one fact of the line: bursts of typing."
+  },
+  "found.marks": {
+    "description": "Zoom › Auto zoom summary: one fact of the line: zoom marks set while recording."
+  },
+  "found.scrolls": {
+    "description": "Zoom › Auto zoom summary: one fact of the line: long scrolls."
+  },
+  "found.detected": {
+    "description": "Zoom › Auto zoom summary: the line of what was found; {list} is the facts (zoom.found.clicks, .typing, …) one after another with \" · \" between them."
+  },
+  "found.none": {
+    "description": "Zoom › Auto zoom summary: nothing auto zoom can zoom for was found."
   }
 }

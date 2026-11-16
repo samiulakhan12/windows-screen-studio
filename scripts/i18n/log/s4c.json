@@ -1188,5 +1188,1225 @@
     "sample": {
       "reason": "The AI service did not answer."
     }
+  },
+  {
+    "key": "timeline.waveform.loading",
+    "file": "src/renderer/src/editor/ClipWaveform.tsx",
+    "line": 56,
+    "english": "Reading the sound for the waveform…",
+    "sample": {}
+  },
+  {
+    "key": "timeline.waveform.error",
+    "file": "src/renderer/src/editor/ClipWaveform.tsx",
+    "line": 57,
+    "english": "The waveform could not read the sound",
+    "sample": {}
+  },
+  {
+    "key": "timeline.waveform.split",
+    "file": "src/renderer/src/editor/ClipWaveform.tsx",
+    "line": 60,
+    "english": "Waveform: microphone above the line, system sound below; darker stretches are pauses",
+    "sample": {}
+  },
+  {
+    "key": "timeline.waveform.splitMuted",
+    "file": "src/renderer/src/editor/ClipWaveform.tsx",
+    "line": 60,
+    "english": "Waveform: microphone above the line, system sound below; darker stretches are pauses (grey: muted)",
+    "sample": {}
+  },
+  {
+    "key": "timeline.waveform.mixed",
+    "file": "src/renderer/src/editor/ClipWaveform.tsx",
+    "line": 60,
+    "english": "Waveform: the recording's sound; darker stretches are pauses",
+    "sample": {}
+  },
+  {
+    "key": "timeline.waveform.mixedMuted",
+    "file": "src/renderer/src/editor/ClipWaveform.tsx",
+    "line": 60,
+    "english": "Waveform: the recording's sound; darker stretches are pauses (grey: muted)",
+    "sample": {}
+  },
+  {
+    "key": "style.colourControls.autoColourStopped",
+    "file": "src/renderer/src/editor/autoColourRun.ts",
+    "line": 133,
+    "english": "Auto colour stopped",
+    "sample": {}
+  },
+  {
+    "key": "smart.chapters.wasStopped",
+    "file": "src/renderer/src/editor/chaptersRun.ts",
+    "line": 90,
+    "english": "Find chapters was stopped.",
+    "sample": {}
+  },
+  {
+    "key": "export.cancelledAbort",
+    "file": "src/renderer/src/editor/exporter.ts",
+    "line": 110,
+    "english": "Export cancelled",
+    "sample": {}
+  },
+  {
+    "key": "editor.freeze.atEndPauses",
+    "file": "src/renderer/src/editor/freezeItems.ts",
+    "line": 47,
+    "english": "Nothing plays after the end of the video, so this freeze pauses the sound",
+    "sample": {}
+  },
+  {
+    "key": "editor.freeze.onePaused",
+    "file": "src/renderer/src/editor/freezeItems.ts",
+    "line": 50,
+    "english": "Freeze frame: the recording waits with its sound paused",
+    "sample": {}
+  },
+  {
+    "key": "editor.freeze.onePlaying",
+    "file": "src/renderer/src/editor/freezeItems.ts",
+    "line": 50,
+    "english": "Freeze frame: the sound keeps playing",
+    "sample": {}
+  },
+  {
+    "key": "text.graphicsPanel.full",
+    "file": "src/renderer/src/editor/graphicItems.ts",
+    "line": 18,
+    "english": [
+      "This video already has 0 pop-ups.",
+      "This video already has 1 pop-ups.",
+      "This video already has 2 pop-ups.",
+      "This video already has 1000 pop-ups."
+    ],
+    "sample": [
+      {
+        "count": 0,
+        "n": "0"
+      },
+      {
+        "count": 1,
+        "n": "1"
+      },
+      {
+        "count": 2,
+        "n": "2"
+      },
+      {
+        "count": 1000,
+        "n": "1000"
+      }
+    ]
+  },
+  {
+    "key": "captions.look.previewFocus",
+    "file": "src/renderer/src/editor/previewLook.ts",
+    "line": 43,
+    "english": "Previewing Karaoke Fill · Enter uses it",
+    "sample": {
+      "name": "Karaoke Fill"
+    }
+  },
+  {
+    "key": "captions.look.previewHover",
+    "file": "src/renderer/src/editor/previewLook.ts",
+    "line": 43,
+    "english": "Previewing Karaoke Fill · Click to use it",
+    "sample": {
+      "name": "Karaoke Fill"
+    }
+  },
+  {
+    "key": "text.titleTrack.chapterThere",
+    "file": "src/renderer/src/editor/titleItems.ts",
+    "line": 66,
+    "english": "\"Intro\" already starts here, so it is selected instead",
+    "sample": {
+      "title": "Intro"
+    }
+  },
+  {
+    "key": "text.titleTrack.chapterAtEnd",
+    "file": "src/renderer/src/editor/titleItems.ts",
+    "line": 70,
+    "english": "A chapter needs some video after it: move the playhead back from the end",
+    "sample": {}
+  },
+  {
+    "key": "editor.click.kind",
+    "file": "src/renderer/src/editor/selection.ts",
+    "line": 85,
+    "english": "Left click",
+    "sample": {
+      "button": "left"
+    }
+  },
+  {
+    "key": "editor.click.kind",
+    "file": "src/renderer/src/editor/selection.ts",
+    "line": 85,
+    "english": "Right click",
+    "sample": {
+      "button": "right"
+    }
+  },
+  {
+    "key": "editor.click.kind",
+    "file": "src/renderer/src/editor/selection.ts",
+    "line": 85,
+    "english": "Middle click",
+    "sample": {
+      "button": "middle"
+    }
+  },
+  {
+    "key": "editor.click.stray.start",
+    "file": "src/renderer/src/editor/selection.ts",
+    "line": 89,
+    "english": "the first moment of the recording, usually the click that focuses the app",
+    "sample": {}
+  },
+  {
+    "key": "editor.click.stray.end",
+    "file": "src/renderer/src/editor/selection.ts",
+    "line": 90,
+    "english": "right before the recording stopped",
+    "sample": {}
+  },
+  {
+    "key": "editor.click.stray.moving",
+    "file": "src/renderer/src/editor/selection.ts",
+    "line": 91,
+    "english": "made while the cursor was flying past",
+    "sample": {}
+  },
+  {
+    "key": "editor.click.tooltip.strayStart",
+    "file": "src/renderer/src/editor/selection.ts",
+    "line": 105,
+    "english": "Ignored automatically at 0:00.3: the first moment of the recording, usually the click that focuses the app · select it to use it again",
+    "sample": {
+      "at": "0:00.3"
+    }
+  },
+  {
+    "key": "editor.click.tooltip.strayEnd",
+    "file": "src/renderer/src/editor/selection.ts",
+    "line": 105,
+    "english": "Ignored automatically at 1:02.5: right before the recording stopped · select it to use it again",
+    "sample": {
+      "at": "1:02.5"
+    }
+  },
+  {
+    "key": "editor.click.tooltip.strayMoving",
+    "file": "src/renderer/src/editor/selection.ts",
+    "line": 105,
+    "english": "Ignored automatically at 0:12.0: made while the cursor was flying past · select it to use it again",
+    "sample": {
+      "at": "0:12.0"
+    }
+  },
+  {
+    "key": "editor.click.tooltip.ignored",
+    "file": "src/renderer/src/editor/selection.ts",
+    "line": 106,
+    "english": "Ignored click at 0:04.2 · select it to use it again",
+    "sample": {
+      "at": "0:04.2"
+    }
+  },
+  {
+    "key": "editor.click.tooltip.usedKey",
+    "file": "src/renderer/src/editor/selection.ts",
+    "line": 109,
+    "english": "Left click at 0:04.2 · select it and press Delete to ignore it (no zoom, click effect or sound)",
+    "sample": {
+      "button": "left",
+      "at": "0:04.2",
+      "zoom": "yes",
+      "key": "Delete"
+    }
+  },
+  {
+    "key": "editor.click.tooltip.usedKey",
+    "file": "src/renderer/src/editor/selection.ts",
+    "line": 109,
+    "english": "Right click at 0:04.2 · select it and press Delete to ignore it (no click effect or sound)",
+    "sample": {
+      "button": "right",
+      "at": "0:04.2",
+      "zoom": "no",
+      "key": "Delete"
+    }
+  },
+  {
+    "key": "editor.click.tooltip.usedKey",
+    "file": "src/renderer/src/editor/selection.ts",
+    "line": 109,
+    "english": "Middle click at 0:04.2 · select it and press Backspace to ignore it (no click effect or sound)",
+    "sample": {
+      "button": "middle",
+      "at": "0:04.2",
+      "zoom": "no",
+      "key": "Backspace"
+    }
+  },
+  {
+    "key": "editor.click.tooltip.used",
+    "file": "src/renderer/src/editor/selection.ts",
+    "line": 109,
+    "english": "Left click at 0:04.2 · select it to ignore it in the Zoom panel (no zoom, click effect or sound)",
+    "sample": {
+      "button": "left",
+      "at": "0:04.2",
+      "zoom": "yes"
+    }
+  },
+  {
+    "key": "editor.click.tooltip.used",
+    "file": "src/renderer/src/editor/selection.ts",
+    "line": 109,
+    "english": "Right click at 0:04.2 · select it to ignore it in the Zoom panel (no click effect or sound)",
+    "sample": {
+      "button": "right",
+      "at": "0:04.2",
+      "zoom": "no"
+    }
+  },
+  {
+    "key": "editor.click.usedZoom",
+    "file": "src/renderer/src/editor/selection.ts",
+    "line": 115,
+    "english": "Used: it can start an automatic zoom, shows the click effect, plays the click sound and counts as activity for smart speed.",
+    "sample": {}
+  },
+  {
+    "key": "editor.click.used",
+    "file": "src/renderer/src/editor/selection.ts",
+    "line": 118,
+    "english": "Used: it shows the click effect, plays the click sound and counts as activity for smart speed.",
+    "sample": {}
+  },
+  {
+    "key": "editor.click.usedRight",
+    "file": "src/renderer/src/editor/selection.ts",
+    "line": 118,
+    "english": "Used: it shows the click effect, plays the click sound and counts as activity for smart speed. Turn on Auto zoom › Right clicks to zoom for it too.",
+    "sample": {}
+  },
+  {
+    "key": "zoom.found.onlyClickIgnored",
+    "file": "src/renderer/src/editor/selection.ts",
+    "line": 134,
+    "english": "The only click is ignored.",
+    "sample": {}
+  },
+  {
+    "key": "zoom.found.onlyLeftClickIgnored",
+    "file": "src/renderer/src/editor/selection.ts",
+    "line": 134,
+    "english": "The only left click is ignored.",
+    "sample": {}
+  },
+  {
+    "key": "zoom.found.allClicksIgnored",
+    "file": "src/renderer/src/editor/selection.ts",
+    "line": 134,
+    "english": [
+      "All 0 clicks are ignored.",
+      "All 1 clicks are ignored.",
+      "All 2 clicks are ignored.",
+      "All 1000 clicks are ignored."
+    ],
+    "sample": [
+      {
+        "count": 0,
+        "n": "0"
+      },
+      {
+        "count": 1,
+        "n": "1"
+      },
+      {
+        "count": 2,
+        "n": "2"
+      },
+      {
+        "count": 1000,
+        "n": "1000"
+      }
+    ]
+  },
+  {
+    "key": "zoom.found.allLeftClicksIgnored",
+    "file": "src/renderer/src/editor/selection.ts",
+    "line": 134,
+    "english": [
+      "All 0 left clicks are ignored.",
+      "All 1 left clicks are ignored.",
+      "All 2 left clicks are ignored.",
+      "All 1000 left clicks are ignored."
+    ],
+    "sample": [
+      {
+        "count": 0,
+        "n": "0"
+      },
+      {
+        "count": 1,
+        "n": "1"
+      },
+      {
+        "count": 2,
+        "n": "2"
+      },
+      {
+        "count": 1000,
+        "n": "1000"
+      }
+    ]
+  },
+  {
+    "key": "zoom.found.clicks",
+    "file": "src/renderer/src/editor/selection.ts",
+    "line": 136,
+    "english": [
+      "0 clicks",
+      "1 click",
+      "2 clicks",
+      "1000 clicks"
+    ],
+    "sample": [
+      {
+        "count": 0,
+        "n": "0",
+        "ignored": "0"
+      },
+      {
+        "count": 1,
+        "n": "1",
+        "ignored": "0"
+      },
+      {
+        "count": 2,
+        "n": "2",
+        "ignored": "0"
+      },
+      {
+        "count": 1000,
+        "n": "1000",
+        "ignored": "0"
+      }
+    ]
+  },
+  {
+    "key": "zoom.found.leftClicks",
+    "file": "src/renderer/src/editor/selection.ts",
+    "line": 136,
+    "english": [
+      "0 left clicks",
+      "1 left click",
+      "2 left clicks",
+      "1000 left clicks"
+    ],
+    "sample": [
+      {
+        "count": 0,
+        "n": "0",
+        "ignored": "0"
+      },
+      {
+        "count": 1,
+        "n": "1",
+        "ignored": "0"
+      },
+      {
+        "count": 2,
+        "n": "2",
+        "ignored": "0"
+      },
+      {
+        "count": 1000,
+        "n": "1000",
+        "ignored": "0"
+      }
+    ]
+  },
+  {
+    "key": "zoom.found.clicksIgnored",
+    "file": "src/renderer/src/editor/selection.ts",
+    "line": 136,
+    "english": [
+      "0 clicks (1 ignored)",
+      "1 click (1 ignored)",
+      "2 clicks (1 ignored)",
+      "1000 clicks (1 ignored)"
+    ],
+    "sample": [
+      {
+        "count": 0,
+        "n": "0",
+        "ignored": "1"
+      },
+      {
+        "count": 1,
+        "n": "1",
+        "ignored": "1"
+      },
+      {
+        "count": 2,
+        "n": "2",
+        "ignored": "1"
+      },
+      {
+        "count": 1000,
+        "n": "1000",
+        "ignored": "1"
+      }
+    ]
+  },
+  {
+    "key": "zoom.found.leftClicksIgnored",
+    "file": "src/renderer/src/editor/selection.ts",
+    "line": 136,
+    "english": [
+      "0 left clicks (1 ignored)",
+      "1 left click (1 ignored)",
+      "2 left clicks (1 ignored)",
+      "1000 left clicks (1 ignored)"
+    ],
+    "sample": [
+      {
+        "count": 0,
+        "n": "0",
+        "ignored": "1"
+      },
+      {
+        "count": 1,
+        "n": "1",
+        "ignored": "1"
+      },
+      {
+        "count": 2,
+        "n": "2",
+        "ignored": "1"
+      },
+      {
+        "count": 1000,
+        "n": "1000",
+        "ignored": "1"
+      }
+    ]
+  },
+  {
+    "key": "zoom.found.typing",
+    "file": "src/renderer/src/editor/selection.ts",
+    "line": 137,
+    "english": [
+      "0 typing bursts",
+      "1 typing burst",
+      "2 typing bursts",
+      "1000 typing bursts"
+    ],
+    "sample": [
+      {
+        "count": 0,
+        "n": "0"
+      },
+      {
+        "count": 1,
+        "n": "1"
+      },
+      {
+        "count": 2,
+        "n": "2"
+      },
+      {
+        "count": 1000,
+        "n": "1000"
+      }
+    ]
+  },
+  {
+    "key": "zoom.found.marks",
+    "file": "src/renderer/src/editor/selection.ts",
+    "line": 138,
+    "english": [
+      "0 zoom marks",
+      "1 zoom mark",
+      "2 zoom marks",
+      "1000 zoom marks"
+    ],
+    "sample": [
+      {
+        "count": 0,
+        "n": "0"
+      },
+      {
+        "count": 1,
+        "n": "1"
+      },
+      {
+        "count": 2,
+        "n": "2"
+      },
+      {
+        "count": 1000,
+        "n": "1000"
+      }
+    ]
+  },
+  {
+    "key": "zoom.found.scrolls",
+    "file": "src/renderer/src/editor/selection.ts",
+    "line": 139,
+    "english": [
+      "0 long scrolls",
+      "1 long scroll",
+      "2 long scrolls",
+      "1000 long scrolls"
+    ],
+    "sample": [
+      {
+        "count": 0,
+        "n": "0"
+      },
+      {
+        "count": 1,
+        "n": "1"
+      },
+      {
+        "count": 2,
+        "n": "2"
+      },
+      {
+        "count": 1000,
+        "n": "1000"
+      }
+    ]
+  },
+  {
+    "key": "zoom.found.detected",
+    "file": "src/renderer/src/editor/selection.ts",
+    "line": 141,
+    "english": "3 left clicks (1 ignored) · 1 long scroll detected.",
+    "sample": {
+      "list": "3 left clicks (1 ignored) · 1 long scroll"
+    }
+  },
+  {
+    "key": "zoom.found.none",
+    "file": "src/renderer/src/editor/selection.ts",
+    "line": 141,
+    "english": "No usable input detected.",
+    "sample": {}
+  },
+  {
+    "key": "smart.guide.run.stopped",
+    "file": "src/renderer/src/guide/guideRun.ts",
+    "line": 174,
+    "english": "Stopped. Nothing was changed.",
+    "sample": {}
+  },
+  {
+    "key": "smart.guide.run.stopped",
+    "file": "src/renderer/src/guide/guideRun.ts",
+    "line": 195,
+    "english": "Stopped. Nothing was changed.",
+    "sample": {}
+  },
+  {
+    "key": "smart.guide.run.nothingChanged",
+    "file": "src/renderer/src/guide/guideRun.ts",
+    "line": 180,
+    "english": "Nothing was changed.",
+    "sample": {}
+  },
+  {
+    "key": "smart.guide.run.nothingChanged",
+    "file": "src/renderer/src/guide/guideRun.ts",
+    "line": 201,
+    "english": "Nothing was changed.",
+    "sample": {}
+  },
+  {
+    "key": "smart.guide.run.nothingForNotes",
+    "file": "src/renderer/src/guide/guideRun.ts",
+    "line": 193,
+    "english": "Nothing was said to make notes from.",
+    "sample": {}
+  },
+  {
+    "key": "smart.guide.run.titlesLocal",
+    "file": "src/renderer/src/guide/guideRun.ts",
+    "line": 182,
+    "english": [
+      "Wrote 0 titles on this PC.",
+      "Wrote 1 title on this PC.",
+      "Wrote 2 titles on this PC.",
+      "Wrote 1000 titles on this PC."
+    ],
+    "sample": [
+      {
+        "count": 0,
+        "n": "0",
+        "place": ""
+      },
+      {
+        "count": 1,
+        "n": "1",
+        "place": ""
+      },
+      {
+        "count": 2,
+        "n": "2",
+        "place": ""
+      },
+      {
+        "count": 1000,
+        "n": "1000",
+        "place": ""
+      }
+    ]
+  },
+  {
+    "key": "smart.guide.run.titlesWith",
+    "file": "src/renderer/src/guide/guideRun.ts",
+    "line": 182,
+    "english": [
+      "Wrote 0 titles with OpenAI.",
+      "Wrote 1 title with OpenAI.",
+      "Wrote 2 titles with OpenAI.",
+      "Wrote 1000 titles with OpenAI."
+    ],
+    "sample": [
+      {
+        "count": 0,
+        "n": "0",
+        "place": "OpenAI"
+      },
+      {
+        "count": 1,
+        "n": "1",
+        "place": "OpenAI"
+      },
+      {
+        "count": 2,
+        "n": "2",
+        "place": "OpenAI"
+      },
+      {
+        "count": 1000,
+        "n": "1000",
+        "place": "OpenAI"
+      }
+    ]
+  },
+  {
+    "key": "smart.guide.run.titlesLocalPartly",
+    "file": "src/renderer/src/guide/guideRun.ts",
+    "line": 183,
+    "english": [
+      "Wrote 0 titles on this PC. The rest failed: The model stopped.",
+      "Wrote 1 title on this PC. The rest failed: The model stopped.",
+      "Wrote 2 titles on this PC. The rest failed: The model stopped.",
+      "Wrote 1000 titles on this PC. The rest failed: The model stopped."
+    ],
+    "sample": [
+      {
+        "count": 0,
+        "n": "0",
+        "place": "",
+        "reason": "The model stopped."
+      },
+      {
+        "count": 1,
+        "n": "1",
+        "place": "",
+        "reason": "The model stopped."
+      },
+      {
+        "count": 2,
+        "n": "2",
+        "place": "",
+        "reason": "The model stopped."
+      },
+      {
+        "count": 1000,
+        "n": "1000",
+        "place": "",
+        "reason": "The model stopped."
+      }
+    ]
+  },
+  {
+    "key": "smart.guide.run.titlesWithPartly",
+    "file": "src/renderer/src/guide/guideRun.ts",
+    "line": 183,
+    "english": [
+      "Wrote 0 titles with OpenAI. The rest failed: The service is busy.",
+      "Wrote 1 title with OpenAI. The rest failed: The service is busy.",
+      "Wrote 2 titles with OpenAI. The rest failed: The service is busy.",
+      "Wrote 1000 titles with OpenAI. The rest failed: The service is busy."
+    ],
+    "sample": [
+      {
+        "count": 0,
+        "n": "0",
+        "place": "OpenAI",
+        "reason": "The service is busy."
+      },
+      {
+        "count": 1,
+        "n": "1",
+        "place": "OpenAI",
+        "reason": "The service is busy."
+      },
+      {
+        "count": 2,
+        "n": "2",
+        "place": "OpenAI",
+        "reason": "The service is busy."
+      },
+      {
+        "count": 1000,
+        "n": "1000",
+        "place": "OpenAI",
+        "reason": "The service is busy."
+      }
+    ]
+  },
+  {
+    "key": "smart.guide.run.notesLocal",
+    "file": "src/renderer/src/guide/guideRun.ts",
+    "line": 203,
+    "english": [
+      "Tidied 0 notes on this PC.",
+      "Tidied 1 note on this PC.",
+      "Tidied 2 notes on this PC.",
+      "Tidied 1000 notes on this PC."
+    ],
+    "sample": [
+      {
+        "count": 0,
+        "n": "0",
+        "place": ""
+      },
+      {
+        "count": 1,
+        "n": "1",
+        "place": ""
+      },
+      {
+        "count": 2,
+        "n": "2",
+        "place": ""
+      },
+      {
+        "count": 1000,
+        "n": "1000",
+        "place": ""
+      }
+    ]
+  },
+  {
+    "key": "smart.guide.run.notesWith",
+    "file": "src/renderer/src/guide/guideRun.ts",
+    "line": 203,
+    "english": [
+      "Tidied 0 notes with OpenAI.",
+      "Tidied 1 note with OpenAI.",
+      "Tidied 2 notes with OpenAI.",
+      "Tidied 1000 notes with OpenAI."
+    ],
+    "sample": [
+      {
+        "count": 0,
+        "n": "0",
+        "place": "OpenAI"
+      },
+      {
+        "count": 1,
+        "n": "1",
+        "place": "OpenAI"
+      },
+      {
+        "count": 2,
+        "n": "2",
+        "place": "OpenAI"
+      },
+      {
+        "count": 1000,
+        "n": "1000",
+        "place": "OpenAI"
+      }
+    ]
+  },
+  {
+    "key": "smart.guide.cropTooSmall",
+    "file": "src/renderer/src/guide/ShotViewer.tsx",
+    "line": 178,
+    "english": "The crop is too small: at least 5% of the screen.",
+    "sample": {}
+  },
+  {
+    "key": "smart.guide.adjust.cropName",
+    "file": "src/shared/guide/adjust.ts",
+    "line": 101,
+    "english": "Crop, 45% wide, from 20% across and 10% down",
+    "sample": {
+      "w": "45%",
+      "x": "20%",
+      "y": "10%"
+    }
+  },
+  {
+    "key": "smart.guide.adjust.ringName",
+    "file": "src/shared/guide/adjust.ts",
+    "line": 103,
+    "english": "Ring at 42% across, 30% down",
+    "sample": {
+      "x": "42%",
+      "y": "30%"
+    }
+  },
+  {
+    "key": "export.fonts.notDownloaded",
+    "file": "src/renderer/src/render/fontLoader.ts",
+    "line": 542,
+    "english": "Captions use Noto Sans KR, which is not downloaded: they will use Malgun Gothic.",
+    "sample": {
+      "family": "Noto Sans KR",
+      "until": "Malgun Gothic"
+    }
+  },
+  {
+    "key": "export.fonts.missingOne",
+    "file": "src/renderer/src/render/fontLoader.ts",
+    "line": 542,
+    "english": "Font missing: Inter. Text that uses it is drawn with another font.",
+    "sample": {
+      "family": "Inter"
+    }
+  },
+  {
+    "key": "style.colourControls.lutProblem",
+    "file": "src/renderer/src/render/lutCache.ts",
+    "line": 21,
+    "english": "The LUT file is missing or has changed. Import it again.",
+    "sample": {}
+  },
+  {
+    "key": "export.stoppedAbort",
+    "file": "src/renderer/src/render/proEncoders.ts",
+    "line": 177,
+    "english": "The export was stopped",
+    "sample": {}
+  },
+  {
+    "key": "export.overlay.unreadable",
+    "file": "src/renderer/src/render/overlayLayer.ts",
+    "line": 258,
+    "english": "This image could not be read.",
+    "sample": {}
+  },
+  {
+    "key": "export.overlay.unreadable",
+    "file": "src/renderer/src/render/overlayLayer.ts",
+    "line": 269,
+    "english": "This image could not be read.",
+    "sample": {}
+  },
+  {
+    "key": "review.share.step.waitingCopy",
+    "file": "src/shared/share/steps.ts",
+    "line": 9,
+    "english": "Waiting to copy to OneDrive",
+    "sample": {
+      "label": "OneDrive"
+    }
+  },
+  {
+    "key": "review.share.step.copying",
+    "file": "src/shared/share/steps.ts",
+    "line": 10,
+    "english": "Copying to OneDrive…",
+    "sample": {
+      "label": "OneDrive"
+    }
+  },
+  {
+    "key": "review.share.step.copyingPercent",
+    "file": "src/shared/share/steps.ts",
+    "line": 10,
+    "english": "Copying to OneDrive… 45%",
+    "sample": {
+      "label": "OneDrive",
+      "percent": "45%"
+    }
+  },
+  {
+    "key": "review.share.step.saved",
+    "file": "src/shared/share/steps.ts",
+    "line": 11,
+    "english": "Saved to OneDrive › Flown",
+    "sample": {
+      "place": "OneDrive › Flown"
+    }
+  },
+  {
+    "key": "review.share.step.notCopied",
+    "file": "src/shared/share/steps.ts",
+    "line": 12,
+    "english": "Not copied to OneDrive: cancelled",
+    "sample": {
+      "label": "OneDrive"
+    }
+  },
+  {
+    "key": "review.share.step.copyFailed",
+    "file": "src/shared/share/steps.ts",
+    "line": 13,
+    "english": "Could not copy to OneDrive: The disk is full.",
+    "sample": {
+      "label": "OneDrive",
+      "reason": "The disk is full."
+    }
+  },
+  {
+    "key": "review.share.step.copyFailedUnknown",
+    "file": "src/shared/share/steps.ts",
+    "line": 13,
+    "english": "Could not copy to OneDrive: something went wrong.",
+    "sample": {
+      "label": "OneDrive"
+    }
+  },
+  {
+    "key": "review.share.step.waitingPost",
+    "file": "src/shared/share/steps.ts",
+    "line": 15,
+    "english": "Waiting to post to #demos",
+    "sample": {
+      "label": "#demos"
+    }
+  },
+  {
+    "key": "review.share.step.posting",
+    "file": "src/shared/share/steps.ts",
+    "line": 16,
+    "english": "Posting to #demos…",
+    "sample": {
+      "label": "#demos"
+    }
+  },
+  {
+    "key": "review.share.step.posted",
+    "file": "src/shared/share/steps.ts",
+    "line": 17,
+    "english": "Posted to #demos",
+    "sample": {
+      "label": "#demos"
+    }
+  },
+  {
+    "key": "review.share.step.notPosted",
+    "file": "src/shared/share/steps.ts",
+    "line": 18,
+    "english": "Not posted to #demos: cancelled",
+    "sample": {
+      "label": "#demos"
+    }
+  },
+  {
+    "key": "review.share.step.postFailed",
+    "file": "src/shared/share/steps.ts",
+    "line": 19,
+    "english": "Could not post to #demos: Slack is busy. Try again in a minute.",
+    "sample": {
+      "label": "#demos",
+      "reason": "Slack is busy. Try again in a minute."
+    }
+  },
+  {
+    "key": "review.share.step.postFailedUnknown",
+    "file": "src/shared/share/steps.ts",
+    "line": 19,
+    "english": "Could not post to #demos: something went wrong.",
+    "sample": {
+      "label": "#demos"
+    }
+  },
+  {
+    "key": "review.share.button.retryCopy",
+    "file": "src/shared/share/steps.ts",
+    "line": 30,
+    "english": "Try again: copy to OneDrive",
+    "sample": {
+      "action": "Try again",
+      "label": "OneDrive"
+    }
+  },
+  {
+    "key": "review.share.button.retryPost",
+    "file": "src/shared/share/steps.ts",
+    "line": 30,
+    "english": "Try again: post to #demos",
+    "sample": {
+      "action": "Try again",
+      "label": "#demos"
+    }
+  },
+  {
+    "key": "review.share.button.theCopy",
+    "file": "src/shared/share/steps.ts",
+    "line": 31,
+    "english": "Show in folder: the copy in OneDrive",
+    "sample": {
+      "action": "Show in folder",
+      "label": "OneDrive"
+    }
+  },
+  {
+    "key": "review.share.button.theCopy",
+    "file": "src/shared/share/steps.ts",
+    "line": 31,
+    "english": "Copy link: the copy in OneDrive",
+    "sample": {
+      "action": "Copy link",
+      "label": "OneDrive"
+    }
+  },
+  {
+    "key": "review.share.cancelNamed",
+    "file": "src/shared/share/steps.ts",
+    "line": 37,
+    "english": "Cancel share: OneDrive and #demos",
+    "sample": {
+      "targets": "OneDrive and #demos"
+    }
+  },
+  {
+    "key": "review.share.source.picked",
+    "file": "src/shared/share/cloudFolders.ts",
+    "line": 16,
+    "english": "Added by you",
+    "sample": {}
+  },
+  {
+    "key": "review.share.source.usual",
+    "file": "src/shared/share/cloudFolders.ts",
+    "line": 17,
+    "english": "Found at the usual place",
+    "sample": {}
+  },
+  {
+    "key": "review.share.source.app",
+    "file": "src/shared/share/cloudFolders.ts",
+    "line": 18,
+    "english": "Found in OneDrive's settings",
+    "sample": {
+      "service": "OneDrive"
+    }
+  },
+  {
+    "key": "review.share.linkHint.onedrive",
+    "file": "src/shared/share/cloudFolders.ts",
+    "line": 229,
+    "english": "To share a link, right-click the file and choose Share.",
+    "sample": {}
+  },
+  {
+    "key": "review.share.linkHint.dropbox",
+    "file": "src/shared/share/cloudFolders.ts",
+    "line": 230,
+    "english": "To share a link, right-click the file and choose Copy Dropbox link.",
+    "sample": {}
+  },
+  {
+    "key": "review.share.linkHint.gdrive",
+    "file": "src/shared/share/cloudFolders.ts",
+    "line": 231,
+    "english": "To share a link, right-click the file and choose Share › Copy link.",
+    "sample": {}
+  },
+  {
+    "key": "review.share.linkHint.folder",
+    "file": "src/shared/share/cloudFolders.ts",
+    "line": 232,
+    "english": "People with access to this folder can open it there.",
+    "sample": {}
+  },
+  {
+    "key": "review.share.action.copyTo",
+    "file": "src/renderer/src/share/useShare.ts",
+    "line": 27,
+    "english": "Copy to Google Drive (H:)",
+    "sample": {
+      "place": "Google Drive (H:)"
+    }
+  },
+  {
+    "key": "review.share.action.postTo",
+    "file": "src/renderer/src/share/useShare.ts",
+    "line": 29,
+    "english": "Post to #demos",
+    "sample": {
+      "place": "#demos"
+    }
+  },
+  {
+    "key": "review.share.action.copyTitle",
+    "file": "src/renderer/src/share/useShare.ts",
+    "line": 35,
+    "english": "Copy the video into C:\\Users\\me\\OneDrive\\Flown",
+    "sample": {
+      "folder": "C:\\Users\\me\\OneDrive\\Flown"
+    }
+  },
+  {
+    "key": "review.share.action.postTitle",
+    "file": "src/renderer/src/share/useShare.ts",
+    "line": 37,
+    "english": "Post the title, length and where it was saved to #demos (hooks.slack.com/…/x7Qa). The video is not uploaded.",
+    "sample": {
+      "label": "#demos",
+      "masked": "hooks.slack.com/…/x7Qa"
+    }
+  },
+  {
+    "key": "review.share.failed",
+    "file": "src/renderer/src/share/useShare.ts",
+    "line": 104,
+    "english": "Could not share: Choose where to share it.",
+    "sample": {
+      "reason": "Choose where to share it."
+    }
+  },
+  {
+    "key": "common.action.tryAgain",
+    "file": "src/renderer/src/share/ShareDone.tsx",
+    "line": 75,
+    "english": "Try again",
+    "sample": {}
+  },
+  {
+    "key": "common.action.showInFolder",
+    "file": "src/renderer/src/share/ShareDone.tsx",
+    "line": 80,
+    "english": "Show in folder",
+    "sample": {}
+  },
+  {
+    "key": "review.share.copyLink",
+    "file": "src/renderer/src/share/ShareDone.tsx",
+    "line": 85,
+    "english": "Copy link",
+    "sample": {}
   }
 ]

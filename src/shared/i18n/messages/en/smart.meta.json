@@ -704,5 +704,44 @@
   },
   "chapters.failed": {
     "description": "Find chapters: finding chapters failed; {reason} is why."
+  },
+  "chapters.wasStopped": {
+    "description": "Find chapters: the reason a run ends when Stop is pressed (a stopped run says nothing more)."
+  },
+  "guide.run.stopped": {
+    "description": "Make a guide › Write titles or Tidy notes: said when the run was stopped."
+  },
+  "guide.run.nothingChanged": {
+    "description": "Make a guide › Write titles or Tidy notes: every step was edited by hand meanwhile, so nothing was written."
+  },
+  "guide.run.nothingForNotes": {
+    "description": "Make a guide › Tidy notes: no step has words near it."
+  },
+  "guide.run.titlesLocal": {
+    "description": "Make a guide › Write titles: done, with AI on this PC; {n} titles written."
+  },
+  "guide.run.titlesWith": {
+    "description": "Make a guide › Write titles: done with an AI service; {n} titles written, {place} the service's name."
+  },
+  "guide.run.titlesLocalPartly": {
+    "description": "Make a guide › Write titles: a later request failed after some titles were written on this PC; {reason} is why."
+  },
+  "guide.run.titlesWithPartly": {
+    "description": "Make a guide › Write titles: a later request failed after some titles were written with an AI service ({place}); {reason} is why."
+  },
+  "guide.run.notesLocal": {
+    "description": "Make a guide › Tidy notes: done, with AI on this PC; {n} notes tidied."
+  },
+  "guide.run.notesWith": {
+    "description": "Make a guide › Tidy notes: done with an AI service; {n} notes tidied, {place} the service's name."
+  },
+  "guide.cropTooSmall": {
+    "description": "Make a guide › screenshot viewer › Adjust: a crop under 5% of the frame is refused."
+  },
+  "guide.adjust.cropName": {
+    "description": "Make a guide › Adjust: how a screen reader hears the crop box; {w}, {x} and {y} are shares of the screen (\"45%\")."
+  },
+  "guide.adjust.ringName": {
+    "description": "Make a guide › Adjust: how a screen reader hears the ring; {x} and {y} are shares of the screen (\"42%\")."
   }
 }

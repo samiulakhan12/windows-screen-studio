@@ -539,6 +539,6 @@ export async function missingCatalogNotes(project: Project): Promise<string[]> {
   return missingCatalogFonts(project)
     .filter((f) => !drawn || drawn.has(f.id))
     .map((f) =>
-      f.download ? `Captions use ${f.family}, which is not downloaded: they will use ${f.download.until}.` : `Font missing: ${f.family}. Text that uses it is drawn with another font.`
+      f.download ? t('export.fonts.notDownloaded', { family: f.family, until: f.download.until }) : t('export.fonts.missingOne', { family: f.family })
     )
 }

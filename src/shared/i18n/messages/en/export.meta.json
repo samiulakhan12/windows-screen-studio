@@ -999,5 +999,17 @@
   },
   "batch.exportFiles.whole": {
     "description": "Export dialog › Batch: the export button as one message, for languages other than English: how many files are exported."
+  },
+  "cancelledAbort": {
+    "description": "Export: the reason an export ends when Cancel is pressed (the dialog then shows its own cancelled view)."
+  },
+  "fonts.notDownloaded": {
+    "description": "Export dialog: a note on a caption font from the catalogue that is not downloaded; {family} is its name, {until} the Windows font drawn instead (font names, never translated)."
+  },
+  "fonts.missingOne": {
+    "description": "Export dialog: a note on a catalogue font that is missing; {family} is its name."
+  },
+  "stoppedAbort": {
+    "description": "Export: the reason an export with HEVC or AV1 ends when it is cancelled before its encoder opened (the dialog shows its own cancelled view)."
   }
 }
