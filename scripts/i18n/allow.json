@@ -599,6 +599,30 @@
       "kind": "copy",
       "pattern": "^\\$\\{…\\} days ago$",
       "reason": "usedAgo, kept as the English reference that test 73 (tests/i18nFmtSites.test.ts) compares fmt.relative with; Settings › Storage shows fmt.relative, which says it in the UI language."
+    },
+    {
+      "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
+      "kind": "copy",
+      "pattern": "^(?:Use anyway|Copy anyway)$",
+      "reason": "NotedAsk action ids (src/renderer/src/publish/checkNote.tsx): they choose which question and button NotedConfirm shows, and it says them through review.check.askUse, askCopy, useAnyway and copyAnyway; the ids themselves are never shown."
+    },
+    {
+      "file": "src/renderer/src/publish/PublishDialog.tsx",
+      "kind": "copy",
+      "pattern": "^(?:Use anyway|Copy anyway)$",
+      "reason": "NotedAsk action ids (src/renderer/src/publish/checkNote.tsx): they choose which question and button NotedConfirm shows, and it says them through review.check.askUse, askCopy, useAnyway and copyAnyway; the ids themselves are never shown."
+    },
+    {
+      "file": "src/renderer/src/render/studioLayer.ts",
+      "kind": "table",
+      "pattern": "^(?:Make every word count today|Make|every|word|count|today)$",
+      "reason": "The caption style gallery’s sample caption and its timed words: caption content drawn into the thumbnails and chosen by the captions’ language (SAMPLE_CAPTION_BN for Bangla captions), not by the UI language, like the captions a user makes (section 9.7)."
+    },
+    {
+      "file": "src/renderer/src/editor/sounds/offline.ts",
+      "kind": "copy",
+      "text": "Flown makes no network requests",
+      "reason": "The refusal keepOffline gives MediaPipe’s usage-statistics fetch inside the sound and background-blur workers: MediaPipe treats it as a failed send and stops trying, and nothing shows it."
     }
   ]
 }

@@ -4,6 +4,7 @@ import { cleanCaptionText, CAPTION_MAX_CHARS } from '../../../../shared/captions
 import { findInCaptions, mergeWithNext, readSuggestedChapters, readSuggestedText, replaceInCaptions, splitCaption, typedCaption } from '../../../../shared/captions/edit'
 import { captionIndexAt } from '../../../../shared/captions/layout'
 import { languageSubtitleFile, spokenSegments, type SubtitleFormat } from '../../../../shared/captions/subtitles'
+import { TRACK_LANGUAGES } from '../../../../shared/captions/captionTracks'
 import { displayTime } from '../../../../shared/editor/clips'
 import { reviewHint, undoHint, withShortcut } from '../../../../shared/editor/shortcuts'
 import { chapterNear, createChapter } from '../../../../shared/editor/titles'
@@ -76,34 +77,12 @@ import { LocalNote, LocalProgress, LocalWritten } from '../../ai/LocalProgress'
 
 /* ---------- Captions and transcript ---------- */
 
-/** Spoken languages offered for transcription and translation (BCP-47), after "Detect automatically". */
-export const CAPTION_LANGUAGES: { code: string; name: string }[] = [
-  { code: 'en', name: 'English' },
-  { code: 'bn', name: 'Bengali' },
-  { code: 'hi', name: 'Hindi' },
-  { code: 'es', name: 'Spanish' },
-  { code: 'fr', name: 'French' },
-  { code: 'de', name: 'German' },
-  { code: 'pt', name: 'Portuguese' },
-  { code: 'it', name: 'Italian' },
-  { code: 'nl', name: 'Dutch' },
-  { code: 'ru', name: 'Russian' },
-  { code: 'uk', name: 'Ukrainian' },
-  { code: 'pl', name: 'Polish' },
-  { code: 'tr', name: 'Turkish' },
-  { code: 'ar', name: 'Arabic' },
-  { code: 'ur', name: 'Urdu' },
-  { code: 'ta', name: 'Tamil' },
-  { code: 'te', name: 'Telugu' },
-  { code: 'mr', name: 'Marathi' },
-  { code: 'zh', name: 'Chinese' },
-  { code: 'ja', name: 'Japanese' },
-  { code: 'ko', name: 'Korean' },
-  { code: 'id', name: 'Indonesian' },
-  { code: 'vi', name: 'Vietnamese' },
-  { code: 'th', name: 'Thai' },
-  { code: 'sv', name: 'Swedish' }
-]
+/**
+ * Spoken languages offered for transcription and translation (BCP-47), after "Detect automatically":
+ * the caption tracks' list, whose English names are data (subtitle stream names, translation
+ * requests); the select shows each through captionLanguageName, in the UI language.
+ */
+export const CAPTION_LANGUAGES: readonly { code: string; name: string }[] = TRACK_LANGUAGES
 
 const KIND_NAMES: Record<AiProviderInfo['kind'], string> = { openai: 'OpenAI', gemini: 'Gemini', anthropic: 'Claude' }
 /** Where a transcript was made, for its summary line ('local': on this PC). */
