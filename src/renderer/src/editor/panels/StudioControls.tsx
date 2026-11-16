@@ -27,7 +27,7 @@ import { FontPicker } from './FontPicker'
 import { ContrastMeter } from './ContrastMeter'
 import './captionStudio.css'
 import { fmt } from '../../../../shared/i18n/fmt'
-import { t } from '../../../../shared/i18n/t'
+import { t, type MessageKey } from '../../../../shared/i18n/t'
 
 /* ---------- the look and its edits ---------- */
 
@@ -49,9 +49,15 @@ const frameOf = (project: Project): { w: number; h: number } => {
 /** Languages whose captions have no capital letters (Case is hidden, §2.6, §0.2). */
 const CASELESS = new Set(['bn', 'hi', 'mr', 'ar', 'ur', 'he', 'th', 'ta', 'te', 'zh', 'ja', 'ko'])
 /** Languages of joined letters: letter spacing is off (§6.6). */
-const JOINED: Readonly<Record<string, string>> = { ar: 'Arabic', ur: 'Urdu' }
+const JOINED: Readonly<Record<string, MessageKey>> = { ar: 'captions.studio.script.arabic', ur: 'captions.studio.script.urdu' }
 /** Languages with digits of their own (the Digits choice, §0.2). */
-export const NATIVE_DIGITS: Readonly<Record<string, string>> = { bn: 'Bangla ০–৯', hi: 'Devanagari ०–९', mr: 'Devanagari ०–९', ar: 'Arabic ٠–٩', ur: 'Urdu ۰–۹' }
+export const NATIVE_DIGITS: Readonly<Record<string, MessageKey>> = {
+  bn: 'captions.studio.digits.native.bangla',
+  hi: 'captions.studio.digits.native.devanagari',
+  mr: 'captions.studio.digits.native.devanagari',
+  ar: 'captions.studio.digits.native.arabic',
+  ur: 'captions.studio.digits.native.urdu'
+}
 const base = (language: string | undefined): string => (language ?? '').split('-')[0].toLowerCase()
 
 /* ---------- small controls ---------- */
@@ -139,7 +145,15 @@ const pct = (v: number): string => `${Math.round(v * 100)}%`
 
 /* ---------- Text ---------- */
 
-const WEIGHT_NAMES: Readonly<Record<number, string>> = { 300: 'Light 300', 400: 'Regular 400', 500: 'Medium 500', 600: 'Semibold 600', 700: 'Bold 700', 800: 'Extra bold 800', 900: 'Black 900' }
+const WEIGHT_NAMES: Readonly<Record<number, MessageKey>> = {
+  300: 'captions.studio.weight.300',
+  400: 'captions.studio.weight.400',
+  500: 'captions.studio.weight.500',
+  600: 'captions.studio.weight.600',
+  700: 'captions.studio.weight.700',
+  800: 'captions.studio.weight.800',
+  900: 'captions.studio.weight.900'
+}
 
 /** The weights the look's font has (§2.6): a static family's own, a variable one's within its range; others all. */
 export function weightsOf(font: string): number[] {
@@ -178,7 +192,7 @@ export function TextControls(props: { project: Project }): JSX.Element {
         id="caption-weight"
         label={t('captions.studio.weight')}
         value={String(weights.includes(studio.text.weight) ? studio.text.weight : weights.reduce((a, b) => (Math.abs(b - studio.text.weight) < Math.abs(a - studio.text.weight) ? b : a)))}
-        options={weights.map((w) => ({ value: String(w), label: WEIGHT_NAMES[w] ?? String(w) }))}
+        options={weights.map((w) => ({ value: String(w), label: WEIGHT_NAMES[w] ? t(WEIGHT_NAMES[w]) : String(w) }))}
         onChange={(w) => edit((s) => ({ ...s, text: { ...s.text, weight: Number(w) } }))}
       />
       <StudioSlider
@@ -189,7 +203,7 @@ export function TextControls(props: { project: Project }): JSX.Element {
         max={STUDIO_LIMITS.size.max}
         step={0.001}
         format={pct1}
-        spoken={(v) => `${Math.round(v * 1000) / 10} percent of the shorter side`}
+        spoken={(v) => t('captions.studio.percentOfShorter', { n: fmt.number(Math.round(v * 1000) / 10) })}
         onChange={(v) => edit((s) => setStudioSize(s, v, frame.w, frame.h), 'caption-size')}
       />
       {!CASELESS.has(language) && (
@@ -217,7 +231,7 @@ export function TextControls(props: { project: Project }): JSX.Element {
         disabled={!!joined}
         onChange={(v) => edit((s) => ({ ...s, text: { ...s.text, tracking: v } }), 'caption-tracking')}
       />
-      {joined && <p className="hint">{t('captions.studio.trackingOff', { script: joined })}</p>}
+      {joined && <p className="hint">{t('captions.studio.trackingOff', { script: t(joined) })}</p>}
       {NATIVE_DIGITS[language] && (
         <ChipField<'asis' | 'native' | 'western'>
           id="caption-digits"
@@ -225,7 +239,7 @@ export function TextControls(props: { project: Project }): JSX.Element {
           value={settings.digits ?? 'asis'}
           options={[
             { value: 'asis', label: t('captions.studio.digits.asis') },
-            { value: 'native', label: NATIVE_DIGITS[language] },
+            { value: 'native', label: t(NATIVE_DIGITS[language]) },
             { value: 'western', label: t('captions.studio.digits.western') }
           ]}
           onChange={(d) =>
@@ -620,7 +634,7 @@ export function MotionControls(props: { project: Project }): JSX.Element {
         value={m.exit}
         options={withCurrent(exits(), m.exit)}
         onChange={(exit) => setMotion({ exit })}
-        hint="Only before a pause: back-to-back captions replace each other."
+        hint={t('captions.studio.exitHint')}
       />
       <SelectField<WordMotion> id="caption-word" label={t('captions.studio.eachWord')} value={m.word} options={withCurrent(wordMotions(), m.word)} onChange={(word) => setMotion({ word })} />
       <SelectField<SpokenMark> id="caption-spoken" label={t('captions.studio.spokenWord')} value={studio.spoken} options={spokenMarks()} onChange={(spoken) => edit((s) => ({ ...s, spoken }))} />
@@ -709,7 +723,7 @@ export function EmphasisControls(props: { project: Project }): JSX.Element {
         max={STUDIO_LIMITS.emphasisScale.max}
         step={0.01}
         format={pct}
-        spoken={(v) => `${Math.round(v * 100)} percent of the words`}
+        spoken={(v) => t('captions.studio.percentOfWords', { n: fmt.count(Math.round(v * 100)) })}
         onChange={(scale) => edit((s) => ({ ...s, emphasis: { ...s.emphasis, scale } }), 'caption-emphasis-size')}
       />
       <FontPicker
@@ -719,7 +733,7 @@ export function EmphasisControls(props: { project: Project }): JSX.Element {
         language={captionLanguage(project)}
         bangla={studio.text.scripts?.bengali?.font}
         testId="caption-emphasis-font"
-        defaultLabel="Same as the words"
+        defaultLabel={t('captions.studio.sameAsWords')}
         apply={(p, font) =>
           ({
             ...p,

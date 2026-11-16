@@ -4677,5 +4677,332 @@
       "amount": "US$0.03",
       "tokens": "12,400"
     }
+  },
+  {
+    "key": "captions.studio.position.bottom",
+    "file": "src/renderer/src/editor/panels/CaptionLookSection.tsx",
+    "line": 136,
+    "english": "Bottom",
+    "sample": {}
+  },
+  {
+    "key": "captions.studio.position.middle",
+    "file": "src/renderer/src/editor/panels/CaptionLookSection.tsx",
+    "line": 137,
+    "english": "Middle",
+    "sample": {}
+  },
+  {
+    "key": "captions.studio.position.top",
+    "file": "src/renderer/src/editor/panels/CaptionLookSection.tsx",
+    "line": 138,
+    "english": "Top",
+    "sample": {}
+  },
+  {
+    "key": "common.state.none",
+    "file": "src/renderer/src/editor/panels/CaptionLookSection.tsx",
+    "line": 153,
+    "english": "None",
+    "sample": {}
+  },
+  {
+    "key": "captions.lookSection.background.noneTitle",
+    "file": "src/renderer/src/editor/panels/CaptionLookSection.tsx",
+    "line": 153,
+    "english": "Text with a thin outline",
+    "sample": {}
+  },
+  {
+    "key": "captions.lookSection.background.box",
+    "file": "src/renderer/src/editor/panels/CaptionLookSection.tsx",
+    "line": 154,
+    "english": "Box",
+    "sample": {}
+  },
+  {
+    "key": "captions.lookSection.background.boxTitle",
+    "file": "src/renderer/src/editor/panels/CaptionLookSection.tsx",
+    "line": 154,
+    "english": "A dark box behind each line",
+    "sample": {}
+  },
+  {
+    "key": "captions.lookSection.background.shadow",
+    "file": "src/renderer/src/editor/panels/CaptionLookSection.tsx",
+    "line": 155,
+    "english": "Shadow",
+    "sample": {}
+  },
+  {
+    "key": "captions.lookSection.background.shadowTitle",
+    "file": "src/renderer/src/editor/panels/CaptionLookSection.tsx",
+    "line": 155,
+    "english": "A soft shadow behind the text",
+    "sample": {}
+  },
+  {
+    "key": "captions.lookSection.lines.one",
+    "file": "src/renderer/src/editor/panels/CaptionLookSection.tsx",
+    "line": 166,
+    "english": "One line",
+    "sample": {}
+  },
+  {
+    "key": "captions.lookSection.lines.two",
+    "file": "src/renderer/src/editor/panels/CaptionLookSection.tsx",
+    "line": 167,
+    "english": "Up to two lines",
+    "sample": {}
+  },
+  {
+    "key": "captions.look.picked",
+    "file": "src/renderer/src/editor/panels/CaptionLookSection.tsx",
+    "line": 311,
+    "english": "Caption style: Bold Pop",
+    "sample": {
+      "name": "Bold Pop"
+    }
+  },
+  {
+    "key": "captions.look.savedLook",
+    "file": "src/renderer/src/editor/panels/CaptionLookSection.tsx",
+    "line": 352,
+    "english": "Saved “My style 2” to your styles",
+    "sample": {
+      "name": "My style 2"
+    }
+  },
+  {
+    "key": "captions.look.savedLook",
+    "file": "src/renderer/src/editor/captionCommands.ts",
+    "line": 89,
+    "english": "Saved “My style 2” to your styles",
+    "sample": {
+      "name": "My style 2"
+    }
+  },
+  {
+    "key": "captions.emphasis.added",
+    "file": "src/renderer/src/editor/captionCommands.ts",
+    "line": 52,
+    "english": [
+      "Emphasised 0 words",
+      "Emphasised 1 word",
+      "Emphasised 2 words",
+      "Emphasised 1000 words"
+    ],
+    "sample": [
+      {
+        "count": 0,
+        "n": "0"
+      },
+      {
+        "count": 1,
+        "n": "1"
+      },
+      {
+        "count": 2,
+        "n": "2"
+      },
+      {
+        "count": 1000,
+        "n": "1000"
+      }
+    ]
+  },
+  {
+    "key": "captions.emphasis.noneStoodOut",
+    "file": "src/renderer/src/editor/captionCommands.ts",
+    "line": 52,
+    "english": "No words stood out",
+    "sample": {}
+  },
+  {
+    "key": "captions.cleanup.notice.tidiedBleeped",
+    "file": "src/renderer/src/editor/captionCommands.ts",
+    "line": 80,
+    "english": "Tidied 0 captions, bleeped 2 words",
+    "sample": {
+      "tidied": 0,
+      "t": "0",
+      "bleeped": 2,
+      "b": "2"
+    }
+  },
+  {
+    "key": "captions.cleanup.notice.tidied",
+    "file": "src/renderer/src/editor/captionCommands.ts",
+    "line": 80,
+    "english": [
+      "Tidied 0 captions",
+      "Tidied 1 caption",
+      "Tidied 2 captions",
+      "Tidied 1000 captions"
+    ],
+    "sample": [
+      {
+        "count": 0,
+        "n": "0"
+      },
+      {
+        "count": 1,
+        "n": "1"
+      },
+      {
+        "count": 2,
+        "n": "2"
+      },
+      {
+        "count": 1000,
+        "n": "1000"
+      }
+    ]
+  },
+  {
+    "key": "captions.cleanup.notice.nothing",
+    "file": "src/renderer/src/editor/captionCommands.ts",
+    "line": 80,
+    "english": "Nothing to tidy",
+    "sample": {}
+  },
+  {
+    "key": "editor.notice.noCaptions",
+    "file": "src/renderer/src/editor/captionCommands.ts",
+    "line": 111,
+    "english": "This video has no captions yet: generate them in the Captions tab",
+    "sample": {}
+  },
+  {
+    "key": "captions.great.couldNotFinish",
+    "file": "src/renderer/src/editor/captionsGreat.ts",
+    "line": 52,
+    "english": "Make my captions great could not finish: The AI provider is not reachable.",
+    "sample": {
+      "reason": "The AI provider is not reachable."
+    }
+  },
+  {
+    "key": "captions.studio.script.arabic",
+    "file": "src/renderer/src/editor/panels/StudioControls.tsx",
+    "line": 52,
+    "english": "Arabic",
+    "sample": {}
+  },
+  {
+    "key": "captions.studio.script.urdu",
+    "file": "src/renderer/src/editor/panels/StudioControls.tsx",
+    "line": 52,
+    "english": "Urdu",
+    "sample": {}
+  },
+  {
+    "key": "captions.studio.digits.native.bangla",
+    "file": "src/renderer/src/editor/panels/StudioControls.tsx",
+    "line": 54,
+    "english": "Bangla ০–৯",
+    "sample": {}
+  },
+  {
+    "key": "captions.studio.digits.native.devanagari",
+    "file": "src/renderer/src/editor/panels/StudioControls.tsx",
+    "line": 54,
+    "english": "Devanagari ०–९",
+    "sample": {}
+  },
+  {
+    "key": "captions.studio.digits.native.arabic",
+    "file": "src/renderer/src/editor/panels/StudioControls.tsx",
+    "line": 54,
+    "english": "Arabic ٠–٩",
+    "sample": {}
+  },
+  {
+    "key": "captions.studio.digits.native.urdu",
+    "file": "src/renderer/src/editor/panels/StudioControls.tsx",
+    "line": 54,
+    "english": "Urdu ۰–۹",
+    "sample": {}
+  },
+  {
+    "key": "captions.studio.weight.300",
+    "file": "src/renderer/src/editor/panels/StudioControls.tsx",
+    "line": 142,
+    "english": "Light 300",
+    "sample": {}
+  },
+  {
+    "key": "captions.studio.weight.400",
+    "file": "src/renderer/src/editor/panels/StudioControls.tsx",
+    "line": 142,
+    "english": "Regular 400",
+    "sample": {}
+  },
+  {
+    "key": "captions.studio.weight.500",
+    "file": "src/renderer/src/editor/panels/StudioControls.tsx",
+    "line": 142,
+    "english": "Medium 500",
+    "sample": {}
+  },
+  {
+    "key": "captions.studio.weight.600",
+    "file": "src/renderer/src/editor/panels/StudioControls.tsx",
+    "line": 142,
+    "english": "Semibold 600",
+    "sample": {}
+  },
+  {
+    "key": "captions.studio.weight.700",
+    "file": "src/renderer/src/editor/panels/StudioControls.tsx",
+    "line": 142,
+    "english": "Bold 700",
+    "sample": {}
+  },
+  {
+    "key": "captions.studio.weight.800",
+    "file": "src/renderer/src/editor/panels/StudioControls.tsx",
+    "line": 142,
+    "english": "Extra bold 800",
+    "sample": {}
+  },
+  {
+    "key": "captions.studio.weight.900",
+    "file": "src/renderer/src/editor/panels/StudioControls.tsx",
+    "line": 142,
+    "english": "Black 900",
+    "sample": {}
+  },
+  {
+    "key": "captions.studio.percentOfShorter",
+    "file": "src/renderer/src/editor/panels/StudioControls.tsx",
+    "line": 192,
+    "english": "6.5 percent of the shorter side",
+    "sample": {
+      "n": "6.5"
+    }
+  },
+  {
+    "key": "captions.studio.exitHint",
+    "file": "src/renderer/src/editor/panels/StudioControls.tsx",
+    "line": 623,
+    "english": "Only before a pause: back-to-back captions replace each other.",
+    "sample": {}
+  },
+  {
+    "key": "captions.studio.percentOfWords",
+    "file": "src/renderer/src/editor/panels/StudioControls.tsx",
+    "line": 712,
+    "english": "130 percent of the words",
+    "sample": {
+      "n": "130"
+    }
+  },
+  {
+    "key": "captions.studio.sameAsWords",
+    "file": "src/renderer/src/editor/panels/StudioControls.tsx",
+    "line": 722,
+    "english": "Same as the words",
+    "sample": {}
   }
 ]

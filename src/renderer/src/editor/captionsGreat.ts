@@ -12,6 +12,7 @@ import type { Project } from '../../../shared/types'
 import { confirmRequest } from '../ai/costConfirm'
 import { choiceOf } from '../ai/textChoices'
 import { marksCostRequest, runCaptionsGreat } from './greatRun'
+import { t } from '../../../shared/i18n/t'
 
 let running: AbortController | null = null
 /** The project the run edits: closing its editor stops the run (cancelCaptionsGreatFor). */
@@ -49,7 +50,7 @@ export async function startCaptionsGreat(deps: { store: EditStore<Project>; fram
     const r = await runCaptionsGreat({ store: deps.store, frame: deps.frame, options, signal: ctrl.signal, undo: deps.undo ?? '', review: deps.review ?? '' })
     if (r && !ctrl.signal.aborted) deps.notice(r.notice)
   } catch (err) {
-    if (!ctrl.signal.aborted) deps.notice(`Make my captions great could not finish: ${err instanceof Error ? err.message : String(err)}`)
+    if (!ctrl.signal.aborted) deps.notice(t('captions.great.couldNotFinish', { reason: err instanceof Error ? err.message : String(err) }))
   } finally {
     running = null
     runningStore = null

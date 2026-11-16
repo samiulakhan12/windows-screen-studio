@@ -134,9 +134,9 @@ function ClassicControls({ project }: { project: Project }): JSX.Element {
           value={s.position}
           onChange={(position) => set({ position })}
           options={[
-            { value: 'bottom', label: 'Bottom' },
-            { value: 'middle', label: 'Middle' },
-            { value: 'top', label: 'Top' }
+            { value: 'bottom', label: t('captions.studio.position.bottom') },
+            { value: 'middle', label: t('captions.studio.position.middle') },
+            { value: 'top', label: t('captions.studio.position.top') }
           ]}
         />
       </div>
@@ -151,9 +151,9 @@ function ClassicControls({ project }: { project: Project }): JSX.Element {
           value={s.background}
           onChange={(background) => set({ background })}
           options={[
-            { value: 'none', label: 'None', title: 'Text with a thin outline' },
-            { value: 'box', label: 'Box', title: 'A dark box behind each line' },
-            { value: 'shadow', label: 'Shadow', title: 'A soft shadow behind the text' }
+            { value: 'none', label: t('common.state.none'), title: t('captions.lookSection.background.noneTitle') },
+            { value: 'box', label: t('captions.lookSection.background.box'), title: t('captions.lookSection.background.boxTitle') },
+            { value: 'shadow', label: t('captions.lookSection.background.shadow'), title: t('captions.lookSection.background.shadowTitle') }
           ]}
         />
       </div>
@@ -164,8 +164,8 @@ function ClassicControls({ project }: { project: Project }): JSX.Element {
           value={s.maxLines}
           onChange={(maxLines) => set({ maxLines })}
           options={[
-            { value: 1, label: 'One line' },
-            { value: 2, label: 'Up to two lines' }
+            { value: 1, label: t('captions.lookSection.lines.one') },
+            { value: 2, label: t('captions.lookSection.lines.two') }
           ]}
         />
       </div>
@@ -309,7 +309,7 @@ export function CaptionLookSection(props: { project: Project; vw: number; vh: nu
   const pick = (tile: string): void => {
     setPreviewLook(null)
     store.update((p) => ({ ...p, captions: pickTile(captionsOf(p), tile, frame, saved, brand?.look ?? null) }))
-    group.notice(`Caption style: ${tile === 'brand' && brand ? brand.name : tileName(tile, saved)}`)
+    group.notice(t('captions.look.picked', { name: tile === 'brand' && brand ? brand.name : tileName(tile, saved) }))
   }
   const preview = (tile: string | null, via: PreviewLook['via'] = 'pointer'): void =>
     setPreviewLook(tile ? { tile, name: tile === 'brand' && brand ? brand.name : tileName(tile, saved), via, captions: pickTile(captionsOf(store.state), tile, frame, saved, brand?.look ?? null) } : null)
@@ -350,7 +350,7 @@ export function CaptionLookSection(props: { project: Project; vw: number; vh: nu
           <button type="button" className="btn small" data-testid="caption-style-reset" title={t('captions.lookSection.resetTitle', { name: name.name })} onClick={() => pick(reset)}>{t('common.action.reset')}</button>
         )}
       </div>
-      <SaveStyle settings={settings} saved={saved} onSaved={(n) => group.notice(`Saved “${n}” to your styles`)} />
+      <SaveStyle settings={settings} saved={saved} onSaved={(n) => group.notice(t('captions.look.savedLook', { name: n }))} />
       {classic && <ClassicControls project={project} />}
       {classic && <p className="hint">{t('captions.lookSection.classicHint', { name: name.name })}</p>}
       <Part id="caption-text" title={t('common.label.text')} open={open.text} onToggle={() => toggle('text')}>

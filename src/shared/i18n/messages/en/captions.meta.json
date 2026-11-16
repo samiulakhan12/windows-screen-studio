@@ -2630,6 +2630,129 @@
   "local.hint.ducking": {
     "description": "Audio tab, ducking: hint when the voice counts."
   },
+  "lookSection.background.noneTitle": {
+    "description": "Captions › Look, the Classic look's controls: tooltip of the background chip None."
+  },
+  "lookSection.background.box": {
+    "description": "Captions › Look, the Classic look's controls: background chip: a dark box behind each line (the noun)."
+  },
+  "lookSection.background.boxTitle": {
+    "description": "Captions › Look, the Classic look's controls: tooltip of the background chip Box."
+  },
+  "lookSection.background.shadow": {
+    "description": "Captions › Look, the Classic look's controls: background chip: a soft shadow behind the text (the noun)."
+  },
+  "lookSection.background.shadowTitle": {
+    "description": "Captions › Look, the Classic look's controls: tooltip of the background chip Shadow."
+  },
+  "lookSection.lines.one": {
+    "description": "Captions › Look, the Classic look's controls: lines chip: at most one line of caption."
+  },
+  "lookSection.lines.two": {
+    "description": "Captions › Look, the Classic look's controls: lines chip: at most two lines of caption."
+  },
+  "look.picked": {
+    "description": "Notice after a caption look was picked in the gallery; {name} is the look's name (a built-in look, a Classic look, the brand kit's or one the user saved).",
+    "user": [
+      "name"
+    ]
+  },
+  "look.savedLook": {
+    "description": "Notice after the current caption look was saved; {name} is the saved look's name (\"My style 2\").",
+    "user": [
+      "name"
+    ]
+  },
+  "emphasis.noneStoodOut": {
+    "description": "Notice after Find important words found nothing to emphasise."
+  },
+  "great.couldNotFinish": {
+    "description": "Notice when Make my captions great failed; {reason} is why (a sentence). \"Make my captions great\" is the tool's name."
+  },
+  "studio.script.arabic": {
+    "description": "Captions Studio controls (Captions › Look): the script named in \"Letter spacing is off for {script}…\"."
+  },
+  "studio.script.urdu": {
+    "description": "Captions Studio controls (Captions › Look): the script named in \"Letter spacing is off for {script}…\" (Urdu's letters, written in Arabic script)."
+  },
+  "studio.digits.native.bangla": {
+    "description": "Captions Studio controls (Captions › Look): the Digits chip for Bangla's own digits, followed by those digits.",
+    "dnt": [
+      "০–৯"
+    ]
+  },
+  "studio.digits.native.devanagari": {
+    "description": "Captions Studio controls (Captions › Look): the Digits chip for Devanagari digits (Hindi, Marathi), followed by those digits.",
+    "dnt": [
+      "०–९"
+    ]
+  },
+  "studio.digits.native.arabic": {
+    "description": "Captions Studio controls (Captions › Look): the Digits chip for Arabic-Indic digits, followed by those digits.",
+    "dnt": [
+      "٠–٩"
+    ]
+  },
+  "studio.digits.native.urdu": {
+    "description": "Captions Studio controls (Captions › Look): the Digits chip for Urdu's digits, followed by those digits.",
+    "dnt": [
+      "۰–۹"
+    ]
+  },
+  "studio.weight.300": {
+    "description": "Captions Studio controls (Captions › Look): a font weight in the Weight select: its name, then its number (CSS weight 300).",
+    "dnt": [
+      "300"
+    ]
+  },
+  "studio.weight.400": {
+    "description": "Captions Studio controls (Captions › Look): a font weight in the Weight select: its name, then its number (CSS weight 400).",
+    "dnt": [
+      "400"
+    ]
+  },
+  "studio.weight.500": {
+    "description": "Captions Studio controls (Captions › Look): a font weight in the Weight select: its name, then its number (CSS weight 500).",
+    "dnt": [
+      "500"
+    ]
+  },
+  "studio.weight.600": {
+    "description": "Captions Studio controls (Captions › Look): a font weight in the Weight select: its name, then its number (CSS weight 600).",
+    "dnt": [
+      "600"
+    ]
+  },
+  "studio.weight.700": {
+    "description": "Captions Studio controls (Captions › Look): a font weight in the Weight select: its name, then its number (CSS weight 700).",
+    "dnt": [
+      "700"
+    ]
+  },
+  "studio.weight.800": {
+    "description": "Captions Studio controls (Captions › Look): a font weight in the Weight select: its name, then its number (CSS weight 800).",
+    "dnt": [
+      "800"
+    ]
+  },
+  "studio.weight.900": {
+    "description": "Captions Studio controls (Captions › Look): a font weight in the Weight select: its name, then its number (CSS weight 900).",
+    "dnt": [
+      "900"
+    ]
+  },
+  "studio.percentOfShorter": {
+    "description": "Captions Studio controls (Captions › Look): the text size slider's value as screen readers read it: a share of the frame's shorter side."
+  },
+  "studio.exitHint": {
+    "description": "Captions Studio controls (Captions › Look): hint under the Exit select (how a caption leaves)."
+  },
+  "studio.percentOfWords": {
+    "description": "Captions Studio controls (Captions › Look): the emphasis size slider's value as screen readers read it: a share of the other words' size."
+  },
+  "studio.sameAsWords": {
+    "description": "Captions Studio controls (Captions › Look): the emphasis font picker's default: the same font as the other words."
+  },
   "ai.cost.time.seconds": {
     "description": "The cost line under an AI tool (§11.5): how long AI on this PC takes, in tens of seconds (lower case, inside the line)."
   },
