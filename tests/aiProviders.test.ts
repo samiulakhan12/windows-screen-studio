@@ -53,6 +53,9 @@ import { partArgs, stopTranscription, sweepTranscribeTemp, validateTranscribeOpt
 import { ffmpegPath } from '../src/main/ffmpeg'
 import { BUNDLED_MODEL_LIST } from '../src/shared/ai/modelList'
 import { describeFailure } from '../src/shared/captions/transcriptErrors'
+import { t } from '../src/shared/i18n/t'
+import { CANCELLED_ERROR, isCancelled } from '../src/shared/jobs/longJobs'
+import { ipcRejection, uiEnglish, uiPseudo } from './pseudoUi'
 import { ApiError } from '@google/genai'
 
 const req = createRequire(import.meta.url)
@@ -433,6 +436,33 @@ describe('transcription', () => {
     expect(transcribeTemps()).toEqual([])
     // Nothing is left listening on the page once the job has ended.
     expect(['did-navigate', 'destroyed', 'render-process-gone'].map((n) => appEvent.sender.listenerCount(n))).toEqual([0, 0, 0])
+  }, 60_000)
+
+  it('a transcription stopped in a translated UI rejects with errors.cancelled there and the cancel code (output-and-languages §9.6)', async () => {
+    const slow = providers['Slow OpenAI'] ?? (await add('Slow OpenAI', 'openai', 'slow-openai-key-1'))
+    let started!: () => void
+    const transcribing = new Promise<void>((r) => (started = r))
+    appEvent.sender.send = vi.fn((_c: string, p: TranscribeProgress) => p.phase === 'transcribing' && started())
+    uiPseudo()
+    try {
+      const run = call<Transcript>('ai:transcribe', 'rec-words', { providerId: slow.id }).then(
+        () => null,
+        (e: Error) => e
+      )
+      await transcribing
+      await call('ai:cancelTranscription', 'rec-words')
+      const err = await run
+      expect(err?.message).toBe(t('errors.cancelled'))
+      expect(err?.message).not.toBe('Cancelled.')
+      expect(err?.name).toBe(CANCELLED_ERROR)
+      // As the Captions tab receives it, a cancel in that UI and in one that shows English.
+      expect(isCancelled(ipcRejection('ai:transcribe', err))).toBe(true)
+      uiEnglish()
+      expect(isCancelled(ipcRejection('ai:transcribe', err))).toBe(true)
+      expect(transcribeTemps()).toEqual([])
+    } finally {
+      uiEnglish()
+    }
   }, 60_000)
 
   it('removes the temporary files at once when the app quits mid-transcription', async () => {

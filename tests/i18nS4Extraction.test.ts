@@ -9,7 +9,8 @@
  *   are today's text.
  * - The webhook refusals and post failures (main's import graph) are errors messages with today's
  *   English, and change under en-XA.
- * - A renderer check that reads main's "Cancelled." also accepts errors.cancelled in the UI language.
+ * - The renderer tells main's cancel by its code (step S4b replaced S4's reading of "Cancelled." and
+ *   errors.cancelled; tests/i18nS4dCancels.test.ts holds each cancel path).
  * - <Rich> adds no element in English and isolates the user's text in <bdi> outside English, as <T>.
  */
 import { afterEach, describe, expect, it } from 'vitest'
@@ -33,7 +34,7 @@ const { blockerText, lengthOptions, publishLabel, toneOptions } = (await import(
 }
 const { FIND_WORDS } = (await import(/* @vite-ignore */ CHAPTERS)) as { FIND_WORDS: { tooShort: string; asking(place: string): string } }
 const { CLIPS_WORDS } = (await import(/* @vite-ignore */ CLIPS)) as { CLIPS_WORDS: { intro: string; noRoom(n: number, need: string, free: string): string; making(i: number, n: number): string } }
-const { isCancel } = (await import(/* @vite-ignore */ CANCELLED)) as { isCancel(message: string): boolean }
+const { isCancel } = (await import(/* @vite-ignore */ CANCELLED)) as { isCancel(err: unknown): boolean }
 const { Rich } = (await import(/* @vite-ignore */ RICH)) as { Rich(props: { k: string; values?: Record<string, unknown> }): unknown }
 
 const files = require('../scripts/i18n/lib/files.cjs') as { readEnglish(): { messages: Record<string, string>; meta: Record<string, object> } }
@@ -109,13 +110,15 @@ describe('S4: webhook refusals and post failures (main’s import graph) are err
 })
 
 describe('S4: cancelled jobs', () => {
-  it('main’s English or errors.cancelled in the UI language both read as cancelled', () => {
-    expect(isCancel('Cancelled.')).toBe(true)
-    expect(isCancel('The model could not be read.')).toBe(false)
+  it('a cancel is told by main’s code in English and in another language, never by its words', () => {
+    const coded = (words: string): Error => new Error(`Error invoking remote method 'speech:download': CancelledError: ${words}`)
+    expect(isCancel(coded('Cancelled.'))).toBe(true)
+    expect(isCancel(new Error("Error invoking remote method 'speech:download': Error: The model could not be read."))).toBe(false)
+    expect(isCancel(new Error("Error invoking remote method 'speech:download': Error: Cancelled."))).toBe(false)
     enXA()
     expect(t('errors.cancelled')).not.toBe('Cancelled.')
-    expect(isCancel(t('errors.cancelled'))).toBe(true)
-    expect(isCancel('Cancelled.')).toBe(true)
+    expect(isCancel(coded(t('errors.cancelled')))).toBe(true)
+    expect(isCancel(new Error(`Error invoking remote method 'speech:download': Error: ${t('errors.cancelled')}`))).toBe(false)
   })
 })
 

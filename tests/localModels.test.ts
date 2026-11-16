@@ -29,6 +29,9 @@ import { LocalModelStore, MODELS_FILE, readTestCatalog, sanitizeModelsFile, SPEE
 import type { HttpGet } from '../src/main/speech/download'
 import { LOCAL_MODELS } from '../src/shared/localAi/catalog'
 import { diskMessage, localRunProblem } from '../src/shared/localAi/messages'
+import { t } from '../src/shared/i18n/t'
+import { isCancelled } from '../src/shared/jobs/longJobs'
+import { ipcRejection, uiEnglish, uiPseudo } from './pseudoUi'
 
 const BODY = Buffer.concat([Buffer.from('GGUF'), randomBytes(200_000)])
 const SHA = createHash('sha256').update(BODY).digest('hex')
@@ -167,6 +170,37 @@ describe('downloadLocalModel against a local server (test 71)', () => {
     const old = store(undefined, { processor: async () => false })
     expect(await message(old.download('qwen3.5-2b'))).toBe("This PC's processor is too old for AI on this PC (it needs AVX2).")
     expect(requests).toEqual([])
+  })
+
+  it('a cancel in a translated UI says errors.cancelled there and carries the cancel code (output-and-languages §9.6)', async () => {
+    const slow: HttpGet = async (_url, _h, signal) => ({
+      status: 200,
+      headers: { 'content-length': String(BODY.length) },
+      body: (async function* () {
+        yield BODY.subarray(0, 50_000)
+        await new Promise<void>((r) => signal.addEventListener('abort', () => r()))
+        throw new Error('aborted')
+      })()
+    })
+    const s = store(undefined, { get: slow })
+    uiPseudo()
+    try {
+      const p = s.download('qwen3.5-2b').then(
+        () => null,
+        (e: Error) => e
+      )
+      await vi.waitFor(() => expect(s.downloading).toBe(true))
+      await s.cancel('qwen3.5-2b')
+      const err = await p
+      expect(err?.message).toBe(t('errors.cancelled'))
+      expect(err?.message).not.toBe('Cancelled.')
+      // As Settings receives it, a cancel in that UI and in one that shows English.
+      expect(isCancelled(ipcRejection('localAi:download', err))).toBe(true)
+      uiEnglish()
+      expect(isCancelled(ipcRejection('localAi:download', err))).toBe(true)
+    } finally {
+      uiEnglish()
+    }
   })
 
   it('Cancel stops the download and keeps the .part for later', async () => {

@@ -1,8 +1,10 @@
 /**
  * What went wrong with a request to an AI provider, in words the user can act on, and whether
  * trying again may help (rate limits, overloaded or failing servers, the network). Each provider
- * module reads its SDK's error into a FailureInfo; the wording is the same for all of them.
+ * module reads its SDK's error into a FailureInfo; the wording is the same for all of them. A
+ * cancel's message is errors.cancelled in the UI language, and its code is the error's name (request.ts).
  */
+import { t } from '../i18n/t'
 
 export type AiFailureKind = 'auth' | 'quota' | 'rate-limit' | 'server' | 'network' | 'timeout' | 'too-large' | 'not-found' | 'bad-request' | 'cancelled' | 'refused' | 'other'
 
@@ -43,7 +45,7 @@ const short = (s: string | undefined): string => (s ?? '').replace(/\s+/g, ' ').
 export function describeFailure(info: FailureInfo, provider: string, model?: string): Failure {
   const text = `${info.code ?? ''} ${info.message ?? ''}`
   const status = info.status
-  if (info.cancelled) return { kind: 'cancelled', retryable: false, message: 'Cancelled.' }
+  if (info.cancelled) return { kind: 'cancelled', retryable: false, message: t('errors.cancelled') }
   if (info.timeout) return { kind: 'timeout', retryable: true, message: `${provider} took too long to answer. Try again in a moment.` }
   if (info.network) return { kind: 'network', retryable: true, message: `Could not reach ${provider}. Check the internet connection and try again.` }
   if (status === 401 || AUTH_RE.test(text)) return { kind: 'auth', retryable: false, message: `${provider} did not accept the API key. Check the key in Settings → AI providers.` }

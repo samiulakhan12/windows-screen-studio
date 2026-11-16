@@ -1,8 +1,8 @@
 /**
  * Whether main's answer to a job says it was cancelled (docs/design/output-and-languages.md §9.6):
- * its English "Cancelled.", or the errors.cancelled message where main words it in the UI language.
- * Until every cancel carries a code, the renderer accepts both.
+ * main throws or rejects a cancel with the cancel code (CANCELLED_ERROR, longJobs.ts), and the
+ * renderer decides by that code, never by the words of the message, which are in the UI language.
  */
-import { t } from '../../../shared/i18n/t'
+import { isCancelled } from '../../../shared/jobs/longJobs'
 
-export const isCancel = (message: string): boolean => message === 'Cancelled.' || message === t('errors.cancelled')
+export const isCancel = (err: unknown): boolean => isCancelled(err)

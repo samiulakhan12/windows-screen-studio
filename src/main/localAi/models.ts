@@ -21,6 +21,7 @@ import { writeFileAtomicSync } from '../atomicWrite'
 import { allowDownloadUrl, DownloadFailure, downloadPinned, electronGet, type HttpGet } from '../speech/download'
 import { STALE_PART_MS } from '../speech/models'
 import { t } from '../../shared/i18n/t'
+import { cancelledError } from '../../shared/jobs/longJobs'
 
 /** userData/text-models (§4.7). */
 export const TEXT_MODELS_DIR = 'text-models'
@@ -276,8 +277,8 @@ export class LocalModelStore {
 
   /**
    * Downloads `id` from its pinned sources (§9.4), resuming a stopped download; resolves with the
-   * state once the file is verified and in place. Rejects with a message to show ("Cancelled."
-   * when cancelled; the .part stays for a later resume).
+   * state once the file is verified and in place. Rejects with a message to show (a cancel with
+   * the cancel code and errors.cancelled, cancelledError; the .part stays for a later resume).
    */
   async download(id: unknown, opts: { signal?: AbortSignal; onProgress?: (s: LocalAiState) => void } = {}): Promise<LocalAiState> {
     const spec = this.spec(id)
@@ -324,7 +325,7 @@ export class LocalModelStore {
         })
       } catch (err) {
         const failure = err instanceof DownloadFailure ? err : new DownloadFailure('other', err instanceof Error ? err.message : String(err))
-        if (failure.kind === 'cancelled') throw new Error(t('errors.cancelled'))
+        if (failure.kind === 'cancelled') throw cancelledError()
         if (failure.kind === 'disk') throw new Error(diskMessage(spec))
         throw new Error(failure.message)
       } finally {

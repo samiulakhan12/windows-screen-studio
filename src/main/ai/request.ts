@@ -7,17 +7,22 @@
  */
 import { AiOutputError } from '../../shared/captions/transcriptText'
 import { describeFailure, retryDelay, type Failure, type FailureInfo } from '../../shared/captions/transcriptErrors'
+import { CANCELLED_ERROR } from '../../shared/jobs/longJobs'
 import { scrubSecrets } from './secrets'
 
-/** A failed request, with its kind; the message is meant for the user. */
+/**
+ * A failed request, with its kind; the message is meant for the user. A cancel carries the cancel
+ * code as its name (CANCELLED_ERROR), which the renderer decides by (output-and-languages §9.6).
+ */
 export class AiError extends Error {
   constructor(readonly failure: Failure) {
     super(failure.message)
-    this.name = 'AiError'
+    this.name = failure.kind === 'cancelled' ? CANCELLED_ERROR : 'AiError'
   }
 }
 
-export const cancelled = (): AiError => new AiError({ kind: 'cancelled', retryable: false, message: 'Cancelled.' })
+/** A stopped request: errors.cancelled in the UI language, with the cancel code. */
+export const cancelled = (): AiError => new AiError(describeFailure({ cancelled: true }, ''))
 
 /** Waits `ms`, or rejects as cancelled when `signal` aborts first. */
 export function sleep(ms: number, signal: AbortSignal): Promise<void> {

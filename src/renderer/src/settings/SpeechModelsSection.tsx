@@ -44,8 +44,7 @@ export function SpeechModelsSection({ reveal = false }: { reveal?: boolean }): J
   const act = (what: Promise<unknown>): void => {
     setError(null)
     void what.catch((err: unknown) => {
-      const message = ipcMessage(err)
-      if (!isCancel(message)) setError(message)
+      if (!isCancel(err)) setError(ipcMessage(err))
     })
   }
 

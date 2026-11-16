@@ -108,6 +108,31 @@ export function thumbarButtons(jobs: readonly JobView[], now: number): ThumbButt
 /** How a job ended. Files are absolute paths of what an export wrote (checked by main). */
 export type JobOutcome = { kind: 'done'; files?: string[]; label?: string; failed?: number; stopped?: boolean } | { kind: 'cancelled' } | { kind: 'failed'; message: string }
 
+/**
+ * The code a stopped job's error carries (docs/design/output-and-languages.md §9.6): its name.
+ * Electron hands a rejected invoke to the renderer as "Error invoking remote method '…': <name>:
+ * <message>", so main throws or rejects a cancel with this name and the renderer tells a cancel by
+ * it, never by the words of the message, which are errors.cancelled in the UI language.
+ */
+export const CANCELLED_ERROR = 'CancelledError'
+
+/** A cancel as main throws or rejects it: errors.cancelled in the UI language, named CANCELLED_ERROR. */
+export function cancelledError(): Error {
+  const err = new Error(t('errors.cancelled'))
+  err.name = CANCELLED_ERROR
+  return err
+}
+
+/** A rejected invoke whose error main named CANCELLED_ERROR, after Electron's prefix. */
+const IPC_CANCEL = new RegExp(`^Error invoking remote method '[^']*': ${CANCELLED_ERROR}: `)
+
+/** Whether `err` is a cancel: an error named CANCELLED_ERROR, in this process or passed over IPC. Never read from its words. */
+export function isCancelled(err: unknown): boolean {
+  if (!err || typeof err !== 'object') return false
+  const { name, message } = err as { name?: unknown; message?: unknown }
+  return name === CANCELLED_ERROR || (typeof message === 'string' && IPC_CANCEL.test(message))
+}
+
 export interface NotificationCopy {
   title: string
   body: string

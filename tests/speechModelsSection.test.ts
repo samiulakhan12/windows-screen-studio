@@ -1,6 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { SpeechModelView, SpeechState } from '../src/shared/api/speech'
 import { SPEECH_MODELS, type SpeechModelId } from '../src/shared/speech/catalog'
+import { cancelledError } from '../src/shared/jobs/longJobs'
+import { ipcRejection, uiEnglish, uiPseudo } from './pseudoUi'
 
 /*
  * Settings › Captions on this PC without a DOM, in captionsPanel.test.ts's way: React's hooks are
@@ -32,6 +34,8 @@ const focused: El[] = []
 const body = {}
 let speechListener: ((state: SpeechState) => void) | null = null
 let reply: SpeechState
+/** What main answers a download with (never, unless a test says). */
+let downloadAnswer: () => Promise<void> = () => new Promise(() => undefined)
 
 vi.stubGlobal('window', {
   api: {
@@ -40,7 +44,7 @@ vi.stubGlobal('window', {
       speechListener = l
       return () => undefined
     },
-    downloadSpeechModel: () => new Promise(() => undefined),
+    downloadSpeechModel: () => downloadAnswer(),
     cancelSpeechDownload: () => Promise.resolve(),
     removeSpeechModel: () => Promise.resolve(),
     setDefaultSpeechModel: () => Promise.resolve(),
@@ -270,5 +274,43 @@ describe('Settings › Captions on this PC: the Bangla model (docs/design/offlin
     expect(radios(installed)).toEqual([])
     expect(installed.some((e) => textOf(e.props.children) === 'Downloaded')).toBe(true)
     expect(installed.some((e) => e.type === 'button' && textOf(e.props.children).trim() === 'Remove')).toBe(true)
+  })
+})
+
+describe('Settings › Captions on this PC: a stopped download (output-and-languages §9.6)', () => {
+  beforeEach(async () => {
+    for (const list of cells.values()) for (const c of list) c.cleanup?.()
+    cells.clear()
+    effects = []
+    reply = speechState()
+    render()
+    await flush()
+  })
+
+  it('a download main stopped in a translated UI is told by its code, not by words, so no error shows', async () => {
+    // Main says the cancel in the UI language; the section decides by the code, whatever words it has.
+    uiPseudo()
+    const stopped = ipcRejection('speech:download', cancelledError())
+    const words = stopped.message.replace(/^.*?CancelledError: /, '')
+    try {
+      for (const renderer of [uiEnglish, () => uiPseudo('bn-XA')]) {
+        // The button is found by its English name; the answer is read in the renderer's language.
+        uiEnglish()
+        downloadAnswer = () => Promise.reject(stopped)
+        click(render(), 'Download 60 MB')
+        renderer()
+        await flush()
+        expect(render().some((e) => e.props.role === 'alert')).toBe(false)
+      }
+      // The same words without the code are a failure, shown as they came.
+      uiEnglish()
+      downloadAnswer = () => Promise.reject(new Error(`Error invoking remote method 'speech:download': Error: ${words}`))
+      click(render(), 'Download 60 MB')
+      await flush()
+      expect(textOf(render().find((e) => e.props.role === 'alert'))).toBe(words)
+    } finally {
+      downloadAnswer = () => new Promise(() => undefined)
+      uiEnglish()
+    }
   })
 })

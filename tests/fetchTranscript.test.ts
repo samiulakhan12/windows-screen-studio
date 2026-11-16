@@ -125,7 +125,7 @@ describe('fetchTranscript', () => {
     expect(items.transcriptionJob()).toBeNull()
     // Stopped by the main process (the editor closed): not a failure.
     const stopped = items.fetchTranscript('p1', 100, { providerId: 'x' })
-    calls.transcribe[1].reject(ipcError('AiError: Cancelled.'))
+    calls.transcribe[1].reject(ipcError('CancelledError: Cancelled.'))
     expect(await stopped).toEqual({ cancelled: true })
     expect(items.transcriptionJob()).toBeNull()
   })

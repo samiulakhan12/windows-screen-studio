@@ -9,6 +9,7 @@ import { createHash, type Hash } from 'node:crypto'
 import { createReadStream, createWriteStream, promises as fs } from 'node:fs'
 import type { SpeechDownloadError } from '../../shared/api/speech'
 import { t } from '../../shared/i18n/t'
+import { CANCELLED_ERROR } from '../../shared/jobs/longJobs'
 
 /** Response of one GET: status, lower-case headers and the body. */
 export interface HttpResponse {
@@ -97,7 +98,11 @@ const SPEED_WINDOW_MS = 5000
 /** Error codes Windows returns while antivirus or indexers briefly hold a new file (atomicWrite's set). */
 const TRANSIENT = new Set(['EPERM', 'EBUSY', 'EACCES'])
 
-/** Why a download stopped: one of SpeechDownloadError, or 'cancelled' (the .part is kept). */
+/**
+ * Why a download stopped: one of SpeechDownloadError, or 'cancelled' (the .part is kept), which
+ * also carries the cancel code as its name (CANCELLED_ERROR, output-and-languages §9.6). The
+ * messages are errors messages in the UI language.
+ */
 export class DownloadFailure extends Error {
   constructor(
     readonly kind: SpeechDownloadError | 'cancelled',
@@ -105,6 +110,7 @@ export class DownloadFailure extends Error {
     readonly status?: number
   ) {
     super(message)
+    if (kind === 'cancelled') this.name = CANCELLED_ERROR
   }
 }
 
@@ -265,7 +271,7 @@ async function downloadFrom(source: string, pin: Pin, dest: string, opts: Downlo
   const retries = opts.retries ?? DOWNLOAD.retries
   const delays = opts.retryDelaysMs ?? DOWNLOAD.retryDelaysMs
   const stallMs = opts.stallMs ?? DOWNLOAD.stallMs
-  const cancelled = (): DownloadFailure => new DownloadFailure('cancelled', 'Cancelled.')
+  const cancelled = (): DownloadFailure => new DownloadFailure('cancelled', t('errors.cancelled'))
   const maxWait = opts.maxRetryAfterMs ?? DOWNLOAD.maxRetryAfterMs
   let busyWaits = 0
 
