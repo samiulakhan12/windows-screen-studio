@@ -11,6 +11,7 @@ import { LOCAL_MODELS, suggestedModel, type LocalModelSpec } from '../../../shar
 import { blockReason, pcLine, sizeGb, speedLine } from '../../../shared/localAi/messages'
 import { loadLocalAiState, modelInUse, setLocalAiState, useLocalAi } from '../ai/localAiState'
 import { ipcMessage } from './providerText'
+import { isCancel } from '../editor/cancelled'
 import '../ai/localAi.css'
 import { t } from '../../../shared/i18n/t'
 import { fmt } from '../../../shared/i18n/fmt'
@@ -52,8 +53,7 @@ export function LocalAiSection(props: { reveal: boolean }): JSX.Element {
         else loadLocalAiState()
       },
       (err: unknown) => {
-        const message = ipcMessage(err)
-        if (message !== t('errors.cancelled')) setError(message)
+        if (!isCancel(err)) setError(ipcMessage(err))
         loadLocalAiState()
       }
     )

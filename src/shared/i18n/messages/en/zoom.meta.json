@@ -5,12 +5,6 @@
   "zoomPanel.selectedClick": {
     "description": "zoomPanel, the title of <Section> (src/renderer/src/editor/panels/ZoomPanel.tsx:114)."
   },
-  "zoomPanel.ignoredNoZoomClick": {
-    "description": "zoomPanel, text of <p> (src/renderer/src/editor/panels/ZoomPanel.tsx:120)."
-  },
-  "zoomPanel.itWasIgnoredAutomatically": {
-    "description": "Zoom tab › Selected click: added after \"Ignored: …\" when the click was ignored automatically. {reason} says why. Starts with a space."
-  },
   "zoomPanel.ignoreClick": {
     "description": "zoomPanel, text of <button> (src/renderer/src/editor/panels/ZoomPanel.tsx:126)."
   },
@@ -571,5 +565,16 @@
   },
   "found.none": {
     "description": "Zoom › Auto zoom summary: nothing auto zoom can zoom for was found."
+  },
+  "zoomPanel.ignored.lead": {
+    "description": "zoomPanel, text of <p> (src/renderer/src/editor/panels/ZoomPanel.tsx:120). English shows it in pieces as before (a merge group, output-and-languages §9.3); other languages show only the group’s .whole message.",
+    "merge": true
+  },
+  "zoomPanel.ignored.auto": {
+    "description": "Zoom tab › Selected click: added after \"Ignored: …\" when the click was ignored automatically. {reason} says why. Starts with a space. English shows it in pieces as before (a merge group, output-and-languages §9.3); other languages show only the group’s .whole message.",
+    "merge": true
+  },
+  "zoomPanel.ignored.whole": {
+    "description": "Zoom tab › Selected click: an ignored click, whole. auto yes: Flown ignored it by itself, and {reason} says why. Used only when the UI language is not English (merge group, output-and-languages §9.3): English builds the same sentence from its pieces."
   }
 }

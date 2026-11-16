@@ -717,15 +717,6 @@
   "selectionPanel.changingOrMovingThe": {
     "description": "selectionPanel, text of <p> (src/renderer/src/editor/panels/SelectionPanel.tsx:298)."
   },
-  "selectionPanel.textTitlesAndChapter": {
-    "description": "Selection view: the closing hint’s first sentence; the shortcuts of Copy look and Paste look may follow. Ends with a space."
-  },
-  "selectionPanel.copiesOneItemS": {
-    "description": "Selection view: part of the closing hint, after \"Text, titles and chapter names are edited one at a time.\" {keys} is Copy look’s shortcut, never translated. Ends with a semicolon and a space."
-  },
-  "selectionPanel.pastesItOntoThe": {
-    "description": "Selection view: the end of the closing hint. {keys} is Paste look’s shortcut, never translated."
-  },
   "selectionPanel.useTheProjectS": {
     "description": "selectionPanel, the title of <button> (src/renderer/src/editor/panels/SelectionPanel.tsx:334)."
   },
@@ -824,10 +815,12 @@
     "description": "Style › New recordings: notice when the saved default look could not be reset. {reason} is why, from the system."
   },
   "stylePanel.defaultsLeft.image": {
-    "description": "Style › New recordings: one of the things a saved default leaves out, inside \"Saved as default ({left})\"."
+    "description": "Style › New recordings: one of the things a saved default leaves out, inside \"Saved as default ({left})\". English shows it in pieces as before (a merge group, output-and-languages §9.3); other languages show only the group’s .whole message.",
+    "merge": true
   },
   "stylePanel.defaultsLeft.logo": {
-    "description": "Style › New recordings: one of the things a saved default leaves out, inside \"Saved as default ({left})\"."
+    "description": "Style › New recordings: one of the things a saved default leaves out, inside \"Saved as default ({left})\". English shows it in pieces as before (a merge group, output-and-languages §9.3); other languages show only the group’s .whole message.",
+    "merge": true
   },
   "stylePanel.savedAsDefaultLeft": {
     "description": "Style › New recordings: notice after saving the default look when parts were left out. {left} lists them, joined by semicolons."
@@ -1547,21 +1540,6 @@
   "freezeSection.sound.continue.atEnd": {
     "description": "Freeze frame: tooltip of Keep the sound playing when the freeze is at the very end (the chip is off)."
   },
-  "freezeMarks.groupSelected": {
-    "description": "Timeline: added at the end of a freeze frame’s tooltip when it is one of several selected items. {n} is how many are selected. Starts with a space and a middle dot.",
-    "dnt": [
-      "Ctrl"
-    ]
-  },
-  "freezeMarks.groupSelectSeveral": {
-    "description": "Timeline: added at the end of a freeze frame’s tooltip when nothing else is selected. Starts with a space and a middle dot.",
-    "dnt": [
-      "Ctrl"
-    ]
-  },
-  "freezeMarks.removeHint": {
-    "description": "Timeline: added after \"Drag the edge to change\" in a freeze frame’s tooltip. {keys} is the delete shortcut’s keycaps, never translated. Starts with a comma."
-  },
   "freezeMarks.nothingToHoldNext": {
     "description": "Timeline: tooltip of a freeze frame that keeps the sound but the next freeze leaves it no time. {keys} is the delete shortcut’s keycaps."
   },
@@ -1869,22 +1847,28 @@
     "description": "Clip tab: title of a selected gap that is a cut part (a noun: the part that was cut out)."
   },
   "clipPanel.editHint.pressSplit": {
-    "description": "Clip tab, Edit hint (piece 1 of 4, with a split shortcut): split is its keycaps (never translated). The hint is one sentence in pieces, joined by spaces, so that English keeps the text as it lays it out today (the English guard compares the pixels): Press {split} to split at the playhead, | select a clip and | press {delete} | to cut it, or Shift+drag …"
+    "description": "Clip tab, Edit hint (piece 1 of 4, with a split shortcut): split is its keycaps (never translated). The hint is one sentence in pieces, joined by spaces, so that English keeps the text as it lays it out today (the English guard compares the pixels): Press {split} to split at the playhead, | select a clip and | press {delete} | to cut it, or Shift+drag … English shows it in pieces as before (a merge group, output-and-languages §9.3); other languages show only the group’s .whole message.",
+    "merge": true
   },
   "clipPanel.editHint.split": {
-    "description": "Clip tab, Edit hint (piece 1 of 4, without a split shortcut). The hint is one sentence in pieces, joined by spaces, so that English keeps the text as it lays it out today (the English guard compares the pixels): Press {split} to split at the playhead, | select a clip and | press {delete} | to cut it, or Shift+drag …"
+    "description": "Clip tab, Edit hint (piece 1 of 4, without a split shortcut). The hint is one sentence in pieces, joined by spaces, so that English keeps the text as it lays it out today (the English guard compares the pixels): Press {split} to split at the playhead, | select a clip and | press {delete} | to cut it, or Shift+drag … English shows it in pieces as before (a merge group, output-and-languages §9.3); other languages show only the group’s .whole message.",
+    "merge": true
   },
   "clipPanel.editHint.selectClip": {
-    "description": "Clip tab, Edit hint (piece 2 of 4). The hint is one sentence in pieces, joined by spaces, so that English keeps the text as it lays it out today (the English guard compares the pixels): Press {split} to split at the playhead, | select a clip and | press {delete} | to cut it, or Shift+drag …"
+    "description": "Clip tab, Edit hint (piece 2 of 4). The hint is one sentence in pieces, joined by spaces, so that English keeps the text as it lays it out today (the English guard compares the pixels): Press {split} to split at the playhead, | select a clip and | press {delete} | to cut it, or Shift+drag … English shows it in pieces as before (a merge group, output-and-languages §9.3); other languages show only the group’s .whole message.",
+    "merge": true
   },
   "clipPanel.editHint.pressDelete": {
-    "description": "Clip tab, Edit hint (piece 3 of 4, with a delete shortcut): delete is its keycaps (never translated). The hint is one sentence in pieces, joined by spaces, so that English keeps the text as it lays it out today (the English guard compares the pixels): Press {split} to split at the playhead, | select a clip and | press {delete} | to cut it, or Shift+drag …"
+    "description": "Clip tab, Edit hint (piece 3 of 4, with a delete shortcut): delete is its keycaps (never translated). The hint is one sentence in pieces, joined by spaces, so that English keeps the text as it lays it out today (the English guard compares the pixels): Press {split} to split at the playhead, | select a clip and | press {delete} | to cut it, or Shift+drag … English shows it in pieces as before (a merge group, output-and-languages §9.3); other languages show only the group’s .whole message.",
+    "merge": true
   },
   "clipPanel.editHint.useDelete": {
-    "description": "Clip tab, Edit hint (piece 3 of 4, without a delete shortcut; Delete clip is the button below). The hint is one sentence in pieces, joined by spaces, so that English keeps the text as it lays it out today (the English guard compares the pixels): Press {split} to split at the playhead, | select a clip and | press {delete} | to cut it, or Shift+drag …"
+    "description": "Clip tab, Edit hint (piece 3 of 4, without a delete shortcut; Delete clip is the button below). The hint is one sentence in pieces, joined by spaces, so that English keeps the text as it lays it out today (the English guard compares the pixels): Press {split} to split at the playhead, | select a clip and | press {delete} | to cut it, or Shift+drag … English shows it in pieces as before (a merge group, output-and-languages §9.3); other languages show only the group’s .whole message.",
+    "merge": true
   },
   "clipPanel.editHint.toCut": {
-    "description": "Clip tab, Edit hint (piece 4 of 4): Shift is a keycap (never translated). The hint is one sentence in pieces, joined by spaces, so that English keeps the text as it lays it out today (the English guard compares the pixels): Press {split} to split at the playhead, | select a clip and | press {delete} | to cut it, or Shift+drag …"
+    "description": "Clip tab, Edit hint (piece 4 of 4): Shift is a keycap (never translated). The hint is one sentence in pieces, joined by spaces, so that English keeps the text as it lays it out today (the English guard compares the pixels): Press {split} to split at the playhead, | select a clip and | press {delete} | to cut it, or Shift+drag … English shows it in pieces as before (a merge group, output-and-languages §9.3); other languages show only the group’s .whole message.",
+    "merge": true
   },
   "colourControls.autoColourStopped": {
     "description": "Colour › Auto colour: the reason a run ends when it is stopped (a stopped run shows nothing more)."
@@ -1921,5 +1905,53 @@
   },
   "groupEdit.count.graphic": {
     "description": "Several items selected: how many pop-ups (the Selection view, and the paste and duplicate notices)."
+  },
+  "selectionPanel.lookKeys.intro": {
+    "description": "Selection view: the closing hint’s first sentence; the shortcuts of Copy look and Paste look may follow. Ends with a space. English shows it in pieces as before (a merge group, output-and-languages §9.3); other languages show only the group’s .whole message.",
+    "merge": true
+  },
+  "selectionPanel.lookKeys.copy": {
+    "description": "Selection view: part of the closing hint, after \"Text, titles and chapter names are edited one at a time.\" {keys} is Copy look’s shortcut, never translated. Ends with a semicolon and a space. English shows it in pieces as before (a merge group, output-and-languages §9.3); other languages show only the group’s .whole message.",
+    "merge": true
+  },
+  "selectionPanel.lookKeys.paste": {
+    "description": "Selection view: the end of the closing hint. {keys} is Paste look’s shortcut, never translated. English shows it in pieces as before (a merge group, output-and-languages §9.3); other languages show only the group’s .whole message.",
+    "merge": true
+  },
+  "freezeMarks.tip.groupSelected": {
+    "description": "Timeline: added at the end of a freeze frame’s tooltip when it is one of several selected items. {n} is how many are selected. Starts with a space and a middle dot. English shows it in pieces as before (a merge group, output-and-languages §9.3); other languages show only the group’s .whole message.",
+    "dnt": [
+      "Ctrl"
+    ],
+    "merge": true
+  },
+  "freezeMarks.tip.groupSelectSeveral": {
+    "description": "Timeline: added at the end of a freeze frame’s tooltip when nothing else is selected. Starts with a space and a middle dot. English shows it in pieces as before (a merge group, output-and-languages §9.3); other languages show only the group’s .whole message.",
+    "dnt": [
+      "Ctrl"
+    ],
+    "merge": true
+  },
+  "freezeMarks.tip.removeHint": {
+    "description": "Timeline: added after \"Drag the edge to change\" in a freeze frame’s tooltip. {keys} is the delete shortcut’s keycaps, never translated. Starts with a comma. English shows it in pieces as before (a merge group, output-and-languages §9.3); other languages show only the group’s .whole message.",
+    "merge": true
+  },
+  "freezeMarks.tip.whole": {
+    "description": "Timeline: a freeze frame block's tooltip, whole. kind adds: a freeze that adds {length} to the video (its edge drags); otherwise the picture holds while the sound plays on. remove yes: {keys} is the Delete shortcut. group selected: the block is in a selected group of {n} items; several: Ctrl+click can start one. Used only when the UI language is not English (merge group, output-and-languages §9.3): English builds the same sentence from its pieces.",
+    "dnt": [
+      "Ctrl"
+    ]
+  },
+  "clipPanel.editHint.whole": {
+    "description": "Clip tab: how to edit clips, whole. {split} and {delete} are keycaps (hasSplit and hasDelete are no when that action has no shortcut); \"Delete clip\" names the button; <kbd> is a keycap. Used only when the UI language is not English (merge group, output-and-languages §9.3): English builds the same sentence from its pieces.",
+    "dnt": [
+      "Shift"
+    ]
+  },
+  "selectionPanel.lookKeys.whole": {
+    "description": "Selection tab: the hint under the shared properties, whole. {copy} and {paste} are the keycaps of Copy look and Paste look; keys says which of them have a shortcut. Used only when the UI language is not English (merge group, output-and-languages §9.3): English builds the same sentence from its pieces."
+  },
+  "stylePanel.defaultsLeft.whole": {
+    "description": "Style tab: the notice after Save as default for new recordings when part of the look was not saved, whole; left says which part. Used only when the UI language is not English (merge group, output-and-languages §9.3): English builds the same sentence from its pieces."
   }
 }

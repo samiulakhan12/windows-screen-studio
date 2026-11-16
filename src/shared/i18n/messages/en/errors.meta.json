@@ -1727,5 +1727,253 @@
   },
   "search.momentCutEnd": {
     "description": "The editor's notice after opening a moment found by Home's search that was cut after the last kept part: the playhead is at the end."
+  },
+  "aiFailure.timeout": {
+    "description": "A request to an AI service failed: no answer in time. {provider} is the service's name as shown (OpenAI, Google Gemini, a service the user added).",
+    "user": [
+      "provider"
+    ]
+  },
+  "aiFailure.network": {
+    "description": "A request to an AI service failed: the connection failed. {provider} is the service's name as shown (OpenAI, Google Gemini, a service the user added).",
+    "user": [
+      "provider"
+    ]
+  },
+  "aiFailure.certificate": {
+    "description": "A request to an AI service failed: the service's certificate was refused in the handshake (a company's TLS inspection or a proxy). {code} is the TLS error code, kept as it is. {provider} is the service's name as shown (OpenAI, Google Gemini, a service the user added).",
+    "user": [
+      "provider",
+      "code"
+    ]
+  },
+  "aiFailure.auth": {
+    "description": "A request to an AI service failed: the API key was refused. \"Settings → AI providers\" names the place in Settings. {provider} is the service's name as shown (OpenAI, Google Gemini, a service the user added).",
+    "user": [
+      "provider"
+    ]
+  },
+  "aiFailure.rateLimit": {
+    "description": "A request to an AI service failed: too many requests for now (HTTP 429). {provider} is the service's name as shown (OpenAI, Google Gemini, a service the user added).",
+    "user": [
+      "provider"
+    ]
+  },
+  "aiFailure.quota": {
+    "description": "A request to an AI service failed: the account has no credit left. {provider} is the service's name as shown (OpenAI, Google Gemini, a service the user added).",
+    "user": [
+      "provider"
+    ]
+  },
+  "aiFailure.noAccessModel": {
+    "description": "A request to an AI service failed: the key may not use the model (HTTP 403). {model} is the model's name. {provider} is the service's name as shown (OpenAI, Google Gemini, a service the user added).",
+    "user": [
+      "provider",
+      "model"
+    ]
+  },
+  "aiFailure.noAccessApi": {
+    "description": "A request to an AI service failed: the key may not use that part of the service (HTTP 403), no model named. {provider} is the service's name as shown (OpenAI, Google Gemini, a service the user added).",
+    "user": [
+      "provider"
+    ]
+  },
+  "aiFailure.unknownModelNamed": {
+    "description": "A request to an AI service failed: the model is unknown to the service (HTTP 404). {model} is the model's name. {provider} is the service's name as shown (OpenAI, Google Gemini, a service the user added).",
+    "user": [
+      "provider",
+      "model"
+    ]
+  },
+  "aiFailure.unknownModel": {
+    "description": "A request to an AI service failed: the model is unknown to the service (HTTP 404), no model named. {provider} is the service's name as shown (OpenAI, Google Gemini, a service the user added).",
+    "user": [
+      "provider"
+    ]
+  },
+  "aiFailure.tooLarge": {
+    "description": "A request to an AI service failed: the sound sent was larger than the service takes (HTTP 413). {provider} is the service's name as shown (OpenAI, Google Gemini, a service the user added).",
+    "user": [
+      "provider"
+    ]
+  },
+  "aiFailure.server": {
+    "description": "A request to an AI service failed: the service had an error of its own. {status} is the HTTP status number, kept in Latin digits. {provider} is the service's name as shown (OpenAI, Google Gemini, a service the user added).",
+    "digits": "latn",
+    "user": [
+      "provider"
+    ]
+  },
+  "aiFailure.rejectedSaying": {
+    "description": "A request to an AI service failed: the service refused the request (HTTP 400). {detail} is the service's own message, as it wrote it. {provider} is the service's name as shown (OpenAI, Google Gemini, a service the user added).",
+    "user": [
+      "provider",
+      "detail"
+    ]
+  },
+  "aiFailure.rejected": {
+    "description": "A request to an AI service failed: the service refused the request (HTTP 400) without saying why. {provider} is the service's name as shown (OpenAI, Google Gemini, a service the user added).",
+    "user": [
+      "provider"
+    ]
+  },
+  "aiFailure.failedSaying": {
+    "description": "A request to an AI service failed: any other failure. {detail} is what went wrong, as the service or the system wrote it. {provider} is the service's name as shown (OpenAI, Google Gemini, a service the user added).",
+    "user": [
+      "provider",
+      "detail"
+    ]
+  },
+  "aiFailure.failed": {
+    "description": "A request to an AI service failed: any other failure, with nothing more to say. {provider} is the service's name as shown (OpenAI, Google Gemini, a service the user added).",
+    "user": [
+      "provider"
+    ]
+  },
+  "localCaptions.reason.missing": {
+    "description": "Settings › Captions on this PC: why the speech engine cannot run, inside the brackets of \"Speech engine: not available (…)\". Part of the app is missing."
+  },
+  "localCaptions.reason.cpu": {
+    "description": "Settings › Captions on this PC: why the speech engine cannot run, inside the brackets of \"Speech engine: not available (…)\". The processor is too old."
+  },
+  "localCaptions.reason.blocked": {
+    "description": "Settings › Captions on this PC: why the speech engine cannot run, inside the brackets of \"Speech engine: not available (…)\". Windows or an antivirus refused to start it."
+  },
+  "localCaptions.reason.failed": {
+    "description": "Settings › Captions on this PC: why the speech engine cannot run, inside the brackets of \"Speech engine: not available (…)\". It did not start for another reason."
+  },
+  "localCaptions.unavailable.missing": {
+    "description": "Captions on this PC could not be made (shown after \"Captions could not be made: \"): the speech engine is missing from this copy of Flown."
+  },
+  "localCaptions.unavailable.cpu": {
+    "description": "Captions on this PC could not be made (shown after \"Captions could not be made: \"): the processor cannot run the speech engine."
+  },
+  "localCaptions.unavailable.blocked": {
+    "description": "Captions on this PC could not be made (shown after \"Captions could not be made: \"): Windows or an antivirus refused to start the speech engine."
+  },
+  "localCaptions.unavailable.failed": {
+    "description": "Captions on this PC could not be made (shown after \"Captions could not be made: \"): the speech engine did not start."
+  },
+  "localCaptions.tierLabel": {
+    "description": "A speech model as the Captions tab names it: its tier (Fast, Standard, Accurate, Most accurate, Bangla) and then the model's own name once, in brackets (\"Standard (Whisper base)\")."
+  },
+  "localCaptions.noModel": {
+    "description": "Captions on this PC could not be made (shown after \"Captions could not be made: \"): the model is not downloaded. {model} names it (\"Standard (Whisper base)\"); {size} its download size (\"142 MB\").",
+    "digits": "latn"
+  },
+  "localCaptions.damaged": {
+    "description": "Captions on this PC could not be made (shown after \"Captions could not be made: \"): the model file failed its check. {model} names it; {size} its download size.",
+    "digits": "latn"
+  },
+  "localCaptions.crashedAt": {
+    "description": "Captions on this PC could not be made (shown after \"Captions could not be made: \"): the speech engine crashed twice on one part. {part} and {parts} are numbers; \"Generate captions\" names the button."
+  },
+  "localCaptions.crashed": {
+    "description": "Captions on this PC could not be made (shown after \"Captions could not be made: \"): the speech engine crashed twice. \"Generate captions\" names the button."
+  },
+  "localCaptions.memoryTry": {
+    "description": "Captions on this PC could not be made (shown after \"Captions could not be made: \"): the PC ran out of memory. {model} names the model; {tier} the next quicker tier (\"Standard\")."
+  },
+  "localCaptions.memory": {
+    "description": "Captions on this PC could not be made (shown after \"Captions could not be made: \"): the PC ran out of memory and there is no quicker tier. {model} names the model."
+  },
+  "localCaptions.stalled": {
+    "description": "Captions on this PC could not be made (shown after \"Captions could not be made: \"): the speech engine stopped answering. \"Generate captions\" names the button."
+  },
+  "localCaptions.protocol": {
+    "description": "Captions on this PC could not be made (shown after \"Captions could not be made: \"): the speech engine gave an answer Flown cannot read."
+  },
+  "localCaptions.language": {
+    "description": "Captions on this PC could not be made (shown after \"Captions could not be made: \"): the model does not know the spoken language asked for. {language} is its code; \"Detect automatically\" names a choice of the spoken language list.",
+    "user": [
+      "language"
+    ]
+  },
+  "localCaptions.blockedMemory": {
+    "description": "Captions on this PC could not be made (shown after \"Captions could not be made: \"): the model may not run on this PC for lack of memory. {model} names it; {gb} is a number."
+  },
+  "localCaptions.blockedProcessor": {
+    "description": "Captions on this PC could not be made (shown after \"Captions could not be made: \"): the model would be too slow on this processor. {model} names it."
+  },
+  "localCaptions.outdated": {
+    "description": "Captions on this PC could not be made (shown after \"Captions could not be made: \"): the bundled speech engine is from another version of Flown. {model} names the model."
+  },
+  "localCaptions.modelProcessor": {
+    "description": "Settings › Captions on this PC: why a speech model cannot be downloaded on this PC (its processor).",
+    "dnt": [
+      "AVX2"
+    ]
+  },
+  "localCaptions.modelMemory": {
+    "description": "Settings › Captions on this PC: why a speech model cannot be downloaded on this PC (its memory). {need} is a decimal number of GB, {gb} and {have} whole numbers."
+  },
+  "pinnedDownload.notAllowed": {
+    "description": "A download of a speech model, a font, music or a model for AI on this PC failed: the address is not one Flown downloads from."
+  },
+  "pinnedDownload.space": {
+    "description": "A download of a speech model, a font, music or a model for AI on this PC failed: the disk has too little free space. {mb} is a whole number of megabytes."
+  },
+  "pinnedDownload.stalled": {
+    "description": "A download of a speech model, a font, music or a model for AI on this PC failed: nothing arrived for a minute."
+  },
+  "pinnedDownload.tooManyRedirects": {
+    "description": "A download of a speech model, a font, music or a model for AI on this PC failed: the server sent it on too many times."
+  },
+  "pinnedDownload.badRedirect": {
+    "description": "A download of a speech model, a font, music or a model for AI on this PC failed: the server sent it on to an address that is not valid."
+  },
+  "pinnedDownload.hostNotAllowed": {
+    "description": "A download of a speech model, a font, music or a model for AI on this PC failed: the server sent it on to a host Flown does not download from. {host} is that host's name.",
+    "user": [
+      "host"
+    ]
+  },
+  "pinnedDownload.busy": {
+    "description": "A download of a speech model, a font, music or a model for AI on this PC failed: the server stayed busy longer than Flown waits."
+  },
+  "pinnedDownload.refused": {
+    "description": "A download of a speech model, a font, music or a model for AI on this PC failed: the server or a proxy refused it.",
+    "dnt": [
+      "Hugging Face"
+    ]
+  },
+  "pinnedDownload.missing": {
+    "description": "A download of a speech model, a font, music or a model for AI on this PC failed: the file is gone from its address. {status} is the HTTP status number.",
+    "digits": "latn"
+  },
+  "pinnedDownload.httpStatus": {
+    "description": "A download of a speech model, a font, music or a model for AI on this PC failed: the server answered with an error. {status} is the HTTP status number.",
+    "digits": "latn"
+  },
+  "pinnedDownload.differentFile": {
+    "description": "A download of a speech model, a font, music or a model for AI on this PC failed: the server sent another file when the download continued."
+  },
+  "pinnedDownload.cannotContinue": {
+    "description": "A download of a speech model, a font, music or a model for AI on this PC failed: the server could not continue a download that had stopped."
+  },
+  "pinnedDownload.tooLarge": {
+    "description": "A download of a speech model, a font, music or a model for AI on this PC failed: more arrived than the file's size."
+  },
+  "pinnedDownload.notSaved": {
+    "description": "A download of a speech model, a font, music or a model for AI on this PC failed: the file could not be written. {reason} is the system's own message.",
+    "user": [
+      "reason"
+    ]
+  },
+  "pinnedDownload.closedEarly": {
+    "description": "A download of a speech model, a font, music or a model for AI on this PC failed: the connection closed early."
+  },
+  "pinnedDownload.mismatch": {
+    "description": "A download of a speech model, a font, music or a model for AI on this PC failed: the file did not match its checksum."
+  },
+  "localAiDownload.needsMemory": {
+    "description": "Settings › AI on this PC: a model cannot be downloaded because this PC has too little memory. {need} and {have} are whole numbers of GB."
+  },
+  "audioAnalysis.unreadableExit": {
+    "description": "Sound measurement failed and the decoder wrote nothing: {file} is a recording file name, {code} the decoder's exit code (a number, kept in Latin digits).",
+    "user": [
+      "file"
+    ],
+    "digits": "latn"
   }
 }

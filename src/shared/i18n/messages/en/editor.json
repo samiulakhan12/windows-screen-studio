@@ -32,9 +32,7 @@
   "preview.clickToPlay": "Click to play or pause",
   "preview.groupOutline": "Selected · click to edit it alone, Ctrl+click to leave it out",
   "preview.groupHint": "{count, plural, =1 {{n} selected item} other {{n} selected items}} on screen · Ctrl+click to add or remove",
-  "preview.focusHint": "Click or drag to set where this zoom looks ·",
   "preview.regionBox": "Drag to move · corners resize (Shift: any shape)",
-  "preview.regionHint": "Drag to draw the area to zoom into (Shift: any shape) ·",
   "preview.moveText": "Drag to move the text",
   "preview.moveEnd": "Drag to move this end",
   "preview.moveArrowhead": "Drag to move the arrowhead",
@@ -295,5 +293,9 @@
   "duplicate.someMovedWhy": "Duplicated {n} of {total} at {at} (moved back so they fit): {reasons}",
   "duplicate.none": "Nothing duplicated",
   "duplicate.noneWhy": "Nothing duplicated: {reasons}",
-  "paste.shortened": "{count, plural, one {{n} zoom was shortened to fit} other {{n} zooms were shortened to fit}}"
+  "paste.shortened": "{count, plural, one {{n} zoom was shortened to fit} other {{n} zooms were shortened to fit}}",
+  "preview.focusHint.lead": "Click or drag to set where this zoom looks ·",
+  "preview.regionHint.lead": "Drag to draw the area to zoom into (Shift: any shape) ·",
+  "preview.focusHint.whole": "Click or drag to set where this zoom looks · <link>Done</link>",
+  "preview.regionHint.whole": "Drag to draw the area to zoom into (Shift: any shape) · <link>Done</link>"
 }

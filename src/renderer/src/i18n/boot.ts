@@ -6,8 +6,10 @@
  *
  * - The recording bar (Toolbar.*, the other account's) stays English and asks nothing (§9.5).
  * - The built catalogues (`src/shared/i18n/built/<lang>.json`) are separate chunks, loaded only for
- *   the UI language; none exists until a language ships. An unpackaged test build may hand the
- *   catalogue over with ui:info instead (SSW_I18N_CATALOGUE_DIR).
+ *   the UI language; none exists until a language ships. An unpackaged build may hand the catalogue
+ *   over with ui:info instead: the tests' folder (SSW_I18N_CATALOGUE_DIR), or a pseudo-locale's
+ *   under FLOWN_I18N_PSEUDO (§16.3, development only), whose direction ui:info gives too (ar-XB is
+ *   right to left).
  * - After a relaunch from the editor, its project opens again once (reopenAfterRelaunch); the
  *   project the editor has open is what Restart now asks to reopen (editorProjectToReopen).
  */

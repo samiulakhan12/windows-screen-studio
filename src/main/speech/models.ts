@@ -14,6 +14,7 @@ import { writeFileAtomicSync } from '../atomicWrite'
 import { DownloadFailure, downloadPinned, electronGet, type HttpGet } from './download'
 import type { HelperBuild } from './helper'
 import { t } from '../../shared/i18n/t'
+import { cancelledError } from '../../shared/jobs/longJobs'
 
 /** speech.json, as stored. */
 export interface SpeechSettingsFile {
@@ -272,7 +273,7 @@ export class SpeechModelStore {
 
   /**
    * Downloads `id` (continuing a stopped download); resolves once installed and verified.
-   * Rejects with a message ('Cancelled.' when cancelled). The first verified model becomes the
+   * Rejects with a message (a cancel with the cancel code, cancelledError). The first verified model becomes the
    * default when the default is not installed; a model made for one language never does.
    */
   async download(id: unknown): Promise<void> {
@@ -337,7 +338,7 @@ export class SpeechModelStore {
       if (failure.kind === 'cancelled') {
         this.live.delete(spec.id)
         if (active.discard) await this.deletePart(spec)
-        throw new Error(t('errors.cancelled'))
+        throw cancelledError()
       }
       const received = (await fs.stat(`${dest}.part`).catch(() => null))?.size ?? 0
       this.live.set(spec.id, { state: 'failed', received, total: spec.bytes, error: failure.kind, ...(failure.status ? { status: failure.status } : {}), message: failure.message })

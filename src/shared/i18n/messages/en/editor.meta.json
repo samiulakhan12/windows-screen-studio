@@ -107,17 +107,8 @@
       "Ctrl"
     ]
   },
-  "preview.focusHint": {
-    "description": "Preview: hint while choosing where a zoom looks; a Done button follows."
-  },
   "preview.regionBox": {
     "description": "Preview: tooltip of the box a region zoom frames. Shift is a keycap.",
-    "dnt": [
-      "Shift"
-    ]
-  },
-  "preview.regionHint": {
-    "description": "Preview: hint while drawing a region zoom; a Done button follows. Shift is a keycap.",
     "dnt": [
       "Shift"
     ]
@@ -932,5 +923,25 @@
   },
   "paste.shortened": {
     "description": "Paste or Duplicate: one more fact after a middle dot in the notice, the zooms made shorter so they fit."
+  },
+  "preview.focusHint.lead": {
+    "description": "Preview: hint while choosing where a zoom looks; a Done button follows. English shows it in pieces as before (a merge group, output-and-languages §9.3); other languages show only the group’s .whole message.",
+    "merge": true
+  },
+  "preview.regionHint.lead": {
+    "description": "Preview: hint while drawing a region zoom; a Done button follows. Shift is a keycap. English shows it in pieces as before (a merge group, output-and-languages §9.3); other languages show only the group’s .whole message.",
+    "dnt": [
+      "Shift"
+    ],
+    "merge": true
+  },
+  "preview.focusHint.whole": {
+    "description": "Preview: the hint while a zoom's focus is picked; <link> is the Done button that ends picking. Used only when the UI language is not English (merge group, output-and-languages §9.3): English builds the same sentence from its pieces."
+  },
+  "preview.regionHint.whole": {
+    "description": "Preview: the hint while a zoom's area is drawn; <link> is the Done button that ends drawing. Used only when the UI language is not English (merge group, output-and-languages §9.3): English builds the same sentence from its pieces.",
+    "dnt": [
+      "Shift"
+    ]
   }
 }

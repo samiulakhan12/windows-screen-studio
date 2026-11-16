@@ -212,9 +212,9 @@ export async function downloadThenCaptions(projectId: string, model: SpeechModel
       intents.delete(projectId)
       emit()
       const host = hosts.get(projectId)
-      if (host && !host.captionsOpen() && !isCancel(message)) host.notice(SPEECH_COPY.downloadFailedNotice)
+      if (host && !host.captionsOpen() && !isCancel(err)) host.notice(SPEECH_COPY.downloadFailedNotice)
     }
-    if (!isCancel(message)) console.warn(`The speech model ${model} could not be downloaded:`, message)
+    if (!isCancel(err)) console.warn(`The speech model ${model} could not be downloaded:`, message)
     return
   }
   // A model made for one language (the Bangla model) never becomes the default: other languages would use it.

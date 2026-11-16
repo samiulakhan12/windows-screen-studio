@@ -497,12 +497,6 @@
   "overlayEditor.dragToRotateShift": {
     "description": "overlayEditor, the title of <span> (src/renderer/src/editor/OverlayEditor.tsx:170)."
   },
-  "overlayEditor.dragToPlaceIt": {
-    "description": "Preview, a newly added image: what to do with it, before a Done link; label is the image's name.",
-    "user": [
-      "label"
-    ]
-  },
   "overlayTrack.doubleClickToAdd": {
     "description": "overlayTrack, the title of <div> (src/renderer/src/editor/OverlayTrack.tsx:128)."
   },
@@ -1228,5 +1222,15 @@
   },
   "titleTrack.chapterAtEnd": {
     "description": "Editor notice: Add chapter at the very end of the video."
+  },
+  "overlayEditor.dragToPlaceIt.lead": {
+    "description": "Preview, a newly added image: what to do with it, before a Done link; label is the image's name. English shows it in pieces as before (a merge group, output-and-languages §9.3); other languages show only the group’s .whole message.",
+    "user": [
+      "label"
+    ],
+    "merge": true
+  },
+  "overlayEditor.dragToPlaceIt.whole": {
+    "description": "Preview: the hint while a picture or logo is being placed. {label} names it; <link> is the Done button that ends placing. Used only when the UI language is not English (merge group, output-and-languages §9.3): English builds the same sentence from its pieces."
   }
 }

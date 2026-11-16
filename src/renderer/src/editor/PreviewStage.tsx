@@ -1,4 +1,4 @@
-import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
+import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent, type ReactNode } from 'react'
 import { annotationVisibleAt } from '../../../shared/editor/annotations'
 import { displayTime } from '../../../shared/editor/clips'
 import {
@@ -40,7 +40,8 @@ import { CropEditor, type CropTool } from './CropEditor'
 import { overlayBounds, OverlayEditor } from './OverlayEditor'
 import { overlayVisibleAt } from '../../../shared/render/imageOverlays'
 import { fmt } from '../../../shared/i18n/fmt'
-import { t } from '../../../shared/i18n/t'
+import { t, uiLanguage, type MessageKey } from '../../../shared/i18n/t'
+import { richText } from '../i18n/richText'
 import { releaseFocus } from './focus'
 import type { PreviewPlayer } from './player'
 import { followPointer } from './pointer'
@@ -513,6 +514,32 @@ function framedArea(zoom: ZoomSegment, fx: number, fy: number, rect: Rect): Rect
   return { x: rect.x + (cam.cx - half) * rect.w, y: rect.y + (cam.cy - half) * rect.h, w: rect.w / cam.scale, h: rect.h / cam.scale }
 }
 
+/**
+ * A picker's hint and its Done button. English keeps today's text nodes, the hint and then the
+ * button (merge group, output-and-languages §9.3); other languages say the hint whole, Done inside it.
+ */
+function PickHint({ lead, whole, onDone }: { lead: MessageKey; whole: MessageKey; onDone: () => void }): JSX.Element {
+  const done = (label: ReactNode): JSX.Element => (
+    <button
+      className="link"
+      onPointerDown={(e) => e.stopPropagation()}
+      onClick={(e) => {
+        e.stopPropagation()
+        onDone()
+      }}
+    >
+      {label}
+    </button>
+  )
+  if (uiLanguage() !== 'en') return <>{richText(whole, {}, { link: (chunks) => done(chunks) })}</>
+  return (
+    <>
+      {t(lead)}{' '}
+      {done(t('common.action.done'))}
+    </>
+  )
+}
+
 function FocusPicker({ zoom, rect, onDone }: { zoom: ZoomSegment; rect: Rect; onDone: () => void }): JSX.Element {
   const fx = zoom.focus.mode === 'fixed' ? zoom.focus.x : 0.5
   const fy = zoom.focus.mode === 'fixed' ? zoom.focus.y : 0.5
@@ -522,17 +549,7 @@ function FocusPicker({ zoom, rect, onDone }: { zoom: ZoomSegment; rect: Rect; on
       <div className="focus-viewport" style={{ left: view.x, top: view.y, width: view.w, height: view.h }} />
       <div className="focus-marker" style={{ left: rect.x + fx * rect.w, top: rect.y + fy * rect.h }} />
       <div className="pick-hint">
-        {t('editor.preview.focusHint')}{' '}
-        <button
-          className="link"
-          onPointerDown={(e) => e.stopPropagation()}
-          onClick={(e) => {
-            e.stopPropagation()
-            onDone()
-          }}
-        >
-          {t('common.action.done')}
-        </button>
+        <PickHint lead="editor.preview.focusHint.lead" whole="editor.preview.focusHint.whole" onDone={onDone} />
       </div>
     </>
   )
@@ -596,17 +613,7 @@ function RegionEditor({
         ))}
       </div>
       <div className="pick-hint">
-        {t('editor.preview.regionHint')}{' '}
-        <button
-          className="link"
-          onPointerDown={(e) => e.stopPropagation()}
-          onClick={(e) => {
-            e.stopPropagation()
-            onDone()
-          }}
-        >
-          {t('common.action.done')}
-        </button>
+        <PickHint lead="editor.preview.regionHint.lead" whole="editor.preview.regionHint.whole" onDone={onDone} />
       </div>
     </>
   )

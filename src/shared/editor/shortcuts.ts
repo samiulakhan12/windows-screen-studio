@@ -11,7 +11,7 @@
  */
 import { COMMAND_IDS, commandInfo, isCommandId, type CommandId } from './commands'
 import { fmt } from '../i18n/fmt'
-import { t, type MessageKey } from '../i18n/t'
+import { t, uiLanguage, type MessageKey } from '../i18n/t'
 
 export interface Chord {
   ctrl: boolean
@@ -301,9 +301,16 @@ export function reviewHint(keymap: Keymap): string {
   return keymap.review.length ? t('keys.reviewHint', { keys: shortcutLabel(keymap.review[0]) }) : t('keys.reviewHintNoKey')
 }
 
-/** " · Ctrl + Z to undo", for a notice after a big change; empty when Undo has no shortcut. */
+/**
+ * " · Ctrl + Z to undo", for a notice after a big change; empty when Undo has no shortcut. Other
+ * messages take it as their {undo} placeholder. English keeps today's piece (merge group,
+ * output-and-languages §9.3); other languages say the hint as a phrase of its own, after the same
+ * separator.
+ */
 export function undoHint(keymap: Keymap): string {
-  return keymap.undo.length ? t('keys.undoHint', { keys: shortcutLabel(keymap.undo[0]) }) : ''
+  if (!keymap.undo.length) return ''
+  const keys = shortcutLabel(keymap.undo[0])
+  return uiLanguage() === 'en' ? t('keys.undoHint.lead', { keys }) : ` · ${t('keys.undoHint.whole', { keys })}`
 }
 
 /**

@@ -163,7 +163,6 @@
   "overlayEditor.dragToMoveArrow": "{label}: drag to move, arrow keys move it",
   "overlayEditor.dragToMoveHandles": "Drag to move · handles resize (Shift: keep the shape) · round handle rotates",
   "overlayEditor.dragToRotateShift": "Drag to rotate (Shift: 15° steps)",
-  "overlayEditor.dragToPlaceIt": "{label} · drag to place it ·",
   "overlayTrack.doubleClickToAdd": "Double-click to add an image",
   "overlayTrack.imagesAndStickers": "Images and stickers",
   "overlayDropZone.dropAnImageTo": "Drop an image to add it at the playhead",
@@ -399,5 +398,7 @@
   "imagesPanel.formats": "PNG, JPG, WebP, SVG or GIF, up to 25 MB",
   "graphicsPanel.full": "{count, plural, other {This video already has {n} pop-ups.}}",
   "titleTrack.chapterThere": "\"{title}\" already starts here, so it is selected instead",
-  "titleTrack.chapterAtEnd": "A chapter needs some video after it: move the playhead back from the end"
+  "titleTrack.chapterAtEnd": "A chapter needs some video after it: move the playhead back from the end",
+  "overlayEditor.dragToPlaceIt.lead": "{label} · drag to place it ·",
+  "overlayEditor.dragToPlaceIt.whole": "{label} · drag to place it · <link>Done</link>"
 }

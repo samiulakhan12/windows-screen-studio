@@ -1,12 +1,16 @@
 /**
  * The sentences shared by the main process and the Captions tab when captions on this PC cannot
  * be made (docs/design/offline-captions.md §7.2), and why a model is not offered on a PC (§7.3).
- * Electron passes only the message of a rejected invoke, so the message itself carries the
- * reason: main throws `new Error(localErrorMessage(code, params))`, and the renderer maps the
- * text back with localErrorCode to pick the button it offers. The Captions tab names a model by
- * its tier first ("Accurate (Whisper small)"), so every sentence here does. Pure, frozen.
+ * Each is an errors message in the UI language (main imports this file), one whole sentence for
+ * each shape. Electron passes only the message of a rejected invoke, so the message itself carries
+ * the reason: main throws `new Error(localErrorMessage(code, params))`, and the renderer maps the
+ * text back with localErrorCode to pick the button it offers (today's English patterns, and in
+ * another language the same messages read from the catalogue main formats them from). The Captions
+ * tab names a model by its tier first ("Accurate (Whisper small)"), so every sentence here does.
+ * Pure, frozen.
  */
 import type { SpeechUnavailable } from '../api/speech'
+import { t, uiLanguage, type MessageKey, type MessageValues } from '../i18n/t'
 import { isLanguageModel, memoryNeedMB, SPEECH_MODELS, SPEECH_TIER_NAMES, speechModel, type SpeechModelBlock, type SpeechModelId, type SpeechModelSpec } from './catalog'
 
 /** Why a transcription on this PC failed. */
@@ -46,12 +50,32 @@ export interface LocalErrorParams {
   block?: SpeechModelBlock
 }
 
-/** The end of "Captions on this PC are not available here: …." for each reason. */
+/**
+ * Why the speech engine cannot run, as a clause: Settings › Captions on this PC puts it in brackets
+ * after "Speech engine: not available". The sentences of localErrorMessage('unavailable') are whole
+ * messages of their own.
+ */
 export const UNAVAILABLE_REASONS: Readonly<Record<SpeechUnavailable, string>> = {
-  missing: 'part of Flown is missing; reinstall it to get them back',
-  cpu: "this PC's processor cannot run the speech model",
-  blocked: 'Windows or an antivirus blocked the speech engine',
-  failed: 'the speech engine did not start'
+  get missing(): string {
+    return t('errors.localCaptions.reason.missing')
+  },
+  get cpu(): string {
+    return t('errors.localCaptions.reason.cpu')
+  },
+  get blocked(): string {
+    return t('errors.localCaptions.reason.blocked')
+  },
+  get failed(): string {
+    return t('errors.localCaptions.reason.failed')
+  }
+}
+
+/** "Captions on this PC are not available here: …." for each reason, as one sentence. */
+const UNAVAILABLE_KEYS: Readonly<Record<SpeechUnavailable, MessageKey>> = {
+  missing: 'errors.localCaptions.unavailable.missing',
+  cpu: 'errors.localCaptions.unavailable.cpu',
+  blocked: 'errors.localCaptions.unavailable.blocked',
+  failed: 'errors.localCaptions.unavailable.failed'
 }
 
 const mb = (bytes: number): string => `${Math.round(bytes / 1e6)} MB`
@@ -59,7 +83,7 @@ const mb = (bytes: number): string => `${Math.round(bytes / 1e6)} MB`
 /** "Standard (Whisper base)": the tier, then the model's name once. */
 export function tierLabel(id: SpeechModelId): string {
   const spec = speechModel(id)!
-  return `${SPEECH_TIER_NAMES[spec.tier]} (${spec.name})`
+  return t('errors.localCaptions.tierLabel', { tier: SPEECH_TIER_NAMES[spec.tier], name: spec.name })
 }
 
 /**
@@ -72,36 +96,42 @@ export function quickerModel(id: SpeechModelId): SpeechModelSpec | null {
   return i > 0 ? general[i - 1] : null
 }
 
-/** The sentence for `code` (shown after "Captions could not be made: "). */
-export function localErrorMessage(code: LocalCaptionsError, params: LocalErrorParams = {}): string {
+/** The message key and values of `code`'s sentence (localErrorMessage). */
+function localError(code: LocalCaptionsError, params: LocalErrorParams): { key: MessageKey; values: MessageValues } {
   const spec = speechModel(params.model) ?? speechModel('whisper-base')!
-  const label = tierLabel(spec.id)
+  const model = tierLabel(spec.id)
   switch (code) {
     case 'unavailable':
-      return `Captions on this PC are not available here: ${UNAVAILABLE_REASONS[params.reason ?? 'failed']}.`
+      return { key: UNAVAILABLE_KEYS[params.reason ?? 'failed'], values: {} }
     case 'no-model':
-      return `${label} is not downloaded yet: download it in the Captions tab (${mb(spec.bytes)}, free).`
+      return { key: 'errors.localCaptions.noModel', values: { model, size: mb(spec.bytes) } }
     case 'damaged':
-      return `The speech model for ${label} is damaged or missing, so it was not used. Download it again (${mb(spec.bytes)}).`
+      return { key: 'errors.localCaptions.damaged', values: { model, size: mb(spec.bytes) } }
     case 'crashed':
       return params.part && params.parts
-        ? `The speech engine stopped unexpectedly. The parts already done are kept: Generate captions again continues from part ${params.part} of ${params.parts}.`
-        : 'The speech engine stopped unexpectedly. Generate captions again continues where it stopped.'
+        ? { key: 'errors.localCaptions.crashedAt', values: { part: String(params.part), parts: String(params.parts) } }
+        : { key: 'errors.localCaptions.crashed', values: {} }
     case 'memory': {
       const quicker = quickerModel(spec.id)
-      return quicker ? `This PC ran out of memory for ${label}. Try ${SPEECH_TIER_NAMES[quicker.tier]}.` : `This PC ran out of memory for ${label}. Close other apps and try again.`
+      return quicker ? { key: 'errors.localCaptions.memoryTry', values: { model, tier: SPEECH_TIER_NAMES[quicker.tier] } } : { key: 'errors.localCaptions.memory', values: { model } }
     }
     case 'stalled':
-      return 'The speech engine stopped responding and was closed. Generate captions again continues where it stopped.'
+      return { key: 'errors.localCaptions.stalled', values: {} }
     case 'protocol':
-      return 'The speech engine returned something unexpected.'
+      return { key: 'errors.localCaptions.protocol', values: {} }
     case 'language':
-      return `The speech model does not know the language “${params.language ?? ''}”. Choose another spoken language, or Detect automatically.`
+      return { key: 'errors.localCaptions.language', values: { language: params.language ?? '' } }
     case 'blocked':
-      return params.block === 'memory' ? `${label} needs a PC with ${spec.minTotalMemGB ?? 8} GB of memory in all.` : `${label} is too slow for this PC's processor. Choose a quicker tier.`
+      return params.block === 'memory' ? { key: 'errors.localCaptions.blockedMemory', values: { model, gb: String(spec.minTotalMemGB ?? 8) } } : { key: 'errors.localCaptions.blockedProcessor', values: { model } }
     case 'outdated':
-      return `The speech engine in this copy of Flown does not match this version, so it cannot run ${label}. Reinstall Flown to fix it.`
+      return { key: 'errors.localCaptions.outdated', values: { model } }
   }
+}
+
+/** The sentence for `code` (shown after "Captions could not be made: "). */
+export function localErrorMessage(code: LocalCaptionsError, params: LocalErrorParams = {}): string {
+  const { key, values } = localError(code, params)
+  return t(key, values)
 }
 
 const PATTERNS: readonly [LocalCaptionsError, RegExp][] = [
@@ -117,20 +147,51 @@ const PATTERNS: readonly [LocalCaptionsError, RegExp][] = [
   ['outdated', /^The speech engine in this copy of Flown does not match this version, so it cannot run /]
 ]
 
+/** Every message each code is said with, and the placeholders it fills (localError). */
+const CODE_KEYS: readonly [LocalCaptionsError, MessageKey, readonly string[]][] = [
+  ...Object.values(UNAVAILABLE_KEYS).map((key): [LocalCaptionsError, MessageKey, readonly string[]] => ['unavailable', key, []]),
+  ['no-model', 'errors.localCaptions.noModel', ['model', 'size']],
+  ['damaged', 'errors.localCaptions.damaged', ['model', 'size']],
+  ['crashed', 'errors.localCaptions.crashedAt', ['part', 'parts']],
+  ['crashed', 'errors.localCaptions.crashed', []],
+  ['memory', 'errors.localCaptions.memoryTry', ['model', 'tier']],
+  ['memory', 'errors.localCaptions.memory', ['model']],
+  ['stalled', 'errors.localCaptions.stalled', []],
+  ['protocol', 'errors.localCaptions.protocol', []],
+  ['language', 'errors.localCaptions.language', ['language']],
+  ['blocked', 'errors.localCaptions.blockedMemory', ['model', 'gb']],
+  ['blocked', 'errors.localCaptions.blockedProcessor', ['model']],
+  ['outdated', 'errors.localCaptions.outdated', ['model']]
+]
+
+/** A stand-in no message holds, for a placeholder while a message becomes a pattern. */
+const SLOT = '\u{F0000}'
+const escape = (s: string): string => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+
+/** The UI language's messages as patterns (any text where a placeholder goes), for a language other than English. */
+function catalogPatterns(): [LocalCaptionsError, RegExp][] {
+  return CODE_KEYS.map(([code, key, slots]) => {
+    const shown = t(key, Object.fromEntries(slots.map((name) => [name, SLOT])))
+    return [code, new RegExp(`^${shown.split(SLOT).map(escape).join('[\\s\\S]*')}$`, 'u')]
+  })
+}
+
 /**
  * The code of a message made by localErrorMessage, with or without Electron's "Error invoking
  * remote method '…': Error: " prefix; null for any other message (cloud providers, "This
- * recording has no sound to transcribe.", "Cancelled.").
+ * recording has no sound to transcribe.", a cancel). English reads today's patterns; another
+ * language first reads its own messages, which main formats from the same catalogue.
  */
 export function localErrorCode(message: string): LocalCaptionsError | null {
   const text = message.replace(/^Error invoking remote method '[^']*':\s*/, '').replace(/^(?:[A-Za-z]*Error):\s*/, '')
-  for (const [code, re] of PATTERNS) if (re.test(text)) return code
+  const patterns = uiLanguage() === 'en' ? PATTERNS : [...catalogPatterns(), ...PATTERNS]
+  for (const [code, re] of patterns) if (re.test(text)) return code
   return null
 }
 
 /** Why a model row in Settings cannot be downloaded (SpeechModelView.reason). */
 export function modelBlockReason(block: SpeechModelBlock, spec: Pick<SpeechModelSpec, 'ramMB' | 'partSeconds' | 'minTotalMemGB'>, totalMemBytes: number): string {
-  if (block === 'processor') return "Too slow for this PC's processor: it needs one with AVX2 (most PCs from 2013 on)."
+  if (block === 'processor') return t('errors.localCaptions.modelProcessor')
   const need = (memoryNeedMB(spec) / 1000).toFixed(1)
-  return `Needs about ${need} GB of memory and a PC with ${spec.minTotalMemGB ?? 8} GB in all; this one has ${Math.round(totalMemBytes / 2 ** 30)} GB.`
+  return t('errors.localCaptions.modelMemory', { need, gb: String(spec.minTotalMemGB ?? 8), have: String(Math.round(totalMemBytes / 2 ** 30)) })
 }

@@ -139,8 +139,10 @@ export interface SpeechApi {
   getSpeechState(): Promise<SpeechState>
   /**
    * Downloads model `id` (or continues a stopped download) and verifies it. Resolves once it is
-   * installed; rejects with a message to show ('Cancelled.' when cancelled). Starts only from a
-   * click on a button that names the model and its size.
+   * installed; rejects with a message to show. A cancel rejects with the cancel code (its error's
+   * name, CANCELLED_ERROR in jobs/longJobs.ts) and errors.cancelled in the UI language, and the
+   * renderer tells it by the code (isCancelled). Starts only from a click on a button that names
+   * the model and its size.
    */
   downloadSpeechModel(id: SpeechModelId): Promise<void>
   /** Stops the download of `id`; `discard` also deletes the part already downloaded. */

@@ -94,7 +94,6 @@
   "batch.also": "Also",
   "batch.aspectTitle": "The settings below in {aspect}",
   "batch.alsoHint": "The settings below, in more shapes.",
-  "settings.batch": "for “Also” and the encoder",
   "settings.format": "Format",
   "settings.noSound": "This recording has no sound",
   "settings.resolution": "Resolution",
@@ -235,5 +234,8 @@
   "fonts.notDownloaded": "Captions use {family}, which is not downloaded: they will use {until}.",
   "fonts.missingOne": "Font missing: {family}. Text that uses it is drawn with another font.",
   "stoppedAbort": "The export was stopped",
-  "overlay.tooLarge": "This image is too large to show ({width} × {height} pixels; {side} a side and {megapixels} megapixels at most)."
+  "overlay.tooLarge": "This image is too large to show ({width} × {height} pixels; {side} a side and {megapixels} megapixels at most).",
+  "settings.batch.lead": "for “Also” and the encoder",
+  "resolution.whole": "{size}{capped, select, yes {; limited to {side} px on the long side} other {}}{upscaled, select, yes {; larger than the recording ({width}×{height}): it will be upscaled} other {}}",
+  "settings.batch.whole": "Settings <em>· for “Also” and the encoder</em>"
 }

@@ -69,7 +69,11 @@ export function measureLevels(file: string, owner = ''): Promise<AudioLevels> {
       running.delete(proc)
       if (code === 0) resolve(meter.finish())
       else if (signal) reject(new Error(t('errors.audioAnalysis.theSoundMeasurementWas')))
-      else reject(new Error(t('errors.audioAnalysis.unreadable', { file: path.basename(file), reason: log.trim().split('\n').pop() || `exit code ${code}` })))
+      else {
+        // ffmpeg's last log line as it wrote it, or its exit code when it wrote nothing.
+        const last = log.trim().split('\n').pop()
+        reject(new Error(last ? t('errors.audioAnalysis.unreadable', { file: path.basename(file), reason: last }) : t('errors.audioAnalysis.unreadableExit', { file: path.basename(file), code: String(code) })))
+      }
     })
   })
 }

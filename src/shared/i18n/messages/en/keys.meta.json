@@ -11,8 +11,9 @@
   "reviewHintNoKey": {
     "description": "Added to the end of a notice after automatic changes when Review mode has no shortcut. Starts with the full stop that ends the notice's sentence."
   },
-  "undoHint": {
-    "description": "Added to the end of a notice after a big change: the Undo shortcut. Starts with a space and a middle dot that separate it from the notice."
+  "undoHint.lead": {
+    "description": "Added to the end of a notice after a big change: the Undo shortcut. Starts with a space and a middle dot that separate it from the notice. English shows it in pieces as before (a merge group, output-and-languages §9.3); other languages show only the group’s .whole message.",
+    "merge": true
   },
   "zoomLevels.range": {
     "description": "A run of zoom level keys, written as a range (\"1–4\")."
@@ -154,5 +155,8 @@
   },
   "dialog.takeBack": {
     "description": "Shortcuts editor: button of the question shown when a command is reset while other commands have its default shortcuts: give them back to this command. {count} is how many shortcuts (never 0)."
+  },
+  "undoHint.whole": {
+    "description": "The Undo shortcut after a notice about a big change, as a phrase of its own; {keys} is the keycap (Ctrl + Z). The app puts it after the notice with a \" · \" separator. Used only when the UI language is not English (merge group, output-and-languages §9.3): English builds the same sentence from its pieces."
   }
 }

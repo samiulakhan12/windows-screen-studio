@@ -1631,13 +1631,16 @@
     "description": "Home's search of every recording: a result's short label of where the words were found: the speaker notes."
   },
   "search.time.hours": {
-    "description": "Home's search of every recording: part of a length or time said to screen readers (\"1 hour 2 minutes 3 seconds\")."
+    "description": "Home's search of every recording: part of a length or time said to screen readers (\"1 hour 2 minutes 3 seconds\"). English shows it in pieces as before (a merge group, output-and-languages §9.3); other languages show only the group’s .whole message.",
+    "merge": true
   },
   "search.time.minutes": {
-    "description": "Home's search of every recording: part of a length or time said to screen readers."
+    "description": "Home's search of every recording: part of a length or time said to screen readers. English shows it in pieces as before (a merge group, output-and-languages §9.3); other languages show only the group’s .whole message.",
+    "merge": true
   },
   "search.time.seconds": {
-    "description": "Home's search of every recording: part of a length or time said to screen readers."
+    "description": "Home's search of every recording: part of a length or time said to screen readers. English shows it in pieces as before (a merge group, output-and-languages §9.3); other languages show only the group’s .whole message.",
+    "merge": true
   },
   "search.noMatch": {
     "description": "Home's search of every recording: no result; {query} is what was typed.",
@@ -2417,5 +2420,8 @@
   },
   "join.title": {
     "description": "Review mode: the smooth cuts row's title; count is how many cuts get the smooth style now."
+  },
+  "search.time.whole": {
+    "description": "Home's search of every recording: a length or time said to screen readers, whole (\"1 hour 2 minutes 3 seconds\"). shape names the parts it has: h hours, m minutes, s seconds. Used only when the UI language is not English (merge group, output-and-languages §9.3): English builds the same sentence from its pieces."
   }
 }

@@ -1,8 +1,6 @@
 {
   "zoomPanel.withAZoomSelected": "With a zoom selected, {levels}.",
   "zoomPanel.selectedClick": "Selected click",
-  "zoomPanel.ignoredNoZoomClick": "Ignored: no zoom, click effect or sound, and smart speed does not count it.",
-  "zoomPanel.itWasIgnoredAutomatically": " It was ignored automatically: {reason}.",
   "zoomPanel.ignoreClick": "Ignore click",
   "zoomPanel.useThisClickAgain": "Use this click again",
   "zoomPanel.useClick": "Use click",
@@ -183,5 +181,8 @@
   "found.marks": "{count, plural, one {{n} zoom mark} other {{n} zoom marks}}",
   "found.scrolls": "{count, plural, one {{n} long scroll} other {{n} long scrolls}}",
   "found.detected": "{list} detected.",
-  "found.none": "No usable input detected."
+  "found.none": "No usable input detected.",
+  "zoomPanel.ignored.lead": "Ignored: no zoom, click effect or sound, and smart speed does not count it.",
+  "zoomPanel.ignored.auto": " It was ignored automatically: {reason}.",
+  "zoomPanel.ignored.whole": "Ignored: no zoom, click effect or sound, and smart speed does not count it.{auto, select, yes { It was ignored automatically: {reason}.} other {}}"
 }

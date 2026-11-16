@@ -3,7 +3,7 @@
  * the notifications show for the jobs running now. Pure; src/main/longJobs.ts applies it.
  */
 import { fmt } from '../i18n/fmt'
-import { t } from '../i18n/t'
+import { t, uiLanguage } from '../i18n/t'
 
 /** 'ai': a request to AI on this PC expected to take more than 10 s (docs/design/smart-tools.md §9.2). */
 export type JobKind = 'export' | 'captions' | 'analysis' | 'ai'
@@ -108,6 +108,31 @@ export function thumbarButtons(jobs: readonly JobView[], now: number): ThumbButt
 /** How a job ended. Files are absolute paths of what an export wrote (checked by main). */
 export type JobOutcome = { kind: 'done'; files?: string[]; label?: string; failed?: number; stopped?: boolean } | { kind: 'cancelled' } | { kind: 'failed'; message: string }
 
+/**
+ * The code a stopped job's error carries (docs/design/output-and-languages.md §9.6): its name.
+ * Electron hands a rejected invoke to the renderer as "Error invoking remote method '…': <name>:
+ * <message>", so main throws or rejects a cancel with this name and the renderer tells a cancel by
+ * it, never by the words of the message, which are errors.cancelled in the UI language.
+ */
+export const CANCELLED_ERROR = 'CancelledError'
+
+/** A cancel as main throws or rejects it: errors.cancelled in the UI language, named CANCELLED_ERROR. */
+export function cancelledError(): Error {
+  const err = new Error(t('errors.cancelled'))
+  err.name = CANCELLED_ERROR
+  return err
+}
+
+/** A rejected invoke whose error main named CANCELLED_ERROR, after Electron's prefix. */
+const IPC_CANCEL = new RegExp(`^Error invoking remote method '[^']*': ${CANCELLED_ERROR}: `)
+
+/** Whether `err` is a cancel: an error named CANCELLED_ERROR, in this process or passed over IPC. Never read from its words. */
+export function isCancelled(err: unknown): boolean {
+  if (!err || typeof err !== 'object') return false
+  const { name, message } = err as { name?: unknown; message?: unknown }
+  return name === CANCELLED_ERROR || (typeof message === 'string' && IPC_CANCEL.test(message))
+}
+
 export interface NotificationCopy {
   title: string
   body: string
@@ -142,9 +167,13 @@ export function notificationFor(kind: JobKind, outcome: JobOutcome, files: reado
   if (!files.length) return null
   // A batch that stopped early or lost files says so.
   const failed = outcome.failed ?? 0
-  const more = `${failed > 0 ? t('main.jobs.moreFailed', { count: failed, n: fmt.count(failed) }) : ''}${outcome.stopped ? t('main.jobs.moreStopped') : ''}`
-  if (files.length === 1) return { title: t('main.jobs.exportFinished'), body: t('main.jobs.fileBody', { file: fileName(files[0].path), size: fmt.bytes(files[0].bytes) }) + more, actions: ['open', 'show'] }
-  return { title: t('main.jobs.filesExported', { count: files.length, n: fmt.count(files.length) }), body: `${folderName(files[0].path)}${more}`, actions: ['show'] }
+  // English adds today's pieces to the body (merge group, output-and-languages §9.3); other languages say it whole.
+  const body = (lead: string): string =>
+    uiLanguage() === 'en'
+      ? `${lead}${failed > 0 ? t('main.jobs.more.failed', { count: failed, n: fmt.count(failed) }) : ''}${outcome.stopped ? t('main.jobs.more.stopped') : ''}`
+      : t('main.jobs.more.whole', { lead, failed: failed > 0 ? 'yes' : 'no', count: failed, n: fmt.count(failed), stopped: outcome.stopped ? 'yes' : 'no' })
+  if (files.length === 1) return { title: t('main.jobs.exportFinished'), body: body(t('main.jobs.fileBody', { file: fileName(files[0].path), size: fmt.bytes(files[0].bytes) })), actions: ['open', 'show'] }
+  return { title: t('main.jobs.filesExported', { count: files.length, n: fmt.count(files.length) }), body: body(folderName(files[0].path)), actions: ['show'] }
 }
 
 /** The taskbar share of an export's progress: frames while rendering, unknown while finalizing. */

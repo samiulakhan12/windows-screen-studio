@@ -1,4 +1,4 @@
-import { useEffect, useState, type KeyboardEvent as ReactKeyboardEvent, type PointerEvent as ReactPointerEvent } from 'react'
+import { useEffect, useState, type KeyboardEvent as ReactKeyboardEvent, type PointerEvent as ReactPointerEvent, type ReactNode } from 'react'
 import { moveOverlay, overlayLabel, resizeOverlay, rotationToward, type OverlayHandle } from '../../../shared/editor/overlays'
 import { overlayBox, overlayVisibleAt } from '../../../shared/render/imageOverlays'
 import type { ImageOverlay, Project } from '../../../shared/types'
@@ -7,7 +7,8 @@ import { releaseFocus } from './focus'
 import { followPointer } from './pointer'
 import type { Selection } from './selection'
 import './overlays.css'
-import { t } from '../../../shared/i18n/t'
+import { t, uiLanguage } from '../../../shared/i18n/t'
+import { richText } from '../i18n/richText'
 
 const HANDLES: OverlayHandle[] = ['nw', 'n', 'ne', 'e', 'se', 's', 'sw', 'w']
 
@@ -142,6 +143,11 @@ export function OverlayEditor({ project, selection, box, onDone }: { project: Pr
   }
 
   const label = overlayLabel(o)
+  const doneButton = (text: ReactNode): JSX.Element => (
+    <button className="link" onClick={onDone}>
+      {text}
+    </button>
+  )
   return (
     <div className="overlay-editor" data-testid="overlay-editor" data-item={o.id}>
       <div
@@ -173,10 +179,15 @@ export function OverlayEditor({ project, selection, box, onDone }: { project: Pr
         />
       </div>
       <div className="pick-hint shape-hint" onPointerDown={(e) => e.stopPropagation()}>
-        {t('text.overlayEditor.dragToPlaceIt', { label })}{' '}
-        <button className="link" onClick={onDone}>
-          {t('common.action.done')}
-        </button>
+        {uiLanguage() === 'en' ? (
+          // English keeps today's text nodes (merge group, output-and-languages §9.3); other languages say the hint whole, Done inside it.
+          <>
+            {t('text.overlayEditor.dragToPlaceIt.lead', { label })}{' '}
+            {doneButton(t('common.action.done'))}
+          </>
+        ) : (
+          richText('text.overlayEditor.dragToPlaceIt.whole', { label }, { link: (chunks) => doneButton(chunks) })
+        )}
       </div>
     </div>
   )

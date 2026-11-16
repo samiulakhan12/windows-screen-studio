@@ -9,6 +9,7 @@ import { createHash, type Hash } from 'node:crypto'
 import { createReadStream, createWriteStream, promises as fs } from 'node:fs'
 import type { SpeechDownloadError } from '../../shared/api/speech'
 import { t } from '../../shared/i18n/t'
+import { CANCELLED_ERROR } from '../../shared/jobs/longJobs'
 
 /** Response of one GET: status, lower-case headers and the body. */
 export interface HttpResponse {
@@ -77,8 +78,6 @@ export interface DownloadOptions {
 
 export const DOWNLOAD = { stallMs: 60_000, retries: 3, retryDelaysMs: [2000, 5000, 15_000], maxRedirects: 5, spareBytes: 64 << 20, progressEveryMs: 250, maxRetryAfterMs: 10 * 60_000, busyWaits: 3, busyDefaultMs: 60_000 } as const
 
-/** What a download that stays busy longer than DOWNLOAD.maxRetryAfterMs stops with. */
-export const BUSY_MESSAGE = 'The download server is busy. Try again in 10 minutes.'
 
 /**
  * Milliseconds a Retry-After header asks to wait (seconds, or an HTTP date read against `now`);
@@ -97,7 +96,11 @@ const SPEED_WINDOW_MS = 5000
 /** Error codes Windows returns while antivirus or indexers briefly hold a new file (atomicWrite's set). */
 const TRANSIENT = new Set(['EPERM', 'EBUSY', 'EACCES'])
 
-/** Why a download stopped: one of SpeechDownloadError, or 'cancelled' (the .part is kept). */
+/**
+ * Why a download stopped: one of SpeechDownloadError, or 'cancelled' (the .part is kept), which
+ * also carries the cancel code as its name (CANCELLED_ERROR, output-and-languages §9.6). The
+ * messages are errors messages in the UI language.
+ */
 export class DownloadFailure extends Error {
   constructor(
     readonly kind: SpeechDownloadError | 'cancelled',
@@ -105,6 +108,7 @@ export class DownloadFailure extends Error {
     readonly status?: number
   ) {
     super(message)
+    if (kind === 'cancelled') this.name = CANCELLED_ERROR
   }
 }
 
@@ -243,7 +247,7 @@ async function renameWithRetries(from: string, to: string, opts: DownloadOptions
 export async function downloadPinned(pin: Pin, dest: string, opts: DownloadOptions): Promise<void> {
   const sources = opts.sources?.length ? opts.sources : [pin.url]
   const allow = opts.allow ?? ((u: URL) => allowDownloadUrl(u, opts.testBase ?? null))
-  for (const source of sources) if (!allow(new URL(source))) throw new DownloadFailure('other', 'The download address is not allowed.')
+  for (const source of sources) if (!allow(new URL(source))) throw new DownloadFailure('other', t('errors.pinnedDownload.notAllowed'))
   let last: unknown = null
   for (const [i, source] of sources.entries()) {
     try {
@@ -265,7 +269,7 @@ async function downloadFrom(source: string, pin: Pin, dest: string, opts: Downlo
   const retries = opts.retries ?? DOWNLOAD.retries
   const delays = opts.retryDelaysMs ?? DOWNLOAD.retryDelaysMs
   const stallMs = opts.stallMs ?? DOWNLOAD.stallMs
-  const cancelled = (): DownloadFailure => new DownloadFailure('cancelled', 'Cancelled.')
+  const cancelled = (): DownloadFailure => new DownloadFailure('cancelled', t('errors.cancelled'))
   const maxWait = opts.maxRetryAfterMs ?? DOWNLOAD.maxRetryAfterMs
   let busyWaits = 0
 
@@ -276,7 +280,7 @@ async function downloadFrom(source: string, pin: Pin, dest: string, opts: Downlo
   }
   const free = opts.freeBytes ? await opts.freeBytes(dir).catch(() => null) : null
   if (free !== null && free < pin.bytes - have + DOWNLOAD.spareBytes) {
-    throw new DownloadFailure('disk', `Not enough free space: ${Math.ceil((pin.bytes - have) / 1e6)} MB are needed.`)
+    throw new DownloadFailure('disk', t('errors.pinnedDownload.space', { mb: String(Math.ceil((pin.bytes - have) / 1e6)) }))
   }
 
   // Speed over the last few seconds, and progress at most every progressEveryMs.
@@ -350,17 +354,17 @@ async function downloadFrom(source: string, pin: Pin, dest: string, opts: Downlo
           res = await opts.get(url, headers, controller.signal)
         } catch (err) {
           if (opts.signal.aborted) throw cancelled()
-          throw new Retryable(stalled ? 'No data arrived for a minute.' : err instanceof Error ? err.message : String(err))
+          throw new Retryable(stalled ? t('errors.pinnedDownload.stalled') : err instanceof Error ? err.message : String(err))
         }
         if (res.status >= 300 && res.status < 400 && res.headers.location) {
-          if (hop >= DOWNLOAD.maxRedirects) throw new DownloadFailure('other', 'The download was redirected too many times.')
+          if (hop >= DOWNLOAD.maxRedirects) throw new DownloadFailure('other', t('errors.pinnedDownload.tooManyRedirects'))
           let next: URL
           try {
             next = new URL(res.headers.location, url)
           } catch {
-            throw new DownloadFailure('other', 'The download was redirected to an invalid address.')
+            throw new DownloadFailure('other', t('errors.pinnedDownload.badRedirect'))
           }
-          if (!allow(next)) throw new DownloadFailure('other', `The download was redirected to a host that is not allowed (${next.host}).`)
+          if (!allow(next)) throw new DownloadFailure('other', t('errors.pinnedDownload.hostNotAllowed', { host: next.host }))
           url = next.href
           continue
         }
@@ -371,7 +375,7 @@ async function downloadFrom(source: string, pin: Pin, dest: string, opts: Downlo
       // fault of the file: wait as long as Retry-After asks, up to maxRetryAfterMs, then try again.
       const wait = res.status === 429 || res.status === 503 ? (retryAfterMs(res.headers['retry-after'], (opts.now ?? Date.now)()) ?? (res.status === 429 ? DOWNLOAD.busyDefaultMs : null)) : null
       if (wait !== null) {
-        if (wait > maxWait || busyWaits >= DOWNLOAD.busyWaits) throw new DownloadFailure('http', BUSY_MESSAGE, res.status)
+        if (wait > maxWait || busyWaits >= DOWNLOAD.busyWaits) throw new DownloadFailure('http', t('errors.pinnedDownload.busy'), res.status)
         busyWaits++
         if (stallTimer) clearTimeout(stallTimer)
         controller.abort()
@@ -381,26 +385,26 @@ async function downloadFrom(source: string, pin: Pin, dest: string, opts: Downlo
         if (opts.signal.aborted) throw cancelled()
         continue
       }
-      if (res.status === 403) throw new DownloadFailure('refused', 'Hugging Face or the network refused the download (HTTP 403).', 403)
-      if (res.status === 404 || res.status === 410) throw new DownloadFailure('missing', `The model is no longer at its address (HTTP ${res.status}).`, res.status)
-      if (res.status >= 500) throw Object.assign(new Retryable(`The server answered with HTTP ${res.status}.`), { status: res.status })
+      if (res.status === 403) throw new DownloadFailure('refused', t('errors.pinnedDownload.refused'), 403)
+      if (res.status === 404 || res.status === 410) throw new DownloadFailure('missing', t('errors.pinnedDownload.missing', { status: String(res.status) }), res.status)
+      if (res.status >= 500) throw Object.assign(new Retryable(t('errors.pinnedDownload.httpStatus', { status: String(res.status) })), { status: res.status })
       let append = false
       if (res.status === 206) {
         const range = contentRange(res.headers['content-range'])
         if (!range || range.start !== have || range.total !== pin.bytes) {
-          if (restarted) throw new DownloadFailure('other', 'The server sent a different file than expected.')
+          if (restarted) throw new DownloadFailure('other', t('errors.pinnedDownload.differentFile'))
           restarted = true
           await fs.rm(part, { force: true })
           continue
         }
         append = true
       } else if (res.status === 416) {
-        if (restarted) throw new DownloadFailure('other', 'The server could not continue the download.', 416)
+        if (restarted) throw new DownloadFailure('other', t('errors.pinnedDownload.cannotContinue'), 416)
         restarted = true
         await fs.rm(part, { force: true })
         continue
       } else if (res.status !== 200) {
-        throw new DownloadFailure('http', `The server answered with HTTP ${res.status}.`, res.status)
+        throw new DownloadFailure('http', t('errors.pinnedDownload.httpStatus', { status: String(res.status) }), res.status)
       }
 
       const hash = createHash('sha256')
@@ -418,7 +422,7 @@ async function downloadFrom(source: string, pin: Pin, dest: string, opts: Downlo
           armStall()
           if (received === have && attempt > 0) opts.onRetry?.(null)
           received += chunk.length
-          if (received > pin.bytes) throw new DownloadFailure('mismatch', 'The downloaded file is larger than expected.')
+          if (received > pin.bytes) throw new DownloadFailure('mismatch', t('errors.pinnedDownload.tooLarge'))
           hash.update(chunk)
           if (!out.write(chunk)) await new Promise<void>((r) => out.once('drain', r).once('error', () => r()))
           report(received)
@@ -429,27 +433,27 @@ async function downloadFrom(source: string, pin: Pin, dest: string, opts: Downlo
         // What arrived stays for Continue (or the automatic retry), recorded beside it.
         await writeMeta(received)
         if (opts.signal.aborted) throw cancelled()
-        throw new Retryable(stalled ? 'No data arrived for a minute.' : err instanceof Error ? err.message : String(err))
+        throw new Retryable(stalled ? t('errors.pinnedDownload.stalled') : err instanceof Error ? err.message : String(err))
       }
       await new Promise<void>((r) => out.end(r))
       if (writeError) {
         const code = (writeError as NodeJS.ErrnoException).code
-        if (code === 'ENOSPC' || code === 'EDQUOT') throw new DownloadFailure('disk', 'The disk is full.')
-        throw new DownloadFailure('other', `The download could not be saved (${(writeError as Error).message}).`)
+        if (code === 'ENOSPC' || code === 'EDQUOT') throw new DownloadFailure('disk', t('errors.diskFull'))
+        throw new DownloadFailure('other', t('errors.pinnedDownload.notSaved', { reason: (writeError as Error).message }))
       }
       report(received, true)
       await writeMeta(received)
       if (opts.signal.aborted) throw cancelled()
       if (received < pin.bytes) {
-        if (stalled) throw new Retryable('No data arrived for a minute.')
-        throw new Retryable('The connection closed before the whole file arrived.')
+        if (stalled) throw new Retryable(t('errors.pinnedDownload.stalled'))
+        throw new Retryable(t('errors.pinnedDownload.closedEarly'))
       }
 
       opts.onVerifying?.()
       if (received !== pin.bytes || hash.digest('hex') !== pin.sha256) {
         await fs.rm(part, { force: true })
         await fs.rm(meta, { force: true })
-        throw new DownloadFailure('mismatch', 'The downloaded file was not the expected one, so it was deleted.')
+        throw new DownloadFailure('mismatch', t('errors.pinnedDownload.mismatch'))
       }
       await install()
       return
@@ -458,7 +462,7 @@ async function downloadFrom(source: string, pin: Pin, dest: string, opts: Downlo
         if (err instanceof DownloadFailure) throw err
         if (opts.signal.aborted) throw cancelled()
         const code = (err as NodeJS.ErrnoException).code
-        if (code === 'ENOSPC' || code === 'EDQUOT') throw new DownloadFailure('disk', 'The disk is full.')
+        if (code === 'ENOSPC' || code === 'EDQUOT') throw new DownloadFailure('disk', t('errors.diskFull'))
         throw new DownloadFailure('other', err instanceof Error ? err.message : String(err))
       }
       if (attempt >= retries) {

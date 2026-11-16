@@ -38,6 +38,9 @@ import type { PartProgress } from '../src/main/ai/types'
 import { ENGINE_VERSION, speechModel, type SpeechModelId } from '../src/shared/speech/catalog'
 import { CAPTION_LIMITS } from '../src/shared/speech/protocol'
 import { localErrorCode, localErrorMessage } from '../src/shared/speech/errors'
+import { t } from '../src/shared/i18n/t'
+import { isCancelled } from '../src/shared/jobs/longJobs'
+import { ipcRejection, uiEnglish, uiPseudo } from './pseudoUi'
 
 const FAKE = path.resolve(__dirname, 'fixtures/fake-speech-helper.cjs')
 const VAD = path.resolve(__dirname, '../resources/speech/ggml-silero-v6.2.0.bin')
@@ -446,6 +449,28 @@ describe('localSpeechClient', () => {
       expect(await failure(c.transcribe!(part(wav('y.wav', 2), 2), { signal: controller.signal }))).toBe('Cancelled.')
       expect(transcribeCalls()).toHaveLength(1)
       expect(store.cleared).toEqual([])
+    })
+
+    it('a cancel in a translated UI says errors.cancelled there and carries the cancel code (output-and-languages §9.6)', async () => {
+      process.env.FAKE_SPEECH_MODE = 'hang'
+      const c = await localSpeechClient('whisper-tiny', deps(fakeStore()))
+      const controller = new AbortController()
+      setTimeout(() => controller.abort(), 150)
+      uiPseudo()
+      try {
+        const err = await c.transcribe!(part(wav('y2.wav', 2), 2), { signal: controller.signal }).then(
+          () => null,
+          (e: Error) => e
+        )
+        expect(err?.message).toBe(t('errors.cancelled'))
+        expect(err?.message).not.toBe('Cancelled.')
+        // As the renderer receives it, a cancel in that UI and in one that shows English.
+        expect(isCancelled(ipcRejection('ai:transcribe', err))).toBe(true)
+        uiEnglish()
+        expect(isCancelled(ipcRejection('ai:transcribe', err))).toBe(true)
+      } finally {
+        uiEnglish()
+      }
     })
   })
 })

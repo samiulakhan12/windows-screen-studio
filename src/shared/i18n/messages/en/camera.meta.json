@@ -410,8 +410,9 @@
   "director.autoLayoutHint": {
     "description": "Camera › Layout: hint for a block the director made."
   },
-  "director.autoTitleSuffix": {
-    "description": "Camera track: added at the end of the tooltip of a block the director made. Starts with a space and a middle dot."
+  "director.autoTitleSuffix.lead": {
+    "description": "Camera track: added at the end of the tooltip of a block the director made. Starts with a space and a middle dot. English shows it in pieces as before (a merge group, output-and-languages §9.3); other languages show only the group’s .whole message.",
+    "merge": true
   },
   "director.framed": {
     "description": "Camera › Auto director: the face was framed; {zoom} is the zoom used (1.25×)."
@@ -541,5 +542,8 @@
   },
   "layout.cameraOnly.short": {
     "description": "The short name of the Camera only camera layout, on the camera track’s blocks."
+  },
+  "director.autoTitleSuffix.whole": {
+    "description": "Timeline: the tooltip of a layout block the automatic camera director made, whole; {title} is the block's own tooltip (its layout and times). Used only when the UI language is not English (merge group, output-and-languages §9.3): English builds the same sentence from its pieces."
   }
 }

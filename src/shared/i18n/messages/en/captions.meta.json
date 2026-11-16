@@ -2947,5 +2947,8 @@
   },
   "look.previewHover": {
     "description": "Captions › look gallery: the label over the preview while a hovered tile is previewed; {name} is the look's name."
+  },
+  "transcribe.leftOut": {
+    "description": "Captions tab notice after Generate captions: the provider gave more captions than a project keeps. {max} is that limit (5000); {at} the video time where the kept captions stop (\"1:02:03\")."
   }
 }

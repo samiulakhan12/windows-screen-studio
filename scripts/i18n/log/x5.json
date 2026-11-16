@@ -16,7 +16,7 @@
     }
   },
   {
-    "key": "settings.about.builtBy",
+    "key": "settings.about.builtBy.lead",
     "file": "src/renderer/src/settings/AboutSection.tsx",
     "line": 39,
     "english": "Built by Qbexel ·",
@@ -83,7 +83,7 @@
     "sample": {}
   },
   {
-    "key": "settings.storage.total",
+    "key": "settings.storage.line.total",
     "file": "src/renderer/src/settings/StorageSection.tsx",
     "line": 113,
     "english": "Recordings use 95 KB",
@@ -92,7 +92,7 @@
     }
   },
   {
-    "key": "settings.storage.free",
+    "key": "settings.storage.line.free",
     "file": "src/renderer/src/settings/StorageSection.tsx",
     "line": 114,
     "english": " · 9.5 GB free on this drive",
@@ -3275,7 +3275,7 @@
     "sample": {}
   },
   {
-    "key": "export.settings.batch",
+    "key": "export.settings.batch.lead",
     "file": "src/renderer/src/editor/ExportDialog.tsx",
     "line": 1258,
     "english": "for “Also” and the encoder",
@@ -6410,7 +6410,7 @@
     }
   },
   {
-    "key": "main.jobs.moreFailed",
+    "key": "main.jobs.more.failed",
     "file": "src/shared/jobs/longJobs.ts",
     "line": 145,
     "english": [
@@ -6439,7 +6439,7 @@
     ]
   },
   {
-    "key": "main.jobs.moreStopped",
+    "key": "main.jobs.more.stopped",
     "file": "src/shared/jobs/longJobs.ts",
     "line": 145,
     "english": " · stopped early",

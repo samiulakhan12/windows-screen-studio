@@ -1,12 +1,29 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import type { AppInfo } from '../../../shared/api/brand'
 import { APP_NAME, COMPANY_NAME, COMPANY_URL, COMPANY_URL_LABEL, COPYRIGHT } from '../../../shared/brand'
 import { BrandLogo } from '../components/BrandLogo'
 import { UpdatesBlock } from '../updates/UpdatesBlock'
 import { NoticesPanel } from './NoticesPanel'
 import './about.css'
-import { t } from '../../../shared/i18n/t'
+import { t, uiLanguage } from '../../../shared/i18n/t'
 import { richText } from '../i18n/richText'
+
+
+/** The company's website as a link that opens in the browser. */
+function companyLink(text: ReactNode): JSX.Element {
+  return (
+    <a
+      className="link"
+      href={COMPANY_URL}
+      onClick={(e) => {
+        e.preventDefault()
+        void window.api.openCompanyWebsite().catch(() => undefined)
+      }}
+    >
+      {text}
+    </a>
+  )
+}
 
 /**
  * About Flown: logo, version, who makes it and a link to their website. The link goes through
@@ -36,17 +53,15 @@ export function AboutSection({ reveal = false }: { reveal?: boolean }): JSX.Elem
             {info && <span className="about-version">{richText('settings.about.version', { version: info.version })}</span>}
           </p>
           <p>
-            {richText('settings.about.builtBy', { company: COMPANY_NAME })}{' '}
-            <a
-              className="link"
-              href={COMPANY_URL}
-              onClick={(e) => {
-                e.preventDefault()
-                void window.api.openCompanyWebsite().catch(() => undefined)
-              }}
-            >
-              {COMPANY_URL_LABEL}
-            </a>
+            {uiLanguage() === 'en' ? (
+              // English keeps today's text nodes, the words and then the link (merge group, output-and-languages §9.3).
+              <>
+                {richText('settings.about.builtBy.lead', { company: COMPANY_NAME })}{' '}
+                {companyLink(COMPANY_URL_LABEL)}
+              </>
+            ) : (
+              richText('settings.about.builtBy.whole', { company: COMPANY_NAME, site: COMPANY_URL_LABEL }, { link: (chunks) => companyLink(chunks) })
+            )}
           </p>
           <p className="about-legal">{COPYRIGHT}</p>
         </div>

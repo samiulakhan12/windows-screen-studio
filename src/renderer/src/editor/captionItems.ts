@@ -185,8 +185,6 @@ export function onTranscriptionJob(listener: () => void): () => void {
 /** An error from the main process without Electron's "Error invoking remote method" prefix. */
 export const ipcMessage = (err: unknown): string => (err instanceof Error ? err.message : String(err)).replace(/^Error invoking remote method '[^']+': (\w*Error: )?/, '')
 
-/** The main process stopped the job (Cancel, or the editor was closed): not a failure. */
-
 /**
  * What fetchTranscript got: the transcript (`leftOut`: the provider gave more than MAX_CAPTIONS
  * captions, so the ones after its last were left out), the error the job shows, or a cancel.
@@ -222,11 +220,11 @@ export async function fetchTranscript(projectId: string, duration: number, optio
     return { transcript, leftOut: Array.isArray(given) && given.length > MAX_CAPTIONS && transcript.segments.length >= MAX_CAPTIONS }
   } catch (err) {
     if (mine !== generation) return { cancelled: true }
-    const message = ipcMessage(err)
-    if (isCancel(message)) {
+    if (isCancel(err)) {
       setJob(null)
       return { cancelled: true }
     }
+    const message = ipcMessage(err)
     setJob({ projectId, progress: null, error: message, running: false, ...(local ? { local } : {}) })
     return { error: message }
   } finally {
@@ -252,7 +250,7 @@ export async function transcribe({ store }: EditorServices, options: TranscribeO
   if (fetched.leftOut) {
     const last = transcript.segments[transcript.segments.length - 1]
     const at = fmt.clock(videoTimeAt(store.state.clips, planOf(store.state), last.end), 'whole')
-    setJob({ projectId, progress: null, error: null, running: false, notice: `A project keeps at most ${MAX_CAPTIONS} captions, so the captions after ${at} were left out.` })
+    setJob({ projectId, progress: null, error: null, running: false, notice: t('captions.transcribe.leftOut', { max: fmt.count(MAX_CAPTIONS), at }) })
   }
   return true
 }

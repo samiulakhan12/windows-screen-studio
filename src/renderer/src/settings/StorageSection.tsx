@@ -3,7 +3,7 @@ import type { StorageCleanupResult, StorageOverview } from '../../../shared/api/
 import { CACHE_DAY_CHOICES, freedBytes, REMOVE_DAY_CHOICES, sharedBytes, type CleanupItem, type SharedFile, type StorageRules } from '../../../shared/storage/rules'
 import { fmt } from '../../../shared/i18n/fmt'
 import { ipcMessage } from './providerText'
-import { t } from '../../../shared/i18n/t'
+import { t, uiLanguage } from '../../../shared/i18n/t'
 import { richText } from '../i18n/richText'
 
 /** Recordings listed before "Show all". */
@@ -110,8 +110,19 @@ export function StorageSection(): JSX.Element {
         <>
           <div className="health-actions">
             <p className="storage-total" data-testid="storage-total">
-              {richText('settings.storage.total', { size: fmt.bytes(overview.bytes, 'storage') }, { b: (chunks) => <strong>{chunks}</strong> })}
-              {overview.free !== null ? t('settings.storage.free', { free: fmt.bytes(overview.free, 'storage') }) : ''}
+              {uiLanguage() === 'en' ? (
+                // English keeps today's text nodes (merge group, output-and-languages §9.3); other languages say the line whole.
+                <>
+                  {richText('settings.storage.line.total', { size: fmt.bytes(overview.bytes, 'storage') }, { b: (chunks) => <strong>{chunks}</strong> })}
+                  {overview.free !== null ? t('settings.storage.line.free', { free: fmt.bytes(overview.free, 'storage') }) : ''}
+                </>
+              ) : (
+                richText(
+                  'settings.storage.line.whole',
+                  { size: fmt.bytes(overview.bytes, 'storage'), hasFree: overview.free !== null ? 'yes' : 'no', free: overview.free !== null ? fmt.bytes(overview.free, 'storage') : '' },
+                  { b: (chunks) => <strong>{chunks}</strong> }
+                )
+              )}
             </p>
             <button type="button" className="btn ghost settings-small" onClick={() => void scan()}>
               {t('common.action.refresh')}

@@ -2,6 +2,8 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { TranscribeProgress } from '../src/shared/api/ai'
 import { MAX_CAPTIONS } from '../src/shared/captions/captionData'
 import { studioPreset } from '../src/shared/captions/studioPresets'
+import { cancelledError } from '../src/shared/jobs/longJobs'
+import { ipcRejection, uiEnglish, uiPseudo } from './pseudoUi'
 
 /** What a call to the main process rejects with in the renderer (Electron puts the error's name first). */
 const ipcError = (channel: string, text: string): Error => new Error(`Error invoking remote method '${channel}': ${text}`)
@@ -98,9 +100,33 @@ describe('captionItems: errors from the main process', () => {
   it('a job the main process stopped (the editor was closed) is not a failure (W4-07, CAP-8)', async () => {
     const run = items.transcribe(services(), { providerId: 'x' })
     expect(items.transcriptionJob()?.running).toBe(true)
-    calls.transcribe[0].reject(ipcError('ai:transcribe', 'AiError: Cancelled.'))
+    calls.transcribe[0].reject(ipcError('ai:transcribe', 'CancelledError: Cancelled.'))
     expect(await run).toBe(false)
     expect(items.transcriptionJob()).toBeNull()
+  })
+
+  it('a job main stopped in a translated UI is told by its code, whatever words the renderer has (output-and-languages §9.6)', async () => {
+    // Main stops the job (the taskbar's Stop, the editor closing) and says it in the UI language.
+    uiPseudo()
+    const stopped = ipcRejection('ai:transcribe', cancelledError())
+    const words = stopped.message.replace(/^.*?CancelledError: /, '')
+    try {
+      // A renderer that shows English (its catalogue did not load), and one in another language.
+      for (const renderer of [uiEnglish, () => uiPseudo('bn-XA')]) {
+        renderer()
+        const run = items.transcribe(services(), { providerId: 'x' })
+        calls.transcribe.at(-1)!.reject(stopped)
+        expect(await run).toBe(false)
+        expect(items.transcriptionJob()).toBeNull()
+      }
+      // The same words without the code are a failure, shown as it came.
+      const run = items.transcribe(services(), { providerId: 'x' })
+      calls.transcribe.at(-1)!.reject(new Error(`Error invoking remote method 'ai:transcribe': Error: ${words}`))
+      await run
+      expect(items.transcriptionJob()).toMatchObject({ running: false, error: words })
+    } finally {
+      uiEnglish()
+    }
   })
 
   it('a real failure stays on the job', async () => {
@@ -129,7 +155,7 @@ describe('captionItems: cancelling (CAP-8)', () => {
 
     // A new job starts; the first call's rejection arrives late.
     const second = items.transcribe(s, { providerId: 'x' })
-    calls.transcribe[0].reject(ipcError('ai:transcribe', 'AiError: Cancelled.'))
+    calls.transcribe[0].reject(ipcError('ai:transcribe', 'CancelledError: Cancelled.'))
     expect(await first).toBe(false)
     expect(items.transcriptionJob()).toMatchObject({ running: true, error: null })
     progress({ projectId: 'p1', phase: 'transcribing', done: 0, total: 1 })

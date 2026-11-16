@@ -44,7 +44,7 @@ import { IMPORTED_COPY, isImported } from '../../../../shared/import/imported'
 import { fmt } from '../../../../shared/i18n/fmt'
 import '../zoom.css'
 import { MagnifierZoomRow } from './MagnifierZoomRow'
-import { t } from '../../../../shared/i18n/t'
+import { t, uiLanguage } from '../../../../shared/i18n/t'
 import { zoomLevelPresets } from '../../../../shared/editor/itemNames'
 
 const secFmt = (v: number): string => t('zoom.zoomPanel.seconds', { n: fmt.number(v, { max: 2 }) })
@@ -117,7 +117,14 @@ function SelectedClick({ row, input, rightClicks }: { row: ClickRow; input: Inpu
         {state === 'used' ? (
           <p className="hint">{usedClickText(row.click, rightClicks)}</p>
         ) : (
-          <p className="hint">{t('zoom.zoomPanel.ignoredNoZoomClick')}{row.ignored?.stray ? t('zoom.zoomPanel.itWasIgnoredAutomatically', { reason: STRAY_REASON_TEXT[row.ignored.stray] }) : ''}
+          <p className="hint">{uiLanguage() === 'en' ? (
+            // English keeps today's two text nodes (merge group, output-and-languages §9.3).
+            <>
+              {t('zoom.zoomPanel.ignored.lead')}{row.ignored?.stray ? t('zoom.zoomPanel.ignored.auto', { reason: STRAY_REASON_TEXT[row.ignored.stray] }) : ''}
+            </>
+          ) : (
+            t('zoom.zoomPanel.ignored.whole', { auto: row.ignored?.stray ? 'yes' : 'no', reason: row.ignored?.stray ? STRAY_REASON_TEXT[row.ignored.stray] : '' })
+          )}
           </p>
         )}
         {state === 'used' ? (

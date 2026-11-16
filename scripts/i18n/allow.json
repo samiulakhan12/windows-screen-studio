@@ -805,6 +805,12 @@
       "kind": "table",
       "pattern": "^(?:Tabs and search|Like, comment, share|Name, caption and sound|Reels and camera|Name, caption and audio|Search and menu|Like, comment, share, remix|Title, channel and subscribe)$",
       "reason": "The safe-zone boxes' labels are data (main imports safeZones.ts for the placement rules): the preview's overlay names each box by its app and side (SafeZoneOverlay.tsx, timeline.safeZones.zone.*), and the label stays only in a hidden data-label attribute (the overlay is aria-hidden)."
+    },
+    {
+      "file": "src/main/speech/localClient.ts",
+      "kind": "table",
+      "text": "the run ended without a result",
+      "reason": "Why a captions run on this PC ended as 'protocol': written only to the log (console.warn with the helper's last lines), like helper.ts's own details. The user sees errors.localCaptions.protocol."
     }
   ]
 }

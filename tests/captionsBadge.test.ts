@@ -115,4 +115,36 @@ describe('the Captions tab badge (useCaptionsHost)', () => {
     await flush()
     expect(badge()).toBeNull()
   })
+
+  it('a download main stopped in a translated UI gives no notice: it is told by its code, not by words (output-and-languages §9.6)', async () => {
+    // This file's modules are fresh (vi.resetModules), so the helpers come from the same module graph.
+    const ui = (await import('./pseudoUi')) as typeof import('./pseudoUi')
+    const { cancelledError } = (await import('../src/shared/jobs/longJobs')) as typeof import('../src/shared/jobs/longJobs')
+    const notices: string[] = []
+    m.useCaptionsHost('p1', (n) => notices.push(n), false)
+    // Main says the cancel in the UI language; the editor decides by the code, whatever words it has.
+    ui.uiPseudo()
+    const stopped = ui.ipcRejection('speech:download', cancelledError())
+    const words = stopped.message.replace(/^.*?CancelledError: /, '')
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined)
+    try {
+      for (const renderer of [ui.uiEnglish, () => ui.uiPseudo('bn-XA')]) {
+        renderer()
+        const run = m.downloadThenCaptions('p1', 'whisper-tiny', {})
+        finish!.reject(stopped)
+        await run
+        expect(notices).toEqual([])
+      }
+      expect(warn).not.toHaveBeenCalled()
+      // The same words without the code are a failure, which the editor names while the tab is closed.
+      ui.uiEnglish()
+      const run = m.downloadThenCaptions('p1', 'whisper-tiny', {})
+      finish!.reject(new Error(`Error invoking remote method 'speech:download': Error: ${words}`))
+      await run
+      expect(notices).toHaveLength(1)
+    } finally {
+      warn.mockRestore()
+      ui.uiEnglish()
+    }
+  })
 })

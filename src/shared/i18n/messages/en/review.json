@@ -713,5 +713,6 @@
   "colour.detail": "Auto colour",
   "join.byPolish": "Polish",
   "join.byShort": "Make a shorter version",
-  "join.title": "Smooth cuts at {count, plural, one {{n} cut} other {{n} cuts}}"
+  "join.title": "Smooth cuts at {count, plural, one {{n} cut} other {{n} cuts}}",
+  "search.time.whole": "{shape, select, hms {{hours, plural, one {{h} hour} other {{h} hours}} {minutes, plural, one {{m} minute} other {{m} minutes}} {seconds, plural, one {{s} second} other {{s} seconds}}} hm {{hours, plural, one {{h} hour} other {{h} hours}} {minutes, plural, one {{m} minute} other {{m} minutes}}} hs {{hours, plural, one {{h} hour} other {{h} hours}} {seconds, plural, one {{s} second} other {{s} seconds}}} h {{hours, plural, one {{h} hour} other {{h} hours}}} ms {{minutes, plural, one {{m} minute} other {{m} minutes}} {seconds, plural, one {{s} second} other {{s} seconds}}} m {{minutes, plural, one {{m} minute} other {{m} minutes}}} other {{seconds, plural, one {{s} second} other {{s} seconds}}}}"
 }

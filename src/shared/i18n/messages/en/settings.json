@@ -1,13 +1,10 @@
 {
   "about.title": "About",
   "about.version": "Version {version}",
-  "about.builtBy": "Built by {company} ·",
   "dialog.close": "Close settings",
   "storage.shared": "{size} shared with a copy",
   "storage.title": "Storage",
   "storage.measuring": "Measuring…",
-  "storage.total": "Recordings use <b>{size}</b>",
-  "storage.free": " · {free} free on this drive",
   "storage.empty": "No recordings yet.",
   "storage.listLabel": "Recordings by size",
   "storage.used": "{date} · used {when}",
@@ -218,5 +215,10 @@
   "provider.preset.lmstudio": "LM Studio on this PC",
   "provider.preset.other": "Other address",
   "ai.canTranscribeDo": "Transcription (auto captions), clean-up, translation, chapters, titles and summaries",
-  "brand.notSaved": "Your brand kit could not be saved: {reason}"
+  "brand.notSaved": "Your brand kit could not be saved: {reason}",
+  "about.builtBy.lead": "Built by {company} ·",
+  "storage.line.total": "Recordings use <b>{size}</b>",
+  "storage.line.free": " · {free} free on this drive",
+  "about.builtBy.whole": "Built by {company} · <link>{site}</link>",
+  "storage.line.whole": "{hasFree, select, yes {Recordings use <b>{size}</b> · {free} free on this drive} other {Recordings use <b>{size}</b>}}"
 }

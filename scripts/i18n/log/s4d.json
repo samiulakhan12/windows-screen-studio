@@ -1,0 +1,737 @@
+[
+  {
+    "key": "errors.cancelled",
+    "file": "src/shared/captions/transcriptErrors.ts",
+    "line": 46,
+    "english": "Cancelled.",
+    "sample": {}
+  },
+  {
+    "key": "errors.aiFailure.timeout",
+    "file": "src/shared/captions/transcriptErrors.ts",
+    "line": 47,
+    "english": "OpenAI took too long to answer. Try again in a moment.",
+    "sample": {
+      "provider": "OpenAI"
+    }
+  },
+  {
+    "key": "errors.aiFailure.network",
+    "file": "src/shared/captions/transcriptErrors.ts",
+    "line": 48,
+    "english": "Could not reach OpenAI. Check the internet connection and try again.",
+    "sample": {
+      "provider": "OpenAI"
+    }
+  },
+  {
+    "key": "errors.aiFailure.certificate",
+    "file": "src/main/ai/request.ts",
+    "line": 112,
+    "english": "localhost:8080 failed: its certificate is not trusted on this PC (DEPTH_ZERO_SELF_SIGNED_CERT), so nothing was sent.",
+    "sample": {
+      "provider": "localhost:8080",
+      "code": "DEPTH_ZERO_SELF_SIGNED_CERT"
+    }
+  },
+  {
+    "key": "errors.aiFailure.auth",
+    "file": "src/shared/captions/transcriptErrors.ts",
+    "line": 49,
+    "english": "OpenAI did not accept the API key. Check the key in Settings → AI providers.",
+    "sample": {
+      "provider": "OpenAI"
+    }
+  },
+  {
+    "key": "errors.aiFailure.rateLimit",
+    "file": "src/shared/captions/transcriptErrors.ts",
+    "line": 53,
+    "english": "Google Gemini is limiting requests (rate limit). Wait a minute and try again, or check your plan's limits.",
+    "sample": {
+      "provider": "Google Gemini"
+    }
+  },
+  {
+    "key": "errors.aiFailure.quota",
+    "file": "src/shared/captions/transcriptErrors.ts",
+    "line": 56,
+    "english": "Your OpenAI account has no credits or quota left. Check its billing and usage limits, then try again.",
+    "sample": {
+      "provider": "OpenAI"
+    }
+  },
+  {
+    "key": "errors.aiFailure.noAccessModel",
+    "file": "src/shared/captions/transcriptErrors.ts",
+    "line": 58,
+    "english": "OpenAI refused the request: this key has no access to the model “gpt-4o-transcribe”.",
+    "sample": {
+      "provider": "OpenAI",
+      "model": "gpt-4o-transcribe"
+    }
+  },
+  {
+    "key": "errors.aiFailure.noAccessApi",
+    "file": "src/shared/captions/transcriptErrors.ts",
+    "line": 58,
+    "english": "OpenAI refused the request: this key has no access to that API.",
+    "sample": {
+      "provider": "OpenAI"
+    }
+  },
+  {
+    "key": "errors.aiFailure.unknownModelNamed",
+    "file": "src/shared/captions/transcriptErrors.ts",
+    "line": 59,
+    "english": "OpenAI does not know the model “whisper-1”. Check the model name in Settings → AI providers.",
+    "sample": {
+      "provider": "OpenAI",
+      "model": "whisper-1"
+    }
+  },
+  {
+    "key": "errors.aiFailure.unknownModel",
+    "file": "src/shared/captions/transcriptErrors.ts",
+    "line": 59,
+    "english": "OpenAI does not know the model. Check the model name in Settings → AI providers.",
+    "sample": {
+      "provider": "OpenAI"
+    }
+  },
+  {
+    "key": "errors.aiFailure.tooLarge",
+    "file": "src/shared/captions/transcriptErrors.ts",
+    "line": 60,
+    "english": "The sound was too large for OpenAI.",
+    "sample": {
+      "provider": "OpenAI"
+    }
+  },
+  {
+    "key": "errors.aiFailure.server",
+    "file": "src/shared/captions/transcriptErrors.ts",
+    "line": 62,
+    "english": "Anthropic had a problem answering (HTTP 529). Try again in a moment.",
+    "sample": {
+      "provider": "Anthropic",
+      "status": "529"
+    }
+  },
+  {
+    "key": "errors.aiFailure.rejectedSaying",
+    "file": "src/shared/captions/transcriptErrors.ts",
+    "line": 66,
+    "english": "OpenAI rejected the request: Invalid file format.",
+    "sample": {
+      "provider": "OpenAI",
+      "detail": "Invalid file format."
+    }
+  },
+  {
+    "key": "errors.aiFailure.rejected",
+    "file": "src/shared/captions/transcriptErrors.ts",
+    "line": 66,
+    "english": "OpenAI rejected the request.",
+    "sample": {
+      "provider": "OpenAI"
+    }
+  },
+  {
+    "key": "errors.aiFailure.failedSaying",
+    "file": "src/shared/captions/transcriptErrors.ts",
+    "line": 69,
+    "english": "OpenAI failed: socket hang up",
+    "sample": {
+      "provider": "OpenAI",
+      "detail": "socket hang up"
+    }
+  },
+  {
+    "key": "errors.aiFailure.failed",
+    "file": "src/shared/captions/transcriptErrors.ts",
+    "line": 69,
+    "english": "OpenAI failed.",
+    "sample": {
+      "provider": "OpenAI"
+    }
+  },
+  {
+    "key": "errors.cancelled",
+    "file": "src/main/ai/request.ts",
+    "line": 20,
+    "english": "Cancelled.",
+    "sample": {}
+  },
+  {
+    "key": "errors.localCaptions.reason.missing",
+    "file": "src/shared/speech/errors.ts",
+    "line": 51,
+    "english": "part of Flown is missing; reinstall it to get them back",
+    "sample": {}
+  },
+  {
+    "key": "errors.localCaptions.reason.cpu",
+    "file": "src/shared/speech/errors.ts",
+    "line": 52,
+    "english": "this PC's processor cannot run the speech model",
+    "sample": {}
+  },
+  {
+    "key": "errors.localCaptions.reason.blocked",
+    "file": "src/shared/speech/errors.ts",
+    "line": 53,
+    "english": "Windows or an antivirus blocked the speech engine",
+    "sample": {}
+  },
+  {
+    "key": "errors.localCaptions.reason.failed",
+    "file": "src/shared/speech/errors.ts",
+    "line": 54,
+    "english": "the speech engine did not start",
+    "sample": {}
+  },
+  {
+    "key": "errors.localCaptions.unavailable.missing",
+    "file": "src/shared/speech/errors.ts",
+    "line": 81,
+    "english": "Captions on this PC are not available here: part of Flown is missing; reinstall it to get them back.",
+    "sample": {}
+  },
+  {
+    "key": "errors.localCaptions.unavailable.cpu",
+    "file": "src/shared/speech/errors.ts",
+    "line": 81,
+    "english": "Captions on this PC are not available here: this PC's processor cannot run the speech model.",
+    "sample": {}
+  },
+  {
+    "key": "errors.localCaptions.unavailable.blocked",
+    "file": "src/shared/speech/errors.ts",
+    "line": 81,
+    "english": "Captions on this PC are not available here: Windows or an antivirus blocked the speech engine.",
+    "sample": {}
+  },
+  {
+    "key": "errors.localCaptions.unavailable.failed",
+    "file": "src/shared/speech/errors.ts",
+    "line": 81,
+    "english": "Captions on this PC are not available here: the speech engine did not start.",
+    "sample": {}
+  },
+  {
+    "key": "errors.localCaptions.tierLabel",
+    "file": "src/shared/speech/errors.ts",
+    "line": 62,
+    "english": "Standard (Whisper base)",
+    "sample": {
+      "tier": "Standard",
+      "name": "Whisper base"
+    }
+  },
+  {
+    "key": "errors.localCaptions.noModel",
+    "file": "src/shared/speech/errors.ts",
+    "line": 83,
+    "english": "Standard (Whisper base) is not downloaded yet: download it in the Captions tab (148 MB, free).",
+    "sample": {
+      "model": "Standard (Whisper base)",
+      "size": "148 MB"
+    }
+  },
+  {
+    "key": "errors.localCaptions.damaged",
+    "file": "src/shared/speech/errors.ts",
+    "line": 85,
+    "english": "The speech model for Accurate (Whisper small) is damaged or missing, so it was not used. Download it again (488 MB).",
+    "sample": {
+      "model": "Accurate (Whisper small)",
+      "size": "488 MB"
+    }
+  },
+  {
+    "key": "errors.localCaptions.crashedAt",
+    "file": "src/shared/speech/errors.ts",
+    "line": 88,
+    "english": "The speech engine stopped unexpectedly. The parts already done are kept: Generate captions again continues from part 3 of 7.",
+    "sample": {
+      "part": "3",
+      "parts": "7"
+    }
+  },
+  {
+    "key": "errors.localCaptions.crashed",
+    "file": "src/shared/speech/errors.ts",
+    "line": 89,
+    "english": "The speech engine stopped unexpectedly. Generate captions again continues where it stopped.",
+    "sample": {}
+  },
+  {
+    "key": "errors.localCaptions.memoryTry",
+    "file": "src/shared/speech/errors.ts",
+    "line": 92,
+    "english": "This PC ran out of memory for Accurate (Whisper small). Try Standard.",
+    "sample": {
+      "model": "Accurate (Whisper small)",
+      "tier": "Standard"
+    }
+  },
+  {
+    "key": "errors.localCaptions.memory",
+    "file": "src/shared/speech/errors.ts",
+    "line": 92,
+    "english": "This PC ran out of memory for Fast (Whisper tiny). Close other apps and try again.",
+    "sample": {
+      "model": "Fast (Whisper tiny)"
+    }
+  },
+  {
+    "key": "errors.localCaptions.stalled",
+    "file": "src/shared/speech/errors.ts",
+    "line": 95,
+    "english": "The speech engine stopped responding and was closed. Generate captions again continues where it stopped.",
+    "sample": {}
+  },
+  {
+    "key": "errors.localCaptions.protocol",
+    "file": "src/shared/speech/errors.ts",
+    "line": 97,
+    "english": "The speech engine returned something unexpected.",
+    "sample": {}
+  },
+  {
+    "key": "errors.localCaptions.language",
+    "file": "src/shared/speech/errors.ts",
+    "line": 99,
+    "english": "The speech model does not know the language “xx”. Choose another spoken language, or Detect automatically.",
+    "sample": {
+      "language": "xx"
+    }
+  },
+  {
+    "key": "errors.localCaptions.blockedMemory",
+    "file": "src/shared/speech/errors.ts",
+    "line": 101,
+    "english": "Most accurate (Whisper large-v3 turbo) needs a PC with 8 GB of memory in all.",
+    "sample": {
+      "model": "Most accurate (Whisper large-v3 turbo)",
+      "gb": "8"
+    }
+  },
+  {
+    "key": "errors.localCaptions.blockedProcessor",
+    "file": "src/shared/speech/errors.ts",
+    "line": 101,
+    "english": "Most accurate (Whisper large-v3 turbo) is too slow for this PC's processor. Choose a quicker tier.",
+    "sample": {
+      "model": "Most accurate (Whisper large-v3 turbo)"
+    }
+  },
+  {
+    "key": "errors.localCaptions.outdated",
+    "file": "src/shared/speech/errors.ts",
+    "line": 103,
+    "english": "The speech engine in this copy of Flown does not match this version, so it cannot run Bangla (Bengali.AI Whisper medium). Reinstall Flown to fix it.",
+    "sample": {
+      "model": "Bangla (Bengali.AI Whisper medium)"
+    }
+  },
+  {
+    "key": "errors.localCaptions.modelProcessor",
+    "file": "src/shared/speech/errors.ts",
+    "line": 133,
+    "english": "Too slow for this PC's processor: it needs one with AVX2 (most PCs from 2013 on).",
+    "sample": {}
+  },
+  {
+    "key": "errors.localCaptions.modelMemory",
+    "file": "src/shared/speech/errors.ts",
+    "line": 135,
+    "english": "Needs about 1.3 GB of memory and a PC with 8 GB in all; this one has 4 GB.",
+    "sample": {
+      "need": "1.3",
+      "gb": "8",
+      "have": "4"
+    }
+  },
+  {
+    "key": "errors.pinnedDownload.notAllowed",
+    "file": "src/main/speech/download.ts",
+    "line": 246,
+    "english": "The download address is not allowed.",
+    "sample": {}
+  },
+  {
+    "key": "errors.cancelled",
+    "file": "src/main/speech/download.ts",
+    "line": 268,
+    "english": "Cancelled.",
+    "sample": {}
+  },
+  {
+    "key": "errors.pinnedDownload.space",
+    "file": "src/main/speech/download.ts",
+    "line": 279,
+    "english": "Not enough free space: 1550 MB are needed.",
+    "sample": {
+      "mb": "1550"
+    }
+  },
+  {
+    "key": "errors.pinnedDownload.stalled",
+    "file": "src/main/speech/download.ts",
+    "line": 353,
+    "english": "No data arrived for a minute.",
+    "sample": {}
+  },
+  {
+    "key": "errors.pinnedDownload.tooManyRedirects",
+    "file": "src/main/speech/download.ts",
+    "line": 356,
+    "english": "The download was redirected too many times.",
+    "sample": {}
+  },
+  {
+    "key": "errors.pinnedDownload.badRedirect",
+    "file": "src/main/speech/download.ts",
+    "line": 361,
+    "english": "The download was redirected to an invalid address.",
+    "sample": {}
+  },
+  {
+    "key": "errors.pinnedDownload.hostNotAllowed",
+    "file": "src/main/speech/download.ts",
+    "line": 363,
+    "english": "The download was redirected to a host that is not allowed (example.com).",
+    "sample": {
+      "host": "example.com"
+    }
+  },
+  {
+    "key": "errors.pinnedDownload.busy",
+    "file": "src/main/speech/download.ts",
+    "line": 81,
+    "english": "The download server is busy. Try again in 10 minutes.",
+    "sample": {}
+  },
+  {
+    "key": "errors.pinnedDownload.refused",
+    "file": "src/main/speech/download.ts",
+    "line": 384,
+    "english": "Hugging Face or the network refused the download (HTTP 403).",
+    "sample": {}
+  },
+  {
+    "key": "errors.pinnedDownload.missing",
+    "file": "src/main/speech/download.ts",
+    "line": 385,
+    "english": "The model is no longer at its address (HTTP 404).",
+    "sample": {
+      "status": "404"
+    }
+  },
+  {
+    "key": "errors.pinnedDownload.httpStatus",
+    "file": "src/main/speech/download.ts",
+    "line": 386,
+    "english": "The server answered with HTTP 502.",
+    "sample": {
+      "status": "502"
+    }
+  },
+  {
+    "key": "errors.pinnedDownload.differentFile",
+    "file": "src/main/speech/download.ts",
+    "line": 391,
+    "english": "The server sent a different file than expected.",
+    "sample": {}
+  },
+  {
+    "key": "errors.pinnedDownload.cannotContinue",
+    "file": "src/main/speech/download.ts",
+    "line": 398,
+    "english": "The server could not continue the download.",
+    "sample": {}
+  },
+  {
+    "key": "errors.pinnedDownload.tooLarge",
+    "file": "src/main/speech/download.ts",
+    "line": 421,
+    "english": "The downloaded file is larger than expected.",
+    "sample": {}
+  },
+  {
+    "key": "errors.diskFull",
+    "file": "src/main/speech/download.ts",
+    "line": 437,
+    "english": "The disk is full.",
+    "sample": {}
+  },
+  {
+    "key": "errors.pinnedDownload.notSaved",
+    "file": "src/main/speech/download.ts",
+    "line": 438,
+    "english": "The download could not be saved (EACCES: permission denied).",
+    "sample": {
+      "reason": "EACCES: permission denied"
+    }
+  },
+  {
+    "key": "errors.pinnedDownload.closedEarly",
+    "file": "src/main/speech/download.ts",
+    "line": 445,
+    "english": "The connection closed before the whole file arrived.",
+    "sample": {}
+  },
+  {
+    "key": "errors.pinnedDownload.mismatch",
+    "file": "src/main/speech/download.ts",
+    "line": 452,
+    "english": "The downloaded file was not the expected one, so it was deleted.",
+    "sample": {}
+  },
+  {
+    "key": "errors.localAiDownload.needsMemory",
+    "file": "src/main/localAi/models.ts",
+    "line": 287,
+    "english": "Needs 12 GB of memory; this PC has 8 GB.",
+    "sample": {
+      "need": "12",
+      "have": "8"
+    }
+  },
+  {
+    "key": "main.localSpeech.testName",
+    "file": "src/main/speech/localClient.ts",
+    "line": 267,
+    "english": "On this PC",
+    "sample": {}
+  },
+  {
+    "key": "captions.transcribe.leftOut",
+    "file": "src/renderer/src/editor/captionItems.ts",
+    "line": 253,
+    "english": "A project keeps at most 5000 captions, so the captions after 1:02:03 were left out.",
+    "sample": {
+      "max": "5000",
+      "at": "1:02:03"
+    }
+  },
+  {
+    "key": "errors.audioAnalysis.unreadableExit",
+    "file": "src/main/audioAnalysis.ts",
+    "line": 75,
+    "english": "Could not read the sound of screen.mp4 (exit code 1)",
+    "sample": {
+      "file": "screen.mp4",
+      "code": "1"
+    }
+  },
+  {
+    "key": "smart.guide.say.shotsReady",
+    "file": "src/renderer/src/guide/GuidePanel.tsx",
+    "line": 278,
+    "english": "Screenshots ready",
+    "sample": {}
+  },
+  {
+    "key": "smart.guide.say.stopped",
+    "file": "src/renderer/src/guide/GuidePanel.tsx",
+    "line": 389,
+    "english": "Stopped. Nothing was changed.",
+    "sample": {}
+  },
+  {
+    "key": "smart.guide.cost.titles",
+    "file": "src/renderer/src/guide/GuidePanel.tsx",
+    "line": 420,
+    "english": "Titles",
+    "sample": {}
+  },
+  {
+    "key": "smart.guide.cost.notes",
+    "file": "src/renderer/src/guide/GuidePanel.tsx",
+    "line": 838,
+    "english": "Notes",
+    "sample": {}
+  },
+  {
+    "key": "smart.guide.cost.what",
+    "file": "src/renderer/src/guide/GuidePanel.tsx",
+    "line": 420,
+    "english": "the steps' narration",
+    "sample": {}
+  },
+  {
+    "key": "smart.guide.say.missing",
+    "file": "src/renderer/src/guide/GuidePanel.tsx",
+    "line": 471,
+    "english": [
+      "0 screenshots could not be made.",
+      "1 screenshot could not be made.",
+      "2 screenshots could not be made.",
+      "1000 screenshots could not be made."
+    ],
+    "sample": [
+      {
+        "count": 0,
+        "n": "0"
+      },
+      {
+        "count": 1,
+        "n": "1"
+      },
+      {
+        "count": 2,
+        "n": "2"
+      },
+      {
+        "count": 1000,
+        "n": "1000"
+      }
+    ]
+  },
+  {
+    "key": "smart.guide.say.missingWhy",
+    "file": "src/renderer/src/guide/GuidePanel.tsx",
+    "line": 471,
+    "english": [
+      "0 screenshots could not be made: The recording could not be read.",
+      "1 screenshot could not be made: The recording could not be read.",
+      "2 screenshots could not be made: The recording could not be read.",
+      "1000 screenshots could not be made: The recording could not be read."
+    ],
+    "sample": [
+      {
+        "count": 0,
+        "n": "0",
+        "reason": "The recording could not be read."
+      },
+      {
+        "count": 1,
+        "n": "1",
+        "reason": "The recording could not be read."
+      },
+      {
+        "count": 2,
+        "n": "2",
+        "reason": "The recording could not be read."
+      },
+      {
+        "count": 1000,
+        "n": "1000",
+        "reason": "The recording could not be read."
+      }
+    ]
+  },
+  {
+    "key": "smart.guide.say.changedSaving",
+    "file": "src/renderer/src/guide/GuidePanel.tsx",
+    "line": 476,
+    "english": "Changes made while saving are not in it: save again to add them.",
+    "sample": {}
+  },
+  {
+    "key": "smart.guide.say.changedCopying",
+    "file": "src/renderer/src/guide/GuidePanel.tsx",
+    "line": 476,
+    "english": "Changes made while copying are not in it: copy again to add them.",
+    "sample": {}
+  },
+  {
+    "key": "smart.guide.say.saved",
+    "file": "src/renderer/src/guide/GuidePanel.tsx",
+    "line": 507,
+    "english": "Saved “Guide.html”.",
+    "sample": {
+      "name": "Guide.html"
+    }
+  },
+  {
+    "key": "smart.guide.say.copied",
+    "file": "src/renderer/src/guide/GuidePanel.tsx",
+    "line": 524,
+    "english": [
+      "Copied the guide with 0 screenshots.",
+      "Copied the guide with 1 screenshot.",
+      "Copied the guide with 2 screenshots.",
+      "Copied the guide with 1000 screenshots."
+    ],
+    "sample": [
+      {
+        "count": 0,
+        "n": "0"
+      },
+      {
+        "count": 1,
+        "n": "1"
+      },
+      {
+        "count": 2,
+        "n": "2"
+      },
+      {
+        "count": 1000,
+        "n": "1000"
+      }
+    ]
+  },
+  {
+    "key": "smart.guide.say.added",
+    "file": "src/renderer/src/guide/GuidePanel.tsx",
+    "line": 549,
+    "english": "Added a step at the playhead.",
+    "sample": {}
+  },
+  {
+    "key": "smart.guide.say.allTitled",
+    "file": "src/renderer/src/guide/GuidePanel.tsx",
+    "line": 558,
+    "english": "Every step has a title.",
+    "sample": {}
+  },
+  {
+    "key": "smart.guide.say.needsTitle",
+    "file": "src/renderer/src/guide/GuidePanel.tsx",
+    "line": 563,
+    "english": "Step 4 needs a title",
+    "sample": {
+      "n": "4"
+    }
+  },
+  {
+    "key": "smart.guide.say.notReady",
+    "file": "src/renderer/src/guide/GuidePanel.tsx",
+    "line": 571,
+    "english": "The screenshots are not ready yet.",
+    "sample": {}
+  },
+  {
+    "key": "smart.guide.say.blurred",
+    "file": "src/renderer/src/guide/GuidePanel.tsx",
+    "line": 598,
+    "english": "Blurred the typed text.",
+    "sample": {}
+  },
+  {
+    "key": "smart.guide.say.copiedShot",
+    "file": "src/renderer/src/guide/GuidePanel.tsx",
+    "line": 607,
+    "english": "Copied the screenshot.",
+    "sample": {}
+  },
+  {
+    "key": "smart.guide.say.adjusted",
+    "file": "src/renderer/src/guide/GuidePanel.tsx",
+    "line": 954,
+    "english": "Adjusted the screenshot.",
+    "sample": {}
+  },
+  {
+    "key": "smart.guide.say.zoomedAgain",
+    "file": "src/renderer/src/guide/GuidePanel.tsx",
+    "line": 954,
+    "english": "The screenshot is zoomed to the click again.",
+    "sample": {}
+  }
+]

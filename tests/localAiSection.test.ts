@@ -17,13 +17,17 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { LocalAiProgress, LocalAiState, LocalModelId, LocalModelState } from '../src/shared/api/localAi'
 import type { AiProviderInfo } from '../src/shared/api/ai'
 import { byLabel, byTestId, button, mockReact, render, settle, textOf, unmountAll, type El } from './studioHarness'
+import { cancelledError } from '../src/shared/jobs/longJobs'
+import { ipcRejection, uiEnglish, uiPseudo } from './pseudoUi'
 
 const GIB = 2 ** 30
 const fake = vi.hoisted(() => ({
   calls: [] as unknown[][],
   state: null as unknown,
   stateListener: null as ((s: unknown) => void) | null,
-  progressListeners: [] as ((p: unknown) => void)[]
+  progressListeners: [] as ((p: unknown) => void)[],
+  /** What main answers a download with (never, unless a test says). */
+  answer: null as null | (() => Promise<unknown>)
 }))
 vi.stubGlobal('window', {
   api: {
@@ -40,7 +44,7 @@ vi.stubGlobal('window', {
     },
     downloadLocalModel: (id: string) => {
       fake.calls.push(['download', id])
-      return new Promise(() => undefined)
+      return fake.answer?.() ?? new Promise(() => undefined)
     },
     cancelLocalDownload: async (id: string) => void fake.calls.push(['cancel', id]),
     removeLocalModel: async (id: string) => {
@@ -162,6 +166,33 @@ describe('Settings › AI on this PC (test 76)', () => {
     expect(textOf(byTestId(await old.out(), 'local-ai-pc'))).toBe("This PC's processor is too old for AI on this PC (it needs AVX2).")
     const none = await section(stateOf([model('qwen3.5-2b', 'missing', { block: 'helper' })], { pc: pcOf({ helper: false }) }))
     expect(textOf(byTestId(await none.out(), 'local-ai-pc'))).toBe('AI on this PC is not part of this build.')
+  })
+
+  it('a download main stopped in a translated UI is told by its code, not by words, so no error shows (output-and-languages §9.6)', async () => {
+    // Main says the cancel in the UI language; the section decides by the code, whatever words it has.
+    uiPseudo()
+    const stopped = ipcRejection('localAi:download', cancelledError())
+    const words = stopped.message.replace(/^.*?CancelledError: /, '')
+    const tick = (): Promise<void> => new Promise((r) => setTimeout(r, 0))
+    const download = async (answer: Error, renderer: () => void): Promise<El[]> => {
+      // The button is found by its English name; the answer is read in the renderer's language.
+      uiEnglish()
+      fake.answer = () => Promise.reject(answer)
+      const { out } = await section(stateOf([model('gemma4-e2b', 'missing'), model('qwen3.5-2b', 'missing')]))
+      ;(byLabel(await out(), 'Download Recommended, 3.1 gigabytes')!.props.onClick as () => void)()
+      renderer()
+      await tick()
+      return out()
+    }
+    try {
+      for (const renderer of [uiEnglish, () => uiPseudo('bn-XA')]) expect((await download(stopped, renderer)).some((e) => e.props.role === 'alert')).toBe(false)
+      // The same words without the code are a failure, shown as they came.
+      const els = await download(new Error(`Error invoking remote method 'localAi:download': Error: ${words}`), uiEnglish)
+      expect(textOf(els.find((e) => e.props.role === 'alert'))).toBe(words)
+    } finally {
+      fake.answer = null
+      uiEnglish()
+    }
   })
 
   it('Download → progress with Cancel → ready, announced → Use → Remove after asking', async () => {

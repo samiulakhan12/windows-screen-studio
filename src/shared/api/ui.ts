@@ -31,8 +31,9 @@ export interface UiInfo {
   reopen: string | null
   /**
    * The renderer's catalogue of `language`, only in an unpackaged build started with
-   * SSW_I18N_CATALOGUE_DIR (the language tests and the reviewers' pack, §23.4); absent otherwise,
-   * when the renderer loads its built catalogue itself.
+   * SSW_I18N_CATALOGUE_DIR (the language tests and the reviewers' pack, §23.4) or with
+   * FLOWN_I18N_PSEUDO (a pseudo-locale from scripts/i18n/pseudo/, §16.3); absent otherwise, when the
+   * renderer loads its built catalogue itself.
    */
   catalogue?: { messages: Record<string, string>; latn: string[]; user: Record<string, string[]> }
 }

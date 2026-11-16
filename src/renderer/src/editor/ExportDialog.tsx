@@ -921,7 +921,12 @@ export function ExportDialog(props: Props): JSX.Element {
     const notes = [`${d.width}×${d.height}`]
     if (d.capped) notes.push(t('export.resolution.capped', { side: fmt.count(MAX_EXPORT_SIDE) }))
     if (upscaled(r)) notes.push(t('export.resolution.upscaled', { width: fmt.count(visible.width), height: fmt.count(visible.height) }))
-    return { value: r, label: RESOLUTION_LABELS[r], className: upscaled(r) ? 'upscale' : '', title: notes.join('; ') }
+    // English keeps its notes joined by "; " (merge group, output-and-languages §9.3); other languages say the whole line.
+    const title =
+      uiLanguage() === 'en'
+        ? notes.join('; ')
+        : t('export.resolution.whole', { size: `${d.width}×${d.height}`, capped: d.capped ? 'yes' : 'no', side: fmt.count(MAX_EXPORT_SIDE), upscaled: upscaled(r) ? 'yes' : 'no', width: fmt.count(visible.width), height: fmt.count(visible.height) })
+    return { value: r, label: RESOLUTION_LABELS[r], className: upscaled(r) ? 'upscale' : '', title }
   })
   const projectAspect = project.style.aspectRatio
   const aspectOptions = (['project', ...BATCH_ASPECTS] as const).map((a) => {
@@ -1255,7 +1260,14 @@ export function ExportDialog(props: Props): JSX.Element {
                     <span>{tNodes<ReactNode>('presets.header.named', { name: userName }, {})}</span>
                   ) : (
                     <span>
-                      {t('common.label.settings')} <span className="muted">· {mode === 'single' ? settingsName : t('export.settings.batch')}</span>
+                      {mode === 'single' || uiLanguage() === 'en' ? (
+                        <>
+                          {t('common.label.settings')} <span className="muted">· {mode === 'single' ? settingsName : t('export.settings.batch.lead')}</span>
+                        </>
+                      ) : (
+                        // Other languages say the batch heading whole (merge group, output-and-languages §9.3); <em> is its lighter part.
+                        richText('export.settings.batch.whole', {}, { em: (chunks) => <span className="muted">{chunks}</span> })
+                      )}
                     </span>
                   )}
                   <span className={`chevron ${settingsOpen ? 'open' : ''}`} aria-hidden="true">
