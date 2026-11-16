@@ -12,7 +12,7 @@ import type { AudioLevels } from '../../../shared/audio/loudness'
 import type { AudioSource } from '../../../shared/audio/settings'
 import { speechLevelSource } from '../../../shared/audio/speech'
 import { clipCopy, type ClipShape } from '../../../shared/clips/clipCopy'
-import { CLIP_RULES, type Moment, type MomentLength } from '../../../shared/clips/moments'
+import { CLIP_RULES, listedReasons, type Moment, type MomentLength } from '../../../shared/clips/moments'
 import { outputTimeAt } from '../../../shared/editor/clips'
 import { canCopyAs } from '../../../shared/editor/duplicate'
 import { planOf, videoDuration, videoTimeAt } from '../../../shared/engine/freeze'
@@ -59,7 +59,7 @@ export function momentRange(project: Pick<Project, 'clips' | 'freezes'>, m: Pick
 }
 
 /** The reasons a row lists: without the length, which its time line says. */
-const rowReasons = (m: Moment): string => m.reasons.filter((r) => !/^\d+ s$/.test(r)).join(' · ')
+const rowReasons = (m: Moment): string => listedReasons(m).join(' · ')
 
 /**
  * The shapes Duplicate can make of this recording (canCopyAs: a tall one is not made vertical) and

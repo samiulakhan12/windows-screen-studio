@@ -313,5 +313,7 @@
   "fonts.unreadable": "This file could not be read as a TTF, OTF or WOFF2 font.",
   "fonts.misnamed.ttf": "This file is named .{named} but holds a TrueType (.ttf) font: rename it to .ttf and add it again.",
   "fonts.misnamed.otf": "This file is named .{named} but holds an OpenType (.otf) font: rename it to .otf and add it again.",
-  "fonts.misnamed.woff2": "This file is named .{named} but holds a WOFF2 (.woff2) font: rename it to .woff2 and add it again."
+  "fonts.misnamed.woff2": "This file is named .{named} but holds a WOFF2 (.woff2) font: rename it to .woff2 and add it again.",
+  "autosave.locked": "The project file is locked by another program or is read-only.",
+  "autosave.readOnly": "The drive is read-only."
 }

@@ -16,12 +16,13 @@ import type { Annotation, Chapter, Freeze, Graphic, ImageOverlay, Project, Shape
 import { newAnnotationId } from './annotations'
 import { displayTime } from './clips'
 import { freezeAtPlayhead } from './freezeEdit'
-import { itemKey, KIND_WORDS, parseItemKey, type GroupKind, type ItemKey } from './multiSelect'
+import { countOf, itemKey, parseItemKey, type GroupKind, type ItemKey } from './multiSelect'
 import { newOverlayId } from './overlays'
 import { newShapeId, newSpotlightId } from './shapes'
 import { outputToSourceRanges } from './smartSpeed'
 import { chapterNear, createChapter, newTitleId } from './titles'
 import { fmt } from '../i18n/fmt'
+import { t, type MessageKey } from '../i18n/t'
 
 export type ClipItem =
   | { kind: 'zoom'; item: ZoomSegment }
@@ -346,35 +347,55 @@ export function duplicateItems(p: Project, keys: readonly ItemKey[]): PasteResul
   return place(p, clip, at, at < want - 1e-9)
 }
 
-const plural = (n: number, word: string): string => `${n} ${word}${n === 1 ? '' : 's'}`
-const countOf = (n: number, kind: GroupKind): string => `${n} ${KIND_WORDS[kind][n === 1 ? 0 : 1]}`
-
-/** Why items were skipped, as the end of a notice: "1 zoom is already there, 1 freeze frame is in a cut". */
+/** Why items were skipped, as the end of a notice: "1 zoom is already there", "1 freeze frame is in a cut" ({what} counts them). */
 function skipText(kind: GroupKind, why: PasteSkip, n: number): string {
-  const is = n === 1 ? 'is' : 'are'
-  const what = countOf(n, kind)
+  const values = { count: n, what: countOf(n, kind) }
   switch (why) {
     case 'outside':
-      return `${what} would end after the video`
+      return t('editor.paste.skip.outside', values)
     case 'zoom-taken':
     case 'chapter-near':
     case 'freeze-taken':
-      return `${what} ${is} already there`
+      return t('editor.paste.skip.taken', values)
     case 'chapter-end':
-      return `${what} would be at the very end`
+      return t('editor.paste.skip.atEnd', values)
     case 'freeze-cut':
-      return `${what} ${is} in a cut`
+      return t('editor.paste.skip.inCut', values)
     case 'freeze-frozen':
-      return `${what} would land where the picture is already frozen`
+      return t('editor.paste.skip.frozen', values)
     case 'freeze-full':
-      return `${what} would go past the limit of ${MAX_FREEZES}`
+      return t('editor.paste.skip.full', { ...values, max: fmt.count(MAX_FREEZES) })
     case 'image-full':
-      return `${what} would go past the limit of ${MAX_OVERLAYS}`
+      return t('editor.paste.skip.full', { ...values, max: fmt.count(MAX_OVERLAYS) })
     case 'graphic-full':
-      return `${what} would go past the limit of ${MAX_GRAPHICS}`
+      return t('editor.paste.skip.full', { ...values, max: fmt.count(MAX_GRAPHICS) })
     case 'freeze-other-recording':
     case 'image-other-recording':
-      return `${what} ${is} from another recording`
+      return t('editor.paste.skip.otherRecording', values)
+  }
+}
+
+/** The notice's messages for a paste and for a duplicate. */
+const NOTICE: Readonly<Record<'paste' | 'duplicate', Readonly<Record<'all' | 'allMoved' | 'some' | 'someMoved' | 'someWhy' | 'someMovedWhy' | 'none' | 'noneWhy', MessageKey>>>> = {
+  paste: {
+    all: 'editor.paste.all',
+    allMoved: 'editor.paste.allMoved',
+    some: 'editor.paste.some',
+    someMoved: 'editor.paste.someMoved',
+    someWhy: 'editor.paste.someWhy',
+    someMovedWhy: 'editor.paste.someMovedWhy',
+    none: 'editor.paste.none',
+    noneWhy: 'editor.paste.noneWhy'
+  },
+  duplicate: {
+    all: 'editor.duplicate.all',
+    allMoved: 'editor.duplicate.allMoved',
+    some: 'editor.duplicate.some',
+    someMoved: 'editor.duplicate.someMoved',
+    someWhy: 'editor.duplicate.someWhy',
+    someMovedWhy: 'editor.duplicate.someMovedWhy',
+    none: 'editor.duplicate.none',
+    noneWhy: 'editor.duplicate.noneWhy'
   }
 }
 
@@ -392,12 +413,15 @@ export function pasteNotice(r: PasteResult, total: number, verb = 'Pasted'): str
     if (c) c.n++
     else counts.set(id, { ...s, n: 1 })
   }
+  // The skipped kinds are facts one after another, with commas.
   const reasons = [...counts.values()].map((c) => skipText(c.kind, c.why, c.n)).join(', ')
-  const where = r.movedBack ? ` at ${fmt.clock(r.at)} (moved back so they fit)` : ''
+  const keys = NOTICE[verb === 'Duplicated' ? 'duplicate' : 'paste']
+  const values = { count: n, n: fmt.count(n), total: fmt.count(total), at: fmt.clock(r.at), reasons }
   let text: string
-  if (n === 0) text = `Nothing ${verb.toLowerCase()}${reasons ? `: ${reasons}` : ''}`
-  else if (n < total) text = `${verb} ${n} of ${total}${where}${reasons ? `: ${reasons}` : ''}`
-  else text = `${verb} ${plural(n, 'item')}${where}`
-  if (r.shortened) text += ` · ${countOf(r.shortened, 'zoom')} ${r.shortened === 1 ? 'was' : 'were'} shortened to fit`
+  if (n === 0) text = t(reasons ? keys.noneWhy : keys.none, values)
+  else if (n < total) text = t(r.movedBack ? (reasons ? keys.someMovedWhy : keys.someMoved) : reasons ? keys.someWhy : keys.some, values)
+  else text = t(r.movedBack ? keys.allMoved : keys.all, values)
+  // One more fact after a middle dot: the zooms that were shortened.
+  if (r.shortened) text += ` · ${t('editor.paste.shortened', { count: r.shortened, n: fmt.count(r.shortened) })}`
   return text
 }

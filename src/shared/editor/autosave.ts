@@ -1,3 +1,5 @@
+import { t, type MessageKey } from '../i18n/t'
+
 export type SaveStatus =
   | { state: 'saved' }
   | { state: 'pending' }
@@ -32,10 +34,11 @@ export interface AutosaveOptions {
   maxRetryMs?: number
 }
 
-const FRIENDLY: [RegExp, string][] = [
-  [/\bENOSPC\b/, 'The disk is full.'],
-  [/\b(EPERM|EACCES|EBUSY)\b/, 'The project file is locked by another program or is read-only.'],
-  [/\bEROFS\b/, 'The drive is read-only.']
+/** The causes a save failure is told by, each with its message; the code follows in brackets. */
+const FRIENDLY: [RegExp, MessageKey][] = [
+  [/\bENOSPC\b/, 'errors.diskFull'],
+  [/\b(EPERM|EACCES|EBUSY)\b/, 'errors.autosave.locked'],
+  [/\bEROFS\b/, 'errors.autosave.readOnly']
 ]
 
 /** User-facing reason for a failed save, keeping the system error code for support. */
@@ -43,9 +46,9 @@ export function saveErrorMessage(err: unknown): string {
   const raw = (err instanceof Error ? err.message : String(err))
     // Electron prefixes errors thrown in the main process; the user only needs the cause.
     .replace(/^Error invoking remote method '[^']+': (Error: )?/, '')
-  for (const [re, text] of FRIENDLY) {
+  for (const [re, key] of FRIENDLY) {
     const m = re.exec(raw)
-    if (m) return `${text} (${m[1] ?? m[0]})`
+    if (m) return `${t(key)} (${m[1] ?? m[0]})`
   }
   return raw
 }

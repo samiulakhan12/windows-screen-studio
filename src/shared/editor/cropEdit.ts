@@ -10,6 +10,8 @@ import { rebaseAutoZooms, zoomSettingsOf } from '../engine/zoom'
 import type { CursorTrack, NormRect, Project, ZoomSegment } from '../types'
 import { shapeBounds } from './shapes'
 import { setZoomLevel, setZoomRegion, type RegionHandle } from './zoomEdit'
+import { fmt } from '../i18n/fmt'
+import { t } from '../i18n/t'
 
 export type CropAspect = 'free' | 'original' | '16:9' | '4:3' | '1:1' | '9:16'
 /** The crop being edited (held by the Editor until Done). */
@@ -284,30 +286,27 @@ export function setCrop(p: Project, crop: NormRect | null, track: CursorTrack | 
   return { project: next, removedAutoZooms, restoredAutoZooms, outside: outsideCrop(next, cropOf(next)) }
 }
 
-const count = (n: number, one: string, many: string): string => `${n} ${n === 1 ? one : many}`
+/** A plural message's values: the count and its digits. */
+const counted = (n: number): { count: number; n: string } => ({ count: n, n: fmt.count(n) })
 
-/** The notice after Done: "Cropped to 1920 × 1032." plus what happened to zooms and items. */
+/** The notice after Done: "Cropped to 1920 × 1032." plus what happened to zooms and items, each a sentence. */
 export function cropNotice(o: CropOutcome): string {
   const size = visibleSize(o.project)
-  const parts = [cropOf(o.project) ? `Cropped to ${size.width} × ${size.height}.` : 'Showing the whole recording.']
+  const parts = [cropOf(o.project) ? t('editor.crop.croppedTo', { width: fmt.count(size.width), height: fmt.count(size.height) }) : t('editor.crop.whole')]
   // A zoom replaced (a merged zoom split around a hidden click) is removed and added: it was adjusted.
   const adjusted = Math.min(o.removedAutoZooms, o.restoredAutoZooms)
   const removed = o.removedAutoZooms - adjusted
   const restored = o.restoredAutoZooms - adjusted
-  if (removed) parts.push(`${count(removed, 'automatic zoom for a click outside it was', 'automatic zooms for clicks outside it were')} removed.`)
-  if (adjusted) parts.push(`${count(adjusted, 'automatic zoom was', 'automatic zooms were')} adjusted.`)
-  if (restored) parts.push(`${count(restored, 'automatic zoom', 'automatic zooms')} came back.`)
+  if (removed) parts.push(t('editor.crop.zoomsRemoved', counted(removed)))
+  if (adjusted) parts.push(t('editor.crop.zoomsAdjusted', counted(adjusted)))
+  if (restored) parts.push(t('editor.crop.zoomsBack', counted(restored)))
   const { zooms, shapes, spotlights } = o.outside
   const items = [
-    zooms ? count(zooms, 'zoom', 'zooms') : '',
-    shapes ? count(shapes, 'shape', 'shapes') : '',
-    spotlights ? count(spotlights, 'spotlight', 'spotlights') : ''
+    zooms ? t('editor.crop.item.zooms', counted(zooms)) : '',
+    shapes ? t('editor.crop.item.shapes', counted(shapes)) : '',
+    spotlights ? t('editor.crop.item.spotlights', counted(spotlights)) : ''
   ].filter(Boolean)
-  if (items.length) {
-    const one = zooms + shapes + spotlights === 1
-    const list = items.length > 1 ? `${items.slice(0, -1).join(', ')} and ${items[items.length - 1]}` : items[0]
-    parts.push(`${list} ${one ? 'is' : 'are'} outside it; ${one ? 'it comes' : 'they come'} back if you widen the crop.`)
-  }
+  if (items.length) parts.push(t('editor.crop.outside', { count: zooms + shapes + spotlights, list: fmt.list(items) }))
   return parts.join(' ')
 }
 

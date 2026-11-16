@@ -1894,5 +1894,32 @@
     "dnt": [
       "LUT"
     ]
+  },
+  "groupEdit.count.zoom": {
+    "description": "Several items selected: how many zooms (the Selection view, and the paste and duplicate notices)."
+  },
+  "groupEdit.count.annotation": {
+    "description": "Several items selected: how many text items (the Selection view, and the paste and duplicate notices)."
+  },
+  "groupEdit.count.shape": {
+    "description": "Several items selected: how many shapes (the Selection view, and the paste and duplicate notices)."
+  },
+  "groupEdit.count.spotlight": {
+    "description": "Several items selected: how many spotlights (the Selection view, and the paste and duplicate notices)."
+  },
+  "groupEdit.count.overlay": {
+    "description": "Several items selected: how many images (the Selection view, and the paste and duplicate notices)."
+  },
+  "groupEdit.count.title": {
+    "description": "Several items selected: how many title cards (the Selection view, and the paste and duplicate notices)."
+  },
+  "groupEdit.count.chapter": {
+    "description": "Several items selected: how many chapters (the Selection view, and the paste and duplicate notices)."
+  },
+  "groupEdit.count.freeze": {
+    "description": "Several items selected: how many freeze frames (the Selection view, and the paste and duplicate notices)."
+  },
+  "groupEdit.count.graphic": {
+    "description": "Several items selected: how many pop-ups (the Selection view, and the paste and duplicate notices)."
   }
 }

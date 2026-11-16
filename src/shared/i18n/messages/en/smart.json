@@ -244,5 +244,17 @@
   "guide.run.notesWith": "{count, plural, one {Tidied {n} note with {place}.} other {Tidied {n} notes with {place}.}}",
   "guide.cropTooSmall": "The crop is too small: at least 5% of the screen.",
   "guide.adjust.cropName": "Crop, {w} wide, from {x} across and {y} down",
-  "guide.adjust.ringName": "Ring at {x} across, {y} down"
+  "guide.adjust.ringName": "Ring at {x} across, {y} down",
+  "clips.reason.clicks": "{count, plural, one {{n} click} other {{n} clicks}}",
+  "clips.reason.screens": "{count, plural, one {{n} screen} other {{n} screens}}",
+  "clips.reason.seconds": "{n} s",
+  "clips.reason.density": "Packed with information",
+  "clips.reason.keywords": "Important words",
+  "clips.reason.emphasis": "Words you emphasised",
+  "clips.reason.numbers": "Numbers",
+  "clips.reason.mentions": "Mentions “{word}”",
+  "clips.reason.opensQuestion": "Opens with a question",
+  "clips.reason.opensNumber": "Opens with a number",
+  "clips.reason.opensAction": "Opens with an action",
+  "clips.reason.endsCleanly": "Ends cleanly"
 }

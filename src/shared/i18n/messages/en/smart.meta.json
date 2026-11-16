@@ -743,5 +743,44 @@
   },
   "guide.adjust.ringName": {
     "description": "Make a guide › Adjust: how a screen reader hears the ring; {x} and {y} are shares of the screen (\"42%\")."
+  },
+  "clips.reason.clicks": {
+    "description": "Find short clips: a reason a moment was picked, the clicks in it."
+  },
+  "clips.reason.screens": {
+    "description": "Find short clips: a reason a silent moment was picked, how many screens it shows."
+  },
+  "clips.reason.seconds": {
+    "description": "Find short clips: the last reason of a moment, its length in seconds (\"s\" is the unit symbol). The rows leave it out, since their time line gives it; a copy's origin keeps it."
+  },
+  "clips.reason.density": {
+    "description": "Find short clips: a reason a moment was picked (it says much in little time)."
+  },
+  "clips.reason.keywords": {
+    "description": "Find short clips: a reason a moment was picked (it holds the recording's key words)."
+  },
+  "clips.reason.emphasis": {
+    "description": "Find short clips: a reason a moment was picked (words marked for emphasis in the captions)."
+  },
+  "clips.reason.numbers": {
+    "description": "Find short clips: a reason a moment was picked (it says numbers)."
+  },
+  "clips.reason.mentions": {
+    "description": "Find short clips: a reason a moment was picked; {word} is the word the user asked clips about, as said.",
+    "user": [
+      "word"
+    ]
+  },
+  "clips.reason.opensQuestion": {
+    "description": "Find short clips: a reason a moment was picked (its first sentence is a question)."
+  },
+  "clips.reason.opensNumber": {
+    "description": "Find short clips: a reason a moment was picked (its first sentence gives a number)."
+  },
+  "clips.reason.opensAction": {
+    "description": "Find short clips: a reason a moment was picked (it opens with a click or typing)."
+  },
+  "clips.reason.endsCleanly": {
+    "description": "Find short clips: a reason a moment was picked (it ends at the end of a sentence)."
   }
 }

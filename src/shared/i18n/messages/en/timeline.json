@@ -71,5 +71,21 @@
   "waveform.split": "Waveform: microphone above the line, system sound below; darker stretches are pauses",
   "waveform.splitMuted": "Waveform: microphone above the line, system sound below; darker stretches are pauses (grey: muted)",
   "waveform.mixed": "Waveform: the recording's sound; darker stretches are pauses",
-  "waveform.mixedMuted": "Waveform: the recording's sound; darker stretches are pauses (grey: muted)"
+  "waveform.mixedMuted": "Waveform: the recording's sound; darker stretches are pauses (grey: muted)",
+  "shuttle.reverse": "Reverse {rate}",
+  "shuttle.forward": "Forward {rate}",
+  "shuttle.forwardSilent": "Forward {rate} · no sound",
+  "shuttle.role.reverse": "{key} plays backwards",
+  "shuttle.role.pause": "{key} pauses",
+  "shuttle.role.forward": "{key} plays forward",
+  "shuttle.roles": "{roles}.",
+  "shuttle.rolesFaster": "{roles}; press again to go faster.",
+  "shuttle.step": "Hold {pause} and tap {keys} to step one frame.",
+  "shuttle.noSound": "No sound in reverse or above {rate}.",
+  "previewSpeedKeys.slower": "{key} slower",
+  "previewSpeedKeys.faster": "{key} faster",
+  "previewSpeedHint": "Preview speed: play the preview faster or slower to review it. The exported video keeps its own speed.",
+  "previewSpeedHintKeys": "Preview speed: play the preview faster or slower to review it ({keys}). The exported video keeps its own speed.",
+  "cutMarker.name": "Cut {n} of {of}: {start} to {end}, {join}",
+  "cutMarker.nameMore": "{count, plural, one {Cut {n} of {of}: {start} to {end}, {join}, and {more} more cut} other {Cut {n} of {of}: {start} to {end}, {join}, and {more} more cuts}}"
 }

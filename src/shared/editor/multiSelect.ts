@@ -5,6 +5,8 @@
  * and keys and calls these.
  */
 import type { Project } from '../types'
+import { fmt } from '../i18n/fmt'
+import { t, type MessageKey } from '../i18n/t'
 
 /** Kinds of items that can be selected together; captions, layouts, clips and clicks stay one at a time (§3). */
 export const GROUP_KINDS = ['zoom', 'annotation', 'shape', 'spotlight', 'overlay', 'title', 'chapter', 'freeze', 'graphic'] as const
@@ -233,21 +235,21 @@ export function topmostHit(boxes: readonly KeyRect[], x: number, y: number): Ite
   return null
 }
 
-/** Singular and plural words of each kind, as notices and the Selection view say them. */
-export const KIND_WORDS: Readonly<Record<GroupKind, readonly [string, string]>> = {
-  zoom: ['zoom', 'zooms'],
-  annotation: ['text item', 'text items'],
-  shape: ['shape', 'shapes'],
-  spotlight: ['spotlight', 'spotlights'],
-  overlay: ['image', 'images'],
-  title: ['title card', 'title cards'],
-  chapter: ['chapter', 'chapters'],
-  freeze: ['freeze frame', 'freeze frames'],
-  graphic: ['pop-up', 'pop-ups']
+/** The message that counts each kind, as notices and the Selection view say them ("3 zooms", "1 text item"). */
+export const KIND_WORDS: Readonly<Record<GroupKind, MessageKey>> = {
+  zoom: 'style.groupEdit.count.zoom',
+  annotation: 'style.groupEdit.count.annotation',
+  shape: 'style.groupEdit.count.shape',
+  spotlight: 'style.groupEdit.count.spotlight',
+  overlay: 'style.groupEdit.count.overlay',
+  title: 'style.groupEdit.count.title',
+  chapter: 'style.groupEdit.count.chapter',
+  freeze: 'style.groupEdit.count.freeze',
+  graphic: 'style.groupEdit.count.graphic'
 }
 
 /** "3 zooms", "1 text item". */
-export const countOf = (n: number, kind: GroupKind): string => `${n} ${KIND_WORDS[kind][n === 1 ? 0 : 1]}`
+export const countOf = (n: number, kind: GroupKind): string => t(KIND_WORDS[kind], { count: n, n: fmt.count(n) })
 
 /** How many keys of each kind. */
 export function kindCounts(keys: readonly ItemKey[]): Partial<Record<GroupKind, number>> {

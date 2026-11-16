@@ -1011,5 +1011,8 @@
   },
   "stoppedAbort": {
     "description": "Export: the reason an export with HEVC or AV1 ends when it is cancelled before its encoder opened (the dialog shows its own cancelled view)."
+  },
+  "overlay.tooLarge": {
+    "description": "Images: why an image is refused; {width} × {height} is its size in pixels, {side} the longest side and {megapixels} the most pixels (in millions) an image may have."
   }
 }

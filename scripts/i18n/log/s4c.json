@@ -2408,5 +2408,1895 @@
     "line": 85,
     "english": "Copy link",
     "sample": {}
+  },
+  {
+    "key": "smart.clips.reason.clicks",
+    "file": "src/shared/clips/moments.ts",
+    "line": 198,
+    "english": [
+      "0 clicks",
+      "1 click",
+      "2 clicks",
+      "1000 clicks"
+    ],
+    "sample": [
+      {
+        "count": 0,
+        "n": "0"
+      },
+      {
+        "count": 1,
+        "n": "1"
+      },
+      {
+        "count": 2,
+        "n": "2"
+      },
+      {
+        "count": 1000,
+        "n": "1000"
+      }
+    ]
+  },
+  {
+    "key": "smart.clips.reason.screens",
+    "file": "src/shared/clips/moments.ts",
+    "line": 447,
+    "english": [
+      "0 screens",
+      "1 screen",
+      "2 screens",
+      "1000 screens"
+    ],
+    "sample": [
+      {
+        "count": 0,
+        "n": "0"
+      },
+      {
+        "count": 1,
+        "n": "1"
+      },
+      {
+        "count": 2,
+        "n": "2"
+      },
+      {
+        "count": 1000,
+        "n": "1000"
+      }
+    ]
+  },
+  {
+    "key": "smart.clips.reason.seconds",
+    "file": "src/shared/clips/moments.ts",
+    "line": 200,
+    "english": "34 s",
+    "sample": {
+      "n": "34"
+    }
+  },
+  {
+    "key": "smart.clips.reason.density",
+    "file": "src/shared/clips/moments.ts",
+    "line": 361,
+    "english": "Packed with information",
+    "sample": {}
+  },
+  {
+    "key": "smart.clips.reason.keywords",
+    "file": "src/shared/clips/moments.ts",
+    "line": 362,
+    "english": "Important words",
+    "sample": {}
+  },
+  {
+    "key": "smart.clips.reason.emphasis",
+    "file": "src/shared/clips/moments.ts",
+    "line": 363,
+    "english": "Words you emphasised",
+    "sample": {}
+  },
+  {
+    "key": "smart.clips.reason.numbers",
+    "file": "src/shared/clips/moments.ts",
+    "line": 364,
+    "english": "Numbers",
+    "sample": {}
+  },
+  {
+    "key": "smart.clips.reason.mentions",
+    "file": "src/shared/clips/moments.ts",
+    "line": 366,
+    "english": "Mentions “billing”",
+    "sample": {
+      "word": "billing"
+    }
+  },
+  {
+    "key": "smart.clips.reason.opensQuestion",
+    "file": "src/shared/clips/moments.ts",
+    "line": 367,
+    "english": "Opens with a question",
+    "sample": {}
+  },
+  {
+    "key": "smart.clips.reason.opensNumber",
+    "file": "src/shared/clips/moments.ts",
+    "line": 367,
+    "english": "Opens with a number",
+    "sample": {}
+  },
+  {
+    "key": "smart.clips.reason.opensAction",
+    "file": "src/shared/clips/moments.ts",
+    "line": 367,
+    "english": "Opens with an action",
+    "sample": {}
+  },
+  {
+    "key": "smart.clips.reason.endsCleanly",
+    "file": "src/shared/clips/moments.ts",
+    "line": 368,
+    "english": "Ends cleanly",
+    "sample": {}
+  },
+  {
+    "key": "errors.autosave.locked",
+    "file": "src/shared/editor/autosave.ts",
+    "line": 40,
+    "english": "The project file is locked by another program or is read-only.",
+    "sample": {}
+  },
+  {
+    "key": "errors.autosave.readOnly",
+    "file": "src/shared/editor/autosave.ts",
+    "line": 41,
+    "english": "The drive is read-only.",
+    "sample": {}
+  },
+  {
+    "key": "errors.diskFull",
+    "file": "src/shared/editor/autosave.ts",
+    "line": 39,
+    "english": "The disk is full.",
+    "sample": {}
+  },
+  {
+    "key": "editor.crop.croppedTo",
+    "file": "src/shared/editor/cropEdit.ts",
+    "line": 295,
+    "english": "Cropped to 1920 × 1032.",
+    "sample": {
+      "width": "1920",
+      "height": "1032"
+    }
+  },
+  {
+    "key": "editor.crop.whole",
+    "file": "src/shared/editor/cropEdit.ts",
+    "line": 295,
+    "english": "Showing the whole recording.",
+    "sample": {}
+  },
+  {
+    "key": "editor.crop.zoomsRemoved",
+    "file": "src/shared/editor/cropEdit.ts",
+    "line": 300,
+    "english": [
+      "0 automatic zooms for clicks outside it were removed.",
+      "1 automatic zoom for a click outside it was removed.",
+      "2 automatic zooms for clicks outside it were removed.",
+      "1000 automatic zooms for clicks outside it were removed."
+    ],
+    "sample": [
+      {
+        "count": 0,
+        "n": "0"
+      },
+      {
+        "count": 1,
+        "n": "1"
+      },
+      {
+        "count": 2,
+        "n": "2"
+      },
+      {
+        "count": 1000,
+        "n": "1000"
+      }
+    ]
+  },
+  {
+    "key": "editor.crop.zoomsAdjusted",
+    "file": "src/shared/editor/cropEdit.ts",
+    "line": 301,
+    "english": [
+      "0 automatic zooms were adjusted.",
+      "1 automatic zoom was adjusted.",
+      "2 automatic zooms were adjusted.",
+      "1000 automatic zooms were adjusted."
+    ],
+    "sample": [
+      {
+        "count": 0,
+        "n": "0"
+      },
+      {
+        "count": 1,
+        "n": "1"
+      },
+      {
+        "count": 2,
+        "n": "2"
+      },
+      {
+        "count": 1000,
+        "n": "1000"
+      }
+    ]
+  },
+  {
+    "key": "editor.crop.zoomsBack",
+    "file": "src/shared/editor/cropEdit.ts",
+    "line": 302,
+    "english": [
+      "0 automatic zooms came back.",
+      "1 automatic zoom came back.",
+      "2 automatic zooms came back.",
+      "1000 automatic zooms came back."
+    ],
+    "sample": [
+      {
+        "count": 0,
+        "n": "0"
+      },
+      {
+        "count": 1,
+        "n": "1"
+      },
+      {
+        "count": 2,
+        "n": "2"
+      },
+      {
+        "count": 1000,
+        "n": "1000"
+      }
+    ]
+  },
+  {
+    "key": "editor.crop.item.zooms",
+    "file": "src/shared/editor/cropEdit.ts",
+    "line": 305,
+    "english": [
+      "0 zooms",
+      "1 zoom",
+      "2 zooms",
+      "1000 zooms"
+    ],
+    "sample": [
+      {
+        "count": 0,
+        "n": "0"
+      },
+      {
+        "count": 1,
+        "n": "1"
+      },
+      {
+        "count": 2,
+        "n": "2"
+      },
+      {
+        "count": 1000,
+        "n": "1000"
+      }
+    ]
+  },
+  {
+    "key": "editor.crop.item.shapes",
+    "file": "src/shared/editor/cropEdit.ts",
+    "line": 306,
+    "english": [
+      "0 shapes",
+      "1 shape",
+      "2 shapes",
+      "1000 shapes"
+    ],
+    "sample": [
+      {
+        "count": 0,
+        "n": "0"
+      },
+      {
+        "count": 1,
+        "n": "1"
+      },
+      {
+        "count": 2,
+        "n": "2"
+      },
+      {
+        "count": 1000,
+        "n": "1000"
+      }
+    ]
+  },
+  {
+    "key": "editor.crop.item.spotlights",
+    "file": "src/shared/editor/cropEdit.ts",
+    "line": 307,
+    "english": [
+      "0 spotlights",
+      "1 spotlight",
+      "2 spotlights",
+      "1000 spotlights"
+    ],
+    "sample": [
+      {
+        "count": 0,
+        "n": "0"
+      },
+      {
+        "count": 1,
+        "n": "1"
+      },
+      {
+        "count": 2,
+        "n": "2"
+      },
+      {
+        "count": 1000,
+        "n": "1000"
+      }
+    ]
+  },
+  {
+    "key": "editor.crop.outside",
+    "file": "src/shared/editor/cropEdit.ts",
+    "line": 309,
+    "english": [
+      "0 zooms are outside it; they come back if you widen the crop.",
+      "1 zoom is outside it; it comes back if you widen the crop.",
+      "2 zooms are outside it; they come back if you widen the crop.",
+      "1000 zooms are outside it; they come back if you widen the crop."
+    ],
+    "sample": [
+      {
+        "count": 0,
+        "n": "0",
+        "list": "0 zooms"
+      },
+      {
+        "count": 1,
+        "n": "1",
+        "list": "1 zoom"
+      },
+      {
+        "count": 2,
+        "n": "2",
+        "list": "2 zooms"
+      },
+      {
+        "count": 1000,
+        "n": "1000",
+        "list": "1000 zooms"
+      }
+    ]
+  },
+  {
+    "key": "style.groupEdit.count.zoom",
+    "file": "src/shared/editor/multiSelect.ts",
+    "line": 240,
+    "english": [
+      "0 zooms",
+      "1 zoom",
+      "2 zooms",
+      "1000 zooms"
+    ],
+    "sample": [
+      {
+        "count": 0,
+        "n": "0"
+      },
+      {
+        "count": 1,
+        "n": "1"
+      },
+      {
+        "count": 2,
+        "n": "2"
+      },
+      {
+        "count": 1000,
+        "n": "1000"
+      }
+    ]
+  },
+  {
+    "key": "style.groupEdit.count.annotation",
+    "file": "src/shared/editor/multiSelect.ts",
+    "line": 241,
+    "english": [
+      "0 text items",
+      "1 text item",
+      "2 text items",
+      "1000 text items"
+    ],
+    "sample": [
+      {
+        "count": 0,
+        "n": "0"
+      },
+      {
+        "count": 1,
+        "n": "1"
+      },
+      {
+        "count": 2,
+        "n": "2"
+      },
+      {
+        "count": 1000,
+        "n": "1000"
+      }
+    ]
+  },
+  {
+    "key": "style.groupEdit.count.shape",
+    "file": "src/shared/editor/multiSelect.ts",
+    "line": 242,
+    "english": [
+      "0 shapes",
+      "1 shape",
+      "2 shapes",
+      "1000 shapes"
+    ],
+    "sample": [
+      {
+        "count": 0,
+        "n": "0"
+      },
+      {
+        "count": 1,
+        "n": "1"
+      },
+      {
+        "count": 2,
+        "n": "2"
+      },
+      {
+        "count": 1000,
+        "n": "1000"
+      }
+    ]
+  },
+  {
+    "key": "style.groupEdit.count.spotlight",
+    "file": "src/shared/editor/multiSelect.ts",
+    "line": 243,
+    "english": [
+      "0 spotlights",
+      "1 spotlight",
+      "2 spotlights",
+      "1000 spotlights"
+    ],
+    "sample": [
+      {
+        "count": 0,
+        "n": "0"
+      },
+      {
+        "count": 1,
+        "n": "1"
+      },
+      {
+        "count": 2,
+        "n": "2"
+      },
+      {
+        "count": 1000,
+        "n": "1000"
+      }
+    ]
+  },
+  {
+    "key": "style.groupEdit.count.overlay",
+    "file": "src/shared/editor/multiSelect.ts",
+    "line": 244,
+    "english": [
+      "0 images",
+      "1 image",
+      "2 images",
+      "1000 images"
+    ],
+    "sample": [
+      {
+        "count": 0,
+        "n": "0"
+      },
+      {
+        "count": 1,
+        "n": "1"
+      },
+      {
+        "count": 2,
+        "n": "2"
+      },
+      {
+        "count": 1000,
+        "n": "1000"
+      }
+    ]
+  },
+  {
+    "key": "style.groupEdit.count.title",
+    "file": "src/shared/editor/multiSelect.ts",
+    "line": 245,
+    "english": [
+      "0 title cards",
+      "1 title card",
+      "2 title cards",
+      "1000 title cards"
+    ],
+    "sample": [
+      {
+        "count": 0,
+        "n": "0"
+      },
+      {
+        "count": 1,
+        "n": "1"
+      },
+      {
+        "count": 2,
+        "n": "2"
+      },
+      {
+        "count": 1000,
+        "n": "1000"
+      }
+    ]
+  },
+  {
+    "key": "style.groupEdit.count.chapter",
+    "file": "src/shared/editor/multiSelect.ts",
+    "line": 246,
+    "english": [
+      "0 chapters",
+      "1 chapter",
+      "2 chapters",
+      "1000 chapters"
+    ],
+    "sample": [
+      {
+        "count": 0,
+        "n": "0"
+      },
+      {
+        "count": 1,
+        "n": "1"
+      },
+      {
+        "count": 2,
+        "n": "2"
+      },
+      {
+        "count": 1000,
+        "n": "1000"
+      }
+    ]
+  },
+  {
+    "key": "style.groupEdit.count.freeze",
+    "file": "src/shared/editor/multiSelect.ts",
+    "line": 247,
+    "english": [
+      "0 freeze frames",
+      "1 freeze frame",
+      "2 freeze frames",
+      "1000 freeze frames"
+    ],
+    "sample": [
+      {
+        "count": 0,
+        "n": "0"
+      },
+      {
+        "count": 1,
+        "n": "1"
+      },
+      {
+        "count": 2,
+        "n": "2"
+      },
+      {
+        "count": 1000,
+        "n": "1000"
+      }
+    ]
+  },
+  {
+    "key": "style.groupEdit.count.graphic",
+    "file": "src/shared/editor/multiSelect.ts",
+    "line": 248,
+    "english": [
+      "0 pop-ups",
+      "1 pop-up",
+      "2 pop-ups",
+      "1000 pop-ups"
+    ],
+    "sample": [
+      {
+        "count": 0,
+        "n": "0"
+      },
+      {
+        "count": 1,
+        "n": "1"
+      },
+      {
+        "count": 2,
+        "n": "2"
+      },
+      {
+        "count": 1000,
+        "n": "1000"
+      }
+    ]
+  },
+  {
+    "key": "editor.paste.skip.outside",
+    "file": "src/shared/editor/groupClipboard.ts",
+    "line": 355,
+    "english": [
+      "0 zooms would end after the video",
+      "1 zoom would end after the video",
+      "2 zooms would end after the video",
+      "1000 zooms would end after the video"
+    ],
+    "sample": [
+      {
+        "count": 0,
+        "n": "0",
+        "what": "0 zooms"
+      },
+      {
+        "count": 1,
+        "n": "1",
+        "what": "1 zoom"
+      },
+      {
+        "count": 2,
+        "n": "2",
+        "what": "2 zooms"
+      },
+      {
+        "count": 1000,
+        "n": "1000",
+        "what": "1000 zooms"
+      }
+    ]
+  },
+  {
+    "key": "editor.paste.skip.taken",
+    "file": "src/shared/editor/groupClipboard.ts",
+    "line": 359,
+    "english": [
+      "0 zooms are already there",
+      "1 zoom is already there",
+      "2 zooms are already there",
+      "1000 zooms are already there"
+    ],
+    "sample": [
+      {
+        "count": 0,
+        "n": "0",
+        "what": "0 zooms"
+      },
+      {
+        "count": 1,
+        "n": "1",
+        "what": "1 zoom"
+      },
+      {
+        "count": 2,
+        "n": "2",
+        "what": "2 zooms"
+      },
+      {
+        "count": 1000,
+        "n": "1000",
+        "what": "1000 zooms"
+      }
+    ]
+  },
+  {
+    "key": "editor.paste.skip.atEnd",
+    "file": "src/shared/editor/groupClipboard.ts",
+    "line": 361,
+    "english": [
+      "0 zooms would be at the very end",
+      "1 zoom would be at the very end",
+      "2 zooms would be at the very end",
+      "1000 zooms would be at the very end"
+    ],
+    "sample": [
+      {
+        "count": 0,
+        "n": "0",
+        "what": "0 zooms"
+      },
+      {
+        "count": 1,
+        "n": "1",
+        "what": "1 zoom"
+      },
+      {
+        "count": 2,
+        "n": "2",
+        "what": "2 zooms"
+      },
+      {
+        "count": 1000,
+        "n": "1000",
+        "what": "1000 zooms"
+      }
+    ]
+  },
+  {
+    "key": "editor.paste.skip.inCut",
+    "file": "src/shared/editor/groupClipboard.ts",
+    "line": 363,
+    "english": [
+      "0 zooms are in a cut",
+      "1 zoom is in a cut",
+      "2 zooms are in a cut",
+      "1000 zooms are in a cut"
+    ],
+    "sample": [
+      {
+        "count": 0,
+        "n": "0",
+        "what": "0 zooms"
+      },
+      {
+        "count": 1,
+        "n": "1",
+        "what": "1 zoom"
+      },
+      {
+        "count": 2,
+        "n": "2",
+        "what": "2 zooms"
+      },
+      {
+        "count": 1000,
+        "n": "1000",
+        "what": "1000 zooms"
+      }
+    ]
+  },
+  {
+    "key": "editor.paste.skip.frozen",
+    "file": "src/shared/editor/groupClipboard.ts",
+    "line": 365,
+    "english": [
+      "0 zooms would land where the picture is already frozen",
+      "1 zoom would land where the picture is already frozen",
+      "2 zooms would land where the picture is already frozen",
+      "1000 zooms would land where the picture is already frozen"
+    ],
+    "sample": [
+      {
+        "count": 0,
+        "n": "0",
+        "what": "0 zooms"
+      },
+      {
+        "count": 1,
+        "n": "1",
+        "what": "1 zoom"
+      },
+      {
+        "count": 2,
+        "n": "2",
+        "what": "2 zooms"
+      },
+      {
+        "count": 1000,
+        "n": "1000",
+        "what": "1000 zooms"
+      }
+    ]
+  },
+  {
+    "key": "editor.paste.skip.full",
+    "file": "src/shared/editor/groupClipboard.ts",
+    "line": 367,
+    "english": [
+      "0 zooms would go past the limit of 20",
+      "1 zoom would go past the limit of 20",
+      "2 zooms would go past the limit of 20",
+      "1000 zooms would go past the limit of 20"
+    ],
+    "sample": [
+      {
+        "count": 0,
+        "n": "0",
+        "what": "0 zooms",
+        "max": "20"
+      },
+      {
+        "count": 1,
+        "n": "1",
+        "what": "1 zoom",
+        "max": "20"
+      },
+      {
+        "count": 2,
+        "n": "2",
+        "what": "2 zooms",
+        "max": "20"
+      },
+      {
+        "count": 1000,
+        "n": "1000",
+        "what": "1000 zooms",
+        "max": "20"
+      }
+    ]
+  },
+  {
+    "key": "editor.paste.skip.otherRecording",
+    "file": "src/shared/editor/groupClipboard.ts",
+    "line": 374,
+    "english": [
+      "0 zooms are from another recording",
+      "1 zoom is from another recording",
+      "2 zooms are from another recording",
+      "1000 zooms are from another recording"
+    ],
+    "sample": [
+      {
+        "count": 0,
+        "n": "0",
+        "what": "0 zooms"
+      },
+      {
+        "count": 1,
+        "n": "1",
+        "what": "1 zoom"
+      },
+      {
+        "count": 2,
+        "n": "2",
+        "what": "2 zooms"
+      },
+      {
+        "count": 1000,
+        "n": "1000",
+        "what": "1000 zooms"
+      }
+    ]
+  },
+  {
+    "key": "editor.paste.all",
+    "file": "src/shared/editor/groupClipboard.ts",
+    "line": 381,
+    "english": [
+      "Pasted 0 items",
+      "Pasted 1 item",
+      "Pasted 2 items",
+      "Pasted 1000 items"
+    ],
+    "sample": [
+      {
+        "count": 0,
+        "n": "0"
+      },
+      {
+        "count": 1,
+        "n": "1"
+      },
+      {
+        "count": 2,
+        "n": "2"
+      },
+      {
+        "count": 1000,
+        "n": "1000"
+      }
+    ]
+  },
+  {
+    "key": "editor.paste.allMoved",
+    "file": "src/shared/editor/groupClipboard.ts",
+    "line": 382,
+    "english": [
+      "Pasted 0 items at 0:52.0 (moved back so they fit)",
+      "Pasted 1 item at 0:52.0 (moved back so they fit)",
+      "Pasted 2 items at 0:52.0 (moved back so they fit)",
+      "Pasted 1000 items at 0:52.0 (moved back so they fit)"
+    ],
+    "sample": [
+      {
+        "count": 0,
+        "n": "0",
+        "at": "0:52.0"
+      },
+      {
+        "count": 1,
+        "n": "1",
+        "at": "0:52.0"
+      },
+      {
+        "count": 2,
+        "n": "2",
+        "at": "0:52.0"
+      },
+      {
+        "count": 1000,
+        "n": "1000",
+        "at": "0:52.0"
+      }
+    ]
+  },
+  {
+    "key": "editor.paste.some",
+    "file": "src/shared/editor/groupClipboard.ts",
+    "line": 383,
+    "english": [
+      "Pasted 0 of 1001",
+      "Pasted 1 of 1001",
+      "Pasted 2 of 1001",
+      "Pasted 1000 of 1001"
+    ],
+    "sample": [
+      {
+        "count": 0,
+        "n": "0",
+        "total": "1001"
+      },
+      {
+        "count": 1,
+        "n": "1",
+        "total": "1001"
+      },
+      {
+        "count": 2,
+        "n": "2",
+        "total": "1001"
+      },
+      {
+        "count": 1000,
+        "n": "1000",
+        "total": "1001"
+      }
+    ]
+  },
+  {
+    "key": "editor.paste.someMoved",
+    "file": "src/shared/editor/groupClipboard.ts",
+    "line": 384,
+    "english": [
+      "Pasted 0 of 1001 at 0:52.0 (moved back so they fit)",
+      "Pasted 1 of 1001 at 0:52.0 (moved back so they fit)",
+      "Pasted 2 of 1001 at 0:52.0 (moved back so they fit)",
+      "Pasted 1000 of 1001 at 0:52.0 (moved back so they fit)"
+    ],
+    "sample": [
+      {
+        "count": 0,
+        "n": "0",
+        "total": "1001",
+        "at": "0:52.0"
+      },
+      {
+        "count": 1,
+        "n": "1",
+        "total": "1001",
+        "at": "0:52.0"
+      },
+      {
+        "count": 2,
+        "n": "2",
+        "total": "1001",
+        "at": "0:52.0"
+      },
+      {
+        "count": 1000,
+        "n": "1000",
+        "total": "1001",
+        "at": "0:52.0"
+      }
+    ]
+  },
+  {
+    "key": "editor.paste.someWhy",
+    "file": "src/shared/editor/groupClipboard.ts",
+    "line": 385,
+    "english": [
+      "Pasted 0 of 1001: 1 zoom is already there, 1 freeze frame is in a cut",
+      "Pasted 1 of 1001: 1 zoom is already there, 1 freeze frame is in a cut",
+      "Pasted 2 of 1001: 1 zoom is already there, 1 freeze frame is in a cut",
+      "Pasted 1000 of 1001: 1 zoom is already there, 1 freeze frame is in a cut"
+    ],
+    "sample": [
+      {
+        "count": 0,
+        "n": "0",
+        "total": "1001",
+        "reasons": "1 zoom is already there, 1 freeze frame is in a cut"
+      },
+      {
+        "count": 1,
+        "n": "1",
+        "total": "1001",
+        "reasons": "1 zoom is already there, 1 freeze frame is in a cut"
+      },
+      {
+        "count": 2,
+        "n": "2",
+        "total": "1001",
+        "reasons": "1 zoom is already there, 1 freeze frame is in a cut"
+      },
+      {
+        "count": 1000,
+        "n": "1000",
+        "total": "1001",
+        "reasons": "1 zoom is already there, 1 freeze frame is in a cut"
+      }
+    ]
+  },
+  {
+    "key": "editor.paste.someMovedWhy",
+    "file": "src/shared/editor/groupClipboard.ts",
+    "line": 386,
+    "english": [
+      "Pasted 0 of 1001 at 0:52.0 (moved back so they fit): 1 zoom is already there",
+      "Pasted 1 of 1001 at 0:52.0 (moved back so they fit): 1 zoom is already there",
+      "Pasted 2 of 1001 at 0:52.0 (moved back so they fit): 1 zoom is already there",
+      "Pasted 1000 of 1001 at 0:52.0 (moved back so they fit): 1 zoom is already there"
+    ],
+    "sample": [
+      {
+        "count": 0,
+        "n": "0",
+        "total": "1001",
+        "at": "0:52.0",
+        "reasons": "1 zoom is already there"
+      },
+      {
+        "count": 1,
+        "n": "1",
+        "total": "1001",
+        "at": "0:52.0",
+        "reasons": "1 zoom is already there"
+      },
+      {
+        "count": 2,
+        "n": "2",
+        "total": "1001",
+        "at": "0:52.0",
+        "reasons": "1 zoom is already there"
+      },
+      {
+        "count": 1000,
+        "n": "1000",
+        "total": "1001",
+        "at": "0:52.0",
+        "reasons": "1 zoom is already there"
+      }
+    ]
+  },
+  {
+    "key": "editor.paste.none",
+    "file": "src/shared/editor/groupClipboard.ts",
+    "line": 387,
+    "english": "Nothing pasted",
+    "sample": {}
+  },
+  {
+    "key": "editor.paste.noneWhy",
+    "file": "src/shared/editor/groupClipboard.ts",
+    "line": 388,
+    "english": "Nothing pasted: 2 zooms are already there",
+    "sample": {
+      "reasons": "2 zooms are already there"
+    }
+  },
+  {
+    "key": "editor.duplicate.all",
+    "file": "src/shared/editor/groupClipboard.ts",
+    "line": 391,
+    "english": [
+      "Duplicated 0 items",
+      "Duplicated 1 item",
+      "Duplicated 2 items",
+      "Duplicated 1000 items"
+    ],
+    "sample": [
+      {
+        "count": 0,
+        "n": "0"
+      },
+      {
+        "count": 1,
+        "n": "1"
+      },
+      {
+        "count": 2,
+        "n": "2"
+      },
+      {
+        "count": 1000,
+        "n": "1000"
+      }
+    ]
+  },
+  {
+    "key": "editor.duplicate.allMoved",
+    "file": "src/shared/editor/groupClipboard.ts",
+    "line": 392,
+    "english": [
+      "Duplicated 0 items at 0:52.0 (moved back so they fit)",
+      "Duplicated 1 item at 0:52.0 (moved back so they fit)",
+      "Duplicated 2 items at 0:52.0 (moved back so they fit)",
+      "Duplicated 1000 items at 0:52.0 (moved back so they fit)"
+    ],
+    "sample": [
+      {
+        "count": 0,
+        "n": "0",
+        "at": "0:52.0"
+      },
+      {
+        "count": 1,
+        "n": "1",
+        "at": "0:52.0"
+      },
+      {
+        "count": 2,
+        "n": "2",
+        "at": "0:52.0"
+      },
+      {
+        "count": 1000,
+        "n": "1000",
+        "at": "0:52.0"
+      }
+    ]
+  },
+  {
+    "key": "editor.duplicate.some",
+    "file": "src/shared/editor/groupClipboard.ts",
+    "line": 393,
+    "english": [
+      "Duplicated 0 of 1001",
+      "Duplicated 1 of 1001",
+      "Duplicated 2 of 1001",
+      "Duplicated 1000 of 1001"
+    ],
+    "sample": [
+      {
+        "count": 0,
+        "n": "0",
+        "total": "1001"
+      },
+      {
+        "count": 1,
+        "n": "1",
+        "total": "1001"
+      },
+      {
+        "count": 2,
+        "n": "2",
+        "total": "1001"
+      },
+      {
+        "count": 1000,
+        "n": "1000",
+        "total": "1001"
+      }
+    ]
+  },
+  {
+    "key": "editor.duplicate.someMoved",
+    "file": "src/shared/editor/groupClipboard.ts",
+    "line": 394,
+    "english": [
+      "Duplicated 0 of 1001 at 0:52.0 (moved back so they fit)",
+      "Duplicated 1 of 1001 at 0:52.0 (moved back so they fit)",
+      "Duplicated 2 of 1001 at 0:52.0 (moved back so they fit)",
+      "Duplicated 1000 of 1001 at 0:52.0 (moved back so they fit)"
+    ],
+    "sample": [
+      {
+        "count": 0,
+        "n": "0",
+        "total": "1001",
+        "at": "0:52.0"
+      },
+      {
+        "count": 1,
+        "n": "1",
+        "total": "1001",
+        "at": "0:52.0"
+      },
+      {
+        "count": 2,
+        "n": "2",
+        "total": "1001",
+        "at": "0:52.0"
+      },
+      {
+        "count": 1000,
+        "n": "1000",
+        "total": "1001",
+        "at": "0:52.0"
+      }
+    ]
+  },
+  {
+    "key": "editor.duplicate.someWhy",
+    "file": "src/shared/editor/groupClipboard.ts",
+    "line": 395,
+    "english": [
+      "Duplicated 0 of 1001: 1 zoom is already there, 1 freeze frame is in a cut",
+      "Duplicated 1 of 1001: 1 zoom is already there, 1 freeze frame is in a cut",
+      "Duplicated 2 of 1001: 1 zoom is already there, 1 freeze frame is in a cut",
+      "Duplicated 1000 of 1001: 1 zoom is already there, 1 freeze frame is in a cut"
+    ],
+    "sample": [
+      {
+        "count": 0,
+        "n": "0",
+        "total": "1001",
+        "reasons": "1 zoom is already there, 1 freeze frame is in a cut"
+      },
+      {
+        "count": 1,
+        "n": "1",
+        "total": "1001",
+        "reasons": "1 zoom is already there, 1 freeze frame is in a cut"
+      },
+      {
+        "count": 2,
+        "n": "2",
+        "total": "1001",
+        "reasons": "1 zoom is already there, 1 freeze frame is in a cut"
+      },
+      {
+        "count": 1000,
+        "n": "1000",
+        "total": "1001",
+        "reasons": "1 zoom is already there, 1 freeze frame is in a cut"
+      }
+    ]
+  },
+  {
+    "key": "editor.duplicate.someMovedWhy",
+    "file": "src/shared/editor/groupClipboard.ts",
+    "line": 396,
+    "english": [
+      "Duplicated 0 of 1001 at 0:52.0 (moved back so they fit): 1 zoom is already there",
+      "Duplicated 1 of 1001 at 0:52.0 (moved back so they fit): 1 zoom is already there",
+      "Duplicated 2 of 1001 at 0:52.0 (moved back so they fit): 1 zoom is already there",
+      "Duplicated 1000 of 1001 at 0:52.0 (moved back so they fit): 1 zoom is already there"
+    ],
+    "sample": [
+      {
+        "count": 0,
+        "n": "0",
+        "total": "1001",
+        "at": "0:52.0",
+        "reasons": "1 zoom is already there"
+      },
+      {
+        "count": 1,
+        "n": "1",
+        "total": "1001",
+        "at": "0:52.0",
+        "reasons": "1 zoom is already there"
+      },
+      {
+        "count": 2,
+        "n": "2",
+        "total": "1001",
+        "at": "0:52.0",
+        "reasons": "1 zoom is already there"
+      },
+      {
+        "count": 1000,
+        "n": "1000",
+        "total": "1001",
+        "at": "0:52.0",
+        "reasons": "1 zoom is already there"
+      }
+    ]
+  },
+  {
+    "key": "editor.duplicate.none",
+    "file": "src/shared/editor/groupClipboard.ts",
+    "line": 397,
+    "english": "Nothing duplicated",
+    "sample": {}
+  },
+  {
+    "key": "editor.duplicate.noneWhy",
+    "file": "src/shared/editor/groupClipboard.ts",
+    "line": 398,
+    "english": "Nothing duplicated: 2 zooms are already there",
+    "sample": {
+      "reasons": "2 zooms are already there"
+    }
+  },
+  {
+    "key": "editor.paste.shortened",
+    "file": "src/shared/editor/groupClipboard.ts",
+    "line": 425,
+    "english": [
+      "0 zooms were shortened to fit",
+      "1 zoom was shortened to fit",
+      "2 zooms were shortened to fit",
+      "1000 zooms were shortened to fit"
+    ],
+    "sample": [
+      {
+        "count": 0,
+        "n": "0"
+      },
+      {
+        "count": 1,
+        "n": "1"
+      },
+      {
+        "count": 2,
+        "n": "2"
+      },
+      {
+        "count": 1000,
+        "n": "1000"
+      }
+    ]
+  },
+  {
+    "key": "timeline.shuttle.reverse",
+    "file": "src/shared/editor/shuttle.ts",
+    "line": 80,
+    "english": "Reverse 2×",
+    "sample": {
+      "rate": "2×"
+    }
+  },
+  {
+    "key": "timeline.shuttle.forward",
+    "file": "src/shared/editor/shuttle.ts",
+    "line": 80,
+    "english": "Forward 2×",
+    "sample": {
+      "rate": "2×"
+    }
+  },
+  {
+    "key": "timeline.shuttle.forwardSilent",
+    "file": "src/shared/editor/shuttle.ts",
+    "line": 80,
+    "english": "Forward 8× · no sound",
+    "sample": {
+      "rate": "8×"
+    }
+  },
+  {
+    "key": "timeline.shuttle.role.reverse",
+    "file": "src/shared/editor/shuttle.ts",
+    "line": 117,
+    "english": "J plays backwards",
+    "sample": {
+      "key": "J"
+    }
+  },
+  {
+    "key": "timeline.shuttle.role.pause",
+    "file": "src/shared/editor/shuttle.ts",
+    "line": 117,
+    "english": "K pauses",
+    "sample": {
+      "key": "K"
+    }
+  },
+  {
+    "key": "timeline.shuttle.role.forward",
+    "file": "src/shared/editor/shuttle.ts",
+    "line": 117,
+    "english": "L plays forward",
+    "sample": {
+      "key": "L"
+    }
+  },
+  {
+    "key": "timeline.shuttle.roles",
+    "file": "src/shared/editor/shuttle.ts",
+    "line": 120,
+    "english": "K pauses.",
+    "sample": {
+      "roles": "K pauses"
+    }
+  },
+  {
+    "key": "timeline.shuttle.rolesFaster",
+    "file": "src/shared/editor/shuttle.ts",
+    "line": 120,
+    "english": "J plays backwards, K pauses, L plays forward; press again to go faster.",
+    "sample": {
+      "roles": "J plays backwards, K pauses, L plays forward"
+    }
+  },
+  {
+    "key": "timeline.shuttle.step",
+    "file": "src/shared/editor/shuttle.ts",
+    "line": 121,
+    "english": "Hold K and tap J or L to step one frame.",
+    "sample": {
+      "pause": "K",
+      "keys": "J or L"
+    }
+  },
+  {
+    "key": "timeline.shuttle.noSound",
+    "file": "src/shared/editor/shuttle.ts",
+    "line": 122,
+    "english": "No sound in reverse or above 4×.",
+    "sample": {
+      "rate": "4×"
+    }
+  },
+  {
+    "key": "timeline.previewSpeedKeys.slower",
+    "file": "src/shared/editor/shuttle.ts",
+    "line": 128,
+    "english": "< slower",
+    "sample": {
+      "key": "<"
+    }
+  },
+  {
+    "key": "timeline.previewSpeedKeys.faster",
+    "file": "src/shared/editor/shuttle.ts",
+    "line": 128,
+    "english": "> faster",
+    "sample": {
+      "key": ">"
+    }
+  },
+  {
+    "key": "timeline.previewSpeedHint",
+    "file": "src/shared/editor/shuttle.ts",
+    "line": 129,
+    "english": "Preview speed: play the preview faster or slower to review it. The exported video keeps its own speed.",
+    "sample": {}
+  },
+  {
+    "key": "timeline.previewSpeedHintKeys",
+    "file": "src/shared/editor/shuttle.ts",
+    "line": 129,
+    "english": "Preview speed: play the preview faster or slower to review it (< slower, > faster). The exported video keeps its own speed.",
+    "sample": {
+      "keys": "< slower, > faster"
+    }
+  },
+  {
+    "key": "timeline.cutMarker.name",
+    "file": "src/shared/editor/timelineCuts.ts",
+    "line": 60,
+    "english": "Cut 5 of 37: 1:23.4 to 1:25.0, crossfade",
+    "sample": {
+      "n": "5",
+      "of": "37",
+      "start": "1:23.4",
+      "end": "1:25.0",
+      "join": "crossfade"
+    }
+  },
+  {
+    "key": "timeline.cutMarker.nameMore",
+    "file": "src/shared/editor/timelineCuts.ts",
+    "line": 60,
+    "english": [
+      "Cut 5 of 37: 1:23.4 to 1:25.0, crossfade, and 0 more cuts",
+      "Cut 5 of 37: 1:23.4 to 1:25.0, crossfade, and 1 more cut",
+      "Cut 5 of 37: 1:23.4 to 1:25.0, crossfade, and 2 more cuts",
+      "Cut 5 of 37: 1:23.4 to 1:25.0, crossfade, and 1000 more cuts"
+    ],
+    "sample": [
+      {
+        "count": 0,
+        "more": "0",
+        "n": "5",
+        "of": "37",
+        "start": "1:23.4",
+        "end": "1:25.0",
+        "join": "crossfade"
+      },
+      {
+        "count": 1,
+        "more": "1",
+        "n": "5",
+        "of": "37",
+        "start": "1:23.4",
+        "end": "1:25.0",
+        "join": "crossfade"
+      },
+      {
+        "count": 2,
+        "more": "2",
+        "n": "5",
+        "of": "37",
+        "start": "1:23.4",
+        "end": "1:25.0",
+        "join": "crossfade"
+      },
+      {
+        "count": 1000,
+        "more": "1000",
+        "n": "5",
+        "of": "37",
+        "start": "1:23.4",
+        "end": "1:25.0",
+        "join": "crossfade"
+      }
+    ]
+  },
+  {
+    "key": "captions.transcript.kind.filler",
+    "file": "src/shared/editor/transcriptReview.ts",
+    "line": 34,
+    "english": "Filler",
+    "sample": {}
+  },
+  {
+    "key": "captions.transcript.kind.retake",
+    "file": "src/shared/editor/transcriptReview.ts",
+    "line": 34,
+    "english": "Retake",
+    "sample": {}
+  },
+  {
+    "key": "captions.transcript.kind.repeat",
+    "file": "src/shared/editor/transcriptReview.ts",
+    "line": 34,
+    "english": "Repeat",
+    "sample": {}
+  },
+  {
+    "key": "export.overlay.unreadable",
+    "file": "src/shared/render/imageOverlays.ts",
+    "line": 132,
+    "english": "This image could not be read.",
+    "sample": {}
+  },
+  {
+    "key": "export.overlay.tooLarge",
+    "file": "src/shared/render/imageOverlays.ts",
+    "line": 134,
+    "english": "This image is too large to show (9000 × 6000 pixels; 8192 a side and 40 megapixels at most).",
+    "sample": {
+      "width": "9000",
+      "height": "6000",
+      "side": "8192",
+      "megapixels": "40"
+    }
+  },
+  {
+    "key": "text.shapesPanel.times",
+    "file": "src/shared/render/magnifier.ts",
+    "line": 205,
+    "english": "2.25 times",
+    "sample": {
+      "n": "2.25"
+    }
+  },
+  {
+    "key": "text.shapesPanel.magnifierName",
+    "file": "src/shared/render/magnifier.ts",
+    "line": 210,
+    "english": "Magnifier, 2 times",
+    "sample": {
+      "times": "2 times"
+    }
+  },
+  {
+    "key": "text.shapesPanel.cursorSpotlightName",
+    "file": "src/shared/render/magnifier.ts",
+    "line": 211,
+    "english": "Cursor spotlight",
+    "sample": {}
+  },
+  {
+    "key": "text.shapesPanel.spotlightName",
+    "file": "src/shared/render/magnifier.ts",
+    "line": 211,
+    "english": "Spotlight",
+    "sample": {}
+  },
+  {
+    "key": "review.captions.detail",
+    "file": "src/shared/review/captionReview.ts",
+    "line": 40,
+    "english": "Captions Studio",
+    "sample": {}
+  },
+  {
+    "key": "review.captions.detailWith",
+    "file": "src/shared/review/captionReview.ts",
+    "line": 152,
+    "english": "Captions Studio, with OpenAI",
+    "sample": {
+      "provider": "OpenAI"
+    }
+  },
+  {
+    "key": "review.captions.by.great",
+    "file": "src/shared/review/captionReview.ts",
+    "line": 42,
+    "english": "Make my captions great",
+    "sample": {}
+  },
+  {
+    "key": "review.captions.by.polish",
+    "file": "src/shared/review/captionReview.ts",
+    "line": 42,
+    "english": "Polish",
+    "sample": {}
+  },
+  {
+    "key": "review.captions.look.brand",
+    "file": "src/shared/review/captionReview.ts",
+    "line": 101,
+    "english": "Brand",
+    "sample": {}
+  },
+  {
+    "key": "review.captions.look.yours",
+    "file": "src/shared/review/captionReview.ts",
+    "line": 102,
+    "english": "your style",
+    "sample": {}
+  },
+  {
+    "key": "captions.look.classic.clean.name",
+    "file": "src/shared/review/captionReview.ts",
+    "line": 98,
+    "english": "Clean",
+    "sample": {}
+  },
+  {
+    "key": "review.captions.styleTitle",
+    "file": "src/shared/review/captionReview.ts",
+    "line": 108,
+    "english": "Caption style: Karaoke Fill (was Clean)",
+    "sample": {
+      "name": "Karaoke Fill",
+      "was": "Clean"
+    }
+  },
+  {
+    "key": "review.captions.fixed",
+    "file": "src/shared/review/captionReview.ts",
+    "line": 113,
+    "english": "Fixed “flown”",
+    "sample": {
+      "text": "flown"
+    }
+  },
+  {
+    "key": "review.captions.fixedTo",
+    "file": "src/shared/review/captionReview.ts",
+    "line": 124,
+    "english": "Fixed “flown” → “Flown”",
+    "sample": {
+      "was": "flown",
+      "is": "Flown"
+    }
+  },
+  {
+    "key": "review.captions.popUp",
+    "file": "src/shared/review/captionReview.ts",
+    "line": 130,
+    "english": "Pop-up “Save”",
+    "sample": {
+      "text": "Save"
+    }
+  },
+  {
+    "key": "review.captions.emoji",
+    "file": "src/shared/review/captionReview.ts",
+    "line": 134,
+    "english": "Emoji 🎉",
+    "sample": {
+      "emoji": "🎉"
+    }
+  },
+  {
+    "key": "review.captions.emojiOn",
+    "file": "src/shared/review/captionReview.ts",
+    "line": 134,
+    "english": "Emoji 🎉 on “launch”",
+    "sample": {
+      "emoji": "🎉",
+      "anchor": "launch"
+    }
+  },
+  {
+    "key": "review.captions.counter",
+    "file": "src/shared/review/captionReview.ts",
+    "line": 138,
+    "english": "Counter $1.5M",
+    "sample": {
+      "value": "$1.5M"
+    }
+  },
+  {
+    "key": "review.captions.list",
+    "file": "src/shared/review/captionReview.ts",
+    "line": 140,
+    "english": "List: Three steps",
+    "sample": {
+      "title": "Three steps"
+    }
+  },
+  {
+    "key": "review.captions.listItems",
+    "file": "src/shared/review/captionReview.ts",
+    "line": 140,
+    "english": [
+      "List: 0 items",
+      "List: 1 item",
+      "List: 2 items",
+      "List: 1000 items"
+    ],
+    "sample": [
+      {
+        "count": 0,
+        "n": "0"
+      },
+      {
+        "count": 1,
+        "n": "1"
+      },
+      {
+        "count": 2,
+        "n": "2"
+      },
+      {
+        "count": 1000,
+        "n": "1000"
+      }
+    ]
+  },
+  {
+    "key": "review.captions.lowerThird",
+    "file": "src/shared/review/captionReview.ts",
+    "line": 146,
+    "english": "Lower third: Maya Chen",
+    "sample": {
+      "text": "Maya Chen"
+    }
+  },
+  {
+    "key": "review.captions.chapterTitle",
+    "file": "src/shared/review/captionReview.ts",
+    "line": 147,
+    "english": "Chapter title: Set up billing",
+    "sample": {
+      "text": "Set up billing"
+    }
+  },
+  {
+    "key": "review.captions.quote",
+    "file": "src/shared/review/captionReview.ts",
+    "line": 148,
+    "english": "Quote: “It just works”",
+    "sample": {
+      "text": "It just works"
+    }
+  },
+  {
+    "key": "review.captions.title",
+    "file": "src/shared/review/captionReview.ts",
+    "line": 149,
+    "english": "Title: Welcome",
+    "sample": {
+      "text": "Welcome"
+    }
+  },
+  {
+    "key": "review.captions.withSound",
+    "file": "src/shared/review/captionReview.ts",
+    "line": 205,
+    "english": "Pop-up “Save” (with Soft pop)",
+    "sample": {
+      "title": "Pop-up “Save”",
+      "sound": "Soft pop"
+    }
+  },
+  {
+    "key": "review.captions.emphasisGroup",
+    "file": "src/shared/review/captionReview.ts",
+    "line": 156,
+    "english": [
+      "Emphasis: 0 words",
+      "Emphasis: 1 word",
+      "Emphasis: 2 words",
+      "Emphasis: 1000 words"
+    ],
+    "sample": [
+      {
+        "count": 0,
+        "n": "0"
+      },
+      {
+        "count": 1,
+        "n": "1"
+      },
+      {
+        "count": 2,
+        "n": "2"
+      },
+      {
+        "count": 1000,
+        "n": "1000"
+      }
+    ]
+  },
+  {
+    "key": "review.captions.textGroup",
+    "file": "src/shared/review/captionReview.ts",
+    "line": 157,
+    "english": [
+      "Text: 0 captions tidied",
+      "Text: 1 caption tidied",
+      "Text: 2 captions tidied",
+      "Text: 1000 captions tidied"
+    ],
+    "sample": [
+      {
+        "count": 0,
+        "n": "0"
+      },
+      {
+        "count": 1,
+        "n": "1"
+      },
+      {
+        "count": 2,
+        "n": "2"
+      },
+      {
+        "count": 1000,
+        "n": "1000"
+      }
+    ]
+  },
+  {
+    "key": "review.captions.emphasisOn",
+    "file": "src/shared/review/captionReview.ts",
+    "line": 185,
+    "english": "Emphasis on “really fast”",
+    "sample": {
+      "text": "really fast"
+    }
+  },
+  {
+    "key": "review.captions.bleeped",
+    "file": "src/shared/review/captionReview.ts",
+    "line": 213,
+    "english": "Bleeped “d**n”",
+    "sample": {
+      "word": "d**n"
+    }
   }
 ]

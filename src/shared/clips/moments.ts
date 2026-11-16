@@ -15,6 +15,8 @@ import { cutName, sentenceName } from '../smart/sentenceName'
 import { screenChanges } from '../smart/screenChanges'
 import type { Clip, CursorTrack, Project } from '../types'
 import { clipSentences, keptClipWords, lastAtOrBefore, type ClipSentence } from './sentences'
+import { fmt } from '../i18n/fmt'
+import { t } from '../i18n/t'
 
 export const CLIP_RULES = {
   min: 15,
@@ -192,8 +194,13 @@ function pick<T extends { vs: number; ve: number; score: number }>(cands: T[], k
   return out
 }
 
-const plural = (n: number, one: string): string => `${n} ${one}${n === 1 ? '' : 's'}`
-const lengthWords = (seconds: number): string => `${Math.round(seconds)} s`
+/** A reason that counts clicks: "6 clicks". */
+const clickCount = (n: number): string => t('smart.clips.reason.clicks', { count: n, n: fmt.count(n) })
+/** The last reason, the moment's length in viewing seconds: "34 s". */
+const lengthWords = (seconds: number): string => t('smart.clips.reason.seconds', { n: fmt.count(Math.round(seconds)) })
+
+/** The reasons a list of moments shows: all but the length, which its time line gives (told by its message, in any language). */
+export const listedReasons = (m: Pick<Moment, 'reasons' | 'seconds'>): string[] => m.reasons.filter((r) => r !== lengthWords(m.seconds))
 
 const graphemer = new Intl.Segmenter(undefined, { granularity: 'grapheme' })
 /** The first words of a sentence, at most FIRST_MAX graphemes, cut at a word with "…". */
@@ -351,14 +358,14 @@ function reasonsOf(list: readonly ClipSentence[], c: Candidate): string[] {
   }
   const mean = (x: number): number => (w > 0 ? x / w : 0)
   const terms: { value: number; label: string }[] = [
-    { value: mean(sum.density), label: 'Packed with information' },
-    { value: mean(sum.keywords), label: 'Important words' },
-    { value: mean(sum.emphasis), label: 'Words you emphasised' },
-    { value: mean(sum.numbers), label: 'Numbers' },
-    { value: clicks > 0 ? mean(sum.action) : 0, label: plural(clicks, 'click') },
-    { value: focusWord ? mean(sum.focus) : 0, label: `Mentions “${focusWord ?? ''}”` },
-    { value: c.hook ? 1 : 0, label: c.hook === 'question' ? 'Opens with a question' : c.hook === 'number' ? 'Opens with a number' : 'Opens with an action' },
-    { value: c.ending ? 0.5 : 0, label: 'Ends cleanly' }
+    { value: mean(sum.density), label: t('smart.clips.reason.density') },
+    { value: mean(sum.keywords), label: t('smart.clips.reason.keywords') },
+    { value: mean(sum.emphasis), label: t('smart.clips.reason.emphasis') },
+    { value: mean(sum.numbers), label: t('smart.clips.reason.numbers') },
+    { value: clicks > 0 ? mean(sum.action) : 0, label: clickCount(clicks) },
+    { value: focusWord ? mean(sum.focus) : 0, label: t('smart.clips.reason.mentions', { word: focusWord ?? '' }) },
+    { value: c.hook ? 1 : 0, label: t(c.hook === 'question' ? 'smart.clips.reason.opensQuestion' : c.hook === 'number' ? 'smart.clips.reason.opensNumber' : 'smart.clips.reason.opensAction') },
+    { value: c.ending ? 0.5 : 0, label: t('smart.clips.reason.endsCleanly') }
   ]
   const top = terms
     .filter((t) => t.value >= REASON_MIN)
@@ -437,7 +444,7 @@ function silentMoments(project: Project, plan: FreezePlan, L: number, ctx: { tra
   return pick(cands, momentCount(L)).map((c): Moment => {
     const clicks = within(clickV, c.vs, c.ve)
     const screens = 1 + countBetween(pageV, c.vs, c.ve)
-    const reasons = [...(clicks > 0 ? [plural(clicks, 'click')] : []), ...(screens > 1 ? [plural(screens, 'screen')] : []), lengthWords(c.ve - c.vs)]
+    const reasons = [...(clicks > 0 ? [clickCount(clicks)] : []), ...(screens > 1 ? [t('smart.clips.reason.screens', { count: screens, n: fmt.count(screens) })] : []), lengthWords(c.ve - c.vs)]
     return {
       start: S0[c.si],
       end: E0[c.ei],

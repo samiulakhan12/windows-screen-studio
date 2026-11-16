@@ -6,6 +6,8 @@
 import { clamp } from '../engine/math'
 import type { Clip, ImageOverlay } from '../types'
 import { viewingTime } from './overlays'
+import { fmt } from '../i18n/fmt'
+import { t } from '../i18n/t'
 
 /** Where an overlay is drawn in a w x h frame: centre, size (px) and clockwise angle (radians). */
 export interface OverlayBox {
@@ -127,9 +129,9 @@ export function gifScreenSize(bytes: Uint8Array): { width: number; height: numbe
 
 /** Why an image of this many pixels is refused, or null when it may be used. */
 export function imageSizeProblem(width: number, height: number): string | null {
-  if (!(width > 0 && height > 0)) return 'This image could not be read.'
+  if (!(width > 0 && height > 0)) return t('export.overlay.unreadable')
   if (Math.max(width, height) > IMAGE_MAX_DECODE_SIDE || width * height > IMAGE_MAX_PIXELS) {
-    return `This image is too large to show (${width} × ${height} pixels; ${IMAGE_MAX_DECODE_SIDE} a side and 40 megapixels at most).`
+    return t('export.overlay.tooLarge', { width: fmt.count(width), height: fmt.count(height), side: fmt.count(IMAGE_MAX_DECODE_SIDE), megapixels: fmt.count(IMAGE_MAX_PIXELS / 1e6) })
   }
   return null
 }

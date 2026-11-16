@@ -248,5 +248,53 @@
   },
   "waveform.mixedMuted": {
     "description": "Timeline: as timeline.waveform.mixed, when a muted sound shows in grey."
+  },
+  "shuttle.reverse": {
+    "description": "Preview: the label while the preview plays backwards with the shuttle keys; {rate} is the speed as a factor, e.g. \"2×\"."
+  },
+  "shuttle.forward": {
+    "description": "Preview: the label while the preview plays forward faster with the shuttle keys; {rate} is the speed as a factor, e.g. \"2×\"."
+  },
+  "shuttle.forwardSilent": {
+    "description": "Preview: as timeline.shuttle.forward when the speed is too fast for sound; {rate} is the speed as a factor, e.g. \"2×\"."
+  },
+  "shuttle.role.reverse": {
+    "description": "Shuttle hint: what a key does, one clause of {roles}; {key} is the shortcut as keycaps, e.g. \"J\"."
+  },
+  "shuttle.role.pause": {
+    "description": "Shuttle hint: what a key does, one clause of {roles}; {key} is the shortcut as keycaps, e.g. \"J\"."
+  },
+  "shuttle.role.forward": {
+    "description": "Shuttle hint: what a key does, one clause of {roles}; {key} is the shortcut as keycaps, e.g. \"J\"."
+  },
+  "shuttle.roles": {
+    "description": "Shuttle hint: the first sentence when only the pause key is bound; {roles} is timeline.shuttle.role.pause."
+  },
+  "shuttle.rolesFaster": {
+    "description": "Shuttle hint: the first sentence; {roles} is the timeline.shuttle.role.* clauses with commas between them."
+  },
+  "shuttle.step": {
+    "description": "Shuttle hint: {pause} is the pause key, {keys} the backwards and forward keys as a list joined by \"or\"."
+  },
+  "shuttle.noSound": {
+    "description": "Shuttle hint: the last sentence; {rate} is the speed as a factor, e.g. \"2×\"."
+  },
+  "previewSpeedKeys.slower": {
+    "description": "Preview speed menu tooltip: the key that picks the next slower speed, one item of {keys}; {key} is the shortcut as keycaps, e.g. \"<\"."
+  },
+  "previewSpeedKeys.faster": {
+    "description": "Preview speed menu tooltip: the key that picks the next faster speed, one item of {keys}; {key} is the shortcut as keycaps, e.g. \">\"."
+  },
+  "previewSpeedHint": {
+    "description": "Preview speed menu: its tooltip when no key changes the speed."
+  },
+  "previewSpeedHintKeys": {
+    "description": "Preview speed menu: its tooltip; {keys} is timeline.previewSpeedKeys.* with commas between them."
+  },
+  "cutMarker.name": {
+    "description": "Timeline: a cut marker's accessible name and tooltip; {start} and {end} are the removed part's times, {join} how the two sides meet, as a word in a sentence (e.g. \"crossfade\")."
+  },
+  "cutMarker.nameMore": {
+    "description": "Timeline: as timeline.cutMarker.name for a marker that stands for several cuts close together; {more} (count) is how many more."
   }
 }

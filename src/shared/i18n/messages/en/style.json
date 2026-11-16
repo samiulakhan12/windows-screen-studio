@@ -592,5 +592,14 @@
   "clipPanel.editHint.useDelete": "use Delete clip",
   "clipPanel.editHint.toCut": "to cut it, or <kbd>Shift</kbd>+drag on the clip track to select a range. Drag the yellow handles to trim.",
   "colourControls.autoColourStopped": "Auto colour stopped",
-  "colourControls.lutProblem": "The LUT file is missing or has changed. Import it again."
+  "colourControls.lutProblem": "The LUT file is missing or has changed. Import it again.",
+  "groupEdit.count.zoom": "{count, plural, one {{n} zoom} other {{n} zooms}}",
+  "groupEdit.count.annotation": "{count, plural, one {{n} text item} other {{n} text items}}",
+  "groupEdit.count.shape": "{count, plural, one {{n} shape} other {{n} shapes}}",
+  "groupEdit.count.spotlight": "{count, plural, one {{n} spotlight} other {{n} spotlights}}",
+  "groupEdit.count.overlay": "{count, plural, one {{n} image} other {{n} images}}",
+  "groupEdit.count.title": "{count, plural, one {{n} title card} other {{n} title cards}}",
+  "groupEdit.count.chapter": "{count, plural, one {{n} chapter} other {{n} chapters}}",
+  "groupEdit.count.freeze": "{count, plural, one {{n} freeze frame} other {{n} freeze frames}}",
+  "groupEdit.count.graphic": "{count, plural, one {{n} pop-up} other {{n} pop-ups}}"
 }

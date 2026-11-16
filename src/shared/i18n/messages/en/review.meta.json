@@ -2231,5 +2231,119 @@
   },
   "share.failed": {
     "description": "Export dialog: a share could not start; {reason} is main's reason."
+  },
+  "captions.detail": {
+    "description": "Review mode: what made a row's change, under its title (the Captions Studio tool)."
+  },
+  "captions.detailWith": {
+    "description": "Review mode: as review.captions.detail when an AI service made the change; {provider} is the service's name (OpenAI, Gemini, Claude).",
+    "dnt": [
+      "OpenAI",
+      "Gemini",
+      "Claude"
+    ]
+  },
+  "captions.by.great": {
+    "description": "Review mode: what made the caption style row's change, the Make my captions great button (same words as its button)."
+  },
+  "captions.by.polish": {
+    "description": "Review mode: what made the caption style row's change, the Polish tool (same word as its button)."
+  },
+  "captions.look.brand": {
+    "description": "Review mode: the caption look made from the brand kit, as {was} in review.captions.styleTitle."
+  },
+  "captions.look.yours": {
+    "description": "Review mode: a caption look the user saved, as {was} in review.captions.styleTitle (lower case, in a sentence)."
+  },
+  "captions.styleTitle": {
+    "description": "Review mode: a row's title for a Captions Studio change: the captions' look changed; {name} is the new look's name, {was} the look before.",
+    "user": [
+      "name"
+    ]
+  },
+  "captions.fixed": {
+    "description": "Review mode: a row's title for a Captions Studio change: a caption's text was tidied; {text} is the words, cut to 40 characters, bleeped words masked.",
+    "user": [
+      "text"
+    ]
+  },
+  "captions.fixedTo": {
+    "description": "Review mode: a row's title for a Captions Studio change: a caption's words were changed; {was} the words before, {is} the words now, cut to 40 characters, bleeped words masked.",
+    "user": [
+      "was",
+      "is"
+    ]
+  },
+  "captions.popUp": {
+    "description": "Review mode: a row's title for a Captions Studio change: a keyword pop-up was added; {text} is its words, cut to 40 characters, bleeped words masked.",
+    "user": [
+      "text"
+    ]
+  },
+  "captions.emoji": {
+    "description": "Review mode: a row's title for a Captions Studio change: an emoji pop-up was added; {emoji} is the emoji itself."
+  },
+  "captions.emojiOn": {
+    "description": "Review mode: a row's title for a Captions Studio change: an emoji pop-up was added on a word; {emoji} is the emoji, {anchor} the word it sits on, cut to 40 characters, bleeped words masked.",
+    "user": [
+      "anchor"
+    ]
+  },
+  "captions.counter": {
+    "description": "Review mode: a row's title for a Captions Studio change: a counting number pop-up was added; {value} is the number it counts to, with its prefix and suffix (e.g. \"$1.5M\")."
+  },
+  "captions.list": {
+    "description": "Review mode: a row's title for a Captions Studio change: a list pop-up was added; {title} is its title, cut to 40 characters, bleeped words masked.",
+    "user": [
+      "title"
+    ]
+  },
+  "captions.listItems": {
+    "description": "Review mode: a row's title for a Captions Studio change: a list pop-up without a title was added; {n} is how many items it lists."
+  },
+  "captions.lowerThird": {
+    "description": "Review mode: a row's title for a Captions Studio change: a speaker's name card was added; {text} is its title, cut to 40 characters, bleeped words masked.",
+    "user": [
+      "text"
+    ]
+  },
+  "captions.chapterTitle": {
+    "description": "Review mode: a row's title for a Captions Studio change: a chapter title card was added; {text} is its title, cut to 40 characters, bleeped words masked.",
+    "user": [
+      "text"
+    ]
+  },
+  "captions.quote": {
+    "description": "Review mode: a row's title for a Captions Studio change: a quote card was added; {text} is the quote, cut to 40 characters, bleeped words masked.",
+    "user": [
+      "text"
+    ]
+  },
+  "captions.title": {
+    "description": "Review mode: a row's title for a Captions Studio change: a title card was added; {text} is its title, cut to 40 characters, bleeped words masked.",
+    "user": [
+      "text"
+    ]
+  },
+  "captions.withSound": {
+    "description": "Review mode: a pop-up row's title when the pop-up plays a library sound; {title} is the row's title (review.captions.popUp and the others), {sound} the sound effect's name."
+  },
+  "captions.emphasisGroup": {
+    "description": "Review mode: the title of the group of emphasis rows; {n} is how many words were emphasised."
+  },
+  "captions.textGroup": {
+    "description": "Review mode: the title of the group of text rows; {n} is how many captions were tidied."
+  },
+  "captions.emphasisOn": {
+    "description": "Review mode: a row's title for a Captions Studio change: words were emphasised; {text} is the words, cut to 40 characters, bleeped words masked.",
+    "user": [
+      "text"
+    ]
+  },
+  "captions.bleeped": {
+    "description": "Review mode: a row's title for a Captions Studio change: a word was bleeped; {word} is the word, masked (e.g. \"f***\").",
+    "user": [
+      "word"
+    ]
   }
 }

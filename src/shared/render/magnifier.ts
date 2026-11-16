@@ -11,6 +11,8 @@ import { clamp } from '../engine/math'
 import type { Camera } from '../engine/zoom'
 import type { Clip, Project, Spotlight } from '../types'
 import { speedAt, viewingTime } from './overlays'
+import { fmt } from '../i18n/fmt'
+import { t } from '../i18n/t'
 
 export const MAGNIFIER: {
   enter: 0.3
@@ -200,13 +202,13 @@ export function newMagnifier(
 
 /** "2 times", "2.25 times": a zoom as the panel's value text and the timeline's name say it. */
 export function timesText(z: number): string {
-  return `${Number(z.toFixed(2))} times`
+  return t('text.shapesPanel.times', { n: fmt.number(Number(z.toFixed(2))) })
 }
 
 /** A spotlight's name on the timeline, its tooltip and accessible name: "Magnifier, 2 times", or today's spotlight name. */
 export function spotlightName(s: Spotlight): string {
-  if (isMagnifier(s)) return `Magnifier, ${timesText(clamp(s.magnify as number, MAGNIFIER.min, MAGNIFIER.max))}`
-  return s.mode === 'cursor' ? 'Cursor spotlight' : 'Spotlight'
+  if (isMagnifier(s)) return t('text.shapesPanel.magnifierName', { times: timesText(clamp(s.magnify as number, MAGNIFIER.min, MAGNIFIER.max)) })
+  return t(s.mode === 'cursor' ? 'text.shapesPanel.cursorSpotlightName' : 'text.shapesPanel.spotlightName')
 }
 
 /** A spotlight's icon on the timeline: a magnifying glass for a magnifier. */

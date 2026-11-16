@@ -1155,5 +1155,11 @@
       "WOFF2",
       ".woff2"
     ]
+  },
+  "autosave.locked": {
+    "description": "Saving failed: the project file could not be written (the system code follows in brackets, e.g. \"(EBUSY)\")."
+  },
+  "autosave.readOnly": {
+    "description": "Saving failed: the drive cannot be written (the system code follows in brackets, \"(EROFS)\")."
   }
 }
