@@ -239,12 +239,10 @@ function without<T extends object>(item: T, key: string): T {
 
 /** A group's Comes in or Goes out: offers the motions every selected item allows; one value written to each (Default removes it). */
 function motionField(cls: 'text' | 'mark' | 'title', side: 'enter' | 'exit'): GroupField {
+  // No spread of `base` when the table loads: it would read the label's message then (§9.1).
   const base = {
     id: `${cls}.${side}`,
     cls,
-    get label() {
-      return side === 'enter' ? t('text.motion.comesIn') : t('text.motion.goesOut')
-    },
     look: true,
     applies: (item: unknown) => itemOfField(cls, item) !== null,
     read: (item: unknown) => motionOf(cls, item, side)?.kind ?? 'default',
@@ -258,8 +256,12 @@ function motionField(cls: 'text' | 'mark' | 'title', side: 'enter' | 'exit'): Gr
       }
     }
   }
+  const label = (): string => (side === 'enter' ? t('text.motion.comesIn') : t('text.motion.goesOut'))
   const field: GroupField = {
     ...base,
+    get label() {
+      return label()
+    },
     control: { type: 'chips', options: CALLOUT_MOTIONS },
     narrow: (targets) => {
       const ok = new Set(sharedMotions(cls, side, targets))
