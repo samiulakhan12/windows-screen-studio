@@ -176,5 +176,10 @@
   "voice.strength.lightHint": "Softens the noise and keeps some of the room.",
   "voice.strength.normalHint": "Removes most noise. Right for most recordings.",
   "voice.strength.strongHint": "Removes as much as it can. Quiet words can sound thin.",
-  "library.credit": "Music: {title} by {artist} (CC0)"
+  "library.credit": "Music: {title} by {artist} (CC0)",
+  "library.lengthSeconds": "{s, plural, one {{sn} second} other {{sn} seconds}}",
+  "library.lengthMinutes": "{m, plural, one {{mn} minute} other {{mn} minutes}}",
+  "library.lengthMinutesSeconds": "{m, plural, one {{mn} minute} other {{mn} minutes}} {s, plural, one {{sn} second} other {{sn} seconds}}",
+  "library.sizeMb": "{n} MB",
+  "library.sizeMegabytes": "{n} megabytes"
 }

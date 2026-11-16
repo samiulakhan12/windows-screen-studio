@@ -535,5 +535,23 @@
     "dnt": [
       "CC0"
     ]
+  },
+  "library.lengthSeconds": {
+    "description": "Audio › Music library: a track's length as screen readers read it."
+  },
+  "library.lengthMinutes": {
+    "description": "Audio › Music library: a track's length as screen readers read it."
+  },
+  "library.lengthMinutesSeconds": {
+    "description": "Audio › Music library: a track's length as screen readers read it. Minutes, then seconds."
+  },
+  "library.sizeMb": {
+    "description": "Audio › Music library and Settings › Music: a download's size in megabytes with one decimal (\"1.0 MB\"); {n} is the number in the UI's digits.",
+    "dnt": [
+      "MB"
+    ]
+  },
+  "library.sizeMegabytes": {
+    "description": "Audio › Music library: the same size as screen readers read it (\"1.0 megabytes\"); {n} is the number in the UI's digits."
   }
 }

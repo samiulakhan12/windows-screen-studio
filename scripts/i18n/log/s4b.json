@@ -5011,5 +5011,100 @@
     "line": 16,
     "english": "Captions skipped: download a speech model in the Captions tab (free, 60 MB) or add an AI provider.",
     "sample": {}
+  },
+  {
+    "key": "sound.library.sizeMb",
+    "file": "src/shared/audio/soundFxEdit.ts",
+    "line": 79,
+    "english": "1.0 MB",
+    "sample": {
+      "n": "1.0"
+    }
+  },
+  {
+    "key": "sound.library.sizeMegabytes",
+    "file": "src/shared/audio/soundFxEdit.ts",
+    "line": 79,
+    "english": "1.0 megabytes",
+    "sample": {
+      "n": "1.0"
+    }
+  },
+  {
+    "key": "sound.library.lengthSeconds",
+    "file": "src/shared/audio/soundFxEdit.ts",
+    "line": 66,
+    "english": [
+      "0 seconds",
+      "1 second",
+      "2 seconds",
+      "1000 seconds"
+    ],
+    "sample": [
+      {
+        "count": 0,
+        "s": 0,
+        "sn": "0"
+      },
+      {
+        "count": 1,
+        "s": 1,
+        "sn": "1"
+      },
+      {
+        "count": 2,
+        "s": 2,
+        "sn": "2"
+      },
+      {
+        "count": 1000,
+        "s": 1000,
+        "sn": "1000"
+      }
+    ]
+  },
+  {
+    "key": "sound.library.lengthMinutes",
+    "file": "src/shared/audio/soundFxEdit.ts",
+    "line": 66,
+    "english": "2 minutes",
+    "sample": {
+      "m": 2,
+      "mn": "2"
+    }
+  },
+  {
+    "key": "sound.library.lengthMinutes",
+    "file": "src/shared/audio/soundFxEdit.ts",
+    "line": 66,
+    "english": "1 minute",
+    "sample": {
+      "m": 1,
+      "mn": "1"
+    }
+  },
+  {
+    "key": "sound.library.lengthMinutesSeconds",
+    "file": "src/shared/audio/soundFxEdit.ts",
+    "line": 66,
+    "english": "1 minute 43 seconds",
+    "sample": {
+      "m": 1,
+      "mn": "1",
+      "s": 43,
+      "sn": "43"
+    }
+  },
+  {
+    "key": "sound.library.lengthMinutesSeconds",
+    "file": "src/shared/audio/soundFxEdit.ts",
+    "line": 66,
+    "english": "2 minutes 1 second",
+    "sample": {
+      "m": 2,
+      "mn": "2",
+      "s": 1,
+      "sn": "1"
+    }
   }
 ]
