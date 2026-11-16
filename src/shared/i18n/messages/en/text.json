@@ -340,7 +340,7 @@
   "overlayDropZone.onlyImages": "Only PNG, JPG, WebP, SVG and GIF images can be added",
   "overlayDropZone.addedName": "Added {name} at the playhead",
   "overlayDropZone.added": "Added the image at the playhead",
-  "imagesPanel.dropHint": "Or drop an image on the editor, or paste one with {keys}. PNG, JPG, WebP, SVG or GIF, up to 25 MB.",
+  "imagesPanel.dropHint": "Or drop an image on the editor, or paste one with {keys}. {formats}.",
   "imagesPanel.animatedFrames": "animated, {n} frames",
   "imagesPanel.seconds": "{n} s",
   "fontPicker.missingFont": "{name} (missing: drawn with {fallback})",
@@ -395,5 +395,6 @@
   "contrastMeter.some": "Hard to read for some people",
   "contrastMeter.hard": "Hard to read on this video",
   "contrastMeter.shown": "{where, select, yes {Contrast {ratio} : 1 at {time} · {words}} other {Contrast {ratio} : 1 · {words}}}",
-  "contrastMeter.spoken": "{where, select, yes {Contrast {ratio} to 1, {words} at {time}} other {Contrast {ratio} to 1, {words}}}"
+  "contrastMeter.spoken": "{where, select, yes {Contrast {ratio} to 1, {words} at {time}} other {Contrast {ratio} to 1, {words}}}",
+  "imagesPanel.formats": "PNG, JPG, WebP, SVG or GIF, up to 25 MB"
 }

@@ -1041,7 +1041,7 @@
     "description": "Images: a notice after a dropped image with no name was added."
   },
   "imagesPanel.dropHint": {
-    "description": "Images tab: the hint under Add image; keys is the paste shortcut's keycaps (never translated). PNG, JPG, WebP, SVG and GIF are file formats (keep them)."
+    "description": "Images tab: the hint under Add image; keys is the paste shortcut's keycaps (never translated), formats says which images and how large (text.imagesPanel.formats)."
   },
   "imagesPanel.animatedFrames": {
     "description": "Images tab: after the selected image's name (after a middle dot): it is a GIF with more than one frame; n is how many."
@@ -1213,5 +1213,8 @@
   },
   "contrastMeter.spoken": {
     "description": "Captions tab, contrast meter: the meter as a screen reader says it; words is how readable, as inside a sentence (English lower-cases it)."
+  },
+  "imagesPanel.formats": {
+    "description": "Images tab: the images Flown takes, inside the hint under Add image. PNG, JPG, WebP, SVG and GIF are file formats (keep them)."
   }
 }

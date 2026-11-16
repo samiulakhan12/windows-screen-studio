@@ -382,10 +382,6 @@
   "clipPanel.gapSpan": "{start} – {end} ({seconds} s) is not in the video.",
   "clipPanel.rangeSpan": "{start} – {end} ({seconds} s)",
   "clipPanel.nothingToChange": "Nothing to change: this range is cut or already plays at {speed}",
-  "clipPanel.editHint.keys": "Press {split} to split at the playhead, select a clip and press {delete} to cut it, or <kbd>Shift</kbd>+drag on the clip track to select a range. Drag the yellow handles to trim.",
-  "clipPanel.editHint.splitKey": "Press {split} to split at the playhead, select a clip and use Delete clip to cut it, or <kbd>Shift</kbd>+drag on the clip track to select a range. Drag the yellow handles to trim.",
-  "clipPanel.editHint.deleteKey": "Split at the playhead, select a clip and press {delete} to cut it, or <kbd>Shift</kbd>+drag on the clip track to select a range. Drag the yellow handles to trim.",
-  "clipPanel.editHint.noKeys": "Split at the playhead, select a clip and use Delete clip to cut it, or <kbd>Shift</kbd>+drag on the clip track to select a range. Drag the yellow handles to trim.",
   "clipPanel.pathSummary": "{count, plural, =1 {{n} move here · {straightened} straightened} other {{n} moves here · {straightened} straightened}}",
   "clipPanel.mode.idle": "Idle parts",
   "clipPanel.mode.idle.title": "Still picture, nothing heard, mouse and keyboard at rest",
@@ -588,5 +584,11 @@
   "selectionPanel.ownMotionCount": "{count, plural, =1 {({n} with its own motion)} other {({n} with their own motion)}}",
   "selectionPanel.noCursor": "No cursor data in this recording",
   "mixedControls.labelMixed": "{label}, mixed",
-  "clipPanel.gap.cut": "Cut"
+  "clipPanel.gap.cut": "Cut",
+  "clipPanel.editHint.pressSplit": "Press {split} to split at the playhead,",
+  "clipPanel.editHint.split": "Split at the playhead,",
+  "clipPanel.editHint.selectClip": "select a clip and",
+  "clipPanel.editHint.pressDelete": "press {delete}",
+  "clipPanel.editHint.useDelete": "use Delete clip",
+  "clipPanel.editHint.toCut": "to cut it, or <kbd>Shift</kbd>+drag on the clip track to select a range. Drag the yellow handles to trim."
 }

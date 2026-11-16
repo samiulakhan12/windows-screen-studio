@@ -16,6 +16,7 @@ import { addSticker, ipcMessage, pickOverlay, showOverlay } from '../overlayItem
 import { useListSelect } from '../listSelect'
 import '../overlays.css'
 import { t } from '../../../../shared/i18n/t'
+import { Rich } from './Rich'
 
 /* ---------- Images: overlays and stickers (docs/design/brand-kit.md §5) ---------- */
 
@@ -52,7 +53,10 @@ function AddImages(props: InspectorProps): JSX.Element {
         <button className="btn" disabled={busy} onClick={() => void run(() => pickOverlay(services, { onSelect: props.onSelect }))} data-testid="add-image">
           <EditorIcon name="image" size={16} /> {busy ? t('text.imagesPanel.adding') : t('text.imagesPanel.addImage')}
         </button>
-        <p className="hint">{t('text.imagesPanel.dropHint', { keys: 'Ctrl+V' })}</p>
+        <p className="hint">
+          {/* The formats are their own text, as in today's markup, so English lays the line out as before. */}
+          <Rich k="text.imagesPanel.dropHint" values={{ keys: 'Ctrl+V', formats: <>{t('text.imagesPanel.formats')}</> }} />
+        </p>
         {error && (
           <p className="callout" role="alert" data-testid="overlay-error">
             <EditorIcon name="alert" size={16} />

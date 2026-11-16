@@ -68,7 +68,8 @@ export function ClipPanel(props: InspectorProps): JSX.Element {
   return (
     <>
       <p className="hint">
-        <T k="style.clipPanel.videoLength" values={{ length: fmt.clock(length), recorded: fmt.clock(project.duration) }} tags={{ b: (c) => <strong>{c}</strong> }} />
+        {/* Each time is its own text, as in today's markup, so English lays the line out as before. */}
+        <Rich k="style.clipPanel.videoLength" values={{ length: fmt.clock(length), recorded: <>{fmt.clock(project.duration)}</> }} />
       </p>
       {/* Smooth cuts (docs/design/editing-polish.md §2.1): every cut's style. */}
       {selection?.kind !== 'gap' && <CutsSection project={project} />}
@@ -135,18 +136,10 @@ export function ClipPanel(props: InspectorProps): JSX.Element {
             <EditorIcon name="split" size={16} /> {t('style.clipPanel.splitAtPlayhead')}
           </button>
           <p className="hint">
-            <Rich
-              k={
-                keymap.split.length
-                  ? keymap.deleteSelection.length
-                    ? 'style.clipPanel.editHint.keys'
-                    : 'style.clipPanel.editHint.splitKey'
-                  : keymap.deleteSelection.length
-                    ? 'style.clipPanel.editHint.deleteKey'
-                    : 'style.clipPanel.editHint.noKeys'
-              }
-              values={{ split: <FirstShortcut accelerators={keymap.split} fallback="" />, delete: <FirstShortcut accelerators={keymap.deleteSelection} fallback="" /> }}
-            />
+            {keymap.split.length ? <Rich k="style.clipPanel.editHint.pressSplit" values={{ split: <FirstShortcut accelerators={keymap.split} fallback="" /> }} /> : t('style.clipPanel.editHint.split')}{' '}
+            {t('style.clipPanel.editHint.selectClip')}{' '}
+            {keymap.deleteSelection.length ? <Rich k="style.clipPanel.editHint.pressDelete" values={{ delete: <FirstShortcut accelerators={keymap.deleteSelection} fallback="" /> }} /> : t('style.clipPanel.editHint.useDelete')}{' '}
+            <Rich k="style.clipPanel.editHint.toCut" />
           </p>
         </Section>
       )}

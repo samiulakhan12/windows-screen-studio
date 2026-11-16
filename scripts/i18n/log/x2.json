@@ -7085,7 +7085,7 @@
   {
     "key": "style.clipPanel.videoLength",
     "file": "src/renderer/src/editor/panels/ClipPanel.tsx",
-    "line": 68,
+    "line": 72,
     "english": "Video length 0:42.0 of 1:05.3 recorded.",
     "sample": {
       "length": "0:42.0",
@@ -7175,41 +7175,6 @@
     "sample": {
       "speed": "2×"
     }
-  },
-  {
-    "key": "style.clipPanel.editHint.keys",
-    "file": "src/renderer/src/editor/panels/ClipPanel.tsx",
-    "line": 131,
-    "english": "Press S to split at the playhead, select a clip and press Delete to cut it, or Shift+drag on the clip track to select a range. Drag the yellow handles to trim.",
-    "sample": {
-      "split": "S",
-      "delete": "Delete"
-    }
-  },
-  {
-    "key": "style.clipPanel.editHint.splitKey",
-    "file": "src/renderer/src/editor/panels/ClipPanel.tsx",
-    "line": 131,
-    "english": "Press S to split at the playhead, select a clip and use Delete clip to cut it, or Shift+drag on the clip track to select a range. Drag the yellow handles to trim.",
-    "sample": {
-      "split": "S"
-    }
-  },
-  {
-    "key": "style.clipPanel.editHint.deleteKey",
-    "file": "src/renderer/src/editor/panels/ClipPanel.tsx",
-    "line": 131,
-    "english": "Split at the playhead, select a clip and press Delete to cut it, or Shift+drag on the clip track to select a range. Drag the yellow handles to trim.",
-    "sample": {
-      "delete": "Delete"
-    }
-  },
-  {
-    "key": "style.clipPanel.editHint.noKeys",
-    "file": "src/renderer/src/editor/panels/ClipPanel.tsx",
-    "line": 131,
-    "english": "Split at the playhead, select a clip and use Delete clip to cut it, or Shift+drag on the clip track to select a range. Drag the yellow handles to trim.",
-    "sample": {}
   },
   {
     "key": "style.clipPanel.pathSummary",
@@ -13758,10 +13723,11 @@
   {
     "key": "text.imagesPanel.dropHint",
     "file": "src/renderer/src/editor/panels/ImagesPanel.tsx",
-    "line": 55,
+    "line": 57,
     "english": "Or drop an image on the editor, or paste one with Ctrl+V. PNG, JPG, WebP, SVG or GIF, up to 25 MB.",
     "sample": {
-      "keys": "Ctrl+V"
+      "keys": "Ctrl+V",
+      "formats": "PNG, JPG, WebP, SVG or GIF, up to 25 MB"
     }
   },
   {
@@ -14214,5 +14180,58 @@
       "time": "",
       "words": "easy to read"
     }
+  },
+  {
+    "key": "style.clipPanel.editHint.pressSplit",
+    "file": "src/renderer/src/editor/panels/ClipPanel.tsx",
+    "line": 139,
+    "english": "Press S to split at the playhead,",
+    "sample": {
+      "split": "S"
+    }
+  },
+  {
+    "key": "style.clipPanel.editHint.split",
+    "file": "src/renderer/src/editor/panels/ClipPanel.tsx",
+    "line": 139,
+    "english": "Split at the playhead,",
+    "sample": {}
+  },
+  {
+    "key": "style.clipPanel.editHint.selectClip",
+    "file": "src/renderer/src/editor/panels/ClipPanel.tsx",
+    "line": 140,
+    "english": "select a clip and",
+    "sample": {}
+  },
+  {
+    "key": "style.clipPanel.editHint.pressDelete",
+    "file": "src/renderer/src/editor/panels/ClipPanel.tsx",
+    "line": 141,
+    "english": "press Delete",
+    "sample": {
+      "delete": "Delete"
+    }
+  },
+  {
+    "key": "style.clipPanel.editHint.useDelete",
+    "file": "src/renderer/src/editor/panels/ClipPanel.tsx",
+    "line": 141,
+    "english": "use Delete clip",
+    "sample": {}
+  },
+  {
+    "key": "style.clipPanel.editHint.toCut",
+    "file": "src/renderer/src/editor/panels/ClipPanel.tsx",
+    "line": 142,
+    "english": "to cut it, or Shift+drag on the clip track to select a range. Drag the yellow handles to trim.",
+    "sample": {}
+  },
+  {
+    "key": "text.imagesPanel.formats",
+    "file": "src/renderer/src/editor/panels/ImagesPanel.tsx",
+    "line": 57,
+    "english": "PNG, JPG, WebP, SVG or GIF, up to 25 MB",
+    "sample": {}
   }
 ]

@@ -1253,30 +1253,6 @@
   "clipPanel.nothingToChange": {
     "description": "Clip tab: notice when a range speed changes nothing. {speed} is the speed picked (2×)."
   },
-  "clipPanel.editHint.keys": {
-    "description": "Clip tab: how to edit, under Split at playhead. {split} and {delete} are the shortcuts’ keycaps; <kbd>Shift</kbd> is a keycap, never translated.",
-    "dnt": [
-      "Shift"
-    ]
-  },
-  "clipPanel.editHint.splitKey": {
-    "description": "Clip tab: how to edit, under Split at playhead. {split} and {delete} are the shortcuts’ keycaps; <kbd>Shift</kbd> is a keycap, never translated. Used when no key deletes.",
-    "dnt": [
-      "Shift"
-    ]
-  },
-  "clipPanel.editHint.deleteKey": {
-    "description": "Clip tab: how to edit, under Split at playhead. {split} and {delete} are the shortcuts’ keycaps; <kbd>Shift</kbd> is a keycap, never translated. Used when no key splits.",
-    "dnt": [
-      "Shift"
-    ]
-  },
-  "clipPanel.editHint.noKeys": {
-    "description": "Clip tab: how to edit, under Split at playhead. {split} and {delete} are the shortcuts’ keycaps; <kbd>Shift</kbd> is a keycap, never translated. Used when neither has a key.",
-    "dnt": [
-      "Shift"
-    ]
-  },
   "clipPanel.pathSummary": {
     "description": "Clip tab › Cursor path: how many cursor moves the selected range holds ({n}) and how many of them are straightened."
   },
@@ -1891,5 +1867,23 @@
   },
   "clipPanel.gap.cut": {
     "description": "Clip tab: title of a selected gap that is a cut part (a noun: the part that was cut out)."
+  },
+  "clipPanel.editHint.pressSplit": {
+    "description": "Clip tab, Edit hint (piece 1 of 4, with a split shortcut): split is its keycaps (never translated). The hint is one sentence in pieces, joined by spaces, so that English keeps the text as it lays it out today (the English guard compares the pixels): Press {split} to split at the playhead, | select a clip and | press {delete} | to cut it, or Shift+drag …"
+  },
+  "clipPanel.editHint.split": {
+    "description": "Clip tab, Edit hint (piece 1 of 4, without a split shortcut). The hint is one sentence in pieces, joined by spaces, so that English keeps the text as it lays it out today (the English guard compares the pixels): Press {split} to split at the playhead, | select a clip and | press {delete} | to cut it, or Shift+drag …"
+  },
+  "clipPanel.editHint.selectClip": {
+    "description": "Clip tab, Edit hint (piece 2 of 4). The hint is one sentence in pieces, joined by spaces, so that English keeps the text as it lays it out today (the English guard compares the pixels): Press {split} to split at the playhead, | select a clip and | press {delete} | to cut it, or Shift+drag …"
+  },
+  "clipPanel.editHint.pressDelete": {
+    "description": "Clip tab, Edit hint (piece 3 of 4, with a delete shortcut): delete is its keycaps (never translated). The hint is one sentence in pieces, joined by spaces, so that English keeps the text as it lays it out today (the English guard compares the pixels): Press {split} to split at the playhead, | select a clip and | press {delete} | to cut it, or Shift+drag …"
+  },
+  "clipPanel.editHint.useDelete": {
+    "description": "Clip tab, Edit hint (piece 3 of 4, without a delete shortcut; Delete clip is the button below). The hint is one sentence in pieces, joined by spaces, so that English keeps the text as it lays it out today (the English guard compares the pixels): Press {split} to split at the playhead, | select a clip and | press {delete} | to cut it, or Shift+drag …"
+  },
+  "clipPanel.editHint.toCut": {
+    "description": "Clip tab, Edit hint (piece 4 of 4): Shift is a keycap (never translated). The hint is one sentence in pieces, joined by spaces, so that English keeps the text as it lays it out today (the English guard compares the pixels): Press {split} to split at the playhead, | select a clip and | press {delete} | to cut it, or Shift+drag …"
   }
 }
