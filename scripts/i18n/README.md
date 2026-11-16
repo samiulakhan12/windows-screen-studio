@@ -14,6 +14,7 @@ English catalogue from `src/shared/i18n/messages/en/` and never changes a source
 | `npm run i18n:pseudo` | `en-XA`, `bn-XA` and `ar-XB` under `scripts/i18n/pseudo/` (not committed), each also as a catalogue folder for `SSW_I18N_CATALOGUE_DIR`. |
 | `npm run i18n:extract -- --ns <ns> --files <a,b>` | The codemod: a patch and a proposal (messages, meta, log rows, what needs a hand edit) under `scripts/i18n/extract/`. |
 | `node scripts/i18n/split.mjs [--check]` | Splits the extraction between X1-X7 into `parts.json` (step S2). |
+| `node scripts/i18n/fmt-sites.mjs [--check]` | Part X6's formatter call sites: any number, size, time, date or list our files still format with one of today's helpers instead of `fmt`, against `fmt-sites.json` (the calls moved to `fmt` and those kept with a reason). Test 73 runs the same check. |
 | `node scripts/i18n/draft.mjs …` | Drafts one namespace with an AI service the README names, with your own key. Development only; see its header. |
 
 Settings: `config.json` (`scan`, `failFor`), `allow.json` (what is not UI text, each with its reason),

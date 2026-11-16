@@ -1,0 +1,1548 @@
+{
+  "$comment": "Part X6's formatter call sites (docs/design/output-and-languages.md §10.5, §11.2, §21.8; step S3a). 'sites' are the calls moved to fmt, each with the call it replaced ('was'), the call now ('now'), its line at S3a and the mapping test 73 checks it by ('as'); 'mappings' say what each mapping replaced and over which grid tests/i18nFmtSites.test.ts compares the two in English. 'kept' are the formatter calls left as they are, each with its reason; scripts/i18n/fmt-sites.mjs and test 73 fail on any formatter call in our files that is neither moved nor kept. The other account's files (pending.json) are not listed: formatTime stays ASCII for them (§9.5). A part that rewrites a listed call keeps its 'now' text, or updates its entry.",
+  "mappings": {
+    "formatTime": {
+      "was": "formatTime(s) · src/shared/engine/project.ts",
+      "now": "fmt.clock(s)",
+      "grid": "seconds"
+    },
+    "formatTime(whole)": {
+      "was": "formatTime(s, false) · src/shared/engine/project.ts",
+      "now": "fmt.clock(s, 'whole')",
+      "grid": "seconds"
+    },
+    "formatClock": {
+      "was": "formatClock(s) · src/renderer/src/editor/ExportDialog.tsx",
+      "now": "fmt.clock(s, 'whole')",
+      "grid": "seconds"
+    },
+    "formatClock(tenths)": {
+      "was": "formatClock(s, true) · src/renderer/src/editor/ExportDialog.tsx",
+      "now": "fmt.clock(s, 'rounded-tenths')",
+      "grid": "seconds"
+    },
+    "clockTime": {
+      "was": "clockTime(s) · src/shared/search/moment.ts",
+      "now": "fmt.clock(s, 'hours')",
+      "grid": "seconds"
+    },
+    "formatTick": {
+      "was": "formatTick(t, step) · src/shared/editor/timelineScale.ts",
+      "now": "fmt.tick(t, step)",
+      "grid": "ticks"
+    },
+    "formatDuration": {
+      "was": "formatDuration(s) · src/renderer/src/editor/ExportDialog.tsx",
+      "now": "fmt.duration(s)",
+      "grid": "seconds"
+    },
+    "lengthText(sounds)": {
+      "was": "lengthText(s) · src/shared/audio/soundsCopy.ts",
+      "now": "fmt.seconds(s)",
+      "grid": "seconds"
+    },
+    "formatBytes(export)": {
+      "was": "formatBytes(n) · src/renderer/src/editor/ExportDialog.tsx",
+      "now": "fmt.bytes(n)",
+      "grid": "bytes"
+    },
+    "sizeText(longJobs)": {
+      "was": "sizeText(n) · src/shared/jobs/longJobs.ts",
+      "now": "fmt.bytes(n)",
+      "grid": "bytes"
+    },
+    "formatBytes(storage)": {
+      "was": "formatBytes(n) · src/shared/storage/rules.ts",
+      "now": "fmt.bytes(n, 'storage')",
+      "grid": "bytes"
+    },
+    "formatBytes(home)": {
+      "was": "formatBytes(n) · src/renderer/src/views/Home.tsx (a local helper, removed; test 73 keeps its code)",
+      "now": "fmt.bytes(n, 'coarse')",
+      "grid": "bytes"
+    },
+    "sizeText(clips)": {
+      "was": "sizeText(n) · src/renderer/src/clips/clipsRun.ts",
+      "now": "fmt.bytes(n, 'megabytes')",
+      "grid": "bytes"
+    },
+    "formatLevel": {
+      "was": "formatLevel(x) · src/shared/editor/zoomEdit.ts",
+      "now": "fmt.factor(x)",
+      "grid": "factors"
+    },
+    "formatRate": {
+      "was": "formatRate(x) · src/shared/editor/shuttle.ts",
+      "now": "fmt.factor(x)",
+      "grid": "factors"
+    },
+    "zoomText": {
+      "was": "zoomText(x) · src/shared/editor/directorCopy.ts",
+      "now": "fmt.factor(x)",
+      "grid": "factors"
+    },
+    "versionTime": {
+      "was": "versionTime(iso) · src/shared/editor/versions.ts",
+      "now": "fmt.date(Date.parse(iso), 'version')",
+      "grid": "versions"
+    },
+    "usedAgo": {
+      "was": "usedAgo(t, now) · src/shared/storage/rules.ts",
+      "now": "fmt.relative(t, now)",
+      "grid": "ages"
+    },
+    "listPhrase": {
+      "was": "listPhrase(items) · src/shared/editor/shortcuts.ts and src/renderer/src/versions/VersionsDialog.tsx (local helpers, removed; test 73 keeps their code)",
+      "now": "fmt.list(items)",
+      "grid": "lists"
+    },
+    "toLocaleTimeString(hour, minute)": {
+      "was": "d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })",
+      "now": "fmt.time(ms)",
+      "grid": "instants"
+    },
+    "toLocaleTimeString()": {
+      "was": "d.toLocaleTimeString()",
+      "now": "fmt.time(ms, 'seconds')",
+      "grid": "instants"
+    },
+    "toLocaleDateString(day, month, year)": {
+      "was": "d.toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' })",
+      "now": "fmt.date(ms, 'dayYear')",
+      "grid": "instants"
+    },
+    "toLocaleDateString(day, month)": {
+      "was": "d.toLocaleDateString(undefined, { day: 'numeric', month: 'short' })",
+      "now": "fmt.date(ms, 'day')",
+      "grid": "instants"
+    },
+    "toLocaleString(dateStyle, timeStyle)": {
+      "was": "d.toLocaleString(undefined, { dateStyle: 'short', timeStyle: 'short' })",
+      "now": "fmt.date(ms, 'dayTime')",
+      "grid": "instants"
+    },
+    "toLocaleString('en-US')": {
+      "was": "n.toLocaleString('en-US')",
+      "now": "fmt.count(n, { grouping: true })",
+      "grid": "counts"
+    }
+  },
+  "sites": [
+    {
+      "file": "src/renderer/src/ai/CostLine.tsx",
+      "line": 183,
+      "was": "r.estimate.inputTokens[0].toLocaleString('en-US')",
+      "now": "fmt.count(r.estimate.inputTokens[0], { grouping: true })",
+      "as": "toLocaleString('en-US')"
+    },
+    {
+      "file": "src/renderer/src/ai/CostLine.tsx",
+      "line": 183,
+      "was": "r.estimate.inputTokens[1].toLocaleString('en-US')",
+      "now": "fmt.count(r.estimate.inputTokens[1], { grouping: true })",
+      "as": "toLocaleString('en-US')"
+    },
+    {
+      "file": "src/renderer/src/ai/CostLine.tsx",
+      "line": 183,
+      "was": "r.estimate.outputTokens[0].toLocaleString('en-US')",
+      "now": "fmt.count(r.estimate.outputTokens[0], { grouping: true })",
+      "as": "toLocaleString('en-US')"
+    },
+    {
+      "file": "src/renderer/src/ai/CostLine.tsx",
+      "line": 184,
+      "was": "r.estimate.outputTokens[1].toLocaleString('en-US')",
+      "now": "fmt.count(r.estimate.outputTokens[1], { grouping: true })",
+      "as": "toLocaleString('en-US')"
+    },
+    {
+      "file": "src/renderer/src/clips/clipsRun.ts",
+      "line": 58,
+      "was": "sizeText(cost.bytes * Math.max(1, n))",
+      "now": "fmt.bytes(cost.bytes * Math.max(1, n), 'megabytes')",
+      "as": "sizeText(clips)"
+    },
+    {
+      "file": "src/renderer/src/clips/clipsRun.ts",
+      "line": 58,
+      "was": "sizeText(cost.free)",
+      "now": "fmt.bytes(cost.free, 'megabytes')",
+      "as": "sizeText(clips)"
+    },
+    {
+      "file": "src/renderer/src/clips/clipsRun.ts",
+      "line": 59,
+      "was": "sizeText(cost.bytes)",
+      "now": "fmt.bytes(cost.bytes, 'megabytes')",
+      "as": "sizeText(clips)"
+    },
+    {
+      "file": "src/renderer/src/clips/ShortClipsPanel.tsx",
+      "line": 57,
+      "was": "clockTime(videoTimeAt(project.clips, plan, m.start))",
+      "now": "fmt.clock(videoTimeAt(project.clips, plan, m.start), 'hours')",
+      "as": "clockTime"
+    },
+    {
+      "file": "src/renderer/src/clips/ShortClipsPanel.tsx",
+      "line": 57,
+      "was": "clockTime(videoTimeAt(project.clips, plan, m.end))",
+      "now": "fmt.clock(videoTimeAt(project.clips, plan, m.end), 'hours')",
+      "as": "clockTime"
+    },
+    {
+      "file": "src/renderer/src/clips/ShortClipsPanel.tsx",
+      "line": 510,
+      "was": "clockTime(Math.max(0, playing.at - playing.from))",
+      "now": "fmt.clock(Math.max(0, playing.at - playing.from), 'hours')",
+      "as": "clockTime"
+    },
+    {
+      "file": "src/renderer/src/clips/ShortClipsPanel.tsx",
+      "line": 510,
+      "was": "clockTime(playing.until - playing.from)",
+      "now": "fmt.clock(playing.until - playing.from, 'hours')",
+      "as": "clockTime"
+    },
+    {
+      "file": "src/renderer/src/editor/captionItems.ts",
+      "line": 253,
+      "was": "formatTime(videoTimeAt(store.state.clips, planOf(store.state), last.end), false)",
+      "now": "fmt.clock(videoTimeAt(store.state.clips, planOf(store.state), last.end), 'whole')",
+      "as": "formatTime(whole)"
+    },
+    {
+      "file": "src/renderer/src/editor/CaptionTrack.tsx",
+      "line": 116,
+      "was": "formatTime(s.start)",
+      "now": "fmt.clock(s.start)",
+      "as": "formatTime"
+    },
+    {
+      "file": "src/renderer/src/editor/CaptionTrack.tsx",
+      "line": 116,
+      "was": "formatTime(s.end)",
+      "now": "fmt.clock(s.end)",
+      "as": "formatTime"
+    },
+    {
+      "file": "src/renderer/src/editor/ExportDialog.tsx",
+      "line": 354,
+      "was": "formatClock(l.maxSeconds)",
+      "now": "fmt.clock(l.maxSeconds, 'whole')",
+      "as": "formatClock"
+    },
+    {
+      "file": "src/renderer/src/editor/ExportDialog.tsx",
+      "line": 354,
+      "was": "formatClock(l.maxSeconds)",
+      "now": "fmt.clock(l.maxSeconds, 'whole')",
+      "as": "formatClock"
+    },
+    {
+      "file": "src/renderer/src/editor/ExportDialog.tsx",
+      "line": 985,
+      "was": "formatClock(limits.maxSeconds)",
+      "now": "fmt.clock(limits.maxSeconds, 'whole')",
+      "as": "formatClock"
+    },
+    {
+      "file": "src/renderer/src/editor/ExportDialog.tsx",
+      "line": 985,
+      "was": "formatClock(length)",
+      "now": "fmt.clock(length, 'whole')",
+      "as": "formatClock"
+    },
+    {
+      "file": "src/renderer/src/editor/ExportDialog.tsx",
+      "line": 988,
+      "was": "formatClock(length)",
+      "now": "fmt.clock(length, 'whole')",
+      "as": "formatClock"
+    },
+    {
+      "file": "src/renderer/src/editor/ExportDialog.tsx",
+      "line": 1042,
+      "was": "formatClock(frameAt, true)",
+      "now": "fmt.clock(frameAt, 'rounded-tenths')",
+      "as": "formatClock(tenths)"
+    },
+    {
+      "file": "src/renderer/src/editor/ExportDialog.tsx",
+      "line": 1075,
+      "was": "formatDuration(length)",
+      "now": "fmt.duration(length)",
+      "as": "formatDuration"
+    },
+    {
+      "file": "src/renderer/src/editor/ExportDialog.tsx",
+      "line": 1084,
+      "was": "formatClock(parts[i].end - parts[i].start)",
+      "now": "fmt.clock(parts[i].end - parts[i].start, 'whole')",
+      "as": "formatClock"
+    },
+    {
+      "file": "src/renderer/src/editor/ExportDialog.tsx",
+      "line": 1093,
+      "was": "formatDuration(length)",
+      "now": "fmt.duration(length)",
+      "as": "formatDuration"
+    },
+    {
+      "file": "src/renderer/src/editor/ExportDialog.tsx",
+      "line": 1480,
+      "was": "formatBytes(phase.bytes)",
+      "now": "fmt.bytes(phase.bytes)",
+      "as": "formatBytes(export)"
+    },
+    {
+      "file": "src/renderer/src/editor/ExportDialog.tsx",
+      "line": 1480,
+      "was": "formatDuration(phase.seconds)",
+      "now": "fmt.duration(phase.seconds)",
+      "as": "formatDuration"
+    },
+    {
+      "file": "src/renderer/src/editor/ExportDialog.tsx",
+      "line": 1569,
+      "was": "formatBytes(s.bytes)",
+      "now": "fmt.bytes(s.bytes)",
+      "as": "formatBytes(export)"
+    },
+    {
+      "file": "src/renderer/src/editor/ExportDialog.tsx",
+      "line": 1569,
+      "was": "formatDuration(s.seconds)",
+      "now": "fmt.duration(s.seconds)",
+      "as": "formatDuration"
+    },
+    {
+      "file": "src/renderer/src/editor/ExportDialog.tsx",
+      "line": 1764,
+      "was": "formatDuration(progress.eta)",
+      "now": "fmt.duration(progress.eta)",
+      "as": "formatDuration"
+    },
+    {
+      "file": "src/renderer/src/editor/GraphicsTrack.tsx",
+      "line": 123,
+      "was": "formatTime(g.start)",
+      "now": "fmt.clock(g.start)",
+      "as": "formatTime"
+    },
+    {
+      "file": "src/renderer/src/editor/GraphicsTrack.tsx",
+      "line": 123,
+      "was": "formatTime(g.end)",
+      "now": "fmt.clock(g.end)",
+      "as": "formatTime"
+    },
+    {
+      "file": "src/renderer/src/editor/LayoutTrack.tsx",
+      "line": 208,
+      "was": "formatTime(s.start)",
+      "now": "fmt.clock(s.start)",
+      "as": "formatTime"
+    },
+    {
+      "file": "src/renderer/src/editor/LayoutTrack.tsx",
+      "line": 208,
+      "was": "formatTime(s.end)",
+      "now": "fmt.clock(s.end)",
+      "as": "formatTime"
+    },
+    {
+      "file": "src/renderer/src/editor/OverlayTrack.tsx",
+      "line": 142,
+      "was": "formatTime(o.start)",
+      "now": "fmt.clock(o.start)",
+      "as": "formatTime"
+    },
+    {
+      "file": "src/renderer/src/editor/OverlayTrack.tsx",
+      "line": 142,
+      "was": "formatTime(o.end)",
+      "now": "fmt.clock(o.end)",
+      "as": "formatTime"
+    },
+    {
+      "file": "src/renderer/src/editor/panels/AudioPanel.tsx",
+      "line": 255,
+      "was": "formatTime(length, false)",
+      "now": "fmt.clock(length, 'whole')",
+      "as": "formatTime(whole)"
+    },
+    {
+      "file": "src/renderer/src/editor/panels/CameraPanel.tsx",
+      "line": 316,
+      "was": "formatTime(target.start)",
+      "now": "fmt.clock(target.start)",
+      "as": "formatTime"
+    },
+    {
+      "file": "src/renderer/src/editor/panels/CameraPanel.tsx",
+      "line": 316,
+      "was": "formatTime(target.end)",
+      "now": "fmt.clock(target.end)",
+      "as": "formatTime"
+    },
+    {
+      "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
+      "line": 939,
+      "was": "formatTime(videoTimeAt(clips, plan, s.start))",
+      "now": "fmt.clock(videoTimeAt(clips, plan, s.start))",
+      "as": "formatTime"
+    },
+    {
+      "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
+      "line": 1291,
+      "was": "formatTime(c.t, false)",
+      "now": "fmt.clock(c.t, 'whole')",
+      "as": "formatTime(whole)"
+    },
+    {
+      "file": "src/renderer/src/editor/panels/ClipPanel.tsx",
+      "line": 68,
+      "was": "formatTime(length)",
+      "now": "fmt.clock(length)",
+      "as": "formatTime"
+    },
+    {
+      "file": "src/renderer/src/editor/panels/ClipPanel.tsx",
+      "line": 68,
+      "was": "formatTime(project.duration)",
+      "now": "fmt.clock(project.duration)",
+      "as": "formatTime"
+    },
+    {
+      "file": "src/renderer/src/editor/panels/ClipPanel.tsx",
+      "line": 75,
+      "was": "formatTime(clip.start)",
+      "now": "fmt.clock(clip.start)",
+      "as": "formatTime"
+    },
+    {
+      "file": "src/renderer/src/editor/panels/ClipPanel.tsx",
+      "line": 75,
+      "was": "formatTime(clip.end)",
+      "now": "fmt.clock(clip.end)",
+      "as": "formatTime"
+    },
+    {
+      "file": "src/renderer/src/editor/panels/ClipPanel.tsx",
+      "line": 93,
+      "was": "formatTime(selection.start)",
+      "now": "fmt.clock(selection.start)",
+      "as": "formatTime"
+    },
+    {
+      "file": "src/renderer/src/editor/panels/ClipPanel.tsx",
+      "line": 93,
+      "was": "formatTime(selection.end)",
+      "now": "fmt.clock(selection.end)",
+      "as": "formatTime"
+    },
+    {
+      "file": "src/renderer/src/editor/panels/ClipPanel.tsx",
+      "line": 103,
+      "was": "formatTime(selection.start)",
+      "now": "fmt.clock(selection.start)",
+      "as": "formatTime"
+    },
+    {
+      "file": "src/renderer/src/editor/panels/ClipPanel.tsx",
+      "line": 103,
+      "was": "formatTime(selection.end)",
+      "now": "fmt.clock(selection.end)",
+      "as": "formatTime"
+    },
+    {
+      "file": "src/renderer/src/editor/panels/ClipPanel.tsx",
+      "line": 269,
+      "was": "formatTime(s)",
+      "now": "fmt.clock(s)",
+      "as": "formatTime"
+    },
+    {
+      "file": "src/renderer/src/editor/panels/ClipPanel.tsx",
+      "line": 682,
+      "was": "formatTime(p.start)",
+      "now": "fmt.clock(p.start)",
+      "as": "formatTime"
+    },
+    {
+      "file": "src/renderer/src/editor/panels/ClipPanel.tsx",
+      "line": 682,
+      "was": "formatTime(p.end)",
+      "now": "fmt.clock(p.end)",
+      "as": "formatTime"
+    },
+    {
+      "file": "src/renderer/src/editor/panels/ContrastMeter.tsx",
+      "line": 65,
+      "was": "formatTime(videoTimeAt(project.clips, planOf(project), measured.at), false)",
+      "now": "fmt.clock(videoTimeAt(project.clips, planOf(project), measured.at), 'whole')",
+      "as": "formatTime(whole)"
+    },
+    {
+      "file": "src/renderer/src/editor/panels/FontPicker.tsx",
+      "line": 174,
+      "was": "new Date(progress.retryAt).toLocaleTimeString()",
+      "now": "fmt.time(progress.retryAt, 'seconds')",
+      "as": "toLocaleTimeString()"
+    },
+    {
+      "file": "src/renderer/src/editor/panels/FreezeSection.tsx",
+      "line": 63,
+      "was": "formatTime(videoDuration(clips, plan))",
+      "now": "fmt.clock(videoDuration(clips, plan))",
+      "as": "formatTime"
+    },
+    {
+      "file": "src/renderer/src/editor/panels/FreezeSection.tsx",
+      "line": 87,
+      "was": "formatTime(freezeVideoTime(project, f))",
+      "now": "fmt.clock(freezeVideoTime(project, f))",
+      "as": "formatTime"
+    },
+    {
+      "file": "src/renderer/src/editor/panels/GraphicsPanel.tsx",
+      "line": 330,
+      "was": "formatTime(g.start, false)",
+      "now": "fmt.clock(g.start, 'whole')",
+      "as": "formatTime(whole)"
+    },
+    {
+      "file": "src/renderer/src/editor/panels/GraphicsPanel.tsx",
+      "line": 374,
+      "was": "formatTime(g.start)",
+      "now": "fmt.clock(g.start)",
+      "as": "formatTime"
+    },
+    {
+      "file": "src/renderer/src/editor/panels/GraphicsPanel.tsx",
+      "line": 374,
+      "was": "formatTime(g.end)",
+      "now": "fmt.clock(g.end)",
+      "as": "formatTime"
+    },
+    {
+      "file": "src/renderer/src/editor/panels/GraphicsPanel.tsx",
+      "line": 612,
+      "was": "formatTime(it.at, false)",
+      "now": "fmt.clock(it.at, 'whole')",
+      "as": "formatTime(whole)"
+    },
+    {
+      "file": "src/renderer/src/editor/panels/ImagesPanel.tsx",
+      "line": 107,
+      "was": "formatTime(o.start)",
+      "now": "fmt.clock(o.start)",
+      "as": "formatTime"
+    },
+    {
+      "file": "src/renderer/src/editor/panels/ImagesPanel.tsx",
+      "line": 107,
+      "was": "formatTime(o.end)",
+      "now": "fmt.clock(o.end)",
+      "as": "formatTime"
+    },
+    {
+      "file": "src/renderer/src/editor/panels/ImagesPanel.tsx",
+      "line": 182,
+      "was": "formatTime(o.start, false)",
+      "now": "fmt.clock(o.start, 'whole')",
+      "as": "formatTime(whole)"
+    },
+    {
+      "file": "src/renderer/src/editor/panels/MagnifierSection.tsx",
+      "line": 106,
+      "was": "formatTime(spot.start)",
+      "now": "fmt.clock(spot.start)",
+      "as": "formatTime"
+    },
+    {
+      "file": "src/renderer/src/editor/panels/MagnifierSection.tsx",
+      "line": 106,
+      "was": "formatTime(spot.end)",
+      "now": "fmt.clock(spot.end)",
+      "as": "formatTime"
+    },
+    {
+      "file": "src/renderer/src/editor/panels/SelectionPanel.tsx",
+      "line": 66,
+      "was": "formatLevel(zoomTargetScale(zoomInView(cropOf(p), z)))",
+      "now": "fmt.factor(zoomTargetScale(zoomInView(cropOf(p), z)))",
+      "as": "formatLevel"
+    },
+    {
+      "file": "src/renderer/src/editor/panels/SelectionPanel.tsx",
+      "line": 185,
+      "was": "formatTime(span.start)",
+      "now": "fmt.clock(span.start)",
+      "as": "formatTime"
+    },
+    {
+      "file": "src/renderer/src/editor/panels/SelectionPanel.tsx",
+      "line": 185,
+      "was": "formatTime(span.end)",
+      "now": "fmt.clock(span.end)",
+      "as": "formatTime"
+    },
+    {
+      "file": "src/renderer/src/editor/panels/SelectionPanel.tsx",
+      "line": 239,
+      "was": "formatTime(e.start)",
+      "now": "fmt.clock(e.start)",
+      "as": "formatTime"
+    },
+    {
+      "file": "src/renderer/src/editor/panels/ShapesPanel.tsx",
+      "line": 171,
+      "was": "formatTime(item.start, false)",
+      "now": "fmt.clock(item.start, 'whole')",
+      "as": "formatTime(whole)"
+    },
+    {
+      "file": "src/renderer/src/editor/panels/ShapesPanel.tsx",
+      "line": 171,
+      "was": "formatTime(item.end, false)",
+      "now": "fmt.clock(item.end, 'whole')",
+      "as": "formatTime(whole)"
+    },
+    {
+      "file": "src/renderer/src/editor/panels/ShapesPanel.tsx",
+      "line": 194,
+      "was": "formatTime(shape.start)",
+      "now": "fmt.clock(shape.start)",
+      "as": "formatTime"
+    },
+    {
+      "file": "src/renderer/src/editor/panels/ShapesPanel.tsx",
+      "line": 194,
+      "was": "formatTime(shape.end)",
+      "now": "fmt.clock(shape.end)",
+      "as": "formatTime"
+    },
+    {
+      "file": "src/renderer/src/editor/panels/ShapesPanel.tsx",
+      "line": 295,
+      "was": "formatTime(spot.start)",
+      "now": "fmt.clock(spot.start)",
+      "as": "formatTime"
+    },
+    {
+      "file": "src/renderer/src/editor/panels/ShapesPanel.tsx",
+      "line": 295,
+      "was": "formatTime(spot.end)",
+      "now": "fmt.clock(spot.end)",
+      "as": "formatTime"
+    },
+    {
+      "file": "src/renderer/src/editor/panels/TextPanel.tsx",
+      "line": 118,
+      "was": "formatTime(a.start, false)",
+      "now": "fmt.clock(a.start, 'whole')",
+      "as": "formatTime(whole)"
+    },
+    {
+      "file": "src/renderer/src/editor/panels/TextPanel.tsx",
+      "line": 137,
+      "was": "formatTime(ann.start)",
+      "now": "fmt.clock(ann.start)",
+      "as": "formatTime"
+    },
+    {
+      "file": "src/renderer/src/editor/panels/TextPanel.tsx",
+      "line": 137,
+      "was": "formatTime(ann.end)",
+      "now": "fmt.clock(ann.end)",
+      "as": "formatTime"
+    },
+    {
+      "file": "src/renderer/src/editor/panels/TextPanel.tsx",
+      "line": 213,
+      "was": "formatTime(c.start, false)",
+      "now": "fmt.clock(c.start, 'whole')",
+      "as": "formatTime(whole)"
+    },
+    {
+      "file": "src/renderer/src/editor/panels/TextPanel.tsx",
+      "line": 230,
+      "was": "formatTime(card.start)",
+      "now": "fmt.clock(card.start)",
+      "as": "formatTime"
+    },
+    {
+      "file": "src/renderer/src/editor/panels/TextPanel.tsx",
+      "line": 230,
+      "was": "formatTime(card.end)",
+      "now": "fmt.clock(card.end)",
+      "as": "formatTime"
+    },
+    {
+      "file": "src/renderer/src/editor/panels/TextPanel.tsx",
+      "line": 346,
+      "was": "formatTime(videoTimeAt(clips, planOf(project), t), false)",
+      "now": "fmt.clock(videoTimeAt(clips, planOf(project), t), 'whole')",
+      "as": "formatTime(whole)"
+    },
+    {
+      "file": "src/renderer/src/editor/panels/TextPanel.tsx",
+      "line": 357,
+      "was": "formatTime(chapter.t)",
+      "now": "fmt.clock(chapter.t)",
+      "as": "formatTime"
+    },
+    {
+      "file": "src/renderer/src/editor/panels/TextPanel.tsx",
+      "line": 439,
+      "was": "formatTime(videoTimeAt(project.clips, planOf(project), c.t), false)",
+      "now": "fmt.clock(videoTimeAt(project.clips, planOf(project), c.t), 'whole')",
+      "as": "formatTime(whole)"
+    },
+    {
+      "file": "src/renderer/src/editor/panels/TextPanel.tsx",
+      "line": 447,
+      "was": "formatTime(c.t, false)",
+      "now": "fmt.clock(c.t, 'whole')",
+      "as": "formatTime(whole)"
+    },
+    {
+      "file": "src/renderer/src/editor/panels/TranscriptPanel.tsx",
+      "line": 460,
+      "was": "formatTime(videoTimeAt(clips, plan, words[i].start))",
+      "now": "fmt.clock(videoTimeAt(clips, plan, words[i].start))",
+      "as": "formatTime"
+    },
+    {
+      "file": "src/renderer/src/editor/panels/ZoomPanel.tsx",
+      "line": 114,
+      "was": "formatTime(row.click.t)",
+      "now": "fmt.clock(row.click.t)",
+      "as": "formatTime"
+    },
+    {
+      "file": "src/renderer/src/editor/panels/ZoomPanel.tsx",
+      "line": 147,
+      "was": "formatTime(cause.click.t)",
+      "now": "fmt.clock(cause.click.t)",
+      "as": "formatTime"
+    },
+    {
+      "file": "src/renderer/src/editor/panels/ZoomPanel.tsx",
+      "line": 164,
+      "was": "formatTime(cause.t)",
+      "now": "fmt.clock(cause.t)",
+      "as": "formatTime"
+    },
+    {
+      "file": "src/renderer/src/editor/panels/ZoomPanel.tsx",
+      "line": 166,
+      "was": "formatTime(cause.t)",
+      "now": "fmt.clock(cause.t)",
+      "as": "formatTime"
+    },
+    {
+      "file": "src/renderer/src/editor/panels/ZoomPanel.tsx",
+      "line": 167,
+      "was": "formatTime(cause.t)",
+      "now": "fmt.clock(cause.t)",
+      "as": "formatTime"
+    },
+    {
+      "file": "src/renderer/src/editor/panels/ZoomPanel.tsx",
+      "line": 247,
+      "was": "formatTime(zoom.start)",
+      "now": "fmt.clock(zoom.start)",
+      "as": "formatTime"
+    },
+    {
+      "file": "src/renderer/src/editor/panels/ZoomPanel.tsx",
+      "line": 247,
+      "was": "formatTime(zoom.end)",
+      "now": "fmt.clock(zoom.end)",
+      "as": "formatTime"
+    },
+    {
+      "file": "src/renderer/src/editor/panels/ZoomPanel.tsx",
+      "line": 263,
+      "was": "formatLevel(framed)",
+      "now": "fmt.factor(framed)",
+      "as": "formatLevel"
+    },
+    {
+      "file": "src/renderer/src/editor/panels/ZoomPanel.tsx",
+      "line": 263,
+      "was": "formatLevel",
+      "now": "fmt.factor",
+      "as": "formatLevel"
+    },
+    {
+      "file": "src/renderer/src/editor/panels/ZoomPanel.tsx",
+      "line": 272,
+      "was": "formatLevel",
+      "now": "fmt.factor",
+      "as": "formatLevel"
+    },
+    {
+      "file": "src/renderer/src/editor/panels/ZoomPanel.tsx",
+      "line": 301,
+      "was": "formatLevel(level)",
+      "now": "fmt.factor(level)",
+      "as": "formatLevel"
+    },
+    {
+      "file": "src/renderer/src/editor/panels/ZoomPanel.tsx",
+      "line": 301,
+      "was": "formatLevel",
+      "now": "fmt.factor",
+      "as": "formatLevel"
+    },
+    {
+      "file": "src/renderer/src/editor/panels/ZoomPanel.tsx",
+      "line": 514,
+      "was": "formatTime(r.click.t)",
+      "now": "fmt.clock(r.click.t)",
+      "as": "formatTime"
+    },
+    {
+      "file": "src/renderer/src/editor/PreviewSpeed.tsx",
+      "line": 38,
+      "was": "formatRate(s)",
+      "now": "fmt.factor(s)",
+      "as": "formatRate"
+    },
+    {
+      "file": "src/renderer/src/editor/PreviewStage.tsx",
+      "line": 586,
+      "was": "formatLevel(zoomTargetScale(zoom))",
+      "now": "fmt.factor(zoomTargetScale(zoom))",
+      "as": "formatLevel"
+    },
+    {
+      "file": "src/renderer/src/editor/selection.ts",
+      "line": 103,
+      "was": "formatTime(row.click.t)",
+      "now": "fmt.clock(row.click.t)",
+      "as": "formatTime"
+    },
+    {
+      "file": "src/renderer/src/editor/sounds/SoundsSection.tsx",
+      "line": 289,
+      "was": "formatTime(props.time)",
+      "now": "fmt.clock(props.time)",
+      "as": "formatTime"
+    },
+    {
+      "file": "src/renderer/src/editor/sounds/SoundsSection.tsx",
+      "line": 289,
+      "was": "lengthText(r.end - r.start)",
+      "now": "fmt.seconds(r.end - r.start)",
+      "as": "lengthText(sounds)"
+    },
+    {
+      "file": "src/renderer/src/editor/Timeline.tsx",
+      "line": 645,
+      "was": "formatTick(t, step)",
+      "now": "fmt.tick(t, step)",
+      "as": "formatTick"
+    },
+    {
+      "file": "src/renderer/src/editor/Timeline.tsx",
+      "line": 735,
+      "was": "formatTime(b.start)",
+      "now": "fmt.clock(b.start)",
+      "as": "formatTime"
+    },
+    {
+      "file": "src/renderer/src/editor/Timeline.tsx",
+      "line": 735,
+      "was": "formatTime(b.end)",
+      "now": "fmt.clock(b.end)",
+      "as": "formatTime"
+    },
+    {
+      "file": "src/renderer/src/editor/Timeline.tsx",
+      "line": 768,
+      "was": "formatTime(z.start)",
+      "now": "fmt.clock(z.start)",
+      "as": "formatTime"
+    },
+    {
+      "file": "src/renderer/src/editor/Timeline.tsx",
+      "line": 768,
+      "was": "formatTime(z.end)",
+      "now": "fmt.clock(z.end)",
+      "as": "formatTime"
+    },
+    {
+      "file": "src/renderer/src/editor/Timeline.tsx",
+      "line": 768,
+      "was": "formatLevel(scale)",
+      "now": "fmt.factor(scale)",
+      "as": "formatLevel"
+    },
+    {
+      "file": "src/renderer/src/editor/Timeline.tsx",
+      "line": 779,
+      "was": "formatLevel(scale)",
+      "now": "fmt.factor(scale)",
+      "as": "formatLevel"
+    },
+    {
+      "file": "src/renderer/src/editor/Timeline.tsx",
+      "line": 829,
+      "was": "formatTime(it.start)",
+      "now": "fmt.clock(it.start)",
+      "as": "formatTime"
+    },
+    {
+      "file": "src/renderer/src/editor/Timeline.tsx",
+      "line": 829,
+      "was": "formatTime(it.end)",
+      "now": "fmt.clock(it.end)",
+      "as": "formatTime"
+    },
+    {
+      "file": "src/renderer/src/editor/Timeline.tsx",
+      "line": 893,
+      "was": "formatTime(gap.start)",
+      "now": "fmt.clock(gap.start)",
+      "as": "formatTime"
+    },
+    {
+      "file": "src/renderer/src/editor/Timeline.tsx",
+      "line": 893,
+      "was": "formatTime(gap.end)",
+      "now": "fmt.clock(gap.end)",
+      "as": "formatTime"
+    },
+    {
+      "file": "src/renderer/src/editor/TitleTrack.tsx",
+      "line": 175,
+      "was": "formatTime(c.t)",
+      "now": "fmt.clock(c.t)",
+      "as": "formatTime"
+    },
+    {
+      "file": "src/renderer/src/editor/TitleTrack.tsx",
+      "line": 196,
+      "was": "formatTime(c.start)",
+      "now": "fmt.clock(c.start)",
+      "as": "formatTime"
+    },
+    {
+      "file": "src/renderer/src/editor/TitleTrack.tsx",
+      "line": 196,
+      "was": "formatTime(c.end)",
+      "now": "fmt.clock(c.end)",
+      "as": "formatTime"
+    },
+    {
+      "file": "src/renderer/src/editor/Transport.tsx",
+      "line": 93,
+      "was": "formatTime(videoDuration(clips, plan))",
+      "now": "fmt.clock(videoDuration(clips, plan))",
+      "as": "formatTime"
+    },
+    {
+      "file": "src/renderer/src/editor/Transport.tsx",
+      "line": 95,
+      "was": "formatTime(videoTimeAt(clips, plan, player.time) + player.holdElapsed)",
+      "now": "fmt.clock(videoTimeAt(clips, plan, player.time) + player.holdElapsed)",
+      "as": "formatTime"
+    },
+    {
+      "file": "src/renderer/src/guide/GuidePanel.tsx",
+      "line": 615,
+      "was": "formatTime(editToVideo(plan, viewAt(project.clips, t)), false)",
+      "now": "fmt.clock(editToVideo(plan, viewAt(project.clips, t)), 'whole')",
+      "as": "formatTime(whole)"
+    },
+    {
+      "file": "src/renderer/src/render/gradeLayer.ts",
+      "line": 235,
+      "was": "off.toLocaleString('en-US')",
+      "now": "fmt.count(off, { grouping: true })",
+      "as": "toLocaleString('en-US')"
+    },
+    {
+      "file": "src/renderer/src/search/LibrarySearch.tsx",
+      "line": 272,
+      "was": "clockTime(hit.duration)",
+      "now": "fmt.clock(hit.duration, 'hours')",
+      "as": "clockTime"
+    },
+    {
+      "file": "src/renderer/src/search/LibrarySearch.tsx",
+      "line": 279,
+      "was": "clockTime(row.moment.video)",
+      "now": "fmt.clock(row.moment.video, 'hours')",
+      "as": "clockTime"
+    },
+    {
+      "file": "src/renderer/src/search/rows.ts",
+      "line": 23,
+      "was": "d.toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' })",
+      "now": "fmt.date(d.getTime(), 'dayYear')",
+      "as": "toLocaleDateString(day, month, year)"
+    },
+    {
+      "file": "src/renderer/src/settings/StorageSection.tsx",
+      "line": 15,
+      "was": "formatBytes(sharedBytes(files))",
+      "now": "fmt.bytes(sharedBytes(files), 'storage')",
+      "as": "formatBytes(storage)"
+    },
+    {
+      "file": "src/renderer/src/settings/StorageSection.tsx",
+      "line": 18,
+      "was": "d.toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' })",
+      "now": "fmt.date(d.getTime(), 'dayYear')",
+      "as": "toLocaleDateString(day, month, year)"
+    },
+    {
+      "file": "src/renderer/src/settings/StorageSection.tsx",
+      "line": 111,
+      "was": "formatBytes(overview.bytes)",
+      "now": "fmt.bytes(overview.bytes, 'storage')",
+      "as": "formatBytes(storage)"
+    },
+    {
+      "file": "src/renderer/src/settings/StorageSection.tsx",
+      "line": 112,
+      "was": "formatBytes(overview.free)",
+      "now": "fmt.bytes(overview.free, 'storage')",
+      "as": "formatBytes(storage)"
+    },
+    {
+      "file": "src/renderer/src/settings/StorageSection.tsx",
+      "line": 128,
+      "was": "usedAgo(r.lastUsed, overview.now)",
+      "now": "fmt.relative(r.lastUsed, overview.now)",
+      "as": "usedAgo"
+    },
+    {
+      "file": "src/renderer/src/settings/StorageSection.tsx",
+      "line": 129,
+      "was": "formatBytes(r.cacheBytes)",
+      "now": "fmt.bytes(r.cacheBytes, 'storage')",
+      "as": "formatBytes(storage)"
+    },
+    {
+      "file": "src/renderer/src/settings/StorageSection.tsx",
+      "line": 130,
+      "was": "formatBytes(r.versionBytes)",
+      "now": "fmt.bytes(r.versionBytes, 'storage')",
+      "as": "formatBytes(storage)"
+    },
+    {
+      "file": "src/renderer/src/settings/StorageSection.tsx",
+      "line": 135,
+      "was": "formatBytes(r.bytes)",
+      "now": "fmt.bytes(r.bytes, 'storage')",
+      "as": "formatBytes(storage)"
+    },
+    {
+      "file": "src/renderer/src/settings/StorageSection.tsx",
+      "line": 199,
+      "was": "formatBytes(freedBytes(g.items))",
+      "now": "fmt.bytes(freedBytes(g.items), 'storage')",
+      "as": "formatBytes(storage)"
+    },
+    {
+      "file": "src/renderer/src/settings/StorageSection.tsx",
+      "line": 215,
+      "was": "usedAgo(i.lastUsed, overview.now)",
+      "now": "fmt.relative(i.lastUsed, overview.now)",
+      "as": "usedAgo"
+    },
+    {
+      "file": "src/renderer/src/settings/StorageSection.tsx",
+      "line": 218,
+      "was": "formatBytes(i.bytes)",
+      "now": "fmt.bytes(i.bytes, 'storage')",
+      "as": "formatBytes(storage)"
+    },
+    {
+      "file": "src/renderer/src/settings/StorageSection.tsx",
+      "line": 227,
+      "was": "formatBytes(chosenBytes)",
+      "now": "fmt.bytes(chosenBytes, 'storage')",
+      "as": "formatBytes(storage)"
+    },
+    {
+      "file": "src/renderer/src/settings/StorageSection.tsx",
+      "line": 247,
+      "was": "formatBytes(result.freed)",
+      "now": "fmt.bytes(result.freed, 'storage')",
+      "as": "formatBytes(storage)"
+    },
+    {
+      "file": "src/renderer/src/updates/useUpdates.ts",
+      "line": 76,
+      "was": "d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })",
+      "now": "fmt.time(d.getTime())",
+      "as": "toLocaleTimeString(hour, minute)"
+    },
+    {
+      "file": "src/renderer/src/updates/useUpdates.ts",
+      "line": 77,
+      "was": "d.toLocaleDateString(undefined, { day: 'numeric', month: 'short' })",
+      "now": "fmt.date(d.getTime(), 'day')",
+      "as": "toLocaleDateString(day, month)"
+    },
+    {
+      "file": "src/renderer/src/versions/VersionsDialog.tsx",
+      "line": 231,
+      "was": "formatBytes(v.bytes)",
+      "now": "fmt.bytes(v.bytes, 'storage')",
+      "as": "formatBytes(storage)"
+    },
+    {
+      "file": "src/renderer/src/versions/VersionsDialog.tsx",
+      "line": 256,
+      "was": "versionTime(v.createdAt)",
+      "now": "fmt.date(Date.parse(v.createdAt), 'version')",
+      "as": "versionTime"
+    },
+    {
+      "file": "src/renderer/src/versions/VersionsDialog.tsx",
+      "line": 350,
+      "was": "listPhrase(areas)",
+      "now": "fmt.list(areas)",
+      "as": "listPhrase"
+    },
+    {
+      "file": "src/renderer/src/views/Editor.tsx",
+      "line": 692,
+      "was": "formatTime(ms / 1000)",
+      "now": "fmt.clock(ms / 1000)",
+      "as": "formatTime"
+    },
+    {
+      "file": "src/renderer/src/views/Editor.tsx",
+      "line": 693,
+      "was": "formatTime(r.start)",
+      "now": "fmt.clock(r.start)",
+      "as": "formatTime"
+    },
+    {
+      "file": "src/renderer/src/views/Editor.tsx",
+      "line": 693,
+      "was": "formatTime(r.end)",
+      "now": "fmt.clock(r.end)",
+      "as": "formatTime"
+    },
+    {
+      "file": "src/renderer/src/views/Editor.tsx",
+      "line": 809,
+      "was": "formatLevel(level)",
+      "now": "fmt.factor(level)",
+      "as": "formatLevel"
+    },
+    {
+      "file": "src/renderer/src/views/Editor.tsx",
+      "line": 1228,
+      "was": "formatRate(player.previewSpeed)",
+      "now": "fmt.factor(player.previewSpeed)",
+      "as": "formatRate"
+    },
+    {
+      "file": "src/renderer/src/views/Editor.tsx",
+      "line": 1230,
+      "was": "formatRate(next)",
+      "now": "fmt.factor(next)",
+      "as": "formatRate"
+    },
+    {
+      "file": "src/renderer/src/views/Editor.tsx",
+      "line": 1666,
+      "was": "formatRate(player.previewSpeed)",
+      "now": "fmt.factor(player.previewSpeed)",
+      "as": "formatRate"
+    },
+    {
+      "file": "src/renderer/src/views/Editor.tsx",
+      "line": 1667,
+      "was": "formatRate(player.previewSpeed)",
+      "now": "fmt.factor(player.previewSpeed)",
+      "as": "formatRate"
+    },
+    {
+      "file": "src/renderer/src/views/Home.tsx",
+      "line": 301,
+      "was": "d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })",
+      "now": "fmt.time(d.getTime())",
+      "as": "toLocaleTimeString(hour, minute)"
+    },
+    {
+      "file": "src/renderer/src/views/Home.tsx",
+      "line": 304,
+      "was": "d.toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' })",
+      "now": "fmt.date(d.getTime(), 'dayYear')",
+      "as": "toLocaleDateString(day, month, year)"
+    },
+    {
+      "file": "src/renderer/src/views/Home.tsx",
+      "line": 325,
+      "was": "formatTime(project.duration, false)",
+      "now": "fmt.clock(project.duration, 'whole')",
+      "as": "formatTime(whole)"
+    },
+    {
+      "file": "src/renderer/src/views/Home.tsx",
+      "line": 700,
+      "was": "formatBytes(item.bytes)",
+      "now": "fmt.bytes(item.bytes, 'coarse')",
+      "as": "formatBytes(home)"
+    },
+    {
+      "file": "src/renderer/src/views/Home.tsx",
+      "line": 825,
+      "was": "new Date(u.createdAt).toLocaleString(undefined, { dateStyle: 'short', timeStyle: 'short' })",
+      "now": "fmt.date(new Date(u.createdAt).getTime(), 'dayTime')",
+      "as": "toLocaleString(dateStyle, timeStyle)"
+    },
+    {
+      "file": "src/renderer/src/views/Home.tsx",
+      "line": 827,
+      "was": "formatBytes(u.bytes)",
+      "now": "fmt.bytes(u.bytes, 'coarse')",
+      "as": "formatBytes(home)"
+    },
+    {
+      "file": "src/shared/ai/cost.ts",
+      "line": 433,
+      "was": "r.toLocaleString('en-US')",
+      "now": "fmt.count(r, { grouping: true })",
+      "as": "toLocaleString('en-US')"
+    },
+    {
+      "file": "src/shared/ai/cost.ts",
+      "line": 544,
+      "was": "Math.round(usage.input + usage.output).toLocaleString('en-US')",
+      "now": "fmt.count(Math.round(usage.input + usage.output), { grouping: true })",
+      "as": "toLocaleString('en-US')"
+    },
+    {
+      "file": "src/shared/audio/soundsCopy.ts",
+      "line": 57,
+      "was": "formatTime(outputTime)",
+      "now": "fmt.clock(outputTime)",
+      "as": "formatTime"
+    },
+    {
+      "file": "src/shared/audio/soundsCopy.ts",
+      "line": 63,
+      "was": "lengthText(seconds)",
+      "now": "fmt.seconds(seconds)",
+      "as": "lengthText(sounds)"
+    },
+    {
+      "file": "src/shared/editor/directorCopy.ts",
+      "line": 43,
+      "was": "formatTime(part.outStart, false)",
+      "now": "fmt.clock(part.outStart, 'whole')",
+      "as": "formatTime(whole)"
+    },
+    {
+      "file": "src/shared/editor/directorCopy.ts",
+      "line": 43,
+      "was": "formatTime(part.outEnd, false)",
+      "now": "fmt.clock(part.outEnd, 'whole')",
+      "as": "formatTime(whole)"
+    },
+    {
+      "file": "src/shared/editor/directorCopy.ts",
+      "line": 64,
+      "was": "zoomText(applied.zoom)",
+      "now": "fmt.factor(applied.zoom)",
+      "as": "zoomText"
+    },
+    {
+      "file": "src/shared/editor/directorCopy.ts",
+      "line": 184,
+      "was": "zoomText(outcome.zoom)",
+      "now": "fmt.factor(outcome.zoom)",
+      "as": "zoomText"
+    },
+    {
+      "file": "src/shared/editor/directorCopy.ts",
+      "line": 209,
+      "was": "zoomText(outcome.zoom)",
+      "now": "fmt.factor(outcome.zoom)",
+      "as": "zoomText"
+    },
+    {
+      "file": "src/shared/editor/groupClipboard.ts",
+      "line": 396,
+      "was": "formatTime(r.at)",
+      "now": "fmt.clock(r.at)",
+      "as": "formatTime"
+    },
+    {
+      "file": "src/shared/editor/groupEdit.ts",
+      "line": 288,
+      "was": "formatLevel",
+      "now": "fmt.factor",
+      "as": "formatLevel"
+    },
+    {
+      "file": "src/shared/editor/groupEdit.ts",
+      "line": 1039,
+      "was": "formatLevel(num('zoom.level')!)",
+      "now": "fmt.factor(num('zoom.level')!)",
+      "as": "formatLevel"
+    },
+    {
+      "file": "src/shared/editor/joinsEdit.ts",
+      "line": 185,
+      "was": "formatTime(gap.start)",
+      "now": "fmt.clock(gap.start)",
+      "as": "formatTime"
+    },
+    {
+      "file": "src/shared/editor/joinsEdit.ts",
+      "line": 185,
+      "was": "formatTime(gap.end)",
+      "now": "fmt.clock(gap.end)",
+      "as": "formatTime"
+    },
+    {
+      "file": "src/shared/editor/polishCopy.ts",
+      "line": 70,
+      "was": "formatTime(s)",
+      "now": "fmt.clock(s)",
+      "as": "formatTime"
+    },
+    {
+      "file": "src/shared/editor/polishCopy.ts",
+      "line": 214,
+      "was": "formatTime(at, false)",
+      "now": "fmt.clock(at, 'whole')",
+      "as": "formatTime(whole)"
+    },
+    {
+      "file": "src/shared/editor/polishCopy.ts",
+      "line": 223,
+      "was": "zoomText(f.zoom)",
+      "now": "fmt.factor(f.zoom)",
+      "as": "zoomText"
+    },
+    {
+      "file": "src/shared/editor/shortcuts.ts",
+      "line": 295,
+      "was": "listPhrase(levels)",
+      "now": "fmt.list(levels)",
+      "as": "listPhrase"
+    },
+    {
+      "file": "src/shared/editor/shuttle.ts",
+      "line": 78,
+      "was": "formatRate(Math.abs(viewRate(s, previewSpeed)))",
+      "now": "fmt.factor(Math.abs(viewRate(s, previewSpeed)))",
+      "as": "formatRate"
+    },
+    {
+      "file": "src/shared/editor/shuttle.ts",
+      "line": 120,
+      "was": "formatRate(AUDIBLE_RATES.max)",
+      "now": "fmt.factor(AUDIBLE_RATES.max)",
+      "as": "formatRate"
+    },
+    {
+      "file": "src/shared/editor/snapping.ts",
+      "line": 382,
+      "was": "formatTime(target.t)",
+      "now": "fmt.clock(target.t)",
+      "as": "formatTime"
+    },
+    {
+      "file": "src/shared/editor/timelineCuts.ts",
+      "line": 59,
+      "was": "formatTime(gap.start)",
+      "now": "fmt.clock(gap.start)",
+      "as": "formatTime"
+    },
+    {
+      "file": "src/shared/editor/timelineCuts.ts",
+      "line": 59,
+      "was": "formatTime(gap.end)",
+      "now": "fmt.clock(gap.end)",
+      "as": "formatTime"
+    },
+    {
+      "file": "src/shared/editor/versions.ts",
+      "line": 133,
+      "was": "formatTime(s.duration, false)",
+      "now": "fmt.clock(s.duration, 'whole')",
+      "as": "formatTime(whole)"
+    },
+    {
+      "file": "src/shared/editor/versions.ts",
+      "line": 152,
+      "was": "formatTime(version.duration)",
+      "now": "fmt.clock(version.duration)",
+      "as": "formatTime"
+    },
+    {
+      "file": "src/shared/editor/versions.ts",
+      "line": 152,
+      "was": "formatTime(now.duration)",
+      "now": "fmt.clock(now.duration)",
+      "as": "formatTime"
+    },
+    {
+      "file": "src/shared/editor/versions.ts",
+      "line": 152,
+      "was": "formatTime(version.duration)",
+      "now": "fmt.clock(version.duration)",
+      "as": "formatTime"
+    },
+    {
+      "file": "src/shared/editor/versions.ts",
+      "line": 152,
+      "was": "formatTime(now.duration)",
+      "now": "fmt.clock(now.duration)",
+      "as": "formatTime"
+    },
+    {
+      "file": "src/shared/jobs/longJobs.ts",
+      "line": 132,
+      "was": "sizeText(files[0].bytes)",
+      "now": "fmt.bytes(files[0].bytes)",
+      "as": "sizeText(longJobs)"
+    },
+    {
+      "file": "src/shared/notes/notesCopy.ts",
+      "line": 85,
+      "was": "n.toLocaleString('en-US')",
+      "now": "fmt.count(n, { grouping: true })",
+      "as": "toLocaleString('en-US')"
+    },
+    {
+      "file": "src/shared/notes/scriptDraft.ts",
+      "line": 58,
+      "was": "SCRIPT_LIMITS.notesMax.toLocaleString('en-US')",
+      "now": "fmt.count(SCRIPT_LIMITS.notesMax, { grouping: true })",
+      "as": "toLocaleString('en-US')"
+    },
+    {
+      "file": "src/shared/notes/scriptDraft.ts",
+      "line": 97,
+      "was": "NOTES_TEXT_MAX.toLocaleString('en-US')",
+      "now": "fmt.count(NOTES_TEXT_MAX, { grouping: true })",
+      "as": "toLocaleString('en-US')"
+    },
+    {
+      "file": "src/shared/render/cubeLut.ts",
+      "line": 52,
+      "was": "line.toLocaleString('en-US')",
+      "now": "fmt.count(line, { grouping: true })",
+      "as": "toLocaleString('en-US')"
+    },
+    {
+      "file": "src/shared/render/cubeLut.ts",
+      "line": 87,
+      "was": "n.toLocaleString('en-US')",
+      "now": "fmt.count(n, { grouping: true })",
+      "as": "toLocaleString('en-US')"
+    },
+    {
+      "file": "src/shared/render/cubeLut.ts",
+      "line": 87,
+      "was": "range.max.toLocaleString('en-US')",
+      "now": "fmt.count(range.max, { grouping: true })",
+      "as": "toLocaleString('en-US')"
+    },
+    {
+      "file": "src/shared/render/cubeLut.ts",
+      "line": 136,
+      "was": "CUBE_LIMITS.maxLine.toLocaleString('en-US')",
+      "now": "fmt.count(CUBE_LIMITS.maxLine, { grouping: true })",
+      "as": "toLocaleString('en-US')"
+    },
+    {
+      "file": "src/shared/render/cubeLut.ts",
+      "line": 227,
+      "was": "total.toLocaleString('en-US')",
+      "now": "fmt.count(total, { grouping: true })",
+      "as": "toLocaleString('en-US')"
+    },
+    {
+      "file": "src/shared/render/cubeLut.ts",
+      "line": 248,
+      "was": "rows.toLocaleString('en-US')",
+      "now": "fmt.count(rows, { grouping: true })",
+      "as": "toLocaleString('en-US')"
+    },
+    {
+      "file": "src/shared/render/cubeLut.ts",
+      "line": 248,
+      "was": "(total || size1 + size3 ** 3).toLocaleString('en-US')",
+      "now": "fmt.count(total || size1 + size3 ** 3, { grouping: true })",
+      "as": "toLocaleString('en-US')"
+    },
+    {
+      "file": "src/shared/review/copy.ts",
+      "line": 75,
+      "was": "formatLevel(z.scale)",
+      "now": "fmt.factor(z.scale)",
+      "as": "formatLevel"
+    },
+    {
+      "file": "src/shared/review/times.ts",
+      "line": 25,
+      "was": "formatTime(times[k])",
+      "now": "fmt.clock(times[k])",
+      "as": "formatTime"
+    },
+    {
+      "file": "src/shared/speech/speechCopy.ts",
+      "line": 308,
+      "was": "formatTime(at, false)",
+      "now": "fmt.clock(at, 'whole')",
+      "as": "formatTime(whole)"
+    },
+    {
+      "file": "src/shared/speech/speechCopy.ts",
+      "line": 308,
+      "was": "formatTime(duration, false)",
+      "now": "fmt.clock(duration, 'whole')",
+      "as": "formatTime(whole)"
+    }
+  ],
+  "kept": [
+    {
+      "file": "src/renderer/src/editor/CropEditor.tsx",
+      "kind": "helper",
+      "helper": "sizeText",
+      "text": "sizeText(r, recorded)",
+      "why": "Not a size helper of §11: a local function of the crop editor that writes the crop in pixels (\"1280 × 720\") from two numbers. Its digits are an interpolated number of the part that extracts CropEditor.tsx (X2), as `${n}` sites are."
+    },
+    {
+      "file": "src/shared/ai/cost.ts",
+      "kind": "locale",
+      "helper": "toLocaleString",
+      "text": "Math.round(amount).toLocaleString('en-US')",
+      "why": "Inside usd(), which writes a US$ amount whole (\"US$1,234\", or \"US$12.50\" with toFixed below 100). fmt has no currency format yet; §11.3 gives other languages the format locale's currency (\"১২.৫০ US$\"), which belongs with the cost line's extraction, so the amount is not split here."
+    },
+    {
+      "file": "src/shared/clips/moments.ts",
+      "kind": "helper",
+      "helper": "clockTime",
+      "text": "clockTime(c.vs)",
+      "why": "The moment's offline title (\"Most action, 1:02\") becomes the clip copy's project name (clipCopy.ts), which is written into a project file: such text stays English and ASCII (§9.7, §10.3 rule 7)."
+    },
+    {
+      "file": "src/shared/share/webhooks.ts",
+      "kind": "helper",
+      "helper": "lengthText",
+      "text": "lengthText(meta.seconds)",
+      "why": "The share message (\"New video: Demo (2:31)\") is posted by main to the user's own Slack, Teams or Discord channel, outside the app, like an exported file's text (§0 decision 10, §9.7). It keeps its ASCII length while the message stays English; if the part that extracts webhooks.ts (X4) makes the message follow the UI language, the length moves to fmt.clock(s, 'hours-rounded')."
+    }
+  ]
+}
