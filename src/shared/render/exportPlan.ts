@@ -3,10 +3,9 @@ import { visibleSize } from '../engine/crop'
 import { outputSize } from '../engine/layout'
 import { DEFAULT_REFRAME, followApplies, isTall, tallAs } from '../engine/reframeData'
 import type { AspectRatio, ExportFormat, Project } from '../types'
-import { alphaOf } from './alpha'
 import { codecRoutes, type CodecCaps } from './codecRoutes'
 import type { ExportOptions } from './exportPresets'
-import { codecOf, DEFAULT_CODEC } from './proFormats'
+import { canAlpha, codecOf, DEFAULT_CODEC } from './proFormats'
 
 /** GIFs play at 15 fps; their size options stop at 1080p. */
 export const GIF_FPS = 15
@@ -71,7 +70,10 @@ export function exportSize(project: Project, settings: ExportOptions): ExportSiz
   const capped = capSize(size)
   if (settings.format === 'mov' && codecOf(settings) === 'cineform') {
     const maxWidth = Math.min(MAX_EXPORT_SIDE, settings.maxWidth ?? MAX_EXPORT_SIDE)
-    Object.assign(capped, cineformSize(capped, alphaOf(settings) !== undefined, maxWidth, [shown, { width: project.width, height: project.height }]))
+    // With alpha exactly when alphaOf (alpha.ts) says so; alpha.ts is not imported, since it carries
+    // renderer messages that main's bundle leaves out (test 86).
+    const alpha = (settings.alpha === 'background' || settings.alpha === 'overlays') && canAlpha(settings.format, codecOf(settings))
+    Object.assign(capped, cineformSize(capped, alpha, maxWidth, [shown, { width: project.width, height: project.height }]))
   }
   return { ...capped, fps: gif ? GIF_FPS : settings.fps }
 }

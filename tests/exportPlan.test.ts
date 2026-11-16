@@ -5,6 +5,7 @@ import { validateJob } from '../src/main/exportJob'
 import type { ExportCapabilities, ExportJob } from '../src/shared/api/export'
 import { outputSize } from '../src/shared/engine/layout'
 import { createProject } from '../src/shared/engine/project'
+import { alphaOf } from '../src/shared/render/alpha'
 import { avcLevel, colorTagsFrom } from '../src/shared/render/codec'
 import { studioMetrics } from '../src/shared/captions/studioLayout'
 import { studioPreset } from '../src/shared/captions/studioPresets'
@@ -207,6 +208,15 @@ describe('exportDimensions', () => {
     expect(exportSize(shaped(1280, 1024), { ...cine, resolution: 1440 })).toMatchObject({ width: 1792, height: 1434 })
     expect(exportSize(shaped(1280, 1024), { ...cine, resolution: 2160 })).toMatchObject({ width: 2688, height: 2150 })
     expect(exportSize(shaped(1280, 1024), { ...clear, resolution: 1440 })).toMatchObject({ width: 1808, height: 1446 })
+  })
+
+  it('a CineForm frame takes the alpha rule exactly when the export draws with alpha (alphaOf)', () => {
+    // exportSize decides it without alpha.ts, whose messages main's bundle leaves out (test 86).
+    for (const alpha of [undefined, 'background', 'overlays'] as const) {
+      const o = { ...cine, aspect: '4:5' as const, resolution: 720 as const, alpha }
+      expect(exportSize(project, o), `alpha ${alpha}`).toMatchObject(alphaOf(o) ? { width: 720, height: 900 } : { width: 736, height: 920 })
+    }
+    expect(alphaOf({ ...cine, alpha: 'overlays' })).toBe('overlays')
   })
 
   it('every CineForm size of the sweep is one cfhd round-trips, within maxWidth and 4096, in the H.264 frame\'s shape and on its sides of the tall and follow lines', () => {
