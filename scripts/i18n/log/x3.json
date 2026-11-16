@@ -768,6 +768,114 @@
     "sample": {}
   },
   {
+    "key": "captions.gallery.deleted",
+    "file": "src/renderer/src/editor/panels/CaptionGallery.tsx",
+    "line": 363,
+    "english": "Deleted “My style 2”",
+    "sample": {
+      "name": "My style 2"
+    }
+  },
+  {
+    "key": "captions.gallery.undo",
+    "file": "src/renderer/src/editor/panels/CaptionGallery.tsx",
+    "line": 363,
+    "english": "Undo",
+    "sample": {}
+  },
+  {
+    "key": "captions.gallery.notDeleted",
+    "file": "src/renderer/src/editor/panels/CaptionGallery.tsx",
+    "line": 364,
+    "english": "The style could not be deleted: Access denied.",
+    "sample": {
+      "reason": "Access denied."
+    }
+  },
+  {
+    "key": "captions.gallery.showFor",
+    "file": "src/renderer/src/editor/panels/CaptionGallery.tsx",
+    "line": 373,
+    "english": "Show styles for",
+    "sample": {}
+  },
+  {
+    "key": "captions.gallery.label",
+    "file": "src/renderer/src/editor/panels/CaptionGallery.tsx",
+    "line": 384,
+    "english": "Caption style",
+    "sample": {}
+  },
+  {
+    "key": "captions.gallery.currentLabel",
+    "file": "src/renderer/src/editor/panels/CaptionGallery.tsx",
+    "line": 400,
+    "english": "Clean, classic: white text with a soft shadow, your current style",
+    "sample": {
+      "label": "Clean, classic: white text with a soft shadow"
+    }
+  },
+  {
+    "key": "captions.gallery.current",
+    "file": "src/renderer/src/editor/panels/CaptionGallery.tsx",
+    "line": 440,
+    "english": "Your current style",
+    "sample": {}
+  },
+  {
+    "key": "captions.gallery.suggestedBadge",
+    "file": "src/renderer/src/editor/panels/CaptionGallery.tsx",
+    "line": 444,
+    "english": "Suggested",
+    "sample": {}
+  },
+  {
+    "key": "captions.gallery.fewer",
+    "file": "src/renderer/src/editor/panels/CaptionGallery.tsx",
+    "line": 458,
+    "english": "Show fewer styles",
+    "sample": {}
+  },
+  {
+    "key": "captions.gallery.all",
+    "file": "src/renderer/src/editor/panels/CaptionGallery.tsx",
+    "line": 458,
+    "english": "Show all styles",
+    "sample": {}
+  },
+  {
+    "key": "captions.gallery.playLabel",
+    "file": "src/renderer/src/editor/panels/CaptionGallery.tsx",
+    "line": 462,
+    "english": "Play a preview of Bold Pop",
+    "sample": {
+      "name": "Bold Pop"
+    }
+  },
+  {
+    "key": "common.action.play",
+    "file": "src/renderer/src/editor/panels/CaptionGallery.tsx",
+    "line": 463,
+    "english": "Play",
+    "sample": {}
+  },
+  {
+    "key": "captions.gallery.deleteName",
+    "file": "src/renderer/src/editor/panels/CaptionGallery.tsx",
+    "line": 468,
+    "english": "Delete “My style 2”",
+    "sample": {
+      "name": "My style 2"
+    }
+  },
+  {
+    "key": "common.action.delete",
+    "file": "src/renderer/src/editor/panels/CaptionGallery.tsx",
+    "line": 468,
+    "english": "Delete",
+    "sample": {}
+  },
+  {
     "key": "captions.generate.byThisPc",
     "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
     "line": 109,
@@ -2532,6 +2640,633 @@
     "file": "src/renderer/src/editor/panels/SubtitlesField.tsx",
     "line": 82,
     "english": "They are separate from the captions drawn on the video.",
+    "sample": {}
+  },
+  {
+    "key": "captions.gallery.filter.long",
+    "file": "src/renderer/src/editor/panels/captionTiles.ts",
+    "line": 37,
+    "english": "Long videos",
+    "sample": {}
+  },
+  {
+    "key": "captions.gallery.filter.short",
+    "file": "src/renderer/src/editor/panels/captionTiles.ts",
+    "line": 38,
+    "english": "Short clips",
+    "sample": {}
+  },
+  {
+    "key": "captions.gallery.filter.classic",
+    "file": "src/renderer/src/editor/panels/captionTiles.ts",
+    "line": 39,
+    "english": "Classic",
+    "sample": {}
+  },
+  {
+    "key": "captions.gallery.filter.mine",
+    "file": "src/renderer/src/editor/panels/captionTiles.ts",
+    "line": 40,
+    "english": "Mine",
+    "sample": {}
+  },
+  {
+    "key": "captions.gallery.filter.brand",
+    "file": "src/renderer/src/editor/panels/captionTiles.ts",
+    "line": 41,
+    "english": "Brand",
+    "sample": {}
+  },
+  {
+    "key": "captions.gallery.filter.all",
+    "file": "src/renderer/src/editor/panels/captionTiles.ts",
+    "line": 42,
+    "english": "All",
+    "sample": {}
+  },
+  {
+    "key": "captions.gallery.group.long",
+    "file": "src/renderer/src/editor/panels/captionTiles.ts",
+    "line": 46,
+    "english": "long videos",
+    "sample": {}
+  },
+  {
+    "key": "captions.gallery.group.short",
+    "file": "src/renderer/src/editor/panels/captionTiles.ts",
+    "line": 47,
+    "english": "short clips",
+    "sample": {}
+  },
+  {
+    "key": "captions.gallery.group.classic",
+    "file": "src/renderer/src/editor/panels/captionTiles.ts",
+    "line": 48,
+    "english": "classic",
+    "sample": {}
+  },
+  {
+    "key": "captions.gallery.group.mine",
+    "file": "src/renderer/src/editor/panels/captionTiles.ts",
+    "line": 49,
+    "english": "your styles",
+    "sample": {}
+  },
+  {
+    "key": "captions.gallery.group.brand",
+    "file": "src/renderer/src/editor/panels/captionTiles.ts",
+    "line": 50,
+    "english": "brand kit",
+    "sample": {}
+  },
+  {
+    "key": "captions.look.preset.subtitle.name",
+    "file": "src/renderer/src/editor/panels/captionTiles.ts",
+    "line": 54,
+    "english": "Subtitle",
+    "sample": {}
+  },
+  {
+    "key": "captions.look.preset.subtitle.description",
+    "file": "src/renderer/src/editor/panels/captionTiles.ts",
+    "line": 54,
+    "english": "Clean two-line subtitles in a crisp font",
+    "sample": {}
+  },
+  {
+    "key": "captions.look.preset.karaoke-fill.name",
+    "file": "src/renderer/src/editor/panels/captionTiles.ts",
+    "line": 54,
+    "english": "Karaoke Fill",
+    "sample": {}
+  },
+  {
+    "key": "captions.look.preset.karaoke-fill.description",
+    "file": "src/renderer/src/editor/panels/captionTiles.ts",
+    "line": 54,
+    "english": "Each word fills with colour as it is spoken",
+    "sample": {}
+  },
+  {
+    "key": "captions.look.preset.glass.name",
+    "file": "src/renderer/src/editor/panels/captionTiles.ts",
+    "line": 54,
+    "english": "Glass Pill",
+    "sample": {}
+  },
+  {
+    "key": "captions.look.preset.glass.description",
+    "file": "src/renderer/src/editor/panels/captionTiles.ts",
+    "line": 54,
+    "english": "Frosted glass behind each line",
+    "sample": {}
+  },
+  {
+    "key": "captions.look.preset.highlighter.name",
+    "file": "src/renderer/src/editor/panels/captionTiles.ts",
+    "line": 54,
+    "english": "Highlighter",
+    "sample": {}
+  },
+  {
+    "key": "captions.look.preset.highlighter.description",
+    "file": "src/renderer/src/editor/panels/captionTiles.ts",
+    "line": 54,
+    "english": "Key words marked like a highlighter pen",
+    "sample": {}
+  },
+  {
+    "key": "captions.look.preset.editorial.name",
+    "file": "src/renderer/src/editor/panels/captionTiles.ts",
+    "line": 54,
+    "english": "Editorial",
+    "sample": {}
+  },
+  {
+    "key": "captions.look.preset.editorial.description",
+    "file": "src/renderer/src/editor/panels/captionTiles.ts",
+    "line": 54,
+    "english": "Calm text with key words in a large serif",
+    "sample": {}
+  },
+  {
+    "key": "captions.look.preset.typewriter.name",
+    "file": "src/renderer/src/editor/panels/captionTiles.ts",
+    "line": 54,
+    "english": "Typewriter",
+    "sample": {}
+  },
+  {
+    "key": "captions.look.preset.typewriter.description",
+    "file": "src/renderer/src/editor/panels/captionTiles.ts",
+    "line": 54,
+    "english": "Letters type on as each word is spoken",
+    "sample": {}
+  },
+  {
+    "key": "captions.look.preset.terminal.name",
+    "file": "src/renderer/src/editor/panels/captionTiles.ts",
+    "line": 54,
+    "english": "Terminal",
+    "sample": {}
+  },
+  {
+    "key": "captions.look.preset.terminal.description",
+    "file": "src/renderer/src/editor/panels/captionTiles.ts",
+    "line": 54,
+    "english": "Code-editor colours on a dark panel",
+    "sample": {}
+  },
+  {
+    "key": "captions.look.preset.news.name",
+    "file": "src/renderer/src/editor/panels/captionTiles.ts",
+    "line": 54,
+    "english": "News Bar",
+    "sample": {}
+  },
+  {
+    "key": "captions.look.preset.news.description",
+    "file": "src/renderer/src/editor/panels/captionTiles.ts",
+    "line": 54,
+    "english": "Capitals on a red band, like a news ticker",
+    "sample": {}
+  },
+  {
+    "key": "captions.look.preset.bold-pop.name",
+    "file": "src/renderer/src/editor/panels/captionTiles.ts",
+    "line": 54,
+    "english": "Bold Pop",
+    "sample": {}
+  },
+  {
+    "key": "captions.look.preset.bold-pop.description",
+    "file": "src/renderer/src/editor/panels/captionTiles.ts",
+    "line": 54,
+    "english": "Big capitals, three words at a time; the spoken word turns green",
+    "sample": {}
+  },
+  {
+    "key": "captions.look.preset.clean-short.name",
+    "file": "src/renderer/src/editor/panels/captionTiles.ts",
+    "line": 54,
+    "english": "Clean Short",
+    "sample": {}
+  },
+  {
+    "key": "captions.look.preset.clean-short.description",
+    "file": "src/renderer/src/editor/panels/captionTiles.ts",
+    "line": 54,
+    "english": "Calm sentence-case words with a soft shadow",
+    "sample": {}
+  },
+  {
+    "key": "captions.look.preset.text-box.name",
+    "file": "src/renderer/src/editor/panels/captionTiles.ts",
+    "line": 54,
+    "english": "Text Box",
+    "sample": {}
+  },
+  {
+    "key": "captions.look.preset.text-box.description",
+    "file": "src/renderer/src/editor/panels/captionTiles.ts",
+    "line": 54,
+    "english": "Dark words on white boxes, like phone apps' own text",
+    "sample": {}
+  },
+  {
+    "key": "captions.look.preset.weight-shift.name",
+    "file": "src/renderer/src/editor/panels/captionTiles.ts",
+    "line": 54,
+    "english": "Light to Bold",
+    "sample": {}
+  },
+  {
+    "key": "captions.look.preset.weight-shift.description",
+    "file": "src/renderer/src/editor/panels/captionTiles.ts",
+    "line": 54,
+    "english": "Lowercase words turn bold as they are spoken",
+    "sample": {}
+  },
+  {
+    "key": "captions.look.preset.one-word.name",
+    "file": "src/renderer/src/editor/panels/captionTiles.ts",
+    "line": 54,
+    "english": "One Word",
+    "sample": {}
+  },
+  {
+    "key": "captions.look.preset.one-word.description",
+    "file": "src/renderer/src/editor/panels/captionTiles.ts",
+    "line": 54,
+    "english": "One big word at a time",
+    "sample": {}
+  },
+  {
+    "key": "captions.look.preset.comic.name",
+    "file": "src/renderer/src/editor/panels/captionTiles.ts",
+    "line": 54,
+    "english": "Comic",
+    "sample": {}
+  },
+  {
+    "key": "captions.look.preset.comic.description",
+    "file": "src/renderer/src/editor/panels/captionTiles.ts",
+    "line": 54,
+    "english": "Comic-book capitals with a thick outline",
+    "sample": {}
+  },
+  {
+    "key": "captions.look.preset.stacked.name",
+    "file": "src/renderer/src/editor/panels/captionTiles.ts",
+    "line": 54,
+    "english": "Stacked",
+    "sample": {}
+  },
+  {
+    "key": "captions.look.preset.stacked.description",
+    "file": "src/renderer/src/editor/panels/captionTiles.ts",
+    "line": 54,
+    "english": "Lines of different sizes stacked together",
+    "sample": {}
+  },
+  {
+    "key": "captions.look.preset.highlight-box.name",
+    "file": "src/renderer/src/editor/panels/captionTiles.ts",
+    "line": 54,
+    "english": "Highlight Box",
+    "sample": {}
+  },
+  {
+    "key": "captions.look.preset.highlight-box.description",
+    "file": "src/renderer/src/editor/panels/captionTiles.ts",
+    "line": 54,
+    "english": "The spoken word on a red box",
+    "sample": {}
+  },
+  {
+    "key": "captions.look.preset.neon.name",
+    "file": "src/renderer/src/editor/panels/captionTiles.ts",
+    "line": 54,
+    "english": "Neon",
+    "sample": {}
+  },
+  {
+    "key": "captions.look.preset.neon.description",
+    "file": "src/renderer/src/editor/panels/captionTiles.ts",
+    "line": 54,
+    "english": "The spoken word glows cyan",
+    "sample": {}
+  },
+  {
+    "key": "captions.look.preset.outline.name",
+    "file": "src/renderer/src/editor/panels/captionTiles.ts",
+    "line": 54,
+    "english": "Outline",
+    "sample": {}
+  },
+  {
+    "key": "captions.look.preset.outline.description",
+    "file": "src/renderer/src/editor/panels/captionTiles.ts",
+    "line": 54,
+    "english": "Hollow letters that fill as they are spoken",
+    "sample": {}
+  },
+  {
+    "key": "captions.look.preset.handwritten.name",
+    "file": "src/renderer/src/editor/panels/captionTiles.ts",
+    "line": 54,
+    "english": "Handwritten",
+    "sample": {}
+  },
+  {
+    "key": "captions.look.preset.handwritten.description",
+    "file": "src/renderer/src/editor/panels/captionTiles.ts",
+    "line": 54,
+    "english": "Handwriting that writes itself on",
+    "sample": {}
+  },
+  {
+    "key": "captions.look.preset.bubble-speech.name",
+    "file": "src/renderer/src/editor/panels/captionTiles.ts",
+    "line": 54,
+    "english": "Speech Bubble",
+    "sample": {}
+  },
+  {
+    "key": "captions.look.preset.bubble-speech.description",
+    "file": "src/renderer/src/editor/panels/captionTiles.ts",
+    "line": 54,
+    "english": "A speech bubble that points at your camera",
+    "sample": {}
+  },
+  {
+    "key": "captions.look.preset.chat.name",
+    "file": "src/renderer/src/editor/panels/captionTiles.ts",
+    "line": 54,
+    "english": "Chat",
+    "sample": {}
+  },
+  {
+    "key": "captions.look.preset.chat.description",
+    "file": "src/renderer/src/editor/panels/captionTiles.ts",
+    "line": 54,
+    "english": "Calls and interviews as chat bubbles: you on the right, others on the left",
+    "sample": {}
+  },
+  {
+    "key": "captions.look.preset.cinema.name",
+    "file": "src/renderer/src/editor/panels/captionTiles.ts",
+    "line": 54,
+    "english": "Cinema",
+    "sample": {}
+  },
+  {
+    "key": "captions.look.preset.cinema.description",
+    "file": "src/renderer/src/editor/panels/captionTiles.ts",
+    "line": 54,
+    "english": "Film-style subtitles in warm yellow, low on the frame",
+    "sample": {}
+  },
+  {
+    "key": "captions.look.preset.gold.name",
+    "file": "src/renderer/src/editor/panels/captionTiles.ts",
+    "line": 54,
+    "english": "Gold",
+    "sample": {}
+  },
+  {
+    "key": "captions.look.preset.gold.description",
+    "file": "src/renderer/src/editor/panels/captionTiles.ts",
+    "line": 54,
+    "english": "Gold serif letters for titles and launches",
+    "sample": {}
+  },
+  {
+    "key": "captions.look.preset.circle.name",
+    "file": "src/renderer/src/editor/panels/captionTiles.ts",
+    "line": 54,
+    "english": "Circle",
+    "sample": {}
+  },
+  {
+    "key": "captions.look.preset.circle.description",
+    "file": "src/renderer/src/editor/panels/captionTiles.ts",
+    "line": 54,
+    "english": "A hand-drawn circle around the key words",
+    "sample": {}
+  },
+  {
+    "key": "captions.look.preset.gradient.name",
+    "file": "src/renderer/src/editor/panels/captionTiles.ts",
+    "line": 54,
+    "english": "Gradient",
+    "sample": {}
+  },
+  {
+    "key": "captions.look.preset.gradient.description",
+    "file": "src/renderer/src/editor/panels/captionTiles.ts",
+    "line": 54,
+    "english": "Bold capitals in a pink to orange gradient",
+    "sample": {}
+  },
+  {
+    "key": "captions.look.preset.stickers.name",
+    "file": "src/renderer/src/editor/panels/captionTiles.ts",
+    "line": 54,
+    "english": "Stickers",
+    "sample": {}
+  },
+  {
+    "key": "captions.look.preset.stickers.description",
+    "file": "src/renderer/src/editor/panels/captionTiles.ts",
+    "line": 54,
+    "english": "Each word a tilted sticker; the spoken one turns yellow",
+    "sample": {}
+  },
+  {
+    "key": "captions.look.preset.spotlight-word.name",
+    "file": "src/renderer/src/editor/panels/captionTiles.ts",
+    "line": 54,
+    "english": "Spotlight Word",
+    "sample": {}
+  },
+  {
+    "key": "captions.look.preset.spotlight-word.description",
+    "file": "src/renderer/src/editor/panels/captionTiles.ts",
+    "line": 54,
+    "english": "Only the spoken word is lit",
+    "sample": {}
+  },
+  {
+    "key": "captions.look.preset.retro-pixel.name",
+    "file": "src/renderer/src/editor/panels/captionTiles.ts",
+    "line": 54,
+    "english": "Retro Pixel",
+    "sample": {}
+  },
+  {
+    "key": "captions.look.preset.retro-pixel.description",
+    "file": "src/renderer/src/editor/panels/captionTiles.ts",
+    "line": 54,
+    "english": "A pixel font with a colour split, for gaming",
+    "sample": {}
+  },
+  {
+    "key": "captions.look.preset.block-3d.name",
+    "file": "src/renderer/src/editor/panels/captionTiles.ts",
+    "line": 54,
+    "english": "3D Block",
+    "sample": {}
+  },
+  {
+    "key": "captions.look.preset.block-3d.description",
+    "file": "src/renderer/src/editor/panels/captionTiles.ts",
+    "line": 54,
+    "english": "Capitals with depth, for announcements",
+    "sample": {}
+  },
+  {
+    "key": "captions.look.preset.bubble-round.name",
+    "file": "src/renderer/src/editor/panels/captionTiles.ts",
+    "line": 54,
+    "english": "Bubble",
+    "sample": {}
+  },
+  {
+    "key": "captions.look.preset.bubble-round.description",
+    "file": "src/renderer/src/editor/panels/captionTiles.ts",
+    "line": 54,
+    "english": "Rounded, soft and friendly",
+    "sample": {}
+  },
+  {
+    "key": "captions.look.classic.clean.name",
+    "file": "src/renderer/src/editor/panels/captionTiles.ts",
+    "line": 57,
+    "english": "Clean",
+    "sample": {}
+  },
+  {
+    "key": "captions.look.classic.clean.description",
+    "file": "src/renderer/src/editor/panels/captionTiles.ts",
+    "line": 57,
+    "english": "White text with a soft shadow",
+    "sample": {}
+  },
+  {
+    "key": "captions.look.classic.boxed.name",
+    "file": "src/renderer/src/editor/panels/captionTiles.ts",
+    "line": 57,
+    "english": "Boxed",
+    "sample": {}
+  },
+  {
+    "key": "captions.look.classic.boxed.description",
+    "file": "src/renderer/src/editor/panels/captionTiles.ts",
+    "line": 57,
+    "english": "Text on a dark box, like TV subtitles",
+    "sample": {}
+  },
+  {
+    "key": "captions.look.classic.karaoke.name",
+    "file": "src/renderer/src/editor/panels/captionTiles.ts",
+    "line": 57,
+    "english": "Karaoke",
+    "sample": {}
+  },
+  {
+    "key": "captions.look.classic.karaoke.description",
+    "file": "src/renderer/src/editor/panels/captionTiles.ts",
+    "line": 57,
+    "english": "Each word lights up as it is spoken",
+    "sample": {}
+  },
+  {
+    "key": "captions.look.classic.minimal.name",
+    "file": "src/renderer/src/editor/panels/captionTiles.ts",
+    "line": 57,
+    "english": "Minimal",
+    "sample": {}
+  },
+  {
+    "key": "captions.look.classic.minimal.description",
+    "file": "src/renderer/src/editor/panels/captionTiles.ts",
+    "line": 57,
+    "english": "Light, small text with a thin outline",
+    "sample": {}
+  },
+  {
+    "key": "captions.look.classic.bold.name",
+    "file": "src/renderer/src/editor/panels/captionTiles.ts",
+    "line": 57,
+    "english": "Bold",
+    "sample": {}
+  },
+  {
+    "key": "captions.look.classic.bold.description",
+    "file": "src/renderer/src/editor/panels/captionTiles.ts",
+    "line": 57,
+    "english": "Big outlined capitals; the spoken word lights up",
+    "sample": {}
+  },
+  {
+    "key": "captions.gallery.savedByYou",
+    "file": "src/renderer/src/editor/panels/captionTiles.ts",
+    "line": 79,
+    "english": "Saved by you",
+    "sample": {}
+  },
+  {
+    "key": "captions.gallery.brandDescription",
+    "file": "src/renderer/src/editor/panels/captionTiles.ts",
+    "line": 81,
+    "english": "The caption style of your brand kit",
+    "sample": {}
+  },
+  {
+    "key": "captions.gallery.yourSavedStyle",
+    "file": "src/renderer/src/editor/panels/captionTiles.ts",
+    "line": 124,
+    "english": "Your saved style",
+    "sample": {}
+  },
+  {
+    "key": "captions.gallery.yourStyle",
+    "file": "src/renderer/src/editor/panels/captionTiles.ts",
+    "line": 129,
+    "english": "Your style",
+    "sample": {}
+  },
+  {
+    "key": "captions.gallery.tileLabel",
+    "file": "src/renderer/src/editor/panels/captionTiles.ts",
+    "line": 155,
+    "english": "Bold Pop, short clips: big capitals, three words at a time",
+    "sample": {
+      "name": "Bold Pop",
+      "group": "short clips",
+      "description": "big capitals, three words at a time"
+    }
+  },
+  {
+    "key": "captions.gallery.suggested.camera",
+    "file": "src/renderer/src/editor/panels/captionTiles.ts",
+    "line": 163,
+    "english": "Suggested when you are on camera",
+    "sample": {}
+  },
+  {
+    "key": "captions.gallery.suggested.tall",
+    "file": "src/renderer/src/editor/panels/captionTiles.ts",
+    "line": 164,
+    "english": "Suggested for tall videos",
+    "sample": {}
+  },
+  {
+    "key": "captions.gallery.suggested.wide",
+    "file": "src/renderer/src/editor/panels/captionTiles.ts",
+    "line": 164,
+    "english": "Suggested for wide videos",
     "sample": {}
   },
   {

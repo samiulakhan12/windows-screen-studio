@@ -126,3 +126,9 @@ export function trackRowWords(row: TrackRow, project: Project): { label: string;
       : t('captions.languages.translatedWith', { language, via: track.by === 'openai' && track.host ? track.host : PROVIDER_NAMES[track.by] })
   return { label, notes }
 }
+
+/**
+ * A sentence's first word as it reads inside another sentence: in English its first letter lower
+ * case, as the panels wrote it ("…, short clips: big capitals…"); other languages leave it as it is.
+ */
+export const inSentence = (text: string): string => (uiLanguage() === 'en' ? `${text.charAt(0).toLowerCase()}${text.slice(1)}` : text)

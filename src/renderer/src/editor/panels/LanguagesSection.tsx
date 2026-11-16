@@ -12,7 +12,7 @@ import type { AiProviderInfo, AiTextRequest, AiTextResult, AiUsage, TextChoice }
 import { costSentence } from '../../../../shared/ai/cost'
 import { fmt } from '../../../../shared/i18n/fmt'
 import { t } from '../../../../shared/i18n/t'
-import { captionLanguageName, trackRowWords } from '../captionWords'
+import { captionLanguageName, inSentence, trackRowWords } from '../captionWords'
 import { captionsToTranslate, languageName, languagesToAdd, trackOf, trackRows, withoutTrack, withShownTrack, withTranslation } from '../../../../shared/captions/captionTracks'
 import { MAX_TRACKS } from '../../../../shared/captions/studioData'
 import type { Project } from '../../../../shared/types'
@@ -205,7 +205,7 @@ export function LanguagesSection({ project }: { project: Project }): JSX.Element
     if (running.current) return
     // A new language when the project keeps the most: the answer could not be kept, so nothing is sent.
     if (!trackOf(store.state, code) && (store.state.captionTracks?.length ?? 0) >= MAX_TRACKS) {
-      setError(t('captions.languages.failed', { reason: fmt.inSentence(fullReason()) }))
+      setError(t('captions.languages.failed', { reason: inSentence(fullReason()) }))
       return
     }
     const sent = captionsToTranslate(store.state, code)
