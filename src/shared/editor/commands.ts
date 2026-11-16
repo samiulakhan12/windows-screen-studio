@@ -2,8 +2,17 @@
  * The editor's commands: one registry for the command palette, the keyboard shortcuts
  * (shortcuts.ts) and the shortcuts editor, plus the palette's fuzzy search and ranking.
  * Pure: what a command does lives in the editor (views/Editor.tsx), which runs them by id.
+ *
+ * Titles and category names are messages (docs/design/output-and-languages.md §9.1, §21.8): a
+ * command's title is `commands.title.<id>` and a category's name `commands.category.<id>`, shown
+ * through commandTitle and categoryLabel. The registry keeps each command's English title as data,
+ * read from the English catalogue, because the palette finds a command by its English title and
+ * its English keywords in every UI language.
  */
+import commandsEn from '../i18n/messages/en/commands.json'
+import { t } from '../i18n/t'
 
+/** A category's id; its name in the UI language is categoryLabel(id). */
 export type CommandCategory = 'Playback' | 'Edit' | 'Add' | 'Zoom' | 'Effects' | 'Camera' | 'Captions' | 'Panels' | 'Timeline' | 'General' | 'Publish'
 
 /** Categories in the order the palette and the shortcuts editor list them. */
@@ -11,7 +20,6 @@ export const COMMAND_CATEGORIES: readonly CommandCategory[] = ['Playback', 'Edit
 
 interface CommandSpec {
   id: string
-  title: string
   category: CommandCategory
   /** Other words the palette search finds the command by. */
   keywords?: string
@@ -27,183 +35,185 @@ interface CommandSpec {
 
 export interface CommandInfo extends CommandSpec {
   id: CommandId
+  /** The English title (`commands.title.<id>` in English); the UI shows commandTitle(). */
+  title: string
 }
 
 const COMMAND_LIST = [
-  { id: 'play', title: 'Play / pause', category: 'Playback', keywords: 'start stop playback preview' },
-  { id: 'goToStart', title: 'Go to start', category: 'Playback', keywords: 'beginning first frame home', repeat: true },
-  { id: 'goToEnd', title: 'Go to end', category: 'Playback', keywords: 'last frame', repeat: true },
-  { id: 'stepBack', title: 'Step back one frame', category: 'Playback', keywords: 'previous frame left', repeat: true },
-  { id: 'stepForward', title: 'Step forward one frame', category: 'Playback', keywords: 'next frame right', repeat: true },
-  { id: 'jumpBack', title: 'Back one second', category: 'Playback', keywords: 'rewind skip', repeat: true },
-  { id: 'jumpForward', title: 'Forward one second', category: 'Playback', keywords: 'skip ahead', repeat: true },
-  { id: 'nextChapter', title: 'Go to next chapter', category: 'Playback', keywords: 'chapter marker section skip jump forward', repeat: true },
-  { id: 'prevChapter', title: 'Go to previous chapter', category: 'Playback', keywords: 'chapter marker section skip jump back', repeat: true },
-  { id: 'shuttleReverse', title: 'Play backwards (again: faster)', category: 'Playback', keywords: 'reverse rewind backwards shuttle j' },
-  { id: 'shuttlePause', title: 'Pause', category: 'Playback', keywords: 'stop hold shuttle k' },
-  { id: 'shuttleForward', title: 'Play forward (again: faster)', category: 'Playback', keywords: 'fast forward shuttle speed l' },
-  { id: 'previewSpeedUp', title: 'Faster preview speed', category: 'Playback', keywords: 'playback rate review quick 1.5x 2x' },
-  { id: 'previewSpeedDown', title: 'Slower preview speed', category: 'Playback', keywords: 'playback rate slow motion 0.5x' },
+  { id: 'play', category: 'Playback', keywords: 'start stop playback preview' },
+  { id: 'goToStart', category: 'Playback', keywords: 'beginning first frame home', repeat: true },
+  { id: 'goToEnd', category: 'Playback', keywords: 'last frame', repeat: true },
+  { id: 'stepBack', category: 'Playback', keywords: 'previous frame left', repeat: true },
+  { id: 'stepForward', category: 'Playback', keywords: 'next frame right', repeat: true },
+  { id: 'jumpBack', category: 'Playback', keywords: 'rewind skip', repeat: true },
+  { id: 'jumpForward', category: 'Playback', keywords: 'skip ahead', repeat: true },
+  { id: 'nextChapter', category: 'Playback', keywords: 'chapter marker section skip jump forward', repeat: true },
+  { id: 'prevChapter', category: 'Playback', keywords: 'chapter marker section skip jump back', repeat: true },
+  { id: 'shuttleReverse', category: 'Playback', keywords: 'reverse rewind backwards shuttle j' },
+  { id: 'shuttlePause', category: 'Playback', keywords: 'stop hold shuttle k' },
+  { id: 'shuttleForward', category: 'Playback', keywords: 'fast forward shuttle speed l' },
+  { id: 'previewSpeedUp', category: 'Playback', keywords: 'playback rate review quick 1.5x 2x' },
+  { id: 'previewSpeedDown', category: 'Playback', keywords: 'playback rate slow motion 0.5x' },
 
-  { id: 'undo', title: 'Undo', category: 'Edit', keywords: 'revert back', repeat: true },
-  { id: 'redo', title: 'Redo', category: 'Edit', keywords: 'again', repeat: true },
-  { id: 'split', title: 'Split clip at playhead', category: 'Edit', keywords: 'cut divide razor' },
-  { id: 'deleteSelection', title: 'Delete selection', category: 'Edit', keywords: 'remove erase clip zoom text', repeat: true },
-  { id: 'cutRange', title: 'Cut selected range', category: 'Edit', keywords: 'remove delete trim range' },
-  { id: 'restoreAll', title: 'Restore the whole recording', category: 'Edit', keywords: 'undo cuts trims speed reset uncut' },
-  { id: 'smartSpeed', title: 'Smart speed: find idle parts', category: 'Edit', keywords: 'speed up skip pauses still inactivity fast forward silence auto cut' },
-  { id: 'polish', title: 'Polish in one click…', category: 'Edit', keywords: 'auto magic clean up remove silences auto zoom camera director captions subtitles style preset one click' },
+  { id: 'undo', category: 'Edit', keywords: 'revert back', repeat: true },
+  { id: 'redo', category: 'Edit', keywords: 'again', repeat: true },
+  { id: 'split', category: 'Edit', keywords: 'cut divide razor' },
+  { id: 'deleteSelection', category: 'Edit', keywords: 'remove erase clip zoom text', repeat: true },
+  { id: 'cutRange', category: 'Edit', keywords: 'remove delete trim range' },
+  { id: 'restoreAll', category: 'Edit', keywords: 'undo cuts trims speed reset uncut' },
+  { id: 'smartSpeed', category: 'Edit', keywords: 'speed up skip pauses still inactivity fast forward silence auto cut' },
+  { id: 'polish', category: 'Edit', keywords: 'auto magic clean up remove silences auto zoom camera director captions subtitles style preset one click' },
   // E-02 review mode (docs/design/review-mode.md §5).
-  { id: 'review', title: 'Review automatic changes…', category: 'Edit', keywords: 'tracked changes auto zoom silence cut camera director filler undo keep remove accept reject' },
-  { id: 'straightenRange', title: 'Straighten cursor in selected range', category: 'Edit', keywords: 'cursor path straight line glide smooth wobble mouse range' },
-  { id: 'recordedPathRange', title: 'Keep recorded cursor path in selected range', category: 'Edit', keywords: 'cursor path as recorded original wobble mouse range' },
-  { id: 'cropRecording', title: 'Crop the recording…', category: 'Edit', keywords: 'crop trim edge taskbar tabs hide area frame region cut' },
-  { id: 'resetCrop', title: 'Show the whole recording (reset crop)', category: 'Edit', keywords: 'crop uncrop full frame reset' },
-  { id: 'cropTaskbar', title: 'Crop out the taskbar', category: 'Edit', keywords: 'crop hide taskbar bottom windows' },
-  { id: 'toggleFreezeSound', title: 'Freeze frame: pause or keep the sound', category: 'Edit', keywords: 'freeze hold audio continue silence voice' },
+  { id: 'review', category: 'Edit', keywords: 'tracked changes auto zoom silence cut camera director filler undo keep remove accept reject' },
+  { id: 'straightenRange', category: 'Edit', keywords: 'cursor path straight line glide smooth wobble mouse range' },
+  { id: 'recordedPathRange', category: 'Edit', keywords: 'cursor path as recorded original wobble mouse range' },
+  { id: 'cropRecording', category: 'Edit', keywords: 'crop trim edge taskbar tabs hide area frame region cut' },
+  { id: 'resetCrop', category: 'Edit', keywords: 'crop uncrop full frame reset' },
+  { id: 'cropTaskbar', category: 'Edit', keywords: 'crop hide taskbar bottom windows' },
+  { id: 'toggleFreezeSound', category: 'Edit', keywords: 'freeze hold audio continue silence voice' },
   // E-06 select several items (docs/design/multi-select.md §6): Ctrl+A/C/X/V are standard keys (shortcuts.ts STANDARD_EDIT_KEYS).
-  { id: 'selectAll', title: 'Select all items on the track (again: every item)', category: 'Edit', keywords: 'multi several group many select all track box' },
-  { id: 'copyItems', title: 'Copy selected items', category: 'Edit', keywords: 'multi several group many clipboard duplicate' },
-  { id: 'cutItems', title: 'Cut selected items', category: 'Edit', keywords: 'multi several group many clipboard remove move' },
-  { id: 'pasteItems', title: 'Paste items at playhead', category: 'Edit', keywords: 'multi several group many clipboard insert' },
-  { id: 'duplicateItems', title: 'Duplicate selected items', category: 'Edit', keywords: 'multi several group many copy clone repeat series' },
-  { id: 'copyLook', title: 'Copy look of the selected item', category: 'Edit', keywords: 'multi several group many style format painter appearance' },
-  { id: 'pasteLook', title: 'Paste look onto selected items', category: 'Edit', keywords: 'multi several group many style format painter appearance apply' },
+  { id: 'selectAll', category: 'Edit', keywords: 'multi several group many select all track box' },
+  { id: 'copyItems', category: 'Edit', keywords: 'multi several group many clipboard duplicate' },
+  { id: 'cutItems', category: 'Edit', keywords: 'multi several group many clipboard remove move' },
+  { id: 'pasteItems', category: 'Edit', keywords: 'multi several group many clipboard insert' },
+  { id: 'duplicateItems', category: 'Edit', keywords: 'multi several group many copy clone repeat series' },
+  { id: 'copyLook', category: 'Edit', keywords: 'multi several group many style format painter appearance' },
+  { id: 'pasteLook', category: 'Edit', keywords: 'multi several group many style format painter appearance apply' },
 
-  { id: 'addZoom', title: 'Add zoom at playhead', category: 'Add', keywords: 'magnify scale camera' },
-  { id: 'addText', title: 'Add text at playhead', category: 'Add', keywords: 'annotation title caption label' },
-  { id: 'addArrow', title: 'Add arrow', category: 'Add', keywords: 'shape pointer annotate' },
-  { id: 'addLine', title: 'Add line', category: 'Add', keywords: 'shape stroke annotate' },
-  { id: 'addRect', title: 'Add rectangle', category: 'Add', keywords: 'shape box square frame' },
-  { id: 'addEllipse', title: 'Add ellipse', category: 'Add', keywords: 'shape circle oval' },
-  { id: 'addHighlight', title: 'Add highlight', category: 'Add', keywords: 'shape marker emphasis' },
-  { id: 'addBlur', title: 'Add blur', category: 'Add', keywords: 'privacy hide redact secret password' },
-  { id: 'addPixelate', title: 'Add pixelate', category: 'Add', keywords: 'privacy mosaic censor redact hide' },
-  { id: 'addSpotlight', title: 'Add spotlight', category: 'Add', keywords: 'focus dim darken region area' },
-  { id: 'addCursorSpotlight', title: 'Add cursor spotlight', category: 'Add', keywords: 'focus dim darken follow pointer mouse' },
-  { id: 'addTitle', title: 'Add title card at playhead', category: 'Add', keywords: 'intro heading lower third slide caption text' },
-  { id: 'addChapter', title: 'Add chapter at playhead', category: 'Add', keywords: 'marker section bookmark youtube timestamps' },
-  { id: 'freezeFrame', title: 'Freeze frame at playhead', category: 'Add', keywords: 'hold still pause picture extend frame read freeze' },
+  { id: 'addZoom', category: 'Add', keywords: 'magnify scale camera' },
+  { id: 'addText', category: 'Add', keywords: 'annotation title caption label' },
+  { id: 'addArrow', category: 'Add', keywords: 'shape pointer annotate' },
+  { id: 'addLine', category: 'Add', keywords: 'shape stroke annotate' },
+  { id: 'addRect', category: 'Add', keywords: 'shape box square frame' },
+  { id: 'addEllipse', category: 'Add', keywords: 'shape circle oval' },
+  { id: 'addHighlight', category: 'Add', keywords: 'shape marker emphasis' },
+  { id: 'addBlur', category: 'Add', keywords: 'privacy hide redact secret password' },
+  { id: 'addPixelate', category: 'Add', keywords: 'privacy mosaic censor redact hide' },
+  { id: 'addSpotlight', category: 'Add', keywords: 'focus dim darken region area' },
+  { id: 'addCursorSpotlight', category: 'Add', keywords: 'focus dim darken follow pointer mouse' },
+  { id: 'addTitle', category: 'Add', keywords: 'intro heading lower third slide caption text' },
+  { id: 'addChapter', category: 'Add', keywords: 'marker section bookmark youtube timestamps' },
+  { id: 'freezeFrame', category: 'Add', keywords: 'hold still pause picture extend frame read freeze' },
 
-  { id: 'zoomLevel0', title: 'Pull back selected zoom (0.75×)', category: 'Zoom', keywords: 'level scale out background' },
-  { id: 'zoomLevel1', title: 'Zoom level 1.25×', category: 'Zoom', keywords: 'level scale selected' },
-  { id: 'zoomLevel2', title: 'Zoom level 1.5×', category: 'Zoom', keywords: 'level scale selected' },
-  { id: 'zoomLevel3', title: 'Zoom level 2×', category: 'Zoom', keywords: 'level scale selected' },
-  { id: 'zoomLevel4', title: 'Zoom level 3×', category: 'Zoom', keywords: 'level scale selected' },
-  { id: 'toggleClickAtPlayhead', title: 'Ignore or use the click at the playhead', category: 'Zoom', keywords: 'click stray skip auto zoom ripple sound mouse' },
-  { id: 'findStrayClicks', title: 'Find stray clicks', category: 'Zoom', keywords: 'click ignore skip accidental auto zoom mouse' },
-  { id: 'useAllClicks', title: 'Use all ignored clicks again', category: 'Zoom', keywords: 'click restore unignore auto zoom mouse' },
+  { id: 'zoomLevel0', category: 'Zoom', keywords: 'level scale out background' },
+  { id: 'zoomLevel1', category: 'Zoom', keywords: 'level scale selected' },
+  { id: 'zoomLevel2', category: 'Zoom', keywords: 'level scale selected' },
+  { id: 'zoomLevel3', category: 'Zoom', keywords: 'level scale selected' },
+  { id: 'zoomLevel4', category: 'Zoom', keywords: 'level scale selected' },
+  { id: 'toggleClickAtPlayhead', category: 'Zoom', keywords: 'click stray skip auto zoom ripple sound mouse' },
+  { id: 'findStrayClicks', category: 'Zoom', keywords: 'click ignore skip accidental auto zoom mouse' },
+  { id: 'useAllClicks', category: 'Zoom', keywords: 'click restore unignore auto zoom mouse' },
   // NW-05 vertical video (docs/design/vertical-video.md §2.11): the view that follows the action.
-  { id: 'toggleFollow', title: 'Follow the action', category: 'Zoom', keywords: 'vertical portrait tall square 9:16 1:1 crop pan reframe framing cursor short reels tiktok', toggle: true },
-  { id: 'holdView', title: 'Hold the view here', category: 'Zoom', keywords: 'vertical follow framing pan stop keep still aim point' },
+  { id: 'toggleFollow', category: 'Zoom', keywords: 'vertical portrait tall square 9:16 1:1 crop pan reframe framing cursor short reels tiktok', toggle: true },
+  { id: 'holdView', category: 'Zoom', keywords: 'vertical follow framing pan stop keep still aim point' },
 
-  { id: 'toggleCursor', title: 'Smooth cursor', category: 'Effects', keywords: 'show hide pointer mouse toggle', toggle: true },
-  { id: 'toggleClickEffects', title: 'Click effects', category: 'Effects', keywords: 'ripple ring pulse toggle', toggle: true },
-  { id: 'toggleStraighten', title: 'Straighten cursor moves', category: 'Effects', keywords: 'cursor path straight line glide smooth wobble mouse toggle', toggle: true },
-  { id: 'toggleMotionBlur', title: 'Motion blur', category: 'Effects', keywords: 'toggle smooth camera', toggle: true },
-  { id: 'toggleKeystrokes', title: 'Keystroke overlay', category: 'Effects', keywords: 'keyboard shortcuts keys toggle show hide', toggle: true },
-  { id: 'toggleWebcam', title: 'Camera bubble', category: 'Effects', keywords: 'webcam face show hide toggle', toggle: true },
+  { id: 'toggleCursor', category: 'Effects', keywords: 'show hide pointer mouse toggle', toggle: true },
+  { id: 'toggleClickEffects', category: 'Effects', keywords: 'ripple ring pulse toggle', toggle: true },
+  { id: 'toggleStraighten', category: 'Effects', keywords: 'cursor path straight line glide smooth wobble mouse toggle', toggle: true },
+  { id: 'toggleMotionBlur', category: 'Effects', keywords: 'toggle smooth camera', toggle: true },
+  { id: 'toggleKeystrokes', category: 'Effects', keywords: 'keyboard shortcuts keys toggle show hide', toggle: true },
+  { id: 'toggleWebcam', category: 'Effects', keywords: 'webcam face show hide toggle', toggle: true },
 
-  { id: 'layoutDefault', title: 'Camera layout: screen with camera bubble', category: 'Camera', keywords: 'webcam layout default picture in picture pip' },
-  { id: 'layoutCameraOnly', title: 'Camera layout: camera only', category: 'Camera', keywords: 'webcam layout full face talking head fullscreen' },
-  { id: 'layoutScreenOnly', title: 'Camera layout: screen only', category: 'Camera', keywords: 'webcam layout hide no camera' },
-  { id: 'layoutSideBySide', title: 'Camera layout: side by side', category: 'Camera', keywords: 'webcam layout split two columns' },
-  { id: 'layoutCameraLarge', title: 'Camera layout: large camera', category: 'Camera', keywords: 'webcam layout big presenter' },
-  { id: 'directCamera', title: 'Direct the camera automatically', category: 'Camera', keywords: 'auto director webcam layout intro outro bubble corner move hide silence face centre framing' },
+  { id: 'layoutDefault', category: 'Camera', keywords: 'webcam layout default picture in picture pip' },
+  { id: 'layoutCameraOnly', category: 'Camera', keywords: 'webcam layout full face talking head fullscreen' },
+  { id: 'layoutScreenOnly', category: 'Camera', keywords: 'webcam layout hide no camera' },
+  { id: 'layoutSideBySide', category: 'Camera', keywords: 'webcam layout split two columns' },
+  { id: 'layoutCameraLarge', category: 'Camera', keywords: 'webcam layout big presenter' },
+  { id: 'directCamera', category: 'Camera', keywords: 'auto director webcam layout intro outro bubble corner move hide silence face centre framing' },
 
-  { id: 'generateCaptions', title: 'Generate captions', category: 'Captions', keywords: 'transcribe transcript subtitles speech text auto ai' },
-  { id: 'toggleCaptions', title: 'Show or hide captions', category: 'Captions', keywords: 'subtitles transcript on off toggle burn', toggle: true },
-  { id: 'exportCaptions', title: 'Export captions…', category: 'Captions', keywords: 'subtitles srt vtt transcript text save file' },
+  { id: 'generateCaptions', category: 'Captions', keywords: 'transcribe transcript subtitles speech text auto ai' },
+  { id: 'toggleCaptions', category: 'Captions', keywords: 'subtitles transcript on off toggle burn', toggle: true },
+  { id: 'exportCaptions', category: 'Captions', keywords: 'subtitles srt vtt transcript text save file' },
   // Captions Studio (docs/design/captions-studio.md §2.14): no default keys.
-  { id: 'captionsGreat', title: 'Make my captions great', category: 'Captions', keywords: 'auto style emphasis emoji pop-ups motion graphics magic' },
-  { id: 'captionStyles', title: 'Caption styles…', category: 'Captions', keywords: 'gallery look preset font theme' },
-  { id: 'captionEmphasis', title: 'Find important words', category: 'Captions', keywords: 'emphasis highlight bold key words' },
-  { id: 'captionGraphics', title: 'Add pop-ups from captions', category: 'Captions', keywords: 'keyword emoji counter number list graphics' },
-  { id: 'captionTidy', title: 'Tidy captions', category: 'Captions', keywords: 'clean capital punctuation digits bleep' },
-  { id: 'captionLanguage', title: 'Add a caption language…', category: 'Captions', keywords: 'translate subtitles track' },
-  { id: 'saveCaptionStyle', title: 'Save caption style as mine', category: 'Captions', keywords: 'preset save' },
+  { id: 'captionsGreat', category: 'Captions', keywords: 'auto style emphasis emoji pop-ups motion graphics magic' },
+  { id: 'captionStyles', category: 'Captions', keywords: 'gallery look preset font theme' },
+  { id: 'captionEmphasis', category: 'Captions', keywords: 'emphasis highlight bold key words' },
+  { id: 'captionGraphics', category: 'Captions', keywords: 'keyword emoji counter number list graphics' },
+  { id: 'captionTidy', category: 'Captions', keywords: 'clean capital punctuation digits bleep' },
+  { id: 'captionLanguage', category: 'Captions', keywords: 'translate subtitles track' },
+  { id: 'saveCaptionStyle', category: 'Captions', keywords: 'preset save' },
 
-  { id: 'showStyle', title: 'Open Style settings', category: 'Panels', keywords: 'background padding corners shadow aspect inspector tab' },
-  { id: 'showCursor', title: 'Open Cursor settings', category: 'Panels', keywords: 'pointer clicks inspector tab' },
-  { id: 'showZoom', title: 'Open Zoom settings', category: 'Panels', keywords: 'auto zoom inspector tab' },
-  { id: 'showClip', title: 'Open Clip settings', category: 'Panels', keywords: 'cuts speed trim inspector tab' },
-  { id: 'showText', title: 'Open Text settings', category: 'Panels', keywords: 'annotations titles chapters inspector tab' },
-  { id: 'showCaptions', title: 'Open Captions settings', category: 'Panels', keywords: 'subtitles transcript inspector tab' },
-  { id: 'showShapes', title: 'Open Shapes settings', category: 'Panels', keywords: 'arrows blur spotlight inspector tab' },
-  { id: 'showEffects', title: 'Open Effects settings', category: 'Panels', keywords: 'motion blur keystrokes inspector tab' },
-  { id: 'showCamera', title: 'Open Camera settings', category: 'Panels', keywords: 'webcam inspector tab' },
-  { id: 'showAudio', title: 'Open Audio settings', category: 'Panels', keywords: 'volume mute music inspector tab' },
+  { id: 'showStyle', category: 'Panels', keywords: 'background padding corners shadow aspect inspector tab' },
+  { id: 'showCursor', category: 'Panels', keywords: 'pointer clicks inspector tab' },
+  { id: 'showZoom', category: 'Panels', keywords: 'auto zoom inspector tab' },
+  { id: 'showClip', category: 'Panels', keywords: 'cuts speed trim inspector tab' },
+  { id: 'showText', category: 'Panels', keywords: 'annotations titles chapters inspector tab' },
+  { id: 'showCaptions', category: 'Panels', keywords: 'subtitles transcript inspector tab' },
+  { id: 'showShapes', category: 'Panels', keywords: 'arrows blur spotlight inspector tab' },
+  { id: 'showEffects', category: 'Panels', keywords: 'motion blur keystrokes inspector tab' },
+  { id: 'showCamera', category: 'Panels', keywords: 'webcam inspector tab' },
+  { id: 'showAudio', category: 'Panels', keywords: 'volume mute music inspector tab' },
 
-  { id: 'timelineZoomIn', title: 'Zoom timeline in', category: 'Timeline', keywords: 'magnify scale wider', repeat: true },
-  { id: 'timelineZoomOut', title: 'Zoom timeline out', category: 'Timeline', keywords: 'shrink scale narrower', repeat: true },
-  { id: 'timelineFit', title: 'Fit timeline to window', category: 'Timeline', keywords: 'whole recording all reset zoom' },
-  { id: 'toggleWaveform', title: 'Audio waveform on the timeline', category: 'Timeline', keywords: 'sound wave levels audio pauses silence talk show hide', toggle: true },
-  { id: 'toggleSnapping', title: 'Snapping', category: 'Timeline', keywords: 'snap magnet align edges cuts clicks chapters playhead stick toggle', toggle: true },
+  { id: 'timelineZoomIn', category: 'Timeline', keywords: 'magnify scale wider', repeat: true },
+  { id: 'timelineZoomOut', category: 'Timeline', keywords: 'shrink scale narrower', repeat: true },
+  { id: 'timelineFit', category: 'Timeline', keywords: 'whole recording all reset zoom' },
+  { id: 'toggleWaveform', category: 'Timeline', keywords: 'sound wave levels audio pauses silence talk show hide', toggle: true },
+  { id: 'toggleSnapping', category: 'Timeline', keywords: 'snap magnet align edges cuts clicks chapters playhead stick toggle', toggle: true },
 
   // NW-05 vertical video and X-04 duplicate (docs/design/vertical-video.md §2.11): copies, and the safe-zone preview.
-  { id: 'makeVertical', title: 'Make a vertical version', category: 'General', keywords: 'duplicate copy portrait tall 9:16 short shorts reels tiktok follow' },
-  { id: 'makeSquare', title: 'Make a square version', category: 'General', keywords: 'duplicate copy 1:1 post instagram follow' },
-  { id: 'duplicateVideo', title: 'Duplicate this video', category: 'General', keywords: 'copy clone project version' },
-  { id: 'toggleSafeZones', title: 'Show safe zones', category: 'General', keywords: 'vertical tiktok reels shorts buttons captions phone app overlay', toggle: true },
-  { id: 'export', title: 'Export…', category: 'General', keywords: 'render save mp4 gif video share' },
-  { id: 'shortcuts', title: 'Keyboard shortcuts…', category: 'General', keywords: 'keys hotkeys bindings rebind customize keymap' },
-  { id: 'about', title: 'About Flown', category: 'General', keywords: 'version qbexel website credits info' },
-  { id: 'commandPalette', title: 'Command palette', category: 'General', keywords: 'search commands', inText: true, hidden: true },
+  { id: 'makeVertical', category: 'General', keywords: 'duplicate copy portrait tall 9:16 short shorts reels tiktok follow' },
+  { id: 'makeSquare', category: 'General', keywords: 'duplicate copy 1:1 post instagram follow' },
+  { id: 'duplicateVideo', category: 'General', keywords: 'copy clone project version' },
+  { id: 'toggleSafeZones', category: 'General', keywords: 'vertical tiktok reels shorts buttons captions phone app overlay', toggle: true },
+  { id: 'export', category: 'General', keywords: 'render save mp4 gif video share' },
+  { id: 'shortcuts', category: 'General', keywords: 'keys hotkeys bindings rebind customize keymap' },
+  { id: 'about', category: 'General', keywords: 'version qbexel website credits info' },
+  { id: 'commandPalette', category: 'General', keywords: 'search commands', inText: true, hidden: true },
 
   // NW-13 publishing copy pack (docs/design/publish-pack.md §2.8): every AI text tool, and the pack's items.
-  { id: 'aiCleanup', title: 'Fix captions with AI', category: 'Captions', keywords: 'ai clean up correct spelling punctuation misheard transcript' },
-  { id: 'aiTranslate', title: 'Translate captions with AI…', category: 'Captions', keywords: 'ai language subtitles transcript other' },
-  { id: 'aiChapters', title: 'Suggest chapters with AI', category: 'Captions', keywords: 'ai chapter markers sections youtube timestamps' },
-  { id: 'aiTitle', title: 'Suggest a title with AI', category: 'Captions', keywords: 'ai name rename recording heading' },
-  { id: 'aiSummary', title: 'Summarize with AI', category: 'Captions', keywords: 'ai summary summarise description overview' },
-  { id: 'publishPack', title: 'Publish: write the copy…', category: 'Publish', keywords: 'ai copy pack text description post social share all tone length' },
-  { id: 'publishYoutube', title: 'Write a YouTube description', category: 'Publish', keywords: 'ai copy description chapters timestamps tags video upload' },
-  { id: 'publishLinkedin', title: 'Write a LinkedIn post', category: 'Publish', keywords: 'ai copy social share post' },
-  { id: 'publishX', title: 'Write an X post', category: 'Publish', keywords: 'ai copy twitter tweet social share post' },
-  { id: 'publishArticle', title: 'Write a help-centre article', category: 'Publish', keywords: 'ai copy help center knowledge base docs how to steps guide' },
-  { id: 'publishReleaseNotes', title: 'Write release notes', category: 'Publish', keywords: 'ai copy changelog what changed update new fixed improved product' },
+  { id: 'aiCleanup', category: 'Captions', keywords: 'ai clean up correct spelling punctuation misheard transcript' },
+  { id: 'aiTranslate', category: 'Captions', keywords: 'ai language subtitles transcript other' },
+  { id: 'aiChapters', category: 'Captions', keywords: 'ai chapter markers sections youtube timestamps' },
+  { id: 'aiTitle', category: 'Captions', keywords: 'ai name rename recording heading' },
+  { id: 'aiSummary', category: 'Captions', keywords: 'ai summary summarise description overview' },
+  { id: 'publishPack', category: 'Publish', keywords: 'ai copy pack text description post social share all tone length' },
+  { id: 'publishYoutube', category: 'Publish', keywords: 'ai copy description chapters timestamps tags video upload' },
+  { id: 'publishLinkedin', category: 'Publish', keywords: 'ai copy social share post' },
+  { id: 'publishX', category: 'Publish', keywords: 'ai copy twitter tweet social share post' },
+  { id: 'publishArticle', category: 'Publish', keywords: 'ai copy help center knowledge base docs how to steps guide' },
+  { id: 'publishReleaseNotes', category: 'Publish', keywords: 'ai copy changelog what changed update new fixed improved product' },
 
   // Output and languages (docs/design/output-and-languages.md §2.5): listed only while Settings has a Language section.
-  { id: 'language', title: 'Language…', category: 'General', keywords: 'language ভাষা bangla বাংলা english español हिन्दी' },
+  { id: 'language', category: 'General', keywords: 'language ভাষা bangla বাংলা english español हिन्दी' },
 
   // E-09 nudge, E-07 filmstrip, E-12 versions (docs/design/versions.md): the step keys nudge while items are selected (shortcuts.ts NUDGE_STEPS).
-  { id: 'nudgeBack', title: 'Move selected items one frame earlier', category: 'Edit', keywords: 'nudge shift left arrow frame item selection earlier', repeat: true },
-  { id: 'nudgeForward', title: 'Move selected items one frame later', category: 'Edit', keywords: 'nudge shift right arrow frame item selection later', repeat: true },
-  { id: 'nudgeBackTen', title: 'Move selected items ten frames earlier', category: 'Edit', keywords: 'nudge shift left arrow frames item selection earlier', repeat: true },
-  { id: 'nudgeForwardTen', title: 'Move selected items ten frames later', category: 'Edit', keywords: 'nudge shift right arrow frames item selection later', repeat: true },
-  { id: 'toggleFilmstrip', title: 'Frames on the clip track', category: 'Timeline', keywords: 'filmstrip thumbnails pictures preview video frames show hide', toggle: true },
-  { id: 'saveVersion', title: 'Save a version…', category: 'General', keywords: 'snapshot history checkpoint backup keep edit restore' },
-  { id: 'versions', title: 'Versions…', category: 'General', keywords: 'history snapshot restore go back compare checkpoint earlier edit' },
+  { id: 'nudgeBack', category: 'Edit', keywords: 'nudge shift left arrow frame item selection earlier', repeat: true },
+  { id: 'nudgeForward', category: 'Edit', keywords: 'nudge shift right arrow frame item selection later', repeat: true },
+  { id: 'nudgeBackTen', category: 'Edit', keywords: 'nudge shift left arrow frames item selection earlier', repeat: true },
+  { id: 'nudgeForwardTen', category: 'Edit', keywords: 'nudge shift right arrow frames item selection later', repeat: true },
+  { id: 'toggleFilmstrip', category: 'Timeline', keywords: 'filmstrip thumbnails pictures preview video frames show hide', toggle: true },
+  { id: 'saveVersion', category: 'General', keywords: 'snapshot history checkpoint backup keep edit restore' },
+  { id: 'versions', category: 'General', keywords: 'history snapshot restore go back compare checkpoint earlier edit' },
 
   // Editing polish (docs/design/editing-polish.md §2.8): no default keys (users give them keys in the shortcuts editor).
-  { id: 'smoothAllCuts', title: 'Smooth all cuts', category: 'Playback', keywords: 'cut style crossfade transition punch-in jump cut soften every' },
-  { id: 'hardCutsEverywhere', title: 'Use hard cuts everywhere', category: 'Playback', keywords: 'cut style no transition plain jump every' },
-  { id: 'nextCut', title: 'Go to next cut', category: 'Playback', keywords: 'cut jump skip forward following transition style' },
-  { id: 'previousCut', title: 'Go to previous cut', category: 'Playback', keywords: 'cut jump skip back earlier transition style' },
-  { id: 'playCut', title: 'Play this cut', category: 'Playback', keywords: 'cut preview listen watch transition around' },
-  { id: 'addMagnifier', title: 'Add magnifier', category: 'Add', keywords: 'magnify loupe zoom lens detail larger bigger glass' },
-  { id: 'addMagnifierCursor', title: 'Add magnifier on the cursor', category: 'Add', keywords: 'magnify loupe zoom lens pointer mouse follow glass' },
-  { id: 'addStepBadge', title: 'Add step badge', category: 'Add', keywords: 'number step badge callout 1 2 3 sequence marker' },
-  { id: 'addSpeechBubble', title: 'Add speech bubble', category: 'Add', keywords: 'callout bubble balloon tail comment note text' },
-  { id: 'toggleProgressBar', title: 'Progress bar on the video', category: 'Effects', keywords: 'progress chapter bar chapters timeline played', toggle: true },
-  { id: 'compareColour', title: 'Compare with original colour', category: 'Effects', keywords: 'color colour grade look before after original lut', toggle: true },
-  { id: 'autoColour', title: 'Auto colour for the camera', category: 'Camera', keywords: 'color colour white balance auto correct webcam exposure' },
-  { id: 'musicLibrary', title: 'Music library…', category: 'Panels', keywords: 'music bed background song track library sound audio' },
+  { id: 'smoothAllCuts', category: 'Playback', keywords: 'cut style crossfade transition punch-in jump cut soften every' },
+  { id: 'hardCutsEverywhere', category: 'Playback', keywords: 'cut style no transition plain jump every' },
+  { id: 'nextCut', category: 'Playback', keywords: 'cut jump skip forward following transition style' },
+  { id: 'previousCut', category: 'Playback', keywords: 'cut jump skip back earlier transition style' },
+  { id: 'playCut', category: 'Playback', keywords: 'cut preview listen watch transition around' },
+  { id: 'addMagnifier', category: 'Add', keywords: 'magnify loupe zoom lens detail larger bigger glass' },
+  { id: 'addMagnifierCursor', category: 'Add', keywords: 'magnify loupe zoom lens pointer mouse follow glass' },
+  { id: 'addStepBadge', category: 'Add', keywords: 'number step badge callout 1 2 3 sequence marker' },
+  { id: 'addSpeechBubble', category: 'Add', keywords: 'callout bubble balloon tail comment note text' },
+  { id: 'toggleProgressBar', category: 'Effects', keywords: 'progress chapter bar chapters timeline played', toggle: true },
+  { id: 'compareColour', category: 'Effects', keywords: 'color colour grade look before after original lut', toggle: true },
+  { id: 'autoColour', category: 'Camera', keywords: 'color colour white balance auto correct webcam exposure' },
+  { id: 'musicLibrary', category: 'Panels', keywords: 'music bed background song track library sound audio' },
 
   // Smart tools (docs/design/smart-tools.md §2.8): no default keys. The existing aiChapters keeps its id and title and runs Suggest chapters (§7.6.1).
-  { id: 'guide', title: 'Make a step-by-step guide…', category: 'Publish', keywords: 'how to steps screenshots pdf markdown html instructions document tutorial copy paste' },
-  { id: 'demo', title: 'Make a click-through demo…', category: 'Publish', keywords: 'interactive walkthrough hotspot offline html tour' },
-  { id: 'bugReport', title: 'Write a bug report with steps…', category: 'Publish', keywords: 'steps to reproduce issue ticket expected actual jira' },
-  { id: 'findChapters', title: 'Find chapters', category: 'Add', keywords: 'chapter markers sections youtube timestamps split auto scenes pauses' },
-  { id: 'shortClips', title: 'Find short clips…', category: 'General', keywords: 'highlights moments shorts reels tiktok best parts copy vertical' },
-  { id: 'shortVersion', title: 'Make a shorter version…', category: 'General', keywords: 'short summary cut down highlights 30 60 90 seconds copy' },
-  { id: 'localAi', title: 'Set up AI on this PC…', category: 'General', keywords: 'offline local model no key download private gemma qwen' },
-  { id: 'aiService', title: 'Add an AI service…', category: 'General', keywords: 'openrouter groq together azure ollama lm studio openai compatible api key provider model' }
+  { id: 'guide', category: 'Publish', keywords: 'how to steps screenshots pdf markdown html instructions document tutorial copy paste' },
+  { id: 'demo', category: 'Publish', keywords: 'interactive walkthrough hotspot offline html tour' },
+  { id: 'bugReport', category: 'Publish', keywords: 'steps to reproduce issue ticket expected actual jira' },
+  { id: 'findChapters', category: 'Add', keywords: 'chapter markers sections youtube timestamps split auto scenes pauses' },
+  { id: 'shortClips', category: 'General', keywords: 'highlights moments shorts reels tiktok best parts copy vertical' },
+  { id: 'shortVersion', category: 'General', keywords: 'short summary cut down highlights 30 60 90 seconds copy' },
+  { id: 'localAi', category: 'General', keywords: 'offline local model no key download private gemma qwen' },
+  { id: 'aiService', category: 'General', keywords: 'openrouter groq together azure ollama lm studio openai compatible api key provider model' }
 ] as const satisfies readonly CommandSpec[]
 
 export type CommandId = (typeof COMMAND_LIST)[number]['id']
 
-export const COMMANDS: readonly CommandInfo[] = COMMAND_LIST
+export const COMMANDS: readonly CommandInfo[] = COMMAND_LIST.map((c) => ({ ...c, title: commandsEn[`title.${c.id}`] }))
 export const COMMAND_IDS: readonly CommandId[] = COMMANDS.map((c) => c.id)
 
 const BY_ID = new Map<string, CommandInfo>(COMMANDS.map((c) => [c.id, c]))
@@ -214,11 +224,32 @@ export function commandInfo(id: CommandId): CommandInfo {
   return BY_ID.get(id)!
 }
 
-/** Commands the palette offers. */
+/** A command's title in the UI language: "Split clip at playhead". */
+export function commandTitle(command: CommandId | Pick<CommandInfo, 'id'>): string {
+  const id: CommandId = typeof command === 'string' ? command : command.id
+  return t(`commands.title.${id}`)
+}
+
+/** A category's name in the UI language; in English it is the id itself ("Playback"). */
+export function categoryLabel(category: CommandCategory): string {
+  return t(`commands.category.${category.toLowerCase() as Lowercase<CommandCategory>}`)
+}
+
 /** Commands that exist only while a language other than English ships (output-and-languages §2.5): left out of the palette and the shortcuts editor until then. */
 export const LANGUAGE_COMMANDS: readonly CommandId[] = ['language']
 
+/** Commands the palette offers. */
 export const PALETTE_COMMANDS: readonly CommandInfo[] = COMMANDS.filter((c) => !c.hidden && !LANGUAGE_COMMANDS.includes(c.id))
+
+/** The palette's commands, with Language… only while Settings has a Language section (§2.5). */
+export function paletteCommands(languageSection: boolean): readonly CommandInfo[] {
+  return languageSection ? [...PALETTE_COMMANDS, commandInfo('language')] : PALETTE_COMMANDS
+}
+
+/** The commands the shortcuts editor lists: every one, with Language… only while Settings has a Language section. */
+export function listedCommands(languageSection: boolean): readonly CommandInfo[] {
+  return languageSection ? COMMANDS : COMMANDS.filter((c) => !LANGUAGE_COMMANDS.includes(c.id))
+}
 
 /* ---------- fuzzy search ---------- */
 
@@ -313,7 +344,7 @@ export function fuzzyMatch(query: string, text: string): FuzzyMatch | null {
 export interface RankedCommand {
   command: CommandInfo
   score: number
-  /** Matched characters of the title. */
+  /** Matched characters of the title the palette shows (commandTitle, in NFC). */
   indices: number[]
   recent: boolean
 }
@@ -324,13 +355,16 @@ const RECENT_BOOST = 3
 const KEYWORD_SCORE = 2
 
 /**
- * Commands matching `query`, best first. Every word of the query must match the title, or
- * failing that start a word of the category or keywords (scoring less, without highlights). Recently used
- * commands rank higher; with an empty query they come first, in the order they were used,
- * followed by the rest in registry order.
+ * Commands matching `query`, best first. Every word of the query must match the title shown
+ * (`titleOf`, the UI language's), or failing that the English title (without highlights), or
+ * failing that start a word of the category or keywords (scoring less, without highlights).
+ * Query, titles and keywords are compared in NFC, so a letter typed precomposed or as its parts
+ * (য়) finds the same commands (output-and-languages §21.8). Recently used commands rank higher;
+ * with an empty query they come first, in the order they were used, followed by the rest in
+ * registry order.
  */
-export function searchCommands(commands: readonly CommandInfo[], query: string, recent: readonly CommandId[] = []): RankedCommand[] {
-  const words = query.trim().split(/\s+/).filter(Boolean)
+export function searchCommands(commands: readonly CommandInfo[], query: string, recent: readonly CommandId[] = [], titleOf: (command: CommandInfo) => string = commandTitle): RankedCommand[] {
+  const words = query.normalize('NFC').trim().split(/\s+/).filter(Boolean)
   const recentRank = new Map(recent.map((id, i) => [id, i]))
   if (words.length === 0) {
     const first = recent.map((id) => commands.find((c) => c.id === id)).filter((c): c is CommandInfo => !!c)
@@ -339,14 +373,25 @@ export function searchCommands(commands: readonly CommandInfo[], query: string, 
   }
   const out: { ranked: RankedCommand; order: number }[] = []
   commands.forEach((command, order) => {
-    const extra = `${command.category} ${command.keywords ?? ''}`.toLowerCase().split(/\s+/)
+    const title = titleOf(command).normalize('NFC')
+    const english = command.title.normalize('NFC')
+    const label = categoryLabel(command.category)
+    // The category by its name in the UI language and by its English id (the same word in English).
+    const category = label === command.category ? command.category : `${label} ${command.category}`
+    const extra = `${category} ${command.keywords ?? ''}`.normalize('NFC').toLowerCase().split(/\s+/)
     let score = 0
     const indices = new Set<number>()
     for (const word of words) {
-      const inTitle = fuzzyMatch(word, command.title)
+      const inTitle = fuzzyMatch(word, title)
       if (inTitle) {
         score += inTitle.score
         for (const i of inTitle.indices) indices.add(i)
+        continue
+      }
+      // The English title, in another UI language: as good a match, but nothing to highlight.
+      const inEnglish = english !== title ? fuzzyMatch(word, english) : null
+      if (inEnglish) {
+        score += inEnglish.score
         continue
       }
       // Category and keywords match by the start of a word only, and score below the title.
@@ -355,7 +400,7 @@ export function searchCommands(commands: readonly CommandInfo[], query: string, 
       score += KEYWORD_SCORE + w.length
     }
     // On a tie, the title the query covers more of ("export": "Export…" before "Export captions…").
-    if (indices.size) score += indices.size / command.title.length
+    if (indices.size) score += indices.size / title.length
     const r = recentRank.get(command.id)
     const recentHit = r !== undefined
     if (recentHit) score += RECENT_BOOST * (1 - r / Math.max(1, recent.length))

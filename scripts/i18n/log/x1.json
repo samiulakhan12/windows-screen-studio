@@ -1,0 +1,1159 @@
+[
+  {
+    "key": "commands.palette.recent",
+    "file": "src/renderer/src/editor/CommandPalette.tsx",
+    "line": 98,
+    "english": "Recently used",
+    "sample": {}
+  },
+  {
+    "key": "commands.palette.label",
+    "file": "src/renderer/src/editor/CommandPalette.tsx",
+    "line": 161,
+    "english": "Command palette",
+    "sample": {}
+  },
+  {
+    "key": "commands.palette.search",
+    "file": "src/renderer/src/editor/CommandPalette.tsx",
+    "line": 168,
+    "english": "Search commands",
+    "sample": {}
+  },
+  {
+    "key": "commands.palette.placeholder",
+    "file": "src/renderer/src/editor/CommandPalette.tsx",
+    "line": 173,
+    "english": "Type a command…",
+    "sample": {}
+  },
+  {
+    "key": "commands.palette.list",
+    "file": "src/renderer/src/editor/CommandPalette.tsx",
+    "line": 184,
+    "english": "Commands",
+    "sample": {}
+  },
+  {
+    "key": "commands.palette.results",
+    "file": "src/renderer/src/editor/CommandPalette.tsx",
+    "line": 186,
+    "english": "Results",
+    "sample": {}
+  },
+  {
+    "key": "commands.palette.on",
+    "file": "src/renderer/src/editor/CommandPalette.tsx",
+    "line": 214,
+    "english": "On",
+    "sample": {}
+  },
+  {
+    "key": "commands.palette.noMatch",
+    "file": "src/renderer/src/editor/CommandPalette.tsx",
+    "line": 223,
+    "english": "No commands match “«query»”",
+    "sample": {
+      "query": "«query»"
+    }
+  },
+  {
+    "key": "commands.palette.help",
+    "file": "src/renderer/src/editor/CommandPalette.tsx",
+    "line": 229,
+    "english": "↑↓ move Enter run Esc close",
+    "sample": {}
+  },
+  {
+    "key": "commands.title.play",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Play / pause",
+    "sample": {}
+  },
+  {
+    "key": "commands.title.goToStart",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Go to start",
+    "sample": {}
+  },
+  {
+    "key": "commands.title.goToEnd",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Go to end",
+    "sample": {}
+  },
+  {
+    "key": "commands.title.stepBack",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Step back one frame",
+    "sample": {}
+  },
+  {
+    "key": "commands.title.stepForward",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Step forward one frame",
+    "sample": {}
+  },
+  {
+    "key": "commands.title.jumpBack",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Back one second",
+    "sample": {}
+  },
+  {
+    "key": "commands.title.jumpForward",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Forward one second",
+    "sample": {}
+  },
+  {
+    "key": "commands.title.nextChapter",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Go to next chapter",
+    "sample": {}
+  },
+  {
+    "key": "commands.title.prevChapter",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Go to previous chapter",
+    "sample": {}
+  },
+  {
+    "key": "commands.title.shuttleReverse",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Play backwards (again: faster)",
+    "sample": {}
+  },
+  {
+    "key": "commands.title.shuttlePause",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Pause",
+    "sample": {}
+  },
+  {
+    "key": "commands.title.shuttleForward",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Play forward (again: faster)",
+    "sample": {}
+  },
+  {
+    "key": "commands.title.previewSpeedUp",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Faster preview speed",
+    "sample": {}
+  },
+  {
+    "key": "commands.title.previewSpeedDown",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Slower preview speed",
+    "sample": {}
+  },
+  {
+    "key": "commands.title.undo",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Undo",
+    "sample": {}
+  },
+  {
+    "key": "commands.title.redo",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Redo",
+    "sample": {}
+  },
+  {
+    "key": "commands.title.split",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Split clip at playhead",
+    "sample": {}
+  },
+  {
+    "key": "commands.title.deleteSelection",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Delete selection",
+    "sample": {}
+  },
+  {
+    "key": "commands.title.cutRange",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Cut selected range",
+    "sample": {}
+  },
+  {
+    "key": "commands.title.restoreAll",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Restore the whole recording",
+    "sample": {}
+  },
+  {
+    "key": "commands.title.smartSpeed",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Smart speed: find idle parts",
+    "sample": {}
+  },
+  {
+    "key": "commands.title.polish",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Polish in one click…",
+    "sample": {}
+  },
+  {
+    "key": "commands.title.review",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Review automatic changes…",
+    "sample": {}
+  },
+  {
+    "key": "commands.title.straightenRange",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Straighten cursor in selected range",
+    "sample": {}
+  },
+  {
+    "key": "commands.title.recordedPathRange",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Keep recorded cursor path in selected range",
+    "sample": {}
+  },
+  {
+    "key": "commands.title.cropRecording",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Crop the recording…",
+    "sample": {}
+  },
+  {
+    "key": "commands.title.resetCrop",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Show the whole recording (reset crop)",
+    "sample": {}
+  },
+  {
+    "key": "commands.title.cropTaskbar",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Crop out the taskbar",
+    "sample": {}
+  },
+  {
+    "key": "commands.title.toggleFreezeSound",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Freeze frame: pause or keep the sound",
+    "sample": {}
+  },
+  {
+    "key": "commands.title.selectAll",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Select all items on the track (again: every item)",
+    "sample": {}
+  },
+  {
+    "key": "commands.title.copyItems",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Copy selected items",
+    "sample": {}
+  },
+  {
+    "key": "commands.title.cutItems",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Cut selected items",
+    "sample": {}
+  },
+  {
+    "key": "commands.title.pasteItems",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Paste items at playhead",
+    "sample": {}
+  },
+  {
+    "key": "commands.title.duplicateItems",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Duplicate selected items",
+    "sample": {}
+  },
+  {
+    "key": "commands.title.copyLook",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Copy look of the selected item",
+    "sample": {}
+  },
+  {
+    "key": "commands.title.pasteLook",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Paste look onto selected items",
+    "sample": {}
+  },
+  {
+    "key": "commands.title.addZoom",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Add zoom at playhead",
+    "sample": {}
+  },
+  {
+    "key": "commands.title.addText",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Add text at playhead",
+    "sample": {}
+  },
+  {
+    "key": "commands.title.addArrow",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Add arrow",
+    "sample": {}
+  },
+  {
+    "key": "commands.title.addLine",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Add line",
+    "sample": {}
+  },
+  {
+    "key": "commands.title.addRect",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Add rectangle",
+    "sample": {}
+  },
+  {
+    "key": "commands.title.addEllipse",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Add ellipse",
+    "sample": {}
+  },
+  {
+    "key": "commands.title.addHighlight",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Add highlight",
+    "sample": {}
+  },
+  {
+    "key": "commands.title.addBlur",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Add blur",
+    "sample": {}
+  },
+  {
+    "key": "commands.title.addPixelate",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Add pixelate",
+    "sample": {}
+  },
+  {
+    "key": "commands.title.addSpotlight",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Add spotlight",
+    "sample": {}
+  },
+  {
+    "key": "commands.title.addCursorSpotlight",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Add cursor spotlight",
+    "sample": {}
+  },
+  {
+    "key": "commands.title.addTitle",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Add title card at playhead",
+    "sample": {}
+  },
+  {
+    "key": "commands.title.addChapter",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Add chapter at playhead",
+    "sample": {}
+  },
+  {
+    "key": "commands.title.freezeFrame",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Freeze frame at playhead",
+    "sample": {}
+  },
+  {
+    "key": "commands.title.zoomLevel0",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Pull back selected zoom (0.75×)",
+    "sample": {}
+  },
+  {
+    "key": "commands.title.zoomLevel1",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Zoom level 1.25×",
+    "sample": {}
+  },
+  {
+    "key": "commands.title.zoomLevel2",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Zoom level 1.5×",
+    "sample": {}
+  },
+  {
+    "key": "commands.title.zoomLevel3",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Zoom level 2×",
+    "sample": {}
+  },
+  {
+    "key": "commands.title.zoomLevel4",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Zoom level 3×",
+    "sample": {}
+  },
+  {
+    "key": "commands.title.toggleClickAtPlayhead",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Ignore or use the click at the playhead",
+    "sample": {}
+  },
+  {
+    "key": "commands.title.findStrayClicks",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Find stray clicks",
+    "sample": {}
+  },
+  {
+    "key": "commands.title.useAllClicks",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Use all ignored clicks again",
+    "sample": {}
+  },
+  {
+    "key": "commands.title.toggleFollow",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Follow the action",
+    "sample": {}
+  },
+  {
+    "key": "commands.title.holdView",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Hold the view here",
+    "sample": {}
+  },
+  {
+    "key": "commands.title.toggleCursor",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Smooth cursor",
+    "sample": {}
+  },
+  {
+    "key": "commands.title.toggleClickEffects",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Click effects",
+    "sample": {}
+  },
+  {
+    "key": "commands.title.toggleStraighten",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Straighten cursor moves",
+    "sample": {}
+  },
+  {
+    "key": "commands.title.toggleMotionBlur",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Motion blur",
+    "sample": {}
+  },
+  {
+    "key": "commands.title.toggleKeystrokes",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Keystroke overlay",
+    "sample": {}
+  },
+  {
+    "key": "commands.title.toggleWebcam",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Camera bubble",
+    "sample": {}
+  },
+  {
+    "key": "commands.title.layoutDefault",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Camera layout: screen with camera bubble",
+    "sample": {}
+  },
+  {
+    "key": "commands.title.layoutCameraOnly",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Camera layout: camera only",
+    "sample": {}
+  },
+  {
+    "key": "commands.title.layoutScreenOnly",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Camera layout: screen only",
+    "sample": {}
+  },
+  {
+    "key": "commands.title.layoutSideBySide",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Camera layout: side by side",
+    "sample": {}
+  },
+  {
+    "key": "commands.title.layoutCameraLarge",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Camera layout: large camera",
+    "sample": {}
+  },
+  {
+    "key": "commands.title.directCamera",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Direct the camera automatically",
+    "sample": {}
+  },
+  {
+    "key": "commands.title.generateCaptions",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Generate captions",
+    "sample": {}
+  },
+  {
+    "key": "commands.title.toggleCaptions",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Show or hide captions",
+    "sample": {}
+  },
+  {
+    "key": "commands.title.exportCaptions",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Export captions…",
+    "sample": {}
+  },
+  {
+    "key": "commands.title.captionsGreat",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Make my captions great",
+    "sample": {}
+  },
+  {
+    "key": "commands.title.captionStyles",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Caption styles…",
+    "sample": {}
+  },
+  {
+    "key": "commands.title.captionEmphasis",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Find important words",
+    "sample": {}
+  },
+  {
+    "key": "commands.title.captionGraphics",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Add pop-ups from captions",
+    "sample": {}
+  },
+  {
+    "key": "commands.title.captionTidy",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Tidy captions",
+    "sample": {}
+  },
+  {
+    "key": "commands.title.captionLanguage",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Add a caption language…",
+    "sample": {}
+  },
+  {
+    "key": "commands.title.saveCaptionStyle",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Save caption style as mine",
+    "sample": {}
+  },
+  {
+    "key": "commands.title.showStyle",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Open Style settings",
+    "sample": {}
+  },
+  {
+    "key": "commands.title.showCursor",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Open Cursor settings",
+    "sample": {}
+  },
+  {
+    "key": "commands.title.showZoom",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Open Zoom settings",
+    "sample": {}
+  },
+  {
+    "key": "commands.title.showClip",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Open Clip settings",
+    "sample": {}
+  },
+  {
+    "key": "commands.title.showText",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Open Text settings",
+    "sample": {}
+  },
+  {
+    "key": "commands.title.showCaptions",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Open Captions settings",
+    "sample": {}
+  },
+  {
+    "key": "commands.title.showShapes",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Open Shapes settings",
+    "sample": {}
+  },
+  {
+    "key": "commands.title.showEffects",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Open Effects settings",
+    "sample": {}
+  },
+  {
+    "key": "commands.title.showCamera",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Open Camera settings",
+    "sample": {}
+  },
+  {
+    "key": "commands.title.showAudio",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Open Audio settings",
+    "sample": {}
+  },
+  {
+    "key": "commands.title.timelineZoomIn",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Zoom timeline in",
+    "sample": {}
+  },
+  {
+    "key": "commands.title.timelineZoomOut",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Zoom timeline out",
+    "sample": {}
+  },
+  {
+    "key": "commands.title.timelineFit",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Fit timeline to window",
+    "sample": {}
+  },
+  {
+    "key": "commands.title.toggleWaveform",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Audio waveform on the timeline",
+    "sample": {}
+  },
+  {
+    "key": "commands.title.toggleSnapping",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Snapping",
+    "sample": {}
+  },
+  {
+    "key": "commands.title.makeVertical",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Make a vertical version",
+    "sample": {}
+  },
+  {
+    "key": "commands.title.makeSquare",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Make a square version",
+    "sample": {}
+  },
+  {
+    "key": "commands.title.duplicateVideo",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Duplicate this video",
+    "sample": {}
+  },
+  {
+    "key": "commands.title.toggleSafeZones",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Show safe zones",
+    "sample": {}
+  },
+  {
+    "key": "commands.title.export",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Export…",
+    "sample": {}
+  },
+  {
+    "key": "commands.title.shortcuts",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Keyboard shortcuts…",
+    "sample": {}
+  },
+  {
+    "key": "commands.title.about",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "About Flown",
+    "sample": {}
+  },
+  {
+    "key": "commands.title.commandPalette",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Command palette",
+    "sample": {}
+  },
+  {
+    "key": "commands.title.aiCleanup",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Fix captions with AI",
+    "sample": {}
+  },
+  {
+    "key": "commands.title.aiTranslate",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Translate captions with AI…",
+    "sample": {}
+  },
+  {
+    "key": "commands.title.aiChapters",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Suggest chapters with AI",
+    "sample": {}
+  },
+  {
+    "key": "commands.title.aiTitle",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Suggest a title with AI",
+    "sample": {}
+  },
+  {
+    "key": "commands.title.aiSummary",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Summarize with AI",
+    "sample": {}
+  },
+  {
+    "key": "commands.title.publishPack",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Publish: write the copy…",
+    "sample": {}
+  },
+  {
+    "key": "commands.title.publishYoutube",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Write a YouTube description",
+    "sample": {}
+  },
+  {
+    "key": "commands.title.publishLinkedin",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Write a LinkedIn post",
+    "sample": {}
+  },
+  {
+    "key": "commands.title.publishX",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Write an X post",
+    "sample": {}
+  },
+  {
+    "key": "commands.title.publishArticle",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Write a help-centre article",
+    "sample": {}
+  },
+  {
+    "key": "commands.title.publishReleaseNotes",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Write release notes",
+    "sample": {}
+  },
+  {
+    "key": "commands.title.language",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Language…",
+    "sample": {}
+  },
+  {
+    "key": "commands.title.nudgeBack",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Move selected items one frame earlier",
+    "sample": {}
+  },
+  {
+    "key": "commands.title.nudgeForward",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Move selected items one frame later",
+    "sample": {}
+  },
+  {
+    "key": "commands.title.nudgeBackTen",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Move selected items ten frames earlier",
+    "sample": {}
+  },
+  {
+    "key": "commands.title.nudgeForwardTen",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Move selected items ten frames later",
+    "sample": {}
+  },
+  {
+    "key": "commands.title.toggleFilmstrip",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Frames on the clip track",
+    "sample": {}
+  },
+  {
+    "key": "commands.title.saveVersion",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Save a version…",
+    "sample": {}
+  },
+  {
+    "key": "commands.title.versions",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Versions…",
+    "sample": {}
+  },
+  {
+    "key": "commands.title.smoothAllCuts",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Smooth all cuts",
+    "sample": {}
+  },
+  {
+    "key": "commands.title.hardCutsEverywhere",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Use hard cuts everywhere",
+    "sample": {}
+  },
+  {
+    "key": "commands.title.nextCut",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Go to next cut",
+    "sample": {}
+  },
+  {
+    "key": "commands.title.previousCut",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Go to previous cut",
+    "sample": {}
+  },
+  {
+    "key": "commands.title.playCut",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Play this cut",
+    "sample": {}
+  },
+  {
+    "key": "commands.title.addMagnifier",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Add magnifier",
+    "sample": {}
+  },
+  {
+    "key": "commands.title.addMagnifierCursor",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Add magnifier on the cursor",
+    "sample": {}
+  },
+  {
+    "key": "commands.title.addStepBadge",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Add step badge",
+    "sample": {}
+  },
+  {
+    "key": "commands.title.addSpeechBubble",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Add speech bubble",
+    "sample": {}
+  },
+  {
+    "key": "commands.title.toggleProgressBar",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Progress bar on the video",
+    "sample": {}
+  },
+  {
+    "key": "commands.title.compareColour",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Compare with original colour",
+    "sample": {}
+  },
+  {
+    "key": "commands.title.autoColour",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Auto colour for the camera",
+    "sample": {}
+  },
+  {
+    "key": "commands.title.musicLibrary",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Music library…",
+    "sample": {}
+  },
+  {
+    "key": "commands.title.guide",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Make a step-by-step guide…",
+    "sample": {}
+  },
+  {
+    "key": "commands.title.demo",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Make a click-through demo…",
+    "sample": {}
+  },
+  {
+    "key": "commands.title.bugReport",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Write a bug report with steps…",
+    "sample": {}
+  },
+  {
+    "key": "commands.title.findChapters",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Find chapters",
+    "sample": {}
+  },
+  {
+    "key": "commands.title.shortClips",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Find short clips…",
+    "sample": {}
+  },
+  {
+    "key": "commands.title.shortVersion",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Make a shorter version…",
+    "sample": {}
+  },
+  {
+    "key": "commands.title.localAi",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Set up AI on this PC…",
+    "sample": {}
+  },
+  {
+    "key": "commands.title.aiService",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Add an AI service…",
+    "sample": {}
+  },
+  {
+    "key": "commands.category.playback",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Playback",
+    "sample": {}
+  },
+  {
+    "key": "commands.category.edit",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Edit",
+    "sample": {}
+  },
+  {
+    "key": "commands.category.add",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Add",
+    "sample": {}
+  },
+  {
+    "key": "commands.category.zoom",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Zoom",
+    "sample": {}
+  },
+  {
+    "key": "commands.category.effects",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Effects",
+    "sample": {}
+  },
+  {
+    "key": "commands.category.camera",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Camera",
+    "sample": {}
+  },
+  {
+    "key": "commands.category.captions",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Captions",
+    "sample": {}
+  },
+  {
+    "key": "commands.category.panels",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Panels",
+    "sample": {}
+  },
+  {
+    "key": "commands.category.timeline",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Timeline",
+    "sample": {}
+  },
+  {
+    "key": "commands.category.general",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "General",
+    "sample": {}
+  },
+  {
+    "key": "commands.category.publish",
+    "file": "src/shared/editor/commands.ts",
+    "line": 7,
+    "english": "Publish",
+    "sample": {}
+  }
+]

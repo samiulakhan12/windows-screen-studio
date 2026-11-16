@@ -7,7 +7,7 @@ import { captionsOf } from '../../../shared/captions/settings'
 import { createAnnotation } from '../../../shared/editor/annotations'
 import { Autosaver } from '../../../shared/editor/autosave'
 import { canSplitAt, clipAt, correctProjectMedia, displayTime, restoreRange, stepOutput } from '../../../shared/editor/clips'
-import { commandInfo, PALETTE_COMMANDS, type CommandId } from '../../../shared/editor/commands'
+import { commandInfo, paletteCommands, type CommandId } from '../../../shared/editor/commands'
 import { currentUiInfo, noteProjectLanguages, showLanguageSection } from '../i18n/boot'
 import { cropNotice, setCrop, setZoomLevelInView, snapCrop, taskbarCrop, type CropDraft } from '../../../shared/editor/cropEdit'
 import { directUnavailable } from '../../../shared/editor/directorCopy'
@@ -1699,7 +1699,7 @@ function EditorSession({
     on.toggleFollow = followable && p.reframe?.mode === 'follow'
     on.toggleSafeZones = isTall(frame.outW, frame.outH) && safeZoneChoice() !== 'off'
     // Language… exists only while Settings has a Language section (output-and-languages §2.5).
-    const listed = showLanguageSection(currentUiInfo()) ? [...PALETTE_COMMANDS, commandInfo('language')] : PALETTE_COMMANDS
+    const listed = paletteCommands(showLanguageSection(currentUiInfo()))
     return listed.map((info) => ({ info, shortcuts: commandKeys(keymap, info.id), unavailable: unavailable[info.id] ?? null, on: info.toggle ? !!on[info.id] : undefined }))
     // Recomputed when the palette opens or something it shows changes, not on every playhead move.
   }, [dialog, project, selection, group, keymap, cursor.valid, rows, data.webcamUrl, store, player, cropDraft, recorded.scale, copy])
