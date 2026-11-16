@@ -15,6 +15,7 @@ import { useEditor } from '../context'
 import { Chips, pctFmt, Section, Slider, Toggle } from '../controls'
 import { useGroup } from '../groupContext'
 import { useKeymap } from '../keymapContext'
+import { t } from '../../../../shared/i18n/t'
 
 /**
  * What the section reads from the editor besides the project (Editor.tsx provides it): whether
@@ -28,16 +29,16 @@ export interface FollowEnv {
 
 export const FollowEnvContext = createContext<FollowEnv>({ cursorValid: true, reveal: 0 })
 
-const PACES: { value: ReframePace; label: string; title: string }[] = [
-  { value: 'calm', label: 'Calm', title: 'Moves less, and more slowly' },
-  { value: 'balanced', label: 'Balanced', title: 'Follows each new place you work in' },
-  { value: 'lively', label: 'Lively', title: 'Reacts sooner and moves faster' }
+const PACES = (): { value: ReframePace; label: string; title: string }[] => [
+  { value: 'calm', label: t('style.followSection.pace.calm'), title: t('style.followSection.pace.calm.title') },
+  { value: 'balanced', label: t('style.followSection.pace.balanced'), title: t('style.followSection.pace.balanced.title') },
+  { value: 'lively', label: t('style.followSection.pace.lively'), title: t('style.followSection.pace.lively.title') }
 ]
 
-const CAMERAS: { value: ReframeCamera; label: string; title: string }[] = [
-  { value: 'top', label: 'Band on top', title: 'Your camera above the screen' },
-  { value: 'bottom', label: 'Band at the bottom', title: 'Your camera under the screen' },
-  { value: 'bubble', label: 'Bubble', title: 'Your camera bubble over the screen, as in the Camera tab' }
+const CAMERAS = (): { value: ReframeCamera; label: string; title: string }[] => [
+  { value: 'top', label: t('style.followSection.camera.top'), title: t('style.followSection.camera.top.title') },
+  { value: 'bottom', label: t('style.followSection.camera.bottom'), title: t('style.followSection.camera.bottom.title') },
+  { value: 'bubble', label: t('style.followSection.camera.bubble'), title: t('style.followSection.camera.bubble.title') }
 ]
 
 /** Settings shown before any are stored: following off, text placed as before. */
@@ -83,12 +84,10 @@ export function FollowSection(props: { project: Project; vw: number; vh: number;
     if (!canFollow('9:16', vw, vh)) return <></>
     return (
       <div data-testid="framing-section" ref={boxRef}>
-        <Section title="Vertical framing">
+        <Section title={t('style.followSection.verticalFraming')}>
           <div className="framing-callout" data-testid="vertical-callout">
-            <span>Making a Short?</span>
-            <button className="btn small" onClick={onMakeVertical}>
-              Make a vertical version
-            </button>
+            <span>{t('style.followSection.makingAShort')}</span>
+            <button className="btn small" onClick={onMakeVertical}>{t('style.followSection.makeAVerticalVersion')}</button>
           </div>
         </Section>
       </div>
@@ -134,64 +133,62 @@ export function FollowSection(props: { project: Project; vw: number; vh: number;
 
   return (
     <div data-testid="framing-section" ref={boxRef}>
-      <Section title="Vertical framing">
+      <Section title={t('style.followSection.verticalFraming')}>
         <div data-testid="follow-toggle">
-          <Toggle label="Follow the action" checked={following} onChange={(on) => store.update((p) => withFollowing(p, on, vw, vh))} />
+          <Toggle label={t('style.followSection.followTheAction')} checked={following} onChange={(on) => store.update((p) => withFollowing(p, on, vw, vh))} />
         </div>
-        {!following && <p className="hint">Your whole screen is shrunk to fit this shape. Turn this on to crop in and follow your cursor, clicks and typing.</p>}
+        {!following && <p className="hint">{t('style.followSection.yourWholeScreenIs')}</p>}
         {following && (
           <>
             <p className="hint" data-testid="follow-status" data-state={status}>
-              {status === 'following' ? 'Following your cursor, clicks and typing.' : 'This recording has no cursor data, so the view stays where you put it.'}
+              {status === 'following' ? t('style.followSection.followingYourCursorClicks') : t('style.followSection.thisRecordingHasNo')}
             </p>
             <div data-testid="follow-level">
-              <Slider label="How close" value={reframe.level} {...REFRAME_LIMITS.level} format={levelFmt} onChange={(v) => set({ level: v }, 'reframe.level')} />
+              <Slider label={t('style.followSection.howClose')} value={reframe.level} {...REFRAME_LIMITS.level} format={levelFmt} onChange={(v) => set({ level: v }, 'reframe.level')} />
             </div>
-            {limited && <p className="hint">Limited to keep the picture sharp.</p>}
+            {limited && <p className="hint">{t('style.followSection.limitedToKeepThe')}</p>}
             <div className="field-block" data-testid="follow-pace">
-              <span className="field-label">Movement</span>
-              <Chips label="Movement" value={reframe.pace} options={PACES} onChange={(pace) => set({ pace })} />
+              <span className="field-label">{t('style.followSection.movement')}</span>
+              <Chips label={t('style.followSection.movement')} value={reframe.pace} options={PACES()} onChange={(pace) => set({ pace })} />
             </div>
             {tall && cameraShown && (
               <div className="field-block" data-testid="follow-camera">
-                <span className="field-label">Camera</span>
-                <Chips label="Camera" value={reframe.camera} options={CAMERAS} onChange={(camera) => set({ camera })} />
-                {reframe.camera === 'bottom' && <p className="hint">The apps put their captions over the bottom of the video, so a band on top usually stays clearer.</p>}
+                <span className="field-label">{t('common.label.camera')}</span>
+                <Chips label={t('common.label.camera')} value={reframe.camera} options={CAMERAS()} onChange={(camera) => set({ camera })} />
+                {reframe.camera === 'bottom' && <p className="hint">{t('style.followSection.theAppsPutTheir')}</p>}
               </div>
             )}
             {tall && cameraShown && reframe.camera !== 'bubble' && (
               <div data-testid="follow-band">
-                <Slider label="Camera size" value={reframe.band} {...REFRAME_LIMITS.band} format={pctFmt} onChange={(v) => set({ band: v }, 'reframe.band')} />
+                <Slider label={t('style.followSection.cameraSize')} value={reframe.band} {...REFRAME_LIMITS.band} format={pctFmt} onChange={(v) => set({ band: v }, 'reframe.band')} />
               </div>
             )}
-            {!tall && cameraShown && <p className="hint">Square videos keep the camera bubble.</p>}
+            {!tall && cameraShown && <p className="hint">{t('style.followSection.squareVideosKeepThe')}</p>}
             {status === 'no-input' && (
-              <div className="field-block" role="group" aria-label="Where the view rests">
-                <span className="field-label">Where the view rests</span>
+              <div className="field-block" role="group" aria-label={t('style.followSection.whereTheViewRests')}>
+                <span className="field-label">{t('style.followSection.whereTheViewRests')}</span>
                 <div data-testid="follow-rest-x">
-                  <Slider label="Left to right" value={rest.x} min={0} max={1} step={0.01} format={pctFmt} onChange={(v) => setRest('x', v)} />
+                  <Slider label={t('style.followSection.leftToRight')} value={rest.x} min={0} max={1} step={0.01} format={pctFmt} onChange={(v) => setRest('x', v)} />
                 </div>
                 {shorter && (
                   <div data-testid="follow-rest-y">
-                    <Slider label="Top to bottom" value={rest.y} min={0} max={1} step={0.01} format={pctFmt} onChange={(v) => setRest('y', v)} />
+                    <Slider label={t('style.followSection.topToBottom')} value={rest.y} min={0} max={1} step={0.01} format={pctFmt} onChange={(v) => setRest('y', v)} />
                   </div>
                 )}
               </div>
             )}
             <div className="field-block">
-              <button className="btn small" data-testid="follow-hold" onClick={() => group.command('holdView')} title={withShortcut('Hold the view here', keymap.holdView)}>
-                Hold the view here
-              </button>
-              <p className="hint">Drag the picture to aim the view. Zooms still work inside it.</p>
+              <button className="btn small" data-testid="follow-hold" onClick={() => group.command('holdView')} title={withShortcut(t('style.followSection.holdTitle'), keymap.holdView)}>{t('style.followSection.holdTheViewHere')}</button>
+              <p className="hint">{t('style.followSection.dragThePictureTo')}</p>
             </div>
             {point?.mode === 'fixed' && (
-              <div className="field-block" role="group" aria-label="View at the playhead">
-                <span className="field-label">View at the playhead</span>
+              <div className="field-block" role="group" aria-label={t('style.followSection.viewAtThePlayhead')}>
+                <span className="field-label">{t('style.followSection.viewAtThePlayhead')}</span>
                 <div data-testid="follow-view-x">
-                  <Slider label="Left to right" value={point.x} min={0} max={1} step={0.01} format={pctFmt} onChange={(v) => setPoint('x', v)} />
+                  <Slider label={t('style.followSection.leftToRight')} value={point.x} min={0} max={1} step={0.01} format={pctFmt} onChange={(v) => setPoint('x', v)} />
                 </div>
                 <div data-testid="follow-view-y">
-                  <Slider label="Top to bottom" value={point.y} min={0} max={1} step={0.01} format={pctFmt} onChange={(v) => setPoint('y', v)} />
+                  <Slider label={t('style.followSection.topToBottom')} value={point.y} min={0} max={1} step={0.01} format={pctFmt} onChange={(v) => setPoint('y', v)} />
                 </div>
               </div>
             )}
@@ -200,13 +197,13 @@ export function FollowSection(props: { project: Project; vw: number; vh: number;
         {tall && (
           <>
             <div data-testid="app-safe-toggle">
-              <Toggle label="Keep text clear of app buttons" checked={reframe.appSafe} onChange={(on) => store.update((p) => withAppSafe(p, on))} />
+              <Toggle label={t('style.followSection.keepTextClearOf')} checked={reframe.appSafe} onChange={(on) => store.update((p) => withAppSafe(p, on))} />
             </div>
-            <p className="hint">Places captions, pop-ups, key presses, your logo and lower-third titles where TikTok, Reels and Shorts don't put buttons.</p>
+            <p className="hint">{t('style.followSection.placesCaptionsPopUps')}</p>
           </>
         )}
-        {following && tiltOrFrame && <p className="hint">The 3D tilt and the device frame are left out while the view follows the action.</p>}
-        {status === 'following' && <p className="hint">A stray click pulled the view away? Ignore the click (Zoom › Selected click) and the view stays put.</p>}
+        {following && tiltOrFrame && <p className="hint">{t('style.followSection.the3dTiltAnd')}</p>}
+        {status === 'following' && <p className="hint">{t('style.followSection.aStrayClickPulled')}</p>}
       </Section>
     </div>
   )

@@ -1,0 +1,6016 @@
+[
+  {
+    "key": "style.stylePanel.frame",
+    "file": "src/renderer/src/editor/panels/StylePanel.tsx",
+    "line": 94,
+    "english": "Frame",
+    "sample": {}
+  },
+  {
+    "key": "style.stylePanel.aspectRatio",
+    "file": "src/renderer/src/editor/panels/StylePanel.tsx",
+    "line": 95,
+    "english": "Aspect ratio",
+    "sample": {}
+  },
+  {
+    "key": "common.label.background",
+    "file": "src/renderer/src/editor/panels/StylePanel.tsx",
+    "line": 101,
+    "english": "Background",
+    "sample": {}
+  },
+  {
+    "key": "style.stylePanel.backgroundKind",
+    "file": "src/renderer/src/editor/panels/StylePanel.tsx",
+    "line": 104,
+    "english": "Background kind",
+    "sample": {}
+  },
+  {
+    "key": "style.stylePanel.background2",
+    "file": "src/renderer/src/editor/panels/StylePanel.tsx",
+    "line": 120,
+    "english": "«name» background",
+    "sample": {
+      "name": "«name»"
+    }
+  },
+  {
+    "key": "style.stylePanel.wallpaper",
+    "file": "src/renderer/src/editor/panels/StylePanel.tsx",
+    "line": 134,
+    "english": "«name» wallpaper",
+    "sample": {
+      "name": "«name»"
+    }
+  },
+  {
+    "key": "style.stylePanel.movesWhileTheVideo",
+    "file": "src/renderer/src/editor/panels/StylePanel.tsx",
+    "line": 148,
+    "english": "«name» (moves while the video plays)",
+    "sample": {
+      "name": "«name»"
+    }
+  },
+  {
+    "key": "style.stylePanel.animatedBackground",
+    "file": "src/renderer/src/editor/panels/StylePanel.tsx",
+    "line": 149,
+    "english": "«name» animated background",
+    "sample": {
+      "name": "«name»"
+    }
+  },
+  {
+    "key": "style.stylePanel.solidColour",
+    "file": "src/renderer/src/editor/panels/StylePanel.tsx",
+    "line": 165,
+    "english": "Solid colour",
+    "sample": {}
+  },
+  {
+    "key": "style.stylePanel.image",
+    "file": "src/renderer/src/editor/panels/StylePanel.tsx",
+    "line": 168,
+    "english": " Image…",
+    "sample": {}
+  },
+  {
+    "key": "style.stylePanel.backgroundBlur",
+    "file": "src/renderer/src/editor/panels/StylePanel.tsx",
+    "line": 173,
+    "english": "Background blur",
+    "sample": {}
+  },
+  {
+    "key": "style.stylePanel.motionSpeed",
+    "file": "src/renderer/src/editor/panels/StylePanel.tsx",
+    "line": 184,
+    "english": "Motion speed",
+    "sample": {}
+  },
+  {
+    "key": "style.stylePanel.driftsSlowlyWhileThe",
+    "file": "src/renderer/src/editor/panels/StylePanel.tsx",
+    "line": 191,
+    "english": "Drifts slowly while the video plays and loops without a seam.",
+    "sample": {}
+  },
+  {
+    "key": "common.label.layout",
+    "file": "src/renderer/src/editor/panels/StylePanel.tsx",
+    "line": 196,
+    "english": "Layout",
+    "sample": {}
+  },
+  {
+    "key": "style.stylePanel.padding",
+    "file": "src/renderer/src/editor/panels/StylePanel.tsx",
+    "line": 197,
+    "english": "Padding",
+    "sample": {}
+  },
+  {
+    "key": "style.stylePanel.cornerRadius",
+    "file": "src/renderer/src/editor/panels/StylePanel.tsx",
+    "line": 199,
+    "english": "Corner radius",
+    "sample": {}
+  },
+  {
+    "key": "style.stylePanel.theDeviceFrameSets",
+    "file": "src/renderer/src/editor/panels/StylePanel.tsx",
+    "line": 207,
+    "english": "The device frame sets the corners of the recording.",
+    "sample": {}
+  },
+  {
+    "key": "style.stylePanel.deviceFrame",
+    "file": "src/renderer/src/editor/panels/StylePanel.tsx",
+    "line": 210,
+    "english": "Device frame",
+    "sample": {}
+  },
+  {
+    "key": "style.stylePanel.deviceFrame",
+    "file": "src/renderer/src/editor/panels/StylePanel.tsx",
+    "line": 211,
+    "english": "Device frame",
+    "sample": {}
+  },
+  {
+    "key": "style.stylePanel.frame2",
+    "file": "src/renderer/src/editor/panels/StylePanel.tsx",
+    "line": 219,
+    "english": "«label» frame",
+    "sample": {
+      "label": "«label»"
+    }
+  },
+  {
+    "key": "style.stylePanel.frameTheme",
+    "file": "src/renderer/src/editor/panels/StylePanel.tsx",
+    "line": 232,
+    "english": "Frame theme",
+    "sample": {}
+  },
+  {
+    "key": "style.stylePanel.deviceFramesAreNot",
+    "file": "src/renderer/src/editor/panels/StylePanel.tsx",
+    "line": 241,
+    "english": "Device frames are not drawn while the view follows the action.",
+    "sample": {}
+  },
+  {
+    "key": "style.stylePanel.addressBar",
+    "file": "src/renderer/src/editor/panels/StylePanel.tsx",
+    "line": 244,
+    "english": "Address bar",
+    "sample": {}
+  },
+  {
+    "key": "style.stylePanel.addressBarText",
+    "file": "src/renderer/src/editor/panels/StylePanel.tsx",
+    "line": 247,
+    "english": "Address bar text",
+    "sample": {}
+  },
+  {
+    "key": "common.label.shadow",
+    "file": "src/renderer/src/editor/panels/StylePanel.tsx",
+    "line": 257,
+    "english": "Shadow",
+    "sample": {}
+  },
+  {
+    "key": "style.stylePanel.shadowStyle",
+    "file": "src/renderer/src/editor/panels/StylePanel.tsx",
+    "line": 258,
+    "english": "Shadow style",
+    "sample": {}
+  },
+  {
+    "key": "common.label.shadow",
+    "file": "src/renderer/src/editor/panels/StylePanel.tsx",
+    "line": 259,
+    "english": "Shadow",
+    "sample": {}
+  },
+  {
+    "key": "style.stylePanel.shadowColour",
+    "file": "src/renderer/src/editor/panels/StylePanel.tsx",
+    "line": 261,
+    "english": "Shadow colour",
+    "sample": {}
+  },
+  {
+    "key": "style.stylePanel.addSomePaddingTo",
+    "file": "src/renderer/src/editor/panels/StylePanel.tsx",
+    "line": 263,
+    "english": "Add some padding to make room for the shadow.",
+    "sample": {}
+  },
+  {
+    "key": "style.stylePanel.border",
+    "file": "src/renderer/src/editor/panels/StylePanel.tsx",
+    "line": 266,
+    "english": "Border",
+    "sample": {}
+  },
+  {
+    "key": "style.stylePanel.borderWidth",
+    "file": "src/renderer/src/editor/panels/StylePanel.tsx",
+    "line": 268,
+    "english": "Border width",
+    "sample": {}
+  },
+  {
+    "key": "style.stylePanel.frostedGlass",
+    "file": "src/renderer/src/editor/panels/StylePanel.tsx",
+    "line": 277,
+    "english": "Frosted glass",
+    "sample": {}
+  },
+  {
+    "key": "style.stylePanel.aSeeThroughFrosted",
+    "file": "src/renderer/src/editor/panels/StylePanel.tsx",
+    "line": 278,
+    "english": "A see-through, frosted border instead of a solid colour",
+    "sample": {}
+  },
+  {
+    "key": "style.stylePanel.borderColour",
+    "file": "src/renderer/src/editor/panels/StylePanel.tsx",
+    "line": 284,
+    "english": "Border colour",
+    "sample": {}
+  },
+  {
+    "key": "style.stylePanel.deviceFramesHaveTheir",
+    "file": "src/renderer/src/editor/panels/StylePanel.tsx",
+    "line": 291,
+    "english": "Device frames have their own bezel, so they take no border.",
+    "sample": {}
+  },
+  {
+    "key": "common.colour.pickAny",
+    "file": "src/renderer/src/editor/panels/StylePanel.tsx",
+    "line": 336,
+    "english": "Pick any colour",
+    "sample": {}
+  },
+  {
+    "key": "common.colour.anyFor",
+    "file": "src/renderer/src/editor/panels/StylePanel.tsx",
+    "line": 337,
+    "english": "«label» (any colour)",
+    "sample": {
+      "label": "«label»"
+    }
+  },
+  {
+    "key": "style.stylePanel.newRecordings",
+    "file": "src/renderer/src/editor/panels/StylePanel.tsx",
+    "line": 390,
+    "english": "New recordings",
+    "sample": {}
+  },
+  {
+    "key": "style.stylePanel.newRecordingsStartWith",
+    "file": "src/renderer/src/editor/panels/StylePanel.tsx",
+    "line": 393,
+    "english": "New recordings start with your saved look: background, frame, layout, cursor, camera, zoom style, watermark and effects.",
+    "sample": {}
+  },
+  {
+    "key": "style.stylePanel.newRecordingsStartWith2",
+    "file": "src/renderer/src/editor/panels/StylePanel.tsx",
+    "line": 394,
+    "english": "New recordings start with the built-in look. Save this one to use it for every new recording.",
+    "sample": {}
+  },
+  {
+    "key": "style.stylePanel.saveAsDefaultFor",
+    "file": "src/renderer/src/editor/panels/StylePanel.tsx",
+    "line": 398,
+    "english": " Save as default for new recordings",
+    "sample": {}
+  },
+  {
+    "key": "style.stylePanel.goBackToThe",
+    "file": "src/renderer/src/editor/panels/StylePanel.tsx",
+    "line": 400,
+    "english": "Go back to the built-in look for new recordings",
+    "sample": {}
+  },
+  {
+    "key": "style.stylePanel.noDefaultsAreSaved",
+    "file": "src/renderer/src/editor/panels/StylePanel.tsx",
+    "line": 400,
+    "english": "No defaults are saved",
+    "sample": {}
+  },
+  {
+    "key": "style.stylePanel.resetDefaults",
+    "file": "src/renderer/src/editor/panels/StylePanel.tsx",
+    "line": 401,
+    "english": " Reset defaults",
+    "sample": {}
+  },
+  {
+    "key": "style.stylePresets.preset",
+    "file": "src/renderer/src/editor/panels/StylePresets.tsx",
+    "line": 131,
+    "english": "«name» preset",
+    "sample": {
+      "name": "«name»"
+    }
+  },
+  {
+    "key": "style.stylePresets.applyTheLook",
+    "file": "src/renderer/src/editor/panels/StylePresets.tsx",
+    "line": 131,
+    "english": "Apply the «name» look",
+    "sample": {
+      "name": "«name»"
+    }
+  },
+  {
+    "key": "style.stylePresets.rename",
+    "file": "src/renderer/src/editor/panels/StylePresets.tsx",
+    "line": 137,
+    "english": "Rename",
+    "sample": {}
+  },
+  {
+    "key": "style.stylePresets.renameName",
+    "file": "src/renderer/src/editor/panels/StylePresets.tsx",
+    "line": 137,
+    "english": "Rename «name»",
+    "sample": {
+      "name": "«name»"
+    }
+  },
+  {
+    "key": "style.stylePresets.clickAgainToDelete",
+    "file": "src/renderer/src/editor/panels/StylePresets.tsx",
+    "line": 144,
+    "english": "Click again to delete",
+    "sample": {}
+  },
+  {
+    "key": "common.action.delete",
+    "file": "src/renderer/src/editor/panels/StylePresets.tsx",
+    "line": 144,
+    "english": "Delete",
+    "sample": {}
+  },
+  {
+    "key": "style.stylePresets.confirmDeleting",
+    "file": "src/renderer/src/editor/panels/StylePresets.tsx",
+    "line": 145,
+    "english": "Confirm deleting «name»",
+    "sample": {
+      "name": "«name»"
+    }
+  },
+  {
+    "key": "common.action.deleteName",
+    "file": "src/renderer/src/editor/panels/StylePresets.tsx",
+    "line": 145,
+    "english": "Delete «name»",
+    "sample": {
+      "name": "«name»"
+    }
+  },
+  {
+    "key": "style.stylePresets.deleteQuestion",
+    "file": "src/renderer/src/editor/panels/StylePresets.tsx",
+    "line": 149,
+    "english": "Delete?",
+    "sample": {}
+  },
+  {
+    "key": "style.stylePresets.newPresetName",
+    "file": "src/renderer/src/editor/panels/StylePresets.tsx",
+    "line": 161,
+    "english": "New preset name",
+    "sample": {}
+  },
+  {
+    "key": "style.stylePresets.presetName",
+    "file": "src/renderer/src/editor/panels/StylePresets.tsx",
+    "line": 161,
+    "english": "Preset name",
+    "sample": {}
+  },
+  {
+    "key": "style.stylePresets.presetName",
+    "file": "src/renderer/src/editor/panels/StylePresets.tsx",
+    "line": 162,
+    "english": "Preset name",
+    "sample": {}
+  },
+  {
+    "key": "common.action.save",
+    "file": "src/renderer/src/editor/panels/StylePresets.tsx",
+    "line": 170,
+    "english": "Save",
+    "sample": {}
+  },
+  {
+    "key": "style.stylePresets.rename",
+    "file": "src/renderer/src/editor/panels/StylePresets.tsx",
+    "line": 170,
+    "english": "Rename",
+    "sample": {}
+  },
+  {
+    "key": "common.action.cancel",
+    "file": "src/renderer/src/editor/panels/StylePresets.tsx",
+    "line": 173,
+    "english": "Cancel",
+    "sample": {}
+  },
+  {
+    "key": "style.stylePresets.presets",
+    "file": "src/renderer/src/editor/panels/StylePresets.tsx",
+    "line": 182,
+    "english": "Presets",
+    "sample": {}
+  },
+  {
+    "key": "common.action.hide",
+    "file": "src/renderer/src/editor/panels/StylePresets.tsx",
+    "line": 186,
+    "english": "Hide",
+    "sample": {}
+  },
+  {
+    "key": "style.stylePresets.showTheStylePresets",
+    "file": "src/renderer/src/editor/panels/StylePresets.tsx",
+    "line": 192,
+    "english": "Show the style presets",
+    "sample": {}
+  },
+  {
+    "key": "style.stylePresets.customLook",
+    "file": "src/renderer/src/editor/panels/StylePresets.tsx",
+    "line": 193,
+    "english": "Custom look",
+    "sample": {}
+  },
+  {
+    "key": "style.stylePresets.browsePresets",
+    "file": "src/renderer/src/editor/panels/StylePresets.tsx",
+    "line": 194,
+    "english": "Browse presets…",
+    "sample": {}
+  },
+  {
+    "key": "style.stylePresets.yourPresets",
+    "file": "src/renderer/src/editor/panels/StylePresets.tsx",
+    "line": 203,
+    "english": "Your presets",
+    "sample": {}
+  },
+  {
+    "key": "style.stylePresets.saveThisLookAs",
+    "file": "src/renderer/src/editor/panels/StylePresets.tsx",
+    "line": 211,
+    "english": " Save this look as a preset…",
+    "sample": {}
+  },
+  {
+    "key": "style.stylePresets.aPresetSetsThe",
+    "file": "src/renderer/src/editor/panels/StylePresets.tsx",
+    "line": 214,
+    "english": "A preset sets the background, card, device frame, 3D tilt, cursor look and zoom style in one step; undo brings the previous look back.",
+    "sample": {}
+  },
+  {
+    "key": "style.brandKitBar.brandKit",
+    "file": "src/renderer/src/editor/panels/BrandKitBar.tsx",
+    "line": 88,
+    "english": "Brand kit",
+    "sample": {}
+  },
+  {
+    "key": "style.brandKitBar.setUpYourBrand",
+    "file": "src/renderer/src/editor/panels/BrandKitBar.tsx",
+    "line": 95,
+    "english": "Set up your brand kit in Settings first",
+    "sample": {}
+  },
+  {
+    "key": "style.brandKitBar.yourLogoColoursFonts",
+    "file": "src/renderer/src/editor/panels/BrandKitBar.tsx",
+    "line": 95,
+    "english": "Your logo, colours, fonts, intro, outro and style preset, as one undo step",
+    "sample": {}
+  },
+  {
+    "key": "style.brandKitBar.applying",
+    "file": "src/renderer/src/editor/panels/BrandKitBar.tsx",
+    "line": 97,
+    "english": "Applying…",
+    "sample": {}
+  },
+  {
+    "key": "style.brandKitBar.applyBrandKit",
+    "file": "src/renderer/src/editor/panels/BrandKitBar.tsx",
+    "line": 97,
+    "english": "Apply brand kit",
+    "sample": {}
+  },
+  {
+    "key": "style.brandKitBar.setUpBrandKit",
+    "file": "src/renderer/src/editor/panels/BrandKitBar.tsx",
+    "line": 100,
+    "english": "Set up brand kit…",
+    "sample": {}
+  },
+  {
+    "key": "style.brandKitBar.editBrandKit",
+    "file": "src/renderer/src/editor/panels/BrandKitBar.tsx",
+    "line": 100,
+    "english": "Edit brand kit…",
+    "sample": {}
+  },
+  {
+    "key": "style.brandKitBar.saveYourLogoColours",
+    "file": "src/renderer/src/editor/panels/BrandKitBar.tsx",
+    "line": 103,
+    "english": "Save your logo, colours, fonts, intro and outro once in Settings, then apply them to any video in one click.",
+    "sample": {}
+  },
+  {
+    "key": "style.watermarkSection.watermark",
+    "file": "src/renderer/src/editor/panels/WatermarkSection.tsx",
+    "line": 65,
+    "english": "Watermark",
+    "sample": {}
+  },
+  {
+    "key": "style.watermarkSection.showWatermark",
+    "file": "src/renderer/src/editor/panels/WatermarkSection.tsx",
+    "line": 66,
+    "english": "Show watermark",
+    "sample": {}
+  },
+  {
+    "key": "style.watermarkSection.stampYourLogoOr",
+    "file": "src/renderer/src/editor/panels/WatermarkSection.tsx",
+    "line": 68,
+    "english": "Stamp your logo or name on every frame of the video.",
+    "sample": {}
+  },
+  {
+    "key": "style.watermarkSection.watermarkType",
+    "file": "src/renderer/src/editor/panels/WatermarkSection.tsx",
+    "line": 72,
+    "english": "Watermark type",
+    "sample": {}
+  },
+  {
+    "key": "style.watermarkSection.watermarkText",
+    "file": "src/renderer/src/editor/panels/WatermarkSection.tsx",
+    "line": 83,
+    "english": "Watermark text",
+    "sample": {}
+  },
+  {
+    "key": "style.watermarkSection.yourNameOrWebsite",
+    "file": "src/renderer/src/editor/panels/WatermarkSection.tsx",
+    "line": 84,
+    "english": "Your name or website",
+    "sample": {}
+  },
+  {
+    "key": "style.watermarkSection.noLogoChosen",
+    "file": "src/renderer/src/editor/panels/WatermarkSection.tsx",
+    "line": 91,
+    "english": "No logo chosen",
+    "sample": {}
+  },
+  {
+    "key": "style.watermarkSection.changeLogo",
+    "file": "src/renderer/src/editor/panels/WatermarkSection.tsx",
+    "line": 93,
+    "english": "Change logo…",
+    "sample": {}
+  },
+  {
+    "key": "style.watermarkSection.chooseLogo",
+    "file": "src/renderer/src/editor/panels/WatermarkSection.tsx",
+    "line": 93,
+    "english": "Choose logo…",
+    "sample": {}
+  },
+  {
+    "key": "style.watermarkSection.watermarkPosition",
+    "file": "src/renderer/src/editor/panels/WatermarkSection.tsx",
+    "line": 103,
+    "english": "Watermark position",
+    "sample": {}
+  },
+  {
+    "key": "common.label.size",
+    "file": "src/renderer/src/editor/panels/WatermarkSection.tsx",
+    "line": 118,
+    "english": "Size",
+    "sample": {}
+  },
+  {
+    "key": "common.label.opacity",
+    "file": "src/renderer/src/editor/panels/WatermarkSection.tsx",
+    "line": 119,
+    "english": "Opacity",
+    "sample": {}
+  },
+  {
+    "key": "style.watermarkSection.distanceFromEdge",
+    "file": "src/renderer/src/editor/panels/WatermarkSection.tsx",
+    "line": 120,
+    "english": "Distance from edge",
+    "sample": {}
+  },
+  {
+    "key": "style.colourControls.reset",
+    "file": "src/renderer/src/editor/panels/ColourControls.tsx",
+    "line": 203,
+    "english": "Reset «label»",
+    "sample": {
+      "label": "«label»"
+    }
+  },
+  {
+    "key": "style.colourControls.reset",
+    "file": "src/renderer/src/editor/panels/ColourControls.tsx",
+    "line": 204,
+    "english": "Reset «label»",
+    "sample": {
+      "label": "«label»"
+    }
+  },
+  {
+    "key": "common.action.reset",
+    "file": "src/renderer/src/editor/panels/ColourControls.tsx",
+    "line": 211,
+    "english": "Reset",
+    "sample": {}
+  },
+  {
+    "key": "common.label.look",
+    "file": "src/renderer/src/editor/panels/ColourControls.tsx",
+    "line": 287,
+    "english": "Look",
+    "sample": {}
+  },
+  {
+    "key": "common.label.strength",
+    "file": "src/renderer/src/editor/panels/ColourControls.tsx",
+    "line": 319,
+    "english": "Strength",
+    "sample": {}
+  },
+  {
+    "key": "style.colourControls.strengthOf",
+    "file": "src/renderer/src/editor/panels/ColourControls.tsx",
+    "line": 325,
+    "english": "Strength of «value»",
+    "sample": {
+      "value": "«value»"
+    }
+  },
+  {
+    "key": "style.colourControls.fewer",
+    "file": "src/renderer/src/editor/panels/ColourControls.tsx",
+    "line": 339,
+    "english": "Fewer",
+    "sample": {}
+  },
+  {
+    "key": "style.colourControls.more",
+    "file": "src/renderer/src/editor/panels/ColourControls.tsx",
+    "line": 339,
+    "english": "More",
+    "sample": {}
+  },
+  {
+    "key": "style.colourControls.lutStrength",
+    "file": "src/renderer/src/editor/panels/ColourControls.tsx",
+    "line": 354,
+    "english": "LUT strength",
+    "sample": {}
+  },
+  {
+    "key": "style.colourControls.lutStrength",
+    "file": "src/renderer/src/editor/panels/ColourControls.tsx",
+    "line": 360,
+    "english": "LUT strength",
+    "sample": {}
+  },
+  {
+    "key": "style.colourControls.removeLut",
+    "file": "src/renderer/src/editor/panels/ColourControls.tsx",
+    "line": 393,
+    "english": "Remove LUT",
+    "sample": {}
+  },
+  {
+    "key": "style.colourControls.compare",
+    "file": "src/renderer/src/editor/panels/ColourControls.tsx",
+    "line": 401,
+    "english": "Compare",
+    "sample": {}
+  },
+  {
+    "key": "style.colourControls.resetColour",
+    "file": "src/renderer/src/editor/panels/ColourControls.tsx",
+    "line": 415,
+    "english": "Reset colour",
+    "sample": {}
+  },
+  {
+    "key": "style.colourControls.balancing",
+    "file": "src/renderer/src/editor/panels/ColourControls.tsx",
+    "line": 419,
+    "english": "Balancing…",
+    "sample": {}
+  },
+  {
+    "key": "style.colourControls.autoColour",
+    "file": "src/renderer/src/editor/panels/ColourControls.tsx",
+    "line": 419,
+    "english": "Auto colour",
+    "sample": {}
+  },
+  {
+    "key": "common.label.colour",
+    "file": "src/renderer/src/editor/panels/CameraColourSection.tsx",
+    "line": 12,
+    "english": "Colour",
+    "sample": {}
+  },
+  {
+    "key": "style.screenColourSection.screenColour",
+    "file": "src/renderer/src/editor/panels/ScreenColourSection.tsx",
+    "line": 12,
+    "english": "Screen colour",
+    "sample": {}
+  },
+  {
+    "key": "common.label.look",
+    "file": "src/renderer/src/editor/LookButtons.tsx",
+    "line": 25,
+    "english": "Look",
+    "sample": {}
+  },
+  {
+    "key": "style.lookButtons.copyLook",
+    "file": "src/renderer/src/editor/LookButtons.tsx",
+    "line": 27,
+    "english": "Copy look",
+    "sample": {}
+  },
+  {
+    "key": "style.lookButtons.pasteLook",
+    "file": "src/renderer/src/editor/LookButtons.tsx",
+    "line": 30,
+    "english": "Paste look",
+    "sample": {}
+  },
+  {
+    "key": "style.autoColourRun.timedOut",
+    "file": "src/renderer/src/editor/autoColourRun.ts",
+    "line": 28,
+    "english": "timed out",
+    "sample": {}
+  },
+  {
+    "key": "style.cropEditor.dragToMoveEdges",
+    "file": "src/renderer/src/editor/CropEditor.tsx",
+    "line": 108,
+    "english": "Drag to move · edges and corners resize · Enter to apply, Esc to cancel",
+    "sample": {}
+  },
+  {
+    "key": "style.cropEditor.cropShape",
+    "file": "src/renderer/src/editor/CropEditor.tsx",
+    "line": 186,
+    "english": "Crop shape",
+    "sample": {}
+  },
+  {
+    "key": "style.cropEditor.anyShapeHoldShift",
+    "file": "src/renderer/src/editor/CropEditor.tsx",
+    "line": 192,
+    "english": "Any shape. Hold Shift while dragging to keep the current shape",
+    "sample": {}
+  },
+  {
+    "key": "style.cropEditor.theRecordingSOwn",
+    "file": "src/renderer/src/editor/CropEditor.tsx",
+    "line": 192,
+    "english": "The recording's own shape («W» × «H»)",
+    "sample": {
+      "width": "«W»",
+      "height": "«H»"
+    }
+  },
+  {
+    "key": "style.cropEditor.keepTheShapeAt",
+    "file": "src/renderer/src/editor/CropEditor.tsx",
+    "line": 192,
+    "english": "Keep the shape at «a»",
+    "sample": {
+      "aspect": "«a»"
+    }
+  },
+  {
+    "key": "style.cropEditor.cutTheBottomPx",
+    "file": "src/renderer/src/editor/CropEditor.tsx",
+    "line": 202,
+    "english": "Cut the bottom «taskbarCut» px: the Windows taskbar at «scaling»% scaling",
+    "sample": {
+      "scaling": "«scaling»",
+      "px": "«taskbarCut»"
+    }
+  },
+  {
+    "key": "style.cropEditor.thisRecordingDoesNot",
+    "file": "src/renderer/src/editor/CropEditor.tsx",
+    "line": 202,
+    "english": "This recording does not show the taskbar",
+    "sample": {}
+  },
+  {
+    "key": "style.cropEditor.hideTaskbar",
+    "file": "src/renderer/src/editor/CropEditor.tsx",
+    "line": 206,
+    "english": "Hide taskbar",
+    "sample": {}
+  },
+  {
+    "key": "style.cropEditor.cutTheTopPx",
+    "file": "src/renderer/src/editor/CropEditor.tsx",
+    "line": 213,
+    "english": "Cut the top «browserCut» px: tabs and address bar of a maximised browser",
+    "sample": {
+      "px": "«browserCut»"
+    }
+  },
+  {
+    "key": "style.cropEditor.onlyForScreenOr",
+    "file": "src/renderer/src/editor/CropEditor.tsx",
+    "line": 215,
+    "english": "Only for screen or window recordings, or areas at the top of the screen",
+    "sample": {}
+  },
+  {
+    "key": "style.cropEditor.thisRecordingIsToo",
+    "file": "src/renderer/src/editor/CropEditor.tsx",
+    "line": 216,
+    "english": "This recording is too short to show a browser bar",
+    "sample": {}
+  },
+  {
+    "key": "style.cropEditor.hideBrowserBar",
+    "file": "src/renderer/src/editor/CropEditor.tsx",
+    "line": 221,
+    "english": "Hide browser bar",
+    "sample": {}
+  },
+  {
+    "key": "style.cropEditor.wholeRecording",
+    "file": "src/renderer/src/editor/CropEditor.tsx",
+    "line": 227,
+    "english": "Whole recording",
+    "sample": {}
+  },
+  {
+    "key": "common.action.reset",
+    "file": "src/renderer/src/editor/CropEditor.tsx",
+    "line": 228,
+    "english": "Reset",
+    "sample": {}
+  },
+  {
+    "key": "style.cropEditor.esc",
+    "file": "src/renderer/src/editor/CropEditor.tsx",
+    "line": 230,
+    "english": "Esc",
+    "sample": {}
+  },
+  {
+    "key": "common.action.cancel",
+    "file": "src/renderer/src/editor/CropEditor.tsx",
+    "line": 231,
+    "english": "Cancel",
+    "sample": {}
+  },
+  {
+    "key": "style.cropEditor.enter",
+    "file": "src/renderer/src/editor/CropEditor.tsx",
+    "line": 233,
+    "english": "Enter",
+    "sample": {}
+  },
+  {
+    "key": "common.action.done",
+    "file": "src/renderer/src/editor/CropEditor.tsx",
+    "line": 234,
+    "english": "Done",
+    "sample": {}
+  },
+  {
+    "key": "style.cropRow.cropRecording",
+    "file": "src/renderer/src/editor/panels/CropRow.tsx",
+    "line": 23,
+    "english": "Crop recording…",
+    "sample": {}
+  },
+  {
+    "key": "style.cropRow.crop",
+    "file": "src/renderer/src/editor/panels/CropRow.tsx",
+    "line": 36,
+    "english": "Crop",
+    "sample": {}
+  },
+  {
+    "key": "style.cropRow.edit",
+    "file": "src/renderer/src/editor/panels/CropRow.tsx",
+    "line": 39,
+    "english": "Edit…",
+    "sample": {}
+  },
+  {
+    "key": "style.cropRow.showTheWholeRecording",
+    "file": "src/renderer/src/editor/panels/CropRow.tsx",
+    "line": 41,
+    "english": "Show the whole recording",
+    "sample": {}
+  },
+  {
+    "key": "common.action.reset",
+    "file": "src/renderer/src/editor/panels/CropRow.tsx",
+    "line": 42,
+    "english": "Reset",
+    "sample": {}
+  },
+  {
+    "key": "style.followSection.verticalFraming",
+    "file": "src/renderer/src/editor/panels/FollowSection.tsx",
+    "line": 86,
+    "english": "Vertical framing",
+    "sample": {}
+  },
+  {
+    "key": "style.followSection.makingAShort",
+    "file": "src/renderer/src/editor/panels/FollowSection.tsx",
+    "line": 88,
+    "english": "Making a Short?",
+    "sample": {}
+  },
+  {
+    "key": "style.followSection.makeAVerticalVersion",
+    "file": "src/renderer/src/editor/panels/FollowSection.tsx",
+    "line": 90,
+    "english": "Make a vertical version",
+    "sample": {}
+  },
+  {
+    "key": "style.followSection.verticalFraming",
+    "file": "src/renderer/src/editor/panels/FollowSection.tsx",
+    "line": 137,
+    "english": "Vertical framing",
+    "sample": {}
+  },
+  {
+    "key": "style.followSection.followTheAction",
+    "file": "src/renderer/src/editor/panels/FollowSection.tsx",
+    "line": 139,
+    "english": "Follow the action",
+    "sample": {}
+  },
+  {
+    "key": "style.followSection.yourWholeScreenIs",
+    "file": "src/renderer/src/editor/panels/FollowSection.tsx",
+    "line": 141,
+    "english": "Your whole screen is shrunk to fit this shape. Turn this on to crop in and follow your cursor, clicks and typing.",
+    "sample": {}
+  },
+  {
+    "key": "style.followSection.followingYourCursorClicks",
+    "file": "src/renderer/src/editor/panels/FollowSection.tsx",
+    "line": 145,
+    "english": "Following your cursor, clicks and typing.",
+    "sample": {}
+  },
+  {
+    "key": "style.followSection.thisRecordingHasNo",
+    "file": "src/renderer/src/editor/panels/FollowSection.tsx",
+    "line": 145,
+    "english": "This recording has no cursor data, so the view stays where you put it.",
+    "sample": {}
+  },
+  {
+    "key": "style.followSection.howClose",
+    "file": "src/renderer/src/editor/panels/FollowSection.tsx",
+    "line": 148,
+    "english": "How close",
+    "sample": {}
+  },
+  {
+    "key": "style.followSection.limitedToKeepThe",
+    "file": "src/renderer/src/editor/panels/FollowSection.tsx",
+    "line": 150,
+    "english": "Limited to keep the picture sharp.",
+    "sample": {}
+  },
+  {
+    "key": "style.followSection.movement",
+    "file": "src/renderer/src/editor/panels/FollowSection.tsx",
+    "line": 152,
+    "english": "Movement",
+    "sample": {}
+  },
+  {
+    "key": "style.followSection.movement",
+    "file": "src/renderer/src/editor/panels/FollowSection.tsx",
+    "line": 153,
+    "english": "Movement",
+    "sample": {}
+  },
+  {
+    "key": "common.label.camera",
+    "file": "src/renderer/src/editor/panels/FollowSection.tsx",
+    "line": 157,
+    "english": "Camera",
+    "sample": {}
+  },
+  {
+    "key": "common.label.camera",
+    "file": "src/renderer/src/editor/panels/FollowSection.tsx",
+    "line": 158,
+    "english": "Camera",
+    "sample": {}
+  },
+  {
+    "key": "style.followSection.theAppsPutTheir",
+    "file": "src/renderer/src/editor/panels/FollowSection.tsx",
+    "line": 159,
+    "english": "The apps put their captions over the bottom of the video, so a band on top usually stays clearer.",
+    "sample": {}
+  },
+  {
+    "key": "style.followSection.cameraSize",
+    "file": "src/renderer/src/editor/panels/FollowSection.tsx",
+    "line": 164,
+    "english": "Camera size",
+    "sample": {}
+  },
+  {
+    "key": "style.followSection.squareVideosKeepThe",
+    "file": "src/renderer/src/editor/panels/FollowSection.tsx",
+    "line": 167,
+    "english": "Square videos keep the camera bubble.",
+    "sample": {}
+  },
+  {
+    "key": "style.followSection.whereTheViewRests",
+    "file": "src/renderer/src/editor/panels/FollowSection.tsx",
+    "line": 169,
+    "english": "Where the view rests",
+    "sample": {}
+  },
+  {
+    "key": "style.followSection.whereTheViewRests",
+    "file": "src/renderer/src/editor/panels/FollowSection.tsx",
+    "line": 170,
+    "english": "Where the view rests",
+    "sample": {}
+  },
+  {
+    "key": "style.followSection.leftToRight",
+    "file": "src/renderer/src/editor/panels/FollowSection.tsx",
+    "line": 172,
+    "english": "Left to right",
+    "sample": {}
+  },
+  {
+    "key": "style.followSection.topToBottom",
+    "file": "src/renderer/src/editor/panels/FollowSection.tsx",
+    "line": 176,
+    "english": "Top to bottom",
+    "sample": {}
+  },
+  {
+    "key": "style.followSection.holdTheViewHere",
+    "file": "src/renderer/src/editor/panels/FollowSection.tsx",
+    "line": 183,
+    "english": "Hold the view here",
+    "sample": {}
+  },
+  {
+    "key": "style.followSection.dragThePictureTo",
+    "file": "src/renderer/src/editor/panels/FollowSection.tsx",
+    "line": 185,
+    "english": "Drag the picture to aim the view. Zooms still work inside it.",
+    "sample": {}
+  },
+  {
+    "key": "style.followSection.viewAtThePlayhead",
+    "file": "src/renderer/src/editor/panels/FollowSection.tsx",
+    "line": 188,
+    "english": "View at the playhead",
+    "sample": {}
+  },
+  {
+    "key": "style.followSection.viewAtThePlayhead",
+    "file": "src/renderer/src/editor/panels/FollowSection.tsx",
+    "line": 189,
+    "english": "View at the playhead",
+    "sample": {}
+  },
+  {
+    "key": "style.followSection.leftToRight",
+    "file": "src/renderer/src/editor/panels/FollowSection.tsx",
+    "line": 191,
+    "english": "Left to right",
+    "sample": {}
+  },
+  {
+    "key": "style.followSection.topToBottom",
+    "file": "src/renderer/src/editor/panels/FollowSection.tsx",
+    "line": 194,
+    "english": "Top to bottom",
+    "sample": {}
+  },
+  {
+    "key": "style.followSection.keepTextClearOf",
+    "file": "src/renderer/src/editor/panels/FollowSection.tsx",
+    "line": 203,
+    "english": "Keep text clear of app buttons",
+    "sample": {}
+  },
+  {
+    "key": "style.followSection.placesCaptionsPopUps",
+    "file": "src/renderer/src/editor/panels/FollowSection.tsx",
+    "line": 205,
+    "english": "Places captions, pop-ups, key presses, your logo and lower-third titles where TikTok, Reels and Shorts don't put buttons.",
+    "sample": {}
+  },
+  {
+    "key": "style.followSection.the3dTiltAnd",
+    "file": "src/renderer/src/editor/panels/FollowSection.tsx",
+    "line": 208,
+    "english": "The 3D tilt and the device frame are left out while the view follows the action.",
+    "sample": {}
+  },
+  {
+    "key": "style.followSection.aStrayClickPulled",
+    "file": "src/renderer/src/editor/panels/FollowSection.tsx",
+    "line": 209,
+    "english": "A stray click pulled the view away? Ignore the click (Zoom › Selected click) and the view stays put.",
+    "sample": {}
+  },
+  {
+    "key": "style.effectsPanel.motionBlur",
+    "file": "src/renderer/src/editor/panels/EffectsPanel.tsx",
+    "line": 30,
+    "english": "Motion blur",
+    "sample": {}
+  },
+  {
+    "key": "common.label.strength",
+    "file": "src/renderer/src/editor/panels/EffectsPanel.tsx",
+    "line": 32,
+    "english": "Strength",
+    "sample": {}
+  },
+  {
+    "key": "style.effectsPanel.blursFastZoomAnd",
+    "file": "src/renderer/src/editor/panels/EffectsPanel.tsx",
+    "line": 39,
+    "english": "Blurs fast zoom and pan movements, like a real camera.",
+    "sample": {}
+  },
+  {
+    "key": "style.effectsPanel.keyboardShortcuts",
+    "file": "src/renderer/src/editor/panels/EffectsPanel.tsx",
+    "line": 41,
+    "english": "Keyboard shortcuts",
+    "sample": {}
+  },
+  {
+    "key": "style.effectsPanel.shortcutsRecorded",
+    "file": "src/renderer/src/editor/panels/EffectsPanel.tsx",
+    "line": 43,
+    "english": [
+      "0 shortcuts recorded (plain typing is never recorded).",
+      "1 shortcut recorded (plain typing is never recorded).",
+      "2 shortcuts recorded (plain typing is never recorded).",
+      "1000 shortcuts recorded (plain typing is never recorded)."
+    ],
+    "sample": [
+      {
+        "count": 0,
+        "n": "0"
+      },
+      {
+        "count": 1,
+        "n": "1"
+      },
+      {
+        "count": 2,
+        "n": "2"
+      },
+      {
+        "count": 1000,
+        "n": "1000"
+      }
+    ]
+  },
+  {
+    "key": "style.effectsPanel.noKeyboardShortcutsWere",
+    "file": "src/renderer/src/editor/panels/EffectsPanel.tsx",
+    "line": 43,
+    "english": "No keyboard shortcuts were recorded in this video.",
+    "sample": {}
+  },
+  {
+    "key": "style.effectsPanel.showShortcutsOnScreen",
+    "file": "src/renderer/src/editor/panels/EffectsPanel.tsx",
+    "line": 45,
+    "english": "Show shortcuts on screen",
+    "sample": {}
+  },
+  {
+    "key": "style.effectsPanel.shortcutPosition",
+    "file": "src/renderer/src/editor/panels/EffectsPanel.tsx",
+    "line": 47,
+    "english": "Shortcut position",
+    "sample": {}
+  },
+  {
+    "key": "common.label.size",
+    "file": "src/renderer/src/editor/panels/EffectsPanel.tsx",
+    "line": 56,
+    "english": "Size",
+    "sample": {}
+  },
+  {
+    "key": "style.effectsPanel.tiltTitle",
+    "file": "src/renderer/src/editor/panels/EffectsPanel.tsx",
+    "line": 91,
+    "english": "3D tilt",
+    "sample": {}
+  },
+  {
+    "key": "style.effectsPanel.tiltTheRecordingIn",
+    "file": "src/renderer/src/editor/panels/EffectsPanel.tsx",
+    "line": 92,
+    "english": "Tilt the recording in 3D",
+    "sample": {}
+  },
+  {
+    "key": "style.effectsPanel.the3dTiltIs",
+    "file": "src/renderer/src/editor/panels/EffectsPanel.tsx",
+    "line": 93,
+    "english": "The 3D tilt is not drawn while the view follows the action.",
+    "sample": {}
+  },
+  {
+    "key": "style.effectsPanel.tiltPresets",
+    "file": "src/renderer/src/editor/panels/EffectsPanel.tsx",
+    "line": 94,
+    "english": "Tilt presets",
+    "sample": {}
+  },
+  {
+    "key": "style.effectsPanel.tilt",
+    "file": "src/renderer/src/editor/panels/EffectsPanel.tsx",
+    "line": 102,
+    "english": "«label» tilt",
+    "sample": {
+      "label": "«label»"
+    }
+  },
+  {
+    "key": "style.effectsPanel.tiltBack",
+    "file": "src/renderer/src/editor/panels/EffectsPanel.tsx",
+    "line": 116,
+    "english": "Tilt back",
+    "sample": {}
+  },
+  {
+    "key": "style.effectsPanel.turn",
+    "file": "src/renderer/src/editor/panels/EffectsPanel.tsx",
+    "line": 126,
+    "english": "Turn",
+    "sample": {}
+  },
+  {
+    "key": "style.effectsPanel.perspective",
+    "file": "src/renderer/src/editor/panels/EffectsPanel.tsx",
+    "line": 136,
+    "english": "Perspective",
+    "sample": {}
+  },
+  {
+    "key": "style.effectsPanel.tiltMovement",
+    "file": "src/renderer/src/editor/panels/EffectsPanel.tsx",
+    "line": 145,
+    "english": "Tilt movement",
+    "sample": {}
+  },
+  {
+    "key": "style.effectsPanel.noCursorKeeps",
+    "file": "src/renderer/src/editor/panels/EffectsPanel.tsx",
+    "line": 160,
+    "english": "This recording has no cursor positions to follow, so the card keeps these angles.",
+    "sample": {}
+  },
+  {
+    "key": "style.effectsPanel.tiltNeedsWebgl",
+    "file": "src/renderer/src/editor/panels/EffectsPanel.tsx",
+    "line": 163,
+    "english": "3D tilt needs WebGL, which this computer's graphics driver does not provide: the video is shown and exported flat.",
+    "sample": {}
+  },
+  {
+    "key": "style.effectsPanel.whileAShapeOr",
+    "file": "src/renderer/src/editor/panels/EffectsPanel.tsx",
+    "line": 166,
+    "english": "While a shape or spotlight is edited on the preview, or a zoom's focus is picked, the preview shows the card flat so the handles line up with the video.",
+    "sample": {}
+  },
+  {
+    "key": "style.clipPanel.clipOf",
+    "file": "src/renderer/src/editor/panels/ClipPanel.tsx",
+    "line": 73,
+    "english": "Clip «value» of «length»",
+    "sample": {
+      "n": "«value»",
+      "total": "«length»"
+    }
+  },
+  {
+    "key": "style.clipPanel.speed",
+    "file": "src/renderer/src/editor/panels/ClipPanel.tsx",
+    "line": 78,
+    "english": " Speed",
+    "sample": {}
+  },
+  {
+    "key": "style.clipPanel.clipSpeed",
+    "file": "src/renderer/src/editor/panels/ClipPanel.tsx",
+    "line": 80,
+    "english": "Clip speed",
+    "sample": {}
+  },
+  {
+    "key": "style.clipPanel.theLastClipCannot",
+    "file": "src/renderer/src/editor/panels/ClipPanel.tsx",
+    "line": 85,
+    "english": "The last clip cannot be removed",
+    "sample": {}
+  },
+  {
+    "key": "style.clipPanel.deleteClip",
+    "file": "src/renderer/src/editor/panels/ClipPanel.tsx",
+    "line": 87,
+    "english": " Delete clip",
+    "sample": {}
+  },
+  {
+    "key": "style.clipPanel.restore",
+    "file": "src/renderer/src/editor/panels/ClipPanel.tsx",
+    "line": 96,
+    "english": " Restore",
+    "sample": {}
+  },
+  {
+    "key": "style.clipPanel.selectedRange",
+    "file": "src/renderer/src/editor/panels/ClipPanel.tsx",
+    "line": 101,
+    "english": "Selected range",
+    "sample": {}
+  },
+  {
+    "key": "style.clipPanel.cutRange",
+    "file": "src/renderer/src/editor/panels/ClipPanel.tsx",
+    "line": 106,
+    "english": " Cut range",
+    "sample": {}
+  },
+  {
+    "key": "style.clipPanel.speedUpOrSlow",
+    "file": "src/renderer/src/editor/panels/ClipPanel.tsx",
+    "line": 109,
+    "english": " Speed up or slow down this range",
+    "sample": {}
+  },
+  {
+    "key": "style.clipPanel.rangeSpeed",
+    "file": "src/renderer/src/editor/panels/ClipPanel.tsx",
+    "line": 112,
+    "english": "Range speed",
+    "sample": {}
+  },
+  {
+    "key": "style.clipPanel.edit",
+    "file": "src/renderer/src/editor/panels/ClipPanel.tsx",
+    "line": 130,
+    "english": "Edit",
+    "sample": {}
+  },
+  {
+    "key": "style.clipPanel.splitAtPlayhead",
+    "file": "src/renderer/src/editor/panels/ClipPanel.tsx",
+    "line": 132,
+    "english": " Split at playhead",
+    "sample": {}
+  },
+  {
+    "key": "style.clipPanel.restoreTheWholeRecording",
+    "file": "src/renderer/src/editor/panels/ClipPanel.tsx",
+    "line": 164,
+    "english": " Restore the whole recording",
+    "sample": {}
+  },
+  {
+    "key": "style.clipPanel.cursorPath",
+    "file": "src/renderer/src/editor/panels/ClipPanel.tsx",
+    "line": 185,
+    "english": " Cursor path",
+    "sample": {}
+  },
+  {
+    "key": "style.clipPanel.replaceTheCursorMoves",
+    "file": "src/renderer/src/editor/panels/ClipPanel.tsx",
+    "line": 188,
+    "english": "Replace the cursor moves in this range with straight, smooth glides",
+    "sample": {}
+  },
+  {
+    "key": "style.clipPanel.straighten",
+    "file": "src/renderer/src/editor/panels/ClipPanel.tsx",
+    "line": 189,
+    "english": "Straighten",
+    "sample": {}
+  },
+  {
+    "key": "style.clipPanel.keepTheCursorMoves",
+    "file": "src/renderer/src/editor/panels/ClipPanel.tsx",
+    "line": 191,
+    "english": "Keep the cursor moves in this range exactly as recorded",
+    "sample": {}
+  },
+  {
+    "key": "style.clipPanel.asRecorded",
+    "file": "src/renderer/src/editor/panels/ClipPanel.tsx",
+    "line": 192,
+    "english": "As recorded",
+    "sample": {}
+  },
+  {
+    "key": "style.clipPanel.letThisRangeFollow",
+    "file": "src/renderer/src/editor/panels/ClipPanel.tsx",
+    "line": 195,
+    "english": "Let this range follow the Straighten moves option again",
+    "sample": {}
+  },
+  {
+    "key": "common.action.reset",
+    "file": "src/renderer/src/editor/panels/ClipPanel.tsx",
+    "line": 196,
+    "english": "Reset",
+    "sample": {}
+  },
+  {
+    "key": "style.clipPanel.smartSpeed",
+    "file": "src/renderer/src/editor/panels/ClipPanel.tsx",
+    "line": 453,
+    "english": "Smart speed",
+    "sample": {}
+  },
+  {
+    "key": "style.clipPanel.smartSpeedMode",
+    "file": "src/renderer/src/editor/panels/ClipPanel.tsx",
+    "line": 455,
+    "english": "Smart speed mode",
+    "sample": {}
+  },
+  {
+    "key": "style.clipPanel.speedsUpOrCuts",
+    "file": "src/renderer/src/editor/panels/ClipPanel.tsx",
+    "line": 460,
+    "english": "Speeds up or cuts the parts where nothing happens: the picture stays still, nothing is heard, and you did not move, click, scroll or type.",
+    "sample": {}
+  },
+  {
+    "key": "style.clipPanel.thisRecordingHasNo",
+    "file": "src/renderer/src/editor/panels/ClipPanel.tsx",
+    "line": 463,
+    "english": "This recording has no mouse or keyboard data, so only the picture decides.",
+    "sample": {}
+  },
+  {
+    "key": "style.clipPanel.idleForAtLeast",
+    "file": "src/renderer/src/editor/panels/ClipPanel.tsx",
+    "line": 464,
+    "english": "Idle for at least",
+    "sample": {}
+  },
+  {
+    "key": "style.clipPanel.minimumIdleLength",
+    "file": "src/renderer/src/editor/panels/ClipPanel.tsx",
+    "line": 465,
+    "english": "Minimum idle length",
+    "sample": {}
+  },
+  {
+    "key": "style.clipPanel.then",
+    "file": "src/renderer/src/editor/panels/ClipPanel.tsx",
+    "line": 467,
+    "english": " Then",
+    "sample": {}
+  },
+  {
+    "key": "style.clipPanel.smartSpeedAction",
+    "file": "src/renderer/src/editor/panels/ClipPanel.tsx",
+    "line": 470,
+    "english": "Smart speed action",
+    "sample": {}
+  },
+  {
+    "key": "style.clipPanel.lookingForIdleParts",
+    "file": "src/renderer/src/editor/panels/ClipPanel.tsx",
+    "line": 486,
+    "english": " Looking for idle parts…",
+    "sample": {}
+  },
+  {
+    "key": "common.action.tryAgain",
+    "file": "src/renderer/src/editor/panels/ClipPanel.tsx",
+    "line": 490,
+    "english": "Try again",
+    "sample": {}
+  },
+  {
+    "key": "style.clipPanel.findIdleParts",
+    "file": "src/renderer/src/editor/panels/ClipPanel.tsx",
+    "line": 490,
+    "english": "Find idle parts",
+    "sample": {}
+  },
+  {
+    "key": "style.clipPanel.cutsOrSpeedsUp",
+    "file": "src/renderer/src/editor/panels/ClipPanel.tsx",
+    "line": 521,
+    "english": "Cuts or speeds up the pauses where nothing is heard, keeping a little of the silence next to the sound so no word is clipped.",
+    "sample": {}
+  },
+  {
+    "key": "style.clipPanel.findIdleParts",
+    "file": "src/renderer/src/editor/panels/ClipPanel.tsx",
+    "line": 535,
+    "english": "Find idle parts",
+    "sample": {}
+  },
+  {
+    "key": "style.clipPanel.theRecordingsSoundIs",
+    "file": "src/renderer/src/editor/panels/ClipPanel.tsx",
+    "line": 543,
+    "english": "The recording’s sound is muted, so nothing can be told apart from silence. Turn the sound on in the Audio tab to find its pauses.",
+    "sample": {}
+  },
+  {
+    "key": "style.clipPanel.silentForAtLeast",
+    "file": "src/renderer/src/editor/panels/ClipPanel.tsx",
+    "line": 548,
+    "english": "Silent for at least",
+    "sample": {}
+  },
+  {
+    "key": "style.clipPanel.keepNextToThe",
+    "file": "src/renderer/src/editor/panels/ClipPanel.tsx",
+    "line": 557,
+    "english": "Keep next to the sound",
+    "sample": {}
+  },
+  {
+    "key": "style.clipPanel.then",
+    "file": "src/renderer/src/editor/panels/ClipPanel.tsx",
+    "line": 566,
+    "english": " Then",
+    "sample": {}
+  },
+  {
+    "key": "style.clipPanel.silenceAction",
+    "file": "src/renderer/src/editor/panels/ClipPanel.tsx",
+    "line": 569,
+    "english": "Silence action",
+    "sample": {}
+  },
+  {
+    "key": "style.clipPanel.theSoundOfThe",
+    "file": "src/renderer/src/editor/panels/ClipPanel.tsx",
+    "line": 579,
+    "english": "The sound of the recording could not be measured.",
+    "sample": {}
+  },
+  {
+    "key": "style.clipPanel.listeningForPauses",
+    "file": "src/renderer/src/editor/panels/ClipPanel.tsx",
+    "line": 585,
+    "english": " Listening for pauses…",
+    "sample": {}
+  },
+  {
+    "key": "common.action.tryAgain",
+    "file": "src/renderer/src/editor/panels/ClipPanel.tsx",
+    "line": 589,
+    "english": "Try again",
+    "sample": {}
+  },
+  {
+    "key": "style.clipPanel.findSilences",
+    "file": "src/renderer/src/editor/panels/ClipPanel.tsx",
+    "line": 589,
+    "english": "Find silences",
+    "sample": {}
+  },
+  {
+    "key": "style.clipPanel.nothingIsHeardIn",
+    "file": "src/renderer/src/editor/panels/ClipPanel.tsx",
+    "line": 596,
+    "english": "Nothing is heard in this recording, so there is no sound to keep and nothing is removed.",
+    "sample": {}
+  },
+  {
+    "key": "style.clipPanel.include",
+    "file": "src/renderer/src/editor/panels/ClipPanel.tsx",
+    "line": 686,
+    "english": "Include «range»",
+    "sample": {
+      "range": "«range»"
+    }
+  },
+  {
+    "key": "style.clipPanel.selectThisPartOn",
+    "file": "src/renderer/src/editor/panels/ClipPanel.tsx",
+    "line": 689,
+    "english": "Select this part on the timeline",
+    "sample": {}
+  },
+  {
+    "key": "style.cutsSection.cuts",
+    "file": "src/renderer/src/editor/panels/CutsSection.tsx",
+    "line": 34,
+    "english": "Cuts",
+    "sample": {}
+  },
+  {
+    "key": "style.cutsSection.everyCut",
+    "file": "src/renderer/src/editor/panels/CutsSection.tsx",
+    "line": 37,
+    "english": "Every cut",
+    "sample": {}
+  },
+  {
+    "key": "style.cutsSection.everyCut",
+    "file": "src/renderer/src/editor/panels/CutsSection.tsx",
+    "line": 38,
+    "english": "Every cut",
+    "sample": {}
+  },
+  {
+    "key": "style.cutsSection.everyCutIsAlready",
+    "file": "src/renderer/src/editor/panels/CutsSection.tsx",
+    "line": 51,
+    "english": "Every cut is already smooth",
+    "sample": {}
+  },
+  {
+    "key": "style.cutsSection.crossfadesOnTheScreen",
+    "file": "src/renderer/src/editor/panels/CutsSection.tsx",
+    "line": 51,
+    "english": "Crossfades on the screen, punch-ins on the camera",
+    "sample": {}
+  },
+  {
+    "key": "style.cutsSection.smoothAllCuts",
+    "file": "src/renderer/src/editor/panels/CutsSection.tsx",
+    "line": 54,
+    "english": " Smooth all cuts",
+    "sample": {}
+  },
+  {
+    "key": "style.cutsSection.everyCutIsAlready",
+    "file": "src/renderer/src/editor/panels/CutsSection.tsx",
+    "line": 56,
+    "english": "Every cut is already smooth",
+    "sample": {}
+  },
+  {
+    "key": "style.cutsSection.giveThemTheSame",
+    "file": "src/renderer/src/editor/panels/CutsSection.tsx",
+    "line": 68,
+    "english": "Give them the same style",
+    "sample": {}
+  },
+  {
+    "key": "style.cutStyleSection.previousCut",
+    "file": "src/renderer/src/editor/panels/CutStyleSection.tsx",
+    "line": 41,
+    "english": "Previous cut",
+    "sample": {}
+  },
+  {
+    "key": "style.cutStyleSection.nextCut",
+    "file": "src/renderer/src/editor/panels/CutStyleSection.tsx",
+    "line": 44,
+    "english": "Next cut",
+    "sample": {}
+  },
+  {
+    "key": "style.cutStyleSection.playThisCut",
+    "file": "src/renderer/src/editor/panels/CutStyleSection.tsx",
+    "line": 47,
+    "english": "Play this cut",
+    "sample": {}
+  },
+  {
+    "key": "style.cutStyleSection.cutStyle",
+    "file": "src/renderer/src/editor/panels/CutStyleSection.tsx",
+    "line": 51,
+    "english": "Cut style",
+    "sample": {}
+  },
+  {
+    "key": "style.cutStyleSection.cutStyle",
+    "file": "src/renderer/src/editor/panels/CutStyleSection.tsx",
+    "line": 53,
+    "english": "Cut style",
+    "sample": {}
+  },
+  {
+    "key": "style.cutStyleSection.sameAsEveryCut",
+    "file": "src/renderer/src/editor/panels/CutStyleSection.tsx",
+    "line": 48,
+    "english": "Same as every cut (Hard cut)",
+    "sample": {
+      "name": "Hard cut"
+    }
+  },
+  {
+    "key": "common.label.colour",
+    "file": "src/renderer/src/editor/panels/JoinOptions.tsx",
+    "line": 120,
+    "english": "Colour",
+    "sample": {}
+  },
+  {
+    "key": "style.joinOptions.otherColour",
+    "file": "src/renderer/src/editor/panels/JoinOptions.tsx",
+    "line": 129,
+    "english": "Other colour",
+    "sample": {}
+  },
+  {
+    "key": "style.joinOptions.other",
+    "file": "src/renderer/src/editor/panels/JoinOptions.tsx",
+    "line": 130,
+    "english": "Other…",
+    "sample": {}
+  },
+  {
+    "key": "style.joinOptions.otherColour",
+    "file": "src/renderer/src/editor/panels/JoinOptions.tsx",
+    "line": 131,
+    "english": "Other colour",
+    "sample": {}
+  },
+  {
+    "key": "style.joinOptions.comesInFrom",
+    "file": "src/renderer/src/editor/panels/JoinOptions.tsx",
+    "line": 140,
+    "english": "Comes in from",
+    "sample": {}
+  },
+  {
+    "key": "style.freezeSection.freezeFrame",
+    "file": "src/renderer/src/editor/panels/FreezeSection.tsx",
+    "line": 45,
+    "english": "Freeze frame",
+    "sample": {}
+  },
+  {
+    "key": "style.freezeSection.freezeFrameAtPlayhead",
+    "file": "src/renderer/src/editor/panels/FreezeSection.tsx",
+    "line": 52,
+    "english": " Freeze frame at playhead",
+    "sample": {}
+  },
+  {
+    "key": "style.freezeSection.holdsThePictureSo",
+    "file": "src/renderer/src/editor/panels/FreezeSection.tsx",
+    "line": 54,
+    "english": "Holds the picture so viewers can read it.",
+    "sample": {}
+  },
+  {
+    "key": "style.freezeSection.freezeFrameAt",
+    "file": "src/renderer/src/editor/panels/FreezeSection.tsx",
+    "line": 87,
+    "english": "Freeze frame at «value»",
+    "sample": {
+      "time": "«value»"
+    }
+  },
+  {
+    "key": "style.freezeSection.holdFor",
+    "file": "src/renderer/src/editor/panels/FreezeSection.tsx",
+    "line": 89,
+    "english": "Hold for",
+    "sample": {}
+  },
+  {
+    "key": "common.label.sound",
+    "file": "src/renderer/src/editor/panels/FreezeSection.tsx",
+    "line": 97,
+    "english": "Sound",
+    "sample": {}
+  },
+  {
+    "key": "style.freezeSection.freezeFrameSound",
+    "file": "src/renderer/src/editor/panels/FreezeSection.tsx",
+    "line": 100,
+    "english": "Freeze frame sound",
+    "sample": {}
+  },
+  {
+    "key": "style.freezeSection.aTextThatShows",
+    "file": "src/renderer/src/editor/panels/FreezeSection.tsx",
+    "line": 119,
+    "english": "A text that shows through the whole freeze",
+    "sample": {}
+  },
+  {
+    "key": "style.freezeSection.addTextOnThe",
+    "file": "src/renderer/src/editor/panels/FreezeSection.tsx",
+    "line": 120,
+    "english": " Add text on the freeze",
+    "sample": {}
+  },
+  {
+    "key": "style.freezeSection.deleteFreeze",
+    "file": "src/renderer/src/editor/panels/FreezeSection.tsx",
+    "line": 130,
+    "english": "Delete freeze",
+    "sample": {}
+  },
+  {
+    "key": "style.freezeMarks.freezeFrameAddsHere",
+    "file": "src/renderer/src/editor/FreezeMarks.tsx",
+    "line": 162,
+    "english": "Freeze frame: adds «value» here, the recording waits. Drag the edge to change«deleteHint»«value2»",
+    "sample": {
+      "length": "«value»",
+      "remove": "«deleteHint»",
+      "group": "«value2»"
+    }
+  },
+  {
+    "key": "style.freezeMarks.freezeFrameThePicture",
+    "file": "src/renderer/src/editor/FreezeMarks.tsx",
+    "line": 193,
+    "english": "Freeze frame: the picture holds for «value» while the sound plays on«value2»",
+    "sample": {
+      "length": "«value»",
+      "group": "«value2»"
+    }
+  },
+  {
+    "key": "style.freezeMarks.freezeFrameInA",
+    "file": "src/renderer/src/editor/FreezeMarks.tsx",
+    "line": 224,
+    "english": "Freeze frame in a cut: not in the video. Restore the cut, or select it and press «deleteKey»",
+    "sample": {
+      "keys": "«deleteKey»"
+    }
+  },
+  {
+    "key": "style.selectionPanel.itemsSelected",
+    "file": "src/renderer/src/editor/panels/SelectionPanel.tsx",
+    "line": 183,
+    "english": "«length» items selected",
+    "sample": {
+      "n": "«length»"
+    }
+  },
+  {
+    "key": "style.selectionPanel.selectOnlyThe",
+    "file": "src/renderer/src/editor/panels/SelectionPanel.tsx",
+    "line": 193,
+    "english": "Select only the text items",
+    "sample": {
+      "kind": "annotation"
+    }
+  },
+  {
+    "key": "style.selectionPanel.actions",
+    "file": "src/renderer/src/editor/panels/SelectionPanel.tsx",
+    "line": 207,
+    "english": "Actions",
+    "sample": {}
+  },
+  {
+    "key": "style.selectionPanel.duplicate",
+    "file": "src/renderer/src/editor/panels/SelectionPanel.tsx",
+    "line": 210,
+    "english": " Duplicate",
+    "sample": {}
+  },
+  {
+    "key": "common.action.copy",
+    "file": "src/renderer/src/editor/panels/SelectionPanel.tsx",
+    "line": 213,
+    "english": "Copy",
+    "sample": {}
+  },
+  {
+    "key": "style.selectionPanel.pasteLook",
+    "file": "src/renderer/src/editor/panels/SelectionPanel.tsx",
+    "line": 221,
+    "english": "Paste look",
+    "sample": {}
+  },
+  {
+    "key": "style.selectionPanel.delete",
+    "file": "src/renderer/src/editor/panels/SelectionPanel.tsx",
+    "line": 228,
+    "english": " Delete",
+    "sample": {}
+  },
+  {
+    "key": "style.selectionPanel.selectedItems",
+    "file": "src/renderer/src/editor/panels/SelectionPanel.tsx",
+    "line": 233,
+    "english": "Selected items",
+    "sample": {}
+  },
+  {
+    "key": "style.selectionPanel.leaveOutAt",
+    "file": "src/renderer/src/editor/panels/SelectionPanel.tsx",
+    "line": 247,
+    "english": "Leave out «name» at «at»",
+    "sample": {
+      "name": "«name»",
+      "at": "«at»"
+    }
+  },
+  {
+    "key": "style.selectionPanel.leaveThisItemOut",
+    "file": "src/renderer/src/editor/panels/SelectionPanel.tsx",
+    "line": 247,
+    "english": "Leave this item out of the selection",
+    "sample": {}
+  },
+  {
+    "key": "style.selectionPanel.leaveOut",
+    "file": "src/renderer/src/editor/panels/SelectionPanel.tsx",
+    "line": 248,
+    "english": "Leave out",
+    "sample": {}
+  },
+  {
+    "key": "style.selectionPanel.timing",
+    "file": "src/renderer/src/editor/panels/SelectionPanel.tsx",
+    "line": 257,
+    "english": "Timing",
+    "sample": {}
+  },
+  {
+    "key": "style.selectionPanel.startsAt",
+    "file": "src/renderer/src/editor/panels/SelectionPanel.tsx",
+    "line": 259,
+    "english": "Starts at",
+    "sample": {}
+  },
+  {
+    "key": "style.selectionPanel.startsAt",
+    "file": "src/renderer/src/editor/panels/SelectionPanel.tsx",
+    "line": 260,
+    "english": "Starts at",
+    "sample": {}
+  },
+  {
+    "key": "style.selectionPanel.startsAtSetTo",
+    "file": "src/renderer/src/editor/panels/SelectionPanel.tsx",
+    "line": 264,
+    "english": "Starts at: set to the playhead",
+    "sample": {}
+  },
+  {
+    "key": "style.selectionPanel.startsAtSetTo",
+    "file": "src/renderer/src/editor/panels/SelectionPanel.tsx",
+    "line": 265,
+    "english": "Starts at: set to the playhead",
+    "sample": {}
+  },
+  {
+    "key": "style.selectionPanel.moveTheSelection",
+    "file": "src/renderer/src/editor/panels/SelectionPanel.tsx",
+    "line": 272,
+    "english": "Move the selection",
+    "sample": {}
+  },
+  {
+    "key": "style.selectionPanel.move",
+    "file": "src/renderer/src/editor/panels/SelectionPanel.tsx",
+    "line": 273,
+    "english": "Move",
+    "sample": {}
+  },
+  {
+    "key": "style.selectionPanel.moveEarlier",
+    "file": "src/renderer/src/editor/panels/SelectionPanel.tsx",
+    "line": 274,
+    "english": "Move the selection 1 second earlier",
+    "sample": {}
+  },
+  {
+    "key": "style.selectionPanel.moveLater",
+    "file": "src/renderer/src/editor/panels/SelectionPanel.tsx",
+    "line": 277,
+    "english": "Move the selection 1 second later",
+    "sample": {}
+  },
+  {
+    "key": "common.label.length",
+    "file": "src/renderer/src/editor/panels/SelectionPanel.tsx",
+    "line": 283,
+    "english": "Length",
+    "sample": {}
+  },
+  {
+    "key": "common.label.length",
+    "file": "src/renderer/src/editor/panels/SelectionPanel.tsx",
+    "line": 284,
+    "english": "Length",
+    "sample": {}
+  },
+  {
+    "key": "style.selectionPanel.secondsUnit",
+    "file": "src/renderer/src/editor/panels/SelectionPanel.tsx",
+    "line": 285,
+    "english": "s",
+    "sample": {}
+  },
+  {
+    "key": "style.selectionPanel.movesAsOneBlock",
+    "file": "src/renderer/src/editor/panels/SelectionPanel.tsx",
+    "line": 288,
+    "english": "Moves as one block: it stops at the recording's ends, at zooms in the way, and a freeze frame stays in its clip.",
+    "sample": {}
+  },
+  {
+    "key": "style.selectionPanel.chaptersMoveWithThe",
+    "file": "src/renderer/src/editor/panels/SelectionPanel.tsx",
+    "line": 289,
+    "english": "Chapters move with the selection; rename them one at a time.",
+    "sample": {}
+  },
+  {
+    "key": "style.selectionPanel.automaticEdited",
+    "file": "src/renderer/src/editor/panels/SelectionPanel.tsx",
+    "line": 296,
+    "english": "«autoZooms» automatic · «value» edited",
+    "sample": {
+      "auto": "«autoZooms»",
+      "edited": "«value»"
+    }
+  },
+  {
+    "key": "style.selectionPanel.changingOrMovingThe",
+    "file": "src/renderer/src/editor/panels/SelectionPanel.tsx",
+    "line": 298,
+    "english": "Changing or moving the automatic ones makes them yours: auto zoom then keeps them.",
+    "sample": {}
+  },
+  {
+    "key": "style.selectionPanel.textTitlesAndChapter",
+    "file": "src/renderer/src/editor/panels/SelectionPanel.tsx",
+    "line": 305,
+    "english": "Text, titles and chapter names are edited one at a time. ",
+    "sample": {}
+  },
+  {
+    "key": "style.selectionPanel.copiesOneItemS",
+    "file": "src/renderer/src/editor/panels/SelectionPanel.tsx",
+    "line": 305,
+    "english": "«value» copies one item's look; ",
+    "sample": {
+      "keys": "«value»"
+    }
+  },
+  {
+    "key": "style.selectionPanel.pastesItOntoThe",
+    "file": "src/renderer/src/editor/panels/SelectionPanel.tsx",
+    "line": 306,
+    "english": "«value» pastes it onto the selection.",
+    "sample": {
+      "keys": "«value»"
+    }
+  },
+  {
+    "key": "style.selectionPanel.useTheProjectS",
+    "file": "src/renderer/src/editor/panels/SelectionPanel.tsx",
+    "line": 334,
+    "english": "Use the project's zoom style for these zooms",
+    "sample": {}
+  },
+  {
+    "key": "style.selectionPanel.zoomLevelPresets",
+    "file": "src/renderer/src/editor/panels/SelectionPanel.tsx",
+    "line": 361,
+    "english": "Zoom level presets",
+    "sample": {}
+  },
+  {
+    "key": "style.mixedControls.mixed",
+    "file": "src/renderer/src/editor/mixedControls.tsx",
+    "line": 34,
+    "english": "Mixed",
+    "sample": {}
+  },
+  {
+    "key": "style.mixedControls.mixed",
+    "file": "src/renderer/src/editor/mixedControls.tsx",
+    "line": 67,
+    "english": "Mixed",
+    "sample": {}
+  },
+  {
+    "key": "style.mixedControls.labelMixed",
+    "file": "src/renderer/src/editor/mixedControls.tsx",
+    "line": 69,
+    "english": "«label», mixed",
+    "sample": {
+      "label": "«label»"
+    }
+  },
+  {
+    "key": "style.mixedControls.mixed",
+    "file": "src/renderer/src/editor/mixedControls.tsx",
+    "line": 100,
+    "english": "Mixed",
+    "sample": {}
+  },
+  {
+    "key": "style.mixedControls.mixed",
+    "file": "src/renderer/src/editor/mixedControls.tsx",
+    "line": 128,
+    "english": "Mixed",
+    "sample": {}
+  },
+  {
+    "key": "style.mixedControls.labelMixed",
+    "file": "src/renderer/src/editor/mixedControls.tsx",
+    "line": 130,
+    "english": "«label», mixed",
+    "sample": {
+      "label": "«label»"
+    }
+  },
+  {
+    "key": "common.colour.pickAny",
+    "file": "src/renderer/src/editor/mixedControls.tsx",
+    "line": 145,
+    "english": "Pick any colour",
+    "sample": {}
+  },
+  {
+    "key": "common.colour.anyFor",
+    "file": "src/renderer/src/editor/mixedControls.tsx",
+    "line": 146,
+    "english": "«label» (any colour)",
+    "sample": {
+      "label": "«label»"
+    }
+  },
+  {
+    "key": "style.mixedControls.mixed",
+    "file": "src/renderer/src/editor/mixedControls.tsx",
+    "line": 201,
+    "english": "Mixed",
+    "sample": {}
+  },
+  {
+    "key": "style.stylePanel.frames.none",
+    "file": "src/renderer/src/editor/panels/StylePanel.tsx",
+    "line": 31,
+    "english": "None",
+    "sample": {}
+  },
+  {
+    "key": "style.stylePanel.frames.none.title",
+    "file": "src/renderer/src/editor/panels/StylePanel.tsx",
+    "line": 31,
+    "english": "Just the recording",
+    "sample": {}
+  },
+  {
+    "key": "style.stylePanel.frames.browser",
+    "file": "src/renderer/src/editor/panels/StylePanel.tsx",
+    "line": 32,
+    "english": "Browser",
+    "sample": {}
+  },
+  {
+    "key": "style.stylePanel.frames.browser.title",
+    "file": "src/renderer/src/editor/panels/StylePanel.tsx",
+    "line": 32,
+    "english": "A browser window with an address bar",
+    "sample": {}
+  },
+  {
+    "key": "style.stylePanel.frames.laptop",
+    "file": "src/renderer/src/editor/panels/StylePanel.tsx",
+    "line": 33,
+    "english": "Laptop",
+    "sample": {}
+  },
+  {
+    "key": "style.stylePanel.frames.laptop.title",
+    "file": "src/renderer/src/editor/panels/StylePanel.tsx",
+    "line": 33,
+    "english": "A laptop screen on its base",
+    "sample": {}
+  },
+  {
+    "key": "style.stylePanel.frames.monitor",
+    "file": "src/renderer/src/editor/panels/StylePanel.tsx",
+    "line": 34,
+    "english": "Monitor",
+    "sample": {}
+  },
+  {
+    "key": "style.stylePanel.frames.monitor.title",
+    "file": "src/renderer/src/editor/panels/StylePanel.tsx",
+    "line": 34,
+    "english": "A desktop monitor on a stand",
+    "sample": {}
+  },
+  {
+    "key": "style.stylePanel.frames.phone",
+    "file": "src/renderer/src/editor/panels/StylePanel.tsx",
+    "line": 35,
+    "english": "Phone",
+    "sample": {}
+  },
+  {
+    "key": "style.stylePanel.frames.phone.title",
+    "file": "src/renderer/src/editor/panels/StylePanel.tsx",
+    "line": 35,
+    "english": "A phone (on its side for landscape recordings)",
+    "sample": {}
+  },
+  {
+    "key": "style.stylePanel.shadowStyles.soft",
+    "file": "src/renderer/src/editor/panels/StylePanel.tsx",
+    "line": 39,
+    "english": "Soft",
+    "sample": {}
+  },
+  {
+    "key": "style.stylePanel.shadowStyles.soft.title",
+    "file": "src/renderer/src/editor/panels/StylePanel.tsx",
+    "line": 39,
+    "english": "A soft drop shadow",
+    "sample": {}
+  },
+  {
+    "key": "style.stylePanel.shadowStyles.hard",
+    "file": "src/renderer/src/editor/panels/StylePanel.tsx",
+    "line": 40,
+    "english": "Hard",
+    "sample": {}
+  },
+  {
+    "key": "style.stylePanel.shadowStyles.hard.title",
+    "file": "src/renderer/src/editor/panels/StylePanel.tsx",
+    "line": 40,
+    "english": "A solid shadow offset down and to the right",
+    "sample": {}
+  },
+  {
+    "key": "style.stylePanel.shadowStyles.glow",
+    "file": "src/renderer/src/editor/panels/StylePanel.tsx",
+    "line": 41,
+    "english": "Glow",
+    "sample": {}
+  },
+  {
+    "key": "style.stylePanel.shadowStyles.glow.title",
+    "file": "src/renderer/src/editor/panels/StylePanel.tsx",
+    "line": 41,
+    "english": "A coloured glow all around",
+    "sample": {}
+  },
+  {
+    "key": "style.stylePanel.aspectAuto",
+    "file": "src/renderer/src/editor/panels/StylePanel.tsx",
+    "line": 96,
+    "english": "Auto",
+    "sample": {}
+  },
+  {
+    "key": "style.stylePanel.backgroundKinds.gradient",
+    "file": "src/renderer/src/editor/panels/StylePanel.tsx",
+    "line": 109,
+    "english": "Gradients",
+    "sample": {}
+  },
+  {
+    "key": "style.stylePanel.backgroundKinds.wallpaper",
+    "file": "src/renderer/src/editor/panels/StylePanel.tsx",
+    "line": 110,
+    "english": "Wallpapers",
+    "sample": {}
+  },
+  {
+    "key": "style.stylePanel.backgroundKinds.animated",
+    "file": "src/renderer/src/editor/panels/StylePanel.tsx",
+    "line": 111,
+    "english": "Animated",
+    "sample": {}
+  },
+  {
+    "key": "style.stylePanel.frameThemes.light",
+    "file": "src/renderer/src/editor/panels/StylePanel.tsx",
+    "line": 234,
+    "english": "Light",
+    "sample": {}
+  },
+  {
+    "key": "style.stylePanel.frameThemes.dark",
+    "file": "src/renderer/src/editor/panels/StylePanel.tsx",
+    "line": 235,
+    "english": "Dark",
+    "sample": {}
+  },
+  {
+    "key": "style.stylePanel.borderNone",
+    "file": "src/renderer/src/editor/panels/StylePanel.tsx",
+    "line": 268,
+    "english": "None",
+    "sample": {}
+  },
+  {
+    "key": "style.stylePanel.defaultsNotSaved",
+    "file": "src/renderer/src/editor/panels/StylePanel.tsx",
+    "line": 376,
+    "english": "Could not save the defaults: «reason»",
+    "sample": {
+      "reason": "«reason»"
+    }
+  },
+  {
+    "key": "style.stylePanel.defaultsNotReset",
+    "file": "src/renderer/src/editor/panels/StylePanel.tsx",
+    "line": 383,
+    "english": "Could not reset the defaults: «reason»",
+    "sample": {
+      "reason": "«reason»"
+    }
+  },
+  {
+    "key": "style.stylePanel.defaultsLeft.image",
+    "file": "src/renderer/src/editor/panels/StylePanel.tsx",
+    "line": 373,
+    "english": "image backgrounds are not included",
+    "sample": {}
+  },
+  {
+    "key": "style.stylePanel.defaultsLeft.logo",
+    "file": "src/renderer/src/editor/panels/StylePanel.tsx",
+    "line": 374,
+    "english": "the watermark logo could not be kept",
+    "sample": {}
+  },
+  {
+    "key": "style.stylePanel.savedAsDefaultLeft",
+    "file": "src/renderer/src/editor/panels/StylePanel.tsx",
+    "line": 375,
+    "english": "Saved as default (image backgrounds are not included; the watermark logo could not be kept)",
+    "sample": {
+      "left": "image backgrounds are not included; the watermark logo could not be kept"
+    }
+  },
+  {
+    "key": "style.stylePanel.savedAsDefault",
+    "file": "src/renderer/src/editor/panels/StylePanel.tsx",
+    "line": 375,
+    "english": "Saved as default for new recordings",
+    "sample": {}
+  },
+  {
+    "key": "style.stylePanel.defaultsReset",
+    "file": "src/renderer/src/editor/panels/StylePanel.tsx",
+    "line": 382,
+    "english": "Defaults reset: new recordings use the built-in look",
+    "sample": {}
+  },
+  {
+    "key": "style.preset.studio",
+    "file": "src/shared/editor/stylePresets.ts",
+    "line": 52,
+    "english": "Studio",
+    "sample": {}
+  },
+  {
+    "key": "style.preset.minimal",
+    "file": "src/shared/editor/stylePresets.ts",
+    "line": 61,
+    "english": "Minimal",
+    "sample": {}
+  },
+  {
+    "key": "style.preset.midnightBrowser",
+    "file": "src/shared/editor/stylePresets.ts",
+    "line": 70,
+    "english": "Midnight browser",
+    "sample": {}
+  },
+  {
+    "key": "style.preset.neon",
+    "file": "src/shared/editor/stylePresets.ts",
+    "line": 81,
+    "english": "Neon glow",
+    "sample": {}
+  },
+  {
+    "key": "style.preset.pop",
+    "file": "src/shared/editor/stylePresets.ts",
+    "line": 90,
+    "english": "Pop",
+    "sample": {}
+  },
+  {
+    "key": "style.preset.showcase",
+    "file": "src/shared/editor/stylePresets.ts",
+    "line": 99,
+    "english": "Laptop showcase",
+    "sample": {}
+  },
+  {
+    "key": "style.preset.frosted",
+    "file": "src/shared/editor/stylePresets.ts",
+    "line": 110,
+    "english": "Frosted glass",
+    "sample": {}
+  },
+  {
+    "key": "style.preset.flow",
+    "file": "src/shared/editor/stylePresets.ts",
+    "line": 119,
+    "english": "Flow",
+    "sample": {}
+  },
+  {
+    "key": "style.stylePresets.error.noName",
+    "file": "src/shared/editor/stylePresets.ts",
+    "line": 275,
+    "english": "Give the preset a name",
+    "sample": {}
+  },
+  {
+    "key": "style.stylePresets.error.unusable",
+    "file": "src/shared/editor/stylePresets.ts",
+    "line": 277,
+    "english": "This look cannot be saved as a preset",
+    "sample": {}
+  },
+  {
+    "key": "style.stylePresets.error.full",
+    "file": "src/shared/editor/stylePresets.ts",
+    "line": 278,
+    "english": "You can keep up to 50 presets: delete one first",
+    "sample": {
+      "max": "50"
+    }
+  },
+  {
+    "key": "style.stylePresets.notSaved",
+    "file": "src/renderer/src/editor/panels/StylePresets.tsx",
+    "line": 78,
+    "english": "Could not save your presets: «reason»",
+    "sample": {
+      "reason": "«reason»"
+    }
+  },
+  {
+    "key": "style.stylePresets.savedWithoutImage",
+    "file": "src/renderer/src/editor/panels/StylePresets.tsx",
+    "line": 99,
+    "english": "Saved \"«name»\" (without the background image, which belongs to this recording)",
+    "sample": {
+      "name": "«name»"
+    }
+  },
+  {
+    "key": "style.stylePresets.saved",
+    "file": "src/renderer/src/editor/panels/StylePresets.tsx",
+    "line": 99,
+    "english": "Saved \"«name»\"",
+    "sample": {
+      "name": "«name»"
+    }
+  },
+  {
+    "key": "style.stylePresets.renamed",
+    "file": "src/renderer/src/editor/panels/StylePresets.tsx",
+    "line": 103,
+    "english": "Preset renamed",
+    "sample": {}
+  },
+  {
+    "key": "style.stylePresets.deleted",
+    "file": "src/renderer/src/editor/panels/StylePresets.tsx",
+    "line": 117,
+    "english": "Deleted \"«name»\"",
+    "sample": {
+      "name": "«name»"
+    }
+  },
+  {
+    "key": "style.brandKitBar.theLogo",
+    "file": "src/renderer/src/editor/panels/BrandKitBar.tsx",
+    "line": 60,
+    "english": "the logo",
+    "sample": {}
+  },
+  {
+    "key": "style.brandKitBar.empty",
+    "file": "src/renderer/src/editor/panels/BrandKitBar.tsx",
+    "line": 77,
+    "english": "Your brand kit is empty: set it up in Settings › Brand kit",
+    "sample": {}
+  },
+  {
+    "key": "style.brandKitBar.unreadable",
+    "file": "src/renderer/src/editor/panels/BrandKitBar.tsx",
+    "line": 78,
+    "english": "the logo, Inter (could not be read)",
+    "sample": {
+      "names": "the logo, Inter"
+    }
+  },
+  {
+    "key": "style.brandKitBar.tooManyFonts",
+    "file": "src/renderer/src/editor/panels/BrandKitBar.tsx",
+    "line": 78,
+    "english": "Inter, Lora (the video already has 8 fonts)",
+    "sample": {
+      "names": "Inter, Lora",
+      "max": "8"
+    }
+  },
+  {
+    "key": "style.brandKitBar.applied",
+    "file": "src/renderer/src/editor/panels/BrandKitBar.tsx",
+    "line": 78,
+    "english": "Brand kit applied",
+    "sample": {}
+  },
+  {
+    "key": "style.brandKitBar.appliedUndo",
+    "file": "src/renderer/src/editor/panels/BrandKitBar.tsx",
+    "line": 78,
+    "english": "Brand kit applied · Ctrl + Z to undo",
+    "sample": {
+      "keys": "Ctrl + Z"
+    }
+  },
+  {
+    "key": "style.brandKitBar.appliedWithout",
+    "file": "src/renderer/src/editor/panels/BrandKitBar.tsx",
+    "line": 78,
+    "english": "Brand kit applied without the logo (could not be read)",
+    "sample": {
+      "without": "the logo (could not be read)"
+    }
+  },
+  {
+    "key": "style.brandKitBar.appliedWithoutUndo",
+    "file": "src/renderer/src/editor/panels/BrandKitBar.tsx",
+    "line": 78,
+    "english": "Brand kit applied without the logo (could not be read) · Ctrl + Z to undo",
+    "sample": {
+      "without": "the logo (could not be read)",
+      "keys": "Ctrl + Z"
+    }
+  },
+  {
+    "key": "style.brandKitBar.notApplied",
+    "file": "src/renderer/src/editor/panels/BrandKitBar.tsx",
+    "line": 95,
+    "english": "The brand kit could not be applied: «reason»",
+    "sample": {
+      "reason": "«reason»"
+    }
+  },
+  {
+    "key": "style.watermarkSection.position.topLeft",
+    "file": "src/renderer/src/editor/panels/WatermarkSection.tsx",
+    "line": 11,
+    "english": "Top left",
+    "sample": {}
+  },
+  {
+    "key": "style.watermarkSection.positionName.topLeft",
+    "file": "src/renderer/src/editor/panels/WatermarkSection.tsx",
+    "line": 11,
+    "english": "Watermark top left",
+    "sample": {}
+  },
+  {
+    "key": "style.watermarkSection.position.topRight",
+    "file": "src/renderer/src/editor/panels/WatermarkSection.tsx",
+    "line": 12,
+    "english": "Top right",
+    "sample": {}
+  },
+  {
+    "key": "style.watermarkSection.positionName.topRight",
+    "file": "src/renderer/src/editor/panels/WatermarkSection.tsx",
+    "line": 12,
+    "english": "Watermark top right",
+    "sample": {}
+  },
+  {
+    "key": "style.watermarkSection.position.centre",
+    "file": "src/renderer/src/editor/panels/WatermarkSection.tsx",
+    "line": 13,
+    "english": "Centre",
+    "sample": {}
+  },
+  {
+    "key": "style.watermarkSection.positionName.centre",
+    "file": "src/renderer/src/editor/panels/WatermarkSection.tsx",
+    "line": 13,
+    "english": "Watermark centre",
+    "sample": {}
+  },
+  {
+    "key": "style.watermarkSection.position.bottomLeft",
+    "file": "src/renderer/src/editor/panels/WatermarkSection.tsx",
+    "line": 14,
+    "english": "Bottom left",
+    "sample": {}
+  },
+  {
+    "key": "style.watermarkSection.positionName.bottomLeft",
+    "file": "src/renderer/src/editor/panels/WatermarkSection.tsx",
+    "line": 14,
+    "english": "Watermark bottom left",
+    "sample": {}
+  },
+  {
+    "key": "style.watermarkSection.position.bottomRight",
+    "file": "src/renderer/src/editor/panels/WatermarkSection.tsx",
+    "line": 15,
+    "english": "Bottom right",
+    "sample": {}
+  },
+  {
+    "key": "style.watermarkSection.positionName.bottomRight",
+    "file": "src/renderer/src/editor/panels/WatermarkSection.tsx",
+    "line": 15,
+    "english": "Watermark bottom right",
+    "sample": {}
+  },
+  {
+    "key": "style.watermarkSection.unreadableKept",
+    "file": "src/renderer/src/editor/panels/WatermarkSection.tsx",
+    "line": 42,
+    "english": "This image could not be read. Your current logo is kept.",
+    "sample": {}
+  },
+  {
+    "key": "style.watermarkSection.unreadable",
+    "file": "src/renderer/src/editor/panels/WatermarkSection.tsx",
+    "line": 42,
+    "english": "This image could not be read.",
+    "sample": {}
+  },
+  {
+    "key": "style.watermarkSection.kind.text",
+    "file": "src/renderer/src/editor/panels/WatermarkSection.tsx",
+    "line": 77,
+    "english": "Text",
+    "sample": {}
+  },
+  {
+    "key": "style.watermarkSection.kind.image",
+    "file": "src/renderer/src/editor/panels/WatermarkSection.tsx",
+    "line": 78,
+    "english": "Logo",
+    "sample": {}
+  },
+  {
+    "key": "style.watermarkSection.kind.image.title",
+    "file": "src/renderer/src/editor/panels/WatermarkSection.tsx",
+    "line": 78,
+    "english": "A PNG, JPG, WebP or SVG logo",
+    "sample": {}
+  },
+  {
+    "key": "style.colourControls.copy.monoHint",
+    "file": "src/renderer/src/editor/panels/ColourControls.tsx",
+    "line": 36,
+    "english": "Coloured text may become harder to read.",
+    "sample": {}
+  },
+  {
+    "key": "style.colourControls.copy.cpuNote",
+    "file": "src/renderer/src/editor/panels/ColourControls.tsx",
+    "line": 39,
+    "english": "This PC grades colour without graphics acceleration, so the preview may play less smoothly. The export looks the same.",
+    "sample": {}
+  },
+  {
+    "key": "style.colourControls.copy.autoHint",
+    "file": "src/renderer/src/editor/panels/ColourControls.tsx",
+    "line": 42,
+    "english": "Balances the camera’s colour and brightness from a few frames, on this PC. Review mode lists it.",
+    "sample": {}
+  },
+  {
+    "key": "style.colourControls.copy.importLut",
+    "file": "src/renderer/src/editor/panels/ColourControls.tsx",
+    "line": 45,
+    "english": "Import a LUT (.cube)…",
+    "sample": {}
+  },
+  {
+    "key": "style.colourControls.copy.reset",
+    "file": "src/renderer/src/editor/panels/ColourControls.tsx",
+    "line": 48,
+    "english": "Colour reset",
+    "sample": {}
+  },
+  {
+    "key": "style.colourControls.copy.compareHint",
+    "file": "src/renderer/src/editor/panels/ColourControls.tsx",
+    "line": 51,
+    "english": "Shows the preview without colour while it is on. The export keeps the colour.",
+    "sample": {}
+  },
+  {
+    "key": "style.colourControls.slider.temperature",
+    "file": "src/renderer/src/editor/panels/ColourControls.tsx",
+    "line": 57,
+    "english": "Temperature",
+    "sample": {}
+  },
+  {
+    "key": "style.colourControls.slider.tint",
+    "file": "src/renderer/src/editor/panels/ColourControls.tsx",
+    "line": 60,
+    "english": "Tint",
+    "sample": {}
+  },
+  {
+    "key": "style.colourControls.slider.brightness",
+    "file": "src/renderer/src/editor/panels/ColourControls.tsx",
+    "line": 63,
+    "english": "Brightness",
+    "sample": {}
+  },
+  {
+    "key": "style.colourControls.slider.contrast",
+    "file": "src/renderer/src/editor/panels/ColourControls.tsx",
+    "line": 66,
+    "english": "Contrast",
+    "sample": {}
+  },
+  {
+    "key": "style.colourControls.slider.saturation",
+    "file": "src/renderer/src/editor/panels/ColourControls.tsx",
+    "line": 69,
+    "english": "Saturation",
+    "sample": {}
+  },
+  {
+    "key": "style.colourControls.slider.highlights",
+    "file": "src/renderer/src/editor/panels/ColourControls.tsx",
+    "line": 72,
+    "english": "Highlights",
+    "sample": {}
+  },
+  {
+    "key": "style.colourControls.slider.shadows",
+    "file": "src/renderer/src/editor/panels/ColourControls.tsx",
+    "line": 75,
+    "english": "Shadows",
+    "sample": {}
+  },
+  {
+    "key": "style.colourControls.slider.vibrance",
+    "file": "src/renderer/src/editor/panels/ColourControls.tsx",
+    "line": 78,
+    "english": "Vibrance",
+    "sample": {}
+  },
+  {
+    "key": "style.colourControls.slider.exposure",
+    "file": "src/renderer/src/editor/panels/ColourControls.tsx",
+    "line": 81,
+    "english": "Exposure",
+    "sample": {}
+  },
+  {
+    "key": "style.colourControls.value.none",
+    "file": "src/renderer/src/editor/panels/ColourControls.tsx",
+    "line": 115,
+    "english": "No change",
+    "sample": {}
+  },
+  {
+    "key": "style.colourControls.value.warmer",
+    "file": "src/renderer/src/editor/panels/ColourControls.tsx",
+    "line": 115,
+    "english": "Warmer, +20",
+    "sample": {
+      "n": "+20"
+    }
+  },
+  {
+    "key": "style.colourControls.value.cooler",
+    "file": "src/renderer/src/editor/panels/ColourControls.tsx",
+    "line": 115,
+    "english": "Cooler, −15",
+    "sample": {
+      "n": "−15"
+    }
+  },
+  {
+    "key": "style.colourControls.value.magenta",
+    "file": "src/renderer/src/editor/panels/ColourControls.tsx",
+    "line": 115,
+    "english": "More magenta, +5",
+    "sample": {
+      "n": "+5"
+    }
+  },
+  {
+    "key": "style.colourControls.value.greener",
+    "file": "src/renderer/src/editor/panels/ColourControls.tsx",
+    "line": 115,
+    "english": "Greener, −5",
+    "sample": {
+      "n": "−5"
+    }
+  },
+  {
+    "key": "style.colourControls.value.stops",
+    "file": "src/renderer/src/editor/panels/ColourControls.tsx",
+    "line": 115,
+    "english": [
+      "+0 stops",
+      "+1 stop",
+      "+2 stops",
+      "+1000 stops"
+    ],
+    "sample": [
+      {
+        "count": 0,
+        "n": "+0"
+      },
+      {
+        "count": 1,
+        "n": "+1"
+      },
+      {
+        "count": 2,
+        "n": "+2"
+      },
+      {
+        "count": 1000,
+        "n": "+1000"
+      }
+    ]
+  },
+  {
+    "key": "style.colourControls.percent",
+    "file": "src/renderer/src/editor/panels/ColourControls.tsx",
+    "line": 123,
+    "english": "75 percent",
+    "sample": {
+      "n": "75"
+    }
+  },
+  {
+    "key": "style.colourControls.lookNone",
+    "file": "src/renderer/src/editor/panels/ColourControls.tsx",
+    "line": 273,
+    "english": "None",
+    "sample": {}
+  },
+  {
+    "key": "style.colourControls.sliderReset",
+    "file": "src/renderer/src/editor/panels/ColourControls.tsx",
+    "line": 290,
+    "english": "Temperature reset",
+    "sample": {
+      "label": "Temperature"
+    }
+  },
+  {
+    "key": "style.colourControls.lutImported",
+    "file": "src/renderer/src/editor/panels/ColourControls.tsx",
+    "line": 302,
+    "english": "LUT «title» imported",
+    "sample": {
+      "title": "«title»"
+    }
+  },
+  {
+    "key": "style.colourControls.lutRemoved",
+    "file": "src/renderer/src/editor/panels/ColourControls.tsx",
+    "line": 417,
+    "english": "LUT removed",
+    "sample": {}
+  },
+  {
+    "key": "style.autoColourRun.noCamera",
+    "file": "src/renderer/src/editor/autoColourRun.ts",
+    "line": 144,
+    "english": "This recording has no camera",
+    "sample": {}
+  },
+  {
+    "key": "style.autoColourRun.running",
+    "file": "src/renderer/src/editor/autoColourRun.ts",
+    "line": 147,
+    "english": "Balancing the camera’s colour…",
+    "sample": {}
+  },
+  {
+    "key": "style.autoColourRun.done",
+    "file": "src/renderer/src/editor/autoColourRun.ts",
+    "line": 150,
+    "english": "Camera colour balanced · Ctrl + Z to undo",
+    "sample": {}
+  },
+  {
+    "key": "style.autoColourRun.nothing",
+    "file": "src/renderer/src/editor/autoColourRun.ts",
+    "line": 153,
+    "english": "The camera’s colour already looks balanced",
+    "sample": {}
+  },
+  {
+    "key": "style.autoColourRun.failed",
+    "file": "src/renderer/src/editor/autoColourRun.ts",
+    "line": 156,
+    "english": "The camera’s colour could not be balanced",
+    "sample": {}
+  },
+  {
+    "key": "style.lookButtons.copyFirst",
+    "file": "src/renderer/src/editor/LookButtons.tsx",
+    "line": 23,
+    "english": "Copy a look first: Copy look on one item, then select others",
+    "sample": {}
+  },
+  {
+    "key": "style.lookButtons.copiedLookFor",
+    "file": "src/renderer/src/editor/LookButtons.tsx",
+    "line": 23,
+    "english": "The copied look is for zooms",
+    "sample": {
+      "cls": "zoom"
+    }
+  },
+  {
+    "key": "style.lookButtons.copiedLookFor",
+    "file": "src/renderer/src/editor/LookButtons.tsx",
+    "line": 23,
+    "english": "The copied look is for text items",
+    "sample": {
+      "cls": "text"
+    }
+  },
+  {
+    "key": "style.lookButtons.copiedLookFor",
+    "file": "src/renderer/src/editor/LookButtons.tsx",
+    "line": 23,
+    "english": "The copied look is for blur or pixelate areas",
+    "sample": {
+      "cls": "privacy"
+    }
+  },
+  {
+    "key": "style.lookButtons.copiedLookFor",
+    "file": "src/renderer/src/editor/LookButtons.tsx",
+    "line": 23,
+    "english": "The copied look is for pop-ups",
+    "sample": {
+      "cls": "graphic"
+    }
+  },
+  {
+    "key": "style.lookButtons.pasteLookOf",
+    "file": "src/renderer/src/editor/LookButtons.tsx",
+    "line": 24,
+    "english": "Paste look (Box: #ff3b30, 6 px)",
+    "sample": {
+      "look": "Box: #ff3b30, 6 px"
+    }
+  },
+  {
+    "key": "style.lookButtons.pasteLookKeys",
+    "file": "src/renderer/src/editor/LookButtons.tsx",
+    "line": 24,
+    "english": "Paste look (Box: #ff3b30, 6 px) · Ctrl + Alt + V",
+    "sample": {
+      "look": "Box: #ff3b30, 6 px",
+      "keys": "Ctrl + Alt + V"
+    }
+  },
+  {
+    "key": "style.lookButtons.copyThisLook",
+    "file": "src/renderer/src/editor/LookButtons.tsx",
+    "line": 27,
+    "english": "Copy this item's look",
+    "sample": {}
+  },
+  {
+    "key": "style.cropEditor.aspect.free",
+    "file": "src/renderer/src/editor/CropEditor.tsx",
+    "line": 135,
+    "english": "Free",
+    "sample": {}
+  },
+  {
+    "key": "style.cropEditor.aspect.original",
+    "file": "src/renderer/src/editor/CropEditor.tsx",
+    "line": 135,
+    "english": "Original",
+    "sample": {}
+  },
+  {
+    "key": "style.cropEditor.sizePx",
+    "file": "src/renderer/src/editor/CropEditor.tsx",
+    "line": 221,
+    "english": "1280 × 720 px",
+    "sample": {
+      "width": "1280",
+      "height": "720"
+    }
+  },
+  {
+    "key": "style.cropEditor.smallCrop",
+    "file": "src/renderer/src/editor/CropEditor.tsx",
+    "line": 230,
+    "english": "Only 640 × 360 px: larger exports will be upscaled and may look soft.",
+    "sample": {
+      "width": "640",
+      "height": "360"
+    }
+  },
+  {
+    "key": "style.cropRow.cropTitle",
+    "file": "src/renderer/src/editor/panels/CropRow.tsx",
+    "line": 20,
+    "english": "Choose the part of the recording to show: hide the taskbar, browser tabs or an edge",
+    "sample": {}
+  },
+  {
+    "key": "style.cropRow.changeTheCrop",
+    "file": "src/renderer/src/editor/panels/CropRow.tsx",
+    "line": 37,
+    "english": "Change the crop",
+    "sample": {}
+  },
+  {
+    "key": "style.cropRow.sizeOf",
+    "file": "src/renderer/src/editor/panels/CropRow.tsx",
+    "line": 42,
+    "english": "1280 × 720 of 1920 × 1080",
+    "sample": {
+      "width": "1280",
+      "height": "720",
+      "fullWidth": "1920",
+      "fullHeight": "1080"
+    }
+  },
+  {
+    "key": "style.followSection.pace.calm",
+    "file": "src/renderer/src/editor/panels/FollowSection.tsx",
+    "line": 33,
+    "english": "Calm",
+    "sample": {}
+  },
+  {
+    "key": "style.followSection.pace.calm.title",
+    "file": "src/renderer/src/editor/panels/FollowSection.tsx",
+    "line": 33,
+    "english": "Moves less, and more slowly",
+    "sample": {}
+  },
+  {
+    "key": "style.followSection.pace.balanced",
+    "file": "src/renderer/src/editor/panels/FollowSection.tsx",
+    "line": 34,
+    "english": "Balanced",
+    "sample": {}
+  },
+  {
+    "key": "style.followSection.pace.balanced.title",
+    "file": "src/renderer/src/editor/panels/FollowSection.tsx",
+    "line": 34,
+    "english": "Follows each new place you work in",
+    "sample": {}
+  },
+  {
+    "key": "style.followSection.pace.lively",
+    "file": "src/renderer/src/editor/panels/FollowSection.tsx",
+    "line": 35,
+    "english": "Lively",
+    "sample": {}
+  },
+  {
+    "key": "style.followSection.pace.lively.title",
+    "file": "src/renderer/src/editor/panels/FollowSection.tsx",
+    "line": 35,
+    "english": "Reacts sooner and moves faster",
+    "sample": {}
+  },
+  {
+    "key": "style.followSection.camera.top",
+    "file": "src/renderer/src/editor/panels/FollowSection.tsx",
+    "line": 39,
+    "english": "Band on top",
+    "sample": {}
+  },
+  {
+    "key": "style.followSection.camera.top.title",
+    "file": "src/renderer/src/editor/panels/FollowSection.tsx",
+    "line": 39,
+    "english": "Your camera above the screen",
+    "sample": {}
+  },
+  {
+    "key": "style.followSection.camera.bottom",
+    "file": "src/renderer/src/editor/panels/FollowSection.tsx",
+    "line": 40,
+    "english": "Band at the bottom",
+    "sample": {}
+  },
+  {
+    "key": "style.followSection.camera.bottom.title",
+    "file": "src/renderer/src/editor/panels/FollowSection.tsx",
+    "line": 40,
+    "english": "Your camera under the screen",
+    "sample": {}
+  },
+  {
+    "key": "style.followSection.camera.bubble",
+    "file": "src/renderer/src/editor/panels/FollowSection.tsx",
+    "line": 41,
+    "english": "Bubble",
+    "sample": {}
+  },
+  {
+    "key": "style.followSection.camera.bubble.title",
+    "file": "src/renderer/src/editor/panels/FollowSection.tsx",
+    "line": 41,
+    "english": "Your camera bubble over the screen, as in the Camera tab",
+    "sample": {}
+  },
+  {
+    "key": "style.followSection.holdTitle",
+    "file": "src/renderer/src/editor/panels/FollowSection.tsx",
+    "line": 181,
+    "english": "Hold the view here",
+    "sample": {}
+  },
+  {
+    "key": "style.effectsPanel.motionBlurOff",
+    "file": "src/renderer/src/editor/panels/EffectsPanel.tsx",
+    "line": 37,
+    "english": "Off",
+    "sample": {}
+  },
+  {
+    "key": "style.effectsPanel.position.bottom",
+    "file": "src/renderer/src/editor/panels/EffectsPanel.tsx",
+    "line": 53,
+    "english": "Bottom",
+    "sample": {}
+  },
+  {
+    "key": "style.effectsPanel.position.top",
+    "file": "src/renderer/src/editor/panels/EffectsPanel.tsx",
+    "line": 54,
+    "english": "Top",
+    "sample": {}
+  },
+  {
+    "key": "style.effectsPanel.movement.none",
+    "file": "src/renderer/src/editor/panels/EffectsPanel.tsx",
+    "line": 71,
+    "english": "The card keeps these angles for the whole video.",
+    "sample": {}
+  },
+  {
+    "key": "style.effectsPanel.movement.cursor",
+    "file": "src/renderer/src/editor/panels/EffectsPanel.tsx",
+    "line": 72,
+    "english": "The card leans a little toward the cursor as it moves, so the part you work on comes forward.",
+    "sample": {}
+  },
+  {
+    "key": "style.effectsPanel.movement.zoom",
+    "file": "src/renderer/src/editor/panels/EffectsPanel.tsx",
+    "line": 73,
+    "english": "The card straightens up while the camera zooms in, so zoomed-in details stay easy to read.",
+    "sample": {}
+  },
+  {
+    "key": "style.effectsPanel.noCursor",
+    "file": "src/renderer/src/editor/panels/EffectsPanel.tsx",
+    "line": 70,
+    "english": "This recording has no cursor positions to follow",
+    "sample": {}
+  },
+  {
+    "key": "style.effectsPanel.movementChip.none",
+    "file": "src/renderer/src/editor/panels/EffectsPanel.tsx",
+    "line": 150,
+    "english": "Still",
+    "sample": {}
+  },
+  {
+    "key": "style.effectsPanel.movementChip.cursor",
+    "file": "src/renderer/src/editor/panels/EffectsPanel.tsx",
+    "line": 153,
+    "english": "Follow cursor",
+    "sample": {}
+  },
+  {
+    "key": "style.effectsPanel.movementChip.zoom",
+    "file": "src/renderer/src/editor/panels/EffectsPanel.tsx",
+    "line": 157,
+    "english": "Flatten on zoom",
+    "sample": {}
+  },
+  {
+    "key": "style.effectsPanel.presetTurnsOn",
+    "file": "src/renderer/src/editor/panels/EffectsPanel.tsx",
+    "line": 103,
+    "english": "Seen from above (turns the tilt on)",
+    "sample": {
+      "title": "Seen from above"
+    }
+  },
+  {
+    "key": "style.effectsPanel.angle.level",
+    "file": "src/renderer/src/editor/panels/EffectsPanel.tsx",
+    "line": 122,
+    "english": "Level",
+    "sample": {}
+  },
+  {
+    "key": "style.effectsPanel.angle.back",
+    "file": "src/renderer/src/editor/panels/EffectsPanel.tsx",
+    "line": 122,
+    "english": "12° back",
+    "sample": {
+      "n": "12"
+    }
+  },
+  {
+    "key": "style.effectsPanel.angle.forward",
+    "file": "src/renderer/src/editor/panels/EffectsPanel.tsx",
+    "line": 122,
+    "english": "12° forward",
+    "sample": {
+      "n": "12"
+    }
+  },
+  {
+    "key": "style.effectsPanel.angle.straight",
+    "file": "src/renderer/src/editor/panels/EffectsPanel.tsx",
+    "line": 132,
+    "english": "Straight",
+    "sample": {}
+  },
+  {
+    "key": "style.effectsPanel.angle.right",
+    "file": "src/renderer/src/editor/panels/EffectsPanel.tsx",
+    "line": 132,
+    "english": "16° right",
+    "sample": {
+      "n": "16"
+    }
+  },
+  {
+    "key": "style.effectsPanel.angle.left",
+    "file": "src/renderer/src/editor/panels/EffectsPanel.tsx",
+    "line": 132,
+    "english": "16° left",
+    "sample": {
+      "n": "16"
+    }
+  },
+  {
+    "key": "style.effectsPanel.perspectiveNone",
+    "file": "src/renderer/src/editor/panels/EffectsPanel.tsx",
+    "line": 141,
+    "english": "None",
+    "sample": {}
+  },
+  {
+    "key": "style.clipPanel.videoLength",
+    "file": "src/renderer/src/editor/panels/ClipPanel.tsx",
+    "line": 68,
+    "english": "Video length 0:42.0 of 1:05.3 recorded.",
+    "sample": {
+      "length": "0:42.0",
+      "recorded": "1:05.3"
+    }
+  },
+  {
+    "key": "style.clipPanel.clipSpan",
+    "file": "src/renderer/src/editor/panels/ClipPanel.tsx",
+    "line": 76,
+    "english": "0:04.0 – 0:09.5 of the recording, plays for 2.8 s",
+    "sample": {
+      "start": "0:04.0",
+      "end": "0:09.5",
+      "seconds": "2.8"
+    }
+  },
+  {
+    "key": "style.clipPanel.cutClipTitle",
+    "file": "src/renderer/src/editor/panels/ClipPanel.tsx",
+    "line": 85,
+    "english": "Cut this clip out of the video",
+    "sample": {}
+  },
+  {
+    "key": "style.clipPanel.cutRangeTitle",
+    "file": "src/renderer/src/editor/panels/ClipPanel.tsx",
+    "line": 101,
+    "english": "Cut this range out of the video",
+    "sample": {}
+  },
+  {
+    "key": "style.clipPanel.splitTitle",
+    "file": "src/renderer/src/editor/panels/ClipPanel.tsx",
+    "line": 125,
+    "english": "Split the clip at the playhead",
+    "sample": {}
+  },
+  {
+    "key": "style.clipPanel.gap.trimStart",
+    "file": "src/renderer/src/editor/panels/ClipPanel.tsx",
+    "line": 46,
+    "english": "Trimmed start",
+    "sample": {}
+  },
+  {
+    "key": "style.clipPanel.gap.cut",
+    "file": "src/renderer/src/editor/panels/ClipPanel.tsx",
+    "line": 46,
+    "english": "Cut",
+    "sample": {}
+  },
+  {
+    "key": "style.clipPanel.gap.trimEnd",
+    "file": "src/renderer/src/editor/panels/ClipPanel.tsx",
+    "line": 46,
+    "english": "Trimmed end",
+    "sample": {}
+  },
+  {
+    "key": "style.clipPanel.gapSpan",
+    "file": "src/renderer/src/editor/panels/ClipPanel.tsx",
+    "line": 92,
+    "english": "0:04.0 – 0:09.5 (5.5 s) is not in the video.",
+    "sample": {
+      "start": "0:04.0",
+      "end": "0:09.5",
+      "seconds": "5.5"
+    }
+  },
+  {
+    "key": "style.clipPanel.rangeSpan",
+    "file": "src/renderer/src/editor/panels/ClipPanel.tsx",
+    "line": 101,
+    "english": "0:04.0 – 0:09.5 (5.5 s)",
+    "sample": {
+      "start": "0:04.0",
+      "end": "0:09.5",
+      "seconds": "5.5"
+    }
+  },
+  {
+    "key": "style.clipPanel.nothingToChange",
+    "file": "src/renderer/src/editor/panels/ClipPanel.tsx",
+    "line": 115,
+    "english": "Nothing to change: this range is cut or already plays at 2×",
+    "sample": {
+      "speed": "2×"
+    }
+  },
+  {
+    "key": "style.clipPanel.editHint.keys",
+    "file": "src/renderer/src/editor/panels/ClipPanel.tsx",
+    "line": 131,
+    "english": "Press S to split at the playhead, select a clip and press Delete to cut it, or Shift+drag on the clip track to select a range. Drag the yellow handles to trim.",
+    "sample": {
+      "split": "S",
+      "delete": "Delete"
+    }
+  },
+  {
+    "key": "style.clipPanel.editHint.splitKey",
+    "file": "src/renderer/src/editor/panels/ClipPanel.tsx",
+    "line": 131,
+    "english": "Press S to split at the playhead, select a clip and use Delete clip to cut it, or Shift+drag on the clip track to select a range. Drag the yellow handles to trim.",
+    "sample": {
+      "split": "S"
+    }
+  },
+  {
+    "key": "style.clipPanel.editHint.deleteKey",
+    "file": "src/renderer/src/editor/panels/ClipPanel.tsx",
+    "line": 131,
+    "english": "Split at the playhead, select a clip and press Delete to cut it, or Shift+drag on the clip track to select a range. Drag the yellow handles to trim.",
+    "sample": {
+      "delete": "Delete"
+    }
+  },
+  {
+    "key": "style.clipPanel.editHint.noKeys",
+    "file": "src/renderer/src/editor/panels/ClipPanel.tsx",
+    "line": 131,
+    "english": "Split at the playhead, select a clip and use Delete clip to cut it, or Shift+drag on the clip track to select a range. Drag the yellow handles to trim.",
+    "sample": {}
+  },
+  {
+    "key": "style.clipPanel.pathSummary",
+    "file": "src/renderer/src/editor/panels/ClipPanel.tsx",
+    "line": 184,
+    "english": [
+      "0 moves here · 0 straightened",
+      "1 move here · 1 straightened",
+      "2 moves here · 1 straightened",
+      "1000 moves here · 7 straightened"
+    ],
+    "sample": [
+      {
+        "count": 0,
+        "n": "0",
+        "straightened": "0"
+      },
+      {
+        "count": 1,
+        "n": "1",
+        "straightened": "1"
+      },
+      {
+        "count": 2,
+        "n": "2",
+        "straightened": "1"
+      },
+      {
+        "count": 1000,
+        "n": "1000",
+        "straightened": "7"
+      }
+    ]
+  },
+  {
+    "key": "style.clipPanel.mode.idle",
+    "file": "src/renderer/src/editor/panels/ClipPanel.tsx",
+    "line": 233,
+    "english": "Idle parts",
+    "sample": {}
+  },
+  {
+    "key": "style.clipPanel.mode.idle.title",
+    "file": "src/renderer/src/editor/panels/ClipPanel.tsx",
+    "line": 233,
+    "english": "Still picture, nothing heard, mouse and keyboard at rest",
+    "sample": {}
+  },
+  {
+    "key": "style.clipPanel.mode.silence",
+    "file": "src/renderer/src/editor/panels/ClipPanel.tsx",
+    "line": 234,
+    "english": "Silences",
+    "sample": {}
+  },
+  {
+    "key": "style.clipPanel.mode.silence.title",
+    "file": "src/renderer/src/editor/panels/ClipPanel.tsx",
+    "line": 234,
+    "english": "Pauses where nothing is heard",
+    "sample": {}
+  },
+  {
+    "key": "style.clipPanel.action.cut",
+    "file": "src/renderer/src/editor/panels/ClipPanel.tsx",
+    "line": 237,
+    "english": "Cut",
+    "sample": {}
+  },
+  {
+    "key": "style.clipPanel.action.idle2",
+    "file": "src/renderer/src/editor/panels/ClipPanel.tsx",
+    "line": 237,
+    "english": "Play idle parts twice as fast",
+    "sample": {}
+  },
+  {
+    "key": "style.clipPanel.action.idle4",
+    "file": "src/renderer/src/editor/panels/ClipPanel.tsx",
+    "line": 237,
+    "english": "Play idle parts four times as fast",
+    "sample": {}
+  },
+  {
+    "key": "style.clipPanel.action.idle8",
+    "file": "src/renderer/src/editor/panels/ClipPanel.tsx",
+    "line": 237,
+    "english": "Play idle parts eight times as fast",
+    "sample": {}
+  },
+  {
+    "key": "style.clipPanel.action.idleCut",
+    "file": "src/renderer/src/editor/panels/ClipPanel.tsx",
+    "line": 237,
+    "english": "Remove idle parts from the video",
+    "sample": {}
+  },
+  {
+    "key": "style.clipPanel.action.silence2",
+    "file": "src/renderer/src/editor/panels/ClipPanel.tsx",
+    "line": 237,
+    "english": "Play pauses twice as fast",
+    "sample": {}
+  },
+  {
+    "key": "style.clipPanel.action.silence4",
+    "file": "src/renderer/src/editor/panels/ClipPanel.tsx",
+    "line": 237,
+    "english": "Play pauses four times as fast",
+    "sample": {}
+  },
+  {
+    "key": "style.clipPanel.action.silence8",
+    "file": "src/renderer/src/editor/panels/ClipPanel.tsx",
+    "line": 237,
+    "english": "Play pauses eight times as fast",
+    "sample": {}
+  },
+  {
+    "key": "style.clipPanel.action.silenceCut",
+    "file": "src/renderer/src/editor/panels/ClipPanel.tsx",
+    "line": 237,
+    "english": "Remove pauses from the video",
+    "sample": {}
+  },
+  {
+    "key": "style.clipPanel.seconds",
+    "file": "src/renderer/src/editor/panels/ClipPanel.tsx",
+    "line": 251,
+    "english": "2.5 s",
+    "sample": {
+      "n": "2.5"
+    }
+  },
+  {
+    "key": "style.clipPanel.idleParts",
+    "file": "src/renderer/src/editor/panels/ClipPanel.tsx",
+    "line": 251,
+    "english": [
+      "0 idle parts",
+      "1 idle part",
+      "2 idle parts",
+      "1000 idle parts"
+    ],
+    "sample": [
+      {
+        "count": 0,
+        "n": "0"
+      },
+      {
+        "count": 1,
+        "n": "1"
+      },
+      {
+        "count": 2,
+        "n": "2"
+      },
+      {
+        "count": 1000,
+        "n": "1000"
+      }
+    ]
+  },
+  {
+    "key": "style.clipPanel.silences",
+    "file": "src/renderer/src/editor/panels/ClipPanel.tsx",
+    "line": 251,
+    "english": [
+      "0 silences",
+      "1 silence",
+      "2 silences",
+      "1000 silences"
+    ],
+    "sample": [
+      {
+        "count": 0,
+        "n": "0"
+      },
+      {
+        "count": 1,
+        "n": "1"
+      },
+      {
+        "count": 2,
+        "n": "2"
+      },
+      {
+        "count": 1000,
+        "n": "1000"
+      }
+    ]
+  },
+  {
+    "key": "style.clipPanel.done.cutIdle",
+    "file": "src/renderer/src/editor/panels/ClipPanel.tsx",
+    "line": 424,
+    "english": [
+      "Cut 0 idle parts: the video is 12.5 s shorter",
+      "Cut 1 idle part: the video is 12.5 s shorter",
+      "Cut 2 idle parts: the video is 12.5 s shorter",
+      "Cut 1000 idle parts: the video is 12.5 s shorter"
+    ],
+    "sample": [
+      {
+        "count": 0,
+        "n": "0",
+        "speed": "4×",
+        "shorter": "12.5 s"
+      },
+      {
+        "count": 1,
+        "n": "1",
+        "speed": "4×",
+        "shorter": "12.5 s"
+      },
+      {
+        "count": 2,
+        "n": "2",
+        "speed": "4×",
+        "shorter": "12.5 s"
+      },
+      {
+        "count": 1000,
+        "n": "1000",
+        "speed": "4×",
+        "shorter": "12.5 s"
+      }
+    ]
+  },
+  {
+    "key": "style.clipPanel.done.speedIdle",
+    "file": "src/renderer/src/editor/panels/ClipPanel.tsx",
+    "line": 424,
+    "english": [
+      "Sped up 0 idle parts 4×: the video is 12.5 s shorter",
+      "Sped up 1 idle part 4×: the video is 12.5 s shorter",
+      "Sped up 2 idle parts 4×: the video is 12.5 s shorter",
+      "Sped up 1000 idle parts 4×: the video is 12.5 s shorter"
+    ],
+    "sample": [
+      {
+        "count": 0,
+        "n": "0",
+        "speed": "4×",
+        "shorter": "12.5 s"
+      },
+      {
+        "count": 1,
+        "n": "1",
+        "speed": "4×",
+        "shorter": "12.5 s"
+      },
+      {
+        "count": 2,
+        "n": "2",
+        "speed": "4×",
+        "shorter": "12.5 s"
+      },
+      {
+        "count": 1000,
+        "n": "1000",
+        "speed": "4×",
+        "shorter": "12.5 s"
+      }
+    ]
+  },
+  {
+    "key": "style.clipPanel.done.cutSilences",
+    "file": "src/renderer/src/editor/panels/ClipPanel.tsx",
+    "line": 424,
+    "english": [
+      "Cut 0 silences: the video is 12.5 s shorter",
+      "Cut 1 silence: the video is 12.5 s shorter",
+      "Cut 2 silences: the video is 12.5 s shorter",
+      "Cut 1000 silences: the video is 12.5 s shorter"
+    ],
+    "sample": [
+      {
+        "count": 0,
+        "n": "0",
+        "speed": "4×",
+        "shorter": "12.5 s"
+      },
+      {
+        "count": 1,
+        "n": "1",
+        "speed": "4×",
+        "shorter": "12.5 s"
+      },
+      {
+        "count": 2,
+        "n": "2",
+        "speed": "4×",
+        "shorter": "12.5 s"
+      },
+      {
+        "count": 1000,
+        "n": "1000",
+        "speed": "4×",
+        "shorter": "12.5 s"
+      }
+    ]
+  },
+  {
+    "key": "style.clipPanel.done.speedSilences",
+    "file": "src/renderer/src/editor/panels/ClipPanel.tsx",
+    "line": 424,
+    "english": [
+      "Sped up 0 silences 4×: the video is 12.5 s shorter",
+      "Sped up 1 silence 4×: the video is 12.5 s shorter",
+      "Sped up 2 silences 4×: the video is 12.5 s shorter",
+      "Sped up 1000 silences 4×: the video is 12.5 s shorter"
+    ],
+    "sample": [
+      {
+        "count": 0,
+        "n": "0",
+        "speed": "4×",
+        "shorter": "12.5 s"
+      },
+      {
+        "count": 1,
+        "n": "1",
+        "speed": "4×",
+        "shorter": "12.5 s"
+      },
+      {
+        "count": 2,
+        "n": "2",
+        "speed": "4×",
+        "shorter": "12.5 s"
+      },
+      {
+        "count": 1000,
+        "n": "1000",
+        "speed": "4×",
+        "shorter": "12.5 s"
+      }
+    ]
+  },
+  {
+    "key": "style.clipPanel.apply.cutParts",
+    "file": "src/renderer/src/editor/panels/ClipPanel.tsx",
+    "line": 501,
+    "english": [
+      "Cut 0 parts",
+      "Cut 1 part",
+      "Cut 2 parts",
+      "Cut 1000 parts"
+    ],
+    "sample": [
+      {
+        "count": 0,
+        "n": "0",
+        "speed": "4×"
+      },
+      {
+        "count": 1,
+        "n": "1",
+        "speed": "4×"
+      },
+      {
+        "count": 2,
+        "n": "2",
+        "speed": "4×"
+      },
+      {
+        "count": 1000,
+        "n": "1000",
+        "speed": "4×"
+      }
+    ]
+  },
+  {
+    "key": "style.clipPanel.apply.speedParts",
+    "file": "src/renderer/src/editor/panels/ClipPanel.tsx",
+    "line": 501,
+    "english": [
+      "Speed up 0 parts 4×",
+      "Speed up 1 part 4×",
+      "Speed up 2 parts 4×",
+      "Speed up 1000 parts 4×"
+    ],
+    "sample": [
+      {
+        "count": 0,
+        "n": "0",
+        "speed": "4×"
+      },
+      {
+        "count": 1,
+        "n": "1",
+        "speed": "4×"
+      },
+      {
+        "count": 2,
+        "n": "2",
+        "speed": "4×"
+      },
+      {
+        "count": 1000,
+        "n": "1000",
+        "speed": "4×"
+      }
+    ]
+  },
+  {
+    "key": "style.clipPanel.apply.cutSilences",
+    "file": "src/renderer/src/editor/panels/ClipPanel.tsx",
+    "line": 596,
+    "english": [
+      "Cut 0 silences",
+      "Cut 1 silence",
+      "Cut 2 silences",
+      "Cut 1000 silences"
+    ],
+    "sample": [
+      {
+        "count": 0,
+        "n": "0",
+        "speed": "4×"
+      },
+      {
+        "count": 1,
+        "n": "1",
+        "speed": "4×"
+      },
+      {
+        "count": 2,
+        "n": "2",
+        "speed": "4×"
+      },
+      {
+        "count": 1000,
+        "n": "1000",
+        "speed": "4×"
+      }
+    ]
+  },
+  {
+    "key": "style.clipPanel.apply.speedSilences",
+    "file": "src/renderer/src/editor/panels/ClipPanel.tsx",
+    "line": 596,
+    "english": [
+      "Speed up 0 silences 4×",
+      "Speed up 1 silence 4×",
+      "Speed up 2 silences 4×",
+      "Speed up 1000 silences 4×"
+    ],
+    "sample": [
+      {
+        "count": 0,
+        "n": "0",
+        "speed": "4×"
+      },
+      {
+        "count": 1,
+        "n": "1",
+        "speed": "4×"
+      },
+      {
+        "count": 2,
+        "n": "2",
+        "speed": "4×"
+      },
+      {
+        "count": 1000,
+        "n": "1000",
+        "speed": "4×"
+      }
+    ]
+  },
+  {
+    "key": "style.clipPanel.none.idle",
+    "file": "src/renderer/src/editor/panels/ClipPanel.tsx",
+    "line": 492,
+    "english": "No idle parts of 3 s or more.",
+    "sample": {
+      "n": "3"
+    }
+  },
+  {
+    "key": "style.clipPanel.none.idleSpeed",
+    "file": "src/renderer/src/editor/panels/ClipPanel.tsx",
+    "line": 492,
+    "english": "No idle parts of 3 s or more to speed up.",
+    "sample": {
+      "n": "3"
+    }
+  },
+  {
+    "key": "style.clipPanel.none.silences",
+    "file": "src/renderer/src/editor/panels/ClipPanel.tsx",
+    "line": 588,
+    "english": "No pauses of 1.5 s or more.",
+    "sample": {
+      "n": "1.5"
+    }
+  },
+  {
+    "key": "style.clipPanel.none.silencesSpeed",
+    "file": "src/renderer/src/editor/panels/ClipPanel.tsx",
+    "line": 588,
+    "english": "No pauses of 1.5 s or more to speed up.",
+    "sample": {
+      "n": "1.5"
+    }
+  },
+  {
+    "key": "style.clipPanel.list.idle",
+    "file": "src/renderer/src/editor/panels/ClipPanel.tsx",
+    "line": 498,
+    "english": "Idle parts",
+    "sample": {}
+  },
+  {
+    "key": "style.clipPanel.list.silences",
+    "file": "src/renderer/src/editor/panels/ClipPanel.tsx",
+    "line": 594,
+    "english": "Silences",
+    "sample": {}
+  },
+  {
+    "key": "style.clipPanel.summary",
+    "file": "src/renderer/src/editor/panels/ClipPanel.tsx",
+    "line": 657,
+    "english": "3 idle parts · saves 12.5 s",
+    "sample": {
+      "chosen": "3 idle parts",
+      "saved": "12.5 s"
+    }
+  },
+  {
+    "key": "style.clipPanel.summaryOf",
+    "file": "src/renderer/src/editor/panels/ClipPanel.tsx",
+    "line": 657,
+    "english": "3 idle parts of 5 · saves 12.5 s",
+    "sample": {
+      "chosen": "3 idle parts",
+      "total": "5",
+      "saved": "12.5 s"
+    }
+  },
+  {
+    "key": "style.clipPanel.seconds",
+    "file": "src/renderer/src/editor/panels/ClipPanel.tsx",
+    "line": 686,
+    "english": "4.0 s",
+    "sample": {
+      "n": "4.0"
+    }
+  },
+  {
+    "key": "style.clipPanel.kept.both",
+    "file": "src/renderer/src/editor/panels/ClipPanel.tsx",
+    "line": 617,
+    "english": "Title cards and freeze frames stay as they are: the time they are on screen is never sped up or cut.",
+    "sample": {}
+  },
+  {
+    "key": "style.clipPanel.kept.freezes",
+    "file": "src/renderer/src/editor/panels/ClipPanel.tsx",
+    "line": 617,
+    "english": "Freeze frames stay as they are: the time they are on screen is never sped up or cut.",
+    "sample": {}
+  },
+  {
+    "key": "style.clipPanel.kept.titles",
+    "file": "src/renderer/src/editor/panels/ClipPanel.tsx",
+    "line": 617,
+    "english": "Title cards stay as they are: the time they are on screen is never sped up or cut.",
+    "sample": {}
+  },
+  {
+    "key": "style.clipPanel.notAnalysed",
+    "file": "src/renderer/src/editor/panels/ClipPanel.tsx",
+    "line": 471,
+    "english": "The recording could not be analysed: «reason».",
+    "sample": {
+      "reason": "«reason»"
+    }
+  },
+  {
+    "key": "style.clipPanel.noSound",
+    "file": "src/renderer/src/editor/panels/ClipPanel.tsx",
+    "line": 524,
+    "english": "This recording has no sound, so it has no pauses to remove. Find idle parts instead: the moments where the picture and the mouse rest.",
+    "sample": {}
+  },
+  {
+    "key": "style.cuts.hint.cut",
+    "file": "src/shared/editor/cutsCopy.ts",
+    "line": 11,
+    "english": "Jumps straight to the next clip.",
+    "sample": {}
+  },
+  {
+    "key": "style.cuts.hint.smooth",
+    "file": "src/shared/editor/cutsCopy.ts",
+    "line": 12,
+    "english": "A crossfade where the screen fills the picture, a punch-in where the camera fills most of it. The video keeps its length.",
+    "sample": {}
+  },
+  {
+    "key": "style.cuts.hint.crossfade",
+    "file": "src/shared/editor/cutsCopy.ts",
+    "line": 13,
+    "english": "The last frame before the cut fades into the next clip. Hides small jumps on the screen. The video keeps its length.",
+    "sample": {}
+  },
+  {
+    "key": "style.cuts.hint.dip",
+    "file": "src/shared/editor/cutsCopy.ts",
+    "line": 14,
+    "english": "Fades to a colour and back. For the start of a new part.",
+    "sample": {}
+  },
+  {
+    "key": "style.cuts.hint.slide",
+    "file": "src/shared/editor/cutsCopy.ts",
+    "line": 15,
+    "english": "The next clip pushes the last frame out of the picture.",
+    "sample": {}
+  },
+  {
+    "key": "style.cuts.hint.punch",
+    "file": "src/shared/editor/cutsCopy.ts",
+    "line": 16,
+    "english": "The next clip is shown a little closer: the camera in the camera layouts and side by side, otherwise the screen. The clip after it goes back. For talking-head cuts.",
+    "sample": {}
+  },
+  {
+    "key": "style.cuts.line",
+    "file": "src/shared/editor/cutsCopy.ts",
+    "line": 23,
+    "english": [
+      "0 cuts. A cut jumps from one moment of the recording to the next.",
+      "1 cut. A cut jumps from one moment of the recording to the next.",
+      "2 cuts. A cut jumps from one moment of the recording to the next.",
+      "1000 cuts. A cut jumps from one moment of the recording to the next."
+    ],
+    "sample": [
+      {
+        "count": 0,
+        "n": "0"
+      },
+      {
+        "count": 1,
+        "n": "1"
+      },
+      {
+        "count": 2,
+        "n": "2"
+      },
+      {
+        "count": 1000,
+        "n": "1000"
+      }
+    ]
+  },
+  {
+    "key": "style.cuts.smoothed",
+    "file": "src/shared/editor/cutsCopy.ts",
+    "line": 26,
+    "english": [
+      "Smoothed 0 cuts",
+      "Smoothed 1 cut",
+      "Smoothed 2 cuts",
+      "Smoothed 1000 cuts"
+    ],
+    "sample": [
+      {
+        "count": 0,
+        "n": "0",
+        "kept": 0,
+        "k": "0"
+      },
+      {
+        "count": 1,
+        "n": "1",
+        "kept": 0,
+        "k": "0"
+      },
+      {
+        "count": 2,
+        "n": "2",
+        "kept": 0,
+        "k": "0"
+      },
+      {
+        "count": 1000,
+        "n": "1000",
+        "kept": 0,
+        "k": "0"
+      }
+    ]
+  },
+  {
+    "key": "style.cuts.smoothedKept",
+    "file": "src/shared/editor/cutsCopy.ts",
+    "line": 26,
+    "english": [
+      "Smoothed 0 cuts · 3 keep their own style",
+      "Smoothed 1 cut · 1 keeps its own style",
+      "Smoothed 2 cuts · 3 keep their own style",
+      "Smoothed 1000 cuts · 3 keep their own style"
+    ],
+    "sample": [
+      {
+        "count": 0,
+        "n": "0",
+        "kept": 3,
+        "k": "3"
+      },
+      {
+        "count": 1,
+        "n": "1",
+        "kept": 1,
+        "k": "1"
+      },
+      {
+        "count": 2,
+        "n": "2",
+        "kept": 3,
+        "k": "3"
+      },
+      {
+        "count": 1000,
+        "n": "1000",
+        "kept": 3,
+        "k": "3"
+      }
+    ]
+  },
+  {
+    "key": "style.cuts.alreadySmooth",
+    "file": "src/shared/editor/cutsCopy.ts",
+    "line": 30,
+    "english": "Every cut is already smooth",
+    "sample": {}
+  },
+  {
+    "key": "style.cuts.noCuts",
+    "file": "src/shared/editor/cutsCopy.ts",
+    "line": 31,
+    "english": "No cuts to smooth",
+    "sample": {}
+  },
+  {
+    "key": "style.cuts.hardEverywhere",
+    "file": "src/shared/editor/cutsCopy.ts",
+    "line": 32,
+    "english": "Every cut is a hard cut",
+    "sample": {}
+  },
+  {
+    "key": "style.cuts.noCutAfter",
+    "file": "src/shared/editor/cutsCopy.ts",
+    "line": 33,
+    "english": "No cut after the playhead",
+    "sample": {}
+  },
+  {
+    "key": "style.cuts.noCutBefore",
+    "file": "src/shared/editor/cutsCopy.ts",
+    "line": 34,
+    "english": "No cut before the playhead",
+    "sample": {}
+  },
+  {
+    "key": "style.cuts.herePunch",
+    "file": "src/shared/editor/cutsCopy.ts",
+    "line": 40,
+    "english": "Here: a punch-in (the camera fills most of the picture on both sides).",
+    "sample": {}
+  },
+  {
+    "key": "style.cuts.hereCrossfade",
+    "file": "src/shared/editor/cutsCopy.ts",
+    "line": 40,
+    "english": "Here: a crossfade (the screen fills the picture).",
+    "sample": {}
+  },
+  {
+    "key": "style.cuts.calmNote",
+    "file": "src/shared/editor/cutsCopy.ts",
+    "line": 44,
+    "english": "(Crossfade while Calm motion is on)",
+    "sample": {}
+  },
+  {
+    "key": "style.cuts.flashNote",
+    "file": "src/shared/editor/cutsCopy.ts",
+    "line": 45,
+    "english": "Shown as a crossfade so dips don't flash too often.",
+    "sample": {}
+  },
+  {
+    "key": "style.cuts.noCutsInVideo",
+    "file": "src/renderer/src/editor/cutCommands.ts",
+    "line": 59,
+    "english": "This video has no cuts",
+    "sample": {}
+  },
+  {
+    "key": "style.cuts.sameStyle",
+    "file": "src/renderer/src/editor/panels/CutsSection.tsx",
+    "line": 65,
+    "english": "Every cut has the same style",
+    "sample": {}
+  },
+  {
+    "key": "style.cuts.own",
+    "file": "src/shared/editor/cutsCopy.ts",
+    "line": 37,
+    "english": [
+      "0 cuts have their own style.",
+      "1 cut has its own style.",
+      "2 cuts have their own style.",
+      "1000 cuts have their own style."
+    ],
+    "sample": [
+      {
+        "count": 0,
+        "n": "0"
+      },
+      {
+        "count": 1,
+        "n": "1"
+      },
+      {
+        "count": 2,
+        "n": "2"
+      },
+      {
+        "count": 1000,
+        "n": "1000"
+      }
+    ]
+  },
+  {
+    "key": "style.cuts.cutOf",
+    "file": "src/shared/editor/cutsCopy.ts",
+    "line": 48,
+    "english": "Cut 5 of 37",
+    "sample": {
+      "n": "5",
+      "total": "37"
+    }
+  },
+  {
+    "key": "style.cuts.seconds",
+    "file": "src/shared/editor/cutsCopy.ts",
+    "line": 51,
+    "english": "0.15 seconds",
+    "sample": {
+      "n": "0.15"
+    }
+  },
+  {
+    "key": "style.cuts.percent",
+    "file": "src/shared/editor/cutsCopy.ts",
+    "line": 52,
+    "english": "110 percent",
+    "sample": {
+      "n": "110"
+    }
+  },
+  {
+    "key": "style.cuts.slide.right",
+    "file": "src/shared/editor/cutsCopy.ts",
+    "line": 54,
+    "english": "Right",
+    "sample": {}
+  },
+  {
+    "key": "style.cuts.slide.left",
+    "file": "src/shared/editor/cutsCopy.ts",
+    "line": 54,
+    "english": "Left",
+    "sample": {}
+  },
+  {
+    "key": "style.cuts.slide.top",
+    "file": "src/shared/editor/cutsCopy.ts",
+    "line": 54,
+    "english": "Top",
+    "sample": {}
+  },
+  {
+    "key": "style.cuts.slide.bottom",
+    "file": "src/shared/editor/cutsCopy.ts",
+    "line": 54,
+    "english": "Bottom",
+    "sample": {}
+  },
+  {
+    "key": "style.cuts.name.cut",
+    "file": "src/shared/editor/joinsEdit.ts",
+    "line": 134,
+    "english": "Hard cut",
+    "sample": {}
+  },
+  {
+    "key": "style.cuts.name.smooth",
+    "file": "src/shared/editor/joinsEdit.ts",
+    "line": 134,
+    "english": "Smooth",
+    "sample": {}
+  },
+  {
+    "key": "style.cuts.name.crossfade",
+    "file": "src/shared/editor/joinsEdit.ts",
+    "line": 134,
+    "english": "Crossfade",
+    "sample": {}
+  },
+  {
+    "key": "style.cuts.name.dip",
+    "file": "src/shared/editor/joinsEdit.ts",
+    "line": 134,
+    "english": "Dip to colour",
+    "sample": {}
+  },
+  {
+    "key": "style.cuts.name.slide",
+    "file": "src/shared/editor/joinsEdit.ts",
+    "line": 134,
+    "english": "Slide",
+    "sample": {}
+  },
+  {
+    "key": "style.cuts.name.punch",
+    "file": "src/shared/editor/joinsEdit.ts",
+    "line": 134,
+    "english": "Punch-in",
+    "sample": {}
+  },
+  {
+    "key": "style.cuts.labelPercent",
+    "file": "src/shared/editor/joinsEdit.ts",
+    "line": 150,
+    "english": "Punch-in, 110 %",
+    "sample": {
+      "name": "Punch-in",
+      "n": "110"
+    }
+  },
+  {
+    "key": "style.cuts.labelSeconds",
+    "file": "src/shared/editor/joinsEdit.ts",
+    "line": 150,
+    "english": "Crossfade, 0.15 s",
+    "sample": {
+      "name": "Crossfade",
+      "n": "0.15"
+    }
+  },
+  {
+    "key": "style.joinOptions.black",
+    "file": "src/renderer/src/editor/panels/JoinOptions.tsx",
+    "line": 102,
+    "english": "Black",
+    "sample": {}
+  },
+  {
+    "key": "style.joinOptions.white",
+    "file": "src/renderer/src/editor/panels/JoinOptions.tsx",
+    "line": 103,
+    "english": "White",
+    "sample": {}
+  },
+  {
+    "key": "style.joinOptions.brandColour",
+    "file": "src/renderer/src/editor/panels/JoinOptions.tsx",
+    "line": 104,
+    "english": "Brand colour 1, #ff3b30",
+    "sample": {
+      "n": "1",
+      "colour": "#ff3b30"
+    }
+  },
+  {
+    "key": "style.joinOptions.crossfadeLength",
+    "file": "src/renderer/src/editor/panels/JoinOptions.tsx",
+    "line": 111,
+    "english": "Crossfade length",
+    "sample": {}
+  },
+  {
+    "key": "style.joinOptions.punchSize",
+    "file": "src/renderer/src/editor/panels/JoinOptions.tsx",
+    "line": 112,
+    "english": "Punch-in size",
+    "sample": {}
+  },
+  {
+    "key": "common.label.length",
+    "file": "src/renderer/src/editor/panels/JoinOptions.tsx",
+    "line": 115,
+    "english": "Length",
+    "sample": {}
+  },
+  {
+    "key": "common.label.size",
+    "file": "src/renderer/src/editor/panels/JoinOptions.tsx",
+    "line": 116,
+    "english": "Size",
+    "sample": {}
+  },
+  {
+    "key": "style.freeze.refusal.cut",
+    "file": "src/shared/editor/freezeEdit.ts",
+    "line": 19,
+    "english": "The playhead is in a cut: move it onto a clip to freeze a frame",
+    "sample": {}
+  },
+  {
+    "key": "style.freeze.refusal.taken",
+    "file": "src/shared/editor/freezeEdit.ts",
+    "line": 19,
+    "english": "There is already a freeze frame here",
+    "sample": {}
+  },
+  {
+    "key": "style.freeze.refusal.frozen",
+    "file": "src/shared/editor/freezeEdit.ts",
+    "line": 19,
+    "english": "The picture is already frozen here",
+    "sample": {}
+  },
+  {
+    "key": "style.freeze.refusal.full",
+    "file": "src/shared/editor/freezeEdit.ts",
+    "line": 19,
+    "english": "A project can have at most 20 freeze frames",
+    "sample": {
+      "max": "20"
+    }
+  },
+  {
+    "key": "style.freezeSection.seconds",
+    "file": "src/renderer/src/editor/panels/FreezeSection.tsx",
+    "line": 27,
+    "english": "2.0 s",
+    "sample": {
+      "n": "2.0"
+    }
+  },
+  {
+    "key": "style.freezeSection.holdTitle",
+    "file": "src/renderer/src/editor/panels/FreezeSection.tsx",
+    "line": 50,
+    "english": "Hold the frame under the playhead",
+    "sample": {}
+  },
+  {
+    "key": "style.freezeSection.removeTitle",
+    "file": "src/renderer/src/editor/panels/FreezeSection.tsx",
+    "line": 127,
+    "english": "Remove this freeze frame",
+    "sample": {}
+  },
+  {
+    "key": "style.freezeSection.hint.adds",
+    "file": "src/renderer/src/editor/panels/FreezeSection.tsx",
+    "line": 63,
+    "english": "Adds 2.0 s to the video (now 1:02.5).",
+    "sample": {
+      "length": "2.0 s",
+      "now": "1:02.5"
+    }
+  },
+  {
+    "key": "style.freezeSection.hint.cut",
+    "file": "src/renderer/src/editor/panels/FreezeSection.tsx",
+    "line": 67,
+    "english": "This frame is cut out of the video, so the freeze is not shown.",
+    "sample": {}
+  },
+  {
+    "key": "style.freezeSection.hint.next",
+    "file": "src/renderer/src/editor/panels/FreezeSection.tsx",
+    "line": 68,
+    "english": "The next freeze starts right after this frame, so the picture is not held.",
+    "sample": {}
+  },
+  {
+    "key": "style.freezeSection.hint.afterEnd",
+    "file": "src/renderer/src/editor/panels/FreezeSection.tsx",
+    "line": 69,
+    "english": "Nothing plays after the end of the video, so the picture is not held.",
+    "sample": {}
+  },
+  {
+    "key": "style.freezeSection.hint.end",
+    "file": "src/renderer/src/editor/panels/FreezeSection.tsx",
+    "line": 69,
+    "english": "The video ends right after this frame, so the picture is not held.",
+    "sample": {}
+  },
+  {
+    "key": "style.freezeSection.hint.holds",
+    "file": "src/renderer/src/editor/panels/FreezeSection.tsx",
+    "line": 72,
+    "english": "The screen holds for 2.0 s. The camera and captions keep moving.",
+    "sample": {
+      "length": "2.0 s"
+    }
+  },
+  {
+    "key": "style.freezeSection.hint.heldToEnd",
+    "file": "src/renderer/src/editor/panels/FreezeSection.tsx",
+    "line": 73,
+    "english": "Holds for 1.2 s: the video ends there.",
+    "sample": {
+      "length": "1.2 s"
+    }
+  },
+  {
+    "key": "style.freezeSection.hint.heldToNext",
+    "file": "src/renderer/src/editor/panels/FreezeSection.tsx",
+    "line": 73,
+    "english": "Holds for 1.2 s: the next freeze starts there.",
+    "sample": {
+      "length": "1.2 s"
+    }
+  },
+  {
+    "key": "style.freezeSection.sound.pause",
+    "file": "src/renderer/src/editor/panels/FreezeSection.tsx",
+    "line": 103,
+    "english": "Pause the sound",
+    "sample": {}
+  },
+  {
+    "key": "style.freezeSection.sound.pause.title",
+    "file": "src/renderer/src/editor/panels/FreezeSection.tsx",
+    "line": 103,
+    "english": "Adds the time to the video. The recording waits; music keeps playing.",
+    "sample": {}
+  },
+  {
+    "key": "style.freezeSection.sound.continue",
+    "file": "src/renderer/src/editor/panels/FreezeSection.tsx",
+    "line": 106,
+    "english": "Keep the sound playing",
+    "sample": {}
+  },
+  {
+    "key": "style.freezeSection.sound.continue.title",
+    "file": "src/renderer/src/editor/panels/FreezeSection.tsx",
+    "line": 106,
+    "english": "Adds no time. The picture holds while the recording plays on.",
+    "sample": {}
+  },
+  {
+    "key": "style.freezeSection.sound.continue.atEnd",
+    "file": "src/renderer/src/editor/panels/FreezeSection.tsx",
+    "line": 106,
+    "english": "Nothing plays after the end of the video",
+    "sample": {}
+  },
+  {
+    "key": "style.freezeSection.seconds",
+    "file": "src/renderer/src/editor/FreezeMarks.tsx",
+    "line": 41,
+    "english": "2.0 s",
+    "sample": {
+      "n": "2.0"
+    }
+  },
+  {
+    "key": "style.freezeMarks.groupSelected",
+    "file": "src/renderer/src/editor/FreezeMarks.tsx",
+    "line": 66,
+    "english": " · selected: drag to move all 3, Ctrl+click to leave it out",
+    "sample": {
+      "n": "3"
+    }
+  },
+  {
+    "key": "style.freezeMarks.groupSelectSeveral",
+    "file": "src/renderer/src/editor/FreezeMarks.tsx",
+    "line": 66,
+    "english": " · Ctrl+click to select several",
+    "sample": {}
+  },
+  {
+    "key": "style.freezeMarks.removeHint",
+    "file": "src/renderer/src/editor/FreezeMarks.tsx",
+    "line": 148,
+    "english": ", Delete to remove",
+    "sample": {
+      "keys": "Delete"
+    }
+  },
+  {
+    "key": "style.freezeMarks.nothingToHoldNext",
+    "file": "src/renderer/src/editor/FreezeMarks.tsx",
+    "line": 226,
+    "english": "Freeze frame with nothing to hold: the next freeze starts right after it. Pause the sound, or select it and press Delete",
+    "sample": {
+      "keys": "Delete"
+    }
+  },
+  {
+    "key": "style.freezeMarks.nothingToHoldEnd",
+    "file": "src/renderer/src/editor/FreezeMarks.tsx",
+    "line": 226,
+    "english": "Freeze frame with nothing to hold: the video ends right after it. Pause the sound, or select it and press Delete",
+    "sample": {
+      "keys": "Delete"
+    }
+  },
+  {
+    "key": "text.shape.arrow",
+    "file": "src/shared/editor/shapes.ts",
+    "line": 23,
+    "english": "Arrow",
+    "sample": {}
+  },
+  {
+    "key": "text.shape.arrow.title",
+    "file": "src/shared/editor/shapes.ts",
+    "line": 23,
+    "english": "Point at something",
+    "sample": {}
+  },
+  {
+    "key": "text.shape.line",
+    "file": "src/shared/editor/shapes.ts",
+    "line": 24,
+    "english": "Line",
+    "sample": {}
+  },
+  {
+    "key": "text.shape.line.title",
+    "file": "src/shared/editor/shapes.ts",
+    "line": 24,
+    "english": "A straight line, e.g. to underline",
+    "sample": {}
+  },
+  {
+    "key": "text.shape.rect",
+    "file": "src/shared/editor/shapes.ts",
+    "line": 25,
+    "english": "Box",
+    "sample": {}
+  },
+  {
+    "key": "text.shape.rect.title",
+    "file": "src/shared/editor/shapes.ts",
+    "line": 25,
+    "english": "An outlined or filled box",
+    "sample": {}
+  },
+  {
+    "key": "text.shape.ellipse",
+    "file": "src/shared/editor/shapes.ts",
+    "line": 26,
+    "english": "Ellipse",
+    "sample": {}
+  },
+  {
+    "key": "text.shape.ellipse.title",
+    "file": "src/shared/editor/shapes.ts",
+    "line": 26,
+    "english": "Circle something",
+    "sample": {}
+  },
+  {
+    "key": "text.shape.highlight",
+    "file": "src/shared/editor/shapes.ts",
+    "line": 27,
+    "english": "Marker",
+    "sample": {}
+  },
+  {
+    "key": "text.shape.highlight.title",
+    "file": "src/shared/editor/shapes.ts",
+    "line": 27,
+    "english": "A translucent highlighter box",
+    "sample": {}
+  },
+  {
+    "key": "text.shape.blur",
+    "file": "src/shared/editor/shapes.ts",
+    "line": 28,
+    "english": "Blur",
+    "sample": {}
+  },
+  {
+    "key": "text.shape.blur.title",
+    "file": "src/shared/editor/shapes.ts",
+    "line": 28,
+    "english": "Blur private content (always fully applied)",
+    "sample": {}
+  },
+  {
+    "key": "text.shape.pixelate",
+    "file": "src/shared/editor/shapes.ts",
+    "line": 29,
+    "english": "Pixelate",
+    "sample": {}
+  },
+  {
+    "key": "text.shape.pixelate.title",
+    "file": "src/shared/editor/shapes.ts",
+    "line": 29,
+    "english": "Pixelate private content (always fully applied)",
+    "sample": {}
+  },
+  {
+    "key": "text.shape.shape",
+    "file": "src/shared/editor/shapes.ts",
+    "line": 32,
+    "english": "Shape",
+    "sample": {}
+  },
+  {
+    "key": "text.titleStyle.centered",
+    "file": "src/shared/editor/titles.ts",
+    "line": 24,
+    "english": "Centered",
+    "sample": {}
+  },
+  {
+    "key": "text.titleStyle.centered.title",
+    "file": "src/shared/editor/titles.ts",
+    "line": 24,
+    "english": "A full-frame card with the title in the middle",
+    "sample": {}
+  },
+  {
+    "key": "text.titleStyle.big",
+    "file": "src/shared/editor/titles.ts",
+    "line": 25,
+    "english": "Big",
+    "sample": {}
+  },
+  {
+    "key": "text.titleStyle.big.title",
+    "file": "src/shared/editor/titles.ts",
+    "line": 25,
+    "english": "A full-frame card with a very large title",
+    "sample": {}
+  },
+  {
+    "key": "text.titleStyle.lowerThird",
+    "file": "src/shared/editor/titles.ts",
+    "line": 26,
+    "english": "Lower third",
+    "sample": {}
+  },
+  {
+    "key": "text.titleStyle.lowerThird.title",
+    "file": "src/shared/editor/titles.ts",
+    "line": 26,
+    "english": "A band at the bottom, over the video",
+    "sample": {}
+  },
+  {
+    "key": "text.titleStyle.quote",
+    "file": "src/shared/editor/titles.ts",
+    "line": 28,
+    "english": "Quote",
+    "sample": {}
+  },
+  {
+    "key": "text.titleStyle.quote.title",
+    "file": "src/shared/editor/titles.ts",
+    "line": 28,
+    "english": "A short quote on a panel",
+    "sample": {}
+  },
+  {
+    "key": "text.titleStyle.fallback",
+    "file": "src/renderer/src/editor/TitleTrack.tsx",
+    "line": 27,
+    "english": "Title",
+    "sample": {}
+  },
+  {
+    "key": "text.titleBackground.blur",
+    "file": "src/shared/editor/titles.ts",
+    "line": 32,
+    "english": "Blurred video",
+    "sample": {}
+  },
+  {
+    "key": "text.titleBackground.blur.title",
+    "file": "src/shared/editor/titles.ts",
+    "line": 32,
+    "english": "The video behind it, blurred and darkened",
+    "sample": {}
+  },
+  {
+    "key": "text.titleBackground.solid",
+    "file": "src/shared/editor/titles.ts",
+    "line": 33,
+    "english": "Colour",
+    "sample": {}
+  },
+  {
+    "key": "text.titleBackground.solid.title",
+    "file": "src/shared/editor/titles.ts",
+    "line": 33,
+    "english": "A solid colour",
+    "sample": {}
+  },
+  {
+    "key": "text.titleBackground.style",
+    "file": "src/shared/editor/titles.ts",
+    "line": 34,
+    "english": "Project background",
+    "sample": {}
+  },
+  {
+    "key": "text.titleBackground.style.title",
+    "file": "src/shared/editor/titles.ts",
+    "line": 34,
+    "english": "The project's background, as set in the Style panel",
+    "sample": {}
+  },
+  {
+    "key": "zoom.preset.pullBack",
+    "file": "src/shared/editor/zoomEdit.ts",
+    "line": 25,
+    "english": "Pull back: show more background",
+    "sample": {}
+  },
+  {
+    "key": "zoom.preset.zoom",
+    "file": "src/shared/editor/zoomEdit.ts",
+    "line": 25,
+    "english": "Zoom 1.5×",
+    "sample": {
+      "level": "1.5×"
+    }
+  },
+  {
+    "key": "style.groupEdit.field.zoomLevel",
+    "file": "src/shared/editor/groupEdit.ts",
+    "line": 285,
+    "english": "Zoom level",
+    "sample": {}
+  },
+  {
+    "key": "style.groupEdit.field.zoomFocus",
+    "file": "src/shared/editor/groupEdit.ts",
+    "line": 295,
+    "english": "Focus",
+    "sample": {}
+  },
+  {
+    "key": "style.groupEdit.field.zoomEasing",
+    "file": "src/shared/editor/groupEdit.ts",
+    "line": 315,
+    "english": "Easing",
+    "sample": {}
+  },
+  {
+    "key": "style.groupEdit.field.zoomTransition",
+    "file": "src/shared/editor/groupEdit.ts",
+    "line": 324,
+    "english": "Transition",
+    "sample": {}
+  },
+  {
+    "key": "style.groupEdit.field.textStyle",
+    "file": "src/shared/editor/groupEdit.ts",
+    "line": 344,
+    "english": "Text style",
+    "sample": {}
+  },
+  {
+    "key": "common.label.size",
+    "file": "src/shared/editor/groupEdit.ts",
+    "line": 359,
+    "english": "Size",
+    "sample": {}
+  },
+  {
+    "key": "style.groupEdit.field.textX",
+    "file": "src/shared/editor/groupEdit.ts",
+    "line": 368,
+    "english": "Position X",
+    "sample": {}
+  },
+  {
+    "key": "style.groupEdit.field.textY",
+    "file": "src/shared/editor/groupEdit.ts",
+    "line": 377,
+    "english": "Position Y",
+    "sample": {}
+  },
+  {
+    "key": "common.label.colour",
+    "file": "src/shared/editor/groupEdit.ts",
+    "line": 389,
+    "english": "Colour",
+    "sample": {}
+  },
+  {
+    "key": "style.groupEdit.field.textNumbering",
+    "file": "src/shared/editor/groupEdit.ts",
+    "line": 401,
+    "english": "Count with",
+    "sample": {}
+  },
+  {
+    "key": "common.label.colour",
+    "file": "src/shared/editor/groupEdit.ts",
+    "line": 418,
+    "english": "Colour",
+    "sample": {}
+  },
+  {
+    "key": "style.groupEdit.field.markFill",
+    "file": "src/shared/editor/groupEdit.ts",
+    "line": 430,
+    "english": "Filled",
+    "sample": {}
+  },
+  {
+    "key": "style.groupEdit.field.markStrokeWidth",
+    "file": "src/shared/editor/groupEdit.ts",
+    "line": 440,
+    "english": "Line width",
+    "sample": {}
+  },
+  {
+    "key": "common.label.opacity",
+    "file": "src/shared/editor/groupEdit.ts",
+    "line": 451,
+    "english": "Opacity",
+    "sample": {}
+  },
+  {
+    "key": "style.groupEdit.field.privacyKind",
+    "file": "src/shared/editor/groupEdit.ts",
+    "line": 465,
+    "english": "Effect",
+    "sample": {}
+  },
+  {
+    "key": "style.groupEdit.field.privacyStrength",
+    "file": "src/shared/editor/groupEdit.ts",
+    "line": 481,
+    "english": "Amount",
+    "sample": {}
+  },
+  {
+    "key": "style.groupEdit.field.spotlightShape",
+    "file": "src/shared/editor/groupEdit.ts",
+    "line": 492,
+    "english": "Shape",
+    "sample": {}
+  },
+  {
+    "key": "style.groupEdit.field.spotlightDim",
+    "file": "src/shared/editor/groupEdit.ts",
+    "line": 507,
+    "english": "Darkness",
+    "sample": {}
+  },
+  {
+    "key": "style.groupEdit.field.spotlightFeather",
+    "file": "src/shared/editor/groupEdit.ts",
+    "line": 516,
+    "english": "Soft edge",
+    "sample": {}
+  },
+  {
+    "key": "style.groupEdit.field.imageX",
+    "file": "src/shared/editor/groupEdit.ts",
+    "line": 527,
+    "english": "Position X",
+    "sample": {}
+  },
+  {
+    "key": "style.groupEdit.field.imageY",
+    "file": "src/shared/editor/groupEdit.ts",
+    "line": 536,
+    "english": "Position Y",
+    "sample": {}
+  },
+  {
+    "key": "common.label.size",
+    "file": "src/shared/editor/groupEdit.ts",
+    "line": 545,
+    "english": "Size",
+    "sample": {}
+  },
+  {
+    "key": "style.groupEdit.field.imageRotation",
+    "file": "src/shared/editor/groupEdit.ts",
+    "line": 554,
+    "english": "Rotation",
+    "sample": {}
+  },
+  {
+    "key": "common.label.opacity",
+    "file": "src/shared/editor/groupEdit.ts",
+    "line": 563,
+    "english": "Opacity",
+    "sample": {}
+  },
+  {
+    "key": "style.groupEdit.field.imageFadeIn",
+    "file": "src/shared/editor/groupEdit.ts",
+    "line": 572,
+    "english": "Fade in",
+    "sample": {}
+  },
+  {
+    "key": "style.groupEdit.field.imageFadeOut",
+    "file": "src/shared/editor/groupEdit.ts",
+    "line": 581,
+    "english": "Fade out",
+    "sample": {}
+  },
+  {
+    "key": "style.groupEdit.field.titleStyle",
+    "file": "src/shared/editor/groupEdit.ts",
+    "line": 591,
+    "english": "Style",
+    "sample": {}
+  },
+  {
+    "key": "common.label.background",
+    "file": "src/shared/editor/groupEdit.ts",
+    "line": 600,
+    "english": "Background",
+    "sample": {}
+  },
+  {
+    "key": "common.label.colour",
+    "file": "src/shared/editor/groupEdit.ts",
+    "line": 609,
+    "english": "Colour",
+    "sample": {}
+  },
+  {
+    "key": "common.label.textColour",
+    "file": "src/shared/editor/groupEdit.ts",
+    "line": 621,
+    "english": "Text colour",
+    "sample": {}
+  },
+  {
+    "key": "style.groupEdit.field.freezeLength",
+    "file": "src/shared/editor/groupEdit.ts",
+    "line": 635,
+    "english": "Hold for",
+    "sample": {}
+  },
+  {
+    "key": "common.label.sound",
+    "file": "src/shared/editor/groupEdit.ts",
+    "line": 645,
+    "english": "Sound",
+    "sample": {}
+  },
+  {
+    "key": "common.label.size",
+    "file": "src/shared/editor/groupEdit.ts",
+    "line": 662,
+    "english": "Size",
+    "sample": {}
+  },
+  {
+    "key": "common.label.colour",
+    "file": "src/shared/editor/groupEdit.ts",
+    "line": 671,
+    "english": "Colour",
+    "sample": {}
+  },
+  {
+    "key": "style.groupEdit.field.graphicAccent",
+    "file": "src/shared/editor/groupEdit.ts",
+    "line": 682,
+    "english": "Accent",
+    "sample": {}
+  },
+  {
+    "key": "text.motion.comesIn",
+    "file": "src/shared/editor/groupEdit.ts",
+    "line": 693,
+    "english": "Comes in",
+    "sample": {}
+  },
+  {
+    "key": "text.motion.goesOut",
+    "file": "src/shared/editor/groupEdit.ts",
+    "line": 703,
+    "english": "Goes out",
+    "sample": {}
+  },
+  {
+    "key": "common.label.sound",
+    "file": "src/shared/editor/groupEdit.ts",
+    "line": 712,
+    "english": "Sound",
+    "sample": {}
+  },
+  {
+    "key": "style.groupEdit.option.zoomFocus.cursor",
+    "file": "src/shared/editor/groupEdit.ts",
+    "line": 301,
+    "english": "Follow cursor",
+    "sample": {}
+  },
+  {
+    "key": "style.groupEdit.option.zoomFocus.cursor.title",
+    "file": "src/shared/editor/groupEdit.ts",
+    "line": 301,
+    "english": "Follow the cursor",
+    "sample": {}
+  },
+  {
+    "key": "style.groupEdit.option.zoomFocus.fixed",
+    "file": "src/shared/editor/groupEdit.ts",
+    "line": 302,
+    "english": "Fixed point",
+    "sample": {}
+  },
+  {
+    "key": "style.groupEdit.option.zoomFocus.fixed.title",
+    "file": "src/shared/editor/groupEdit.ts",
+    "line": 302,
+    "english": "Look at the point each zoom looks at now",
+    "sample": {}
+  },
+  {
+    "key": "style.groupEdit.option.textStyle.pill",
+    "file": "src/shared/editor/groupEdit.ts",
+    "line": 350,
+    "english": "Caption pill",
+    "sample": {}
+  },
+  {
+    "key": "style.groupEdit.option.textStyle.title",
+    "file": "src/shared/editor/groupEdit.ts",
+    "line": 351,
+    "english": "Title",
+    "sample": {}
+  },
+  {
+    "key": "style.groupEdit.option.privacyKind.blur",
+    "file": "src/shared/editor/groupEdit.ts",
+    "line": 471,
+    "english": "Blur",
+    "sample": {}
+  },
+  {
+    "key": "style.groupEdit.option.privacyKind.blur.title",
+    "file": "src/shared/editor/groupEdit.ts",
+    "line": 471,
+    "english": "A soft blur over the area",
+    "sample": {}
+  },
+  {
+    "key": "style.groupEdit.option.privacyKind.pixelate",
+    "file": "src/shared/editor/groupEdit.ts",
+    "line": 472,
+    "english": "Pixelate",
+    "sample": {}
+  },
+  {
+    "key": "style.groupEdit.option.privacyKind.pixelate.title",
+    "file": "src/shared/editor/groupEdit.ts",
+    "line": 472,
+    "english": "Large square pixels over the area",
+    "sample": {}
+  },
+  {
+    "key": "style.groupEdit.option.spotlightShape.ellipse",
+    "file": "src/shared/editor/groupEdit.ts",
+    "line": 498,
+    "english": "Ellipse",
+    "sample": {}
+  },
+  {
+    "key": "style.groupEdit.option.spotlightShape.rect",
+    "file": "src/shared/editor/groupEdit.ts",
+    "line": 499,
+    "english": "Rectangle",
+    "sample": {}
+  },
+  {
+    "key": "style.groupEdit.useZoomStyle",
+    "file": "src/shared/editor/groupEdit.ts",
+    "line": 336,
+    "english": "Use zoom style",
+    "sample": {}
+  },
+  {
+    "key": "text.motion.none",
+    "file": "src/shared/editor/groupEdit.ts",
+    "line": 105,
+    "english": "None",
+    "sample": {}
+  },
+  {
+    "key": "text.motion.fade",
+    "file": "src/shared/editor/groupEdit.ts",
+    "line": 105,
+    "english": "Fade",
+    "sample": {}
+  },
+  {
+    "key": "text.motion.pop",
+    "file": "src/shared/editor/groupEdit.ts",
+    "line": 105,
+    "english": "Pop",
+    "sample": {}
+  },
+  {
+    "key": "text.motion.rise",
+    "file": "src/shared/editor/groupEdit.ts",
+    "line": 105,
+    "english": "Rise",
+    "sample": {}
+  },
+  {
+    "key": "text.motion.drop",
+    "file": "src/shared/editor/groupEdit.ts",
+    "line": 105,
+    "english": "Drop",
+    "sample": {}
+  },
+  {
+    "key": "text.motion.slideLeft",
+    "file": "src/shared/editor/groupEdit.ts",
+    "line": 105,
+    "english": "Slide left",
+    "sample": {}
+  },
+  {
+    "key": "text.motion.slideRight",
+    "file": "src/shared/editor/groupEdit.ts",
+    "line": 105,
+    "english": "Slide right",
+    "sample": {}
+  },
+  {
+    "key": "text.motion.grow",
+    "file": "src/shared/editor/groupEdit.ts",
+    "line": 105,
+    "english": "Grow",
+    "sample": {}
+  },
+  {
+    "key": "text.motion.blur",
+    "file": "src/shared/editor/groupEdit.ts",
+    "line": 105,
+    "english": "Blur",
+    "sample": {}
+  },
+  {
+    "key": "text.motion.typewriter",
+    "file": "src/shared/editor/groupEdit.ts",
+    "line": 105,
+    "english": "Typewriter",
+    "sample": {}
+  },
+  {
+    "key": "text.motion.default",
+    "file": "src/shared/editor/groupEdit.ts",
+    "line": 175,
+    "english": "Default",
+    "sample": {}
+  },
+  {
+    "key": "text.motion.draw",
+    "file": "src/shared/editor/groupEdit.ts",
+    "line": 175,
+    "english": "Draw",
+    "sample": {}
+  },
+  {
+    "key": "text.motion.wipe",
+    "file": "src/shared/editor/groupEdit.ts",
+    "line": 175,
+    "english": "Wipe",
+    "sample": {}
+  },
+  {
+    "key": "text.calloutSound.project",
+    "file": "src/shared/editor/groupEdit.ts",
+    "line": 182,
+    "english": "Same as the project",
+    "sample": {}
+  },
+  {
+    "key": "common.state.none",
+    "file": "src/shared/editor/groupEdit.ts",
+    "line": 182,
+    "english": "None",
+    "sample": {}
+  },
+  {
+    "key": "common.state.none",
+    "file": "src/shared/editor/groupEdit.ts",
+    "line": 122,
+    "english": "None",
+    "sample": {}
+  },
+  {
+    "key": "text.motion.comesIn",
+    "file": "src/shared/editor/groupEdit.ts",
+    "line": 231,
+    "english": "Comes in",
+    "sample": {}
+  },
+  {
+    "key": "text.motion.goesOut",
+    "file": "src/shared/editor/groupEdit.ts",
+    "line": 231,
+    "english": "Goes out",
+    "sample": {}
+  },
+  {
+    "key": "common.label.sound",
+    "file": "src/shared/editor/groupEdit.ts",
+    "line": 259,
+    "english": "Sound",
+    "sample": {}
+  },
+  {
+    "key": "style.groupEdit.seconds",
+    "file": "src/shared/editor/groupEdit.ts",
+    "line": 85,
+    "english": "0.70 s",
+    "sample": {
+      "n": "0.70"
+    }
+  },
+  {
+    "key": "common.label.zoom",
+    "file": "src/shared/editor/groupEdit.ts",
+    "line": 996,
+    "english": "Zoom",
+    "sample": {}
+  },
+  {
+    "key": "common.label.text",
+    "file": "src/shared/editor/groupEdit.ts",
+    "line": 996,
+    "english": "Text",
+    "sample": {}
+  },
+  {
+    "key": "style.groupEdit.name.spotlight",
+    "file": "src/shared/editor/groupEdit.ts",
+    "line": 996,
+    "english": "Spotlight",
+    "sample": {}
+  },
+  {
+    "key": "style.groupEdit.name.image",
+    "file": "src/shared/editor/groupEdit.ts",
+    "line": 996,
+    "english": "Image",
+    "sample": {}
+  },
+  {
+    "key": "style.groupEdit.name.titleCard",
+    "file": "src/shared/editor/groupEdit.ts",
+    "line": 996,
+    "english": "Title card",
+    "sample": {}
+  },
+  {
+    "key": "style.groupEdit.name.freeze",
+    "file": "src/shared/editor/groupEdit.ts",
+    "line": 996,
+    "english": "Freeze frame",
+    "sample": {}
+  },
+  {
+    "key": "style.groupEdit.name.chapter",
+    "file": "src/shared/editor/groupEdit.ts",
+    "line": 996,
+    "english": "Chapter",
+    "sample": {}
+  },
+  {
+    "key": "style.groupEdit.name.stickerFallback",
+    "file": "src/shared/editor/groupEdit.ts",
+    "line": 996,
+    "english": "Sticker",
+    "sample": {}
+  },
+  {
+    "key": "style.groupEdit.name.sticker",
+    "file": "src/shared/editor/groupEdit.ts",
+    "line": 996,
+    "english": "Heart sticker",
+    "sample": {
+      "name": "Heart"
+    }
+  },
+  {
+    "key": "text.graphic.keyword",
+    "file": "src/shared/editor/groupEdit.ts",
+    "line": 1022,
+    "english": "Keyword pop-up",
+    "sample": {}
+  },
+  {
+    "key": "text.graphic.emoji",
+    "file": "src/shared/editor/groupEdit.ts",
+    "line": 1022,
+    "english": "Emoji",
+    "sample": {}
+  },
+  {
+    "key": "text.graphic.counter",
+    "file": "src/shared/editor/groupEdit.ts",
+    "line": 1022,
+    "english": "Counter",
+    "sample": {}
+  },
+  {
+    "key": "text.graphic.list",
+    "file": "src/shared/editor/groupEdit.ts",
+    "line": 1022,
+    "english": "List card",
+    "sample": {}
+  },
+  {
+    "key": "style.groupEdit.look.percent",
+    "file": "src/shared/editor/groupEdit.ts",
+    "line": 1072,
+    "english": "60 %",
+    "sample": {
+      "n": "60"
+    }
+  },
+  {
+    "key": "style.groupEdit.look.style",
+    "file": "src/shared/editor/groupEdit.ts",
+    "line": 1072,
+    "english": "Title style",
+    "sample": {
+      "style": "Title"
+    }
+  },
+  {
+    "key": "style.groupEdit.look.filled",
+    "file": "src/shared/editor/groupEdit.ts",
+    "line": 1072,
+    "english": "filled",
+    "sample": {}
+  },
+  {
+    "key": "style.groupEdit.look.px",
+    "file": "src/shared/editor/groupEdit.ts",
+    "line": 1072,
+    "english": "6 px",
+    "sample": {
+      "n": "6"
+    }
+  },
+  {
+    "key": "style.groupEdit.look.dark",
+    "file": "src/shared/editor/groupEdit.ts",
+    "line": 1072,
+    "english": "60 % dark",
+    "sample": {
+      "n": "60"
+    }
+  },
+  {
+    "key": "style.groupEdit.look.soundOn",
+    "file": "src/shared/editor/groupEdit.ts",
+    "line": 1072,
+    "english": "sound plays on",
+    "sample": {}
+  },
+  {
+    "key": "style.groupEdit.look.soundPaused",
+    "file": "src/shared/editor/groupEdit.ts",
+    "line": 1072,
+    "english": "sound paused",
+    "sample": {}
+  },
+  {
+    "key": "style.groupEdit.look.comesIn",
+    "file": "src/shared/editor/groupEdit.ts",
+    "line": 1072,
+    "english": "in pop",
+    "sample": {
+      "motion": "pop"
+    }
+  },
+  {
+    "key": "style.groupEdit.look.label",
+    "file": "src/shared/editor/groupEdit.ts",
+    "line": 1072,
+    "english": "Box: #ff3b30, 6 px",
+    "sample": {
+      "name": "Box",
+      "parts": "#ff3b30, 6 px"
+    }
+  },
+  {
+    "key": "style.groupEdit.class.zoom.one",
+    "file": "src/shared/editor/groupEdit.ts",
+    "line": 1111,
+    "english": "zoom",
+    "sample": {}
+  },
+  {
+    "key": "style.groupEdit.class.zoom.other",
+    "file": "src/shared/editor/groupEdit.ts",
+    "line": 1111,
+    "english": "zooms",
+    "sample": {}
+  },
+  {
+    "key": "style.groupEdit.class.text.one",
+    "file": "src/shared/editor/groupEdit.ts",
+    "line": 1111,
+    "english": "text item",
+    "sample": {}
+  },
+  {
+    "key": "style.groupEdit.class.text.other",
+    "file": "src/shared/editor/groupEdit.ts",
+    "line": 1111,
+    "english": "text items",
+    "sample": {}
+  },
+  {
+    "key": "style.groupEdit.class.mark.one",
+    "file": "src/shared/editor/groupEdit.ts",
+    "line": 1111,
+    "english": "shape",
+    "sample": {}
+  },
+  {
+    "key": "style.groupEdit.class.mark.other",
+    "file": "src/shared/editor/groupEdit.ts",
+    "line": 1111,
+    "english": "shapes",
+    "sample": {}
+  },
+  {
+    "key": "style.groupEdit.class.privacy.one",
+    "file": "src/shared/editor/groupEdit.ts",
+    "line": 1111,
+    "english": "blur or pixelate area",
+    "sample": {}
+  },
+  {
+    "key": "style.groupEdit.class.privacy.other",
+    "file": "src/shared/editor/groupEdit.ts",
+    "line": 1111,
+    "english": "blur or pixelate areas",
+    "sample": {}
+  },
+  {
+    "key": "style.groupEdit.class.spotlight.one",
+    "file": "src/shared/editor/groupEdit.ts",
+    "line": 1111,
+    "english": "spotlight",
+    "sample": {}
+  },
+  {
+    "key": "style.groupEdit.class.spotlight.other",
+    "file": "src/shared/editor/groupEdit.ts",
+    "line": 1111,
+    "english": "spotlights",
+    "sample": {}
+  },
+  {
+    "key": "style.groupEdit.class.image.one",
+    "file": "src/shared/editor/groupEdit.ts",
+    "line": 1111,
+    "english": "image",
+    "sample": {}
+  },
+  {
+    "key": "style.groupEdit.class.image.other",
+    "file": "src/shared/editor/groupEdit.ts",
+    "line": 1111,
+    "english": "images",
+    "sample": {}
+  },
+  {
+    "key": "style.groupEdit.class.title.one",
+    "file": "src/shared/editor/groupEdit.ts",
+    "line": 1111,
+    "english": "title card",
+    "sample": {}
+  },
+  {
+    "key": "style.groupEdit.class.title.other",
+    "file": "src/shared/editor/groupEdit.ts",
+    "line": 1111,
+    "english": "title cards",
+    "sample": {}
+  },
+  {
+    "key": "style.groupEdit.class.freeze.one",
+    "file": "src/shared/editor/groupEdit.ts",
+    "line": 1111,
+    "english": "freeze frame",
+    "sample": {}
+  },
+  {
+    "key": "style.groupEdit.class.freeze.other",
+    "file": "src/shared/editor/groupEdit.ts",
+    "line": 1111,
+    "english": "freeze frames",
+    "sample": {}
+  },
+  {
+    "key": "style.groupEdit.class.graphic.one",
+    "file": "src/shared/editor/groupEdit.ts",
+    "line": 1111,
+    "english": "pop-up",
+    "sample": {}
+  },
+  {
+    "key": "style.groupEdit.class.graphic.other",
+    "file": "src/shared/editor/groupEdit.ts",
+    "line": 1111,
+    "english": "pop-ups",
+    "sample": {}
+  },
+  {
+    "key": "style.selectionPanel.class.zoom",
+    "file": "src/renderer/src/editor/panels/SelectionPanel.tsx",
+    "line": 33,
+    "english": "Zooms",
+    "sample": {}
+  },
+  {
+    "key": "style.selectionPanel.class.text",
+    "file": "src/renderer/src/editor/panels/SelectionPanel.tsx",
+    "line": 33,
+    "english": "Text",
+    "sample": {}
+  },
+  {
+    "key": "style.selectionPanel.class.mark",
+    "file": "src/renderer/src/editor/panels/SelectionPanel.tsx",
+    "line": 33,
+    "english": "Shapes",
+    "sample": {}
+  },
+  {
+    "key": "style.selectionPanel.class.privacy",
+    "file": "src/renderer/src/editor/panels/SelectionPanel.tsx",
+    "line": 33,
+    "english": "Privacy",
+    "sample": {}
+  },
+  {
+    "key": "style.selectionPanel.class.spotlight",
+    "file": "src/renderer/src/editor/panels/SelectionPanel.tsx",
+    "line": 33,
+    "english": "Spotlights",
+    "sample": {}
+  },
+  {
+    "key": "style.selectionPanel.class.image",
+    "file": "src/renderer/src/editor/panels/SelectionPanel.tsx",
+    "line": 33,
+    "english": "Images",
+    "sample": {}
+  },
+  {
+    "key": "style.selectionPanel.class.title",
+    "file": "src/renderer/src/editor/panels/SelectionPanel.tsx",
+    "line": 33,
+    "english": "Title cards",
+    "sample": {}
+  },
+  {
+    "key": "style.selectionPanel.class.freeze",
+    "file": "src/renderer/src/editor/panels/SelectionPanel.tsx",
+    "line": 33,
+    "english": "Freeze frames",
+    "sample": {}
+  },
+  {
+    "key": "style.selectionPanel.class.graphic",
+    "file": "src/renderer/src/editor/panels/SelectionPanel.tsx",
+    "line": 33,
+    "english": "Pop-ups",
+    "sample": {}
+  },
+  {
+    "key": "style.selectionPanel.classCount",
+    "file": "src/renderer/src/editor/panels/SelectionPanel.tsx",
+    "line": 283,
+    "english": "Zooms (3)",
+    "sample": {
+      "name": "Zooms",
+      "n": "3"
+    }
+  },
+  {
+    "key": "style.selectionPanel.zoomLevel",
+    "file": "src/renderer/src/editor/panels/SelectionPanel.tsx",
+    "line": 63,
+    "english": "Zoom 2×",
+    "sample": {
+      "level": "2×"
+    }
+  },
+  {
+    "key": "common.label.zoom",
+    "file": "src/renderer/src/editor/panels/SelectionPanel.tsx",
+    "line": 63,
+    "english": "Zoom",
+    "sample": {}
+  },
+  {
+    "key": "style.selectionPanel.cursorSpotlight",
+    "file": "src/renderer/src/editor/panels/SelectionPanel.tsx",
+    "line": 63,
+    "english": "Cursor spotlight",
+    "sample": {}
+  },
+  {
+    "key": "style.selectionPanel.popUp",
+    "file": "src/renderer/src/editor/panels/SelectionPanel.tsx",
+    "line": 63,
+    "english": "Pop-up",
+    "sample": {}
+  },
+  {
+    "key": "style.selectionPanel.selectOnlyThe",
+    "file": "src/renderer/src/editor/panels/SelectionPanel.tsx",
+    "line": 194,
+    "english": "Select only the zooms",
+    "sample": {
+      "kind": "zoom"
+    }
+  },
+  {
+    "key": "style.selectionPanel.onlyKind",
+    "file": "src/renderer/src/editor/panels/SelectionPanel.tsx",
+    "line": 194,
+    "english": "Only text (2)",
+    "sample": {
+      "kind": "annotation",
+      "n": "2"
+    }
+  },
+  {
+    "key": "style.selectionPanel.onlyKind",
+    "file": "src/renderer/src/editor/panels/SelectionPanel.tsx",
+    "line": 194,
+    "english": "Only freeze frames (1)",
+    "sample": {
+      "kind": "freeze",
+      "n": "1"
+    }
+  },
+  {
+    "key": "style.selectionPanel.freezesAtEnd",
+    "file": "src/renderer/src/editor/panels/SelectionPanel.tsx",
+    "line": 161,
+    "english": [
+      "0 freeze frames at the end keep pausing the sound: nothing plays after the end of the video",
+      "1 freeze frame at the end keeps pausing the sound: nothing plays after the end of the video",
+      "2 freeze frames at the end keep pausing the sound: nothing plays after the end of the video",
+      "1000 freeze frames at the end keep pausing the sound: nothing plays after the end of the video"
+    ],
+    "sample": [
+      {
+        "count": 0,
+        "n": "0"
+      },
+      {
+        "count": 1,
+        "n": "1"
+      },
+      {
+        "count": 2,
+        "n": "2"
+      },
+      {
+        "count": 1000,
+        "n": "1000"
+      }
+    ]
+  },
+  {
+    "key": "style.selectionPanel.shorter",
+    "file": "src/renderer/src/editor/panels/SelectionPanel.tsx",
+    "line": 174,
+    "english": [
+      "0 items are shorter: they stop at the next zoom, the end of the recording or the shortest length",
+      "1 item is shorter: it stops at the next zoom, the end of the recording or the shortest length",
+      "2 items are shorter: they stop at the next zoom, the end of the recording or the shortest length",
+      "1000 items are shorter: they stop at the next zoom, the end of the recording or the shortest length"
+    ],
+    "sample": [
+      {
+        "count": 0,
+        "n": "0"
+      },
+      {
+        "count": 1,
+        "n": "1"
+      },
+      {
+        "count": 2,
+        "n": "2"
+      },
+      {
+        "count": 1000,
+        "n": "1000"
+      }
+    ]
+  },
+  {
+    "key": "style.lookButtons.copiedLookFor",
+    "file": "src/renderer/src/editor/panels/SelectionPanel.tsx",
+    "line": 178,
+    "english": "The copied look is for title cards",
+    "sample": {
+      "cls": "title"
+    }
+  },
+  {
+    "key": "style.selectionPanel.duplicateTitle",
+    "file": "src/renderer/src/editor/panels/SelectionPanel.tsx",
+    "line": 210,
+    "english": "Duplicate the selected items right after themselves",
+    "sample": {}
+  },
+  {
+    "key": "style.selectionPanel.copyTitle",
+    "file": "src/renderer/src/editor/panels/SelectionPanel.tsx",
+    "line": 212,
+    "english": "Copy the selected items",
+    "sample": {}
+  },
+  {
+    "key": "style.selectionPanel.pasteLookTitle",
+    "file": "src/renderer/src/editor/panels/SelectionPanel.tsx",
+    "line": 217,
+    "english": "Paste the copied look onto the selected items",
+    "sample": {}
+  },
+  {
+    "key": "style.selectionPanel.deleteTitle",
+    "file": "src/renderer/src/editor/panels/SelectionPanel.tsx",
+    "line": 222,
+    "english": "Delete the selected items",
+    "sample": {}
+  },
+  {
+    "key": "style.selectionPanel.selectedItemsCount",
+    "file": "src/renderer/src/editor/panels/SelectionPanel.tsx",
+    "line": 230,
+    "english": "Selected items (3)",
+    "sample": {
+      "n": "3"
+    }
+  },
+  {
+    "key": "style.selectionPanel.secondsMinus",
+    "file": "src/renderer/src/editor/panels/SelectionPanel.tsx",
+    "line": 267,
+    "english": "−1 s",
+    "sample": {
+      "n": "1"
+    }
+  },
+  {
+    "key": "style.selectionPanel.secondsPlus",
+    "file": "src/renderer/src/editor/panels/SelectionPanel.tsx",
+    "line": 267,
+    "english": "+1 s",
+    "sample": {
+      "n": "1"
+    }
+  },
+  {
+    "key": "style.selectionPanel.appliesTo",
+    "file": "src/renderer/src/editor/panels/SelectionPanel.tsx",
+    "line": 319,
+    "english": "Filled · applies to 1 of 3",
+    "sample": {
+      "label": "Filled",
+      "n": "1",
+      "total": "3"
+    }
+  },
+  {
+    "key": "style.selectionPanel.ownMotionCount",
+    "file": "src/renderer/src/editor/panels/SelectionPanel.tsx",
+    "line": 327,
+    "english": [
+      "(0 with their own motion)",
+      "(1 with its own motion)",
+      "(2 with their own motion)",
+      "(1000 with their own motion)"
+    ],
+    "sample": [
+      {
+        "count": 0,
+        "n": "0"
+      },
+      {
+        "count": 1,
+        "n": "1"
+      },
+      {
+        "count": 2,
+        "n": "2"
+      },
+      {
+        "count": 1000,
+        "n": "1000"
+      }
+    ]
+  },
+  {
+    "key": "style.selectionPanel.noCursor",
+    "file": "src/renderer/src/editor/panels/SelectionPanel.tsx",
+    "line": 358,
+    "english": "No cursor data in this recording",
+    "sample": {}
+  },
+  {
+    "key": "style.mixedControls.mixed",
+    "file": "src/renderer/src/editor/mixedControls.tsx",
+    "line": 23,
+    "english": "Mixed",
+    "sample": {}
+  }
+]

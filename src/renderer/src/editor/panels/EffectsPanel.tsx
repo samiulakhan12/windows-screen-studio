@@ -11,6 +11,8 @@ import './tiltPanel.css'
 import { ScreenColourSection } from './ScreenColourSection'
 import { CalmMotionRow } from './CalmMotionRow'
 import { ProgressBarLink } from './ProgressBarLink'
+import { t } from '../../../../shared/i18n/t'
+import { fmt } from '../../../../shared/i18n/fmt'
 
 const L = LOOK_LIMITS
 
@@ -27,33 +29,33 @@ export function EffectsPanel({ project, cursor }: { project: Project; cursor: Cu
       {/* Editing polish (docs/design/editing-polish.md §2.4, §2.5, §7.5): the screen's colour, Calm motion and the progress bar's row. */}
       <ScreenColourSection project={project} />
       <TiltSection project={project} cursor={cursor} />
-      <Section title="Motion blur">
+      <Section title={t('style.effectsPanel.motionBlur')}>
         <Slider
-          label="Strength"
+          label={t('common.label.strength')}
           value={effects.motionBlur}
           {...L.motionBlur}
           step={0.05}
-          format={(v) => (v === 0 ? 'Off' : pctFmt(v))}
+          format={(v) => (v === 0 ? t('style.effectsPanel.motionBlurOff') : pctFmt(v))}
           onChange={(v) => store.update((p) => ({ ...p, effects: { ...p.effects, motionBlur: v } }), 'effects.motionBlur')}
         />
-        <p className="hint">Blurs fast zoom and pan movements, like a real camera.</p>
+        <p className="hint">{t('style.effectsPanel.blursFastZoomAnd')}</p>
       </Section>
-      <Section title="Keyboard shortcuts">
+      <Section title={t('style.effectsPanel.keyboardShortcuts')}>
         <p className="hint">
-          {keys > 0 ? `${keys} shortcut${keys === 1 ? '' : 's'} recorded (plain typing is never recorded).` : isImported(project) ? IMPORTED_COPY.keystrokes : 'No keyboard shortcuts were recorded in this video.'}
+          {keys > 0 ? t('style.effectsPanel.shortcutsRecorded', { count: keys, n: fmt.count(keys) }) : isImported(project) ? IMPORTED_COPY.keystrokes : t('style.effectsPanel.noKeyboardShortcutsWere')}
         </p>
-        <Toggle label="Show shortcuts on screen" checked={effects.keystrokes.show} onChange={(v) => setKeys({ show: v })} />
+        <Toggle label={t('style.effectsPanel.showShortcutsOnScreen')} checked={effects.keystrokes.show} onChange={(v) => setKeys({ show: v })} />
         <Chips
-          label="Shortcut position"
+          label={t('style.effectsPanel.shortcutPosition')}
           value={effects.keystrokes.position}
           disabled={!effects.keystrokes.show}
           onChange={(position) => setKeys({ position })}
           options={[
-            { value: 'bottom', label: 'Bottom' },
-            { value: 'top', label: 'Top' }
+            { value: 'bottom', label: t('style.effectsPanel.position.bottom') },
+            { value: 'top', label: t('style.effectsPanel.position.top') }
           ]}
         />
-        <Slider label="Size" value={effects.keystrokes.size} {...L.keystrokeSize} step={0.001} format={(v) => `${Math.round(v * 1000) / 10}%`} disabled={!effects.keystrokes.show} onChange={(v) => setKeys({ size: v }, 'effects.keys.size')} />
+        <Slider label={t('common.label.size')} value={effects.keystrokes.size} {...L.keystrokeSize} step={0.001} format={(v) => `${Math.round(v * 1000) / 10}%`} disabled={!effects.keystrokes.show} onChange={(v) => setKeys({ size: v }, 'effects.keys.size')} />
       </Section>
       <CalmMotionRow project={project} />
       <ProgressBarLink />
@@ -66,12 +68,11 @@ export function EffectsPanel({ project, cursor }: { project: Project; cursor: Cu
 /** Size (px) of the mini card on a preset tile; its perspective is scaled to it like the video's. */
 const TILE_CARD = 30
 
-const MOVEMENT: Record<TiltAnimation, string> = {
-  none: 'The card keeps these angles for the whole video.',
-  cursor: 'The card leans a little toward the cursor as it moves, so the part you work on comes forward.',
-  zoom: 'The card straightens up while the camera zooms in, so zoomed-in details stay easy to read.'
-}
-const NO_CURSOR = 'This recording has no cursor positions to follow'
+const MOVEMENT = (): Record<TiltAnimation, string> => ({
+  none: t('style.effectsPanel.movement.none'),
+  cursor: t('style.effectsPanel.movement.cursor'),
+  zoom: t('style.effectsPanel.movement.zoom')
+})
 
 const degrees = (v: number): number => Math.round(Math.abs(v))
 
@@ -88,10 +89,10 @@ function TiltSection({ project, cursor }: { project: Project; cursor: CursorTrac
   const movement: TiltAnimation = noCursor ? 'none' : tilt.animate
   const A = TILT_LIMITS.angle
   return (
-    <Section title="3D tilt">
-      <Toggle label="Tilt the recording in 3D" checked={on} onChange={(v) => set({ enabled: v })} />
-      {followsAction(project) && <p className="hint">The 3D tilt is not drawn while the view follows the action.</p>}
-      <div className="tilt-presets" role="group" aria-label="Tilt presets">
+    <Section title={t('style.effectsPanel.tiltTitle')}>
+      <Toggle label={t('style.effectsPanel.tiltTheRecordingIn')} checked={on} onChange={(v) => set({ enabled: v })} />
+      {followsAction(project) && <p className="hint">{t('style.effectsPanel.the3dTiltIs')}</p>}
+      <div className="tilt-presets" role="group" aria-label={t('style.effectsPanel.tiltPresets')}>
         {TILT_PRESETS.map((preset) => {
           const active = on && sameAngles(tilt, preset.angles)
           return (
@@ -99,8 +100,8 @@ function TiltSection({ project, cursor }: { project: Project; cursor: CursorTrac
               key={preset.id}
               className={`tilt-preset ${active ? 'active' : ''}`}
               aria-pressed={active}
-              aria-label={`${preset.label} tilt`}
-              title={`${preset.title}${on ? '' : ' (turns the tilt on)'}`}
+              aria-label={t('style.effectsPanel.tilt', { label: preset.label })}
+              title={on ? preset.title : t('style.effectsPanel.presetTurnsOn', { title: preset.title })}
               data-tilt-preset={preset.id}
               onClick={() => set({ ...preset.angles, enabled: true })}
             >
@@ -113,57 +114,55 @@ function TiltSection({ project, cursor }: { project: Project; cursor: CursorTrac
         })}
       </div>
       <Slider
-        label="Tilt back"
+        label={t('style.effectsPanel.tiltBack')}
         value={tilt.rotateX}
         min={A.min}
         max={A.max}
         step={1}
         disabled={!on}
-        format={(v) => (degrees(v) === 0 ? 'Level' : `${degrees(v)}° ${v > 0 ? 'back' : 'forward'}`)}
+        format={(v) => (degrees(v) === 0 ? t('style.effectsPanel.angle.level') : v > 0 ? t('style.effectsPanel.angle.back', { n: fmt.count(degrees(v)) }) : t('style.effectsPanel.angle.forward', { n: fmt.count(degrees(v)) }))}
         onChange={(v) => set({ rotateX: v }, 'tilt.rotateX')}
       />
       <Slider
-        label="Turn"
+        label={t('style.effectsPanel.turn')}
         value={tilt.rotateY}
         min={A.min}
         max={A.max}
         step={1}
         disabled={!on}
-        format={(v) => (degrees(v) === 0 ? 'Straight' : `${degrees(v)}° ${v > 0 ? 'right' : 'left'}`)}
+        format={(v) => (degrees(v) === 0 ? t('style.effectsPanel.angle.straight') : v > 0 ? t('style.effectsPanel.angle.right', { n: fmt.count(degrees(v)) }) : t('style.effectsPanel.angle.left', { n: fmt.count(degrees(v)) }))}
         onChange={(v) => set({ rotateY: v }, 'tilt.rotateY')}
       />
       <Slider
-        label="Perspective"
+        label={t('style.effectsPanel.perspective')}
         value={tilt.perspective}
         {...TILT_LIMITS.perspective}
         step={0.05}
         disabled={!on}
-        format={(v) => (v === 0 ? 'None' : pctFmt(v))}
+        format={(v) => (v === 0 ? t('style.effectsPanel.perspectiveNone') : pctFmt(v))}
         onChange={(v) => set({ perspective: v }, 'tilt.perspective')}
       />
       <Chips
-        label="Tilt movement"
+        label={t('style.effectsPanel.tiltMovement')}
         value={movement}
         disabled={!on}
         onChange={(animate) => set({ animate })}
         options={[
-          { value: 'none', label: 'Still', title: MOVEMENT.none },
+          { value: 'none', label: t('style.effectsPanel.movementChip.none'), title: MOVEMENT().none },
           {
             value: 'cursor',
-            label: 'Follow cursor',
-            title: cursor.valid ? MOVEMENT.cursor : NO_CURSOR,
+            label: t('style.effectsPanel.movementChip.cursor'),
+            title: cursor.valid ? MOVEMENT().cursor : t('style.effectsPanel.noCursor'),
             disabled: !cursor.valid
           },
-          { value: 'zoom', label: 'Flatten on zoom', title: MOVEMENT.zoom }
+          { value: 'zoom', label: t('style.effectsPanel.movementChip.zoom'), title: MOVEMENT().zoom }
         ]}
       />
-      <p className="hint" data-testid="tilt-movement">{noCursor ? `${NO_CURSOR}, so the card keeps these angles.` : MOVEMENT[movement]}</p>
+      <p className="hint" data-testid="tilt-movement">{noCursor ? t('style.effectsPanel.noCursorKeeps') : MOVEMENT()[movement]}</p>
       {!supported && (
-        <p className="hint tilt-warn" data-testid="tilt-unsupported">
-          3D tilt needs WebGL, which this computer's graphics driver does not provide: the video is shown and exported flat.
-        </p>
+        <p className="hint tilt-warn" data-testid="tilt-unsupported">{t('style.effectsPanel.tiltNeedsWebgl')}</p>
       )}
-      <p className="hint">While a shape or spotlight is edited on the preview, or a zoom's focus is picked, the preview shows the card flat so the handles line up with the video.</p>
+      <p className="hint">{t('style.effectsPanel.whileAShapeOr')}</p>
     </Section>
   )
 }

@@ -14,6 +14,7 @@ import { faceBoxOfMask } from '../../../shared/render/faceFraming'
 import type { ColorGrade, Project } from '../../../shared/types'
 import { ensureSegmenter, segmentPicture } from '../render/segmentation/personSegmenter'
 import { createVideo, seekedFrame, seekToFrame, WEBCAM_PROXY_FPS, whenReady } from './media'
+import { t } from '../../../shared/i18n/t'
 
 /** Frames sampled. */
 export const AUTO_COLOUR_FRAMES = 12
@@ -25,7 +26,7 @@ class Aborted extends Error {}
 /** `promise`, or a rejection after `ms` (timed out) or when `signal` aborts. */
 function bounded<T>(promise: Promise<T>, ms: number, signal: AbortSignal): Promise<T> {
   return new Promise<T>((resolve, reject) => {
-    const timer = setTimeout(() => finish(() => reject(new Error('timed out'))), ms)
+    const timer = setTimeout(() => finish(() => reject(new Error(t('style.autoColourRun.timedOut')))), ms)
     const onAbort = (): void => finish(() => reject(new Aborted()))
     const finish = (then: () => void): void => {
       clearTimeout(timer)
@@ -140,12 +141,22 @@ export async function runAutoColour(deps: { project: Project; webcamUrl: string;
 /* ---------- the command ---------- */
 
 export const AUTO_COLOUR_COPY = {
-  noCamera: 'This recording has no camera',
-  running: 'Balancing the camera’s colour…',
-  done: 'Camera colour balanced · Ctrl + Z to undo',
-  nothing: 'The camera’s colour already looks balanced',
-  failed: 'The camera’s colour could not be balanced'
-} as const
+  get noCamera() {
+    return t('style.autoColourRun.noCamera')
+  },
+  get running() {
+    return t('style.autoColourRun.running')
+  },
+  get done() {
+    return t('style.autoColourRun.done')
+  },
+  get nothing() {
+    return t('style.autoColourRun.nothing')
+  },
+  get failed() {
+    return t('style.autoColourRun.failed')
+  }
+}
 
 let running: AbortController | null = null
 const listeners = new Set<() => void>()

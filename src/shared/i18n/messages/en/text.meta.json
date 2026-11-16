@@ -1,1 +1,152 @@
-{}
+{
+  "shape.arrow": {
+    "description": "The name of a shape kind (arrow): the Shapes tab’s add buttons, its list, the timeline and the Selection view."
+  },
+  "shape.arrow.title": {
+    "description": "Shapes tab: tooltip of the Arrow add button."
+  },
+  "shape.line": {
+    "description": "The name of a shape kind (line): the Shapes tab’s add buttons, its list, the timeline and the Selection view."
+  },
+  "shape.line.title": {
+    "description": "Shapes tab: tooltip of the Line add button."
+  },
+  "shape.rect": {
+    "description": "The name of a shape kind (rect): the Shapes tab’s add buttons, its list, the timeline and the Selection view."
+  },
+  "shape.rect.title": {
+    "description": "Shapes tab: tooltip of the Box add button."
+  },
+  "shape.ellipse": {
+    "description": "The name of a shape kind (ellipse): the Shapes tab’s add buttons, its list, the timeline and the Selection view."
+  },
+  "shape.ellipse.title": {
+    "description": "Shapes tab: tooltip of the Ellipse add button."
+  },
+  "shape.highlight": {
+    "description": "The name of a shape kind (highlight): the Shapes tab’s add buttons, its list, the timeline and the Selection view."
+  },
+  "shape.highlight.title": {
+    "description": "Shapes tab: tooltip of the Marker add button."
+  },
+  "shape.blur": {
+    "description": "The name of a shape kind (blur): the Shapes tab’s add buttons, its list, the timeline and the Selection view."
+  },
+  "shape.blur.title": {
+    "description": "Shapes tab: tooltip of the Blur add button."
+  },
+  "shape.pixelate": {
+    "description": "The name of a shape kind (pixelate): the Shapes tab’s add buttons, its list, the timeline and the Selection view."
+  },
+  "shape.pixelate.title": {
+    "description": "Shapes tab: tooltip of the Pixelate add button."
+  },
+  "shape.shape": {
+    "description": "A shape’s name when its kind is unknown."
+  },
+  "titleStyle.centered": {
+    "description": "A title card style (centered): the Text tab’s style tiles, the Selection view and the title track."
+  },
+  "titleStyle.centered.title": {
+    "description": "Text tab: tooltip of the Centered title card style."
+  },
+  "titleStyle.big": {
+    "description": "A title card style (big): the Text tab’s style tiles, the Selection view and the title track."
+  },
+  "titleStyle.big.title": {
+    "description": "Text tab: tooltip of the Big title card style."
+  },
+  "titleStyle.lowerThird": {
+    "description": "A title card style (lower-third): the Text tab’s style tiles, the Selection view and the title track."
+  },
+  "titleStyle.lowerThird.title": {
+    "description": "Text tab: tooltip of the Lower third title card style."
+  },
+  "titleStyle.quote": {
+    "description": "A title card style (quote): the Text tab’s style tiles, the Selection view and the title track."
+  },
+  "titleStyle.quote.title": {
+    "description": "Text tab: tooltip of the Quote title card style."
+  },
+  "titleStyle.fallback": {
+    "description": "The title track’s name for a title card of an unknown style."
+  },
+  "titleBackground.blur": {
+    "description": "A title card background (blur): the Text tab’s Background chips and the Selection view."
+  },
+  "titleBackground.blur.title": {
+    "description": "Text tab: tooltip of the Blurred video background chip."
+  },
+  "titleBackground.solid": {
+    "description": "A title card background (solid): the Text tab’s Background chips and the Selection view."
+  },
+  "titleBackground.solid.title": {
+    "description": "Text tab: tooltip of the Colour background chip."
+  },
+  "titleBackground.style": {
+    "description": "A title card background (style): the Text tab’s Background chips and the Selection view."
+  },
+  "titleBackground.style.title": {
+    "description": "Text tab: tooltip of the Project background background chip."
+  },
+  "motion.none": {
+    "description": "How a pop-up or a callout comes in or goes out: None. A chip of Comes in and Goes out (Graphics, Text, Shapes tabs, Selection view)."
+  },
+  "motion.fade": {
+    "description": "How a pop-up or a callout comes in or goes out: Fade. A chip of Comes in and Goes out (Graphics, Text, Shapes tabs, Selection view)."
+  },
+  "motion.pop": {
+    "description": "How a pop-up or a callout comes in or goes out: Pop. A chip of Comes in and Goes out (Graphics, Text, Shapes tabs, Selection view)."
+  },
+  "motion.rise": {
+    "description": "How a pop-up or a callout comes in or goes out: Rise. A chip of Comes in and Goes out (Graphics, Text, Shapes tabs, Selection view)."
+  },
+  "motion.drop": {
+    "description": "How a pop-up or a callout comes in or goes out: Drop. A chip of Comes in and Goes out (Graphics, Text, Shapes tabs, Selection view)."
+  },
+  "motion.slideLeft": {
+    "description": "How a pop-up or a callout comes in or goes out: Slide left. A chip of Comes in and Goes out (Graphics, Text, Shapes tabs, Selection view)."
+  },
+  "motion.slideRight": {
+    "description": "How a pop-up or a callout comes in or goes out: Slide right. A chip of Comes in and Goes out (Graphics, Text, Shapes tabs, Selection view)."
+  },
+  "motion.grow": {
+    "description": "How a pop-up or a callout comes in or goes out: Grow. A chip of Comes in and Goes out (Graphics, Text, Shapes tabs, Selection view)."
+  },
+  "motion.blur": {
+    "description": "How a pop-up or a callout comes in or goes out: Blur. A chip of Comes in and Goes out (Graphics, Text, Shapes tabs, Selection view)."
+  },
+  "motion.typewriter": {
+    "description": "How a pop-up or a callout comes in or goes out: Typewriter. A chip of Comes in and Goes out (Graphics, Text, Shapes tabs, Selection view)."
+  },
+  "motion.default": {
+    "description": "How a callout comes in or goes out: the callout’s default fade. A chip of Comes in and Goes out."
+  },
+  "motion.draw": {
+    "description": "How a callout comes in or goes out: drawn on, as by a pen. A chip of Comes in and Goes out."
+  },
+  "motion.wipe": {
+    "description": "How a callout comes in or goes out: wiped on. A chip of Comes in and Goes out."
+  },
+  "calloutSound.project": {
+    "description": "A callout’s Sound: the choice that plays what the project’s sound effects rule says."
+  },
+  "motion.comesIn": {
+    "description": "Label of the row of motions an item comes in with (Graphics, Text, Shapes tabs, Selection view)."
+  },
+  "motion.goesOut": {
+    "description": "Label of the row of motions an item goes out with (Graphics, Text, Shapes tabs, Selection view)."
+  },
+  "graphic.keyword": {
+    "description": "The name of a pop-up kind (keyword): the Graphics tab, its track and the Selection view."
+  },
+  "graphic.emoji": {
+    "description": "The name of a pop-up kind (emoji): the Graphics tab, its track and the Selection view."
+  },
+  "graphic.counter": {
+    "description": "The name of a pop-up kind (counter): the Graphics tab, its track and the Selection view."
+  },
+  "graphic.list": {
+    "description": "The name of a pop-up kind (list): the Graphics tab, its track and the Selection view."
+  }
+}

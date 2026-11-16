@@ -19,6 +19,7 @@ import { blurActiveControl, releaseFocus } from './focus'
 import { followPointer } from './pointer'
 import './crop.css'
 import './zoom.css'
+import { t } from '../../../shared/i18n/t'
 
 /** The recording's size in recorded pixels: what a crop is measured and snapped in. */
 type Size = { width: number; height: number }
@@ -105,7 +106,7 @@ export function CropEditor({ recorded, rect, draft, onDraft, onDone }: { recorde
           onDone()
         }}
         data-testid="crop-box"
-        title="Drag to move · edges and corners resize · Enter to apply, Esc to cancel"
+        title={t('style.cropEditor.dragToMoveEdges')}
       >
         {dragging && (
           <>
@@ -131,7 +132,7 @@ export function CropEditor({ recorded, rect, draft, onDraft, onDone }: { recorde
   )
 }
 
-const ASPECT_LABELS: Record<CropAspect, string> = { free: 'Free', original: 'Original', '16:9': '16:9', '4:3': '4:3', '1:1': '1:1', '9:16': '9:16' }
+const aspectLabel = (a: CropAspect): string => (a === 'free' ? t('style.cropEditor.aspect.free') : a === 'original' ? t('style.cropEditor.aspect.original') : a)
 
 /**
  * The crop tool's bar under the preview: aspect locks, the taskbar and browser-bar presets, the
@@ -183,62 +184,50 @@ export function CropBar({
   return (
     <div className="crop-bar" data-testid="crop-bar">
       <div className="crop-bar-row">
-        <div className="chips" role="group" aria-label="Crop shape">
+        <div className="chips" role="group" aria-label={t('style.cropEditor.cropShape')}>
           {CROP_ASPECTS.map((a) => (
             <button
               key={a}
               className={`chip ${draft.aspect === a ? 'active' : ''}`}
               aria-pressed={draft.aspect === a}
-              title={a === 'free' ? 'Any shape. Hold Shift while dragging to keep the current shape' : a === 'original' ? `The recording's own shape (${W} × ${H})` : `Keep the shape at ${a}`}
+              title={a === 'free' ? t('style.cropEditor.anyShapeHoldShift') : a === 'original' ? t('style.cropEditor.theRecordingSOwn', { width: String(W), height: String(H) }) : t('style.cropEditor.keepTheShapeAt', { aspect: a })}
               onClick={act(() => chooseAspect(a))}
             >
-              {ASPECT_LABELS[a]}
+              {aspectLabel(a)}
             </button>
           ))}
         </div>
         <button
           className="btn small"
           disabled={!taskbar}
-          title={taskbar ? `Cut the bottom ${taskbarCut} px: the Windows taskbar at ${scaling}% scaling` : 'This recording does not show the taskbar'}
+          title={taskbar ? t('style.cropEditor.cutTheBottomPx', { px: String(taskbarCut), scaling: String(scaling) }) : t('style.cropEditor.thisRecordingDoesNot')}
           onClick={act(preset(taskbar))}
           data-testid="crop-taskbar"
-        >
-          Hide taskbar
-        </button>
+        >{t('style.cropEditor.hideTaskbar')}</button>
         <button
           className="btn small"
           disabled={!browserBar}
           title={
             browserBar
-              ? `Cut the top ${browserCut} px: tabs and address bar of a maximised browser`
+              ? t('style.cropEditor.cutTheTopPx', { px: String(browserCut) })
               : lowArea
-                ? 'Only for screen or window recordings, or areas at the top of the screen'
-                : 'This recording is too short to show a browser bar'
+                ? t('style.cropEditor.onlyForScreenOr')
+                : t('style.cropEditor.thisRecordingIsToo')
           }
           onClick={act(preset(browserBar))}
           data-testid="crop-browserbar"
-        >
-          Hide browser bar
-        </button>
+        >{t('style.cropEditor.hideBrowserBar')}</button>
         <span className="crop-bar-size" data-testid="crop-size">
-          {px.w} × {px.h} px
+          {t('style.cropEditor.sizePx', { width: String(px.w), height: String(px.h) })}
         </span>
         <div className="crop-bar-actions">
-          <button className="btn small ghost" title="Whole recording" onClick={act(() => onDraft({ rect: { ...FULL_FRAME }, aspect: 'free' }))} data-testid="crop-reset">
-            Reset
-          </button>
-          <button className="btn small ghost" title="Esc" onClick={act(onCancel)} data-testid="crop-cancel">
-            Cancel
-          </button>
-          <button className="btn small primary" title="Enter" onClick={act(onDone)} data-testid="crop-done">
-            Done
-          </button>
+          <button className="btn small ghost" title={t('style.cropEditor.wholeRecording')} onClick={act(() => onDraft({ rect: { ...FULL_FRAME }, aspect: 'free' }))} data-testid="crop-reset">{t('common.action.reset')}</button>
+          <button className="btn small ghost" title={t('style.cropEditor.esc')} onClick={act(onCancel)} data-testid="crop-cancel">{t('common.action.cancel')}</button>
+          <button className="btn small primary" title={t('style.cropEditor.enter')} onClick={act(onDone)} data-testid="crop-done">{t('common.action.done')}</button>
         </div>
       </div>
       {small && (
-        <p className="hint crop-bar-hint">
-          Only {px.w} × {px.h} px: larger exports will be upscaled and may look soft.
-        </p>
+        <p className="hint crop-bar-hint">{t('style.cropEditor.smallCrop', { width: String(px.w), height: String(px.h) })}</p>
       )}
     </div>
   )

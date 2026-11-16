@@ -3,7 +3,7 @@
  * everywhere, Go to next cut, Go to previous cut, Play this cut. The palette, the Clip tab's
  * buttons and the timeline's markers run the same handlers. Each edit is one store.update.
  */
-import { ALREADY_SMOOTH, cutOf, HARD_EVERYWHERE, NO_CUT_AFTER, NO_CUT_BEFORE, NO_CUTS, smoothedNotice } from '../../../shared/editor/cutsCopy'
+import { alreadySmooth, cutOf, hardEverywhere, noCutAfter, noCutBefore, noCuts, noCutsInVideo, smoothedNotice } from '../../../shared/editor/cutsCopy'
 import type { EditStore } from '../../../shared/editor/editStore'
 import { cutAt, cutCount, cutNumber, hardCutsEverywhere, nextCutAfter, prevCutBefore, smoothAllCuts } from '../../../shared/editor/joinsEdit'
 import type { Project } from '../../../shared/types'
@@ -25,9 +25,9 @@ export interface CutCommandDeps {
 
 /** Every cut set to Smooth, in one update, with its notice ("Smoothed 34 cuts · 3 keep their own style · Ctrl + Z to undo"). */
 export function runSmoothAllCuts(store: CutCommandDeps['store'], notice: (m: string) => void, undo: string): void {
-  if (cutCount(store.state) === 0) return notice(NO_CUTS)
+  if (cutCount(store.state) === 0) return notice(noCuts())
   const r = smoothAllCuts(store.state)
-  if (r.project === store.state) return notice(ALREADY_SMOOTH)
+  if (r.project === store.state) return notice(alreadySmooth())
   store.update((p) => smoothAllCuts(p).project)
   notice(smoothedNotice(r.changed, r.kept, undo))
 }
@@ -56,19 +56,19 @@ export function cutCommands(d: CutCommandDeps): Record<'smoothAllCuts' | 'hardCu
     },
     hardCutsEverywhere: () => {
       d.reveal()
-      if (cutCount(d.store.state) === 0) return d.notice('This video has no cuts')
+      if (cutCount(d.store.state) === 0) return d.notice(noCutsInVideo())
       const before = d.store.state
       d.store.update(hardCutsEverywhere)
-      d.notice(d.store.state === before ? HARD_EVERYWHERE : `${HARD_EVERYWHERE}${d.undo()}`)
+      d.notice(d.store.state === before ? hardEverywhere() : `${hardEverywhere()}${d.undo()}`)
     },
     nextCut: () => {
       const gap = nextCutAfter(d.store.state, from(d))
-      if (!gap) return d.notice(NO_CUT_AFTER)
+      if (!gap) return d.notice(noCutAfter())
       goToCut(d, gap)
     },
     previousCut: () => {
       const gap = prevCutBefore(d.store.state, from(d))
-      if (!gap) return d.notice(NO_CUT_BEFORE)
+      if (!gap) return d.notice(noCutBefore())
       goToCut(d, gap)
     },
     playCut: () => {
@@ -77,7 +77,7 @@ export function cutCommands(d: CutCommandDeps): Record<'smoothAllCuts' | 'hardCu
       // The selected cut, else the one at or after the playhead, else the last one before it.
       const gap = sel?.kind === 'gap' && cutAt(project, sel.end) ? sel : (nextCutAfter(project, d.player.time - 2e-6) ?? prevCutBefore(project, d.player.time))
       const cut = gap ? cutAt(project, gap.end) : null
-      if (!cut) return d.notice('This video has no cuts')
+      if (!cut) return d.notice(noCutsInVideo())
       d.player.playCut(cut.video)
     }
   }

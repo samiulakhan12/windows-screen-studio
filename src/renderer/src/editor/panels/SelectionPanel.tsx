@@ -1,11 +1,11 @@
 import { useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { displayTime } from '../../../../shared/editor/clips'
 import type { CommandId } from '../../../../shared/editor/commands'
-import { applyField, fieldItems, fieldsFor, fieldValue, LOOK_CLASS_WORDS, lookClassOf, type FieldCtx, type GroupField, type LookClass } from '../../../../shared/editor/groupEdit'
+import { applyField, fieldItems, fieldsFor, fieldValue, lookClassOf, type FieldCtx, type GroupField, type LookClass } from '../../../../shared/editor/groupEdit'
 import { setGroupLength, setGroupStart } from '../../../../shared/editor/groupMove'
-import { countOf, GROUP_KINDS, groupLabel, kindCounts, KIND_WORDS, projectItems, toggleKey, type GroupKind, type ItemEntry, type ItemKey } from '../../../../shared/editor/multiSelect'
+import { GROUP_KINDS, groupLabel, kindCounts, projectItems, toggleKey, type GroupKind, type ItemEntry, type ItemKey } from '../../../../shared/editor/multiSelect'
 import { copyLookFirst, movedNotice } from '../../../../shared/editor/multiSelectCopy'
-import { shapeLabel } from '../../../../shared/editor/shapes'
+import { shapeName, zoomLevelPresets } from '../../../../shared/editor/itemNames'
 import { commandKeys, shortcutLabel, withShortcut } from '../../../../shared/editor/shortcuts'
 import { ZOOM_LEVEL_PRESETS } from '../../../../shared/editor/zoomEdit'
 import { cropOf, zoomInView } from '../../../../shared/engine/crop'
@@ -27,18 +27,19 @@ import '../shapes.css'
 import { overlayLabel } from '../../../../shared/editor/overlays'
 import { fmt } from '../../../../shared/i18n/fmt'
 import { graphicLabel } from './GraphicsPanel'
+import { t, type MessageKey } from '../../../../shared/i18n/t'
 
 /** Section titles of the look classes, in their order (§4.9 item 5). */
-const CLASS_TITLE: Readonly<Record<LookClass, string>> = {
-  zoom: 'Zooms',
-  text: 'Text',
-  mark: 'Shapes',
-  privacy: 'Privacy',
-  spotlight: 'Spotlights',
-  image: 'Images',
-  title: 'Title cards',
-  freeze: 'Freeze frames',
-  graphic: 'Pop-ups'
+const CLASS_TITLE: Readonly<Record<LookClass, MessageKey>> = {
+  zoom: 'style.selectionPanel.class.zoom',
+  text: 'style.selectionPanel.class.text',
+  mark: 'style.selectionPanel.class.mark',
+  privacy: 'style.selectionPanel.class.privacy',
+  spotlight: 'style.selectionPanel.class.spotlight',
+  image: 'style.selectionPanel.class.image',
+  title: 'style.selectionPanel.class.title',
+  freeze: 'style.selectionPanel.class.freeze',
+  graphic: 'style.selectionPanel.class.graphic'
 }
 
 /** Kinds with a start and an end (Length applies to them). */
@@ -63,31 +64,31 @@ function itemName(p: Project, e: ItemEntry): string {
   switch (e.kind) {
     case 'zoom': {
       const z = p.zooms.find((x) => x.id === e.id)
-      return z ? `Zoom ${fmt.factor(zoomTargetScale(zoomInView(cropOf(p), z)))}` : 'Zoom'
+      return z ? t('style.selectionPanel.zoomLevel', { level: fmt.factor(zoomTargetScale(zoomInView(cropOf(p), z))) }) : t('common.label.zoom')
     }
     case 'annotation':
-      return p.annotations.find((x) => x.id === e.id)?.text.trim() || 'Text'
+      return p.annotations.find((x) => x.id === e.id)?.text.trim() || t('common.label.text')
     case 'shape': {
       const s = p.shapes?.find((x) => x.id === e.id)
-      return s ? shapeLabel(s.kind) : 'Shape'
+      return s ? shapeName(s.kind) : t('text.shape.shape')
     }
     case 'spotlight':
-      return p.spotlights?.find((x) => x.id === e.id)?.mode === 'cursor' ? 'Cursor spotlight' : 'Spotlight'
+      return p.spotlights?.find((x) => x.id === e.id)?.mode === 'cursor' ? t('style.selectionPanel.cursorSpotlight') : t('style.groupEdit.name.spotlight')
     case 'title': {
       const c = p.titles?.find((x) => x.id === e.id)
-      return c?.title.trim() || c?.subtitle?.trim() || 'Title card'
+      return c?.title.trim() || c?.subtitle?.trim() || t('style.groupEdit.name.titleCard')
     }
     case 'chapter':
-      return p.chapters?.find((x) => x.id === e.id)?.title.trim() || 'Chapter'
+      return p.chapters?.find((x) => x.id === e.id)?.title.trim() || t('style.groupEdit.name.chapter')
     case 'freeze':
-      return 'Freeze frame'
+      return t('style.groupEdit.name.freeze')
     case 'overlay': {
       const o = p.overlays?.find((x) => x.id === e.id)
-      return o ? overlayLabel(o) : 'Image'
+      return o ? overlayLabel(o) : t('style.groupEdit.name.image')
     }
     case 'graphic': {
       const g = p.graphics?.find((x) => x.id === e.id)
-      return g ? graphicLabel(g) : 'Pop-up'
+      return g ? graphicLabel(g) : t('style.selectionPanel.popUp')
     }
   }
 }
@@ -157,7 +158,7 @@ export function SelectionPanel(props: InspectorProps & { onCommand: (id: Command
       return r.project
     }, key)
     if (refused && field.id === 'freeze.sound')
-      G.notice(`${countOf(refused, 'freeze')} at the end ${refused === 1 ? 'keeps' : 'keep'} pausing the sound: nothing plays after the end of the video`)
+      G.notice(t('style.selectionPanel.freezesAtEnd', { count: refused, n: fmt.count(refused) }))
   }
 
   const moveTo = (t: number): void => {
@@ -170,17 +171,17 @@ export function SelectionPanel(props: InspectorProps & { onCommand: (id: Command
   const setLength = (length: number): void => {
     const r = setGroupLength(store.state, keys, length)
     if (r.project !== store.state) store.update(() => r.project)
-    if (r.clamped) G.notice(`${r.clamped === 1 ? '1 item is' : `${r.clamped} items are`} shorter: ${r.clamped === 1 ? 'it stops' : 'they stop'} at the next zoom, the end of the recording or the shortest length`)
+    if (r.clamped) G.notice(t('style.selectionPanel.shorter', { count: r.clamped, n: fmt.count(r.clamped) }))
   }
 
   const pasteLookWhy =
-    !look ? copyLookFirst(commandKeys(keymap, 'copyLook').map(shortcutLabel)[0] ?? null) : keys.some((k) => lookClassOf(project, k) === look.cls) ? null : `The copied look is for ${LOOK_CLASS_WORDS[look.cls][1]}`
+    !look ? copyLookFirst(commandKeys(keymap, 'copyLook').map(shortcutLabel)[0] ?? null) : keys.some((k) => lookClassOf(project, k) === look.cls) ? null : t('style.lookButtons.copiedLookFor', { cls: look.cls })
   const autoZooms = keys.filter((k) => k.startsWith('zoom:') && project.zooms.find((z) => `zoom:${z.id}` === k)?.auto).length
 
   return (
     <div className="selection-panel" data-testid="selection-panel">
       <div role="status" aria-live="polite">
-        <Section title={`${keys.length} items selected`}>
+        <Section title={t('style.selectionPanel.itemsSelected', { n: fmt.count(keys.length) })}>
           <p className="hint selection-summary">
             {groupLabel(keys)} · {fmt.clock(span.start)} – {fmt.clock(span.end)}
           </p>
@@ -190,13 +191,13 @@ export function SelectionPanel(props: InspectorProps & { onCommand: (id: Command
                 <button
                   key={kind}
                   className="btn ghost"
-                  title={`Select only the ${KIND_WORDS[kind][1]}`}
+                  title={t('style.selectionPanel.selectOnlyThe', { kind })}
                   onClick={() => {
                     const only = keys.filter((k) => k.startsWith(`${kind}:`))
                     narrowTo(only, only.includes(G.group.anchor as ItemKey) ? G.group.anchor : only[0])
                   }}
                 >
-                  Only {KIND_WORDS[kind][1].replace(/ items$/, '')} ({counts[kind]})
+                  {t('style.selectionPanel.onlyKind', { kind, n: fmt.count(counts[kind] ?? 0) })}
                 </button>
               ))}
             </div>
@@ -204,35 +205,29 @@ export function SelectionPanel(props: InspectorProps & { onCommand: (id: Command
         </Section>
       </div>
 
-      <Section title="Actions">
+      <Section title={t('style.selectionPanel.actions')}>
         <div className="selection-actions">
-          <button className="btn" onClick={() => onCommand('duplicateItems')} title={withShortcut('Duplicate the selected items right after themselves', commandKeys(keymap, 'duplicateItems'))}>
-            <ShapeIcon name="duplicate" size={15} /> Duplicate
-          </button>
-          <button className="btn" onClick={() => onCommand('copyItems')} title={withShortcut('Copy the selected items', commandKeys(keymap, 'copyItems'))}>
-            Copy
-          </button>
+          <button className="btn" onClick={() => onCommand('duplicateItems')} title={withShortcut(t('style.selectionPanel.duplicateTitle'), commandKeys(keymap, 'duplicateItems'))}>
+            <ShapeIcon name="duplicate" size={15} />{t('style.selectionPanel.duplicate')}</button>
+          <button className="btn" onClick={() => onCommand('copyItems')} title={withShortcut(t('style.selectionPanel.copyTitle'), commandKeys(keymap, 'copyItems'))}>{t('common.action.copy')}</button>
           <button
             className="btn"
             disabled={!!pasteLookWhy}
             onClick={() => onCommand('pasteLook')}
-            title={pasteLookWhy ?? withShortcut('Paste the copied look onto the selected items', commandKeys(keymap, 'pasteLook'))}
-          >
-            Paste look
-          </button>
+            title={pasteLookWhy ?? withShortcut(t('style.selectionPanel.pasteLookTitle'), commandKeys(keymap, 'pasteLook'))}
+          >{t('style.selectionPanel.pasteLook')}</button>
           <button
             className="btn ghost danger"
             onClick={() => onCommand('deleteSelection')}
-            title={withShortcut('Delete the selected items', keymap.deleteSelection)}
+            title={withShortcut(t('style.selectionPanel.deleteTitle'), keymap.deleteSelection)}
           >
-            <Icon name="trash" size={15} /> Delete
-          </button>
+            <Icon name="trash" size={15} />{t('style.selectionPanel.delete')}</button>
         </div>
       </Section>
 
-      <Section title="Selected items">
+      <Section title={t('style.selectionPanel.selectedItems')}>
         <details open={keys.length <= 12}>
-          <summary>Selected items ({keys.length})</summary>
+          <summary>{t('style.selectionPanel.selectedItemsCount', { n: fmt.count(keys.length) })}</summary>
           <ul className="selection-items" ref={listRef}>
             {entries.slice(0, 200).map((e, i) => {
               const name = itemName(project, e)
@@ -244,9 +239,7 @@ export function SelectionPanel(props: InspectorProps & { onCommand: (id: Command
                     {name}
                   </span>
                   <span className="muted small">{at}</span>
-                  <button className="btn ghost leave-out" aria-label={`Leave out ${name} at ${at}`} title="Leave this item out of the selection" onClick={() => leaveOut(e.key, i)}>
-                    Leave out
-                  </button>
+                  <button className="btn ghost leave-out" aria-label={t('style.selectionPanel.leaveOutAt', { name, at })} title={t('style.selectionPanel.leaveThisItemOut')} onClick={() => leaveOut(e.key, i)}>{t('style.selectionPanel.leaveOut')}</button>
                 </li>
               )
             })}
@@ -254,56 +247,53 @@ export function SelectionPanel(props: InspectorProps & { onCommand: (id: Command
         </details>
       </Section>
 
-      <Section title="Timing">
+      <Section title={t('style.selectionPanel.timing')}>
         <div className="group-time">
-          <span className="field-label">Starts at</span>
-          <GroupTimeField label="Starts at" testId="group-start" value={span.start} min={0} max={project.duration} onCommit={moveTo} />
+          <span className="field-label">{t('style.selectionPanel.startsAt')}</span>
+          <GroupTimeField label={t('style.selectionPanel.startsAt')} testId="group-start" value={span.start} min={0} max={project.duration} onCommit={moveTo} />
           <button
             className="btn ghost shape-time-now"
             onClick={() => moveTo(displayTime(project.clips, player.time))}
-            title="Starts at: set to the playhead"
-            aria-label="Starts at: set to the playhead"
+            title={t('style.selectionPanel.startsAtSetTo')}
+            aria-label={t('style.selectionPanel.startsAtSetTo')}
           >
             <svg width={15} height={15} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
               <path d="M12 3v18M7 3h10l-5 5z" />
             </svg>
           </button>
         </div>
-        <div className="group-move" role="group" aria-label="Move the selection">
-          <span className="field-label">Move</span>
-          <button className="btn" onClick={() => moveTo(span.start - 1)} aria-label="Move the selection 1 second earlier">
-            −1 s
-          </button>
-          <button className="btn" onClick={() => moveTo(span.start + 1)} aria-label="Move the selection 1 second later">
-            +1 s
-          </button>
+        <div className="group-move" role="group" aria-label={t('style.selectionPanel.moveTheSelection')}>
+          <span className="field-label">{t('style.selectionPanel.move')}</span>
+          <button className="btn" onClick={() => moveTo(span.start - 1)} aria-label={t('style.selectionPanel.moveEarlier')}>{t('style.selectionPanel.secondsMinus', { n: fmt.count(1) })}</button>
+          <button className="btn" onClick={() => moveTo(span.start + 1)} aria-label={t('style.selectionPanel.moveLater')}>{t('style.selectionPanel.secondsPlus', { n: fmt.count(1) })}</button>
         </div>
         {spans.length > 0 && (
           <div className="group-time group-length">
-            <span className="field-label">Length</span>
-            <GroupTimeField label="Length" testId="group-length" value={lengths[0]} mixed={!sameLength} min={0.3} max={project.duration} onCommit={setLength} />
-            <span className="muted small">s</span>
+            <span className="field-label">{t('common.label.length')}</span>
+            <GroupTimeField label={t('common.label.length')} testId="group-length" value={lengths[0]} mixed={!sameLength} min={0.3} max={project.duration} onCommit={setLength} />
+            <span className="muted small">{t('style.selectionPanel.secondsUnit')}</span>
           </div>
         )}
-        <p className="hint">Moves as one block: it stops at the recording's ends, at zooms in the way, and a freeze frame stays in its clip.</p>
-        {counts.chapter ? <p className="hint">Chapters move with the selection; rename them one at a time.</p> : null}
+        <p className="hint">{t('style.selectionPanel.movesAsOneBlock')}</p>
+        {counts.chapter ? <p className="hint">{t('style.selectionPanel.chaptersMoveWithThe')}</p> : null}
       </Section>
 
       {sections.map((s) => (
         <Section
           key={s.cls}
-          title={`${CLASS_TITLE[s.cls]} (${s.keys.length})`}
-          aside={s.cls === 'zoom' ? <span className="muted small">{`${autoZooms} automatic · ${s.keys.length - autoZooms} edited`}</span> : undefined}
+          title={t('style.selectionPanel.classCount', { name: t(CLASS_TITLE[s.cls]), n: fmt.count(s.keys.length) })}
+          aside={s.cls === 'zoom' ? <span className="muted small">{t('style.selectionPanel.automaticEdited', { auto: fmt.count(autoZooms), edited: fmt.count(s.keys.length - autoZooms) })}</span> : undefined}
         >
-          {s.cls === 'zoom' && autoZooms > 0 && <p className="hint">Changing or moving the automatic ones makes them yours: auto zoom then keeps them.</p>}
+          {s.cls === 'zoom' && autoZooms > 0 && <p className="hint">{t('style.selectionPanel.changingOrMovingThe')}</p>}
           {s.fields.map(({ field, targets }) => (
             <FieldRow key={field.id} project={project} field={field} targets={targets} of={s.keys.length} ctx={ctx} onWrite={write} />
           ))}
         </Section>
       ))}
       <p className="hint">
-        Text, titles and chapter names are edited one at a time. {keymap.copyLook[0] ? `${shortcutLabel(keymap.copyLook[0])} copies one item's look; ` : ''}
-        {keymap.pasteLook[0] ? `${shortcutLabel(keymap.pasteLook[0])} pastes it onto the selection.` : ''}
+        {t('style.selectionPanel.textTitlesAndChapter')}
+        {keymap.copyLook[0] ? t('style.selectionPanel.copiesOneItemS', { keys: shortcutLabel(keymap.copyLook[0]) }) : ''}
+        {keymap.pasteLook[0] ? t('style.selectionPanel.pastesItOntoThe', { keys: shortcutLabel(keymap.pasteLook[0]) }) : ''}
       </p>
     </div>
   )
@@ -326,15 +316,15 @@ function FieldRow({
   onWrite: (field: GroupField, targets: readonly ItemKey[], v: unknown, merge?: 'drag' | 'picker') => void
 }): JSX.Element | null {
   const shared = fieldValue(project, field, targets, ctx)
-  const label = targets.length < of && field.control.type !== 'action' ? `${field.label} · applies to ${targets.length} of ${of}` : field.label
+  const label = targets.length < of && field.control.type !== 'action' ? t('style.selectionPanel.appliesTo', { label: field.label, n: fmt.count(targets.length), total: fmt.count(of) }) : field.label
   const c = field.control
   if (c.type === 'action') {
     return (
       <p className="hint">
-        <button className="link" onClick={() => onWrite(field, targets, null)} title="Use the project's zoom style for these zooms">
+        <button className="link" onClick={() => onWrite(field, targets, null)} title={t('style.selectionPanel.useTheProjectS')}>
           {c.label}
         </button>{' '}
-        ({targets.length} with {targets.length === 1 ? 'its' : 'their'} own motion)
+        {t('style.selectionPanel.ownMotionCount', { count: targets.length, n: fmt.count(targets.length) })}
       </p>
     )
   }
@@ -358,14 +348,14 @@ function FieldRow({
     return (
       <>
         <div className="zoom-chips-fill">
-          <MixedChips label="Zoom level presets" value={preset} mixed={shared.mixed} options={ZOOM_LEVEL_PRESETS.map((p) => ({ value: p.value, label: p.label, title: p.title }))} onChange={(v) => onWrite(field, targets, v)} />
+          <MixedChips label={t('style.selectionPanel.zoomLevelPresets')} value={preset} mixed={shared.mixed} options={zoomLevelPresets().map((p) => ({ value: p.value, label: p.label, title: p.title }))} onChange={(v) => onWrite(field, targets, v)} />
         </div>
         {slider}
       </>
     )
   }
   if (c.type === 'chips') {
-    const options = c.options.map((o) => (field.id === 'zoom.focus' && o.value === 'cursor' && !ctx.cursorValid ? { ...o, disabled: true, title: 'No cursor data in this recording' } : o))
+    const options = c.options.map((o) => (field.id === 'zoom.focus' && o.value === 'cursor' && !ctx.cursorValid ? { ...o, disabled: true, title: t('style.selectionPanel.noCursor') } : o))
     // A focus mode not offered here (a region) reads as Mixed with the others.
     const offered = options.some((o) => o.value === shared.value)
     return <MixedChips label={label} value={offered ? (shared.value as string | number) : null} mixed={shared.mixed || !offered} options={options} onChange={(v) => onWrite(field, targets, v)} />

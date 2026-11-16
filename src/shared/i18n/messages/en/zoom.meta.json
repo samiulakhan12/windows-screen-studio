@@ -1,1 +1,8 @@
-{}
+{
+  "preset.pullBack": {
+    "description": "Zoom tab: tooltip of the 0.75× level chip, which zooms out."
+  },
+  "preset.zoom": {
+    "description": "Zoom tab: tooltip of a level chip. {level} is the zoom factor (1.5×)."
+  }
+}

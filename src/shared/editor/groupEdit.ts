@@ -19,8 +19,8 @@ import { setZoomLevelInView } from './cropEdit'
 import { removeFreeze, setFreezeLength, setFreezeSound } from './freezeEdit'
 import { parseItemKey, type GroupKind, type ItemKey } from './multiSelect'
 import { sizeForAspect } from './overlays'
-import { hasStroke, HIGHLIGHT_COLORS, isPrivacyKind, SHAPE_COLORS, shapeLabel, STROKE_LIMITS } from './shapes'
-import { TITLE_BACKGROUNDS, TITLE_COLORS, TITLE_STYLES, TITLE_TEXT_COLORS, titleColorOf, titleTextColorOf } from './titles'
+import { hasStroke, HIGHLIGHT_COLORS, isPrivacyKind, SHAPE_COLORS, STROKE_LIMITS } from './shapes'
+import { TITLE_COLORS, TITLE_TEXT_COLORS, titleColorOf, titleTextColorOf } from './titles'
 import { annotationItem, CALLOUT_ALLOWED, calloutOf, shapeItem, type CalloutItem } from '../render/calloutData'
 import { BADGE_FILL, BUBBLE_FILL } from '../render/callouts'
 import { SOUND_EFFECTS } from '../audio/soundLibrary'
@@ -28,6 +28,9 @@ import { readGraphicSound, readItemSound } from '../audio/soundFxData'
 import { ORIGINAL_SOUNDS, sfxGroupsFor } from '../audio/sfxChoices'
 import { pickedMotion } from './calloutsEdit'
 import { fmt } from '../i18n/fmt'
+import { t, type MessageKey } from '../i18n/t'
+import { choice, type Choice } from './choice'
+import { shapeName, TITLE_BACKGROUND_CHOICES, TITLE_STYLE_CHOICES } from './itemNames'
 
 /** Items that share a look: shapes split into marks and privacy shapes; chapters have none. */
 export type LookClass = 'zoom' | 'text' | 'mark' | 'privacy' | 'spotlight' | 'image' | 'title' | 'freeze' | 'graphic'
@@ -81,10 +84,10 @@ export interface Look {
 /** A shared value, or Mixed; `value` is the first target's. */
 export type Shared<V> = { mixed: false; value: V } | { mixed: true; value: V }
 
-const pctFmt = (v: number): string => `${Math.round(v * 100)}%`
-const secFmt = (v: number): string => `${v.toFixed(2)} s`
-const tenthsFmt = (v: number): string => `${v.toFixed(1)} s`
-const sizeFmt = (v: number): string => `${Math.round(v * 1000) / 10}%`
+const pctFmt = (v: number): string => fmt.percent(v)
+const secFmt = (v: number): string => t('style.groupEdit.seconds', { n: fmt.number(v, { max: 2 }) })
+const tenthsFmt = (v: number): string => t('style.groupEdit.seconds', { n: fmt.number(v, { max: 1 }) })
+const sizeFmt = (v: number): string => `${fmt.number(Math.round(v * 1000) / 10)}%`
 
 /** Numbers within 1e-6 are equal; anything else only when identical (undefined equals only undefined). */
 const sameValue = (a: unknown, b: unknown): boolean => (typeof a === 'number' && typeof b === 'number' ? Math.abs(a - b) <= 1e-6 : a === b)
@@ -102,25 +105,25 @@ export const GRAPHIC_SIZE = { min: 0.02, max: 0.3 }
 /** Colour dots of a graphic's text and accent: the caption themes' colours (§7.1). */
 export const GRAPHIC_COLORS: readonly string[] = ['#ffffff', '#ffe14d', '#39e508', '#22d3ee', '#ff5c8a', '#111111']
 /** Comes in and Goes out (§2.11). */
-export const ITEM_MOTIONS: readonly { value: ItemMotion['kind']; label: string }[] = [
-  { value: 'none', label: 'None' },
-  { value: 'fade', label: 'Fade' },
-  { value: 'pop', label: 'Pop' },
-  { value: 'rise', label: 'Rise' },
-  { value: 'drop', label: 'Drop' },
-  { value: 'slide-left', label: 'Slide left' },
-  { value: 'slide-right', label: 'Slide right' },
-  { value: 'grow', label: 'Grow' },
-  { value: 'blur', label: 'Blur' },
-  { value: 'typewriter', label: 'Typewriter' }
+export const ITEM_MOTIONS: readonly Choice<ItemMotion['kind']>[] = [
+  choice('none', 'text.motion.none'),
+  choice('fade', 'text.motion.fade'),
+  choice('pop', 'text.motion.pop'),
+  choice('rise', 'text.motion.rise'),
+  choice('drop', 'text.motion.drop'),
+  choice('slide-left', 'text.motion.slideLeft'),
+  choice('slide-right', 'text.motion.slideRight'),
+  choice('grow', 'text.motion.grow'),
+  choice('blur', 'text.motion.blur'),
+  choice('typewriter', 'text.motion.typewriter')
 ]
 /**
  * Sound on a pop-up (§2.11): absent is None. Then Captions Studio's own sounds, as they always
  * sounded, and the library's effects, pop-ups' first (editing polish §2.6, §10.7), as the Graphics
  * tab's select offers them.
  */
-export const GRAPHIC_SOUNDS: readonly { value: 'none' | 'pop' | 'ding' | SfxRef; label: string }[] = [
-  { value: 'none', label: 'None' },
+export const GRAPHIC_SOUNDS: readonly Choice<'none' | 'pop' | 'ding' | SfxRef>[] = [
+  choice('none', 'common.state.none'),
   ...ORIGINAL_SOUNDS,
   ...sfxGroupsFor('pop-ups').flatMap((g) => g.options)
 ]
@@ -146,15 +149,20 @@ const zoomLevelOf = (z: ZoomSegment, ctx: FieldCtx): number => zoomTargetScale(z
 
 /** A field writing `patch(v)` into an item of its class. */
 function patchField<T>(
-  spec: Omit<GroupField, 'write' | 'applies' | 'read'> & {
+  spec: Omit<GroupField, 'write' | 'applies' | 'read' | 'label'> & {
+    /** The row's label, a message made when it is shown. */
+    label: MessageKey
     applies?: (item: T, p: Project) => boolean
     read: (item: T, p: Project, ctx: FieldCtx) => unknown
     patch: (item: T, v: unknown, ctx: FieldCtx) => T
   }
 ): GroupField {
-  const { applies, read, patch, ...rest } = spec
+  const { applies, read, patch, label, ...rest } = spec
   return {
     ...rest,
+    get label() {
+      return t(label)
+    },
     applies: (item, p) => (applies ? applies(item as T, p) : true),
     read: (item, p, ctx) => read(item as T, p, ctx),
     write: { item: (item, v, ctx) => patch(item as T, v, ctx) }
@@ -172,16 +180,16 @@ function lookPoint(z: ZoomSegment, ctx: FieldCtx): { x: number; y: number } {
 /* ---------- animated callouts (docs/design/editing-polish.md §2.3, §7.1) ---------- */
 
 /** Comes in and Goes out: Default (today's fade), then the Graphics tab's motion names, Draw and Wipe. */
-export const CALLOUT_MOTIONS: readonly { value: CalloutMotionKind | 'default'; label: string }[] = [
-  { value: 'default', label: 'Default' },
+export const CALLOUT_MOTIONS: readonly Choice<CalloutMotionKind | 'default'>[] = [
+  choice('default', 'text.motion.default'),
   ...ITEM_MOTIONS.filter((o) => o.value !== 'none' && o.value !== 'blur'),
-  { value: 'draw', label: 'Draw' },
-  { value: 'wipe', label: 'Wipe' }
+  choice('draw', 'text.motion.draw'),
+  choice('wipe', 'text.motion.wipe')
 ]
 /** A callout's Sound: the project's rule, none, or an effect of the library. */
-export const CALLOUT_SOUNDS: readonly { value: string; label: string }[] = [
-  { value: 'project', label: 'Same as the project' },
-  { value: 'none', label: 'None' },
+export const CALLOUT_SOUNDS: readonly Choice<string>[] = [
+  choice('project', 'text.calloutSound.project'),
+  choice('none', 'common.state.none'),
   ...SOUND_EFFECTS.map((e) => ({ value: `sfx:${e.id}`, label: e.title }))
 ]
 /** A badge's or a bubble's fill: the default blue, white, dark, then the shape colours. */
@@ -228,7 +236,9 @@ function motionField(cls: 'text' | 'mark' | 'title', side: 'enter' | 'exit'): Gr
   const base = {
     id: `${cls}.${side}`,
     cls,
-    label: side === 'enter' ? 'Comes in' : 'Goes out',
+    get label() {
+      return side === 'enter' ? t('text.motion.comesIn') : t('text.motion.goesOut')
+    },
     look: true,
     applies: (item: unknown) => itemOfField(cls, item) !== null,
     read: (item: unknown) => motionOf(cls, item, side)?.kind ?? 'default',
@@ -258,7 +268,9 @@ function soundField(cls: 'text' | 'mark' | 'title'): GroupField {
   return {
     id: `${cls}.sound`,
     cls,
-    label: 'Sound',
+    get label() {
+      return t('common.label.sound')
+    },
     control: { type: 'chips', options: CALLOUT_SOUNDS },
     look: true,
     applies: (item) => itemOfField(cls, item) !== null,
@@ -284,7 +296,7 @@ export const GROUP_FIELDS: readonly GroupField[] = [
   patchField<ZoomSegment>({
     id: 'zoom.level',
     cls: 'zoom',
-    label: 'Zoom level',
+    label: 'style.groupEdit.field.zoomLevel',
     control: { type: 'slider', min: ZOOM_MIN_SCALE, max: ZOOM_MAX_SCALE, step: 0.05, format: fmt.factor },
     look: true,
     read: (z, _p, ctx) => zoomLevelOf(z, ctx),
@@ -294,12 +306,12 @@ export const GROUP_FIELDS: readonly GroupField[] = [
   patchField<ZoomSegment>({
     id: 'zoom.focus',
     cls: 'zoom',
-    label: 'Focus',
+    label: 'style.groupEdit.field.zoomFocus',
     control: {
       type: 'chips',
       options: [
-        { value: 'cursor', label: 'Follow cursor', title: 'Follow the cursor' },
-        { value: 'fixed', label: 'Fixed point', title: 'Look at the point each zoom looks at now' }
+        choice('cursor', 'style.groupEdit.option.zoomFocus.cursor', 'style.groupEdit.option.zoomFocus.cursor.title'),
+        choice('fixed', 'style.groupEdit.option.zoomFocus.fixed', 'style.groupEdit.option.zoomFocus.fixed.title')
       ]
     },
     look: false,
@@ -314,7 +326,7 @@ export const GROUP_FIELDS: readonly GroupField[] = [
   patchField<ZoomSegment>({
     id: 'zoom.easing',
     cls: 'zoom',
-    label: 'Easing',
+    label: 'style.groupEdit.field.zoomEasing',
     control: { type: 'chips', options: ZOOM_EASINGS },
     look: true,
     read: (z, _p, ctx) => zoomEasing(z, ctx.style),
@@ -323,7 +335,7 @@ export const GROUP_FIELDS: readonly GroupField[] = [
   patchField<ZoomSegment>({
     id: 'zoom.transition',
     cls: 'zoom',
-    label: 'Transition',
+    label: 'style.groupEdit.field.zoomTransition',
     control: { type: 'slider', min: MIN_TRANSITION, max: MAX_TRANSITION, step: 0.05, format: secFmt },
     look: true,
     read: (z, _p, ctx) => zoomTransition(z, ctx.style),
@@ -332,8 +344,13 @@ export const GROUP_FIELDS: readonly GroupField[] = [
   patchField<ZoomSegment>({
     id: 'zoom.ownStyle',
     cls: 'zoom',
-    label: 'Use zoom style',
-    control: { type: 'action', label: 'Use zoom style' },
+    label: 'style.groupEdit.useZoomStyle',
+    control: {
+      type: 'action',
+      get label() {
+        return t('style.groupEdit.useZoomStyle')
+      }
+    },
     look: false,
     applies: (z) => z.easing !== undefined || z.transition !== undefined,
     read: () => null,
@@ -343,12 +360,12 @@ export const GROUP_FIELDS: readonly GroupField[] = [
   patchField<Annotation>({
     id: 'text.style',
     cls: 'text',
-    label: 'Text style',
+    label: 'style.groupEdit.field.textStyle',
     control: {
       type: 'chips',
       options: [
-        { value: 'pill', label: 'Caption pill' },
-        { value: 'title', label: 'Title' }
+        choice('pill', 'style.groupEdit.option.textStyle.pill'),
+        choice('title', 'style.groupEdit.option.textStyle.title')
       ]
     },
     look: true,
@@ -358,7 +375,7 @@ export const GROUP_FIELDS: readonly GroupField[] = [
   patchField<Annotation>({
     id: 'text.size',
     cls: 'text',
-    label: 'Size',
+    label: 'common.label.size',
     control: { type: 'slider', min: ANNOTATION_SIZE.min, max: ANNOTATION_SIZE.max, step: 0.002, format: sizeFmt },
     look: true,
     read: (a) => a.size,
@@ -367,7 +384,7 @@ export const GROUP_FIELDS: readonly GroupField[] = [
   patchField<Annotation>({
     id: 'text.x',
     cls: 'text',
-    label: 'Position X',
+    label: 'style.groupEdit.field.textX',
     control: { type: 'slider', min: 0, max: 1, step: 0.005, format: pctFmt },
     look: false,
     read: (a) => a.x,
@@ -376,7 +393,7 @@ export const GROUP_FIELDS: readonly GroupField[] = [
   patchField<Annotation>({
     id: 'text.y',
     cls: 'text',
-    label: 'Position Y',
+    label: 'style.groupEdit.field.textY',
     control: { type: 'slider', min: 0, max: 1, step: 0.005, format: pctFmt },
     look: false,
     read: (a) => a.y,
@@ -388,7 +405,7 @@ export const GROUP_FIELDS: readonly GroupField[] = [
   patchField<Annotation>({
     id: 'text.color',
     cls: 'text',
-    label: 'Colour',
+    label: 'common.label.colour',
     control: { type: 'color', presets: CALLOUT_COLORS },
     look: true,
     applies: isBadgeOrBubble,
@@ -396,28 +413,30 @@ export const GROUP_FIELDS: readonly GroupField[] = [
     eq: sameColor,
     patch: (a, v) => ({ ...a, color: (v as string).toLowerCase() })
   }),
-  {
-    ...patchField<Annotation>({
+  Object.assign(
+    patchField<Annotation>({
       id: 'text.numbering',
       cls: 'text',
-      label: 'Count with',
+      label: 'style.groupEdit.field.textNumbering',
       control: { type: 'chips', options: BADGE_NUMBERINGS },
       look: true,
       applies: (a) => a.style === 'badge',
       read: (a) => calloutOf(a).numbering,
       patch: (a, v) => (v === '1' ? without(a, 'numbering') : { ...a, numbering: v as string })
     }),
-    // A language of the selected badges' own (Hindi digits, say) is offered beside the three.
-    narrow(targets) {
-      const extra = [...new Set(targets.map((a) => calloutOf(a as Annotation).numbering))].filter((n) => !BADGE_NUMBERINGS.some((o) => o.value === n))
-      return extra.length ? { ...this, control: { type: 'chips', options: [...BADGE_NUMBERINGS, ...extra.map((n) => ({ value: n, label: n }))] } } : this
+    {
+      // A language of the selected badges' own (Hindi digits, say) is offered beside the three.
+      narrow(this: GroupField, targets: readonly unknown[]): GroupField {
+        const extra = [...new Set(targets.map((a) => calloutOf(a as Annotation).numbering))].filter((n) => !BADGE_NUMBERINGS.some((o) => o.value === n))
+        return extra.length ? { ...this, control: { type: 'chips', options: [...BADGE_NUMBERINGS, ...extra.map((n) => ({ value: n, label: n }))] } } : this
+      }
     }
-  },
+  ),
 
   patchField<Shape>({
     id: 'mark.color',
     cls: 'mark',
-    label: 'Colour',
+    label: 'common.label.colour',
     control: { type: 'color', presets: SHAPE_COLORS },
     look: true,
     applies: isMark,
@@ -429,7 +448,7 @@ export const GROUP_FIELDS: readonly GroupField[] = [
   patchField<Shape>({
     id: 'mark.fill',
     cls: 'mark',
-    label: 'Filled',
+    label: 'style.groupEdit.field.markFill',
     control: { type: 'toggle' },
     look: true,
     applies: (s) => s.kind === 'rect' || s.kind === 'ellipse',
@@ -439,8 +458,8 @@ export const GROUP_FIELDS: readonly GroupField[] = [
   patchField<Shape>({
     id: 'mark.strokeWidth',
     cls: 'mark',
-    label: 'Line width',
-    control: { type: 'slider', min: STROKE_LIMITS.min, max: STROKE_LIMITS.max, step: 0.5, format: (v) => `${+v.toFixed(1)} px` },
+    label: 'style.groupEdit.field.markStrokeWidth',
+    control: { type: 'slider', min: STROKE_LIMITS.min, max: STROKE_LIMITS.max, step: 0.5, format: (v) => `${fmt.number(+v.toFixed(1))} px` },
     look: true,
     // Checked on the item as it is after a Filled write (paste look applies fields in this order).
     applies: (s) => isMark(s) && hasStroke(s),
@@ -450,7 +469,7 @@ export const GROUP_FIELDS: readonly GroupField[] = [
   patchField<Shape>({
     id: 'mark.opacity',
     cls: 'mark',
-    label: 'Opacity',
+    label: 'common.label.opacity',
     control: { type: 'slider', min: 0.1, max: 1, step: 0.01, format: pctFmt },
     look: true,
     applies: isMark,
@@ -464,12 +483,12 @@ export const GROUP_FIELDS: readonly GroupField[] = [
   patchField<Shape>({
     id: 'privacy.kind',
     cls: 'privacy',
-    label: 'Effect',
+    label: 'style.groupEdit.field.privacyKind',
     control: {
       type: 'chips',
       options: [
-        { value: 'blur', label: 'Blur', title: 'A soft blur over the area' },
-        { value: 'pixelate', label: 'Pixelate', title: 'Large square pixels over the area' }
+        choice('blur', 'style.groupEdit.option.privacyKind.blur', 'style.groupEdit.option.privacyKind.blur.title'),
+        choice('pixelate', 'style.groupEdit.option.privacyKind.pixelate', 'style.groupEdit.option.privacyKind.pixelate.title')
       ]
     },
     look: true,
@@ -480,7 +499,7 @@ export const GROUP_FIELDS: readonly GroupField[] = [
   patchField<Shape>({
     id: 'privacy.strength',
     cls: 'privacy',
-    label: 'Amount',
+    label: 'style.groupEdit.field.privacyStrength',
     control: { type: 'slider', min: 0, max: 1, step: 0.01, format: pctFmt },
     look: true,
     applies: (s) => isPrivacyKind(s.kind),
@@ -491,12 +510,12 @@ export const GROUP_FIELDS: readonly GroupField[] = [
   patchField<Spotlight>({
     id: 'spotlight.shape',
     cls: 'spotlight',
-    label: 'Shape',
+    label: 'style.groupEdit.field.spotlightShape',
     control: {
       type: 'chips',
       options: [
-        { value: 'ellipse', label: 'Ellipse' },
-        { value: 'rect', label: 'Rectangle' }
+        choice('ellipse', 'style.groupEdit.option.spotlightShape.ellipse'),
+        choice('rect', 'style.groupEdit.option.spotlightShape.rect')
       ]
     },
     look: true,
@@ -506,7 +525,7 @@ export const GROUP_FIELDS: readonly GroupField[] = [
   patchField<Spotlight>({
     id: 'spotlight.dim',
     cls: 'spotlight',
-    label: 'Darkness',
+    label: 'style.groupEdit.field.spotlightDim',
     control: { type: 'slider', min: 0.1, max: 0.95, step: 0.01, format: pctFmt },
     look: true,
     read: (s) => s.dim,
@@ -515,7 +534,7 @@ export const GROUP_FIELDS: readonly GroupField[] = [
   patchField<Spotlight>({
     id: 'spotlight.feather',
     cls: 'spotlight',
-    label: 'Soft edge',
+    label: 'style.groupEdit.field.spotlightFeather',
     control: { type: 'slider', min: 0, max: 1, step: 0.01, format: pctFmt },
     look: true,
     read: (s) => s.feather,
@@ -526,7 +545,7 @@ export const GROUP_FIELDS: readonly GroupField[] = [
   patchField<ImageOverlay>({
     id: 'image.x',
     cls: 'image',
-    label: 'Position X',
+    label: 'style.groupEdit.field.imageX',
     control: { type: 'slider', min: 0, max: 1, step: 0.005, format: pctFmt },
     look: false,
     read: (o) => o.x,
@@ -535,7 +554,7 @@ export const GROUP_FIELDS: readonly GroupField[] = [
   patchField<ImageOverlay>({
     id: 'image.y',
     cls: 'image',
-    label: 'Position Y',
+    label: 'style.groupEdit.field.imageY',
     control: { type: 'slider', min: 0, max: 1, step: 0.005, format: pctFmt },
     look: false,
     read: (o) => o.y,
@@ -544,7 +563,7 @@ export const GROUP_FIELDS: readonly GroupField[] = [
   patchField<ImageOverlay>({
     id: 'image.size',
     cls: 'image',
-    label: 'Size',
+    label: 'common.label.size',
     control: { type: 'slider', min: OVERLAY_LIMITS.side.min, max: OVERLAY_LIMITS.side.max, step: 0.005, format: pctFmt },
     look: true,
     read: (o) => Math.max(o.w, o.h),
@@ -553,8 +572,8 @@ export const GROUP_FIELDS: readonly GroupField[] = [
   patchField<ImageOverlay>({
     id: 'image.rotation',
     cls: 'image',
-    label: 'Rotation',
-    control: { type: 'slider', min: OVERLAY_LIMITS.rotation.min, max: OVERLAY_LIMITS.rotation.max, step: 1, format: (v) => `${Math.round(v)}°` },
+    label: 'style.groupEdit.field.imageRotation',
+    control: { type: 'slider', min: OVERLAY_LIMITS.rotation.min, max: OVERLAY_LIMITS.rotation.max, step: 1, format: (v) => `${fmt.count(Math.round(v))}°` },
     look: true,
     read: (o) => o.rotation,
     patch: (o, v) => ({ ...o, rotation: v as number })
@@ -562,7 +581,7 @@ export const GROUP_FIELDS: readonly GroupField[] = [
   patchField<ImageOverlay>({
     id: 'image.opacity',
     cls: 'image',
-    label: 'Opacity',
+    label: 'common.label.opacity',
     control: { type: 'slider', min: OVERLAY_LIMITS.opacity.min, max: OVERLAY_LIMITS.opacity.max, step: 0.05, format: pctFmt },
     look: true,
     read: (o) => o.opacity,
@@ -571,7 +590,7 @@ export const GROUP_FIELDS: readonly GroupField[] = [
   patchField<ImageOverlay>({
     id: 'image.fadeIn',
     cls: 'image',
-    label: 'Fade in',
+    label: 'style.groupEdit.field.imageFadeIn',
     control: { type: 'slider', min: OVERLAY_LIMITS.fade.min, max: OVERLAY_LIMITS.fade.max, step: 0.1, format: tenthsFmt },
     look: true,
     read: (o) => o.fadeIn,
@@ -580,7 +599,7 @@ export const GROUP_FIELDS: readonly GroupField[] = [
   patchField<ImageOverlay>({
     id: 'image.fadeOut',
     cls: 'image',
-    label: 'Fade out',
+    label: 'style.groupEdit.field.imageFadeOut',
     control: { type: 'slider', min: OVERLAY_LIMITS.fade.min, max: OVERLAY_LIMITS.fade.max, step: 0.1, format: tenthsFmt },
     look: true,
     read: (o) => o.fadeOut,
@@ -590,8 +609,8 @@ export const GROUP_FIELDS: readonly GroupField[] = [
   patchField<TitleCard>({
     id: 'title.style',
     cls: 'title',
-    label: 'Style',
-    control: { type: 'chips', options: TITLE_STYLES },
+    label: 'style.groupEdit.field.titleStyle',
+    control: { type: 'chips', options: TITLE_STYLE_CHOICES },
     look: true,
     read: (c) => c.style,
     patch: (c, v) => ({ ...c, style: v as TitleCard['style'] })
@@ -599,8 +618,8 @@ export const GROUP_FIELDS: readonly GroupField[] = [
   patchField<TitleCard>({
     id: 'title.background',
     cls: 'title',
-    label: 'Background',
-    control: { type: 'chips', options: TITLE_BACKGROUNDS },
+    label: 'common.label.background',
+    control: { type: 'chips', options: TITLE_BACKGROUND_CHOICES },
     look: true,
     read: (c) => c.background,
     patch: (c, v) => ({ ...c, background: v as TitleCard['background'] })
@@ -608,7 +627,7 @@ export const GROUP_FIELDS: readonly GroupField[] = [
   patchField<TitleCard>({
     id: 'title.color',
     cls: 'title',
-    label: 'Colour',
+    label: 'common.label.colour',
     control: { type: 'color', presets: TITLE_COLORS },
     look: true,
     onlyWhenAll: true,
@@ -620,7 +639,7 @@ export const GROUP_FIELDS: readonly GroupField[] = [
   patchField<TitleCard>({
     id: 'title.textColor',
     cls: 'title',
-    label: 'Text colour',
+    label: 'common.label.textColour',
     control: { type: 'color', presets: TITLE_TEXT_COLORS },
     look: true,
     read: (c, _p, ctx) => titleTextColorOf(c, ctx.background),
@@ -634,7 +653,9 @@ export const GROUP_FIELDS: readonly GroupField[] = [
   {
     id: 'freeze.length',
     cls: 'freeze',
-    label: 'Hold for',
+    get label() {
+      return t('style.groupEdit.field.freezeLength')
+    },
     control: { type: 'slider', min: FREEZE.min, max: FREEZE.max, step: FREEZE.step, format: tenthsFmt },
     look: true,
     applies: () => true,
@@ -644,12 +665,14 @@ export const GROUP_FIELDS: readonly GroupField[] = [
   {
     id: 'freeze.sound',
     cls: 'freeze',
-    label: 'Sound',
+    get label() {
+      return t('common.label.sound')
+    },
     control: {
       type: 'chips',
       options: [
-        { value: 'pause', label: 'Pause the sound', title: 'Adds the time to the video. The recording waits; music keeps playing.' },
-        { value: 'continue', label: 'Keep the sound playing', title: 'Adds no time. The picture holds while the recording plays on.' }
+        choice('pause', 'style.freezeSection.sound.pause', 'style.freezeSection.sound.pause.title'),
+        choice('continue', 'style.freezeSection.sound.continue', 'style.freezeSection.sound.continue.title')
       ]
     },
     look: true,
@@ -661,7 +684,7 @@ export const GROUP_FIELDS: readonly GroupField[] = [
   patchField<Graphic>({
     id: 'graphic.size',
     cls: 'graphic',
-    label: 'Size',
+    label: 'common.label.size',
     control: { type: 'slider', min: GRAPHIC_SIZE.min, max: GRAPHIC_SIZE.max, step: 0.005, format: sizeFmt },
     look: true,
     read: (g) => g.size,
@@ -670,7 +693,9 @@ export const GROUP_FIELDS: readonly GroupField[] = [
   {
     id: 'graphic.color',
     cls: 'graphic',
-    label: 'Colour',
+    get label() {
+      return t('common.label.colour')
+    },
     control: { type: 'color', presets: GRAPHIC_COLORS },
     look: true,
     applies: () => true,
@@ -681,7 +706,9 @@ export const GROUP_FIELDS: readonly GroupField[] = [
   {
     id: 'graphic.accent',
     cls: 'graphic',
-    label: 'Accent',
+    get label() {
+      return t('style.groupEdit.field.graphicAccent')
+    },
     control: { type: 'color', presets: GRAPHIC_COLORS },
     look: true,
     applies: () => true,
@@ -692,7 +719,7 @@ export const GROUP_FIELDS: readonly GroupField[] = [
   patchField<Graphic>({
     id: 'graphic.enter',
     cls: 'graphic',
-    label: 'Comes in',
+    label: 'text.motion.comesIn',
     control: { type: 'chips', options: ITEM_MOTIONS },
     look: true,
     // Typewriter is for keywords only (§10.1).
@@ -702,7 +729,7 @@ export const GROUP_FIELDS: readonly GroupField[] = [
   patchField<Graphic>({
     id: 'graphic.exit',
     cls: 'graphic',
-    label: 'Goes out',
+    label: 'text.motion.goesOut',
     control: { type: 'chips', options: ITEM_MOTIONS },
     look: true,
     read: (g) => g.exit.kind,
@@ -711,7 +738,7 @@ export const GROUP_FIELDS: readonly GroupField[] = [
   patchField<Graphic>({
     id: 'graphic.sound',
     cls: 'graphic',
-    label: 'Sound',
+    label: 'common.label.sound',
     control: { type: 'chips', options: GRAPHIC_SOUNDS },
     look: true,
     read: (g) => g.sound ?? 'none',
@@ -969,30 +996,43 @@ export function deleteItems(p: Project, keys: readonly ItemKey[]): Project {
 function lookName(kind: GroupKind, item: unknown): string {
   switch (kind) {
     case 'zoom':
-      return 'Zoom'
+      return t('common.label.zoom')
     case 'annotation':
-      return 'Text'
+      return t('common.label.text')
     case 'shape':
-      return shapeLabel((item as Shape).kind)
+      return shapeName((item as Shape).kind)
     case 'spotlight':
-      return 'Spotlight'
+      return t('style.groupEdit.name.spotlight')
     case 'overlay': {
       const o = item as ImageOverlay
-      return o.sticker ? `${stickerOf(o.sticker)?.name ?? 'Sticker'} sticker` : 'Image'
+      return o.sticker ? t('style.groupEdit.name.sticker', { name: stickerOf(o.sticker)?.name ?? t('style.groupEdit.name.stickerFallback') }) : t('style.groupEdit.name.image')
     }
     case 'title':
-      return 'Title card'
+      return t('style.groupEdit.name.titleCard')
     case 'freeze':
-      return 'Freeze frame'
+      return t('style.groupEdit.name.freeze')
     case 'graphic':
       return GRAPHIC_NAMES[(item as Graphic).kind]
     case 'chapter':
-      return 'Chapter'
+      return t('style.groupEdit.name.chapter')
   }
 }
 
 /** A graphic's kind as a name ("Keyword pop-up"). */
-export const GRAPHIC_NAMES: Readonly<Record<Graphic['kind'], string>> = { keyword: 'Keyword pop-up', emoji: 'Emoji', counter: 'Counter', list: 'List card' }
+export const GRAPHIC_NAMES: Readonly<Record<Graphic['kind'], string>> = {
+  get keyword() {
+    return t('text.graphic.keyword')
+  },
+  get emoji() {
+    return t('text.graphic.emoji')
+  },
+  get counter() {
+    return t('text.graphic.counter')
+  },
+  get list() {
+    return t('text.graphic.list')
+  }
+}
 
 /** The look of one item: the values of its class's look fields, read in the crop's view. Null for a chapter or a missing item. */
 export function copyLook(p: Project, key: ItemKey, ctx: FieldCtx): Look | null {
@@ -1032,50 +1072,68 @@ const optionLabel = (field: string, v: unknown): string => {
 export function lookLabel(look: Look): string {
   const v = look.values
   const num = (id: string): number | null => (typeof v[id] === 'number' ? (v[id] as number) : null)
-  const pct = (x: number | null): string | null => (x === null ? null : `${Math.round(x * 100)} %`)
+  const pct = (x: number | null): string | null => (x === null ? null : t('style.groupEdit.look.percent', { n: fmt.count(Math.round(x * 100)) }))
   const parts: (string | null)[] = []
   switch (look.cls) {
     case 'zoom':
       parts.push(num('zoom.level') === null ? null : fmt.factor(num('zoom.level')!), v['zoom.easing'] ? optionLabel('zoom.easing', v['zoom.easing']).toLowerCase() : null)
       break
     case 'text':
-      parts.push(v['text.style'] ? `${optionLabel('text.style', v['text.style'])} style` : null, num('text.size') === null ? null : `${Math.round(num('text.size')! * 1000) / 10} %`)
+      parts.push(v['text.style'] ? t('style.groupEdit.look.style', { style: optionLabel('text.style', v['text.style']) }) : null, num('text.size') === null ? null : t('style.groupEdit.look.percent', { n: fmt.number(Math.round(num('text.size')! * 1000) / 10) }))
       break
     case 'mark':
-      parts.push(typeof v['mark.color'] === 'string' ? (v['mark.color'] as string) : null, v['mark.fill'] === true ? 'filled' : num('mark.strokeWidth') === null ? null : `${+num('mark.strokeWidth')!.toFixed(1)} px`)
+      parts.push(typeof v['mark.color'] === 'string' ? (v['mark.color'] as string) : null, v['mark.fill'] === true ? t('style.groupEdit.look.filled') : num('mark.strokeWidth') === null ? null : t('style.groupEdit.look.px', { n: fmt.number(+num('mark.strokeWidth')!.toFixed(1)) }))
       break
     case 'privacy':
       parts.push(pct(num('privacy.strength')))
       break
     case 'spotlight':
-      parts.push(v['spotlight.shape'] ? optionLabel('spotlight.shape', v['spotlight.shape']).toLowerCase() : null, num('spotlight.dim') === null ? null : `${pct(num('spotlight.dim'))} dark`)
+      parts.push(v['spotlight.shape'] ? optionLabel('spotlight.shape', v['spotlight.shape']).toLowerCase() : null, num('spotlight.dim') === null ? null : t('style.groupEdit.look.dark', { n: fmt.count(Math.round(num('spotlight.dim')! * 100)) }))
       break
     case 'image':
-      parts.push(pct(num('image.opacity')), num('image.rotation') ? `${Math.round(num('image.rotation')!)}°` : null)
+      parts.push(pct(num('image.opacity')), num('image.rotation') ? `${fmt.count(Math.round(num('image.rotation')!))}°` : null)
       break
     case 'title':
       parts.push(v['title.style'] ? optionLabel('title.style', v['title.style']) : null, v['title.background'] ? optionLabel('title.background', v['title.background']) : null)
       break
     case 'freeze':
-      parts.push(num('freeze.length') === null ? null : tenthsFmt(num('freeze.length')!), v['freeze.sound'] === 'continue' ? 'sound plays on' : v['freeze.sound'] === 'pause' ? 'sound paused' : null)
+      parts.push(num('freeze.length') === null ? null : tenthsFmt(num('freeze.length')!), v['freeze.sound'] === 'continue' ? t('style.groupEdit.look.soundOn') : v['freeze.sound'] === 'pause' ? t('style.groupEdit.look.soundPaused') : null)
       break
     case 'graphic':
-      parts.push(num('graphic.size') === null ? null : sizeFmt(num('graphic.size')!), v['graphic.enter'] ? `in ${optionLabel('graphic.enter', v['graphic.enter']).toLowerCase()}` : null)
+      parts.push(num('graphic.size') === null ? null : sizeFmt(num('graphic.size')!), v['graphic.enter'] ? t('style.groupEdit.look.comesIn', { motion: optionLabel('graphic.enter', v['graphic.enter']).toLowerCase() }) : null)
       break
   }
   const text = parts.filter(Boolean).join(', ')
-  return text ? `${look.label}: ${text}` : look.label
+  return text ? t('style.groupEdit.look.label', { name: look.label, parts: text }) : look.label
 }
 
 /** What each look class's items are called, singular and plural ("Pasted the box look onto 3 shapes"). */
 export const LOOK_CLASS_WORDS: Readonly<Record<LookClass, readonly [string, string]>> = {
-  zoom: ['zoom', 'zooms'],
-  text: ['text item', 'text items'],
-  mark: ['shape', 'shapes'],
-  privacy: ['blur or pixelate area', 'blur or pixelate areas'],
-  spotlight: ['spotlight', 'spotlights'],
-  image: ['image', 'images'],
-  title: ['title card', 'title cards'],
-  freeze: ['freeze frame', 'freeze frames'],
-  graphic: ['pop-up', 'pop-ups']
+  get zoom() {
+    return [t('style.groupEdit.class.zoom.one'), t('style.groupEdit.class.zoom.other')] as const
+  },
+  get text() {
+    return [t('style.groupEdit.class.text.one'), t('style.groupEdit.class.text.other')] as const
+  },
+  get mark() {
+    return [t('style.groupEdit.class.mark.one'), t('style.groupEdit.class.mark.other')] as const
+  },
+  get privacy() {
+    return [t('style.groupEdit.class.privacy.one'), t('style.groupEdit.class.privacy.other')] as const
+  },
+  get spotlight() {
+    return [t('style.groupEdit.class.spotlight.one'), t('style.groupEdit.class.spotlight.other')] as const
+  },
+  get image() {
+    return [t('style.groupEdit.class.image.one'), t('style.groupEdit.class.image.other')] as const
+  },
+  get title() {
+    return [t('style.groupEdit.class.title.one'), t('style.groupEdit.class.title.other')] as const
+  },
+  get freeze() {
+    return [t('style.groupEdit.class.freeze.one'), t('style.groupEdit.class.freeze.other')] as const
+  },
+  get graphic() {
+    return [t('style.groupEdit.class.graphic.one'), t('style.groupEdit.class.graphic.other')] as const
+  }
 }

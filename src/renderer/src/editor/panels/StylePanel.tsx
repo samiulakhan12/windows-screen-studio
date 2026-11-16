@@ -20,24 +20,26 @@ import { animatedThumb, frameThumb, wallpaperThumb } from './styleThumbs'
 import { WatermarkSection } from './WatermarkSection'
 import './cursorPanel.css'
 import './stylePanel.css'
+import { t } from '../../../../shared/i18n/t'
+import { fmt } from '../../../../shared/i18n/fmt'
 
 const L = LOOK_LIMITS
 
 type BackgroundGroup = 'gradient' | 'wallpaper' | 'animated'
 const groupOf = (bg: Background): BackgroundGroup | null => (bg.type === 'gradient' || bg.type === 'wallpaper' || bg.type === 'animated' ? bg.type : null)
 
-const FRAMES: { kind: DeviceFrameKind; label: string; title: string }[] = [
-  { kind: 'none', label: 'None', title: 'Just the recording' },
-  { kind: 'browser', label: 'Browser', title: 'A browser window with an address bar' },
-  { kind: 'laptop', label: 'Laptop', title: 'A laptop screen on its base' },
-  { kind: 'monitor', label: 'Monitor', title: 'A desktop monitor on a stand' },
-  { kind: 'phone', label: 'Phone', title: 'A phone (on its side for landscape recordings)' }
+const FRAMES = (): { kind: DeviceFrameKind; label: string; title: string }[] => [
+  { kind: 'none', label: t('style.stylePanel.frames.none'), title: t('style.stylePanel.frames.none.title') },
+  { kind: 'browser', label: t('style.stylePanel.frames.browser'), title: t('style.stylePanel.frames.browser.title') },
+  { kind: 'laptop', label: t('style.stylePanel.frames.laptop'), title: t('style.stylePanel.frames.laptop.title') },
+  { kind: 'monitor', label: t('style.stylePanel.frames.monitor'), title: t('style.stylePanel.frames.monitor.title') },
+  { kind: 'phone', label: t('style.stylePanel.frames.phone'), title: t('style.stylePanel.frames.phone.title') }
 ]
 
-const SHADOW_STYLES: { value: ShadowStyle; label: string; title: string }[] = [
-  { value: 'soft', label: 'Soft', title: 'A soft drop shadow' },
-  { value: 'hard', label: 'Hard', title: 'A solid shadow offset down and to the right' },
-  { value: 'glow', label: 'Glow', title: 'A coloured glow all around' }
+const SHADOW_STYLES = (): { value: ShadowStyle; label: string; title: string }[] => [
+  { value: 'soft', label: t('style.stylePanel.shadowStyles.soft'), title: t('style.stylePanel.shadowStyles.soft.title') },
+  { value: 'hard', label: t('style.stylePanel.shadowStyles.hard'), title: t('style.stylePanel.shadowStyles.hard.title') },
+  { value: 'glow', label: t('style.stylePanel.shadowStyles.glow'), title: t('style.stylePanel.shadowStyles.glow.title') }
 ]
 
 const SHADOW_COLORS = ['#111827', '#000000', '#8b5cf6', '#ec4899', '#38bdf8', '#facc15']
@@ -91,23 +93,23 @@ export function StylePanel({
     <>
       <PresetsSection project={project} onNotice={onNotice} />
 
-      <Section title="Frame" aside={<CropLink project={project} onCrop={onCrop} />}>
-        <Chips label="Aspect ratio" value={style.aspectRatio} onChange={(a) => setStyle({ aspectRatio: a })} options={ASPECT_RATIOS.map((a) => ({ value: a, label: a === 'auto' ? 'Auto' : a }))} />
+      <Section title={t('style.stylePanel.frame')} aside={<CropLink project={project} onCrop={onCrop} />}>
+        <Chips label={t('style.stylePanel.aspectRatio')} value={style.aspectRatio} onChange={(a) => setStyle({ aspectRatio: a })} options={ASPECT_RATIOS.map((a) => ({ value: a, label: a === 'auto' ? t('style.stylePanel.aspectAuto') : a }))} />
         <CropRow project={project} onCrop={onCrop} />
       </Section>
 
       <FollowSection project={project} vw={vw} vh={vh} onMakeVertical={() => command('makeVertical')} />
 
-      <Section title="Background">
+      <Section title={t('common.label.background')}>
         <div className="compact-chips">
           <Chips
-            label="Background kind"
+            label={t('style.stylePanel.backgroundKind')}
             value={group}
             onChange={setGroup}
             options={[
-              { value: 'gradient', label: 'Gradients' },
-              { value: 'wallpaper', label: 'Wallpapers' },
-              { value: 'animated', label: 'Animated' }
+              { value: 'gradient', label: t('style.stylePanel.backgroundKinds.gradient') },
+              { value: 'wallpaper', label: t('style.stylePanel.backgroundKinds.wallpaper') },
+              { value: 'animated', label: t('style.stylePanel.backgroundKinds.animated') }
             ]}
           />
         </div>
@@ -117,7 +119,7 @@ export function StylePanel({
               <button
                 key={g.id}
                 title={g.name}
-                aria-label={`${g.name} background`}
+                aria-label={t('style.stylePanel.background2', { name: String(g.name) })}
                 className={`swatch ${bg.type === 'gradient' && bg.preset === g.id ? 'active' : ''}`}
                 style={{ background: gradientCss(g) }}
                 onClick={() => setStyle({ background: { type: 'gradient', preset: g.id } })}
@@ -131,7 +133,7 @@ export function StylePanel({
               <button
                 key={w.id}
                 title={w.name}
-                aria-label={`${w.name} wallpaper`}
+                aria-label={t('style.stylePanel.wallpaper', { name: String(w.name) })}
                 aria-pressed={bg.type === 'wallpaper' && bg.id === w.id}
                 className={`swatch ${bg.type === 'wallpaper' && bg.id === w.id ? 'active' : ''}`}
                 style={{ backgroundImage: `url(${wallpaperThumb(w.id)})` }}
@@ -145,8 +147,8 @@ export function StylePanel({
             {ANIMATED_GRADIENTS.map((a) => (
               <button
                 key={a.id}
-                title={`${a.name} (moves while the video plays)`}
-                aria-label={`${a.name} animated background`}
+                title={t('style.stylePanel.movesWhileTheVideo', { name: String(a.name) })}
+                aria-label={t('style.stylePanel.animatedBackground', { name: String(a.name) })}
                 aria-pressed={bg.type === 'animated' && bg.preset === a.id}
                 className={`swatch animated ${bg.type === 'animated' && bg.preset === a.id ? 'active' : ''}`}
                 style={{ backgroundImage: `url(${animatedThumb(a.id)})` }}
@@ -161,16 +163,13 @@ export function StylePanel({
               type="color"
               value={bg.type === 'color' ? bg.color : '#1f2937'}
               onChange={(e) => setStyle({ background: { type: 'color', color: e.target.value } }, 'style.color')}
-            />
-            Solid colour
-          </label>
+            />{t('style.stylePanel.solidColour')}</label>
           <button className={`btn ghost ${bg.type === 'image' ? 'active' : ''}`} onClick={onBackgroundImage}>
-            <Icon name="image" size={16} /> Image…
-          </button>
+            <Icon name="image" size={16} />{t('style.stylePanel.image')}</button>
         </div>
         {(bg.type === 'image' || bg.type === 'wallpaper') && (
           <Slider
-            label="Background blur"
+            label={t('style.stylePanel.backgroundBlur')}
             value={blur}
             {...L.backgroundBlur}
             step={0.05}
@@ -181,22 +180,22 @@ export function StylePanel({
         {bg.type === 'animated' && (
           <>
             <Slider
-              label="Motion speed"
+              label={t('style.stylePanel.motionSpeed')}
               value={animatedSpeed(bg)}
               {...ANIMATED_SPEED}
               step={0.05}
               format={(v) => `${v.toFixed(2)}×`}
               onChange={(v) => setStyle({ background: { ...bg, speed: v } }, 'style.background.speed')}
             />
-            <p className="hint">Drifts slowly while the video plays and loops without a seam.</p>
+            <p className="hint">{t('style.stylePanel.driftsSlowlyWhileThe')}</p>
           </>
         )}
       </Section>
 
-      <Section title="Layout">
-        <Slider label="Padding" value={style.padding} {...L.padding} step={0.005} format={pctFmt} onChange={(v) => setStyle({ padding: v }, 'style.padding')} />
+      <Section title={t('common.label.layout')}>
+        <Slider label={t('style.stylePanel.padding')} value={style.padding} {...L.padding} step={0.005} format={pctFmt} onChange={(v) => setStyle({ padding: v }, 'style.padding')} />
         <Slider
-          label="Corner radius"
+          label={t('style.stylePanel.cornerRadius')}
           value={style.cornerRadius}
           {...L.cornerRadius}
           step={1}
@@ -204,19 +203,19 @@ export function StylePanel({
           disabled={!frameUsesRadius(frame)}
           onChange={(v) => setStyle({ cornerRadius: v }, 'style.radius')}
         />
-        {!frameUsesRadius(frame) && <p className="hint">The device frame sets the corners of the recording.</p>}
+        {!frameUsesRadius(frame) && <p className="hint">{t('style.stylePanel.theDeviceFrameSets')}</p>}
       </Section>
 
-      <Section title="Device frame">
-        <div className="frame-tiles" role="radiogroup" aria-label="Device frame">
-          {FRAMES.map((f) => {
+      <Section title={t('style.stylePanel.deviceFrame')}>
+        <div className="frame-tiles" role="radiogroup" aria-label={t('style.stylePanel.deviceFrame')}>
+          {FRAMES().map((f) => {
             const active = (frame?.kind ?? 'none') === f.kind
             return (
               <button
                 key={f.kind}
                 role="radio"
                 aria-checked={active}
-                aria-label={`${f.label} frame`}
+                aria-label={t('style.stylePanel.frame2', { label: String(f.label) })}
                 title={f.title}
                 className={`frame-tile ${active ? 'active' : ''}`}
                 onClick={() => setFrame({ kind: f.kind })}
@@ -229,22 +228,20 @@ export function StylePanel({
         </div>
         {frame && (
           <Chips
-            label="Frame theme"
+            label={t('style.stylePanel.frameTheme')}
             value={frame.theme}
             onChange={(theme) => setFrame({ theme })}
             options={[
-              { value: 'light', label: 'Light' },
-              { value: 'dark', label: 'Dark' }
+              { value: 'light', label: t('style.stylePanel.frameThemes.light') },
+              { value: 'dark', label: t('style.stylePanel.frameThemes.dark') }
             ]}
           />
         )}
-        {following && frame && <p className="hint">Device frames are not drawn while the view follows the action.</p>}
+        {following && frame && <p className="hint">{t('style.stylePanel.deviceFramesAreNot')}</p>}
         {frame?.kind === 'browser' && (
-          <label className="field-label stacked">
-            Address bar
-            <input
+          <label className="field-label stacked">{t('style.stylePanel.addressBar')}<input
               className="text-input"
-              aria-label="Address bar text"
+              aria-label={t('style.stylePanel.addressBarText')}
               placeholder={project.name}
               maxLength={120}
               value={style.frame?.title ?? ''}
@@ -254,41 +251,41 @@ export function StylePanel({
         )}
       </Section>
 
-      <Section title="Shadow">
-        <Chips label="Shadow style" value={card.shadowStyle} onChange={(s) => setStyle({ shadowStyle: s })} options={SHADOW_STYLES} />
-        <Slider label="Shadow" value={style.shadow} {...L.shadow} step={0.05} format={pctFmt} onChange={(v) => setStyle({ shadow: v }, 'style.shadow')} />
+      <Section title={t('common.label.shadow')}>
+        <Chips label={t('style.stylePanel.shadowStyle')} value={card.shadowStyle} onChange={(s) => setStyle({ shadowStyle: s })} options={SHADOW_STYLES()} />
+        <Slider label={t('common.label.shadow')} value={style.shadow} {...L.shadow} step={0.05} format={pctFmt} onChange={(v) => setStyle({ shadow: v }, 'style.shadow')} />
         {card.shadowStyle !== 'soft' && (
-          <ColorDots label="Shadow colour" value={card.shadowColor} presets={SHADOW_COLORS} onChange={(c, key) => setStyle({ shadowColor: c }, key)} mergeKey="style.shadowColor" />
+          <ColorDots label={t('style.stylePanel.shadowColour')} value={card.shadowColor} presets={SHADOW_COLORS} onChange={(c, key) => setStyle({ shadowColor: c }, key)} mergeKey="style.shadowColor" />
         )}
-        {style.padding === 0 && style.shadow > 0 && <p className="hint">Add some padding to make room for the shadow.</p>}
+        {style.padding === 0 && style.shadow > 0 && <p className="hint">{t('style.stylePanel.addSomePaddingTo')}</p>}
       </Section>
 
-      <Section title="Border">
+      <Section title={t('style.stylePanel.border')}>
         <Slider
-          label="Border width"
+          label={t('style.stylePanel.borderWidth')}
           value={borderOk ? border.width : 0}
           {...BORDER_WIDTH}
           step={1}
-          format={(v) => (v === 0 ? 'None' : `${v}px`)}
+          format={(v) => (v === 0 ? t('style.stylePanel.borderNone') : `${fmt.count(v)}px`)}
           disabled={!borderOk}
           onChange={(v) => setBorder({ width: v }, 'style.border.width')}
         />
         <Toggle
-          label="Frosted glass"
-          title="A see-through, frosted border instead of a solid colour"
+          label={t('style.stylePanel.frostedGlass')}
+          title={t('style.stylePanel.aSeeThroughFrosted')}
           checked={borderOk && border.width > 0 && border.glass}
           disabled={!borderOk || border.width === 0}
           onChange={(v) => setBorder({ glass: v })}
         />
         <ColorDots
-          label="Border colour"
+          label={t('style.stylePanel.borderColour')}
           value={border.color}
           presets={BORDER_COLORS}
           disabled={!borderOk || border.width === 0 || border.glass}
           onChange={(c, key) => setBorder({ color: c }, key)}
           mergeKey="style.border.color"
         />
-        {!borderOk && <p className="hint">Device frames have their own bezel, so they take no border.</p>}
+        {!borderOk && <p className="hint">{t('style.stylePanel.deviceFramesHaveTheir')}</p>}
       </Section>
 
       <WatermarkSection project={project} />
@@ -333,8 +330,8 @@ function ColorDots({
           onClick={() => onChange(c)}
         />
       ))}
-      <label className={`color-dot custom ${custom ? 'active' : ''}`} title="Pick any colour" style={custom ? { background: value } : undefined}>
-        <input type="color" aria-label={`${label} (any colour)`} value={v} disabled={disabled} onChange={(e) => onChange(e.target.value.toLowerCase(), mergeKey)} />
+      <label className={`color-dot custom ${custom ? 'active' : ''}`} title={t('common.colour.pickAny')} style={custom ? { background: value } : undefined}>
+        <input type="color" aria-label={t('common.colour.anyFor', { label: String(label) })} value={v} disabled={disabled} onChange={(e) => onChange(e.target.value.toLowerCase(), mergeKey)} />
       </label>
     </div>
   )
@@ -358,12 +355,12 @@ function StyleDefaultsSection({ project, onNotice }: { project: Project; onNotic
     }
   }, [])
 
-  const run = async (action: () => Promise<string>, failure: string): Promise<void> => {
+  const run = async (action: () => Promise<string>, failure: (reason: string) => string): Promise<void> => {
     setBusy(true)
     try {
       onNotice(await action())
     } catch (err) {
-      onNotice(`${failure}: ${saveErrorMessage(err)}`)
+      onNotice(failure(saveErrorMessage(err)))
     } finally {
       setBusy(false)
     }
@@ -374,32 +371,30 @@ function StyleDefaultsSection({ project, onNotice }: { project: Project; onNotic
       const stored = await window.api.saveStyleDefaults(lookOf(project))
       setSaved(true)
       const left: string[] = []
-      if (project.style.background.type === 'image') left.push('image backgrounds are not included')
-      if (activeWatermark(project)?.kind === 'image' && !stored?.watermark) left.push('the watermark logo could not be kept')
-      return left.length ? `Saved as default (${left.join('; ')})` : 'Saved as default for new recordings'
-    }, 'Could not save the defaults')
+      if (project.style.background.type === 'image') left.push(t('style.stylePanel.defaultsLeft.image'))
+      if (activeWatermark(project)?.kind === 'image' && !stored?.watermark) left.push(t('style.stylePanel.defaultsLeft.logo'))
+      return left.length ? t('style.stylePanel.savedAsDefaultLeft', { left: left.join('; ') }) : t('style.stylePanel.savedAsDefault')
+    }, (reason) => t('style.stylePanel.defaultsNotSaved', { reason }))
 
   const reset = (): Promise<void> =>
     run(async () => {
       await window.api.resetStyleDefaults()
       setSaved(false)
-      return 'Defaults reset: new recordings use the built-in look'
-    }, 'Could not reset the defaults')
+      return t('style.stylePanel.defaultsReset')
+    }, (reason) => t('style.stylePanel.defaultsNotReset', { reason }))
 
   return (
-    <Section title="New recordings">
+    <Section title={t('style.stylePanel.newRecordings')}>
       <p className="hint" data-testid="style-defaults-state">
         {saved
-          ? 'New recordings start with your saved look: background, frame, layout, cursor, camera, zoom style, watermark and effects.'
-          : 'New recordings start with the built-in look. Save this one to use it for every new recording.'}
+          ? t('style.stylePanel.newRecordingsStartWith')
+          : t('style.stylePanel.newRecordingsStartWith2')}
       </p>
       <div className="defaults-actions">
         <button className="btn" disabled={busy} onClick={() => void save()}>
-          <Icon name="check" size={16} /> Save as default for new recordings
-        </button>
-        <button className="btn ghost" disabled={busy || !saved} onClick={() => void reset()} title={saved ? 'Go back to the built-in look for new recordings' : 'No defaults are saved'}>
-          <Icon name="refresh" size={16} /> Reset defaults
-        </button>
+          <Icon name="check" size={16} />{t('style.stylePanel.saveAsDefaultFor')}</button>
+        <button className="btn ghost" disabled={busy || !saved} onClick={() => void reset()} title={saved ? t('style.stylePanel.goBackToThe') : t('style.stylePanel.noDefaultsAreSaved')}>
+          <Icon name="refresh" size={16} />{t('style.stylePanel.resetDefaults')}</button>
       </div>
     </Section>
   )

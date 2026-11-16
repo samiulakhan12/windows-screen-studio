@@ -22,8 +22,9 @@ import { addFreezeAt, addTextOnFreeze } from '../freezeItems'
 import type { InspectorProps } from '../Inspector'
 import { useKeymap } from '../keymapContext'
 import { LookButtons } from '../LookButtons'
+import { t } from '../../../../shared/i18n/t'
 
-const seconds = (v: number): string => `${v.toFixed(1)} s`
+const seconds = (v: number): string => t('style.freezeSection.seconds', { n: fmt.number(v, { max: 1 }) })
 
 /**
  * Freeze frames in the Clip panel (E-11, docs/design/freeze-frame.md §5): the selected freeze's
@@ -42,16 +43,15 @@ function AddFreeze({ project, onSelect, onNotice }: InspectorProps): JSX.Element
   // Why the frame under the playhead cannot be frozen (follows the playhead, re-rendering only when that changes).
   const refusal = useSyncExternalStore(player.subscribe, () => freezeRefusal(project, player.time)?.refused ?? null)
   return (
-    <Section title="Freeze frame">
+    <Section title={t('style.freezeSection.freezeFrame')}>
       <button
         className="btn"
         disabled={!!refusal}
-        title={refusal ? FREEZE_REFUSAL_TEXT[refusal] : withShortcut('Hold the frame under the playhead', keymap.freezeFrame)}
+        title={refusal ? FREEZE_REFUSAL_TEXT[refusal] : withShortcut(t('style.freezeSection.holdTitle'), keymap.freezeFrame)}
         onClick={() => addFreezeAt(services, { onSelect, onNotice })}
       >
-        <Icon name="pause" size={16} /> Freeze frame at playhead
-      </button>
-      <p className="hint">Holds the picture so viewers can read it.</p>
+        <Icon name="pause" size={16} />{t('style.freezeSection.freezeFrameAtPlayhead')}</button>
+      <p className="hint">{t('style.freezeSection.holdsThePictureSo')}</p>
     </Section>
   )
 }
@@ -60,18 +60,17 @@ function AddFreeze({ project, onSelect, onNotice }: InspectorProps): JSX.Element
 function freezeHint(project: Project, f: Freeze): string {
   const { clips } = project
   const plan = planOf(project)
-  if (plan.holds.some((h) => h.id === f.id)) return `Adds ${seconds(f.length)} to the video (now ${fmt.clock(videoDuration(clips, plan))}).`
+  if (plan.holds.some((h) => h.id === f.id)) return t('style.freezeSection.hint.adds', { length: seconds(f.length), now: fmt.clock(videoDuration(clips, plan)) })
   const still = plan.stills.find((s) => s.id === f.id)
   if (!still) {
     const why = freezeInactiveReason(project, f)
-    if (why === 'cut') return 'This frame is cut out of the video, so the freeze is not shown.'
-    if (why === 'next') return 'The next freeze starts right after this frame, so the picture is not held.'
-    return atEditEnd(clips, f.at) ? 'Nothing plays after the end of the video, so the picture is not held.' : 'The video ends right after this frame, so the picture is not held.'
+    if (why === 'cut') return t('style.freezeSection.hint.cut')
+    if (why === 'next') return t('style.freezeSection.hint.next')
+    return atEditEnd(clips, f.at) ? t('style.freezeSection.hint.afterEnd') : t('style.freezeSection.hint.end')
   }
   const held = still.editEnd - still.editStart
-  if (held >= f.length - 1e-6) return `The screen holds for ${seconds(f.length)}. The camera and captions keep moving.`
-  const why = still.editEnd >= outputDuration(clips) - 1e-6 ? 'the video ends there' : 'the next freeze starts there'
-  return `Holds for ${seconds(held)}: ${why}.`
+  if (held >= f.length - 1e-6) return t('style.freezeSection.hint.holds', { length: seconds(f.length) })
+  return still.editEnd >= outputDuration(clips) - 1e-6 ? t('style.freezeSection.hint.heldToEnd', { length: seconds(held) }) : t('style.freezeSection.hint.heldToNext', { length: seconds(held) })
 }
 
 function SelectedFreeze({ project, freeze: f, onSelect }: InspectorProps & { freeze: Freeze }): JSX.Element {
@@ -84,9 +83,9 @@ function SelectedFreeze({ project, freeze: f, onSelect }: InspectorProps & { fre
   const atEnd = atEditEnd(clips, f.at)
   const setSound = (sound: FreezeSound): void => store.update((p) => setFreezeSound(p, f.id, sound))
   return (
-    <Section title={`Freeze frame at ${fmt.clock(freezeVideoTime(project, f))}`}>
+    <Section title={t('style.freezeSection.freezeFrameAt', { time: fmt.clock(freezeVideoTime(project, f)) })}>
       <Slider
-        label="Hold for"
+        label={t('style.freezeSection.holdFor')}
         value={f.length}
         min={FREEZE.min}
         max={FREEZE.max}
@@ -94,18 +93,18 @@ function SelectedFreeze({ project, freeze: f, onSelect }: InspectorProps & { fre
         format={seconds}
         onChange={(v) => store.update((p) => setFreezeLength(p, f.id, v), `freeze-length:${f.id}`)}
       />
-      <span className="field-label">Sound</span>
+      <span className="field-label">{t('common.label.sound')}</span>
       <div data-testid="freeze-sound">
         <Chips
-          label="Freeze frame sound"
+          label={t('style.freezeSection.freezeFrameSound')}
           value={f.sound}
           onChange={setSound}
           options={[
-            { value: 'pause', label: 'Pause the sound', title: 'Adds the time to the video. The recording waits; music keeps playing.' },
+            { value: 'pause', label: t('style.freezeSection.sound.pause'), title: t('style.freezeSection.sound.pause.title') },
             {
               value: 'continue',
-              label: 'Keep the sound playing',
-              title: atEnd ? 'Nothing plays after the end of the video' : 'Adds no time. The picture holds while the recording plays on.',
+              label: t('style.freezeSection.sound.continue'),
+              title: atEnd ? t('style.freezeSection.sound.continue.atEnd') : t('style.freezeSection.sound.continue.title'),
               disabled: atEnd
             }
           ]}
@@ -116,19 +115,16 @@ function SelectedFreeze({ project, freeze: f, onSelect }: InspectorProps & { fre
       </p>
       <LookButtons itemKey={`freeze:${f.id}`} />
       <div className="row start">
-        <button className="btn" disabled={!active} onClick={() => addTextOnFreeze(services, f, onSelect)} title="A text that shows through the whole freeze">
-          <EditorIcon name="text" size={16} /> Add text on the freeze
-        </button>
+        <button className="btn" disabled={!active} onClick={() => addTextOnFreeze(services, f, onSelect)} title={t('style.freezeSection.aTextThatShows')}>
+          <EditorIcon name="text" size={16} />{t('style.freezeSection.addTextOnThe')}</button>
         <button
           className="btn ghost danger"
           onClick={() => {
             store.update((p) => removeFreeze(p, f.id))
             onSelect(null)
           }}
-          title={withShortcut('Remove this freeze frame', keymap.deleteSelection)}
-        >
-          Delete freeze
-        </button>
+          title={withShortcut(t('style.freezeSection.removeTitle'), keymap.deleteSelection)}
+        >{t('style.freezeSection.deleteFreeze')}</button>
       </div>
     </Section>
   )

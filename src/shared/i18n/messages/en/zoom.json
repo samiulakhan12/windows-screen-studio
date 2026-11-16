@@ -1,1 +1,4 @@
-{}
+{
+  "preset.pullBack": "Pull back: show more background",
+  "preset.zoom": "Zoom {level}"
+}

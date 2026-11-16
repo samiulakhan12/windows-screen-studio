@@ -9,6 +9,8 @@ import { clipIndexAt, outputDuration, outputToSource } from '../engine/timeline'
 import { viewingTime } from '../render/overlays'
 import type { Clip, Freeze, FreezeSound, Project } from '../types'
 import { outputToSourceRanges } from './smartSpeed'
+import { t } from '../i18n/t'
+import { fmt } from '../i18n/fmt'
 
 export { atEditEnd }
 
@@ -16,11 +18,19 @@ export { atEditEnd }
 export type FreezeRefusal = 'cut' | 'taken' | 'frozen' | 'full'
 
 /** What the editor says when a freeze is refused (the notice, and why the button or the command is unavailable). */
-export const FREEZE_REFUSAL_TEXT: Record<FreezeRefusal, string> = {
-  cut: 'The playhead is in a cut: move it onto a clip to freeze a frame',
-  taken: 'There is already a freeze frame here',
-  frozen: 'The picture is already frozen here',
-  full: `A project can have at most ${MAX_FREEZES} freeze frames`
+export const FREEZE_REFUSAL_TEXT: Readonly<Record<FreezeRefusal, string>> = {
+  get cut() {
+    return t('style.freeze.refusal.cut')
+  },
+  get taken() {
+    return t('style.freeze.refusal.taken')
+  },
+  get frozen() {
+    return t('style.freeze.refusal.frozen')
+  },
+  get full() {
+    return t('style.freeze.refusal.full', { max: fmt.count(MAX_FREEZES) })
+  }
 }
 
 /** Proxy frame rate when the project does not say (the player uses the same). */
