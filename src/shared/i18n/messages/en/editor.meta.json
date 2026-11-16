@@ -88,5 +88,116 @@
   },
   "multiSelect.nothingCopiedPalette": {
     "description": "Notice after selecting several timeline items (multi-select): Paste found nothing copied, and Copy has no shortcut; {command} is the Copy command's title."
+  },
+  "notice.noRoomForZoom": {
+    "description": "Notice: dragging the picture or adding a zoom found no free time for a new zoom at the playhead."
+  },
+  "preview.clickToPlay": {
+    "description": "Preview: tooltip of the picture."
+  },
+  "preview.groupOutline": {
+    "description": "Preview: tooltip of the outline around an item in a selection of several. Ctrl is a keycap.",
+    "dnt": [
+      "Ctrl"
+    ]
+  },
+  "preview.groupHint": {
+    "description": "Preview: hint while several items are selected; {n} is how many of them are on the picture now. Ctrl is a keycap.",
+    "dnt": [
+      "Ctrl"
+    ]
+  },
+  "preview.focusHint": {
+    "description": "Preview: hint while choosing where a zoom looks; a Done button follows."
+  },
+  "preview.regionBox": {
+    "description": "Preview: tooltip of the box a region zoom frames. Shift is a keycap.",
+    "dnt": [
+      "Shift"
+    ]
+  },
+  "preview.regionHint": {
+    "description": "Preview: hint while drawing a region zoom; a Done button follows. Shift is a keycap.",
+    "dnt": [
+      "Shift"
+    ]
+  },
+  "preview.moveText": {
+    "description": "Preview: tooltip of the handle on the selected text."
+  },
+  "preview.moveEnd": {
+    "description": "Preview: tooltip of an end of a selected line or arrow."
+  },
+  "preview.moveArrowhead": {
+    "description": "Preview: tooltip of the head of a selected arrow."
+  },
+  "preview.followsResize": {
+    "description": "Preview: tooltip of a spotlight that follows the cursor."
+  },
+  "preview.shapeBox": {
+    "description": "Preview: tooltip of the box of a selected shape or spotlight. Shift is a keycap.",
+    "dnt": [
+      "Shift"
+    ]
+  },
+  "preview.follows": {
+    "description": "Preview: tag on a spotlight that follows the cursor."
+  },
+  "preview.cursorSpotlight": {
+    "description": "Preview: the name of a spotlight that follows the cursor, in the hint under a selected one."
+  },
+  "preview.spotlight": {
+    "description": "Preview: the name of a spotlight on an area, in the hint under a selected one."
+  },
+  "preview.cursorOff": {
+    "description": "Preview: in the hint under a selected cursor spotlight, after its name and \" · \": nothing to show at the playhead."
+  },
+  "preview.dragToPlace": {
+    "description": "Preview: in the hint under a selected cursor spotlight, after its name and \" · \"."
+  },
+  "preview.dragToPlaceOrDraw": {
+    "description": "Preview: in the hint under a selected shape or spotlight, after its name and \" · \"."
+  },
+  "tab.style": {
+    "description": "Inspector: the name of a settings tab, on its button and as its tooltip."
+  },
+  "tab.cursor": {
+    "description": "Inspector: the name of a settings tab, on its button and as its tooltip."
+  },
+  "tab.clip": {
+    "description": "Inspector: the name of a settings tab, on its button and as its tooltip."
+  },
+  "tab.graphics": {
+    "description": "Inspector: the name of a settings tab, on its button and as its tooltip."
+  },
+  "tab.transcript": {
+    "description": "Inspector: the name of a settings tab, on its button and as its tooltip."
+  },
+  "tab.shapes": {
+    "description": "Inspector: the name of a settings tab, on its button and as its tooltip."
+  },
+  "tab.images": {
+    "description": "Inspector: the name of a settings tab, on its button and as its tooltip."
+  },
+  "tab.effects": {
+    "description": "Inspector: the name of a settings tab, on its button and as its tooltip."
+  },
+  "tab.audio": {
+    "description": "Inspector: the name of a settings tab, on its button and as its tooltip."
+  },
+  "inspector": {
+    "description": "Inspector: accessible name of the rail of settings tabs."
+  },
+  "tab.selectionTitle": {
+    "description": "Inspector: tooltip of the Selection tab, shown while two or more items are selected; {n} is how many."
+  },
+  "tab.selection": {
+    "description": "Inspector: the tab of the items selected together."
+  },
+  "save.notSaved": {
+    "description": "Title bar: the last save failed; the reason follows."
+  },
+  "save.retry": {
+    "description": "Title bar: button that saves again after a save failed."
   }
 }

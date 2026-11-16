@@ -2573,5 +2573,322 @@
     "line": 124,
     "english": "Text",
     "sample": {}
+  },
+  {
+    "key": "editor.notice.noRoomForZoom",
+    "file": "src/renderer/src/editor/PreviewStage.tsx",
+    "line": 383,
+    "english": "There is no room for a new zoom here.",
+    "sample": {}
+  },
+  {
+    "key": "editor.preview.clickToPlay",
+    "file": "src/renderer/src/editor/PreviewStage.tsx",
+    "line": 462,
+    "english": "Click to play or pause",
+    "sample": {}
+  },
+  {
+    "key": "editor.preview.groupOutline",
+    "file": "src/renderer/src/editor/PreviewStage.tsx",
+    "line": 482,
+    "english": "Selected · click to edit it alone, Ctrl+click to leave it out",
+    "sample": {}
+  },
+  {
+    "key": "editor.preview.groupHint",
+    "file": "src/renderer/src/editor/PreviewStage.tsx",
+    "line": 495,
+    "english": [
+      "0 selected items on screen · Ctrl+click to add or remove",
+      "1 selected item on screen · Ctrl+click to add or remove",
+      "2 selected items on screen · Ctrl+click to add or remove",
+      "1000 selected items on screen · Ctrl+click to add or remove"
+    ],
+    "sample": [
+      {
+        "count": 0,
+        "n": "0"
+      },
+      {
+        "count": 1,
+        "n": "1"
+      },
+      {
+        "count": 2,
+        "n": "2"
+      },
+      {
+        "count": 1000,
+        "n": "1000"
+      }
+    ]
+  },
+  {
+    "key": "editor.preview.focusHint",
+    "file": "src/renderer/src/editor/PreviewStage.tsx",
+    "line": 525,
+    "english": "Click or drag to set where this zoom looks ·",
+    "sample": {}
+  },
+  {
+    "key": "editor.preview.regionBox",
+    "file": "src/renderer/src/editor/PreviewStage.tsx",
+    "line": 586,
+    "english": "Drag to move · corners resize (Shift: any shape)",
+    "sample": {}
+  },
+  {
+    "key": "editor.preview.regionHint",
+    "file": "src/renderer/src/editor/PreviewStage.tsx",
+    "line": 599,
+    "english": "Drag to draw the area to zoom into (Shift: any shape) ·",
+    "sample": {}
+  },
+  {
+    "key": "editor.preview.moveText",
+    "file": "src/renderer/src/editor/PreviewStage.tsx",
+    "line": 679,
+    "english": "Drag to move the text",
+    "sample": {}
+  },
+  {
+    "key": "editor.preview.moveEnd",
+    "file": "src/renderer/src/editor/PreviewStage.tsx",
+    "line": 764,
+    "english": "Drag to move this end",
+    "sample": {}
+  },
+  {
+    "key": "editor.preview.moveArrowhead",
+    "file": "src/renderer/src/editor/PreviewStage.tsx",
+    "line": 765,
+    "english": "Drag to move the arrowhead",
+    "sample": {}
+  },
+  {
+    "key": "editor.preview.followsResize",
+    "file": "src/renderer/src/editor/PreviewStage.tsx",
+    "line": 787,
+    "english": "Follows the cursor: drag a corner to resize",
+    "sample": {}
+  },
+  {
+    "key": "editor.preview.shapeBox",
+    "file": "src/renderer/src/editor/PreviewStage.tsx",
+    "line": 787,
+    "english": "Drag to move · handles resize (Shift: keep the shape)",
+    "sample": {}
+  },
+  {
+    "key": "editor.preview.follows",
+    "file": "src/renderer/src/editor/PreviewStage.tsx",
+    "line": 790,
+    "english": "Follows the cursor",
+    "sample": {}
+  },
+  {
+    "key": "editor.preview.cursorSpotlight",
+    "file": "src/renderer/src/editor/PreviewStage.tsx",
+    "line": 804,
+    "english": "Cursor spotlight",
+    "sample": {}
+  },
+  {
+    "key": "editor.preview.spotlight",
+    "file": "src/renderer/src/editor/PreviewStage.tsx",
+    "line": 804,
+    "english": "Spotlight",
+    "sample": {}
+  },
+  {
+    "key": "editor.preview.cursorOff",
+    "file": "src/renderer/src/editor/PreviewStage.tsx",
+    "line": 815,
+    "english": "the cursor is off the recording here",
+    "sample": {}
+  },
+  {
+    "key": "editor.preview.dragToPlace",
+    "file": "src/renderer/src/editor/PreviewStage.tsx",
+    "line": 815,
+    "english": "drag to place it",
+    "sample": {}
+  },
+  {
+    "key": "editor.preview.dragToPlaceOrDraw",
+    "file": "src/renderer/src/editor/PreviewStage.tsx",
+    "line": 815,
+    "english": "drag to place it, or drag elsewhere to draw it again",
+    "sample": {}
+  },
+  {
+    "key": "editor.tab.style",
+    "file": "src/renderer/src/editor/Inspector.tsx",
+    "line": 88,
+    "english": "Style",
+    "sample": {}
+  },
+  {
+    "key": "editor.tab.cursor",
+    "file": "src/renderer/src/editor/Inspector.tsx",
+    "line": 89,
+    "english": "Cursor",
+    "sample": {}
+  },
+  {
+    "key": "editor.tab.clip",
+    "file": "src/renderer/src/editor/Inspector.tsx",
+    "line": 91,
+    "english": "Clip",
+    "sample": {}
+  },
+  {
+    "key": "editor.tab.graphics",
+    "file": "src/renderer/src/editor/Inspector.tsx",
+    "line": 94,
+    "english": "Graphics",
+    "sample": {}
+  },
+  {
+    "key": "editor.tab.transcript",
+    "file": "src/renderer/src/editor/Inspector.tsx",
+    "line": 95,
+    "english": "Transcript",
+    "sample": {}
+  },
+  {
+    "key": "editor.tab.shapes",
+    "file": "src/renderer/src/editor/Inspector.tsx",
+    "line": 96,
+    "english": "Shapes",
+    "sample": {}
+  },
+  {
+    "key": "editor.tab.images",
+    "file": "src/renderer/src/editor/Inspector.tsx",
+    "line": 97,
+    "english": "Images",
+    "sample": {}
+  },
+  {
+    "key": "editor.tab.effects",
+    "file": "src/renderer/src/editor/Inspector.tsx",
+    "line": 98,
+    "english": "Effects",
+    "sample": {}
+  },
+  {
+    "key": "editor.tab.audio",
+    "file": "src/renderer/src/editor/Inspector.tsx",
+    "line": 100,
+    "english": "Audio",
+    "sample": {}
+  },
+  {
+    "key": "editor.inspector",
+    "file": "src/renderer/src/editor/Inspector.tsx",
+    "line": 167,
+    "english": "Inspector",
+    "sample": {}
+  },
+  {
+    "key": "editor.tab.selectionTitle",
+    "file": "src/renderer/src/editor/Inspector.tsx",
+    "line": 173,
+    "english": [
+      "Selection (0 items)",
+      "Selection (1 items)",
+      "Selection (2 items)",
+      "Selection (1000 items)"
+    ],
+    "sample": [
+      {
+        "count": 0,
+        "n": "0"
+      },
+      {
+        "count": 1,
+        "n": "1"
+      },
+      {
+        "count": 2,
+        "n": "2"
+      },
+      {
+        "count": 1000,
+        "n": "1000"
+      }
+    ]
+  },
+  {
+    "key": "editor.tab.selection",
+    "file": "src/renderer/src/editor/Inspector.tsx",
+    "line": 177,
+    "english": "Selection",
+    "sample": {}
+  },
+  {
+    "key": "editor.save.notSaved",
+    "file": "src/renderer/src/editor/SaveIndicator.tsx",
+    "line": 17,
+    "english": "Not saved",
+    "sample": {}
+  },
+  {
+    "key": "editor.save.retry",
+    "file": "src/renderer/src/editor/SaveIndicator.tsx",
+    "line": 20,
+    "english": "Retry",
+    "sample": {}
+  },
+  {
+    "key": "common.action.done",
+    "file": "src/renderer/src/editor/PreviewStage.tsx",
+    "line": 534,
+    "english": "Done",
+    "sample": {}
+  },
+  {
+    "key": "common.label.zoom",
+    "file": "src/renderer/src/editor/Inspector.tsx",
+    "line": 90,
+    "english": "Zoom",
+    "sample": {}
+  },
+  {
+    "key": "common.label.text",
+    "file": "src/renderer/src/editor/Inspector.tsx",
+    "line": 92,
+    "english": "Text",
+    "sample": {}
+  },
+  {
+    "key": "common.label.captions",
+    "file": "src/renderer/src/editor/Inspector.tsx",
+    "line": 93,
+    "english": "Captions",
+    "sample": {}
+  },
+  {
+    "key": "common.label.camera",
+    "file": "src/renderer/src/editor/Inspector.tsx",
+    "line": 99,
+    "english": "Camera",
+    "sample": {}
+  },
+  {
+    "key": "common.state.saved",
+    "file": "src/renderer/src/editor/SaveIndicator.tsx",
+    "line": 29,
+    "english": "Saved",
+    "sample": {}
+  },
+  {
+    "key": "common.state.saving",
+    "file": "src/renderer/src/editor/SaveIndicator.tsx",
+    "line": 32,
+    "english": "Saving…",
+    "sample": {}
   }
 ]
