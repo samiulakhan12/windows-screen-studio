@@ -260,6 +260,24 @@ export function shortcutLabel(accelerator: string): string {
   return shortcutKeys(accelerator).join(' + ')
 }
 
+/** Key names in aria-keyshortcuts' syntax (KeyboardEvent key values; "Space" for the space bar), where they differ from ours. */
+const ARIA_KEYS: Record<string, string> = { Left: 'ArrowLeft', Right: 'ArrowRight', Up: 'ArrowUp', Down: 'ArrowDown' }
+
+/**
+ * Shortcuts as aria-keyshortcuts writes them (docs/design/output-and-languages.md §14.2): each in
+ * its fixed syntax, never translated ("Control+Shift+Z Control+Y"), or undefined for none. For
+ * controls whose tooltip does not name the shortcut already. The plus key, which that syntax uses
+ * between keys, stays "Plus".
+ */
+export function ariaKeys(accelerators: readonly string[] | undefined): string | undefined {
+  const out: string[] = []
+  for (const a of accelerators ?? []) {
+    const c = parseShortcut(a)
+    if (c) out.push([c.ctrl && 'Control', c.alt && 'Alt', c.shift && 'Shift', ARIA_KEYS[c.key] ?? c.key].filter(Boolean).join('+'))
+  }
+  return out.length ? out.join(' ') : undefined
+}
+
 /*
  * The sentences around keycaps are messages (keys.*, docs/design/output-and-languages.md §14.1);
  * the keycaps stay as shortcutLabel writes them in every language.

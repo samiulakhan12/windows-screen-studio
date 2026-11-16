@@ -2,11 +2,12 @@
  * Test 71 (docs/design/output-and-languages.md §14.1, §21.8 row X1, §23.1): the sentences around
  * keycaps are messages, and withShortcut, orPress, reviewHint, undoHint and zoomLevelKeysHint give
  * today's English for the default keymap and for edited ones, as do the reasons a key cannot be a
- * shortcut; in Bangla the keycaps stay Latin.
+ * shortcut; in Bangla the keycaps stay Latin, and so does aria-keyshortcuts' fixed syntax (§14.2).
  */
 import { afterEach, describe, expect, it } from 'vitest'
 import {
   addBinding,
+  ariaKeys,
   checkShortcut,
   DEFAULT_KEYMAP,
   orPress,
@@ -130,5 +131,19 @@ describe('test 71: the shortcut sentences', () => {
     // Keys without a Bangla message read in English, keycaps the same.
     expect(reservedReason('Ctrl+Plus')).toBe('Ctrl + + zooms the window.')
     expect(shortcutLabel('Ctrl+Shift+Left')).toBe('Ctrl + Shift + ←')
+  })
+})
+
+describe('test 71: aria-keyshortcuts (§14.2)', () => {
+  it('writes shortcuts in the fixed syntax, never translated', () => {
+    expect(ariaKeys(DEFAULT_KEYMAP.redo)).toBe('Control+Shift+Z Control+Y')
+    expect(ariaKeys(['Shift+R'])).toBe('Shift+R')
+    expect(ariaKeys(DEFAULT_KEYMAP.jumpBack)).toBe('Shift+ArrowLeft')
+    expect(ariaKeys(DEFAULT_KEYMAP.play)).toBe('Space')
+    expect(ariaKeys(['Ctrl+Alt+PageDown', 'F11', 'Escape'])).toBe('Control+Alt+PageDown F11 Escape')
+    expect(ariaKeys([])).toBeUndefined()
+    expect(ariaKeys(undefined)).toBeUndefined()
+    setCatalogue({ language: 'bn', messages: {}, formatLocale: 'bn-BD', dir: 'ltr' })
+    expect(ariaKeys(DEFAULT_KEYMAP.undo)).toBe('Control+Z')
   })
 })
