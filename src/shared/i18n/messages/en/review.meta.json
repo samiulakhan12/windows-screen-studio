@@ -768,5 +768,389 @@
   },
   "versions.different": {
     "description": "Versions: the parts of the edit that differ when no count does; {areas} lists them (\"style, camera and zooms\")."
+  },
+  "polish.step.style": {
+    "description": "Polish in one click: the name of a step (a row of the dialog and of its summary): the look: background, frame, cursor and zoom style."
+  },
+  "polish.step.zoom": {
+    "description": "Polish in one click: the name of a step (a row of the dialog and of its summary): turning auto zoom on."
+  },
+  "polish.step.silences": {
+    "description": "Polish in one click: the name of a step (a row of the dialog and of its summary): cutting or speeding up pauses."
+  },
+  "polish.step.smoothCuts": {
+    "description": "Polish in one click: the name of a step (a row of the dialog and of its summary): crossfades and punch-ins at the cuts."
+  },
+  "polish.step.captions": {
+    "description": "Polish in one click: the name of a step (a row of the dialog and of its summary): making captions."
+  },
+  "polish.step.chapters": {
+    "description": "Polish in one click: the name of a step (a row of the dialog and of its summary): finding chapters."
+  },
+  "polish.step.captionLook": {
+    "description": "Polish in one click: the name of a step (a row of the dialog and of its summary): the captions' style, emphasis and pop-ups."
+  },
+  "polish.step.director": {
+    "description": "Polish in one click: the name of a step (a row of the dialog and of its summary): the automatic camera director."
+  },
+  "polish.silence.cut": {
+    "description": "Polish in one click: a Silence action chip: pauses are cut out (not played faster)."
+  },
+  "polish.silence.cutHint": {
+    "description": "Polish in one click: the tooltip of the Cut chip."
+  },
+  "polish.silence.x2": {
+    "description": "Polish in one click: the tooltip of the 2× chip."
+  },
+  "polish.silence.x4": {
+    "description": "Polish in one click: the tooltip of the 4× chip."
+  },
+  "polish.silence.x8": {
+    "description": "Polish in one click: the tooltip of the 8× chip."
+  },
+  "polish.title": {
+    "description": "The Polish in one click dialog's title: it runs the automatic edits in one go."
+  },
+  "polish.lead": {
+    "description": "Polish in one click: the line under the title."
+  },
+  "polish.footnote": {
+    "description": "Polish in one click: under the summary of what changed."
+  },
+  "polish.nothingChosen": {
+    "description": "Polish in one click: the Polish button's tooltip when no step is on."
+  },
+  "polish.lookingForProviders": {
+    "description": "Polish in one click: the Captions row while the AI services are read."
+  },
+  "polish.keepLook": {
+    "description": "Polish in one click: the Style menu's first choice: no style preset is applied."
+  },
+  "polish.changedSince": {
+    "description": "Polish in one click: why Undo polish is off: the video was edited after the polish."
+  },
+  "polish.cancelled": {
+    "description": "The editor's notice after Polish in one click was cancelled while it ran."
+  },
+  "polish.undone": {
+    "description": "The editor's notice after Undo polish."
+  },
+  "polish.buttonTitle": {
+    "description": "The title bar's Polish button's tooltip: what Polish in one click does."
+  },
+  "polish.failed": {
+    "description": "Polish in one click: shown when planning the polish failed; {reason} is the error."
+  },
+  "polish.unknownError": {
+    "description": "Polish in one click: the reason shown when an error has no message, inside \"Polish failed: {reason}.\" (lower case)."
+  },
+  "polish.hint.style": {
+    "description": "Polish in one click: what the Style step does."
+  },
+  "polish.hint.zoomOn": {
+    "description": "Polish in one click: the Auto zoom step when auto zoom is on already."
+  },
+  "polish.hint.zoomOff": {
+    "description": "Polish in one click: what the Auto zoom step does."
+  },
+  "polish.hint.silencesCut": {
+    "description": "Polish in one click: what Remove silences does with Cut chosen; {length} is the shortest pause (\"1.0 s\")."
+  },
+  "polish.hint.silencesFaster": {
+    "description": "Polish in one click: what Remove silences does with a speed chosen; {length} is the shortest pause, {factor} the speed (\"4\")."
+  },
+  "polish.hint.smoothCuts": {
+    "description": "Polish in one click: what Smooth cuts does."
+  },
+  "polish.hint.captionsTo": {
+    "description": "Polish in one click: the Captions step with an AI service; {provider} is its name (\"My OpenAI\").",
+    "user": [
+      "provider"
+    ]
+  },
+  "polish.hint.captionsToAny": {
+    "description": "Polish in one click: the Captions step with an AI service not chosen yet."
+  },
+  "polish.hint.chapters": {
+    "description": "Polish in one click: what Find chapters does. Review is Review mode."
+  },
+  "polish.hint.captionLookWide": {
+    "description": "Polish in one click: what Caption look does in a wide video (no pop-ups)."
+  },
+  "polish.hint.captionLook": {
+    "description": "Polish in one click: what Caption look does."
+  },
+  "polish.hint.director": {
+    "description": "Polish in one click: what Camera director does."
+  },
+  "polish.skip.keptLook": {
+    "description": "Polish in one click: why a step cannot run or was skipped: the Style row when no preset is chosen."
+  },
+  "polish.skip.off": {
+    "description": "Polish in one click: why a step cannot run or was skipped: a step the user turned off."
+  },
+  "polish.skip.noInput": {
+    "description": "Polish in one click: why a step cannot run or was skipped: auto zoom needs recorded clicks."
+  },
+  "polish.skip.noCuts": {
+    "description": "Polish in one click: why a step cannot run or was skipped: Smooth cuts needs cuts."
+  },
+  "polish.skip.keptStyle": {
+    "description": "Polish in one click: why a step cannot run or was skipped: the user chose a cut style already."
+  },
+  "polish.skip.hasChapters": {
+    "description": "Polish in one click: why a step cannot run or was skipped: the video has chapters already."
+  },
+  "polish.skip.shortVideo": {
+    "description": "Polish in one click: why a step cannot run or was skipped: the video is too short for chapters."
+  },
+  "polish.skip.noSpeech": {
+    "description": "Polish in one click: why a step cannot run or was skipped: chapters are named from what is said."
+  },
+  "polish.skip.noSound": {
+    "description": "Polish in one click: why a step cannot run or was skipped: nothing to measure for silences or captions."
+  },
+  "polish.skip.muted": {
+    "description": "Polish in one click: why a step cannot run or was skipped: the recording sound is muted."
+  },
+  "polish.skip.notMeasured": {
+    "description": "Polish in one click: why a step cannot run or was skipped: measuring the sound failed."
+  },
+  "polish.skip.nothingHeard": {
+    "description": "Polish in one click: why a step cannot run or was skipped: the recording is silent."
+  },
+  "polish.skip.hasCaptions": {
+    "description": "Polish in one click: why a step cannot run or was skipped: captions exist already."
+  },
+  "polish.skip.noProvider": {
+    "description": "Polish in one click: why a step cannot run or was skipped: no AI service that makes captions."
+  },
+  "polish.skip.noModel": {
+    "description": "Polish in one click: why a step cannot run or was skipped: the free speech model on this PC is not downloaded."
+  },
+  "polish.skip.busy": {
+    "description": "Polish in one click: why a step cannot run or was skipped: captions are being made already."
+  },
+  "polish.skip.noCaptions": {
+    "description": "Polish in one click: why a step cannot run or was skipped: Caption look needs captions."
+  },
+  "polish.skip.cancelled": {
+    "description": "Polish in one click: why a step cannot run or was skipped: the user pressed Skip while the step ran."
+  },
+  "polish.skip.noCamera": {
+    "description": "Polish in one click: why a step cannot run or was skipped: the camera director needs a camera."
+  },
+  "polish.skip.cameraHidden": {
+    "description": "Polish in one click: why a step cannot run or was skipped: the camera is hidden."
+  },
+  "polish.skip.noPreset": {
+    "description": "Polish in one click: why a step cannot run or was skipped: the remembered preset was deleted."
+  },
+  "polish.skip.failedWhy": {
+    "description": "Polish in one click: a step that failed; {why} is the error."
+  },
+  "polish.skip.failed": {
+    "description": "Polish in one click: a step that failed with no reason."
+  },
+  "polish.skip.captionsFailedWhy": {
+    "description": "Polish in one click: making captions failed; {why} is the error."
+  },
+  "polish.skip.captionsFailed": {
+    "description": "Polish in one click: making captions failed with no reason."
+  },
+  "polish.phase.stopping": {
+    "description": "Polish in one click: the Captions row while making captions stops."
+  },
+  "polish.phase.starting": {
+    "description": "Polish in one click: the Captions row as making captions starts."
+  },
+  "polish.phase.extracting": {
+    "description": "Polish in one click: the Captions row while the sound is prepared for transcription."
+  },
+  "polish.phase.uploading": {
+    "description": "Polish in one click: the Captions row while the sound is sent to the AI service."
+  },
+  "polish.phase.transcribing": {
+    "description": "Polish in one click: the Captions row while speech is turned into text."
+  },
+  "polish.phase.finishing": {
+    "description": "Polish in one click: the Captions row as making captions ends."
+  },
+  "polish.phase.part": {
+    "description": "Polish in one click: the Captions row for a long recording sent in parts; {phase} is what it does (\"Transcribing…\")."
+  },
+  "polish.camera.intro": {
+    "description": "Polish in one click: a camera change of the director, in a list after \"Camera:\": the camera fills the frame at the start. Lower case."
+  },
+  "polish.camera.moves": {
+    "description": "Polish in one click: camera bubble moves to another corner, in a list after \"Camera:\"."
+  },
+  "polish.camera.hidden": {
+    "description": "Polish in one click: how many times the camera is hidden in long silences, in a list after \"Camera:\" (\"2 hidden\")."
+  },
+  "polish.camera.outro": {
+    "description": "Polish in one click: a camera change of the director, in a list after \"Camera:\": the camera fills the frame at the end. Lower case."
+  },
+  "polish.camera.face": {
+    "description": "Polish in one click: the camera was centred on the face, zoomed {zoom} (\"1.4×\"), after \"Camera:\". Lower case."
+  },
+  "polish.camera.nothing": {
+    "description": "Polish in one click: after \"Camera:\" when the director changed nothing. Lower case."
+  },
+  "polish.camera.already": {
+    "description": "Polish in one click: after \"Camera:\" when the camera was directed already. Lower case."
+  },
+  "polish.camera.withFace": {
+    "description": "Polish in one click: the camera changes (\"intro, 1 bubble move\") and then the face framing (\"face centred (1.4×)\"), after \"Camera:\"."
+  },
+  "polish.result.skipped": {
+    "description": "Polish in one click: a summary line of a skipped step: its name, then why, starting lower case (\"Auto zoom: no clicks were captured\")."
+  },
+  "polish.result.styleUnchanged": {
+    "description": "Polish in one click: the summary line of the Style step that changed nothing."
+  },
+  "polish.result.style": {
+    "description": "Polish in one click: the summary line of the Style step; {name} is the preset applied.",
+    "user": [
+      "name"
+    ]
+  },
+  "polish.result.styleAlready": {
+    "description": "Polish in one click: the Style step when the video had that preset's look already; {name} is the preset.",
+    "user": [
+      "name"
+    ]
+  },
+  "polish.result.zoomAlready": {
+    "description": "Polish in one click: the Auto zoom line when it was on already, with how many zooms there are."
+  },
+  "polish.result.zoomOn": {
+    "description": "Polish in one click: the Auto zoom line with how many zooms it made."
+  },
+  "polish.result.zoomOnKept": {
+    "description": "Polish in one click: the Auto zoom line with how many zooms it made and how many of the user's it kept ({kept})."
+  },
+  "polish.result.noSilences": {
+    "description": "Polish in one click: the Remove silences line when no pause was long enough; {length} is the shortest pause (\"1.0 s\")."
+  },
+  "polish.result.noSilencesToSpeed": {
+    "description": "Polish in one click: the Remove silences line, with a speed chosen, when no pause was long enough."
+  },
+  "polish.result.silencesCut": {
+    "description": "Polish in one click: the Remove silences line: how many pauses were cut and how much shorter the video is ({saved}, \"3.5 s\" or \"1:12.0\")."
+  },
+  "polish.result.silencesSped": {
+    "description": "Polish in one click: the Remove silences line with a speed: how many pauses play {factor} times as fast and how much shorter the video is."
+  },
+  "polish.result.smoothCuts": {
+    "description": "Polish in one click: the Smooth cuts line: at how many cuts it set a style."
+  },
+  "polish.result.smoothCutsUnchanged": {
+    "description": "Polish in one click: the Smooth cuts line when it changed nothing."
+  },
+  "polish.result.captions": {
+    "description": "Polish in one click: the Captions line: how many captions were made."
+  },
+  "polish.result.captionsLeftOut": {
+    "description": "Polish in one click: the Captions line when the most captions a project keeps ({max}) was reached at {time} in the video."
+  },
+  "polish.result.chapters": {
+    "description": "Polish in one click: the Find chapters line: how many chapters it found."
+  },
+  "polish.result.chaptersNone": {
+    "description": "Polish in one click: the Find chapters line when it found none."
+  },
+  "polish.result.captionLook": {
+    "description": "Polish in one click: the Caption look line when it changed the captions."
+  },
+  "polish.result.captionLookUnchanged": {
+    "description": "Polish in one click: the Caption look line when it changed nothing."
+  },
+  "polish.result.camera": {
+    "description": "Polish in one click: the Camera director line; {body} lists what changed (\"intro, 2 bubble moves; face centred (1.4×)\")."
+  },
+  "polish.result.cameraWhy": {
+    "description": "Polish in one click: the Camera director line with why the face was not centred ({why}, a sentence)."
+  },
+  "polish.headline.already": {
+    "description": "Polish in one click: the summary's headline and the notice when nothing changed."
+  },
+  "polish.headline.shorter": {
+    "description": "Polish in one click: the summary's headline; {saved} is how much shorter (\"1:12.0\")."
+  },
+  "polish.headline.done": {
+    "description": "Polish in one click: the summary's headline (and the notice's start) when the video is not shorter."
+  },
+  "polish.notice.shorter": {
+    "description": "The notice after Polish in one click: its start, how much shorter the video is (\"1:12.0\"); what else changed follows after \" · \"."
+  },
+  "polish.notice.style": {
+    "description": "The notice after Polish in one click: the preset applied (\"Studio style\").",
+    "user": [
+      "name"
+    ]
+  },
+  "polish.notice.autoZoom": {
+    "description": "The notice after Polish in one click: auto zoom was turned on. Lower case."
+  },
+  "polish.notice.silencesCut": {
+    "description": "The notice after Polish in one click: how many pauses were cut."
+  },
+  "polish.notice.silencesSped": {
+    "description": "The notice after Polish in one click: how many pauses play {factor} times as fast."
+  },
+  "polish.notice.captions": {
+    "description": "The notice after Polish in one click: how many captions were made."
+  },
+  "polish.notice.chapters": {
+    "description": "The notice after Polish in one click: how many chapters were found."
+  },
+  "polish.notice.camera": {
+    "description": "The notice after Polish in one click: how many camera changes the director made."
+  },
+  "polish.notice.cameraFace": {
+    "description": "The notice after Polish in one click: camera changes, and the camera centred on the face."
+  },
+  "polish.notice.face": {
+    "description": "The notice after Polish in one click: the camera was centred on the face. Lower case."
+  },
+  "polish.stylePreset": {
+    "description": "Polish in one click: the Style menu's name for screen readers."
+  },
+  "polish.yourPresets": {
+    "description": "Polish in one click: the group of the user's own style presets in the Style menu."
+  },
+  "polish.silenceAction": {
+    "description": "Polish in one click: the name of the chips that choose to cut pauses or play them faster."
+  },
+  "polish.transcriptionProvider": {
+    "description": "Polish in one click: the menu that chooses what makes the captions (this PC or an AI service)."
+  },
+  "polish.skip": {
+    "description": "Polish in one click: the button on a running step that skips it (making captions, centring the face)."
+  },
+  "polish.run": {
+    "description": "Polish in one click: the button that runs the chosen steps (a verb)."
+  },
+  "polish.undo": {
+    "description": "Polish in one click: the summary's button that undoes the whole polish."
+  },
+  "polish.row.waiting": {
+    "description": "Polish in one click: a step's row while it waits for its turn."
+  },
+  "polish.row.measuring": {
+    "description": "Polish in one click: the Remove silences row while the sound is measured."
+  },
+  "polish.row.lookingAtScreen": {
+    "description": "Polish in one click: the Find chapters row while the screen changes are found."
+  },
+  "polish.row.captions": {
+    "description": "Polish in one click: the Captions row when its captions are made: how many."
+  },
+  "polish.row.applying": {
+    "description": "Polish in one click: every running row while the edit is put together."
+  },
+  "polish.nothingPlanned": {
+    "description": "Polish in one click: the error inside \"Polish failed: {reason}.\" when planning gave nothing (lower case)."
   }
 }

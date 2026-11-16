@@ -15,6 +15,8 @@ import { applyingLabel } from '../../../shared/editor/directorCopy'
 import { planPolish, planPolishSteps, polishAvailability, POLISH_STEPS, type PolishInput, type PolishOptions, type PolishResult, type PolishSkip, type PolishStep } from '../../../shared/editor/polish'
 import { polishSkipText, transcribePhaseText } from '../../../shared/editor/polishCopy'
 import { BUILT_IN_PRESETS, type StylePreset } from '../../../shared/editor/stylePresets'
+import { fmt } from '../../../shared/i18n/fmt'
+import { t } from '../../../shared/i18n/t'
 import { effectiveTrack } from '../../../shared/engine/inputTrack'
 import { cropOf } from '../../../shared/engine/crop'
 import type { SceneScan } from '../../../shared/api/projects'
@@ -43,9 +45,9 @@ export interface PolishRun {
   skipFace(): void
 }
 
-const WAITING: PolishRowState = { phase: 'waiting', text: 'Waiting…' }
+/** A row waiting for its turn (made where it is shown, in the UI language). */
+const waiting = (): PolishRowState => ({ phase: 'waiting', text: t('review.polish.row.waiting') })
 
-const plural = (n: number, word: string): string => `${n} ${word}${n === 1 ? '' : 's'}`
 
 /** Whether `options` asks for `step` (a style is asked for by choosing a preset). */
 const chosen = (options: PolishOptions, step: PolishStep): boolean => (step === 'style' ? options.styleId !== null : options[step])
@@ -83,7 +85,7 @@ export function runPolish(
   const rows = {} as Record<PolishStep, PolishRowState>
   for (const step of POLISH_STEPS) {
     const why: PolishSkip | null = !chosen(options, step) ? 'off' : step === 'style' && !found ? 'no-preset' : available[step]
-    rows[step] = why ? { phase: 'skipped', text: polishSkipText(step, why) } : WAITING
+    rows[step] = why ? { phase: 'skipped', text: polishSkipText(step, why) } : waiting()
   }
   const runs = (step: PolishStep): boolean => rows[step].phase !== 'skipped'
   const setRow = (step: PolishStep, state: PolishRowState): void => {
@@ -103,7 +105,7 @@ export function runPolish(
     const speechSource = runs('director') ? speechLevelSource(start) : null
     if (speechSource) sources.add(speechSource)
     if (sources.size === 0) return null
-    if (runs('silences')) setRow('silences', { phase: 'working', text: 'Measuring the sound…' })
+    if (runs('silences')) setRow('silences', { phase: 'working', text: t('review.polish.row.measuring') })
     if (runs('director')) setRow('director', { phase: 'working', text: applyingLabel({ listening: true, done: 0, total: 0 }) })
     // A source that cannot be measured is left out (sourceActivity is then null).
     const levels = await loadAudioAnalysis(start.id, [...sources]).catch((err: unknown) => {
@@ -114,7 +116,7 @@ export function runPolish(
     // Not measured: only the silences are skipped (the director asks for its own source again, and
     // falls back to the transcript when that fails too).
     const sound = sourceActivity(start, levels)
-    setRow('silences', sound ? WAITING : { phase: 'skipped', text: polishSkipText('silences', 'not-measured') })
+    setRow('silences', sound ? waiting() : { phase: 'skipped', text: polishSkipText('silences', 'not-measured') })
     return sound
   }
 
@@ -153,7 +155,7 @@ export function runPolish(
       showFace(0, times.length)
       return await measureFraming(video.currentSrc || video.src, times, plan.framingCap, { onProgress: ({ done, total }) => showFace(done, total), signal: face.signal })
     } catch (err) {
-      return { status: 'unavailable', reason: (err instanceof Error ? err.message : String(err)).replace(/[.\s]+$/, '') || 'unknown error' }
+      return { status: 'unavailable', reason: (err instanceof Error ? err.message : String(err)).replace(/[.\s]+$/, '') || t('review.polish.unknownError') }
     }
   }
 
@@ -164,14 +166,14 @@ export function runPolish(
    */
   const fetchScan = async (): Promise<SceneScan | null> => {
     if (!runs('chapters')) return null
-    setRow('chapters', { phase: 'working', text: 'Looking at the screen…' })
+    setRow('chapters', { phase: 'working', text: t('review.polish.row.lookingAtScreen') })
     try {
       return await window.api.detectScenes(start.id, cropOf(start))
     } catch (err) {
       console.warn('Could not read the screen:', err)
       return null
     } finally {
-      setRow('chapters', WAITING)
+      setRow('chapters', waiting())
     }
   }
 
@@ -181,7 +183,7 @@ export function runPolish(
     if (!collected || run.signal.aborted) return null
     const [sound, fetched, scan] = collected
     const transcript = fetched && 'transcript' in fetched ? fetched.transcript : null
-    if (transcript) setRow('captions', { phase: 'done', text: plural(transcript.segments.length, 'caption') })
+    if (transcript) setRow('captions', { phase: 'done', text: t('review.polish.row.captions', { count: transcript.segments.length, n: fmt.count(transcript.segments.length) }) })
     else if (fetched && 'error' in fetched) {
       blocked.captions = 'failed'
       errors.captions = fetched.error
@@ -222,7 +224,7 @@ export function runPolish(
 
     // 4. One undo step, planned again from the project as it is now, a step at a time (Captions
     // Studio §9.8), and planned again at once from an edit made meanwhile.
-    for (const step of POLISH_STEPS) if (runs(step)) setRow(step, { phase: 'working', text: 'Applying…' })
+    for (const step of POLISH_STEPS) if (runs(step)) setRow(step, { phase: 'working', text: t('review.polish.row.applying') })
     const from = store.state
     const planned = await planInSteps(planPolishSteps({ ...gathered, framing, project: from }, options), run.signal)
     if (!planned || run.signal.aborted) return null
@@ -232,7 +234,7 @@ export function runPolish(
     // EditStore.update calls the function once, before anything is pushed: a throw changes nothing.
     store.update((p) => (result = p === from ? planned : planPolish({ ...gathered, framing, project: p }, options)).project)
     store.seal()
-    if (!result) throw new Error('nothing was planned')
+    if (!result) throw new Error(t('review.polish.nothingPlanned'))
     return { before, after: store.state, result }
   }
 

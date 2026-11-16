@@ -9,7 +9,7 @@ import {
   polishSkipText,
   polishStepLabel,
   providerName,
-  SILENCE_ACTION_CHIPS,
+  silenceActionChips,
   transcriberLabel,
   transcribePhaseText
 } from '../src/shared/editor/polishCopy'
@@ -149,7 +149,7 @@ describe('rows and progress', () => {
       'Captions',
       'Camera director'
     ])
-    expect(SILENCE_ACTION_CHIPS.map((c) => c.label)).toEqual(['Cut', '2×', '4×', '8×'])
+    expect(silenceActionChips().map((c) => c.label)).toEqual(['Cut', '2×', '4×', '8×'])
   })
 
   it('hints follow the options', () => {

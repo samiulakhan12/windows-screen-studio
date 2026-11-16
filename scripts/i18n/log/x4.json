@@ -2527,5 +2527,1349 @@
   "sample": {
    "areas": "style and camera"
   }
+ },
+ {
+  "key": "review.polish.step.style",
+  "file": "src/shared/editor/polishCopy.ts",
+  "line": 19,
+  "english": "Style",
+  "sample": {}
+ },
+ {
+  "key": "review.polish.step.zoom",
+  "file": "src/shared/editor/polishCopy.ts",
+  "line": 20,
+  "english": "Auto zoom",
+  "sample": {}
+ },
+ {
+  "key": "review.polish.step.silences",
+  "file": "src/shared/editor/polishCopy.ts",
+  "line": 21,
+  "english": "Remove silences",
+  "sample": {}
+ },
+ {
+  "key": "review.polish.step.smoothCuts",
+  "file": "src/shared/editor/polishCopy.ts",
+  "line": 22,
+  "english": "Smooth cuts",
+  "sample": {}
+ },
+ {
+  "key": "review.polish.step.captions",
+  "file": "src/shared/editor/polishCopy.ts",
+  "line": 23,
+  "english": "Captions",
+  "sample": {}
+ },
+ {
+  "key": "review.polish.step.chapters",
+  "file": "src/shared/editor/polishCopy.ts",
+  "line": 24,
+  "english": "Find chapters",
+  "sample": {}
+ },
+ {
+  "key": "review.polish.step.captionLook",
+  "file": "src/shared/editor/polishCopy.ts",
+  "line": 25,
+  "english": "Caption look",
+  "sample": {}
+ },
+ {
+  "key": "review.polish.step.director",
+  "file": "src/shared/editor/polishCopy.ts",
+  "line": 26,
+  "english": "Camera director",
+  "sample": {}
+ },
+ {
+  "key": "review.polish.silence.cut",
+  "file": "src/shared/editor/polishCopy.ts",
+  "line": 37,
+  "english": "Cut",
+  "sample": {}
+ },
+ {
+  "key": "review.polish.silence.cutHint",
+  "file": "src/shared/editor/polishCopy.ts",
+  "line": 37,
+  "english": "Remove pauses from the video",
+  "sample": {}
+ },
+ {
+  "key": "review.polish.silence.x2",
+  "file": "src/shared/editor/polishCopy.ts",
+  "line": 38,
+  "english": "Play pauses twice as fast",
+  "sample": {}
+ },
+ {
+  "key": "review.polish.silence.x4",
+  "file": "src/shared/editor/polishCopy.ts",
+  "line": 39,
+  "english": "Play pauses four times as fast",
+  "sample": {}
+ },
+ {
+  "key": "review.polish.silence.x8",
+  "file": "src/shared/editor/polishCopy.ts",
+  "line": 40,
+  "english": "Play pauses eight times as fast",
+  "sample": {}
+ },
+ {
+  "key": "review.polish.title",
+  "file": "src/shared/editor/polishCopy.ts",
+  "line": 44,
+  "english": "Polish in one click",
+  "sample": {}
+ },
+ {
+  "key": "review.polish.lead",
+  "file": "src/shared/editor/polishCopy.ts",
+  "line": 45,
+  "english": "Runs the automatic edits in one go. Zooms, camera changes and captions you made are kept, and it is all one undo step.",
+  "sample": {}
+ },
+ {
+  "key": "review.polish.footnote",
+  "file": "src/shared/editor/polishCopy.ts",
+  "line": 46,
+  "english": "All of this is one undo step.",
+  "sample": {}
+ },
+ {
+  "key": "review.polish.nothingChosen",
+  "file": "src/shared/editor/polishCopy.ts",
+  "line": 48,
+  "english": "Choose at least one step",
+  "sample": {}
+ },
+ {
+  "key": "review.polish.lookingForProviders",
+  "file": "src/shared/editor/polishCopy.ts",
+  "line": 50,
+  "english": "Looking for your AI providers…",
+  "sample": {}
+ },
+ {
+  "key": "review.polish.keepLook",
+  "file": "src/shared/editor/polishCopy.ts",
+  "line": 52,
+  "english": "Keep the current look",
+  "sample": {}
+ },
+ {
+  "key": "review.polish.changedSince",
+  "file": "src/shared/editor/polishCopy.ts",
+  "line": 54,
+  "english": "The video changed since",
+  "sample": {}
+ },
+ {
+  "key": "review.polish.cancelled",
+  "file": "src/shared/editor/polishCopy.ts",
+  "line": 55,
+  "english": "Polish cancelled: nothing was changed",
+  "sample": {}
+ },
+ {
+  "key": "review.polish.undone",
+  "file": "src/shared/editor/polishCopy.ts",
+  "line": 56,
+  "english": "Polish undone",
+  "sample": {}
+ },
+ {
+  "key": "review.polish.buttonTitle",
+  "file": "src/shared/editor/polishCopy.ts",
+  "line": 63,
+  "english": "Polish in one click: silences, zooms, captions, camera and style",
+  "sample": {}
+ },
+ {
+  "key": "review.polish.failed",
+  "file": "src/shared/editor/polishCopy.ts",
+  "line": 66,
+  "english": "Polish failed: nothing was planned. Nothing was changed.",
+  "sample": {
+   "reason": "nothing was planned"
+  }
+ },
+ {
+  "key": "review.polish.unknownError",
+  "file": "src/shared/editor/polishCopy.ts",
+  "line": 66,
+  "english": "unknown error",
+  "sample": {}
+ },
+ {
+  "key": "review.polish.hint.style",
+  "file": "src/shared/editor/polishCopy.ts",
+  "line": 95,
+  "english": "Changes the background, card, device frame, 3D tilt, cursor look and zoom style. The aspect ratio and crop stay.",
+  "sample": {}
+ },
+ {
+  "key": "review.polish.hint.zoomOn",
+  "file": "src/shared/editor/polishCopy.ts",
+  "line": 97,
+  "english": "Auto zoom is on: your zooms stay as they are.",
+  "sample": {}
+ },
+ {
+  "key": "review.polish.hint.zoomOff",
+  "file": "src/shared/editor/polishCopy.ts",
+  "line": 97,
+  "english": "Turns auto zoom on. Zooms you added or edited are kept.",
+  "sample": {}
+ },
+ {
+  "key": "review.polish.hint.silencesCut",
+  "file": "src/shared/editor/polishCopy.ts",
+  "line": 100,
+  "english": "Cuts pauses of 1.0 s or more, keeping a quarter second next to the sound.",
+  "sample": {
+   "length": "1.0 s"
+  }
+ },
+ {
+  "key": "review.polish.hint.silencesFaster",
+  "file": "src/shared/editor/polishCopy.ts",
+  "line": 100,
+  "english": "Plays pauses of 1.0 s or more 4× as fast, keeping a quarter second next to the sound.",
+  "sample": {
+   "length": "1.0 s",
+   "factor": "4"
+  }
+ },
+ {
+  "key": "review.polish.hint.smoothCuts",
+  "file": "src/shared/editor/polishCopy.ts",
+  "line": 103,
+  "english": "Crossfades on the screen, punch-ins on the camera",
+  "sample": {}
+ },
+ {
+  "key": "review.polish.hint.captionsTo",
+  "file": "src/shared/editor/polishCopy.ts",
+  "line": 106,
+  "english": "The sound is sent to My OpenAI with your key and billed to your account.",
+  "sample": {
+   "provider": "My OpenAI"
+  }
+ },
+ {
+  "key": "review.polish.hint.captionsToAny",
+  "file": "src/shared/editor/polishCopy.ts",
+  "line": 106,
+  "english": "The sound is sent to the provider with your key and billed to your account.",
+  "sample": {}
+ },
+ {
+  "key": "review.polish.hint.chapters",
+  "file": "src/shared/editor/polishCopy.ts",
+  "line": 108,
+  "english": "Splits the video where the screen changes and where you start something new, and names each part from what you say. Review lists each one.",
+  "sample": {}
+ },
+ {
+  "key": "review.polish.hint.captionLookWide",
+  "file": "src/shared/editor/polishCopy.ts",
+  "line": 111,
+  "english": "Style, emphasis and tidy text for your captions.",
+  "sample": {}
+ },
+ {
+  "key": "review.polish.hint.captionLook",
+  "file": "src/shared/editor/polishCopy.ts",
+  "line": 111,
+  "english": "Style, emphasis and pop-ups for your captions.",
+  "sample": {}
+ },
+ {
+  "key": "review.polish.hint.director",
+  "file": "src/shared/editor/polishCopy.ts",
+  "line": 113,
+  "english": "Uses your Camera tab options: intro and outro, bubble corners, hiding in long silences, centring your face. Camera blocks you placed or changed are kept.",
+  "sample": {}
+ },
+ {
+  "key": "review.polish.skip.keptLook",
+  "file": "src/shared/editor/polishCopy.ts",
+  "line": 142,
+  "english": "The current look is kept",
+  "sample": {}
+ },
+ {
+  "key": "review.polish.skip.off",
+  "file": "src/shared/editor/polishCopy.ts",
+  "line": 142,
+  "english": "Not selected",
+  "sample": {}
+ },
+ {
+  "key": "review.polish.skip.noInput",
+  "file": "src/shared/editor/polishCopy.ts",
+  "line": 119,
+  "english": "No clicks were captured",
+  "sample": {}
+ },
+ {
+  "key": "review.polish.skip.noCuts",
+  "file": "src/shared/editor/polishCopy.ts",
+  "line": 120,
+  "english": "No cuts to smooth",
+  "sample": {}
+ },
+ {
+  "key": "review.polish.skip.keptStyle",
+  "file": "src/shared/editor/polishCopy.ts",
+  "line": 121,
+  "english": "Your cut style is kept",
+  "sample": {}
+ },
+ {
+  "key": "review.polish.skip.hasChapters",
+  "file": "src/shared/editor/polishCopy.ts",
+  "line": 122,
+  "english": "Your chapters are kept",
+  "sample": {}
+ },
+ {
+  "key": "review.polish.skip.shortVideo",
+  "file": "src/shared/editor/polishCopy.ts",
+  "line": 123,
+  "english": "Under 2 minutes: no chapters needed",
+  "sample": {}
+ },
+ {
+  "key": "review.polish.skip.noSpeech",
+  "file": "src/shared/editor/polishCopy.ts",
+  "line": 124,
+  "english": "No captions to name chapters from",
+  "sample": {}
+ },
+ {
+  "key": "review.polish.skip.noSound",
+  "file": "src/shared/editor/polishCopy.ts",
+  "line": 125,
+  "english": "This recording has no sound",
+  "sample": {}
+ },
+ {
+  "key": "review.polish.skip.muted",
+  "file": "src/shared/editor/polishCopy.ts",
+  "line": 126,
+  "english": "The sound is muted: turn it on in the Audio tab",
+  "sample": {}
+ },
+ {
+  "key": "review.polish.skip.notMeasured",
+  "file": "src/shared/editor/polishCopy.ts",
+  "line": 127,
+  "english": "The sound could not be measured, so nothing was cut",
+  "sample": {}
+ },
+ {
+  "key": "review.polish.skip.nothingHeard",
+  "file": "src/shared/editor/polishCopy.ts",
+  "line": 128,
+  "english": "Nothing is heard in this recording, so nothing was cut",
+  "sample": {}
+ },
+ {
+  "key": "review.polish.skip.hasCaptions",
+  "file": "src/shared/editor/polishCopy.ts",
+  "line": 129,
+  "english": "This video already has captions; they are kept",
+  "sample": {}
+ },
+ {
+  "key": "review.polish.skip.noProvider",
+  "file": "src/shared/editor/polishCopy.ts",
+  "line": 130,
+  "english": "Add an AI provider that can transcribe (OpenAI or Gemini)",
+  "sample": {}
+ },
+ {
+  "key": "review.polish.skip.noModel",
+  "file": "src/shared/editor/polishCopy.ts",
+  "line": 131,
+  "english": "Captions skipped: download a speech model in the Captions tab (free, 60 MB) or add an AI provider.",
+  "sample": {}
+ },
+ {
+  "key": "review.polish.skip.busy",
+  "file": "src/shared/editor/polishCopy.ts",
+  "line": 132,
+  "english": "A transcription is already running in the Captions tab",
+  "sample": {}
+ },
+ {
+  "key": "review.polish.skip.noCaptions",
+  "file": "src/shared/editor/polishCopy.ts",
+  "line": 133,
+  "english": "This video has no captions to style",
+  "sample": {}
+ },
+ {
+  "key": "review.polish.skip.cancelled",
+  "file": "src/shared/editor/polishCopy.ts",
+  "line": 134,
+  "english": "Skipped",
+  "sample": {}
+ },
+ {
+  "key": "review.polish.skip.noCamera",
+  "file": "src/shared/editor/polishCopy.ts",
+  "line": 135,
+  "english": "This recording has no camera",
+  "sample": {}
+ },
+ {
+  "key": "review.polish.skip.cameraHidden",
+  "file": "src/shared/editor/polishCopy.ts",
+  "line": 136,
+  "english": "Show the camera first",
+  "sample": {}
+ },
+ {
+  "key": "review.polish.skip.noPreset",
+  "file": "src/shared/editor/polishCopy.ts",
+  "line": 137,
+  "english": "The chosen style preset no longer exists",
+  "sample": {}
+ },
+ {
+  "key": "review.polish.skip.failedWhy",
+  "file": "src/shared/editor/polishCopy.ts",
+  "line": 145,
+  "english": "It failed: no face found",
+  "sample": {
+   "why": "no face found"
+  }
+ },
+ {
+  "key": "review.polish.skip.failed",
+  "file": "src/shared/editor/polishCopy.ts",
+  "line": 145,
+  "english": "It failed",
+  "sample": {}
+ },
+ {
+  "key": "review.polish.skip.captionsFailedWhy",
+  "file": "src/shared/editor/polishCopy.ts",
+  "line": 146,
+  "english": "Captions not made: the service refused. Try again in the Captions tab.",
+  "sample": {
+   "why": "the service refused"
+  }
+ },
+ {
+  "key": "review.polish.skip.captionsFailed",
+  "file": "src/shared/editor/polishCopy.ts",
+  "line": 146,
+  "english": "Captions not made. Try again in the Captions tab.",
+  "sample": {}
+ },
+ {
+  "key": "review.polish.phase.stopping",
+  "file": "src/shared/editor/polishCopy.ts",
+  "line": 155,
+  "english": "Stopping…",
+  "sample": {}
+ },
+ {
+  "key": "review.polish.phase.starting",
+  "file": "src/shared/editor/polishCopy.ts",
+  "line": 157,
+  "english": "Starting…",
+  "sample": {}
+ },
+ {
+  "key": "review.polish.phase.extracting",
+  "file": "src/shared/editor/polishCopy.ts",
+  "line": 159,
+  "english": "Preparing the sound…",
+  "sample": {}
+ },
+ {
+  "key": "review.polish.phase.uploading",
+  "file": "src/shared/editor/polishCopy.ts",
+  "line": 163,
+  "english": "Sending the sound…",
+  "sample": {}
+ },
+ {
+  "key": "review.polish.phase.transcribing",
+  "file": "src/shared/editor/polishCopy.ts",
+  "line": 165,
+  "english": "Transcribing…",
+  "sample": {}
+ },
+ {
+  "key": "review.polish.phase.finishing",
+  "file": "src/shared/editor/polishCopy.ts",
+  "line": 166,
+  "english": "Finishing…",
+  "sample": {}
+ },
+ {
+  "key": "review.polish.phase.part",
+  "file": "src/shared/editor/polishCopy.ts",
+  "line": 167,
+  "english": "Transcribing… Part 2 of 3.",
+  "sample": {
+   "phase": "Transcribing…",
+   "part": "2",
+   "total": "3"
+  }
+ },
+ {
+  "key": "review.polish.camera.intro",
+  "file": "src/shared/editor/polishCopy.ts",
+  "line": 173,
+  "english": "intro",
+  "sample": {}
+ },
+ {
+  "key": "review.polish.camera.moves",
+  "file": "src/shared/editor/polishCopy.ts",
+  "line": 174,
+  "english": [
+   "0 bubble moves",
+   "1 bubble move",
+   "2 bubble moves",
+   "1000 bubble moves"
+  ],
+  "sample": [
+   {
+    "count": 0,
+    "n": "0"
+   },
+   {
+    "count": 1,
+    "n": "1"
+   },
+   {
+    "count": 2,
+    "n": "2"
+   },
+   {
+    "count": 1000,
+    "n": "1000"
+   }
+  ]
+ },
+ {
+  "key": "review.polish.camera.hidden",
+  "file": "src/shared/editor/polishCopy.ts",
+  "line": 175,
+  "english": "2 hidden",
+  "sample": {
+   "n": "2"
+  }
+ },
+ {
+  "key": "review.polish.camera.outro",
+  "file": "src/shared/editor/polishCopy.ts",
+  "line": 176,
+  "english": "outro",
+  "sample": {}
+ },
+ {
+  "key": "review.polish.camera.face",
+  "file": "src/shared/editor/polishCopy.ts",
+  "line": 220,
+  "english": "face centred (1.4×)",
+  "sample": {
+   "zoom": "1.4×"
+  }
+ },
+ {
+  "key": "review.polish.camera.nothing",
+  "file": "src/shared/editor/polishCopy.ts",
+  "line": 222,
+  "english": "nothing to change",
+  "sample": {}
+ },
+ {
+  "key": "review.polish.camera.already",
+  "file": "src/shared/editor/polishCopy.ts",
+  "line": 225,
+  "english": "already directed",
+  "sample": {}
+ },
+ {
+  "key": "review.polish.camera.withFace",
+  "file": "src/shared/editor/polishCopy.ts",
+  "line": 229,
+  "english": "intro, outro; face centred (1.4×)",
+  "sample": {
+   "what": "intro, outro",
+   "face": "face centred (1.4×)"
+  }
+ },
+ {
+  "key": "review.polish.result.skipped",
+  "file": "src/shared/editor/polishCopy.ts",
+  "line": 187,
+  "english": "Auto zoom: no clicks were captured",
+  "sample": {
+   "step": "Auto zoom",
+   "reason": "no clicks were captured"
+  }
+ },
+ {
+  "key": "review.polish.result.styleUnchanged",
+  "file": "src/shared/editor/polishCopy.ts",
+  "line": 191,
+  "english": "Style: unchanged",
+  "sample": {}
+ },
+ {
+  "key": "review.polish.result.style",
+  "file": "src/shared/editor/polishCopy.ts",
+  "line": 192,
+  "english": "Style: Studio",
+  "sample": {
+   "name": "Studio"
+  }
+ },
+ {
+  "key": "review.polish.result.styleAlready",
+  "file": "src/shared/editor/polishCopy.ts",
+  "line": 192,
+  "english": "Style: already Studio",
+  "sample": {
+   "name": "Studio"
+  }
+ },
+ {
+  "key": "review.polish.result.zoomAlready",
+  "file": "src/shared/editor/polishCopy.ts",
+  "line": 195,
+  "english": [
+   "Auto zoom: already on · 0 zooms",
+   "Auto zoom: already on · 1 zoom",
+   "Auto zoom: already on · 2 zooms",
+   "Auto zoom: already on · 1000 zooms"
+  ],
+  "sample": [
+   {
+    "count": 0,
+    "n": "0"
+   },
+   {
+    "count": 1,
+    "n": "1"
+   },
+   {
+    "count": 2,
+    "n": "2"
+   },
+   {
+    "count": 1000,
+    "n": "1000"
+   }
+  ]
+ },
+ {
+  "key": "review.polish.result.zoomOn",
+  "file": "src/shared/editor/polishCopy.ts",
+  "line": 196,
+  "english": [
+   "Auto zoom turned on: 0 zooms",
+   "Auto zoom turned on: 1 zoom",
+   "Auto zoom turned on: 2 zooms",
+   "Auto zoom turned on: 1000 zooms"
+  ],
+  "sample": [
+   {
+    "count": 0,
+    "n": "0"
+   },
+   {
+    "count": 1,
+    "n": "1"
+   },
+   {
+    "count": 2,
+    "n": "2"
+   },
+   {
+    "count": 1000,
+    "n": "1000"
+   }
+  ]
+ },
+ {
+  "key": "review.polish.result.zoomOnKept",
+  "file": "src/shared/editor/polishCopy.ts",
+  "line": 196,
+  "english": [
+   "Auto zoom turned on: 0 zooms · 2 of yours kept",
+   "Auto zoom turned on: 1 zoom · 2 of yours kept",
+   "Auto zoom turned on: 2 zooms · 2 of yours kept",
+   "Auto zoom turned on: 1000 zooms · 2 of yours kept"
+  ],
+  "sample": [
+   {
+    "kept": "2",
+    "count": 0,
+    "n": "0"
+   },
+   {
+    "kept": "2",
+    "count": 1,
+    "n": "1"
+   },
+   {
+    "kept": "2",
+    "count": 2,
+    "n": "2"
+   },
+   {
+    "kept": "2",
+    "count": 1000,
+    "n": "1000"
+   }
+  ]
+ },
+ {
+  "key": "review.polish.result.noSilences",
+  "file": "src/shared/editor/polishCopy.ts",
+  "line": 200,
+  "english": "No silences of 1.0 s or more",
+  "sample": {
+   "length": "1.0 s"
+  }
+ },
+ {
+  "key": "review.polish.result.noSilencesToSpeed",
+  "file": "src/shared/editor/polishCopy.ts",
+  "line": 200,
+  "english": "No silences of 1.0 s or more to speed up",
+  "sample": {
+   "length": "1.0 s"
+  }
+ },
+ {
+  "key": "review.polish.result.silencesCut",
+  "file": "src/shared/editor/polishCopy.ts",
+  "line": 203,
+  "english": [
+   "Cut 0 silences: 3.5 s shorter",
+   "Cut 1 silence: 3.5 s shorter",
+   "Cut 2 silences: 3.5 s shorter",
+   "Cut 1000 silences: 3.5 s shorter"
+  ],
+  "sample": [
+   {
+    "saved": "3.5 s",
+    "count": 0,
+    "n": "0"
+   },
+   {
+    "saved": "3.5 s",
+    "count": 1,
+    "n": "1"
+   },
+   {
+    "saved": "3.5 s",
+    "count": 2,
+    "n": "2"
+   },
+   {
+    "saved": "3.5 s",
+    "count": 1000,
+    "n": "1000"
+   }
+  ]
+ },
+ {
+  "key": "review.polish.result.silencesSped",
+  "file": "src/shared/editor/polishCopy.ts",
+  "line": 204,
+  "english": [
+   "Sped up 0 silences 4×: 3.5 s shorter",
+   "Sped up 1 silence 4×: 3.5 s shorter",
+   "Sped up 2 silences 4×: 3.5 s shorter",
+   "Sped up 1000 silences 4×: 3.5 s shorter"
+  ],
+  "sample": [
+   {
+    "factor": "4",
+    "saved": "3.5 s",
+    "count": 0,
+    "n": "0"
+   },
+   {
+    "factor": "4",
+    "saved": "3.5 s",
+    "count": 1,
+    "n": "1"
+   },
+   {
+    "factor": "4",
+    "saved": "3.5 s",
+    "count": 2,
+    "n": "2"
+   },
+   {
+    "factor": "4",
+    "saved": "3.5 s",
+    "count": 1000,
+    "n": "1000"
+   }
+  ]
+ },
+ {
+  "key": "review.polish.result.smoothCuts",
+  "file": "src/shared/editor/polishCopy.ts",
+  "line": 207,
+  "english": [
+   "Smooth cuts at 0 cuts",
+   "Smooth cuts at 1 cut",
+   "Smooth cuts at 2 cuts",
+   "Smooth cuts at 1000 cuts"
+  ],
+  "sample": [
+   {
+    "count": 0,
+    "n": "0"
+   },
+   {
+    "count": 1,
+    "n": "1"
+   },
+   {
+    "count": 2,
+    "n": "2"
+   },
+   {
+    "count": 1000,
+    "n": "1000"
+   }
+  ]
+ },
+ {
+  "key": "review.polish.result.smoothCutsUnchanged",
+  "file": "src/shared/editor/polishCopy.ts",
+  "line": 207,
+  "english": "Smooth cuts: unchanged",
+  "sample": {}
+ },
+ {
+  "key": "review.polish.result.captions",
+  "file": "src/shared/editor/polishCopy.ts",
+  "line": 211,
+  "english": [
+   "Captions: 0 captions",
+   "Captions: 1 caption",
+   "Captions: 2 captions",
+   "Captions: 1000 captions"
+  ],
+  "sample": [
+   {
+    "count": 0,
+    "n": "0"
+   },
+   {
+    "count": 1,
+    "n": "1"
+   },
+   {
+    "count": 2,
+    "n": "2"
+   },
+   {
+    "count": 1000,
+    "n": "1000"
+   }
+  ]
+ },
+ {
+  "key": "review.polish.result.captionsLeftOut",
+  "file": "src/shared/editor/polishCopy.ts",
+  "line": 212,
+  "english": [
+   "Captions: 0 captions. A project keeps at most 5000 captions, so the captions after 1:02 were left out.",
+   "Captions: 1 caption. A project keeps at most 5000 captions, so the captions after 1:02 were left out.",
+   "Captions: 2 captions. A project keeps at most 5000 captions, so the captions after 1:02 were left out.",
+   "Captions: 1000 captions. A project keeps at most 5000 captions, so the captions after 1:02 were left out."
+  ],
+  "sample": [
+   {
+    "max": "5000",
+    "time": "1:02",
+    "count": 0,
+    "n": "0"
+   },
+   {
+    "max": "5000",
+    "time": "1:02",
+    "count": 1,
+    "n": "1"
+   },
+   {
+    "max": "5000",
+    "time": "1:02",
+    "count": 2,
+    "n": "2"
+   },
+   {
+    "max": "5000",
+    "time": "1:02",
+    "count": 1000,
+    "n": "1000"
+   }
+  ]
+ },
+ {
+  "key": "review.polish.result.chapters",
+  "file": "src/shared/editor/polishCopy.ts",
+  "line": 215,
+  "english": [
+   "Found 0 chapters",
+   "Found 1 chapter",
+   "Found 2 chapters",
+   "Found 1000 chapters"
+  ],
+  "sample": [
+   {
+    "count": 0,
+    "n": "0"
+   },
+   {
+    "count": 1,
+    "n": "1"
+   },
+   {
+    "count": 2,
+    "n": "2"
+   },
+   {
+    "count": 1000,
+    "n": "1000"
+   }
+  ]
+ },
+ {
+  "key": "review.polish.result.chaptersNone",
+  "file": "src/shared/editor/polishCopy.ts",
+  "line": 215,
+  "english": "Find chapters: no new chapters",
+  "sample": {}
+ },
+ {
+  "key": "review.polish.result.captionLook",
+  "file": "src/shared/editor/polishCopy.ts",
+  "line": 217,
+  "english": "Caption look: done",
+  "sample": {}
+ },
+ {
+  "key": "review.polish.result.captionLookUnchanged",
+  "file": "src/shared/editor/polishCopy.ts",
+  "line": 217,
+  "english": "Caption look: unchanged",
+  "sample": {}
+ },
+ {
+  "key": "review.polish.result.camera",
+  "file": "src/shared/editor/polishCopy.ts",
+  "line": 234,
+  "english": "Camera: intro, outro",
+  "sample": {
+   "body": "intro, outro"
+  }
+ },
+ {
+  "key": "review.polish.result.cameraWhy",
+  "file": "src/shared/editor/polishCopy.ts",
+  "line": 234,
+  "english": "Camera: intro, outro. No face was found.",
+  "sample": {
+   "body": "intro, outro",
+   "why": "No face was found."
+  }
+ },
+ {
+  "key": "review.polish.headline.already",
+  "file": "src/shared/editor/polishCopy.ts",
+  "line": 249,
+  "english": "Already polished: nothing to change",
+  "sample": {}
+ },
+ {
+  "key": "review.polish.headline.shorter",
+  "file": "src/shared/editor/polishCopy.ts",
+  "line": 250,
+  "english": "Polished: the video is 1:12.0 shorter",
+  "sample": {
+   "saved": "1:12.0"
+  }
+ },
+ {
+  "key": "review.polish.headline.done",
+  "file": "src/shared/editor/polishCopy.ts",
+  "line": 250,
+  "english": "Polished",
+  "sample": {}
+ },
+ {
+  "key": "review.polish.notice.shorter",
+  "file": "src/shared/editor/polishCopy.ts",
+  "line": 259,
+  "english": "Polished: 1:12.0 shorter",
+  "sample": {
+   "saved": "1:12.0"
+  }
+ },
+ {
+  "key": "review.polish.notice.style",
+  "file": "src/shared/editor/polishCopy.ts",
+  "line": 262,
+  "english": "Studio style",
+  "sample": {
+   "name": "Studio"
+  }
+ },
+ {
+  "key": "review.polish.notice.autoZoom",
+  "file": "src/shared/editor/polishCopy.ts",
+  "line": 263,
+  "english": "auto zoom on",
+  "sample": {}
+ },
+ {
+  "key": "review.polish.notice.silencesCut",
+  "file": "src/shared/editor/polishCopy.ts",
+  "line": 266,
+  "english": [
+   "0 silences cut",
+   "1 silence cut",
+   "2 silences cut",
+   "1000 silences cut"
+  ],
+  "sample": [
+   {
+    "count": 0,
+    "n": "0"
+   },
+   {
+    "count": 1,
+    "n": "1"
+   },
+   {
+    "count": 2,
+    "n": "2"
+   },
+   {
+    "count": 1000,
+    "n": "1000"
+   }
+  ]
+ },
+ {
+  "key": "review.polish.notice.silencesSped",
+  "file": "src/shared/editor/polishCopy.ts",
+  "line": 266,
+  "english": [
+   "0 silences sped up 4×",
+   "1 silence sped up 4×",
+   "2 silences sped up 4×",
+   "1000 silences sped up 4×"
+  ],
+  "sample": [
+   {
+    "factor": "4",
+    "count": 0,
+    "n": "0"
+   },
+   {
+    "factor": "4",
+    "count": 1,
+    "n": "1"
+   },
+   {
+    "factor": "4",
+    "count": 2,
+    "n": "2"
+   },
+   {
+    "factor": "4",
+    "count": 1000,
+    "n": "1000"
+   }
+  ]
+ },
+ {
+  "key": "review.polish.notice.captions",
+  "file": "src/shared/editor/polishCopy.ts",
+  "line": 268,
+  "english": [
+   "0 captions",
+   "1 caption",
+   "2 captions",
+   "1000 captions"
+  ],
+  "sample": [
+   {
+    "count": 0,
+    "n": "0"
+   },
+   {
+    "count": 1,
+    "n": "1"
+   },
+   {
+    "count": 2,
+    "n": "2"
+   },
+   {
+    "count": 1000,
+    "n": "1000"
+   }
+  ]
+ },
+ {
+  "key": "review.polish.notice.chapters",
+  "file": "src/shared/editor/polishCopy.ts",
+  "line": 269,
+  "english": [
+   "0 chapters found",
+   "1 chapter found",
+   "2 chapters found",
+   "1000 chapters found"
+  ],
+  "sample": [
+   {
+    "count": 0,
+    "n": "0"
+   },
+   {
+    "count": 1,
+    "n": "1"
+   },
+   {
+    "count": 2,
+    "n": "2"
+   },
+   {
+    "count": 1000,
+    "n": "1000"
+   }
+  ]
+ },
+ {
+  "key": "review.polish.notice.camera",
+  "file": "src/shared/editor/polishCopy.ts",
+  "line": 273,
+  "english": [
+   "0 camera changes",
+   "1 camera change",
+   "2 camera changes",
+   "1000 camera changes"
+  ],
+  "sample": [
+   {
+    "count": 0,
+    "n": "0"
+   },
+   {
+    "count": 1,
+    "n": "1"
+   },
+   {
+    "count": 2,
+    "n": "2"
+   },
+   {
+    "count": 1000,
+    "n": "1000"
+   }
+  ]
+ },
+ {
+  "key": "review.polish.notice.cameraFace",
+  "file": "src/shared/editor/polishCopy.ts",
+  "line": 273,
+  "english": [
+   "0 camera changes, face centred",
+   "1 camera change, face centred",
+   "2 camera changes, face centred",
+   "1000 camera changes, face centred"
+  ],
+  "sample": [
+   {
+    "count": 0,
+    "n": "0"
+   },
+   {
+    "count": 1,
+    "n": "1"
+   },
+   {
+    "count": 2,
+    "n": "2"
+   },
+   {
+    "count": 1000,
+    "n": "1000"
+   }
+  ]
+ },
+ {
+  "key": "review.polish.notice.face",
+  "file": "src/shared/editor/polishCopy.ts",
+  "line": 274,
+  "english": "face centred",
+  "sample": {}
+ },
+ {
+  "key": "review.polish.stylePreset",
+  "file": "src/renderer/src/editor/PolishDialog.tsx",
+  "line": 227,
+  "english": "Style preset",
+  "sample": {}
+ },
+ {
+  "key": "review.polish.yourPresets",
+  "file": "src/renderer/src/editor/PolishDialog.tsx",
+  "line": 235,
+  "english": "Your presets",
+  "sample": {}
+ },
+ {
+  "key": "review.polish.silenceAction",
+  "file": "src/renderer/src/editor/PolishDialog.tsx",
+  "line": 261,
+  "english": "Silence action",
+  "sample": {}
+ },
+ {
+  "key": "review.polish.transcriptionProvider",
+  "file": "src/renderer/src/editor/PolishDialog.tsx",
+  "line": 264,
+  "english": "Transcription provider",
+  "sample": {}
+ },
+ {
+  "key": "common.label.captions",
+  "file": "src/renderer/src/editor/PolishDialog.tsx",
+  "line": 274,
+  "english": "Captions",
+  "sample": {}
+ },
+ {
+  "key": "common.action.addAiProvider",
+  "file": "src/renderer/src/editor/PolishDialog.tsx",
+  "line": 278,
+  "english": "Add an AI provider",
+  "sample": {}
+ },
+ {
+  "key": "review.polish.skip",
+  "file": "src/renderer/src/editor/PolishDialog.tsx",
+  "line": 296,
+  "english": "Skip",
+  "sample": {}
+ },
+ {
+  "key": "common.action.cancel",
+  "file": "src/renderer/src/editor/PolishDialog.tsx",
+  "line": 314,
+  "english": "Cancel",
+  "sample": {}
+ },
+ {
+  "key": "review.polish.run",
+  "file": "src/renderer/src/editor/PolishDialog.tsx",
+  "line": 325,
+  "english": "Polish",
+  "sample": {}
+ },
+ {
+  "key": "review.polish.undo",
+  "file": "src/renderer/src/editor/PolishDialog.tsx",
+  "line": 359,
+  "english": "Undo polish",
+  "sample": {}
+ },
+ {
+  "key": "common.action.done",
+  "file": "src/renderer/src/editor/PolishDialog.tsx",
+  "line": 363,
+  "english": "Done",
+  "sample": {}
+ },
+ {
+  "key": "review.polish.row.waiting",
+  "file": "src/renderer/src/editor/polishRunner.ts",
+  "line": 49,
+  "english": "Waiting…",
+  "sample": {}
+ },
+ {
+  "key": "review.polish.row.measuring",
+  "file": "src/renderer/src/editor/polishRunner.ts",
+  "line": 108,
+  "english": "Measuring the sound…",
+  "sample": {}
+ },
+ {
+  "key": "review.polish.row.lookingAtScreen",
+  "file": "src/renderer/src/editor/polishRunner.ts",
+  "line": 169,
+  "english": "Looking at the screen…",
+  "sample": {}
+ },
+ {
+  "key": "review.polish.row.captions",
+  "file": "src/renderer/src/editor/polishRunner.ts",
+  "line": 186,
+  "english": [
+   "0 captions",
+   "1 caption",
+   "2 captions",
+   "1000 captions"
+  ],
+  "sample": [
+   {
+    "count": 0,
+    "n": "0"
+   },
+   {
+    "count": 1,
+    "n": "1"
+   },
+   {
+    "count": 2,
+    "n": "2"
+   },
+   {
+    "count": 1000,
+    "n": "1000"
+   }
+  ]
+ },
+ {
+  "key": "review.polish.row.applying",
+  "file": "src/renderer/src/editor/polishRunner.ts",
+  "line": 227,
+  "english": "Applying…",
+  "sample": {}
+ },
+ {
+  "key": "review.polish.nothingPlanned",
+  "file": "src/renderer/src/editor/polishRunner.ts",
+  "line": 237,
+  "english": "nothing was planned",
+  "sample": {}
  }
 ]
