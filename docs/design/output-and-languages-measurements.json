@@ -1,7 +1,8 @@
 {
  "S0": {
-  "at": "2026-11-09T22:27:23.361Z",
+  "at": "2026-11-16T10:25:49.935Z",
   "commit": "31c4b0d",
+  "note": "Taken again beside S2, with the runs alternating between the two builds.",
   "sizes": {
    "renderer": {
     "bytes": 2715936,
@@ -9,44 +10,95 @@
    },
    "rendererChunks": 1,
    "main": {
-    "bytes": 5770527,
-    "gzip": 1264843
+    "bytes": 5769855,
+    "gzip": 1264559
    },
    "preload": {
     "bytes": 25303,
     "gzip": 6062
    }
   },
-  "mainFirstRenderMs": 256,
-  "toolbarFirstRenderMs": 68,
+  "mainFirstRenderMs": 244,
+  "toolbarFirstRenderMs": 192,
   "runs": [
    {
-    "main": 352,
-    "toolbar": 112
-   },
-   {
-    "main": 260,
-    "toolbar": 68
-   },
-   {
-    "main": 248,
-    "toolbar": 60
+    "main": 244,
+    "toolbar": 212
    },
    {
     "main": 228,
-    "toolbar": 72
+    "toolbar": 212
    },
    {
-    "main": 260,
-    "toolbar": 68
+    "main": 232,
+    "toolbar": 188
+   },
+   {
+    "main": 236,
+    "toolbar": 192
+   },
+   {
+    "main": 272,
+    "toolbar": 192
+   },
+   {
+    "main": 252,
+    "toolbar": 192
+   },
+   {
+    "main": 252,
+    "toolbar": 216
+   }
+  ]
+ },
+ "S2": {
+  "at": "2026-11-16T10:25:49.552Z",
+  "commit": "d2963a4",
+  "sizes": {
+   "renderer": {
+    "bytes": 2818582,
+    "gzip": 929532
+   },
+   "rendererChunks": 2,
+   "main": {
+    "bytes": 5896910,
+    "gzip": 1299919
+   },
+   "preload": {
+    "bytes": 26247,
+    "gzip": 6287
+   }
+  },
+  "mainFirstRenderMs": 256,
+  "toolbarFirstRenderMs": 196,
+  "runs": [
+   {
+    "main": 248,
+    "toolbar": 192
+   },
+   {
+    "main": 236,
+    "toolbar": 200
+   },
+   {
+    "main": 264,
+    "toolbar": 228
+   },
+   {
+    "main": 264,
+    "toolbar": 196
+   },
+   {
+    "main": 236,
+    "toolbar": 208
    },
    {
     "main": 256,
-    "toolbar": 80
+    "toolbar": 184
    },
    {
-    "main": 248,
-    "toolbar": 56
+    "main": 268,
+    "toolbar": 192
    }
   ]
  }
