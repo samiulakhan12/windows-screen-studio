@@ -384,29 +384,260 @@
   {
     "key": "captions.export.format.srt",
     "file": "src/renderer/src/editor/captionWords.ts",
-    "line": 28,
+    "line": 30,
     "english": "SubRip subtitles: YouTube, Vimeo, most video players and editors",
     "sample": {}
   },
   {
     "key": "captions.export.format.vtt",
     "file": "src/renderer/src/editor/captionWords.ts",
-    "line": 29,
+    "line": 31,
     "english": "WebVTT subtitles: web video players",
     "sample": {}
   },
   {
     "key": "captions.export.format.txtLabel",
     "file": "src/renderer/src/editor/captionWords.ts",
-    "line": 30,
+    "line": 32,
     "english": "Text",
     "sample": {}
   },
   {
     "key": "captions.export.format.txt",
     "file": "src/renderer/src/editor/captionWords.ts",
-    "line": 30,
+    "line": 32,
     "english": "The transcript as plain text",
+    "sample": {}
+  },
+  {
+    "key": "captions.speakers.title",
+    "file": "src/renderer/src/editor/captionWords.ts",
+    "line": 49,
+    "english": "Speakers",
+    "sample": {}
+  },
+  {
+    "key": "captions.speakers.labelStems",
+    "file": "src/renderer/src/editor/captionWords.ts",
+    "line": 52,
+    "english": "Label You and Others",
+    "sample": {
+      "youName": "You",
+      "othersName": "Others"
+    }
+  },
+  {
+    "key": "captions.speakers.labelStemsTitle",
+    "file": "src/renderer/src/editor/captionWords.ts",
+    "line": 55,
+    "english": "Who speaks in each caption, from the microphone and computer sound tracks",
+    "sample": {}
+  },
+  {
+    "key": "captions.speakers.replaceQuestion",
+    "file": "src/renderer/src/editor/captionWords.ts",
+    "line": 58,
+    "english": "Replace the speaker labels with You and Others from the sound tracks?",
+    "sample": {
+      "youName": "You",
+      "othersName": "Others"
+    }
+  },
+  {
+    "key": "captions.speakers.remove",
+    "file": "src/renderer/src/editor/captionWords.ts",
+    "line": 61,
+    "english": "Remove labels",
+    "sample": {}
+  },
+  {
+    "key": "captions.speakers.none",
+    "file": "src/renderer/src/editor/captionWords.ts",
+    "line": 64,
+    "english": "Speaker labels come from Gemini, or from recordings that kept the microphone and the computer sound apart.",
+    "sample": {}
+  },
+  {
+    "key": "captions.speakers.mixedHint",
+    "file": "src/renderer/src/editor/captionWords.ts",
+    "line": 67,
+    "english": "For calls, transcribe the Mixed sound so the other people’s words are captioned too.",
+    "sample": {}
+  },
+  {
+    "key": "captions.speakers.nameLabel",
+    "file": "src/renderer/src/editor/captionWords.ts",
+    "line": 69,
+    "english": "Name of Speaker 1",
+    "sample": {
+      "name": "Speaker 1"
+    }
+  },
+  {
+    "key": "captions.speakers.count",
+    "file": "src/renderer/src/editor/captionWords.ts",
+    "line": 70,
+    "english": [
+      "0 captions",
+      "1 caption",
+      "2 captions",
+      "1000 captions"
+    ],
+    "sample": [
+      {
+        "count": 0,
+        "n": "0"
+      },
+      {
+        "count": 1,
+        "n": "1"
+      },
+      {
+        "count": 2,
+        "n": "2"
+      },
+      {
+        "count": 1000,
+        "n": "1000"
+      }
+    ]
+  },
+  {
+    "key": "captions.speakers.labelled",
+    "file": "src/renderer/src/editor/captionWords.ts",
+    "line": 72,
+    "english": [
+      "Labelled 0 captions: 7 You, 0 Others.",
+      "Labelled 1 caption: 7 You, 0 Others.",
+      "Labelled 2 captions: 7 You, 0 Others.",
+      "Labelled 1000 captions: 7 You, 0 Others."
+    ],
+    "sample": [
+      {
+        "you": "7",
+        "others": "0",
+        "youName": "You",
+        "othersName": "Others",
+        "count": 0,
+        "n": "0"
+      },
+      {
+        "you": "7",
+        "others": "0",
+        "youName": "You",
+        "othersName": "Others",
+        "count": 1,
+        "n": "1"
+      },
+      {
+        "you": "7",
+        "others": "0",
+        "youName": "You",
+        "othersName": "Others",
+        "count": 2,
+        "n": "2"
+      },
+      {
+        "you": "7",
+        "others": "0",
+        "youName": "You",
+        "othersName": "Others",
+        "count": 1000,
+        "n": "1000"
+      }
+    ]
+  },
+  {
+    "key": "captions.speakers.nothingHeard",
+    "file": "src/renderer/src/editor/captionWords.ts",
+    "line": 74,
+    "english": "No caption had enough sound on either track to tell who speaks.",
+    "sample": {}
+  },
+  {
+    "key": "captions.speakers.levelsFailed",
+    "file": "src/renderer/src/editor/captionWords.ts",
+    "line": 77,
+    "english": "The sound tracks could not be measured, so no labels were added.",
+    "sample": {}
+  },
+  {
+    "key": "captions.speakers.renamed",
+    "file": "src/renderer/src/editor/captionWords.ts",
+    "line": 79,
+    "english": "Renamed Speaker 1 to Priya (Undo brings the old name back)",
+    "sample": {
+      "from": "Speaker 1",
+      "to": "Priya"
+    }
+  },
+  {
+    "key": "captions.speakers.unlabelled",
+    "file": "src/renderer/src/editor/captionWords.ts",
+    "line": 79,
+    "english": "Removed the label Speaker 1",
+    "sample": {
+      "from": "Speaker 1"
+    }
+  },
+  {
+    "key": "captions.speakers.removed",
+    "file": "src/renderer/src/editor/captionWords.ts",
+    "line": 81,
+    "english": "Speaker labels removed (Undo brings them back)",
+    "sample": {}
+  },
+  {
+    "key": "captions.speakers.noSpeaker",
+    "file": "src/renderer/src/editor/captionWords.ts",
+    "line": 84,
+    "english": "No speaker",
+    "sample": {}
+  },
+  {
+    "key": "captions.speakers.newSpeaker",
+    "file": "src/renderer/src/editor/captionWords.ts",
+    "line": 86,
+    "english": "New speaker (Speaker 3)",
+    "sample": {
+      "name": "Speaker 3"
+    }
+  },
+  {
+    "key": "captions.speakers.selectLabel",
+    "file": "src/renderer/src/editor/captionWords.ts",
+    "line": 87,
+    "english": "Speaker of the caption at 0:03.2",
+    "sample": {
+      "time": "0:03.2"
+    }
+  },
+  {
+    "key": "captions.speakers.showOnVideo",
+    "file": "src/renderer/src/editor/captionWords.ts",
+    "line": 89,
+    "english": "Show speaker names",
+    "sample": {}
+  },
+  {
+    "key": "captions.speakers.showOnVideoTitle",
+    "file": "src/renderer/src/editor/captionWords.ts",
+    "line": 92,
+    "english": "Put the speaker’s name before each caption on the video",
+    "sample": {}
+  },
+  {
+    "key": "captions.speakers.inFiles",
+    "file": "src/renderer/src/editor/captionWords.ts",
+    "line": 95,
+    "english": "Speaker names in SRT and text",
+    "sample": {}
+  },
+  {
+    "key": "captions.speakers.inFilesTitle",
+    "file": "src/renderer/src/editor/captionWords.ts",
+    "line": 98,
+    "english": "Start each caption with the speaker’s name, like “Priya: Hello”. WebVTT files always name the speaker.",
     "sample": {}
   },
   {
@@ -419,21 +650,21 @@
   {
     "key": "captions.generate.byThisPc",
     "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
-    "line": 110,
+    "line": 109,
     "english": "this PC",
     "sample": {}
   },
   {
     "key": "captions.script.used",
     "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
-    "line": 287,
+    "line": 286,
     "english": "Your speaker notes are this script again",
     "sample": {}
   },
   {
     "key": "captions.script.notChanged",
     "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
-    "line": 289,
+    "line": 288,
     "english": "Your speaker notes could not be changed: The disk is full.",
     "sample": {
       "reason": "The disk is full."
@@ -442,21 +673,21 @@
   {
     "key": "captions.script.copied",
     "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
-    "line": 314,
+    "line": 313,
     "english": "Script copied",
     "sample": {}
   },
   {
     "key": "captions.script.notCopied",
     "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
-    "line": 315,
+    "line": 314,
     "english": "The script could not be copied",
     "sample": {}
   },
   {
     "key": "common.label.captions",
     "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
-    "line": 346,
+    "line": 345,
     "english": "Captions",
     "sample": {}
   },
@@ -470,14 +701,14 @@
   {
     "key": "captions.generate.summaryTitle",
     "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
-    "line": 504,
+    "line": 509,
     "english": "Generate",
     "sample": {}
   },
   {
     "key": "captions.generate.byLanguage",
     "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
-    "line": 528,
+    "line": 533,
     "english": "12 captions by Gemini (Bengali).",
     "sample": {
       "n": "12",
@@ -488,7 +719,7 @@
   {
     "key": "captions.generate.by",
     "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
-    "line": 529,
+    "line": 534,
     "english": "12 captions by OpenAI.",
     "sample": {
       "n": "12",
@@ -498,70 +729,70 @@
   {
     "key": "captions.action.dismiss",
     "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
-    "line": 541,
+    "line": 546,
     "english": "Dismiss",
     "sample": {}
   },
   {
     "key": "captions.generate.regenerateOpen",
     "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
-    "line": 546,
+    "line": 551,
     "english": "Regenerate captions…",
     "sample": {}
   },
   {
     "key": "captions.generate.generating",
     "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
-    "line": 554,
+    "line": 559,
     "english": "Generating captions",
     "sample": {}
   },
   {
     "key": "captions.generate.phase.stopping",
     "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
-    "line": 564,
+    "line": 569,
     "english": "Stopping…",
     "sample": {}
   },
   {
     "key": "captions.generate.phase.starting",
     "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
-    "line": 566,
+    "line": 571,
     "english": "Starting…",
     "sample": {}
   },
   {
     "key": "captions.generate.phase.extracting",
     "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
-    "line": 568,
+    "line": 573,
     "english": "Preparing the sound…",
     "sample": {}
   },
   {
     "key": "captions.generate.phase.uploading",
     "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
-    "line": 570,
+    "line": 575,
     "english": "Sending the sound…",
     "sample": {}
   },
   {
     "key": "captions.generate.phase.transcribing",
     "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
-    "line": 572,
+    "line": 577,
     "english": "Transcribing…",
     "sample": {}
   },
   {
     "key": "captions.generate.phase.finishing",
     "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
-    "line": 573,
+    "line": 578,
     "english": "Finishing…",
     "sample": {}
   },
   {
     "key": "captions.generate.part",
     "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
-    "line": 583,
+    "line": 588,
     "english": "Part 2 of 3.",
     "sample": {
       "n": "2",
@@ -571,49 +802,49 @@
   {
     "key": "common.action.cancel",
     "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
-    "line": 593,
+    "line": 598,
     "english": "Cancel",
     "sample": {}
   },
   {
     "key": "captions.generate.titleAgain",
     "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
-    "line": 601,
+    "line": 606,
     "english": "Regenerate captions",
     "sample": {}
   },
   {
     "key": "captions.generate.title",
     "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
-    "line": 601,
+    "line": 606,
     "english": "Generate captions",
     "sample": {}
   },
   {
     "key": "captions.generate.noProvider",
     "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
-    "line": 617,
+    "line": 622,
     "english": "Add an AI provider with your own API key to make captions. Transcription works with OpenAI and Gemini.",
     "sample": {}
   },
   {
     "key": "captions.generate.noTranscriber",
     "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
-    "line": 617,
+    "line": 622,
     "english": "None of your AI providers can transcribe: Claude cannot listen to audio. Add an OpenAI or Gemini key to make captions (Claude can still fix and translate them).",
     "sample": {}
   },
   {
     "key": "common.action.addAiProvider",
     "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
-    "line": 620,
+    "line": 625,
     "english": "Add an AI provider",
     "sample": {}
   },
   {
     "key": "captions.generate.providersUnread",
     "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
-    "line": 622,
+    "line": 627,
     "english": "Your providers could not be read: Access denied.",
     "sample": {
       "reason": "Access denied."
@@ -622,126 +853,126 @@
   {
     "key": "captions.action.checkAgain",
     "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
-    "line": 624,
+    "line": 629,
     "english": "Check again",
     "sample": {}
   },
   {
     "key": "common.label.provider",
     "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
-    "line": 632,
+    "line": 637,
     "english": "Provider",
     "sample": {}
   },
   {
     "key": "captions.generate.providerLabel",
     "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
-    "line": 635,
+    "line": 640,
     "english": "Transcription provider",
     "sample": {}
   },
   {
     "key": "captions.generate.spokenLanguage",
     "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
-    "line": 655,
+    "line": 660,
     "english": "Spoken language",
     "sample": {}
   },
   {
     "key": "captions.generate.detect",
     "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
-    "line": 657,
+    "line": 662,
     "english": "Detect automatically",
     "sample": {}
   },
   {
     "key": "common.label.sound",
     "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
-    "line": 667,
+    "line": 672,
     "english": "Sound",
     "sample": {}
   },
   {
     "key": "captions.generate.source.label",
     "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
-    "line": 669,
+    "line": 674,
     "english": "Sound to transcribe",
     "sample": {}
   },
   {
     "key": "captions.generate.source.auto",
     "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
-    "line": 673,
+    "line": 678,
     "english": "Auto",
     "sample": {}
   },
   {
     "key": "captions.generate.source.autoTitle",
     "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
-    "line": 673,
+    "line": 678,
     "english": "The microphone when it was recorded on its own, else all the sound",
     "sample": {}
   },
   {
     "key": "captions.generate.source.mic",
     "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
-    "line": 674,
+    "line": 679,
     "english": "Microphone",
     "sample": {}
   },
   {
     "key": "captions.generate.source.micTitle",
     "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
-    "line": 674,
+    "line": 679,
     "english": "Only your voice",
     "sample": {}
   },
   {
     "key": "captions.generate.source.micMissing",
     "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
-    "line": 674,
+    "line": 679,
     "english": "The microphone was not recorded on its own",
     "sample": {}
   },
   {
     "key": "captions.generate.source.mixed",
     "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
-    "line": 675,
+    "line": 680,
     "english": "Mixed sound",
     "sample": {}
   },
   {
     "key": "captions.generate.source.mixedTitle",
     "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
-    "line": 675,
+    "line": 680,
     "english": "The microphone and the computer sound together",
     "sample": {}
   },
   {
     "key": "common.action.close",
     "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
-    "line": 724,
+    "line": 729,
     "english": "Close",
     "sample": {}
   },
   {
     "key": "captions.generate.noSound",
     "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
-    "line": 730,
+    "line": 735,
     "english": "This recording has no sound to transcribe.",
     "sample": {}
   },
   {
     "key": "common.action.regenerate",
     "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
-    "line": 733,
+    "line": 738,
     "english": "Regenerate",
     "sample": {}
   },
   {
     "key": "captions.generate.sentTo",
     "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
-    "line": 741,
+    "line": 746,
     "english": "The recording's sound is sent to OpenAI with your key; it is billed to your account.",
     "sample": {
       "where": "OpenAI"
@@ -750,14 +981,14 @@
   {
     "key": "captions.generate.theProvider",
     "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
-    "line": 741,
+    "line": 746,
     "english": "the provider",
     "sample": {}
   },
   {
     "key": "captions.generate.failed",
     "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
-    "line": 768,
+    "line": 773,
     "english": "Captions could not be made: The sound of the recording could not be read.",
     "sample": {
       "reason": "The sound of the recording could not be read."
@@ -766,14 +997,14 @@
   {
     "key": "captions.list.splitWhere",
     "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
-    "line": 892,
+    "line": 897,
     "english": "Move the playhead inside this caption, between two of its words, to split it there",
     "sample": {}
   },
   {
     "key": "captions.list.notFound",
     "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
-    "line": 905,
+    "line": 910,
     "english": "\"hello\" is not in the captions",
     "sample": {
       "text": "hello"
@@ -782,7 +1013,7 @@
   {
     "key": "captions.list.replaced",
     "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
-    "line": 907,
+    "line": 912,
     "english": [
       "Replaced 0 times",
       "Replaced 1 time",
@@ -811,7 +1042,7 @@
   {
     "key": "captions.list.title",
     "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
-    "line": 917,
+    "line": 922,
     "english": "Transcript (12)",
     "sample": {
       "n": "12"
@@ -820,35 +1051,35 @@
   {
     "key": "captions.list.findReplace",
     "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
-    "line": 919,
+    "line": 924,
     "english": "Find and replace",
     "sample": {}
   },
   {
     "key": "captions.list.findLabel",
     "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
-    "line": 926,
+    "line": 931,
     "english": "Find in captions",
     "sample": {}
   },
   {
     "key": "captions.list.find",
     "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
-    "line": 926,
+    "line": 931,
     "english": "Find",
     "sample": {}
   },
   {
     "key": "captions.list.replaceWith",
     "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
-    "line": 927,
+    "line": 932,
     "english": "Replace with",
     "sample": {}
   },
   {
     "key": "captions.list.matches",
     "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
-    "line": 929,
+    "line": 934,
     "english": [
       "0 matches",
       "1 match",
@@ -877,35 +1108,35 @@
   {
     "key": "captions.list.anyCase",
     "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
-    "line": 929,
+    "line": 934,
     "english": "Ignores upper and lower case",
     "sample": {}
   },
   {
     "key": "captions.list.replaceAll",
     "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
-    "line": 931,
+    "line": 936,
     "english": "Replace all",
     "sample": {}
   },
   {
     "key": "captions.list.empty",
     "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
-    "line": 936,
+    "line": 941,
     "english": "Every caption was deleted. Regenerate them above, or undo.",
     "sample": {}
   },
   {
     "key": "captions.list.earlier",
     "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
-    "line": 940,
+    "line": 945,
     "english": "Earlier",
     "sample": {}
   },
   {
     "key": "captions.list.range",
     "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
-    "line": 943,
+    "line": 948,
     "english": "151–300 of 420",
     "sample": {
       "first": "151",
@@ -916,21 +1147,21 @@
   {
     "key": "captions.list.later",
     "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
-    "line": 946,
+    "line": 951,
     "english": "Later",
     "sample": {}
   },
   {
     "key": "captions.list.goTo",
     "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
-    "line": 960,
+    "line": 965,
     "english": "Go to this caption",
     "sample": {}
   },
   {
     "key": "captions.list.captionAt",
     "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
-    "line": 966,
+    "line": 971,
     "english": "Caption at 0:03.2",
     "sample": {
       "time": "0:03.2"
@@ -939,35 +1170,35 @@
   {
     "key": "captions.list.split",
     "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
-    "line": 974,
+    "line": 979,
     "english": "Split at the playhead",
     "sample": {}
   },
   {
     "key": "captions.list.merge",
     "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
-    "line": 977,
+    "line": 982,
     "english": "Merge with the next caption",
     "sample": {}
   },
   {
     "key": "captions.list.delete",
     "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
-    "line": 980,
+    "line": 985,
     "english": "Delete this caption",
     "sample": {}
   },
   {
     "key": "captions.list.timesHint",
     "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
-    "line": 988,
+    "line": 993,
     "english": "Times are where each caption plays in the video. Drag captions on the caption track to change their timing.",
     "sample": {}
   },
   {
     "key": "captions.tools.notUsed",
     "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
-    "line": 1042,
+    "line": 1047,
     "english": "Suggested title not used: there is a link, address or file name nobody said to check. Run it again with the Captions tab open.",
     "sample": {
       "what": "Suggested title"
@@ -976,14 +1207,14 @@
   {
     "key": "captions.tools.chaptersLeft",
     "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
-    "line": 1082,
+    "line": 1087,
     "english": "Suggested chapters not added: open the Captions tab and suggest them again to add them.",
     "sample": {}
   },
   {
     "key": "captions.tools.chaptersAdded",
     "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
-    "line": 1093,
+    "line": 1098,
     "english": [
       "Added 0 chapters (see the Text tab)",
       "Added 1 chapter (see the Text tab)",
@@ -1012,105 +1243,105 @@
   {
     "key": "captions.tools.needsCaptions",
     "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
-    "line": 1126,
+    "line": 1131,
     "english": "Make captions first: chapters are named from what is said.",
     "sample": {}
   },
   {
     "key": "captions.tools.otherAnswer",
     "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
-    "line": 1173,
+    "line": 1178,
     "english": "The provider answered something else; nothing was changed.",
     "sample": {}
   },
   {
     "key": "captions.tools.chaptersThere",
     "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
-    "line": 1177,
+    "line": 1182,
     "english": "The suggested chapters are already there.",
     "sample": {}
   },
   {
     "key": "captions.tools.noChapters",
     "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
-    "line": 1177,
+    "line": 1182,
     "english": "The provider suggested no chapters.",
     "sample": {}
   },
   {
     "key": "captions.tools.chaptersNotAdded",
     "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
-    "line": 1182,
+    "line": 1187,
     "english": "Suggested chapters not added: there is a link, address or file name nobody said to check. Run it again with the Captions tab open.",
     "sample": {}
   },
   {
     "key": "captions.tools.noTitle",
     "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
-    "line": 1187,
+    "line": 1192,
     "english": "The provider suggested no title.",
     "sample": {}
   },
   {
     "key": "captions.tools.noSummary",
     "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
-    "line": 1194,
+    "line": 1199,
     "english": "The provider wrote no summary.",
     "sample": {}
   },
   {
     "key": "captions.tools.addProviderFirst",
     "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
-    "line": 1214,
+    "line": 1219,
     "english": "Add an AI provider first: the button is in the AI tools section",
     "sample": {}
   },
   {
     "key": "captions.tools.busy",
     "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
-    "line": 1215,
+    "line": 1220,
     "english": "An AI tool is already working",
     "sample": {}
   },
   {
     "key": "common.state.working",
     "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
-    "line": 1223,
+    "line": 1228,
     "english": "Working…",
     "sample": {}
   },
   {
     "key": "captions.tools.title",
     "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
-    "line": 1225,
+    "line": 1230,
     "english": "AI tools",
     "sample": {}
   },
   {
     "key": "captions.tools.noProvider",
     "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
-    "line": 1228,
+    "line": 1233,
     "english": "Add an AI provider to suggest chapters, a title and a summary from your captions. OpenAI, Gemini and Claude all can.",
     "sample": {}
   },
   {
     "key": "captions.tools.providerLabel",
     "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
-    "line": 1237,
+    "line": 1242,
     "english": "AI provider for text",
     "sample": {}
   },
   {
     "key": "captions.tools.chaptersLocal",
     "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
-    "line": 1248,
+    "line": 1253,
     "english": "Finds chapters and names them on this PC: Review lists each one.",
     "sample": {}
   },
   {
     "key": "captions.tools.chaptersWith",
     "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
-    "line": 1248,
+    "line": 1253,
     "english": "Finds chapters with OpenAI's suggestions: Review lists each one.",
     "sample": {
       "where": "OpenAI"
@@ -1119,70 +1350,70 @@
   {
     "key": "captions.tools.theAi",
     "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
-    "line": 1248,
+    "line": 1253,
     "english": "the AI",
     "sample": {}
   },
   {
     "key": "captions.tools.suggestChapters",
     "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
-    "line": 1250,
+    "line": 1255,
     "english": "Suggest chapters",
     "sample": {}
   },
   {
     "key": "captions.tools.titleHint",
     "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
-    "line": 1252,
+    "line": 1257,
     "english": "A name for this recording from what is said",
     "sample": {}
   },
   {
     "key": "captions.tools.suggestTitle",
     "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
-    "line": 1253,
+    "line": 1258,
     "english": "Suggest a title",
     "sample": {}
   },
   {
     "key": "captions.tools.summaryHint",
     "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
-    "line": 1255,
+    "line": 1260,
     "english": "A short summary of what is said, to copy into a description",
     "sample": {}
   },
   {
     "key": "captions.tools.summarize",
     "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
-    "line": 1256,
+    "line": 1261,
     "english": "Summarize",
     "sample": {}
   },
   {
     "key": "captions.tools.chapters",
     "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
-    "line": 1266,
+    "line": 1271,
     "english": "Chapters",
     "sample": {}
   },
   {
     "key": "common.label.title",
     "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
-    "line": 1266,
+    "line": 1271,
     "english": "Title",
     "sample": {}
   },
   {
     "key": "captions.tools.summary",
     "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
-    "line": 1266,
+    "line": 1271,
     "english": "Summary",
     "sample": {}
   },
   {
     "key": "captions.tools.suggestedTitle",
     "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
-    "line": 1274,
+    "line": 1279,
     "english": "Suggested title: Saving a file",
     "sample": {
       "title": "Saving a file"
@@ -1191,84 +1422,84 @@
   {
     "key": "captions.tools.suggestedTitleWhat",
     "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
-    "line": 1284,
+    "line": 1289,
     "english": "Suggested title",
     "sample": {}
   },
   {
     "key": "captions.tools.renamed",
     "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
-    "line": 1287,
+    "line": 1292,
     "english": "Recording renamed",
     "sample": {}
   },
   {
     "key": "captions.tools.rename",
     "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
-    "line": 1291,
+    "line": 1296,
     "english": "Rename the recording",
     "sample": {}
   },
   {
     "key": "captions.tools.suggestedChaptersHead",
     "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
-    "line": 1301,
+    "line": 1306,
     "english": "Suggested chapters:",
     "sample": {}
   },
   {
     "key": "captions.tools.suggestedChapters",
     "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
-    "line": 1321,
+    "line": 1326,
     "english": "Suggested chapters",
     "sample": {}
   },
   {
     "key": "captions.tools.addChapters",
     "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
-    "line": 1327,
+    "line": 1332,
     "english": "Add the chapters",
     "sample": {}
   },
   {
     "key": "captions.tools.summaryHead",
     "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
-    "line": 1337,
+    "line": 1342,
     "english": "Summary:",
     "sample": {}
   },
   {
     "key": "captions.tools.summaryCopied",
     "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
-    "line": 1348,
+    "line": 1353,
     "english": "Summary copied",
     "sample": {}
   },
   {
     "key": "captions.tools.summaryNotCopied",
     "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
-    "line": 1349,
+    "line": 1354,
     "english": "The summary could not be copied",
     "sample": {}
   },
   {
     "key": "common.action.copy",
     "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
-    "line": 1354,
+    "line": 1359,
     "english": "Copy",
     "sample": {}
   },
   {
     "key": "captions.tools.hintLocal",
     "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
-    "line": 1367,
+    "line": 1372,
     "english": "Each tool reads the caption text on this PC: nothing is sent. Undo reverts any change.",
     "sample": {}
   },
   {
     "key": "captions.tools.hintSends",
     "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
-    "line": 1367,
+    "line": 1372,
     "english": "Each tool sends the caption text (not the sound) to OpenAI. Undo reverts any change.",
     "sample": {
       "where": "OpenAI"
@@ -1277,14 +1508,14 @@
   {
     "key": "captions.export.none",
     "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
-    "line": 1387,
+    "line": 1392,
     "english": "There are no captions to export",
     "sample": {}
   },
   {
     "key": "captions.export.saved",
     "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
-    "line": 1392,
+    "line": 1397,
     "english": "Captions saved: C:\\Videos\\Product tour.srt",
     "sample": {
       "file": "C:\\Videos\\Product tour.srt"
@@ -1293,7 +1524,7 @@
   {
     "key": "captions.export.failed",
     "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
-    "line": 1394,
+    "line": 1399,
     "english": "The captions could not be saved: The disk is full.",
     "sample": {
       "reason": "The disk is full."
@@ -1302,36 +1533,43 @@
   {
     "key": "captions.export.title",
     "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
-    "line": 1410,
+    "line": 1415,
     "english": "Export captions",
     "sample": {}
   },
   {
     "key": "captions.export.format.label",
     "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
-    "line": 1412,
+    "line": 1417,
     "english": "Subtitle format",
     "sample": {}
   },
   {
     "key": "common.state.saving",
     "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
-    "line": 1422,
+    "line": 1427,
     "english": "Saving…",
     "sample": {}
   },
   {
     "key": "captions.export.button",
     "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
-    "line": 1422,
+    "line": 1427,
     "english": "Export captions…",
     "sample": {}
   },
   {
     "key": "captions.export.hint",
     "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
-    "line": 1424,
+    "line": 1429,
     "english": "Times follow your cuts and speed changes, like the exported video. Captions are drawn on the video when Show captions is on.",
+    "sample": {}
+  },
+  {
+    "key": "common.state.working",
+    "file": "src/renderer/src/editor/panels/SpeakersSection.tsx",
+    "line": 93,
+    "english": "Working…",
     "sample": {}
   },
   {

@@ -10,7 +10,8 @@ import { brandTheme, speakerColors, withTheme } from '../../../../shared/caption
 import { clearEmphasis } from '../../../../shared/captions/marks'
 import { catalogFont, catalogId } from '../../../../shared/captions/fontCatalog'
 import { captionsOf } from '../../../../shared/captions/settings'
-import { speakersOf, SPEAKER_COPY } from '../../../../shared/captions/speakers'
+import { speakersOf } from '../../../../shared/captions/speakers'
+import { speakerCopy } from '../captionWords'
 import { editStudio, legacyTwin, lineLengthOf, setStudioSize, studioSize, withLineLength, withSpeakerNames } from '../../../../shared/captions/studioEdit'
 import { STUDIO_LIMITS } from '../../../../shared/captions/studioData'
 import { GRADIENTS, SHADOW_CHIPS, THEMES } from '../../../../shared/captions/studioPresets'
@@ -734,7 +735,7 @@ export function SpeakerControls(props: { project: Project }): JSX.Element {
   const colours = studio.speakerColors && names ? speakerColors(studio, speakers.length) : []
   return (
     <>
-      <Toggle label={SPEAKER_COPY.showOnVideo} title={SPEAKER_COPY.showOnVideoTitle} checked={names} onChange={(on) => store.update((p) => ({ ...p, captions: withSpeakerNames(captionsOf(p), on) }))} />
+      <Toggle label={speakerCopy.showOnVideo} title={speakerCopy.showOnVideoTitle} checked={names} onChange={(on) => store.update((p) => ({ ...p, captions: withSpeakerNames(captionsOf(p), on) }))} />
       <div data-testid="caption-speaker-colors">
         <Toggle
           label="A colour for each speaker"

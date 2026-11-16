@@ -527,5 +527,96 @@
   },
   "export.format.txt": {
     "description": "Tooltip of the Text chip of Export captions."
+  },
+  "speakers.title": {
+    "description": "Captions tab: heading of the section that lists who speaks."
+  },
+  "speakers.labelStems": {
+    "description": "Button that labels each caption with who speaks, from the microphone and computer sound tracks; {youName} and {othersName} are the labels written into the captions (\"You\", \"Others\"), which stay as they are."
+  },
+  "speakers.labelStemsTitle": {
+    "description": "Tooltip of the button that labels the speakers from the sound tracks."
+  },
+  "speakers.replaceQuestion": {
+    "description": "Question before speaker labels are replaced by the ones the sound tracks give; the names are the labels written into the captions."
+  },
+  "speakers.replaceAction": {
+    "description": "Button of the question before speaker labels are replaced (outside English; in English the system dialog says OK)."
+  },
+  "speakers.remove": {
+    "description": "Button that removes every speaker label."
+  },
+  "speakers.none": {
+    "description": "Speakers section with no labels and no separate sound tracks.",
+    "dnt": [
+      "Gemini"
+    ]
+  },
+  "speakers.mixedHint": {
+    "description": "Hint of the Speakers section for recordings with separate sound tracks."
+  },
+  "speakers.nameLabel": {
+    "description": "Accessible name of the field that renames a speaker; {name} is the speaker's label.",
+    "user": [
+      "name"
+    ]
+  },
+  "speakers.count": {
+    "description": "Speakers section: how many captions a speaker has."
+  },
+  "speakers.labelled": {
+    "description": "Notice after the speakers were labelled from the sound tracks: how many captions, and how many for each label."
+  },
+  "speakers.nothingHeard": {
+    "description": "Notice when the sound tracks could not tell who speaks in any caption."
+  },
+  "speakers.levelsFailed": {
+    "description": "Notice when the sound tracks could not be read."
+  },
+  "speakers.renamed": {
+    "description": "Notice after a speaker was renamed.",
+    "user": [
+      "from",
+      "to"
+    ]
+  },
+  "speakers.unlabelled": {
+    "description": "Notice after a speaker's name was emptied, which removes the label.",
+    "user": [
+      "from"
+    ]
+  },
+  "speakers.removed": {
+    "description": "Notice after every speaker label was removed."
+  },
+  "speakers.noSpeaker": {
+    "description": "Choice of a caption's speaker select: no label."
+  },
+  "speakers.newSpeaker": {
+    "description": "Choice of a caption's speaker select that adds a speaker; {name} is the label it gets (\"Speaker 3\").",
+    "user": [
+      "name"
+    ]
+  },
+  "speakers.selectLabel": {
+    "description": "Accessible name of a caption's speaker select; {time} is where the caption plays."
+  },
+  "speakers.showOnVideo": {
+    "description": "Toggle that writes the speaker's name before each caption on the video."
+  },
+  "speakers.showOnVideoTitle": {
+    "description": "Tooltip of Show speaker names."
+  },
+  "speakers.inFiles": {
+    "description": "Toggle that writes the speaker's name in SRT and text subtitle files.",
+    "dnt": [
+      "SRT"
+    ]
+  },
+  "speakers.inFilesTitle": {
+    "description": "Tooltip of Speaker names in SRT and text.",
+    "dnt": [
+      "WebVTT"
+    ]
   }
 }
