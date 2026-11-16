@@ -154,9 +154,10 @@
 - **Timelines for DaVinci Resolve, Premiere Pro and Final Cut Pro**: *Also save → Timeline* writes
   a timeline of the finished export, or of the original recordings with their cuts and speed
   changes, with your chapters as markers, and says how to open it in each editor.
-- **Ready for other languages**: almost every text you see outside the recording bar now comes from
-  one English catalogue, so a translation can be added without touching the app. Nothing looks or
-  reads differently in English, and no other language is offered yet.
+- **Ready for other languages**: every text you see, apart from the recording bar and the recording
+  settings, now comes from one English catalogue, names of looks, shapes and stickers included, so a
+  translation can be added without touching the app. Nothing looks or reads differently in English,
+  and no other language is offered yet.
 - **Fixed: a blank preview in the export dialog**: moving the *Frame* slider right after the dialog
   opened could leave the preview empty until the next move.
 

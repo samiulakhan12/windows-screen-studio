@@ -1,4 +1,4 @@
-# Build report: output and the app (wave 12), steps S0 to S4
+# Build report: output and the app (wave 12), steps S0 to S4b
 
 Branch `feat/wave12` in `/home/user/wt-w12`. Design:
 [`docs/design/output-and-languages.md`](docs/design/output-and-languages.md) (§0 the owner's decisions,
@@ -10,7 +10,8 @@ last verification fix from `integ/wave8`, the seven parts P1 to P7 merged in the
 below. Nothing was pushed.
 
 This build covers steps S0 and S1, the lead's step S2, part X6's step S3a, the extraction parts X1 to
-X5 and X7 merged at step S3b, and the lead's step S4 (their own sections below). The translations
+X5 and X7 merged at step S3b, the lead's step S4, and step S4b with its three groups merged and the
+scanner's words rule turned to fail (their own sections below). The translations
 (S5) need people: no translation was drafted or written, `scripts/i18n/draft.mjs` was never run
 against any service, no AI service was contacted, `translations/reviewers.json` lists nobody, and
 `src/shared/i18n/built/shipped.json` is `[]`, so Bangla stays out of the language picker and Flown
@@ -484,37 +485,259 @@ that overflow in English too. Results on this build:
   the export dialog first); the meta entries can carry `maxLength` for the fixed ones (§12.3). The
   screenshots are under the run's `--out` folder for the reviewers.
 
+## Step S4b: word tables, sentences in pieces and cancel codes
+
+S4 left what the scanner of that step could not see: word tables, copy a function returns or builds,
+and sentences made of pieces. S4b added a **words rule** to the scanner (`scripts/i18n/lib/scan.cjs`,
+`WORD_KINDS`: `table`, `copy`, `fragment`). Its inventory at `790664e` listed 1,296 sites in 173 files
+(801 table, 471 copy, 24 fragment; 144 more in the other account's files, pending), split into three
+disjoint groups of files for three builders: b (captions, speech, sound and AI; 64 files, 666 sites),
+c (editor, panels, review rows, notes, share and search; 86 files, 532 sites) and d (sentences in
+pieces, the cancel paths and the pseudo-locale wiring; 37 files, 98 sites). After the three merges
+113 sites in 15 files were left, each one whose display site was in a file outside its group's list;
+the integration extracted them and turned the rule from report to fail.
+
+* **The merges**: `feat/w12-s4b` (`47ab5f1`), `feat/w12-s4c` (`46db203`) and `feat/w12-s4d`
+  (`46d7153`), one at a time with `git merge --no-ff` onto `790664e`. Group b merged cleanly; c and d
+  conflicted only in the English catalogues, their meta files and `allow.json`, where both sides
+  appended entries. Each was resolved by a three-way JSON merge that keeps every key and entry of
+  both sides (no key was changed differently on two sides; the piece keys group d renamed follow its
+  rename). After each merge `npm run -s build` and the English guard (tests 9 and 10, compare mode
+  against the S2 baseline, never re-recorded) passed at the first run, and both typechecks were clean
+  after the last.
+* **The rule**: `scripts/i18n/config.json` says `"words": "fail"`. A word table (labels, names,
+  hints, notes and sentences in object and array literals, maps keyed by ids, getters, Map entries,
+  a component's own text prop), copy a function returns, builds or throws, or a sentence made of
+  pieces (a message joined with English words, English in a placeholder, messages side by side that
+  are not each a whole sentence, a message whose English is itself a piece) now fails
+  `npm run i18n:check`, `predist` and the checks workflow anywhere in our files. Ids, CSS values,
+  fonts, paths, file-format words, logs, comparisons, message keys and merge-group keys pass. The
+  whole tree has none left: test 61's whole-tree case (`tests/i18nScan.test.ts`) holds the config to
+  fail and the repository scan to no failure, no report and no word finding, and
+  `tests/i18nScanWords.test.ts` does the same for the words rule alone.
+* **`scripts/i18n/s4b-sites.json` removed**: it was the builders' work list (written by
+  `s4b-sites.mjs` through `lib/s4bSites.cjs`, read only by the inventory test). With the rule failing
+  there is nothing left to list, so the list, its script and library and the inventory's own test
+  are gone; the whole-tree cases above replace that test. (The removal landed in `cedf450`, whose
+  message does not mention it; `5fa0f09` describes it. At `cedf450` alone the old inventory test
+  would not load.)
+* **What the groups extracted** (their reports, condensed):
+  * b (522 log rows in `s4b.json`): main's AI, download, clipboard and music-loop failures, the
+    speech helper's and detector's reasons, Clean voice (`voiceWords.ts`), the shared captions and AI
+    tables through words files (`greatWords.ts`, `captionWords.ts`, `transcriptMarks.ts`,
+    `timingWords.ts`, `textChoices.ts`), AI on this PC and the speech tiers, captions on this PC
+    (`speechCopy.ts`, 170 messages), the AI cost line, cost question and usage line (one whole message
+    per sentence shape, plurals, a capitalised message for a sentence's first word), the Captions
+    tab's look controls, Polish's skip line and the music library's lengths and sizes.
+  * c (381 rows in `s4c.json`): main's guide, notes, copy, share and versions texts; the import, LUT,
+    font, YouTube chapter and Draft script refusals; the editor, guide, render layers and share
+    block; the clips, autosave, crop, selection, paste, shuttle, cut marker, image, magnifier and
+    caption review texts; the found chapters', Auto colour's and smooth cuts' review rows; the
+    safe-zone chips, the brand kit's selects, the clips' fallback names, an imported video's hints,
+    the search moment notices and the work folders' names.
+  * d (82 rows in `s4d.json`): the cancel codes, main's sentences for AI failures, captions on this
+    PC and pinned downloads as whole `errors` messages, Make a guide's live-region sentences, the
+    merge groups, `FLOWN_I18N_PSEUDO` and `english-changes.md` (below).
+  * The integration (107 rows in `s4b-lead.json`, `cedf450`): what the groups could not reach
+    because the display site was in another group's or nobody's file. The Clip tab calls
+    `silencesVoiceHint()` and `idleVoiceHint()`, `review.ts` calls `framingTitle()` and
+    `directorDetail()`, the title bar calls `polishButtonTitle()`, the editor's restore takes the file
+    notices from `versionWords.ts`, the share folders' sources come from `steps.ts`; shapes on the
+    timeline, the preview and the snap guides are named by `itemNames.ts`' `shapeName`; Polish names
+    the built-in looks by `presetLabel`; the Style, Zoom and Effects tabs and group edit take the
+    gradients, wallpapers, animated gradients, zoom easings (`ZOOM_EASING_CHOICES`, made when read)
+    and tilt presets from `lookNames.ts`; the Captions field's chips come from `exportNames.ts`. The
+    colour looks (`editor.look.colour.*`) and stickers (`text.sticker.*`, with an image item's name
+    as `text.overlay.*`) had no renderer words and got them; the Images tab puts a sticker's name
+    inside its tooltip through `fmt.inSentence` instead of lower-casing it in code. The English
+    constants these replaced (`SILENCES_VOICE_HINT`, `IDLE_VOICE_HINT`, `FRAMING_TITLE`,
+    `DIRECTOR_DETAIL`, `POLISH_BUTTON_TITLE`, versions.ts' two notices, `sourceText`, `shapeLabel`)
+    are gone; their tests follow the words files with the same English.
+* **Data, not UI text** (`allow.json`, 140 site entries, 68 at S4): every entry has its reason, and
+  none is UI text. The groups listed default content Flown writes into a project (a new text's,
+  chapter's and project's names, readers' fallbacks, a pasted image's file name), words written into
+  exported files and team-chat posts (output stays English, §0), AI prompts (Write titles' step
+  actions), log-only and token texts, the noted-text action ids, the caption gallery's sample caption
+  (caption content chosen by the captions' language), and the tables main loads whose words the
+  renderer shows only through a words file (§9.5, §9.6: `exportNames.ts`, `itemNames.ts`,
+  `versionWords.ts`, `notesCopy.ts`, `rows.ts`, `steps.ts`, `soundNames.ts`, `captionWords.ts` and the
+  others). The integration added ten of that last kind: `SHAPE_KINDS`' names, `BUILT_IN_PRESETS`'
+  names, the gradients and animated gradients, wallpapers, zoom easings, tilt presets, colour looks,
+  stickers, and `SIDECAR_LABELS` with `sidecarBlocked`'s reasons, each naming the words file that
+  shows it.
+* **Two behaviours fixed outside English** (each with a test that fails without it): the guide's save
+  and copy checks gave English sentences the preload, main and the panel all showed. They now give a
+  problem id (`GuideProblem`) with its `errors.guide.*` key (`GUIDE_PROBLEM_KEYS`, plain keys because
+  the preload has no catalogue, test 86); main throws the message, the renderer checks first and says
+  it in the UI language, and the preload refuses with the id only (`tests/guideCopy.test.ts`,
+  `tests/i18nS4bLeftovers.test.ts`). Polish's summary named a built-in look by its English stored
+  name in every language; it now uses `presetLabel` (`tests/polishRunner.test.ts`).
+
+### Counts by namespace (English messages)
+
+5,487 messages in 25 namespaces (4,545 at S4; 5,019 after group b, 5,361 after c, 5,457 after d):
+alpha 12, camera 182, captions 880, codecs 52, commands 165, common 65, editor 307, errors 507,
+export 239, home 85, keys 48, language 20, main 137, presets 30, recording 0 (reserved for the other
+account), review 716, settings 222, smart 281, sound 183, stems 16, style 607, text 417, timeline 99,
+timelines 31, zoom 186. Extraction log rows: X1 557, X2 1,787, X3 411, X4 623, X5 937, X7 0, S4 617,
+S4b group b 522, group c 381, group d 82, integration 107 (6,024 in all), every one given back by
+test 69.
+
+### Merge groups (§9.3)
+
+`build-catalogues.mjs --check` reports 19 groups: camera 1, editor 2, export 3, keys 1, main 1,
+review 1, settings 2, smart 2, style 4, text 1, zoom 1 (one, in `export`, existed at S4). Group d made
+the 18 sentences English still builds from pieces into `merge: true` groups with a `.whole` message:
+the guide's check question and too-big line, the Clip tab's edit hint, the Selection tab's keycap
+hint, the FreezeMarks tooltips, the director's automatic title (`autoTitleSuffix`; LayoutTrack uses
+`autoTitle`), the export dialog's resolution notes and batch heading, the preview and overlay
+pickers' hints, the ignored click, the saved look notice, the spoken search time, About's line,
+Storage's line, the undo hint (`keys.undoHint`, still added after other notices, so the {undo}
+placeholder of other messages is unchanged) and the batch export notification. English keeps exactly
+today's code path and text nodes; other languages show the whole message, with selects, plurals and
+rich tags. To give each sentence its own group, 21 piece keys were renamed and only the key fields of
+their rows in the X1, X2, X5 and S4 logs changed. `tests/i18nS4dMergeGroups.test.ts` runs the other
+languages' path with the English catalogue and checks each whole message says what English builds.
+
+### `scripts/i18n/english-changes.md`
+
+It lists eight English texts that only a deliberate later change could improve (§0 decision 12,
+§10.3 rule 8): "Bengali" in the captions' language lists against "Bangla" in new text; the Selection
+tab's hint that can end with a semicolon or a space; the freeze block tooltip; the export dialog's
+Batch heading; the review and undo hints that carry their separator or full stop into other notices;
+the space at the end of the guide's too-big line; and the Clip tab's hint in four pieces. None was
+changed: each needs the owner's approval and a deliberate change of the guard's baseline, named in
+its commit. Other languages already get whole messages for them.
+
+### Cancel codes (§9.6)
+
+A stopped AI request, transcription, captions run on this PC, pinned download, speech model download,
+download of a model for AI on this PC and chat post now throw or reject an error named
+`CancelledError` (`CANCELLED_ERROR` in `src/shared/jobs/longJobs.ts`) whose message is
+`errors.cancelled` in the UI language. Electron puts the name before the message of a rejected
+invoke, and `isCancelled` reads it there or on the error itself; the Captions tab, the speech download
+notice and both Settings sections decide by it, never by words, and main's English "Cancelled." is
+gone. `tests/i18nS4dCancels.test.ts` runs each path in en-XA or bn-XA and shows the rejection is a
+cancel in a translated UI and in English, and that the same words without the code are a failure.
+For captions on this PC, `localErrorCode` still finds a failure's code from its text (English
+patterns, or the UI language's messages outside English): passing a code, as cancels now do, would
+be cleaner later.
+
+### The pseudo-locale switch
+
+`FLOWN_I18N_PSEUDO=en-XA|bn-XA|ar-XB` starts an unpackaged build in that pseudo-locale from
+`scripts/i18n/pseudo/<locale>/` (written by `npm run i18n:pseudo`, not committed); ar-XB's page is
+right to left. A packaged build never reads the variable (`tests/i18nPseudoSwitch.test.ts`).
+
+### Checks and tests at S4b
+
+On the final head, one end-to-end file at a time under `xvfb-run -a -s "-screen 0 1920x1080x24"`,
+with at least 8.6 GB free throughout.
+
+* **Typechecks**: both clean.
+* **vitest** (`--maxWorkers=2`, private `TMPDIR`): 612 files, 8,016 tests passed, 8 skipped (the same
+  skips as before wave 12; 605 files and 7,950 tests at S4).
+* **`npm run -s build`**: succeeds.
+* **i18n checks (§16)**: `npm run i18n:check`: every check passed (5,487 English messages; the scan
+  and its words rule find nothing in our files; 245 texts pending in the other account's files, 101
+  at S4, because the words rule also reads their tables). `build-catalogues.mjs --check`: the built
+  catalogues match the translations (none), 19 merge groups. `fmt-sites.mjs --check`: 198 sites moved
+  to `fmt`, 4 kept with a reason. `rtl-sites.mjs --check`: 135 physical declarations kept with their
+  reasons in 65 stylesheets. `split.mjs --check`: passes (group b named `CaptionsPanel.tsx` in X3's
+  list, since it has no table left for the split to find it by).
+* **The English guard** (tests 9 and 10, compare mode against the S2 baseline, never re-recorded):
+  passed after each of the three merges, after the integration's extraction, and on the final build
+  in the list below.
+
+End to end (the task's list; every file exists), on the final build (`5fa0f09`'s code), at least 9 GB
+free throughout; every file passed at its first run, so none was re-run:
+
+| File | Result |
+|---|---|
+| `english-guard` | pass (compare) |
+| `languages` | 4/4 |
+| `output-formats` | 5/5 |
+| `export` | 10/10 |
+| `export-pack` | 5/5 |
+| `render` | 3/3 |
+| `audit-audio-export` | 2/2 |
+| `clean-voice` | 3/3 |
+| `editing-polish` | 17/17 (E1 and E13 say SKIP: they need an older build and the prepared download beds, as before) |
+| `smart-tools` | 6/6 |
+| `guides` | 1/1 (steps, screenshots, PDF, Markdown, HTML, demo and Copy guide, through the renderer's new size check) |
+| `short-clips` | 1/1 |
+| `captions-studio` | 8/8 |
+| `captions` | 9/9 |
+| `review-mode` | 10/10 |
+| `vertical-video` | 1/1 |
+| `versions` | 3/3 |
+| `commands` | 5/5 |
+| `search` | 3/3 |
+| `ui` | 5/5 |
+| `smoke` | 1/1 |
+| `packaging` | 2/2; `verify-dist` says SKIP because no installer was built in this step |
+
+### The pseudo-locale check again (§12.3)
+
+`tests/e2e/pseudo-overflow.cjs` on the final build, the same walk as at S4 (Home, every Settings
+section, the editor with all 13 inspector tabs, the palette, Polish, Versions and the export dialog),
+lists each element whose text overflows its box apart from those that overflow in English too (16 now,
+47 at S4: the English walk now finds fewer, mostly the music rows' texts that the S4 run counted on
+more screens). The list replaces S4's:
+
+* **bn-XA, 26 elements** (21 at S4): the title bar's save state (64 px wide, +32 px, every editor
+  screen); the timeline's hint line (ellipsis; the whole line, every editor screen); the Style tab's
+  preset name (42 px box, +119 px, ellipsis) and *Save as default for new recordings* (239 px button,
+  +113 px); the Zoom tab's active chip (*Zoom out*, 72 px, +26 px); **new since S4: the Zoom tab's
+  four easing chips** (55 px, +18 to +26 px; they were English at S4 and are messages now) and **a
+  colour look's name in the Colour tab** (66 px, +12 px, ellipsis; new messages); two buttons of the Cursor and Clip
+  tabs (239 px, +16 and +56 px); the Audio tab's *Find unwanted sounds* (+26 px) and the music rows'
+  titles and credits (67 px wide; the English names overflow because the translated buttons beside
+  them are wider); three disabled commands in the palette (+6 to +89 px, ellipsis); five labels of the
+  export dialog's form rows (92 px column, +3 to +45 px); and the recording options' summary on Home
+  (English text, +32 px, beside longer translated words).
+* **en-XA, 10 elements** (7 at S4): the save state (+4/+5 px), the timeline hint (+224 px, ellipsis),
+  the preset name (+16 px), *Save as default for new recordings* (+30 px), the Zoom tab's active chip
+  (*Zoom out*, +3 px), **the Zoom tab's easing chips** (Smooth, Snappy and Bouncy, +9 and +10 px;
+  new), a music row's title and the recording options' summary.
+* As at S4, these are layout work before a language ships (fixed-width buttons and chips and the
+  92 px label column of the export dialog first); the meta entries can carry `maxLength` for the fixed
+  ones (§12.3). The screenshots and `overflow.json` were written to the run's `--out` folder (a
+  scratch folder of this step, not kept in the repository).
+
 ## What is left for S5 and after
 
-* **Tables the scanner does not read, still English** (they reach the screens through code the scanner
-  cannot see): `speechCopy.ts` (SPEECH_COPY and the tier names: the Captions tab's on-this-PC card and
-  Settings › Captions on this PC), `localAi/catalog.ts`'s model notes, `transcriptMarks.ts`'s emphasis
-  notices and `TIMING_COPY`, `textChoices.ts`'s sent hints and `ai/cost.ts`'s sentence frames,
-  `captionTracks.ts`'s `burnedTrackNote`, `voiceCopy.ts` (main's import graph; VoiceSection has no
-  owner), `soundLibrary.ts` (moods' labels for main, `sfxTitle`, `musicCredit`), `soundFxEdit.ts`,
-  `magnifier.ts`, `stickers.ts`, `selection.ts`, `multiSelect.ts` (`KIND_WORDS`, `groupLabel`),
-  `groupClipboard.ts`, `ClipWaveform.tsx`, `shuttle.ts`, `import/imported.ts`, the review row titles of
-  `review.ts`, `captionReview.ts`, `chapterReview.ts`, `colourReview.ts` and `joinReview.ts`,
-  `useSearchMoment.ts`, `share/steps.ts`, `notes/blocks.ts`, `NotesCard.tsx`, `titles.ts`
-  (`TITLE_STYLES`, `TITLE_BACKGROUNDS` in the brand kit card), `ai/presets.ts`'s `serviceName`, and
-  the engine tables X2's panels still show in English (gradients, wallpapers, animated gradients,
-  zoom easings, tilt presets; `lookNames.ts` is ready for them). A table rule for the scanner (or the
-  split's `labelTablesOf` turned into a check) would find these; it is not built.
-* **Fragments that are still sentences built in code**: the guide's check question (`"; "`-joined
-  parts), the Clip edit hint (kept in its four pieces for the guard), the Selection view's keycap
-  hint, FreezeMarks' group tooltip endings, the director's `autoTitleSuffix`. They need `merge: true`
-  groups with `.whole` messages before a language ships (§9.3); `scripts/i18n/english-changes.md`
-  (§10.3 rule 8) does not exist yet because no English change was needed.
+* **Sentences joined in code that the words rule does not see**: a reason shown with a full stop added
+  in the markup (`` `${reason}.` `` in `ExportBundleOptions.tsx`'s reasons and also-save lines,
+  `{blocked}.` in the Captions field, `SubtitlesField.tsx`) and `orPress(...)` followed by "." (the
+  Zoom tab's auto zoom hint, whose `errors.imported.autoZoom` meta says so). Each is one message with
+  a placeholder plus a full stop in code, so a language that ends sentences otherwise (Bangla's "।")
+  cannot choose its own; they want `{reason}.`-style messages, or merge groups where English must
+  keep its text nodes, before a language ships.
+* **English that only a deliberate change could improve**: the eight entries of
+  `scripts/i18n/english-changes.md` (see S4b). Each needs the owner's approval and a deliberate
+  re-record of the guard's baseline named in its commit; other languages already have whole messages.
 * **Code that still reads English text**: Home's source refresh matches `/no longer available/` from
   the recording side (a request to the other account is in `pending.json`); the editor's copy check
-  compares `editor.copy.failed` while `duplicateFlow` uses `review.copy.failed` (same English;
-  translations must match or the prefix doubles); main's AI and speech cancels still say "Cancelled."
-  in English (the renderer accepts both).
-* **Not wired**: the pseudo-locale selection `FLOWN_I18N_PSEUDO` (the catalogue folders of
-  `npm run i18n:pseudo` stand in for a language through `SSW_I18N_CATALOGUE_DIR` instead, as the new
-  overflow check does); the notes window's resize drag in a right-to-left page; arrow keys following
-  the visual direction (§13.2); postcss is used by X7's tools from vite's dependency, not listed in
+  compares the prefix of `editor.copy.failed` while `duplicateFlow` and the clips use
+  `review.copy.failed` (same English; translations must keep the same prefix or it doubles); for
+  captions on this PC `localErrorCode` finds a failure's code from its text (English patterns, or the
+  UI language's messages outside English), where a code passed from main, as cancels now have, would
+  be cleaner.
+* **Judgements to confirm**: group c treats the default content Flown writes into a project ("Add
+  your text", "Key point", "Chapter n", "Untitled recording", "Imported video", a pasted image's name,
+  and group d the "Step" title of a step added by hand) as the user's content, the same in every UI
+  language, like `UNTITLED` and the stored speaker labels; webhook post lines are output and stay
+  English. The guide's cost line has its own `smart.guide.cost.what` with the same English as
+  `captions.ai.what.steps` ("the steps' narration"); both are kept, one per context.
+* **Not wired**: the notes window's resize drag in a right-to-left page; arrow keys following the
+  visual direction (§13.2); postcss is used by X7's tools from vite's dependency, not listed in
   `package.json` (no install was run).
+* **Testing note**: the English guard and the pseudo-overflow check write under `os.tmpdir()`
+  (`/tmp/flown-english-guard`, `/tmp/flown-english-guard-home`), which every worktree shares, so two
+  guard runs at the same time can break each other; run them one at a time. `docs/design/offline-captions.md`
+  still names the removed `CAPTIONS_SKIPPED_NO_MODEL` (now `captionsSkippedNoModel()`); the design
+  record was left as written.
 * **S5 itself** (§10.4, §15): Bangla drafted with a service whose terms allow commercial use, reviewed
   in context with the review pack and sheet (`npm run i18n:pack`, `npm run i18n:sheet`) by two
   listed reviewers, the merge-group report, `npm run i18n:build`, the installer built and its size
@@ -535,8 +758,9 @@ that overflow in English too. Results on this build:
   context, with the pseudo-locale overflow list above) and `npm run i18n:sheet`; their approvals are
   imported with the sheet's checks.
 * **The other account's agreement for the recording side** (§0 decision 11, §9.5): until then a
-  shipped language is a preview, the recording files keep their English (101 texts pending), and our
-  code shows their text in corner messages and `lang="en"` wrappers.
+  shipped language is a preview, the recording files keep their English (245 texts pending since
+  S4b: 101 found by the sink rules and 144 by the words rule), and our code shows their text in
+  corner messages and `lang="en"` wrappers.
 * **§0 decision 14's checks on Windows and in other editors**: the NVDA check of the palette's
   `aria-keyshortcuts` (`7ef521e` can be held back on its own) and of the Bangla UI on Windows 10 and
   11, the GPU encoders' quality values, WebCodecs HEVC and AV1, `av1_amf`'s padding, the alpha
