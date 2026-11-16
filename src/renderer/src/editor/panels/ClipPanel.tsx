@@ -41,7 +41,7 @@ import './clipPanel.css'
 import './silences.css'
 import { CutsSection } from './CutsSection'
 import { CutStyleSection } from './CutStyleSection'
-import { t } from '../../../../shared/i18n/t'
+import { t, uiLanguage } from '../../../../shared/i18n/t'
 import { T } from '../../i18n/T'
 import { Rich } from './Rich'
 
@@ -135,12 +135,27 @@ export function ClipPanel(props: InspectorProps): JSX.Element {
           <button className="btn" onClick={props.onSplit} title={withShortcut(t('style.clipPanel.splitTitle'), keymap.split)}>
             <EditorIcon name="split" size={16} /> {t('style.clipPanel.splitAtPlayhead')}
           </button>
-          <p className="hint">
-            {keymap.split.length ? <Rich k="style.clipPanel.editHint.pressSplit" values={{ split: <FirstShortcut accelerators={keymap.split} fallback="" /> }} /> : t('style.clipPanel.editHint.split')}{' '}
-            {t('style.clipPanel.editHint.selectClip')}{' '}
-            {keymap.deleteSelection.length ? <Rich k="style.clipPanel.editHint.pressDelete" values={{ delete: <FirstShortcut accelerators={keymap.deleteSelection} fallback="" /> }} /> : t('style.clipPanel.editHint.useDelete')}{' '}
-            <Rich k="style.clipPanel.editHint.toCut" />
-          </p>
+          {uiLanguage() === 'en' ? (
+            // English keeps the hint in today's four text nodes (merge group, output-and-languages §9.3).
+            <p className="hint">
+              {keymap.split.length ? <Rich k="style.clipPanel.editHint.pressSplit" values={{ split: <FirstShortcut accelerators={keymap.split} fallback="" /> }} /> : t('style.clipPanel.editHint.split')}{' '}
+              {t('style.clipPanel.editHint.selectClip')}{' '}
+              {keymap.deleteSelection.length ? <Rich k="style.clipPanel.editHint.pressDelete" values={{ delete: <FirstShortcut accelerators={keymap.deleteSelection} fallback="" /> }} /> : t('style.clipPanel.editHint.useDelete')}{' '}
+              <Rich k="style.clipPanel.editHint.toCut" />
+            </p>
+          ) : (
+            <p className="hint">
+              <Rich
+                k="style.clipPanel.editHint.whole"
+                values={{
+                  hasSplit: keymap.split.length ? 'yes' : 'no',
+                  split: <FirstShortcut accelerators={keymap.split} fallback="" />,
+                  hasDelete: keymap.deleteSelection.length ? 'yes' : 'no',
+                  delete: <FirstShortcut accelerators={keymap.deleteSelection} fallback="" />
+                }}
+              />
+            </p>
+          )}
         </Section>
       )}
       <FreezeSection {...props} />

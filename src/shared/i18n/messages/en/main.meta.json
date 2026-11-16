@@ -197,11 +197,13 @@
       "file"
     ]
   },
-  "jobs.moreFailed": {
-    "description": "Added after a batch export notification body when some files failed (starts with the \" · \" separator)."
+  "jobs.more.failed": {
+    "description": "Added after a batch export notification body when some files failed (starts with the \" · \" separator). English shows it in pieces as before (a merge group, output-and-languages §9.3); other languages show only the group’s .whole message.",
+    "merge": true
   },
-  "jobs.moreStopped": {
-    "description": "Added after a batch export notification body when the batch was stopped (starts with the \" · \" separator)."
+  "jobs.more.stopped": {
+    "description": "Added after a batch export notification body when the batch was stopped (starts with the \" · \" separator). English shows it in pieces as before (a merge group, output-and-languages §9.3); other languages show only the group’s .whole message.",
+    "merge": true
   },
   "jobs.filesExported": {
     "description": "Windows notification title when a batch exported several files."
@@ -301,5 +303,11 @@
   },
   "localSpeech.testName": {
     "description": "What the key check of AI providers answers for captions made on this PC (no key to check)."
+  },
+  "jobs.more.whole": {
+    "description": "The notification after a batch export, its body whole: {lead} is the file and its size, or the folder; failed yes adds how many files failed ({n}); stopped yes says the batch stopped early. Used only when the UI language is not English (merge group, output-and-languages §9.3): English builds the same sentence from its pieces.",
+    "user": [
+      "lead"
+    ]
   }
 }

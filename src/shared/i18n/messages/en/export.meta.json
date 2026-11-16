@@ -187,13 +187,15 @@
     ]
   },
   "resolution.capped": {
-    "description": "Export dialog: part of a resolution chip’s tooltip, after its size.",
+    "description": "Export dialog: part of a resolution chip’s tooltip, after its size. English shows it in pieces as before (a merge group, output-and-languages §9.3); other languages show only the group’s .whole message.",
     "dnt": [
       "px"
-    ]
+    ],
+    "merge": true
   },
   "resolution.upscaled": {
-    "description": "Export dialog: part of a resolution chip’s tooltip."
+    "description": "Export dialog: part of a resolution chip’s tooltip. English shows it in pieces as before (a merge group, output-and-languages §9.3); other languages show only the group’s .whole message.",
+    "merge": true
   },
   "aspect.project": {
     "description": "Export dialog: the aspect chip that keeps the project’s own shape."
@@ -450,8 +452,9 @@
   "batch.alsoHint": {
     "description": "Export dialog: Batch: under the shape chips."
   },
-  "settings.batch": {
-    "description": "Export dialog: Batch: after \"Settings ·\", what the settings apply to."
+  "settings.batch.lead": {
+    "description": "Export dialog: Batch: after \"Settings ·\", what the settings apply to. English shows it in pieces as before (a merge group, output-and-languages §9.3); other languages show only the group’s .whole message.",
+    "merge": true
   },
   "settings.format": {
     "description": "Export dialog: Settings: the format row."
@@ -999,5 +1002,15 @@
   },
   "batch.exportFiles.whole": {
     "description": "Export dialog › Batch: the export button as one message, for languages other than English: how many files are exported."
+  },
+  "resolution.whole": {
+    "description": "Export dialog: a resolution chip's tooltip, whole. {size} is the export's size (\"1920×1080\"); capped is yes when the size was limited to {side} px on its long side; upscaled is yes when the recording ({width}×{height}) is smaller and will be upscaled. Used only when the UI language is not English (merge group, output-and-languages §9.3): English builds the same sentence from its pieces.",
+    "dnt": [
+      "px"
+    ],
+    "digits": "latn"
+  },
+  "settings.batch.whole": {
+    "description": "Export dialog › Batch: the Settings section's heading, whole. The part in <em> shows lighter; “Also” names the Also save section. Used only when the UI language is not English (merge group, output-and-languages §9.3): English builds the same sentence from its pieces."
   }
 }

@@ -6,7 +6,7 @@
  * bug report, and copying. Docked in Review mode's place: the preview, transport and timeline stay
  * usable beside it. Every edit is one store update (one undo step). Esc closes it.
  */
-import { useCallback, useEffect, useId, useMemo, useRef, useState, type KeyboardEvent } from 'react'
+import { useCallback, useEffect, useId, useMemo, useRef, useState, type KeyboardEvent, type ReactNode } from 'react'
 import type { AiTextRequest, TextChoice } from '../../../shared/api/ai'
 import type { GuideFormat } from '../../../shared/api/guide'
 import type { SceneScan } from '../../../shared/api/projects'
@@ -46,7 +46,8 @@ import { namesWithPictures, pictureImage, pictureSteps, picturesToSend } from '.
 import '../review/review.css'
 import './guide.css'
 import { LANGUAGE_NAMES } from '../../../shared/i18n/locale'
-import { t } from '../../../shared/i18n/t'
+import { t, uiLanguage } from '../../../shared/i18n/t'
+import { richText } from '../i18n/richText'
 
 /** Rows drawn at a time as the list scrolls (§2.1). */
 export const ROWS_AT_A_TIME = 20
@@ -91,10 +92,15 @@ export function stepsLine(c: { steps: number; hidden: number; untitled: number; 
 /** The question before the first Save or Copy with shots not checked at full size (§2.1.2), or null when all are. */
 export function checkQuestion(c: { unchecked: number; typed: number; whole: number }): string | null {
   if (!c.unchecked) return null
+  // Other languages ask it whole (merge group, output-and-languages §9.3); English keeps today's parts.
+  if (uiLanguage() !== 'en') {
+    const more = c.typed && c.whole ? 'both' : c.typed ? 'typed' : c.whole ? 'whole' : 'none'
+    return t('smart.guide.check.whole', { count: c.unchecked, n: fmt.count(c.unchecked), more, typed: fmt.count(c.typed), wholeCount: c.whole, whole: fmt.count(c.whole) })
+  }
   const parts = [t('smart.guide.check.unchecked', { count: c.unchecked, n: fmt.count(c.unchecked) })]
   const more: string[] = []
   if (c.typed) more.push(t('smart.guide.check.typed', { n: fmt.count(c.typed) }))
-  if (c.whole) more.push(t('smart.guide.check.whole', { count: c.whole, n: fmt.count(c.whole) }))
+  if (c.whole) more.push(t('smart.guide.check.wholeScreen', { count: c.whole, n: fmt.count(c.whole) }))
   if (more.length) parts.push(`${more.join('; ')}.`)
   parts.push(t('smart.guide.check.now'))
   return parts.join(' ')
@@ -471,6 +477,12 @@ export function GuidePanel(props: { project: Project; cursor: CursorTrack; start
   const changedNote = (at: Project, doing: 'saving' | 'copying'): string => (store.state !== at ? t(doing === 'saving' ? 'smart.guide.say.changedSaving' : 'smart.guide.say.changedCopying') : '')
   /** A Save's or Copy's sentence, then what it lacks: each a sentence of its own. */
   const sentences = (...said: string[]): string => said.filter(Boolean).join(' ')
+  /** Save again, smaller: the button after the too-big line. */
+  const smallerButton = (label: ReactNode): JSX.Element => (
+    <button type="button" className="btn ghost small" onClick={() => void doSave(true)}>
+      {label}
+    </button>
+  )
   /** The project the document is built from: a bug report's default details with the recording's real scale. */
   const docProject = (): Project => {
     const p = store.state
@@ -891,8 +903,15 @@ export function GuidePanel(props: { project: Project; cursor: CursorTrack; start
             <button type="button" className="btn ghost" onClick={() => void window.api.showGuideFile(saved.path).catch(() => undefined)}>{t('common.action.showInFolder')}</button>
             {(saved.format === 'html' || saved.format === 'demo') && saved.bytes > BIG_FILE && (
               <p className="hint">
-                {t('smart.guide.tooBig', { size: fmt.count(Math.round(saved.bytes / 1e6)) })}
-                <button type="button" className="btn ghost small" onClick={() => void doSave(true)}>{t('smart.guide.smaller')}</button>
+                {uiLanguage() === 'en' ? (
+                  // English keeps today's text node and button (merge group, output-and-languages §9.3); other languages say it whole.
+                  <>
+                    {t('smart.guide.tooBig.lead', { size: fmt.count(Math.round(saved.bytes / 1e6)) })}
+                    {smallerButton(t('smart.guide.smaller'))}
+                  </>
+                ) : (
+                  richText('smart.guide.tooBig.whole', { size: fmt.count(Math.round(saved.bytes / 1e6)) }, { link: (chunks) => smallerButton(chunks) })
+                )}
               </p>
             )}
           </div>

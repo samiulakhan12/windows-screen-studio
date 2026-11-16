@@ -1318,7 +1318,7 @@
     "sample": {}
   },
   {
-    "key": "smart.guide.tooBig",
+    "key": "smart.guide.tooBig.lead",
     "file": "src/renderer/src/guide/GuidePanel.tsx",
     "line": 917,
     "english": "This file is «value» MB: too big for some email. ",
@@ -1997,7 +1997,7 @@
     }
   },
   {
-    "key": "smart.guide.check.whole",
+    "key": "smart.guide.check.wholeScreen",
     "file": "src/renderer/src/guide/GuidePanel.tsx",
     "line": 96,
     "english": [

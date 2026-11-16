@@ -1,8 +1,8 @@
 {
   "zoomPanel.withAZoomSelected": "With a zoom selected, {levels}.",
   "zoomPanel.selectedClick": "Selected click",
-  "zoomPanel.ignoredNoZoomClick": "Ignored: no zoom, click effect or sound, and smart speed does not count it.",
-  "zoomPanel.itWasIgnoredAutomatically": " It was ignored automatically: {reason}.",
+  "zoomPanel.ignored.lead": "Ignored: no zoom, click effect or sound, and smart speed does not count it.",
+  "zoomPanel.ignored.auto": " It was ignored automatically: {reason}.",
   "zoomPanel.ignoreClick": "Ignore click",
   "zoomPanel.useThisClickAgain": "Use this click again",
   "zoomPanel.useClick": "Use click",
@@ -170,5 +170,6 @@
   "magnifierSection.follows.region.title": "The lens stays on the content you place it on",
   "magnifierSection.follows.cursor": "The cursor",
   "magnifierSection.follows.cursor.title": "The lens follows the cursor",
-  "magnifierZoomRow.addTitle": "Add a magnifier at the playhead"
+  "magnifierZoomRow.addTitle": "Add a magnifier at the playhead",
+  "zoomPanel.ignored.whole": "Ignored: no zoom, click effect or sound, and smart speed does not count it.{auto, select, yes { It was ignored automatically: {reason}.} other {}}"
 }

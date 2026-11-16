@@ -3,7 +3,7 @@
   "orPress": "{text}, or press {keys}",
   "reviewHint": ". Review ({keys})",
   "reviewHintNoKey": ". Review mode lists them",
-  "undoHint": " · {keys} to undo",
+  "undoHint.lead": " · {keys} to undo",
   "zoomLevels.range": "{first}–{last}",
   "zoomLevels.both": "{levels} {count, plural, =1 {sets} other {set}} its zoom level, {back} pulls back",
   "zoomLevels.levels": "{levels} {count, plural, =1 {sets} other {set}} its zoom level",
@@ -45,5 +45,6 @@
   "dialog.pauseHint": "Shortcuts pause while you type in a text field. Esc, Enter and Tab keep their usual jobs.",
   "dialog.resetAllTitle": "Every command back to its default shortcuts",
   "dialog.resetAll": "Reset all",
-  "dialog.takeBack": "{count, plural, =0 {Take it back} =1 {Take it back} other {Take them back}}"
+  "dialog.takeBack": "{count, plural, =0 {Take it back} =1 {Take it back} other {Take them back}}",
+  "undoHint.whole": "{keys} to undo"
 }

@@ -17,7 +17,7 @@ import { followPointer } from './pointer'
 import type { Selection } from './selection'
 import type { SnapController } from './snapControl'
 import './freeze.css'
-import { t } from '../../../shared/i18n/t'
+import { t, uiLanguage } from '../../../shared/i18n/t'
 import { fmt } from '../../../shared/i18n/fmt'
 
 interface Props {
@@ -64,8 +64,12 @@ export const FreezeMarks = memo(function FreezeMarks({ px, win, duration, clips,
     return group.keys.has(key) ? ` selected in-group${group.group.anchor === key ? ' anchor' : ''}` : ''
   }
   const groupSize = group.group.keys.length
-  const hint = (id: string): string =>
-    group.keys.has(itemKey('freeze', id)) ? t('style.freezeMarks.groupSelected', { n: fmt.count(groupSize) }) : groupSize || !multi ? '' : t('style.freezeMarks.groupSelectSeveral')
+  /** What a block's tooltip says about the group: in it, how to start one, or nothing. */
+  const groupState = (id: string): 'selected' | 'several' | 'none' => (group.keys.has(itemKey('freeze', id)) ? 'selected' : groupSize || !multi ? 'none' : 'several')
+  const hint = (id: string): string => {
+    const state = groupState(id)
+    return state === 'selected' ? t('style.freezeMarks.tip.groupSelected', { n: fmt.count(groupSize) }) : state === 'several' ? t('style.freezeMarks.tip.groupSelectSeveral') : ''
+  }
 
   // The held freeze's block fills as it plays (written to the DOM: no re-render per frame).
   useEffect(() => {
@@ -146,7 +150,18 @@ export const FreezeMarks = memo(function FreezeMarks({ px, win, duration, clips,
     })
   }
 
-  const deleteHint = keymap.deleteSelection.length ? t('style.freezeMarks.removeHint', { keys: shortcutLabel(keymap.deleteSelection[0]) }) : ''
+  const removeKey = keymap.deleteSelection.length ? shortcutLabel(keymap.deleteSelection[0]) : null
+  const deleteHint = removeKey ? t('style.freezeMarks.tip.removeHint', { keys: removeKey }) : ''
+  /**
+   * A block's tooltip: English keeps its sentence with the remove and group hints put in (merge
+   * group, output-and-languages §9.3); other languages say it whole.
+   */
+  const tooltip = (kind: 'adds' | 'holds', id: string, length: string): string =>
+    uiLanguage() === 'en'
+      ? kind === 'adds'
+        ? t('style.freezeMarks.freezeFrameAddsHere', { length, remove: deleteHint, group: hint(id) })
+        : t('style.freezeMarks.freezeFrameThePicture', { length, group: hint(id) })
+      : t('style.freezeMarks.tip.whole', { kind, length, remove: kind === 'adds' && removeKey ? 'yes' : 'no', keys: removeKey ?? '', group: groupState(id), n: fmt.count(groupSize) })
   const blocks: JSX.Element[] = []
 
   const holdBlock = (h: Hold): void => {
@@ -161,7 +176,7 @@ export const FreezeMarks = memo(function FreezeMarks({ px, win, duration, clips,
         data-freeze={h.id}
         data-sound="pause"
         style={{ left: Math.min(h.at, duration) * px, width }}
-        title={t('style.freezeMarks.freezeFrameAddsHere', { length: seconds(h.length), remove: deleteHint, group: hint(h.id) })}
+        title={tooltip('adds', h.id, seconds(h.length))}
         onPointerDown={onBodyDown(f)}
       >
         <span className="freeze-progress" />
@@ -192,7 +207,7 @@ export const FreezeMarks = memo(function FreezeMarks({ px, win, duration, clips,
           data-freeze={s.id}
           data-sound="continue"
           style={{ left: r.start * px, width }}
-          title={t('style.freezeMarks.freezeFrameThePicture', { length: seconds(held), group: hint(s.id) })}
+          title={tooltip('holds', s.id, seconds(held))}
           onPointerDown={onBodyDown(f)}
         >
           {i === 0 && width > 40 && (

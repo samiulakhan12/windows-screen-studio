@@ -10,7 +10,7 @@ import type { DirectorSpeech } from '../audio/speech'
 import type { FramingOutcome } from '../render/faceFraming'
 import type { CameraLayout, DirectorSettings } from '../types'
 import { fmt } from '../i18n/fmt'
-import { t } from '../i18n/t'
+import { t, uiLanguage } from '../i18n/t'
 
 /** "1.25×", "1.3×", "1×": a zoom as the Framing section rounds it (steps of 0.05). */
 export const zoomText = (zoom: number): string => `${Number(zoom.toFixed(2))}×`
@@ -188,8 +188,11 @@ export const userFramingHint = (): string => t('camera.director.userFramingHint'
 /** The Layout section's hint for a block the director made. */
 export const autoLayoutHint = (): string => t('camera.director.autoLayoutHint')
 
-/** The timeline's title suffix of a block the director made. */
-export const autoTitleSuffix = (): string => t('camera.director.autoTitleSuffix')
+/**
+ * The timeline's title of a block the director made, from the block's own `title`: English adds
+ * today's suffix to it (merge group, output-and-languages §9.3); other languages say it whole.
+ */
+export const autoTitle = (title: string): string => (uiLanguage() === 'en' ? title + t('camera.director.autoTitleSuffix.lead') : t('camera.director.autoTitleSuffix.whole', { title }))
 
 /** What the framing came to, for `data-status`: as the outcome says, with the user's own framing kept named apart. */
 export type FramingStatus = 'framed' | 'not-found' | 'unavailable' | 'skipped' | 'kept'

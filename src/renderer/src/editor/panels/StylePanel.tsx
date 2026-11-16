@@ -20,7 +20,7 @@ import { animatedThumb, frameThumb, wallpaperThumb } from './styleThumbs'
 import { WatermarkSection } from './WatermarkSection'
 import './cursorPanel.css'
 import './stylePanel.css'
-import { t } from '../../../../shared/i18n/t'
+import { t, uiLanguage } from '../../../../shared/i18n/t'
 import { fmt } from '../../../../shared/i18n/fmt'
 
 const L = LOOK_LIMITS
@@ -371,10 +371,15 @@ function StyleDefaultsSection({ project, onNotice }: { project: Project; onNotic
     run(async () => {
       const stored = await window.api.saveStyleDefaults(lookOf(project))
       setSaved(true)
+      const image = project.style.background.type === 'image'
+      const logo = activeWatermark(project)?.kind === 'image' && !stored?.watermark
+      if (!image && !logo) return t('style.stylePanel.savedAsDefault')
+      // English keeps its reasons joined by "; " (merge group, output-and-languages §9.3); other languages say the whole sentence.
+      if (uiLanguage() !== 'en') return t('style.stylePanel.defaultsLeft.whole', { left: image && logo ? 'both' : image ? 'image' : 'logo' })
       const left: string[] = []
-      if (project.style.background.type === 'image') left.push(t('style.stylePanel.defaultsLeft.image'))
-      if (activeWatermark(project)?.kind === 'image' && !stored?.watermark) left.push(t('style.stylePanel.defaultsLeft.logo'))
-      return left.length ? t('style.stylePanel.savedAsDefaultLeft', { left: left.join('; ') }) : t('style.stylePanel.savedAsDefault')
+      if (image) left.push(t('style.stylePanel.defaultsLeft.image'))
+      if (logo) left.push(t('style.stylePanel.defaultsLeft.logo'))
+      return t('style.stylePanel.savedAsDefaultLeft', { left: left.join('; ') })
     }, (reason) => t('style.stylePanel.defaultsNotSaved', { reason }))
 
   const reset = (): Promise<void> =>

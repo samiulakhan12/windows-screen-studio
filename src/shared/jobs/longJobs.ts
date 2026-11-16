@@ -3,7 +3,7 @@
  * the notifications show for the jobs running now. Pure; src/main/longJobs.ts applies it.
  */
 import { fmt } from '../i18n/fmt'
-import { t } from '../i18n/t'
+import { t, uiLanguage } from '../i18n/t'
 
 /** 'ai': a request to AI on this PC expected to take more than 10 s (docs/design/smart-tools.md §9.2). */
 export type JobKind = 'export' | 'captions' | 'analysis' | 'ai'
@@ -167,9 +167,13 @@ export function notificationFor(kind: JobKind, outcome: JobOutcome, files: reado
   if (!files.length) return null
   // A batch that stopped early or lost files says so.
   const failed = outcome.failed ?? 0
-  const more = `${failed > 0 ? t('main.jobs.moreFailed', { count: failed, n: fmt.count(failed) }) : ''}${outcome.stopped ? t('main.jobs.moreStopped') : ''}`
-  if (files.length === 1) return { title: t('main.jobs.exportFinished'), body: t('main.jobs.fileBody', { file: fileName(files[0].path), size: fmt.bytes(files[0].bytes) }) + more, actions: ['open', 'show'] }
-  return { title: t('main.jobs.filesExported', { count: files.length, n: fmt.count(files.length) }), body: `${folderName(files[0].path)}${more}`, actions: ['show'] }
+  // English adds today's pieces to the body (merge group, output-and-languages §9.3); other languages say it whole.
+  const body = (lead: string): string =>
+    uiLanguage() === 'en'
+      ? `${lead}${failed > 0 ? t('main.jobs.more.failed', { count: failed, n: fmt.count(failed) }) : ''}${outcome.stopped ? t('main.jobs.more.stopped') : ''}`
+      : t('main.jobs.more.whole', { lead, failed: failed > 0 ? 'yes' : 'no', count: failed, n: fmt.count(failed), stopped: outcome.stopped ? 'yes' : 'no' })
+  if (files.length === 1) return { title: t('main.jobs.exportFinished'), body: body(t('main.jobs.fileBody', { file: fileName(files[0].path), size: fmt.bytes(files[0].bytes) })), actions: ['open', 'show'] }
+  return { title: t('main.jobs.filesExported', { count: files.length, n: fmt.count(files.length) }), body: body(folderName(files[0].path)), actions: ['show'] }
 }
 
 /** The taskbar share of an export's progress: frames while rendering, unknown while finalizing. */

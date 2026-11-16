@@ -136,7 +136,7 @@
   "director.keptPositionsHint": "You placed the camera yourself (while recording or with Move camera here): those positions are kept either way.",
   "director.userFramingHint": "You framed the camera yourself; turn this on to let the director frame it.",
   "director.autoLayoutHint": "Made by the auto director. Changing it makes it yours; Direct again keeps it.",
-  "director.autoTitleSuffix": " · automatic: change it to keep it when you direct again",
+  "director.autoTitleSuffix.lead": " · automatic: change it to keep it when you direct again",
   "director.framed": "Face centred ({zoom}).",
   "director.framedMoving": "You move around a lot, so the camera is centred on you with little zoom.",
   "director.notFound": "No one was found in the camera picture, so the framing was left as it was.",
@@ -179,5 +179,6 @@
   "directorAnalysis.detectionNotStarted": "person detection could not start",
   "directorAnalysis.cameraUnreadable": "the camera video could not be read",
   "directorAnalysis.detectionStopped": "person detection stopped working",
-  "layout.cameraOnly.short": "Camera"
+  "layout.cameraOnly.short": "Camera",
+  "director.autoTitleSuffix.whole": "{title} · automatic: change it to keep it when you direct again"
 }

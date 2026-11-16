@@ -94,7 +94,7 @@
   "batch.also": "Also",
   "batch.aspectTitle": "The settings below in {aspect}",
   "batch.alsoHint": "The settings below, in more shapes.",
-  "settings.batch": "for “Also” and the encoder",
+  "settings.batch.lead": "for “Also” and the encoder",
   "settings.format": "Format",
   "settings.noSound": "This recording has no sound",
   "settings.resolution": "Resolution",
@@ -230,5 +230,7 @@
   "batch.exportFiles.noun": " file",
   "batch.exportFiles.s": "s",
   "batch.exportFiles.end": "…",
-  "batch.exportFiles.whole": "{count, plural, one {Export {n} file…} other {Export {n} files…}}"
+  "batch.exportFiles.whole": "{count, plural, one {Export {n} file…} other {Export {n} files…}}",
+  "resolution.whole": "{size}{capped, select, yes {; limited to {side} px on the long side} other {}}{upscaled, select, yes {; larger than the recording ({width}×{height}): it will be upscaled} other {}}",
+  "settings.batch.whole": "Settings <em>· for “Also” and the encoder</em>"
 }

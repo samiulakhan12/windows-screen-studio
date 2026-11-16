@@ -91,7 +91,7 @@
   "guide.a4": "A4",
   "guide.letter": "Letter",
   "guide.brandKit": "Use the brand kit",
-  "guide.tooBig": "This file is {size} MB: too big for some email. ",
+  "guide.tooBig.lead": "This file is {size} MB: too big for some email. ",
   "guide.smaller": "Make it smaller",
   "guide.copyGuide": "Copy guide",
   "guide.clicksOnly": "Use clicks only",
@@ -165,7 +165,7 @@
   "guide.count.untitled": "{count, plural, one {{n} needs a title} other {{n} need a title}}",
   "guide.count.typed": "{n} may show typing",
   "guide.check.typed": "{n} may show what you typed",
-  "guide.check.whole": "{count, plural, one {{n} shows the whole screen} other {{n} show the whole screen}}",
+  "guide.check.wholeScreen": "{count, plural, one {{n} shows the whole screen} other {{n} show the whole screen}}",
   "guide.check.now": "Check them now?",
   "guide.typed": "May show what you typed",
   "guide.actualTitle": "The Actual screenshot",
@@ -242,5 +242,7 @@
   "guide.say.blurred": "Blurred the typed text.",
   "guide.say.copiedShot": "Copied the screenshot.",
   "guide.say.adjusted": "Adjusted the screenshot.",
-  "guide.say.zoomedAgain": "The screenshot is zoomed to the click again."
+  "guide.say.zoomedAgain": "The screenshot is zoomed to the click again.",
+  "guide.check.whole": "{count, plural, one {{n} screenshot has not been checked at full size.} other {{n} screenshots have not been checked at full size.}}{more, select, both { {typed} may show what you typed; {wholeCount, plural, one {{whole} shows the whole screen} other {{whole} show the whole screen}}.} typed { {typed} may show what you typed.} whole { {wholeCount, plural, one {{whole} shows the whole screen} other {{whole} show the whole screen}}.} other {}} Check them now?",
+  "guide.tooBig.whole": "This file is {size} MB: too big for some email. <link>Make it smaller</link>"
 }

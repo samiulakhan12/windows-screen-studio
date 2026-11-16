@@ -59,8 +59,8 @@
   "jobs.captionsBody": "Your recording has captions now.",
   "jobs.exportFinished": "Export finished",
   "jobs.fileBody": "{file} · {size}",
-  "jobs.moreFailed": " · {count, plural, other {{n} failed}}",
-  "jobs.moreStopped": " · stopped early",
+  "jobs.more.failed": " · {count, plural, other {{n} failed}}",
+  "jobs.more.stopped": " · stopped early",
   "jobs.filesExported": "{count, plural, other {{n} files exported}}",
   "import.title": "Import a video",
   "import.videos": "Videos",
@@ -84,5 +84,6 @@
   "saveFilter.mov": "QuickTime movie",
   "saveFilter.m4a": "M4A audio",
   "saveFilter.png": "PNG image",
-  "localSpeech.testName": "On this PC"
+  "localSpeech.testName": "On this PC",
+  "jobs.more.whole": "{lead}{failed, select, yes { · {count, plural, other {{n} failed}}} other {}}{stopped, select, yes { · stopped early} other {}}"
 }

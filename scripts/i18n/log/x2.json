@@ -2106,14 +2106,14 @@
     "sample": {}
   },
   {
-    "key": "style.selectionPanel.textTitlesAndChapter",
+    "key": "style.selectionPanel.lookKeys.intro",
     "file": "src/renderer/src/editor/panels/SelectionPanel.tsx",
     "line": 305,
     "english": "Text, titles and chapter names are edited one at a time. ",
     "sample": {}
   },
   {
-    "key": "style.selectionPanel.copiesOneItemS",
+    "key": "style.selectionPanel.lookKeys.copy",
     "file": "src/renderer/src/editor/panels/SelectionPanel.tsx",
     "line": 305,
     "english": "«value» copies one item's look; ",
@@ -2122,7 +2122,7 @@
     }
   },
   {
-    "key": "style.selectionPanel.pastesItOntoThe",
+    "key": "style.selectionPanel.lookKeys.paste",
     "file": "src/renderer/src/editor/panels/SelectionPanel.tsx",
     "line": 306,
     "english": "«value» pastes it onto the selection.",
@@ -2230,14 +2230,14 @@
     "sample": {}
   },
   {
-    "key": "zoom.zoomPanel.ignoredNoZoomClick",
+    "key": "zoom.zoomPanel.ignored.lead",
     "file": "src/renderer/src/editor/panels/ZoomPanel.tsx",
     "line": 120,
     "english": "Ignored: no zoom, click effect or sound, and smart speed does not count it.",
     "sample": {}
   },
   {
-    "key": "zoom.zoomPanel.itWasIgnoredAutomatically",
+    "key": "zoom.zoomPanel.ignored.auto",
     "file": "src/renderer/src/editor/panels/ZoomPanel.tsx",
     "line": 121,
     "english": " It was ignored automatically: «value».",
@@ -5661,7 +5661,7 @@
     "sample": {}
   },
   {
-    "key": "text.overlayEditor.dragToPlaceIt",
+    "key": "text.overlayEditor.dragToPlaceIt.lead",
     "file": "src/renderer/src/editor/OverlayEditor.tsx",
     "line": 175,
     "english": "logo.png · drag to place it ·",
@@ -8348,7 +8348,7 @@
     }
   },
   {
-    "key": "style.freezeMarks.groupSelected",
+    "key": "style.freezeMarks.tip.groupSelected",
     "file": "src/renderer/src/editor/FreezeMarks.tsx",
     "line": 66,
     "english": " · selected: drag to move all 3, Ctrl+click to leave it out",
@@ -8357,14 +8357,14 @@
     }
   },
   {
-    "key": "style.freezeMarks.groupSelectSeveral",
+    "key": "style.freezeMarks.tip.groupSelectSeveral",
     "file": "src/renderer/src/editor/FreezeMarks.tsx",
     "line": 66,
     "english": " · Ctrl+click to select several",
     "sample": {}
   },
   {
-    "key": "style.freezeMarks.removeHint",
+    "key": "style.freezeMarks.tip.removeHint",
     "file": "src/renderer/src/editor/FreezeMarks.tsx",
     "line": 148,
     "english": ", Delete to remove",
@@ -11236,7 +11236,7 @@
     "sample": {}
   },
   {
-    "key": "camera.director.autoTitleSuffix",
+    "key": "camera.director.autoTitleSuffix.lead",
     "file": "src/shared/editor/directorCopy.ts",
     "line": 170,
     "english": " · automatic: change it to keep it when you direct again",

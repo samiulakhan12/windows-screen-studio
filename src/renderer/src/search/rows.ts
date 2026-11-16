@@ -5,7 +5,7 @@
 import type { SearchHit, SearchMoment, SnippetPart } from '../../../shared/api/search'
 import type { SearchKind } from '../../../shared/search/types'
 import { fmt } from '../../../shared/i18n/fmt'
-import { t } from '../../../shared/i18n/t'
+import { t, uiLanguage } from '../../../shared/i18n/t'
 import { SEARCH_LIMITS } from '../../../shared/search/types'
 
 /*
@@ -23,6 +23,11 @@ export function spokenTime(seconds: number): string {
   const h = Math.floor(s / 3600)
   const m = Math.floor((s % 3600) / 60)
   const sec = s % 60
+  // Other languages say the time whole (merge group, output-and-languages §9.3); English keeps its parts joined by spaces.
+  if (uiLanguage() !== 'en') {
+    const shape = `${h ? 'h' : ''}${m ? 'm' : ''}${sec || (!h && !m) ? 's' : ''}`
+    return t('review.search.time.whole', { shape, hours: h, h: fmt.count(h), minutes: m, m: fmt.count(m), seconds: sec, s: fmt.count(sec) })
+  }
   const parts: string[] = []
   if (h) parts.push(t('review.search.time.hours', { count: h, n: fmt.count(h) }))
   if (m) parts.push(t('review.search.time.minutes', { count: m, n: fmt.count(m) }))

@@ -27,7 +27,7 @@ import '../shapes.css'
 import { overlayLabel } from '../../../../shared/editor/overlays'
 import { fmt } from '../../../../shared/i18n/fmt'
 import { graphicLabel } from './GraphicsPanel'
-import { t, type MessageKey } from '../../../../shared/i18n/t'
+import { t, uiLanguage, type MessageKey } from '../../../../shared/i18n/t'
 
 /** Section titles of the look classes, in their order (§4.9 item 5). */
 const CLASS_TITLE: Readonly<Record<LookClass, MessageKey>> = {
@@ -91,6 +91,13 @@ function itemName(p: Project, e: ItemEntry): string {
       return g ? graphicLabel(g) : t('style.selectionPanel.popUp')
     }
   }
+}
+
+
+/** The hint about copying looks in a language other than English: one whole sentence for the keys there are (merge group, §9.3). */
+export function lookKeysHint(copy: string | undefined, paste: string | undefined): string {
+  const keys = copy && paste ? 'both' : copy ? 'copy' : paste ? 'paste' : 'none'
+  return t('style.selectionPanel.lookKeys.whole', { keys, copy: copy ? shortcutLabel(copy) : '', paste: paste ? shortcutLabel(paste) : '' })
 }
 
 /**
@@ -292,11 +299,16 @@ export function SelectionPanel(props: InspectorProps & { onCommand: (id: Command
           ))}
         </Section>
       ))}
-      <p className="hint">
-        {t('style.selectionPanel.textTitlesAndChapter')}
-        {keymap.copyLook[0] ? t('style.selectionPanel.copiesOneItemS', { keys: shortcutLabel(keymap.copyLook[0]) }) : ''}
-        {keymap.pasteLook[0] ? t('style.selectionPanel.pastesItOntoThe', { keys: shortcutLabel(keymap.pasteLook[0]) }) : ''}
-      </p>
+      {uiLanguage() === 'en' ? (
+        // English keeps today's three text nodes (merge group, output-and-languages §9.3).
+        <p className="hint">
+          {t('style.selectionPanel.lookKeys.intro')}
+          {keymap.copyLook[0] ? t('style.selectionPanel.lookKeys.copy', { keys: shortcutLabel(keymap.copyLook[0]) }) : ''}
+          {keymap.pasteLook[0] ? t('style.selectionPanel.lookKeys.paste', { keys: shortcutLabel(keymap.pasteLook[0]) }) : ''}
+        </p>
+      ) : (
+        <p className="hint">{lookKeysHint(keymap.copyLook[0], keymap.pasteLook[0])}</p>
+      )}
     </div>
   )
 }

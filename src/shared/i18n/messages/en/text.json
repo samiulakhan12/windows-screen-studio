@@ -163,7 +163,7 @@
   "overlayEditor.dragToMoveArrow": "{label}: drag to move, arrow keys move it",
   "overlayEditor.dragToMoveHandles": "Drag to move · handles resize (Shift: keep the shape) · round handle rotates",
   "overlayEditor.dragToRotateShift": "Drag to rotate (Shift: 15° steps)",
-  "overlayEditor.dragToPlaceIt": "{label} · drag to place it ·",
+  "overlayEditor.dragToPlaceIt.lead": "{label} · drag to place it ·",
   "overlayTrack.doubleClickToAdd": "Double-click to add an image",
   "overlayTrack.imagesAndStickers": "Images and stickers",
   "overlayDropZone.dropAnImageTo": "Drop an image to add it at the playhead",
@@ -396,5 +396,6 @@
   "contrastMeter.hard": "Hard to read on this video",
   "contrastMeter.shown": "{where, select, yes {Contrast {ratio} : 1 at {time} · {words}} other {Contrast {ratio} : 1 · {words}}}",
   "contrastMeter.spoken": "{where, select, yes {Contrast {ratio} to 1, {words} at {time}} other {Contrast {ratio} to 1, {words}}}",
-  "imagesPanel.formats": "PNG, JPG, WebP, SVG or GIF, up to 25 MB"
+  "imagesPanel.formats": "PNG, JPG, WebP, SVG or GIF, up to 25 MB",
+  "overlayEditor.dragToPlaceIt.whole": "{label} · drag to place it · <link>Done</link>"
 }

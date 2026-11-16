@@ -32,9 +32,9 @@
   "preview.clickToPlay": "Click to play or pause",
   "preview.groupOutline": "Selected · click to edit it alone, Ctrl+click to leave it out",
   "preview.groupHint": "{count, plural, =1 {{n} selected item} other {{n} selected items}} on screen · Ctrl+click to add or remove",
-  "preview.focusHint": "Click or drag to set where this zoom looks ·",
+  "preview.focusHint.lead": "Click or drag to set where this zoom looks ·",
   "preview.regionBox": "Drag to move · corners resize (Shift: any shape)",
-  "preview.regionHint": "Drag to draw the area to zoom into (Shift: any shape) ·",
+  "preview.regionHint.lead": "Drag to draw the area to zoom into (Shift: any shape) ·",
   "preview.moveText": "Drag to move the text",
   "preview.moveEnd": "Drag to move this end",
   "preview.moveArrowhead": "Drag to move the arrowhead",
@@ -246,5 +246,7 @@
   "media.loadFailed": "Could not load video ({reason})",
   "media.readFailed": "Could not read video ({reason})",
   "media.unknownError": "unknown error",
-  "media.imageFailed": "Could not load image"
+  "media.imageFailed": "Could not load image",
+  "preview.focusHint.whole": "Click or drag to set where this zoom looks · <link>Done</link>",
+  "preview.regionHint.whole": "Drag to draw the area to zoom into (Shift: any shape) · <link>Done</link>"
 }

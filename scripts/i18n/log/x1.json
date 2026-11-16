@@ -1193,7 +1193,7 @@
     "sample": {}
   },
   {
-    "key": "keys.undoHint",
+    "key": "keys.undoHint.lead",
     "file": "src/shared/editor/shortcuts.ts",
     "line": 306,
     "english": " · Ctrl + Z to undo",
@@ -2625,7 +2625,7 @@
     ]
   },
   {
-    "key": "editor.preview.focusHint",
+    "key": "editor.preview.focusHint.lead",
     "file": "src/renderer/src/editor/PreviewStage.tsx",
     "line": 525,
     "english": "Click or drag to set where this zoom looks ·",
@@ -2639,7 +2639,7 @@
     "sample": {}
   },
   {
-    "key": "editor.preview.regionHint",
+    "key": "editor.preview.regionHint.lead",
     "file": "src/renderer/src/editor/PreviewStage.tsx",
     "line": 599,
     "english": "Drag to draw the area to zoom into (Shift: any shape) ·",

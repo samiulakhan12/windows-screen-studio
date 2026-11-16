@@ -1,5 +1,5 @@
 import { useMemo, useRef, useSyncExternalStore, type PointerEvent as ReactPointerEvent } from 'react'
-import { autoTitleSuffix } from '../../../shared/editor/directorCopy'
+import { autoTitle } from '../../../shared/editor/directorCopy'
 import { addLayoutAt, cornerName, dragLayout, dragLayoutTimes, layoutDragBounds, LAYOUT_OPTIONS, layoutLabel, layoutShowTime, stayAround } from '../../../shared/editor/layouts'
 import { sameSpan, type SnapExclude } from '../../../shared/editor/snapping'
 import { overlaps } from '../../../shared/editor/timelineScale'
@@ -18,6 +18,9 @@ import type { MultiSelect } from './multiSelectControl'
 import type { SnapController } from './snapControl'
 import './camera.css'
 import { t } from '../../../shared/i18n/t'
+
+/** A block's tooltip: its layout and time, and for a block the director made, that it is automatic. */
+const blockTitle = (title: string, auto: boolean): string => (auto ? autoTitle(title) : title)
 
 export interface TrackSlotProps {
   /** Pixels per second of source time. */
@@ -205,7 +208,7 @@ export function LayoutTrack({ px, win, duration, selection, onSelect, scrub, sna
               className={`seg layout-seg ${s.layout} ${auto ? 'auto' : ''} ${selId === s.id ? 'selected' : ''}`}
               style={{ left: s.start * px, width: w, ['--edge' as string]: `${edgeWidth(w)}px` }}
               onPointerDown={onSegmentDown(s)}
-              title={`${corner ? t('camera.layoutTrack.blockCorner', { layout: layoutLabel(s.layout), corner, start: fmt.clock(s.start), end: fmt.clock(s.end) }) : t('camera.layoutTrack.block', { layout: layoutLabel(s.layout), start: fmt.clock(s.start), end: fmt.clock(s.end) })}${auto ? autoTitleSuffix() : ''}`}
+              title={blockTitle(corner ? t('camera.layoutTrack.blockCorner', { layout: layoutLabel(s.layout), corner, start: fmt.clock(s.start), end: fmt.clock(s.end) }) : t('camera.layoutTrack.block', { layout: layoutLabel(s.layout), start: fmt.clock(s.start), end: fmt.clock(s.end) }), auto)}
             >
               {ramp && w > 24 && (
                 <>

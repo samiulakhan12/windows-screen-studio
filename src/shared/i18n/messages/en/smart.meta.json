@@ -279,8 +279,9 @@
   "guide.brandKit": {
     "description": "guidePanel, text of <label> (src/renderer/src/guide/GuidePanel.tsx:900)."
   },
-  "guide.tooBig": {
-    "description": "guidePanel, text of <p> (src/renderer/src/guide/GuidePanel.tsx:917)."
+  "guide.tooBig.lead": {
+    "description": "guidePanel, text of <p> (src/renderer/src/guide/GuidePanel.tsx:917). English shows it in pieces as before (a merge group, output-and-languages §9.3); other languages show only the group’s .whole message.",
+    "merge": true
   },
   "guide.smaller": {
     "description": "guidePanel, text of <button> (src/renderer/src/guide/GuidePanel.tsx:919)."
@@ -463,7 +464,8 @@
     "description": "Make a guide: the count line under the steps, its first part; parts are joined with \" · \"."
   },
   "guide.check.unchecked": {
-    "description": "Make a guide: the question before the first Save or Copy, its first sentence. More sentences and \"Check them now?\" follow."
+    "description": "Make a guide: the question before the first Save or Copy, its first sentence. More sentences and \"Check them now?\" follow. English shows it in pieces as before (a merge group, output-and-languages §9.3); other languages show only the group’s .whole message.",
+    "merge": true
   },
   "guide.typedIn": {
     "description": "Make a guide: the chip on a screenshot that may show typing, with the step where it was typed."
@@ -499,13 +501,16 @@
     "description": "Make a guide: the count line, how many screenshots may show what was typed."
   },
   "guide.check.typed": {
-    "description": "Make a guide: inside the question before saving, how many unchecked screenshots may show typing; parts are joined with \"; \"."
+    "description": "Make a guide: inside the question before saving, how many unchecked screenshots may show typing; parts are joined with \"; \". English shows it in pieces as before (a merge group, output-and-languages §9.3); other languages show only the group’s .whole message.",
+    "merge": true
   },
-  "guide.check.whole": {
-    "description": "Make a guide: inside the question before saving, how many unchecked screenshots show the whole screen."
+  "guide.check.wholeScreen": {
+    "description": "Make a guide: inside the question before saving, how many unchecked screenshots show the whole screen. English shows it in pieces as before (a merge group, output-and-languages §9.3); other languages show only the group’s .whole message.",
+    "merge": true
   },
   "guide.check.now": {
-    "description": "Make a guide: the end of the question before saving (Check now / Save anyway follow)."
+    "description": "Make a guide: the end of the question before saving (Check now / Save anyway follow). English shows it in pieces as before (a merge group, output-and-languages §9.3); other languages show only the group’s .whole message.",
+    "merge": true
   },
   "guide.typed": {
     "description": "Make a guide: the chip on a screenshot that may show typing that is no listed step."
@@ -743,5 +748,11 @@
   },
   "guide.say.zoomedAgain": {
     "description": "Make a guide: what the panel's live region says after Reset in the viewer's Adjust."
+  },
+  "guide.check.whole": {
+    "description": "Make a guide: the question before the first Save or Copy while screenshots are not checked, whole. {n} screenshots are not checked; more says which of these follow: {typed} of them may show typing, {whole} show the whole screen. Used only when the UI language is not English (merge group, output-and-languages §9.3): English builds the same sentence from its pieces."
+  },
+  "guide.tooBig.whole": {
+    "description": "Make a guide: after saving a web page guide larger than email takes. {size} is a whole number of megabytes; <link> is the button that saves it again smaller. Used only when the UI language is not English (merge group, output-and-languages §9.3): English builds the same sentence from its pieces."
   }
 }

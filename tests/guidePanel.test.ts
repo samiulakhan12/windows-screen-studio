@@ -1038,6 +1038,29 @@ describe('the helpers', () => {
     expect(checkQuestion({ unchecked: 0, typed: 0, whole: 0 })).toBeNull()
   })
 
+  it('the check question is one whole message outside English (merge group, output-and-languages §9.3), saying what English builds', async () => {
+    const { setCatalogue, t } = await import('../src/shared/i18n/t')
+    const english = (): void => setCatalogue({ language: 'en', messages: {}, formatLocale: 'en-US', dir: 'ltr' })
+    const counts = [0, 1, 2, 1000]
+    try {
+      for (const unchecked of [1, 2, 1000])
+        for (const typed of counts)
+          for (const whole of counts) {
+            english()
+            const built = checkQuestion({ unchecked, typed, whole })
+            // The other languages' path, with the English words.
+            setCatalogue({ language: 'es', messages: {}, formatLocale: 'en-US', dir: 'ltr' })
+            expect(checkQuestion({ unchecked, typed, whole })).toBe(built)
+          }
+      // A translated UI says the group's whole message.
+      setCatalogue({ language: 'es', messages: { 'smart.guide.check.whole': 'QUESTION {n}/{typed}/{whole} {more}' }, formatLocale: 'en-US', dir: 'ltr' })
+      expect(checkQuestion({ unchecked: 4, typed: 1, whole: 2 })).toBe('QUESTION 4/1/2 both')
+      expect(t('smart.guide.check.now')).toBe('Check them now?')
+    } finally {
+      english()
+    }
+  })
+
   it('Check screenshots walks typing steps first, then whole-screen shots, then the rest', () => {
     expect(checkOrder(['a', 'b', 'c', 'd'], new Set(['c']), new Set(['b', 'c']))).toEqual(['c', 'b', 'a', 'd'])
   })

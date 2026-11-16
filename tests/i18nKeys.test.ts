@@ -114,7 +114,8 @@ describe('test 71: the shortcut sentences', () => {
         'keys.withShortcut': '{text} ({keys})',
         'keys.orPress': '{text}, অথবা {keys} চাপুন',
         'keys.reviewHint': '। রিভিউ ({keys})',
-        'keys.undoHint': ' · ফিরিয়ে নিতে {keys}',
+        // A translation of the undo hint is its merge group's whole phrase; the app adds the " · " before it.
+        'keys.undoHint.whole': 'ফিরিয়ে নিতে {keys}',
         'keys.zoomLevels.both': '{levels} দিয়ে জুমের মাত্রা, {back} দিয়ে পিছিয়ে আসা',
         'keys.reserved.closesWindow': '{keys} উইন্ডো বন্ধ করে।'
       },

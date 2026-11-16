@@ -5,11 +5,12 @@
   "about.version": {
     "description": "Settings › About: the app version under its name; {version} is a version number such as 0.7.1."
   },
-  "about.builtBy": {
-    "description": "Settings › About: who makes Flown, before a link to their website; {company} is the company name (Qbexel), never translated.",
+  "about.builtBy.lead": {
+    "description": "Settings › About: who makes Flown, before a link to their website; {company} is the company name (Qbexel), never translated. English shows it in pieces as before (a merge group, output-and-languages §9.3); other languages show only the group’s .whole message.",
     "dnt": [
       "Qbexel"
-    ]
+    ],
+    "merge": true
   },
   "dialog.close": {
     "description": "Settings: the accessible name of the close (×) button in the dialog’s header."
@@ -23,11 +24,13 @@
   "storage.measuring": {
     "description": "Settings › Storage: shown while the disk use is measured."
   },
-  "storage.total": {
-    "description": "Settings › Storage: the disk use of all recordings, the size in bold. {size} is a size such as \"95 KB\"."
+  "storage.line.total": {
+    "description": "Settings › Storage: the disk use of all recordings, the size in bold. {size} is a size such as \"95 KB\". English shows it in pieces as before (a merge group, output-and-languages §9.3); other languages show only the group’s .whole message.",
+    "merge": true
   },
-  "storage.free": {
-    "description": "Settings › Storage: follows \"Recordings use …\" when the free space is known; {free} is a size. Starts with a space and a middle dot."
+  "storage.line.free": {
+    "description": "Settings › Storage: follows \"Recordings use …\" when the free space is known; {free} is a size. Starts with a space and a middle dot. English shows it in pieces as before (a merge group, output-and-languages §9.3); other languages show only the group’s .whole message.",
+    "merge": true
   },
   "storage.empty": {
     "description": "Settings › Storage: there are no recordings to list."
@@ -757,5 +760,14 @@
   },
   "provider.preset.other": {
     "description": "AI providers: a service at a web address the user types."
+  },
+  "about.builtBy.whole": {
+    "description": "Settings › About: who makes Flown, whole. {company} is the company name (Qbexel); <link> is the link to its website, {site} its address as shown; neither is translated. Used only when the UI language is not English (merge group, output-and-languages §9.3): English builds the same sentence from its pieces.",
+    "dnt": [
+      "Qbexel"
+    ]
+  },
+  "storage.line.whole": {
+    "description": "Settings › Storage: the disk use of all recordings, the size in bold, and the drive's free space when it is known (hasFree). {size} and {free} are sizes such as \"95 KB\". Used only when the UI language is not English (merge group, output-and-languages §9.3): English builds the same sentence from its pieces."
   }
 }
