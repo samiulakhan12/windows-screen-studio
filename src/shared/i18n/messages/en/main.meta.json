@@ -91,5 +91,134 @@
   },
   "busy.share": {
     "description": "Why Flown cannot restart now: a video is being shared."
+  },
+  "captionsIpc.exportCaptions": {
+    "description": "Main process: a dialog or notification text (main/captionsIpc.ts)."
+  },
+  "exportIpc.exportToFolder": {
+    "description": "Main process: a dialog or notification text (main/exportIpc.ts)."
+  },
+  "exportIpc.exportHere": {
+    "description": "Main process: a dialog or notification text (main/exportIpc.ts)."
+  },
+  "guideIpc.saveTheGuideAs": {
+    "description": "Main process: a dialog or notification text (main/guide/guideIpc.ts)."
+  },
+  "guideIpc.saveTheGuideIn": {
+    "description": "Main process: a dialog or notification text (main/guide/guideIpc.ts)."
+  },
+  "lutImport.thisLutCouldNot": {
+    "description": "Main process: a dialog or notification text (main/lutImport.ts)."
+  },
+  "projectsIpc.chooseBackgroundImage": {
+    "description": "Main process: a dialog or notification text (main/projectsIpc.ts)."
+  },
+  "projectsIpc.chooseCursorImage": {
+    "description": "Main process: a dialog or notification text (main/projectsIpc.ts)."
+  },
+  "shareIpc.addAFolderTo": {
+    "description": "Main process: a dialog or notification text (main/share/shareIpc.ts)."
+  },
+  "shareIpc.addFolder": {
+    "description": "Main process: a dialog or notification text (main/share/shareIpc.ts)."
+  },
+  "brandKit.logoTitle": {
+    "description": "Settings › Brand kit: the title of the file dialog that picks a logo."
+  },
+  "brandKit.fontTitle": {
+    "description": "Settings › Brand kit: the title of the file dialog that adds a font."
+  },
+  "export.thumbnailTitle": {
+    "description": "The title of the save dialog for a thumbnail image."
+  },
+  "export.saveTitle": {
+    "description": "The title of the save dialog for an export."
+  },
+  "guide.pdfTitle": {
+    "description": "The title of the save dialog for a step-by-step guide as PDF.",
+    "dnt": [
+      "PDF"
+    ]
+  },
+  "guide.demoTitle": {
+    "description": "The title of the save dialog for a click-through demo."
+  },
+  "guide.htmlTitle": {
+    "description": "The title of the save dialog for a guide as a web page."
+  },
+  "jobs.exporting": {
+    "description": "Windows taskbar: what a running export is doing."
+  },
+  "jobs.makingCaptions": {
+    "description": "Windows taskbar: what a running captions job is doing."
+  },
+  "jobs.reading": {
+    "description": "Windows taskbar: what a running sound or screen analysis is doing."
+  },
+  "jobs.writingAi": {
+    "description": "Windows taskbar: what a long request to AI on this PC is doing."
+  },
+  "jobs.resumeExport": {
+    "description": "Windows taskbar thumbnail button tooltip."
+  },
+  "jobs.pauseExport": {
+    "description": "Windows taskbar thumbnail button tooltip."
+  },
+  "jobs.stopExport": {
+    "description": "Windows taskbar thumbnail button tooltip."
+  },
+  "jobs.stopAi": {
+    "description": "Windows taskbar thumbnail button tooltip."
+  },
+  "jobs.stopCaptions": {
+    "description": "Windows taskbar thumbnail button tooltip."
+  },
+  "jobs.exportFailed": {
+    "description": "Windows notification title when an export fails; the body says why."
+  },
+  "jobs.captionsFailed": {
+    "description": "Windows notification title when making captions fails."
+  },
+  "jobs.somethingWrong": {
+    "description": "Windows notification body when a job failed without a reason."
+  },
+  "jobs.captionsReady": {
+    "description": "Windows notification title when captions are made."
+  },
+  "jobs.captionsBody": {
+    "description": "Windows notification body when captions are made and the recording has no name."
+  },
+  "jobs.exportFinished": {
+    "description": "Windows notification title when one file was exported."
+  },
+  "jobs.fileBody": {
+    "description": "Windows notification body: the exported file name and its size (e.g. \"Demo.mp4 · 2.8 MB\").",
+    "user": [
+      "file"
+    ]
+  },
+  "jobs.moreFailed": {
+    "description": "Added after a batch export notification body when some files failed (starts with the \" · \" separator)."
+  },
+  "jobs.moreStopped": {
+    "description": "Added after a batch export notification body when the batch was stopped (starts with the \" · \" separator)."
+  },
+  "jobs.filesExported": {
+    "description": "Windows notification title when a batch exported several files."
+  },
+  "import.title": {
+    "description": "Title of the Windows open dialog for importing a video file."
+  },
+  "import.videos": {
+    "description": "File type filter in the Windows open dialog: video files."
+  },
+  "import.allFiles": {
+    "description": "File type filter in the Windows open dialog: any file."
+  },
+  "projectsIpc.images": {
+    "description": "File type filter in the Windows open dialog for a background image."
+  },
+  "projectsIpc.cursorImages": {
+    "description": "File type filter in the Windows open dialog for a cursor image."
   }
 }

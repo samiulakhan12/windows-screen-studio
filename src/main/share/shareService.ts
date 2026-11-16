@@ -10,6 +10,7 @@ import { placeText } from '../../shared/share/cloudFolders'
 import { folderPlaces, hookPlaces, withPlace } from '../../shared/share/names'
 import { cleanTitle, maskWebhook, shareMessage, type SharePlace, type WebhookService } from '../../shared/share/webhooks'
 import type { CopyResult } from './copyToFolder'
+import { t } from '../../shared/i18n/t'
 
 export interface ShareDeps {
   /** Folders found and added, with whether each is on. */
@@ -102,14 +103,14 @@ export class ShareService {
 
   /** Starts a run; throws a message to show when it cannot. */
   async start(file: unknown, targets: unknown, rawMeta: unknown): Promise<ShareRunView> {
-    if (typeof file !== 'string' || !this.deps.isExported(file)) throw new Error('Only files exported in this session can be shared.')
-    if (!Array.isArray(targets) || targets.length === 0 || targets.length > MAX_TARGETS || !targets.every((t) => typeof t === 'string')) throw new Error('Choose where to share it.')
+    if (typeof file !== 'string' || !this.deps.isExported(file)) throw new Error(t('errors.shareService.onlyFilesExportedIn'))
+    if (!Array.isArray(targets) || targets.length === 0 || targets.length > MAX_TARGETS || !targets.every((t) => typeof t === 'string')) throw new Error(t('errors.shareService.chooseWhereToShare'))
     const meta = validMeta(rawMeta)
     const folders = await this.deps.folders()
     // Checked after the wait and before the run is added, with nothing awaited between: two starts
     // at once (a double click, the notification and the page) cannot both pass.
     const active = [...this.runs.values()].filter((r) => !r.view.finished)
-    if (active.length >= MAX_RUNS) throw new Error('Wait for the other shares to finish.')
+    if (active.length >= MAX_RUNS) throw new Error(t('errors.shareService.waitForTheOther'))
     const ids = [...new Set(targets as string[])]
     const steps: ShareStepView[] = []
     const folderPlace = folderPlaces(folders)
@@ -117,20 +118,20 @@ export class ShareService {
       const f = folders.find((x) => x.id === id)
       if (f) {
         const name = withPlace(f.label, folderPlace.get(id))
-        if (!f.on) throw new Error(`${name} is turned off in Settings › Share.`)
+        if (!f.on) throw new Error(t('errors.shareService.isTurnedOffIn', { name: String(name) }))
         steps.push({ target: id, kind: 'copy', service: f.service, label: name, state: 'waiting' })
       }
     }
     const hookPlace = ids.some((id) => !folders.some((x) => x.id === id)) ? this.hookPlaces() : new Map<string, string>()
     for (const id of ids) {
       if (folders.some((x) => x.id === id)) continue
-      if (id.startsWith('cf')) throw new Error('This folder is not set up any more. Look in Settings › Share.')
+      if (id.startsWith('cf')) throw new Error(t('errors.shareService.thisFolderIsNot'))
       const h = this.deps.hook(id)
       steps.push({ target: id, kind: 'post', service: h.service, label: withPlace(h.label, hookPlace.get(id)), state: 'waiting' })
     }
     for (const r of active) {
       const busy = steps.find((s) => r.view.file === file && r.view.steps.some((x) => x.target === s.target && (x.state === 'running' || x.state === 'waiting')))
-      if (busy) throw new Error(`Already sharing to ${busy.label}.`)
+      if (busy) throw new Error(t('errors.shareService.alreadySharingTo', { label: String(busy.label) }))
     }
     const run: Run = {
       view: { id: `sr${(this.counter++).toString(36)}${Date.now().toString(36)}`, file, steps, finished: false },
@@ -249,7 +250,7 @@ export class ShareService {
           this.places.set(file, { text: placeText(folder.label), ...(link ? { link } : {}) })
           console.info(`Share: copied 1 file to ${folder.service}${result.already ? ' (already there)' : ''}`)
         } else {
-          if (copyFailed) throw new Error('Not posted: the copy failed.')
+          if (copyFailed) throw new Error(t('errors.shareService.notPostedTheCopy'))
           const hook = this.deps.hook(step.target)
           await this.deps.post(hook, shareMessage(run.meta, this.places.get(file)), signal)
           console.info(`Share: posted to ${hook.service}`)

@@ -10,9 +10,10 @@ import path from 'node:path'
 import type { CopyCost } from '../../shared/api/projects'
 import { copiedFile, linkAllowed, NOT_COPIED_DIRS } from '../projectCopy'
 import * as projects from '../projects'
+import { t } from '../../shared/i18n/t'
 
-/** Why the cost could not be read, as the panel shows it. */
-const READ_FAILED = "The recording's files could not be read."
+/** Why the cost could not be read, as the panel shows it (made when thrown, in the UI language). */
+const readFailed = (): string => t('errors.copyCost.unreadable')
 
 /** Bytes of the regular file `file` (no links, no folders), or 0. */
 async function fileBytes(file: string): Promise<number> {
@@ -35,7 +36,7 @@ export async function copyCost(sourceId: unknown): Promise<CopyCost> {
   try {
     entries = await fs.readdir(src)
   } catch {
-    throw new Error(READ_FAILED)
+    throw new Error(readFailed())
   }
   let bytes = 0
   for (const entry of entries) {
@@ -57,7 +58,7 @@ export async function copyCost(sourceId: unknown): Promise<CopyCost> {
     const st = await fs.statfs(root)
     free = st.bavail * st.bsize
   } catch {
-    throw new Error(READ_FAILED)
+    throw new Error(readFailed())
   }
   return { linked, bytes, free }
 }

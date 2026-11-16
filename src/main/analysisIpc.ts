@@ -27,6 +27,7 @@ import { stopVoiceClean } from './voice/voiceIpc'
 import { stopSoundScans } from './sounds/soundsIpc'
 import { stopFilmstrip } from './filmstrip'
 import { stopSceneScan } from './sceneScan'
+import { t } from '../shared/i18n/t'
 
 /** Shortest still stretch looked for: longer minimums are filtered from the same result. */
 const DETECT_MIN = 0.5
@@ -166,7 +167,7 @@ export async function detectStill(id: unknown, minSeconds: unknown, crop?: unkno
   const inside = requestedCrop(crop)
   const file = path.join(dir, 'screen.mp4')
   const stat = await fs.stat(file).catch(() => null)
-  if (!stat?.isFile()) throw new Error('the video file is missing')
+  if (!stat?.isFile()) throw new Error(t('errors.analysisIpc.theVideoFileIs'))
   let duration = NaN
   // A 30 fps proxy has a key frame only every 0.5 s (as long as the shortest still looked for): all its frames are decoded.
   let keyFramesOnly = true
@@ -182,7 +183,7 @@ export async function detectStill(id: unknown, minSeconds: unknown, crop?: unkno
   let result = cache.get(key)
   if (!result) {
     // Stopped while the file was being looked at (the editor closed, the project is being deleted).
-    if (running.generation(id) !== generation) throw new Error('the analysis was stopped')
+    if (running.generation(id) !== generation) throw new Error(t('errors.analysisIpc.theAnalysisWasStopped'))
     // About a minute, plus as long again as the recording: decoding is far faster than real time.
     const timeoutMs = 60_000 + (Number.isFinite(duration) ? Math.min(duration, 4 * 3600) : 3600) * 1000
     const run = runFreezeDetect(file, id, timeoutMs, keyFramesOnly, inside).then((r) => {

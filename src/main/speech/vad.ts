@@ -21,6 +21,7 @@ import type { ProjectProcesses } from '../projectProcesses'
 import { readProject } from '../projects'
 import { commonArgs, markIllegalInstruction, runHelper, selectHelper, speechHelperPaths, SPEECH_TIMING, type HelperChoice } from './helper'
 import { sha256File } from './models'
+import { t } from '../../shared/i18n/t'
 
 /** The project's file of detector results. */
 export const SPEECH_CACHE_FILE = path.join('.cache', 'speech.json')
@@ -176,7 +177,8 @@ function writeEntry(projectId: string, dir: string, source: 'mic' | 'mix', entry
 /** Resolves once every queued write of `projectId` is done (tests). */
 export const speechWritesSettled = (projectId: string): Promise<void> => writes.get(projectId) ?? Promise.resolve()
 
-const STOPPED = 'The sound measurement was stopped.'
+/** A stopped measurement's message (made when thrown, in the UI language). */
+const stopped = (): string => t('errors.audioAnalysis.theSoundMeasurementWas')
 /** Files the detector definitively failed on this session (the next start tries again). */
 const failedFiles = new Set<string>()
 
@@ -263,7 +265,7 @@ export async function speechOfFile(projectId: string, source: 'mic' | 'mix', fil
     return null
   })
   if (!helper) return null
-  if (processes.generation(projectId) !== generation) throw new Error(STOPPED)
+  if (processes.generation(projectId) !== generation) throw new Error(stopped())
   let r = await detect(helper.exe, helper.vadModel, file, projectId, processes, levels)
   if ('illegal' in r) {
     // The standard build faulted: the compatible one for the session, and the detector stays on.
@@ -276,7 +278,7 @@ export async function speechOfFile(projectId: string, source: 'mic' | 'mix', fil
     }
     r = await detect(again.exe, again.vadModel, file, projectId, processes, levels)
   }
-  if ('stopped' in r || processes.generation(projectId) !== generation) throw new Error(STOPPED)
+  if ('stopped' in r || processes.generation(projectId) !== generation) throw new Error(stopped())
   if ('illegal' in r || 'failed' in r) {
     console.warn(`Speech detector failed on ${path.basename(file)}; sound levels are used. ${'failed' in r ? r.failed : 'illegal instruction'}`)
     failedFiles.add(key)

@@ -9,6 +9,7 @@ import path from 'node:path'
 import { validSubtitle, type SubtitleFormat } from '../shared/captions/subtitles'
 import { writeFileAtomicSync } from './atomicWrite'
 import { getMainWindow } from './windows'
+import { t } from '../shared/i18n/t'
 
 const FILTERS: Record<SubtitleFormat, Electron.FileFilter> = {
   srt: { name: 'SRT subtitles', extensions: ['srt'] },
@@ -29,17 +30,17 @@ export function withExtension(file: string, format: SubtitleFormat): string {
 
 export function registerCaptionsIpc(): void {
   ipcMain.handle('captions:save', async (_e, defaultName: unknown, format: unknown, content: unknown) => {
-    if (!validSubtitle(format, content)) throw new Error('These captions cannot be saved as a subtitle file')
+    if (!validSubtitle(format, content)) throw new Error(t('errors.captionsIpc.theseCaptionsCannotBe'))
     const main = getMainWindow()
     if (!main) return null
     const filter = FILTERS[format]
     const result = await dialog.showSaveDialog(main, {
-      title: 'Export captions',
+      title: t('main.captionsIpc.exportCaptions'),
       defaultPath: path.join(app.getPath('videos'), `${subtitleFileName(defaultName)}.${filter.extensions[0]}`),
       filters: [filter]
     })
     if (result.canceled || !result.filePath) return null
-    if (!path.isAbsolute(result.filePath)) throw new Error('Choose a folder on this computer for the captions')
+    if (!path.isAbsolute(result.filePath)) throw new Error(t('errors.captionsIpc.chooseAFolderOn'))
     const file = withExtension(result.filePath, format)
     // A byte order mark helps older Windows players read accents and non-Latin scripts in SRT files.
     writeFileAtomicSync(file, (format === 'srt' ? '﻿' : '') + (content as string))

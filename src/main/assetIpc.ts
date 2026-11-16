@@ -25,6 +25,7 @@ import { mediaUrl } from './mediaProtocol'
 import * as projects from './projects'
 import { isAppUrl } from './security'
 import { getMainWindow } from './windows'
+import { t } from '../shared/i18n/t'
 
 interface AssetSpec {
   title: string
@@ -266,7 +267,7 @@ async function store(id: string, kind: AssetKind, ext: string, data: Buffer | { 
       if (same) return { url: mediaUrl(id, same), path: same }
     }
     const name = PICKS[kind].next(existing, stored)
-    if (!isAssetFile(name)) throw new Error(`Choose ${spec.formats}.`)
+    if (!isAssetFile(name)) throw new Error(t('errors.asset.choose', { formats: String(spec.formats) }))
     const tmp = path.join(dir, `.${name}.part`)
     try {
       if (Buffer.isBuffer(data)) await fs.writeFile(tmp, data)
@@ -288,7 +289,7 @@ async function store(id: string, kind: AssetKind, ext: string, data: Buffer | { 
  * with `reuseLatest` a logo identical to the latest logo pick).
  */
 export async function importAsset(id: string, kind: AssetKind, src: string, { reuseLatest = false } = {}): Promise<PickedAsset> {
-  if (!isKind(kind)) throw new Error('Unknown asset kind')
+  if (!isKind(kind)) throw new Error(t('errors.assetIpc.unknownAssetKind'))
   projects.projectDir(id)
   const name = path.basename(src)
   // A LUT (editing polish §9.5): read once with its size checked first, parsed in full before
@@ -314,13 +315,13 @@ export async function importAsset(id: string, kind: AssetKind, src: string, { re
  * returns its extension (lower case). Throws the reason it is refused.
  */
 export async function checkAssetFile(kind: AssetKind, src: string): Promise<string> {
-  if (!isKind(kind)) throw new Error('Unknown asset kind')
+  if (!isKind(kind)) throw new Error(t('errors.assetIpc.unknownAssetKind'))
   const spec = ASSET_SPECS[kind]
   if (spec.whole) return (await readWholeAsset(kind, src)).ext
   const ext = extOf(src)
-  if (!spec.extensions.includes(ext)) throw new Error(`Choose ${spec.formats}.`)
+  if (!spec.extensions.includes(ext)) throw new Error(t('errors.asset.choose', { formats: String(spec.formats) }))
   const st = await fs.stat(src)
-  if (!st.isFile()) throw new Error(`Choose ${spec.formats}.`)
+  if (!st.isFile()) throw new Error(t('errors.asset.choose', { formats: String(spec.formats) }))
   const tooBig = sizeProblem(kind, ext, st.size)
   if (tooBig) throw new Error(tooBig)
   const handle = await fs.open(src, 'r')
@@ -341,9 +342,9 @@ export async function checkAssetFile(kind: AssetKind, src: string): Promise<stri
 async function readWholeAsset(kind: AssetKind, src: string): Promise<{ ext: string; data: Buffer }> {
   const spec = ASSET_SPECS[kind]
   const ext = extOf(src)
-  if (!spec.extensions.includes(ext)) throw new Error(`Choose ${spec.formats}.`)
+  if (!spec.extensions.includes(ext)) throw new Error(t('errors.asset.choose', { formats: String(spec.formats) }))
   const st = await fs.stat(src)
-  if (!st.isFile()) throw new Error(`Choose ${spec.formats}.`)
+  if (!st.isFile()) throw new Error(t('errors.asset.choose', { formats: String(spec.formats) }))
   const tooBig = sizeProblem(kind, ext, st.size)
   if (tooBig) throw new Error(tooBig)
   const data = await fs.readFile(src)
@@ -362,13 +363,13 @@ const DATA_KINDS: ReadonlySet<AssetKind> = new Set(['overlay', 'font'])
  * same checks as a picked file, the size first.
  */
 export async function importAssetData(id: string, kind: AssetKind, name: string, bytes: Uint8Array): Promise<PickedAsset> {
-  if (!isKind(kind) || !DATA_KINDS.has(kind)) throw new Error('Unknown asset kind')
+  if (!isKind(kind) || !DATA_KINDS.has(kind)) throw new Error(t('errors.assetIpc.unknownAssetKind'))
   const spec = ASSET_SPECS[kind]
-  if (!(bytes instanceof Uint8Array)) throw new Error(`Choose ${spec.formats}.`)
+  if (!(bytes instanceof Uint8Array)) throw new Error(t('errors.asset.choose', { formats: String(spec.formats) }))
   projects.projectDir(id)
   const shown = path.basename(String(name).replace(/\\/g, '/')).slice(0, 200)
   const ext = extOf(shown)
-  if (!spec.extensions.includes(ext)) throw new Error(kind === 'overlay' ? 'Only PNG, JPG, WebP, SVG and GIF images can be added.' : `Choose ${spec.formats}.`)
+  if (!spec.extensions.includes(ext)) throw new Error(kind === 'overlay' ? t('errors.asset.overlayFormats') : t('errors.asset.choose', { formats: spec.formats }))
   const tooBig = sizeProblem(kind, ext, bytes.byteLength)
   if (tooBig) throw new Error(tooBig)
   const data = Buffer.from(bytes.buffer, bytes.byteOffset, bytes.byteLength)
@@ -445,7 +446,7 @@ export function registerAssetIpc(): void {
 
   ipcMain.handle('projects:importAssetData', (e, id: unknown, kind: unknown, name: unknown, bytes: unknown) => {
     if (!isAppUrl(e.senderFrame?.url ?? '')) throw new Error('Not allowed')
-    if (typeof id !== 'string' || !isKind(kind) || typeof name !== 'string' || !(bytes instanceof Uint8Array)) throw new Error('Choose an image.')
+    if (typeof id !== 'string' || !isKind(kind) || typeof name !== 'string' || !(bytes instanceof Uint8Array)) throw new Error(t('errors.assetIpc.chooseAnImage'))
     return importAssetData(id, kind, name, bytes)
   })
 

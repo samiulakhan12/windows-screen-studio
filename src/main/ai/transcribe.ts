@@ -56,6 +56,7 @@ import type { AiClient, PartProgress } from './types'
 import { cancelled } from './request'
 import { modelDefaults } from './modelList'
 import { glossaryTerms } from '../../shared/captions/cleanup'
+import { t } from '../../shared/i18n/t'
 
 const RATE = 16000
 /** Bytes per second of the decoded sound (16-bit mono). */
@@ -81,21 +82,21 @@ const isObject = (v: unknown): v is Record<string, unknown> => typeof v === 'obj
 
 /** TranscribeOptions from the renderer, checked; throws a message to show. */
 export function validateTranscribeOptions(raw: unknown): Required<Pick<TranscribeOptions, 'providerId' | 'source'>> & Pick<TranscribeOptions, 'language' | 'model' | 'glossary'> {
-  if (!isObject(raw) || typeof raw.providerId !== 'string' || raw.providerId.length > 64) throw new Error('Choose an AI provider for the transcription.')
+  if (!isObject(raw) || typeof raw.providerId !== 'string' || raw.providerId.length > 64) throw new Error(t('errors.transcribe.chooseAnAiProvider'))
   const source = raw.source === undefined ? 'auto' : raw.source
   if (!SOURCES.includes(source as (typeof SOURCES)[number])) throw new Error('Invalid sound source.')
   let language: string | undefined
   if (raw.language !== undefined && raw.language !== null && raw.language !== '') {
-    if (typeof raw.language !== 'string' || !LANGUAGE_RE.test(raw.language.trim())) throw new Error('The language must be a code such as "en" or "pt-BR".')
+    if (typeof raw.language !== 'string' || !LANGUAGE_RE.test(raw.language.trim())) throw new Error(t('errors.transcribe.theLanguageMustBe'))
     language = raw.language.trim()
   }
   // The speech model: a catalog id, for On this PC only (providers use their own setting).
   let model: string | undefined
   if (raw.providerId === LOCAL_TRANSCRIBER_ID && raw.model !== undefined && raw.model !== null) {
     const spec = speechModel(raw.model)
-    if (!spec) throw new Error('Unknown speech model.')
+    if (!spec) throw new Error(t('errors.speech.unknownModel'))
     // A model made for one language (the Bangla model) never makes captions in another one.
-    if (spec.language && language && language.split('-')[0].toLowerCase() !== spec.language) throw new Error(`${tierLabel(spec.id)} makes captions in Bangla only.`)
+    if (spec.language && language && language.split('-')[0].toLowerCase() !== spec.language) throw new Error(t('errors.transcribe.makesCaptionsInBangla', { value: String(tierLabel(spec.id)) }))
     model = raw.model as string
   }
   // The caption word list as a spelling hint (Captions Studio §11.7 rule 4): plain terms only, capped.
@@ -129,11 +130,11 @@ function runFfmpeg(args: string[], id: string, signal: AbortSignal, timeoutMs: n
       if (err) reject(err)
       else resolve()
     }
-    proc.on('error', (e) => done(new Error(`ffmpeg could not be started (${e.message})`)))
+    proc.on('error', (e) => done(new Error(t('errors.transcribe.ffmpegCouldNotBe', { message: String(e.message) }))))
     proc.on('close', (code) => {
       if (signal.aborted) done(cancelled())
       else if (code === 0) done(null)
-      else if (timedOut) done(new Error('Reading the sound took too long and was stopped.'))
+      else if (timedOut) done(new Error(t('errors.transcribe.readingTheSoundTook')))
       else done(new Error(describeFfmpegError(log, 'The sound of the recording could not be read.')))
     })
   })
@@ -186,10 +187,10 @@ async function activityOf(pcm: string, signal: AbortSignal): Promise<Range[]> {
 
 /** Which file of project `dir` to transcribe. */
 async function soundFile(dir: string, project: { hasAudio: boolean; audioStems?: { mic: boolean } }, source: 'auto' | 'mic' | 'mixed'): Promise<string> {
-  if (!project.hasAudio) throw new Error('This recording has no sound to transcribe.')
+  if (!project.hasAudio) throw new Error(t('errors.transcribe.thisRecordingHasNo'))
   const mic = path.join(dir, 'mic.m4a')
   const hasMic = project.audioStems?.mic === true && (await fs.stat(mic).catch(() => null))?.isFile() === true
-  if (source === 'mic' && !hasMic) throw new Error('This recording has no separate microphone track. Transcribe the mixed sound instead.')
+  if (source === 'mic' && !hasMic) throw new Error(t('errors.transcribe.thisRecordingHasNo2'))
   return source !== 'mixed' && hasMic ? mic : path.join(dir, 'screen.mp4')
 }
 
@@ -201,7 +202,7 @@ export async function transcribeProject(store: AiProviderStore, projectId: unkno
   if (typeof projectId !== 'string') throw new Error('Invalid project.')
   const dir = projectDir(projectId)
   const options = validateTranscribeOptions(rawOptions)
-  if (jobs.has(projectId)) throw new Error('This recording is already being transcribed.')
+  if (jobs.has(projectId)) throw new Error(t('errors.transcribe.thisRecordingIsAlready'))
   if (options.providerId === LOCAL_TRANSCRIBER_ID) {
     // On this PC: no key; the client rejects with the shared sentences when the engine or the model is not ready (it never downloads).
     const controller = new AbortController()
@@ -229,7 +230,7 @@ export async function transcribeProject(store: AiProviderStore, projectId: unkno
   const { info, apiKey } = store.get(options.providerId)
   if (!AI_PROVIDER_KINDS[info.kind].canTranscribe) {
     throw new Error(
-      'Claude cannot transcribe: the Claude API does not accept sound. Choose an OpenAI or Google Gemini provider to transcribe; Claude can then clean up, translate and summarise the captions.'
+      t('errors.transcribe.claudeCannotTranscribeThe')
     )
   }
   const controller = new AbortController()
@@ -258,7 +259,7 @@ async function runJob(
 ): Promise<Transcript> {
   const send = (phase: TranscribeProgress['phase'], done: number, total: number, extra: Partial<TranscribeProgress> = {}): void => progress({ projectId: id, phase, done, total, ...extra })
   const project = await readProject(id).catch(() => {
-    throw new Error('This recording could not be read (it may have been moved or deleted).')
+    throw new Error(t('errors.transcribe.thisRecordingCouldNot'))
   })
   const input = await soundFile(dir, project, options.source)
   const tmp = await fs.mkdtemp(path.join(os.tmpdir(), TEMP_PREFIX))
@@ -270,7 +271,7 @@ async function runJob(
     await runFfmpeg(decodeArgs(input, pcm), id, signal, 120_000 + length * 500)
     const decoded = (await fs.stat(pcm)).size / PCM_RATE
     const duration = Number.isFinite(project.duration) && project.duration > 0 ? Math.min(decoded, project.duration) : decoded
-    if (duration < 0.1) throw new Error('This recording has no sound to transcribe.')
+    if (duration < 0.1) throw new Error(t('errors.transcribe.thisRecordingHasNo'))
 
     const limits = client.partLimits!
     const maxSeconds = Math.min(limits.maxSeconds, secondsForBytes(limits.maxBytes, MP3_BITRATE), testLimit('SSW_AI_MAX_PART_SECONDS') ?? Infinity)
@@ -293,7 +294,7 @@ async function runJob(
       const file = path.join(tmp, `part-${part.index}.${wav ? 'wav' : 'mp3'}`)
       await runFfmpeg((wav ? wavPartArgs : partArgs)(pcm, part.start, seconds, file), id, signal, 60_000 + seconds * 1000)
       const bytes = (await fs.stat(file).catch(() => null))?.size ?? 0
-      if (bytes === 0) throw new Error('The sound of the recording could not be read.')
+      if (bytes === 0) throw new Error(t('errors.transcribe.theSoundOfThe'))
       const onProgress = (p: PartProgress): void => {
         if (p.cached) resumed++
         if (p.phase === 'transcribing') loaded = true

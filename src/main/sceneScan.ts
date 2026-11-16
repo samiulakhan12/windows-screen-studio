@@ -23,6 +23,7 @@ import { ProjectProcesses } from './projectProcesses'
 import { projectDir } from './projects'
 import { cropFilter } from './proxyArgs'
 import { isAppUrl } from './security'
+import { t } from '../shared/i18n/t'
 
 /** Samples a second when every frame is decoded (§7.2). */
 const SAMPLE_FPS = 4
@@ -220,7 +221,7 @@ function runScan(args: string[], id: string, timeoutMs: number, onTime: (t: numb
 async function cacheDir(dir: string): Promise<string> {
   const cache = path.join(dir, SCENES_CACHE_DIR)
   const st = await fs.lstat(cache).catch(() => null)
-  if (st && (st.isSymbolicLink() || !st.isDirectory())) throw new Error('the cache folder is not a folder')
+  if (st && (st.isSymbolicLink() || !st.isDirectory())) throw new Error(t('errors.filmstrip.theCacheFolderIs'))
   if (!st) await fs.mkdir(cache)
   return cache
 }
@@ -276,18 +277,18 @@ const cache = new Map<string, Run>()
  * missing, or the scan fails or is stopped.
  */
 export async function detectScenes(id: unknown, crop: unknown, onProgress?: (fraction: number) => void): Promise<SceneScan> {
-  if (typeof id !== 'string') throw new Error('the video file is missing')
+  if (typeof id !== 'string') throw new Error(t('errors.analysisIpc.theVideoFileIs'))
   let dir: string
   try {
     dir = projectDir(id)
   } catch {
-    throw new Error('the video file is missing')
+    throw new Error(t('errors.analysisIpc.theVideoFileIs'))
   }
   const generation = running.generation(id)
   const inside = requestedCrop(crop)
   const file = path.join(dir, 'screen.mp4')
   const stat = await fs.stat(file).catch(() => null)
-  if (!stat?.isFile()) throw new Error('the video file is missing')
+  if (!stat?.isFile()) throw new Error(t('errors.analysisIpc.theVideoFileIs'))
   let duration = NaN
   let fps: number | undefined
   try {
@@ -303,12 +304,12 @@ export async function detectScenes(id: unknown, crop: unknown, onProgress?: (fra
   let run = cache.get(memoKey)
   if (!run) {
     // Stopped while the file was being looked at (the editor closed, the project is being deleted).
-    if (running.generation(id) !== generation) throw new Error('reading the screen was stopped')
+    if (running.generation(id) !== generation) throw new Error(t('errors.sceneScan.readingTheScreenWas'))
     const listeners = new Set<(fraction: number) => void>()
     const work = async (): Promise<SceneScan> => {
       const kept = (await readCacheFile(dir)).find((e) => e.key === key)
       if (kept) return kept.scan
-      if (running.generation(id) !== generation) throw new Error('reading the screen was stopped')
+      if (running.generation(id) !== generation) throw new Error(t('errors.sceneScan.readingTheScreenWas'))
       // About a minute, plus as long again as the recording: one pass is far faster than real time.
       const timeoutMs = 60_000 + (Number.isFinite(duration) ? Math.min(duration, 4 * 3600) : 3600) * 1000
       let lastSent = 0

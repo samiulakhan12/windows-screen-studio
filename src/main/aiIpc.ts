@@ -28,6 +28,7 @@ import { listModels } from './ai/modelLists'
 import { priceList } from './ai/priceList'
 import { usageRatios } from './ai/usage'
 import { localTextClient } from './localAi/localTextClient'
+import { t } from '../shared/i18n/t'
 
 /** safeStorage (DPAPI on Windows). On Linux without a keyring it falls back to a fixed key: a packaged app refuses that. */
 const secretBox: SecretBox = {
@@ -55,7 +56,7 @@ export function listAiProviders(): AiProviderInfo[] {
 
 /** The tasks AI on this PC never runs (decision 18): Find chapters chooses, the model only names. */
 const NOT_ON_THIS_PC: readonly AiTextRequest['task'][] = ['chapters', 'marks']
-export const NOT_ON_THIS_PC_MESSAGE = 'Not available on this PC: choose an AI service for this.'
+export const NOT_ON_THIS_PC_MESSAGE = (): string => t('errors.localTextClient.notAvailableOnThis')
 
 /**
  * The client for `providerId` and the limits it runs a request with: AI on this PC (LOCAL_TEXT_ID)
@@ -63,8 +64,8 @@ export const NOT_ON_THIS_PC_MESSAGE = 'Not available on this PC: choose an AI se
  */
 async function textClient(providerId: unknown, request: AiTextRequest | null, ctx: { sender?: WebContents; requestId?: string }): Promise<{ client: AiClient; limits: TextLimits }> {
   if (providerId === LOCAL_TEXT_ID) {
-    if (request && NOT_ON_THIS_PC.includes(request.task)) throw new Error(NOT_ON_THIS_PC_MESSAGE)
-    if (!ctx.sender) throw new Error('AI on this PC runs from the editor only.')
+    if (request && NOT_ON_THIS_PC.includes(request.task)) throw new Error(NOT_ON_THIS_PC_MESSAGE())
+    if (!ctx.sender) throw new Error(t('errors.aiIpc.aiOnThisPc'))
     const client = await localTextClient({ sender: ctx.sender, ...(ctx.requestId ? { requestId: ctx.requestId } : {}) })
     return { client, limits: request ? client.limits(request) : DEFAULT_TEXT_LIMITS }
   }

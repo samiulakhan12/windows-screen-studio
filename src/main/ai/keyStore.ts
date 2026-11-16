@@ -12,6 +12,7 @@ import path from 'node:path'
 import { AI_LIMITS, AI_PROVIDER_KINDS, type AiProviderInfo, type AiProviderInput } from '../../shared/api/ai'
 import type { AiProviderKind } from '../../shared/types'
 import { writeFileAtomicSync } from '../atomicWrite'
+import { t } from '../../shared/i18n/t'
 
 const FILE_VERSION = 1
 
@@ -51,9 +52,9 @@ const newId = (): string => `ai${Date.now().toString(36)}${(idCounter++).toStrin
 /** A model name from the form: trimmed, `fallback` when empty; throws when it cannot be a model id. */
 function modelName(v: unknown, fallback: string, what: string): string {
   if (v === undefined || v === null || (typeof v === 'string' && !v.trim())) return fallback
-  if (typeof v !== 'string') throw new Error(`The ${what} must be text.`)
+  if (typeof v !== 'string') throw new Error(t('errors.keyStore.theMustBeText', { what: String(what) }))
   const s = v.trim()
-  if (s.length > AI_LIMITS.modelLength || !MODEL_RE.test(s)) throw new Error(`“${s.slice(0, 40)}” is not a model name (letters, digits and . _ - : / @ only).`)
+  if (s.length > AI_LIMITS.modelLength || !MODEL_RE.test(s)) throw new Error(t('errors.keyStore.isNotAModel', { value: String(s.slice(0, 40)) }))
   return s
 }
 
@@ -64,17 +65,17 @@ const builtinDefaults: ModelDefaultsOf = (kind) => ({ model: AI_PROVIDER_KINDS[k
 
 export function validateProviderInput(input: unknown, defaults: ModelDefaultsOf = builtinDefaults): AiProviderInput {
   if (!isObject(input)) throw new Error('Invalid provider.')
-  if (!isKind(input.kind)) throw new Error('Choose OpenAI, Google Gemini or Anthropic Claude.')
+  if (!isKind(input.kind)) throw new Error(t('errors.keyStore.chooseOpenaiGoogleGemini'))
   if (input.id !== undefined && (typeof input.id !== 'string' || !ID_RE.test(input.id))) throw new Error('Invalid provider.')
-  if (typeof input.label !== 'string') throw new Error('Give the provider a name.')
+  if (typeof input.label !== 'string') throw new Error(t('errors.keyStore.giveTheProviderA'))
   const label = input.label.replace(/\s+/g, ' ').trim()
-  if (!label) throw new Error('Give the provider a name.')
-  if (label.length > AI_LIMITS.labelLength) throw new Error(`The name is too long (at most ${AI_LIMITS.labelLength} characters).`)
+  if (!label) throw new Error(t('errors.keyStore.giveTheProviderA'))
+  if (label.length > AI_LIMITS.labelLength) throw new Error(t('errors.keyStore.theNameIsToo', { labelLength: String(AI_LIMITS.labelLength) }))
   let apiKey: string | undefined
   if (input.apiKey !== undefined && input.apiKey !== null && input.apiKey !== '') {
-    if (typeof input.apiKey !== 'string') throw new Error('The API key must be text.')
+    if (typeof input.apiKey !== 'string') throw new Error(t('errors.keyStore.theApiKeyMust'))
     apiKey = input.apiKey.trim()
-    if (apiKey.length < 8 || apiKey.length > AI_LIMITS.keyLength || !KEY_RE.test(apiKey)) throw new Error('That does not look like an API key (copy the whole key, without spaces).')
+    if (apiKey.length < 8 || apiKey.length > AI_LIMITS.keyLength || !KEY_RE.test(apiKey)) throw new Error(t('errors.keyStore.thatDoesNotLook'))
   }
   const info = AI_PROVIDER_KINDS[input.kind]
   const suggested = defaults(input.kind)
@@ -146,10 +147,10 @@ export class AiProviderStore {
   private encrypt(apiKey: string): string {
     if (!this.box.isEncryptionAvailable()) {
       const what = process.platform === 'win32' ? 'Windows data protection' : process.platform === 'darwin' ? 'the Keychain' : 'the system keyring'
-      throw new Error(`API keys cannot be stored safely on this PC: ${what} is not available, so the key was not saved.`)
+      throw new Error(t('errors.keyStore.apiKeysCannotBe', { what: String(what) }))
     }
     const weak = this.box.weakness?.()
-    if (weak) throw new Error(`API keys cannot be stored safely on this PC (${weak}), so the key was not saved.`)
+    if (weak) throw new Error(t('errors.keyStore.apiKeysCannotBe2', { weak: String(weak) }))
     return this.box.encryptString(apiKey).toString('base64')
   }
 
@@ -182,10 +183,10 @@ export class AiProviderStore {
     const input = validateProviderInput(raw, this.defaults)
     const entries = this.load()
     const existing = input.id !== undefined ? entries.find((e) => e.id === input.id) : undefined
-    if (input.id !== undefined && !existing) throw new Error('This provider no longer exists.')
-    if (!existing && !input.apiKey) throw new Error('Enter the API key.')
-    if (existing && existing.kind !== input.kind && !input.apiKey) throw new Error('Enter the API key for the new kind of provider.')
-    if (!existing && entries.length + besides >= AI_LIMITS.maxProviders) throw new Error(`At most ${AI_LIMITS.maxProviders} providers can be added.`)
+    if (input.id !== undefined && !existing) throw new Error(t('errors.keyStore.thisProviderNoLonger'))
+    if (!existing && !input.apiKey) throw new Error(t('errors.keyStore.enterTheApiKey'))
+    if (existing && existing.kind !== input.kind && !input.apiKey) throw new Error(t('errors.keyStore.enterTheApiKey2'))
+    if (!existing && entries.length + besides >= AI_LIMITS.maxProviders) throw new Error(t('errors.keyStore.atMostProvidersCan', { maxProviders: String(AI_LIMITS.maxProviders) }))
     // The suggested transcription model is not stored, so the provider moves with the list when a
     // model retires (docs/design/transcription.md §2.1); one the user chose instead is kept. The form
     // leaves the field out until the user types in it: an edit of the same kind keeps what it had.
@@ -217,9 +218,9 @@ export class AiProviderStore {
   /** A provider with its key, for a request; throws a message to show when it is gone or its key cannot be read. */
   get(id: unknown): { info: AiProviderInfo; apiKey: string } {
     const entry = typeof id === 'string' ? this.load().find((e) => e.id === id) : undefined
-    if (!entry) throw new Error('This AI provider no longer exists. Choose another one in Settings → AI providers.')
+    if (!entry) throw new Error(t('errors.keyStore.thisAiProviderNo'))
     const apiKey = this.decrypt(entry)
-    if (!apiKey) throw new Error(`The API key of “${entry.label}” can no longer be read on this PC (it was saved by another Windows user or PC). Edit the provider and enter the key again.`)
+    if (!apiKey) throw new Error(t('errors.keyStore.theApiKeyOf', { label: String(entry.label) }))
     return { info: this.info(entry), apiKey }
   }
 }

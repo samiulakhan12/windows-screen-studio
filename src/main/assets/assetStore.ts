@@ -19,6 +19,7 @@ import { assetFontFile, type AssetProgress, type AssetState } from '../../shared
 import { CAPTION_MIRROR, CATALOG_FONTS, fontSources, GOOGLE_FONTS_COMMIT, NOTO_EMOJI_COMMIT, type CatalogFile, type CatalogFont } from '../../shared/captions/fontCatalog'
 import { writeFileAtomicSync } from '../atomicWrite'
 import { DownloadFailure, downloadPinned, electronGet, type HttpGet } from '../speech/download'
+import { t } from '../../shared/i18n/t'
 
 /** The folder under userData that holds the assets. */
 export const ASSET_DIR = 'caption-assets'
@@ -218,7 +219,7 @@ function failureMessage(err: unknown): string {
  */
 export async function downloadAsset(id: string, opts: { signal: AbortSignal; onProgress(p: AssetProgress): void }): Promise<AssetState> {
   const d = downloadable(id)
-  if (!d) throw new Error('This download is not one Flown offers.')
+  if (!d) throw new Error(t('errors.assetStore.thisDownloadIsNot'))
   const running = active.get(id)
   if (running) return running.done
   const controller = new AbortController()
@@ -260,7 +261,7 @@ export async function downloadAsset(id: string, opts: { signal: AbortSignal; onP
       return { id, kind: 'font', state: 'ready', bytes: stat.size }
     } catch (err) {
       const code = (err as NodeJS.ErrnoException).code
-      throw new Error(`The font downloaded, but Flown could not save it${code ? ` (${code})` : ''}. Try again.`)
+      throw new Error(code ? t('errors.download.fontNotSavedCode', { code }) : t('errors.download.fontNotSaved'))
     }
   })()
   active.set(id, { controller, done })
@@ -279,7 +280,7 @@ export function cancelAssetDownload(id: string): void {
 
 /** Deletes asset `id`'s file, its partial download and its record. */
 export async function removeAsset(id: string): Promise<void> {
-  if (!downloadable(id)) throw new Error('This download is not one Flown offers.')
+  if (!downloadable(id)) throw new Error(t('errors.assetStore.thisDownloadIsNot'))
   active.get(id)?.controller.abort()
   const name = assetFontFile(id)
   const dir = deps.dir()

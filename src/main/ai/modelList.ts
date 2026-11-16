@@ -8,6 +8,7 @@ import fs from 'node:fs'
 import { BUNDLED_MODEL_LIST, MODEL_LIST_EVERY_MS, MODEL_LIST_MAX_BYTES, newerList, parseModelList, type ModelDefaults, type ModelList } from '../../shared/ai/modelList'
 import type { AiProviderKind } from '../../shared/types'
 import { writeFileAtomicSync } from '../atomicWrite'
+import { t } from '../../shared/i18n/t'
 
 export const MODEL_CACHE_FILE = 'ai-models.json'
 
@@ -97,12 +98,12 @@ export async function refreshModelList(url: string, fetcher: Fetcher, now = Date
   let raw: unknown = null
   try {
     const res = await fetcher(url, { redirect: 'error', signal: AbortSignal.timeout(15_000), headers: { Accept: 'application/json', 'Cache-Control': 'no-cache' } })
-    if (!res.ok) throw new Error(`HTTP ${res.status}`)
+    if (!res.ok) throw new Error(t('errors.modelList.http', { status: String(res.status) }))
     const text = await readCapped(res, MODEL_LIST_MAX_BYTES)
-    if (text === null) throw new Error('too large or not UTF-8')
+    if (text === null) throw new Error(t('errors.modelList.tooLargeOrNot'))
     raw = JSON.parse(text)
     list = parseModelList(raw, appVersion)
-    if (!list) throw new Error('not a list Flown can use')
+    if (!list) throw new Error(t('errors.modelList.notAListFlown'))
   } catch (err) {
     console.warn('Could not refresh the list of AI models:', err instanceof Error ? err.message : String(err))
     return false

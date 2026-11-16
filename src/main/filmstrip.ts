@@ -16,6 +16,7 @@ import { ffmpegPath } from './ffmpeg'
 import { ProjectProcesses } from './projectProcesses'
 import { projectDir } from './projects'
 import { isAppUrl } from './security'
+import { t } from '../shared/i18n/t'
 
 const CACHE = '.cache'
 export const FILMSTRIP_JPG = 'filmstrip.jpg'
@@ -112,7 +113,7 @@ function runFfmpeg(args: string[], id: string, timeoutMs: number): Promise<{ cou
 async function cacheDir(dir: string): Promise<string> {
   const cache = path.join(dir, CACHE)
   const st = await fs.lstat(cache).catch(() => null)
-  if (st && (st.isSymbolicLink() || !st.isDirectory())) throw new Error('the cache folder is not a folder')
+  if (st && (st.isSymbolicLink() || !st.isDirectory())) throw new Error(t('errors.filmstrip.theCacheFolderIs'))
   if (!st) await fs.mkdir(cache)
   return cache
 }

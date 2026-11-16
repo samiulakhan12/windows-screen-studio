@@ -6,6 +6,7 @@
  * `fetch` is Electron's net.fetch in the app (the system proxy), Node's in tests.
  */
 import { parseWebhookUrl, postFailure, SHARE_LIMITS, webhookBody, type WebhookService } from '../../shared/share/webhooks'
+import { t } from '../../shared/i18n/t'
 
 export type FetchLike = (url: string, init: { method: 'POST'; headers: Record<string, string>; body: string; redirect: 'error'; signal: AbortSignal }) => Promise<Response>
 
@@ -48,7 +49,7 @@ export async function postToWebhook(service: WebhookService, url: string, lines:
   try {
     res = await deps.fetch(target, { method: 'POST', headers: { 'content-type': 'application/json' }, body, redirect: 'error', signal: both })
   } catch {
-    if (signal.aborted) throw new Error('Cancelled.')
+    if (signal.aborted) throw new Error(t('errors.cancelled'))
     throw new Error(postFailure(service, timeout.aborted ? 'timeout' : 'network'))
   }
   await drain(res, SHARE_LIMITS.responseBytes).catch(() => undefined)

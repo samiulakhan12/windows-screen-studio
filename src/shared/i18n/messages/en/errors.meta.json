@@ -45,5 +45,556 @@
   },
   "localAi.notDownloaded": {
     "description": "AI on this PC: the model picked for use is not on this PC."
+  },
+  "compatible.notAService": {
+    "description": "Main process: a reason shown to the user when this fails (main/ai/compatible.ts)."
+  },
+  "images.thereAreTooMany": {
+    "description": "Main process: a reason shown to the user when this fails (main/ai/images.ts)."
+  },
+  "images.aPictureToSend": {
+    "description": "Main process: a reason shown to the user when this fails (main/ai/images.ts)."
+  },
+  "images.aPictureToSend2": {
+    "description": "Main process: a reason shown to the user when this fails (main/ai/images.ts)."
+  },
+  "keyStore.theMustBeText": {
+    "description": "Main process: a reason shown to the user when this fails (main/ai/keyStore.ts)."
+  },
+  "keyStore.isNotAModel": {
+    "description": "Main process: a reason shown to the user when this fails (main/ai/keyStore.ts)."
+  },
+  "keyStore.chooseOpenaiGoogleGemini": {
+    "description": "Main process: a reason shown to the user when this fails (main/ai/keyStore.ts)."
+  },
+  "keyStore.giveTheProviderA": {
+    "description": "Main process: a reason shown to the user when this fails (main/ai/keyStore.ts)."
+  },
+  "keyStore.theNameIsToo": {
+    "description": "Main process: a reason shown to the user when this fails (main/ai/keyStore.ts)."
+  },
+  "keyStore.theApiKeyMust": {
+    "description": "Main process: a reason shown to the user when this fails (main/ai/keyStore.ts)."
+  },
+  "keyStore.thatDoesNotLook": {
+    "description": "Main process: a reason shown to the user when this fails (main/ai/keyStore.ts)."
+  },
+  "keyStore.apiKeysCannotBe": {
+    "description": "Main process: a reason shown to the user when this fails (main/ai/keyStore.ts)."
+  },
+  "keyStore.apiKeysCannotBe2": {
+    "description": "Main process: a reason shown to the user when this fails (main/ai/keyStore.ts)."
+  },
+  "keyStore.thisProviderNoLonger": {
+    "description": "Main process: a reason shown to the user when this fails (main/ai/keyStore.ts)."
+  },
+  "keyStore.enterTheApiKey": {
+    "description": "Main process: a reason shown to the user when this fails (main/ai/keyStore.ts)."
+  },
+  "keyStore.enterTheApiKey2": {
+    "description": "Main process: a reason shown to the user when this fails (main/ai/keyStore.ts)."
+  },
+  "keyStore.atMostProvidersCan": {
+    "description": "Main process: a reason shown to the user when this fails (main/ai/keyStore.ts)."
+  },
+  "keyStore.thisAiProviderNo": {
+    "description": "Main process: a reason shown to the user when this fails (main/ai/keyStore.ts)."
+  },
+  "keyStore.theApiKeyOf": {
+    "description": "Main process: a reason shown to the user when this fails (main/ai/keyStore.ts)."
+  },
+  "modelList.http": {
+    "description": "Main process: a reason shown to the user when this fails (main/ai/modelList.ts)."
+  },
+  "modelList.tooLargeOrNot": {
+    "description": "Main process: a reason shown to the user when this fails (main/ai/modelList.ts)."
+  },
+  "modelList.notAListFlown": {
+    "description": "Main process: a reason shown to the user when this fails (main/ai/modelList.ts)."
+  },
+  "modelLists.thisProviderCannotList": {
+    "description": "Main process: a reason shown to the user when this fails (main/ai/modelLists.ts)."
+  },
+  "providers.thisProviderHasNo": {
+    "description": "Main process: a reason shown to the user when this fails (main/ai/providers.ts)."
+  },
+  "serviceStore.chooseAService": {
+    "description": "Main process: a reason shown to the user when this fails (main/ai/serviceStore.ts)."
+  },
+  "transcribe.chooseAnAiProvider": {
+    "description": "Main process: a reason shown to the user when this fails (main/ai/transcribe.ts)."
+  },
+  "transcribe.theLanguageMustBe": {
+    "description": "Main process: a reason shown to the user when this fails (main/ai/transcribe.ts)."
+  },
+  "transcribe.makesCaptionsInBangla": {
+    "description": "Main process: a reason shown to the user when this fails (main/ai/transcribe.ts)."
+  },
+  "transcribe.ffmpegCouldNotBe": {
+    "description": "Main process: a reason shown to the user when this fails (main/ai/transcribe.ts)."
+  },
+  "transcribe.readingTheSoundTook": {
+    "description": "Main process: a reason shown to the user when this fails (main/ai/transcribe.ts)."
+  },
+  "transcribe.thisRecordingHasNo": {
+    "description": "Main process: a reason shown to the user when this fails (main/ai/transcribe.ts)."
+  },
+  "transcribe.thisRecordingHasNo2": {
+    "description": "Main process: a reason shown to the user when this fails (main/ai/transcribe.ts)."
+  },
+  "transcribe.thisRecordingIsAlready": {
+    "description": "Main process: a reason shown to the user when this fails (main/ai/transcribe.ts)."
+  },
+  "transcribe.claudeCannotTranscribeThe": {
+    "description": "Main process: a reason shown to the user when this fails (main/ai/transcribe.ts)."
+  },
+  "transcribe.thisRecordingCouldNot": {
+    "description": "Main process: a reason shown to the user when this fails (main/ai/transcribe.ts)."
+  },
+  "transcribe.theSoundOfThe": {
+    "description": "Main process: a reason shown to the user when this fails (main/ai/transcribe.ts)."
+  },
+  "aiIpc.aiOnThisPc": {
+    "description": "Main process: a reason shown to the user when this fails (main/aiIpc.ts)."
+  },
+  "analysisIpc.theVideoFileIs": {
+    "description": "Main process: a reason shown to the user when this fails (main/analysisIpc.ts)."
+  },
+  "analysisIpc.theAnalysisWasStopped": {
+    "description": "Main process: a reason shown to the user when this fails (main/analysisIpc.ts)."
+  },
+  "assetIpc.unknownAssetKind": {
+    "description": "Main process: a reason shown to the user when this fails (main/assetIpc.ts)."
+  },
+  "assetIpc.chooseAnImage": {
+    "description": "Main process: a reason shown to the user when this fails (main/assetIpc.ts)."
+  },
+  "assetStore.thisDownloadIsNot": {
+    "description": "Main process: a reason shown to the user when this fails (main/assets/assetStore.ts)."
+  },
+  "audioAnalysis.theSoundMeasurementWas": {
+    "description": "Main process: a reason shown to the user when this fails (main/audioAnalysis.ts)."
+  },
+  "brandIpc.theThirdPartyNotices": {
+    "description": "Main process: a reason shown to the user when this fails (main/brandIpc.ts)."
+  },
+  "brandIpc.theThirdPartyNotices2": {
+    "description": "Main process: a reason shown to the user when this fails (main/brandIpc.ts)."
+  },
+  "brandKitFiles.removeAFontFrom": {
+    "description": "Main process: a reason shown to the user when this fails (main/brandKitFiles.ts)."
+  },
+  "brandKitFiles.thisFileCannotBe": {
+    "description": "Main process: a reason shown to the user when this fails (main/brandKitFiles.ts)."
+  },
+  "brandKitIpc.unknownProject": {
+    "description": "Main process: a reason shown to the user when this fails (main/brandKitIpc.ts)."
+  },
+  "captionsIpc.theseCaptionsCannotBe": {
+    "description": "Main process: a reason shown to the user when this fails (main/captionsIpc.ts)."
+  },
+  "captionsIpc.chooseAFolderOn": {
+    "description": "Main process: a reason shown to the user when this fails (main/captionsIpc.ts)."
+  },
+  "exportArgs.thisRecordingHasNo": {
+    "description": "Main process: a reason shown to the user when this fails (main/exportArgs.ts)."
+  },
+  "exportBundle.onlyFilesExportedIn": {
+    "description": "Main process: a reason shown to the user when this fails (main/exportBundle.ts)."
+  },
+  "exportIpc.exportFolderWasNot": {
+    "description": "Main process: a reason shown to the user when this fails (main/exportIpc.ts)."
+  },
+  "exportIpc.exportPathWasNot": {
+    "description": "Main process: a reason shown to the user when this fails (main/exportIpc.ts)."
+  },
+  "exportIpc.couldNotWriteTo": {
+    "description": "Main process: a reason shown to the user when this fails (main/exportIpc.ts)."
+  },
+  "exportIpc.thumbnailPathWasNot": {
+    "description": "Main process: a reason shown to the user when this fails (main/exportIpc.ts)."
+  },
+  "exportJob.couldNotSaveThe": {
+    "description": "Main process: a reason shown to the user when this fails (main/exportJob.ts)."
+  },
+  "exportJob.couldNotSave": {
+    "description": "Main process: a reason shown to the user when this fails (main/exportJob.ts)."
+  },
+  "exportJob.theExportSizeIs": {
+    "description": "Main process: a reason shown to the user when this fails (main/exportJob.ts)."
+  },
+  "exportJob.theBackgroundMusicFile": {
+    "description": "Main process: a reason shown to the user when this fails (main/exportJob.ts)."
+  },
+  "filmstrip.theCacheFolderIs": {
+    "description": "Main process: a reason shown to the user when this fails (main/filmstrip.ts)."
+  },
+  "guideIpc.thisScreenshotCannotBe": {
+    "description": "Main process: a reason shown to the user when this fails (main/guide/guideIpc.ts)."
+  },
+  "writeGuide.nothingToSave": {
+    "description": "Main process: a reason shown to the user when this fails (main/guide/writeGuide.ts)."
+  },
+  "writeGuide.couldNotMakeA": {
+    "description": "Main process: a reason shown to the user when this fails (main/guide/writeGuide.ts)."
+  },
+  "writeGuide.theGuideCannotBe": {
+    "description": "Main process: a reason shown to the user when this fails (main/guide/writeGuide.ts)."
+  },
+  "writeGuide.thePdfCouldNot": {
+    "description": "Main process: a reason shown to the user when this fails (main/guide/writeGuide.ts)."
+  },
+  "writeGuide.theGuidesPicturesDo": {
+    "description": "Main process: a reason shown to the user when this fails (main/guide/writeGuide.ts)."
+  },
+  "writeGuide.aScreenshotOfThis": {
+    "description": "Main process: a reason shown to the user when this fails (main/guide/writeGuide.ts)."
+  },
+  "localTextClient.notAvailableOnThis": {
+    "description": "Main process: a reason shown to the user when this fails (main/localAi/localTextClient.ts)."
+  },
+  "localTextClient.aiOnThisPc": {
+    "description": "Main process: a reason shown to the user when this fails (main/localAi/localTextClient.ts)."
+  },
+  "lutImport.thisFileIsEmpty": {
+    "description": "Main process: a reason shown to the user when this fails (main/lutImport.ts)."
+  },
+  "lutImport.theFileIsToo": {
+    "description": "Main process: a reason shown to the user when this fails (main/lutImport.ts)."
+  },
+  "notesIpc.finishTheRecordingFirst": {
+    "description": "Main process: a reason shown to the user when this fails (main/notes/notesIpc.ts)."
+  },
+  "prefsIpc.thisPreferenceIsToo": {
+    "description": "Main process: a reason shown to the user when this fails (main/prefsIpc.ts)."
+  },
+  "prefsIpc.unknownPreference": {
+    "description": "Main process: a reason shown to the user when this fails (main/prefsIpc.ts)."
+  },
+  "projectCopy.theCopyWasCancelled": {
+    "description": "Main process: a reason shown to the user when this fails (main/projectCopy.ts)."
+  },
+  "projectCopy.thisProjectIsToo": {
+    "description": "Main process: a reason shown to the user when this fails (main/projectCopy.ts)."
+  },
+  "projectsIpc.notAProject": {
+    "description": "Main process: a reason shown to the user when this fails (main/projectsIpc.ts)."
+  },
+  "projectsIpc.theRecordingFolderNo": {
+    "description": "Main process: a reason shown to the user when this fails (main/projectsIpc.ts)."
+  },
+  "projectsIpc.aCopyIsAlready": {
+    "description": "Main process: a reason shown to the user when this fails (main/projectsIpc.ts)."
+  },
+  "projectsIpc.chooseAPngJpg": {
+    "description": "Main process: a reason shown to the user when this fails (main/projectsIpc.ts)."
+  },
+  "projectsIpc.thisImageIsToo": {
+    "description": "Main process: a reason shown to the user when this fails (main/projectsIpc.ts)."
+  },
+  "projectsIpc.thisFileCouldNot": {
+    "description": "Main process: a reason shown to the user when this fails (main/projectsIpc.ts)."
+  },
+  "projectsIpc.chooseAPngJpg2": {
+    "description": "Main process: a reason shown to the user when this fails (main/projectsIpc.ts)."
+  },
+  "projectsIpc.thisImageIsToo2": {
+    "description": "Main process: a reason shown to the user when this fails (main/projectsIpc.ts)."
+  },
+  "projectsIpc.thisFileCouldNot2": {
+    "description": "Main process: a reason shown to the user when this fails (main/projectsIpc.ts)."
+  },
+  "projectsIpc.unsupportedCursorImage": {
+    "description": "Main process: a reason shown to the user when this fails (main/projectsIpc.ts)."
+  },
+  "sceneScan.readingTheScreenWas": {
+    "description": "Main process: a reason shown to the user when this fails (main/sceneScan.ts)."
+  },
+  "searchIpc.notASearch": {
+    "description": "Main process: a reason shown to the user when this fails (main/search/searchIpc.ts)."
+  },
+  "copyToFolder.noFreeFileName": {
+    "description": "Main process: a reason shown to the user when this fails (main/share/copyToFolder.ts)."
+  },
+  "copyToFolder.thisFileCannotBe": {
+    "description": "Main process: a reason shown to the user when this fails (main/share/copyToFolder.ts)."
+  },
+  "copyToFolder.theExportedFileIs": {
+    "description": "Main process: a reason shown to the user when this fails (main/share/copyToFolder.ts)."
+  },
+  "copyToFolder.theFolderIsNot": {
+    "description": "Main process: a reason shown to the user when this fails (main/share/copyToFolder.ts)."
+  },
+  "copyToFolder.couldNotMakeThe": {
+    "description": "Main process: a reason shown to the user when this fails (main/share/copyToFolder.ts)."
+  },
+  "copyToFolder.theFolderCouldNot": {
+    "description": "Main process: a reason shown to the user when this fails (main/share/copyToFolder.ts)."
+  },
+  "copyToFolder.theFolderInLeads": {
+    "description": "Main process: a reason shown to the user when this fails (main/share/copyToFolder.ts)."
+  },
+  "copyToFolder.thereIsNotEnough": {
+    "description": "Main process: a reason shown to the user when this fails (main/share/copyToFolder.ts)."
+  },
+  "copyToFolder.theDriveOfIs": {
+    "description": "Main process: a reason shown to the user when this fails (main/share/copyToFolder.ts)."
+  },
+  "copyToFolder.theFolderIsRead": {
+    "description": "Main process: a reason shown to the user when this fails (main/share/copyToFolder.ts)."
+  },
+  "shareIpc.thisFolderIsNot": {
+    "description": "Main process: a reason shown to the user when this fails (main/share/shareIpc.ts)."
+  },
+  "shareIpc.chooseAFolder": {
+    "description": "Main process: a reason shown to the user when this fails (main/share/shareIpc.ts)."
+  },
+  "shareService.onlyFilesExportedIn": {
+    "description": "Main process: a reason shown to the user when this fails (main/share/shareService.ts)."
+  },
+  "shareService.chooseWhereToShare": {
+    "description": "Main process: a reason shown to the user when this fails (main/share/shareService.ts)."
+  },
+  "shareService.waitForTheOther": {
+    "description": "Main process: a reason shown to the user when this fails (main/share/shareService.ts)."
+  },
+  "shareService.isTurnedOffIn": {
+    "description": "Main process: a reason shown to the user when this fails (main/share/shareService.ts)."
+  },
+  "shareService.thisFolderIsNot": {
+    "description": "Main process: a reason shown to the user when this fails (main/share/shareService.ts)."
+  },
+  "shareService.alreadySharingTo": {
+    "description": "Main process: a reason shown to the user when this fails (main/share/shareService.ts)."
+  },
+  "shareService.notPostedTheCopy": {
+    "description": "Main process: a reason shown to the user when this fails (main/share/shareService.ts)."
+  },
+  "shareStore.atMostFoldersCan": {
+    "description": "Main process: a reason shown to the user when this fails (main/share/shareStore.ts)."
+  },
+  "shareStore.webhooksCannotBeStored": {
+    "description": "Main process: a reason shown to the user when this fails (main/share/shareStore.ts)."
+  },
+  "shareStore.webhooksCannotBeStored2": {
+    "description": "Main process: a reason shown to the user when this fails (main/share/shareStore.ts)."
+  },
+  "shareStore.atMostChatsCan": {
+    "description": "Main process: a reason shown to the user when this fails (main/share/shareStore.ts)."
+  },
+  "shareStore.thisWebhookIsAlready": {
+    "description": "Main process: a reason shown to the user when this fails (main/share/shareStore.ts)."
+  },
+  "shareStore.thisChatIsNo": {
+    "description": "Main process: a reason shown to the user when this fails (main/share/shareStore.ts)."
+  },
+  "shareStore.theWebhookOfCan": {
+    "description": "Main process: a reason shown to the user when this fails (main/share/shareStore.ts)."
+  },
+  "soundsIpc.tooManySoundsAre": {
+    "description": "Main process: a reason shown to the user when this fails (main/sounds/soundsIpc.ts)."
+  },
+  "soundsIpc.noSuchSoundStream": {
+    "description": "Main process: a reason shown to the user when this fails (main/sounds/soundsIpc.ts)."
+  },
+  "soundsIpc.aReadOfThis": {
+    "description": "Main process: a reason shown to the user when this fails (main/sounds/soundsIpc.ts)."
+  },
+  "soundsIpc.theRecordingChangedWhile": {
+    "description": "Main process: a reason shown to the user when this fails (main/sounds/soundsIpc.ts)."
+  },
+  "soundsIpc.theSoundScoresAre": {
+    "description": "Main process: a reason shown to the user when this fails (main/sounds/soundsIpc.ts)."
+  },
+  "download.theConnectionWasClosed": {
+    "description": "Main process: a reason shown to the user when this fails (main/speech/download.ts)."
+  },
+  "localClient.textTasksNeedAn": {
+    "description": "Main process: a reason shown to the user when this fails (main/speech/localClient.ts)."
+  },
+  "models.captionsAreBeingMade": {
+    "description": "Main process: a reason shown to the user when this fails (main/speech/models.ts)."
+  },
+  "models.makesCaptionsInOne": {
+    "description": "Main process: a reason shown to the user when this fails (main/speech/models.ts)."
+  },
+  "models.onlyADownloadedSpeech": {
+    "description": "Main process: a reason shown to the user when this fails (main/speech/models.ts)."
+  },
+  "storage.notAFolderOf": {
+    "description": "Main process: a reason shown to the user when this fails (main/storage.ts)."
+  },
+  "storage.itIsOpenIn": {
+    "description": "Main process: a reason shown to the user when this fails (main/storage.ts)."
+  },
+  "styleDefaults.noWatermarkImageTo": {
+    "description": "Main process: a reason shown to the user when this fails (main/styleDefaults.ts)."
+  },
+  "styleDefaults.theWatermarkImageCannot": {
+    "description": "Main process: a reason shown to the user when this fails (main/styleDefaults.ts)."
+  },
+  "styleDefaults.theseSettingsCannotBe": {
+    "description": "Main process: a reason shown to the user when this fails (main/styleDefaults.ts)."
+  },
+  "versions.notAnIndex": {
+    "description": "Main process: a reason shown to the user when this fails (main/versions.ts)."
+  },
+  "versions.notAVersion": {
+    "description": "Main process: a reason shown to the user when this fails (main/versions.ts)."
+  },
+  "asset.overlayFormats": {
+    "description": "Adding a picture to the video: the file is not a kind Flown shows.",
+    "dnt": [
+      "PNG",
+      "JPG",
+      "WebP",
+      "SVG",
+      "GIF"
+    ]
+  },
+  "asset.choose": {
+    "description": "Adding a file: the kinds that can be chosen (\"a PNG, JPG or WebP image\")."
+  },
+  "share.somethingWrong": {
+    "description": "Copy to a folder failed with no reason of its own; shown after \"Could not copy to OneDrive:\"."
+  },
+  "speech.alreadyDownloading": {
+    "description": "Captions on this PC: the model asked for is downloading."
+  },
+  "speech.anotherDownloading": {
+    "description": "Captions on this PC: only one speech model downloads at a time."
+  },
+  "speech.unknownModel": {
+    "description": "Main process: a reason shown to the user when this fails (main/ai/transcribe.ts)."
+  },
+  "diskFull": {
+    "description": "Main process: a reason shown to the user when this fails (main/exportBundle.ts)."
+  },
+  "export.permission": {
+    "description": "Shown when an export fails; ffmpeg.ts keeps the English text for the recording side, the export shows this."
+  },
+  "export.inUse": {
+    "description": "Shown when an export fails; ffmpeg.ts keeps the English text for the recording side, the export shows this."
+  },
+  "export.missingInput": {
+    "description": "Shown when an export fails; ffmpeg.ts keeps the English text for the recording side, the export shows this."
+  },
+  "export.memory": {
+    "description": "Shown when an export fails; ffmpeg.ts keeps the English text for the recording side, the export shows this."
+  },
+  "export.unreadable": {
+    "description": "Shown when an export fails; ffmpeg.ts keeps the English text for the recording side, the export shows this."
+  },
+  "export.encoderStart": {
+    "description": "Shown when an export fails; ffmpeg.ts keeps the English text for the recording side, the export shows this."
+  },
+  "export.encoderStopped": {
+    "description": "Shown when an export fails; ffmpeg.ts keeps the English text for the recording side, the export shows this."
+  },
+  "export.encoderFailed": {
+    "description": "Shown when an export fails; ffmpeg.ts keeps the English text for the recording side, the export shows this."
+  },
+  "export.encoderEarly": {
+    "description": "Shown when an export fails; ffmpeg.ts keeps the English text for the recording side, the export shows this."
+  },
+  "export.cancelled": {
+    "description": "Shown when an export was cancelled while it was running."
+  },
+  "sound.effectMissing": {
+    "description": "Export or preview: a library sound effect the project uses is not installed."
+  },
+  "exportJob.stemsMissing": {
+    "description": "Export refused: both sound tracks of the recording are missing. {mic} and {system} are file names."
+  },
+  "exportJob.micMissing": {
+    "description": "Export refused: the microphone track file is missing. {mic} is a file name."
+  },
+  "exportJob.systemMissing": {
+    "description": "Export refused: the system sound track file is missing. {system} is a file name."
+  },
+  "exportJob.micTrackMissing": {
+    "description": "Export failed: the recording’s microphone track is missing."
+  },
+  "exportJob.systemTrackMissing": {
+    "description": "Export failed: the recording’s system sound track is missing."
+  },
+  "listFetch.otherOrigin": {
+    "description": "AI services: a request was refused because it would go to another web address than the one the key was entered for."
+  },
+  "download.fontNotSaved": {
+    "description": "Font download: the file arrived but could not be saved on this PC."
+  },
+  "download.fontNotSavedCode": {
+    "description": "Font download: the file arrived but could not be saved; {code} is a system error code such as EPERM.",
+    "dnt": [
+      "{code}"
+    ]
+  },
+  "download.musicNotSaved": {
+    "description": "Music library download: the file arrived but could not be saved on this PC."
+  },
+  "download.musicNotSavedCode": {
+    "description": "Music library download: the file arrived but could not be saved; {code} is a system error code such as EPERM.",
+    "dnt": [
+      "{code}"
+    ]
+  },
+  "music.notOffered": {
+    "description": "Music library: a download of something not in the library was refused."
+  },
+  "music.notYet": {
+    "description": "Music library: the download address is not set up yet."
+  },
+  "music.mismatch": {
+    "description": "Music library: the downloaded file failed its check."
+  },
+  "music.cancelled": {
+    "description": "Music library: the download was cancelled."
+  },
+  "music.changed": {
+    "description": "Music library: a downloaded file changed on disk."
+  },
+  "music.missing": {
+    "description": "Music library: a downloaded file is gone."
+  },
+  "music.bundledMissing": {
+    "description": "Music library: a file that comes with Flown is missing."
+  },
+  "music.cap": {
+    "description": "Music library: the downloads exceed their size limit."
+  },
+  "audioAnalysis.unreadable": {
+    "description": "Sound measurement failed: {file} is a recording file name, {reason} the last line of the decoder (English, technical).",
+    "user": [
+      "file"
+    ],
+    "dnt": [
+      "{reason}"
+    ]
+  },
+  "copyCost.unreadable": {
+    "description": "Short clips: the size of a copy could not be worked out because the recording’s files could not be read."
+  },
+  "guideIpc.notWritten": {
+    "description": "Guide: Show in folder was asked for a file this session did not save."
+  },
+  "lutImport.choose": {
+    "description": "Colour: the chosen file is not a .cube LUT file.",
+    "dnt": [
+      ".cube",
+      "LUT"
+    ]
+  },
+  "share.cancelled": {
+    "description": "Share: copying to a folder was stopped."
+  },
+  "soundsIpc.micMissing": {
+    "description": "Sound finder: the recording’s microphone file is gone."
+  },
+  "soundsIpc.systemMissing": {
+    "description": "Sound finder: the recording’s system sound file is gone."
+  },
+  "soundsIpc.soundMissing": {
+    "description": "Sound finder: the recording’s sound file is gone."
   }
 }

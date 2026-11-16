@@ -18,6 +18,8 @@ import type { Clip } from '../types'
 import { clickSoundSource } from './clickSound'
 import { BLEEP_TONE, POP_VOLUME, popSoundSource, toneSoundSource } from './popSound'
 import { cutFadeFilters, pieceCutFades } from './cutFades'
+import { ExportFailure } from './exportPlan'
+import { t } from '../i18n/t'
 
 /** Sample rate of every soundtrack the export writes (Opus requires 48 kHz; AAC is fine with it). */
 export const AUDIO_RATE = 48000
@@ -557,7 +559,7 @@ export function soundtrackParts(job: ExportJob, files: SoundFiles, first: number
       const stems: StemPart[] = []
       for (const k of wanted) {
         const file = files.stems?.[k]
-        if (!file) throw new Error(`The ${k === 'mic' ? 'microphone' : 'system sound'} track of this recording is missing.`)
+        if (!file) throw new ExportFailure(t(k === 'mic' ? 'errors.exportJob.micTrackMissing' : 'errors.exportJob.systemTrackMissing'), 'missing-input')
         args.push('-vn', '-i', file)
         stems.push({ input: `${next++}:a`, gain: job.audio.stems?.[k] ?? 1, denoise: k === 'mic' })
         kinds.push(k)
@@ -610,7 +612,7 @@ export function soundtrackParts(job: ExportJob, files: SoundFiles, first: number
   for (const e of job.effects ?? []) {
     if (clickPositions(e.times, duration).length === 0) continue
     const file = files.effects?.[e.id]
-    if (!file) throw new Error('A sound effect of the library is missing from this installation. Reinstall Flown to bring it back.')
+    if (!file) throw new ExportFailure(t('errors.sound.effectMissing'), 'missing-input')
     args.push('-vn', '-i', file)
     effects.push({ sounds: { times: e.times, volume: e.gain }, input: `${next++}:a` })
   }

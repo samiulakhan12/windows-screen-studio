@@ -9,6 +9,7 @@ import { promises as fs, type Dirent, type Stats } from 'node:fs'
 import path from 'node:path'
 import { VERSIONS_DIR } from './versions'
 import { cleanupPlan, freedBytes, lastUsed, type CleanupAction, type CleanupItem, type RecordingUsage, type SharedFile, type StorageRules } from '../shared/storage/rules'
+import { t } from '../shared/i18n/t'
 
 /** How far one recording's folder is walked. */
 export const SCAN = { maxDepth: 8, maxEntries: 20_000 } as const
@@ -189,12 +190,12 @@ export async function cleanupTarget(root: string, id: string, action: CleanupAct
   const target = action === 'caches' ? path.join(dir, CACHE_DIR) : dir
   for (const p of action === 'caches' ? [dir, target] : [dir]) {
     const st = await deps.lstat(p)
-    if (st.isSymbolicLink() || !st.isDirectory()) throw new Error('Not a folder of the projects folder')
+    if (st.isSymbolicLink() || !st.isDirectory()) throw new Error(t('errors.storage.notAFolderOf'))
   }
   const real = await deps.realpath(target)
   const want = action === 'caches' ? path.join(realRoot, id, CACHE_DIR) : path.join(realRoot, id)
   const same = process.platform === 'win32' ? real.toLowerCase() === want.toLowerCase() : real === want
-  if (!same) throw new Error('Not a folder of the projects folder')
+  if (!same) throw new Error(t('errors.storage.notAFolderOf'))
   return target
 }
 
@@ -241,9 +242,9 @@ export async function runCleanup(
     if (!item) continue
     try {
       const target = await cleanupTarget(root, item.id, item.action, fsd)
-      if (deps.isOpen?.(item.id)) throw new Error('It is open in the editor')
+      if (deps.isOpen?.(item.id)) throw new Error(t('errors.storage.itIsOpenIn'))
       if (item.action === 'remove') await deps.beforeRemove?.(item.id)
-      if (deps.isOpen?.(item.id)) throw new Error('It is open in the editor')
+      if (deps.isOpen?.(item.id)) throw new Error(t('errors.storage.itIsOpenIn'))
       await deps.trash(target)
       result.moved.push(item)
       // A file shared with a recording that stays is not freed.

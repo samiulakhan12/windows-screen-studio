@@ -12,6 +12,7 @@ import { folderId } from '../../shared/share/cloudFolders'
 import { maskWebhook, parseWebhookUrl, SHARE_LIMITS, WEBHOOK_SERVICES, type WebhookService } from '../../shared/share/webhooks'
 import type { SecretBox } from '../ai/keyStore'
 import { writeFileAtomicSync } from '../atomicWrite'
+import { t } from '../../shared/i18n/t'
 
 const FILE_VERSION = 1
 
@@ -134,7 +135,7 @@ export class ShareStore {
     const id = folderId(folder)
     const off = d.off.filter((x) => x !== id)
     if (d.folders.some((f) => f.id === id)) return this.write({ ...d, off })
-    if (d.folders.length >= SHARE_LIMITS.maxFolders) throw new Error(`At most ${SHARE_LIMITS.maxFolders} folders can be added.`)
+    if (d.folders.length >= SHARE_LIMITS.maxFolders) throw new Error(t('errors.shareStore.atMostFoldersCan', { maxFolders: String(SHARE_LIMITS.maxFolders) }))
     this.write({ ...d, off, folders: [...d.folders, { id, path: folder, label: cleanLabel(label, 'Folder'), addedAt: now.toISOString() }] })
   }
 
@@ -168,10 +169,10 @@ export class ShareStore {
   private encrypt(url: string): string {
     if (!this.box.isEncryptionAvailable()) {
       const what = process.platform === 'win32' ? 'Windows data protection' : process.platform === 'darwin' ? 'the Keychain' : 'the system keyring'
-      throw new Error(`Webhooks cannot be stored safely on this PC: ${what} is not available, so it was not saved.`)
+      throw new Error(t('errors.shareStore.webhooksCannotBeStored', { what: String(what) }))
     }
     const weak = this.box.weakness?.()
-    if (weak) throw new Error(`Webhooks cannot be stored safely on this PC (${weak}), so it was not saved.`)
+    if (weak) throw new Error(t('errors.shareStore.webhooksCannotBeStored2', { weak: String(weak) }))
     return this.box.encryptString(url).toString('base64')
   }
 
@@ -186,8 +187,8 @@ export class ShareStore {
   addHook(label: unknown, rawUrl: unknown, now = new Date()): ShareHookInfo {
     const { service, url } = parseWebhookUrl(rawUrl)
     const d = this.load()
-    if (d.hooks.length >= SHARE_LIMITS.maxHooks) throw new Error(`At most ${SHARE_LIMITS.maxHooks} chats can be added.`)
-    if (d.hooks.some((h) => this.decrypt(h) === url)) throw new Error('This webhook is already added.')
+    if (d.hooks.length >= SHARE_LIMITS.maxHooks) throw new Error(t('errors.shareStore.atMostChatsCan', { maxHooks: String(SHARE_LIMITS.maxHooks) }))
+    if (d.hooks.some((h) => this.decrypt(h) === url)) throw new Error(t('errors.shareStore.thisWebhookIsAlready'))
     const hook: StoredHook = { id: newHookId(), service, label: cleanLabel(label, WEBHOOK_SERVICES[service].label), url: this.encrypt(url), createdAt: now.toISOString() }
     this.write({ ...d, hooks: [...d.hooks, hook] })
     return { id: hook.id, service, label: hook.label, masked: maskWebhook(url), readable: true }
@@ -201,9 +202,9 @@ export class ShareStore {
   /** A chat with its URL, for a post; throws a message to show. */
   hook(id: unknown): { service: WebhookService; label: string; url: string } {
     const h = typeof id === 'string' ? this.load().hooks.find((x) => x.id === id) : undefined
-    if (!h) throw new Error('This chat is no longer set up. Add it again in Settings › Share.')
+    if (!h) throw new Error(t('errors.shareStore.thisChatIsNo'))
     const url = this.decrypt(h)
-    if (!url) throw new Error(`The webhook of “${h.label}” can no longer be read on this PC. Remove it and paste it again in Settings › Share.`)
+    if (!url) throw new Error(t('errors.shareStore.theWebhookOfCan', { label: String(h.label) }))
     return { service: h.service, label: h.label, url }
   }
 }

@@ -16,6 +16,7 @@ import { ffmpegPath } from './ffmpeg'
 import { ProjectProcesses } from './projectProcesses'
 import * as projects from './projects'
 import { speechOfFile } from './speech/vad'
+import { t } from '../shared/i18n/t'
 
 /** Decoding rate and layout: plenty for speech and loudness, cheap to measure. */
 const RATE = 16000
@@ -67,8 +68,8 @@ export function measureLevels(file: string, owner = ''): Promise<AudioLevels> {
     proc.on('close', (code, signal) => {
       running.delete(proc)
       if (code === 0) resolve(meter.finish())
-      else if (signal) reject(new Error('The sound measurement was stopped.'))
-      else reject(new Error(`Could not read the sound of ${path.basename(file)} (${log.trim().split('\n').pop() || `exit code ${code}`})`))
+      else if (signal) reject(new Error(t('errors.audioAnalysis.theSoundMeasurementWas')))
+      else reject(new Error(t('errors.audioAnalysis.unreadable', { file: path.basename(file), reason: log.trim().split('\n').pop() || `exit code ${code}` })))
     })
   })
 }
@@ -114,7 +115,7 @@ export async function analyzeAudio(id: string, sources: unknown): Promise<Partia
     const stat = await fs.stat(file).catch(() => null)
     if (!stat?.isFile()) continue
     // Stopped meanwhile (the editor closed, the project is being deleted): nothing more is read.
-    if (running.generation(id) !== generation) throw new Error('The sound measurement was stopped.')
+    if (running.generation(id) !== generation) throw new Error(t('errors.audioAnalysis.theSoundMeasurementWas'))
     const speech = source === 'mic' ? 'mic' : source === 'mix' && !hasMic ? 'mix' : null
     out[source] = await cachedLevels(id, file, stat, speech)
   }

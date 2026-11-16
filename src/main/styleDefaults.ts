@@ -16,6 +16,7 @@ import type { Project } from '../shared/types'
 import { writeFileAtomicSync } from './atomicWrite'
 import { applyBrandKitToNew } from './brandKit'
 import { projectDir } from './projects'
+import { t } from '../shared/i18n/t'
 
 export type { StyleDefaults } from '../shared/editor/styleDefaults'
 
@@ -64,10 +65,10 @@ export async function loadStyleDefaults(file?: string): Promise<StyleDefaults | 
 
 /** Copies the watermark image of project `source` beside the saved look; throws when it cannot. */
 async function keepWatermarkImage(file: string, source: string | undefined, name: string): Promise<void> {
-  if (!source || !WATERMARK_FILE_RE.test(name)) throw new Error('No watermark image to keep')
+  if (!source || !WATERMARK_FILE_RE.test(name)) throw new Error(t('errors.styleDefaults.noWatermarkImageTo'))
   const from = path.join(projectDir(source), name)
   const st = await fs.stat(from)
-  if (!st.isFile() || st.size === 0 || st.size > WATERMARK_MAX_BYTES) throw new Error('The watermark image cannot be kept')
+  if (!st.isFile() || st.size === 0 || st.size > WATERMARK_MAX_BYTES) throw new Error(t('errors.styleDefaults.theWatermarkImageCannot'))
   await fs.mkdir(path.dirname(file), { recursive: true })
   const tmp = `${watermarkCopy(file, name)}.tmp`
   await fs.copyFile(from, tmp)
@@ -88,7 +89,7 @@ export async function saveStyleDefaults(defaults: StyleDefaults | null, file = s
     return null
   }
   const clean = sanitizeStyleDefaults(defaults)
-  if (!clean) throw new Error('These settings cannot be saved as defaults.')
+  if (!clean) throw new Error(t('errors.styleDefaults.theseSettingsCannotBe'))
   const { source, ...look } = clean
   const image = look.watermark?.kind === 'image' ? look.watermark.path : undefined
   if (image && look.watermark) {

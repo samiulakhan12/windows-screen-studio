@@ -10,6 +10,7 @@ import { speechModel } from '../../shared/speech/catalog'
 import { isAppUrl } from '../security'
 import { resetSpeechWatchdogs, stopAllSpeech } from './helper'
 import { onSpeechChanged, speechState, speechStore } from './service'
+import { t } from '../../shared/i18n/t'
 
 /** Fewest milliseconds between two 'speech:changed' messages. */
 export const CHANGED_EVERY_MS = 250
@@ -22,7 +23,7 @@ function fromApp(e: IpcMainInvokeEvent): void {
 /** A catalog id from the renderer; anything else (a path, a URL) is refused. */
 function modelId(v: unknown): string {
   const spec = speechModel(v)
-  if (!spec) throw new Error('Unknown speech model.')
+  if (!spec) throw new Error(t('errors.speech.unknownModel'))
   return spec.id
 }
 

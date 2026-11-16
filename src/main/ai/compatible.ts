@@ -33,6 +33,7 @@ import { noteUsage } from './usage'
 import type { ServiceStore } from './serviceStore'
 import type { AiClient } from './types'
 import { chatImagePart, noPictures, refusesPictures, withPictures } from './images'
+import { t } from '../../shared/i18n/t'
 
 /** A failure of a service's request as a FailureInfo: a refused redirect or origin in its own words, the rest as OpenAI's. */
 function serviceFailure(err: unknown): FailureInfo {
@@ -102,7 +103,7 @@ class FormatRefused extends AiError {
  */
 export function compatibleClient(info: AiProviderInfo, apiKey: string | null, store: Pick<ServiceStore, 'setJsonMode'>, base: typeof fetch = globalThis.fetch): AiClient & { probe(signal: AbortSignal): Promise<ServiceInfo['json']> } {
   const service = info.service
-  if (!service) throw new Error('Not a service.')
+  if (!service) throw new Error(t('errors.compatible.notAService'))
   const origin = new URL(service.baseUrl).origin
   if (apiKey) registerSecret(apiKey)
   const azure = service.preset === 'azure' && presetApplies('azure', service.host)

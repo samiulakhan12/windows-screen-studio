@@ -14,6 +14,7 @@ import { probedProcessor, selectHelper } from '../speech/helper'
 import { llmHelperPath } from './engine'
 import { currentEngine } from './localTextClient'
 import { configureLocalModels, localAiState, localModels } from './models'
+import { t } from '../../shared/i18n/t'
 
 /** Only the app's own page. */
 function fromApp(e: IpcMainInvokeEvent): void {
@@ -22,7 +23,7 @@ function fromApp(e: IpcMainInvokeEvent): void {
 
 /** A catalogue id from the page, or an error. */
 function modelId(raw: unknown): string {
-  if (!isLocalModelId(raw)) throw new Error('Unknown model.')
+  if (!isLocalModelId(raw)) throw new Error(t('errors.localAi.unknownModel'))
   return raw
 }
 
@@ -108,7 +109,7 @@ export function registerLocalAiIpc(): void {
   })
   ipcMain.handle(LOCAL_AI_CHANNELS.setUse, (e, raw: unknown) => {
     fromApp(e)
-    if (!isLocalModelUse(raw)) throw new Error('Unknown choice.')
+    if (!isLocalModelUse(raw)) throw new Error(t('errors.localAi.unknownChoice'))
     return localModels().setUse(raw)
   })
   // Sleep never looks like a frozen helper.

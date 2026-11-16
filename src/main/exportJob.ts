@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto'
 import { promises as fs } from 'node:fs'
 import path from 'node:path'
-import type { ColorTags, ExportJob, FfmpegVideoEncoder, MusicSound, RecordingSound, SoundStem, StemJob, VideoInput } from '../shared/api/export'
+import type { ColorTags, ExportErrorCode, ExportJob, FfmpegVideoEncoder, MusicSound, RecordingSound, SoundStem, StemJob, VideoInput } from '../shared/api/export'
 import { MAX_DUCK_RANGES } from '../shared/audio/automation'
 import { AUDIO_LIMITS, MUSIC_FILE_RE, SOURCE_FILES, STEM_KINDS, type StemKind } from '../shared/audio/settings'
 import type { ExportCodec, ExportFormat } from '../shared/types'
@@ -14,11 +14,15 @@ import { FREEZE, MAX_FREEZES } from '../shared/engine/freeze'
 import { MAX_SPEED, MIN_SPEED } from '../shared/engine/timeline'
 import { MAX_CUT_FADE } from '../shared/render/cutFades'
 import { FfmpegFailure } from './ffmpeg'
+import { ExportFailure } from '../shared/render/exportPlan'
 import { isVoiceStrength } from '../shared/audio/voiceClean'
 import { HARDWARE_ENCODERS } from './hwEncoders'
 import { validSoundGains } from '../shared/audio/soundsEdit'
 import { bedLoop, soundBed, soundEffect } from '../shared/audio/soundLibrary'
 import { MAX_SFX } from '../shared/render/sfxJob'
+import { t, type MessageKey } from '../shared/i18n/t'
+
+export { ExportFailure }
 
 let counter = 0
 const uniqueSuffix = (): string => `${process.pid}-${Date.now().toString(36)}${(counter++).toString(36)}`
@@ -63,9 +67,47 @@ export function freeBatchPath(folder: string, name: string, taken: (file: string
 const PNG_SIGNATURE = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]
 export const isPng = (data: Uint8Array): boolean => data.byteLength > 8 && PNG_SIGNATURE.every((b, i) => data[i] === b)
 
+/**
+ * The code of an export's failure: ffmpeg's and Flown's own carry one, as does the IPC checks' fixed
+ * "Invalid export settings" (never translated); a file system error is coded by what it says (a
+ * denied or read-only folder); anything else is unknown, so the next encoder is tried.
+ */
+export function errorCodeOf(e: unknown): ExportErrorCode {
+  if (e instanceof FfmpegFailure || e instanceof ExportFailure) return e.code
+  if (e instanceof Error && e.message === 'Invalid export settings') return 'invalid-job'
+  const code = (e as NodeJS.ErrnoException | null)?.code
+  if (code === 'EACCES') return 'permission'
+  if (code === 'EROFS') return 'read-only'
+  return 'unknown'
+}
+
+/**
+ * ffmpeg.ts's texts, which stay English for the recording side (§9.5), as an export shows them in
+ * the UI language. English gives the same words.
+ */
+const FFMPEG_TEXTS: Readonly<Record<string, MessageKey>> = {
+  'The disk is full.': 'errors.diskFull',
+  'Could not write to that folder (permission denied).': 'errors.export.permission',
+  'The file is in use by another app.': 'errors.export.inUse',
+  'A file the export needs is missing.': 'errors.export.missingInput',
+  'The computer ran out of memory.': 'errors.export.memory',
+  'The recording could not be read (it may be damaged).': 'errors.export.unreadable',
+  'Could not start the video encoder.': 'errors.export.encoderStart',
+  'The video encoder was stopped.': 'errors.export.encoderStopped',
+  'The video encoder stopped unexpectedly.': 'errors.export.encoderFailed',
+  'The video encoder finished early.': 'errors.export.encoderEarly',
+  'The export was cancelled.': 'errors.export.cancelled'
+}
+
+/** An ffmpeg failure's sentence in the UI language (its own English when it is not one of ffmpeg.ts's). */
+export const ffmpegText = (e: FfmpegFailure): string => (FFMPEG_TEXTS[e.message] ? t(FFMPEG_TEXTS[e.message]) : e.message)
+
 /** The renderer only sees `message`; keep ffmpeg's log after a blank line for the details view. */
 export function toIpcError(e: unknown): Error {
-  if (e instanceof FfmpegFailure) return new Error(e.detail && e.detail !== 'cancelled' ? `${e.message}\n\n${e.detail}` : e.message)
+  if (e instanceof FfmpegFailure) {
+    const text = ffmpegText(e)
+    return new Error(e.detail && e.detail !== 'cancelled' ? `${text}\n\n${e.detail}` : text)
+  }
   if (e instanceof Error) return e
   return new Error(String(e))
 }
@@ -74,10 +116,10 @@ export function renameError(e: unknown, finalPath: string): Error {
   const code = (e as NodeJS.ErrnoException).code
   const name = path.basename(finalPath)
   if (code === 'EBUSY' || code === 'EPERM' || code === 'EACCES') {
-    return new Error(`Could not save "${name}": the file is open in another app or the folder is read-only. Close it and export again.`)
+    return new ExportFailure(t('errors.exportJob.couldNotSaveThe', { name: String(name) }), code === 'EBUSY' ? 'in-use' : 'permission')
   }
-  if (code === 'ENOSPC') return new Error('The disk is full.')
-  return new Error(`Could not save "${name}" (${code ?? (e as Error).message}).`)
+  if (code === 'ENOSPC') return new ExportFailure(t('errors.diskFull'), 'disk-full')
+  return new ExportFailure(t('errors.exportJob.couldNotSave', { name: String(name), value: String(code ?? (e as Error).message) }), code === 'EROFS' ? 'read-only' : 'permission')
 }
 
 /** Renames with a few retries: on Windows an antivirus scan can hold a fresh file briefly. */
@@ -314,7 +356,7 @@ export function validateJob(job: ExportJob): void {
   const audioOnly = job.format === 'm4a' || job.format === 'wav'
   const sizeOk = audioOnly || (isNum(job.width, 2, MAX_FRAME_SIDE) && isNum(job.height, 2, MAX_FRAME_SIDE) && job.width % 2 === 0 && job.height % 2 === 0)
   if (!sizeOk && typeof job.width === 'number' && typeof job.height === 'number') {
-    throw new Error(`The export size ${job.width}×${job.height} is not supported: each side must be an even number of pixels, at most ${MAX_FRAME_SIDE}. Choose a lower resolution.`)
+    throw new ExportFailure(t('errors.exportJob.theExportSizeIs', { width: String(job.width), height: String(job.height), MAX_FRAME_SIDE: String(MAX_FRAME_SIDE) }), 'invalid-job')
   }
   const ok =
     FORMATS.includes(job.format) &&
@@ -339,8 +381,8 @@ export function validateJob(job: ExportJob): void {
     (job.effects === undefined || (job.format !== 'gif' && validEffects(job.effects))) &&
     (job.subtitles === undefined || validSubtitles(job.subtitles, job.format)) &&
     (job.stems === undefined || validStems(job.stems, job))
-  if (!ok) throw new Error('Invalid export settings')
-  if (audioOnly && !job.audio && !job.clicks && !job.music && !job.pops?.length && !job.tones?.length && !job.effects?.length) throw new Error('This recording has no sound to export.')
+  if (!ok) throw new ExportFailure('Invalid export settings', 'invalid-job')
+  if (audioOnly && !job.audio && !job.clicks && !job.music && !job.pops?.length && !job.tones?.length && !job.effects?.length) throw new ExportFailure(t('errors.exportArgs.thisRecordingHasNo'), 'no-sound')
 }
 
 /** The files a job's soundtrack reads, inside the project folder. */
@@ -367,7 +409,9 @@ export interface LibraryInputs {
 }
 
 export const LIBRARY_COPY = {
-  missingEffect: 'A sound effect of the library is missing from this installation. Reinstall Flown to bring it back.'
+  get missingEffect(): string {
+    return t('errors.sound.effectMissing')
+  }
 }
 
 /**
@@ -383,7 +427,13 @@ export async function isLibraryBed(file: string, id: string, readFile: (file: st
   return !!data && data.length === bed.prepared.bytes && createHash('sha256').update(data).digest('hex') === bed.prepared.sha256
 }
 
-const SOURCE_NAMES: Record<StemKind, string> = { mic: 'microphone', system: 'system sound' }
+
+/** Why a muted or turned-down source cannot be left out: the stems `missing` (one or both) are not there. */
+function missingStemsText(missing: readonly StemKind[]): string {
+  const values = { mic: SOURCE_FILES.mic, system: SOURCE_FILES.system }
+  if (missing.length > 1) return t('errors.exportJob.stemsMissing', values)
+  return t(missing[0] === 'mic' ? 'errors.exportJob.micMissing' : 'errors.exportJob.systemMissing', values)
+}
 
 /**
  * Resolves the soundtrack files of `job` in project folder `dir`. Names come from fixed
@@ -411,10 +461,7 @@ export async function resolveSoundInputs(job: ExportJob, dir: string, exists: (f
       const missing = wanted.filter((_, i) => !present[i])
       const full = (g: number | undefined): boolean => g !== undefined && Math.abs(g - 1) < 1e-6
       if (![...new Set([...recorded, ...wanted])].every((k) => full(job.audio?.stems?.[k]))) {
-        const names = missing.map((k) => `${SOURCE_NAMES[k]} (${SOURCE_FILES[k]})`).join(' and ')
-        throw new Error(
-          `The ${names} ${missing.length > 1 ? 'files of this recording are' : 'file of this recording is'} missing, so a source you muted or turned down cannot be left out. Open the recording again to use its mixed sound, with every source.`
-        )
+        throw new ExportFailure(missingStemsText(missing), 'missing-input')
       }
       console.warn('A sound track of the recording is missing; exporting its mixed sound instead.')
       const { stems: _dropped, ...audio } = job.audio
@@ -423,9 +470,9 @@ export async function resolveSoundInputs(job: ExportJob, dir: string, exists: (f
     }
   }
   if (job.music) {
-    if (!MUSIC_FILE_RE.test(job.music.file)) throw new Error('Invalid export settings')
+    if (!MUSIC_FILE_RE.test(job.music.file)) throw new ExportFailure('Invalid export settings', 'invalid-job')
     const music = path.join(dir, job.music.file)
-    if (!(await exists(music))) throw new Error('The background music file is missing. Choose it again in the Audio panel.')
+    if (!(await exists(music))) throw new ExportFailure(t('errors.exportJob.theBackgroundMusicFile'), 'missing-input')
     out.music = music
     const named = out.job.music
     if (named?.bed !== undefined) {
@@ -445,9 +492,9 @@ export async function resolveSoundInputs(job: ExportJob, dir: string, exists: (f
     const files: Record<string, string> = {}
     for (const e of job.effects) {
       const fx = soundEffect(e.id)
-      if (!fx) throw new Error('Invalid export settings')
+      if (!fx) throw new ExportFailure('Invalid export settings', 'invalid-job')
       const file = library ? path.join(library.soundDir, fx.prepared.file) : null
-      if (!file || !(await exists(file))) throw new Error(LIBRARY_COPY.missingEffect)
+      if (!file || !(await exists(file))) throw new ExportFailure(LIBRARY_COPY.missingEffect, 'missing-input')
       files[e.id] = file
     }
     out.effects = files

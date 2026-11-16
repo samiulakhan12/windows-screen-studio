@@ -13,14 +13,15 @@ import { isAppUrl } from '../security'
 import { getMainWindow } from '../windows'
 import { printGuidePdf } from './printPdf'
 import { checkGuidePayload, writeGuideFiles } from './writeGuide'
+import { t } from '../../shared/i18n/t'
 
 /** Only the app's own page. */
 function fromApp(e: IpcMainInvokeEvent): void {
   if (!isAppUrl(e.senderFrame?.url ?? '')) throw new Error('Not allowed')
 }
 
-/** guide:showItem's answer for a path this session's guide:save did not write. */
-export const NOT_WRITTEN = 'Flown did not save that file.'
+/** guide:showItem's answer for a path this session's guide:save did not write (made when thrown, in the UI language). */
+export const NOT_WRITTEN = (): string => t('errors.guideIpc.notWritten')
 
 /** Folders of Markdown guides written this session (Show in folder accepts them). */
 const guideFolders = new Set<string>()
@@ -44,16 +45,16 @@ async function chooseTarget(payload: GuideSavePayload): Promise<string | null> {
   const documents = app.getPath('documents')
   if (payload.format === 'markdown') {
     const result = await dialog.showOpenDialog(main, {
-      title: 'Save the guide as Markdown',
+      title: t('main.guideIpc.saveTheGuideAs'),
       defaultPath: documents,
-      buttonLabel: 'Save the guide in this folder',
+      buttonLabel: t('main.guideIpc.saveTheGuideIn'),
       properties: ['openDirectory', 'createDirectory', 'promptToCreate']
     })
     return result.canceled || !result.filePaths[0] ? null : result.filePaths[0]
   }
   const kind = EXTENSIONS[payload.format]
   const result = await dialog.showSaveDialog(main, {
-    title: payload.format === 'pdf' ? 'Save the guide as PDF' : payload.format === 'demo' ? 'Save the click-through demo' : 'Save the guide as a web page',
+    title: payload.format === 'pdf' ? t('main.guide.pdfTitle') : payload.format === 'demo' ? t('main.guide.demoTitle') : t('main.guide.htmlTitle'),
     defaultPath: path.join(documents, `${payload.name}.${kind.ext}`),
     filters: [{ name: kind.filter, extensions: [kind.ext] }]
   })
@@ -74,7 +75,7 @@ export async function saveGuide(raw: unknown): Promise<{ path: string; bytes: nu
 
 /** guide:showItem: only a file or folder this session's guide:save wrote. */
 export function showGuideFile(file: unknown): void {
-  if (typeof file !== 'string' || !path.isAbsolute(file) || !(isExportedFile(file) || guideFolders.has(file))) throw new Error(NOT_WRITTEN)
+  if (typeof file !== 'string' || !path.isAbsolute(file) || !(isExportedFile(file) || guideFolders.has(file))) throw new Error(NOT_WRITTEN())
   shell.showItemInFolder(file)
 }
 
@@ -88,7 +89,7 @@ export async function copyGuide(clip: unknown): Promise<void> {
 
 /** guide:copyImage: one PNG of at most 16 MB on the clipboard. */
 export async function copyGuideImage(png: unknown): Promise<void> {
-  if (!(png instanceof Uint8Array) || png.byteLength > GUIDE_SAVE_LIMITS.image || imageKind(png) !== 'png') throw new Error('This screenshot cannot be copied.')
+  if (!(png instanceof Uint8Array) || png.byteLength > GUIDE_SAVE_LIMITS.image || imageKind(png) !== 'png') throw new Error(t('errors.guideIpc.thisScreenshotCannotBe'))
   await clipboard.write([new ClipboardItem({ 'image/png': new Blob([new Uint8Array(png)], { type: 'image/png' }) })])
 }
 
